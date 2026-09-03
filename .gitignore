@@ -28,6 +28,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 _dev_data/
+.linnya-development-data-retired/
 storage/
 *.sqlite
 *.sqlite3

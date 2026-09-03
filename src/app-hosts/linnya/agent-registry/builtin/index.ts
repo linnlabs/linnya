@@ -9,14 +9,14 @@
 
 import type { AgentRegistryDependencies } from '../types';
 import { agentRegistry } from '../registry';
-import { BUILTIN_AGENT_DEFINITIONS } from './builtin-agent-definitions';
+import { getBuiltinAgentDefinitions } from './builtin-agent-definitions';
 import { ensurePluginSkillAvailabilityRegistered } from '../../plugin-registry/skillAvailability';
 
 let builtinRegistered = false;
 
 function ensureBuiltinDefinitionsRegistered(): void {
   if (builtinRegistered) return;
-  for (const def of BUILTIN_AGENT_DEFINITIONS) {
+  for (const def of getBuiltinAgentDefinitions()) {
     agentRegistry.register(def);
   }
   builtinRegistered = true;
