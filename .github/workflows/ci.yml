@@ -72,9 +72,6 @@ jobs:
       - name: Verify public packages
         run: |
           pnpm run test:schemas-package-gate
-          pnpm --filter @linnlabs/linnkit typecheck
-          pnpm --filter @linnlabs/linnkit build
-          pnpm --filter @linnlabs/linnkit test
           pnpm run test:provider-package-gate
           pnpm run test:renderer-ui-package-gate
           pnpm --filter @linnya/plugin-host-contract typecheck
@@ -105,7 +102,6 @@ jobs:
           cargo install wasm-pack --version 0.15.0 --locked
           pnpm run build:wasm
           pnpm run build:schemas
-          pnpm --filter @linnlabs/linnkit build
           pnpm run build:main
           pnpm run build:backend
           pnpm test

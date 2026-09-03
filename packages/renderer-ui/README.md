@@ -155,7 +155,7 @@ Host external 的插件；改变已 bundle 纯叶子行为时必须按实际 art
 远程安装和运行时加载三条链的任何 JS/CSS 副作用前被拒绝。
 
 Linnya 已进入开源筹备期，因此不建立临时私有 GitHub Packages 渠道。`Linnya` 是产品名，当前 `@linnya` 是
-workspace/runtime 的产品逻辑 namespace，不是 GitHub 或 npm 身份声明。已确认的 D7-C 要求首次开源只在公共 `linnlabs/linnya` 仓库中开放本包源码、文档和边界门禁；
+workspace/runtime 的产品逻辑 namespace，不是 GitHub 或 npm 身份声明。已确认的 D7-C 要求首次开源只在本公共仓中开放本包源码、文档和边界门禁；
 本包在开源前后都保持 `@linnya/renderer-ui`、workspace-only 与 `private: true`，不发布公共 npm package。
 
 真实 tarball consumer gate 继续验证 public exports、DTS/CSS、Vue runtime 与无 Host 偶然依赖，但该 tarball 是 CI/官方装配的验证产物，不自动上传 npm 或 GitHub Release。未来如出现真实仓外 consumer，必须通过公开 issue / PR 明确 registry、scope、版本承诺和运营 owner。

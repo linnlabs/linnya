@@ -47,7 +47,7 @@ reference frame 只报告在当前文稿物理尺寸下仍为正面积的事实�
 - `observationPreviewMeta` 只命名文稿并标记 `slides/inspection`，由 ToolNode 交给超长输出预览端口消费；
 - backend producer parse 执行期 `PptInspectToolResultSchema`；Conversation 持久化后只保留 `data + observation`，Renderer projector parse 同一 owner 中的 `PptInspectToolMessageResultSchema`；两者复用完全相同的 data/observation schema，不维护兼容读取分支。
 
-当 observation 超过通用字符或行预算时，ToolNode 把全文交给 ToolOutputStore，模型收到可续读预览。blob 身份只属于通用 `tool_output.metadata.observationTruncation`；Slides data 不复制 blob、cursor 或截断正文。通用执行规则见 [Linnkit Tool 开发规范](../../../../../linnkit/docs/integration/tool-development-guide.md)。
+当 observation 超过通用字符或行预算时，ToolNode 把全文交给 ToolOutputStore，模型收到可续读预览。blob 身份只属于通用 `tool_output.metadata.observationTruncation`；Slides data 不复制 blob、cursor 或截断正文。通用执行规则见 [Linnkit Tool 开发规范](https://github.com/linnlabs/linnkit/blob/main/docs/integration/tool-development-guide.md)。
 
 ## 边界
 

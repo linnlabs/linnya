@@ -29,9 +29,9 @@
 原不变量 15 写"生产代码禁止定义或调用 `addUserMessage()`"，但当时代码库中有三处**合法**的同名 API：
 
 ```text
-linnlabs/linnkit（历史位置）src/context-manager/profiles/agent/context/ConversationSession.ts:78
-linnlabs/linnkit（历史位置）src/runtime-kernel/events/provider-sidecar.ts:34
-linnlabs/linnkit（历史位置）src/runtime-kernel/events/runtime-to-ai-message.ts:17
+独立 Linnkit 仓（历史位置）src/context-manager/profiles/agent/context/ConversationSession.ts:78
+独立 Linnkit 仓（历史位置）src/runtime-kernel/events/provider-sidecar.ts:34
+独立 Linnkit 仓（历史位置）src/runtime-kernel/events/runtime-to-ai-message.ts:17
 ```
 
 这些是 Linnkit context-manager 的**内存消息构建** API，与被废止的 Renderer store action 无关。禁令若按字面执行会误伤。

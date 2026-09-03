@@ -190,7 +190,7 @@ runtime 仍未闭合。因此这组文件仍是法律 SBOM 的中间证据，不
 Poppler 是 Desktop 的外部 runtime，不跟随普通源码提交。`config/poppler-runtime.json`
 锁定两个平台 release 资产；`pnpm run release:poppler-runtime:prepare`
 只会从已经通过完整文件树校验的本地 runtime 生成字节确定的压缩包，并拒绝与 catalog 大小/hash 不一致的输出。首次公开前把两个输出上传到
-`linnlabs/linnya` 的 `poppler-runtime-v1` GitHub
+[Linnya 公开仓](https://github.com/linnlabs/linnya)的 `poppler-runtime-v1` GitHub
 Release；后续升级必须使用新 release tag 并同步更新 catalog、NOTICE/source
 offer 和 installer BOM。
 

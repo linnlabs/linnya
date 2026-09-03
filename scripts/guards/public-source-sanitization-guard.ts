@@ -14,6 +14,7 @@ export type PublicSourceSanitizationReason =
   | 'absolute-symlink-target'
   | 'machine-volume-path'
   | 'macos-user-temporary-path'
+  | 'parent-workspace-path'
   | 'retired-product-name'
   | 'windows-development-root-path'
   | 'user-home-path';
@@ -52,6 +53,10 @@ const RETIRED_PRODUCT_NAME_PATTERN = new RegExp(
   `(?<![A-Za-z0-9])${['ting', 'talk'].join('')}(?=$|[^A-Za-z0-9])`,
   'giu'
 );
+// npm scope、GitHub URL 和 workflow `uses:` 是正式发布身份；只有裸路径写法表示
+// 对个人父级工作区的假设，公共仓必须拒绝。
+const PARENT_WORKSPACE_PATH_PATTERN =
+  /(?<!github\.com\/)(?<!@)(?<!uses: )linnlabs[\\/]+/giu;
 
 function isPublicPlaceholderSegment(segment: string): boolean {
   const normalized = segment.toLowerCase();
@@ -143,6 +148,12 @@ export function analyzePublicTextForSourceSanitization(
       content,
       RETIRED_PRODUCT_NAME_PATTERN,
       'retired-product-name'
+    ),
+    ...collectPatternViolations(
+      relativePath,
+      content,
+      PARENT_WORKSPACE_PATH_PATTERN,
+      'parent-workspace-path'
     ),
   ];
 }

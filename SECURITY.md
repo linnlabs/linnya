@@ -6,7 +6,7 @@ Before the first stable release, security fixes target the latest source on `mai
 
 ## Reporting a vulnerability
 
-Use GitHub's private vulnerability reporting for `linnlabs/linnya` when it is available. Include affected versions, impact, reproduction steps, and any proposed mitigation.
+Use GitHub's private vulnerability reporting for the [Linnya repository](https://github.com/linnlabs/linnya) when it is available. Include affected versions, impact, reproduction steps, and any proposed mitigation.
 
 If private reporting is unavailable, open a minimal issue requesting a private contact channel. Do not include exploit code, credentials, personal data, or sensitive infrastructure details in a public issue.
 

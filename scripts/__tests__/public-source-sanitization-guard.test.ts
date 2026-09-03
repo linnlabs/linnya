@@ -71,6 +71,22 @@ describe('public source sanitization guard', () => {
     ]);
   });
 
+  it('拒绝父级个人工作区路径，但允许正式 npm scope 与 GitHub URL', () => {
+    const parentWorkspacePath = ['linnlabs', 'linnkit'].join('/');
+    const content = [
+      parentWorkspacePath,
+      `../${parentWorkspacePath}`,
+      '@linnlabs/linnkit',
+      'https://github.com/linnlabs/linnkit',
+      '- uses: linnlabs/build/.github/workflows/release.yml@0123456789abcdef',
+    ].join('\n');
+
+    expect(analyzePublicTextForSourceSanitization('fixture.md', content)).toEqual([
+      { file: 'fixture.md', line: 1, reason: 'parent-workspace-path' },
+      { file: 'fixture.md', line: 2, reason: 'parent-workspace-path' },
+    ]);
+  });
+
   it('扫描 Git 候选文件并排除已忽略的本地文件', () => {
     const repositoryRoot = mkdtempSync(path.join(tmpdir(), 'linnya-public-path-guard-'));
     const user = createPrivateUserSegment();

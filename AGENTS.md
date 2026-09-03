@@ -12,7 +12,7 @@ Linnya 是一个以 Agent 为中心的文档数据库，也是基于 Electron �
 | Linnya App Host | `src/app-hosts/linnya/` | 把 Agent、工具、持久化、模型与插件装配成产品 |
 | 产品业务 | `src/domains/`、`src/tools/` | 业务定义、规则、流程与能力 |
 | Electron / Infra | `src/electron-main/`、`src/infra/` | 桌面生命周期、IPC、进程与技术适配器 |
-| Linnkit | `@linnlabs/linnkit`（npm；源码见 `linnlabs/linnkit`） | 独立版本的通用 Agent runtime、Graph、工具执行、事件与 ports |
+| Linnkit | `@linnlabs/linnkit`（npm；源码见[独立 Linnkit 仓](https://github.com/linnlabs/linnkit)） | 独立版本的通用 Agent runtime、Graph、工具执行、事件与 ports |
 | 产品合同 | `packages/schemas/` | 跨进程、跨端和跨插件 DTO 与 schema |
 | 插件平台 | `packages/plugin-host-contract/`、`packages/plugins/` | Host 门面、开放插件及其 artifact |
 | 共享 Renderer UI | `packages/renderer-ui/` | 稳定 token、基础控件、图标和交互原语 |
@@ -42,7 +42,7 @@ Linnya 是一个以 Agent 为中心的文档数据库，也是基于 Electron �
 
 | 任务 | 第一入口 |
 | --- | --- |
-| Agent loop、Run、child run、RuntimeEvent | [`linnlabs/linnkit`](https://github.com/linnlabs/linnkit) 的 Runtime 与 integration 文档 |
+| Agent loop、Run、child run、RuntimeEvent | [独立 Linnkit 仓](https://github.com/linnlabs/linnkit)的 Runtime 与 integration 文档 |
 | Linnya Agent 与产品装配 | [`src/app-hosts/linnya/README.md`](./src/app-hosts/linnya/README.md) |
 | 跨端 schema | [`packages/schemas/README.md`](./packages/schemas/README.md) |
 | Renderer UI 通用能力 | [`packages/renderer-ui/README.md`](./packages/renderer-ui/README.md) |

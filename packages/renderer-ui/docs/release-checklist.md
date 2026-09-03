@@ -4,7 +4,7 @@
 不通过私有 GitHub Packages、个人 scope、额外组织或临时脚本远程发布。`Linnya` 是产品名，当前 `@linnya` 是
 workspace/runtime 的逻辑 namespace，不是 GitHub 或 npm 身份声明。
 
-首次开源时，本包的源码、文档和构建门禁随 `linnlabs/linnya` 公开，但不改名、不解除 `private: true`、不发布公共 npm。公开边界必须同时遵循
+首次开源时，本包的源码、文档和构建门禁随 Linnya 公共仓公开，但不改名、不解除 `private: true`、不发布公共 npm。公开边界必须同时遵循
 [文档治理规则](../../../docs/documentation-governance.md) 与仓库根构建说明。
 
 ## 1. 判断版本级别
