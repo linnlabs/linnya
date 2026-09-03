@@ -158,6 +158,39 @@ function mountDeeplyNestedSelect(onSelect: (value: unknown) => void): MountedCus
   };
 }
 
+function mountOverflowingLabelSelect(): MountedCustomSelect {
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const app = createApp({
+    render() {
+      return h(CustomSelect, {
+        modelValue: null,
+        optionLabelOverflow: 'marquee-on-hover',
+        options: [
+          {
+            text: 'Provider',
+            children: [
+              {
+                value: 'long-model',
+                text: '这是一个长度明显超过子菜单可用宽度的模型名称',
+              },
+            ],
+          },
+        ],
+      });
+    },
+  });
+  app.mount(host);
+
+  return {
+    host,
+    unmount: () => {
+      app.unmount();
+      host.remove();
+    },
+  };
+}
+
 const mountedSelects: MountedCustomSelect[] = [];
 
 afterEach(() => {
@@ -166,6 +199,51 @@ afterEach(() => {
 });
 
 describe('CustomSelect 子菜单交互与定位', () => {
+  it('长选项默认省略，并仅在真实溢出时于 hover 中滚动到末尾', async () => {
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    const mounted = mountOverflowingLabelSelect();
+    mountedSelects.push(mounted);
+
+    const trigger = mounted.host.querySelector('.select-trigger');
+    if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
+    trigger.click();
+    await nextTick();
+
+    const provider = mounted.host.querySelector('.custom-select__options .select-option');
+    if (!(provider instanceof HTMLButtonElement)) throw new Error('Provider option not found');
+    provider.dispatchEvent(new MouseEvent('mouseenter'));
+    await nextTick();
+    await nextTick();
+
+    const modelOption = document.body.querySelector('.custom-select__submenu .select-option');
+    const label = modelOption?.querySelector('.option-label');
+    const labelText = modelOption?.querySelector('.linnya-ui-select-menu-option-label-text');
+    if (!(modelOption instanceof HTMLButtonElement)) throw new Error('Model option not found');
+    if (!(label instanceof HTMLElement) || !(labelText instanceof HTMLElement)) {
+      throw new Error('Model option label not found');
+    }
+    expect(label.classList).toContain('linnya-ui-select-menu-option-label--ellipsis');
+    expect(label.title).toBe('这是一个长度明显超过子菜单可用宽度的模型名称');
+    modelOption.dispatchEvent(new MouseEvent('mouseenter'));
+    expect(label.classList).not.toContain('linnya-ui-select-menu-option-label--scrolling');
+
+    Object.defineProperties(labelText, {
+      scrollWidth: { configurable: true, value: 300 },
+      clientWidth: { configurable: true, value: 120 },
+    });
+    modelOption.dispatchEvent(new MouseEvent('mouseenter'));
+
+    expect(label.classList).toContain('linnya-ui-select-menu-option-label--scrolling');
+    expect(label.style.getPropertyValue('--linnya-ui-select-menu-label-scroll-distance'))
+      .toBe('180px');
+
+    modelOption.dispatchEvent(new MouseEvent('mouseleave'));
+    expect(label.classList).not.toContain('linnya-ui-select-menu-option-label--scrolling');
+  });
+
   it('主菜单与子菜单共用标准菜单项合同并提交子项动作', async () => {
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
       callback(0);

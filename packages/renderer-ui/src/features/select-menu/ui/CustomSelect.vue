@@ -92,6 +92,7 @@
               :submenu-panel-id="submenuPanelId"
               :show-submenu-state="true"
               :class-names="classNames"
+              :option-label-overflow="optionLabelOverflow"
               @activate="activateOption"
               @hover="handleOptionHover"
               @open-submenu="handleOptionSubmenuOpen"
@@ -173,6 +174,7 @@
               :submenu-panel-id="nestedSubmenuPanelId"
               :show-submenu-state="true"
               :class-names="classNames"
+              :option-label-overflow="optionLabelOverflow"
               @activate="activateSubmenuOption"
               @hover="handleNestedOptionHover"
               @open-submenu="handleNestedOptionSubmenuOpen"
@@ -211,6 +213,7 @@
             :model-value="modelValue"
             semantic-role="menu"
             :class-names="classNames"
+            :option-label-overflow="optionLabelOverflow"
             @activate="selectOption"
             @update-inline-number="updateInlineNumberValueDirect"
             @adjust-inline-number="adjustInlineNumber"
@@ -228,6 +231,7 @@ import type {
   CustomSelectClassNames,
   CustomSelectInlineNumberConfirm,
   CustomSelectOption,
+  CustomSelectOptionLabelOverflow,
   CustomSelectOptionValue,
   CustomSelectSemanticRole,
   CustomSelectVariant,
@@ -255,6 +259,7 @@ interface CustomSelectProps {
   minWidth?: string;
   optionsMaxHeight?: string;
   optionsOverflow?: string;
+  optionLabelOverflow?: CustomSelectOptionLabelOverflow;
   variant?: CustomSelectVariant;
   disabled?: boolean;
   bordered?: boolean;
@@ -277,6 +282,7 @@ const props = withDefaults(defineProps<CustomSelectProps>(), {
   minWidth: '100%',
   optionsMaxHeight: '',
   optionsOverflow: '',
+  optionLabelOverflow: 'visible',
   variant: 'default',
   disabled: false,
   bordered: true,

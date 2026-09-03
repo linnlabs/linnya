@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { ConversationAgentIds } from '@app/schemas';
+import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
 import {
   clearRendererPluginRegistryForTest,
   getDocumentTypeByNodeType,
@@ -522,7 +523,9 @@ describe('runtime renderer plugin loader', () => {
         rendererUiRange: '^1.0.0',
       },
       error: {
-        message: expect.stringContaining('要求 Renderer UI ^1.0.0，当前为 2.0.0'),
+        message: expect.stringContaining(
+          `要求 Renderer UI ^1.0.0，当前为 ${RENDERER_UI_VERSION}`
+        ),
       },
     });
   });

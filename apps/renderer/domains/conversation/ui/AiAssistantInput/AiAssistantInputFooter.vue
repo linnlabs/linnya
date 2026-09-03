@@ -103,6 +103,7 @@
             variant="minimal"
             :bordered="false"
             font-size="12px"
+            option-label-overflow="marquee-on-hover"
             :class-names="{
               trigger: 'input-footer-model-trigger',
               selectedValue: 'input-footer-model-selected-value',

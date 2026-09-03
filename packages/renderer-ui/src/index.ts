@@ -80,6 +80,7 @@ export type {
   CustomSelectInlineNumberInput,
   CustomSelectKeyboardNavigationInput,
   CustomSelectOption,
+  CustomSelectOptionLabelOverflow,
   CustomSelectOptionValue,
   CustomSelectOptionVariant,
   CustomSelectPanelItem,

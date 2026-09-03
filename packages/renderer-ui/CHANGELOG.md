@@ -2,6 +2,11 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 2.1.0 - 2026-09-03
+
+- `CustomSelect` 新增可选 `optionLabelOverflow` 合同；`marquee-on-hover` 让长选项默认显示省略号，hover 时仅对真实溢出的文本滚动到末尾，并遵守 reduced-motion；
+- 带子菜单项的数量提示由箭头左侧 12px 单边间距改为数字左右各 6px，保持名称、数量和箭头的视觉节奏。
+
 ## 2.0.0 - 2026-09-01
 
 - `ActionButtons` 删除 `isGenerating`、`canGenerate` 业务状态和 `isDangerousAction`、`isInfoAction`、

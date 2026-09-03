@@ -49,7 +49,8 @@
         ? submenuPanelId
         : undefined"
       @click="emit('activate', option, $event)"
-      @mouseenter="emit('hover', option, $event, index)"
+      @mouseenter="handleOptionMouseEnter(option, $event, index)"
+      @mouseleave="stopOptionLabelMarquee"
       @keydown.right="emit('open-submenu', option, $event)"
     >
       <component
@@ -85,8 +86,18 @@
         </template>
         <span
           v-else
-          :class="['option-label', option.labelClassName, classNames.optionLabel]"
-        >{{ option.text ?? option.label }}</span>
+          :class="[
+            'option-label',
+            {
+              'linnya-ui-select-menu-option-label--ellipsis': optionLabelOverflow !== 'visible',
+            },
+            option.labelClassName,
+            classNames.optionLabel,
+          ]"
+          :title="optionLabelOverflow === 'visible' ? undefined : optionLabelText(option)"
+        >
+          <span class="linnya-ui-select-menu-option-label-text">{{ optionLabelText(option) }}</span>
+        </span>
         <span
           v-if="option.shortcut"
           :class="['option-shortcut', option.shortcutClassName, classNames.optionShortcut]"
@@ -113,11 +124,13 @@
 import type {
   CustomSelectClassNames,
   CustomSelectOption,
+  CustomSelectOptionLabelOverflow,
   CustomSelectOptionValue,
   CustomSelectSemanticRole,
 } from '../definitions/selectMenu';
 import { CustomNumberInput } from '../../number-entry';
 import type { NumberInputValue } from '../../number-entry';
+import { resolveOptionLabelMarquee } from '../functions/resolveOptionLabelMarquee';
 
 interface CustomSelectOptionListProps {
   options: readonly CustomSelectOption<Value>[];
@@ -129,6 +142,7 @@ interface CustomSelectOptionListProps {
   submenuPanelId?: string;
   showSubmenuState?: boolean;
   classNames?: CustomSelectClassNames;
+  optionLabelOverflow?: CustomSelectOptionLabelOverflow;
 }
 
 const props = withDefaults(defineProps<CustomSelectOptionListProps>(), {
@@ -140,6 +154,7 @@ const props = withDefaults(defineProps<CustomSelectOptionListProps>(), {
   submenuPanelId: '',
   showSubmenuState: false,
   classNames: () => ({}),
+  optionLabelOverflow: 'visible',
 });
 
 const emit = defineEmits<{
@@ -154,6 +169,51 @@ const emit = defineEmits<{
 function optionKey(option: CustomSelectOption<Value>, index: number): string | number {
   if (typeof option.value === 'string' || typeof option.value === 'number') return option.value;
   return `${option.label ?? option.text ?? 'option'}-${index}`;
+}
+
+function optionLabelText(option: CustomSelectOption<Value>): string {
+  return option.text ?? option.label ?? '';
+}
+
+function handleOptionMouseEnter(
+  option: CustomSelectOption<Value>,
+  event: MouseEvent,
+  index: number
+): void {
+  if (props.optionLabelOverflow === 'marquee-on-hover') startOptionLabelMarquee(event);
+  emit('hover', option, event, index);
+}
+
+function startOptionLabelMarquee(event: MouseEvent): void {
+  const optionElement = event.currentTarget;
+  if (!(optionElement instanceof HTMLElement)) return;
+  const label = optionElement.querySelector('.option-label');
+  const labelText = optionElement.querySelector('.linnya-ui-select-menu-option-label-text');
+  if (!(label instanceof HTMLElement) || !(labelText instanceof HTMLElement)) return;
+
+  const metrics = resolveOptionLabelMarquee(labelText.scrollWidth, labelText.clientWidth);
+  if (!metrics) return;
+
+  label.style.setProperty(
+    '--linnya-ui-select-menu-label-scroll-distance',
+    `${metrics.distancePx}px`
+  );
+  label.style.setProperty(
+    '--linnya-ui-select-menu-label-scroll-duration',
+    `${metrics.durationMs}ms`
+  );
+  label.classList.add('linnya-ui-select-menu-option-label--scrolling');
+}
+
+function stopOptionLabelMarquee(event: MouseEvent): void {
+  const optionElement = event.currentTarget;
+  if (!(optionElement instanceof HTMLElement)) return;
+  const label = optionElement.querySelector('.option-label');
+  if (!(label instanceof HTMLElement)) return;
+
+  label.classList.remove('linnya-ui-select-menu-option-label--scrolling');
+  label.style.removeProperty('--linnya-ui-select-menu-label-scroll-distance');
+  label.style.removeProperty('--linnya-ui-select-menu-label-scroll-duration');
 }
 
 /**

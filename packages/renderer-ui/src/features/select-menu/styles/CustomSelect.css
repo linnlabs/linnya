@@ -197,6 +197,41 @@
   text-align: left;
 }
 
+.custom-select__options .linnya-ui-select-menu-option-label--ellipsis,
+.custom-select__submenu .linnya-ui-select-menu-option-label--ellipsis {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.linnya-ui-select-menu-option-label--ellipsis .linnya-ui-select-menu-option-label-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linnya-ui-select-menu-option-label--scrolling {
+  --linnya-ui-select-menu-label-scroll-distance: 0px;
+  --linnya-ui-select-menu-label-scroll-duration: 0ms;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .linnya-ui-select-menu-option-label--scrolling .linnya-ui-select-menu-option-label-text {
+    width: max-content;
+    overflow: visible;
+    text-overflow: clip;
+    animation: linnya-ui-select-menu-option-label-scroll
+      var(--linnya-ui-select-menu-label-scroll-duration) linear 300ms forwards;
+    will-change: transform;
+  }
+}
+
+@keyframes linnya-ui-select-menu-option-label-scroll {
+  to {
+    transform: translateX(calc(-1 * var(--linnya-ui-select-menu-label-scroll-distance)));
+  }
+}
+
 .custom-select__options .option-inline-number,
 .custom-select__submenu .option-inline-number {
   display: inline-flex;
@@ -236,6 +271,10 @@
   opacity: 0.7;
 }
 
+.custom-select__options .select-option.has-children .option-shortcut {
+  margin-inline: 6px;
+}
+
 .custom-select__options .option-right-icon,
 .custom-select__submenu .option-right-icon {
   display: inline-flex;
@@ -251,7 +290,7 @@
 
 .custom-select__options .option-arrow {
   flex-shrink: 0;
-  margin-left: 12px;
+  margin-left: 0;
   font-size: 1.2em;
   color: var(--color-text-tertiary);
 }

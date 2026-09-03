@@ -63,6 +63,8 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 
 业务确需保持交互不变并调整某个菜单节点时，使用 `classNames` 或 option 自身的 class 字段注入业务命名空间 class；`.select-*`、`.option-*` 和 `.custom-select__*` 属于 package 内部实现。独立业务面板只可通过 `DROPDOWN_SURFACE_CLASSES` 复用标准 surface，不借用内部 options class。
 
+菜单宽度受限且选项名称可能很长时，传入 `option-label-overflow="ellipsis"`；若还需要在鼠标停留时阅读完整名称，使用 `option-label-overflow="marquee-on-hover"`。后者只滚动真实溢出的标签，并在 reduced-motion 环境保持静态省略号。默认值是 `visible`，不会改变既有菜单布局。
+
 ### 悬浮提示
 
 `HoverTooltip` 区分指针与键盘两种真实交互来源：指针移动到触发器上时显示，键盘导航形成 `focus-visible` 焦点时显示。窗口失焦会关闭现有提示；重新激活窗口本身不会恢复旧提示，必须等待新的指针移动或键盘导航，避免 Chromium 恢复历史焦点时误弹出。组件与浏览器状态机现由 package 拥有；Linnya Host 在 app-level orchestration 中把主进程 `BrowserWindow` 广播适配为 `HoverTooltipWindowFocusPort`，package 和插件都不读取 `window.electronAPI`。运行在 Host 组件树中的插件自然继承该 port；独立 browser consumer 未注入时使用同语义 DOM 事件。
