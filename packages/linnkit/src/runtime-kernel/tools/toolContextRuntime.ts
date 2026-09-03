@@ -36,7 +36,45 @@ export const TOOL_CONTEXT_RUNTIME_RESERVED_KEYS = [
   'modelInputAdmission',
 ] as const;
 
-const runtimeBindings = new WeakMap<ToolExecutionContext, ToolContextRuntimeBinding>();
+const TOOL_CONTEXT_RUNTIME_BINDINGS_KEY = Symbol.for(
+  '@linnlabs/linnkit/tool-context-runtime-bindings/v1'
+);
+
+interface RuntimeBindingRegistry {
+  get(context: ToolExecutionContext): ToolContextRuntimeBinding | undefined;
+  set(context: ToolExecutionContext, binding: ToolContextRuntimeBinding): void;
+}
+
+function isRuntimeBindingRegistry(value: unknown): value is RuntimeBindingRegistry {
+  return value instanceof WeakMap;
+}
+
+function resolveRuntimeBindingRegistry(): RuntimeBindingRegistry {
+  const existing: unknown = Reflect.get(globalThis, TOOL_CONTEXT_RUNTIME_BINDINGS_KEY);
+  if (existing !== undefined) {
+    if (!isRuntimeBindingRegistry(existing)) {
+      throw new Error('Linnkit ToolContext runtime binding registry has an incompatible owner.');
+    }
+    return existing;
+  }
+
+  const registry = new WeakMap<ToolExecutionContext, ToolContextRuntimeBinding>();
+  const installed = Reflect.defineProperty(globalThis, TOOL_CONTEXT_RUNTIME_BINDINGS_KEY, {
+    value: registry,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+  if (!installed) {
+    throw new Error('Cannot install Linnkit ToolContext runtime binding registry.');
+  }
+  return registry;
+}
+
+// 中文说明：npm 产物的公开子入口是独立 bundle；模块级 WeakMap 会让同一上下文在
+// root / runtime-kernel / testkit 之间失去准入身份。用带 ABI 版本的全局 Symbol 只共享
+// registry，具体绑定仍由 WeakMap 弱引用，不暴露到 ToolContext，也不会阻止垃圾回收。
+const runtimeBindings = resolveRuntimeBindingRegistry();
 
 function toEventSource(
   source: ReadonlyArray<RuntimeEvent> | RuntimeEventSource

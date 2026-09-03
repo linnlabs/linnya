@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.1] - 2026-09-03
+
+### Fixed
+
+- Fixed `ToolContext` runtime capability identity across the package root, `runtime-kernel`, and `testkit` bundles. ESM and CommonJS consumers can now admit a context through one public entry and read or derive it through another without creating isolated hidden-binding registries.
+
 ## [0.31.0] - 2026-09-03
 
 ### Added

@@ -108,6 +108,45 @@ describe('package.runtime-import — dist 子入口隔离 import 烟雾测试', 
     );
   });
 
+  describe('跨公开入口的 ToolContext runtime 身份', () => {
+    const MODULE_PAIRS = [
+      ['dist/index.js', 'dist/runtime-kernel.js', 'esm'],
+      ['dist/index.cjs', 'dist/runtime-kernel.cjs', 'cjs'],
+    ] as const;
+
+    it.each(MODULE_PAIRS)(
+      '%s 创建的 runtime binding 必须能被 %s 读取并派生（%s）',
+      async (rootEntry, runtimeEntry, format) => {
+        const loadRoot = format === 'esm'
+          ? `await import('./${rootEntry}')`
+          : `require('./${rootEntry}')`;
+        const loadRuntime = format === 'esm'
+          ? `await import('./${runtimeEntry}')`
+          : `require('./${runtimeEntry}')`;
+        const script = [
+          format === 'esm' ? '(async () => {' : '',
+          `const root = ${loadRoot};`,
+          `const runtime = ${loadRuntime};`,
+          'const source = { conversationId: "conversation-1", turnId: "turn-1" };',
+          'root.runtimeKernel.tools.ensureToolContextRuntimeCapability({ context: source });',
+          'const target = { ...source };',
+          'runtime.copyToolContextRuntimeCapability(source, target);',
+          'if (!runtime.getToolContextRuntimeBinding(target)) throw new Error("binding not shared");',
+          'process.stdout.write("ok");',
+          format === 'esm' ? '})().catch(error => { console.error(error); process.exit(1); });' : '',
+        ].join('\n');
+        const result = await nodeRun(['-e', script]);
+
+        if (!result.ok) {
+          throw new Error(
+            `ToolContext runtime identity failed (${format}):\nstdout: ${result.stdout}\nstderr: ${result.stderr}`
+          );
+        }
+        expect(result.stdout).toBe('ok');
+      }
+    );
+  });
+
   describe('Browser-safe seam + 纯类型入口（应一直能 import）', () => {
     const SAFE_ENTRIES = [
       'dist/runtime-kernel/events.js',

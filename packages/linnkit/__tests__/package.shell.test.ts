@@ -21,7 +21,7 @@ async function readJson(relativePath: string): Promise<Record<string, unknown>> 
 }
 
 /**
- * Smoke test for `@linnlabs/linnkit` 0.31.0 publishable shape.
+ * Smoke test for `@linnlabs/linnkit` 0.31.1 publishable shape.
  *
  * 这个 test 是公开包 manifest 的硬性闸门，覆盖：
  *   1. 包元数据（name / version / 不再 private / repository / npmjs publishConfig）
@@ -37,11 +37,11 @@ async function readJson(relativePath: string): Promise<Record<string, unknown>> 
  * 任何破坏以上不变量的改动 = break，必须同步 CHANGELOG / integration docs。
  */
 describe('packages/linnkit shell manifest', () => {
-  it('declares the publishable @linnlabs/linnkit 0.31.0 shape with dist-only exports', async () => {
+  it('declares the publishable @linnlabs/linnkit 0.31.1 shape with dist-only exports', async () => {
     const manifest = await readJson('package.json');
 
     expect(manifest.name).toBe('@linnlabs/linnkit');
-    expect(manifest.version).toBe('0.31.0');
+    expect(manifest.version).toBe('0.31.1');
     expect(manifest.private).toBeUndefined();
     expect(manifest.type).toBe('module');
     expect(manifest.main).toBe('./dist/index.cjs');
