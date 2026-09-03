@@ -10,7 +10,8 @@ const FILE = 'src/app-hosts/linnya/adapters/runtime/example.ts';
 describe('runtime identity assertion guard', () => {
   it('当前生产代码不存在身份断言绕过', () => {
     expect(runRuntimeIdentityAssertionGuard()).toEqual([]);
-  });
+  }, // 这项断言会遍历并解析全部生产 TypeScript/Vue 源码，完整测试并行时不应受 5 秒单元测试默认值限制。
+  30_000);
 
   it.each([
     ['RunId', 'const runId = raw as RunId;'],
