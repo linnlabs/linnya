@@ -26,9 +26,9 @@ const sshHost = process.env.LINNYA_WINDOWS_SSH_HOST;
 const sshUser = process.env.LINNYA_WINDOWS_SSH_USER;
 const sshKey = process.env.LINNYA_WINDOWS_SSH_KEY;
 const windowsNodeArm64Path = process.env.LINNYA_WINDOWS_NODE_ARM64_PATH
-  ?? `C:/Users/${sshUser}/AppData/Local/Temp/linnya-napi-spike/node-v22.23.1-win-arm64/node.exe`;
+  ?? `C:/Users/${sshUser}/AppData/Local/Temp/linnya-napi-spike/node-v24.18.0-win-arm64/node.exe`;
 const windowsNodeX64Path = process.env.LINNYA_WINDOWS_NODE_X64_PATH
-  ?? `C:/Users/${sshUser}/AppData/Local/Temp/linnya-napi-spike/node-v22.23.1-win-x64/node.exe`;
+  ?? `C:/Users/${sshUser}/AppData/Local/Temp/linnya-napi-spike/node-v24.18.0-win-x64/node.exe`;
 const OUTPUT_LIMIT = 512 * 1024;
 
 const packages = [

@@ -43,7 +43,7 @@ describe('artifact content BOM', () => {
           architecture: 'arm64',
         },
         source: { revision: 'a'.repeat(40), dirty: false },
-        environment: { nodeVersion: 'v22.23.1', platform: 'darwin', architecture: 'arm64' },
+        environment: { nodeVersion: 'v24.18.0', platform: 'darwin', architecture: 'arm64' },
         artifacts: [
           {
             fileName: 'Linnya.dmg',
@@ -85,7 +85,7 @@ describe('artifact content BOM', () => {
         kind: 'linnya-plugin-artifact-content',
         identity: { name: 'demo', pluginId: 'demo', version: '1.0.0' },
         source: { revision: 'b'.repeat(40), dirty: true },
-        environment: { nodeVersion: 'v22.23.1', platform: 'darwin', architecture: 'arm64' },
+        environment: { nodeVersion: 'v24.18.0', platform: 'darwin', architecture: 'arm64' },
         artifacts: [
           {
             fileName: 'demo-1.0.0.zip',

@@ -6,7 +6,7 @@
 
 ## 1. 前置环境
 
-- Node.js 22；精确版本见根目录 `.nvmrc`，支持范围见 `package.json#engines`。
+- Node.js 24；精确版本见根目录 `.nvmrc`，支持范围见 `package.json#engines`。
 - Corepack 与仓库锁定的 pnpm 版本。
 - Rust 工具链和 `wasm-pack`，用于构建 `packages/parser-wasm`。
 - macOS 或 Windows。涉及签名、安装器和平台原生能力的最终验收必须在对应真实平台完成。
@@ -27,7 +27,11 @@ pnpm run dev:electron
 
 `pnpm-lock.yaml` 是根工作区唯一依赖锁文件。不要在根目录或 workspace package 中运行 `npm install`，也不要提交 `node_modules`、WASM 生成目录、构建产物或本地凭据文件。
 
-开发入口会先按 `config/qdrant-runtime.json` 与 `config/poppler-runtime.json` 从锁定 release 准备并校验目标平台运行时，再准备公开 workspace 依赖和 WASM，最后启动 Renderer 与 Electron。生成的 Qdrant/Poppler 文件不进入源码版本控制；PDF 转图不会从 node_modules、Homebrew 或系统 PATH 猜另一份实现。启动失败时先修复最早失败的 owner gate；不要通过删除用户数据、增加 fallback 或绕过合同校验掩盖构建问题。
+开发入口会先按 `config/qdrant-runtime.json` 与 `config/poppler-runtime.json` 从锁定 release 准备并校验目标平台运行时，再准备公开 workspace 依赖和 WASM，最后启动 Renderer 与 Electron。这个下载发生在源码开发或打包阶段；Desktop 安装包通过 `extraResources` 携带已经校验的 runtime，最终用户启动应用时不再下载。
+
+生成的 Qdrant/Poppler 文件不进入源码版本控制；PDF 转图不会从 node_modules、Homebrew 或系统 PATH 猜另一份实现。仓库首次公开前，维护者必须先把 catalog 声明的 Poppler archive 上传到计划中的 Linnya GitHub Release。在远端仓和 Release 尚未创建的 bootstrap 阶段，只能把同一份、且大小与 SHA-256 均匹配 catalog 的 archive 放到 `node_modules/.cache/linnya-poppler-runtime/<archive_file_name>`，再运行 `pnpm run prepare:poppler-runtime` 走完整解包、文件树和版本校验；这只是发布前本地准备方式，公开源码不能依赖相邻私有仓或未校验的系统安装。
+
+启动失败时先修复最早失败的 owner gate；不要通过删除用户数据、增加 fallback 或绕过合同校验掩盖构建问题。
 
 ## 3. 按改动范围验证
 

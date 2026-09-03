@@ -42,7 +42,7 @@ function createPackageMap(): ArtifactPackageMap {
     environment: {
       platform: 'darwin',
       architecture: 'arm64',
-      nodeVersion: '22.22.0',
+      nodeVersion: '24.18.0',
       productionPackageLockSha256: 'b'.repeat(64),
     },
     contentBomSha256: 'a'.repeat(64),

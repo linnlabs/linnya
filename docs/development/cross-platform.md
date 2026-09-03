@@ -8,7 +8,7 @@
 
 ## 新电脑首次初始化
 
-根工作区统一使用 `.nvmrc` 固定的 Node 22 开发版本，并使用 `package.json#packageManager`
+根工作区统一使用 `.nvmrc` 固定的 Node 24 开发版本，并使用 `package.json#packageManager`
 固定 pnpm。Electron 开发还依赖 Rust/WASM 工具链，不能只安装 Node 依赖。
 
 ```bash

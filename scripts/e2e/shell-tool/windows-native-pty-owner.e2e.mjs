@@ -334,7 +334,7 @@ try {
   results = [];
   for (const { architecture } of artifacts) {
     const nodePath = process.env[`LINNYA_WINDOWS_NODE_${architecture.toUpperCase()}_PATH`]
-      ?? `${remoteTemp}/linnya-napi-spike/node-v22.23.1-win-${architecture}/node.exe`;
+      ?? `${remoteTemp}/linnya-napi-spike/node-v24.18.0-win-${architecture}/node.exe`;
     const remoteValidation = `${remoteRoot}/validation`;
     const remoteScript = `${remoteValidation}/fixture/remote-suite.mjs`;
     const remoteFixture = `${remoteValidation}/fixture/pty-child.cjs`;
@@ -368,7 +368,7 @@ try {
   }
   for (const { architecture } of productionArtifacts) {
     const nodePath = process.env[`LINNYA_WINDOWS_NODE_${architecture.toUpperCase()}_PATH`]
-      ?? `${remoteTemp}/linnya-napi-spike/node-v22.23.1-win-${architecture}/node.exe`;
+      ?? `${remoteTemp}/linnya-napi-spike/node-v24.18.0-win-${architecture}/node.exe`;
     const remoteValidation = `${remoteRoot}/validation`;
     const remoteManifest = `${remoteValidation}/production-${architecture}/linnyaCommandProcessOwner.manifest.json`;
     const remoteScript = `${remoteValidation}/fixture/production-adapter-suite.cjs`;

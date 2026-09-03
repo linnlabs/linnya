@@ -37,7 +37,7 @@ Linnya 对 `@linnlabs/linnkit` 使用精确 npm 版本。产品构建与测试�
 
 需要：
 
-- Node.js 22，精确版本见 `.nvmrc`；
+- Node.js 24，精确版本见 `.nvmrc`；
 - Corepack 与 `package.json` 锁定的 pnpm；
 - Rust 与 `wasm-pack`；
 - 完整 Desktop 开发使用 macOS 或 Windows。
@@ -49,7 +49,7 @@ pnpm install --frozen-lockfile
 pnpm run dev:electron
 ```
 
-首次启动 Desktop 时，会从锁定的 release 准备目标平台 Qdrant 与 Poppler runtime，并校验声明的 archive、executable 和文件树 checksum；生成的 runtime 文件不进入源码版本控制。
+锁定的 runtime release 可用后，首次从源码启动开发环境或构建 Desktop 安装包时，会自动下载目标平台的 Qdrant 与 Poppler runtime，并校验声明的 archive、executable 和文件树 checksum。仓库首次公开前，维护者必须按开发指南把同一份已校验 archive 放入本地缓存。生成的 runtime 文件不进入源码版本控制；正式安装包已经携带这些 runtime，最终用户启动应用时不会再次下载。
 
 架构、定向验证、原生模块和源码构建说明见[文档总图](docs/README.md)与[开发指南](docs/development/README.md)。
 

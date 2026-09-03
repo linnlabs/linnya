@@ -917,7 +917,7 @@ async function runLocalCoordinator() {
 
     const results = [];
     for (const architecture of ['x64', 'arm64']) {
-      const nodePath = `C:\\Users\\${sshUser}\\AppData\\Local\\Temp\\linnya-napi-spike\\node-v22.23.1-win-${architecture}\\node.exe`;
+      const nodePath = `C:\\Users\\${sshUser}\\AppData\\Local\\Temp\\linnya-napi-spike\\node-v24.18.0-win-${architecture}\\node.exe`;
       const remoteScript = `${remoteStaging}\\${path.basename(currentFile)}`;
       const remoteBinding = `${remoteStaging}\\linnyaCommandProcessOwner.${architecture}.node`;
       const remoteAdapter = `${remoteStaging}\\windowsOwnedPipeAdapter.cjs`;
@@ -968,7 +968,7 @@ async function runLocalCoordinator() {
       sshTarget,
       runToken,
       remoteStaging,
-      nodePath: `C:\\Users\\${sshUser}\\AppData\\Local\\Temp\\linnya-napi-spike\\node-v22.23.1-win-arm64\\node.exe`,
+      nodePath: `C:\\Users\\${sshUser}\\AppData\\Local\\Temp\\linnya-napi-spike\\node-v24.18.0-win-arm64\\node.exe`,
       remoteScript: `${remoteStaging}\\${path.basename(currentFile)}`,
       remoteBinding: `${remoteStaging}\\linnyaCommandProcessOwner.arm64.node`,
     });

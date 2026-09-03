@@ -43,7 +43,7 @@ describe('Desktop artifact content BOM', () => {
         },
         source: { revision: 'c'.repeat(40), dirty: false },
         environment: {
-          nodeVersion: 'v22.23.1',
+          nodeVersion: 'v24.18.0',
           electronVersion: '43.4.0',
           platform: 'darwin',
           architecture: 'arm64',

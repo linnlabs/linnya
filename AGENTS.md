@@ -97,7 +97,7 @@ Host 不 deep import 插件内部实现；插件不 deep import Host 内部。�
 | 主题 | 当前实现 / 文档 |
 | --- | --- |
 | Renderer | Vue 3、Pinia、Vite；见 [Renderer domains](./apps/renderer/domains/README.md) |
-| Backend | Node.js 22、TypeScript、Express、独立 App Server；见[后端导航](./src/README.md) |
+| Backend | Node.js 24、TypeScript、Express、独立 App Server；见[后端导航](./src/README.md) |
 | Desktop | Electron Main + Preload/IPC；业务流式接口使用 localhost HTTP/SSE |
 | 数据 | `better-sqlite3`、Qdrant、受管文件存储；跨边界只传稳定 identity/DTO |
 | 前后端合同 | [`packages/schemas`](./packages/schemas/README.md)；外部数据进入可信代码前必须执行 schema parse |

@@ -9,7 +9,7 @@
 | Runtime | Node | Chromium / V8 | Module ABI | N-API |
 |---|---:|---:|---:|---:|
 | Electron 43.4.0 | 24.18.1 | 150 / 15.0 | 148 | 10 |
-| 开发 Node | 22.19+ | 由本机 Node 决定 | 由本机 Node 决定 | 10 |
+| 开发 Node | 24.18.0 | 由本机 Node 决定 | 由本机 Node 决定 | 10 |
 
 Electron 的 Module ABI 仍与普通 Node 不同，绑定 V8 ABI 的模块必须针对 Electron 重建；N-API 模块则按 N-API 版本、平台和架构复用制品。
 

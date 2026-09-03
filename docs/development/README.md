@@ -11,7 +11,7 @@ pnpm install --frozen-lockfile
 pnpm run dev:electron
 ```
 
-需要 Node.js 22（精确版本见根目录 `.nvmrc`）、仓库锁定的 pnpm、Rust 和 `wasm-pack`。完整 Desktop 开发与原生能力验收使用 macOS 或 Windows。
+需要 Node.js 24（精确版本见根目录 `.nvmrc`）、仓库锁定的 pnpm、Rust 和 `wasm-pack`。完整 Desktop 开发与原生能力验收使用 macOS 或 Windows。
 
 ## 按问题选择文档
 

@@ -107,7 +107,7 @@ describe('artifact bundle component map', () => {
       environment: {
         architecture: 'arm64',
         electronVersion: '43.4.0',
-        nodeVersion: 'v22.22.0',
+        nodeVersion: 'v24.18.0',
         platform: 'darwin',
         productionPackageLockSha256: 'e'.repeat(64),
       },
@@ -202,7 +202,7 @@ describe('artifact bundle component map', () => {
       environment: {
         architecture: 'arm64',
         electronVersion: '43.4.0',
-        nodeVersion: 'v22.22.0',
+        nodeVersion: 'v24.18.0',
         platform: 'darwin',
         productionPackageLockSha256: 'e'.repeat(64),
       },

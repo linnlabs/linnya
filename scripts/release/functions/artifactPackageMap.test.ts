@@ -41,7 +41,7 @@ function contentBom(
     },
     source: { revision: 'a'.repeat(40), dirty: false },
     environment: {
-      nodeVersion: 'v22.23.1',
+      nodeVersion: 'v24.18.0',
       platform: 'darwin',
       architecture: 'arm64',
       productionPackageLockSha256: lockSha256,

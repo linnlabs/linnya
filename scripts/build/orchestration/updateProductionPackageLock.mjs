@@ -21,8 +21,15 @@ function createCleanNpmEnvironment(tempRoot) {
     encoding: 'utf8',
     mode: 0o600,
   });
+  const environmentWithoutNpmConfig = Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([name]) => !name.toLocaleLowerCase('en-US').startsWith('npm_config_')
+    )
+  );
   return {
-    ...process.env,
+    // pnpm 会把 workspace 配置投影为 npm_config_* 环境变量。生产 lock 必须只消费
+    // 下方明确声明的公开 registry/cache/userconfig，不能把调用方的 pnpm/npm 配置带入 npm。
+    ...environmentWithoutNpmConfig,
     npm_config_cache: path.join(tempRoot, 'npm-cache'),
     npm_config_registry: 'https://registry.npmjs.org/',
     npm_config_userconfig: userConfigPath,

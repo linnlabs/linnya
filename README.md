@@ -37,7 +37,7 @@ Linnya pins an exact `@linnlabs/linnkit` npm version. Product builds and tests r
 
 Prerequisites:
 
-- Node.js 22 (the exact version is in `.nvmrc`)
+- Node.js 24 (the exact version is in `.nvmrc`)
 - Corepack and the pnpm version pinned by `package.json`
 - Rust and `wasm-pack`
 - macOS or Windows for the full desktop development workflow
@@ -49,7 +49,7 @@ pnpm install --frozen-lockfile
 pnpm run dev:electron
 ```
 
-The first desktop start prepares the target-platform Qdrant and Poppler runtimes from pinned releases and verifies their declared archive, executable, and file-tree checksums. Generated runtime files are not source-controlled.
+Once the pinned runtime releases are available, the first source-development start or desktop package build downloads the target-platform Qdrant and Poppler runtimes and verifies their declared archive, executable, and file-tree checksums. Before the repository's first public release, maintainers must seed the same verified archives into the local cache as described in the development guide. Generated runtime files are not source-controlled; packaged desktop applications already include these runtimes and do not download them on end-user startup.
 
 See the [documentation map](docs/README.md) and [development guide](docs/development/README.md) for architecture, targeted validation, native-module requirements, and source builds.
 
