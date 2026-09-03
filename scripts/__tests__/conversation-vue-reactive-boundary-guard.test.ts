@@ -6,9 +6,10 @@ import {
 } from '../guards/conversation-vue-reactive-boundary-guard';
 
 describe('conversation Vue reactive boundary guard', () => {
+  // 该断言需要遍历并解析生产源码，完整测试并行时不应受 5 秒单元测试默认值限制。
   it('当前 Conversation Vue 组件不在响应式层解析协议或抛业务错误', () => {
     expect(runConversationVueReactiveBoundaryGuard()).toEqual([]);
-  });
+  }, 30_000);
 
   it('拒绝 Vue 组件内的 schema parse 与 safeParse', () => {
     const source = `<script setup lang="ts">

@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  analyzeEmptyCatchSource,
-  runNoEmptyCatchGuard,
-} from '../guards/no-empty-catch-guard';
+import { analyzeEmptyCatchSource, runNoEmptyCatchGuard } from '../guards/no-empty-catch-guard';
 
 describe('no-empty-catch guard', () => {
+  // 该断言需要遍历并解析生产源码，完整测试并行时不应受 5 秒单元测试默认值限制。
   it('当前生产代码和构建脚本不存在空 catch', () => {
     expect(runNoEmptyCatchGuard()).toEqual([]);
-  });
+  }, 30_000);
 
   it.each([
     ['无参数 catch', 'try { work(); } catch {}'],
@@ -27,10 +25,12 @@ describe('no-empty-catch guard', () => {
   });
 
   it('第一阶段保留带明确说明的历史 catch，避免用批量日志补丁改动稳定链路', () => {
-    expect(analyzeEmptyCatchSource(
-      'src/example.ts',
-      'try { releasePointerCapture(); } catch { /* pointer capture 已释放 */ }',
-    )).toEqual([]);
+    expect(
+      analyzeEmptyCatchSource(
+        'src/example.ts',
+        'try { releasePointerCapture(); } catch { /* pointer capture 已释放 */ }'
+      )
+    ).toEqual([]);
   });
 
   it('解析 Vue script 并报告 SFC 真实行号', () => {

@@ -4,16 +4,15 @@ import {
   analyzeSource,
   runConversationMessagesWriteGuard,
 } from '../guards/conversation-messages-write-guard';
-import {
-  findConversationMessagesWriteAllowance,
-} from '../guards/conversation-messages-write-allowlist';
+import { findConversationMessagesWriteAllowance } from '../guards/conversation-messages-write-allowlist';
 
 const FILE = 'apps/renderer/domains/conversation/store/example.ts';
 
 describe('conversation.messages write guard', () => {
+  // 该断言需要遍历并解析生产源码，完整测试并行时不应受 5 秒单元测试默认值限制。
   it('当前代码库不存在越界写入', () => {
     expect(runConversationMessagesWriteGuard()).toEqual([]);
-  });
+  }, 30_000);
 
   it('捕获 splice —— 架构文档明确点名的反例', () => {
     const found = analyzeSource(FILE, 'conversation.messages.splice(index + 1);');
@@ -42,7 +41,7 @@ describe('conversation.messages write guard', () => {
   it('捕获下标写入与 length 截断', () => {
     const found = analyzeSource(
       FILE,
-      ['conv.messages[0] = patched;', 'conv.messages.length = 0;'].join('\n'),
+      ['conv.messages[0] = patched;', 'conv.messages.length = 0;'].join('\n')
     );
     expect(found.map(v => v.ruleId)).toEqual(['CONV-MSG-01-assign', 'CONV-MSG-03-length']);
   });
@@ -54,7 +53,7 @@ describe('conversation.messages write guard', () => {
         '(conv as Conversation).messages.push(m);',
         'conv!.messages = [];',
         '(conv).messages.splice(0);',
-      ].join('\n'),
+      ].join('\n')
     );
     expect(found).toHaveLength(3);
   });
@@ -86,7 +85,7 @@ describe('conversation.messages write guard', () => {
         'conv.metadata = next;',
         'conv.updatedAt = Date.now();',
         'other.rows.push(row);',
-      ].join('\n'),
+      ].join('\n')
     );
     expect(found).toEqual([]);
   });
@@ -102,20 +101,26 @@ describe('conversation.messages write guard', () => {
       [
         'conversationState.conversations[existingIndex] = conversation;',
         'conversationState.conversations.push(conversation);',
-      ].join('\n'),
+      ].join('\n')
     );
     expect(found).toEqual([]);
   });
 
   it('允许列表覆盖 reducer 工作区与 commit pipeline，且不覆盖普通 store', () => {
-    expect(findConversationMessagesWriteAllowance(
-      'apps/renderer/domains/conversation/services/messageProjection/helpers/messageAccess.ts',
-    )).not.toBeNull();
-    expect(findConversationMessagesWriteAllowance(
-      'apps/renderer/domains/conversation/services/orchestration/projectionCommitPipeline.ts',
-    )).not.toBeNull();
-    expect(findConversationMessagesWriteAllowance(
-      'apps/renderer/domains/conversation/history/store/historyLoaderStore.ts',
-    )).toBeNull();
+    expect(
+      findConversationMessagesWriteAllowance(
+        'apps/renderer/domains/conversation/services/messageProjection/helpers/messageAccess.ts'
+      )
+    ).not.toBeNull();
+    expect(
+      findConversationMessagesWriteAllowance(
+        'apps/renderer/domains/conversation/services/orchestration/projectionCommitPipeline.ts'
+      )
+    ).not.toBeNull();
+    expect(
+      findConversationMessagesWriteAllowance(
+        'apps/renderer/domains/conversation/history/store/historyLoaderStore.ts'
+      )
+    ).toBeNull();
   });
 });
