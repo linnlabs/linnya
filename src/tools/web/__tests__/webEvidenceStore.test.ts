@@ -3,7 +3,6 @@ import { promises as fsp } from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { WebReadResultSchema } from '@app/schemas';
 import {
   pathManager,
   setWorkspaceRoot,
@@ -14,7 +13,6 @@ import type { ToolContext } from '../../types';
 import { EvidenceResolveTool } from '../../evidence/EvidenceResolveTool';
 import { ToolOutputReadTool } from '../../tool_output/ToolOutputReadTool';
 import { truncateObservationToPreview } from '../../tool_output/toolOutputStore';
-import { applyObservationGovernance } from '../../../../packages/linnkit/src/runtime-kernel/graph-engine/nodes/toolNode.observationGovernance';
 import type { WebReadProvider, WebReadResult } from '../webread/providers/types';
 import type { WebSearchProvider, WebSearchResult } from '../websearch/providers/types';
 import { attachCitationRefAllocator, attachCitationSequence } from '../../../domains/citation';
@@ -377,25 +375,18 @@ describe('web evidence store integration', () => {
       expect(observation).not.toContain(bundleId);
       expect(observation).toContain('FINAL_EVIDENCE_TAIL');
 
-      const governed = { data: { ...data }, observation };
-      const governance = await applyObservationGovernance({
-        parsed: governed,
+      // Linnya 只验证自己的 ToolOutputStore 适配能力；治理编排属于 Linnkit，并在其仓库测试。
+      const truncation = await truncateObservationToPreview({
+        context: ctx,
         toolName: 'web_read',
-        toolContext: ctx,
-        structuredObservation: observation,
-        observationPreview: {
-          truncateObservation: params =>
-            truncateObservationToPreview({
-              ...params,
-              context: ctx,
-            }),
-        },
+        text: observation,
+        maxChars: 20_000,
+        maxLines: 1_200,
       });
-      expect(governance.observationTruncation).toBeDefined();
-      expect(governed.data).not.toHaveProperty('tool_output_store');
-      expect(() => WebReadResultSchema.parse(governed)).not.toThrow();
-      const blobId = governance.observationTruncation?.blobId;
-      if (!blobId) throw new Error('长网页 observation 未产生 ToolOutputStore blob。');
+      expect(truncation.truncated).toBe(true);
+      expect(data).not.toHaveProperty('tool_output_store');
+      if (!truncation.truncated) throw new Error('长网页 observation 未产生 ToolOutputStore blob。');
+      const blobId = truncation.blob_id;
       const blobFiles = await fsp.readdir(
         pathManager.getConversationToolOutputBlobsDir({
           conversationId: 'conv_long_observation',

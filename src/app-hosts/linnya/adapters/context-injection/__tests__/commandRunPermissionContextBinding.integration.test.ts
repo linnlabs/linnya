@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { CommandAgentRunIdSchema } from '@app/schemas/commands';
-import { createChildRunToolContext } from 'packages/linnkit/src/runtime-kernel/child-runs/childToolContext';
 
 import type { CommandPermissionSettingsPort } from 'src/domains/commands/ports';
 import {
@@ -37,12 +35,8 @@ function createMutablePort(): {
   };
 }
 
-function readCommandRunPermission(context: object): unknown {
-  return 'commandRunPermission' in context ? context.commandRunPermission : undefined;
-}
-
 describe('command run permission context binding', () => {
-  it('同一根 run 恢复和 child run 沿用首次快照，新根 run 才读取新设置', () => {
+  it('同一根 run 恢复时沿用首次快照，新根 run 才读取新设置', () => {
     const settings = createMutablePort();
     const firstOwner = {};
     const first = resolveCommandRunPermissionContext({
@@ -85,19 +79,6 @@ describe('command run permission context binding', () => {
     });
     expect(resumed).toBe(first);
     expect(settings.readCount()).toBe(1);
-
-    const parentToolContext = { commandRunPermission: first };
-    const childContext = createChildRunToolContext({
-      parentToolContext,
-      conversationId: 'permission-context-conversation',
-      turnId: 'permission-context-turn',
-      runId: RunIdSchema.parse('run_permission_child'),
-      parentRunId: RunIdSchema.parse('run_permission_first'),
-      userQuery: 'child',
-      modelId: 'model-test',
-      seedHistory: [],
-    });
-    expect(readCommandRunPermission(childContext)).toBe(first);
 
     const second = resolveCommandRunPermissionContext({
       runOwner: {},

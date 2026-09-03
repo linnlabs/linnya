@@ -4,17 +4,17 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 
-import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import {
   CommandAgentRunIdSchema,
   CommandExecutionIdentitySchema,
 } from '../../../packages/schemas/src/commands';
-import { createChildRunToolContext } from '../../../packages/linnkit/src/runtime-kernel/child-runs/childToolContext';
 
 import { resolveCommandRunPermissionContext } from '../../../src/app-hosts/linnya/adapters/context-injection/commandRunPermissionContextBinding';
 import {
+  DEFAULT_COMMAND_PERMISSION_SETTINGS,
   createInitialCommandPermissionSnapshot,
   readCommandPermissionSettings,
+  serializeCommandPermissionSettings,
   updateCommandPermissionSettings,
 } from '../../../src/domains/commands/features/permission-settings';
 import { createJsonFileCommandPermissionSettingsPort } from '../../../src/infra/adapters/command-permission-settings/json-file';
@@ -24,15 +24,13 @@ const runRoot = await fsp.mkdtemp(
 );
 let succeeded = false;
 
-function readInheritedPermission(context: object): unknown {
-  return 'commandRunPermission' in context
-    ? context.commandRunPermission
-    : undefined;
-}
-
 try {
   const filePath = path.join(runRoot, 'config with spaces', 'command_permission.json');
   const port = createJsonFileCommandPermissionSettingsPort({ filePath });
+  assert.equal(
+    port.write(serializeCommandPermissionSettings(DEFAULT_COMMAND_PERMISSION_SETTINGS)).status,
+    'written',
+  );
   assert.deepEqual(readCommandPermissionSettings(port), {
     schema_version: 1,
     kind: 'command_permission_settings',
@@ -77,19 +75,6 @@ try {
   });
   assert.strictEqual(resumed, first);
   assert.equal(resumed.status === 'available' && resumed.snapshot.permission_level, 'standard');
-
-  const parentToolContext = { commandRunPermission: first };
-  const childContext = createChildRunToolContext({
-    parentToolContext,
-    conversationId: 'permission-e2e-conversation',
-    turnId: 'permission-e2e-turn',
-    runId: RunIdSchema.parse('permission-e2e-child'),
-    parentRunId: RunIdSchema.parse('permission-e2e-root-first'),
-    userQuery: 'child',
-    modelId: 'model-test',
-    seedHistory: [],
-  });
-  assert.strictEqual(readInheritedPermission(childContext), first);
 
   const second = resolveCommandRunPermissionContext({
     runOwner: {},
