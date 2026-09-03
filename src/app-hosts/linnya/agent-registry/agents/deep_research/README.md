@@ -94,25 +94,25 @@ src/app-hosts/linnya/agent-registry/agents/deep_research/
 
 1. **AgentRunnerService / ChildRunInvoker 下发策略到 executorLocal（执行期状态）**
    - 主会话：`src/app-hosts/linnya/adapters/flow/flow.agent-runner.service.ts`
-   - 子 Agent：`packages/linnkit/src/runtime-kernel/child-runs/childRunInvoker.ts`
+   - 子 Agent：独立 Linnkit 仓的 `src/runtime-kernel/child-runs/childRunInvoker.ts`
    - 下发字段（写入 `executorLocal`，仅执行期有效，不落库）：
      - `finalStepPolicy / finalStepForcedTools / lastStepsHintThreshold`
      - `systemReminderPolicy`（来自 `AgentDefinition.config.contextPolicy.systemReminder`）
 
 2. **GraphExecutor 计算“阶段 phase/剩余步数”**
-   - `packages/linnkit/src/runtime-kernel/graph-engine/engine.ts` 每次节点切换写入：
+   - 独立 Linnkit 仓的 `src/runtime-kernel/graph-engine/engine.ts` 每次节点切换写入：
      - `executorLocal.stepCount / maxSteps / remainingSteps`
      - `executorLocal.phase`：`running / force_final_answer / force_tools`
    - 重要：这里的步数口径是“节点切换次数”，不是“LLM 调用次数”。
 
 3. **LlmNode 按 phase 改写本轮请求的工具视图（决定是否允许/收缩工具）**
-   - `packages/linnkit/src/runtime-kernel/graph-engine/nodes/llmNode.ts`
+   - 独立 Linnkit 仓的 `src/runtime-kernel/graph-engine/nodes/llmNode.ts`
    - 行为：
      - `phase='force_final_answer'`：本轮禁用工具（`enableTools=false`，`availableTools=[]`）
      - `phase='force_tools'`：本轮只允许 `finalStepForcedTools` 白名单工具
 
 4. **`apply_system_reminder` tick stage 注入普通 `<system-reminder>`（只对当前 tick 生效）**
-   - `packages/linnkit/src/runtime-kernel/graph-engine/tick-pipeline/stages/applySystemReminderStage.ts` 会在调用 LLM 前：
+   - 独立 Linnkit 仓的 `src/runtime-kernel/graph-engine/tick-pipeline/stages/applySystemReminderStage.ts` 会在调用 LLM 前：
      - 读取 `executorLocal.systemReminderPolicy` 解释规则集
      - 将 `<system-reminder>...</system-reminder>` **追加到最后一条 message.content 的末尾**
    - 关键约束：
@@ -121,7 +121,7 @@ src/app-hosts/linnya/agent-registry/agents/deep_research/
      - 这里说的是普通 tick Reminder；自动压缩使用完整原 Prompt 后新增的瞬态末尾 `role=user` Reminder，二者不能共用物理位置
 
 > System Reminder 的位置、role、生命周期和扩展规范见
-> [`packages/linnkit/src/runtime-kernel/system-reminder/README.md`](../../../../../../packages/linnkit/src/runtime-kernel/system-reminder/README.md)。
+> [独立 Linnkit 仓的 `src/runtime-kernel/system-reminder/README.md`](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/system-reminder/README.md)。
 
 #### 3) “预算边界直接回答” vs “只保留某些工具”（两种模式）
 

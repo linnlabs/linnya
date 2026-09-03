@@ -28,5 +28,5 @@
 
 一句话：
 
-- 通用 context core 在 `packages/linnkit/src/context-manager/*`
+- 通用 context core 在 独立 Linnkit 仓的 `src/context-manager/*`
 - Linnya 默认策略在 `src/app-hosts/linnya/context-policies/*`

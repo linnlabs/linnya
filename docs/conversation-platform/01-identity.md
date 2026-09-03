@@ -13,7 +13,7 @@
 
 | 世界 | 属于谁 | 代码 owner | 服务什么 |
 |---|---|---|---|
-| **Runtime 身份** | Linnkit 框架事实链 | `packages/linnkit/src/contracts/identity/` | Agent 执行、上下文关联、审计回放 |
+| **Runtime 身份** | Linnkit 框架事实链 | 独立 Linnkit 仓的 `src/contracts/identity/` | Agent 执行、上下文关联、审计回放 |
 | **产品 read model 身份** | Linnya 产品边界 | `packages/schemas/src/conversation/message-identity.ts` | UI message 主键、跨端 DTO、持久化行 |
 | **视觉身份** | Linnya UI 布局 | `packages/schemas/src/conversation/visual-turn-identity.ts` | 分组、timeline、虚拟化导航 |
 
@@ -23,7 +23,7 @@
 
 ## 2. Runtime 身份矩阵
 
-真源 `packages/linnkit/src/contracts/identity/`：`definitions.ts`（schema 与语义）、`generators.ts`（生成器）、`invariants.ts`（跨字段关系）、`index.ts`（唯一出口，禁止 deep import）。
+真源 独立 Linnkit 仓的 `src/contracts/identity/`：`definitions.ts`（schema 与语义）、`generators.ts`（生成器）、`invariants.ts`（跨字段关系）、`index.ts`（唯一出口，禁止 deep import）。
 
 Runtime 身份遵循统一类型边界：Provider、HTTP、SQLite row 与插件公共合同可以携带 raw string；进入 Runtime、Host 内部编排或 Renderer 运行态时必须由真源 schema parse，并保持各自 brand。禁止用 `as RunId` 或把对象整体断言成 RuntimeEvent 来跳过 admission。
 

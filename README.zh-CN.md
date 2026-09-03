@@ -31,7 +31,7 @@ Linnya 是一个以 Agent 为中心的文档数据库和可扩展桌面工作台
 
 工程采用 domain-first vertical slice。跨 domain 协作只能走窄 public contract、port、registry、event 或 app-level orchestration，不能直接依赖其他 domain 的内部实现。
 
-Linnya 对 `@linnlabs/linnkit` 使用精确 npm 版本。产品构建与测试必须从 `node_modules` 解析该包，不再支持 alias 回 `packages/linnkit/` 源码。内嵌目录在分阶段迁移期间暂时保留，等剩余发布门禁和文档链接迁入独立仓后再删除。
+Linnya 对 `@linnlabs/linnkit` 使用精确 npm 版本。产品构建与测试从 `node_modules` 解析该包；框架源码、测试与发布流程只存在于[独立 Linnkit 仓](https://github.com/linnlabs/linnkit)。
 
 ## 开始开发
 

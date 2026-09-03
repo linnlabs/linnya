@@ -124,8 +124,7 @@ export const IGNORE_DIRS = new Set([
 export const IGNORED_RELATIVE_PREFIXES: string[] = [];
 
 export const FORBIDDEN_AGENT_DIRS = [
-  `${LINNKIT_SOURCE_PREFIX}/host-adapters`,
-  `${LINNKIT_SOURCE_PREFIX}/product-extensions`,
+  'packages/linnkit',
   `${LEGACY_AGENT_SOURCE_PREFIX}/host-adapters`,
   `${LEGACY_AGENT_SOURCE_PREFIX}/product-extensions`,
   // Phase 5：Slides dev harness 和工具 facade 已迁出 host 旧入口，防止旧路径复活。
@@ -154,8 +153,8 @@ const PUBLIC_AGENT_ENTRY_NAMES = new Set([
  * 列出，禁止隐式扩张。
  *
  * 加新条目前必须同时满足：
- * 1. 该子入口在 `packages/linnkit/package.json` 的 `exports` 字段里有显式声明
- * 2. 该子入口在 `vite.config.mjs` alias 里有专门 entry，且置于父入口之前
+ * 1. 该子入口在独立 Linnkit package 的 `exports` 字段里有显式声明
+ * 2. Linnya 只能通过 npm package export 消费
  * 3. 该子入口 transitive 不会拖入 Node-only API（`crypto` / `node:async_hooks` 等）
  */
 const PUBLIC_AGENT_NESTED_ENTRY_PATHS = new Set([
@@ -282,8 +281,7 @@ export function isProductionSource(filePath: string): boolean {
 
 /**
  * 路径段中含 `testkit` 视为 testkit 源（不是 production runtime）。
- * 例：`packages/linnkit/src/testkit/agent-harness/scriptedAiEngineHarness.ts`、
- * `src/app-hosts/linnya/testkit/agent-harness/childRunHarness.ts`。
+ * 例：`src/app-hosts/linnya/testkit/agent-harness/childRunHarness.ts`。
  * 这些文件允许 import `vitest` / `linnkit/testkit`，但禁止被 production runtime
  * 通过 import 拖入 backend bundle（由 AGENT-GUARD-10 守护）。
  */
@@ -966,8 +964,7 @@ function analyzeInternalOnlyImportRule(
 /**
  * AGENT-GUARD-10：production runtime 禁止 import 测试基础设施。
  *
- * 背景：linnkit 的 `testkit` 子树（`packages/linnkit/src/testkit/**`）顶层直接
- * `import { vi, expect } from 'vitest'`。tsup/esbuild 处理 `export *` 是静态拉链，
+ * 背景：Linnkit 的 `testkit` 子入口会使用 Vitest。tsup/esbuild 处理 `export *` 是静态拉链，
  * 任何 production runtime 文件 `import '@linnlabs/linnkit/testkit'` 都会把 vitest 拖进
  * backend bundle，导致 electron main 启动时抛 "Vitest failed to access its
  * internal state."。同理直接 `import 'vitest'` 也会污染 bundle。
@@ -1029,7 +1026,7 @@ function analyzeContextSharedProfileImportRule(
  *
  * `linnkit/*` 曾依赖 tsconfig / Vite alias 直连 monorepo 源码，会让本地开发与
  * npm 安装产物走两套模块解析。迁移到独立发布包后，任何旧 bare import 回流都
- * 必须立即失败；仓内 Linnkit 自身使用相对路径，不需要例外。
+ * 必须立即失败。
  */
 function analyzeLegacyLinnkitPackageImportRule(
   file: string,

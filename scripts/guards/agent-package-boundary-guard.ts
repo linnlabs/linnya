@@ -2,13 +2,8 @@
  * Agent package boundary guard.
  *
  * 目标：
- * - 保证 `packages/linnkit/src/*` 的生产代码不会重新依赖 `src/app-hosts/*`
- * - 保证 `packages/linnkit/src/*` 的生产代码不会重新依赖其他 workspace owner；
- *   当前唯一允许的外部 workspace contract 是 `@app/schemas`
- * - 防止已删除的过渡目录重新出现在 engine 源目录
- * - 阻止宿主或其他模块 deep import `linnkit` 的内部实现
- * - 冻结 `packages/linnkit/src` 跨顶层子模块的 deep import 新增面
- * - 防止 context-manager/shared 反向依赖 profiles 兼容岛
+ * - 防止已删除的 `packages/linnkit` 和 `src/agent` 过渡目录回流
+ * - 阻止宿主或其他模块恢复 Linnkit 源码 deep import
  * - 阻止 production runtime 拖入 vitest / linnkit/testkit
  * - 阻止已废弃的 `linnkit/*` bare import 回流，统一消费 `@linnlabs/linnkit`
  *
@@ -409,7 +404,6 @@ function isAllowedPluginTsconfigPathTarget(target: string): boolean {
     || target.startsWith('packages/text-measurement-core/')
     || target.startsWith('packages/plugins/')
     || target.startsWith('packages/schemas/')
-    || target.startsWith('packages/linnkit/')
     || target === 'src/plugin-sdk/*'
   );
 }

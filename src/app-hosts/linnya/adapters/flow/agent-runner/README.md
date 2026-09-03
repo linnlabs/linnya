@@ -29,6 +29,6 @@ Layer: `host-adapter`
 
 ## 相关文档
 
-- `packages/linnkit/src/runtime-kernel/README.md`
+- 独立 Linnkit 仓的 `src/runtime-kernel/README.md`
 - `src/app-hosts/linnya/adapters/flow/README.md`
 - `src/app-hosts/linnya/adapters/child-runs/README.md`

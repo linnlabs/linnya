@@ -36,7 +36,7 @@ Layer: `host-adapter/child-runs`
 ## 3. 关键边界 / 不变量
 
 1. 这里只做 host default assembly，不定义 child-run runtime 协议
-2. child-run 原语、history policy、最小上下文仍属于 `packages/linnkit/src/runtime-kernel/child-runs/*`
+2. child-run 原语、history policy、最小上下文仍属于 独立 Linnkit 仓的 `src/runtime-kernel/child-runs/*`
 3. 只有“已注册 agent”才能走这条默认调用链
 4. registered child invoker 必须由 composition root 创建并经 ToolContext 显式注入，不存在模块级默认实例
 5. parent trace 是 child fact 的展示投影；关键关联字段使用 Linnkit 共享 schema，不在 metadata 中另造别名
@@ -215,7 +215,7 @@ parent `subrun_trace` 始终是 `ephemeral` 实时展示协议，不进入通用
 - 其中必须包含 SQLite-backed `RunSupervisor + LinnyaEventStoreAdapter + EventStoreAuditPort` 路径，避免测试只走 MemoryEventStore 而漏掉真实 run lifecycle 问题
 - SQLite 路径必须验证 child durable fact 与紧凑 parent trace history 的 `source_event_id` 关联，以及 projector / persistence 失败不会留下 completed run
 - `src/app-hosts/linnya/adapters/flow/agent-runner/__tests__/childRunInvokerFactory.test.ts`
-- `packages/linnkit/src/runtime-kernel/child-runs/__tests__/childRunInvoker.test.ts`
+- 独立 Linnkit 仓的 `src/runtime-kernel/child-runs/__tests__/childRunInvoker.test.ts`
 
 如果改的是工具侧 child-run 主链，再加：
 
@@ -237,7 +237,7 @@ Host 端到端测试必须按事实 owner 取数：run 注册前提交的 `user_
 
 ## 9. 相关文档
 
-- `packages/linnkit/src/runtime-kernel/README.md`
-- `packages/linnkit/src/runtime-kernel/graph-engine/README.md`
+- 独立 Linnkit 仓的 `src/runtime-kernel/README.md`
+- 独立 Linnkit 仓的 `src/runtime-kernel/graph-engine/README.md`
 - `src/app-hosts/linnya/adapters/flow/README.md`
 - `src/app-hosts/linnya/agent-registry/README.md`

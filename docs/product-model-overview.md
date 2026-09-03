@@ -342,7 +342,7 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 | 文档 Citation 阅读 | `src/domains/citation/features/document-read/README.md` |
 | Evidence 边界 | `src/domains/evidence/README.md` |
 | Deep Research | `src/app-hosts/linnya/agent-registry/agents/deep_research/README.md` |
-| Linnkit 语义边界 | `packages/linnkit/docs/framework/00-vision-and-positioning.md` |
+| Linnkit 语义边界 | [独立 Linnkit 仓的定位文档](https://github.com/linnlabs/linnkit/blob/main/docs/framework/00-vision-and-positioning.md) |
 | SharedMemory 退役 | `docs/shared-memory-canonical-identity-refactor.md` |
 | TaskState | `src/domains/task-state/README.md` |
 | Agent Control / Subagent | `src/tools/agent_control/README.md` |
@@ -350,5 +350,5 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 | 插件体系 | `docs/plugins/architecture.md` + `docs/plugins/guides/` |
 | 命令执行 | `docs/command-execution/README.md` |
 | ToolOutput 领域 | `src/tools/tool_output/README.md` |
-| Agent 内核 | `packages/linnkit/docs/framework/00-vision-and-positioning.md` |
+| Agent 内核 | [独立 Linnkit 仓的定位文档](https://github.com/linnlabs/linnkit/blob/main/docs/framework/00-vision-and-positioning.md) |
 | 工程入口 | `README_FOR_AI.md` |

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // 历史遗留：曾经 vi.mock('src/agent/shared/TokenCalculator', ...)，但 src/agent
-// 已搬到 packages/linnkit/src，且 TokenCalculator 是 linnkit 内部 internal-only
+// 已搬到独立 Linnkit 仓，且 TokenCalculator 是 Linnkit 内部 internal-only
 // 模块（GUARD-09 禁止外部 import）。生产代码从来不用 'src/agent/...' 这个 specifier
 // 直接 import 它，所以历史 mock 自始至终未生效（vi.mock 静默 no-op），删之。
 // 真要在测试里替换 TokenCalculator，应改在 linnkit 内部用依赖注入或单独提供

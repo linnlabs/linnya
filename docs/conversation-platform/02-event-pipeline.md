@@ -60,7 +60,7 @@ Host 与客户端可以独立实现投影、传输和持久化，但不能各自
 
 | 合同 / 函数 | 位置 | 用途 |
 |---|---|---|
-| `RuntimeEvent` / `RoutedRuntimeEvent` / `EventEnvelope` / `SSEEvent` | `packages/linnkit/src/contracts/events.ts`、`sse.ts` | wire 与事实定义 |
+| `RuntimeEvent` / `RoutedRuntimeEvent` / `EventEnvelope` / `SSEEvent` | 独立 Linnkit 仓的 `src/contracts/events.ts`、`sse.ts` | wire 与事实定义 |
 | `routeRuntimeEvent()` | `contracts/events.ts` | 草稿 → 正式事实的唯一 admission 操作 |
 | `parseRoutedRuntimeEvent()` | `contracts/events.ts` | 不可信边界校验 |
 | `parseRuntimeEventRoutingIdentity()` | `contracts/events.ts` | 读取正式身份的唯一方式 |

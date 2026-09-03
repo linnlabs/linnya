@@ -399,7 +399,7 @@ Agent/runtime 类型必须从 `linnkit/contracts` 导入，不允许在 `@app/sc
 
 ## 14. 相关文档
 
-- Agent/runtime 公共合同：`packages/linnkit/src/contracts/`。
-- Linnkit 集成说明：`packages/linnkit/docs/integration/README.md`。
+- Agent/runtime 公共合同：[独立 Linnkit 仓的 `src/contracts/`](https://github.com/linnlabs/linnkit/tree/main/src/contracts)。
+- Linnkit 集成说明：[`docs/integration/README.md`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/README.md)。
 - Conversation 活动 / subrun 系统规范：`apps/renderer/domains/conversation/docs/task-system.md`。
 - 正式 subrun renderer：`apps/renderer/domains/conversation/features/subrun-collection/README.md`。

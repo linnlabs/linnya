@@ -82,12 +82,12 @@
 |---|---|
 | ……新增或修改一种 RuntimeEvent | [02](./02-event-pipeline.md) → [03](./03-persistence.md) → [05](./05-live-projection.md)，四处同 PR 改 |
 | ……修改输入框上下文用量或提高刷新频率 | [02](./02-event-pipeline.md) → [04](./04-schema-contract.md) → [05](./05-live-projection.md) → [06](./06-read-model.md) → [07](./07-render.md)；实现说明见 [`context-window-usage`](../../apps/renderer/domains/conversation/features/context-window-usage/README.md) |
-| ……修改自动上下文压缩开关/水位/事件归属 | [00 INV-21/60](./00-invariants.md) → [02](./02-event-pipeline.md) → [04](./04-schema-contract.md) → [05](./05-live-projection.md)；framework 见 [`context-engineering`](../../packages/linnkit/docs/integration/context-engineering.md) 与 [`graph-engine`](../../packages/linnkit/src/runtime-kernel/graph-engine/README.md) |
+| ……修改自动上下文压缩开关/水位/事件归属 | [00 INV-21/60](./00-invariants.md) → [02](./02-event-pipeline.md) → [04](./04-schema-contract.md) → [05](./05-live-projection.md)；framework 见 [`context-engineering`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/context-engineering.md) 与 [`graph-engine`](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/graph-engine/README.md) |
 | ……搞清 `answer_id` / `tool_call_id` / `message_id` / `visual_turn_id` 的区别 | [01](./01-identity.md) |
 | ……知道一条消息为什么在重载后消失/重复 | [06](./06-read-model.md) 合并规则 + [01](./01-identity.md) |
 | ……加一个工具卡片 | [09](./09-tools.md) + [04](./04-schema-contract.md) |
 | ……让工具复用别的工具的卡片 | [09](./09-tools.md) wrapper 别名章 |
-| ……修改 Tool 幂等策略或 key | [09 §9](./09-tools.md#9-tool-幂等属于-linnkit-runtime) → [Linnkit Tool runtime owner](../../packages/linnkit/src/runtime-kernel/tools/README.md) |
+| ……修改 Tool 幂等策略或 key | [09 §9](./09-tools.md#9-tool-幂等属于-linnkit-runtime) → [Linnkit Tool runtime owner](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/tools/README.md) |
 | ……做工具的 child agent 过程展示 | [10](./10-subruns.md) |
 | ……排查滚动、吸底、估高、闪帧 | [07](./07-render.md) |
 | ……排查切会话 / 新建对话失败 | [08](./08-lifecycle.md) DOM 归属章 |
@@ -108,13 +108,13 @@
 
 | 边界 | 文件 |
 |---|---|
-| Runtime / SSE 事实合同 | `packages/linnkit/src/contracts/events.ts`、`sse.ts` |
-| Runtime 身份 | `packages/linnkit/src/contracts/identity/` |
-| 事件治理纯函数 | `packages/linnkit/src/runtime-kernel/events/` |
-| Graph 事件主链 | `packages/linnkit/src/runtime-kernel/graph-engine/` |
-| 自动压缩策略、计划、固定格式与输出预算 | `packages/linnkit/src/contracts/contextCompaction.ts`、`packages/linnkit/src/context-manager/features/context-compaction/` |
-| 通用 Tool 取消事实 | `packages/linnkit/src/runtime-kernel/graph-engine/nodes/toolNode.cancellation.ts` |
-| Tool 合同、参数规范化与幂等 key | `packages/linnkit/src/runtime-kernel/tools/` |
+| Runtime / SSE 事实合同 | [独立 Linnkit 仓的 `src/contracts/`](https://github.com/linnlabs/linnkit/tree/main/src/contracts) |
+| Runtime 身份 | [`src/contracts/identity/`](https://github.com/linnlabs/linnkit/tree/main/src/contracts/identity) |
+| 事件治理纯函数 | [`src/runtime-kernel/events/`](https://github.com/linnlabs/linnkit/tree/main/src/runtime-kernel/events) |
+| Graph 事件主链 | [`src/runtime-kernel/graph-engine/`](https://github.com/linnlabs/linnkit/tree/main/src/runtime-kernel/graph-engine) |
+| 自动压缩策略、计划、固定格式与输出预算 | [Linnkit context compaction](https://github.com/linnlabs/linnkit/tree/main/src/context-manager/features/context-compaction) |
+| 通用 Tool 取消事实 | [`toolNode.cancellation.ts`](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/graph-engine/nodes/toolNode.cancellation.ts) |
+| Tool 合同、参数规范化与幂等 key | [`src/runtime-kernel/tools/`](https://github.com/linnlabs/linnkit/tree/main/src/runtime-kernel/tools) |
 
 ### 4.2 产品共享合同（Schemas）
 
@@ -184,7 +184,7 @@
 | `apps/renderer/domains/conversation/docs/conversation-virtualization.md` | 虚拟化与滚动的完整实现契约、媒体管线、估高体系 |
 | `apps/renderer/domains/conversation/docs/task-system.md` | 活动 / subrun 系统的产品设计与上下文装配 |
 | `apps/renderer/domains/conversation/docs/input-contribution.md` | 输入框贡献框架三原语与插件 SDK 边界 |
-| `packages/linnkit/docs/integration/` | Linnkit 作为独立 npm 包的接入手册（外部读者视角） |
+| [独立 Linnkit 仓的 `docs/integration/`](https://github.com/linnlabs/linnkit/tree/main/docs/integration) | Linnkit 作为独立 npm 包的接入手册（外部读者视角） |
 | `packages/schemas/README.md` | `@app/schemas` 包级说明与目录职责 |
 | `apps/linnya-cli/README.md` | CLI 命令、JSON/JSONL、退出码、安全发现与分层测试 |
 

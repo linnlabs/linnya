@@ -134,7 +134,7 @@ tool / parent flow
 - seed history policy
 - parent tool context 缩减
 
-这些都已经收在 `packages/linnkit/src/runtime-kernel/child-runs/*` 和 `src/app-hosts/linnya/adapters/child-runs/*`。
+这些都已经收在 独立 Linnkit 仓的 `src/runtime-kernel/child-runs/*` 和 `src/app-hosts/linnya/adapters/child-runs/*`。
 
 ---
 
@@ -478,8 +478,8 @@ src/app-hosts/linnya/agent-registry/
 
 ## 推荐阅读顺序
 
-1. [runtime-kernel README](../../../../packages/linnkit/src/runtime-kernel/README.md)
-2. [context-manager README](../../../../packages/linnkit/src/context-manager/README.md)
+1. [runtime-kernel README](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/README.md)
+2. [context-manager README](https://github.com/linnlabs/linnkit/blob/main/src/context-manager/README.md)
 3. [Linnya context README](../context/README.md)
 4. 本文档
 

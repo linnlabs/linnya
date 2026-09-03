@@ -34,4 +34,4 @@ Layer: `host-bound regression harness`
 
 请优先使用：
 
-- `packages/linnkit/src/testkit/agent-harness/*`
+- 独立 Linnkit 仓的 `src/testkit/agent-harness/*`

@@ -20,7 +20,7 @@ Linnya 是基于 Electron 的桌面 Agent 工作台。Workspace、对话式 Agen
 ## 2. 核心边界
 
 1. Linnkit 只拥有通用 Agent runtime；Linnya 产品选择、数据库、具体 Provider 和 UI 不进入 Linnkit。
-   Linnya 通过精确 npm 版本消费它，禁止用 tsconfig、Vite 或测试 alias 回连 `packages/linnkit/src`。
+   Linnya 通过精确 npm 版本消费它，禁止用 tsconfig、Vite 或测试 alias 回连任何 Linnkit 源码目录。
 2. 跨进程或跨端产品 DTO 归 `packages/schemas/`；producer 与 consumer 不各写一份 interface。
 3. Provider SDK 只存在于 Host capability；Renderer、model catalog 和 Linnkit 不识别 SDK 实例。
 4. 新业务采用 domain-first vertical slice；跨 domain 只走窄 public contract、port、registry、event 或 app-level orchestration。

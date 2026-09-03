@@ -10,7 +10,6 @@ import { pathToFileURL } from 'node:url';
 
 const REPO_ROOT = process.cwd();
 const SCAN_ROOTS = [
-  'packages/linnkit/src',
   'packages/schemas/src',
   'packages/plugins',
   'src',

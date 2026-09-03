@@ -69,7 +69,7 @@ locator 表达节点当前地址，inode 表达跨重命名/移动仍稳定的�
 `required` 与封闭 `oneOf`。Workspace shared 只复用“正式 parser 的错误如何转换为 admission 结果”这一窄逻辑，
 不生成 locator/inode 分支，也不把 Workspace 身份语义下沉到 Linnkit。通用协议与测试时序见
 [`src/tools/README.md`](../README.md) 和 Linnkit 的
-[`tool-development-guide.md`](../../../packages/linnkit/docs/integration/tool-development-guide.md)。
+[`tool-development-guide.md`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/tool-development-guide.md)。
 
 `write_file` / `edit_file` 在模型流式输出中一旦确定工具名，就通过通用 streaming policy 发布 ephemeral
 占位事件。Renderer 先显示不可展开的“正在创建文件...”或“正在编辑文件...”标题，完整参数到达后仍由

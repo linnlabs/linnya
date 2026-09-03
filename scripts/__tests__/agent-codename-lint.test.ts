@@ -21,9 +21,9 @@ function firstViolation(filePath: string, content: string): CodenameViolation {
 }
 
 describe('isCodenameAuthorityFile', () => {
-  it('allows agent package authority files', () => {
-    expect(isCodenameAuthorityFile('packages/linnkit/src/index.ts')).toBe(true);
-    expect(isCodenameAuthorityFile('packages/linnkit/src/__tests__/package.manifest.test.ts')).toBe(true);
+  it('allows local legacy agent authority files', () => {
+    expect(isCodenameAuthorityFile('src/agent/index.ts')).toBe(true);
+    expect(isCodenameAuthorityFile('src/agent/__tests__/package.manifest.test.ts')).toBe(true);
   });
 
   it('does not allow unrelated business files', () => {
@@ -53,7 +53,7 @@ describe('findCodenameViolations', () => {
   it('allows codename usage in authority files (defensive — currently no codename remains beyond linngent)', () => {
     expect(
       symbolsFor(
-        'packages/linnkit/src/__tests__/package.manifest.test.ts',
+        'src/agent/__tests__/package.manifest.test.ts',
         "expect(historicalAlias).toBe('linngent');",
       ),
     ).toEqual([]);

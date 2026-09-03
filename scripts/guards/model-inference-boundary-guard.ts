@@ -2,8 +2,7 @@
  * Model inference 的跨端合同与 Provider SDK 边界守卫。
  *
  * 这里只锁架构不变量：配置生产端不能恢复 legacy route，wire contract 不能复制，
- * Provider SDK 只能存在于 Linnya Host capability，Linnkit 核心只能依赖 canonical
- * contract。旧 codec、integration registry 与宽 AIEngine 已物理删除，本门禁阻止
+ * Provider SDK 只能存在于 Linnya Host capability。旧 codec、integration registry 与宽 AIEngine 已物理删除，本门禁阻止
  * 它们以兼容层名义回流。
  */
 import fs from 'node:fs';
@@ -24,13 +23,6 @@ const DOCUMENT_OCR_CONTRACT_OWNER = 'packages/schemas/src/document-ocr/';
 const AI_SDK_OWNERS = [
   'src/app-hosts/linnya/adapters/inference/capabilities/ai-sdk/',
   'src/app-hosts/linnya/adapters/image-generation/capabilities/ai-sdk/',
-] as const;
-const LINNKIT_CORE_ROOTS = [
-  'packages/linnkit/src/contracts/',
-  'packages/linnkit/src/context-manager/',
-  'packages/linnkit/src/ports/',
-  'packages/linnkit/src/runtime-kernel/',
-  'packages/linnkit/src/shared/',
 ] as const;
 const INPUT_MATERIALIZATION_OWNER = 'src/app-hosts/linnya/adapters/llm-input-materialization/';
 const TOKEN_ACCOUNTING_OWNER = 'src/app-hosts/linnya/adapters/token-accounting/';
@@ -248,14 +240,11 @@ function main(): void {
     ));
   }
 
-  const linnkitCoreFiles = [...new Set(LINNKIT_CORE_ROOTS.flatMap(listSourceFiles))]
-    .filter(file => !isTestFile(file));
   const contractFiles = [
     ...listSourceFiles('src'),
     ...listSourceFiles('apps'),
     ...listSourceFiles('cloud'),
     ...listSourceFiles('packages/schemas/src'),
-    ...linnkitCoreFiles,
   ]
     .filter(file => !isTestFile(file));
   for (const file of contractFiles) {
@@ -373,21 +362,6 @@ function main(): void {
         ));
       }
     }
-  }
-
-  for (const file of linnkitCoreFiles) {
-    violations.push(...occurrences(
-      file,
-      /\b(?:extra_content|thought_signature|reasoning_content|prompt_tokens|completion_tokens|prompt_tokens_details|completion_tokens_details|provider_metadata|providerMetadata|summary_supported|budget_tokens_by_effort|beforeRequest|afterResponse)\b/u,
-      'INFERENCE-28',
-      'Linnkit 核心只能消费 canonical contract；厂商 wire 字段与原始请求/响应 hook 必须留在 Host Provider capability。'
-    ));
-    violations.push(...occurrences(
-      file,
-      /\b(?:deepseek|gemini|google|anthropic|claude|openai|openrouter|moonshot|minimax|alibaba|qwen|kimi|glm)\b/iu,
-      'INFERENCE-29',
-      'Linnkit 核心不得按厂商或模型家族名称分支；路由、codec 与模型特性属于 Host。'
-    ));
   }
 
   if (violations.length > 0) {

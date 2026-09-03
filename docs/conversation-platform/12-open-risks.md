@@ -29,9 +29,9 @@
 原不变量 15 写"生产代码禁止定义或调用 `addUserMessage()`"，但当时代码库中有三处**合法**的同名 API：
 
 ```text
-packages/linnkit/src/context-manager/profiles/agent/context/ConversationSession.ts:78
-packages/linnkit/src/runtime-kernel/events/provider-sidecar.ts:34
-packages/linnkit/src/runtime-kernel/events/runtime-to-ai-message.ts:17
+linnlabs/linnkit（历史位置）src/context-manager/profiles/agent/context/ConversationSession.ts:78
+linnlabs/linnkit（历史位置）src/runtime-kernel/events/provider-sidecar.ts:34
+linnlabs/linnkit（历史位置）src/runtime-kernel/events/runtime-to-ai-message.ts:17
 ```
 
 这些是 Linnkit context-manager 的**内存消息构建** API，与被废止的 Renderer store action 无关。禁令若按字面执行会误伤。
@@ -172,4 +172,4 @@ packages/linnkit/src/runtime-kernel/events/runtime-to-ai-message.ts:17
 
 因此 R-11 的风险等级由**高**降为**低**。残余风险是：guard 只覆盖 Conversation 域内的直接属性写入，无法判定先取出数组别名或经函数参数继续传递后的间接写入；该限制不依赖 `any`，即使类型完整也存在。
 
-**R-10 的改进已落地**：`uiProjectionParityCoverage.test.ts` 从 Linnkit `RuntimeEventShape` 读取正式事件全集；fixture 未覆盖且未登记为非 UI 的新事件会使语义门失败。该门随 `packages/linnkit/**`、Host、Renderer 与 schema 改动运行。残余风险仍是两套投影可能对同一已覆盖事件在 fixture 未表达的业务分支上产生差异，因此必须继续维护业务场景，而不能退化为字段快照。
+**R-10 的改进已落地**：`uiProjectionParityCoverage.test.ts` 维护 Linnya 对 npm 包公共 `RuntimeEvent` 类型的完整接纳清单；Linnkit 增删事件后，TypeScript 类型检查会要求同步更新清单，语义测试再要求每个已接纳事件进入 fixture 或登记为非 UI 事件。它不再读取 Linnkit 仓内未发布的 TypeScript 源文件。残余风险是当前仓库的全量类型检查仍有既存错误，因而升级 Linnkit 时必须先单独确认该文件通过类型检查；两套投影在 fixture 未表达的业务分支上也仍可能产生差异，必须继续维护业务场景，不能退化为字段快照。

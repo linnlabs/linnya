@@ -4,7 +4,7 @@ Linnya 宿主对 linnkit `Checkpointer` port 的 SQLite 实现。
 
 ## 1. 这是什么
 
-`Checkpointer` 是 linnkit 平台层的 port（定义在 `packages/linnkit/src/runtime-kernel/graph-engine/checkpointer/base.ts`）。它的语义是 **保存 graph engine 的执行状态快照** `EngineState`：
+`Checkpointer` 是 linnkit 平台层的 port（定义在 独立 Linnkit 仓的 `src/runtime-kernel/graph-engine/checkpointer/base.ts`）。它的语义是 **保存 graph engine 的执行状态快照** `EngineState`：
 
 - `nodeId`：图执行当前停在哪个节点
 - `pendingToolCalls`：已发出还没回收结果的 tool call
@@ -64,7 +64,7 @@ const checkpointer = new SqliteCheckpointer(dbService.getDb());
 const executor = new GraphExecutor(checkpointer, { maxSteps: ... });
 ```
 
-同步子 agent (`packages/linnkit/src/runtime-kernel/child-runs/childRunInvoker.ts`) **不**走这个，仍用 `MemoryCheckpointer`：
+同步子 agent (独立 Linnkit 仓的 `src/runtime-kernel/child-runs/childRunInvoker.ts`) **不**走这个，仍用 `MemoryCheckpointer`：
 
 - 子 agent 是短生命周期（一个 tool call 内完成），父 run 失败可整体重试，不需要持久化
 
@@ -97,11 +97,11 @@ checkpointer.purgeStale({
 ## 8. 测试
 
 - 契约测试：`__tests__/sqlite.implementation.contract.test.ts`（9 个用例，包含同会话 foreground/auxiliary 两个 run 的独立行与定向清理，以及 GC 行为）
-- 基础 4 个用例与 `MemoryCheckpointer` 契约一致（见 `packages/linnkit/src/runtime-kernel/graph-engine/checkpointer/__tests__/memoryCheckpointer.contract.test.ts`），只是后端从内存 Map 换成 in-memory SQLite
+- 基础 4 个用例与 `MemoryCheckpointer` 契约一致（见 独立 Linnkit 仓的 `src/runtime-kernel/graph-engine/checkpointer/__tests__/memoryCheckpointer.contract.test.ts`），只是后端从内存 Map 换成 in-memory SQLite
 
 ## 9. 参考
 
-- linnkit Checkpointer port：`packages/linnkit/src/runtime-kernel/graph-engine/checkpointer/base.ts`
-- runtime-kernel 总入口：`packages/linnkit/src/runtime-kernel/README.md`
-- 开发指南术语小节：`packages/linnkit/docs/DEVELOPMENT_GUIDE.md`
-- B0 研究文档：`packages/linnkit/docs/archive/engine-phases/21-host-port-adapter-research.md` §6（B1 实施背景）
+- linnkit Checkpointer port：独立 Linnkit 仓的 `src/runtime-kernel/graph-engine/checkpointer/base.ts`
+- runtime-kernel 总入口：独立 Linnkit 仓的 `src/runtime-kernel/README.md`
+- 开发指南术语小节：独立 Linnkit 仓的 `docs/DEVELOPMENT_GUIDE.md`
+- B0 研究文档：独立 Linnkit 仓的 `docs/archive/engine-phases/21-host-port-adapter-research.md` §6（B1 实施背景）

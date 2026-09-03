@@ -1,12 +1,12 @@
 # Linnya App Host 架构
 
-`src/app-hosts/linnya/` 是 Linnya 接入 `packages/linnkit/` 的宿主层。Linnkit 是通用 Agent framework；App Host 负责把 framework 的 ports、protocol 与 Linnya 产品能力装配成可运行应用。
+`src/app-hosts/linnya/` 是 Linnya 接入 npm 包 `@linnlabs/linnkit` 的宿主层。Linnkit 是通用 Agent framework；App Host 负责把 framework 的 ports、protocol 与 Linnya 产品能力装配成可运行应用。
 
 ## 1. 所有权边界
 
 | 问题 | owner |
 | --- | --- |
-| Agent framework 一般如何运行 | `packages/linnkit/` |
+| Agent framework 一般如何运行 | [独立 Linnkit 仓](https://github.com/linnlabs/linnkit) |
 | Linnya 如何装配、接纳请求、传输和持久化 | `src/app-hosts/linnya/` |
 | Workspace、TaskState、知识库等工具做什么 | `src/tools/` 或对应 product domain |
 | 跨 Host/Renderer 的 Linnya DTO | `packages/schemas/` |
@@ -85,7 +85,7 @@ Conversation Agent run 的 application orchestration：请求接纳、Host sessi
 - `context/`：Linnya request 到 context-manager 输入的绑定。
 - `context-policies/`：默认 provider、context policy 与自动 compaction 的宿主装配。
 
-通用 context 算法继续属于 `packages/linnkit/src/context-manager/`。
+通用 context 算法继续属于 独立 Linnkit 仓的 `src/context-manager/`。
 
 ### `plugin-registry/`
 
@@ -185,8 +185,8 @@ Workspace document read、TaskState、问卷和 tool-output read 的跨端 schem
 
 ## 8. 阅读顺序
 
-1. `packages/linnkit/src/runtime-kernel/README.md`
-2. `packages/linnkit/docs/integration/realtime.md`
+1. 独立 Linnkit 仓的 `src/runtime-kernel/README.md`
+2. 独立 Linnkit 仓的 `docs/integration/realtime.md`
 3. 本文
 4. `adapters/flow/README.md`
 5. `application/README.md`

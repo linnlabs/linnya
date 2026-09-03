@@ -145,18 +145,6 @@ const canonicalFiles = new Map([
     ["message.type !== 'summarization_progress'", "type: 'history_summary'"],
   ],
   [
-    'packages/linnkit/src/contracts/sse.ts',
-    ['summarization_id: RuntimeEventIdSchema', 'original_message_count', 'compressed_message_count'],
-  ],
-  [
-    'packages/linnkit/src/contracts/events.ts',
-    ['original_message_count: z.number().int().nonnegative()', 'original_message_count: originalMessageCount'],
-  ],
-  [
-    'packages/linnkit/src/contracts/summarization.ts',
-    ['interface SummarizationCallbacks', "Extract<RuntimeEvent, { type: 'history_summary' }>"],
-  ],
-  [
     'src/app-hosts/linnya/adapters/flow/agent-runner/summarizationEventEmitter.ts',
     ['summarization_id: summarizationId', 'run_id: options.runId', 'execution_id: options.executionId'],
   ],
@@ -171,10 +159,6 @@ const canonicalFiles = new Map([
   [
     'src/tools/tool_output/orchestration/readToolOutputTextWindow.ts',
     ['parseToolOutputBlobId', 'computeToolOutputBlobId(manifest)'],
-  ],
-  [
-    'packages/linnkit/src/contracts/sub-run-trace-payload.ts',
-    ['export const SubRunTraceKind', 'kind: SubRunTraceKind'],
   ],
   [
     'apps/renderer/domains/conversation/features/subrun-trace/definitions/subrunTracePresentation.ts',
@@ -243,7 +227,6 @@ const removedTodoRuntimePatterns = [
   { pattern: /\bcreateTodoUpdated\b/, message: '禁止恢复 Todo 事件工厂' },
 ];
 const todoRuntimeBoundaryRoots = [
-  'packages/linnkit/src',
   'src/app-hosts/linnya',
   'apps/renderer/domains/conversation',
 ];
@@ -260,7 +243,6 @@ for (const root of todoRuntimeBoundaryRoots) {
 // packages/schemas 和 Renderer replay/projector；执行内核、Host、领域工具与插件不得
 // 再生产该工具名，否则会重新把 VFS、Skill、Knowledge、Web 等边界耦合到一起。
 const retiredResourceExecutableRoots = [
-  'packages/linnkit/src',
   'packages/plugin-host-contract/backend',
   'packages/plugins',
   'src/features',
@@ -285,7 +267,6 @@ const removedBackendToolUiPatterns = [
   { pattern: /\bgetDisplayOptions\b/, message: '禁止恢复后端工具展示查询端口' },
 ];
 const backendToolUiBoundaryRoots = [
-  'packages/linnkit/src',
   'packages/plugin-host-contract/backend',
   'packages/plugins',
   'src/tools',
@@ -416,7 +397,6 @@ for (const relativePath of summaryContractFiles) {
 }
 
 const summarizationProtocolFiles = [
-  'packages/linnkit/src/contracts/sse.ts',
   'src/app-hosts/linnya/adapters/flow/agent-runner/summarizationEventEmitter.ts',
 ];
 for (const relativePath of summarizationProtocolFiles) {
@@ -434,7 +414,6 @@ if (/event\.(?:originalMessages|compressedMessages|compressionRatio)\b/.test(sum
 }
 
 const runtimeSummaryContractSources = [
-  readRequiredFile('packages/linnkit/src/contracts/sse.ts'),
   readRequiredFile('src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/projectEvent.ts'),
 ].join('\n');
 if (/original_message_count\s*\?\?/.test(runtimeSummaryContractSources)) {
@@ -450,18 +429,6 @@ if (/Math\.random|\.\.\.summaryInfo/.test(summarizationEmitterSource)) {
 const flowSchemasSource = readRequiredFile('src/app-hosts/linnya/adapters/flow/flow.schemas.ts');
 if (/\b(?:interface|type)\s+SummarizationInfo\b/.test(flowSchemasSource)) {
   violations.push('flow.schemas.ts: 禁止复制 Linnkit SummarizationCallbacks 合同');
-}
-
-const canonicalSummarizationCallbacksPath = 'packages/linnkit/src/contracts/summarization.ts';
-for (const relativePath of productionFiles('packages/linnkit/src')) {
-  if (relativePath === canonicalSummarizationCallbacksPath) continue;
-  const source = readRequiredFile(relativePath);
-  if (/\binterface\s+SummarizationCallbacks\b/.test(source)) {
-    violations.push(`${relativePath}: SummarizationCallbacks 只能在 Linnkit contracts 定义`);
-  }
-  if (/onSummarizationEnd\?\s*:\s*\([^)]*:\s*unknown\)/.test(source)) {
-    violations.push(`${relativePath}: summary callback 禁止退化为 unknown`);
-  }
 }
 
 const conversationTypesSource = readRequiredFile(

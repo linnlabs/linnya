@@ -20,7 +20,7 @@ Layer: `app-host`
 真实 owner 边界：
 
 - 通用 context core/profile：
-  - `packages/linnkit/src/context-manager/*`
+  - 独立 Linnkit 仓的 `src/context-manager/*`
 - Linnya 默认 context policy：
   - `src/app-hosts/linnya/context-policies/*`
 
@@ -40,6 +40,6 @@ Linnya host 会把当前轮的页面上下文、文档片段、引用内容等�
 推荐阅读：
 
 - `src/app-hosts/linnya/context/agent-context-unification-plan.md`
-- `packages/linnkit/src/context-manager/README.md`
+- 独立 Linnkit 仓的 `src/context-manager/README.md`
 - `src/app-hosts/linnya/context-policies/README.md`
 - `src/app-hosts/linnya/agent-registry/README.md`

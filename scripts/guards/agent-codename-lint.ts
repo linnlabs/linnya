@@ -7,7 +7,7 @@
  *   不再当作 codename 处理；任何文件都可以自由使用，不在本 lint 关心范围内。
  *
  * 历史背景：早期 `linnkit` 是临时代号，需要防止它在前端/业务代码里硬编码。
- * 自 D-1.b 起，决策已 finalize 为正式包名（见 packages/linnkit/src/docs/00-vision-and-split.md §4.1），
+ * 自 D-1.b 起，决策已 finalize 为正式包名（见独立 Linnkit 仓的 framework 定位文档），
  * 继续禁会和"它是公开 API 的一部分"自相矛盾。
  *
  * - 只允许 codename 出现在权威定义文件或验证这些权威定义的测试里
@@ -48,9 +48,6 @@ const IGNORE_DIRS = new Set([
 const AUTHORITY_FILES = new Set([
   'scripts/guards/agent-codename-lint.ts',
   'scripts/__tests__/agent-codename-lint.test.ts',
-  'packages/linnkit/src/index.ts',
-  'packages/linnkit/src/__tests__/index.exports.snapshot.test.ts',
-  'packages/linnkit/src/__tests__/package.manifest.test.ts',
   'src/agent/index.ts',
   'src/agent/__tests__/index.exports.snapshot.test.ts',
   'src/agent/__tests__/package.manifest.test.ts',

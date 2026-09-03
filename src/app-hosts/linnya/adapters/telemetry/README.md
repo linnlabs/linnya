@@ -116,7 +116,7 @@ CREATE INDEX idx_engine_telemetry_conv_emitted    ON engine_telemetry (conversat
 - `graph_node`: `{ kind, nodeId, durationMs, scope }`
 - `run_lifecycle`: spawned 只有身份；terminal 额外带 `{ stepsUsed, maxSteps, terminalReason }`
 
-权威定义见 `packages/linnkit/src/runtime-kernel/telemetry/telemetryPort.ts`。
+权威定义见 独立 Linnkit 仓的 `src/runtime-kernel/telemetry/telemetryPort.ts`。
 
 ---
 
@@ -188,7 +188,7 @@ telemetryPort.purgeStale({
 
 ## 8. 参考
 
-- linnkit TelemetryPort 接口：`packages/linnkit/src/runtime-kernel/telemetry/telemetryPort.ts`
-- 事件 schema：`packages/linnkit/src/runtime-kernel/telemetry/telemetryEvents.ts`
-- B0 研究文档：`packages/linnkit/docs/archive/engine-phases/21-host-port-adapter-research.md` §6（B2 实施背景）
-- 跨切关注点（telemetry 设计原则）：`packages/linnkit/docs/archive/engine-phases/08-cross-cutting-concerns.md`
+- linnkit TelemetryPort 接口：独立 Linnkit 仓的 `src/runtime-kernel/telemetry/telemetryPort.ts`
+- 事件 schema：独立 Linnkit 仓的 `src/runtime-kernel/telemetry/telemetryEvents.ts`
+- B0 研究文档：独立 Linnkit 仓的 `docs/archive/engine-phases/21-host-port-adapter-research.md` §6（B2 实施背景）
+- 跨切关注点（telemetry 设计原则）：独立 Linnkit 仓的 `docs/archive/engine-phases/08-cross-cutting-concerns.md`

@@ -144,7 +144,7 @@ function inspectPackage(
 }
 
 function inspectConsumers(): readonly BoundaryViolation[] {
-  const files = ['src', 'apps', 'cloud', 'packages/linnkit/src']
+  const files = ['src', 'apps', 'cloud']
     .flatMap(listSourceFiles)
     .filter(file => !isTestFile(file));
   return files.flatMap(file =>
@@ -182,18 +182,6 @@ function inspectConsumers(): readonly BoundaryViolation[] {
           line,
           rule: 'PROVIDER-PACKAGE-RENDERER',
           detail: `Renderer 禁止导入 Node-only Provider package 出口：${moduleName}`,
-        }];
-      }
-      if (
-        file.startsWith('packages/linnkit/src/') &&
-        (moduleName.startsWith('@linnya/provider-catalog') ||
-          moduleName.startsWith('@linnlabs/linnkit-provider-ai-sdk'))
-      ) {
-        return [{
-          file,
-          line,
-          rule: 'PROVIDER-PACKAGE-LINNKIT-REVERSE',
-          detail: `Linnkit 核心禁止反向依赖可选 Provider package：${moduleName}`,
         }];
       }
       return [];

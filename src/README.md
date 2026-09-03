@@ -8,7 +8,7 @@
 
 | 层 | 当前 owner | 职责 |
 |---|---|---|
-| 通用 Agent framework | `packages/linnkit/` | Runtime facts、Graph、LLM、tool/child-run 协议、context core、ports |
+| 通用 Agent framework | [`@linnlabs/linnkit`](https://github.com/linnlabs/linnkit) | 从 npm 精确版本消费的 Runtime facts、Graph、LLM、tool/child-run 协议、context core、ports |
 | Linnya App Host | `src/app-hosts/linnya/` | 请求接纳、runtime 装配、flow、realtime、persistence、产品 registry |
 | 产品 domain | `src/domains/`、`src/features/` | 独立业务规则与用例；跨 domain 通过 port、registry 或 app orchestration 协作 |
 | 产品工具 | `src/tools/` | Workspace、TaskState、知识库等具体工具能力 |
@@ -47,7 +47,7 @@ HTTP request
 - Runtime 装配：`src/app-hosts/linnya/adapters/runtime-assembly/README.md`
 - Realtime：`src/app-hosts/linnya/adapters/realtime/README.md`
 - 持久化：`src/app-hosts/linnya/adapters/persistence/event-store/README.md`
-- 通用 Runtime：`packages/linnkit/src/runtime-kernel/README.md`
+- 通用 Runtime：[独立 Linnkit 仓的 `src/runtime-kernel/README.md`](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/README.md)
 
 ## 3. 事实、存储与 UI read model
 
@@ -114,9 +114,9 @@ Renderer 必须解析正式 `data`，不得从 observation、Markdown 或旧 pay
 
 ## 8. 文档入口
 
-- Linnkit：`packages/linnkit/README.md`
-- Linnkit Runtime：`packages/linnkit/src/runtime-kernel/README.md`
-- Linnkit realtime：`packages/linnkit/docs/integration/realtime.md`
+- Linnkit：[独立仓 README](https://github.com/linnlabs/linnkit)
+- Linnkit Runtime：[`src/runtime-kernel/README.md`](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/README.md)
+- Linnkit realtime：[`docs/integration/realtime.md`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/realtime.md)
 - Linnya App Host：`src/app-hosts/linnya/README.md`
 - Linnya schemas：`packages/schemas/README.md`
 - Model Inference 边界：`docs/model-inference/README.md`

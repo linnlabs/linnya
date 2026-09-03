@@ -31,7 +31,7 @@ Public documentation contains the stable contracts and maintenance rules needed 
 
 Linnya follows domain-first vertical slices. Cross-domain collaboration must use narrow public contracts, ports, registries, events, or app-level orchestration; a domain must not import another domain's internals.
 
-Linnya pins an exact `@linnlabs/linnkit` npm version. Product builds and tests must resolve that package from `node_modules`; source aliases back to `packages/linnkit/` are not part of the supported integration. The embedded directory remains temporarily during the staged extraction and will be removed after its remaining release checks and documentation links have moved to the independent repository.
+Linnya pins an exact `@linnlabs/linnkit` npm version. Product builds and tests resolve that package from `node_modules`; framework source, tests, and release workflows live only in the [independent Linnkit repository](https://github.com/linnlabs/linnkit).
 
 ## Getting started
 

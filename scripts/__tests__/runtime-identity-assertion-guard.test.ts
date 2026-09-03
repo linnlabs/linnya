@@ -5,7 +5,7 @@ import {
   runRuntimeIdentityAssertionGuard,
 } from '../guards/runtime-identity-assertion-guard';
 
-const FILE = 'packages/linnkit/src/runtime-kernel/example.ts';
+const FILE = 'src/app-hosts/linnya/adapters/runtime/example.ts';
 
 describe('runtime identity assertion guard', () => {
   it('当前生产代码不存在身份断言绕过', () => {

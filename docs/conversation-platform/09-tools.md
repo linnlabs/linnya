@@ -3,7 +3,7 @@
 > **What** · 工具事件语义、工具卡身份、结算保证、结果合同、wrapper 别名、UI 注册表。
 > **When to read** · 加工具、加工具卡、加 wrapper 别名、排查"工具卡不更新 / 卡 loading / 结果读不到"之前。
 > **不变量** · [INV-11](./00-invariants.md#inv-11--tool-ui-身份不属于单个事件)、[INV-24](./00-invariants.md#inv-24--具体工具没有-runtime-特权)、[INV-25](./00-invariants.md#inv-25--工具-batch-必须完整结算)、[INV-17](./00-invariants.md#inv-17--strict-schema-必须在真实边界执行)、[INV-18](./00-invariants.md#inv-18--工具-wrapper-与底层工具是两个正式合同)、[INV-56](./00-invariants.md#inv-56--工具展示派生只有三个-admission-入口)、[INV-57](./00-invariants.md#inv-57--工具执行合同只承载业务事实)
-> **Related** · [04 schema](./04-schema-contract.md) · [10 subrun](./10-subruns.md) · [08 生命周期](./08-lifecycle.md) · [Linnkit Tool runtime](../../packages/linnkit/src/runtime-kernel/tools/README.md)
+> **Related** · [04 schema](./04-schema-contract.md) · [10 subrun](./10-subruns.md) · [08 生命周期](./08-lifecycle.md) · [Linnkit Tool runtime](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/tools/README.md)
 
 ---
 
@@ -78,7 +78,7 @@ schema 强制两者一致，非法组合直接 parse 失败：
 | **尚未启动被取消** | 同上 |
 | child lifecycle | 再 drain child fact 与 parent trace |
 
-真源：`packages/linnkit/src/runtime-kernel/graph-engine/nodes/toolNode.cancellation.ts`。
+真源：独立 Linnkit 仓的 `src/runtime-kernel/graph-engine/nodes/toolNode.cancellation.ts`。
 
 **Host、投影器和 Renderer 禁止扫描 loading 行补终态。** 陈旧 live loading 由 window dominance 压过（[06 §3.3](./06-read-model.md)），不是靠前端伪造。
 
@@ -307,7 +307,7 @@ catch 后继续或空数组降级。可见 message 只持有正文实际使用�
 
 ## 9. Tool 幂等属于 Linnkit Runtime
 
-Tool 幂等是执行合同，不是 Conversation 消息身份，也不是 Renderer 展示语义。唯一 owner 是 [Linnkit runtime-kernel tools](../../packages/linnkit/src/runtime-kernel/tools/README.md)：
+Tool 幂等是执行合同，不是 Conversation 消息身份，也不是 Renderer 展示语义。唯一 owner 是 [Linnkit runtime-kernel tools](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/tools/README.md)：
 
 - 工具只在确有副作用、同参重试必须复用成功结果时声明 `idempotency`；scope 只能是 `conversation` 或 `turn`。
 - key 是 32 hex（128-bit）的 SHA-256 前缀；对应 scope 缺少 `conversationId` / `turnId` 时明确失败，不猜测其它身份。

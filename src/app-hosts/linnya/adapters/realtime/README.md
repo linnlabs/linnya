@@ -23,8 +23,8 @@ src/app-hosts/linnya/adapters/realtime/
 
 边界说明：
 
-- realtime lifecycle policy 仍由 `packages/linnkit/src/runtime-kernel/events/eventGovernance.ts` 定义
-- 标准 SSE 字段映射由 `packages/linnkit/src/contracts/sse.ts::runtimeEventToSSEEvent` 定义
+- realtime lifecycle policy 仍由 独立 Linnkit 仓的 `src/runtime-kernel/events/eventGovernance.ts` 定义
+- 标准 SSE 字段映射由 独立 Linnkit 仓的 `src/contracts/sse.ts::runtimeEventToSSEEvent` 定义
 - 这里不定义新的 runtime 事实事件
 - 这里只追加宿主表现层 meta，不把 `render_hint` 等 host 关切写回 runtime-kernel
 

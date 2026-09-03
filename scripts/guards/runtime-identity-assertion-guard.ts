@@ -11,7 +11,7 @@ import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
 const REPO_ROOT = process.cwd();
-const SCAN_ROOTS = ['packages/linnkit/src', 'src', 'apps/renderer'] as const;
+const SCAN_ROOTS = ['src', 'apps/renderer'] as const;
 const SCANNABLE_EXTENSIONS = new Set(['.ts', '.tsx', '.vue']);
 const IGNORE_DIRS = new Set([
   'node_modules',

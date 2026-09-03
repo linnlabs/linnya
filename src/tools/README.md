@@ -2,7 +2,7 @@
 
 > 🎯 **核心**: 本文档为开发者提供了在 `src/tools/` 目录下创建、实现和注册自定义工具的完整指南。遵循这些规范是确保工具能够被Agent系统正确识别、调用和管理的关键。
 
-> **配套阅读**：Linnkit 的通用执行协议见 [`packages/linnkit/src/runtime-kernel/tools/README.md`](../../packages/linnkit/src/runtime-kernel/tools/README.md)，接入说明见 [`packages/linnkit/docs/integration/tools.md`](../../packages/linnkit/docs/integration/tools.md)，完整通用规范见 [`packages/linnkit/docs/integration/tool-development-guide.md`](../../packages/linnkit/docs/integration/tool-development-guide.md)。本文件在这些通用合同之上补充 Linnya concrete tool 的目录、参数可读性、产品结果和 Renderer 约定。
+> **配套阅读**：Linnkit 的通用执行协议见 [独立 Linnkit 仓的 `src/runtime-kernel/tools/README.md`](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/tools/README.md)，接入说明见 [独立 Linnkit 仓的 `docs/integration/tools.md`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/tools.md)，完整通用规范见 [独立 Linnkit 仓的 `docs/integration/tool-development-guide.md`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/tool-development-guide.md)。本文件在这些通用合同之上补充 Linnya concrete tool 的目录、参数可读性、产品结果和 Renderer 约定。
 
 ## 设计思想
 
@@ -288,7 +288,7 @@ import type { StructuredToolResult } from 'src/tools/types';
 - 旧 16 hex key 不双读；升级后按 cache miss 处理。
 - cache hit 后，模型附件等 scope-sensitive 后处理仍按当前上下文重新解析，不能直接复用旧 durable ref。
 
-权威合同与完整验收矩阵见 [`packages/linnkit/docs/integration/tool-development-guide.md §3.2`](../../packages/linnkit/docs/integration/tool-development-guide.md#32-幂等执行合同)；底层 owner 见 [`packages/linnkit/src/runtime-kernel/tools/README.md`](../../packages/linnkit/src/runtime-kernel/tools/README.md)。
+权威合同与完整验收矩阵见 [独立 Linnkit 仓的 `docs/integration/tool-development-guide.md §3.2`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/tool-development-guide.md#32-幂等执行合同)；底层 owner 见 [独立 Linnkit 仓的 `src/runtime-kernel/tools/README.md`](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/tools/README.md)。
 
 ### 系统专用批量工具
 

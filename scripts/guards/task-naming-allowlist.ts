@@ -85,10 +85,7 @@ export const TASK_NAMING_ALLOWANCES: readonly TaskNamingAllowance[] = [
     removeAfter: '长期保留',
     allows: occurrence =>
       hasStandardTechnicalTaskName(occurrence.name) ||
-      inFiles(
-        'apps/renderer/domains/editor/ui/scheduling/editorIdleScheduler.ts',
-        'packages/linnkit/src/runtime-kernel/graph-engine/orchestration/runWithLifecycleTelemetry.ts'
-      )(occurrence),
+      inFiles('apps/renderer/domains/editor/ui/scheduling/editorIdleScheduler.ts')(occurrence),
   },
   {
     id: 'linnkit-public-agent-task-api',
@@ -97,9 +94,7 @@ export const TASK_NAMING_ALLOWANCES: readonly TaskNamingAllowance[] = [
     allows: occurrence =>
       hasPublicAgentTaskName(occurrence.name) ||
       isPublicAgentDefinitionTaskField(occurrence) ||
-      under('packages/linnkit/src/context-manager/profiles/agent/tasks')(occurrence) ||
       inFiles(
-        'packages/linnkit/src/context-manager/profiles/agent/orchestration/AgentMessageOrchestrator.ts',
         'packages/plugin-host-contract/backend/agentRegistry.ts',
         'src/app-hosts/linnya/adapters/context-injection/defaultGraphExecutorContextBuilder.ts',
         'src/app-hosts/linnya/adapters/flow/agent-runner/__tests__/childRunInvokerFactory.test.ts',
@@ -151,7 +146,6 @@ export const TASK_NAMING_ALLOWANCES: readonly TaskNamingAllowance[] = [
     allows: inFiles(
       'src/shared/audit/taskTracking.ts',
       'src/shared/audit/index.ts',
-      'packages/linnkit/src/contracts/messages.ts',
       'src/shared/utils/pathManager.ts'
     ),
   },

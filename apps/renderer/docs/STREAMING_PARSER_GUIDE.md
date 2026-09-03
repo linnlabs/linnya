@@ -24,9 +24,9 @@ Agent runtime
 
 | 边界 | 权威实现 | 职责 |
 | --- | --- | --- |
-| Runtime 事件 | [`packages/linnkit/src/runtime-kernel`](../../../packages/linnkit/src/runtime-kernel) | 产生有 execution / conversation / turn 身份的事件 |
+| Runtime 事件 | [独立 Linnkit 仓的 `src/runtime-kernel`](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel) | 产生有 execution / conversation / turn 身份的事件 |
 | Realtime 投影 | [`sse.port.ts`](../../../src/app-hosts/linnya/adapters/realtime/sse.port.ts) | 按 governance 将 runtime event 投影为 SSE，不解析 Markdown |
-| SSE 合同 | [`sse.ts`](../../../packages/linnkit/src/contracts/sse.ts) | 定义 `markdown_chunk`、`stream_control`等事件及其身份字段 |
+| SSE 合同 | [`sse.ts`](https://github.com/linnlabs/linnkit/blob/main/src/contracts/sse.ts) | 定义 `markdown_chunk`、`stream_control`等事件及其身份字段 |
 | Renderer 传输 | [`agentStreamService.js`](../shared/services/aiService/agentStreamService.js) | 解析 SSE frame，按事件类型分发回调 |
 | 流式会话编排 | [`useStreamingHandlers.ts`](../domains/editor/services/useStreamingHandlers.ts) | 初始化、投递、finalize 解析器，并把 block event 交给编辑器 |
 | Markdown 解析 | [`markdownService.js`](../shared/services/markdownService.js) 与 [`parser-wasm`](../../../packages/parser-wasm) | 按顺序缓冲 chunk，产生 `BlockEvent[]` |

@@ -489,8 +489,8 @@ type BackendPluginAgentFenceCategory =
 
 当 host 侧方案稳定后，更新：
 
-- `packages/linnkit/docs/integration/context-engineering.md`
-- `packages/linnkit/docs/integration/context-fences.md`
+- 独立 Linnkit 仓的 `docs/integration/context-engineering.md`
+- 独立 Linnkit 仓的 `docs/integration/context-fences.md`
 - `src/app-hosts/linnya/context/README.md`
 
 重点补充 role 结构图，让接入者能直观看到最终上下文构成。

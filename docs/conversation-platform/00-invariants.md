@@ -168,7 +168,7 @@ Renderer registry/projector 独立拥有工具卡的标题、图标、布局与 
 
 `features/user-input-admission/` 校验 ack 的 conversation、message、operation 与 replace identity，成功后才调用 store action。普通聊天、编辑重发、Annotation、插件 isolated run、subrun 和 table-fill 必须共用。
 
-> **作用域说明**：本条禁止 Conversation projection store 定义或调用 `addUserMessage()`。它**不涉及** `packages/linnkit/src/context-manager/profiles/agent/context/ConversationSession.ts` 的同名方法——那是 linnkit 上下文装配的合法 API，与 Conversation UI 接纳无关。
+> **作用域说明**：本条禁止 Conversation projection store 定义或调用 `addUserMessage()`。它**不涉及** 独立 Linnkit 仓的 `src/context-manager/profiles/agent/context/ConversationSession.ts` 的同名方法——那是 linnkit 上下文装配的合法 API，与 Conversation UI 接纳无关。
 
 ### INV-60 · 上下文占用的实时快照与结算事实分层
 

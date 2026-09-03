@@ -94,6 +94,6 @@ Linnkit adapter 的 `PersistedEvent` 只有 `eventStoreId + event`。`eventStore
 ## 相关文档
 
 - [`ui-projection/README.md`](./ui-projection/README.md)：Runtime fact 到 disposable Conversation UI read model 的权威投影边界
-- `packages/linnkit/src/runtime-kernel/README.md`
+- 独立 Linnkit 仓的 `src/runtime-kernel/README.md`
 - `src/app-hosts/linnya/adapters/flow/README.md`
 - `src/features/conversation/history/history.repository.ts`

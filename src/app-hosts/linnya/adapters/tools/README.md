@@ -79,9 +79,9 @@ adapter 只负责原子事务和双唯一约束；Knowledge/Web/Workspace produc
 
 ## 5. 相关文档
 
-- [Linnkit Tool runtime](../../../../../packages/linnkit/src/runtime-kernel/tools/README.md)
-- [Linnkit 工具接入](../../../../../packages/linnkit/docs/integration/tools.md)
-- [Linnkit 工具开发规范](../../../../../packages/linnkit/docs/integration/tool-development-guide.md)
+- [Linnkit Tool runtime](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/tools/README.md)
+- [Linnkit 工具接入](https://github.com/linnlabs/linnkit/blob/main/docs/integration/tools.md)
+- [Linnkit 工具开发规范](https://github.com/linnlabs/linnkit/blob/main/docs/integration/tool-development-guide.md)
 - [Linnya Flow adapter](../flow/README.md)
 - [Linnya concrete tools](../../../../tools/README.md)
 - [Conversation 工具投影与渲染](../../../../../docs/conversation-platform/09-tools.md)

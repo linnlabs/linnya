@@ -37,7 +37,7 @@ Layer: `host-adapter/context-injection`
 ## 3. 关键边界 / 不变量
 
 1. 这里只负责“如何注入”，不重新定义 runtime 协议
-2. `ToolContext` 的 runtime capability 仍由 `packages/linnkit/src/runtime-kernel/tools/*` 定义
+2. `ToolContext` 的 runtime capability 仍由 独立 Linnkit 仓的 `src/runtime-kernel/tools/*` 定义
 3. `ToolContextPatch` 不能覆盖 runtime 保留字段
 4. 默认 `ToolManager` / orchestrator 只在宿主层装配，不下沉到 runtime-kernel
 
@@ -165,20 +165,20 @@ Host 装配不完整，应在 child admission 前失败，禁止回退模块级 
 
 如果改的是 `ToolManager` 接线，再加：
 
-- `packages/linnkit/src/context-manager/profiles/agent/context/providers/__tests__/multiToolFollowup.integration.test.ts`
+- 独立 Linnkit 仓的 `src/context-manager/profiles/agent/context/providers/__tests__/multiToolFollowup.integration.test.ts`
 
 如果改的是 child invoker / runtime scope 接线，再加：
 
 - `src/app-hosts/linnya/adapters/child-runs/__tests__/childRuntimeScopeIsolation.integration.test.ts`
-- `packages/linnkit/src/runtime-kernel/child-runs/__tests__/childToolContext.test.ts`
+- 独立 Linnkit 仓的 `src/runtime-kernel/child-runs/__tests__/childToolContext.test.ts`
 
 ---
 
 ## 9. 相关文档
 
-- `packages/linnkit/src/runtime-kernel/README.md`
-- `packages/linnkit/src/runtime-kernel/graph-engine/README.md`
-- `packages/linnkit/src/runtime-kernel/tools/README.md`
+- 独立 Linnkit 仓的 `src/runtime-kernel/README.md`
+- 独立 Linnkit 仓的 `src/runtime-kernel/graph-engine/README.md`
+- 独立 Linnkit 仓的 `src/runtime-kernel/tools/README.md`
 - `src/app-hosts/linnya/adapters/tools/README.md`
-- `packages/linnkit/src/context-manager/README.md`
+- 独立 Linnkit 仓的 `src/context-manager/README.md`
 - `src/app-hosts/linnya/context/README.md`

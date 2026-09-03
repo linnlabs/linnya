@@ -23,7 +23,7 @@ Layer: `app-host verification`
 真实边界：
 
 - 通用测试底座：
-  - `packages/linnkit/src/testkit/*`
+  - 独立 Linnkit 仓的 `src/testkit/*`
 - Linnya host-bound harness：
   - `src/app-hosts/linnya/testkit/*`
 
@@ -31,6 +31,6 @@ N-3/G-1/B.3 之后，host 级 agent 场景测试优先使用 `agent-harness/scen
 
 推荐阅读：
 
-- `packages/linnkit/src/testkit/README.md`
+- 独立 Linnkit 仓的 `src/testkit/README.md`
 - `src/app-hosts/linnya/testkit/agent-harness/README.md`
 - `src/app-hosts/linnya/adapters/flow/README.md`
