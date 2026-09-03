@@ -14,7 +14,6 @@
     "sync:provider-catalog": "pnpm --filter @linnya/provider-catalog sync",
     "build:schemas": "pnpm --dir packages/schemas run build",
     "test:schemas-package-gate": "pnpm --dir packages/schemas run pack-smoke",
-    "test:linnkit-projection-gate": "vitest run scripts/release/functions/linnkitProjection.test.ts && node --import tsx scripts/release/orchestration/manageLinnkitProjection.ts smoke",
     "build:provider-catalog": "pnpm --dir packages/provider-catalog run build",
     "prepare:backend-workspace-dependencies": "pnpm run build:schemas && pnpm run build:provider-catalog",
     "setup:electron": "node scripts/native/ensure-electron-installed.cjs",

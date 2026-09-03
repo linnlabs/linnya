@@ -40,9 +40,6 @@ scripts/release/
   upload-plugin-artifact.mjs             # 插件 R2 上传与公网回读校验
   generate-plugin-catalog.mjs            # 官方插件 catalog 草稿生成
   smoke-official-plugins-r2.test.ts      # 官方插件公网安装/迁移 smoke
-  definitions/linnkitProjection.ts      # Linnkit 投影与 provenance 合同
-  functions/linnkitProjection.ts        # allowlist 与确定性 hash 规则
-  orchestration/manageLinnkitProjection.ts # export/verify/smoke 编排
   definitions/dependencyLegalPolicy.ts  # 跨 pnpm/npm 图共用的精确许可证与来源策略
   definitions/packageLegalEvidence.ts   # 安装 package 法律 evidence 公共合同
   definitions/reviewedPackageLegalEvidence.ts # 精确版本的上游/registry 复核映射
@@ -68,7 +65,6 @@ scripts/release/
   orchestration/generateDesktopArtifactPackageMap.ts # 从内容 BOM 与 production lock 生成 package map
   orchestration/generateDesktopArtifactBundleComponentMap.ts # 从 trace set 与内容 BOM 生成 bundle component map
   orchestration/generateDesktopArtifactPackageLegalEvidence.ts # 生成成品 npm component 法律 evidence/NOTICE
-  export-linnkit-oss.sh                  # Linnkit 投影兼容入口
 ```
 
 ## 脚本职责
@@ -102,8 +98,6 @@ scripts/release/
 | `packages/schemas/src/plugins/catalog.ts`                      | catalog 公共结构与解析合同                                                                                                     | 发布生成器与后续 Host catalog runtime 共用                                                                    |
 | `smoke-official-plugins-r2.test.ts`                            | 从公网下载所有官方插件，安装、激活、执行 migration、校验 owned tables                                                          | `LINNYA_R2_SMOKE=1 pnpm run smoke:plugins:official:r2`                                                        |
 | `create-poppler-runtime-release-archives.cjs`                  | 从已通过 catalog 校验的运行时生成确定性 ZIP，并复核大小与 SHA-256                                                              | `pnpm run release:poppler-runtime:prepare`                                                                    |
-| `orchestration/manageLinnkitProjection.ts`                     | 从锁定 Linnya commit 导出/校验 Linnkit 单向发布投影，并记录 source/version/hash                                                | `pnpm run test:linnkit-projection-gate` 或 `export-linnkit-oss.sh`                                            |
-| `export-linnkit-oss.sh`                                        | 调用正式 orchestration 的兼容入口；不再改写 Git 历史                                                                           | 手动执行                                                                                                      |
 
 ## 主应用发布
 
