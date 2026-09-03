@@ -1,11 +1,11 @@
-# Linnya 产品模型总览（愿景）
+# Linnya 产品模型总览
 
-> 状态：愿景文档（Vision / PRD 层）
+> 状态：产品定义与愿景文档（Vision / PRD 层）
 >
-> 这份文档描述 Linnya 的**理想终态**：概念应该怎么分层、边界应该划在哪里、什么东西恒定不变。
-> 它**不是**执行计划、迁移方案或排期。具体落地由各 proposal 承担；当 proposal 之间冲突时，以本文的分层与不变式仲裁。
+> 这份文档回答 Linnya 是什么、从哪里来、当前形成了哪些产品边界，以及未来希望演进成什么。
+> 其中“不变式”描述长期方向，不是执行计划、迁移方案或排期；当前实现与愿景有差距时，以 owner 文档和代码说明已经落地的事实。
 >
-> 当前实现与愿景的差距另行分析，避免把历史实现误写成永久产品概念。
+> 过程方案形成稳定结论后回写本文或对应 owner 文档，不把历史实现和阶段性选择误写成永久产品概念。
 
 ---
 
@@ -14,6 +14,23 @@
 **Linnya 是一个以 Agent 为中心的文档数据库。**
 
 所有文档类型存在同一个逻辑数据库里，按项目组织；数据库通过 VFS 映射成一棵虚拟路径树；Agent 在一个真实的会话工作区里工作，并通过一组恒定的通用工具操作虚拟树、会话文件和宿主命令。文档类型可以无限扩展，基础工具面不变。插件通过 VFS 文本投影、CLI 和 Skill 接入 Agent；Agent 必须经通用 `shell` / `process` 调用插件 CLI，不为插件领域命令增加新的模型工具。推荐把适合文本表达的插件文档类型做成“代码即文档”。
+
+### 0.1 公开历史
+
+> Linnya 的开发始于 2025 年 3 月，早期项目名为 Tingtalk。出于隐私、安全和开源边界原因，公开 Git 历史从经过净化的首次源码发布开始。
+
+- 2025-03：项目开始开发；
+- 2025-07：发布 `0.0.31` 内测版本；
+- 2026-02：发布 `0.0.34`；
+- 2026-03：发布 `0.0.35`；
+- 2026-04：Linnkit 首次独立发布；
+- 2026-06：形成插件独立发布体系。
+
+### 0.2 当前与未来
+
+当前 Linnya 已经形成 Desktop Host、Renderer、独立 Linnkit npm 依赖、产品 Schemas、插件 Host 合同和开放官方插件等主要边界。具体目录和当前 owner 以[工程地图](./README_FOR_AI.md)为准。
+
+未来方向由下文的产品模型与不变式描述：统一逻辑数据库，以 VFS 组织可扩展文档类型，让 Agent 通过稳定的基础工具、CLI 和 Skill 工作，同时保持内核、产品与插件之间的独立演进。文中明确标注的未决项仍是研究问题，不代表已经承诺的实现排期。
 
 ---
 
@@ -351,4 +368,6 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 | 命令执行 | `docs/command-execution/README.md` |
 | ToolOutput 领域 | `src/tools/tool_output/README.md` |
 | Agent 内核 | [独立 Linnkit 仓的定位文档](https://github.com/linnlabs/linnkit/blob/main/docs/framework/00-vision-and-positioning.md) |
-| 工程入口 | `README_FOR_AI.md` |
+| 文档总图 | [`docs/README.md`](./README.md) |
+| 工程地图 | [`docs/README_FOR_AI.md`](./README_FOR_AI.md) |
+| 开发指南 | [`docs/development/README.md`](./development/README.md) |

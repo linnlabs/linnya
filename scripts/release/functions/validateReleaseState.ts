@@ -76,7 +76,7 @@ export function validateReleaseState(rootDir: string): ReleaseValidationResult {
   assertNoPattern(
     problems,
     rootDir,
-    'BUILD_AND_TEST_GUIDE.md',
+    'docs/development/build-and-test.md',
     /林芽-\d+\.\d+\.\d+-arm64/,
     '构建指南不应硬编码具体版本产物名，请使用 ${version} 或 release:checklist。',
   );

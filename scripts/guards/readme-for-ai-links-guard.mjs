@@ -4,7 +4,8 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const readmePath = path.join(repoRoot, 'README_FOR_AI.md');
+const readmePath = path.join(repoRoot, 'docs/README_FOR_AI.md');
+const readmeDir = path.dirname(readmePath);
 const source = fs.readFileSync(readmePath, 'utf8');
 const violations = [];
 
@@ -27,7 +28,7 @@ for (const match of removeFencedCode(source).matchAll(/!?\[[^\]]*\]\(([^)]+)\)/g
     continue;
   }
 
-  const targetPath = path.resolve(repoRoot, decodedFilePart);
+  const targetPath = path.resolve(readmeDir, decodedFilePart);
   const relativeTarget = path.relative(repoRoot, targetPath);
   if (relativeTarget.startsWith('..') || path.isAbsolute(relativeTarget)) {
     violations.push(`仓库内入口不得指向仓库外：${destination}`);

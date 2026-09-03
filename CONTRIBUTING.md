@@ -20,7 +20,7 @@ Small fixes may go directly to a pull request. Maintainers may ask that a large 
 - Update stable documentation when architecture, contracts, directories, or contributor workflows change.
 - Test business behavior and failure semantics, not README snapshots or cosmetic constants.
 
-Setup and validation commands are in [BUILD_AND_TEST_GUIDE.md](BUILD_AND_TEST_GUIDE.md).
+Setup and validation commands are in the [development guide](docs/development/README.md).
 Public documentation boundaries are defined in [docs/documentation-governance.md](docs/documentation-governance.md).
 
 ## Pull requests

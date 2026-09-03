@@ -201,7 +201,7 @@
     "build:electron:prod:mac": "node scripts/build/build-prod.cjs --mac",
     "notarize-app:mac": "node scripts/build/notarize-app.cjs",
     "notarize-dmg:mac": "node scripts/build/notarize-dmg.cjs",
-    "build:electron:mac:full": "echo 'This script is deprecated. Please follow the multi-step process in BUILD_AND_TEST_GUIDE.md'",
+    "build:electron:mac:full": "echo 'This script is deprecated. Please follow docs/development/build-and-test.md'",
     "build:electron:mac": "cross-env LINNYA_BUILD_TARGET_PLATFORM=darwin LINNYA_BUILD_TARGET_ARCH=arm64 pnpm run build:electron:prepare && electron-builder --projectDir dist_build --mac --arm64",
     "finalize-dmg:mac": "bash scripts/build/create-dmg.sh",
     "db:inspect": "node scripts/test-runner/run-test-with-electron.cjs scripts/diagnostics/database/inspect-workspace-database.ts",

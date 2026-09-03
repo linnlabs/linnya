@@ -1,0 +1,32 @@
+# Linnya 开发指南
+
+本目录覆盖从全新 clone 到本地开发、定向验证和跨平台排错的公开流程。发布签名、公证、上传凭据与受保护环境由维护者流水线拥有，不是普通开发前置条件。
+
+## 快速开始
+
+```bash
+corepack enable
+cargo install wasm-pack
+pnpm install --frozen-lockfile
+pnpm run dev:electron
+```
+
+需要 Node.js 22（精确版本见根目录 `.nvmrc`）、仓库锁定的 pnpm、Rust 和 `wasm-pack`。完整 Desktop 开发与原生能力验收使用 macOS 或 Windows。
+
+## 按问题选择文档
+
+| 场景 | 文档 |
+| --- | --- |
+| 安装依赖、启动、选择测试、构建和提交前检查 | [构建与测试](./build-and-test.md) |
+| 在 macOS 与 Windows 之间切换、重建平台依赖或重置开发数据 | [跨平台开发](./cross-platform.md) |
+| 配置开发模式、工作区目录、调试开关与本地 API Key | [`.env.local` 开发配置](./env-local.md) |
+| 排查 Electron/Node ABI、`better-sqlite3`、`node-pty` 等原生模块 | [原生模块 ABI 与测试](./native-modules.md) |
+
+## 开发方法
+
+1. 先从 [AI 与工程地图](../README_FOR_AI.md) 找到目标 owner，并阅读相邻 README、公开合同和调用链。
+2. 先运行最小而真实的 owner gate，小范围通过后再扩大到相关集成测试、构建或全量测试。
+3. 架构、目录、合同和开发流程发生变化时，同步更新正式文档。
+4. 不提交凭据、开发者绝对路径、生成物、临时调试输出或对私有仓的依赖。
+
+详细贡献要求见根目录 [CONTRIBUTING.md](../../CONTRIBUTING.md)，公共文档边界见[文档治理](../documentation-governance.md)。

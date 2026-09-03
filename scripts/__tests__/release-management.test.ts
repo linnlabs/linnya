@@ -63,7 +63,7 @@ describe('release management', () => {
     expect(result.ok).toBe(false);
     expect(result.problems.map((problem) => problem.path)).toEqual([
       'apps/renderer/domains/settings/ui/tabs/AboutTab.vue',
-      'BUILD_AND_TEST_GUIDE.md',
+      'docs/development/build-and-test.md',
     ]);
   });
 
@@ -148,7 +148,7 @@ function makeReleaseFixture(input: {
     input.aboutContent ?? '<template>{{ currentRelease.title }}</template>\n',
   );
   writeFile(
-    path.join(dir, 'BUILD_AND_TEST_GUIDE.md'),
+    path.join(dir, 'docs/development/build-and-test.md'),
     input.buildGuideContent ?? '产物名：林芽-${version}-arm64.dmg\n',
   );
 

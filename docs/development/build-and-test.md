@@ -2,6 +2,8 @@
 
 本文面向公开仓贡献者，说明从全新 clone 到本地开发、定向验证和非发布构建的稳定入口。发布签名、公证、上传凭据与受保护环境由维护者流水线拥有，不是普通开发前置条件。
 
+返回[开发指南总览](./README.md)。本地环境变量见 [`.env.local` 开发配置](./env-local.md)；平台切换与原生依赖问题分别见[跨平台开发](./cross-platform.md)和[原生模块 ABI 与测试](./native-modules.md)。
+
 ## 1. 前置环境
 
 - Node.js 22；精确版本见根目录 `.nvmrc`，支持范围见 `package.json#engines`。
@@ -65,6 +67,8 @@ pnpm run build:main
 - 可在普通 CI 验证的类型、合同和纯函数；
 - 必须在真实 Electron 中验证的 ABI、进程与 IPC；
 - 必须在目标操作系统验证的签名、权限、安装器和自动更新。
+
+具体重建流程见[跨平台开发](./cross-platform.md)，ABI 与运行时验证合同见[原生模块 ABI 与测试](./native-modules.md)。
 
 ## 6. 凭据与网络
 

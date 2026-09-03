@@ -1,5 +1,7 @@
 # 原生模块 ABI 与测试运行方式
 
+本文定义 Node、Electron 与平台原生制品的验证合同。常规安装与构建入口见[构建与测试](./build-and-test.md)，操作系统切换流程见[跨平台开发](./cross-platform.md)。
+
 ## 1. 正式运行时
 
 当前桌面基线为 Electron `43.4.0`：

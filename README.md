@@ -51,7 +51,7 @@ pnpm run dev:electron
 
 The first desktop start prepares the target-platform Qdrant and Poppler runtimes from pinned releases and verifies their declared archive, executable, and file-tree checksums. Generated runtime files are not source-controlled.
 
-See [BUILD_AND_TEST_GUIDE.md](BUILD_AND_TEST_GUIDE.md) for targeted validation, native-module requirements, and source builds.
+See the [documentation map](docs/README.md) and [development guide](docs/development/README.md) for architecture, targeted validation, native-module requirements, and source builds.
 
 ## Plugin development
 

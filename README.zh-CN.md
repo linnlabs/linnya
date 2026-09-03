@@ -51,7 +51,7 @@ pnpm run dev:electron
 
 首次启动 Desktop 时，会从锁定的 release 准备目标平台 Qdrant 与 Poppler runtime，并校验声明的 archive、executable 和文件树 checksum；生成的 runtime 文件不进入源码版本控制。
 
-定向验证、原生模块和源码构建说明见 [BUILD_AND_TEST_GUIDE.md](BUILD_AND_TEST_GUIDE.md)。
+架构、定向验证、原生模块和源码构建说明见[文档总图](docs/README.md)与[开发指南](docs/development/README.md)。
 
 ## 插件开发
 

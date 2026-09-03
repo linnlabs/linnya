@@ -1,8 +1,10 @@
 # 跨平台开发指南（Mac ⇄ Windows）
 
-> 注意：本文讲的是 **Mac ⇄ Windows 平台**二进制重建。 `better-sqlite3@13` 使用 N-API 10 平台制品；Node 与 Electron 是否都能加载由 `pnpm run verify:better:runtimes` 真实查询验证。完整合同见 [`native-module-abi-and-testing.md`](./native-module-abi-and-testing.md)。
+> 注意：本文讲的是 **Mac ⇄ Windows 平台**二进制重建。 `better-sqlite3@13` 使用 N-API 10 平台制品；Node 与 Electron 是否都能加载由 `pnpm run verify:better:runtimes` 真实查询验证。完整合同见[原生模块 ABI 与测试](./native-modules.md)。
 >
 > 本仓库使用 **pnpm**（见 `pnpm-workspace.yaml`）。下文命令统一使用 pnpm，请不要混用 npm。
+
+常规安装、构建与测试见[构建与测试指南](./build-and-test.md)；返回[开发指南总览](./README.md)。
 
 ## 新电脑首次初始化
 

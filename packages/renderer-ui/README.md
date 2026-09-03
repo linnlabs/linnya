@@ -159,7 +159,7 @@ workspace/runtime 的产品逻辑 namespace，不是 GitHub 或 npm 身份声明
 本包在开源前后都保持 `@linnya/renderer-ui`、workspace-only 与 `private: true`，不发布公共 npm package。
 
 真实 tarball consumer gate 继续验证 public exports、DTS/CSS、Vue runtime 与无 Host 偶然依赖，但该 tarball 是 CI/官方装配的验证产物，不自动上传 npm 或 GitHub Release。未来如出现真实仓外 consumer，必须通过公开 issue / PR 明确 registry、scope、版本承诺和运营 owner。
-公开边界以根 [README](../../README.md)、[构建说明](../../BUILD_AND_TEST_GUIDE.md) 与[文档治理规则](../../docs/documentation-governance.md) 为准。
+公开边界以根 [README](../../README.md)、[开发指南](../../docs/development/README.md) 与[文档治理规则](../../docs/documentation-governance.md) 为准。
 变更版本时必须按 [版本与装配检查表](./docs/release-checklist.md) 执行，并更新 [CHANGELOG](./CHANGELOG.md)。
 
 ## Overlay 层级
