@@ -16,7 +16,7 @@
 | Headless App Server | `src/app-hosts/linnya/app-server-runtime/` | HTTP/SSE、Backend owner、数据库、Agent 与插件 Backend 的生产组合根 |
 | Desktop Host | `src/electron-main/` | Electron 生命周期、窗口、系统能力、Renderer IPC gateway 与 App Server supervisor |
 
-模型推理的跨端 route、Model Catalog、Host capability、Linnkit 与非 Agent 业务 port 之间的详细职责，以 [`docs/model-inference/README.md`](../docs/model-inference/README.md) 为准。
+模型推理的跨端 route、Model Catalog、Host capability、Linnkit 与非 Agent 业务 port 之间的详细职责，以 [Model Inference README](./domains/model-inference/README.md) 为准。
 
 边界判断：
 
@@ -119,7 +119,7 @@ Renderer 必须解析正式 `data`，不得从 observation、Markdown 或旧 pay
 - Linnkit realtime：[`docs/integration/realtime.md`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/realtime.md)
 - Linnya App Host：`src/app-hosts/linnya/README.md`
 - Linnya schemas：`packages/schemas/README.md`
-- Model Inference 边界：`docs/model-inference/README.md`
+- Model Inference：[Domain README](./domains/model-inference/README.md)
 - Plugin Host contract：`packages/plugin-host-contract/README.md`
 - Conversation Renderer：`apps/renderer/domains/conversation/docs/README.md`
 - Conversation virtualization：`apps/renderer/domains/conversation/docs/conversation-virtualization.md`

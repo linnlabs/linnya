@@ -55,5 +55,4 @@ code、state、PKCE verifier 或 token。
 ChatGPT 授权协议以 Craft Agents
 OSS 的 PKCE 实现为首选上游，并由 Cline 的账号 claim 与刷新实现交叉验证；账户模型发现合同以 OpenAI
 Codex 的 `ModelsClient`、`ModelInfo`
-和 picker 过滤规则为上游。来源、许可证和固定快照记录在
-`docs/source-acquisition/provider-catalog.md`。
+和 picker 过滤规则为上游。来源、许可证和固定快照记录在 [Provider Catalog README](../../../packages/provider-catalog/README.md#来源与复用台账)。

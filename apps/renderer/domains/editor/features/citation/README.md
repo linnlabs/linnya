@@ -105,5 +105,5 @@ Mindmap 两个消费者。
 - 大文档：citation/bibliography 目前在相关文档变更和装载投影时做全文扫描，复杂度为 O(n)。若真实性能
   数据证明成为瓶颈，应做可重建的增量索引，不能新增第二套持久化真相。
 
-Conversation 合同见 [`conversation/docs/citation.md`](../../../conversation/docs/citation.md)，Agent 文档读取
+Conversation 合同见 [Citation domain](../../../../../../src/domains/citation/README.md#conversation-展示链路)，Agent 文档读取
 合同见 [`src/domains/citation/features/document-read/README.md`](../../../../../../src/domains/citation/features/document-read/README.md)。

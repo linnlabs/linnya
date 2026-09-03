@@ -6,7 +6,7 @@
 >
 > 本文是热路径的**冻结契约**：改动前必读，任何改动必须走 Electron 真机三类会话门禁（见 §7）。
 >
-> 配套文档：域架构与不变量见 [`conversation-architecture.md`](./conversation-architecture.md)；核心数据流与目录见 [`README.md`](./README.md)。实现级细节见 `../ui/conversationView/README.md`（虚拟列表与滚动合同）、`../ui/components/timeline/README.md`（timeline 圆点与让位动画）。
+> 配套文档：全链路架构与不变量见 [Conversation Platform](../../../../../docs/conversation-platform/README.md)；域内目录见 [`README.md`](./README.md)。实现级细节见 `../ui/conversationView/README.md`（虚拟列表与滚动合同）、`../ui/components/timeline/README.md`（timeline 圆点与让位动画）。
 
 ---
 
@@ -65,7 +65,7 @@ flowchart TB
 7. **加载竞态防线**：loader 按 store 实例维护请求世代，所有 `await` 后校验所有权（`store.conversationId === conversationId && generation 未变`）再 apply；store action 内另做 conversation 归属断言作底线。切换 conversationId 开始加载时立即清空旧窗口 rows / cursor / revision。
 8. **响应式边界**：window rows 是不可变历史快照，单行用 `markRaw` 阻止 Vue 深代理递归 JSON payload，外层 rows 数组仍响应替换。分页、truncate 和 revision 更新必须替换行/数组，禁止原地修改 raw row。live `conversation.messages` 仍保持深层响应式；metadata 合同收紧没有改变 message ID、visual row key、估高或滚动补偿。
 
-> 加载期 SSE 无损缓冲（打开仍在生成会话时的短暂窗口）见 [`conversation-architecture.md`](./conversation-architecture.md) §5。
+> 加载期 SSE 无损缓冲（打开仍在生成会话时的短暂窗口）见 [Read model §4](../../../../../docs/conversation-platform/06-read-model.md#4-加载期无损缓冲inv-45)。
 
 ---
 
@@ -151,7 +151,7 @@ flowchart TB
 
 `features/subrun-trace/` 是子 run trace 基础能力的唯一 feature，统一持有事件 bucket、历史 API 契约、DTO 校验、历史懒加载、append-only 增量消费、步骤标题 / 状态投影与 `SubrunTracePanel`。外部 UI 只能通过 feature 根出口消费，禁止恢复顶层 `subrun-trace/` 或 `ui/tools/subrunTrace/` 双入口。
 
-该 feature 的步骤 projector 只产出轻量过程步骤，并由既有 `SubrunTracePanel` 统一渲染；Deep Search 与 Host `SubrunProgressCard` 必须复用同一面板，后者只负责 Host detail navigation 适配，不得复制步骤 DOM、历史加载或 CSS。Host 的卡片边界继续由 `ToolCallsMessage` 统一持有，subrun registry 不得通过 `renderAsGroup` 绕开它，也不得让内容组件再造卡片。`features/subrun-card/` 另有正式 message admission，把完整 trace 原子投影为 thought / tool / final answer 等 `BaseMessage`，供 `features/subrun-detail/` 和插件公开 `SubrunCard` 复用。两条投影共享 bucket，但职责独立，禁止合并为带 `compact/full` 分支的上帝 projector。多 subrun 的 Host 父卡由 `SubrunBatchCollection` 归一为多个进度项；插件 collection 合同见 [`task-system.md`](./task-system.md)。
+该 feature 的步骤 projector 只产出轻量过程步骤，并由既有 `SubrunTracePanel` 统一渲染；Deep Search 与 Host `SubrunProgressCard` 必须复用同一面板，后者只负责 Host detail navigation 适配，不得复制步骤 DOM、历史加载或 CSS。Host 的卡片边界继续由 `ToolCallsMessage` 统一持有，subrun registry 不得通过 `renderAsGroup` 绕开它，也不得让内容组件再造卡片。`features/subrun-card/` 另有正式 message admission，把完整 trace 原子投影为 thought / tool / final answer 等 `BaseMessage`，供 `features/subrun-detail/` 和插件公开 `SubrunCard` 复用。两条投影共享 bucket，但职责独立，禁止合并为带 `compact/full` 分支的上帝 projector。多 subrun 的 Host 父卡由 `SubrunBatchCollection` 归一为多个进度项；完整合同见 [Conversation Subruns](../../../../../docs/conversation-platform/10-subruns.md)。
 
 Subrun detail 的底部状态面板与主 composer 只共享 `conversation-footer-shell` 和
 `conversation-footer-surface` 两层视觉外壳；editor、草稿、附件、模型选择与发送控制仍只属于

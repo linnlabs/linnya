@@ -93,3 +93,57 @@ Conversation Host 在 durable projection 写入与全量 rebuild 时，把 owner
 规范化到可重建索引。窗口只按可见正文 ref 查询候选，再通过本 domain 的 workspace 规则按 message 发生时点
 裁剪 dependency sidecar。未来 tool fact 不得反向改变历史消息；同一来源重复接纳时保留首次快照。索引属于
 Host read model，不能让 Citation domain 读取 SQLite，也不能成为第二套业务真相。
+
+## Conversation 展示链路
+
+Conversation 中的引用从 producer 到 Host durable window、live/Subrun 投影，再到 hover、复制和 Editor 转换，统一经过本 domain 的 conversation-presentation 公共入口：
+
+```text
+Knowledge / Web / Workspace citation producer
+  → Citation ref allocator + Host atomic claim store
+  → owner strict schema admission
+  → Citation conversation-presentation
+      ├─ Renderer live / Subrun detached workspace
+      └─ Host durable citation fact index
+  → message dependency snapshot
+  → hover / clipboard / export / Editor CitationNode
+```
+
+### Live 与 Subrun
+
+`MessageProjectionState` 为当前 Conversation 持有独享 citation workspace。成功 tool output 必须先通过 producer schema，再在 detached `Map` 上注册；冲突时整次投影失败，已提交 workspace 不变。answer/thought 正文只从该 workspace 生成实际使用 ref 的 dependency snapshot。
+
+Subrun 使用自己的 detached workspace，不与主会话或其它 Subrun 共用容器。child tool output、thought、answer 与 citation snapshot 在同一次 admission 中原子替换；任一步失败都不能发布半份消息或引用状态。页面切换、截断或 runtime 重建只能从已提交 canonical tool message 与 subrun trace 恢复，禁止从 UI 组件或旧 snapshot 反推来源。
+
+### Durable window
+
+消息窗口可能把答案与 producer tool row 分到不同分页，因此 Host 在 durable projection 和全量 rebuild 时维护可重建的 `conversation_ui_citation_facts`：
+
+1. main 与 child tool output 通过同一 producer admission 写入索引；
+2. 只为当前可见正文中的 ref 查询候选，并按消息发生时点裁剪；
+3. 通过 `citation_dependencies[message_id]` 与同一 message revision 返回；
+4. Renderer 在 window store 前同时校验 message、snapshot 和正文 ref 的完整闭包；
+5. truncate、run 删除与 Conversation 删除同步清理派生索引。
+
+索引和 sidecar 都是可重建 read model，不是 Citation SoT，也不能回写工具结果。未来 tool fact 不得反向改变历史消息，同一稳定来源重复出现时保留首次接纳快照。
+
+### UI 与 Editor
+
+Conversation Markdown renderer 只从当前 message 的 dependency snapshot 解析 canonical `[@ref]`，不得访问全局 registry 或扫描其它 turn。popover、复制和另存为文档消费同一 snapshot；引用离开 Conversation 时必须转换为 Editor `CitationNode`，保留稳定来源身份与引用发生时的快照，不能只复制展示编号。
+
+Editor 文档被 `read_file` 带入新 Conversation 时，只在出站投影中将原文档 ref 映射为新 Conversation 的别名，不回写原文档。这样文件移动和脱离原 Conversation 后仍能查看引用，也不会把旧 Conversation 的局部 ref 直接注入新 scope。
+
+### 变更检查
+
+修改 Conversation 引用链路时至少确认：
+
+1. producer 的正式 schema、observation 与 citations 来自同一事实；
+2. live、durable window 与 Subrun 复用同一 admission 和来源冲突规则；
+3. 所有 citation-bearing message 都携带完整 snapshot 或明确 unresolved refs；
+4. producer row 位于窗外时，hover、copy 与 export 仍只依赖消息 snapshot；
+5. projection 失败不发布半份 message/citation 状态；
+6. runtime 重建只恢复已提交事实；
+7. snapshot 只包含正文实际使用的 refs；
+8. 日志不打印 snippet、正文、完整 tool output 或无必要 URL。
+
+Renderer 投影入口见 [Message Projection README](../../../apps/renderer/domains/conversation/services/messageProjection/README.md)，全链路窗口和 Subrun 约束见 [Conversation read model](../../../docs/conversation-platform/06-read-model.md) 与 [Conversation Subruns](../../../docs/conversation-platform/10-subruns.md)。

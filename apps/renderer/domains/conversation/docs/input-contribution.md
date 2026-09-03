@@ -6,7 +6,7 @@
 >
 > 本文是客观契约规范，不记录施工过程（迭代历史见 git）。插件开发规则见 `docs/plugins/guides/19-conversation-input.md`（输入贡献）与 `docs/plugins/guides/12-ai-interaction.md`（AI 调用 / subrun 发起）。
 >
-> 配套文档：域架构见 [`conversation-architecture.md`](./conversation-architecture.md)；活动 / subrun 展示见 [`task-system.md`](./task-system.md)。
+> 配套文档：全链路架构见 [Conversation Platform](../../../../../docs/conversation-platform/README.md)；活动与 Subrun 见 [Conversation Subruns](../../../../../docs/conversation-platform/10-subruns.md)。
 
 ---
 
@@ -109,7 +109,7 @@ startConversationSubruns({
 }) => { runId, completion, cancel }
 ```
 
-- **边界**：公共契约禁止出现 `task`、`subrun_batch`、`tool_name`、`hostToolCall` 与系统 promptKey；单个和批量都用 `subruns[]`。宿主内部翻译为 forced `subrun_batch` + `system_batch_summarizer`（见 [`task-system.md`](./task-system.md)），固定并发策略归宿主。写回类副作用（如 table write port）不进本契约。
+- **边界**：公共契约禁止出现 `task`、`subrun_batch`、`tool_name`、`hostToolCall` 与系统 promptKey；单个和批量都用 `subruns[]`。宿主内部翻译为 forced `subrun_batch` + `system_batch_summarizer`（见 [Conversation Subruns](../../../../../docs/conversation-platform/10-subruns.md)），固定并发策略归宿主。写回类副作用（如 table write port）不进本契约。
 - 插件在 contribution 声明 `workerId → promptKey`，调用只传当前 active 插件的 `pluginId + workerId`；后端仍校验 promptKey 是否真实注册。这是官方可信 renderer runtime 下的声明约束，不伪装成不受信代码的权限隔离。
 
 **④ 结构化多引用 wire**——见 §4。

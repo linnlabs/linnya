@@ -23,7 +23,7 @@
 - 系统 subrun-batch 输入与结果合同。
 - Todo、TaskState、Subagent、Workspace document read 与 tool-output read 工具结果合同。
 - 用户可见错误消息与操作结果合同。
-- Model inference 的 language/embedding/reranking、document OCR 与音频转写跨端 route 合同；完整模块边界见 [`docs/model-inference/README.md`](../../docs/model-inference/README.md)。
+- Model inference 的 language/embedding/reranking、document OCR 与音频转写跨端 route 合同；完整模块边界见 [Model Inference README](../../src/domains/model-inference/README.md)。
 - Provider Catalog 的公开生成资产和 HTTP list/get read model；Host 私有 runtime binding 不属于共享合同。
 - Provider Account 授权状态、授权结果和脱敏错误的 HTTP 合同；OAuth token 与刷新凭据不属于共享合同。
 
@@ -401,5 +401,5 @@ Agent/runtime 类型必须从 `linnkit/contracts` 导入，不允许在 `@app/sc
 
 - Agent/runtime 公共合同：[独立 Linnkit 仓的 `src/contracts/`](https://github.com/linnlabs/linnkit/tree/main/src/contracts)。
 - Linnkit 集成说明：[`docs/integration/README.md`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/README.md)。
-- Conversation 活动 / subrun 系统规范：`apps/renderer/domains/conversation/docs/task-system.md`。
+- Conversation 活动 / subrun 系统规范：[`docs/conversation-platform/10-subruns.md`](../../docs/conversation-platform/10-subruns.md)。
 - 正式 subrun renderer：`apps/renderer/domains/conversation/features/subrun-collection/README.md`。

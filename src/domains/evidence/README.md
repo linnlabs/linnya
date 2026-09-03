@@ -75,7 +75,7 @@
 - **本 README（权威）**：`src/domains/evidence/README.md`
 - **历史记录入口**：请通过 git history 追溯（不再保留单独的历史记录文件）
 - **引用数据契约**：`packages/schemas/src/citation.ts`（`ref` 为 6 位裸 token）
-- **对话引用合同与链路**：`apps/renderer/domains/conversation/docs/citation.md`
+- **对话引用合同与链路**：[Citation domain](../citation/README.md#conversation-展示链路)
 
 #### 2) Evidence domain 与 host adapter（核心链路）
 

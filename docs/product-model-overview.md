@@ -365,7 +365,7 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 | Agent Control / Subagent | `src/tools/agent_control/README.md` |
 | 数据库架构 | `docs/workspace-db-architecture.md` |
 | 插件体系 | `docs/plugins/architecture.md` + `docs/plugins/guides/` |
-| 命令执行 | `docs/command-execution/README.md` |
+| 命令执行 | `src/domains/commands/README.md` |
 | ToolOutput 领域 | `src/tools/tool_output/README.md` |
 | Agent 内核 | [独立 Linnkit 仓的定位文档](https://github.com/linnlabs/linnkit/blob/main/docs/framework/00-vision-and-positioning.md) |
 | 文档总图 | [`docs/README.md`](./README.md) |

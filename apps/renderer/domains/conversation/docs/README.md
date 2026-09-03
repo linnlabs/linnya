@@ -8,34 +8,18 @@ Conversation 域是 Linnya 的前端对话投影与渲染边界。它消费 Linn
 
 ---
 
-## 先读哪一篇
+## 阅读入口
 
-| 我要改…… | 看 |
-|---|---|
-| 任何东西（改动前必读） | [`00-invariants.md`](../../../../../docs/conversation-platform/00-invariants.md) |
-| live 投影 / `reduceEvent` | [`05-live-projection.md`](../../../../../docs/conversation-platform/05-live-projection.md) |
-| 历史窗口 / window ∪ live 合并 | [`06-read-model.md`](../../../../../docs/conversation-platform/06-read-model.md) |
-| 虚拟列表 / 滚动 / 估高 | [`07-render.md`](../../../../../docs/conversation-platform/07-render.md) → [`conversation-virtualization.md`](./conversation-virtualization.md) |
-| 切会话 / 新建 / 取消 | [`08-lifecycle.md`](../../../../../docs/conversation-platform/08-lifecycle.md) |
-| 工具卡 / wrapper 别名 | [`09-tools.md`](../../../../../docs/conversation-platform/09-tools.md) |
-| 父子 agent / subrun 展示 | [`10-subruns.md`](../../../../../docs/conversation-platform/10-subruns.md) → [`task-system.md`](./task-system.md) |
-| 输入框引用 / 扩展 | [`input-contribution.md`](./input-contribution.md) |
-| 输入框上下文用量 / token 刷新 | [`context-window-usage`](../features/context-window-usage/README.md)；跨端生命周期见 [`INV-60`](../../../../../docs/conversation-platform/00-invariants.md#inv-60--上下文占用的实时快照与结算事实分层) |
-| 对话模型快捷选择 | `features/model-selection/`；Provider/可见性事实来自 `@/domains/model-configuration` 公开 read model |
-| 回答里的 Workspace / Conversation / Host 文件链接 | [`07-render.md` §9.1](../../../../../docs/conversation-platform/07-render.md#91-回答中的文件链接) |
-| 要跑哪些门禁 | [`11-testing-gates.md`](../../../../../docs/conversation-platform/11-testing-gates.md) |
+跨 Host、持久化、schema、实时投影和 Renderer 的问题，统一从 [Conversation Platform 文档地图](../../../../../docs/conversation-platform/README.md#2-文档地图) 查找。本目录不复制全链路索引，只维护 Renderer Conversation owner 的实现级规范。
 
----
-
-## 本目录的实现级规范（未迁移，原位维护）
+## 本目录的实现级规范
 
 | 文档 | 管什么 |
 |---|---|
 | [`conversation-virtualization.md`](./conversation-virtualization.md) | 三层虚拟化（数据 / 渲染 / timeline）、媒体管线、估高体系、滚动契约与红线表 |
-| [`citation.md`](./citation.md) | 对话 `[@ref]` 的严格合同、消息依赖闭包、live/Subrun 投影与 Editor 转换边界 |
 | [`input-contribution.md`](./input-contribution.md) | 输入框贡献框架：三原语（Reference / Input Extension / Trigger）、五能力契约、`user_quote` items[] wire、插件 SDK 物理隔离 |
-| [`task-system.md`](./task-system.md) | 活动 / subrun 统一原语、系统 batch 工具、表格填充切片、`task` 命名治理 |
-| [`conversation-architecture.md`](./conversation-architecture.md) | 迁移指引（内容已并入仓根规范） |
+
+引用的跨 owner 合同由 [Citation domain](../../../../../src/domains/citation/README.md#conversation-展示链路) 维护；活动与 Subrun 的完整规范见 [Conversation Subruns](../../../../../docs/conversation-platform/10-subruns.md)。
 
 更贴代码的说明：`../history/README.md`、`../ui/messageCanvas/README.md`、`../ui/conversationView/README.md`、`../ui/components/timeline/README.md`。
 

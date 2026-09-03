@@ -12,13 +12,13 @@
 | 公共文档应该保存什么、哪些过程材料不进公开仓 | [文档治理](./documentation-governance.md) |
 | Conversation 的身份、事件、持久化、投影与渲染 | [Conversation Platform](./conversation-platform/README.md) |
 | 插件边界、开发方式与发布模型 | [插件文档](./plugins/README.md) |
-| 模型调用与 Provider 边界 | [Model Inference](./model-inference/README.md) |
-| Shell、长进程与命令权限 | [命令执行](./command-execution/README.md) |
+| 模型调用与 Provider 边界 | [Model Inference Domain](../src/domains/model-inference/README.md) |
+| Shell、长进程与命令权限 | [Commands Domain](../src/domains/commands/README.md) |
 
 ## 文档如何组织
 
 - 产品级长期定义放在 `docs/`，例如产品模型、跨领域架构和开发流程。
-- 单个 domain、feature、package 或 app 的稳定规则放在 owner 附近的 `README.md`。
+- 单个 domain、feature、package 或 app 的稳定规则放在 owner 附近的 `README.md`；只有一篇模块专题时优先融合，多个独立专题才放入 owner 的 `docs/` 并由 README 导航。
 - 类型、schema、port、registry 和 event 的最终事实以公开合同与实现为准。
 - Proposal、阶段日志、调研过程和发布证据不进入公共仓；确认后的稳定结论必须回写到正式文档。
 

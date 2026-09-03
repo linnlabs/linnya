@@ -54,7 +54,7 @@ Linnya 本体增加 Agent 工具分支。`plugin.json.entry.command` 继续表�
 - [Process Tool](./commands/process/README.md)
 - [Plugin CLI Shell Bridge](../app-hosts/linnya/application/plugin-cli-shell-bridge/README.md)
 - [Commands Domain](../domains/commands/README.md)
-- [命令执行跨模块入口](../../docs/command-execution/README.md)
+- [命令执行](../domains/commands/README.md)
 
 Shell 和 Process 可以调用网络与普通宿主 CLI，但 Linnya 不管理其安装、版本、Python 环境或包管理器。
 Linnya 自己安装的插件 facade 受 bridge v1 access plan 约束，固定拒绝外部文件、网络、GUI 和本地 IPC；

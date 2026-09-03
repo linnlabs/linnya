@@ -40,7 +40,49 @@ child fact 使用 `lane=child / visibility=parent-trace`，可供 child 恢复�
 
 ---
 
-## 2. Trace 展示协议
+## 2. 产品活动模型与发起路径
+
+对话栏不是“消息流加特殊任务卡”，而是活动流：一次父 Run 可以包含普通消息、父工具活动和若干隔离 subrun。是否进入主上下文、是否需要独立上下文，决定它的产品形态：
+
+| 渲染在对话中 | 需要独立上下文 | 形态 |
+| --- | --- | --- |
+| 是 | 否 | 父级普通消息或工具对，进入主上下文 |
+| 是 | 是 | 归属于父工具活动的 subrun；过程只进 trace，聚合结果经父 `tool_output` 回主上下文 |
+| 否 | 默认独立 | Review、autocomplete 等 `persist:false` 能力，不属于 Conversation 活动 |
+
+```text
+Run（一次用户意图）
+  └─ 可选父工具活动
+       ├─ subrun 1（隔离执行 + UI trace + 结构化结果）
+       ├─ subrun 2
+       └─ 父 tool_output（有界聚合，进入主上下文）
+```
+
+批量执行分成两条真实路径：
+
+- LLM 批量：Agent 在一次决策中多次调用普通 `subagent`；每次调用拥有自己的工具对和 subrun，不承诺并行。
+- 系统批量：按钮或确定性业务编排使用 Host-only `subrun_batch`，一次启动 N 个 child run；它可以注册在 Host ToolRegistry，但不能进入任何 AgentDefinition 或模型工具白名单。
+
+系统批量由无工具的 `system_batch_summarizer` 收尾，父工具结果保存完整逐项事实与权威 `subrun_ids`，observation 保持有界。Host 使用标准 ToolNode 合同形成 `tool_call/tool_output`，不能手工合成一套事件；写回副作用通过业务 owner 的窄 port 完成，不能由 child 自报的行列、路径或开放 metadata 决定目标。
+
+表格填充是首个垂直切片：`app/workflows/table-fill` 发起 forced `subrun_batch`，Editor 的 `table-fill-write` port 串行提交真实 ProseMirror 写入，Conversation 只承载活动、trace 和最终展示，不识别 table 业务字段。
+
+术语必须保持单义：
+
+| 语义 | 正式名称 |
+| --- | --- |
+| 父 Agent 委派动作 | `subagent` 工具 |
+| 隔离执行与 UI 下钻 | `subrun`、`SubrunCard`、`subrun_trace` |
+| Host 确定性批量 | `subrun_batch`、`subruns[]` |
+| 外部活动归属 | Renderer `activityBinding`；wire `options.activity` / `metadata.activity` |
+| 历史隔离 | `historyIsolation: 'isolated'`；wire `history_mode: 'isolated'` |
+| 结构化工作状态 | `TaskState`、`task_read`、`task_write`，这是独立业务概念，不等于 subrun |
+
+Linnkit 的 `IAgentTask` 等公开上下文装配 API、知识库外部 `task_id` 协议和 Cloud `task_defaults` 不属于 Conversation 命名整理范围；若要修改必须各自设计公开迁移，不能在本模块顺手改名。
+
+---
+
+## 3. Trace 展示协议
 
 child 工具链的三类事实语义与主 ToolNode 一致；已提交的上下文摘要另投影为一类只读展示事实：
 
@@ -53,7 +95,7 @@ child 工具链的三类事实语义与主 ToolNode 一致；已提交的上下�
 
 `tool_call_decision` 不表示工具已开始，也不创建 queued/pending 可见行。ToolNode 当前串行执行时，用户会看到工具随 `tool_process(start)` 一个个出现；未来并行执行时只会有多个步骤同时 loading，Renderer 无需新增 queue 状态。
 
-### 2.1 decision 为什么必须保存完整批次
+### 3.1 decision 为什么必须保存完整批次
 
 - 一个 child fact 对应一个 `source_event_id`，不得拆成 N 个伪事实。
 - `tool_output` 在 reload 时可能没有 ephemeral `tool_process`；durable decision 是恢复原 args 的唯一正式来源。
@@ -62,7 +104,7 @@ child 工具链的三类事实语义与主 ToolNode 一致；已提交的上下�
 
 ---
 
-## 3. 稳定 accumulator（[INV-48](./00-invariants.md#inv-48--subrun-trace-使用稳定-accumulator)）
+## 4. 稳定 accumulator（[INV-48](./00-invariants.md#inv-48--subrun-trace-使用稳定-accumulator)）
 
 真源是 `features/subrun-trace/functions/createSubrunTraceAccumulator.ts`。
 
@@ -92,9 +134,9 @@ child 工具链的三类事实语义与主 ToolNode 一致；已提交的上下�
 
 ---
 
-## 4. 两条 Renderer 投影链，一个 trace 输入
+## 5. 两条 Renderer 投影链，一个 trace 输入
 
-### 4.1 父卡轻量进度
+### 5.1 父卡轻量进度
 
 `SubrunTracePanel.vue` 是父卡与 Deep Search 共用的唯一轻量过程 UI。它消费稳定 bucket，
 `createAppendOnlySubrunStepProjector.ts` 只产生轻量步骤；`ToolCallsMessage` 持有统一工具卡外壳，
@@ -133,7 +175,7 @@ error lifecycle 必须能表达“工具执行失败”，即使原 args 正是�
 `bucket + version + toolCallId + uiKey/sourceToolName` 指纹只报告一次高层诊断。去重不代表接纳成功，
 输入或版本改变后仍按新指纹重新报告。
 
-### 4.2 完整 child message admission
+### 5.2 完整 child message admission
 
 `admitSubrunMessageProjection.ts` 是具名 admission owner：
 
@@ -168,7 +210,7 @@ child 的 `history_summary` 只有 durable commit 成功后才进入 parent trac
 
 ---
 
-## 5. Host 产品形态
+## 6. Host 产品形态
 
 Host 中 `subagent` 与 `subrun_batch` 不再把完整 child 消息树嵌套在父 virtual row。
 
@@ -188,7 +230,7 @@ Host 中 `subagent` 与 `subrun_batch` 不再把完整 child 消息树嵌套在�
             └─ 执行状态 / 模型事实 + 返回主对话
 ```
 
-### 5.1 详情 scope 与返回
+### 6.1 详情 scope 与返回
 
 打开时固定：
 
@@ -218,7 +260,7 @@ conversationId + parentMessageId + parentToolCallId + subrunId + description
 - detail 的首条消息从父 `subagent` 正式 `args.prompt` 投影为只读 `UserMessage`，与 child messages 组成同一 visual turn。它不写入父 Conversation window，不提供编辑或重新发送；复制继续复用 `UserMessage` 既有能力。
 - 复用到展示层为止。detail 不 import `ConversationView`、foreground store、message-window、timeline 或 TanStack；这些能力属于主时间线与 Host 编排。
 
-### 5.2 插件公开卡不在 Host 主链
+### 6.2 插件公开卡不在 Host 主链
 
 插件公开 `SubrunCard` / `SubrunCollection` 继续保留，并复用同一完整 message admission。它们的 bounded 展开、多卡互斥属于插件合同，不得倒推 Host 重新嵌套 child 树。
 
@@ -226,7 +268,7 @@ conversationId + parentMessageId + parentToolCallId + subrunId + description
 
 ---
 
-## 6. Lazy 状态不是运行状态（[INV-28](./00-invariants.md#inv-28--subrun-lazy-状态不是运行状态)）
+## 7. Lazy 状态不是运行状态（[INV-28](./00-invariants.md#inv-28--subrun-lazy-状态不是运行状态)）
 
 `useLazySubrunTrace.ts` 五态：`idle | loading | preparing | ready | error`。
 
@@ -244,7 +286,7 @@ conversationId + parentMessageId + parentToolCallId + subrunId + description
 
 ---
 
-## 7. Lifecycle 与后端 scope
+## 8. Lifecycle 与后端 scope
 
 SQLite `runs` / RunRegistryStore 保存 `parentRunId + status + currentNode + iterationsUsed + errorIfAny`，是按父级查询 child lifecycle 的唯一 owner。Telemetry、CostCollector、LLM Audit 只观测，紧凑 trace 只展示，禁止从 trace 数量或 audit bucket 重建第二套 lifecycle。
 
@@ -252,7 +294,7 @@ composition root 必须将同一 `LinnyaAgentRuntimeScope` 显式交给 Flow、A
 
 ---
 
-## 8. 业务测试要求
+## 9. 业务测试要求
 
 Subrun 变更至少覆盖：
 
@@ -277,27 +319,27 @@ Subrun 历史协议的专用真机门禁是 `test:conversation-subrun-reload:ele
 
 ---
 
-## 9. 禁止清单
+## 10. 禁止清单
 
 | # | 禁止 | 正确做法 |
 |---|---|---|
 | 1 | child fact 进父级正文 | 只走 parent trace（§1） |
 | 2 | 用 `tool_output.data/observation` 补 child 正文 | 让 trace 缺失明确暴露（§1） |
-| 3 | 把 decision 当可见 queued/pending 步骤 | 只在 process start 创建 loading（§2） |
-| 4 | 把 decision batch 拆成多个伪 trace fact | 保存 canonical `tool_calls[]`（§2.1） |
-| 5 | reload 时猜 args 或补默认值 | 从 durable decision 按 tool identity 恢复（§2.1） |
-| 6 | 已有 live bucket 就跳过历史加载 | 完成历史前缀（§3） |
-| 7 | computed 中重建 bucket 或 parse/project child 工具 | 稳定 accumulator + admission scheduler（§3–4） |
-| 8 | 失败时跳过单个事实继续发布 | 原子拒绝整个新快照（§4.2） |
-| 9 | Host 父 row 内嵌套完整 child 消息树 | 父进度 + Host 就地详情（§5） |
-| 10 | 详情重读 active conversation 猜 scope | 打开时固定不可变 scope（§5.1） |
-| 11 | 把 `idle` 显示为加载中 | 只有真实请求才是加载（§6） |
-| 12 | 从 trace/audit 重建 lifecycle | 读 `runs` owner（§7） |
-| 13 | 执行期查全局 EventStore fallback | composition root 显式注入 scope（§7） |
-| 14 | detail 直接循环 `Message.vue` 并自定义消息 gap | 复用共享 message canvas / visual-row（§5.1） |
-| 15 | detail 复用整个 `ConversationView` | 只复用展示层，Host 继续拥有导航与滚动编排（§5.1） |
-| 16 | 把 Subrun 标题复制进 layout/assistant/Header 状态或正文重复显示 | feature scope 保留唯一身份，Header 消费只读投影（§5.1） |
-| 17 | 详情从当前模型选择或 trace 文本猜 child 模型 | 读取 `subagent` 正式结果中的 `data.model_id`（§5.1） |
-| 18 | Header 直接清 scope 或自己恢复 DOM 锚点 | Header 只发返回意图，Host navigation 独占关闭与锚点恢复（§5.1） |
-| 19 | compact error 复用 success parser 或补造查询参数 | error 只生成 owner-owned 失败标题（§4.1） |
-| 20 | 在 CitationNode miss、computed 或 mounted 时扫描 child trace | detached admission 生成 message dependency snapshot（§4.2） |
+| 3 | 把 decision 当可见 queued/pending 步骤 | 只在 process start 创建 loading（§3） |
+| 4 | 把 decision batch 拆成多个伪 trace fact | 保存 canonical `tool_calls[]`（§3.1） |
+| 5 | reload 时猜 args 或补默认值 | 从 durable decision 按 tool identity 恢复（§3.1） |
+| 6 | 已有 live bucket 就跳过历史加载 | 完成历史前缀（§4） |
+| 7 | computed 中重建 bucket 或 parse/project child 工具 | 稳定 accumulator + admission scheduler（§4–5） |
+| 8 | 失败时跳过单个事实继续发布 | 原子拒绝整个新快照（§5.2） |
+| 9 | Host 父 row 内嵌套完整 child 消息树 | 父进度 + Host 就地详情（§6） |
+| 10 | 详情重读 active conversation 猜 scope | 打开时固定不可变 scope（§6.1） |
+| 11 | 把 `idle` 显示为加载中 | 只有真实请求才是加载（§7） |
+| 12 | 从 trace/audit 重建 lifecycle | 读 `runs` owner（§8） |
+| 13 | 执行期查全局 EventStore fallback | composition root 显式注入 scope（§8） |
+| 14 | detail 直接循环 `Message.vue` 并自定义消息 gap | 复用共享 message canvas / visual-row（§6.1） |
+| 15 | detail 复用整个 `ConversationView` | 只复用展示层，Host 继续拥有导航与滚动编排（§6.1） |
+| 16 | 把 Subrun 标题复制进 layout/assistant/Header 状态或正文重复显示 | feature scope 保留唯一身份，Header 消费只读投影（§6.1） |
+| 17 | 详情从当前模型选择或 trace 文本猜 child 模型 | 读取 `subagent` 正式结果中的 `data.model_id`（§6.1） |
+| 18 | Header 直接清 scope 或自己恢复 DOM 锚点 | Header 只发返回意图，Host navigation 独占关闭与锚点恢复（§6.1） |
+| 19 | compact error 复用 success parser 或补造查询参数 | error 只生成 owner-owned 失败标题（§5.1） |
+| 20 | 在 CitationNode miss、computed 或 mounted 时扫描 child trace | detached admission 生成 message dependency snapshot（§5.2） |

@@ -1,10 +1,12 @@
-# Commands Domain
+# Linnya 命令执行
 
 ## 1. 领域职责
 
 Commands domain 是命令执行的业务核心，定义“这次命令是谁发起、能否执行、如何继续控制、何时才算完成、输出哪些事实”。它不直接调用 `child_process`、Electron、Node stream、SQLite 或 Vue。
 
-跨模块产品入口见 [命令执行模块](../../../docs/command-execution/README.md)。
+Linnya 提供本地、一次性、可观察的 Shell 命令执行能力。Agent 可以调用本机 Shell、宿主 CLI、脚本、数据库和外部 Agent CLI；Linnya 负责将命令放进当前对话的运行环境，管理整棵进程树，展示状态、保留审计事实，并在删除对话或退出 App 时完成清理。
+
+它不是用户终端、远程开发环境或 CLI 安装市场，也不承诺把整个操作系统变成强隔离沙箱。文件工具优先，Shell 只补充文件工具无法表达的能力；Shell 可以联网，安全边界是“平台进程边界 + 权限审批 + 审计”，不是识别所有脚本行为。
 
 ## 2. 领域边界
 
@@ -29,6 +31,23 @@ Commands domain 是命令执行的业务核心，定义“这次命令是谁发�
 - UI 颜色、布局、弹窗尺寸和组件生命周期。
 
 这些事实通过窄 port 或 application use case 进入，避免 domain 变成 Electron 的第二个主进程。
+
+### 2.3 对话目录与地址空间
+
+每个对话拥有稳定的本地工作目录，同一对话的 Agent 共享目录中的物理文件，但 Shell 进程、`cd` 和环境变量不跨调用持久化。默认目录由应用数据根与 conversation identity 推导，目录名使用完整 SHA-256，不直接暴露原始 conversation ID。
+
+Shell 路径与产品 locator 是不同地址空间，禁止按字符串或文件是否存在互相猜测：
+
+| 地址 | 使用者 | 示例 | 含义 |
+| --- | --- | --- | --- |
+| Shell 物理路径 | `shell`、`process` 与操作系统命令 | `/opt/project`、`C:\\work\\project` | 操作系统真实文件系统路径 |
+| Workspace locator | Workspace 文件工具 | `workspace:/docs/plan.md` | 当前 Workspace 数据库 VFS |
+| Conversation locator | `read_file` | `conversation:/renders/page-1.png` | 当前对话物理目录内的文件 |
+| Host file locator | `read_file` | `file:///opt/project/README.md` | 对话目录外的宿主文件 |
+
+Workspace VFS 与 Conversation 物理目录之间没有自动 materialize/commit：`write_file` 写入的 Workspace 文档不会自动出现在 Shell 的 `ls` 中，Shell 创建的文件也不会自动进入 Workspace。Agent 需要真实 Shell cwd 时应执行 `pwd`；内部绝对路径不自动写入普通工具结果或审计正文。
+
+显式 `cwd` 可以指向对话目录外的物理路径。是否可访问由权限档、平台边界和操作系统权限共同决定，不能把产品描述成“Shell 永远只能在对话目录运行”。删除对话时必须先建立持久 cleanup job 和准入屏障，再停止进程和 Flow，最后清理目录、审批、卡片、对话事实与 identity metadata。
 
 ## 3. 代码树
 
@@ -60,6 +79,25 @@ src/domains/commands/
 ```
 
 Feature 导航见 [features/README.md](./features/README.md)。
+
+### 3.1 端到端链路
+
+```text
+Agent Graph / ToolRegistry
+  → shell / process 工具（参数接纳与结果投影）
+  → Commands domain（授权、身份、owner 与终态合同）
+  → Linnya App Host（conversation admission、process owner、output、audit）
+  → fixed headless Node runner
+  → local-process-runtime（macOS process group / Windows Job）
+  → Shell 与整棵 child process tree
+
+同一执行同时投影到：
+  → ToolOutputStore / raw artifact
+  → EventStore audit 与 durable card settlement
+  → Desktop RPC / Renderer approval 与 command card
+```
+
+Agent 调用插件 CLI 仍走这条主链：受管 PATH 中的极小 client 通过 execution-scoped bridge 调用已启用插件的 `pluginCli` contribution，不创建第二套 command owner、审批、输出或终态。
 
 ## 4. 核心身份合同
 
@@ -227,6 +265,12 @@ Shell 输入、风险规则、进程 owner、输出管道和 UI 生命周期变�
 App。权限、owner、process handle、输出和 terminal 都继续属于父 Shell，bridge 只管理 token、invocation
 abort 与 plugin draining。这样既不复制 Commands domain，也不把插件语义塞进 Shell schema。
 
+### 平台策略
+
+- macOS 默认使用 zsh，启动时冻结 Shell 语义和用户登录环境；进程组负责整树接管，SRT/Seatbelt 平台边界建立失败时关闭执行。
+- Windows 支持 Windows 10 22H2 x64 与 Windows 11 x64；Job Object 负责整树接管，PowerShell 7 优先、系统 PowerShell 5.1 作为明确启动配置。native loader 必须校验 manifest、架构、hash、版本与发布者，不能回退到裸 child。
+- 两个平台保持一致的产品权限、状态与 UI 语义，但允许底层 Shell、PTY、错误和发布限制不同。Windows 不伪装拥有 OS 文件写入沙箱，其风险由普通用户权限、固定审批规则、Job 与审计共同约束。
+
 ### 主要风险
 
 - approval request 与 proposal identity 不一致；
@@ -273,3 +317,15 @@ abort 与 plugin draining。这样既不复制 Commands domain，也不把插件
 5. 补正常、失败、取消和竞态的业务测试。
 6. 检查双平台、Sandbox、删除和 App 退出是否受影响。
 7. 更新跨模块入口和子模块链接。
+
+## 15. 相关文档
+
+- [Shell Tool](../../tools/commands/shell/README.md)
+- [Process Tool](../../tools/commands/process/README.md)
+- [Command Runtime](../../infra/adapters/command-runtime/README.md)
+- [Local Process Runtime](../../infra/adapters/local-process-runtime/README.md)
+- [Command Host Adapter](../../app-hosts/linnya/adapters/commands/README.md)
+- [Command Approval Renderer](../../../apps/renderer/domains/conversation/features/command-approval/README.md)
+- [Command Execution Presentation](../../../apps/renderer/domains/conversation/features/command-execution-presentation/README.md)
+- [Conversation Files](../conversation-files/README.md)
+- [Command Execution Audit](../audit/features/command-execution-audit/README.md)

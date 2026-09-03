@@ -68,11 +68,9 @@
 | 07 | [`07-render.md`](./07-render.md) | visual row、三层虚拟化、滚动契约、媒体管线、timeline |
 | 08 | [`08-lifecycle.md`](./08-lifecycle.md) | 导航、DOM 归属、取消三层屏障、HITL、foreground run 控制面 |
 | 09 | [`09-tools.md`](./09-tools.md) | tool call / output、batch 结算、wrapper 别名、工具卡消费规则 |
-| 10 | [`10-subruns.md`](./10-subruns.md) | 父子 agent、trace accumulator、lifecycle owner、collection 展示 |
+| 10 | [`10-subruns.md`](./10-subruns.md) | 活动模型、父子 agent、系统 batch、trace、lifecycle 与展示 |
 | 11 | [`11-testing-gates.md`](./11-testing-gates.md) | 测试分层、guard、Electron 真机门禁、什么测试不算门禁 |
-| 12 | [`12-open-risks.md`](./12-open-risks.md) | 遗留风险登记与冻结边界；**不是** backlog |
-
-历史审计证据存于 [`archive/`](./archive/)，只作追溯用，不含生效规则。
+| 12 | [`12-open-risks.md`](./12-open-risks.md) | 当前风险、待单独立项的演进与冻结边界；**不是**完成记录 |
 
 ---
 
@@ -182,8 +180,8 @@
 | 文档 | 管什么 |
 |---|---|
 | `apps/renderer/domains/conversation/docs/conversation-virtualization.md` | 虚拟化与滚动的完整实现契约、媒体管线、估高体系 |
-| `apps/renderer/domains/conversation/docs/task-system.md` | 活动 / subrun 系统的产品设计与上下文装配 |
 | `apps/renderer/domains/conversation/docs/input-contribution.md` | 输入框贡献框架三原语与插件 SDK 边界 |
+| `src/domains/citation/README.md` | Conversation 引用的 producer、live/reload/Subrun、依赖闭包与 Editor 转换 |
 | [独立 Linnkit 仓的 `docs/integration/`](https://github.com/linnlabs/linnkit/tree/main/docs/integration) | Linnkit 作为独立 npm 包的接入手册（外部读者视角） |
 | `packages/schemas/README.md` | `@app/schemas` 包级说明与目录职责 |
 | `apps/linnya-cli/README.md` | CLI 命令、JSON/JSONL、退出码、安全发现与分层测试 |

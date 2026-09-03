@@ -31,3 +31,5 @@
 公共 Git history 用于追溯已经公开的实现演进，不承担内部过程档案职责。私有过程记录即使引用某个公共 commit，也不能覆盖该 commit 中的 schema、实现和 owner 文档。
 
 发生冲突时，依次以可执行 schema/public contract、owner 实现、相邻稳定 README、本工程地图为准。历史 Proposal、audit、迁移记录和 release note 只提供背景。
+
+README、模块专题和产品级文档的具体位置与写法见[文档编写规范](./development/documentation.md)。

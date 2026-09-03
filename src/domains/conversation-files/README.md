@@ -14,7 +14,7 @@
 
 `conversation_<sha256>` 是稳定的目录身份，不是用户可见的文件 locator。`workspace:/foo.md` 属于数据库 VFS；`conversation:/foo.md` 只是模型侧对当前工作目录文件的显式地址。本 domain 不负责解析 locator，也不负责把 VFS 文档 materialize 到物理目录或把 Shell 文件 commit 回 Workspace。
 
-这条边界必须保持显式：Shell 的 `cwd`、目录清理和磁盘占用计量只针对物理目录；Workspace 文档读写只针对 Workspace DB。任何未来的转换能力都应作为独立、明确的用例定义输入、输出、权限和失败处理，不能在目录 adapter 中隐式完成。跨模块的产品合同见 [命令执行总览](../../../docs/command-execution/README.md)。
+这条边界必须保持显式：Shell 的 `cwd`、目录清理和磁盘占用计量只针对物理目录；Workspace 文档读写只针对 Workspace DB。任何未来的转换能力都应作为独立、明确的用例定义输入、输出、权限和失败处理，不能在目录 adapter 中隐式完成。跨模块的产品合同见 [Commands README](../commands/README.md)。
 
 ## 2. 目录树
 

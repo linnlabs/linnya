@@ -28,4 +28,4 @@ pnpm run build:wasm
 ## 发布状态
 
 该 package 当前服务 Linnya
-workspace，`private: true`，不单独发布 npm。未来公开源码不等于立即增加独立 npm 发布面；根许可证确定后，还需要同步补齐 Cargo 与生成 package 的许可证、repository 和 NOTICE 元数据，才能讨论独立分发。
+workspace，`private: true`，不单独发布 npm。

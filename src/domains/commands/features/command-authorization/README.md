@@ -120,7 +120,7 @@ macOS 使用 zsh 语义扫描，Windows 使用 PowerShell 简单命令扫描。�
 
 ## 9. 相关文档
 
-- 全局合同：[命令执行总览](../../../../../docs/command-execution/README.md)
+- 全局合同：[命令执行总览](../../README.md)
 - 权限设置：[permission-settings](../permission-settings/README.md)
 - 审批 owner：[App Host approval host](../../../../app-hosts/linnya/adapters/commands/approval-host/README.md)
 - 输出和审计：[command output](../../../../app-hosts/linnya/adapters/commands/output/README.md)、[audit](../../../audit/features/command-execution-audit/README.md)

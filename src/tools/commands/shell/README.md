@@ -33,4 +33,4 @@
 - `/README.md` 这类以 `/` 开头的路径属于 Workspace 文件工具的虚拟路径，不应直接作为 Shell 的 `cwd` 或命令参数使用。
 - Shell 创建的物理文件和 Workspace `write_file` / `edit_file` 写入的 VFS 文档当前没有自动同步。需要让 Shell 读取某份 Workspace 内容时，必须先有明确的物理文件来源；不能假定 VFS 文档已经落在 conversation cwd 中。
 
-实现入口：[ShellTool.ts](./ShellTool.ts)。业务测试见同目录 `__tests__` 和 App Host 的 `shell-runtime` integration 测试。Workspace 虚拟路径与 Shell 物理目录的边界见 [Workspace 工具说明](../../workspace/README.md) 和 [命令执行总览](../../../../docs/command-execution/README.md)。
+实现入口：[ShellTool.ts](./ShellTool.ts)。业务测试见同目录 `__tests__` 和 App Host 的 `shell-runtime` integration 测试。Workspace 虚拟路径与 Shell 物理目录的边界见 [Workspace 工具说明](../../workspace/README.md) 和 [Commands README](../../../domains/commands/README.md)。

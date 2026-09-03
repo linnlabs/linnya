@@ -3,7 +3,7 @@
 > **What** · 哪一层测试能证明什么、必跑门禁清单、guard 机制、以及"绿灯不等于可用"的判定标准。
 > **When to read** · 提 PR 前、设计新测试前、想用组件测试替代真机门禁时。
 > **不变量** · [INV-50](./00-invariants.md#inv-50--业务门禁必须穿过生产实现)、[INV-51](./00-invariants.md#inv-51--导航时序回归必须真机)、[INV-52](./00-invariants.md#inv-52--parity-fixture-同-pr-锁一致)、[INV-53](./00-invariants.md#inv-53--测试装配不能拥有另一套协议)、[INV-54](./00-invariants.md#inv-54--parse-与-throw-只允许在-admission-边界)
-> **Related** · [00 不变量](./00-invariants.md) · [04 schema](./04-schema-contract.md) · [12 遗留风险](./12-open-risks.md)
+> **Related** · [00 不变量](./00-invariants.md) · [04 schema](./04-schema-contract.md) · [12 风险与冻结区](./12-open-risks.md)
 
 ---
 

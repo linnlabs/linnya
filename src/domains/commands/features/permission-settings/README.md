@@ -97,4 +97,4 @@ Renderer 不传路径、revision 以外的内部字段，不直接读文件，�
 - [授权规则](../command-authorization/README.md)
 - [App Host authority](../../../../app-hosts/linnya/adapters/commands/permission-settings-authority/README.md)
 - [Renderer UI 使用指南](../../../../../packages/renderer-ui/docs/usage-guide.md)
-- [命令执行总览](../../../../../docs/command-execution/README.md)
+- [命令执行总览](../../README.md)

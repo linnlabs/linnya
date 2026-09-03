@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const documentationRoots = [
-  'docs/command-execution',
   'src/domains/commands',
   'src/domains/conversation-files',
   'src/domains/audit/features/command-execution-audit',
@@ -49,17 +48,16 @@ process.stdout.write(
 );
 
 function verifyRootNavigation() {
-  const root = 'docs/command-execution/README.md';
+  const root = 'src/domains/commands/README.md';
   const source = read(root);
   const requiredLinks = [
-    '../../src/domains/commands/README.md',
-    '../../src/tools/commands/shell/README.md',
-    '../../src/tools/commands/process/README.md',
-    '../../src/infra/adapters/command-runtime/README.md',
-    '../../src/infra/adapters/local-process-runtime/README.md',
-    '../../src/app-hosts/linnya/adapters/commands/README.md',
-    '../../src/domains/conversation-files/README.md',
-    '../../src/domains/audit/features/command-execution-audit/README.md',
+    '../../tools/commands/shell/README.md',
+    '../../tools/commands/process/README.md',
+    '../../infra/adapters/command-runtime/README.md',
+    '../../infra/adapters/local-process-runtime/README.md',
+    '../../app-hosts/linnya/adapters/commands/README.md',
+    '../conversation-files/README.md',
+    '../audit/features/command-execution-audit/README.md',
   ];
   for (const link of requiredLinks) {
     if (!source.includes(`](${link})`)) violations.push(`${root}: 缺少入口链接 ${link}`);

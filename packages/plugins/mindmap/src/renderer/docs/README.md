@@ -432,7 +432,7 @@ packages/plugins/mindmap/src/renderer/
 #### 5.9.0 先接入历史隔离 Run（不执行，只落库 run 头）
 
 > 中文说明：MindMap 右键属于“外部入口”。最小可用方案是先接入历史隔离 run 的头部落库能力：**不引入历史对话**，把本次请求写进事件库，后续对话/刷新仍可见。
-> 参考设计文档：`apps/renderer/domains/conversation/docs/task-system.md`（活动 / subrun 系统规范）。
+> 参考设计文档：[`docs/conversation-platform/10-subruns.md`](../../../../../../docs/conversation-platform/10-subruns.md)（活动 / subrun 系统规范）。
 
 #### 5.9.1 Agent 拆分（三个 promptKey）
 

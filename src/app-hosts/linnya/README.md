@@ -26,7 +26,7 @@ App Host 不定义 RuntimeEvent、Graph、tool/child-run kernel 协议，也不�
 
 ### `adapters/inference/`
 
-实现生产 canonical inference Host port：从 Model Catalog 读取显式 route，按 `capability_id` 进入唯一 Provider package factory，解析 attempt-scoped 凭据并校验 endpoint route identity。具体 AI SDK package import 全部收口在 Host 的类型安全 registry；Linnkit、业务 domain 和 Model Catalog 都不识别 npm package。正式 BYOK route 的 codec 对应用户实际直连 endpoint；Cloud route 的 codec 只对应客户端下一跳的 Cloud 对外协议，上游 Provider/model/credential 属于 Cloud 私有路由。该模块不执行工具、不拥有重试/切模或 Run 终态，也不记录 Provider body。当前已连接生产 `LlmCaller`；详见 `adapters/inference/README.md`。跨端 route、非 Agent port、Cloud 与 Provider SDK 的完整职责矩阵见 [`docs/model-inference/README.md`](../../../docs/model-inference/README.md)。
+实现生产 canonical inference Host port：从 Model Catalog 读取显式 route，按 `capability_id` 进入唯一 Provider package factory，解析 attempt-scoped 凭据并校验 endpoint route identity。具体 AI SDK package import 全部收口在 Host 的类型安全 registry；Linnkit、业务 domain 和 Model Catalog 都不识别 npm package。正式 BYOK route 的 codec 对应用户实际直连 endpoint；Cloud route 的 codec 只对应客户端下一跳的 Cloud 对外协议，上游 Provider/model/credential 属于 Cloud 私有路由。该模块不执行工具、不拥有重试/切模或 Run 终态，也不记录 Provider body。当前已连接生产 `LlmCaller`；详见 `adapters/inference/README.md`。跨端 route、非 Agent port、Cloud 与 Provider SDK 的完整职责矩阵见 [Model Inference README](../../domains/model-inference/README.md)。
 
 ### `adapters/model-routing-policy/`
 
