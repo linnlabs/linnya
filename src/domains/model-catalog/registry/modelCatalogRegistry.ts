@@ -22,6 +22,7 @@ import type {
 } from '../definitions/inferenceEndpoint';
 import { processModelConfig } from '../features/catalog-admission/functions/processModelConfig';
 import { fetchCloudModels } from '../features/cloud-catalog/orchestration/fetchCloudModels';
+import { isLinnyaCloudClientEnabled } from '../features/cloud-catalog/functions/isLinnyaCloudClientEnabled';
 import { resolveDefaultModelsPath } from '../features/default-catalog/functions/resolveDefaultModelsPath';
 import { modelPersister } from '../features/user-model-persistence/orchestration/modelPersister';
 import { assertEndpointMatchesModel } from '../features/inference-endpoints/functions/assertEndpointMatchesModel';
@@ -96,8 +97,12 @@ export class ModelCatalogRegistry implements ModelCatalog {
     this.loadInferenceEndpoints(userState.inferenceEndpoints);
     this.loadDefaultModels();
 
-    const cloudModelsLoaded = await this.loadCloudModels();
-    if (!cloudModelsLoaded) this.scheduleCloudModelRetry('启动阶段首次拉取失败');
+    if (isLinnyaCloudClientEnabled(this.envVars)) {
+      const cloudModelsLoaded = await this.loadCloudModels();
+      if (!cloudModelsLoaded) this.scheduleCloudModelRetry('启动阶段首次拉取失败');
+    } else {
+      logger.info('[ModelCatalog] 源码开发模式已关闭 Linnya Cloud 目录');
+    }
 
     this.loadUserModels(userState.models);
     this.initialized = true;

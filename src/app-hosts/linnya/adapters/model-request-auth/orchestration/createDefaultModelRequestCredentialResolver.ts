@@ -1,5 +1,6 @@
 import {
   getLinnyaCloudDeviceId,
+  isLinnyaCloudClientEnabled,
   modelCatalog,
   type CredentialReference,
   type ModelConfig,
@@ -23,6 +24,7 @@ export interface DefaultModelRequestCredentialResolverDependencies {
   readonly catalog: DefaultCredentialCatalog;
   readonly resolveCloudDeviceId: () => Promise<string | null>;
   readonly providerAccounts: ProviderAccountRequestCredentialResolver;
+  readonly linnyaCloudClientEnabled?: boolean;
 }
 
 /**
@@ -57,16 +59,24 @@ export function createDefaultModelRequestCredentialResolver(
           );
         }
       }
+      const isLinnyaCloudCredential =
+        credentialReference?.kind === 'host_managed' &&
+        credentialReference.credential_id === 'linnya-cloud';
+      if (
+        isLinnyaCloudCredential &&
+        !(dependencies.linnyaCloudClientEnabled ?? isLinnyaCloudClientEnabled(process.env))
+      ) {
+        throw new ModelRequestCredentialError(
+          'Linnya Cloud model requests are disabled in source development mode.'
+        );
+      }
       const secret = dependencies.catalog.resolveCredential(request.model_id)?.trim();
       if (!secret) {
         throw new ModelRequestCredentialError(
           `Model request credential is not configured for model: ${request.model_id}`
         );
       }
-      if (
-        credentialReference?.kind !== 'host_managed' ||
-        credentialReference.credential_id !== 'linnya-cloud'
-      ) {
+      if (!isLinnyaCloudCredential) {
         return { profile: request.auth_profile, secret };
       }
       const deviceId = await dependencies.resolveCloudDeviceId();

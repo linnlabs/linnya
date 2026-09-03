@@ -173,6 +173,17 @@ describe('Registry cloud retry', () => {
     await vi.advanceTimersByTimeAsync(30_000);
     expect(fetchCloudModelsMock).toHaveBeenCalledTimes(2);
   });
+
+  it('源码开发模式不请求 Cloud，也不安排后台重试', async () => {
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+
+    await registry.initialize({ LINNYA_DEV_MODE: 'true' });
+
+    expect(fetchCloudModelsMock).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(90_000);
+    expect(fetchCloudModelsMock).not.toHaveBeenCalled();
+  });
 });
 
 describe('Registry default model by capability', () => {

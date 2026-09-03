@@ -49,6 +49,8 @@ pnpm install --frozen-lockfile
 pnpm run dev:electron
 ```
 
+Source development is intentionally independent from Linnya Cloud: it does not load the hosted model catalog, send model requests or derive a Cloud device ID, and it does not automatically check the production update service. A source checkout uses local data and the developer's configured model provider; no Linnya account or private repository is required.
+
 Once the pinned runtime releases are available, the first source-development start or desktop package build downloads the target-platform Qdrant and Poppler runtimes and verifies their declared archive, executable, and file-tree checksums. Before the repository's first public release, maintainers must seed the same verified archives into the local cache as described in the development guide. Generated runtime files are not source-controlled; packaged desktop applications already include these runtimes and do not download them on end-user startup.
 
 See the [documentation map](docs/README.md) and [development guide](docs/development/README.md) for architecture, targeted validation, native-module requirements, and source builds.

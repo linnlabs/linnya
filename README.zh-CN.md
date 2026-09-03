@@ -49,6 +49,8 @@ pnpm install --frozen-lockfile
 pnpm run dev:electron
 ```
 
+源码开发环境刻意与 Linnya Cloud 解耦：不加载托管模型目录、不发送 Cloud 模型请求、不生成 Cloud 设备 ID，也不自动检查正式版更新。源码 checkout 只使用本地数据和开发者自己配置的模型 Provider，不需要 Linnya 账号或任何私有仓。
+
 锁定的 runtime release 可用后，首次从源码启动开发环境或构建 Desktop 安装包时，会自动下载目标平台的 Qdrant 与 Poppler runtime，并校验声明的 archive、executable 和文件树 checksum。仓库首次公开前，维护者必须按开发指南把同一份已校验 archive 放入本地缓存。生成的 runtime 文件不进入源码版本控制；正式安装包已经携带这些 runtime，最终用户启动应用时不会再次下载。
 
 架构、定向验证、原生模块和源码构建说明见[文档总图](docs/README.md)与[开发指南](docs/development/README.md)。

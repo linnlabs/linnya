@@ -5,7 +5,7 @@
 ## 边界
 
 - `definitions/` 只定义一次模型请求需要的 secret、认证 profile 和 credential 附属请求头。
-- `orchestration/` 按模型 ID 解析当前 credential；当前只有 `host_managed:linnya-cloud` 会动态取得 `X-Device-ID`。
+- `orchestration/` 按模型 ID 解析当前 credential；当前只有发布态的 `host_managed:linnya-cloud` 会动态取得 `X-Device-ID`。源码开发模式在解析凭据和设备身份前直接拒绝 Cloud 请求。
 - Language inference 与 remote token count 依赖本目录公开入口，不能分别维护 Cloud header 或再次读取 ModelConfig 通用 header map。
 - Provider 主认证头仍由对应协议 capability 根据 `profile + secret` 生成；本模块不拼 `Authorization`、`x-api-key` 或厂商版本头。
 - Web Search / Web Read 不是模型请求，不依赖此模块；它们由 Web domain 自己拥有服务认证合同。

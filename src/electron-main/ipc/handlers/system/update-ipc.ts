@@ -30,6 +30,7 @@ import type {
 } from '../../../../shared/update/definitions/updateMessage';
 import { publishRendererReady } from '../../../events/rendererReadyEvent';
 import { installDownloadedUpdate } from '../../../update/orchestration/installDownloadedUpdate';
+import { shouldCheckForAppUpdates } from '../../../update/functions/shouldCheckForAppUpdates';
 
 const logger = new Logger('update-ipc');
 
@@ -73,7 +74,10 @@ function sendStatusToWindow(channel: UpdateMessageChannel, payload?: UpdateMessa
 }
 
 function shouldSkipAppUpdateChecks(): boolean {
-  return process.env.LINNYA_DISABLE_UPDATE_CHECKS === '1';
+  return !shouldCheckForAppUpdates({
+    LINNYA_DEV_MODE: process.env.LINNYA_DEV_MODE,
+    LINNYA_DISABLE_UPDATE_CHECKS: process.env.LINNYA_DISABLE_UPDATE_CHECKS,
+  });
 }
 
 // ============================================================================
@@ -103,7 +107,7 @@ export function registerUpdateHandlers(): void {
      */
     if (shouldSkipAppUpdateChecks()) {
       // 中文：Electron 自动化 smoke 需要稳定截图；应用更新弹窗是独立能力，不应污染页面视觉验收。
-      log('跳过更新检查：LINNYA_DISABLE_UPDATE_CHECKS=1');
+      log('跳过更新检查：源码开发模式或显式禁用');
     } else {
       try {
         // 这里不强制等待结果，electron-updater 会通过事件推送进度与结果。
@@ -127,7 +131,7 @@ export function registerUpdateHandlers(): void {
    */
   ipcMain.handle('updater-check-for-updates', () => {
     if (shouldSkipAppUpdateChecks()) {
-      log('IPC: 已跳过 updater-check-for-updates：LINNYA_DISABLE_UPDATE_CHECKS=1');
+      log('IPC: 已跳过 updater-check-for-updates：源码开发模式或显式禁用');
       return null;
     }
 

@@ -37,6 +37,7 @@ export {
   toCloudModelId,
 } from './features/cloud-catalog/functions/cloudModelIds';
 export { getDeviceId as getLinnyaCloudDeviceId } from './features/cloud-catalog/functions/deviceId';
+export { isLinnyaCloudClientEnabled } from './features/cloud-catalog/functions/isLinnyaCloudClientEnabled';
 export { normalizeModelCapabilities } from './features/catalog-admission/functions/normalizeModelCapabilities';
 export { parseEditableModelPatch } from './features/catalog-admission/functions/parseEditableModelPatch';
 export { readDocumentOcrRoute } from './features/catalog-admission/functions/readDocumentOcrRoute';

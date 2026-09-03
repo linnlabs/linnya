@@ -43,7 +43,7 @@ Main 不允许加载 `app-server-backend.cjs`、打开 `workspace.sqlite`，也�
 | safeStorage、OAuth browser、文件定位、PDF、隐藏窗口等 | `desktop-capabilities/`、`hidden-worker/`、`measurement/`、`web-render/` | 对外只实现 [Desktop capability ports](../app-hosts/linnya/desktop-capabilities/README.md) |
 | 自定义协议与受管媒体 | `protocols/`、`plugins/loader/pluginProtocol.ts` | scheme 必须在 `app.ready` 前登记；文件路径必须经过准入 |
 | Command 审批/权限的页面身份与 RPC | [`commands/`](./commands/README.md)、`ipc/handlers/commands/` | 命令 owner 在 App Server；Main 不处理 stdout、PTY 或命令状态 |
-| 更新与安装交接 | `update-manager.js`、`update/` | 必须复用统一 App shutdown owner |
+| 更新与安装交接 | `update-manager.js`、`update/` | 源码开发不连接发行服务；发布态必须复用统一 App shutdown owner |
 | Renderer 权限与窗口安全 | `security/`、`window-security-boundary.test.ts` | 默认拒绝未声明权限，不放宽任意导航或窗口创建 |
 
 跨进程 DTO 与 schema 统一归 [`packages/schemas`](../../packages/schemas/README.md)，不能在 Main 和 Renderer 各自复制 shape。

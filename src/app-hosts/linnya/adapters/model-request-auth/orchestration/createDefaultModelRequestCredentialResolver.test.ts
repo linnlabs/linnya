@@ -33,6 +33,7 @@ describe('default model request credential resolver', () => {
         resolveCredential: id => (id === cloudModel.id ? 'linnya-cloud' : 'byok-secret'),
       },
       resolveCloudDeviceId: async () => 'device-fixture',
+      linnyaCloudClientEnabled: true,
       providerAccounts: {
         resolve: async () => {
           throw new Error('fixture 不使用 Provider account');
@@ -99,5 +100,44 @@ describe('default model request credential resolver', () => {
         originator: 'linnya',
       },
     });
+  });
+
+  it('源码开发模式在请求边界拒绝 Cloud，不解析凭据也不生成设备身份', async () => {
+    const cloudModel = model('cloud-model', {
+      kind: 'host_managed',
+      credential_id: 'linnya-cloud',
+    });
+    let credentialResolutionCount = 0;
+    let deviceIdentityResolutionCount = 0;
+    const resolver = createDefaultModelRequestCredentialResolver({
+      catalog: {
+        getModel: () => cloudModel,
+        getCredentialReference: () => cloudModel.credential_reference,
+        resolveCredential: () => {
+          credentialResolutionCount += 1;
+          return 'linnya-cloud';
+        },
+      },
+      resolveCloudDeviceId: async () => {
+        deviceIdentityResolutionCount += 1;
+        return 'device-fixture';
+      },
+      providerAccounts: {
+        resolve: async () => {
+          throw new Error('fixture 不使用 Provider account');
+        },
+      },
+      linnyaCloudClientEnabled: false,
+    });
+
+    await expect(
+      resolver.resolve({
+        model_id: cloudModel.id,
+        endpoint_id: 'linnya-cloud',
+        auth_profile: 'bearer',
+      })
+    ).rejects.toThrow('disabled in source development mode');
+    expect(credentialResolutionCount).toBe(0);
+    expect(deviceIdentityResolutionCount).toBe(0);
   });
 });
