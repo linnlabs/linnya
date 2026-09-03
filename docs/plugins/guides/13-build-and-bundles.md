@@ -30,7 +30,7 @@ build resolver 仍独立维护，禁止继承 Host Renderer profile。需要共�
 ## 重型 backend 的启动入口与按需 runtime
 
 磁盘 loader 会同步 `require()` backend
-entry 以取得 contribution，所以 entry 位于主进程启动关键路径。重型插件不能只看 zip 压缩体积，还必须约束 entry 的 raw
+entry 以取得 contribution，所以 entry 位于 App Server Backend 启动关键路径。重型插件不能只看 zip 压缩体积，还必须约束 entry 的 raw
 bytes 和构建依赖图：只在首次业务调用才需要的 compiler、parser 或转换 runtime，不应通过静态 import 在 contribution 注册时初始化。
 
 允许把大型插件专属 runtime 作为插件自有资源放入

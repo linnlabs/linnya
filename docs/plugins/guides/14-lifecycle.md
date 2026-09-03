@@ -47,7 +47,7 @@
 
 ## 后端 / 前端加载
 
-- 后端 loader（`diskPluginLoader.ts`）：发现目录 → `parsePluginManifest` 校验 → 校验 `compat.minApp` → `require(entry.backend)` → 校验 contribution meta 与 manifest 一致。同一 pluginId 只加载第一个实例；加载失败不崩主进程，active 布局尝试回滚 previous。
+- 后端 loader（`diskPluginLoader.ts`）：由 App Server 执行“发现目录 → `parsePluginManifest` 校验 → 校验 `compat.minApp` → `require(entry.backend)` → 校验 contribution meta 与 manifest 一致”。同一 pluginId 只加载第一个实例；单个插件加载失败不应破坏其他插件，active 布局尝试回滚 previous。
 - 前端 loader：只加载 enabled 插件 entry；登记 contribution 后注入 CSS，再调用 `activate()` 挂载 renderer port。下一次同步时如果插件不再 enabled，会先调用 `deactivate()` 注销 port/watchers，再移除该插件 CSS；单插件失败只记 warning，不阻断其它插件，且会撤回本次已注入的 CSS。
 - 启动 reconciliation：若 `plugin_active_versions` 里有 `activating/failed` 记录，平台会对照磁盘 `active.json` 修复或记录失败；若记录为 `active` 但磁盘已经被 loader 回滚到 `previousVersion`，平台承认 runtime rollback，不把坏版本强行写回去。
 

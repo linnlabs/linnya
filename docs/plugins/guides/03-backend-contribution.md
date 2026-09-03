@@ -1,6 +1,6 @@
 # 03 · 后端 Contribution
 
-> 适用场景：实现插件主进程能力；理解 backend contribution 的字段与生命周期。
+> 适用场景：实现插件 App Server Backend 能力；理解 backend contribution 的字段与生命周期。
 
 ## 入口与类型
 
@@ -20,7 +20,7 @@
 | Skill | `skillResourceRoots` | 源码态 skill 资源根；默认 agent 通过统一 skill catalog 看到 enabled 插件 skill | [09](./09-skills.md) |
 | Document | `documentTypeHooks` | 文档类型后端能力 | [05](./05-document-types.md) |
 | IPC | `ipc` | IPC 白名单与真实 handler 的原子 contribution | [10](./10-ipc.md) |
-| RendererPush | `rendererPush` | 主进程 → renderer 推送 channel 白名单 | [10](./10-ipc.md) |
+| RendererPush | `rendererPush` | App Server → Renderer 推送 channel 白名单；Desktop gateway 只负责转发 | [10](./10-ipc.md) |
 | Runtime | `sandboxProfiles` / `hiddenWorkers` / `runtimeEffects` | Backend 运行态装配与受管宿主能力声明 | [17 重型指南](./17-heavy-plugins.md) |
 | Database | `schemaProviders` / `ownedTables` / `pluginMigrations` | 数据库能力 | [06](./06-database.md) |
 

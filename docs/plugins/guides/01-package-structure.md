@@ -25,7 +25,7 @@ packages/plugins/<plugin-id>/
 约定：
 
 - `src/shared` 放跨进程共享契约（纯 DTO、常量、纯函数），必须保持 Node-free、Vue-free。
-- `src/backend` 放主进程能力：工具、agent、plugin migrations、IPC handler、document hook。
+- `src/backend` 放 App Server Backend 能力：工具、agent、plugin migrations、Renderer request handler、document hook。
 - `src/renderer` 放前端 surface、file handler、工具卡、渲染端 ports 和 UI domain。
 - `dev/` 放 showcase / seed 等开发辅助脚本，允许显式消费 host 服务，但不进入生产 `src` 或发布 artifact。
 - 包外只允许通过公开入口消费插件能力，不允许 deep import 插件内部文件。

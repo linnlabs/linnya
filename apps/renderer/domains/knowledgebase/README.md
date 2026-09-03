@@ -16,7 +16,7 @@ apps/renderer/domains/knowledgebase/
 │           ├── uploadQueue.js    # 上传队列
 │           └── polling.js        # 轮询
 ├── services/
-│   ├── knowledgeBaseService.js   # 与后端 / 主进程交互的业务封装
+│   ├── knowledgeBaseService.js   # 与 App Server Backend 交互的请求封装
 │   └── progressAnimator.js       # 进度动画相关逻辑
 └── ui/
     ├── AddToKnowledgeBaseModal.vue
@@ -36,33 +36,35 @@ apps/renderer/domains/knowledgebase/
 
 ---
 
-## 通信边界说明（IPC vs HTTP）
+## 通信边界说明（Renderer request vs HTTP）
 
-### Electron 环境（推荐）
+### Desktop 环境
 
-**原则：知识库“管理类/元数据类”走 IPC，重数据/长链路走 HTTP。**
+**原则：知识库“管理类/元数据类”使用 preload 暴露的 Renderer request facade，重数据/长链路直接走 App Server HTTP。两条路径的业务 owner 都是 App Server。**
 
-- **走 IPC（主进程 + workspace.sqlite）**：
+- **走 Renderer request（Renderer → Electron Main data-only gateway → App Server）**：
   - 知识库列表（getAll）
   - 创建 / 删除知识库
   - 获取知识库文档列表
   - 更新知识库设置（名称/描述/模型/标签）
   - 项目 ↔ 知识库关联（`project-kb-links:*`）
 
-- **保留 HTTP（TS 后端 API）**：
+- **直接走 App Server HTTP**：
   - 文档上传（multipart/form-data / busboy）
   - 任务状态查询 / 轮询 / 取消任务
   - 搜索（可能涉及向量检索/重排/大 payload）
 
 ### Web / DevServer 环境
 
-由于无 `window.electronAPI`，只能使用 HTTP（`/api/v1/knowledge-base`）。
+由于没有 `window.electronAPI`，直接使用 App Server HTTP（`/api/v1/knowledge-base`）。
 
 ### 落点（代码定位）
 
 - 渲染进程统一入口：`services/knowledgeBaseService.js`
-  - Electron 下会自动优先调用 preload 暴露的 IPC 方法（若存在）
-  - Web 下回退到 axios HTTP
+  - Desktop 下会自动优先调用 preload 暴露的 request 方法（若存在）；Electron Main 只负责转发，不拥有 Knowledge service 或数据库
+  - Web 下直接调用 axios HTTP
+
+摄入状态、进度和 Worker/轮询的 Backend owner 见 [Knowledge ingestion README](../../../../src/features/knowledge-base/ingestion/README.md)。
 
 ---
 

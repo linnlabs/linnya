@@ -14,23 +14,11 @@
 
 产品概念、存储模型、基础工具面和插件接入原则统一从[产品模型总览](./docs/product-model-overview.md)开始阅读。
 
-## 2. 一条主链
+## 2. 运行边界
 
-```text
-用户
-  -> Renderer / Conversation
-  -> HTTP 请求；流式结果走 SSE
-  -> App Server / Linnya App Host
-  -> Linnkit Agent loop
-  -> 模型 Provider 或 Agent 工具
-  -> RuntimeEvent
-  -> EventStore 持久化 + SSE 实时投影
-  -> Renderer / Conversation
-```
+用户请求从 Renderer / Conversation 进入 App Server，App Host 使用 Linnkit 运行 Agent 并调用模型或工具；RuntimeEvent 被持久化并通过 SSE 投影回 Renderer。文件选择、窗口等桌面能力另走 Preload/IPC，由 Electron Main 提供；Main 不拥有业务数据库或 Agent loop。
 
-另一条边界是桌面能力：Renderer 通过 Preload/IPC 使用文件选择、窗口和文件管理器等 Electron 能力；Electron Main 负责 Desktop 生命周期和 App Server supervisor，不打开业务数据库，也不拥有 Agent loop。跨进程 DTO 与 schema 统一归 [`packages/schemas`](./packages/schemas/README.md)。
-
-后端总图见 [`src/README.md`](./src/README.md)，Conversation 全链路不变量见 [`docs/conversation-platform`](./docs/conversation-platform/README.md)。
+继续阅读：[后端总图](./src/README.md)、[Conversation 全链路规范](./docs/conversation-platform/README.md)、[跨进程 DTO 与 Schema](./packages/schemas/README.md)。
 
 ## 3. 前端：Renderer 与 Conversation
 
@@ -52,31 +40,18 @@ Workspace 树、编辑器、Knowledge 和模型配置等其他前端 owner 从 [
 
 [`src/app-hosts/linnya/app-server-runtime`](./src/app-hosts/linnya/app-server-runtime/README.md) 是业务 Backend 的生产组合根，拥有数据库、Agent、HTTP/SSE 和插件 Backend。[`src/app-hosts/linnya`](./src/app-hosts/linnya/README.md) 负责把 Linnkit 的 ports/protocol 装配成 Linnya 产品。
 
-[`src/electron-main`](./src/README.md) 是 Desktop Host：负责 Electron 生命周期、窗口、Preload/IPC、操作系统能力和 App Server 进程管理。不要因为部分后端实现仍位于 `src/electron-main/services` 或 `routes` 就把业务 owner 写回 Electron Main。
+[`src/electron-main`](./src/electron-main/README.md) 是 Desktop Host：负责 Electron 生命周期、窗口、Preload/IPC、操作系统能力和 App Server 进程管理。不要因为部分后端实现仍位于 `src/electron-main/services` 或 `routes` 就把业务 owner 写回 Electron Main。
 
-### 4.2 数据存在哪里
+### 4.2 数据与存储边界
 
-Linnya 使用的是统一**逻辑数据库**，不是“所有字节都在一张 SQLite 表”。Workspace 根和 AppData 根由 Desktop Host 在启动时解析并冻结，Backend 与 Worker 只消费已确定的路径事实。
+Linnya 是统一逻辑数据库，但不同数据有各自的物理落点和 owner：
 
-| 数据 | 物理落点 | Owner 与读取方式 |
-| --- | --- | --- |
-| 项目与文档树 | Workspace 下的 `workspace/workspace.sqlite`：`projects`、`workspace_nodes`、文档类型卫星表与搜索投影 | [`src/features/workspace`](./src/features/workspace/vfs/README.md) 拥有树与 VFS；文档 domain/插件拥有内容；Agent 只通过 Workspace 工具访问 |
-| Conversation 执行事实 | 同一 `workspace.sqlite`：`conversations`、`runs`、`events` 及关联表 | [`EventStore`](./src/app-hosts/linnya/adapters/persistence/event-store/README.md)；`events` 是事实源，`conversation_ui_messages` 是可重建的 UI read model |
-| Knowledge | SQLite 元数据与图谱、Qdrant 向量、受管原文与 SoT 文件 | [`Knowledge Base`](./src/features/knowledge-base/README.md) 统一编排；不进入 Workspace VFS，Agent 走 `knowledge_search` / `knowledge_read` |
-| 资产与二进制 | SQLite 保存身份、关系和存储绑定；真实字节进入受管文件存储 | [`Assets`](./src/domains/assets/README.md)；Renderer 使用 asset ID/API，不读取数据库中的物理路径 |
-| Conversation 过程文件 | AppData 下按 Conversation 身份隔离的真实目录 | [`conversation-files`](./src/domains/conversation-files/README.md) 管身份、准入、恢复和清理；它不是 Workspace VFS |
-| 超长工具文本与命令原始输出 | 各自的 Backend 受管文件存储 | [`ToolOutputStore`](./src/tools/tool_output/README.md) 保存可续读文本；Commands output adapter 保存原始字节，二者不能混用 |
-| 模型与 Provider 配置 | Workspace 的 Models 配置文件 | [`model-catalog`](./src/domains/model-catalog/README.md) 与 [`provider-configuration`](./src/domains/provider-configuration/README.md) 分别拥有模型/端点和正式 Provider 归属 |
-| API Key、OAuth 等凭据 | AppData `config/` 下的系统安全存储密文 | Model Catalog credential boundary 与 [`provider-account`](./src/domains/provider-account/README.md)；不得进入 Workspace、Renderer、日志或数据库导出 |
-| 插件状态与插件数据 | Host 状态表和插件 owned tables 位于 `workspace.sqlite`；插件 artifact 位于独立受管目录 | 插件 lifecycle 和 migration 是唯一 owner，禁用/卸载不等于删除数据 |
+- **Workspace SQLite**：保存项目树、Conversation 执行事实以及 Core/插件的结构化状态。[Workspace/VFS](./src/features/workspace/vfs/README.md) 拥有文档树和路径投影，[EventStore](./src/app-hosts/linnya/adapters/persistence/event-store/README.md) 拥有 Conversation 事实，各业务 domain/插件拥有自己的数据。
+- **受管文件存储**：保存资产字节、Conversation 过程文件和超长工具输出；分别从 [Assets](./src/domains/assets/README.md)、[conversation-files](./src/domains/conversation-files/README.md) 和 [ToolOutputStore](./src/tools/tool_output/README.md) 进入。
+- **Knowledge 存储**：由 [Knowledge Base](./src/features/knowledge-base/README.md) 统一编排 SQLite 元数据、Qdrant 向量和原文文件，不属于 Workspace VFS。
+- **凭据**：API Key、OAuth 等只进入 AppData 的系统安全存储；不得进入 Workspace、Renderer、日志或数据库导出。
 
-数据库交互遵循三条主规则：
-
-1. Renderer 不直接访问 SQLite、Qdrant 或受管文件路径，只调用 HTTP/IPC 的正式合同。
-2. [`DatabaseService`](./src/electron-main/services/database.ts) 管理 `workspace.sqlite` 连接、Host schema provider 与版本；业务读写仍由各 domain repository/用例拥有。Host 基线和迁移规则见[数据库迁移 README](./src/electron-main/services/database/migrations/README.md)。
-3. Host 核心表走 schema provider；插件表只走插件 migration，详见[插件数据库规范](./docs/plugins/guides/06-database.md)。不要在调用点直接写跨 domain SQL。
-
-Workspace/VFS 是文档数据库的核心访问层：数据库中的项目节点被投影为 `workspace:/...`，通用文件工具再把动作分发给对应文档类型。VFS 拥有路径与调度，不拥有文档内容；详见 [`Workspace VFS`](./src/features/workspace/vfs/README.md)。
+只记三条规则：Renderer 不直接访问数据库或物理路径；App Server 是业务存储的运行 owner；连接与迁移由 [`DatabaseService`](./src/electron-main/services/database.ts) 管理，具体读写必须回到对应 domain repository/用例，禁止跨 domain 直接写 SQL。Workspace 内容由 VFS 投影为 `workspace:/...`，Agent 只通过正式工具访问。
 
 ## 5. Agent 系统
 

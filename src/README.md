@@ -14,7 +14,7 @@
 | 产品工具 | `src/tools/` | Workspace、TaskState、知识库等具体工具能力 |
 | 产品共享合同 | `packages/schemas/` | HTTP、IPC、Host/Renderer、插件间共同校验的 Linnya DTO |
 | Headless App Server | `src/app-hosts/linnya/app-server-runtime/` | HTTP/SSE、Backend owner、数据库、Agent 与插件 Backend 的生产组合根 |
-| Desktop Host | `src/electron-main/` | Electron 生命周期、窗口、系统能力、Renderer IPC gateway 与 App Server supervisor |
+| Desktop Host | [`src/electron-main/`](./electron-main/README.md) | Electron 生命周期、窗口、系统能力、Renderer IPC gateway 与 App Server supervisor |
 
 模型推理的跨端 route、Model Catalog、Host capability、Linnkit 与非 Agent 业务 port 之间的详细职责，以 [Model Inference README](./domains/model-inference/README.md) 为准。
 
@@ -120,6 +120,7 @@ Renderer 必须解析正式 `data`，不得从 observation、Markdown 或旧 pay
 - Linnya App Host：`src/app-hosts/linnya/README.md`
 - Linnya schemas：`packages/schemas/README.md`
 - Model Inference：[Domain README](./domains/model-inference/README.md)
+- Electron Desktop Host：[`src/electron-main/README.md`](./electron-main/README.md)
 - Plugin Host contract：`packages/plugin-host-contract/README.md`
 - Conversation Renderer：`apps/renderer/domains/conversation/docs/README.md`
 - Conversation virtualization：`apps/renderer/domains/conversation/docs/conversation-virtualization.md`

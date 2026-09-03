@@ -3,16 +3,16 @@
 本指南面向「依赖宿主重型基础设施」的插件（隐藏窗口、子进程 sandbox、CPU 密集编译、大体积引擎、自有重型 renderer）。标准插件开发流程按 [章节指南](../README.md#章节导航开发啥看啥) 走；本指南只补充重型场景特有的设计模式与踩坑清单。
 
 > 参考实现（仅供对照，规则本身与具体插件无关）：
-> - **轻型插件样例**：引擎在 renderer、JSON 持久化、无主进程重型设施的最小实现。
-> - **重型插件样例**：backend 重引擎 + 主进程沙箱 + 自有预览的完整实现。
+> - **轻型插件样例**：引擎在 Renderer、JSON 持久化、无宿主重型设施的最小实现。
+> - **重型插件样例**：App Server backend 重引擎 + 必要的 Desktop 沙箱/隐藏预览的完整实现。
 > - **重型插件实施案例**：现行实现与边界参考 [Slides 插件说明](../../../packages/plugins/slides/README.md)；旧的分阶段执行归档不在仓库内。
 
 ---
 
 ## 0. 轻型插件 vs 重型插件
 
-- **轻型插件**：业务逻辑在 renderer、持久化是结构化数据读写、只走 IPC、不碰主进程重型基础设施。标准章节指南基本够用。
-- **重型插件**：依赖主进程的危险/重型运行时（隐藏 BrowserWindow、子进程沙箱、重编译引擎、大体积资源）。标准章节的契约都成立，但还需要本指南的能力归属、传输层、平台门面、执行适配器等模式，否则容易把危险运行时塞进插件包、把进度误判成「搬目录」。
+- **轻型插件**：业务逻辑在 Renderer、持久化是结构化数据读写、不依赖宿主重型基础设施。标准章节指南基本够用。
+- **重型插件**：依赖 App Server 的重型计算，或依赖 Electron Main 拥有的桌面运行时（例如隐藏 `BrowserWindow`）。标准章节的契约都成立，但还需要本指南的能力归属、传输层、平台门面、执行适配器等模式，否则容易把危险运行时塞进插件包、把进度误判成「搬目录」。
 
 ---
 
@@ -38,16 +38,16 @@
 
 ## 2. 传输层：什么时候用 IPC，什么时候 push 事件
 
-- **请求-响应**（绝大多数）：用 `plugin:invoke(pluginId, channel, payload)`（`src/plugin-sdk/renderer/pluginIpcClient.ts` + `pluginIpcRuntime.ts`）。主进程自动校验「已安装且启用」，顺带拿到卸载门禁。
+- **请求-响应**（绝大多数）：用 `plugin:invoke(pluginId, channel, payload)`（`src/plugin-sdk/renderer/pluginIpcClient.ts` + `pluginIpcRuntime.ts`）。App Server 校验「已安装且启用」和 channel 白名单，Electron Main 只转发已登记的 data-only request。
 - **二进制**（上传/导出）：IPC 结构化克隆原生支持 `ArrayBuffer`/`Buffer`，前端 `File.arrayBuffer()` 进、后端 `Buffer` 出，无需 multipart。**记得加体积上限**。
-- **增量/流式推送**（边算边推进度）：`invoke` 做不到，用 `webContents.send(channel, payload)` + 前端 `ipcRenderer.on`（仓库内既有先例：`transcription:progress`、`task-status-update`、`kb-graph-progress-updated`）。channel 要进 preload 白名单 `src/electron-main/preload/valid-channels.ts`。
+- **增量/流式推送**（边算边推进度）：`invoke` 做不到，插件应声明 `rendererPush` 并发送统一 `plugin:push` envelope；App Server 产生业务事件，Electron Main data gateway 只转发到 Renderer。不要为插件新增由 Main 拥有的业务事件源。
 - **真 token 级长流**（如对话 SSE）：目前仍走 localhost HTTP SSE（`flow.router.ts`），不是 IPC。绝大多数插件用不到。
 
 ### 关于「IPC 会不会堵」的事实
 
-- 在 App Server cutover 完成前，插件 backend 与 host Express **仍跑在 Electron Main 同一事件循环**。换 IPC 不会比 HTTP 更堵，瓶颈是同步 CPU 重活所在的事件循环，与传输层名字无关。
+- 当前插件 backend 与 host Express 运行在 **App Server 的同一事件循环**。换 Renderer request 或 HTTP 不会改变同步 CPU 重活的阻塞性质，瓶颈是计算所在的事件循环，而不是传输层名字。
 - 大 payload 一次性结构化克隆 vs `JSON.stringify` 量级相当，KB–MB 级不是瓶颈。
-- 物理搬包 **≠ 进程隔离**：插件 backend 被加载到哪个业务 owner，才决定它占用哪个事件循环。目标态只加载到 headless App Server；同步 CPU 工作还必须进入 feature-owned Worker，不能只从 Main 搬到 App Server 后继续阻塞 Agent/SSE。
+- 物理搬包 **≠ 进程隔离**：插件 backend 当前只由 headless App Server 加载；同步 CPU 工作还必须进入 feature-owned Worker，不能因为已经离开 Electron Main 就继续阻塞 Agent/SSE。
 - 重型插件应该把 compile / parse / export / render-model build 这类重活包在 feature-owned execution port 后面（见范式 D）。Slides 已使用有界 Node Worker；这不是新的公共插件 compute 接口。
 
 ---
@@ -55,8 +55,8 @@
 ## 3. host 能力接入机制（编译期 + 运行时两层）
 
 - **编译期**：插件 `tsconfig.json` 用通配符 `paths` 把 `@plugin/backend/*` / `@plugin/renderer/*` 映射到契约真源包 `@linnya/plugin-host-contract`，让插件包能独立 typecheck/构建。**不再使用 `hostImports.d.ts` 手写桩镜像 host 类型**（这类桩已删，并有 `packages/plugins/__tests__/host-types-contract.test.ts` 守卫禁止复活）；`host-types/` 只保留 renderer 环境声明或插件自有引擎 ambient（如 sheet 的 `sheetEngine.d.ts`）。
-- **运行时**：插件生产代码 import `@plugin/backend/*` / `@plugin/renderer/*`（在构建里 external），磁盘加载时由 host 的 `backendHostModuleResolver`（`src/electron-main/plugins/loader/backendHostModuleResolver.ts`）注入真实实现；SDK 门面 `src/plugin-sdk/backend/*` re-export 或薄包装 host 实现。
-- **DB/workspace**：host 把服务容器注入 IPC registrar，插件内 `databaseService.getDb()` + `WorkspaceService`。`better-sqlite3` external，复用 host 已加载的原生模块。
+- **运行时**：插件生产代码 import `@plugin/backend/*` / `@plugin/renderer/*`（在构建里 external），磁盘加载时由 App Server 的 `backendHostModuleResolver` 注入真实实现；该模块目前仍位于历史目录 `src/electron-main/plugins/loader/backendHostModuleResolver.ts`。SDK 门面 `src/plugin-sdk/backend/*` re-export 或薄包装 host 实现。
+- **DB/workspace**：App Server 把服务容器注入 request registrar，插件内使用 `databaseService.getDb()` + `WorkspaceService`。`better-sqlite3` external，复用 App Server 已加载的原生模块。
 
 **纪律**：插件运行时绝不直接 `import 'src/electron-main/...'`，一律走 `@plugin/*` port。新增门面的完整接入口径（五件套）见 [11 宿主平台门面](./11-host-facades.md)。
 
@@ -75,7 +75,7 @@
 ### 范式 B：隐藏 renderer worker 托管
 
 - Desktop Host 提供「托管一个由调用方提供 bundle 路径 + IPC 协议的隐藏 BrowserWindow」的通用能力，负责 spawn / 健康检查 / 空闲回收 / 禁用与卸载时安全释放。
-- Backend 插件继续只通过既有 `@plugin/backend/hiddenWorkerRuntime` 和 `hiddenWorkers` contribution 使用该能力；SDK 门面落到 `BackendHiddenWorkerRuntimePort`，不得 import `electron-main`。Backend runtime 保留 contribution、codec 与同步 registry，只把 data-only worker descriptor 和已编码 envelope 交给 `DesktopHiddenWorkerHostPort`；当前低层 adapter 由 Electron 实现，App Server cutover 后由 reverse Desktop RPC 实现这个低层 port，插件 API 与前端交互不变。RPC server 必须对 worker HTML/preload artifact 路径做 admission。
+- Backend 插件继续只通过既有 `@plugin/backend/hiddenWorkerRuntime` 和 `hiddenWorkers` contribution 使用该能力；SDK 门面落到 `BackendHiddenWorkerRuntimePort`，不得 import `electron-main`。App Server 保留 contribution、codec 与同步 registry，只把 data-only worker descriptor 和已编码 envelope 通过 reverse Desktop RPC 交给 Electron Main 的 `DesktopHiddenWorkerHostPort` adapter；插件 API 与前端交互不变。RPC server 必须对 worker HTML/preload artifact 路径做 admission。
 - 只有当 worker 载荷确实是插件专属时，才由插件提供专属 worker bundle（在 renderer 环境跑只能在浏览器跑的库）。通用能力（如纯文本测量）应判定为平台能力留 host，对应 worker 也留 host；`hiddenWorkers` contribution 保留给真正自带 worker 的插件。
 - 生命周期红线：禁用插件后 worker 不被无谓拉起；卸载时窗口必须安全 close，不泄漏。
 
@@ -143,7 +143,7 @@ bridge 只寻址 enabled 官方插件，且 v1 明确拒绝外部文件、网络
    - 无论哪种，`ownedTables` 都要声明（驱动升级备份/卸载不删表/运行态门禁）。
    - 出生在核心历史的表通常会留下胎记：建表 DDL 永久留在核心迁移历史里，物理抽包也搬不走它。这是和「天生插件原生」表的根本差异。
    - 例外窗口：如果可以证明生产库从未应用过相关核心迁移，可以在物理抽包阶段保号掏空历史迁移，并把建表移交插件，从而达成真·插件原生；一旦生产发布跨过该迁移窗口，就必须退回「留胎记」方案。
-4. **平台能力补齐**（把主进程基础设施做成通用 port）：物理搬迁的前置。
+4. **平台能力补齐**（把 App Server 或 Desktop Host 基础设施收口成边界清晰的通用 port）：物理搬迁的前置。
 5. **物理外置 + 发布**（抽包、构建、R2、边界守卫）。
 
 **1–3 完成只是中间验收点，不是终点**：用户视角已是真插件，引擎物理上还在 host。若目标是彻底插件化，阶段 4–5 也必须完成：先把危险 host 能力抽成通用 port，再把插件专属载荷物理外置并独立发布。
@@ -227,7 +227,7 @@ bridge 只寻址 enabled 官方插件，且 v1 明确拒绝外部文件、网络
 5. backend/renderer contribution 注册、enable/disable 收口
 6. plugin migration / ownedTables / 升级回滚框架
 7. R2 发布、预置 seed、release target 泛化脚本
-8. `plugin:invoke` IPC 通道 + 主进程「已安装且启用」门禁
+8. `plugin:invoke` request 通道 + App Server「已安装且启用」门禁 + Electron Main data-only gateway
 9. SDK 门面 `@plugin/backend/*` `@plugin/renderer/*` + `backendHostModuleResolver`
 10. 边界守卫范式（每插件独立命名，勿复用他人测试名）
 11. `toolContextDecorators` + `toolContextBindingMigrators` + `derivePluginAwareToolContext`（插件给通用工具上下文挂私有绑定，宿主派生时自动迁移）

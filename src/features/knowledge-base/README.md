@@ -68,6 +68,7 @@ knowledge-base/
 │       ├── knowledge-graph.schema.ts
 │       └── schema-providers.ts             # Schema 聚合入口
 ├── ingestion/                              # 📥 摄入管道
+│   ├── README.md                            # 状态、进度、Worker/轮询边界与修改地图
 │   ├── stateMachine.ts                     # 摄入状态机
 │   ├── IngestionStateMachineManager.ts     # 状态机管理器
 │   ├── handlers/                           # 各阶段处理器 (Parsing, Embedding, Storing)
@@ -89,6 +90,8 @@ Knowledge 自有 capture DTO；只有 `src/tools/knowledgebase/evidence/knowledg
 `shared/agent-observation` 是 Knowledge domain 内搜索与阅读共同使用的模型安全边界：owner 生成的 canonical
 ref 和 `doc_id/block_id` 留在可信骨架，标题、摘要、正文及图谱来源文本进入动态不可信边界。边界格式复用
 全局稳定的 `shared/ai-observation` 安全原语，但该原语不理解 Knowledge、Evidence 或 Web 业务。
+
+文档摄入的状态机、进度读模型、Worker/轮询链路和当前前端映射漂移见 [`ingestion/README.md`](./ingestion/README.md)。
 
 ### PDF partial 诊断与失败页续跑
 
@@ -113,27 +116,30 @@ ref 和 `doc_id/block_id` 留在可信骨架，标题、摘要、正文及图谱
 
 ## 跨模块集成文件索引（Cross-Module Integration）
 
-> 说明：知识库 Feature 核心逻辑在 `src/features/knowledge-base/**`，但完整运行依赖主进程与渲染进程配合。
+> 说明：知识库 Feature 核心逻辑在 `src/features/knowledge-base/**`。完整运行由 App Server Backend 组合数据库、HTTP、Renderer request handler 和 Worker，Electron Main 只负责桌面生命周期、Preload/IPC 数据转发与 App Server supervisor，Renderer 只消费正式接口。
 
-### 1. 数据库 Schema 注册
-*   `src/electron-main/services/database.ts`: 注册 `SchemaProvider`。
+### 1. App Server 数据库组合
+*   `src/electron-main/services/database.ts`: `DatabaseService` 的历史物理位置；实际由 App Server runtime 实例化并注册 `SchemaProvider`，不表示 Electron Main 拥有 Knowledge 数据库。
 *   `src/features/knowledge-base/infrastructure/sqlite/schema-providers.ts`: 聚合导出 KB 与 Graph 的 Schema。
 
-### 2. Electron IPC (主进程)
-*   **KB 管理**: `src/electron-main/ipc/handlers/knowledge-base/knowledge-base-ipc.ts`
+### 2. App Server 请求入口
+*   **KB 管理**: `src/electron-main/ipc/handlers/knowledge-base/knowledge-base-ipc.ts`（历史物理位置，handler 在 App Server 注册和执行）
     *   `get-all-kbs`, `create-kb`, `delete-kb`, `update-kb-settings`
-*   **项目关联**: `src/electron-main/ipc/handlers/knowledge-base/project-knowledge-base-links-ipc.ts`
-*   **图谱进度**: `src/electron-main/ipc/handlers/knowledge-base/knowledge-base-ipc.ts` (集成进度查询与推送)
+*   **项目关联**: `src/electron-main/ipc/handlers/knowledge-base/project-knowledge-base-links-ipc.ts`（历史物理位置，运行 owner 同上）
+*   **HTTP API**: `src/electron-main/routes/knowledgeBaseRouter.ts`（历史物理位置，由 App Server 挂载）
+*   **统一注册**: `src/app-hosts/linnya/adapters/backend-renderer-requests/orchestration/registerCoreBackendRendererRequestHandlers.ts`
+*   **图谱进度**: App Server 生成正式 push event，再经 Desktop gateway 投影到 Renderer。
 
-### 3. Preload & Gateway
-*   `src/electron-main/preload/modules/knowledge-base-preload.ts`: 暴露 `window.electronAPI.knowledgeBase`。
-*   `apps/renderer/domains/knowledgebase/services/knowledgeBaseService.js`: 前端 Service，优先走 IPC，Web 回退 HTTP。
+### 3. Electron Preload 与数据网关
+*   `src/electron-main/preload/modules/knowledge-base-preload.ts`: 暴露 `window.electronAPI.knowledgeBase` 的 Renderer request facade。
+*   Electron Main 只在已注册的 data-only channel 上转发请求和 push，不实例化 Knowledge service，也不读写 `workspace.sqlite`。
+*   `apps/renderer/domains/knowledgebase/services/knowledgeBaseService.js`: 前端 Service；Desktop 下优先使用 preload facade，Web 下直接调用 App Server HTTP。
 
 ### 4. 任务队列 (Worker Threads)
 *   `src/infra/task-queue/jobs.ts`: 定义 `GraphExtractionJob`, `GraphIndexingJob` Payload。
 *   `src/infra/task-queue/workers/graph-extraction.worker.ts`: 图谱抽取 Worker (LLM)。
 *   `src/infra/task-queue/workers/graph-indexing.worker.ts`: 图谱向量化 Worker (Embedding -> Qdrant)。
-*   `WorkerThreadQueue` 只发布通用 job 生命周期；main 进程组合根仅向 ingestion queue 注入摄取 observer。进度 store 和投影规则始终归本 feature，禁止移回 task-queue 或通过 payload 字段猜测业务类型。
+*   `WorkerThreadQueue` 只发布通用 job 生命周期；App Server 组合根仅向 ingestion queue 注入摄取 observer。进度 store 和投影规则始终归本 feature，禁止移回 task-queue 或通过 payload 字段猜测业务类型。
 
 ---
 
@@ -152,7 +158,7 @@ ref 和 `doc_id/block_id` 留在可信骨架，标题、摘要、正文及图谱
 *   **核心文档**: 详见 [SOFT_KNOWLEDGE_GRAPH.md](./SOFT_KNOWLEDGE_GRAPH.md)。
 *   **Ref 语义**: 在 Light/Full 模式下，`ref: in_rag` 的语义为 **“该证据块也在本次工具输出的列表中（可直接阅读）”**，**不再等同于** “RAG TopK”。
 *   **Text Generation**: 图谱抽取只依赖 `domains/model-inference` 的 `TextGenerationPort`。Worker composition root 负责构造 Host adapter；抽取服务拥有 prompt、JSON/Zod 校验和图谱规则，不得依赖 `LlmCaller`、`AIEngine` 或 Provider SDK。
-*   **Embedding**: 摄入、查询向量、PDF 失败页续跑、Graph Discovery 与 Graph Indexing 只依赖 `domains/model-inference` 的 `EmbeddingPort`。主进程/worker composition root 构造 Host adapter；KB 拥有分批进度、sparse vector、Qdrant 写入、索引 provenance 与重建策略，不得读 Model Catalog 或导入 AI SDK。
+*   **Embedding**: 摄入、查询向量、PDF 失败页续跑、Graph Discovery 与 Graph Indexing 只依赖 `domains/model-inference` 的 `EmbeddingPort`。App Server / Worker composition root 构造 Host adapter；KB 拥有分批进度、sparse vector、Qdrant 写入、索引 provenance 与重建策略，不得读 Model Catalog 或导入 AI SDK。
 *   **Reranking**: 搜索编排只依赖 `domains/model-inference` 的 `RerankingPort`。候选身份以 Provider 返回的 `originalIndex` 为准，禁止按文本反查；只有标记为 retryable 的上游可用性故障可保留已有 RRF/分层排序，配置、凭据、schema、Abort 与编程错误必须继续失败。KB 不读取 Model Catalog，也不导入 AI SDK。
 
 ### 2. 类型安全

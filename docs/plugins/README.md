@@ -65,7 +65,7 @@ Linnya Core 的静态运行面只有 `platform`。当前产品发行可以随包
 
 参考实现（仅供对照，规则本身与具体插件无关）：
 
-- **轻型插件样例**（引擎在 renderer、结构化数据持久化、无主进程重型设施）：`packages/plugins/mindmap`。
+- **轻型插件样例**（引擎在 Renderer、结构化数据持久化、无宿主重型设施）：`packages/plugins/mindmap`。
 - **重型插件样例**（App Server backend 重引擎 + Profiled Code Sandbox + Desktop 隐藏预览）：`packages/plugins/slides`。
 - 重型功能「事后插件化」的现行参考见 [Slides 插件说明](../../packages/plugins/slides/README.md)；旧的 `docs/archive/slides-pluginization/` 归档不在仓库内。
 

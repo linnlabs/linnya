@@ -39,6 +39,8 @@ Keep commits reviewable and avoid mixing unrelated cleanup. Generated files must
 
 Linnya is led and maintained by BCAutumn under the `linnlabs` GitHub organization. The lead maintainer has final responsibility for product direction, repository scope, merge decisions, releases, and security response.
 
+Reviews are currently handled by the lead maintainer. As the contributor base grows, maintainers may be appointed for specific domains or packages.
+
 Significant changes to public contracts, architecture, compatibility, security, or product behavior should be discussed in a public issue or pull request before implementation, then recorded in the owning stable documentation. Community input is welcome, but a proposal may be declined when it conflicts with product direction, weakens established boundaries, or creates disproportionate long-term maintenance obligations.
 
 Changes merge when they are ready. A product release is a separately approved and verified snapshot; merging a change does not by itself create or schedule a release.
