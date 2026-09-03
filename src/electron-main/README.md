@@ -59,7 +59,7 @@ Main 不允许加载 `app-server-backend.cjs`、打开 `workspace.sqlite`，也�
 
 其中也夹有真正的 Main adapter，例如 `pluginProtocol.ts` 和 `prepareElectronPluginRuntimeEnvironment.ts`。因此不要整目录搬迁，也不要继续向这些历史位置新增 Backend 业务；应先确认唯一 owner、公开合同和调用链，再按 domain/feature 分批归位。
 
-`commands/production-runtime`、`commands/runner-runtime`、`sandbox-runtime` 和 `conversation-runtime` 中还保留平台 fixture 或历史 Electron composition。生产 Commands/Sandbox owner 以 App Server 和 [Commands domain](../domains/commands/README.md) 为准，不能把 fixture 当作当前生产入口。
+`commands/production-runtime`、`commands/runner-runtime` 和 `sandbox-runtime` 中还保留平台 fixture 或历史 Electron composition。生产 Commands/Sandbox owner 以 App Server 和 [Commands domain](../domains/commands/README.md) 为准，不能把 fixture 当作当前生产入口。
 
 ## 开发约束
 

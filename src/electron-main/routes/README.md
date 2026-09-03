@@ -1,91 +1,77 @@
-# `src/electron-main/routes/`：路由聚合与端点总览（当前实现）
+# App Server HTTP Routes
 
-> 本目录是 **TS 后端 Express 服务**的“路由装配层”。它不应承载业务规则，业务逻辑应在 `src/features/*` / `src/core/*` / `src/tools/*`。
->
-> 后端宏观入口请先看：`src/README.md`
+本目录是 App Server 的 Express route adapter 与当前路由组合入口。它仍物理位于 `src/electron-main/routes/`，但生产代码只在 headless App Server 进程运行；Electron Main 不挂载这些路由，也不拥有 HTTP/SSE、业务服务或数据库。
 
----
+后端总导航见 [`src/README.md`](../../README.md)，App Server 生产组合根见 [`src/app-hosts/linnya/app-server-runtime`](../../app-hosts/linnya/app-server-runtime/README.md)。
 
-## 1) 路由是如何被配置的？（权威入口）
+## 负责与不负责
 
-- 路由聚合入口：`src/electron-main/routes/index.ts`
-  - `configureRoutes(app, dependencies)`：把各个 router 挂到 express app 上，并返回关键路由是否真实挂载成功
-  - `getRouteSummary(dependencies, routeResult)`：用于启动日志与可观测摘要；会话路由初始化失败时不会继续展示对话端点
-- HTTP Server：`src/electron-main/services/apiServer.ts`
-  - 调用 `configureRoutes(...)` 完成挂载
+本目录负责：
 
-依赖注入（RouteDependencies）：
+- 把 HTTP method/path 映射到已经存在的 domain 或 App Host use case；
+- 解析请求、调用正式接口，并把结果或错误序列化为稳定响应；
+- 在 `index.ts` 组合当前路由，报告 Conversation 等关键 route family 是否成功挂载；
+- 为上传、SSE、预览和仅开发环境端点声明各自的传输约束。
 
-- 目前主要是 `knowledgeBaseService` / `transcriptionService`
-- 对话服务（conversation/agent）由 `routes/index.ts` 内部初始化并挂载（基于 EventStore + GraphExecutor）
-- SQLite RunSupervisor 在这个装配阶段先执行 `recoverOnBoot()`；只有恢复成功才继续创建 FlowOrchestrator 和挂载会话路由
+本目录不负责业务规则、数据库查询规则、Provider 协议、Agent loop 或 Renderer 状态。Router 不应自行创建另一个业务 service、绕过 public contract 直接跨 domain 读写，也不能导入 Electron API。
 
-启动日志约定：
+## 运行链路
 
-- 只有会话历史与会话流程路由都挂载成功时，才允许输出“应用路由配置完成”。
-- 如果会话初始化失败，日志必须输出“部分完成/会话路由不可用”，并且 `/health` 中的 `chat` / `agent` 状态应为 `false`。
+`src/app-hosts/linnya/backend-runtime/orchestration/backendLifecycle.ts` 在 App Server 内创建唯一 `BackendRuntimeOwner`，取得 `ApiServer` 和已初始化服务后调用 `configureRoutes()`。`src/electron-main/services/apiServer.ts` 虽仍在历史目录，但同样运行于 App Server，负责 loopback HTTP Server、middleware、安全 token、CORS、请求体限制和关闭生命周期。
 
----
+主要入口：
 
-## 2) 当前端点列表（以代码为准）
+- `index.ts`：`RouteDependencies`、route family 组合、Conversation runtime 初始化结果和可观测摘要；
+- `orchestration/createConversationRouteLifecycle.ts`：Conversation route 准备失败时的资源回滚；
+- `*Router.ts`：具体 HTTP adapter；
+- `../services/apiServer.ts`、`../services/apiServerSecurityRules.ts`：HTTP Server 与统一安全边界。
 
-在 `routes/index.ts` 中（按挂载顺序）：
+## 当前 Route Families
 
-- **健康检查**
-  - `GET /health`（`healthRouter.ts`）
-- **模型管理**
-  - `GET /api/v1/providers`（内置 Provider 公开目录；可用 `q` 搜索）
-  - `GET /api/v1/providers/:providerDefinitionId`（单个 Provider 与 bundled 模型资料）
-  - `POST /api/v1/provider-onboarding/direct-providers`（用 API Key 连接正式 Provider，并启用少量近期模型）
-  - `POST /api/v1/custom-api-onboarding/models`（按用户选择的 API 格式、URL、Key 和模型资料原子注册自定义模型）
-  - `/api/v1/models/*`（`modelRouter.ts`）
-- **静态资源**
-  - `GET /static/images/:filename`（`staticRouter.ts`）
-- **转录（若服务初始化成功）**
-  - `/api/v1/transcription/*`
-- **知识库（若服务初始化成功）**
-  - `/api/v1/knowledge-base/*`
-- **对话（统一端点）**
-  - `POST /api/v1/conversation/attachments/images`（单图 multipart 草稿暂存；副本写入 AppData 会话附件存储）
-  - `DELETE /api/v1/conversation/attachments/images/:draftId`（幂等释放未提交草稿）
-  - `GET /api/v1/conversation/assets/images/:assetId/content`（鉴权并完整性复核的 durable 图片内容）
-  - `POST /api/v1/conversation/next`（Conversation Flow，含 SSE）
-  - `/api/v1/conversation/*`（历史等）
-- **Workspace 资源库**
-  - `GET /api/v1/workspace/assets/images/:assetId/content`（按 durable asset ID 读取并复核受管图片；Renderer 不接触账本路径）
-- **调试（仅非生产环境）**
-  - `/api/v1/debug/provider-outbound/*`
-- **Ollama 代理**
-  - `/api/v1/ollama/*`
+以 `index.ts` 和各 router 为事实源，当前主要包括：
 
-> 重要说明：旧的 `/api/v1/generate` / `/api/v1/generate/stream` **已移除**。统一入口是 `/api/v1/conversation/next`（见 `routes/index.ts` 的日志说明）。
+- `/health`：App Server 健康与关键服务可用性；
+- `/api/v1/providers`、`provider-accounts`、`provider-onboarding`、`custom-api-onboarding`、`ollama-onboarding`、`models`、`model-picker`：模型与 Provider 产品接口；
+- `/api/v1/transcription`、`/api/v1/knowledge-base`：业务服务接口；
+- `/api/v1/conversation`、`/api/v1/workspace`、`/api/v1/storage-space`：Conversation、受管资源和存储空间；
+- `/api/v1/conversation-control`：本机 CLI 使用的独立鉴权控制桥；
+- `/api/v1/ollama`：本机 Ollama 代理；
+- `/api/v1/debug/provider-outbound`：仅开发模式开放的只读诊断接口；
+- `/static`：受管静态资源。
 
-Provider Catalog 端点只返回 `@linnya/provider-catalog` 的 public read model。package、route profile、auth profile 和 API surface 属于 Host-only runtime binding，不能通过这个端点下发；“自定义 API”也不是目录 Provider。
+Conversation 的统一执行入口是 `POST /api/v1/conversation/next`；旧 `/api/v1/generate` 系列已删除。Conversation 的身份、事件、SSE 和历史一致性以 [Conversation Platform](../../../docs/conversation-platform/README.md) 为准。
 
-Provider onboarding 路由只解析共享 command schema，并调用 App Host use case。URL、鉴权、容量、视觉能力与 runtime route 不由路由或 Renderer 拼接；完整边界见 `src/app-hosts/linnya/application/provider-onboarding/README.md`。
+## 新增或修改路由
 
-会话上传端点只创建会话附件副本，不创建 `project_asset_links`，因此附件不会自动出现在项目资源库。预览端点只接受 durable asset ID，并在 host 内解析和复核真实文件；Renderer 不接触 `assets.local_path`。完整生命周期与 Agent 读取链路见 `src/features/conversation/attachments/README.md`。
+1. 先确认业务 owner，在对应 domain/feature 或 App Host application 层实现规则和用例。
+2. 跨 Renderer、CLI 或插件边界的 DTO 先进入 [`packages/schemas`](../../../packages/schemas/README.md)，Route 只执行 schema parse 和序列化。
+3. Router 优先跟随业务 owner；只有当前组合尚未归位时，才在本历史目录增加最薄的 adapter，并在 `index.ts` 挂载。
+4. 依赖从 `RouteDependencies` 或明确的 route factory 参数注入，不在 Router 内读取全局数据库或自行构造另一套 runtime。
+5. 新 route family 若影响健康状态或启动诊断，同步更新 `RouteConfigurationResult` 与 `getRouteSummary()`。
+6. 测试真实成功、鉴权、输入错误、取消/关闭和资源清理语义；不要只断言路径存在。
 
----
+## 安全与进程边界
 
-## 3) 如何新增一个路由/端点（推荐流程）
+- App Server 只监听 loopback；Renderer 与 Conversation CLI 使用互不相通的 session token。
+- CORS 不是鉴权。`ApiServer` 必须在 body parser 前完成来源和 token 校验，避免未授权大请求消耗解析资源。
+- 默认请求体限制由 `ApiServer` 统一管理；上传、Conversation 和其他大 payload 必须在各自 route 明确限额。
+- Router 不接触 `BrowserWindow`、`ipcMain`、Electron `shell` 或真实 Desktop credential；需要桌面能力时调用 App Host 的窄 port。
+- Renderer 不接触数据库路径、资产物理路径或 Backend 内部对象，只消费稳定 ID 与 DTO。
 
-### 3.1 这是某个业务 Feature 的端点
+## 历史目录债务
 
-建议把 router/handler 放在该 Feature 内（保持内聚），然后在此处挂载：
+`routes/**`、`services/apiServer.ts` 和相关 Backend 初始化仍位于 `src/electron-main/**`，是 App Server cutover 后尚未完成的物理归位，不是继续向 Electron Main 聚合业务的理由。后续移动必须以 App Server 组合根、domain owner 和公开合同为单位，不能机械搬目录或建立兼容双入口。
 
-1. 在 `src/features/<feature>/` 内实现 router（或暴露 `createXxxRouter(service)` 工厂）
-2. 在 `src/electron-main/routes/index.ts` 引入并 `app.use('/api/v1/xxx', createXxxRouter(...))`
-3. 如果需要依赖服务实例，通过 `RouteDependencies` 传入（不要在 router 内自行 new 服务）
+## 验证
 
-### 3.2 这是“环境适配型”路由
+从仓库根按改动范围执行：
 
-例如健康检查、静态文件、开发调试等，可以放在 `routes/` 内：
+```bash
+pnpm vitest run \
+  src/electron-main/routes \
+  src/electron-main/services/apiServer.test.ts \
+  src/electron-main/services/apiServer.lifecycle.test.ts
+pnpm guard:app-server-backend-boundary
+```
 
-- 参考：`healthRouter.ts`、`staticRouter.ts`、`providerOutboundDebugRouter.ts`
-
-### 3.3 更新可观测摘要（可选但推荐）
-
-如果你希望启动日志能展示新端点，请同步更新：
-
-- `getRouteSummary(...)`
+涉及 Conversation 路由时，还需执行 [Conversation 测试门禁](../../../docs/conversation-platform/11-testing-gates.md) 中与改动对应的 gate。
