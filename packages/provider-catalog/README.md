@@ -34,9 +34,9 @@ exports 消费目录；旧 `src/domains/provider-catalog`
 上游新增模型且现有 connection/route/package 已覆盖其协议时，正常改动范围应限于同步、人工 diff、准入 policy 与业务 conformance，不得新增 Provider
 factory、Host 分支或 Renderer 特例。只有上游资料缺失、错误或不满足产品安全要求时，才允许维护最小的本地补充事实，并记录来源、理由、复核时间和删除条件。
 
-来源和依赖只保留贡献者需要理解的稳定边界：目录数据来自 models.dev，语言推理 codec 由
-`@linnlabs/linnkit-provider-ai-sdk` 统一接入 Vercel AI SDK Provider package。精确版本与许可证分别以 package
-manifest 和根 `THIRD_PARTY_NOTICES.txt` 为准，不在本 README 复制依赖清单或调研过程。
+目录数据来自 models.dev；语言推理 codec 由
+`@linnlabs/linnkit-provider-ai-sdk` 统一接入 Vercel AI SDK Provider package。Catalog 只拥有外部事实到产品目录与
+runtime binding 的投影，不拥有第三方协议实现。
 
 具体 wire codec 继续遵循
 [`@linnlabs/linnkit-provider-ai-sdk`](../linnkit-provider-ai-sdk/README.md)
@@ -173,22 +173,3 @@ key/id、关键容量、模型能力 admission、deprecated/non-text-output 过�
 本 README 是 Catalog 所有权、双投影、同步事务和业务门禁的长期真源。AI SDK
 factory 与 codec 的长期合同由 `packages/linnkit-provider-ai-sdk/README.md`
 持有；Catalog 不反向依赖该 package，二者只由 Linnya Host composition 显式连接。
-
-## 上游与许可证
-
-Provider Catalog 只直接复用一类外部数据：models.dev 的模型目录。同步器对其公开 API 做严格解析，再由 Linnya
-自己的 admission policy 生成公开目录和 Host-only runtime binding；它不复制 models.dev 的实现源码，也不接受上游
-`npm` 或 `api` 字段直接决定运行时 package。
-
-语言推理不由本 package 实现。正式 Provider codec 统一由
-[`@linnlabs/linnkit-provider-ai-sdk`](../linnkit-provider-ai-sdk/README.md)
-通过 Vercel AI SDK Provider package 接入；该 package 的 manifest 是精确版本 owner，conformance 是行为 owner。
-Catalog 只提供产品身份、准入政策和 runtime profile，两者由 Linnya Host 显式连接。
-
-许可证与来源公告由根
-[`THIRD_PARTY_NOTICES.txt`](../../THIRD_PARTY_NOTICES.txt)
-及发布门禁统一维护。models.dev 的 MIT 声明、Vercel AI SDK 及各 runtime dependency 的许可证都随实际制品依赖闭包生成和校验。
-README 不重复这些法律文本或逐项版本台账，避免文档与真实依赖漂移。
-
-如果未来复制或修改第三方源码，应在实际源码附近保留必要来源说明，并同步更新 NOTICE；如果只是依赖 package、参考设计或比较候选方案，
-则分别由 manifest、NOTICE、Git history 或 Pull Request 承担追溯，不把阶段调研长期保留在模块 README。
