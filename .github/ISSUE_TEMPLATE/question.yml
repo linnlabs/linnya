@@ -1,0 +1,28 @@
+name: Public question
+description: Ask about the public source, current public build, or public documentation
+title: "[Question]: "
+body:
+  - type: markdown
+    attributes:
+      value: Ask only questions that can be discussed publicly. Do not include API keys, private documents, database contents, full user directories, private URLs, or sensitive infrastructure details. Report security vulnerabilities through SECURITY.md instead.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Describe what you are trying to understand or accomplish.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Relevant context
+      description: Include the Linnya version or commit, operating system, related public documentation, and sanitized logs when relevant.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched for an existing issue or documentation answer.
+          required: true
+        - label: This question contains no private information and is not a security vulnerability.
+          required: true

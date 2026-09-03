@@ -53,6 +53,14 @@ The first desktop start prepares the target-platform Qdrant and Poppler runtimes
 
 See the [documentation map](docs/README.md) and [development guide](docs/development/README.md) for architecture, targeted validation, native-module requirements, and source builds.
 
+### One-line prompt for coding agents
+
+If you use Claude Code, Codex, Cursor, Windsurf, or another coding agent, you can paste this directly:
+
+> If Linnya is not cloned yet, clone [https://github.com/linnlabs/linnya](https://github.com/linnlabs/linnya) first; then follow this README and `docs/development/README.md` to prepare a local desktop development environment, use Corepack and the repository-pinned pnpm version, install dependencies with `pnpm install --frozen-lockfile`, start Linnya with `pnpm run dev:electron`, keep development data in the default isolated `_dev_data` workspace, do not depend on private repositories or adjacent checkouts and do not invent or commit credentials, and finish by telling me the next command to run plus which Node.js / pnpm / Rust / `wasm-pack` / platform prerequisites are still missing.
+
+---
+
 ## Plugin development
 
 Plugins own their backend, renderer, shared contracts, tools, agents, skills, migrations, and artifacts. The host supplies stable capabilities and must not acquire plugin business semantics.
@@ -66,7 +74,11 @@ Start with:
 
 ## Contributing and support
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [GOVERNANCE.md](GOVERNANCE.md) before submitting a change. Use [GitHub Issues](https://github.com/linnlabs/linnya/issues) for reproducible bugs and scoped proposals. Security reports follow [SECURITY.md](SECURITY.md).
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before submitting a change. Project maintenance and decision-making are described in the contribution guide.
+
+Use [GitHub Issues](https://github.com/linnlabs/linnya/issues) for reproducible bugs in the public source or current public build, focused feature proposals, public documentation corrections, and questions that can be discussed without private information. Search for an existing issue first. Bug reports should include the Linnya version or commit, operating system, reproduction steps, expected and actual behavior, and relevant sanitized logs or screenshots.
+
+Do not post API keys, database contents, private documents, full user directories, private URLs, or sensitive infrastructure details. Security vulnerabilities follow [SECURITY.md](SECURITY.md), not a public issue.
 
 ## License
 

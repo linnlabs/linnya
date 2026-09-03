@@ -35,6 +35,14 @@ A pull request should explain:
 
 Keep commits reviewable and avoid mixing unrelated cleanup. Generated files must be produced by their canonical generator.
 
+## Maintenance and decisions
+
+Linnya is led and maintained by BCAutumn under the `linnlabs` GitHub organization. The lead maintainer has final responsibility for product direction, repository scope, merge decisions, releases, and security response.
+
+Significant changes to public contracts, architecture, compatibility, security, or product behavior should be discussed in a public issue or pull request before implementation, then recorded in the owning stable documentation. Community input is welcome, but a proposal may be declined when it conflicts with product direction, weakens established boundaries, or creates disproportionate long-term maintenance obligations.
+
+Changes merge when they are ready. A product release is a separately approved and verified snapshot; merging a change does not by itself create or schedule a release.
+
 ## Contribution license
 
 No separate Contributor License Agreement is currently required. By submitting a contribution, you confirm that you have the right to submit it and agree that it may be distributed under the repository's license.

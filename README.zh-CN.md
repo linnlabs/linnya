@@ -53,6 +53,14 @@ pnpm run dev:electron
 
 架构、定向验证、原生模块和源码构建说明见[文档总图](docs/README.md)与[开发指南](docs/development/README.md)。
 
+### 给编码 Agent 的一句话 Prompt
+
+如果你使用 Claude Code、Codex、Cursor、Windsurf 或其他编码 Agent，可以直接粘贴下面这句话：
+
+> 如果尚未 clone Linnya，请先 clone [https://github.com/linnlabs/linnya](https://github.com/linnlabs/linnya)；然后按照本 README 和 `docs/development/README.md` 准备本地桌面开发环境，使用 Corepack 和仓库锁定的 pnpm 版本，通过 `pnpm install --frozen-lockfile` 安装依赖并用 `pnpm run dev:electron` 启动 Linnya，将开发数据保留在默认隔离的 `_dev_data` 工作区，不依赖私有仓或相邻 checkout，也不要虚构或提交凭据，最后告诉我下一条要执行的命令，以及 Node.js、pnpm、Rust、`wasm-pack` 或平台前置条件中还缺少什么。
+
+---
+
 ## 插件开发
 
 插件拥有自己的 backend、renderer、shared 合同、工具、Agent、Skill、迁移和 artifact。Host 只提供稳定能力，不持有插件业务语义。
@@ -66,7 +74,11 @@ pnpm run dev:electron
 
 ## 贡献与支持
 
-提交修改前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)、[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) 和 [GOVERNANCE.md](GOVERNANCE.md)。可复现 Bug 与边界清楚的方案请提交到 [GitHub Issues](https://github.com/linnlabs/linnya/issues)，安全问题按 [SECURITY.md](SECURITY.md) 处理。
+提交修改前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。项目维护与决策方式也在贡献指南中说明。
+
+可复现的公开源码或当前公开版本问题、边界清楚的功能方案、公开文档修正，以及不涉及私密信息的问题，请提交到 [GitHub Issues](https://github.com/linnlabs/linnya/issues)。提交前先搜索已有 Issue。Bug 报告应包含 Linnya 版本或 commit、操作系统、复现步骤、预期与实际行为，以及经过脱敏的相关日志或截图。
+
+不要公开 API Key、数据库内容、私有文档、完整用户目录、私有 URL 或敏感基础设施信息。安全漏洞按 [SECURITY.md](SECURITY.md) 私下报告，不要提交公开 Issue。
 
 ## 许可证
 
