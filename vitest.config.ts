@@ -47,10 +47,9 @@ export default defineConfig({
       { find: /^@linnlabs\/linnkit-provider-ai-sdk$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit-provider-ai-sdk/src/index.ts') },
       { find: /^@linnya\/provider-catalog\/runtime-bindings$/, replacement: path.resolve(import.meta.dirname, 'packages/provider-catalog/src/runtime-bindings.ts') },
       { find: /^@linnya\/provider-catalog$/, replacement: path.resolve(import.meta.dirname, 'packages/provider-catalog/src/index.ts') },
-      // linnkit 真包名是 `@linnlabs/linnkit`（GitHub Packages 私有 scope，详见 packages/linnkit/docs/release/RELEASE.md）。
-      // scope 选用 `@linnlabs`（linn 系列总品牌伞）的原因：`@linn`/`@linnya` 这两个 GitHub username
-      // 已分别被英国音响公司 Linn Products / 一个 2016 年废弃账号占用，永久无法注册；详见 RELEASE.md §0 v3 修订。
-      // 同时登记两套别名：旧名 `linnkit*`（兼容 monorepo 内 ~170 处历史 import）+ 真名 `@linnlabs/linnkit*`（新代码 / linnsy / 外部消费者）。
+      // linnkit 的公开 npm 包名是 `@linnlabs/linnkit`；monorepo 开发期仍直接解析当前 workspace 源码。
+      // `@linnlabs` 是 linn 系列公共 package 的统一 scope。
+      // 同时登记两套别名：旧名 `linnkit*`（兼容 monorepo 既有 import）+ 真名 `@linnlabs/linnkit*`（新代码与外部消费者）。
       // ⚠️ 这里用精确正则（`^...$`）避免前缀劫持；browser-safe slim seam `runtime-kernel/events` 必须显式列出。
       { find: /^linnkit$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/index.ts') },
       { find: /^linnkit\/ports$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/ports/index.ts') },

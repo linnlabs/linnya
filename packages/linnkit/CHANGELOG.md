@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-09-03
+
 ### Added
 
 - Added ordered durable attachment refs to successful child `tool_output` parent-trace projections. Runtime→SSE mapping preserves the refs for Host compact history and full Subrun UI admission without copying resource bytes or exposing them to the parent Agent context.
