@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import type { RuntimeEvent, RuntimeResourceRef } from 'linnkit/contracts';
+import type { RuntimeEvent, RuntimeResourceRef } from '@linnlabs/linnkit/contracts';
 import type { WorkspaceAssetCommitRecord } from 'src/features/workspace/assets/definitions/workspaceAssetCommit';
 
 interface AssetRow {

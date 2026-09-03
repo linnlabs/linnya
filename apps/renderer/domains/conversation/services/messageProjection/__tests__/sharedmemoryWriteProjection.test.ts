@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialProjectionState, reduceEvent } from '../index';
 import type { BaseMessage, Conversation, ToolCallMessage } from '../../../types';
-import { createSSEToolCallDecisionEvent, createSSEToolOutputEvent } from 'linnkit/contracts';
+import { createSSEToolCallDecisionEvent, createSSEToolOutputEvent } from '@linnlabs/linnkit/contracts';
 import { PROJECTION_TEST_SCOPE } from './helpers/projectionTestScope';
 
 function createConversation(): Conversation {

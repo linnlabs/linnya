@@ -3,7 +3,7 @@
  *
  * 审计上下文仅服务本地观测，禁止进入模型供应商请求体或请求头。
  */
-import { setLlmAuditRecorder } from 'linnkit';
+import { setLlmAuditRecorder } from '@linnlabs/linnkit';
 import {
   recordAfterContextManager,
   recordAfterContextManagerOnSystemReminderHit,

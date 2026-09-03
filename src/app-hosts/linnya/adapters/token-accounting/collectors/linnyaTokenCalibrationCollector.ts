@@ -1,10 +1,10 @@
-import type { telemetry } from 'linnkit/runtime-kernel';
+import type { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import type {
   CanonicalLlmUsage,
   ContextBuildTokenEstimate,
   TokenRoute,
   TokenUsageCalibrationSample,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 type TelemetryEvent = telemetry.TelemetryEvent;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AuditPort } from 'linnkit/ports';
+import type { AuditPort } from '@linnlabs/linnkit/ports';
 
 import {
   CommandExecutionIdentitySchema,

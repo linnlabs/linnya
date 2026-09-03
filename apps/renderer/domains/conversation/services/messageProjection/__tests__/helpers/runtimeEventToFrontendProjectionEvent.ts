@@ -2,8 +2,8 @@ import {
   runtimeEventToSSEEvent,
   type RuntimeEvent,
   type SSEExecutionScope,
-} from 'linnkit/contracts';
-import { shouldEmitRuntimeEventToSse } from 'linnkit/runtime-kernel/events';
+} from '@linnlabs/linnkit/contracts';
+import { shouldEmitRuntimeEventToSse } from '@linnlabs/linnkit/runtime-kernel/events';
 
 import type { ProjectionEvent } from '../..';
 

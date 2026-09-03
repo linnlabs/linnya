@@ -4,7 +4,7 @@
  * Evidence domain 只接收明确的 conversation scope 与审计字段；
  * 这个 adapter 是唯一允许从 ToolContext 投影这些事实的边界。
  */
-import type { ToolExecutionContext } from 'linnkit/runtime-kernel';
+import type { ToolExecutionContext } from '@linnlabs/linnkit/runtime-kernel';
 import {
   saveEvidenceBundle,
   type KnowledgeBaseEvidenceItem,

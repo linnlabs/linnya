@@ -5,8 +5,8 @@ import {
   ProcessAgentModelControlV1Schema,
   ShellAgentModelControlV1Schema,
 } from '@app/schemas/commands';
-import type { SerializableJsonValue } from 'linnkit/contracts';
-import type { CanonicalInferenceEvent, CanonicalInferencePort } from 'linnkit/ports';
+import type { SerializableJsonValue } from '@linnlabs/linnkit/contracts';
+import type { CanonicalInferenceEvent, CanonicalInferencePort } from '@linnlabs/linnkit/ports';
 
 import { parseCommandToolModelControlLine } from '../../../../../src/domains/commands';
 import {

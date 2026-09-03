@@ -3,13 +3,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 import { SQLiteEventStore } from 'src/app-hosts/linnya/adapters/persistence/event-store/sqlite.implementation';
 import { SQLiteRunRegistryStore } from 'src/app-hosts/linnya/adapters/persistence/run-registry';
-import type { runSupervisor } from 'linnkit/runtime-kernel';
-import type { LlmInputMaterializerPort } from 'linnkit/ports';
+import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
+import type { LlmInputMaterializerPort } from '@linnlabs/linnkit/ports';
 import {
   bootstrapAgentRuntimeSingletons,
   resetAgentRuntimeSingletonsForTest,
 } from '../agentRuntimeSingletons';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 
 type RunRecord = runSupervisor.RunRecord;
 

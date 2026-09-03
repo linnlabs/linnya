@@ -1,6 +1,6 @@
 import { truncateObservationToPreview } from '../../../../tools/tool_output/toolOutputStore';
 import { assertToolConversationScopeContext } from './conversation-scope';
-import type { ObservationPreviewPort, ToolRuntimePort } from 'linnkit/runtime-kernel';
+import type { ObservationPreviewPort, ToolRuntimePort } from '@linnlabs/linnkit/runtime-kernel';
 import { toolRegistry } from './toolRegistry';
 
 function readToolDefinitionCompat(toolName: string) {

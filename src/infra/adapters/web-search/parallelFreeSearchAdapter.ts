@@ -4,7 +4,7 @@ import {
   WebHttpError,
   type WebHttpResponse,
 } from '../web-http/webHttpFetch';
-import { createServerSentEventFrameParser } from 'linnkit/contracts';
+import { createServerSentEventFrameParser } from '@linnlabs/linnkit/contracts';
 
 const PARALLEL_MCP_PROTOCOL_VERSION = '2025-06-18';
 const DEFAULT_PARALLEL_MCP_URL = 'https://search.parallel.ai/mcp';

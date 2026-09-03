@@ -1,7 +1,7 @@
 import type { PromptKey } from 'src/app-hosts/linnya/agent-registry/prompt.types';
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
-import { generateSubrunId, runIdFromSubrunId, type RunId } from 'linnkit/contracts';
-import { childRuns, tools } from 'linnkit/runtime-kernel';
+import { generateSubrunId, runIdFromSubrunId, type RunId } from '@linnlabs/linnkit/contracts';
+import { childRuns, tools } from '@linnlabs/linnkit/runtime-kernel';
 import {
   recordRunTranscript,
   runWithLLMAuditContext,
@@ -14,7 +14,7 @@ import {
 import type { RegisteredAgentResolverPort } from './registeredAgentResolver';
 import { createDefaultRegisteredAgentResolver } from './registeredAgentResolver';
 import type { LinnyaAgentRuntimeScope } from 'src/app-hosts/linnya/adapters/runtime-assembly/agentRuntimeScope';
-import type { telemetry } from 'linnkit/runtime-kernel';
+import type { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import {
   CommandAgentRunIdSchema,
   CommandConversationIdSchema,

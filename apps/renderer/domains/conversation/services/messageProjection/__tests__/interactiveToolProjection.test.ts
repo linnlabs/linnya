@@ -6,7 +6,7 @@ import {
   createSSEToolCallDecisionEvent,
   createSSEToolOutputEvent,
   ToolCallIdSchema,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { PROJECTION_TEST_SCOPE } from './helpers/projectionTestScope';
 
 function createConversation(): Conversation {

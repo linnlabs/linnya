@@ -2,7 +2,7 @@ import {
   ToolOutputBlobIdSchema,
   type SubagentArtifactRef,
 } from '@app/schemas';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 import { isWorkspaceVfsInode } from '../../../../../shared/artifacts/artifactReference';
 

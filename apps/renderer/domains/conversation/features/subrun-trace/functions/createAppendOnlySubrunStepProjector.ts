@@ -1,5 +1,5 @@
 import type { ToolLocalizedTextDescriptor } from '@linnya/plugin-host-contract/renderer/toolUi';
-import type { SSESubRunTraceEvent } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 
 import {
   projectToolCompactStep,

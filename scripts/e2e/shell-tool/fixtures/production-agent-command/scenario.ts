@@ -5,11 +5,11 @@ import path from 'node:path';
 
 import { app } from 'electron';
 import { resolveElectronLocalProcessPlatformRuntime } from '../../../../../src/electron-main/local-process-runtime/production-runtime';
-import { telemetry } from 'linnkit/runtime-kernel';
+import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import {
   createDefaultGraphExecutor,
   LlmCaller,
-} from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/runtime-kernel';
 import { ConversationToolMessagePayloadSchema } from '@app/schemas';
 import type { KnowledgeBaseService } from '../../../../../src/features/knowledge-base/application/knowledgeBaseService';
 import { DatabaseService } from '../../../../../src/electron-main/services/database';

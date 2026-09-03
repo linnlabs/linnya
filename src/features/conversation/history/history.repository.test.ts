@@ -22,7 +22,7 @@ import {
   routeRuntimeEvent,
   type RoutedRuntimeEvent,
   type RuntimeEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 class FakeEventStore implements IEventStore {
   private readonly eventsByConversation = new Map<string, RoutedRuntimeEvent[]>();

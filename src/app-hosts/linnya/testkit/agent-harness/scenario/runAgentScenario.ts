@@ -1,11 +1,11 @@
-import type { AuditEnvelope, RuntimeEvent } from 'linnkit/contracts';
+import type { AuditEnvelope, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import {
   assertRunInvariants,
   createRunSupervisorHarness,
   validateRunInvariants,
   type RunInvariantReport,
-} from 'linnkit/testkit';
-import { events as runtimeEvents, type runSupervisor } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/testkit';
+import { events as runtimeEvents, type runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import { BaseTool, type ToolExecutionContext, type ToolParameterSchema } from 'src/tools/types';
 import {
   createGraphLoopHarness,
@@ -13,8 +13,8 @@ import {
   type GraphLoopHarnessOptions,
   type GraphLoopHarnessRunResult,
 } from 'src/app-hosts/linnya/testkit/agent-harness/graphLoopHarness';
-import type { ScriptedLlmTurn } from 'linnkit/testkit';
-import { RunIdSchema } from 'linnkit/contracts';
+import type { ScriptedLlmTurn } from '@linnlabs/linnkit/testkit';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 
 export type AgentScenarioFailureInjection =
   | { kind: 'llm_throw'; atCall: number; message: string }

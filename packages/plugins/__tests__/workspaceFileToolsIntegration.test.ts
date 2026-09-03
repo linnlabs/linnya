@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
-import { createToolContextFixture } from 'linnkit/testkit';
-import { ToolNode, type EngineState } from 'linnkit/runtime-kernel';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
+import { ToolNode, type EngineState } from '@linnlabs/linnkit/runtime-kernel';
 import type { WorkspaceMutationEvent } from '@app/schemas';
 
 import type { ToolContext } from 'src/tools/types';
@@ -69,7 +69,7 @@ import {
   RunIdSchema,
   ToolCallIdSchema,
   type RuntimeEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import {
   attachCitationRefAllocator,
   attachCitationSequence,

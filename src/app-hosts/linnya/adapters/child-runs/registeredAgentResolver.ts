@@ -1,5 +1,5 @@
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
-import type { childRuns } from 'linnkit/runtime-kernel';
+import type { childRuns } from '@linnlabs/linnkit/runtime-kernel';
 import { toChildRunAgentConfig } from './childRunInvokerFactory';
 import { findRegisteredAgentDefinitionByPromptKey } from 'src/app-hosts/linnya/agent-registry/agentDefinitionResolver';
 

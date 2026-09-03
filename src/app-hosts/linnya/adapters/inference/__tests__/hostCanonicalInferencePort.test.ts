@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from 'linnkit/ports';
-import { consumeCanonicalInferenceStream } from 'linnkit/runtime-kernel';
+import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
+import { consumeCanonicalInferenceStream } from '@linnlabs/linnkit/runtime-kernel';
 import type { ModelConfig, ModelInferenceRoute } from 'src/domains/model-catalog';
 import { createInMemoryProviderOutboundAudit } from 'src/domains/audit/features/provider-outbound-audit';
 import type {

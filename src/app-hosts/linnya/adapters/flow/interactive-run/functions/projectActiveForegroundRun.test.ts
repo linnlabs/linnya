@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { runSupervisor } from 'linnkit/runtime-kernel';
+import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import { projectActiveForegroundRun } from './projectActiveForegroundRun';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 
 type RunSnapshot = runSupervisor.RunSnapshot;
 

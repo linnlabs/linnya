@@ -7,14 +7,14 @@ import {
   DEFAULT_CONTEXT_COMPACTION_POLICY,
   RunIdSchema,
   type RuntimeEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import type {
   AgentInvocationRequest,
   CanonicalInferenceMessage,
   LlmRequestMessage,
   TokenizerPort,
-} from 'linnkit/ports';
-import { childRuns, execution, graph, llm, runSupervisor, tools } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/ports';
+import { childRuns, execution, graph, llm, runSupervisor, tools } from '@linnlabs/linnkit/runtime-kernel';
 
 import { LinnyaRegisteredChildRunLifecycle } from 'src/app-hosts/linnya/adapters/child-runs/childRunLifecycle';
 import {

@@ -1,14 +1,14 @@
 import {
   LLM_IMAGE_INPUT_ERROR_CODES,
   LlmImageInputError,
-} from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/runtime-kernel';
 import type {
   ImageInputAdmissionEvidence,
   LlmInputMaterializerPort,
   LlmRequestMessage,
   ResolvedLlmImageAttachment,
   ResolvedLlmInputMessage,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 import {
   WorkspaceLlmImageResolutionError,
   type WorkspaceLlmImageResolverPort,

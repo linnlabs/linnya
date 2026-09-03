@@ -6,7 +6,7 @@ import {
   ToolCallIdSchema,
   type SubRunTraceEvent,
   type RuntimeResourceRef,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { CONVERSATION_SCHEMAS } from '../../event-store/conversation.schema';
 import { readSubrunTrace } from '../../event-store/ui-projection/sqliteUiMessagesReader';
 import { SqliteSubrunTraceHistoryProjector } from '../sqliteSubrunTraceHistoryProjector';

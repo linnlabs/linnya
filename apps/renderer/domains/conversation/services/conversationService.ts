@@ -36,7 +36,7 @@ import {
   createServerSentEventFrameParser,
   validateSSEEvent,
   type ServerSentEventFrame,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import type {
   SSEErrorEvent,
   SSEContextUsageSnapshotEvent,
@@ -55,7 +55,7 @@ import type {
   SSEToolOutputEvent,
   SSEToolProcessEvent,
   SSETransportEndEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 // 已移除模块加载时的 console.log：避免在控制台产生常驻噪音日志
 

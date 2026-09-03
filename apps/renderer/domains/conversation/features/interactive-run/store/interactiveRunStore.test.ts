@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import type { SSEEvent } from 'linnkit/contracts';
+import type { SSEEvent } from '@linnlabs/linnkit/contracts';
 import { useInteractiveRunStore } from './interactiveRunStore';
-import { RunIdSchema, ToolCallIdSchema } from 'linnkit/contracts';
+import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 function createAwaitingEvent(): Extract<SSEEvent, { type: 'requires_user_interaction' }> {
   return {

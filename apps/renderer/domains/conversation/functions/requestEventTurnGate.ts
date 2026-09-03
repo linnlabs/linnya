@@ -1,4 +1,4 @@
-import type { SSEEvent } from 'linnkit/contracts';
+import type { SSEEvent } from '@linnlabs/linnkit/contracts';
 
 export type RequestTurnEvent = Pick<SSEEvent, 'type' | 'turn_id'>;
 

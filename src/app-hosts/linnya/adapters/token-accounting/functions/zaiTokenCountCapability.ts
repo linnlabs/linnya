@@ -1,4 +1,4 @@
-import type { LlmRequestMessage } from 'linnkit/ports';
+import type { LlmRequestMessage } from '@linnlabs/linnkit/ports';
 import type {
   TokenCountCapability,
   TokenCountCapabilityInput,

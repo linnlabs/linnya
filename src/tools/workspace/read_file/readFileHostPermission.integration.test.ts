@@ -10,8 +10,8 @@ import {
   CommandRunPermissionSnapshotV1Schema,
   type CommandPermissionLevel,
 } from '@app/schemas/commands';
-import { ToolCallIdSchema } from 'linnkit/contracts';
-import { createToolContextFixture } from 'linnkit/testkit';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createNodePhysicalFileReader } from 'src/app-hosts/linnya/adapters/file-read/createNodePhysicalFileReader';
 import { createToolRuntimeHarness } from 'src/app-hosts/linnya/testkit/agent-harness/toolRegistryHarness';

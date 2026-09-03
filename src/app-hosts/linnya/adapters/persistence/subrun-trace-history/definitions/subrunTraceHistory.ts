@@ -1,4 +1,4 @@
-import type { SubRunTraceEvent } from 'linnkit/contracts';
+import type { SubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 
 export const DURABLE_SUBRUN_TRACE_KINDS = [
   'thought_complete',

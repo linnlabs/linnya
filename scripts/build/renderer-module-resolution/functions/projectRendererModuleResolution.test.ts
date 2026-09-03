@@ -47,8 +47,6 @@ describe('Renderer module-resolution catalog', () => {
     ['@linnya/renderer-ui/font-stack', 'packages/renderer-ui/src/features/font-stack/index.ts'],
     ['@linnya/renderer-ui/scroll', 'packages/renderer-ui/src/scroll/index.ts'],
     ['@app/schemas', 'packages/schemas/src/index.ts'],
-    ['linnkit/contracts', 'packages/linnkit/src/contracts/index.ts'],
-    ['linnkit/runtime-kernel/events', 'packages/linnkit/src/runtime-kernel/events/index.ts'],
     ['stream-markdown-parser', 'packages/stream-markdown-parser/src/index.ts'],
   ])('resolves %s to its canonical browser target', (specifier, relativeTarget) => {
     expect(resolveCatalogTarget(
@@ -57,5 +55,17 @@ describe('Renderer module-resolution catalog', () => {
       'vite',
       specifier,
     )).toBe(path.resolve(repositoryRoot, relativeTarget));
+  });
+
+  it.each([
+    '@linnlabs/linnkit/contracts',
+    '@linnlabs/linnkit/runtime-kernel/events',
+  ])('leaves published Linnkit entry %s to the package resolver', specifier => {
+    expect(resolveCatalogTarget(
+      RENDERER_MODULE_RESOLUTION_CATALOG,
+      repositoryRoot,
+      'vite',
+      specifier,
+    )).toBeUndefined();
   });
 });

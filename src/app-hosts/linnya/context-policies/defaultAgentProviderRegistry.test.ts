@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import * as contextManager from 'linnkit/context-manager';
-import type { AiMessage } from 'linnkit/contracts';
+import * as contextManager from '@linnlabs/linnkit/context-manager';
+import type { AiMessage } from '@linnlabs/linnkit/contracts';
 import { createDefaultAgentProviderRegistry } from './defaultAgentProviderRegistry';
 import { PluginRuntimeDatabaseNotReadyError } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
 

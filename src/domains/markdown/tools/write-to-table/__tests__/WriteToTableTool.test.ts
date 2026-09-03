@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readWriteToTableOutput } from '@app/schemas';
-import { createToolContextFixture } from 'linnkit/testkit';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import { WriteToTableTool } from '../WriteToTableTool';
 
 describe('WriteToTableTool', () => {

@@ -1,6 +1,6 @@
-import type { SSETransportEndEvent } from 'linnkit/contracts';
+import type { SSETransportEndEvent } from '@linnlabs/linnkit/contracts';
 
-import { parseSSEExecutionScope } from 'linnkit/contracts';
+import { parseSSEExecutionScope } from '@linnlabs/linnkit/contracts';
 
 import { releaseExecutionProjectionState } from '../functions/executionProjectionState';
 import type { MessageProjectionState, ProjectionResult } from '../state';

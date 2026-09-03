@@ -1,5 +1,5 @@
 import type { ConversationNextRequest } from '@app/schemas';
-import { generateRuntimeEventId } from 'linnkit/contracts';
+import { generateRuntimeEventId } from '@linnlabs/linnkit/contracts';
 
 /**
  * Flow 的请求构建、持久化和 runner history 必须共享同一批事件身份。

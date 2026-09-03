@@ -1,6 +1,6 @@
-import type { execution } from 'linnkit/runtime-kernel';
-import type { runSupervisor } from 'linnkit/runtime-kernel';
-import type { graph } from 'linnkit/runtime-kernel';
+import type { execution } from '@linnlabs/linnkit/runtime-kernel';
+import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
+import type { graph } from '@linnlabs/linnkit/runtime-kernel';
 import type {
   ConversationNextRequest,
   FlowExecutionResult,

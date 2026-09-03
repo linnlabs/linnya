@@ -1,4 +1,4 @@
-import { validateSSEEvent, type SSEEvent } from 'linnkit/contracts';
+import { validateSSEEvent, type SSEEvent } from '@linnlabs/linnkit/contracts';
 
 import { createRequestEventTurnGate } from '../../../functions/requestEventTurnGate';
 import type {

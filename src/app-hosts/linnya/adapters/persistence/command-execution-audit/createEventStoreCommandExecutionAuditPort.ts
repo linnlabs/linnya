@@ -1,4 +1,4 @@
-import type { AuditPort } from 'linnkit/ports';
+import type { AuditPort } from '@linnlabs/linnkit/ports';
 
 import {
   projectCommandExecutionAuditEnvelope,

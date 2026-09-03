@@ -1,4 +1,4 @@
-import { resolveEffectiveEffort, type ReasoningEffort } from 'linnkit/contracts';
+import { resolveEffectiveEffort, type ReasoningEffort } from '@linnlabs/linnkit/contracts';
 
 import type { ModelCatalogItem } from '../../model-catalog';
 import type { ModelPurposeSelections } from '../definitions/modelPurposeBindings';

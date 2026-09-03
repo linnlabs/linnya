@@ -1,4 +1,4 @@
-import type { ReasoningEffort } from 'linnkit/contracts';
+import type { ReasoningEffort } from '@linnlabs/linnkit/contracts';
 
 import type { AuxiliaryModelSelections } from './modelPurposes';
 

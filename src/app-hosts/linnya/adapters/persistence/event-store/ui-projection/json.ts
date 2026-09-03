@@ -1,4 +1,4 @@
-import type { SerializableJsonRecord, SerializableJsonValue } from 'linnkit/contracts';
+import type { SerializableJsonRecord, SerializableJsonValue } from '@linnlabs/linnkit/contracts';
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);

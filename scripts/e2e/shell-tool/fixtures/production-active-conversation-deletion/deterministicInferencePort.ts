@@ -4,7 +4,7 @@ import {
   ShellAgentModelControlV1Schema,
   type CommandProcessHandle,
 } from '@app/schemas/commands';
-import type { CanonicalInferencePort } from 'linnkit/ports';
+import type { CanonicalInferencePort } from '@linnlabs/linnkit/ports';
 
 import { parseCommandToolModelControlLine } from '../../../../../src/domains/commands';
 import {

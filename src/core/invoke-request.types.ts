@@ -13,7 +13,7 @@
  */
 
 import type { PromptKey } from '@app/schemas';
-import type { AiMessage } from 'linnkit/contracts';
+import type { AiMessage } from '@linnlabs/linnkit/contracts';
 
 export interface CoreInvokeRequest {
   /** 用户查询 */

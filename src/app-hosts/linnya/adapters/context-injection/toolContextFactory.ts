@@ -1,10 +1,10 @@
-import { childRunTrace, graph, runContext, tools } from 'linnkit/runtime-kernel';
+import { childRunTrace, graph, runContext, tools } from '@linnlabs/linnkit/runtime-kernel';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import type { DatabaseService } from 'src/electron-main/services/database';
 import type { KnowledgeBaseService } from 'src/features/knowledge-base/application/knowledgeBaseService';
 import type { WorkspaceMutationPublisher } from 'src/features/workspace/definitions/workspaceMutationPublisher';
 import type { ToolContext } from 'src/tools/types';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { RegisteredChildRunInvokerPort } from 'src/app-hosts/linnya/adapters/child-runs/registeredSubagentInvoker';
 import type { CommandRunPermissionContext } from 'src/domains/commands/features/permission-settings';
 import type { ShellToolRuntimePort } from 'src/app-hosts/linnya/adapters/commands/shell-runtime/definitions';

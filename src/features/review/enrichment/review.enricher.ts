@@ -8,7 +8,7 @@
  * - 将 Review 业务逻辑注入到标准 Enrichment 流程中
  */
 
-import type { RequestEnricher, EnrichmentContext, EnrichmentResult } from 'linnkit/runtime-kernel';
+import type { RequestEnricher, EnrichmentContext, EnrichmentResult } from '@linnlabs/linnkit/runtime-kernel';
 import type { CoreInvokeRequest } from '../../../core/invoke-request.types';
 import type { AgentInvokeRequest } from '../../app-hosts/linnya/context/agent/schemas';
 import { AgentsService } from '../../workspace/infrastructure/sqlite/services/agents.service';

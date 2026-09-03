@@ -13,10 +13,7 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@linnlabs/linnkit-provider-ai-sdk": ["./src/index.ts"],
-      "@linnlabs/linnkit": ["../linnkit/src/index.ts"],
-      "@linnlabs/linnkit/ports": ["../linnkit/src/ports/index.ts"],
-      "@linnlabs/linnkit/contracts": ["../linnkit/src/contracts/index.ts"]
+      "@linnlabs/linnkit-provider-ai-sdk": ["./src/index.ts"]
     }
   },
   "include": [

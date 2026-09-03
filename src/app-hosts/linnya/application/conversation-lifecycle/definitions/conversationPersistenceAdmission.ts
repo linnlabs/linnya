@@ -1,4 +1,4 @@
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 import type {
   ConversationWorkDirectoryResolution,

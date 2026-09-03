@@ -6,7 +6,7 @@ import type {
   RunSession,
 } from 'src/app-hosts/linnya/adapters/persistence/event-store';
 import { Logger } from 'src/shared/logger';
-import type { RoutedRuntimeEvent, RuntimeEvent } from 'linnkit/contracts';
+import type { RoutedRuntimeEvent, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type {
   ConversationPersistenceAdmissionPort,
 } from 'src/app-hosts/linnya/application/conversation-lifecycle';

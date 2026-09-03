@@ -1,4 +1,4 @@
-import { runtimeKernel } from 'linnkit';
+import { runtimeKernel } from '@linnlabs/linnkit';
 import {
   agentConfig,
   agentOrchestration,
@@ -8,7 +8,7 @@ import {
   contextPolicyToProviderOptions,
   formatAgentLlmMessages,
   mergeContextPolicy,
-} from 'linnkit/context-manager';
+} from '@linnlabs/linnkit/context-manager';
 import { createDefaultAgentProviderRegistry } from 'src/app-hosts/linnya/context-policies/defaultAgentProviderRegistry';
 import { LINNYA_CONTEXT_POLICY_FALLBACK } from 'src/app-hosts/linnya/context-policies/defaultContextPolicy';
 import { getAgentTask } from 'src/app-hosts/linnya/agent-registry/agentTaskResolver';
@@ -23,18 +23,18 @@ import type {
   ContextBuildTokenEstimate,
   ContextTokenComponent,
   TokenRoute,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import {
   ContextTokenComponent as ContextTokenComponentSchema,
-} from 'linnkit/contracts';
-import type { AgentSpecContextPolicy } from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
+import type { AgentSpecContextPolicy } from '@linnlabs/linnkit/contracts';
 import type {
   CanonicalInferenceCachePolicy,
   ImageInputAdmissionEvidence,
   LlmImageInputEstimatorPort,
   TokenCounterPort,
   TokenizerPort,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 import type { LinnyaTokenCalibrationCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
 import { modelCatalog } from 'src/domains/model-catalog';
 

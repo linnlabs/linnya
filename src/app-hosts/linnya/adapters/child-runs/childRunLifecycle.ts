@@ -1,8 +1,8 @@
 import type { PromptKey } from 'src/app-hosts/linnya/agent-registry/prompt.types';
-import type { AgentInvocationRequest } from 'linnkit/ports';
-import type { RunId } from 'linnkit/contracts';
-import { childRunTrace, execution, graph, runSupervisor } from 'linnkit/runtime-kernel';
-import type { SubRunTracePublisher } from 'linnkit/runtime-kernel';
+import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
+import type { RunId } from '@linnlabs/linnkit/contracts';
+import { childRunTrace, execution, graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
+import type { SubRunTracePublisher } from '@linnlabs/linnkit/runtime-kernel';
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
 import { runnableDefinitionToAgentSpec } from 'src/app-hosts/linnya/adapters/runtime/agentDefinitionToAgentSpec';
 

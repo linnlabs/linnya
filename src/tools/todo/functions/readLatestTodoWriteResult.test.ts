@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { RuntimeEvent, SerializableJsonValue } from 'linnkit/contracts';
-import { createToolOutputEvent } from 'linnkit/contracts';
+import type { RuntimeEvent, SerializableJsonValue } from '@linnlabs/linnkit/contracts';
+import { createToolOutputEvent } from '@linnlabs/linnkit/contracts';
 
 import { readLatestTodoWriteResult } from './readLatestTodoWriteResult';
 

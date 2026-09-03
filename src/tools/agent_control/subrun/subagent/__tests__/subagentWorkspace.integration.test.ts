@@ -4,8 +4,8 @@ import {
   WorkspaceReadFileResultSchema,
   formatWorkspaceFileLocator,
 } from '@app/schemas';
-import { expectMessagesContainText, expectToolOutputFedBackToHistory } from 'linnkit/testkit';
-import { RunIdSchema, ToolCallIdSchema } from 'linnkit/contracts';
+import { expectMessagesContainText, expectToolOutputFedBackToHistory } from '@linnlabs/linnkit/testkit';
+import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
 import {

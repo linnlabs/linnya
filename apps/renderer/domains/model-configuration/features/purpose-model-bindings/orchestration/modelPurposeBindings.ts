@@ -1,6 +1,6 @@
 import { computed, type ComputedRef, type Ref } from 'vue';
 import { storeToRefs } from 'pinia';
-import { isValidReasoningEffort, type ReasoningEffort } from 'linnkit/contracts';
+import { isValidReasoningEffort, type ReasoningEffort } from '@linnlabs/linnkit/contracts';
 
 import { useModelCatalogStore } from '../../model-catalog';
 import type { ModelBindingSlot, ModelPurposeSelections } from '../definitions/modelPurposeBindings';

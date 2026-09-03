@@ -3,8 +3,8 @@ import type {
   ToolCompactStepPresentation,
   ToolLocalizedTextDescriptor,
 } from '@linnya/plugin-host-contract/renderer/toolUi';
-import type { SSESubRunTraceEvent } from 'linnkit/contracts';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent } from '@linnlabs/linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 import { createAppendOnlySubrunStepProjector } from '../functions/createAppendOnlySubrunStepProjector';
 

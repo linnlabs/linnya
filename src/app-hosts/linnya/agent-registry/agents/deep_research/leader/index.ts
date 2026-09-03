@@ -8,7 +8,7 @@ import { ConversationAgentIds } from '@app/schemas';
 import type { AgentDefinition, AgentRegistryDependencies } from '../../../types';
 import { buildPrompt } from '../../../prompt.builder';
 import { DEEP_RESEARCH_LEADER_PROMPT } from './prompt';
-import type { enrichment } from 'linnkit/runtime-kernel';
+import type { enrichment } from '@linnlabs/linnkit/runtime-kernel';
 import { DeepResearchRequestEnricher } from '../deepResearch.enricher';
 import { DEEP_RESEARCH_SYSTEM_REMINDER_RULE_IDS } from '../systemReminder';
 

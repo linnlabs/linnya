@@ -1,8 +1,8 @@
 import type {
   LlmImageInputPlacement,
   LlmRequestMessage,
-} from 'linnkit/ports';
-import type { RuntimeResourceRef } from 'linnkit/contracts';
+} from '@linnlabs/linnkit/ports';
+import type { RuntimeResourceRef } from '@linnlabs/linnkit/contracts';
 
 export interface DurableImageInputPosition {
   readonly messageIndex: number;

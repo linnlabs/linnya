@@ -1,10 +1,10 @@
-import * as contextManager from 'linnkit/context-manager';
+import * as contextManager from '@linnlabs/linnkit/context-manager';
 import { PromptKeys } from 'src/app-hosts/linnya/agent-registry/prompt.types';
 import type {
   AgentInvokeRequest,
   AgentUserQuote,
 } from 'src/app-hosts/linnya/context/agent/contracts';
-import type { AiMessage, ReasoningEffort, RuntimeResourceRef } from 'linnkit/contracts';
+import type { AiMessage, ReasoningEffort, RuntimeResourceRef } from '@linnlabs/linnkit/contracts';
 
 const { AGENT_CONSTANTS } = contextManager.agentConfig;
 

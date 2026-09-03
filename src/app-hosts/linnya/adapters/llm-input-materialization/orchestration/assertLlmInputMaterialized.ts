@@ -1,4 +1,4 @@
-import { MODEL_INPUT_ERROR_CODES, ModelInputCapabilityError } from 'linnkit/runtime-kernel';
+import { MODEL_INPUT_ERROR_CODES, ModelInputCapabilityError } from '@linnlabs/linnkit/runtime-kernel';
 import { findDurableAttachmentPresence } from '../functions/findDurableAttachmentPresence';
 
 export function assertLlmInputMaterialized(input: {

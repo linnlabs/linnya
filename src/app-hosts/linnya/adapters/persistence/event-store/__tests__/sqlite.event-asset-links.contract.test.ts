@@ -11,9 +11,9 @@ import {
   type RoutedRuntimeEvent,
   type RuntimeEvent,
   type RuntimeResourceRef,
-} from 'linnkit/contracts';
-import { agentUtils, formatAgentLlmMessages } from 'linnkit/context-manager';
-import { deriveModelInputRequirement } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/contracts';
+import { agentUtils, formatAgentLlmMessages } from '@linnlabs/linnkit/context-manager';
+import { deriveModelInputRequirement } from '@linnlabs/linnkit/runtime-kernel';
 import type { WorkspaceAssetCommitRecord } from 'src/features/workspace/assets/definitions/workspaceAssetCommit';
 import { CONVERSATION_SCHEMAS } from '../conversation.schema';
 import { SQLiteEventStore } from '../sqlite.implementation';

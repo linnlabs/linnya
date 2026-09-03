@@ -1,6 +1,6 @@
 import type { ConversationRunSettlementResponse } from '@app/schemas';
-import type { RunId } from 'linnkit/contracts';
-import type { runSupervisor } from 'linnkit/runtime-kernel';
+import type { RunId } from '@linnlabs/linnkit/contracts';
+import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import { projectActiveForegroundRun } from '../functions/projectActiveForegroundRun';
 import type { FlowExecutionCompletionRegistry } from './flowExecutionCompletionRegistry';
 

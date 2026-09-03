@@ -1,7 +1,7 @@
 import { Schema } from '@tiptap/pm/model';
 import { EditorState, type Transaction } from '@tiptap/pm/state';
 import { describe, expect, it, vi } from 'vitest';
-import type { SSESubRunTraceEvent, SSEToolOutputEvent } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent, SSEToolOutputEvent } from '@linnlabs/linnkit/contracts';
 import { PromptKeys, type SubrunBatchResultItem } from '@app/schemas';
 import type { TableCellWriteEditor } from '@/domains/editor/blocks/TableBlock/ai/tableCellWriter.js';
 import type { TableFillWriteCommand } from '@/domains/editor/features/table-fill-write';
@@ -12,7 +12,7 @@ import type {
   ExecuteTableFillRunDependencies,
   TableFillWorkflowInput,
 } from '../definitions/tableFillWorkflow';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 const schema = new Schema({
   nodes: {

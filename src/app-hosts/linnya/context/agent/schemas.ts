@@ -17,14 +17,14 @@ import {
   PromptKeys,
   UserQuoteSchema,
 } from '@app/schemas';
-import { generateAiMessageId } from 'linnkit/contracts';
-import * as contextManager from 'linnkit/context-manager';
-import type { graph } from 'linnkit/runtime-kernel';
+import { generateAiMessageId } from '@linnlabs/linnkit/contracts';
+import * as contextManager from '@linnlabs/linnkit/context-manager';
+import type { graph } from '@linnlabs/linnkit/runtime-kernel';
 import type { AgentInvokeRequest } from './contracts';
 import {
   AiMessage as AiMessageSchema,
   RuntimeResourceRef as RuntimeResourceRefSchema,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import type {
   AiMessage,
   AssistantMessage,
@@ -33,7 +33,7 @@ import type {
   TokenCountSource,
   ToolMessage,
   UserMessage,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 const { AGENT_CONSTANTS } = contextManager.agentConfig;
 type ConversationSession = contextManager.agentContext.ConversationSession;
@@ -144,7 +144,7 @@ export const AgentInvokeResponseSchema = z.object({
 export type { AgentInvokeRequest } from './contracts';
 export type AgentInvokeResponse = z.infer<typeof AgentInvokeResponseSchema>;
 
-export type { AiMessage } from 'linnkit/contracts';
+export type { AiMessage } from '@linnlabs/linnkit/contracts';
 
 export interface AgentEvent {
   type: string;

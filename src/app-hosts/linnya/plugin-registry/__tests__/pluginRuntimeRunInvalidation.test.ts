@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentSpec } from 'linnkit/contracts';
-import { execution, graph, runSupervisor } from 'linnkit/runtime-kernel';
+import type { AgentSpec } from '@linnlabs/linnkit/contracts';
+import { execution, graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 
 import { cancelActiveRunsForPluginRuntimeChange } from '../pluginRuntimeRunInvalidation';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 
 const agentSpec: AgentSpec = {
   id: 'test-agent',

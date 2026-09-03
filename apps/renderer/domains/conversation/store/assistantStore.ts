@@ -26,7 +26,7 @@ import { useToolingFlowOrchestrator } from '../services/orchestration/toolingFlo
 // 阶段性拆分导入
 import { useProjectionStore } from './assistant';
 import type { AnnotationRunParams } from '../definitions/annotationRun';
-import type { SSEEventInput } from 'linnkit/contracts';
+import type { SSEEventInput } from '@linnlabs/linnkit/contracts';
 import { useAnnotationRunExecutionStore } from '../features/annotation-run/store/annotationRunExecutionStore';
 import { useAnnotationRunOrchestrator } from '../services/orchestration/annotationRunOrchestrator';
 import { cancelContributedAssistantRuns } from '../ports/contributedAssistantRunCancellationPort';

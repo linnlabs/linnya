@@ -11,8 +11,8 @@ import {
   ConversationUserInputCommittedEventSchema,
   validateConversationNextRequest,
 } from '@app/schemas';
-import { agentContext, agentUtils, formatAgentLlmMessages } from 'linnkit/context-manager';
-import type { LlmRequestMessage, TokenizerPort } from 'linnkit/ports';
+import { agentContext, agentUtils, formatAgentLlmMessages } from '@linnlabs/linnkit/context-manager';
+import type { LlmRequestMessage, TokenizerPort } from '@linnlabs/linnkit/ports';
 import { mapUiMessagesWindowDtoToRows } from 'apps/renderer/domains/conversation/message-window/functions/mapUiMessageDto';
 import { readUiMessagesWindowDto } from 'apps/renderer/domains/conversation/message-window/functions/uiMessagesDtoGuards';
 import { createConversationImageDraftSubmissionSnapshot } from 'apps/renderer/domains/conversation/features/image-attachments/functions/conversationImageDraftRules';
@@ -63,7 +63,7 @@ import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
 } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
-import type { UserInputEvent } from 'linnkit/contracts';
+import type { UserInputEvent } from '@linnlabs/linnkit/contracts';
 
 const TEST_POLICY: ConversationImageIngressPolicy = {
   maxImageBytes: 1024 * 1024,

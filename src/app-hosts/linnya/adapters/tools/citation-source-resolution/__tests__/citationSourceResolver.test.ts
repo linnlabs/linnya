@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createToolOutputEvent } from 'linnkit/contracts';
+import { createToolOutputEvent } from '@linnlabs/linnkit/contracts';
 import { KnowledgeSearchResultSchema, WebSearchResultSchema } from '@app/schemas';
 import { createCitationSourceResolver } from '../orchestration/createCitationSourceResolver';
 import type { ResolveEvidenceResult } from 'src/domains/evidence';

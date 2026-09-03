@@ -9,7 +9,7 @@ Linnya 是一个以 Agent 为中心的文档数据库和可扩展桌面工作台
 ## 这个仓库包含什么
 
 - Linnya Desktop Host 与 Vue Renderer；
-- Linnya 使用的通用 Agent runtime：Linnkit；
+- 对已发布通用 Agent runtime `@linnlabs/linnkit` 的产品接入；
 - 跨端 Schemas、插件 Host 合同和 Renderer UI 基础能力；
 - 已批准开源的 Mindmap 与 Slides 官方插件；
 - 公共源码构建、测试、Benchmark 和发布验证所需的工程工具。
@@ -25,11 +25,13 @@ Linnya 是一个以 Agent 为中心的文档数据库和可扩展桌面工作台
 | Desktop Renderer | `apps/renderer/` | Vue 界面、交互和前端 domain |
 | 产品 Host | `src/app-hosts/linnya/` | Agent、模型、持久化与插件的产品装配 |
 | 核心业务 | `src/domains/`、`src/tools/` | 业务合同、规则、编排与 Agent 工具 |
-| Agent runtime | `packages/linnkit/` | 与 Host 无关的 runtime kernel、Graph、工具、事件和 ports |
+| Agent runtime | [`@linnlabs/linnkit`](https://github.com/linnlabs/linnkit) | 从 npm 精确版本消费、独立发布的 runtime kernel、Graph、工具、事件和 ports |
 | 插件平台 | `packages/plugin-host-contract/`、`packages/plugins/` | 稳定 Host 合同与开放插件 owner |
 | 共享 UI | `packages/renderer-ui/` | Token、基础控件、图标与可复用交互 |
 
 工程采用 domain-first vertical slice。跨 domain 协作只能走窄 public contract、port、registry、event 或 app-level orchestration，不能直接依赖其他 domain 的内部实现。
+
+Linnya 对 `@linnlabs/linnkit` 使用精确 npm 版本。产品构建与测试必须从 `node_modules` 解析该包，不再支持 alias 回 `packages/linnkit/` 源码。内嵌目录在分阶段迁移期间暂时保留，等剩余发布门禁和文档链接迁入独立仓后再删除。
 
 ## 开始开发
 

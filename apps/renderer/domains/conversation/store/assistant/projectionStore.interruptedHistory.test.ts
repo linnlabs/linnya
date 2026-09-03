@@ -12,7 +12,7 @@ import {
   createTestAnswerMessage,
   createTestUserMessage,
 } from '../../testing/functions/createConversationTestMessage';
-import { RunIdSchema, ToolCallIdSchema } from 'linnkit/contracts';
+import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 import { projectMessageCitationDependencies } from '../../features/citation-presentation';
 
 vi.mock('../../../../shared/stores/workspaceScopeStore', () => ({

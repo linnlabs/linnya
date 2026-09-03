@@ -10,8 +10,8 @@ import {
   llm,
   runSupervisor,
   tools,
-} from 'linnkit/runtime-kernel';
-import type { AgentInvocationRequest } from 'linnkit/ports';
+} from '@linnlabs/linnkit/runtime-kernel';
+import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
 import { RegisteredChildRunInvoker } from '../registeredSubagentInvoker';
 import type { ResolvedRegisteredAgent } from '../registeredAgentResolver';
 import {
@@ -27,7 +27,7 @@ import {
   type SubRunTraceEvent,
   RunIdSchema,
   ToolCallIdSchema,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { SQLiteRunRegistryStore } from 'src/app-hosts/linnya/adapters/persistence/run-registry';
 import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 import {

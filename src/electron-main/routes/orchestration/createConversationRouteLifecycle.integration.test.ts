@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 import {
   CONVERSATION_WORK_DIRECTORY_INITIALIZED_SUFFIX,

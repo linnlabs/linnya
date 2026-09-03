@@ -3,7 +3,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { uiProjectionFixtures } from 'src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/__fixtures__/uiProjectionFixtures';
 
 const RUNTIME_EVENT_CONTRACT_PATH = 'packages/linnkit/src/contracts/events.ts';

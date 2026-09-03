@@ -1,4 +1,4 @@
-import type { AgentInvocationRequest } from 'linnkit/ports';
+import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
 import type { LinnyaToolSchemaContext } from 'src/tools/types';
 
 /**

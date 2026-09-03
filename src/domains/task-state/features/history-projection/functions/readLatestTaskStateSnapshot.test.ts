@@ -6,7 +6,7 @@ import {
   RunIdSchema,
   type RuntimeEvent,
   type SerializableJsonValue,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import { readLatestTaskStateSnapshot } from './readLatestTaskStateSnapshot';
 

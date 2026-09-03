@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RunIdSchema, ToolCallIdSchema } from 'linnkit/contracts';
+import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 import {
   CommandAgentRunIdSchema,
   CommandExecutionPresentationFactsV1Schema,

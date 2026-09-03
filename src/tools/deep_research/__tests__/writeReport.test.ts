@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createToolContextFixture } from 'linnkit/testkit';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import { WriteReportTool } from '../writeReport';
 
 describe('write_report 最终交付合同', () => {

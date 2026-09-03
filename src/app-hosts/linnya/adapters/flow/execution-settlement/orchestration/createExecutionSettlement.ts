@@ -3,7 +3,7 @@ import {
   generateRuntimeEventId,
   type ContextUsageSnapshot,
   type RunExecutionOutcome,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { Logger } from 'src/shared/logger';
 import type {
   ExecutionSettlementOrchestration,

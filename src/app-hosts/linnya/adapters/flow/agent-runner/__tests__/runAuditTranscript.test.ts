@@ -3,7 +3,7 @@ import {
   createFinalAnswerEvent,
   createThoughtEvent,
   createUserInputEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { buildRootRunTranscriptMessages } from '../runAuditTranscript';
 
 describe('runAuditTranscript', () => {

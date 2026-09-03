@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import type { CanonicalInferencePort } from 'linnkit/ports';
+import type { CanonicalInferencePort } from '@linnlabs/linnkit/ports';
 import { ShellAgentModelControlV1Schema } from '@app/schemas/commands';
 
 import { parseCommandToolModelControlLine } from '../../../../../src/domains/commands';

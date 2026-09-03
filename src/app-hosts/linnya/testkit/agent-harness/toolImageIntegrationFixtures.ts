@@ -1,12 +1,12 @@
 import Database from 'better-sqlite3';
-import type { RoutedRuntimeEvent, RuntimeEvent } from 'linnkit/contracts';
+import type { RoutedRuntimeEvent, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type {
   CanonicalInferencePort,
   CanonicalInferenceRequest,
   LlmInputMaterializationAttempt,
   ResolvedLlmInputMessage,
-} from 'linnkit/ports';
-import { llm } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/ports';
+import { llm } from '@linnlabs/linnkit/runtime-kernel';
 import { expect } from 'vitest';
 import { findLanguageInferenceRouteProfileForRoute } from '@app/schemas/model-inference';
 

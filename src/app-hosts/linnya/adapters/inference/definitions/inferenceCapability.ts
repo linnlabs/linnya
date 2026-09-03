@@ -1,4 +1,4 @@
-import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from 'linnkit/ports';
+import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
 import type { LanguageInferenceRouteProfileId } from '@app/schemas/model-inference';
 import type {
   InferenceApiSurface,

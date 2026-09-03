@@ -1,7 +1,7 @@
 import { effectScope, nextTick, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
-import type { SSESubRunTraceEvent } from 'linnkit/contracts';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent } from '@linnlabs/linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 import type { SubrunTraceBucketMap } from '../definitions/subrunTrace';
 import { useAppendOnlySubrunTrace } from '../orchestration/useAppendOnlySubrunTrace';

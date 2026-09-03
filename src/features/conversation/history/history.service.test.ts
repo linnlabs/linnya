@@ -8,9 +8,9 @@ import type {
 } from '../../../app-hosts/linnya/adapters/persistence/event-store/event-store.interface';
 import { HistoryRepository } from './history.repository';
 import { HistoryService } from './history.service';
-import type { RoutedRuntimeEvent, RuntimeEvent } from 'linnkit/contracts';
+import type { RoutedRuntimeEvent, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { encodeConversationListCursor } from '../../../app-hosts/linnya/adapters/persistence/event-store/conversation-list-cursor';
-import { RUNTIME_EVENT_TYPES_NEVER_REPLAYED_TO_UI } from 'linnkit/runtime-kernel/events';
+import { RUNTIME_EVENT_TYPES_NEVER_REPLAYED_TO_UI } from '@linnlabs/linnkit/runtime-kernel/events';
 import { ConversationSelectedAgentIdSchema } from '@app/schemas';
 import type { ConversationDeletionPort } from './definitions/conversationDeletionPort';
 import type { ConversationCleanupStatusPort } from './definitions/conversationCleanupStatusPort';

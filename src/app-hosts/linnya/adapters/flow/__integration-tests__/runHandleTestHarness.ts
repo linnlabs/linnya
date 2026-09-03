@@ -1,8 +1,8 @@
-import { graph, runSupervisor } from 'linnkit/runtime-kernel';
-import type { AgentSpec } from 'linnkit/contracts';
+import { graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
+import type { AgentSpec } from '@linnlabs/linnkit/contracts';
 import type { FlowRunnerHostPorts } from 'src/app-hosts/linnya/adapters/flow/flow.runner-handoff';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 
 export async function createRunHandleForFlowTest(params: {
   conversationId: string;

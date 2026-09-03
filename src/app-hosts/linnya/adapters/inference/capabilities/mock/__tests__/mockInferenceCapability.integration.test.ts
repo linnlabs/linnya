@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from 'linnkit/ports';
+import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
 import type { ResolvedInferenceAttemptRoute } from '../../../definitions/inferenceCapability';
 import { createMockInferenceCapability } from '../orchestration/createMockInferenceCapability';
 

@@ -4,12 +4,12 @@
  */
 
 import { vi } from 'vitest';
-import type { runtimeKernel } from 'linnkit';
+import type { runtimeKernel } from '@linnlabs/linnkit';
 import type { IEventStore } from 'src/app-hosts/linnya/adapters/persistence/event-store/event-store.interface';
 import type { KnowledgeBaseService } from 'src/features/knowledge-base/application/knowledgeBaseService';
 import type { IncrementalEvent } from '@app/schemas';
-import type { RuntimeEvent } from 'linnkit/contracts';
-import { RuntimeEvent as RuntimeEventSchema } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
+import { RuntimeEvent as RuntimeEventSchema } from '@linnlabs/linnkit/contracts';
 import type { FlowConversationAdmissionInput } from '../flow.persistence';
 
 type GraphExecutor = runtimeKernel.graph.GraphExecutor;

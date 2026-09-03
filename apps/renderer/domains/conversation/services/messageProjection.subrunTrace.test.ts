@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { Conversation } from '../types';
 import { createInitialProjectionState, reduceEvent } from './messageProjection';
 import { isRecord } from '../utils/typeGuards';
-import type { SSESubRunTraceEvent, SSEToolCallDecisionEvent } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent, SSEToolCallDecisionEvent } from '@linnlabs/linnkit/contracts';
 import { PROJECTION_TEST_SCOPE } from './messageProjection/__tests__/helpers/projectionTestScope';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 import { registerToolPresentationProjectionPort } from '../ports/toolPresentationProjectionPort';
 import { projectSingleSubrunPresentation } from '../features/subrun-card/functions/projectSingleSubrunPresentation';
 

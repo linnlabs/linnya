@@ -1,13 +1,13 @@
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 
-import type { graph } from 'linnkit/runtime-kernel';
+import type { graph } from '@linnlabs/linnkit/runtime-kernel';
 import {
   createFinalAnswerChunkEvent,
   createUserInputEvent,
   routeRuntimeEvent,
   type RuntimeEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { CONVERSATION_SCHEMAS } from '../conversation.schema';
 import { LinnyaEventStoreAdapter } from '../linnkit-event-store.adapter';
 import { SQLiteEventStore } from '../sqlite.implementation';

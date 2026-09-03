@@ -1,5 +1,5 @@
-import { generateToolCallId, toSerializableJsonRecord } from 'linnkit/contracts';
-import type { CanonicalInferenceEvent } from 'linnkit/ports';
+import { generateToolCallId, toSerializableJsonRecord } from '@linnlabs/linnkit/contracts';
+import type { CanonicalInferenceEvent } from '@linnlabs/linnkit/ports';
 import {
   resolveMockInferenceConfig,
   splitMockInferenceText,

@@ -5,7 +5,7 @@ import {
   createToolOutputEvent,
   RunIdSchema,
   ToolCallIdSchema,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import {
   conversationMessageIdFromToolIdentity,
   type ConversationAttachmentRef,

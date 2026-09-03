@@ -6,14 +6,14 @@ import {
   createToolContextFixture,
   expectMessagesContainText,
   expectToolOutputFedBackToHistory,
-} from 'linnkit/testkit';
+} from '@linnlabs/linnkit/testkit';
 import {
   createChildRunHarness,
   type ChildRunHarness,
 } from 'src/app-hosts/linnya/testkit/agent-harness/childRunHarness';
 import { runRegisteredSubagent } from '../subagentRunner';
-import type { RuntimeEvent } from 'linnkit/contracts';
-import { createToolOutputEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
+import { createToolOutputEvent } from '@linnlabs/linnkit/contracts';
 
 const { TEST_AGENT_DEFINITION } = vi.hoisted(() => ({
   TEST_AGENT_DEFINITION: {

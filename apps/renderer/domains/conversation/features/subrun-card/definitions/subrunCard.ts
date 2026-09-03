@@ -1,7 +1,7 @@
 import type { AnswerSegmentState } from '../../answer-segment';
 import type { ConversationToolMessageStatus } from '@app/schemas';
 import type { SubagentStatus } from '@app/schemas';
-import type { SubRunTraceToolCallDecision } from 'linnkit/contracts';
+import type { SubRunTraceToolCallDecision } from '@linnlabs/linnkit/contracts';
 import type { ConversationCitationProjectionWorkspace } from '../../citation-presentation';
 
 export type SubrunCardStatus = 'loading' | 'success' | 'error';

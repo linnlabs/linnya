@@ -24,7 +24,7 @@ import {
   type SSETransportEndEvent,
   type SSEThoughtEvent,
   RunIdSchema,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 type CallbackBag = {
   onTransportError: (e: ConversationTransportError) => void;

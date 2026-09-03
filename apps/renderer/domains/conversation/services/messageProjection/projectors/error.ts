@@ -2,7 +2,7 @@ import type { MessageProjectionState, ProjectionResult } from '../state';
 import { normalizeConversationError } from '../../errorNormalizer';
 import { resolveCurrentConversationMessage } from '../../../functions/resolveCurrentConversationMessage';
 import { isRecord } from '../../../utils/typeGuards';
-import type { SSEErrorEvent } from 'linnkit/contracts';
+import type { SSEErrorEvent } from '@linnlabs/linnkit/contracts';
 
 /**
  * @description

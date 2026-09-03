@@ -3,9 +3,9 @@ import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentSpec } from 'linnkit/contracts';
-import { RunIdSchema, type RunId } from 'linnkit/contracts';
-import { execution, graph, runSupervisor } from 'linnkit/runtime-kernel';
+import type { AgentSpec } from '@linnlabs/linnkit/contracts';
+import { RunIdSchema, type RunId } from '@linnlabs/linnkit/contracts';
+import { execution, graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 import { SQLiteRunRegistryStore } from 'src/app-hosts/linnya/adapters/persistence/run-registry';
 

@@ -1,5 +1,5 @@
 import type { RegisteredChildRunInvokerPort } from 'src/app-hosts/linnya/adapters/child-runs/registeredSubagentInvoker';
-import type { ToolExecutionContext } from 'linnkit/runtime-kernel';
+import type { ToolExecutionContext } from '@linnlabs/linnkit/runtime-kernel';
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object';

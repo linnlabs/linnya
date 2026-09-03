@@ -1,4 +1,4 @@
-import type { RoutedRuntimeEvent, RuntimeEvent } from 'linnkit/contracts';
+import type { RoutedRuntimeEvent, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { WorkspaceAssetCommitRecord } from 'src/features/workspace/assets/definitions/workspaceAssetCommit';
 
 /** 当前轮 wire DTO 经 host 校验后形成的唯一事实批次。 */

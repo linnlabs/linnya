@@ -23,8 +23,8 @@ import {
   ToolCallIdSchema,
   type RunId,
   type ToolCallId,
-} from 'linnkit/contracts';
-import type { runSupervisor } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/contracts';
+import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import {
   FlowExecutionResult,
   type FlowRunAcceptance,

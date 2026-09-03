@@ -5,7 +5,7 @@ import {
   PtyTerminalScreenProjectionSchema,
   type CommandToolOutputDisplay,
 } from '@app/schemas/commands';
-import { createSSEToolCallDecisionEvent, createSSEToolOutputEvent } from 'linnkit/contracts';
+import { createSSEToolCallDecisionEvent, createSSEToolOutputEvent } from '@linnlabs/linnkit/contracts';
 
 import {
   createTestToolMessage,

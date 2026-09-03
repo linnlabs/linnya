@@ -4,11 +4,11 @@ import type {
   SSESummarizationEndEvent,
   SSESummarizationErrorEvent,
   SSESummarizationStartEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import type { Conversation } from '../../../types';
 import { createInitialProjectionState, reduceEvent } from '..';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 
 function createConversation(): Conversation {
   return {

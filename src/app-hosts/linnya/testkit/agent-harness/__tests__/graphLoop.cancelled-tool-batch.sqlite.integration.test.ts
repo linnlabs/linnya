@@ -8,13 +8,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   type RuntimeEvent,
   RunIdSchema,
-} from 'linnkit/contracts';
-import { execution, graph } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/contracts';
+import { execution, graph } from '@linnlabs/linnkit/runtime-kernel';
 import {
   createGraphLoopHarness,
   createScriptedInferenceHarness,
   createToolContextFixture,
-} from 'linnkit/testkit';
+} from '@linnlabs/linnkit/testkit';
 
 import { createDefaultLlmNode } from 'src/app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
 import { defaultObservationPreviewPort } from 'src/app-hosts/linnya/adapters/tools/defaultPorts';

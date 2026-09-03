@@ -1,4 +1,4 @@
-import type { FenceInjection } from 'linnkit/context-manager';
+import type { FenceInjection } from '@linnlabs/linnkit/context-manager';
 import type { AgentInvokeRequest, AgentUserQuote } from './contracts';
 import {
   createLinnyaFenceDescriptors,

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import * as testkit from 'linnkit/testkit';
-import { events, execution } from 'linnkit/runtime-kernel';
+import * as testkit from '@linnlabs/linnkit/testkit';
+import { events, execution } from '@linnlabs/linnkit/runtime-kernel';
 import { SsePort } from 'src/app-hosts/linnya/adapters/realtime/sse.port';
-import { routeRuntimeEvent, validateRuntimeEvent } from 'linnkit/contracts';
-import type { RoutedRuntimeEvent, RuntimeEvent, SSEEvent } from 'linnkit/contracts';
+import { routeRuntimeEvent, validateRuntimeEvent } from '@linnlabs/linnkit/contracts';
+import type { RoutedRuntimeEvent, RuntimeEvent, SSEEvent } from '@linnlabs/linnkit/contracts';
 
 function createRuntimeEvent(
   event: Record<string, unknown> & { id: string; type: RuntimeEvent['type'] },

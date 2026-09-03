@@ -1,4 +1,4 @@
-import type { CanonicalInferenceRequest } from 'linnkit/ports';
+import type { CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
 import type { ProviderOutboundAttemptStart } from 'src/domains/audit/features/provider-outbound-audit';
 import type { ResolvedInferenceAttemptRoute } from '../definitions/inferenceCapability';
 

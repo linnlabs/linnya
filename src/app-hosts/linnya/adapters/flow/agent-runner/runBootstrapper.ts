@@ -1,9 +1,9 @@
 import type { ConversationNextRequest } from '@app/schemas';
-import { enrichment, runContext, tools } from 'linnkit/runtime-kernel';
+import { enrichment, runContext, tools } from '@linnlabs/linnkit/runtime-kernel';
 import { ensureBuiltinRequestEnrichersRegistered } from 'src/app-hosts/linnya/agent-registry/builtin';
 import type { DatabaseService } from 'src/electron-main/services/database';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
-import type { RunId } from 'linnkit/contracts';
+import type { RunId } from '@linnlabs/linnkit/contracts';
 type RunContext = runContext.RunContext;
 type ToolContextPatch = tools.ToolContextPatch;
 

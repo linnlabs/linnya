@@ -10,8 +10,8 @@ import {
   resetWorkspaceRootToDefault,
 } from '../../../../shared/utils/pathManager';
 import type { KnowledgeBaseService } from '../../../../features/knowledge-base/application/knowledgeBaseService';
-import type { SubRunTracePublisher } from 'linnkit/runtime-kernel';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import type { SubRunTracePublisher } from '@linnlabs/linnkit/runtime-kernel';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 import { KnowledgeSearchResultSchema } from '@app/schemas';
 import { attachCitationRefAllocator, attachCitationSequence } from '../../../../domains/citation';
 import { createCitationRefAllocatorFixture } from '../../../../domains/citation/testkit/citationRefAllocatorFixture';

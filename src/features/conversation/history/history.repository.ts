@@ -48,7 +48,7 @@ import type {
   ReadEventsResponse,
   ConversationMetadata,
 } from './history.schemas';
-import type { RoutedRuntimeEvent, RuntimeEvent } from 'linnkit/contracts';
+import type { RoutedRuntimeEvent, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { ConversationSelectedAgentId } from '@app/schemas';
 
 export interface UiMessagesReadRepository {

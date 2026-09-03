@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
-import type { runSupervisor } from 'linnkit/runtime-kernel';
-import { RunIdSchema } from 'linnkit/contracts';
+import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { CONVERSATION_RUN_KIND } from '../definitions/conversationRunKind';
 
 type ListRunsFilter = runSupervisor.ListRunsFilter;

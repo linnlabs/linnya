@@ -1,10 +1,10 @@
 import type Database from 'better-sqlite3';
-import type { RuntimeResourceRef } from 'linnkit/contracts';
+import type { RuntimeResourceRef } from '@linnlabs/linnkit/contracts';
 import type {
   CompleteToolModelInputParams,
   ResolveToolModelInputParams,
   ToolModelInputResolverPort,
-} from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/runtime-kernel';
 import {
   parseToolResultAssetClaimUri,
   ToolResultAssetClaimError,

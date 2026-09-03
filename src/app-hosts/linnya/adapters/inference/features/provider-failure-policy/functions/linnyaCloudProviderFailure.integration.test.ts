@@ -1,4 +1,4 @@
-import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from 'linnkit/ports';
+import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
 import { createAiSdkLanguageModelRegistry } from '@linnlabs/linnkit-provider-ai-sdk';
 import { describe, expect, it } from 'vitest';
 import type {

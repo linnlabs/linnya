@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 
-import type { SerializableJsonValue } from 'linnkit/contracts';
+import type { SerializableJsonValue } from '@linnlabs/linnkit/contracts';
 import type {
   CanonicalInferenceEvent,
   CanonicalInferenceMessage,
   CanonicalInferenceRequest,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 
 export function startInferenceEvent(
   request: CanonicalInferenceRequest,

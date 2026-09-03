@@ -6,7 +6,7 @@ import {
   type UiMessageRow,
 } from 'src/app-hosts/linnya/adapters/persistence/event-store/ui-projection';
 import { uiProjectionFixtures } from 'src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/__fixtures__/uiProjectionFixtures';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { BaseMessage, Conversation } from '../../../types';
 import { createInitialProjectionState, reduceEvent } from '..';
 import { runtimeEventToFrontendProjectionEvent } from './helpers/runtimeEventToFrontendProjectionEvent';

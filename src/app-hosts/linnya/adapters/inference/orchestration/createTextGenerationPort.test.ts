@@ -3,7 +3,7 @@ import type {
   CanonicalInferenceEvent,
   CanonicalInferencePort,
   CanonicalInferenceRequest,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 import { TextGenerationFailure } from 'src/domains/model-inference';
 import { InferenceAdmissionError } from '../definitions/inferenceAdmissionError';
 import { createTextGenerationPort } from './createTextGenerationPort';

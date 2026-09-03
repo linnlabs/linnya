@@ -2,13 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import type {
   ImageInputAdmissionEvidence,
   LlmRequestMessage,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 import {
   LLM_IMAGE_INPUT_ERROR_CODES,
   llm,
-} from 'linnkit/runtime-kernel';
-import type { CanonicalInferencePort } from 'linnkit/ports';
-import type { RuntimeResourceRef } from 'linnkit/contracts';
+} from '@linnlabs/linnkit/runtime-kernel';
+import type { CanonicalInferencePort } from '@linnlabs/linnkit/ports';
+import type { RuntimeResourceRef } from '@linnlabs/linnkit/contracts';
 import {
   WorkspaceLlmImageResolutionError,
   type WorkspaceLlmImageReference,

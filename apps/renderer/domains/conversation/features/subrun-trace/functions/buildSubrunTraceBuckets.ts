@@ -1,5 +1,5 @@
-import { runtimeEventToSSEEvent } from 'linnkit/contracts';
-import type { RuntimeEvent, SSESubRunTraceEvent } from 'linnkit/contracts';
+import { runtimeEventToSSEEvent } from '@linnlabs/linnkit/contracts';
+import type { RuntimeEvent, SSESubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 import type { SubrunTraceBucketMap } from '../definitions/subrunTrace';
 import { projectHistoricalSubrunTraceEvent } from './projectHistoricalSubrunTraceEvent';
 

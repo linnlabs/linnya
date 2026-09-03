@@ -1,5 +1,5 @@
-import type { TokenRoute } from 'linnkit/contracts';
-import type { LlmRequestMessage } from 'linnkit/ports';
+import type { TokenRoute } from '@linnlabs/linnkit/contracts';
+import type { LlmRequestMessage } from '@linnlabs/linnkit/ports';
 import type { ModelRequestCredential } from '../../model-request-auth';
 
 export type TokenCountSurface =

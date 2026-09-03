@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import type { SSEEvent } from 'linnkit/contracts';
+import type { SSEEvent } from '@linnlabs/linnkit/contracts';
 import type {
   InteractiveRunSnapshot,
   InteractiveRunTerminalStatus,

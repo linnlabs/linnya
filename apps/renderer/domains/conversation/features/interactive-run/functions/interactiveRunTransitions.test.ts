@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { SSEEvent } from 'linnkit/contracts';
+import type { SSEEvent } from '@linnlabs/linnkit/contracts';
 import type { InteractiveRunSnapshot } from '../definitions/interactiveRun';
 import { isInteractiveRunBusy, reduceInteractiveRunEvent } from './interactiveRunTransitions';
-import { RunIdSchema, ToolCallIdSchema } from 'linnkit/contracts';
+import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 function waitEvent(conversationId: string, runId: string): SSEEvent {
   return {

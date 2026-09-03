@@ -23,8 +23,8 @@
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
 
-import { CanonicalLlmUsage } from 'linnkit/contracts';
-import { telemetry } from 'linnkit/runtime-kernel';
+import { CanonicalLlmUsage } from '@linnlabs/linnkit/contracts';
+import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import type { LinnyaRunCostCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
 import type { LinnyaTokenCalibrationCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
 import type {

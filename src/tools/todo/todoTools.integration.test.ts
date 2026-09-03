@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createToolContextFixture } from 'linnkit/testkit';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { AgentTodoToolResultSchema, AgentTodoWriteResultSchema } from '@app/schemas';
 
 import { TodoReadTool } from './todo_read';
 import { TodoWriteTool } from './todo_write';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 function todoWriteOutput(
   id: string,

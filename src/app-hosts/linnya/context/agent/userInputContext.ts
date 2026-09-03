@@ -1,5 +1,5 @@
 import type { IncrementalEvent } from '@app/schemas';
-import type { RuntimeEvent, UserInputEvent } from 'linnkit/contracts';
+import type { RuntimeEvent, UserInputEvent } from '@linnlabs/linnkit/contracts';
 
 type IncrementalUserInputEvent = IncrementalEvent & {
   type: 'user_input';

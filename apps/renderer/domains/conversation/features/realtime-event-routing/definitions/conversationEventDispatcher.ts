@@ -1,4 +1,4 @@
-import type { SSEEvent } from 'linnkit/contracts';
+import type { SSEEvent } from '@linnlabs/linnkit/contracts';
 
 import type { EventDispatchResult } from '../../../definitions/eventDispatch';
 import type { ActivityBinding, UiSpec } from '../../../types';

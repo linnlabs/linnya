@@ -7,7 +7,7 @@ import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
 } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
-import type { ToolSchemaBuildRequest } from 'linnkit/runtime-kernel';
+import type { ToolSchemaBuildRequest } from '@linnlabs/linnkit/runtime-kernel';
 
 beforeEach(() => setPluginRuntimeStateForTests({ enabledPluginIds: ['platform'] }));
 afterEach(() => clearPluginRuntimeStateForTests());

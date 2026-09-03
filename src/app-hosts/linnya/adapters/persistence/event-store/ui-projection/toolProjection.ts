@@ -1,7 +1,7 @@
 import {
   type SerializableJsonRecord,
   type SerializableJsonValue,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import {
   ConversationActivityBindingSchema,
   ConversationToolMessagePayloadSchema,

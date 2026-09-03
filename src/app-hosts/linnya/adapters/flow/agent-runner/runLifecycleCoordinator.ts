@@ -1,12 +1,12 @@
 import type { ConversationNextRequest } from '@app/schemas';
-import type { events, runContext } from 'linnkit/runtime-kernel';
+import type { events, runContext } from '@linnlabs/linnkit/runtime-kernel';
 import {
   toSerializableJsonRecord,
   toSerializableJsonValue,
   type RuntimeEvent,
   type RuntimeEventId,
   type SerializableJsonRecord,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { withRuntimeEventMetadata } from './functions/withRuntimeEventMetadata';
 
 function buildBaseMappingMetadata(

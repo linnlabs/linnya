@@ -4,8 +4,8 @@ import {
   createDefaultGraphExecutor,
   createScriptedInferenceHarness,
   type ScriptedInferenceHarness,
-} from 'linnkit/testkit';
-import { runtimeKernel } from 'linnkit';
+} from '@linnlabs/linnkit/testkit';
+import { runtimeKernel } from '@linnlabs/linnkit';
 import { createDefaultLlmNode } from 'src/app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
 import { defaultObservationPreviewPort } from 'src/app-hosts/linnya/adapters/tools/defaultPorts';
 import { AgentRunnerService } from 'src/app-hosts/linnya/adapters/flow/flow.agent-runner.service';
@@ -14,7 +14,7 @@ import { createRunHandleForFlowTest } from 'src/app-hosts/linnya/adapters/flow/_
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import { createAgentRunnerRuntimeHarness } from 'src/app-hosts/linnya/testkit/agent-harness/agentRunnerRuntimeHarness';
 import { createScriptedChatModelCatalog } from 'src/app-hosts/linnya/testkit/agent-harness/modelCatalogHarness';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import type { CommandAgentRunLifecyclePort } from 'src/app-hosts/linnya/adapters/commands/process-owner';
 import { AskTool } from 'src/tools/agent_control/ask';
 

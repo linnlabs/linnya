@@ -9,21 +9,21 @@
  * FastMCP 的启发，确保工具的一致性和可扩展性。
  */
 
-import type { ToolExecutionContext } from 'linnkit/runtime-kernel';
+import type { ToolExecutionContext } from '@linnlabs/linnkit/runtime-kernel';
 import type { KnowledgeBaseService } from '../features/knowledge-base/application/knowledgeBaseService';
 import type {
   GraphBudget,
   GraphMode,
 } from '../features/knowledge-base/graph/application/graphBudget';
-export type { ToolContextConversationView } from 'linnkit/runtime-kernel';
-export type { ToolExecutionContext } from 'linnkit/runtime-kernel';
-export { BaseTool, CommonParameterTypes } from 'linnkit/runtime-kernel';
+export type { ToolContextConversationView } from '@linnlabs/linnkit/runtime-kernel';
+export type { ToolExecutionContext } from '@linnlabs/linnkit/runtime-kernel';
+export { BaseTool, CommonParameterTypes } from '@linnlabs/linnkit/runtime-kernel';
 export type {
   StructuredToolResult,
   ToolControlInfo,
   ToolObservationPreviewMeta,
   ToolResultImageMedia,
-} from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/runtime-kernel';
 export type {
   ToolParameterProperty,
   ToolParameterSchema,
@@ -37,13 +37,13 @@ export type {
   FunctionToolSchema,
   ToolCallResult,
   ToolCallStreamingPolicy,
-} from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/runtime-kernel';
 export type {
   ToolExecutionResult,
   ToolRuntimeDefinition,
   ToolRuntimePort,
   ToolSchemaBuildRequest,
-} from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/runtime-kernel';
 
 /**
  * 工具执行上下文

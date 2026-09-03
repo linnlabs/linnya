@@ -3,8 +3,8 @@ import {
   ConversationIdSchema,
   ToolCallIdSchema,
   TurnIdSchema,
-} from 'linnkit/contracts';
-import type { ObservationPreviewMeta } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/contracts';
+import type { ObservationPreviewMeta } from '@linnlabs/linnkit/runtime-kernel';
 
 export const TOOL_OUTPUT_BLOB_FORMAT_VERSION = 2 as const;
 export const TOOL_OUTPUT_BODY_FILE_NAME = 'body.utf16le' as const;

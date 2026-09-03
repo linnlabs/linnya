@@ -1,6 +1,6 @@
-import { generateAiMessageId } from 'linnkit/contracts';
-import * as contextManager from 'linnkit/context-manager';
-import type { AiMessage } from 'linnkit/contracts';
+import { generateAiMessageId } from '@linnlabs/linnkit/contracts';
+import * as contextManager from '@linnlabs/linnkit/context-manager';
+import type { AiMessage } from '@linnlabs/linnkit/contracts';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 
 /**

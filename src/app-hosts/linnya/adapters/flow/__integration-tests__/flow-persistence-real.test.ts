@@ -10,8 +10,8 @@ import {
 } from 'src/app-hosts/linnya/adapters/flow/flow.persistence';
 import { createDirectFlowConversationAdmissionPort } from 'src/app-hosts/linnya/adapters/flow/__test-helpers__/createDirectFlowConversationAdmissionPort';
 import { HistoryRepository } from 'src/features/conversation/history/history.repository';
-import { routeRuntimeEvent } from 'linnkit/contracts';
-import type { RoutedRuntimeEvent, RuntimeEvent } from 'linnkit/contracts';
+import { routeRuntimeEvent } from '@linnlabs/linnkit/contracts';
+import type { RoutedRuntimeEvent, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { IEventStore, RunSession } from 'src/app-hosts/linnya/adapters/persistence/event-store';
 
 const mockEventStore: Mocked<IEventStore> = {

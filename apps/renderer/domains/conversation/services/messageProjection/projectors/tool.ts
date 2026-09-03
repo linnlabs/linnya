@@ -22,7 +22,7 @@ import {
   type SSEToolCallDecisionEvent,
   type SSEToolProcessEvent,
   type SSEToolOutputEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { mapRuntimeAttachmentsToConversation } from '../../../functions/runtimeAttachments';
 import { conversationMessageIdFromToolIdentity } from '@app/schemas';
 

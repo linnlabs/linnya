@@ -1,13 +1,13 @@
 import { PromptKeys } from '@app/schemas';
 
-import { runtimeKernel } from 'linnkit';
-import * as testkit from 'linnkit/testkit';
+import { runtimeKernel } from '@linnlabs/linnkit';
+import * as testkit from '@linnlabs/linnkit/testkit';
 import type {
   GraphLoopHarness as PublicGraphLoopHarness,
   ScriptedInferenceHarness,
   ScriptedLlmTurn,
   ToolContextFixtureOptions,
-} from 'linnkit/testkit';
+} from '@linnlabs/linnkit/testkit';
 import { BaseTool } from 'src/tools/types';
 import { createDefaultLlmNode } from 'src/app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
 import { defaultObservationPreviewPort } from 'src/app-hosts/linnya/adapters/tools/defaultPorts';
@@ -15,15 +15,15 @@ import {
   createToolRuntimeHarness,
   type ToolRuntimeHarness,
 } from 'src/app-hosts/linnya/testkit/agent-harness/toolRegistryHarness';
-import type { RoutedRuntimeEvent, RuntimeEvent } from 'linnkit/contracts';
+import type { RoutedRuntimeEvent, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type {
   AuditPort,
   LlmImageInputEstimatorPort,
   LlmInputMaterializerPort,
-} from 'linnkit/ports';
-import type { telemetry } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/ports';
+import type { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import { createToolModelInputCapabilityValidator } from 'src/app-hosts/linnya/adapters/tools/modelInputCapabilityValidator';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import {
   createScriptedChatModelCatalog,
   SCRIPTED_MODEL_ID,

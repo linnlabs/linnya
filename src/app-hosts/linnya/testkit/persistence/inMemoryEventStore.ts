@@ -5,9 +5,9 @@ import type {
   RunMetadata,
   RunSession,
 } from 'src/app-hosts/linnya/adapters/persistence/event-store/event-store.interface';
-import { events as runtimeEvents } from 'linnkit/runtime-kernel';
-import { parseRuntimeEventRoutingIdentity } from 'linnkit/contracts';
-import type { RoutedRuntimeEvent, RuntimeEvent } from 'linnkit/contracts';
+import { events as runtimeEvents } from '@linnlabs/linnkit/runtime-kernel';
+import { parseRuntimeEventRoutingIdentity } from '@linnlabs/linnkit/contracts';
+import type { RoutedRuntimeEvent, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { getRenderableRuntimeEventContent } from 'src/app-hosts/linnya/context/agent/userInputContext';
 import {
   decodeConversationListCursor,

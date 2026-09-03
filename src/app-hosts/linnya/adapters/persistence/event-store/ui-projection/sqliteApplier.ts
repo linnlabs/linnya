@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import {
   ConversationUiMessageSchema,
   type ConversationUiMessage,

@@ -6,7 +6,7 @@ import {
   runtimeEventToSSEEvent,
   validateRuntimeEvent,
   RunIdSchema,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { projectEventsWithMemoryApplier } from 'src/app-hosts/linnya/adapters/persistence/event-store/ui-projection';
 import type { Conversation } from '../../../types';
 import { createInitialProjectionState, reduceEvent } from '..';

@@ -1,4 +1,4 @@
-import type { CanonicalInferenceRequest } from 'linnkit/ports';
+import type { CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
 import type {
   InferenceModelCatalog,
   ResolvedInferenceAttemptRoute,

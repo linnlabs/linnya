@@ -44,10 +44,6 @@ export const RENDERER_MODULE_RESOLUTION_CATALOG = [
   browser('@linnya/text-measurement-core', 'packages/text-measurement-core/src/index.ts', 'exact'),
   browser('@linnya/citation-domain/conversation-presentation', 'src/domains/citation/conversation-presentation.ts', 'exact'),
   browser('@linnya/citation-domain/markdown-reference', 'src/domains/citation/markdown-reference.ts', 'exact'),
-  browser('linnkit/contracts', 'packages/linnkit/src/contracts/index.ts', 'exact'),
-  browser('linnkit/runtime-kernel/events', 'packages/linnkit/src/runtime-kernel/events/index.ts', 'exact'),
-  browser('@linnlabs/linnkit/contracts', 'packages/linnkit/src/contracts/index.ts', 'exact'),
-  browser('@linnlabs/linnkit/runtime-kernel/events', 'packages/linnkit/src/runtime-kernel/events/index.ts', 'exact'),
   browser('stream-markdown-parser', 'packages/stream-markdown-parser/src/index.ts', 'exact'),
   browser('stream-markdown-parser', 'packages/stream-markdown-parser/src', 'subpath'),
 

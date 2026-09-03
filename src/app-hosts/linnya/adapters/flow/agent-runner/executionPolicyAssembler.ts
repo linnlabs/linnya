@@ -4,7 +4,7 @@ import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types'
 import type {
   AgentSpecSystemReminderPolicy,
   AgentSpecToolObservationGovernancePolicy,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { findRegisteredAgentDefinitionByPromptKey } from 'src/app-hosts/linnya/agent-registry/agentDefinitionResolver';
 
 export type ExecutionStartNode = 'user' | 'llm';

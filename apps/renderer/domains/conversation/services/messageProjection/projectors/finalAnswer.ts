@@ -15,8 +15,8 @@ import { resolveAnswerSegmentMessageType } from '../../../features/answer-segmen
 import { isBlankAnswerContent } from '../../../functions/answerContent';
 import { isRecord } from '../../../utils/typeGuards';
 import { PROJECTION_DEBUG } from '../debug';
-import type { SSEFinalAnswerChunkEvent, SSEFinalAnswerEvent } from 'linnkit/contracts';
-import { assertCanonicalFinalAnswerIdentity } from 'linnkit/contracts';
+import type { SSEFinalAnswerChunkEvent, SSEFinalAnswerEvent } from '@linnlabs/linnkit/contracts';
+import { assertCanonicalFinalAnswerIdentity } from '@linnlabs/linnkit/contracts';
 import { conversationMessageIdFromAnswerId } from '@app/schemas';
 import { parseConversationAnswerMessageMetadata } from '@app/schemas';
 import type { AnswerMessage } from '../../../types';

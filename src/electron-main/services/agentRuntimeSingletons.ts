@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
-import { audit, graph, runSupervisor, type ToolModelInputResolverPort } from 'linnkit/runtime-kernel';
-import type { AuditPort, LlmInputMaterializerPort } from 'linnkit/ports';
+import { audit, graph, runSupervisor, type ToolModelInputResolverPort } from '@linnlabs/linnkit/runtime-kernel';
+import type { AuditPort, LlmInputMaterializerPort } from '@linnlabs/linnkit/ports';
 import {
   LinnyaEventStoreAdapter,
   type IEventStore,

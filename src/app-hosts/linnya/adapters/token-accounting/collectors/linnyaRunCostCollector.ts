@@ -1,5 +1,5 @@
-import { tokenAccounting } from 'linnkit/runtime-kernel';
-import type { runSupervisor, telemetry } from 'linnkit/runtime-kernel';
+import { tokenAccounting } from '@linnlabs/linnkit/runtime-kernel';
+import type { runSupervisor, telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import type {
   CanonicalLlmUsage,
   ContextComponentTokenLedgerEntry,
@@ -9,7 +9,7 @@ import type {
   TokenLedgerEntry,
   TokenPricing,
   TokenRoute,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { modelCatalog } from 'src/domains/model-catalog';
 
 type RunCost = runSupervisor.RunCost;

@@ -1,4 +1,4 @@
-import { graph } from 'linnkit/runtime-kernel';
+import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import type { CreateRunFailureEventInput } from '../functions/createRunFailureEvent';
 import { createRunFailureEvent } from '../functions/createRunFailureEvent';
 

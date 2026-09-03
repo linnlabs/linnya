@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 import type { SqliteEventAssetLinks } from '../../event-asset-links/sqliteEventAssetLinks';
 import type { SqliteUiProjectionApplier } from '../../ui-projection/sqliteApplier';

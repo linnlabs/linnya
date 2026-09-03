@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { RunIdSchema } from 'linnkit/contracts';
-import type { runSupervisor } from 'linnkit/runtime-kernel';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
+import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import { readForegroundRunSettlement } from './readForegroundRunSettlement';
 
 const conversationId = 'conversation-settlement';

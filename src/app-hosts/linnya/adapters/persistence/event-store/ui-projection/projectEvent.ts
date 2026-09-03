@@ -1,4 +1,4 @@
-import { shouldReplayRuntimeEventToUi } from 'linnkit/runtime-kernel/events';
+import { shouldReplayRuntimeEventToUi } from '@linnlabs/linnkit/runtime-kernel/events';
 import {
   type HistorySummaryEvent,
   type RunExecutionOutcome,
@@ -9,7 +9,7 @@ import {
   type ToolOutputEvent,
   type ToolProcessEvent,
   toSerializableJsonRecord,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import {
   appendSubrunTraceSummary,
   ConversationActivityBindingSchema,

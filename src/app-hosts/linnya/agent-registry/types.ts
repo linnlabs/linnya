@@ -13,10 +13,10 @@
 
 import type { PromptKey } from './prompt.types';
 import type { HistoryBuilderOptionsExtender } from 'src/app-hosts/linnya/adapters/flow/history-builder/history-builder-options-extender.types';
-import type { AgentInvocationRequest } from 'linnkit/ports';
-import type { AgentSpecContextPolicy } from 'linnkit/contracts';
-import type * as contextManager from 'linnkit/context-manager';
-import type { enrichment } from 'linnkit/runtime-kernel';
+import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
+import type { AgentSpecContextPolicy } from '@linnlabs/linnkit/contracts';
+import type * as contextManager from '@linnlabs/linnkit/context-manager';
+import type { enrichment } from '@linnlabs/linnkit/runtime-kernel';
 
 type RequestEnricher = enrichment.RequestEnricher;
 type IAgentTask = contextManager.agentTasks.IAgentTask;

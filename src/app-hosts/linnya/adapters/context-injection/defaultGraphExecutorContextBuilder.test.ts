@@ -2,17 +2,17 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   agentContext,
   agentOrchestration,
-} from 'linnkit/context-manager';
+} from '@linnlabs/linnkit/context-manager';
 import type {
   MessageProcessingState,
   ProviderContext,
   ProviderResult,
-} from 'linnkit/context-manager';
+} from '@linnlabs/linnkit/context-manager';
 import {
   createHistorySummaryEvent,
   defineContextPolicy,
   type AiMessage,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 vi.mock('src/domains/model-catalog', () => ({
   CLOUD_DEEPSEEK_CHAT_MODEL_ID: 'cloud-deepseek-chat',

@@ -3,7 +3,7 @@ import type {
   CanonicalInferenceEvent,
   CanonicalInferenceRequest,
   ProviderContinuation,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 import type { ResolvedInferenceAttemptRoute } from '../definitions/inferenceCapability';
 import {
   INFERENCE_ADMISSION_ERROR_CODES,

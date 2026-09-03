@@ -1,4 +1,4 @@
-import type { RuntimeEvent, RuntimeEventId } from 'linnkit/contracts';
+import type { RuntimeEvent, RuntimeEventId } from '@linnlabs/linnkit/contracts';
 
 /**
  * 解析当前 execution 应修订的用户消息。

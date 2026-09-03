@@ -1,4 +1,4 @@
-import type { RoutedRuntimeEvent, RuntimeEvent } from 'linnkit/contracts';
+import type { RoutedRuntimeEvent, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { WorkspaceAssetCommitRecord } from 'src/features/workspace/assets/definitions/workspaceAssetCommit';
 import type { ConversationRunKind } from '../definitions/conversationRunKind';
 import type { ConversationSelectedAgentId } from '@app/schemas';

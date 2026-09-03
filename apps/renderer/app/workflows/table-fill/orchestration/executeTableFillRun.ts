@@ -1,5 +1,5 @@
 import { PromptKeys } from '@app/schemas';
-import type { SSETransportEndEvent } from 'linnkit/contracts';
+import type { SSETransportEndEvent } from '@linnlabs/linnkit/contracts';
 import type {
   ExecuteTableFillRunDependencies,
   TableFillWorkflowInput,

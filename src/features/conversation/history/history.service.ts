@@ -45,7 +45,7 @@ import type {
 import type { RunFinalAnswerResult } from '../../../app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import { Logger } from '../../../shared/logger';
 import { decodeConversationListCursor } from '../../../app-hosts/linnya/adapters/persistence/event-store/conversation-list-cursor';
-import { RUNTIME_EVENT_TYPES_NEVER_REPLAYED_TO_UI } from 'linnkit/runtime-kernel/events';
+import { RUNTIME_EVENT_TYPES_NEVER_REPLAYED_TO_UI } from '@linnlabs/linnkit/runtime-kernel/events';
 import type { ConversationSelectedAgentId } from '@app/schemas';
 import type { ConversationDeletionPort } from './definitions/conversationDeletionPort';
 import type { ConversationCleanupStatusPort } from './definitions/conversationCleanupStatusPort';

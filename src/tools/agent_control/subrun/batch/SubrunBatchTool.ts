@@ -1,4 +1,4 @@
-import { DEFAULT_MAX_STEPS } from 'linnkit/contracts';
+import { DEFAULT_MAX_STEPS } from '@linnlabs/linnkit/contracts';
 import {
   SubrunBatchArgsSchema,
   readSubrunBatchStructuredResult,

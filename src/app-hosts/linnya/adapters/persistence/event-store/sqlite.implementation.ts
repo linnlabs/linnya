@@ -4,7 +4,7 @@
  */
 
 import Database from 'better-sqlite3';
-import { events as runtimeEvents } from 'linnkit/runtime-kernel';
+import { events as runtimeEvents } from '@linnlabs/linnkit/runtime-kernel';
 import type {
   AppendEventToRunOptions,
   ConversationListItem,
@@ -21,7 +21,7 @@ import {
   parseRuntimeEventRoutingIdentity,
   type RoutedRuntimeEvent,
   type RuntimeEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { getRenderableRuntimeEventContent } from 'src/app-hosts/linnya/context/agent/userInputContext';
 import {
   CONVERSATION_LIST_PINNED_SORT_OFFSET,

@@ -1,4 +1,4 @@
-import type { RunId, RuntimeEvent } from 'linnkit/contracts';
+import type { RunId, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 /**
  * 只把当前 run 的正式附件事实视为“模型已经见过”。历史轮次、其他 child run

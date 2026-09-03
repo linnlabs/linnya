@@ -2,7 +2,7 @@ import type {
   CanonicalInferenceEvent,
   CanonicalInferencePort,
   CanonicalInferenceRequest,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 import {
   beginProviderOutboundAttempt,
   type ProviderOutboundAuditPort,

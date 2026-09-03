@@ -200,7 +200,7 @@ describe('AGENT-GUARD-10-no-testkit-in-production', () => {
     expect(
       ruleIdsFor(
         'src/app-hosts/linnya/adapters/flow/flow.stream-handler.ts',
-        "import * as testkit from 'linnkit/testkit';",
+        "import * as testkit from '@linnlabs/linnkit/testkit';",
       ),
     ).toContain('AGENT-GUARD-10-no-testkit-in-production');
   });
@@ -218,7 +218,7 @@ describe('AGENT-GUARD-10-no-testkit-in-production', () => {
     expect(
       ruleIdsFor(
         'src/app-hosts/linnya/testkit/agent-harness/childRunHarness.ts',
-        "import * as testkit from 'linnkit/testkit';",
+        "import * as testkit from '@linnlabs/linnkit/testkit';",
       ),
     ).not.toContain('AGENT-GUARD-10-no-testkit-in-production');
   });
@@ -230,6 +230,26 @@ describe('AGENT-GUARD-10-no-testkit-in-production', () => {
         "import { defineConfig } from 'vitest/config';",
       ),
     ).toEqual([]);
+  });
+});
+
+describe('AGENT-GUARD-12-no-legacy-linnkit-import', () => {
+  it('拒绝旧 linnkit bare import', () => {
+    expect(
+      ruleIdsFor(
+        'src/app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory.ts',
+        "import { GraphExecutor } from 'linnkit/runtime-kernel';",
+      ),
+    ).toContain('AGENT-GUARD-12-no-legacy-linnkit-import');
+  });
+
+  it('允许正式 @linnlabs/linnkit 子入口', () => {
+    expect(
+      ruleIdsFor(
+        'src/app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory.ts',
+        "import { GraphExecutor } from '@linnlabs/linnkit/runtime-kernel';",
+      ),
+    ).not.toContain('AGENT-GUARD-12-no-legacy-linnkit-import');
   });
 });
 
@@ -1425,7 +1445,7 @@ describe('extractImportsFromSource (AST-based scanner)', () => {
       " * import { Bad } from 'src/app-hosts/should-not-flag';",
       ' */',
       "import { real } from 'real-mod';",
-      "/* import('linnkit/testkit') */",
+      "/* import('@linnlabs/linnkit/testkit') */",
     ].join('\n');
 
     const imports = extractImportsFromSource('src/agent/example.ts', source);

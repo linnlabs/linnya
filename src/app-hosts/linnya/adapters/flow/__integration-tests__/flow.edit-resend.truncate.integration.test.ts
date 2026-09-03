@@ -25,8 +25,8 @@ import {
   type RoutedRuntimeEvent,
   type RuntimeEvent,
   type RuntimeResourceRef,
-} from 'linnkit/contracts';
-import { graph, runSupervisor } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/contracts';
+import { graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import type { FlowRuntimePort } from 'src/app-hosts/linnya/adapters/flow/flow.runtime';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import { LinnyaRunCostCollector } from 'src/app-hosts/linnya/adapters/token-accounting';

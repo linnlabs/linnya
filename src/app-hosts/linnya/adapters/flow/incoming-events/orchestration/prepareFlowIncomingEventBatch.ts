@@ -4,7 +4,7 @@ import type {
   ConversationDraftAttachmentRef,
   ConversationNextRequest,
 } from '@app/schemas';
-import type { RuntimeEvent, RuntimeResourceRef } from 'linnkit/contracts';
+import type { RuntimeEvent, RuntimeResourceRef } from '@linnlabs/linnkit/contracts';
 import type { WorkspaceAssetIdentityPort } from 'src/features/workspace/assets/definitions/workspaceAssetIdentity';
 import type { WorkspaceAssetCommitRecord } from 'src/features/workspace/assets/definitions/workspaceAssetCommit';
 import type { FlowIncomingEventBatch } from '../definitions/flowIncomingEventBatch';

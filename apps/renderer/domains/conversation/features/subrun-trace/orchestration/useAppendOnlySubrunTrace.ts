@@ -1,5 +1,5 @@
 import { computed, shallowRef, watch } from 'vue';
-import type { SSESubRunTraceEvent } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 import type { SubrunTraceBucket } from '../definitions/subrunTrace';
 import type { IndexedSubrunTraceEvent } from '../functions/createAppendOnlySubrunStepProjector';
 import { findSubrunTraceBucket } from '../functions/hasSubrunTraceBucket';

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, ref } from 'vue';
-import type { RuntimeEvent, SubRunTraceEvent } from 'linnkit/contracts';
+import type { RuntimeEvent, SubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 import {
   SUBRUN_TRACE_STEP_KINDS,
   SUBRUN_TRACE_SUBRUN_CARD_KINDS,
@@ -17,7 +17,7 @@ import { findSubrunTraceBucket } from '../functions/hasSubrunTraceBucket';
 import { isHistoricalFinalAnswerSnapshotChunk } from '../functions/projectHistoricalSubrunTraceEvent';
 import { loadCompleteSubrunTrace, loadSubrunTrace } from '../orchestration/loadSubrunTrace';
 import { useLazySubrunTrace } from '../orchestration/useLazySubrunTrace';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 function createSubrunEvent(overrides: Partial<SubRunTraceEvent> = {}): SubRunTraceEvent {
   return {

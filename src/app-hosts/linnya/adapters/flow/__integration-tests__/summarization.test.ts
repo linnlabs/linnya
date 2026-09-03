@@ -5,11 +5,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgentRunnerService } from 'src/app-hosts/linnya/adapters/flow/flow.agent-runner.service';
 import { createAgentRunnerRuntimeHarness } from 'src/app-hosts/linnya/testkit/agent-harness/agentRunnerRuntimeHarness';
-import { runtimeKernel } from 'linnkit';
-import type { graph } from 'linnkit/runtime-kernel';
+import { runtimeKernel } from '@linnlabs/linnkit';
+import type { graph } from '@linnlabs/linnkit/runtime-kernel';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
-import { createHistorySummaryEvent, RunIdSchema } from 'linnkit/contracts';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import { createHistorySummaryEvent, RunIdSchema } from '@linnlabs/linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { FlowAgentRunRequest } from 'src/app-hosts/linnya/adapters/flow/flow.runner-handoff';
 import type { FlowExecutionResult } from 'src/app-hosts/linnya/adapters/flow/flow.schemas';
 import { createRunHandleForFlowTest } from 'src/app-hosts/linnya/adapters/flow/__integration-tests__/runHandleTestHarness';

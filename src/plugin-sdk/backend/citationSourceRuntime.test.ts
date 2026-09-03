@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { KnowledgeSearchResultSchema } from '@app/schemas';
-import { createToolOutputEvent } from 'linnkit/contracts';
-import { createToolContextFixture } from 'linnkit/testkit';
+import { createToolOutputEvent } from '@linnlabs/linnkit/contracts';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import { createCitationSourceResolver } from './citationSourceRuntime';
 
 describe('plugin Citation source runtime', () => {

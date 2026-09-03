@@ -1,4 +1,4 @@
-import type { SSERunExecutionMetricsEvent } from 'linnkit/contracts';
+import type { SSERunExecutionMetricsEvent } from '@linnlabs/linnkit/contracts';
 
 import type { MessageProjectionState, ProjectionResult } from '../state';
 import { updateMessage } from '../helpers/messageAccess';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Conversation } from '../../types';
 import { createInitialProjectionState, reduceEvent } from './index';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 
 function createConversation(): Conversation {
   return {

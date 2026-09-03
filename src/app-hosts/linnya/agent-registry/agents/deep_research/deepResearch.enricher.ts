@@ -7,10 +7,10 @@
  * - 不应该单独变成一个 features/deep-research 模块（未来每个复杂 agent 都建一个 feature 会失控）。
  */
 
-import type { AgentInvocationRequest } from 'linnkit/ports';
-import type { enrichment } from 'linnkit/runtime-kernel';
+import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
+import type { enrichment } from '@linnlabs/linnkit/runtime-kernel';
 import { PromptKeys } from '../../prompt.types';
-import { generateRunId } from 'linnkit/contracts';
+import { generateRunId } from '@linnlabs/linnkit/contracts';
 import { Logger } from 'src/shared/logger';
 
 const logger = new Logger('DeepResearchRequestEnricher');

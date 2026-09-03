@@ -1,11 +1,11 @@
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
-import { agentUtils } from 'linnkit/context-manager';
+import { agentUtils } from '@linnlabs/linnkit/context-manager';
 import {
   createUserInputEvent,
   routeRuntimeEvent,
   type RoutedRuntimeEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import {
   createFlowHistoryAccessPort,

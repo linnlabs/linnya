@@ -6,12 +6,12 @@ import {
   type EngineState,
   type ObservationPreviewPort,
   type ToolRuntimePort,
-} from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/runtime-kernel';
 import {
   RunIdSchema,
   ToolCallIdSchema,
   type RuntimeEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import { projectCommandExecutionPresentation } from '../../../../../../../apps/renderer/domains/conversation/features/command-execution-presentation/functions/projectCommandExecutionPresentation';
 

@@ -1,4 +1,4 @@
-import type { ToolObservationPreviewMeta } from 'linnkit/runtime-kernel';
+import type { ToolObservationPreviewMeta } from '@linnlabs/linnkit/runtime-kernel';
 
 export function buildWorkspaceObservationPreviewMeta(params: {
   documentName: string;

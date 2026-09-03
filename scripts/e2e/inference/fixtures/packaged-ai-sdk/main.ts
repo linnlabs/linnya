@@ -2,7 +2,7 @@ import { app } from 'electron';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import path from 'node:path';
-import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from 'linnkit/ports';
+import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
 import type {
   InferenceCapabilityInvocation,
   ResolvedInferenceAttemptRoute,

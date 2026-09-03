@@ -1,5 +1,5 @@
-import { validateRuntimeEvent } from 'linnkit/contracts';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import { validateRuntimeEvent } from '@linnlabs/linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { isRecord } from '../../../utils/typeGuards';
 import type { SubrunTraceDto, SubrunTracePreparingDto, SubrunTraceReadyDto } from '../definitions/subrunTrace';
 

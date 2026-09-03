@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RunIdSchema, type SSEContextUsageSnapshotEvent } from 'linnkit/contracts';
+import { RunIdSchema, type SSEContextUsageSnapshotEvent } from '@linnlabs/linnkit/contracts';
 
 import type { BaseMessage, Conversation } from '../../../types';
 import { createInitialProjectionState, reduceEvent } from '../index';

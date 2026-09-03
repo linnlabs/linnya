@@ -2,7 +2,7 @@ import {
   createFenceRegistry,
   type FenceDescriptor,
   type FenceRegistry,
-} from 'linnkit/context-manager';
+} from '@linnlabs/linnkit/context-manager';
 import { getRegisteredAgentFenceDescriptors } from '../../plugin-registry/builtin';
 
 type LinnyaFenceDescriptor = FenceDescriptor & {

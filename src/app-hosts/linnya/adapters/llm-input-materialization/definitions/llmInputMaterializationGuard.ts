@@ -1,4 +1,4 @@
-import type { ModelInputPlacement } from 'linnkit/runtime-kernel';
+import type { ModelInputPlacement } from '@linnlabs/linnkit/runtime-kernel';
 
 export interface DurableAttachmentPresence {
   readonly found: boolean;

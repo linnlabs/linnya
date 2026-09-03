@@ -1,4 +1,4 @@
-import type { ToolExecutionContext } from 'linnkit/runtime-kernel';
+import type { ToolExecutionContext } from '@linnlabs/linnkit/runtime-kernel';
 import { attachWebEvidenceWriter } from '../../../../tools/web/shared/orchestration/webEvidenceWriterContext';
 import { saveEvidenceBundleFromToolContext } from '../../../../tools/evidence/evidenceBundleToolContextAdapter';
 import { assertToolConversationScopeContext } from './conversation-scope';

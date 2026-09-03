@@ -14,7 +14,7 @@
 
 import type { AgentDefinition, AgentRegistryDependencies } from './types';
 import { historyBuilderOptionsExtenderRegistry } from 'src/app-hosts/linnya/adapters/flow/history-builder/history-builder-options-extender.registry';
-import { enrichment } from 'linnkit/runtime-kernel';
+import { enrichment } from '@linnlabs/linnkit/runtime-kernel';
 
 class AgentRegistry {
   private readonly definitions = new Map<string, AgentDefinition>();

@@ -15,12 +15,12 @@ import {
   CommandConversationIdSchema,
   CommandRunPermissionSnapshotV1Schema,
 } from '@app/schemas/commands';
-import { telemetry } from 'linnkit/runtime-kernel';
+import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import {
   createDefaultGraphExecutor,
   LlmCaller,
-} from 'linnkit/runtime-kernel';
-import type { RuntimeEvent } from 'linnkit/contracts';
+} from '@linnlabs/linnkit/runtime-kernel';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 import type { KnowledgeBaseService } from '../../../../../src/features/knowledge-base/application/knowledgeBaseService';
 import { HistoryRepository } from '../../../../../src/features/conversation/history/history.repository';

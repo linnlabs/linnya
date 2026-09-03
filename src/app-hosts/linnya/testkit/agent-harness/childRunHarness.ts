@@ -4,10 +4,10 @@ import { createDefaultLlmNode } from 'src/app-hosts/linnya/adapters/runtime-asse
 import { createLinnyaChildRunInvoker, toChildRunAgentConfig } from 'src/app-hosts/linnya/adapters/child-runs/childRunInvokerFactory';
 import { LinnyaRegisteredChildRunLifecycle } from 'src/app-hosts/linnya/adapters/child-runs/childRunLifecycle';
 import { BaseTool } from 'src/tools/types';
-import * as testkit from 'linnkit/testkit';
-import type { ScriptedInferenceHarness, ScriptedLlmTurn } from 'linnkit/testkit';
+import * as testkit from '@linnlabs/linnkit/testkit';
+import type { ScriptedInferenceHarness, ScriptedLlmTurn } from '@linnlabs/linnkit/testkit';
 import { createToolRuntimeHarness, type ToolRuntimeHarness } from 'src/app-hosts/linnya/testkit/agent-harness/toolRegistryHarness';
-import { audit, graph, runSupervisor, telemetry } from 'linnkit/runtime-kernel';
+import { audit, graph, runSupervisor, telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import { createScriptedChatModelCatalog } from './modelCatalogHarness';
 
 export interface ChildRunHarnessOptions {

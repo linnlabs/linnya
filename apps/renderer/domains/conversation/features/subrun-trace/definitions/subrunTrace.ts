@@ -1,4 +1,4 @@
-import type { SSESubRunTraceEvent, SubRunTraceEvent } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent, SubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 import type { HistoricalSubrunTraceKind } from '@linnya/plugin-host-contract/renderer/subrunToolUi';
 
 export type { HistoricalSubrunTraceLazySource } from '@linnya/plugin-host-contract/renderer/subrunToolUi';

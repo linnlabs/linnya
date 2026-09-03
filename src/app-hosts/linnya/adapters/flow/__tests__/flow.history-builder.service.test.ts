@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { PromptKeys } from '@app/schemas';
 import { HistoryBuilder } from '../flow.history-builder.service';
-import { createUserInputEvent, type RuntimeEvent, type RuntimeResourceRef } from 'linnkit/contracts';
+import { createUserInputEvent, type RuntimeEvent, type RuntimeResourceRef } from '@linnlabs/linnkit/contracts';
 import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,

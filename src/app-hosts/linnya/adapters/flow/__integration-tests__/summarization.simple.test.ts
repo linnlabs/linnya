@@ -11,8 +11,8 @@ import {
 import { createDirectFlowConversationAdmissionPort } from 'src/app-hosts/linnya/adapters/flow/__test-helpers__/createDirectFlowConversationAdmissionPort';
 import { HistoryRepository } from 'src/features/conversation/history/history.repository';
 import { InMemoryEventStore } from 'src/app-hosts/linnya/testkit/persistence/inMemoryEventStore';
-import { routeRuntimeEvent } from 'linnkit/contracts';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import { routeRuntimeEvent } from '@linnlabs/linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { RunMetadata } from 'src/app-hosts/linnya/adapters/persistence/event-store';
 
 async function appendEventsToRunForTest(

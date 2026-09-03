@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { projectDurableLlmAuditValue } from 'linnkit';
+import { projectDurableLlmAuditValue } from '@linnlabs/linnkit';
 import { Logger } from 'src/shared/logger';
 import type {
   ContextManagerAuditEntry,

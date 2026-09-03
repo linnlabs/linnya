@@ -1,4 +1,4 @@
-import type { FinalAnswerCompletionReason } from 'linnkit/contracts';
+import type { FinalAnswerCompletionReason } from '@linnlabs/linnkit/contracts';
 import type { MessageType } from '../../../types';
 
 /** 把 durable segment 语义映射为 UI 消息类型，禁止把可见播报伪装成 thought。 */

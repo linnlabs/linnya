@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createUserInputEvent,
   routeRuntimeEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import {
   parseStoredRuntimeEvent,

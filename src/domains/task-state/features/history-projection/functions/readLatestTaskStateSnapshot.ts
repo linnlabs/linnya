@@ -1,5 +1,5 @@
 import { TaskStateWriteResultSchema } from '@app/schemas';
-import type { RunId, RuntimeEvent, ToolCallId } from 'linnkit/contracts';
+import type { RunId, RuntimeEvent, ToolCallId } from '@linnlabs/linnkit/contracts';
 
 import type { TaskStateHistorySnapshot } from '../definitions/taskStateHistorySnapshot';
 

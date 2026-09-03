@@ -1,11 +1,11 @@
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
-import { agentUtils } from 'linnkit/context-manager';
-import { childRuns, graph, llm, telemetry, tools } from 'linnkit/runtime-kernel';
+import { agentUtils } from '@linnlabs/linnkit/context-manager';
+import { childRuns, graph, llm, telemetry, tools } from '@linnlabs/linnkit/runtime-kernel';
 import type {
   AuditPort,
   LlmImageInputEstimatorPort,
   LlmInputMaterializerPort,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 import {
   createDefaultLlmNode,
   createDefaultModelResolver,
@@ -16,7 +16,7 @@ import {
   defaultToolRuntimePort,
 } from 'src/app-hosts/linnya/adapters/tools/defaultPorts';
 import { createToolModelInputCapabilityValidator } from 'src/app-hosts/linnya/adapters/tools/modelInputCapabilityValidator';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 export interface LinnyaChildRunInvokerDependencies {
   telemetryPort: telemetry.TelemetryPort;

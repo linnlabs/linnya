@@ -1,5 +1,5 @@
-import { generateRuntimeEventId } from 'linnkit/contracts';
-import { execution } from 'linnkit/runtime-kernel';
+import { generateRuntimeEventId } from '@linnlabs/linnkit/contracts';
+import { execution } from '@linnlabs/linnkit/runtime-kernel';
 
 export interface CreateRunFailureEventInput {
   readonly conversationId: string;

@@ -6,7 +6,7 @@ import {
   createUserInputEvent,
   type SSEThoughtEvent,
   RunIdSchema,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import type { Conversation } from '../../../types';
 import { createInitialProjectionState, reduceEvent, type ProjectionEvent } from '../index';

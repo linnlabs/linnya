@@ -15,9 +15,9 @@
 import { describe, it, expect } from 'vitest';
 import type { Conversation } from '../types';
 import { createInitialProjectionState, reduceEvent } from './messageProjection';
-import type { SSEToolCallDecisionEvent, SSEThoughtEvent } from 'linnkit/contracts';
+import type { SSEToolCallDecisionEvent, SSEThoughtEvent } from '@linnlabs/linnkit/contracts';
 import { PROJECTION_TEST_SCOPE } from './messageProjection/__tests__/helpers/projectionTestScope';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 describe('messageProjection - thought_message_id 归并', () => {
   it('工具调用打断 thought 后补发 complete thought，应更新同一条 thought 而不是新建', () => {

@@ -36,6 +36,7 @@ type ImportRule = {
 
 export const repoRoot = process.cwd();
 export const LINNKIT_SOURCE_PREFIX = 'packages/linnkit/src';
+export const LINNKIT_PACKAGE_NAME = '@linnlabs/linnkit';
 export const LEGACY_AGENT_SOURCE_PREFIX = 'src/agent';
 export const MINDMAP_PACKAGE_PREFIX = 'packages/plugins/mindmap/src';
 export const SLIDES_PACKAGE_PREFIX = 'packages/plugins/slides/src';
@@ -355,17 +356,23 @@ function createViolation(
 }
 
 function isAllowedHostAgentImport(importPath: string): boolean {
-  if (importPath === 'linnkit' || importPath === LEGACY_AGENT_SOURCE_PREFIX) {
+  if (
+    importPath === LINNKIT_PACKAGE_NAME
+    || importPath === 'linnkit'
+    || importPath === LEGACY_AGENT_SOURCE_PREFIX
+  ) {
     return true;
   }
 
-  const singleSegmentMatch = importPath.match(/^(?:linnkit|src\/agent)\/([^/]+)$/);
-  if (singleSegmentMatch && PUBLIC_AGENT_ENTRY_NAMES.has(singleSegmentMatch[1])) {
+  const publicSubpath = readLinnkitPackageSubpath(importPath)
+    ?? (importPath.startsWith(`${LEGACY_AGENT_SOURCE_PREFIX}/`)
+      ? importPath.slice(`${LEGACY_AGENT_SOURCE_PREFIX}/`.length)
+      : null);
+  if (publicSubpath && !publicSubpath.includes('/') && PUBLIC_AGENT_ENTRY_NAMES.has(publicSubpath)) {
     return true;
   }
 
-  const nestedMatch = importPath.match(/^(?:linnkit|src\/agent)\/(.+)$/);
-  if (nestedMatch && PUBLIC_AGENT_NESTED_ENTRY_PATHS.has(nestedMatch[1])) {
+  if (publicSubpath && PUBLIC_AGENT_NESTED_ENTRY_PATHS.has(publicSubpath)) {
     return true;
   }
 
@@ -384,7 +391,9 @@ function topLevelAgentSubmodule(filePath: string): string | null {
 
 function isAgentPackageImportPath(importPath: string): boolean {
   return (
-    importPath === 'linnkit'
+    importPath === LINNKIT_PACKAGE_NAME
+    || importPath.startsWith(`${LINNKIT_PACKAGE_NAME}/`)
+    || importPath === 'linnkit'
     || importPath.startsWith('linnkit/')
     || importPath === LEGACY_AGENT_SOURCE_PREFIX
     || importPath.startsWith(`${LEGACY_AGENT_SOURCE_PREFIX}/`)
@@ -394,16 +403,27 @@ function isAgentPackageImportPath(importPath: string): boolean {
 }
 
 function normalizeBareLinnkitImport(importPath: string): string {
-  if (importPath === 'linnkit') {
+  if (importPath === LINNKIT_PACKAGE_NAME || importPath === 'linnkit') {
     return `${LINNKIT_SOURCE_PREFIX}/index`;
   }
 
-  if (!importPath.startsWith('linnkit/')) {
+  const suffix = readLinnkitPackageSubpath(importPath);
+  if (suffix === null) {
     return importPath;
   }
 
-  const suffix = importPath.slice('linnkit/'.length);
   return `${LINNKIT_SOURCE_PREFIX}/${suffix}`;
+}
+
+function readLinnkitPackageSubpath(importPath: string): string | null {
+  for (const packageName of [LINNKIT_PACKAGE_NAME, 'linnkit']) {
+    const prefix = `${packageName}/`;
+    if (importPath.startsWith(prefix)) {
+      return importPath.slice(prefix.length);
+    }
+  }
+
+  return null;
 }
 
 function normalizeBareRuntimePluginPackageImport(importPath: string): string {
@@ -948,7 +968,7 @@ function analyzeInternalOnlyImportRule(
  *
  * 背景：linnkit 的 `testkit` 子树（`packages/linnkit/src/testkit/**`）顶层直接
  * `import { vi, expect } from 'vitest'`。tsup/esbuild 处理 `export *` 是静态拉链，
- * 任何 production runtime 文件 `import 'linnkit/testkit'` 都会把 vitest 拖进
+ * 任何 production runtime 文件 `import '@linnlabs/linnkit/testkit'` 都会把 vitest 拖进
  * backend bundle，导致 electron main 启动时抛 "Vitest failed to access its
  * internal state."。同理直接 `import 'vitest'` 也会污染 bundle。
  *
@@ -966,7 +986,10 @@ function analyzeTestkitInProductionRule(
   }
 
   const isVitest = importPath === 'vitest' || importPath.startsWith('vitest/');
-  const isLinnkitTestkit = importPath === 'linnkit/testkit' || importPath.startsWith('linnkit/testkit/');
+  const isLinnkitTestkit = importPath === `${LINNKIT_PACKAGE_NAME}/testkit`
+    || importPath.startsWith(`${LINNKIT_PACKAGE_NAME}/testkit/`)
+    || importPath === 'linnkit/testkit'
+    || importPath.startsWith('linnkit/testkit/');
   const isPluginHostTestRuntime = importPath === '@plugin/backend/testRuntime';
   if (!isVitest && !isLinnkitTestkit && !isPluginHostTestRuntime) {
     return [];
@@ -1002,8 +1025,30 @@ function analyzeContextSharedProfileImportRule(
 }
 
 /**
+ * AGENT-GUARD-12：Linnya 只能通过正式 npm 包名消费 Linnkit。
+ *
+ * `linnkit/*` 曾依赖 tsconfig / Vite alias 直连 monorepo 源码，会让本地开发与
+ * npm 安装产物走两套模块解析。迁移到独立发布包后，任何旧 bare import 回流都
+ * 必须立即失败；仓内 Linnkit 自身使用相对路径，不需要例外。
+ */
+function analyzeLegacyLinnkitPackageImportRule(
+  file: string,
+  line: number,
+  preview: string,
+  importPath: string,
+): Violation[] {
+  if (importPath !== 'linnkit' && !importPath.startsWith('linnkit/')) {
+    return [];
+  }
+
+  return [
+    createViolation('AGENT-GUARD-12-no-legacy-linnkit-import', file, line, preview, importPath),
+  ];
+}
+
+/**
  * 单个 import 站点的规则评估。所有真规则在这里集中：legacy forbidden 规则、
- * GUARD-07/08/09/10/11。无论调用方来自 AST 扫描（生产路径）还是 `analyzeLine()`
+ * GUARD-07/08/09/10/11/12。无论调用方来自 AST 扫描（生产路径）还是 `analyzeLine()`
  * 兼容包装（单元测试路径），逻辑共用。
  */
 export function analyzeImport(
@@ -1021,6 +1066,7 @@ export function analyzeImport(
     ...analyzeInternalOnlyImportRule(file, line, preview, importPath),
     ...analyzeTestkitInProductionRule(file, line, preview, importPath),
     ...analyzeContextSharedProfileImportRule(file, line, preview, importPath),
+    ...analyzeLegacyLinnkitPackageImportRule(file, line, preview, importPath),
     ...analyzePluginHostContractImportRule(file, line, preview, importPath),
     ...analyzeLegacyWorkspaceVfsPolicyImportRule(file, line, preview, importPath),
     ...analyzePluginWorkspaceRuntimeMindmapAccessRule(file, line, preview, importPath),

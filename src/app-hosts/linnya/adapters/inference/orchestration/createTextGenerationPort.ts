@@ -3,7 +3,7 @@ import type {
   CanonicalInferenceMessage,
   CanonicalInferencePort,
   CanonicalInferenceRequest,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 import {
   TextGenerationFailure,
   type TextGenerationFinishReason,

@@ -5,7 +5,7 @@ import type {
 } from '../state';
 import { removeMessageById } from '../helpers/messageAccess';
 import { deleteThoughtSegmentBuffer } from '../functions/thoughtSegmentBuffer';
-import type { SSEFinalAnswerResetEvent } from 'linnkit/contracts';
+import type { SSEFinalAnswerResetEvent } from '@linnlabs/linnkit/contracts';
 
 /**
  * @description

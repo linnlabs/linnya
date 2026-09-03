@@ -1,4 +1,4 @@
-import { ToolCallWire, type RoutedRuntimeEvent } from 'linnkit/contracts';
+import { ToolCallWire, type RoutedRuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 import { CommandExecutionTerminalV1Schema } from '@app/schemas/commands';
 import type { ExecutionAuditEventFact } from 'src/app-hosts/linnya/application/execution-audit-export';

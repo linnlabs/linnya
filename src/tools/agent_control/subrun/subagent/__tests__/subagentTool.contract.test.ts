@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SubagentResultSchema } from '@app/schemas';
-import { createToolContextFixture } from 'linnkit/testkit';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import {
   createToolOutputEvent,
   type RuntimeEvent,
   type SerializableJsonRecord,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import {
   clearPluginRuntimeStateForTests,

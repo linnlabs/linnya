@@ -1,15 +1,15 @@
 import Database from 'better-sqlite3';
 import { PromptKeys } from '@app/schemas';
 import { describe, expect, it, vi } from 'vitest';
-import type { AuditEnvelope } from 'linnkit/contracts';
-import type { AgentInvocationRequest, AuditPort } from 'linnkit/ports';
-import { childRuns, graph, runSupervisor } from 'linnkit/runtime-kernel';
+import type { AuditEnvelope } from '@linnlabs/linnkit/contracts';
+import type { AgentInvocationRequest, AuditPort } from '@linnlabs/linnkit/ports';
+import { childRuns, graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 
 import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 import { SQLiteRunRegistryStore } from 'src/app-hosts/linnya/adapters/persistence/run-registry';
 import { LinnyaRegisteredChildRunLifecycle } from '../childRunLifecycle';
 import { RegisteredChildRunInvoker } from '../registeredSubagentInvoker';
-import { RunIdSchema, ToolCallIdSchema } from 'linnkit/contracts';
+import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 interface Latch {
   promise: Promise<void>;

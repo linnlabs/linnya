@@ -1,4 +1,4 @@
-import type { AgentSpecContextPolicyInput } from 'linnkit/contracts';
+import type { AgentSpecContextPolicyInput } from '@linnlabs/linnkit/contracts';
 
 const LINNYA_INJECTION_MAX_BUDGET_FRACTION = 0.25;
 

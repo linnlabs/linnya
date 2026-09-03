@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { SSEEvent } from 'linnkit/contracts';
+import type { SSEEvent } from '@linnlabs/linnkit/contracts';
 
 import type { Conversation } from '../../../types';
 import { createInitialProjectionState, reduceEvent } from '..';
 import { conversationMessageIdFromToolIdentity } from '@app/schemas';
-import { RunIdSchema, ToolCallIdSchema } from 'linnkit/contracts';
+import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 import { projectMessageCitationDependencies } from '../../../features/citation-presentation';
 
 const CONVERSATION_ID = 'conversation-concurrent-runs';

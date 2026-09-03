@@ -1,4 +1,4 @@
-import { telemetry } from 'linnkit/runtime-kernel';
+import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import type { LinnyaRunCostCollector } from '../collectors/linnyaRunCostCollector';
 
 type TelemetryEvent = telemetry.TelemetryEvent;

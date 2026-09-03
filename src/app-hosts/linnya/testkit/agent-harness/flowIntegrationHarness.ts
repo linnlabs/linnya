@@ -6,14 +6,14 @@ import type {
   RunMetadata,
   RunSession,
 } from 'src/app-hosts/linnya/adapters/persistence/event-store/event-store.interface';
-import { runtimeKernel } from 'linnkit';
-import { events as runtimeEvents } from 'linnkit/runtime-kernel';
-import { parseRuntimeEventRoutingIdentity } from 'linnkit/contracts';
-import type { RoutedRuntimeEvent, RuntimeEvent } from 'linnkit/contracts';
+import { runtimeKernel } from '@linnlabs/linnkit';
+import { events as runtimeEvents } from '@linnlabs/linnkit/runtime-kernel';
+import { parseRuntimeEventRoutingIdentity } from '@linnlabs/linnkit/contracts';
+import type { RoutedRuntimeEvent, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import {
   createDefaultGraphExecutor,
   type ScriptedInferenceHarness,
-} from 'linnkit/testkit';
+} from '@linnlabs/linnkit/testkit';
 import type { ToolRuntimeHarness } from 'src/app-hosts/linnya/testkit/agent-harness/toolRegistryHarness';
 import type { FlowRuntimePort } from 'src/app-hosts/linnya/adapters/flow/flow.runtime';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';

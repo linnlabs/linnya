@@ -1,5 +1,5 @@
 import { modelCatalog } from 'src/domains/model-catalog';
-import type { llm } from 'linnkit/runtime-kernel';
+import type { llm } from '@linnlabs/linnkit/runtime-kernel';
 import type { ModelConfig } from 'src/domains/model-catalog';
 
 export function toRuntimeModelCatalogEntry(config: ModelConfig): llm.ModelCatalogEntry {

@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import type { SubRunTraceEvent } from 'linnkit/contracts';
+import type { SubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 import type { SubrunTraceHistoryProjectorPort } from './definitions/subrunTraceHistory';
 import {
   encodeSubrunTraceHistoryPayload,

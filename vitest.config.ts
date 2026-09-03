@@ -47,24 +47,7 @@ export default defineConfig({
       { find: /^@linnlabs\/linnkit-provider-ai-sdk$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit-provider-ai-sdk/src/index.ts') },
       { find: /^@linnya\/provider-catalog\/runtime-bindings$/, replacement: path.resolve(import.meta.dirname, 'packages/provider-catalog/src/runtime-bindings.ts') },
       { find: /^@linnya\/provider-catalog$/, replacement: path.resolve(import.meta.dirname, 'packages/provider-catalog/src/index.ts') },
-      // linnkit 的公开 npm 包名是 `@linnlabs/linnkit`；monorepo 开发期仍直接解析当前 workspace 源码。
-      // `@linnlabs` 是 linn 系列公共 package 的统一 scope。
-      // 同时登记两套别名：旧名 `linnkit*`（兼容 monorepo 既有 import）+ 真名 `@linnlabs/linnkit*`（新代码与外部消费者）。
-      // ⚠️ 这里用精确正则（`^...$`）避免前缀劫持；browser-safe slim seam `runtime-kernel/events` 必须显式列出。
-      { find: /^linnkit$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/index.ts') },
-      { find: /^linnkit\/ports$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/ports/index.ts') },
-      { find: /^linnkit\/contracts$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/contracts/index.ts') },
-      { find: /^linnkit\/runtime-kernel$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/runtime-kernel/index.ts') },
-      { find: /^linnkit\/runtime-kernel\/events$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/runtime-kernel/events/index.ts') },
-      { find: /^linnkit\/context-manager$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/context-manager/index.ts') },
-      { find: /^linnkit\/testkit$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/testkit/index.ts') },
-      { find: /^@linnlabs\/linnkit$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/index.ts') },
-      { find: /^@linnlabs\/linnkit\/ports$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/ports/index.ts') },
-      { find: /^@linnlabs\/linnkit\/contracts$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/contracts/index.ts') },
-      { find: /^@linnlabs\/linnkit\/runtime-kernel$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/runtime-kernel/index.ts') },
-      { find: /^@linnlabs\/linnkit\/runtime-kernel\/events$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/runtime-kernel/events/index.ts') },
-      { find: /^@linnlabs\/linnkit\/context-manager$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/context-manager/index.ts') },
-      { find: /^@linnlabs\/linnkit\/testkit$/, replacement: path.resolve(import.meta.dirname, 'packages/linnkit/src/testkit/index.ts') },
+      // Linnkit 使用正式 npm 包名，不能在测试配置中 alias 回工作区源码，否则会掩盖发布包漂移。
       { find: /^@linnya\/plugin-host-contract$/, replacement: path.resolve(import.meta.dirname, 'packages/plugin-host-contract/index.ts') },
       { find: /^@linnya\/plugin-host-contract\/backend$/, replacement: path.resolve(import.meta.dirname, 'packages/plugin-host-contract/backend/index.ts') },
       { find: /^@linnya\/plugin-host-contract\/backend\/(.+)$/, replacement: path.resolve(import.meta.dirname, 'packages/plugin-host-contract/backend/$1') },

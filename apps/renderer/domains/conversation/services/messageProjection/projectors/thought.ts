@@ -8,7 +8,7 @@ import { extractActivityBinding } from '../guards/activityBinding';
 import { appendMessage, getMessageById, updateMessage } from '../helpers/messageAccess';
 import { ensureTurnState } from '../helpers/turnAnswerState';
 import { PROJECTION_DEBUG } from '../debug';
-import type { SSEThoughtEvent } from 'linnkit/contracts';
+import type { SSEThoughtEvent } from '@linnlabs/linnkit/contracts';
 import { ConversationThoughtMessageMetadataSchema } from '@app/schemas';
 import {
   deleteThoughtSegmentBuffer,

@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 import { SQLiteRunRegistryStore } from '../sqlite-run-registry.store';
-import type { runSupervisor } from 'linnkit/runtime-kernel';
-import { RunIdSchema } from 'linnkit/contracts';
+import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 
 type RunRecord = runSupervisor.RunRecord;
 

@@ -5,7 +5,7 @@
  * Model Catalog 对外暴露的核心合同定义。
  */
 
-import type { ModelReasoningConfig } from 'linnkit/contracts';
+import type { ModelReasoningConfig } from '@linnlabs/linnkit/contracts';
 import type {
   InferenceApiSurface,
   InferenceAuthProfile,

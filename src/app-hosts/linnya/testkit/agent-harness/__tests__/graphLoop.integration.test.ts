@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { BaseTool, type ToolContext, type ToolParameterSchema } from 'src/tools/types';
 import { createGraphLoopHarness, type GraphLoopHarness } from 'src/app-hosts/linnya/testkit/agent-harness/graphLoopHarness';
-import { assertions } from 'linnkit/testkit';
+import { assertions } from '@linnlabs/linnkit/testkit';
 
 class TestRecordNoteTool extends BaseTool {
   readonly name = 'test_record_note';

@@ -20,7 +20,7 @@ import {
   type SerializableJsonRecord,
   RunIdSchema,
   ToolCallIdSchema,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 export interface UiProjectionFixture {
   readonly name: string;

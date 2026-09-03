@@ -12,7 +12,7 @@ Linnya 是基于 Electron 的桌面 Agent 工作台。Workspace、对话式 Agen
 | Linnya App Host | `src/app-hosts/linnya/` | 把 Agent、工具、持久化、模型与插件装配成产品 |
 | 产品业务 | `src/domains/`、`src/tools/` | 业务定义、规则、流程与能力 |
 | Electron / Infra | `src/electron-main/`、`src/infra/` | 桌面生命周期、IPC、进程与技术适配器 |
-| Linnkit | `packages/linnkit/` | 通用 Agent runtime、Graph、工具执行、事件与 ports |
+| Linnkit | `@linnlabs/linnkit`（npm；源码见 `linnlabs/linnkit`） | 独立版本的通用 Agent runtime、Graph、工具执行、事件与 ports |
 | 产品合同 | `packages/schemas/` | 跨进程、跨端和跨插件 DTO 与 schema |
 | 插件平台 | `packages/plugin-host-contract/`、`packages/plugins/` | Host 门面、开放插件及其 artifact |
 | 共享 Renderer UI | `packages/renderer-ui/` | 稳定 token、基础控件、图标和交互原语 |
@@ -20,6 +20,7 @@ Linnya 是基于 Electron 的桌面 Agent 工作台。Workspace、对话式 Agen
 ## 2. 核心边界
 
 1. Linnkit 只拥有通用 Agent runtime；Linnya 产品选择、数据库、具体 Provider 和 UI 不进入 Linnkit。
+   Linnya 通过精确 npm 版本消费它，禁止用 tsconfig、Vite 或测试 alias 回连 `packages/linnkit/src`。
 2. 跨进程或跨端产品 DTO 归 `packages/schemas/`；producer 与 consumer 不各写一份 interface。
 3. Provider SDK 只存在于 Host capability；Renderer、model catalog 和 Linnkit 不识别 SDK 实例。
 4. 新业务采用 domain-first vertical slice；跨 domain 只走窄 public contract、port、registry、event 或 app-level orchestration。
@@ -41,7 +42,7 @@ Linnya 是基于 Electron 的桌面 Agent 工作台。Workspace、对话式 Agen
 
 | 任务 | 第一入口 |
 | --- | --- |
-| Agent loop、Run、child run、RuntimeEvent | `packages/linnkit/src/runtime-kernel/README.md` |
+| Agent loop、Run、child run、RuntimeEvent | [`linnlabs/linnkit`](https://github.com/linnlabs/linnkit) 的 Runtime 与 integration 文档 |
 | Linnya Agent 与产品装配 | `src/app-hosts/linnya/README.md` |
 | 跨端 schema | `packages/schemas/README.md` |
 | Renderer UI 通用能力 | `packages/renderer-ui/README.md` |

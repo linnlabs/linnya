@@ -1,4 +1,4 @@
-import { isValidReasoningEffort, type ReasoningEffort } from 'linnkit/contracts';
+import { isValidReasoningEffort, type ReasoningEffort } from '@linnlabs/linnkit/contracts';
 
 const MODEL_REASONING_SELECTION_MARKER = '::reasoning::';
 

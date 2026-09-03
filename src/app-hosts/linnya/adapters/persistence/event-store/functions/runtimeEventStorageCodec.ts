@@ -1,5 +1,5 @@
-import { parseRoutedRuntimeEvent, type RoutedRuntimeEvent } from 'linnkit/contracts';
-import { events as runtimeEvents } from 'linnkit/runtime-kernel';
+import { parseRoutedRuntimeEvent, type RoutedRuntimeEvent } from '@linnlabs/linnkit/contracts';
+import { events as runtimeEvents } from '@linnlabs/linnkit/runtime-kernel';
 
 export interface StoredRuntimeEventIdentity {
   readonly eventId: string;

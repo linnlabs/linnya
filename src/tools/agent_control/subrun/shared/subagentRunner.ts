@@ -15,8 +15,8 @@
  */
 
 import type { PromptKey } from 'src/app-hosts/linnya/agent-registry/prompt.types';
-import type { ToolExecutionContext } from 'linnkit/runtime-kernel';
-import type { RuntimeEvent, ToolCallId } from 'linnkit/contracts';
+import type { ToolExecutionContext } from '@linnlabs/linnkit/runtime-kernel';
+import type { RuntimeEvent, ToolCallId } from '@linnlabs/linnkit/contracts';
 import { resolveRegisteredChildRunInvoker } from './childRunInvoker';
 
 type RegisteredSubagentToolContext = ToolExecutionContext & object;

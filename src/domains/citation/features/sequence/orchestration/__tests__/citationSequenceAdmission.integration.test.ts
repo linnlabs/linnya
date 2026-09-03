@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createToolOutputEvent } from 'linnkit/contracts';
-import { ensureToolContextRuntimeCapability } from 'linnkit/runtime-kernel';
+import { createToolOutputEvent } from '@linnlabs/linnkit/contracts';
+import { ensureToolContextRuntimeCapability } from '@linnlabs/linnkit/runtime-kernel';
 import { decorateCitationSequenceToolContext } from '../../../../../../app-hosts/linnya/adapters/tools/citationSequenceToolContextDecorator';
 import {
   requireCitationSequenceOffset,

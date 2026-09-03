@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PromptKeys } from '@app/schemas';
-import { createToolContextFixture } from 'linnkit/testkit';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import type { RegisteredChildRunInvokerPort } from 'src/app-hosts/linnya/adapters/child-runs/registeredSubagentInvoker';
 import { runRegisteredSubagent, runRegisteredSubagentsInParallel } from '../subagentRunner';
 import { buildSubrunBatchResult } from 'src/tools/agent_control/subrun/batch';

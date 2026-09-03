@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SSEEvent } from 'linnkit/contracts';
+import type { SSEEvent } from '@linnlabs/linnkit/contracts';
 import { createInitialProjectionState, reduceEvent } from '../index';
 import type { Conversation } from '../../../types';
 import { PROJECTION_TEST_SCOPE } from './helpers/projectionTestScope';

@@ -1,7 +1,7 @@
 import { PromptKeys } from '@app/schemas';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { RunIdSchema } from 'linnkit/contracts';
-import type { AgentInvocationRequest } from 'linnkit/ports';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
+import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
 import {
   audit,
   childRuns,
@@ -10,8 +10,8 @@ import {
   llm,
   runSupervisor,
   telemetry,
-} from 'linnkit/runtime-kernel';
-import * as testkit from 'linnkit/testkit';
+} from '@linnlabs/linnkit/runtime-kernel';
+import * as testkit from '@linnlabs/linnkit/testkit';
 
 import { createLinnyaChildRunInvoker } from 'src/app-hosts/linnya/adapters/child-runs/childRunInvokerFactory';
 import { createDefaultLlmNode } from 'src/app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';

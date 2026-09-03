@@ -9,16 +9,16 @@
  * - 这是 host realtime adapter 的默认实现。
  */
 
-import { events } from 'linnkit/runtime-kernel';
-import type { execution } from 'linnkit/runtime-kernel';
+import { events } from '@linnlabs/linnkit/runtime-kernel';
+import type { execution } from '@linnlabs/linnkit/runtime-kernel';
 import { Logger } from 'src/shared/logger';
 import type {
   EventEnvelope,
   RoutedRuntimeEvent,
   SSEEvent,
   SerializableJsonRecord,
-} from 'linnkit/contracts';
-import { runtimeEventToSSEEvent, toSerializableJsonRecord } from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
+import { runtimeEventToSSEEvent, toSerializableJsonRecord } from '@linnlabs/linnkit/contracts';
 
 const logger = new Logger('SsePort');
 

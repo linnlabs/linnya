@@ -21,7 +21,7 @@ import {
   getAgentTask,
 } from 'src/app-hosts/linnya/agent-registry/agentTaskResolver';
 import { pluginDiagnostics } from '../diagnostics';
-import type { ToolSchemaBuildRequest } from 'linnkit/runtime-kernel';
+import type { ToolSchemaBuildRequest } from '@linnlabs/linnkit/runtime-kernel';
 
 class RuntimeGateTestTool extends BaseTool {
   readonly name = 'runtime_gate_test_tool';

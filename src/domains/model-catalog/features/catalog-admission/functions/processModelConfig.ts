@@ -11,8 +11,8 @@ import type {
   ModelTokenRoute,
   TokenRouteCapabilities,
 } from '../../../definitions/modelCatalog';
-import type { ModelReasoningConfig } from 'linnkit/contracts';
-import { isValidReasoningEffort, REASONING_EFFORTS } from 'linnkit/contracts';
+import type { ModelReasoningConfig } from '@linnlabs/linnkit/contracts';
+import { isValidReasoningEffort, REASONING_EFFORTS } from '@linnlabs/linnkit/contracts';
 import { inferReasoningConfigByModelName } from './inferReasoningConfigByModelName';
 import { readModelInferenceRoute } from './readModelInferenceRoute';
 import { readModelEmbeddingRoute } from './readModelEmbeddingRoute';

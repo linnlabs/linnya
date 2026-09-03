@@ -1,4 +1,4 @@
-import type { CanonicalLlmUsage } from 'linnkit/contracts';
+import type { CanonicalLlmUsage } from '@linnlabs/linnkit/contracts';
 
 export type TextGenerationImageMediaType = 'image/jpeg' | 'image/png' | 'image/webp';
 

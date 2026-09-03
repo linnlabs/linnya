@@ -1,4 +1,4 @@
-import { copyToolContextRuntimeCapability } from 'linnkit/runtime-kernel';
+import { copyToolContextRuntimeCapability } from '@linnlabs/linnkit/runtime-kernel';
 import type { ToolContext } from '../../../tools/types';
 import {
   getBackendPluginRegistryRevision,

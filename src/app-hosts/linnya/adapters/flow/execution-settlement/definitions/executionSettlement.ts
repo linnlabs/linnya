@@ -2,8 +2,8 @@ import type {
   ContextUsageSnapshot,
   RoutedRuntimeEvent,
   RuntimeEvent,
-} from 'linnkit/contracts';
-import type { graph, runSupervisor } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/contracts';
+import type { graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 
 export type WaitUserRuntimeEvent = Extract<RoutedRuntimeEvent, { type: 'requires_user_interaction' }>;

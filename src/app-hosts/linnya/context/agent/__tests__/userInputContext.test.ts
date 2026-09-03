@@ -7,7 +7,7 @@ import {
   normalizeIncrementalUserInputEvent,
   normalizeRuntimeUserInputEvent,
 } from '../userInputContext';
-import type { UserInputEvent } from 'linnkit/contracts';
+import type { UserInputEvent } from '@linnlabs/linnkit/contracts';
 
 describe('agent user input context', () => {
   it('formats local time to seconds', () => {

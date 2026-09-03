@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 
-import { graph } from 'linnkit/runtime-kernel';
+import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import { getLogger } from 'src/shared/logger';
 import type { IEventStore, RunSession } from './event-store.interface';
 import { parseStoredRuntimeEvent } from './functions/runtimeEventStorageCodec';

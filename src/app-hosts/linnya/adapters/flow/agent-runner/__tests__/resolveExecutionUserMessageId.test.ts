@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createUserInputEvent, type RuntimeEvent } from 'linnkit/contracts';
+import { createUserInputEvent, type RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 import { resolveExecutionUserMessageId } from '../functions/resolveExecutionUserMessageId';
 

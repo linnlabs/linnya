@@ -1,4 +1,4 @@
-import { generateConversationId } from 'linnkit/contracts';
+import { generateConversationId } from '@linnlabs/linnkit/contracts';
 import type { FlowOrchestrator } from 'src/app-hosts/linnya/adapters/flow/flow.orchestrator';
 import type { HistoryService } from 'src/features/conversation/history/history.service';
 import type { ModelCatalog } from 'src/domains/model-catalog';

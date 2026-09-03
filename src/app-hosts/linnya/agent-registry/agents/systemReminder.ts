@@ -8,7 +8,7 @@
  * - 只有实际具备对应工具的 agent 才应启用这些规则，避免提醒模型调用不可用能力。
  */
 
-import type { AgentSpecSystemReminderExtraRule, AgentSpecSystemReminderPolicy } from 'linnkit/contracts';
+import type { AgentSpecSystemReminderExtraRule, AgentSpecSystemReminderPolicy } from '@linnlabs/linnkit/contracts';
 
 export const LINNYA_DEFAULT_SYSTEM_REMINDER_RULE_IDS = [
   'max_steps_force_final_answer',

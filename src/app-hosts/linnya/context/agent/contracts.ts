@@ -1,5 +1,5 @@
-import type * as contextManager from 'linnkit/context-manager';
-import type { AiMessage, ReasoningEffort } from 'linnkit/contracts';
+import type * as contextManager from '@linnlabs/linnkit/context-manager';
+import type { AiMessage, ReasoningEffort } from '@linnlabs/linnkit/contracts';
 import type { UserQuoteData } from '@app/schemas';
 
 type AgentProfileRequest = contextManager.agentContracts.AgentProfileRequest;

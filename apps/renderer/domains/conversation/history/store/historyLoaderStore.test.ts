@@ -75,7 +75,7 @@ import { useConversationState } from '../../store/conversationState';
 import { useHistoryLoaderStore } from './historyLoaderStore';
 import { useInteractiveRunStore } from '../../features/interactive-run';
 import type { BaseMessage } from '../../types';
-import { RunIdSchema, ToolCallIdSchema } from 'linnkit/contracts';
+import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 interface DeferredPromise<T> {
   promise: Promise<T>;

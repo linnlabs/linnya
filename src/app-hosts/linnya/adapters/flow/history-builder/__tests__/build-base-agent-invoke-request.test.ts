@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildBaseAgentInvokeRequest } from '../build-base-agent-invoke-request';
-import type { RuntimeResourceRef } from 'linnkit/contracts';
+import type { RuntimeResourceRef } from '@linnlabs/linnkit/contracts';
 
 describe('flow/history-builder.buildBaseAgentInvokeRequest', () => {
   it('从 host flow 输入构建最小 AgentInvokeRequest 形状', () => {

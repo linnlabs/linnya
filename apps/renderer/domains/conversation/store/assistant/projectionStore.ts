@@ -16,7 +16,7 @@ import type { BaseMessage, Conversation } from '../../types';
 import type { EventDispatchResult } from '../../definitions/eventDispatch';
 import { useConversationState } from '../conversationState';
 import { createProjectionCommitPipeline } from '../../services/orchestration/projectionCommitPipeline';
-import { SSEEvent as SSEEventSchema, type SSEEvent, type SSEEventInput } from 'linnkit/contracts';
+import { SSEEvent as SSEEventSchema, type SSEEvent, type SSEEventInput } from '@linnlabs/linnkit/contracts';
 import type { ConversationUserInputCommittedEvent } from '@app/schemas';
 import { mapCommittedUserInputToMessage } from '../../functions/committedUserInput';
 import { useInteractiveRunStore } from '../../features/interactive-run';

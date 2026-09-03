@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ImageGenerationResultSchema } from '@app/schemas';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 import { deriveConversationWorkDirectoryIdentity } from 'src/domains/conversation-files';
 import { generateAndPublishImages } from 'src/app-hosts/linnya/application/image-generation';
 import { GenerateImageTool } from '../GenerateImageTool';

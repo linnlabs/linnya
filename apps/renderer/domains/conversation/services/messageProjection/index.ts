@@ -23,7 +23,7 @@ import {
   projectSummarizationErrorEvent,
   projectSummarizationStartEvent,
 } from './projectors/summary';
-import type { SSEEvent, UserInputEvent } from 'linnkit/contracts';
+import type { SSEEvent, UserInputEvent } from '@linnlabs/linnkit/contracts';
 import {
   ensureExecutionProjectionState,
   releaseRunProjectionState,

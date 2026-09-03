@@ -3,7 +3,7 @@ import {
   SubRunTraceKind as SubRunTraceKindSchema,
   type SubRunTraceEvent,
   type SubRunTraceKind,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import {
   ConversationUiMessageSchema,
   conversationVisualTurnIdFromUserMessageId,

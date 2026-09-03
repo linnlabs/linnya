@@ -6,15 +6,15 @@ import {
   toolRegistry,
 } from '../../app-hosts/linnya/adapters/tools/toolRegistry';
 import { BaseTool, type ToolArgs, type ToolContext, type ToolParameterSchema } from '../types';
-import { computeToolIdempotencyKey } from 'linnkit/runtime-kernel';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import { computeToolIdempotencyKey } from '@linnlabs/linnkit/runtime-kernel';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
 } from '../../app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import * as builtinPluginRegistry from '../../app-hosts/linnya/plugin-registry/builtin';
-import { createToolOutputEvent } from 'linnkit/contracts';
-import type { ToolSchemaBuildRequest } from 'linnkit/runtime-kernel';
+import { createToolOutputEvent } from '@linnlabs/linnkit/contracts';
+import type { ToolSchemaBuildRequest } from '@linnlabs/linnkit/runtime-kernel';
 
 type MutableToolRegistry = {
   tools: Map<string, BaseTool>;

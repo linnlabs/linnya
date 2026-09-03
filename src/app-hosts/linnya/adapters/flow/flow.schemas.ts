@@ -20,7 +20,7 @@ import type {
   ConversationUserInputCommittedEvent,
   IncrementalEvent
 } from '@app/schemas';
-import type { ExecutionId, RunId, RuntimeEvent, SSEEvent } from 'linnkit/contracts';
+import type { ExecutionId, RunId, RuntimeEvent, SSEEvent } from '@linnlabs/linnkit/contracts';
 
 /**
  * 导出核心类型（从 @app/schemas 重导出）

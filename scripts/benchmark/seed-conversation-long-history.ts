@@ -18,7 +18,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 const DEFAULT_CONVERSATION_ID = 'conv-phase0-long-history-baseline';
 const DEFAULT_TURNS = 5_000;
@@ -128,7 +128,7 @@ function printHelp(): void {
 }
 
 function buildUserEvent(
-  createUserInputEvent: typeof import('linnkit/contracts').createUserInputEvent,
+  createUserInputEvent: typeof import('@linnlabs/linnkit/contracts').createUserInputEvent,
   conversationId: string,
   turnIndex: number,
   timestamp: number,
@@ -145,7 +145,7 @@ function buildUserEvent(
 }
 
 function buildAnswerEvent(
-  createFinalAnswerEvent: typeof import('linnkit/contracts').createFinalAnswerEvent,
+  createFinalAnswerEvent: typeof import('@linnlabs/linnkit/contracts').createFinalAnswerEvent,
   conversationId: string,
   turnIndex: number,
   timestamp: number,
@@ -227,7 +227,7 @@ async function main(): Promise<void> {
   ] = await Promise.all([
     import('../../src/electron-main/services/database'),
     import('../../src/app-hosts/linnya/adapters/persistence/event-store/sqlite.implementation'),
-    import('linnkit/contracts'),
+    import('@linnlabs/linnkit/contracts'),
   ]);
 
   const databaseService = new DatabaseService(args.dbPath);

@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
-import type { SubRunTraceEvent, ToolOutputEvent } from 'linnkit/contracts';
-import { shouldReplayRuntimeEventToUi } from 'linnkit/runtime-kernel/events';
+import type { SubRunTraceEvent, ToolOutputEvent } from '@linnlabs/linnkit/contracts';
+import { shouldReplayRuntimeEventToUi } from '@linnlabs/linnkit/runtime-kernel/events';
 import {
   SearchResultCitationSchema,
   conversationMessageIdFromToolIdentity,

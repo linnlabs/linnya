@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SubagentResultSchema } from '@app/schemas';
-import { createToolContextFixture } from 'linnkit/testkit';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
 import {

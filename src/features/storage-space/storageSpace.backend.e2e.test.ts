@@ -6,7 +6,7 @@ import path from 'node:path';
 import { StorageSpaceOverviewResponseSchema } from '@app/schemas';
 import Database from 'better-sqlite3';
 import express from 'express';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createSqliteConversationStorageCatalogPort } from '../../app-hosts/linnya/adapters/persistence/storage-space/createSqliteConversationStorageCatalogPort';

@@ -5,7 +5,7 @@ import {
   createToolOutputEvent,
   routeRuntimeEvent,
   type RoutedRuntimeEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import {
   CommandExecutionIdentitySchema,

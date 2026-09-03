@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import { createToolContextFixture } from 'linnkit/testkit';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 
 import { DatabaseService } from 'src/electron-main/services/database';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';

@@ -7,7 +7,7 @@ import type {
 import {
   parseSSEExecutionScope,
   type SSERequiresUserInteractionEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { getMessageById } from '../helpers/messageAccess';
 import { isRecord } from '../../../utils/typeGuards';
 import { commitPreparedToolPatch, prepareToolPatch } from '../helpers/toolPatch';

@@ -8,4 +8,4 @@ export type {
   ToolExecutionResult,
   ToolRuntimeDefinition,
   ToolRuntimePort,
-} from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/runtime-kernel';

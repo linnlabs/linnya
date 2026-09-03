@@ -1,4 +1,4 @@
-import type { CanonicalInferencePort } from 'linnkit/ports';
+import type { CanonicalInferencePort } from '@linnlabs/linnkit/ports';
 import { modelCatalog } from 'src/domains/model-catalog';
 import {
   defaultProviderOutboundAudit,

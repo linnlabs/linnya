@@ -14,8 +14,8 @@ import type {
   RuntimeResourceRef,
   ToolOutputEvent,
   AiMessage,
-} from 'linnkit/contracts';
-import { RuntimeResourceRef as RuntimeResourceRefSchema } from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
+import { RuntimeResourceRef as RuntimeResourceRefSchema } from '@linnlabs/linnkit/contracts';
 import { findRegisteredAgentDefinitionByPromptKey } from 'src/app-hosts/linnya/agent-registry/agentDefinitionResolver';
 import { createModelFacingUserInput } from 'src/app-hosts/linnya/context/agent/userInputContext';
 

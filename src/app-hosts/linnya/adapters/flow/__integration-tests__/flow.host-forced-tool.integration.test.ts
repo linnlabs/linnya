@@ -39,11 +39,11 @@ import type {
   RuntimeEvent,
   ToolCallDecisionEvent,
   ToolOutputEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import {
   createScriptedInferenceHarness,
   type ScriptedInferenceHarness,
-} from 'linnkit/testkit';
+} from '@linnlabs/linnkit/testkit';
 import { AgentRunnerService } from 'src/app-hosts/linnya/adapters/flow/flow.agent-runner.service';
 import { createAgentRunnerRuntimeHarness } from 'src/app-hosts/linnya/testkit/agent-harness/agentRunnerRuntimeHarness';
 import {
@@ -73,7 +73,7 @@ import { SubrunBatchTool } from 'src/tools/agent_control/subrun/batch';
 import { WriteToTableTool } from 'src/domains/markdown/tools';
 import * as subagentRunner from 'src/tools/agent_control/subrun/shared';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
-import type { CanonicalInferenceMessage } from 'linnkit/ports';
+import type { CanonicalInferenceMessage } from '@linnlabs/linnkit/ports';
 
 class HostOnlyProbeTool extends BaseTool {
   readonly name = 'host_only_probe';

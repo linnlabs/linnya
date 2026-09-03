@@ -26,7 +26,7 @@ import type {
   ConversationUiSpec,
   HostToolCallRequestData,
 } from '@app/schemas';
-import type { SSEThoughtEvent, SSEToolOutputEvent, SSEToolCallDecisionEvent, SSEToolProcessEvent, SSEFinalAnswerEvent, SSEFinalAnswerChunkEvent, SSESubRunTraceEvent, SSETransportEndEvent } from 'linnkit/contracts';
+import type { SSEThoughtEvent, SSEToolOutputEvent, SSEToolCallDecisionEvent, SSEToolProcessEvent, SSEFinalAnswerEvent, SSEFinalAnswerChunkEvent, SSESubRunTraceEvent, SSETransportEndEvent } from '@linnlabs/linnkit/contracts';
 import type { ToolCardPresentation } from '@linnya/plugin-host-contract/renderer/toolUi';
 import type { ConversationTransportOutcome } from '../definitions/conversationTransport';
 
@@ -276,7 +276,7 @@ type SendMessageOptionsBase = SendMessageAgentRouting & {
    */
   hostToolCall?: HostToolCallRequestData;
   /** 思考努力程度（统一语义）；未传时由 assistantService 从 modelsStore 读取 */
-  reasoning_effort?: import('linnkit/contracts').ReasoningEffort;
+  reasoning_effort?: import('@linnlabs/linnkit/contracts').ReasoningEffort;
   // 🔥 新增：用于对齐会话链路的会话ID
   conversationId?: string;
   /**

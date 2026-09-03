@@ -1,5 +1,5 @@
-import type { RunId } from 'linnkit/contracts';
-import { runSupervisor } from 'linnkit/runtime-kernel';
+import type { RunId } from '@linnlabs/linnkit/contracts';
+import { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 
 import type { FlowExecutionCompletionRegistry } from './flowExecutionCompletionRegistry';
 

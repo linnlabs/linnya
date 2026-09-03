@@ -5,9 +5,9 @@
  * 下沉到 orchestration，避免 Shell 接入后在一个文件里复制第二套生命周期。
  */
 
-import type { ToolExecutionContext } from 'linnkit/runtime-kernel';
-import type { ObservationPreviewMeta } from 'linnkit/runtime-kernel';
-import { ToolCallIdSchema, TurnIdSchema } from 'linnkit/contracts';
+import type { ToolExecutionContext } from '@linnlabs/linnkit/runtime-kernel';
+import type { ObservationPreviewMeta } from '@linnlabs/linnkit/runtime-kernel';
+import { ToolCallIdSchema, TurnIdSchema } from '@linnlabs/linnkit/contracts';
 import type { ToolOutputBlobId } from '@app/schemas';
 
 import {

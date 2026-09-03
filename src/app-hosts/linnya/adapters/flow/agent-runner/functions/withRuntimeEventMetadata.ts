@@ -1,4 +1,4 @@
-import type { RuntimeEvent, SerializableJsonRecord } from 'linnkit/contracts';
+import type { RuntimeEvent, SerializableJsonRecord } from '@linnlabs/linnkit/contracts';
 
 /**
  * Graph 原生控制事件不会经过 AgentEvent mapper，这里统一补齐 host 扩展元数据。

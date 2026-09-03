@@ -1,4 +1,4 @@
-import { graph, llm, telemetry } from 'linnkit/runtime-kernel';
+import { graph, llm, telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import type {
   AuditPort,
   CanonicalInferencePort,
@@ -6,7 +6,7 @@ import type {
   LlmInputMaterializerPort,
   TokenCounterPort,
   TokenizerPort,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 import { defaultToolRuntimePort } from 'src/app-hosts/linnya/adapters/tools/defaultPorts';
 import { CLOUD_DEEPSEEK_REASONER_MODEL_ID } from 'src/domains/model-catalog';
 import { LLM_FALLBACK_CHAT_MODEL_PREFERRED_ORDER } from 'src/app-hosts/linnya/agent-registry/system/llm_fallback';

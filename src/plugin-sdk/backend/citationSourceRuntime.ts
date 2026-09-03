@@ -1,4 +1,4 @@
-import { readToolContextWorkingHistory } from 'linnkit/runtime-kernel';
+import { readToolContextWorkingHistory } from '@linnlabs/linnkit/runtime-kernel';
 import type {
   PluginCitationSource,
   PluginCitationSourceResolverPort,

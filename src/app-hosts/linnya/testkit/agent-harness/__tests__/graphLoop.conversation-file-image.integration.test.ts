@@ -4,12 +4,12 @@ import os from 'node:os';
 import path from 'node:path';
 
 import Database from 'better-sqlite3';
-import { createUserInputEvent } from 'linnkit/contracts';
+import { createUserInputEvent } from '@linnlabs/linnkit/contracts';
 import type {
   LlmInputMaterializationAttempt,
   LlmInputMaterializerPort,
   ResolvedLlmInputMessage,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 

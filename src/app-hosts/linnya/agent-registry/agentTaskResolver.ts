@@ -1,4 +1,4 @@
-import * as contextManager from 'linnkit/context-manager';
+import * as contextManager from '@linnlabs/linnkit/context-manager';
 import { GenericAgentTask } from 'src/app-hosts/linnya/agent-registry/GenericAgentTask';
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
 import {

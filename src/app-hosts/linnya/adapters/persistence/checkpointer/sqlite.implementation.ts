@@ -14,7 +14,7 @@
 
 import type Database from 'better-sqlite3';
 
-import { graph } from 'linnkit/runtime-kernel';
+import { graph } from '@linnlabs/linnkit/runtime-kernel';
 
 type EngineState = graph.EngineState;
 type Checkpointer = graph.Checkpointer;

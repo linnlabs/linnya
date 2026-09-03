@@ -20,15 +20,7 @@
       "@plugin/slides/shared": ["packages/plugins/slides/src/shared/index.ts"],
       "@app/localization": ["packages/plugin-host-contract/renderer/localization.ts"],
       "@app/schemas": ["packages/schemas/src/index.ts"],
-      "@app/schemas/*": ["packages/schemas/src/*"],
-      "@linnlabs/linnkit": ["packages/linnkit/src/index.ts"],
-      "@linnlabs/linnkit/ports": ["packages/linnkit/src/ports/index.ts"],
-      "@linnlabs/linnkit/contracts": ["packages/linnkit/src/contracts/index.ts"],
-      "@linnlabs/linnkit/runtime-kernel": ["packages/linnkit/src/runtime-kernel/index.ts"],
-      "@linnlabs/linnkit/runtime-kernel/events": ["packages/linnkit/src/runtime-kernel/events/index.ts"],
-      "@linnlabs/linnkit/context-manager": ["packages/linnkit/src/context-manager/index.ts"],
-      "@linnlabs/linnkit/testkit": ["packages/linnkit/src/testkit/index.ts"],
-      "@linnlabs/linnkit/quickstart": ["packages/linnkit/src/quickstart/index.ts"]
+      "@app/schemas/*": ["packages/schemas/src/*"]
     }
   },
   "include": ["src", "host-types/rendererEnv.d.ts"],

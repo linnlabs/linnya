@@ -1,4 +1,4 @@
-import type { SSETransportEndEvent, SSETransportErrorEvent } from 'linnkit/contracts';
+import type { SSETransportEndEvent, SSETransportErrorEvent } from '@linnlabs/linnkit/contracts';
 
 export interface ClientConversationTransportError {
   readonly source: 'client';

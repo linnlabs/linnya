@@ -1,4 +1,4 @@
-import type { runSupervisor } from 'linnkit/runtime-kernel';
+import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import { Logger } from '../../../shared/logger';
 
 const logger = new Logger('PluginRuntimeRunInvalidation');

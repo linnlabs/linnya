@@ -1,4 +1,4 @@
-import type { LLMPolicyErrorDecision } from 'linnkit/runtime-kernel';
+import type { LLMPolicyErrorDecision } from '@linnlabs/linnkit/runtime-kernel';
 import {
   MODEL_ROUTABLE_INFERENCE_FAILURE_CODES,
   type ModelRoutableInferenceFailureCode,

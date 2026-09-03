@@ -1,4 +1,4 @@
-import type { ModelInputPlacement } from 'linnkit/runtime-kernel';
+import type { ModelInputPlacement } from '@linnlabs/linnkit/runtime-kernel';
 import type { DurableAttachmentPresence } from '../definitions/llmInputMaterializationGuard';
 
 const NO_DURABLE_ATTACHMENTS: DurableAttachmentPresence = Object.freeze({

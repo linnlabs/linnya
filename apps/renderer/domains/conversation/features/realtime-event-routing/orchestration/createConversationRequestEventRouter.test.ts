@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { SSEThoughtEvent } from 'linnkit/contracts';
+import type { SSEThoughtEvent } from '@linnlabs/linnkit/contracts';
 
 import type { ConversationEventDispatcher } from '../definitions/conversationEventDispatcher';
 import { createConversationRequestEventRouter } from './createConversationRequestEventRouter';

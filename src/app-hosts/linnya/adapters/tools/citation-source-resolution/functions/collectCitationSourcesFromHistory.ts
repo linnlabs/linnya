@@ -1,4 +1,4 @@
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { admitCitationsFromConversationToolOutput } from 'src/domains/citation/conversation-presentation';
 import { projectSearchResultCitationSource, type CitationSource } from 'src/domains/citation';
 

@@ -28,7 +28,7 @@ import type { KnowledgeBaseLookupPort } from 'src/features/knowledge-base/ingest
 import type { DocumentOcrPort } from 'src/domains/document-ocr';
 import { createProviderOutboundDebugRouter } from './providerOutboundDebugRouter';
 import ollamaRouter from './ollamaRouter';
-import { GraphExecutor, ToolNode, UserNode, WaitUserNode } from 'linnkit/runtime-kernel';
+import { GraphExecutor, ToolNode, UserNode, WaitUserNode } from '@linnlabs/linnkit/runtime-kernel';
 import { createDefaultLlmNode } from '../../app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
 import { SqliteCheckpointer } from '../../app-hosts/linnya/adapters/persistence/checkpointer/sqlite.implementation';
 import { SqliteTelemetryAdapter } from '../../app-hosts/linnya/adapters/telemetry/sqlite.implementation';

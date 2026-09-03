@@ -1,5 +1,5 @@
-import type { TokenRoute } from 'linnkit/contracts';
-import type { LlmRequestMessage, TokenCounterPort, TokenCountResult } from 'linnkit/ports';
+import type { TokenRoute } from '@linnlabs/linnkit/contracts';
+import type { LlmRequestMessage, TokenCounterPort, TokenCountResult } from '@linnlabs/linnkit/ports';
 import type { ModelCatalog, ModelConfig } from 'src/domains/model-catalog';
 import { modelCatalog } from 'src/domains/model-catalog';
 import {

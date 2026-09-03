@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
-import { parseRuntimeEventRoutingIdentity, type RuntimeEvent } from 'linnkit/contracts';
-import { RUNTIME_EVENT_TYPES_NEVER_REPLAYED_TO_UI } from 'linnkit/runtime-kernel/events';
+import { parseRuntimeEventRoutingIdentity, type RuntimeEvent } from '@linnlabs/linnkit/contracts';
+import { RUNTIME_EVENT_TYPES_NEVER_REPLAYED_TO_UI } from '@linnlabs/linnkit/runtime-kernel/events';
 import { InMemoryUiProjectionAccess } from './memoryApplier';
 import { projectEventToUiRowOps } from './projectEvent';
 import type { UiMessagePayload, UiMessageRow } from './types';

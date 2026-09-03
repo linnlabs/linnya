@@ -1,4 +1,4 @@
-import type { SSEContextUsageSnapshotEvent } from 'linnkit/contracts';
+import type { SSEContextUsageSnapshotEvent } from '@linnlabs/linnkit/contracts';
 
 import {
   ConversationUserMessageMetadataSchema,

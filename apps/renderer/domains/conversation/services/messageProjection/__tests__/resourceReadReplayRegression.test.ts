@@ -3,9 +3,9 @@ import type { BaseMessage, Conversation, ToolCallMessage } from '../../../types'
 import { createInitialProjectionState, reduceEvent } from '../index';
 import { resourceToolConfigs } from '../../../ui/tools/configs/resource';
 import { isRecord } from '../../../utils/typeGuards';
-import type { SSEToolCallDecisionEvent, SSEToolOutputEvent } from 'linnkit/contracts';
+import type { SSEToolCallDecisionEvent, SSEToolOutputEvent } from '@linnlabs/linnkit/contracts';
 import { PROJECTION_TEST_SCOPE } from './helpers/projectionTestScope';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 function createConversation(): Conversation {
   return {

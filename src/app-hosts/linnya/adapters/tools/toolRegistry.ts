@@ -1,4 +1,4 @@
-import { runtimeKernel } from 'linnkit';
+import { runtimeKernel } from '@linnlabs/linnkit';
 import {
   getRegisteredToolClasses,
   getRegisteredToolContextDecorators,

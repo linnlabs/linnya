@@ -1,5 +1,5 @@
-import { AgentSpec as AgentSpecSchema } from 'linnkit/contracts';
-import type { AgentSpec } from 'linnkit/contracts';
+import { AgentSpec as AgentSpecSchema } from '@linnlabs/linnkit/contracts';
+import type { AgentSpec } from '@linnlabs/linnkit/contracts';
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
 import { findRegisteredAgentDefinitionByPromptKey } from 'src/app-hosts/linnya/agent-registry/agentDefinitionResolver';
 

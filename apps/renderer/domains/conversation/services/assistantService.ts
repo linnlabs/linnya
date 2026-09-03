@@ -26,7 +26,7 @@ import {
 } from '@app/schemas';
 import type { UserMessageContent } from '../definitions/userMessageContent';
 import { generateMessageId } from '@shared/utils/idUtils';
-import { toSerializableJsonRecord } from 'linnkit/contracts';
+import { toSerializableJsonRecord } from '@linnlabs/linnkit/contracts';
 import { resolveCurrentConversationMessage } from '../functions/resolveCurrentConversationMessage';
 import { toUserQuoteWire } from '../functions/userQuoteWire';
 import { createAssistantStreamCallbacks } from './orchestration/createAssistantStreamCallbacks';

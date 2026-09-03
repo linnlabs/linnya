@@ -4,7 +4,7 @@ import {
   createSSETransportEndEvent,
   RunIdSchema,
   type SSEContextUsageSnapshotEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { createAssistantStreamCallbacks } from './createAssistantStreamCallbacks';
 
 describe('createAssistantStreamCallbacks', () => {

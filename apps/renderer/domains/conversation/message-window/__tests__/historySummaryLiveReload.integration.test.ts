@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import type {
   SSEHistorySummaryEvent,
   SSESummarizationEndEvent,
   SSESummarizationStartEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import type { Conversation } from '../../types';
 import { createInitialProjectionState, reduceEvent } from '../../services/messageProjection';

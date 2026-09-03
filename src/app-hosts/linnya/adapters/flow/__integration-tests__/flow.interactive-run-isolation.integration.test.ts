@@ -39,7 +39,7 @@ import {
   createRequiresUserInteractionEvent,
   createToolCallDecisionEvent,
   ToolCallIdSchema,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 interface Latch {
   readonly promise: Promise<void>;

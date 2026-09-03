@@ -1,17 +1,17 @@
 import { PromptKeys } from '@app/schemas';
 import { describe, expect, it } from 'vitest';
-import type { AgentInvocationRequest } from 'linnkit/ports';
-import { audit, graph, runSupervisor, telemetry } from 'linnkit/runtime-kernel';
+import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
+import { audit, graph, runSupervisor, telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import {
   createHistorySummaryEvent,
   type RoutedRuntimeEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { LinnyaRunCostCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
 import {
   createRegisteredChildRunInvoker,
   type RegisteredChildRunInvokerPort,
 } from '../registeredSubagentInvoker';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 
 function createIsolatedRuntime(label: string): {
   invoker: RegisteredChildRunInvokerPort;

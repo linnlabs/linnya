@@ -7,7 +7,7 @@ import type {
   SSESummarizationEndEvent,
   SSESummarizationErrorEvent,
   SSESummarizationStartEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import {
   conversationSummarizationPresentationIdFromEventId,
   ConversationSummarizationProgressMetadataSchema,

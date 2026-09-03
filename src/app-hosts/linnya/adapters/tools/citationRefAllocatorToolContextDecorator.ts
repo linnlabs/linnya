@@ -1,4 +1,4 @@
-import type { ToolExecutionContext } from 'linnkit/runtime-kernel';
+import type { ToolExecutionContext } from '@linnlabs/linnkit/runtime-kernel';
 import {
   attachCitationRefAllocator,
   createCitationRefAllocator,

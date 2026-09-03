@@ -62,15 +62,15 @@ import {
 import {
   createScriptedInferenceHarness,
   type ScriptedInferenceHarness,
-} from 'linnkit/testkit';
-import type { CanonicalInferenceMessage } from 'linnkit/ports';
+} from '@linnlabs/linnkit/testkit';
+import type { CanonicalInferenceMessage } from '@linnlabs/linnkit/ports';
 import type {
   FinalAnswerEvent,
   ProviderContinuation,
   RuntimeEvent,
   ToolCallDecisionEvent,
   ToolProcessEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import {
   buildFlowIntegrationEngine,
   createFlowIntegrationRuntimePersistence,

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createFinalAnswerEvent, createUserInputEvent } from 'linnkit/contracts';
+import { createFinalAnswerEvent, createUserInputEvent } from '@linnlabs/linnkit/contracts';
 
 vi.mock('src/app-hosts/linnya/agent-registry/agentDefinitionResolver', () => ({
   findRegisteredAgentDefinitionByPromptKey: vi.fn(() => undefined),

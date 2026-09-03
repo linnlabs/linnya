@@ -7,7 +7,7 @@ import type {
 import {
   SubRunTraceKind as RuntimeSubRunTraceKindSchema,
   type SubRunTraceEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 const DEFAULT_LIMIT = 80;
 const MIN_LIMIT = 1;

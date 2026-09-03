@@ -2,7 +2,7 @@ import type {
   CanonicalAssistantReplayPart,
   CanonicalInferenceEvent,
   CanonicalInferenceRequest,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 
 import { createLinnyaAiSdkInferenceCapability } from '../../../../src/app-hosts/linnya/adapters/inference/features/ai-sdk-language-composition/orchestration/createLinnyaAiSdkInferenceCapability';
 import { createLinnyaAiSdkLanguageModelRegistry } from '../../../../src/app-hosts/linnya/adapters/inference/features/ai-sdk-language-composition/orchestration/createLinnyaAiSdkLanguageModelRegistry';

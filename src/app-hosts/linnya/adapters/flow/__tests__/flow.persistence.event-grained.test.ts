@@ -12,7 +12,7 @@ import {
   type RoutedRuntimeEvent,
   type RuntimeEvent,
   type RuntimeResourceRef,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import type { WorkspaceAssetCommitRecord } from 'src/features/workspace/assets/definitions/workspaceAssetCommit';
 import { createConversationPersistencePort, EventPersistenceCoordinator } from '../flow.persistence';
 import { createDirectFlowConversationAdmissionPort } from '../__test-helpers__/createDirectFlowConversationAdmissionPort';

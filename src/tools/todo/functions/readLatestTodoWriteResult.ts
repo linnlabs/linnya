@@ -2,7 +2,7 @@ import {
   AgentTodoWriteResultSchema,
   type AgentTodoWriteResult,
 } from '@app/schemas';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 /**
  * 从通用工具事实中读取最近一次成功的 todo_write。

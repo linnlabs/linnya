@@ -1,5 +1,5 @@
-import { generateRuntimeEventId } from 'linnkit/contracts';
-import type { RunId, SSEEvent, SummarizationCallbacks } from 'linnkit/contracts';
+import { generateRuntimeEventId } from '@linnlabs/linnkit/contracts';
+import type { RunId, SSEEvent, SummarizationCallbacks } from '@linnlabs/linnkit/contracts';
 import { Logger } from 'src/shared/logger';
 import type { SSESink } from 'src/app-hosts/linnya/adapters/flow/flow.schemas';
 

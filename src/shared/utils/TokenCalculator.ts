@@ -16,7 +16,7 @@
  */
 
 import { get_encoding, Tiktoken } from 'tiktoken';
-import { AiMessage } from 'linnkit/contracts';
+import { AiMessage } from '@linnlabs/linnkit/contracts';
 
 /**
  * Token 计算器类

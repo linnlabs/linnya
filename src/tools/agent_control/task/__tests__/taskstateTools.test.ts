@@ -9,7 +9,7 @@ import {
   createToolOutputEvent,
   RunIdSchema,
   type RuntimeEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import { taskStateToolClasses } from '..';
 import { TaskReadTool } from '../taskReadTool';

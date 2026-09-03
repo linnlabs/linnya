@@ -5,7 +5,7 @@ import {
   type RuntimeResourceRef,
   type SerializableJsonRecord,
   ToolCallIdSchema,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { normalizeIncrementalUserInputEvent } from 'src/app-hosts/linnya/context/agent/userInputContext';
 import type { WorkspaceAssetCommitRecord } from 'src/features/workspace/assets/definitions/workspaceAssetCommit';
 import type { FlowIncomingEventBatch } from '../definitions/flowIncomingEventBatch';

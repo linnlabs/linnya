@@ -3,7 +3,7 @@ import {
   createHistorySummaryEvent,
   routeRuntimeEvent,
   type RuntimeEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { conversationMessageIdFromToolIdentity } from '@app/schemas';
 
 import {

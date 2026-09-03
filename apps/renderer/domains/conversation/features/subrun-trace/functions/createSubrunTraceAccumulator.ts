@@ -1,4 +1,4 @@
-import type { SSESubRunTraceEvent } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 import type { SubrunTraceBucketMap } from '../definitions/subrunTrace';
 import { readSubrunTraceBuckets } from './hasSubrunTraceBucket';
 import { isHistoricalFinalAnswerSnapshotChunk } from './projectHistoricalSubrunTraceEvent';

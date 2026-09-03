@@ -8,12 +8,12 @@
  * - 本实现与当前 agent profile task 语义对齐
  */
 
-import { generateAiMessageId } from 'linnkit/contracts';
-import * as contextManager from 'linnkit/context-manager';
+import { generateAiMessageId } from '@linnlabs/linnkit/contracts';
+import * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import { buildPrompt } from '../../prompt.builder';
 import { REVIEW_AGENT_PROMPT } from './prompt';
-import type { AiMessage } from 'linnkit/contracts';
+import type { AiMessage } from '@linnlabs/linnkit/contracts';
 import { linnyaFenceRegistry } from 'src/app-hosts/linnya/context/agent/registerLinnyaFences';
 
 function requireNonEmptyString(value: string | undefined, fieldName: string): string {

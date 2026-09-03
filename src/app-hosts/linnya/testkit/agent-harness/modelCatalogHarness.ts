@@ -1,4 +1,4 @@
-import type { llm } from 'linnkit/runtime-kernel';
+import type { llm } from '@linnlabs/linnkit/runtime-kernel';
 
 export const SCRIPTED_MODEL_ID = 'scripted-test-model';
 

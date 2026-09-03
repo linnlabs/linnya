@@ -1,4 +1,4 @@
-import type { SSEEvent, SSEThoughtEvent } from 'linnkit/contracts';
+import type { SSEEvent, SSEThoughtEvent } from '@linnlabs/linnkit/contracts';
 
 import type { AssistantServiceCallbacks } from '../../types';
 import type { ConversationStreamCallbacks } from '../conversationService';

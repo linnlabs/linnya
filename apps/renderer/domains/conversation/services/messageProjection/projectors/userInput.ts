@@ -2,7 +2,7 @@ import type { BaseMessage } from '../../../types';
 import type { MessageProjectionState, ProjectionResult } from '../state';
 import { appendMessage } from '../helpers/messageAccess';
 import { mapRuntimeAttachmentsToConversation } from '../../../functions/runtimeAttachments';
-import type { UserInputEvent } from 'linnkit/contracts';
+import type { UserInputEvent } from '@linnlabs/linnkit/contracts';
 import { ConversationUserMessageMetadataSchema } from '@app/schemas';
 
 /**

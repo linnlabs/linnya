@@ -3,7 +3,7 @@ import {
   createSseSummarizationRealtimePort,
   createSummarizationCallbacks,
 } from 'src/app-hosts/linnya/adapters/flow/agent-runner/summarizationEventEmitter';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 
 describe('createSummarizationCallbacks', () => {
   it('只通过 realtime port 发出 SSE-only 摘要进度，不发布 durable fact', () => {

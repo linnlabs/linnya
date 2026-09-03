@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SSESubRunTraceEvent } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 
 import type { BaseMessage } from '../../../types';
 import type { SubrunTraceBucketMap } from '../../subrun-trace';
@@ -11,7 +11,7 @@ import {
   createSubrunMessageProjectionState,
   projectSubrunTraceEvent,
 } from '../functions/projectSubrunTraceEvent';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 function answerChunk(params: {
   id: string;

@@ -1,5 +1,5 @@
-import type { AuditPort, LlmInputMaterializerPort } from 'linnkit/ports';
-import type { graph, runSupervisor, ToolModelInputResolverPort } from 'linnkit/runtime-kernel';
+import type { AuditPort, LlmInputMaterializerPort } from '@linnlabs/linnkit/ports';
+import type { graph, runSupervisor, ToolModelInputResolverPort } from '@linnlabs/linnkit/runtime-kernel';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import type { LinnyaRunCostCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
 import type { LinnyaTokenCalibrationCollector } from 'src/app-hosts/linnya/adapters/token-accounting';

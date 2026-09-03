@@ -22,15 +22,7 @@
     "baseUrl": ".",
     "paths": {
       "@app/schemas": ["../schemas/src/index.ts"],
-      "@app/schemas/*": ["../schemas/src/*"],
-      "@linnlabs/linnkit": ["../linnkit/src/index.ts"],
-      "@linnlabs/linnkit/ports": ["../linnkit/src/ports/index.ts"],
-      "@linnlabs/linnkit/contracts": ["../linnkit/src/contracts/index.ts"],
-      "@linnlabs/linnkit/runtime-kernel": ["../linnkit/src/runtime-kernel/index.ts"],
-      "@linnlabs/linnkit/runtime-kernel/events": ["../linnkit/src/runtime-kernel/events/index.ts"],
-      "@linnlabs/linnkit/context-manager": ["../linnkit/src/context-manager/index.ts"],
-      "@linnlabs/linnkit/testkit": ["../linnkit/src/testkit/index.ts"],
-      "@linnlabs/linnkit/quickstart": ["../linnkit/src/quickstart/index.ts"]
+      "@app/schemas/*": ["../schemas/src/*"]
     }
   },
   "include": [

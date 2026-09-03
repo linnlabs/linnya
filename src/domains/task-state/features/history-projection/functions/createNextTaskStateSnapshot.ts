@@ -1,5 +1,5 @@
 import type { TaskState } from '@app/schemas';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 import type { NextTaskStateSnapshot } from '../definitions/taskStateHistorySnapshot';
 import { readLatestTaskStateSnapshot } from './readLatestTaskStateSnapshot';

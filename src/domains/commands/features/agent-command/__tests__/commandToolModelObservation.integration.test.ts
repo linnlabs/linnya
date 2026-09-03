@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 import {
   CommandProcessHandleSchema,
   ProcessAgentModelControlV1Schema,

@@ -6,9 +6,9 @@ import {
   readToolContextPersistedHistory,
   readToolContextWorkingHistory,
   stripRuntimeReservedToolContextPatch,
-} from 'linnkit/runtime-kernel';
-import type { RuntimeEvent } from 'linnkit/contracts';
-import { createToolOutputEvent, ToolCallIdSchema } from 'linnkit/contracts';
+} from '@linnlabs/linnkit/runtime-kernel';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
+import { createToolOutputEvent, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 function makeEvent(id: string): RuntimeEvent {
   return createToolOutputEvent(

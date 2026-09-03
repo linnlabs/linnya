@@ -17,7 +17,7 @@ import {
 } from '../definitions/toolOutputBlob';
 import { setWorkspaceRoot, resetWorkspaceRootToDefault } from '../../../shared/utils/pathManager';
 import { ToolOutputReadResultSchema } from '@app/schemas';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 /**
  * ToolOutputReadTool 真实落盘测试（ToolOutputStore）：

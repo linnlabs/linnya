@@ -3,7 +3,7 @@ import {
   type SerializableJsonRecord,
   type SerializableJsonValue,
   type SubRunTraceEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import type {
   DurableSubrunTraceEvent,
   DurableSubrunTraceKind,

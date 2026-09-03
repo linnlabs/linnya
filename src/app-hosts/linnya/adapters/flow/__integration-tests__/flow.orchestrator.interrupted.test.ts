@@ -12,7 +12,7 @@ import {
   createRunExecutionMetricsEvent,
   createToolOutputEvent,
   createToolProcessEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import type { FlowExecutionResult } from 'src/app-hosts/linnya/adapters/flow/flow.schemas';
 import type {
   FlowAgentRunExecution,
@@ -33,7 +33,7 @@ import {
   createFlowIntegrationRuntimePersistence,
   InMemoryFlowEventStore,
 } from 'src/app-hosts/linnya/testkit/agent-harness/flowIntegrationHarness';
-import { RuntimeEvent as RuntimeEventSchema } from 'linnkit/contracts';
+import { RuntimeEvent as RuntimeEventSchema } from '@linnlabs/linnkit/contracts';
 
 interface Latch {
   readonly promise: Promise<void>;

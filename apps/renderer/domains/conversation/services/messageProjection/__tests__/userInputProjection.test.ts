@@ -5,7 +5,7 @@ import {
   reduceEvent,
 } from '../index';
 import type { Conversation } from '../../../types';
-import { createUserInputEvent } from 'linnkit/contracts';
+import { createUserInputEvent } from '@linnlabs/linnkit/contracts';
 
 function createConversation(): Conversation {
   return {

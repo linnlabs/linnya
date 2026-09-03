@@ -1,8 +1,8 @@
 import {
   LLM_IMAGE_INPUT_ERROR_CODES,
   LlmImageInputError,
-} from 'linnkit/runtime-kernel';
-import type { LlmImageInputDescriptor } from 'linnkit/ports';
+} from '@linnlabs/linnkit/runtime-kernel';
+import type { LlmImageInputDescriptor } from '@linnlabs/linnkit/ports';
 import type {
   ImageInputProcessingProfileBinding,
   ImageInputProcessingProfileRegistry,

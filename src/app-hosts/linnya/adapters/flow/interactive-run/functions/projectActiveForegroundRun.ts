@@ -1,5 +1,5 @@
 import type { ConversationActiveRunResponse } from '@app/schemas';
-import type { runSupervisor } from 'linnkit/runtime-kernel';
+import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 
 type RunSnapshot = runSupervisor.RunSnapshot;
 

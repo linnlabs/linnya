@@ -1,5 +1,5 @@
 import type { ModelPickerSnapshot } from '@app/schemas/model-picker';
-import type { ReasoningEffort } from 'linnkit/contracts';
+import type { ReasoningEffort } from '@linnlabs/linnkit/contracts';
 
 import type { ModelSelectOption } from '../../../definitions/modelSelectOption';
 

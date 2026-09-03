@@ -14,7 +14,7 @@ import {
   type RuntimeResourceRef,
   type UserInputEvent,
   RunIdSchema,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { CONVERSATION_SCHEMAS } from '../conversation.schema';
 import {
   ConversationSelectedAgentIdSchema,

@@ -2,7 +2,7 @@ import {
   admitCitationsFromConversationSubrunOutput,
   admitCitationsFromConversationToolOutput,
 } from '@linnya/citation-domain/conversation-presentation';
-import { SSEEvent as SSEEventSchema } from 'linnkit/contracts';
+import { SSEEvent as SSEEventSchema } from '@linnlabs/linnkit/contracts';
 
 import type { BaseMessage } from '../../../types';
 import {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { CommandAgentRunIdSchema } from '@app/schemas/commands';
 import { createChildRunToolContext } from 'packages/linnkit/src/runtime-kernel/child-runs/childToolContext';
 

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { SSESubRunTraceEvent, SubRunTraceToolCallDecision } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent, SubRunTraceToolCallDecision } from '@linnlabs/linnkit/contracts';
 
 import type { BaseMessage } from '../../../types';
 import {
   createSubrunMessageProjectionState,
   projectSubrunTraceEvent,
 } from '../functions/projectSubrunTraceEvent';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 function toolDecision(
   toolName: string,

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from 'linnkit/ports';
+import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
 import type { ModelConfig } from 'src/domains/model-catalog';
 import { createDefaultHostInferencePort } from './createDefaultHostInferencePort';
 

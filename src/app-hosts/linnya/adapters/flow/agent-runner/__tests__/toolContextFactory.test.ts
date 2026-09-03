@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type Database from 'better-sqlite3';
-import { runtimeKernel } from 'linnkit';
+import { runtimeKernel } from '@linnlabs/linnkit';
 import { DatabaseService } from 'src/electron-main/services/database';
 import {
   createRuntimeEventToolContextHostPorts,
   createToolContext,
 } from 'src/app-hosts/linnya/adapters/context-injection/toolContextFactory';
 import { clearPluginRuntimeStateForTests } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { ToolContext } from 'src/tools/types';
-import { createToolOutputEvent, RunIdSchema } from 'linnkit/contracts';
+import { createToolOutputEvent, RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { createCommandRunPermissionSnapshot } from 'src/domains/commands/features/permission-settings';
 import { CommandAgentRunIdSchema } from '@app/schemas/commands';
 import type { ShellToolRuntimePort } from 'src/app-hosts/linnya/adapters/commands/shell-runtime/definitions';

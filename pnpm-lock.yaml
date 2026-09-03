@@ -31,6 +31,9 @@ importers:
       '@discordjs/opus':
         specifier: ^0.10.0
         version: 0.10.0(encoding@0.1.13)
+      '@linnlabs/linnkit':
+        specifier: 0.31.1
+        version: 0.31.1(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
       '@linnlabs/linnkit-provider-ai-sdk':
         specifier: workspace:*
         version: link:packages/linnkit-provider-ai-sdk
@@ -628,8 +631,8 @@ importers:
         version: 7.0.83(zod@3.25.76)
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: workspace:*
-        version: link:../linnkit
+        specifier: 0.31.1
+        version: 0.31.1(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -645,6 +648,9 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1)
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
 
   packages/parser-wasm: {}
 
@@ -654,8 +660,11 @@ importers:
         specifier: workspace:*
         version: link:../schemas
       '@linnlabs/linnkit':
-        specifier: workspace:*
-        version: link:../linnkit
+        specifier: 0.31.1
+        version: 0.31.1(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -695,8 +704,8 @@ importers:
         version: 9.0.1
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: workspace:*
-        version: link:../../linnkit
+        specifier: 0.31.1
+        version: 0.31.1(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
       '@linnya/plugin-host-contract':
         specifier: workspace:*
         version: link:../../plugin-host-contract
@@ -733,6 +742,9 @@ importers:
       vue-tsc:
         specifier: ~3.1.0
         version: 3.1.8(typescript@5.9.3)
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
 
   packages/plugins/slides:
     dependencies:
@@ -795,8 +807,8 @@ importers:
         version: 3.25.76
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: workspace:*
-        version: link:../../linnkit
+        specifier: 0.31.1
+        version: 0.31.1(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
       '@linnya/plugin-host-contract':
         specifier: workspace:*
         version: link:../../plugin-host-contract
@@ -1718,6 +1730,16 @@ packages:
 
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
+
+  '@linnlabs/linnkit@0.31.1':
+    resolution: {integrity: sha512-r1f1OV09z/qH7Bv6sM7n1kFdZu95MeFclDUOue0n0NFBJ9IPGJMII5r6e+TBQtfj05FQgRQmbTRGugkxoiDmKA==}
+    hasBin: true
+    peerDependencies:
+      vitest: ^2.0.0 || ^3.0.0
+      zod: ^3.22.0
+    peerDependenciesMeta:
+      vitest:
+        optional: true
 
   '@malept/cross-spawn-promise@2.0.0':
     resolution: {integrity: sha512-1DpKU0Z5ThltBwjNySMC14g0CkbyhCaz9FkhxqNsZI6uAPJXFS8cMXlBKo26FJ8ZuW6S9GCMcR9IO5k2X5/9Fg==}
@@ -7117,6 +7139,14 @@ snapshots:
       keyv: 5.6.0
 
   '@keyv/serialize@1.1.1': {}
+
+  '@linnlabs/linnkit@0.31.1(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)':
+    dependencies:
+      eventsource-parser: 3.1.0
+      tiktoken: 1.0.22
+      zod: 3.25.76
+    optionalDependencies:
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1)
 
   '@malept/cross-spawn-promise@2.0.0':
     dependencies:

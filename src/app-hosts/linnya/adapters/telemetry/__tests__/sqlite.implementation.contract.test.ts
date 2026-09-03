@@ -20,8 +20,8 @@ import {
 } from '../sqlite.implementation';
 import { LinnyaRunCostCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
 import { LinnyaTokenCalibrationCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
-import type { telemetry } from 'linnkit/runtime-kernel';
-import type { TokenRoute } from 'linnkit/contracts';
+import type { telemetry } from '@linnlabs/linnkit/runtime-kernel';
+import type { TokenRoute } from '@linnlabs/linnkit/contracts';
 
 type TelemetryEvent = telemetry.TelemetryEvent;
 

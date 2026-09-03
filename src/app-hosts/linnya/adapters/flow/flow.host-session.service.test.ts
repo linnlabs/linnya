@@ -5,8 +5,8 @@ import {
   createHistorySummaryEvent,
   type RuntimeEvent,
   RunIdSchema,
-} from 'linnkit/contracts';
-import { graph } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/contracts';
+import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import { FlowHostSessionService } from './flow.host-session.service';
 import {
   createConversationPersistencePort,

@@ -1,5 +1,5 @@
-import type { SSEExecutionScope } from 'linnkit/contracts';
-import { RunIdSchema } from 'linnkit/contracts';
+import type { SSEExecutionScope } from '@linnlabs/linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 
 /** 测试中的在途事件必须像真实 Host 一样显式携带执行身份。 */
 export const PROJECTION_TEST_SCOPE = {

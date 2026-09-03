@@ -2,7 +2,7 @@ import {
   parseSSEExecutionScope,
   type BaseSSEEvent,
   type SSEExecutionScope,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import type {
   ExecutionProjectionState,

@@ -1,11 +1,11 @@
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { graph } from 'linnkit/runtime-kernel';
+import { graph } from '@linnlabs/linnkit/runtime-kernel';
 
 import { ENGINE_CHECKPOINTS_SCHEMA } from '../checkpointer.schema';
 import { SqliteCheckpointer } from '../sqlite.implementation';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 type EngineState = graph.EngineState;
 type CheckpointSummary = graph.CheckpointSummary;

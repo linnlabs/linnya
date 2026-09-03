@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { runContext } from 'linnkit/runtime-kernel';
+import { runContext } from '@linnlabs/linnkit/runtime-kernel';
 import {
   createContextUsageSnapshotEvent,
   type RequiresUserInteractionEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 import { RunLifecycleCoordinator } from '../runLifecycleCoordinator';
-import { RunIdSchema, ToolCallIdSchema } from 'linnkit/contracts';
+import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 describe('RunLifecycleCoordinator execution-scoped 事件上下文', () => {
   it('只为 Graph 草稿补充非路由 trace metadata，不拥有 run routing identity', () => {

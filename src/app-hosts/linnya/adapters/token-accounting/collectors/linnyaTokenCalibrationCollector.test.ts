@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { telemetry } from 'linnkit/runtime-kernel';
-import type { CanonicalLlmUsage, TokenRoute } from 'linnkit/contracts';
+import type { telemetry } from '@linnlabs/linnkit/runtime-kernel';
+import type { CanonicalLlmUsage, TokenRoute } from '@linnlabs/linnkit/contracts';
 
 import { LinnyaTokenCalibrationCollector } from './linnyaTokenCalibrationCollector';
 

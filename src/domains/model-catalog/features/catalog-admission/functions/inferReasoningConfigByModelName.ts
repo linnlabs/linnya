@@ -18,7 +18,7 @@
  * 档位事实来源：各 provider 公开 API 文档；当前产品取舍直接记录在对应模型分支的注释中。
  */
 
-import type { ModelReasoningConfig } from 'linnkit/contracts';
+import type { ModelReasoningConfig } from '@linnlabs/linnkit/contracts';
 
 /**
  * 按模型名推断 reasoning 能力契约。

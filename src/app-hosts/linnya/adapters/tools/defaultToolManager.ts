@@ -1,4 +1,4 @@
-import * as contextManager from 'linnkit/context-manager';
+import * as contextManager from '@linnlabs/linnkit/context-manager';
 import { toolRegistry } from './toolRegistry';
 
 /**

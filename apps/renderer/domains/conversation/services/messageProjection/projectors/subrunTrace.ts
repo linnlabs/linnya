@@ -8,7 +8,7 @@ import { isRecord } from '../../../utils/typeGuards';
 import { markRaw } from 'vue';
 import { admitCitationsFromConversationSubrunOutput } from '@linnya/citation-domain/conversation-presentation';
 import { projectConversationCitationRegistration } from '../../../features/citation-presentation';
-import type { SSESubRunTraceEvent } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 import {
   appendSubrunTraceSummary,
   readSubrunTraceSummary,

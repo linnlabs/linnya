@@ -1,15 +1,15 @@
 import { PromptKeys } from '@app/schemas';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
-import { audit, execution, graph, llm, telemetry, tools } from 'linnkit/runtime-kernel';
-import type { RoutedRuntimeEvent, RuntimeResourceRef, UserInputEvent } from 'linnkit/contracts';
-import { createScriptedInferenceHarness, createToolContextFixture } from 'linnkit/testkit';
+import { audit, execution, graph, llm, telemetry, tools } from '@linnlabs/linnkit/runtime-kernel';
+import type { RoutedRuntimeEvent, RuntimeResourceRef, UserInputEvent } from '@linnlabs/linnkit/contracts';
+import { createScriptedInferenceHarness, createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import type {
   CanonicalInferencePort,
   LlmInputMaterializerPort,
   LlmRequestMessage,
   ResolvedLlmInputMessage,
-} from 'linnkit/ports';
+} from '@linnlabs/linnkit/ports';
 import {
   createLinnyaChildRunInvoker,
   toChildRunAgentConfig,
@@ -26,7 +26,7 @@ import {
 } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import { clearRegisteredAgentTaskCache } from 'src/app-hosts/linnya/agent-registry/agentTaskResolver';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { createInMemoryToolResultAssetClaimRegistry } from 'src/domains/assets/features/tool-result-claims';
 import { deriveConversationWorkDirectoryIdentity } from 'src/domains/conversation-files';
 import { createToolRuntimeHarness } from 'src/app-hosts/linnya/testkit/agent-harness/toolRegistryHarness';

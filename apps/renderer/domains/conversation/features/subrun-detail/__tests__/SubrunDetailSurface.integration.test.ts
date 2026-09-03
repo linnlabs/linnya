@@ -3,8 +3,8 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createApp, defineComponent, h, nextTick, provide, type App } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SSESubRunTraceEvent, SSEToolCallDecisionEvent } from 'linnkit/contracts';
-import { ToolCallIdSchema } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent, SSEToolCallDecisionEvent } from '@linnlabs/linnkit/contracts';
+import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 import {
   clearRendererPluginRegistryForTest,

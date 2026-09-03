@@ -10,6 +10,7 @@
  * - 冻结 `packages/linnkit/src` 跨顶层子模块的 deep import 新增面
  * - 防止 context-manager/shared 反向依赖 profiles 兼容岛
  * - 阻止 production runtime 拖入 vitest / linnkit/testkit
+ * - 阻止已废弃的 `linnkit/*` bare import 回流，统一消费 `@linnlabs/linnkit`
  *
  * 实现要点：
  * - 真实 import 提取走 TypeScript Compiler API（`extractImportsFromSource`）：

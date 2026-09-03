@@ -3,8 +3,8 @@ import {
   type ConversationNextRequest,
 } from '@app/schemas';
 import { Logger } from 'src/shared/logger';
-import { generateRuntimeEventId, type RunId } from 'linnkit/contracts';
-import { execution } from 'linnkit/runtime-kernel';
+import { generateRuntimeEventId, type RunId } from '@linnlabs/linnkit/contracts';
+import { execution } from '@linnlabs/linnkit/runtime-kernel';
 import { SsePort } from 'src/app-hosts/linnya/adapters/realtime/sse.port';
 import type { FlowExecutionResult, SSESink } from 'src/app-hosts/linnya/adapters/flow/flow.schemas';
 import { EventPersistenceCoordinator } from 'src/app-hosts/linnya/adapters/flow/flow.persistence';
@@ -13,14 +13,14 @@ import {
   createSSERunStatusEvent,
   createSSETransportEndEvent,
   createSSETransportErrorEvent,
-} from 'linnkit/contracts';
-import type { RuntimeEvent } from 'linnkit/contracts';
-import type { runSupervisor } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
+import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import type {
   RunMetadata,
   RunSession,
 } from 'src/app-hosts/linnya/adapters/persistence/event-store';
-import type { graph } from 'linnkit/runtime-kernel';
+import type { graph } from '@linnlabs/linnkit/runtime-kernel';
 import type {
   FlowIncomingEventBatch,
   RoutedFlowIncomingEventBatch,

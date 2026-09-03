@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SSEEvent } from 'linnkit/contracts';
+import type { SSEEvent } from '@linnlabs/linnkit/contracts';
 import { conversationMessageIdFromToolIdentity } from '@app/schemas';
 
 import { createInitialProjectionState, reduceEvent } from '../../../services/messageProjection';
@@ -9,7 +9,7 @@ import {
   createSubrunMessageProjectionState,
   projectSubrunTraceEvent,
 } from '../functions/projectSubrunTraceEvent';
-import { RunIdSchema, ToolCallIdSchema } from 'linnkit/contracts';
+import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 
 const CONVERSATION_ID = 'conversation-parallel-subruns';
 const PARENT_RUN_ID = 'run-parent';

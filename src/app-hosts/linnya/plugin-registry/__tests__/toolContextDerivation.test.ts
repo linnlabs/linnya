@@ -1,10 +1,10 @@
 import { describe, expect, it, afterEach } from 'vitest';
-import { createToolContextFixture } from 'linnkit/testkit';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import {
   ensureToolContextRuntimeCapability,
   getToolContextRuntimeBinding,
-} from 'linnkit/runtime-kernel';
-import type { RuntimeEvent } from 'linnkit/contracts';
+} from '@linnlabs/linnkit/runtime-kernel';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 import type { ToolContext } from 'src/tools/types';
 import { backendPluginRegistry } from '../registry';
@@ -17,7 +17,7 @@ import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
 } from '../pluginRuntimeState';
-import { RunIdSchema } from 'linnkit/contracts';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import {
   attachCitationSequence,
   attachCitationRefAllocator,

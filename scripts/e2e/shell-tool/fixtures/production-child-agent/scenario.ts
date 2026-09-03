@@ -14,11 +14,11 @@ import { ConversationToolMessagePayloadSchema } from '@app/schemas';
 import { app } from 'electron';
 import { resolveElectronLocalProcessPlatformRuntime } from '../../../../../src/electron-main/local-process-runtime/production-runtime';
 import express from 'express';
-import { telemetry } from 'linnkit/runtime-kernel';
+import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import {
   createDefaultGraphExecutor,
   LlmCaller,
-} from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/runtime-kernel';
 
 import type { KnowledgeBaseService } from '../../../../../src/features/knowledge-base/application/knowledgeBaseService';
 import { HistoryRepository } from '../../../../../src/features/conversation/history/history.repository';

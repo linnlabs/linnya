@@ -1,19 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { llm } from 'linnkit/runtime-kernel';
+import { llm } from '@linnlabs/linnkit/runtime-kernel';
 import {
   agentTasks,
   agentContext,
   agentOrchestration,
-} from 'linnkit/context-manager';
-import { defineContextPolicy } from 'linnkit/contracts';
-import type { AgentSpecContextPolicy, AiMessage, RuntimeEvent, TokenRoute } from 'linnkit/contracts';
+} from '@linnlabs/linnkit/context-manager';
+import { defineContextPolicy } from '@linnlabs/linnkit/contracts';
+import type { AgentSpecContextPolicy, AiMessage, RuntimeEvent, TokenRoute } from '@linnlabs/linnkit/contracts';
 import type {
   LlmCallOptions,
   LlmImageInputEstimatorPort,
   LlmRequestMessage,
   TokenizerPort,
-} from 'linnkit/ports';
-import type { ContextTrace } from 'linnkit/context-manager';
+} from '@linnlabs/linnkit/ports';
+import type { ContextTrace } from '@linnlabs/linnkit/context-manager';
 
 import {
   createDefaultGraphAgentExecutor,

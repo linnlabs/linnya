@@ -1,4 +1,4 @@
-import type { SSESubRunTraceEvent } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 
 import type { BaseMessage } from '../../../types';
 import type { SubrunTraceBucket } from '../../subrun-trace';

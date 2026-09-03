@@ -1,4 +1,4 @@
-import type { RunId } from 'linnkit/contracts';
+import type { RunId } from '@linnlabs/linnkit/contracts';
 
 interface FlowExecutionCompletion {
   readonly promise: Promise<void>;

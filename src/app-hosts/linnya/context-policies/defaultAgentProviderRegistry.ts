@@ -1,4 +1,4 @@
-import * as contextManager from 'linnkit/context-manager';
+import * as contextManager from '@linnlabs/linnkit/context-manager';
 import { LINNYA_CONTEXT_POLICY_FALLBACK } from 'src/app-hosts/linnya/context-policies/defaultContextPolicy';
 
 export interface DefaultAgentProviderRegistryOptions {

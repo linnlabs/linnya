@@ -15,12 +15,6 @@
       "@app/schemas/*": [
         "../../packages/schemas/src/*"
       ],
-      "@linnlabs/linnkit/contracts": [
-        "../../packages/linnkit/src/contracts/index.ts"
-      ],
-      "@linnlabs/linnkit/runtime-kernel/events": [
-        "../../packages/linnkit/src/runtime-kernel/events/index.ts"
-      ],
       "@linnya/app-lifecycle-contract": [
         "../../src/shared/app-lifecycle/definitions/windowCloseProtocol.ts"
       ],
@@ -77,12 +71,6 @@
       ],
       "@shared/*": [
         "./shared/*"
-      ],
-      "linnkit/contracts": [
-        "../../packages/linnkit/src/contracts/index.ts"
-      ],
-      "linnkit/runtime-kernel/events": [
-        "../../packages/linnkit/src/runtime-kernel/events/index.ts"
       ],
       "stream-markdown-parser": [
         "../../packages/stream-markdown-parser/src/index.ts"

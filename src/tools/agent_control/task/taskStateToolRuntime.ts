@@ -1,5 +1,5 @@
 import type { ToolContext } from '../../types';
-import type { RuntimeEvent } from 'linnkit/contracts';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 export function readTaskStateWorkingHistory(
   context: ToolContext,

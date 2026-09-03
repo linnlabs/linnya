@@ -2,7 +2,7 @@ import {
   readSubrunBatchStructuredResult,
   readWriteToTableReplayResult,
 } from '@app/schemas';
-import type { SSESubRunTraceEvent, SSEToolOutputEvent } from 'linnkit/contracts';
+import type { SSESubRunTraceEvent, SSEToolOutputEvent } from '@linnlabs/linnkit/contracts';
 import type { TableFillWriteCommand } from '@/domains/editor/features/table-fill-write';
 
 const SUBRUN_BATCH_TOOL_NAME = 'subrun_batch';

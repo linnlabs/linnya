@@ -20,7 +20,7 @@ import {
   unregisterDocumentTypeBackendHook,
   type DocumentTypeBackendHook,
 } from '@plugin/backend/documentTypeBackendHook';
-import { createToolContextFixture } from 'linnkit/testkit';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 
 function readDocument(args: Record<string, unknown>, context: ToolContext) {
   return readWorkspaceDocumentForTool(args, context);

@@ -9,7 +9,7 @@ Linnya is an agent-centered document database and extensible desktop workspace. 
 ## What is in this repository
 
 - The Linnya desktop host and Vue renderer.
-- Linnkit, the host-neutral agent runtime used by Linnya.
+- Integration with the published `@linnlabs/linnkit` host-neutral agent runtime.
 - Shared schemas, plugin host contracts, and Renderer UI primitives.
 - The open official Mindmap and Slides plugins.
 - CLI, benchmark, build, test, and release-validation tooling required by the public source tree.
@@ -25,11 +25,13 @@ Public documentation contains the stable contracts and maintenance rules needed 
 | Desktop renderer | `apps/renderer/` | Vue UI, interaction, and renderer domains |
 | Product host | `src/app-hosts/linnya/` | Product-level agent, model, persistence, and plugin composition |
 | Core domains | `src/domains/`, `src/tools/` | Business contracts, rules, orchestration, and agent tools |
-| Agent runtime | `packages/linnkit/` | Host-neutral runtime kernel, graphs, tools, events, and ports |
+| Agent runtime | [`@linnlabs/linnkit`](https://github.com/linnlabs/linnkit) | Independently versioned runtime kernel, graphs, tools, events, and ports consumed from npm |
 | Plugin platform | `packages/plugin-host-contract/`, `packages/plugins/` | Stable host contracts and open plugin owners |
 | Shared UI | `packages/renderer-ui/` | Tokens, primitives, icons, and reusable renderer interactions |
 
 Linnya follows domain-first vertical slices. Cross-domain collaboration must use narrow public contracts, ports, registries, events, or app-level orchestration; a domain must not import another domain's internals.
+
+Linnya pins an exact `@linnlabs/linnkit` npm version. Product builds and tests must resolve that package from `node_modules`; source aliases back to `packages/linnkit/` are not part of the supported integration. The embedded directory remains temporarily during the staged extraction and will be removed after its remaining release checks and documentation links have moved to the independent repository.
 
 ## Getting started
 

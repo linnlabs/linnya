@@ -4,7 +4,7 @@ import { ConversationUiMessageSchema } from '@app/schemas';
 import {
   createSSEToolCallDecisionEvent,
   createSSEToolOutputEvent,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import type { Conversation } from '../../../types';
 import { mapUiMessageDtoToConversationMessage } from '../../../message-window/functions/mapUiMessageDto';

@@ -4,7 +4,7 @@ import {
   RunIdSchema,
   ToolCallIdSchema,
   type AuditEnvelope as AuditEnvelopeValue,
-} from 'linnkit/contracts';
+} from '@linnlabs/linnkit/contracts';
 
 import type { CommandExecutionIdentity } from '@app/schemas/commands';
 

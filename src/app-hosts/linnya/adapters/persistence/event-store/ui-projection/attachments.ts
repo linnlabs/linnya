@@ -2,7 +2,7 @@ import {
   ConversationAttachmentRefSchema,
   type ConversationAttachmentRef,
 } from '@app/schemas';
-import type { RuntimeResourceRef } from 'linnkit/contracts';
+import type { RuntimeResourceRef } from '@linnlabs/linnkit/contracts';
 
 export type UiMessageAttachments = readonly ConversationAttachmentRef[];
 

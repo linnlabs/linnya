@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_MAX_STEPS } from 'linnkit/contracts';
-import { createToolContextFixture } from 'linnkit/testkit';
+import { DEFAULT_MAX_STEPS } from '@linnlabs/linnkit/contracts';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import { ALL_AGENT_DEFINITIONS_FOR_TESTS } from 'src/app-hosts/linnya/agent-registry/agents';
 import { legacyBuiltinToolClasses } from 'src/app-hosts/linnya/adapters/tools/legacyToolClasses';
 import {

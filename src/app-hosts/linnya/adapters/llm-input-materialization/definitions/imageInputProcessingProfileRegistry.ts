@@ -1,4 +1,4 @@
-import type { LlmImageInputEstimatorPort } from 'linnkit/ports';
+import type { LlmImageInputEstimatorPort } from '@linnlabs/linnkit/ports';
 import type { ImageInputProcessingProfile } from './imageInputProcessingProfile';
 
 export interface ImageInputProcessingProfileRegistry extends LlmImageInputEstimatorPort {

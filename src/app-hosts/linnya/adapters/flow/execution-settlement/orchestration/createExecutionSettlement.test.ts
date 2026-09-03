@@ -6,8 +6,8 @@ import {
   type RuntimeEvent,
   RunIdSchema,
   ToolCallIdSchema,
-} from 'linnkit/contracts';
-import { execution, graph, llm } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/contracts';
+import { execution, graph, llm } from '@linnlabs/linnkit/runtime-kernel';
 import type {
   ExecutionSettlementPorts,
   ExecutionSettlementRunHandle,

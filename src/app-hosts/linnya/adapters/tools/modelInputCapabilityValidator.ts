@@ -1,4 +1,4 @@
-import { llm, type ToolModelInputCapabilityValidatorPort } from 'linnkit/runtime-kernel';
+import { llm, type ToolModelInputCapabilityValidatorPort } from '@linnlabs/linnkit/runtime-kernel';
 import { defaultModelCatalog } from '../runtime-assembly/modelCatalog';
 
 /** 把 host model catalog 收窄成 ToolNode 所需的同步能力门禁。 */

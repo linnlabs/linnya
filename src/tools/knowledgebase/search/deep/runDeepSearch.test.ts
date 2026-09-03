@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PromptKeys } from '@app/schemas';
 import type { ToolContext } from '../../../types';
-import { createToolContextFixture } from 'linnkit/testkit';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import { runDeepSearch } from './runDeepSearch';
 import { attachCitationRefAllocator } from '../../../../domains/citation';
 import { createCitationRefAllocatorFixture } from '../../../../domains/citation/testkit/citationRefAllocatorFixture';

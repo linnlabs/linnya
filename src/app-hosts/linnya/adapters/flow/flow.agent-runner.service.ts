@@ -14,9 +14,9 @@ import {
   generateRuntimeEventId,
   generateToolCallId,
   type ContextUsageSnapshot,
-} from 'linnkit/contracts';
-import type { RoutedRuntimeEvent } from 'linnkit/contracts';
-import { graph } from 'linnkit/runtime-kernel';
+} from '@linnlabs/linnkit/contracts';
+import type { RoutedRuntimeEvent } from '@linnlabs/linnkit/contracts';
+import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import { KnowledgeBaseService } from 'src/features/knowledge-base/application/knowledgeBaseService';
 import { FlowExecutionResult } from 'src/app-hosts/linnya/adapters/flow/flow.schemas';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
