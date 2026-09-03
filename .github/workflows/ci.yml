@@ -38,6 +38,7 @@ jobs:
           pnpm run guard:remote-telemetry-boundary
           pnpm run guard:public-package-private-plugin-boundary
           pnpm run guard:agent-boundary
+          pnpm run guard:tsc-baseline
           pnpm run guard:shell-tool-boundary
           pnpm run guard:markdown-domain-boundary
           pnpm run guard:tool-directory-boundary

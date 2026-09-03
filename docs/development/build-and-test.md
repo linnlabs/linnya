@@ -42,9 +42,12 @@ pnpm run dev:electron
 | Schemas package | `pnpm run test:schemas-package-gate` |
 | Provider catalog | `pnpm run test:provider-catalog-package-gate` |
 | Slides plugin | `pnpm --filter @plugin/slides typecheck` 与 `pnpm --filter @plugin/slides test` |
+| 全仓 TypeScript 存量债务 | `pnpm run guard:tsc-baseline` |
 | 代码边界与格式 | 对修改文件运行 ESLint，并执行 `pnpm run lint:style`、`git diff --check` |
 
 公共源码净化门禁使用 `pnpm run guard:public-source-sanitization`。它扫描 Git 已跟踪和未忽略的候选文本文件，拒绝开发者用户目录、机器卷、盘符根开发 checkout、父级个人工作区路径、macOS 用户临时目录、绝对符号链接和已退役产品身份；文档与测试只能使用 `name`、`example`、`${变量}` 或 `<用户名>` 一类明确占位符，门禁本身不得记录真实用户名、本机路径或旧名称字面量。
+
+全仓仍有来自渐进式 JavaScript/TypeScript 迁移的存量类型错误。`guard:tsc-baseline` 将错误总数与 `.baseline/typescript-errors.txt` 对比，只允许减少、不允许增加，并在公共 CI 执行；错误减少后运行 `pnpm run guard:tsc-baseline:update` 收紧基线。这个债务门禁不能代替改动 owner 的严格 typecheck，新代码不得以“总数没有增加”为理由引入新的类型问题。
 
 测试应覆盖真实业务流程、合同和失败语义。不要用 README snapshot、CSS 数值快照或无业务意义的覆盖率测试代替行为验收。
 
@@ -52,7 +55,7 @@ pnpm run dev:electron
 
 ```bash
 pnpm run build:wasm
-pnpm run build:vue
+pnpm run build:frontend
 pnpm run build:main
 ```
 

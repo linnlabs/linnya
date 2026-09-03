@@ -52,7 +52,7 @@ package CSS、token 或 Vue runtime。版本发布遵循 Renderer UI
 `scripts/release/plugin-release-targets.mjs` 同步，避免某个插件只有源码包、没有进入 artifact/seed 生命周期。公共目标由该文件静态声明；下游组合根通过插件 owner 的发行元数据发现额外目标，Core 不保存其 ID。边界守卫使用单一入口表达“官方插件边界必须整体一致”；artifact
 smoke 仍保留单插件入口，便于定位发布形态问题。
 
-- `guard:plugin` / `guard:plugin:official` — 官方插件包边界守卫（包内不 import
+- `guard:agent-boundary` — 全仓 Agent 与插件包边界守卫（包内不 import
   host 内部、包外不 deep import 插件内部）。
 - `smoke:plugin:<id>:artifact`
   — 本地 artifact 冒烟，必须包含 package、一次性 bundled root 准备、
@@ -73,17 +73,16 @@ targets 精确一致，避免非目标插件因本机陈旧目录重新进入默
 重型 backend 还必须在自身 build 内提供确定性制品门禁：entry 与 backend 总 raw
 budget、metafile 依赖类别、初始 contribution 加载、首次延迟 runtime 调用、以及派生资源的精确闭包都要验证。只检查最终 zip 大小会被压缩率掩盖；只检查动态 import 则可能把依赖挪到另一个文件却没有缩小 artifact。标准库、语言数据等闭包应从制品内容重新推导并与 manifest/checksum/zip/extraResources 对账，禁止用“至少 N 个文件”代替完整性。
 
-现有官方插件已登记聚合入口
-`guard:plugin:official`、`guard:plugin-runtime-dist`、`smoke:plugins:official:artifact`，并保留
-`smoke:plugin:<id>:artifact` 作为单插件 artifact 定位入口。历史
-`guard:plugin:<id>` 伪隔离脚本已合并，新文档、CI 和手工验证应使用 `guard:plugin`
-或 `guard:plugin:official`。
+现有官方插件统一使用
+`guard:agent-boundary`、`guard:plugin-runtime-dist`、`smoke:plugins:official:artifact`，并保留
+`smoke:plugin:<id>:artifact` 作为单插件 artifact 定位入口。包边界守卫扫描完整工作区，
+不再为单个插件保留伪隔离或兼容脚本。
 
 ## 守卫要随迁移进度收紧
 
 - 每删一个过渡入口（legacy
   bridge、旧 re-export、旧目录），立刻把对应守卫从「允许过渡」升级为「禁止复活」（路径不得存在 / 任何 import 一律违规）。
-- 通用守卫入口：`pnpm run guard:agent-boundary`（全局包边界）、`pnpm run guard:plugin:official`（官方插件包边界）、`pnpm run guard:plugin-runtime-dist`（运行时产物）。
+- 通用守卫入口：`pnpm run guard:agent-boundary`（全局 Agent 与插件包边界）、`pnpm run guard:plugin-runtime-dist`（运行时产物）。
 - 新增公开入口/门面必须同步
   `scripts/guards/agent-package-boundary-guard.rules.ts`。
 

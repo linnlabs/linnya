@@ -1,0 +1,3 @@
+# Aggregate TypeScript debt baseline
+# This count may only decrease. See docs/development/build-and-test.md.
+Total errors: 500

@@ -266,11 +266,11 @@ pnpm test -- packages/plugins/__tests__/rendererPluginBoundary.test.ts apps/rend
 
 ```bash
 npm run build:backend
-npm run build:frontend
+pnpm run build:frontend
 npm run build:plugin:slides
 npm run build:plugin:mindmap
 npm run build:plugin:sheet
-npm run guard:tsc-baseline
+pnpm run guard:tsc-baseline
 ```
 
 ## 排查清单

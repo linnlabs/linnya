@@ -42,7 +42,7 @@ workspace/runtime 的逻辑 namespace，不是 GitHub 或 npm 身份声明。
 ```bash
 pnpm run test:renderer-ui-package-gate
 pnpm run build:frontend
-pnpm run guard:plugin:official
+pnpm run guard:agent-boundary
 pnpm run smoke:plugins:official:artifact
 ```
 

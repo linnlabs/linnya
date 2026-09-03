@@ -391,8 +391,8 @@ Agent/runtime 类型必须从 `linnkit/contracts` 导入，不允许在 `@app/sc
   Cloud 所需子入口的 types/CommonJS/ESM 产物与真实运行时解析，并拒绝源码、测试实现和测试声明进入 tarball。
 - 包构建会对账全仓业务 import 与 package exports，并检查 types、CommonJS、ESM 产物及真实运行时加载；新增正式子入口时不得只依赖 tsconfig 别名。
 - 运行 Conversation schema 业务测试：`pnpm exec vitest run packages/schemas/src/conversation`。
-- 检查全仓类型基线：`npm run guard:tsc-baseline`。
-- 检查包边界：`npm run guard:agent-boundary`。
+- 检查全仓类型基线：`pnpm run guard:tsc-baseline`。
+- 检查包边界：`pnpm run guard:agent-boundary`。
 - 检查 Conversation 身份与投影旁路：`pnpm run guard:conversation-contract`。
 
 测试应验证真实合同规则，例如非法输入拒绝、唯一身份、顺序、计数和状态一致性；不要为字段声明或 README 写快照测试。

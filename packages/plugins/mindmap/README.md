@@ -19,7 +19,7 @@
 
 包外代码只能通过上面的公开入口消费 Mindmap 能力，不能 deep import `packages/plugins/mindmap/src/**`。包内代码如需调用宿主能力，应优先走 `@plugin/*` 下的窄 port，而不是反向 import 主应用内部实现。
 
-`pnpm run guard:plugin:official` 是当前包边界的阻断守卫：它会扫描包内生产代码和 Vue SFC `<script>` import，禁止插件包反向依赖主应用内部实现，也禁止主应用 deep import 插件内部文件。历史 `guard:mindmap-package` 仍保留为兼容别名，新文档和 CI 使用统一入口。
+`pnpm run guard:agent-boundary` 是全仓包边界的阻断守卫：它会扫描包内生产代码和 Vue SFC `<script>` import，禁止插件包反向依赖主应用内部实现，也禁止主应用 deep import 插件内部文件。
 
 Renderer 基础 UI 直接依赖 `@linnya/renderer-ui`：`peerDependencies` 与
 `plugin.json.compat.rendererUi` 使用同一 range，开发依赖使用 `workspace:*`。插件不装载 package CSS；renderer 构建把

@@ -182,7 +182,7 @@ bridge 只寻址 enabled 官方插件，且 v1 明确拒绝外部文件、网络
 | renderer | renderer contribution、surface、ports、stores、UI、CSS 都在包内；host renderer 不 deep import 插件 domain。 |
 | SDK | 插件需要 host 能力时先补 `@plugin/backend/*` / `@plugin/renderer/*` 窄门面，不能把 host store、workspace gateway 或 shared UI 当内部依赖拖进包；renderer SDK 新增后必须同步 host module provider、`plugin://host` shim 和 `packages/plugins/rendererHostExternalMap.mjs`。 |
 | release | manifest、package scripts、release target、extraResources seed、R2 smoke 和本地 runtime smoke 同时覆盖；源码 alias build 不等于可独立安装/升级。 |
-| guard | 包边界守卫 `guard:plugin` / `guard:plugin:official`（agent-package-boundary）、`guard:plugin-runtime-dist`（业务符号禁入 dist，覆盖当前 workspace 插件 owner）、`guard:tsc-baseline`；每个过渡 re-export 都必须有退出条件。 |
+| guard | 包边界守卫 `guard:agent-boundary`、`guard:plugin-runtime-dist`（业务符号禁入 dist，覆盖当前 workspace 插件 owner）、`guard:tsc-baseline`；每个过渡 re-export 都必须有退出条件。 |
 
 一个实用判断：如果禁用或卸载插件后，host 仍能从任何生产路径 new 出该插件的 coordinator、调用该插件工具、注册该插件 UI、注入该插件 prompt/skill，或者新建该插件文件格式，那就还没完成物理插件化。
 

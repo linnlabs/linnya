@@ -6,7 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 
 const repoRoot = process.cwd();
-const baselinePath = path.join(repoRoot, '.baseline/m4-summary.txt');
+const BASELINE_RELATIVE_PATH = '.baseline/typescript-errors.txt';
+const baselinePath = path.join(repoRoot, BASELINE_RELATIVE_PATH);
 const args = new Set(process.argv.slice(2));
 const shouldUpdateBaseline = args.has('--update-baseline');
 const shouldStageBaseline = args.has('--stage-baseline');
@@ -31,7 +32,7 @@ function readBaseline() {
   const content = readFileSync(baselinePath, 'utf8');
   const match = content.match(/^Total errors:\s*(\d+)\s*$/m);
   if (!match) {
-    fail('❌ 无法从 .baseline/m4-summary.txt 解析 tsc baseline（缺少 "Total errors: N"）。', 2);
+    fail(`❌ 无法从 ${BASELINE_RELATIVE_PATH} 解析 tsc baseline（缺少 "Total errors: N"）。`, 2);
   }
 
   return {

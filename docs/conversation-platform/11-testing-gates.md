@@ -211,7 +211,7 @@ services/orchestration/projectionCommitPipeline.ts Vue live slot 的唯一提交
 | `pnpm run guard:context-compaction-legacy` | 已删除的 checkpoint 工具、step reset、预算提醒或专用摘要模型字段重新进入生产源码 |
 | `pnpm run test:context-compaction-gate` | 自动压缩的 root/child 隔离、取消传播、durable-before-fanout、live/reload、Provider wire、审计与旧机制零基线回退 |
 | `pnpm run guard:conversation-contract` | INV-57 执行合同混入展示配置，或 durable tool row 开始持久化派生 presentation |
-| `pnpm run guard:tsc-baseline`（`tsc-baseline-guard.mjs`） | 类型错误基线回退 |
+| `pnpm run guard:tsc-baseline`（`.baseline/typescript-errors.txt`） | 全仓存量类型错误总数回退；不能代替 owner 严格 typecheck |
 
 `guard:conversation-types-exports` 按 TypeScript AST 读取**实际导出符号**，不是统计 `export` 行数。迁移删除符号后运行 `pnpm run guard:conversation-types-exports:update`；该命令只会删除 baseline 中已消失的符号，发现新增或改名仍然失败。
 
