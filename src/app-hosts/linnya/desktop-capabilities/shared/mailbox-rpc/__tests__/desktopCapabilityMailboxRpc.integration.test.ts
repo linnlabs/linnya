@@ -5,7 +5,11 @@ import { PassThrough } from 'node:stream';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { createAppServerRpcPeer, mergeAppServerRpcHandlerRegistries } from '../../../../app-server-rpc';
+import {
+  APP_SERVER_RPC_MAX_FRAME_BYTES,
+  createAppServerRpcPeer,
+  mergeAppServerRpcHandlerRegistries,
+} from '../../../../app-server-rpc';
 import type { DesktopHiddenWorkerHostPort } from '../../../definitions/desktopHiddenWorkerHostPort';
 import type { DesktopRasterPdfDocumentPort } from '../../../definitions/desktopRasterPdfDocumentPort';
 import type { DesktopTextMeasurementWorkerPort } from '../../../definitions/backendTextMeasurementRuntimeDependencies';
@@ -30,7 +34,8 @@ describe('Desktop capability mailbox RPC', () => {
   it('隐藏 Worker 的注册、ready、大二进制调用与释放保持原 port', async () => {
     const fixture = await createFixture();
     const readyPayload = { workerId: 'slides-raster', protocolVersion: 3 };
-    const responseBytes = new Uint8Array(2 * 1024 * 1024).fill(7);
+    // 只需越过 JSON frame 上限即可证明 mailbox 路径；更大的任意 fixture 只会放大并发 CI 的磁盘争用。
+    const responseBytes = new Uint8Array(APP_SERVER_RPC_MAX_FRAME_BYTES + 1).fill(7);
     const port: DesktopHiddenWorkerHostPort = {
       registerHiddenWorker: vi.fn(async () => undefined),
       unregisterHiddenWorker: vi.fn(async () => true),
@@ -86,7 +91,7 @@ describe('Desktop capability mailbox RPC', () => {
       pair.dispose();
       await fixture.dispose();
     }
-  });
+  }, 30_000);
 
   it('Browser Pretext 批量测量通过 mailbox 往返并保留启动 availability', async () => {
     const fixture = await createFixture();
@@ -154,7 +159,7 @@ describe('Desktop capability mailbox RPC', () => {
 
   it('多页 PNG 与 PDF bytes 不进入 JSON frame', async () => {
     const fixture = await createFixture();
-    const pdfBytes = new Uint8Array(3 * 1024 * 1024).fill(9);
+    const pdfBytes = new Uint8Array(APP_SERVER_RPC_MAX_FRAME_BYTES + 1).fill(9);
     const port: DesktopRasterPdfDocumentPort = {
       render: vi.fn(async () => pdfBytes),
     };
@@ -175,7 +180,7 @@ describe('Desktop capability mailbox RPC', () => {
       const request = {
         pageWidthInches: 13.333,
         pageHeightInches: 7.5,
-        pages: [new Uint8Array(2 * 1024 * 1024).fill(1)],
+        pages: [new Uint8Array(APP_SERVER_RPC_MAX_FRAME_BYTES + 1).fill(1)],
       };
       await expect(client.render(request)).resolves.toEqual(pdfBytes);
       expect(port.render).toHaveBeenCalledWith(request);
@@ -183,7 +188,7 @@ describe('Desktop capability mailbox RPC', () => {
       pair.dispose();
       await fixture.dispose();
     }
-  }, 15_000);
+  }, 30_000);
 
   it('Chromium 网页 DOM 通过 mailbox 往返并保留业务失败类型', async () => {
     const fixture = await createFixture();
