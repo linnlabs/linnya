@@ -1,7 +1,7 @@
 import type { ProviderAccountOAuthCredential } from '../../../definitions/providerAccount';
 
 /**
- * 来源：Craft Agents OSS 50ffa143，Apache-2.0。
+ * 从 Craft Agents OSS 50ffa143 移植并按 Linnya 边界修改，Apache-2.0。
  * 这些值属于 Codex 公共客户端授权合同，不是 Linnya 自建 OAuth 应用配置。
  */
 export const CHATGPT_OAUTH_CONFIG = {

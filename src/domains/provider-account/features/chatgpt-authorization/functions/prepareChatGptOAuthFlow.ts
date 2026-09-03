@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 
 import { CHATGPT_OAUTH_CONFIG, type PreparedChatGptOAuthFlow } from '../definitions/chatGptOAuth';
 
-/** 从 Craft 的 PKCE 参数集合移植；Linnya 只拥有生成与编排，不修改授权协议。 */
+/** 从 Craft 的 PKCE 参数集合移植，并按 Linnya 的类型与编排边界修改。 */
 export function prepareChatGptOAuthFlow(): PreparedChatGptOAuthFlow {
   const state = randomBytes(32).toString('hex');
   const codeVerifier = randomBytes(32).toString('base64url');

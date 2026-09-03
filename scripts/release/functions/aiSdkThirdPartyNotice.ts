@@ -5,7 +5,10 @@ import type {
   AiSdkReleasePackage,
   AiSdkThirdPartyNoticeProblem,
 } from '../definitions/aiSdkThirdPartyNotice';
-import { MODELS_DEV_CATALOG_NOTICE } from '../definitions/sourceDependencyBom';
+import {
+  CRAFT_AGENTS_OAUTH_NOTICE,
+  MODELS_DEV_CATALOG_NOTICE,
+} from '../definitions/sourceDependencyBom';
 
 export const AI_SDK_NOTICE_FILE_NAME = 'THIRD_PARTY_NOTICES.txt';
 
@@ -159,6 +162,12 @@ export function createAiSdkThirdPartyNotice(rootDir: string): string {
     '',
     MODELS_DEV_CATALOG_NOTICE.content,
     '',
+    CRAFT_AGENTS_OAUTH_NOTICE.title,
+    `Source: ${CRAFT_AGENTS_OAUTH_NOTICE.source}`,
+    `License: ${CRAFT_AGENTS_OAUTH_NOTICE.licenseExpression}`,
+    '',
+    CRAFT_AGENTS_OAUTH_NOTICE.content,
+    '',
   ].join('\n');
 }
 
@@ -190,11 +199,14 @@ export function validateAiSdkThirdPartyNotice(
         MODELS_DEV_CATALOG_NOTICE.title,
         MODELS_DEV_CATALOG_NOTICE.source,
         'Copyright (c) 2025 models.dev',
+        CRAFT_AGENTS_OAUTH_NOTICE.title,
+        CRAFT_AGENTS_OAUTH_NOTICE.source,
+        'Copyright 2026 Craft Docs Ltd.',
       ].filter(fragment => !notice.includes(fragment));
       if (missingFragments.length > 0) {
         problems.push({
           path: AI_SDK_NOTICE_FILE_NAME,
-          message: `NOTICE 缺少当前 AI SDK 或 models.dev 许可证证据：${missingFragments.join(', ')}`,
+          message: `NOTICE 缺少当前第三方依赖或移植源码许可证证据：${missingFragments.join(', ')}`,
         });
       }
     }

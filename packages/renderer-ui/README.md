@@ -104,7 +104,7 @@ token、surface class、root extension class 和 data attribute 才是 CSS API�
 
 - 组件自身真正跨业务的默认文案进入 `/localization` 的 message catalog，并同时提供正式 fallback；业务标题、实体名、
   错误解释和操作结果由调用方传入或通过业务 resolver 解析。完整规则见
-  [本地化指南](../../docs/i18n/LOCALIZATION_GUIDE.md)。
+  [Renderer 本地化](../../apps/renderer/app/localization/README.md)。
 - 无业务语义的平台图标从 `/icons` 复用。品牌图标、业务实体图标和只随某个插件演进的图标留在真实 owner；禁止在
   新组件模板里复制已有 SVG。
 - 包根和 UI feature 只允许 Vue public API、DOM/browser API、包内稳定切片和已审核的 browser-safe runtime 依赖。

@@ -74,7 +74,7 @@ scripts/release/
 | `orchestration/bumpRelease.ts`                                 | bump 主应用版本                                                                                                                | `pnpm run release:bump <version>`                                                                             |
 | `orchestration/generateCurrentRelease.ts`                      | 从 `release-notes.md` 生成前端 release 数据                                                                                    | `pnpm run release:generate`                                                                                   |
 | `orchestration/verifyRelease.ts`                               | 校验主应用 release 数据一致性                                                                                                  | `pnpm run release:verify`                                                                                     |
-| `orchestration/generateAiSdkThirdPartyNotice.ts`               | 从精确 AI SDK 依赖、上游 LICENSE 和 bundled catalog 数据来源生成发行 NOTICE                                                    | `pnpm run generate:ai-sdk-third-party-notice`                                                                 |
+| `orchestration/generateAiSdkThirdPartyNotice.ts`               | 兼容旧命令名，委托完整 Source dependency BOM 生成根发行 NOTICE，禁止再用 AI SDK 子集覆盖完整清单                              | `pnpm run generate:ai-sdk-third-party-notice`                                                                 |
 | `orchestration/verifyAiSdkThirdPartyNotice.ts`                 | 校验 AI SDK 版本、许可证、models.dev 署名、NOTICE 与安装包资源声明                                                             | `pnpm run guard:ai-sdk-third-party-notice`                                                                    |
 | `orchestration/verifyDependencyLicenseEvidence.ts`             | 校验根应用 Unknown license 的精确版本、integrity、随包许可证 hash 和公开阻断项                                                 | `pnpm run guard:dependency-license-evidence`                                                                  |
 | `orchestration/generateSourceDependencyBom.ts`                 | 从安装后的生产依赖图生成无本机路径的版本、integrity、source、license 与 evidence hash 清单                                     | `pnpm run release:bom:source-dependencies`                                                                    |
@@ -126,11 +126,11 @@ diff。正式构建不会重新解析依赖，而是把经过合同校验的 loc
 `dist_build/package-lock.json`，再执行
 `npm ci --omit=dev`。公开候选不能复用私有组合根的 lock：clean-root 编排会在公共 workspace 删除私有 owner 后重新生成，并把其 SHA-256 写入演练证据；Desktop 内容 BOM 也记录本次生产 lock 的 SHA-256。
 
-AI SDK 直接生产依赖和随产品分发的第三方目录数据都是发布合同的一部分。升级
-`ai`、任一正式 `@ai-sdk/*` package 或 bundled catalog 来源后，必须重新运行
+生产依赖、移植源码和随产品分发的第三方目录数据都是发布合同的一部分。升级
+依赖、修改 supplemental notice 或更新 bundled catalog 来源后，必须重新运行
 `pnpm run generate:ai-sdk-third-party-notice` 并提交根目录
-`THIRD_PARTY_NOTICES.txt`。`release:verify` 与 `build:electron:prepare`
-都会执行同一份检查：依赖必须使用精确 semver、安装版本必须一致、上游许可证和 models.dev 署名必须进入 NOTICE，NOTICE 必须与当前包集合一致，并作为安装包
+`THIRD_PARTY_NOTICES.txt`。这个兼容命令使用完整 Source dependency BOM 生成链，不能只输出 AI SDK 子集。`release:verify` 与 `build:electron:prepare`
+都会执行同一份检查：AI SDK 依赖必须使用精确 semver、安装版本必须一致，外部目录数据和移植源码署名必须进入 NOTICE，并作为安装包
 `Resources/THIRD_PARTY_NOTICES.txt`
 发布。门禁不从网络猜测 license，也不接受手工维护的漂移版本表。
 

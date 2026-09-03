@@ -6,6 +6,19 @@ export interface SourceDependencySupplementalNotice {
   readonly title: string;
 }
 
+export const CRAFT_AGENTS_OAUTH_NOTICE = {
+  id: 'craft-agents-oauth-derived-source',
+  title: 'Craft Agents OAuth derived source',
+  source:
+    'https://github.com/craft-ai-agents/craft-agents-oss/tree/50ffa143ab76e44c0e96ea785d03aa67cf942c50',
+  licenseExpression: 'Apache-2.0',
+  content: `Craft Agents
+Copyright 2026 Craft Docs Ltd.
+
+This product includes software developed by Craft Docs Ltd.
+https://craft.do`,
+} as const satisfies SourceDependencySupplementalNotice;
+
 export const MODELS_DEV_CATALOG_NOTICE = {
   id: 'models-dev-catalog-data',
   title: 'models.dev catalog data',

@@ -404,6 +404,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^3.2.4
         version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))
+      '@vue/compiler-sfc':
+        specifier: ^3.5.13
+        version: 3.5.22
       bytenode:
         specifier: 1.6.0
         version: 1.6.0

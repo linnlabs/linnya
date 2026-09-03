@@ -605,6 +605,7 @@
     "@typescript-eslint/parser": "^8.38.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vitest/coverage-v8": "^3.2.4",
+    "@vue/compiler-sfc": "^3.5.13",
     "bytenode": "1.6.0",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",

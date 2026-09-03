@@ -18,6 +18,8 @@ describe('AI SDK third-party release notice', () => {
     }
     expect(notice).toContain('models.dev catalog data');
     expect(notice).toContain('Copyright (c) 2025 models.dev');
+    expect(notice).toContain('Craft Agents OAuth derived source');
+    expect(notice).toContain('Copyright 2026 Craft Docs Ltd.');
     expect(notice).toContain('Source: https://github.com/OpenRouterTeam/ai-sdk-provider');
     expect(validateAiSdkThirdPartyNotice(rootDir)).toEqual([]);
   });

@@ -513,6 +513,16 @@ PACKAGES WITH MANIFEST-ONLY LICENSE EVIDENCE
 
 SUPPLEMENTAL DATA AND ASSET NOTICES
 
+----- Craft Agents OAuth derived source (craft-agents-oauth-derived-source) 6a5aaf69f38c68d115f5c8815613a2a3d299df7d90d7be146cdfeafe13004879 -----
+Source: https://github.com/craft-ai-agents/craft-agents-oss/tree/50ffa143ab76e44c0e96ea785d03aa67cf942c50
+License: Apache-2.0
+
+Craft Agents
+Copyright 2026 Craft Docs Ltd.
+
+This product includes software developed by Craft Docs Ltd.
+https://craft.do
+
 ----- models.dev catalog data (models-dev-catalog-data) 7421db98a6a01de1bc01e24fc6c830f6803859ba8df3df9a6152347203c75723 -----
 Source: https://github.com/anomalyco/models.dev
 License: MIT

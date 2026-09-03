@@ -52,7 +52,6 @@ ChatGPT loopback 是一次性 HTTP 能力：回调页必须声明
 socket。凭据落盘成功后，回调服务器清理不得把授权成功响应永久阻塞；授权阶段日志只记录流程节点和稳定错误码，禁止记录 authorization
 code、state、PKCE verifier 或 token。
 
-ChatGPT 授权协议以 Craft Agents
-OSS 的 PKCE 实现为首选上游，并由 Cline 的账号 claim 与刷新实现交叉验证；账户模型发现合同以 OpenAI
-Codex 的 `ModelsClient`、`ModelInfo`
-和 picker 过滤规则为上游。来源、许可证和固定快照记录在 [Provider Catalog README](../../../packages/provider-catalog/README.md#来源与复用台账)。
+ChatGPT 授权实现移植自 Apache-2.0 的 Craft Agents OSS，并按 Linnya 的 domain 与 Host 边界重组；具体来源和修改说明保留在对应源码附近。
+账户模型发现只复用 OpenAI Codex 的公开 wire 与过滤语义，不复制其 Agent runtime。第三方许可证与来源公告由根
+[`THIRD_PARTY_NOTICES.txt`](../../../THIRD_PARTY_NOTICES.txt) 和发布门禁统一维护，不在本 README 重复版本台账。

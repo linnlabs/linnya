@@ -25,7 +25,7 @@
 
 - **Vue/Pinia 初始化**：`createApp(App)` + `createPinia()` + pinia persist
 - **全局样式/指令注册**：例如某些 editor feature 的指令注册
-- **本地化地基注册**：`app/localization` 注册各模块 catalog，并通过窄 port 向 shared 基础控件提供默认文案解析能力
+- **本地化地基注册**：[`app/localization`](../app/localization/README.md) 注册各模块 catalog，并通过窄 port 向 shared 基础控件提供默认文案解析能力
 - **关键 store 预热**：
   - `shared/stores/ui`：纯 UI 偏好、弹窗等非导航状态
   - `shared/stores/workspaceScopeStore`：当前项目 / Linnya 助手 scope 与草稿对话状态

@@ -6,7 +6,7 @@ import { validateAiSdkThirdPartyNotice } from '../functions/aiSdkThirdPartyNotic
 export function verifyAiSdkThirdPartyNotice(rootDir: string): void {
   const problems = validateAiSdkThirdPartyNotice(rootDir);
   if (problems.length === 0) {
-    console.log('AI SDK 依赖、bundled catalog 来源、NOTICE 与安装包资源声明检查通过。');
+    console.log('AI SDK 依赖、外部目录数据、移植源码 NOTICE 与安装包资源声明检查通过。');
     return;
   }
   console.error('第三方发布 NOTICE 检查失败：');

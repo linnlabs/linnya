@@ -9,14 +9,24 @@ import {
   DEPENDENCY_SOURCE_OVERRIDES,
   DEPENDENCY_SUPPLEMENTAL_EVIDENCE_FILES,
 } from '../definitions/dependencyLegalPolicy';
-import { MODELS_DEV_CATALOG_NOTICE } from '../definitions/sourceDependencyBom';
+import {
+  CRAFT_AGENTS_OAUTH_NOTICE,
+  MODELS_DEV_CATALOG_NOTICE,
+} from '../definitions/sourceDependencyBom';
 import { REVIEWED_PACKAGE_LEGAL_EVIDENCE } from '../definitions/reviewedPackageLegalEvidence';
 import { createSourceDependencyBom } from '../functions/sourceDependencyBom';
 
 const orchestrationDirectory = path.dirname(fileURLToPath(import.meta.url));
 const defaultRootDir = path.resolve(orchestrationDirectory, '..', '..', '..');
 
-export function generateSourceDependencyBom(rootDir: string): void {
+export interface GenerateSourceDependencyBomOptions {
+  readonly writeRootNotice?: boolean;
+}
+
+export function generateSourceDependencyBom(
+  rootDir: string,
+  options: GenerateSourceDependencyBomOptions = {}
+): void {
   const licenseReportResult = spawnSync(
     'pnpm',
     ['--filter', 'linnya...', 'licenses', 'list', '--prod', '--json'],
@@ -46,7 +56,7 @@ export function generateSourceDependencyBom(rootDir: string): void {
     licenseSelections: DEPENDENCY_LICENSE_SELECTIONS,
     sourceOverrides: DEPENDENCY_SOURCE_OVERRIDES,
     supplementalEvidenceFiles: DEPENDENCY_SUPPLEMENTAL_EVIDENCE_FILES,
-    supplementalNotices: [MODELS_DEV_CATALOG_NOTICE],
+    supplementalNotices: [CRAFT_AGENTS_OAUTH_NOTICE, MODELS_DEV_CATALOG_NOTICE],
     unknownLicenseEvidence: ROOT_DEPENDENCY_LICENSE_EVIDENCE,
     reviewedEvidenceFiles: REVIEWED_PACKAGE_LEGAL_EVIDENCE,
     reviewedEvidenceRootDir: rootDir,
@@ -65,10 +75,16 @@ export function generateSourceDependencyBom(rootDir: string): void {
   const noticePath = path.join(outputDirectory, `source-third-party-notices.${target}.txt`);
   fs.writeFileSync(bomPath, `${JSON.stringify(result.bom, null, 2)}\n`, 'utf8');
   fs.writeFileSync(noticePath, result.notice, 'utf8');
+  if (options.writeRootNotice === true) {
+    fs.writeFileSync(path.join(rootDir, 'THIRD_PARTY_NOTICES.txt'), result.notice, 'utf8');
+  }
   process.stdout.write(
     `[source-bom] ${result.bom.packageCount} packages, ` +
       `${result.bom.manifestOnlyPackageCount} manifest-only evidence\n` +
-      `[source-bom] ${bomPath}\n[source-bom] ${noticePath}\n`
+      `[source-bom] ${bomPath}\n[source-bom] ${noticePath}\n` +
+      (options.writeRootNotice === true
+        ? `[source-bom] ${path.join(rootDir, 'THIRD_PARTY_NOTICES.txt')}\n`
+        : '')
   );
 }
 
