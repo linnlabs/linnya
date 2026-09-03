@@ -1,0 +1,128 @@
+.taskstate-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 12px 10px 14px;
+}
+
+.taskstate-card .ts-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  padding: 6px 0;
+}
+
+.taskstate-card .ts-state--error {
+  color: inherit;
+}
+
+.taskstate-card .ts-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: taskstate-card-spin 1s linear infinite;
+}
+
+@keyframes taskstate-card-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.taskstate-card .ts-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.taskstate-card .ts-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.taskstate-card .ts-meta-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.taskstate-card .ts-meta-seg {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.taskstate-card .ts-meta-seg + .ts-meta-seg::before {
+  content: '·';
+  margin: 0 5px;
+  color: var(--color-text-placeholder);
+}
+
+.taskstate-card .ts-link-btn {
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.taskstate-card .ts-link-btn:hover {
+  color: var(--color-accent);
+}
+
+.taskstate-card .ts-goal {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.taskstate-card .ts-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.taskstate-card .ts-step-row {
+  display: flex;
+  gap: 6px;
+  padding-left: 4px;
+}
+
+.taskstate-card .ts-step-bar-wrap {
+  width: 4px;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.taskstate-card .ts-step-bar {
+  width: 2px;
+  height: 100%;
+  border-radius: 999px;
+  background-color: var(--color-accent);
+  opacity: 0.6;
+}
+
+.taskstate-card .ts-step-text {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.taskstate-card .ts-empty {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  padding: 4px 0;
+}

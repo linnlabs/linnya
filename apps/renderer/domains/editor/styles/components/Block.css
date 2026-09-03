@@ -1,0 +1,762 @@
+/* src/assets/styles/components/Block.css */
+/* RootBlock.css - 根块、标题块和基础块的视觉样式 */
+
+/* 
+ * 根块外层容器视觉样式
+ * 作用：为根块提供视觉边界和交互效果
+ */
+.root-block-outer {
+  --editor-block-selection-overlay: color-mix(in srgb, var(--color-brand-300) 70%, var(--color-brand-400));
+
+  border-radius: 6px;
+}
+
+/*
+ * RootBlock 渲染虚拟化占位态。
+ * 中文说明：placeholder NodeView 不暴露 contentDOM，只负责保留离屏块的高度与 id。
+ */
+.root-block-outer.root-block-virtual-placeholder {
+  contain: layout style paint;
+}
+
+.root-block-outer.root-block-virtual-placeholder .root-block {
+  min-height: inherit;
+  transition: none;
+}
+
+.block-revision-indicator-row {
+  margin: 2px 0;
+}
+
+/* 
+ * 根块视觉样式
+ * 作用：为内容提供视觉容器
+ */
+.root-block {
+  border-radius: 6px;
+  background-color: transparent; /* 明确指定透明背景，防止低分辨率下hover时文字抗锯齿模式切换导致轻微偏移 */
+  transition: background-color 0.2s ease-in-out; /* 添加背景色过渡效果 */
+  position: relative; /* 为遮罩层定位提供参照 */
+}
+
+/* 
+ * 编辑器块通用视觉样式
+ * 作用：为所有内容块提供统一的视觉风格
+ */
+.editor-block {
+  /* ++ 颜色继承策略：允许从父级块容器继承颜色 ++ */
+  /* 内联样式：color 和 background-color 由块容器的 renderHTML 提供 */
+  position: relative; /* 为其他定位元素提供参考 */
+}
+
+/* 块悬停效果 - 只在启用时生效 */
+.block-hover-enabled .root-block:hover {
+  background-color: var(--editor-block-hover-bg); /* 悬停时的背景色 */
+}
+
+/* LaTeX 块是一个交互式块，始终允许悬停高亮（但不在选中状态时） */
+.root-block-outer:not(.is-block-selected):has(.latex-block-view) .root-block:hover {
+  background-color: var(--editor-block-hover-bg);
+}
+
+/* 
+ * 块选中状态样式 - 使用遮罩层方式
+ * 当通过点击拖拽手柄选中块时，通过JS手动添加此类
+ * 使用 ::after 遮罩层 + 透明度过渡，不改变块原有颜色
+ */
+.root-block::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--editor-block-selection-overlay); /* 选中遮罩颜色 */
+  opacity: 0; /* 默认不显示 */
+  pointer-events: none; /* 不阻挡鼠标事件 */
+  border-radius: 6px; /* 与 root-block 的圆角保持一致 */
+  z-index: 1; /* 覆盖在内容上方 */
+  transition: opacity 0.2s ease-in-out; /* 过渡效果 */
+}
+
+.root-block-outer.is-block-selected .root-block::after {
+  opacity: 0.25; /* 显示遮罩层 */
+}
+
+/* 特殊块自带遮罩层的，禁用 root-block 的遮罩，避免双重叠加 */
+.root-block:has(.audio-block-border)::after {
+  display: none;
+}
+
+
+
+/* 
+ * 标题块视觉样式
+ * 作用：为标题块提供特定的视觉风格
+ */
+.heading-block {
+  padding-right: 0; /* 如果有需要，保留右侧 padding */
+}
+
+/* 
+ * 基础块视觉样式
+ * 作用：为基础块提供特定的视觉风格
+ */
+.base-block {
+  /* ++ 颜色继承策略：允许从父级块容器继承颜色 ++ */
+  /* 内联样式：color 和 background-color 由块容器的 renderHTML 提供 */
+  /* 此块已全面支持颜色继承 */
+  color: inherit; /* 确保继承父级的颜色 */
+}
+
+/* 
+ * 标题级别视觉样式
+ * 作用：为不同级别的标题提供不同的字体大小和样式
+ */
+/* 一级标题样式 */
+.heading-block.heading-level-1,
+.ProseMirror h1.heading-level-1 {
+  font-size: var(--h1-font-size); /* 使用变量并添加!important */
+  font-weight: bold;
+  line-height: 1.2;
+  /* ++ 颜色继承策略：使用 CSS 变量而非 inherit，避免影响主文本 ++ */
+  /* 标题本身不需要继承块颜色（由 Mark 控制），这里仅设置默认回退颜色 */
+  /* 当块未设置颜色时，通过 .heading-block-outer 的 :not([data-text-color]) 回退到默认色 */
+  color: inherit;
+}
+/* 当块没有设置文字色时，使用默认标题颜色 */
+.heading-block-outer:not([data-text-color]) .heading-block.heading-level-1,
+.heading-block-outer:not([data-text-color]) .ProseMirror h1.heading-level-1 {
+  color: var(--color-text-primary);
+}
+
+/* 二级标题样式 */
+.heading-block.heading-level-2,
+.ProseMirror h2.heading-level-2 {
+  font-size: var(--h2-font-size); /* 使用变量并添加!important */
+  font-weight: bold;
+  line-height: 1.25;
+  color: inherit;
+}
+/* 当块没有设置文字色时，使用默认标题颜色 */
+.heading-block-outer:not([data-text-color]) .heading-block.heading-level-2,
+.heading-block-outer:not([data-text-color]) .ProseMirror h2.heading-level-2 {
+  color: var(--color-text-primary);
+}
+
+/* 三级标题样式 */
+.heading-block.heading-level-3,
+.ProseMirror h3.heading-level-3 {
+  font-size: var(--h3-font-size); /* 使用变量并添加!important */
+  font-weight: bold;
+  line-height: 1.3;
+  color: inherit;
+}
+/* 当块没有设置文字色时，使用默认标题颜色 */
+.heading-block-outer:not([data-text-color]) .heading-block.heading-level-3,
+.heading-block-outer:not([data-text-color]) .ProseMirror h3.heading-level-3 {
+  color: var(--color-text-primary);
+}
+
+/* 四级标题样式 */
+.heading-block.heading-level-4,
+.ProseMirror h4.heading-level-4 {
+  font-size: var(--h4-h5-h6-font-size); /* 使用变量并添加!important */
+  font-weight: bold;
+  line-height: 1.3;
+  color: inherit;
+}
+/* 当块没有设置文字色时，使用默认标题颜色 */
+.heading-block-outer:not([data-text-color]) .heading-block.heading-level-4,
+.heading-block-outer:not([data-text-color]) .ProseMirror h4.heading-level-4 {
+  color: var(--color-text-primary);
+}
+
+/* 五级标题样式 */
+.heading-block.heading-level-5,
+.ProseMirror h5.heading-level-5 {
+  font-size: var(--h4-h5-h6-font-size); /* 使用变量并添加!important */
+  font-weight: bold;
+  line-height: 1.3;
+  color: inherit;
+}
+/* 当块没有设置文字色时，使用默认标题颜色 */
+.heading-block-outer:not([data-text-color]) .heading-block.heading-level-5,
+.heading-block-outer:not([data-text-color]) .ProseMirror h5.heading-level-5 {
+  color: var(--color-text-primary);
+}
+
+/* 六级标题样式 */
+.heading-block.heading-level-6,
+.ProseMirror h6.heading-level-6 {
+  font-size: var(--h4-h5-h6-font-size); /* 使用变量并添加!important */
+  font-weight: bold;
+  line-height: 1.3;
+  color: inherit;
+}
+/* 当块没有设置文字色时，使用默认标题颜色 */
+.heading-block-outer:not([data-text-color]) .heading-block.heading-level-6,
+.heading-block-outer:not([data-text-color]) .ProseMirror h6.heading-level-6 {
+  color: var(--color-text-primary);
+}
+
+/* 
+ * 空块占位符视觉样式
+ * 作用：为空内容块提供视觉提示
+ */
+.is-empty[data-placeholder]::before {
+  content: attr(data-placeholder); /* 使用 data-placeholder 属性作为内容 */
+  position: absolute;
+  left: 0; /* 默认左侧对齐 */
+  color: var(--color-text-placeholder); /* 占位符颜色 */
+  opacity: 0.8;
+  pointer-events: none; /* 避免干扰点击 */
+  font-style: italic;
+}
+
+/* 调整缩进块的占位符位置 */
+/* BaseBlock 和 HeadingBlock - 根据外层 data-indent 调整 left */
+.base-block-outer.is-empty[data-placeholder][data-indent="1"]::before,
+.heading-block-outer.is-empty[data-placeholder][data-indent="1"]::before {
+  left: 20px; /* 匹配内层 padding-left */
+}
+.base-block-outer.is-empty[data-placeholder][data-indent="2"]::before,
+.heading-block-outer.is-empty[data-placeholder][data-indent="2"]::before {
+  left: 40px; /* 匹配内层 padding-left */
+}
+.base-block-outer.is-empty[data-placeholder][data-indent="3"]::before,
+.heading-block-outer.is-empty[data-placeholder][data-indent="3"]::before {
+  left: 60px; /* 匹配内层 padding-left */
+}
+.base-block-outer.is-empty[data-placeholder][data-indent="4"]::before,
+.heading-block-outer.is-empty[data-placeholder][data-indent="4"]::before {
+  left: 80px; /* 匹配内层 padding-left */
+}
+.base-block-outer.is-empty[data-placeholder][data-indent="5"]::before,
+.heading-block-outer.is-empty[data-placeholder][data-indent="5"]::before {
+  left: 100px; /* 匹配内层 padding-left */
+}
+.base-block-outer.is-empty[data-placeholder][data-indent="6"]::before,
+.heading-block-outer.is-empty[data-placeholder][data-indent="6"]::before {
+  left: 120px; /* 匹配内层 padding-left */
+}
+
+/* ListItemBlock - 根据外层 data-indent 调整 left，匹配内层 padding-left */
+/* Level 0 (data-indent="0"): padding-left: 32px（无序/有序统一） */
+.list-item-block-outer.is-empty[data-placeholder][data-indent="0"]::before {
+  left: 32px; /* 覆盖默认的 left: 0 */
+}
+/* Level 1 (data-indent="1"): padding-left: 44px */
+.list-item-block-outer.is-empty[data-placeholder][data-indent="1"]::before {
+  left: 52px;
+}
+/* Level 2 (data-indent="2"): padding-left: 64px */
+.list-item-block-outer.is-empty[data-placeholder][data-indent="2"]::before {
+  left: 72px;
+}
+/* Level 3 (data-indent="3"): padding-left: 84px */
+.list-item-block-outer.is-empty[data-placeholder][data-indent="3"]::before {
+  left: 92px;
+}
+
+/* 注：有序/无序列表 placeholder 左边距已统一在上方规则中处理，无需再区分 listType */
+
+/* 
+ * 批注高亮样式
+ * 作用：当鼠标悬停在批注面板或关联块上时，高亮显示相关联的块
+ */
+.annotation-highlight-block .root-block {
+  /* 移除了 outline 和 box-shadow，替换为背景色高亮 */
+  background-color: var(--editor-block-hover-bg); /* 悬停时的背景色 */
+  transition: background-color 0.2s ease; /* 添加过渡效果 */
+}
+
+/*
+ * AI 引用段落高亮样式
+ * 作用：用户在对话区点击“第N段”引用后，编辑器对应块会短暂闪烁高亮，强化定位感知。
+ *
+ * 设计说明：
+ * - 该高亮由 JS 对 .root-block-outer[data-id="blockId"] 添加 .ai-ref-highlight-block 实现
+ * - 视觉上尽量与现有 hover/批注高亮一致，避免引入突兀的颜色体系
+ */
+.ai-ref-highlight-block .root-block {
+  background-color: var(--editor-block-hover-bg);
+  transition: background-color 0.2s ease;
+}
+
+/* 
+ * 水平分割线块视觉样式
+ */
+.horizontal-rule-block-outer {
+  /* 外层容器，可以添加上下间距 */
+  padding: 4px 0; /* 提供一些垂直空间 (0.5rem -> 8px) */
+}
+
+.horizontal-rule-block {
+  /* 内层容器，可以设置背景等，但通常分割线块背景是透明的 */
+  padding: 0; /* 通常不需要内边距 */
+  display: flex; /* 使用 flex 居中 hr (如果需要) */
+  justify-content: center; /* 水平居中 hr */
+  align-items: center; /* 垂直居中 hr */
+  min-height: 6px; /* 给一个最小高度，方便选中 */
+}
+
+.horizontal-rule-block hr {
+  border: none; /* 重置默认边框 */
+  border-top: 1px solid var(--editor-hr-color); /* 使用 CSS 变量定义分割线颜色和样式 */
+  width: 100%; /* 撑满容器 */
+  margin: 0; /* 移除 hr 默认的外边距 */
+}
+
+/* 选中时的样式 (ProseMirror 会添加 .ProseMirror-selectednode) */
+/* 应用到内层 div 上 */
+.horizontal-rule-block.ProseMirror-selectednode {
+  background-color: var(--color-accent-bg); /* 使用变量定义选中背景色 */
+  outline: 2px solid var(--color-accent); /* 使用变量定义选中边框 */
+  border-radius: 2px;
+}
+
+.list-item-block {
+  --local-block-text-color: inherit;
+
+  /* 内层容器，与基础块保持一致的样式 */
+  /* display: flex; 不再需要 flex 布局 */
+  line-height: 1.5; /* 1.5倍行距 */
+}
+
+/* ==================== 列表项前缀（无序/有序） ==================== */
+
+/* 无序列表：使用伪元素添加项目符号 */
+.list-item-block[data-list-type="bullet"]::before {
+  content: '•'; /* Level 0 默认圆点 */
+  position: absolute; /* 绝对定位 */
+  left: 6px; /* 控制前缀的位置 */
+  top: -0.24em; /* 定位到第一行视觉中心 (用户调试结果) */
+  /* 与有序编号列宽保持一致，避免“圆点看起来更小/更靠左”的视觉差 */
+  width: 22px; /* 前缀区域宽度（与 .ordered-list-number 一致） */
+  /* ++ 颜色继承策略：使用 CSS 变量而非 inherit，避免影响主文本 ++ */
+  /* 当块设置了 textColor 时，列表符号会自动使用该颜色 */
+  color: var(--local-block-text-color, inherit);
+  text-align: center; /* 居中显示 */
+  /* 圆点的视觉重量比数字更轻，略微放大一点，让无序/有序更协调 */
+  font-size: 1.5em;
+  user-select: none; /* 不可选中 */
+  pointer-events: none; /* 避免干扰点击 */
+}
+
+/* ==================== 有序列表编号（插件 widget DOM） ==================== */
+/**
+ * 编号由 ListItemBlock 的 ProseMirror 插件插入 span.ordered-list-number：
+ * - 避免 ::before 在 .content(overflow-y: hidden) 场景下被裁切
+ * - 也避免与 PlaceholderPlugin 的 ::before 冲突
+ */
+.ordered-list-number {
+  position: absolute;
+  left: -4px; /* 6px - 10px (增加宽度导致的偏移) */
+  top: 0.09em;
+  width: 32px; /* 22px + 10px (增加宽度以容纳两位数) */
+  padding-right: 6px; /* “.” 后间距 */
+  box-sizing: border-box;
+  text-align: right;
+  font-size: 1em;
+  line-height: 1.5;
+  user-select: none;
+  pointer-events: none;
+  color: var(--local-block-text-color, inherit);
+  white-space: nowrap; /* 防止数字和点换行 */
+}
+
+.ordered-list-number.level-1 { left: 16px; } /* 26px - 10px */
+.ordered-list-number.level-2 { left: 36px; } /* 46px - 10px */
+.ordered-list-number.level-3 { left: 56px; } /* 66px - 10px */
+
+/* 有序列表空状态：占位符 left 需要避开编号（覆盖通用 listItem placeholder 位置） */
+.list-item-block-outer[data-list-type="ordered"].is-empty[data-placeholder][data-indent="0"]::before { left: 32px; }
+.list-item-block-outer[data-list-type="ordered"].is-empty[data-placeholder][data-indent="1"]::before { left: 52px; }
+.list-item-block-outer[data-list-type="ordered"].is-empty[data-placeholder][data-indent="2"]::before { left: 72px; }
+.list-item-block-outer[data-list-type="ordered"].is-empty[data-placeholder][data-indent="3"]::before { left: 92px; }
+
+/* 当块没有设置文字色时，使用默认的主文本颜色 */
+.list-item-block-outer:not([data-text-color]) .list-item-block::before {
+  color: var(--color-text-primary);
+}
+
+/* Level 1: 空心圆点 - 使用 CSS 绘制以精确控制粗细 */
+.list-item-block[data-list-type="bullet"].level-1::before {
+  content: '';
+  box-sizing: border-box;
+  width: 6px;
+  height: 6px;
+  border: 1.2px solid currentColor; /* 1.2px 细线 */
+  border-radius: 50%;
+  background: transparent;
+  /* 重置字体大小和行高，基于父级计算位置 */
+  font-size: 1em;
+  line-height: 1;
+  /* 定位调整 */
+  /* 水平：(22px - 6px) / 2 = 8px */
+  margin-left: 8px;
+  /* 垂直：(1.5em / 2) - (6px / 2) = 0.75em - 3px */
+  top: calc(0.75em - 1px);
+}
+
+/* Level 2: 实心方形 */
+.list-item-block[data-list-type="bullet"].level-2::before {
+  content: '▪'; /* U+25AA or U+25A0 */
+}
+
+/* Level 3: 也使用实心方形 */
+.list-item-block[data-list-type="bullet"].level-3::before {
+  content: '▪'; /* 与 Level 2 相同 */
+}
+
+/* 不同嵌套级别下，调整 ::before (项目符号) 的 left 位置 */
+/* Level 0 默认 left: 6px */
+.list-item-block.level-1::before {
+  left: 26px; /* 6px + 20px indent */
+}
+
+.list-item-block.level-2::before {
+  left: 46px; /* 6px + 40px indent */
+}
+
+.list-item-block.level-3::before {
+  left: 66px; /* 6px + 60px indent */
+}
+
+/*
+ * 根据 data-indent 属性应用缩进样式
+ * 支持 BaseBlock 和 HeadingBlock
+ */
+.base-block[data-indent="1"],
+.heading-block[data-indent="1"] {
+  padding-left: 20px;
+}
+
+.base-block[data-indent="2"],
+.heading-block[data-indent="2"] {
+  padding-left: 40px;
+}
+
+.base-block[data-indent="3"],
+.heading-block[data-indent="3"] {
+  padding-left: 60px;
+}
+
+.base-block[data-indent="4"],
+.heading-block[data-indent="4"] {
+  padding-left: 80px;
+}
+
+.base-block[data-indent="5"],
+.heading-block[data-indent="5"] {
+  padding-left: 100px;
+}
+
+.base-block[data-indent="6"],
+.heading-block[data-indent="6"] {
+  padding-left: 120px;
+}
+
+/* 
+ * 引用块视觉样式
+ * 作用：为引用块提供特定的视觉风格
+ */
+.quote-block-outer {
+  --local-block-text-color: var(--color-border-default);
+
+  /* 外层容器，可以添加额外边距 */
+  padding-left: 0px;
+}
+
+.quote-block {
+  /* 内层容器 */
+  position: relative; /* 为伪元素定位提供参考 */
+  padding-left: 1rem; /* 增加左侧内边距 */
+  /* ++ 颜色继承策略：使用 CSS 变量而非 inherit，避免影响主文本 ++ */
+  /* 当块设置了 textColor 时，引用块边框会自动使用该颜色 */
+  color: var(--local-block-text-color, inherit);
+  border-radius: 2px; /* 增加圆角效果 */
+  overflow: visible; /* 确保内容不被裁剪 */
+  line-height: 1.5; /* 1.5倍行距 */
+}
+/* 当块没有设置文字色时，使用默认的第三级文本颜色 */
+.quote-block-outer:not([data-text-color]) .quote-block {
+  color: var(--color-text-tertiary);
+}
+
+/* 使用伪元素创建左侧边框 */
+.quote-block::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px; /* 距离顶部有一定间距 */
+  bottom: 2px; /* 距离底部有一定间距 */
+  width: 3px; /* 边框宽度 */
+  /* 边框颜色：优先使用当前块颜色，否则回退到默认边框色 */
+  background-color: var(--local-block-text-color, var(--color-border-default));
+  border-radius: 1.5px; /* 边框自身的圆角 */
+}
+
+/* -- 修改缩进方式 - 引用块 -- */
+/* -- 将 margin-left 改为 padding-left, 与其他块保持一致 -- */
+.quote-block-outer[data-indent="1"] .quote-block {
+  padding-left: calc(1rem + 20px);
+}
+
+.quote-block-outer[data-indent="2"] .quote-block {
+  padding-left: calc(1rem + 40px);
+}
+
+.quote-block-outer[data-indent="3"] .quote-block {
+  padding-left: calc(1rem + 60px);
+}
+
+.quote-block-outer[data-indent="4"] .quote-block {
+  padding-left: calc(1rem + 80px);
+}
+
+.quote-block-outer[data-indent="5"] .quote-block {
+  padding-left: calc(1rem + 100px);
+}
+
+.quote-block-outer[data-indent="6"] .quote-block {
+  padding-left: calc(1rem + 120px);
+}
+
+/* ++ 新增：同步移动引用块的左侧边框 ++ */
+.quote-block-outer[data-indent="1"] .quote-block::before {
+  left: calc(2px + 20px);
+}
+.quote-block-outer[data-indent="2"] .quote-block::before {
+  left: calc(2px + 40px);
+}
+.quote-block-outer[data-indent="3"] .quote-block::before {
+  left: calc(2px + 60px);
+}
+.quote-block-outer[data-indent="4"] .quote-block::before {
+  left: calc(2px + 80px);
+}
+.quote-block-outer[data-indent="5"] .quote-block::before {
+  left: calc(2px + 100px);
+}
+.quote-block-outer[data-indent="6"] .quote-block::before {
+  left: calc(2px + 120px);
+}
+
+/* 占位符位置调整 - 引用块，需要同步更新 */
+.quote-block-outer.is-empty[data-placeholder][data-indent="0"]::before {
+  left: 1rem; /* 匹配 padding-left */
+}
+
+.quote-block-outer.is-empty[data-placeholder][data-indent="1"]::before {
+  left: calc(1rem + 20px); /* 考虑margin-left */
+}
+
+.quote-block-outer.is-empty[data-placeholder][data-indent="2"]::before {
+  left: calc(1rem + 40px); /* 考虑margin-left */
+}
+
+.quote-block-outer.is-empty[data-placeholder][data-indent="3"]::before {
+  left: calc(1rem + 60px); /* 考虑margin-left */
+}
+
+/* 
+ * 代码块视觉样式
+ */
+.code-block-outer {
+  position: relative; /* 确保外层容器可以定位控件 */
+}
+
+.code-block {
+  position: relative; /* 确保内部可以定位 */
+}
+
+.code-block pre {
+  /* 使用更深的背景色，与普通背景区分，但不过于刺眼 */
+  background-color: var(--code-block-bg);
+  font-family: var(--font-family-mono, "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace); /* 等宽字体 */
+  padding: 1em;
+  padding-top: 2em; /* 为控件留出空间 */
+  padding-bottom: 1em; /* 为控件留出空间 */
+  border-radius: 6px;
+  overflow-x: auto;
+  overflow-y: hidden; /* 禁用垂直滚动 */
+  white-space: pre;
+  margin: 0;
+  line-height: 1.5; /* 调整行高，让代码看起来更紧凑 */
+  position: relative; /* 为了定位 ::before 伪元素 */
+  transition: background-color 0.2s ease-in-out; /* 背景色过渡动画 */
+  scrollbar-width: thin; /* Firefox 滚动条宽度 */
+  scrollbar-color: var(--color-border-default) var(--code-block-bg);
+}
+
+.code-block code {
+  font-family: inherit;
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: 0.85em; /* 略微缩小代码字体 */
+}
+
+/* ① 只负责高度（横向滚动条） */
+.code-block pre::-webkit-scrollbar {
+  height: 8px;                 /* 仅尺寸 */
+}
+
+/* ③ 滑块主体 */
+.code-block pre::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: 4px;
+}
+
+/* 
+ * LaTeX 块视觉样式
+ */
+.latex-block-view {
+  /* 移除边框，使用与其他块一致的背景色 */
+  border: none;
+  border-radius: 4px; /* 保留圆角 */
+  padding: 0px; /* 保留内边距 */
+  margin: 0px; /* 保留外边距 */
+  position: relative;
+  transition: background-color 0.2s ease-in-out; /* 过渡背景色 */
+  max-width: 100%; /* 防止超出容器 */
+}
+
+.latex-container {
+  min-height: 40px; /* 确保最小高度 */
+  max-width: 100%; /* 防止超出容器 */
+  overflow-x: auto; /* LaTeX 公式如果太长，允许内部滚动 */
+  overflow-y: hidden; /* 禁用垂直滚动 */
+}
+
+.latex-rendered-content {
+  cursor: pointer;
+  padding-top: 2px;    /* ++ 增加上内边距 ++ */
+  padding-bottom: 2px; /* ++ 增加下内边距 ++ */
+  min-height: 20px;
+  max-width: 100%; /* 防止超出容器 */
+}
+
+/* KaTeX 元素样式 */
+/* 注意：由于移除了 scoped，:deep 不再需要，直接选择 .katex */
+.latex-rendered-content .katex {
+  font-size: 1.1em; /* 可调整公式大小 */
+  text-align: center; /* 居中块级公式 */
+  /* 可以在这里添加更多 KaTeX 相关的样式 */
+  border-radius: 3px;
+}
+
+/* LaTeX 错误信息样式 */
+.latex-error-message {
+  color: var(--color-error);
+  font-size: 0.8em;
+  margin-top: 5px;
+  padding: 4px 8px;
+  background-color: var(--color-error-bg);
+  border: 1px solid color-mix(in srgb, var(--color-error) 30%, transparent);
+  border-radius: 3px;
+}
+
+/* 
+ * 图片块视觉样式
+ * 作用：为图片块提供视觉样式和交互效果
+ */
+.image-block-outer {
+  /* 外层容器，可以添加上下间距 */
+  padding: 4px 0; /* 提供一些垂直空间 */
+}
+
+.image-block {
+  /* 内层容器，可以设置背景等 */
+  padding: 5px; /* 提供一些内边距 */
+  display: flex; /* 使用 flex 居中图片 */
+  justify-content: center; /* 水平居中图片 */
+  align-items: center; /* 垂直居中图片 */
+  min-height: 30px; /* 给一个最小高度，方便选中 */
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+/* 图片对齐方式 */
+.image-block.align-left {
+  justify-content: flex-start; /* 左对齐 */
+}
+
+.image-block.align-center {
+  justify-content: center; /* 居中对齐(默认) */
+}
+
+.image-block.align-right {
+  justify-content: flex-end; /* 右对齐 */
+}
+
+/* 图片样式 */
+.image-block-img {
+  max-width: 100%; /* 确保图片不超出容器 */
+  height: auto; /* 保持宽高比 */
+  display: block; /* 避免底部的额外空间 */
+  box-shadow: var(--shadow-sm); /* 轻微阴影效果 */
+  border-radius: 2px; /* 圆角效果 */
+}
+
+/* 空图片样式 */
+.image-block.empty-image {
+  color: var(--color-text-placeholder);
+  font-style: italic;
+  padding: 15px;
+  text-align: center;
+  background-color: var(--editor-block-hover-bg);
+  border: 1px dashed var(--color-border-default);
+}
+
+/* 悬停效果 */
+.image-block:hover {
+  background-color: var(--editor-block-hover-bg);
+}
+
+/* 选中时的样式 (ProseMirror 会添加 .ProseMirror-selectednode) */
+.image-block.ProseMirror-selectednode {
+  background-color: var(--color-accent-bg); /* 使用变量定义选中背景色 */
+  outline: 2px solid var(--color-accent); /* 使用变量定义选中边框 */
+  border-radius: 2px;
+}
+
+/* 
+ * Audio 块选中状态样式
+ * 作用：使用覆盖层 + 透明度过渡，避免改变内部元素颜色
+ */
+.audio-block-border {
+  position: relative; /* 作为遮罩定位参照 */
+}
+
+.audio-block-border::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--editor-block-selection-overlay); /* 基色，与主题选中背景匹配 */
+  opacity: 0; /* 默认不显示 */
+  pointer-events: none; /* 不阻挡鼠标事件 */
+  border-radius: 6px; /* 与 audio-block-border 的圆角保持一致 */
+  z-index: 11; /* 覆盖在内容上方，且高于内部 sticky toolbar (z-index: 10) */
+  transition: opacity 0.2s ease-in-out; /* 过渡效果 */
+}
+
+.root-block-outer.is-block-selected .audio-block-border::after {
+  opacity: 0.25; /* 叠加在白底上保持浅绿选中视觉 */
+}
+
+/* 
+ * 行内文字高亮样式
+ * 作用：为文字添加荧光笔式的背景高亮
+ */
+.ProseMirror span[data-text-highlight] {
+  border-radius: 2px;
+  /* 只做轻微的竖直填充，避免左右产生视觉间隙 */
+  padding: 1px 0;
+  /* 背景色由 mark 的 style 属性提供（使用 color-mix 得到浅色） */
+}

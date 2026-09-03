@@ -1,0 +1,219 @@
+/* SimpleDatePicker 的结构、主题和动画由 Renderer UI 唯一拥有。 */
+.sdp-root {
+  position: relative;
+  display: inline-block;
+  width: auto;
+}
+
+.sdp-root .sdp-input {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--color-text-primary);
+  text-align: center;
+  cursor: pointer;
+  background-color: transparent;
+  border: 0;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sdp-root .sdp-input:hover {
+  background-color: var(--color-bg-hover-strong);
+}
+
+.sdp-root .sdp-input svg {
+  width: 15px;
+  height: 15px;
+}
+
+.sdp-root .sdp-panel {
+  position: absolute;
+  right: 0;
+  z-index: var(--linnya-ui-layer-picker);
+  min-width: 220px;
+  padding: 8px 10px 10px;
+  background-color: var(--color-bg-surface);
+  border-radius: 8px;
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+}
+
+.sdp-root .sdp-panel.is-placement-bottom {
+  top: calc(100% + 4px);
+  bottom: auto;
+}
+
+.sdp-root .sdp-panel.is-placement-top {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.sdp-root .sdp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.sdp-root .sdp-month-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.sdp-root .sdp-year-text {
+  padding: 2px 4px;
+  margin-right: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sdp-root .sdp-year-text:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover);
+}
+
+.sdp-root .sdp-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sdp-root .sdp-nav-btn:hover {
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-hover);
+}
+
+.sdp-root .sdp-weekdays,
+.sdp-root .sdp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.sdp-root .sdp-weekdays {
+  margin-bottom: 4px;
+}
+
+.sdp-root .sdp-weekday {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+.sdp-root .sdp-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  font-size: 12px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  border-radius: 9999px;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.sdp-root .sdp-cell.is-empty {
+  cursor: default;
+}
+
+.sdp-root .sdp-cell:not(.is-empty):hover {
+  background-color: var(--color-bg-hover);
+}
+
+.sdp-root .sdp-cell.is-outside-month {
+  color: var(--color-text-placeholder);
+  cursor: default;
+}
+
+.sdp-root .sdp-cell.is-outside-month:hover {
+  background-color: transparent;
+}
+
+.sdp-root .sdp-cell.is-today {
+  font-weight: 500;
+}
+
+.sdp-root .sdp-cell.is-selected {
+  font-weight: 500;
+  color: var(--color-accent);
+  background-color: var(--color-accent-bg);
+}
+
+.sdp-root .sdp-month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.sdp-root .sdp-month-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sdp-root .sdp-month-item:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover);
+}
+
+.sdp-root .sdp-month-item.is-current-month {
+  font-weight: 500;
+  color: var(--color-accent);
+  background-color: var(--color-accent-bg);
+}
+
+.sdp-root .sdp-fade-enter-active,
+.sdp-root .sdp-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.sdp-root .sdp-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.sdp-root .sdp-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.sdp-root .sdp-panel.is-placement-top.sdp-fade-enter-from {
+  transform: translateY(8px);
+}
+
+.sdp-root .sdp-panel.is-placement-top.sdp-fade-leave-to {
+  transform: translateY(4px);
+}
+
+.sdp-root .sdp-fade-enter-to,
+.sdp-root .sdp-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}

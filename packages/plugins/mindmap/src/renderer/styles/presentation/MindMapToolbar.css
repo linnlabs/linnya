@@ -1,0 +1,72 @@
+.mindmap-toolbar {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.mindmap-toolbar-group {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  background-color: var(--color-bg-default);
+  border: none;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 6%, transparent),
+    0 1px 3px color-mix(in srgb, var(--color-text-primary) 4%, transparent),
+    0 8px 24px -4px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+  pointer-events: auto;
+  backdrop-filter: blur(8px);
+}
+
+.mindmap-toolbar-group.vertical-left-top {
+  top: 20px;
+  left: 20px;
+}
+
+.mindmap-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  border: none;
+  background-color: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.mindmap-toolbar-button:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.mindmap-toolbar-button:active,
+.mindmap-toolbar-button.is-active {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.mindmap-toolbar-button.is-active:hover {
+  background-color: var(--color-accent-bg-hover);
+}
+
+.mindmap-toolbar .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.mindmap-toolbar .icon-text {
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 500;
+}
+
+.mindmap-toolbar .rotate-180 {
+  transform: rotate(180deg);
+}

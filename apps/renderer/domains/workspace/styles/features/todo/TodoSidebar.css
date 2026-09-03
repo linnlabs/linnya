@@ -1,0 +1,285 @@
+/*
+ * TodoSidebar 样式：todo feature 私有样式。
+ * 统一收口到 .todo-sidebar 根下，避免外迁后污染其它同名类。
+ */
+.todo-sidebar {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-bg-default),
+    color-mix(in srgb, var(--color-bg-default) 95%, transparent)
+  );
+}
+
+/* 新的头部占位和按钮样式 */
+.todo-sidebar .header-placeholder {
+  display: flex;
+  justify-content: flex-end; /* 右对齐 */
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+
+.todo-sidebar .add-button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-default);
+  background-color: var(--color-accent-bg-subtle);
+  color: var(--color-accent);
+  transition: background-color 0.2s;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.todo-sidebar .add-button:hover {
+  background-color: var(--color-bg-hover);
+}
+
+/* Create Card Wrapper */
+.todo-sidebar .create-card-wrapper {
+  padding: 0; /* Let the parent .content-inner handle padding */
+}
+
+/* Content */
+.todo-sidebar .content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Custom Scrollbar */
+.todo-sidebar .content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.todo-sidebar .content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.todo-sidebar .content::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.todo-sidebar .content::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+.todo-sidebar .content-inner {
+  padding: 4px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.todo-sidebar .section-content {
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+.todo-sidebar .timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px 20px 1fr; /* time | connector | content */
+  align-items: flex-start; /* Vertically align all cells to the top */
+  gap: 8px;
+  padding-bottom: 0; /* Spacing is handled by timeline-content */
+}
+
+.todo-sidebar .timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+/* Ensure no external margins break the line */
+.todo-sidebar .timeline-content .todo-item {
+  margin-bottom: 0;
+}
+
+/* Provide visual spacing inside the content cell so the line stays continuous */
+.todo-sidebar .timeline-content {
+  grid-column: 3;
+  min-width: 0;
+  padding-bottom: 8px;
+}
+
+.todo-sidebar .timeline-item:last-child .timeline-content {
+  padding-bottom: 0;
+}
+
+.todo-sidebar .timeline-time {
+  grid-column: 1;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  text-align: right;
+  line-height: 1;
+  margin-top: 9px; /* Align with title */
+}
+
+.todo-sidebar .timeline-connector {
+  grid-column: 2;
+  position: relative;
+  height: 100%;
+}
+
+/* Draw the vertical line as two halves, centered on the dot */
+.todo-sidebar .timeline-connector::before,
+.todo-sidebar .timeline-connector::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 1px;
+  background-color: var(--color-border-light);
+  transform: translateX(-50%);
+}
+
+/* Upper half (from top to center) */
+.todo-sidebar .timeline-connector::before {
+  top: 0;
+  height: 11.5px;
+}
+
+/* Lower half (from center to bottom) */
+.todo-sidebar .timeline-connector::after {
+  top: 11.5px;
+  bottom: 0; /* Extend to the bottom to ensure continuity */
+}
+
+/* First item: remove the line above the dot */
+.todo-sidebar .timeline-item:first-child .timeline-connector::before {
+  display: none;
+}
+
+/* Last item: remove the line below the dot */
+.todo-sidebar .timeline-item:last-child .timeline-connector::after {
+  display: none;
+}
+
+.todo-sidebar .timeline-dot {
+  position: absolute;
+  top: 11.5px; /* Align with checkbox in TodoItem */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: var(--color-border-default);
+  z-index: 2;
+}
+
+/* For the last item (no bottom padding on content), center the dot and time normally */
+.todo-sidebar .timeline-item:last-child .timeline-dot {
+  top: 11.5px;
+}
+.todo-sidebar .timeline-item:last-child .timeline-time {
+  margin-top: 9px;
+}
+
+.todo-sidebar .sub-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px;
+  font-size: 12px;
+  font-weight: 460;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.todo-sidebar .today-tasks-group .sub-header {
+  padding-left: 22px; /* Align with collapsable headers */
+}
+
+.todo-sidebar .sub-header-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 12px 4px 4px;
+  font-size: 12px;
+  font-weight: 460;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color 0.2s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.todo-sidebar .sub-header-button:hover {
+  color: var(--color-text-primary);
+}
+
+.todo-sidebar .sub-header-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.todo-sidebar .sub-header-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-placeholder);
+}
+
+.todo-sidebar .sub-header-button .chevron {
+  color: var(--color-text-tertiary);
+  width: 12px;
+  height: 12px;
+  transition: transform 0.2s;
+}
+
+.todo-sidebar .sub-header-button .chevron:not(.is-expanded) {
+  transform: rotate(-90deg);
+}
+
+.todo-sidebar .dot {
+  height: 6px;
+  width: 6px;
+  border-radius: 9999px;
+}
+
+.todo-sidebar .primary-dot {
+  background-color: var(--color-accent);
+}
+
+.todo-sidebar .danger-dot {
+  background-color: var(--color-red-400);
+}
+
+.todo-sidebar .muted-dot {
+  background-color: var(--color-blue-500);
+}
+
+.todo-sidebar .todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.todo-sidebar .sub-tasks-section {
+  /* Base styles, no margin/padding/border here */
+}
+
+.todo-sidebar .today-tasks-group + .sub-tasks-section,
+.todo-sidebar .sub-tasks-section + .sub-tasks-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.todo-sidebar .no-tasks-placeholder {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-placeholder);
+}

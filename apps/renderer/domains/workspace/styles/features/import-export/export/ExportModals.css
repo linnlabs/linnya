@@ -1,0 +1,289 @@
+/*
+ * Import/export 导出弹窗组样式。
+ * 这些弹窗通过通用 Modal Teleport 到 body，不能依赖 workspace 宿主后代选择器。
+ */
+.export-settings-content,
+.workspace-batch-export-markdown-modal {
+  color: var(--color-text-primary);
+}
+
+.export-settings-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 32px 0;
+}
+
+.workspace-batch-export-markdown-modal {
+  padding: 12px 32px 0;
+}
+
+.export-settings-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 32px 24px;
+}
+
+.workspace-batch-export-markdown-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 32px 24px;
+}
+
+.export-settings-content .form-row,
+.workspace-batch-export-markdown-modal .form-row {
+  display: flex;
+  margin-bottom: 24px;
+  align-items: center;
+}
+
+.export-settings-content .form-row.align-top,
+.workspace-batch-export-markdown-modal .form-row.align-top {
+  align-items: flex-start;
+}
+
+.export-settings-content .form-label,
+.workspace-batch-export-markdown-modal .form-label {
+  width: 180px;
+  flex-shrink: 0;
+  padding-top: 0;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.export-settings-content .export-tab-content .form-row.align-top .form-label {
+  padding-top: 0;
+}
+
+.export-settings-content .export-tab-content .form-row.align-top:has(.margin-inputs) .form-label {
+  padding-top: 4px;
+}
+
+.export-settings-content .control-area,
+.workspace-batch-export-markdown-modal .control-area {
+  flex: 1;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0;
+}
+
+.export-settings-content .control-area {
+  align-items: flex-end;
+}
+
+.export-settings-content .export-tab-content {
+  flex: 1;
+  min-height: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.export-settings-content .export-tab-content:has(.placeholder-container) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  text-align: center;
+}
+
+.export-settings-content .placeholder-container {
+  padding: 20px;
+  border-radius: 8px;
+  background-color: var(--color-bg-subtle);
+}
+
+.export-settings-content .placeholder-container p {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin: 0 0 8px;
+}
+
+.export-settings-content .checkbox-options,
+.workspace-batch-export-markdown-modal .checkbox-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.workspace-batch-export-markdown-modal .tip-text {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  line-height: 18px;
+}
+
+.workspace-batch-export-markdown-modal .tip-text-top {
+  margin-top: 12px;
+  margin-bottom: 10px;
+}
+
+.workspace-batch-export-markdown-modal .tip-text-top-secondary {
+  margin-bottom: 12px;
+}
+
+.export-settings-content .radio-options,
+.workspace-batch-export-markdown-modal .radio-options {
+  display: flex;
+  gap: 20px;
+  justify-content: flex-end;
+}
+
+.export-settings-content .export-tab-content:has(#export-txt-plain) .radio-options {
+  flex-direction: column;
+  gap: 12px;
+}
+
+.export-settings-content .radio-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.export-settings-content .export-tab-content:has(#export-txt-plain) .radio-item {
+  gap: 8px;
+}
+
+.export-settings-content .radio-item-with-description {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.export-settings-content .setting-description {
+  font-size: 12px;
+  color: var(--color-text-placeholder);
+  margin-top: 4px;
+  padding-left: 24px;
+}
+
+.export-settings-content .radio-item label {
+  font-size: 14px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.export-settings-content .radio-item input[type='radio']:disabled + label,
+.export-settings-content .disabled-label {
+  color: var(--color-text-placeholder);
+  cursor: not-allowed;
+}
+
+.export-settings-content .radio-item input[type='radio'] {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border-default);
+  background-color: var(--color-bg-surface);
+  position: relative;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  display: grid;
+  place-content: center;
+  box-shadow: 0 1px 1px var(--shadow-color-xs);
+}
+
+.export-settings-content .radio-item input[type='radio']::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  transform: scale(0);
+  transition: 0.1s transform ease-in-out;
+}
+
+.export-settings-content .radio-item input[type='radio']:checked::before {
+  transform: scale(1);
+}
+
+.export-settings-content .radio-item input[type='radio']:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 1px 1px var(--shadow-color-xs);
+}
+
+.export-settings-content .radio-item input[type='radio']:checked {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 1px 1px var(--shadow-color-sm);
+}
+
+.export-settings-content .radio-item input[type='radio']:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.export-settings-content .radio-item input[type='radio']:disabled {
+  cursor: not-allowed;
+  border-color: var(--color-border-light);
+  background-color: var(--color-bg-disabled);
+}
+
+.export-settings-content .radio-item input[type='radio']:disabled::before {
+  background-color: var(--color-text-placeholder);
+}
+
+.export-settings-content .margin-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  justify-items: end;
+  padding-right: 2px;
+}
+
+.export-settings-content .margin-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-settings-content .margin-input-group:nth-child(even) {
+  justify-content: flex-end;
+}
+
+.export-settings-content .custom-select-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 180px;
+}
+
+.export-settings-content .export-pdf-page-size-trigger,
+.export-settings-content .margin-inputs .export-pdf-margin-input {
+  background-color: var(--color-bg-search-light);
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.export-settings-content .margin-inputs .export-pdf-margin-input {
+  border: 1px solid transparent;
+}
+
+.export-settings-content .export-pdf-page-size-trigger:hover,
+.export-settings-content .margin-inputs .export-pdf-margin-input:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.export-settings-content .export-tab-content .form-row:has(#pdf-page-size) .control-area {
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+  .export-settings-content .margin-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .export-settings-content .radio-options,
+  .workspace-batch-export-markdown-modal .radio-options {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .export-settings-content .checkbox-options {
+    gap: 8px;
+  }
+}

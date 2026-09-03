@@ -1,0 +1,2 @@
+# Conversation agent-choice legacy workflow naming surface (INV-55)
+# 格式：count<TAB>rule<TAB>file<TAB>name。只允许数量减少；agent 选择必须改用 agent 命名。

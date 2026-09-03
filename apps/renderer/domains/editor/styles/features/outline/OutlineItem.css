@@ -1,0 +1,95 @@
+.editor-outline-item {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  transition: padding-left 0.3s ease;
+}
+
+.editor-outline-item .outline-item-content {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 大纲条目的缩进类来自虚拟列表数据，外迁后必须挂在 feature 根类下，避免污染全局 indent-*。 */
+.editor-outline-item.indent-1 { padding-left: 0px; }
+.editor-outline-item.indent-2 { padding-left: 8px; }
+.editor-outline-item.indent-3 { padding-left: 16px; }
+.editor-outline-item.indent-4 { padding-left: 24px; }
+.editor-outline-item.indent-5 { padding-left: 32px; }
+.editor-outline-item.indent-6 { padding-left: 40px; }
+
+.editor-outline-item .outline-item-content:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.editor-outline-item .outline-item-content.is-active {
+  background-color: var(--color-bg-surface);
+}
+
+.editor-outline-item .outline-item-content.is-active:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.editor-outline-item .outline-item-content.is-active .outline-item-text {
+  color: var(--color-accent-light);
+  font-weight: 500;
+}
+
+.editor-outline-item .outline-indicator {
+  width: 16px;
+  height: 16px;
+  margin-right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.editor-outline-item .collapse-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.editor-outline-item .bullet-indicator {
+  font-size: 16px;
+  line-height: 1;
+  font-weight: bold;
+  position: relative;
+  top: -0.5px;
+}
+
+.editor-outline-item .chevron-icon {
+  width: 10px;
+  height: 10px;
+  stroke-width: 2.5;
+  transition: transform 0.2s ease;
+}
+
+.editor-outline-item .collapse-toggle.is-collapsed .chevron-icon {
+  transform: rotate(-90deg);
+}
+
+.editor-outline-item .outline-item-text {
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  transition: color 0.2s ease;
+}
+
+.editor-outline-item .outline-item-content:hover .outline-item-text {
+  color: var(--color-accent);
+}

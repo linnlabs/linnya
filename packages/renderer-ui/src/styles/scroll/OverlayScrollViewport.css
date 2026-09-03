@@ -1,0 +1,38 @@
+/**
+ * Renderer UI OverlayScrollbars theme presets
+ *
+ * 中文说明：
+ * - 这里存放“可复用的主题与可见性约定”，不放页面私有布局；
+ * - 页面通过 data-attribute 声明自己要使用哪套主题 / 可见性策略；
+ * - 这样后续推广到知识库、侧栏、设置页时，只需要复用约定，不需要再复制一段 scoped 样式。
+ */
+
+[data-overlay-scroll-theme="linnya"] .os-theme-linnya.os-scrollbar {
+  --os-size: 10px;
+  --os-padding-axis: 1px;
+  --os-padding-perpendicular: 1px;
+  --os-handle-interactive-area-offset: 4px;
+  --os-track-border-radius: 999px;
+  --os-handle-border-radius: 999px;
+  --os-handle-perpendicular-size: 6px;
+  --os-handle-perpendicular-size-hover: 6px;
+  --os-handle-perpendicular-size-active: 6px;
+  --os-handle-bg: var(--color-border-default);
+  --os-handle-bg-hover: var(--color-border-hover);
+  --os-handle-bg-active: var(--color-border-hover);
+  --os-track-bg: transparent;
+  --os-track-bg-hover: transparent;
+  --os-track-bg-active: transparent;
+}
+
+/**
+ * 中文说明：
+ * - strict-hover 表示：未 hover 时必须隐藏；
+ * - 用它来覆盖 OverlayScrollbars 在内容/尺寸更新时可能短暂切换出的“可见态” class，
+ *   避免流式阶段出现非 hover 闪现。
+ */
+[data-overlay-scroll-visibility="strict-hover"]:not(:hover) .os-scrollbar:not(.os-scrollbar-interaction) {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

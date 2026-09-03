@@ -1,0 +1,129 @@
+/* Renderer UI feedback feature：保留迁移前 selector 与 computed style。 */
+.scroll-to-bottom-btn {
+  --scroll-to-bottom-surface: color-mix(in srgb, var(--color-bg-surface) 52%, transparent);
+  --scroll-to-bottom-surface-hover: color-mix(in srgb, var(--color-bg-surface) 58%, transparent);
+  --scroll-to-bottom-border: color-mix(in srgb, var(--color-white) 16%, transparent);
+  --scroll-to-bottom-icon: color-mix(in srgb, var(--color-text-secondary) 68%, var(--color-bg-surface));
+  --scroll-to-bottom-icon-hover: color-mix(in srgb, var(--color-text-secondary) 82%, var(--color-bg-surface));
+  --scroll-to-bottom-icon-shadow: color-mix(in srgb, var(--color-black) 20%, transparent);
+  --scroll-to-bottom-icon-highlight: color-mix(in srgb, var(--color-white) 36%, transparent);
+  --scroll-to-bottom-shadow-near: color-mix(in srgb, var(--color-black) 8%, transparent);
+  --scroll-to-bottom-shadow-mid: color-mix(in srgb, var(--color-black) 6%, transparent);
+  --scroll-to-bottom-shadow-far: color-mix(in srgb, var(--color-text-primary) 12%, transparent);
+  --scroll-to-bottom-active-shadow-near: color-mix(in srgb, var(--color-black) 6%, transparent);
+  --scroll-to-bottom-active-shadow-far: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+
+  position: absolute;
+  right: 40px;
+  bottom: 24px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--scroll-to-bottom-icon);
+  cursor: pointer;
+  background: var(--scroll-to-bottom-surface);
+  border: 0.5px solid var(--scroll-to-bottom-border);
+  border-radius: 50%;
+  box-shadow:
+    0 1px 3px var(--scroll-to-bottom-shadow-near),
+    0 4px 12px var(--scroll-to-bottom-shadow-mid),
+    0 10px 20px var(--scroll-to-bottom-shadow-far);
+  backdrop-filter: blur(4px) saturate(180%);
+  -webkit-backdrop-filter: blur(4px) saturate(180%);
+  overflow: hidden;
+  transition:
+    background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scroll-to-bottom-btn .scroll-to-bottom-icon {
+  position: relative;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  overflow: visible;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scroll-to-bottom-icon__shadow,
+.scroll-to-bottom-icon__highlight,
+.scroll-to-bottom-icon__stroke {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.scroll-to-bottom-icon__shadow {
+  stroke: var(--scroll-to-bottom-icon-shadow);
+  stroke-width: 2.65;
+  opacity: 0.5;
+  transform: translate(-0.3px, -0.45px);
+}
+
+.scroll-to-bottom-icon__highlight {
+  stroke: var(--scroll-to-bottom-icon-highlight);
+  stroke-width: 2.6;
+  opacity: 0.58;
+  transform: translate(0.3px, 0.48px);
+}
+
+.scroll-to-bottom-icon__stroke {
+  stroke: currentColor;
+  stroke-width: 2.35;
+}
+
+.scroll-to-bottom-btn:hover {
+  color: var(--scroll-to-bottom-icon-hover);
+  background: var(--scroll-to-bottom-surface-hover);
+  box-shadow:
+    0 2px 5px var(--scroll-to-bottom-shadow-near),
+    0 6px 16px var(--scroll-to-bottom-shadow-mid),
+    0 16px 28px var(--scroll-to-bottom-shadow-far);
+  transform: translateY(-2px);
+}
+
+.scroll-to-bottom-btn:active {
+  background: var(--scroll-to-bottom-surface);
+  box-shadow:
+    0 1px 4px var(--scroll-to-bottom-active-shadow-near),
+    0 6px 12px var(--scroll-to-bottom-active-shadow-far);
+  transition-duration: 0.1s;
+  transform: translateY(0);
+}
+
+.scroll-to-bottom-btn.scroll-btn-enter-active {
+  animation: scroll-to-bottom-fade-in-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scroll-to-bottom-btn.scroll-btn-leave-active {
+  animation: scroll-to-bottom-fade-out-down 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes scroll-to-bottom-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes scroll-to-bottom-fade-out-down {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+  }
+}

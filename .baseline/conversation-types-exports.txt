@@ -1,0 +1,32 @@
+# Conversation legacy types export surface (R-13)
+# 只允许删除。新增类型必须归属对应 domain/feature definitions。
+ActivityBinding
+AnswerMessage
+AssistantMessage
+AssistantServiceCallbacks
+AssistantState
+BaseMessage
+ContextFenceInjection
+Conversation
+ConversationReference
+FinalAnswerMessage
+HistorySummaryMessage
+InteractiveToolActiveMetadata
+InteractiveToolMetadata
+InteractiveToolStatus
+InteractiveToolSubmissionMetadata
+InteractiveToolSubmissionStatus
+MessageRole
+MessageType
+PartialAnswerMessage
+ProjectFileSummary
+QuestionnaireAnswers
+SendMessageOptions
+SummarizationProgressMessage
+SummaryMessage
+ThoughtMessage
+ToolCallMessage
+ToolPreambleMessage
+Turn
+UiSpec
+UserMessage

@@ -1,0 +1,294 @@
+/**
+ * @file citation/render/citationRender.css
+ * @description Phase 3 引用渲染样式
+ *
+ * CitationNode 是 inline atom；NodeView 显示当前派生 label，本文件只负责视觉状态。
+ */
+
+/* ============ CitationNode 样式 ============ */
+
+/**
+ * `[n]` 是 NodeView 的派生显示；canonical `[@ref]` 仅用于 HTML/Markdown 可移植边界。
+ */
+.citation-mark {
+  /* 中文说明：引用的“蓝色语义”统一使用 functional.css 的 info 色系 */
+  color: var(--color-info);
+  cursor: pointer;
+  text-decoration: none;
+  border-radius: 3px;
+  padding: 0 2px;
+  display: inline-block;
+  /* 中文说明：
+   * - 之前 line-height: 1 + vertical-align: middle 会在块内较大行高时看起来“不居中”
+   * - 改为继承行高 + baseline 对齐，让 token 跟正文文字自然对齐
+   */
+  line-height: inherit;
+  vertical-align: baseline;
+  /* 中文说明：
+   * 移除基础样式的 transition，避免“选中态 -> 默认态”时因背景色渐变而产生“闪烁为 hover 色”的视觉残影。
+   * transition 现在只加在 :hover 中，确保进入 hover 是柔和的，而退出状态是干脆的。
+   */
+  /* transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out; */
+}
+
+.citation-mark:hover {
+  /**
+   * 中文说明：
+   * - 仅在 hover 激活时启用过渡，实现“柔和进入，瞬间退出”。
+   * - transition-delay: 60ms 用于过滤极短暂的鼠标划过（防抖）。
+   */
+  transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition-delay: 60ms;
+  color: color-mix(in srgb, var(--color-info) 85%, var(--color-text-primary));
+  background-color: color-mix(in srgb, var(--color-info-bg) 84%, var(--color-info));
+  /* 中文说明：hover 时不使用“链接下划线”，保持引用 token 更像可点击标签 */
+  text-decoration: none;
+}
+
+/* 选中态：对齐 InlineLatexView 的 ProseMirror-selectednode 风格 */
+.citation-mark.ProseMirror-selectednode,
+.citation-mark.citation-selected {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+/**
+ * 块选中态下的 citation 高亮（关键体验）
+ *
+ * 中文说明：
+ * - “块选中”在 Block.css 里是通过 `.root-block::after` 叠加遮罩实现的（且遮罩 z-index=1 覆盖正文内容）；
+ * - 如果不额外处理，citation 的背景色会被遮罩盖掉，用户只能在 hover 时看到浅底色；
+ * - 这里约定：当引用所在块被选中时，citation 应表现为“选中效果”（背景用主题色），而不是 hover 效果。
+ */
+.root-block-outer.is-block-selected .citation-mark {
+  /* 中文说明：
+   * 重新把 transition 加回来（与 .root-block::after 的 0.2s 保持一致），
+   * 确保“进入选中态”时 citation 与块遮罩同步渐变，而不是瞬间突变。
+   * 注意：退出选中态时依然走基础样式（无 transition），保持瞬间消失以防残影。
+   */
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+  /* 中文说明：避免 hover 的 underline 干扰“块选中”的一致性 */
+  text-decoration: none;
+  /* 中文说明：块选中态需要立即生效，不受 hover delay 影响 */
+  transition-delay: 0ms;
+  /* 中文说明：把 citation 抬到块选中遮罩层之上，确保背景可见 */
+  position: relative;
+  z-index: 2;
+}
+
+/* ============ 选区与交互状态 ============ */
+
+/**
+ * 选中状态：保持可见性
+ */
+.citation-mark::selection {
+  /* 选中时背景色 */
+  background-color: var(--color-info-bg);
+}
+
+/**
+ * ProseMirror 选区高亮（当 citation 被选中时）
+ *
+ * 中文说明：避免覆盖上方 `.citation-mark.ProseMirror-selectednode` 的“选中态”主题样式。
+ */
+.ProseMirror-selectednode .citation-mark {
+  background-color: var(--color-info-bg);
+}
+
+/* ============ Bibliography Block 样式 ============ */
+
+/**
+ * 参考文献容器块
+ */
+.bibliography-block {
+  /**
+   * 中文说明：
+   * - 目标：让参考文献“看起来像正文的一部分”，因此容器不再提供卡片式背景/边框。
+   * - BibliographyBlock 在 NodeView 中会挂上 `base-block editor-block`，
+   *   它的基础排版（line-height、padding、块间距）由 BaseBlock 体系接管。
+   * - 这里仅保留 bibliography 内部的轻量排版规则。
+   */
+  position: relative;
+  margin: 0;
+  /**
+   * 重要：不要在这里覆盖 padding。
+   * BaseBlock 默认是 `padding: 1.5px`（见 block-layout.css），这是正文块的基础“呼吸感”。
+   * citationRender.css 在全局样式中较晚加载，若在这里写死 padding 会把正文样式覆盖掉。
+   */
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  /**
+   * 中文说明：
+   * - 参考文献块是系统块，不可编辑，但应该允许“选中文本/复制”
+   * - 明确指定 user-select，避免某些全局样式把它变成不可选
+   */
+  user-select: text;
+  cursor: text;
+}
+
+/**
+ * 参考文献标题
+ */
+.bibliography-title {
+  /* 标题也按“正文强调”处理：不再做分割线/加大字号 */
+  font-size: inherit;
+  /**
+   * 中文说明：
+   * - BaseBlock 默认不设置 font-weight（正文通常是 400）；
+   * - “参考文献”这四个字需要作为分节标题适度强调，因此仅标题加粗；
+   * - 条目内容（作者/标题/编号）依然保持 400，避免整段参考文献比正文更重。
+   */
+  font-weight: 600;
+  line-height: inherit;
+  color: var(--color-text-primary);
+  margin: 0 0 6px 0;
+  padding: 0;
+  border: none;
+}
+
+/**
+ * 参考文献列表
+ */
+.bibliography-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/**
+ * 单条参考文献条目
+ */
+.bibliography-entry {
+  display: flex;
+  gap: 8px;
+  padding: 0;
+  margin: 0 0 6px 0;
+  font-size: inherit;
+  line-height: inherit;
+  /* 主文本颜色跟随正文 */
+  color: inherit;
+  border: none;
+}
+
+.bibliography-entry:last-child {
+  margin-bottom: 0;
+}
+
+/**
+ * 条目编号（numeric 风格）
+ */
+.bibliography-entry-index {
+  flex-shrink: 0;
+  min-width: 28px;
+  /* 中文说明：编号不做加粗，避免整段参考文献“比正文更重” */
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+/**
+ * 条目内容
+ */
+.bibliography-entry-content {
+  flex: 1;
+}
+
+/**
+ * 条目标题
+ */
+.bibliography-entry-title {
+  /* 中文说明：条目标题保持正文权重；强调交给颜色/布局，而不是字重 */
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+
+/**
+ * 条目作者
+ */
+.bibliography-entry-authors {
+  color: var(--color-text-secondary);
+}
+
+/**
+ * 条目年份/日期
+ */
+.bibliography-entry-date {
+  color: var(--color-text-tertiary);
+}
+
+/**
+ * 条目 URL
+ */
+.bibliography-entry-url {
+  /* 中文说明：参考文献里的 URL 也跟随 info 色系 */
+  color: var(--color-info);
+  cursor: pointer;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.bibliography-entry-url:hover {
+  text-decoration: underline;
+}
+
+/**
+ * 条目容器标题（期刊名等）
+ */
+.bibliography-entry-container {
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+/* ============ 空状态 ============ */
+
+/**
+ * 无引用时的占位提示
+ */
+.bibliography-empty {
+  padding: 0;
+  text-align: left;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+/* ============ 样式切换按钮（尽量“像正文”） ============ */
+
+/**
+ * 默认隐藏切换按钮，鼠标悬停参考文献块时再显示，避免破坏正文观感。
+ */
+.bibliography-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.bibliography-block:hover .bibliography-actions {
+  opacity: 1;
+}
+
+.bibliography-style-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.bibliography-style-toggle:hover {
+  color: var(--color-text-secondary);
+  background-color: var(--editor-block-hover-bg);
+}
+
+.bibliography-style-toggle .style-label {
+  font-family: var(--font-family-mono, monospace);
+}

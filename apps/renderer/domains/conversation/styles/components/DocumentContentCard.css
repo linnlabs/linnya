@@ -1,0 +1,167 @@
+.document-content-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: transparent;
+  overflow: hidden;
+  padding: 0 10.5px 10.5px;
+}
+
+.document-content-card .loading-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  padding: 12px;
+}
+
+.document-content-card .loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: document-content-card-spin 1s linear infinite;
+}
+
+@keyframes document-content-card-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.document-content-card .content-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.document-content-card .content-card {
+  background-color: var(--color-bg-sidebar);
+  border-radius: 8px;
+  border: 0.5px solid transparent;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 4px;
+  transition: border-color 0.2s ease;
+}
+
+.document-content-card .content-card:hover {
+  border-color: var(--color-accent);
+}
+
+.document-content-card .header-meta {
+  padding: 4px 10px;
+}
+
+.document-content-card .subtitle {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+}
+
+.document-content-card .subtitle-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.document-content-card .subtitle-filename {
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.document-content-card .subtitle-range {
+  white-space: nowrap;
+  color: var(--color-text-tertiary);
+  margin-left: auto;
+}
+
+.document-content-card .doc-content-wrapper {
+  /* 保持阅读卡片内部滚动，避免长文档撑高整条消息。 */
+  padding: 4px 10px;
+  background-color: var(--color-bg-sidebar);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.document-content-card .doc-content-wrapper::-webkit-scrollbar {
+  width: 9px;
+  height: 10px;
+}
+
+.document-content-card .doc-content-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.document-content-card .doc-content-wrapper::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-default);
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.document-content-card .doc-content-wrapper::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-border-hover);
+}
+
+.document-content-card .chunks-list {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+}
+
+.document-content-card .chunk-item {
+  display: flex;
+  align-items: baseline;
+  line-height: 1.6;
+}
+
+.document-content-card .chunk-item:hover {
+  background-color: transparent;
+}
+
+.document-content-card .chunk-gutter {
+  width: 32px;
+  text-align: right;
+  padding-right: 12px;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  font-family: inherit;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.document-content-card .chunk-text {
+  flex: 1;
+  font-size: 12px;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  padding-right: 12px;
+  font-family: inherit;
+}
+
+.document-content-card .error-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+  font-size: 13px;
+}
+
+.document-content-card .error-icon {
+  font-size: 14px;
+}

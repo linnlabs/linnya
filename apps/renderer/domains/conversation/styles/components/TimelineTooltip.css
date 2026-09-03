@@ -1,0 +1,62 @@
+.timeline-tooltip {
+  --timeline-tooltip-bg: var(--color-bg-surface);
+  --timeline-tooltip-ring: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+
+  position: relative;
+  max-width: 280px;
+  min-width: 160px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 1.4;
+  opacity: 0;
+  overflow-wrap: break-word;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  white-space: normal;
+  /* 关键：把阴影和"1px 描边"统一加在父容器上，沿矩形和箭头合并后的真实轮廓投影，从而避免连接处出现重叠或断线。 */
+  filter:
+    drop-shadow(1px 0 0 var(--timeline-tooltip-ring))
+    drop-shadow(-1px 0 0 var(--timeline-tooltip-ring))
+    drop-shadow(0 1px 0 var(--timeline-tooltip-ring))
+    drop-shadow(0 -1px 0 var(--timeline-tooltip-ring))
+    drop-shadow(0 4px 12px color-mix(in srgb, var(--color-black) 10%, transparent))
+    drop-shadow(0 1px 3px color-mix(in srgb, var(--color-black) 6%, transparent));
+}
+
+.timeline-tooltip.visible {
+  opacity: 1;
+}
+
+/* 矩形主体的实际可见背景，盖在箭头之上，遮住箭头伸入内部的那一半。 */
+.timeline-tooltip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--timeline-tooltip-bg);
+  border-radius: 8px;
+  z-index: -1;
+}
+
+/* 箭头本体：纯背景色的旋转方块，自身不再设置任何阴影或边框，所有视觉效果由父容器的 filter 统一负责。 */
+.timeline-tooltip.placement-right::before,
+.timeline-tooltip.placement-left::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  background: var(--timeline-tooltip-bg);
+  transform: translateY(-50%) rotate(45deg);
+  z-index: -2;
+}
+
+.timeline-tooltip.placement-right::before {
+  left: -3.5px;
+}
+
+.timeline-tooltip.placement-left::before {
+  right: -3.5px;
+}

@@ -1,0 +1,58 @@
+/* apps/renderer/domains/settings/styles/components/AppearanceTab.css */
+/* 主题色板不是规整表单，不套件套的行原语，只借用 SettingsRow 的控件列。 */
+
+.appearance-theme-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.appearance-theme-option {
+  display: flex;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: var(--radius-full);
+}
+
+.appearance-theme-option:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.appearance-theme-circle {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border: 1px solid color-mix(in srgb, var(--color-black) 10%, transparent);
+  border-radius: 50%;
+  transition:
+    transform var(--transition-normal) ease,
+    box-shadow var(--transition-normal) ease;
+}
+
+.appearance-theme-option:hover .appearance-theme-circle {
+  transform: scale(1.1);
+}
+
+.appearance-theme-option.is-active .appearance-theme-circle {
+  border-color: transparent;
+  box-shadow:
+    0 0 0 1.5px var(--color-accent),
+    0 3px 6px var(--shadow-color-md);
+  transform: scale(1.1);
+}
+
+.appearance-theme-circle.is-light {
+  background-color: var(--color-white);
+}
+
+.appearance-theme-circle.is-dark {
+  background-color: var(--color-dark-surface);
+}
+
+.appearance-theme-circle.is-moon-blue {
+  background-color: var(--color-blue-50);
+  border-color: color-mix(in srgb, var(--color-blue-500) 22%, transparent);
+}

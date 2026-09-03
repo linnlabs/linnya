@@ -1,0 +1,77 @@
+.kg-progress {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.kg-progress .kg-trigger {
+  /* 图标触发器：去掉 TextPopover 默认 padding，避免看起来像按钮。 */
+  padding: 0;
+  border-radius: 8px;
+}
+
+.kg-progress .kg-trigger:hover {
+  /* hover 只负责展示信息卡片，不额外改变图标背景。 */
+  background-color: transparent;
+}
+
+.kg-progress .kg-icon {
+  position: relative;
+  display: inline-block;
+  width: var(--kg-icon-size);
+  height: var(--kg-icon-size);
+  font-size: var(--kg-icon-size);
+  line-height: 1;
+}
+
+.kg-progress .kg-icon-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kg-progress .kg-icon-layer--base {
+  opacity: 0.22;
+  filter: grayscale(1) saturate(0.2);
+}
+
+.kg-progress .kg-icon-layer--fill {
+  /**
+   * 通过 clip-path 做“自下而上填充”：
+   * - 0%：完全裁掉
+   * - 100%：完全显示
+   */
+  clip-path: inset(calc(100% - var(--kg-progress)) 0 0 0);
+  transition: clip-path 220ms ease;
+}
+
+.kg-progress .kg-icon-layer--fill.empty {
+  clip-path: inset(100% 0 0 0);
+}
+
+.kg-progress .kg-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 4px;
+}
+
+.kg-progress .kg-popover-title {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-text-primary);
+}
+
+.kg-progress .kg-popover-sub {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}

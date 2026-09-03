@@ -1,0 +1,473 @@
+/* apps/renderer/domains/settings/styles/kit/settings-kit.css */
+/* Settings Kit 基元只表达版式与节奏，控件视觉来自 @linnya/renderer-ui。 */
+
+/* --- Page --- */
+
+.settings-page-description {
+  margin: 0 0 24px;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+/* --- Section --- */
+
+/*
+ * 分区之间自动出现分隔线。用「任意前置兄弟 + section」而不是「section + section」，
+ * 这样页面级的操作区 / 反馈条夹在两段之间时，下一段依然与上文分开。
+ */
+.settings-section + .settings-section,
+.settings-page > * + .settings-section {
+  padding-top: 26px;
+  margin-top: 26px;
+  border-top: 1px solid var(--settings-hairline, var(--color-border-default));
+}
+
+.settings-section-header {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md);
+}
+
+.settings-section-heading-area {
+  min-width: 0;
+}
+
+.settings-section-heading {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+}
+
+.settings-section-description {
+  margin: 6px 0 0;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-tertiary);
+}
+
+.settings-section-actions {
+  flex-shrink: 0;
+}
+
+/* --- Row --- */
+
+.settings-row {
+  display: flex;
+  align-items: flex-start;
+}
+
+.settings-row.is-align-center {
+  align-items: center;
+}
+
+.settings-row + .settings-row {
+  margin-top: 20px;
+}
+
+.settings-row-label-area {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 控件占满右列：标签列定宽，多个分区之间的标签也能对齐成一条线。 */
+.settings-row.is-control-fill > .settings-row-label-area {
+  flex-shrink: 0;
+  width: 200px;
+  padding-right: var(--spacing-md);
+}
+
+.settings-row.is-control-fill.is-align-top > .settings-row-label-area {
+  padding-top: 7px;
+}
+
+/* 控件贴右：开关这类固定宽度控件不该占掉一整列，把空间还给文案。 */
+.settings-row.is-control-end > .settings-row-label-area {
+  flex: 1;
+  padding-right: var(--spacing-lg);
+}
+
+.settings-row-label {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+}
+
+.settings-row-description {
+  margin: 6px 0 0;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-tertiary);
+}
+
+.settings-row-control {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 共享文本输入默认继承使用环境字号；设置页在件套边界内统一为 14px。 */
+.settings-row-control > .tt-text-field {
+  font-size: var(--font-size-sm);
+}
+
+.settings-row.is-control-fill > .settings-row-control {
+  flex: 1;
+}
+
+/* 输入类控件从左侧收窄 100px，右边缘继续与页面内容列对齐。 */
+.settings-row.is-control-fill > .settings-row-control:has(
+  > :is(
+    .linnya-select-menu,
+    .tt-text-field,
+    .secret-input,
+    .settings-input,
+    .settings-select,
+    .settings-textarea,
+    .settings-field-with-action
+  )
+) {
+  margin-left: 100px;
+}
+
+.settings-row.is-control-end > .settings-row-control {
+  flex: 0 0 auto;
+  align-items: flex-end;
+}
+
+.settings-row-hint {
+  width: 100%;
+  margin: 7px 0 0;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-tertiary);
+}
+
+/* --- ChoiceGroup --- */
+
+.settings-choice-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* 单选卡是多行的，圆点要对齐第一行文字而不是整块垂直居中。 */
+.settings-choice-group .radio-item {
+  align-items: flex-start;
+}
+
+.settings-choice-group .radio-custom {
+  margin-top: 2px;
+}
+
+.settings-choice-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.settings-choice-name-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.settings-choice-name {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.settings-choice-badge {
+  padding: 1px 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--color-warning);
+  background-color: var(--color-warning-bg);
+  border-radius: var(--radius-sm);
+}
+
+.settings-choice-description {
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-tertiary);
+}
+
+.settings-choice-group .radio-item.is-danger :is(
+  .settings-choice-name,
+  .settings-choice-description
+) {
+  color: var(--color-error);
+}
+
+/* --- Actions --- */
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--spacing-lg);
+}
+
+/* --- 行内小按钮（分区右上角的刷新、列表条目的删除…） --- */
+
+.settings-inline-button {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--transition-fast) ease,
+    background-color var(--transition-fast) ease,
+    border-color var(--transition-fast) ease;
+}
+
+.settings-inline-button:hover:not(:disabled) {
+  background: var(--color-bg-hover-light);
+  border-color: var(--color-border-hover);
+}
+
+.settings-inline-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.settings-inline-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.settings-inline-button.is-quiet {
+  background: transparent;
+  border-color: transparent;
+}
+
+.settings-inline-button.is-quiet:hover:not(:disabled) {
+  background: var(--color-bg-hover-light);
+  border-color: transparent;
+}
+
+.settings-inline-button.is-danger:hover:not(:disabled) {
+  color: var(--color-error);
+}
+
+/* --- 外链按钮（「去这里申请 API Key」） --- */
+
+.settings-external-link {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  align-self: flex-start;
+  padding: 0;
+  margin-top: 10px;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-accent);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+}
+
+.settings-external-link:hover {
+  text-decoration: underline;
+}
+
+.settings-external-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.settings-external-link > .shared-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+/* --- 提示条（政策说明、限制说明这类整段文字） --- */
+
+.settings-note {
+  padding: 10px 12px;
+  margin: 20px 0 0;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-subtle);
+  border-left: 2px solid var(--color-accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* --- Feedback --- */
+
+.settings-feedback {
+  margin: var(--spacing-sm) 0 0;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.settings-feedback.is-success {
+  color: var(--color-success);
+}
+
+.settings-feedback.is-error {
+  color: var(--color-error);
+}
+
+.settings-feedback.is-info {
+  color: var(--color-text-tertiary);
+}
+
+/* --- State --- */
+
+.settings-state {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+  border-radius: var(--radius-md);
+}
+
+.settings-state.is-error,
+.settings-state.is-unavailable {
+  color: var(--color-error);
+  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
+}
+
+.settings-state-message {
+  min-width: 0;
+}
+
+.settings-state-action {
+  flex-shrink: 0;
+}
+
+/* --- List --- */
+
+.settings-list {
+  overflow: hidden;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.settings-list.is-borderless {
+  display: flex;
+  overflow: visible;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  border: 0;
+  border-radius: 0;
+}
+
+.settings-list-row {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--settings-hairline, var(--color-border-default));
+}
+
+.settings-list-row:last-child {
+  border-bottom: none;
+}
+
+.settings-list.is-borderless .settings-list-row {
+  border: 0;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast) ease;
+}
+
+.settings-list.is-borderless .settings-list-row:hover {
+  background-color: var(--color-bg-hover-light);
+}
+
+.settings-list-row.is-interactive {
+  cursor: pointer;
+  transition: background-color var(--transition-fast) ease;
+}
+
+.settings-list-row.is-interactive.has-trailing {
+  cursor: default;
+}
+
+.settings-list-row.is-interactive:hover {
+  background-color: var(--color-bg-hover-light);
+}
+
+.settings-list-row.is-interactive:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.settings-list-row-main {
+  display: flex;
+  flex: 1;
+  gap: var(--spacing-sm);
+  align-items: baseline;
+  min-width: 0;
+}
+
+.settings-list-row-main.is-interactive {
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.settings-list-row-main.is-interactive:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.settings-list-row-title {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-list-row-meta {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.settings-list-row-trailing {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+/* --- 件套示例页（仅开发模式） --- */
+
+.kit-gallery-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}

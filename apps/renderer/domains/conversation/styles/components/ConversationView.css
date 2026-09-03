@@ -1,0 +1,171 @@
+.conversation-view-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* 复制/转存时复用真实消息组件；离屏但保留布局，抽取完成后立即卸载。 */
+.conversation-answer-render-host {
+  position: fixed;
+  top: 0;
+  left: -100000px;
+  visibility: hidden;
+  pointer-events: none;
+  contain: layout style paint;
+}
+
+.conversation-view-wrapper .conversation-view {
+  flex: 1;
+  overflow-y: auto;
+  overflow-anchor: none;
+  padding: 4px 16px 0 16px;
+  height: 100%;
+  position: relative;
+}
+
+.conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view {
+  scrollbar-color: transparent transparent;
+}
+
+.conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view:is(:hover, :focus-within) {
+  scrollbar-color: var(--scrollbar-thumb-color) transparent;
+}
+
+.conversation-host-viewport[data-conversation-scroll-viewport='true'] .conversation-view-wrapper,
+.conversation-host-viewport[data-conversation-scroll-viewport='true'] .conversation-view-wrapper .conversation-view {
+  height: auto;
+  overflow: visible;
+}
+
+.conversation-host-viewport[data-conversation-scroll-viewport='true'] .conversation-view-wrapper .conversation-content {
+  height: auto;
+}
+
+.conversation-view-wrapper .conversation-content {
+  flex: 1;
+  height: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.conversation-view-wrapper .history-loading-state {
+  flex: 1;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px 20px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.conversation-view-wrapper .history-loading-copy {
+  transform: none;
+  animation: conversation-history-loading-reveal 120ms ease-out 250ms both;
+}
+
+@keyframes conversation-history-loading-reveal {
+  from {
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  to {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+.conversation-view-wrapper .history-loading-title {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.conversation-view-wrapper .history-loading-dots {
+  display: inline-flex;
+  width: 2.2em;
+  justify-content: flex-start;
+}
+
+.conversation-view-wrapper .history-loading-dots span {
+  animation: conversation-history-loading-dot 1.2s ease-in-out infinite;
+}
+
+.conversation-view-wrapper .history-loading-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.conversation-view-wrapper .history-loading-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.conversation-view-wrapper .history-loading-dots span:nth-child(4) {
+  animation-delay: 0.45s;
+}
+
+.conversation-view-wrapper .history-loading-dots span:nth-child(5) {
+  animation-delay: 0.6s;
+}
+
+.conversation-view-wrapper .history-loading-dots span:nth-child(6) {
+  animation-delay: 0.75s;
+}
+
+@keyframes conversation-history-loading-dot {
+  0%,
+  70%,
+  100% {
+    opacity: 0.35;
+  }
+
+  35% {
+    opacity: 1;
+  }
+}
+
+.conversation-view-wrapper .messages-container {
+  flex: 1;
+  padding: 0;
+  position: relative;
+}
+
+.conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view::-webkit-scrollbar {
+  width: 10px;
+}
+
+.conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view:is(:hover, :focus-within)::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+}
+
+.conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view:is(:hover, :focus-within)::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+.editor-shell.for-project-setup .conversation-view-wrapper {
+  height: auto;
+}
+
+.editor-shell.for-project-setup .conversation-view {
+  height: auto;
+  max-height: none;
+  overflow-y: visible !important;
+}

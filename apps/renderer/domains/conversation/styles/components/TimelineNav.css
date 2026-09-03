@@ -1,0 +1,79 @@
+.timeline-nav {
+  --timeline-track-padding: 12px;
+
+  position: absolute;
+  top: 0;
+  right: var(--timeline-offset-right, 6px);
+  z-index: 10;
+  display: flex;
+  width: var(--timeline-width, 28px);
+  height: 100%;
+  padding: 20px 0;
+  overflow: hidden;
+  background: transparent;
+  flex-direction: column;
+  align-items: center;
+  opacity: 1;
+  pointer-events: none;
+  transform: translateX(0);
+  will-change: transform, opacity;
+}
+
+.timeline-nav > * {
+  pointer-events: auto;
+}
+
+.timeline-nav.is-collapsed {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(var(--timeline-width, 28px));
+}
+
+.timeline-track {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  overflow: visible;
+  flex: 1;
+  pointer-events: auto;
+}
+
+.timeline-track.is-overflow {
+  display: block;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.timeline-track.is-overflow::-webkit-scrollbar {
+  display: none;
+}
+
+.timeline-track-content {
+  position: relative;
+  width: 2px;
+  height: 100%;
+  pointer-events: auto;
+}
+
+.timeline-track.is-overflow .timeline-track-content {
+  margin: 0 auto;
+}
+
+.timeline-track-content.has-multiple-markers::before {
+  position: absolute;
+  top: var(--timeline-track-padding);
+  bottom: var(--timeline-track-padding);
+  left: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--color-text-primary) 12%, transparent);
+  content: '';
+  pointer-events: none;
+}
+
+.timeline-track-content > * {
+  pointer-events: auto;
+}

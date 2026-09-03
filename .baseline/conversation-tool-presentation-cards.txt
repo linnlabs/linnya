@@ -1,0 +1,21 @@
+# Conversation presentation-only tool cards (INV-56)
+# 默认只允许新增；产品正式退役时必须与注册、组件和测试在同一切片删除。
+apps/renderer/domains/conversation/features/subrun-card/ui/SubrunCard.vue
+apps/renderer/domains/conversation/features/subrun-card/ui/SubrunProgressCard.vue
+apps/renderer/domains/conversation/features/subrun-collection/ui/SubrunBatchCollection.vue
+apps/renderer/domains/conversation/ui/tools/questionnaire/QuestionnaireCard.vue
+apps/renderer/domains/conversation/ui/tools/image/ImageGenerationCard.vue
+apps/renderer/domains/conversation/ui/tools/image-read/ImageReadCard.vue
+apps/renderer/domains/conversation/ui/tools/knowledge/DocumentContentCard.vue
+apps/renderer/domains/conversation/ui/tools/knowledge/DocumentListCard.vue
+apps/renderer/domains/conversation/ui/tools/knowledgebasesearchcard/KnowledgeSearchCard.vue
+apps/renderer/domains/conversation/ui/tools/sharedmemory/SharedMemoryDocListCard.vue
+apps/renderer/domains/conversation/ui/tools/sharedmemory/SharedMemoryDocReadCard.vue
+apps/renderer/domains/conversation/ui/tools/sharedmemory/SharedMemoryDocWriteCard.vue
+apps/renderer/domains/conversation/ui/tools/skill/SkillLearnedCard.vue
+apps/renderer/domains/conversation/ui/tools/taskstate/TaskStateCard.vue
+apps/renderer/domains/conversation/ui/tools/todo/AgentTodoCard.vue
+apps/renderer/domains/conversation/ui/tools/tool_output/ToolOutputReadCard.vue
+apps/renderer/domains/conversation/ui/tools/webread/WebReadCard.vue
+apps/renderer/domains/conversation/ui/tools/websearch/WebSearchCard.vue
+apps/renderer/domains/conversation/ui/tools/workspace/WorkspaceDocumentViewCard.vue

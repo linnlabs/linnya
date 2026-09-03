@@ -1,0 +1,136 @@
+.document-list-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 7px 7px;
+}
+
+.document-list-card .loading-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.document-list-card .loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: document-list-card-spin 1s linear infinite;
+}
+
+@keyframes document-list-card-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.document-list-card .content-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.document-list-card .header-meta {
+  padding: 0 10px;
+}
+
+.document-list-card .header-subtitle {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.document-list-card .doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.document-list-card .doc-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background-color: transparent;
+  transition: all 0.15s ease;
+  cursor: default;
+  color: var(--color-text-primary);
+}
+
+.document-list-card .doc-item:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.document-list-card .doc-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+.document-list-card .doc-item:hover .doc-icon-wrapper {
+  color: var(--color-accent);
+}
+
+.document-list-card .doc-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.document-list-card .doc-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.document-list-card .doc-title {
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.document-list-card .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+  color: var(--color-text-tertiary);
+}
+
+.document-list-card .empty-icon {
+  font-size: 20px;
+  margin-bottom: 4px;
+  opacity: 0.5;
+}
+
+.document-list-card .empty-text {
+  font-size: 12px;
+}
+
+.document-list-card .error-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background-color: var(--color-error-bg);
+  border-radius: 6px;
+  color: var(--color-error);
+  font-size: 13px;
+}
+
+.document-list-card .error-icon {
+  font-size: 14px;
+}

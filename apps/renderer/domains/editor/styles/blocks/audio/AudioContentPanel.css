@@ -1,0 +1,132 @@
+.audio-content-panel {
+  border-radius: 6px;
+  margin-top: 8px;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.audio-content-panel.is-collapsed {
+  min-height: auto;
+}
+
+.audio-content-panel .panel-divider {
+  height: 1px;
+  margin: 0 12px 8px;
+  background-color: var(--color-border-default);
+}
+
+.audio-content-panel.is-collapsed .panel-divider {
+  margin-bottom: 4px;
+}
+
+.audio-content-panel .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+}
+
+.audio-content-panel.is-collapsed .panel-header {
+  border-radius: 6px;
+}
+
+.audio-content-panel .tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.audio-content-panel .tab {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.audio-content-panel .tab:hover {
+  background: var(--color-bg-hover);
+}
+
+.audio-content-panel .tab.active {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.audio-content-panel .collapse-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.audio-content-panel .collapse-button:hover {
+  background: var(--color-bg-hover);
+}
+
+.audio-content-panel .panel-content {
+  min-height: 60px;
+  max-height: 500px;
+  padding: 0 18px 8px;
+  overflow-y: auto;
+}
+
+.audio-content-panel .panel-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.audio-content-panel .panel-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.audio-content-panel .panel-content::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 5px;
+  background-color: var(--scrollbar-thumb-color, var(--color-border-default));
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+.audio-content-panel .panel-content::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color, var(--color-accent-light));
+}
+
+.audio-content-panel .resize-handle {
+  position: relative;
+  height: 4px;
+  background: transparent;
+  cursor: ns-resize;
+}
+
+.audio-content-panel .resize-handle:hover {
+  background: var(--color-bg-hover-strong, var(--color-border-hover));
+}
+
+.audio-content-panel .resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-text-placeholder);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.15s ease;
+}
+
+.audio-content-panel .resize-handle:hover::after {
+  opacity: 1;
+}

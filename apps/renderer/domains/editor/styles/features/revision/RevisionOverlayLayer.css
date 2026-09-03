@@ -1,0 +1,14 @@
+.revision-overlay-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 24;
+  pointer-events: none;
+}
+
+.revision-overlay-layer:not(.is-enabled) {
+  display: none;
+}
+
+.revision-overlay-toolbar {
+  pointer-events: auto;
+}

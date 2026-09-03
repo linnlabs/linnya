@@ -1,0 +1,63 @@
+/* EditorStatusBar.css - 编辑器状态栏视觉样式 */
+/*
+ * 状态栏只消费 semantic token，明暗主题由 token 层切换。
+ */
+
+/* 
+ * 状态栏内部容器样式
+ * 作用：提供状态栏的视觉样式和内容布局
+ */
+.editor-status-bar-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) 0;
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+/* 状态项样式 */
+.status-item {
+  margin-right: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+}
+
+/* 提示项样式 */
+.hint-item {
+  margin-right: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  color: var(--color-text-placeholder);
+}
+
+/* 状态图标样式 */
+.status-item .status-icon,
+.hint-item .hint-icon {
+  margin-right: var(--spacing-xs);
+  font-size: 0.9rem;
+}
+
+/* 状态文本样式 */
+.status-item .status-text,
+.hint-item .hint-text {
+  font-size: 0.8rem;
+}
+
+/* 状态栏链接样式 */
+.editor-status-bar-inner a {
+  color: var(--color-text-link);
+  text-decoration: none;
+  transition: color var(--transition-normal);
+}
+
+/* 状态栏链接悬停效果 */
+.editor-status-bar-inner a:hover {
+  color: var(--color-text-link-hover);
+  text-decoration: underline;
+}
+
+/* == 文件结束 == */ 

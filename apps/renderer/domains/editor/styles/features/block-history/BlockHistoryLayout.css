@@ -1,0 +1,166 @@
+/**
+ * 块历史模式布局样式
+ *
+ * 这些选择器需要作用在 root-block 容器和历史面板之间，放在 editor domain
+ * 样式入口统一聚合，避免 layout 入口反向依赖 feature 内部目录。
+ */
+
+/**
+ * Side-by-Side 头部：占满 root-block 宽度，显示左右版本标签。
+ */
+.root-block.history-side-by-side-mode > .block-history-side-by-side-header {
+  grid-column: 1 / 3;
+  grid-row: 1;
+  /* 顶部与右侧保持同样的内边距，让右侧的更多菜单图标不会贴到边缘 */
+  padding: 4px 4px 8px 0;
+  margin-bottom: 12px;
+  border-bottom: 1px dashed var(--color-border-default);
+  user-select: none;
+}
+
+.block-history-side-by-side-header .header-main-row {
+  /*
+   * 头部采用与 root-block 相同的两列 Grid 布局，确保右半部分的左边界
+   * 与下面内容区域中间的 gap 对齐。
+   */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.block-history-side-by-side-header .header-left,
+.block-history-side-by-side-header .header-right {
+  display: flex;
+  align-items: center;
+}
+
+.block-history-side-by-side-header .header-right {
+  /* 右半区域内部：左边是版本，右边是 More 菜单。 */
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.block-history-side-by-side-header .header-label {
+  padding-left: 1.5px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.block-history-side-by-side-header .header-more-menu {
+  width: auto !important;
+  flex-shrink: 0;
+}
+
+.block-history-side-by-side-header .header-more-menu .block-history-more-value {
+  display: none;
+}
+
+.block-history-side-by-side-header .header-more-menu .block-history-more-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  min-width: 0;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.block-history-side-by-side-header .header-more-menu .block-history-more-trigger:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.block-history-side-by-side-header .header-more-menu .block-history-more-options {
+  right: 0;
+  left: auto;
+  width: max-content;
+  min-width: 140px;
+  max-width: 180px;
+}
+
+.block-history-side-by-side-header .more-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+
+.block-history-side-by-side-header .more-icon:hover {
+  color: var(--color-text-primary);
+}
+
+/**
+ * 块内左右分栏布局：左侧为当前版本内容，右侧为历史面板。
+ */
+.root-block.history-side-by-side-mode {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 12px;
+}
+
+/*
+ * 历史 UI 有两条挂载路径：
+ * - Host 路径直接 Teleport 到 .root-block；
+ * - 旧 Vue NodeView 路径先进入 history mount 包裹层。
+ * 包裹层本身不是视觉结构，必须让它在 Grid 中透明，否则底部 timeline
+ * 会退化成普通子流，跑到右侧历史面板附近而不是横跨整个版本块。
+ */
+.root-block.history-side-by-side-mode > [data-root-block-history-mount],
+.root-block.history-side-by-side-mode > [data-root-block-shell-history-mount] {
+  display: contents;
+}
+
+.root-block.history-side-by-side-mode > .content {
+  grid-column: 1 / 2;
+  grid-row: 2;
+}
+
+.root-block.history-side-by-side-mode > .root-block-history-panel,
+.root-block.history-side-by-side-mode > [data-root-block-history-mount] > .root-block-history-panel,
+.root-block.history-side-by-side-mode > [data-root-block-shell-history-mount] > .root-block-history-panel {
+  grid-column: 2 / 3;
+  grid-row: 2;
+}
+
+/*
+ * 右侧历史编辑器仅用于展示对比，不参与当前文档的块选择交互。
+ * 禁用块选中遮罩，避免整块选中时出现双层覆盖感。
+ */
+.history-side-by-side-panel .root-block::after {
+  display: none;
+}
+
+.root-block.history-side-by-side-mode > .block-revision-indicator-row {
+  grid-column: 1 / 3;
+}
+
+.root-block.history-side-by-side-mode > .history-timeline,
+.root-block.history-side-by-side-mode > [data-root-block-history-mount] > .history-timeline,
+.root-block.history-side-by-side-mode > [data-root-block-shell-history-mount] > .history-timeline {
+  grid-column: 1 / 3;
+  grid-row: 3;
+  padding: 4px 4px 0 0;
+  margin-top: 12px;
+  border-top: 1px dashed var(--color-border-default);
+}
+
+/*
+ * 只在 Side-by-Side 模式下调整右侧历史根块布局，去掉历史视图里
+ * root-block-outer / root-block 的左右缩进，让右侧历史内容与左侧当前内容对齐。
+ */
+.root-block.history-side-by-side-mode .root-block-history-panel .root-block-outer {
+  margin: 0 !important;
+}
+
+.root-block.history-side-by-side-mode .root-block-history-panel .root-block-outer > .root-block {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}

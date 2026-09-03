@@ -1,0 +1,120 @@
+.conversation-visual-row {
+  display: flow-root;
+  box-sizing: border-box;
+  padding-top: 12px;
+}
+
+.conversation-visual-row > .ui-card-group,
+.conversation-visual-row
+  > .conversation-visual-row__content
+  > .conversation-visual-row__content-inner
+  > .ai-message {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.conversation-visual-row.follows-user-message {
+  padding-top: 4px;
+}
+
+.conversation-visual-row.follows-user-thought {
+  padding-top: 0;
+}
+
+.conversation-visual-row.is-turn-start {
+  padding-top: 0;
+}
+
+.conversation-visual-row.is-turn-end {
+  padding-bottom: 16px;
+}
+
+.conversation-visual-row__content {
+  /* 工具输出可能含长 URL；显式允许 grid track 收缩，禁止最小内容宽度撑出对话列。 */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.conversation-visual-row__content-inner {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 0;
+  overflow: visible;
+}
+
+/*
+ * tail region 是最后一轮 duration/actions/waiting 的唯一几何 owner。
+ * 子元素全部绝对定位，图标延迟显隐和 disabled actions 都不能改变虚拟行高度。
+ */
+.conversation-visual-row__tail {
+  position: relative;
+  height: 42px;
+}
+
+.conversation-visual-row__tail > .turn-work-duration-hint {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  margin-top: 0;
+}
+
+.conversation-visual-row__tail > .conversation-answer-actions--turn {
+  position: absolute;
+  top: 9px;
+  right: 0;
+}
+
+.conversation-visual-row__waiting-indicator {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.conversation-visual-row__waiting-indicator.is-visible {
+  visibility: visible;
+  opacity: 1;
+}
+
+.conversation-visual-row__waiting-indicator.is-visible > svg {
+  animation: conversation-row-waiting-fade-in 0.3s ease-in-out;
+}
+
+@keyframes conversation-row-waiting-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.conversation-visual-row.is-bounded .conversation-visual-row__content-inner {
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
+}
+
+.conversation-visual-row.is-actions-visible .conversation-answer-actions {
+  opacity: 1;
+  transition:
+    opacity 0.2s ease,
+    visibility 0s ease;
+  visibility: visible;
+}
+
+.conversation-visual-row.is-actions-visible .conversation-answer-actions.is-disabled {
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}

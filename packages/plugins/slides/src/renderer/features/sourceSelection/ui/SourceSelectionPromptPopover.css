@@ -1,0 +1,131 @@
+.source-selection-prompt {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  width: min(420px, calc(100vw - 32px));
+  min-height: 40px;
+  padding: 5px 8px;
+  overflow: hidden;
+  pointer-events: auto;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-light);
+  border-left: none;
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
+  transform: translateX(-50%);
+}
+
+.source-selection-prompt__icon-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.source-selection-prompt__linnya-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.source-selection-prompt__count {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 22px;
+  margin-right: 8px;
+  padding: 0;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+.source-selection-prompt__textarea {
+  flex-grow: 1;
+  min-width: 0;
+  width: 100%;
+  min-height: 20px;
+  max-height: 92px;
+  padding: 0;
+  margin: 0;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+}
+
+.source-selection-prompt__textarea::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.source-selection-prompt__buttons {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.source-selection-prompt__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  margin: 0;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  border-radius: 4px;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.source-selection-prompt__button:not(:disabled):hover {
+  color: var(--color-text-tertiary);
+  background-color: var(--color-bg-hover);
+}
+
+.source-selection-prompt__submit:not(:disabled):hover {
+  color: var(--color-accent);
+  background-color: var(--color-bg-hover);
+}
+
+.source-selection-prompt__button:disabled {
+  color: var(--color-text-placeholder);
+  cursor: not-allowed;
+  background-color: transparent;
+}
+
+.source-selection-prompt__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.source-selection-prompt-pop-enter-active,
+.source-selection-prompt-pop-leave-active {
+  transition:
+    opacity 0.15s ease-out,
+    transform 0.15s ease-out;
+}
+
+.source-selection-prompt-pop-enter-from,
+.source-selection-prompt-pop-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
+}

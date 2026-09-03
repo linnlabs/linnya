@@ -1,0 +1,245 @@
+.citation-popover {
+  --citation-popover-surface: var(--color-bg-surface);
+  --citation-popover-subtle-bg: var(--color-bg-sidebar);
+  --citation-popover-hover-bg: var(--color-bg-hover);
+  --citation-popover-accent: var(--color-accent);
+  --citation-popover-accent-hover: var(--color-accent-hover);
+  --citation-popover-error-color: var(--color-error);
+  --citation-popover-shadow-color: color-mix(in srgb, var(--color-black) 12%, transparent);
+  --citation-popover-scrollbar-thumb: color-mix(in srgb, var(--color-text-primary) 20%, transparent);
+
+  position: fixed;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  max-height: 300px;
+  padding: 12px;
+  /* 箭头会超出浮层边界，根容器不能裁剪；内容滚动交给内部 snippet。 */
+  overflow: visible;
+  background: var(--citation-popover-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px var(--citation-popover-shadow-color);
+}
+
+.citation-popover .popover-arrow {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--citation-popover-surface);
+  border: 1px solid var(--color-border-light);
+  transform: rotate(45deg);
+}
+
+.citation-popover .popover-arrow.top {
+  top: -6px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.citation-popover .popover-arrow.bottom {
+  bottom: -6px;
+  border-top: none;
+  border-left: none;
+}
+
+.citation-popover .citation-loading {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.citation-popover .loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--citation-popover-accent);
+  border-radius: 50%;
+  animation: citation-popover-spin 1s linear infinite;
+}
+
+@keyframes citation-popover-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.citation-popover .citation-error {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  color: var(--citation-popover-error-color);
+  font-size: 13px;
+}
+
+.citation-popover .error-icon {
+  font-size: 14px;
+}
+
+.citation-popover .citation-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* 允许内容区在浮层 max-height 内收缩，避免长摘录撑开 Teleport 浮层。 */
+  min-height: 0;
+  overflow: hidden;
+}
+
+.citation-popover .citation-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.citation-popover .doc-info {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.citation-popover .doc-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--citation-popover-accent);
+}
+
+.citation-popover .doc-icon.web-icon {
+  color: var(--color-text-secondary);
+}
+
+.citation-popover .doc-title {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.citation-popover .page-badge {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  background: var(--citation-popover-subtle-bg);
+  border-radius: 4px;
+}
+
+.citation-popover .web-open-link {
+  flex-shrink: 0;
+  color: var(--citation-popover-accent);
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.citation-popover .web-open-link:hover {
+  text-decoration: underline;
+}
+
+.citation-popover .web-meta-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.citation-popover .web-meta-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.citation-popover .web-meta-seg {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.citation-popover .web-meta-seg + .web-meta-seg::before {
+  margin: 0 4px;
+  color: var(--color-text-placeholder);
+  content: '·';
+}
+
+.citation-popover .web-meta-date {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.citation-popover .citation-body {
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  overflow: hidden;
+  background: var(--citation-popover-subtle-bg);
+  border-radius: 6px;
+}
+
+.citation-popover .citation-snippet {
+  max-height: 200px;
+  overflow-y: auto;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.citation-popover .citation-snippet::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.citation-popover .citation-snippet::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.citation-popover .citation-snippet::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+}
+
+.citation-popover .citation-snippet:hover::-webkit-scrollbar-thumb {
+  background-color: var(--citation-popover-scrollbar-thumb);
+}
+
+.citation-popover .citation-snippet::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.citation-popover .citation-empty {
+  padding: 20px;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.citation-popover-fade-enter-active,
+.citation-popover-fade-leave-active {
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.citation-popover-fade-enter-from,
+.citation-popover-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}

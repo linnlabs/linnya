@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN" data-linnya-ui-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/icons/icon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Linnya</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "plugin://host/vue.js",
+          "pinia": "plugin://host/pinia.js",
+          "@linnya/renderer-ui": "plugin://host/renderer-ui/index.js",
+          "@linnya/renderer-ui/icons": "plugin://host/renderer-ui/icons.js",
+          "@linnya/renderer-ui/localization": "plugin://host/renderer-ui/localization.js",
+          "@linnya/renderer-ui/scroll": "plugin://host/renderer-ui/scroll.js",
+          "@linnya/renderer-ui/theme": "plugin://host/renderer-ui/theme.js",
+          "@linnya/renderer-ui/version": "plugin://host/renderer-ui/version.js",
+          "@plugin/renderer/aiInvocationPort": "plugin://host/plugin-renderer/aiInvocationPort.js",
+          "@plugin/renderer/documentReferenceRuntimePort": "plugin://host/plugin-renderer/documentReferenceRuntimePort.js",
+          "@plugin/renderer/exportArtifact": "plugin://host/plugin-renderer/exportArtifact.js",
+          "@plugin/renderer/pageContextProvider": "plugin://host/plugin-renderer/pageContextProvider.js",
+          "@plugin/renderer/pluginDocumentCreationPort": "plugin://host/plugin-renderer/pluginDocumentCreationPort.js",
+          "@plugin/renderer/pluginIpcClient": "plugin://host/plugin-renderer/pluginIpcClient.js",
+          "@plugin/renderer/refId": "plugin://host/plugin-renderer/refId.js",
+          "@plugin/renderer/referenceLinkUi": "plugin://host/plugin-renderer/referenceLinkUi.js",
+          "@plugin/renderer/referenceRuntime": "plugin://host/plugin-renderer/referenceRuntime.js",
+          "@plugin/renderer/subrunToolUi": "plugin://host/plugin-renderer/subrunToolUi.js",
+          "@plugin/renderer/toolRefreshPort": "plugin://host/plugin-renderer/toolRefreshPort.js",
+          "@plugin/renderer/workspaceRuntime": "plugin://host/plugin-renderer/workspaceRuntime.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/apps/renderer/app/fixtures/orchestration/installConversationFixtureHost.ts"></script>
+    <script type="module" src="/apps/renderer/app/main.js"></script>
+  </body>
+</html>

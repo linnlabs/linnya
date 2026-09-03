@@ -1,0 +1,17 @@
+.linnya-assistant-empty-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background-color: var(--color-accent-bg);
+  overflow: hidden;
+}
+
+.linnya-assistant-empty-logo-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--color-accent);
+}

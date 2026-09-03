@@ -1,0 +1,93 @@
+.conversation-answer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    visibility 0s ease 0.2s;
+  visibility: hidden;
+}
+
+.conversation-answer-actions.is-disabled {
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.conversation-answer-actions--card {
+  margin-top: 10px;
+}
+
+.turn-container:hover .conversation-answer-actions--turn,
+.ui-card-group:hover .conversation-answer-actions--card {
+  opacity: 1;
+  transition:
+    opacity 0.2s ease,
+    visibility 0s ease;
+  visibility: visible;
+}
+
+.turn-container:hover .conversation-answer-actions--turn.is-disabled,
+.ui-card-group:hover .conversation-answer-actions--card.is-disabled {
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.conversation-answer-actions .turn-action-button,
+.conversation-answer-actions .card-action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  font-size: 11px;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.conversation-answer-actions--card .card-action-button {
+  color: var(--color-text-muted);
+}
+
+.conversation-answer-actions .turn-action-button:disabled,
+.conversation-answer-actions .card-action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.conversation-answer-actions .turn-action-button svg,
+.conversation-answer-actions .card-action-button svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.conversation-answer-actions .answer-action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.conversation-answer-actions .action-text {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.conversation-answer-actions .turn-action-button:hover:not(:disabled),
+.conversation-answer-actions .card-action-button:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}

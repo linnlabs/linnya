@@ -1,0 +1,19 @@
+/*
+ * 布局壳样式只包含定位、尺寸、边框等布局能力；
+ * 业务导航项、项目列表等规则由 workspace domain 自己承接。
+ */
+.sidebar-shell {
+  position: fixed;
+  top: var(--app-header-height, 40px);
+  left: 0;
+  height: calc(100vh - var(--app-header-height, 40px));
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-sidebar);
+}
+
+/* 分割线向上贯穿 Header，确保整条左侧边界共用同一个 hover 和拖拽热区。 */
+.sidebar-shell > .sidebar-shell__divider {
+  top: calc(-1 * var(--app-header-height, 40px));
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "runtime_id": "linnya_poppler_runtime",
+  "distribution": {
+    "repository_url": "https://github.com/linnlabs/linnya",
+    "release_tag": "poppler-runtime-v1",
+    "poppler_license_expression": "GPL-2.0-only OR GPL-3.0-only",
+    "source_repository_url": "https://gitlab.freedesktop.org/poppler/poppler"
+  },
+  "targets": [
+    {
+      "platform": "darwin",
+      "architecture": "arm64",
+      "version": "25.05.0",
+      "output_directory": "mac-arm64",
+      "archive_file_name": "poppler-runtime-darwin-arm64-25.05.0.zip",
+      "archive_url": "https://github.com/linnlabs/linnya/releases/download/poppler-runtime-v1/poppler-runtime-darwin-arm64-25.05.0.zip",
+      "archive_size_bytes": 5271513,
+      "archive_sha256": "0400e811a020c79e0e16b05e17459cae2372117b31418f69e5ca9e58c5ec6f5b",
+      "file_count": 63,
+      "tree_sha256": "ff430c7a4d3c43a67ba48d3921233ddedcc5c525ae3fcb950c601316cce8a711",
+      "executable_file_name": "pdftocairo",
+      "executable_size_bytes": 225536,
+      "executable_sha256": "38beae19a09e939c3d7315437a45a5b08dab69d8420277a67846558ab789d97e"
+    },
+    {
+      "platform": "win32",
+      "architecture": "x64",
+      "version": "24.07.0",
+      "output_directory": "win-x64",
+      "archive_file_name": "poppler-runtime-win32-x64-24.07.0.zip",
+      "archive_url": "https://github.com/linnlabs/linnya/releases/download/poppler-runtime-v1/poppler-runtime-win32-x64-24.07.0.zip",
+      "archive_size_bytes": 6953909,
+      "archive_sha256": "7ce85a263ff1651c21e00a7a6667876fb2e3a8dca6a7b0a3c3051963a95dc690",
+      "file_count": 20,
+      "tree_sha256": "c40f48b41ac866833674f0b7d354f01d0b72d9dbf0769719e530b0479cbb77cd",
+      "executable_file_name": "pdftocairo.exe",
+      "executable_size_bytes": 164352,
+      "executable_sha256": "45686330875b8732053fa111b65960b49a94f6cd546e1729219a70d4d2659681"
+    }
+  ]
+}

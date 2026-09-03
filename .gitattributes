@@ -1,0 +1,21 @@
+# Store text consistently across macOS, Linux, and Windows.
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.sh text eol=lf
+
+# Never apply line-ending conversion to binary source fixtures and runtime assets.
+*.gif binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.png binary
+*.pptx binary
+*.wasm binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.zip binary

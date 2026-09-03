@@ -1,0 +1,122 @@
+/* Editor floating-toolbar 的业务样式；选择器与迁移前保持一致。 */
+.floating-toolbar {
+  --floating-toolbar-text-color: var(--color-text-primary);
+  --floating-toolbar-item-hover-bg: var(--color-bg-hover-light);
+
+  position: absolute;
+  z-index: 1000;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px;
+  border: 0.6px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-default);
+  box-shadow: 0 4px 12px var(--shadow-color-md);
+}
+
+.floating-toolbar .toolbar-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.floating-toolbar .toolbar-group:not(:last-child)::after {
+  display: block;
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background-color: var(--color-border-light);
+  content: "";
+}
+
+.inline-color-picker,
+.inline-highlight-picker {
+  position: relative;
+  padding: 12px;
+  outline: none;
+  background-color: var(--color-bg-default);
+  user-select: none;
+}
+
+.inline-color-picker .color-section,
+.inline-highlight-picker .color-section {
+  margin-bottom: 12px;
+}
+
+.inline-color-picker .color-section:last-child,
+.inline-highlight-picker .color-section:last-child {
+  margin-bottom: 0;
+}
+
+.inline-color-picker .section-title,
+.inline-highlight-picker .section-title {
+  margin-bottom: 8px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.inline-color-picker .color-grid,
+.inline-highlight-picker .color-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.inline-color-picker .color-cell,
+.inline-highlight-picker .color-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--cell-border-color);
+  border-radius: 6px;
+  background-color: var(--color-bg-surface);
+  box-shadow: 0 0.75px 0.5px var(--shadow-color-xs);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.inline-color-picker .color-cell:hover,
+.inline-highlight-picker .color-cell:hover {
+  transform: scale(1.08);
+}
+
+.inline-color-picker .color-cell.is-current,
+.inline-highlight-picker .color-cell.is-current {
+  border-color: transparent;
+  box-shadow:
+    0 0 0 1.5px var(--color-accent),
+    0 3px 6px var(--shadow-color-md);
+}
+
+.inline-color-picker .text-color-cell,
+.inline-highlight-picker .highlight-color-cell {
+  box-shadow: 0 0.75px 0 var(--shadow-color-xs);
+}
+
+.inline-highlight-picker .highlight-color-cell {
+  border-color: var(--cell-border-color);
+  background-color: var(--cell-background);
+}
+
+.inline-color-picker .color-sample {
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.inline-highlight-picker .highlight-sample {
+  color: var(--color-text-primary);
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.inline-color-picker .picker-footer,
+.inline-highlight-picker .picker-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0;
+}

@@ -1,0 +1,126 @@
+/* BlockVersionHandle.css - 块历史版本按钮 & 左侧控制岛样式 */
+
+/*
+ * 左侧控制岛容器
+ * 职责：
+ * - 统一管理左侧的 Handle 按钮（拖拽、版本等）
+ * - 始终水平排列：[拖拽手柄] [版本按钮]，拖拽靠近内容、版本按钮在外侧
+ * - 绝对定位在 .root-block 左侧
+ *
+ * 注意：
+ * - 只负责布局，不关心块本身的内容样式
+ */
+.block-left-handle-group {
+  position: absolute;
+  /* 恢复原来位置：-24px，与 drag-handle 独立时的位置一致 */
+  left: -24px;
+  /* 垂直位置与 annotation-handle 对齐，固定在块顶部附近，不随高度变化 */
+  top: 0.5px;
+  display: flex;
+  flex-direction: row; /* 始终水平排列 */
+  align-items: center;
+  gap: 2px; /* 按钮之间的间距 */
+  z-index: 100;
+  pointer-events: auto;
+  /* 允许溢出，不裁剪 */
+  overflow: visible;
+}
+
+/**
+ * 有版本按钮时，向左扩展以容纳两个按钮
+ */
+.block-left-handle-group.has-version {
+  left: -50px; /* 向左偏移，容纳版本按钮 */
+}
+
+/**
+ * 在控制岛容器内的拖拽手柄
+ *
+ * 使用相对定位，由容器的 flex 布局控制位置
+ */
+.block-left-handle-group .drag-handle {
+  position: static; /* 由 flex 布局控制 */
+  left: auto;
+  top: auto;
+}
+
+/* ==================== 历史版本按钮样式 ==================== */
+
+/**
+ * 版本按钮基础样式（普通编辑视图中的「版本柄」）
+ *
+ * 设计原则：
+ * - 结构上与 DragHandle / AnnotationHandle 一致：外层 26x26 容器 + 内部图标
+ * - 默认透明，hover 时整个 26x26 容器出现浅灰背景
+ * - 与拖拽柄、批注柄的交互手感保持一致
+ */
+.block-left-handle-group .block-version-handle {
+  --block-version-handle-color: var(--drag-handle-color);
+  --block-version-handle-hover-color: var(--drag-handle-hover-color);
+  --block-version-handle-active-color: var(--drag-handle-active-color);
+  --block-version-handle-hover-bg: var(--drag-handle-hover-bg);
+  --block-version-handle-active-bg: var(--drag-handle-active-bg);
+
+  /* 尺寸：26x26 正方形容器 */
+  width: 26px;
+  height: 26px;
+
+  /* 重置按钮默认样式 - 仅重置会影响布局/字体属性 */
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+
+  /* 布局：居中图标 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* 交互 */
+  cursor: pointer;
+  user-select: none;
+
+  /* 颜色/背景：与 DragHandle / AnnotationHandle 对齐 */
+  color: var(--block-version-handle-color);
+  background-color: transparent;
+
+  /* 显隐与过渡：默认隐藏，hover 整个块时再显示（与 drag-handle 行为一致） */
+  opacity: 0;
+  transition:
+    opacity var(--transition-normal),
+    color var(--transition-normal),
+    background-color var(--transition-normal);
+}
+
+/* 悬停效果：整个 26x26 容器变为浅灰背景 + 深一点的图标 */
+.block-left-handle-group .block-version-handle:hover {
+  color: var(--block-version-handle-hover-color);
+  background-color: var(--block-version-handle-hover-bg);
+}
+
+/* 按下效果：更深一点的灰色背景 */
+.block-left-handle-group .block-version-handle:active {
+  color: var(--block-version-handle-active-color);
+  background-color: var(--block-version-handle-active-bg);
+}
+
+/**
+ * 图标容器：与 AnnotationHandle 的 .annotation-icon 保持一致尺寸（18x18）
+ */
+.block-version-handle .version-icon-wrapper {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/**
+ * 当块被悬停时显示版本按钮
+ * 行为与 .drag-handle 一致：hover 整个 root-block-outer 即可看到
+ */
+body:not([data-suppress-handle-hover]) .root-block-outer:hover .block-version-handle {
+  opacity: 1;
+}
+
+/* 版本按钮在紧凑模式下仅调整顺序，不再缩小尺寸，以保持与 annotation-handle 一致的 26x26 区域 */

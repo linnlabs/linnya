@@ -1,0 +1,11 @@
+/* AI 答案不使用气泡；这里保持旧版纯文本回答的宽度、字号与行高。 */
+.answer-body {
+  width: 100%;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.answer-body .content-area {
+  width: 100%;
+}

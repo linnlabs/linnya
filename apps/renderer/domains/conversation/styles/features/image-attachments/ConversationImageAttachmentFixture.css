@@ -1,0 +1,165 @@
+.conversation-image-fixture {
+  --input-footer-control-height: var(--spacing-xl);
+
+  width: min(100%, calc(var(--spacing-2xl) * 26));
+  min-height: 100vh;
+  padding: var(--spacing-xl);
+  margin: 0 auto;
+  color: var(--color-text-primary);
+}
+
+.conversation-image-fixture__header,
+.conversation-image-fixture__section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.conversation-image-fixture__header {
+  padding-bottom: var(--spacing-lg);
+  border-bottom: thin solid var(--color-border-light);
+}
+
+.conversation-image-fixture__header h1,
+.conversation-image-fixture__section-heading h2,
+.conversation-image-fixture__section-heading p,
+.conversation-image-fixture__eyebrow,
+.conversation-image-fixture__message p,
+.conversation-image-fixture__entry-state {
+  margin: 0;
+}
+
+.conversation-image-fixture__header h1 {
+  font-size: var(--font-size-2xl);
+  line-height: var(--line-height-tight);
+  letter-spacing: 0;
+}
+
+.conversation-image-fixture__eyebrow {
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-accent);
+}
+
+.conversation-image-fixture__status {
+  flex: 0 0 auto;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.conversation-image-fixture__section {
+  padding: var(--spacing-lg) 0;
+  border-bottom: thin solid var(--color-border-light);
+}
+
+.conversation-image-fixture__section-heading {
+  margin-bottom: var(--spacing-md);
+}
+
+.conversation-image-fixture__section-heading h2 {
+  margin-bottom: var(--spacing-xxs);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-tight);
+  letter-spacing: 0;
+}
+
+.conversation-image-fixture__section-heading p,
+.conversation-image-fixture__entry-state,
+.conversation-image-fixture__drop-zone span,
+.conversation-image-fixture__message p {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+.conversation-image-fixture__drop-zone {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: calc(var(--spacing-2xl) * 2);
+  padding: var(--spacing-md);
+  background: var(--color-bg-subtle);
+  border: thin dashed var(--color-border-focus);
+  border-radius: var(--radius-md);
+}
+
+.conversation-image-fixture__drop-zone:focus-visible {
+  outline: thin solid var(--color-accent);
+  outline-offset: var(--spacing-xxs);
+}
+
+.conversation-image-fixture__drop-zone div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.conversation-image-fixture__text-button {
+  flex: 0 0 auto;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: transparent;
+  border: thin solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+}
+
+.conversation-image-fixture__text-button:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.conversation-image-fixture__text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.conversation-image-fixture .conversation-image-draft-strip {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.conversation-image-fixture__entry-state {
+  margin-top: var(--spacing-sm);
+}
+
+.conversation-image-fixture__message {
+  max-width: calc(var(--spacing-2xl) * 12);
+  padding: var(--spacing-md);
+  margin-left: auto;
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-md);
+}
+
+.conversation-image-fixture__message .conversation-image-gallery {
+  width: 100%;
+}
+
+@media (max-width: 40rem) {
+  .conversation-image-fixture {
+    padding: var(--spacing-md);
+  }
+
+  .conversation-image-fixture__header,
+  .conversation-image-fixture__section-heading {
+    align-items: flex-start;
+  }
+
+  .conversation-image-fixture__header h1 {
+    font-size: var(--font-size-xl);
+  }
+
+  .conversation-image-fixture__drop-zone {
+    align-items: flex-start;
+  }
+
+  .conversation-image-fixture__message,
+  .conversation-image-fixture .conversation-image-gallery {
+    width: 100%;
+    max-width: 100%;
+  }
+}

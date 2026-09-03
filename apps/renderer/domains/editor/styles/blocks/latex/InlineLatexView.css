@@ -1,0 +1,54 @@
+.inline-latex-view {
+  display: inline-block;
+  padding: 1px 3px;
+  margin: 0 2px; /* Add slight horizontal spacing */
+  line-height: 1; /* Prevent extra line height */
+  vertical-align: middle; /* Align vertically with surrounding text */
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.inline-latex-view:hover {
+  background-color: var(--color-bg-hover); /* Subtle hover background */
+}
+
+/* Style when selected by ProseMirror */
+.inline-latex-view.ProseMirror-selectednode {
+  color: var(--color-accent);
+  background-color: var(--color-accent-bg);
+}
+
+.inline-latex-rendered {
+  display: inline-block; /* Necessary for proper rendering within the span */
+}
+
+/* Style for source code when rendering fails */
+.inline-latex-view.has-error {
+  padding: 0 3px;
+  background-color: var(--color-error-bg);
+  border: 1px dashed var(--color-error);
+  border-radius: 3px;
+}
+
+.inline-latex-source-error {
+  font-family: var(--font-family-mono); /* Use monospace for source */
+  font-size: 0.9em;
+  color: var(--color-error);
+}
+
+/* Simple error indicator */
+.inline-latex-error-indicator {
+  display: inline-block;
+  margin-left: 3px;
+  font-size: 0.8em;
+  color: var(--color-error);
+  cursor: help; /* Indicate more info on hover (via title) */
+}
+
+/* Adjust KaTeX styling within the inline view if needed */
+.inline-latex-view .katex {
+  font-size: 1em; /* Match surrounding text size by default */
+  /* Override any block-specific styles */
+  text-align: left;
+}

@@ -1,0 +1,116 @@
+/* AI 写作浮层通过 Teleport 挂到 body，必须使用自身唯一根类承接样式。 */
+
+.ai-writing-container-horizontal {
+  position: fixed;
+  z-index: 1000;
+  overflow: hidden;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-light);
+  border-left: none;
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
+  transition:
+    opacity 0.2s ease-out,
+    transform 0.2s ease-out,
+    width 0.3s ease-out;
+}
+
+.ai-writing-inner-horizontal {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+}
+
+.ai-writing-icon-horizontal {
+  display: flex;
+  flex-shrink: 0;
+  margin-right: 8px;
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* LinnyaIcon 默认为 1em，这里固定尺寸以保持旧浮层的入口占位。 */
+.ai-writing-linnya-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.ai-writing-textarea-horizontal {
+  flex-grow: 1;
+  width: 100%;
+  min-height: 20px;
+  max-height: 100px;
+  padding: 0;
+  margin: 0;
+  overflow-y: hidden;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  vertical-align: middle;
+  resize: none;
+  background-color: transparent;
+  border: none;
+  outline: none;
+}
+
+.ai-writing-textarea-horizontal::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.ai-writing-buttons-horizontal {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.ai-writing-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  margin: 0;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  border-radius: 4px;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.ai-writing-button:hover {
+  color: var(--color-text-tertiary);
+  background-color: var(--color-bg-hover);
+}
+
+.ai-writing-button:disabled {
+  color: var(--color-text-placeholder);
+  cursor: not-allowed;
+  background-color: transparent;
+}
+
+.ai-writing-submit-button:not(:disabled):hover {
+  color: var(--color-accent);
+  background-color: var(--color-bg-hover);
+}
+
+.ai-writing-fade-enter-active,
+.ai-writing-fade-leave-active {
+  transition:
+    opacity 0.15s ease-out,
+    transform 0.15s ease-out;
+}
+
+.ai-writing-fade-enter-from,
+.ai-writing-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.98);
+}

@@ -1,0 +1,27 @@
+/* 语法高亮属于 editor 内容渲染，不进入全局 UI 主题 token。 */
+
+:root {
+  --syntax-keyword: #499aaf;
+  --syntax-function: #c84f4f;
+  --syntax-variable: #8a60c5;
+  --syntax-string: #55ad55;
+  --syntax-builtin: #bcae3d;
+  --syntax-tag: #5775ce;
+  --syntax-attribute: #c75b8f;
+  --syntax-comment: var(--color-gray-450);
+  --syntax-addition: #88b888;
+  --syntax-deletion: #cc7a7a;
+}
+
+[data-linnya-ui-theme='dark'] {
+  --syntax-keyword: #79b0b8;
+  --syntax-function: #cc7a7a;
+  --syntax-variable: #a492c7;
+  --syntax-string: #88b888;
+  --syntax-builtin: #c7bf7c;
+  --syntax-tag: #8a9ece;
+  --syntax-attribute: #c78fab;
+  --syntax-comment: var(--color-gray-475);
+  --syntax-addition: #88b888;
+  --syntax-deletion: #cc7a7a;
+}

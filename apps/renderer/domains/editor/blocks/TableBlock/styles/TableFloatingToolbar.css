@@ -1,0 +1,119 @@
+.table-toolbar-root {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.table-toolbar-root .toolbar-group {
+  /* 中文说明：该组样式只服务表格浮动工具条，不能裸写 `.toolbar-group` 影响其它工具条。 */
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.table-toolbar-root .toolbar-group:not(:last-child)::after {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background-color: var(--color-border-light);
+}
+
+.table-toolbar-root .toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 26px;
+  padding: 4px 8px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--floating-toolbar-text-color, var(--color-text-primary));
+  text-align: center;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.table-toolbar-root .toolbar-button:hover:not(:disabled) {
+  background-color: var(--floating-toolbar-item-hover-bg, var(--color-bg-hover-light));
+  box-shadow: none;
+}
+
+.table-toolbar-root .toolbar-button.is-disabled,
+.table-toolbar-root .toolbar-button:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  background-color: var(--color-bg-disabled);
+  border-color: var(--color-border-light);
+  box-shadow: none;
+}
+
+.table-toolbar-root .ai-trigger.toolbar-button {
+  font-weight: 500;
+  color: var(--color-accent);
+  background-color: var(--color-accent-bg);
+}
+
+.table-toolbar-root .ai-trigger.toolbar-button:hover {
+  color: var(--color-accent);
+  background-color: var(--color-accent-bg-hover);
+}
+
+.table-toolbar-root .toolbar-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.table-toolbar-root .toolbar-dropdown-trigger {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.table-toolbar-root .chevron-icon {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  margin-left: 2px;
+  opacity: 0.6;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.table-toolbar-root .toolbar-dropdown-trigger.is-menu-open .chevron-icon {
+  opacity: 1;
+  transform: rotate(180deg);
+}
+
+.table-toolbar-root .dropdown-container {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 1000;
+  min-width: 120px;
+}
+
+.toolbar-dropdown-fade-enter-active,
+.toolbar-dropdown-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.toolbar-dropdown-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.toolbar-dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.toolbar-dropdown-fade-enter-to,
+.toolbar-dropdown-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}

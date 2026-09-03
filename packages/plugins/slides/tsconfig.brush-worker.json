@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": false,
+    "lib": ["ES2022", "WebWorker"],
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": [
+    "src/renderer/features/brushArtworkGeneration/brushStandalone.d.ts",
+    "src/renderer/features/brushArtworkGeneration/functions/**/*.ts",
+    "src/renderer/features/brushArtworkGeneration/worker/brushArtworkJobWorker.ts"
+  ],
+  "exclude": []
+}

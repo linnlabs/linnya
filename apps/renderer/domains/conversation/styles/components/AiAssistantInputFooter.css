@@ -1,0 +1,470 @@
+.ai-assistant-input-footer {
+  --input-footer-control-height: 26px;
+  --input-footer-control-line-height: 18px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px 8px 8px;
+  background-color: transparent;
+  position: relative;
+  z-index: 1;
+}
+
+.ai-assistant-input-footer.input-bottom-section--compact {
+  --input-footer-control-height: 24px;
+  --input-footer-control-line-height: 16px;
+
+  padding: 6px 10px 8px;
+  align-items: flex-end;
+}
+
+.ai-assistant-input-footer.input-bottom-section--compact .selectors-top-row {
+  gap: 4px;
+}
+
+.ai-assistant-input-footer.input-bottom-section--compact .selectors-wrapper {
+  margin-right: 6px;
+}
+
+.ai-assistant-input-footer.input-bottom-section--compact .input-action-menu-button {
+  width: var(--input-footer-control-height);
+  height: var(--input-footer-control-height);
+}
+
+.ai-assistant-input-footer.input-bottom-section--compact .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger) {
+  min-width: 0;
+  padding: 3px 20px 3px 7px;
+  font-size: 11px;
+}
+
+.ai-assistant-input-footer.input-bottom-section--compact .selector-group--model {
+  max-width: 108px;
+}
+
+.ai-assistant-input-footer.input-bottom-section--compact .selector-chevron {
+  right: 6px;
+  width: 12px;
+  height: 12px;
+}
+
+.ai-assistant-input-footer.input-bottom-section--compact .send-button {
+  width: 24px;
+  height: 24px;
+}
+
+.ai-assistant-input-footer .selectors-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  align-items: flex-start;
+  /**
+   * 根因修复（侧边栏变窄时底栏溢出）：
+   * - 该区域在 `.input-bottom-section` 内作为左侧 flex 子项
+   * - 若不设置 `min-width: 0`，浏览器会按“内容最小宽度”计算，导致左侧无法收缩，从而把右侧发送按钮挤出视口
+   */
+  min-width: 0;
+  /* 保证与右侧发送按钮的最小间距（与内部 gap: 8px 保持视觉节奏一致） */
+  margin-right: 8px;
+}
+
+.ai-assistant-input-footer .selectors-top-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  /* 允许内部的 CustomSelect 在窄宽度下收缩并触发省略号 */
+  min-width: 0;
+  /* 关键修复：强制宽度不超出父容器，触发内部 flex item 的收缩 */
+  width: 100%;
+}
+
+.ai-assistant-input-footer .selector-group {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  height: var(--input-footer-control-height);
+  position: relative;
+  z-index: 10;
+}
+
+.ai-assistant-input-footer .selector-group .input-footer-model-select {
+  display: flex;
+  align-items: center;
+}
+
+.ai-assistant-input-footer .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger) {
+  min-width: 60px;
+  width: auto;
+  padding: 4px 24px 4px 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  height: var(--input-footer-control-height);
+  line-height: var(--input-footer-control-line-height);
+}
+
+.ai-assistant-input-footer.is-controls-disabled .input-footer-model-trigger:disabled {
+  /*
+   * 运行中禁用 mode/model 选择器时，只表达“当前配置不可改”。
+   * 共享 CustomSelect 的 disabled 背景更像选中态；这里收敛到对话输入底栏，避免影响其它业务选择器。
+   */
+  color: var(--color-text-muted);
+  background-color: transparent;
+  opacity: 0.55;
+}
+
+.ai-assistant-input-footer.is-controls-disabled .input-footer-model-trigger:disabled .input-footer-model-selected-value,
+.ai-assistant-input-footer.is-controls-disabled .input-footer-model-trigger:disabled .selector-chevron {
+  color: var(--color-text-muted);
+}
+
+/* “+” 是附件与 Agent 的统一入口，按钮尺寸与相邻选择器保持一致。 */
+.ai-assistant-input-footer .input-action-menu-container {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.ai-assistant-input-footer .input-action-menu-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 与旁边 select-trigger 的整体高度节奏对齐 */
+  width: var(--input-footer-control-height);
+  height: var(--input-footer-control-height);
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.15s ease;
+}
+
+.ai-assistant-input-footer .input-action-menu-button:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+.ai-assistant-input-footer .input-action-menu-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-assistant-input-footer .input-action-menu-add-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.ai-assistant-input-footer__input-action-menu-wrapper {
+  --conversation-input-action-menu-width: calc(var(--spacing-2xl) * 5);
+
+  position: fixed;
+  z-index: 1000;
+  /* 由 JS 动态写入 top/left */
+}
+
+/* 菜单过渡动画：对齐 HEAD~2 */
+.ai-assistant-input-action-menu-fade-enter-active,
+.ai-assistant-input-action-menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.ai-assistant-input-action-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.ai-assistant-input-action-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+/* 主菜单为多分组能力入口，需要稳定宽度承载标题与图标。 */
+.ai-assistant-input-footer__input-action-menu-wrapper .input-action-menu-options {
+  width: var(--conversation-input-action-menu-width);
+  min-width: var(--conversation-input-action-menu-width);
+  max-width: min(var(--conversation-input-action-menu-width), calc(100vw - var(--spacing-md)));
+}
+
+.ai-assistant-input-footer__input-action-menu-wrapper .input-action-menu-submenu {
+  min-width: calc(var(--spacing-2xl) * 7);
+  max-width: min(calc(var(--spacing-2xl) * 9), calc(100vw - var(--spacing-md)));
+}
+
+.ai-assistant-input-footer__input-action-menu-wrapper .input-action-menu-submenu .input-action-menu-option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/**
+ * “+” 菜单项左侧留白收紧：
+ * - CustomSelect 的 minimal 选项默认 `padding: 3px 10px`，加上前置图标后会显得左侧空白偏大
+ * - 这里仅对输入能力菜单做局部覆盖，避免影响其他下拉组件
+ */
+.ai-assistant-input-footer__input-action-menu-wrapper .input-action-menu-option {
+  padding-left: 6px;
+}
+
+/* agent-choice pill：与 mode/model 的触发器样式一致（对齐 HEAD~2） */
+.ai-assistant-input-footer .selector-group--agent-choice .agent-choice-trigger {
+  position: relative;
+  /* 左侧放 icon（默认 research，hover 变 close） */
+  padding: 4px 8px 4px 26px; /* 为左侧图标预留空间（收紧 icon 与“研究”的间距） */
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.ai-assistant-input-footer .agent-choice-trigger.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-assistant-input-footer .agent-choice-trigger-text {
+  white-space: nowrap;
+}
+
+.ai-assistant-input-footer .agent-choice-trigger-close {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  transform: none;
+  width: 18px;
+  height: 18px;
+  /* X 用圆角矩形 */
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  /* 默认可见（显示 ResearchIcon），但不可点击；hover 才允许点击关闭 */
+  opacity: 1;
+  pointer-events: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.ai-assistant-input-footer .agent-choice-trigger:hover .agent-choice-trigger-close {
+  pointer-events: auto;
+}
+
+.ai-assistant-input-footer .agent-choice-trigger-close:disabled {
+  cursor: not-allowed;
+}
+
+.ai-assistant-input-footer .selector-group--agent-choice .agent-choice-trigger-close:hover:not(:disabled) {
+  /**
+   * 需求：X 的 hover 是更深的绿色
+   * - 背景：更深的主题 hover 背景
+   * - 图标：更深的主题主色 hover
+   */
+  background-color: var(--color-accent-bg-hover);
+  color: var(--color-accent-hover);
+}
+
+.ai-assistant-input-footer .agent-choice-trigger-close svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 右侧图标：默认显示 ResearchIcon，hover 切换为 CloseIcon */
+.ai-assistant-input-footer .agent-choice-trigger-icon {
+  /* 两个图标叠放，通过 opacity 做快速过渡（避免 display 切换导致“闪现”） */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translate(-50%, -50%) scale(1);
+  display: block;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  will-change: opacity, transform;
+}
+
+.ai-assistant-input-footer .agent-choice-trigger-icon--default {
+  opacity: 1;
+}
+
+.ai-assistant-input-footer .agent-choice-trigger-icon--hover {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.92);
+}
+
+.ai-assistant-input-footer .agent-choice-trigger:hover .agent-choice-trigger-icon--default {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.92);
+}
+
+.ai-assistant-input-footer .agent-choice-trigger:hover .agent-choice-trigger-icon--hover {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* 仅针对“模型选择”放开宽度，让它比“模式选择”更宽、更易读 */
+.ai-assistant-input-footer .selector-group--model {
+  /**
+   * 根因修复：
+   * - 之前 `.selector-group` 是 `flex: 0 0 auto`（不增长也不收缩），侧边栏变窄时会整体撑破，导致底栏右侧内容溢出
+   * - 模型名称是最适合被“压缩/省略”的信息，因此仅让模型选择承担收缩
+   * - Update: flex-grow 改为 0，让宽度随内容自适应，不再主动占满剩余空间
+   */
+  flex: 0 1 auto;
+  min-width: 0;
+  /* 限制最大宽度，避免在宽屏下占满整个底栏（恢复之前的紧凑感） */
+  max-width: 180px;
+}
+
+/**
+ * 模型选择触发器：必须允许缩到容器宽度内，才能让 CustomSelect 内置的
+ * package 的省略样式生效。
+ */
+.ai-assistant-input-footer .selector-group--model .input-footer-model-trigger {
+  width: 100%;
+  min-width: 0;
+}
+
+/* 关键补充：在 flex 容器内，子项默认 min-width:auto，会阻止文字真正“收缩成 ...” */
+.ai-assistant-input-footer .selector-group--model .input-footer-model-selected-value {
+  min-width: 0;
+}
+
+.ai-assistant-input-footer .selector-group--model .input-footer-model-options-header {
+  width: min(320px, calc(100vw - 32px));
+}
+
+/* 模型下拉面板：用“内容自适应”而不是写死宽度（避免你说的“面板变窄/固定宽度”） */
+.ai-assistant-input-footer .selector-group--model .input-footer-model-options {
+  /**
+   * 说明：
+   * - width: max-content 让面板根据选项内容自然展开
+   * - max-width 做上限，避免超出窗口；min-width 保持 0，允许在窄窗口下自然收缩
+   */
+  width: max-content;
+  min-width: 0;
+  max-width: min(360px, calc(100vw - 16px));
+}
+
+.ai-assistant-input-footer .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger):hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+/**
+ * 覆盖通用 select-trigger:hover（灰色 hover）：
+ * - agent-choice-trigger 是“选中态按钮”，hover 不应变灰
+ * - 放在通用规则之后，确保优先级与顺序都能压住
+ */
+.ai-assistant-input-footer .selector-group--agent-choice .agent-choice-trigger:hover {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.ai-assistant-input-footer .selector-chevron {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--color-gray-400);
+  transition: transform 0.2s ease-in-out;
+  pointer-events: none;
+}
+
+.ai-assistant-input-footer .selector-chevron.is-open {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.ai-assistant-input-footer .selector-group .input-footer-model-trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-assistant-input-footer .selector-group .input-footer-model-options {
+  top: auto;
+  bottom: calc(100% + 4px);
+  z-index: 1000;
+}
+
+.ai-assistant-input-footer .selector-group .select-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.ai-assistant-input-footer .selector-group .select-fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.ai-assistant-input-footer .send-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background-color: var(--color-gray-700);
+  color: var(--color-white);
+  cursor: pointer;
+  transition: none;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.ai-assistant-input-footer__primary-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.ai-assistant-input-footer .send-button:hover:not(.disabled) {
+  background-color: color-mix(in srgb, var(--color-gray-700) 88%, var(--color-blue-900));
+}
+
+.ai-assistant-input-footer .send-button.disabled {
+  background-color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.ai-assistant-input-footer .send-button:has(.stop-icon) {
+  background-color: color-mix(in srgb, var(--color-gray-700) 88%, var(--color-blue-900));
+}
+
+.ai-assistant-input-footer .send-button:has(.stop-icon):hover {
+  background-color: color-mix(in srgb, var(--color-gray-700) 88%, var(--color-blue-900));
+}
+
+.ai-assistant-input-footer .send-icon,
+.ai-assistant-input-footer .loading-spinner,
+.ai-assistant-input-footer .stop-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* 发送按钮中的回车图标尺寸与旧图标保持一致 */
+.ai-assistant-input-footer .enter-left-icon {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+
+.ai-assistant-input-footer .animate-spin {
+  animation: ai-assistant-input-footer-spin 1s linear infinite;
+}
+
+@keyframes ai-assistant-input-footer-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

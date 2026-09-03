@@ -1,0 +1,131 @@
+/* @linnya/renderer-ui number-entry owner。 */
+.custom-number-input {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.custom-number-input .input-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.custom-number-input .input-wrapper {
+  position: relative;
+}
+
+.custom-number-input .input-wrapper--full-width {
+  width: 100%;
+}
+
+.custom-number-input .styled-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  text-align: center;
+  appearance: none;
+  background-color: var(--color-bg-search-light);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  -moz-appearance: textfield;
+}
+
+.custom-number-input .styled-input--default:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.custom-number-input .styled-input--default:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.custom-number-input .styled-input--panel {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 8px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  font-size: 0.85em;
+  color: var(--color-text-primary);
+  text-align: center;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-light);
+}
+
+.custom-number-input .styled-input--panel:hover {
+  border-color: var(--color-accent);
+}
+
+.custom-number-input .styled-input--panel:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.custom-number-input .styled-input--with-spin {
+  padding-right: 24px;
+}
+
+.custom-number-input .styled-input--with-spin.text-align-center {
+  padding-left: 24px;
+}
+
+.custom-number-input .text-align-left {
+  text-align: left;
+}
+
+.custom-number-input .text-align-center {
+  text-align: center;
+}
+
+.custom-number-input .text-align-right {
+  text-align: right;
+}
+
+.custom-number-input .styled-input--full-width {
+  width: 100%;
+}
+
+.custom-number-input .styled-input::-webkit-outer-spin-button,
+.custom-number-input .styled-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.custom-number-input.custom-number-input--full-width {
+  width: 100%;
+}
+
+.custom-number-input .input-wrapper:hover .spin-btn:not(:disabled) {
+  opacity: 0.6;
+}
+
+.custom-number-input .input-wrapper:hover .spin-btn:disabled {
+  opacity: 0.2;
+}
+
+/* CustomSelect 行内数字项的既有密度，由数字输入 owner 通过明确变体提供。 */
+.custom-number-input.custom-number-input--inline-menu .styled-input {
+  height: 24px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 6px;
+  font-size: 13px;
+}
+
+.custom-number-input.custom-number-input--inline-menu .styled-input--with-spin {
+  padding-right: 20px;
+}
+
+.custom-number-input.custom-number-input--inline-menu .number-spin-buttons {
+  right: 1px;
+  width: 16px;
+}
+
+.custom-number-input.custom-number-input--inline-menu .spin-btn svg {
+  width: 8px;
+  height: 8px;
+}

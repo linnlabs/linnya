@@ -1,0 +1,64 @@
+/* EditorMainContent.css - 编辑器主内容区域视觉样式 */
+/*
+ * 编辑器主内容只消费 semantic token，明暗主题由 token 层切换。
+ */
+
+/* 
+ * ProseMirror 编辑器样式
+ * 作用：提供编辑器的基础视觉样式
+ */
+.ProseMirror {
+  outline: none;                 /* 固定: 移除默认焦点轮廓 */
+  color: var(--color-text-primary);      /* 主题相关: 编辑器文字颜色 */
+  font-family: var(--font-family, sans-serif); /* 主题/基础: 字体 (回退到 sans-serif) */
+  line-height: 1.6;              /* 固定: 行高 */
+  /**
+   * 有序列表编号的“计数”由 ProseMirror 插件计算并写到 DOM：
+   * - 对应属性：data-ordered-index
+   * - 这样可以正确支持“跨块（rootBlock）分段重置编号”的需求
+   */
+}
+
+.editor-context-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 1400px; /* 设置最大宽度 */
+  margin: 0 auto; /* 居中显示 */
+  border-radius: var(--radius-lg);
+  overflow: visible;
+}
+
+/* 编辑器整体容器视觉样式 */
+.editor-ui-container {
+  border-radius: var(--radius-md);  /* 固定: 圆角边框 */
+}
+
+/* 编辑器状态栏视觉样式 */
+.editor-status-bar {
+  border-top: 1px solid var(--color-border-default);    /* 主题相关: 状态栏上边框 */
+  border-bottom-left-radius: var(--radius-md); /* 固定: 左下圆角 */
+  border-bottom-right-radius: var(--radius-md); /* 固定: 右下圆角 */
+}
+
+/* 编辑器内容区域视觉样式 */
+.editor-content {
+  box-sizing: border-box;                    /* 固定: 确保边框不影响总宽度 */
+  position: relative;                        /* 固定: 确保定位上下文 */
+}
+
+/* 修改：完全移除选中节点边框效果 */
+.ProseMirror-focused .ProseMirror-selectednode > .root-block {
+  outline: none; /* 移除边框 */
+  border-radius: var(--radius-sm);
+}
+
+/* 确保默认的选中节点样式也不生效 */
+.ProseMirror-focused .ProseMirror-selectednode {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+
+/* == 文件结束 == */

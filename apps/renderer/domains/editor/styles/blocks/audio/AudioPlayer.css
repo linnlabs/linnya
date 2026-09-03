@@ -1,0 +1,281 @@
+.audio-block-border {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 0;
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+}
+
+.audio-block-border .audio-block-status {
+  display: block;
+  padding: 4px 0;
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+.audio-block-border .audio-missing-placeholder {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: calc(100% - 24px);
+  min-height: 56px;
+  padding: 12px 14px;
+  margin: 0 12px;
+  color: var(--color-text-muted);
+  text-align: left;
+  cursor: pointer;
+  background: var(--color-bg-subtle);
+  border: 1px dashed var(--color-border-default);
+  border-radius: 6px;
+}
+
+.audio-block-border .audio-missing-placeholder__icon {
+  position: relative;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 22px;
+  color: var(--color-text-muted);
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  opacity: 0.75;
+}
+
+.audio-block-border .audio-missing-placeholder__icon::before,
+.audio-block-border .audio-missing-placeholder__icon::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  content: '';
+  background: currentColor;
+  transform: translate(-50%, -50%);
+}
+
+.audio-block-border .audio-missing-placeholder__icon::before {
+  width: 12px;
+  height: 2px;
+}
+
+.audio-block-border .audio-missing-placeholder__icon::after {
+  width: 18px;
+  height: 2px;
+  transform: translate(-50%, -50%) rotate(-35deg);
+}
+
+.audio-block-border .audio-missing-placeholder__text {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.audio-player-container {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.audio-player-container audio {
+  display: none;
+  background: transparent;
+  appearance: none;
+}
+
+.audio-player-container .player-controls {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0 12px;
+}
+
+.audio-player-container .play-button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  padding: 0;
+  margin-right: 4px;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.audio-player-container .play-button:hover {
+  background-color: transparent;
+  transform: scale(1.05);
+}
+
+.audio-player-container .play-icon,
+.audio-player-container .pause-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--color-text-secondary);
+}
+
+.audio-player-container .time-display {
+  flex-shrink: 0;
+  min-width: 86px;
+  padding: 0 4px;
+  margin-right: 4px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.audio-player-container .error-message {
+  position: absolute;
+  right: 0;
+  bottom: -36px;
+  left: 0;
+  z-index: 20;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--color-error) 20%, transparent);
+  border-radius: 3px;
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+  font-size: 14px;
+}
+
+.audio-player-container .progress-container {
+  position: relative;
+  flex-grow: 1;
+  height: 3px;
+  margin: 0 10px;
+  overflow: visible;
+  border-radius: 3px;
+  background-color: var(--color-border-default);
+  cursor: pointer;
+}
+
+.audio-player-container .progress-bar {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  border-radius: 3px;
+  background-color: var(--color-accent);
+}
+
+.audio-player-container .progress-dot {
+  position: absolute;
+  top: 50%;
+  z-index: 10;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  box-shadow: 0 0 3px color-mix(in srgb, var(--color-text-primary) 30%, transparent);
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+  transition: transform 0.2s ease;
+}
+
+.audio-player-container .progress-dot:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.audio-player-container .toggle-panel-button,
+.audio-player-container .audio-transcription-button,
+.audio-player-container .create-button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+  margin-left: 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.audio-player-container .toggle-panel-button:hover,
+.audio-player-container .audio-transcription-button:hover:not(:disabled),
+.audio-player-container .create-button:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.audio-player-container .audio-transcription-button.transcription-state-success {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.audio-player-container .audio-transcription-button.transcription-state-loading {
+  background-color: transparent;
+}
+
+.audio-player-container .audio-transcription-button:disabled {
+  cursor: not-allowed;
+}
+
+.audio-player-container .audio-transcription-button.transcription-state-success:disabled {
+  opacity: 0.7;
+}
+
+.audio-player-container .audio-transcription-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.audio-player-container .transcription-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.audio-player-container .create-menu-container {
+  position: relative;
+}
+
+.audio-player-container .plus-icon,
+.audio-player-container .chevron-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.audio-player-container .chevron-icon {
+  transition: transform 0.2s ease-in-out;
+}
+
+.audio-player-container .chevron-icon.is-open {
+  transform: rotate(-90deg);
+}
+
+.audio-create-menu-fade-enter-active,
+.audio-create-menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.audio-create-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.audio-create-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.audio-create-menu-fade-enter-to,
+.audio-create-menu-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}

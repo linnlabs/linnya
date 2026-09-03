@@ -1,0 +1,135 @@
+/* Citation feature 的公开 Renderer UI 合同；Host referenceRuntime 同时供插件引用能力消费。 */
+
+.web-manual-citation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.web-manual-citation-form .source-type-section {
+  display: flex;
+  gap: 24px;
+}
+
+.web-manual-citation-form .source-type-label {
+  font-size: 13px;
+}
+
+.web-manual-citation-form .form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.web-manual-citation-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.web-manual-citation-form .form-label {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.web-manual-citation-form .form-label.required::after {
+  color: var(--color-error);
+  content: ' *';
+}
+
+.web-manual-citation-form .form-input,
+.web-manual-citation-form .form-textarea {
+  padding: 8px 12px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.web-manual-citation-form .form-input:hover:not(:disabled),
+.web-manual-citation-form .form-textarea:hover:not(:disabled),
+.web-manual-citation-form .form-input:focus:not(:disabled),
+.web-manual-citation-form .form-textarea:focus:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.web-manual-citation-form .form-input:focus,
+.web-manual-citation-form .form-textarea:focus {
+  outline: none;
+}
+
+.web-manual-citation-form .form-input::placeholder,
+.web-manual-citation-form .form-textarea::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.web-manual-citation-form .form-input.error,
+.web-manual-citation-form .form-textarea.error {
+  border-color: var(--color-error);
+}
+
+.web-manual-citation-form .form-textarea {
+  min-height: 60px;
+  max-height: 160px;
+  overflow-y: hidden;
+  font-family: inherit;
+  resize: none;
+}
+
+.web-manual-citation-form .form-error {
+  color: var(--color-error);
+  font-size: 11px;
+}
+
+.web-manual-citation-form .action-section {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.web-manual-citation-form .reset-btn {
+  height: 32px;
+  padding: 0 16px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.web-manual-citation-form .reset-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.web-manual-citation-form .insert-btn {
+  height: 32px;
+  padding: 0 20px;
+  color: var(--color-text-on-accent);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--color-accent);
+  border: none;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+
+.web-manual-citation-form .insert-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.web-manual-citation-form .insert-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

@@ -1,0 +1,28 @@
+.conversation-reference-suggestion {
+  min-width: 280px;
+  animation: conversation-reference-suggestion-enter 140ms ease-out;
+}
+
+.conversation-reference-suggestion__empty {
+  min-width: 280px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+  border-radius: 6px;
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+  text-align: center;
+}
+
+@keyframes conversation-reference-suggestion-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

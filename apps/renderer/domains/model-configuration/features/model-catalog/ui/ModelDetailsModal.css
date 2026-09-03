@@ -1,0 +1,112 @@
+/* Modal slot 内容会进入 shared Modal 容器，必须用内容根类承接样式边界。 */
+.model-details-content {
+  padding: 12px 32px 24px;
+  color: var(--color-text-primary);
+}
+
+.model-details-content .form-row {
+  display: flex;
+  margin-bottom: 24px;
+}
+
+.model-details-content .form-row:last-of-type {
+  margin-bottom: 0;
+}
+
+.model-details-content .input-row {
+  align-items: center;
+}
+
+.model-details-content .form-label {
+  width: 160px;
+  flex-shrink: 0;
+  padding-top: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+.model-details-content .control-area {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.model-details-content .settings-input {
+  width: 160px;
+  height: 28px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-search-light);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.model-details-content .settings-input:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+  border-color: transparent;
+}
+
+.model-details-content .settings-input:focus:not(:disabled) {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.model-details-content .settings-input:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  background-color: var(--color-bg-disabled);
+  opacity: 0.6;
+}
+
+.model-details-content .info-text {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 21px;
+  padding: 0 4px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.model-details-content .error-message {
+  padding: 8px 12px;
+  margin-top: 15px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-error);
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error);
+  border-radius: 4px;
+}
+
+.model-details-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 0 32px 24px;
+}
+
+.model-details-content .select-chevron {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+  transition: transform 0.2s ease-in-out;
+  transform: translateY(-50%);
+}
+
+.model-details-content .select-chevron.is-open {
+  transform: translateY(-50%) rotate(180deg);
+}

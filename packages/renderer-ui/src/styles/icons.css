@@ -1,0 +1,52 @@
+:where(.shared-icon--em) {
+  width: 1em;
+  height: 1em;
+}
+
+:where(.shared-icon--full) {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+:where(.shared-icon--fit) {
+  width: 100%;
+  height: 100%;
+}
+
+.text-color-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.background-color-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+}
+
+.background-edit-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.text-color-indicator,
+.background-color-indicator {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 14px;
+  height: 3px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+}

@@ -1,0 +1,400 @@
+.upload-tab {
+  height: 100%;
+  /* 重要：该组件在不同容器（页面/弹窗）中使用，不能依赖父容器继承 display:flex。 */
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.upload-tab .scope-link {
+  color: var(--color-accent);
+  cursor: pointer;
+  padding: 0 2px;
+  border-radius: 4px;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.upload-tab .scope-link:hover {
+  background-color: var(--color-accent-bg-subtle);
+  color: var(--color-accent);
+}
+
+.upload-tab .control-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  flex-shrink: 0;
+}
+
+.upload-tab .left-controls,
+.upload-tab .right-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-tab .file-input {
+  display: none;
+}
+
+.upload-tab .left-controls {
+  margin-left: 3px;
+}
+
+.upload-tab .center-controls {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.upload-tab .control-hint-text {
+  font-size: 12px;
+  /* 两段提示文案颜色必须一致（除“这里”链接高亮）。 */
+  color: var(--color-text-placeholder);
+  margin: 0;
+}
+
+.upload-tab .warning-text {
+  color: var(--color-warning);
+}
+
+.upload-tab label {
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.upload-tab .file-list-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 16px;
+  min-height: 0;
+}
+
+.upload-tab .upload-drop-zone {
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px dashed var(--color-border-default);
+  background-color: var(--color-bg-default);
+  cursor: pointer;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.upload-tab .upload-drop-zone.is-dragging {
+  background-color: var(--color-accent-bg-hover);
+  border-color: var(--color-accent);
+}
+
+.upload-tab .upload-drop-zone:hover {
+  background-color: var(--color-accent-bg-subtle);
+  border-color: var(--color-accent);
+}
+
+.upload-tab .drop-zone-icons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--color-accent);
+}
+
+.upload-tab .drop-zone-icon-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background-color: var(--color-accent-bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 把过渡写在默认状态，hover 进出都会有动画。 */
+  transition: background-color 0.2s ease;
+}
+
+.upload-tab .drop-zone-icon-circle:hover,
+.upload-tab .upload-drop-zone:hover .drop-zone-icon-circle {
+  background-color: var(--color-accent-bg-hover);
+}
+
+.upload-tab .drop-zone-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.upload-tab .drop-zone-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.upload-tab .drop-zone-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.upload-tab .drop-zone-filetypes {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--color-text-placeholder);
+}
+
+.upload-tab .file-list-container {
+  flex-grow: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.upload-tab .file-list-header,
+.upload-tab .file-item {
+  display: grid;
+  border-radius: 6px;
+  gap: 16px;
+  align-items: center;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.upload-tab .upload-list .file-list-header,
+.upload-tab .upload-list .file-item {
+  grid-template-columns: 3.5fr 1fr 1.5fr 1.2fr 1.5fr 1.3fr;
+}
+
+.upload-tab .file-list-header {
+  height: 40px;
+  border-radius: 6px;
+  background-color: var(--color-bg-subtle);
+  border-bottom: 0 solid var(--color-border-default);
+  flex-shrink: 0;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+}
+
+.upload-tab .file-list-header > div {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 450;
+}
+
+.upload-tab .file-list-header .col-size,
+.upload-tab .file-list-header .col-category,
+.upload-tab .file-list-header .col-status,
+.upload-tab .file-list-header .col-progress {
+  text-align: center;
+}
+
+.upload-tab .file-list-header .col-actions {
+  text-align: right;
+}
+
+.upload-tab .file-list-items {
+  overflow-y: auto;
+  flex-grow: 1;
+  scrollbar-gutter: stable;
+}
+
+.upload-tab .file-item {
+  min-height: 52px;
+  padding: 8px 16px;
+  position: relative;
+}
+
+.upload-tab .file-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  height: 0.5px;
+  left: 10px;
+  right: 0;
+  background-color: var(--color-border-default);
+}
+
+.upload-tab .file-item:last-child {
+  border-bottom: none;
+}
+
+.upload-tab .file-name {
+  font-weight: 450;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.upload-tab .col-name {
+  min-width: 0;
+}
+
+.upload-tab .col-size,
+.upload-tab .col-category {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.upload-tab .col-status {
+  display: flex;
+  justify-content: center;
+}
+
+.upload-tab .status-text {
+  font-size: 12px;
+  font-weight: 450;
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.upload-tab .status-text.status-processing,
+.upload-tab .status-text.status-uploading {
+  color: var(--color-warning);
+  background-color: var(--color-warning-bg);
+}
+
+.upload-tab .status-text.status-failed,
+.upload-tab .status-text.status-error {
+  color: var(--color-error);
+  background-color: var(--color-error-bg);
+}
+
+.upload-tab .status-text.status-completed {
+  color: var(--color-success);
+  background-color: var(--color-success-bg);
+}
+
+.upload-tab .status-text.status-duplicate {
+  color: var(--color-info);
+  background-color: var(--color-info-bg);
+}
+
+.upload-tab .status-text.status-pending {
+  color: var(--color-text-tertiary);
+  background-color: var(--color-bg-subtle);
+}
+
+.upload-tab .progress-details {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.upload-tab .progress-bar {
+  flex: 1;
+  min-width: 50px;
+  height: 5px;
+  background-color: var(--color-bg-hover);
+  border-radius: 2.5px;
+  overflow: hidden;
+}
+
+.upload-tab .progress-fill {
+  height: 100%;
+  background-color: var(--color-accent);
+  transition: width 0.3s ease;
+}
+
+.upload-tab .progress-percent {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  white-space: nowrap;
+  width: 40px;
+  text-align: right;
+}
+
+.upload-tab .error-details {
+  font-size: 12px;
+  color: var(--color-error);
+  text-align: center;
+}
+
+.upload-tab .action-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+}
+
+.upload-tab .retry-btn {
+  color: var(--color-accent);
+}
+
+.upload-tab .cancel-btn {
+  color: var(--color-text-secondary);
+}
+
+.upload-tab .cancel-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.upload-tab .col-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.upload-tab .empty-list-placeholder {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.upload-tab .empty-content {
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  margin-top: 16px;
+}
+
+.upload-tab .empty-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.upload-tab .empty-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-placeholder);
+}
+
+.upload-tab .file-list-items::-webkit-scrollbar,
+.upload-tab .file-list-header::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.upload-tab .file-list-items::-webkit-scrollbar-track,
+.upload-tab .file-list-header::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.upload-tab .file-list-items::-webkit-scrollbar-thumb,
+.upload-tab .file-list-header::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.upload-tab .file-list-items::-webkit-scrollbar-thumb:hover,
+.upload-tab .file-list-header::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}

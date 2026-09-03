@@ -1,0 +1,149 @@
+/* Renderer UI text-entry feature：迁移保留既有 selector 与 computed style。 */
+.tt-text-field {
+  display: block;
+  min-width: 0;
+}
+
+.tt-text-field--clearable {
+  position: relative;
+}
+
+.tt-text-field__control {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.tt-text-field__control:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+/* focus 与 hover 保持同等选择器权重，确保后声明的焦点态不会被 hover 覆盖。 */
+.tt-text-field__control:focus:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.tt-text-field__control:disabled {
+  background: var(--color-bg-disabled);
+  color: var(--color-text-tertiary);
+  cursor: default;
+}
+
+.tt-text-field--borderless .tt-text-field__control {
+  border-color: transparent;
+  background: transparent;
+}
+
+.tt-text-field--borderless .tt-text-field__control:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--color-bg-hover);
+}
+
+.tt-text-field--borderless .tt-text-field__control:focus:not(:disabled) {
+  border-color: var(--color-accent);
+  background: var(--color-bg-hover);
+}
+
+.tt-text-field__control::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.tt-text-field:not(.tt-text-field--textarea) .tt-text-field__control {
+  height: 32px;
+  padding: 0 9px;
+}
+
+.tt-text-field--textarea .tt-text-field__control {
+  display: block;
+  min-height: 72px;
+  padding: 7px 9px;
+  line-height: 1.45;
+  overflow-y: hidden;
+  resize: none;
+}
+
+.tt-text-field--textarea .tt-text-field__control::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.tt-text-field--textarea .tt-text-field__control::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tt-text-field--textarea .tt-text-field__control::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  background-color: var(--scrollbar-thumb-color);
+  background-clip: content-box;
+}
+
+.tt-text-field--textarea .tt-text-field__control::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+.tt-text-field--textarea .tt-text-field__control::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.tt-text-field--compact:not(.tt-text-field--textarea) .tt-text-field__control {
+  height: 28px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.tt-text-field--compact.tt-text-field--textarea .tt-text-field__control {
+  min-height: 58px;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.tt-text-field--clearable:not(.tt-text-field--textarea) .tt-text-field__control {
+  padding-right: var(--spacing-xl);
+}
+
+.tt-text-field--clearable .tt-text-field__control::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.tt-text-field__clear {
+  position: absolute;
+  top: 50%;
+  right: var(--spacing-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--spacing-lg);
+  height: var(--spacing-lg);
+  padding: 0;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  transform: translateY(-50%);
+}
+
+.tt-text-field__clear:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.tt-text-field__clear:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.tt-text-field__clear > .shared-icon {
+  width: var(--spacing-md);
+  height: var(--spacing-md);
+}

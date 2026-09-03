@@ -1,0 +1,83 @@
+.text-popover {
+  position: relative;
+  display: inline-block;
+}
+
+.text-popover .popover-trigger {
+  padding: 4px 8px;
+  font-size: 14px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.text-popover .popover-trigger:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover);
+}
+
+.text-popover .popover-panel {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-popover);
+  padding: 12px;
+  background-color: var(--color-bg-surface);
+  border-radius: 8px;
+  box-shadow: var(--shadow-floating-panel);
+}
+
+.text-popover .popover-content {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+}
+
+.text-popover .popover-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.text-popover .popover-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.text-popover .popover-close-btn:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover);
+}
+
+.text-popover .popover-panel.popover-fade-enter-active,
+.text-popover .popover-panel.popover-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.text-popover .popover-panel.popover-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.text-popover .popover-panel.popover-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.text-popover .popover-panel.popover-fade-enter-to,
+.text-popover .popover-panel.popover-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}

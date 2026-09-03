@@ -1,0 +1,76 @@
+.pane-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 0;
+  pointer-events: none;
+}
+
+.pane-divider__line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0.5px;
+  background-color: var(--color-border-sidebar);
+}
+
+.pane-divider--left {
+  left: 0;
+}
+
+.pane-divider--right {
+  right: 0;
+}
+
+.pane-divider__resize-hit-area {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  width: 8px;
+  cursor: col-resize;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+.pane-divider__resize-hit-area::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+  content: '';
+  background: transparent;
+}
+
+.pane-divider__resize-hit-area:hover::after,
+.pane-divider__resize-hit-area:focus-visible::after,
+.pane-divider__resize-hit-area:active::after {
+  background: var(--color-accent);
+}
+
+.pane-divider__resize-hit-area:focus-visible {
+  outline: none;
+}
+
+/* Header 和 WorkspaceStage 中同一条物理分割线必须同步交互反馈。 */
+body:has(
+  .pane-divider[data-pane-divider-group='workspace-split']
+  .pane-divider__resize-hit-area:hover
+)
+  .pane-divider[data-pane-divider-group='workspace-split']
+  .pane-divider__line,
+body:has(
+  .pane-divider[data-pane-divider-group='workspace-split']
+  .pane-divider__resize-hit-area:focus-visible
+)
+  .pane-divider[data-pane-divider-group='workspace-split']
+  .pane-divider__line,
+body.workspace-split-resizing
+  .pane-divider[data-pane-divider-group='workspace-split']
+  .pane-divider__line {
+  width: 1px;
+  background: var(--color-accent);
+}

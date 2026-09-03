@@ -1,0 +1,65 @@
+{
+  "name": "@plugin/mindmap",
+  "version": "1.0.6",
+  "type": "module",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Linnya Mindmap 官方 runtime 插件包",
+  "linnya": {
+    "development": {
+      "backendLoading": "disk",
+      "rendererOptimizeDependencies": [
+        "@tiptap/core",
+        "@tiptap/starter-kit",
+        "@tiptap/vue-3",
+        "@vueuse/core",
+        "html-to-image"
+      ]
+    }
+  },
+  "exports": {
+    "./shared": "./src/shared/index.ts",
+    "./backend": "./src/backend/index.ts",
+    "./backend-test-support": "./src/backend/test-support.ts",
+    "./renderer": "./src/renderer/index.ts"
+  },
+  "scripts": {
+    "build": "pnpm run build:renderer && pnpm run build:backend",
+    "build:backend": "tsup --config tsup.plugin.config.ts",
+    "build:renderer": "vite build --config vite.plugin.config.mts",
+    "package:artifact": "pnpm run build && node ../../../scripts/release/package-plugin-artifact.mjs mindmap",
+    "test": "vitest run --config vitest.config.ts src",
+    "typecheck": "tsc --noEmit -p tsconfig.json && vue-tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@app/schemas": "workspace:*",
+    "@tiptap/core": "^2.12.0",
+    "@tiptap/starter-kit": "^2.12.0",
+    "@tiptap/vue-3": "^2.12.0",
+    "@vueuse/core": "^13.1.0",
+    "better-sqlite3": "13.0.3",
+    "html-to-image": "^1.11.13",
+    "katex": "^0.16.22",
+    "uuid": "^9.0.1"
+  },
+  "peerDependencies": {
+    "@linnya/renderer-ui": "^2.0.0",
+    "pinia": ">=3.0.0 <4",
+    "vue": ">=3.5.0 <4"
+  },
+  "devDependencies": {
+    "@linnlabs/linnkit": "workspace:*",
+    "@linnya/plugin-host-contract": "workspace:*",
+    "@linnya/renderer-ui": "workspace:*",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "pinia": "^3.0.4",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.4",
+    "vite": "^6.2.0",
+    "vitest": "^3.2.4",
+    "vue": "^3.5.13",
+    "vue-tsc": "~3.1.0"
+  }
+}

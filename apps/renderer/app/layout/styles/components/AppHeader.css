@@ -1,0 +1,448 @@
+.app-header {
+  position: relative;
+  z-index: 110;
+  height: var(--app-header-height, 40px);
+  padding: 0;
+  background-color: var(--color-bg-default);
+  -webkit-app-region: drag;
+}
+
+.app-header .sidebar-extension {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  height: 100%;
+  background-color: var(--color-bg-sidebar);
+}
+
+.app-header .sidebar-extension.sidebar-fade-enter-active,
+.app-header .sidebar-extension.sidebar-fade-leave-active {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  will-change: transform, opacity;
+}
+
+.app-header .sidebar-extension.sidebar-fade-enter-from,
+.app-header .sidebar-extension.sidebar-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
+.app-header-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 111;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  height: 100%;
+  padding-left: 6px;
+  transition: padding-left 0.3s ease;
+}
+
+.app-header-left.mac-native {
+  padding-left: 78px;
+}
+
+.app-header-left .function-buttons {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+}
+
+.app-header-left .sidebar-toggle,
+.app-header-left .settings-button,
+.app-header-left .knowledge-base-button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin-right: 0;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.app-header-left .sidebar-toggle:hover,
+.app-header-left .settings-button:hover,
+.app-header-left .knowledge-base-button:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.app-header-left .settings-button svg,
+.app-header-left .knowledge-base-button svg,
+.app-header-left .sidebar-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.app-header-right {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 111;
+  height: 100%;
+  pointer-events: none;
+  /*
+   * 右侧覆盖层横跨整个 Header，不能直接声明 drag/no-drag。
+   * - no-drag 会覆盖底层 .app-header，导致标题栏无法拖动。
+   * - drag 会把按钮外层的 tooltip trigger 也纳入拖拽区，导致按钮无法点击。
+   */
+  --app-header-edge-inset: 6px;
+  --app-header-icon-button-size: 24px;
+  --app-header-fixed-button-gap: 6px;
+  --app-header-trailing-chrome-width: 0px;
+}
+
+.app-header-right .header-pane {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  padding: 0 var(--app-header-edge-inset) 0 12px;
+  overflow: hidden;
+  pointer-events: auto;
+  transition:
+    left 0.3s ease,
+    right 0.3s ease,
+    width 0.3s ease,
+    padding-left 0.3s ease,
+    padding-right 0.3s ease;
+}
+
+.app-header-right .header-pane--rightmost {
+  padding-right: calc(
+    var(--app-header-edge-inset)
+    + var(--app-header-icon-button-size)
+    + var(--app-header-fixed-button-gap)
+  );
+}
+
+.app-header-right .header-pane__title {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header-right .breadcrumb-segment {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header-right .breadcrumb-segment--parent-action {
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  /* Header 根节点是 Electron 原生拖拽区；只有真实交互段退出拖拽，剩余标题仍可拖动窗口。 */
+  -webkit-app-region: no-drag;
+}
+
+.app-header-right .breadcrumb-segment--parent-action:hover {
+  color: var(--color-text-primary);
+}
+
+.app-header-right .breadcrumb-segment--parent-action:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.app-header-right .breadcrumb-separator {
+  display: inline-block;
+  flex-shrink: 0;
+  margin: 0 8px;
+  color: var(--color-border-default);
+  user-select: none;
+}
+
+.app-header-right .header-pane__actions {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 6px;
+  align-items: center;
+  min-width: max-content;
+  margin-left: auto;
+  -webkit-app-region: no-drag;
+}
+
+.app-header .tooltip-trigger {
+  -webkit-app-region: no-drag;
+}
+
+.app-header-right .header-pane--right {
+  gap: 8px;
+  padding: 0;
+}
+
+.app-header-right .header-pane--right.header-pane--rightmost {
+  padding-right: 0;
+}
+
+.app-header-right .header-pane--right .header-pane__content {
+  box-sizing: border-box;
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+  padding: 0 calc(
+    var(--app-header-edge-inset)
+    + var(--app-header-trailing-chrome-width)
+    + var(--app-header-icon-button-size)
+    + var(--app-header-fixed-button-gap)
+  ) 0 12px;
+  opacity: 0;
+  transition:
+    transform var(--transition-slow) ease,
+    opacity var(--transition-slow) ease;
+  transform: translateX(16px);
+}
+
+.app-header-right .header-pane--right.header-pane--visible .header-pane__content {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.app-header-right .project-workspace-actions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.app-header-right .workspace-layout-actions,
+.app-header-right .global-tool-actions {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.app-header-right .project-workspace-action {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+  -webkit-app-region: no-drag;
+}
+
+.app-header-right .project-workspace-action:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.app-header-right .project-workspace-action:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+  background-color: transparent;
+}
+
+.app-header-right .project-workspace-action.is-active {
+  color: var(--color-accent);
+  background-color: var(--color-accent-bg);
+}
+
+.app-header-right .project-workspace-action-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.app-header-right .project-workspace-action-icon--right-sidebar {
+  transform: scaleX(-1);
+}
+
+.app-header-right .workspace-right-toggle {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+.header-tool-panel {
+  position: fixed;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, calc(100vw - 16px));
+  height: min(640px, calc(100vh - var(--app-header-height, 40px) - 16px));
+  overflow: hidden;
+  background: var(--color-bg-surface);
+  border: none;
+  border-radius: 8px;
+  box-shadow: var(--shadow-floating-panel);
+  -webkit-app-region: no-drag;
+}
+
+.header-tool-panel__header {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 0 8px 0 12px;
+  border-bottom: 0.5px solid var(--color-border-light);
+}
+
+.header-tool-panel__title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-tool-panel__actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.header-tool-panel__icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+}
+
+.header-tool-panel__icon-button:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.header-tool-panel__icon-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.header-tool-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.header-tool-panel__body .todo-sidebar,
+.header-tool-panel__body .review-sidebar {
+  height: 100%;
+}
+
+.app-header-doc-menu-wrapper {
+  position: fixed;
+  z-index: 1000;
+}
+
+.app-header-menu-fade-enter-active,
+.app-header-menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.app-header-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.app-header-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.app-header-right .windows-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  height: 100%;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+  --app-header-window-close-bg: var(--color-error);
+  --app-header-window-close-bg-active: color-mix(in srgb, var(--color-error) 70%, var(--color-white));
+}
+
+.app-header-right .windows-controls .control-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  color: var(--color-text-tertiary);
+  cursor: default;
+  background-color: transparent;
+  border: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  -webkit-app-region: no-drag;
+}
+
+.app-header-right .windows-controls .control-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.app-header-right .windows-controls .control-button:hover {
+  color: var(--color-text-tertiary);
+  background-color: var(--color-bg-hover);
+}
+
+.app-header-right .windows-controls .control-button:active {
+  background-color: var(--color-bg-active);
+}
+
+/* Windows 系统关闭按钮沿用危险操作语义色，避免 app layout 层保留平台色硬编码。 */
+.app-header-right .windows-controls .close-button:hover {
+  color: var(--color-white);
+  background-color: var(--app-header-window-close-bg);
+}
+
+.app-header-right .windows-controls .close-button:active {
+  color: var(--color-white);
+  background-color: var(--app-header-window-close-bg-active);
+}

@@ -1,0 +1,95 @@
+/*
+ * SidebarChatList 的 app/layout 宿主组合契约。
+ * 对话 domain 只负责列表自身；外层列表、项目页和 workspace 行模型的组合由 app 壳层决定。
+ */
+.workspace-sidebar--list .sidebar-content-viewport > .sidebar-chat-list--sidebar {
+  --workspace-sidebar-row-list-padding: 2px 10px 4px;
+}
+
+.workspace-sidebar .sidebar-chat-list--outer-list .chat-list-state {
+  /* 中文说明：项目名称文字起点为 44px；列表/项目区已有 10px 左内边距，空态盒内补 34px。 */
+  margin: 0;
+  padding-left: 34px;
+  font-size: 13px;
+}
+
+/* 项目页空态与上方“最近对话”标题共用同一条文字起始线。 */
+.workspace-sidebar .sidebar-chat-list--project-panel .chat-list-state {
+  padding-left: 10px;
+}
+
+.workspace-sidebar .sidebar-chat-list .chat-list-item {
+  /* 公共 workspace row 的默认外边距由对话列表宿主收口为整行宽度。 */
+  --workspace-sidebar-row-margin-left: 0px;
+  --workspace-sidebar-row-margin-right: 0px;
+  --workspace-sidebar-row-label-color: var(
+    --workspace-project-row-text-color,
+    var(--workspace-sidebar-label-color)
+  );
+  --workspace-sidebar-row-bg-hover: var(--workspace-project-row-bg-hover, var(--color-bg-hover));
+  --workspace-sidebar-row-bg-active: var(--workspace-project-row-bg-active, var(--workspace-sidebar-active-bg));
+  --workspace-sidebar-row-active-color: var(--workspace-project-row-active-color, var(--color-text-primary));
+}
+
+.workspace-sidebar .sidebar-chat-list .chat-list-item.is-history-reveal-pulse {
+  isolation: isolate;
+}
+
+.workspace-sidebar .sidebar-chat-list .chat-list-item.is-history-reveal-pulse::before {
+  /*
+   * 这层只呈现 Header「历史对话」触发的短暂提示，不能把 transition 加到行本身；
+   * 否则普通 hover 的进入和离开也会被拖慢，改变侧边栏既有交互手感。
+   */
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--workspace-sidebar-row-bg-hover);
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+  animation:
+    sidebar-conversation-history-reveal-pulse
+    calc(var(--transition-slow) + var(--transition-slow) + var(--transition-slow))
+    ease-in-out
+    both;
+}
+
+@keyframes sidebar-conversation-history-reveal-pulse {
+  0% {
+    opacity: 0;
+  }
+
+  15%,
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-sidebar .sidebar-chat-list .chat-list-item.is-history-reveal-pulse::before {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+.workspace-sidebar .sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-item {
+  --workspace-sidebar-row-padding-left: 10px;
+  --workspace-sidebar-row-padding-right: 10px;
+
+  height: 28px;
+  border-radius: 4px;
+}
+
+.workspace-sidebar.workspace-sidebar--project .sidebar-chat-list--project-panel .chat-list-item {
+  /* 项目页对话行需要与项目内部 header 保持一致的左右边距。 */
+  --workspace-sidebar-row-margin-left: 10px;
+  --workspace-sidebar-row-margin-right: 10px;
+  --workspace-sidebar-row-padding-left: 8px;
+  --workspace-sidebar-row-padding-right: 10px;
+  --workspace-sidebar-row-gap: 8px;
+}

@@ -1,0 +1,49 @@
+/* Conversation presentation 专属主题 token，不进入 Renderer UI 公共 ABI。 */
+
+:root {
+  --conversation-tool-card-shadow: 0 4px 16px rgba(0, 0, 0, 0.035);
+  --conversation-tool-card-border-shadow: 0 0 0 1px rgba(84, 72, 49, 0.1);
+  --conversation-tool-card-error-border-shadow: 0 0 0 1px rgba(231, 76, 60, 0.35);
+}
+
+[data-linnya-ui-theme='light'] {
+  --thought-message-text-color: #6b7280;
+  --thought-message-line-color: #e5e7eb;
+  --thought-message-mark-border-color: #e5e7eb;
+  --thought-message-pre-background: #f8fafc;
+  --thought-message-pre-border-color: #e2e8f0;
+  --thought-message-code-background: #e2e8f0;
+  --thought-message-arrow-color: var(--color-text-placeholder);
+  --thought-message-arrow-hover-color: var(--color-text-secondary);
+  --thought-message-title-color: var(--color-text-placeholder);
+  --thought-message-title-hover-color: var(--color-text-secondary);
+  --thought-message-blockquote-border-color: var(--thought-message-mark-border-color);
+}
+
+[data-linnya-ui-theme='dark'] {
+  --thought-message-text-color: #9ca3af;
+  --thought-message-line-color: #4b5563;
+  --thought-message-mark-border-color: #4b5563;
+  --thought-message-pre-background: #1f2937;
+  --thought-message-pre-border-color: #374151;
+  --thought-message-code-background: #374151;
+  --thought-message-arrow-color: #9ca3af;
+  --thought-message-arrow-hover-color: #d1d5db;
+  --thought-message-title-color: #d1d5db;
+  --thought-message-title-hover-color: #d1d5db;
+  --thought-message-blockquote-border-color: #007AFF;
+}
+
+[data-linnya-ui-theme='moon-blue'] {
+  --thought-message-text-color: color-mix(in srgb, var(--color-blue-800) 32%, var(--color-gray-550));
+  --thought-message-line-color: var(--color-border-light);
+  --thought-message-mark-border-color: var(--color-border-light);
+  --thought-message-pre-background: var(--color-bg-subtle);
+  --thought-message-pre-border-color: var(--color-border-light);
+  --thought-message-code-background: var(--color-bg-hover-light);
+  --thought-message-arrow-color: var(--color-text-placeholder);
+  --thought-message-arrow-hover-color: var(--color-text-secondary);
+  --thought-message-title-color: var(--color-text-placeholder);
+  --thought-message-title-hover-color: var(--color-text-secondary);
+  --thought-message-blockquote-border-color: var(--color-border-accent-light);
+}

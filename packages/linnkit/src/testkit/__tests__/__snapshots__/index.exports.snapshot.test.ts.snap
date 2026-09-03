@@ -1,0 +1,25 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`src/agent/testkit public exports snapshot > exposes the documented testkit surface 1`] = `
+[
+  "assertContextPolicyInvariants",
+  "assertRunInvariants",
+  "assertions",
+  "createCollectingAuditPort",
+  "createDefaultGraphExecutor",
+  "createGraphLoopHarness",
+  "createMockTelemetryPort",
+  "createMockTokenizerPort",
+  "createReplayHarness",
+  "createRunSupervisorHarness",
+  "createScriptedInferenceHarness",
+  "createToolContextFixture",
+  "expectFinalStepForcedTools",
+  "expectMessagesContainText",
+  "expectMessagesContainToolResult",
+  "expectRunEndedWithFinalAnswer",
+  "expectToolOutputFedBackToHistory",
+  "validateContextPolicyInvariants",
+  "validateRunInvariants",
+]
+`;

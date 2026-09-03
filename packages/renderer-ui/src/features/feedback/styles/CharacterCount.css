@@ -1,0 +1,16 @@
+/* Renderer UI feedback feature：保留迁移前 selector 与 computed style。 */
+.character-count-display {
+  position: absolute;
+  right: 20px;
+  bottom: 10px;
+  z-index: var(--linnya-ui-layer-status);
+  display: inline-block;
+  padding: 2px 5px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  pointer-events: none;
+  background-color: transparent;
+  border-radius: 3px;
+  opacity: 0.7;
+}

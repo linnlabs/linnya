@@ -1,0 +1,129 @@
+.revision-global-toolbar {
+  position: fixed;
+  left: calc(var(--sidebar-deltaX, 0px) / 2);
+  bottom: 24px;
+  z-index: 1200;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  pointer-events: none;
+  transition: left 0.3s ease;
+}
+
+/* 这里用全宽 flex 居中，避免 left: 50% + translateX(-50%) 在奇数宽度时造成 0.5px 模糊。 */
+.revision-global-toolbar__inner {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 4px 4px 4px 14px;
+  border-radius: 999px;
+  color: var(--color-text-primary);
+  background-color: color-mix(in srgb, var(--color-bg-default) 92%, transparent);
+  box-shadow:
+    0 0 0 0.8px color-mix(in srgb, var(--color-text-primary) 6%, transparent),
+    0 -4px 10px -2px color-mix(in srgb, var(--color-text-primary) 4%, transparent),
+    0 8px 24px -2px color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  pointer-events: auto;
+  backdrop-filter: blur(8px);
+}
+
+.revision-global-toolbar__summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.revision-global-toolbar .summary-title {
+  font-weight: 500;
+}
+
+.revision-global-toolbar .summary-counts {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.revision-global-toolbar .summary-blocks,
+.revision-global-toolbar .summary-separator {
+  color: var(--color-text-muted);
+}
+
+.revision-global-toolbar .summary-insert {
+  color: var(--color-success);
+}
+
+.revision-global-toolbar .summary-delete {
+  color: var(--color-error);
+}
+
+.revision-global-toolbar .summary-warning {
+  color: var(--color-warning);
+  font-weight: 500;
+}
+
+.revision-global-toolbar__actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.revision-global-toolbar .toolbar-btn {
+  min-width: 80px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.revision-global-toolbar .toolbar-btn:active {
+  transform: translateY(1px);
+}
+
+.revision-global-toolbar .accept-btn {
+  color: var(--color-success);
+  background-color: var(--color-success-bg);
+}
+
+.revision-global-toolbar .accept-btn:hover {
+  background-color: color-mix(in srgb, var(--color-success-bg) 82%, var(--color-success));
+}
+
+.revision-global-toolbar .accept-btn:active {
+  background-color: color-mix(in srgb, var(--color-success-bg) 70%, var(--color-success));
+}
+
+.revision-global-toolbar .reject-btn {
+  color: var(--color-error);
+  background-color: var(--color-error-bg);
+}
+
+.revision-global-toolbar .reject-btn:hover {
+  background-color: color-mix(in srgb, var(--color-error-bg) 82%, var(--color-error));
+}
+
+.revision-global-toolbar .reject-btn:active {
+  background-color: color-mix(in srgb, var(--color-error-bg) 70%, var(--color-error));
+}
+
+.revision-global-toolbar-fade-enter-active,
+.revision-global-toolbar-fade-leave-active {
+  transition: opacity 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.revision-global-toolbar-fade-enter-from,
+.revision-global-toolbar-fade-leave-to {
+  opacity: 0;
+  transform: translate(0, 16px);
+}
+
+/* 分割线拖拽期间必须直接跟随布局变量，避免底部工具栏跟随滞后。 */
+body.panel-resizing .revision-global-toolbar {
+  transition: none !important;
+}

@@ -1,0 +1,429 @@
+/* src/assets/styles/layout/block-layout.css */
+/* block-layout.css - 内容块布局 */
+
+/* 
+ * 1. 根块外层容器布局
+ * 作用：包裹每个内容块，提供拖拽和交互的基础容器
+ * 特点：
+ * 1. 相对定位，作为拖拽手柄等子元素的定位参考
+ * 2. 宽度设为100%，确保横向撑满整个.editor-content的宽度
+ * 3. 使用flex布局，垂直排列内容
+ */
+.root-block-outer {
+  position: relative; /* 相对定位，作为子元素的定位参考 */
+  margin-left: 0; /* 不使用负边距 */
+  margin-right: 0; /* 不使用负边距 */
+  border-radius: var(--radius-sm); /* 圆角边框 */
+  transition: background-color var(--transition-normal), transform var(--transition-fast); /* 平滑过渡效果 */
+  width: 100%; /* 宽度为100%，不添加额外宽度 */
+  box-sizing: border-box; /* 确保padding不会导致宽度溢出 */
+  margin-top: 0;
+  margin-bottom: 5px; /* 减小块之间的间距，从spacing-md(16px)改为spacing-xs(5px) */
+  display: flex; /* 使用flex布局 */
+  flex-direction: column; /* 垂直方向排列 */
+}
+
+.root-block-outer.root-block-virtual-placeholder,
+.root-block-outer.is-placeholder {
+  /* placeholder 没有 contentDOM，只需要隔离自身布局与绘制，不再依赖 content-visibility 估高。 */
+  contain: layout style paint;
+}
+
+/*
+ * Shell 大文档的修订 header 是 RootBlockShellView 内的文档流 slot。
+ * 中文说明：它和正文同属真实布局，避免 overlay 先量坐标、再给正文补 padding 的双轨错位。
+ */
+.root-block-revision-header {
+  max-width: 740px;
+  width: calc(100% - 32px);
+  box-sizing: border-box;
+  margin: 2px auto 2px;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.root-block-revision-header[hidden] {
+  display: none !important;
+}
+
+.root-block-revision-header:empty {
+  display: none;
+}
+
+.root-block-revision-header > .block-revision-indicator-row {
+  width: 100%;
+}
+
+/*
+ * 裸 DOM RootBlock NodeView 的 revision header 已经位于 .root-block 内部。
+ * .root-block 本身负责 740px / calc(100% - 32px) 的正文宽度约束；
+ * 这里不能再次套用同一套宽度和 auto margin，否则 pending header 会比正文窄一圈。
+ */
+.root-block > .root-block-revision-header {
+  max-width: none;
+  width: 100%;
+  margin: 2px 0;
+}
+
+.root-block > .root-block-revision-header > .block-revision-indicator-row {
+  margin: 0;
+}
+
+.shell-revision-indicator {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 20px;
+  box-sizing: border-box;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--color-warning-bg) 82%, var(--color-warning));
+  opacity: 0.85;
+}
+
+.shell-revision-label {
+  margin-right: 4px;
+  color: var(--color-text-muted);
+}
+
+.shell-revision-insert {
+  color: var(--color-success);
+}
+
+.shell-revision-delete {
+  color: var(--color-error);
+}
+
+.shell-revision-separator {
+  color: var(--color-text-muted);
+}
+
+.shell-revision-pending {
+  color: var(--color-warning);
+}
+
+.shell-revision-time {
+  margin-left: auto;
+  padding-left: 6px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+/* ==================== 有序列表编号说明 ==================== */
+/**
+ * 注意：本项目的列表项是“一个列表项 = 一个块（rootBlock）”的结构。
+ * CSS counter 很难在“兄弟块”之间做可靠的分段 reset，因此编号改由插件计算，
+ * 并写入 listItemBlock DOM 的 data-ordered-index 属性。
+ */
+
+/* ⭐️ 包含表格的 root-block-outer 也需要允许收缩 */
+.root-block-outer:has(table) {
+  min-width: 0; /* 允许 Flexbox 子项收缩 */
+}
+
+/* 增加紧跟在其他块后面的 HeadingBlock 块的上边距 */
+.root-block-outer + .root-block-outer:has(.heading-block.heading-level-1) {
+  margin-top: 20px; /* H1 的上边距 */
+}
+
+/* H2 的上边距 */
+.root-block-outer + .root-block-outer:has(.heading-block.heading-level-2) {
+  margin-top: 16px; /* 比 H1 稍小 */
+}
+
+/* H3 的上边距 */
+.root-block-outer + .root-block-outer:has(.heading-block.heading-level-3) {
+  margin-top: 12px; /* 比 H2 稍小 */
+}
+
+/* H4, H5, H6 的上边距 (可以设置相同的值) */
+.root-block-outer + .root-block-outer:has(.heading-block.heading-level-4),
+.root-block-outer + .root-block-outer:has(.heading-block.heading-level-5),
+.root-block-outer + .root-block-outer:has(.heading-block.heading-level-6) {
+  margin-top: 8px; /* 比 H3 稍小 */
+}
+
+/* 
+ * 根块布局
+ * 作用：内容的主要容器
+ * 特点：
+ * 1. 居中显示，最大宽度限制
+ * 2. 内边距提供足够的内容空间
+ * 3. 左侧预留拖拽手柄空间
+ */
+.root-block {
+  position: relative; /* 相对定位，作为子元素的定位参考 */
+  margin: 0 auto; /* 上右下左边距，居中显示 */
+  padding: 0px; /* 内边距为0，与contentblock完全重合 */
+  border-radius: 4px; /* 与旧样式保持一致 */
+  max-width: 740px; /* 最大宽度限制，与旧样式保持一致 */
+  width: calc(100% - 32px); /* 宽度为父容器宽度减去左右padding，与旧样式保持一致 */
+  box-sizing: border-box; /* 确保padding不会导致宽度溢出 */
+  display: flex; /* 使用Flexbox布局 */
+  flex-direction: column; /* 垂直方向排列 */
+  /* 重要：根容器不做滚动容器，避免把左右 handle 算进滚动宽度 */
+  overflow: visible;
+}
+
+.root-block-chrome-anchor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.root-block-chrome-anchor > * {
+  pointer-events: auto;
+}
+
+/* 根块内容适应子元素（作为横向滚动容器） */
+.root-block > .content,
+.version-content > .content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* 关键：在 Flex 布局下允许内容收缩，否则超宽内容会撑开容器 */
+  min-width: 0;
+  /* 横向滚动仅作用于内容区域，避免 drag/annotation handle 影响滚动宽度 */
+  overflow-x: auto;
+  overflow-y: hidden; /* 默认禁用垂直滚动 */
+}
+
+/* Webkit 滚动条样式 - 仅作用于内容区域（参考 AppLayout.vue） */
+.root-block > .content::-webkit-scrollbar,
+.version-content > .content::-webkit-scrollbar {
+  height: 10px; /* 与 editor-shell 一致 */
+}
+.root-block > .content::-webkit-scrollbar-track,
+.version-content > .content::-webkit-scrollbar-track {
+  background: transparent; /* 轨道背景透明 */
+}
+.root-block > .content::-webkit-scrollbar-thumb,
+.version-content > .content::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color, var(--color-border-default)); /* 使用主题变量 */
+  border-radius: 5px; /* 与 editor-shell 一致 */
+  transition: background-color 0.2s ease; /* 平滑过渡 */
+  border: 2px solid transparent; /* 四周透明边框 */
+  background-clip: content-box; /* 背景色只填充内容区域 */
+}
+.root-block > .content::-webkit-scrollbar-thumb:hover,
+.version-content > .content::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color, var(--color-accent-light)); /* 使用主题变量 */
+}
+
+/* 原子块不需要水平滚动 - 它们应该适应容器或有固定显示方式 */
+.root-block-outer.contains-imageBlock > .root-block > .content,
+.root-block-outer.contains-audioBlock > .root-block > .content,
+.root-block-outer.contains-latexBlock > .root-block > .content,
+.root-block-outer.contains-horizontalRule > .root-block > .content,
+.root-block-outer.contains-imageBlock .version-content > .content,
+.root-block-outer.contains-audioBlock .version-content > .content,
+.root-block-outer.contains-latexBlock .version-content > .content,
+.root-block-outer.contains-horizontalRule .version-content > .content {
+  overflow-x: visible;
+  overflow-y: visible; /* 覆盖默认值，防止原子块出现不必要的滚动条 */
+}
+
+/* 
+ * 块视图基础布局
+ * 作用：为所有块提供基础布局
+ */
+.block-view {
+  position: relative;
+  margin: var(--spacing-xs) 0;
+}
+
+.block-content {
+  position: relative;
+  min-height: 1.5em;
+}
+
+/* 
+ * 编辑器块通用布局
+ * 作用：为所有内容块提供基础布局
+ * 特点：
+ * 1. 相对定位，便于子元素定位
+ * 2. 圆角边框，提供视觉边界
+ * 3. 宽度占满父容器
+ */
+.editor-block {
+  position: relative;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-normal);
+  width: 100%; /* 所有块默认占满父容器宽度 */
+  box-sizing: border-box;
+}
+
+/* 
+ * 标题块布局
+ * 作用：显示标题内容
+ * 特点：
+ * 1. 块级显示
+ * 2. 内边距提供足够的内容空间
+ * 3. 继承编辑器块的通用布局
+ */
+.heading-block {
+  display: block;
+  padding: 8px; /* 与旧样式保持一致 */
+  padding-left: 2px; /* 与旧样式保持一致 */
+  margin: 0; /* 外边距决定了块与块之间的间距 */
+  box-sizing: border-box;
+  line-height: 1.5; /* 1.5倍行距 */
+}
+
+/* 
+ * 基础块布局
+ * 作用：显示普通段落内容
+ * 特点：
+ * 1. 块级显示
+ * 2. 内边距与标题块保持一致
+ * 3. 继承编辑器块的通用布局
+ */
+.base-block {
+  display: block;
+  padding: 1.5px; /* 与旧样式保持一致 */
+  margin: 0; /* 与标题块相同的外边距 */
+  box-sizing: border-box;
+  line-height: 1.5; /* 1.5倍行距 */
+}
+
+/* 
+ * 空块占位符布局
+ * 作用：为空内容块提供视觉提示
+ * 特点：
+ * 1. 最小高度确保空块也有一定高度
+ * 2. 相对定位，便于放置占位符文本
+ */
+.is-empty {
+  min-height: 1.5em;
+  position: relative;
+}
+
+/* 
+ * 空块占位符文本布局
+ * 作用：显示占位符文本
+ * 特点：
+ * 1. 使用伪元素显示占位符文本
+ * 2. 绝对定位，垂直居中
+ */
+.is-empty[data-placeholder]::before {
+  content: attr(data-placeholder);
+  pointer-events: none;
+  position: absolute;
+  left: 8px; /* 与旧样式保持一致 */
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+/* 
+ * 有批注的块布局
+ * 作用：标识包含批注的块
+ * 特点：
+ * 1. 左侧添加内边距，为批注标识预留空间
+ */
+.has-annotation {
+  padding-left: var(--spacing-md);
+}
+
+/* ==================== 左侧控制岛布局（已迁移至 BlockVersionHandle.css） ==================== */
+
+/* 拖拽手柄布局（定位及尺寸已迁移至 DragHandle.css / BlockVersionHandle.css 中的 .block-left-handle-group 规则） */
+
+/* 
+ * 批注手柄布局
+ * 作用：提供批注控制点的定位
+ * 定位策略：对齐块的顶部（类似Notion），而非垂直居中
+ */
+.annotation-handle {
+  position: absolute; /* 绝对定位 */
+  right: -32px; /* 放在.root-block的右侧, 与拖拽手柄保持一致 */
+  top: 0.5px; /* 对齐顶部，带少量偏移 */
+  width: 26px; /* 实际宽度由内部元素大小决定，这里匹配真实宽度 */
+  height: 26px; /* 实际高度由内部元素大小决定，这里匹配真实高度 */
+  display: flex;
+  justify-content: center; /* 水平居中内容 */
+  align-items: center; /* 垂直居中内容 */
+  z-index: 200; /* 提高z-index确保在批注层之上 */
+  pointer-events: auto;
+}
+
+.custom-drop-indicator {
+  position: fixed;
+  left: 0;
+  height: 3px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+  border-radius: 1.5px;
+  display: none; /* 默认不显示 */
+}
+
+/* 显示拖拽指示器的状态 */
+.custom-drop-indicator.visible,
+.custom-drop-indicator[style*="opacity: 1"] {
+  opacity: 1;
+  display: block;
+}
+
+/* 覆盖 Tiptap 默认的拖拽指示器样式 */
+.tiptap-drop-indicator {
+  position: absolute;
+  z-index: 50;
+  pointer-events: none;
+  height: 2px !important;
+  opacity: 0.5;
+  transition: all var(--transition-normal);
+  border-radius: 1px;
+}
+
+/* 当指示器在 contentBlock 之间时隐藏它 */
+.content > .tiptap-drop-indicator {
+  display: none !important;
+}
+
+/* 
+ * 列表项块布局
+ * 作用：显示列表项内容，处理嵌套缩进
+ * 特点：
+ * 1. 垂直内边距与 BaseBlock 保持一致
+ * 2. 左侧内边距根据 level (data-indent) 调整，为项目符号和缩进提供空间
+ * 3. 相对定位，用于项目符号定位
+ */
+.list-item-block {
+  display: block;
+  position: relative; /* 用于 ::before 定位 */
+  padding-top: 1.5px;    /* 匹配 BaseBlock 垂直 padding */
+  padding-bottom: 1.5px; /* 匹配 BaseBlock 垂直 padding */
+  padding-right: 0;     /* 默认无右侧 padding */
+  /* 默认 Level 0 的 padding-left
+   * 说明：无序/有序列表都使用同一套正文起始位置，保证对齐。
+   * 预留 32px 的 gutter，用于容纳：
+   * - bullet 符号
+   * - ordered 编号（含 “.” 与视觉间距）
+   */
+  padding-left: 32px; 
+  margin: 0; /* 与 BaseBlock 保持一致 */
+  box-sizing: border-box;
+}
+
+/* 不同嵌套级别的缩进样式 - 应用 padding-left */
+.list-item-block.level-1 {
+  padding-left: 52px; /* 32px + 20px */
+}
+
+.list-item-block.level-2 {
+  padding-left: 72px; /* 32px + 40px */
+}
+
+.list-item-block.level-3 {
+  padding-left: 92px; /* 32px + 60px */
+}

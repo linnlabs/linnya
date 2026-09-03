@@ -1,0 +1,18 @@
+/* 模型配置页面只保留 Settings Kit 未覆盖的控件级样式。 */
+/* 模型配置整体已迁到 Settings Kit，这里只留下拉箭头这类控件级补充。 */
+
+.model-config-tab .select-chevron {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+  transition: transform 0.2s ease-in-out;
+  transform: translateY(-50%);
+}
+
+.model-config-tab .select-chevron.is-open {
+  transform: translateY(-50%) rotate(180deg);
+}

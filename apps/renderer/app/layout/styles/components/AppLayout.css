@@ -1,0 +1,26 @@
+.app-layout {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-x: hidden; /* 侧边栏过渡期间不能让页面出现水平滚动条。 */
+  background-color: var(--color-bg-default);
+}
+
+.app-layout > .main-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--color-bg-default);
+}
+
+.app-layout > .main-container > .content-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+  position: relative; /* 为 CharacterCount 提供定位上下文。 */
+  background-color: var(--color-bg-default);
+}

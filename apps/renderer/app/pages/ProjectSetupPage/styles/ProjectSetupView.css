@@ -1,0 +1,237 @@
+/*
+ * ProjectSetupView 样式：项目初始化页面私有样式。
+ * 固定在 .project-setup-view 根下，避免对 conversation 宿主与全局错误提示造成污染。
+ */
+/* ========================================
+   ProjectSetupView - AI 项目初始化视图
+   设计风格：简洁、专业、与侧边栏占位卡片一致
+   ======================================== */
+
+.project-setup-view {
+  display: flex;
+  flex-direction: column;
+  /* 让高度随内容撑开，由外层 editor-shell 滚动 */
+  height: auto;
+  /* 配合父容器 flex 布局，确保占满剩余空间 */
+  flex: 1;
+  min-height: 100%;
+  background-color: var(--color-bg-default);
+  position: relative;
+}
+
+/* ----------------------------------------
+   顶部标题栏
+   ---------------------------------------- */
+.project-setup-view .setup-header {
+  flex-shrink: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 24px;
+  background-color: var(--color-bg-surface);
+  z-index: 10;
+  position: sticky;
+  top: 0;
+}
+
+.project-setup-view .header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Remove unused button styles now that we use ActionButtons */
+
+.project-setup-view .conversation-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* 允许容器被内容自然撑开 */
+  height: auto;
+  overflow: visible;
+  background-color: var(--color-bg-default);
+}
+
+.project-setup-view .conversation-inner {
+  flex: 1;
+  /* 同样允许被内容撑开 */
+  height: auto;
+  /* 与头部保持同样的内容宽度 */
+  max-width: 800px;
+  margin: 0 auto;
+  /**
+   * 中文说明（关键）：
+   * - `.conversation-container` 是 column flex，`.conversation-inner` 是它的 flex item。
+   * - 在 flex 布局里，交叉轴（横向）上使用 `margin: 0 auto` 会导致元素按内容“收缩适配”（shrink-to-fit）后再居中。
+   * - 结果就是你看到的：消息第一帧从中间窄着出来，流式内容变长后宽度逐步增长，直到触达 max-width 才看起来“左对齐”。
+   * - 这里显式指定 `width: 100%`，让容器从第一帧开始就占满可用宽度（并受 max-width 约束），避免宽度随内容变化。
+   */
+  width: 100%;
+  /* bottom padding 预留出底部固定输入栏的高度，避免最后一条消息被遮挡 */
+  padding: 10px 0px 96px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.project-setup-view .project-conversation-host {
+  /* 覆盖 ConversationHost 默认的 height: 100% 和 overflow: hidden */
+  height: auto !important;
+  overflow: visible !important;
+  flex: none !important;
+}
+
+/* 
+   强制覆盖 ConversationHost 内部所有容器的样式，
+   确保在 ProjectSetup 视图中完全由内容撑开，不产生内部滚动条 
+*/
+.project-setup-view .project-conversation-host .panel-content,
+.project-setup-view .project-conversation-host .conversation-view-container,
+.project-setup-view .project-conversation-host .conversation-view-wrapper,
+.project-setup-view .project-conversation-host .conversation-view {
+  height: auto !important;
+  overflow: visible !important;
+  flex: none !important;
+  display: block !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+/* 项目初始化视图底部固定输入栏（跟随中间列宽度和侧边栏开合一起移动） */
+.project-setup-view .project-setup-input-bar {
+  position: sticky;
+  bottom: 0;
+  box-sizing: border-box;
+  background-color: var(--color-bg-surface);
+  z-index: 20;
+}
+
+.project-setup-view .project-setup-input-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  /* 与对话区域保持一致：避免输入框容器也出现“按内容收缩后居中”的宽度跳变 */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 在项目初始化视图中，尽量避免对话区因为滚动条出现/消失而一会儿宽一会儿窄，
+   同时去掉为了时间轴 / 滚动条预留的额外右侧 padding，使内容和输入框左对齐 */
+.project-setup-view .conversation-view {
+  padding-right: 16px !important;
+}
+
+.project-setup-view .timeline-expanded .conversation-view {
+  padding-right: 16px !important;
+}
+
+.project-setup-view .btn-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.project-setup-view .btn-icon {
+  width: 14px; /* Slightly smaller icon for more compact look */
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.project-setup-view .btn-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid color-mix(in srgb, var(--color-white) 30%, transparent);
+  border-top-color: var(--color-white);
+  border-radius: 50%;
+  animation: project-setup-view-spin 0.8s linear infinite;
+}
+
+@keyframes project-setup-view-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ----------------------------------------
+   错误提示
+   ---------------------------------------- */
+.project-setup-view .error-banner {
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error);
+  border-radius: 8px;
+  color: var(--color-error);
+  font-size: 13px;
+  z-index: 100;
+  box-shadow: 0 4px 16px var(--shadow-color-sm);
+  max-width: 480px;
+}
+
+.project-setup-view .error-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.project-setup-view .error-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.project-setup-view .error-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.project-setup-view .error-dismiss {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-error);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.project-setup-view .error-dismiss:hover {
+  opacity: 1;
+}
+
+.project-setup-view .error-dismiss svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ----------------------------------------
+   错误提示过渡动画
+   ---------------------------------------- */
+.project-setup-view .error-slide-enter-active,
+.project-setup-view .error-slide-leave-active {
+  transition: all 0.25s ease;
+}
+
+.project-setup-view .error-slide-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-10px);
+}
+
+.project-setup-view .error-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-10px);
+}

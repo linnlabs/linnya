@@ -1,0 +1,149 @@
+.workspace-sidebar .project-list-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-sidebar .project-list-view .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--workspace-sidebar-muted-color);
+  font-size: 13px;
+  gap: 12px;
+  height: 100%;
+}
+
+.workspace-sidebar .project-list-view .empty-icon {
+  width: 48px;
+  height: 48px;
+  opacity: 0.5;
+  color: var(--color-text-tertiary);
+}
+
+.workspace-sidebar .project-list-view .empty-action-button {
+  margin-top: 8px;
+  background-color: var(--color-accent);
+  color: var(--color-white);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.workspace-sidebar .project-list-view .empty-action-button:hover {
+  background-color: var(--color-accent-hover);
+  transform: translateY(-1px);
+}
+
+.workspace-sidebar .project-list-view .empty-action-button:active {
+  transform: translateY(0);
+}
+
+.workspace-sidebar .project-list-view .project-list {
+  padding: 2px 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.workspace-sidebar .project-list-view .project-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: 4px;
+  margin: 2px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.workspace-sidebar .project-list-view .project-item:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.workspace-sidebar .project-list-view .project-icon {
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workspace-sidebar .project-list-view .project-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.workspace-sidebar .project-list-view .project-name {
+  font-size: 13px;
+  color: var(--workspace-sidebar-label-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-grow: 1;
+}
+
+.workspace-sidebar .project-list-view .project-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.workspace-sidebar .project-list-view .more-button {
+  background: none;
+  border: none;
+  padding: 2px;
+  border-radius: 3px;
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+}
+
+.workspace-sidebar .project-list-view .more-button:hover {
+  /* 与整行 hover 拉开层次，避免按钮 hover 被行背景吞掉。 */
+  background-color: var(--color-bg-hover-strong);
+  color: var(--color-text-secondary);
+}
+
+.workspace-sidebar .project-list-view .more-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.project-menu-wrapper {
+  position: fixed;
+  /* 项目 More 菜单是主动操作层，必须高于 sidebar hover 预览浮层。 */
+  z-index: 1300;
+}
+
+.workspace-project-list-menu-fade-enter-active,
+.workspace-project-list-menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.workspace-project-list-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.workspace-project-list-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}

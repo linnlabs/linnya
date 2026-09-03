@@ -1,0 +1,342 @@
+.review-section.review-setup-view {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 16px 16px;
+}
+
+.review-setup-view .section-title {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 6px 0;
+  margin-bottom: 12px;
+}
+
+.review-setup-view .title-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-setup-view .section-title h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.review-setup-view .subtitle {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+
+.review-setup-view .history-entry-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-accent);
+  white-space: nowrap;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  border: none;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.review-setup-view .history-entry-btn:hover {
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+}
+
+.review-setup-view .selected-agents-list {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
+  margin-bottom: 20px;
+}
+
+.review-setup-view .list-label {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.review-setup-view .selected-agent-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.review-setup-view .selected-agent-card:hover {
+  border-color: var(--color-accent);
+}
+
+.review-setup-view .agent-content {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  margin-right: 56px;
+}
+
+.review-setup-view .agent-actions {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  transform: translateY(-50%);
+}
+
+.review-setup-view .selected-agent-card:hover .agent-actions {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.review-setup-view .agent-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.review-setup-view .agent-badge-info {
+  padding: 2px 4px;
+  font-size: 10px;
+  color: var(--color-accent);
+  background: var(--color-accent-bg);
+  border-radius: 4px;
+}
+
+.review-setup-view .icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.review-setup-view .icon-btn svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.review-setup-view .icon-btn:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover);
+}
+
+.review-setup-view .add-agent-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.review-setup-view .add-agent-icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  color: var(--color-accent);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.review-setup-view .role-edit-btn {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 2px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.review-setup-view .role-edit-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.review-setup-view .review-agent-select {
+  width: 100%;
+}
+
+.review-setup-view .review-agent-select-trigger {
+  position: relative;
+  justify-content: space-between;
+  width: 100%;
+  height: auto;
+  padding: 8px 12px 8px 34px;
+  font-weight: 500;
+  color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  border: 1px dashed var(--color-accent);
+  border-radius: 4px;
+}
+
+.review-setup-view .review-agent-select-trigger:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  border-color: var(--color-accent);
+}
+
+.review-setup-view .review-agent-select-value {
+  color: var(--color-accent);
+}
+
+.review-setup-view .select-chevron {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: block;
+  width: 16px;
+  height: 16px;
+  color: var(--color-accent);
+  pointer-events: none;
+  transition: transform 0.2s ease-in-out;
+  transform: translateY(-50%);
+}
+
+.review-setup-view .select-chevron.is-open {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.review-setup-view .input-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  padding-right: 2px;
+  padding-bottom: 10px;
+  overflow-y: auto;
+}
+
+.review-setup-view .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-setup-view .field-label {
+  margin-left: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.review-setup-view .field-control {
+  width: 100%;
+  min-height: 80px;
+  max-height: 200px;
+  padding: 8px 12px;
+  overflow-y: hidden;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  resize: none;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.review-setup-view .field-control::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.review-setup-view .field-control::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.review-setup-view .field-control::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.review-setup-view .field-control:hover::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--color-gray-500) 40%, transparent);
+}
+
+.review-setup-view .field-control::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.review-setup-view .field-control:hover,
+.review-setup-view .field-control:focus {
+  border-color: var(--color-accent);
+}
+
+.review-setup-view .field-control::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.review-setup-view .action-area {
+  flex-shrink: 0;
+  padding-top: 16px;
+  margin-top: auto;
+  border-top: 1px solid var(--color-border-default);
+}
+
+.review-setup-view .start-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-on-accent);
+  cursor: pointer;
+  background-color: var(--color-accent);
+  border: none;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.review-setup-view .start-btn:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+  transform: translateY(-1px);
+}
+
+.review-setup-view .start-btn:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  background-color: var(--color-bg-disabled);
+  opacity: 0.5;
+  transform: none;
+}

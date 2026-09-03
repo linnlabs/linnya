@@ -1,0 +1,60 @@
+/* menu-bar-layout.css - 菜单栏布局 */
+
+/* 
+ * 编辑器菜单栏
+ * 作用：顶部工具栏，包含各种编辑功能按钮
+ * 特点：
+ * 1. 水平布局，允许按钮换行
+ * 2. 居中显示，最大宽度与内容区一致
+ * 3. 圆角与编辑器整体容器配合
+ */
+
+
+/* 
+ * 菜单栏内部容器
+ * 作用：限制菜单栏内容宽度，与内容区保持一致
+ */
+
+
+/* 
+ * 表格尺寸选择器包装器
+ * 作用：固定定位，避免滚动影响
+ */
+.table-size-selector-wrapper {
+  position: fixed;
+  z-index: 100; /* 与 CustomSelect 保持一致 */
+}
+
+/* 
+ * 表格按钮容器
+ * 作用：为表格按钮提供相对定位上下文
+ */
+.table-button-container {
+  position: relative;
+  display: inline-block;
+}
+
+/* 
+ * 表格尺寸选择器过渡动画
+ * 作用：平滑的进入/退出效果
+ */
+.table-selector-fade-enter-active,
+.table-selector-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.table-selector-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
+}
+
+.table-selector-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+}
+
+.table-selector-fade-enter-to,
+.table-selector-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}

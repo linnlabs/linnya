@@ -1,0 +1,75 @@
+/* Renderer UI selection feature：保留迁移前 selector 与 computed style。 */
+.radio-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.radio-item.is-disabled {
+  cursor: not-allowed;
+}
+
+.radio-item .radio-label {
+  display: contents;
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.radio-item.is-disabled .radio-label {
+  color: var(--color-text-muted);
+}
+
+.radio-item input[type="radio"] {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+
+.radio-item .radio-custom {
+  display: grid;
+  flex-shrink: 0;
+  place-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 50%;
+  background-color: var(--color-bg-surface);
+  box-shadow: var(--shadow-xs);
+  transition: all var(--transition-fast);
+}
+
+.radio-item .radio-custom::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  content: '';
+  transform: scale(0);
+  transition: transform 0.1s ease-in-out;
+}
+
+.radio-item:not(.is-disabled):hover .radio-custom {
+  border-color: var(--color-accent);
+}
+
+.radio-item input[type="radio"]:checked ~ .radio-custom {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 1px 1px color-mix(in srgb, var(--color-black) 10%, transparent);
+}
+
+.radio-item input[type="radio"]:checked ~ .radio-custom::before {
+  transform: scale(1);
+}
+
+.radio-item input[type="radio"]:disabled ~ .radio-custom,
+.radio-item input[type="radio"]:checked:disabled ~ .radio-custom {
+  background-color: var(--color-bg-disabled);
+  box-shadow: none;
+}
+
+.radio-item input[type="radio"]:focus-visible ~ .radio-custom {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 1px;
+}

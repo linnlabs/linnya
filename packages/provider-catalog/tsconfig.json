@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@app/schemas": ["../schemas/src/index.ts"],
+      "@app/schemas/*": ["../schemas/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "bin/**/*.ts", "__tests__/**/*.ts"],
+  "exclude": ["dist", "node_modules"]
+}

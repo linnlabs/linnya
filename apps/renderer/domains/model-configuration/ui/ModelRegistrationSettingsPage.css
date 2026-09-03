@@ -1,0 +1,57 @@
+/* 模型注册组合页的补充控件样式。 */
+/* 表单行已迁到 Settings Kit，这里只留「下拉 + 刷新按钮」这种组合控件的补充。 */
+
+.add-model-select-with-action {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  width: 100%;
+}
+
+.add-model-select-with-action > .add-model-select-control {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.add-model-refresh-button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-height: 32px;
+  padding: 0;
+  color: var(--color-text-tertiary);
+}
+
+.add-model-refresh-icon {
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes add-model-tab-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.add-model-refresh-icon.is-spinning {
+  animation: add-model-tab-spin 1s linear infinite;
+}
+
+.add-model-submit {
+  margin-top: var(--spacing-lg);
+}
+
+.add-model-provider-form {
+  display: block;
+}
+
+.settings-row + .add-model-provider-form,
+.add-model-provider-form > .settings-row + .settings-row {
+  margin-top: 20px;
+}

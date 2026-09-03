@@ -1,0 +1,64 @@
+.write-to-table-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 12px 10px;
+}
+
+.write-to-table-card .loading-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.write-to-table-card .loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: write-to-table-card-spin 1s linear infinite;
+}
+
+@keyframes write-to-table-card-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.write-to-table-card .content-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.write-to-table-card .meta-row {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.write-to-table-card .meta-item {
+  white-space: nowrap;
+}
+
+.write-to-table-card .preview {
+  background-color: var(--color-bg-sidebar);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .write-to-table-card .loading-spinner {
+    animation: none;
+  }
+}

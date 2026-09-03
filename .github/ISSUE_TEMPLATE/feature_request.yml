@@ -1,0 +1,36 @@
+name: Feature proposal
+description: Propose a focused capability or public contract change
+title: "[Proposal]: "
+labels: [proposal]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the user or engineering problem without prescribing an implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Suggested owner and boundary
+      description: Identify the domain, package, or plugin owner if known.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and tradeoffs
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched for an existing issue or proposal.
+          required: true
+        - label: This proposal does not require private source or maintainer credentials.
+          required: true

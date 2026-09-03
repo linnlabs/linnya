@@ -1,0 +1,50 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@plugin/slides/shared": ["packages/plugins/slides/src/shared/index.ts"],
+      "@plugin/slides/shared/*": ["packages/plugins/slides/src/shared/*"],
+      "@plugin/slides/backend": ["packages/plugins/slides/src/backend/index.ts"],
+      "@plugin/slides/backend-codegen": ["packages/plugins/slides/src/backend/codegen/index.ts"],
+      "@plugin/slides/backend-coordinator": ["packages/plugins/slides/src/backend/coordinator/index.ts"],
+      "@plugin/slides/backend-engine-core": ["packages/plugins/slides/src/backend/engine/core.ts"],
+      "@plugin/slides/backend-ipc": ["packages/plugins/slides/src/backend/ipc/index.ts"],
+      "@plugin/slides/backend-sandbox": ["packages/plugins/slides/src/backend/sandbox/index.ts"],
+      "@plugin/slides/backend-tool-classes": ["packages/plugins/slides/src/backend/toolClasses/index.ts"],
+      "@plugin/slides/backend-tools": ["packages/plugins/slides/src/backend/tools/index.ts"],
+      "@linnya/slides-mathjax-runtime": ["packages/plugins/slides/src/backend/engine/mathFormula/runtime/mathJaxSvgRuntime.ts"],
+      "@plugin/slides/renderer": ["packages/plugins/slides/src/renderer/index.ts"],
+      "@plugin/backend/*": [
+        "packages/plugin-host-contract/backend/*.ts"
+      ],
+      "@plugin/renderer/*": [
+        "packages/plugin-host-contract/renderer/*.ts"
+      ],
+      "@linnya/plugin-host-contract": ["packages/plugin-host-contract/index.ts"],
+      "@linnya/plugin-host-contract/backend": ["packages/plugin-host-contract/backend/index.ts"],
+      "@linnya/plugin-host-contract/backend/*": ["packages/plugin-host-contract/backend/*"],
+      "@linnya/plugin-host-contract/renderer": ["packages/plugin-host-contract/renderer/index.ts"],
+      "@linnya/plugin-host-contract/renderer/*": ["packages/plugin-host-contract/renderer/*"],
+      "@linnya/text-measurement-core": ["packages/text-measurement-core/src/index.ts"],
+      "@plugin/*": ["src/plugin-sdk/*"],
+      "@app/localization": ["packages/plugin-host-contract/renderer/localization.ts"],
+      "@app/schemas": ["packages/schemas/src/index.ts"],
+      "@app/schemas/*": ["packages/schemas/src/*"],
+      "@linnlabs/linnkit": ["packages/linnkit/src/index.ts"],
+      "@linnlabs/linnkit/ports": ["packages/linnkit/src/ports/index.ts"],
+      "@linnlabs/linnkit/contracts": ["packages/linnkit/src/contracts/index.ts"],
+      "@linnlabs/linnkit/runtime-kernel": ["packages/linnkit/src/runtime-kernel/index.ts"],
+      "@linnlabs/linnkit/runtime-kernel/events": ["packages/linnkit/src/runtime-kernel/events/index.ts"],
+      "@linnlabs/linnkit/context-manager": ["packages/linnkit/src/context-manager/index.ts"],
+      "@linnlabs/linnkit/testkit": ["packages/linnkit/src/testkit/index.ts"],
+      "@linnlabs/linnkit/quickstart": ["packages/linnkit/src/quickstart/index.ts"]
+    }
+  },
+  "include": ["src", "host-types/rendererEnv.d.ts"],
+  "exclude": [
+    "src/**/__tests__/**",
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts",
+    "src/renderer/features/brushArtworkGeneration/worker/brushArtworkJobWorker.ts"
+  ]
+}

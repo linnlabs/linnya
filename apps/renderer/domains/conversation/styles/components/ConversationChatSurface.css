@@ -1,0 +1,180 @@
+.conversation-chat-surface {
+  --conversation-chat-surface-input-ring: color-mix(in srgb, var(--color-black) 20%, transparent);
+  --conversation-chat-surface-input-shadow-1: color-mix(in srgb, var(--color-black) 4%, transparent);
+  --conversation-chat-surface-input-shadow-2: color-mix(in srgb, var(--color-black) 3%, transparent);
+  --conversation-chat-surface-input-shadow-3: color-mix(in srgb, var(--color-black) 2.5%, transparent);
+  --conversation-chat-surface-input-shadow-4: color-mix(in srgb, var(--color-black) 2%, transparent);
+  --conversation-chat-surface-compact-input-ring: color-mix(in srgb, var(--color-black) 16%, transparent);
+  --conversation-chat-surface-compact-input-shadow: color-mix(in srgb, var(--color-black) 4%, transparent);
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  background-color: var(--color-bg-default);
+  color: var(--color-text-primary);
+  overflow: hidden;
+}
+
+.conversation-chat-surface .conversation-chat-main {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.conversation-chat-surface .empty-state-layout {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.conversation-chat-surface .empty-state-content {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.conversation-chat-surface .empty-mark {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.conversation-chat-surface .empty-heading {
+  margin: 0 0 28px;
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  text-align: center;
+}
+
+.conversation-chat-surface .empty-description {
+  margin: -16px 0 26px;
+  max-width: 520px;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.conversation-chat-surface .centered-input-box {
+  width: 100%;
+  margin-bottom: 32px;
+}
+
+.conversation-chat-surface .empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.conversation-chat-surface .conversation-chat-host {
+  flex: 1;
+  min-height: 0;
+  background-color: var(--color-bg-default);
+}
+
+.conversation-chat-surface .conversation-footer-shell {
+  padding: 0 16px 18px 16px;
+}
+
+.conversation-chat-surface .input-top-section {
+  padding: 14px 16px 2px;
+}
+
+.conversation-chat-surface .input-editor .ai-assistant-tiptap-editor {
+  min-height: 34px;
+}
+
+.conversation-chat-surface .conversation-footer-surface {
+  box-shadow:
+    0 0 0 0.5px var(--conversation-chat-surface-input-ring),
+    0 1px 3px var(--conversation-chat-surface-input-shadow-1),
+    0 4px 12px var(--conversation-chat-surface-input-shadow-2),
+    0 10px 24px var(--conversation-chat-surface-input-shadow-3),
+    0 24px 48px -8px var(--conversation-chat-surface-input-shadow-4);
+  border-color: transparent;
+  transition: border-color 0.2s ease;
+}
+
+.conversation-chat-surface .ai-assistant-input .input-wrapper:focus-within:not(.is-selector-interacting) {
+  border-color: var(--color-accent-hover-light);
+}
+
+.conversation-chat-surface .conversation-chat-footer-empty-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.conversation-chat-surface .conversation-chat-footer-empty-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.conversation-chat-surface .conversation-chat-footer-empty-footer {
+  flex-shrink: 0;
+}
+
+.conversation-chat-surface--compact .conversation-chat-host {
+  --conversation-content-side-gap: 8px;
+}
+
+.conversation-chat-surface--compact .conversation-chat-host .conversation-view-container,
+.conversation-chat-surface--compact .conversation-chat-host .virtual-conversation-item,
+.conversation-chat-surface--compact .conversation-chat-host .history-loading-state,
+.conversation-chat-surface--compact .conversation-chat-host .panel-footer > .conversation-footer-shell {
+  max-width: none;
+}
+
+.conversation-chat-surface--compact .conversation-chat-host .conversation-view {
+  padding: 8px 0 16px;
+}
+
+.conversation-chat-surface--compact .conversation-chat-host .virtual-conversation-item,
+.conversation-chat-surface--compact .conversation-chat-host .history-loading-state {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.conversation-chat-surface--compact .conversation-footer-shell {
+  --conversation-footer-surface-radius: 12px;
+
+  padding: 0 8px 10px;
+}
+
+.conversation-chat-surface--compact .conversation-footer-surface {
+  box-shadow:
+    0 0 0 0.5px var(--conversation-chat-surface-compact-input-ring),
+    0 4px 12px var(--conversation-chat-surface-compact-input-shadow);
+}
+
+.conversation-chat-surface--compact .input-top-section {
+  padding: 10px 10px 0;
+}
+
+.conversation-chat-surface--compact .input-editor .ai-assistant-tiptap-editor {
+  min-height: 28px;
+  max-height: 140px;
+  font-size: 13px;
+}

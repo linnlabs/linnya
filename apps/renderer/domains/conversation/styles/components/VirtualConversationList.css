@@ -1,0 +1,9 @@
+.virtual-conversation-list,
+.virtual-conversation-item {
+  width: 100%;
+  min-width: 0;
+}
+
+.virtual-conversation-list {
+  background: var(--color-bg-surface);
+}

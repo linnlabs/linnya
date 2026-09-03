@@ -1,0 +1,135 @@
+.ai-assistant-quote-preview {
+  padding: 10px 14px 8px;
+  /*
+   * 引用区紧贴输入框顶部，只应跟随外壳的两个上圆角。
+   * 不单独绘制背景，直接透出输入框 surface，避免覆盖 0.5px 圆角边框的抗锯齿区域。
+   */
+  border-radius: var(--ai-assistant-input-radius) var(--ai-assistant-input-radius) 0 0;
+  background: transparent;
+}
+
+.ai-assistant-quote-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.ai-assistant-quote-preview__label {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.ai-assistant-quote-preview__clear-button {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 999px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.ai-assistant-quote-preview__clear-button:hover {
+  background-color: var(--color-bg-hover-light);
+  color: var(--color-text-secondary);
+}
+
+.ai-assistant-quote-preview__body {
+  display: flex;
+  align-items: flex-start;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.ai-assistant-quote-preview__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ai-assistant-quote-preview__pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: 999px; /* 两头半圆形 */
+  background-color: var(--color-bg-hover-light);
+  color: var(--color-text-primary);
+  transition: background-color 0.15s ease;
+  position: relative; /* 让关闭按钮和渐变遮罩悬浮在文字上方 */
+  overflow: hidden; /* 确保右侧渐变和关闭按钮在 pill 内部裁剪 */
+}
+
+.ai-assistant-quote-preview__pill::before {
+  /* 右侧渐变遮罩用于 hover 时盖住文字，避免关闭按钮和文本重叠。 */
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 64px;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(
+      in srgb,
+      var(--color-bg-hover-light) 50%,
+      transparent
+    ) 35%,
+    var(--color-bg-hover-light) 58%,
+    var(--color-bg-hover-light) 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.ai-assistant-quote-preview__pill-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-assistant-quote-preview__pill-close {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.ai-assistant-quote-preview__pill-close:hover {
+  background-color: var(--color-bg-hover-strong);
+}
+
+.ai-assistant-quote-preview__pill-close svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ai-assistant-quote-preview__pill:hover::before {
+  opacity: 1;
+}
+
+.ai-assistant-quote-preview__pill:hover .ai-assistant-quote-preview__pill-close {
+  opacity: 1;
+  pointer-events: auto;
+}

@@ -1,0 +1,51 @@
+/* 表格单元格内容块样式 */
+.table-cell-content-block {
+  /* 基本布局属性 */
+  display: block; /* 使用 block 以便 width: 100% 生效 */
+  width: 100%;           /* 确保填满单元格宽度 */
+  min-height: 1em;       /* 避免空块塌陷 */
+  margin: 0;
+  box-sizing: border-box; /* 确保 padding 不会增加总宽度 */
+
+  /* 文本处理相关 */
+  white-space: pre-wrap; /* 保留空白符序列和换行符，允许自动换行 */
+  overflow-wrap: break-word; /* 处理长单词或 URL，避免单元格撑宽。 */
+  word-break: normal;          /* 使用正常的断词规则 */
+  line-height: 1.4;           /* 设置合适的行高 */
+  font-size: 0.875em;       /* 字体调小一号 */
+
+  /* 避免创建新的格式化上下文 - 保留这些关键的 */
+  overflow: visible;
+  position: static;
+
+  /* 确保正确的垂直对齐 */
+  vertical-align: top;   /* 与单元格内容对齐 */
+
+  /* 移除可能影响光标行为的属性 */
+  outline: none;         /* 移除焦点时的默认轮廓，由自定义样式控制 */
+  -webkit-user-select: text;  /* 确保文本可选择 */
+  user-select: text;
+}
+
+/* 编辑状态样式 */
+.table-cell-content-block:focus {
+  outline: none;
+  background-color: color-mix(in srgb, var(--color-text-primary) 4%, transparent); /* 轻微背景色表示焦点 */
+}
+
+/* 确保内部文本节点不会创建额外的块级盒子 */
+.table-cell-content-block br {
+  line-height: inherit; /* 继承父元素的行高 */
+}
+
+/* 禁用任何可能干扰光标导航的 ProseMirror 特性 */
+.ProseMirror-gapcursor,
+.ProseMirror-separator {
+  display: none !important;
+}
+
+/* 优化空单元格的显示 */
+.table-cell-content-block:empty::before {
+  content: '\200B'; /* 零宽空格确保空单元格有高度 */
+  display: inline;
+}

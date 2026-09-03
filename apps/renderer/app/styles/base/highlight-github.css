@@ -1,0 +1,104 @@
+/* 自定义柔和低饱和度高亮主题 */
+
+/* 基础样式：文本颜色使用应用变量，背景色由 Block.css 控制 */
+.hljs {
+  color: var(--color-text-primary);
+  /* background 属性不再在这里设置，由 .code-block pre 控制 */
+}
+
+/* 关键字, doctag, 模板标签/变量, 类型, 特殊变量 */
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  color: var(--syntax-keyword);
+}
+
+/* 标题 (Markdown), 函数名, 类名 */
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  color: var(--syntax-function);
+}
+
+/* 变量, 字面量 (true/false/null), 数字, 操作符, 选择器属性/类/ID */
+.hljs-attr,
+.hljs-attribute, /* XML/HTML属性值，可能需要调整，暂时归类 */
+.hljs-literal,
+.hljs-meta, /* 元数据，可能包含字符串等，但整体设个色 */
+.hljs-number,
+.hljs-operator,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-variable {
+  color: var(--syntax-variable);
+}
+
+/* 字符串, 正则表达式 */
+.hljs-meta .hljs-string,
+.hljs-regexp,
+.hljs-string {
+  color: var(--syntax-string);
+}
+
+/* 内建函数/变量, Symbol */
+.hljs-built_in,
+.hljs-symbol {
+  color: var(--syntax-builtin);
+}
+
+/* 注释, 代码块中的代码 (?), 公式 */
+.hljs-code, /* 这个通常指行内代码，颜色应与普通文本接近或略有不同 */
+.hljs-comment,
+.hljs-formula {
+  color: var(--syntax-comment);
+}
+
+/* HTML/XML 标签名, 引用名, 选择器伪类/标签 */
+.hljs-name,
+.hljs-quote,
+.hljs-selector-pseudo,
+.hljs-selector-tag {
+  color: var(--syntax-tag);
+}
+
+/* 不太确定具体指什么，暂时使用变量色 */
+.hljs-subst {
+  color: var(--syntax-variable);
+}
+
+/* Markdown Section */
+.hljs-section {
+  color: var(--syntax-function); /* 用函数/类名颜色 */
+  font-weight: bold;
+}
+
+/* Markdown Bullet */
+.hljs-bullet {
+  color: var(--syntax-tag); /* 用标签颜色 */
+}
+
+/* 强调 (斜体) */
+.hljs-emphasis {
+  font-style: italic;
+}
+
+/* 加粗 */
+.hljs-strong {
+  font-weight: bold;
+}
+
+/* Diff 新增 */
+.hljs-addition {
+  color: var(--syntax-addition);
+}
+
+/* Diff 删除 */
+.hljs-deletion {
+  color: var(--syntax-deletion);
+}

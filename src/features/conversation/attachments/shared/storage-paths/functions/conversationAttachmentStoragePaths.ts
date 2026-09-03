@@ -1,0 +1,8 @@
+export {
+  createLegacyAppManagedImageStoragePaths as createLegacyAppConversationAttachmentStoragePaths,
+  createLegacyWorkspaceManagedImageStoragePaths as createLegacyWorkspaceImageStoragePaths,
+  createManagedImageContentIdentity as createConversationImageContentIdentity,
+  createManagedImageStoragePaths as createConversationAttachmentStoragePaths,
+  isManagedImageResourceUri as isConversationAttachmentUri,
+  managedImageExtension as conversationImageExtension,
+} from 'src/domains/assets/shared/managed-image-storage';

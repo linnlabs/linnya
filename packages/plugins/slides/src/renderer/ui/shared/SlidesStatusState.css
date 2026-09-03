@@ -1,0 +1,65 @@
+.slides-status-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 48px 16px;
+  text-align: center;
+}
+
+.slides-status-state .status-icon {
+  width: 22px;
+  height: 22px;
+  color: var(--color-text-placeholder);
+  opacity: 0.85;
+}
+
+.slides-status-state .status-icon.spinning {
+  animation: slides-status-spin 1s linear infinite;
+}
+
+.slides-status-state .status-title {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.slides-status-state .status-description {
+  margin: 0;
+  color: var(--color-text-placeholder);
+  font-size: 12px;
+}
+
+.slides-status-state .status-action {
+  padding: 6px 16px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.slides-status-state .status-action:hover {
+  border-color: var(--color-border-hover);
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.slides-status-state.is-error .status-icon,
+.slides-status-state.is-error .status-title {
+  color: var(--color-text-secondary);
+}
+
+@keyframes slides-status-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

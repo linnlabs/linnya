@@ -1,0 +1,191 @@
+.subrun-trace-panel {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.subrun-trace-panel.subrun-trace-panel--completed {
+  border-top: 1px solid var(--color-border-light);
+  padding-top: 10.5px;
+  margin-top: 10.5px;
+}
+
+.subrun-trace-panel .deep-trace__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  padding: 2px 10px;
+}
+
+.subrun-trace-panel.subrun-trace-panel--collapsible .deep-trace__header {
+  cursor: pointer;
+}
+
+.subrun-trace-panel .deep-trace__title {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.subrun-trace-panel .deep-trace__meta {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+.subrun-trace-panel .deep-trace__actions {
+  margin-left: auto;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.subrun-trace-panel .deep-trace__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.subrun-trace-panel .deep-trace__action:hover:not(:disabled) {
+  color: var(--color-accent);
+}
+
+.subrun-trace-panel .deep-trace__action:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.subrun-trace-panel .deep-trace__toggle {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.subrun-trace-panel .deep-trace__actions + .deep-trace__toggle {
+  margin-left: var(--spacing-xs);
+}
+
+.subrun-trace-panel.subrun-trace-panel--collapsible .deep-trace__header:hover .deep-trace__toggle {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-underline-offset: 2px;
+}
+
+.subrun-trace-panel .deep-trace__body {
+  padding: 6px 10px 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subrun-trace-panel .deep-trace__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  position: relative;
+}
+
+.subrun-trace-panel .deep-trace__marker {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.subrun-trace-panel .deep-trace__line {
+  position: absolute;
+  top: 7px;
+  bottom: -13px;
+  width: 1px;
+  background-color: var(--color-border-light);
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  z-index: 0;
+}
+
+.subrun-trace-panel .deep-trace__row.has-next .deep-trace__line {
+  display: block;
+}
+
+.subrun-trace-panel .deep-trace__dot-wrapper {
+  width: 10px;
+  height: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg-surface);
+  z-index: 1;
+  position: relative;
+}
+
+.subrun-trace-panel .deep-trace__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background-color: var(--color-border-light);
+}
+
+.subrun-trace-panel .deep-trace__dot.is-success {
+  background-color: var(--color-accent);
+  opacity: 0.6;
+}
+
+.subrun-trace-panel .deep-trace__dot.is-error {
+  background-color: var(--color-red-400);
+  opacity: 0.6;
+}
+
+.subrun-trace-panel .deep-trace__dot.is-loading {
+  background-color: var(--color-text-tertiary);
+  opacity: 0.6;
+}
+
+.subrun-trace-panel .deep-trace__tool {
+  color: var(--color-text-secondary);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subrun-trace-panel .deep-trace__duration {
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.subrun-trace-panel .deep-trace__row.is-active .deep-trace__tool {
+  background: linear-gradient(
+    90deg,
+    var(--color-text-placeholder) 0%,
+    var(--color-text-placeholder) 47%,
+    var(--color-text-primary) 50%,
+    var(--color-text-placeholder) 53%,
+    var(--color-text-placeholder) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: conversation-progress-text-shimmer 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .subrun-trace-panel .deep-trace__row.is-active .deep-trace__tool {
+    animation: none;
+  }
+}

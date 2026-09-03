@@ -1,0 +1,58 @@
+/* src/assets/styles/components/AnnotationHandle.css */
+/* AnnotationHandle.css - 批注手柄视觉样式 (SVG图标版) */
+
+/* 
+ * 批注手柄样式
+ * 作用：提供可视化的批注控制点
+ */
+.annotation-handle {
+  --annotation-entry-color: var(--drag-handle-color);
+  --annotation-entry-hover-color: var(--drag-handle-hover-color);
+  --annotation-entry-active-color: var(--drag-handle-active-color);
+  --annotation-entry-hover-bg: var(--drag-handle-hover-bg);
+  --annotation-entry-active-bg: var(--drag-handle-active-bg);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer; /* 指针光标，表示可点击 */
+  opacity: 0; /* 默认不可见 */
+  transition: opacity var(--transition-normal), color var(--transition-normal), background-color var(--transition-normal);
+  border-radius: var(--radius-sm); /* 圆角 */
+  z-index: 200; /* 提高z-index确保在批注层之上 */
+  color: var(--annotation-entry-color); /* 设置默认图标颜色为浅灰色 */
+  background-color: transparent; /* 默认背景透明 */
+  border: 1px solid transparent; /* 默认边框透明 */
+}
+
+/* 批注手柄悬停效果 */
+.annotation-handle:hover {
+  color: var(--annotation-entry-hover-color); /* 改变图标颜色 */
+  background-color: var(--annotation-entry-hover-bg); /* 使用悬停背景色 */
+}
+
+/* 批注手柄激活状态（按下时） */
+.annotation-handle:active {
+  color: var(--annotation-entry-active-color);
+  background-color: var(--annotation-entry-active-bg);
+}
+
+/* 
+ * 当块被悬停时显示批注手柄
+ * 仅当 body 上没有 data-suppress-handle-hover 属性时，此规则才生效 (与 DragHandle 对齐)
+ * 且不再依赖 data-hovered 属性 (避免 JS 延时导致消失时间不一致)
+ */
+body:not([data-suppress-handle-hover]) .root-block-outer:hover .annotation-handle {
+  opacity: 1; /* 完全不透明 */
+}
+
+/* 
+ * 批注图标样式 (SVG)
+ * 作用：控制SVG图标的大小
+ */
+.annotation-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* 删除夜间模式下的所有样式，使用CSS变量实现主题切换 */

@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noImplicitAny": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@linnlabs/linnkit-provider-ai-sdk": ["./src/index.ts"],
+      "@linnlabs/linnkit": ["../linnkit/src/index.ts"],
+      "@linnlabs/linnkit/ports": ["../linnkit/src/ports/index.ts"],
+      "@linnlabs/linnkit/contracts": ["../linnkit/src/contracts/index.ts"]
+    }
+  },
+  "include": [
+    "__tests__/**/*.ts",
+    "bin/**/*.ts",
+    "conformance/**/*.ts",
+    "src/**/*.test.ts",
+    "src/**/__tests__/**/*.ts"
+  ],
+  "exclude": ["dist", "node_modules"]
+}

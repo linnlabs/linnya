@@ -1,0 +1,117 @@
+.project-overview-modal-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 32px 24px;
+}
+
+.project-overview-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  flex-shrink: 0;
+  padding: 0 0 16px;
+}
+
+.project-overview-project-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.project-overview-loading-text {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.project-overview-stats-row {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+  flex-shrink: 0;
+  padding: 2px 0 20px;
+}
+
+.project-overview-stat-cell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.project-overview-stat-value {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  line-height: 1.15;
+}
+
+.project-overview-stat-label {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  line-height: 1.4;
+}
+
+.project-overview-error-text {
+  margin: -8px 0 16px;
+  font-size: 12px;
+  color: var(--color-error);
+}
+
+.project-overview-divider {
+  flex-shrink: 0;
+  height: 1px;
+  background-color: var(--color-border-light);
+  margin-bottom: 20px;
+}
+
+.project-overview-kb-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+/*
+ * 项目概览选择 internal 模式：标题和统计固定，关联列表各自滚动，保存区由业务面板固定。
+ * 这些约束只作用于当前嵌入场景，不改变 ProjectKbSettingsPanel 在其它页面的自适应高度。
+ */
+.project-overview-kb-section .kb-settings-embedded {
+  flex: 1;
+  min-height: 0;
+}
+
+.project-overview-kb-section .kb-settings-embedded .project-kb-header,
+.project-overview-kb-section .kb-settings-embedded .project-kb-footer {
+  flex-shrink: 0;
+}
+
+.project-overview-kb-section .kb-settings-embedded .project-kb-body,
+.project-overview-kb-section .kb-settings-embedded .columns,
+.project-overview-kb-section .kb-settings-embedded .column-wrapper {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.project-overview-kb-section .kb-settings-embedded .columns {
+  align-items: stretch;
+}
+
+.project-overview-kb-section .kb-settings-embedded .column-wrapper {
+  flex-direction: column;
+}
+
+.project-overview-kb-section .kb-settings-embedded .column {
+  min-height: 0;
+  max-height: none;
+}

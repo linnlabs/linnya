@@ -1,0 +1,173 @@
+/* TimePicker 的结构、主题和动画由 Renderer UI 唯一拥有。 */
+.time-root {
+  position: relative;
+  display: inline-block;
+  width: auto;
+}
+
+.time-root .time-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+  height: 32px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background-color: var(--color-bg-search-light);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.time-root .time-button:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover);
+}
+
+.time-root .time-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: var(--linnya-ui-layer-picker);
+  min-width: 140px;
+  background-color: var(--color-bg-surface);
+  border-radius: 8px;
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+}
+
+.time-root .time-popover-body {
+  padding: 8px 10px 6px;
+}
+
+.time-root .time-select-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.time-root .time-select-wrapper {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: center;
+  width: auto;
+}
+
+.time-root .time-separator {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--color-text-tertiary);
+}
+
+.time-root .time-arrow-icon {
+  width: 14px;
+  height: 14px;
+  margin-left: 8px;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+  transition: transform 0.2s ease-in-out;
+}
+
+.time-root .time-arrow-icon.is-open {
+  transform: rotate(180deg);
+}
+
+.time-root .time-select-trigger {
+  position: relative;
+  width: auto;
+  min-width: 50px;
+  height: auto;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+}
+
+.time-root .time-select-trigger:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+.time-root .time-select-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.time-root .time-select-options {
+  top: auto;
+  bottom: calc(100% + 4px);
+  z-index: var(--linnya-ui-layer-popover);
+  max-height: 240px;
+}
+
+.time-root .time-popover-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 6px 12px 10px;
+}
+
+.time-root .time-action-button {
+  min-width: 60px;
+  height: 26px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.time-root .time-action-button.secondary {
+  color: var(--color-text-tertiary);
+  background-color: transparent;
+  border-color: var(--color-border-default);
+}
+
+.time-root .time-action-button.secondary:hover {
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-border-hover);
+}
+
+.time-root .time-action-button.primary {
+  color: var(--color-white);
+  background-color: var(--color-accent);
+}
+
+.time-root .time-action-button.primary:hover {
+  background-color: var(--color-accent-hover);
+}
+
+.time-root .time-fade-enter-active,
+.time-root .time-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.time-root .time-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.time-root .time-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.time-root .time-fade-enter-to,
+.time-root .time-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}

@@ -1,0 +1,74 @@
+.timeline-dot {
+  --timeline-dot-surface: var(--color-bg-surface);
+  --timeline-dot-inactive-bg: color-mix(in srgb, var(--color-text-primary) 18%, var(--timeline-dot-surface));
+  --timeline-dot-active-bg: var(--color-accent);
+  --timeline-dot-active-ring: var(--color-accent-bg);
+  --timeline-dot-hover-bg: var(--color-accent-light);
+
+  position: absolute;
+  top: calc(var(--timeline-track-padding, 12px) + var(--n) * (100% - 2 * var(--timeline-track-padding, 12px)));
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.timeline-dot::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  content: '';
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.timeline-dot .dot-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--timeline-dot-inactive-bg);
+  box-shadow:
+    var(--shadow-xs),
+    0 0 0 2px var(--timeline-dot-surface);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition:
+    width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.timeline-dot.active .dot-indicator {
+  width: 8px;
+  height: 8px;
+  background: var(--timeline-dot-active-bg);
+  box-shadow:
+    var(--shadow-xs),
+    0 0 0 3px var(--timeline-dot-active-ring);
+}
+
+.timeline-dot:hover .dot-indicator {
+  background: var(--timeline-dot-hover-bg);
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+.timeline-dot:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 3px;
+}

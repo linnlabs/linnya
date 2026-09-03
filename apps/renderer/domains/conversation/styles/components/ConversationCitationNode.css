@@ -1,0 +1,56 @@
+.conversation-citation-node {
+  --conversation-citation-accent: var(--color-accent);
+  --conversation-citation-accent-hover: var(--color-accent-hover);
+  --conversation-citation-bg: color-mix(in srgb, var(--conversation-citation-accent) 10%, transparent);
+  --conversation-citation-bg-hover: color-mix(in srgb, var(--conversation-citation-accent) 18%, transparent);
+  --conversation-citation-bg-active: color-mix(in srgb, var(--conversation-citation-accent) 25%, transparent);
+  --conversation-citation-focus-ring: color-mix(in srgb, var(--conversation-citation-accent) 40%, transparent);
+  --conversation-citation-empty-bg: var(--color-bg-sidebar);
+  --conversation-citation-empty-hover-bg: var(--color-bg-hover);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 1px;
+  padding: 2px 4px;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  vertical-align: baseline;
+  cursor: pointer;
+  border-radius: 3px;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+  user-select: none;
+}
+
+.conversation-citation-node.has-citation {
+  color: var(--conversation-citation-accent);
+  background: var(--conversation-citation-bg);
+}
+
+.conversation-citation-node.has-citation:hover {
+  color: var(--conversation-citation-accent-hover);
+  background: var(--conversation-citation-bg-hover);
+}
+
+.conversation-citation-node.has-citation:active {
+  background: var(--conversation-citation-bg-active);
+}
+
+.conversation-citation-node.no-citation {
+  color: var(--color-text-tertiary);
+  background: var(--conversation-citation-empty-bg);
+}
+
+.conversation-citation-node.no-citation:hover {
+  color: var(--color-text-secondary);
+  background: var(--conversation-citation-empty-hover-bg);
+}
+
+.conversation-citation-node:focus-visible {
+  outline: 2px solid var(--conversation-citation-focus-ring);
+  outline-offset: 1px;
+}

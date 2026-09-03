@@ -1,0 +1,210 @@
+/**
+ * 编辑器外壳样式
+ * 
+ * 包含：
+ * - .editor-shell 主容器样式
+ * - .main-flow 网格布局
+ * - .scroll-content-wrapper 滚动容器
+ * - .annotation-layer 批注层
+ * - 自定义滚动条样式
+ */
+
+/* === 编辑器外壳容器 === */
+
+.editor-shell {
+  flex-grow: 1;
+  overflow: auto; /* 允许垂直和水平滚动 */
+  padding: var(--spacing-md) 0;
+  padding-bottom: 50vh; /* 底部留白，仅编辑器视图生效 */
+  position: relative;
+  background-color: var(--color-bg-default);
+  z-index: 1;
+}
+
+/* 非编辑器视图：去掉额外底部留白 */
+.editor-shell.for-non-editor {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 0;
+}
+
+/* 项目初始化视图：占满高度，由外层统一管理滚动（避免对话组件内再嵌套一层滚动） */
+.editor-shell.for-project-setup {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  height: 100%;
+  min-height: 0;
+  /**
+   * 中文说明：
+   * - 解决“消息最开始看起来居中，内容变多后才左对齐”的视觉抖动。
+   * - 根因是滚动条在内容溢出前后会“出现/消失”，导致可用宽度变化，居中的内容列会发生水平位移。
+   * - `scrollbar-gutter: stable` 会提前预留滚动条占位，使布局从第一帧开始就稳定。
+   */
+  scrollbar-gutter: stable;
+}
+
+.editor-shell.for-project-setup .scroll-content-wrapper {
+  /* 允许内容自然撑开高度，由 .editor-shell 滚动 */
+  height: auto;
+  /* 确保占满高度，使子元素能够撑开到底部 */
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 知识库视图：由 editor-shell 统一滚动，滚动条贴 app 主窗口最右侧。 */
+.editor-shell.for-knowledge-base {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  height: 100%;
+  min-height: 0;
+  scrollbar-gutter: stable;
+}
+
+.editor-shell.for-knowledge-base .scroll-content-wrapper {
+  height: auto;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-shell.for-knowledge-base .main-flow {
+  width: 100%;
+  min-height: 100%;
+}
+
+.editor-shell.for-knowledge-base .page-main-content {
+  min-height: 100%;
+}
+
+.editor-shell.for-knowledge-base::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+}
+
+/* 插件视图：由 editor-shell 统一滚动，滚动条贴主内容区域最右侧，避免页面内部滚动条落在内容列中间。 */
+.editor-shell.for-plugin-store {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  height: 100%;
+  min-height: 0;
+  scrollbar-gutter: stable;
+}
+
+.editor-shell.for-plugin-store .scroll-content-wrapper {
+  height: auto;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-shell.for-plugin-store .main-flow {
+  width: 100%;
+  min-height: 100%;
+}
+
+.editor-shell.for-plugin-store .page-main-content {
+  min-height: 100%;
+}
+
+/* === 中心网格容器 === */
+
+.main-flow {
+  display: grid;
+  /* 三列对称 Grid：左空白 | 正文 | 右空白 */
+  grid-template-columns: 1fr minmax(0, 1000px) 1fr;
+  column-gap: var(--spacing-lg);
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* === 全尺寸容器 (非 Grid 布局) === */
+.full-size-container {
+  width: 100%;
+  height: 100%;
+}
+
+
+/* === 滚动内容包装器 === */
+
+.scroll-content-wrapper {
+  position: relative;
+  /* 高度由内部 .main-flow 自然撑开 */
+}
+
+/* === 批注层 === */
+
+.annotation-layer {
+  position: absolute;
+  inset: 0; /* 占满整个 scroll-content-wrapper */
+  z-index: 100;
+  box-sizing: border-box;
+  width: 100%;
+  background-color: transparent;
+  pointer-events: none; /* 允许点击穿透 */
+}
+
+/* === Notion 风格自定义滚动条 === */
+
+.editor-shell::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.editor-shell::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editor-shell::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.editor-shell::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+/* 对话居中工作台：全屏、无外层留白，高度链完整传递给 WorkspaceStage */
+.editor-shell.for-chat-centric,
+.editor-shell.for-workspace-stage {
+  overflow: hidden;
+  padding: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.editor-shell.for-chat-centric .scroll-content-wrapper,
+.editor-shell.for-workspace-stage .scroll-content-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* === 通用页面主内容区域 === */
+
+.page-main-content {
+  grid-column: 2 / 3;
+  max-width: 1000px;
+  width: 100%;
+  justify-self: center;
+  position: relative;
+  overflow-y: visible;
+  box-sizing: border-box;
+}
+
+/* === 编辑器主内容区域 === */
+
+.editor-main-content {
+  grid-column: 2 / 3;
+  max-width: 1000px;
+  width: 100%;
+  justify-self: center;
+  position: relative;
+  overflow-y: visible;
+  box-sizing: border-box;
+}

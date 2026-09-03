@@ -1,0 +1,140 @@
+.presentation-action-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px 12px;
+}
+
+.presentation-action-card .loading-state,
+.presentation-action-card .error-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.presentation-action-card .loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: presentation-action-card-spin 1s linear infinite;
+}
+
+@keyframes presentation-action-card-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.presentation-action-card .content-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.presentation-action-card .result-action {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+.presentation-action-card .presentation-link {
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent);
+  padding: 0 2px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.presentation-action-card .presentation-link:hover {
+  color: var(--color-accent-hover);
+}
+
+.presentation-action-card .presentation-name {
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 2px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presentation-action-card .summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.presentation-action-card .summary-item {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+.presentation-action-card .quality-gate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-bg-sidebar);
+  border: 1px solid var(--color-border-light);
+}
+
+.presentation-action-card .quality-gate--pass {
+  border-color: var(--color-success);
+}
+
+.presentation-action-card .quality-gate__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.presentation-action-card .quality-gate__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.presentation-action-card .actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.presentation-action-card .action-button {
+  appearance: none;
+  border: 1px solid var(--color-border-default);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.presentation-action-card .action-button:hover {
+  background: var(--color-bg-hover);
+}

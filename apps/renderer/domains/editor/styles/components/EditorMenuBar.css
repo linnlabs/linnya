@@ -1,0 +1,182 @@
+/* EditorMenuBar.css - 编辑器菜单栏视觉样式 */
+/* 注意：这些样式已被移动到MenuBar.vue组件中，这里保留仅作参考 */
+
+/* 
+ * 菜单栏内部容器样式
+ * 作用：提供菜单栏的视觉样式和按钮布局
+ */
+.editor-menu-bar {
+  position: sticky; 
+  top: 0; 
+  z-index: 100; 
+  background-color: var(--color-bg-default);
+  padding: 4px 10px; 
+  border-bottom: 0px solid var(--color-gray-100); 
+  pointer-events: auto; 
+  /* 使其内容居中 */
+  display: flex;
+  justify-content: center;
+  width: 100%; /* 确保容器占据可用宽度 */
+}
+
+/* 内部容器，包含按钮组 */
+.editor-menu-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  /* 允许内容决定宽度，但可以设置最大宽度 */
+  width: auto; 
+  max-width: 1200px; /* 可选：限制最大宽度 */
+  flex-wrap: wrap; /* 允许按钮换行 */
+  flex-grow: 0; /* 防止拉伸 */
+  margin-left: 0; /* 移除外边距 */
+  margin-right: 0;
+}
+
+/* 通用按钮样式 */
+.editor-menu-bar button {
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  padding: 4px 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text-tertiary);
+  transition: background-color 0.2s ease, color 0.2s ease; /* 统一过渡效果 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px; /* 统一按钮高度 */
+}
+
+/* 按钮内的 SVG 图标样式 */
+.editor-menu-bar button svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* 标题级别文本样式 */
+.editor-menu-bar button .heading-level-text {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  width: 20px; /* 与SVG图标宽度一致 */
+  height: 20px; /* 与SVG图标高度一致 */
+  line-height: 20px; /* 垂直居中 */
+  text-align: center;
+}
+
+.editor-menu-bar button .ordered-list-label {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.editor-menu-bar button .llm-debug-label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* 按钮悬停效果 */
+.editor-menu-bar button:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+/* 激活状态按钮样式 */
+.editor-menu-bar button.is-active {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+/* ++ 新增：激活状态按钮的悬停效果 ++ */
+.editor-menu-bar button.is-active:hover:not(:disabled) {
+  background-color: var(--color-accent-bg-hover);
+}
+
+/* ++ 新增：禁用状态按钮样式 ++ */
+.editor-menu-bar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 分隔线样式 */
+.divider {
+  display: inline-block;
+  width: 1px;
+  height: 20px; /* 或根据按钮高度调整 */
+  background-color: var(--color-border-default);
+  margin: 0 4px; /* 调整间距 */
+  vertical-align: middle; /* 垂直居中对齐 */
+}
+
+/* 文件按钮容器 */
+.file-button-container {
+  position: relative; 
+  display: inline-block; 
+}
+
+/* 菜单容器样式 */
+.file-menu-container,
+.heading-menu-container {
+  position: relative;
+}
+
+/* CustomSelect 包装器的定位样式 */
+.file-select-wrapper,
+.heading-select-wrapper {
+  position: fixed;
+  z-index: 1050;
+  /* 确保包装器不会干扰内部组件的布局 */
+  width: auto;
+  height: auto;
+}
+
+.heading-select-wrapper .editor-heading-option-label {
+  /* 中文说明：标题菜单文案用 NBSP 对齐等级与标题名，必须保留空白渲染。 */
+  white-space: pre-wrap;
+}
+
+/* ++ 新增：下拉菜单过渡动画 ++ */
+.menu-fade-enter-active,
+.menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.menu-fade-enter-from,
+.menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+
+
+/* 下拉菜单分隔线 */
+.dropdown-divider {
+  height: 1px;
+  background-color: var(--color-border-default);
+  margin: var(--spacing-xs) var(--spacing-sm); 
+}
+
+/* 主题切换按钮特殊图标样式（如果需要） */
+.theme-toggle-button span {
+  display: inline-block; /* 让 span 可以设置大小 */
+  line-height: 1; /* 确保图标垂直居中 */
+}
+
+/* 调试按钮特殊样式（如果需要） */
+.debug-button {
+  background-color: var(--color-red-350); /* 调试入口需要显眼，但仍使用基础色阶。 */
+  color: var(--color-white);
+}
+
+.debug-button:hover {
+  background-color: var(--color-red-400);
+}
+
+/* 加粗、斜体按钮内图标/文字样式 */
+.menu-icon {
+  font-weight: bold; /* B */
+}
+.menu-icon i {
+  font-style: italic; /* I */
+}

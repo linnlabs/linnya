@@ -1,0 +1,275 @@
+/* ReferenceAddon 嵌在 mindmap 节点内部，交互门禁仍由组件模板维护。 */
+.mm-evidence-in-node {
+  pointer-events: auto;
+}
+
+.mm-evidence-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.mm-evidence-count {
+  color: var(--color-text-tertiary);
+}
+
+.mm-evidence-container {
+  margin-top: 8px;
+  cursor: default;
+  display: inline-block;
+  /* 引用块要跟随 topic 文本宽度，但仍保留最小宽度，避免短节点被压得过窄。 */
+  min-width: var(--mm-evidence-min-width, 220px);
+  /* 与 mindmap topic 最大宽度保持一致，避免引用块提前卡死在固定宽度。 */
+  max-width: var(--mm-topic-max-width, 35em);
+  width: auto;
+  box-sizing: border-box;
+  align-self: flex-start;
+}
+
+.mm-evidence-container.is-expanded {
+  max-height: 220px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mm-evidence-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
+  cursor: default;
+  box-sizing: border-box;
+}
+
+.mm-evidence-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mm-reference-collapse-toggle {
+  border: none;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  padding: 2px;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.mm-reference-collapse-toggle:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.mm-reference-toggle-icon,
+.mm-reference-toggle-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.mm-evidence-add-button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  padding: 1px;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mm-evidence-add-button:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.mm-evidence-add-icon,
+.mm-evidence-add-icon svg,
+.mm-evidence-item-delete-icon,
+.mm-evidence-item-delete-icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.mm-evidence-preview {
+  margin-top: 8px;
+  cursor: default;
+  user-select: text;
+  width: 100%;
+  /* 点击只用于展开，不显示系统焦点框。 */
+  outline: none;
+}
+
+.mm-evidence-preview-block {
+  position: relative;
+  padding: 8px 10px;
+  background: var(--color-bg-surface);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: text;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.mm-evidence-preview-text {
+  /*
+   * 折叠态竖线来自 .mm-evidence-preview-block::after；
+   * 省略号裁剪必须只作用在文本本身，避免伪元素被 border-radius 裁掉。
+   */
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mm-evidence-preview-block::after,
+.mm-evidence-item::after {
+  content: '';
+  position: absolute;
+  /* 左侧引用线不留边距，贴边显示。 */
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  background-color: var(--color-border-default);
+  border-radius: 1.5px;
+  pointer-events: none;
+}
+
+.mm-evidence-body {
+  margin-top: 8px;
+  padding: 0 2px 2px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.mm-evidence-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.mm-evidence-list-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 10px;
+}
+
+.mm-evidence-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mm-evidence-list-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-default);
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.mm-evidence-list-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-border-hover);
+}
+
+.mm-evidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mm-evidence-item-title {
+  font-size: 12px;
+  color: var(--color-text-primary);
+  font-weight: 500;
+  cursor: text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* 为右上角删除按钮预留空间，避免标题被遮挡。 */
+  padding-right: 24px;
+}
+
+.mm-evidence-item {
+  position: relative;
+  padding: 8px 10px;
+  background: var(--color-bg-surface);
+  border-radius: 8px;
+  cursor: default;
+}
+
+.mm-evidence-item-container-title {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  cursor: text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 24px;
+}
+
+.mm-evidence-item-placeholder {
+  color: var(--color-text-tertiary);
+  cursor: default;
+}
+
+.mm-evidence-item-delete {
+  position: absolute;
+  /* 右上角 close icon 往左/下内缩，避免贴边。 */
+  top: 4px;
+  right: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  border-radius: 4px;
+  color: var(--color-text-tertiary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mm-evidence-item-delete:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-error);
+}
+
+.mm-evidence-item-snippet {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: text;
+  /* 引用内容超出 8 行时用省略号代替，避免占用过多空间。 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 8;
+  line-clamp: 8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}

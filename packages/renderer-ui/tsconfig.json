@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.bundler-base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue"]
+}

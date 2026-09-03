@@ -1,0 +1,7 @@
+.kb-view-container {
+  min-height: 100%;
+  width: 100%;
+  background-color: var(--color-bg-default);
+  color: var(--color-text-primary);
+  overflow: visible;
+}

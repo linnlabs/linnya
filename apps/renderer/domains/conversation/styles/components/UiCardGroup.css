@@ -1,0 +1,226 @@
+.ui-card-group {
+  --ui-card-group-timeline-line-color: var(--color-border-light);
+  --ui-card-group-window-hint-hover-bg: var(--color-bg-hover-light);
+  --ui-card-group-action-muted-color: var(--color-text-muted);
+
+  display: flex;
+  width: 100%;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.ui-card-group .ui-card-group-expand-enter-active,
+.ui-card-group .ui-card-group-expand-leave-active {
+  transition: all 0.2s ease-in-out;
+  overflow: hidden;
+}
+
+.ui-card-group .timeline-marker {
+  width: 8px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 8px;
+  cursor: pointer;
+  position: relative;
+  margin-top: 1px;
+}
+
+.ui-card-group .timeline-marker.is-expanded {
+  margin-right: 8px;
+}
+
+.ui-card-group .timeline-line {
+  position: absolute;
+  top: 10px;
+  bottom: -24px;
+  width: 2px;
+  background-color: var(--ui-card-group-timeline-line-color);
+  z-index: 0;
+  display: none;
+  left: 50%;
+  transform: translateX(-1px);
+}
+
+.ui-card-group .timeline-marker.has-next .timeline-line {
+  display: block;
+}
+
+.ui-card-group .timeline-node {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg-surface);
+  z-index: 1;
+  position: relative;
+}
+
+.ui-card-group .node-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--color-text-placeholder);
+  background-color: var(--color-bg-surface);
+  position: absolute;
+  opacity: 1;
+  transform: scale(1);
+  transition: all 0.2s ease;
+}
+
+.ui-card-group .node-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-secondary);
+  position: absolute;
+
+  --scale: 0.8;
+  --rotate: 0deg;
+  --opacity: 0;
+
+  opacity: var(--opacity);
+  transform: scale(var(--scale)) rotate(var(--rotate));
+  transition: all 0.2s ease;
+}
+
+.ui-card-group .node-chevron.is-expanded {
+  --rotate: 90deg;
+}
+
+.ui-card-group .timeline-marker:hover .node-dot,
+.ui-card-group:hover .node-dot {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.ui-card-group .timeline-marker:hover .node-chevron,
+.ui-card-group:hover .node-chevron {
+  --scale: 1;
+  --opacity: 1;
+}
+
+.ui-card-group .content-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-card-group .ui-card-header {
+  height: 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ui-card-group .ui-card-header-text {
+  position: relative;
+  display: inline-block;
+  font-size: 13px;
+  color: var(--color-text-placeholder);
+  font-weight: 400;
+  transition: color 0.2s ease;
+}
+
+/* 流光必须独立覆盖在实色文字上；切换文字填充模式会在完成帧造成整组 header 闪烁。 */
+.ui-card-group .ui-card-header-text::after {
+  content: attr(data-header-text);
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    var(--color-text-placeholder) 40%,
+    var(--color-text-primary) 50%,
+    var(--color-text-placeholder) 60%
+  );
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease-out;
+}
+
+.ui-card-group .ui-card-header-text.is-streaming::after {
+  opacity: 1;
+  animation: ui-card-group-shine 2.5s linear infinite;
+}
+
+@keyframes ui-card-group-shine {
+  0% {
+    background-position: 100% center;
+  }
+
+  80% {
+    background-position: 0% center;
+  }
+
+  100% {
+    background-position: 0% center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-card-group .ui-card-header-text.is-streaming {
+    color: var(--color-text-primary);
+  }
+
+  .ui-card-group .ui-card-header-text.is-streaming::after {
+    opacity: 0;
+    animation: none;
+  }
+}
+
+.ui-card-group .ui-card-header:hover .ui-card-header-text {
+  color: var(--color-text-primary);
+}
+
+.ui-card-group .ui-card-body {
+  padding-top: 12px;
+  width: 100%;
+}
+
+.ui-card-group .ui-card-body--bounded {
+  box-sizing: border-box;
+  max-height: min(60vh, 480px);
+  padding-right: 1px;
+  padding-left: 1px;
+  overflow-y: auto;
+}
+
+.ui-card-group .ui-card-body__window-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0 10px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.ui-card-group .ui-card-body__window-hint-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-card-group .ui-card-body__window-hint-btn {
+  flex-shrink: 0;
+  border: 1px solid var(--ui-card-group-timeline-line-color);
+  background: var(--color-bg-subtle);
+  color: var(--ui-card-group-action-muted-color);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ui-card-group .ui-card-body__window-hint-btn:hover {
+  background: var(--ui-card-group-window-hint-hover-bg);
+}
+
+.ui-card-group .ui-card-body .ai-message:first-child {
+  margin-top: 0;
+}

@@ -1,0 +1,51 @@
+/* apps/renderer/domains/settings/styles/components/AboutTab.css */
+/* 更新日志与联系方式是叙述性内容，不是表单，保留自己的排版。 */
+
+.about-release-notes {
+  padding-left: 20px;
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  list-style-type: disc;
+}
+
+.about-release-notes li + li {
+  margin-top: var(--spacing-xs);
+}
+
+.about-contact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.about-contact p {
+  margin: 0;
+}
+
+.about-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: var(--spacing-sm) 0 0;
+}
+
+.about-contact-list > div {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.about-contact-list dt {
+  flex-shrink: 0;
+  min-width: 72px;
+  color: var(--color-text-tertiary);
+}
+
+.about-contact-list dd {
+  margin: 0;
+  color: var(--color-text-primary);
+}

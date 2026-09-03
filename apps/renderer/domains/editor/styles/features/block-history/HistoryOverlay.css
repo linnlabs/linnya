@@ -1,0 +1,164 @@
+.history-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 2px solid var(--color-border-accent-light);
+  border-radius: 8px;
+  background-color: color-mix(
+    in srgb,
+    var(--color-bg-default) 95%,
+    transparent
+  );
+  backdrop-filter: blur(4px);
+}
+
+.history-overlay .overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border-default);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-info-bg) 80%, var(--color-white)) 0%,
+    var(--color-info-bg) 100%
+  );
+}
+
+.history-overlay .header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.history-overlay .version-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background-color: var(--color-info);
+  color: var(--color-text-on-accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.history-overlay .version-time {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.history-overlay .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-overlay .overlay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.history-overlay .overlay-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.history-overlay .restore-btn {
+  background-color: var(--color-success);
+  color: var(--color-text-on-accent);
+}
+
+.history-overlay .restore-btn:hover:not(:disabled) {
+  background-color: color-mix(
+    in srgb,
+    var(--color-success) 85%,
+    var(--color-black) 15%
+  );
+}
+
+.history-overlay .close-btn {
+  padding: 5px;
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.history-overlay .close-btn:hover {
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-primary);
+}
+
+.history-overlay .overlay-content {
+  flex: 1;
+  padding: 12px 16px;
+  overflow-y: auto;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.history-overlay .overlay-line {
+  padding: 2px 0;
+}
+
+.history-overlay .overlay-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+.history-overlay .overlay-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-top: 1px solid var(--color-border-default);
+  background-color: var(--color-bg-subtle);
+}
+
+.history-overlay .tip {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+}
+
+.history-overlay .origin-type {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.history-overlay .origin-ai {
+  color: var(--color-accent-light);
+}
+
+.history-overlay .origin-manual {
+  color: var(--color-success);
+}
+
+.history-overlay .origin-restore {
+  color: var(--color-warning);
+}
+
+.overlay-fade-enter-active,
+.overlay-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.overlay-fade-enter-from,
+.overlay-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.98);
+}

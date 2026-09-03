@@ -1,0 +1,202 @@
+.command-execution-card {
+  min-width: 0;
+}
+
+.command-execution-card__terminal-window {
+  min-width: 0;
+}
+
+.command-execution-card__command,
+.command-execution-card__output {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.command-execution-card__command-line {
+  display: flex;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px 12px 3px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.command-execution-card__prompt {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+  user-select: none;
+}
+
+.command-execution-card__command {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+
+.command-execution-card__empty {
+  padding: 8px 12px 12px 30px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.command-execution-card__output {
+  box-sizing: border-box;
+  max-height: 320px;
+  margin: 0;
+  padding: 0 12px 12px;
+  overflow-x: auto;
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--color-border-default) transparent;
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: thin;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.command-execution-card__output::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.command-execution-card__output::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.command-execution-card__output::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-color: var(--color-border-default);
+  background-clip: content-box;
+}
+
+.command-execution-card__output::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-border-hover);
+}
+
+.command-execution-card__output::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.command-execution-card__output--pty {
+  color: var(--color-text-secondary);
+  white-space: normal;
+}
+
+.command-execution-card__notices {
+  display: grid;
+  gap: 4px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.command-execution-card__warning {
+  color: var(--color-error);
+  font-size: 12px;
+}
+
+.command-execution-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+  padding: 5px 5px 5px 12px;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.command-execution-card__footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.command-execution-card__footer-right {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.command-execution-card__status,
+.command-execution-card__duration {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.command-execution-card__duration {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.command-execution-card__status.is-running,
+.command-execution-card__status.is-starting {
+  color: var(--color-info);
+}
+
+.command-execution-card__status.is-completed {
+  color: var(--color-success);
+}
+
+.command-execution-card__status.is-rejected,
+.command-execution-card__status.is-failed {
+  color: var(--color-error);
+}
+
+.command-execution-card__cancel,
+.command-execution-card__protected-input,
+.command-execution-card__copy {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  padding: 4px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.command-execution-card__protected-input {
+  display: inline-flex;
+  width: auto;
+  gap: 5px;
+  padding-inline: 6px;
+  white-space: nowrap;
+}
+
+.command-execution-card__cancel:hover:not(:disabled),
+.command-execution-card__protected-input:hover:not(:disabled),
+.command-execution-card__copy:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.command-execution-card__cancel:disabled,
+.command-execution-card__protected-input:disabled,
+.command-execution-card__copy:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.command-execution-card__cancel svg,
+.command-execution-card__protected-input svg,
+.command-execution-card__copy svg {
+  width: 14px;
+  height: 14px;
+}
+
+.command-execution-card__copy.is-copied {
+  color: var(--color-success);
+}
+
+.command-execution-card__copy.is-failed {
+  color: var(--color-error);
+}

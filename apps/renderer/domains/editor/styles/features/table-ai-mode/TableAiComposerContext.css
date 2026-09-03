@@ -1,0 +1,31 @@
+.ai-assistant-table-context {
+  position: relative;
+}
+
+.ai-assistant-table-context .table-context-embedded {
+  padding: 12px 32px 8px 12px;
+}
+
+.ai-assistant-table-context .table-mode-close-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.ai-assistant-table-context .table-mode-close-button:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover-light);
+}

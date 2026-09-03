@@ -1,0 +1,121 @@
+.slides-draft-failure-log {
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--code-block-bg);
+}
+
+.slides-draft-failure-log__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs);
+}
+
+.slides-draft-failure-log__toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 0;
+  padding: var(--spacing-xs);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.slides-draft-failure-log__toggle:hover,
+.slides-draft-failure-log__copy:hover {
+  background: var(--color-bg-hover-strong);
+  color: var(--color-text-primary);
+}
+
+.slides-draft-failure-log__toggle:focus-visible,
+.slides-draft-failure-log__copy:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: -2px;
+}
+
+.slides-draft-failure-log__chevron {
+  width: var(--spacing-md);
+  height: var(--spacing-md);
+  flex: 0 0 auto;
+  transition: transform var(--transition-fast) ease;
+}
+
+.slides-draft-failure-log__chevron.is-expanded {
+  transform: rotate(90deg);
+}
+
+.slides-draft-failure-log__copy {
+  display: inline-grid;
+  width: var(--spacing-lg);
+  height: var(--spacing-lg);
+  flex: 0 0 auto;
+  padding: var(--spacing-xs);
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.slides-draft-failure-log__copy svg {
+  width: var(--spacing-md);
+  height: var(--spacing-md);
+}
+
+.slides-draft-failure-log__copy.is-copied {
+  color: var(--color-success);
+}
+
+.slides-draft-failure-log__copy.is-failed {
+  color: var(--color-error);
+}
+
+.slides-draft-failure-log__content {
+  box-sizing: border-box;
+  max-height: 240px;
+  margin: 0;
+  padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-sm);
+  overflow: auto;
+  overscroll-behavior: contain;
+  /* Chromium 的标准 scrollbar 属性会覆盖下方 WebKit 宽度，局部面板只走共享规范的伪元素方案。 */
+  scrollbar-gutter: stable;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  overflow-wrap: anywhere;
+  text-align: left;
+  white-space: pre-wrap;
+}
+
+.slides-draft-failure-log__content::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.slides-draft-failure-log__content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.slides-draft-failure-log__content::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  background-color: var(--scrollbar-thumb-color);
+  background-clip: content-box;
+}
+
+.slides-draft-failure-log__content::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+.slides-draft-failure-log__content::-webkit-scrollbar-corner {
+  background: transparent;
+}

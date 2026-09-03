@@ -1,0 +1,66 @@
+{
+  "name": "stream-markdown-parser",
+  "type": "module",
+  "version": "0.0.45",
+  "packageManager": "pnpm@10.26.1",
+  "description": "Pure markdown parser and renderer utilities with streaming support - framework agnostic",
+  "author": "Simon He",
+  "license": "MIT",
+  "homepage": "https://github.com/Simon-He95/markstream-vue/tree/main/packages/markdown-parser",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Simon-He95/markstream-vue.git",
+    "directory": "packages/markdown-parser"
+  },
+  "bugs": {
+    "url": "https://github.com/Simon-He95/markstream-vue/issues"
+  },
+  "keywords": [
+    "markdown",
+    "markdown-it",
+    "markdown-it-ts",
+    "parser",
+    "markdown-parser",
+    "markdown-renderer",
+    "ast",
+    "markdown-ast",
+    "streaming",
+    "progressive",
+    "framework-agnostic"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "files": [
+    "src",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "tsdown --watch",
+    "build": "tsdown",
+    "test": "vitest",
+    "test:run": "vitest --run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --cache",
+    "lint:fix": "eslint . --cache --fix",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "markdown-it-container": "^4.0.0",
+    "markdown-it-footnote": "^4.0.0",
+    "markdown-it-ins": "^4.0.0",
+    "markdown-it-mark": "^4.0.0",
+    "markdown-it-sub": "^2.0.0",
+    "markdown-it-sup": "^2.0.0",
+    "markdown-it-task-checkbox": "^1.0.6",
+    "markdown-it-ts": "0.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.3",
+    "tsdown": "^0.15.12",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

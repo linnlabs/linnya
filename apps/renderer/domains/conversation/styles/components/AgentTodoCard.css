@@ -1,0 +1,255 @@
+.agent-todo-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  /**
+   * 视觉对齐：
+   * - Tool 卡片 header 左右 padding 是 12px；
+   * - 这里统一为 12px，确保子组件内的「ToDo」标题与 header 文案左对齐，
+   *   避免出现“略微超出一点点”的错位感。
+   */
+  padding: 6px 12px 10px 14px;
+}
+
+.agent-todo-card .loading-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.agent-todo-card .loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: agent-todo-card-spin 1s linear infinite;
+}
+
+.agent-todo-card .error-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  color: var(--color-text-secondary);
+}
+
+.agent-todo-card .error-icon {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.agent-todo-card .error-text {
+  font-size: 12px;
+}
+
+.agent-todo-card .content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-todo-card .meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.agent-todo-card .meta-left {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.agent-todo-card .meta-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.agent-todo-card .meta-version {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.agent-todo-card .meta-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.agent-todo-card .meta-right .tt-tag-chip {
+  font-size: 10px;
+  /* 关键：覆盖 TagChip 自身 scoped 样式的注入顺序，确保在 ToDo 场景稳定垂直居中 */
+  height: 18px !important;
+  padding: 0 6px !important;
+  line-height: 18px !important;
+  display: inline-flex;
+  align-items: center;
+  transform: none !important;
+}
+
+.agent-todo-card .meta-right .tt-tag-chip__label {
+  display: inline-flex;
+  align-items: center;
+  line-height: 18px !important;
+}
+
+.agent-todo-card .count-text {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  margin-right: 4px;
+  line-height: 18px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.agent-todo-card .empty {
+  padding: 10px 0;
+  color: var(--color-text-tertiary);
+}
+
+.agent-todo-card .empty-title {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.agent-todo-card .empty-subtitle {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.agent-todo-card .list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agent-todo-card .item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  /* 更简洁：每条 todo 不要边框（靠 hover + 间距来区分） */
+  border: none;
+  background-color: var(--color-bg-surface);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.agent-todo-card .item:hover {
+  background-color: var(--color-bg-hover-light);
+}
+
+.agent-todo-card .todo-checkbox {
+  margin-top: 0;
+  flex: 0 0 auto;
+}
+
+.agent-todo-card .todo-checkbox .checkbox-container {
+  /* 压缩：只展示 checkbox，不要额外的 column 布局带来的高度 */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.agent-todo-card .todo-checkbox .checkbox-item {
+  gap: 0;
+  margin: 0;
+  line-height: 1;
+}
+
+.agent-todo-card .todo-checkbox .checkbox-custom {
+  width: 14px;
+  height: 14px;
+}
+
+.agent-todo-card .todo-checkbox .check-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.agent-todo-card .item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.agent-todo-card .item-text {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  word-break: break-word;
+}
+
+.agent-todo-card .item--completed .item-text {
+  color: var(--color-text-tertiary);
+  text-decoration: line-through;
+}
+
+.agent-todo-card .item--cancelled .item-text {
+  color: var(--color-text-tertiary);
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.agent-todo-card .item-status {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.agent-todo-card .item-status .tt-tag-chip {
+  font-size: 10px;
+  height: 18px !important;
+  padding: 0 6px !important;
+  line-height: 18px !important;
+  border: 1px solid var(--color-border-light);
+  display: inline-flex;
+  align-items: center;
+  transform: none !important;
+}
+
+.agent-todo-card .item-status .tt-tag-chip__label {
+  display: inline-flex;
+  align-items: center;
+  line-height: 18px !important;
+}
+
+.agent-todo-card .progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.agent-todo-card .progress-bar {
+  height: 6px;
+  flex: 1;
+  border-radius: 999px;
+  background-color: var(--color-bg-subtle);
+  border: 1px solid var(--color-border-light);
+  overflow: hidden;
+}
+
+.agent-todo-card .progress-bar__fill {
+  height: 100%;
+  background-color: var(--color-accent);
+  border-radius: 999px;
+}
+
+.agent-todo-card .progress-text {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+@keyframes agent-todo-card-spin {
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,88 @@
+/* Renderer UI selection feature：保留迁移前 selector 与 computed style。 */
+.checkbox-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.checkbox-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.checkbox-item .label-content {
+  display: contents;
+}
+
+.checkbox-container .setting-description {
+  margin: 4px 0 0;
+  padding-left: 24px;
+  color: var(--color-text-placeholder);
+  font-size: 12px;
+}
+
+.checkbox-item.disabled-label,
+.checkbox-item.disabled-label .label-content {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.checkbox-item input[type="checkbox"] {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  opacity: 0;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.checkbox-custom {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 3px;
+  background-color: var(--color-bg-surface);
+  box-shadow: var(--shadow-xs);
+  transition: all var(--transition-fast);
+}
+
+.checkbox-item input[type="checkbox"]:disabled ~ .checkbox-custom {
+  background-color: var(--color-bg-disabled);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.checkbox-item:not(.disabled-label):hover .checkbox-custom {
+  border-color: var(--color-accent);
+}
+
+.checkbox-item input[type="checkbox"]:checked ~ .checkbox-custom {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  box-shadow: inset 0 1.5px 2px color-mix(in srgb, var(--color-black) 10%, transparent);
+}
+
+.checkbox-item .check-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  color: var(--color-text-on-accent);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform var(--transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.checkbox-item input[type="checkbox"]:checked ~ .checkbox-custom .check-icon {
+  transform: translate(-50%, -50%) scale(1);
+}

@@ -1,0 +1,81 @@
+/* 用户内容标记色：这些颜色由用户选择，独立于全局 UI 主题色。 */
+
+:root {
+  --block-bg-gray: #f1f1ef;
+  --block-bg-brown: #f4eeee;
+  --block-bg-orange: #faebdd;
+  --block-bg-yellow: #fef3c7;
+  --block-bg-green: #edf7ed;
+  --block-bg-blue: #e7f3f8;
+  --block-bg-purple: #f3effd;
+  --block-bg-pink: #fce8f3;
+  --block-bg-red: #ffe2dd;
+  --block-bg-indigo: #eef2ff;
+  --block-bg-teal: #f0fdfa;
+  --block-bg-mint: #f0fdf4;
+  --block-bg-slate: #f1f5f9;
+  --block-bg-lime: #f7fee7;
+  --block-bg-crimson: #fff1f2;
+
+  --block-text-gray: #787774;
+  --block-text-brown: #9f6b53;
+  --block-text-orange: #d9730d;
+  --block-text-yellow: #cb912f;
+  --block-text-green: #448361;
+  --block-text-blue: #337ea9;
+  --block-text-purple: #9065b0;
+  --block-text-pink: #c14c8a;
+  --block-text-red: #d44c47;
+  --block-text-indigo: #5c6ac4;
+  --block-text-teal: #14b8a6;
+  --block-text-mint: #22c55e;
+  --block-text-slate: #64748b;
+  --block-text-lime: #84cc16;
+  --block-text-crimson: #e11d48;
+
+  --highlight-bright-yellow: #ffff00;
+  --highlight-bright-pink: #ff007f;
+  --highlight-bright-green: #00ff00;
+  --highlight-bright-orange: #ff5500;
+  --highlight-bright-blue: #00bfff;
+}
+
+[data-linnya-ui-theme='dark'] {
+  --block-bg-gray: #454b4e;
+  --block-bg-brown: #594a3a;
+  --block-bg-orange: #594a3a;
+  --block-bg-yellow: #59563b;
+  --block-bg-green: #354c4b;
+  --block-bg-blue: #364954;
+  --block-bg-purple: #443f57;
+  --block-bg-pink: #533b4c;
+  --block-bg-red: #594141;
+  --block-bg-indigo: #4338ca;
+  --block-bg-teal: #115e59;
+  --block-bg-mint: #166534;
+  --block-bg-slate: #475569;
+  --block-bg-lime: #4d7c0f;
+  --block-bg-crimson: #9f1239;
+
+  --block-text-gray: #9b9a97;
+  --block-text-brown: #c79c86;
+  --block-text-orange: #d9a679;
+  --block-text-yellow: #e8d889;
+  --block-text-green: #76c9a0;
+  --block-text-blue: #69b5e6;
+  --block-text-purple: #c299ff;
+  --block-text-pink: #f588c5;
+  --block-text-red: #ff7369;
+  --block-text-indigo: #a5b4fc;
+  --block-text-teal: #5eead4;
+  --block-text-mint: #86efac;
+  --block-text-slate: #cbd5e1;
+  --block-text-lime: #bef264;
+  --block-text-crimson: #fda4af;
+
+  --highlight-bright-yellow: #ffff00;
+  --highlight-bright-pink: #ff1493;
+  --highlight-bright-green: #39ff14;
+  --highlight-bright-orange: #ff7700;
+  --highlight-bright-blue: #00d4ff;
+}

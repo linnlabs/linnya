@@ -1,0 +1,205 @@
+/*
+ * FileTreeView 样式：workspace file-tree 子组件样式。
+ * 普通节点收口到 .workspace-sidebar 下；Teleport 菜单使用组件专属 wrapper 与 transition 名。
+ */
+.workspace-sidebar .file-tree-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.workspace-sidebar .file-tree-view .project-title-header {
+  padding: 0 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  margin: 4px var(--workspace-sidebar-row-margin-x) 0;
+  transition: background-color 0.15s ease;
+}
+
+.workspace-sidebar .file-tree-view .project-title-header.drag-over-root {
+  background-color: var(--color-accent-bg);
+}
+
+.workspace-sidebar .file-tree-view .project-title-header.drag-over-root .project-title-text {
+  color: var(--color-accent);
+}
+
+.workspace-sidebar .file-tree-view .project-title-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--workspace-sidebar-heading-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-sidebar .file-tree-view .header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.workspace-sidebar .file-tree-view .add-button {
+  background: none;
+  border: none;
+  padding: 2px;
+  border-radius: 3px;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workspace-sidebar .file-tree-view .add-button:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.workspace-sidebar .file-tree-view .add-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.workspace-sidebar .file-tree-view .tree-scroll-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.workspace-sidebar .file-tree-view .file-tree {
+  --workspace-sidebar-row-list-padding: 2px 0 4px;
+}
+
+.workspace-sidebar .file-tree-view .file-search-empty-state {
+  margin: 0 10px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--workspace-sidebar-muted-color);
+}
+
+.workspace-sidebar .file-tree-view .empty-directory-state {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 16px 12px 24px;
+  color: var(--workspace-sidebar-label-color);
+  font-size: 13px;
+  gap: 8px;
+  height: 100%;
+}
+
+.workspace-sidebar .file-tree-view .empty-directory-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 12px 12px 14px;
+  border-radius: 4px;
+  background-color: var(--color-bg-subtle);
+  border: 1px dashed var(--color-border-default);
+}
+
+.workspace-sidebar .file-tree-view .empty-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workspace-sidebar .file-tree-view .empty-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workspace-sidebar .file-tree-view .empty-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.workspace-sidebar .file-tree-view .empty-badge {
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 18px;
+  background-color: var(--color-accent-bg-subtle);
+  color: var(--color-accent-light);
+}
+
+.workspace-sidebar .file-tree-view .empty-subtitle {
+  margin: 0;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--workspace-sidebar-muted-color);
+}
+
+.workspace-sidebar .file-tree-view .empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.workspace-sidebar .file-tree-view .empty-action {
+  margin-bottom: 8px;
+}
+
+.workspace-sidebar .file-tree-view .empty-action--full {
+  width: 100%;
+}
+
+.workspace-sidebar .file-tree-view .button-icon {
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+}
+
+/* 更多菜单样式 */
+.workspace-sidebar .file-tree-view .more-menu-container {
+  position: relative;
+}
+
+.file-tree-menu-wrapper {
+  position: fixed;
+  z-index: 1000;
+}
+
+.file-tree-more-menu-wrapper {
+  /* 中文说明：文件标题 More 菜单只比内容宽一点，给二级入口箭头留空间，但不做成块菜单那种宽面板。 */
+  width: 120px;
+}
+
+.file-tree-more-menu-wrapper .file-tree-more-menu-options {
+  width: 120px;
+  max-width: 120px;
+}
+
+.file-tree-more-menu-wrapper .file-tree-more-menu-option-arrow {
+  line-height: 1;
+  transform: translateY(0.5px);
+}
+
+.workspace-file-tree-menu-fade-enter-active,
+.workspace-file-tree-menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.workspace-file-tree-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.workspace-file-tree-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}

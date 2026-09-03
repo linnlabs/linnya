@@ -1,0 +1,12 @@
+.conversation-input-accessories {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px 0;
+  border-radius: var(--ai-assistant-input-radius) var(--ai-assistant-input-radius) 0 0;
+}
+
+.conversation-input-accessory {
+  min-width: 0;
+}

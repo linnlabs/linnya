@@ -1,0 +1,31 @@
+/* src/renderer/app/styles/global.css */
+
+/* 全局字体栈：后续 i18n 只需切换 <html lang> 即可触发语言字体顺序。 */
+:root {
+  --font-family-active: var(--font-family-default);
+}
+
+:lang(zh),
+:lang(zh-CN),
+:lang(zh-Hans) {
+  --font-family-active: var(--font-family-cjk), var(--font-family-latin);
+}
+
+:lang(en) {
+  --font-family-active: var(--font-family-latin), var(--font-family-cjk);
+}
+
+html,
+body {
+  font-family: var(--font-family-active);
+}
+
+/* 全局文本选区样式 */
+::selection {
+  background-color: var(--color-text-selection);
+}
+
+::-moz-selection { /* Firefox */
+  background-color: var(--color-text-selection);
+}
+

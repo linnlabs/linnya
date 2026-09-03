@@ -1,0 +1,12 @@
+/* layout/index.css - 导入所有布局样式 */
+
+/* 导入菜单栏布局 */
+@import './menu-bar-layout.css';
+
+
+
+/* 导入内容块布局 */
+@import './block-layout.css';
+
+/* 导入AI提示框布局 */
+/* ai-prompt-layout.css 已删除 - 样式已集成到 AiWriting.vue 组件中 */

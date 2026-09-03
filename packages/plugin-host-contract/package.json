@@ -1,0 +1,41 @@
+{
+  "name": "@linnya/plugin-host-contract",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Type-only contracts shared by Linnya plugin packages and the host SDK facade.",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts"
+    },
+    "./backend": {
+      "types": "./backend/index.ts"
+    },
+    "./backend/*": {
+      "types": "./backend/*.ts"
+    },
+    "./renderer": {
+      "types": "./renderer/index.ts"
+    },
+    "./renderer/*": {
+      "types": "./renderer/*.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@app/schemas": "workspace:*",
+    "@linnlabs/linnkit": "workspace:*"
+  },
+  "peerDependencies": {
+    "vue": ">=3.5.0 <4"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vue": "^3.5.13"
+  }
+}

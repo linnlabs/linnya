@@ -1,0 +1,26 @@
+.turn-work-duration-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--spacing-sm);
+  color: var(--color-text-placeholder);
+  font-size: 11px;
+  line-height: 1.2;
+  user-select: none;
+}
+
+.turn-work-duration-hint::before,
+.turn-work-duration-hint::after {
+  height: 1px;
+  flex: 0 0 44px;
+  align-self: center;
+  background-color: var(--color-border-light);
+  content: '';
+  opacity: 0.9;
+}
+
+.turn-work-duration-text {
+  padding: 0 10px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}

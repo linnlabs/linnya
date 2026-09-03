@@ -1,0 +1,9 @@
+.image-read-card {
+  padding: 0 12px 12px;
+}
+
+.image-read-card__unavailable {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}

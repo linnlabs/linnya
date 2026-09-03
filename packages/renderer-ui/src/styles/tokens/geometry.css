@@ -1,0 +1,32 @@
+/* Renderer UI 非主题 token：间距、圆角、阴影、过渡。 */
+
+:root {
+  --spacing-xxs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 40px;
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+
+  --shadow-xs: 0 1px 2px var(--shadow-color-xs);
+  --shadow-sm: 0 1px 3px var(--shadow-color-sm);
+  --shadow-md: 0 2px 8px var(--shadow-color-md);
+  --shadow-lg: 0 8px 24px var(--shadow-color-lg);
+  --shadow-xl: 0 16px 48px var(--shadow-color-xl);
+  --shadow-floating-panel:
+    0 14px 28px -9px color-mix(in srgb, var(--color-black) 10%, transparent),
+    0 2px 4px -1px color-mix(in srgb, var(--color-black) 6%, transparent),
+    0 -2px 4px -1px color-mix(in srgb, var(--color-black) 4%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+
+  --transition-fast: 0.1s;
+  --transition-normal: 0.2s;
+  --transition-slow: 0.3s;
+}

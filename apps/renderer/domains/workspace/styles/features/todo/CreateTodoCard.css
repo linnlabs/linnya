@@ -1,0 +1,261 @@
+/*
+ * CreateTodoCard 样式：todo feature 私有样式。
+ * 统一收口到 .todo-sidebar 根下，避免外迁后污染其它同名类。
+ */
+/* Main Card */
+.todo-sidebar .create-todo-card {
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  background-color: var(--color-bg-surface);
+  /* 使用可见溢出，避免下拉类组件（如日期选择器）被裁剪 */
+  overflow: visible;
+  margin-bottom: 12px; /* Add space below when visible */
+}
+
+.todo-sidebar .create-todo-card .card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: none; /* Removed border to match modal */
+}
+
+.todo-sidebar .create-todo-card .header-title {
+  margin: 0;
+  font-weight: 350;
+  font-size: 14px;
+  color: var(--color-text-heading-meta);
+  flex: 1; /* Let title take up remaining space */
+}
+
+.todo-sidebar .create-todo-card .close-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--color-text-primary);
+  transition: all 0.2s;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.todo-sidebar .create-todo-card .close-button:hover {
+  background-color: var(--color-bg-hover);
+  border-radius: 4px; /* Match modal style */
+}
+
+.todo-sidebar .create-todo-card .close-icon {
+  width: 18px; /* Match modal style */
+  height: 18px; /* Match modal style */
+}
+
+.todo-sidebar .create-todo-card .form-content {
+  padding: 12px 24px 20px; /* Match modal content padding style */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Todo Form Label */
+.todo-sidebar .create-todo-card .todo-form-label {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  flex-shrink: 0;
+  width: 50px; /* Align labels */
+  display: flex;
+  align-items: center;
+  height: 32px; /* Match input height */
+}
+
+/* Form Inputs & Textarea */
+.todo-sidebar .create-todo-card .form-input,
+.todo-sidebar .create-todo-card .form-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px; /* Smaller font size */
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background-color: var(--color-bg-search-light);
+  color: var(--color-text-primary);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  font-family: inherit;
+}
+
+.todo-sidebar .create-todo-card .form-input.date-input {
+  width: 220px;
+  flex-grow: 0;
+}
+
+.todo-sidebar .create-todo-card .form-textarea {
+  resize: none;
+  overflow-y: auto; /* Show scrollbar if max-height is exceeded */
+  transition: height 0.1s ease; /* Smooth height transition */
+  min-height: 60px;
+  line-height: 1.5;
+}
+
+.todo-sidebar .create-todo-card .form-input:hover:not(:disabled),
+.todo-sidebar .create-todo-card .form-textarea:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+.todo-sidebar .create-todo-card .form-input:focus:not(:disabled),
+.todo-sidebar .create-todo-card .form-textarea:focus:not(:disabled) {
+  outline: none;
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-hover);
+}
+
+.todo-sidebar .create-todo-card .control-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  flex: 1;
+  align-items: center;
+}
+
+.todo-sidebar .create-todo-card .time-control-wrapper {
+  position: relative;
+}
+
+.todo-sidebar .create-todo-card .form-field-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.todo-sidebar .create-todo-card .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Gap within form groups */
+}
+
+/* Button Group (for layout) */
+.todo-sidebar .create-todo-card .button-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end; /* Align priority to the right */
+  flex: 1;
+}
+
+/* Priority Tags */
+.todo-sidebar .create-todo-card .priority-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  background-color: var(--color-bg-surface);
+}
+
+.todo-sidebar .create-todo-card .priority-tag .badge-dot {
+  height: 6px;
+  width: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.todo-sidebar .create-todo-card .priority-tag:not(.is-active):hover {
+  background-color: var(--color-bg-hover);
+}
+
+/* Use darker shades on hover for active tags */
+.todo-sidebar .create-todo-card .priority-tag.priority-low.is-active:hover {
+  background-color: var(--color-blue-200);
+}
+.todo-sidebar .create-todo-card .priority-tag.priority-medium.is-active:hover {
+  background-color: var(--color-yellow-200);
+}
+.todo-sidebar .create-todo-card .priority-tag.priority-high.is-active:hover {
+  background-color: var(--color-red-200);
+}
+
+/* Tag colors from TodoItem.vue */
+.todo-sidebar .create-todo-card .priority-tag.priority-low {
+  color: var(--color-blue-700);
+  border-color: var(--color-blue-100);
+}
+
+.todo-sidebar .create-todo-card .priority-tag.priority-medium {
+  color: var(--color-yellow-700);
+  border-color: var(--color-yellow-100);
+}
+
+.todo-sidebar .create-todo-card .priority-tag.priority-high {
+  color: var(--color-red-400);
+  border-color: var(--color-red-100);
+}
+
+.todo-sidebar .create-todo-card .priority-tag.priority-low.is-active {
+  background-color: var(--color-blue-100);
+}
+
+.todo-sidebar .create-todo-card .priority-tag.priority-medium.is-active {
+  background-color: var(--color-yellow-100);
+}
+
+.todo-sidebar .create-todo-card .priority-tag.priority-high.is-active {
+  background-color: var(--color-red-100);
+}
+
+
+/* Tag Input */
+.todo-sidebar .create-todo-card .tag-input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.todo-sidebar .create-todo-card .tag-input {
+  flex: 1;
+}
+
+.todo-sidebar .create-todo-card .add-tag-button {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background-color: var(--color-bg-subtle);
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.todo-sidebar .create-todo-card .add-tag-button:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.todo-sidebar .create-todo-card .add-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Tags List */
+.todo-sidebar .create-todo-card .tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Actions */
+.todo-sidebar .create-todo-card .actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Datepicker 相关样式已经迁移到 SimpleDatePicker 组件中 */

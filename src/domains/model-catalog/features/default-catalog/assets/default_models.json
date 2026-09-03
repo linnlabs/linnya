@@ -1,0 +1,289 @@
+{
+  "_comment": "此文件包含系统默认的模型配置。'ui_visibility' 字段用于控制模型在哪个UI界面或下拉列表中显示。'chat' 对应主聊天模型选择。'embedding', 'rerank', 'vision' 分别对应知识库设置中不同的模型下拉列表。'image_generation' 对应图片生成模型选择。一个模型可以被分配到多个类别。",
+  "models": [
+    {
+      "id": "mock-debug-chat",
+      "model_name": "mock-chat",
+      "catalog_source": "default",
+      "inference_route": {
+        "api_surface": "mock",
+        "capability_id": "host:mock",
+        "endpoint_id": "mock",
+        "endpoint_model_id": "mock-chat",
+        "base_url": "mock://local?script=markdown_kitchen_sink",
+        "auth_profile": "none",
+        "context_window_tokens": 32768,
+        "max_output_tokens": 4096,
+        "input_support": { "user_image": false, "tool_result_image": false },
+        "usage": { "response_usage": "unavailable" },
+        "continuation": { "tool_replay": "unavailable" }
+      },
+      "capabilities": ["chat"],
+      "ui_visibility": ["chat1"],
+      "display_name": "Mock（调试专用）",
+      "description": "System Default: 本地 mock:// 模型（不发起真实 AI 请求）。用于稳定复现前端 Markdown 流式渲染（复杂语法压力测试，不包含链接）。"
+    },
+    {
+      "id": "mock-markdown-all-in-one",
+      "model_name": "mock-chat",
+      "catalog_source": "default",
+      "inference_route": {
+        "api_surface": "mock",
+        "capability_id": "host:mock",
+        "endpoint_id": "mock",
+        "endpoint_model_id": "mock-chat",
+        "base_url": "mock://local?script=markdown_all_in_one",
+        "auth_profile": "none",
+        "context_window_tokens": 32768,
+        "max_output_tokens": 4096,
+        "input_support": { "user_image": false, "tool_result_image": false },
+        "usage": { "response_usage": "unavailable" },
+        "continuation": { "tool_replay": "unavailable" }
+      },
+      "capabilities": ["chat"],
+      "ui_visibility": ["chat1"],
+      "display_name": "Mock Markdown（一键全测）",
+      "description": "System Default: 一次性覆盖多个 Markdown 压力用例（不含链接），用于“一次测试完”。"
+    },
+    {
+      "id": "mock-markdown-fence-boundary",
+      "model_name": "mock-chat",
+      "catalog_source": "default",
+      "inference_route": {
+        "api_surface": "mock",
+        "capability_id": "host:mock",
+        "endpoint_id": "mock",
+        "endpoint_model_id": "mock-chat",
+        "base_url": "mock://local?script=markdown_code_fence_boundary_stress",
+        "auth_profile": "none",
+        "context_window_tokens": 32768,
+        "max_output_tokens": 4096,
+        "input_support": { "user_image": false, "tool_result_image": false },
+        "usage": { "response_usage": "unavailable" },
+        "continuation": { "tool_replay": "unavailable" }
+      },
+      "capabilities": ["chat"],
+      "ui_visibility": ["chat1"],
+      "display_name": "Mock Markdown（Fence 边界）",
+      "description": "System Default: 专测 ``` code fence 在极小 chunk_size 下的流式边界问题（不含链接）。"
+    },
+    {
+      "id": "mock-markdown-latex-heavy",
+      "model_name": "mock-chat",
+      "catalog_source": "default",
+      "inference_route": {
+        "api_surface": "mock",
+        "capability_id": "host:mock",
+        "endpoint_id": "mock",
+        "endpoint_model_id": "mock-chat",
+        "base_url": "mock://local?script=markdown_latex_heavy",
+        "auth_profile": "none",
+        "context_window_tokens": 32768,
+        "max_output_tokens": 4096,
+        "input_support": { "user_image": false, "tool_result_image": false },
+        "usage": { "response_usage": "unavailable" },
+        "continuation": { "tool_replay": "unavailable" }
+      },
+      "capabilities": ["chat"],
+      "ui_visibility": ["chat1"],
+      "display_name": "Mock Markdown（LaTeX 压力）",
+      "description": "System Default: 专测 $/$$ LaTeX 在流式拆分下的解析稳定性（不含链接）。"
+    },
+    {
+      "id": "mock-markdown-matrix-ops",
+      "model_name": "mock-chat",
+      "catalog_source": "default",
+      "inference_route": {
+        "api_surface": "mock",
+        "capability_id": "host:mock",
+        "endpoint_id": "mock",
+        "endpoint_model_id": "mock-chat",
+        "base_url": "mock://local?script=markdown_matrix_ops",
+        "auth_profile": "none",
+        "context_window_tokens": 32768,
+        "max_output_tokens": 4096,
+        "input_support": { "user_image": false, "tool_result_image": false },
+        "usage": { "response_usage": "unavailable" },
+        "continuation": { "tool_replay": "unavailable" }
+      },
+      "capabilities": ["chat"],
+      "ui_visibility": ["chat1"],
+      "display_name": "Mock Markdown（矩阵运算）",
+      "description": "System Default: 专测 bmatrix 矩阵在流式拆分下的解析/渲染稳定性（不含链接）。"
+    },
+    {
+      "id": "mock-markdown-mix",
+      "model_name": "mock-chat",
+      "catalog_source": "default",
+      "inference_route": {
+        "api_surface": "mock",
+        "capability_id": "host:mock",
+        "endpoint_id": "mock",
+        "endpoint_model_id": "mock-chat",
+        "base_url": "mock://local?script=markdown_table_list_quote_mix",
+        "auth_profile": "none",
+        "context_window_tokens": 32768,
+        "max_output_tokens": 4096,
+        "input_support": { "user_image": false, "tool_result_image": false },
+        "usage": { "response_usage": "unavailable" },
+        "continuation": { "tool_replay": "unavailable" }
+      },
+      "capabilities": ["chat"],
+      "ui_visibility": ["chat1"],
+      "display_name": "Mock Markdown（表格/列表/引用混合）",
+      "description": "System Default: 表格/列表/引用混合段落边界压力测试（不含链接）。"
+    },
+    {
+      "id": "text-embedding-3-small",
+      "model_name": "BAAI/bge-m3",
+      "catalog_source": "default",
+      "credential_reference": {
+        "kind": "environment_variable",
+        "environment_variable": "SILICONFLOW_EMBEDDING_API_KEY"
+      },
+      "embedding_route": {
+        "api_surface": "openai_embeddings",
+        "capability_id": "ai-sdk:openai-compatible-embeddings",
+        "endpoint_id": "siliconflow",
+        "endpoint_model_id": "BAAI/bge-m3",
+        "base_url": "https://api.siliconflow.cn/v1",
+        "auth_profile": "bearer",
+        "usage": { "response_usage": "provider_reported_optional" }
+      },
+      "capabilities": ["embedding"],
+      "ui_visibility": ["embedding"],
+      "display_name": "bge-m3",
+      "description": "System Default: embedding model for cost-effective use."
+    },
+    {
+      "id": "rerank-bge-reranker-v2-m3",
+      "model_name": "BAAI/bge-reranker-v2-m3",
+      "catalog_source": "default",
+      "credential_reference": { "kind": "environment_variable", "environment_variable": "SILICONFLOW_RERANK_API_KEY" },
+      "reranking_route": {
+        "api_surface": "cohere_rerank",
+        "capability_id": "ai-sdk:cohere-compatible-reranking",
+        "endpoint_id": "siliconflow",
+        "endpoint_model_id": "BAAI/bge-reranker-v2-m3",
+        "base_url": "https://api.siliconflow.cn/v1",
+        "auth_profile": "bearer",
+        "usage": { "response_usage": "provider_reported_optional" }
+      },
+      "capabilities": ["rerank"],
+      "ui_visibility": ["rerank"],
+      "display_name": "bge-reranker-v2-m3",
+      "description": "System Default: rerank model for cost-effective use."
+    },
+    {
+      "id": "PaddlePaddle/PaddleOCR-VL-1.5",
+      "model_name": "PaddlePaddle/PaddleOCR-VL-1.5",
+      "catalog_source": "default",
+      "credential_reference": { "kind": "environment_variable", "environment_variable": "PADDLEOCR_API_KEY" },
+      "capabilities": ["vision", "document_ocr", "pdf_ocr_default"],
+      "ui_visibility": ["vision"],
+      "display_name": "PaddleOCR-VL-1.5",
+      "document_ocr_route": {
+        "api_surface": "paddle_layout_parsing",
+        "capability_id": "host:paddle-ocr-layout-parsing",
+        "endpoint_id": "paddleocr",
+        "endpoint_model_id": "PaddlePaddle/PaddleOCR-VL-1.5",
+        "base_url": "https://rey0cfwaych5we3e.aistudio-app.com/layout-parsing",
+        "auth_profile": "token",
+        "mode": "document_upload",
+        "supports_abort_signal": true,
+        "attempt_timeout_ms": 300000,
+        "max_input_pages": 100
+      },
+      "description": "System Default: PaddleOCR-VL-1.5 (0.9B) document VLM. 94.5% accuracy on OmniDocBench v1.5 and strong robustness under real-world distortions (scan/skew/warping/photography/illumination). Supports document layout parsing with better table/formula/text recognition, plus text spotting and seal recognition."
+    },
+    {
+      "id": "PaddleOCR-VL-1.6",
+      "model_name": "PaddleOCR-VL-1.6",
+      "catalog_source": "default",
+      "credential_reference": { "kind": "environment_variable", "environment_variable": "PADDLEOCR_API_KEY" },
+      "capabilities": ["vision", "document_ocr"],
+      "ui_visibility": ["vision"],
+      "display_name": "PaddleOCR-VL-1.6",
+      "document_ocr_route": {
+        "api_surface": "paddle_ocr_jobs",
+        "capability_id": "host:paddle-ocr-jobs",
+        "endpoint_id": "paddleocr",
+        "endpoint_model_id": "PaddleOCR-VL-1.6",
+        "base_url": "https://paddleocr.aistudio-app.com",
+        "auth_profile": "bearer",
+        "mode": "document_upload",
+        "supports_abort_signal": true,
+        "attempt_timeout_ms": 300000,
+        "poll_interval_ms": 5000,
+        "max_input_pages": 100
+      },
+      "description": "System model: PaddleOCR-VL-1.6 async OCR job API. Submits documents to /api/v2/ocr/jobs, polls job status, then reads jsonl markdown output."
+    },
+    {
+      "id": "gemini-3-flash-preview",
+      "model_name": "gemini-3-flash-preview",
+      "catalog_source": "default",
+      "credential_reference": { "kind": "environment_variable", "environment_variable": "FEIAI_GEMINI_API_KEY" },
+      "inference_route": {
+        "api_surface": "openai_chat_completions",
+        "capability_id": "ai-sdk:openai-chat",
+        "endpoint_id": "feiai",
+        "endpoint_model_id": "gemini-3-flash-preview",
+        "base_url": "https://feiai.chat/v1",
+        "auth_profile": "bearer",
+        "context_window_tokens": 1048576,
+        "max_output_tokens": 65536,
+        "input_support": { "user_image": false, "tool_result_image": false },
+        "usage": { "response_usage": "provider_reported_optional" },
+        "continuation": { "tool_replay": "required" }
+      },
+      "capabilities": ["chat"],
+      "ui_visibility": ["chat"],
+      "display_name": "Gemini 3 Flash Preview",
+      "description": "System Default: Gemini 3 Flash Preview for knowledge graph extraction and lightweight chat tasks.",
+      "reasoning": {
+        "supported_efforts": ["off", "low", "medium", "high"],
+        "default_effort": "medium"
+      }
+    },
+    {
+      "id": "whisper-1-feiai",
+      "model_name": "whisper-1",
+      "catalog_source": "default",
+      "credential_reference": { "kind": "environment_variable", "environment_variable": "FEIAI_TRANSCRIPTION_API_KEY" },
+      "transcription_route": {
+        "api_surface": "openai_audio_transcriptions",
+        "capability_id": "host:openai-audio-transcriptions",
+        "endpoint_id": "feiai",
+        "endpoint_model_id": "whisper-1",
+        "base_url": "https://feiai.chat/v1",
+        "auth_profile": "bearer"
+      },
+      "capabilities": ["audio_transcription"],
+      "ui_visibility": ["audio_transcription"],
+      "display_name": "Whisper-1",
+      "description": "System Default: Whisper-1 model for speech-to-text, proxied by feiai.chat."
+    },
+    {
+      "id": "qwen3-asr-flash",
+      "model_name": "qwen3-asr-flash",
+      "catalog_source": "default",
+      "credential_reference": {
+        "kind": "environment_variable",
+        "environment_variable": "ALIYUN_TRANSCRIPTION_API_KEY"
+      },
+      "transcription_route": {
+        "api_surface": "dashscope_multimodal_generation",
+        "capability_id": "host:dashscope-qwen-asr",
+        "endpoint_id": "dashscope",
+        "endpoint_model_id": "qwen3-asr-flash",
+        "base_url": "https://dashscope.aliyuncs.com/api/v1",
+        "auth_profile": "bearer"
+      },
+      "capabilities": ["audio_transcription"],
+      "ui_visibility": ["audio_transcription"],
+      "display_name": "Qwen3 ASR Flash",
+      "description": "Alibaba Qwen3 ASR Flash model for speech recognition. Uses DashScope multimodal API."
+    }
+  ]
+}

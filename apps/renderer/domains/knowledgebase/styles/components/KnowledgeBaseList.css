@@ -1,0 +1,387 @@
+/* 外层页面容器：纵向滚动由 app 级 editor-shell 承担。 */
+.kb-list-view {
+  min-height: 100%;
+  width: 100%;
+  background-color: var(--color-bg-default);
+  overflow: visible;
+}
+
+/* 内层内容区域，控制最大宽度与左右留白。 */
+.kb-list-view .kb-list-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 36px 24px 40px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.kb-list-view .create-btn,
+.kb-list-view .global-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  /*
+   * 既要图标对齐，又要文字居中：
+   * 1. 容器用 flex-start，保证左侧图标绝对对齐
+   * 2. 文字 span 用 flex: 1 + text-align: center，让文字在剩余空间里居中
+   * 3. 稍微调整 padding-right 抵消图标宽度，让文字视觉上绝对居中（可选，这里先只做 flex:1）
+   */
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background-color: var(--color-bg-surface);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  white-space: nowrap;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
+  box-shadow:
+    0 1px 2px var(--shadow-color-xs),
+    0 2px 4px color-mix(in srgb, var(--shadow-color-xs) 40%, transparent);
+}
+
+.kb-list-view .create-btn span:not(.icon),
+.kb-list-view .global-upload-btn span:not(.icon) {
+  /* 让文字区域占据剩余空间并居中，实现“图标对齐 + 文字居中” */
+  flex: 1;
+  text-align: center;
+  /*
+   * 微调：因为左侧有个 14px 图标 + 10px gap，
+   * 为了让文字视觉上看起来是“相对于整个按钮”居中，而不是“相对于剩余空间”居中，
+   * 可以把右边距加回来一点，或者简单的就让它在剩余空间居中（通常也够好看了）。
+   * 这里我们选择让它在剩余空间居中，但在右侧补偿一下图标的视觉偏移。
+   */
+  padding-right: 14px;
+}
+
+/* 新建：保持品牌主色（绿色） */
+.kb-list-view .create-btn {
+  /* 更加克制的主按钮样式：浅底 + 品牌色描边与文字，偏 Linear / Notion 风格 */
+  border: 0.5px solid var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+.kb-list-view .global-upload-btn {
+  /**
+   * 文件上传：使用 Info 功能色（蓝色系），与新建（绿色）做明显区分。
+   * 这里使用 functional.css 中定义的变量。
+   */
+  border: 0.5px solid var(--color-info);
+  /* 默认态用低饱和的 info 文案色：避免使用高饱和的 info-color 抢过“新建知识库”的品牌绿 */
+  color: var(--color-info);
+}
+
+.kb-list-view .global-upload-btn:hover {
+  /* 使用 Info 对应的背景色变量 */
+  background-color: var(--color-info-bg);
+  border-color: var(--color-info);
+  box-shadow:
+    0 2px 5px var(--shadow-color-xs),
+    0 6px 14px color-mix(in srgb, var(--shadow-color-xs) 80%, transparent);
+}
+
+/* 上传按钮点击态：更深一点的浅底，保证反馈一致 */
+.kb-list-view .global-upload-btn:active {
+  background-color: color-mix(in srgb, var(--color-info-bg) 82%, var(--color-info));
+  box-shadow:
+    0 1px 3px var(--shadow-color-xs),
+    0 2px 6px color-mix(in srgb, var(--shadow-color-xs) 80%, transparent);
+}
+
+.kb-list-view .page-section-header__actions .icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  /* 作为固定尺寸的图标槽位，避免随内容抖动 */
+  flex: 0 0 14px;
+  /* 避免 svg 的默认 line-height 参与排版，导致上下不齐 */
+  line-height: 0;
+}
+
+/**
+ * 图标对齐的根因说明：
+ * - 不同图标组件默认尺寸/基线可能不同，导致两个按钮的 icon 看起来“不对齐”
+ * - 外迁后不再依赖 Vue SFC 的深度选择语法，统一在知识库列表根类下命中 svg
+ */
+.kb-list-view .page-section-header__actions .icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+/* 使用 SVG 图标时，明确限制容器尺寸，避免图标显得过大 */
+.kb-list-view .create-btn .icon,
+.kb-list-view .global-upload-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.kb-list-view .create-btn:hover {
+  background-color: var(--color-accent-bg-subtle);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  box-shadow:
+    0 2px 5px var(--shadow-color-xs),
+    0 6px 14px color-mix(in srgb, var(--shadow-color-xs) 80%, transparent);
+}
+
+.kb-list-view .create-btn:active {
+  background-color: var(--color-accent-bg);
+  box-shadow:
+    0 1px 3px var(--shadow-color-xs),
+    0 2px 6px color-mix(in srgb, var(--shadow-color-xs) 80%, transparent);
+}
+
+.kb-list-view .kb-grid {
+  display: grid;
+  /* 卡片宽度与间距沿用工作台信息卡密度 */
+  grid-template-columns: repeat(auto-fill, 219px);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.kb-list-view .kb-card {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  /* 与工作台信息卡 padding 对齐 */
+  padding: 12px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-light);
+  background-color: var(--color-bg-surface);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  /* 多层级柔和阴影 - 默认态 */
+  box-shadow:
+    0 2px 5px color-mix(in srgb, var(--shadow-color-xs) 40%, transparent),
+    0 4px 10px color-mix(in srgb, var(--shadow-color-xs) 40%, transparent);
+}
+
+.kb-list-view .kb-card:hover {
+  /* 交互感与 Home 中卡片保持统一风格 */
+  border-color: var(--color-border-default);
+  /* 多层级柔和阴影 - 悬停态 */
+  box-shadow:
+    0 4px 8px color-mix(in srgb, var(--shadow-color-xs) 80%, transparent),
+    0 8px 20px color-mix(in srgb, var(--shadow-color-xs) 60%, transparent),
+    0 10px 20px color-mix(in srgb, var(--shadow-color-xs) 20%, transparent);
+}
+
+.kb-list-view .kb-card:focus-visible {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 1px var(--color-border-focus);
+}
+
+/* 列表卡片内联图标：对齐标题行，尺寸更小 */
+.kb-list-view .card-icon-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.kb-list-view .kb-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.kb-list-view .card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kb-list-view .card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kb-list-view .card-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kb-list-view .card-subtitle {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.kb-list-view .default-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 0.5px solid var(--color-border-accent-light);
+  background-color: var(--color-accent-bg-subtle);
+  color: var(--color-accent);
+  font-weight: 500;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.kb-list-view .card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.kb-list-view .card-meta-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  /* 控制进度条整体宽度，避免挤占卡片文本 */
+  max-width: 180px;
+}
+
+.kb-list-view .meta-dot {
+  margin: 0 2px;
+}
+
+/* 新建卡片（更扁平的占位卡） */
+.kb-list-view .create-card {
+  border: 1px dashed var(--color-border-default);
+  background-color: transparent;
+  box-shadow: none !important;
+}
+
+.kb-list-view .create-card:hover {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-subtle);
+  box-shadow: none !important;
+}
+
+/* 新建卡片中的“+”图标使用与标题同行的小图标样式，并强调品牌色 */
+.kb-list-view .create-icon-inline {
+  color: var(--color-accent);
+}
+
+.kb-list-view .create-desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-tertiary);
+}
+
+/* 空状态：更加 Notion / Linear 风格的空面板 */
+.kb-list-view .empty-state {
+  margin-top: 24px;
+  padding: 24px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.kb-list-view .empty-panel {
+  max-width: 420px;
+  text-align: center;
+  padding: 24px 20px;
+  border-radius: 12px;
+  border: 1px dashed var(--color-border-light);
+  background-color: var(--color-bg-subtle);
+}
+
+.kb-list-view .empty-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+  opacity: 0.7;
+}
+
+.kb-list-view .empty-title {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.kb-list-view .empty-desc {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.kb-list-view .empty-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-default);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
+  box-shadow:
+    0 1px 2px var(--shadow-color-xs),
+    0 2px 4px color-mix(in srgb, var(--shadow-color-xs) 40%, transparent);
+}
+
+.kb-list-view .empty-create-btn .icon {
+  /* 空状态按钮里的“新建”图标，同样做尺寸收缩，保持轻盈 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+}
+
+.kb-list-view .empty-create-btn:hover {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-border-hover);
+  box-shadow:
+    0 2px 5px var(--shadow-color-xs),
+    0 6px 14px color-mix(in srgb, var(--shadow-color-xs) 80%, transparent);
+}
+
+.kb-list-view .empty-create-btn:active {
+  background-color: var(--color-bg-active);
+  box-shadow:
+    0 1px 3px var(--shadow-color-xs),
+    0 2px 6px color-mix(in srgb, var(--shadow-color-xs) 80%, transparent);
+}
+
+@media (max-width: 960px) {
+  .kb-list-view .kb-list-inner {
+    padding: 24px 16px 32px;
+  }
+
+  .kb-list-view .kb-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

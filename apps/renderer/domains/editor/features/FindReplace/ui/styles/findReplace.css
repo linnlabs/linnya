@@ -1,0 +1,35 @@
+/* Find & Replace Styles */
+
+/* Match highlights */
+.find-replace-match {
+  background-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
+  border-radius: 2px;
+  transition: background-color 0.15s;
+}
+
+.find-replace-match-active {
+  background-color: color-mix(in srgb, var(--color-warning) 50%, transparent);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warning) 80%, transparent);
+  transition: background-color 0.15s, box-shadow 0.15s;
+  animation: find-replace-pulse 0.3s ease-in-out;
+}
+
+/* Ensure matches are visible in selection */
+.ProseMirror ::selection .find-replace-match,
+.ProseMirror ::selection .find-replace-match-active {
+  background-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
+}
+
+/* Animation for match cycling */
+@keyframes find-replace-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

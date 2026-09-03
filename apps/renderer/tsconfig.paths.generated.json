@@ -1,0 +1,95 @@
+// 此文件由 renderer module-resolution catalog 生成，禁止手工修改。
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@app/*": [
+        "./app/*"
+      ],
+      "@app/schemas": [
+        "../../packages/schemas/src/index.ts"
+      ],
+      "@app/schemas/*": [
+        "../../packages/schemas/src/*"
+      ],
+      "@linnlabs/linnkit/contracts": [
+        "../../packages/linnkit/src/contracts/index.ts"
+      ],
+      "@linnlabs/linnkit/runtime-kernel/events": [
+        "../../packages/linnkit/src/runtime-kernel/events/index.ts"
+      ],
+      "@linnya/app-lifecycle-contract": [
+        "../../src/shared/app-lifecycle/definitions/windowCloseProtocol.ts"
+      ],
+      "@linnya/citation-domain/conversation-presentation": [
+        "../../src/domains/citation/conversation-presentation.ts"
+      ],
+      "@linnya/citation-domain/markdown-reference": [
+        "../../src/domains/citation/markdown-reference.ts"
+      ],
+      "@linnya/plugin-host-contract": [
+        "../../packages/plugin-host-contract/index.ts"
+      ],
+      "@linnya/plugin-host-contract/renderer": [
+        "../../packages/plugin-host-contract/renderer/index.ts"
+      ],
+      "@linnya/plugin-host-contract/renderer/*": [
+        "../../packages/plugin-host-contract/renderer/*"
+      ],
+      "@linnya/renderer-ui": [
+        "../../packages/renderer-ui/src/index.ts"
+      ],
+      "@linnya/renderer-ui/font-stack": [
+        "../../packages/renderer-ui/src/features/font-stack/index.ts"
+      ],
+      "@linnya/renderer-ui/icons": [
+        "../../packages/renderer-ui/src/icons/index.ts"
+      ],
+      "@linnya/renderer-ui/localization": [
+        "../../packages/renderer-ui/src/localization/index.ts"
+      ],
+      "@linnya/renderer-ui/scroll": [
+        "../../packages/renderer-ui/src/scroll/index.ts"
+      ],
+      "@linnya/renderer-ui/theme": [
+        "../../packages/renderer-ui/src/theme/index.ts"
+      ],
+      "@linnya/renderer-ui/version": [
+        "../../packages/renderer-ui/src/version.ts"
+      ],
+      "@linnya/text-measurement-core": [
+        "../../packages/text-measurement-core/src/index.ts"
+      ],
+      "@plugin/mindmap/shared": [
+        "../../packages/plugins/mindmap/src/shared/index.ts"
+      ],
+      "@plugin/renderer/*": [
+        "../../src/plugin-sdk/renderer/*"
+      ],
+      "@plugin/slides/shared": [
+        "../../packages/plugins/slides/src/shared/index.ts"
+      ],
+      "@plugin/slides/shared/*": [
+        "../../packages/plugins/slides/src/shared/*"
+      ],
+      "@shared/*": [
+        "./shared/*"
+      ],
+      "linnkit/contracts": [
+        "../../packages/linnkit/src/contracts/index.ts"
+      ],
+      "linnkit/runtime-kernel/events": [
+        "../../packages/linnkit/src/runtime-kernel/events/index.ts"
+      ],
+      "stream-markdown-parser": [
+        "../../packages/stream-markdown-parser/src/index.ts"
+      ],
+      "stream-markdown-parser/*": [
+        "../../packages/stream-markdown-parser/src/*"
+      ]
+    }
+  }
+}

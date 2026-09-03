@@ -1,0 +1,97 @@
+/* Renderer UI feedback feature：保留迁移前 selector 与 computed style。 */
+.page-section-header {
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: 18px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.page-section-header.has-tabs {
+  /* 带 tab 的页头由 tab 自身下划线承担分隔感，避免出现双线。 */
+  padding-bottom: 18px;
+  border-bottom: 0;
+}
+
+.page-section-header__main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.page-section-header__left {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.page-section-header__title-block {
+  min-width: 0;
+}
+
+.page-section-header__title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-section-header__title {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-section-header.is-title-compact .page-section-header__title {
+  font-size: 20px;
+}
+
+.page-section-header__subtitle {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.page-section-header__meta {
+  margin: 4px 0 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: normal;
+}
+
+.page-section-header__actions {
+  display: inline-flex;
+  min-width: 140px;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.page-section-header__tabs {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+@media (max-width: 960px) {
+  .page-section-header__main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-section-header__actions {
+    width: 100%;
+    align-items: stretch;
+  }
+}

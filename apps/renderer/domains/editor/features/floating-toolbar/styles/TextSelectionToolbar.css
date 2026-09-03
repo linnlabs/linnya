@@ -1,0 +1,198 @@
+/* Editor 文本选区工具栏样式；选择器与迁移前保持一致。 */
+.text-selection-toolbar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.text-selection-toolbar .color-button-wrapper,
+.text-selection-toolbar .highlight-button-wrapper {
+  position: relative;
+}
+
+.text-selection-toolbar .color-panel,
+.text-selection-toolbar .highlight-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+}
+
+.text-selection-toolbar .color-button,
+.text-selection-toolbar .highlight-button {
+  min-width: 36px;
+}
+
+.text-selection-toolbar .color-icon,
+.text-selection-toolbar .highlight-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+}
+
+.text-selection-toolbar .color-icon {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.text-selection-toolbar .highlight-edit-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.text-selection-toolbar .color-indicator,
+.text-selection-toolbar .highlight-indicator {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 14px;
+  height: 3px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+}
+
+.text-selection-toolbar .color-panel-fade-enter-active,
+.text-selection-toolbar .color-panel-fade-leave-active,
+.text-selection-toolbar .highlight-panel-fade-enter-active,
+.text-selection-toolbar .highlight-panel-fade-leave-active,
+.text-selection-toolbar .heading-menu-fade-enter-active,
+.text-selection-toolbar .heading-menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.text-selection-toolbar .color-panel-fade-enter-from,
+.text-selection-toolbar .highlight-panel-fade-enter-from,
+.text-selection-toolbar .heading-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.text-selection-toolbar .color-panel-fade-leave-to,
+.text-selection-toolbar .highlight-panel-fade-leave-to,
+.text-selection-toolbar .heading-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.text-selection-toolbar .color-panel-fade-enter-to,
+.text-selection-toolbar .color-panel-fade-leave-from,
+.text-selection-toolbar .highlight-panel-fade-enter-to,
+.text-selection-toolbar .highlight-panel-fade-leave-from,
+.text-selection-toolbar .heading-menu-fade-enter-to,
+.text-selection-toolbar .heading-menu-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.text-selection-toolbar .format-buttons {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.text-selection-toolbar .format-button {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: var(--floating-toolbar-text-color);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.text-selection-toolbar .format-button:hover {
+  background-color: var(--floating-toolbar-item-hover-bg);
+}
+
+.text-selection-toolbar .format-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.text-selection-toolbar .heading-level {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.text-selection-toolbar .heading-button-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.text-selection-toolbar .chevron-icon {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  margin-left: 2px;
+  opacity: 0.6;
+  transition: transform 0.2s ease;
+}
+
+.text-selection-toolbar .format-button.is-menu-open .chevron-icon {
+  opacity: 1;
+  transform: rotate(180deg);
+}
+
+.text-selection-toolbar .format-button.is-active,
+.text-selection-toolbar .format-button.is-menu-open {
+  color: var(--color-accent);
+  background-color: var(--color-accent-bg);
+}
+
+.text-selection-toolbar .heading-select-wrapper {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 1000;
+  display: inline-block;
+  width: max-content;
+  min-width: unset;
+}
+
+.text-selection-toolbar .text-selection-heading-option-label {
+  white-space: pre-wrap;
+}
+
+.text-selection-toolbar .divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 2px;
+  background-color: var(--color-border-light);
+}
+
+.text-selection-toolbar .ai-quote-button {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--floating-toolbar-text-color);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.text-selection-toolbar .ai-quote-button:hover {
+  background-color: var(--floating-toolbar-item-hover-bg);
+}
+
+.text-selection-toolbar .ai-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}

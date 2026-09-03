@@ -1,0 +1,507 @@
+/*
+ * AnnotationPanel.css - 批注面板统一样式入口。
+ *
+ * 中文说明：批注面板是 Annotation feature 的 UI surface，定位、显隐、内容布局
+ * 和视觉状态必须在这个文件内收口，避免再由旧 layout CSS 与组件 CSS 分别覆盖。
+ */
+
+/* ============================================= */
+/* == 1. 面板基础样式 (Panel Base Styles) == */
+/* ============================================= */
+
+/* 
+ * 批注面板容器 (.annotation-panel)
+ * 作用：定义面板的基础视觉外观 - Notion卡片风格
+ */
+.annotation-panel {
+  --annotation-ai-action-color: color-mix(in srgb, var(--color-blue-600) 70%, var(--color-red-350));
+
+  position: absolute;
+  z-index: 1000;
+  display: none;
+  box-sizing: border-box;
+  width: 250px;
+  max-height: none;
+  overflow: visible;
+  opacity: 0;
+  pointer-events: none;
+  background-color: var(--annotation-panel-bg); /* 背景色 */
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--annotation-panel-border); /* 细边框 */
+  box-shadow: none;                                   /* 移除默认阴影，让面板更干净 */
+  padding: 10px;                                      /* 内边距 */
+  font-family: inherit;
+  /* 过渡效果 */
+  transition: top 0.25s ease-out, box-shadow 0.15s ease, transform 0.15s ease; 
+}
+
+.annotation-panel.is-visible {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.annotation-content,
+.annotation-body {
+  width: 100%;
+}
+
+/* ============================================= */
+/* == 2. 面板头部样式 (Header Styles) == */
+/* ============================================= */
+
+/* 
+ * 批注元信息区域 (.annotation-meta)
+ * 作用：包含作者、操作按钮等，采用flex布局
+ */
+.annotation-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  font-size: 11px;                                 /* 更小的字体，从13px减少到11px，与作者名称保持一致 */
+  color: var(--color-text-secondary);               /* 次要文本颜色 */
+  /* 移除下边框，现在用margin代替分隔 */
+  height: 22px; /* 固定高度，确保切换时不会跳动 */
+}
+
+/* 
+ * 批注作者 (.annotation-author)
+ * 作用：定义作者名称的样式，无头像版本
+ */
+.annotation-author {
+  font-weight: 500;                                 /* 中等粗细，更现代 */
+  color: var(--color-text-muted);                  /* 更浅的文本色 */
+  font-size: 11px;                                 /* 更小的字体，从13px减少到11px */
+}
+
+.annotation-panel .ai-tag-chip {
+  height: 16px;
+  font-size: 10px;
+}
+
+/* 
+ * 右侧区域容器 (.annotation-meta-right)
+ * 作用：放置时间戳和操作按钮，使用相对定位以支持显隐切换
+ */
+.annotation-meta-right {
+  display: flex;
+  align-items: center;
+  position: relative;
+  height: 100%;
+}
+
+/* 
+ * 批注时间戳 (.annotation-time)
+ * 作用：默认显示的时间信息
+ */
+.annotation-time {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+/* 
+ * 批注图标按钮组布局 (.annotation-icon-buttons)
+ * 作用：右侧操作按钮组
+ */
+.annotation-icon-buttons {
+  display: flex;
+  gap: 8px;                                         /* 按钮间距，与设计一致 */
+  align-items: center;
+  opacity: 0;                                       /* 默认隐藏按钮 */
+  position: absolute;                               /* 绝对定位，覆盖在时间戳位置 */
+  right: 0;                                         /* 右对齐 */
+  transition: opacity 0.2s ease;                   /* 平滑的显示/隐藏过渡 */
+  pointer-events: none;                            /* 隐藏时不阻挡点击 */
+}
+
+/* 
+ * 面板悬停时的显隐切换逻辑
+ * - 隐藏时间戳
+ * - 显示操作按钮
+ */
+.annotation-panel:hover .annotation-time {
+  opacity: 0;
+}
+
+.annotation-panel:hover .annotation-icon-buttons {
+  opacity: 1;
+  pointer-events: auto; /* 显示时允许点击 */
+}
+
+/* 编辑和新建状态下按钮始终可见，时间隐藏 */
+.annotation-panel.is-editing .annotation-time,
+.annotation-panel.is-creating .annotation-time {
+  opacity: 0;
+}
+
+.annotation-panel.is-editing .annotation-icon-buttons,
+.annotation-panel.is-creating .annotation-icon-buttons {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ============================================= */
+/* == 3. 面板内容样式 (Content Styles) == */
+/* ============================================= */
+
+/* 
+ * 批注文本内容 (.annotation-text)
+ * 作用：定义批注正文的样式，优化可读性
+ */
+.annotation-text {
+  width: 100%;
+  white-space: pre-wrap;                            /* 保留空白符和换行 */
+  word-break: break-word;                           /* 长单词换行 */
+  font-size: 13px;                                 /* 更小的字体大小，从14px减少到13px */
+  line-height: 1.4;                                /* 调整行高以适应更小的字体 */
+  color: var(--annotation-panel-content-color);     /* 批注正文颜色由主题承接 */
+  margin: 0;                                        /* 移除默认边距 */
+}
+
+/* ============================================= */
+/* == 4. 已解决状态样式 (Resolved State Styles) == */
+/* ============================================= */
+
+/* 
+ * "已解决" 标记 (.annotation-resolved-badge)
+ * 作用：在已解决的批注中显示一个视觉标记
+ */
+.annotation-resolved-badge {
+  flex-shrink: 0;
+  margin-left: 8px;
+  padding: 3px 8px;                                /* 稍大的内边距 */
+  background-color: var(--color-success-bg);        /* 成功状态背景色 */
+  color: var(--color-success);                      /* 成功状态文字颜色 */
+  border-radius: 12px;                             /* 胶囊形状 */
+  font-size: 10px;                                 /* 更小的字体，从11px减少到10px */
+  font-weight: 500;                                /* 中等粗细 */
+  white-space: nowrap;                             /* 不换行 */
+}
+
+/* 
+ * 已解决状态下的面板内容区域
+ */
+.annotation-panel.is-resolved .annotation-content {
+  opacity: 0.7;                                    /* 降低透明度 */
+}
+
+/* 
+ * 已解决状态下的批注文本
+ */
+.annotation-panel.is-resolved .annotation-text {
+  color: var(--annotation-panel-resolved-text-color); /* 较浅的文本颜色 */
+}
+
+/* ============================================= */
+/* == 5. 输入区域样式 (Input Area Styles) == */
+/* ============================================= */
+
+/* 
+ * 批注文本输入框 (.annotation-textarea)
+ * 作用：定义多行文本输入框的基础和焦点样式
+ */
+.annotation-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 80px;                                /* 更大的最小高度 */
+  max-height: none;
+  padding: 10px;                                   /* 更宽松的内边距 */
+  border: 1px solid var(--annotation-panel-input-border); /* 边框 */
+  border-radius: var(--radius-md);
+  font-family: inherit;                            /* 继承父元素字体 */
+  font-size: 13px;                                 /* 与批注正文保持一致，从14px减少到13px */
+  line-height: 1.4;                                /* 与批注正文保持一致，从1.5调整到1.4 */
+  color: var(--annotation-panel-input-color);       /* 输入文字颜色 */
+  background-color: var(--annotation-panel-input-bg); /* 背景色 */
+  resize: none;                                     /* 禁用调整大小 */
+  overflow: hidden;
+  outline: none;                                    /* 移除默认轮廓 */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease; /* 过渡效果 */
+}
+
+/* 
+ * 文本输入框焦点状态
+ */
+.annotation-textarea:focus {
+  border-color: var(--annotation-panel-input-focus-border); /* 聚焦边框色 */
+}
+
+/* 
+ * 文本输入框占位符样式
+ */
+.annotation-textarea::placeholder {
+  color: var(--color-text-placeholder);            /* 占位符颜色 */
+  font-style: normal;                              /* 正常字体样式 */
+}
+
+/* ============================================= */
+/* == 6. 图标按钮样式 (Icon Button Styles) == */
+/* ============================================= */
+
+/* 
+ * 图标按钮基础样式 (.icon-button)
+ * 作用：更小的圆形按钮，减少视觉干扰
+ */
+.icon-button {
+  width: 22px;                                      /* 更大的尺寸 */
+  height: 22px;                                     /* 更大的尺寸 */
+  border-radius: 50%;                               /* 圆形 */
+  border: none;                                     /* 移除边框 */
+  background: transparent;                          /* 透明背景 */
+  cursor: pointer;                                  /* 手型光标 */
+  font-size: 15px;                                 /* 增大的图标尺寸 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s ease;                       /* 过渡效果 */
+  color: var(--color-text-secondary);             /* 默认图标颜色 */
+}
+
+/* 
+ * 图标字体样式
+ */
+.icon-edit, .icon-resolve, .icon-delete, .icon-cancel, .icon-save, .icon-ai {
+  font-style: normal;
+  line-height: 1;
+  font-weight: bold;
+}
+
+/* --- 特定图标按钮颜色 --- */
+
+/* AI 图标按钮 */
+.ai-icon {
+  color: var(--annotation-ai-action-color);
+}
+
+/* 编辑图标按钮 */
+.edit-icon {
+  color: var(--color-info);
+}
+
+/* 解决图标按钮 */
+.resolve-icon {
+  color: var(--color-success);
+}
+
+/* 已解决状态下的解决图标按钮 */
+.resolve-icon.is-resolved {
+  background-color: var(--color-success);
+  color: var(--color-white);
+}
+
+/* 删除图标按钮 */
+.delete-icon {
+  color: var(--color-error);
+}
+
+/* 取消图标按钮 */
+.cancel-icon {
+  color: var(--color-text-secondary);
+}
+
+/* 保存图标按钮 */
+.save-icon {
+  color: var(--color-info);
+}
+
+/* ============================================= */
+/* == 7. 交互样式 (Interaction Styles) == */
+/* ============================================= */
+
+/* --- 悬停效果 --- */
+
+/* 面板悬停时显示轻微阴影 */
+.annotation-panel:hover {
+  box-shadow: 0 2px 8px var(--shadow-color-sm);        /* 轻微的悬停阴影效果 */
+}
+
+/* 图标按钮悬停效果 - 统一样式 */
+.icon-button:hover {
+  background-color: var(--color-bg-hover);
+  transform: scale(1.1);                            /* 轻微放大 */
+}
+
+/* AI 图标按钮悬停 */
+.ai-icon:hover {
+  background-color: color-mix(in srgb, var(--annotation-ai-action-color) 10%, transparent);
+}
+
+/* 编辑图标按钮悬停 */
+.edit-icon:hover {
+  background-color: color-mix(in srgb, var(--color-info) 10%, transparent);
+}
+
+/* 解决图标按钮悬停 */
+.resolve-icon:hover {
+  background-color: color-mix(in srgb, var(--color-success) 10%, transparent);
+}
+
+/* 已解决状态下的解决图标按钮悬停 */
+.resolve-icon.is-resolved:hover {
+  background-color: color-mix(in srgb, var(--color-success) 82%, var(--color-black));
+}
+
+/* 删除图标按钮悬停 */
+.delete-icon:hover {
+  background-color: color-mix(in srgb, var(--color-error) 10%, transparent);
+}
+
+/* 取消图标按钮悬停 */
+.cancel-icon:hover {
+  background-color: color-mix(in srgb, var(--color-text-secondary) 10%, transparent);
+}
+
+/* 保存图标按钮悬停 */
+.save-icon:hover {
+  background-color: color-mix(in srgb, var(--color-info) 10%, transparent);
+}
+
+/* 保存按钮禁用状态 */
+.save-icon:disabled {
+  color: var(--color-text-placeholder);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.save-icon:disabled:hover {
+  background-color: transparent;
+  transform: none;
+}
+
+/* ============================================= */
+/* == 8. 动画效果 (Animation Effects) == */
+/* ============================================= */
+
+/* 
+ * 批注面板进入动画
+ */
+@keyframes annotation-panel-fade-in {
+  from {
+    opacity: 0;
+    /* 只做轻微向上位移，不再缩放，避免“放大”感 */
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 
+ * 创建中的面板应用动画
+ */
+.annotation-panel.is-creating {
+  /* 创建态：使用淡入 + 从下往上轻微浮起的动画 */
+  animation: annotation-panel-fade-in 0.2s ease-out;
+  /* 创建时不做 top 位置平滑过渡，避免“从页面顶部滑到目标位置”的视觉效果 */
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+/* ============================================= */
+/* == 9. 高亮样式 (Highlight Styles) == */
+/* ============================================= */
+
+/* 
+ * 面板高亮样式
+ */
+.annotation-highlight-panel {
+  box-shadow: 0 2px 8px var(--shadow-color-sm);        /* 轻微的悬停阴影效果 */
+}
+
+/* ============================================= */
+/* == 10. 批注项容器样式 (Annotation Item Container) == */
+/* ============================================= */
+
+/* 
+ * 批注项容器 (.annotation-item)
+ * 作用：为AnnotationDisplay、AnnotationEditor、NewAnnotation提供统一容器样式
+ */
+.annotation-item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* 
+ * 编辑和新建状态的特殊样式
+ */
+.annotation-item.annotation-editor,
+.annotation-item.new-annotation {
+  /* 可以添加编辑状态特有的样式 */
+}
+
+/* ============================================= */
+/* == 11. 回复功能样式 (Reply Styles) == */
+/* ============================================= */
+
+.annotation-replies {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--annotation-panel-border); /* 仅保留顶部横线 */
+}
+
+.annotation-reply-item {
+  padding: 6px 0; /* 减少左右内边距，因为没有背景色了 */
+  /* 回复间分割线已移除，保持列表更清爽 */
+}
+
+.annotation-reply-item:last-child {
+  padding-bottom: 0;
+}
+
+.annotation-reply-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;                              /* 与 .annotation-meta 的间距保持一致 */
+  font-size: 11px;
+}
+
+.annotation-reply-author {
+  font-weight: 500;                                 /* 复用 .annotation-author 的样式 */
+  color: var(--color-text-muted);                  /* 复用 .annotation-author 的颜色 */
+  font-size: 11px;                                 /* 复用 .annotation-author 的大小 */
+}
+
+.annotation-reply-time {
+  color: var(--annotation-panel-reply-time-color);
+  font-size: 10px;
+}
+
+.annotation-reply-content {
+  font-size: 13px; /* 字体微调回 13px 与正文一致 */
+  line-height: 1.4;
+  color: var(--annotation-panel-reply-content-color);
+  word-break: break-word;
+}
+
+/* ============================================= */
+/* == 12. 批注创建者信息容器样式 (Annotation Creator Styles) == */
+/* ============================================= */
+
+/* 
+ * 批注创建者信息容器 (.annotation-creator)
+ * 作用：包含作者名称和状态标记，使用flex布局
+ */
+.annotation-creator {
+  display: flex;
+  align-items: center;
+  gap: 4px;                                         /* 作者名称和标记间的间距 */
+}
+
+@media (max-width: 1200px) {
+  .annotation-panel {
+    width: 230px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .annotation-panel {
+    width: 210px;
+  }
+}

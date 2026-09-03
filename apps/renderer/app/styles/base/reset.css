@@ -1,0 +1,64 @@
+/* reset.css - 浏览器默认样式重置 */
+
+/* 重置所有元素的盒模型 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  transition-property: none;
+}
+
+/* 重置基础HTML元素 */
+html, body {
+  height: 100%;
+  width: 100%;
+  font-size: 16px;
+  line-height: 1.5;
+  font-family: var(--font-family-default);
+  background-color: var(--color-bg-default);
+  border: none !important;
+  outline: none !important;
+  /* 让 macOS 字体渲染更清晰纤细 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 移除列表样式 */
+ul, ol {
+  list-style: none;
+}
+
+/* 移除链接下划线 */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* 重置表单元素 */
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+/* 重置按钮样式 */
+button {
+  cursor: pointer;
+}
+
+/* 图片默认样式 */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 移除表格边框间距 */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}

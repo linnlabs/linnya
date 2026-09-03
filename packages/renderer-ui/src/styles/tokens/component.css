@@ -1,0 +1,31 @@
+/* 跨 Host 与插件稳定复用的组件/交互 token，三套内置主题必须同构。 */
+
+[data-linnya-ui-theme='light'] {
+  --code-block-bg: var(--color-gray-100);
+  --drag-handle-color: var(--color-gray-350);
+  --drag-handle-hover-color: var(--color-gray-400);
+  --drag-handle-active-color: var(--color-gray-450);
+  --scrollbar-track-color: var(--color-gray-100);
+  --scrollbar-thumb-color: var(--color-gray-300);
+  --scrollbar-thumb-hover-color: var(--color-gray-400);
+}
+
+[data-linnya-ui-theme='dark'] {
+  --code-block-bg: var(--color-gray-825);
+  --drag-handle-color: var(--color-gray-500);
+  --drag-handle-hover-color: var(--color-gray-400);
+  --drag-handle-active-color: var(--color-gray-350);
+  --scrollbar-track-color: var(--color-dark-elevated);
+  --scrollbar-thumb-color: var(--color-gray-550);
+  --scrollbar-thumb-hover-color: var(--color-gray-450);
+}
+
+[data-linnya-ui-theme='moon-blue'] {
+  --code-block-bg: color-mix(in srgb, var(--color-blue-50) 58%, var(--color-white));
+  --drag-handle-color: var(--color-text-tertiary);
+  --drag-handle-hover-color: var(--color-text-secondary);
+  --drag-handle-active-color: var(--color-text-primary);
+  --scrollbar-track-color: var(--color-bg-subtle);
+  --scrollbar-thumb-color: color-mix(in srgb, var(--color-blue-150) 64%, var(--color-gray-300));
+  --scrollbar-thumb-hover-color: color-mix(in srgb, var(--color-blue-250) 70%, var(--color-gray-350));
+}

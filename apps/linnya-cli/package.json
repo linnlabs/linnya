@@ -1,0 +1,28 @@
+{
+  "name": "@linnya/conversation-cli",
+  "version": "0.0.38",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "Thin command-line control plane for a running Linnya desktop App",
+  "bin": {
+    "linnya": "bin/linnya.cjs"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@app/schemas": "workspace:*",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.5.4",
+    "vitest": "^3.2.4"
+  }
+}

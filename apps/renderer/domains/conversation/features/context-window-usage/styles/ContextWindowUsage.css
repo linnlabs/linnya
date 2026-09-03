@@ -1,0 +1,91 @@
+.context-window-usage-trigger {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.context-window-usage-trigger:hover,
+.context-window-usage-trigger[aria-expanded='true'] {
+  background: var(--color-bg-hover);
+}
+
+.context-window-usage-trigger:focus-visible {
+  outline: 1px solid var(--color-border-focus);
+  outline-offset: 1px;
+}
+
+.context-window-usage-trigger__ring {
+  width: 16px;
+  height: 16px;
+  overflow: visible;
+}
+
+.context-window-usage-trigger__track,
+.context-window-usage-trigger__value {
+  fill: none;
+}
+
+.context-window-usage-trigger__track {
+  stroke: var(--color-border-light);
+  stroke-width: 2;
+}
+
+.context-window-usage-trigger__value {
+  transform: rotate(-90deg);
+  transform-origin: center;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+}
+
+.context-window-usage-trigger__value.is-normal {
+  stroke: var(--color-accent);
+}
+
+.context-window-usage-trigger__value.is-elevated {
+  stroke: var(--color-warning);
+}
+
+.context-window-usage-trigger__value.is-critical {
+  stroke: var(--color-error);
+}
+
+.context-window-usage-trigger.is-unavailable {
+  color: var(--color-text-muted);
+}
+
+.context-window-usage-trigger.is-historical .context-window-usage-trigger__track {
+  stroke-dasharray: 2 2;
+}
+
+.context-window-usage-panel-wrapper.linnya-dropdown-surface {
+  position: fixed;
+  z-index: 1100;
+  width: min(320px, calc(100vw - 16px));
+  max-height: none;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.context-window-usage-panel-wrapper.is-positioned {
+  visibility: visible;
+}
+
+.context-window-usage-panel-fade-enter-active,
+.context-window-usage-panel-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.context-window-usage-panel-fade-enter-from,
+.context-window-usage-panel-fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}

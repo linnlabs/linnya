@@ -1,0 +1,10 @@
+# Conversation presentation-only header registrations (INV-56)
+# 只允许新增。进入清单的 header-only 工具必须使用 projector，禁止恢复 raw title resolver。
+apps/renderer/domains/conversation/ui/tools/configs/common.ts#commonToolConfigs.assemble_documents
+apps/renderer/domains/conversation/ui/tools/configs/common.ts#commonToolConfigs.assemble_evidence
+apps/renderer/domains/conversation/ui/tools/configs/common.ts#commonToolConfigs.edit_file
+apps/renderer/domains/conversation/ui/tools/configs/common.ts#commonToolConfigs.evidence_resolve
+apps/renderer/domains/conversation/ui/tools/configs/common.ts#commonToolConfigs.grep
+apps/renderer/domains/conversation/ui/tools/configs/common.ts#commonToolConfigs.list_files
+apps/renderer/domains/conversation/ui/tools/configs/common.ts#commonToolConfigs.write_file
+apps/renderer/domains/conversation/ui/tools/configs/workspace.ts#workspaceReadToolConfigs.workspace_read_file

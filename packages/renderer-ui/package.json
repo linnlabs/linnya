@@ -1,0 +1,53 @@
+{
+  "name": "@linnya/renderer-ui",
+  "version": "2.0.0",
+  "type": "module",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Browser-safe Linnya Renderer UI runtime, components, tokens, theme, scroll and pure presentation capabilities.",
+  "files": [
+    "CHANGELOG.md",
+    "docs",
+    "src",
+    "README.md"
+  ],
+  "sideEffects": [
+    "./src/styles/*.css",
+    "./src/styles/**/*.css"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./font-stack": "./src/features/font-stack/index.ts",
+    "./icons": "./src/icons/index.ts",
+    "./localization": "./src/localization/index.ts",
+    "./scroll": "./src/scroll/index.ts",
+    "./theme": "./src/theme/index.ts",
+    "./version": "./src/version.ts",
+    "./tokens.css": "./src/styles/tokens.css",
+    "./styles.css": "./src/styles/styles.css",
+    "./package.json": "./package.json"
+  },
+  "types": "./src/index.ts",
+  "peerDependencies": {
+    "vue": ">=3.5.0 <4"
+  },
+  "dependencies": {
+    "overlayscrollbars": "2.15.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "jsdom": "27.4.0",
+    "typescript": "^5.5.4",
+    "vitest": "^3.2.4",
+    "vue": "3.5.22",
+    "vue-tsc": "~3.1.0"
+  },
+  "scripts": {
+    "gate": "pnpm run typecheck && pnpm run test && pnpm run style-audit && pnpm run pack-smoke",
+    "pack-smoke": "node scripts/verifyPackedPackage.mjs",
+    "style-audit": "node scripts/verifyStyleContract.mjs",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "verify": "pnpm run gate"
+  }
+}

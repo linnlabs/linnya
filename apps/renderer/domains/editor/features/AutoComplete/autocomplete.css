@@ -1,0 +1,6 @@
+/* Autocomplete 建议文本由 ProseMirror widget 注入，只承接弱提示视觉，不参与交互命中。 */
+.autocomplete-suggestion {
+  margin-left: 1px;
+  color: var(--color-text-placeholder);
+  pointer-events: none;
+}

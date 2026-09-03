@@ -1,0 +1,88 @@
+.latex-input-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 450px;
+  max-width: 600px;
+  padding: 12px;
+  border: 0.5px solid var(--color-border-default);
+  border-radius: 8px;
+  background-color: var(--color-bg-surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.latex-panel-main-content {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.latex-panel-textarea {
+  flex-grow: 1;
+  width: auto;
+  min-height: 60px;
+  padding: 8px;
+  overflow-y: hidden;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 4px;
+  outline: none;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 0.9em;
+  resize: none;
+}
+
+.latex-panel-textarea::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.latex-panel-buttons {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.latex-panel-button {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  font-size: 0.85em;
+  text-align: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.latex-panel-button.submit {
+  color: var(--color-accent);
+}
+
+.latex-panel-button.submit:not(:disabled):hover,
+.latex-panel-button.cancel:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.latex-panel-button.cancel {
+  color: var(--color-text-secondary);
+}
+
+.latex-panel-error {
+  width: 100%;
+  color: var(--color-error);
+  font-size: 0.75em;
+  text-align: left;
+}
+
+.latex-panel-fade-enter-active,
+.latex-panel-fade-leave-active {
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.latex-panel-fade-enter-from,
+.latex-panel-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}

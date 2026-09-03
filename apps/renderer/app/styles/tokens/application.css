@@ -1,0 +1,11 @@
+/* App 导航语义不属于基础组件包，由 Host application owner 持有。 */
+
+[data-linnya-ui-theme='light'],
+[data-linnya-ui-theme='dark'],
+[data-linnya-ui-theme='moon-blue'] {
+  --color-bg-navigation-highlight: color-mix(
+    in srgb,
+    var(--color-brand-200) 4%,
+    color-mix(in srgb, var(--color-bg-hover-strong) 60%, var(--color-bg-sidebar))
+  );
+}

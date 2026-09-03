@@ -1,0 +1,100 @@
+.sharedmemory-doc-write-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0 10px 10.5px 10.5px;
+}
+
+.sharedmemory-doc-write-card .loading-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  padding: 12px;
+}
+
+.sharedmemory-doc-write-card .loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: sharedmemory-doc-write-card-spin 1s linear infinite;
+}
+
+@keyframes sharedmemory-doc-write-card-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sharedmemory-doc-write-card .content-card {
+  background-color: var(--color-accent-bg-subtle);
+  border: 0.5px solid transparent;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.sharedmemory-doc-write-card .info-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.sharedmemory-doc-write-card .doc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.sharedmemory-doc-write-card .doc-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.sharedmemory-doc-write-card .doc-meta {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.sharedmemory-doc-write-card .doc-meta-text {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
+.sharedmemory-doc-write-card .error-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background-color: var(--color-error-bg);
+  border-radius: 8px;
+  color: var(--color-error);
+  font-size: 13px;
+}
+
+.sharedmemory-doc-write-card .error-icon {
+  font-size: 14px;
+}

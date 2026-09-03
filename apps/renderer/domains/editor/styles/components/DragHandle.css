@@ -1,0 +1,88 @@
+/* DragHandle.css - 拖拽手柄视觉样式 */
+/*
+ * 拖拽手柄颜色由主题层的组件 token 提供，组件样式只消费变量。
+ */
+
+/* 
+ * 拖拽手柄样式
+ * 作用：提供可视化的拖拽控制点
+ */
+.drag-handle {
+  cursor: grab; /* 固定: 抓取光标 */
+  opacity: 0;   /* 固定: 默认不可见 */
+  /* 固定尺寸：26 x 18（宽 x 高） */
+  width: 18px;
+  height: 26px;
+  /* --- 新增：为容器设置固定尺寸和居中属性 --- */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* --- 新增：默认背景、边框透明，无阴影 --- */
+  background-color: transparent; 
+  box-shadow: none; 
+  /* --- 修改：将 background-color, border, box-shadow 加入过渡 --- */
+  transition: opacity var(--transition-normal), background-color var(--transition-normal), border var(--transition-normal), box-shadow var(--transition-normal); 
+  border-radius: var(--radius-sm);      /* 固定: 圆角 */
+  /* 移除这里的背景、边框、阴影设置，推迟到 :hover */
+}
+
+/* 拖拽手柄悬停效果 - 应用主题定义的背景、边框、阴影 */
+.drag-handle:hover {
+  color: var(--drag-handle-hover-color);
+  background-color: var(--drag-handle-hover-bg);
+}
+
+/* 拖拽手柄激活状态（按下时） */
+.drag-handle:active {
+  cursor: grabbing;                                /* 固定: 抓取中光标 */
+  color: var(--drag-handle-active-color);
+  background-color: var(--drag-handle-active-bg);
+}
+
+/* 
+ * 当块被悬停时显示拖拽手柄
+ * 仅当 body 上没有 data-suppress-handle-hover 属性时，此规则才生效
+ * 用于在拖拽结束后，防止旧位置的 handle 错误地保持悬停状态
+ */
+body:not([data-suppress-handle-hover]) .root-block-outer:hover .drag-handle {
+  opacity: 1; /* 固定: 完全不透明 */
+}
+
+/* 
+ * 更新：为SVG图标容器设置样式 
+ * 使其在.drag-handle内居中
+ */
+.drag-handle > svg {
+  width: 20px;  /* 比 26 x 18 容器略小，留出内边距空间 */
+  height: 20px;
+  color: var(--drag-handle-color);
+  transition: color var(--transition-normal);
+}
+
+.drag-handle:hover > svg {
+  color: var(--drag-handle-hover-color);
+}
+
+/* 
+ * 拖拽图像样式
+ * 拖拽过程中跟随鼠标的元素
+ */
+.drag-image {
+  padding: var(--spacing-sm);           /* 固定: 内边距 */
+  /* 主题相关: 背景 (注意: --drag-image-bg 需在主题文件中定义) */
+  background: var(--drag-image-bg, var(--drag-handle-bg)); 
+  border-radius: var(--radius-sm); /* 固定: 圆角 */
+  font-size: 12px;                      /* 固定: 字体大小 */
+   /* 主题相关: 阴影 (注意: --drag-image-shadow 需在主题文件中定义) */
+  box-shadow: var(--drag-image-shadow, var(--shadow-md)); 
+}
+
+
+
+/* 自定义拖拽指示器样式 */
+.custom-drop-indicator {
+  background-color: var(--drag-indicator-color); /* 主题相关: 指示器颜色 */
+  box-shadow: 0 0 6px var(--drag-indicator-shadow); /* 主题相关: 指示器阴影 */
+}
+
+/* == 文件结束 == */

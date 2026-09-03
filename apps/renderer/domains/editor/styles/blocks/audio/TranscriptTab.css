@@ -1,0 +1,135 @@
+.transcript-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.transcript-tab .toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 28px;
+  padding: 4px 0;
+  margin-bottom: 8px;
+  background: var(--color-bg-default);
+}
+
+.transcript-tab .toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+}
+
+.transcript-tab .toolbar-button {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.transcript-tab .toolbar-button svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.transcript-tab .toolbar-button:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.transcript-tab .toolbar-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.transcript-tab .loading-icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+}
+
+.transcript-tab .timestamp-info {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-placeholder);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.transcript-tab .time-label {
+  color: var(--color-text-placeholder);
+}
+
+.transcript-tab .time-separator {
+  color: var(--color-text-placeholder);
+  font-weight: 300;
+  opacity: 0.4;
+}
+
+.transcript-tab .transcript-editor {
+  flex: 1;
+  padding-right: 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.transcript-tab .transcript-editor .ProseMirror {
+  min-height: 100%;
+  color: var(--color-text-primary);
+  font-size: 15px;
+  line-height: 1.6;
+  outline: none;
+}
+
+.transcript-tab .translate-menu-container {
+  position: relative;
+  margin-left: 8px;
+}
+
+.transcript-menu-fade-enter-active,
+.transcript-menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.transcript-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.transcript-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.transcript-menu-fade-enter-to,
+.transcript-menu-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.transcript-tab .empty-state {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-placeholder);
+  font-size: 14px;
+}

@@ -1,0 +1,18 @@
+.review-sidebar {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  overflow-y: auto;
+}
+
+.review-sidebar-fade-enter-active,
+.review-sidebar-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.review-sidebar-fade-enter-from,
+.review-sidebar-fade-leave-to {
+  opacity: 0;
+}

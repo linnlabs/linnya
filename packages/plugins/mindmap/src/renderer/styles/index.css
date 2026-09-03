@@ -1,0 +1,30 @@
+@import './tokens/palette.css';
+@import './mindmap.css';
+@import './markdown.css';
+@import './MindMapView.css';
+@import './presentation/MindMapContextMenu.css';
+@import './presentation/MindMapToolbar.css';
+@import './presentation/NodeEditor.css';
+@import './presentation/RichContentHost.css';
+@import './features/tagging/TaggingBadgeAddon.css';
+@import './features/evidence/ReferenceAddon.css';
+@import './features/evidence/ReferenceInsertPanel.css';
+@import './features/evidence/ReferenceKbTab.css';
+
+.editor-shell.for-mindmap {
+  overflow: hidden;
+  padding: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.editor-shell.for-mindmap .scroll-content-wrapper,
+.document-surface--mindmap {
+  height: 100%;
+  min-height: 0;
+}
+
+.document-surface--mindmap {
+  display: flex;
+  flex-direction: column;
+}

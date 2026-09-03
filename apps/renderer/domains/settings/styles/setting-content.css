@@ -1,0 +1,331 @@
+/* apps/renderer/domains/settings/styles/setting-content.css */
+/* 设置域通用表单布局规范，由 settings/styles/index.css 统一聚合。 */
+
+/* --- 基础与容器 --- */
+.settings-content {
+  /* 确保内容区域可滚动 */
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* --- 标题 (h3, h4) --- */
+/* 一级标题 (Section Title) */
+.settings-section-title,
+.settings-tab-content > div > h3,
+.settings-tab-content > section > h3,
+.settings-tab-content > h3 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+}
+
+/* 二级标题 (Subheading) */
+.settings-subheading { /* h4 */
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+/* --- 表单行布局 --- */
+.form-row {
+  display: flex;
+  align-items: flex-start; /* 所有行默认顶部对齐 */
+  margin-bottom: 20px; /* 统一行间距 */
+}
+
+/* --- 标签 --- */
+.form-label {
+  flex-shrink: 0;
+  width: 200px;
+  padding-top: 7px; /* 调整padding使标签文本与控件文本视觉对齐 */
+  padding-right: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+}
+
+/* 带描述的标签区域 */
+.label-area {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 200px;
+  padding-right: var(--spacing-md);
+}
+
+.label-area > .form-label {
+  width: auto;
+  padding-top: 0;
+  padding-right: 0;
+}
+
+.label-description {
+  margin-top: 6px;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-tertiary);
+}
+
+/* --- 控件区域与控件 --- */
+.control-area {
+  display: flex;
+  flex: 1;
+  flex-direction: column; /* 内部元素垂直排列 */
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 默认控件填充容器 */
+.control-area > .settings-input,
+.control-area > .settings-select,
+.control-area > .settings-textarea,
+.control-area > .secret-input,
+.control-area > .range-control,
+.control-area > .token-control {
+  width: 100%;
+  height: 100%;
+}
+
+/* 基础控件样式 */
+.settings-input,
+.settings-select,
+.settings-textarea {
+  box-sizing: border-box; /* 确保 padding 和 border 不会撑大宽度 */
+  height: 34px; /* 统一高度 */
+  padding: 7px 11px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--transition-normal) ease,
+    background-color var(--transition-normal) ease;
+}
+
+.settings-textarea {
+  min-height: 80px;
+  line-height: var(--line-height-normal);
+  resize: vertical;
+}
+
+/* 添加所有输入控件的 placeholder 统一样式 */
+.settings-input::placeholder,
+.settings-textarea::placeholder,
+.settings-select::placeholder {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-placeholder);
+  opacity: 1; /* 确保在所有浏览器中显示统一 */
+}
+
+/* 状态样式 */
+.settings-input:hover:not(:disabled),
+.settings-select:hover:not(:disabled),
+.settings-textarea:hover:not(:disabled) {
+  border-color: var(--color-border-hover);
+}
+
+.settings-input:focus:not(:disabled),
+.settings-select:focus:not(:disabled),
+.settings-textarea:focus:not(:disabled) {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+/* --- 开关行 --- */
+/* 控件贴右、标签与说明占满左侧：开关只需要固定宽度，把剩余空间留给文案更好读。 */
+.form-row:has(> .control-area.align-right) > .form-label,
+.form-row:has(> .control-area.align-right) > .label-area {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  padding-right: var(--spacing-lg);
+}
+
+.form-row > .control-area.align-right {
+  flex: 0 0 auto;
+  align-items: flex-end;
+}
+
+/* --- 控件下方文字说明 --- */
+.control-area > .setting-description {
+  width: 100%;
+  margin-top: 7px;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-tertiary);
+}
+
+/* --- 状态提示（加载 / 不可用 / 错误） --- */
+.settings-status {
+  padding: 12px 14px;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+  border-radius: var(--radius-md);
+}
+
+.settings-status.error {
+  color: var(--color-error);
+  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
+}
+
+/* --- 特殊按钮 (居中) --- */
+.centered-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* 水平居中 */
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.success-message {
+  margin-left: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-success);
+}
+
+/* --- 主操作按钮 --- */
+.settings-button.full-width-button {
+  width: 100%;
+  height: 36px;
+  padding: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-accent);
+  cursor: pointer;
+  background: var(--color-accent-bg);
+  border: none;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-normal) ease;
+}
+
+.settings-button.full-width-button:hover:not(:disabled) {
+  background: var(--color-accent-bg-hover);
+}
+
+.settings-button.full-width-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* --- 水平分割线 --- */
+/* 主要区域分割线 (添加到需要底部边框的区域容器上) */
+.section-divider-bottom {
+  padding-bottom: 26px; /* 分割线上方的留白 */
+  margin-bottom: 0; /* 区域间距由下一段标题的 margin-top 提供 */
+  border-bottom: 1px solid var(--settings-hairline, var(--color-border-default));
+}
+
+/* 移除分隔线区域内最后一个 form-row 的下外边距 */
+.section-divider-bottom > .form-row:last-child {
+  margin-bottom: 0;
+}
+
+/* 为分割线下方的 H3 / H4 添加上边距 */
+.section-divider-bottom + div > h3,
+.section-divider-bottom + section > h3,
+.section-divider-bottom + div > h4,
+.section-divider-bottom + section > h4 {
+  margin-top: 26px;
+}
+
+/* 表单内部分割线 */
+.inner-bottom-divider {
+  padding-bottom: var(--spacing-lg);
+  margin-bottom: 0 !important;
+  border-bottom: 1px solid var(--settings-hairline, var(--color-border-default));
+}
+
+.settings-content::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.settings-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-content::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  transition: background-color var(--transition-normal) ease;
+}
+
+.settings-content::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+/* --- Toggle Switch 样式 --- */
+/* 遗留控件：尚未迁移到 `@linnya/renderer-ui` Switch 的设置页仍在使用。 */
+.control-area.align-right {
+  padding-top: 6px;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  margin-left: auto; /* 确保开关右对齐 */
+}
+
+/* 隐藏默认 checkbox */
+.toggle-switch input {
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+
+/* 滑块背景轨道 */
+.slider {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  padding: 2px; /* 轨道与滑块间的间隙 */
+  cursor: pointer;
+  background-color: var(--color-border-default);
+  border-radius: var(--radius-full);
+  transition: background-color 0.4s;
+}
+
+/* 滑块手柄 */
+.slider::before {
+  position: absolute;
+  top: 2px; /* 垂直位置 = padding */
+  left: 2px; /* 初始位置 = padding */
+  width: 16px;
+  height: 16px; /* 高度 = 容器高度 - 2*padding */
+  content: "";
+  background-color: var(--color-white);
+  border-radius: var(--radius-full);
+  box-shadow: 0 1px 2px var(--shadow-color-sm), 0 2px 2px var(--shadow-color-xs);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 选中状态：改变背景色 */
+input:checked + .slider {
+  background-color: var(--color-accent);
+  box-shadow: inset 0 2px 2px var(--shadow-color-md);
+}
+
+/* 禁用状态 */
+input:disabled + .slider {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* 选中状态：移动滑块 */
+input:checked + .slider::before {
+  /* 移动距离 = 容器宽度 - 滑块宽度 - 2*padding = 36 - 16 - 4 = 16px */
+  transform: translateX(16px);
+}

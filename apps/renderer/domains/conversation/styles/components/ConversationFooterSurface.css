@@ -1,0 +1,22 @@
+/*
+ * 主 composer 与 Subrun 只读面板共享同一悬浮表面。
+ * 这里只定义外壳；输入焦点、附件和业务按钮仍由各自 feature 负责。
+ */
+.conversation-footer-shell {
+  --conversation-footer-surface-bg: var(--color-bg-elevated);
+  --conversation-footer-surface-radius: 16px;
+
+  border-top: none;
+  padding: 0 16px 16px;
+  background-color: transparent;
+}
+
+.conversation-footer-surface {
+  display: flex;
+  overflow: visible;
+  border: 0.5px solid color-mix(in srgb, var(--color-text-primary) 15%, transparent);
+  border-radius: var(--conversation-footer-surface-radius);
+  background-color: var(--conversation-footer-surface-bg);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease;
+}

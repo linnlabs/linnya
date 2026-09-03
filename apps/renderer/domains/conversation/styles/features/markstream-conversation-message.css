@@ -1,0 +1,179 @@
+/**
+ * @file markstream-conversation-message.css
+ * @description 会话消息中 markstream 渲染内容的基础排版契约
+ *
+ * 这组规则服务于 MarkstreamRenderer.vue 输出的 `data-scope="conversation-message"`。
+ * 它不是单个 Vue 组件样式，而是会话消息渲染 feature 的全局 markdown 基线；
+ * 因此放在 conversation domain 的 features 样式入口中，并始终用 data-scope 收口。
+ */
+
+[data-scope="conversation-message"] {
+  --markstream-message-subtle-bg: var(--color-bg-subtle);
+  --markstream-message-accent: var(--color-accent);
+  --markstream-message-accent-hover: var(--color-accent-hover);
+  --markstream-message-inline-code-bg: color-mix(in srgb, var(--color-gray-475) 12%, transparent);
+  --markstream-message-link-hover-bg: color-mix(in srgb, var(--markstream-message-accent) 10%, transparent);
+  --markstream-message-link-active-bg: color-mix(in srgb, var(--markstream-message-accent) 14%, transparent);
+  --markstream-message-link-focus-ring: color-mix(in srgb, var(--markstream-message-accent) 35%, transparent);
+
+  color: var(--color-text-primary);
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.markstream-message-renderer {
+  width: 100%;
+}
+
+/* 段落与换行：对齐旧 `.markdown-content` 的紧凑间距策略。 */
+[data-scope="conversation-message"] p {
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+[data-scope="conversation-message"] br {
+  display: block;
+  height: 0;
+  margin-bottom: 8px;
+  content: "";
+}
+
+/* 标题：给出最小可读的层级间距，避免流式内容贴在一起。 */
+[data-scope="conversation-message"] h1,
+[data-scope="conversation-message"] h2,
+[data-scope="conversation-message"] h3,
+[data-scope="conversation-message"] h4,
+[data-scope="conversation-message"] h5,
+[data-scope="conversation-message"] h6 {
+  margin: 12px 0 8px;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+/* 列表：markstream 输出原生列表节点时需要保留默认可读性。 */
+[data-scope="conversation-message"] ul,
+[data-scope="conversation-message"] ol {
+  margin: 8px 0 8px 18px;
+  padding: 0;
+}
+
+[data-scope="conversation-message"] ul {
+  list-style-position: outside;
+  list-style-type: disc;
+}
+
+[data-scope="conversation-message"] ol {
+  list-style-position: outside;
+  list-style-type: decimal;
+}
+
+[data-scope="conversation-message"] li {
+  margin: 4px 0;
+}
+
+/* 引用块：对齐编辑器 quote-block 视觉，但限定在会话消息作用域。 */
+[data-scope="conversation-message"] blockquote {
+  position: relative;
+  margin: 10px 0;
+  padding-left: 1rem;
+  overflow: visible;
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+  border-radius: 2px;
+}
+
+[data-scope="conversation-message"] blockquote::before {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: 3px;
+  background-color: var(--color-border-default);
+  border-radius: 1.5px;
+  content: "";
+}
+
+/* 二级引用：编辑器没有对应样式，这里补齐缩进。 */
+[data-scope="conversation-message"] blockquote blockquote {
+  margin: 8px 0;
+  padding-left: calc(1rem + 20px);
+}
+
+[data-scope="conversation-message"] blockquote blockquote::before {
+  left: calc(2px + 20px);
+}
+
+/* 行内代码与代码块：SmartCodeBlock 会用更具体的组件选择器接管自研代码块。 */
+[data-scope="conversation-message"] code {
+  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-size: 12px;
+}
+
+[data-scope="conversation-message"] :not(pre) > code {
+  padding: 1px 4px;
+  background: var(--markstream-message-inline-code-bg);
+  border-radius: 4px;
+}
+
+[data-scope="conversation-message"] pre {
+  margin: 10px 0;
+  padding: 10px 12px;
+  overflow: auto;
+  background: var(--markstream-message-subtle-bg);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+}
+
+/* 链接：普通 markdown 链接使用基础交互色，引用链接由 ConversationReferenceLink.css 接管。 */
+[data-scope="conversation-message"] a {
+  color: var(--markstream-message-accent);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+[data-scope="conversation-message"] a:hover {
+  color: var(--markstream-message-accent-hover);
+  background: var(--markstream-message-link-hover-bg);
+}
+
+[data-scope="conversation-message"] a:active {
+  color: var(--markstream-message-accent-hover);
+  background: var(--markstream-message-link-active-bg);
+}
+
+[data-scope="conversation-message"] a:focus-visible {
+  outline: 2px solid var(--markstream-message-link-focus-ring);
+  outline-offset: 1px;
+}
+
+/* 表格：沿用会话 markdown 的基础表格视觉。 */
+[data-scope="conversation-message"] table {
+  width: 100%;
+  margin: 16px 0;
+  font-size: 12px;
+  border-collapse: collapse;
+}
+
+/* 公式节点样式仍由 ConversationMathInlineNode / ConversationMathBlockNode 自身承接。 */
+[data-scope="conversation-message"] th,
+[data-scope="conversation-message"] td {
+  padding: 6px 10px;
+  text-align: left;
+  border: 1px solid var(--color-border-default);
+}
+
+[data-scope="conversation-message"] th {
+  font-weight: 600;
+  background-color: var(--markstream-message-subtle-bg);
+}
+
+/* 水平分割线：conversation markdown 不依赖 editor 内部 token，直接使用全局边框语义色。 */
+[data-scope="conversation-message"] hr {
+  width: 100%;
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid var(--color-border-default);
+}

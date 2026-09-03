@@ -1,0 +1,66 @@
+/* Renderer UI selection feature：保留迁移前 selector 与 computed style。 */
+.tt-tag-chip {
+  --tt-tag-chip-icon-size: 12px;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tt-tag-chip__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--tt-tag-chip-icon-size);
+  height: var(--tt-tag-chip-icon-size);
+}
+
+.tt-tag-chip__icon svg,
+.tt-tag-chip__icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tt-tag-chip__label {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tt-tag-chip__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  line-height: 0;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.tt-tag-chip__close svg {
+  display: block;
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  stroke-width: 0.7px;
+}
+
+.tt-tag-chip__close:hover {
+  opacity: 1;
+}

@@ -1,0 +1,27 @@
+.tool-error-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.tool-error-card--actionable {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tool-error-card__message {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-error);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tool-error-card__actions {
+  flex-shrink: 0;
+}

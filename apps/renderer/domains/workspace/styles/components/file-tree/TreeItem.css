@@ -1,0 +1,159 @@
+/*
+ * TreeItem 样式：workspace file-tree 子组件样式。
+ * 普通节点收口到 .workspace-sidebar 下；Teleport 菜单使用组件专属 wrapper 与 transition 名。
+ */
+.workspace-sidebar .tree-item {
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  border-radius: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.workspace-sidebar .tree-item .tree-item-content {
+  --workspace-sidebar-row-padding-left: calc(
+    8px
+    + var(--node-depth) * var(--workspace-sidebar-tree-indent)
+  );
+  --workspace-sidebar-row-padding-right: var(--workspace-sidebar-row-padding-x);
+  --workspace-sidebar-row-icon-color: var(--workspace-project-row-icon-color, var(--color-text-secondary));
+  --workspace-sidebar-row-label-color: var(
+    --workspace-project-row-text-color,
+    var(--workspace-sidebar-label-color)
+  );
+  --workspace-sidebar-row-bg-hover: var(--workspace-project-row-bg-hover, var(--color-bg-hover));
+  --workspace-sidebar-row-bg-active: var(--workspace-project-row-bg-active, var(--workspace-sidebar-active-bg));
+  --workspace-sidebar-row-active-color: var(--workspace-project-row-active-color, var(--color-text-primary));
+}
+
+.workspace-sidebar .tree-item:hover .tree-item-content,
+.workspace-sidebar .tree-item.is-more-menu-open .tree-item-content {
+  --workspace-sidebar-row-padding-right: 31px;
+}
+
+.workspace-sidebar .tree-item .expand-icon {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--node-depth) * var(--workspace-sidebar-tree-indent) - 1px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 10px;
+  height: 18px;
+  color: var(--workspace-project-row-icon-color, var(--color-text-secondary));
+  opacity: 0.7;
+  flex-shrink: 0;
+  transform: translateY(-50%);
+}
+
+.workspace-sidebar .tree-item .expand-icon:hover {
+  opacity: 1;
+}
+
+.workspace-sidebar .tree-item .item-icon {
+  color: var(--workspace-project-row-icon-color, var(--color-text-secondary));
+}
+
+.workspace-sidebar .tree-item .expand-icon .svg-icon {
+  width: 10px;
+  height: 10px;
+}
+
+/* 项目名称样式 */
+.workspace-sidebar .tree-item .item-name {
+  color: var(--workspace-project-row-text-color, var(--workspace-sidebar-label-color));
+}
+
+/* 新建文件标签样式 */
+.workspace-sidebar .tree-item .new-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--color-accent);
+  background-color: var(--color-accent-bg);
+  text-transform: uppercase;
+  flex-shrink: 0; /* 防止被压缩 */
+}
+
+/* 重命名输入框 */
+.workspace-sidebar .tree-item .rename-input {
+  flex-grow: 1;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-focus);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 13px;
+  outline: none;
+  width: calc(100% - 50px);
+  color: var(--color-text-secondary);
+}
+
+.workspace-sidebar .tree-item .item-actions {
+  flex-shrink: 0;
+}
+
+.workspace-sidebar .tree-item .more-button {
+  transition: background-color 0.15s ease;
+}
+
+.workspace-sidebar .tree-item .more-button:hover {
+  color: var(--color-text-secondary);
+}
+
+/* 选中状态的文件，More 按钮 hover 时使用激活行的灰色层级。 */
+.workspace-sidebar .tree-item.active-file .more-button:hover {
+  background-color: var(--color-bg-active-control-hover);
+  color: var(--color-text-secondary);
+}
+
+.tree-item-menu-wrapper {
+  position: fixed;
+  z-index: 1000;
+}
+
+/* 菜单过渡动画（与 ProjectListView 一致） */
+.workspace-tree-item-menu-fade-enter-active,
+.workspace-tree-item-menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.workspace-tree-item-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.workspace-tree-item-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.workspace-sidebar .children-container {
+  margin-left: 0;
+}
+
+/* 拖放样式 */
+.workspace-sidebar .tree-item.dragging {
+  opacity: 0.5;
+  cursor: move;
+}
+
+.workspace-sidebar .tree-item.drag-over > .tree-item-content {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+  border-radius: 4px;
+}
+
+.workspace-sidebar .tree-item.drag-over > .tree-item-content .item-name {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.workspace-sidebar .tree-item.drag-over > .tree-item-content .folder-icon {
+  color: var(--color-accent);
+  font-weight: 500;
+}

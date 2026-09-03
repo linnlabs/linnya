@@ -1,0 +1,183 @@
+.review-section.review-agent-creator-view {
+  /* 与 ReviewSetup 保持一致的顶部节奏：先减小页面 padding-top，再用标题区 padding 找回层次。 */
+  padding: 12px 16px 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.review-agent-creator-view .section-header {
+  /* 返回按钮使用 absolute，是为了不让按钮参与标题区高度计算。 */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 6px 56px 6px 0;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.review-agent-creator-view .back-btn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.review-agent-creator-view .back-btn:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.review-agent-creator-view .section-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.review-agent-creator-view .full-height {
+  padding-bottom: 0;
+}
+
+.review-agent-creator-view .single-line {
+  height: 36px;
+}
+
+.review-agent-creator-view .input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  padding-bottom: 10px;
+}
+
+.review-agent-creator-view .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-agent-creator-view .field-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.review-agent-creator-view .field-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  margin-left: 2px;
+}
+
+.review-agent-creator-view .field-counter {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.review-agent-creator-view .field-counter.is-over {
+  color: var(--color-error);
+}
+
+.review-agent-creator-view .field-control {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border-default);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 0.2s ease;
+  font-family: inherit;
+
+  /* 自动高度由脚本根据内容控制；CSS 只保留初始和上限。 */
+  resize: none;
+  overflow-y: hidden;
+  min-height: 36px;
+  max-height: 300px;
+}
+
+.review-agent-creator-view .field-control::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.review-agent-creator-view .field-control::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.review-agent-creator-view .field-control::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.review-agent-creator-view .field-control:hover::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--color-gray-500) 40%, transparent);
+}
+
+.review-agent-creator-view .field-control::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.review-agent-creator-view .field-control:hover {
+  border-color: var(--color-accent);
+}
+
+.review-agent-creator-view .field-control:focus {
+  border-color: var(--color-accent);
+}
+
+.review-agent-creator-view .field-control::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.review-agent-creator-view .action-area {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-default);
+  flex-shrink: 0;
+}
+
+.review-agent-creator-view .start-btn {
+  width: 100%;
+  height: 36px;
+  background: var(--color-accent-bg);
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  padding: 0;
+  color: var(--color-accent);
+}
+
+.review-agent-creator-view .start-btn:hover:not(:disabled) {
+  background: var(--color-accent-bg-hover);
+}
+
+.review-agent-creator-view .start-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

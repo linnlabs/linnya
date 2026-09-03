@@ -1,0 +1,118 @@
+{
+  "name": "@linnlabs/linnkit",
+  "version": "0.31.0",
+  "type": "module",
+  "description": "A fine-grained context engineering framework for Agent applications — control every token sent to the model, with clear run lifecycle, audit records, and testable protocol boundaries.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/linnlabs/linnkit.git"
+  },
+  "homepage": "https://github.com/linnlabs/linnkit#readme",
+  "bugs": {
+    "url": "https://github.com/linnlabs/linnkit/issues"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "provenance": true
+  },
+  "files": [
+    "bin",
+    "dist",
+    "LICENSE",
+    "CHANGELOG.md",
+    "README.md",
+    "README.zh-CN.md",
+    "docs/README.md",
+    "docs/integration"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "linnkit": "bin/linnkit.cjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./ports": {
+      "types": "./dist/ports.d.ts",
+      "import": "./dist/ports.js",
+      "require": "./dist/ports.cjs"
+    },
+    "./contracts": {
+      "types": "./dist/contracts.d.ts",
+      "import": "./dist/contracts.js",
+      "require": "./dist/contracts.cjs"
+    },
+    "./runtime-kernel": {
+      "types": "./dist/runtime-kernel.d.ts",
+      "import": "./dist/runtime-kernel.js",
+      "require": "./dist/runtime-kernel.cjs"
+    },
+    "./runtime-kernel/events": {
+      "types": "./dist/runtime-kernel/events.d.ts",
+      "import": "./dist/runtime-kernel/events.js",
+      "require": "./dist/runtime-kernel/events.cjs"
+    },
+    "./context-manager": {
+      "types": "./dist/context-manager.d.ts",
+      "import": "./dist/context-manager.js",
+      "require": "./dist/context-manager.cjs"
+    },
+    "./testkit": {
+      "types": "./dist/testkit.d.ts",
+      "import": "./dist/testkit.js",
+      "require": "./dist/testkit.cjs"
+    },
+    "./quickstart": {
+      "types": "./dist/quickstart.d.ts",
+      "import": "./dist/quickstart.js",
+      "require": "./dist/quickstart.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsup",
+    "build:clean": "rm -rf dist",
+    "prepublishOnly": "npm run build:clean && npm run build && npm run test:smoke && npm run test:smoke:dist",
+    "publish:npm": "npm publish",
+    "publish:dry-run": "npm pack --dry-run",
+    "typecheck": "tsc --noEmit -p tsconfig.src.json && tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:smoke": "vitest run __tests__/package.shell.test.ts",
+    "test:smoke:dist": "vitest run __tests__/package.runtime-import.test.ts __tests__/package.events-browser-safe.test.ts"
+  },
+  "dependencies": {
+    "eventsource-parser": "^3.1.0",
+    "tiktoken": "^1.0.22"
+  },
+  "peerDependencies": {
+    "vitest": "^2.0.0 || ^3.0.0",
+    "zod": "^3.22.0"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.4",
+    "vitest": "^3.2.4"
+  },
+  "linnkit": {
+    "phase": "development (0.31.0 — unified automatic context compaction)",
+    "sourceOfTruth": "CHANGELOG.md",
+    "notes": [
+      "子入口 ./runtime-kernel/events 是 browser-safe slim seam：仅暴露 events governance 纯函数，禁止扩展任何 Node-only 依赖（如 node:async_hooks / crypto / fs）",
+      "前端代码禁止从 ./runtime-kernel（namespace 全展开入口）import，否则会把 crypto / node:async_hooks 等 Node-only 子树拖进 frontend bundle",
+      "0.x 版本号策略：任何加 export / 改既有签名都 bump minor（不是 patch），保证消费者不会在 patch 升级中吃到公开 API 变化"
+    ]
+  }
+}

@@ -1,0 +1,177 @@
+.ask-question-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ask-question-item .question-header {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.ask-question-item .question-number {
+  flex-shrink: 0;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.ask-question-item .question-text {
+  flex: 1;
+}
+
+.ask-question-item .required-indicator {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--color-error);
+}
+
+.ask-question-item .question-content {
+  margin-left: 16px;
+}
+
+.ask-question-item .radio-group,
+.ask-question-item .checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ask-question-item .radio-option,
+.ask-question-item .checkbox-option {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.ask-question-item .radio-option:hover,
+.ask-question-item .checkbox-option:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.ask-question-item .radio-option.selected,
+.ask-question-item .checkbox-option.selected {
+  background-color: var(--color-accent-bg);
+}
+
+.ask-question-item .radio-option.option-disabled,
+.ask-question-item .checkbox-option.option-disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.ask-question-item .radio-option.option-disabled:not(.selected):hover,
+.ask-question-item .checkbox-option.option-disabled:not(.selected):hover {
+  /* 只移除禁用后未选项的 hover 残留；选中项仍保留自己的选中态，避免提交后答案像丢了。 */
+  background-color: transparent;
+}
+
+/* 行级 hover 需要同步高亮共享输入组件内部控件。 */
+.ask-question-item .checkbox-option:not(.option-disabled):hover .checkbox-custom {
+  border-color: var(--color-accent);
+}
+
+.ask-question-item .radio-option:not(.option-disabled):hover .radio-item input[type="radio"] {
+  border-color: var(--color-accent);
+}
+
+.ask-question-item .option-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ask-question-item .option-label {
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.ask-question-item .option-description {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.ask-question-item .other-input {
+  margin-top: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background-color: var(--color-accent-bg-subtle);
+  border: 1px solid var(--color-border-accent-light);
+  border-radius: 3px;
+  outline: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.ask-question-item .other-input:focus {
+  border-color: var(--color-accent);
+}
+
+.ask-question-item .other-input::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.ask-question-item .text-input {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  resize: none;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.ask-question-item .text-input:focus {
+  border-color: var(--color-accent);
+}
+
+.ask-question-item .text-input::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.ask-question-item .text-input.input-disabled {
+  cursor: not-allowed;
+  background-color: var(--color-bg-disabled);
+  border-color: var(--color-border-default);
+  opacity: 0.7;
+}
+
+.ask-question-item .multi-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.ask-question-item .validation-error {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--color-error);
+}
+
+.ask-question-item .validation-error::before {
+  font-size: 12px;
+  content: '⚠';
+}
+
+/* 内部原生 input 默认隐藏由共享控件自身控制；这里只修正行内容顶部对齐。 */
+.ask-question-item .radio-option .radio-item,
+.ask-question-item .checkbox-option .checkbox-item {
+  align-items: flex-start;
+}

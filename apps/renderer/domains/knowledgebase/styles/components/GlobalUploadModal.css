@@ -1,0 +1,91 @@
+.global-upload-body {
+  padding: 0 32px 24px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.global-upload-body .global-upload-layout {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.global-upload-body .toolbar {
+  flex-shrink: 0;
+  padding-bottom: 10px;
+  background: var(--color-bg-surface);
+}
+
+.global-upload-body .toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.global-upload-body .toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.global-upload-body .toolbar-right {
+  display: flex;
+  justify-content: flex-end;
+  flex: 1;
+  min-width: 0;
+}
+
+.global-upload-body .label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.global-upload-body .kb-select-wrap {
+  /* CustomSelect 默认撑满容器，这里固定宽度是为了保留弹窗说明文案空间。 */
+  width: 140px;
+  flex: 0 0 140px;
+}
+
+.global-upload-body .kb-target-select-trigger {
+  height: 30px;
+  padding: 6px 20px 6px 10px;
+}
+
+.global-upload-body .select-chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-tertiary);
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: transform 0.2s ease-in-out;
+}
+
+.global-upload-body .select-chevron.is-open {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.global-upload-body .hint {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.global-upload-body .content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.global-upload-body .content > * {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}

@@ -1,0 +1,27 @@
+.tooltip-trigger {
+  display: inline-flex;
+}
+
+.hover-tooltip {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-tooltip);
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--color-white);
+  white-space: nowrap;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--color-black) 92%, transparent);
+  border-radius: 6px;
+  box-shadow: var(--shadow-floating-panel);
+}
+
+.hover-tooltip.tooltip-fade-enter-active,
+.hover-tooltip.tooltip-fade-leave-active {
+  transition: opacity 0.12s ease;
+}
+
+.hover-tooltip.tooltip-fade-enter-from,
+.hover-tooltip.tooltip-fade-leave-to {
+  opacity: 0;
+}

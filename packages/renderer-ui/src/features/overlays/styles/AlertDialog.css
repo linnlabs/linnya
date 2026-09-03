@@ -1,0 +1,104 @@
+.alert-dialog-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 32px 0;
+}
+
+.alert-dialog-content .alert-dialog-copy {
+  flex: 1;
+  max-height: min(360px, 50vh);
+  min-height: 20px;
+  display: grid;
+  gap: 16px;
+  padding-right: 4px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.alert-dialog-content .alert-dialog-message {
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.alert-dialog-content .alert-dialog-sections {
+  display: grid;
+  gap: 14px;
+}
+
+.alert-dialog-content .alert-dialog-section h4 {
+  margin: 0 0 6px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.alert-dialog-content .alert-dialog-section ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+  list-style: disc outside;
+}
+
+.alert-dialog-content .alert-dialog-risk-message {
+  margin: 0;
+  color: var(--color-error);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.alert-dialog-content .alert-dialog-copy::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.alert-dialog-content .alert-dialog-copy::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.alert-dialog-content .alert-dialog-copy::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+}
+
+.alert-dialog-content .alert-dialog-copy::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+.alert-dialog-content .alert-dialog-copy::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.alert-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 24px 32px;
+}
+
+@media (max-width: 768px) {
+  .alert-dialog-content .alert-dialog-copy {
+    text-align: center;
+  }
+
+  .alert-dialog-content .alert-dialog-section ul {
+    display: inline-block;
+    text-align: left;
+  }
+
+  .alert-dialog-footer {
+    flex-direction: column-reverse;
+  }
+
+  .alert-dialog-footer .alert-dialog-action {
+    width: 100%;
+  }
+}

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/linnlabs/linnkit/discussions
+    about: Ask questions and discuss usage in GitHub Discussions.
+  - name: Documentation
+    url: https://github.com/linnlabs/linnkit/blob/main/docs/integration/README.md
+    about: Read the integration guide before opening an issue.

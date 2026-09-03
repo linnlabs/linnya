@@ -1,0 +1,18 @@
+.ask-questionnaire-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  /* 问卷卡片按产品约定不显示标题分界线。 */
+}
+
+.ask-questionnaire-header .questionnaire-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.ask-questionnaire-header .questionnaire-description {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}

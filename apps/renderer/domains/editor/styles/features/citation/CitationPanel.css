@@ -1,0 +1,40 @@
+.citation-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 300px;
+  font-family: inherit;
+}
+
+/* 中文说明：CitationPanel 是 DraggablePanel 内的业务内容，tab 视觉只收口到 citation 面板根下。 */
+.citation-panel .citation-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.citation-panel .citation-tab {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.citation-panel .citation-tab:hover {
+  color: var(--color-text-primary);
+}
+
+.citation-panel .citation-tab.active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.citation-panel .citation-tab-content {
+  flex: 1;
+  min-height: 0;
+}

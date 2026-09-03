@@ -1,0 +1,208 @@
+:is(.notes-tab, .summary-tab) {
+  display: flex;
+  flex-direction: column;
+}
+
+:is(.notes-tab, .summary-tab) .toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+  margin-bottom: 8px;
+  background: var(--color-bg-default);
+}
+
+:is(.notes-tab, .summary-tab) .toolbar-buttons {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+:is(.notes-tab, .summary-tab) .divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--color-border-default);
+}
+
+:is(.notes-tab, .summary-tab) .toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+:is(.notes-tab, .summary-tab) .toolbar-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+:is(.notes-tab, .summary-tab) .toolbar-button:hover {
+  background-color: var(--color-bg-hover);
+}
+
+:is(.notes-tab, .summary-tab) .toolbar-button.is-active {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+:is(.notes-tab, .summary-tab) .toolbar-button.is-active:hover {
+  background-color: var(--color-accent-bg-hover);
+}
+
+:is(.notes-tab, .summary-tab) .editor-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 80px;
+}
+
+:is(.notes-tab, .summary-tab) .custom-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--color-text-placeholder);
+  font-size: 14px;
+  line-height: 1.6;
+  pointer-events: none;
+}
+
+:is(.notes-editor, .summary-editor) {
+  width: 100%;
+  min-height: 80px;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror {
+  position: relative;
+  min-height: 80px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+  outline: none;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror p {
+  margin: 0.43em 0;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror p:first-child {
+  margin-top: 0;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror h1,
+:is(.notes-editor, .summary-editor) .ProseMirror h2,
+:is(.notes-editor, .summary-editor) .ProseMirror h3 {
+  margin: 1em 0 0.5em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror h1 {
+  font-size: 1.5em;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror h2 {
+  font-size: 1.3em;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror h3 {
+  font-size: 1.1em;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror strong {
+  font-weight: 600;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror em {
+  font-style: italic;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror ul,
+:is(.notes-editor, .summary-editor) .ProseMirror ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror ul {
+  list-style-type: disc;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror ol {
+  list-style-type: decimal;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror li {
+  display: list-item;
+  margin: 0.25em 0;
+}
+
+:is(.notes-editor, .summary-editor) .ProseMirror li p {
+  margin: 0;
+}
+
+:is(.notes-editor, .summary-editor) .timestamp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+:is(.notes-editor, .summary-editor) .timestamp-tag::before {
+  content: '';
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  background-color: currentColor;
+  mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12,4c4.42,0,8,3.58,8,8s-3.58,8-8,8-8-3.58-8-8S7.58,4,12,4ZM12,5c-3.87,0-7,3.13-7,7s3.13,7,7,7,7-3.13,7-7-3.13-7-7-7ZM11.5,7c.24,0,.45.17.49.41v.09s0,4.5,0,4.5h2.5c.28,0,.5.22.5.5,0,.24-.17.45-.41.49h-.09s-3,0-3,0c-.24,0-.45-.17-.49-.41v-.09s0-5,0-5c0-.28.22-.5.5-.5Z" fill="black" stroke-width="0"/></svg>');
+  mask-repeat: no-repeat;
+  mask-size: contain;
+}
+
+:is(.notes-editor, .summary-editor) .timestamp-tag:hover {
+  background-color: var(--color-accent-bg-hover);
+  transform: translateY(0);
+}
+
+:is(.notes-editor, .summary-editor) .timestamp-tag:active {
+  box-shadow: none;
+  transform: translateY(0);
+}
+
+:is(.notes-tab, .summary-tab) .timestamp-info {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-placeholder);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+:is(.notes-tab, .summary-tab) .time-label {
+  color: var(--color-text-placeholder);
+}
+
+:is(.notes-tab, .summary-tab) .time-separator {
+  color: var(--color-text-placeholder);
+  opacity: 0.5;
+}

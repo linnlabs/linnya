@@ -1,0 +1,47 @@
+/*
+ * 项目对话表面的空态内容样式。
+ * 主区和右侧共享 conversation domain 的消息列与输入框规格。
+ */
+.project-chat-empty-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background-color: var(--color-accent-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.project-chat-empty-logo-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--color-accent);
+}
+
+.project-chat-suggestion-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 0.5px solid var(--color-border-default);
+  background-color: transparent;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.project-chat-suggestion-chip:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.project-chat-suggestion-divider {
+  width: 1px;
+  height: 16px;
+  align-self: center;
+  background-color: var(--color-border-light);
+  margin: 0 2px;
+}

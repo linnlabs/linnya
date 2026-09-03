@@ -1,0 +1,66 @@
+/* Renderer UI selection feature：保留迁移前 selector 与 computed style。 */
+.switch-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch-control.is-disabled {
+  cursor: not-allowed;
+}
+
+.switch-control-label {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.switch-control-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch-control-track {
+  position: relative;
+  display: inline-flex;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 10px;
+  background-color: var(--color-border-default);
+  box-sizing: border-box;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.switch-control-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background-color: var(--color-white);
+  box-shadow: 0 1px 2px var(--shadow-color-sm), 0 2px 2px var(--shadow-color-xs);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.switch-control-input:checked + .switch-control-track {
+  background-color: var(--color-accent);
+  box-shadow: inset 0 2px 2px var(--shadow-color-md);
+}
+
+.switch-control-input:checked + .switch-control-track .switch-control-thumb {
+  transform: translateX(16px);
+}
+
+.switch-control-input:focus-visible + .switch-control-track {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.switch-control-input:disabled + .switch-control-track {
+  opacity: 0.6;
+}

@@ -1,0 +1,78 @@
+.command-protected-input {
+  display: grid;
+  gap: 12px;
+}
+
+.command-protected-input__description,
+.command-protected-input__boundary,
+.command-protected-input__error {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.command-protected-input__description,
+.command-protected-input__boundary {
+  color: var(--color-text-secondary);
+}
+
+.command-protected-input__target {
+  max-height: 96px;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.command-protected-input__label {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.command-protected-input__field {
+  width: 100%;
+}
+
+.command-protected-input__error {
+  color: var(--color-error);
+}
+
+.command-protected-input__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 16px;
+}
+
+.command-protected-input__button {
+  min-height: 34px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.command-protected-input__button.is-secondary {
+  background: transparent;
+  color: var(--color-text-primary);
+}
+
+.command-protected-input__button.is-primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+}
+
+.command-protected-input__button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}

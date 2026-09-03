@@ -1,0 +1,244 @@
+/* apps/renderer/domains/settings/styles/components/SettingsModal.css */
+/* 设置壳层：左侧分组导航 + 右侧固定头部的内容面板。 */
+
+.settings-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--linnya-ui-layer-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 16px;
+  background-color: color-mix(in srgb, var(--color-black) 42%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+.settings-modal-overlay > .settings-modal-container {
+  /* 语义 border token 在部分主题下与表面同色（如 dark 的 border-light == bg-surface），
+     分隔线改由文本色按比例混出，三套主题都能稳定看到一条淡线。 */
+  --settings-hairline: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+
+  position: relative;
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  width: min(1080px, 92vw);
+  max-width: none;
+  height: min(760px, 88vh);
+  /* 只允许左右内容区各自滚动，避免聚焦深层控件时外层容器被 scrollIntoView 推移。 */
+  overflow: clip;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-surface);
+  border-radius: 12px;
+  box-shadow:
+    0 24px 64px -16px color-mix(in srgb, var(--color-black) 30%, transparent),
+    0 4px 16px -4px color-mix(in srgb, var(--color-black) 12%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+}
+
+/* --- 左侧导航 --- */
+
+.settings-modal-nav {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  background: var(--color-bg-sidebar);
+  border-right: 1px solid var(--settings-hairline);
+}
+
+/* 标题文字要和下方导航项的文字左对齐：导航项文字缩进 = 滚动容器 10px + 按钮 8px。 */
+.settings-modal-nav-title {
+  padding: 20px 18px 14px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+}
+
+/* 不预留滚动条槽位，否则左右内边距会不对称；导航条目少，几乎不会出现滚动。 */
+.settings-modal-nav-scroll {
+  min-height: 0;
+  padding: 0 10px 20px;
+  overflow-y: auto;
+}
+
+.settings-modal-nav-group + .settings-modal-nav-group {
+  margin-top: 18px;
+}
+
+/* 无标题分组（如「关于」）用一条分隔线与上一段区分，不再重复一次标题。 */
+.settings-modal-nav-group + .settings-modal-nav-group.is-untitled {
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid var(--settings-hairline);
+}
+
+.settings-modal-nav-group-title {
+  padding: 0 8px;
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--color-text-heading-meta);
+}
+
+.settings-modal-nav-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 30px;
+  padding: 6px 8px;
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  line-height: var(--line-height-tight);
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  transition:
+    color var(--transition-fast) ease,
+    background-color var(--transition-fast) ease;
+}
+
+.settings-modal-nav-item + .settings-modal-nav-item {
+  margin-top: 2px;
+}
+
+.settings-modal-nav-item:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-navigation-highlight);
+}
+
+.settings-modal-nav-item.is-active {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-navigation-highlight);
+}
+
+.settings-modal-nav-item:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+/* --- 右侧面板 --- */
+
+.settings-modal-panel {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  background-color: var(--color-bg-surface);
+}
+
+.settings-modal-panel > .settings-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  transition:
+    color var(--transition-fast) ease,
+    background-color var(--transition-fast) ease;
+}
+
+.settings-modal-panel > .settings-modal-close:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover);
+}
+
+.settings-modal-panel > .settings-modal-close:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/*
+ * 左右内边距对称，取值 = 关闭按钮宽度 + 右偏移 + 间隙，
+ * 这样滚动内容既不会经过按钮下方，两侧留白又相等。
+ */
+.settings-modal-panel-body {
+  min-height: 0;
+  padding: 36px 44px 56px;
+  overflow-y: auto;
+  /* both-edges：两侧都预留滚动条槽位，滚动条出现与否都不会让左右留白变得不对称。 */
+  scrollbar-gutter: stable both-edges;
+}
+
+/* 标题与内容共用同一列并居中，两侧留白始终相等。 */
+.settings-modal-panel-body > .settings-modal-panel-title,
+.settings-modal-panel-body > .settings-tab-content {
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+/* 标题随内容一起向上滚动，只有关闭按钮固定。 */
+.settings-modal-panel-title {
+  /* 下方留白刻意大于分区内的行间距，让标题和正文之间有一次呼吸。 */
+  margin-block: 0 34px;
+  overflow: hidden;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* tabpanel 需要能被键盘聚焦以滚动，焦点环只在键盘导航时出现。 */
+.settings-modal-panel-body:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* --- 滚动条 --- */
+
+.settings-modal-nav-scroll::-webkit-scrollbar,
+.settings-modal-panel-body::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.settings-modal-nav-scroll::-webkit-scrollbar-track,
+.settings-modal-panel-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-modal-nav-scroll::-webkit-scrollbar-thumb,
+.settings-modal-panel-body::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  transition: background-color var(--transition-normal) ease;
+}
+
+.settings-modal-nav-scroll::-webkit-scrollbar-thumb:hover,
+.settings-modal-panel-body::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+/* --- 响应式 --- */
+
+@media (width <= 1000px) {
+  .settings-modal-overlay > .settings-modal-container {
+    grid-template-columns: 196px minmax(0, 1fr);
+    width: calc(100% - 32px);
+    height: min(760px, calc(100vh - 32px));
+  }
+
+  .settings-modal-panel-body {
+    padding: 36px 42px 40px;
+  }
+}

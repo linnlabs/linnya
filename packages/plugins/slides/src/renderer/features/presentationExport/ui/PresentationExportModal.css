@@ -1,0 +1,90 @@
+.slides-export-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 12px 32px 0;
+}
+
+.slides-export-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 20px 32px 24px;
+}
+
+.slides-export-modal__description,
+.slides-export-modal__error {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.slides-export-modal__description {
+  color: var(--color-text-secondary);
+}
+
+.slides-export-modal__error {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.slides-export-modal__choice-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.slides-export-modal__choice-group legend {
+  margin-bottom: 10px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.slides-export-modal__choice-label,
+.slides-export-modal__choice-description {
+  display: block;
+}
+
+.slides-export-modal__choice-label {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.slides-export-modal__choice-description {
+  margin-top: 2px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.slides-export-modal__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slides-export-modal__progress-summary {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.slides-export-modal__progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-border-default);
+}
+
+.slides-export-modal__progress-value {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent);
+  transition: width 180ms ease;
+}

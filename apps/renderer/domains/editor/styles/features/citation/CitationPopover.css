@@ -1,0 +1,189 @@
+.editor-citation-popover-enter-active,
+.editor-citation-popover-leave-active {
+  /*
+   * 只做轻量过渡：pinned 模式下关闭更频繁，
+   * 120ms 左右可以避免操作后动画拖沓。
+   */
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.editor-citation-popover-enter-from,
+.editor-citation-popover-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.editor-citation-popover-enter-to,
+.editor-citation-popover-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.editor-citation-popover {
+  position: fixed;
+  z-index: 10000;
+  /*
+   * 这里的卡片样式对齐 LatexInputPanel 的浮层风格。
+   * editor 专属根类避免撞上 conversation 域的 .citation-popover。
+   */
+  background-color: var(--color-bg-surface);
+  border: 0.5px solid var(--color-border-default);
+  border-radius: 8px;
+  box-shadow:
+    0 20px 25px -5px color-mix(in srgb, var(--color-black) 10%, transparent),
+    0 10px 10px -5px color-mix(in srgb, var(--color-black) 4%, transparent);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  user-select: text;
+}
+
+.editor-citation-popover .popover-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.editor-citation-popover .popover-title {
+  flex: 1;
+  font-size: 14px;
+  /* 标题不需要加粗，保持与正文一致的正常字重。 */
+  font-weight: 400;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.editor-citation-popover .popover-date {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.editor-citation-popover .popover-authors {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.editor-citation-popover .popover-body {
+  max-height: 150px;
+  overflow-y: auto;
+  background-color: var(--color-bg-sidebar);
+  border-radius: 6px;
+  padding: 8px;
+  border: 0.5px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.editor-citation-popover .popover-body:hover {
+  border-color: var(--color-border-hover);
+}
+
+.editor-citation-popover .popover-body::-webkit-scrollbar {
+  width: 8px;
+  height: 10px;
+}
+
+.editor-citation-popover .popover-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editor-citation-popover .popover-body::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-default);
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.editor-citation-popover .popover-body::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-border-hover);
+}
+
+.editor-citation-popover .popover-snippet {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.editor-citation-popover .popover-snippet-divider {
+  height: 1px;
+  background-color: var(--color-border-default);
+  opacity: 0.6;
+  margin: 10px 12px;
+  border-radius: 999px;
+}
+
+.editor-citation-popover .source-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 4px;
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-tertiary);
+}
+
+.editor-citation-popover .source-badge.knowledge_base {
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.editor-citation-popover .source-badge.web {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.editor-citation-popover .source-badge.manual {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.editor-citation-popover .popover-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.editor-citation-popover .popover-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.editor-citation-popover .popover-btn:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover);
+}
+
+.editor-citation-popover .popover-btn.primary {
+  /* 引用相关的“蓝色语义”统一使用 info 色系。 */
+  color: var(--color-info);
+}
+
+.editor-citation-popover .popover-btn.primary:hover {
+  color: color-mix(in srgb, var(--color-info) 85%, var(--color-text-primary));
+  background-color: var(--color-info-bg);
+}
+
+.editor-citation-popover .btn-icon {
+  flex-shrink: 0;
+  /* Popover 内按钮图标统一为 14px，与原内联 SVG 对齐。 */
+  width: 14px;
+  height: 14px;
+}

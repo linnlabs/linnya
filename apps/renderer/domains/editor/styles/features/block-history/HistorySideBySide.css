@@ -1,0 +1,27 @@
+.history-side-by-side-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.history-side-by-side-panel .history-editor-content {
+  height: 100%;
+}
+
+/*
+ * 历史右侧是只读 Editor，不能依赖 scoped deep；用根容器限定作用域，
+ * 避免影响主编辑器里的 ProseMirror 实例。
+ */
+.history-side-by-side-panel .ProseMirror {
+  padding: 2px;
+  outline: none;
+}
+
+.history-side-by-side-panel .base-block,
+.history-side-by-side-panel .heading-block,
+.history-side-by-side-panel .quote-block,
+.history-side-by-side-panel .code-block {
+  text-align: justify;
+  /* stylelint-disable-next-line declaration-property-value-no-unknown -- Chromium 支持该值，历史右侧面板需要保留中文两端对齐视觉。 */
+  text-justify: inter-ideograph;
+}

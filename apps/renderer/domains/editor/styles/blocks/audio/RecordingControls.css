@@ -1,0 +1,174 @@
+.recording-controls {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr minmax(100px, auto);
+  align-items: center;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  gap: 8px;
+}
+
+.recording-controls .left-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.recording-controls .icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  color: var(--color-error);
+  transition: color 0.2s ease;
+}
+
+.recording-controls.is-ready .icon {
+  color: var(--color-success);
+}
+
+.recording-controls.is-recording .icon {
+  color: var(--color-info);
+}
+
+.recording-controls .status-text {
+  position: relative;
+  overflow: visible;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recording-controls .recording-indicator {
+  margin-right: 5px;
+  color: var(--color-error);
+}
+
+.recording-controls.is-paused .recording-indicator {
+  color: var(--color-warning);
+}
+
+.recording-controls .recording-time {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 5px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  transition: color 0.3s ease;
+}
+
+.recording-controls .recording-time.near-limit {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.recording-controls .limit-warning-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+}
+
+.recording-controls .limit-warning-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--color-warning);
+  cursor: pointer;
+  animation: recording-controls-limit-pulse 1.5s infinite;
+}
+
+@keyframes recording-controls-limit-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.recording-controls .limit-warning-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 10000;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background-color: var(--color-bg-surface);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 0s ease, visibility 0s ease;
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+.recording-controls .limit-warning-container:hover .limit-warning-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.recording-controls .error-text {
+  overflow: hidden;
+  color: var(--color-error);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recording-controls .waveform-container {
+  width: 100%;
+  height: 36px;
+}
+
+.recording-controls .right-section {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.recording-controls .control-button {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.recording-controls .control-button:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+.recording-controls .control-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.recording-controls .start-button,
+.recording-controls .stop-button {
+  border-color: var(--color-info);
+  background-color: var(--color-info);
+  color: var(--color-text-on-accent);
+}
+
+.recording-controls .start-button:hover:not(:disabled),
+.recording-controls .stop-button:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-info) 85%, var(--color-text-primary));
+}

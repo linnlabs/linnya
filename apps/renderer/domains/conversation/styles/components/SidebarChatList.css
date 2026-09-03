@@ -1,0 +1,172 @@
+.sidebar-chat-list {
+  --sidebar-chat-list-indent: 0px;
+  --workspace-sidebar-row-list-padding: 2px 0 4px var(--sidebar-chat-list-indent);
+}
+
+.sidebar-chat-list.sidebar-chat-list--dropdown {
+  --workspace-sidebar-row-list-padding: 0;
+}
+
+.sidebar-chat-list .chat-list-state {
+  margin: 0 10px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--workspace-sidebar-muted-color);
+}
+
+.sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-state {
+  margin: 0;
+}
+
+.sidebar-chat-list .chat-list-state.is-error {
+  color: var(--color-error);
+}
+
+.sidebar-chat-list .chat-list-status-slot {
+  --workspace-sidebar-row-icon-color: var(--color-text-tertiary);
+}
+
+.sidebar-chat-list .chat-list-item.is-pinned .chat-list-status-slot {
+  color: var(--color-accent);
+}
+
+.sidebar-chat-list .chat-list-item.is-deleting {
+  cursor: progress;
+  opacity: 0.68;
+}
+
+.sidebar-chat-list .chat-list-item:focus-visible {
+  outline: 1px solid var(--color-border-focus);
+  outline-offset: -1px;
+}
+
+.sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-status-slot {
+  display: none;
+}
+
+.sidebar-chat-list .chat-list-title {
+  color: var(--workspace-project-row-text-color, currentColor);
+}
+
+.sidebar-chat-list .chat-list-rename-input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--color-border-focus);
+  border-radius: 4px;
+  outline: none;
+  background: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.sidebar-chat-list .chat-list-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: var(--workspace-sidebar-row-height, 32px);
+  color: var(--workspace-sidebar-muted-color);
+  white-space: nowrap;
+}
+
+.sidebar-chat-list .chat-list-item.is-active .chat-list-time {
+  color: var(--color-text-primary);
+}
+
+.sidebar-chat-list .chat-list-actions {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar-chat-list .chat-list-item:hover .chat-list-time,
+.sidebar-chat-list .chat-list-item:focus-within .chat-list-time,
+.sidebar-chat-list .chat-list-item.is-history-reveal-pulse .chat-list-time {
+  opacity: 0;
+}
+
+.sidebar-chat-list .chat-list-item:hover .chat-list-actions,
+.sidebar-chat-list .chat-list-item:focus-within .chat-list-actions,
+.sidebar-chat-list .chat-list-item.is-history-reveal-pulse .chat-list-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar-chat-list .chat-list-item.is-deleting .chat-list-time {
+  opacity: 1;
+}
+
+.sidebar-chat-list .chat-list-item.is-deleting .chat-list-actions {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar-chat-list .chat-list-action-button:hover {
+  color: var(--color-text-secondary);
+}
+
+.sidebar-chat-list .chat-list-item.is-active .chat-list-action-button:hover {
+  background-color: var(--color-bg-active-control-hover);
+  color: var(--color-text-primary);
+}
+
+.sidebar-chat-list .chat-list-action-button.is-active {
+  color: var(--color-text-primary);
+}
+
+.sidebar-chat-list .chat-list-toggle-row {
+  width: calc(100% - 20px);
+  height: 28px;
+  margin: 1px 10px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--workspace-sidebar-muted-color);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+
+.sidebar-chat-list .chat-list-toggle-row:hover {
+  background-color: transparent;
+  color: var(--color-text-primary);
+}
+
+.sidebar-chat-menu-wrapper {
+  position: fixed;
+  z-index: 1300;
+}
+
+.sidebar-chat-menu-fade-enter-active,
+.sidebar-chat-menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.sidebar-chat-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.sidebar-chat-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-title {
+  font-size: 14px;
+  line-height: 28px;
+}
+
+.sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-time {
+  font-size: 11px;
+  line-height: 28px;
+}
+
+.sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-actions {
+  display: none;
+}
+
+.sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-item:hover .chat-list-time,
+.sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-item:focus-within .chat-list-time {
+  opacity: 1;
+}

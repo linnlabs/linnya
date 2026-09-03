@@ -1,0 +1,9 @@
+.context-menu-container {
+  position: fixed;
+  z-index: 1000;
+}
+
+.context-menu-container .workspace-context-menu-options {
+  min-width: 120px;
+  width: auto;
+}

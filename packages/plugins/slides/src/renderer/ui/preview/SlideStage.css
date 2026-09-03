@@ -1,0 +1,52 @@
+.slide-stage {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  contain: layout;
+  outline: none;
+}
+
+.slide-stage .slide-stage-scroll-viewport {
+  width: 100%;
+  height: 100%;
+}
+
+.slide-stage .slide-stage-scroll-content {
+  position: relative;
+}
+
+/* 首次 viewport 测量完成前隐藏内容，防止 fitScale=1 默认值导致首帧尺寸跳变。 */
+.slide-stage:not(.stage-viewport-measured) .slide-stage-scroll-content {
+  visibility: hidden;
+}
+
+.slide-stage .slide-stage-canvas-shell {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 4px;
+  background-color: var(--color-bg-surface);
+  box-shadow:
+    0 2px 12px var(--shadow-color-sm),
+    0 0 0 1px var(--shadow-color-xs);
+  /*
+   * 暂不对画布外壳启用 paint containment。
+   * 图片 decode 后的 canvas 合成必须通过明确的 stage redraw 验证，
+   * 不允许靠选择模式或其他无关 UI 状态制造隐式刷新。
+   */
+  contain: layout style;
+}
+
+.slide-stage .slide-stage-empty {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.slide-stage .stage-canvas-wrapper {
+  position: absolute;
+}
+
+.konva-slide-stage {
+  width: 100%;
+  height: 100%;
+}

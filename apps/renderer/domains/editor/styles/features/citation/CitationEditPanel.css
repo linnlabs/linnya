@@ -1,0 +1,165 @@
+.citation-edit-form {
+  padding: 4px 0;
+}
+
+/* 引用编辑面板沿用双列表单布局，便于长字段和日期选择器对齐。 */
+.citation-edit-form .form-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.citation-edit-form .form-row:last-of-type {
+  margin-bottom: 0;
+}
+
+.citation-edit-form .input-row {
+  align-items: flex-start;
+}
+
+.citation-edit-form .form-label {
+  flex-shrink: 0;
+  width: 90px;
+  padding-top: 8px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+}
+
+.citation-edit-form .form-label.required::after {
+  color: var(--color-error);
+  content: ' *';
+}
+
+.citation-edit-form .control-area {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.citation-edit-form .date-control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.citation-edit-form .date-control-row .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.citation-edit-form .citation-edit-date-picker-trigger {
+  height: 36px;
+  padding: 8px 12px;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+/* hover 不强调边框；仅在 focus 激活时强调，避免面板内视觉噪音。 */
+.citation-edit-form .citation-edit-date-picker-trigger:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.citation-edit-form .form-input,
+.citation-edit-form .form-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 12px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.citation-edit-form .form-input:hover:not(:disabled),
+.citation-edit-form .form-textarea:hover:not(:disabled),
+.citation-edit-form .form-input:focus:not(:disabled),
+.citation-edit-form .form-textarea:focus:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.citation-edit-form .form-input:focus,
+.citation-edit-form .form-textarea:focus {
+  outline: none;
+}
+
+.citation-edit-form .form-textarea {
+  min-height: 80px;
+  max-height: 200px;
+  overflow-y: hidden;
+  resize: none;
+}
+
+.citation-edit-form .form-hint {
+  display: block;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.citation-edit-form .form-error {
+  display: block;
+  color: var(--color-error);
+  font-size: 12px;
+}
+
+.citation-edit-form .same-source-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  color: var(--color-info);
+  font-size: 13px;
+  background-color: var(--color-info-bg);
+  border-radius: 6px;
+}
+
+.citation-edit-form .notice-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.citation-edit-form .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.citation-edit-panel-body::-webkit-scrollbar,
+.citation-edit-form .form-textarea::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.citation-edit-panel-body::-webkit-scrollbar-track,
+.citation-edit-form .form-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.citation-edit-panel-body::-webkit-scrollbar-thumb,
+.citation-edit-form .form-textarea::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-default);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+}
+
+.citation-edit-panel-body::-webkit-scrollbar-thumb:hover,
+.citation-edit-form .form-textarea::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-border-hover);
+}

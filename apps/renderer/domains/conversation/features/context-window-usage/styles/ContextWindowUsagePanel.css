@@ -1,0 +1,143 @@
+.usage-breakdown-panel {
+  width: 100%;
+  padding: 12px;
+  color: var(--color-text-primary);
+}
+
+.usage-breakdown-panel__title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.usage-breakdown-panel__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.usage-breakdown-panel__summary > :last-child {
+  text-align: right;
+}
+
+.usage-breakdown-panel__track {
+  display: flex;
+  width: 100%;
+  height: 6px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--color-border-light);
+}
+
+.usage-breakdown-panel__segment {
+  display: block;
+  min-width: 2px;
+  flex: 0 1 auto;
+  height: 100%;
+}
+
+.usage-breakdown-panel__used {
+  display: flex;
+  height: 100%;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+/* 分类色使用不同功能色相，避免弱灰与品牌绿接近，也避免月白蓝主题下 accent 与 info 撞色。 */
+.usage-breakdown-panel__tone--system {
+  background: var(--color-warning);
+}
+
+.usage-breakdown-panel__tone--conversation {
+  background: var(--color-success);
+}
+
+.usage-breakdown-panel__tone--tools {
+  background: var(--color-info);
+}
+
+.usage-breakdown-panel__rows {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.usage-breakdown-panel__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.usage-breakdown-panel__row-label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.usage-breakdown-panel__row dd {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-breakdown-panel__swatch {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+}
+
+.usage-breakdown-panel__empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.usage-breakdown-panel__details {
+  margin-top: calc(var(--spacing-sm) + var(--spacing-xs));
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.usage-breakdown-panel__details-title {
+  margin: 0 0 var(--spacing-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  line-height: var(--line-height-normal);
+}
+
+.usage-breakdown-panel__details-rows {
+  display: grid;
+  gap: var(--spacing-sm);
+  margin: 0;
+}
+
+.usage-breakdown-panel__detail-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(var(--spacing-sm) + var(--spacing-xs));
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+.usage-breakdown-panel__detail-row dd {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

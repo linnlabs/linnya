@@ -1,0 +1,85 @@
+.presentation-inspect-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px 12px;
+}
+
+.presentation-inspect-card .loading-state,
+.presentation-inspect-card .error-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.presentation-inspect-card .loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: presentation-inspect-card-spin 1s linear infinite;
+}
+
+@keyframes presentation-inspect-card-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.presentation-inspect-card .content-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.presentation-inspect-card .meta-line {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.presentation-inspect-card .page-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.presentation-inspect-card .page-item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--color-bg-sidebar);
+}
+
+.presentation-inspect-card .page-item__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.presentation-inspect-card .page-item__meta {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.presentation-inspect-card .page-item__actions {
+  margin-top: 8px;
+  display: flex;
+}
+
+.presentation-inspect-card .action-button {
+  appearance: none;
+  border: 1px solid var(--color-border-default);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.presentation-inspect-card .action-button:hover {
+  background: var(--color-bg-hover);
+}

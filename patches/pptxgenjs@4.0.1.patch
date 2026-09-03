@@ -1,0 +1,38 @@
+diff --git a/dist/pptxgen.cjs.js b/dist/pptxgen.cjs.js
+index 55ae0b9eb49b1c87dc2ac2ec9d7c1fa215ddab8d..652fb4df7e8c443d5470d95e9c2d66aab0b30773 100644
+--- a/dist/pptxgen.cjs.js
++++ b/dist/pptxgen.cjs.js
+@@ -4838,16 +4838,14 @@ function encodeSlideMediaRels(layout) {
+     // These will be filled only when we’re in Node
+     let fs;
+     let https;
+-    // STEP 2: Lazy-load Node built-ins if needed
+-    const loadNodeDeps = isNode
+-        ? () => __awaiter(this, void 0, void 0, function* () {
+-            ({ default: fs } = yield import('node:fs'));
+-            ({ default: https } = yield import('node:https'));
+-        })
+-        : () => __awaiter(this, void 0, void 0, function* () { });
+-    // Immediately start it when we know we’re in Node
+-    if (isNode)
+-        loadNodeDeps();
++    // STEP 2: The CommonJS build runs in Node/Electron and must load built-ins
++    // synchronously. An un-awaited dynamic import here creates unhandled
++    // rejections in VM/bytecode loaders even when a slide has no media.
++    if (isNode) {
++        fs = require('node:fs');
++        https = require('node:https');
++    }
++    const loadNodeDeps = () => __awaiter(this, void 0, void 0, function* () { });
+     // STEP 3: Prepare promises list
+     const imageProms = [];
+     // A: Capture all audio/image/video candidates for encoding (filtering online/pre-encoded)
+@@ -7203,7 +7201,7 @@ class PptxGenJS {
+             // STEP 4: Write the file out
+             if (isNode) {
+                 // Dynamically import to avoid bundling fs in the browser build
+-                const { promises: fs } = yield import('node:fs');
++                const { promises: fs } = require('node:fs');
+                 const { writeFile } = fs;
+                 yield writeFile(fileName, data);
+                 return fileName;

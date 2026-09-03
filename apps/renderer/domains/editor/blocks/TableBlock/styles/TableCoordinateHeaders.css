@@ -1,0 +1,82 @@
+.tt-table-coordinate-headers {
+  /* 中文说明：容器本身不定位，具体位置由行/列 header 的测量样式控制。 */
+  pointer-events: none;
+}
+
+.tt-table-row-headers,
+.tt-table-column-headers {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+  user-select: none;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: 6px;
+  /* 中文说明：使用 drop-shadow 避免被坐标头 clip-path 裁剪。 */
+  filter: drop-shadow(0 2px 8px var(--shadow-color-sm));
+}
+
+.tt-table-row-headers {
+  display: flex;
+  flex-direction: column;
+}
+
+.tt-table-column-headers-scroller {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+}
+
+.tt-row-header-cell,
+.tt-col-header-cell {
+  box-sizing: border-box;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.tt-row-header-cell {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.tt-row-header-cell:last-child {
+  border-bottom: none;
+}
+
+.tt-col-header-cell {
+  height: 100%;
+  padding: 0 4px;
+  border-right: 1px solid var(--color-border-light);
+}
+
+.tt-col-header-cell:last-child {
+  border-right: none;
+}
+
+.tt-headers-fade-enter-active {
+  transition: opacity 400ms ease;
+}
+
+.tt-headers-fade-enter-from {
+  opacity: 0;
+}
+
+.tt-headers-fade-enter-to {
+  opacity: 1;
+}
+
+.tt-headers-fade-leave-active {
+  transition: opacity 300ms ease;
+}
+
+.tt-headers-fade-leave-from {
+  opacity: 1;
+}
+
+.tt-headers-fade-leave-to {
+  opacity: 0;
+}

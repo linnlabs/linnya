@@ -1,0 +1,15 @@
+.mindmap-context-menu-panel {
+  position: fixed;
+  z-index: 10000; /* 确保 z-index 足够高 */
+}
+
+.mindmap-link-tips {
+  position: fixed;
+  z-index: 9999;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--color-gray-100);
+  pointer-events: none;
+  background: color-mix(in srgb, var(--color-gray-900) 90%, transparent);
+  border-radius: 4px;
+}

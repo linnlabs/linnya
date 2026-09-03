@@ -1,0 +1,7 @@
+@import './tokens/foundation.css';
+@import './tokens/semantic.css';
+@import './tokens/functional.css';
+@import './tokens/geometry.css';
+@import './tokens/layers.css';
+@import './tokens/typography.css';
+@import './tokens/component.css';

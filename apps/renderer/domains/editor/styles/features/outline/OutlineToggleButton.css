@@ -1,0 +1,86 @@
+/* 目录开关由 outline feature 控制显隐；组件 Teleport 到 body 后由当前文档窗口测量 left。 */
+.outline-toggle-button {
+  position: fixed;
+  z-index: 1301;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 104px;
+  padding: 0;
+  border: none;
+  border-radius: 0 999px 999px 0;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+}
+
+.outline-geometry-anchor {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.outline-toggle-button .outline-rail-trigger__thumb {
+  display: block;
+  width: 3px;
+  height: 58px;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--color-text-secondary) 36%, transparent);
+  transition:
+    width 0.16s ease,
+    height 0.16s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.outline-toggle-button:hover .outline-rail-trigger__thumb,
+.outline-toggle-button:focus-visible .outline-rail-trigger__thumb,
+.outline-toggle-button.is-previewed .outline-rail-trigger__thumb,
+.outline-toggle-button.is-active .outline-rail-trigger__thumb,
+.outline-toggle-button.is-pinned .outline-rail-trigger__thumb {
+  width: 4px;
+  height: 72px;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-text-primary) 12%, transparent);
+}
+
+.outline-toggle-button:hover:not(.is-active, .is-pinned) .outline-rail-trigger__thumb,
+.outline-toggle-button:focus-visible:not(.is-active, .is-pinned) .outline-rail-trigger__thumb,
+.outline-toggle-button.is-previewed:not(.is-active, .is-pinned) .outline-rail-trigger__thumb {
+  background-color: color-mix(in srgb, var(--color-text-secondary) 68%, transparent);
+}
+
+.outline-toggle-button.is-active .outline-rail-trigger__thumb,
+.outline-toggle-button.is-pinned .outline-rail-trigger__thumb {
+  /* 激活态只改变小竖条本身；透明度要克制，避免固定态和 hover 灰色混淆。 */
+  background-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--color-accent-light) 82%, var(--color-text-secondary) 18%) 88%,
+    transparent
+  );
+}
+
+.outline-toggle-button.fade-in {
+  opacity: 0.5;
+  pointer-events: auto;
+}
+
+.outline-toggle-button.fade-in:hover,
+.outline-toggle-button.fade-in:focus-visible,
+.outline-toggle-button.fade-in.is-previewed,
+.outline-toggle-button.fade-in.is-active {
+  opacity: 1;
+}
+
+.outline-toggle-button:focus-visible {
+  outline: none;
+}
+
+.outline-toggle-button:focus-visible .outline-rail-trigger__thumb {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 24%, transparent);
+}

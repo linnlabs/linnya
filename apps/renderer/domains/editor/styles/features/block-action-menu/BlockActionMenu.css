@@ -1,0 +1,33 @@
+/* 淡入淡出过渡效果 */
+.block-action-menu-fade-enter-active,
+.block-action-menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.block-action-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.block-action-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.block-action-menu-fade-enter-to,
+.block-action-menu-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.block-color-picker {
+  position: relative;
+  padding: 12px;
+  user-select: none;
+  background-color: transparent;
+  outline: none;
+}
+
+.block-action-color-palette {
+  padding: 0;
+}

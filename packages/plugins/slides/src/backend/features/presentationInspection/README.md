@@ -1,0 +1,72 @@
+# Presentation Inspection
+
+`presentationInspection` 是 Slides backend 的共享只读检查能力。它让 Agent 工具和人/CI CLI 从同一份 presentation 版本快照派生 finding 事实，不在不同入口重复页选择、quality 或 geometry 规则。
+
+Slides 只有三个用户可理解的观察面：`read_file` 读取当前 `deck.js` 原文和页面组织；`inspect` 说明哪些最终布局事实值得复核；`render` 展示最终像素。inspection 不复制源码，也不以机器规则替代视觉判断。
+
+## 目录职责
+
+```text
+presentationInspection/
+├── definitions/     # inspection 结果与完整 finding feedback 合同
+├── functions/       # 页选择、截断和 deck.js source location 映射
+└── orchestration/   # 版本快照、feedback 构建与结果编排
+```
+
+## 数据流
+
+```text
+PptCoordinator.inspectPresentation
+  -> presentationQueryRuntime.getRenderModelSnapshot
+  -> 页选择与可选数量上限
+  -> generated deck source location
+  -> tools/inspectFeedback 的 buildStatus + findings
+  -> PresentationInspectionResult
+```
+
+`versionId` 必须取自 snapshot 中的真实 repository version ID，不能用数字版次 `renderModel.version` 代替。数字版次只适合展示和排序，不能承担 artifact 身份。
+
+## Agent 投影与工具结果
+
+inspect 先按完整 evidence 去重，再生成两种有证据的根因组：quality 明确提供的约束 `rootCauseKey`；以及至少两个 finding 指向完全相同 element 级源码范围的 `shared_source` 组。后者表示同一作者控制点可以一次修复多处后果，不会用“同页、同父节点、同 code”或相似文案猜根因；slide 级与 unavailable source 也不参与共享源码归组。
+
+observation 对节点与源码建立本地 handle，同一源码控制点只声明一次；finding 再按统一派生的 P0/P1/P2 排序。P0 是高置信且明确需要修复的问题，P1 先复核 fidelity，P2 结合 render 判断设计意图。每个唯一 finding 仍保留 code、置信度、证据、行动目标和复验方式；不会按页静默截取前几条，也不会打印完整内部 JSON。完整问题合同与分级规则由 [quality definitions](../../engine/quality/definitions/README.md) 拥有。
+
+图表检查也遵守同一合同：`chart_identity_missing` 与 `chart_label_capacity_exceeded` 只投影图表节点、类别/系列数量、可见标签通道和容量比，不输出 series values。它们属于 P1，Agent 应先看 render 再调整图例、标签、尺寸或字号；inspection 不根据标题猜图表是否构成真正的价值桥、瀑布或其他业务语义。
+
+文本检查同样只消费 backend finalized layout。`text_single_glyph_last_line` 只在非显式换行的段落被自动断行、且末行只剩一个字素时产生 P1；表格通过 `cell=rows[row][column]` 定位到源码数组。inspection 不重测字宽，不把规则升级成溢出，也不修改原文。
+
+reference frame 只报告在当前文稿物理尺寸下仍为正面积的事实。`slide` 始终存在；固定物理边距推导出的
+`safe_area` 或 `content_area` 在 1 英寸等极端合法画布上失效时直接省略，不能输出零/负尺寸，也不能为了凑齐字段伪造相对边距。
+
+`PptInspectTool` 的成功结果与 Conversation 工具消息结果都由
+[Slides shared strict contract](../../../shared/pptInspectToolContract.ts) 约束：
+
+- `data` 只保存 artifact/version、文稿名称、页选择、轻量卡片页摘要、`ready` 状态和 raw/unique/root/P0/P1/P2 计数；不保存 finding、scene graph、背景明细、editable target 明细或源码；
+- `observation` 是唯一模型可见的完整检查正文；
+- `observationPreviewMeta` 只命名文稿并标记 `slides/inspection`，由 ToolNode 交给超长输出预览端口消费；
+- backend producer parse 执行期 `PptInspectToolResultSchema`；Conversation 持久化后只保留 `data + observation`，Renderer projector parse 同一 owner 中的 `PptInspectToolMessageResultSchema`；两者复用完全相同的 data/observation schema，不维护兼容读取分支。
+
+当 observation 超过通用字符或行预算时，ToolNode 把全文交给 ToolOutputStore，模型收到可续读预览。blob 身份只属于通用 `tool_output.metadata.observationTruncation`；Slides data 不复制 blob、cursor 或截断正文。通用执行规则见 [Linnkit Tool 开发规范](../../../../../linnkit/docs/integration/tool-development-guide.md)。
+
+## 边界
+
+- 该 feature 只编排已有事实，不定义新的视觉诊断规则。
+- `PptInspectTool` 只负责严格参数 admission、Agent observation 和最小 UI data 投影；CLI 只负责参数与机器输出合同。
+- `presentation_id / locator / inode` 必须且只能提供一个非空值。未知字段、空 selector 和非法页范围在 ToolNode 执行开始前拒绝；`heuristics` 可直接作为 inspect 的 Tier-2 开关；开发环境不保留旧字段兼容。
+- 成功取得同一版本的 RenderModel 后 `buildStatus.state = ready`；visual findings 不得把它改成失败。未解决 draft 或无法构建的情况在进入 inspection 前由稳定 build-failure code 返回。
+- CLI inspect 必须原样保留 Agent inspection finding 的置信度、意图上下文、源码位置、空间关系和建议，禁止另建降维诊断 DTO。
+- Agent 与 CLI 必须复用同一个 diagnostic projection；CLI 的 `priority`、`findingSummary` 和 `rootGroups` 只是该投影的机器序列化，不能另写分级或归组规则。
+- generated deck 的 source location 来自 codegen structure；imported/patched deck 没有 `deck.js` 位置。
+- legacy generated deck 没有可用 source 时不伪造位置；其他 codegen 错误继续抛出。
+- 页选择允许得到空结果，保持 inspect 查询语义；截图 render 的越界失败规则归 `presentationScreenshot`。
+- CLI 的完整机器报告与 Agent 的低 token observation 都投影同一份 finding；边界见 [presentationCli](../presentationCli/README.md)。
+
+## 测试
+
+- 共享编排：`orchestration/PresentationInspectionRuntime.test.ts`
+- Agent 工具适配：`backend/tools/presentationTools.test.ts`
+- 参数/result contract：`shared/pptInspectToolContract.test.ts`
+- ToolNode admission：`backend/tools/PptInspectTool.toolNode.test.ts`
+- 超长 observation 续读：`backend/tools/PptInspectTool.toolOutputStore.integration.test.ts`
+- observation 格式：`functions/buildInspectionObservation.test.ts`

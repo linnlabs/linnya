@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "useDefineForClassFields": false,
+    "declaration": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@app/schemas": [
+        "packages/schemas/src/index.ts"
+      ],
+      "@app/schemas/*": [
+        "packages/schemas/src/*"
+      ],
+      "@linnya/text-measurement-core": [
+        "packages/text-measurement-core/src/index.ts"
+      ],
+      "stream-markdown-parser": [
+        "packages/stream-markdown-parser/src/index.ts"
+      ],
+      "stream-markdown-parser/*": [
+        "packages/stream-markdown-parser/src/*"
+      ]
+    }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts"
+  ]
+}

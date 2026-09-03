@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "types": ["node", "electron"]
+  },
+  "include": [
+    "fixtures/svgPhase0Fixtures.ts",
+    "tools/svgPhase0AdmissionDefinitions.ts",
+    "tools/svgPhase0AdmissionPrototype.ts",
+    "tools/svgPhase0AdmissionSchema.ts",
+    "tools/svgPhase0Validation.ts",
+    "tools/svgPhase0ValuePrototype.ts",
+    "tools/svgPhase0XmlPrototype.ts"
+  ],
+  "exclude": []
+}

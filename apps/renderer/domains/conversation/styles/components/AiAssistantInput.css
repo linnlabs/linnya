@@ -1,0 +1,102 @@
+.ai-assistant-input {
+  --ai-assistant-input-radius: var(--conversation-footer-surface-radius);
+}
+
+.ai-assistant-input--compact {
+  --conversation-footer-surface-radius: 12px;
+}
+
+.ai-assistant-input .input-wrapper {
+  flex-direction: column;
+}
+
+.ai-assistant-input .input-wrapper:focus-within:not(.is-selector-interacting) {
+  border-color: var(--color-accent);
+  /* box-shadow 不再在 focus 态覆写：两态视觉差异极小，去掉可避免多层阴影过渡的逐帧重绘 */
+}
+
+.ai-assistant-input .input-wrapper.is-disabled {
+  border-color: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  background-color: color-mix(in srgb, var(--conversation-footer-surface-bg) 92%, var(--color-bg-disabled));
+}
+
+.ai-assistant-input .input-wrapper.is-disabled:focus-within {
+  border-color: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+}
+
+.ai-assistant-input .input-top-section {
+  padding: 12px 16px 0;
+  overflow: hidden; /* 确保编辑器内容不溢出 */
+  border-radius: var(--ai-assistant-input-radius) var(--ai-assistant-input-radius) 0 0;
+}
+
+/* Accessory 成为首个可见区块时，由它承接上圆角，后续区块不重复声明顶部边界。 */
+.ai-assistant-input .input-wrapper.has-input-accessories .input-top-section,
+.ai-assistant-input .input-wrapper.has-input-accessories .ai-assistant-quote-preview {
+  border-radius: 0;
+}
+
+.ai-assistant-input .input-editor .ai-assistant-tiptap-editor {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4; /* 改为相对行高，避免固定行高导致的计算问题 */
+  min-height: 28px; /* 增加最小高度，提供缓冲空间避免高度跳跃 */
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.ai-assistant-input .input-editor .ai-assistant-tiptap-editor::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ai-assistant-input .input-editor .ai-assistant-tiptap-editor::-webkit-scrollbar-track {
+  background: transparent; /* 移除背景和竖线 */
+}
+
+.ai-assistant-input .input-editor .ai-assistant-tiptap-editor::-webkit-scrollbar-thumb {
+  background: var(--color-gray-300);
+  border-radius: 3px;
+}
+
+.ai-assistant-input .input-editor .ai-assistant-tiptap-editor::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-400);
+}
+
+.ai-assistant-input .input-editor .ai-assistant-tiptap-editor.ProseMirror-focused {
+  outline: none;
+}
+
+.ai-assistant-input .input-editor .ai-assistant-paragraph {
+  margin: 0;
+  padding: 0;
+}
+
+.ai-assistant-input .input-editor .ai-assistant-paragraph.is-editor-empty:first-child {
+  position: relative;
+  min-height: 20px; /* 确保空段落有最小高度 */
+  font-weight: 320;
+}
+
+.ai-assistant-input .input-editor .ai-assistant-paragraph.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-placeholder);
+  font-size: 14px;
+  pointer-events: none;
+  font-style: normal;
+  z-index: 1;
+}
+
+.ai-assistant-input .input-editor.is-disabled .ai-assistant-tiptap-editor {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

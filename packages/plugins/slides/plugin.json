@@ -1,0 +1,103 @@
+{
+  "id": "slides",
+  "version": "1.1.1",
+  "name": "Slides",
+  "description": "用 AI 规划、生成、编辑和检查演示文稿，并让 agents 沿源码协作。",
+  "developer": "Linnya",
+  "details": [
+    "Slides 为 Linnya 提供 AI 演示文稿工作流，覆盖规划、生成、检查、修复和源码编辑；当前不支持 PPTX 导出。",
+    "它适合需要把研究、方案、复盘或汇报快速沉淀成可演示材料的场景，并让 agents 沿着 deck 源码继续协作。",
+    "Slides 作为独立 runtime 插件分发、升级和卸载，主应用只保留通用平台能力。"
+  ],
+  "releaseNotes": [
+    {
+      "version": "1.1.1",
+      "title": "切换 Renderer UI 2.0",
+      "description": "原子切换到严格的共享操作按钮合同并重建插件 artifact，前端 UI 与交互保持不变。"
+    },
+    {
+      "version": "1.1.0",
+      "title": "增加幻灯片截图与 Agent 视觉检查",
+      "description": "新增同源 hidden worker 和只读 CLI，使 Agent 能按页渲染并通过 read_file 读取会话工作区中的幻灯片截图。"
+    },
+    {
+      "version": "1.0.3",
+      "title": "补齐 backend 运行时依赖",
+      "description": "将 PPTX 读写、XML、ZIP 与 UUID 等 Slides 自有运行时依赖打入 backend artifact，确保远程安装后无需依赖宿主 node_modules。"
+    },
+    {
+      "version": "1.0.2",
+      "title": "补齐 TypeScript 编译运行时",
+      "description": "将 deck.js 解析和类型检查依赖的 TypeScript 打入 backend artifact，确保公网安装时迁移可安全加载。"
+    },
+    {
+      "version": "1.0.1",
+      "title": "补齐 Yoga 运行时资源",
+      "description": "补齐磁盘 artifact 的 yogaRuntimeLoader.cjs，确保公网安装后 Slides flex 布局 backend 可加载。"
+    },
+    {
+      "version": "1.0.0",
+      "title": "Runtime 插件化",
+      "description": "Slides 引擎、工具、IPC、renderer、设计技能和数据迁移随官方 runtime 插件 artifact 分发，可按插件生命周期安装、启用、停用、卸载和升级。"
+    }
+  ],
+  "agents": [
+    {
+      "name": "Slides Agent",
+      "description": "规划、生成和修复演示文稿。"
+    }
+  ],
+  "skills": [
+    {
+      "name": "slides-design",
+      "description": "通过 Workspace deck.js 文件和 Slides CLI 规划、创建、编辑、诊断与视觉检查演示文稿。"
+    }
+  ],
+  "entry": {
+    "backend": "./dist/backend/index.cjs",
+    "renderer": "./dist/renderer/index.js",
+    "command": "./dist/cli/slides-cli.cjs"
+  },
+  "dependsOn": ["platform"],
+  "compat": {
+    "minApp": "0.0.38",
+    "rendererUi": "^2.0.0"
+  },
+  "ownedTables": [
+    "presentation_documents",
+    "presentation_revisions",
+    "presentation_drafts",
+    "presentation_templates",
+    "presentation_image_bindings",
+    "presentation_svg_graphic_bindings"
+  ],
+  "migrations": [
+    {
+      "version": 1,
+      "description": "Create and adopt Slides presentation tables"
+    },
+    {
+      "version": 2,
+      "description": "Backfill workspace text snapshots from latest Slides versions"
+    },
+    {
+      "version": 3,
+      "description": "Materialize current documents and source revision history"
+    },
+    {
+      "version": 4,
+      "description": "Bind presentation image sources to owned assets"
+    },
+    {
+      "version": 5,
+      "description": "Bind presentation SVG Graphic sources to owned assets"
+    }
+  ],
+  "ownedFileTypes": [
+    {
+      "nodeType": "presentation",
+      "extension": ".slides",
+      "label": "演示文稿"
+    }
+  ]
+}

@@ -1,0 +1,214 @@
+{
+  "extends": "./tsconfig.bundler-base.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@shared/*": [
+        "src/shared/*",
+        "apps/renderer/shared/*"
+      ],
+      "@core/*": [
+        "src/core/*"
+      ],
+      "@kb/*": [
+        "src/features/knowledge-base/*"
+      ],
+      "@infra/*": [
+        "src/infra/*"
+      ],
+      "@parsers/*": [
+        "src/features/parsers/*"
+      ],
+      "@task-queue/*": [
+        "src/infra/task-queue/*"
+      ],
+      "@tools/*": [
+        "src/tools/*"
+      ],
+      "@transcription/*": [
+        "src/features/transcription/*"
+      ],
+      "@plugin/mindmap/shared": [
+        "packages/plugins/mindmap/src/shared/index.ts"
+      ],
+      "@plugin/slides/shared": [
+        "packages/plugins/slides/src/shared/index.ts"
+      ],
+      "@plugin/slides/shared/*": [
+        "packages/plugins/slides/src/shared/*"
+      ],
+      "@plugin/slides/backend": [
+        "packages/plugins/slides/src/backend/index.ts"
+      ],
+      "@plugin/slides/backend-codegen": [
+        "packages/plugins/slides/src/backend/codegen/index.ts"
+      ],
+      "@plugin/slides/backend-coordinator": [
+        "packages/plugins/slides/src/backend/coordinator/index.ts"
+      ],
+      "@plugin/slides/backend-engine-core": [
+        "packages/plugins/slides/src/backend/engine/core.ts"
+      ],
+      "@plugin/slides/backend-ipc": [
+        "packages/plugins/slides/src/backend/ipc/index.ts"
+      ],
+      "@plugin/slides/backend-cli-contract": [
+        "packages/plugins/slides/src/backend/features/presentationCli/contract.ts"
+      ],
+      "@plugin/slides/backend-sandbox": [
+        "packages/plugins/slides/src/backend/sandbox/index.ts"
+      ],
+      "@plugin/slides/backend-tool-classes": [
+        "packages/plugins/slides/src/backend/toolClasses/index.ts"
+      ],
+      "@plugin/slides/backend-tools": [
+        "packages/plugins/slides/src/backend/tools/index.ts"
+      ],
+      "@linnya/slides-mathjax-runtime": [
+        "packages/plugins/slides/src/backend/engine/mathFormula/runtime/mathJaxSvgRuntime.ts"
+      ],
+      "@plugin/slides/renderer": [
+        "packages/plugins/slides/src/renderer/index.ts"
+      ],
+      "@plugin/mindmap/backend": [
+        "packages/plugins/mindmap/src/backend/index.ts"
+      ],
+      "@plugin/mindmap/backend-test-support": [
+        "packages/plugins/mindmap/src/backend/test-support.ts"
+      ],
+      "@linnya/plugin-host-contract": [
+        "packages/plugin-host-contract/index.ts"
+      ],
+      "@linnya/app-lifecycle-contract": [
+        "src/shared/app-lifecycle/definitions/windowCloseProtocol.ts"
+      ],
+      "@linnya/plugin-host-contract/backend": [
+        "packages/plugin-host-contract/backend/index.ts"
+      ],
+      "@linnya/plugin-host-contract/backend/*": [
+        "packages/plugin-host-contract/backend/*"
+      ],
+      "@linnya/plugin-host-contract/renderer": [
+        "packages/plugin-host-contract/renderer/index.ts"
+      ],
+      "@linnya/plugin-host-contract/renderer/*": [
+        "packages/plugin-host-contract/renderer/*"
+      ],
+      "@linnya/renderer-ui/font-stack": [
+        "packages/renderer-ui/src/features/font-stack/index.ts"
+      ],
+      "@linnya/text-measurement-core": [
+        "packages/text-measurement-core/src/index.ts"
+      ],
+      "@linnya/citation-domain/conversation-presentation": [
+        "src/domains/citation/conversation-presentation.ts"
+      ],
+      "@linnya/citation-domain/markdown-reference": [
+        "src/domains/citation/markdown-reference.ts"
+      ],
+      "@plugin/*": [
+        "src/plugin-sdk/*"
+      ],
+      "@/*": [
+        "apps/renderer/*"
+      ],
+      "@app/*": [
+        "apps/renderer/app/*"
+      ],
+      "@app/schemas": [
+        "packages/schemas/src/index.ts"
+      ],
+      "@app/schemas/*": [
+        "packages/schemas/src/*"
+      ],
+      "@linnlabs/linnkit-provider-ai-sdk": [
+        "packages/linnkit-provider-ai-sdk/src/index.ts"
+      ],
+      "@linnlabs/linnkit-provider-ai-sdk/conformance": [
+        "packages/linnkit-provider-ai-sdk/conformance/index.ts"
+      ],
+      "@linnya/provider-catalog": [
+        "packages/provider-catalog/src/index.ts"
+      ],
+      "@linnya/provider-catalog/runtime-bindings": [
+        "packages/provider-catalog/src/runtime-bindings.ts"
+      ],
+      "linnkit": [
+        "packages/linnkit/src/index.ts"
+      ],
+      "linnkit/ports": [
+        "packages/linnkit/src/ports/index.ts"
+      ],
+      "linnkit/contracts": [
+        "packages/linnkit/src/contracts/index.ts"
+      ],
+      "linnkit/runtime-kernel": [
+        "packages/linnkit/src/runtime-kernel/index.ts"
+      ],
+      "linnkit/runtime-kernel/events": [
+        "packages/linnkit/src/runtime-kernel/events/index.ts"
+      ],
+      "linnkit/context-manager": [
+        "packages/linnkit/src/context-manager/index.ts"
+      ],
+      "linnkit/testkit": [
+        "packages/linnkit/src/testkit/index.ts"
+      ],
+      "linnkit/quickstart": [
+        "packages/linnkit/src/quickstart/index.ts"
+      ],
+      "@linnlabs/linnkit": [
+        "packages/linnkit/src/index.ts"
+      ],
+      "@linnlabs/linnkit/ports": [
+        "packages/linnkit/src/ports/index.ts"
+      ],
+      "@linnlabs/linnkit/contracts": [
+        "packages/linnkit/src/contracts/index.ts"
+      ],
+      "@linnlabs/linnkit/runtime-kernel": [
+        "packages/linnkit/src/runtime-kernel/index.ts"
+      ],
+      "@linnlabs/linnkit/runtime-kernel/events": [
+        "packages/linnkit/src/runtime-kernel/events/index.ts"
+      ],
+      "@linnlabs/linnkit/context-manager": [
+        "packages/linnkit/src/context-manager/index.ts"
+      ],
+      "@linnlabs/linnkit/testkit": [
+        "packages/linnkit/src/testkit/index.ts"
+      ],
+      "@linnlabs/linnkit/quickstart": [
+        "packages/linnkit/src/quickstart/index.ts"
+      ],
+      "stream-markdown-parser": [
+        "packages/stream-markdown-parser/src/index.ts"
+      ],
+      "stream-markdown-parser/*": [
+        "packages/stream-markdown-parser/src/*"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "packages/linnkit/src/**/*.ts",
+    "packages/linnkit/src/**/*.d.ts",
+    "packages/linnkit/src/**/*.tsx",
+    "packages/plugin-host-contract/**/*.ts",
+    "packages/plugins/mindmap/src/**/*.ts",
+    "packages/plugins/mindmap/src/**/*.d.ts",
+    "packages/plugins/mindmap/src/**/*.tsx",
+    "packages/plugins/mindmap/src/**/*.vue",
+    "src/**/*.vue",
+    "apps/renderer/**/*.ts",
+    "apps/renderer/**/*.d.ts",
+    "apps/renderer/**/*.vue",
+    "apps/renderer/global-frontend-modules.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "name": "linnya-windows-native-runtime-validation",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Packaged validation for the Windows command native runtime manifest",
+  "author": "Linnya",
+  "main": "main.cjs",
+  "build": {
+    "appId": "com.linnyai.windows-native-runtime-validation",
+    "productName": "Linnya Windows Native Runtime Validation",
+    "asar": true,
+    "npmRebuild": false,
+    "files": [
+      "main.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime/x64",
+        "to": "command-runtime/windows/x64"
+      },
+      {
+        "from": "validation",
+        "to": "command-runtime-validation"
+      },
+      {
+        "from": "config",
+        "to": "config"
+      },
+      {
+        "from": "headless-node-runtime/win32/x64",
+        "to": "headless-node-runtime/win32/x64"
+      },
+      {
+        "from": "sandbox/sandboxEvaluatorProcess.cjs",
+        "to": "sandbox-runtime/evaluator/sandboxEvaluatorProcess.cjs"
+      }
+    ],
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": false
+    }
+  }
+}

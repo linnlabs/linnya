@@ -1,0 +1,14 @@
+.audio-waveform {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  --audio-waveform-recording-color: color-mix(in srgb, var(--color-text-secondary) 80%, transparent);
+  --audio-waveform-paused-color: color-mix(in srgb, var(--color-text-secondary) 40%, transparent);
+}
+
+.audio-waveform .waveform-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

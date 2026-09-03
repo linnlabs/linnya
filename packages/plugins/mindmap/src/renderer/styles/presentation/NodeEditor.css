@@ -1,0 +1,62 @@
+.node-editor-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.node-editor-container {
+  position: absolute;
+  z-index: 101;
+  box-sizing: border-box;
+  overflow: visible;
+  pointer-events: auto;
+}
+
+/* 选中框样式统一（参考 mindmap.css） */
+.node-editor-container::after {
+  position: absolute;
+  pointer-events: none;
+  content: '';
+  border: 2px solid var(--selected, var(--color-accent));
+
+  /* 默认普通节点样式 */
+  inset: -2px;
+  border-radius: calc(var(--node-border-radius, 8px) + 2px);
+}
+
+.node-editor-container.is-main-node::after {
+  /* 主分支节点样式 */
+  inset: -5px;
+  /* 保持与 mindmap.css 一致的逻辑: inset 为 -5px，线条宽度2px，圆角同步外扩 3px */
+  border-radius: calc(var(--node-border-radius, 8px) + 3px);
+}
+
+/* Tiptap 内容样式 */
+.node-editor-content {
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  overflow-wrap: break-word;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-align: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+  outline: none;
+}
+
+.node-editor-content p {
+  padding: 0;
+  margin: 0;
+  overflow-wrap: inherit;
+  line-height: inherit;
+  white-space: inherit;
+  word-break: inherit;
+}

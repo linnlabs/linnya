@@ -1,0 +1,6 @@
+.subrun-progress-card {
+  /* 恢复历史 compact subrun 与 Deep Search 一致的内容留白；卡片外壳仍归 ToolCallsMessage。 */
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 10px 10px;
+}

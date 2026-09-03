@@ -1,0 +1,207 @@
+.create-project-content {
+  padding: 12px 32px 0;
+  color: var(--color-text-primary);
+}
+
+.create-project-content .form-row {
+  display: flex;
+  margin-bottom: 24px;
+}
+
+.create-project-content .form-row:last-of-type {
+  margin-bottom: 0;
+}
+
+.create-project-content .input-row {
+  /* textarea 会自动扩高，顶部对齐能避免 label 在多行输入时漂移。 */
+  align-items: flex-start;
+}
+
+.create-project-content .form-label {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  width: 100px;
+  flex-shrink: 0;
+  padding-top: 8px;
+  text-align: left;
+}
+
+.create-project-content .required {
+  color: var(--color-error);
+  margin-left: 2px;
+}
+
+.create-project-content .control-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.create-project-content .settings-input,
+.create-project-content .settings-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background-color: var(--color-bg-search-light);
+  color: var(--color-text-primary);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  font-family: inherit;
+}
+
+.create-project-content .settings-input {
+  height: 36px;
+}
+
+.create-project-content .settings-textarea {
+  resize: none;
+  min-height: 100px;
+  max-height: 200px;
+  line-height: 1.5;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  transition: height 0.1s ease;
+}
+
+.create-project-content .settings-textarea::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.create-project-content .settings-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.create-project-content .settings-textarea::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  background-color: var(--scrollbar-thumb-color);
+  background-clip: content-box;
+}
+
+.create-project-content .settings-textarea::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+.create-project-content .settings-textarea::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.create-project-content .settings-input:hover:not(:disabled),
+.create-project-content .settings-textarea:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+  border-color: transparent;
+}
+
+.create-project-content .settings-input:focus:not(:disabled),
+.create-project-content .settings-textarea:focus:not(:disabled) {
+  outline: none;
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-hover);
+}
+
+.create-project-content .settings-input:disabled,
+.create-project-content .settings-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--color-bg-disabled);
+  color: var(--color-text-placeholder);
+}
+
+.create-project-content .error-message {
+  color: var(--color-error);
+  font-size: 12px;
+  margin-top: 15px;
+  padding: 8px 12px;
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error);
+  border-radius: 4px;
+  line-height: 1.4;
+}
+
+.create-project-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 32px;
+}
+
+.create-project-footer .ai-action-group {
+  margin-right: auto;
+}
+
+.create-project-footer .ai-icon {
+  font-size: 14px;
+}
+
+.create-project-content .kb-tag-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.create-project-content .tag-input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.create-project-content .add-tag-button {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  /*
+   * 原先引用的 --color-interactive-surface-subtle 未定义，实际背景是透明；
+   * 外迁时显式保留这个视觉结果，避免按钮突然获得新的底色。
+   */
+  background-color: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.create-project-content .add-tag-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.create-project-content .add-tag-button:not(:disabled):hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.create-project-content .add-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.create-project-content .tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.create-project-content .select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-tertiary);
+  transition: transform 0.2s ease-in-out;
+  pointer-events: none;
+}
+
+.create-project-content .select-chevron.is-open {
+  transform: translateY(-50%) rotate(180deg);
+}

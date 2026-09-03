@@ -1,0 +1,130 @@
+.config-tab {
+  padding: 0 0 0 12px;
+  flex-grow: 1;
+}
+
+.config-tab .config-main-view {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0 auto;
+  padding-bottom: 24px;
+}
+
+.config-tab .action-btn {
+  display: flex;
+  align-items: center;
+  padding: 5px 12px;
+  height: 28px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.config-tab .action-btn.secondary {
+  color: var(--color-text-secondary);
+  background-color: transparent;
+  border: none;
+}
+
+.config-tab .action-btn.secondary:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.config-tab .model-settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-tab .model-settings-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.config-tab .parsing-settings-section {
+  padding-top: 0;
+}
+
+.config-tab .parsing-settings-section .field-header {
+  /* 与通用设置页的 24px 节奏对齐，但规则自持在 knowledgebase 域内。 */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.config-tab .field-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.config-tab .parsing-options {
+  /* 与通用设置页的 form-row 间距对齐，但不依赖 settings 域内部 CSS。 */
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.config-tab .parsing-option-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 4px 0;
+}
+
+.config-tab .option-label {
+  flex: 1;
+}
+
+.config-tab .option-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+
+.config-tab .scope-hint {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+}
+
+.config-tab .option-description {
+  font-size: 12px;
+  color: var(--color-text-placeholder);
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.config-tab .option-control {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.config-tab .pdf-strategy-select {
+  width: 220px;
+}
+
+.config-tab .pdf-strategy-select-trigger {
+  height: 34px;
+  background-color: var(--color-bg-surface);
+}
+
+.config-tab .setting-note {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  margin: 0;
+  white-space: nowrap;
+}

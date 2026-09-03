@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "runtime_id": "linnya_headless_node_runtime",
+  "node_version": "24.18.1",
+  "targets": [
+    {
+      "platform": "darwin",
+      "architecture": "arm64",
+      "archive_kind": "tar.gz",
+      "archive_file_name": "node-v24.18.1-darwin-arm64.tar.gz",
+      "archive_sha256": "eb02f7fab96d3d67de40c5ec8566096fcb4c2026728787683ae5a97eb612b941",
+      "archive_root": "node-v24.18.1-darwin-arm64",
+      "executable_relative_path": "bin/node"
+    },
+    {
+      "platform": "win32",
+      "architecture": "x64",
+      "archive_kind": "zip",
+      "archive_file_name": "node-v24.18.1-win-x64.zip",
+      "archive_sha256": "ec56b84a7551893ab2324ebdfdc4ab974a63b4781162600b68a1293cc3e53765",
+      "archive_root": "node-v24.18.1-win-x64",
+      "executable_relative_path": "node.exe"
+    }
+  ]
+}

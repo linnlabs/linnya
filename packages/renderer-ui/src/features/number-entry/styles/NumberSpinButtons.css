@@ -1,0 +1,54 @@
+/* @linnya/renderer-ui number-entry owner。 */
+.custom-number-input .number-spin-buttons {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  bottom: 2px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 20px;
+}
+
+.custom-number-input .spin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50%;
+  padding: 0;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s, background-color 0.2s, color 0.2s;
+}
+
+.custom-number-input .number-spin-buttons:hover .spin-btn:not(:disabled),
+.custom-number-input .spin-btn:focus-visible,
+.custom-number-input .spin-btn:not(:disabled):hover {
+  opacity: 1;
+}
+
+.custom-number-input .number-spin-buttons:hover .spin-btn:disabled {
+  opacity: 0.2;
+}
+
+.custom-number-input .spin-btn:not(:disabled):hover,
+.custom-number-input .spin-btn:focus-visible {
+  background-color: var(--color-bg-hover);
+}
+
+.custom-number-input .spin-btn:active:not(:disabled) {
+  background-color: var(--color-border-default);
+}
+
+.custom-number-input .spin-btn:disabled {
+  cursor: not-allowed;
+}
+
+.custom-number-input .spin-btn svg {
+  width: 10px;
+  height: 10px;
+}

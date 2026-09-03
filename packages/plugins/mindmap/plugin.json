@@ -1,0 +1,103 @@
+{
+  "id": "mindmap",
+  "version": "1.0.6",
+  "name": "Mindmap",
+  "description": "用思维导图拆解问题、组织证据，并让 AI agents 沿节点协作。",
+  "developer": "Linnya",
+  "details": [
+    "Mindmap 为 Linnya 提供思维导图文档类型，让复杂问题可以被拆成节点、假设、证据和验证路径。它适合研究拆解、产品方案推演、写作大纲、多分支任务规划，以及需要边思考边沉淀结构的长任务。",
+    "你可以用节点表达主题、子问题、结论、状态、置信度和证据，并在选择、移动、插入父节点或兄弟节点、折叠展开和重排布局之间保持结构清晰。",
+    "Mindmap agents 可以沿着导图结构拆解问题、提出假设、验证证据，并把结果写回节点，而不是把所有上下文堆进一段长文本。"
+  ],
+  "releaseNotes": [
+    {
+      "version": "1.0.6",
+      "title": "切换 Renderer UI 2.0",
+      "description": "更新共享 UI 兼容合同并重建插件 artifact，现有思维导图前端 UI 与交互保持不变。"
+    },
+    {
+      "version": "1.0.5",
+      "title": "修复 renderer 生产环境加载",
+      "description": "重新构建 renderer artifact，移除浏览器环境中的裸 process 引用，确保磁盘插件可正常启用。"
+    },
+    {
+      "version": "1.0.4",
+      "title": "用户详情契约收口",
+      "description": "详细介绍成为插件必填字段，README 回到开发者文档，Mindmap 只声明 Agents。"
+    },
+    {
+      "version": "1.0.3",
+      "title": "结构化插件详情",
+      "description": "插件商店详情改为原生结构化展示，介绍、版本更新和能力模块独立呈现。"
+    },
+    {
+      "version": "1.0.2",
+      "title": "补齐详情内容",
+      "description": "补齐插件详情页长介绍和版本更新说明，并同步本地预置资源与插件 artifact。"
+    },
+    {
+      "version": "1.0.1",
+      "title": "插件商店基础信息",
+      "description": "接入插件商店展示信息，补齐图标、介绍和插件商店基础声明。"
+    },
+    {
+      "version": "1.0.0",
+      "title": "Runtime 插件化",
+      "description": "Mindmap 成为 Linnya 官方 runtime 插件，支持磁盘加载、预置 seed、R2 artifact 分发、独立迁移和安全升级/回滚。"
+    }
+  ],
+  "agents": [
+    {
+      "name": "Workflow Leader",
+      "description": "统筹拆解、提出假设和验证路径，让多个 Mindmap 子任务围绕同一张图协作。"
+    },
+    {
+      "name": "Reasoning Canvas",
+      "description": "围绕当前导图节点进行假设验证、证据挂载、状态和置信度更新。"
+    },
+    {
+      "name": "Decompose Question",
+      "description": "把复杂问题拆成更容易验证和推进的子问题节点。"
+    },
+    {
+      "name": "Propose Hypothesis",
+      "description": "围绕当前节点提出可验证的解释、路径或方案假设。"
+    },
+    {
+      "name": "Validate Hypothesis",
+      "description": "为节点搜索和整理证据，并更新验证状态与置信度。"
+    }
+  ],
+  "entry": {
+    "backend": "./dist/backend/index.cjs",
+    "renderer": "./dist/renderer/index.js"
+  },
+  "dependsOn": [
+    "platform"
+  ],
+  "compat": {
+    "minApp": "0.0.36",
+    "rendererUi": "^2.0.0"
+  },
+  "ownedTables": [
+    "mindmap_versions",
+    "mindmap_evidence"
+  ],
+  "ownedFileTypes": [
+    {
+      "nodeType": "mindmap",
+      "extension": ".mindmap",
+      "label": "思维导图"
+    }
+  ],
+  "migrations": [
+    {
+      "version": 1,
+      "description": "baseline adoption"
+    },
+    {
+      "version": 2,
+      "description": "workspace text snapshot backfill"
+    }
+  ]
+}

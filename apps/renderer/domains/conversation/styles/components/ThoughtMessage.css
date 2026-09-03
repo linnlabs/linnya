@@ -1,0 +1,213 @@
+.thought-container {
+  border: none;
+  background-color: transparent;
+  width: 100%;
+}
+
+.thought-container .thought-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-placeholder);
+  transition: color 0.2s ease;
+}
+
+.thought-container .thought-header:hover {
+  color: var(--color-text-secondary);
+}
+
+.thought-container .thought-header:hover .thought-arrow {
+  color: var(--thought-message-arrow-hover-color);
+}
+
+.thought-container .thought-arrow {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-left: -3px;
+  transition: transform 0.2s ease, color 0.2s ease;
+  color: var(--thought-message-arrow-color);
+}
+
+.thought-container .thought-icon {
+  font-size: 14px;
+}
+
+.thought-container .thought-title {
+  font-size: 12px;
+  color: var(--thought-message-title-color);
+  transition: color 0.2s ease;
+}
+
+.thought-container .thought-header:hover .thought-title {
+  color: var(--thought-message-title-hover-color);
+}
+
+.thought-container .thought-content-wrapper {
+  position: relative;
+  padding-left: 20px;
+  margin-top: 4px;
+}
+
+.thought-container .thought-content-wrapper::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: var(--thought-message-line-color);
+}
+
+.thought-container .thought-content {
+  min-height: 60px;
+  background: var(--color-accent-bg-subtle);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--thought-message-text-color);
+}
+
+.thought-container .thought-content p {
+  margin-top: 0;
+  margin-bottom: 4px;
+  line-height: 1.5;
+  color: var(--thought-message-text-color);
+}
+
+.thought-container .thought-content p:last-child {
+  margin-bottom: 0;
+}
+
+.thought-container .thought-content br {
+  display: block;
+  content: "";
+  margin-top: 4px;
+}
+
+.thought-container .thought-content strong {
+  font-weight: 600;
+  color: var(--thought-message-text-color);
+}
+
+.thought-container .thought-content ul,
+.thought-container .thought-content ol {
+  margin-top: 0;
+  margin-bottom: 4px;
+  padding-left: 20px;
+  list-style: revert;
+  color: var(--thought-message-text-color);
+}
+
+.thought-container .thought-content li {
+  margin-bottom: 4px;
+  color: var(--thought-message-text-color);
+}
+
+.thought-container .thought-content li:last-child {
+  margin-bottom: 0;
+}
+
+.thought-container .thought-content blockquote {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 4px solid var(--thought-message-blockquote-border-color);
+  color: var(--thought-message-text-color);
+}
+
+.thought-container .thought-content pre {
+  margin: 8px 0;
+  padding: 8px;
+  background: var(--thought-message-pre-background);
+  border: 1px solid var(--thought-message-pre-border-color);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-x: auto;
+  color: var(--thought-message-text-color);
+}
+
+.thought-container .thought-content code {
+  background: var(--thought-message-code-background);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-style: normal;
+  word-break: break-all;
+  font-family: var(--font-family-mono, "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace);
+  color: var(--thought-message-text-color);
+}
+
+.thought-container .thought-content pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--thought-message-text-color);
+}
+
+.thought-container .thought-content h1,
+.thought-container .thought-content h2,
+.thought-container .thought-content h3,
+.thought-container .thought-content h4,
+.thought-container .thought-content h5,
+.thought-container .thought-content h6 {
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: var(--thought-message-text-color);
+}
+
+.thought-container .thought-content h1:first-child,
+.thought-container .thought-content h2:first-child,
+.thought-container .thought-content h3:first-child,
+.thought-container .thought-content h4:first-child,
+.thought-container .thought-content h5:first-child,
+.thought-container .thought-content h6:first-child {
+  margin-top: 0;
+}
+
+.thought-container .thought-content h1 {
+  font-size: 14px;
+}
+
+.thought-container .thought-content h2,
+.thought-container .thought-content h3,
+.thought-container .thought-content h4 {
+  font-size: 12px;
+}
+
+.thought-container .thought-content h2 {
+  font-size: 13px;
+}
+
+.thought-container .thought-content h5,
+.thought-container .thought-content h6 {
+  font-size: 11px;
+}
+
+.thought-container .thought-content table {
+  border-collapse: collapse;
+  border: 1px solid var(--thought-message-line-color);
+  width: 100%;
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+.thought-container .thought-content th,
+.thought-container .thought-content td {
+  border: 1px solid var(--thought-message-line-color);
+  padding: 6px 8px;
+  text-align: left;
+  color: var(--thought-message-text-color);
+}
+
+.thought-container .thought-content hr {
+  border: none;
+  border-top: 1px solid var(--thought-message-line-color);
+  margin: 16px 0;
+  height: 0;
+  opacity: 0.6;
+}

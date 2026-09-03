@@ -1,0 +1,71 @@
+{
+  "name": "@linnlabs/linnkit-provider-ai-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Optional Vercel AI SDK language inference adapter for Linnkit canonical hosts.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./conformance": {
+      "types": "./dist/conformance.d.ts",
+      "import": "./dist/conformance.js",
+      "require": "./dist/conformance.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsup",
+    "conformance": "vitest run conformance",
+    "conformance:affected": "node --import tsx bin/runAffectedProviderConformance.ts",
+    "test": "vitest run src conformance",
+    "typecheck": "tsc --noEmit -p tsconfig.src.json && tsc --noEmit -p tsconfig.json",
+    "pack-smoke": "pnpm --dir ../linnkit run build && pnpm run build && node scripts/verifyPackedRuntime.mjs"
+  },
+  "peerDependencies": {
+    "@linnlabs/linnkit": "^0.31.0"
+  },
+  "dependencies": {
+    "@ai-sdk/alibaba": "2.0.37",
+    "@ai-sdk/anthropic": "4.0.44",
+    "@ai-sdk/cerebras": "3.0.39",
+    "@ai-sdk/cohere": "4.0.33",
+    "@ai-sdk/deepinfra": "3.0.39",
+    "@ai-sdk/deepseek": "3.0.35",
+    "@ai-sdk/fireworks": "3.0.42",
+    "@ai-sdk/google": "4.0.54",
+    "@ai-sdk/groq": "4.0.33",
+    "@ai-sdk/minimax": "3.0.20",
+    "@ai-sdk/mistral": "4.0.35",
+    "@ai-sdk/moonshotai": "3.0.41",
+    "@ai-sdk/openai": "4.0.50",
+    "@ai-sdk/openai-compatible": "3.0.39",
+    "@ai-sdk/provider": "4.0.8",
+    "@ai-sdk/togetherai": "3.0.40",
+    "@ai-sdk/xai": "4.0.47",
+    "@ai-sdk/zai": "3.0.1",
+    "@openrouter/ai-sdk-provider": "3.0.0",
+    "ai": "7.0.83"
+  },
+  "devDependencies": {
+    "@linnlabs/linnkit": "workspace:*",
+    "@types/node": "^24.3.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.5.4",
+    "vitest": "^3.2.4"
+  }
+}

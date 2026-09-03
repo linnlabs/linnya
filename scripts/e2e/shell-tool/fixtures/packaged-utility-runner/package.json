@@ -1,0 +1,32 @@
+{
+  "name": "linnya-packaged-utility-runner-validation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Packaged Electron utility-process lifecycle validation fixture",
+  "author": "Linnya",
+  "main": "main.cjs",
+  "build": {
+    "appId": "com.linnyai.utility-runner-validation",
+    "productName": "Linnya Utility Runner Validation",
+    "asar": true,
+    "npmRebuild": false,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": false
+    },
+    "files": [
+      "main.cjs",
+      "validation-suite.cjs",
+      "utility-child.cjs",
+      "package.json"
+    ],
+    "mac": {
+      "target": "dir",
+      "identity": "-"
+    },
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": false
+    }
+  }
+}

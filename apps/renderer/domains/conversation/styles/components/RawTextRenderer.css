@@ -1,0 +1,29 @@
+.raw-text-renderer {
+  width: 100%;
+  font-size: 12px;
+}
+
+.raw-text-renderer .raw-text-content {
+  margin: 0;
+  color: var(--color-text-secondary);
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.raw-text-renderer .state-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.raw-text-renderer .error-state {
+  gap: 8px;
+  color: var(--color-error);
+}
+
+.raw-text-renderer .empty-state {
+  color: var(--color-text-tertiary);
+}

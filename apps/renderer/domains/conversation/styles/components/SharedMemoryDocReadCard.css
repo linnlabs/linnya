@@ -1,0 +1,142 @@
+.sharedmemory-doc-read-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: transparent;
+  padding: 0 10.5px 10.5px 10.5px;
+}
+
+.sharedmemory-doc-read-card .loading-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  padding: 12px;
+}
+
+.sharedmemory-doc-read-card .loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: sharedmemory-doc-read-card-spin 1s linear infinite;
+}
+
+@keyframes sharedmemory-doc-read-card-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sharedmemory-doc-read-card .content-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sharedmemory-doc-read-card .header-meta {
+  padding: 4px 10px;
+}
+
+.sharedmemory-doc-read-card .subtitle {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+}
+
+.sharedmemory-doc-read-card .subtitle-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.sharedmemory-doc-read-card .subtitle-filename {
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sharedmemory-doc-read-card .subtitle-range {
+  white-space: nowrap;
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.sharedmemory-doc-read-card .content-card {
+  background-color: var(--color-bg-sidebar);
+  border-radius: 8px;
+  border: 0.5px solid transparent;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.sharedmemory-doc-read-card .content-card:hover {
+  border-color: var(--color-accent);
+}
+
+.sharedmemory-doc-read-card .doc-content-wrapper {
+  /* 左右留白稍微加大一档，阅读更“透气”，同时保持左右对称 */
+  padding: 8px 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  /**
+   * 字号策略（仅影响 SharedMemory 阅读卡片，不影响普通会话消息）：
+   * - markstream-conversation-message.css 在 `[data-scope="conversation-message"]` 下使用 `font-size: inherit`；
+   * - 因此这里通过设置容器字号，安全地让正文整体更紧凑。
+   */
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.sharedmemory-doc-read-card .doc-plain {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+}
+
+.sharedmemory-doc-read-card .doc-content-wrapper::-webkit-scrollbar {
+  width: 9px;
+  height: 10px;
+}
+
+.sharedmemory-doc-read-card .doc-content-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sharedmemory-doc-read-card .doc-content-wrapper::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-default);
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.sharedmemory-doc-read-card .doc-content-wrapper::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-border-hover);
+}
+
+.sharedmemory-doc-read-card .error-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background-color: var(--color-error-bg);
+  border-radius: 8px;
+  color: var(--color-error);
+  font-size: 13px;
+}
+
+.sharedmemory-doc-read-card .error-icon {
+  font-size: 14px;
+}

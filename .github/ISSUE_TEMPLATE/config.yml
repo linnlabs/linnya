@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security policy
+    url: https://github.com/linnlabs/linnya/blob/main/SECURITY.md
+    about: Read the private vulnerability reporting instructions before disclosing a security issue.
+  - name: Support guide
+    url: https://github.com/linnlabs/linnya/blob/main/SUPPORT.md
+    about: Check the support scope and required diagnostic information.

@@ -1,0 +1,156 @@
+{
+  "name": "@app/schemas",
+  "version": "1.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Unified schema definitions for frontend and backend",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rimraf dist && tsc -p tsconfig.json && tsc -p tsconfig.esm.json && node -e \"const fs=require('fs'); fs.mkdirSync('dist/esm',{recursive:true}); fs.writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}, null, 2));\" && node scripts/fix-esm-specifiers.cjs && node scripts/verify-runtime-exports.cjs",
+    "pack-smoke": "pnpm run build && node scripts/verify-packed-runtime.mjs",
+    "dev": "tsc --watch",
+    "clean": "rimraf dist"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "semver": "7.7.3",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/semver": "7.7.1",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.2.4"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/esm/index.js"
+    },
+    "./api-dtos": {
+      "types": "./dist/api-dtos.d.ts",
+      "import": "./dist/esm/api-dtos.js",
+      "require": "./dist/api-dtos.js",
+      "default": "./dist/esm/api-dtos.js"
+    },
+    "./file-locator": {
+      "types": "./dist/file-locator.d.ts",
+      "import": "./dist/esm/file-locator.js",
+      "require": "./dist/file-locator.js",
+      "default": "./dist/esm/file-locator.js"
+    },
+    "./document-view": {
+      "types": "./dist/document-view.d.ts",
+      "import": "./dist/esm/document-view.js",
+      "require": "./dist/document-view.js",
+      "default": "./dist/esm/document-view.js"
+    },
+    "./plugins/manifest": {
+      "types": "./dist/plugins/manifest.d.ts",
+      "import": "./dist/esm/plugins/manifest.js",
+      "require": "./dist/plugins/manifest.js",
+      "default": "./dist/esm/plugins/manifest.js"
+    },
+    "./plugins/catalog": {
+      "types": "./dist/plugins/catalog.d.ts",
+      "import": "./dist/esm/plugins/catalog.js",
+      "require": "./dist/plugins/catalog.js",
+      "default": "./dist/esm/plugins/catalog.js"
+    },
+    "./agent-config": {
+      "types": "./dist/agent-config/index.d.ts",
+      "import": "./dist/esm/agent-config/index.js",
+      "require": "./dist/agent-config/index.js",
+      "default": "./dist/esm/agent-config/index.js"
+    },
+    "./commands": {
+      "types": "./dist/commands/index.d.ts",
+      "import": "./dist/esm/commands/index.js",
+      "require": "./dist/commands/index.js",
+      "default": "./dist/esm/commands/index.js"
+    },
+    "./model-inference": {
+      "types": "./dist/model-inference/index.d.ts",
+      "import": "./dist/esm/model-inference/index.js",
+      "require": "./dist/model-inference/index.js",
+      "default": "./dist/esm/model-inference/index.js"
+    },
+    "./provider-catalog": {
+      "types": "./dist/provider-catalog/index.d.ts",
+      "import": "./dist/esm/provider-catalog/index.js",
+      "require": "./dist/provider-catalog/index.js",
+      "default": "./dist/esm/provider-catalog/index.js"
+    },
+    "./provider-onboarding": {
+      "types": "./dist/provider-onboarding/index.d.ts",
+      "import": "./dist/esm/provider-onboarding/index.js",
+      "require": "./dist/provider-onboarding/index.js",
+      "default": "./dist/esm/provider-onboarding/index.js"
+    },
+    "./provider-account": {
+      "types": "./dist/provider-account/index.d.ts",
+      "import": "./dist/esm/provider-account/index.js",
+      "require": "./dist/provider-account/index.js",
+      "default": "./dist/esm/provider-account/index.js"
+    },
+    "./custom-api-onboarding": {
+      "types": "./dist/custom-api-onboarding/index.d.ts",
+      "import": "./dist/esm/custom-api-onboarding/index.js",
+      "require": "./dist/custom-api-onboarding/index.js",
+      "default": "./dist/esm/custom-api-onboarding/index.js"
+    },
+    "./ollama-onboarding": {
+      "types": "./dist/ollama-onboarding/index.d.ts",
+      "import": "./dist/esm/ollama-onboarding/index.js",
+      "require": "./dist/ollama-onboarding/index.js",
+      "default": "./dist/esm/ollama-onboarding/index.js"
+    },
+    "./model-picker": {
+      "types": "./dist/model-picker/index.d.ts",
+      "import": "./dist/esm/model-picker/index.js",
+      "require": "./dist/model-picker/index.js",
+      "default": "./dist/esm/model-picker/index.js"
+    },
+    "./document-ocr": {
+      "types": "./dist/document-ocr/index.d.ts",
+      "import": "./dist/esm/document-ocr/index.js",
+      "require": "./dist/document-ocr/index.js",
+      "default": "./dist/esm/document-ocr/index.js"
+    },
+    "./transcription": {
+      "types": "./dist/transcription/index.d.ts",
+      "import": "./dist/esm/transcription/index.js",
+      "require": "./dist/transcription/index.js",
+      "default": "./dist/esm/transcription/index.js"
+    },
+    "./provider-outbound-audit": {
+      "types": "./dist/provider-outbound-audit/index.d.ts",
+      "import": "./dist/esm/provider-outbound-audit/index.js",
+      "require": "./dist/provider-outbound-audit/index.js",
+      "default": "./dist/esm/provider-outbound-audit/index.js"
+    },
+    "./conversation/selected-agent": {
+      "types": "./dist/conversation/selected-agent.d.ts",
+      "import": "./dist/esm/conversation/selected-agent.js",
+      "require": "./dist/conversation/selected-agent.js",
+      "default": "./dist/esm/conversation/selected-agent.js"
+    },
+    "./conversation/reference-identity": {
+      "types": "./dist/conversation/reference-identity.d.ts",
+      "import": "./dist/esm/conversation/reference-identity.js",
+      "require": "./dist/conversation/reference-identity.js",
+      "default": "./dist/esm/conversation/reference-identity.js"
+    },
+    "./conversation-control": {
+      "types": "./dist/conversation-control/index.d.ts",
+      "import": "./dist/esm/conversation-control/index.js",
+      "require": "./dist/conversation-control/index.js",
+      "default": "./dist/esm/conversation-control/index.js"
+    }
+  }
+}

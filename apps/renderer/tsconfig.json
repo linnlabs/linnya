@@ -1,0 +1,28 @@
+{
+  "extends": [
+    "../../tsconfig.bundler-base.json",
+    "./tsconfig.paths.generated.json"
+  ],
+  "compilerOptions": {
+    "allowJs": true,
+    "allowImportingTsExtensions": true,
+    "experimentalDecorators": true,
+    "noEmit": true
+  },
+  "include": [
+    "env.d.ts",
+    "**/*.ts",
+    "**/*.d.ts",
+    "**/*.tsx",
+    "**/*.vue",
+    "**/*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/__tests__/**",
+    "**/__test__/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/*.bench.*"
+  ]
+}

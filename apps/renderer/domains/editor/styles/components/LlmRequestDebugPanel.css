@@ -1,0 +1,180 @@
+.llm-debug-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-black) 35%, transparent);
+  --llm-debug-panel-bg: var(--color-gray-850);
+  --llm-debug-panel-border: color-mix(in srgb, var(--color-white) 8%, transparent);
+  --llm-debug-header-start: var(--color-gray-825);
+  --llm-debug-header-end: color-mix(in srgb, var(--color-gray-850) 88%, var(--color-black));
+  --llm-debug-toolbar-bg: color-mix(in srgb, var(--color-gray-800) 88%, var(--color-black));
+  --llm-debug-content-bg: color-mix(in srgb, var(--color-gray-850) 88%, var(--color-black));
+  --llm-debug-text: var(--color-gray-100);
+  --llm-debug-text-muted: var(--color-gray-350);
+  --llm-debug-text-secondary: var(--color-gray-300);
+  --llm-debug-text-tertiary: var(--color-gray-400);
+  --llm-debug-accent: var(--color-blue-500);
+  --llm-debug-error: var(--color-red-300);
+  --llm-debug-token-count: var(--color-yellow-400);
+  --llm-debug-scrollbar-thumb: color-mix(in srgb, var(--color-white) 20%, transparent);
+  --llm-debug-scrollbar-thumb-hover: color-mix(in srgb, var(--color-white) 30%, transparent);
+}
+
+.llm-debug-panel {
+  display: flex;
+  flex-direction: column;
+  width: 960px;
+  max-width: 96vw;
+  height: 70vh;
+  max-height: 80vh;
+  overflow: hidden;
+  border: 1px solid var(--llm-debug-panel-border);
+  border-radius: 10px;
+  background: var(--llm-debug-panel-bg);
+  box-shadow: var(--shadow-xl);
+  color: var(--llm-debug-text);
+}
+
+.llm-debug-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--llm-debug-panel-border);
+  background: linear-gradient(
+    90deg,
+    var(--llm-debug-header-start),
+    var(--llm-debug-header-end)
+  );
+}
+
+.llm-debug-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.llm-debug-title span:first-child {
+  font-weight: 600;
+}
+
+.llm-debug-meta {
+  color: var(--llm-debug-text-muted);
+  font-size: 11px;
+}
+
+.llm-debug-tokens {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 16px;
+  color: var(--llm-debug-text-secondary);
+  font-size: 11px;
+}
+
+.llm-debug-tokens-value {
+  color: var(--llm-debug-token-count);
+  font-weight: 600;
+}
+
+.llm-debug-close {
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--llm-debug-text-secondary);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.llm-debug-close:hover {
+  color: var(--color-white);
+}
+
+.llm-debug-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.llm-debug-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-white) 6%, transparent);
+  background: var(--llm-debug-toolbar-bg);
+}
+
+.llm-debug-toolbar button {
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-white) 12%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--llm-debug-text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.llm-debug-toolbar button.active {
+  border-color: var(--llm-debug-accent);
+  background: var(--llm-debug-accent);
+  color: var(--color-white);
+}
+
+.llm-debug-status {
+  margin-left: auto;
+  color: var(--llm-debug-text-tertiary);
+  font-size: 12px;
+}
+
+.llm-debug-status.error {
+  color: var(--llm-debug-error);
+}
+
+.llm-debug-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--llm-debug-content-bg);
+}
+
+.llm-debug-content .json-viewer {
+  flex: 1;
+  height: 100%;
+  padding: 10px 12px;
+  margin: 0;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+  word-break: normal;
+}
+
+.llm-debug-content .json-viewer::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.llm-debug-content .json-viewer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.llm-debug-content .json-viewer::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 5px;
+  background-color: var(--scrollbar-thumb-color, var(--llm-debug-scrollbar-thumb));
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+.llm-debug-content .json-viewer::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color, var(--llm-debug-scrollbar-thumb-hover));
+}

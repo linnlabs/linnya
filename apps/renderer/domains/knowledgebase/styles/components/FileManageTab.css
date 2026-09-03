@@ -1,0 +1,232 @@
+.manage-tab {
+  padding: 0 0 16px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.manage-tab .file-list-container {
+  flex-grow: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.manage-tab .file-list-header,
+.manage-tab .file-item {
+  display: grid;
+  gap: 16px;
+  align-items: center;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.manage-tab .manage-list .file-list-header,
+.manage-tab .manage-list .file-item {
+  grid-template-columns: minmax(180px, 4fr) minmax(72px, 1fr) minmax(120px, 1.5fr) minmax(112px, 1.2fr) minmax(150px, 1.6fr) minmax(80px, 1fr);
+}
+
+.manage-tab .file-list-header {
+  height: 40px;
+  background-color: var(--color-bg-subtle);
+  border-radius: 6px;
+  flex-shrink: 0;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+  position: relative;
+}
+
+.manage-tab .file-list-header::before {
+  /* 覆盖表头右侧滚动条 gutter，保持和可滚动列表列宽对齐。 */
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 10px;
+  background: var(--color-bg-subtle);
+}
+
+.manage-tab .file-list-header > div {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 450;
+}
+
+.manage-tab .file-list-header .col-size,
+.manage-tab .file-list-header .col-category,
+.manage-tab .file-list-header .col-parse-status,
+.manage-tab .file-list-header .col-upload-time,
+.manage-tab .file-list-header .col-actions {
+  text-align: center;
+}
+
+.manage-tab .file-list-items {
+  overflow-y: auto;
+  flex-grow: 1;
+  scrollbar-gutter: stable;
+}
+
+.manage-tab .file-item {
+  min-height: 52px;
+  padding: 8px 16px;
+  position: relative;
+}
+
+.manage-tab .file-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  height: 0.5px;
+  left: 10px;
+  right: 0;
+  background-color: var(--color-border-default);
+}
+
+.manage-tab .file-name {
+  font-weight: 450;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.manage-tab .col-name {
+  min-width: 0;
+}
+
+.manage-tab .col-size,
+.manage-tab .col-category,
+.manage-tab .col-parse-status,
+.manage-tab .col-upload-time {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.manage-tab .parse-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.manage-tab .parse-status-badge.is-partial {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.manage-tab .action-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+}
+
+.manage-tab .delete-btn {
+  color: var(--color-text-secondary);
+}
+
+.manage-tab .delete-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.manage-tab .continue-btn {
+  color: var(--color-warning);
+}
+
+.manage-tab .continue-btn:hover {
+  color: var(--color-warning);
+}
+
+.manage-tab .continue-btn:disabled,
+.manage-tab .continue-btn:disabled:hover {
+  color: var(--color-text-tertiary);
+  cursor: wait;
+}
+
+.manage-tab .warning-btn {
+  color: var(--color-error);
+}
+
+.manage-tab .warning-btn:hover {
+  color: var(--color-error);
+}
+
+.manage-tab .col-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.manage-tab .empty-list-placeholder {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.manage-tab .empty-content {
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  margin-top: 16px;
+}
+
+.manage-tab .empty-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.manage-tab .empty-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-placeholder);
+}
+
+.manage-tab .clear-all-btn {
+  font-weight: 500;
+}
+
+.manage-tab .clear-all-btn:disabled,
+.manage-tab .clear-all-btn:disabled:hover {
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+}
+
+.manage-tab .file-list-items::-webkit-scrollbar,
+.manage-tab .file-list-header::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.manage-tab .file-list-items::-webkit-scrollbar-track,
+.manage-tab .file-list-header::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.manage-tab .file-list-items::-webkit-scrollbar-thumb,
+.manage-tab .file-list-header::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.manage-tab .file-list-items::-webkit-scrollbar-thumb:hover,
+.manage-tab .file-list-header::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}

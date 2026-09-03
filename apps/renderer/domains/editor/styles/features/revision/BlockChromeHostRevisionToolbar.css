@@ -1,0 +1,10 @@
+.block-chrome-host-revision-toolbar {
+  position: absolute;
+  inset: 0;
+  z-index: 26;
+  pointer-events: none;
+}
+
+.block-chrome-host-revision-toolbar .revision-toolbar {
+  pointer-events: auto;
+}

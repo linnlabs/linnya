@@ -1,0 +1,257 @@
+.kb-detail-view {
+  --kb-detail-tab-shadow: color-mix(in srgb, var(--shadow-color-md) 80%, transparent);
+  --kb-detail-tab-glow: color-mix(in srgb, var(--color-accent) 16%, transparent);
+
+  min-height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  background-color: var(--color-bg-default);
+  overflow: visible;
+}
+
+.kb-detail-view .kb-detail-inner {
+  flex: 1;
+  max-width: 960px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 36px 24px 40px;
+  background-color: var(--color-bg-surface);
+}
+
+.kb-detail-view .detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 24px;
+  background-color: var(--color-bg-surface);
+}
+
+.kb-detail-view .right-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.kb-detail-view .left-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.kb-detail-view .back-btn {
+  background: none;
+  border: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.kb-detail-view .back-btn:hover {
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-primary);
+}
+
+.kb-detail-view .back-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.kb-detail-view .kb-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.kb-detail-view .kb-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kb-detail-view .kb-info h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kb-detail-view .kb-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-accent-light);
+  background-color: var(--color-accent-bg-subtle);
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.kb-detail-view .kb-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 36px;
+  min-width: 0;
+}
+
+.kb-detail-view .kb-meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.kb-detail-view .kb-meta-doc,
+.kb-detail-view .kb-meta-updated {
+  white-space: nowrap;
+}
+
+.kb-detail-view .kb-graph-progress {
+  display: flex;
+  justify-content: flex-end;
+  /* 进度组件是图标模式，这里不能占据剩余宽度，否则会挤压 meta 文案。 */
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.kb-detail-view .tab-navigation {
+  position: relative;
+  display: inline-flex;
+  gap: 0;
+  padding: 3px;
+  border-radius: 999px;
+  background-color: var(--color-bg-subtle);
+  --indicator-x: 3px;
+  --indicator-width: 0px;
+
+  isolation: isolate;
+}
+
+.kb-detail-view .tab-navigation::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: var(--indicator-width);
+  transform: translateX(var(--indicator-x));
+  border-radius: 999px;
+  background: var(--color-bg-surface);
+  box-shadow: 0 6px 18px var(--kb-detail-tab-shadow);
+  z-index: 0;
+  transition:
+    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.kb-detail-view .tab-navigation::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at center,
+    var(--kb-detail-tab-glow),
+    transparent 70%
+  );
+  mix-blend-mode: soft-light;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.kb-detail-view .tab-button {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 5px 14px;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  border-radius: 999px;
+  transition: background-color 0.16s ease, color 0.16s ease,
+    box-shadow 0.16s ease;
+  white-space: nowrap;
+}
+
+.kb-detail-view .tab-button:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.kb-detail-view .tab-button.active {
+  color: var(--color-accent);
+  background-color: transparent;
+  font-weight: 500;
+}
+
+.kb-detail-view .detail-content {
+  flex: 0 0 auto;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-surface);
+}
+
+.kb-detail-view .detail-content > * {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+/*
+ * 详情页应该由 app 级 editor-shell 承担纵向滚动，这样滚动条固定在窗口最右侧。
+ * FileUploadTab / FileManageTab 同时会被弹窗复用，所以只在详情页作用域内取消内部纵向滚动。
+ */
+.kb-detail-view .upload-tab,
+.kb-detail-view .manage-tab {
+  height: auto;
+}
+
+.kb-detail-view .upload-tab .file-list-items,
+.kb-detail-view .manage-tab .file-list-items {
+  overflow-y: visible;
+  scrollbar-gutter: auto;
+}
+
+.kb-detail-view .upload-tab .file-list-header,
+.kb-detail-view .manage-tab .file-list-header {
+  scrollbar-gutter: auto;
+}
+
+.kb-detail-view .manage-tab .file-list-header::before {
+  content: none;
+}
+
+@media (max-width: 960px) {
+  .kb-detail-view .detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .kb-detail-view .right-section {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

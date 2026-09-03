@@ -1,0 +1,67 @@
+.history-dropdown-wrapper {
+  position: fixed;
+  z-index: 1300;
+  width: 280px;
+}
+
+.history-dropdown-wrapper .history-dropdown-options {
+  width: 280px;
+  max-width: 280px;
+}
+
+.history-dropdown-wrapper .history-dropdown-option {
+  box-sizing: border-box;
+  width: 100%;
+  height: 28px;
+  padding: 6px 10px;
+}
+
+.history-dropdown-wrapper .history-dropdown-option-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-dropdown-wrapper .history-dropdown-option-shortcut {
+  margin-left: 8px;
+  color: var(--color-text-placeholder);
+  font-size: 11px;
+  opacity: 1;
+}
+
+.history-dropdown-wrapper .history-dropdown-option.is-selected .history-dropdown-option-shortcut {
+  color: var(--color-accent);
+}
+
+.history-dropdown-wrapper .history-dropdown-status-option {
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  opacity: 1;
+}
+
+.history-dropdown-wrapper .history-dropdown-view-all-option {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.history-dropdown-wrapper .history-dropdown-view-all-option .history-dropdown-option-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  transform: translateY(0.5px);
+}
+
+.history-dropdown-fade-enter-active,
+.history-dropdown-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.history-dropdown-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.history-dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}

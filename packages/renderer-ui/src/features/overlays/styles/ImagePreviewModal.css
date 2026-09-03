@@ -1,0 +1,31 @@
+.image-preview-modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--linnya-ui-layer-image-preview);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  background: color-mix(in srgb, var(--color-black) 50%, transparent);
+  backdrop-filter: blur(var(--spacing-xxs));
+}
+
+.image-preview-modal img {
+  display: block;
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  cursor: default;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.image-preview-modal-fade-enter-active,
+.image-preview-modal-fade-leave-active {
+  transition: opacity var(--transition-fast);
+}
+
+.image-preview-modal-fade-enter-from,
+.image-preview-modal-fade-leave-to {
+  opacity: 0;
+}

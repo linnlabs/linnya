@@ -1,0 +1,69 @@
+# Dependencies and build output
+node_modules/
+dist/
+dist-ssr/
+dist_build/
+dist_electron/
+coverage/
+.coverage/
+.nyc_output/
+*.tsbuildinfo
+*.js.map
+/app-*.js
+/app-*.css
+/main-*.js
+
+# Credentials and machine-local configuration
+.env
+.env.*
+!.env.example
+*.local
+
+# Logs and local runtime state
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+_dev_data/
+storage/
+*.sqlite
+*.sqlite3
+/benchmark-results/runs/
+
+# Maintainer-private process documents
+/docs/proposals/
+
+# Tool and compiler caches
+.eslintcache
+.turbo/
+packages/parser-wasm/target/
+temp/
+temp_tsup/
+temp_ts_build/
+.tmp_*
+
+# Generated product resources
+dist_release/
+extraResources/plugins/
+extraResources/headless-node-runtime/
+extraResources/bin/qdrant/
+extraResources/bin/poppler/
+extraResources/bin/ffmpeg/*
+!extraResources/bin/ffmpeg/README.md
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.husky/_/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+$null
+rustup-init.exe

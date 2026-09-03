@@ -1,0 +1,223 @@
+.review-section.review-dashboard-view {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.review-dashboard-view .dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.review-dashboard-view .header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-dashboard-view .header-left h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.review-dashboard-view .message-count {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-hover);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.review-dashboard-view .new-review-btn {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-default);
+  border: 1px solid var(--color-border-default);
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.review-dashboard-view .new-review-btn:hover {
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.review-dashboard-view .filter-tabs {
+  position: relative;
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  background-color: var(--color-bg-subtle);
+  padding: 3px;
+  border-radius: 6px; /* 形状保持圆角矩形（不做胶囊） */
+  flex-shrink: 0;
+  overflow: hidden;
+
+  /* 与脚本中的动态滑块变量保持同名，保证首次渲染也有稳定位置。 */
+  --indicator-x: 3px;
+  --indicator-width: 0px;
+
+  isolation: isolate;
+}
+
+.review-dashboard-view .filter-tabs::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: var(--indicator-width);
+  transform: translateX(var(--indicator-x));
+  border-radius: 4px; /* 按钮圆角矩形 */
+  background: var(--color-bg-surface);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-gray-900) 12%, transparent);
+  z-index: 0;
+  transition:
+    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.review-dashboard-view .filter-tabs::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 6px;
+  background: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--color-accent) 14%, transparent),
+    transparent 70%
+  );
+  mix-blend-mode: soft-light;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.review-dashboard-view .filter-tab {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 5px 14px;
+  border-radius: 4px;
+  transition: background-color 0.16s ease, color 0.16s ease,
+    box-shadow 0.16s ease;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.review-dashboard-view .filter-tabs.is-scrollable {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.review-dashboard-view .filter-tabs.is-scrollable .filter-tab {
+  flex: 0 0 auto;
+}
+
+.review-dashboard-view .filter-tabs.is-scrollable::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.review-dashboard-view .filter-tabs.is-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.review-dashboard-view .filter-tabs.is-scrollable::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-default);
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.review-dashboard-view .filter-tabs.is-scrollable::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-border-hover);
+}
+
+.review-dashboard-view .filter-tab:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.review-dashboard-view .filter-tab.active {
+  color: var(--color-accent);
+  background-color: transparent;
+  font-weight: 500;
+}
+
+.review-dashboard-view .results-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.review-dashboard-view .results-list::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.review-dashboard-view .results-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.review-dashboard-view .results-list::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-default);
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.review-dashboard-view .results-list::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-border-hover);
+}
+
+.review-dashboard-view .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  height: 100%;
+}
+
+.review-dashboard-view .empty-state p {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+  color: var(--color-text-primary);
+}
+
+.review-dashboard-view .empty-state .sub {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+  max-width: 240px;
+}
+
+.review-dashboard-view .messages-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* 防止审阅卡片后续恢复阴影时被滚动容器截断。 */
+  padding: 2px 4px;
+}

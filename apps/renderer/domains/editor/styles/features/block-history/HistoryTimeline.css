@@ -1,0 +1,222 @@
+.history-timeline {
+  --history-timeline-axis-y: 16px;
+
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.history-timeline .timeline-main-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.history-timeline .timeline-axis {
+  position: relative;
+  flex: 1;
+  min-height: 72px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  cursor: pointer;
+}
+
+.history-timeline .timeline-axis-inner {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: flex-start;
+  min-width: fit-content;
+  padding: 0 4px;
+  gap: 16px;
+  white-space: nowrap;
+}
+
+.history-timeline .timeline-track {
+  position: absolute;
+  top: var(--history-timeline-axis-y);
+  height: 2px;
+  background-color: var(--color-border-default);
+  transform: translateY(-50%);
+}
+
+.history-timeline .timeline-node {
+  position: relative;
+  min-width: 40px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.history-timeline .timeline-node-dot {
+  position: relative;
+  height: 32px;
+}
+
+.history-timeline .timeline-node-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.history-timeline .node-version {
+  color: var(--color-text-secondary);
+}
+
+.history-timeline .node-time {
+  color: var(--color-text-tertiary);
+}
+
+.history-timeline .timeline-dot {
+  position: absolute;
+  top: var(--history-timeline-axis-y);
+  left: 50%;
+  display: block;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  appearance: none;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+  transform: translate(-50%, -50%);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.history-timeline .timeline-dot::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.history-timeline .dot-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--color-bg-default);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.history-timeline .timeline-dot.origin-ai {
+  background-color: transparent;
+}
+
+.history-timeline .timeline-dot.origin-manual .dot-indicator {
+  background-color: var(--color-border-default);
+}
+
+.history-timeline .timeline-dot.origin-restore .dot-indicator {
+  background-color: var(--color-accent-light);
+}
+
+.history-timeline .timeline-dot:hover .dot-indicator {
+  background-color: var(--color-accent-light);
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+.history-timeline .timeline-handle {
+  position: absolute;
+  top: var(--history-timeline-axis-y);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-bg);
+  cursor: grab;
+  transform: translate(-50%, -50%);
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
+}
+
+.history-timeline .timeline-handle:hover {
+  background: var(--color-accent-light);
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+.history-timeline .timeline-handle.dragging {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-bg);
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.02);
+}
+
+.history-timeline .timeline-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.history-timeline .timeline-meta-text {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-timeline .timeline-meta-text.muted {
+  color: var(--color-text-tertiary);
+}
+
+.history-timeline .timeline-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.history-timeline .timeline-actions .action-buttons-container {
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+}
+
+.history-timeline .timeline-actions .action-btn {
+  width: 100%;
+  height: 24px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.history-timeline .timeline-actions .action-btn.secondary {
+  margin-top: 2px;
+}
+
+.history-timeline .timeline-axis::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.history-timeline .timeline-axis::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.history-timeline .timeline-axis::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 5px;
+  background-color: var(--color-border-default);
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+.history-timeline .timeline-axis::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-border-hover);
+}

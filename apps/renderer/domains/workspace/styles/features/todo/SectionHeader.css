@@ -1,0 +1,73 @@
+/*
+ * SectionHeader 样式：todo feature 私有样式。
+ * 统一收口到 .todo-sidebar 根下，避免外迁后污染其它同名类。
+ */
+.todo-sidebar .section-header {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding: 0.375rem 0.75rem;
+  transition: background-color 0.2s;
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-tertiary);
+}
+
+.todo-sidebar .section-header:hover:not(.not-collapsible) {
+  background-color: var(--color-bg-hover);
+}
+
+.todo-sidebar .section-header.not-collapsible {
+  cursor: default;
+}
+
+.todo-sidebar .section-header .chevron {
+  color: var(--color-text-tertiary);
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s;
+}
+
+.todo-sidebar .section-header .chevron.is-expanded {
+  transform: rotate(0deg);
+}
+
+.todo-sidebar .section-header .chevron:not(.is-expanded) {
+  transform: rotate(-90deg);
+}
+
+.todo-sidebar .section-header .title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.todo-sidebar .section-header .count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-placeholder);
+}
+
+/* Text color utilities */
+.todo-sidebar .section-header .text-primary {
+  color: var(--color-accent);
+}
+
+.todo-sidebar .section-header .text-foreground {
+  color: var(--color-text-primary);
+}
+
+.todo-sidebar .section-header .text-foreground-60 {
+  color: var(--color-text-tertiary);
+}
+
+.todo-sidebar .section-header .text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.todo-sidebar .section-header .text-success {
+  color: var(--color-success);
+}

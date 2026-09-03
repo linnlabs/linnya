@@ -1,0 +1,14 @@
+/* 导入基础样式 */
+@import './base/index.css';
+
+/* Renderer UI 的 runtime CSS 只由 Host 装载一次，插件不得重复导入。 */
+@import '@linnya/renderer-ui/styles.css';
+
+/* App 业务语义留在 Host；基础 token/theme 已由 Renderer UI 唯一拥有。 */
+@import './tokens/application.css';
+
+/* 导入全局样式和过渡效果 */
+@import './global.css';
+
+/* 导入代码高亮主题 */
+@import './base/highlight-github.css';

@@ -1,0 +1,175 @@
+/* 语义颜色 token：组件应优先引用本层，而不是直接引用 base 色阶。 */
+
+[data-linnya-ui-theme='light'] {
+  /* Background */
+  --color-bg-default: var(--color-white);
+  --color-bg-surface: var(--color-white);
+  --color-bg-elevated: var(--color-bg-surface);
+  --color-bg-sidebar: var(--color-gray-50);
+  --color-bg-subtle: var(--color-gray-100);
+  --color-bg-disabled: var(--color-gray-100);
+  --color-bg-search: var(--color-gray-125);
+  --color-bg-search-light: var(--color-gray-100);
+  --color-bg-hover: color-mix(in srgb, var(--color-gray-125) 50%, var(--color-gray-150));
+  --color-bg-hover-light: var(--color-gray-100);
+  --color-bg-hover-strong: var(--color-gray-200);
+  --color-bg-active: color-mix(in srgb, var(--color-black) 10%, transparent);
+  --color-bg-active-subtle: color-mix(in srgb, var(--color-black) 7%, transparent);
+  --color-bg-active-control-hover: var(--color-gray-250);
+  --color-bg-selection: color-mix(in srgb, var(--color-brand-400) 6%, transparent);
+
+  /* Text */
+  --color-text-primary: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-650);
+  --color-text-tertiary: var(--color-gray-550);
+  --color-text-placeholder: var(--color-gray-421);
+  --color-text-muted: var(--color-gray-500);
+  --color-text-link: var(--color-blue-500);
+  --color-text-link-hover: var(--color-blue-600);
+  --color-text-selection: color-mix(in srgb, var(--color-brand-300) 30%, transparent);
+  --color-text-heading-meta: var(--color-gray-421);
+  --color-text-on-accent: var(--color-white);
+
+  /* Border */
+  --color-border-default: var(--color-gray-300);
+  --color-border-light: var(--color-gray-200);
+  --color-border-hover: var(--color-gray-400);
+  --color-border-focus: var(--color-gray-350);
+  --color-border-sidebar: var(--color-gray-300);
+  --color-border-accent-light: var(--color-brand-300);
+
+  /* Accent */
+  --color-accent: var(--color-brand-600);
+  --color-accent-rgb: 52, 123, 69;
+  --color-accent-hover: var(--color-brand-700);
+  --color-accent-hover-light: var(--color-brand-550);
+  --color-accent-light: var(--color-brand-500);
+  --color-accent-strong-light: var(--color-brand-300);
+  --color-accent-disabled: var(--color-brand-200);
+  --color-accent-bg: var(--color-brand-125);
+  --color-accent-bg-subtle: var(--color-brand-50);
+  --color-accent-bg-hover: var(--color-brand-163);
+
+  /* Shadow */
+  --shadow-color-xs: rgba(0, 0, 0, 0.05);
+  --shadow-color-sm: rgba(0, 0, 0, 0.1);
+  --shadow-color-md: rgba(0, 0, 0, 0.15);
+  --shadow-color-lg: rgba(0, 0, 0, 0.3);
+  --shadow-color-xl: rgba(0, 0, 0, 0.5);
+}
+
+[data-linnya-ui-theme='dark'] {
+  /* Background */
+  --color-bg-default: var(--color-gray-900);
+  --color-bg-surface: var(--color-gray-800);
+  --color-bg-elevated: var(--color-bg-surface);
+  --color-bg-sidebar: var(--color-gray-800);
+  --color-bg-subtle: var(--color-gray-775);
+  --color-bg-disabled: var(--color-gray-750);
+  --color-bg-search: var(--color-gray-750);
+  --color-bg-search-light: var(--color-gray-700);
+  --color-bg-hover: color-mix(in srgb, var(--color-gray-750) 50%, var(--color-gray-725));
+  --color-bg-hover-light: var(--color-gray-850);
+  --color-bg-hover-strong: var(--color-gray-725);
+  --color-bg-active: color-mix(in srgb, var(--color-black) 10%, transparent);
+  --color-bg-active-subtle: color-mix(in srgb, var(--color-black) 7%, transparent);
+  --color-bg-active-control-hover: var(--color-gray-700);
+  --color-bg-selection: color-mix(in srgb, var(--color-brand-400) 6%, transparent);
+
+  /* Text */
+  --color-text-primary: var(--color-gray-50);
+  --color-text-secondary: var(--color-gray-100);
+  --color-text-tertiary: var(--color-gray-150);
+  --color-text-placeholder: var(--color-gray-300);
+  --color-text-muted: var(--color-gray-750);
+  --color-text-link: var(--color-blue-200);
+  --color-text-link-hover: var(--color-blue-100);
+  --color-text-selection: color-mix(in srgb, var(--color-brand-300) 30%, transparent);
+  --color-text-heading-meta: var(--color-gray-421);
+  --color-text-on-accent: var(--color-white);
+
+  /* Border */
+  --color-border-default: var(--color-gray-625);
+  --color-border-light: var(--color-gray-800);
+  --color-border-hover: var(--color-gray-600);
+  --color-border-focus: var(--color-gray-500);
+  --color-border-sidebar: var(--color-gray-775);
+  --color-border-accent-light: var(--color-brand-300);
+
+  /* Accent */
+  --color-accent: var(--color-brand-500);
+  --color-accent-rgb: 73, 165, 92;
+  --color-accent-hover: var(--color-brand-700);
+  --color-accent-hover-light: var(--color-brand-550);
+  --color-accent-light: var(--color-brand-450);
+  --color-accent-strong-light: var(--color-brand-300);
+  --color-accent-disabled: var(--color-brand-200);
+  --color-accent-bg: var(--color-brand-850);
+  --color-accent-bg-subtle: var(--color-brand-900);
+  --color-accent-bg-hover: var(--color-brand-800);
+
+  /* Shadow */
+  --shadow-color-xs: rgba(0, 0, 0, 0.05);
+  --shadow-color-sm: rgba(0, 0, 0, 0.1);
+  --shadow-color-md: rgba(0, 0, 0, 0.15);
+  --shadow-color-lg: rgba(0, 0, 0, 0.3);
+  --shadow-color-xl: rgba(0, 0, 0, 0.5);
+}
+
+[data-linnya-ui-theme='moon-blue'] {
+  /* Background */
+  --color-bg-default: color-mix(in srgb, var(--color-blue-25) 82%, var(--color-white));
+  --color-bg-surface: color-mix(in srgb, var(--color-blue-25) 58%, var(--color-white));
+  --color-bg-elevated: var(--color-bg-surface);
+  --color-bg-sidebar: color-mix(in srgb, var(--color-blue-50) 76%, var(--color-white));
+  --color-bg-subtle: color-mix(in srgb, var(--color-blue-75) 56%, var(--color-white));
+  --color-bg-disabled: color-mix(in srgb, var(--color-blue-50) 64%, var(--color-gray-100));
+  --color-bg-search: color-mix(in srgb, var(--color-blue-75) 56%, var(--color-white));
+  --color-bg-search-light: color-mix(in srgb, var(--color-blue-50) 68%, var(--color-white));
+  --color-bg-hover: color-mix(in srgb, var(--color-blue-100) 42%, var(--color-white));
+  --color-bg-hover-light: color-mix(in srgb, var(--color-blue-50) 62%, var(--color-white));
+  --color-bg-hover-strong: color-mix(in srgb, var(--color-blue-125) 54%, var(--color-white));
+  --color-bg-active: color-mix(in srgb, var(--color-blue-400) 16%, transparent);
+  --color-bg-active-subtle: color-mix(in srgb, var(--color-blue-300) 10%, transparent);
+  --color-bg-active-control-hover: color-mix(in srgb, var(--color-blue-125) 60%, var(--color-white));
+  --color-bg-selection: color-mix(in srgb, var(--color-blue-300) 20%, transparent);
+
+  /* Text */
+  --color-text-primary: color-mix(in srgb, var(--color-blue-900) 36%, var(--color-gray-900));
+  --color-text-secondary: color-mix(in srgb, var(--color-blue-850) 28%, var(--color-gray-650));
+  --color-text-tertiary: color-mix(in srgb, var(--color-blue-750) 24%, var(--color-gray-550));
+  --color-text-placeholder: color-mix(in srgb, var(--color-blue-650) 30%, var(--color-gray-421));
+  --color-text-muted: color-mix(in srgb, var(--color-blue-700) 18%, var(--color-gray-500));
+  --color-text-link: var(--color-blue-600);
+  --color-text-link-hover: var(--color-blue-700);
+  --color-text-selection: color-mix(in srgb, var(--color-blue-300) 34%, transparent);
+  --color-text-heading-meta: color-mix(in srgb, var(--color-blue-700) 28%, var(--color-gray-421));
+  --color-text-on-accent: var(--color-white);
+
+  /* Border */
+  --color-border-default: color-mix(in srgb, var(--color-blue-150) 48%, var(--color-gray-200));
+  --color-border-light: color-mix(in srgb, var(--color-blue-75) 52%, var(--color-gray-150));
+  --color-border-hover: color-mix(in srgb, var(--color-blue-250) 48%, var(--color-gray-300));
+  --color-border-focus: color-mix(in srgb, var(--color-blue-300) 58%, var(--color-gray-300));
+  --color-border-sidebar: color-mix(in srgb, var(--color-blue-100) 54%, var(--color-gray-200));
+  --color-border-accent-light: var(--color-blue-300);
+
+  /* Accent */
+  --color-accent: var(--color-blue-600);
+  --color-accent-rgb: 37, 99, 235;
+  --color-accent-hover: var(--color-blue-700);
+  --color-accent-hover-light: var(--color-blue-550);
+  --color-accent-light: var(--color-blue-500);
+  --color-accent-strong-light: var(--color-blue-300);
+  --color-accent-disabled: var(--color-blue-150);
+  --color-accent-bg: color-mix(in srgb, var(--color-blue-100) 62%, var(--color-white));
+  --color-accent-bg-subtle: color-mix(in srgb, var(--color-blue-50) 74%, var(--color-white));
+  --color-accent-bg-hover: color-mix(in srgb, var(--color-blue-125) 68%, var(--color-white));
+
+  /* Shadow */
+  --shadow-color-xs: color-mix(in srgb, var(--color-blue-900) 5%, transparent);
+  --shadow-color-sm: color-mix(in srgb, var(--color-blue-900) 10%, transparent);
+  --shadow-color-md: color-mix(in srgb, var(--color-blue-900) 14%, transparent);
+  --shadow-color-lg: color-mix(in srgb, var(--color-blue-900) 20%, transparent);
+  --shadow-color-xl: color-mix(in srgb, var(--color-blue-900) 28%, transparent);
+}

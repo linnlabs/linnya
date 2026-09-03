@@ -1,0 +1,205 @@
+.draggable-panel {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-floating-panel);
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  min-height: 180px;
+  overflow: hidden;
+  background-color: var(--color-bg-surface);
+  border: 0.5px solid var(--color-border-default);
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 7%, transparent),
+    0 1px 3px color-mix(in srgb, var(--color-text-primary) 5%, transparent),
+    0 8px 24px -4px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+}
+
+.draggable-panel .panel-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  color: var(--color-text-primary);
+  cursor: move;
+  user-select: none;
+  border-bottom: none;
+}
+
+.draggable-panel .panel-title {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 350;
+  color: var(--color-text-heading-meta);
+  text-align: left;
+  text-transform: none;
+}
+
+.draggable-panel .close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.draggable-panel .close-btn:hover {
+  background-color: var(--color-bg-hover);
+  border-radius: 4px;
+}
+
+.draggable-panel .panel-body {
+  flex: 1;
+  padding: 0 26px 20px;
+  overflow-y: auto;
+}
+
+.draggable-panel[style*="height: auto"] .panel-body {
+  height: auto;
+  max-height: calc(100vh - 80px);
+  overflow: auto;
+}
+
+.draggable-panel .resize-handle {
+  position: absolute;
+  z-index: 10;
+  background: transparent;
+}
+
+.draggable-panel .resize-handle:hover {
+  background: color-mix(in srgb, var(--color-info) 20%, transparent);
+}
+
+.draggable-panel .resize-se {
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
+}
+
+.draggable-panel .resize-nw {
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nw-resize;
+}
+
+.draggable-panel .resize-ne {
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: ne-resize;
+}
+
+.draggable-panel .resize-sw {
+  bottom: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  cursor: sw-resize;
+}
+
+.draggable-panel .resize-e {
+  top: 16px;
+  right: 0;
+  bottom: 16px;
+  width: 8px;
+  cursor: e-resize;
+}
+
+.draggable-panel .resize-w {
+  top: 16px;
+  bottom: 16px;
+  left: 0;
+  width: 8px;
+  cursor: w-resize;
+}
+
+.draggable-panel .resize-s {
+  right: 16px;
+  bottom: 0;
+  left: 16px;
+  height: 8px;
+  cursor: s-resize;
+}
+
+.draggable-panel .resize-n {
+  top: 0;
+  right: 16px;
+  left: 16px;
+  height: 8px;
+  cursor: n-resize;
+}
+
+.draggable-panel--mini {
+  min-width: 220px;
+  min-height: 0;
+  border-color: var(--color-border-light);
+  border-radius: 10px;
+  background-color: color-mix(in srgb, var(--color-bg-default) 94%, transparent);
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 7%, transparent),
+    0 1px 3px color-mix(in srgb, var(--color-text-primary) 5%, transparent),
+    0 8px 24px -4px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.draggable-panel--mini .panel-header {
+  min-height: 32px;
+  padding: 6px 8px 4px 10px;
+}
+
+.draggable-panel--mini .panel-title {
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.draggable-panel--mini .close-btn {
+  width: 22px;
+  height: 22px;
+  color: var(--color-text-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.draggable-panel--mini .close-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.draggable-panel--mini .panel-body {
+  padding: 4px 10px 10px;
+}
+
+.draggable-panel.panel-fade-enter-active,
+.draggable-panel.panel-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.draggable-panel.panel-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.draggable-panel.panel-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.draggable-panel.panel-fade-enter-to,
+.draggable-panel.panel-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}

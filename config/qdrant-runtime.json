@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "runtime_id": "linnya_qdrant_runtime",
+  "version": "1.14.1",
+  "upstream": {
+    "repository_url": "https://github.com/qdrant/qdrant",
+    "release_tag": "v1.14.1",
+    "release_commit": "530430fac2a3ca872504f276d2c91a5c91f43fa0",
+    "license_spdx": "Apache-2.0",
+    "license_url": "https://raw.githubusercontent.com/qdrant/qdrant/v1.14.1/LICENSE",
+    "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  "targets": [
+    {
+      "platform": "darwin",
+      "architecture": "arm64",
+      "output_directory": "mac-arm64",
+      "archive_kind": "tar.gz",
+      "archive_file_name": "qdrant-aarch64-apple-darwin.tar.gz",
+      "archive_url": "https://github.com/qdrant/qdrant/releases/download/v1.14.1/qdrant-aarch64-apple-darwin.tar.gz",
+      "archive_sha256": "e790977ad8e93a9fdcd45d311c4e36e643187ff01ba3a7f6614ab8b02743e9ad",
+      "archive_entry": "qdrant",
+      "executable_file_name": "qdrant",
+      "executable_size_bytes": 64440240,
+      "executable_sha256": "1a28ae1873912dad46164e2366b7daff18441416900f14a7a552247a2d81e42d"
+    },
+    {
+      "platform": "win32",
+      "architecture": "x64",
+      "output_directory": "win-x64",
+      "archive_kind": "zip",
+      "archive_file_name": "qdrant-x86_64-pc-windows-msvc.zip",
+      "archive_url": "https://github.com/qdrant/qdrant/releases/download/v1.14.1/qdrant-x86_64-pc-windows-msvc.zip",
+      "archive_sha256": "52f3e58a73709b81f13b035fac144089b7317da259ae2e6e71c949c536081854",
+      "archive_entry": "qdrant.exe",
+      "executable_file_name": "qdrant.exe",
+      "executable_size_bytes": 75142144,
+      "executable_sha256": "47593e5bbc396015b068747aeddf7294cdfbb2b9d52fb5002e1d10220fe33686"
+    }
+  ]
+}

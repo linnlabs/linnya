@@ -1,0 +1,434 @@
+.kb-settings-tab {
+  --kb-settings-remove-hover-color: var(--color-error);
+  --kb-settings-remove-hover-bg: color-mix(in srgb, var(--color-error) 10%, transparent);
+
+  padding: 0 0 0 12px;
+}
+
+.kb-settings-tab .form-row {
+  display: flex;
+  margin-bottom: 24px;
+  align-items: flex-start;
+}
+
+.kb-settings-tab .form-label {
+  width: 180px;
+  flex-shrink: 0;
+  padding-top: 8px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.kb-settings-tab .label-area {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0;
+}
+
+.kb-settings-tab .label-area > .form-label {
+  width: auto;
+  padding-right: 0;
+  padding-top: 0;
+}
+
+.kb-settings-tab .control-area {
+  flex: 1;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0;
+  margin-left: auto;
+}
+
+.kb-settings-tab .control-area > .settings-input,
+.kb-settings-tab .control-area > .settings-select,
+.kb-settings-tab .control-area > .settings-textarea,
+.kb-settings-tab .control-area > .range-control,
+.kb-settings-tab .control-area > .token-control {
+  width: 100%;
+  height: 100%;
+}
+
+.kb-settings-tab .settings-input,
+.kb-settings-tab .settings-select,
+.kb-settings-tab .settings-textarea {
+  height: 36px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border-default);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.kb-settings-tab .settings-textarea {
+  min-height: 80px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.kb-settings-tab .settings-input::placeholder,
+.kb-settings-tab .settings-textarea::placeholder,
+.kb-settings-tab .settings-select::placeholder {
+  color: var(--color-text-placeholder);
+  font-size: 14px;
+  opacity: 1;
+}
+
+.kb-settings-tab .settings-input:hover:not(:disabled),
+.kb-settings-tab .settings-input:focus:not(:disabled),
+.kb-settings-tab .settings-select:hover:not(:disabled),
+.kb-settings-tab .settings-select:focus:not(:disabled),
+.kb-settings-tab .settings-textarea:hover:not(:disabled),
+.kb-settings-tab .settings-textarea:focus:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.kb-settings-tab .settings-input:focus:not(:disabled),
+.kb-settings-tab .settings-select:focus:not(:disabled),
+.kb-settings-tab .settings-textarea:focus:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.kb-settings-tab .control-area > .setting-description,
+.kb-settings-tab .setting-description {
+  margin-left: auto;
+  margin-top: 10px;
+  max-width: 350px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--color-text-placeholder);
+  opacity: 1;
+}
+
+.kb-settings-tab .section-divider-bottom {
+  border-bottom: 1px solid var(--color-border-default);
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+}
+
+.kb-settings-tab .section-divider-bottom > .form-row:last-child {
+  margin-bottom: 0;
+}
+
+.kb-settings-tab .section-divider-bottom:last-child {
+  border-bottom: none;
+}
+
+.kb-settings-tab .section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.kb-settings-tab .section-title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kb-settings-tab .tags-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.kb-settings-tab .tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.kb-settings-tab .kb-tag-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kb-settings-tab .tag-input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.kb-settings-tab .tag-empty-text {
+  font-size: 12px;
+  color: var(--color-text-placeholder);
+}
+
+.kb-settings-tab .tag-input {
+  max-width: 260px;
+}
+
+.kb-settings-tab .add-tag-button {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background-color: var(--color-bg-subtle);
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.kb-settings-tab .add-tag-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.kb-settings-tab .add-tag-button:not(:disabled):hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.kb-settings-tab .add-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.kb-settings-tab .project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.kb-settings-tab .project-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background-color: transparent;
+  box-shadow: none;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.kb-settings-tab .project-item:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.kb-settings-tab .project-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kb-settings-tab .project-name {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  transition: color 0.2s;
+}
+
+.kb-settings-tab .project-item:hover .project-name {
+  color: var(--color-text-primary);
+}
+
+.kb-settings-tab .project-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: none;
+  background-color: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.kb-settings-tab .project-item:hover .project-action-btn {
+  opacity: 1;
+}
+
+.kb-settings-tab .project-action-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.kb-settings-tab .remove-btn:hover {
+  background-color: var(--kb-settings-remove-hover-bg);
+  color: var(--kb-settings-remove-hover-color);
+}
+
+.kb-settings-tab .add-btn:hover {
+  background-color: var(--color-bg-hover-strong);
+  color: var(--color-text-primary);
+}
+
+.kb-settings-tab .action-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.kb-settings-tab .project-empty {
+  font-size: 12px;
+  color: var(--color-text-placeholder);
+  margin-bottom: 4px;
+}
+
+.kb-settings-tab .project-content-container {
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kb-settings-tab .project-columns {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.kb-settings-tab .project-column-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kb-settings-tab .project-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background-color: var(--color-bg-sidebar);
+  border-radius: 8px;
+  padding: 8px;
+  border: none;
+  min-height: 200px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.kb-settings-tab .project-column-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 6px;
+  padding-left: 2px;
+}
+
+.kb-settings-tab .project-column-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.kb-settings-tab .project-column .project-list {
+  gap: 2px;
+  flex: 1;
+}
+
+.kb-settings-tab .project-column::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.kb-settings-tab .project-column::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.kb-settings-tab .project-column::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.kb-settings-tab .project-column::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+.kb-settings-tab .project-column .project-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.kb-settings-tab .danger-section {
+  padding-top: 4px;
+}
+
+.kb-settings-tab .danger-section-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 0.5px solid var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.kb-settings-tab .danger-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-error);
+  padding-left: 4px;
+}
+
+.kb-settings-tab .danger-section-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.kb-settings-tab .danger-delete-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+  cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease,
+    color 0.16s ease, transform 0.12s ease;
+}
+
+.kb-settings-tab .danger-delete-btn:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-error-bg) 72%, var(--color-error));
+  color: var(--color-error);
+}
+
+.kb-settings-tab .danger-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kb-settings-tab .project-section .form-row {
+  align-items: flex-start;
+}
+
+.kb-settings-tab .project-section .label-area {
+  padding-top: 4px;
+}
+
+.kb-settings-tab .project-control-area {
+  max-width: 100%;
+  margin-left: 0;
+}
+
+.kb-settings-tab .no-resize {
+  resize: none;
+}

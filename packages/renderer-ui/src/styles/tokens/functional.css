@@ -1,0 +1,43 @@
+/* 功能语义色：主题只能在这里覆盖，不在组件内各自分叉。 */
+
+[data-linnya-ui-theme='light'] {
+  --color-success: var(--color-brand-500);
+  --color-success-bg: var(--color-brand-50);
+
+  --color-error: var(--color-red-400);
+  --color-error-bg: var(--color-red-50);
+
+  --color-warning: var(--color-yellow-500);
+  --color-warning-bg: var(--color-yellow-50);
+
+  --color-info: var(--color-blue-475);
+  --color-info-bg: var(--color-blue-50);
+}
+
+[data-linnya-ui-theme='dark'] {
+  --color-success: var(--color-brand-500);
+  --color-success-bg: var(--color-brand-850);
+
+  --color-error: var(--color-red-400);
+  --color-error-bg: var(--color-red-800);
+
+  --color-warning: var(--color-yellow-500);
+  --color-warning-bg: var(--color-yellow-900);
+
+  --color-info: var(--color-blue-500);
+  --color-info-bg: var(--color-blue-900);
+}
+
+[data-linnya-ui-theme='moon-blue'] {
+  --color-success: var(--color-brand-500);
+  --color-success-bg: color-mix(in srgb, var(--color-brand-50) 74%, var(--color-blue-25));
+
+  --color-error: var(--color-red-400);
+  --color-error-bg: color-mix(in srgb, var(--color-red-50) 72%, var(--color-blue-25));
+
+  --color-warning: var(--color-yellow-500);
+  --color-warning-bg: color-mix(in srgb, var(--color-yellow-50) 68%, var(--color-blue-25));
+
+  --color-info: var(--color-blue-600);
+  --color-info-bg: color-mix(in srgb, var(--color-blue-50) 78%, var(--color-white));
+}

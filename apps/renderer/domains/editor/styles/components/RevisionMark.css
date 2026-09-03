@@ -1,0 +1,25 @@
+/* RevisionMark.css - 修订标记样式 */
+/*
+ * 样式依赖 functional / semantic token，不在组件层写暗色主题覆盖。
+ */
+
+/* 修订标记基础样式 */
+.revision-mark {
+  /* 基础样式：不设置具体颜色，避免覆盖 insert/delete；但也不能空规则集（lint）。 */
+  background-color: transparent;
+  text-decoration: none;
+}
+
+/* 插入类型（新增文字） */
+.revision-mark--insert {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+  text-decoration: underline;
+}
+
+/* 删除类型（删除文字） */
+.revision-mark--delete {
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+  text-decoration: line-through;
+}

@@ -1,0 +1,104 @@
+.summary-message {
+  display: flex;
+  justify-content: center;
+}
+
+.summary-message .summary-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: var(--color-bg-surface);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  max-width: 80%;
+  position: relative;
+  overflow: hidden;
+}
+
+.summary-message .summary-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.summary-message .success-icon {
+  color: var(--color-success);
+  font-weight: bold;
+  font-size: 12px;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.summary-message .error-icon {
+  color: var(--color-error);
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.summary-message .summary-text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.summary-message .summary-timestamp {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.summary-message.summary-status-summarizing .summary-content {
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.summary-message.summary-status-completed .summary-content {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.summary-message.summary-status-error .summary-content {
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.summary-message.is-loading .summary-content {
+  position: relative;
+}
+
+.summary-message.is-loading .summary-content::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-bg-surface) 30%, transparent),
+    transparent
+  );
+  animation: summary-message-shimmer 2.5s infinite -1.7s;
+}
+
+@keyframes summary-message-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}

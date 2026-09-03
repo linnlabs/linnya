@@ -1,0 +1,138 @@
+.update-dialog-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 32px 0;
+  color: var(--color-text-primary);
+}
+
+.update-dialog-content .update-dialog-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.update-dialog-content .update-dialog-section {
+  padding: 0 0 12px;
+}
+
+.update-dialog-content .release-notes-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.update-dialog-content .update-dialog-section-title {
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.update-dialog-content .update-dialog-section-content {
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  background-color: var(--color-bg-search-light);
+  border-radius: 6px;
+}
+
+/* 更新日志由 v-html 生成，只允许在弹窗根类下承接排版与滚动。 */
+.update-dialog-content .release-notes {
+  flex: 1;
+  min-height: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.update-dialog-content .release-notes::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.update-dialog-content .release-notes::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.update-dialog-content .release-notes::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-default);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+}
+
+.update-dialog-content .release-notes::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-border-hover);
+}
+
+.update-dialog-content .progress-bar {
+  width: 100%;
+  height: 8px;
+  margin: 8px 0;
+  overflow: hidden;
+  background-color: var(--color-bg-disabled);
+  border-radius: 4px;
+}
+
+.update-dialog-content .progress-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-light));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.update-dialog-content .progress-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.update-dialog-content .download-complete h4,
+.update-dialog-content .error-container h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.update-dialog-content .download-complete p,
+.update-dialog-content .error-container p {
+  margin: 0;
+}
+
+.update-dialog-content .error-message {
+  color: var(--color-red-450);
+}
+
+.update-dialog-footer {
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 12px 32px 24px;
+}
+
+.update-dialog-content .release-notes ul {
+  padding-left: 16px;
+  margin: 8px 0;
+}
+
+.update-dialog-content .release-notes li {
+  margin-bottom: 6px;
+}
+
+.update-dialog-content .release-notes p {
+  margin: 6px 0;
+}
+
+.update-dialog-content .release-notes h1,
+.update-dialog-content .release-notes h2,
+.update-dialog-content .release-notes h3 {
+  margin: 10px 0 8px;
+  font-size: 14px;
+}

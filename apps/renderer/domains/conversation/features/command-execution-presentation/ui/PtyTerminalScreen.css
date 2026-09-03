@@ -1,0 +1,20 @@
+.command-terminal {
+  width: max-content;
+  min-height: 1.5em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.command-terminal__line {
+  min-height: 1.5em;
+}
+
+.command-terminal__omitted {
+  color: var(--color-gray-400);
+}
+
+.command-terminal__cursor {
+  outline: 1px solid currentColor;
+  outline-offset: -1px;
+}

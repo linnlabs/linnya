@@ -1,0 +1,72 @@
+.shared-color-picker-panel {
+  --linnya-ui-color-picker-cell-border-color: transparent;
+
+  position: relative;
+  padding: 12px;
+  outline: none;
+  background-color: transparent;
+  user-select: none;
+}
+
+.shared-color-picker-panel--no-padding {
+  padding: 0;
+}
+
+.shared-color-picker-panel__section {
+  margin-bottom: 12px;
+}
+
+.shared-color-picker-panel__section:last-child {
+  margin-bottom: 0;
+}
+
+.shared-color-picker-panel__title {
+  margin-bottom: 8px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.shared-color-picker-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.shared-color-picker-panel__cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--linnya-ui-color-picker-cell-border-color);
+  border-radius: 6px;
+  box-shadow: 0 0.75px 0.5px var(--shadow-color-xs);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.shared-color-picker-panel__cell:hover {
+  transform: scale(1.08);
+}
+
+.shared-color-picker-panel__cell.is-current {
+  border-color: transparent;
+  box-shadow:
+    0 0 0 1.5px var(--color-accent),
+    0 3px 6px var(--shadow-color-md);
+}
+
+.shared-color-picker-panel__cell--text {
+  background-color: var(--color-bg-surface);
+}
+
+.shared-color-picker-panel__sample {
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.shared-color-picker-panel__footer {
+  display: flex;
+  justify-content: flex-end;
+}

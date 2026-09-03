@@ -1,0 +1,77 @@
+.add-to-kb-body {
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.add-to-kb-body .doc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background-color: var(--color-bg-subtle);
+  border-radius: 6px;
+}
+
+.add-to-kb-body .doc-info-label {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.add-to-kb-body .doc-info-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.add-to-kb-body .kb-select-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-to-kb-body .kb-select-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.add-to-kb-body .kb-select-wrap {
+  width: 100%;
+}
+
+.add-to-kb-body .kb-target-select-trigger {
+  height: 36px;
+  padding: 8px 32px 8px 12px;
+}
+
+.add-to-kb-body .select-chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-tertiary);
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: transform 0.2s ease-in-out;
+}
+
+.add-to-kb-body .select-chevron.is-open {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.add-to-kb-body .hint-text {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+}
+
+.add-to-kb-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 24px 24px 20px;
+}

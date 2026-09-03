@@ -1,0 +1,23 @@
+/**
+ * 布局样式统一入口
+ * 
+ * 导入顺序：
+ * 1. CSS 变量（基础）
+ * 2. 过渡动画
+ * 3. 编辑器外壳
+ * 4. app layout 组件外壳
+ */
+
+@import './layout-variables.css';
+@import './layout-transitions.css';
+@import './editor-shell.css';
+@import './components/AppLayout.css';
+@import './components/AppHeader.css';
+@import './components/ConversationSidePane.css';
+@import './components/DocumentPane.css';
+@import './components/DocumentSurface.css';
+@import './components/PaneDivider.css';
+@import './components/SidebarShell.css';
+@import './components/SidebarProjectGroup.css';
+@import './components/SidebarConversationList.css';
+@import './components/WorkspaceStage.css';

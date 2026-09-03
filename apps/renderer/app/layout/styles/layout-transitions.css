@@ -1,0 +1,76 @@
+/**
+ * 布局过渡动画样式
+ * 
+ * 包含：
+ * - 侧边栏滑入/滑出动画
+ * - AI 助手面板动画
+ * - 模态框淡入/淡出动画
+ * - 内容区域过渡
+ */
+
+/* === 左侧边栏过渡动画 === */
+
+/* sidebar-fade：滑动 + 淡入淡出 */
+.sidebar-fade-enter-active,
+.sidebar-fade-leave-active {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  will-change: transform, opacity; /* 提示浏览器优化渲染，防止白色闪烁 */
+}
+
+.sidebar-fade-enter-from,
+.sidebar-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-100%); /* 从左侧滑入/滑出 */
+}
+
+/* === 模态框过渡动画 === */
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.2s;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+
+/* === 内容区域过渡 === */
+
+.app-layout > .main-container > .content-area {
+  transition: margin-left 0.3s ease, margin-right 0.3s ease;
+}
+
+/* === 拖拽调整大小时禁用过渡 === */
+
+/* 所有布局分割线共用同一拖拽态、光标和过渡禁用规则。 */
+body.panel-resizing,
+body.panel-resizing * {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+body.panel-resizing .app-layout > .main-container > .content-area,
+body.panel-resizing .app-layout .annotation-layer,
+body.panel-resizing .app-header .header-pane {
+  transition: none !important;
+  pointer-events: none; /* 拖拽时忽略内容区鼠标事件，减少开销 */
+  will-change: margin-left, margin-right, width, left; /* 提示浏览器将该层独立，减少重绘影响范围 */
+}
+
+body.panel-resizing .workspace-stage__document-frame--right,
+body.panel-resizing .workspace-stage__right-pane-frame,
+body.panel-resizing .workspace-stage__document--right,
+body.panel-resizing .workspace-stage__conversation-side {
+  transition: none !important;
+}
+
+/* 主 pane / 右侧 pane 交换是位置语义切换，不播放右侧栏展开折叠动画。 */
+body.workspace-pane-placement-swapping .app-header .header-pane,
+body.workspace-pane-placement-swapping .app-header .header-pane__content,
+body.workspace-pane-placement-swapping .workspace-stage__document-frame--right,
+body.workspace-pane-placement-swapping .workspace-stage__right-pane-frame,
+body.workspace-pane-placement-swapping .workspace-stage__document--right,
+body.workspace-pane-placement-swapping .workspace-stage__conversation-side {
+  transition: none !important;
+}

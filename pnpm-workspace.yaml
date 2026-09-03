@@ -1,0 +1,30 @@
+packages:
+  - apps/*
+  - packages/*
+  - packages/plugins/*
+
+allowBuilds:
+  '@discordjs/opus': true
+  '@swc/core': true
+  better-sqlite3: true
+  core-js: true
+  electron: true
+  electron-winstaller: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  vue-demi: true
+
+onlyBuiltDependencies:
+  - '@discordjs/opus'
+  - '@swc/core'
+  - better-sqlite3
+  - core-js
+  - electron
+  - electron-winstaller
+  - esbuild
+  - protobufjs
+  - sharp
+
+patchedDependencies:
+  pptxgenjs@4.0.1: patches/pptxgenjs@4.0.1.patch

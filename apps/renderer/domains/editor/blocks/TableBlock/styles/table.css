@@ -1,0 +1,264 @@
+/* 表格单元格内容块样式 */
+
+/* 针对表格的特殊样式 */
+.ProseMirror table {
+  /* 确保表格布局稳定 */
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: auto; /* 宽度由列宽总和决定，而不是占满容器 */
+  overflow: visible;
+  box-sizing: border-box;
+  position: relative; /* 为列宽调整器提供定位参考 */
+}
+
+.ProseMirror table td,
+.ProseMirror table th {
+  /* 设置单元格边框 */
+  border: 1px solid var(--color-border-default);
+  /* 设置单元格内边距，使内容不贴近边缘 */
+  padding: 8px;
+  /* 防止单元格高度塌陷 */
+  min-height: 2em;
+  /* 确保足够的宽度 */
+  min-width: 2em;
+  /* 默认垂直对齐方式 */
+  vertical-align: top;
+  /* 确保没有额外的块级格式化上下文 */
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* 新增：单元格悬停反馈 */
+.ProseMirror table td:hover,
+.ProseMirror table th:hover {
+  background-color: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
+}
+
+.ProseMirror td.is-cell-active,
+.ProseMirror th.is-cell-active {
+  /* 使用内嵌阴影模拟边框，避免影响布局 */
+  box-shadow: inset 0 0 0 1.5px var(--color-accent-strong-light);
+}
+
+/* 新增：单元格选中高亮 */
+/* Tiptap 会为选中的单元格添加 .selectedCell 类 */
+.ProseMirror table td.selectedCell,
+.ProseMirror table th.selectedCell {
+  background-color: var(--color-accent-bg);
+}
+
+/* 新增：常规多选外框样式 */
+.ProseMirror table td.selection-outline,
+.ProseMirror table th.selection-outline {
+  --shadow-top: 0;
+  --shadow-bottom: 0;
+  --shadow-left: 0;
+  --shadow-right: 0;
+  
+  box-shadow: 
+    inset var(--shadow-left) var(--shadow-top) 0 0 var(--color-accent-strong-light),
+    inset var(--shadow-right) var(--shadow-bottom) 0 0 var(--color-accent-strong-light);
+}
+
+.ProseMirror table td.selection-outline-top,
+.ProseMirror table th.selection-outline-top {
+  --shadow-top: 1.5px;
+}
+
+.ProseMirror table td.selection-outline-bottom,
+.ProseMirror table th.selection-outline-bottom {
+  --shadow-bottom: -1.5px;
+}
+
+.ProseMirror table td.selection-outline-left,
+.ProseMirror table th.selection-outline-left {
+  --shadow-left: 1.5px;
+}
+
+.ProseMirror table td.selection-outline-right,
+.ProseMirror table th.selection-outline-right {
+  --shadow-right: -1.5px;
+}
+
+/* 新增：AI交互时的持久选区高亮 - 统一外边框 */
+.ProseMirror table td.ai-persistent-selected-cell-outline,
+.ProseMirror table th.ai-persistent-selected-cell-outline {
+  /* 移除之前的背景和独立阴影 */
+  background-color: transparent !important; 
+  box-shadow: none !important;
+}
+
+.ProseMirror table td.ai-outline-top,
+.ProseMirror table th.ai-outline-top {
+  border-top: 2px solid color-mix(in srgb, var(--color-info) 70%, transparent) !important;
+}
+
+.ProseMirror table td.ai-outline-bottom,
+.ProseMirror table th.ai-outline-bottom {
+  border-bottom: 2px solid color-mix(in srgb, var(--color-info) 70%, transparent) !important;
+}
+
+.ProseMirror table td.ai-outline-left,
+.ProseMirror table th.ai-outline-left {
+  border-left: 2px solid color-mix(in srgb, var(--color-info) 70%, transparent) !important;
+}
+
+.ProseMirror table td.ai-outline-right,
+.ProseMirror table th.ai-outline-right {
+  border-right: 2px solid color-mix(in srgb, var(--color-info) 70%, transparent) !important;
+}
+
+/* 新增：AI输出目标列的样式 */
+.ProseMirror table td.ai-output-column-cell,
+.ProseMirror table th.ai-output-column-cell {
+  background-color: color-mix(in srgb, var(--color-warning-bg) 30%, transparent) !important;
+}
+
+/* Decoration 只传入当前列颜色；默认色、透明度和层叠规则由 TableBlock 样式统一持有。 */
+.ProseMirror table td.ai-column-ref-cell,
+.ProseMirror table th.ai-column-ref-cell {
+  --table-ai-column-ref-color: color-mix(in srgb, var(--color-info) 40%, transparent);
+
+  position: relative;
+  z-index: 1;
+}
+
+.ProseMirror table td.ai-column-ref-cell::before,
+.ProseMirror table th.ai-column-ref-cell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--table-ai-column-ref-color);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* AI输出目标列的边框样式 */
+.ProseMirror table td.ai-output-column-cell.ai-outline-top,
+.ProseMirror table th.ai-output-column-cell.ai-outline-top {
+  border-top: 2px solid color-mix(in srgb, var(--color-warning) 70%, transparent) !important;
+}
+
+.ProseMirror table td.ai-output-column-cell.ai-outline-bottom,
+.ProseMirror table th.ai-output-column-cell.ai-outline-bottom {
+  border-bottom: 2px solid color-mix(in srgb, var(--color-warning) 70%, transparent) !important;
+}
+
+.ProseMirror table td.ai-output-column-cell.ai-outline-left,
+.ProseMirror table th.ai-output-column-cell.ai-outline-left {
+  border-left: 2px solid color-mix(in srgb, var(--color-warning) 70%, transparent) !important;
+}
+
+.ProseMirror table td.ai-output-column-cell.ai-outline-right,
+.ProseMirror table th.ai-output-column-cell.ai-outline-right {
+  border-right: 2px solid color-mix(in srgb, var(--color-warning) 70%, transparent) !important;
+}
+
+/* 处理边角重叠，确保边框看起来连续 */
+/* 可以根据需要调整这些，以避免双重边框或间隙 */
+.ProseMirror table td.ai-outline-top.ai-outline-left,
+.ProseMirror table th.ai-outline-top.ai-outline-left {
+  /* 左上角 */
+}
+.ProseMirror table td.ai-outline-top.ai-outline-right,
+.ProseMirror table th.ai-outline-top.ai-outline-right {
+  /* 右上角 */
+}
+.ProseMirror table td.ai-outline-bottom.ai-outline-left,
+.ProseMirror table th.ai-outline-bottom.ai-outline-left {
+  /* 左下角 */
+}
+.ProseMirror table td.ai-outline-bottom.ai-outline-right,
+.ProseMirror table th.ai-outline-bottom.ai-outline-right {
+  /* 右下角 */
+}
+
+/* 确保单元格内容能够正确响应用户操作 */
+.ProseMirror table td > *,
+.ProseMirror table th > * {
+  margin: 0;
+  /* 防止创建不必要的内部布局上下文 */
+  position: static;
+}
+
+/* 表格单元格交互选中柄样式 */
+.cell-handle-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--color-accent-light);
+  border: 1px solid var(--color-white);
+  box-shadow: 0 0 2px color-mix(in srgb, var(--color-black) 50%, transparent);
+  cursor: pointer;
+  z-index: 1000;
+  pointer-events: auto;
+  transition: background-color 0.2s ease;
+  will-change: transform;
+}
+
+.cell-handle-overlay:hover,
+.cell-handle-overlay.hovering {
+  background-color: var(--color-accent);
+}
+
+/* 旧的 cell-interaction-handle 样式保留以防其他地方使用 */
+.cell-interaction-handle {
+  position: absolute;
+  /* 将一个12px的圆形手柄的中心定位在单元格左上角边框交汇处 */
+  left: -6px; 
+  top: -6px;  
+  width: 12px;
+  height: 12px;
+  border-radius: 50%; /* 圆形 */
+  cursor: pointer;
+  z-index: 100; /* 确保在其他内容之上 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 2px var(--color-accent-bg-hover);
+  background-color: var(--color-brand-300);
+  border: 1px solid var(--color-white);
+  box-sizing: border-box;
+  /* 根据实际视觉效果调整 transform，使其位于单元格左上角外侧一点 */
+  /* 如果需要在圆圈内放一个 '+' 或其他图标，可以在这里设置字体大小和颜色 */
+  /* font-size: 10px; */
+  /* color: white; */
+}
+
+.cell-interaction-handle:hover {
+  background-color: var(--color-accent-light);
+}
+
+/* 列宽调整器样式 */
+.column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  width: 7px;
+  background-color: transparent;
+  cursor: col-resize;
+  z-index: 20;
+}
+
+/* 拖动时的样式指示器 */
+.column-resize-handle:hover,
+.column-resize-handle.dragging {
+  background-color: var(--color-accent-light);
+}
+
+/* 拖动线样式 */
+.resize-cursor {
+  cursor: col-resize;
+  cursor: ew-resize;
+}
+
+/* 当用户拖动时应用到整个编辑器的样式 */
+.ProseMirror.resize-cursor * {
+  cursor: col-resize !important;
+  cursor: ew-resize !important;
+}

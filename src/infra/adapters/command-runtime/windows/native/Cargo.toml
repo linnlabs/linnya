@@ -1,0 +1,34 @@
+[package]
+name = "linnya_command_process_owner"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+default = []
+test-fault-injection = []
+
+[dependencies]
+napi = { version = "=3.12.0", default-features = false, features = ["napi8"] }
+napi-derive = "=3.6.2"
+windows-sys = { version = "=0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_Globalization",
+  "Win32_Security",
+  "Win32_Storage_FileSystem",
+  "Win32_System_Console",
+  "Win32_System_IO",
+  "Win32_System_JobObjects",
+  "Win32_System_Pipes",
+  "Win32_System_Threading",
+] }
+
+[build-dependencies]
+napi-build = "=2.4.0"
+
+[profile.release]
+lto = true
+strip = "symbols"

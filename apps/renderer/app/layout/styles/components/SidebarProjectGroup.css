@@ -1,0 +1,55 @@
+.workspace-sidebar .sidebar-project-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-sidebar .sidebar-project-group .project-row {
+  --workspace-sidebar-row-margin-left: 0px;
+  --workspace-sidebar-row-margin-right: 0px;
+  --workspace-sidebar-row-padding-right: 51px;
+  --workspace-sidebar-row-icon-color: var(--color-text-tertiary);
+  --workspace-sidebar-row-bg-active: var(--workspace-sidebar-active-bg);
+  --workspace-sidebar-row-active-color: var(--color-text-primary);
+}
+
+.workspace-sidebar .sidebar-project-group .project-row-icon {
+  color: var(--color-text-tertiary);
+}
+
+.workspace-sidebar .sidebar-project-group .project-row-name {
+  color: var(--workspace-sidebar-label-color);
+}
+
+.workspace-sidebar .sidebar-project-group .row-action-button {
+  opacity: 0;
+}
+
+.workspace-sidebar .sidebar-project-group .project-row:hover .row-action-button,
+.workspace-sidebar .sidebar-project-group .project-row:focus-within .row-action-button {
+  opacity: 1;
+}
+
+.workspace-sidebar .sidebar-project-group .row-action-button:hover {
+  color: var(--color-text-primary);
+}
+
+.sidebar-project-menu-wrapper {
+  position: fixed;
+  /* 项目 More 菜单是主动操作层，需要高于侧栏内容与文件树菜单。 */
+  z-index: 1300;
+}
+
+.sidebar-project-menu-fade-enter-active,
+.sidebar-project-menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.sidebar-project-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.sidebar-project-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}

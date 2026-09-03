@@ -1,0 +1,466 @@
+.ppt-plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: visible;
+}
+
+.ppt-plan-card__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ppt-plan-card__heading::after {
+  content: '';
+  display: block;
+  height: 1px;
+  background: var(--color-border-light);
+}
+
+.ppt-plan-card__heading-text {
+  line-height: 1.4;
+}
+
+.ppt-plan-card__empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.ppt-plan-card .loading-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  animation: ppt-plan-card-pulse 1.5s infinite;
+}
+
+.ppt-plan-card .loading-text {
+  font-size: 12px;
+}
+
+.ppt-plan-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.ppt-plan-card__content--disabled {
+  opacity: 0.7;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ppt-plan-card__status {
+  padding: 8px 10px;
+  background: var(--color-bg-sidebar);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.ppt-plan-card__error {
+  color: var(--color-error);
+  font-size: 12px;
+}
+
+.ppt-plan-card .deck-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ppt-plan-card .deck-title {
+  padding: 2px 6px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-text-primary);
+}
+
+.ppt-plan-card .deck-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.ppt-plan-card .deck-audience {
+  min-width: 56px;
+  padding: 2px 6px;
+}
+
+.ppt-plan-card .deck-meta__separator {
+  color: var(--color-text-muted);
+}
+
+.ppt-plan-card .visual-direction-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 6px;
+}
+
+.ppt-plan-card .visual-direction-grid {
+  display: grid;
+  gap: 5px;
+}
+
+.ppt-plan-card .visual-direction-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.ppt-plan-card .visual-direction-row__label {
+  padding-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+
+.ppt-plan-card .visual-direction-row__value {
+  min-width: 0;
+}
+
+.ppt-plan-card .ppt-plan-card__visual-direction-control {
+  min-height: 28px;
+  padding: 2px 6px;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+
+.ppt-plan-card .page-timeline {
+  --page-insert-slot-height: 18px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ppt-plan-card .page-insert-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--page-insert-slot-height);
+  padding-left: 64px;
+}
+
+.ppt-plan-card .page-insert-slot::before,
+.ppt-plan-card .page-insert-slot::after {
+  content: '';
+  width: 40px;
+  height: 1px;
+  background: var(--color-border-default);
+  opacity: 0;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+
+.ppt-plan-card .page-insert-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  position: relative;
+  z-index: 1;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px dashed var(--color-border-default);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.2s ease, border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+.ppt-plan-card .page-insert-slot:hover .page-insert-button,
+.ppt-plan-card .page-insert-slot:focus-within .page-insert-button,
+.ppt-plan-card .page-insert-slot--active .page-insert-button {
+  opacity: 1;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.ppt-plan-card .page-insert-button:hover,
+.ppt-plan-card .page-insert-button:focus-visible {
+  background: var(--color-accent-bg);
+}
+
+.ppt-plan-card .page-insert-slot:hover::before,
+.ppt-plan-card .page-insert-slot:hover::after,
+.ppt-plan-card .page-insert-slot:focus-within::before,
+.ppt-plan-card .page-insert-slot:focus-within::after,
+.ppt-plan-card .page-insert-slot--active::before,
+.ppt-plan-card .page-insert-slot--active::after {
+  opacity: 1;
+  background: var(--color-accent);
+}
+
+.ppt-plan-card .page-insert-button__icon {
+  width: 10px;
+  height: 10px;
+}
+
+.ppt-plan-card .page-timeline--dragging .page-insert-button {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ppt-plan-card .page-drop-indicator {
+  position: absolute;
+  left: 64px;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-accent);
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.ppt-plan-card .page-drop-indicator--active {
+  opacity: 1;
+}
+
+.ppt-plan-card .page-section {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  padding-left: 20px;
+  min-height: 44px;
+}
+
+.ppt-plan-card .page-section--with-connector::after {
+  content: '';
+  position: absolute;
+  top: 30px;
+  bottom: 4px;
+  left: 37px;
+  border-left: 1px dashed var(--color-border-default);
+}
+
+.ppt-plan-card .page-section--editable.page-section--with-connector::after {
+  bottom: calc(-1 * var(--page-insert-slot-height) + 4px);
+}
+
+.ppt-plan-card .page-section--dragging {
+  opacity: 0.45;
+}
+
+.ppt-plan-card .page-drag-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--drag-handle-color);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity var(--transition-normal, 120ms ease), color var(--transition-normal, 120ms ease), background-color var(--transition-normal, 120ms ease);
+  z-index: 2;
+}
+
+.ppt-plan-card .page-drag-handle > svg {
+  width: 20px;
+  height: 20px;
+  color: currentColor;
+}
+
+.ppt-plan-card .page-drag-handle:hover {
+  color: var(--drag-handle-hover-color);
+  background-color: var(--color-gray-100);
+}
+
+.ppt-plan-card .page-drag-handle:active {
+  cursor: grabbing;
+  color: var(--drag-handle-active-color);
+  background-color: var(--color-gray-200);
+}
+
+.ppt-plan-card .page-section--menu-open .page-drag-handle {
+  opacity: 1;
+  color: var(--drag-handle-hover-color);
+  background-color: var(--color-gray-100);
+}
+
+.ppt-plan-card .page-timeline:not(.page-timeline--suppress-handle-hover) .page-section:hover .page-drag-handle,
+.ppt-plan-card .page-section:focus-within .page-drag-handle,
+.ppt-plan-card .page-section--menu-open .page-drag-handle {
+  opacity: 1;
+}
+
+.ppt-plan-card .page-section__marker {
+  grid-column: 1;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  margin-left: 4px;
+  border-radius: 8px;
+  background: var(--color-bg-sidebar);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 26px;
+  text-align: center;
+}
+
+.ppt-plan-card .page-section__body {
+  grid-column: 2;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 1px 0 3px;
+}
+
+.ppt-plan-card .page-section__title {
+  padding: 2px 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--color-text-primary);
+}
+
+.ppt-plan-card .page-section__content {
+  padding: 2px 6px;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+}
+
+.ppt-plan-card__page-action-menu-wrapper {
+  position: fixed;
+}
+
+.ppt-plan-card-menu-fade-enter-active,
+.ppt-plan-card-menu-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.ppt-plan-card-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.ppt-plan-card-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.ppt-plan-card-menu-fade-enter-to,
+.ppt-plan-card-menu-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ppt-plan-card .page-undo-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 64px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.ppt-plan-card .page-undo-notice button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent);
+  cursor: pointer;
+  font: inherit;
+}
+
+.ppt-plan-card .notes-section {
+  margin-left: 0;
+}
+
+.ppt-plan-card .notes-section__content {
+  width: 100%;
+}
+
+.ppt-plan-card .notes-section__content .ppt-plan-card__notes-control {
+  min-height: 56px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background-color: var(--color-bg-search-light);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ppt-plan-card .notes-section__content .ppt-plan-card__notes-control:hover:not(:disabled),
+.ppt-plan-card .notes-section__content .ppt-plan-card__notes-control:focus:not(:disabled) {
+  background-color: var(--color-bg-search-light);
+}
+
+.ppt-plan-card .notes-section__content .ppt-plan-card__notes-control::placeholder {
+  color: var(--color-text-muted);
+}
+
+.ppt-plan-card .editable-text {
+  outline: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.ppt-plan-card .editable-text[contenteditable='true'] {
+  cursor: text;
+}
+
+.ppt-plan-card .editable-text[contenteditable='true']:focus {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-search-light);
+}
+
+.ppt-plan-card .editable-text--disabled {
+  cursor: default;
+}
+
+.ppt-plan-card .editable-text--placeholder {
+  color: var(--color-text-muted);
+}
+
+.ppt-plan-card .editable-text--placeholder[contenteditable='true']::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.ppt-plan-card .actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+  margin-left: 64px;
+}
+
+@keyframes ppt-plan-card-pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}

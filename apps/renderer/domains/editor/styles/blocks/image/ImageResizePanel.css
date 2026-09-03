@@ -1,0 +1,71 @@
+.image-resize-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: max-content;
+  padding: 12px;
+  border: 0.5px solid var(--color-border-default);
+  border-radius: 8px;
+  background-color: var(--color-bg-surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.image-resize-panel .resize-panel-main-content {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.image-resize-panel .resize-input-group {
+  display: grid;
+  flex-grow: 1;
+  grid-template-columns: auto auto auto;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+.image-resize-panel .resize-input-group label {
+  color: var(--color-text-secondary);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.image-resize-panel .resize-panel-button {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  font-size: 0.85em;
+  text-align: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.image-resize-panel .resize-panel-button.submit {
+  color: var(--color-accent);
+}
+
+.image-resize-panel .resize-panel-button.submit:not(:disabled):hover,
+.image-resize-panel .resize-panel-button.cancel:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.image-resize-panel .resize-panel-button.submit:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.image-resize-panel .resize-panel-button.cancel {
+  color: var(--color-text-secondary);
+}
+
+.resize-panel-fade-enter-active,
+.resize-panel-fade-leave-active {
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.resize-panel-fade-enter-from,
+.resize-panel-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}

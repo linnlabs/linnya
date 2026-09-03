@@ -1,0 +1,295 @@
+.tool-calls-message.tool-card,
+.tool-calls-message.tool-registry-card {
+  /* full-width 只表示占满当前消息列，不能突破 visual-row 提供的列边界。 */
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  background-color: var(--color-bg-surface);
+  border-radius: 8px;
+  border: 0 solid var(--color-border-light);
+  margin: 2px 0;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease-in-out;
+  /* 工具卡片历史上使用更轻、更暖的阴影；不能直接套通用 shadow token，否则层次会明显变重。 */
+  box-shadow:
+    var(--conversation-tool-card-shadow),
+    var(--conversation-tool-card-border-shadow);
+}
+
+.tool-calls-message.tool-error-wrapper {
+  /* 红色细边框提示错误，但保持整体视觉一致。 */
+  box-shadow:
+    var(--conversation-tool-card-shadow),
+    var(--conversation-tool-card-error-border-shadow);
+}
+
+.tool-calls-message.tool-error-wrapper .tool-card__header {
+  cursor: pointer;
+}
+
+.tool-calls-message.tool-card.no-border,
+.tool-calls-message.tool-registry-card.no-border {
+  border: none;
+  box-shadow: none;
+}
+
+.tool-calls-message.tool-card.no-background,
+.tool-calls-message.tool-registry-card.no-background {
+  background-color: transparent !important;
+}
+
+.tool-calls-message.tool-card.no-overflow,
+.tool-calls-message.tool-registry-card.no-overflow {
+  overflow: visible;
+}
+
+.tool-calls-message.tool-card.full-width,
+.tool-calls-message.tool-registry-card.full-width {
+  width: 100%;
+}
+
+.tool-calls-message.tool-card.is-collapsed .tool-card__header {
+  border-bottom-color: transparent;
+}
+
+.tool-calls-message .tool-card__header {
+  padding: 7px 12px;
+  background-color: var(--color-bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  min-height: 32px;
+  height: auto;
+  border-bottom: 0 solid var(--color-border-light);
+}
+
+.tool-calls-message .tool-card__header:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.tool-calls-message .tool-card__header.tool-card__header--no-hover:hover {
+  background-color: var(--color-bg-surface);
+}
+
+.tool-calls-message .tool-card__header.tool-card__header--static {
+  cursor: default;
+}
+
+.tool-calls-message .tool-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-calls-message .tool-card__icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+.tool-calls-message .tool-card__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: nowrap;
+  font-weight: normal;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.tool-calls-message .tool-card__name-text {
+  /*
+   * 标题在右侧 meta 左侧开始省略：
+   * 让文本占满剩余空间，并允许 flex 子项触发 ellipsis。
+   */
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tool-calls-message .tool-card__name-text--active {
+  background: linear-gradient(
+    90deg,
+    var(--color-text-placeholder) 0%,
+    var(--color-text-placeholder) 47%,
+    var(--color-text-primary) 50%,
+    var(--color-text-placeholder) 53%,
+    var(--color-text-placeholder) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: conversation-progress-text-shimmer 2.6s ease-in-out infinite;
+}
+
+.tool-calls-message .tool-card__name-text--document-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tool-calls-message .tool-card__title-prefix {
+  flex-shrink: 0;
+}
+
+.tool-calls-message .tool-card__title-link {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  font: inherit;
+  color: var(--color-accent);
+  text-align: left;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.tool-calls-message .tool-card__title-link:hover {
+  text-decoration: underline;
+}
+
+.tool-calls-message .tool-card__title-link:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.tool-calls-message .tool-card__header-meta {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  padding-right: 4px;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.tool-calls-message .tool-card__tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 18px;
+  text-transform: none;
+  font-weight: 500;
+  position: relative;
+  top: 0;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    filter 0.15s ease,
+    transform 0.15s ease;
+}
+
+.tool-calls-message .tool-card__tag--default {
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+}
+
+.tool-calls-message .tool-card__tag--success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.tool-calls-message .tool-card__tag--warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.tool-calls-message .tool-card__tag--info {
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.tool-calls-message .tool-card__header:not(.tool-card__header--no-hover):hover .tool-card__tag--success {
+  background-color: color-mix(in srgb, var(--color-success-bg) 70%, var(--color-success));
+}
+
+.tool-calls-message .tool-card__header:not(.tool-card__header--no-hover):hover .tool-card__tag--warning {
+  background-color: color-mix(in srgb, var(--color-warning-bg) 70%, var(--color-warning));
+}
+
+.tool-calls-message .tool-card__header:not(.tool-card__header--no-hover):hover .tool-card__tag--info {
+  background-color: color-mix(in srgb, var(--color-info-bg) 70%, var(--color-info));
+}
+
+.tool-calls-message .header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.tool-calls-message .collapse-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.tool-calls-message .tool-card__loading {
+  display: flex;
+  align-items: center;
+}
+
+.tool-calls-message .tool-card__content {
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+}
+
+.tool-calls-message .tool-card__content.no-padding {
+  padding: 0 !important;
+}
+
+.tool-calls-message .loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: tool-calls-message-spin 1s linear infinite;
+}
+
+@keyframes tool-calls-message-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes conversation-progress-text-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tool-calls-message .tool-card__name-text--active {
+    animation: none;
+  }
+}
+
+.tool-calls-message.tool-group-mode .ui-card-group {
+  margin-bottom: 0;
+}

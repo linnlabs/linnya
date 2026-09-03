@@ -1,0 +1,50 @@
+{
+  "name": "linnya-windows-current-host-cli-corpus",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Windows packaged production host CLI corpus",
+  "author": "Linnya",
+  "main": "main.cjs",
+  "build": {
+    "appId": "com.linnyai.windows-current-host-cli-corpus",
+    "productName": "Linnya Windows Current Host CLI Corpus",
+    "asar": true,
+    "npmRebuild": false,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": false
+    },
+    "files": [
+      "main.cjs",
+      "commands/commandRunnerUtilityProcess.cjs",
+      "yogaRuntimeLoader.cjs",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/@img/sharp-win32-x64/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime/windows/x64",
+        "to": "command-runtime/windows/x64"
+      },
+      {
+        "from": "host-cli-fixtures",
+        "to": "host-cli-fixtures"
+      }
+    ],
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": false
+    }
+  },
+  "dependencies": {
+    "better-sqlite3": "12.4.1",
+    "bindings": "1.5.0",
+    "file-uri-to-path": "2.0.0",
+    "sharp": "0.33.5",
+    "tiktoken": "1.0.22"
+  }
+}

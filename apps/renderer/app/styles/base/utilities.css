@@ -1,0 +1,440 @@
+/* utilities.css - 常用工具类 */
+
+/* 显示与隐藏 */
+.hidden {
+  display: none !important;
+}
+
+.invisible {
+  visibility: hidden !important;
+}
+
+/* 文本对齐 */
+.text-left {
+  text-align: left !important;
+}
+
+.text-center {
+  text-align: center !important;
+}
+
+.text-right {
+  text-align: right !important;
+}
+
+/* 文本样式 */
+.text-bold {
+  font-weight: bold !important;
+}
+
+.text-italic {
+  font-style: italic !important;
+}
+
+.text-underline {
+  text-decoration: underline !important;
+}
+
+.text-strike {
+  text-decoration: line-through !important;
+}
+
+/* 文本颜色 */
+.text-primary {
+  color: var(--color-accent) !important;
+}
+
+.text-secondary {
+  color: var(--color-text-secondary) !important;
+}
+
+.text-success {
+  color: var(--color-success) !important;
+}
+
+.text-info {
+  color: var(--color-info) !important;
+}
+
+.text-warning {
+  color: var(--color-warning) !important;
+}
+
+.text-danger {
+  color: var(--color-error) !important;
+}
+
+.text-muted {
+  color: var(--color-text-muted) !important;
+}
+
+/* 背景颜色 */
+.bg-primary {
+  background-color: var(--color-accent) !important;
+}
+
+.bg-secondary {
+  background-color: var(--color-bg-subtle) !important;
+}
+
+.bg-light {
+  background-color: var(--color-bg-subtle) !important;
+}
+
+.bg-dark {
+  background-color: var(--color-gray-900) !important;
+}
+
+/* 边距工具类 */
+/* Margin - all sides */
+.m-0 {
+  margin: 0 !important;
+}
+
+.m-xs {
+  margin: var(--spacing-xs) !important;
+}
+
+.m-sm {
+  margin: var(--spacing-sm) !important;
+}
+
+.m-md {
+  margin: var(--spacing-md) !important;
+}
+
+.m-lg {
+  margin: var(--spacing-lg) !important;
+}
+
+.m-xl {
+  margin: var(--spacing-xl) !important;
+}
+
+/* Margin - vertical */
+.my-0 {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.my-xs {
+  margin-top: var(--spacing-xs) !important;
+  margin-bottom: var(--spacing-xs) !important;
+}
+
+.my-sm {
+  margin-top: var(--spacing-sm) !important;
+  margin-bottom: var(--spacing-sm) !important;
+}
+
+.my-md {
+  margin-top: var(--spacing-md) !important;
+  margin-bottom: var(--spacing-md) !important;
+}
+
+.my-lg {
+  margin-top: var(--spacing-lg) !important;
+  margin-bottom: var(--spacing-lg) !important;
+}
+
+.my-xl {
+  margin-top: var(--spacing-xl) !important;
+  margin-bottom: var(--spacing-xl) !important;
+}
+
+/* Margin - horizontal */
+.mx-0 {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.mx-xs {
+  margin-left: var(--spacing-xs) !important;
+  margin-right: var(--spacing-xs) !important;
+}
+
+.mx-sm {
+  margin-left: var(--spacing-sm) !important;
+  margin-right: var(--spacing-sm) !important;
+}
+
+.mx-md {
+  margin-left: var(--spacing-md) !important;
+  margin-right: var(--spacing-md) !important;
+}
+
+.mx-lg {
+  margin-left: var(--spacing-lg) !important;
+  margin-right: var(--spacing-lg) !important;
+}
+
+.mx-xl {
+  margin-left: var(--spacing-xl) !important;
+  margin-right: var(--spacing-xl) !important;
+}
+
+.mx-auto {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Padding - all sides */
+.p-0 {
+  padding: 0 !important;
+}
+
+.p-xs {
+  padding: var(--spacing-xs) !important;
+}
+
+.p-sm {
+  padding: var(--spacing-sm) !important;
+}
+
+.p-md {
+  padding: var(--spacing-md) !important;
+}
+
+.p-lg {
+  padding: var(--spacing-lg) !important;
+}
+
+.p-xl {
+  padding: var(--spacing-xl) !important;
+}
+
+/* Padding - vertical */
+.py-0 {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.py-xs {
+  padding-top: var(--spacing-xs) !important;
+  padding-bottom: var(--spacing-xs) !important;
+}
+
+.py-sm {
+  padding-top: var(--spacing-sm) !important;
+  padding-bottom: var(--spacing-sm) !important;
+}
+
+.py-md {
+  padding-top: var(--spacing-md) !important;
+  padding-bottom: var(--spacing-md) !important;
+}
+
+.py-lg {
+  padding-top: var(--spacing-lg) !important;
+  padding-bottom: var(--spacing-lg) !important;
+}
+
+.py-xl {
+  padding-top: var(--spacing-xl) !important;
+  padding-bottom: var(--spacing-xl) !important;
+}
+
+/* Padding - horizontal */
+.px-0 {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.px-xs {
+  padding-left: var(--spacing-xs) !important;
+  padding-right: var(--spacing-xs) !important;
+}
+
+.px-sm {
+  padding-left: var(--spacing-sm) !important;
+  padding-right: var(--spacing-sm) !important;
+}
+
+.px-md {
+  padding-left: var(--spacing-md) !important;
+  padding-right: var(--spacing-md) !important;
+}
+
+.px-lg {
+  padding-left: var(--spacing-lg) !important;
+  padding-right: var(--spacing-lg) !important;
+}
+
+.px-xl {
+  padding-left: var(--spacing-xl) !important;
+  padding-right: var(--spacing-xl) !important;
+}
+
+/* Flexbox 工具类 */
+.d-flex {
+  display: flex !important;
+}
+
+.flex-row {
+  flex-direction: row !important;
+}
+
+.flex-column {
+  flex-direction: column !important;
+}
+
+.flex-wrap {
+  flex-wrap: wrap !important;
+}
+
+.flex-nowrap {
+  flex-wrap: nowrap !important;
+}
+
+.justify-start {
+  justify-content: flex-start !important;
+}
+
+.justify-end {
+  justify-content: flex-end !important;
+}
+
+.justify-center {
+  justify-content: center !important;
+}
+
+.justify-between {
+  justify-content: space-between !important;
+}
+
+.justify-around {
+  justify-content: space-around !important;
+}
+
+.align-start {
+  align-items: flex-start !important;
+}
+
+.align-end {
+  align-items: flex-end !important;
+}
+
+.align-center {
+  align-items: center !important;
+}
+
+.align-stretch {
+  align-items: stretch !important;
+}
+
+/* 边框工具类 */
+.border {
+  border: 1px solid var(--color-border-default) !important;
+}
+
+.border-top {
+  border-top: 1px solid var(--color-border-default) !important;
+}
+
+.border-right {
+  border-right: 1px solid var(--color-border-default) !important;
+}
+
+.border-bottom {
+  border-bottom: 1px solid var(--color-border-default) !important;
+}
+
+.border-left {
+  border-left: 1px solid var(--color-border-default) !important;
+}
+
+.border-0 {
+  border: none !important;
+}
+
+/* 圆角工具类 */
+.rounded {
+  border-radius: var(--radius-md) !important;
+}
+
+.rounded-sm {
+  border-radius: var(--radius-sm) !important;
+}
+
+.rounded-lg {
+  border-radius: var(--radius-lg) !important;
+}
+
+.rounded-circle {
+  border-radius: 50% !important;
+}
+
+/* 阴影工具类 */
+.shadow-sm {
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.shadow {
+  box-shadow: var(--shadow-md) !important;
+}
+
+.shadow-lg {
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.shadow-none {
+  box-shadow: none !important;
+}
+
+/* 清除浮动 */
+.clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* 溢出处理 */
+.overflow-auto {
+  overflow: auto !important;
+}
+
+.overflow-hidden {
+  overflow: hidden !important;
+}
+
+.overflow-visible {
+  overflow: visible !important;
+}
+
+.overflow-scroll {
+  overflow: scroll !important;
+}
+
+/* 位置工具类 */
+.position-relative {
+  position: relative !important;
+}
+
+.position-absolute {
+  position: absolute !important;
+}
+
+.position-fixed {
+  position: fixed !important;
+}
+
+.position-sticky {
+  position: sticky !important;
+}
+
+/* 宽度和高度 */
+.w-100 {
+  width: 100% !important;
+}
+
+.h-100 {
+  height: 100% !important;
+}
+
+.w-auto {
+  width: auto !important;
+}
+
+.h-auto {
+  height: auto !important;
+}

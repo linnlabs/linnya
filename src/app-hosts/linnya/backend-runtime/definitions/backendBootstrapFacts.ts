@@ -1,0 +1,19 @@
+import type { RuntimePathRoots } from '../../../../shared/runtime-paths';
+
+/**
+ * Backend owner 启动时冻结的只读宿主事实。这里只允许 data-only 字段，不能携带 Electron
+ * 对象、环境变量袋、函数或可变路径解析器，以便同一合同随后跨 App Server 进程边界传递。
+ */
+export interface BackendBootstrapFacts {
+  readonly applicationVersion: string;
+  readonly applicationExecutablePath: string;
+  readonly platform: NodeJS.Platform;
+  readonly architecture: NodeJS.Architecture;
+  readonly packaged: boolean;
+  readonly resourcesPath: string;
+  readonly mainBundleDirectory: string;
+  /** 仅供受控旧 Workspace 数据迁移读取；不能由 App Server 从 appDataRoot 猜父目录。 */
+  readonly legacyUserDataDirectory: string;
+  readonly runtimePathRoots: RuntimePathRoots;
+  readonly exposeProviderOutboundDebugRoutes: boolean;
+}

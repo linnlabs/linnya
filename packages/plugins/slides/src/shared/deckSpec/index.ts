@@ -1,0 +1,80 @@
+export {
+  isDataUri,
+  isExternalUrl,
+  normalizeAssetRef,
+} from './assetRefs';
+export { normalizeDeckSpecLineSpacingInput } from './functions/normalizeDeckSpecLineSpacing';
+export type {
+  AssetRef,
+} from './assetRefs';
+export type {
+  SlideBox,
+} from './boxes';
+export type {
+  SemanticRole,
+} from './semanticRoles';
+export type {
+  CustomSlideLayout,
+  RenderSlideSizeInches,
+  SlideLayout,
+  SlideLayoutNormalizationResult,
+  SlideLayoutPreset,
+  SlideSizeBoxInches,
+  SlideSizeEmu,
+  SlideSizeInches,
+} from './slideSize';
+export {
+  DEFAULT_SLIDE_LAYOUT,
+  EMU_PER_INCH,
+  createPptxCustomLayoutName,
+  createSlideLayoutKey,
+  isSlideLayout,
+  normalizeSlideLayout,
+  requireNormalizedSlideLayout,
+  resolveSlideSizeBoxInches,
+  resolveSlideSizeInches,
+  SLIDE_LAYOUT_MAX_INCHES,
+  SLIDE_LAYOUT_MIN_INCHES,
+  SLIDE_SIZES_INCHES,
+  toSlideSizeEmu,
+  toRenderSlideSize,
+  toSlideSizeBox,
+} from './slideSize';
+export type {
+  Box,
+  ChartSeries,
+  ChartType,
+  DeckSpec,
+  DeferredPatchOperation,
+  FreeformElement,
+  FreeformElementBase,
+  FreeformGroupElement,
+  FreeformImageElement,
+  FreeformShapeElement,
+  FreeformSvgGraphicElement,
+  FreeformFormulaElement,
+  FreeformSlideSpec,
+  FreeformTextElement,
+  FreeformTextRun,
+  FreeformFormulaTextRun,
+  FreeformInlineRun,
+  ImageSourceInput,
+  ImageSourceRef,
+  ImageVisualOptions,
+  ImageVisualShadow,
+  PatchOperation,
+  PatchSpec,
+  PatchTarget,
+  ResolvedImageAsset,
+  ShapeStyle,
+  SlideBackgroundGradient,
+  SlideBackgroundGradientStop,
+  SlideEntry,
+  SourceSpan,
+  StructuredElement,
+  StructuredSvgGraphicElement,
+  StructuredFormulaElement,
+  StructuredSlideSpec,
+  TableCell,
+  TextStyle,
+} from './slideSpec';

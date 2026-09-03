@@ -1,0 +1,7 @@
+.image-generation-card {
+  width: 100%;
+  /* 图片结果复用 ImageRenderer 自身结构，这里只保留外壳去边框策略。 */
+  border: none;
+  padding: 0;
+  background: transparent;
+}

@@ -1,0 +1,14 @@
+/* Renderer document 的跨 owner 浮层层级；迁移期只命名现值，不重排任何前后关系。 */
+
+:root {
+  --linnya-ui-layer-inline-menu: 100;
+  --linnya-ui-layer-picker: 120;
+  --linnya-ui-layer-popover: 1000;
+  --linnya-ui-layer-status: 1000;
+  --linnya-ui-layer-floating-panel: 1001;
+  --linnya-ui-layer-modal: 2000;
+  --linnya-ui-layer-alert: 2100;
+  --linnya-ui-layer-portal-menu: 2100;
+  --linnya-ui-layer-image-preview: 3000;
+  --linnya-ui-layer-tooltip: 4000;
+}

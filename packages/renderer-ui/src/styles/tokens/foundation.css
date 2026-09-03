@@ -1,0 +1,128 @@
+/* Renderer UI 基础原子色阶：品牌绿、中性灰和功能色。 */
+
+:root {
+  /* Brand Green */
+  --color-brand-50: #f6fbf7;
+  --color-brand-100: #ecf8ef;
+  --color-brand-125: #e1f3e6;
+  --color-brand-150: #d7eedf;
+  --color-brand-163: #d1ecda;
+  --color-brand-175: #cbe9d5;
+  --color-brand-200: #bfe3ca;
+  --color-brand-250: #aadab8;
+  --color-brand-300: #95d0a5;
+  --color-brand-350: #7fc692;
+  --color-brand-400: #6abc7f;
+  --color-brand-450: #58b16c;
+  --color-brand-500: #49a55c;
+  --color-brand-550: #3f8e4e;
+  --color-brand-600: #347b45;
+  --color-brand-700: #2c683a;
+  --color-brand-750: #275c33;
+  --color-brand-800: #24542f;
+  --color-brand-850: #204929;
+  --color-brand-900: #1c4025;
+
+  /* Neutral Gray */
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f5f5f5;
+  --color-gray-125: #f1f1f1;
+  --color-gray-150: #ededed;
+  --color-gray-200: #e5e5e5;
+  --color-gray-250: #dcdcdc;
+  --color-gray-300: #d4d4d4;
+  --color-gray-350: #bcbcbc;
+  --color-gray-400: #a3a3a3;
+  --color-gray-421: #999999;
+  --color-gray-450: #8b8b8b;
+  --color-gray-475: #7f7f7f;
+  --color-gray-500: #737373;
+  --color-gray-550: #636363;
+  --color-gray-600: #525252;
+  --color-gray-625: #4d4d4d;
+  --color-gray-650: #494949;
+  --color-gray-675: #454545;
+  --color-gray-700: #404040;
+  --color-gray-725: #3a3a3a;
+  --color-gray-750: #333333;
+  --color-gray-775: #2d2d2d;
+  --color-gray-800: #262626;
+  --color-gray-825: #222222;
+  --color-gray-850: #1e1e1e;
+  --color-gray-875: #1b1b1b;
+  --color-gray-900: #171717;
+
+  /* Black & White */
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-dark-bg: #121212;
+  --color-dark-surface: #181818;
+  --color-dark-elevated: #1e1e1e;
+
+  /* Blue */
+  --color-blue-25: #f5faff;
+  --color-blue-50: #f0f6ff;
+  --color-blue-75: #e6f0ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-125: #d0e5fd;
+  --color-blue-150: #c4dffc;
+  --color-blue-200: #bfdbfe;
+  --color-blue-250: #a6cdfb;
+  --color-blue-300: #93c5fd;
+  --color-blue-350: #6eb0fa;
+  --color-blue-400: #60a5fa;
+  --color-blue-450: #4a96f7;
+  --color-blue-475: #438cf7;
+  --color-blue-500: #3b82f6;
+  --color-blue-525: #337aef;
+  --color-blue-550: #2b72e8;
+  --color-blue-600: #2563eb;
+  --color-blue-650: #426e9a;
+  --color-blue-700: #1d4ed8;
+  --color-blue-750: #1a45c4;
+  --color-blue-800: #1e40af;
+  --color-blue-850: #1a3a9a;
+  --color-blue-900: #1e3a8a;
+
+  /* Red */
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-150: #fecaca;
+  --color-red-200: #fca5a5;
+  --color-red-300: #f87171;
+  --color-red-350: #ef4444;
+  --color-red-400: #dc2626;
+  --color-red-425: #cb2121;
+  --color-red-450: #b91c1c;
+  --color-red-500: #991b1b;
+  --color-red-600: #7f1d1d;
+  --color-red-700: #6a1a1a;
+  --color-red-800: #4c1a1a;
+  --color-red-900: #351515;
+
+  /* Yellow */
+  --color-yellow-25: #fffdf6;
+  --color-yellow-50: #fefce8;
+  --color-yellow-75: #fefbd6;
+  --color-yellow-100: #fef9c3;
+  --color-yellow-125: #fef6b0;
+  --color-yellow-150: #fef3a0;
+  --color-yellow-200: #fef08a;
+  --color-yellow-250: #fde868;
+  --color-yellow-300: #fde047;
+  --color-yellow-350: #fbd62e;
+  --color-yellow-400: #facc15;
+  --color-yellow-450: #f0be0c;
+  --color-yellow-500: #fbbf24;
+  --color-yellow-550: #d89d06;
+  --color-yellow-600: #ca8a04;
+  --color-yellow-700: #a16207;
+  --color-yellow-750: #935a06;
+  --color-yellow-800: #854d0e;
+  --color-yellow-850: #78440c;
+  --color-yellow-900: #713f12;
+
+  /* Transparent Overlays */
+  --color-transparent-light: rgba(255, 255, 255, 0.05);
+  --color-transparent-dark: rgba(0, 0, 0, 0.05);
+}

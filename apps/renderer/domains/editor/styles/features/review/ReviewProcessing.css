@@ -1,0 +1,88 @@
+.review-section.review-processing-view {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.review-processing-view .processing-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 240px;
+}
+
+.review-processing-view .loading-icon {
+  /* 这里仅影响审阅处理页：RippleLoadingIcon 组件默认 18x18，此处之前放大到 32x32 视觉偏大。 */
+  width: 22px;
+  height: 22px;
+  margin-bottom: 12px;
+}
+
+.review-processing-view .loading-icon g {
+  stroke-width: 1.5;
+}
+
+.review-processing-view h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.review-processing-view .progress-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-processing-view .agent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-accent) 15%, transparent) 0%,
+    color-mix(in srgb, var(--color-accent) 8%, transparent) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.review-processing-view .agent-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.review-processing-view .progress-text {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.review-processing-view .progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: var(--color-bg-hover);
+  border-radius: 4px;
+  margin-top: 24px;
+  overflow: hidden;
+}
+
+.review-processing-view .progress-fill {
+  height: 100%;
+  background-color: var(--color-accent);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}

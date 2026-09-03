@@ -1,0 +1,40 @@
+.conversation-resource-link,
+[data-scope="conversation-message"] a.conversation-resource-link {
+  display: inline;
+  color: var(--markstream-message-accent);
+  font: inherit;
+  line-height: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  transition: color 0.15s ease;
+}
+
+.conversation-resource-link:hover:not(.is-disabled),
+.conversation-resource-link:active:not(.is-disabled),
+[data-scope="conversation-message"] a.conversation-resource-link:hover:not(.is-disabled),
+[data-scope="conversation-message"] a.conversation-resource-link:active:not(.is-disabled) {
+  color: var(--markstream-message-accent-hover);
+  text-decoration: underline;
+  background: transparent;
+}
+
+.conversation-resource-link.is-disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.conversation-resource-link__icon {
+  /* 插件图标自带 shared-icon--full（block），资源链接内必须显式恢复行内排版。 */
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+}
+
+.conversation-resource-link__suffix,
+.conversation-resource-link__status {
+  color: color-mix(in srgb, currentColor 62%, transparent);
+  font-size: 0.82em;
+}

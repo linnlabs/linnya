@@ -1,0 +1,38 @@
+{
+  "name": "linnya-formal-command-runner-validation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Packaged validation for the production Electron command runner adapter",
+  "author": "Linnya",
+  "main": "main.cjs",
+  "build": {
+    "appId": "com.linnyai.formal-command-runner-validation",
+    "productName": "Linnya Formal Command Runner Validation",
+    "asar": true,
+    "npmRebuild": false,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": false
+    },
+    "files": [
+      "main.cjs",
+      "commands/commandRunnerUtilityProcess.cjs",
+      "node_modules/node-pty/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/node-pty/**/*"
+    ],
+    "mac": {
+      "target": "dir",
+      "identity": "-"
+    },
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": false
+    }
+  },
+  "dependencies": {
+    "node-pty": "1.2.0-beta.14"
+  }
+}

@@ -1,0 +1,303 @@
+.mindmap-create-node-card,
+.mindmap-attach-evidence-card,
+.mindmap-tag-node-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 4px 10px 10.5px 10.5px;
+}
+
+.mindmap-create-node-card .loading-state,
+.mindmap-attach-evidence-card .loading-state,
+.mindmap-tag-node-card .loading-state {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.mindmap-create-node-card .loading-spinner,
+.mindmap-attach-evidence-card .loading-spinner,
+.mindmap-tag-node-card .loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-light);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: mindmap-tool-card-spin 1s linear infinite;
+}
+
+@keyframes mindmap-tool-card-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mindmap-create-node-card .content-container,
+.mindmap-attach-evidence-card .content-container,
+.mindmap-tag-node-card .content-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mindmap-create-node-card .content-card,
+.mindmap-attach-evidence-card .content-card,
+.mindmap-tag-node-card .content-card {
+  margin-top: 4px;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.mindmap-create-node-card .content-card {
+  /* 外层 tool-card 已经有容器视觉，这里只保留内部留白。 */
+  padding: 4px;
+}
+
+.mindmap-attach-evidence-card .content-card,
+.mindmap-tag-node-card .content-card {
+  /* 与 MindMap 更新类工具保持一致的左右阅读留白。 */
+  padding: 4px 10px;
+}
+
+.mindmap-create-node-card .rows,
+.mindmap-attach-evidence-card .rows,
+.mindmap-tag-node-card .rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mindmap-create-node-card .row,
+.mindmap-attach-evidence-card .row,
+.mindmap-tag-node-card .row {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.mindmap-create-node-card .label,
+.mindmap-attach-evidence-card .label,
+.mindmap-tag-node-card .label {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--color-text-tertiary);
+}
+
+.mindmap-create-node-card .value,
+.mindmap-attach-evidence-card .value,
+.mindmap-tag-node-card .value {
+  min-width: 0;
+  padding-left: 2px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+}
+
+.mindmap-create-node-card .value a.ai-ref-link {
+  margin-left: -2px;
+}
+
+.mindmap-attach-evidence-card .value a.ai-ref-link,
+.mindmap-tag-node-card .value a.ai-ref-link {
+  margin-left: 0;
+}
+
+.mindmap-create-node-card .mono,
+.mindmap-attach-evidence-card .mono,
+.mindmap-tag-node-card .mono {
+  font-family: var(--font-family-mono);
+}
+
+.mindmap-create-node-card .node-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mindmap-create-node-card .node-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.mindmap-create-node-card .node-item__meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.mindmap-create-node-card .node-item__ref {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.mindmap-create-node-card .node-item__topic {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  word-break: break-word;
+}
+
+.mindmap-attach-evidence-card .change-list,
+.mindmap-tag-node-card .change-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.mindmap-attach-evidence-card .change-item,
+.mindmap-tag-node-card .change-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+}
+
+.mindmap-attach-evidence-card .change-item:first-child,
+.mindmap-tag-node-card .change-item:first-child {
+  padding-top: 0;
+}
+
+.mindmap-attach-evidence-card .change-item:last-child,
+.mindmap-tag-node-card .change-item:last-child {
+  padding-bottom: 0;
+}
+
+.mindmap-attach-evidence-card .change-item--divided,
+.mindmap-tag-node-card .change-item--divided {
+  border-top: 0.5px solid var(--color-border-light);
+}
+
+.mindmap-attach-evidence-card .node-line,
+.mindmap-tag-node-card .node-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.mindmap-attach-evidence-card .node-topic,
+.mindmap-tag-node-card .node-topic {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mindmap-attach-evidence-card .change-text {
+  color: var(--color-text-primary);
+}
+
+.mindmap-tag-node-card .change-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.mindmap-tag-node-card .mm-tagging-status-dot {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 999px;
+  opacity: 0.9;
+}
+
+.mindmap-tag-node-card .mm-tagging-chip.tt-tag-chip {
+  min-height: 18px;
+  padding: 1px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  border-radius: 999px;
+}
+
+.mindmap-tag-node-card .mm-tagging-chip.tt-tag-chip .tt-tag-chip__label {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  line-height: 1;
+  transform: translateY(-0.3px);
+}
+
+.mindmap-tag-node-card .mm-tagging-chip--confidence.tt-tag-chip {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.mindmap-tag-node-card .mm-tagging-chip--unknown.tt-tag-chip,
+.mindmap-tag-node-card .mm-tagging-chip--mm-kind-badge--unknown.tt-tag-chip {
+  border-style: dashed;
+}
+
+.mindmap-create-node-card .warnings .value,
+.mindmap-attach-evidence-card .warnings .value,
+.mindmap-tag-node-card .warnings .value {
+  color: var(--color-text-secondary);
+}
+
+.mindmap-create-node-card .warning-list,
+.mindmap-attach-evidence-card .warning-list,
+.mindmap-tag-node-card .warning-list {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.mindmap-attach-evidence-card .empty-state,
+.mindmap-tag-node-card .empty-state {
+  padding: 6px 0;
+  text-align: center;
+}
+
+.mindmap-create-node-card .muted,
+.mindmap-attach-evidence-card .muted,
+.mindmap-tag-node-card .muted {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.mindmap-create-node-card .error-state,
+.mindmap-attach-evidence-card .error-state,
+.mindmap-tag-node-card .error-state {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  font-size: 13px;
+  color: var(--color-error);
+  background-color: var(--color-error-bg);
+  border-radius: 8px;
+}
+
+.mindmap-create-node-card .error-icon,
+.mindmap-attach-evidence-card .error-icon,
+.mindmap-tag-node-card .error-icon {
+  font-size: 14px;
+}
+
+.mindmap-subrun-parallel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+/*
+ * UiCardGroup 默认 margin-bottom 用于时间线分组；并行子 agent 由容器 gap 控制间距。
+ */
+.mindmap-subrun-parallel .ui-card-group {
+  margin-bottom: 0;
+}

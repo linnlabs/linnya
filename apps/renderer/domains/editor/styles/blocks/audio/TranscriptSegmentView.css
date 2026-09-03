@@ -1,0 +1,185 @@
+.transcript-segment-wrapper {
+  position: relative;
+  display: grid;
+  min-height: auto;
+  padding: 8px 0;
+}
+
+.transcript-segment-wrapper:first-child {
+  padding-top: 0;
+}
+
+.transcript-segment-wrapper.active {
+  background: var(--color-accent-bg);
+}
+
+.transcript-segment-wrapper .timestamp-column {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 2px 0 0;
+}
+
+.transcript-segment-wrapper:first-child .timestamp-column {
+  padding-top: 0;
+}
+
+.transcript-segment-wrapper:last-child .timestamp-column {
+  padding-bottom: 0;
+}
+
+.transcript-segment-wrapper .timestamp-text {
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.transcript-segment-wrapper .timestamp-text:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-accent);
+}
+
+.transcript-segment-wrapper .timestamp-column::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: -8px;
+  right: -0.5px;
+  bottom: -8px;
+  width: 1px;
+  background: var(--color-border-default);
+}
+
+.transcript-segment-wrapper:first-child .timestamp-column::before {
+  top: calc(0.85em);
+}
+
+.transcript-segment-wrapper:last-child .timestamp-column::before {
+  bottom: calc(100% - 0.85em - 2px);
+}
+
+.transcript-segment-wrapper:first-child:last-child .timestamp-column::before {
+  display: none;
+}
+
+.transcript-segment-wrapper .timestamp-column::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  top: calc(0.85em + 2px);
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  transform: translateY(-50%);
+  transition: all 0.15s ease;
+}
+
+.transcript-segment-wrapper:first-child .timestamp-column::after {
+  top: calc(0.85em);
+}
+
+.transcript-segment-wrapper .timestamp-column:has(.timestamp-text:hover)::after {
+  background: var(--color-accent-light);
+}
+
+.transcript-segment-wrapper.active .timestamp-text {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.transcript-segment-wrapper.active .timestamp-column::after {
+  background: var(--color-accent-bg);
+  transform: scale(1.15) translateY(-50%);
+}
+
+.transcript-segment-wrapper .content-columns {
+  position: relative;
+  padding: 2px 0 0;
+  overflow: hidden;
+}
+
+.transcript-segment-wrapper:first-child .content-columns {
+  padding-top: 0;
+}
+
+.transcript-segment-wrapper .content-dom {
+  color: var(--color-text-primary);
+  font-size: 15px;
+  line-height: 1.6;
+  outline: none;
+}
+
+.transcript-segment-wrapper .content-dom [data-type="transcript-text"] {
+  display: block;
+  padding: 0 18px;
+  overflow-wrap: break-word;
+}
+
+.transcript-segment-wrapper .content-dom[style*='grid-template-columns'] {
+  display: grid;
+  column-gap: 0;
+}
+
+.transcript-segment-wrapper .content-dom[style*='grid-template-columns'] [data-type="transcript-text"] {
+  grid-column: 1;
+  min-width: 0;
+  padding: 0 18px;
+  overflow-wrap: break-word;
+}
+
+.transcript-segment-wrapper .content-dom[style*='grid-template-columns'] [data-type="transcript-translation"] {
+  grid-column: 2;
+  min-width: 0;
+  padding: 0 18px;
+  overflow-wrap: break-word;
+  color: var(--color-text-secondary);
+}
+
+.transcript-segment-wrapper .divider-overlay {
+  position: absolute;
+  top: calc(2px + 0.6em - 4px);
+  bottom: -8px;
+  width: 8px;
+  cursor: col-resize;
+  transform: translateX(-4px);
+}
+
+.transcript-segment-wrapper:first-child .divider-overlay {
+  top: calc(2px + 0.6em - 4px);
+}
+
+.transcript-segment-wrapper:last-child .divider-overlay {
+  bottom: calc(-8px + 0.6em + 4px);
+}
+
+.transcript-segment-wrapper:first-child:last-child .divider-overlay {
+  height: 8px;
+  bottom: auto;
+}
+
+.transcript-segment-wrapper .divider-handle {
+  width: 1px;
+  height: 100%;
+  background: var(--color-border-default);
+  transition: all 0.2s ease;
+}
+
+.transcript-segment-wrapper .divider-overlay.is-hovering .divider-handle,
+.transcript-segment-wrapper .divider-overlay.is-dragging .divider-handle {
+  width: 3px;
+  background: var(--color-accent);
+}
+
+.transcript-segment-wrapper .content-dom .ProseMirror {
+  outline: none;
+}

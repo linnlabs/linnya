@@ -1,0 +1,4 @@
+[target.x86_64-pc-windows-msvc]
+# CLI client 位于独立 runtime 目录，不能假设 Windows 全局安装了 MSVC runtime，
+# 也不能借 PATH 回找主应用目录中的 app-local DLL。
+rustflags = ["-C", "target-feature=+crt-static"]

@@ -1,0 +1,25 @@
+/* mindmap 节点调色板：只服务思维导图节点主题，不进入 app 级 UI 色阶。 */
+
+:root {
+  --mindmap-palette-red: var(--color-red-350);
+  --mindmap-palette-orange: color-mix(in srgb, var(--color-yellow-500) 58%, var(--color-red-350));
+  --mindmap-palette-yellow: var(--color-yellow-500);
+  --mindmap-palette-green: var(--color-brand-600);
+  --mindmap-palette-cyan: color-mix(in srgb, var(--color-blue-300) 72%, var(--color-brand-400));
+  --mindmap-palette-blue: var(--color-blue-500);
+  --mindmap-palette-purple: color-mix(in srgb, var(--color-blue-600) 70%, var(--color-red-350));
+  --mindmap-palette-pink: color-mix(in srgb, var(--color-red-350) 75%, var(--color-blue-500));
+  --mindmap-palette-brown: color-mix(in srgb, var(--color-yellow-800) 55%, var(--color-red-500));
+  --mindmap-palette-gray: var(--color-gray-600);
+
+  --mindmap-palette-dark-red: var(--color-red-300);
+  --mindmap-palette-dark-orange: color-mix(in srgb, var(--color-yellow-200) 72%, var(--color-red-300));
+  --mindmap-palette-dark-yellow: var(--color-yellow-300);
+  --mindmap-palette-dark-green: var(--color-brand-400);
+  --mindmap-palette-dark-cyan: color-mix(in srgb, var(--color-blue-200) 75%, var(--color-brand-300));
+  --mindmap-palette-dark-blue: var(--color-blue-300);
+  --mindmap-palette-dark-purple: color-mix(in srgb, var(--color-blue-300) 62%, var(--color-red-300));
+  --mindmap-palette-dark-pink: color-mix(in srgb, var(--color-red-300) 70%, var(--color-blue-300));
+  --mindmap-palette-dark-brown: color-mix(in srgb, var(--color-yellow-200) 50%, var(--color-red-300));
+  --mindmap-palette-dark-gray: var(--color-gray-200);
+}

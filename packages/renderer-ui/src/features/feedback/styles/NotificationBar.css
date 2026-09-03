@@ -1,0 +1,74 @@
+.notification-bar {
+  position: fixed;
+  bottom: 10px;
+  z-index: var(--linnya-ui-layer-status);
+  display: flex;
+  align-items: center;
+  max-width: 300px;
+  padding: 5px 10px;
+  color: var(--color-text-primary);
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--color-bg-surface) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-default) 65%, transparent);
+  border-radius: 4px;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(2px);
+  transition: right 0.3s ease-out, opacity 0.3s, transform 0.3s;
+}
+
+.notification-bar.clickable {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.notification-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+  font-size: 13px;
+}
+
+.notification-content {
+  flex-grow: 1;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-type-success {
+  color: var(--color-success);
+  background-color: color-mix(in srgb, var(--color-success) 18%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 35%, transparent);
+}
+
+.notification-type-error {
+  color: var(--color-error);
+  background-color: color-mix(in srgb, var(--color-error) 18%, transparent);
+  border-color: color-mix(in srgb, var(--color-error) 35%, transparent);
+}
+
+.notification-type-info {
+  color: var(--color-info);
+  background-color: color-mix(in srgb, var(--color-info) 18%, transparent);
+  border-color: color-mix(in srgb, var(--color-info) 35%, transparent);
+}
+
+.notification-type-warning {
+  color: var(--color-warning);
+  background-color: color-mix(in srgb, var(--color-warning) 18%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
+}
+
+.notification-bar.notification-fade-enter-active,
+.notification-bar.notification-fade-leave-active {
+  transition-property: opacity, transform;
+  transition-duration: 0.3s;
+}
+
+.notification-bar.notification-fade-enter-from,
+.notification-bar.notification-fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}

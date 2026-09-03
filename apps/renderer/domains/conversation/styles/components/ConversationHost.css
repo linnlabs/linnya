@@ -1,0 +1,206 @@
+.conversation-host {
+  /* 时间轴布局变量由宿主统一持有，避免 TimelineNav 和内容区各自猜测间距。 */
+  --timeline-width: 28px;
+  --timeline-spacing: 0px;
+  --timeline-offset-right: 6px;
+  --conversation-timeline-visible-height: 100%;
+  --conversation-content-column-max-width: 800px;
+  --conversation-content-side-gap: 22px;
+  --conversation-footer-mask-bg: var(--color-bg-surface);
+  --conversation-footer-mask-entry-depth: 14px;
+
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-bg-surface);
+}
+
+.conversation-host-viewport {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background-color: inherit;
+}
+
+.conversation-host-viewport[data-conversation-scroll-viewport='true'] {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-anchor: none;
+}
+
+.conversation-host .panel-content {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.conversation-host-viewport[data-conversation-scroll-viewport='true'] .panel-content {
+  /*
+   * 主对话页把滚动提升到 conversation-host 本身：
+   * panel-content 用单格 grid 把时间轴和内容叠在同一层，
+   * 避免时间轴参与 flex 排版或被消息列宽度计算吃掉。
+   */
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  overflow: visible;
+}
+
+.conversation-host .conversation-view-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  padding-right: 0;
+}
+
+.conversation-host-viewport[data-conversation-scroll-viewport='true'] .conversation-view-container {
+  grid-area: 1 / 1;
+  overflow: visible;
+}
+
+.conversation-host[data-conversation-content-state='filled'] .conversation-view-container {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.conversation-host[data-conversation-content-state='filled'] .conversation-view {
+  --conversation-content-left-space: max(
+    calc((100% - var(--conversation-content-column-max-width)) / 2),
+    0px
+  );
+  --conversation-content-timeline-reserve-px: 0px;
+
+  padding: 10px 0 24px;
+}
+
+.conversation-host[data-conversation-content-state='filled'] .conversation-content {
+  width: max(
+    0px,
+    calc(100% - var(--conversation-content-left-space) - var(--conversation-content-timeline-reserve-px))
+  );
+  max-width: var(--conversation-content-column-max-width);
+  margin-right: auto;
+  margin-left: var(--conversation-content-left-space);
+  box-sizing: border-box;
+}
+
+.conversation-host[data-conversation-content-state='filled'] .virtual-conversation-item,
+.conversation-host[data-conversation-content-state='filled'] .history-loading-state {
+  width: 100%;
+  box-sizing: border-box;
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: var(--conversation-content-side-gap);
+  padding-left: var(--conversation-content-side-gap);
+}
+
+.conversation-host-viewport[data-conversation-scroll-viewport='true'] .timeline-nav {
+  position: sticky;
+  top: 0;
+  right: auto;
+  grid-area: 1 / 1;
+  align-self: start;
+  justify-self: end;
+  height: var(--conversation-timeline-visible-height, 100%);
+  max-height: var(--conversation-timeline-visible-height, 100%);
+  margin-right: var(--timeline-offset-right, 6px);
+}
+
+.conversation-host .panel-footer {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  background-color: var(--color-bg-surface);
+}
+
+.conversation-host[data-conversation-content-state='filled'] .panel-footer {
+  /*
+   * 非空对话里视觉仍保持“输入框浮在消息历史上”，但遮挡边界不能交给 scroll JS。
+   * 这里用 sticky 背板遮住 footer 下半区，保证快速滚动时合成器同帧裁掉消息。
+   */
+  background: transparent;
+  isolation: isolate;
+}
+
+.conversation-host[data-conversation-content-state='filled'] .panel-footer::before {
+  content: '';
+  position: absolute;
+  inset: var(--conversation-footer-mask-entry-depth) 0 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--conversation-footer-mask-bg);
+}
+
+.conversation-host[data-conversation-content-state='filled'] .panel-footer > .conversation-footer-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: var(--conversation-content-column-max-width);
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding-right: var(--conversation-content-side-gap);
+  padding-left: var(--conversation-content-side-gap);
+}
+
+.conversation-host .panel-footer > .scroll-to-bottom-btn {
+  /*
+   * 回到底部按钮属于输入区的辅助操作，但不能盖住输入框本体。
+   * 放在 footer 顶边之外，左右位置再由具体页面按输入框宽度微调。
+   */
+  right: 24px;
+  bottom: calc(100% + 8px);
+  z-index: 2;
+}
+
+.conversation-host[data-conversation-content-state='filled'] .panel-footer > .scroll-to-bottom-btn {
+  right: max(
+    var(--conversation-content-side-gap),
+    calc((100% - var(--conversation-content-column-max-width)) / 2 + var(--conversation-content-side-gap))
+  );
+}
+
+.conversation-host-viewport[data-conversation-scroll-viewport='true'] .panel-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+}
+
+.conversation-host[data-conversation-content-state='filled'] .error-banner {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: calc(100% - var(--conversation-content-side-gap) - var(--conversation-content-side-gap));
+  max-width: var(--conversation-content-column-max-width);
+}
+
+/* 项目初始化视图由 ProjectSetupView 自己渲染输入区，这里只保留宿主布局例外。 */
+.editor-shell.for-project-setup .conversation-host .panel-footer {
+  display: none;
+}
+
+.editor-shell.for-project-setup .conversation-host {
+  height: auto;
+  overflow: visible;
+}
+
+.editor-shell.for-project-setup .conversation-host .conversation-host-viewport {
+  height: auto;
+  overflow: visible;
+}
+
+.editor-shell.for-project-setup .conversation-host .panel-content {
+  height: auto;
+  overflow: visible;
+}

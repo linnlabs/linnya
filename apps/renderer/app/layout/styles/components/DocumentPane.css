@@ -1,0 +1,28 @@
+.document-pane {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-default);
+  color: var(--color-text-primary);
+  overflow: hidden;
+}
+
+.document-pane__editor-tools {
+  flex-shrink: 0;
+  border-bottom: 0.5px solid var(--color-border-light);
+}
+
+.document-pane__body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.document-pane__character-count {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+}

@@ -1,0 +1,54 @@
+{
+  "_comment": "LLM mock 脚本库：用于前端流式渲染调试（当前重点：Markdown 流式渲染）。只改这里即可快速复现各种场景。注意：脚本内容不包含任何链接语法。",
+  "scripts": {
+    "content_fast": {
+      "preset": "content",
+      "delay_ms": 25,
+      "chunk_size": 16,
+      "thought": "### Mock 思考\ncontent_fast：快速输出思考。\n",
+      "content": "content_fast：快速输出正文，用于测试 chunk 拼接与 markdown 渲染。"
+    },
+    "markdown_kitchen_sink": {
+      "preset": "content",
+      "delay_ms": 100,
+      "chunk_size": 3,
+      "thought": "### Mock 思考\nmarkdown_kitchen_sink：这是一个超复杂的 Markdown 流式压力测试脚本。\n",
+      "content": "# Markdown Kitchen Sink\n\n## 1. 段落 / 强调\n这是普通段落。\n\n- **加粗**、*斜体*、***加粗斜体***\n- ~~删除线~~、`行内代码`、\\`反引号转义\\`\n- 中文与 English 混排：Tokenization/Wrap\n\n---\n\n## 2. 引用与嵌套\n> 一级引用：这一段用于测试引用块在流式拼接时的换行。\n> - 引用中的列表 1\n> - 引用中的列表 2\n>\n> > 二级引用：注意引用中的空行与缩进。\n\n---\n\n## 3. 列表（嵌套 + 任务列表）\n- 无序列表 A\n  - 子项 A.1\n    - 子项 A.1.a\n- 无序列表 B\n\n1. 有序列表 1\n2. 有序列表 2\n   1. 有序子项 2.1\n   2. 有序子项 2.2\n\n- [ ] 任务 1（未完成）\n- [x] 任务 2（已完成）\n\n---\n\n## 4. 代码块（多语言）\n下面是 TypeScript 代码块：\n\n```ts\n/**\n * 计算斐波那契（演示用）\n */\nexport function fib(n: number): number {\n  if (n <= 1) return n;\n  let a = 0;\n  let b = 1;\n  for (let i = 2; i <= n; i += 1) {\n    const next = a + b;\n    a = b;\n    b = next;\n  }\n  return b;\n}\n\nconsole.log(fib(10));\n```\n\n下面是 Python 代码块：\n\n```python\ndef normalize_text(s: str) -> str:\n    s = s.strip()\n    return s.replace(\"\\\\t\", \"  \")\n\nprint(normalize_text(\"\\\\tHello\"))\n```\n\n---\n\n## 5. 表格\n| 列A | 列B | 列C |\n| --- | ---: | :---: |\n| 左对齐 | 右对齐 | 居中 |\n| 123 | 456 | 789 |\n| 含特殊字符 | `code` | **bold** |\n\n---\n\n## 6. LaTeX（$ / $$）\n行内公式：$E=mc^2$，以及 $a^2+b^2=c^2$。\n\n块级公式：\n\n$$\\int_{0}^{1} x^2 \\, dx = \\frac{1}{3}$$\n\n矩阵：\n\n$$\\begin{bmatrix}1 & 2\\\\3 & 4\\end{bmatrix}$$\n\n注意转义：\\$ 不是公式开始（这是字面量美元符号）。\n\n---\n\n## 7. HTML 片段（用于测试渲染器容错）\n<details>\n<summary>HTML 折叠（可能被过滤，这是预期）</summary>\n\n<p>这里是一个 <strong>HTML</strong> 段落。</p>\n</details>\n\n---\n\n## 8. 边界/转义/怪字符\n- 反斜杠：\\\\\\\\\\\\\\\\\\\\\n- 星号：\\\\* 不应触发斜体\n- 下划线：foo_bar_baz\n- 混合符号：`const s = \"a\\\\n\\\\tb\"`\n\n结束。"
+    },
+    "markdown_code_fence_boundary_stress": {
+      "preset": "content",
+      "delay_ms": 15,
+      "chunk_size": 2,
+      "thought": "### Mock 思考\nmarkdown_code_fence_boundary_stress：用极小 chunk_size 打断 ``` fence 与缩进，专测流式渲染边界。\n",
+      "content": "## Fence Boundary Stress\n\n下面这个 code fence 会被拆得很碎：\n\n```\nline-1\nline-2\n```\n\n再来一个带语言标记：\n\n```js\nfunction add(a, b) {\n  return a + b;\n}\nconsole.log(add(1, 2));\n```\n\n如果你的渲染策略是“增量追加渲染”而不是“全量重渲”，这里很容易出问题。\n"
+    },
+    "markdown_latex_heavy": {
+      "preset": "content",
+      "delay_ms": 35,
+      "chunk_size": 3,
+      "thought": "### Mock 思考\nmarkdown_latex_heavy：专测 $...$ 与 $$...$$ 在流式拆分下的解析稳定性。\n",
+      "content": "## LaTeX Heavy\n\n行内：$\\alpha + \\beta = \\gamma$，$\\frac{1}{1+x}$，$\\sqrt{a^2+b^2}$。\n\n块级：\n\n$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$\n\n再来一个更长的：\n\n$$\\mathrm{KL}(p\\Vert q)=\\sum_x p(x)\\log\\frac{p(x)}{q(x)}$$\n\n注意：这里的美元符号是字面量：\\$\\$\\$（不是公式）。\n"
+    },
+    "markdown_matrix_ops": {
+      "preset": "content",
+      "delay_ms": 45,
+      "chunk_size": 4,
+      "thought": "### Mock 思考\nmarkdown_matrix_ops：专测矩阵（bmatrix）在流式拆分下的解析稳定性（$$...$$）。\n",
+      "content": "## Matrix Ops\n\n块级矩阵加法：\n\n$$\n\\begin{bmatrix}\na_{11} & a_{12}\\\\\na_{21} & a_{22}\n\\end{bmatrix}\n+\n\\begin{bmatrix}\nb_{11} & b_{12}\\\\\nb_{21} & b_{22}\n\\end{bmatrix}\n=\n\\begin{bmatrix}\na_{11}+b_{11} & a_{12}+b_{12}\\\\\na_{21}+b_{21} & a_{22}+b_{22}\n\\end{bmatrix}\n$$\n\n矩阵乘法（2x2）：\n\n$$\n\\begin{bmatrix}\na & b\\\\\nc & d\n\\end{bmatrix}\n\\begin{bmatrix}\ne & f\\\\\ng & h\n\\end{bmatrix}\n=\n\\begin{bmatrix}\nae+bg & af+bh\\\\\nce+dg & cf+dh\n\\end{bmatrix}\n$$\n\n矩阵与向量乘法：\n\n$$\n\\begin{bmatrix}\n1 & 2 & 3\\\\\n4 & 5 & 6\\\\\n7 & 8 & 9\n\\end{bmatrix}\n\\begin{bmatrix}\nx_1\\\\\nx_2\\\\\nx_3\n\\end{bmatrix}\n=\n\\begin{bmatrix}\nx_1+2x_2+3x_3\\\\\n4x_1+5x_2+6x_3\\\\\n7x_1+8x_2+9x_3\n\\end{bmatrix}\n$$\n"
+    },
+    "markdown_table_list_quote_mix": {
+      "preset": "content",
+      "delay_ms": 40,
+      "chunk_size": 10,
+      "thought": "### Mock 思考\nmarkdown_table_list_quote_mix：表格 + 列表 + 引用混合，用于测试段落边界。\n",
+      "content": "## Mix\n\n> 引用开始\n> 1. 引用里有序列表\n> 2. 第二项\n>\n> | A | B |\n> | - | - |\n> | 1 | 2 |\n\n- 外层列表\n  - 子项包含表格：\n\n| k | v |\n| - | - |\n| key | value |\n\n---\n\n结束。"
+    },
+    "markdown_all_in_one": {
+      "preset": "content",
+      "delay_ms": 35,
+      "chunk_size": 6,
+      "thought": "### Mock 思考\nmarkdown_all_in_one：一次性覆盖所有 Markdown 压力用例（不含链接）。\n",
+      "content": "# Markdown All-in-One Suite\n\n说明：这个脚本会在一次流式输出里依次覆盖多种语法边界，用于“一次测试完”。\n\n---\n\n## A) Kitchen Sink（节选 + 重点）\n- 强调：**bold** / *italic* / ***both*** / ~~del~~ / `inline`\n- 引用 + 嵌套：\n> 引用段落\n>\n> > 二级引用\n\n- 嵌套列表：\n- item\n  - child\n    - grandchild\n\n- 任务列表：\n- [ ] todo\n- [x] done\n\n- 表格：\n| A | B |\n| - | - |\n| 1 | 2 |\n\n- LaTeX：行内 $E=mc^2$，块级：\n\n$$\\int_0^1 x^2\\,dx=\\frac{1}{3}$$\n\n---\n\n## B) Code Fence Boundary Stress\n下面这个 fence 会被拆分得很碎（靠 chunk_size 验证渲染稳定性）：\n\n```\nline-1\nline-2\n```\n\n再来一个带语言：\n\n```js\nfunction add(a, b) {\n  return a + b;\n}\nconsole.log(add(1, 2));\n```\n\n---\n\n## C) LaTeX Heavy\n行内：$\\alpha+\\beta=\\gamma$，$\\frac{1}{1+x}$。\n\n块级：\n\n$$\\sum_{i=1}^{n} i=\\frac{n(n+1)}{2}$$\n\n美元符号字面量：\\$\\$\\$（不是公式）。\n\n---\n\n## D) Table/List/Quote Mix\n> 引用里含列表与表格\n> 1. one\n> 2. two\n>\n> | k | v |\n> | - | - |\n> | a | b |\n\n- 外层列表\n  - 子项\n\n结束。"
+    }
+  }
+}

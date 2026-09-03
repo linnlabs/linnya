@@ -1,0 +1,135 @@
+/* FindReplace 面板只承接浮动面板视觉，搜索/替换流程仍由 feature store 和 editor commands 统筹。 */
+.find-replace-panel {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: auto;
+  height: 100%;
+  font-family: inherit;
+}
+
+.find-replace-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.find-replace-input-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.find-replace-input {
+  width: 160px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.find-replace-input:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.find-replace-input::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.find-replace-input-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.find-replace-count {
+  min-width: 48px;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  line-height: 28px;
+  text-align: center;
+}
+
+.find-replace-nav-btn {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.find-replace-nav-btn .nav-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.find-replace-nav-btn:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+.find-replace-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s ease;
+}
+
+.find-replace-action-btn:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+.find-replace-nav-btn:disabled,
+.find-replace-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.find-replace-options {
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.find-replace-panel .option-wrapper {
+  cursor: pointer;
+  user-select: none;
+}
+
+.find-replace-options .checkbox-item {
+  gap: 6px;
+  font-size: 12px;
+}
+
+.find-replace-options .label-content {
+  color: var(--color-text-primary);
+}
+
+.find-replace-no-matches {
+  padding: 8px;
+  border-radius: 4px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  text-align: center;
+}

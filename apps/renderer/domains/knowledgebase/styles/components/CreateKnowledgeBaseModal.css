@@ -1,0 +1,169 @@
+.create-kb-content {
+  padding: 12px 32px 0;
+  color: var(--color-text-primary);
+}
+
+.create-kb-content .form-row {
+  display: flex;
+  margin-bottom: 24px;
+}
+
+.create-kb-content .form-row:last-of-type {
+  margin-bottom: 0;
+}
+
+.create-kb-content .input-row {
+  align-items: flex-start;
+}
+
+.create-kb-content .form-label {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  width: 100px;
+  flex-shrink: 0;
+  padding-top: 8px;
+  text-align: left;
+}
+
+.create-kb-content .required {
+  color: var(--color-error);
+  margin-left: 2px;
+}
+
+.create-kb-content .control-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.create-kb-content .settings-input,
+.create-kb-content .settings-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background-color: var(--color-bg-search-light);
+  color: var(--color-text-primary);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  font-family: inherit;
+}
+
+.create-kb-content .settings-textarea {
+  resize: none;
+  min-height: 100px;
+  max-height: 200px;
+  line-height: 1.5;
+  overflow-y: auto;
+  transition: height 0.1s ease;
+}
+
+.create-kb-content .settings-input:hover:not(:disabled),
+.create-kb-content .settings-textarea:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+  border-color: transparent;
+}
+
+.create-kb-content .settings-input:focus:not(:disabled),
+.create-kb-content .settings-textarea:focus:not(:disabled) {
+  outline: none;
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-hover);
+}
+
+.create-kb-content .settings-input:disabled,
+.create-kb-content .settings-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--color-bg-disabled);
+  color: var(--color-text-placeholder);
+}
+
+.create-kb-content .error-message {
+  color: var(--color-error);
+  font-size: 12px;
+  margin-top: 15px;
+  padding: 8px 12px;
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error);
+  border-radius: 4px;
+  line-height: 1.4;
+}
+
+.create-kb-content .kb-tag-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.create-kb-content .tag-input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.create-kb-content .tag-input {
+  flex: 1;
+}
+
+.create-kb-content .add-tag-button {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background-color: var(--color-bg-subtle);
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.create-kb-content .add-tag-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.create-kb-content .add-tag-button:not(:disabled):hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.create-kb-content .add-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.create-kb-content .tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.create-kb-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 32px;
+}
+
+.create-kb-content .select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-tertiary);
+  transition: transform 0.2s ease-in-out;
+  pointer-events: none;
+}
+
+.create-kb-content .select-chevron.is-open {
+  transform: translateY(-50%) rotate(180deg);
+}

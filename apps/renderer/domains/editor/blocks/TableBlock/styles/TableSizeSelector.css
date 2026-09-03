@@ -1,0 +1,72 @@
+.table-size-selector {
+  position: relative;
+  min-width: 200px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: var(--color-bg-surface);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+  outline: none;
+  user-select: none;
+  z-index: 101;
+}
+
+.table-size-selector .grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.table-size-selector .grid-row {
+  display: flex;
+  gap: 4px;
+}
+
+.table-size-selector .grid-cell {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 2px;
+  background-color: var(--color-bg-surface);
+  cursor: pointer;
+  transition: background-color 0.1s ease, border-color 0.1s ease, opacity 0.1s ease;
+}
+
+.table-size-selector .grid-cell:hover {
+  border-color: var(--color-accent);
+}
+
+.table-size-selector .grid-cell.is-selected {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-bg);
+}
+
+.table-size-selector .grid-cell.is-header {
+  background-color: var(--color-accent);
+  opacity: 0.8;
+}
+
+.table-size-selector .selector-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-default);
+}
+
+.table-size-selector .size-display {
+  color: var(--color-text-primary);
+  font-size: 13px;
+}
+
+.table-size-selector .header-row-option {
+  display: flex;
+  align-items: center;
+}
+
+/* CustomCheckbox 是共享组件，字号覆盖必须收口在尺寸选择器根类下。 */
+.table-size-selector .header-row-option .checkbox-item {
+  font-size: 13px;
+}

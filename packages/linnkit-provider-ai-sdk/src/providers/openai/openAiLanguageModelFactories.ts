@@ -1,0 +1,47 @@
+import { createOpenAI, VERSION as OPENAI_PACKAGE_VERSION } from '@ai-sdk/openai';
+import {
+  AI_SDK_INFERENCE_CAPABILITY_IDS,
+} from '../../definitions/aiSdkCapabilityIds';
+import type { AiSdkLanguageModelFactoryEntry } from '../../definitions/aiSdkInferenceSurface';
+import { requireAiSdkLanguageModelCredential } from '../../functions/requireAiSdkLanguageModelCredential';
+
+export const OPENAI_LANGUAGE_MODEL_FACTORIES: Record<
+  | typeof AI_SDK_INFERENCE_CAPABILITY_IDS.OPENAI_CHAT
+  | typeof AI_SDK_INFERENCE_CAPABILITY_IDS.OPENAI_RESPONSES,
+  AiSdkLanguageModelFactoryEntry
+> = {
+  [AI_SDK_INFERENCE_CAPABILITY_IDS.OPENAI_CHAT]: {
+    capability_id: AI_SDK_INFERENCE_CAPABILITY_IDS.OPENAI_CHAT,
+    surface: 'openai_chat_completions',
+    auth_profiles: ['bearer'],
+    package_name: '@ai-sdk/openai',
+    package_version: OPENAI_PACKAGE_VERSION,
+    createLanguageModel(input) {
+      const credential = requireAiSdkLanguageModelCredential(input);
+      const provider = createOpenAI({
+        baseURL: input.base_url,
+        apiKey: credential.secret,
+        ...(input.headers ? { headers: input.headers } : {}),
+        ...(input.fetch ? { fetch: input.fetch } : {}),
+      });
+      return provider.chat(input.endpoint_model_id);
+    },
+  },
+  [AI_SDK_INFERENCE_CAPABILITY_IDS.OPENAI_RESPONSES]: {
+    capability_id: AI_SDK_INFERENCE_CAPABILITY_IDS.OPENAI_RESPONSES,
+    surface: 'openai_responses',
+    auth_profiles: ['bearer'],
+    package_name: '@ai-sdk/openai',
+    package_version: OPENAI_PACKAGE_VERSION,
+    createLanguageModel(input) {
+      const credential = requireAiSdkLanguageModelCredential(input);
+      const provider = createOpenAI({
+        baseURL: input.base_url,
+        apiKey: credential.secret,
+        ...(input.headers ? { headers: input.headers } : {}),
+        ...(input.fetch ? { fetch: input.fetch } : {}),
+      });
+      return provider.responses(input.endpoint_model_id);
+    },
+  },
+};

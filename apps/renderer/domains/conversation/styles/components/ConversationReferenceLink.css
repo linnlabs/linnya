@@ -1,0 +1,47 @@
+a.ai-ref-link,
+[data-scope="conversation-message"] a.ai-ref-link {
+  --conversation-reference-link-accent: var(--color-accent);
+  --conversation-reference-link-accent-hover: var(--color-accent-hover);
+  --conversation-reference-link-bg: color-mix(in srgb, var(--conversation-reference-link-accent) 6%, transparent);
+  --conversation-reference-link-bg-hover: color-mix(in srgb, var(--conversation-reference-link-accent) 10%, transparent);
+  --conversation-reference-link-bg-active: color-mix(in srgb, var(--conversation-reference-link-accent) 14%, transparent);
+  --conversation-reference-link-focus-ring: color-mix(in srgb, var(--conversation-reference-link-accent) 35%, transparent);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 2px;
+  padding: 2px 6px;
+  color: var(--conversation-reference-link-accent);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-decoration: none;
+  vertical-align: baseline;
+  cursor: pointer;
+  background: var(--conversation-reference-link-bg);
+  border: none;
+  border-radius: 4px;
+  transform: translateY(-0.5px);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+a.ai-ref-link:hover,
+[data-scope="conversation-message"] a.ai-ref-link:hover {
+  color: var(--conversation-reference-link-accent-hover);
+  background: var(--conversation-reference-link-bg-hover);
+}
+
+a.ai-ref-link:active,
+[data-scope="conversation-message"] a.ai-ref-link:active {
+  color: var(--conversation-reference-link-accent-hover);
+  background: var(--conversation-reference-link-bg-active);
+}
+
+a.ai-ref-link:focus-visible,
+[data-scope="conversation-message"] a.ai-ref-link:focus-visible {
+  outline: 2px solid var(--conversation-reference-link-focus-ring);
+  outline-offset: 1px;
+}

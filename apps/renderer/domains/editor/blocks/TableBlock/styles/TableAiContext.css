@@ -1,0 +1,115 @@
+.table-ai-context {
+  --table-ai-tag-bg: var(--color-bg-hover-light);
+  --table-ai-tag-hover-bg: var(--color-bg-hover);
+  --table-ai-ref-color: var(--color-info);
+  --table-ai-selection-bg: var(--color-info-bg);
+  --table-ai-selection-color: var(--color-info);
+  --table-ai-selection-border: color-mix(in srgb, var(--color-info) 35%, transparent);
+  --table-ai-selection-hover-bg: color-mix(in srgb, var(--color-info) 14%, transparent);
+  --table-ai-output-border: color-mix(in srgb, var(--color-warning) 35%, transparent);
+  --table-ai-output-hover-bg: color-mix(in srgb, var(--color-warning) 14%, transparent);
+
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border-default);
+  background-color: var(--color-bg-subtle);
+}
+
+/* 该组件会被 conversation 输入框动态加载，内嵌态必须保留无分割线视觉。 */
+.table-context-embedded.table-ai-context {
+  padding: 12px 16px;
+  margin-bottom: 4px;
+  border-bottom: none;
+  background-color: transparent;
+}
+
+.table-ai-context .table-ai-section {
+  padding: 8px 0;
+}
+
+.table-ai-context .table-ai-section.is-inline {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.table-ai-context .table-ai-section.is-inline .table-ai-section-title {
+  flex-basis: 70px;
+  flex-shrink: 0;
+  padding-top: 3px;
+  margin-bottom: 0;
+}
+
+.table-ai-context .table-ai-section.is-inline .table-ai-section-content {
+  flex: 1;
+}
+
+.table-ai-context .table-ai-section:first-child {
+  padding-top: 4px;
+}
+
+.table-ai-context .table-ai-section:last-child {
+  padding-bottom: 4px;
+}
+
+.table-ai-context .table-ai-section-title {
+  margin-bottom: 10px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.table-ai-context .table-ai-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.table-ai-context .table-ai-tag {
+  box-sizing: border-box;
+  display: inline-block;
+  min-width: 52px;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background-color: var(--table-ai-tag-bg);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, filter 0.2s ease;
+}
+
+.table-ai-context .table-ai-tag:hover {
+  border-color: var(--color-border-default);
+  background-color: var(--table-ai-tag-hover-bg);
+}
+
+.table-ai-context .table-ai-tag.is-active {
+  border-color: var(--table-ai-ref-color);
+  background-color: color-mix(in srgb, var(--table-ai-ref-color) 13%, transparent);
+  color: var(--table-ai-ref-color);
+}
+
+.table-ai-context .table-ai-tag.is-active:hover {
+  filter: brightness(95%);
+}
+
+.table-ai-context .table-ai-tag.selection-tag {
+  border-color: var(--table-ai-selection-border);
+  background-color: var(--table-ai-selection-bg);
+  color: var(--table-ai-selection-color);
+}
+
+.table-ai-context .table-ai-tag.selection-tag:hover {
+  background-color: var(--table-ai-selection-hover-bg);
+}
+
+.table-ai-context .table-ai-tag.output-column-display-tag {
+  border-color: var(--table-ai-output-border);
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.table-ai-context .table-ai-tag.output-column-display-tag:hover {
+  background-color: var(--table-ai-output-hover-bg);
+}

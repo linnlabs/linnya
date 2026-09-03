@@ -1,0 +1,1 @@
+export { slidesDocumentRuntimeLoader } from './contribution';

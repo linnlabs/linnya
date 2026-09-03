@@ -1,0 +1,148 @@
+/* 目录侧栏承载 OutlineItem 子组件过渡和虚拟列表布局，组件脚本只负责构建/定位/滚动同步。 */
+.outline-sidebar .outline-list {
+  position: relative;
+  box-sizing: border-box;
+  padding: 14px;
+  list-style: none;
+}
+
+.outline-sidebar .outline-list-virtual {
+  contain: content;
+}
+
+.outline-sidebar .outline-list-virtual .outline-item {
+  min-height: 28px;
+  transition: none;
+}
+
+.outline-sidebar .outline-list-virtual .outline-item-content {
+  min-height: 24px;
+  transition: none;
+}
+
+.outline-sidebar .outline-virtual-spacer {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.outline-sidebar .outline-item,
+.outline-sidebar .fade-leave-active {
+  box-sizing: border-box;
+}
+
+.outline-sidebar .fade-enter-active,
+.outline-sidebar .fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.outline-sidebar .fade-enter-from,
+.outline-sidebar .fade-leave-to {
+  opacity: 0;
+}
+
+.outline-sidebar .fade-leave-active {
+  position: absolute;
+  left: 8px;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.outline-sidebar .fade-move {
+  transition: transform 0.5s ease-out;
+}
+
+.outline-sidebar {
+  position: fixed;
+  z-index: 1300;
+  box-sizing: border-box;
+  contain: layout style;
+  width: 240px;
+  min-height: 100px;
+  max-height: min(70vh, calc(100vh - 128px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--color-bg-surface);
+  opacity: 0;
+  transform: translateX(-8px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-radius 0.18s ease;
+  will-change: height;
+}
+
+.outline-sidebar.no-scroll {
+  max-height: none;
+  overflow-y: hidden;
+}
+
+.outline-sidebar.is-visible,
+.outline-sidebar.fade-in {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.outline-sidebar.outline-collapsed {
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events: none;
+}
+
+.outline-sidebar.overlay.is-visible {
+  border-radius: 8px;
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+}
+
+@media (max-width: 1250px) {
+  .outline-sidebar.is-visible {
+    height: auto;
+    max-height: min(70vh, calc(100vh - 128px));
+    border-radius: 8px;
+    box-shadow:
+      var(--shadow-lg),
+      0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+  }
+
+  :root.theme-transition-active .outline-sidebar {
+    transition:
+      opacity 0.18s ease,
+      transform 0.18s ease,
+      box-shadow 0s ease,
+      border-radius 0.18s ease;
+  }
+}
+
+.outline-empty {
+  padding: 20px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  text-align: center;
+}
+
+.outline-sidebar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.outline-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.outline-sidebar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 5px;
+  background-color: var(--scrollbar-thumb-color);
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+.outline-sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}

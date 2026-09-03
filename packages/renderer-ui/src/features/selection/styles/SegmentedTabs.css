@@ -1,0 +1,50 @@
+/* Renderer UI selection feature：保留迁移前 selector 与 computed style。 */
+.segmented-tabs {
+  display: flex;
+  min-width: 0;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.segmented-tabs__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.segmented-tabs__button:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.segmented-tabs__button.is-active {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.segmented-tabs__button:focus-visible {
+  outline: 1px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.segmented-tabs__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.segmented-tabs__count {
+  color: currentColor;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.72;
+}

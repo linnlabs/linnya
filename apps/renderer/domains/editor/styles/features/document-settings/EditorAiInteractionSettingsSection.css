@@ -1,0 +1,97 @@
+/* apps/renderer/domains/editor/styles/features/document-settings/EditorAiInteractionSettingsSection.css */
+/* 滑杆不是 Settings Kit 覆盖的规整控件，这里只补它自己的视觉。 */
+
+.editor-ai-range-control {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.editor-ai-range-value {
+  flex-shrink: 0;
+  width: 40px;
+  margin-right: 15px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  text-align: right;
+}
+
+.editor-ai-range-track {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.editor-ai-range {
+  --range-progress: 0%;
+  --editor-ai-range-thumb-shadow: 0 2px 4px color-mix(in srgb, var(--color-black) 15%, transparent);
+  --editor-ai-range-thumb-shadow-hover: 0 2px 6px color-mix(in srgb, var(--color-black) 25%, transparent);
+
+  position: relative;
+  width: 100%;
+  height: 4px;
+  margin: 10px 0;
+  cursor: pointer;
+  appearance: none;
+  background: transparent;
+  border-radius: 2px;
+  outline: none;
+}
+
+.editor-ai-range::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  cursor: pointer;
+  appearance: none;
+  background: var(--color-accent);
+  border: none;
+  border-radius: 50%;
+  box-shadow: var(--editor-ai-range-thumb-shadow);
+  transition: box-shadow 0.2s, transform 0.1s;
+}
+
+.editor-ai-range:hover::-webkit-slider-thumb,
+.editor-ai-range:hover::-moz-range-thumb {
+  box-shadow: var(--editor-ai-range-thumb-shadow-hover);
+}
+
+.editor-ai-range:active::-webkit-slider-thumb,
+.editor-ai-range:active::-moz-range-thumb {
+  transform: scale(1.1);
+}
+
+.editor-ai-range::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    var(--color-accent) 0%,
+    var(--color-accent) var(--range-progress, 0%),
+    var(--color-border-default) var(--range-progress, 0%),
+    var(--color-border-default) 100%
+  );
+  border-radius: 2px;
+}
+
+.editor-ai-range:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+
+.editor-ai-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.editor-ai-range:disabled::-webkit-slider-thumb,
+.editor-ai-range:disabled::-moz-range-thumb {
+  background: var(--color-border-default);
+  box-shadow: none;
+}
+
+.editor-ai-range-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--spacing-sm);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}

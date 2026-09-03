@@ -1,0 +1,161 @@
+/*
+ * TodoItem 样式：todo feature 私有样式。
+ * 统一收口到 .todo-sidebar 根下，避免外迁后污染其它同名类。
+ */
+.todo-sidebar .todo-item {
+  position: relative;
+  border-radius: 8px;
+  padding: 8px;
+  transition: background-color 0.2s;
+}
+
+.todo-sidebar .todo-item:hover {
+  background-color: var(--color-bg-hover-light);
+}
+
+.todo-sidebar .todo-item .main-content {
+  display: flex;
+  align-items: flex-start; /* align checkbox with top of content */
+  gap: 10px;
+}
+
+/* Checkbox */
+.todo-sidebar .todo-item .todo-checkbox {
+  margin-top: 0; /* remove offset to match timeline dot */
+}
+
+/* Details */
+.todo-sidebar .todo-item .details {
+  flex: 1;
+  min-width: 0;
+}
+
+.todo-sidebar .todo-item .title {
+  font-size: 13px;
+  font-weight: 460;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  color: var(--color-text-secondary);
+}
+
+.todo-sidebar .todo-item.is-completed {
+  opacity: 0.5;
+}
+
+.todo-sidebar .todo-item.is-completed:hover {
+  opacity: 1;
+}
+
+.todo-sidebar .todo-item .title.is-finished {
+  text-decoration: line-through;
+}
+
+/* Info Row */
+.todo-sidebar .todo-item .info-row {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.todo-sidebar .todo-item .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 9999px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.todo-sidebar .todo-item .badge-dot {
+  height: 6px;
+  width: 6px;
+  border-radius: 9999px;
+  background-color: currentColor;
+}
+
+.todo-sidebar .todo-item .priority-high {
+  background-color: var(--color-red-100);
+  color: var(--color-red-400);
+}
+.todo-sidebar .todo-item .priority-medium {
+  background-color: var(--color-yellow-100);
+  color: var(--color-yellow-700);
+}
+.todo-sidebar .todo-item .priority-low {
+  background-color: var(--color-blue-100);
+  color: var(--color-blue-700);
+}
+
+.todo-sidebar .todo-item .tag-badge {
+  background-color: var(--color-accent-bg-subtle);
+  color: var(--color-accent);
+}
+
+.todo-sidebar .todo-item .tag-badge .tag-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.todo-sidebar .todo-item .date-badge {
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+}
+
+.todo-sidebar .todo-item .date-badge.date-today {
+  background-color: var(--color-accent-bg-subtle);
+  color: var(--color-accent);
+}
+
+.todo-sidebar .todo-item .date-badge.date-tomorrow {
+  background-color: var(--color-yellow-100);
+  color: var(--color-yellow-700);
+}
+
+.todo-sidebar .todo-item .date-badge.date-overdue {
+  background-color: var(--color-red-100);
+  color: var(--color-red-500);
+}
+
+.todo-sidebar .todo-item .date-badge.date-upcoming {
+  background-color: var(--color-blue-50);
+  color: var(--color-blue-700);
+}
+
+.todo-sidebar .todo-item .date-badge .date-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Actions */
+.todo-sidebar .todo-item .actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.todo-sidebar .todo-item .delete-button {
+  display: flex;
+  height: 28px;
+  width: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--color-text-tertiary);
+  transition: background-color 0.2s;
+}
+
+.todo-sidebar .todo-item .delete-icon {
+  width: 16px;
+  height: 16px;
+  background-color: transparent !important;
+}
+
+.todo-sidebar .todo-item .delete-button:hover {
+  background-color: var(--color-red-100);
+  color: var(--color-text-tertiary);
+}

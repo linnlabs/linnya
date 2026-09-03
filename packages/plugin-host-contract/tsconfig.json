@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "experimentalDecorators": true,
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "downlevelIteration": true,
+    "baseUrl": ".",
+    "paths": {
+      "@app/schemas": ["../schemas/src/index.ts"],
+      "@app/schemas/*": ["../schemas/src/*"],
+      "@linnlabs/linnkit": ["../linnkit/src/index.ts"],
+      "@linnlabs/linnkit/ports": ["../linnkit/src/ports/index.ts"],
+      "@linnlabs/linnkit/contracts": ["../linnkit/src/contracts/index.ts"],
+      "@linnlabs/linnkit/runtime-kernel": ["../linnkit/src/runtime-kernel/index.ts"],
+      "@linnlabs/linnkit/runtime-kernel/events": ["../linnkit/src/runtime-kernel/events/index.ts"],
+      "@linnlabs/linnkit/context-manager": ["../linnkit/src/context-manager/index.ts"],
+      "@linnlabs/linnkit/testkit": ["../linnkit/src/testkit/index.ts"],
+      "@linnlabs/linnkit/quickstart": ["../linnkit/src/quickstart/index.ts"]
+    }
+  },
+  "include": [
+    "index.ts",
+    "backend/**/*.ts",
+    "renderer/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
