@@ -29,6 +29,10 @@ import { assertEndpointMatchesModel } from '../features/inference-endpoints/func
 import { findUnreferencedInferenceEndpoints } from '../features/inference-endpoints/functions/findUnreferencedInferenceEndpoints';
 import { readInferenceEndpoint } from '../features/inference-endpoints/functions/readInferenceEndpoint';
 import { endpointCredentialStore } from '../features/inference-endpoints/orchestration/endpointCredentialStore';
+import {
+  requireInstalledDistributionIdentity,
+  type DistributionIdentity,
+} from '../../../shared/distribution-identity';
 
 const logger = new Logger('ModelCatalog');
 const CLOUD_MODEL_RETRY_INTERVAL_MS = 30_000;
@@ -87,21 +91,23 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return ModelCatalogRegistry.instance;
   }
 
-  async initialize(envVars?: Record<string, string>): Promise<void> {
+  async initialize(distributionIdentity?: DistributionIdentity): Promise<void> {
     if (this.initialized) return;
 
-    this.envVars = envVars ?? processEnvironment();
+    this.envVars = processEnvironment();
     await modelPersister.initialize();
     await endpointCredentialStore.initialize();
     const userState = await modelPersister.loadState();
     this.loadInferenceEndpoints(userState.inferenceEndpoints);
     this.loadDefaultModels();
 
-    if (isLinnyaCloudClientEnabled(this.envVars)) {
+    if (isLinnyaCloudClientEnabled(
+      distributionIdentity ?? requireInstalledDistributionIdentity()
+    )) {
       const cloudModelsLoaded = await this.loadCloudModels();
       if (!cloudModelsLoaded) this.scheduleCloudModelRetry('启动阶段首次拉取失败');
     } else {
-      logger.info('[ModelCatalog] 源码开发模式已关闭 Linnya Cloud 目录');
+      logger.info('[ModelCatalog] 当前 Desktop 发行身份已关闭 Linnya Cloud 目录');
     }
 
     this.loadUserModels(userState.models);

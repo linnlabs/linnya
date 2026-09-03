@@ -31,6 +31,7 @@ import type {
 import { publishRendererReady } from '../../../events/rendererReadyEvent';
 import { installDownloadedUpdate } from '../../../update/orchestration/installDownloadedUpdate';
 import { shouldCheckForAppUpdates } from '../../../update/functions/shouldCheckForAppUpdates';
+import { requireInstalledDistributionIdentity } from '../../../../shared/distribution-identity';
 
 const logger = new Logger('update-ipc');
 
@@ -74,8 +75,7 @@ function sendStatusToWindow(channel: UpdateMessageChannel, payload?: UpdateMessa
 }
 
 function shouldSkipAppUpdateChecks(): boolean {
-  return !shouldCheckForAppUpdates({
-    LINNYA_DEV_MODE: process.env.LINNYA_DEV_MODE,
+  return !shouldCheckForAppUpdates(requireInstalledDistributionIdentity(), {
     LINNYA_DISABLE_UPDATE_CHECKS: process.env.LINNYA_DISABLE_UPDATE_CHECKS,
   });
 }
@@ -107,7 +107,7 @@ export function registerUpdateHandlers(): void {
      */
     if (shouldSkipAppUpdateChecks()) {
       // 中文：Electron 自动化 smoke 需要稳定截图；应用更新弹窗是独立能力，不应污染页面视觉验收。
-      log('跳过更新检查：源码开发模式或显式禁用');
+      log('跳过更新检查：当前发行身份不允许官方更新');
     } else {
       try {
         // 这里不强制等待结果，electron-updater 会通过事件推送进度与结果。
@@ -131,7 +131,7 @@ export function registerUpdateHandlers(): void {
    */
   ipcMain.handle('updater-check-for-updates', () => {
     if (shouldSkipAppUpdateChecks()) {
-      log('IPC: 已跳过 updater-check-for-updates：源码开发模式或显式禁用');
+      log('IPC: 已跳过 updater-check-for-updates：当前发行身份不允许官方更新');
       return null;
     }
 
@@ -150,6 +150,10 @@ export function registerUpdateHandlers(): void {
    * 响应渲染进程的开始下载请求
    */
   ipcMain.handle('updater-start-download', async () => {
+    if (shouldSkipAppUpdateChecks()) {
+      log('IPC: 已跳过 updater-start-download：当前发行身份不允许官方更新');
+      return null;
+    }
     log('IPC: 收到 updater-start-download 请求，开始下载...');
     try {
       const result = await autoUpdater.downloadUpdate();
@@ -167,6 +171,10 @@ export function registerUpdateHandlers(): void {
    * 响应渲染进程的退出并安装请求
    */
   ipcMain.handle('updater-quit-and-install', () => {
+    if (shouldSkipAppUpdateChecks()) {
+      log('IPC: 已跳过 updater-quit-and-install：当前发行身份不允许官方更新');
+      return { success: false, alreadyRequested: false };
+    }
     log('IPC: 收到 updater-quit-and-install 请求，准备退出并安装...');
     try {
       return installDownloadedUpdate({

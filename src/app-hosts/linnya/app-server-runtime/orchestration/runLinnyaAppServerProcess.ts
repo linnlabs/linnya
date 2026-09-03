@@ -100,6 +100,7 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
       rendererIntegration: composition.backendHostDependencies.rendererIntegration,
       applicationVersion: bootstrap.backend_facts.applicationVersion,
       packaged: bootstrap.backend_facts.packaged,
+      distributionIdentity: bootstrap.backend_facts.distributionIdentity,
       fileReveal: composition.fileReveal,
     });
     registerRpcHandlers(rpcHandlers, createBackendRendererRequestRpcHandlers({

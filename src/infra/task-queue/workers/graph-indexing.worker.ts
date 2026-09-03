@@ -23,6 +23,10 @@ import {
   installRuntimePathRoots,
   type RuntimePathRoots,
 } from '../../../shared/runtime-paths';
+import {
+  installDistributionIdentity,
+  type DistributionIdentity,
+} from '../../../shared/distribution-identity';
 
 import { getDatabaseService } from '../../../electron-main/services/database';
 import { BetterSqliteKnowledgeGraphRepository } from '../../../features/knowledge-base/graph/infrastructure/better-sqlite-knowledge-graph.repository';
@@ -60,9 +64,19 @@ function installWorkerRuntimePathRoots(): void {
   installRuntimePathRoots(runtimePathRoots);
 }
 
+function installWorkerDistributionIdentity(): DistributionIdentity {
+  const distributionIdentity = (
+    workerData as { readonly distributionIdentity?: DistributionIdentity } | undefined
+  )?.distributionIdentity;
+  if (!distributionIdentity) {
+    throw new Error('[GraphIndexingWorker] 缺少 owner 传入的 Desktop distribution identity');
+  }
+  return installDistributionIdentity(distributionIdentity);
+}
+
 async function initializeWorkerServices(): Promise<EmbeddingPort> {
   installWorkerRuntimePathRoots();
-  await modelCatalog.initialize();
+  await modelCatalog.initialize(installWorkerDistributionIdentity());
   return createEmbeddingPort({ catalog: modelCatalog });
 }
 

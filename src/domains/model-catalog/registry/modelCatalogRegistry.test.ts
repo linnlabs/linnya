@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import path from 'node:path';
 import type { ModelConfig } from '../definitions/modelCatalog';
+import {
+  createOfficialDistributionIdentity,
+  createSourceDistributionIdentity,
+} from '../../../shared/distribution-identity';
 
 const { credentialStoreMock, fetchCloudModelsMock, persisterMock } = vi.hoisted(() => {
   return {
@@ -156,7 +160,10 @@ describe('Registry cloud retry', () => {
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
 
-    await registry.initialize();
+    await registry.initialize(createOfficialDistributionIdentity({
+      releaseChannel: 'stable',
+      releaseKeyId: 'fixture',
+    }));
 
     expect(fetchCloudModelsMock).toHaveBeenCalledTimes(1);
     expect(registry.getModel('cloud-test-model')).toBeUndefined();
@@ -174,11 +181,11 @@ describe('Registry cloud retry', () => {
     expect(fetchCloudModelsMock).toHaveBeenCalledTimes(2);
   });
 
-  it('源码开发模式不请求 Cloud，也不安排后台重试', async () => {
+  it('源码发行身份不请求 Cloud，也不安排后台重试', async () => {
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
 
-    await registry.initialize({ LINNYA_DEV_MODE: 'true' });
+    await registry.initialize(createSourceDistributionIdentity());
 
     expect(fetchCloudModelsMock).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(90_000);
@@ -233,7 +240,7 @@ describe('Registry default model by capability', () => {
 
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize();
+    await registry.initialize(createSourceDistributionIdentity());
 
     expect(registry.getDefaultModelIdByCapability('unit_test_default')).toBe('first-ocr');
   });
@@ -248,7 +255,7 @@ describe('Registry default model by capability', () => {
 
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize();
+    await registry.initialize(createSourceDistributionIdentity());
 
     expect(registry.getDefaultModelIdByCapability('missing_capability')).toBeUndefined();
   });
@@ -261,7 +268,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize();
+    await registry.initialize(createSourceDistributionIdentity());
     persisterMock.saveState.mockClear();
 
     const accountId = 'chatgpt-subscription';
@@ -303,7 +310,10 @@ describe('Registry default model by capability', () => {
 
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize();
+    await registry.initialize(createOfficialDistributionIdentity({
+      releaseChannel: 'stable',
+      releaseKeyId: 'fixture',
+    }));
 
     expect(registry.getFunctionalModelDefaults()).toEqual({
       autocomplete: 'cloud-fast-model',
@@ -321,7 +331,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize();
+    await registry.initialize(createSourceDistributionIdentity());
 
     await registry.registerUserModel(buildUserModel('first-user-model', 'shared-endpoint'), {
       kind: 'create',
@@ -360,7 +370,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize();
+    await registry.initialize(createSourceDistributionIdentity());
     credentialStoreMock.put.mockClear();
 
     await registry.registerUserModel(buildUserModel('second-user-model', 'shared-endpoint'), {
@@ -386,7 +396,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize();
+    await registry.initialize(createSourceDistributionIdentity());
     const credentialReference = {
       kind: 'stored_secret' as const,
       credential_id: 'configured-provider:opencode-go',
@@ -445,7 +455,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize();
+    await registry.initialize(createSourceDistributionIdentity());
     credentialStoreMock.put.mockClear();
     persisterMock.saveState.mockRejectedValueOnce(new Error('disk unavailable'));
 
@@ -472,7 +482,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize();
+    await registry.initialize(createSourceDistributionIdentity());
 
     await registry.registerUserModel(buildUserModel('first-user-model', 'shared-endpoint'), {
       kind: 'create',
@@ -509,7 +519,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize();
+    await registry.initialize(createSourceDistributionIdentity());
 
     await registry.registerUserModel(buildUserModel('only-user-model', 'only-endpoint'), {
       kind: 'create',
@@ -549,7 +559,7 @@ describe('Registry default model by capability', () => {
 
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize();
+    await registry.initialize(createSourceDistributionIdentity());
     credentialStoreMock.has.mockReturnValue(false);
     persisterMock.saveState.mockRejectedValueOnce(new Error('disk unavailable'));
 

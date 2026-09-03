@@ -140,7 +140,7 @@ function collectTestEnvironment(): Readonly<Record<string, string>> {
 
 function createBootstrap(): AppServerBootstrap {
   return {
-    schema_version: 1,
+    schema_version: 2,
     backend_configuration: {
       qdrant: { host: '127.0.0.1', port: 6333 },
       server: { port: 3000 },
@@ -151,6 +151,7 @@ function createBootstrap(): AppServerBootstrap {
       platform: 'darwin',
       architecture: 'arm64',
       packaged: false,
+      distributionIdentity: { kind: 'source', packaged: false },
       resourcesPath: '/resources',
       mainBundleDirectory: '/repo/dist/main',
       legacyUserDataDirectory: '/app-user-data',

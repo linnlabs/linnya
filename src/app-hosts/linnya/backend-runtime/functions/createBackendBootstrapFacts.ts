@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import { createRuntimePathRoots } from '../../../../shared/runtime-paths';
+import { createDistributionIdentity } from '../../../../shared/distribution-identity';
 import type { BackendBootstrapFacts } from '../definitions/backendBootstrapFacts';
 
 export function createBackendBootstrapFacts(input: BackendBootstrapFacts): BackendBootstrapFacts {
@@ -11,8 +12,13 @@ export function createBackendBootstrapFacts(input: BackendBootstrapFacts): Backe
   requireAbsolute(input.resourcesPath, 'resourcesPath');
   requireAbsolute(input.mainBundleDirectory, 'mainBundleDirectory');
   requireAbsolute(input.legacyUserDataDirectory, 'legacyUserDataDirectory');
+  const distributionIdentity = createDistributionIdentity(input.distributionIdentity);
+  if (distributionIdentity.packaged !== input.packaged) {
+    throw new Error('Backend bootstrap packaged 与 distribution identity 不一致');
+  }
   return Object.freeze({
     ...input,
+    distributionIdentity,
     runtimePathRoots: createRuntimePathRoots(input.runtimePathRoots),
   });
 }

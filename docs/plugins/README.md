@@ -8,7 +8,8 @@ Linnya 支持的是 **官方可信 runtime 插件**：
 
 - 插件可以有独立 `plugin.json`、独立版本、独立 backend/renderer 构建产物、独立数据库迁移和 R2 artifact。
 - 官方插件包是 monorepo workspace 成员，但运行时和构建时仍通过别名直读源码；发布和安装依赖独立 artifact，`node_modules/@plugin/**` 不进入 asar。
-- 插件已经具备安装、启用、停用、卸载和远程更新生命周期；远程链路当前以 SHA512 做完整性校验，生产发布方真实性与 packaged 来源准入仍按下述信任策略实施。
+- 插件已经具备安装、启用、停用、卸载和远程更新生命周期；只有验签通过的 `official` Desktop 才会连接 Linnya 官方插件更新/下载源。源码运行和社区打包仍可使用随包、本地 active 或开发直载插件，但不会请求官方远端服务。
+- 远程链路当前以 SHA512 做完整性校验；生产发布方真实性、packaged 来源准入和未来 catalog 签名仍按下述信任策略实施。Desktop 自身的发行身份见 [`distribution-identity`](../../src/shared/distribution-identity/README.md)。
 - 主应用通过 manifest、registry、document type hook、IPC 白名单和生命周期执行器接入插件能力。
 - 当前不支持第三方不受信代码。生产安装包短期只允许受保护 bundled composition 或验签 catalog 证明的官方插件；权限执行、第三方沙箱和市场化分发属于未来独立安全模型。
 
@@ -33,7 +34,6 @@ Linnya Core 的静态运行面只有 `platform`。当前产品发行可以随包
 | --- | --- |
 | [插件系统架构参考](./architecture.md) | 系统结构、模块职责、数据流、启动时序、状态管理、环境差异、边界约束 |
 | [生产插件分发与信任策略](./production-distribution-and-trust.md) | packaged 官方插件来源、签名 catalog、启动准入、开发直载边界，以及与开源产品装配的门禁关系 |
-| [Conversation 输入贡献框架规范](../../apps/renderer/domains/conversation/docs/input-contribution.md) | conversation 域以通用动词、挂载点和 opaque 数据接入文档类型交互的稳定契约 |
 | [Conversation 输入贡献框架规范](../../apps/renderer/domains/conversation/docs/input-contribution.md) | 输入框引用 / 输入扩展 / 触发途径三原语的注册化框架；table 模式解耦、@ 引用、页面元素交互的统一接入规范 |
 
 ## 章节导航（开发啥看啥）

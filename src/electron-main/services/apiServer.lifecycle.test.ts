@@ -39,6 +39,7 @@ function createRouteDependencies(): RouteDependencies {
       platform: 'darwin',
       architecture: 'arm64',
       packaged: false,
+      distributionIdentity: { kind: 'source', packaged: false },
       resourcesPath: '/workspace/extraResources',
       mainBundleDirectory: '/workspace/dist/main',
       legacyUserDataDirectory: '/workspace/app-user-data',

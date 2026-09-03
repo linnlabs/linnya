@@ -7,7 +7,7 @@
 ## 推荐配置（开发机）
 
 ```ini
-# 开发模式：影响路径规则（例如日志在 `<项目根>/_dev_data/logs`）
+# 开发模式：只影响路径、热加载和诊断等源码开发行为，不代表官方发行身份
 LINNYA_DEV_MODE=true
 
 # 可选：自定义工作区根目录（默认开发模式为 `<项目根>/_dev_data`）
@@ -51,3 +51,4 @@ LINNYA_KG_DUMP_JSON=1
 
 - **主进程/后端/worker**：开发态启动时由 `src/electron-main/bootstrap-env.ts` 加载；发布包明确跳过 dotenv 文件。
 - **前端（Vite）**：Vite 会自动加载 `.env.local`，但只有 `VITE_` 前缀会暴露给 renderer 侧代码。
+- **发行身份**：不从 `.env.local` 推导。未打包运行固定为 `source`，未通过受信发行清单验签的安装包固定为 `community`。

@@ -10,6 +10,7 @@ import {
   shutdownDiagnosticLogging,
 } from '../../../shared/logger';
 import { WorkerThreadQueue } from '../WorkerThreadQueue';
+import { createSourceDistributionIdentity } from '../../../shared/distribution-identity';
 
 const temporaryDirectories: string[] = [];
 const diagnosticWorkerPath = fileURLToPath(new URL('./fixtures/diagnosticLog.worker.cjs', import.meta.url));
@@ -35,6 +36,7 @@ describe('WorkerThreadQueue 诊断日志与退出合同', () => {
       maxConcurrency: 1,
       workerScript: runtimePathRootsWorkerPath,
       runtimePathRoots,
+      distributionIdentity: createSourceDistributionIdentity(),
     });
     const completed = new Promise<unknown>((resolve, reject) => {
       queue.once('taskCompleted', (event: { result: unknown }) => resolve(event.result));
@@ -42,7 +44,10 @@ describe('WorkerThreadQueue 诊断日志与退出合同', () => {
     });
 
     await queue.addTask({ taskId: 'runtime-path-roots' });
-    await expect(completed).resolves.toEqual(runtimePathRoots);
+    await expect(completed).resolves.toEqual({
+      runtimePathRoots,
+      distributionIdentity: { kind: 'source', packaged: false },
+    });
     await queue.shutdown();
   });
 

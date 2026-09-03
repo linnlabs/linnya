@@ -13,7 +13,11 @@ pnpm run dev:electron
 
 需要 Node.js 24（精确版本见根目录 `.nvmrc`）、仓库锁定的 pnpm、Rust 和 `wasm-pack`。完整 Desktop 开发与原生能力验收使用 macOS 或 Windows。
 
-`pnpm run dev:electron` 启动的是独立源码开发环境：不加载 Linnya Cloud 模型目录，不请求 Cloud 推理代理，也不自动检查正式版更新。本地体验使用内置目录、用户配置的 BYOK Provider 和本地数据，不需要 Linnya 账号或私有仓库。
+`pnpm run dev:electron` 启动的是 `source` 发行身份：不加载 Linnya Cloud 模型目录，不请求
+Cloud 推理代理，也不自动检查正式版更新。本地体验使用内置目录、用户配置的 BYOK
+Provider 和本地数据，不需要 Linnya 账号或私有仓库。普通贡献者自行打出的安装包属于
+`community`，同样不会连接 Linnya 官方更新或 Cloud；只有受保护发行清单验签通过后才是
+`official`。
 
 ## 按问题选择文档
 

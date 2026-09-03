@@ -3,8 +3,6 @@
  * @description 管理 Electron 应用的生命周期事件，作为应用的启动协调器。
  */
 
-/* global process, __dirname */
-
 import { app, BrowserWindow, globalShortcut, session, systemPreferences } from 'electron';
 import {
   configureMainWindowCloseLifecycle,
@@ -41,6 +39,8 @@ import { createHostProcessEnvironment } from '../infra/adapters/command-runtime/
 import { createNodeEventLoopResponsivenessMonitor } from '../infra/observability/event-loop/index.ts';
 import { createBackendBootstrapFacts } from '../app-hosts/linnya/backend-runtime/index.ts';
 import { installRuntimePathRoots } from '../shared/runtime-paths/index.ts';
+import { installDistributionIdentity } from '../shared/distribution-identity/index.ts';
+import { resolveElectronDistributionIdentity } from './distribution/index.ts';
 import { resolveBackendRuntimePathRoots } from './app-lifecycle/functions/resolveBackendRuntimePathRoots.ts';
 import { resolveAppServerBundleDirectory } from './app-lifecycle/functions/resolveAppServerBundleDirectory.ts';
 import {
@@ -54,6 +54,21 @@ import { registerCommandCardControlHandlers } from './ipc/handlers/commands/comm
 import { registerCommandProtectedInputHandler } from './ipc/handlers/commands/command-protected-input-ipc.ts';
 
 const logger = new Logger('app-lifecycle');
+const distributionResolution = resolveElectronDistributionIdentity({
+  packaged: app.isPackaged,
+  resourcesPath: process.resourcesPath,
+  applicationVersion: app.getVersion(),
+});
+const distributionIdentity = installDistributionIdentity(distributionResolution.identity);
+if (distributionResolution.diagnostic) {
+  logger.warn(
+    `[Distribution] ${distributionResolution.evidence}: ${distributionResolution.diagnostic}`
+  );
+} else {
+  logger.info(
+    `[Distribution] kind=${distributionIdentity.kind} evidence=${distributionResolution.evidence}`
+  );
+}
 // 必须早于 plugin/model runtime 向 process.env 写入 Linnya 内部路径。后续命令环境
 // 只能沿 app-owner 依赖链使用这份事实，不能在 routes 初始化时重新读取 process.env。
 const commandHostProcessEnvironment = createHostProcessEnvironment(process.env);
@@ -176,7 +191,7 @@ export function initialize() {
   
   try {
     logger.info('调用 initializeUpdateManager...');
-    initializeUpdateManager();
+    initializeUpdateManager(distributionIdentity);
     logger.info('initializeUpdateManager 调用成功');
   } catch (err) {
     logger.error('初始化更新管理器失败:', err);
@@ -261,11 +276,11 @@ export function initialize() {
       '[Main Process] MODEL_REGISTRY_DEFAULTS_PATH=' + defaultModelsResolution.path
         + ' source=' + defaultModelsResolution.source,
     );
-    // [V145 代理修复] & [更新测试修复]
+    // 为需要联网的用户 Provider 配置 Electron session 代理。
     // 为 session 配置代理，以确保网络请求正常。
     if (process.env.NODE_ENV === 'development') {
         // 中文说明：
-        // - 开发环境常见会开系统代理/抓包工具，可能导致更新检查、第三方上报等网络行为异常。
+        // - 开发环境常见会开系统代理/抓包工具，可能导致用户配置的第三方 Provider 请求异常。
         // - 这里显式使用 direct 模式，确保“所有请求直连”，减少环境噪音。
         logger.info('[Main Process] 开发模式：强制直连（不使用系统代理），确保网络请求稳定。');
         try {
@@ -311,6 +326,7 @@ export function initialize() {
         platform: process.platform,
         architecture: process.arch,
         packaged: app.isPackaged,
+        distributionIdentity,
         resourcesPath: process.resourcesPath,
         mainBundleDirectory,
         legacyUserDataDirectory: app.getPath('userData'),

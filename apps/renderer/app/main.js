@@ -19,7 +19,6 @@ import '../domains/editor/features/citation/ui/styles/WebManualCitationForm.css'
 // KaTeX 基础样式（会话侧自研渲染层使用 renderToString 输出的 DOM 结构）
 import 'katex/dist/katex.min.css'
 // KaTeX 扩展：支持 \ce{ } 化学公式（mhchem 会在运行时向 katex 注册宏）
-// eslint-disable-next-line import/no-unassigned-import
 import 'katex/contrib/mhchem'
 import VueKonva from 'vue-konva'
 import App from './App.vue'
@@ -160,15 +159,13 @@ if (!isConversationFixture) {
 }
 
 /**
- * 更新弹窗稳定性：尽可能早地注册 update-message 监听器，并在监听器就绪后通知主进程开始检查。
- *
- * 需求（中文）：
- * - 开发环境：不管是否有更新，都要弹（至少展示 checking/已是最新版本）
- * - 生产环境：只有有更新才弹；发生错误也要弹
+ * 更新弹窗稳定性：尽可能早地注册 update-message 监听器，并在监听器就绪后通知主进程。
+ * 只有 Main 已验真的 official 发行身份会继续检查更新；source/community 仍需要
+ * renderer-ready 完成其他 App 生命周期订阅，不能在 Renderer 自行猜发行身份。
  *
  * 根因（中文）：
  * - 如果主进程在窗口/监听器就绪前发送 update-message，渲染进程会漏收，从而“不弹窗”。
- * - 通过 renderer-ready 握手触发 checkForUpdates，保证消息不会丢。
+ * - official 发行通过 renderer-ready 握手触发 checkForUpdates，保证消息不会丢。
  */
 if (!isConversationFixture) {
   const updateStore = useUpdateStore()
@@ -181,7 +178,7 @@ if (!isConversationFixture) {
 
 app.mount('#app')
 
-// 监听器已注册后，再通知主进程：渲染进程 ready，可以开始自动检查更新
+// 监听器已注册后通知主进程 ready；是否检查更新由 Main 的发行身份决定。
 if (
   !isConversationFixture
   && window.electronAPI

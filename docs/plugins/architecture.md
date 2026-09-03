@@ -274,6 +274,10 @@ registry 内部使用普通 `Map`，Vue 的响应式追踪无法感知 `Map` 的
 - `LINNYA_PLUGIN_RENDERER_BUNDLE=disk` → 强制磁盘态
 - 未设置时：`!app.isPackaged` 或 `NODE_ENV=development` 或 `LINNYA_DEV_MODE=true` → 源码态
 
+这里的“开发/生产”只表示插件 Renderer 读取源码还是磁盘 artifact，不表示 Desktop
+是否由 Linnya 官方发行。社区打包同样读取磁盘 artifact，但发行身份仍是 `community`；
+官方服务统一消费 [`DistributionIdentity`](../../src/shared/distribution-identity/README.md)。
+
 ---
 
 ## 6. 关键约束与边界

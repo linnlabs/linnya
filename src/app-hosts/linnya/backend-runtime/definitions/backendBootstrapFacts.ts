@@ -1,4 +1,5 @@
 import type { RuntimePathRoots } from '../../../../shared/runtime-paths';
+import type { DistributionIdentity } from '../../../../shared/distribution-identity';
 
 /**
  * Backend owner 启动时冻结的只读宿主事实。这里只允许 data-only 字段，不能携带 Electron
@@ -10,6 +11,7 @@ export interface BackendBootstrapFacts {
   readonly platform: NodeJS.Platform;
   readonly architecture: NodeJS.Architecture;
   readonly packaged: boolean;
+  readonly distributionIdentity: DistributionIdentity;
   readonly resourcesPath: string;
   readonly mainBundleDirectory: string;
   /** 仅供受控旧 Workspace 数据迁移读取；不能由 App Server 从 appDataRoot 猜父目录。 */

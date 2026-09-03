@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ModelConfig } from 'src/domains/model-catalog';
+import {
+  createOfficialDistributionIdentity,
+  createSourceDistributionIdentity,
+} from 'src/shared/distribution-identity';
 import { createDefaultModelRequestCredentialResolver } from './createDefaultModelRequestCredentialResolver';
 
 function model(id: string, credentialReference: ModelConfig['credential_reference']): ModelConfig {
@@ -33,7 +37,10 @@ describe('default model request credential resolver', () => {
         resolveCredential: id => (id === cloudModel.id ? 'linnya-cloud' : 'byok-secret'),
       },
       resolveCloudDeviceId: async () => 'device-fixture',
-      linnyaCloudClientEnabled: true,
+      distributionIdentity: createOfficialDistributionIdentity({
+        releaseChannel: 'stable',
+        releaseKeyId: 'fixture',
+      }),
       providerAccounts: {
         resolve: async () => {
           throw new Error('fixture 不使用 Provider account');
@@ -102,7 +109,7 @@ describe('default model request credential resolver', () => {
     });
   });
 
-  it('源码开发模式在请求边界拒绝 Cloud，不解析凭据也不生成设备身份', async () => {
+  it('源码发行身份在请求边界拒绝 Cloud，不解析凭据也不生成设备身份', async () => {
     const cloudModel = model('cloud-model', {
       kind: 'host_managed',
       credential_id: 'linnya-cloud',
@@ -127,7 +134,7 @@ describe('default model request credential resolver', () => {
           throw new Error('fixture 不使用 Provider account');
         },
       },
-      linnyaCloudClientEnabled: false,
+      distributionIdentity: createSourceDistributionIdentity(),
     });
 
     await expect(
@@ -136,7 +143,7 @@ describe('default model request credential resolver', () => {
         endpoint_id: 'linnya-cloud',
         auth_profile: 'bearer',
       })
-    ).rejects.toThrow('disabled in source development mode');
+    ).rejects.toThrow('disabled for this Desktop distribution');
     expect(credentialResolutionCount).toBe(0);
     expect(deviceIdentityResolutionCount).toBe(0);
   });

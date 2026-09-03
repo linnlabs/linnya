@@ -65,6 +65,12 @@ pnpm run build:main
 
 正式 Desktop 安装器还涉及原生资源、签名、公证、SBOM、NOTICE 和三平台验收。普通贡献者不需要发布凭据；本地构建通过不等于产物可以发布。
 
+源码运行、社区安装包和官方发行是三个不同身份。普通 `build:electron*` 或 ad-hoc
+签名产物没有 Linnya 发行清单，运行时按 `community` 处理，不连接官方更新和 Cloud。
+`official` 必须由受保护环境生成发行 payload、使用受信 Ed25519 私钥签名并与平台代码
+签名共同进入发布证据；普通环境变量、`NODE_ENV=production` 和 `app.isPackaged` 都不能
+提升发行身份。当前公开 key ring 尚未配置，正式 Desktop 发布仍处于关闭状态。
+
 ## 5. 原生模块与跨平台边界
 
 `better-sqlite3`、Electron、图像与音频原生模块必须匹配当前 Node、Electron、平台和架构。切换 Node 或 Electron 版本后，先重新执行冻结安装，再运行仓库提供的 runtime 验证；不要复制另一台机器的 `node_modules`。

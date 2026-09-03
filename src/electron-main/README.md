@@ -9,6 +9,7 @@
 Electron Main 负责：
 
 - 单实例、启动、窗口、权限、协议、更新和统一退出；
+- 从打包事实与受信发行清单解析 `source / community / official` 发行身份，并把它冻结到 App Server bootstrap；
 - 解析并冻结 Desktop 路径与平台事实，启动固定 Node 中的 App Server；
 - 向 App Server 提供 safeStorage、系统浏览器、文件定位、隐藏 Chromium、PDF 和文本测量等窄 Desktop capability；
 - 对 Renderer 页面身份做 admission，并转发 App Server 已登记的 data-only request/push；
@@ -43,7 +44,8 @@ Main 不允许加载 `app-server-backend.cjs`、打开 `workspace.sqlite`，也�
 | safeStorage、OAuth browser、文件定位、PDF、隐藏窗口等 | `desktop-capabilities/`、`hidden-worker/`、`measurement/`、`web-render/` | 对外只实现 [Desktop capability ports](../app-hosts/linnya/desktop-capabilities/README.md) |
 | 自定义协议与受管媒体 | `protocols/`、`plugins/loader/pluginProtocol.ts` | scheme 必须在 `app.ready` 前登记；文件路径必须经过准入 |
 | Command 审批/权限的页面身份与 RPC | [`commands/`](./commands/README.md)、`ipc/handlers/commands/` | 命令 owner 在 App Server；Main 不处理 stdout、PTY 或命令状态 |
-| 更新与安装交接 | `update-manager.js`、`update/` | 源码开发不连接发行服务；发布态必须复用统一 App shutdown owner |
+| 发行身份 | [`distribution`](./distribution/README.md) | 未打包固定为 `source`；未通过发行清单验签的包固定为 `community` |
+| 更新与安装交接 | `update-manager.js`、`update/` | 只有 `official` 可连接发行服务；安装必须复用统一 App shutdown owner |
 | Renderer 权限与窗口安全 | `security/`、`window-security-boundary.test.ts` | 默认拒绝未声明权限，不放宽任意导航或窗口创建 |
 
 跨进程 DTO 与 schema 统一归 [`packages/schemas`](../../packages/schemas/README.md)，不能在 Main 和 Renderer 各自复制 shape。
@@ -67,6 +69,7 @@ Main 不允许加载 `app-server-backend.cjs`、打开 `workspace.sqlite`，也�
 - Main 不导入业务 domain 内部实现；App Server 也不导入 Electron、`BrowserWindow`、`ipcMain` 或 `shell`。
 - Renderer request 必须先经过页面身份与 channel admission；未知 channel、失效页面和越界路径应失败关闭。
 - Desktop capability 必须是窄 port，不能开放 Electron 对象、任意 method table、真实凭据或未经准入的物理路径。
+- `app.isPackaged` 与 `LINNYA_DEV_MODE` 都不能证明官方发行身份；新增官方服务统一消费[发行身份合同](../shared/distribution-identity/README.md)。
 - 架构或运行 owner 变化时，同步更新本 README 和对应 owner README，不以兼容 fallback 掩盖双 owner。
 
 ## 验证

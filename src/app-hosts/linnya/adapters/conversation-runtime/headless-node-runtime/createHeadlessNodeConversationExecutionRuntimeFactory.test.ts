@@ -32,6 +32,7 @@ describe('Headless Node conversation runtime composition', () => {
       platform: 'darwin' as const,
       architecture: 'arm64' as const,
       packaged: true,
+      distributionIdentity: { kind: 'community' as const, packaged: true as const },
       resourcesPath: '/Applications/Linnya.app/Contents/Resources',
       mainBundleDirectory: '/Applications/Linnya.app/Contents/Resources/app.asar/dist/main',
       legacyUserDataDirectory: '/Users/test/Library/Application Support/Linnya',

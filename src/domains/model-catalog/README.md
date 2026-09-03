@@ -124,14 +124,18 @@ lifecycle 从启动 cwd 所代表的仓库根解析该源码资产；`app.getApp
 
 ### Cloud catalog
 
-`LINNYA_DEV_MODE=true` 的源码开发环境不加载 Cloud catalog，也不安排后台重试；开发者只使用本地 default/user/BYOK 模型。发布态保留 Cloud 接入边界，但服务端在账号与鉴权体系完成前独立关闭数据面；客户端开关不是安全边界。
+Model Catalog 使用 Desktop Host 经严格 bootstrap 传入的发行身份，不再读取
+`LINNYA_DEV_MODE` 判断 Cloud。`source` 和 `community` 不加载 Cloud catalog，也不安排后台
+重试；只有发行清单验签通过的 `official` 保留 Cloud 客户端接入边界。当前正式发行 key
+ring 为空，因此源码运行和本地打包都只使用 default/user/BYOK 模型。发行身份不是服务端
+授权；账号 token、entitlement 与计量完成前 Cloud 数据面继续独立关闭。
 
 Cloud transport 启用时，每次只执行一次 `/v1/models` 请求，并把公开模型映射为本地
 `cloud-` ID。公开项必须直接给出 `client_base_url` 和完整
 `client_*_route`；桌面不再根据 Cloud
 alias、展示 provider 或上游厂商拼 URL。Cloud route 的 `endpoint_id`
 表示客户端下一跳
-`linnya-cloud`，不泄露 Cloud 私有上游。非法条目不会进入目录；整包没有合法条目时结果标记为失败。发布态首次网络失败不阻断本地/default/user 模型启动，registry 只对 Cloud 来源安排后台重试。
+`linnya-cloud`，不泄露 Cloud 私有上游。非法条目不会进入目录；整包没有合法条目时结果标记为失败。官方发行态首次网络失败不阻断本地/default/user 模型启动，registry 只对 Cloud 来源安排后台重试。
 
 Cloud 成功快照会原子替换旧 Cloud 模型、更新 purpose
 defaults 并发布刷新事件。事件 payload 不是第二份目录；Renderer 收到 Electron 信号后仍从 HTTP

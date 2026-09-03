@@ -7,9 +7,13 @@
 `processRuntime` 只包含 Backend 自己拥有的 Qdrant、owned pipe launcher 与队列 Worker 运行依赖。它与对话 `conversationExecutionRuntimeFactory` 都由最外层 composition 注入；这样 App Server 可以选择纯 Node adapter，而无需在 Backend 入口里按宿主类型分支或读取 `process.env`。
 
 App Server bootstrap 使用独立 fd 3 一次性 pipe，不进入 argv 或 lifecycle stdout。帧包含严格 Backend 配置、
-`BackendBootstrapFacts`、Main 在内部环境写入前捕获的 Command host environment 与测量开关；child 完整校验后才可
+`BackendBootstrapFacts`（含 `source / community / official` 发行身份）、Main 在内部环境写入前捕获的 Command host environment 与测量开关；child 完整校验后才可
 启动 owner。lifecycle `ready` 必须返回真实 API port、renderer token、应用版本与数据库 ready 事实，不能用空 sidecar
 或“进程仍存活”替代业务就绪。
+
+发行身份由 Electron Main 验证并经 bootstrap 传入，Backend 只安装一次只读事实。它不能读取
+`LINNYA_DEV_MODE`、`NODE_ENV` 或 `packaged` 自行推导官方身份；稳定合同见
+[`shared/distribution-identity`](../../../shared/distribution-identity/README.md)。
 
 Backend 的 start、stop、ready、health 和配置生命周期只属于 App owner。Renderer 不拥有启停或重启 Backend 的 IPC；前端只消费已经过认证的业务 HTTP/SSE 与明确的 Desktop capability。
 

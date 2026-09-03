@@ -162,11 +162,10 @@ target**，不要把「单独命令存在」当作已进默认发布面。
 | `LINNYA_PLUGIN_<ID>_PACKAGE_DIR` / `LINNYA_PLUGIN_PACKAGE_DIR`                                                 | 插件包目录覆盖                                                                                   |
 | `LINNYA_PLUGIN_<ID>_R2_PREFIX` / `LINNYA_PLUGIN_R2_PREFIX`                                                     | R2 前缀                                                                                          |
 | `LINNYA_PLUGIN_<ID>_DOWNLOAD_BASE_URL` / `LINNYA_PLUGIN_DOWNLOAD_BASE_URL` / `LINNYA_PLUGIN_DOWNLOAD_ROOT_URL` | 下载地址                                                                                         |
-| `LINNYA_PLUGIN_<ID>_LATEST_URL`                                                                                | 单插件 latest.json 覆盖                                                                          |
 | `LINNYA_PLUGIN_CATALOG_OUTPUT`                                                                                 | catalog 输出路径                                                                                 |
 | `LINNYA_PLUGIN_UPLOAD_DRY_RUN`                                                                                 | 上传 dry-run                                                                                     |
 | `LINNYA_R2_BUCKET`                                                                                             | R2 bucket（默认 `linny-app-store`，正式发布建议显式设置）                                        |
 | `LINNYA_R2_SMOKE`                                                                                              | 启用 R2 公网 smoke                                                                               |
 
-> 遗留别名 `LINNYA_MINDMAP_PLUGIN_LATEST_URL`、`LINNYA_SLIDES_PLUGIN_LATEST_URL`
-> 已废弃，运行时不再读取；新旧脚本一律用 `LINNYA_PLUGIN_<ID>_LATEST_URL`。
+> 本表中的下载地址变量只服务构建、上传和公网 smoke 脚本，不是 Desktop 运行时配置。
+> Desktop 只允许 `official` 发行身份访问固定官方插件源，普通环境变量不能改写地址。

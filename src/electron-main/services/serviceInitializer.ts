@@ -66,6 +66,7 @@ import { createDocumentOcrPort } from 'src/app-hosts/linnya/adapters/document-oc
 import type { DocumentOcrPort } from 'src/domains/document-ocr';
 import type { QueueWorkerRuntime } from 'src/infra/task-queue/definitions/queueWorkerRuntime';
 import type { RuntimePathRoots } from 'src/shared/runtime-paths';
+import { requireInstalledDistributionIdentity } from 'src/shared/distribution-identity';
 
 /**
  * 服务初始化结果接口
@@ -417,6 +418,7 @@ export class ServiceInitializer {
       await queueManager.initialize({
         workerRuntime: this.queueWorkerRuntime,
         runtimePathRoots: this.runtimePathRoots,
+        distributionIdentity: requireInstalledDistributionIdentity(),
         qdrantUrl: this.qdrantUrl ?? undefined,
         jobPresentationPublisher: getBackendRendererIntegrationPort().queueJobPresentationPublisher,
         ingestionLifecycleObserver: {

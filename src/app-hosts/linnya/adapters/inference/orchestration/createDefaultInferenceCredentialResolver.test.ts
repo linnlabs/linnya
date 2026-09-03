@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ModelConfig } from 'src/domains/model-catalog';
+import { createOfficialDistributionIdentity } from 'src/shared/distribution-identity';
 import { createDefaultInferenceCredentialResolver } from './createDefaultInferenceCredentialResolver';
 
 function model(id: string, credentialReference: ModelConfig['credential_reference']): ModelConfig {
@@ -33,6 +34,10 @@ describe('default inference credential resolver', () => {
         resolveCredential: id => (id === cloudModel.id ? 'linnya-cloud' : 'byok-secret'),
       },
       resolveCloudDeviceId: async () => 'device-fixture',
+      distributionIdentity: createOfficialDistributionIdentity({
+        releaseChannel: 'stable',
+        releaseKeyId: 'fixture',
+      }),
       providerAccounts: {
         resolve: async () => {
           throw new Error('fixture 不使用 Provider account');

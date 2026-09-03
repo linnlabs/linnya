@@ -1,5 +1,3 @@
-/* global process */
-
 import { autoUpdater } from 'electron-updater';
 import { getMainWindow } from './window-manager.js';
 import { Logger } from '../shared/logger.js';
@@ -21,29 +19,16 @@ function sendStatusToWindow(channel, payload) {
 }
 
 /**
- * @description 初始化自动更新管理器。
+ * @description 只为通过发行清单验签的官方 Desktop 初始化自动更新管理器。
+ * @param {import('../shared/distribution-identity/index.ts').DistributionIdentity} distributionIdentity
  */
-export function initializeUpdateManager() {
-  // 直接让 electron-updater 使用 app.getVersion()
-  // 它会自动创建正确的 SemVer 对象
-  // 不要尝试手动设置 currentVersion!
-  // 如果要覆盖，应该这样做：
-  if (process.env.NODE_ENV === 'development') {
-    // 在开发环境中，我们需要手动为 autoUpdater 提供配置，
-    // 因为它不会像在打包应用中那样自动读取 package.json 的 publish 字段。
-    autoUpdater.setFeedURL({
-      provider: 'generic',
-      // 说明：统一使用线上更新源（Cloudflare R2 公网域名）。
-      // 注意：这里是“更新源目录”，不是某个具体文件；electron-updater 会在其下请求 latest-*.yml 等文件。
-      url: 'https://download.linnyai.com/updates'
-    });
-    
-    // 强制在开发模式下检查更新。
-    autoUpdater.forceDevUpdateConfig = true;
-    
-    // 在开发环境中允许降级，方便测试
-    autoUpdater.allowDowngrade = true;
+export function initializeUpdateManager(distributionIdentity) {
+  if (distributionIdentity.kind !== 'official') {
+    updateLogger.info(`disabled for ${distributionIdentity.kind} distribution`);
+    return;
   }
+
+  // 官方包由 electron-builder 的发布配置提供 feed；源码运行不能覆盖到正式更新源。
   // ------- 彻底禁用 GH_TOKEN / GITHUB_TOKEN -------
   delete process.env.GH_TOKEN;
   delete process.env.GITHUB_TOKEN;
@@ -125,7 +110,7 @@ export function initializeUpdateManager() {
    * ⚠️ 重要：不要在此处自动触发 checkForUpdates。
    *
    * 根因说明（中文）：
-   * - 生产/开发环境下，initializeUpdateManager() 会在窗口创建之前被调用（见 app-lifecycle）。
+   * - official 发行态下，initializeUpdateManager() 会在窗口创建之前被调用（见 app-lifecycle）。
    * - 如果这里自动检查更新，autoUpdater 的事件可能在 mainWindow 还没创建时触发，
    *   sendStatusToWindow() 会直接丢弃消息，导致前端“稳定不弹窗/偶发不弹窗”。
    *

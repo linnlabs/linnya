@@ -29,6 +29,10 @@ import {
   installRuntimePathRoots,
   type RuntimePathRoots,
 } from '../../../shared/runtime-paths';
+import {
+  installDistributionIdentity,
+  type DistributionIdentity,
+} from '../../../shared/distribution-identity';
 import { getDatabaseService } from '../../../electron-main/services/database';
 import { BetterSqliteMetadataRepository } from '../../../features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
 import { cleanupFailedDocument } from '../../../features/knowledge-base/ingestion/failureCleanup';
@@ -91,6 +95,16 @@ function installWorkerRuntimePathRoots(): void {
   installRuntimePathRoots(runtimePathRoots);
 }
 
+function installWorkerDistributionIdentity(): DistributionIdentity {
+  const distributionIdentity = (
+    workerData as { readonly distributionIdentity?: DistributionIdentity } | undefined
+  )?.distributionIdentity;
+  if (!distributionIdentity) {
+    throw new Error('[IngestionWorker] 缺少 owner 传入的 Desktop distribution identity');
+  }
+  return installDistributionIdentity(distributionIdentity);
+}
+
 // 全局状态标志
 let isCancelled = false;
 let isPaused = false;
@@ -148,10 +162,11 @@ async function initializeWorkerServices(): Promise<EmbeddingPort> {
 
   // 🔥 新增：首先修复Worker环境
   installWorkerRuntimePathRoots();
+  const distributionIdentity = installWorkerDistributionIdentity();
 
   try {
     // 路径合法性由 Model Catalog 唯一入口校验，worker 不重复探测或选择目录。
-    await modelCatalog.initialize();
+    await modelCatalog.initialize(distributionIdentity);
 
     const embeddingModels = modelCatalog.getModelsByCapability('embedding');
     logger.info(`🔍 可用的嵌入模型: [${embeddingModels.map(m => m.id).join(', ')}]`);

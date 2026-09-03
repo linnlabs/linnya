@@ -23,6 +23,7 @@ import { AudioProcessingQueue } from './AudioProcessingQueue';
 import type { AudioPreprocessingConfig } from '../../features/transcription/audio-preprocessing/config';
 import type { QueueWorkerRuntime } from './definitions/queueWorkerRuntime';
 import type { RuntimePathRoots } from '../../shared/runtime-paths';
+import type { DistributionIdentity } from '../../shared/distribution-identity';
 
 /**
  * src/pipeline/queues.ts
@@ -86,6 +87,7 @@ export class QueueManager extends EventEmitter {
   async initialize(options: {
     workerRuntime: QueueWorkerRuntime;
     runtimePathRoots: RuntimePathRoots;
+    distributionIdentity: DistributionIdentity;
     maxConcurrency?: number;
     qdrantUrl?: string;
     ingestionLifecycleObserver?: WorkerJobLifecycleObserver<IngestionJobPayload>;
@@ -100,6 +102,7 @@ export class QueueManager extends EventEmitter {
       workerScript: options.workerRuntime.ingestionScriptPath,
       lifecycleObserver: options.ingestionLifecycleObserver,
       runtimePathRoots: options.runtimePathRoots,
+      distributionIdentity: options.distributionIdentity,
     });
 
     // 监听队列事件并发布任务事实，同时对外提供通用事件订阅（扩展点）。
@@ -140,6 +143,7 @@ export class QueueManager extends EventEmitter {
         maxConcurrency: 1,
         workerScript: options.workerRuntime.graphExtractionScriptPath,
         runtimePathRoots: options.runtimePathRoots,
+        distributionIdentity: options.distributionIdentity,
       });
 
       this.graphExtractionQueue.on(
@@ -165,6 +169,7 @@ export class QueueManager extends EventEmitter {
         maxConcurrency: 1,
         workerScript: options.workerRuntime.graphIndexingScriptPath,
         runtimePathRoots: options.runtimePathRoots,
+        distributionIdentity: options.distributionIdentity,
       });
 
       this.graphIndexingQueue.on(

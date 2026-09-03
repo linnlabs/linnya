@@ -7,8 +7,6 @@
 
 import type { ModelReasoningConfig } from '@linnlabs/linnkit/contracts';
 import type {
-  InferenceApiSurface,
-  InferenceAuthProfile,
   LanguageInferenceRouteProfileId,
   ModelEmbeddingRoute,
   ModelImageGenerationRoute,
@@ -17,6 +15,7 @@ import type {
 } from '@app/schemas/model-inference';
 import type { DocumentOcrRoute } from '@app/schemas/document-ocr';
 import type { TranscriptionRoute } from '@app/schemas/transcription';
+import type { DistributionIdentity } from '../../../shared/distribution-identity';
 import type {
   CredentialReference,
   InferenceEndpointSelection,
@@ -320,5 +319,5 @@ export interface ModelCatalog {
    * 初始化注册表
    * @param envVars 环境变量映射
    */
-  initialize(envVars?: Record<string, string>): Promise<void>;
+  initialize(distributionIdentity?: DistributionIdentity): Promise<void>;
 }

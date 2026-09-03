@@ -18,6 +18,11 @@ packaged 产品只允许两类来源：
 
 开发态可以从 workspace 或显式目录直载插件。这项能力只服务开发、测试和受控 artifact smoke，不能通过普通环境变量带入 packaged 生产模式。
 
+Desktop 发行身份和插件 artifact 来源是两层不同证明：只有验签通过的 `official`
+Desktop 才能请求 Linnya 官方插件远端服务；`source` 与 `community` 仍可运行本地插件，
+但远程检查与安装在发出网络请求前失败关闭。即使 Desktop 是 `official`，下载到的插件
+也仍须单独通过本文件定义的 catalog/artifact 信任链，不能继承 Desktop 身份。
+
 ## 不变量
 
 1. `plugin.json` 只能声明插件能力，不能声明或提升自身官方身份。
@@ -29,6 +34,8 @@ packaged 产品只允许两类来源：
 7. 拒绝未知 artifact 时保留用户文档和插件数据；删除或恢复必须走独立、明确、可恢复的流程。
 8. Core 不得为产品策略引入具体插件 ID allowlist 或私有插件语义。
 9. 签名私钥、生产写入凭据、私有源码和内部发布地址不进入公共仓；通用验证逻辑、schema 和验证公钥可以公开。
+10. 普通进程环境变量不能改写 official Desktop 的插件下载地址，也不能让
+    `source` / `community` 获得官方远端服务准入。
 
 ## Bundled 来源
 
@@ -50,6 +57,10 @@ packaged 产品只允许两类来源：
 8. 启动或切换前再次完成来源准入。
 
 任何失败都必须保留原 active version，不能让半安装 artifact 进入执行目录。Catalog 未完成发布方签名以前，现有 `latest.json` 与 SHA512 链路只能视为完整性机制，不能描述成完整的官方身份验证。
+
+当前公共实现已先落地 Desktop 发行身份门禁，可信 Desktop key ring 仍为空。因此源码运行
+和本地 ad-hoc 包不会访问官方插件源；正式发行 key 与验签 catalog 建立前，也不存在可用的
+official 远程安装产品面。
 
 ## 第三方插件
 

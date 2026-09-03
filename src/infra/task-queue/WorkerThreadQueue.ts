@@ -16,6 +16,7 @@ import { calculateOptimalConcurrency } from './concurrency';
 import { readDiagnosticLogEnvelope } from '../../shared/logging';
 import { writeForwardedDiagnosticLogRecord } from '../../shared/logger';
 import type { RuntimePathRoots } from '../../shared/runtime-paths';
+import type { DistributionIdentity } from '../../shared/distribution-identity';
 
 /**
  * 任务状态枚举
@@ -73,6 +74,7 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
   private workerScript: string;
   private readonly lifecycleObserver?: WorkerJobLifecycleObserver<TPayload>;
   private readonly runtimePathRoots?: RuntimePathRoots;
+  private readonly distributionIdentity?: DistributionIdentity;
   private shuttingDown = false;
 
   constructor(options: {
@@ -80,6 +82,7 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
     workerScript: string;
     lifecycleObserver?: WorkerJobLifecycleObserver<TPayload>;
     runtimePathRoots?: RuntimePathRoots;
+    distributionIdentity?: DistributionIdentity;
   }) {
     super();
     // 注意：maxConcurrency=0 在语义上表示“暂停队列，不自动启动任何任务”
@@ -88,6 +91,7 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
     this.workerScript = options.workerScript;
     this.lifecycleObserver = options.lifecycleObserver;
     this.runtimePathRoots = options.runtimePathRoots;
+    this.distributionIdentity = options.distributionIdentity;
 
     // 🔍 初始化诊断日志
     console.log(`[WorkerQueue] 初始化: maxConcurrency=${this.maxConcurrency}, workerScript=${this.workerScript}`);
@@ -160,6 +164,7 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
         workerData: {
           ...job.data,
           ...(this.runtimePathRoots ? { runtimePathRoots: this.runtimePathRoots } : {}),
+          ...(this.distributionIdentity ? { distributionIdentity: this.distributionIdentity } : {}),
         },
         env: process.env
       });

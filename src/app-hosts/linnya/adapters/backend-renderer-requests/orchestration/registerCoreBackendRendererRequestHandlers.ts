@@ -27,6 +27,7 @@ import type {
   DesktopCredentialProtectionPort,
   DesktopFileRevealPort,
 } from '../../../desktop-capabilities';
+import type { DistributionIdentity } from 'src/shared/distribution-identity';
 
 /**
  * App Server 内注册数据库与插件请求；文件 reveal 只依赖窄 Desktop port，审批 sender 语义仍留在 Main。
@@ -39,6 +40,7 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   readonly rendererIntegration: BackendRendererIntegrationPort;
   readonly applicationVersion: string;
   readonly packaged: boolean;
+  readonly distributionIdentity: DistributionIdentity;
   readonly fileReveal: DesktopFileRevealPort;
 }): Promise<void> {
   const ipc = createBackendRendererIpcStyleRegistrar(input.registry);
@@ -69,6 +71,7 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
     ipc,
     applicationVersion: input.applicationVersion,
     packaged: input.packaged,
+    distributionIdentity: input.distributionIdentity,
     rendererIntegration: input.rendererIntegration,
   });
 }

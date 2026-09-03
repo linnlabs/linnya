@@ -13,6 +13,10 @@ import {
   ModelRequestCredentialError,
   type ModelRequestCredentialResolver,
 } from '../definitions/modelRequestCredential';
+import {
+  requireInstalledDistributionIdentity,
+  type DistributionIdentity,
+} from 'src/shared/distribution-identity';
 
 interface DefaultCredentialCatalog {
   getModel(modelId: string): ModelConfig | undefined;
@@ -24,7 +28,7 @@ export interface DefaultModelRequestCredentialResolverDependencies {
   readonly catalog: DefaultCredentialCatalog;
   readonly resolveCloudDeviceId: () => Promise<string | null>;
   readonly providerAccounts: ProviderAccountRequestCredentialResolver;
-  readonly linnyaCloudClientEnabled?: boolean;
+  readonly distributionIdentity?: DistributionIdentity;
 }
 
 /**
@@ -64,10 +68,12 @@ export function createDefaultModelRequestCredentialResolver(
         credentialReference.credential_id === 'linnya-cloud';
       if (
         isLinnyaCloudCredential &&
-        !(dependencies.linnyaCloudClientEnabled ?? isLinnyaCloudClientEnabled(process.env))
+        !isLinnyaCloudClientEnabled(
+          dependencies.distributionIdentity ?? requireInstalledDistributionIdentity()
+        )
       ) {
         throw new ModelRequestCredentialError(
-          'Linnya Cloud model requests are disabled in source development mode.'
+          'Linnya Cloud model requests are disabled for this Desktop distribution.'
         );
       }
       const secret = dependencies.catalog.resolveCredential(request.model_id)?.trim();

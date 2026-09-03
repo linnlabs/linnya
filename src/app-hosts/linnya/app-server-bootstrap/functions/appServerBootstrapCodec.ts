@@ -41,6 +41,22 @@ const ArchitectureSchema = z.enum([
   's390x',
   'x64',
 ]);
+const DistributionIdentitySchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('source'),
+    packaged: z.literal(false),
+  }).strict(),
+  z.object({
+    kind: z.literal('community'),
+    packaged: z.literal(true),
+  }).strict(),
+  z.object({
+    kind: z.literal('official'),
+    packaged: z.literal(true),
+    releaseChannel: z.enum(['stable', 'beta']),
+    releaseKeyId: NonEmptyStringSchema,
+  }).strict(),
+]);
 
 const AppServerBootstrapSchema = z.object({
   schema_version: z.literal(APP_SERVER_BOOTSTRAP_SCHEMA_VERSION),
@@ -59,6 +75,7 @@ const AppServerBootstrapSchema = z.object({
     platform: PlatformSchema,
     architecture: ArchitectureSchema,
     packaged: z.boolean(),
+    distributionIdentity: DistributionIdentitySchema,
     resourcesPath: AbsolutePathSchema,
     mainBundleDirectory: AbsolutePathSchema,
     legacyUserDataDirectory: AbsolutePathSchema,

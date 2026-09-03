@@ -1,9 +1,9 @@
+import type { DistributionIdentity } from '../../../../../shared/distribution-identity';
+
 /**
- * 源码开发不应依赖 Linnya Cloud，也不应生成 Cloud 设备身份或产生隐式外部请求。
- * 发布态是否真正开放由服务端账号鉴权边界独立决定，客户端条件不能充当安全控制。
+ * 源码和社区构建不连接 Linnya Cloud；只有验签通过的官方发行可以进入客户端接入边界。
+ * 这不是服务端授权。账号 token、entitlement 与计量完成前 Cloud 数据面仍须保持关闭。
  */
-export function isLinnyaCloudClientEnabled(
-  environment: Readonly<Record<string, string | undefined>>
-): boolean {
-  return environment.LINNYA_DEV_MODE !== 'true';
+export function isLinnyaCloudClientEnabled(identity: DistributionIdentity): boolean {
+  return identity.kind === 'official';
 }

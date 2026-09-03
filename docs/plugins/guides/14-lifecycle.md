@@ -67,7 +67,10 @@
 
 ## 远程安装和更新
 
-入口 `plugins:installFromRemote`，官方默认 latest 地址 `https://download.linnyai.com/plugins/<pluginId>/latest.json`，可用 `LINNYA_PLUGIN_<ID>_LATEST_URL` 覆盖。
+入口 `plugins:installFromRemote`，运行时只使用固定官方 latest 地址
+`https://download.linnyai.com/plugins/<pluginId>/latest.json`。只有验签通过的
+`official` Desktop 可以在发出请求前通过门禁；源码运行与社区打包不连接该服务。
+普通环境变量不能覆盖运行时下载地址。
 
 安装不存在 DB-only 入口：任何「安装」都必须先拿到插件版本目录并完成迁移/active 指针切换，不能只把 `installed_plugins.installed` 改成 1。
 

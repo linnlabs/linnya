@@ -25,6 +25,10 @@ import {
   installRuntimePathRoots,
   type RuntimePathRoots,
 } from '../../../shared/runtime-paths';
+import {
+  installDistributionIdentity,
+  type DistributionIdentity,
+} from '../../../shared/distribution-identity';
 import { getDatabaseService } from '../../../electron-main/services/database';
 import { BetterSqliteMetadataRepository } from '../../../features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
 import { FileSotRepository } from '../../../features/knowledge-base/infrastructure/sotRepository';
@@ -87,12 +91,23 @@ function installWorkerRuntimePathRoots(): void {
   installRuntimePathRoots(runtimePathRoots);
 }
 
+function installWorkerDistributionIdentity(): DistributionIdentity {
+  const distributionIdentity = (
+    workerData as { readonly distributionIdentity?: DistributionIdentity } | undefined
+  )?.distributionIdentity;
+  if (!distributionIdentity) {
+    throw new Error('[GraphExtractionWorker] 缺少 owner 传入的 Desktop distribution identity');
+  }
+  return installDistributionIdentity(distributionIdentity);
+}
+
 async function initializeWorkerServices(): Promise<void> {
   installWorkerRuntimePathRoots();
+  const distributionIdentity = installWorkerDistributionIdentity();
 
   // 初始化模型注册表
   if (modelCatalog.getModels().length === 0) {
-    await modelCatalog.initialize();
+    await modelCatalog.initialize(distributionIdentity);
   }
 
 }

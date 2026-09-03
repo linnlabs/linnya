@@ -35,11 +35,13 @@ import { uninstallPluginLifecycle } from '../../../../features/plugins/install/o
 import { installPluginFromRemoteAndActivate } from '../../../../features/plugins/install/orchestration/installPluginFromRemoteAndActivate';
 import { checkPluginUpdateFromRemote } from '../../../../features/plugins/install/orchestration/installPluginUpdate';
 import { resolvePluginLatestManifestUrl } from '../../../../features/plugins/install/functions/resolvePluginLatestManifestUrl';
+import { isOfficialPluginRemoteServiceEnabled } from '../../../../features/plugins/install/functions/isOfficialPluginRemoteServiceEnabled';
 import { runPluginLifecycleOperationSerially } from '../../../../features/plugins/install/orchestration/pluginLifecycleSerialExecutor';
 import { resolveDiskPluginUpgradePlan } from '../../../plugins/install/diskPluginUpgradePlan';
 import { getRunSupervisor } from '../../../services/agentRuntimeSingletons';
 import { cancelActiveRunsForPluginRuntimeChange } from '../../../../app-hosts/linnya/plugin-registry/pluginRuntimeRunInvalidation';
 import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
+import type { DistributionIdentity } from '../../../../shared/distribution-identity';
 
 const logger = new Logger('PluginsIPC');
 
@@ -88,6 +90,7 @@ export async function registerPluginsHandlers(input: {
   readonly ipc: BackendRendererIpcStyleRegistrarPort;
   readonly applicationVersion: string;
   readonly packaged: boolean;
+  readonly distributionIdentity: DistributionIdentity;
   readonly rendererIntegration: Pick<BackendRendererIntegrationPort, 'publishPluginsChanged'>;
 }): Promise<void> {
   const databaseService = input.runtimeOwner.getServices().databaseService;
@@ -235,6 +238,9 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:checkRemoteUpdate', async (_event, rawPluginId: unknown) => {
     try {
+      if (!isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
+        throw new Error('当前 Desktop 发行身份不允许连接 Linnya 官方插件更新服务');
+      }
       const pluginId = parsePluginId(rawPluginId, 'plugins:checkRemoteUpdate');
       const service = getService();
       const states = service.listStates(listRegisteredBackendPluginMetas());
@@ -264,6 +270,9 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:installFromRemote', async (_event, rawPluginId: unknown) => {
     try {
+      if (!isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
+        throw new Error('当前 Desktop 发行身份不允许连接 Linnya 官方插件下载服务');
+      }
       const pluginId = parsePluginId(rawPluginId, 'plugins:installFromRemote');
       return await runPluginLifecycleOperationSerially({
         pluginId,
