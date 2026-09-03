@@ -82,7 +82,9 @@ jobs:
 
   tests:
     name: Public test suite
-    runs-on: ubuntu-latest
+    # 完整 backend 会构建 Desktop Plugin CLI native client；产品当前只支持 macOS/Windows，
+    # 因此不能用没有正式 runtime target 的 Linux 冒充受支持宿主。
+    runs-on: macos-latest
     timeout-minutes: 30
     steps:
       - name: Checkout
