@@ -233,12 +233,17 @@ availability 已由 Host 一次投影完成。
 store 只持有最后一次严格解析后的快照、当前操作和结构化错误。HTTP、更新流程和同步 state
 action 分别位于 infrastructure、orchestration 和 store。新增目录模型不会在 Renderer 生成默认偏好；尚未 materialize 的正式 Provider 模型只服务 Settings 全目录，不进入快捷选择候选。
 
-模型目录注册、删除或 Cloud 更新后必须同时重读 model catalog 与 model picker read
+模型目录注册、Provider 目录模型激活、删除或 Cloud 更新后必须同时重读 model catalog 与 model picker read
 model。快捷可见性与用途绑定互不覆盖：关闭显示不清空 primary/辅助/Embedding/OCR 等绑定。Cloud 模型上下架由 Cloud
 Model Catalog 在发布前控制，客户端不再镜像一个恒真的 `ModelConfig.enabled`。
 
+Provider 目录模型激活虽然从 picker 设置界面发起，但 Host 会创建新的 ModelConfig，因此 Renderer 必须通过 domain 根
+`orchestration/activateConfiguredProviderModel.ts` 完成跨 feature 编排。model-picker feature 只提交激活并接纳新的 picker
+快照，UI 不得直接调用它后跳过 model catalog 刷新。
+
 图片输入开关表达模型本身能否理解图片，不是让用户编辑 Provider placement。Host 注册或更新模型时，将这个语义能力
-分别与 route profile 的 `user_image`、`tool_result_image` 相交；设置页只读展示两种来源最终是否可用。因而
+分别与 route profile 的 `user_image`、`tool_result_image` 相交；设置页只提供统一的“支持视觉识别”语义开关，不展示 route
+级图片来源差异。因而
 Chat-only endpoint 可以让多模态模型接收用户附件，而不承诺读取工具返回图片。关闭图片输入后两个有效位置都关闭。
 图片生成是独立工具能力：生成、保存和 Renderer 展示不依赖当前聊天 route；只有把结果继续交给模型时才要求
 `tool_result_image`。模型选择器与 Composer 只消费 `image_input + user_image`，不因工具图片位置缺失而隐藏模型或阻止发送。

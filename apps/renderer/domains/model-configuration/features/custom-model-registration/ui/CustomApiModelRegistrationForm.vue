@@ -83,26 +83,6 @@
       :description="settingsMessage('settings.addModel.imageInput.description')"
     />
 
-    <SettingsRow :label="settingsMessage('settings.modelCapability.userImage')">
-      {{
-        settingsMessage(
-          selectedFormatImageInputSupport.user_image
-            ? 'settings.modelCapability.supported'
-            : 'settings.modelCapability.unsupported'
-        )
-      }}
-    </SettingsRow>
-
-    <SettingsRow :label="settingsMessage('settings.modelCapability.toolResultImage')">
-      {{
-        settingsMessage(
-          selectedFormatImageInputSupport.tool_result_image
-            ? 'settings.modelCapability.supported'
-            : 'settings.modelCapability.unsupported'
-        )
-      }}
-    </SettingsRow>
-
     <div class="add-model-submit">
       <button
         type="button"
@@ -119,7 +99,6 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
-import { projectCustomApiFormatImageInputSupport } from '@app/schemas/custom-api-onboarding';
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import { CustomSelect, CustomTextInput, SecretInput } from '@linnya/renderer-ui';
 import {
@@ -152,10 +131,6 @@ const customApiFormatOptions = computed<CustomSelectOption[]>(() =>
     value: option.id,
     text: settingsMessage(option.labelKey),
   }))
-);
-
-const selectedFormatImageInputSupport = computed(() =>
-  projectCustomApiFormatImageInputSupport(form.value.customApiFormat, form.value.supportsImageInput)
 );
 
 const submitText = computed(() => {

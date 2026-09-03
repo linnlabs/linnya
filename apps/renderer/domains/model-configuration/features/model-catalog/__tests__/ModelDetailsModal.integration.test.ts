@@ -126,7 +126,7 @@ describe('ModelDetailsModal token capacity editing', () => {
     expect(document.querySelector('.form-row .select-trigger')).toBeNull();
   });
 
-  it('Chat-only 图片模型分别展示用户图片可用、工具结果图片不可用', async () => {
+  it('图片模型只展示统一视觉识别开关，不暴露 route 图片来源细节', async () => {
     const model = createModel();
     model.capabilities = ['chat', 'image_input'];
     if (!model.inference_route) throw new Error('测试模型必须包含推理 route');
@@ -138,11 +138,9 @@ describe('ModelDetailsModal token capacity editing', () => {
     app.mount(host);
     await flushUi();
 
-    const infoTexts = Array.from(document.querySelectorAll('.info-text')).map(element =>
-      element.textContent?.trim()
-    );
-    expect(infoTexts).toContain('settings.modelCapability.supported');
-    expect(infoTexts).toContain('settings.modelCapability.unsupported');
     expect(document.querySelector<HTMLInputElement>('.toggle-switch input')?.checked).toBe(true);
+    expect(document.body.textContent).toContain('settings.modelCapability.imageInput');
+    expect(document.body.textContent).not.toContain('settings.modelCapability.userImage');
+    expect(document.body.textContent).not.toContain('settings.modelCapability.toolResultImage');
   });
 });

@@ -157,7 +157,8 @@ Completions 只允许文本 tool message；Host 不改写 package request
 body，也不把工具图片伪装成 user message。共享 route profile
 registry 记录经过 conformance 验证的图片来源上限，route 不能声明超出对应第三方 codec 的
 `input_support`。模型目录中的 `image_input` 只表达模型能否理解图片；注册边界把该语义能力分别与 profile 的
-`user_image`、`tool_result_image` 相交。产品开关不因某一个来源缺失而被整体禁用，设置页只读展示两种来源的有效结果。
+`user_image`、`tool_result_image` 相交。产品开关不因某一个来源缺失而被整体禁用；设置页只提供统一的视觉识别语义开关，
+不把 route 级图片来源差异暴露为额外配置项。
 OpenAI-compatible Chat 可以接收用户图片但不能接收工具结果图片，这个差异不能通过 synthetic user message 抹平。
 
 Canonical message 的顺序属于 Linnkit 合同。普通 route 的 AI SDK

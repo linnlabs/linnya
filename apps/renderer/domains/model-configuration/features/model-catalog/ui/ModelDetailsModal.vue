@@ -143,40 +143,6 @@
         </div>
       </div>
 
-      <div class="form-row input-row">
-        <label class="form-label">{{
-          settingsMessage('settings.modelCapability.userImage')
-        }}</label>
-        <div class="control-area">
-          <div class="info-text">
-            {{
-              settingsMessage(
-                currentRouteImageInputSupport.user_image
-                  ? 'settings.modelCapability.supported'
-                  : 'settings.modelCapability.unsupported'
-              )
-            }}
-          </div>
-        </div>
-      </div>
-
-      <div class="form-row input-row">
-        <label class="form-label">{{
-          settingsMessage('settings.modelCapability.toolResultImage')
-        }}</label>
-        <div class="control-area">
-          <div class="info-text">
-            {{
-              settingsMessage(
-                currentRouteImageInputSupport.tool_result_image
-                  ? 'settings.modelCapability.supported'
-                  : 'settings.modelCapability.unsupported'
-              )
-            }}
-          </div>
-        </div>
-      </div>
-
       <!-- 模态框内错误信息 -->
       <div v-if="modalState.error" class="error-message">{{ modalState.error }}</div>
 
@@ -207,7 +173,6 @@ import { buildEditableLanguageModelUpdate } from '../functions/buildEditableLang
 import { updateModelInCatalog } from '../orchestration/modelCatalogOperations';
 import { deleteConfiguredModel } from '../../../orchestration/deleteConfiguredModel';
 import {
-  readConfigurableLanguageRouteImageInputSupport,
   resolveConfigurableLanguageProtocolLabelKey,
   resolveConfigurableLanguageRouteProfileId,
 } from '../../inference-endpoints';
@@ -276,15 +241,6 @@ const currentProviderProfileLabel = computed(() => {
   if (!props.model?.inference_route) return settingsMessage('settings.protocol.auto');
   const profileId = resolveConfigurableLanguageRouteProfileId(props.model.inference_route);
   return settingsMessage(resolveConfigurableLanguageProtocolLabelKey(profileId));
-});
-
-const currentRouteImageInputSupport = computed(() => {
-  if (!props.model?.inference_route || !editForm.supports_image_input) {
-    return { user_image: false, tool_result_image: false };
-  }
-  return readConfigurableLanguageRouteImageInputSupport(
-    resolveConfigurableLanguageRouteProfileId(props.model.inference_route)
-  );
 });
 
 // 检测表单是否有修改

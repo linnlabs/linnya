@@ -49,7 +49,10 @@ function createResolutionContext(): ModelPurposeResolutionContext {
 
 function requireSupportedModel(slot: ModelBindingSlot, modelId: string): void {
   const model = useModelCatalogStore().models.find(candidate => candidate.id === modelId);
-  if (!model || !modelSupportsBindingSlot(model, slot)) {
+  if (!model) {
+    throw new Error(`模型 ${modelId} 不在当前模型目录中`);
+  }
+  if (!modelSupportsBindingSlot(model, slot)) {
     throw new Error(`模型 ${modelId} 不支持用途 ${slot}`);
   }
 }

@@ -14,7 +14,6 @@ export {
   useModelCatalogReadModel,
 } from './features/model-catalog';
 export {
-  activateModelPickerProviderModel,
   buildConversationModelSelectOptions,
   loadModelPicker,
   setModelPickerModelVisibility,

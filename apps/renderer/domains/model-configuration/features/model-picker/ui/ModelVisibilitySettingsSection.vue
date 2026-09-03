@@ -146,7 +146,6 @@ import {
   useSettingsLocalization,
 } from '@/domains/settings/public';
 import {
-  activateModelPickerProviderModel,
   loadModelPicker,
   setModelPickerModelVisibility,
   setModelPickerProviderVisibility,
@@ -159,6 +158,13 @@ import {
   type ModelVisibilitySource,
 } from '../functions/projectModelVisibilitySources';
 import './ModelVisibilitySettingsSection.css';
+
+const props = defineProps<{
+  readonly activateProviderModel: (
+    configuredProviderId: string,
+    providerModelId: string
+  ) => Promise<void>;
+}>();
 
 const modelPicker = useModelPickerReadModel();
 const modelCatalog = useModelCatalogReadModel();
@@ -186,7 +192,9 @@ const filteredModels = computed(() =>
   selectedSource.value ? filterModelVisibilityModels(selectedSource.value, modelQuery.value) : []
 );
 const isMutating = computed(
-  () => modelPicker.activeOperation.value !== null && modelPicker.activeOperation.value !== 'load'
+  () =>
+    (modelPicker.activeOperation.value !== null && modelPicker.activeOperation.value !== 'load') ||
+    modelCatalog.activeOperation.value !== null
 );
 const isSelectedSourceDisabled = computed(
   () => selectedSource.value?.kind === 'provider' && !selectedSource.value.pickerEnabled
@@ -269,7 +277,7 @@ async function setModelVisibility(
     return;
   }
   if (!visible || selectedSource.value?.kind !== 'provider') return;
-  await activateModelPickerProviderModel(
+  await props.activateProviderModel(
     selectedSource.value.configuredProviderId,
     model.provider_model_id
   );
