@@ -7,7 +7,7 @@
 | 你想了解什么 | 第一入口 |
 | --- | --- |
 | Linnya 是什么、从哪里来、现在与未来去哪里 | [产品模型总览](./product-model-overview.md) |
-| 代码如何分层、一个改动应归谁、继续去哪里找细节 | [AI 与工程地图](./README_FOR_AI.md) |
+| 代码如何分层、一个改动应归谁、继续去哪里找细节 | [仓库工程协作指南](../AGENTS.md) |
 | 安装、启动、构建、测试、环境变量和跨平台开发 | [开发指南](./development/README.md) |
 | 公共文档应该保存什么、哪些过程材料不进公开仓 | [文档治理](./documentation-governance.md) |
 | Conversation 的身份、事件、持久化、投影与渲染 | [Conversation Platform](./conversation-platform/README.md) |

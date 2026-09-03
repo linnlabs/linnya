@@ -9,7 +9,7 @@
 - `maintenance/`：显式修改或清理开发数据。命令必须要求精确目标，并在文件头说明影响范围和运行时前提。
 - `e2e/`：调用真实模块完成可重复的跨层验证；只有输出日志、没有断言或真实实现参与的手工实验不属于 E2E。
 - `test-runner/`：为 Electron ABI 等运行时要求提供启动器，不拥有被执行脚本的业务语义。
-- `guards/`：固化架构、合同与公共源码边界；不能承担自动修复业务代码的职责。`public-local-path-leak-guard.ts` 按路径结构拦截用户 Home、机器卷、macOS 用户临时目录和绝对符号链接，不保存真实用户名或本机路径基线；`public-document-boundary-guard.ts` 只按仓库相对路径禁止跟踪内部过程文档，不知道私有仓位置。
+- `guards/`：固化架构、合同与公共源码边界；不能承担自动修复业务代码的职责。`public-source-sanitization-guard.ts` 按结构拦截用户 Home、机器卷、盘符根开发 checkout、macOS 用户临时目录、绝对符号链接和已退役产品身份，不保存真实用户名、本机路径或旧名称字面量；`public-document-boundary-guard.ts` 只按仓库相对路径禁止跟踪内部过程文档，不知道私有仓位置。
 
 Electron 开发入口由 `development/orchestration/startElectronDevelopment.mjs` 统一持有 Vite
 dev server，再把实际 renderer URL 传给 Electron。服务只绑定 `127.0.0.1`，默认使用

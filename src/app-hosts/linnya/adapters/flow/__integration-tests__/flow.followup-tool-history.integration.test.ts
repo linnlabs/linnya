@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // 真要在测试里替换 TokenCalculator，应改在 linnkit 内部用依赖注入或单独提供
 // 一个 testkit harness，而不是从外部 mock 一个内部模块。
 vi.mock('@shared/utils/pathManager', () => {
-  const stubPath = 'D:/code/Tingtalk_official_version/_test_data';
+  const stubPath = 'test-project/_test_data';
   const pathManager = {
     getAppDataPath: vi.fn(() => stubPath),
     getWorkspaceRoot: vi.fn(() => stubPath),
@@ -17,7 +17,7 @@ vi.mock('@shared/utils/pathManager', () => {
     getTempDirectory: vi.fn(() => stubPath),
     getSourceOfTruthPath: vi.fn(() => stubPath),
     getLogDirectory: vi.fn(() => stubPath),
-    getProjectRoot: vi.fn(() => 'D:/code/Tingtalk_official_version'),
+    getProjectRoot: vi.fn(() => 'test-project'),
     setWorkspaceRoot: vi.fn(() => stubPath),
     getConversationEvidenceBundlesDir: vi.fn(() => stubPath),
     getConversationCitationSnapshotBundlesDir: vi.fn(() => stubPath),

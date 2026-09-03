@@ -1,6 +1,6 @@
-# README_FOR_AI：Linnya 公开工程地图
+# Linnya 工程协作指南
 
-> 本文件是给 AI 与新贡献者的公共工程导航，回答 Linnya 的代码如何分层、改动应该归谁，以及应继续阅读哪份正式文档。产品定义见[产品模型总览](./product-model-overview.md)，本地操作见[开发指南](./development/README.md)。实现事实以 owner 代码、schema 与相邻 README 为准。
+> 本文件是仓库根级 AI 开发指令与公共工程导航，回答 Linnya 的代码如何分层、改动应该归谁，以及应继续阅读哪份正式文档。产品定义见[产品模型总览](./docs/product-model-overview.md)，本地操作见[开发指南](./docs/development/README.md)。实现事实以 owner 代码、schema 与相邻 README 为准。
 
 ## 1. 产品与架构
 
@@ -33,25 +33,25 @@ Linnya 是一个以 Agent 为中心的文档数据库，也是基于 Electron �
 
 开发插件先读：
 
-- [`packages/plugin-host-contract/README.md`](../packages/plugin-host-contract/README.md)
-- [`packages/plugins/mindmap/README.md`](../packages/plugins/mindmap/README.md)
-- [`packages/plugins/slides/README.md`](../packages/plugins/slides/README.md)
-- [`packages/renderer-ui/README.md`](../packages/renderer-ui/README.md)
+- [`packages/plugin-host-contract/README.md`](./packages/plugin-host-contract/README.md)
+- [`packages/plugins/mindmap/README.md`](./packages/plugins/mindmap/README.md)
+- [`packages/plugins/slides/README.md`](./packages/plugins/slides/README.md)
+- [`packages/renderer-ui/README.md`](./packages/renderer-ui/README.md)
 
 ## 4. 按任务找 owner
 
 | 任务 | 第一入口 |
 | --- | --- |
 | Agent loop、Run、child run、RuntimeEvent | [`linnlabs/linnkit`](https://github.com/linnlabs/linnkit) 的 Runtime 与 integration 文档 |
-| Linnya Agent 与产品装配 | [`src/app-hosts/linnya/README.md`](../src/app-hosts/linnya/README.md) |
-| 跨端 schema | [`packages/schemas/README.md`](../packages/schemas/README.md) |
-| Renderer UI 通用能力 | [`packages/renderer-ui/README.md`](../packages/renderer-ui/README.md) |
-| Slides | [`packages/plugins/slides/README.md`](../packages/plugins/slides/README.md) |
-| Conversation CLI | [`apps/linnya-cli/README.md`](../apps/linnya-cli/README.md) |
-| 产品定义与公开历史 | [`product-model-overview.md`](./product-model-overview.md) |
-| 开发、构建、测试与本机配置 | [`development/README.md`](./development/README.md) |
-| Conversation 身份、事件与 UI 投影 | [`conversation-platform/README.md`](./conversation-platform/README.md) |
-| 插件架构与开发 | [`plugins/README.md`](./plugins/README.md) |
+| Linnya Agent 与产品装配 | [`src/app-hosts/linnya/README.md`](./src/app-hosts/linnya/README.md) |
+| 跨端 schema | [`packages/schemas/README.md`](./packages/schemas/README.md) |
+| Renderer UI 通用能力 | [`packages/renderer-ui/README.md`](./packages/renderer-ui/README.md) |
+| Slides | [`packages/plugins/slides/README.md`](./packages/plugins/slides/README.md) |
+| Conversation CLI | [`apps/linnya-cli/README.md`](./apps/linnya-cli/README.md) |
+| 产品定义与公开历史 | [`docs/product-model-overview.md`](./docs/product-model-overview.md) |
+| 开发、构建、测试与本机配置 | [`docs/development/README.md`](./docs/development/README.md) |
+| Conversation 身份、事件与 UI 投影 | [`docs/conversation-platform/README.md`](./docs/conversation-platform/README.md) |
+| 插件架构与开发 | [`docs/plugins/README.md`](./docs/plugins/README.md) |
 
 修改前继续阅读目标目录内的 definitions、functions、orchestration、公开 index 与相邻 README，确认调用链和唯一 owner 后再动代码。
 
@@ -72,10 +72,10 @@ pnpm install --frozen-lockfile
 pnpm run dev:electron
 ```
 
-提交前运行目标 owner 的最小真实 gate，并确认 `git diff --check`。完整入口见[构建与测试指南](./development/build-and-test.md)。
+提交前运行目标 owner 的最小真实 gate，并确认 `git diff --check`。完整入口见[构建与测试指南](./docs/development/build-and-test.md)。
 
 ## 7. 事实优先级
 
 发生冲突时，依次核对：可执行 schema/public contract 与 owner 实现、相邻稳定 README、本工程地图。历史 proposal、audit、迁移记录和旧 release note 不能覆盖当前合同。
 
-公共仓不保存内部过程 Proposal、研究日志或发布证据，也不得链接或依赖相邻私有文档仓。稳定结论必须回写对应 owner README 或正式规范；完整边界见[文档治理](./documentation-governance.md)。
+公共仓不保存内部过程 Proposal、研究日志或发布证据，也不得链接或依赖相邻私有文档仓。稳定结论必须回写对应 owner README 或正式规范；完整边界见[文档治理](./docs/documentation-governance.md)。

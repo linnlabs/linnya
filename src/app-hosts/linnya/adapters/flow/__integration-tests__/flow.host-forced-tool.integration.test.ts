@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@shared/utils/pathManager', () => {
-  const stubPath = 'D:/code/Tingtalk_official_version/_test_data';
+  const stubPath = 'test-project/_test_data';
   const pathManager = {
     getAppDataPath: vi.fn(() => stubPath),
     getWorkspaceRoot: vi.fn(() => stubPath),
@@ -11,7 +11,7 @@ vi.mock('@shared/utils/pathManager', () => {
     getTempDirectory: vi.fn(() => stubPath),
     getSourceOfTruthPath: vi.fn(() => stubPath),
     getLogDirectory: vi.fn(() => stubPath),
-    getProjectRoot: vi.fn(() => 'D:/code/Tingtalk_official_version'),
+    getProjectRoot: vi.fn(() => 'test-project'),
     setWorkspaceRoot: vi.fn(() => stubPath),
     getConversationEvidenceBundlesDir: vi.fn(() => stubPath),
     getConversationCitationSnapshotBundlesDir: vi.fn(() => stubPath),

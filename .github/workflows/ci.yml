@@ -32,7 +32,8 @@ jobs:
       - name: Run public architecture gates
         run: |
           pnpm run guard:github-actions-pinned
-          pnpm run guard:public-local-path-leak
+          pnpm run guard:agents-links
+          pnpm run guard:public-source-sanitization
           pnpm run guard:public-document-boundary
           pnpm run guard:remote-telemetry-boundary
           pnpm run guard:public-package-private-plugin-boundary

@@ -1,24 +1,27 @@
 /**
- * 公共源码本机路径泄露门禁。
+ * 公共源码净化门禁。
  *
- * 门禁按路径结构识别用户 Home、机器卷与 macOS 用户临时目录，不记录任何维护者
- * 用户名，也不维护“已知泄露路径”基线。文档和测试可以使用明确的公共占位符。
+ * 门禁按结构识别用户 Home、机器卷、开发 checkout 与 macOS 用户临时目录，
+ * 同时阻止已退役的产品身份回流。规则不记录维护者用户名、真实本机路径或旧名称
+ * 的完整字面量，也不维护“已知泄露内容”基线。
  */
 import { execFileSync } from 'node:child_process';
 import fs, { type Stats } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export type PublicLocalPathLeakReason =
+export type PublicSourceSanitizationReason =
   | 'absolute-symlink-target'
   | 'machine-volume-path'
   | 'macos-user-temporary-path'
+  | 'retired-product-name'
+  | 'windows-development-root-path'
   | 'user-home-path';
 
-export interface PublicLocalPathLeakViolation {
+export interface PublicSourceSanitizationViolation {
   readonly file: string;
   readonly line: number;
-  readonly reason: PublicLocalPathLeakReason;
+  readonly reason: PublicSourceSanitizationReason;
 }
 
 const PUBLIC_PLACEHOLDER_SEGMENTS = new Set([
@@ -43,6 +46,12 @@ const MACHINE_VOLUME_PATH_PATTERN =
   /(?:file:\/\/\/|(?<![A-Za-z0-9_.@/-])\/)(?:Volumes|media|mnt)\/([^/\\\s"'`]+)/giu;
 const MACOS_USER_TEMPORARY_PATH_PATTERN =
   /(?:file:\/\/\/|(?<![A-Za-z0-9_.@/-])\/)(?:private\/)?var\/folders(?:\/|(?=[\s"'`]))/giu;
+const WINDOWS_DEVELOPMENT_ROOT_PATH_PATTERN =
+  /(?:file:\/\/\/|(?<![A-Za-z0-9_.@/-]))[A-Za-z]:[\\/]+(?:code|dev|development|projects|repos|source|workspace|workspaces)(?=[\\/])/giu;
+const RETIRED_PRODUCT_NAME_PATTERN = new RegExp(
+  `(?<![A-Za-z0-9])${['ting', 'talk'].join('')}(?=$|[^A-Za-z0-9])`,
+  'giu'
+);
 
 function isPublicPlaceholderSegment(segment: string): boolean {
   const normalized = segment.toLowerCase();
@@ -67,8 +76,8 @@ function collectSegmentPathViolations(
   relativePath: string,
   content: string,
   pattern: RegExp,
-  reason: PublicLocalPathLeakReason
-): PublicLocalPathLeakViolation[] {
+  reason: PublicSourceSanitizationReason
+): PublicSourceSanitizationViolation[] {
   return Array.from(content.matchAll(pattern))
     .filter(match => {
       const segment = match[1];
@@ -81,10 +90,23 @@ function collectSegmentPathViolations(
     }));
 }
 
-export function analyzePublicTextForLocalPathLeaks(
+function collectPatternViolations(
+  relativePath: string,
+  content: string,
+  pattern: RegExp,
+  reason: PublicSourceSanitizationReason
+): PublicSourceSanitizationViolation[] {
+  return Array.from(content.matchAll(pattern)).map(match => ({
+    file: relativePath,
+    line: resolveLineNumber(content, match.index),
+    reason,
+  }));
+}
+
+export function analyzePublicTextForSourceSanitization(
   relativePath: string,
   content: string
-): PublicLocalPathLeakViolation[] {
+): PublicSourceSanitizationViolation[] {
   return [
     ...collectSegmentPathViolations(
       relativePath,
@@ -104,11 +126,24 @@ export function analyzePublicTextForLocalPathLeaks(
       MACHINE_VOLUME_PATH_PATTERN,
       'machine-volume-path'
     ),
-    ...Array.from(content.matchAll(MACOS_USER_TEMPORARY_PATH_PATTERN)).map(match => ({
-      file: relativePath,
-      line: resolveLineNumber(content, match.index),
-      reason: 'macos-user-temporary-path' as const,
-    })),
+    ...collectPatternViolations(
+      relativePath,
+      content,
+      WINDOWS_DEVELOPMENT_ROOT_PATH_PATTERN,
+      'windows-development-root-path'
+    ),
+    ...collectPatternViolations(
+      relativePath,
+      content,
+      MACOS_USER_TEMPORARY_PATH_PATTERN,
+      'macos-user-temporary-path'
+    ),
+    ...collectPatternViolations(
+      relativePath,
+      content,
+      RETIRED_PRODUCT_NAME_PATTERN,
+      'retired-product-name'
+    ),
   ];
 }
 
@@ -130,9 +165,9 @@ function isMissingCandidateFile(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }
 
-export function runPublicLocalPathLeakGuard(
+export function runPublicSourceSanitizationGuard(
   repoRoot = process.cwd()
-): PublicLocalPathLeakViolation[] {
+): PublicSourceSanitizationViolation[] {
   return listPublicCandidateFiles(repoRoot).flatMap(relativePath => {
     const absolutePath = path.join(repoRoot, ...relativePath.split('/'));
     let fileStat: Stats;
@@ -149,24 +184,24 @@ export function runPublicLocalPathLeakGuard(
       if (path.isAbsolute(target) || path.win32.isAbsolute(target)) {
         return [{ file: relativePath, line: 1, reason: 'absolute-symlink-target' }];
       }
-      return analyzePublicTextForLocalPathLeaks(relativePath, target);
+      return analyzePublicTextForSourceSanitization(relativePath, target);
     }
     if (!fileStat.isFile()) return [];
 
     const content = fs.readFileSync(absolutePath);
     if (isBinary(content)) return [];
-    return analyzePublicTextForLocalPathLeaks(relativePath, content.toString('utf8'));
+    return analyzePublicTextForSourceSanitization(relativePath, content.toString('utf8'));
   });
 }
 
 function main(): void {
-  const violations = runPublicLocalPathLeakGuard();
+  const violations = runPublicSourceSanitizationGuard();
   if (violations.length === 0) {
-    console.log('Public local path leak guard passed');
+    console.log('Public source sanitization guard passed');
     return;
   }
 
-  console.error('公共候选包含疑似开发者本机绝对路径：');
+  console.error('公共候选包含本机路径或已退役产品身份：');
   for (const violation of violations) {
     console.error(`  ${violation.file}:${violation.line} ${violation.reason}`);
   }

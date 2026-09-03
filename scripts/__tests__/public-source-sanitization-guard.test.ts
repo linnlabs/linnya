@@ -5,15 +5,15 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
-  analyzePublicTextForLocalPathLeaks,
-  runPublicLocalPathLeakGuard,
-} from '../guards/public-local-path-leak-guard';
+  analyzePublicTextForSourceSanitization,
+  runPublicSourceSanitizationGuard,
+} from '../guards/public-source-sanitization-guard';
 
 function createPrivateUserSegment(): string {
   return ['local', 'developer'].join('-');
 }
 
-describe('public local path leak guard', () => {
+describe('public source sanitization guard', () => {
   it('拒绝 macOS、Linux 与 Windows 用户目录', () => {
     const user = createPrivateUserSegment();
     const macPath = ['/Users', user, 'code/project'].join('/');
@@ -21,7 +21,7 @@ describe('public local path leak guard', () => {
     const windowsPath = ['C:', 'Users', user, 'code', 'project'].join('\\');
     const content = [macPath, `file://${linuxPath}`, windowsPath].join('\n');
 
-    expect(analyzePublicTextForLocalPathLeaks('fixture.txt', content)).toEqual([
+    expect(analyzePublicTextForSourceSanitization('fixture.txt', content)).toEqual([
       { file: 'fixture.txt', line: 1, reason: 'user-home-path' },
       { file: 'fixture.txt', line: 2, reason: 'user-home-path' },
       { file: 'fixture.txt', line: 3, reason: 'user-home-path' },
@@ -34,7 +34,7 @@ describe('public local path leak guard', () => {
     const userTemporaryPath = ['/private/var', 'folders', 'aa', 'cache'].join('/');
     const content = ['header', machineVolumePath, userTemporaryPath].join('\n');
 
-    expect(analyzePublicTextForLocalPathLeaks('fixture.md', content)).toEqual([
+    expect(analyzePublicTextForSourceSanitization('fixture.md', content)).toEqual([
       { file: 'fixture.md', line: 2, reason: 'machine-volume-path' },
       { file: 'fixture.md', line: 3, reason: 'macos-user-temporary-path' },
     ]);
@@ -51,7 +51,24 @@ describe('public local path leak guard', () => {
       '@/domains/workspace/ui/home/ProjectKbSettingsPanel.vue',
     ].join('\n');
 
-    expect(analyzePublicTextForLocalPathLeaks('fixture.ts', content)).toEqual([]);
+    expect(analyzePublicTextForSourceSanitization('fixture.ts', content)).toEqual([]);
+  });
+
+  it('拒绝盘符根下的开发 checkout 与已退役产品身份', () => {
+    const checkoutPath = ['D:', 'code', 'private-project'].join('/');
+    const checkoutFileUrl = `file:///${['E:', 'workspaces', 'private-project'].join('/')}`;
+    const retiredProductName = ['Ting', 'Talk'].join('');
+    const content = [
+      checkoutPath,
+      checkoutFileUrl,
+      `legacy=${retiredProductName}_official_version`,
+    ].join('\n');
+
+    expect(analyzePublicTextForSourceSanitization('fixture.ts', content)).toEqual([
+      { file: 'fixture.ts', line: 1, reason: 'windows-development-root-path' },
+      { file: 'fixture.ts', line: 2, reason: 'windows-development-root-path' },
+      { file: 'fixture.ts', line: 3, reason: 'retired-product-name' },
+    ]);
   });
 
   it('扫描 Git 候选文件并排除已忽略的本地文件', () => {
@@ -65,7 +82,7 @@ describe('public local path leak guard', () => {
       writeFileSync(path.join(repositoryRoot, 'ignored.txt'), privatePath);
       writeFileSync(path.join(repositoryRoot, 'candidate.md'), `safe\n${privatePath}\n`);
 
-      expect(runPublicLocalPathLeakGuard(repositoryRoot)).toEqual([
+      expect(runPublicSourceSanitizationGuard(repositoryRoot)).toEqual([
         { file: 'candidate.md', line: 2, reason: 'user-home-path' },
       ]);
     } finally {

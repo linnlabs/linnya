@@ -17,7 +17,7 @@
 
 ### 0.1 公开历史
 
-> Linnya 的开发始于 2025 年 3 月，早期项目名为 Tingtalk。出于隐私、安全和开源边界原因，公开 Git 历史从经过净化的首次源码发布开始。
+> Linnya 的开发始于 2025 年 3 月。出于隐私、安全和开源边界原因，公开 Git 历史从经过净化的首次源码发布开始。
 
 - 2025-03：项目开始开发；
 - 2025-07：发布 `0.0.31` 内测版本；
@@ -28,7 +28,7 @@
 
 ### 0.2 当前与未来
 
-当前 Linnya 已经形成 Desktop Host、Renderer、独立 Linnkit npm 依赖、产品 Schemas、插件 Host 合同和开放官方插件等主要边界。具体目录和当前 owner 以[工程地图](./README_FOR_AI.md)为准。
+当前 Linnya 已经形成 Desktop Host、Renderer、独立 Linnkit npm 依赖、产品 Schemas、插件 Host 合同和开放官方插件等主要边界。具体目录和当前 owner 以根目录[工程协作指南](../AGENTS.md)为准。
 
 未来方向由下文的产品模型与不变式描述：统一逻辑数据库，以 VFS 组织可扩展文档类型，让 Agent 通过稳定的基础工具、CLI 和 Skill 工作，同时保持内核、产品与插件之间的独立演进。文中明确标注的未决项仍是研究问题，不代表已经承诺的实现排期。
 
@@ -369,5 +369,5 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 | ToolOutput 领域 | `src/tools/tool_output/README.md` |
 | Agent 内核 | [独立 Linnkit 仓的定位文档](https://github.com/linnlabs/linnkit/blob/main/docs/framework/00-vision-and-positioning.md) |
 | 文档总图 | [`docs/README.md`](./README.md) |
-| 工程地图 | [`docs/README_FOR_AI.md`](./README_FOR_AI.md) |
+| 工程地图 | [`AGENTS.md`](../AGENTS.md) |
 | 开发指南 | [`docs/development/README.md`](./development/README.md) |
