@@ -32,6 +32,7 @@ Render options:
 Inspect options:
   --max-slides <number>   Limit returned pages and mark the report truncated
   --heuristics            Include Tier-2 low-confidence hints
+  --source-range <a:b>    Focus on an inclusive deck.js line range (repeat up to 4 times)
 
 Font options:
   --family <name>         Exact font family name to check
@@ -90,8 +91,12 @@ export function parseSlidesCliArgs(
   const selection = parseSelection(parsed.values.slide, parsed.values.from, parsed.values.to);
 
   if (commandName === 'render') {
-    if (parsed.values['max-slides'] !== undefined || parsed.values.heuristics === true) {
-      throw usageError('--max-slides and --heuristics are not render options');
+    if (
+      parsed.values['max-slides'] !== undefined
+      || parsed.values.heuristics === true
+      || parsed.values['source-range'] !== undefined
+    ) {
+      throw usageError('--max-slides, --heuristics and --source-range are not render options');
     }
     if (
       options.resolveManagedRenderOutput
@@ -143,6 +148,7 @@ export function parseSlidesCliArgs(
     throw usageError('--output, --width, --pixel-ratio and --overwrite are render options');
   }
   const maxSlides = readOptionalPositiveInteger(parsed.values['max-slides'], '--max-slides');
+  const focus = parseSourceRanges(parsed.values['source-range']);
   const command: SlidesCliCommand = {
     kind: commandName,
     ...(databasePath ? { databasePath } : {}),
@@ -151,6 +157,7 @@ export function parseSlidesCliArgs(
       selection,
       ...(maxSlides === undefined ? {} : { maxSlides }),
       includeHeuristics: parsed.values.heuristics === true,
+      ...(focus.length > 0 ? { focus } : {}),
     },
   };
   return { kind: 'command', command };
@@ -220,6 +227,7 @@ function parseCommandOptions(args: readonly string[]) {
       'pixel-ratio': { type: 'string' },
       overwrite: { type: 'boolean' },
       'max-slides': { type: 'string' },
+      'source-range': { type: 'string', multiple: true },
       heuristics: { type: 'boolean' },
       family: { type: 'string' },
       script: { type: 'string' },
@@ -243,6 +251,7 @@ function assertOnlyFontOptions(
     values.width,
     values['pixel-ratio'],
     values['max-slides'],
+    values['source-range'],
   ];
   if (presentationOptions.some((value) => value !== undefined)
     || values.overwrite === true
@@ -259,6 +268,23 @@ function assertOnlyFontOptions(
   if (action === 'list' && values.family !== undefined) {
     throw usageError('--family requires fonts check');
   }
+}
+
+function parseSourceRanges(values: readonly string[] | undefined) {
+  if (values === undefined) return [];
+  if (values.length > 4) {
+    throw usageError('--source-range may be repeated at most 4 times');
+  }
+  return values.map((value) => {
+    const match = /^(\d+):(\d+)$/.exec(value.trim());
+    if (!match) throw usageError('--source-range must use start:end positive inclusive lines');
+    const startLine = readPositiveInteger(match[1]!, '--source-range start');
+    const endLine = readPositiveInteger(match[2]!, '--source-range end');
+    if (endLine < startLine) {
+      throw usageError('--source-range end cannot be smaller than start');
+    }
+    return { startLine, endLine };
+  });
 }
 
 function parseSelection(

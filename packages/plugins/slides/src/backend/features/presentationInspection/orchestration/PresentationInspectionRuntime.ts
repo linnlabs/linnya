@@ -61,6 +61,7 @@ export class PresentationInspectionRuntime {
       {
         includeHeuristics: request.includeHeuristics,
         sourceSpanUseCounts,
+        ...(request.focus && request.focus.length > 0 ? { focus: request.focus } : {}),
         ...(sourceLocations ? { sourceLocations } : {}),
       },
     );

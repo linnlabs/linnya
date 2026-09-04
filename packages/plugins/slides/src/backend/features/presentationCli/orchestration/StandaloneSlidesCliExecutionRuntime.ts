@@ -108,6 +108,7 @@ export class StandaloneSlidesCliExecutionRuntime implements SlidesCliExecutionPo
           {
             includeHeuristics: options.includeHeuristics,
             sourceSpanUseCounts: options.sourceSpanUseCounts,
+            ...(options.focus ? { focus: options.focus } : {}),
             ...(options.sourceLocations ? { sourceLocations: options.sourceLocations } : {}),
             spatialAnalyzer: {
               analyzeSpatial: async ({ slideNodes }) =>

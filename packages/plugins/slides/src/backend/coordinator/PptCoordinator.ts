@@ -232,6 +232,7 @@ export class PptCoordinator {
           {
             includeHeuristics: options.includeHeuristics,
             sourceSpanUseCounts: options.sourceSpanUseCounts,
+            ...(options.focus ? { focus: options.focus } : {}),
             ...(options.sourceLocations ? { sourceLocations: options.sourceLocations } : {}),
             spatialAnalyzer: this.engine,
           }

@@ -1,7 +1,5 @@
-import { buildSlideSourceSpanLocusKey } from '@plugin/slides/shared';
 import type {
   PresentationRenderModel,
-  SlideSourceSpan,
   GeneratedLayoutConstraintNode,
   SceneGraphNodeSummary,
   SceneGraphSlideSummary,
@@ -22,6 +20,13 @@ import {
   type QualityDiagnosticDraft,
 } from '../../engine/quality/definitions';
 import { renderModelToLintInfo } from '../../engine/quality/renderModelToLintInfo.js';
+import {
+  buildCreationDiagnosticSourceRef,
+  buildSceneNodeDiagnosticSourceRef,
+  buildUnavailableDiagnosticSourceRef,
+  deduplicateDiagnosticSourceRefs,
+  toSceneDiagnosticNodeRef,
+} from './diagnosticNodeFacts.js';
 import { walkSceneGraph } from './sceneGraph.js';
 
 interface DiagnosticContext {
@@ -224,24 +229,7 @@ function normalizeNode(node: DiagnosticNodeRef, context: DiagnosticContext): Dia
       ...(constraintNode.parentNodeId ? { parentNodeId: constraintNode.parentNodeId } : {}),
     };
   }
-  return {
-    nodeId: exact.nodeId,
-    kind: exact.kind,
-    label: buildSceneNodeLabel(exact),
-    finalBox: { ...exact.box, unit: 'in' },
-    zIndex: exact.zIndex,
-    ...(exact.parentNodeId ? { parentNodeId: exact.parentNodeId } : {}),
-  };
-}
-
-function buildSceneNodeLabel(node: SceneGraphNodeSummary): string {
-  const content = typeof node.content?.text === 'string'
-    ? node.content.text
-    : typeof node.content?.alt === 'string'
-      ? node.content.alt
-      : node.elementName ?? node.nodeId;
-  const normalized = content.replace(/\s+/g, ' ').trim() || node.nodeId;
-  return normalized.length <= 40 ? normalized : `${normalized.slice(0, 39)}…`;
+  return toSceneDiagnosticNodeRef(exact);
 }
 
 function collectEvidenceNodeIds(evidence: DiagnosticEvidence): string[] {
@@ -300,43 +288,28 @@ function buildSourceRefs(
       const constraint = context.constraintNodeById.get(nodeId);
       if (!constraint) return [];
       if (constraint.node.sourceSpan) {
-        return [buildCreationSourceRef({
+        return [buildCreationDiagnosticSourceRef({
           slideNumber: constraint.slideNumber,
           nodeId: constraint.node.nodeId,
           sourceSpan: constraint.node.sourceSpan,
           useCounts: context.sourceSpanUseCounts,
         })];
       }
-      return [unavailableSourceRef(
+      return [buildUnavailableDiagnosticSourceRef(
         constraint.slideNumber,
         constraint.node.nodeId,
         constraint.sourceKind,
       )];
     }
-    if (node.sourceSpan) {
-      return [buildCreationSourceRef({
-        slideNumber: node.slideNumber,
-        nodeId: node.nodeId,
-        sourceSpan: node.sourceSpan,
-        useCounts: context.sourceSpanUseCounts,
-      })];
-    }
-    const slideLocation = context.sourceLocations?.get(node.slideNumber);
-    if (slideLocation) {
-      return [{
-        kind: 'slide' as const,
-        slideNumber: node.slideNumber,
-        nodeId: node.nodeId,
-        locator: slideLocation.file,
-        startLine: slideLocation.startLine,
-        endLine: slideLocation.endLine,
-      }];
-    }
-    return [unavailableSourceRef(node.slideNumber, node.nodeId, node.sourceKind)];
+    return [buildSceneNodeDiagnosticSourceRef(
+      node,
+      context.sourceLocations?.get(node.slideNumber),
+      context.sourceSpanUseCounts,
+    )];
   });
-  if (nodeRefs.length > 0) return deduplicateSourceRefs(nodeRefs);
+  if (nodeRefs.length > 0) return deduplicateDiagnosticSourceRefs(nodeRefs);
 
-  return deduplicateSourceRefs(slides.map((slideNumber) => {
+  return deduplicateDiagnosticSourceRefs(slides.map((slideNumber) => {
     const slideLocation = context.sourceLocations?.get(slideNumber);
     if (slideLocation) {
       return {
@@ -348,66 +321,8 @@ function buildSourceRefs(
       };
     }
     const sourceKind = context.slideByNumber.get(slideNumber)?.rootNode.sourceKind;
-    return unavailableSourceRef(slideNumber, undefined, sourceKind);
+    return buildUnavailableDiagnosticSourceRef(slideNumber, undefined, sourceKind);
   }));
-}
-
-function unavailableSourceRef(
-  slideNumber: number,
-  nodeId: string | undefined,
-  sourceKind: PresentationRenderModel['sourceKind'] | undefined,
-): DiagnosticSourceRef {
-  return {
-    kind: 'unavailable',
-    slideNumber,
-    ...(nodeId ? { nodeId } : {}),
-    reason: sourceKind != null && sourceKind !== 'generated'
-      ? 'source_kind_unsupported'
-      : 'source_location_unavailable',
-  };
-}
-
-function deduplicateSourceRefs(refs: readonly DiagnosticSourceRef[]): DiagnosticSourceRef[] {
-  const seen = new Set<string>();
-  return refs.filter((ref) => {
-    const key = ref.kind === 'unavailable'
-      ? `${ref.kind}:${ref.slideNumber}:${ref.nodeId ?? ''}:${ref.reason}`
-      : `${ref.kind}:${ref.slideNumber}:${ref.nodeId ?? ''}:${ref.locator}:${ref.startLine}:${ref.endLine}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function buildCreationSourceRef(input: {
-  readonly slideNumber: number;
-  readonly nodeId: string;
-  readonly sourceSpan: SlideSourceSpan;
-  readonly useCounts: ReadonlyMap<string, number>;
-}): DiagnosticSourceRef {
-  const generatedNodeCount = input.useCounts.get(
-    buildSlideSourceSpanLocusKey(input.sourceSpan),
-  ) ?? 1;
-  if (generatedNodeCount === 1) {
-    return {
-      kind: 'direct_creation',
-      slideNumber: input.slideNumber,
-      nodeId: input.nodeId,
-      locator: 'deck.js',
-      startLine: input.sourceSpan.startLine,
-      endLine: input.sourceSpan.endLine,
-      generatedNodeCount: 1,
-    };
-  }
-  return {
-    kind: 'shared_creation',
-    slideNumber: input.slideNumber,
-    nodeId: input.nodeId,
-    locator: 'deck.js',
-    startLine: input.sourceSpan.startLine,
-    endLine: input.sourceSpan.endLine,
-    generatedNodeCount,
-  };
 }
 
 function buildFindingId(

@@ -46,17 +46,19 @@ function makeResult() {
 }
 
 describe('PptInspectToolArgsSchema', () => {
-  it('接纳唯一目标、合法页范围和显式启发式选项', () => {
+  it('接纳唯一目标、合法页范围、聚焦范围和显式启发式选项', () => {
     expect(PptInspectToolArgsSchema.parse({
       inode: ' inode-1 ',
       slideNumber: 2,
       endSlide: 4,
       heuristics: false,
+      focus: [{ startLine: 30, endLine: 42 }],
     })).toEqual({
       inode: 'inode-1',
       slideNumber: 2,
       endSlide: 4,
       heuristics: false,
+      focus: [{ startLine: 30, endLine: 42 }],
     });
   });
 
@@ -68,6 +70,8 @@ describe('PptInspectToolArgsSchema', () => {
     [{ presentation_id: 'deck-1', slideNumber: 3, endSlide: 2 }, '不能小于 slideNumber'],
     [{ presentation_id: 'deck-1', diagnose: true }, 'Unrecognized key'],
     [{ presentation_id: 'deck-1', legacy: true }, 'Unrecognized key'],
+    [{ presentation_id: 'deck-1', focus: [{ startLine: 8, endLine: 7 }] }, '不能小于 startLine'],
+    [{ presentation_id: 'deck-1', focus: Array.from({ length: 5 }, () => ({ startLine: 1, endLine: 1 })) }, 'at most 4'],
   ])('拒绝无效调用 %#', (input, message) => {
     const parsed = PptInspectToolArgsSchema.safeParse(input);
     expect(parsed.success).toBe(false);

@@ -312,6 +312,7 @@ export type {
   PresentationInspectionFeedbackOptions,
   PresentationInspectionRequest,
   PresentationInspectionSelection,
+  PresentationInspectionSourceRange,
   PresentationInspectionSnapshot,
 } from './presentationInspection';
 export type {

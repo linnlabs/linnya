@@ -44,7 +44,7 @@ describe('executeSlidesCliFontCommand', () => {
     expect(JSON.parse(result.stdout)).toEqual({
       kind: 'linnya.slides.font-check',
       schemaVersion: 1,
-      cliVersion: '1.6.0',
+      cliVersion: '1.7.0',
       requestedFamily: 'Georgia',
       installed: true,
       match: {

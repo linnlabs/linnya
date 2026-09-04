@@ -238,6 +238,46 @@ describe('buildInspectionObservation', () => {
     expect(observation).toContain('issue=single_glyph_last_line basis=finalized lines=2 cell=rows[6][3] paragraph=0 orphan="现"');
     expect(observation).toContain('调整列宽，避免末行只剩一个字');
   });
+
+  it('把源码聚焦结果投影为紧凑节点与轴向关系，不生成距离矩阵', () => {
+    const left = node('left', 1);
+    const right = node('right', 4);
+    const base = feedback([]);
+    const observation = buildInspectionObservation({
+      presentationId: 'deck-focus',
+      versionId: 'version-focus',
+      totalSlideCount: 1,
+      shownSlideNumbers: [1],
+      truncated: false,
+      feedback: {
+        ...base,
+        focus: {
+          ranges: [{ startLine: 10, endLine: 12 }, { startLine: 30, endLine: 31 }],
+          nodes: [
+            {
+              rangeIndexes: [1], slideNumber: 1, node: left,
+              sourceRef: { kind: 'direct_creation', slideNumber: 1, nodeId: 'left', locator: 'deck.js', startLine: 10, endLine: 12, generatedNodeCount: 1 },
+            },
+            {
+              rangeIndexes: [2], slideNumber: 1, node: right,
+              sourceRef: { kind: 'direct_creation', slideNumber: 1, nodeId: 'right', locator: 'deck.js', startLine: 30, endLine: 31, generatedNodeCount: 1 },
+            },
+          ],
+          relations: [{
+            slideNumber: 1,
+            rangeIndexes: [1, 2],
+            nodes: [left, right],
+            horizontal: { kind: 'gap', inches: 1 },
+            vertical: { kind: 'overlap', inches: 1 },
+          }],
+        },
+      },
+    });
+
+    expect(observation).toContain('focus | ranges=Q1:10-12,Q2:30-31 | matched=2 | relations=1');
+    expect(observation).toContain('relation | ranges=Q1:Q2 slide=1 nodes=N1,N2 h=gap:1in v=overlap:1in');
+    expect(observation).toContain('findings | none');
+  });
 });
 
 function feedback(findings: readonly DiagnosticFinding[]): DiagnosticToolFeedbackPayload {

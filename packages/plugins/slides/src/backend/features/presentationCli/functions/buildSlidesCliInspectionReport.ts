@@ -50,6 +50,7 @@ export function buildSlidesCliInspectionReport(
         : {}),
       findingIds: group.findings.map((finding) => finding.findingId),
     })),
+    ...(feedback.focus ? { focus: feedback.focus } : {}),
     findings: projection.findings.map((finding) => {
       const policy = getDiagnosticCodePolicy(finding.code);
       return {

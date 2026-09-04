@@ -69,10 +69,26 @@ const PAGE_RANGE_PROPERTIES: Readonly<Record<'slideNumber' | 'endSlide', ToolPar
   },
 };
 
-const INSPECTION_PROPERTIES: Readonly<Record<'heuristics', ToolParameterProperty>> = {
+const INSPECTION_PROPERTIES: Readonly<Record<'heuristics' | 'focus', ToolParameterProperty>> = {
   heuristics: {
     type: 'boolean',
     description: '是否附加 Tier-2 低置信启发式 info 提示。默认只返回确定性 finding。',
+  },
+  focus: {
+    type: 'array',
+    minItems: 1,
+    maxItems: 4,
+    description: '可选源码范围（最多 4 个）。只返回命中节点，以及不同范围在同页的最近节点间距/相交深度；行号从 1 开始且两端都包含。',
+    items: {
+      type: 'object',
+      description: 'deck.js 中一个从 1 开始、两端都包含的源码范围。',
+      additionalProperties: false,
+      properties: {
+        startLine: { type: 'integer', minimum: 1, description: 'deck.js 起始行（含）。' },
+        endLine: { type: 'integer', minimum: 1, description: 'deck.js 结束行（含）。' },
+      },
+      required: ['startLine', 'endLine'],
+    },
   },
 };
 
@@ -238,6 +254,7 @@ export class PptInspectTool extends BaseTool {
             },
       maxSlides: MAX_PAGES_PER_CALL,
       includeHeuristics: input.heuristics === true,
+      ...(input.focus ? { focus: input.focus } : {}),
     });
     const { feedback, renderModel: limitedModel, truncated } = inspection;
 

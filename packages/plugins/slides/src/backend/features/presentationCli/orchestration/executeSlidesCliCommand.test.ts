@@ -71,6 +71,11 @@ function createInspection(): PresentationInspectionResult {
       debugLogs: [],
     }],
     buildStatus: { state: 'ready' },
+    focus: {
+      ranges: [{ startLine: 2, endLine: 8 }],
+      nodes: [],
+      relations: [],
+    },
     findings: [{
       findingId: 'diag:empty_slide:1:slide:0',
       severity: 'info',
@@ -144,7 +149,7 @@ describe('executeSlidesCliCommand', () => {
     expect(JSON.parse(result.stdout)).toEqual({
       kind: 'linnya.slides.render-report',
       schemaVersion: 1,
-      cliVersion: '1.6.0',
+      cliVersion: '1.7.0',
       presentation: {
         id: 'deck-1',
         versionId: 'version-uuid-7',
@@ -194,7 +199,7 @@ describe('executeSlidesCliCommand', () => {
     expect(result.exitCode).toBe(SlidesCliExitCode.SUCCESS);
     const report = JSON.parse(result.stdout);
     expect(report.presentation.versionId).toBe('version-uuid-7');
-    expect(report.schemaVersion).toBe(6);
+    expect(report.schemaVersion).toBe(7);
     expect(report).not.toHaveProperty('mode');
     expect(report).not.toHaveProperty('pages');
     expect(report.buildStatus).toEqual({ state: 'ready' });
@@ -216,6 +221,11 @@ describe('executeSlidesCliCommand', () => {
       p2Count: 1,
     });
     expect(report.rootGroups).toEqual([]);
+    expect(report.focus).toEqual({
+      ranges: [{ startLine: 2, endLine: 8 }],
+      nodes: [],
+      relations: [],
+    });
     expect(result.stdout.trim().split('\n')).toHaveLength(1);
     expect(result.stdout).not.toContain('/Users/example/private');
     expect(result.stderr).toBe('');

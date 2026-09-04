@@ -25,13 +25,13 @@ import type {
 } from '../../presentationScreenshot';
 
 export const SLIDES_CLI_REPORT_KIND = 'linnya.slides.inspection-report' as const;
-export const SLIDES_CLI_REPORT_VERSION = 6 as const;
+export const SLIDES_CLI_REPORT_VERSION = 7 as const;
 export const SLIDES_CLI_FONT_CHECK_KIND = 'linnya.slides.font-check' as const;
 export const SLIDES_CLI_FONT_LIST_KIND = 'linnya.slides.font-list' as const;
 export const SLIDES_CLI_FONT_REPORT_VERSION = 1 as const;
 export const SLIDES_CLI_RENDER_REPORT_KIND = 'linnya.slides.render-report' as const;
 export const SLIDES_CLI_RENDER_REPORT_VERSION = 1 as const;
-export const SLIDES_CLI_VERSION = '1.6.0' as const;
+export const SLIDES_CLI_VERSION = '1.7.0' as const;
 
 export const SlidesCliExitCode = {
   SUCCESS: 0,
@@ -169,6 +169,7 @@ export interface SlidesCliInspectionReport {
   readonly buildStatus: ToolBuildStatus;
   readonly findingSummary: SlidesCliDiagnosticSummary;
   readonly rootGroups: readonly SlidesCliDiagnosticRootGroup[];
+  readonly focus?: NonNullable<PresentationInspectionResult['feedback']['focus']>;
   /** 与 ppt_inspect 共享同一 finding 契约，不在 CLI 层二次降维。 */
   readonly findings: readonly SlidesCliDiagnosticFinding[];
 }

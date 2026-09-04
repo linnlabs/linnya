@@ -13,6 +13,10 @@ export type {
 } from './orchestration/PresentationInspectionRuntime';
 export type {
   DiagnosticToolFeedbackPayload,
+  FocusedInspectionAxisRelation,
+  FocusedInspectionNode,
+  FocusedInspectionRelation,
+  FocusedInspectionResult,
   PresentationInspectionResult,
 } from './definitions/presentationInspection';
 export { buildInspectionObservation } from './functions/buildInspectionObservation';

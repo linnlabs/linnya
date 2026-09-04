@@ -26,8 +26,8 @@ export interface InspectionObservationInput {
 export function buildInspectionObservation(input: InspectionObservationInput): string {
   const projection = projectDiagnosticFindings(input.feedback.findings);
   const summary = summarizeDiagnosticProjection(projection);
-  const nodeCatalog = buildNodeCatalog(projection.findings);
-  const sourceCatalog = buildSourceCatalog(projection.findings);
+  const nodeCatalog = buildNodeCatalog(projection.findings, input.feedback.focus?.nodes ?? []);
+  const sourceCatalog = buildSourceCatalog(projection.findings, input.feedback.focus?.nodes ?? []);
   const pageSelection = formatPageSelection(
     input.shownSlideNumbers,
     input.totalSlideCount,
@@ -53,6 +53,7 @@ export function buildInspectionObservation(input: InspectionObservationInput): s
       lines.push(`${entry.handle} | ${formatSource(entry.sources, nodeCatalog.handleByNodeId)}`);
     }
   }
+  appendFocus(lines, input.feedback.focus, nodeCatalog.handleByNodeId, sourceCatalog.handleByKey);
 
   if (projection.findings.length === 0) {
     lines.push('findings | none');
@@ -145,12 +146,18 @@ interface NodeCatalog {
   readonly handleByNodeId: ReadonlyMap<string, string>;
 }
 
-function buildNodeCatalog(findings: readonly DiagnosticFinding[]): NodeCatalog {
+function buildNodeCatalog(
+  findings: readonly DiagnosticFinding[],
+  focusedNodes: readonly { readonly node: DiagnosticNodeRef }[],
+): NodeCatalog {
   const nodes = new Map<string, DiagnosticNodeRef>();
   for (const finding of findings) {
     for (const node of collectEvidenceNodes(finding.evidence)) {
       if (!nodes.has(node.nodeId)) nodes.set(node.nodeId, node);
     }
+  }
+  for (const entry of focusedNodes) {
+    if (!nodes.has(entry.node.nodeId)) nodes.set(entry.node.nodeId, entry.node);
   }
   const entries = [...nodes.values()]
     .sort((left, right) => left.nodeId.localeCompare(right.nodeId))
@@ -174,6 +181,7 @@ interface SourceCatalog {
 
 function buildSourceCatalog(
   findings: readonly DiagnosticFinding[],
+  focusedNodes: readonly { readonly sourceRef: DiagnosticSourceRef }[],
 ): SourceCatalog {
   const sourceGroups = new Map<string, DiagnosticSourceRef[]>();
   for (const finding of findings) {
@@ -185,6 +193,15 @@ function buildSourceCatalog(
       }
       sourceGroups.set(key, sources);
     }
+  }
+  for (const entry of focusedNodes) {
+    const source = entry.sourceRef;
+    const key = sourceLocusKey(source);
+    const sources = sourceGroups.get(key) ?? [];
+    if (!sources.some((candidate) => sourceKey(candidate) === sourceKey(source))) {
+      sources.push(source);
+    }
+    sourceGroups.set(key, sources);
   }
   const entries = [...sourceGroups.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
@@ -199,6 +216,37 @@ function buildSourceCatalog(
     entries,
     handleByKey,
   };
+}
+
+function appendFocus(
+  lines: string[],
+  focus: DiagnosticToolFeedbackPayload['focus'],
+  nodeHandles: ReadonlyMap<string, string>,
+  sourceHandles: ReadonlyMap<string, string>,
+): void {
+  if (!focus) return;
+  lines.push(
+    `focus | ranges=${focus.ranges.map((range, index) => `Q${index + 1}:${range.startLine}-${range.endLine}`).join(',')}`
+    + ` | matched=${focus.nodes.length} | relations=${focus.relations.length}`,
+  );
+  for (const entry of focus.nodes) {
+    const node = nodeHandles.get(entry.node.nodeId) ?? entry.node.nodeId;
+    const source = sourceHandles.get(sourceKey(entry.sourceRef)) ?? 'unavailable';
+    lines.push(
+      `  match | ranges=${entry.rangeIndexes.map((index) => `Q${index}`).join(',')}`
+      + ` slide=${entry.slideNumber} node=${node} src=${source}`,
+    );
+  }
+  for (const relation of focus.relations) {
+    const left = nodeHandles.get(relation.nodes[0].nodeId) ?? relation.nodes[0].nodeId;
+    const right = nodeHandles.get(relation.nodes[1].nodeId) ?? relation.nodes[1].nodeId;
+    lines.push(
+      `  relation | ranges=Q${relation.rangeIndexes[0]}:Q${relation.rangeIndexes[1]}`
+      + ` slide=${relation.slideNumber} nodes=${left},${right}`
+      + ` h=${relation.horizontal.kind}:${formatNumber(relation.horizontal.inches)}in`
+      + ` v=${relation.vertical.kind}:${formatNumber(relation.vertical.inches)}in`,
+    );
+  }
 }
 
 function formatFindingHeader(sequence: number, finding: DiagnosticFinding): string {
