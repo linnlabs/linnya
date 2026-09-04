@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { workspaceMarkdownSchemaLite } from 'src/domains/markdown'
 import {
+  canPersistMarkdownAnnotationOnRootBlock,
   mergeDocumentAnnotations,
   readAnnotationsFromDocument,
   replaceRootBlockAnnotations,
@@ -73,6 +74,8 @@ describe('annotationDocumentState', () => {
       doc: workspaceMarkdownSchemaLite.nodes.doc.create(null, emptyRoot),
     })
 
+    expect(canPersistMarkdownAnnotationOnRootBlock(state, 'root-1')).toBe(true)
+    expect(canPersistMarkdownAnnotationOnRootBlock(emptyState, 'root-1')).toBe(false)
     expect(() => replaceRootBlockAnnotations(emptyState, 'root-1', [annotation]))
       .toThrow('没有可序列化的 Markdown 锚点')
     expect(readAnnotationsFromDocument(state.doc)).toHaveLength(1)

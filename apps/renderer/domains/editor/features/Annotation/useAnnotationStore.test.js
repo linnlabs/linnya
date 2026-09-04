@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { EditorState } from 'prosemirror-state'
 import { workspaceMarkdownSchemaLite } from 'src/domains/markdown'
+import { reactive } from 'vue'
 
+import {
+  confirmCreatingAnnotation,
+  startCreatingAnnotation,
+} from './commands/AnnoCreateCommands'
 import { readAnnotationsFromDocument } from './functions/annotationDocumentState'
 import { useAnnotationStore } from './useAnnotationStore'
 
@@ -49,6 +54,44 @@ function createEditor() {
 }
 
 describe('useAnnotationStore document ownership', () => {
+  it('manual create flow leaves exactly one confirmed panel and one document annotation', async () => {
+    const editor = createEditor()
+    const store = reactive(useAnnotationStore({ editor }))
+    const panelPositionManager = {
+      calculateInitialPositionCSS: () => ({ top: '12px', left: '34px' }),
+      handleOverlapsOnly: async () => false,
+      invalidateLayoutCacheForAnnotation: () => undefined,
+      recalculateAllPositions: async () => false,
+    }
+    store.initialize()
+
+    const annotationId = await startCreatingAnnotation({
+      blockId: 'root-1',
+      annotationStore: store,
+      panelPositionManager,
+    })
+    expect(store.annotations).toHaveLength(1)
+    expect(store.annotations[0]).toMatchObject({ id: annotationId, state: 'creating' })
+
+    const confirmedId = await confirmCreatingAnnotation({
+      blockId: 'root-1',
+      content: '手动批注',
+      annotationStore: store,
+      panelPositionManager,
+    })
+
+    expect(confirmedId).toBe(annotationId)
+    expect(store.annotations).toHaveLength(1)
+    expect(store.annotations[0]).toMatchObject({
+      id: annotationId,
+      content: '手动批注',
+      state: 'confirmed',
+    })
+    expect(readAnnotationsFromDocument(editor.state.doc)).toHaveLength(1)
+
+    store.cleanup()
+  })
+
   it('keeps transient states local and persists confirmed changes in rootBlock attrs', () => {
     const editor = createEditor()
     const store = useAnnotationStore({ editor })

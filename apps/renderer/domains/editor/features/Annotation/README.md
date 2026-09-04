@@ -7,6 +7,7 @@
 - 持久化事实只存在于 `rootBlock.attrs.annotations`，与正文共同进入同一个 `content_json` 文档版本。
 - `useAnnotationStore` 从 `editor.state.doc` 派生 read model，并通过 ProseMirror transaction 完成新增、修改、解决、回复和删除。
 - `creating` / `editing` 与面板 `position` 仅是 Renderer 临时态，不进入 Markdown profile。
+- 空 `baseBlock` 没有可序列化的 Markdown 正文锚点，创建命令必须在生成 `creating` 面板前拒绝；若确认前目标变空，则取消该临时面板，不能留下反复提交的悬挂状态。
 - Markdown 导出把每条批注写成相邻的 `<!-- linnya-annotation:v1 ... -->`；普通 `<!-- comment -->` 导入时由 admission 边界补齐身份。
 - 所有持久化新建都调用 `createMarkdownAnnotation()`，统一生成 `confirmed` 初态；用户确认只是把本地 `creating` draft 提交为正式批注，不是 Revision pending。
 - Review 工具和 `edit_file` / `write_file` 最终都进入 Markdown Annotation 的统一 mutation 用例。普通 comment 创建批注；保持稳定 ID 修改 canonical comment 会编辑批注；删除 canonical comment 会删除批注；同次正文变化仍单独进入 Revision。

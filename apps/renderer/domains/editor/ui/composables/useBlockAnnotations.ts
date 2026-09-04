@@ -200,7 +200,8 @@ export function useBlockAnnotations(options: UseBlockAnnotationsOptions): UseBlo
       // 没有批注，调用注入的触发函数
       try {
         const triggerStartedAt = nowMs();
-        await triggerAnnotationCreate(blockId);
+        const annotationId = await triggerAnnotationCreate(blockId);
+        if (!annotationId) return;
         // 高亮块
         highlightState.highlightBlock(blockId);
         publishAnnotationInteractionPerf({

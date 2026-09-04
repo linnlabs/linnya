@@ -87,7 +87,8 @@ async function handleCreateAnnotation(event: MouseEvent): Promise<void> {
 
   try {
     const triggerStartedAt = readAnnotationPerfNowMs();
-    await triggerAnnotationCreate(props.blockId);
+    const annotationId = await triggerAnnotationCreate(props.blockId);
+    if (!annotationId) return;
     highlightState.highlightBlock(props.blockId);
     publishAnnotationInteractionPerf({
       kind: 'annotation-click',

@@ -143,7 +143,12 @@ export function useAnnotationStore(options = {}) {
         position: calculatePosition(annotation.blockId, current?.position),
       }
     })
-    const creating = annotations.value.filter(annotation => annotation.state === 'creating')
+    const persistedIds = new Set(persisted.map(annotation => annotation.id))
+    // 确认创建的 transaction 会同步触发 read-model 重建；同 ID 已进入文档后，
+    // 对应 creating draft 必须被消费，不能再作为第二个面板追加回来。
+    const creating = annotations.value.filter(annotation => (
+      annotation.state === 'creating' && !persistedIds.has(annotation.id)
+    ))
     replaceReadModel([...persisted, ...creating])
 
     if (editor?.panelPositionManager?.handleOverlapsOnly) {

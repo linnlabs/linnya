@@ -305,23 +305,24 @@ provide(TRIGGER_ANNOTATION_CREATE_KEY, handleCreateAnnotationRequest)
 async function handleCreateAnnotationRequest(blockId) {
   if (!annotationStoreInstance.value || !layoutManagerInstance.value) {
     console.error("[EditorContext] 存储或管理器尚未准备好，无法创建批注。")
-    return
+    return null
   }
 
   const rootBlockId = resolveAnnotationRootBlockId(editor.value, blockId)
   if (!rootBlockId) {
     console.error('[EditorContext] 创建批注失败：无法解析 rootBlockId', { blockId })
-    return
+    return null
   }
     
   try {
-    await startCreatingAnnotation({
+    return await startCreatingAnnotation({
       blockId: rootBlockId,
       annotationStore: annotationStoreInstance.value,
       panelPositionManager: layoutManagerInstance.value
     })
   } catch (error) {
     console.error(`[EditorContext] 调用 startCreatingAnnotation 命令时出错:`, error)
+    return null
   }
 }
 

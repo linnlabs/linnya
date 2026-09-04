@@ -1,7 +1,7 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
 import type { AnnotationRuntimeAnnotation, AnnotationRuntimeStoreLike } from '../readModel'
 
-export type AnnotationCreateTrigger = (blockId: string) => Promise<void> | void
+export type AnnotationCreateTrigger = (blockId: string) => Promise<string | null> | string | null
 export type AnnotationListByBlockId = (blockId: string) => readonly AnnotationRuntimeAnnotation[]
 
 /**
