@@ -6,7 +6,6 @@
  * 此服务专门处理 `type='tiptap_document'` 节点的所有内部逻辑：
  * - 文档版本的获取和保存
  * - 复杂块（AudioBlock, CodeBlock 等）的 CRUD 操作
- * - 批注的管理
  * 
  * 它不关心工作区节点树的管理，那是 WorkspaceService 的职责。
  */
@@ -41,16 +40,9 @@ import {
   parseMarkdownDocJson,
   type MarkdownDocJson,
 } from '../../../normalization/runtime';
-import {
-  MarkdownAnnotationRepository,
-  MarkdownAnnotationsService,
-  type MarkdownAnnotation,
-} from '../../../annotations';
-
 export class MarkdownDocumentService {
   private db: Database.Database;
   private readonly versionRepository: MarkdownDocumentVersionRepository;
-  private readonly annotationsService: MarkdownAnnotationsService;
 
   // 块服务
   public audioBlock: AudioBlockService;
@@ -66,10 +58,6 @@ export class MarkdownDocumentService {
   constructor(db: Database.Database) {
     this.db = db;
     this.versionRepository = new MarkdownDocumentVersionRepository(db);
-    this.annotationsService = new MarkdownAnnotationsService(
-      new MarkdownAnnotationRepository(db),
-      this
-    );
 
     // 初始化块服务
     this.audioBlock = new AudioBlockService(db);
@@ -151,40 +139,6 @@ export class MarkdownDocumentService {
     return saved;
   }
 
-  /**
-   * 获取文档的所有批注
-   */
-  getAnnotations(documentNodeId: string): MarkdownAnnotation[] {
-    return this.annotationsService.listForDocument(documentNodeId);
-  }
-
-  /**
-   * 创建新批注
-   */
-  createAnnotation(params: {
-    id: string; // 使用前端生成的 ID
-    documentNodeId: string;
-    targetBlockId: string;
-    contentJson: string;
-    createdAt: string; // ISO 格式的字符串
-  }): MarkdownAnnotation {
-    return this.annotationsService.create(params);
-  }
-
-  /**
-   * 更新批注内容
-   */
-  updateAnnotation(id: string, updates: Readonly<Record<string, unknown>>): void {
-    this.annotationsService.update(id, updates);
-  }
-
-  /**
-   * 删除批注（软删除）
-   */
-  deleteAnnotation(id: string): void {
-    this.annotationsService.delete(id);
-  }
-
   // ========== 复杂块管理 ==========
   // 所有块的具体操作都委托给相应的块服务
   // 例如：this.audioBlock.createAudioBlock(), this.codeBlock.getCodeBlock() 等
@@ -218,7 +172,7 @@ export class MarkdownDocumentService {
    * - 每次保存新版本后，立即触发一次“幽灵块数据”清理，
    *   确保前端删除 / 撤回导致的块删除不会遗留挂在旧 blockId 上的卫星数据。
    * - 这样可以把不变量收敛到后端：只要某个 blockId 不再出现在最新 content_json 中，
-   *   所有挂在它上的 pending / annotations / block_versions 都会被同步移除。
+   *   所有挂在它上的 pending / block_versions 都会被同步移除。
    */
   updateDocument(documentNodeId: string, content: unknown): MarkdownDocumentVersion {
     const contentJson =
@@ -246,13 +200,11 @@ export class MarkdownDocumentService {
 
       if (
         result.removedPending > 0 ||
-        result.removedAnnotations > 0 ||
         result.removedBlockVersions > 0
       ) {
         console.log(
           `[MarkdownDocumentService] updateDocument: 在保存文档 ${documentNodeId} 时清理了 ` +
-            `pending=${result.removedPending}, annotations=${result.removedAnnotations}, ` +
-          `blockVersions=${result.removedBlockVersions}`
+            `pending=${result.removedPending}, blockVersions=${result.removedBlockVersions}`
         );
       }
 
@@ -262,7 +214,7 @@ export class MarkdownDocumentService {
 
   // ========== Block 附加数据一致性约束 ==========
   //
-  // 所有挂在 blockId 上的卫星数据（pending revisions、annotations 等），
+  // 所有挂在 blockId 上的卫星数据（pending revisions、block history 等），
   // 在写入前都必须保证对应的 rootBlock 真实存在于最新的 content_json 中。
   //
   // 由于 blockId 目前仅存在于 ProseMirror JSON 结构中，无法通过数据库外键约束，
@@ -281,7 +233,7 @@ export class MarkdownDocumentService {
    * 断言指定文档中存在给定 blockId 的 rootBlock。
    *
    * 若不存在，则抛出错误，阻止写入任何挂在该 blockId 上的卫星数据，
-   * 避免生成“幽灵 pending / 幽灵批注”等无法回收的数据。
+   * 避免生成无法回收的幽灵卫星数据。
    */
   private assertBlockExists(documentNodeId: string, blockId: string): void {
     const exists = this.blockExists(documentNodeId, blockId);
@@ -338,7 +290,7 @@ export class MarkdownDocumentService {
    *
    * 中文说明：
    * - 这是“insert 占位块”的逆操作；
-   * - 删除后会触发 updateDocument → orphan cleaner，把挂在该 blockId 上的 pending/annotations/history 一并清理干净。
+   * - 删除后会触发 updateDocument → orphan cleaner，把挂在该 blockId 上的 pending/history 一并清理干净。
    */
   private removeRootBlockEntity(documentNodeId: string, blockId: string): void {
     this.updateDocument(documentNodeId, removePendingRootBlock({

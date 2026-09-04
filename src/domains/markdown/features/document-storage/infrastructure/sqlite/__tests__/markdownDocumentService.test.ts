@@ -128,38 +128,6 @@ describe('MarkdownDocumentService', () => {
     expect(version.char_count).toBe(4);
   });
 
-  it('批注只能绑定当前文档中的真实块，并支持更新与软删除', () => {
-    const { service, documentId } = setup();
-    service.createDocument(documentId, {
-      type: 'doc',
-      content: [{ type: 'rootBlock', attrs: { id: 'root-annotation' }, content: [] }],
-    });
-
-    expect(() => service.createAnnotation({
-      id: 'annotation-invalid',
-      documentNodeId: documentId,
-      targetBlockId: 'missing-block',
-      contentJson: JSON.stringify({ content: 'invalid' }),
-      createdAt: new Date(1000).toISOString(),
-    })).toThrow('目标块不存在');
-
-    service.createAnnotation({
-      id: 'annotation-1',
-      documentNodeId: documentId,
-      targetBlockId: 'root-annotation',
-      contentJson: JSON.stringify({ content: 'before' }),
-      createdAt: new Date(1000).toISOString(),
-    });
-    service.updateAnnotation('annotation-1', { content: 'after' });
-
-    const listed = service.getAnnotations(documentId);
-    expect(listed).toHaveLength(1);
-    expect(JSON.parse(listed[0]!.content_json)).toMatchObject({ content: 'after' });
-
-    service.deleteAnnotation('annotation-1');
-    expect(service.getAnnotations(documentId)).toEqual([]);
-  });
-
   it('保存文档时把 imageBlock 投影到 image_blocks，并在删除图片后清理孤儿', () => {
     const { db, service, documentId } = setup();
 

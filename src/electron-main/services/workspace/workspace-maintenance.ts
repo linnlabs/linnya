@@ -42,7 +42,6 @@ export async function runWorkspaceMaintenanceOnce(databaseService: DatabaseServi
     const docs = stmtDocs.all();
 
     let totalRemovedPending = 0;
-    let totalRemovedAnnotations = 0;
     let totalRemovedBlockVersions = 0;
     let failedDocs = 0;
 
@@ -52,18 +51,15 @@ export async function runWorkspaceMaintenanceOnce(databaseService: DatabaseServi
       try {
         const result = cleaner.cleanupDocumentOrphans(documentId);
         totalRemovedPending += result.removedPending;
-        totalRemovedAnnotations += result.removedAnnotations;
         totalRemovedBlockVersions += result.removedBlockVersions;
 
         if (
           result.removedPending > 0 ||
-          result.removedAnnotations > 0 ||
           result.removedBlockVersions > 0
         ) {
           logger.info(
             `文档清理: documentId=${documentId}, ` +
-              `pending=${result.removedPending}, annotations=${result.removedAnnotations}, ` +
-              `blockVersions=${result.removedBlockVersions}`
+              `pending=${result.removedPending}, blockVersions=${result.removedBlockVersions}`
           );
         }
       } catch (err) {
@@ -77,7 +73,7 @@ export async function runWorkspaceMaintenanceOnce(databaseService: DatabaseServi
     // 3) 汇总日志（关键：始终仅输出一条 summary）
     logger.info(
       `✅ 启动维护：幽灵块清理完成. docs=${docs.length}, failed=${failedDocs}, ` +
-        `removed(pending=${totalRemovedPending}, annotations=${totalRemovedAnnotations}, blockVersions=${totalRemovedBlockVersions})`
+        `removed(pending=${totalRemovedPending}, blockVersions=${totalRemovedBlockVersions})`
     );
 
     // 3.5) 占位 Markdown 文档规范化

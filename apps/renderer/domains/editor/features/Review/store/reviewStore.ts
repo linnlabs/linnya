@@ -76,7 +76,7 @@ export const useReviewStore = defineStore('review', {
       return state.availableAgents.filter(a => !state.activeAgentIds.includes(a.id));
     },
 
-    // ⚠️ Review 的结果列表来自 annotations（单一事实源），因此 store 不再维护 reviewMessages。
+    // Review 的结果列表来自当前文档内批注（单一事实源），因此 store 不再维护 reviewMessages。
   },
 
   actions: {
@@ -274,7 +274,7 @@ export const useReviewStore = defineStore('review', {
        * - 从 UIStore 获取 editor 实例（所见即所得）
        * - 分段导出 document_fragment（DocumentView 协议）
        * - 以 agent 模式调用 /api/v1/conversation/next（promptKey='review'）
-       * - 后端通过工具落库 annotations（meta.source='review'）
+       * - 后端通过工具创建包含批注的新文档版本（meta.source='review'）
        */
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('review-started', {

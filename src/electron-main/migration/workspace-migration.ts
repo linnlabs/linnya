@@ -22,7 +22,6 @@ export interface MigrationResult {
   statistics: {
     foldersCreated: number;
     documentsCreated: number;
-    annotationsMigrated: number;
     audioBlocksMigrated: number;
     assetsMigrated: number;
     errors: number;
@@ -48,7 +47,6 @@ export class WorkspaceMigration {
   private stats = {
     foldersCreated: 0,
     documentsCreated: 0,
-    annotationsMigrated: 0,
     audioBlocksMigrated: 0,
     assetsMigrated: 0,
     errors: 0,
@@ -98,7 +96,6 @@ export class WorkspaceMigration {
       logger.info('[Migration] 统计:');
       logger.info(`  - 文件夹: ${this.stats.foldersCreated}`);
       logger.info(`  - 文档: ${this.stats.documentsCreated}`);
-      logger.info(`  - 批注: ${this.stats.annotationsMigrated}`);
       logger.info(`  - 音频块: ${this.stats.audioBlocksMigrated}`);
       logger.info(`  - 资源: ${this.stats.assetsMigrated}`);
       logger.info(`  - 错误: ${this.stats.errors}`);
@@ -305,7 +302,7 @@ export class WorkspaceMigration {
       const documentData = JSON.parse(fileContent);
 
       // 验证基本结构
-      if (!documentData.editorContent || !Array.isArray(documentData.annotations)) {
+      if (!documentData.editorContent) {
         throw new Error('Invalid .ablk file structure');
       }
 
@@ -335,57 +332,13 @@ export class WorkspaceMigration {
       this.stats.documentsCreated++;
       logger.info(`[Migration]   [文档] ${docName}`);
 
-      // 3. 迁移批注
-      await this.migrateAnnotations(documentData.annotations, nodeId);
-
-      // 4. 提取并迁移复杂块
+      // 3. 提取并迁移复杂块
       await this.migrateComplexBlocks(documentData.editorContent, nodeId);
 
     } catch (error) {
       logger.error(`[Migration] 迁移文档失败: ${node.path}`, error);
       this.stats.errors++;
       this.errors.push({ file: node.path, error: String(error) });
-    }
-  }
-
-  /**
-   * 迁移批注
-   */
-  private async migrateAnnotations(annotations: any[], documentNodeId: string): Promise<void> {
-    if (!annotations || annotations.length === 0) {
-      return;
-    }
-
-    const stmt = this.db.prepare(`
-      INSERT INTO annotations (
-        id, document_node_id, target_block_id, content, 
-        position_top, position_left, author, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const annotation of annotations) {
-      try {
-        const createdAt = annotation.createdAt
-          ? new Date(annotation.createdAt).getTime()
-          : Date.now();
-
-        stmt.run(
-          annotation.id,
-          documentNodeId,
-          annotation.blockId,
-          annotation.content,
-          annotation.position?.top || 0,
-          annotation.position?.left || 0,
-          annotation.author || '未知',
-          annotation.state || 'confirmed',
-          createdAt
-        );
-
-        this.stats.annotationsMigrated++;
-      } catch (error) {
-        logger.error(`[Migration] 迁移批注失败: ${annotation.id}`, error);
-        this.stats.errors++;
-      }
     }
   }
 

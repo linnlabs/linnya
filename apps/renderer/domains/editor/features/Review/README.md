@@ -148,8 +148,7 @@ apps/renderer/domains/editor/features/Review/ (Frontend)
 │       ├── ReviewProcessing.vue
 │       └── ReviewDashboard.vue
 └── utils/
-    ├── reviewDocumentChunker.ts          # 从 editor 导出 DocumentView 并按块分段
-    └── reviewAnnotationCreator.ts        # 旧 mock 遗留，仅供调试，不再走主流程
+    └── reviewDocumentChunker.ts          # 从 editor 导出 DocumentView 并按块分段
 
 src/ (Backend Implementation)
 ├── prompts/

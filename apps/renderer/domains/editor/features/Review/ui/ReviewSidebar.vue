@@ -88,7 +88,7 @@ watch(
 let runningAbortController: AbortController | null = null;
 
 /**
- * 处理“开始审阅”事件：顺序执行（角色 × 分段），并在每段完成后刷新 annotations。
+ * 处理“开始审阅”事件：顺序执行（角色 × 分段），并在每段完成后合并文档内批注。
  *
  * 注意：
  * - Review 必须使用 agent 模式（mode='agent'），否则后端会禁用工具调用，无法落库批注

@@ -14,7 +14,7 @@ Markdown 是 Linnya 永久启用的平台默认文档领域，而不是可安装
 
 ## 当前迁移状态
 
-Schema contribution、正文版本持久化、Block 卫星数据、pending revisions、normalization、DocumentView、富文档 Editor、默认文档结构和 file-style 全文写入已迁入本领域。正文版本现由单一 repository 管理；字符统计、工具修订意图归一化、pending 占位块变换和 accept/reject docJson 变换均为纯领域函数；批注已形成独立 feature。重复的 Workspace 块展平/preview 实现已经删除，canonical block projection 位于 domain shared，读取层不再根据异常 pending 猜测或补造块。VFS current text 与结构化 DocumentView 均通过 Markdown provider 读取领域自有版本、pending、图片和 Citation 投影，Workspace 不再查询这些表；document-write 通过 Citation 公开 source resolver 构建 Mark hydration，并通过注入的 Workspace mutation port 刷新节点时间，不读取 ToolContext 或直接写路径层表。Host 的统一 provider resolvers 已让 Markdown 和插件共享读取、Editor、生命周期、已有文件全文写入和缺失路径创建调用形态；Markdown 文件创建先编译、后在同步事务内提交节点与正文。ToolContext 已不再暴露 Markdown store/normalizer，通用工具只能经 Host provider 使用文档实例能力。
+Schema contribution、正文版本持久化、Block 卫星数据、pending revisions、normalization、DocumentView、富文档 Editor、默认文档结构和 file-style 全文写入已迁入本领域。正文版本现由单一 repository 管理；字符统计、工具修订意图归一化、pending 占位块变换和 accept/reject docJson 变换均为纯领域函数；批注由独立 feature 维护，但持久化事实属于 `rootBlock.attrs.annotations`，不使用 sidecar 表。重复的 Workspace 块展平/preview 实现已经删除，canonical block projection 位于 domain shared，读取层不再根据异常 pending 猜测或补造块。VFS current text 与结构化 DocumentView 均通过 Markdown provider 读取领域自有版本、pending、图片和 Citation 投影，Workspace 不再查询这些表；document-write 通过 Citation 公开 source resolver 构建 Mark hydration，并通过注入的 Workspace mutation port 刷新节点时间，不读取 ToolContext 或直接写路径层表。Host 的统一 provider resolvers 已让 Markdown 和插件共享读取、Editor、生命周期、已有文件全文写入和缺失路径创建调用形态；Markdown 文件创建先编译、后在同步事务内提交节点与正文。ToolContext 已不再暴露 Markdown store/normalizer，通用工具只能经 Host provider 使用文档实例能力。
 
 `text/markdown` 不是本领域的准入信号。通用预览只需要内容与 MIME；Markdown 文档 provider 则要求已经解析出的 Workspace 节点类型，或仅在缺失路径创建时使用明确的 `.md` / `.markdown` 声明。禁止用内容嗅探、MIME 或渲染能力反推数据库文档身份。
 
@@ -37,7 +37,6 @@ Markdown 导入结果必须经过这份校验。pending 单块和文档级 Accep
 Markdown schema 当前包括：
 
 - `document_versions`
-- `annotations`
 - `audio_blocks` 及转录、笔记、摘要表
 - `code_blocks`
 - `image_blocks`

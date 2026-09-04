@@ -621,7 +621,7 @@ export interface BlockRevisionState {
 - 启动后维护编排器：`src/electron-main/services/startup/startupMaintenanceRunner.ts`
 - Workspace 维护入口：`src/electron-main/services/workspace/workspace-maintenance.ts`
 - 具体清理逻辑：`MarkdownOrphanBlockDataCleaner.cleanupDocumentOrphans(documentId)`
-  - 会基于最新 `content_json` 的 rootBlockId 集合，删除所有 `target_block_id` 已不存在的 pending / annotations / blockVersions。
+  - 会基于最新 `content_json` 的 rootBlockId 集合，删除所有 `target_block_id` 已不存在的 pending / blockVersions；批注随 root block 正文本身删除。
 
 #### 仍需注意的边界
 

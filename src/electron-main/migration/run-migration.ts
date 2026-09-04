@@ -81,7 +81,6 @@ export async function runMigration(): Promise<void> {
       logger.info('='.repeat(80));
       logger.info('[RunMigration] ✅ 迁移成功完成！');
       logger.info(`[RunMigration] 文档: ${result.statistics.documentsCreated}`);
-      logger.info(`[RunMigration] 批注: ${result.statistics.annotationsMigrated}`);
       logger.info(`[RunMigration] 音频块: ${result.statistics.audioBlocksMigrated}`);
       logger.info(`[RunMigration] 耗时: ${(result.duration / 1000).toFixed(2)} 秒`);
       logger.info('='.repeat(80));

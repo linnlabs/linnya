@@ -1,6 +1,6 @@
 /**
  * @file markdownOrphanBlockDataCleaner.ts
- * @description 清理 Markdown 文档中“无对应块实体”的幽灵数据（pending / annotations / block history）。
+ * @description 清理 Markdown 文档中“无对应块实体”的幽灵数据（pending / block history）。
  *
  * 设计目标：
  * - 不修改业务流程，将清理逻辑封装为独立服务，方便在维护脚本 / 管理工具中按需调用；
@@ -13,7 +13,6 @@ import type { MarkdownDocumentService } from './markdownDocumentService';
 
 export interface OrphanCleanupResult {
   removedPending: number;
-  removedAnnotations: number;
   removedBlockVersions: number;
 }
 
@@ -38,7 +37,6 @@ export class MarkdownOrphanBlockDataCleaner {
   /**
    * 清理指定文档下所有“无对应块实体”的卫星数据：
    * - pending revisions（markdown_block_pending_revisions）
-   * - annotations（块级批注）
    * - markdown_block_versions（块级历史版本）
    *
    * 返回每一类被删除的记录数量，便于日志与测试。
@@ -59,23 +57,7 @@ export class MarkdownOrphanBlockDataCleaner {
       }
     }
 
-    // 2. 清理 annotations：target_block_id 不在当前块集合中的记录（软删除）
-    let removedAnnotations = 0;
-    const stmtAnnotations = this.db.prepare<unknown[], { id: string; target_block_id: string }>(`
-      SELECT id, target_block_id
-      FROM annotations
-      WHERE document_node_id = ? AND deleted_at IS NULL
-    `);
-    const annotations = stmtAnnotations.all(documentNodeId);
-    for (const ann of annotations) {
-      if (!liveBlockIds.has(ann.target_block_id)) {
-        // 复用 MarkdownDocumentService 的软删除逻辑
-        this.markdownService.deleteAnnotation(ann.id);
-        removedAnnotations += 1;
-      }
-    }
-
-    // 3. 清理块历史：markdown_block_versions 中 target_block_id 已不再存在的记录
+    // 2. 清理块历史：markdown_block_versions 中 target_block_id 已不再存在的记录
     let removedBlockVersions = 0;
     const stmtVersions = this.db.prepare<
       unknown[],
@@ -96,12 +78,11 @@ export class MarkdownOrphanBlockDataCleaner {
 
     console.log(
       `[MarkdownOrphanBlockDataCleaner] cleanupDocumentOrphans: documentId=${documentNodeId}, ` +
-        `pending=${removedPending}, annotations=${removedAnnotations}, blockVersions=${removedBlockVersions}`
+        `pending=${removedPending}, blockVersions=${removedBlockVersions}`
     );
 
     return {
       removedPending,
-      removedAnnotations,
       removedBlockVersions
     };
   }

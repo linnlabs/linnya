@@ -245,12 +245,6 @@ export interface IWorkspaceGateway {
     mode: ApplyAllPendingMode;
   }): Promise<OperationResult<ApplySinglePendingResultDTO>>;
 
-  // 批注操作
-  'list-annotations'(args: { documentId: string }): Promise<OperationResult<{ annotations: any[] }>>;
-  'create-annotation'(annotation: any): Promise<OperationResult<{ annotationId: string }>>;
-  'update-annotation'(args: { annotationId: string; updates: any }): Promise<OperationResult<void>>;
-  'delete-annotation'(args: { annotationId: string }): Promise<OperationResult<void>>;
-  
   // 迁移
   'run-migration'(): Promise<OperationResult<void>>;
 }
@@ -420,20 +414,6 @@ class WorkspaceGatewayImpl implements IWorkspaceGateway {
     return this.invoke('apply-pending-revision', args);
   }
 
-  // 批注操作
-  'list-annotations'(args: { documentId: string }): Promise<OperationResult<{ annotations: any[] }>> {
-    return this.invoke('list-annotations', args);
-  }
-  'create-annotation'(annotation: any): Promise<OperationResult<{ annotationId: string }>> {
-    return this.invoke('create-annotation', annotation);
-  }
-  'update-annotation'(args: { annotationId: string; updates: any }): Promise<OperationResult<void>> {
-    return this.invoke('update-annotation', args);
-  }
-  'delete-annotation'(args: { annotationId: string }): Promise<OperationResult<void>> {
-    return this.invoke('delete-annotation', args);
-  }
-  
   // 迁移
   'run-migration'(): Promise<OperationResult<void>> {
     return this.invoke('run-migration');

@@ -35,9 +35,6 @@ import type {
   ClearAllPendingRevisionsArgs,
   ApplyAllPendingRevisionsArgs,
   ApplyPendingRevisionArgs,
-  ListAnnotationsArgs,
-  UpdateAnnotationArgs,
-  DeleteAnnotationArgs,
   NotifyDocumentOpenedArgs,
   GetRecentDocumentsArgs,
   AudioBlockGetAllContentArgs,
@@ -81,10 +78,6 @@ export function buildWorkspacePreloadApi(ipcRenderer: IpcRenderer) {
       ipcRenderer.invoke('workspace:apply-all-pending-revisions', args),
     'workspace:apply-pending-revision': (args: ApplyPendingRevisionArgs) =>
       ipcRenderer.invoke('workspace:apply-pending-revision', args),
-    'workspace:list-annotations': (args: ListAnnotationsArgs) => ipcRenderer.invoke('workspace:list-annotations', args),
-    'workspace:create-annotation': (annotation: any) => ipcRenderer.invoke('workspace:create-annotation', annotation),
-    'workspace:update-annotation': (args: UpdateAnnotationArgs) => ipcRenderer.invoke('workspace:update-annotation', args),
-    'workspace:delete-annotation': (args: DeleteAnnotationArgs) => ipcRenderer.invoke('workspace:delete-annotation', args),
     'workspace:run-migration': () => ipcRenderer.invoke('workspace:run-migration'),
     'workspace:notify-document-opened': (args: NotifyDocumentOpenedArgs) =>
       ipcRenderer.invoke('workspace:notify-document-opened', args),

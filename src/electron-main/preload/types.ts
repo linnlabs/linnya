@@ -77,9 +77,6 @@ export type ClearPendingRevisionArgs = { documentId: string; blockId: string };
 export type ClearAllPendingRevisionsArgs = { documentId: string };
 export type ApplyAllPendingRevisionsArgs = { documentId: string; mode: 'accept' | 'reject' };
 export type ApplyPendingRevisionArgs = { documentId: string; blockId: string; mode: 'accept' | 'reject' };
-export type ListAnnotationsArgs = { documentId: string };
-export type UpdateAnnotationArgs = { annotationId: string; updates: unknown };
-export type DeleteAnnotationArgs = { annotationId: string };
 export type NotifyDocumentOpenedArgs = { documentId: string };
 export type GetRecentDocumentsArgs = {
   limit?: number;

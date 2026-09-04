@@ -1,6 +1,6 @@
 /**
  * @file src/electron-main/ipc/handlers/documents/markdown_document/document-ipc.ts
- * @description 文档读写 IPC 通道处理器（按 node.type 路由）+ MarkdownDocument 专属操作（批注等）
+ * @description 文档读写 IPC 通道处理器（按 node.type 路由）与 MarkdownDocument 专属操作。
  */
 
 import { MarkdownDocumentService } from 'src/domains/markdown';
@@ -17,22 +17,6 @@ import { createWorkspaceDocumentEditorProviderResolver } from '../../../../../..
 import type { BackendRendererIpcStyleRegistrarPort } from '../../../../../../app-hosts/linnya/adapters/backend-renderer-requests';
 
 const logger = new Logger('DocumentIPC');
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function isAnnotationPosition(
-  value: unknown,
-): value is Readonly<{ top: number; left: number }> {
-  return isRecord(value)
-    && typeof value.top === 'number'
-    && typeof value.left === 'number';
-}
 
 export function registerMarkdownDocumentHandlers(
   runtimeOwner: BackendRuntimeOwner,
@@ -368,106 +352,6 @@ export function registerMarkdownDocumentHandlers(
       }
     }
   );
-
-  // ============================================================================
-  // 批注操作
-  // ============================================================================
-  ipcMain.handle('workspace:list-annotations', async (event, { documentId }) => {
-    try {
-      if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
-      const db = databaseService.getDb();
-      const documentService = new MarkdownDocumentService(db);
-      const rawAnnotations = documentService.getAnnotations(documentId);
-      const annotations = rawAnnotations.map(anno => {
-        const content: unknown = JSON.parse(anno.content_json);
-
-        /**
-         * ✅ 批注 position 字段兜底（根因修复：历史数据缺字段导致前端布局崩溃）
-         *
-         * 背景：
-         * - 前端批注面板布局（PanelOverlapDetector 等）默认假设 annotation.position.top/left 为 number
-         * - 早期写入的 annotations.content_json 可能没有 position 字段（包括 Review 工具早期版本）
-         * - 如果直接透传给前端，会触发 `Cannot read properties of undefined (reading 'top')`
-         *
-         * 处理原则：
-         * - IPC 边界返回的数据必须满足前端契约（position 存在且为 {top,left:number}）
-         * - 不在这里做“防御性吞错”，而是把历史数据与当前契约对齐
-         */
-        const normalized: Record<string, unknown> = isRecord(content) ? { ...content } : {};
-
-        const positionRaw = normalized.position;
-        // 缺失或非法时统一修复；合法位置保持原值。
-        normalized.position = isAnnotationPosition(positionRaw)
-          ? positionRaw
-          : { top: 0, left: 0 };
-        return {
-          id: anno.id,
-          blockId: anno.target_block_id,
-          ...normalized,
-          createdAt: new Date(anno.created_at).toISOString(),
-        };
-      });
-      return { success: true, data: { annotations } };
-    } catch (error: unknown) {
-      logger.error('[workspace:list-annotations] Error:', error);
-      return { success: false, error: getErrorMessage(error) };
-    }
-  });
-
-  ipcMain.handle('workspace:create-annotation', async (
-    event,
-    annotation: {
-      id: string;
-      documentId: string;
-      blockId: string;
-      createdAt: string;
-      [key: string]: unknown;
-    },
-  ) => {
-    try {
-      if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
-      const db = databaseService.getDb();
-      const documentService = new MarkdownDocumentService(db);
-      const { id, documentId, blockId, ...content } = annotation;
-      const created = documentService.createAnnotation({
-        id,
-        documentNodeId: documentId,
-        targetBlockId: blockId,
-        contentJson: JSON.stringify(content),
-        createdAt: annotation.createdAt,
-      });
-      return { success: true, data: { annotationId: created.id } };
-    } catch (error: unknown) {
-      logger.error('[workspace:create-annotation] Error:', error);
-      return { success: false, error: getErrorMessage(error) };
-    }
-  });
-
-  ipcMain.handle('workspace:update-annotation', async (event, { annotationId, updates }) => {
-    try {
-      if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
-      const db = databaseService.getDb();
-      const documentService = new MarkdownDocumentService(db);
-      documentService.updateAnnotation(annotationId, updates);
-      return { success: true };
-    } catch (error: unknown) {
-      logger.error('[workspace:update-annotation] Error:', error);
-      return { success: false, error: getErrorMessage(error) };
-    }
-  });
-
-  ipcMain.handle('workspace:delete-annotation', async (event, { annotationId }) => {
-    try {
-      if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
-      const db = databaseService.getDb();
-      const documentService = new MarkdownDocumentService(db);
-      documentService.deleteAnnotation(annotationId);
-      return { success: true };
-    } catch (error: unknown) {
-      logger.error('[workspace:delete-annotation] Error:', error);
-      return { success: false, error: getErrorMessage(error) };
-    }
-  });
 
   logger.info('✅ [IPC-LIFECYCLE] REGISTER | MarkdownDocument IPC handlers registered.');
 }
