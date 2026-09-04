@@ -4,7 +4,7 @@ description: Plan, create, edit, inspect, and visually verify Linnya Slides thro
 metadata:
   author: linnya
   pluginId: slides
-  version: "7.10"
+  version: "7.11"
 ---
 
 # Slides Design
@@ -29,7 +29,7 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 - 用户调整内容计划或视觉方向后，更新同一份计划并再次等待批准。
 
 ### 创建与编辑
-1. 先了解现有材料与 source。部分读取时按 observation 给出的字符 `offset` 继续，不把行号当字符偏移。
+1. 先了解现有材料与 source。普通文本部分读取使用 1-based 行号：`offset` 是起始行，`limit` 是最多行数；复制到 `edit_file.old_string` 时去掉展示行号与 `|`。只有显式 `view="document"` 的结构化读取才使用 `offset_chars/max_chars`。
 2. 按任务读取下表中的最少资源，了解Slides的语法。不要一次加载全部 reference。
 3. deck.js 必须是 plain JavaScript；不写 `import`、`require`、TypeScript 注解或类型声明。每个顶层 `createSlide()` 对应一页，页面必须显式放进 `compose({ slides: [...] })`，整份 source 只调用一次 `compose()`。
 4. 新建文稿或整体改版时，把用户已批准的 `visualDirection` 落实为页面设计，再确定颜色、字体和图表调色板并写进 `compose({ theme })`。`visualDirection` 约束方向，`theme` 保存实际视觉常量；后者是跨页一致性的唯一运行时依据，也是后续编辑读到的 `DECK_DESIGN` 的来源。判断依据见 [`design.md`](./references/design.md)。
@@ -37,7 +37,7 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 6. 局部替换优先 `edit_file`；整体重写才用 `write_file`。示例文件都是独立 source 起点，不能直接互相拼接。同一份 Slides 的写操作必须串行。修改声明与引用时先用 `grep` 找全关联处；删除按“先移除引用、后删除声明”，新增按“先增加声明、后增加引用”，保证每次写入都是可编译状态。能由一段更大且唯一的 `old_string` 覆盖时，优先一次完成关联修改。
 7. 写入失败时按模型可见的错误消息和恢复动作处理。写入成功后，先阅读 observation 中的 `自检`；若有 diagnostic，按其字符串 code、line 和 message 修复。同一输入、同一错误 code 或同一 Shell exit code 再次出现时，先改变失败原因再重试；等待、换目录或原样重放不会修复确定性失败。
 8. 从写入 observation 的 `presentation_id`，或 `read_file` 结果中的 `details.presentationId` 取得 CLI 身份。它不同于 locator、inode 和文件名，不得猜测。
-9. 做质量验收：直接消费低 token observation 时可用 `ppt_inspect`；需要完整机器 JSON、Shell 管道、脚本聚合或自动化时可用 `linnya-slides inspect --presentation <id>`。两者共享同一套检查事实，按当前消费方式选择；同一次验收不要求重复执行。先确认 `buildStatus` 和 `versionId`，按 P0 → P1 → P2 查看；同级先处理 root group，`shared-source` 表示同一源码控制点可一次处理多处后果。再用 `read_file` 定位当前源码；修改后必须在新 `versionId` 上复验，最后 render。P2 是设计复核，不要求机械清零。
+9. 做质量验收：直接消费低 token observation 时可用 `ppt_inspect`；需要完整机器 JSON、Shell 管道、脚本聚合或自动化时可用 `linnya-slides inspect --presentation <id>`。两者共享同一套检查事实，按当前消费方式选择；同一次验收不要求重复执行。先确认 `buildStatus` 和 `versionId`，按 P0 → P1 → P2 查看；同级先处理 root group，`shared-source` 表示同一源码控制点可一次处理多处后果。再用 `read_file` 定位当前源码；修改后必须在新 `versionId` 上复验，最后 render。P2 是设计复核，不要求机械清零。只在比较已经知道的源码对象时使用 `ppt_inspect.focus` 或 CLI `--source-range start:end`；最多四个范围，消费其紧凑的横纵间隙/相交事实，不要求全页距离矩阵。
 10. 需要确认像素效果时才 render。迭代中的新建或大改可以先看代表页，局部修改只看受影响页面；准备完成时，新建或整稿改版应在最终 revision 上检查全部页面，页数多时用显式范围分批，局部修改则在最终 revision 上重新检查全部受影响页面。每次 render 从成功 stdout JSON 确认 `presentation.versionId`，再直接读取 `slides[].locator`；CLI 不会代替 Agent 自动选页。同一 `presentation.versionId + slideNumber` 的检查图最多读取一次，收齐后先汇总页面问题再合并编辑；若 `read_file` 返回 `attachment_status=already_attached`，说明相同像素已在当前 run，无需重试。编辑后只读取新 report 中受影响页的 locator，不原样重放同一批图片。
 
 对象选择遵循语义优先：文字、原生数学公式、数据图表、表格、照片和简单可编辑几何继续使用 Text/Formula、Chart、Table、Image、Shape；复杂流程、架构或机制示意图在“整体编辑即可”时使用 `createSvgGraphic()`；需要手绘插画、笔触、纸面边框或水彩时使用 `createBrushArtwork()`。Brush 通过有序 layers 组合 stroke、watercolor/wash/mass、hatch、field 与几何 marks；复杂画面优先用多个语义图层和不同质感，不要把排线当成唯一纹理。它仍是带显式纯色背景的不透明图片资产，不是透明贴图：背景色应与所在纯色区域一致，下面是照片、渐变或纹理时不要叠加使用。文字和标签用原生 Text 覆盖；块公式和段内公式都使用正式 Formula 语义，不要画成 Brush、SVG 或图片。精确合同见 [`syntax.md`](./references/syntax.md)。

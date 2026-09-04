@@ -72,7 +72,7 @@ shared/
 - backend / renderer 对 shared 的消费应保持单向。shared 不反向了解调用方。
 - renderer / worker 的 value import 禁止指向 `@plugin/slides/shared` 根桶；只能使用 `pluginMeta`、`renderModel`、
   `shapeGeometry`、`slideRasterization` 等语义子入口。`import type` 可以使用稳定 barrel，但优先保持语义清楚。
-- 插件独占工具的 strict schema 由插件 shared 拥有。`pptInspectToolContract.ts` 是 `ppt_inspect` 参数、执行期结果和 Conversation 消息结果的唯一跨端 owner：backend producer parse 包含 `observationPreviewMeta` 的执行期 schema；该 meta 被 ToolNode 消费且不进入 Conversation 工具消息，Renderer projector parse 严格的 `data + observation` 消息 schema。两份结果合同复用相同 data/observation 定义，不维护兼容读取。完整 finding 只进 observation，不进入卡片 data。业务投影规则见 [presentationInspection](../backend/features/presentationInspection/README.md)。
+- 插件独占工具的 strict schema 由插件 shared 拥有。`pptInspectToolContract.ts` 是 `ppt_inspect` 参数、执行期结果和 Conversation 消息结果的唯一跨端 owner：backend producer parse 包含 `observationPreviewMeta` 的执行期 schema；该 meta 被 ToolNode 消费且不进入 Conversation 工具消息，Renderer projector parse 严格的 `data + observation` 消息 schema。两份结果合同复用相同 data/observation 定义，不维护兼容读取。可选 `focus` 只接纳至多四个 1-based 源码闭区间；完整 finding 与 focus 关系只进 observation，不进入卡片 data。业务投影规则见 [presentationInspection](../backend/features/presentationInspection/README.md)。
 - `pptPlanToolContract.ts` 是 `ppt_plan` 参数与计划 data 的唯一跨端 owner。`pages` 是页数和顺序的唯一输入事实；backend 生成连续 `slideNumber` 与 `pageCount`。`visualDirection` 只审批整稿的设计理念、构图策略和唯一记忆点，不复制最终 deck.js 的颜色、字体或图表调色板。
 
 ## Public Barrel 规则
