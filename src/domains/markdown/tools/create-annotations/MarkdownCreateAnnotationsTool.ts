@@ -17,19 +17,14 @@
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '../../../../tools/types';
 import type { StructuredToolResult } from '../../../../tools/types';
 import {
-  appendMarkdownAnnotations,
+  createMarkdownAnnotations,
   resolveMarkdownAnnotationTarget,
-  type MarkdownAnnotationInsertion,
+  type MarkdownAnnotationCreationDraft,
 } from '../../features/annotations';
-import {
-  assertExpectedMarkdownDocumentVersion,
-  MarkdownDocumentService,
-} from '../../features/document-storage';
+import { MarkdownDocumentService } from '../../features/document-storage';
 import {
   flattenMarkdownDocumentBlocks,
-  type FlattenedMarkdownBlock,
 } from '../../shared';
-import { generateEditorAnnotationId } from '../../../../shared/utils/idUtils';
 
 // ============================================================================
 // 类型定义
@@ -219,51 +214,63 @@ export class MarkdownCreateAnnotationsTool extends BaseTool {
     try {
       const db = databaseService.getDb();
       const documentService = new MarkdownDocumentService(db);
-      const latestVersion = documentService.getLatestVersion(documentId);
-      if (!latestVersion) {
-        return this.buildErrorResult(`文档不存在: ${documentId}`);
-      }
-      assertExpectedMarkdownDocumentVersion({
-        expected: expectedDocumentVersion,
-        actual: latestVersion.version_number,
-      });
-
       // 3.1 读取文档并展平 blocks；批注工具只接受 ref，由后端解析到真实 blockId。
       const content = documentService.getDocument(documentId);
       const baseBlocks = flattenMarkdownDocumentBlocks(content);
 
-      // 4. 批量处理批注创建
+      // 4. 工具只负责 ref -> blockId；身份、初态与持久化统一交给 Annotation 用例。
       const results: AnnotationResult[] = [];
-      const insertions: MarkdownAnnotationInsertion[] = [];
-      let createdCount = 0;
+      const drafts: MarkdownAnnotationCreationDraft[] = [];
+      const createdResultIndexes: number[] = [];
       let skippedCount = 0;
 
       for (const item of items) {
-        const plan = this.planAnnotationItem({
-          item,
+        const resolved = resolveMarkdownAnnotationTarget({
+          ref: item.target_ref,
           baseBlocks,
-          reviewRunId,
-          agentId,
-          chunkIndex,
-          author: agentName,
         });
-
-        results.push(plan.result);
-        if (plan.insertion) insertions.push(plan.insertion);
-
-        if (plan.result.status === 'created') {
-          createdCount++;
-        } else {
+        if (resolved.status !== 'ok') {
+          console.warn(
+            `[MarkdownCreateAnnotationsTool] ref 解析失败: ${item.target_ref} | ${resolved.message}`
+          );
+          results.push({
+            targetRef: item.target_ref,
+            status: 'skipped',
+            message: resolved.message,
+          });
           skippedCount++;
+          continue;
         }
+
+        createdResultIndexes.push(results.length);
+        drafts.push({ blockId: resolved.resolvedId, content: item.content });
+        results.push({ targetRef: item.target_ref, status: 'created' });
       }
 
-      if (insertions.length > 0) {
-        documentService.updateDocument(
-          documentId,
-          appendMarkdownAnnotations(content, insertions),
-        );
-      }
+      const creation = createMarkdownAnnotations({
+        store: documentService,
+        documentId,
+        expectedDocumentVersion,
+        drafts,
+        author: agentName,
+        meta: {
+          source: 'review',
+          ...(reviewRunId ? { reviewRunId } : {}),
+          ...(agentId ? { agentId } : {}),
+          ...(chunkIndex !== undefined ? { chunkIndex } : {}),
+        },
+      });
+      creation.created.forEach((created, index) => {
+        const resultIndex = createdResultIndexes[index];
+        const result = resultIndex === undefined ? undefined : results[resultIndex];
+        if (!result) return;
+        results[resultIndex] = {
+          ...result,
+          annotationId: created.annotation.id,
+          message: `已为 ${result.targetRef} 创建批注`,
+        };
+      });
+      const createdCount = creation.created.length;
 
       // 5. 返回结果
       const resultData: MarkdownCreateAnnotationsResultData = {
@@ -305,70 +312,6 @@ export class MarkdownCreateAnnotationsTool extends BaseTool {
       items.push({ target_ref: targetRef, content });
     }
     return items;
-  }
-
-  /**
-   * 处理单条批注创建
-   */
-  private planAnnotationItem(params: {
-    item: AnnotationItem;
-    baseBlocks: FlattenedMarkdownBlock[];
-    reviewRunId?: string;
-    agentId?: string;
-    chunkIndex?: number;
-    author: string;
-  }): { result: AnnotationResult; insertion?: MarkdownAnnotationInsertion } {
-    const { item, baseBlocks, reviewRunId, agentId, chunkIndex, author } = params;
-    const { target_ref: targetRef, content } = item;
-
-    // 1. 解析 ref -> blockId（后端自行读取文档并解析，避免依赖前端额外传映射）
-    const resolved = resolveMarkdownAnnotationTarget({
-      ref: targetRef,
-      baseBlocks
-    });
-
-    if (resolved.status !== 'ok') {
-      const message = resolved.message;
-      console.warn(`[MarkdownCreateAnnotationsTool] ref 解析失败: ${targetRef} | ${message}`);
-      return {
-        result: {
-          targetRef,
-          status: 'skipped',
-          message
-        }
-      };
-    }
-
-    const blockId = resolved.resolvedId;
-
-    const annotationId = generateEditorAnnotationId();
-    const now = new Date().toISOString();
-    const annotation = {
-      id: annotationId,
-      content,
-      author,
-      state: 'confirmed',
-      createdAt: now,
-      updatedAt: now,
-      resolvedAt: null,
-      replies: [],
-      meta: {
-        source: 'review',
-        ...(reviewRunId ? { reviewRunId } : {}),
-        ...(agentId ? { agentId } : {}),
-        ...(chunkIndex !== undefined ? { chunkIndex } : {}),
-      }
-    } as const;
-
-    return {
-      result: {
-        annotationId,
-        targetRef,
-        status: 'created',
-        message: `已为 ${targetRef} 创建批注`
-      },
-      insertion: { blockId, annotation },
-    };
   }
 
   /**

@@ -70,9 +70,16 @@ function createMarkdownFileWriteProvider(params: {
         pendingMetaByMarkdown: await buildMarkdownPendingCitationMetadata(request.content, refs =>
           requireCitationSourceResolver(params.context).resolveSources(refs)
         ),
+        annotationAdmission: {
+          author: 'AI',
+          meta: {
+            source: 'agent',
+            ...(params.context.runId ? { runId: params.context.runId } : {}),
+          },
+        },
         touchDocumentUpdatedAt: workspaceMutation.touchDocumentUpdatedAt,
       });
-      if (write.edits.length > 0) {
+      if (write.edits.length > 0 || write.createdAnnotationIds.length > 0) {
         params.mutationPublisher?.publish(
           createWorkspaceDocumentUpdatedEvent({
             node: {
@@ -80,20 +87,40 @@ function createMarkdownFileWriteProvider(params: {
               project_id: request.identity.projectId,
               type: request.identity.documentType,
             },
-            mutationKind: 'pending',
+            mutationKind: write.edits.length > 0 ? 'pending' : 'version',
             source: 'tool',
           })
         );
       }
 
       return {
-        observation:
-          request.operation === 'edit'
-            ? `已写入 Markdown 修订意图：${request.identity.path}，替换 ${request.replacedCount ?? 0} 处。`
-            : `已写入 Markdown 修订意图：${request.identity.path}。`,
+        observation: buildMarkdownFileWriteObservation({
+          operation: request.operation,
+          path: request.identity.path,
+          replacedCount: request.replacedCount,
+          pendingCount: write.edits.length,
+          annotationCount: write.createdAnnotationIds.length,
+        }),
       };
     },
   };
+}
+
+function buildMarkdownFileWriteObservation(params: {
+  readonly operation: 'edit' | 'write';
+  readonly path: string;
+  readonly replacedCount?: number;
+  readonly pendingCount: number;
+  readonly annotationCount: number;
+}): string {
+  const facts: string[] = [];
+  if (params.pendingCount > 0) facts.push(`正文修订 ${params.pendingCount} 块待确认`);
+  if (params.annotationCount > 0) facts.push(`批注 ${params.annotationCount} 条已创建`);
+  if (facts.length === 0) facts.push('内容无变化');
+  const replacement = params.operation === 'edit'
+    ? `，替换 ${params.replacedCount ?? 0} 处`
+    : '';
+  return `已处理 Markdown 文件：${params.path}${replacement}；${facts.join('，')}。`;
 }
 
 function createPluginFileWriteProvider(params: {

@@ -8,8 +8,10 @@
 
 - Review enricher 只注入当前审阅的文档与角色元信息；
 - 工具校验 Review fragment 对应的正式 Markdown 文档版本仍是最新版本，再展开 canonical root blocks；
-- annotations feature 以稳定 `[#ref]` 确定性解析目标 blockId，并在写入前再次校验目标块仍属于当前文档；
+- 工具只负责以稳定 `[#ref]` 确定性解析目标 blockId；实体创建、`confirmed` 初态与单版本提交统一委托给 annotations feature 的 `createMarkdownAnnotations()` 用例；
 - 工具结果只报告逐项创建事实，不向 Workspace 工具层泄漏 Markdown repository。
+
+同一个创建用例也由 Workspace `edit_file` / `write_file` 的 Markdown provider 调用：普通 `<!-- comment -->` 直接创建批注，正文差异才进入 pending revisions。工具名不同不代表存在第二套批注写入语义。
 
 ### `write_to_table`
 

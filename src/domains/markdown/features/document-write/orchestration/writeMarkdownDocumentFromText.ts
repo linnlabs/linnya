@@ -17,6 +17,13 @@ import {
   type FlattenedMarkdownBlock,
 } from '../../../shared';
 import { normalizeMarkdownCitationTokenSpelling } from '../../../../citation';
+import type { MarkdownAnnotationMeta } from '@app/schemas';
+import {
+  createMarkdownAnnotations,
+  planMarkdownFileAnnotationCreations,
+} from '../../annotations';
+import type { DocumentVersion } from '../../document-storage';
+import type { MarkdownDocJson } from '../../normalization/runtime';
 
 export type MarkdownFileWriteOperation = 'update' | 'insert' | 'delete';
 
@@ -31,10 +38,13 @@ export interface MarkdownFileWriteResult {
   readonly edits: MarkdownFileWriteEdit[];
   readonly currentText: string;
   readonly targetText: string;
+  readonly createdAnnotationIds: readonly string[];
 }
 
 export interface MarkdownDocumentWriteStore {
-  getDocument(documentId: string): unknown;
+  getDocument(documentId: string): MarkdownDocJson;
+  getLatestVersion(documentId: string): DocumentVersion | null;
+  updateDocument(documentId: string, content: MarkdownDocJson): DocumentVersion;
   getPendingRevisions(documentId: string): Array<{
     readonly target_block_id: string;
     readonly new_markdown: string | null;
@@ -130,6 +140,10 @@ export async function writeMarkdownDocumentFromText(params: {
   readonly targetText: string;
   readonly toolName: 'edit_file' | 'write_file';
   readonly pendingMetaByMarkdown?: ReadonlyMap<string, PendingRevisionMetadata>;
+  readonly annotationAdmission: {
+    readonly author: string;
+    readonly meta: MarkdownAnnotationMeta;
+  };
   readonly touchDocumentUpdatedAt: (documentId: string, updatedAt: number) => void;
 }): Promise<MarkdownFileWriteResult> {
   const content = params.documentStore.getDocument(params.documentId);
@@ -140,17 +154,35 @@ export async function writeMarkdownDocumentFromText(params: {
     pendings: params.documentStore.getPendingRevisions(params.documentId),
     viewMode: 'preview',
   });
-  const currentBlocks: readonly FlattenedMarkdownBlock[] = currentProjection.viewBlocks;
+  const currentBodyProjection = buildMarkdownCitationReadProjection({
+    content,
+    pendings: params.documentStore.getPendingRevisions(params.documentId),
+    viewMode: 'preview',
+    includeAnnotations: false,
+  });
+  const currentBlocks: readonly FlattenedMarkdownBlock[] = currentBodyProjection.viewBlocks;
   const planned = await planMarkdownBlocks(params.targetText);
-  const targetBlocks = planned.blocks;
+  const targetBlocks = planned.bodyBlocks;
   const targetComparisonBlocks = targetBlocks.map(normalizeMarkdownCitationTokenSpelling);
-  const currentText = serializeMarkdownBlocks(currentBlocks);
+  const currentText = serializeMarkdownBlocks(currentProjection.viewBlocks);
+  const annotationDrafts = planMarkdownFileAnnotationCreations({
+    currentDocument: content,
+    currentBlocks,
+    annotationComments: planned.annotationComments,
+  });
 
   if (currentBlocks.length === 0 && targetBlocks.length > 0) {
     throw new Error('当前 Markdown 文档没有可锚定的块，无法通过 pending revision 写入全文。');
   }
 
-  const edits = params.documentStore.runInTransaction(() => {
+  const writeResult = params.documentStore.runInTransaction(() => {
+    const annotationCreation = createMarkdownAnnotations({
+      store: params.documentStore,
+      documentId: params.documentId,
+      drafts: annotationDrafts,
+      author: params.annotationAdmission.author,
+      meta: params.annotationAdmission.meta,
+    });
     const executed: MarkdownFileWriteEdit[] = [];
     const sharedLength = Math.min(currentBlocks.length, targetBlocks.length);
 
@@ -204,13 +236,17 @@ export async function writeMarkdownDocumentFromText(params: {
       params.touchDocumentUpdatedAt(params.documentId, Date.now());
     }
 
-    return executed;
+    return {
+      edits: executed,
+      createdAnnotationIds: annotationCreation.created.map(item => item.annotation.id),
+    };
   });
 
   return {
     documentId: params.documentId,
-    edits,
+    edits: writeResult.edits,
     currentText,
-    targetText: targetComparisonBlocks.join('\n\n'),
+    targetText: planned.blocks.join('\n\n'),
+    createdAnnotationIds: writeResult.createdAnnotationIds,
   };
 }

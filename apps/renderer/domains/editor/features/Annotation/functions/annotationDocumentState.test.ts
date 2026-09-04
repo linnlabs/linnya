@@ -96,5 +96,6 @@ describe('annotationDocumentState', () => {
       'annotation-review',
     ])
     expect(plan.mergedCount).toBe(1)
+    expect(plan.transaction.getMeta('internal')).toBe(true)
   })
 })

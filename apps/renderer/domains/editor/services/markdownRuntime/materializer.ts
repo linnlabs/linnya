@@ -204,6 +204,7 @@ export function blockEventsToDocJson(
             id: generateannotationId(),
             author: 'User',
             timestamp: new Date().toISOString(),
+            meta: { source: 'manual' },
           }),
         ],
       }

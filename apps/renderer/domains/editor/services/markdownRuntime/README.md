@@ -55,6 +55,7 @@ apps/renderer/domains/editor/services/markdownRuntime/
 
 - 这里不做 editor schema 逻辑
 - 这里不做 pending / diff / revision 逻辑
+- HTML comment materialization 只消费共享 Annotation 创建合同；file-style 规划把普通 comment 保持为无身份 draft，不能在 parser 内用随机 ID 或当前时间制造业务事实
 - 这里不缓存业务态，只负责解析
 
 注意：

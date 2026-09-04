@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   admitMarkdownAnnotationComment,
+  createMarkdownAnnotation,
   decodeMarkdownAnnotationComment,
   encodeMarkdownAnnotationComment,
   parseMarkdownAnnotationComment,
@@ -19,6 +20,26 @@ const annotation = {
 };
 
 describe('Markdown Annotation comment profile', () => {
+  it('统一创建入口固定新批注的持久化初态', () => {
+    expect(createMarkdownAnnotation({
+      id: 'annotation-agent',
+      content: '建议补充依据。',
+      author: 'AI',
+      timestamp: '2026-09-04T01:02:03.000Z',
+      meta: { source: 'agent', runId: 'run-1' },
+    })).toEqual({
+      id: 'annotation-agent',
+      content: '建议补充依据。',
+      author: 'AI',
+      state: 'confirmed',
+      createdAt: '2026-09-04T01:02:03.000Z',
+      updatedAt: '2026-09-04T01:02:03.000Z',
+      resolvedAt: null,
+      replies: [],
+      meta: { source: 'agent', runId: 'run-1' },
+    });
+  });
+
   it('用合法 HTML comment 无损编码 canonical Annotation', () => {
     const encoded = encodeMarkdownAnnotationComment(annotation);
 
@@ -40,6 +61,7 @@ describe('Markdown Annotation comment profile', () => {
       id: 'annotation-imported',
       author: 'User',
       timestamp: '2026-09-04T01:02:03.000Z',
+      meta: { source: 'manual' },
     })).toEqual({
       id: 'annotation-imported',
       content: '建议补充依据。',
@@ -57,6 +79,7 @@ describe('Markdown Annotation comment profile', () => {
         id: 'ignored',
         author: 'Ignored',
         timestamp: '2026-09-04T01:02:03.000Z',
+        meta: { source: 'manual' },
       },
     )).toEqual(annotation);
   });

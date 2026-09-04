@@ -55,11 +55,16 @@ function readRawMarkdownSource(root: ProseMirrorNode | null): string | null {
 function extractMarkdownFromRootBlock(
   root: ProseMirrorNode | null,
   projectInlineText?: MarkdownInlineTextProjector,
-  projectInlineNode?: MarkdownInlineNodeProjector
+  projectInlineNode?: MarkdownInlineNodeProjector,
+  includeAnnotations?: boolean,
 ): string {
   return (
     readRawMarkdownSource(root) ??
-    serializeRootBlockToMarkdown(root, { projectInlineText, projectInlineNode })
+    serializeRootBlockToMarkdown(root, {
+      projectInlineText,
+      projectInlineNode,
+      includeAnnotations,
+    })
   );
 }
 
@@ -68,6 +73,7 @@ export function flattenMarkdownDocumentBlocks(
   options: {
     readonly projectInlineText?: MarkdownInlineTextProjector;
     readonly projectInlineNode?: MarkdownInlineNodeProjector;
+    readonly includeAnnotations?: boolean;
   } = {}
 ): FlattenedMarkdownBlock[] {
   const doc = asNode(content);
@@ -99,7 +105,8 @@ export function flattenMarkdownDocumentBlocks(
       text: extractMarkdownFromRootBlock(
         node,
         options.projectInlineText,
-        options.projectInlineNode
+        options.projectInlineNode,
+        options.includeAnnotations,
       ),
     });
   }
