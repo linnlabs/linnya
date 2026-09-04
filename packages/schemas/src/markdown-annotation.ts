@@ -20,6 +20,11 @@ export const ReviewMarkdownAnnotationMetaSchema = z.object({
   chunkIndex: z.number().int().nonnegative().optional(),
 }).strict();
 
+export const AgentMarkdownAnnotationMetaSchema = z.object({
+  source: z.literal('agent'),
+  runId: z.string().min(1).optional(),
+}).strict();
+
 export const MarkdownAnnotationSchema = z.object({
   id: z.string().min(1),
   content: z.string().min(1),
@@ -32,6 +37,7 @@ export const MarkdownAnnotationSchema = z.object({
   meta: z.discriminatedUnion('source', [
     ManualMarkdownAnnotationMetaSchema,
     ReviewMarkdownAnnotationMetaSchema,
+    AgentMarkdownAnnotationMetaSchema,
   ]),
 }).strict();
 
@@ -39,6 +45,7 @@ export const MarkdownAnnotationsSchema = z.array(MarkdownAnnotationSchema);
 
 export type MarkdownAnnotationReply = z.infer<typeof MarkdownAnnotationReplySchema>;
 export type MarkdownAnnotation = z.infer<typeof MarkdownAnnotationSchema>;
+export type MarkdownAnnotationMeta = MarkdownAnnotation['meta'];
 
 export interface ImportedMarkdownAnnotationDraft {
   readonly content: string;
@@ -52,6 +59,7 @@ export interface MarkdownAnnotationAdmission {
   readonly id: string;
   readonly author: string;
   readonly timestamp: string;
+  readonly meta: MarkdownAnnotationMeta;
 }
 
 const CANONICAL_MARKER = 'linnya-annotation:v1';
@@ -108,6 +116,32 @@ export function parseMarkdownAnnotationComment(comment: string): ParsedMarkdownA
 }
 
 /**
+ * 创建一条可持久化 Annotation 的唯一语义入口。
+ *
+ * 调用边界负责提供身份、actor、时间和来源；这里统一收口新建态的不变量，
+ * 避免 Renderer、Review tool 与文件写入各自拼一份近似对象。
+ */
+export function createMarkdownAnnotation(params: {
+  readonly id: string;
+  readonly content: string;
+  readonly author: string;
+  readonly timestamp: string;
+  readonly meta: MarkdownAnnotationMeta;
+}): MarkdownAnnotation {
+  return MarkdownAnnotationSchema.parse({
+    id: params.id,
+    content: params.content,
+    author: params.author,
+    state: 'confirmed',
+    createdAt: params.timestamp,
+    updatedAt: params.timestamp,
+    resolvedAt: null,
+    replies: [],
+    meta: params.meta,
+  });
+}
+
+/**
  * 把 HTML comment 接纳为可持久化的 Annotation。
  *
  * canonical profile 保留原身份；普通 comment 只有正文，必须由调用边界注入
@@ -122,15 +156,8 @@ export function admitMarkdownAnnotationComment(
     return parsed.annotation;
   }
 
-  return MarkdownAnnotationSchema.parse({
-    id: admission.id,
+  return createMarkdownAnnotation({
+    ...admission,
     content: parsed.draft.content,
-    author: admission.author,
-    state: 'confirmed',
-    createdAt: admission.timestamp,
-    updatedAt: admission.timestamp,
-    resolvedAt: null,
-    replies: [],
-    meta: { source: 'manual' },
   });
 }

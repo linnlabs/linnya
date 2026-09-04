@@ -7,3 +7,10 @@ export {
   appendMarkdownAnnotations,
   type MarkdownAnnotationInsertion,
 } from './functions/appendMarkdownAnnotations';
+export {
+  createMarkdownAnnotations,
+  type CreateMarkdownAnnotationsResult,
+  type CreatedMarkdownAnnotation,
+  type MarkdownAnnotationCreationDraft,
+  type MarkdownAnnotationCreationStore,
+} from './orchestration/createMarkdownAnnotations';

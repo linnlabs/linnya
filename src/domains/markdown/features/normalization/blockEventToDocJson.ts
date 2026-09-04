@@ -227,6 +227,7 @@ export function convertBlockEventsToDocJson(blockEvents: WasmBlockEventLike[]): 
         id: generateEditorAnnotationId(),
         author: 'User',
         timestamp: new Date().toISOString(),
+        meta: { source: 'manual' },
       });
       target.attrs = {
         ...(target.attrs ?? {}),
