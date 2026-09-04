@@ -2,7 +2,7 @@ import type { Node as ProseMirrorNode } from 'prosemirror-model'
 
 export interface RootBlockAttrs {
   id?: unknown
-  annotationIds?: unknown
+  annotations?: unknown
   position?: unknown
   isDragging?: unknown
   backgroundColor?: unknown

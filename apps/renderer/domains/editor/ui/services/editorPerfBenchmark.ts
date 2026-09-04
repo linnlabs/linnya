@@ -462,7 +462,7 @@ function wrapInRootBlock(contentBlock: DocNode, blockId: string): DocNode {
     type: 'rootBlock',
     attrs: {
       id: blockId,
-      annotationIds: [],
+      annotations: [],
       position: null,
       isDragging: false,
       backgroundColor: null,

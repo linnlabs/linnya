@@ -6,6 +6,11 @@ const schema = new Schema({
   nodes: {
     doc: { content: 'block+' },
     text: { group: 'inline' },
+    rootBlock: {
+      group: 'block',
+      content: 'baseBlock',
+      attrs: { annotations: { default: [] } },
+    },
     baseBlock: { group: 'block', content: 'inline*' },
     bibliographyBlock: { group: 'block', atom: true },
     imageBlock: {
@@ -15,13 +20,6 @@ const schema = new Schema({
         alt: { default: null },
         width: { default: null },
         height: { default: null },
-      },
-    },
-    audioBlock: {
-      group: 'block',
-      atom: true,
-      attrs: {
-        src: { default: null },
       },
     },
   },
@@ -40,14 +38,12 @@ describe('markdownSerializer', () => {
     const doc = schema.nodes.doc.create(null, [
       schema.nodes.bibliographyBlock.create(),
       schema.nodes.imageBlock.create({ width: 320 }),
-      schema.nodes.audioBlock.create(),
     ]);
 
     const markdown = createMarkdownSerializer().serialize(doc);
 
     expect(markdown).toContain('## References');
     expect(markdown).toContain('[Image: Image, width 320px]');
-    expect(markdown).toContain('[Empty audio block]');
     expect(markdown).not.toMatch(/[\u4e00-\u9fff]/u);
   });
 
@@ -63,5 +59,29 @@ describe('markdownSerializer', () => {
     expect(createMarkdownSerializer().serialize(doc)).toBe(
       '[链接](https://example.com/docs "示例文档")'
     );
+  });
+
+  it('exports document-owned annotations after their root block', () => {
+    const annotation = {
+      id: 'annotation-1',
+      content: '建议补充依据',
+      author: 'Reviewer',
+      state: 'confirmed',
+      createdAt: '2026-09-04T00:00:00.000Z',
+      updatedAt: '2026-09-04T00:00:00.000Z',
+      resolvedAt: null,
+      replies: [],
+      meta: { source: 'manual' },
+    };
+    const doc = schema.nodes.doc.create(null, [
+      schema.nodes.rootBlock.create(
+        { annotations: [annotation] },
+        schema.nodes.baseBlock.create(null, schema.text('正文')),
+      ),
+    ]);
+
+    const markdown = createMarkdownSerializer().serialize(doc);
+    expect(markdown).toContain('正文\n\n<!-- linnya-annotation:v1\n');
+    expect(markdown).toContain('"id":"annotation-1"');
   });
 });

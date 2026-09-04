@@ -41,18 +41,10 @@ export const RootBlockHistory = Node.create({
           }
         }
       },
-      // 批注ID数组属性 (历史视图虽然不操作批注，但保留属性以防样式依赖)
-      annotationIds: {
+      // 历史版本保留完整批注实体，但不把内容复制到 DOM。
+      annotations: {
         default: [],
-        parseHTML: element => {
-          const annotationIdsAttr = element.getAttribute('data-annotation-ids')
-          return annotationIdsAttr ? JSON.parse(annotationIdsAttr) : []
-        },
-        renderHTML: attributes => {
-          return {
-            'data-annotation-ids': JSON.stringify(attributes.annotationIds),
-          }
-        }
+        rendered: false,
       },
       // 位置属性
       position: {
@@ -139,4 +131,3 @@ export const RootBlockHistory = Node.create({
     ]
   }
 })
-

@@ -65,7 +65,7 @@ function createRootBlockNode(id = 'root-a') {
   return {
     attrs: {
       id,
-      annotationIds: [],
+      annotations: [],
     },
     firstChild: null,
   }

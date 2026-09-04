@@ -8,6 +8,18 @@ function rootBlock(content: readonly unknown[]) {
   };
 }
 
+const annotation = {
+  id: 'annotation-1',
+  content: '建议补充依据',
+  author: 'Reviewer',
+  state: 'confirmed' as const,
+  createdAt: '2026-09-04T00:00:00.000Z',
+  updatedAt: '2026-09-04T00:00:00.000Z',
+  resolvedAt: null,
+  replies: [],
+  meta: { source: 'manual' as const },
+};
+
 describe('serializeRootBlockToMarkdown inline projection', () => {
   it('未提供 projector 时保持既有 Markdown 转义与 mark 输出', () => {
     expect(
@@ -73,5 +85,15 @@ describe('serializeRootBlockToMarkdown inline projection', () => {
 
     expect(result).toBe('```md\n[@ABC234]\n```');
     expect(callCount).toBe(0);
+  });
+
+  it('在所属 root block 后输出 canonical Annotation comment', () => {
+    const result = serializeRootBlockToMarkdown({
+      ...rootBlock([{ type: 'text', text: '正文' }]),
+      attrs: { annotations: [annotation] },
+    });
+
+    expect(result).toContain('正文\n\n<!-- linnya-annotation:v1\n');
+    expect(result).toContain('"id":"annotation-1"');
   });
 });

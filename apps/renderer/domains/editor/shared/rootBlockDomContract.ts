@@ -17,7 +17,6 @@ export const ROOT_BLOCK_DOM_ATTRS = {
   nodeType: 'data-node-type',
   placeholder: 'data-placeholder',
   renderMode: 'data-root-block-render-mode',
-  annotationIds: 'data-annotation-ids',
   position: 'data-position',
   dragging: 'data-dragging',
   backgroundColor: 'data-background-color',

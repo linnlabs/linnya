@@ -29,7 +29,5 @@ export function buildEditorMarkdownSerializerLabels(
       }
       return editorMessage('editor.markdownSerializer.imageDescription', { alt });
     },
-    audioFile: editorMessage('editor.markdownSerializer.audioFile'),
-    emptyAudioBlock: editorMessage('editor.markdownSerializer.emptyAudioBlock'),
   };
 }

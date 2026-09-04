@@ -73,18 +73,10 @@ export const RootBlock = Node.create({
           }
         }
       },
-      // 批注ID数组属性
-      annotationIds: {
+      // 批注实体属于文档版本，但绝不复制到 data-* DOM。
+      annotations: {
         default: [],
-        parseHTML: element => {
-          const annotationIdsAttr = element.getAttribute('data-annotation-ids')
-          return annotationIdsAttr ? JSON.parse(annotationIdsAttr) : []
-        },
-        renderHTML: attributes => {
-          return {
-            'data-annotation-ids': JSON.stringify(attributes.annotationIds),
-          }
-        }
+        rendered: false,
       },
       // 额外可用于拖拽排序的位置属性
       position: {

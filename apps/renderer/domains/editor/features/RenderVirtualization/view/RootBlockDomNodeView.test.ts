@@ -24,7 +24,7 @@ function createRootBlockNode(id: string): ProseMirrorNode {
     type: rootBlockType,
     attrs: {
       id,
-      annotationIds: [],
+      annotations: [],
     },
     firstChild: {
       type: { name: 'baseBlock' },

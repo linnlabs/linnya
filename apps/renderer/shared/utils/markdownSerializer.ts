@@ -1,6 +1,10 @@
 // apps/renderer/shared/utils/markdownSerializer.ts
 import { MarkdownSerializer, MarkdownSerializerState } from 'prosemirror-markdown'
 import { Mark as ProseMirrorMark, Node as ProsemirrorNode } from 'prosemirror-model'
+import {
+  MarkdownAnnotationsSchema,
+  encodeMarkdownAnnotationComment,
+} from '@app/schemas'
 
 // 类型定义
 type NodeSerializer = (state: MarkdownSerializerState, node: ProsemirrorNode) => void
@@ -50,8 +54,6 @@ export interface MarkdownSerializerLabels {
     width?: number | string
     height?: number | string
   }) => string
-  audioFile: string
-  emptyAudioBlock: string
 }
 
 const DEFAULT_MARKDOWN_SERIALIZER_LABELS: MarkdownSerializerLabels = {
@@ -65,8 +67,6 @@ const DEFAULT_MARKDOWN_SERIALIZER_LABELS: MarkdownSerializerLabels = {
     }
     return `${description}]`
   },
-  audioFile: 'Audio file',
-  emptyAudioBlock: 'Empty audio block',
 }
 
 function getMarkdownSerializerLabels(state: MarkdownSerializerState): MarkdownSerializerLabels {
@@ -89,10 +89,13 @@ const nodes: { [key: string]: NodeSerializer } = {
     state.text(node.text || '')
   },
   rootBlock(state, node) {
-    // "透明"处理 rootBlock，只渲染其内容
-    // 内部的块 (baseBlock, headingBlock 等) 会自己调用 closeBlock 来处理块间距
-    // 之前这里也调用了 closeBlock，导致了双重换行，是错误的。
     state.renderContent(node)
+    const annotations = MarkdownAnnotationsSchema.parse(node.attrs.annotations ?? [])
+    for (const annotation of annotations) {
+      state.ensureNewLine()
+      state.write(encodeMarkdownAnnotationComment(annotation))
+      state.closeBlock(node)
+    }
   },
   baseBlock(state, node) {
     const lineBreakStyle = getLineBreakStyle(state)
@@ -308,23 +311,6 @@ const nodes: { [key: string]: NodeSerializer } = {
     const height = node.attrs.height
 
     state.write(labels.imageDescription({ alt, width, height }))
-
-    if (lineBreakStyle === 'newline') {
-      state.write('\\n\\n')
-    } else {
-      state.closeBlock(node)
-    }
-  },
-  audioBlock(state, node) {
-    const lineBreakStyle = getLineBreakStyle(state)
-    const labels = getMarkdownSerializerLabels(state)
-
-    const src = node.attrs.src || ''
-    if (src) {
-      state.write(`[${labels.audioFile}](` + src.replace(/([()])/g, '\\$1') + ')')
-    } else {
-      state.write(`[${labels.emptyAudioBlock}]`)
-    }
 
     if (lineBreakStyle === 'newline') {
       state.write('\\n\\n')

@@ -14,6 +14,11 @@
  * - 仅负责“导出为 Markdown”，不负责反向解析。
  */
 
+import {
+  MarkdownAnnotationsSchema,
+  encodeMarkdownAnnotationComment,
+} from '@app/schemas';
+
 type JsonRecord = Record<string, unknown>;
 
 type JsonNode = {
@@ -454,6 +459,12 @@ export function serializeRootBlockToMarkdown(
     else parts.push(''); // 空块保留为空串，便于 ref 仍可定位
   }
 
-  // rootBlock 内多子块的情况很少见，这里用空行分隔，保持 Markdown 语义
-  return parts.join('\n\n').trimEnd();
+  // Annotation 随 root block 进入同一个 Markdown 逻辑单元，不能获得独立 ref。
+  const body = parts.join('\n\n').trimEnd();
+  const annotations = MarkdownAnnotationsSchema.parse(getAttrs(root)['annotations'] ?? []);
+  if (annotations.length === 0) return body;
+
+  return [body, ...annotations.map(encodeMarkdownAnnotationComment)]
+    .filter(part => part.length > 0)
+    .join('\n\n');
 }

@@ -29,14 +29,6 @@ function setOptionalAttribute(el, name, value) {
   el.setAttribute(name, String(value));
 }
 
-function setJsonAttribute(el, name, value) {
-  if (value === null || value === undefined) {
-    el.removeAttribute(name);
-    return;
-  }
-  el.setAttribute(name, JSON.stringify(value));
-}
-
 function clearContainsClass(el) {
   for (const className of Array.from(el.classList)) {
     if (className.startsWith('contains-')) {
@@ -83,7 +75,6 @@ function syncShellDom(shell, node) {
   shell.dom.setAttribute(ROOT_BLOCK_RENDER_MODE_DATA_ATTR, 'hydrated');
   shell.dom.setAttribute('data-placeholder', 'false');
   setOptionalAttribute(shell.dom, 'data-id', id);
-  setJsonAttribute(shell.dom, 'data-annotation-ids', attrs.annotationIds || []);
   setOptionalAttribute(shell.dom, 'data-position', attrs.position);
   setOptionalAttribute(shell.dom, 'data-dragging', attrs.isDragging ? 'true' : null);
   setOptionalAttribute(shell.dom, 'data-background-color', attrs.backgroundColor);

@@ -12,6 +12,7 @@ import { Schema, type MarkSpec, type NodeSpec } from 'prosemirror-model';
 import { createWorkspaceMarkdownSchemaContract } from './definitions/workspaceMarkdownSchemaContract';
 import { assertProseMirrorJsonMatchesSchema } from './functions/assertProseMirrorJsonMatchesSchema';
 import type { MarkdownDocJson } from './types';
+import { MarkdownAnnotationsSchema } from '@app/schemas';
 
 const nodes: Record<string, NodeSpec> = {
   doc: {
@@ -65,7 +66,12 @@ const nodes: Record<string, NodeSpec> = {
     selectable: true,
     attrs: {
       id: { default: '' },
-      annotationIds: { default: [] },
+      annotations: {
+        default: [],
+        validate: (value: unknown) => {
+          MarkdownAnnotationsSchema.parse(value);
+        },
+      },
       position: { default: null },
       isDragging: { default: false },
       backgroundColor: { default: null },

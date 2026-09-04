@@ -100,8 +100,10 @@ export const splitBlockCommand = (pos = null) => {
         { 
           type: schema.nodes.rootBlock, // rootBlock 类型固定
           attrs: { 
-            ...(rootNode.attrs || {}), // 继承原 rootBlock 属性 (如 annotationIds)
-            id: generateRootBlockId()  // 新 ID
+            ...(rootNode.attrs || {}),
+            id: generateRootBlockId(), // 新 ID
+            // Annotation 锚定拆分前的目标块；新产生的右侧块不能复制同一批稳定 ID。
+            annotations: [],
           }
         },
         { 

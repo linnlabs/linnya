@@ -45,14 +45,6 @@ interface NodeViewMutationRecordLike {
   target: Node
 }
 
-function setJsonAttribute(el: HTMLElement, name: string, value: unknown): void {
-  if (value === null || value === undefined) {
-    el.removeAttribute(name)
-    return
-  }
-  el.setAttribute(name, JSON.stringify(value))
-}
-
 function resolveRenderMode(
   node: ProseMirrorNode,
   decorations: readonly unknown[] | undefined,
@@ -82,7 +74,6 @@ function syncRootBlockDom(shell: RootBlockDomShellElements, node: ProseMirrorNod
   shell.dom.setAttribute(ROOT_BLOCK_DOM_ATTRS.renderMode, ROOT_BLOCK_DOM_RENDER_MODES.hydrated)
   shell.dom.setAttribute(ROOT_BLOCK_DOM_ATTRS.placeholder, 'false')
   setOptionalAttribute(shell.dom, ROOT_BLOCK_DOM_ATTRS.id, id)
-  setJsonAttribute(shell.dom, ROOT_BLOCK_DOM_ATTRS.annotationIds, attrs.annotationIds ?? [])
   setOptionalAttribute(shell.dom, ROOT_BLOCK_DOM_ATTRS.position, attrs.position)
   setOptionalAttribute(shell.dom, ROOT_BLOCK_DOM_ATTRS.dragging, attrs.isDragging ? 'true' : null)
   setOptionalAttribute(shell.dom, ROOT_BLOCK_DOM_ATTRS.backgroundColor, attrs.backgroundColor)
