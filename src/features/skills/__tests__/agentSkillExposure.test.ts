@@ -83,7 +83,7 @@ describe('agent skill exposure', () => {
     expect(prompt).not.toContain('<skills>');
   });
 
-  it('does not append available skill catalog to agents without skill exposure enabled', () => {
+  it('exposes skills to the project planning agent because it replaces Workspace Markdown', () => {
     const task = new GenericAgentTask(projectPlanningAgent);
     const request = AgentInvokeRequestSchema.parse({
       query: 'test',
@@ -92,8 +92,18 @@ describe('agent skill exposure', () => {
 
     const prompt = task.getSystemPromptForRequest(request);
 
-    expect(prompt).not.toContain('<skills>');
-    expect(prompt).not.toContain('<available_skills>');
+    expect(prompt).toContain('<available_skills>');
+    expect(prompt).toContain('name="linnya-markdown"');
+  });
+
+  it('discovers the minimal builtin Linnya Markdown skill and loads no resources', () => {
+    invalidateSkillCache();
+
+    expect(buildSkillCatalogXml()).toContain('name="linnya-markdown"');
+    const skill = loadSkillContent('linnya-markdown');
+    expect(skill.body).toContain('<!-- linnya-annotation:v1 ... -->');
+    expect(skill.body).toContain('Do not handcraft the canonical JSON');
+    expect(skill.resources).toEqual([]);
   });
 
   it('does not inject skill catalog through additional-context', () => {

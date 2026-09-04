@@ -325,7 +325,13 @@ src/tools/skill/
 
 - 由 `AgentDefinition.config.skill.enabled` 控制是否向模型暴露 Skill 能力
 - 开启时，`availableTools` 必须同时包含 `'skill'`
-- 当前已启用：`default`、`subagent_general` 以及各类 `subagent_*` 专用子 agent
+- 当前已启用：`default`、`subagent_general`、`subagent_document_editor`，以及会创建或覆盖正式 Workspace Markdown 的 Project Planning / Deep Research agents
+
+### 4.9 Linnya Markdown compatibility Skill
+
+`linnya-markdown` 是 Core 内置 Skill，负责告诉 Agent 怎样保留和创建 Linnya 批准的 Markdown 扩展语法。首版只包含 Annotation 两条行为规则，不带 resources 或 scripts；新增兼容语法必须先通过对应 domain 评审，再扩展同一个 Skill。
+
+Skill 不是语法事实源。Annotation 的识别、校验、canonical serialization 和版本兼容始终由 Markdown domain 的 parser/schema/serializer 拥有；不能依据 Skill 文案在文件工具中增加猜测或 fallback。
 
 ---
 

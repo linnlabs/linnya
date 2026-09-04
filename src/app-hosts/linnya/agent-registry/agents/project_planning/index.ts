@@ -15,6 +15,7 @@ import { PROJECT_PLANNING_PROMPT } from './prompt';
 const PROJECT_PLANNING_AGENT_TOOLS = [
   'list_files',
   'write_file',
+  'skill',
   'search_in_knowledgebase',
   'list_knowledge_base',
   'knowledge_read',
@@ -47,6 +48,7 @@ export const AGENT_DEFINITION: AgentDefinition = {
     contextPolicy: { profileId: 'agent', toolHistory: { strategy: 'per-run', keepLatestRuns: 1 } },
     enableTools: true,
     availableTools: PROJECT_PLANNING_AGENT_TOOLS,
+    skill: { enabled: true },
     knowledgeBaseId: 'default',
     // ✅ ProjectPlanning(Agent)：使用“用户选择的主模型”
     modelPolicy: { kind: 'user_primary' },

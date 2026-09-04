@@ -222,6 +222,8 @@ definition 字段，Renderer 和 wire DTO 不维护另一份默认值。root run
 
 以 Slides 为例：场景 Agent 只定义角色、激活 `slides-design` Skill 和最终结果要求；共享 Skill 负责计划审批、Workspace source、CLI 与验收流程。Default Agent 与 Slides Agent 因而使用同一份领域合同，不再维护 Slides 专用执行子 Agent。
 
+同一原则适用于 Workspace Markdown：任何会用 `edit_file` 修改、或用 `write_file` 覆盖已有正式 Markdown 的 AgentDefinition，都必须暴露 `skill` tool 与 Catalog，使模型可以按需激活 `linnya-markdown`。具体兼容规则只写在 Skill 中，不能复制到每个 Agent prompt；`requiredSkills` 只表示配置依赖，不代表自动激活。
+
 ---
 
 ## 目录树
