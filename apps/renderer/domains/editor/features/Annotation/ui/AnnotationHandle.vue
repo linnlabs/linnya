@@ -5,41 +5,51 @@
 <template>
   <div
     class="annotation-handle"
-    @click="handleClick"
     data-annotation-handle="true"
+    @click="handleClick"
   >
-    <component :is="currentIcon" class="annotation-icon" />
+    <component
+      :is="currentIcon"
+      class="annotation-icon"
+    />
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, inject } from 'vue';
 import { AnnotationState } from '../commands/AnnoStateCommands';
 import { AddCommentIcon } from '@linnya/renderer-ui/icons';
 import { CommentIcon } from '@linnya/renderer-ui/icons';
 import { SolvedCommentIcon } from '@linnya/renderer-ui/icons';
 
-const props = defineProps({
-  annotations: {
-    type: Array,
-    default: () => []
-  }
+interface AnnotationHandleItem {
+  readonly state?: string | null;
+}
+
+interface AnnotationStateContract {
+  readonly RESOLVED: string;
+}
+
+const props = withDefaults(defineProps<{
+  readonly annotations?: readonly AnnotationHandleItem[];
+}>(), {
+  annotations: () => [],
 });
 
-const emit = defineEmits(['create-annotation']);
+const emit = defineEmits<{
+  'create-annotation': [event: MouseEvent];
+}>();
 
 // 尝试从父组件注入 AnnotationState
-const InjectedAnnotationState = inject('AnnotationState', null);
-const
- 
-State = InjectedAnnotationState || AnnotationState;
+const injectedAnnotationState = inject<AnnotationStateContract | null>('AnnotationState', null);
+const stateContract: AnnotationStateContract = injectedAnnotationState || AnnotationState;
 
 const status = computed(() => {
   if (!props.annotations || props.annotations.length === 0) {
     return 'none'; // 没有批注
   }
   const allResolved = props.annotations.every(
-    anno => anno.state === State.RESOLVED
+    annotation => annotation.state === stateContract.RESOLVED
   );
   if (allResolved) {
     return 'resolved'; // 所有批注都已解决
@@ -59,7 +69,7 @@ const currentIcon = computed(() => {
   }
 });
 
-const handleClick = (event) => {
+const handleClick = (event: MouseEvent) => {
   // 总是触发创建新批注的事件，并传递原始事件对象
   emit('create-annotation', event);
 };
