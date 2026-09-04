@@ -5,6 +5,7 @@ import {
   beginRootBlockDragHandlePress,
   beginRootBlockDragVisualLifecycle,
   cleanupRootBlockDragVisualLifecycle,
+  endRootBlockDragInteraction,
   endRootBlockDragHandlePress,
   endRootBlockDragVisualLifecycle,
   setupRootBlockDropIndicator,
@@ -61,6 +62,19 @@ describe('rootBlockDragLifecycle', () => {
     expect(document.body.getAttribute('data-suppress-handle-hover')).toBe('true')
 
     document.dispatchEvent(new PointerEvent('pointermove'))
+    expect(document.body.hasAttribute('data-suppress-handle-hover')).toBe(false)
+  })
+
+  it('releases handle selection through the shared drag interaction boundary', () => {
+    const releaseHandleSelection = vi.fn()
+    beginRootBlockDragVisualLifecycle()
+
+    endRootBlockDragInteraction({
+      releaseHandleSelection,
+      restoreHoverOnNextPointerMove: false,
+    })
+
+    expect(releaseHandleSelection).toHaveBeenCalledOnce()
     expect(document.body.hasAttribute('data-suppress-handle-hover')).toBe(false)
   })
 

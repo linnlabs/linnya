@@ -17,8 +17,8 @@ import {
   beginRootBlockDragHandlePress,
   beginRootBlockDragVisualLifecycle,
   cleanupRootBlockDropIndicator,
+  endRootBlockDragInteraction,
   endRootBlockDragHandlePress,
-  endRootBlockDragVisualLifecycle,
   setupRootBlockDropIndicator,
 } from '../../extensions/interaction/drag/rootBlockDragLifecycle';
 import {
@@ -78,6 +78,11 @@ export function useBlockDragAndMenu(options: UseBlockDragAndMenuOptions): UseBlo
   let isDraggingHandle = false;
   let dragHandleStartTime = 0;
   let mouseDownPos = { x: 0, y: 0 };
+
+  const releaseDragHandleSelection = (): void => {
+    isDraggingHandle = false;
+    setBlockSelected(false, true);
+  };
 
   // ==================== 选中逻辑 ====================
 
@@ -196,7 +201,10 @@ export function useBlockDragAndMenu(options: UseBlockDragAndMenuOptions): UseBlo
     }) === true;
     if (!started) {
       isDragging.value = false;
-      endRootBlockDragVisualLifecycle({ restoreHoverOnNextPointerMove: false });
+      endRootBlockDragInteraction({
+        releaseHandleSelection: releaseDragHandleSelection,
+        restoreHoverOnNextPointerMove: false,
+      });
       return;
     }
   };
@@ -205,13 +213,19 @@ export function useBlockDragAndMenu(options: UseBlockDragAndMenuOptions): UseBlo
    * 拖拽结束处理
    */
   const onDragEnd = (event: DragEvent) => {
-    isDragging.value = false;
-    handleDragEndForEditor(event, {
-      editor: props.editor,
-      fallbackBlockId: readRootBlockId() ?? 'unknown',
-    });
-
-    endRootBlockDragVisualLifecycle();
+    try {
+      handleDragEndForEditor(event, {
+        editor: props.editor,
+        fallbackBlockId: readRootBlockId() ?? 'unknown',
+      });
+    } finally {
+      // 拖拽柄的选中态来自本次 pointer/drag 交互，不是持久的编辑器选区。
+      // 无论移动、no-op 还是异常结束，都必须在同一个收尾边界释放。
+      isDragging.value = false;
+      endRootBlockDragInteraction({
+        releaseHandleSelection: releaseDragHandleSelection,
+      });
+    }
   };
 
   // ==================== 菜单上下文构建 ====================

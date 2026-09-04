@@ -34,8 +34,8 @@ import {
   beginRootBlockDragHandlePress,
   beginRootBlockDragVisualLifecycle,
   cleanupRootBlockDragVisualLifecycle,
+  endRootBlockDragInteraction,
   endRootBlockDragHandlePress,
-  endRootBlockDragVisualLifecycle,
 } from '../../extensions/interaction/drag/rootBlockDragLifecycle';
 import { openBlockActionMenuForRootBlockId } from '../../features/blockActionMenu/orchestration/openBlockActionMenuForRootBlockId';
 import { useOpenBlockActionMenuRootBlockId } from '../../features/blockActionMenu/readModel';
@@ -167,7 +167,10 @@ function handleDragStart(event: DragEvent): void {
   }) === true;
   if (!started) {
     isDragging.value = false;
-    endRootBlockDragVisualLifecycle({ restoreHoverOnNextPointerMove: false });
+    endRootBlockDragInteraction({
+      releaseHandleSelection: releaseDragHandleSelection,
+      restoreHoverOnNextPointerMove: false,
+    });
   }
 }
 
@@ -179,11 +182,16 @@ function handleDragEnd(event: DragEvent): void {
     });
   } finally {
     isDragging.value = false;
-    if (openMenuBlockId.value !== props.blockId) {
-      isHandleSelected.value = false;
-    }
-    endRootBlockDragVisualLifecycle();
+    // Host 和旧 BlockChrome 遵守同一交互合同：拖拽结束即释放本次手柄按压态。
+    // 菜单若确实打开，仍由 openMenuBlockId 作为独立原因保持选中视觉。
+    endRootBlockDragInteraction({
+      releaseHandleSelection: releaseDragHandleSelection,
+    });
   }
+}
+
+function releaseDragHandleSelection(): void {
+  isHandleSelected.value = false;
 }
 
 function handleVersionClick(): void {

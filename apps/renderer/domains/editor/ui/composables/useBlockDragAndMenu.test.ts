@@ -13,6 +13,7 @@ import {
   registerCommonMenuProvider,
 } from '../../features/blockActionMenu/registry';
 import type { BlockMenuContext, MenuItem } from '../../features/blockActionMenu/types';
+import { PositionUtils } from '../../extensions/position/PositionUtils';
 import { useBlockDragAndMenu } from './useBlockDragAndMenu';
 
 const RootBlock = Node.create({
@@ -104,6 +105,50 @@ afterEach(() => {
 });
 
 describe('useBlockDragAndMenu', () => {
+  it('拖拽结束后释放旧 BlockChrome 手柄产生的临时选中态', () => {
+    const editor = createEditor();
+    const dragHandle = document.createElement('button');
+    const dragHandleRef = ref<HTMLElement | null>(dragHandle);
+    const setBlockSelected = vi.fn<(selected: boolean, fromHandle?: boolean) => void>();
+    const scope = effectScope();
+    scopes.push(scope);
+    let dragState: ReturnType<typeof useBlockDragAndMenu> | undefined;
+
+    scope.run(() => {
+      dragState = useBlockDragAndMenu({
+        props: {
+          editor,
+          rootBlockId: computed(() => 'block-a'),
+        },
+        dragHandleRef,
+        hasAnnotations: computed(() => false),
+        setBlockSelected,
+      });
+    });
+
+    const dataTransfer = {
+      effectAllowed: '',
+      setData: vi.fn(),
+      types: [],
+    };
+    const dragStart = new Event('dragstart') as DragEvent;
+    Object.defineProperty(dragStart, 'dataTransfer', { value: dataTransfer });
+    dragState?.onDragStart(dragStart);
+    expect(dragState?.isDragging.value).toBe(true);
+
+    vi.spyOn(PositionUtils.prototype, 'calculateDragTargetIndex').mockReturnValue(1);
+    const dragEnd = new Event('dragend') as DragEvent;
+    Object.defineProperties(dragEnd, {
+      clientX: { value: -1 },
+      clientY: { value: -1 },
+    });
+    dragState?.onDragEnd(dragEnd);
+
+    expect(dragState?.isDragging.value).toBe(false);
+    expect(setBlockSelected).toHaveBeenLastCalledWith(false, true);
+    dragState?.cleanupDropIndicator();
+  });
+
   it('菜单关闭后释放旧 BlockChrome 拖拽柄的视觉选中态', async () => {
     registerCommonMenuProvider({
       name: 'test-provider',

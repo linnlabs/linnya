@@ -21,6 +21,11 @@ export interface EndRootBlockDragVisualLifecycleOptions {
   restoreHoverOnNextPointerMove?: boolean
 }
 
+export interface EndRootBlockDragInteractionOptions
+  extends EndRootBlockDragVisualLifecycleOptions {
+  releaseHandleSelection: () => void
+}
+
 export function beginRootBlockDragHandlePress(event: MouseEvent): boolean {
   if (event.button !== 0) return false
   document.body.style.userSelect = 'none'
@@ -51,6 +56,24 @@ export function endRootBlockDragVisualLifecycle(
     document.body.removeAttribute('data-suppress-handle-hover')
   }
   document.addEventListener('pointermove', reEnableHover, { once: true })
+}
+
+/**
+ * RootBlock 拖拽交互的统一收尾边界。
+ *
+ * 手柄选中态由具体 Vue / Host surface 持有，但它的生命周期属于本次 drag；
+ * 所以由共享边界强制释放，再清理浏览器级拖拽视觉，避免两套 surface 行为漂移。
+ */
+export function endRootBlockDragInteraction(
+  options: EndRootBlockDragInteractionOptions
+): void {
+  try {
+    options.releaseHandleSelection()
+  } finally {
+    endRootBlockDragVisualLifecycle({
+      restoreHoverOnNextPointerMove: options.restoreHoverOnNextPointerMove,
+    })
+  }
 }
 
 export function setupRootBlockDropIndicator(): void {

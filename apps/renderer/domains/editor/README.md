@@ -21,7 +21,7 @@
 - **高内聚、低耦合**：一个能力尽量在同一处闭环（UI / 扩展 / service / store），减少跨目录跳转。
 - **职责清晰**：编辑器领域只关心“编辑器能力本身”，页面/布局/顶层视图切换属于 `app/`（见 `apps/renderer/app/pages/README.md`）。
 - **扩展点收敛**：Tiptap 扩展的注册点以 `core/extensionRegistry.ts` 为唯一事实来源；跨模块依赖优先走注入（`core/types.ts` 的 `ExtensionDependencies`）。
-- **拖拽视觉单一 owner**：RootBlock 拖拽只注册 `CustomDropCursorExtension`，由自定义绿色指示器负责块间落点；禁止同时启用 Tiptap `Dropcursor`，否则会出现蓝绿双线。
+- **拖拽视觉单一 owner**：RootBlock 拖拽只注册 `CustomDropCursorExtension`，由自定义绿色指示器负责块间落点；禁止同时启用 Tiptap `Dropcursor`，否则会出现蓝绿双线。手柄按下产生的选中视觉只属于当前 pointer/drag 交互，移动成功、no-op 或异常结束都必须在统一 drag-end 收尾中释放；菜单打开态是独立的保留原因。
 - **大批量结构变更后移**：像 Revision “接受全部 / 拒绝全部”这类全文档操作，优先在后端 docJson 层一次性完成，再让前端通过严格原子装载入口切换一次 `EditorState`。不要在 renderer 里循环触发大量 ProseMirror transaction。
 
 ### 持久化 schema 与完整文档装载
