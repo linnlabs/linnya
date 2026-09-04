@@ -17,6 +17,7 @@ export const ConversationControlCapabilitySchema = z.enum([
   'stop',
   'result',
   'audit',
+  'workspace_tools',
 ]);
 
 export type ConversationControlCapability = z.infer<

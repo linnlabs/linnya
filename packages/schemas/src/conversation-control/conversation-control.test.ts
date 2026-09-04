@@ -73,6 +73,42 @@ describe('conversation-control wire contract', () => {
     }).success).toBe(false);
   });
 
+  it('workspace_tools 只允许五个基础工具，call 必须声明项目作用域', () => {
+    expect(ConversationControlCommandRequestSchema.parse({
+      schema_version: 1,
+      command: 'workspace_tools',
+      action: 'call',
+      tool_name: 'edit_file',
+      args: {
+        locator: 'workspace:/notes.md',
+        old_text: 'before',
+        new_text: 'after',
+      },
+      conversation_id: 'conversation-1',
+    })).toMatchObject({
+      command: 'workspace_tools',
+      action: 'call',
+      tool_name: 'edit_file',
+    });
+
+    expect(ConversationControlCommandRequestSchema.safeParse({
+      schema_version: 1,
+      command: 'workspace_tools',
+      action: 'call',
+      tool_name: 'shell',
+      args: {},
+      project_id: 'project-1',
+    }).success).toBe(false);
+
+    expect(ConversationControlCommandRequestSchema.safeParse({
+      schema_version: 1,
+      command: 'workspace_tools',
+      action: 'call',
+      tool_name: 'read_file',
+      args: { locator: 'workspace:/notes.md' },
+    }).success).toBe(false);
+  });
+
   it('respond 只暴露 expected interaction 与用户响应，不接纳 resume token', () => {
     expect(ConversationControlCommandRequestSchema.parse({
       schema_version: 1,

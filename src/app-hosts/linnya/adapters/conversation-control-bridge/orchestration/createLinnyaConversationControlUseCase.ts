@@ -3,6 +3,7 @@ import type { FlowOrchestrator } from 'src/app-hosts/linnya/adapters/flow/flow.o
 import type { HistoryService } from 'src/features/conversation/history/history.service';
 import type { ModelCatalog } from 'src/domains/model-catalog';
 import type { ProviderAccountRegistry } from 'src/domains/provider-account';
+import type { ToolRuntimePort } from '@linnlabs/linnkit/runtime-kernel';
 import {
   createConversationControlUseCase,
   projectConversationControlModels,
@@ -44,6 +45,7 @@ interface LinnyaConversationControlUseCaseOwners {
   readonly providerAccounts: Pick<ProviderAccountRegistry, 'hasCredential'>;
   readonly telemetry: ExecutionAuditTelemetryPort;
   readonly events: ExecutionAuditEventPort;
+  readonly tools: Pick<ToolRuntimePort, 'getToolSchemas'>;
   readonly history: Pick<
     HistoryService,
     | 'listConversations'
@@ -51,6 +53,7 @@ interface LinnyaConversationControlUseCaseOwners {
     | 'readUiMessagesBefore'
     | 'readUiMessagesAfter'
     | 'readRunFinalAnswer'
+    | 'getConversationMetadata'
     | 'updateConversationSelectedAgent'
   >;
 }
@@ -134,12 +137,40 @@ export function createLinnyaConversationControlUseCase(
         owners.history.readUiMessagesAfter(conversationId, cursor, limit),
       readRunFinalAnswer: (conversationId, runId) =>
         owners.history.readRunFinalAnswer(conversationId, runId),
+      async readConversationProjectId(conversationId) {
+        const metadata = await owners.history.getConversationMetadata(conversationId);
+        return metadata ? metadata.project_id : undefined;
+      },
       updateSelectedAgent: (conversationId, selectedAgentId, projectId) =>
         owners.history.updateConversationSelectedAgent(
           conversationId,
           selectedAgentId,
           projectId ?? null,
         ),
+    },
+    workspaceTools: {
+      describe(toolNames) {
+        const schemas = owners.tools.getToolSchemas({
+          toolNames,
+          invocation: {
+            query: '',
+            promptKey: 'default',
+            enableTools: true,
+            availableTools: [...toolNames],
+          },
+        });
+        return toolNames.map(name => {
+          const schema = schemas.find(candidate => candidate.function.name === name);
+          if (!schema) {
+            throw new Error(`Workspace tool ${name} is not registered`);
+          }
+          return {
+            name,
+            description: schema.function.description,
+            parameters: schema.function.parameters,
+          };
+        });
+      },
     },
     audit,
     createConversationId: generateConversationId,

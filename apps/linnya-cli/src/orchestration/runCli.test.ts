@@ -37,7 +37,10 @@ function createClient(
       protocol_version: 1,
       app_instance_id: 'app-1',
       app_version: '0.0.38',
-      capabilities: ['send', 'models', 'list', 'messages', 'status', 'respond', 'stop', 'result'],
+      capabilities: [
+        'send', 'models', 'list', 'messages', 'status', 'respond', 'stop', 'result',
+        'workspace_tools',
+      ],
       limits: {
         max_request_bytes: 1024 * 1024,
         max_message_chars: 200_000,
@@ -55,6 +58,106 @@ function connect(client: ConversationControlClient): ConversationControlConnecti
 }
 
 describe('runCli', () => {
+  it('工具调用等待 run 与投影结算，并返回同一工具卡的完整结果', async () => {
+    let statusCalls = 0;
+    const execute: ConversationControlClient['execute'] = async request => {
+      if (request.command === 'workspace_tools') {
+        return {
+          schema_version: 1,
+          ok: true,
+          command: 'workspace_tools',
+          action: 'call',
+          tool_name: 'read_file',
+          receipt: {
+            conversation_id: 'conversation-1',
+            user_message_id: 'message-1',
+            turn_id: 'turn-1',
+            run_id: 'run-1',
+            execution_id: 'execution-1',
+            agent_id: 'default',
+            accepted_at: 1,
+          },
+        };
+      }
+      if (request.command === 'status') {
+        statusCalls += 1;
+        return {
+          schema_version: 1,
+          ok: true,
+          command: 'status',
+          conversation_id: request.conversation_id,
+          run: {
+            conversation_id: request.conversation_id,
+            run_id: 'run-1',
+            turn_id: 'turn-1',
+            execution_id: 'execution-1',
+            agent_id: 'default',
+            status: statusCalls === 1 ? 'running' : 'completed',
+            started_at: 1,
+            updated_at: statusCalls === 1 ? 2 : 3,
+            terminal_at: statusCalls === 1 ? undefined : 3,
+            result_available: false,
+          },
+        };
+      }
+      if (request.command === 'messages') {
+        return {
+          schema_version: 1,
+          ok: true,
+          command: 'messages',
+          status: 'ready',
+          conversation_id: request.conversation_id,
+          messages: [{
+            message_id: 'tool-message-1',
+            conversation_id: request.conversation_id,
+            turn_id: 'turn-1',
+            sort_seq: 2,
+            timestamp: 3,
+            content: 'file contents',
+            merge_key: 'tool:run-1:call-1',
+            presentation: null,
+            run_id: 'run-1',
+            role: 'assistant',
+            message_type: 'tool_calls',
+            payload: {
+              tool_call_id: 'call-1',
+              tool_name: 'read_file',
+              status: 'success',
+              phase: 'complete',
+              data: { content: 'file contents' },
+              started_at: 2,
+              completed_at: 3,
+            },
+          }],
+          has_more_before: false,
+          has_more_after: false,
+          revision: 2,
+        };
+      }
+      throw new Error(`unexpected command ${request.command}`);
+    };
+    const output = createIo();
+    await expect(runCli([
+      'tools', 'call', 'read_file',
+      '--conversation', 'conversation-1',
+      '--args-json', '{"locator":"workspace:/notes.md"}',
+      '--interval', '1',
+      '--timeout', '1000',
+    ], {
+      connection: connect(createClient(execute)),
+      io: output.io,
+      now: () => 10,
+      sleep: async () => undefined,
+    })).resolves.toBe(0);
+    expect(JSON.parse(output.stdout())).toMatchObject({
+      ok: true,
+      conversation_id: 'conversation-1',
+      run_id: 'run-1',
+      tool: { payload: { tool_name: 'read_file', status: 'success' } },
+    });
+    expect(output.stderr()).toBe('');
+  });
+
   it('models 输出可复制到 send 参数的模型配置 ID', async () => {
     const execute: ConversationControlClient['execute'] = async request => {
       if (request.command !== 'models') throw new Error('unexpected command');

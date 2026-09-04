@@ -126,6 +126,57 @@ export const ConversationControlAuditRequestSchema = z
   })
   .strict();
 
+export const CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES = [
+  'list_files',
+  'read_file',
+  'grep',
+  'write_file',
+  'edit_file',
+] as const;
+
+export const ConversationControlWorkspaceToolNameSchema = z.enum(
+  CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES,
+);
+
+const WorkspaceToolsRequestBaseFields = {
+  ...CommandBaseFields,
+  command: z.literal('workspace_tools'),
+} as const;
+
+export const ConversationControlWorkspaceToolsListRequestSchema = z.object({
+  ...WorkspaceToolsRequestBaseFields,
+  action: z.literal('list'),
+}).strict();
+
+export const ConversationControlWorkspaceToolsDescribeRequestSchema = z.object({
+  ...WorkspaceToolsRequestBaseFields,
+  action: z.literal('describe'),
+  tool_name: ConversationControlWorkspaceToolNameSchema,
+}).strict();
+
+export const ConversationControlWorkspaceToolsCallRequestSchema = z.object({
+  ...WorkspaceToolsRequestBaseFields,
+  action: z.literal('call'),
+  tool_name: ConversationControlWorkspaceToolNameSchema,
+  args: z.record(JsonValueSchema),
+  conversation_id: OpaqueIdSchema.optional(),
+  project_id: OpaqueIdSchema.optional(),
+}).strict().superRefine((request, ctx) => {
+  if (!request.conversation_id && !request.project_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['conversation_id'],
+      message: 'workspace tool call requires conversation_id or project_id',
+    });
+  }
+});
+
+export const ConversationControlWorkspaceToolsRequestSchema = z.union([
+  ConversationControlWorkspaceToolsListRequestSchema,
+  ConversationControlWorkspaceToolsDescribeRequestSchema,
+  ConversationControlWorkspaceToolsCallRequestSchema,
+]);
+
 // messages 自身按 window 判别，因此顶层使用 union；每个分支仍是 strict schema。
 export const ConversationControlCommandRequestSchema = z.union([
   ConversationControlSendRequestSchema,
@@ -137,6 +188,7 @@ export const ConversationControlCommandRequestSchema = z.union([
   ConversationControlStopRequestSchema,
   ConversationControlResultRequestSchema,
   ConversationControlAuditRequestSchema,
+  ConversationControlWorkspaceToolsRequestSchema,
 ]);
 
 export type ConversationControlSendRequest = z.infer<
@@ -165,6 +217,12 @@ export type ConversationControlResultRequest = z.infer<
 >;
 export type ConversationControlAuditRequest = z.infer<
   typeof ConversationControlAuditRequestSchema
+>;
+export type ConversationControlWorkspaceToolName = z.infer<
+  typeof ConversationControlWorkspaceToolNameSchema
+>;
+export type ConversationControlWorkspaceToolsRequest = z.infer<
+  typeof ConversationControlWorkspaceToolsRequestSchema
 >;
 export type ConversationControlCommandRequest = z.infer<
   typeof ConversationControlCommandRequestSchema

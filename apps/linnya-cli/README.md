@@ -2,7 +2,7 @@
 
 `linnya` 是正在运行的 Linnya 桌面 App 的轻量命令行控制面。它复用 App Host 的正式 Conversation admission、Flow、持久化和 read model，不直接读写 SQLite，也不在 CLI 进程里启动第二套 Agent runtime。
 
-适用场景：脚本化发消息、查询会话与消息、观察运行状态、处理 `awaiting_user`、终止运行、读取最终回答，以及作为 Benchmark 的稳定进程入口。
+适用场景：脚本化发消息、查询会话与消息、观察运行状态、处理 `awaiting_user`、终止运行、读取最终回答、调用五个基础 Workspace 工具，以及作为 Benchmark 或外部 Agent 的稳定进程入口。
 
 ## 1. 运行前提
 
@@ -87,10 +87,42 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 | `stop <conversation-id>` | 终止当前 foreground root run，并等待真实终态结算 | `--run`、`--reason` |
 | `result <conversation-id>` | 读取指定或最近 terminal root run 的最终回答 | `--run` |
 | `audit <conversation-id>` | 导出安全执行摘要 | `--run` |
+| `tools list` | 列出 CLI 允许调用的 Workspace 工具及真实参数合同 | 无 |
+| `tools describe <tool-name>` | 查询一个 Workspace 工具的真实参数合同 | 无 |
+| `tools call <tool-name>` | 在绑定项目的 Conversation 中执行一次 Workspace 工具调用并等待结果 | `--conversation`、`--project`、`--args-json`、`--interval`、`--timeout` |
 
 `messages` 的游标属于整个会话，所以不提供 `--run` 过滤。按 run 精确读取结果应使用 `result --run`；客户端先分页再过滤会让 `has_more` 与实际结果不一致。
 
 `send` 的单条消息上限是 200,000 个字符（按协议字符串长度计），由 App 握手的 `limits.max_message_chars` 正式声明。它只是 Conversation CLI 的 Host 入口限制，不是 Linnkit 的 token 上限；最终模型输入仍由 Agent 的上下文预算统一计量和接纳。
+
+### 3.1 调用 Workspace 工具
+
+CLI 固定只开放 `list_files / read_file / grep / write_file / edit_file`。它不会接受 Shell、插件工具或任意注册工具；工具参数直接来自 App 当前注册的正式 schema，可先查询再调用：
+
+```bash
+pnpm linnya:cli tools list --pretty
+pnpm linnya:cli tools describe write_file --pretty
+
+pnpm linnya:cli tools call list_files \
+  --project <project-id> \
+  --args-json '{}'
+
+pnpm linnya:cli tools call read_file \
+  --conversation <conversation-id> \
+  --args-json '{"locator":"workspace:/notes.md"}'
+
+pnpm linnya:cli tools call write_file \
+  --project <project-id> \
+  --args-json '{"locator":"workspace:/notes.md","content":"# Notes"}'
+```
+
+作用域规则只有三条：
+
+- 只传 `--project`：创建一个绑定该项目、前端可见的新 Conversation，并返回 `conversation_id`。
+- 只传 `--conversation`：从已有 Conversation 取得项目；不存在或未绑定项目时拒绝执行。
+- 两者都传：验证 Conversation 确实属于该项目；不一致时拒绝执行。两者都不传同样拒绝。
+
+`tools call` 不调用 LLM。它仍通过正式 Flow、ToolNode、ToolContext、权限、审计、pending revision 和 Conversation UI 投影执行，因此前端能看到这次工具调用的历史，写入行为也与 Linnya Agent 使用同一工具时完全一致。CLI 会等待 run 和工具卡都完成：工具成功时把完整工具消息写到 stdout；工具自身返回 error 时把同一消息写到 stderr，并以退出码 `8` 结束。
 
 `audit` 从 RunRegistry 读取权威 run/Agent/终态，从 EventStore 配对 durable tool decision/output，
 并复用 Command Audit 区分 Tool error 与 Shell 子进程非零退出。`tool_pairing.complete` 及
@@ -188,3 +220,5 @@ pnpm build:linnya-cli
 - CLI 只负责参数、连接、输出和 watch；不能导入 Flow、数据库或 Electron 内部实现。
 
 CLI 新能力应先成为 Host application use case 的窄 public contract，再通过 bridge 暴露，最后接入命令；不能从 CLI 直接绕过现有控制面。
+
+Workspace 五件套的参数、locator 与 pending revision 语义见 [`src/tools/workspace/README.md`](../../src/tools/workspace/README.md)。

@@ -56,6 +56,7 @@ function createUseCase(
     stop: unused,
     result: unused,
     audit: unused,
+    workspaceTools: unused,
   };
 }
 
@@ -81,6 +82,7 @@ describe('conversation-control bridge router', () => {
     expect(handshake.capabilities).toContain('send');
     expect(handshake.capabilities).toContain('models');
     expect(handshake.capabilities).toContain('audit');
+    expect(handshake.capabilities).toContain('workspace_tools');
   });
 
   it('严格解析命令并投影工作流响应', async () => {

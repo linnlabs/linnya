@@ -20,6 +20,10 @@ import type {
   ConversationControlStatusResponse,
   ConversationControlStopRequest,
   ConversationControlStopResponse,
+  ConversationControlWorkspaceToolDescriptor,
+  ConversationControlWorkspaceToolName,
+  ConversationControlWorkspaceToolsRequest,
+  ConversationControlWorkspaceToolsResponse,
   ConversationHistoryListItem,
   ConversationInteractionResponseRequest,
   ConversationNextRequest,
@@ -161,11 +165,18 @@ export interface ConversationControlHistoryPort {
     conversationId: string,
     runId: string,
   ): Promise<ConversationControlRunFinalAnswer>;
+  readConversationProjectId(conversationId: string): Promise<string | null | undefined>;
   updateSelectedAgent(
     conversationId: string,
     selectedAgentId: ConversationSelectedAgentId,
     projectId?: string,
   ): Promise<boolean>;
+}
+
+export interface ConversationControlWorkspaceToolCatalogPort {
+  describe(
+    toolNames: readonly ConversationControlWorkspaceToolName[],
+  ): readonly ConversationControlWorkspaceToolDescriptor[];
 }
 
 export interface ConversationControlUseCasePorts {
@@ -174,6 +185,7 @@ export interface ConversationControlUseCasePorts {
   readonly executionProgress: ConversationControlExecutionProgressPort;
   readonly models: ConversationControlModelCatalogPort;
   readonly history: ConversationControlHistoryPort;
+  readonly workspaceTools: ConversationControlWorkspaceToolCatalogPort;
   readonly audit: ExecutionAuditExportUseCase;
   readonly createConversationId: () => string;
   readonly now: () => number;
@@ -190,6 +202,7 @@ export interface ConversationControlUseCase {
     | ConversationControlStopResponse
     | ConversationControlResultResponse
     | ConversationControlAuditResponse
+    | ConversationControlWorkspaceToolsResponse
   >;
   send(request: ConversationControlSendRequest): Promise<ConversationControlSendResponse>;
   models(request: ConversationControlModelsRequest): Promise<ConversationControlModelsResponse>;
@@ -200,6 +213,9 @@ export interface ConversationControlUseCase {
   stop(request: ConversationControlStopRequest): Promise<ConversationControlStopResponse>;
   result(request: ConversationControlResultRequest): Promise<ConversationControlResultResponse>;
   audit(request: ConversationControlAuditRequest): Promise<ConversationControlAuditResponse>;
+  workspaceTools(
+    request: ConversationControlWorkspaceToolsRequest,
+  ): Promise<ConversationControlWorkspaceToolsResponse>;
 }
 
 export type ConversationControlResumeReceipt = Omit<

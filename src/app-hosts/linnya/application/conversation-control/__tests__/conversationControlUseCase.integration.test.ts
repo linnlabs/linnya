@@ -213,6 +213,7 @@ function fixture(initialRuns: ConversationControlRunRecord[] = []) {
   const responseRequests: ConversationInteractionResponseRequest[] = [];
   const selectedAgentWrites: string[] = [];
   let finalAnswer: ReturnType<typeof finalAnswerMessage> | null = finalAnswerMessage();
+  let conversationProjectId: string | null | undefined = 'project-1';
 
   const ports: ConversationControlUseCasePorts = {
     flow: {
@@ -323,9 +324,21 @@ function fixture(initialRuns: ConversationControlRunRecord[] = []) {
       async readRunFinalAnswer(conversationId) {
         return { status: 'ready', conversation_id: conversationId, message: finalAnswer };
       },
+      async readConversationProjectId() {
+        return conversationProjectId;
+      },
       async updateSelectedAgent(_conversationId, selectedAgentId) {
         selectedAgentWrites.push(selectedAgentId);
         return true;
+      },
+    },
+    workspaceTools: {
+      describe(toolNames) {
+        return toolNames.map(name => ({
+          name,
+          description: `${name} description`,
+          parameters: { type: 'object', properties: {}, additionalProperties: false },
+        }));
       },
     },
     audit: {
@@ -402,10 +415,96 @@ function fixture(initialRuns: ConversationControlRunRecord[] = []) {
     removeFinalAnswer() {
       finalAnswer = null;
     },
+    setConversationProjectId(projectId: string | null | undefined) {
+      conversationProjectId = projectId;
+    },
   };
 }
 
 describe('conversation-control use case', () => {
+  it('只列出五个正式 Workspace 工具，并复用其真实参数合同', async () => {
+    const response = await fixture().useCase.workspaceTools({
+      schema_version: 1,
+      command: 'workspace_tools',
+      action: 'list',
+    });
+    expect(response).toMatchObject({
+      action: 'list',
+      tools: [
+        { name: 'list_files' },
+        { name: 'read_file' },
+        { name: 'grep' },
+        { name: 'write_file' },
+        { name: 'edit_file' },
+      ],
+    });
+  });
+
+  it('按项目创建可见工具会话，并要求 ToolNode 在批次后直接结算', async () => {
+    const test = fixture();
+    const response = await test.useCase.workspaceTools({
+      schema_version: 1,
+      command: 'workspace_tools',
+      action: 'call',
+      tool_name: 'write_file',
+      args: { locator: 'workspace:/notes.md', content: '# Notes' },
+      project_id: 'project-1',
+    });
+    expect(response).toMatchObject({
+      action: 'call',
+      tool_name: 'write_file',
+      receipt: { conversation_id: 'conversation-1', run_id: 'run-1' },
+    });
+    expect(test.startRequests[0]).toMatchObject({
+      conversation_id: 'conversation-1',
+      project_id: 'project-1',
+      new_events: [{ content: 'CLI 调用 Workspace 工具：write_file' }],
+      options: {
+        project_metadata: { id: 'project-1' },
+        host_tool_call: {
+          tool_name: 'write_file',
+          completion_mode: 'yield_after_batch',
+        },
+      },
+    });
+  });
+
+  it('已有会话继承项目，并拒绝项目不一致或未绑定项目的会话', async () => {
+    const existing = fixture();
+    await existing.useCase.workspaceTools({
+      schema_version: 1,
+      command: 'workspace_tools',
+      action: 'call',
+      tool_name: 'read_file',
+      args: { locator: 'workspace:/notes.md' },
+      conversation_id: 'conversation-1',
+    });
+    expect(existing.startRequests[0]).toMatchObject({ project_id: 'project-1' });
+
+    const mismatch = fixture();
+    await expect(mismatch.useCase.workspaceTools({
+      schema_version: 1,
+      command: 'workspace_tools',
+      action: 'call',
+      tool_name: 'read_file',
+      args: { locator: 'workspace:/notes.md' },
+      conversation_id: 'conversation-1',
+      project_id: 'project-2',
+    })).rejects.toMatchObject({ code: 'invalid_request' });
+    expect(mismatch.startRequests).toEqual([]);
+
+    const projectless = fixture();
+    projectless.setConversationProjectId(null);
+    await expect(projectless.useCase.workspaceTools({
+      schema_version: 1,
+      command: 'workspace_tools',
+      action: 'call',
+      tool_name: 'read_file',
+      args: { locator: 'workspace:/notes.md' },
+      conversation_id: 'conversation-1',
+    })).rejects.toMatchObject({ code: 'invalid_request' });
+  });
+
   it('models 返回可直接用于 CLI 选择的安全模型投影', async () => {
     const response = await fixture().useCase.models({
       schema_version: 1,
