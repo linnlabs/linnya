@@ -302,6 +302,46 @@ describe('Flow host forced-tool integration', () => {
     aiHarness.assertAllTurnsConsumed();
   });
 
+  it('host 可要求工具批次完成后直接结算而不调用 LLM', async () => {
+    const conversationId = 'conv_host_forced_tool_yield';
+    const hostOnlyTool = new HostOnlyProbeTool();
+    aiHarness = createScriptedInferenceHarness([{ contentChunks: ['不应被调用'] }]);
+    const flow = await createHostToolFlow(hostOnlyTool, aiHarness);
+    toolHarness = flow.toolHarness;
+
+    await flow.orchestrator.next({
+      conversation_id: conversationId,
+      project_id: 'project-1',
+      new_events: [{
+        type: 'user_input',
+        content: 'CLI 调用 Workspace 工具：host_only_probe',
+        timestamp: Date.now(),
+        source: 'user',
+      }],
+      options: {
+        promptKey: 'default',
+        model_id: 'scripted-test-model',
+        project_metadata: { id: 'project-1' },
+        host_tool_call: {
+          tool_name: 'host_only_probe',
+          args: { unit_ids: ['row-1'] },
+          completion_mode: 'yield_after_batch',
+        },
+      },
+    }, () => {});
+
+    expect(hostOnlyTool.invocations).toEqual([['row-1']]);
+    const persistedEvents = await readPersistedRuntimeEvents(flow.runtimePersistence, conversationId);
+    expect(persistedEvents.filter((event) => (
+      isToolCallDecisionEvent(event) && event.tool_name === 'host_only_probe'
+    ))).toHaveLength(1);
+    expect(persistedEvents.filter((event) => (
+      isToolOutputEvent(event) && event.tool_name === 'host_only_probe'
+    ))).toHaveLength(1);
+    expect(persistedEvents.some(isFinalAnswerEvent)).toBe(false);
+    expect(aiHarness.getConsumedTurnCount()).toBe(0);
+  });
+
   it('正式 subrun_batch 应形成单一工具对，并由 default agent 生成一条 final_answer', async () => {
     const conversationId = 'conv_host_subrun_batch';
     const liveEvents: ConversationRealtimeEvent[] = [];
