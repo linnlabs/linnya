@@ -6,6 +6,7 @@ import {
 import { planMarkdownBlocks } from '../../normalization';
 import type { MarkdownDocJson } from '../../normalization/runtime';
 import type { DocumentVersion } from '../../document-storage';
+import { encodeMarkdownAnnotationComment, type MarkdownAnnotation } from '@app/schemas';
 
 interface PendingRow {
   readonly target_block_id: string;
@@ -120,6 +121,14 @@ function markdownDoc(blocks: readonly { readonly id: string; readonly text: stri
       ],
     })),
   };
+}
+
+function markdownDocWithAnnotation(annotation: MarkdownAnnotation): MarkdownDocJson {
+  const document = markdownDoc([{ id: 'b1', text: 'Alpha' }]);
+  const root = document.content[0];
+  if (!root) throw new Error('test root missing');
+  root.attrs = { ...(root.attrs ?? {}), annotations: [annotation] };
+  return document;
 }
 
 function markdownDocWithWebCitation(): MarkdownDocJson {
@@ -245,6 +254,48 @@ describe('writeMarkdownDocumentFromText', () => {
         meta: { source: 'agent', runId: 'run-1' },
       }),
     ]);
+  });
+
+  it('编辑或删除 canonical comment 会直接更新文档批注，不生成 Revision pending', async () => {
+    const original: MarkdownAnnotation = {
+      id: 'annotation-1',
+      content: '原批注',
+      author: 'User',
+      state: 'confirmed',
+      createdAt: '2026-09-04T00:00:00.000Z',
+      updatedAt: '2026-09-04T00:00:00.000Z',
+      resolvedAt: null,
+      replies: [],
+      meta: { source: 'manual' },
+    };
+    const service = new FakeMarkdownService(markdownDocWithAnnotation(original));
+    const touch = createTouchRecorder();
+    const edited = { ...original, content: '修改后的批注' };
+
+    const editResult = await writeMarkdownDocumentFromText({
+      documentStore: service,
+      documentId: 'doc-1',
+      targetText: `Alpha\n\n${encodeMarkdownAnnotationComment(edited)}`,
+      toolName: 'edit_file',
+      annotationAdmission,
+      touchDocumentUpdatedAt: touch.touchDocumentUpdatedAt,
+    });
+    expect(editResult.updatedAnnotationIds).toEqual(['annotation-1']);
+    expect(editResult.edits).toEqual([]);
+    expect(service.getDocument().content[0]?.attrs?.annotations).toEqual([edited]);
+
+    const deleteResult = await writeMarkdownDocumentFromText({
+      documentStore: service,
+      documentId: 'doc-1',
+      targetText: 'Alpha',
+      toolName: 'edit_file',
+      annotationAdmission,
+      touchDocumentUpdatedAt: touch.touchDocumentUpdatedAt,
+    });
+    expect(deleteResult.deletedAnnotationIds).toEqual(['annotation-1']);
+    expect(deleteResult.edits).toEqual([]);
+    expect(service.getDocument().content[0]?.attrs?.annotations).toEqual([]);
+    expect(service.pending.size).toBe(0);
   });
 
   it('写 pending 时合并按 Markdown 块传入的 citation hydration 元数据', async () => {

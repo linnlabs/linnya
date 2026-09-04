@@ -2,21 +2,35 @@
 
 [English](README.md)
 
-Linnya 是一个以 Agent 为中心的文档数据库和可扩展桌面工作台。它把对话式 Agent runtime、项目文档、知识工具和插件系统统一在一个 Electron 应用中。
+Linnya 是一个**开源的桌面 Agent 工作空间**。它把对话式 Agent、项目文档、知识工具和可扩展插件组织在同一个桌面应用中，让 AI 不只停留在聊天框里，而是能够围绕真实项目理解上下文、操作文档，并持续完成从研究、思考到创作与交付的工作。
+
+Linnya 基于 Markdown 构建，并提供丰富的插件支持，可以带来新的文档类型、专业界面、Agent、Skill 和工作流，让同一个工作空间持续生长出新的能力。
 
 > Linnya 仍在快速开发。稳定版本之前，API、存储格式、插件合同和发布流程都可能发生不兼容变化。
+
+## 官方插件
+
+Linnya 当前官方支持以下插件：
+
+### [Mindmap](packages/plugins/mindmap)
+
+<!-- 截图完成后可在此加入：![Linnya Mindmap](docs/media/mindmap.png) -->
+
+### [Slides](packages/plugins/slides)
+
+提供演示文稿渲染与导出能力。
+
+<!-- 截图完成后可在此加入：![Linnya Slides](docs/media/slides.png) -->
 
 ## 这个仓库包含什么
 
 - Linnya Desktop Host 与 Vue Renderer；
 - 对已发布通用 Agent runtime `@linnlabs/linnkit` 的产品接入；
 - 跨端 Schemas、插件 Host 合同和 Renderer UI 基础能力；
-- 已批准开源的 Mindmap 与 Slides 官方插件；
+- 已开源的 Mindmap 与 Slides 官方插件；
 - 公共源码构建、测试、Benchmark 和发布验证所需的工程工具。
 
-并不是所有官方插件或托管服务都会进入公共仓。源码是否公开与生产插件如何独立发布是两条不同边界；公共源码必须在没有私有仓、私有凭据和相邻 checkout 的情况下独立构建。
-
-公共文档只保存贡献者需要的稳定合同与维护规则。内部 Proposal、调研过程和发布证据保存在仓外，公共源码的构建、测试与理解都不得依赖它们。具体规则见[文档治理](docs/documentation-governance.md)。
+公共文档只保存贡献者需要的稳定合同与维护规则。具体规则见[文档治理](docs/documentation-governance.md)。
 
 ## 架构
 
@@ -49,11 +63,9 @@ pnpm install --frozen-lockfile
 pnpm run dev:electron
 ```
 
-源码开发环境刻意与 Linnya Cloud 解耦：不加载托管模型目录、不发送 Cloud 模型请求、不生成 Cloud 设备 ID，也不自动检查正式版更新。源码 checkout 只使用本地数据和开发者自己配置的模型 Provider，不需要 Linnya 账号或任何私有仓。
-
-Runtime 只在源码开发或打包阶段准备，最终用户启动应用时不会下载。Qdrant 会从锁定的上游 Release 下载并校验；PDF 文本提取和逐页渲染使用 lockfile 锁定的 PDF.js 与 Node Canvas npm 依赖。全新 checkout 不再需要单独发布的 Poppler bundle、Homebrew 或系统 PDF 可执行文件。
-
 架构、定向验证、原生模块和源码构建说明见[文档总图](docs/README.md)与[开发指南](docs/development/README.md)。
+
+面向Agent：遵循[AGENTS.md](AGENTS.md)
 
 ### 给编码 Agent 的一句话 Prompt
 
@@ -84,6 +96,6 @@ Runtime 只在源码开发或打包阶段准备，最终用户启动应用时不
 
 ## 许可证
 
-除非具体路径另有声明，Linnya 自有源码与文档使用 [Apache License 2.0](LICENSE)。Copyright © 2024–present BCAutumn and Linnya contributors。
+除非具体路径另有声明，Linnya 与文档使用 [Apache License 2.0](LICENSE)。Copyright © 2024–present BCAutumn and Linnya contributors。
 
 Linnkit、Linnkit AI SDK Provider Adapter 以及仓内维护的 Stream Markdown Parser 保留各自明确声明的 MIT 许可证。第三方组件和再分发资产可能还有 `THIRD_PARTY_NOTICES.txt` 中的附加声明；Linnya 名称和官方图标的使用边界见 [TRADEMARKS.md](TRADEMARKS.md)。

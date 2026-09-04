@@ -37,13 +37,14 @@ export function useStartupWorkspaceScope(): void {
     );
 
     if (startupProjectId) {
-      navigation.openWorkspace({ kind: 'project', projectId: startupProjectId });
-      projectsStore.setActiveProject(startupProjectId);
+      // scope 由统一导航在文档 runtime 收尾后提交，项目 store 只同步领域投影。
+      await navigation.openWorkspace({ kind: 'project', projectId: startupProjectId });
+      projectsStore.markActiveProject(startupProjectId);
       startDraftConversation({ kind: 'project', projectId: startupProjectId });
       return;
     }
 
-    navigation.openWorkspace({ kind: 'linnya-assistant' });
+    await navigation.openWorkspace({ kind: 'linnya-assistant' });
     startDraftConversation({ kind: 'linnya-assistant' });
   });
 }

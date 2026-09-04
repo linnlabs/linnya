@@ -4,6 +4,7 @@ import {
   mergeDocumentAnnotations,
   readAnnotationsFromDocument,
   replaceRootBlockAnnotations,
+  synchronizeDocumentAnnotations,
 } from './annotationDocumentState'
 import { EditorState } from 'prosemirror-state'
 
@@ -96,6 +97,27 @@ describe('annotationDocumentState', () => {
       'annotation-review',
     ])
     expect(plan.mergedCount).toBe(1)
+    expect(plan.transaction.getMeta('internal')).toBe(true)
+  })
+
+  it('精确同步后端批注增删改，同时保留本地正文并标记 internal', () => {
+    const state = createState()
+    const changed = state.apply(state.tr.insertText('本地：', 2))
+    const incomingDoc = workspaceMarkdownSchemaLite.nodeFromJSON({
+      ...changed.doc.toJSON(),
+      content: changed.doc.toJSON().content.map((
+        node: { readonly attrs?: Readonly<Record<string, unknown>> },
+        index: number
+      ) => index === 0
+        ? { ...node, attrs: { ...node.attrs, annotations: [] } }
+        : node),
+    })
+    const plan = synchronizeDocumentAnnotations(changed, incomingDoc)
+    if (!plan.transaction) throw new Error('测试前置：应生成 sync transaction')
+    const synchronized = changed.apply(plan.transaction)
+
+    expect(synchronized.doc.textContent).toContain('本地：')
+    expect(readAnnotationsFromDocument(synchronized.doc)).toEqual([])
     expect(plan.transaction.getMeta('internal')).toBe(true)
   })
 })

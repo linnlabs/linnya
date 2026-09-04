@@ -19,8 +19,8 @@ import {
 import { normalizeMarkdownCitationTokenSpelling } from '../../../../citation';
 import type { MarkdownAnnotationMeta } from '@app/schemas';
 import {
-  createMarkdownAnnotations,
-  planMarkdownFileAnnotationCreations,
+  applyMarkdownAnnotationChanges,
+  planMarkdownFileAnnotationChanges,
 } from '../../annotations';
 import type { DocumentVersion } from '../../document-storage';
 import type { MarkdownDocJson } from '../../normalization/runtime';
@@ -39,6 +39,8 @@ export interface MarkdownFileWriteResult {
   readonly currentText: string;
   readonly targetText: string;
   readonly createdAnnotationIds: readonly string[];
+  readonly updatedAnnotationIds: readonly string[];
+  readonly deletedAnnotationIds: readonly string[];
 }
 
 export interface MarkdownDocumentWriteStore {
@@ -165,7 +167,7 @@ export async function writeMarkdownDocumentFromText(params: {
   const targetBlocks = planned.bodyBlocks;
   const targetComparisonBlocks = targetBlocks.map(normalizeMarkdownCitationTokenSpelling);
   const currentText = serializeMarkdownBlocks(currentProjection.viewBlocks);
-  const annotationDrafts = planMarkdownFileAnnotationCreations({
+  const annotationChanges = planMarkdownFileAnnotationChanges({
     currentDocument: content,
     currentBlocks,
     annotationComments: planned.annotationComments,
@@ -176,10 +178,12 @@ export async function writeMarkdownDocumentFromText(params: {
   }
 
   const writeResult = params.documentStore.runInTransaction(() => {
-    const annotationCreation = createMarkdownAnnotations({
+    const annotationMutation = applyMarkdownAnnotationChanges({
       store: params.documentStore,
       documentId: params.documentId,
-      drafts: annotationDrafts,
+      creations: annotationChanges.creations,
+      updates: annotationChanges.updates,
+      deletions: annotationChanges.deletions,
       author: params.annotationAdmission.author,
       meta: params.annotationAdmission.meta,
     });
@@ -238,7 +242,9 @@ export async function writeMarkdownDocumentFromText(params: {
 
     return {
       edits: executed,
-      createdAnnotationIds: annotationCreation.created.map(item => item.annotation.id),
+      createdAnnotationIds: annotationMutation.created.map(item => item.annotation.id),
+      updatedAnnotationIds: annotationMutation.updated.map(item => item.annotation.id),
+      deletedAnnotationIds: annotationMutation.deleted.map(item => item.annotationId),
     };
   });
 
@@ -248,5 +254,7 @@ export async function writeMarkdownDocumentFromText(params: {
     currentText,
     targetText: planned.blocks.join('\n\n'),
     createdAnnotationIds: writeResult.createdAnnotationIds,
+    updatedAnnotationIds: writeResult.updatedAnnotationIds,
+    deletedAnnotationIds: writeResult.deletedAnnotationIds,
   };
 }

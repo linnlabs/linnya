@@ -27,8 +27,12 @@ describe('layoutStateTransitions', () => {
   });
 
   it('opens a project workspace without carrying a document', () => {
-    const initial = createInitialLayoutState();
-    const state = openChatWorkspaceState(initial);
+    const opened = openDocumentState(createInitialLayoutState(), {
+      type: 'editor',
+      id: 'document-from-previous-project',
+      projectId: 'project-previous',
+    });
+    const state = openChatWorkspaceState(opened);
 
     expect(state.scene).toEqual({ kind: 'workspace' });
     expect(state.layoutMode).toBe('chat-centric');

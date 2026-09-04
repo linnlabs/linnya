@@ -6,6 +6,7 @@ import {
   mergeDocumentAnnotations,
   readAnnotationsFromDocument,
   replaceRootBlockAnnotations,
+  synchronizeDocumentAnnotations,
 } from './functions/annotationDocumentState'
 import { resolveAnnotationRootBlockId } from './functions/rootBlockIdResolver'
 
@@ -206,6 +207,14 @@ export function useAnnotationStore(options = {}) {
     }
     if (plan.transaction) editor.view.dispatch(plan.transaction)
     return plan.mergedCount
+  }
+
+  const synchronizeAnnotationsFromDocumentJson = content => {
+    const externalDocument = editor.schema.nodeFromJSON(content)
+    const plan = synchronizeDocumentAnnotations(editor.state, externalDocument)
+    if (plan.transaction) editor.view.dispatch(plan.transaction)
+    synchronizeFromDocument({ preserveEditing: true })
+    return plan.changedBlockCount
   }
 
   const addAnnotation = annotationData => {
@@ -434,6 +443,7 @@ export function useAnnotationStore(options = {}) {
     loadAnnotations,
     getCurrentAnnotations,
     mergeAnnotationsFromDocumentJson,
+    synchronizeAnnotationsFromDocumentJson,
   }
 }
 

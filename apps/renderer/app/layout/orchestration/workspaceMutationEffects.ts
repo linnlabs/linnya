@@ -12,6 +12,7 @@ import { useWorkspaceScopeStore } from '@/shared/stores/workspaceScopeStore';
 import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
 import { notifyRendererDocumentMutationHandlers } from '@plugin/renderer/documentMutationPort';
 import { applyPendingRevisionsToOpenMarkdownDocument } from './shared/markdownPendingRevisionRefresh';
+import { synchronizeAnnotationsToOpenMarkdownDocument } from './shared/markdownAnnotationRefresh';
 import { resolveCurrentOpenDocument } from './resolveCurrentOpenDocument';
 import { handleWorkspaceNodeDeletedMutation } from './workspaceNodeDeletion';
 import { handleWorkspaceNodeTransferredMutation } from './workspaceNodeTransfer';
@@ -88,6 +89,12 @@ async function handleDocumentUpdated(event: WorkspaceDocumentUpdatedEvent): Prom
   if (currentDocument.nodeType !== event.nodeType) return;
 
   if (event.nodeType === 'document' && event.mutationKind === 'pending') {
+    await applyPendingRevisionsToOpenMarkdownDocument(event.documentId);
+    return;
+  }
+
+  if (event.nodeType === 'document' && event.mutationKind === 'incremental') {
+    await synchronizeAnnotationsToOpenMarkdownDocument(event.documentId);
     await applyPendingRevisionsToOpenMarkdownDocument(event.documentId);
     return;
   }

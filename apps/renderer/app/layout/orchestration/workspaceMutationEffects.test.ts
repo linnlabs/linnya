@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   currentProjectId: 'project-1',
   notifyDocumentMutationHandlers: vi.fn(async () => undefined),
   applyMarkdownPending: vi.fn(async () => undefined),
+  synchronizeMarkdownAnnotations: vi.fn(async () => undefined),
   resolveCurrentOpenDocument: vi.fn(() => ({
     documentId: 'deck-1',
     projectId: 'project-1',
@@ -41,6 +42,10 @@ vi.mock('@plugin/renderer/documentMutationPort', () => ({
 
 vi.mock('./shared/markdownPendingRevisionRefresh', () => ({
   applyPendingRevisionsToOpenMarkdownDocument: mocks.applyMarkdownPending,
+}));
+
+vi.mock('./shared/markdownAnnotationRefresh', () => ({
+  synchronizeAnnotationsToOpenMarkdownDocument: mocks.synchronizeMarkdownAnnotations,
 }));
 
 vi.mock('./resolveCurrentOpenDocument', () => ({
@@ -81,6 +86,7 @@ describe('workspaceMutationEffects document mutations', () => {
     mocks.handleWorkspaceNodeTransferredMutation.mockClear();
     mocks.notifyDocumentMutationHandlers.mockClear();
     mocks.applyMarkdownPending.mockClear();
+    mocks.synchronizeMarkdownAnnotations.mockClear();
     mocks.resolveCurrentOpenDocument.mockReset();
     mocks.resolveCurrentOpenDocument.mockReturnValue({
       documentId: 'deck-1',
@@ -132,6 +138,26 @@ describe('workspaceMutationEffects document mutations', () => {
       versionNumber: undefined,
     }));
 
+    expect(mocks.applyMarkdownPending).toHaveBeenCalledWith('doc-1');
+    expect(mocks.notifyDocumentMutationHandlers).not.toHaveBeenCalled();
+  });
+
+  it('同步工具直接提交的 Markdown 批注，并在混合 mutation 后继续刷新 pending', async () => {
+    mocks.resolveCurrentOpenDocument.mockReturnValue({
+      documentId: 'doc-1',
+      projectId: 'project-1',
+      activeDocumentType: 'editor',
+      nodeType: 'document',
+    });
+
+    await createWorkspaceMutationEffects().handleWorkspaceMutation(documentUpdatedEvent({
+      mutationId: 'mutation-markdown-annotations',
+      documentId: 'doc-1',
+      nodeType: 'document',
+      mutationKind: 'incremental',
+    }));
+
+    expect(mocks.synchronizeMarkdownAnnotations).toHaveBeenCalledWith('doc-1');
     expect(mocks.applyMarkdownPending).toHaveBeenCalledWith('doc-1');
     expect(mocks.notifyDocumentMutationHandlers).not.toHaveBeenCalled();
   });

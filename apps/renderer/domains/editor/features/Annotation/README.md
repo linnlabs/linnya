@@ -9,8 +9,9 @@
 - `creating` / `editing` 与面板 `position` 仅是 Renderer 临时态，不进入 Markdown profile。
 - Markdown 导出把每条批注写成相邻的 `<!-- linnya-annotation:v1 ... -->`；普通 `<!-- comment -->` 导入时由 admission 边界补齐身份。
 - 所有持久化新建都调用 `createMarkdownAnnotation()`，统一生成 `confirmed` 初态；用户确认只是把本地 `creating` draft 提交为正式批注，不是 Revision pending。
-- Review 工具和 `edit_file` / `write_file` 最终都调用 Markdown Annotation 的 `createMarkdownAnnotations()` 用例。普通 comment 直接创建批注；同次正文变化仍单独进入 Revision。
+- Review 工具和 `edit_file` / `write_file` 最终都进入 Markdown Annotation 的统一 mutation 用例。普通 comment 创建批注；保持稳定 ID 修改 canonical comment 会编辑批注；删除 canonical comment 会删除批注；同次正文变化仍单独进入 Revision。
 - Review 回流 transaction 标记为 `internal`：后端文档版本已经落库，Renderer 只合并新增批注，不再触发一次重复 autosave。
+- Workspace `document.updated(incremental)` 回流会从后端文档精确同步现有块的 Annotation attrs，因此 file-style 的编辑与删除会立即反映到已打开 Editor；同步 transaction 同样标记为 `internal`，并保留本地正文。
 - 禁止恢复 annotations 表、Annotation CRUD IPC 或另存一份 sidecar 数组，否则正文版本与批注会再次产生双真相。
 
 ## 1. 架构演进：从网格布局到独立浮动层

@@ -10,6 +10,7 @@ export interface AnnotationPanelPositionManager {
 export interface UiAnnotationStore {
   readonly annotations?: { readonly value: readonly unknown[] }
   readonly mergeAnnotationsFromDocumentJson?: (content: unknown) => unknown
+  readonly synchronizeAnnotationsFromDocumentJson?: (content: unknown) => unknown
   readonly removeAnnotation?: (annotationId: string) => boolean | Promise<boolean>
 }
 
