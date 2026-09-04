@@ -48,7 +48,22 @@ function createProductionEditorSchema() {
   return getSchema(extensions)
 }
 
+function readProductionExtensionNames(): string[] {
+  setActivePinia(createPinia())
+  return getAllExtensions({
+    layoutManagerInstance: ref(null),
+    findReplaceStore: null,
+  }).map(extension => extension.name)
+}
+
 describe('Workspace Markdown 与生产 Editor schema conformance', () => {
+  it('RootBlock 拖拽只注册自定义绿色 drop indicator', () => {
+    const names = readProductionExtensionNames()
+
+    expect(names.filter(name => name === 'customDropCursor')).toHaveLength(1)
+    expect(names).not.toContain('dropCursor')
+  })
+
   it('生产 Editor 覆盖 Markdown 正式 node/mark 及其全部属性', () => {
     const editorSchema = createProductionEditorSchema()
 

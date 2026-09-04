@@ -10,7 +10,6 @@ import type { Extensions } from '@tiptap/core'
 
 // --- Tiptap 核心扩展 ---
 import CharacterCount from '@tiptap/extension-character-count'
-import Dropcursor from '@tiptap/extension-dropcursor'
 import TableRow from '@tiptap/extension-table-row'
 import Text from '@tiptap/extension-text'
 import StarterKit from '@tiptap/starter-kit'
@@ -137,10 +136,7 @@ export function getAllExtensions(dependencies: ExtensionDependencies): Extension
     // 功能插件
     PlaceholderPlugin,
     RenderVirtualizationExtension,
-    Dropcursor.configure({
-      color: '#4a9eff',
-      width: 2,
-    }),
+    // RootBlock 拖拽只允许一个视觉 owner，避免与 Tiptap Dropcursor 叠出蓝绿双线。
     CustomDropCursorExtension,
     CharacterCount.configure({}),
     AnnoLayoutPlugin.configure({

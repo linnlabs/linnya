@@ -374,22 +374,6 @@
   display: block;
 }
 
-/* 覆盖 Tiptap 默认的拖拽指示器样式 */
-.tiptap-drop-indicator {
-  position: absolute;
-  z-index: 50;
-  pointer-events: none;
-  height: 2px !important;
-  opacity: 0.5;
-  transition: all var(--transition-normal);
-  border-radius: 1px;
-}
-
-/* 当指示器在 contentBlock 之间时隐藏它 */
-.content > .tiptap-drop-indicator {
-  display: none !important;
-}
-
 /* 
  * 列表项块布局
  * 作用：显示列表项内容，处理嵌套缩进
