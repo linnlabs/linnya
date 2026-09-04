@@ -23,10 +23,11 @@ function createElementWithRect({ right, left = 0, top = 0, height = 20 }) {
   return element;
 }
 
-function createPanelFinder({ blockElement, wrapper }) {
+function createPanelFinder({ blockElement, annotationLayer }) {
   return {
     findBlockElement: vi.fn(() => blockElement),
-    findScrollContentWrapper: vi.fn(() => wrapper),
+    findAnnotationLayer: vi.fn(() => annotationLayer),
+    findEditorRoot: vi.fn(() => document.createElement('div')),
     findEditorShell: vi.fn(() => document.createElement('div')),
     findAnnotationPanel: vi.fn(() => null),
     getElementRect: vi.fn((element) => element.getBoundingClientRect()),
@@ -67,7 +68,7 @@ describe('PanelOverlapDetector', () => {
     const rootBlockBodyElement = createElementWithRect({ left: 240, right: 740, top: 88 });
     rootBlockBodyElement.className = 'root-block';
     blockElement.append(rootBlockBodyElement);
-    const wrapper = createElementWithRect({ left: 140, right: 1140 });
+    const annotationLayer = createElementWithRect({ left: 140, right: 1140 });
     const annotation = {
       id: 'annotation-a',
       blockId: 'root-a',
@@ -76,7 +77,7 @@ describe('PanelOverlapDetector', () => {
     };
     const annotationStore = createAnnotationStore(annotation);
     const detector = createPanelOverlapDetector(
-      createPanelFinder({ blockElement, wrapper }),
+      createPanelFinder({ blockElement, annotationLayer }),
       annotationStore,
       null
     );
@@ -89,13 +90,13 @@ describe('PanelOverlapDetector', () => {
     expect(annotation.position).toEqual({ top: 88, left: 638 });
   });
 
-  it('keeps creating annotation left untouched during overlap handling', async () => {
+  it('repairs a stale creating annotation left during overlap handling', async () => {
     const blockElement = createElementWithRect({ left: 0, right: 1300, top: 88 });
     blockElement.className = 'root-block-outer';
     const rootBlockBodyElement = createElementWithRect({ left: 240, right: 740, top: 88 });
     rootBlockBodyElement.className = 'root-block';
     blockElement.append(rootBlockBodyElement);
-    const wrapper = createElementWithRect({ left: 140, right: 1140 });
+    const annotationLayer = createElementWithRect({ left: 140, right: 1140 });
     const annotation = {
       id: 'annotation-a',
       blockId: 'root-a',
@@ -104,14 +105,16 @@ describe('PanelOverlapDetector', () => {
     };
     const annotationStore = createAnnotationStore(annotation);
     const detector = createPanelOverlapDetector(
-      createPanelFinder({ blockElement, wrapper }),
+      createPanelFinder({ blockElement, annotationLayer }),
       annotationStore,
       null
     );
 
     await detector.handlePanelOverlaps();
 
-    expect(annotationStore.updateAnnotation).not.toHaveBeenCalled();
-    expect(annotation.position).toEqual({ top: 88, left: 1200 });
+    expect(annotationStore.updateAnnotation).toHaveBeenCalledWith('annotation-a', {
+      position: { top: 88, left: 638 },
+    });
+    expect(annotation.position).toEqual({ top: 88, left: 638 });
   });
 });

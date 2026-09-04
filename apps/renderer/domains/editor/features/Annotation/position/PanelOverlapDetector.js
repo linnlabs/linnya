@@ -22,27 +22,41 @@ export function createPanelOverlapDetector(panelFinder, annotationStore, editor)
   // 内部状态/缓存 (如果需要，例如缓存高度)
   const panelHeightCache = new Map(); // 使用 Map 缓存高度 <annotationId, height>
   
-  // --- 新增：IntersectionObserver 逻辑 ---
+  // --- IntersectionObserver 逻辑 ---
   const visibleBlockIds = new Set();
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach(entry => {
-        const blockId = entry.target.dataset.id;
-        if (blockId) {
-          if (entry.isIntersecting) {
-            visibleBlockIds.add(blockId);
-          } else {
-            visibleBlockIds.delete(blockId);
-          }
+  const observedBlockElements = new Set();
+  let observer = null;
+  let observerRoot = null;
+
+  const handleIntersection = (entries) => {
+    entries.forEach(entry => {
+      const blockId = entry.target.dataset.id;
+      if (blockId) {
+        if (entry.isIntersecting) {
+          visibleBlockIds.add(blockId);
+        } else {
+          visibleBlockIds.delete(blockId);
         }
-      });
-    },
-    {
-      root: panelFinder.findEditorShell(), // 使用滚动容器作为视口
-      rootMargin: '100px 0px', // 预加载视口上下100px的内容
+      }
+    });
+  };
+
+  const ensureObserver = () => {
+    const nextRoot = panelFinder.findEditorShell();
+    if (!nextRoot) return null;
+    if (observer && observerRoot === nextRoot) return observer;
+
+    observer?.disconnect();
+    visibleBlockIds.clear();
+    observerRoot = nextRoot;
+    observer = new IntersectionObserver(handleIntersection, {
+      root: nextRoot,
+      rootMargin: '100px 0px',
       threshold: 0
-    }
-  );
+    });
+    observedBlockElements.forEach(element => observer.observe(element));
+    return observer;
+  };
 
   /**
    * 获取或计算面板的实际高度，并缓存结果
@@ -203,7 +217,7 @@ export function createPanelOverlapDetector(panelFinder, annotationStore, editor)
         if (idealTop === null) {
             idealTop = currentTopFromLastRound; // Fallback
         }
-        if (idealLeft === null || currentAnno.state === 'creating' || currentAnno.state === 'editing') {
+        if (idealLeft === null) {
             idealLeft = currentLeftFromLastRound;
         }
 
@@ -351,7 +365,11 @@ export function createPanelOverlapDetector(panelFinder, annotationStore, editor)
   // 整体清理 (如果需要)
   const cleanup = () => {
     panelHeightCache.clear();
-    observer.disconnect(); // 清理 observer
+    visibleBlockIds.clear();
+    observedBlockElements.clear();
+    observer?.disconnect();
+    observer = null;
+    observerRoot = null;
   }
 
   return {
@@ -362,12 +380,18 @@ export function createPanelOverlapDetector(panelFinder, annotationStore, editor)
     // +++ 新增：暴露 observer 的接口 +++
     observeBlock: (element) => {
       if (element instanceof Element) {
-        observer.observe(element);
+        const editorRoot = panelFinder.findEditorRoot();
+        if (!editorRoot?.contains(element)) return;
+        observedBlockElements.add(element);
+        ensureObserver()?.observe(element);
       }
     },
     unobserveBlock: (element) => {
       if (element instanceof Element) {
-        observer.unobserve(element);
+        observedBlockElements.delete(element);
+        observer?.unobserve(element);
+        const blockId = element.dataset.id;
+        if (blockId) visibleBlockIds.delete(blockId);
       }
     }
   };

@@ -14,6 +14,8 @@ export interface AnnotationPanelPositionManagerLike {
   recalculateAllPositions?: (resetToIdeal?: boolean) => Promise<void> | void
   invalidateLayoutCacheForAnnotation?: (annotationId: string) => void
   handleOverlapsOnly?: () => Promise<void> | void
+  getPanelMountElement?: () => HTMLElement | null
+  getLayoutViewportElement?: () => HTMLElement | null
 }
 
 export const ANNOTATION_RUNTIME_STORE_KEY: InjectionKey<

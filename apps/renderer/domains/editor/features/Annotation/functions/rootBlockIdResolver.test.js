@@ -2,7 +2,7 @@
 
 import { Schema } from 'prosemirror-model';
 import { EditorState } from 'prosemirror-state';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { resolveAnnotationRootBlockId } from './rootBlockIdResolver';
 
 const schema = new Schema({
@@ -36,6 +36,10 @@ function createEditor() {
 }
 
 describe('resolveAnnotationRootBlockId', () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
   it('keeps a rootBlock id unchanged', () => {
     expect(resolveAnnotationRootBlockId(createEditor(), 'root-a')).toBe('root-a');
   });
@@ -44,13 +48,30 @@ describe('resolveAnnotationRootBlockId', () => {
     expect(resolveAnnotationRootBlockId(createEditor(), 'paragraph-a')).toBe('root-a');
   });
 
-  it('falls back through DOM descendants when editor state is unavailable', () => {
-    document.body.innerHTML = `
+  it('falls back through current editor DOM descendants when editor state is unavailable', () => {
+    const editorRoot = document.createElement('div');
+    editorRoot.innerHTML = `
       <div class="root-block-outer" data-id="root-dom">
         <p data-id="paragraph-dom"></p>
       </div>
     `;
+    document.body.append(editorRoot);
 
-    expect(resolveAnnotationRootBlockId(null, 'paragraph-dom')).toBe('root-dom');
+    expect(resolveAnnotationRootBlockId({ view: { dom: editorRoot } }, 'paragraph-dom')).toBe('root-dom');
+  });
+
+  it('does not borrow a matching descendant from another editor DOM', () => {
+    const foreignEditorRoot = document.createElement('div');
+    foreignEditorRoot.innerHTML = `
+      <div class="root-block-outer" data-id="foreign-root">
+        <p data-id="shared-paragraph"></p>
+      </div>
+    `;
+    const ownerEditorRoot = document.createElement('div');
+    document.body.append(foreignEditorRoot, ownerEditorRoot);
+
+    expect(
+      resolveAnnotationRootBlockId({ view: { dom: ownerEditorRoot } }, 'shared-paragraph')
+    ).toBe('shared-paragraph');
   });
 });

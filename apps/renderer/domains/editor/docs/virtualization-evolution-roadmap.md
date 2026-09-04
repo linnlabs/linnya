@@ -616,7 +616,7 @@ const dragState = useBlockDragState(blockId)
 
 `annotation-handle` 的最小 Host UI 桥已补上：`Annotation/readModel.ts` 暴露 `useAnnotationHandleSummary(blockId)`，Host 只读取当前块批注列表用于图标状态和点击语义；`BlockChromeHostAnnotationHandle.vue` 只 Teleport 右侧批注入口按钮，创建批注仍走 `EditorContext` 提供的 `triggerAnnotationCreate` 编排。
 
-`annotation-panel` 的挂载权已收束到 Host：`Annotation/readModel.ts` 暴露 `useAnnotationPanelPresence()`，Host 只根据当前是否存在批注面板决定是否把 `AnnotationPanel` Teleport 到 `.annotation-layer`。面板内部的编辑、删除、AI 动作、重叠避让、布局计算、持久化和 hover keep-alive 仍全部留在 Annotation feature；这一步只去掉 `EditorContent` 对批注面板的直接挂载责任，不做批注算法改造。
+`annotation-panel` 的挂载权已收束到 Host：`Annotation/readModel.ts` 暴露 `useAnnotationPanelPresence()`，Host 只根据当前是否存在批注面板决定是否把 `AnnotationPanel` Teleport 到布局管理器为当前 Editor owner 解析出的真实 `.annotation-layer` 元素。禁止使用字符串 Teleport target，否则 Workspace 外壳和 Document Surface 的同名容器会串台。面板内部的编辑、删除、AI 动作、重叠避让、布局计算、持久化和 hover keep-alive 仍全部留在 Annotation feature；这一步只去掉 `EditorContent` 对批注面板的直接挂载责任，不做批注算法改造。
 
 `revision-indicator` 的最小 Host UI 桥已补上：裸 DOM RootBlock NodeView 暴露 `.root-block-revision-header` 文档流挂载点，Host 用 `canonical pending blockIds ∩ hydratedBlockIds` 决定哪些当前水合块要显示常驻修订状态行，`Revision/functions/readRevisionIndicatorSummary.ts` 只把 canonical pending 转成展示摘要，`BlockChromeHostRevisionIndicator.vue` 复用 `RevisionIndicator` 渲染。这个 surface 不属于 hover / focus active chrome，不调用 `getRevisionState()`、不扫描 mark、不触发 pending 投影，也不承接接受 / 拒绝命令；后续修订工具栏仍作为独立 surface 迁移。
 

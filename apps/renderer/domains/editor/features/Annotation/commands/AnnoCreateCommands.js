@@ -13,11 +13,11 @@ import { resolveAnnotationRootBlockId } from '../functions/rootBlockIdResolver';
 // 辅助函数：从 CSS 像素值解析数字
 const parsePx = (cssValue) => {
     if (typeof cssValue === 'string' && cssValue.endsWith('px')) {
-        return parseFloat(cssValue);
+        const value = parseFloat(cssValue);
+        return Number.isFinite(value) ? value : null;
     }
-    // 返回 0 或 null，取决于后续如何处理错误
     console.error(`[AnnoCreateCommands] Failed to parse CSS value: ${cssValue}`);
-    return 0;
+    return null;
 };
 
 // 辅助函数：确保精度一致
@@ -25,8 +25,8 @@ const standardizePrecision = (num) => Math.round(num * 10) / 10;
 
 /**
  * 开始创建新批注的流程
- * 1. 在 store 中添加状态为 'creating' 的批注
- * 2. 计算初始位置并将其存入 store 中的批注对象
+ * 1. 解析当前 Editor owner 内的初始位置
+ * 2. 在 store 中添加状态为 'creating' 的批注
  * 3. 处理可能的重叠
  * @param {Object} params - 参数对象
  * @param {string} params.blockId - 目标块ID
@@ -65,18 +65,15 @@ export const startCreatingAnnotation = async (params) => {
 
     // 1. 计算初始位置 CSS (先计算位置，避免默认 0,0 导致滚动问题)
     const initialPositionCSS = panelPositionManager.calculateInitialPositionCSS(blockId);
-    let top = 0;
-    let left = 0;
-
-    if (initialPositionCSS) {
-        // 解析 CSS
-        top = standardizePrecision(parsePx(initialPositionCSS.top));
-        left = standardizePrecision(parsePx(initialPositionCSS.left));
-    } else {
-        console.error(`[AnnoCreateCommands] 无法计算初始位置 CSS: ${blockId}`);
-        // 可以在这里决定是否抛出错误，或者使用默认位置（可能导致滚动问题）
-        // throw new Error('Failed to calculate initial position CSS');
+    if (!initialPositionCSS) {
+      console.error(`[AnnoCreateCommands] 无法解析当前 editor 的批注布局坐标: ${blockId}`);
+      return null;
     }
+    const parsedTop = parsePx(initialPositionCSS.top);
+    const parsedLeft = parsePx(initialPositionCSS.left);
+    if (parsedTop === null || parsedLeft === null) return null;
+    const top = standardizePrecision(parsedTop);
+    const left = standardizePrecision(parsedLeft);
 
     // 2. 定义要添加的数据 (直接使用计算好的位置)
     const annotationData = {
@@ -96,7 +93,7 @@ export const startCreatingAnnotation = async (params) => {
       throw new Error('Failed to add annotation to store');
     }
     
-    const annotationId = newAnnotation.id;
+    annotationId = newAnnotation.id;
 
     // 4. 处理重叠
     await nextTick(); // 等待 Vue 完成 DOM 更新

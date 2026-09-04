@@ -758,7 +758,9 @@ useMouseInteractions({ editor, editorContainerRef })
 ### `services/usePanelPositioning.ts`
 - 管理面板位置重算
 - 处理窗口 resize 事件（带防抖）
-- 监听编辑器变化并触发重算
+- 跟随编辑器与布局管理器生命周期注册、释放布局监听
+- Annotation 面板的 Teleport 目标和坐标原点由当前 Editor owner 的布局管理器统一解析；WorkspaceStage 与 Document Surface 存在嵌套 shell 时，禁止使用全局选择器取得第一个同名 wrapper/layer
+- 除 `window.resize` 外，监听当前 Editor owner 的布局视口尺寸；右侧窗格拖拽或宽度过渡不会触发窗口 resize，仍必须按帧合并重算批注位置
 
 **API:**
 ```typescript

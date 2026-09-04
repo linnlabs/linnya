@@ -23,7 +23,7 @@ export function useAnnotationLayoutManager({ annotationStore, editor }) {
   }
 
   // 初始化依赖
-  const panelFinder = createPanelFinder();
+  const panelFinder = createPanelFinder(editor);
   const panelPositionCalculator = createPanelPositionCalculator(panelFinder, annotationStore, editor);
 
 
@@ -74,6 +74,22 @@ export function useAnnotationLayoutManager({ annotationStore, editor }) {
      return await panelPositionCalculator.handlePanelOverlaps();
   }
 
+  /**
+   * 返回当前 editor owner 对应的批注挂载层。
+   *
+   * 中文说明：面板 Teleport 和位置计算必须共享同一个真实 DOM 元素，不能各自再用
+   * document.querySelector 猜测目标，否则多层 shell / 多 surface 下会再次坐标串台。
+   */
+  const getPanelMountElement = () => panelFinder.findAnnotationLayer();
+
+  /**
+   * 返回当前 editor owner 对应的布局视口。
+   *
+   * 中文说明：容器尺寸变化监听也必须使用 PanelFinder 已确认的 owner，不能由调用方
+   * 再通过 closest/querySelector 猜测 shell，否则会重新引入嵌套 Workspace shell 串台。
+   */
+  const getLayoutViewportElement = () => panelFinder.findEditorShell();
+
 
 
 
@@ -92,6 +108,8 @@ export function useAnnotationLayoutManager({ annotationStore, editor }) {
     recalculateAllPositions,
     invalidateLayoutCacheForAnnotation,
     handleOverlapsOnly,
+    getPanelMountElement,
+    getLayoutViewportElement,
     cleanup, // 暴露 cleanup 方法
     // --- 新增：将 observer 接口从 calculator 传递上来 ---
     observeBlock: panelPositionCalculator.observeBlock,

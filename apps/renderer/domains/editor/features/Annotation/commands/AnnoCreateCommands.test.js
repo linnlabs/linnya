@@ -72,4 +72,61 @@ describe('startCreatingAnnotation', () => {
       position: { top: 12, left: 34 },
     });
   });
+
+  it('does not create a draft before the owner-scoped layout target is ready', async () => {
+    const annotationStore = {
+      editor: createEditor(),
+      annotations: [],
+      addAnnotation: vi.fn(),
+    };
+    const panelPositionManager = {
+      calculateInitialPositionCSS: vi.fn(() => null),
+      handleOverlapsOnly: vi.fn(),
+    };
+
+    const annotationId = await startCreatingAnnotation({
+      blockId: 'root-a',
+      annotationStore,
+      panelPositionManager,
+    });
+
+    expect(annotationId).toBeNull();
+    expect(annotationStore.addAnnotation).not.toHaveBeenCalled();
+  });
+
+  it('rolls back the draft when post-mount overlap layout fails', async () => {
+    const annotations = [{ id: 'existing', blockId: 'root-a', state: AnnotationState.CONFIRMED }];
+    const removeAnnotation = vi.fn(annotationId => {
+      const index = annotations.findIndex(annotation => annotation.id === annotationId);
+      if (index < 0) return false;
+      annotations.splice(index, 1);
+      return true;
+    });
+    const annotationStore = {
+      editor: createEditor(),
+      annotations,
+      addAnnotation: vi.fn(async annotationData => {
+        const annotation = { id: 'annotation-a', ...annotationData };
+        annotations.push(annotation);
+        return annotation;
+      }),
+      removeAnnotation,
+    };
+    const panelPositionManager = {
+      calculateInitialPositionCSS: vi.fn(() => ({ top: '12px', left: '34px' })),
+      handleOverlapsOnly: vi.fn(async () => {
+        throw new Error('layout failed');
+      }),
+    };
+
+    const annotationId = await startCreatingAnnotation({
+      blockId: 'root-a',
+      annotationStore,
+      panelPositionManager,
+    });
+
+    expect(annotationId).toBeNull();
+    expect(removeAnnotation).toHaveBeenCalledWith('annotation-a');
+    expect(annotations.map(annotation => annotation.id)).toEqual(['existing']);
+  });
 });

@@ -8,7 +8,6 @@
 // --- 辅助函数 --- 
 // 辅助函数：确保精度一致
 const standardizePrecision = (num) => {
-  if (typeof num !== 'number' || isNaN(num)) return 0; // 防御 NaN 或非数字
   return Math.round(num * 10) / 10;
 }
 
@@ -16,7 +15,7 @@ const standardizePrecision = (num) => {
 const parsePx = (cssValue) => {
   if (typeof cssValue === 'string' && cssValue.endsWith('px')) {
     const parsed = parseFloat(cssValue);
-    return isNaN(parsed) ? null : parsed; // 防御 NaN
+    return Number.isFinite(parsed) ? parsed : null;
   }
   console.warn(`[AnnoMoveCommands-parsePx] Failed to parse CSS value: ${cssValue}`);
   return null;
@@ -54,13 +53,14 @@ export const updateAnnotationsPositionForMovedBlock = async ({ blockId, annotati
   }
 
   // 3. 解析 CSS 为数字
-  const newTop = standardizePrecision(parsePx(idealPositionCSS.top));
-  const newLeft = standardizePrecision(parsePx(idealPositionCSS.left));
-
-  if (newTop === null || newLeft === null) {
+  const parsedTop = parsePx(idealPositionCSS.top);
+  const parsedLeft = parsePx(idealPositionCSS.left);
+  if (parsedTop === null || parsedLeft === null) {
     console.error(`[AnnoMoveCommands] updateAnnotationsPositionForMovedBlock: 解析位置 CSS 失败 for blockId=${blockId}`);
     return;
   }
+  const newTop = standardizePrecision(parsedTop);
+  const newLeft = standardizePrecision(parsedLeft);
 
   // 4. 更新所有关联批注的位置 (在 Store 中)
   const updatePromises = annotationsToUpdate.map(annotation => {
@@ -114,4 +114,4 @@ export const moveAnnotationToBlock = async ({ annotationId, targetBlockId, annot
   
   // 占位实现
   return false; 
-}; 
+};

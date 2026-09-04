@@ -67,15 +67,18 @@ export function createPanelPositionCalculator(panelFinder, annotationStore, edit
     const currentState = annotation.state;
     const currentPosition = annotation.position; // { top: number, left: number }
 
-    // 3. 决定最终位置 (保留编辑/创建状态下的位置)
-    let finalPosition = {};
+    // 3. 决定最终位置。
+    // 中文说明：编辑/创建期间只保留纵向避让结果；横向位置始终来自当前 layer 与
+    // rootBlock 的实时几何关系。否则侧栏/右侧 pane 动画中一次错误首算会被永久锁住。
+    let finalPosition = idealPosition;
     const isCreatingOrEditing = currentState === 'creating' || currentState === 'editing';
     const isPositionInitialized = currentPosition && typeof currentPosition.top === 'number' && typeof currentPosition.left === 'number';
 
     if (isCreatingOrEditing && isPositionInitialized) {
-      finalPosition = currentPosition; // 保留当前位置
-    } else {
-      finalPosition = idealPosition; // 使用理想位置
+      finalPosition = {
+        top: currentPosition.top,
+        left: idealPosition.left,
+      };
     }
 
     // 4. 更新 store 中的位置 (仅当位置变化时)

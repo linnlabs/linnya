@@ -81,7 +81,7 @@ flowchart LR
 |---------|-----------|----------|
 | `left-handle` | 拖拽柄、菜单入口、历史入口挂载 | 菜单通过 `blockActionMenu/orchestration`；历史通过 `BlockHistory/orchestration` |
 | `annotation-handle` | 右侧批注入口按钮和轻量摘要 | 创建批注走 Annotation feature 的 `TRIGGER_ANNOTATION_CREATE_KEY` 注入契约 |
-| `annotation-panel` | 把全局面板挂到 `.annotation-layer` | 面板编辑、删除、重叠避让和持久化留在 Annotation feature |
+| `annotation-panel` | 把全局面板挂到当前 Editor 布局管理器解析出的 owner-scoped `.annotation-layer` | 面板编辑、删除、重叠避让和持久化留在 Annotation feature |
 | `revision-indicator` | 当前 hydrated pending header 的文档流状态行 | canonical pending 摘要由 Revision read-model / functions 提供 |
 | `revision-toolbar` | hover / selection 后出现的接受、拒绝按钮 | 点击走 `Revision/orchestration/applyBlockRevisionToolbarAction.ts` |
 | `history-panel` | 历史头部、右侧对比面板、时间轴挂载 | 恢复、删除、保存当前版本等规则留在 BlockHistory feature |
@@ -96,6 +96,7 @@ flowchart LR
 6. Teleport 外壳只处理挂载，不接收业务 props，不决定渲染哪个 feature UI；同一个 blockId 换 DOM target 时必须换 key，避免文档切换时复用旧组件实例。不要用 `isConnected` 过滤 target：ProseMirror NodeView 可能先注册 runtime handle、随后才把 DOM 接入文档，提前过滤会让 pending header 错过挂载机会。
 7. 与虚拟化协作时只消费 runtime 只读端口和 engine snapshot，不自行维护 hydrated / pinned 副本，也不 import `RenderVirtualization/internal`。
 8. 如果需要 keep-alive，使用 `useRenderVirtualizationKeepAliveLease` 或对应公开入口，不能直接改 plugin state。
+9. Annotation 面板禁止用字符串 Teleport target（如 `to=".annotation-layer"`）。Workspace 外壳和 Document Surface 可能存在同名容器，目标元素必须由 Annotation layout contract 显式提供，确保挂载目标与坐标原点是同一个 DOM 元素。
 
 ## 测试与观测
 

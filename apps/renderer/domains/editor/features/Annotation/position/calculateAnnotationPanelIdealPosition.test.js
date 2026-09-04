@@ -30,11 +30,11 @@ describe('calculateAnnotationPanelIdealPosition', () => {
     const rootBlockBodyElement = createElementWithRect({ left: 200, right: 680, top: 124.44 });
     rootBlockBodyElement.className = 'root-block';
     blockElement.append(rootBlockBodyElement);
-    const wrapper = createElementWithRect({ left: 120, right: 1120 });
+    const annotationLayer = createElementWithRect({ left: 120, right: 1120 });
     const transientHandle = createElementWithRect({ left: 900, right: 926 });
     const panelFinder = {
       findBlockElement: vi.fn(() => blockElement),
-      findScrollContentWrapper: vi.fn(() => wrapper),
+      findAnnotationLayer: vi.fn(() => annotationLayer),
       findAnnotationHandle: vi.fn(() => transientHandle),
       getElementRect: vi.fn((element) => element.getBoundingClientRect()),
     };
@@ -60,10 +60,10 @@ describe('calculateAnnotationPanelIdealPosition', () => {
     const rootBlockBodyElement = createElementWithRect({ left: 240, right: 740, top: 88 });
     rootBlockBodyElement.className = 'root-block';
     blockElement.append(rootBlockBodyElement);
-    const wrapper = createElementWithRect({ left: 140, right: 1140 });
+    const annotationLayer = createElementWithRect({ left: 140, right: 1140 });
     const panelFinder = {
       findBlockElement: vi.fn(() => blockElement),
-      findScrollContentWrapper: vi.fn(() => wrapper),
+      findAnnotationLayer: vi.fn(() => annotationLayer),
       findAnnotationHandle: vi.fn(() => null),
       getElementRect: vi.fn((element) => element.getBoundingClientRect()),
     };
@@ -79,5 +79,30 @@ describe('calculateAnnotationPanelIdealPosition', () => {
       left: '638px',
     });
     expect(panelFinder.findAnnotationHandle).not.toHaveBeenCalled();
+  });
+
+  it('uses the actual annotation layer as both x and y coordinate origin', () => {
+    const blockElement = createElementWithRect({ left: 0, right: 1300, top: 24 });
+    blockElement.className = 'root-block-outer';
+    const rootBlockBodyElement = createElementWithRect({ left: 520, right: 1260, top: 340 });
+    rootBlockBodyElement.className = 'root-block';
+    blockElement.append(rootBlockBodyElement);
+    const annotationLayer = createElementWithRect({ left: 400, right: 1400, top: 200 });
+    const panelFinder = {
+      findBlockElement: vi.fn(() => blockElement),
+      findAnnotationLayer: vi.fn(() => annotationLayer),
+      getElementRect: vi.fn((element) => element.getBoundingClientRect()),
+    };
+
+    const position = calculateAnnotationPanelIdealPosition({
+      blockId: 'root-in-right-pane',
+      editor: null,
+      panelFinder,
+    });
+
+    expect(position).toEqual({
+      top: '140px',
+      left: '898px',
+    });
   });
 });

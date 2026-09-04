@@ -6,12 +6,24 @@
  * 专注于查找DOM中的批注面板元素和相关元素
  */
 
-export function createPanelFinder() {
+export function createPanelFinder(editor) {
   const escapeCssAttributeValue = (value) => {
     if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
       return CSS.escape(value);
     }
     return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  };
+
+  /**
+   * 读取当前 Annotation 实例所属的 ProseMirror DOM。
+   *
+   * 中文说明：WorkspaceStage 外层和 Markdown Document Surface 内层都可能存在
+   * `.editor-shell/.scroll-content-wrapper`。所有查询必须从当前 editor owner 向外或
+   * 向内解析，禁止回退到 document 全局查询，否则右侧 pane 会把外层横向偏移重复计算。
+   */
+  const findEditorRoot = () => {
+    const editorRoot = editor?.view?.dom;
+    return editorRoot instanceof HTMLElement ? editorRoot : null;
   };
 
   /**
@@ -25,8 +37,11 @@ export function createPanelFinder() {
       return null;
     }
     
+    const editorRoot = findEditorRoot();
+    if (!editorRoot) return null;
+
     const escapedBlockId = escapeCssAttributeValue(blockId);
-    const blockElement = document.querySelector(`.root-block-outer[data-id="${escapedBlockId}"]`);
+    const blockElement = editorRoot.querySelector(`.root-block-outer[data-id="${escapedBlockId}"]`);
     if (blockElement) {
       return blockElement;
     }
@@ -34,7 +49,7 @@ export function createPanelFinder() {
     // 中文说明：兼容历史批注误存了内容块 ID 的情况。
     // 如果内容 DOM 当前仍在视口内，可以向上归一到 rootBlock；离屏 placeholder
     // 没有内容 DOM 时应由 loadAnnotations / 创建入口先做 doc 级归一化。
-    const elementWithId = document.querySelector(`[data-id="${escapedBlockId}"]`);
+    const elementWithId = editorRoot.querySelector(`[data-id="${escapedBlockId}"]`);
     const rootBlockFromChild = elementWithId?.closest?.('.root-block-outer[data-id]');
     if (rootBlockFromChild) {
       return rootBlockFromChild;
@@ -49,9 +64,12 @@ export function createPanelFinder() {
    * @returns {Element|null} - 批注层元素或null
    */
   const findAnnotationLayer = () => {
-    const annotationLayer = document.querySelector('.annotation-layer');
+    const wrapper = findScrollContentWrapper();
+    const annotationLayer = wrapper
+      ? Array.from(wrapper.children).find(element => element.classList.contains('annotation-layer'))
+      : null;
     if (!annotationLayer) {
-      console.error('[PanelFinder] findAnnotationLayer: 未找到批注层元素');
+      console.error('[PanelFinder] findAnnotationLayer: 当前 editor 所属 wrapper 中未找到批注层元素');
       return null;
     }
     
@@ -63,9 +81,9 @@ export function createPanelFinder() {
    * @returns {Element|null} - 编辑器滚动容器元素或null
    */
   const findEditorShell = () => {
-    const editorShell = document.querySelector('.editor-shell');
+    const editorShell = findEditorRoot()?.closest('.editor-shell');
     if (!editorShell) {
-      console.error('[PanelFinder] findEditorShell: 未找到 .editor-shell 元素');
+      console.error('[PanelFinder] findEditorShell: 当前 editor 未挂载到 .editor-shell');
       return null;
     }
     return editorShell;
@@ -76,9 +94,9 @@ export function createPanelFinder() {
    * @returns {Element|null} - 滚动内容包装器元素或null
    */
   const findScrollContentWrapper = () => {
-    const wrapper = document.querySelector('.scroll-content-wrapper');
+    const wrapper = findEditorRoot()?.closest('.scroll-content-wrapper');
     if (!wrapper) {
-      console.error('[PanelFinder] findScrollContentWrapper: 未找到 .scroll-content-wrapper 元素');
+      console.error('[PanelFinder] findScrollContentWrapper: 当前 editor 未挂载到 .scroll-content-wrapper');
       return null;
     }
     return wrapper;
@@ -113,8 +131,12 @@ export function createPanelFinder() {
         return null;
     }
 
-    const selector = `.annotation-panel[data-annotation-id="${annotationId}"]`;
-    const panelElement = document.querySelector(selector);
+    const annotationLayer = findAnnotationLayer();
+    if (!annotationLayer) return null;
+
+    const escapedAnnotationId = escapeCssAttributeValue(annotationId);
+    const selector = `.annotation-panel[data-annotation-id="${escapedAnnotationId}"]`;
+    const panelElement = annotationLayer.querySelector(selector);
     if (!panelElement) {
       return null;
     }
@@ -164,6 +186,7 @@ export function createPanelFinder() {
   };
 
   return {
+    findEditorRoot,
     findBlockElement,
     findAnnotationLayer,
     findEditorShell, // 暴露新函数

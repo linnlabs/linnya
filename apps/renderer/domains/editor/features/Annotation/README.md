@@ -47,9 +47,13 @@
 *   这个包装器被设置为 `position: relative`，它的高度会由内部的编辑器内容（`.main-flow`）完全撑开，从而和整个可滚动文档等高。
 *   关键在于，**内容区 (`.main-flow`) 和批注层 (`.annotation-layer`) 现在都是这个包装器的直接子元素**。
 *   `.annotation-layer` 通过 `position: absolute` 和 `height: 100%`，变成了一个与文档内容**完全等高、且随之一同滚动**的透明浮层。
+*   WorkspaceStage 外层和 Markdown Document Surface 内层都可能出现同名 shell/wrapper；
+    批注运行时必须从当前 `editor.view.dom` 解析最近的 shell、wrapper 和其中的直接子
+    `annotation-layer`，禁止使用全局 `document.querySelector` 取“第一个同名元素”。
 
 **优点**：
 *   **坐标系统一**：内容和批注层处于同一个可滚动的坐标系中，从根本上解决了所有“滚动不同步”的问题。
+*   **Owner 隔离**：面板 Teleport 目标、块查询、滚动视口和位置计算都归属同一个 Editor 实例，右侧 pane、多层 shell 或未来同屏多 Editor 不会互相借用 DOM。
 *   **解耦**：依然保持了批注渲染与 ProseMirror 文档流的完全解耦。
 *   **定位简化**：使得位置计算变得极其简单和健壮，不再需要复杂的 JavaScript 模拟滚动。
 
@@ -64,26 +68,33 @@
 *   `PanelOverlapDetector.js`: **核心模块**，负责解决多个面板间的垂直重叠问题，并包含最终的位置计算逻辑和性能优化。
 *   `PanelFinder.js`: 一个 DOM 工具类，用于高效地查找所需的元素（如 `.editor-shell`, 文本块等）。
 
-### 2.2. 精确位置计算 (`calculateIdealPositionSync`)
+### 2.2. 精确位置计算 (`calculateAnnotationPanelIdealPosition`)
 
-面板的垂直定位 (`idealTop`) 是整个系统的关键。在我们实现了同步滚动容器之后，位置计算变得前所未有的简单和精确。
+面板样式最终写在 `annotation-layer` 的绝对定位子元素上，因此横纵坐标必须都以**实际挂载该面板的同一个 layer** 为原点。不能用 `offsetTop` 猜测 offset parent，也不能拿外层 Workspace wrapper 的 rect 去计算内层 Document Surface 中的面板。
 
 **最终采用的公式**：
 
 ```javascript
-// in: PanelOverlapDetector.js
-const idealTop = blockElement.offsetTop;
+const layerRect = annotationLayer.getBoundingClientRect();
+const blockRect = rootBlockBody.getBoundingClientRect();
+const idealTop = blockRect.top - layerRect.top;
+const idealLeft = blockRect.right - layerRect.left + handleRightOffset + panelGap;
 ```
 
 **公式解析**：
-1.  `blockElement`: 这是目标文本块的 DOM 元素。
-2.  `.offsetTop`: 这是一个原生的 DOM API，它返回当前元素相对于其 `offsetParent` (最近的、具有定位属性的祖先元素) 的顶部距离。
-3.  **工作原理**：在我们的新布局中，`blockElement` 和批注面板的 `offsetParent` **都是同一个元素**：`.scroll-content-wrapper`。因此，`blockElement.offsetTop` 直接给出了文本块在这个共享容器内的精确垂直偏移量。我们把这个值直接赋给批注面板的 `top` 样式，就能实现像素级的完美对-齐。
+1. `PanelFinder(editor)` 先从当前 `editor.view.dom` 解析 owner-scoped `annotation-layer`。
+2. `rootBlockBody` 是 `.root-block`，普通 Vue NodeView、虚拟化 hydrated NodeView 和 placeholder 都遵循同一 DOM 合同。
+3. 两个 `DOMRect` 相减会把 viewport 坐标转换为 layer 本地坐标；滚动时两者同向移动，差值不受滚动位置影响。
+4. 横坐标从稳定的 rootBlock 右边界推导到批注按钮右侧，避免 Host surface 短暂换挂载点时把瞬时按钮 rect 写入 store。
 
 **为什么这个方法更优越**：
-*   **静态与稳定**：`offsetTop` 是一个静态值，它只在 DOM 结构变化时改变，而**不受滚动条位置的影响**。这彻底解决了之前所有因滚动而产生的定位 Bug。
-*   **无需修正**：它自动处理了所有父元素的 `padding` 和 `border`，我们不再需要任何手动计算来修正偏移，比如之前那个 `- shellPaddingTop`。
-*   **性能更佳**：读取 `offsetTop` 通常比调用 `getBoundingClientRect()` 并进行一系列计算要快。
+*   **挂载与计算同源**：LayoutManager 同时向 Host 暴露真实 Teleport 元素，渲染和计算不会各自查询不同 layer。
+*   **尺寸变化归属同源**：右侧窗格拖拽和宽度过渡不会触发 `window.resize`；监听 LayoutManager 暴露的当前 Editor owner 视口，并按动画帧合并重算。
+*   **不依赖偶然的 offset parent**：在 `.editor-main-content`、NodeView 或 Surface 布局变化后仍成立。
+*   **支持嵌套 pane**：右侧文档 pane 相对 Workspace 的横向偏移只会出现一次，不会重复叠加。
+*   **错误不入库**：创建时如果 owner-scoped layer 尚未 ready，本次 draft 不创建；禁止用 `(0, 0)` 或全局 DOM 作为 fallback。
+
+创建态和编辑态只保留纵向重叠避让结果，`left` 必须在每次布局时重新锚定。这样侧栏动画、pane resize 或历史错误位置都能自动归位，不会因为“正在输入”而永久锁死错误横坐标。
 
 ### 2.3. 重叠避让算法 (`handlePanelOverlaps`)
 
@@ -114,7 +125,7 @@ const idealTop = blockElement.offsetTop;
 
 这是最大程度优化性能的关键。我们不再在滚动时计算所有面板的位置，而只计算**当前可见**的。
 
-*   **工作原理**：我们使用 `IntersectionObserver` 来高效地监听所有带批注的文本块 (`.root-block-outer`)。它会维护一个 `visibleBlockIds` 集合，其中只包含当前在视口（`.editor-shell`）中可见的块 ID。
+*   **工作原理**：我们使用 `IntersectionObserver` 来高效地监听所有带批注的文本块 (`.root-block-outer`)。Observer 在第一个 owner block 真正挂载时才创建，root 取当前 Editor 最近的 `.editor-shell`，而不是初始化阶段的全局第一个 shell。它会维护一个 `visibleBlockIds` 集合，其中只包含当前在视口中可见的块 ID。
 *   **应用**：当 `recalculateAllPositions(false)` (滚动模式) 被调用时，它会先用 `visibleBlockIds` 过滤一遍，**只为那些当前可见的批注面板执行位置计算和重叠避让**。
 *   **效果**：这极大地减少了滚动时的计算量。无论文档有多长、批注有多少，计算开销都只与当前屏幕上可见的批-注数量成正比，确保了在极端情况下的高性能表现。
 
