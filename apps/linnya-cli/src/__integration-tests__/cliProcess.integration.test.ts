@@ -151,12 +151,6 @@ describe('linnya CLI real process -> scripted bridge', () => {
         tools: [{
           name: 'read_file',
           description: 'Read one Workspace file',
-          parameters: {
-            type: 'object',
-            properties: { locator: { type: 'string' } },
-            required: ['locator'],
-            additionalProperties: false,
-          },
         }],
       };
     });

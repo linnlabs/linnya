@@ -18,6 +18,8 @@ Agent
 
 ## 2. 两种宿主 adapter
 
+这里的“插件 CLI”不要与全局 `linnya` Conversation CLI 混淆。`linnya tools ...` 是连接当前 App 的外部控制面，只开放平台五个 Workspace 工具；本章的 Agent facade 和 standalone command 则是插件自己拥有的领域命令。Slides 的三个实际入口与使用方式见 [`presentationCli/README.md`](../../../packages/plugins/slides/src/backend/features/presentationCli/README.md)。
+
 同一个插件 parser 和领域 orchestration 可以有两个明确分离的宿主 adapter：
 
 | 入口 | 使用者 | 启动方式 | 数据与输出 |

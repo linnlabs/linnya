@@ -7,6 +7,7 @@ import {
   ConversationControlAuditResponseSchema,
   ConversationControlProgressFrameSchema,
   ConversationControlRunStatusSnapshotSchema,
+  ConversationControlWorkspaceToolsResponseSchema,
 } from './index';
 
 describe('conversation-control wire contract', () => {
@@ -107,6 +108,38 @@ describe('conversation-control wire contract', () => {
       tool_name: 'read_file',
       args: { locator: 'workspace:/notes.md' },
     }).success).toBe(false);
+  });
+
+  it('workspace_tools list 保持轻量，只有 describe 返回完整参数合同', () => {
+    const summary = {
+      name: 'read_file',
+      description: 'Read one Workspace file',
+    } as const;
+    expect(ConversationControlWorkspaceToolsResponseSchema.parse({
+      schema_version: 1,
+      ok: true,
+      command: 'workspace_tools',
+      action: 'list',
+      tools: [summary],
+    })).toMatchObject({ tools: [summary] });
+
+    expect(ConversationControlWorkspaceToolsResponseSchema.safeParse({
+      schema_version: 1,
+      ok: true,
+      command: 'workspace_tools',
+      action: 'list',
+      tools: [{ ...summary, parameters: { type: 'object' } }],
+    }).success).toBe(false);
+
+    expect(ConversationControlWorkspaceToolsResponseSchema.parse({
+      schema_version: 1,
+      ok: true,
+      command: 'workspace_tools',
+      action: 'describe',
+      tool: { ...summary, parameters: { type: 'object' } },
+    })).toMatchObject({
+      tool: { ...summary, parameters: { type: 'object' } },
+    });
   });
 
   it('respond 只暴露 expected interaction 与用户响应，不接纳 resume token', () => {

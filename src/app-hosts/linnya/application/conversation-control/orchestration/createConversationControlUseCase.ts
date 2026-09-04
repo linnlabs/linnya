@@ -478,12 +478,13 @@ export function createConversationControlUseCase(
 
     async workspaceTools(request) {
       if (request.action === 'list') {
+        const tools = ports.workspaceTools.describe(CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES);
         return {
           schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
           ok: true,
           command: 'workspace_tools',
           action: 'list',
-          tools: [...ports.workspaceTools.describe(CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES)],
+          tools: tools.map(({ name, description }) => ({ name, description })),
         };
       }
       if (request.action === 'describe') {

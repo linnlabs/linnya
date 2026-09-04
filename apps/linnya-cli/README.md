@@ -87,7 +87,7 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 | `stop <conversation-id>` | 终止当前 foreground root run，并等待真实终态结算 | `--run`、`--reason` |
 | `result <conversation-id>` | 读取指定或最近 terminal root run 的最终回答 | `--run` |
 | `audit <conversation-id>` | 导出安全执行摘要 | `--run` |
-| `tools list` | 列出 CLI 允许调用的 Workspace 工具及真实参数合同 | 无 |
+| `tools list` | 列出 CLI 允许调用的 Workspace 工具名称与简介 | 无 |
 | `tools describe <tool-name>` | 查询一个 Workspace 工具的真实参数合同 | 无 |
 | `tools call <tool-name>` | 在绑定项目的 Conversation 中执行一次 Workspace 工具调用并等待结果 | `--conversation`、`--project`、`--args-json`、`--interval`、`--timeout` |
 
@@ -97,7 +97,7 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 
 ### 3.1 调用 Workspace 工具
 
-CLI 固定只开放 `list_files / read_file / grep / write_file / edit_file`。它不会接受 Shell、插件工具或任意注册工具；工具参数直接来自 App 当前注册的正式 schema，可先查询再调用：
+CLI 固定只开放 `list_files / read_file / grep / write_file / edit_file`。它不会接受 Shell、插件工具或任意注册工具。`tools list` 只返回名称与简介；需要调用时再用 `tools describe` 读取 App 当前注册的完整正式 schema，避免为发现工具反复传输全部参数合同：
 
 ```bash
 pnpm linnya:cli tools list --pretty
@@ -123,6 +123,16 @@ pnpm linnya:cli tools call write_file \
 - 两者都传：验证 Conversation 确实属于该项目；不一致时拒绝执行。两者都不传同样拒绝。
 
 `tools call` 不调用 LLM。它仍通过正式 Flow、ToolNode、ToolContext、权限、审计、pending revision 和 Conversation UI 投影执行，因此前端能看到这次工具调用的历史，写入行为也与 Linnya Agent 使用同一工具时完全一致。CLI 会等待 run 和工具卡都完成：工具成功时把完整工具消息写到 stdout；工具自身返回 error 时把同一消息写到 stderr，并以退出码 `8` 结束。
+
+### 3.2 与 Slides CLI 的区别
+
+| 入口 | 适用调用方 | 当前职责 | 是否依赖正在运行的 Linnya |
+| --- | --- | --- | --- |
+| `linnya ...` | 外部 Agent、脚本、人 | Conversation 控制，以及五个 Workspace 工具；可读写 `.slides` 源码 | 是 |
+| `linnya-slides ...` | Linnya Agent 的 `shell` | 通过当前 Shell 的临时 bridge 执行 Slides `inspect / render / fonts` | 是，而且只能在受管 Shell execution 内使用 |
+| `pnpm slides:cli -- ...` / 插件 `entry.command` | 外部 Agent、人、CI | Standalone Slides 只读诊断、检查图与字体查询 | 否；自行提供数据库和输出目录 |
+
+`linnya-slides` 不是给外部进程直连 App 的通用命令：它依赖父 Shell 临时注入的 execution token。外部 Agent 若只需要编辑当前 Linnya 项目，应使用 `linnya tools call`；若需要脱离 App 做 Slides 检查或渲染，应使用 Standalone Slides CLI。两者当前没有相互转发。Slides CLI 的完整参数与运行环境见 [`presentationCli/README.md`](../../packages/plugins/slides/src/backend/features/presentationCli/README.md)。
 
 `audit` 从 RunRegistry 读取权威 run/Agent/终态，从 EventStore 配对 durable tool decision/output，
 并复用 Command Audit 区分 Tool error 与 Shell 子进程非零退出。`tool_pairing.complete` 及

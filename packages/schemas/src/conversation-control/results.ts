@@ -233,11 +233,15 @@ export const ConversationControlResultResponseSchema = z.discriminatedUnion('res
     .strict(),
 ]);
 
-export const ConversationControlWorkspaceToolDescriptorSchema = z.object({
+export const ConversationControlWorkspaceToolSummarySchema = z.object({
   name: ConversationControlWorkspaceToolNameSchema,
   description: z.string().trim().min(1),
-  parameters: JsonValueSchema,
 }).strict();
+
+export const ConversationControlWorkspaceToolDescriptorSchema =
+  ConversationControlWorkspaceToolSummarySchema
+    .extend({ parameters: JsonValueSchema })
+    .strict();
 
 const WorkspaceToolsResponseBaseFields = {
   ...SuccessBaseFields,
@@ -248,7 +252,7 @@ export const ConversationControlWorkspaceToolsResponseSchema = z.discriminatedUn
   z.object({
     ...WorkspaceToolsResponseBaseFields,
     action: z.literal('list'),
-    tools: z.array(ConversationControlWorkspaceToolDescriptorSchema),
+    tools: z.array(ConversationControlWorkspaceToolSummarySchema),
   }).strict(),
   z.object({
     ...WorkspaceToolsResponseBaseFields,
@@ -653,6 +657,9 @@ export type ConversationControlAuditResponse = z.infer<
 >;
 export type ConversationControlWorkspaceToolDescriptor = z.infer<
   typeof ConversationControlWorkspaceToolDescriptorSchema
+>;
+export type ConversationControlWorkspaceToolSummary = z.infer<
+  typeof ConversationControlWorkspaceToolSummarySchema
 >;
 export type ConversationControlWorkspaceToolsResponse = z.infer<
   typeof ConversationControlWorkspaceToolsResponseSchema

@@ -428,14 +428,17 @@ describe('conversation-control use case', () => {
       command: 'workspace_tools',
       action: 'list',
     });
-    expect(response).toMatchObject({
+    expect(response).toEqual({
+      schema_version: 1,
+      ok: true,
+      command: 'workspace_tools',
       action: 'list',
       tools: [
-        { name: 'list_files' },
-        { name: 'read_file' },
-        { name: 'grep' },
-        { name: 'write_file' },
-        { name: 'edit_file' },
+        { name: 'list_files', description: 'list_files description' },
+        { name: 'read_file', description: 'read_file description' },
+        { name: 'grep', description: 'grep description' },
+        { name: 'write_file', description: 'write_file description' },
+        { name: 'edit_file', description: 'edit_file description' },
       ],
     });
   });

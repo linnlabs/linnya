@@ -4,6 +4,16 @@
 
 `presentationCli` 是 Slides CLI 领域 feature。它提供 `render`、`inspect` 和 `fonts` 子命令。
 
+## 与 Linnya CLI 的区别
+
+| 入口 | 调用方 | 作用域与能力 |
+| --- | --- | --- |
+| `linnya tools ...` | 外部 Agent、脚本、人 | 连接正在运行的 Linnya，在 Conversation/项目作用域内调用五个 Workspace 工具；可用 `write_file/edit_file` 修改 `.slides` 源码 |
+| `linnya-slides ...` | Linnya Agent 的受管 Shell | 使用本次 Shell execution 的临时 bridge，复用当前 App 的数据库、Coordinator、权限和 raster worker |
+| Standalone Slides CLI | 外部 Agent、人、CI | 独立 Electron command，直接读取指定 Workspace 数据库；只提供 `render/inspect/fonts`，不修改文稿 |
+
+三者不是别名。尤其不能从普通终端直接拿 `linnya-slides` facade 连接当前 App：它只在 Linnya 启动的父 Shell 内拥有短期有效的 endpoint/token。外部进程使用 Standalone 模式；需要通过当前 App 修改文稿时使用 [Linnya Conversation CLI](../../../../../../../apps/linnya-cli/README.md)。
+
 CLI 是独立 Electron main process，不经过完整应用的 platform runtime effects。除轻量 `help` 与 `fonts` 查询外，进入 presentation 命令前必须显式初始化同一份系统字体解析目录与 system text measurement runtime，并等待完成；否则 RenderModel 会把字体记为 `not-ready`、cluster advance 退回 heuristic，CLI 截图与主应用可能产生不同断行或字形边界。构建制品因此必须同时携带 Yoga 与 HarfBuzz 两个窄 CJS runtime loader。
 前两者共用 parser、领域 orchestration、presentation inspection 和 hidden raster worker，不拥有第二套 PPT
 渲染或诊断规则；standalone adapter 只装配 current document 只读投影与 generated render-model builder，禁止
