@@ -9,4 +9,4 @@
 
 export * from './PdfParseAdapter';
 export * from './PdfjsAdapter';
-export * from './PdfToImgAdapter'; 
+export * from './PdfRasterAdapter';

@@ -1,20 +1,17 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TextGenerationFailure, type TextGenerationPort } from 'src/domains/model-inference';
 import type { DocumentOcrPort } from 'src/domains/document-ocr';
 import { processWithVisionDiagnostics, recognizeImageContent } from './VisionRecognitionStrategy';
 
 const mocks = vi.hoisted(() => ({
-  getPdfPageCountCrossPlatform: vi.fn(),
-  convertPageToJpegCrossPlatform: vi.fn(),
+  openPdfRasterDocumentFromBytes: vi.fn(),
+  renderPageToJpeg: vi.fn(),
+  close: vi.fn(),
 }));
 
-vi.mock('../adapters/PdfParseAdapter', () => ({
-  getPdfPageCountCrossPlatform: mocks.getPdfPageCountCrossPlatform,
-}));
-
-vi.mock('../adapters/PdfToImgAdapter', () => ({
-  DEFAULT_TARGET_PIXELS: 2048,
-  convertPageToJpegCrossPlatform: mocks.convertPageToJpegCrossPlatform,
+vi.mock('../adapters/PdfRasterAdapter', () => ({
+  openPdfRasterDocumentFromBytes: mocks.openPdfRasterDocumentFromBytes,
+  openPdfRasterDocumentFromPath: vi.fn(),
 }));
 
 function makeTextGeneration(generate: TextGenerationPort['generate']): TextGenerationPort {
@@ -29,9 +26,25 @@ function makeDocumentOcr(): DocumentOcrPort {
 }
 
 describe('VisionRecognitionStrategy OCR retry policy', () => {
+  beforeEach(() => {
+    mocks.renderPageToJpeg.mockImplementation(async (pageNumber: number) => ({
+      pageNumber,
+      width: 1087,
+      height: 1536,
+      jpegBytes: Buffer.from(`image-${pageNumber}`),
+      renderDurationMs: 1,
+    }));
+    mocks.close.mockResolvedValue(undefined);
+    mocks.openPdfRasterDocumentFromBytes.mockResolvedValue({
+      pageCount: 1,
+      renderPageToJpeg: mocks.renderPageToJpeg,
+      close: mocks.close,
+    });
+  });
+
   afterEach(() => {
     vi.useRealTimers();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('认证错误不重试，直接暴露 auth 分类可识别的 provider error', async () => {
@@ -99,8 +112,6 @@ describe('VisionRecognitionStrategy OCR retry policy', () => {
   });
 
   it('整篇视觉解析遇到认证错误时返回可操作失败提示', async () => {
-    mocks.getPdfPageCountCrossPlatform.mockResolvedValue(1);
-    mocks.convertPageToJpegCrossPlatform.mockResolvedValue('image-base64');
     const authError = new TextGenerationFailure(
       'provider',
       'provider_http_401',
@@ -128,11 +139,12 @@ describe('VisionRecognitionStrategy OCR retry policy', () => {
     expect(outcome.error).toContain('API key');
   });
 
-  it('page_image 主链路遇到认证错误后不继续启动后续 OCR 请求', async () => {
-    mocks.getPdfPageCountCrossPlatform.mockResolvedValue(4);
-    mocks.convertPageToJpegCrossPlatform.mockImplementation(
-      async (_pdfPath: string, pageNum: number) => `image-${pageNum}`
-    );
+  it('100 页文档只保留两个在途页面，认证错误后不继续栅格化', async () => {
+    mocks.openPdfRasterDocumentFromBytes.mockResolvedValue({
+      pageCount: 100,
+      renderPageToJpeg: mocks.renderPageToJpeg,
+      close: mocks.close,
+    });
 
     let activeCalls = 0;
     const releaseByCall: Array<() => void> = [];
@@ -170,6 +182,7 @@ describe('VisionRecognitionStrategy OCR retry policy', () => {
 
     expect(outcome.success).toBe(false);
     expect(generate).toHaveBeenCalledTimes(2);
+    expect(mocks.renderPageToJpeg).toHaveBeenCalledTimes(2);
     if (outcome.success) {
       throw new Error('expected failure');
     }
@@ -178,10 +191,11 @@ describe('VisionRecognitionStrategy OCR retry policy', () => {
 
   it('page_image 主链路初始并发为 2，遇到 429 后后续降为 1', async () => {
     vi.useFakeTimers();
-    mocks.getPdfPageCountCrossPlatform.mockResolvedValue(4);
-    mocks.convertPageToJpegCrossPlatform.mockImplementation(
-      async (_pdfPath: string, pageNum: number) => `image-${pageNum}`
-    );
+    mocks.openPdfRasterDocumentFromBytes.mockResolvedValue({
+      pageCount: 4,
+      renderPageToJpeg: mocks.renderPageToJpeg,
+      close: mocks.close,
+    });
 
     let activeCalls = 0;
     let maxActiveCalls = 0;

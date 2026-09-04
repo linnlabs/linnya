@@ -237,7 +237,7 @@ function renderThirdPartyNotice(
             `- ${item.name}@${item.version} — declared ${item.declaredLicense} — ${item.source}`
         )),
     '',
-    'SUPPLEMENTAL DATA AND ASSET NOTICES',
+    'SUPPLEMENTAL COMPONENT, DATA, AND ASSET NOTICES',
     '',
     ...(supplementalNotices.length === 0
       ? ['None.', '']
@@ -262,7 +262,15 @@ function renderThirdPartyNotice(
       ''
     );
   }
-  return `${lines.join('\n').trimEnd()}\n`;
+  // 上游法律文本可能混用 CRLF 或在引用块中保留行尾空格。NOTICE 内容保持逐字信息，
+  // 但统一仓库文本格式，避免生成文件无法通过 diff 门禁。
+  const normalizedLines = lines
+    .join('\n')
+    .replaceAll('\r\n', '\n')
+    .replaceAll('\r', '\n')
+    .split('\n')
+    .map(line => line.trimEnd());
+  return `${normalizedLines.join('\n').trimEnd()}\n`;
 }
 
 export function createSourceDependencyBom(

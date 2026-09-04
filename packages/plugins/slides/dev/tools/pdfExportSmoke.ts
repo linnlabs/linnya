@@ -20,8 +20,11 @@ async function run(): Promise<void> {
       throw new Error('Raster PDF runtime returned invalid PDF bytes');
     }
 
-    const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.js');
-    const document = await getDocument({ data: bytes, disableWorker: true }).promise;
+    const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    // PDF.js 6 明确拒绝 Node Buffer；复制成普通 Uint8Array 也避免测试把
+    // Electron runtime 返回值的底层内存所有权交给 loading task。
+    const loadingTask = getDocument({ data: Uint8Array.from(bytes) });
+    const document = await loadingTask.promise;
     try {
       if (document.numPages !== 2) {
         throw new Error(`Raster PDF runtime returned ${document.numPages} pages instead of 2`);
@@ -31,7 +34,7 @@ async function run(): Promise<void> {
       assertNear(viewport.width, PAGE_WIDTH_INCHES * 72, 'width');
       assertNear(viewport.height, PAGE_HEIGHT_INCHES * 72, 'height');
     } finally {
-      await document.destroy();
+      await loadingTask.destroy();
     }
     console.log(`Slides raster PDF passed: 2 pages, ${bytes.byteLength} bytes`);
   } finally {

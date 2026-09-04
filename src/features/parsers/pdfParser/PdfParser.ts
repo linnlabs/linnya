@@ -23,6 +23,10 @@ import {
 import { getPdfPageCountCrossPlatform } from './adapters/PdfParseAdapter';
 import type { PdfParseOutcome } from './definitions/pdfParseOutcome';
 import { createPdfParseDiagnostics } from './definitions/pdfParseOutcome';
+import {
+  PDF_RASTER_DEFAULT_TARGET_PIXELS,
+  normalizePdfRasterTargetPixels,
+} from './definitions/pdfRaster';
 
 const logger = new Logger('PdfParser');
 
@@ -31,9 +35,8 @@ const logger = new Logger('PdfParser');
  * **输入 (Input):** 实现 Parser 接口，支持多种处理策略
  * **输出 (Output):** 提供 parse 方法来解析 PDF 文件
  * **副作用 (Side-effects):**
- * 1. 可能创建临时文件用于图像转换
- * 2. 调用不同的PDF处理库
- * 3. 可能使用AI引擎进行图像识别
+ * 1. 调用 PDF.js 提取文本、布局或逐页渲染
+ * 2. 可能使用 AI 引擎进行图像识别
  */
 export class PdfParser implements Parser {
   private options: {
@@ -45,7 +48,6 @@ export class PdfParser implements Parser {
     targetPixels: number;
     tpmLimitPerWorker: number;
     maxRetries: number;
-    useSystemTools: boolean;
     forceVisionMode: boolean;
   };
 
@@ -63,10 +65,11 @@ export class PdfParser implements Parser {
       filename: options.filename,
       visionModelId: options.visionModelId || '',
       resolveModelByCapability: options.resolveModelByCapability,
-      targetPixels: options.targetPixels || 2048,
+      targetPixels: normalizePdfRasterTargetPixels(
+        options.targetPixels ?? PDF_RASTER_DEFAULT_TARGET_PIXELS
+      ),
       tpmLimitPerWorker: options.tpmLimitPerWorker || 20,
       maxRetries: options.maxRetries || 5,
-      useSystemTools: options.useSystemTools ?? false,
       forceVisionMode: options.forceVisionMode ?? false,
     };
   }
@@ -262,7 +265,7 @@ export class PdfParser implements Parser {
         visionModelId,
         {
           filename: this.options.filename,
-          targetPixels: this.options.targetPixels || 2048,
+          targetPixels: this.options.targetPixels,
           maxRetries: this.options.maxRetries || 3,
           tpmLimitPerWorker: this.options.tpmLimitPerWorker || 20,
         },
@@ -289,13 +292,12 @@ export class PdfParser implements Parser {
     hasVisionModel: boolean;
     targetPixels: number;
     maxRetries: number;
-    useSystemTools: boolean;
     forceVisionMode: boolean;
     supportedStrategies: string[];
   } {
     const strategies: string[] = ['text_extraction'];
 
-    // 总是支持几何分析（使用pdfjs-dist）
+    // 总是支持几何分析（使用 PDF.js）
     strategies.push('geometric_analysis');
 
     // 只有在显式配置文本生成端口时才支持视觉识别。
@@ -308,7 +310,6 @@ export class PdfParser implements Parser {
       hasVisionModel: !!this.options.visionModelId,
       targetPixels: this.options.targetPixels,
       maxRetries: this.options.maxRetries,
-      useSystemTools: this.options.useSystemTools,
       forceVisionMode: this.options.forceVisionMode,
       supportedStrategies: strategies,
     };
@@ -389,7 +390,7 @@ export class PdfParser implements Parser {
           };
         }
       }
-    } catch (error) {
+    } catch {
       // 分析失败，默认推荐视觉识别
       return {
         documentType: 'complex',

@@ -40,16 +40,13 @@
     "smoke:plugins:official:artifact": "node scripts/release/run-official-plugin-scripts.mjs smoke-artifact",
     "smoke:plugins:official:r2": "pnpm run build:schemas && vitest run scripts/release/smoke-official-plugins-r2.test.ts",
     "release:plugin:catalog:generate": "node --import tsx scripts/release/generate-plugin-catalog.mjs",
-    "release:poppler-runtime:prepare": "node scripts/release/create-poppler-runtime-release-archives.cjs",
     "release:plugin:mindmap:upload": "pnpm run build:schemas && pnpm run package:plugin:mindmap && node scripts/release/upload-plugin-artifact.mjs mindmap",
     "release:plugin:slides:upload": "pnpm run build:schemas && pnpm run package:plugin:slides && node scripts/release/upload-plugin-artifact.mjs slides",
     "watch:backend": "pnpm run prepare:backend-workspace-dependencies && tsup --config tsup.backend.config.ts --watch --onSuccess \"node scripts/build/prepare-backend-runtime.cjs\"",
     "watch:backend:dev": "tsup --config tsup.backend.config.ts --watch --onSuccess \"node scripts/build/prepare-backend-runtime.cjs\"",
     "prepare:headless-node-runtime": "node scripts/build/prepare-headless-node-runtime.cjs",
     "prepare:qdrant-runtime": "node scripts/build/prepare-qdrant-runtime.cjs",
-    "prepare:poppler-runtime": "node scripts/build/prepare-poppler-runtime.cjs",
     "test:qdrant-runtime-catalog": "vitest run scripts/build/qdrant-runtime/functions/__tests__/qdrantRuntimeCatalog.test.mjs",
-    "test:poppler-runtime-catalog": "vitest run scripts/build/poppler-runtime/functions/__tests__/popplerRuntimeCatalog.test.mjs",
     "build:sandbox-runner": "tsup --config tsup.sandbox-runner.config.ts",
     "watch:sandbox-runner": "pnpm run build:sandbox-runner --watch",
     "guard:sandbox-utility-bundle": "node scripts/guards/sandbox-utility-bundle-boundary-guard.mjs",
@@ -154,7 +151,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "build:wasm": "pnpm --dir packages/parser-wasm run build",
-    "build:main": "node scripts/build/run-esbuild.mjs src/electron-main/index.js --bundle --platform=node --outfile=dist/main/main.cjs --format=cjs --external:electron --external:pdfjs-dist --external:pdfjs-dist/legacy/build/pdf --external:@node-rs/jieba --external:better-sqlite3 --external:yoga-layout --external:harfbuzzjs --external:sharp",
+    "build:main": "node scripts/build/run-esbuild.mjs src/electron-main/index.js --bundle --platform=node --outfile=dist/main/main.cjs --format=cjs --external:electron --external:pdfjs-dist --external:@napi-rs/canvas --external:@node-rs/jieba --external:better-sqlite3 --external:yoga-layout --external:harfbuzzjs --external:sharp",
     "watch:main": "pnpm run build:main --sourcemap=inline --watch",
     "build:preload": "node scripts/build/run-esbuild.mjs src/electron-main/preload/index.ts --bundle --platform=node --outfile=dist/main/preload.js --format=cjs --external:electron",
     "watch:preload": "pnpm run build:preload --sourcemap=inline --watch",
@@ -186,12 +183,12 @@
     "compile:bytecode": "node scripts/build/compile-electron-main-bytecode.cjs dist/main/main.cjs dist/main/main.jsc",
     "build:loader": "node scripts/build/run-esbuild.mjs src/electron-main/loader.js --bundle --platform=node --outfile=dist/main/loader.cjs --format=cjs --external:electron --external:./main.jsc",
     "start:electron": "wait-on dist/main/main.cjs dist/main/preload.js dist/main/measurement-worker.js dist/main/measurement-preload.js packages/plugins/slides/dist/raster-worker/worker.html packages/plugins/slides/dist/backend/raster-worker-preload.cjs packages/plugins/slides/dist/brush-worker/worker.html packages/plugins/slides/dist/backend/brush-worker-preload.cjs packages/plugins/slides/dist/backend/presentation-build-worker.cjs dist/main/worker.html dist/ingestion.worker.cjs dist/audio-processing.worker.cjs dist/graph-extraction.worker.cjs dist/graph-indexing.worker.cjs dist/main/app-server-entry.cjs dist/main/app-server-backend.cjs dist/main/sandbox/sandboxUtilityProcess.cjs dist/main/sandbox/sandboxEvaluatorProcess.cjs dist/main/commands/commandRunnerProcess.cjs dist/main/commands/commandRunnerUtilityProcess.cjs node_modules/@app/schemas/dist/index.js && pnpm run guard:better:electron && cross-env NODE_ENV=development LINNYA_DEV_MODE=true APP_VERSION=${npm_package_version} electron dist/main/main.cjs",
-    "dev:electron": "pnpm run prepare:qdrant-runtime && pnpm run prepare:poppler-runtime && pnpm run prepare:headless-node-runtime && pnpm run build:wasm && pnpm run build:main && pnpm run build:preload && pnpm run build:measurement-worker && pnpm run build:measurement-preload && pnpm run build:slides-raster-worker && pnpm run build:slides-brush-worker && pnpm run build:slides-cli && pnpm run build:development-disk-plugin-backends && pnpm run build:worker && pnpm run build:backend && node scripts/development/orchestration/startElectronDevelopment.mjs",
+    "dev:electron": "pnpm run prepare:qdrant-runtime && pnpm run prepare:headless-node-runtime && pnpm run build:wasm && pnpm run build:main && pnpm run build:preload && pnpm run build:measurement-worker && pnpm run build:measurement-preload && pnpm run build:slides-raster-worker && pnpm run build:slides-brush-worker && pnpm run build:slides-cli && pnpm run build:development-disk-plugin-backends && pnpm run build:worker && pnpm run build:backend && node scripts/development/orchestration/startElectronDevelopment.mjs",
     "dev:data:reset": "node --import tsx scripts/maintenance/reset-development-data.ts",
     "clean:build": "node -e \"require('fs').rmSync('dist_build', { recursive: true, force: true })\"",
     "prepare:extra-resources": "node scripts/build/prepare-extra-resources.cjs",
     "prepare:windows-app-local-runtime": "node scripts/build/prepare-windows-app-local-runtime.cjs --project-dir dist_build --arch x64",
-    "build:electron:prepare": "pnpm run guard:ai-sdk-third-party-notice && pnpm run package:plugins:official && pnpm run prepare:qdrant-runtime && pnpm run prepare:poppler-runtime && pnpm run prepare:extra-resources && pnpm run prepare:headless-node-runtime && pnpm run clean:build && pnpm run build:wasm && pnpm run build:frontend && pnpm run build:main && pnpm run build:preload && pnpm run build:measurement-worker && pnpm run build:measurement-preload && pnpm run build:worker && pnpm run build:backend && pnpm run guard:public-artifact-private-plugin-boundary && pnpm run build:windows-command-native-runtime && pnpm run compile:bytecode && pnpm run build:loader && pnpm run copy:files",
+    "build:electron:prepare": "pnpm run guard:ai-sdk-third-party-notice && pnpm run package:plugins:official && pnpm run prepare:qdrant-runtime && pnpm run prepare:extra-resources && pnpm run prepare:headless-node-runtime && pnpm run clean:build && pnpm run build:wasm && pnpm run build:frontend && pnpm run build:main && pnpm run build:preload && pnpm run build:measurement-worker && pnpm run build:measurement-preload && pnpm run build:worker && pnpm run build:backend && pnpm run guard:public-artifact-private-plugin-boundary && pnpm run build:windows-command-native-runtime && pnpm run compile:bytecode && pnpm run build:loader && pnpm run copy:files",
     "copy:files": "node scripts/build/copy-files.js",
     "build:electron": "cross-env LINNYA_BUILD_TARGET_PLATFORM=win32 LINNYA_BUILD_TARGET_ARCH=x64 pnpm run build:electron:prepare && pnpm run prepare:windows-app-local-runtime && cross-env LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST=development npm_config_msvs_settings_cflags=\"-IC:/msys64/mingw64/include/cairo -IC:/msys64/mingw64/include/pango-1.0 -IC:/msys64/mingw64/include/glib-2.0 -IC:/msys64/mingw64/lib/glib-2.0/include -IC:/msys64/mingw64/include\" npm_config_msvs_settings_ldflags=\"-LC:/msys64/mingw64/lib\" electron-builder --projectDir dist_build --win",
     "build:electron:prod": "node scripts/build/build-prod.cjs",
@@ -212,8 +209,8 @@
     "guard:better:electron": "cross-env ELECTRON_RUN_AS_NODE=1 electron scripts/native/check-better-sqlite-electron.cjs",
     "verify:better:runtimes": "node scripts/native/verify-better-sqlite3-runtimes.cjs",
     "test:workspace-explorer": "node scripts/test-runner/run-test-with-electron.cjs scripts/diagnostics/workspace/workspace-explorer.ts",
-    "prepack": "pnpm run prepare:qdrant-runtime && pnpm run prepare:poppler-runtime",
-    "prebuild": "pnpm run prepare:qdrant-runtime && pnpm run prepare:poppler-runtime",
+    "prepack": "pnpm run prepare:qdrant-runtime",
+    "prebuild": "pnpm run prepare:qdrant-runtime",
     "rebuild-native": "node scripts/native/rebuild-native.cjs",
     "guard:mindmap": "pnpm exec tsx scripts/guards/mindmap-guards.ts",
     "guard:plugin-runtime-dist": "node --import tsx ./scripts/guards/plugin-runtime-dist-guard.ts",
@@ -256,6 +253,7 @@
     "lint:code": "eslint apps packages src scripts *.config.*",
     "lint:style": "stylelint \"apps/renderer/**/*.{css,vue}\" --allow-empty-input && node scripts/guards/style-audit.mjs --strict",
     "smoke:style:electron": "pnpm run build:main && pnpm run build:preload && pnpm run build:measurement-worker && pnpm run build:measurement-preload && pnpm run build:worker && pnpm run build:backend && node scripts/benchmark/electron-style-smoke.mjs",
+    "benchmark:pdf-raster": "node scripts/benchmark/run-pdf-rasterization.mjs",
     "telemetry:tail": "node scripts/test-runner/run-test-with-electron.cjs scripts/benchmark/telemetry-tail.ts",
     "release:generate": "node --import tsx ./scripts/release/orchestration/generateCurrentRelease.ts",
     "release:bump": "node --import tsx ./scripts/release/orchestration/bumpRelease.ts",
@@ -307,6 +305,7 @@
       "**/node_modules/better-sqlite3/**/*",
       "**/node_modules/@discordjs/opus/**/*",
       "**/node_modules/@node-rs/**/*",
+      "**/node_modules/@napi-rs/**/*",
       "**/node_modules/harfbuzzjs/**/*",
       "**/node_modules/pdfjs-dist/**/*",
       "**/node_modules/yoga-layout/**/*",
@@ -369,10 +368,6 @@
           "to": "bin/qdrant/qdrant.exe"
         },
         {
-          "from": "../extraResources/bin/poppler/win-x64",
-          "to": "bin/poppler/win-x64"
-        },
-        {
           "from": "build/windows-app-local-runtime/x64",
           "to": "command-runtime/windows/x64",
           "filter": [
@@ -382,13 +377,6 @@
         {
           "from": "build/windows-app-local-runtime/x64",
           "to": "bin/qdrant",
-          "filter": [
-            "*.dll"
-          ]
-        },
-        {
-          "from": "build/windows-app-local-runtime/x64",
-          "to": "bin/poppler/win-x64",
           "filter": [
             "*.dll"
           ]
@@ -435,10 +423,6 @@
         {
           "from": "../extraResources/bin/qdrant/mac-arm64/qdrant",
           "to": "bin/qdrant/qdrant"
-        },
-        {
-          "from": "../extraResources/bin/poppler/mac-arm64",
-          "to": "bin/poppler/mac-arm64"
         }
       ]
     },
@@ -483,6 +467,7 @@
     "@linnya/provider-catalog": "workspace:*",
     "@linnya/renderer-ui": "workspace:*",
     "@mozilla/readability": "^0.6.0",
+    "@napi-rs/canvas": "1.0.8",
     "@node-rs/jieba": "^2.0.1",
     "@qdrant/js-client-rest": "^1.15.0",
     "@tanstack/vue-virtual": "3.13.31",
@@ -549,7 +534,7 @@
     "node-pty": "1.2.0-beta.14",
     "open-simplex-noise": "^2.5.0",
     "parser-wasm": "workspace:*",
-    "pdfjs-dist": "^2.16.105",
+    "pdfjs-dist": "6.3.289",
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.2.0",
     "pptxgenjs": "^4.0.1",
@@ -595,7 +580,11 @@
     "@types/diff-match-patch": "^1.0.36",
     "@types/express": "^5.0.3",
     "@types/jsdom": "^28.0.3",
+    "@types/markdown-it": "^14.1.1",
+    "@types/node": "^24.3.0",
     "@types/uuid": "^10.0.0",
+    "@types/xml2js": "^0.4.14",
+    "@types/yauzl": "^2.10.3",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
     "@vitejs/plugin-vue": "^5.2.1",
@@ -630,11 +619,7 @@
     "vue-eslint-parser": "^10.2.0",
     "vue-tsc": "~3.1.0",
     "wait-on": "^8.0.3",
-    "yaml": "^2.8.1",
-    "@types/markdown-it": "^14.1.1",
-    "@types/node": "^24.3.0",
-    "@types/xml2js": "^0.4.14",
-    "@types/yauzl": "^2.10.3"
+    "yaml": "^2.8.1"
   },
   "repository": {
     "type": "git",

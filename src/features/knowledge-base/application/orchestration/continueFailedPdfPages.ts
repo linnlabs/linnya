@@ -37,6 +37,7 @@ import {
   PDF_OCR_DEFAULT_FALLBACK_MODEL_ID,
   PDF_OCR_MODEL_POLICY,
 } from 'src/app-hosts/linnya/agent-registry/internals/ingestion/pdf_ocr';
+import { PDF_RASTER_DEFAULT_TARGET_PIXELS } from 'src/features/parsers/pdfParser/definitions/pdfRaster';
 
 const logger = new Logger('knowledge-base:continue-failed-pdf-pages');
 
@@ -132,7 +133,7 @@ export async function continueFailedPdfPages(
     deps.documentOcr,
     visionModelId,
     {
-      targetPixels: 2048,
+      targetPixels: PDF_RASTER_DEFAULT_TARGET_PIXELS,
       maxRetries: 5,
       tpmLimitPerWorker: 20,
     }

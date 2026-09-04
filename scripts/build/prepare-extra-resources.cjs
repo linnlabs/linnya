@@ -18,14 +18,12 @@ const { spawnSync } = require('node:child_process');
 const rootDir = path.resolve(__dirname, '..', '..');
 
 const staticResourceDirectories = [
-  path.join(rootDir, 'extraResources/bin/poppler/mac-arm64'),
   path.join(rootDir, 'extraResources/bin/qdrant/mac-arm64'),
 ];
 
 const defaultPluginResourceRoot = path.join(rootDir, 'extraResources/plugins');
 
 const executableFiles = new Set([
-  path.join(rootDir, 'extraResources/bin/poppler/mac-arm64/pdftocairo'),
   path.join(rootDir, 'extraResources/bin/qdrant/mac-arm64/qdrant'),
 ]);
 

@@ -250,7 +250,6 @@ describe('Windows app-local VC runtime contract', () => {
     for (const targetDirectory of [
       'command-runtime/windows/x64',
       'bin/qdrant',
-      'bin/poppler/win-x64',
     ]) {
       expect(packageConfig.build.win.extraResources).toContainEqual({
         from: 'build/windows-app-local-runtime/x64',

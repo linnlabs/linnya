@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -12,6 +13,8 @@ import {
 import {
   CRAFT_AGENTS_OAUTH_NOTICE,
   MODELS_DEV_CATALOG_NOTICE,
+  NAPI_RS_CANVAS_NATIVE_NOTICE_EVIDENCE,
+  type SourceDependencySupplementalNotice,
 } from '../definitions/sourceDependencyBom';
 import { REVIEWED_PACKAGE_LEGAL_EVIDENCE } from '../definitions/reviewedPackageLegalEvidence';
 import { createSourceDependencyBom } from '../functions/sourceDependencyBom';
@@ -21,6 +24,40 @@ const defaultRootDir = path.resolve(orchestrationDirectory, '..', '..', '..');
 
 export interface GenerateSourceDependencyBomOptions {
   readonly writeRootNotice?: boolean;
+}
+
+function readPinnedDependencyVersion(projectManifest: unknown, packageName: string): string {
+  if (typeof projectManifest !== 'object' || projectManifest === null) {
+    throw new Error('根 package.json 必须是对象');
+  }
+  const dependencies = Reflect.get(projectManifest, 'dependencies');
+  if (typeof dependencies !== 'object' || dependencies === null) {
+    throw new Error('根 package.json 缺少 dependencies');
+  }
+  const version = Reflect.get(dependencies, packageName);
+  if (typeof version !== 'string') {
+    throw new Error(`根 package.json 缺少生产依赖 ${packageName}`);
+  }
+  return version;
+}
+
+function readNapiCanvasNativeNotice(
+  rootDir: string,
+  projectManifest: unknown
+): SourceDependencySupplementalNotice {
+  const evidence = NAPI_RS_CANVAS_NATIVE_NOTICE_EVIDENCE;
+  const declaredVersion = readPinnedDependencyVersion(projectManifest, evidence.packageName);
+  if (declaredVersion !== evidence.version) {
+    throw new Error(
+      `${evidence.packageName} 已从 ${evidence.version} 变为 ${declaredVersion}，必须重新审计原生组件并更新 NOTICE`
+    );
+  }
+  const content = fs.readFileSync(path.join(rootDir, evidence.evidencePath), 'utf8').trim();
+  const contentSha256 = createHash('sha256').update(content).digest('hex');
+  if (contentSha256 !== evidence.contentSha256) {
+    throw new Error(`${evidence.evidencePath} 与已复核 hash 不一致`);
+  }
+  return { ...evidence.notice, content };
 }
 
 export function generateSourceDependencyBom(
@@ -46,9 +83,13 @@ export function generateSourceDependencyBom(
   }
   const licenseReportText = licenseReportResult.stdout;
   if (!licenseReportText) throw new Error('pnpm licenses list 没有输出 JSON');
+  const projectManifest: unknown = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8')
+  );
+  const napiCanvasNativeNotice = readNapiCanvasNativeNotice(rootDir, projectManifest);
   const result = createSourceDependencyBom({
     rootDir,
-    projectManifest: JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8')),
+    projectManifest,
     lockfile: fs.readFileSync(path.join(rootDir, 'pnpm-lock.yaml'), 'utf8'),
     licenseReport: JSON.parse(licenseReportText),
     platform: process.platform,
@@ -56,7 +97,11 @@ export function generateSourceDependencyBom(
     licenseSelections: DEPENDENCY_LICENSE_SELECTIONS,
     sourceOverrides: DEPENDENCY_SOURCE_OVERRIDES,
     supplementalEvidenceFiles: DEPENDENCY_SUPPLEMENTAL_EVIDENCE_FILES,
-    supplementalNotices: [CRAFT_AGENTS_OAUTH_NOTICE, MODELS_DEV_CATALOG_NOTICE],
+    supplementalNotices: [
+      CRAFT_AGENTS_OAUTH_NOTICE,
+      MODELS_DEV_CATALOG_NOTICE,
+      napiCanvasNativeNotice,
+    ],
     unknownLicenseEvidence: ROOT_DEPENDENCY_LICENSE_EVIDENCE,
     reviewedEvidenceFiles: REVIEWED_PACKAGE_LEGAL_EVIDENCE,
     reviewedEvidenceRootDir: rootDir,

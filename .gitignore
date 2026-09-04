@@ -51,7 +51,6 @@ dist_release/
 extraResources/plugins/
 extraResources/headless-node-runtime/
 extraResources/bin/qdrant/
-extraResources/bin/poppler/
 extraResources/bin/ffmpeg/*
 !extraResources/bin/ffmpeg/README.md
 

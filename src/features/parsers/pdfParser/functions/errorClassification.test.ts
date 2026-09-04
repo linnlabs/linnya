@@ -121,9 +121,9 @@ describe('classifyOcrError', () => {
 
   it('classifies local conversion failures as non-retryable OCR errors', () => {
     const result = classifyOcrError(
-      new PdfLocalConversionError('pdftocairo failed', {
+      new PdfLocalConversionError('PDF.js canvas failed', {
         pageNum: 7,
-        tool: 'pdftocairo',
+        tool: 'pdfjs-canvas',
       })
     );
 

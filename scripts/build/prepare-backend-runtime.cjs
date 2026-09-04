@@ -18,13 +18,6 @@ const runtimeLoaders = [
     ),
     fileName: 'harfbuzzRuntimeLoader.cjs',
   },
-  {
-    source: path.join(
-      rootDir,
-      'src/features/parsers/pdfParser/adapters/pdfJsRuntimeLoader.cjs',
-    ),
-    fileName: 'pdfJsRuntimeLoader.cjs',
-  },
 ];
 
 for (const obsoleteName of ['ts-backend.cjs', 'ts-backend.js', 'ts-backend.jsc']) {

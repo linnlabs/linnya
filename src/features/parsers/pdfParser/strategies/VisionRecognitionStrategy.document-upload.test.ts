@@ -1,14 +1,15 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TextGenerationPort } from 'src/domains/model-inference';
 import type { DocumentOcrPort } from 'src/domains/document-ocr';
 
 const mocks = vi.hoisted(() => ({
-  convertPageToJpegCrossPlatform: vi.fn(),
+  openPdfRasterDocumentFromPath: vi.fn(),
+  renderPageToJpeg: vi.fn(),
+  close: vi.fn(),
 }));
 
-vi.mock('../adapters/PdfToImgAdapter', () => ({
-  DEFAULT_TARGET_PIXELS: 2048,
-  convertPageToJpegCrossPlatform: mocks.convertPageToJpegCrossPlatform,
+vi.mock('../adapters/PdfRasterAdapter', () => ({
+  openPdfRasterDocumentFromPath: mocks.openPdfRasterDocumentFromPath,
 }));
 
 import { processPdfPagesWithVisionDiagnostics } from './VisionRecognitionStrategy';
@@ -18,13 +19,27 @@ function makeTextGeneration(): TextGenerationPort {
 }
 
 describe('processPdfPagesWithVisionDiagnostics document_upload 续跑', () => {
+  beforeEach(() => {
+    mocks.renderPageToJpeg.mockResolvedValue({
+      pageNumber: 7,
+      width: 1087,
+      height: 1536,
+      jpegBytes: Buffer.from('page-image'),
+      renderDurationMs: 1,
+    });
+    mocks.close.mockResolvedValue(undefined);
+    mocks.openPdfRasterDocumentFromPath.mockResolvedValue({
+      pageCount: 10,
+      renderPageToJpeg: mocks.renderPageToJpeg,
+      close: mocks.close,
+    });
+  });
+
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('失败页续跑使用 OCR adapter 识别单页图片，不把 PaddleOCR 送进 chatCompletion', async () => {
-    mocks.convertPageToJpegCrossPlatform.mockResolvedValue('page-image-base64');
-
     const recognizeDocument = vi.fn<DocumentOcrPort['recognizeDocument']>().mockResolvedValue({
       pages: [
         {
@@ -69,7 +84,7 @@ describe('processPdfPagesWithVisionDiagnostics document_upload 续跑', () => {
       modelId: 'PaddlePaddle/PaddleOCR-VL-1.5',
       input: {
         kind: 'image_base64',
-        base64: 'page-image-base64',
+        base64: 'cGFnZS1pbWFnZQ==',
         mimeType: 'image/jpeg',
         pageNumber: 7,
       },
@@ -77,5 +92,6 @@ describe('processPdfPagesWithVisionDiagnostics document_upload 续跑', () => {
         signal: expect.any(AbortSignal),
       },
     });
+    expect(mocks.close).toHaveBeenCalledOnce();
   });
 });

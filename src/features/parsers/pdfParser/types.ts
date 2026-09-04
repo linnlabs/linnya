@@ -9,7 +9,7 @@
 
 import type { TextGenerationPort } from 'src/domains/model-inference';
 import type { DocumentOcrPort } from 'src/domains/document-ocr';
-import { ParsedBlock } from '../types';
+import type { ParsedBlock } from '../types';
 
 /**
  * **功能 (What):** PDF布局复杂度评估结果
@@ -40,17 +40,6 @@ export interface TextItem {
 }
 
 /**
- * **功能 (What):** 速率限制跟踪器条目接口
- * **输入 (Input):** 时间戳和token数量
- * **输出 (Output):** 用于跟踪API调用速率
- * **副作用 (Side-effects):** 无副作用，纯数据结构
- */
-export interface RateLimitEntry {
-  timestamp: number;
-  tokens: number;
-}
-
-/**
  * **功能 (What):** PDF解析器选项接口
  * **输入 (Input):** 包含文本生成端口、视觉模型ID等配置
  * **输出 (Output):** 用于配置PDF解析器行为
@@ -65,7 +54,6 @@ export interface PdfParserOptions {
   targetPixels?: number; // 目标图像像素数
   tpmLimitPerWorker?: number; // Token速率限制
   maxRetries?: number; // 重试次数
-  useSystemTools?: boolean; // 是否使用系统工具作为降级
   forceVisionMode?: boolean; // 强制使用视觉模式
 }
 
@@ -79,17 +67,4 @@ export interface StrategyResult {
   success: boolean;
   blocks?: ParsedBlock[];
   error?: string;
-}
-
-/**
- * **功能 (What):** PDF页面处理上下文
- * **输入 (Input):** 页面相关的处理信息
- * **输出 (Output):** 用于在处理过程中传递状态
- * **副作用 (Side-effects):** 无副作用，纯数据结构
- */
-export interface PageProcessingContext {
-  docId: string;
-  pageNum: number;
-  totalPages: number;
-  updater?: (progress: number, message: string) => void;
 }

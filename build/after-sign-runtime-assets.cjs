@@ -20,7 +20,6 @@ const WINDOWS_VC_RUNTIME_TARGET_DIRECTORIES = [
   '.',
   'resources/command-runtime/windows/x64',
   'resources/bin/qdrant',
-  'resources/bin/poppler/win-x64',
 ];
 const MACOS_ARCHITECTURES = new Map([
   [1, 'x64'],

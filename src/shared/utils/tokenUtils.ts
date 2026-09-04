@@ -7,8 +7,6 @@
  * **副作用 (Side-effects):** 无副作用，纯函数工具集
  */
 
-import { DEFAULT_TARGET_PIXELS } from '../../features/parsers/pdfParser/adapters/PdfToImgAdapter';
-
 /**
  * **功能 (What):** 计算图像的token成本（用于OpenAI Vision API）
  * **输入 (Input / @param):** 
@@ -63,7 +61,7 @@ export function calculateVisionTokens(
  * **副作用 (Side-effects):** 无副作用，纯计算函数
  */
 export function calculateVisionTokensForOurImages(
-  targetPixels: number = DEFAULT_TARGET_PIXELS,
+  targetPixels: number,
   detail: string = "high"
 ): number {
   // 🔥 基于我们实际的图片尺寸控制逻辑

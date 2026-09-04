@@ -21,7 +21,7 @@ export default defineConfig({
   // App Server 由独立 Node 从 app.asar.unpacked 执行，不能像 Electron 一样解析 asar
   // 内的普通 node_modules。除原生/运行时加载模块外全部内联，发布目录只需解包真实物理依赖。
   noExternal: [
-    /^(?!(?:electron|electron-store|better-sqlite3|yoga-layout|sharp|@node-rs\/jieba|pdfjs-dist|canvas)(?:$|\/)).*/,
+    /^(?!(?:electron|electron-store|better-sqlite3|yoga-layout|sharp|@node-rs\/jieba|@napi-rs\/canvas|pdfjs-dist|canvas)(?:$|\/)).*/,
   ],
   // sharp 是 N-API 原生模块（@img/* 预编译二进制），必须 external 从 node_modules 运行时解析，
   // 禁止打进 bundle（官方要求，与 better-sqlite3 同理；sharp 无需 electron-rebuild）。
@@ -33,8 +33,8 @@ export default defineConfig({
     'sharp',
     '@node-rs/jieba',
     '@node-rs/jieba/dict',
+    '@napi-rs/canvas',
     'pdfjs-dist',
-    'pdfjs-dist/legacy/build/pdf',
     'canvas',
   ],
   esbuildPlugins: bundleTrace.esbuildPlugins,

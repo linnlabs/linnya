@@ -61,7 +61,6 @@ try {
       '--external:harfbuzzjs',
       '--external:@node-rs/jieba',
       '--external:pdfjs-dist',
-      '--external:pdfjs-dist/legacy/build/pdf',
       `--external:${SLIDES_MATHJAX_RUNTIME_PACKAGE}`,
       '--tsconfig=tsconfig.json',
     ],

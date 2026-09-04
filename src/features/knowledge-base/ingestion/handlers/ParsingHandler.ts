@@ -47,10 +47,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function readOptionalNumber(
-  record: Record<string, unknown>,
-  key: string
-): number | undefined {
+function readOptionalNumber(record: Record<string, unknown>, key: string): number | undefined {
   const value = record[key];
   return typeof value === 'number' ? value : undefined;
 }
@@ -63,8 +60,8 @@ function isRawSourceInfo(value: unknown): value is NonNullable<RawBlock['source_
   const pageNumber = value['page_number'];
   const location = value['location'];
   return (
-    (pageNumber === undefined || typeof pageNumber === 'number')
-    && (location === undefined || typeof location === 'string')
+    (pageNumber === undefined || typeof pageNumber === 'number') &&
+    (location === undefined || typeof location === 'string')
   );
 }
 
@@ -156,7 +153,6 @@ export class ParsingHandler implements StateHandler {
               documentOcr: this.documentOcr,
               filename: context.filename,
               forceVisionMode: true,
-              targetPixels: 2048,
               maxRetries: 5,
               resolveModelByCapability: getDefaultModelIdByCapability,
             })
@@ -164,7 +160,6 @@ export class ParsingHandler implements StateHandler {
               documentOcr: this.documentOcr,
               filename: context.filename,
               forceVisionMode: false,
-              targetPixels: 2048,
               maxRetries: 5,
               resolveModelByCapability: getDefaultModelIdByCapability,
             });

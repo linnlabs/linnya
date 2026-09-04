@@ -122,7 +122,6 @@ async function buildFixtureProject(projectRoot) {
     '--external:harfbuzzjs',
     '--external:yoga-layout',
     '--external:pdfjs-dist',
-    '--external:pdfjs-dist/legacy/build/pdf',
     '--external:@node-rs/jieba',
     '--alias:@plugin/backend=./src/plugin-sdk/backend',
     `--outfile=${path.join(projectRoot, 'main.cjs')}`,

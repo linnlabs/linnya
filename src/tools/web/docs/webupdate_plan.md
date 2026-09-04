@@ -246,7 +246,7 @@ bash 立项时必须独立评审网络隔离、文件系统隔离、进程权限
 - 新用户默认从秘塔改为 `none`，仍默认开启隔离浏览器解析；已有 `web_read.json` 完整保留原选择，不做覆盖迁移。设置页只保留“网络搜索”Tab，内部使用“网页解析 / Linnya 默认 / 第三方网页解析”等产品名称；内部 `managedReader` 工程合同不做无收益重命名。
 - 修复质量 gate 误判：正文达到 800 字后，`low_text_ratio/table_dominant/list_dominant` 只保留为观测 warning，不再单独否定已经足量的正文。
 - Readability 失败或明显遗漏时，改从原始 DOM 的 `article/main/[role=main]` 提取可访问正文；必须在 `Readability.parse()` 修改 DOM 前读取语义候选与页面元数据，并过滤导航、侧栏、页脚、隐藏与脚本节点。省略显式 `<head>` 的合法 HTML 还需直接读取原始 `title` 元素，不能只依赖 linkedom 的 `document.title`。HTTP 与 Chromium 共用同一抽取入口。
-- GitHub `blob` 自动转 Raw，转换后的 `raw.githubusercontent.com` 继续执行 URL/DNS 校验与 IP 钉扎；对外保留原始 URL，最终 URL 记录 Raw。PDF 继续保持 `unsupported_mime`，等待 bash/Poppler 能力，不引入 PDF 解析依赖。
+- GitHub `blob` 自动转 Raw，转换后的 `raw.githubusercontent.com` 继续执行 URL/DNS 校验与 IP 钉扎；对外保留原始 URL，最终 URL 记录 Raw。PDF 继续保持 `unsupported_mime`；Web source acquisition 不跨域复用知识库 PDF parser，后续若支持应先定义独立的内容提取合同。
 - 2026-07-19 Electron live 复测：正文覆盖 **11/14（78.57%）**，PDF 稳定终态 2/2，p50/p95 = 1.59s/5.51s。中文长 Wikipedia、React、Ant、NASA 与省略 `<head>` 的 Node 官方文档均由本机 HTTP 成功；未覆盖项为政府网 DOM 提取超时，以及 httpbin 同一重定向样本的临时 503（中英文各一条）。这是小规模真实站点兼容样本，不宣称统计 SLO。
 - 当前输出仍是纯文本，live 的代码块/表格结构保真为 0/5、0/1；正文可用但 fenced code 与 Markdown table 结构会丢失。未来如需精确代码/表格引用，应独立引入 HTML→Markdown 抽取策略，不在纯文本序列化中堆站点补丁。
 - Firecrawl `/scrape` 未来可作为用户 BYOK 的增强解析 Provider，与秘塔/Jina 同级；不由 Linnya 提供默认网页读取额度。若 R4 未来重新立项，仍须区分 `/scrape` 的单页解析与 `/crawl` 的多页任务。

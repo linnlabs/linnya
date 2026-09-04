@@ -51,7 +51,7 @@ pnpm run dev:electron
 
 源码开发环境刻意与 Linnya Cloud 解耦：不加载托管模型目录、不发送 Cloud 模型请求、不生成 Cloud 设备 ID，也不自动检查正式版更新。源码 checkout 只使用本地数据和开发者自己配置的模型 Provider，不需要 Linnya 账号或任何私有仓。
 
-Runtime 只在源码开发或打包阶段准备，最终用户启动应用时不会下载。Qdrant 会从锁定的上游 Release 下载并校验；首份公开 Poppler bundle 仍在补齐二进制再分发所需的许可证与对应源码证据，因此 Release 建立前，全新 checkout 暂时不能完成 `pnpm run dev:electron`。不要用未经校验的系统二进制或相邻仓文件绕过。精确边界和当前状态见开发指南。
+Runtime 只在源码开发或打包阶段准备，最终用户启动应用时不会下载。Qdrant 会从锁定的上游 Release 下载并校验；PDF 文本提取和逐页渲染使用 lockfile 锁定的 PDF.js 与 Node Canvas npm 依赖。全新 checkout 不再需要单独发布的 Poppler bundle、Homebrew 或系统 PDF 可执行文件。
 
 架构、定向验证、原生模块和源码构建说明见[文档总图](docs/README.md)与[开发指南](docs/development/README.md)。
 

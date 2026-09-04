@@ -21,7 +21,6 @@ const pluginCliHostModuleSpecifiers = new Set([
   'better-sqlite3',
   'harfbuzzjs',
   'pdfjs-dist',
-  'pdfjs-dist/legacy/build/pdf',
   'sharp',
   'yoga-layout',
   'yoga-layout/load',

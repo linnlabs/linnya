@@ -11,7 +11,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { pathManager } from '../../../../shared/utils/pathManager';
 
-import { StrategyResult, RateLimitEntry } from '../types';
+import { StrategyResult } from '../types';
 import type { TextGenerationPort } from 'src/domains/model-inference';
 import type {
   DocumentOcrModelProfile,
@@ -19,13 +19,21 @@ import type {
   OcrDocumentPage,
 } from 'src/domains/document-ocr';
 import { getPdfPageCountCrossPlatform } from '../adapters/PdfParseAdapter';
-import { convertPageToJpegCrossPlatform, DEFAULT_TARGET_PIXELS } from '../adapters/PdfToImgAdapter';
+import {
+  openPdfRasterDocumentFromBytes,
+  openPdfRasterDocumentFromPath,
+} from '../adapters/PdfRasterAdapter';
+import {
+  PDF_RASTER_DEFAULT_TARGET_PIXELS,
+  PDF_VISION_MAX_IN_FLIGHT_PAGES,
+  type PdfRasterDocument,
+  normalizePdfRasterTargetPixels,
+} from '../definitions/pdfRaster';
 import { parseMarkdownToBlocks } from '../utils/dataConverters';
 import {
   calculateVisionTokensForOurImages,
   estimateTextTokens,
 } from '../../../../shared/utils/tokenUtils';
-import { sleep } from '../utils/textProcessing';
 import pdfOcrPrompt from 'src/app-hosts/linnya/agent-registry/internals/ingestion/pdf_ocr';
 import type { ParsedBlock } from '../../types';
 import { classifyOcrError, type OcrErrorClassification } from '../functions/errorClassification';
@@ -189,11 +197,6 @@ function shouldAbortWholeVisionParse(classification: OcrErrorClassification): bo
   return classification.kind === 'auth' || classification.kind === 'bad_request';
 }
 
-type VisionPageImageInput = {
-  pageNum: number;
-  imageBase64: string;
-};
-
 type VisionPageImageResult =
   | {
       success: true;
@@ -207,8 +210,10 @@ type VisionPageImageResult =
       classification: OcrErrorClassification;
     };
 
-async function processPageImagesWithAdaptiveConcurrency(args: {
-  pages: VisionPageImageInput[];
+async function processRasterPagesWithAdaptiveConcurrency(args: {
+  pageNumbers: readonly number[];
+  rasterDocument: PdfRasterDocument;
+  targetPixels: number;
   textGeneration: TextGenerationPort;
   documentOcr: DocumentOcrPort;
   documentOcrProfile?: DocumentOcrModelProfile;
@@ -216,6 +221,8 @@ async function processPageImagesWithAdaptiveConcurrency(args: {
   maxRetries: number;
   attemptTimeoutMs: number;
   initialConcurrency: number;
+  onPageRasterized?: (pageNumber: number) => void;
+  onPageSettled?: (pageNumber: number) => void;
 }): Promise<VisionPageImageResult[]> {
   const results: VisionPageImageResult[] = [];
   let nextIndex = 0;
@@ -225,7 +232,7 @@ async function processPageImagesWithAdaptiveConcurrency(args: {
 
   return new Promise(resolve => {
     const launchNext = () => {
-      if ((abortScheduling || nextIndex >= args.pages.length) && activeCount === 0) {
+      if ((abortScheduling || nextIndex >= args.pageNumbers.length) && activeCount === 0) {
         resolve(results.sort((a, b) => a.pageNum - b.pageNum));
         return;
       }
@@ -233,39 +240,44 @@ async function processPageImagesWithAdaptiveConcurrency(args: {
       while (
         !abortScheduling &&
         activeCount < currentConcurrency &&
-        nextIndex < args.pages.length
+        nextIndex < args.pageNumbers.length
       ) {
-        const page = args.pages[nextIndex];
+        const pageNum = args.pageNumbers[nextIndex];
         nextIndex += 1;
         activeCount += 1;
 
-        const recognition = args.documentOcrProfile
-          ? recognizeDocumentImageByOcrPort({
-              documentOcr: args.documentOcr,
-              profile: args.documentOcrProfile,
-              imageBase64: page.imageBase64,
-              pageNum: page.pageNum,
-              retryOptions: {
-                maxRetries: args.maxRetries,
-                attemptTimeoutMs: args.attemptTimeoutMs,
-              },
-            })
-          : recognizeImageContent(
-              page.imageBase64,
-              page.pageNum,
-              args.textGeneration,
-              args.visionModelId,
-              {
-                maxRetries: args.maxRetries,
-                attemptTimeoutMs: args.attemptTimeoutMs,
-              }
-            );
+        const recognition = args.rasterDocument
+          .renderPageToJpeg(pageNum, { targetPixels: args.targetPixels })
+          .then(page => {
+            args.onPageRasterized?.(pageNum);
+            return args.documentOcrProfile
+              ? recognizeDocumentImageByOcrPort({
+                  documentOcr: args.documentOcr,
+                  profile: args.documentOcrProfile,
+                  imageBytes: page.jpegBytes,
+                  pageNum,
+                  retryOptions: {
+                    maxRetries: args.maxRetries,
+                    attemptTimeoutMs: args.attemptTimeoutMs,
+                  },
+                })
+              : recognizeImageBytes(
+                  page.jpegBytes,
+                  pageNum,
+                  args.textGeneration,
+                  args.visionModelId,
+                  {
+                    maxRetries: args.maxRetries,
+                    attemptTimeoutMs: args.attemptTimeoutMs,
+                  }
+                );
+          });
 
         recognition
           .then(markdownContent => {
             results.push({
               success: true,
-              pageNum: page.pageNum,
+              pageNum,
               markdownContent,
             });
           })
@@ -282,12 +294,13 @@ async function processPageImagesWithAdaptiveConcurrency(args: {
             }
             results.push({
               success: false,
-              pageNum: page.pageNum,
+              pageNum,
               error,
               classification,
             });
           })
           .finally(() => {
+            args.onPageSettled?.(pageNum);
             activeCount -= 1;
             launchNext();
           });
@@ -376,11 +389,11 @@ async function recognizeDocumentByUpload(args: {
 async function recognizeDocumentImageByOcrPort(args: {
   documentOcr: DocumentOcrPort;
   profile: DocumentOcrModelProfile;
-  imageBase64: string;
+  imageBytes: Buffer;
   pageNum: number;
   retryOptions: { maxRetries: number; attemptTimeoutMs: number };
 }): Promise<string> {
-  const { documentOcr, profile, imageBase64, pageNum, retryOptions } = args;
+  const { documentOcr, profile, imageBytes, pageNum, retryOptions } = args;
   const { maxRetries, attemptTimeoutMs } = retryOptions;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -396,7 +409,7 @@ async function recognizeDocumentImageByOcrPort(args: {
             modelId: profile.modelId,
             input: {
               kind: 'image_base64',
-              base64: imageBase64,
+              base64: imageBytes.toString('base64'),
               mimeType: 'image/jpeg',
               pageNumber: pageNum,
             },
@@ -570,15 +583,13 @@ export async function processWithVisionDiagnostics(
   } = {},
   updater?: (progress: number, message: string) => void
 ): Promise<VisionStrategyDiagnosticResult> {
-  const {
-    filename = `${docId}.pdf`,
-    targetPixels, // 🔥 修复：移除硬编码，让适配器处理默认值
-    maxRetries = 5,
-    tpmLimitPerWorker,
-  } = options;
+  const { filename = `${docId}.pdf`, maxRetries = 5, tpmLimitPerWorker } = options;
+  const targetPixels = normalizePdfRasterTargetPixels(
+    options.targetPixels ?? PDF_RASTER_DEFAULT_TARGET_PIXELS
+  );
 
   let tempDir: string | null = null;
-  const rateLimitTracker: RateLimitEntry[] = [];
+  let rasterDocument: PdfRasterDocument | null = null;
   const pageDiagnostics: PdfPageDiagnostic[] = [];
   let activePipeline: PdfParsePipeline = 'vision_page_image';
   let resolvedTotalPages = 0;
@@ -587,16 +598,20 @@ export async function processWithVisionDiagnostics(
     console.log('[VisionRecognitionStrategy] 开始AI视觉处理...');
     const documentOcrProfile = await documentOcr.resolveModelProfile(visionModelId);
     const attemptTimeoutMs = getAiRecognitionAttemptTimeoutMs(documentOcrProfile);
+    let pdfPath: string | null = null;
+    let totalPages: number;
+    if (documentOcrProfile?.mode === 'document_upload') {
+      totalPages = await getPdfPageCountCrossPlatform(data);
+      const debugImagesPath = path.join(pathManager.getAppDataPath(), 'debug_images');
+      tempDir = path.join(debugImagesPath, `pdf-vision-${docId}-${Date.now()}`);
+      await fs.mkdir(tempDir, { recursive: true });
+      pdfPath = path.join(tempDir, `${docId}.pdf`);
+      await fs.writeFile(pdfPath, data);
+    } else {
+      rasterDocument = await openPdfRasterDocumentFromBytes(data);
+      totalPages = rasterDocument.pageCount;
+    }
 
-    // 🔥 使用开发环境的debug_images目录
-    const debugImagesPath = path.join(pathManager.getAppDataPath(), 'debug_images');
-    tempDir = path.join(debugImagesPath, `pdf-vision-${docId}-${Date.now()}`);
-    await fs.mkdir(tempDir, { recursive: true });
-    const pdfPath = path.join(tempDir, `${docId}.pdf`);
-    await fs.writeFile(pdfPath, data);
-
-    // 获取总页数
-    const totalPages = await getPdfPageCountCrossPlatform(data);
     resolvedTotalPages = totalPages;
     console.log(`[VisionRecognitionStrategy] AI视觉处理，共 ${totalPages} 页`);
     if (documentOcrProfile) {
@@ -617,6 +632,7 @@ export async function processWithVisionDiagnostics(
         updater(5, '上传原始文档并进行文档级版面解析（OCR）...');
       }
 
+      if (!pdfPath) throw new Error('文档直传 OCR 缺少临时 PDF 路径');
       const markdownContent = await recognizeDocumentByUpload({
         pdfPath,
         documentOcr,
@@ -670,54 +686,38 @@ export async function processWithVisionDiagnostics(
       };
     }
 
-    const pageImages: VisionPageImageInput[] = [];
-    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      if (updater) {
-        const progressInAI = 5 + ((pageNum - 1) / totalPages) * 20;
-        updater(progressInAI, `准备第 ${pageNum}/${totalPages} 页图像...`);
-      }
-
-      try {
-        const imageBase64 = await convertPageToJpegCrossPlatform(
-          pdfPath,
-          pageNum,
-          targetPixels ? { targetPixels } : {}
-        );
-        pageImages.push({ pageNum, imageBase64 });
-      } catch (error) {
-        console.error(`[VisionRecognitionStrategy] 页面 ${pageNum} 本地转图失败:`, error);
-        const classification = classifyOcrError(error);
-        pageDiagnostics.push({
-          pageNumber: pageNum,
-          errorKind: classification.kind,
-          message: error instanceof Error ? error.message : String(error),
-          retryable: classification.retryable,
-          shouldReduceConcurrency: classification.shouldReduceConcurrency,
-          shouldSplitSmaller: classification.shouldSplitSmaller,
-        });
-      }
-    }
-
-    const pageImageResults = await processPageImagesWithAdaptiveConcurrency({
-      pages: pageImages,
+    if (!rasterDocument) throw new Error('通用视觉 OCR 缺少 PDF 栅格化文档');
+    let rasterizedPages = 0;
+    let settledPages = 0;
+    const pageImageResults = await processRasterPagesWithAdaptiveConcurrency({
+      pageNumbers: Array.from({ length: totalPages }, (_, index) => index + 1),
+      rasterDocument,
+      targetPixels,
       textGeneration,
       documentOcr,
       documentOcrProfile,
       visionModelId,
       maxRetries,
       attemptTimeoutMs,
-      initialConcurrency: 2,
+      initialConcurrency: PDF_VISION_MAX_IN_FLIGHT_PAGES,
+      onPageRasterized(pageNumber) {
+        rasterizedPages += 1;
+        updater?.(
+          5 + (rasterizedPages / totalPages) * 20,
+          `准备第 ${pageNumber}/${totalPages} 页图像...`
+        );
+      },
+      onPageSettled(pageNumber) {
+        settledPages += 1;
+        updater?.(
+          25 + (settledPages / totalPages) * 65,
+          `AI识别第 ${pageNumber}/${totalPages} 页...`
+        );
+      },
     });
 
-    let processedOcrPages = 0;
     for (const result of pageImageResults) {
       const pageNum = result.pageNum;
-      processedOcrPages += 1;
-      if (updater) {
-        const progressInAI =
-          25 + ((processedOcrPages - 1) / Math.max(pageImageResults.length, 1)) * 65;
-        updater(progressInAI, `AI识别第 ${pageNum}/${totalPages} 页...`);
-      }
 
       if (!result.success) {
         console.error(`[VisionRecognitionStrategy] 页面 ${pageNum} AI识别失败:`, result.error);
@@ -747,15 +747,9 @@ export async function processWithVisionDiagnostics(
 
       // 记录token消耗
       if (tpmLimitPerWorker && markdownContent) {
-        const inputTokens = calculateVisionTokensForOurImages(
-          targetPixels || DEFAULT_TARGET_PIXELS
-        );
+        const inputTokens = calculateVisionTokensForOurImages(targetPixels);
         const outputTokens = estimateTextTokens(markdownContent);
         const totalTokens = inputTokens + outputTokens;
-        rateLimitTracker.push({
-          timestamp: Date.now(),
-          tokens: totalTokens,
-        });
         console.log(
           `[VisionRecognitionStrategy] 页面${pageNum}: 输出${outputTokens} tokens, 总消耗${totalTokens} tokens`
         );
@@ -791,8 +785,10 @@ export async function processWithVisionDiagnostics(
     }
 
     if (
-      pageImages.length === 0 &&
-      pageDiagnostics.some(item => item.errorKind === 'local_conversion')
+      pageImageResults.length > 0 &&
+      pageImageResults.every(
+        result => !result.success && result.classification.kind === 'local_conversion'
+      )
     ) {
       console.warn('[VisionRecognitionStrategy] 所有页面本地转图失败，无法进入 OCR 阶段');
     }
@@ -847,6 +843,7 @@ export async function processWithVisionDiagnostics(
         : {}),
     };
   } finally {
+    await rasterDocument?.close().catch(() => undefined);
     // 清理临时目录
     if (tempDir) {
       await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
@@ -869,7 +866,10 @@ export async function processPdfPagesWithVisionDiagnostics(
   } = {},
   updater?: (progress: number, message: string) => void
 ): Promise<VisionStrategyDiagnosticResult> {
-  const { targetPixels, maxRetries = 5, tpmLimitPerWorker } = options;
+  const { maxRetries = 5, tpmLimitPerWorker } = options;
+  const targetPixels = normalizePdfRasterTargetPixels(
+    options.targetPixels ?? PDF_RASTER_DEFAULT_TARGET_PIXELS
+  );
   const uniquePages = Array.from(new Set(pageNumbers))
     .filter(pageNum => Number.isInteger(pageNum) && pageNum > 0 && pageNum <= totalPages)
     .sort((a, b) => a - b);
@@ -879,94 +879,105 @@ export async function processPdfPagesWithVisionDiagnostics(
   const documentOcrProfile = await documentOcr.resolveModelProfile(visionModelId);
   const attemptTimeoutMs = getAiRecognitionAttemptTimeoutMs(documentOcrProfile);
   const useDedicatedDocumentOcr = documentOcrProfile !== undefined;
+  const rasterDocument = await openPdfRasterDocumentFromPath(pdfPath);
 
-  for (let index = 0; index < uniquePages.length; index += 1) {
-    const pageNum = uniquePages[index];
-    if (updater) {
-      updater((index / uniquePages.length) * 90, `重新解析第 ${pageNum} 页...`);
-    }
+  try {
+    for (let index = 0; index < uniquePages.length; index += 1) {
+      const pageNum = uniquePages[index];
+      if (updater) {
+        updater((index / uniquePages.length) * 90, `重新解析第 ${pageNum} 页...`);
+      }
 
-    try {
-      const imageBase64 = await convertPageToJpegCrossPlatform(
-        pdfPath,
-        pageNum,
-        targetPixels ? { targetPixels } : {}
-      );
-      const markdownContent = useDedicatedDocumentOcr
-        ? await recognizeDocumentImageByOcrPort({
-            documentOcr,
-            profile: documentOcrProfile,
-            imageBase64,
-            pageNum,
-            retryOptions: {
+      try {
+        const pageImage = await rasterDocument.renderPageToJpeg(pageNum, { targetPixels });
+        const markdownContent = useDedicatedDocumentOcr
+          ? await recognizeDocumentImageByOcrPort({
+              documentOcr,
+              profile: documentOcrProfile,
+              imageBytes: pageImage.jpegBytes,
+              pageNum,
+              retryOptions: {
+                maxRetries,
+                attemptTimeoutMs,
+              },
+            })
+          : await recognizeImageBytes(pageImage.jpegBytes, pageNum, textGeneration, visionModelId, {
               maxRetries,
               attemptTimeoutMs,
-            },
-          })
-        : await recognizeImageContent(imageBase64, pageNum, textGeneration, visionModelId, {
-            maxRetries,
-            attemptTimeoutMs,
-          });
+            });
 
-      if (!markdownContent) {
-        throw new Error(`页面 ${pageNum} AI识别返回空内容`);
-      }
+        if (!markdownContent) {
+          throw new Error(`页面 ${pageNum} AI识别返回空内容`);
+        }
 
-      const baseSourceInfo = { page_number: pageNum };
-      const pageOffset = (pageNum - 1) * PAGE_BLOCK_INDEX_STRIDE;
-      allBlocks.push(
-        ...parseMarkdownToBlocks(docId, pageNum, markdownContent, baseSourceInfo, pageOffset)
-      );
-
-      if (tpmLimitPerWorker) {
-        const inputTokens = calculateVisionTokensForOurImages(
-          targetPixels || DEFAULT_TARGET_PIXELS
+        const baseSourceInfo = { page_number: pageNum };
+        const pageOffset = (pageNum - 1) * PAGE_BLOCK_INDEX_STRIDE;
+        allBlocks.push(
+          ...parseMarkdownToBlocks(docId, pageNum, markdownContent, baseSourceInfo, pageOffset)
         );
-        const outputTokens = estimateTextTokens(markdownContent);
-        console.log(
-          `[VisionRecognitionStrategy] 续跑页面${pageNum}: 输出${outputTokens} tokens, 总消耗${inputTokens + outputTokens} tokens`
-        );
-      }
-    } catch (error) {
-      const classification = classifyOcrError(error);
-      pageDiagnostics.push({
-        pageNumber: pageNum,
-        errorKind: classification.kind,
-        message: error instanceof Error ? error.message : String(error),
-        retryable: classification.retryable,
-        shouldReduceConcurrency: classification.shouldReduceConcurrency,
-        shouldSplitSmaller: classification.shouldSplitSmaller,
-      });
 
-      if (shouldAbortWholeVisionParse(classification)) {
-        return {
-          success: false,
-          error: describeOcrFailureForUser(error),
-          diagnostics: createPdfParseDiagnostics({
-            pipeline:
-              documentOcrProfile?.mode === 'document_upload'
-                ? 'vision_document_upload'
-                : 'vision_page_image',
-            totalPages,
-            blocks: allBlocks,
-            failedPages: pageDiagnostics,
-          }),
-        };
+        if (tpmLimitPerWorker) {
+          const inputTokens = calculateVisionTokensForOurImages(targetPixels);
+          const outputTokens = estimateTextTokens(markdownContent);
+          console.log(
+            `[VisionRecognitionStrategy] 续跑页面${pageNum}: 输出${outputTokens} tokens, 总消耗${inputTokens + outputTokens} tokens`
+          );
+        }
+      } catch (error) {
+        const classification = classifyOcrError(error);
+        pageDiagnostics.push({
+          pageNumber: pageNum,
+          errorKind: classification.kind,
+          message: error instanceof Error ? error.message : String(error),
+          retryable: classification.retryable,
+          shouldReduceConcurrency: classification.shouldReduceConcurrency,
+          shouldSplitSmaller: classification.shouldSplitSmaller,
+        });
+
+        if (shouldAbortWholeVisionParse(classification)) {
+          return {
+            success: false,
+            error: describeOcrFailureForUser(error),
+            diagnostics: createPdfParseDiagnostics({
+              pipeline:
+                documentOcrProfile?.mode === 'document_upload'
+                  ? 'vision_document_upload'
+                  : 'vision_page_image',
+              totalPages,
+              blocks: allBlocks,
+              failedPages: pageDiagnostics,
+            }),
+          };
+        }
       }
     }
-  }
 
-  if (updater) {
-    updater(90, `失败页续跑完成，共生成 ${allBlocks.length} 个块`);
-  }
+    if (updater) {
+      updater(90, `失败页续跑完成，共生成 ${allBlocks.length} 个块`);
+    }
 
-  if (allBlocks.length === 0) {
+    if (allBlocks.length === 0) {
+      return {
+        success: false,
+        error:
+          pageDiagnostics.length > 0
+            ? `失败页续跑未提取到内容: ${pageDiagnostics.map(describePageDiagnosticForUser).join('; ')}`
+            : '失败页续跑未提取到内容',
+        diagnostics: createPdfParseDiagnostics({
+          pipeline:
+            documentOcrProfile?.mode === 'document_upload'
+              ? 'vision_document_upload'
+              : 'vision_page_image',
+          totalPages,
+          blocks: allBlocks,
+          failedPages: pageDiagnostics,
+        }),
+      };
+    }
+
     return {
-      success: false,
-      error:
-        pageDiagnostics.length > 0
-          ? `失败页续跑未提取到内容: ${pageDiagnostics.map(describePageDiagnosticForUser).join('; ')}`
-          : '失败页续跑未提取到内容',
+      success: true,
+      blocks: allBlocks,
       diagnostics: createPdfParseDiagnostics({
         pipeline:
           documentOcrProfile?.mode === 'document_upload'
@@ -977,21 +988,9 @@ export async function processPdfPagesWithVisionDiagnostics(
         failedPages: pageDiagnostics,
       }),
     };
+  } finally {
+    await rasterDocument.close();
   }
-
-  return {
-    success: true,
-    blocks: allBlocks,
-    diagnostics: createPdfParseDiagnostics({
-      pipeline:
-        documentOcrProfile?.mode === 'document_upload'
-          ? 'vision_document_upload'
-          : 'vision_page_image',
-      totalPages,
-      blocks: allBlocks,
-      failedPages: pageDiagnostics,
-    }),
-  };
 }
 
 /**
@@ -1007,6 +1006,27 @@ export async function processPdfPagesWithVisionDiagnostics(
  */
 export async function recognizeImageContent(
   imageBase64: string,
+  pageNum: number,
+  textGeneration: TextGenerationPort,
+  visionModelId: string,
+  retryOptions:
+    | {
+        maxRetries?: number;
+        attemptTimeoutMs?: number;
+      }
+    | number = 5
+): Promise<string> {
+  return recognizeImageBytes(
+    Buffer.from(imageBase64, 'base64'),
+    pageNum,
+    textGeneration,
+    visionModelId,
+    retryOptions
+  );
+}
+
+async function recognizeImageBytes(
+  imageBytes: Buffer,
   pageNum: number,
   textGeneration: TextGenerationPort,
   visionModelId: string,
@@ -1047,7 +1067,7 @@ export async function recognizeImageContent(
                   {
                     type: 'image',
                     mediaType: 'image/jpeg',
-                    bytes: Buffer.from(imageBase64, 'base64'),
+                    bytes: imageBytes,
                   },
                 ],
               },
@@ -1128,160 +1148,4 @@ export async function recognizeImageContent(
   }
 
   throw new Error(`页面 ${pageNum} AI识别重试 ${resolvedMaxRetries} 次后仍失败`);
-}
-
-/**
- * **功能 (What):** 应用速率限制，控制API调用频率
- * **输入 (Input / @param):**
- * @param inputTokens - 即将消耗的token数量
- * @param tpmLimit - TPM限制
- * @param rateLimitTracker - 速率限制跟踪器
- * **输出 (Output):** 无返回值，但可能等待
- * **副作用 (Side-effects):** 可能阻塞执行以遵守速率限制
- */
-export async function applyRateLimit(
-  inputTokens: number,
-  tpmLimit: number,
-  rateLimitTracker: RateLimitEntry[]
-): Promise<void> {
-  while (true) {
-    const currentTime = Date.now();
-
-    // 清理超过60秒的旧记录
-    const validEntries = rateLimitTracker.filter(entry => entry.timestamp > currentTime - 60000);
-    rateLimitTracker.length = 0;
-    rateLimitTracker.push(...validEntries);
-
-    // 计算当前窗口内的token总数
-    const currentTokensInMinute = rateLimitTracker.reduce((sum, entry) => sum + entry.tokens, 0);
-
-    if (currentTokensInMinute + inputTokens <= tpmLimit) {
-      break; // Token余量充足，跳出等待循环
-    }
-
-    // 如果token不足，等待
-    if (rateLimitTracker.length > 0) {
-      const oldestEntry = rateLimitTracker[0];
-      const waitTime = oldestEntry.timestamp + 60000 - currentTime + 100; // 加100ms缓冲
-      await sleep(waitTime);
-    } else {
-      // 理论上不应发生，但作为保险
-      await sleep(1000);
-    }
-  }
-
-  // Token计数已应用
-}
-
-/**
- * **功能 (What):** 批量处理多个页面的视觉识别
- * **输入 (Input / @param):**
- * @param imagePages - 页面图像数组
- * @param docId - 文档ID
- * @param textGeneration - 非 Agent 文本生成端口
- * @param visionModelId - 视觉模型ID
- * @param options - 处理选项
- * **输出 (Output / @returns):** 所有页面的处理结果
- * **副作用 (Side-effects):** 批量调用文本生成端口
- */
-export async function batchProcessVisionPages(
-  imagePages: Array<{ pageNum: number; imageBase64: string }>,
-  docId: string,
-  textGeneration: TextGenerationPort,
-  visionModelId: string,
-  options: {
-    maxRetries?: number;
-    concurrency?: number;
-    tpmLimitPerWorker?: number;
-  } = {}
-): Promise<Array<{ pageNum: number; blocks: ParsedBlock[]; success: boolean; error?: string }>> {
-  const { maxRetries = 5, concurrency = 3, tpmLimitPerWorker } = options;
-
-  const results: Array<{
-    pageNum: number;
-    blocks: ParsedBlock[];
-    success: boolean;
-    error?: string;
-  }> = [];
-  const rateLimitTracker: RateLimitEntry[] = [];
-  const attemptTimeoutMs = getAiRecognitionAttemptTimeoutMs();
-
-  // 分批处理，控制并发
-  for (let i = 0; i < imagePages.length; i += concurrency) {
-    const batch = imagePages.slice(i, i + concurrency);
-
-    const batchPromises = batch.map(async page => {
-      try {
-        // 🔥 临时禁用速率限制，避免Worker线程卡死
-        // if (tpmLimitPerWorker) {
-        //   const inputTokens = calculateVisionTokensForOurImages(DEFAULT_TARGET_PIXELS);
-        //   await applyRateLimit(inputTokens, tpmLimitPerWorker, rateLimitTracker);
-        // }
-
-        const markdownContent = await recognizeImageContent(
-          page.imageBase64,
-          page.pageNum,
-          textGeneration,
-          visionModelId,
-          { maxRetries, attemptTimeoutMs }
-        );
-
-        if (markdownContent) {
-          // ✅ 根因修复：跨页唯一 blockId（与 processWithVision 保持一致）
-          const pageOffset = (page.pageNum - 1) * PAGE_BLOCK_INDEX_STRIDE;
-          const blocks = parseMarkdownToBlocks(
-            docId,
-            page.pageNum,
-            markdownContent,
-            {},
-            pageOffset
-          );
-
-          // 🔥 核心修复：确保每个从AI结果中解析出的块都附加了正确的页码
-          const blocksWithPageInfo = blocks.map(block => ({
-            ...block,
-            source_info: {
-              ...(block.source_info || {}),
-              page_number: page.pageNum,
-            },
-          }));
-
-          // 记录token消耗
-          if (tpmLimitPerWorker) {
-            const inputTokens = calculateVisionTokensForOurImages(DEFAULT_TARGET_PIXELS);
-            const outputTokens = estimateTextTokens(markdownContent);
-            rateLimitTracker.push({
-              timestamp: Date.now(),
-              tokens: inputTokens + outputTokens,
-            });
-          }
-
-          return {
-            pageNum: page.pageNum,
-            blocks: blocksWithPageInfo,
-            success: true,
-          };
-        } else {
-          return {
-            pageNum: page.pageNum,
-            blocks: [],
-            success: false,
-            error: 'AI识别返回空内容',
-          };
-        }
-      } catch (error) {
-        return {
-          pageNum: page.pageNum,
-          blocks: [],
-          success: false,
-          error: error instanceof Error ? error.message : String(error),
-        };
-      }
-    });
-
-    const batchResults = await Promise.all(batchPromises);
-    results.push(...batchResults);
-  }
-
-  return results;
 }

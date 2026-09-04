@@ -32,7 +32,6 @@ scripts/release/
   plugin-release-targets.mjs             # 公共静态目标 + workspace package 自声明发现
   plugin-release-targets.d.mts           # 发布目标清单的 TS 消费契约
   package-plugin-artifact.mjs            # 插件 artifact 打包
-  create-poppler-runtime-release-archives.cjs # 生成并校验固定 Poppler runtime release 资产
   verify-plugin-artifact.mjs             # 本地 artifact / 显式 bundled root 校验
   smoke-plugin-artifact.mjs              # 隔离 bundled root 的本地 artifact smoke 编排
   functions/pluginBundledRootContract.mjs # bundled root 与目标插件集合的一致性合同
@@ -97,7 +96,6 @@ scripts/release/
 | `generate-plugin-catalog.mjs`                                  | 从官方插件 artifact 生成 catalog 草稿                                                                                          | `pnpm run release:plugin:catalog:generate`                                                                    |
 | `packages/schemas/src/plugins/catalog.ts`                      | catalog 公共结构与解析合同                                                                                                     | 发布生成器与后续 Host catalog runtime 共用                                                                    |
 | `smoke-official-plugins-r2.test.ts`                            | 从公网下载所有官方插件，安装、激活、执行 migration、校验 owned tables                                                          | `LINNYA_R2_SMOKE=1 pnpm run smoke:plugins:official:r2`                                                        |
-| `create-poppler-runtime-release-archives.cjs`                  | 从已通过 catalog 校验的运行时生成确定性 ZIP，并复核大小与 SHA-256                                                              | `pnpm run release:poppler-runtime:prepare`                                                                    |
 
 ## 主应用发布
 
@@ -186,13 +184,6 @@ Vite/esbuild/tsup/Bytenode target 的输入/输出证据；trace set 会拒绝�
 缺少随包法律文本且没有通过上述复核的 package 会明确保留 `manifest-only`
 limitation；bundle identity 虽已闭合，其法律 evidence、9 个 bundler 外复制/生成代码文件和非 npm
 runtime 仍未闭合。因此这组文件仍是法律 SBOM 的中间证据，不得改名或宣传为完整 SBOM。
-
-Poppler 是 Desktop 的外部 runtime，不跟随普通源码提交。`config/poppler-runtime.json`
-锁定两个平台 release 资产；`pnpm run release:poppler-runtime:prepare`
-只会从已经通过完整文件树校验的本地 runtime 生成字节确定的压缩包，并拒绝与 catalog 大小/hash 不一致的输出。首次公开前把两个输出上传到
-[Linnya 公开仓](https://github.com/linnlabs/linnya)的 `poppler-runtime-v1` GitHub
-Release；后续升级必须使用新 release tag 并同步更新 catalog、NOTICE/source
-offer 和 installer BOM。
 
 Cloudflare 上传检查：
 

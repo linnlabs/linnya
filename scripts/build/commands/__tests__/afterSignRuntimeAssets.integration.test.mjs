@@ -33,7 +33,6 @@ async function createPackagedRuntime(artifactBytes = Buffer.from('unsigned-runti
     appOutDir,
     runtimeDirectory,
     path.join(appOutDir, 'resources/bin/qdrant'),
-    path.join(appOutDir, 'resources/bin/poppler/win-x64'),
   ];
   await Promise.all(vcRuntimeDirectories.map(directory => fsp.mkdir(directory, { recursive: true })));
   await Promise.all(vcRuntimeDirectories.flatMap(directory => [
@@ -370,7 +369,7 @@ describe('Windows command runtime afterSign trust contract', () => {
 
     const mixedRuntime = await createPackagedRuntime();
     await fsp.writeFile(
-      path.join(mixedRuntime.context.appOutDir, 'resources/bin/poppler/win-x64/msvcp140.dll'),
+      path.join(mixedRuntime.context.appOutDir, 'resources/bin/qdrant/msvcp140.dll'),
       'different-runtime-version',
     );
     await expect(hook(mixedRuntime.context)).rejects.toThrow('differs between load locations');

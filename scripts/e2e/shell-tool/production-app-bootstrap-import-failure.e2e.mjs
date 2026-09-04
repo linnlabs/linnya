@@ -68,7 +68,6 @@ async function buildFixture(projectRoot) {
     `--outfile=${path.join(distMainRoot, 'main.cjs')}`,
     '--external:electron',
     '--external:pdfjs-dist',
-    '--external:pdfjs-dist/legacy/build/pdf',
     '--external:@node-rs/jieba',
     '--external:better-sqlite3',
     '--external:yoga-layout',

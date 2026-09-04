@@ -1,36 +1,30 @@
 /**
  * @file src/parsers/pdfParser/utils/index.ts
- * 
+ *
  * **功能 (What):** PDF解析器工具函数导出模块
  * **输入 (Input):** 无
  * **输出 (Output):** 导出的工具函数
  * **副作用 (Side-effects):** 无，纯导出模块
  */
 
-// 🔥 图像处理工具（核心转换功能已迁移到 PdfToImgAdapter）
-export { 
-  validateImageData,
-  validateTargetPixels
-} from './imageProcessing';
+export { validateImageData, validateTargetPixels } from './imageProcessing';
 
-// 🔥 PDF转图片功能（从 PdfToImgAdapter 重新导出）
-export { 
-  convertPageToJpegCrossPlatform,
-  DEFAULT_TARGET_PIXELS,
-  DEFAULT_JPEG_QUALITY
-} from '../adapters/PdfToImgAdapter';
+export {
+  PDF_RASTER_DEFAULT_TARGET_PIXELS,
+  PDF_RASTER_JPEG_QUALITY,
+} from '../definitions/pdfRaster';
 
 // 🔥 Token计算功能（从 shared/utils/tokenUtils 重新导出）
-export { 
+export {
   calculateVisionTokensForOurImages,
-  estimateTextTokens 
+  estimateTextTokens,
 } from '../../../../shared/utils/tokenUtils';
 
 // 文本处理工具
 export {
   isLikelyMultiColumn,
   // extractTextStatistics, // NOTE: 已废弃
-  cleanTextBlock
+  cleanTextBlock,
 } from './textProcessing';
 
 // 数据转换工具
@@ -49,4 +43,4 @@ export {
 // } from './mathUtils';
 
 // 🔥 新增：测试和验证工具
-// 测试功能已移除 
+// 测试功能已移除

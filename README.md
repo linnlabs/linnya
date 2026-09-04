@@ -51,7 +51,7 @@ pnpm run dev:electron
 
 Source development is intentionally independent from Linnya Cloud: it does not load the hosted model catalog, send model requests or derive a Cloud device ID, and it does not automatically check the production update service. A source checkout uses local data and the developer's configured model provider; no Linnya account or private repository is required.
 
-Runtime preparation happens during source development or packaging, never on end-user application startup. Qdrant is downloaded from its pinned upstream release and verified. The first public Poppler bundle is still withheld while its redistributed binaries, notices, and corresponding-source evidence are finalized; until that release exists, a fresh checkout cannot complete `pnpm run dev:electron`. Do not replace it with an unverified system binary or a copy from another repository. See the development guide for the exact boundary and current status.
+Runtime preparation happens during source development or packaging, never on end-user application startup. Qdrant is downloaded from its pinned upstream release and verified. PDF text extraction and page rendering use the npm-locked PDF.js and Node Canvas dependencies; a fresh checkout no longer needs a separately published Poppler bundle, Homebrew, or a system PDF executable.
 
 See the [documentation map](docs/README.md) and [development guide](docs/development/README.md) for architecture, targeted validation, native-module requirements, and source builds.
 
