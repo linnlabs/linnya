@@ -3,7 +3,7 @@
  * @description AI 批量创建批注工具 - 用于 Review 审阅功能
  *
  * 功能：
- * - 接收多条批注创建请求，批量写入 annotations 表
+ * - 接收多条批注创建请求，批量写入文档 rootBlock attrs
  * - 后端读取文档并解析 ref -> blockId
  * - 支持 Review 元信息（reviewRunId、agentId、chunkIndex 等）
  *
@@ -17,16 +17,16 @@
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '../../../../tools/types';
 import type { StructuredToolResult } from '../../../../tools/types';
 import {
-  MarkdownAnnotationRepository,
-  MarkdownAnnotationsService,
+  appendMarkdownAnnotations,
   resolveMarkdownAnnotationTarget,
-  SqliteMarkdownAnnotationDocumentReader,
+  type MarkdownAnnotationInsertion,
 } from '../../features/annotations';
+import { MarkdownDocumentService } from '../../features/document-storage';
 import {
   flattenMarkdownDocumentBlocks,
   type FlattenedMarkdownBlock,
 } from '../../shared';
-import { v4 as uuidv4 } from 'uuid';
+import { generateEditorAnnotationId } from '../../../../shared/utils/idUtils';
 
 // ============================================================================
 // 类型定义
@@ -138,7 +138,7 @@ export class MarkdownCreateAnnotationsTool extends BaseTool {
       '注意事项：',
       '- 只能使用系统提供的 [#ref] 引用，不要猜测',
       '- 如果 ref 无效，该条批注会被跳过',
-      '- 批注以非破坏性方式写入数据库，支持后续审阅和修改',
+      '- 批注与正文写入同一个文档版本，支持后续审阅和修改',
       '- 不要使用markdown格式写批注',
       '- 一个块只能创建一条批注，不要创建多条批注'
     ].join('\n');
@@ -199,40 +199,43 @@ export class MarkdownCreateAnnotationsTool extends BaseTool {
 
     try {
       const db = databaseService.getDb();
-      const documentReader = new SqliteMarkdownAnnotationDocumentReader(db);
-      const annotationsService = new MarkdownAnnotationsService(
-        new MarkdownAnnotationRepository(db),
-        documentReader,
-      );
+      const documentService = new MarkdownDocumentService(db);
 
       // 3.1 读取文档并展平 blocks；批注工具只接受 ref，由后端解析到真实 blockId。
-      const content = documentReader.getDocument(documentId);
+      const content = documentService.getDocument(documentId);
       const baseBlocks = flattenMarkdownDocumentBlocks(content);
 
       // 4. 批量处理批注创建
       const results: AnnotationResult[] = [];
+      const insertions: MarkdownAnnotationInsertion[] = [];
       let createdCount = 0;
       let skippedCount = 0;
 
       for (const item of items) {
-        const result = this.processAnnotationItem({
+        const plan = this.planAnnotationItem({
           item,
-          documentId,
           baseBlocks,
           reviewRunId,
           agentId,
           chunkIndex,
           author: agentName,
-          annotationsService,
         });
 
-        results.push(result);
+        results.push(plan.result);
+        if (plan.insertion) insertions.push(plan.insertion);
 
-        if (result.status === 'created') {
+        if (plan.result.status === 'created') {
           createdCount++;
         } else {
           skippedCount++;
         }
+      }
+
+      if (insertions.length > 0) {
+        documentService.updateDocument(
+          documentId,
+          appendMarkdownAnnotations(content, insertions),
+        );
       }
 
       // 5. 返回结果
@@ -280,17 +283,15 @@ export class MarkdownCreateAnnotationsTool extends BaseTool {
   /**
    * 处理单条批注创建
    */
-  private processAnnotationItem(params: {
+  private planAnnotationItem(params: {
     item: AnnotationItem;
-    documentId: string;
     baseBlocks: FlattenedMarkdownBlock[];
     reviewRunId?: string;
     agentId?: string;
     chunkIndex?: number;
     author: string;
-    annotationsService: MarkdownAnnotationsService;
-  }): AnnotationResult {
-    const { item, documentId, baseBlocks, reviewRunId, agentId, chunkIndex, author, annotationsService } = params;
+  }): { result: AnnotationResult; insertion?: MarkdownAnnotationInsertion } {
+    const { item, baseBlocks, reviewRunId, agentId, chunkIndex, author } = params;
     const { target_ref: targetRef, content } = item;
 
     // 1. 解析 ref -> blockId（后端自行读取文档并解析，避免依赖前端额外传映射）
@@ -303,65 +304,44 @@ export class MarkdownCreateAnnotationsTool extends BaseTool {
       const message = resolved.message;
       console.warn(`[MarkdownCreateAnnotationsTool] ref 解析失败: ${targetRef} | ${message}`);
       return {
-        targetRef,
-        status: 'skipped',
-        message
+        result: {
+          targetRef,
+          status: 'skipped',
+          message
+        }
       };
     }
 
     const blockId = resolved.resolvedId;
 
-    // 3. 构建批注内容 JSON（包含 Review 元信息）
-    //
-    // 重要：
-    // - 前端 Annotation 面板布局（PanelOverlapDetector 等）默认依赖 annotation.position.top/left 为 number
-    // - 前端通过 IPC `workspace:list-annotations` 会 JSON.parse(content_json) 并直接展开字段
-    // - 因此后端工具创建的批注必须写入 position，避免前端布局计算时读取 undefined.top 报错
-    const contentJson = JSON.stringify({
+    const annotationId = generateEditorAnnotationId();
+    const now = new Date().toISOString();
+    const annotation = {
+      id: annotationId,
       content,
       author,
       state: 'confirmed',
-      // 默认位置：由前端布局系统在渲染后重算为理想位置（这里提供稳定的初始值）
-      position: { top: 0, left: 0 },
+      createdAt: now,
+      updatedAt: now,
+      resolvedAt: null,
+      replies: [],
       meta: {
         source: 'review',
-        reviewRunId,
-        agentId,
-        chunkIndex,
+        ...(reviewRunId ? { reviewRunId } : {}),
+        ...(agentId ? { agentId } : {}),
+        ...(chunkIndex !== undefined ? { chunkIndex } : {}),
       }
-    });
+    } as const;
 
-    // 4. 创建批注
-    try {
-      const annotationId = uuidv4();
-      const now = new Date().toISOString();
-
-      annotationsService.create({
-        id: annotationId,
-        documentNodeId: documentId,
-        targetBlockId: blockId,
-        contentJson,
-        createdAt: now
-      });
-
-      return {
+    return {
+      result: {
         annotationId,
         targetRef,
         status: 'created',
         message: `已为 ${targetRef} 创建批注`
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      console.error(
-        `[MarkdownCreateAnnotationsTool] 创建批注失败 (ref=${targetRef}):`,
-        error
-      );
-      return {
-        targetRef,
-        status: 'error',
-        message
-      };
-    }
+      },
+      insertion: { blockId, annotation },
+    };
   }
 
   /**

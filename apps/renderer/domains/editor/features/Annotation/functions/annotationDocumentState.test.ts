@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { workspaceMarkdownSchemaLite } from 'src/domains/markdown'
 import {
+  mergeDocumentAnnotations,
   readAnnotationsFromDocument,
   replaceRootBlockAnnotations,
 } from './annotationDocumentState'
@@ -74,5 +75,26 @@ describe('annotationDocumentState', () => {
     expect(() => replaceRootBlockAnnotations(emptyState, 'root-1', [annotation]))
       .toThrow('没有可序列化的 Markdown 锚点')
     expect(readAnnotationsFromDocument(state.doc)).toHaveLength(1)
+  })
+
+  it('merges annotations without replacing concurrent text changes', () => {
+    const state = createState()
+    const changed = state.apply(state.tr.insertText('更新：', 2))
+    const incoming = {
+      ...annotation,
+      id: 'annotation-review',
+      blockId: 'root-1',
+      meta: { source: 'review' as const, reviewRunId: 'review-1' },
+    }
+    const plan = mergeDocumentAnnotations(changed, [incoming])
+    if (!plan.transaction) throw new Error('测试前置：应生成 merge transaction')
+    const merged = changed.apply(plan.transaction)
+
+    expect(merged.doc.textContent).toContain('更新：')
+    expect(readAnnotationsFromDocument(merged.doc).map(item => item.id)).toEqual([
+      'annotation-1',
+      'annotation-review',
+    ])
+    expect(plan.mergedCount).toBe(1)
   })
 })

@@ -3,6 +3,7 @@ import { MarkdownAnnotationSchema } from '@app/schemas'
 
 import { generateannotationId, generatePrefixedId } from '../../../../shared/utils/idUtils'
 import {
+  mergeDocumentAnnotations,
   readAnnotationsFromDocument,
   replaceRootBlockAnnotations,
 } from './functions/annotationDocumentState'
@@ -169,6 +170,22 @@ export function useAnnotationStore(options = {}) {
   /** 文档加载完成后只需重新投影；不再接收旁路 annotations payload。 */
   const loadAnnotations = () => synchronizeFromDocument({ preserveEditing: false })
   const getCurrentAnnotations = () => [...annotations.value]
+
+  const mergeAnnotationsFromDocumentJson = content => {
+    const externalDocument = editor.schema.nodeFromJSON(content)
+    const plan = mergeDocumentAnnotations(
+      editor.state,
+      readAnnotationsFromDocument(externalDocument)
+    )
+    if (plan.missingBlockIds.length > 0) {
+      console.warn(
+        '[useAnnotationStore] 后端批注对应的块已不在当前编辑器中:',
+        plan.missingBlockIds
+      )
+    }
+    if (plan.transaction) editor.view.dispatch(plan.transaction)
+    return plan.mergedCount
+  }
 
   const addAnnotation = annotationData => {
     if (annotationData.blockId === undefined || annotationData.content === undefined) {
@@ -384,6 +401,7 @@ export function useAnnotationStore(options = {}) {
     cleanup,
     loadAnnotations,
     getCurrentAnnotations,
+    mergeAnnotationsFromDocumentJson,
   }
 }
 

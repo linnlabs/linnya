@@ -28,6 +28,7 @@ function createEditor() {
   const listeners = new Set()
   const editor = {
     isDestroyed: false,
+    schema: workspaceMarkdownSchemaLite,
     get state() {
       return state
     },
@@ -89,5 +90,29 @@ describe('useAnnotationStore document ownership', () => {
     expect(readAnnotationsFromDocument(editor.state.doc)).toEqual([])
 
     store.cleanup()
+  })
+
+  it('merges backend annotations without replacing local text', () => {
+    const editor = createEditor()
+    const store = useAnnotationStore({ editor })
+    store.initialize()
+    editor.view.dispatch(editor.state.tr.insertText('本地', 2))
+
+    const content = structuredClone(editor.state.doc.toJSON())
+    content.content[0].attrs.annotations = [{
+      id: 'annotation-review',
+      content: '审阅意见',
+      author: 'Reviewer',
+      state: 'confirmed',
+      createdAt: '2026-09-04T00:00:00.000Z',
+      updatedAt: '2026-09-04T00:00:00.000Z',
+      resolvedAt: null,
+      replies: [],
+      meta: { source: 'review', reviewRunId: 'review-1' },
+    }]
+
+    expect(store.mergeAnnotationsFromDocumentJson(content)).toBe(1)
+    expect(editor.state.doc.textContent).toContain('本地')
+    expect(readAnnotationsFromDocument(editor.state.doc)[0].id).toBe('annotation-review')
   })
 })

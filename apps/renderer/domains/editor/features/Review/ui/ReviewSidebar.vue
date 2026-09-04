@@ -1,6 +1,9 @@
 <template>
   <div class="review-sidebar">
-    <Transition name="review-sidebar-fade" mode="out-in">
+    <Transition
+      name="review-sidebar-fade"
+      mode="out-in"
+    >
       <ReviewSetup v-if="reviewStore.status === 'idle'" />
       <ReviewAgentCreator v-else-if="reviewStore.status === 'creating_agent'" />
       <ReviewProcessing v-else-if="reviewStore.status === 'processing'" />
@@ -21,6 +24,7 @@ import ReviewDashboard from './views/ReviewDashboard.vue';
 import { getReviewContextConfig } from '../config/contextConfig';
 import { chunkReviewDocumentFromEditor } from '../utils/reviewDocumentChunker';
 import { workspaceGateway } from '@shared/ipc/workspaceGateway';
+import { getWorkspaceContextPort } from '@shared/ports/workspaceContextPort';
 import { generateTextStream } from '@shared/services/aiService/unifiedApiService';
 
 const reviewStore = useReviewStore();
@@ -115,6 +119,11 @@ const handleReviewStarted = async () => {
   runningAbortController = new AbortController();
 
   try {
+    const saved = await getWorkspaceContextPort().requestSaveBeforeAiInvoke();
+    if (!saved) {
+      throw new Error('审阅前保存文档失败，已停止审阅以避免覆盖未保存内容');
+    }
+
     // 1) 分段导出全文（按块）
     const config = getReviewContextConfig();
     const chunks = await chunkReviewDocumentFromEditor({
@@ -175,15 +184,15 @@ const handleReviewStarted = async () => {
         completedCalls += 1;
         reviewStore.progress = Math.round((completedCalls / totalCalls) * 100);
 
-        // 3) 刷新 annotations（后端工具已落库，本地需拉取最新）
-        const annotationsResult = await workspaceGateway['list-annotations']({ documentId });
-        if (annotationsResult?.success) {
-          const annotations = annotationsResult.data?.annotations ?? [];
-          if (typeof annoStore.loadAnnotations === 'function') {
-            annoStore.loadAnnotations(annotations);
+        // 3) 后端工具已创建新文档版本；只合并其中新增的 Annotation，
+        // 不替换当前 editor doc，避免覆盖审阅期间的本地正文编辑。
+        const documentResult = await workspaceGateway['read-document']({ documentId });
+        if (documentResult?.success && documentResult.data?.content) {
+          if (typeof annoStore.mergeAnnotationsFromDocumentJson === 'function') {
+            annoStore.mergeAnnotationsFromDocumentJson(documentResult.data.content);
           }
         } else {
-          console.warn('[ReviewSidebar] 刷新批注失败:', annotationsResult?.error);
+          console.warn('[ReviewSidebar] 合并审阅批注失败:', documentResult?.error);
         }
       }
     }

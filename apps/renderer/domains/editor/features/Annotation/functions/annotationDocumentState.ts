@@ -1,12 +1,19 @@
 import type { Node as ProseMirrorNode } from 'prosemirror-model'
 import type { EditorState, Transaction } from 'prosemirror-state'
 import {
+  MarkdownAnnotationSchema,
   MarkdownAnnotationsSchema,
   type MarkdownAnnotation,
 } from '@app/schemas'
 
 export interface DocumentOwnedAnnotation extends MarkdownAnnotation {
   readonly blockId: string
+}
+
+export interface AnnotationMergePlan {
+  readonly transaction: Transaction | null
+  readonly mergedCount: number
+  readonly missingBlockIds: readonly string[]
 }
 
 interface RootBlockLocation {
@@ -66,4 +73,55 @@ export function replaceRootBlockAnnotations(
     ...location.node.attrs,
     annotations: validated,
   })
+}
+
+/** 把后端新文档版本中的 Annotation 合并进当前编辑器，不覆盖并发正文编辑。 */
+export function mergeDocumentAnnotations(
+  state: EditorState,
+  incoming: readonly DocumentOwnedAnnotation[]
+): AnnotationMergePlan {
+  const incomingByBlockId = new Map<string, MarkdownAnnotation[]>()
+  for (const item of incoming) {
+    const annotation = MarkdownAnnotationSchema.parse({
+      id: item.id,
+      content: item.content,
+      author: item.author,
+      state: item.state,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      resolvedAt: item.resolvedAt,
+      replies: item.replies,
+      meta: item.meta,
+    })
+    const bucket = incomingByBlockId.get(item.blockId)
+    if (bucket) bucket.push(annotation)
+    else incomingByBlockId.set(item.blockId, [annotation])
+  }
+
+  let transaction: Transaction | null = null
+  let mergedCount = 0
+  const found = new Set<string>()
+  state.doc.forEach((node, position) => {
+    if (node.type.name !== 'rootBlock' || typeof node.attrs.id !== 'string') return
+    const additions = incomingByBlockId.get(node.attrs.id)
+    if (!additions) return
+    found.add(node.attrs.id)
+
+    const existing = MarkdownAnnotationsSchema.parse(node.attrs.annotations ?? [])
+    const existingIds = new Set(existing.map(annotation => annotation.id))
+    const missing = additions.filter(annotation => !existingIds.has(annotation.id))
+    if (missing.length === 0) return
+
+    transaction = (transaction ?? state.tr).setNodeMarkup(position, undefined, {
+      ...node.attrs,
+      annotations: [...existing, ...missing],
+    })
+    mergedCount += missing.length
+  })
+
+  return {
+    transaction,
+    mergedCount,
+    missingBlockIds: [...incomingByBlockId.keys()].filter(blockId => !found.has(blockId)),
+  }
 }
