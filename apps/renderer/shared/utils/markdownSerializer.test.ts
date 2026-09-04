@@ -84,4 +84,30 @@ describe('markdownSerializer', () => {
     expect(markdown).toContain('正文\n\n<!-- linnya-annotation:v1\n');
     expect(markdown).toContain('"id":"annotation-1"');
   });
+
+  it('rejects annotations on an empty text block without a Markdown anchor', () => {
+    const annotation = {
+      id: 'annotation-1',
+      content: 'orphan',
+      author: 'User',
+      state: 'confirmed',
+      createdAt: '2026-09-04T00:00:00.000Z',
+      updatedAt: '2026-09-04T00:00:00.000Z',
+      resolvedAt: null,
+      replies: [],
+      meta: { source: 'manual' },
+    }
+    const doc = schema.nodeFromJSON({
+      type: 'doc',
+      content: [
+        {
+          type: 'rootBlock',
+          attrs: { annotations: [annotation] },
+          content: [{ type: 'baseBlock' }],
+        },
+      ],
+    })
+
+    expect(() => createMarkdownSerializer().serialize(doc)).toThrow('空 rootBlock')
+  })
 });

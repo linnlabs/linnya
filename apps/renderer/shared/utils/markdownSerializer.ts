@@ -80,6 +80,11 @@ function normalizeSerializeOptions(options: unknown): Record<string, unknown> {
   return options as Record<string, unknown>
 }
 
+function hasEmptyMarkdownAnnotationTarget(node: ProsemirrorNode): boolean {
+  const child = node.firstChild
+  return child?.type.name === 'baseBlock' && child.content.size === 0
+}
+
 // 定义节点序列化规则
 const nodes: { [key: string]: NodeSerializer } = {
   doc(state, node) {
@@ -89,8 +94,11 @@ const nodes: { [key: string]: NodeSerializer } = {
     state.text(node.text || '')
   },
   rootBlock(state, node) {
-    state.renderContent(node)
     const annotations = MarkdownAnnotationsSchema.parse(node.attrs.annotations ?? [])
+    if (annotations.length > 0 && hasEmptyMarkdownAnnotationTarget(node)) {
+      throw new Error('[MarkdownSerializer] 空 rootBlock 不能承载 Annotation')
+    }
+    state.renderContent(node)
     for (const annotation of annotations) {
       state.ensureNewLine()
       state.write(encodeMarkdownAnnotationComment(annotation))
@@ -458,7 +466,7 @@ export function createMarkdownSerializer(settings: MarkdownExportSettings = {}) 
     // 这使得我们可以在节点序列化函数中访问 lineBreakStyle
     const stateOptions = { ...normalizeSerializeOptions(options), ...settings }
 
-    // @ts-ignore - ProseMirror-markdown 的类型定义可能不完整
+    // @ts-expect-error - ProseMirror-markdown 的类型定义未暴露自定义 state options
     const result = originalSerialize(content, stateOptions)
 
     return result

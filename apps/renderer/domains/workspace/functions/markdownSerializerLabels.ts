@@ -29,7 +29,5 @@ export function buildWorkspaceMarkdownSerializerLabels(
       }
       return workspaceMessage('workspace.export.markdownSerializer.imageDescription', { alt });
     },
-    audioFile: workspaceMessage('workspace.export.markdownSerializer.audioFile'),
-    emptyAudioBlock: workspaceMessage('workspace.export.markdownSerializer.emptyAudioBlock'),
   };
 }

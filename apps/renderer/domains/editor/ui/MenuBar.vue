@@ -294,27 +294,10 @@ const gatherSaveData = () => {
   }
   console.log('[MenuBar] Editor instance is available.');
 
-  // 尝试从 editor 实例获取 annotationStore (这依赖于 EditorContext 中如何挂载)
-  const annotationStoreInstance = editor.value.annotationStore;
-  console.log('[MenuBar] Annotation store instance from editor:', annotationStoreInstance);
-
-  if (!annotationStoreInstance || typeof annotationStoreInstance.getCurrentAnnotations !== 'function') {
-    console.error('[MenuBar] Cannot gather save data: Annotation store instance or getCurrentAnnotations function is not available on editor.');
-    return null; // 暂时返回 null
-  }
-  console.log('[MenuBar] Annotation store and getCurrentAnnotations function are available.');
-
   try {
     const editorContent = editor.value.getJSON();
     console.log('[MenuBar] Got editor content (JSON).');
-    const annotationsFromStore = annotationStoreInstance.getCurrentAnnotations();
-    console.log('[MenuBar] Got current annotations (raw): ', annotationsFromStore);
-
-    // 重要：将 Proxy 转换为纯 JS 对象以进行 IPC 传递
-    const plainAnnotations = JSON.parse(JSON.stringify(annotationsFromStore));
-    console.log('[MenuBar] Got current annotations (plain for IPC): ', plainAnnotations);
-
-    const result = { version: 1, editorContent, annotations: plainAnnotations };
+    const result = { version: 1, editorContent };
     console.log('[MenuBar] Successfully gathered save data:', result);
     return result;
   } catch (error) {

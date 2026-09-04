@@ -61,21 +61,15 @@ const initialContent = {
 /**
  * 收集编辑器当前内容和状态以供保存。
  * @param {import('@tiptap/vue-3').Editor} editor - Tiptap 编辑器实例。
- * @param {object} annotationStore - 批注存储实例。
  * @returns {object|null} - 返回可被序列化的数据对象，或在失败时返回 null。
  */
-export function gatherSaveData(editor, annotationStore) {
+export function gatherSaveData(editor) {
   if (!editor) {
     console.error('[EditorService] 无法收集保存数据：编辑器实例不存在。');
     return null;
   }
   const editorContent = editor.getJSON();
-  const currentAnnotations = annotationStore ? annotationStore.getCurrentAnnotations() : [];
-  if (!annotationStore) {
-    console.warn('[EditorService] 无法收集批注：批注存储实例不存在。');
-  }
-  
-  return { version: 1, editorContent, annotations: currentAnnotations };
+  return { version: 1, editorContent };
 }
 
 /**
@@ -86,13 +80,12 @@ export function gatherSaveData(editor, annotationStore) {
  * @param {object} params.documentData - 从后端获取的完整文档数据
  * @param {object} params.documentData.documentInfo - 文档元数据，如 { id, name }
  * @param {object} params.documentData.content - 文档的 ProseMirror JSON 内容
- * @param {Array} params.documentData.annotations - 文档的批注数组
  * @param {Array} [params.documentData.pendingRevisions] - AI 修订意图数组（冷启动时应用）
  */
 export function loadDocumentFromDatabase({ editor, stores, documentData }) {
   const { fileStore, notificationStore, annotationStore: annotationStoreRef } = stores;
   const editorDocumentSettings = useEditorDocumentSettingsStore();
-  const { documentInfo, content, annotations, pendingRevisions } = documentData;
+  const { documentInfo, content, pendingRevisions } = documentData;
 
   console.log(`[EditorService] 正在从数据库加载文档: ${documentInfo.id}`);
 
@@ -130,6 +123,7 @@ export function loadDocumentFromDatabase({ editor, stores, documentData }) {
     (async () => {
       try {
         let finalContent = content;
+        let normalizationRequiresSave = false;
 
         // 1. 加载 / 规范化文档内容
         if (content) {
@@ -151,6 +145,7 @@ export function loadDocumentFromDatabase({ editor, stores, documentData }) {
           markPerf('markdownNormalize:end');
           measurePerf('markdownNormalize:start', 'markdownNormalize:end', 'markdownNormalizeMs');
           finalContent = normalizeResult.content;
+          normalizationRequiresSave = normalizeResult.dirty === true;
 
           // 如果发生了迁移但回写失败，需要将文档标记为 dirty，以便后续自动保存能生效
           if (normalizeResult.dirty) {
@@ -172,10 +167,10 @@ export function loadDocumentFromDatabase({ editor, stores, documentData }) {
           console.warn(`[EditorService] 文档 ${documentInfo.id} 内容为空，已重置为初始内容。`);
         }
 
-        // 2. 加载批注
+        // 2. 从刚载入的文档投影批注 read model
         const realAnnotationStore = annotationStoreRef.value;
         if (realAnnotationStore && typeof realAnnotationStore.loadAnnotations === 'function') {
-          realAnnotationStore.loadAnnotations(annotations || []);
+          realAnnotationStore.loadAnnotations();
           console.log('[EditorService] 批注已成功加载。');
         } else {
           console.warn('[EditorService] annotationStore.loadAnnotations 不可用，无法加载批注。');
@@ -220,8 +215,8 @@ export function loadDocumentFromDatabase({ editor, stores, documentData }) {
         fileStore.setFilePath(documentInfo.id, documentInfo.name);
         
         // 根据迁移结果设置 dirty 状态
-        // 如果 normalizeResult.dirty 为 true，说明内存与 DB 不一致，必须设为 true
-        fileStore.setDirty(typeof normalizeResult !== 'undefined' && normalizeResult.dirty === true);
+        // 规范化回写失败时，内存与 DB 不一致，必须保持 dirty。
+        fileStore.setDirty(normalizationRequiresSave);
 
         // 性能采集：记录总耗时并输出报告（在字符统计之前，避免 getText 拖慢首开指标）
         markPerf('load:end');
@@ -311,7 +306,7 @@ export function loadContentIntoEditor({ editor, stores, fileInfo }) {
       
       const realAnnotationStore = annotationStoreRef.value;
       if (realAnnotationStore && typeof realAnnotationStore.loadAnnotations === 'function') {
-        realAnnotationStore.loadAnnotations(data.annotations || []);
+        realAnnotationStore.loadAnnotations();
         console.log('[EditorService] 批注已成功加载。');
       } else {
         console.warn('[EditorService] annotationStore.loadAnnotations 不可用，无法加载批注。');

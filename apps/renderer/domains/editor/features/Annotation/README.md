@@ -1,6 +1,14 @@
  #  Linnya 批注系统架构文档
 
-本文档详细阐述了 Linnya 编辑器中批注（Annotation）模块的布局方案、定位系统及其性能优化策略。
+本文档详细阐述 Linnya 编辑器中批注（Annotation）的文档归属、布局与交互。
+
+## 0. 文档归属与持久化
+
+- 持久化事实只存在于 `rootBlock.attrs.annotations`，与正文共同进入同一个 `content_json` 文档版本。
+- `useAnnotationStore` 从 `editor.state.doc` 派生 read model，并通过 ProseMirror transaction 完成新增、修改、解决、回复和删除。
+- `creating` / `editing` 与面板 `position` 仅是 Renderer 临时态，不进入 Markdown profile。
+- Markdown 导出把每条批注写成相邻的 `<!-- linnya-annotation:v1 ... -->`；普通 `<!-- comment -->` 导入时由 admission 边界补齐身份。
+- 禁止恢复 annotations 表、Annotation CRUD IPC 或另存一份 sidecar 数组，否则正文版本与批注会再次产生双真相。
 
 ## 1. 架构演进：从网格布局到独立浮动层
 
@@ -255,10 +263,10 @@ Annotation/
 
 我们准备为批注增加“回复”能力，但当前阶段**只提供 API 入口**，不在正式 UI 中开放真实回复按钮（未来用于 AI 回复/协作回复）。
 
-### 5.1. 最小改动原则
+### 5.1. 数据规则
 
 - **数据结构**：在 `Annotation` 对象中增加可选字段 `replies`（数组），每条回复包含 `id/content/author/createdAt`。
-- **持久化**：复用现有 `workspace:update-annotation` 链路。原因是后端 `MarkdownDocumentService.updateAnnotation()` 会把 `updates` merge 进 `content_json` 后写回，因此 `replies` 作为 JSON 字段可直接存储，无需新增数据库列/表。
+- **持久化**：回复随所属 Annotation 写入 `rootBlock.attrs.annotations[].replies`，复用文档 transaction 与自动保存链路。
 - **命令层**：提供 `AnnoReplyCommands.ts` 的最小封装（例如 `appendAnnotationReply`），避免让 UI 直接操作 store 细节。
 
 ### 5.2. 开发期临时按钮（仅 DEV）

@@ -81,7 +81,8 @@ export function decodeMarkdownAnnotationComment(comment: string): MarkdownAnnota
   try {
     decoded = JSON.parse(payload);
   } catch (error) {
-    throw new Error('[MarkdownAnnotation] canonical JSON 无效', { cause: error });
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`[MarkdownAnnotation] canonical JSON 无效: ${detail}`);
   }
   return MarkdownAnnotationSchema.parse(decoded);
 }

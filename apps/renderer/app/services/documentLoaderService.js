@@ -35,25 +35,16 @@ class MarkdownDocumentLoader {
 
     try {
       throwIfCancelled?.();
-      // 并行获取文档内容和批注
-      const [documentResult, annotationsResult] = await Promise.all([
-        workspaceGateway['read-document']({ documentId }),
-        workspaceGateway['list-annotations']({ documentId }),
-      ]);
+      const documentResult = await workspaceGateway['read-document']({ documentId });
       throwIfCancelled?.();
 
       if (!documentResult?.success) {
         throw new Error(documentResult?.error || 'read-document failed');
       }
-      if (!annotationsResult?.success) {
-        throw new Error(annotationsResult?.error || 'list-annotations failed');
-      }
-
-      // 构造文档数据（包含 pending revisions）
+      // Annotation 已内嵌在 content_json 的 rootBlock attrs 中。
       const documentData = {
         documentInfo: { id: documentId, name: documentName },
         content: documentResult.data?.content,
-        annotations: annotationsResult.data?.annotations || [],
         pendingRevisions: documentResult.data?.pendingRevisions || [],
       };
 

@@ -463,6 +463,9 @@ export function serializeRootBlockToMarkdown(
   const body = parts.join('\n\n').trimEnd();
   const annotations = MarkdownAnnotationsSchema.parse(getAttrs(root)['annotations'] ?? []);
   if (annotations.length === 0) return body;
+  if (body.length === 0) {
+    throw new Error('[MarkdownSerializer] 空 rootBlock 不能承载 Annotation');
+  }
 
   return [body, ...annotations.map(encodeMarkdownAnnotationComment)]
     .filter(part => part.length > 0)

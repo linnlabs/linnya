@@ -187,7 +187,7 @@ export function blockEventsToDocJson(
       typeof event.raw_content_fallback === 'string' ? event.raw_content_fallback : null
 
     if (typeName === 'HtmlComment') {
-      const target = rootBlocks.at(-1)
+      const target = rootBlocks[rootBlocks.length - 1]
       if (!isPlainObject(target)) {
         throw new Error('[MarkdownImport] Annotation comment 前没有可绑定的目标块')
       }

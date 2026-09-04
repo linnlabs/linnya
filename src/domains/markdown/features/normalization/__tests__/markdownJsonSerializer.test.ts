@@ -96,4 +96,11 @@ describe('serializeRootBlockToMarkdown inline projection', () => {
     expect(result).toContain('正文\n\n<!-- linnya-annotation:v1\n');
     expect(result).toContain('"id":"annotation-1"');
   });
+
+  it('拒绝导出没有 Markdown 锚点的空块批注', () => {
+    expect(() => serializeRootBlockToMarkdown({
+      ...rootBlock([]),
+      attrs: { annotations: [annotation] },
+    })).toThrow('空 rootBlock');
+  });
 });
