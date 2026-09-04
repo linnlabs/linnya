@@ -2,21 +2,35 @@
 
 [简体中文](README.zh-CN.md)
 
-Linnya is an agent-centered document database and extensible desktop workspace. It combines a conversational agent runtime, project-oriented documents, knowledge tools, and a plugin system in one Electron application.
+Linnya is an **open-source desktop workspace for agents**. It brings conversational agents, project documents, knowledge tools, and extensible plugins into one app, so AI can go beyond the chat box—understanding real project context, working directly with documents, and carrying work from research and reasoning through creation and delivery.
+
+Linnya is built around Markdown and offers extensive plugin support. Plugins can introduce new document types, purpose-built interfaces, agents, skills, and workflows, allowing the same workspace to keep growing with new capabilities.
 
 > Linnya is under active development. APIs, storage formats, plugin contracts, and release processes may change before a stable release.
+
+## Official plugins
+
+Linnya currently offers official support for the following plugins:
+
+### [Mindmap](packages/plugins/mindmap)
+
+<!-- Add when the screenshot is ready: ![Linnya Mindmap](docs/media/mindmap.png) -->
+
+### [Slides](packages/plugins/slides)
+
+Provides presentation rendering and export capabilities.
+
+<!-- Add when the screenshot is ready: ![Linnya Slides](docs/media/slides.png) -->
 
 ## What is in this repository
 
 - The Linnya desktop host and Vue renderer.
 - Integration with the published `@linnlabs/linnkit` host-neutral agent runtime.
 - Shared schemas, plugin host contracts, and Renderer UI primitives.
-- The open official Mindmap and Slides plugins.
+- The open-source official Mindmap and Slides plugins.
 - CLI, benchmark, build, test, and release-validation tooling required by the public source tree.
 
-The repository does not make every official plugin or hosted service public. Open-source scope and production plugin distribution are separate boundaries: public source builds must work without private repositories, credentials, or adjacent checkouts.
-
-Public documentation contains the stable contracts and maintenance rules needed by contributors. Internal proposals, research logs, and release evidence live outside this repository and are never required to build, test, or understand the public source. See [documentation governance](docs/documentation-governance.md).
+Public documentation contains the stable contracts and maintenance rules needed by contributors. See [documentation governance](docs/documentation-governance.md).
 
 ## Architecture
 
@@ -49,11 +63,9 @@ pnpm install --frozen-lockfile
 pnpm run dev:electron
 ```
 
-Source development is intentionally independent from Linnya Cloud: it does not load the hosted model catalog, send model requests or derive a Cloud device ID, and it does not automatically check the production update service. A source checkout uses local data and the developer's configured model provider; no Linnya account or private repository is required.
-
-Runtime preparation happens during source development or packaging, never on end-user application startup. Qdrant is downloaded from its pinned upstream release and verified. PDF text extraction and page rendering use the npm-locked PDF.js and Node Canvas dependencies; a fresh checkout no longer needs a separately published Poppler bundle, Homebrew, or a system PDF executable.
-
 See the [documentation map](docs/README.md) and [development guide](docs/development/README.md) for architecture, targeted validation, native-module requirements, and source builds.
+
+For coding agents: follow [AGENTS.md](AGENTS.md).
 
 ### One-line prompt for coding agents
 
@@ -84,6 +96,6 @@ Do not post API keys, database contents, private documents, full user directorie
 
 ## License
 
-Unless a path states a different license, Linnya-authored source code and documentation are licensed under [Apache License 2.0](LICENSE). Copyright © 2024–present BCAutumn and Linnya contributors.
+Unless a path states a different license, Linnya and its documentation are licensed under [Apache License 2.0](LICENSE). Copyright © 2024–present BCAutumn and Linnya contributors.
 
 Linnkit, the Linnkit AI SDK provider adapter, and the vendored Stream Markdown Parser retain their separately declared MIT licenses. Third-party components and redistributed assets may have additional notices in `THIRD_PARTY_NOTICES.txt`. The Linnya name and official icons are covered by [TRADEMARKS.md](TRADEMARKS.md).
