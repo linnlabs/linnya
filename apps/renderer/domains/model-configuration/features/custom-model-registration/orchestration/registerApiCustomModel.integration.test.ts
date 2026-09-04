@@ -50,6 +50,27 @@ describe('registerApiCustomModel', () => {
     expect(commands[0]).not.toHaveProperty('capability_id');
   });
 
+  it('按所选 API 格式补全纯域名后再提交', async () => {
+    const commands: CustomApiModelRegistrationCommand[] = [];
+    await expect(
+      registerApiCustomModel(
+        {
+          endpointModelId: 'claude-compatible',
+          displayName: '',
+          credentialSecret: 'secret-value',
+          baseUrl: 'https://relay.example.com',
+          customApiFormat: 'anthropic_compatible',
+          contextWindowTokens: '256000',
+          maxOutputTokens: '16384',
+          supportsImageInput: false,
+        },
+        recordingGateway(commands)
+      )
+    ).resolves.toEqual({ ok: true });
+
+    expect(commands[0]?.base_url).toBe('https://relay.example.com/v1');
+  });
+
   it('允许 Key 留空，由 Host 决定能否复用已有 credential', async () => {
     const commands: CustomApiModelRegistrationCommand[] = [];
     await expect(

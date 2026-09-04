@@ -9,7 +9,8 @@ onboarding，不创建 `ProviderDefinition`、`ProviderAccount` 或模型 `provi
 
 `registerModel` 只接收用户能理解的三种格式之一、HTTP/HTTPS
 URL、可选 Key、endpoint model id、展示名、容量和图片输入开关。HTTP
-adapter 用共享 strict schema 先完成字段准入与 URL 规范化。
+adapter 用共享 strict schema 先完成字段准入与 URL 规范化。纯域名会按所选 API
+格式补全默认 `/v1` 基线路径；只要用户填写了路径，就保留该显式网关路径，不再猜测或改写。
 
 内部 route profile、auth profile、endpoint identity 和 capability
 id 只由本 use case 的 `customApiRuntimeBindingRegistry` 决定，不进入 Renderer

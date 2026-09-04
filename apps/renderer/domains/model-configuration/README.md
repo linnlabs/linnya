@@ -264,6 +264,10 @@ host 当成 Provider 名称持久化。
 Completions；Responses 必须明确选择，不能从模型名、URL 或返回错误自动猜测。Responses、Messages、capability
 id 和 route profile 都是内部实现，不要求普通用户手填。
 
+用户只填写协议服务域名时，共享 command 规则自动补全该协议的 `/v1`
+基线路径；用户已经填写任何路径时必须保留，只统一去掉末尾斜杠。Renderer 与 Host
+共同复用这条规则，endpoint 复用和持久化不允许出现另一套 URL 规范化。
+
 三种格式都允许用户声明模型的图片理解能力，但 route 只开放自身 codec 经过 conformance 的来源。OpenAI-compatible
 Chat 不能原生表达带图片的 tool result，因此投影为 `user_image=true / tool_result_image=false`；它不会把工具图片改写成
 额外 user 消息。OpenAI Responses 与 Anthropic Messages 当前可投影两个来源。自定义 API 允许 HTTP 与 HTTPS，以支持

@@ -39,7 +39,7 @@ describe('custom API onboarding router', () => {
     return listen(server);
   }
 
-  it('规范化内网 URL 后把窄 command 交给 use case', async () => {
+  it('按 API 格式规范化内网根 URL 后把窄 command 交给 use case', async () => {
     const registerModel = vi.fn(async () => ({ model_id: 'local-model-1' }));
     const baseUrl = await start({ registerModel });
     const response = await fetch(`${baseUrl}/api/v1/custom-api-onboarding/models`, {
@@ -47,7 +47,7 @@ describe('custom API onboarding router', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         api_format: 'openai_responses',
-        base_url: ' http://models.intranet:8080/v1/ ',
+        base_url: ' http://models.intranet:8080/ ',
         api_key: 'secret-value',
         endpoint_model_id: 'company-gpt',
         context_window_tokens: 256000,

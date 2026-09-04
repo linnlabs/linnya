@@ -19,7 +19,7 @@ export async function registerApiCustomModel(
   const tokenLimits = parseModelTokenLimits(form.contextWindowTokens, form.maxOutputTokens);
   if (!tokenLimits) return { ok: false, issue: 'token_limits_invalid' };
 
-  const baseUrl = normalizeCustomApiBaseUrl(form.baseUrl);
+  const baseUrl = normalizeCustomApiBaseUrl(form.customApiFormat, form.baseUrl);
   if (!baseUrl) return { ok: false, issue: 'base_url_invalid' };
 
   const apiKey = form.credentialSecret.trim();
