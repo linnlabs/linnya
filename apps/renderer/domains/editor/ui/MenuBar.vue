@@ -101,10 +101,6 @@
           </transition>
         </Teleport>
       </div>
-      <button @click="insertAudioBlock" :title="editorMessage('editor.menu.insertAudio')">
-        <AudioIcon />
-      </button>
-      
       <span class="divider" v-if="isDevelopment"></span>
 
       <!-- Group 5: Dev Tools -->
@@ -141,7 +137,6 @@ import { isInsideTable } from '../extensions/core/commands/ConversionCommands';
 import { useUIStore } from '../../../shared/stores/ui'; // 导入UI Store
 import { useNotificationStore } from '@/app/notification'; // 导入 Notification Store
 import { ImageIcon } from '@linnya/renderer-ui/icons';
-import { AudioIcon } from '@linnya/renderer-ui/icons';
 import { TableIcon } from '@linnya/renderer-ui/icons';
 import { ListItemIcon } from '@linnya/renderer-ui/icons';
 import { QuoteIcon } from '@linnya/renderer-ui/icons';
@@ -416,13 +411,6 @@ const insertImage = async () => {
     unavailableMessageKey: 'editor.menu.toast.imageDialogUnavailable',
     failedMessageKey: 'editor.menu.toast.imageFlowFailed',
   });
-};
-
-// +++ 新增：插入录音块的函数 +++
-const insertAudioBlock = () => {
-  if (editor.value) {
-    editor.value.chain().focus().insertAudioBlock().run();
-  }
 };
 
 // 处理标题菜单选项选择
