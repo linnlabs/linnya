@@ -181,6 +181,7 @@ import SidebarProjectNav from '@/app/layout/sidebar/components/SidebarProjectNav
 import { useSidebarAssetPreviewState } from '@/app/layout/sidebar/composables/useSidebarAssetPreviewState';
 import { useSidebarFileTreeOpen } from '@/app/layout/sidebar/composables/useSidebarFileTreeOpen';
 import { useSidebarProjectDelete } from '@/app/layout/sidebar/composables/useSidebarProjectDelete';
+import { openProjectWorkspaceFromSidebar } from '@/app/layout/orchestration/openProjectWorkspaceFromSidebar';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
 import { workspaceAssetImagePreviewApi } from '@/domains/workspace/features/asset-image-preview';
@@ -514,23 +515,8 @@ const handleProjectConversationPrefetch = (projectId) => {
 
 const handleOpenProject = async (projectId) => {
   try {
-    const isSameProjectScope = currentScope.value.kind === 'project'
-      && currentScope.value.projectId === projectId;
-
-    if (!isSameProjectScope) {
-      await ensureViewSwitchSafety();
-    }
-
-    projectsStore.setActiveProject(projectId);
-
-    if (!isSameProjectScope) {
-      // 中文说明：只有切到别的项目时才开启空白草稿；重复进入当前项目要保留原会话/文件。
-      startDraftConversation({ kind: 'project', projectId });
-    }
-
-    emit('project-workspace-click', projectId);
+    await openProjectWorkspaceFromSidebar(projectId);
     emit('set-sidebar-nav', 'project');
-    await treeStore.ensureProjectTreeLoaded(projectId);
     return true;
   } catch (error) {
     console.warn('[WorkspaceSidebarSurface] 打开项目态已取消：', error);
