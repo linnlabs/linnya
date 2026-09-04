@@ -21,6 +21,10 @@ interface RootBlockLocation {
   readonly position: number
 }
 
+function markAsInternal(transaction: Transaction | null): Transaction | null {
+  return transaction ? transaction.setMeta('internal', true) : null
+}
+
 function findRootBlock(state: EditorState, blockId: string): RootBlockLocation | null {
   let location: RootBlockLocation | null = null
   state.doc.forEach((node, position) => {
@@ -120,7 +124,8 @@ export function mergeDocumentAnnotations(
   })
 
   return {
-    transaction,
+    // 后端 Review 已经持久化了对应文档版本；回流只同步本地投影，禁止再次触发 autosave。
+    transaction: markAsInternal(transaction),
     mergedCount,
     missingBlockIds: [...incomingByBlockId.keys()].filter(blockId => !found.has(blockId)),
   }

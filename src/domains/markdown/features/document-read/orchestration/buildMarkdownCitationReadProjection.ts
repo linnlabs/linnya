@@ -157,6 +157,7 @@ export function buildMarkdownCitationReadProjection(params: {
   readonly content: unknown;
   readonly pendings: readonly MarkdownPendingRevisionLike[];
   readonly viewMode: 'original' | 'preview';
+  readonly includeAnnotations?: boolean;
 }): MarkdownCitationReadProjection {
   const roots = listRootBlocks(params.content);
   const pendingByBlockId = new Map(
@@ -188,6 +189,7 @@ export function buildMarkdownCitationReadProjection(params: {
       projection: citationProjection,
       visibleCitationIds,
     }),
+    includeAnnotations: params.includeAnnotations,
   });
 
   if (params.viewMode === 'original') {

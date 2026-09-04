@@ -4,6 +4,8 @@ import {
   type MarkdownDocumentWriteStore,
 } from '../orchestration/writeMarkdownDocumentFromText';
 import { planMarkdownBlocks } from '../../normalization';
+import type { MarkdownDocJson } from '../../normalization/runtime';
+import type { DocumentVersion } from '../../document-storage';
 
 interface PendingRow {
   readonly target_block_id: string;
@@ -14,13 +16,6 @@ interface PendingRow {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
-}
-
-function readContentArray(value: unknown): unknown[] {
-  if (!isRecord(value) || !Array.isArray(value.content)) {
-    throw new Error('fake doc missing content');
-  }
-  return value.content;
 }
 
 function readNodeId(value: unknown): string | null {
@@ -41,10 +36,30 @@ function createTouchRecorder() {
 class FakeMarkdownService implements MarkdownDocumentWriteStore {
   readonly pending = new Map<string, PendingRow>();
 
-  constructor(private doc: unknown) {}
+  private versionNumber = 1;
 
-  getDocument(): unknown {
+  constructor(private doc: MarkdownDocJson) {}
+
+  getDocument(): MarkdownDocJson {
     return this.doc;
+  }
+
+  getLatestVersion(): DocumentVersion {
+    return {
+      id: `version-${this.versionNumber}`,
+      node_id: 'doc-1',
+      version_number: this.versionNumber,
+      content_json: JSON.stringify(this.doc),
+      char_count: 0,
+      created_at: 0,
+      author_id: null,
+    };
+  }
+
+  updateDocument(_documentId: string, content: MarkdownDocJson): DocumentVersion {
+    this.doc = content;
+    this.versionNumber += 1;
+    return this.getLatestVersion();
   }
 
   getPendingRevisions(): PendingRow[] {
@@ -56,7 +71,7 @@ class FakeMarkdownService implements MarkdownDocumentWriteStore {
   }
 
   insertEmptyBlockAfter(_documentId: string, anchorBlockId: string, newBlockId: string): void {
-    const content = readContentArray(this.doc);
+    const content = this.doc.content;
     const anchorIndex = content.findIndex(node => readNodeId(node) === anchorBlockId);
     if (anchorIndex === -1) {
       throw new Error('fake anchor missing');
@@ -91,7 +106,7 @@ class FakeMarkdownService implements MarkdownDocumentWriteStore {
   }
 }
 
-function markdownDoc(blocks: readonly { readonly id: string; readonly text: string }[]): unknown {
+function markdownDoc(blocks: readonly { readonly id: string; readonly text: string }[]): MarkdownDocJson {
   return {
     type: 'doc',
     content: blocks.map(block => ({
@@ -107,7 +122,7 @@ function markdownDoc(blocks: readonly { readonly id: string; readonly text: stri
   };
 }
 
-function markdownDocWithWebCitation(): unknown {
+function markdownDocWithWebCitation(): MarkdownDocJson {
   const url = 'https://example.com/source';
   return {
     type: 'doc',
@@ -151,6 +166,11 @@ function markdownDocWithWebCitation(): unknown {
 }
 
 describe('writeMarkdownDocumentFromText', () => {
+  const annotationAdmission = {
+    author: 'AI',
+    meta: { source: 'agent' as const, runId: 'run-1' },
+  };
+
   it('将全文目标转换为 update/delete pending，并 touch workspace node', async () => {
     const touch = createTouchRecorder();
     const service = new FakeMarkdownService(
@@ -166,6 +186,7 @@ describe('writeMarkdownDocumentFromText', () => {
       documentId: 'doc-1',
       targetText: 'Alpha\n\nBeta edited',
       toolName: 'edit_file',
+      annotationAdmission,
       touchDocumentUpdatedAt: touch.touchDocumentUpdatedAt,
     });
 
@@ -187,6 +208,7 @@ describe('writeMarkdownDocumentFromText', () => {
       documentId: 'doc-1',
       targetText: 'Alpha\n\nBeta',
       toolName: 'write_file',
+      annotationAdmission,
       touchDocumentUpdatedAt: touch.touchDocumentUpdatedAt,
     });
 
@@ -197,6 +219,32 @@ describe('writeMarkdownDocumentFromText', () => {
       new_markdown: 'Beta',
       operation: 'insert',
     });
+  });
+
+  it('普通 HTML comment 直接创建 confirmed 批注，不生成 Revision pending', async () => {
+    const touch = createTouchRecorder();
+    const service = new FakeMarkdownService(markdownDoc([{ id: 'b1', text: 'Alpha' }]));
+
+    const result = await writeMarkdownDocumentFromText({
+      documentStore: service,
+      documentId: 'doc-1',
+      targetText: 'Alpha\n\n<!-- 建议补充依据 -->',
+      toolName: 'edit_file',
+      annotationAdmission,
+      touchDocumentUpdatedAt: touch.touchDocumentUpdatedAt,
+    });
+
+    expect(result.edits).toEqual([]);
+    expect(result.createdAnnotationIds).toHaveLength(1);
+    expect(service.pending.size).toBe(0);
+    expect(service.getDocument().content[0]?.attrs?.annotations).toEqual([
+      expect.objectContaining({
+        content: '建议补充依据',
+        state: 'confirmed',
+        author: 'AI',
+        meta: { source: 'agent', runId: 'run-1' },
+      }),
+    ]);
   });
 
   it('写 pending 时合并按 Markdown 块传入的 citation hydration 元数据', async () => {
@@ -214,6 +262,7 @@ describe('writeMarkdownDocumentFromText', () => {
       pendingMetaByMarkdown: new Map([
         [blockMarkdown, { citation_hydration: { ABC123: { sourceId: 's1' } } }],
       ]),
+      annotationAdmission,
       touchDocumentUpdatedAt: touch.touchDocumentUpdatedAt,
     });
 
@@ -232,6 +281,7 @@ describe('writeMarkdownDocumentFromText', () => {
       documentId: 'doc-citation',
       targetText: 'Alpha [@ABC234]\n\nBeta edited',
       toolName: 'edit_file',
+      annotationAdmission,
       touchDocumentUpdatedAt: touch.touchDocumentUpdatedAt,
     });
 
@@ -268,6 +318,7 @@ describe('writeMarkdownDocumentFromText', () => {
         documentId: 'doc-missing-block-id',
         targetText: 'Alpha edited',
         toolName: 'edit_file',
+        annotationAdmission,
         touchDocumentUpdatedAt: touch.touchDocumentUpdatedAt,
       })
     ).rejects.toThrow('missing its admitted block identity');

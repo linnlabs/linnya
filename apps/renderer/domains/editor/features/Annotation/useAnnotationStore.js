@@ -1,5 +1,5 @@
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { MarkdownAnnotationSchema } from '@app/schemas'
+import { createMarkdownAnnotation, MarkdownAnnotationSchema } from '@app/schemas'
 
 import { generateannotationId, generatePrefixedId } from '../../../../shared/utils/idUtils'
 import {
@@ -27,18 +27,39 @@ export function createAnnotation({ blockId, content, id, position, author, state
   }
 
   const timestamp = new Date().toISOString()
-  return {
-    id: id || generateannotationId(),
-    blockId,
+  const annotationId = id || generateannotationId()
+  const annotationAuthor = author || 'User'
+  const annotationMeta = meta || { source: 'manual' }
+  const annotationState = state || 'confirmed'
+  if (isTransientState(annotationState)) {
+    return {
+      id: annotationId,
+      blockId,
+      content,
+      position: position || { top: 0, left: 0 },
+      author: annotationAuthor,
+      state: annotationState,
+      replies: [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      resolvedAt: null,
+      meta: annotationMeta,
+    }
+  }
+  if (annotationState !== 'confirmed') {
+    throw new AnnotationError('创建批注失败：持久化初态必须是 confirmed', 'INVALID_INITIAL_STATE')
+  }
+  const persisted = createMarkdownAnnotation({
+    id: annotationId,
     content,
+    author: annotationAuthor,
+    timestamp,
+    meta: annotationMeta,
+  })
+  return {
+    ...persisted,
+    blockId,
     position: position || { top: 0, left: 0 },
-    author: author || 'User',
-    state: state || 'confirmed',
-    replies: [],
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    resolvedAt: null,
-    meta: meta || { source: 'manual' },
   }
 }
 
@@ -270,18 +291,29 @@ export function useAnnotationStore(options = {}) {
     const persisted = getPersistedAnnotation(annotationId)
     const timestamp = new Date().toISOString()
     const base = persisted || current
-    const next = {
-      id: base.id,
-      content: updates.content ?? base.content,
-      author: base.author,
-      state: nextState,
-      createdAt: base.createdAt,
-      updatedAt: timestamp,
-      resolvedAt: nextState === 'resolved' ? (base.resolvedAt || timestamp) : null,
-      replies: updates.replies ?? base.replies ?? [],
-      meta: base.meta || { source: 'manual' },
-      blockId: current.blockId,
-    }
+    const next = !persisted && current.state === 'creating' && nextState === 'confirmed'
+      ? {
+          ...createMarkdownAnnotation({
+            id: base.id,
+            content: updates.content ?? base.content,
+            author: base.author,
+            timestamp,
+            meta: base.meta || { source: 'manual' },
+          }),
+          blockId: current.blockId,
+        }
+      : {
+          id: base.id,
+          content: updates.content ?? base.content,
+          author: base.author,
+          state: nextState,
+          createdAt: base.createdAt,
+          updatedAt: timestamp,
+          resolvedAt: nextState === 'resolved' ? (base.resolvedAt || timestamp) : null,
+          replies: updates.replies ?? base.replies ?? [],
+          meta: base.meta || { source: 'manual' },
+          blockId: current.blockId,
+        }
     persistAnnotation(next)
     synchronizeFromDocument({ preserveEditing: false })
     return true

@@ -4,7 +4,10 @@ export {
   type MarkdownBlockParser,
   type MarkdownImportResult,
 } from './importMarkdownToDocJson';
-export { convertBlockEventsToDocJson } from './blockEventToDocJson';
+export {
+  convertBlockEventsToDocJson,
+  type MarkdownAnnotationCommentAdmitter,
+} from './blockEventToDocJson';
 export { normalizeParsedBlockEvents } from './normalizeBlockEvents';
 export { parseMarkdownToBlocksInNode } from './parserAdapterNode';
 export {
@@ -13,7 +16,11 @@ export {
   workspaceMarkdownSchemaLite,
 } from './schemaLite';
 export type { WorkspaceMarkdownSchemaContract } from './definitions/workspaceMarkdownSchemaContract';
-export { planMarkdownBlocks, type PlannedMarkdownBlocks } from './markdownBlockPlanner';
+export {
+  planMarkdownBlocks,
+  type PlannedMarkdownAnnotationComment,
+  type PlannedMarkdownBlocks,
+} from './markdownBlockPlanner';
 export {
   serializeRootBlockToMarkdown,
   type MarkdownInlineMark,

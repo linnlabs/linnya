@@ -48,6 +48,19 @@ describe('markdownBlockPlanner', () => {
     expect(result.blocks).toEqual(['第一行  \n第二行']);
   });
 
+  it('把普通 comment 保持为无身份规划事实，并稳定分离正文', async () => {
+    const markdown = '正文\n\n<!-- 建议补充依据 -->';
+    const first = await planMarkdownBlocks(markdown);
+    const second = await planMarkdownBlocks(markdown);
+
+    expect(first.blocks).toEqual(second.blocks);
+    expect(first.bodyBlocks).toEqual(['正文']);
+    expect(first.annotationComments).toEqual([{
+      targetBlockIndex: 0,
+      parsed: { kind: 'plain', draft: { content: '建议补充依据' } },
+    }]);
+  });
+
   it('keeps fenced code as a single canonical block in mixed content', async () => {
     const result = await planMarkdownBlocks(
       ['- one', '', '```ts', 'const x = 1', '```'].join('\n')

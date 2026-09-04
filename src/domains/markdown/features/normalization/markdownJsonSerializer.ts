@@ -66,6 +66,8 @@ export interface SerializeRootBlockToMarkdownOptions {
   readonly projectInlineText?: MarkdownInlineTextProjector;
   /** 结构化 inline atom 的领域投影；CitationNode 等节点不应降级读取 textContent。 */
   readonly projectInlineNode?: MarkdownInlineNodeProjector;
+  /** 文件写入规划比较正文时关闭；默认导出仍完整包含 canonical Annotation。 */
+  readonly includeAnnotations?: boolean;
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -461,6 +463,7 @@ export function serializeRootBlockToMarkdown(
 
   // Annotation 随 root block 进入同一个 Markdown 逻辑单元，不能获得独立 ref。
   const body = parts.join('\n\n').trimEnd();
+  if (options.includeAnnotations === false) return body;
   const annotations = MarkdownAnnotationsSchema.parse(getAttrs(root)['annotations'] ?? []);
   if (annotations.length === 0) return body;
   if (body.length === 0) {

@@ -15,7 +15,7 @@ export async function buildMarkdownPendingCitationMetadata(
   }
 
   const planned = await planMarkdownBlocks(targetText);
-  const blocksWithCitation = planned.blocks.filter((block) =>
+  const blocksWithCitation = planned.bodyBlocks.filter((block) =>
     block.includes('[@') || block.includes('\\[@')
   );
   if (blocksWithCitation.length === 0) {

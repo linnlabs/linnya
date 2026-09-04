@@ -3,7 +3,10 @@
  * @description 后端 Markdown -> doc JSON 导入入口。
  */
 
-import { convertBlockEventsToDocJson } from './blockEventToDocJson';
+import {
+  convertBlockEventsToDocJson,
+  type MarkdownAnnotationCommentAdmitter,
+} from './blockEventToDocJson';
 import { normalizeParsedBlockEvents } from './normalizeBlockEvents';
 import { parseMarkdownToBlocksInNode } from './parserAdapterNode';
 import { validateMarkdownDocJson } from './schemaLite';
@@ -25,7 +28,8 @@ export type MarkdownBlockParser = (markdown: string) => Promise<WasmBlockEventLi
  */
 export async function importMarkdownToDocJson(
   markdown: string,
-  parser: MarkdownBlockParser = parseMarkdownToBlocksInNode
+  parser: MarkdownBlockParser = parseMarkdownToBlocksInNode,
+  admitAnnotationComment?: MarkdownAnnotationCommentAdmitter,
 ): Promise<MarkdownImportResult> {
   if (!markdown.trim()) {
     return { docJson: null, blockEvents: [] };
@@ -36,7 +40,7 @@ export async function importMarkdownToDocJson(
     return { docJson: null, blockEvents: [] };
   }
 
-  const rawDocJson = convertBlockEventsToDocJson(blockEvents);
+  const rawDocJson = convertBlockEventsToDocJson(blockEvents, admitAnnotationComment);
   if (!rawDocJson) {
     return { docJson: null, blockEvents };
   }

@@ -11,6 +11,7 @@ import {
 import {
   admitMarkdownAnnotationComment,
   MarkdownAnnotationsSchema,
+  type MarkdownAnnotation,
 } from '@app/schemas';
 import type {
   MarkdownDocJson,
@@ -21,6 +22,20 @@ import type {
 } from './types';
 
 const SUPPORTED_MARK_TYPES = new Set(['bold', 'italic', 'strike', 'code', 'link']);
+
+export type MarkdownAnnotationCommentAdmitter = (
+  comment: string,
+  targetRootBlockIndex: number,
+) => MarkdownAnnotation;
+
+const admitImportedAnnotationComment: MarkdownAnnotationCommentAdmitter = comment => (
+  admitMarkdownAnnotationComment(comment, {
+    id: generateEditorAnnotationId(),
+    author: 'User',
+    timestamp: new Date().toISOString(),
+    meta: { source: 'manual' },
+  })
+);
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -197,7 +212,10 @@ function normalizeBlockTypeName(blockType: string): string {
 /**
  * 将 BlockEvent 序列转换为后端 doc JSON。
  */
-export function convertBlockEventsToDocJson(blockEvents: WasmBlockEventLike[]): MarkdownDocJson | null {
+export function convertBlockEventsToDocJson(
+  blockEvents: WasmBlockEventLike[],
+  admitAnnotationComment: MarkdownAnnotationCommentAdmitter = admitImportedAnnotationComment,
+): MarkdownDocJson | null {
   if (!Array.isArray(blockEvents) || blockEvents.length === 0) {
     return null;
   }
@@ -223,12 +241,7 @@ export function convertBlockEventsToDocJson(blockEvents: WasmBlockEventLike[]): 
       const previousAnnotations = MarkdownAnnotationsSchema.parse(
         target.attrs?.annotations ?? []
       );
-      const annotation = admitMarkdownAnnotationComment(rawFallback, {
-        id: generateEditorAnnotationId(),
-        author: 'User',
-        timestamp: new Date().toISOString(),
-        meta: { source: 'manual' },
-      });
+      const annotation = admitAnnotationComment(rawFallback, rootBlocks.length - 1);
       target.attrs = {
         ...(target.attrs ?? {}),
         annotations: [...previousAnnotations, annotation],
