@@ -10,6 +10,10 @@ import {
   ConversationControlSendRequestSchema,
   ConversationControlStatusRequestSchema,
   ConversationControlStopRequestSchema,
+  ConversationControlWorkspaceToolsRequestSchema,
+  ConversationControlWorkspaceToolsCallRequestSchema,
+  ConversationControlWorkspaceToolsDescribeRequestSchema,
+  ConversationControlWorkspaceToolsListRequestSchema,
 } from '@app/schemas';
 import { LinnyaCliError, type LinnyaCliInvocation } from '../definitions/cli';
 
@@ -274,6 +278,59 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
       });
       return { kind: 'command', request, pretty };
     }
+    case 'tools': {
+      const action = tokens.positionals[0];
+      if (action === 'list') {
+        assertAllowedOptions(tokens, []);
+        if (tokens.positionals.length !== 1) usageError('tools list does not accept arguments');
+        const request = ConversationControlWorkspaceToolsListRequestSchema.parse({
+          schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+          command: 'workspace_tools',
+          action: 'list',
+        });
+        return { kind: 'command', request, pretty };
+      }
+      if (action === 'describe') {
+        assertAllowedOptions(tokens, []);
+        if (tokens.positionals.length !== 2) {
+          usageError('tools describe requires exactly one tool name');
+        }
+        const request = ConversationControlWorkspaceToolsDescribeRequestSchema.parse({
+          schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+          command: 'workspace_tools',
+          action: 'describe',
+          tool_name: tokens.positionals[1],
+        });
+        return { kind: 'command', request, pretty };
+      }
+      if (action === 'call') {
+        assertAllowedOptions(tokens, [
+          'conversation', 'project', 'args-json', 'interval', 'timeout',
+        ]);
+        if (tokens.positionals.length !== 2) {
+          usageError('tools call requires exactly one tool name');
+        }
+        const request = ConversationControlWorkspaceToolsCallRequestSchema.parse({
+          schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+          command: 'workspace_tools',
+          action: 'call',
+          tool_name: tokens.positionals[1],
+          args: readString(tokens, 'args-json') === undefined
+            ? {}
+            : parseJsonOption(tokens, 'args-json'),
+          conversation_id: readString(tokens, 'conversation'),
+          project_id: readString(tokens, 'project'),
+        });
+        return {
+          kind: 'workspace-tool-call',
+          request,
+          intervalMs: readPositiveInteger(tokens, 'interval', 250),
+          timeoutMs: readPositiveInteger(tokens, 'timeout', 60_000),
+          pretty,
+        };
+      }
+      usageError('tools requires one of: list, describe, call');
+    }
     default:
       usageError(`Unknown command: ${command}`);
   }
@@ -290,7 +347,11 @@ export function parseCliInvocation(argv: readonly string[]): LinnyaCliInvocation
   if (command === 'help' || readBoolean(tokens, 'help')) return { kind: 'help' };
   const invocation = parseCommand(command, tokens);
   // 最终再走顶层 union，防止各命令构造器与 wire 合同发生漂移。
-  if (invocation.kind === 'command' || invocation.kind === 'status') {
+  if (
+    invocation.kind === 'command'
+    || invocation.kind === 'status'
+    || invocation.kind === 'workspace-tool-call'
+  ) {
     ConversationControlCommandRequestSchema.parse(invocation.request);
   }
   return invocation;

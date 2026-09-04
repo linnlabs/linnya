@@ -2,6 +2,34 @@ import { describe, expect, it } from 'vitest';
 import { parseCliInvocation } from './parseCliInvocation';
 
 describe('parseCliInvocation', () => {
+  it('只接受五个 Workspace 工具，并要求调用绑定项目或会话', () => {
+    expect(parseCliInvocation(['tools', 'list'])).toMatchObject({
+      request: { command: 'workspace_tools', action: 'list' },
+    });
+    expect(parseCliInvocation(['tools', 'describe', 'edit_file'])).toMatchObject({
+      request: { action: 'describe', tool_name: 'edit_file' },
+    });
+    expect(parseCliInvocation([
+      'tools', 'call', 'write_file',
+      '--project', 'project-1',
+      '--args-json', '{"locator":"workspace:/notes.md","content":"# Notes"}',
+    ])).toMatchObject({
+      kind: 'workspace-tool-call',
+      request: {
+        action: 'call',
+        tool_name: 'write_file',
+        project_id: 'project-1',
+        args: { locator: 'workspace:/notes.md', content: '# Notes' },
+      },
+    });
+    expect(() => parseCliInvocation([
+      'tools', 'call', 'shell', '--project', 'project-1',
+    ])).toThrow();
+    expect(() => parseCliInvocation([
+      'tools', 'call', 'read_file', '--args-json', '{}',
+    ])).toThrow('workspace tool call requires conversation_id or project_id');
+  });
+
   it('把 models 投影成无参数的窄查询合同', () => {
     expect(parseCliInvocation(['models'])).toEqual({
       kind: 'command',

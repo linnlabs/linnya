@@ -13,7 +13,7 @@ POST /api/v1/conversation-control/commands
 
 `handshake` 返回协议版本、App 实例 ID、实际能力和请求/watch 上限；`commands` 使用共享 strict schema 接纳与返回命令。非法 JSON、超限 body、合同错误和 use-case 错误都投影为稳定 JSON，不落到 Express HTML 错误页。
 
-当前握手声明 `send / models / list / messages / status / respond / stop / result / audit`。
+当前握手声明 `send / models / list / messages / status / respond / stop / result / audit / workspace_tools`。
 
 ## 安全边界
 
@@ -31,7 +31,7 @@ descriptor owner 在 API Server 已绑定真实端口且路由装配成功后才
 
 ## 依赖装配
 
-`createLinnyaConversationControlUseCase.ts` 是 app-level composition root：把 Model Catalog、Provider Account、Flow、run registry、durable Conversation history 与 Telemetry 安全查询映射到 use case 的窄 ports。模型查询只投影安全选择事实，并复用正式模型运行可用性判断；业务条件、状态选择、审计聚合和结果语义必须留在 application feature 的 functions，HTTP router 只能完成 parse、调用与错误投影。
+`createLinnyaConversationControlUseCase.ts` 是 app-level composition root：把 Model Catalog、Provider Account、Flow、run registry、durable Conversation history、Tool runtime 与 Telemetry 安全查询映射到 use case 的窄 ports。Tool runtime 只用于读取固定五个 Workspace 工具的真实 schema；CLI 不能借此访问其他已注册工具。模型查询只投影安全选择事实，并复用正式模型运行可用性判断；业务条件、状态选择、审计聚合和结果语义必须留在 application feature 的 functions，HTTP router 只能完成 parse、调用与错误投影。
 
 ## 测试
 

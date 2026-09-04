@@ -28,7 +28,7 @@ function hasWatchSettled(
 
 export async function watchConversationStatus(
   options: WatchConversationStatusOptions,
-): Promise<void> {
+): Promise<ConversationControlRunStatusSnapshot | null> {
   if (options.intervalMs < options.client.handshake.limits.min_watch_interval_ms) {
     throw new LinnyaCliError(
       'invalid_request',
@@ -70,7 +70,7 @@ export async function watchConversationStatus(
       previousSnapshot = serialized;
       sequence += 1;
     }
-    if (!response.run || hasWatchSettled(response.run.status)) return;
+    if (!response.run || hasWatchSettled(response.run.status)) return response.run;
     if (now() - startedAt >= options.timeoutMs) {
       throw new LinnyaCliError(
         'transport_failure',

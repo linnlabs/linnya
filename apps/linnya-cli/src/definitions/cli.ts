@@ -6,6 +6,7 @@ import type {
   ConversationControlErrorCode,
   ConversationControlHandshakeResponse,
   ConversationControlStatusRequest,
+  ConversationControlWorkspaceToolsRequest,
 } from '@app/schemas';
 import packageManifest from '../../package.json';
 
@@ -47,13 +48,24 @@ export type LinnyaCliInvocation =
   | { readonly kind: 'version' }
   | {
       readonly kind: 'command';
-      readonly request: Exclude<ConversationControlCommandRequest, ConversationControlStatusRequest>;
+      readonly request: Exclude<
+        ConversationControlCommandRequest,
+        | ConversationControlStatusRequest
+        | Extract<ConversationControlWorkspaceToolsRequest, { action: 'call' }>
+      >;
       readonly pretty: boolean;
     }
   | {
       readonly kind: 'status';
       readonly request: ConversationControlStatusRequest;
       readonly watch: boolean;
+      readonly intervalMs: number;
+      readonly timeoutMs: number;
+      readonly pretty: boolean;
+    }
+  | {
+      readonly kind: 'workspace-tool-call';
+      readonly request: Extract<ConversationControlWorkspaceToolsRequest, { action: 'call' }>;
       readonly intervalMs: number;
       readonly timeoutMs: number;
       readonly pretty: boolean;

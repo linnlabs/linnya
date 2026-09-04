@@ -52,6 +52,8 @@ link：Workspace 文件使用 `workspace:/...`，对话过程文件使用 `conve
 
 所有工具统一通过 `ToolContext.databaseService` 访问 Workspace DB，不走 renderer IPC。
 
+除了 Agent 正常调用，Conversation CLI 也可以通过 `tools call` 发起这五个工具。CLI 只负责声明工具名、参数和 Conversation/项目作用域；Host 仍把请求送入同一个 Flow、ToolNode 与 ToolContext，完整复用本文件定义的 admission、locator、权限、pending revision、审计和 UI 投影。它不是第二套 Workspace API，也不允许绕过 registry 直接调用 `run()`。CLI 合同与作用域规则见 [`apps/linnya-cli/README.md`](../../../apps/linnya-cli/README.md)。
+
 ### 1.1 单一命令身份与执行 admission
 
 locator 表达节点当前地址，inode 表达跨重命名/移动仍稳定的节点身份。工具成功后同时返回二者，是对同一个真实节点的两项事实；下一次调用只能选择一个作为命令权威：

@@ -285,6 +285,7 @@ export class AgentRunnerService {
                   args: hostToolCall.args,
                   history: initialHistory,
                   metadata: lifecycleCoordinator.getMappingContext().metadata,
+                  completionMode: hostToolCall.completion_mode,
                 })
               : undefined;
             const publishedHostToolDecision = hostToolBootstrap
@@ -337,7 +338,15 @@ export class AgentRunnerService {
                 executorLocal,
                 newEvents,
                 ...(hostToolBootstrap
-                  ? { pendingToolCalls: hostToolBootstrap.localPatch.pendingToolCalls }
+                  ? {
+                      pendingToolCalls: hostToolBootstrap.localPatch.pendingToolCalls,
+                      ...(hostToolBootstrap.localPatch.toolBatchCompletionMode
+                        ? {
+                            toolBatchCompletionMode:
+                              hostToolBootstrap.localPatch.toolBatchCompletionMode,
+                          }
+                        : {}),
+                    }
                   : {}),
                 toolContext,
                 runtimeEventSink: scopedRuntimeEventSink,

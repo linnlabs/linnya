@@ -742,6 +742,7 @@ export async function configureRoutes(
       history: initializedHistoryService,
       telemetry: telemetryPort,
       events: createEventStoreExecutionAuditEventPort(conversationEventStore),
+      tools: defaultToolRuntimePort,
     });
     logger.info('✅ 历史管理服务已初始化');
     logger.info('✅ 流程编排器已初始化');

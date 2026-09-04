@@ -37,15 +37,20 @@ describe('host tool call wire contract', () => {
           limit: 2,
           note: null,
         },
+        completion_mode: 'yield_after_batch',
       },
     });
 
     expect(parsed.host_tool_call?.tool_name).toBe('test_tool');
+    expect(parsed.host_tool_call?.completion_mode).toBe('yield_after_batch');
     expect(ConversationOptions.safeParse({
       host_tool_call: { tool_name: ' ', args: {} },
     }).success).toBe(false);
     expect(ConversationOptions.safeParse({
       host_tool_call: { tool_name: 'test_tool', args: { invalid: Number.NaN } },
+    }).success).toBe(false);
+    expect(ConversationOptions.safeParse({
+      host_tool_call: { tool_name: 'test_tool', args: {}, completion_mode: 'unknown' },
     }).success).toBe(false);
   });
 });

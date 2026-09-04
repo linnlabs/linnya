@@ -11,6 +11,7 @@ import { parseCliInvocation } from '../functions/parseCliInvocation';
 import { exitCodeForError, projectCliError } from '../functions/projectCliError';
 import { createConversationControlConnection } from './createConversationControlConnection';
 import { watchConversationStatus } from './watchConversationStatus';
+import { executeWorkspaceToolCall } from './executeWorkspaceToolCall';
 
 interface RunCliOptions {
   readonly connection?: ConversationControlConnectionPort;
@@ -33,6 +34,9 @@ export function linnyaCliUsage(): string {
     '  linnya stop <conversation-id> [--run ID] [--reason TEXT]',
     '  linnya result <conversation-id> [--run ID]',
     '  linnya audit <conversation-id> [--run ID]',
+    '  linnya tools list',
+    '  linnya tools describe <tool-name>',
+    '  linnya tools call <tool-name> (--conversation ID | --project ID) [--args-json JSON] [--interval MS] [--timeout MS]',
     '',
     'Output:',
     '  Single commands write one JSON value to stdout. status --watch writes JSONL frames.',
@@ -79,6 +83,23 @@ export async function runCli(
     }
 
     const client = await (options.connection ?? createConversationControlConnection()).connect();
+    if (invocation.kind === 'workspace-tool-call') {
+      const result = await executeWorkspaceToolCall({
+        client,
+        request: invocation.request,
+        intervalMs: invocation.intervalMs,
+        timeoutMs: invocation.timeoutMs,
+        now: options.now,
+        sleep: options.sleep,
+      });
+      const output = serialize(result, invocation.pretty);
+      if (result.ok) {
+        io.write(output);
+        return LINNYA_CLI_EXIT.success;
+      }
+      io.writeError(output);
+      return LINNYA_CLI_EXIT.internal;
+    }
     if (invocation.kind === 'status' && invocation.watch) {
       await watchConversationStatus({
         client,

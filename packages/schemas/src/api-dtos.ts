@@ -212,6 +212,7 @@ const ContextFenceInjection = z.object({
 export const HostToolCallRequest = z.object({
   tool_name: z.string().trim().min(1),
   args: z.record(JsonValueSchema),
+  completion_mode: z.enum(['continue_to_llm', 'yield_after_batch']).optional(),
 });
 
 export type HostToolCallRequestData = z.infer<typeof HostToolCallRequest>;
@@ -226,7 +227,7 @@ export const ConversationOptions = z.object({
    * - 该字段是通用执行参数：不绑定具体业务编排概念，仅描述“本次 run 从哪里开始”。
    */
   execution_start_node: z.enum(['user', 'llm']).optional(),
-  /** host 指定工具后直接从 ToolNode 启动，工具完成后仍回到当前 Agent 的 LLM。 */
+  /** host 指定工具后直接从 ToolNode 启动；批次完成后的去向由 completion_mode 声明。 */
   host_tool_call: HostToolCallRequest.optional(),
   /**
    * turn_id（Phase 2：Step-per-Turn 对齐字段）

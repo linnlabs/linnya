@@ -4,6 +4,7 @@ import { ConversationHistoryListItemSchema } from '../conversation/history';
 import { ConversationUiMessageSchema } from '../conversation/ui-message';
 import { ModelPickerReasoningSchema } from '../model-picker';
 import { CONVERSATION_CONTROL_SCHEMA_VERSION } from './protocol';
+import { ConversationControlWorkspaceToolNameSchema } from './commands';
 
 const SuccessBaseFields = {
   schema_version: z.literal(CONVERSATION_CONTROL_SCHEMA_VERSION),
@@ -230,6 +231,40 @@ export const ConversationControlResultResponseSchema = z.discriminatedUnion('res
       reason: z.enum(['run_not_completed', 'final_answer_missing', 'projection_preparing']),
     })
     .strict(),
+]);
+
+export const ConversationControlWorkspaceToolSummarySchema = z.object({
+  name: ConversationControlWorkspaceToolNameSchema,
+  description: z.string().trim().min(1),
+}).strict();
+
+export const ConversationControlWorkspaceToolDescriptorSchema =
+  ConversationControlWorkspaceToolSummarySchema
+    .extend({ parameters: JsonValueSchema })
+    .strict();
+
+const WorkspaceToolsResponseBaseFields = {
+  ...SuccessBaseFields,
+  command: z.literal('workspace_tools'),
+} as const;
+
+export const ConversationControlWorkspaceToolsResponseSchema = z.discriminatedUnion('action', [
+  z.object({
+    ...WorkspaceToolsResponseBaseFields,
+    action: z.literal('list'),
+    tools: z.array(ConversationControlWorkspaceToolSummarySchema),
+  }).strict(),
+  z.object({
+    ...WorkspaceToolsResponseBaseFields,
+    action: z.literal('describe'),
+    tool: ConversationControlWorkspaceToolDescriptorSchema,
+  }).strict(),
+  z.object({
+    ...WorkspaceToolsResponseBaseFields,
+    action: z.literal('call'),
+    tool_name: ConversationControlWorkspaceToolNameSchema,
+    receipt: ConversationControlAcceptedReceiptSchema,
+  }).strict(),
 ]);
 
 const ConversationControlAuditTokenTotalsSchema = z
@@ -561,6 +596,7 @@ export const ConversationControlErrorResponseSchema = z
       'stop',
       'result',
       'audit',
+      'workspace_tools',
     ]).optional(),
     error: z
       .object({
@@ -582,6 +618,7 @@ export const ConversationControlCommandResponseSchema = z.union([
   ConversationControlStopResponseSchema,
   ConversationControlResultResponseSchema,
   ConversationControlAuditResponseSchema,
+  ConversationControlWorkspaceToolsResponseSchema,
   ConversationControlErrorResponseSchema,
 ]);
 
@@ -617,6 +654,15 @@ export type ConversationControlResultResponse = z.infer<
 >;
 export type ConversationControlAuditResponse = z.infer<
   typeof ConversationControlAuditResponseSchema
+>;
+export type ConversationControlWorkspaceToolDescriptor = z.infer<
+  typeof ConversationControlWorkspaceToolDescriptorSchema
+>;
+export type ConversationControlWorkspaceToolSummary = z.infer<
+  typeof ConversationControlWorkspaceToolSummarySchema
+>;
+export type ConversationControlWorkspaceToolsResponse = z.infer<
+  typeof ConversationControlWorkspaceToolsResponseSchema
 >;
 export type ConversationControlErrorResponse = z.infer<
   typeof ConversationControlErrorResponseSchema

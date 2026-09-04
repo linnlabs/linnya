@@ -7,6 +7,7 @@ import {
   ConversationControlAuditResponseSchema,
   ConversationControlProgressFrameSchema,
   ConversationControlRunStatusSnapshotSchema,
+  ConversationControlWorkspaceToolsResponseSchema,
 } from './index';
 
 describe('conversation-control wire contract', () => {
@@ -71,6 +72,74 @@ describe('conversation-control wire contract', () => {
       message: 'hello',
       imageGenerationModelId: 'internal-field-must-not-cross-wire',
     }).success).toBe(false);
+  });
+
+  it('workspace_tools 只允许五个基础工具，call 必须声明项目作用域', () => {
+    expect(ConversationControlCommandRequestSchema.parse({
+      schema_version: 1,
+      command: 'workspace_tools',
+      action: 'call',
+      tool_name: 'edit_file',
+      args: {
+        locator: 'workspace:/notes.md',
+        old_text: 'before',
+        new_text: 'after',
+      },
+      conversation_id: 'conversation-1',
+    })).toMatchObject({
+      command: 'workspace_tools',
+      action: 'call',
+      tool_name: 'edit_file',
+    });
+
+    expect(ConversationControlCommandRequestSchema.safeParse({
+      schema_version: 1,
+      command: 'workspace_tools',
+      action: 'call',
+      tool_name: 'shell',
+      args: {},
+      project_id: 'project-1',
+    }).success).toBe(false);
+
+    expect(ConversationControlCommandRequestSchema.safeParse({
+      schema_version: 1,
+      command: 'workspace_tools',
+      action: 'call',
+      tool_name: 'read_file',
+      args: { locator: 'workspace:/notes.md' },
+    }).success).toBe(false);
+  });
+
+  it('workspace_tools list 保持轻量，只有 describe 返回完整参数合同', () => {
+    const summary = {
+      name: 'read_file',
+      description: 'Read one Workspace file',
+    } as const;
+    expect(ConversationControlWorkspaceToolsResponseSchema.parse({
+      schema_version: 1,
+      ok: true,
+      command: 'workspace_tools',
+      action: 'list',
+      tools: [summary],
+    })).toMatchObject({ tools: [summary] });
+
+    expect(ConversationControlWorkspaceToolsResponseSchema.safeParse({
+      schema_version: 1,
+      ok: true,
+      command: 'workspace_tools',
+      action: 'list',
+      tools: [{ ...summary, parameters: { type: 'object' } }],
+    }).success).toBe(false);
+
+    expect(ConversationControlWorkspaceToolsResponseSchema.parse({
+      schema_version: 1,
+      ok: true,
+      command: 'workspace_tools',
+      action: 'describe',
+      tool: { ...summary, parameters: { type: 'object' } },
+    })).toMatchObject({
+      tool: { ...summary, parameters: { type: 'object' } },
+    });
   });
 
   it('respond 只暴露 expected interaction 与用户响应，不接纳 resume token', () => {

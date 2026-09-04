@@ -1,4 +1,5 @@
 import {
+  CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES,
   CONVERSATION_CONTROL_SCHEMA_VERSION,
   type ConversationControlCommandRequest,
   type ConversationControlListRequest,
@@ -9,6 +10,7 @@ import {
   type ConversationControlSendRequest,
   type ConversationControlStatusRequest,
   type ConversationControlStopRequest,
+  type ConversationControlWorkspaceToolsRequest,
   type ConversationNextRequest,
 } from '@app/schemas';
 import { ConversationControlError } from '../definitions/conversationControlError';
@@ -80,6 +82,72 @@ function buildSendRequest(
       project_metadata: request.project_id ? { id: request.project_id } : undefined,
       run_lane: 'foreground',
       event_visibility: 'conversation',
+    },
+  };
+}
+
+async function resolveWorkspaceToolProjectId(
+  ports: ConversationControlUseCasePorts,
+  request: Extract<ConversationControlWorkspaceToolsRequest, { action: 'call' }>,
+): Promise<string> {
+  if (!request.conversation_id) {
+    if (!request.project_id) {
+      throw new ConversationControlError(
+        'invalid_request',
+        'Workspace tool call requires a project or an existing conversation',
+      );
+    }
+    return request.project_id;
+  }
+
+  const persistedProjectId = await ports.history.readConversationProjectId(
+    request.conversation_id,
+  );
+  if (persistedProjectId === undefined) {
+    throw new ConversationControlError(
+      'invalid_request',
+      `Conversation ${request.conversation_id} does not exist`,
+    );
+  }
+  if (persistedProjectId === null) {
+    throw new ConversationControlError(
+      'invalid_request',
+      `Conversation ${request.conversation_id} is not bound to a Workspace project`,
+    );
+  }
+  if (request.project_id && request.project_id !== persistedProjectId) {
+    throw new ConversationControlError(
+      'invalid_request',
+      `Conversation ${request.conversation_id} belongs to another Workspace project`,
+    );
+  }
+  return persistedProjectId;
+}
+
+function buildWorkspaceToolRequest(input: {
+  readonly request: Extract<ConversationControlWorkspaceToolsRequest, { action: 'call' }>;
+  readonly conversationId: string;
+  readonly projectId: string;
+  readonly timestamp: number;
+}): ConversationNextRequest {
+  return {
+    conversation_id: input.conversationId,
+    project_id: input.projectId,
+    new_events: [{
+      type: 'user_input',
+      timestamp: input.timestamp,
+      content: `CLI 调用 Workspace 工具：${input.request.tool_name}`,
+      source: 'user',
+    }],
+    options: {
+      project_metadata: { id: input.projectId },
+      run_lane: 'foreground',
+      event_visibility: 'conversation',
+      host_tool_call: {
+        tool_name: input.request.tool_name,
+        args: input.request.args,
+        completion_mode: 'yield_after_batch',
+      },
     },
   };
 }
@@ -178,6 +246,7 @@ export function createConversationControlUseCase(
         case 'stop': return useCase.stop(request);
         case 'result': return useCase.result(request);
         case 'audit': return useCase.audit(request);
+        case 'workspace_tools': return useCase.workspaceTools(request);
       }
     },
 
@@ -405,6 +474,68 @@ export function createConversationControlUseCase(
         requestedRunId: request.run_id,
         audit,
       });
+    },
+
+    async workspaceTools(request) {
+      if (request.action === 'list') {
+        const tools = ports.workspaceTools.describe(CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES);
+        return {
+          schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+          ok: true,
+          command: 'workspace_tools',
+          action: 'list',
+          tools: tools.map(({ name, description }) => ({ name, description })),
+        };
+      }
+      if (request.action === 'describe') {
+        const tool = ports.workspaceTools.describe([request.tool_name])[0];
+        if (!tool) {
+          throw new ConversationControlError(
+            'internal_error',
+            `Workspace tool ${request.tool_name} is not registered`,
+          );
+        }
+        return {
+          schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+          ok: true,
+          command: 'workspace_tools',
+          action: 'describe',
+          tool,
+        };
+      }
+
+      const projectId = await resolveWorkspaceToolProjectId(ports, request);
+      const conversationId = request.conversation_id ?? ports.createConversationId();
+      const existingRuns = await ports.runs.findByConversation(conversationId);
+      if (existingRuns.some(run => isForegroundRootRun(run) && isActiveRun(run))) {
+        throw new ConversationControlError(
+          'conversation_busy',
+          `Conversation ${conversationId} already has an active foreground run`,
+          true,
+        );
+      }
+      const acceptance = await ports.flow.start(buildWorkspaceToolRequest({
+        request,
+        conversationId,
+        projectId,
+        timestamp: ports.now(),
+      }));
+      return {
+        schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+        ok: true,
+        command: 'workspace_tools',
+        action: 'call',
+        tool_name: request.tool_name,
+        receipt: {
+          conversation_id: acceptance.conversationId,
+          user_message_id: firstIncomingEventId(acceptance),
+          turn_id: acceptance.turnId,
+          run_id: acceptance.runId,
+          execution_id: acceptance.executionId,
+          agent_id: acceptance.agentId,
+          accepted_at: acceptance.acceptedAt,
+        },
+      };
     },
   };
   return useCase;

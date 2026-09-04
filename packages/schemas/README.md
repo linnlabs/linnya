@@ -114,7 +114,9 @@
 
 `promptKey` 的 wire contract 保持为字符串。内置 key 由 `PromptKeys` 提供，插件 key 则由 app-host registry 注册与校验，不能要求每个插件回到 schemas 包扩充枚举。
 
-`ConversationOptions.host_tool_call` 是 host 主动发起单次已注册工具的通用请求合同。调用方只提供非空 `tool_name` 与可序列化 JSON `args`；事件 ID、tool call ID、配对 decision 和 Graph 起点均由 host/runtime 生成。该字段不把工具暴露给 Agent，也不承载具体 batch、table 或 workflow 语义。
+`ConversationOptions.host_tool_call` 是 host 主动发起单次已注册工具的通用请求合同。调用方提供非空 `tool_name`、可序列化 JSON `args`，以及可选的批次完成策略；事件 ID、tool call ID、配对 decision 和 Graph 起点均由 host/runtime 生成。该字段不把工具暴露给 Agent，也不承载具体 batch、table 或 workflow 语义。
+
+`completion_mode` 省略或为 `continue_to_llm` 时，工具批次完成后继续当前 Agent 的 LLM 循环；`yield_after_batch` 则在完整批次产生 terminal tool output 后直接结束 run。后者适用于 CLI 等 Host 直接工具入口，不能提前跳过仍在执行的工具，也不能改变 protocol fuse 的失败语义。
 
 `ConversationUserInputCommittedEventSchema` 是 Host durable commit 到 Renderer 的 app-level ack，不是 RuntimeEvent，也不进入 EventStore。它证明指定 conversation、message 与 append/replace operation 已原子提交。Renderer 可以预分配请求 `messageId`，但在该 ack 到达前不得把它当作 UI message；`persist=false` 的请求不产生 ack。
 

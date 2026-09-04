@@ -1,6 +1,6 @@
 # Conversation Control Use Case
 
-本 feature 是 Linnya Conversation 外部控制动作的产品级 use case。它把 `send / models / list / messages / status / respond / stop / result / audit` 编排到现有模型目录、Flow、run registry、durable history 和执行审计 ports，供 CLI 等入口复用。
+本 feature 是 Linnya Conversation 外部控制动作的产品级 use case。它把 `send / models / list / messages / status / respond / stop / result / audit / workspace_tools` 编排到现有模型目录、Flow、run registry、durable history、工具目录和执行审计 ports，供 CLI 等入口复用。
 
 它不拥有 HTTP、鉴权、命令行解析、数据库 SQL 或 Agent runtime。共享 wire 合同位于 `packages/schemas/src/conversation-control/`；本地传输位于 `adapters/conversation-control-bridge/`。
 
@@ -13,6 +13,7 @@
 | `ConversationControlExecutionProgressPort` | 读取 Graph 已持久化的当前节点与累计步数 |
 | `ConversationControlModelCatalogPort` | 查询安全模型投影，并按统一运行可用性规则校验显式 Chat/图片模型 |
 | `ConversationControlHistoryPort` | 会话列表、消息窗口、指定 run 最终回答、会话 Agent 选择 |
+| `ConversationControlWorkspaceToolCatalogPort` | 只读取五个获准 Workspace 工具的正式描述与参数 schema |
 | `ExecutionAuditExportUseCase` | 关联 RunRegistry、EventStore、Command Audit 与 Telemetry 的安全只读执行摘要 |
 
 use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLite 实现。跨 domain 的具体组合在 `adapters/conversation-control-bridge/orchestration/createLinnyaConversationControlUseCase.ts` 完成。
@@ -34,6 +35,9 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
   提供完整 durable tool decision/output，Command Audit 提供 Shell 进程终态，Telemetry
   仅按 `best_effort` 聚合 LLM、tool、context compaction 与 run terminal 观测。输出不含
   prompt、摘要正文、工具参数、工具输出或原始错误正文。
+- `workspace_tools` 是固定五工具的窄入口：`list_files / read_file / grep / write_file / edit_file`。`list / describe` 读取真实 Tool registry schema；`call` 必须绑定项目或已有 Conversation，并复用正式 Flow admission 与 ToolNode 执行。
+- 只给项目时创建前端可见的新 Conversation；只给 Conversation 时从历史 owner 解析项目；同时提供时必须一致。Workspace locator 本身不携带项目身份，禁止按当前前端页面或文件存在性猜测作用域。
+- Host 工具请求使用 `yield_after_batch`：完整工具批次结算后结束 run，不调用 LLM。工具 decision/output、权限、审计、pending revision 与 UI projection 仍走普通工具链，不能在本 feature 复制 Workspace 执行逻辑。
 
 ## 并发与已知边界
 
@@ -48,6 +52,6 @@ pnpm exec vitest run \
   src/app-hosts/linnya/application/conversation-control/__tests__/conversationControlUseCase.integration.test.ts
 ```
 
-集成测试使用窄 ports 穿过真实 use case，覆盖 durable acceptance、active-run 冲突、`awaiting_user` exact interaction resume、stop terminal settlement、exact-run result 与安全 audit 投影。执行摘要自身的父子 run scope、token 可信度和工具失败聚合由 `application/execution-audit-export/__tests__/` 覆盖；字段严格性由 `packages/schemas/src/conversation-control/conversation-control.test.ts` 负责。Flow 的交互响应测试还必须验证 `approved` 已被投影为“等待条件已满足”的自包含 observation，不能只断言状态枚举和 JSON payload。
+集成测试使用窄 ports 穿过真实 use case，覆盖 durable acceptance、active-run 冲突、`awaiting_user` exact interaction resume、stop terminal settlement、exact-run result、安全 audit 投影，以及 Workspace 工具的 allowlist、项目作用域与 Host 请求。执行摘要自身的父子 run scope、token 可信度和工具失败聚合由 `application/execution-audit-export/__tests__/` 覆盖；字段严格性由 `packages/schemas/src/conversation-control/conversation-control.test.ts` 负责。Flow 的交互响应测试还必须验证 `approved` 已被投影为“等待条件已满足”的自包含 observation，不能只断言状态枚举和 JSON payload。
 
 CLI 使用方法和端到端测试分层见 `apps/linnya-cli/README.md`。
