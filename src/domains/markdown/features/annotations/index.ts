@@ -7,7 +7,20 @@ export {
   appendMarkdownAnnotations,
   type MarkdownAnnotationInsertion,
 } from './functions/appendMarkdownAnnotations';
-export { planMarkdownFileAnnotationCreations } from './functions/planMarkdownFileAnnotationCreations';
+export {
+  applyMarkdownAnnotationMutations,
+  type MarkdownAnnotationDeletion,
+  type MarkdownAnnotationUpdate,
+} from './functions/applyMarkdownAnnotationMutations';
+export {
+  planMarkdownFileAnnotationChanges,
+  type MarkdownFileAnnotationChangePlan,
+} from './functions/planMarkdownFileAnnotationChanges';
+export {
+  applyMarkdownAnnotationChanges,
+  type ApplyMarkdownAnnotationChangesResult,
+  type MarkdownAnnotationMutationStore,
+} from './orchestration/applyMarkdownAnnotationChanges';
 export {
   createMarkdownAnnotations,
   type CreateMarkdownAnnotationsResult,

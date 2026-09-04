@@ -4,12 +4,23 @@ import {
 } from '@app/schemas';
 import type { PlannedMarkdownAnnotationComment } from '../../normalization';
 import type { FlattenedMarkdownBlock } from '../../../shared';
-import type { MarkdownAnnotationCreationDraft } from '../orchestration/createMarkdownAnnotations';
+import type {
+  MarkdownAnnotationCreationDraft,
+} from '../orchestration/applyMarkdownAnnotationChanges';
+import type {
+  MarkdownAnnotationDeletion,
+  MarkdownAnnotationUpdate,
+} from './applyMarkdownAnnotationMutations';
 
 interface JsonNodeLike {
   readonly type?: unknown;
   readonly attrs?: unknown;
-  readonly content?: unknown;
+}
+
+export interface MarkdownFileAnnotationChangePlan {
+  readonly creations: readonly MarkdownAnnotationCreationDraft[];
+  readonly updates: readonly MarkdownAnnotationUpdate[];
+  readonly deletions: readonly MarkdownAnnotationDeletion[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -38,16 +49,14 @@ function annotationsEqual(left: MarkdownAnnotation, right: MarkdownAnnotation): 
 }
 
 /**
- * 将 file-style Markdown 中的普通 comment 规划为 Annotation 创建草稿。
- *
- * canonical envelope 只允许原样保留；修改或删除已有批注属于另一类 Annotation 命令，
- * 不能偷偷降级成 Revision pending，也不能把模型手写的身份当成新业务事实。
+ * 把 file-style Markdown 的 comment 字符变化解释为 Annotation 增删改。
+ * 普通 comment 只表达新增；canonical envelope 以稳定 ID 表达保留、编辑或删除。
  */
-export function planMarkdownFileAnnotationCreations(params: {
+export function planMarkdownFileAnnotationChanges(params: {
   readonly currentDocument: unknown;
   readonly currentBlocks: readonly FlattenedMarkdownBlock[];
   readonly annotationComments: readonly PlannedMarkdownAnnotationComment[];
-}): readonly MarkdownAnnotationCreationDraft[] {
+}): MarkdownFileAnnotationChangePlan {
   const currentByBlockId = readAnnotationsByBlockId(params.currentDocument);
   const commentsByIndex = new Map<number, PlannedMarkdownAnnotationComment[]>();
   for (const comment of params.annotationComments) {
@@ -56,7 +65,10 @@ export function planMarkdownFileAnnotationCreations(params: {
     else commentsByIndex.set(comment.targetBlockIndex, [comment]);
   }
 
-  const drafts: MarkdownAnnotationCreationDraft[] = [];
+  const creations: MarkdownAnnotationCreationDraft[] = [];
+  const updates: MarkdownAnnotationUpdate[] = [];
+  const deletions: MarkdownAnnotationDeletion[] = [];
+
   for (let index = 0; index < params.currentBlocks.length; index += 1) {
     const block = params.currentBlocks[index];
     if (!block) continue;
@@ -66,23 +78,35 @@ export function planMarkdownFileAnnotationCreations(params: {
       .map(comment => comment.parsed.kind === 'canonical' ? comment.parsed.annotation : null)
       .filter((annotation): annotation is MarkdownAnnotation => annotation !== null);
     const current = currentByBlockId.get(block.blockId) ?? [];
+    const currentById = new Map(current.map(annotation => [annotation.id, annotation]));
+    const targetIds = new Set<string>();
 
-    if (
-      current.length !== targetCanonical.length
-      || current.some(annotation => {
-        const target = targetCanonical.find(candidate => candidate.id === annotation.id);
-        return !target || !annotationsEqual(annotation, target);
-      })
-    ) {
-      throw new Error(
-        `[MarkdownAnnotation] ${block.ref} 的 canonical 批注只能原样保留；` +
-        '修改或删除批注必须走 Annotation 命令。'
-      );
+    for (const annotation of targetCanonical) {
+      if (targetIds.has(annotation.id)) {
+        throw new Error(`[MarkdownAnnotation] ${block.ref} 重复声明批注: ${annotation.id}`);
+      }
+      targetIds.add(annotation.id);
+      const existing = currentById.get(annotation.id);
+      if (!existing) {
+        throw new Error(
+          `[MarkdownAnnotation] ${block.ref} 包含未知 canonical 批注 ${annotation.id}；` +
+          '新增批注请使用普通 HTML comment。'
+        );
+      }
+      if (!annotationsEqual(existing, annotation)) {
+        updates.push({ blockId: block.blockId, annotation });
+      }
     }
 
+    for (const annotation of current) {
+      if (!targetIds.has(annotation.id)) {
+        deletions.push({ blockId: block.blockId, annotationId: annotation.id });
+      }
+    }
     for (const comment of targetComments) {
-      if (comment.parsed.kind !== 'plain') continue;
-      drafts.push({ blockId: block.blockId, content: comment.parsed.draft.content });
+      if (comment.parsed.kind === 'plain') {
+        creations.push({ blockId: block.blockId, content: comment.parsed.draft.content });
+      }
     }
   }
 
@@ -95,5 +119,5 @@ export function planMarkdownFileAnnotationCreations(params: {
     );
   }
 
-  return drafts;
+  return { creations, updates, deletions };
 }

@@ -79,7 +79,12 @@ function createMarkdownFileWriteProvider(params: {
         },
         touchDocumentUpdatedAt: workspaceMutation.touchDocumentUpdatedAt,
       });
-      if (write.edits.length > 0 || write.createdAnnotationIds.length > 0) {
+      if (
+        write.edits.length > 0
+        || write.createdAnnotationIds.length > 0
+        || write.updatedAnnotationIds.length > 0
+        || write.deletedAnnotationIds.length > 0
+      ) {
         params.mutationPublisher?.publish(
           createWorkspaceDocumentUpdatedEvent({
             node: {
@@ -99,7 +104,9 @@ function createMarkdownFileWriteProvider(params: {
           path: request.identity.path,
           replacedCount: request.replacedCount,
           pendingCount: write.edits.length,
-          annotationCount: write.createdAnnotationIds.length,
+          createdAnnotationCount: write.createdAnnotationIds.length,
+          updatedAnnotationCount: write.updatedAnnotationIds.length,
+          deletedAnnotationCount: write.deletedAnnotationIds.length,
         }),
       };
     },
@@ -111,11 +118,21 @@ function buildMarkdownFileWriteObservation(params: {
   readonly path: string;
   readonly replacedCount?: number;
   readonly pendingCount: number;
-  readonly annotationCount: number;
+  readonly createdAnnotationCount: number;
+  readonly updatedAnnotationCount: number;
+  readonly deletedAnnotationCount: number;
 }): string {
   const facts: string[] = [];
   if (params.pendingCount > 0) facts.push(`正文修订 ${params.pendingCount} 块待确认`);
-  if (params.annotationCount > 0) facts.push(`批注 ${params.annotationCount} 条已创建`);
+  if (params.createdAnnotationCount > 0) {
+    facts.push(`批注 ${params.createdAnnotationCount} 条已创建`);
+  }
+  if (params.updatedAnnotationCount > 0) {
+    facts.push(`批注 ${params.updatedAnnotationCount} 条已更新`);
+  }
+  if (params.deletedAnnotationCount > 0) {
+    facts.push(`批注 ${params.deletedAnnotationCount} 条已删除`);
+  }
   if (facts.length === 0) facts.push('内容无变化');
   const replacement = params.operation === 'edit'
     ? `，替换 ${params.replacedCount ?? 0} 处`
