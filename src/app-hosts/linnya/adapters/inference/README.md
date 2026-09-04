@@ -79,7 +79,7 @@ composition 才能接纳新的本地 capability。上游 package 补齐能力后
 Chat、OpenAI Responses、Anthropic Messages、Google Generative AI、DeepSeek
 Chat、MiniMax Chat、Moonshot/Kimi Chat、Alibaba/Qwen Chat、Mistral Chat、xAI
 Responses、Groq Chat、Cerebras Chat、OpenRouter Chat、Fireworks Chat、Together
-AI Chat、DeepInfra Chat、Cohere Chat 与 Z.AI Chat。它们统一使用 attempt-scoped
+AI Chat、DeepInfra Chat、Cohere Chat、Z.AI Chat 与 Ollama Chat。它们统一使用 attempt-scoped
 credential/base URL/headers、canonical message/tool mapper 和分 surface raw
 usage projector。存在专用 package 的正式厂商不能借用通用 compatible
 factory；SiliconFlow 国际站/中国站、NVIDIA NIM 与 ModelScope 经 package
@@ -88,8 +88,8 @@ inventory 和同类 Agent 交叉验证后共享
 `@ai-sdk/zai`，不保留 compatible 双路由；Moonshot 国际站、中国站与 Kimi
 Code 共享经过独立 base URL/两轮回放验证的 Moonshot
 capability，但各自仍是不同 connection 和 credential boundary。明确的 Custom
-API 与 Ollama
-route 使用通用 capability。OpenRouter 的官方 package 由 OpenRouter 发布，不属于
+API 与 Ollama 本地 route 使用通用 capability；Ollama Cloud 使用经过审核的
+`ai-sdk-ollama` 原生 Chat capability。OpenRouter 的官方 package 由 OpenRouter 发布，不属于
 `@ai-sdk/*`
 命名空间，但仍受同一 registry、版本、NOTICE 与 conformance 门禁约束。
 
@@ -160,6 +160,8 @@ registry 记录经过 conformance 验证的图片来源上限，route 不能声�
 `user_image`、`tool_result_image` 相交。产品开关不因某一个来源缺失而被整体禁用；设置页只提供统一的视觉识别语义开关，
 不把 route 级图片来源差异暴露为额外配置项。
 OpenAI-compatible Chat 可以接收用户图片但不能接收工具结果图片，这个差异不能通过 synthetic user message 抹平。
+Ollama Cloud 首版同样只声明用户图片输入；在官方 Cloud 对工具角色图片形成稳定合同并通过
+conformance 前，不把 community package 能序列化该字段等同于产品支持。
 
 Canonical message 的顺序属于 Linnkit 合同。普通 route 的 AI SDK
 capability 显式允许 `messages` 中的 system
@@ -185,7 +187,7 @@ fixture 已通过；`pnpm run test:inference:packaged:mac` 会生成隔离的 ad
 membership、route、默认 URL 与认证方式全部从正式 runtime
 manifest 自动投影，不再维护手写厂商表或 target union。`LINNYA_BYOK_TARGETS`
 必须显式填写一个或多个 target，逗号分隔；当前可选值为
-`openai-chat`、`openai-responses`、`chatgpt`、`opencode-go-openai-compatible-chat`、`opencode-go-openai-responses`、`opencode-go-anthropic-messages`、`anthropic`、`google`、`deepseek`、`minimax`、`moonshot`、`alibaba`、`mistral`、`xai`、`groq`、`cerebras`、`openrouter`、`fireworks`、`togetherai`、`deepinfra`、`cohere`、`siliconflow`、`siliconflow-cn`、`zai`、`nvidia`、`modelscope`，`all`
+`openai-chat`、`openai-responses`、`chatgpt`、`opencode-go-openai-compatible-chat`、`opencode-go-openai-responses`、`opencode-go-anthropic-messages`、`anthropic`、`google`、`deepseek`、`minimax`、`moonshot`、`alibaba`、`mistral`、`xai`、`groq`、`cerebras`、`openrouter`、`fireworks`、`togetherai`、`deepinfra`、`cohere`、`siliconflow`、`siliconflow-cn`、`zai`、`nvidia`、`modelscope`、`ollama-cloud`，`all`
 表示全部。脚本只要求当前所选 target 的专用变量，不再要求一次备齐所有厂商密钥。OpenCode
 Go 的三个 target 共用
 `LINNYA_BYOK_OPENCODE_GO_API_KEY`，但分别要求与 route 匹配的代表模型变量。`chatgpt`
@@ -220,6 +222,7 @@ token；产品运行时仍由 ProviderAccount 解析和刷新，不要求用户�
 | `zai`                                | `LINNYA_BYOK_ZAI_API_KEY`、`LINNYA_BYOK_ZAI_MODEL`                                        | `LINNYA_BYOK_ZAI_BASE_URL`            |
 | `nvidia`                             | `LINNYA_BYOK_NVIDIA_API_KEY`、`LINNYA_BYOK_NVIDIA_MODEL`                                  | `LINNYA_BYOK_NVIDIA_BASE_URL`         |
 | `modelscope`                         | `LINNYA_BYOK_MODELSCOPE_API_KEY`、`LINNYA_BYOK_MODELSCOPE_MODEL`                          | `LINNYA_BYOK_MODELSCOPE_BASE_URL`     |
+| `ollama-cloud`                       | `LINNYA_BYOK_OLLAMA_CLOUD_API_KEY`、`LINNYA_BYOK_OLLAMA_CLOUD_MODEL`                      | `LINNYA_BYOK_OLLAMA_CLOUD_BASE_URL`   |
 
 每个 target 强制执行“命名工具调用 → 工具结果 follow-up”两轮，要求两轮都有 Provider
 usage、第二轮有正文，并断言真实 Provider request count 恰好为 2。该脚本只接受

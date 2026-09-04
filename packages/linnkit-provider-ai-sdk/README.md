@@ -117,7 +117,8 @@ Core 和具体 Provider packages。
 
 `@linnlabs/linnkit` 是显式 peer dependency，本 package 只使用公开 `/ports` 和
 `/contracts`。`ai`、`@ai-sdk/provider`、全部 language Provider
-package 和 OpenRouter 官方 package 是本 package 的精确直接依赖；根应用不再替它拥有这些版本。Embedding、Image
+package、OpenRouter 官方 package 和经过审核的 `ai-sdk-ollama` community package 是本
+package 的精确直接依赖；根应用不再替它拥有这些版本。Embedding、Image
 Generation 与 Reranking 仍可在各自 Host
 adapter 中直接拥有所需依赖，这不属于 language adapter 的所有权。
 
@@ -168,7 +169,9 @@ parser、按 URL/模型名猜协议或失败后切 codec 的 fallback。
 Z.AI 是这条规则的现成案例：2026-08-26 发布的官方 `@ai-sdk/zai`
 已通过独立两轮 conformance，因此 Z.AI route 使用 `zai_chat`；SiliconFlow、NVIDIA
 NIM 与 ModelScope 等仍经单独准入的服务才继续共享 compatible
-capability。目录来源曾经观察到 compatible package，不构成退回通用 codec 的理由。
+capability。Ollama Cloud 使用 `ai-sdk-ollama` 的原生 `/api/chat` codec；factory 显式关闭该
+package 的可靠工具调用和对象生成重试，确保一个 canonical attempt 只产生一次 Provider
+请求。目录来源曾经观察到 compatible package，不构成退回通用 codec 的理由。
 
 模型目录更新不修改本 package factory；Provider
 package 更新也不修改 Host 的模型资料、onboarding、Linnkit 或 Agent 语义。
@@ -177,7 +180,7 @@ package 更新也不修改 Host 的模型资料、onboarding、Linnkit 或 Agent
 `--capability <id>`；`--all` 选择全部 capability，`--list`
 只输出脱敏选择结果而不执行。选择 `ai` 或 `@ai-sdk/provider`
 会自动升级为全矩阵；选择 `@ai-sdk/openai`
-会同时覆盖 Chat 和 Responses。该命令输出 conformance suite
+会同时覆盖 Chat 和 Responses；选择 `ai-sdk-ollama` 只覆盖原生 Ollama Chat。该命令输出 conformance suite
 version、受影响 capability、测试文件和 Provider package
 version，不输出 URL、凭据或 fixture body。
 

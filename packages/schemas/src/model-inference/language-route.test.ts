@@ -188,6 +188,7 @@ describe('ModelInferenceRouteSchema', () => {
     ['deepinfra_chat', 'openai_chat_completions', 'ai-sdk:deepinfra', 'bearer'],
     ['cohere_chat', 'cohere_chat', 'ai-sdk:cohere', 'bearer'],
     ['zai_chat', 'openai_chat_completions', 'ai-sdk:zai', 'bearer'],
+    ['ollama_chat', 'ollama_chat', 'ai-sdk:ollama', 'bearer'],
     ['minimax_chat', 'anthropic_messages', 'ai-sdk:minimax', 'api_key'],
     ['moonshot_chat', 'openai_chat_completions', 'ai-sdk:moonshotai', 'bearer'],
     ['alibaba_chat', 'openai_chat_completions', 'ai-sdk:alibaba', 'bearer'],

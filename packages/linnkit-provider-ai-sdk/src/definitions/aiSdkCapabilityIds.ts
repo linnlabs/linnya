@@ -18,6 +18,7 @@ export const AI_SDK_INFERENCE_CAPABILITY_IDS = {
   DEEPINFRA_CHAT: 'ai-sdk:deepinfra',
   COHERE_CHAT: 'ai-sdk:cohere',
   ZAI_CHAT: 'ai-sdk:zai',
+  OLLAMA_CHAT: 'ai-sdk:ollama',
 } as const;
 
 export type AiSdkInferenceCapabilityId =

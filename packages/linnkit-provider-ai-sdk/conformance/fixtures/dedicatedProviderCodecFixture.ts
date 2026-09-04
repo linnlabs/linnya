@@ -88,6 +88,13 @@ function eventStream(events: readonly Record<string, unknown>[]): Response {
   });
 }
 
+function ndjsonStream(events: readonly Record<string, unknown>[]): Response {
+  return new Response(`${events.map(event => JSON.stringify(event)).join('\n')}\n`, {
+    status: 200,
+    headers: { 'content-type': 'application/x-ndjson' },
+  });
+}
+
 async function collect(
   stream: AsyncIterable<CanonicalInferenceEvent>
 ): Promise<CanonicalInferenceEvent[]> {
@@ -125,6 +132,7 @@ export async function runToolRoundTrip(args: {
   readonly resolvedRoute: DedicatedProviderRoute;
   readonly firstResponse: readonly Record<string, unknown>[];
   readonly secondResponse: readonly Record<string, unknown>[];
+  readonly responseEncoding?: 'sse' | 'ndjson';
   readonly toolResultContent?: Extract<CanonicalInferenceMessage, { role: 'tool' }>['content'];
 }): Promise<{
   readonly requests: readonly CapturedRequest[];
@@ -134,14 +142,16 @@ export async function runToolRoundTrip(args: {
 }> {
   const requests: CapturedRequest[] = [];
   const fixtureFetch: typeof fetch = async (input, init) => {
-    const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
+    const request = new Request(input, init);
+    const requestBody = await request.clone().text();
+    const body = requestBody ? JSON.parse(requestBody) : undefined;
     requests.push({
-      url: String(input),
-      headers: new Headers(init?.headers),
+      url: request.url,
+      headers: request.headers,
       body,
     });
     const response = requests.length === 1 ? args.firstResponse : args.secondResponse;
-    return eventStream(response);
+    return args.responseEncoding === 'ndjson' ? ndjsonStream(response) : eventStream(response);
   };
   const capability = createAiSdkInferenceCapability(
     args.resolvedRoute.capability_id,
@@ -153,6 +163,10 @@ export async function runToolRoundTrip(args: {
     capability.stream(invocation(initialRequest, args.resolvedRoute))
   );
   const replay = replayParts(firstEvents);
+  const completedToolCall = replay.find(part => part.type === 'tool_call');
+  if (!completedToolCall || completedToolCall.type !== 'tool_call') {
+    throw new Error('fixture 第一轮没有产出完整工具调用');
+  }
   const secondRequest: CanonicalInferenceRequest = {
     ...initialRequest,
     messages: [
@@ -160,7 +174,7 @@ export async function runToolRoundTrip(args: {
       { role: 'assistant', parts: replay },
       {
         role: 'tool',
-        tool_call_id: 'call-1',
+        tool_call_id: completedToolCall.call.id,
         content: args.toolResultContent ?? [{ type: 'text', text: 'file contents' }],
       },
     ],

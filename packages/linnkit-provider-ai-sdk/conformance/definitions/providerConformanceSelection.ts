@@ -77,6 +77,9 @@ const CAPABILITY_CONFORMANCE_FILES = {
   [AI_SDK_INFERENCE_CAPABILITY_IDS.ZAI_CHAT]: [
     'conformance/providers/zaiProviderCodec.integration.test.ts',
   ],
+  [AI_SDK_INFERENCE_CAPABILITY_IDS.OLLAMA_CHAT]: [
+    'conformance/providers/ollamaProviderCodec.integration.test.ts',
+  ],
 } satisfies Record<AiSdkInferenceCapabilityId, readonly ProviderConformanceTestFile[]>;
 
 const CORE_PACKAGES = new Set(['ai', '@ai-sdk/provider']);

@@ -24,7 +24,7 @@ exports 消费目录；旧 `src/domains/provider-catalog`
   ModelConfig；
 - AI SDK factory、请求体、SSE、usage、continuation 或错误分类；
 - Agent loop、上下文、工具执行、retry/fallback；
-- ChatGPT `/models`、Linnya Cloud 或 Ollama 的动态模型发现；
+- ChatGPT `/models`、Linnya Cloud 或 Ollama 本地运行时的动态模型发现；
 - Renderer 状态和设置交互。
 
 ## 上游事实复用原则
@@ -137,9 +137,9 @@ digest 与 policy version 都未变化时不会重写资产。
 Provider 删除、API 地址、package 建议和容量变化都必须人工评审。一个上游 Provider 可能同时包含 chat、embedding、TTS 等模型；Agent 目录必须依靠明确能力 admission，不能按名称猜测或整组接纳。新增 policy 前还要证明对应 factory、许可/NOTICE、single-step/zero-retry、tool/图片/usage/Abort/error 和 durable
 continuation conformance。
 
-ChatGPT `/models`、Linnya Cloud
-catalog 与 Ollama 本地发现是运行时动态来源，不进入 bundled
-models，也不由同步器联网刷新。
+ChatGPT `/models`、Linnya Cloud catalog 与 Ollama 本地发现是运行时动态来源，不进入
+bundled models，也不由同步器联网刷新。Ollama Cloud 是同一 Ollama 品牌下的独立 API
+Key connection，模型事实来自 models.dev，随正式 Catalog 同步；它不复用本地运行时发现。
 
 Catalog 运行时只暴露非 `hidden`
 connection；同一品牌全部 connection 都隐藏时，品牌也不会进入公开 API。`hidden`

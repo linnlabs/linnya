@@ -64,6 +64,8 @@ const completeEnvironment: NodeJS.ProcessEnv = {
   LINNYA_BYOK_NVIDIA_MODEL: 'nvidia-model',
   LINNYA_BYOK_MODELSCOPE_API_KEY: 'modelscope-secret',
   LINNYA_BYOK_MODELSCOPE_MODEL: 'modelscope-model',
+  LINNYA_BYOK_OLLAMA_CLOUD_API_KEY: 'ollama-cloud-secret',
+  LINNYA_BYOK_OLLAMA_CLOUD_MODEL: 'glm-5.3',
 };
 
 describe('BYOK live smoke configuration', () => {
@@ -118,6 +120,7 @@ describe('BYOK live smoke configuration', () => {
       'glm-coding-plan',
       'nvidia',
       'modelscope',
+      'ollama-cloud',
     ]);
   });
 

@@ -630,6 +630,9 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
   {
     provider_definition_id: 'ollama',
     display_name: 'Ollama',
+    connection_display_name: 'Ollama 本地',
+    connection_description: '连接本机或局域网中的 Ollama 服务',
+    connection_badge: '本地',
     kind: 'local_runtime',
     release_status: 'preview',
     setup_fields: [
@@ -642,5 +645,27 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
       },
     ],
     model_discovery: 'local_runtime',
+  },
+  {
+    source_provider_id: 'ollama-cloud',
+    provider_definition_id: 'ollama',
+    provider_connection_definition_id: 'ollama-cloud',
+    display_name: 'Ollama',
+    connection_display_name: 'Ollama Cloud',
+    connection_description: '使用 Ollama Cloud API Key 直接连接云端模型',
+    connection_badge: 'Cloud',
+    setup_help_url: 'https://ollama.com/settings/keys',
+    kind: 'direct',
+    release_status: 'preview',
+    setup_fields: [API_KEY_FIELD],
+    model_discovery: 'bundled',
+    model_admission: { requires_tool_call: true },
+    runtime_binding: {
+      endpoint_id: 'ollama-cloud',
+      default_base_url: 'https://ollama.com',
+      auth_profile: 'bearer',
+      default_route_profile_id: 'ollama_chat',
+      supported_route_profile_ids: ['ollama_chat'],
+    },
   },
 ];

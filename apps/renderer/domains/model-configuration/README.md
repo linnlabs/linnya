@@ -1,7 +1,7 @@
 # Model Configuration Renderer Domain
 
 `model-configuration` 是 Renderer 中“模型服务 / Models &
-Providers”的唯一业务 owner。它管理桌面后端 Provider/模型目录的前端投影、正式 Provider 模型注册、自定义 API 配置、Ollama 模型注册，以及各产品用途的模型绑定。正式 Provider 的 URL、鉴权、容量和 runtime
+Providers”的唯一业务 owner。它管理桌面后端 Provider/模型目录的前端投影、正式 Provider 模型注册、自定义 API 配置、Ollama 本地模型注册，以及各产品用途的模型绑定。正式 Provider 的 URL、鉴权、容量和 runtime
 route 不在 Renderer 决定。
 
 Settings 中的产品边界必须保持为三个独立任务：`添加模型`
@@ -33,7 +33,7 @@ workflow 只能消费本 domain 的公开合同，不能自行读取模型目录
 | 正式账号型 Provider 授权与模型注册            | `features/provider-account-model-registration/`；授权 Host use case 位于 `src/app-hosts/linnya/application/provider-account-authorization/` |
 | 已有模型的容量解析与 route 编辑               | `features/inference-endpoints/`                                                                                                             |
 | 自定义 API 新增模型                           | `features/custom-model-registration/`；Host use case 位于 `src/app-hosts/linnya/application/custom-api-onboarding/`                         |
-| Ollama 模型发现与注册                         | `features/ollama-model-registration/`；Host use case 位于 `src/app-hosts/linnya/application/ollama-onboarding/`                             |
+| Ollama 本地模型发现与注册                     | `features/ollama-model-registration/`；Host use case 位于 `src/app-hosts/linnya/application/ollama-onboarding/`                             |
 | 统一 Provider 选择与三条注册路径组合          | `ui/ModelRegistrationSettingsPage.vue`；具体表单归各 feature 的 `ui/` 所有                                                                  |
 | 主模型、辅助用途、Embedding/OCR/图片/转录绑定 | `features/purpose-model-bindings/`                                                                                                          |
 | 删除模型后的跨 feature 清理                   | `orchestration/deleteConfiguredModel.ts`                                                                                                    |
@@ -285,7 +285,15 @@ command 中。Host 将它转换为一次 InferenceEndpoint create
 command；模型配置不重复携带 secret，日志只能记录安全错误 code。未提交 Key 时由 Host 按格式、规范化 URL、认证和 endpoint
 identity 决定能否复用，Renderer 不读取 route/auth 来复刻该规则。
 
-### Ollama model registration
+### Ollama connections
+
+公开目录把 Ollama 表示为一个品牌、两个 connection：`Ollama 本地`负责本机或局域网运行时，
+`Ollama Cloud` 负责官方 Cloud API Key。组合页只复用既有接入方式选择：Cloud 进入正式
+API-Key Provider onboarding，本地进入下面的模型发现流程；不得为 Cloud 复制表单、模型列表或
+Provider 状态。Cloud 的模型来自正式 Catalog，用户只填写 Key，近期模型自动启用，其余模型在
+“模型管理”中选择。
+
+### Ollama local model registration
 
 `features/ollama-model-registration`
 拥有本地模型发现、表单和窄提交流程。Renderer 只提交 Provider Catalog 给出的
@@ -326,8 +334,8 @@ identity，不代表目录仍由旧 store 所有；保留它是数据合同，�
 
 ### 新增、编辑与删除
 
-正式 Provider 新增时，UI 从 public
-catalog 选择 Provider 并提交 Key，Host 自动启用少量近期模型；自定义 API 新增时，UI 提交用户明确填写的 URL、格式、模型资料和容量；Ollama 新增时，UI 提交本地服务地址、发现后的模型 ID 和容量。三条路径分别进入独立 Host
+正式 Provider（包括 Ollama Cloud）新增时，UI 从 public
+catalog 选择 Provider 并提交 Key，Host 自动启用少量近期模型；自定义 API 新增时，UI 提交用户明确填写的 URL、格式、模型资料和容量；Ollama 本地新增时，UI 提交本地服务地址、发现后的模型 ID 和容量。三条路径分别进入独立 Host
 onboarding
 workflow，由 Host 决定 route、endpoint/credential 复用和 ConfiguredProvider 归属，写入完成后统一重读模型 catalog。Renderer 不存储 endpoint
 read model，也不能再通过通用 Model

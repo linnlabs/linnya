@@ -206,5 +206,8 @@ export function projectAiSdkContinuation(
     case 'cohere_chat':
       // Cohere V2 的 thinking 不携带跨轮签名；有序文本与工具调用由 canonical history 回放。
       return undefined;
+    case 'ollama_chat':
+      // Ollama 原生 Chat 不提供跨轮 continuation token；由 canonical history 完整回放。
+      return undefined;
   }
 }

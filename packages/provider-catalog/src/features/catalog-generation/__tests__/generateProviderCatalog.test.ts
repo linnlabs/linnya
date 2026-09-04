@@ -111,6 +111,12 @@ function makeSource() {
     zai: sourceProvider('zai', {
       'glm-agent': sourceModel('glm-agent', { reasoning: true }),
     }),
+    'ollama-cloud': sourceProvider('ollama-cloud', {
+      'glm-cloud': sourceModel('glm-cloud', {
+        reasoning: true,
+        modalities: { input: ['text', 'image'], output: ['text'] },
+      }),
+    }),
     nvidia: sourceProvider('nvidia', {
       'nemotron-agent': sourceModel('nemotron-agent', { reasoning: true }),
       'nvidia-embedding': sourceModel('nvidia-embedding', { tool_call: false }),
@@ -152,6 +158,11 @@ describe('generateProviderCatalog', () => {
     const fireworks = findConnection('fireworks');
     const kimiCode = findConnection('moonshot', 'kimi-code');
     const glmCodingPlan = findConnection('zai', 'glm-coding-plan');
+    const ollamaBrand = projections.publicCatalog.providers.find(
+      provider => provider.id === 'ollama'
+    );
+    const ollamaLocal = findConnection('ollama');
+    const ollamaCloud = findConnection('ollama', 'ollama-cloud');
     const allConnections = projections.publicCatalog.providers.flatMap(
       provider => provider.connections
     );
@@ -170,6 +181,9 @@ describe('generateProviderCatalog', () => {
     const opencodeGoBinding = projections.runtimeBindings.bindings.find(
       binding => binding.provider_definition_id === 'opencode-go'
     );
+    const ollamaCloudBinding = projections.runtimeBindings.bindings.find(
+      binding => binding.provider_connection_definition_id === 'ollama-cloud'
+    );
 
     expect(openai?.models).toEqual([
       expect.objectContaining({
@@ -181,6 +195,37 @@ describe('generateProviderCatalog', () => {
       'openai-api',
       'openai-chatgpt-subscription',
     ]);
+    expect(ollamaBrand?.connections.map(connection => connection.id)).toEqual([
+      'ollama',
+      'ollama-cloud',
+    ]);
+    expect(ollamaLocal).toEqual(
+      expect.objectContaining({
+        display_name: 'Ollama 本地',
+        kind: 'local_runtime',
+        model_discovery: 'local_runtime',
+      })
+    );
+    expect(ollamaCloud).toEqual(
+      expect.objectContaining({
+        display_name: 'Ollama Cloud',
+        kind: 'direct',
+        model_discovery: 'bundled',
+        models: [
+          expect.objectContaining({
+            id: 'glm-cloud',
+            capabilities: { image_input: true, tool_call: true, reasoning: true },
+          }),
+        ],
+      })
+    );
+    expect(ollamaCloudBinding).toEqual(
+      expect.objectContaining({
+        default_base_url: 'https://ollama.com',
+        default_route_profile_id: 'ollama_chat',
+        supported_route_profile_ids: ['ollama_chat'],
+      })
+    );
     expect(chatgpt).toEqual(
       expect.objectContaining({
         release_status: 'preview',

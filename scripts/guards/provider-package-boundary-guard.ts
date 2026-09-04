@@ -25,6 +25,18 @@ const ROOT_NON_LANGUAGE_AI_SDK_DEPENDENCIES = new Set([
   '@ai-sdk/openai-compatible',
   '@ai-sdk/cohere',
 ]);
+const EXTERNAL_LANGUAGE_PROVIDER_PACKAGES = new Set([
+  '@openrouter/ai-sdk-provider',
+  'ai-sdk-ollama',
+]);
+
+function isLanguageProviderPackage(moduleName: string): boolean {
+  if (moduleName.startsWith('@ai-sdk/')) return true;
+  for (const packageName of EXTERNAL_LANGUAGE_PROVIDER_PACKAGES) {
+    if (moduleName === packageName || moduleName.startsWith(`${packageName}/`)) return true;
+  }
+  return false;
+}
 
 function normalize(filePath: string): string {
   return filePath.replaceAll('\\', '/');
@@ -87,8 +99,7 @@ function escapesPackage(file: string, moduleName: string, packageRoot: string): 
 function catalogForbidden(moduleName: string): boolean {
   return (
     moduleName === 'ai' ||
-    moduleName.startsWith('@ai-sdk/') ||
-    moduleName.startsWith('@openrouter/ai-sdk-provider') ||
+    isLanguageProviderPackage(moduleName) ||
     moduleName === '@linnlabs/linnkit' ||
     moduleName.startsWith('@linnlabs/linnkit/') ||
     moduleName === 'linnkit' ||
@@ -218,10 +229,7 @@ function inspectLinnyaProviderImports(): readonly BoundaryViolation[] {
               detail: `${moduleName} 只能由明确保留在 Host 的 Reranking owner 导入`,
             }];
       }
-      if (
-        (moduleName.startsWith('@ai-sdk/') && moduleName !== '@ai-sdk/provider') ||
-        moduleName.startsWith('@openrouter/ai-sdk-provider')
-      ) {
+      if (isLanguageProviderPackage(moduleName) && moduleName !== '@ai-sdk/provider') {
         return [{
           file,
           line,
@@ -240,10 +248,7 @@ function inspectManifestDependencyOwnership(): readonly BoundaryViolation[] {
   const violations: BoundaryViolation[] = [];
 
   for (const name of Object.keys(rootDependencies)) {
-    if (
-      (name.startsWith('@ai-sdk/') || name.startsWith('@openrouter/ai-sdk-provider')) &&
-      !ROOT_NON_LANGUAGE_AI_SDK_DEPENDENCIES.has(name)
-    ) {
+    if (isLanguageProviderPackage(name) && !ROOT_NON_LANGUAGE_AI_SDK_DEPENDENCIES.has(name)) {
       violations.push({
         file: 'package.json',
         line: 1,
@@ -255,9 +260,7 @@ function inspectManifestDependencyOwnership(): readonly BoundaryViolation[] {
 
   for (const [name, version] of Object.entries(adapterDependencies)) {
     if (
-      (name === 'ai' ||
-        name.startsWith('@ai-sdk/') ||
-        name.startsWith('@openrouter/ai-sdk-provider')) &&
+      (name === 'ai' || isLanguageProviderPackage(name)) &&
       (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/u.test(version))
     ) {
       violations.push({
