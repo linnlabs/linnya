@@ -44,7 +44,7 @@
     "better-sqlite3": "12.4.1",
     "bindings": "1.5.0",
     "file-uri-to-path": "2.0.0",
-    "sharp": "0.33.5",
+    "sharp": "0.35.0",
     "tiktoken": "1.0.22"
   }
 }
