@@ -12,7 +12,7 @@ export function findContentBlockInRoot(rootBlock) {
   if (rootBlock.node.content?.content?.length > 0) {
     const firstChild = rootBlock.node.content.content[0];
     // 检查节点类型，确保是预期的内容块类型
-    const expectedContentTypes = ['baseBlock', 'headingBlock', 'table', 'imageBlock', 'audioBlock', 'codeBlock', 'latexBlock', 'quoteBlock', 'listItemBlock'];
+    const expectedContentTypes = ['baseBlock', 'headingBlock', 'table', 'imageBlock', 'codeBlock', 'latexBlock', 'quoteBlock', 'listItemBlock'];
     if (firstChild && expectedContentTypes.includes(firstChild.type.name)) {
       return {
         node: firstChild,

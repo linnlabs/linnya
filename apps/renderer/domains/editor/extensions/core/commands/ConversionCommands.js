@@ -385,51 +385,6 @@ export const convertToLatexBlock = (attrs = {}) => ({ state, dispatch }) => {
 };
 
 /**
- * 将当前块转换为录音块
- * @param {Object} attrs - 属性，可以包含录音块的属性
- * @returns {Function} - 返回一个命令函数
- */
-export const convertToAudioBlock = (attrs = {}) => ({ state, dispatch }) => {
-  // 检查是否在表格内，如果是则禁止转换
-  if (isInsideTable(state)) {
-    console.warn("convertToAudioBlock: 不能在表格内转换为录音块");
-    const notificationStore = useNotificationStore();
-    notificationStore.show(resolveCurrentEditorMessage('editor.conversion.inTable.audioBlock'), 'warning', 2000);
-    return false;
-  }
-  
-  const blockInfo = findCurrentBlock(state);
-  if (!blockInfo) {
-    console.warn("convertToAudioBlock: Could not find current block.");
-    return false;
-  }
-
-  const { blockPos, blockNode } = blockInfo;
-  const schema = state.schema;
-
-  // 创建新的 AudioBlock 节点
-  const newNode = schema.nodes.audioBlock.create({
-      id: blockNode.attrs.id || generateBlockId(), // Preserve or generate ID
-      recordedAt: Date.now(),
-      isFinalized: false,
-      isTempSrc: false,
-      ...attrs
-  });
-
-  const tr = state.tr;
-  // 替换旧节点
-  tr.replaceWith(blockPos, blockPos + blockNode.nodeSize, newNode);
-  // 选中新节点
-  tr.setSelection(NodeSelection.create(tr.doc, blockPos));
-  tr.scrollIntoView();
-
-  if (dispatch) {
-      dispatch(tr);
-  }
-  return true;
-};
-
-/**
  * 通用块转换命令
  * @param {String} blockType - 目标块类型
  * @param {Object} attrs - 块属性
@@ -451,8 +406,6 @@ export const convertBlock = (blockType, attrs = {}) => ({ commands, editor }) =>
       return commands.convertToQuoteBlock();
     case 'latexBlock':
       return commands.convertToLatexBlock(attrs);
-    case 'audioBlock':
-      return commands.convertToAudioBlock(attrs);
     default:
       console.error(`未知的块类型: ${blockType}`);
       return false;
@@ -465,7 +418,6 @@ export default {
   convertToListItem,
   convertToQuoteBlock,
   convertToLatexBlock,
-  convertToAudioBlock,
   convertBlock,
   isInsideTable
 };

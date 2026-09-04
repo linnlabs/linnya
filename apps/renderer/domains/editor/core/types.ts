@@ -17,8 +17,4 @@ export type LayoutManager = unknown
 export interface ExtensionDependencies {
   layoutManagerInstance: Ref<LayoutManager>
   findReplaceStore: unknown
-  audioEditorsStore: unknown
-  audioContentStore: unknown
-  audioRuntimeStore: unknown
 }
-

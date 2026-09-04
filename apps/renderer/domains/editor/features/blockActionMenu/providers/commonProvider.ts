@@ -170,7 +170,7 @@ const addAnnotation = (ctx: BlockMenuContext) => {
 };
 
 // 定义原子块类型列表
-const ATOMIC_BLOCK_TYPES = ['imageBlock', 'audioBlock', 'horizontalRuleBlock'];
+const ATOMIC_BLOCK_TYPES = ['imageBlock', 'horizontalRuleBlock'];
 
 /**
  * 系统块类型列表

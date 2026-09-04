@@ -60,7 +60,7 @@ const nodes: Record<string, NodeSpec> = {
   rootBlock: {
     group: 'block',
     content:
-      '(baseBlock | headingBlock | horizontalRuleBlock | listItemBlock | quoteBlock | codeBlock | latexBlock | table | imageBlock | audioBlock | bibliographyBlock){1}',
+      '(baseBlock | headingBlock | horizontalRuleBlock | listItemBlock | quoteBlock | codeBlock | latexBlock | table | imageBlock | bibliographyBlock){1}',
     defining: true,
     selectable: true,
     attrs: {
@@ -182,22 +182,6 @@ const nodes: Record<string, NodeSpec> = {
       height: { default: null },
       alignment: { default: 'center' },
       uploadedAt: { default: null },
-    },
-  },
-  audioBlock: {
-    group: 'blockContent',
-    atom: true,
-    selectable: true,
-    attrs: {
-      id: { default: '' },
-      blockType: { default: 'audio' },
-      src: { default: null },
-      duration: { default: 0 },
-      mimeType: { default: null },
-      recordedAt: { default: null },
-      isFinalized: { default: false },
-      isTempSrc: { default: false },
-      saveStatus: { default: null },
     },
   },
   bibliographyBlock: {

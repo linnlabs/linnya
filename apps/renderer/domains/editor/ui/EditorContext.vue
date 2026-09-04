@@ -21,7 +21,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch, on
 import { useFileStore } from '../../../shared/stores/file'
 import { useNotificationStore } from '@/app/notification'
 import { useUIStore } from '../../../shared/stores/ui'
-import { useAudioContentStore, useAudioRuntimeStore, useAudioEditorsStore } from '../blocks/AudioBlock'
 import { useFindReplaceStore } from '../features/FindReplace'
 
 // --- 特性模块导入 ---
@@ -88,44 +87,8 @@ import { resolveCurrentEditorMessage } from '../functions/resolveCurrentEditorMe
 const uiStore = useUIStore()
 const fileStore = useFileStore()
 const notificationStore = useNotificationStore()
-const audioContentStore = useAudioContentStore()
-const audioRuntimeStore = useAudioRuntimeStore()
-const audioEditorsStore = useAudioEditorsStore()
 const findReplaceStore = useFindReplaceStore()
 const editorMessage = resolveCurrentEditorMessage
-
-// 为 FindReplace 创建兼容对象（映射旧 API 到新 stores）
-const audioStore = {
-  getAllEditorInstances: () => {
-    return audioEditorsStore.getAllEditors.map(({ blockId, editorType, editor }) => ({
-      blockId,
-      editorType,
-      editor
-    }))
-  },
-  getBlockState: (blockId) => {
-    const content = audioContentStore.getContent(blockId)
-    const runtime = audioRuntimeStore.getRuntime(blockId)
-    return { ...content, ...runtime }
-  },
-  switchTab: (blockId, tab) => {
-    audioRuntimeStore.updateRuntime(blockId, { activeTab: tab })
-  },
-  getAllBlockStates: () => {
-    // 返回所有块的状态（用于查找替换）
-    const allBlockIds = new Set([
-      ...Object.keys(audioContentStore.contents),
-      ...Object.keys(audioRuntimeStore.runtimes)
-    ])
-    return Array.from(allBlockIds).map(blockId => ({
-      blockId,
-      state: {
-        ...audioContentStore.getContent(blockId),
-        ...audioRuntimeStore.getRuntime(blockId)
-      }
-    }))
-  }
-}
 
 // --- 编辑器实例引用 ---
 const editor = ref(null)
@@ -452,34 +415,6 @@ onMounted(async () => {
   // +++ 新增: 注册表格浮动工具栏 Provider（覆盖通用工具栏） +++
   registerBlockToolbarProvider('table', tableToolbarProvider);
 
-  // +++ 新增: 注册 AudioBlock 的保存钩子到 fileStore +++
-  fileStore.registerPreSaveHook(async (_ctx) => {
-    const result = await audioContentStore.persistDirtyContent();
-    if (!result.success) {
-      console.error('[EditorContext] AudioBlock 子内容保存失败:', result.error);
-      return false;
-    }
-    return true;
-  });
-
-  // +++ 新增：切换文件/保存前，若存在录音中的 AudioBlock，先优雅终止并完成保存尝试 +++
-  // 设计目标：避免切换文件导致 NodeView 卸载，从而中断录音且丢失未保存数据。
-  fileStore.registerPreSaveHook(async ({ reason }) => {
-    // 中文说明：
-    // - 自动保存/手动保存：不应打断录音，只保存当前文档快照（音频仍在录制中）
-    // - 切换视图/关闭前保存：必须先终止录音并写入“已保存/可重试失败”态，再保存文档，避免卸载导致录音数据丢失
-    if (reason !== 'view-switch' && reason !== 'before-unload') {
-      return true
-    }
-
-    const ok = await audioRuntimeStore.terminateAllRecordingsForSave()
-    if (!ok) {
-      console.error('[EditorContext] AudioBlock 终止录音失败，已阻止保存/切换流程')
-      return false
-    }
-    return true
-  })
-
   // 添加全局键盘事件监听
   document.addEventListener('keydown', handleGlobalKeyDown, { capture: true })
 
@@ -514,8 +449,7 @@ onMounted(async () => {
     cleanupBlockEventHandler,
     handleCreateAnnotationWithContent,
     onReadyCallback: onEditorReady,
-    findReplaceStore,
-    audioStore
+    findReplaceStore
   });
 
   editorVirtualizationRuntime.scheduleEditorCreatedRefresh();
@@ -589,10 +523,9 @@ onBeforeUnmount(async () => {
   
   // +++ 在组件卸载前尝试保存 +++
   // 这可以捕获例如切换视图（如果 EditorContext 被卸载的话）导致的"页面切换"
-  // 注意：录音未必会立刻标记 fileStore.isDirty，因此这里也要把“存在录音”纳入触发条件
   const shouldSave =
     !!(editor.value && !editor.value.isDestroyed && fileStore.currentFilePath) &&
-    (fileStore.isDirty || audioRuntimeStore.isAnyRecording)
+    fileStore.isDirty
 
   if (shouldSave) {
     console.log('[EditorContext] onBeforeUnmount: 文件已修改，尝试保存...');

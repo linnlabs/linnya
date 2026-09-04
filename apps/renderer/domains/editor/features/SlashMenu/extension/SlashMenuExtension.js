@@ -58,14 +58,6 @@ export const SlashMenuExtension = Extension.create({
         { title: editorMessage('editor.slash.item.orderedList'), aliases: ['有序列表', 'ordered'], group: convertToGroup, command: ({ editor, range }) => editor.chain().focus().deleteRange(range).convertToListItem('ordered').run() },
         // { title: '有序列表', group: '转换为', command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleOrderedList().run() },
         { title: editorMessage('editor.slash.item.quoteBlock'), aliases: ['引用块', 'quote'], group: convertToGroup, command: ({ editor, range }) => editor.chain().focus().deleteRange(range).convertToQuoteBlock().run() },
-        {
-          title: editorMessage('editor.slash.item.audioBlock'),
-          aliases: ['录音块', 'audio'],
-          group: convertToGroup,
-          command: ({ editor, range }) => {
-            editor.chain().focus().deleteRange(range).convertToAudioBlock().run();
-          }
-        },
         { title: editorMessage('editor.slash.item.codeBlock'), aliases: ['代码块', 'code'], group: convertToGroup, command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCodeBlock().run() },
         {
           title: editorMessage('editor.slash.item.latexBlock'),

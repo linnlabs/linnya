@@ -75,8 +75,7 @@ export function createEditor({
   cleanupBlockEventHandler,
   handleCreateAnnotationWithContent,
   onReadyCallback,
-  findReplaceStore,
-  audioStore
+  findReplaceStore
 }) {
   // 字符统计防抖定时器
   let charCountTimer = null;
@@ -84,7 +83,7 @@ export function createEditor({
 
   const editor = new Editor({
     content: fileStore.currentFilePath ? undefined : initialContent,
-    extensions: getAllExtensions({ layoutManagerInstance, findReplaceStore, audioStore }),
+    extensions: getAllExtensions({ layoutManagerInstance, findReplaceStore }),
     
     editorProps: {
       attributes: {

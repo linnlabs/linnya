@@ -36,9 +36,6 @@ function createProductionEditorSchema() {
   const extensions = getAllExtensions({
     layoutManagerInstance: ref(null),
     findReplaceStore: null,
-    audioEditorsStore: null,
-    audioContentStore: null,
-    audioRuntimeStore: null,
   })
   const invalidIndex = extensions.findIndex(extension => !extension)
   if (invalidIndex >= 0) {
@@ -119,7 +116,6 @@ describe('Workspace Markdown 与生产 Editor schema conformance', () => {
       'latexBlock',
       'table',
       'imageBlock',
-      'audioBlock',
       'bibliographyBlock',
     ] as const
 

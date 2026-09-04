@@ -21,7 +21,7 @@ export const NODE_GROUPS = {
   // 块内容组，包含各种块级节点
   // 这些是 rootBlock 的子节点
   // 注意：bibliographyBlock 是系统块（参考文献容器），由 citation 功能自动维护
-  BLOCK_CONTENT: 'baseBlock|headingBlock|horizontalRuleBlock|listItemBlock|quoteBlock|codeBlock|latexBlock|table|imageBlock|audioBlock|bibliographyBlock',
+  BLOCK_CONTENT: 'baseBlock|headingBlock|horizontalRuleBlock|listItemBlock|quoteBlock|codeBlock|latexBlock|table|imageBlock|bibliographyBlock',
   
   // 行内内容组，包含各种行内节点
   // 这些是块级节点的子节点

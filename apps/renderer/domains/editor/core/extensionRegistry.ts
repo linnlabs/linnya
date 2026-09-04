@@ -37,7 +37,6 @@ import {
   CustomTableCell,
   CustomTableHeader
 } from '../blocks/TableBlock'
-import { AudioBlock } from '../blocks/AudioBlock'
 import { createFindReplaceExtension } from '../features/FindReplace'
 import RenderVirtualizationExtension from '../features/RenderVirtualization/RenderVirtualizationExtension'
 
@@ -94,7 +93,7 @@ export type { ExtensionDependencies } from './types'
  * @returns 配置好的扩展数组
  */
 export function getAllExtensions(dependencies: ExtensionDependencies): Extensions {
-  const { layoutManagerInstance, findReplaceStore, audioEditorsStore, audioContentStore, audioRuntimeStore } = dependencies
+  const { layoutManagerInstance, findReplaceStore } = dependencies
   const lowlight = getLowlight()
 
   return [
@@ -117,7 +116,6 @@ export function getAllExtensions(dependencies: ExtensionDependencies): Extension
     LatexBlock,
     InlineLatexNode,
     ImageBlock,
-    AudioBlock,
     TableBlock.configure({
       resizable: true,
       HTMLAttributes: {
@@ -230,7 +228,7 @@ export function getAllExtensions(dependencies: ExtensionDependencies): Extension
     TableVerticalNavigationStateExtension,
     
     // 查找替换扩展 - 必须在 KeyboardListener 之后加载
-    ...(findReplaceStore ? [createFindReplaceExtension(findReplaceStore, audioEditorsStore, audioContentStore, audioRuntimeStore)] : []),
+    ...(findReplaceStore ? [createFindReplaceExtension(findReplaceStore)] : []),
     
     // Citation 引用功能扩展（自动维护 bibliography）
     CitationFeatureExtension,

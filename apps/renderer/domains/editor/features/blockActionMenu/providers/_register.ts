@@ -14,7 +14,6 @@
 
 import { registerCommonMenuProvider, registerBlockMenuProvider } from '../registry';
 import { commonProvider } from './commonProvider';
-import { audioBlockMenuProvider } from '../../../blocks/AudioBlock/menu/audioBlockMenuProvider';
 import { imageBlockMenuProvider } from '../../../blocks/ImageBlock/menu/imageBlockMenuProvider';
 
 // 模块级标记，确保只注册一次
@@ -33,7 +32,6 @@ export function ensureProvidersRegistered(): void {
   registerCommonMenuProvider(commonProvider);
 
   // 注册块专属 Provider
-  registerBlockMenuProvider('audioBlock', audioBlockMenuProvider);
   registerBlockMenuProvider('imageBlock', imageBlockMenuProvider);
   // 已移除注册完成 console.log：避免启动时刷屏
 }
