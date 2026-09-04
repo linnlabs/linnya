@@ -84,7 +84,7 @@ src/plugin-sdk/
 
 - `version`：正式版本变化，可触发当前文档 reload；
 - `pending`：Markdown pending revision 变化，只在当前打开文档匹配时应用 pending 投影；
-- `incremental`：保留给增量语义，Sheet ops 主链当前不通过它刷新。
+- `incremental`：同一次 Markdown file-style 写入直接提交了 Annotation mutation；Renderer 精确同步批注 attrs，并同时刷新可能存在的正文 pending。Sheet ops 主链当前不通过它刷新。
 
 ## 后端发布规则
 

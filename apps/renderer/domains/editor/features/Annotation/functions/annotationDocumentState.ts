@@ -16,6 +16,11 @@ export interface AnnotationMergePlan {
   readonly missingBlockIds: readonly string[]
 }
 
+export interface AnnotationSynchronizationPlan {
+  readonly transaction: Transaction | null
+  readonly changedBlockCount: number
+}
+
 interface RootBlockLocation {
   readonly node: ProseMirrorNode
   readonly position: number
@@ -128,5 +133,40 @@ export function mergeDocumentAnnotations(
     transaction: markAsInternal(transaction),
     mergedCount,
     missingBlockIds: [...incomingByBlockId.keys()].filter(blockId => !found.has(blockId)),
+  }
+}
+
+/** 用后端文档中的 Annotation attrs 精确同步现有块，同时保留当前 Renderer 正文。 */
+export function synchronizeDocumentAnnotations(
+  state: EditorState,
+  incomingDocument: ProseMirrorNode
+): AnnotationSynchronizationPlan {
+  const incomingByBlockId = new Map<string, MarkdownAnnotation[]>()
+  incomingDocument.forEach(node => {
+    if (node.type.name !== 'rootBlock' || typeof node.attrs.id !== 'string') return
+    incomingByBlockId.set(
+      node.attrs.id,
+      MarkdownAnnotationsSchema.parse(node.attrs.annotations ?? [])
+    )
+  })
+
+  let transaction: Transaction | null = null
+  let changedBlockCount = 0
+  state.doc.forEach((node, position) => {
+    if (node.type.name !== 'rootBlock' || typeof node.attrs.id !== 'string') return
+    const incoming = incomingByBlockId.get(node.attrs.id)
+    if (!incoming) return
+    const current = MarkdownAnnotationsSchema.parse(node.attrs.annotations ?? [])
+    if (JSON.stringify(current) === JSON.stringify(incoming)) return
+    transaction = (transaction ?? state.tr).setNodeMarkup(position, undefined, {
+      ...node.attrs,
+      annotations: incoming,
+    })
+    changedBlockCount += 1
+  })
+
+  return {
+    transaction: markAsInternal(transaction),
+    changedBlockCount,
   }
 }

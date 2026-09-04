@@ -85,6 +85,9 @@ function createMarkdownFileWriteProvider(params: {
         || write.updatedAnnotationIds.length > 0
         || write.deletedAnnotationIds.length > 0
       ) {
+        const hasAnnotationChanges = write.createdAnnotationIds.length > 0
+          || write.updatedAnnotationIds.length > 0
+          || write.deletedAnnotationIds.length > 0;
         params.mutationPublisher?.publish(
           createWorkspaceDocumentUpdatedEvent({
             node: {
@@ -92,7 +95,7 @@ function createMarkdownFileWriteProvider(params: {
               project_id: request.identity.projectId,
               type: request.identity.documentType,
             },
-            mutationKind: write.edits.length > 0 ? 'pending' : 'version',
+            mutationKind: hasAnnotationChanges ? 'incremental' : 'pending',
             source: 'tool',
           })
         );
