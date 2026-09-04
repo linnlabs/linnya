@@ -20,6 +20,7 @@ export interface MarkdownAnnotationCreationStore {
   getDocument(documentId: string): MarkdownDocJson;
   getLatestVersion(documentId: string): DocumentVersion | null;
   updateDocument(documentId: string, content: MarkdownDocJson): DocumentVersion;
+  runInTransaction<T>(fn: () => T): T;
 }
 
 export interface CreatedMarkdownAnnotation extends MarkdownAnnotationCreationDraft {
@@ -48,38 +49,40 @@ export function createMarkdownAnnotations(params: {
   readonly createId?: () => string;
   readonly now?: () => string;
 }): CreateMarkdownAnnotationsResult {
-  const latestVersion = params.store.getLatestVersion(params.documentId);
-  if (!latestVersion) {
-    throw new Error(`文档不存在: ${params.documentId}`);
-  }
-  if (params.expectedDocumentVersion !== undefined) {
-    assertExpectedMarkdownDocumentVersion({
-      expected: params.expectedDocumentVersion,
-      actual: latestVersion.version_number,
-    });
-  }
-  if (params.drafts.length === 0) {
-    return { documentId: params.documentId, version: null, created: [] };
-  }
+  return params.store.runInTransaction(() => {
+    const latestVersion = params.store.getLatestVersion(params.documentId);
+    if (!latestVersion) {
+      throw new Error(`文档不存在: ${params.documentId}`);
+    }
+    if (params.expectedDocumentVersion !== undefined) {
+      assertExpectedMarkdownDocumentVersion({
+        expected: params.expectedDocumentVersion,
+        actual: latestVersion.version_number,
+      });
+    }
+    if (params.drafts.length === 0) {
+      return { documentId: params.documentId, version: null, created: [] };
+    }
 
-  const timestamp = (params.now ?? (() => new Date().toISOString()))();
-  const createId = params.createId ?? generateEditorAnnotationId;
-  const created = params.drafts.map(draft => ({
-    ...draft,
-    annotation: createMarkdownAnnotation({
-      id: createId(),
-      content: draft.content,
-      author: params.author,
-      timestamp,
-      meta: params.meta,
-    }),
-  }));
-  const document = params.store.getDocument(params.documentId);
-  const updated = appendMarkdownAnnotations(
-    document,
-    created.map(item => ({ blockId: item.blockId, annotation: item.annotation })),
-  );
-  const version = params.store.updateDocument(params.documentId, updated);
+    const timestamp = (params.now ?? (() => new Date().toISOString()))();
+    const createId = params.createId ?? generateEditorAnnotationId;
+    const created = params.drafts.map(draft => ({
+      ...draft,
+      annotation: createMarkdownAnnotation({
+        id: createId(),
+        content: draft.content,
+        author: params.author,
+        timestamp,
+        meta: params.meta,
+      }),
+    }));
+    const document = params.store.getDocument(params.documentId);
+    const updated = appendMarkdownAnnotations(
+      document,
+      created.map(item => ({ blockId: item.blockId, annotation: item.annotation })),
+    );
+    const version = params.store.updateDocument(params.documentId, updated);
 
-  return { documentId: params.documentId, version, created };
+    return { documentId: params.documentId, version, created };
+  });
 }

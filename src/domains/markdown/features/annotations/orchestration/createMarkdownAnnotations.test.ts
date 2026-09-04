@@ -22,6 +22,10 @@ class FakeAnnotationStore implements MarkdownAnnotationCreationStore {
   document = baseDocument;
   versionNumber = 3;
 
+  runInTransaction<T>(fn: () => T): T {
+    return fn();
+  }
+
   getDocument(): MarkdownDocJson {
     return this.document;
   }
