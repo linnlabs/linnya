@@ -21,6 +21,8 @@ describe('Workspace live file-tool locator schemas', () => {
     expect(WorkspaceReadFileArgsSchema.parse({ inode: 'workspace:node-1' })).toMatchObject({
       inode: 'workspace:node-1',
       view: 'text',
+      offset: 1,
+      limit: 2_000,
     });
     expect(WorkspaceWriteFileArgsSchema.parse({
       locator: 'workspace:/notes.md',
@@ -74,6 +76,24 @@ describe('Workspace live file-tool locator schemas', () => {
       locator: 'file:///tmp/a.md',
       view: 'document',
     }).success).toBe(false);
+    expect(WorkspaceReadFileArgsSchema.safeParse({
+      locator: 'workspace:/notes.md',
+      offset: 0,
+    }).success).toBe(false);
+    expect(WorkspaceReadFileArgsSchema.safeParse({
+      locator: 'workspace:/notes.md',
+      view: 'document',
+      offset: 1,
+    }).success).toBe(false);
+    expect(WorkspaceReadFileArgsSchema.safeParse({
+      locator: 'workspace:/notes.md',
+      offset_chars: 10,
+    }).success).toBe(false);
+    expect(WorkspaceReadFileArgsSchema.parse({
+      locator: 'workspace:/notes.md',
+      view: 'document',
+      offset_chars: 10,
+    })).toMatchObject({ view: 'document', offset_chars: 10, max_chars: 4_000 });
   });
 
   it('uses locator and source_kind in every live read result family', () => {
@@ -99,9 +119,10 @@ describe('Workspace live file-tool locator schemas', () => {
         file_name: 'report.md',
         content_type: 'text/markdown',
         byte_length: 128,
-        offset: 0,
-        limit: 20_000,
-        truncated: false,
+        offset: 1,
+        limit: 2_000,
+        line_count: 2,
+        total_line_count: 2,
         has_more: false,
       },
       observation: '# Report',

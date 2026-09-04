@@ -1019,7 +1019,7 @@ describe('list_files / read_file', () => {
     }
     expect(new ListFilesTool().parameters.oneOf).toHaveLength(3);
     expect(new GrepTool().parameters.oneOf).toHaveLength(3);
-    expect(new ReadFileTool().parameters.oneOf).toHaveLength(2);
+    expect(new ReadFileTool().parameters.oneOf).toHaveLength(4);
     expect(new WriteFileTool().parameters.oneOf).toHaveLength(2);
     expect(new EditFileTool().parameters.oneOf).toHaveLength(2);
     expect(new GrepTool().parameters.properties.pattern.minLength).toBe(1);
@@ -1150,11 +1150,10 @@ describe('list_files / read_file', () => {
     const byInode = parseToolOutput<{
       has_more: boolean;
       next_offset?: number;
-    }>(await tool.run({ inode: 'workspace:doc-1', limit: 4 }, context));
-    expect(byInode.data.has_more).toBe(true);
-    expect(byInode.data.next_offset).toBe(4);
-    expect(byInode.observation).toContain('文件工具读取正文'.slice(0, 4));
-    expect(byInode.observation).toContain('offset=4');
+    }>(await tool.run({ inode: 'workspace:doc-1', limit: 1 }, context));
+    expect(byInode.data.has_more).toBe(false);
+    expect(byInode.data.next_offset).toBeUndefined();
+    expect(byInode.observation).toContain('1 | 文件工具读取正文');
   });
 
   it('read_file 默认文本把 citation facts、预算和 turn index 收口到正式结果', async () => {
@@ -1227,13 +1226,6 @@ describe('list_files / read_file', () => {
         ref: conversationRef,
       }),
     ]);
-
-    const beforeCitation = WorkspaceReadFileResultSchema.parse(
-      JSON.parse(await tool.run({ locator: 'workspace:/项目资料/研究.md', limit: 4 }, context))
-    );
-    expect(beforeCitation.observation).not.toContain('Citation Sources');
-    expect(beforeCitation.data).not.toHaveProperty('citations');
-    expect(beforeCitation.data).not.toHaveProperty('citation_diagnostics');
 
     const grepResult = parseToolOutput<{
       matches: Array<{ preview: string }>;
@@ -1555,9 +1547,10 @@ describe('list_files / read_file', () => {
     ).rejects.toThrow('exactly one of locator or inode is required');
   });
 
-  it('read_file live schema 不要求调用方声明媒体类型，也不发布文本默认参数或 max_chars', () => {
+  it('read_file live schema 区分普通文本行窗口与 DocumentView 字符窗口', () => {
     const parameters = new ReadFileTool().parameters;
-    expect(parameters.properties).not.toHaveProperty('max_chars');
+    expect(parameters.properties).toHaveProperty('offset_chars');
+    expect(parameters.properties).toHaveProperty('max_chars');
     expect(parameters.properties.offset).not.toHaveProperty('default');
     expect(parameters.properties.limit).not.toHaveProperty('default');
     expect(parameters.properties.view?.enum).toEqual(['text', 'document']);
@@ -2170,7 +2163,8 @@ describe('list_files / read_file', () => {
       )
     );
 
-    expect(readResult.observation).toContain(invalidDraftSource);
+    expect(readResult.observation).toContain('1 | const slide = createSlide();');
+    expect(readResult.observation).toContain('2 | compose({ title: "Broken", slides: [slide]');
     expect(readResult.observation).not.toContain(SLIDES_SOURCE);
 
     const editResult = parseToolOutput<{

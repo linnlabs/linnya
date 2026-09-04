@@ -14,6 +14,10 @@ import { buildDocumentCitationWindowOutput } from 'src/features/workspace/docume
 import { readWorkspaceVfsNode } from 'src/features/workspace/vfs/orchestration/readWorkspaceVfsNode';
 import { resolveWorkspaceVfsNode } from 'src/features/workspace/vfs/orchestration/resolveWorkspaceVfsNode';
 import { buildReadFileCitationFields } from 'src/tools/workspace/read_file/functions/buildReadFileCitationFields';
+import {
+  buildTextLineWindow,
+  formatTextLineWindow,
+} from 'src/tools/workspace/read_file/functions/buildTextLineWindow';
 import { readWorkspaceDocumentForTool } from 'src/tools/workspace/read_file/workspaceDocumentReadAdapter';
 import { resolveWorkspaceFileToolRuntime } from 'src/tools/workspace/shared/fileToolContext';
 import { toFileToolEntry } from 'src/tools/workspace/shared/fileToolOutput';
@@ -23,44 +27,11 @@ import { hasRunImageAttachment } from '../functions/hasRunImageAttachment';
 import { remapWorkspaceCitationRefs } from '../functions/remapWorkspaceCitationRefs';
 import { readPhysicalFileForTool } from './readPhysicalFileForTool';
 
-function sliceTextWindow(
-  text: string,
-  offset: number,
-  limit: number
-): {
-  readonly text: string;
-  readonly hasMore: boolean;
-  readonly nextOffset?: number;
-} {
-  const end = offset + limit;
-  const sliced = text.slice(offset, end);
-  const hasMore = text.length > end;
-  return { text: sliced, hasMore, ...(hasMore ? { nextOffset: end } : {}) };
-}
+type TextReadFileArgs = Extract<WorkspaceReadFileArgs, { readonly view: 'text' }>;
 
-function formatReadFileObservation(params: {
-  readonly locator: string;
-  readonly text: string;
-  readonly offset: number;
-  readonly nextOffset?: number;
-  readonly supplement?: string;
-}): string {
-  const content = (() => {
-    if (params.text.length === 0) {
-      return params.offset === 0
-        ? `[read_file: ${params.locator} 为空]`
-        : `[read_file: offset=${params.offset} 已到 ${params.locator} 文件末尾]`;
-    }
-    if (params.text.trim().length === 0) {
-      return `${params.text}\n[read_file: 当前窗口只包含空白字符]`;
-    }
-    return params.text;
-  })();
-  const visibleContent = params.supplement ? `${content}\n\n${params.supplement}` : content;
-  return params.nextOffset === undefined
-    ? visibleContent
-    : `${visibleContent}\n\n[read_file: 还有更多内容，继续使用 offset=${params.nextOffset}]`;
-}
+// VFS provider 当前先产出完整字符串，再在边界裁剪。行号分页必须先看到真实换行；
+// 这里把 source admission 与模型 observation 预算分开，避免再次把字符 cursor 暴露给 Agent。
+const WORKSPACE_READ_FILE_SOURCE_MAX_CHARS = 20 * 1024 * 1024;
 
 function requirePhysicalReadDependencies(context: ToolContext): {
   readonly reader: NonNullable<ToolContext['physicalFileReader']>;
@@ -94,7 +65,7 @@ async function readPhysicalLocator(input: {
     ReturnType<typeof parseFileLocator>,
     { kind: 'conversation' | 'file' }
   >;
-  readonly args: WorkspaceReadFileArgs;
+  readonly args: TextReadFileArgs;
   readonly rawArgs: Readonly<Record<string, unknown>>;
   readonly context: ToolContext;
 }): Promise<string> {
@@ -107,7 +78,7 @@ async function readPhysicalLocator(input: {
       hasRunImageAttachment(conversationView.getWorkingHistoryEvents(), runId, sha256)
     );
   };
-  const hasExplicitTextWindow = ['offset', 'limit'].some(key =>
+  const hasExplicitTextWindow = ['offset', 'limit', 'offset_chars', 'max_chars'].some(key =>
     Object.prototype.hasOwnProperty.call(input.rawArgs, key)
   );
   const read = await (async () => {
@@ -183,7 +154,11 @@ async function readPhysicalLocator(input: {
     );
   }
 
-  const window = sliceTextWindow(read.text, input.args.offset, input.args.limit);
+  const window = buildTextLineWindow({
+    text: read.text,
+    offset: input.args.offset,
+    limit: input.args.limit,
+  });
   return JSON.stringify(
     WorkspaceReadFileResultSchema.parse({
       data: {
@@ -194,15 +169,14 @@ async function readPhysicalLocator(input: {
         byte_length: read.byteLength,
         offset: input.args.offset,
         limit: input.args.limit,
-        truncated: false,
+        line_count: window.lineCount,
+        total_line_count: window.totalLineCount,
         has_more: window.hasMore,
         ...(window.nextOffset !== undefined ? { next_offset: window.nextOffset } : {}),
       },
-      observation: formatReadFileObservation({
+      observation: formatTextLineWindow({
         locator: read.locator,
-        text: window.text,
-        offset: input.args.offset,
-        ...(window.nextOffset !== undefined ? { nextOffset: window.nextOffset } : {}),
+        window,
       }),
     }),
     null,
@@ -246,8 +220,8 @@ async function readWorkspaceLocator(input: {
     const document = await readWorkspaceDocumentForTool(
       {
         document_id: node.id,
-        max_chars: input.args.limit,
-        offset_chars: input.args.offset,
+        max_chars: input.args.max_chars,
+        offset_chars: input.args.offset_chars,
         view_mode: 'preview',
         include_structure_only: false,
       },
@@ -307,17 +281,25 @@ async function readWorkspaceLocator(input: {
     conversationId: runtime.conversationId,
     instanceId: runtime.instanceId,
     inode: node.inode,
-    maxChars: input.args.offset + input.args.limit + 1,
+    maxChars: WORKSPACE_READ_FILE_SOURCE_MAX_CHARS,
     nodeTypeAccessPolicy: pluginWorkspaceVfsNodeTypeAccessPolicy,
   });
   if (!read.ok) {
     throw new Error(read.hint ? `${read.message} ${read.hint}` : read.message);
   }
-  const window = sliceTextWindow(read.text, input.args.offset, input.args.limit);
-  const hasMore = window.hasMore || read.truncated;
+  if (read.truncated) {
+    throw new Error(
+      `[READ_FILE_SOURCE_TOO_LARGE] ${locator} 超过 ${WORKSPACE_READ_FILE_SOURCE_MAX_CHARS} 字符，无法建立可信行号窗口。`,
+    );
+  }
+  const window = buildTextLineWindow({
+    text: read.text,
+    offset: input.args.offset,
+    limit: input.args.limit,
+  });
   const citationWindow = read.citationProjection
     ? buildDocumentCitationWindowOutput({
-        bodyWindow: window.text,
+        bodyWindow: window.rawText,
         projection: read.citationProjection,
       })
     : undefined;
@@ -339,7 +321,6 @@ async function readWorkspaceLocator(input: {
           citationProjection.sources.length > 0 ? requireCitationSequenceOffset(input.context) : 0,
       })
     : undefined;
-  const nextOffset = input.args.offset + window.text.length;
   const data: WorkspaceReadFileResult['data'] = {
     source_kind: 'workspace_vfs',
     locator,
@@ -348,19 +329,21 @@ async function readWorkspaceLocator(input: {
     node: toFileToolEntry(read.node),
     offset: input.args.offset,
     limit: input.args.limit,
-    truncated: read.truncated,
-    has_more: hasMore,
-    ...(hasMore ? { next_offset: nextOffset } : {}),
+    line_count: window.lineCount,
+    total_line_count: window.totalLineCount,
+    has_more: window.hasMore,
+    ...(window.nextOffset !== undefined ? { next_offset: window.nextOffset } : {}),
     ...(citationFields ?? {}),
   };
   return JSON.stringify(
     WorkspaceReadFileResultSchema.parse({
       data,
-      observation: formatReadFileObservation({
+      observation: formatTextLineWindow({
         locator,
-        text: citationProjection ? citationProjection.remapText(window.text) : window.text,
-        offset: input.args.offset,
-        ...(hasMore ? { nextOffset } : {}),
+        window,
+        text: citationProjection
+          ? citationProjection.remapText(window.rawText)
+          : window.rawText,
         ...(citationWindow?.observationSuffix
           ? {
               supplement: citationProjection
@@ -387,6 +370,9 @@ export async function readFileForTool(input: {
   const parsedLocator = parseFileLocator(input.args.locator);
   if (parsedLocator.kind === 'workspace') {
     return readWorkspaceLocator({ args: input.args, context: input.context });
+  }
+  if (input.args.view !== 'text') {
+    throw new Error('[READ_FILE_DOCUMENT_VIEW_REQUIRES_WORKSPACE] DocumentView 只支持 Workspace 文件。');
   }
   return readPhysicalLocator({
     parsedLocator,

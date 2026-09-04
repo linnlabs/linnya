@@ -86,7 +86,7 @@ describe('read_file host locator 与命令权限边界', () => {
       observations.push(result.observation);
     }
 
-    expect(new Set(observations)).toEqual(new Set([content]));
+    expect(new Set(observations)).toEqual(new Set(['1 | # 外部报告\n2 | 同一只读合同。\n3 | ']));
     expect(ingestLocalImage).not.toHaveBeenCalled();
     expect(issueClaims).not.toHaveBeenCalled();
   });

@@ -55,8 +55,9 @@ Markdown DocumentView 已一次性接入 citation-aware blocks、正文窗口选
 
 普通 VFS text 仍保持独立的代码即文档结果形状，并由 Markdown domain 的 `readMarkdownVfsContent`
 读取版本、pending 和同一 admitted citation projection；Workspace VFS 不查询 Markdown 表。默认
-`read_file` 先按正文字符 cursor 裁剪，再为窗口内完整 token 构建来源、预算与 diagnostics；不会把
-DocumentView 的 XML、块 ref 或 presentation 塞进默认 text。
+`read_file` 先按 1-based 正文行窗口选择原始文本，再为窗口内完整 token 构建来源、预算与 diagnostics，
+最后给模型可见正文添加行号；定位前缀不会污染 citation token 或来源映射。DocumentView 仍独立使用
+`offset_chars/max_chars`，不会把它的 XML、块 ref 或 presentation 塞进默认 text。
 
 `pendingDiffs` 是旁路详情，不拥有正文窗口 metadata，因此 citation ref 会显示为中性
 `【citation】`。可引用 token 只来自 DocumentView/普通 text 的正式正文及同结果 citation facts。

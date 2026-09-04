@@ -9,6 +9,10 @@ import type {
   WorkspaceDocumentReadData,
   WorkspaceDocumentReadResult,
 } from '@app/schemas';
+import {
+  WORKSPACE_READ_FILE_DOCUMENT_DEFAULT_MAX_CHARS,
+  WORKSPACE_READ_FILE_DOCUMENT_MAX_CHARS,
+} from '@app/schemas';
 
 /**
  * 文档读取结果的结构化数据
@@ -50,6 +54,6 @@ export type WorkspaceDocumentTypeReadProviderResolver = (
 ) => WorkspaceDocumentTypeReadProvider | undefined;
 
 /** 默认返回的最大字符数 */
-export const DEFAULT_MAX_CHARS = 4000;
+export const DEFAULT_MAX_CHARS = WORKSPACE_READ_FILE_DOCUMENT_DEFAULT_MAX_CHARS;
 /** 允许的最大字符数上限 */
-export const MAX_ALLOWED_CHARS = 12000;
+export const MAX_ALLOWED_CHARS = WORKSPACE_READ_FILE_DOCUMENT_MAX_CHARS;

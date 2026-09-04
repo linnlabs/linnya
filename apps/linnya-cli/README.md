@@ -116,6 +116,11 @@ pnpm linnya:cli tools call write_file \
   --args-json '{"locator":"workspace:/notes.md","content":"# Notes"}'
 ```
 
+`read_file` 的普通文本参数遵循 1-based 行窗口：`offset` 是起始行，`limit` 是最大行数；输出中的
+`行号 |` 仅用于定位，编辑时不属于 `old_string`。结构化 `view="document"` 改用
+`offset_chars/max_chars`。CLI 不重新解释这些字段，完整合同以 `tools describe read_file` 返回的 App
+当前 schema 为准。
+
 作用域规则只有三条：
 
 - 只传 `--project`：创建一个绑定该项目、前端可见的新 Conversation，并返回 `conversation_id`。
