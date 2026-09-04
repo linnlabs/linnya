@@ -213,7 +213,7 @@ export interface IWorkspaceGateway {
   'get-project-char-stats'(args: { projectId: string }): Promise<OperationResult<{ projectId: string; charCount: number }>>;
 
   // 文档操作
-  'read-document'(args: { documentId: string }): Promise<OperationResult<{ content: any; pendingRevisions: PendingRevisionDTO[] }>>;
+  'read-document'(args: { documentId: string }): Promise<OperationResult<{ content: any; pendingRevisions: PendingRevisionDTO[]; versionNumber?: number }>>;
   'save-document'(args: { documentId: string; content: any }): Promise<OperationResult<void>>;
   
   // Pending Revisions（AI 修订意图）操作
@@ -366,7 +366,7 @@ class WorkspaceGatewayImpl implements IWorkspaceGateway {
   }
 
   // 文档操作
-  'read-document'(args: { documentId: string }): Promise<OperationResult<{ content: any; pendingRevisions: PendingRevisionDTO[] }>> {
+  'read-document'(args: { documentId: string }): Promise<OperationResult<{ content: any; pendingRevisions: PendingRevisionDTO[]; versionNumber?: number }>> {
     return this.invoke('read-document', args);
   }
   'save-document'(args: { documentId: string; content: any }): Promise<OperationResult<void>> {

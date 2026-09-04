@@ -107,6 +107,7 @@ describe('Workspace document Editor provider integration', () => {
         resolveProvider,
       });
       expect(before.content).toEqual(markdownDocument('初始正文'));
+      expect(before.versionNumber).toBe(1);
       expect(before.pendingRevisions).toEqual([
         expect.objectContaining({
           blockId: 'root-editor-integration',

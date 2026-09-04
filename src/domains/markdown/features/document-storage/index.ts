@@ -4,6 +4,7 @@ export {
 export { MarkdownDocumentVersionReader } from './infrastructure/sqlite/markdownDocumentVersionReader';
 export type { MarkdownDocumentVersion as DocumentVersion } from './definitions/documentVersion';
 export { countMarkdownTextUnits } from './functions/countMarkdownTextUnits';
+export { assertExpectedMarkdownDocumentVersion } from './functions/assertExpectedMarkdownDocumentVersion';
 export {
   MarkdownOrphanBlockDataCleaner,
   type OrphanCleanupResult,

@@ -19,6 +19,7 @@ export interface WorkspaceEditorDocumentNodeReader {
 export interface WorkspaceEditorDocumentReadResult {
   readonly content: unknown;
   readonly pendingRevisions: readonly unknown[];
+  readonly versionNumber?: number;
 }
 
 export interface WorkspaceEditorDocumentWriteResult {

@@ -31,5 +31,6 @@ export async function readWorkspaceEditorDocument(params: {
   return {
     content: result.content,
     pendingRevisions: result.pendingRevisions,
+    ...(result.versionNumber !== undefined ? { versionNumber: result.versionNumber } : {}),
   };
 }

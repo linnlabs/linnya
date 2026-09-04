@@ -22,7 +22,10 @@ import ReviewAgentCreator from './views/ReviewAgentCreator.vue';
 import ReviewProcessing from './views/ReviewProcessing.vue';
 import ReviewDashboard from './views/ReviewDashboard.vue';
 import { getReviewContextConfig } from '../config/contextConfig';
-import { chunkReviewDocumentFromEditor } from '../utils/reviewDocumentChunker';
+import {
+  chunkReviewDocumentFromEditor,
+  withReviewDocumentVersion,
+} from '../utils/reviewDocumentChunker';
 import { workspaceGateway } from '@shared/ipc/workspaceGateway';
 import { getWorkspaceContextPort } from '@shared/ports/workspaceContextPort';
 import { generateTextStream } from '@shared/services/aiService/unifiedApiService';
@@ -123,6 +126,14 @@ const handleReviewStarted = async () => {
     if (!saved) {
       throw new Error('审阅前保存文档失败，已停止审阅以避免覆盖未保存内容');
     }
+    const baselineDocument = await workspaceGateway['read-document']({ documentId });
+    if (
+      !baselineDocument.success
+      || typeof baselineDocument.data?.versionNumber !== 'number'
+    ) {
+      throw new Error('无法读取审阅文档版本，已停止审阅');
+    }
+    let expectedDocumentVersion = baselineDocument.data.versionNumber;
 
     // 1) 分段导出全文（按块）
     const config = getReviewContextConfig();
@@ -165,7 +176,10 @@ const handleReviewStarted = async () => {
             enableTools: true,
             persist: false,
             history_mode: 'isolated',
-            document_fragment: chunk.document_fragment,
+            document_fragment: withReviewDocumentVersion(
+              chunk.document_fragment,
+              expectedDocumentVersion,
+            ),
             review_run_id: reviewRunId ?? undefined,
             agent_id: agent.id,
             chunk_index: chunkIndex,
@@ -188,11 +202,17 @@ const handleReviewStarted = async () => {
         // 不替换当前 editor doc，避免覆盖审阅期间的本地正文编辑。
         const documentResult = await workspaceGateway['read-document']({ documentId });
         if (documentResult?.success && documentResult.data?.content) {
+          if (typeof documentResult.data.versionNumber !== 'number') {
+            throw new Error('后端未返回审阅后的文档版本');
+          }
           if (typeof annoStore.mergeAnnotationsFromDocumentJson === 'function') {
             annoStore.mergeAnnotationsFromDocumentJson(documentResult.data.content);
           }
+          expectedDocumentVersion = documentResult.data.versionNumber;
+        } else if (!documentResult.success) {
+          console.warn('[ReviewSidebar] 合并审阅批注失败:', documentResult.error);
         } else {
-          console.warn('[ReviewSidebar] 合并审阅批注失败:', documentResult?.error);
+          console.warn('[ReviewSidebar] 合并审阅批注失败: 后端未返回文档内容');
         }
       }
     }

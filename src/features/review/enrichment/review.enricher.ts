@@ -42,6 +42,10 @@ export class ReviewRequestEnricher implements RequestEnricher {
     if (!documentId) {
       throw new Error('[ReviewRequestEnricher] 无法从 document_fragment 中解析 document_id');
     }
+    const documentVersion = this.extractDocumentVersionFromDocumentFragment(request.document_fragment);
+    if (documentVersion === null) {
+      throw new Error('[ReviewRequestEnricher] 无法从 document_fragment 中解析 document_version');
+    }
 
     // 1. 校验必填字段
     const agentId = this.requireNonEmptyString(request.agent_id, 'agent_id');
@@ -95,6 +99,7 @@ export class ReviewRequestEnricher implements RequestEnricher {
       toolContextPatch: {
         // 当前文档 ID：供 markdown_create_annotations 工具自动落库使用（模型无需传参）
         document_id: documentId,
+        expected_document_version: documentVersion,
         review_run_id: reviewRunId,
         agent_id: agentId,
         // 当前角色名：供工具写入批注 author（模型无需传参）
@@ -130,6 +135,14 @@ export class ReviewRequestEnricher implements RequestEnricher {
     if (!match) return null;
     const id = match[1]?.trim();
     return id && id.length > 0 ? id : null;
+  }
+
+  private extractDocumentVersionFromDocumentFragment(fragment: unknown): number | null {
+    if (typeof fragment !== 'string' || fragment.trim().length === 0) return null;
+    const match = fragment.match(/(?:^|\n)document_version:\s*(\d+)(?:\r?\n|$)/);
+    if (!match) return null;
+    const version = Number(match[1]);
+    return Number.isSafeInteger(version) && version > 0 ? version : null;
   }
 
   private requireNonEmptyString(value: string | undefined, fieldName: string): string {

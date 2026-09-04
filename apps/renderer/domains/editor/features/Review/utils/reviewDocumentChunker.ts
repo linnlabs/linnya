@@ -27,6 +27,27 @@ export interface ReviewDocumentChunk {
   blocksCount: number;
 }
 
+export function withReviewDocumentVersion(
+  documentFragment: string,
+  versionNumber: number,
+): string {
+  if (!Number.isSafeInteger(versionNumber) || versionNumber <= 0) {
+    throw new Error(`Review document version must be a positive integer: ${versionNumber}`);
+  }
+  const versionLine = `document_version: ${versionNumber}`;
+  if (/(?:^|\n)document_version:\s*\d+(?=\r?\n|$)/.test(documentFragment)) {
+    return documentFragment.replace(
+      /(^|\n)document_version:\s*\d+(?=\r?\n|$)/,
+      `$1${versionLine}`,
+    );
+  }
+  const documentIdLine = /(^|\n)(document_id:[^\r\n]*\r?\n)/;
+  if (!documentIdLine.test(documentFragment)) {
+    throw new Error('Review document fragment is missing document_id');
+  }
+  return documentFragment.replace(documentIdLine, `$1$2${versionLine}\n`);
+}
+
 interface BlockWithRef {
   blockId: string;
   ref: string;
@@ -139,5 +160,3 @@ export async function chunkReviewDocumentFromEditor(params: {
 
   return chunks;
 }
-
-

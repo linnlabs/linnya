@@ -21,7 +21,10 @@ import {
   resolveMarkdownAnnotationTarget,
   type MarkdownAnnotationInsertion,
 } from '../../features/annotations';
-import { MarkdownDocumentService } from '../../features/document-storage';
+import {
+  assertExpectedMarkdownDocumentVersion,
+  MarkdownDocumentService,
+} from '../../features/document-storage';
 import {
   flattenMarkdownDocumentBlocks,
   type FlattenedMarkdownBlock,
@@ -76,6 +79,8 @@ interface MarkdownCreateAnnotationsResultData {
 interface ReviewToolContextFields {
   /** 当前文档 ID（由 ReviewRequestEnricher 注入，模型无需传参） */
   document_id?: string;
+  /** Review fragment 对应的正式文档版本，用于阻止覆盖并发修改 */
+  expected_document_version?: number;
   /** 本次审阅的唯一标识 */
   review_run_id?: string;
   /** 当前角色 ID */
@@ -94,6 +99,12 @@ function readReviewToolContextFields(context: ToolContext): ReviewToolContextFie
   if (!value || typeof value !== 'object') return fields;
   if ('document_id' in value && typeof value.document_id === 'string') {
     fields.document_id = value.document_id;
+  }
+  if (
+    'expected_document_version' in value
+    && typeof value.expected_document_version === 'number'
+  ) {
+    fields.expected_document_version = value.expected_document_version;
   }
   if ('review_run_id' in value && typeof value.review_run_id === 'string') {
     fields.review_run_id = value.review_run_id;
@@ -185,6 +196,7 @@ export class MarkdownCreateAnnotationsTool extends BaseTool {
     // 3. 获取 Review 相关的上下文
     const reviewContext = readReviewToolContextFields(context);
     const documentId = reviewContext.document_id;
+    const expectedDocumentVersion = reviewContext.expected_document_version;
     const reviewRunId = reviewContext.review_run_id;
     const agentId = reviewContext.agent_id;
     const agentName = reviewContext.agent_name;
@@ -193,6 +205,13 @@ export class MarkdownCreateAnnotationsTool extends BaseTool {
     if (typeof documentId !== 'string' || documentId.trim().length === 0) {
       return this.buildErrorResult('当前审阅上下文缺少 document_id（应由 ReviewRequestEnricher 自动注入）');
     }
+    if (
+      typeof expectedDocumentVersion !== 'number'
+      || !Number.isSafeInteger(expectedDocumentVersion)
+      || expectedDocumentVersion <= 0
+    ) {
+      return this.buildErrorResult('当前审阅上下文缺少有效的 expected_document_version');
+    }
     if (typeof agentName !== 'string' || agentName.trim().length === 0) {
       return this.buildErrorResult('当前审阅上下文缺少 agent_name（应由 ReviewRequestEnricher 自动注入）');
     }
@@ -200,6 +219,14 @@ export class MarkdownCreateAnnotationsTool extends BaseTool {
     try {
       const db = databaseService.getDb();
       const documentService = new MarkdownDocumentService(db);
+      const latestVersion = documentService.getLatestVersion(documentId);
+      if (!latestVersion) {
+        return this.buildErrorResult(`文档不存在: ${documentId}`);
+      }
+      assertExpectedMarkdownDocumentVersion({
+        expected: expectedDocumentVersion,
+        actual: latestVersion.version_number,
+      });
 
       // 3.1 读取文档并展平 blocks；批注工具只接受 ref，由后端解析到真实 blockId。
       const content = documentService.getDocument(documentId);

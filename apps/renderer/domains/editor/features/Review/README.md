@@ -52,12 +52,12 @@ Review 必须走 Agent 模式（`options.mode='agent'`），因为：
 
 这里的“读文档”**不是给模型一个“阅读工具”**，也不是 AI 主动调用某个读取工具。
 
-含义是：当模型调用 `markdown_create_annotations` 时，**后端执行 Markdown domain 的专属工具**。工具读取最新正式文档，以 annotations feature 的确定性 ref 规则把 `target_ref` 反解成目标 block ID，把批注附加到对应 root block，并一次性创建一个新文档版本。
+含义是：当模型调用 `markdown_create_annotations` 时，**后端执行 Markdown domain 的专属工具**。工具读取正式文档，以 annotations feature 的确定性 ref 规则把 `target_ref` 反解成目标 block ID，把批注附加到对应 root block，并一次性创建一个新文档版本。写入前必须验证 fragment 携带的 `document_version` 仍等于数据库最新版本。
 
 也就是说：
 - 模型可见：只有前端注入的 `document_fragment`（带 `[#ref]`）+ “创建批注”工具本身
 - 模型提交：`target_ref`（ref），不提交 `blockId`
-- 后端工具内部：读最新文档 → 展平 blocks → `ref -> blockId` → 更新 root block attrs → 创建文档版本
+- 后端工具内部：校验 expected version → 展平 blocks → `ref -> blockId` → 更新 root block attrs → 创建文档版本
 
 ## 后端/AI 基础设施（已落地 ✅）
 
@@ -105,9 +105,10 @@ Review 必须走 Agent 模式（`options.mode='agent'`），因为：
     - 入口：`generateTextStream(...)` → `POST /api/v1/conversation/next`
     - 必须：`mode='agent'` + `prompt_key='review'` + `enableTools=true`
     - 每段都携带：
-      - `document_fragment`（DocumentView 协议，包含 document_id + `[#ref]`）
+      - `document_fragment`（DocumentView 协议，包含 document_id、当前 document_version 与 `[#ref]`）
       - `review_run_id / agent_id / chunk_index / total_chunks / review_background / review_goal`
   - 每段结束后读取最新文档版本，并通过 `annotationStore.mergeAnnotationsFromDocumentJson(...)` 只合并新增批注，不覆盖审阅期间的本地正文编辑
+  - 下一段使用刚读取到的版本号；若审阅期间其他流程先创建了版本，工具整批拒绝本次写入
   - 全部完成后切换到 `results`
 - `ReviewDashboard.vue` 渲染结果：
   - **结果数据源**：`annotationStore.annotations`
@@ -120,7 +121,7 @@ Review 必须走 Agent 模式（`options.mode='agent'`），因为：
 
 - **禁止回退到 mock**：Review 不再生成 `reviewMessages`，也不再通过前端调用 `startCreatingAnnotation/confirmCreatingAnnotation` 来“模拟落库”。
 - **工具调用前提**：Review 必须 `mode='agent'`，否则后端会禁用工具调用，批注无法落库。
-- **document_id 不再由模型传入**：后端会从 `document_fragment` 头部解析 `document_id` 并注入到工具上下文；模型创建批注时只需要提交 `annotations_markdown`（多行 `[#ref] 批注内容`）。
+- **document_id 与 expected version 不由模型填写**：前端在 `document_fragment` 头部携带正式身份与版本，后端解析后注入工具上下文；模型创建批注时只需要提交 `annotations_markdown`（多行 `[#ref] 批注内容`）。
 - **批注 author 不再由模型传入**：后端会把当前审阅角色名注入到工具上下文，工具落库时统一写入批注 author，避免模型乱填导致不可控。
 - **批注位置为何不进入文档**：`position` 是纯视图状态，由前端根据当前 DOM 计算；Markdown 文档只保存批注身份、内容、状态、回复和业务元信息。
 

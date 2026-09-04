@@ -12,6 +12,7 @@ export interface MarkdownEditorPendingRevision {
 export interface MarkdownEditorDocumentReadResult {
   readonly content: unknown;
   readonly pendingRevisions: readonly MarkdownEditorPendingRevision[];
+  readonly versionNumber: number;
 }
 
 export interface MarkdownEditorDocumentWriteResult {

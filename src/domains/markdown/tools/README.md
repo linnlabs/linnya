@@ -7,7 +7,7 @@
 ### `markdown_create_annotations`
 
 - Review enricher 只注入当前审阅的文档与角色元信息；
-- 工具读取正式 Markdown 文档版本并展开 canonical root blocks；
+- 工具校验 Review fragment 对应的正式 Markdown 文档版本仍是最新版本，再展开 canonical root blocks；
 - annotations feature 以稳定 `[#ref]` 确定性解析目标 blockId，并在写入前再次校验目标块仍属于当前文档；
 - 工具结果只报告逐项创建事实，不向 Workspace 工具层泄漏 Markdown repository。
 
