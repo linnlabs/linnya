@@ -130,7 +130,7 @@ describe('buildToolFeedbackPayload — includeHeuristics findings', () => {
     );
     const finding = payload.findings.find((entry) => entry.code === 'probable_title_too_small');
     expect(finding).toMatchObject({
-      sourceRefs: [expect.objectContaining({ precision: 'unavailable', nodeId: 't1' })],
+      sourceRefs: [expect.objectContaining({ kind: 'unavailable', nodeId: 't1' })],
       remediation: {
         disposition: 'review',
         targetNodeIds: ['t1'],

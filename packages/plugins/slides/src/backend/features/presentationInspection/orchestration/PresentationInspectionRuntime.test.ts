@@ -93,6 +93,7 @@ describe('PresentationInspectionRuntime', () => {
       expect.any(Map),
       {
         includeHeuristics: true,
+        sourceSpanUseCounts: expect.any(Map),
         sourceLocations: expect.any(Map),
       },
     );

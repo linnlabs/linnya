@@ -1,4 +1,5 @@
 export { buildSourceLocationMap } from './functions/buildSourceLocationMap';
+export { countSourceSpanUses } from './functions/countSourceSpanUses';
 export type { PresentationSourceStructure } from './functions/buildSourceLocationMap';
 export {
   resolvePresentationInspectionSelection,

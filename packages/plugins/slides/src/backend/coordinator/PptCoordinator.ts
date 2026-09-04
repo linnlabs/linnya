@@ -231,6 +231,7 @@ export class PptCoordinator {
           editableTargetsBySlide,
           {
             includeHeuristics: options.includeHeuristics,
+            sourceSpanUseCounts: options.sourceSpanUseCounts,
             ...(options.sourceLocations ? { sourceLocations: options.sourceLocations } : {}),
             spatialAnalyzer: this.engine,
           }

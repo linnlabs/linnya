@@ -25,4 +25,5 @@ export interface PresentationInspectionSnapshot {
 export interface PresentationInspectionFeedbackOptions {
   readonly includeHeuristics: boolean;
   readonly sourceLocations?: ReadonlyMap<number, SourceLocationHint>;
+  readonly sourceSpanUseCounts: ReadonlyMap<string, number>;
 }

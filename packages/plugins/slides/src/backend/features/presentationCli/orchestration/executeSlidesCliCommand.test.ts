@@ -85,7 +85,7 @@ function createInspection(): PresentationInspectionResult {
         triggeringNodeIds: [],
       },
       sourceRefs: [{
-        precision: 'slide',
+        kind: 'slide',
         slideNumber: 1,
         locator: 'deck.js',
         startLine: 2,

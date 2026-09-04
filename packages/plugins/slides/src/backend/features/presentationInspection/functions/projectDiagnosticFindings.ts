@@ -6,9 +6,9 @@ import {
   type DiagnosticSourceRef,
 } from '../../../engine/quality/definitions';
 
-type ExactDiagnosticSourceRef = Exclude<
+type CreationDiagnosticSourceRef = Extract<
   DiagnosticSourceRef,
-  { readonly precision: 'unavailable' }
+  { readonly kind: 'direct_creation' | 'shared_creation' }
 >;
 
 export interface DiagnosticDeclaredRootGroup {
@@ -56,7 +56,7 @@ export interface DiagnosticProjectionSummary {
 /**
  * 将同一 snapshot 的诊断事实收敛为稳定顺序，并生成两类有证据的根因组：
  * - quality 明确声明的约束根因；
- * - 多个 finding 指向同一 element 级源码控制点的共享源码根因。
+ * - 多个 finding 指向同一创建位置的共享源码根因。
  *
  * 这里只消费 finding 与 sourceRef，不根据文案、同页或相似几何猜测因果。
  */
@@ -180,11 +180,11 @@ function buildSharedSourceRootGroups(
   return groups;
 }
 
-/** 只有 element 级精确位置才足以证明多个 finding 由同一作者控制点产生。 */
+/** 只有 direct/shared creation 才足以证明多个 finding 由同一作者控制点产生。 */
 function sharedSourceSignature(finding: DiagnosticFinding): string | undefined {
   const loci: string[] = [];
   for (const source of finding.sourceRefs) {
-    if (source.precision !== 'element') return undefined;
+    if (source.kind !== 'direct_creation' && source.kind !== 'shared_creation') return undefined;
     loci.push(exactSourceLocus(source));
   }
   if (loci.length === 0) return undefined;
@@ -194,9 +194,9 @@ function sharedSourceSignature(finding: DiagnosticFinding): string | undefined {
 function deduplicateSourceLoci(
   sources: readonly DiagnosticSourceRef[],
 ): DiagnosticSourceRef[] {
-  const byLocus = new Map<string, ExactDiagnosticSourceRef>();
+  const byLocus = new Map<string, CreationDiagnosticSourceRef>();
   for (const source of sources) {
-    if (source.precision === 'unavailable') continue;
+    if (source.kind !== 'direct_creation' && source.kind !== 'shared_creation') continue;
     const key = exactSourceLocus(source);
     if (!byLocus.has(key)) byLocus.set(key, source);
   }
@@ -206,9 +206,9 @@ function deduplicateSourceLoci(
 }
 
 function exactSourceLocus(
-  source: ExactDiagnosticSourceRef,
+  source: CreationDiagnosticSourceRef,
 ): string {
-  return `${source.precision}:${source.locator}:${source.startLine}:${source.endLine}`;
+  return `${source.kind}:${source.locator}:${source.startLine}:${source.endLine}`;
 }
 
 function compareProjectionBlocks(

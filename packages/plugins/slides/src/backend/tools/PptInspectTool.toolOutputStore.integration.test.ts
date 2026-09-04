@@ -170,7 +170,7 @@ function makeFinding(index: number): DiagnosticFinding {
       fullBleedAxes: [],
     },
     sourceRefs: [{
-      precision: 'unavailable',
+      kind: 'unavailable',
       slideNumber: 1,
       nodeId,
       reason: 'source_location_unavailable',

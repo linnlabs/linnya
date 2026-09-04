@@ -98,6 +98,7 @@ export type {
   SlidesSourceSlicesOutput,
   SlidesSourceSliceTargetInput,
 } from './documentSource';
+export { buildSlideSourceSpanLocusKey } from './documentSource';
 export type {
   GeneratedLayoutBox,
   GeneratedLayoutComputedRatios,

@@ -361,27 +361,29 @@ function formatSource(
   nodeHandles: ReadonlyMap<string, string>,
 ): string {
   const source = sources[0]!;
-  if (sources.length > 1 && source.precision !== 'unavailable') {
-    return `${source.locator}:${source.startLine}-${source.endLine}`
-      + ` precision=${source.precision} shared=${sources.length}`;
-  }
   const node = source.nodeId ? ` node=${nodeHandles.get(source.nodeId) ?? source.nodeId}` : '';
-  if (source.precision === 'unavailable') {
+  if (source.kind === 'unavailable') {
     return `slide=${source.slideNumber}${node} unavailable=${source.reason}`;
   }
-  return `slide=${source.slideNumber}${node} ${source.locator}:${source.startLine}-${source.endLine} precision=${source.precision}`;
+  if (source.kind === 'shared_creation') {
+    return `${source.locator}:${source.startLine}-${source.endLine}`
+      + ` kind=${source.kind} generated=${source.generatedNodeCount}`;
+  }
+  return `slide=${source.slideNumber}${node} ${source.locator}:${source.startLine}-${source.endLine}`
+    + ` kind=${source.kind}`;
 }
 
 function sourceLocusKey(source: DiagnosticSourceRef): string {
-  if (source.precision === 'unavailable') return sourceKey(source);
-  return `${source.precision}:${source.locator}:${source.startLine}:${source.endLine}`;
+  if (source.kind === 'unavailable') return sourceKey(source);
+  return `${source.kind}:${source.locator}:${source.startLine}:${source.endLine}`;
 }
 
 function sourceKey(source: DiagnosticSourceRef): string {
-  if (source.precision === 'unavailable') {
-    return `${source.precision}:${source.slideNumber}:${source.nodeId ?? ''}:${source.reason}`;
+  if (source.kind === 'unavailable') {
+    return `${source.kind}:${source.slideNumber}:${source.nodeId ?? ''}:${source.reason}`;
   }
-  return `${source.precision}:${source.slideNumber}:${source.nodeId ?? ''}:${source.locator}:${source.startLine}:${source.endLine}`;
+  const generated = source.kind === 'slide' ? '' : `:${source.generatedNodeCount}`;
+  return `${source.kind}:${source.slideNumber}:${source.nodeId ?? ''}:${source.locator}:${source.startLine}:${source.endLine}${generated}`;
 }
 
 function formatPageSelection(

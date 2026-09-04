@@ -34,12 +34,13 @@ function outOfBoundsFinding() {
       fullBleedAxes: [],
     },
     sourceRefs: [{
-      precision: 'element',
+      kind: 'direct_creation',
       slideNumber: 1,
       nodeId: 'node-1',
       locator: 'deck.js',
       startLine: 20,
       endLine: 24,
+      generatedNodeCount: 1,
     }],
     remediation: {
       disposition: 'fix',
@@ -140,12 +141,13 @@ describe('DiagnosticFinding contract', () => {
         thresholdRatio: 1.35,
       },
       sourceRefs: [{
-        precision: 'element',
+        kind: 'direct_creation',
         slideNumber: 2,
         nodeId: 'chart-1',
         locator: 'deck.js',
         startLine: 80,
         endLine: 90,
+        generatedNodeCount: 1,
       }],
       remediation: {
         disposition: 'fix',

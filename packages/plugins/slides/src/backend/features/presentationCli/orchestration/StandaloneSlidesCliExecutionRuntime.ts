@@ -107,6 +107,7 @@ export class StandaloneSlidesCliExecutionRuntime implements SlidesCliExecutionPo
           editableTargetsBySlide,
           {
             includeHeuristics: options.includeHeuristics,
+            sourceSpanUseCounts: options.sourceSpanUseCounts,
             ...(options.sourceLocations ? { sourceLocations: options.sourceLocations } : {}),
             spatialAnalyzer: {
               analyzeSpatial: async ({ slideNodes }) =>

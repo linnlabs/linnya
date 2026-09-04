@@ -27,6 +27,7 @@ export interface BuildToolFeedbackPayloadOptions {
    */
   includeHeuristics?: boolean;
   sourceLocations?: ReadonlyMap<number, SourceLocationHint>;
+  sourceSpanUseCounts?: ReadonlyMap<string, number>;
   spatialAnalyzer: Pick<SlidesEngineExecutionAdapter, 'analyzeSpatial'>;
 }
 
@@ -54,6 +55,7 @@ export async function buildToolFeedbackPayload(
   const spatialAnalysis = await buildSpatialAnalysis(sceneGraph, options.spatialAnalyzer);
   const findings = collectFindings(qualityAnalysis, sceneGraph, spatialAnalysis, changedSlides, {
     sourceLocations: options.sourceLocations,
+    sourceSpanUseCounts: options.sourceSpanUseCounts ?? new Map(),
   });
 
   return {
