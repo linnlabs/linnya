@@ -271,8 +271,9 @@ id 和 route profile 都是内部实现，不要求普通用户手填。
 三种格式都允许用户声明模型的图片理解能力，但 route 只开放自身 codec 经过 conformance 的来源。OpenAI-compatible
 Chat 不能原生表达带图片的 tool result，因此投影为 `user_image=true / tool_result_image=false`；它不会把工具图片改写成
 额外 user 消息。OpenAI Responses 与 Anthropic Messages 当前可投影两个来源。自定义 API 允许 HTTP 与 HTTPS，以支持
-公司内网和本地服务；这里不替用户制定网络边界策略。Ollama 等 Chat-only endpoint 同样由正式 profile 决定用户图片能力，
-不能从品牌或模型名猜测，也不承诺把读取或生成的图片重新输入模型。
+公司内网和本地服务；这里不替用户制定网络边界策略。Ollama 原生 Chat 不属于 OpenAI-compatible Chat：其正式
+Provider package 可以把工具结果图片编码为原生 tool message，因此 `ollama_chat` profile 开放两个图片来源。能力仍由
+profile 决定，不能从品牌或模型名猜测。
 
 添加与编辑共用 inference-endpoints feature 的 token
 capacity 解析规则。新增 API 模型的表单初始值为 256K 上下文窗口和 16K 最大输出，仍由用户按实际部署修改；它们不是模型能力推断。配置输入真正缺失时，共享 route

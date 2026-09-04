@@ -171,7 +171,9 @@ Z.AI 是这条规则的现成案例：2026-08-26 发布的官方 `@ai-sdk/zai`
 NIM 与 ModelScope 等仍经单独准入的服务才继续共享 compatible
 capability。Ollama Cloud 使用 `ai-sdk-ollama` 的原生 `/api/chat` codec；factory 显式关闭该
 package 的可靠工具调用和对象生成重试，确保一个 canonical attempt 只产生一次 Provider
-请求。目录来源曾经观察到 compatible package，不构成退回通用 codec 的理由。
+请求。该 package 还负责把 canonical 工具结果图片编码为原生 `tool message + images`；Host
+只维护经 conformance 验证的 placement 能力，不复制图片编码。目录来源曾经观察到 compatible
+package，不构成退回通用 codec 的理由。
 
 模型目录更新不修改本 package factory；Provider
 package 更新也不修改 Host 的模型资料、onboarding、Linnkit 或 Agent 语义。

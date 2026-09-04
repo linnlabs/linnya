@@ -12,9 +12,7 @@ function estimateOllamaImageTokens(dimensions: {
   return Math.min(patches, CONSERVATIVE_VISUAL_TOKEN_LIMIT);
 }
 
-/**
- * 仅供待删除的原生 Ollama codec 做行为回归；生产 AI SDK route 不注册此 profile。
- */
+/** Ollama 原生 Chat 的 inline base64 图片预算与限制。 */
 export const OLLAMA_CHAT_IMAGE_INPUT_PROFILE: Extract<
   ImageInputProcessingProfile,
   { readonly apiSurface: 'ollama_chat' }

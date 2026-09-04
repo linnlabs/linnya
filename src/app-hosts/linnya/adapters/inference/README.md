@@ -160,8 +160,9 @@ registry 记录经过 conformance 验证的图片来源上限，route 不能声�
 `user_image`、`tool_result_image` 相交。产品开关不因某一个来源缺失而被整体禁用；设置页只提供统一的视觉识别语义开关，
 不把 route 级图片来源差异暴露为额外配置项。
 OpenAI-compatible Chat 可以接收用户图片但不能接收工具结果图片，这个差异不能通过 synthetic user message 抹平。
-Ollama Cloud 首版同样只声明用户图片输入；在官方 Cloud 对工具角色图片形成稳定合同并通过
-conformance 前，不把 community package 能序列化该字段等同于产品支持。
+Ollama 原生 Chat 是独立 surface：`ai-sdk-ollama` 会把工具结果图片编码为带 `images` 的原生
+tool message，因此 Ollama Cloud 同时开放用户图片与工具结果图片。该能力必须由 Provider
+conformance 直接断言 wire body，Host 不复制 package 的转换逻辑。
 
 Canonical message 的顺序属于 Linnkit 合同。普通 route 的 AI SDK
 capability 显式允许 `messages` 中的 system

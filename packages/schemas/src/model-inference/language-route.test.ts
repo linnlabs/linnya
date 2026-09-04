@@ -131,6 +131,10 @@ describe('ModelInferenceRouteSchema', () => {
       user_image: true,
       tool_result_image: true,
     });
+    expect(projectLanguageInferenceImageInputSupport('ollama_chat', true)).toEqual({
+      user_image: true,
+      tool_result_image: true,
+    });
     expect(projectLanguageInferenceImageInputSupport('openai_responses', false)).toEqual({
       user_image: false,
       tool_result_image: false,

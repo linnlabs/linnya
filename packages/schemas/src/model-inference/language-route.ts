@@ -189,7 +189,7 @@ export const LANGUAGE_INFERENCE_ROUTE_PROFILES = [
     api_surface: 'ollama_chat',
     capability_id: LANGUAGE_INFERENCE_CAPABILITY_IDS.OLLAMA_CHAT,
     auth_profiles: ['bearer'],
-    image_input_support: { user_image: true, tool_result_image: false },
+    image_input_support: { user_image: true, tool_result_image: true },
   },
 ] as const;
 

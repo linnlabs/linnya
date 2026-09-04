@@ -15,7 +15,7 @@ route 的最终输入。
   attachments。
 - `registry/`：已验证 route
   capability 到冻结 profile 的唯一绑定。默认注册表只绑定生产 AI SDK
-  route；原生 Ollama profile 仅供待删除旧 codec 的回归测试。
+  route；Ollama 原生 Chat 使用独立的 inline base64 profile。
 - `index.ts`：Host public contract；外部模块不得导入内部文件。
 
 ## 负责与不负责

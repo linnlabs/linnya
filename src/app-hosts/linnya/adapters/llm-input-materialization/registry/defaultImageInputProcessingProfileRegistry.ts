@@ -2,6 +2,7 @@ import { modelCatalog } from 'src/domains/model-catalog';
 import { LANGUAGE_INFERENCE_CAPABILITY_IDS } from '@app/schemas/model-inference';
 import { ANTHROPIC_MESSAGES_IMAGE_INPUT_PROFILE } from './anthropicMessagesImageInputProfile';
 import { CHAT_COMPLETIONS_IMAGE_INPUT_PROFILE } from './chatCompletionsImageInputProfile';
+import { OLLAMA_CHAT_IMAGE_INPUT_PROFILE } from './ollamaChatImageInputProfile';
 import { OPENAI_RESPONSES_IMAGE_INPUT_PROFILE } from './openAiResponsesImageInputProfile';
 import { createImageInputProcessingProfileRegistry } from '../orchestration/createImageInputProcessingProfileRegistry';
 
@@ -33,6 +34,10 @@ export const defaultImageInputProcessingProfileRegistry = createImageInputProces
       {
         route: LANGUAGE_INFERENCE_CAPABILITY_IDS.ANTHROPIC_MESSAGES,
         profile: ANTHROPIC_MESSAGES_IMAGE_INPUT_PROFILE,
+      },
+      {
+        route: LANGUAGE_INFERENCE_CAPABILITY_IDS.OLLAMA_CHAT,
+        profile: OLLAMA_CHAT_IMAGE_INPUT_PROFILE,
       },
     ],
   }

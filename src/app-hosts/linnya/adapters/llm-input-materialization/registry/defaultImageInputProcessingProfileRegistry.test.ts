@@ -10,6 +10,7 @@ vi.mock('src/domains/model-catalog', () => ({
 
 import { ANTHROPIC_MESSAGES_IMAGE_INPUT_PROFILE } from './anthropicMessagesImageInputProfile';
 import { CHAT_COMPLETIONS_IMAGE_INPUT_PROFILE } from './chatCompletionsImageInputProfile';
+import { OLLAMA_CHAT_IMAGE_INPUT_PROFILE } from './ollamaChatImageInputProfile';
 import { OPENAI_RESPONSES_IMAGE_INPUT_PROFILE } from './openAiResponsesImageInputProfile';
 import { defaultImageInputProcessingProfileRegistry } from './defaultImageInputProcessingProfileRegistry';
 
@@ -17,7 +18,8 @@ type ImageRoute =
   | 'openai-chat'
   | 'openai-compatible'
   | 'openai-responses'
-  | 'anthropic';
+  | 'anthropic'
+  | 'ollama';
 
 function readImageRoute(value: string): ImageRoute | undefined {
   switch (value) {
@@ -25,6 +27,7 @@ function readImageRoute(value: string): ImageRoute | undefined {
     case 'openai-compatible':
     case 'openai-responses':
     case 'anthropic':
+    case 'ollama':
       return value;
     default:
       return undefined;
@@ -44,13 +47,19 @@ function model(route: ImageRoute): ModelConfig {
           capability_id: LANGUAGE_INFERENCE_CAPABILITY_IDS.ANTHROPIC_MESSAGES,
           auth_profile: 'api_key' as const,
         }
-      : {
-          api_surface: 'openai_chat_completions' as const,
-          capability_id: route === 'openai-chat'
-            ? LANGUAGE_INFERENCE_CAPABILITY_IDS.OPENAI_CHAT
-            : LANGUAGE_INFERENCE_CAPABILITY_IDS.OPENAI_COMPATIBLE_CHAT,
-          auth_profile: 'bearer' as const,
-        };
+      : route === 'ollama'
+        ? {
+            api_surface: 'ollama_chat' as const,
+            capability_id: LANGUAGE_INFERENCE_CAPABILITY_IDS.OLLAMA_CHAT,
+            auth_profile: 'bearer' as const,
+          }
+        : {
+            api_surface: 'openai_chat_completions' as const,
+            capability_id: route === 'openai-chat'
+              ? LANGUAGE_INFERENCE_CAPABILITY_IDS.OPENAI_CHAT
+              : LANGUAGE_INFERENCE_CAPABILITY_IDS.OPENAI_COMPATIBLE_CHAT,
+            auth_profile: 'bearer' as const,
+          };
   return {
     id: `model-${route}`,
     model_name: `provider-${route}`,
@@ -91,12 +100,15 @@ describe('default image input processing profile registry', () => {
     }
   );
 
-  it('Responses 与 Anthropic 保持各自独立的图片 profile', () => {
+  it('Responses、Anthropic 与 Ollama 保持各自独立的图片 profile', () => {
     expect(defaultImageInputProcessingProfileRegistry.resolveForModel('model-openai-responses')).toBe(
       OPENAI_RESPONSES_IMAGE_INPUT_PROFILE
     );
     expect(defaultImageInputProcessingProfileRegistry.resolveForModel('model-anthropic')).toBe(
       ANTHROPIC_MESSAGES_IMAGE_INPUT_PROFILE
+    );
+    expect(defaultImageInputProcessingProfileRegistry.resolveForModel('model-ollama')).toBe(
+      OLLAMA_CHAT_IMAGE_INPUT_PROFILE
     );
   });
 

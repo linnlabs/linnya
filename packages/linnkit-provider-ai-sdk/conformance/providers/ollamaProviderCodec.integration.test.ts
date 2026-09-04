@@ -59,6 +59,10 @@ describe('Ollama Provider package codec conformance', () => {
           eval_count: 3,
         },
       ],
+      toolResultContent: [
+        { type: 'text', text: 'file contents' },
+        { type: 'image', media_type: 'image/png', bytes: new Uint8Array([1, 2, 3]) },
+      ],
     });
 
     expect(result.requests).toHaveLength(2);
@@ -108,7 +112,12 @@ describe('Ollama Provider package codec conformance', () => {
             },
           ],
         },
-        { role: 'tool', content: 'file contents', tool_name: 'read_file' },
+        {
+          role: 'tool',
+          content: 'file contents',
+          tool_name: 'read_file',
+          images: ['AQID'],
+        },
       ],
     });
     expect(result.secondEvents[result.secondEvents.length - 1]).toEqual({
