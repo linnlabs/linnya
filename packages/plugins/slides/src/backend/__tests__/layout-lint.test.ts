@@ -342,6 +342,70 @@ describe('LayoutLint', () => {
     expect(report.issues.some((issue) => issue.code === 'short_numeric_text_wrapped')).toBe(false);
   });
 
+  it('reports a thin decoration crossing a finalized text line', () => {
+    const report = lint.lint(makeInfo({
+      slides: [{
+        number: 1,
+        elements: [
+          {
+            name: 'Caption',
+            nodeId: 'caption',
+            type: 'text',
+            text: 'A',
+            position: { x: 1, y: 1, w: 2, h: 0.8 },
+            textBody: { padding: { top: 0, right: 0, bottom: 0, left: 0 } },
+            textLayout: makeTextLayout(['A']),
+          },
+          {
+            name: 'Divider',
+            nodeId: 'divider',
+            type: 'shape',
+            position: { x: 0.9, y: 1.06, w: 0.5, h: 0.04 },
+          },
+        ],
+      }],
+    }));
+
+    expect(report.issues.find((issue) => issue.code === 'text_decoration_collision')).toMatchObject({
+      severity: 'warning',
+      confidence: 'high',
+      evidence: {
+        kind: 'node_overlap',
+        nodes: [{ nodeId: 'caption' }, { nodeId: 'divider' }],
+        overlapClass: 'forbidden',
+        intent: { assessment: 'likely_unintentional' },
+      },
+    });
+    expect(report.issues.some((issue) => issue.code === 'element_overlap')).toBe(false);
+  });
+
+  it('does not confuse empty text-box space with an occupied text line', () => {
+    const report = lint.lint(makeInfo({
+      slides: [{
+        number: 1,
+        elements: [
+          {
+            name: 'Caption',
+            nodeId: 'caption',
+            type: 'text',
+            text: 'A',
+            position: { x: 1, y: 1, w: 2, h: 0.8 },
+            textBody: { padding: { top: 0, right: 0, bottom: 0, left: 0 } },
+            textLayout: makeTextLayout(['A']),
+          },
+          {
+            name: 'Underline',
+            nodeId: 'underline',
+            type: 'shape',
+            position: { x: 0.9, y: 1.3, w: 0.5, h: 0.04 },
+          },
+        ],
+      }],
+    }));
+
+    expect(report.issues.some((issue) => issue.code === 'text_decoration_collision')).toBe(false);
+  });
+
   it('reports a finalized paragraph whose automatic wrap leaves one glyph on the last line', () => {
     const report = lint.lint(makeInfo({
       slides: [{

@@ -5,6 +5,7 @@ const ACTION_BY_CODE = {
   out_of_bounds: '移动或缩放节点，使其回到页面边界内',
   element_edge_margin: '复核安全边距；若非出血设计则增大边距',
   element_overlap: '结合视觉意图复核两节点关系，必要时调整位置或尺寸',
+  text_decoration_collision: '移动装饰线或文字，使装饰形状不再穿过实际文字行',
   origin_stacking: '为堆叠节点补齐预期布局位置',
   text_overflow_risk: '增大文本区域、缩短文字或调整字号与行距',
   short_numeric_text_wrapped: '增大文本框宽度或使用不指定宽度的单行文本',
