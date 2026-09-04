@@ -171,7 +171,7 @@
     "watch:slides-brush-worker": "pnpm --dir packages/plugins/slides run watch:brush-worker",
     "build:slides-backend": "pnpm --dir packages/plugins/slides run build:backend",
     "build:slides-cli": "pnpm --dir packages/plugins/slides run build:cli",
-    "build:development-disk-plugin-backends": "node scripts/development/orchestration/buildWorkspaceDiskPluginBackends.mjs",
+    "build:development-disk-plugin-backends": "pnpm run prepare:backend-workspace-dependencies && node scripts/development/orchestration/buildWorkspaceDiskPluginBackends.mjs",
     "build:worker:bundle": "tsup --config tsup.worker.config.ts",
     "guard:worker-bundle": "node scripts/guards/worker-bundle-electron-runtime-guard.mjs",
     "guard:backend-dom-runtime": "node scripts/guards/backend-dom-runtime-guard.mjs",
