@@ -10,7 +10,7 @@
 
 - **Block Pending Revisions（唯一主线）**：后端把修订保存到 `markdown_block_pending_revisions`，前端把 pending 快照构建为 `canonicalPendingSessions`，再投影成真实节点 + `revisionMark`。保存文档时会统一剥离这些投影，不污染 `content_json`。
 
-明确边界：Revision 只接纳正文的 `insert/update/delete` 意图，不拥有 Annotation 生命周期。无论来自用户、Review 专用工具还是 file-style Markdown 写入，新批注都直接以 `confirmed` 写入所属 `rootBlock.attrs.annotations`；`creating/editing` 只是 Annotation UI 临时态。已有 canonical 批注的修改或删除也不能伪装成正文 pending。
+明确边界：Revision 只接纳正文的 `insert/update/delete` 意图，不拥有 Annotation 生命周期。无论来自用户、Review 专用工具还是 file-style Markdown 写入，新批注都直接以 `confirmed` 写入所属 `rootBlock.attrs.annotations`；`creating/editing` 只是 Annotation UI 临时态。file-style 写入对 canonical comment 的编辑或删除也由 Annotation mutation 直接提交，不会伪装成正文 pending。
 
 ### 与 Markdown 统一架构的关系
 

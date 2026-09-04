@@ -11,7 +11,7 @@
 - 工具只负责以稳定 `[#ref]` 确定性解析目标 blockId；实体创建、`confirmed` 初态与单版本提交统一委托给 annotations feature 的 `createMarkdownAnnotations()` 用例；
 - 工具结果只报告逐项创建事实，不向 Workspace 工具层泄漏 Markdown repository。
 
-同一个创建用例也由 Workspace `edit_file` / `write_file` 的 Markdown provider 调用：普通 `<!-- comment -->` 直接创建批注，正文差异才进入 pending revisions。工具名不同不代表存在第二套批注写入语义。
+同一个 Annotation mutation 用例也由 Workspace `edit_file` / `write_file` 的 Markdown provider 调用：普通 `<!-- comment -->` 创建批注；稳定 ID 的 canonical envelope 内容变化会编辑批注；envelope 消失会删除批注。三者都直接提交文档版本，只有正文差异进入 pending revisions。
 
 ### `write_to_table`
 
