@@ -110,7 +110,7 @@ Slides 与编辑器的内容结构不同：它的修订会从 deck.js 重新编�
 理由：
 - **图片 → 嵌入**：文档高频内容，要自包含、可分享导出；图片小，复制成本低。相比 base64 内联：①不再随 `document_versions` 按 ~16× 膨胀（保留策略 `keepRecent:15 + keepFirst`，base64 会被每版本各存一份）；②`content_json` 回归"轻量结构骨架"原设计。
 - **音视频 → 媒体存储**：低频且大（视频可达 GB），复制不现实；保持"指向文件"。授权靠 asset 登记自动持久化，**用户无感、无需授权 UI、重启不断**（替代会话 grant 的"重启即断"）。
-- 前端已有 AudioBlock（`apps/renderer/domains/editor/blocks/AudioBlock/`），音视频逻辑收敛以它为基础；实现时需核实其当前解析路径是否就是这条 asset 授权链（疑似存在"找不到资源"的现状问题，待实现阶段确认）。
+- 前端保留了一份暂停注册的 AudioBlock 参考实现（`apps/renderer/domains/editor/blocks/AudioBlock/`）及其专属后端链。它不属于当前生产 Markdown Editor；未来应建设独立 Audio 模块，并把这份代码仅作为录音、转录、摘要和资源解析的研究材料，重新确认领域与 asset 合同。
 
 实现层面的收敛点：
 - **图片三条插入路径收敛成一个嵌入函数**。现状两套：拖拽/粘贴走 `ImageDropPlugin`（base64），菜单走 `MenuBar`（`media://` + 会话 grant）。统一后无论入口，都调同一个"嵌入图片 = 复制私有副本 + 内部定位指针"逻辑。
@@ -129,7 +129,7 @@ Slides 与编辑器的内容结构不同：它的修订会从 deck.js 重新编�
 5. **普通编辑器图片中的 svg 安全**：本条只约束用户通过 Markdown 图片链路插入、并经 `<img src>` 展示的文件；不得把 SVG 内联进 DOM（`innerHTML` / `v-html` / inline `<svg>`）。它不授权 Agent 生成的 SVG 绕过业务准入。Slides 的 SvgGraphic 是独立矢量对象，必须按 [`Slides SVG Graphic 共享合同`](../../packages/plugins/slides/src/shared/svgGraphic/README.md)走唯一 backend admission，拒绝脚本、事件、外部资源、CSS 和未登记结构，不能复用“普通图片无需审查”的结论。
 6. **图片副本存储位置**：落在 `media://` 受控根内（§3.2）；建议受控根下按 `documentNodeId` 开文档私有子目录。实现阶段定稿。
 
-> 落地顺序：①图片插入收敛成"嵌入（复制私有副本）"单一逻辑（既修第 1 节 bug、又消灭 base64 膨胀）；②音视频收敛成"媒体存储 + asset 授权"单一逻辑（顺带修外部音视频重启断 + 核实 AudioBlock"找不到资源"现状）；③落地 D1 查询；④历史 base64 迁移单独评估。
+> 落地顺序：①图片插入收敛成"嵌入（复制私有副本）"单一逻辑（既修第 1 节 bug、又消灭 base64 膨胀）；②另行设计独立 Audio 模块，再以"媒体存储 + asset 授权"收敛音视频能力，并参考休眠 AudioBlock 排查历史资源解析问题；③落地 D1 查询；④历史 base64 迁移单独评估。
 
 ---
 

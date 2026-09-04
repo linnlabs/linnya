@@ -37,7 +37,7 @@ Markdown 导入结果必须经过这份校验。pending 单块和文档级 Accep
 Markdown schema 当前包括：
 
 - `document_versions`
-- `audio_blocks` 及转录、笔记、摘要表
+- `audio_blocks` 及转录、笔记、摘要表（休眠 AudioBlock 的参考持久化链；当前不属于生产 Markdown schema）
 - `code_blocks`
 - `image_blocks`
 - `latex_blocks`
@@ -46,3 +46,5 @@ Markdown schema 当前包括：
 - `markdown_block_pending_revisions`
 
 这些表通过 `workspace_nodes.id` 获得项目文档身份。外键依赖不代表 Markdown 可以调用 Workspace 内部实现；跨领域业务动作必须通过公共合同、port 或 app-level orchestration 完成。
+
+AudioBlock 已从生产 Renderer/backend schema、创建入口和 Editor 运行时依赖中撤下，但实现源码与专属表暂时保留，供未来独立 Audio domain 设计时研究。保留代码不等于继续支持 `audioBlock` 文档：含该节点的旧 doc JSON 会按严格 schema 拒绝加载，不做兼容或降级。

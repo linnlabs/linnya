@@ -71,7 +71,7 @@ apps/renderer/domains/editor/
 │   ├── HorizontalRuleBlock.js
 │   ├── ListItemBlock.js
 │   ├── QuoteBlock.js
-│   ├── AudioBlock/
+│   ├── AudioBlock/              # 暂停注册的参考实现；不进入生产 Editor schema
 │   ├── ImageBlock/
 │   ├── LatexBlock/
 │   ├── CodeBlock/
@@ -532,7 +532,7 @@ await window.__REVISION_TEST__.diagnoseWindow()
 ```text
 doc
 └─ rootBlock (容器块，可拖拽/带块级属性)
-   └─ blockContent（恰好 1 个；如 baseBlock / headingBlock / listItemBlock / quoteBlock / codeBlock / latexBlock / table / imageBlock / audioBlock / bibliographyBlock）
+   └─ blockContent（恰好 1 个；如 baseBlock / headingBlock / listItemBlock / quoteBlock / codeBlock / latexBlock / table / imageBlock / bibliographyBlock）
       └─ inline*（文本/marks/inline nodes）
 ```
 
@@ -935,7 +935,7 @@ RootBlockShellView.js（原生 Shell 压测路径，rootBlockShellEnabled=true�
 
 ### 保活白名单
 
-某些块在屏幕外仍需保持激活（如录音中的 AudioBlock）。子组件通过 `useBlockKeepAlive()` 注入 API，动态注册/注销保活原因：
+某些块在屏幕外仍需保持激活（如仍在执行长任务的重型 Block）。子组件通过 `useBlockKeepAlive()` 注入 API，动态注册/注销保活原因。下例沿用休眠 AudioBlock 中的历史用法，便于未来设计专门 Audio 模块时参考；当前生产 Editor 不注册 AudioBlock：
 
 ```typescript
 const keepAlive = useBlockKeepAlive()
@@ -949,7 +949,7 @@ keepAlive.unregister('audio-busy') // 录音结束时
 |------|------|------|
 | Phase 0 | 数据/测量卸载 | 前置优化，减少 onUpdate 布局开销 |
 | Phase 1 | 重型 UI 激活窗口 | 建立 `BlockActivation` 机制 |
-| Phase 2 | 分层激活细化 | 各 Block 接入激活控制（CodeBlock / ImageBlock / AudioBlock / TableBlock 等） |
+| Phase 2 | 分层激活细化 | 各生产 Block 接入激活控制；AudioBlock 保留已完成的历史实现作为参考 |
 | Phase 3 | 深度冻结与测量压缩 | PM 插件 early return、修订系统清理、保活白名单、**Pending 注入 dispatch 批处理**（N 次 DOM 协调→1 次） |
 | Phase 4 | BlockView 拆分 + 延迟水合 | 将 BlockView 拆分为壳组件 + BlockChrome，仅对视口内块水合重型 UI；字符统计 debounce + requestIdleCallback；`content-visibility: auto`；textUnits 热路径优化 |
 
@@ -1004,13 +1004,12 @@ onBeforeUnmount(() => keepAlive?.unregister('my-reason'))
 interface ExtensionDependencies {
   layoutManagerInstance: Ref<LayoutManager>
   findReplaceStore: unknown        // FindReplace Store
-  audioEditorsStore: unknown       // AudioBlock 编辑器注册表
-  audioContentStore: unknown       // AudioBlock 内容管理
-  audioRuntimeStore: unknown      // AudioBlock 运行时状态
 }
 ```
 
 这些依赖在 `EditorContext.vue` 中创建并传入 `getAllExtensions()`。
+
+`blocks/AudioBlock/` 及其专属前后端链目前只作为休眠参考实现保留，不属于 `ExtensionDependencies`，也不进入生产扩展注册、schema、创建入口或保存生命周期。未来 Audio 模块应单独立项并重新确认领域边界，不能把这份历史实现直接视为现行合同。
 
 ## 注意事项
 
