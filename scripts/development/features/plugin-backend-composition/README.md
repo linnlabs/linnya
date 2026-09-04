@@ -6,10 +6,12 @@
 同仓但不应进入公共 Core 模块图的插件，可在自己的 `package.json` 中把
 `linnya.development.backendLoading` 声明为 `disk`。字段定义以发现函数和对应合同测试为准，文档不复制实现。
 
-`dev:electron` 会先执行该插件的 `build:backend`，随后把插件 package 目录写入
-`LINNYA_PLUGIN_BACKEND_DIRECT_DIRS`。Host 只读取 `plugin.json` 指向的已构建 backend
-entry，不 import 插件源码；Renderer 仍把该目录当作开发源码 package，继续使用 Vite
-源码入口与 HMR。
+`dev:electron` 通过根级 `build:development-disk-plugin-backends` 统一构建这些插件。该入口会先
+执行 `prepare:backend-workspace-dependencies`，确保 `@app/schemas` 等正式 workspace 产物可用，
+再执行各插件的 `build:backend`，不能依赖旧工作区残留的 `dist`。随后启动编排把插件 package
+目录写入 `LINNYA_PLUGIN_BACKEND_DIRECT_DIRS`。Host 只读取 `plugin.json` 指向的已构建 backend
+entry，不 import 插件源码；Renderer 仍把该目录当作开发源码 package，继续使用 Vite 源码入口与
+HMR。
 
 插件迁到独立仓后，不再依赖 workspace 扫描。插件仓自行构建 backend，然后由本地启动环境把一个或多个 package
 目录通过平台路径分隔符写入 `LINNYA_PLUGIN_BACKEND_DIRECT_DIRS`。正式合并和发布验收仍必须改用完整插件

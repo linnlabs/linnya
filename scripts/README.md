@@ -17,7 +17,8 @@ dev server，再把实际 renderer URL 传给 Electron。服务只绑定 `127.0.
 
 Electron Backend 的公开 build/dev/watch 入口统一先执行
 `prepare:backend-workspace-dependencies`。当前顺序是先构建跨端 schema，再构建运行时外置的
-`@linnya/provider-catalog`，最后才允许 Backend bundle 启动。`watch:backend:dev` 是
+`@linnya/provider-catalog`，最后才允许 Backend bundle 启动；开发态磁盘插件的统一 backend
+构建入口也必须先完成这条准备链，再发现并构建各插件。`watch:backend:dev` 是
 `dev:electron` 完成初始构建后的内部 watcher，不是独立开发入口。不得依赖历史 `dist`、PATH
 搜索或运行时 fallback 掩盖 workspace package 未构建；新增外置运行时 package 时必须进入同一
 显式准备链，并提供可执行打包 smoke。
