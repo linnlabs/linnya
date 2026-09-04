@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  admitMarkdownAnnotationComment,
   decodeMarkdownAnnotationComment,
   encodeMarkdownAnnotationComment,
   parseMarkdownAnnotationComment,
@@ -32,6 +33,32 @@ describe('Markdown Annotation comment profile', () => {
       kind: 'plain',
       draft: { content: '建议补充依据。' },
     });
+  });
+
+  it('只在 admission 边界为普通 comment 分配业务身份', () => {
+    expect(admitMarkdownAnnotationComment('<!-- 建议补充依据。 -->', {
+      id: 'annotation-imported',
+      author: 'User',
+      timestamp: '2026-09-04T01:02:03.000Z',
+    })).toEqual({
+      id: 'annotation-imported',
+      content: '建议补充依据。',
+      author: 'User',
+      state: 'confirmed',
+      createdAt: '2026-09-04T01:02:03.000Z',
+      updatedAt: '2026-09-04T01:02:03.000Z',
+      resolvedAt: null,
+      replies: [],
+      meta: { source: 'manual' },
+    });
+    expect(admitMarkdownAnnotationComment(
+      encodeMarkdownAnnotationComment(annotation),
+      {
+        id: 'ignored',
+        author: 'Ignored',
+        timestamp: '2026-09-04T01:02:03.000Z',
+      },
+    )).toEqual(annotation);
   });
 
   it('拒绝未知 Linnya profile 和额外字段', () => {

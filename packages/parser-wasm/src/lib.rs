@@ -30,6 +30,8 @@ static QUOTE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*>\s*(?P<content>.*)
 static LIST_ITEM_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?P<indent>\s*)(?P<marker>[-*+]|\d+[.)])\s+(?P<content>.*)").unwrap());
 static HR_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*(?:-{3,}|_{3,}|\*{3,})\s*$").unwrap());
+static HTML_COMMENT_START_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?m)^[ ]{0,3}<!--").unwrap());
 // LaTeX Block: For $$...$$ or \\[...\]
 // Using (?s) for DOTALL to match across newlines.
 // Using non-greedy .*? for the content.
@@ -127,10 +129,29 @@ fn legacy_parse_lines_to_block_events(markdown_input: &str) -> Vec<BlockEvent> {
     let mut in_code_block_mode = false;
     let mut current_code_language_for_mode: Option<String> = None;
     let mut current_code_content = String::new();
+    let mut current_html_comment: Option<String> = None;
 
     for line_content in markdown_input.lines() {
         let mut event_generated_by_special_rule = false;
-        if in_code_block_mode {
+        if let Some(comment) = current_html_comment.as_mut() {
+            if !comment.is_empty() {
+                comment.push('\n');
+            }
+            comment.push_str(line_content);
+            if line_content.contains("-->") {
+                block_events.push(BlockEvent {
+                    block_type: BlockType::HtmlComment,
+                    raw_content_fallback: current_html_comment.take(),
+                    structured_content: None,
+                    language: None,
+                    level: None,
+                    list_type: None,
+                    list_level: None,
+                    attrs: None,
+                });
+            }
+            event_generated_by_special_rule = true;
+        } else if in_code_block_mode {
             if CODE_BLOCK_END_RE.is_match(line_content) {
                 if !current_code_content.trim().is_empty() {
                     block_events.push(BlockEvent {
@@ -156,7 +177,23 @@ fn legacy_parse_lines_to_block_events(markdown_input: &str) -> Vec<BlockEvent> {
                 event_generated_by_special_rule = true;
             }
         } else {
-            if let Some(caps) = CODE_BLOCK_START_RE.captures(line_content) {
+            if HTML_COMMENT_START_RE.is_match(line_content) {
+                if line_content.contains("-->") {
+                    block_events.push(BlockEvent {
+                        block_type: BlockType::HtmlComment,
+                        raw_content_fallback: Some(line_content.trim().to_string()),
+                        structured_content: None,
+                        language: None,
+                        level: None,
+                        list_type: None,
+                        list_level: None,
+                        attrs: None,
+                    });
+                } else {
+                    current_html_comment = Some(line_content.trim_start().to_string());
+                }
+                event_generated_by_special_rule = true;
+            } else if let Some(caps) = CODE_BLOCK_START_RE.captures(line_content) {
                 let lang_str = caps.name("lang").map_or("", |m| m.as_str());
                 current_code_language_for_mode = if lang_str.is_empty() { None } else { Some(lang_str.to_string()) };
                 in_code_block_mode = true;
@@ -273,6 +310,19 @@ fn legacy_parse_lines_to_block_events(markdown_input: &str) -> Vec<BlockEvent> {
         });
     }
 
+    if let Some(comment) = current_html_comment {
+        block_events.push(BlockEvent {
+            block_type: BlockType::HtmlComment,
+            raw_content_fallback: Some(comment),
+            structured_content: None,
+            language: None,
+            level: None,
+            list_type: None,
+            list_level: None,
+            attrs: None,
+        });
+    }
+
     block_events
 }
 
@@ -309,6 +359,19 @@ mod tests {
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].block_type, BlockType::HeadingBlock);
         assert_eq!(events[0].raw_content_fallback.as_deref(), Some("Title"));
+    }
+
+    #[test]
+    fn legacy_blocks_preserve_multiline_html_comment() {
+        let input = "Paragraph\n<!-- note\nwith blank lines\n-->";
+        let events = legacy_parse_lines_to_block_events(input);
+
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[1].block_type, BlockType::HtmlComment);
+        assert_eq!(
+            events[1].raw_content_fallback.as_deref(),
+            Some("<!-- note\nwith blank lines\n-->")
+        );
     }
 
     // 列表解析测试：验证 legacy 解析能区分有序/无序列表，并输出 list_type/list_level

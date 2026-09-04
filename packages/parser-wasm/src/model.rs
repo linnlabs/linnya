@@ -14,6 +14,11 @@ pub enum BlockType {
     ListItemBlock,
     HorizontalRuleBlock,
     LatexBlock,
+    /// CommonMark type 2 HTML block（`<!-- ... -->`）。
+    ///
+    /// 解析器只负责保留原始 comment；是否属于 Linnya Annotation 由上层
+    /// Markdown 规范化流程按 profile 判定。
+    HtmlComment,
     /// 表格块：用于承载整张表格的数据结构（表头、行、列对齐等）。
     TableBlock,
 }
@@ -65,5 +70,4 @@ pub struct BlockEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attrs: Option<JsonValue>,
 }
-
 

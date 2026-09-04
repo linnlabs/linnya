@@ -10,6 +10,11 @@ pub(crate) enum BlockState {
     InQuoteBlock(String),
     /// 标题块内部状态：(级别, 累积内容)
     InHeadingBlock(u8, String),
+    /// CommonMark type 2 HTML block 的原文。
+    ///
+    /// 不能在看到 `-->` 时立即结束：CommonMark 把终止符所在整行都算入
+    /// HTML block，因此流式输入必须等到行尾或 finalize。
+    InHtmlComment(String),
     /// LaTeX 块内部状态
     InLatexBlock {
         latex_type: LatexType,
@@ -84,5 +89,4 @@ impl DelimMatcher {
         self.current_match_pos > 0 && self.current_match_pos < self.end_marker_len
     }
 }
-
 

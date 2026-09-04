@@ -48,6 +48,12 @@ export type ParsedMarkdownAnnotationComment =
   | { readonly kind: 'canonical'; readonly annotation: MarkdownAnnotation }
   | { readonly kind: 'plain'; readonly draft: ImportedMarkdownAnnotationDraft };
 
+export interface MarkdownAnnotationAdmission {
+  readonly id: string;
+  readonly author: string;
+  readonly timestamp: string;
+}
+
 const CANONICAL_MARKER = 'linnya-annotation:v1';
 const LINNYA_MARKER_PREFIX = 'linnya-annotation:';
 
@@ -98,4 +104,32 @@ export function parseMarkdownAnnotationComment(comment: string): ParsedMarkdownA
     throw new Error('[MarkdownAnnotation] 普通批注内容不能为空');
   }
   return { kind: 'plain', draft: { content: body } };
+}
+
+/**
+ * 把 HTML comment 接纳为可持久化的 Annotation。
+ *
+ * canonical profile 保留原身份；普通 comment 只有正文，必须由调用边界注入
+ * 新身份、当前作者与时间，避免 parser 自己制造业务事实。
+ */
+export function admitMarkdownAnnotationComment(
+  comment: string,
+  admission: MarkdownAnnotationAdmission,
+): MarkdownAnnotation {
+  const parsed = parseMarkdownAnnotationComment(comment);
+  if (parsed.kind === 'canonical') {
+    return parsed.annotation;
+  }
+
+  return MarkdownAnnotationSchema.parse({
+    id: admission.id,
+    content: parsed.draft.content,
+    author: admission.author,
+    state: 'confirmed',
+    createdAt: admission.timestamp,
+    updatedAt: admission.timestamp,
+    resolvedAt: null,
+    replies: [],
+    meta: { source: 'manual' },
+  });
 }

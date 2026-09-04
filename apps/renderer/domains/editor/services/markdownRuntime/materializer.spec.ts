@@ -4,6 +4,29 @@ import { workspaceMarkdownSchemaLite } from 'src/domains/markdown'
 import { blockEventsToDocJson, buildTableRowsFromTableModel } from './index'
 
 describe('markdownRuntime materializer', () => {
+  it('folds HTML comments into the preceding root block annotations', () => {
+    const docJson = blockEventsToDocJson(
+      [
+        { block_type: 'BaseBlock', raw_content_fallback: '正文' },
+        { block_type: 'HtmlComment', raw_content_fallback: '<!-- 需要补充依据 -->' },
+      ],
+      workspaceMarkdownSchemaLite
+    )
+
+    const root = docJson?.content[0] as {
+      attrs?: { annotations?: Array<Record<string, unknown>> }
+    }
+    expect(docJson?.content).toHaveLength(1)
+    expect(root.attrs?.annotations).toEqual([
+      expect.objectContaining({
+        id: expect.stringMatching(/^annotation-[0-9a-f]{8}$/i),
+        content: '需要补充依据',
+        author: 'User',
+        state: 'confirmed',
+      }),
+    ])
+  })
+
   it('materializes hardBreak and inlineLatex through the shared fragment interpreter', () => {
     const docJson = blockEventsToDocJson(
       [

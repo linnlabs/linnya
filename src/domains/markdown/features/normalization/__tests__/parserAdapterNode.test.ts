@@ -63,6 +63,19 @@ describe('parserAdapterNode', () => {
     expect(events[1]?.raw_content_fallback).toBe('普通段落');
   });
 
+  it('preserves CommonMark comments as independent block events', async () => {
+    const events = await parseMarkdownToBlocksInNode(
+      '正文\n<!-- 批注\n\n第二行 -->\n下一段'
+    );
+
+    expect(events.map(event => event.block_type)).toEqual([
+      'BaseBlock',
+      'HtmlComment',
+      'BaseBlock'
+    ]);
+    expect(events[1]?.raw_content_fallback).toBe('<!-- 批注\n\n第二行 -->');
+  });
+
   it('emits one ListItemBlock per markdown list item', async () => {
     const events = await parseMarkdownToBlocksInNode('- one\n- two\n  - nested');
 

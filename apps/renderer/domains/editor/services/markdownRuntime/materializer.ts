@@ -1,6 +1,14 @@
 import type { Node as ProseMirrorNode, Schema } from 'prosemirror-model'
+import {
+  admitMarkdownAnnotationComment,
+  MarkdownAnnotationsSchema,
+} from '@app/schemas'
 
-import { generateBlockId, generateRootBlockId } from '../../../../shared/utils/idUtils'
+import {
+  generateannotationId,
+  generateBlockId,
+  generateRootBlockId,
+} from '../../../../shared/utils/idUtils'
 import type { BlockEventLike, ContentFragmentLike } from './types'
 import type { MarkdownInlineProjection } from './types'
 import {
@@ -177,6 +185,30 @@ export function blockEventsToDocJson(
     const typeName = normalizeBlockTypeName(event.block_type)
     const rawFallback =
       typeof event.raw_content_fallback === 'string' ? event.raw_content_fallback : null
+
+    if (typeName === 'HtmlComment') {
+      const target = rootBlocks.at(-1)
+      if (!isPlainObject(target)) {
+        throw new Error('[MarkdownImport] Annotation comment 前没有可绑定的目标块')
+      }
+      if (!rawFallback) {
+        throw new Error('[MarkdownImport] HtmlComment 缺少原始内容')
+      }
+      const targetAttrs = isPlainObject(target.attrs) ? target.attrs : {}
+      const previousAnnotations = MarkdownAnnotationsSchema.parse(targetAttrs.annotations ?? [])
+      target.attrs = {
+        ...targetAttrs,
+        annotations: [
+          ...previousAnnotations,
+          admitMarkdownAnnotationComment(rawFallback, {
+            id: generateannotationId(),
+            author: 'User',
+            timestamp: new Date().toISOString(),
+          }),
+        ],
+      }
+      continue
+    }
 
     if (typeName === 'TableBlock') {
       const tableType = schema.nodes.table

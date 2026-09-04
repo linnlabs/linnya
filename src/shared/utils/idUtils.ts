@@ -232,3 +232,8 @@ export function generateEditorBlockId(): string {
 export function generateEditorRootBlockId(): string {
   return `root-${uuidv4().replace(/-/g, '').slice(0, 8)}`;
 }
+
+/** 为 Markdown 导入边界生成与 Renderer 一致的 Annotation ID。 */
+export function generateEditorAnnotationId(): string {
+  return `annotation-${uuidv4().replace(/-/g, '').slice(0, 8)}`;
+}

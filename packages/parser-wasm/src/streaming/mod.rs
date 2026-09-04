@@ -7,6 +7,7 @@ use crate::table::{
 use crate::{
     CODE_BLOCK_END_RE, CODE_BLOCK_START_RE, HEADING_RE, HR_RE, LATEX_START_BRACKET_RE,
     LATEX_START_DOLLAR_RE, LATEX_START_EQUATION_RE, LIST_ITEM_RE, QUOTE_RE,
+    HTML_COMMENT_START_RE,
     parse_language_from_line,
 };
 
@@ -22,6 +23,28 @@ pub(crate) struct StreamingParserCore {
 }
 
 impl StreamingParserCore {
+    fn html_comment_event(raw: &str) -> BlockEvent {
+        BlockEvent {
+            block_type: BlockType::HtmlComment,
+            raw_content_fallback: Some(raw.trim().to_string()),
+            structured_content: None,
+            language: None,
+            level: None,
+            list_type: None,
+            list_level: None,
+            attrs: None,
+        }
+    }
+
+    /// 返回 CommonMark type 2 HTML block 的完整行长度（不含换行符）。
+    /// `-->` 后同一行的内容仍属于 HTML block，必须一并保留。
+    fn complete_html_comment_line_len(input: &str) -> Option<usize> {
+        let closing_end = input.find("-->")? + 3;
+        input[closing_end..]
+            .find('\n')
+            .map(|relative| closing_end + relative)
+    }
+
     pub(crate) fn new() -> Self {
         StreamingParserCore {
             buffer: String::new(),
@@ -125,6 +148,12 @@ impl StreamingParserCore {
                         list_level: None,
                         attrs: None,
                     });
+                }
+            }
+            BlockState::InHtmlComment(accumulated_comment) => {
+                let final_comment = format!("{}{}", accumulated_comment, self.buffer);
+                if !final_comment.trim().is_empty() {
+                    events.push(Self::html_comment_event(&final_comment));
                 }
             }
             BlockState::InLatexBlock {
@@ -303,6 +332,31 @@ impl StreamingParserCore {
                             );
                             continue;
                         }
+                    }
+
+                    // CommonMark type 2 HTML block 可以中断段落，且允许最多三个前导空格。
+                    if let Some(comment_start) = HTML_COMMENT_START_RE.find(current_slice) {
+                        if comment_start.start() > 0 {
+                            let prefix = current_slice[..comment_start.start()].trim_end();
+                            let (mut prefix_events, _) = self.parse_paragraph_content(prefix);
+                            events.append(&mut prefix_events);
+                            consumed_offset += comment_start.start();
+                            continue;
+                        }
+
+                        if let Some(comment_line_len) =
+                            Self::complete_html_comment_line_len(current_slice)
+                        {
+                            events.push(Self::html_comment_event(
+                                &current_slice[..comment_line_len],
+                            ));
+                            consumed_offset += comment_line_len + 1;
+                        } else {
+                            self.current_block_state =
+                                BlockState::InHtmlComment(current_slice.to_string());
+                            consumed_offset += current_slice.len();
+                        }
+                        continue;
                     }
 
                     // 先检查水平分割线
@@ -703,6 +757,22 @@ impl StreamingParserCore {
                     }
                     continue;
                 }
+                BlockState::InHtmlComment(ref mut accumulated_comment) => {
+                    let previous_len = accumulated_comment.len();
+                    let combined = format!("{}{}", accumulated_comment, current_slice);
+                    if let Some(comment_line_len) =
+                        Self::complete_html_comment_line_len(&combined)
+                    {
+                        events.push(Self::html_comment_event(&combined[..comment_line_len]));
+                        let consumed_from_slice = comment_line_len + 1 - previous_len;
+                        consumed_offset += consumed_from_slice;
+                        self.current_block_state = BlockState::Idle;
+                    } else {
+                        accumulated_comment.push_str(current_slice);
+                        consumed_offset += current_slice.len();
+                    }
+                    continue;
+                }
                 BlockState::InLatexBlock {
                     ref latex_type,
                     ref mut matcher,
@@ -1008,6 +1078,37 @@ mod tests {
             assert_eq!(e1.language, e2.language);
             assert_eq!(e1.level, e2.level);
         }
+    }
+
+    #[test]
+    fn streaming_core_preserves_comment_that_interrupts_paragraph() {
+        let input = "Paragraph\n<!-- note\n\ncontinued -->\nNext";
+        let events = parse_with_core(input);
+
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[0].block_type, BlockType::BaseBlock);
+        assert_eq!(events[1].block_type, BlockType::HtmlComment);
+        assert_eq!(
+            events[1].raw_content_fallback.as_deref(),
+            Some("<!-- note\n\ncontinued -->")
+        );
+        assert_eq!(events[2].block_type, BlockType::BaseBlock);
+    }
+
+    #[test]
+    fn streaming_core_preserves_comment_across_chunk_boundaries() {
+        let mut core = StreamingParserCore::new();
+        let mut events = core.process_chunk("Paragraph\n<!-- linnya-annotation:v1\n{\"id\":");
+        events.extend(core.process_chunk("\"annotation-1\"}\n--"));
+        events.extend(core.process_chunk(">\nNext"));
+        events.extend(core.finalize_parsing());
+
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[1].block_type, BlockType::HtmlComment);
+        assert_eq!(
+            events[1].raw_content_fallback.as_deref(),
+            Some("<!-- linnya-annotation:v1\n{\"id\":\"annotation-1\"}\n-->")
+        );
     }
 
     #[test]

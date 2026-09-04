@@ -4,6 +4,52 @@ import { importMarkdownToDocJson } from '../importMarkdownToDocJson';
 import type { WasmBlockEventLike } from '../types';
 
 describe('importMarkdownToDocJson', () => {
+  it('binds canonical and plain HTML comments to the preceding root block', async () => {
+    const canonical = {
+      id: 'annotation-existing',
+      content: '保留身份',
+      author: 'Reviewer',
+      state: 'confirmed' as const,
+      createdAt: '2026-09-04T00:00:00.000Z',
+      updatedAt: '2026-09-04T00:00:00.000Z',
+      resolvedAt: null,
+      replies: [],
+      meta: { source: 'manual' as const }
+    };
+    const fakeParser = async (): Promise<WasmBlockEventLike[]> => [
+      { block_type: 'BaseBlock', raw_content_fallback: '正文' },
+      {
+        block_type: 'HtmlComment',
+        raw_content_fallback: `<!-- linnya-annotation:v1\n${JSON.stringify(canonical)}\n-->`
+      },
+      { block_type: 'HtmlComment', raw_content_fallback: '<!-- 普通批注 -->' }
+    ];
+
+    const result = await importMarkdownToDocJson('ignored', fakeParser);
+    const annotations = result.docJson?.content[0]?.attrs?.annotations;
+
+    expect(result.docJson?.content).toHaveLength(1);
+    expect(annotations).toEqual([
+      canonical,
+      expect.objectContaining({
+        id: expect.stringMatching(/^annotation-[0-9a-f]{8}$/i),
+        content: '普通批注',
+        author: 'User',
+        state: 'confirmed',
+        meta: { source: 'manual' }
+      })
+    ]);
+  });
+
+  it('rejects an annotation comment without a target block', async () => {
+    const fakeParser = async (): Promise<WasmBlockEventLike[]> => [
+      { block_type: 'HtmlComment', raw_content_fallback: '<!-- orphan -->' }
+    ];
+
+    await expect(importMarkdownToDocJson('ignored', fakeParser))
+      .rejects.toThrow('前没有可绑定的目标块');
+  });
+
   it('can convert block events into validated doc json', async () => {
     const fakeParser = async (): Promise<WasmBlockEventLike[]> => [
       {

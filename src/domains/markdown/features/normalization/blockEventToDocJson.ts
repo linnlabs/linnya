@@ -4,9 +4,14 @@
  */
 
 import {
+  generateEditorAnnotationId,
   generateEditorBlockId,
   generateEditorRootBlockId
 } from 'src/shared/utils/idUtils';
+import {
+  admitMarkdownAnnotationComment,
+  MarkdownAnnotationsSchema,
+} from '@app/schemas';
 import type {
   MarkdownDocJson,
   ProseMirrorJsonNode,
@@ -21,10 +26,6 @@ type UnknownRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function readString(value: unknown): string | null {
-  return typeof value === 'string' ? value : null;
 }
 
 function readNumber(value: unknown): number | null {
@@ -210,6 +211,29 @@ export function convertBlockEventsToDocJson(blockEvents: WasmBlockEventLike[]): 
     const rawFallback = typeof event.raw_content_fallback === 'string'
       ? event.raw_content_fallback
       : null;
+
+    if (blockTypeName === 'HtmlComment') {
+      const target = rootBlocks.at(-1);
+      if (!target) {
+        throw new Error('[MarkdownImport] Annotation comment 前没有可绑定的目标块');
+      }
+      if (!rawFallback) {
+        throw new Error('[MarkdownImport] HtmlComment 缺少原始内容');
+      }
+      const previousAnnotations = MarkdownAnnotationsSchema.parse(
+        target.attrs?.annotations ?? []
+      );
+      const annotation = admitMarkdownAnnotationComment(rawFallback, {
+        id: generateEditorAnnotationId(),
+        author: 'User',
+        timestamp: new Date().toISOString(),
+      });
+      target.attrs = {
+        ...(target.attrs ?? {}),
+        annotations: [...previousAnnotations, annotation],
+      };
+      continue;
+    }
 
     if (blockTypeName === 'TableBlock' && isRecord(event.attrs)) {
       const tableRows = buildTableRowsFromModel(event.attrs);
