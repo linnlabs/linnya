@@ -85,12 +85,6 @@ export function applyMarkdownAnnotationMutations(params: {
     }
 
     const additions = insertions.map(insertion => MarkdownAnnotationSchema.parse(insertion.annotation));
-    if (additions.length > 0) {
-      const firstChild = rootBlock.content?.[0];
-      if (firstChild?.type === 'baseBlock' && !firstChild.content?.length) {
-        throw new Error(`[MarkdownAnnotation] 空 baseBlock 没有可序列化的 Markdown 锚点: ${blockId}`);
-      }
-    }
     const next = existing
       .filter(annotation => !deletionIds.has(annotation.id))
       .map(annotation => updateById.get(annotation.id) ?? annotation);

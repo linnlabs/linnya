@@ -85,7 +85,7 @@ describe('markdownSerializer', () => {
     expect(markdown).toContain('"id":"annotation-1"');
   });
 
-  it('rejects annotations on an empty text block without a Markdown anchor', () => {
+  it('exports an invisible Markdown anchor before annotations on an empty text block', () => {
     const annotation = {
       id: 'annotation-1',
       content: 'orphan',
@@ -108,6 +108,8 @@ describe('markdownSerializer', () => {
       ],
     })
 
-    expect(() => createMarkdownSerializer().serialize(doc)).toThrow('空 rootBlock')
+    const markdown = createMarkdownSerializer().serialize(doc)
+    expect(markdown).toContain('<!-- linnya-annotation-anchor:v1 empty-block -->')
+    expect(markdown).toContain('<!-- linnya-annotation:v1\n')
   })
 });

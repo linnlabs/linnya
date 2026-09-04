@@ -1,6 +1,7 @@
 import type { Node as ProseMirrorNode, Schema } from 'prosemirror-model'
 import {
   admitMarkdownAnnotationComment,
+  isMarkdownEmptyBlockAnnotationAnchorComment,
   MarkdownAnnotationsSchema,
 } from '@app/schemas'
 
@@ -187,6 +188,21 @@ export function blockEventsToDocJson(
       typeof event.raw_content_fallback === 'string' ? event.raw_content_fallback : null
 
     if (typeName === 'HtmlComment') {
+      if (rawFallback && isMarkdownEmptyBlockAnnotationAnchorComment(rawFallback)) {
+        const baseBlockType = schema.nodes.baseBlock
+        if (!baseBlockType) {
+          throw new Error('[MarkdownImport] 当前 Schema 不支持空 BaseBlock 批注锚点')
+        }
+        const root = buildRootBlock(
+          baseBlockType.create({ id: generateBlockId(), blockType: 'base' }),
+          schema
+        )
+        if (!root) {
+          throw new Error('[MarkdownImport] 无法创建空 BaseBlock 批注锚点')
+        }
+        rootBlocks.push(root.toJSON())
+        continue
+      }
       const target = rootBlocks[rootBlocks.length - 1]
       if (!isPlainObject(target)) {
         throw new Error('[MarkdownImport] Annotation comment 前没有可绑定的目标块')

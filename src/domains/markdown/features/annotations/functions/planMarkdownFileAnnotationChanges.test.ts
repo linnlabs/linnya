@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { encodeMarkdownAnnotationComment } from '@app/schemas';
+import {
+  encodeMarkdownAnnotationComment,
+  encodeMarkdownEmptyBlockAnnotationAnchorComment,
+} from '@app/schemas';
 import { planMarkdownBlocks } from '../../normalization';
 import { flattenMarkdownDocumentBlocks } from '../../../shared';
 import { planMarkdownFileAnnotationChanges } from './planMarkdownFileAnnotationChanges';
@@ -72,6 +75,31 @@ describe('planMarkdownFileAnnotationChanges', () => {
       updates: [],
       deletions: [{ blockId: 'root-1', annotationId: 'annotation-1' }],
     });
+  });
+
+  it('keeps an empty block annotation bound to its empty body slot', async () => {
+    const emptyDocument = {
+      type: 'doc' as const,
+      content: [{
+        type: 'rootBlock',
+        attrs: { id: 'root-empty', annotations: [annotation] },
+        content: [{
+          type: 'baseBlock',
+          attrs: { id: 'block-empty', blockType: 'base' },
+          content: [],
+        }],
+      }],
+    };
+    const planned = await planMarkdownBlocks([
+      encodeMarkdownEmptyBlockAnnotationAnchorComment(),
+      encodeMarkdownAnnotationComment(annotation),
+    ].join('\n\n'));
+
+    expect(planMarkdownFileAnnotationChanges({
+      currentDocument: emptyDocument,
+      currentBlocks: flattenMarkdownDocumentBlocks(emptyDocument, { includeAnnotations: false }),
+      annotationComments: planned.annotationComments,
+    })).toEqual({ creations: [], updates: [], deletions: [] });
   });
 
   it('拒绝用手写 canonical 身份创建批注', async () => {

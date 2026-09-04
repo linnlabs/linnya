@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { workspaceMarkdownSchemaLite } from 'src/domains/markdown'
 import {
-  canPersistMarkdownAnnotationOnRootBlock,
   mergeDocumentAnnotations,
   readAnnotationsFromDocument,
   replaceRootBlockAnnotations,
@@ -59,8 +58,7 @@ describe('annotationDocumentState', () => {
     expect(nextState.doc.firstChild?.textContent).toBe('正文')
   })
 
-  it('rejects persisted annotations on an empty base block', () => {
-    const state = createState()
+  it('persists annotations on an empty base block', () => {
     const emptyBase = workspaceMarkdownSchemaLite.nodes.baseBlock.create({
       id: 'block-1',
       blockType: 'base',
@@ -74,11 +72,14 @@ describe('annotationDocumentState', () => {
       doc: workspaceMarkdownSchemaLite.nodes.doc.create(null, emptyRoot),
     })
 
-    expect(canPersistMarkdownAnnotationOnRootBlock(state, 'root-1')).toBe(true)
-    expect(canPersistMarkdownAnnotationOnRootBlock(emptyState, 'root-1')).toBe(false)
-    expect(() => replaceRootBlockAnnotations(emptyState, 'root-1', [annotation]))
-      .toThrow('没有可序列化的 Markdown 锚点')
-    expect(readAnnotationsFromDocument(state.doc)).toHaveLength(1)
+    const nextState = emptyState.apply(
+      replaceRootBlockAnnotations(emptyState, 'root-1', [annotation])
+    )
+
+    expect(nextState.doc.firstChild?.textContent).toBe('')
+    expect(readAnnotationsFromDocument(nextState.doc)).toEqual([
+      { ...annotation, blockId: 'root-1' },
+    ])
   })
 
   it('merges annotations without replacing concurrent text changes', () => {

@@ -50,6 +50,25 @@ describe('importMarkdownToDocJson', () => {
       .rejects.toThrow('前没有可绑定的目标块');
   });
 
+  it('round-trips an annotation bound to an empty root block', async () => {
+    const fakeParser = async (): Promise<WasmBlockEventLike[]> => [
+      {
+        block_type: 'HtmlComment',
+        raw_content_fallback: '<!-- linnya-annotation-anchor:v1 empty-block -->',
+      },
+      { block_type: 'HtmlComment', raw_content_fallback: '<!-- 空块批注 -->' },
+    ];
+
+    const result = await importMarkdownToDocJson('ignored', fakeParser);
+
+    expect(result.docJson?.content).toHaveLength(1);
+    expect(result.docJson?.content[0]?.content?.[0]?.type).toBe('baseBlock');
+    expect(result.docJson?.content[0]?.content?.[0]?.content ?? []).toEqual([]);
+    expect(result.docJson?.content[0]?.attrs?.annotations).toEqual([
+      expect.objectContaining({ content: '空块批注', state: 'confirmed' }),
+    ]);
+  });
+
   it('can convert block events into validated doc json', async () => {
     const fakeParser = async (): Promise<WasmBlockEventLike[]> => [
       {

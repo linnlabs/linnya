@@ -10,6 +10,7 @@ import {
 } from 'src/shared/utils/idUtils';
 import {
   admitMarkdownAnnotationComment,
+  isMarkdownEmptyBlockAnnotationAnchorComment,
   MarkdownAnnotationsSchema,
   type MarkdownAnnotation,
 } from '@app/schemas';
@@ -231,6 +232,17 @@ export function convertBlockEventsToDocJson(
       : null;
 
     if (blockTypeName === 'HtmlComment') {
+      if (rawFallback && isMarkdownEmptyBlockAnnotationAnchorComment(rawFallback)) {
+        rootBlocks.push(buildRootBlock({
+          type: 'baseBlock',
+          attrs: {
+            id: generateEditorBlockId(),
+            blockType: 'base',
+          },
+          content: [],
+        }));
+        continue;
+      }
       const target = rootBlocks[rootBlocks.length - 1];
       if (!target) {
         throw new Error('[MarkdownImport] Annotation comment 前没有可绑定的目标块');

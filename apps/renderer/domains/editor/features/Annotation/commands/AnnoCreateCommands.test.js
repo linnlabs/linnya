@@ -97,11 +97,16 @@ describe('Annotation create commands', () => {
     expect(annotationStore.addAnnotation).not.toHaveBeenCalled();
   });
 
-  it('does not create a transient panel for an empty BaseBlock', async () => {
+  it('creates a transient panel for an empty BaseBlock', async () => {
+    const annotations = [];
     const annotationStore = {
       editor: createEditor(''),
-      annotations: [],
-      addAnnotation: vi.fn(),
+      annotations,
+      addAnnotation: vi.fn(async annotationData => {
+        const annotation = { id: 'annotation-a', ...annotationData };
+        annotations.push(annotation);
+        return annotation;
+      }),
     };
     const panelPositionManager = {
       calculateInitialPositionCSS: vi.fn(() => ({ top: '12px', left: '34px' })),
@@ -114,12 +119,15 @@ describe('Annotation create commands', () => {
       panelPositionManager,
     });
 
-    expect(annotationId).toBeNull();
-    expect(annotationStore.addAnnotation).not.toHaveBeenCalled();
-    expect(panelPositionManager.calculateInitialPositionCSS).not.toHaveBeenCalled();
+    expect(annotationId).toBe('annotation-a');
+    expect(annotationStore.addAnnotation).toHaveBeenCalledWith(expect.objectContaining({
+      blockId: 'root-a',
+      state: AnnotationState.CREATING,
+    }));
+    expect(panelPositionManager.calculateInitialPositionCSS).toHaveBeenCalledWith('root-a');
   });
 
-  it('removes the creating panel when its target becomes empty before confirmation', async () => {
+  it('confirms a creating annotation when its target becomes empty', async () => {
     const annotations = [{
       id: 'annotation-a',
       blockId: 'root-a',
@@ -129,11 +137,10 @@ describe('Annotation create commands', () => {
     const annotationStore = {
       editor: createEditor(''),
       annotations,
-      updateAnnotation: vi.fn(),
-      removeAnnotation: vi.fn(annotationId => {
-        const index = annotations.findIndex(annotation => annotation.id === annotationId);
-        if (index < 0) return false;
-        annotations.splice(index, 1);
+      updateAnnotation: vi.fn((annotationId, updates) => {
+        const annotation = annotations.find(item => item.id === annotationId);
+        if (!annotation) return false;
+        Object.assign(annotation, updates);
         return true;
       }),
     };
@@ -149,10 +156,14 @@ describe('Annotation create commands', () => {
       panelPositionManager,
     });
 
-    expect(annotationId).toBeNull();
-    expect(annotationStore.updateAnnotation).not.toHaveBeenCalled();
-    expect(annotationStore.removeAnnotation).toHaveBeenCalledWith('annotation-a');
-    expect(annotations).toEqual([]);
+    expect(annotationId).toBe('annotation-a');
+    expect(annotationStore.updateAnnotation).toHaveBeenCalledWith('annotation-a', {
+      content: '批注意见',
+      state: AnnotationState.CONFIRMED,
+    });
+    expect(annotations).toEqual([
+      expect.objectContaining({ id: 'annotation-a', state: AnnotationState.CONFIRMED }),
+    ]);
   });
 
   it('rolls back the draft when post-mount overlap layout fails', async () => {

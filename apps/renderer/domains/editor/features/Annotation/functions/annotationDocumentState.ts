@@ -39,25 +39,6 @@ function findRootBlock(state: EditorState, blockId: string): RootBlockLocation |
   return location
 }
 
-function hasSerializableMarkdownAnnotationTarget(node: ProseMirrorNode): boolean {
-  return !(
-    node.firstChild?.type.name === 'baseBlock'
-    && node.firstChild.content.size === 0
-  )
-}
-
-/**
- * 批注在 Markdown 中序列化为所属 rootBlock 正文后的 HTML comment。
- * 空 BaseBlock 没有可保留的 Markdown 块，因此不能成为批注锚点。
- */
-export function canPersistMarkdownAnnotationOnRootBlock(
-  state: EditorState,
-  blockId: string
-): boolean {
-  const location = findRootBlock(state, blockId)
-  return !!location && hasSerializableMarkdownAnnotationTarget(location.node)
-}
-
 /** 从 ProseMirror 文档派生 Annotation read model；不再访问旁路数据库。 */
 export function readAnnotationsFromDocument(
   doc: ProseMirrorNode
@@ -90,9 +71,6 @@ export function replaceRootBlockAnnotations(
   }
 
   const validated = MarkdownAnnotationsSchema.parse(annotations)
-  if (validated.length > 0 && !hasSerializableMarkdownAnnotationTarget(location.node)) {
-    throw new Error('[Annotation] 空 baseBlock 没有可序列化的 Markdown 锚点')
-  }
   return state.tr.setNodeMarkup(location.position, undefined, {
     ...location.node.attrs,
     annotations: validated,

@@ -35,11 +35,6 @@ export function appendMarkdownAnnotations(
     const additions = byBlockId.get(blockId);
     if (!additions) return rootBlock;
 
-    const firstChild = rootBlock.content?.[0];
-    if (firstChild?.type === 'baseBlock' && !firstChild.content?.length) {
-      throw new Error(`[MarkdownAnnotation] 空 baseBlock 没有可序列化的 Markdown 锚点: ${blockId}`);
-    }
-
     foundBlockIds.add(blockId);
     const existing = MarkdownAnnotationsSchema.parse(rootBlock.attrs?.annotations ?? []);
     const ids = new Set(existing.map(annotation => annotation.id));

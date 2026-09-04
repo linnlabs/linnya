@@ -27,6 +27,28 @@ describe('markdownRuntime materializer', () => {
     ])
   })
 
+  it('materializes an empty annotation anchor as its own root block', () => {
+    const docJson = blockEventsToDocJson(
+      [
+        {
+          block_type: 'HtmlComment',
+          raw_content_fallback: '<!-- linnya-annotation-anchor:v1 empty-block -->',
+        },
+        { block_type: 'HtmlComment', raw_content_fallback: '<!-- 空块批注 -->' },
+      ],
+      workspaceMarkdownSchemaLite
+    )
+
+    const root = docJson?.content[0] as {
+      content?: Array<{ type?: string; content?: unknown[] }>
+      attrs?: { annotations?: Array<Record<string, unknown>> }
+    }
+    expect(docJson?.content).toHaveLength(1)
+    expect(root.content?.[0]).toMatchObject({ type: 'baseBlock' })
+    expect(root.content?.[0]?.content ?? []).toEqual([])
+    expect(root.attrs?.annotations?.[0]).toMatchObject({ content: '空块批注' })
+  })
+
   it('materializes hardBreak and inlineLatex through the shared fragment interpreter', () => {
     const docJson = blockEventsToDocJson(
       [

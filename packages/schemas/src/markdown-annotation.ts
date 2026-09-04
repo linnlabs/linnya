@@ -64,6 +64,20 @@ export interface MarkdownAnnotationAdmission {
 
 const CANONICAL_MARKER = 'linnya-annotation:v1';
 const LINNYA_MARKER_PREFIX = 'linnya-annotation:';
+const EMPTY_BLOCK_ANCHOR_MARKER_PREFIX = 'linnya-annotation-anchor:';
+const EMPTY_BLOCK_ANCHOR_COMMENT = '<!-- linnya-annotation-anchor:v1 empty-block -->';
+
+/**
+ * CommonMark 不会保留空段落。带批注的空块因此需要一个同样不可见的 HTML comment
+ * 作为块锚点，后续批注仍使用统一的 canonical Annotation comment。
+ */
+export function encodeMarkdownEmptyBlockAnnotationAnchorComment(): string {
+  return EMPTY_BLOCK_ANCHOR_COMMENT;
+}
+
+export function isMarkdownEmptyBlockAnnotationAnchorComment(comment: string): boolean {
+  return comment.trim() === EMPTY_BLOCK_ANCHOR_COMMENT;
+}
 
 function encodeCommentSafeJson(annotation: MarkdownAnnotation): string {
   return JSON.stringify(annotation)
@@ -103,6 +117,12 @@ export function parseMarkdownAnnotationComment(comment: string): ParsedMarkdownA
   }
 
   const body = match[1].trim();
+  if (isMarkdownEmptyBlockAnnotationAnchorComment(normalized)) {
+    throw new Error('[MarkdownAnnotation] 空块锚点不是批注正文');
+  }
+  if (body.startsWith(EMPTY_BLOCK_ANCHOR_MARKER_PREFIX)) {
+    throw new Error(`[MarkdownAnnotation] 不支持的空块锚点 profile: ${body.split(/\s/, 1)[0]}`);
+  }
   if (body.startsWith(CANONICAL_MARKER)) {
     return { kind: 'canonical', annotation: decodeMarkdownAnnotationComment(normalized) };
   }

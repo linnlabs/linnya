@@ -3,6 +3,7 @@ import { MarkdownSerializer, MarkdownSerializerState } from 'prosemirror-markdow
 import { Mark as ProseMirrorMark, Node as ProsemirrorNode } from 'prosemirror-model'
 import {
   MarkdownAnnotationsSchema,
+  encodeMarkdownEmptyBlockAnnotationAnchorComment,
   encodeMarkdownAnnotationComment,
 } from '@app/schemas'
 
@@ -95,10 +96,13 @@ const nodes: { [key: string]: NodeSerializer } = {
   },
   rootBlock(state, node) {
     const annotations = MarkdownAnnotationsSchema.parse(node.attrs.annotations ?? [])
-    if (annotations.length > 0 && hasEmptyMarkdownAnnotationTarget(node)) {
-      throw new Error('[MarkdownSerializer] 空 rootBlock 不能承载 Annotation')
+    const needsEmptyBlockAnchor = annotations.length > 0 && hasEmptyMarkdownAnnotationTarget(node)
+    if (needsEmptyBlockAnchor) {
+      state.write(encodeMarkdownEmptyBlockAnnotationAnchorComment())
+      state.closeBlock(node)
+    } else {
+      state.renderContent(node)
     }
-    state.renderContent(node)
     for (const annotation of annotations) {
       state.ensureNewLine()
       state.write(encodeMarkdownAnnotationComment(annotation))

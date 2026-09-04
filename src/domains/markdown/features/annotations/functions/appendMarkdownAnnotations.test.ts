@@ -37,6 +37,25 @@ describe('appendMarkdownAnnotations', () => {
     expect(document.content[0]?.attrs?.annotations).toEqual([]);
   });
 
+  it('allows annotations on an empty base block', () => {
+    const emptyDocument = {
+      ...document,
+      content: [{
+        ...document.content[0],
+        content: [{
+          type: 'baseBlock',
+          attrs: { id: 'block-1', blockType: 'base' },
+          content: [],
+        }],
+      }],
+    };
+
+    expect(appendMarkdownAnnotations(emptyDocument, [{
+      blockId: 'root-1',
+      annotation,
+    }]).content[0]?.attrs?.annotations).toEqual([annotation]);
+  });
+
   it('rejects missing targets and duplicate identities', () => {
     expect(() => appendMarkdownAnnotations(document, [{
       blockId: 'missing',

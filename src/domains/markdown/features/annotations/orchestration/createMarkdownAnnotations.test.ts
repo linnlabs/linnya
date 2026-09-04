@@ -74,6 +74,40 @@ describe('createMarkdownAnnotations', () => {
     ]);
   });
 
+  it('统一创建合同允许批注空 BaseBlock', () => {
+    const store = new FakeAnnotationStore();
+    store.document = {
+      type: 'doc',
+      content: [{
+        type: 'rootBlock',
+        attrs: { id: 'root-1', annotations: [] },
+        content: [{
+          type: 'baseBlock',
+          attrs: { id: 'block-1', blockType: 'base' },
+          content: [],
+        }],
+      }],
+    };
+
+    const result = createMarkdownAnnotations({
+      store,
+      documentId: 'doc-1',
+      expectedDocumentVersion: 3,
+      drafts: [{ blockId: 'root-1', content: '空块批注' }],
+      author: 'Reviewer',
+      meta: { source: 'review', reviewRunId: 'review-1' },
+      createId: () => 'annotation-empty',
+      now: () => '2026-09-04T00:00:00.000Z',
+    });
+
+    expect(result.created[0]?.annotation).toMatchObject({
+      id: 'annotation-empty',
+      content: '空块批注',
+      state: 'confirmed',
+    });
+    expect(store.document.content[0]?.content?.[0]?.content ?? []).toEqual([]);
+  });
+
   it('在创建前拒绝过期文档版本', () => {
     const store = new FakeAnnotationStore();
     expect(() => createMarkdownAnnotations({

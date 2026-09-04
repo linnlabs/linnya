@@ -97,10 +97,13 @@ describe('serializeRootBlockToMarkdown inline projection', () => {
     expect(result).toContain('"id":"annotation-1"');
   });
 
-  it('拒绝导出没有 Markdown 锚点的空块批注', () => {
-    expect(() => serializeRootBlockToMarkdown({
+  it('为空块批注导出不可见的 Markdown 锚点', () => {
+    const result = serializeRootBlockToMarkdown({
       ...rootBlock([]),
       attrs: { annotations: [annotation] },
-    })).toThrow('空 rootBlock');
+    });
+
+    expect(result).toContain('<!-- linnya-annotation-anchor:v1 empty-block -->');
+    expect(result).toContain('<!-- linnya-annotation:v1\n');
   });
 });

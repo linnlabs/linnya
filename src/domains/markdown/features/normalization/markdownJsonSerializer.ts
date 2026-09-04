@@ -16,6 +16,7 @@
 
 import {
   MarkdownAnnotationsSchema,
+  encodeMarkdownEmptyBlockAnnotationAnchorComment,
   encodeMarkdownAnnotationComment,
 } from '@app/schemas';
 
@@ -466,11 +467,11 @@ export function serializeRootBlockToMarkdown(
   if (options.includeAnnotations === false) return body;
   const annotations = MarkdownAnnotationsSchema.parse(getAttrs(root)['annotations'] ?? []);
   if (annotations.length === 0) return body;
-  if (body.length === 0) {
-    throw new Error('[MarkdownSerializer] 空 rootBlock 不能承载 Annotation');
-  }
+  const anchor = body.length === 0
+    ? encodeMarkdownEmptyBlockAnnotationAnchorComment()
+    : body;
 
-  return [body, ...annotations.map(encodeMarkdownAnnotationComment)]
+  return [anchor, ...annotations.map(encodeMarkdownAnnotationComment)]
     .filter(part => part.length > 0)
     .join('\n\n');
 }

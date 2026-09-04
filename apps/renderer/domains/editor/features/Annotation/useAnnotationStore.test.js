@@ -10,7 +10,7 @@ import {
 import { readAnnotationsFromDocument } from './functions/annotationDocumentState'
 import { useAnnotationStore } from './useAnnotationStore'
 
-function createEditor() {
+function createEditor(text = '正文') {
   let state = EditorState.create({
     schema: workspaceMarkdownSchemaLite,
     doc: workspaceMarkdownSchemaLite.nodeFromJSON({
@@ -23,7 +23,7 @@ function createEditor() {
             {
               type: 'baseBlock',
               attrs: { id: 'block-1', blockType: 'base' },
-              content: [{ type: 'text', text: '正文' }],
+              ...(text ? { content: [{ type: 'text', text }] } : {}),
             },
           ],
         },
@@ -88,6 +88,43 @@ describe('useAnnotationStore document ownership', () => {
       state: 'confirmed',
     })
     expect(readAnnotationsFromDocument(editor.state.doc)).toHaveLength(1)
+
+    store.cleanup()
+  })
+
+  it('manual create flow persists exactly one annotation on an empty block', async () => {
+    const editor = createEditor('')
+    const store = reactive(useAnnotationStore({ editor }))
+    const panelPositionManager = {
+      calculateInitialPositionCSS: () => ({ top: '12px', left: '34px' }),
+      handleOverlapsOnly: async () => false,
+      invalidateLayoutCacheForAnnotation: () => undefined,
+      recalculateAllPositions: async () => false,
+    }
+    store.initialize()
+
+    const annotationId = await startCreatingAnnotation({
+      blockId: 'root-1',
+      annotationStore: store,
+      panelPositionManager,
+    })
+    const confirmedId = await confirmCreatingAnnotation({
+      blockId: 'root-1',
+      content: '空块批注',
+      annotationStore: store,
+      panelPositionManager,
+    })
+
+    expect(confirmedId).toBe(annotationId)
+    expect(store.annotations).toHaveLength(1)
+    expect(readAnnotationsFromDocument(editor.state.doc)).toEqual([
+      expect.objectContaining({
+        id: annotationId,
+        blockId: 'root-1',
+        content: '空块批注',
+      }),
+    ])
+    expect(editor.state.doc.firstChild?.textContent).toBe('')
 
     store.cleanup()
   })

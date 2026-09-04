@@ -80,8 +80,7 @@ export async function planMarkdownBlocks(
     .map((block) => block.text)
     .filter((text) => text.trim().length > 0);
   const bodyBlocks = flattenMarkdownDocumentBlocks(docJson, { includeAnnotations: false })
-    .map(block => block.text)
-    .filter(text => text.trim().length > 0);
+    .map(block => block.text);
 
   return {
     blockEvents,

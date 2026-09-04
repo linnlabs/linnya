@@ -9,7 +9,6 @@
 import { nextTick } from 'vue';
 import { AnnotationState } from './AnnoStateCommands'; // 引入状态枚举
 import { resolveAnnotationRootBlockId } from '../functions/rootBlockIdResolver';
-import { canPersistMarkdownAnnotationOnRootBlock } from '../functions/annotationDocumentState';
 
 // 辅助函数：从 CSS 像素值解析数字
 const parsePx = (cssValue) => {
@@ -44,10 +43,6 @@ export const startCreatingAnnotation = async (params) => {
     return null;
   }
   blockId = resolveAnnotationRootBlockId(annotationStore.editor, blockId) || blockId;
-  if (!canPersistMarkdownAnnotationOnRootBlock(annotationStore.editor.state, blockId)) {
-    console.warn(`[AnnoCreateCommands] 空 BaseBlock 不能创建批注: ${blockId}`);
-    return null;
-  }
 
   let annotationId = null;
 
@@ -198,12 +193,6 @@ export const confirmCreatingAnnotation = async (params) => {
      console.warn('[AnnoCreateCommands] 确认创建失败: 内容为空，自动取消');
      // 内容为空时，行为类似取消
      await cancelCreatingAnnotation({ blockId, annotationStore, panelPositionManager }); // await 取消操作
-     return null;
-   }
-
-   if (!canPersistMarkdownAnnotationOnRootBlock(annotationStore.editor.state, blockId)) {
-     console.warn(`[AnnoCreateCommands] 批注目标已变为空 BaseBlock，取消创建: ${blockId}`);
-     await cancelCreatingAnnotation({ blockId, annotationStore, panelPositionManager });
      return null;
    }
 

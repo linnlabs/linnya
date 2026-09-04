@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import {
+  encodeMarkdownAnnotationComment,
+  encodeMarkdownEmptyBlockAnnotationAnchorComment,
+} from '@app/schemas';
 
 import { planMarkdownBlocks } from '../markdownBlockPlanner';
 
@@ -58,6 +62,33 @@ describe('markdownBlockPlanner', () => {
     expect(first.annotationComments).toEqual([{
       targetBlockIndex: 0,
       parsed: { kind: 'plain', draft: { content: '建议补充依据' } },
+    }]);
+  });
+
+  it('preserves the empty body slot used by an annotation anchor', async () => {
+    const annotation = {
+      id: 'annotation-empty',
+      content: '空块批注',
+      author: 'User',
+      state: 'confirmed' as const,
+      createdAt: '2026-09-04T00:00:00.000Z',
+      updatedAt: '2026-09-04T00:00:00.000Z',
+      resolvedAt: null,
+      replies: [],
+      meta: { source: 'manual' as const },
+    };
+    const markdown = [
+      encodeMarkdownEmptyBlockAnnotationAnchorComment(),
+      encodeMarkdownAnnotationComment(annotation),
+    ].join('\n\n');
+
+    const planned = await planMarkdownBlocks(markdown);
+
+    expect(planned.bodyBlocks).toEqual(['']);
+    expect(planned.blocks).toEqual([markdown]);
+    expect(planned.annotationComments).toEqual([{
+      targetBlockIndex: 0,
+      parsed: { kind: 'canonical', annotation },
     }]);
   });
 
