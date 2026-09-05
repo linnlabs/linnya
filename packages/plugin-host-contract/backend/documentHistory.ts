@@ -7,11 +7,9 @@ export interface DocumentHistoryCapability {
   restore(input: DocumentVersionRestoreRequest & { readonly context: PluginToolContext }): Promise<DocumentVersionSummary>;
 }
 
-export class DocumentHistoryError extends Error {
-  constructor(readonly code: DocumentHistoryFailureCode) {
-    super(`Document history: ${code}`);
-    this.name = 'DocumentHistoryError';
-  }
+export declare class DocumentHistoryError extends Error {
+  readonly code: DocumentHistoryFailureCode;
+  constructor(code: DocumentHistoryFailureCode);
 }
 
 /** 只返回身份集合；SQL、差分重建与内部必保依赖由文档类型拥有。 */

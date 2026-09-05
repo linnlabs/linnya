@@ -13,6 +13,7 @@ import type {
   TemplateSummary,
 } from '@plugin/slides/shared';
 import type { PresentationInspectionResult } from '../features/presentationInspection';
+import type { PresentationRevisionScope, PresentationHistoryRuntime } from '../features/presentationSourceHistory';
 import type {
   DeckAssemblerPort,
   ExportedPresentationFile,
@@ -26,7 +27,6 @@ import type {
   TemplateManagerPort,
   WorkspacePresentationPort,
 } from './types.js';
-import type { RestorePresentationRevisionResult } from './types.js';
 import type { DeckPreview, PresentationInfo, PresentationRenderModel } from '@plugin/slides/shared';
 import type {
   CodegenDeckBuilderFailureLogger,
@@ -80,6 +80,8 @@ function isConversationAwareImageSourceResolver(
 }
 
 export interface PptCoordinatorRuntimeOptions {
+  readonly history?: PresentationHistoryRuntime;
+  readonly revisionScope?: PresentationRevisionScope;
   readonly engineAdapter?: SlidesEngineExecutionAdapter;
   readonly codegenDeckBuilderFactory?: CodegenDeckBuilderFactory;
   readonly codegenFailureLogger?: CodegenDeckBuilderFailureLogger;
@@ -89,6 +91,7 @@ export interface PptCoordinatorRuntimeOptions {
 }
 
 export class PptCoordinator {
+  readonly history?: PresentationHistoryRuntime;
   private readonly engine: SlidesEngineExecutionAdapter;
   private readonly codegenRuntime: PresentationCodegenRuntime;
   private readonly queryRuntime: PresentationQueryRuntime;
@@ -108,6 +111,7 @@ export class PptCoordinator {
     private readonly draftRepo: PresentationDraftRepositoryPort | undefined,
     runtimeOptions: PptCoordinatorRuntimeOptions
   ) {
+    this.history = runtimeOptions.history;
     this.svgGraphicRuntime = runtimeOptions.svgGraphicRuntime;
     const presentationQueries = new PptPresentationQueryService(
       pptxReader,
@@ -123,6 +127,7 @@ export class PptCoordinator {
         presentationQueries,
       });
     this.codegenRuntime = new PresentationCodegenRuntime({
+      revisionScope: runtimeOptions.revisionScope,
       presentationRepo: this.presentationRepo,
       ...(this.workspaceService ? { workspaceService: this.workspaceService } : {}),
       ...(this.draftRepo ? { draftRepo: this.draftRepo } : {}),
@@ -312,18 +317,6 @@ export class PptCoordinator {
 
   getCodegenPresentationService(): CodegenPresentationService {
     return this.codegenRuntime.getPresentationService();
-  }
-
-  async restoreRevision(
-    nodeId: string,
-    revision: number
-  ): Promise<RestorePresentationRevisionResult> {
-    const restored = await this.codegenRuntime.restoreRevision(nodeId, revision);
-    return {
-      nodeId,
-      versionId: restored.versionId,
-      versionNumber: restored.versionNumber,
-    };
   }
 
   async readSourceSlicesForAiEdit(input: {

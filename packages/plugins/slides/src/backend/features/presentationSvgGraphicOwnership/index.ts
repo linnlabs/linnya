@@ -11,6 +11,7 @@ export type {
 export { PresentationSvgGraphicBindingRepository } from './infrastructure/sqlite/PresentationSvgGraphicBindingRepository';
 export {
   createPresentationSvgGraphicOwner,
+  createReadOnlyPresentationSvgGraphicOwner,
   createReadOnlyPresentationSvgGraphicAssetResolver,
   type PresentationSvgGraphicAssetReaderDependencies,
   type PresentationSvgGraphicOwnerDependencies,

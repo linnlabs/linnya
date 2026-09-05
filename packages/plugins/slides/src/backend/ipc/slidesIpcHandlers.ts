@@ -10,6 +10,7 @@ import type {
   PresentationExportRequest,
   PresentationExportResult,
 } from '@plugin/slides/shared';
+import { z } from 'zod';
 import {
   parseSlidesNodePayload,
   parsePresentationExportRequest,
@@ -29,6 +30,7 @@ export interface SlidesSourceSlicesForAiEditInput {
 }
 
 export interface SlidesIpcCoordinatorPort {
+  readonly history?: { preview(documentId: string, versionId: string): Promise<PresentationRenderModel> };
   readSourceSlicesForAiEdit(input: SlidesSourceSlicesForAiEditInput): Promise<SlidesSourceSlicesOutput>;
   inspect(nodeId: string): Promise<PresentationInfo>;
   getPreview(nodeId: string): Promise<DeckPreview>;
@@ -90,6 +92,12 @@ export function registerSlidesIpcHandlersForCoordinatorProvider(
   readCoordinator: SlidesIpcCoordinatorProvider,
   registerBackendPluginIpcHandler: SlidesBackendIpcRegistrar,
 ): void {
+  registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:history-preview', async payload => {
+    const request = z.object({ documentId: z.string().min(1), versionId: z.string().min(1) }).strict().parse(payload);
+    const history = readCoordinator().history;
+    if (!history) throw new Error('Slides history is unavailable');
+    return history.preview(request.documentId, request.versionId);
+  });
   registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:source-slices', async (payload) => {
     const parsed = parseSlidesSourceSlicesPayload(payload);
     return readCoordinator().readSourceSlicesForAiEdit({

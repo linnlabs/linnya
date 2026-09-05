@@ -181,7 +181,7 @@ describe('slidesPluginMigrations', () => {
   });
 
   it('保留已发布的迁移版本，不允许回退或重编号', () => {
-    expect(slidesPluginMigrations.map(migration => migration.version)).toEqual([1, 2, 3, 4, 5]);
+    expect(slidesPluginMigrations.map(migration => migration.version)).toEqual([1, 2, 3, 4, 5, 6]);
     expect(slidesPluginMigrations[0]?.description).toBe(
       'Create and adopt Slides presentation tables'
     );

@@ -14,6 +14,7 @@ import type {
   PluginDocumentSvgAssetRuntimePort,
 } from '@plugin/backend/documentSvgAsset';
 import { PRESENTATION_DOCUMENT_SCHEMAS } from '../persistence/schemas/presentation.schema';
+import { PRESENTATION_HISTORY_SCHEMAS } from '../features/presentationSourceHistory/definitions/presentationHistorySchema';
 import { PRESENTATION_IMAGE_BINDING_SCHEMAS } from '../persistence/schemas/presentationImageBinding.schema';
 import { PRESENTATION_SVG_GRAPHIC_BINDING_SCHEMAS } from '../persistence/schemas/presentationSvgGraphicBinding.schema';
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema.js';
@@ -91,6 +92,7 @@ function installSchemas(db: Database.Database): void {
     ...PRESENTATION_DOCUMENT_SCHEMAS,
     ...PRESENTATION_IMAGE_BINDING_SCHEMAS,
     ...PRESENTATION_SVG_GRAPHIC_BINDING_SCHEMAS,
+    ...PRESENTATION_HISTORY_SCHEMAS,
   ]) {
     db.exec(ddl);
   }
@@ -228,6 +230,24 @@ describe('createPptCoordinator — image source resolver integration', () => {
     );
     expect(localAdoptionCount).toBe(1);
     expect(ownedReadCount).toBe(1);
+
+    const history = coordinator.history;
+    if (!history) throw new Error('Production coordinator must expose history');
+    const before = history.list(result.presentationId);
+    const target = before[before.length - 1];
+    const preview = await history.preview(result.presentationId, target.versionId);
+    expect(preview.slides).toHaveLength(1);
+    expect(history.list(result.presentationId)).toEqual(before);
+    expect(readPresentationDocument(db, result.presentationId)).toEqual(updatedDocument);
+    const restored = await history.restore({ documentId: result.presentationId,
+      versionId: target.versionId, expectedCurrentVersionId: before[0].versionId });
+    expect(restored.order).toBe(before[0].order + 1);
+    expect(restored.versionId).not.toBe(target.versionId);
+    expect(readPresentationDocument(db, result.presentationId)).toEqual(firstDocument);
+    await expect(history.restore({ documentId: result.presentationId,
+      versionId: target.versionId, expectedCurrentVersionId: before[0].versionId }))
+      .rejects.toMatchObject({ code: 'version_conflict' });
+    expect(localAdoptionCount).toBe(1); // 历史预览和恢复不下载、不重新接管已经删除的原图。
   });
 
   it('Agent inline SVG 经 admission/ownership 后可预览并原生写入 PPTX', async () => {

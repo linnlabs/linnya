@@ -17,12 +17,35 @@
 最旧保留点变成 checkpoint，后续点相对上一个实际保留点编码。源码 hash 和版本身份保持不变。
 计划不执行 SQL，不处理图片，不发布文档更新。调用方必须先合并 current 和 draft base 等必保依赖。
 
-数据库执行方仍需在提交前核对 current 和完整 revision 集合，在同一事务写入新父关系、载荷及资产引用，
-然后才可删除旧行。Host ownership 释放必须有持久重试记录并与新资产接管协调。
-上述实际压缩与资产回收尚未启用，基础算法完成不代表可以直接删除现有 revision。
+`PresentationHistoryRuntime` 在成功提交后按文稿串行、合并重复维护请求。失败只记诊断，不回滚成功保存，
+下一次成功提交会再尝试；只打开历史面板不触发压缩。维护与正式编译共用文稿级执行作用域。
+仓储提交前再次核对 current、完整 revision 身份集合和 draft 身份，在同一即时事务写入新链、资产引用和删除旧行。
+draft base 必保；存在失败草稿时仍可压缩源码，但暂停资产释放，避免删除草稿尚未形成成功引用的图片。
+
+## 版本上下文与资产
+
+每次成功提交同时保存版本自身主题和实际采用的 image/SVG asset IDs，失败构建不产生成功引用。
+`presentation_revision_contexts` 保存主题，`presentation_revision_assets` 保存轻量引用，均随 revision 删除。
+旧版本缺少引用时，对所有保留点只读重建，全部成功才执行压缩；不从当前文稿借用主题。
+旧源码依赖已丢失的隐式主题或资源时，无法凭空恢复：报告维护失败并保留历史，而不是猜测后删除。
+
+不再可达的 binding 与 `presentation_asset_releases` 待释放记录同事务更新；Host 门面只解除精确文稿归属，
+物理字节仍由既有 Asset GC 处理。失败后待释放记录保留，下次维护重试；若资产已被后续版本重新使用则撤销释放。
+其他文档、项目或会话仍引用的图片不会被此次释放删除。Brush 同样复用图片资产链，不另存历史位图。
 
 历史列表查询只读取元数据列，不读取再丢弃 checkpoint/patch。
-恢复仍走正式编译和新版本提交，不把 current 指针倒回旧版本。
+恢复只有统一 history 入口：请求带目标 versionId 和 expectedCurrentVersionId，编译前与提交时均校验 current。
+恢复使用该历史版本主题、只读资产解析及正式编译链，随后新建 origin=restore 的成功版本、清除旧 draft，
+同步更新 VFS 文本快照并发布标准 workspace.document.updated；不把 current 指针倒回旧版本。
+旧的仅凭 revision 数字恢复入口已移除，避免绕过冲突检查或借用当前主题。
+
+## 只读预览
+
+插件私有 `slides:history-preview` 重建源码并返回既有 RenderModel，不写当前物化、PPTX、截图缓存或文档事件。
+图片和 SVG 只能从既有绑定读取，不能下载、重新生成 Brush 或重新接管文件。当前编译器升级可能改变历史视觉，
+历史承诺是源码与已拥有资源，不是冻结旧版渲染引擎的像素快照。
+前端仅保留一个历史 RenderModel 和一张选中页 bitmap；切页/关闭取消栅格请求并释放 bitmap，
+后端已发出的 IPC 编译结果在关闭后丢弃。详见 [只读预览](../../../renderer/features/presentationHistory/README.md)。
 
 参见 [后端总览](../../README.md)、[Core 历史规则](../../../../../../../src/domains/document-history/README.md)、
 [文档类型合同](../../../../../../../docs/plugins/guides/05-document-types.md)。

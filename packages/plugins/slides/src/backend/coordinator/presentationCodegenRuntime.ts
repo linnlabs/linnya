@@ -17,7 +17,7 @@ import {
   DeckReadStateRegistry,
   InitialPresentationDraftCreator,
 } from '../codegen';
-import { restorePresentationRevision } from '../features/presentationSourceHistory/index.js';
+import type { PresentationRevisionScope } from '../features/presentationSourceHistory';
 import type {
   GeneratePresentationOptions,
   GeneratePresentationResult,
@@ -31,13 +31,13 @@ import type { PresentationBuildExecutionPort } from '../features/presentationBui
 export interface CodegenDeckBuilderPort {
   buildNewPresentation(input: CodegenDeckCreateInput): Promise<CodegenDeckCreateResult>;
   buildFromSource(input: CodegenDeckBuildInput): Promise<CodegenDeckBuildResult>;
-  restoreFromSource(input: CodegenDeckBuildInput): Promise<CodegenDeckBuildResult>;
   buildDeckSpecFromSource(input: CodegenDeckBuildInput): Promise<DeckSpec>;
 }
 
 export type CodegenDeckBuilderFactory = () => CodegenDeckBuilderPort;
 
 export interface PresentationCodegenRuntimeDeps {
+  readonly revisionScope?: PresentationRevisionScope;
   readonly presentationRepo: PresentationRepositoryPort;
   readonly workspaceService?: WorkspacePresentationPort;
   readonly draftRepo?: PresentationDraftRepositoryPort;
@@ -80,7 +80,13 @@ export class PresentationCodegenRuntime {
 
   getDeckBuilder(): CodegenDeckBuilderPort {
     if (!this.codegenDeckBuilder) {
-      this.codegenDeckBuilder = this.deps.codegenDeckBuilderFactory?.() ?? this.createCodegenDeckBuilder();
+      const builder = this.deps.codegenDeckBuilderFactory?.() ?? this.createCodegenDeckBuilder();
+      const scope = this.deps.revisionScope;
+      this.codegenDeckBuilder = scope ? {
+        buildNewPresentation: input => scope.run(`create:${crypto.randomUUID()}`, () => builder.buildNewPresentation(input)),
+        buildFromSource: input => scope.run(input.nodeId, () => builder.buildFromSource(input)),
+        buildDeckSpecFromSource: input => scope.run(input.nodeId, () => builder.buildDeckSpecFromSource(input)),
+      } : builder;
     }
     return this.codegenDeckBuilder;
   }
@@ -96,16 +102,6 @@ export class PresentationCodegenRuntime {
         targets: input.targets,
       },
       { conversationId: input.conversationId },
-    );
-  }
-
-  async restoreRevision(nodeId: string, revision: number): Promise<CodegenDeckBuildResult> {
-    return restorePresentationRevision(
-      { nodeId, revision },
-      {
-        sourceReader: this.deps.presentationRepo,
-        compiler: this.getDeckBuilder(),
-      },
     );
   }
 

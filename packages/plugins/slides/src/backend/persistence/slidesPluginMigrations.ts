@@ -7,6 +7,7 @@ import { SLIDES_PLUGIN_ID } from '@plugin/slides/shared';
 import { PRESENTATION_DOCUMENT_SCHEMAS } from './schemas/presentation.schema.js';
 import { PRESENTATION_IMAGE_BINDING_SCHEMAS } from './schemas/presentationImageBinding.schema.js';
 import { PRESENTATION_SVG_GRAPHIC_BINDING_SCHEMAS } from './schemas/presentationSvgGraphicBinding.schema.js';
+import { PRESENTATION_HISTORY_SCHEMAS } from '../features/presentationSourceHistory/definitions/presentationHistorySchema';
 
 const PRESENTATION_NODE_TYPE = 'presentation';
 
@@ -494,5 +495,10 @@ export const slidesPluginMigrations: readonly PluginMigrationDefinition[] = [
         db.exec(statement);
       }
     },
+  },
+  {
+    version: 6,
+    description: 'Track revision render context, asset reachability and pending ownership releases',
+    up: db => { for (const statement of PRESENTATION_HISTORY_SCHEMAS) db.exec(statement); },
   },
 ] as const;

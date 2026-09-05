@@ -78,6 +78,9 @@ interface WorkspaceProjectRow {
 }
 
 export interface PresentationRepositoryOptions {
+  /** 同一提交事务中记录本次物化实际使用的资产，失败事务不会留下 revision 引用。 */
+  readonly recordRevisionContext?: (nodeId: string, revisionId: string, deckSpec: DeckSpec) => void;
+  readonly requestHistoryMaintenance?: (nodeId: string) => void;
   readonly publishDocumentUpdated?: (payload: PluginWorkspaceDocumentUpdatedPayload) => void;
 }
 
@@ -135,9 +138,11 @@ export class PresentationRepository implements PresentationRepositoryPort {
         origin: options.origin,
       });
       this.commitWorkspaceProjection(nodeId, normalizedSource, now);
+      this.options.recordRevisionContext?.(nodeId, revisionId, normalizedDeckSpec);
     });
     createTx.immediate();
     this.enqueueDocumentUpdated(nodeId, 1);
+    this.options.requestHistoryMaintenance?.(nodeId);
 
     return { revisionId, revision: 1 };
   }
@@ -243,11 +248,15 @@ export class PresentationRepository implements PresentationRepositoryPort {
       }
 
       this.commitWorkspaceProjection(nodeId, normalizedSource, now);
+      this.options.recordRevisionContext?.(nodeId, revisionId, normalizedDeckSpec);
+      // 成功恢复和普通提交都替代当前草稿，不能让旧失败状态遮住新文稿。
+      this.db.prepare('DELETE FROM presentation_drafts WHERE node_id = ?').run(nodeId);
       return nextRevision;
     });
 
     const revision = commitTx.immediate();
     this.enqueueDocumentUpdated(nodeId, revision);
+    this.options.requestHistoryMaintenance?.(nodeId);
     return { revisionId, revision };
   }
 

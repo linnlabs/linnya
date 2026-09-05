@@ -1,3 +1,2 @@
-export { planDocumentVersionRetention } from 'src/domains/document-history';
-export { DocumentHistoryError } from '@linnya/plugin-host-contract/backend/documentHistory';
+export { planDocumentVersionRetention, DocumentHistoryError } from 'src/domains/document-history';
 export type { DocumentHistoryCapability } from '@linnya/plugin-host-contract/backend/documentHistory';

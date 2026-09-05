@@ -15,6 +15,7 @@ import { copyPresentationCoordinatorBindingToToolContext } from './tools/toolCon
 import slidesAgent from './agents/slides_agent';
 import { createSlidesDocumentHookRuntime } from './documentHook/createSlidesDocumentHookRuntime';
 import { createPresentationDocumentTypeBackendHook } from './documentHook/presentationDocumentTypeBackendHook';
+import { slidesDocumentHistoryCapability } from './documentHook/createSlidesDocumentHookRuntime';
 import { registerSlidesIpcHandlers } from './ipc/registerSlidesIpcHandlers';
 import { slidesPluginMigrations } from './persistence/slidesPluginMigrations';
 import { pptComposeProfile } from './sandbox/pptComposeProfile';
@@ -43,9 +44,10 @@ function wrapSlidesSelectedElementFence(content: string): string {
     : '<selected_slides_element />';
 }
 
-export const presentationDocumentTypeBackendHook = createPresentationDocumentTypeBackendHook(
-  createSlidesDocumentHookRuntime,
-);
+export const presentationDocumentTypeBackendHook = {
+  ...createPresentationDocumentTypeBackendHook(createSlidesDocumentHookRuntime),
+  history: slidesDocumentHistoryCapability,
+};
 
 /**
  * 阶段 5AZ：backend contribution 装配点已反转到插件包。

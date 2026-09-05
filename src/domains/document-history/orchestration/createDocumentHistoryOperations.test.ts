@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { DocumentVersionSummary } from '@app/schemas';
-import { DocumentHistoryError } from '@linnya/plugin-host-contract/backend/documentHistory';
+import { DocumentHistoryError } from '../definitions/documentHistoryError';
 import { createDocumentHistoryOperations } from './createDocumentHistoryOperations';
 
 describe('文档历史操作（不依赖任何插件）', () => {

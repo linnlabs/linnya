@@ -9,6 +9,7 @@ export const SLIDES_IPC = {
   preview: 'slides:preview',
   buildState: 'slides:build-state',
   renderModel: 'slides:render-model',
+  historyPreview: 'slides:history-preview',
   templatesList: 'slides:templates-list',
   // M6 决策：PPTX -> editable deck 的直接导入入口仍暂停。
   // 这里仅允许上传 PPTX 作为模板来源；重新接入文档导入前必须先补 imported->Konva 保真验收。
@@ -17,6 +18,7 @@ export const SLIDES_IPC = {
 } as const;
 
 export const SLIDES_IPC_CHANNELS = [
+  SLIDES_IPC.historyPreview,
   SLIDES_IPC.sourceSlices,
   SLIDES_IPC.inspect,
   SLIDES_IPC.preview,
