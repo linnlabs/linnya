@@ -53,6 +53,11 @@ pnpm run dev:electron
 
 全仓仍有来自渐进式 JavaScript/TypeScript 迁移的存量类型错误。`guard:tsc-baseline` 将错误总数与 `.baseline/typescript-errors.txt` 对比，只允许减少、不允许增加，并在公共 CI 执行；错误减少后运行 `pnpm run guard:tsc-baseline:update` 收紧基线。这个债务门禁不能代替改动 owner 的严格 typecheck，新代码不得以“总数没有增加”为理由引入新的类型问题。
 
+依赖升级后若大量错误集中在命名空间类型、公开导出或推断链上，应先验证实际 npm 包的声明产物，
+不能直接调高或重建基线把依赖回归记成存量债。Linnkit 只使用已发布的精确版本；声明问题在独立
+Linnkit 仓修复并通过不含源码 alias 的产物类型门禁后发布，Linnya 再升级、复测并收紧原有基线。
+禁止修改 `node_modules`、回连相邻源码或扩大类型断言来绕过这条验收链。
+
 测试应覆盖真实业务流程、合同和失败语义。不要用 README snapshot、CSS 数值快照或无业务意义的覆盖率测试代替行为验收。
 
 ## 4. 构建

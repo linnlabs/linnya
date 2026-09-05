@@ -36,7 +36,7 @@
     "pack-smoke": "pnpm run build && node scripts/verifyPackedRuntime.mjs"
   },
   "peerDependencies": {
-    "@linnlabs/linnkit": "^0.31.0"
+    "@linnlabs/linnkit": "^0.32.1"
   },
   "dependencies": {
     "@ai-sdk/alibaba": "2.0.37",
@@ -61,7 +61,7 @@
     "ai": "7.0.83"
   },
   "devDependencies": {
-    "@linnlabs/linnkit": "0.32.0",
+    "@linnlabs/linnkit": "0.32.1",
     "@types/node": "^24.3.0",
     "tsup": "^8.0.0",
     "tsx": "^4.20.3",

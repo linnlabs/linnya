@@ -32,8 +32,8 @@ importers:
         specifier: ^0.10.0
         version: 0.10.0(encoding@0.1.13)
       '@linnlabs/linnkit':
-        specifier: 0.32.0
-        version: 0.32.0(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
+        specifier: 0.32.1
+        version: 0.32.1(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
       '@linnlabs/linnkit-provider-ai-sdk':
         specifier: workspace:*
         version: link:packages/linnkit-provider-ai-sdk
@@ -609,8 +609,8 @@ importers:
         version: 7.0.83(zod@3.25.76)
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.32.0
-        version: 0.32.0(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
+        specifier: 0.32.1
+        version: 0.32.1(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -638,8 +638,8 @@ importers:
         specifier: workspace:*
         version: link:../schemas
       '@linnlabs/linnkit':
-        specifier: 0.32.0
-        version: 0.32.0(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
+        specifier: 0.32.1
+        version: 0.32.1(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -682,8 +682,8 @@ importers:
         version: 9.0.1
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.32.0
-        version: 0.32.0(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
+        specifier: 0.32.1
+        version: 0.32.1(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
       '@linnya/plugin-host-contract':
         specifier: workspace:*
         version: link:../../plugin-host-contract
@@ -785,8 +785,8 @@ importers:
         version: 3.25.76
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.32.0
-        version: 0.32.0(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
+        specifier: 0.32.1
+        version: 0.32.1(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)
       '@linnya/plugin-host-contract':
         specifier: workspace:*
         version: link:../../plugin-host-contract
@@ -1709,8 +1709,8 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@linnlabs/linnkit@0.32.0':
-    resolution: {integrity: sha512-ORpPLjKSvqb5WhM4riMdgKtEH1DBX+t1Rxf6QCQtWxHzI8DGoSHIqUg5YgUgNOZEuttKQHfm866db9TiPMQu0A==}
+  '@linnlabs/linnkit@0.32.1':
+    resolution: {integrity: sha512-pXXqhxuoOZvU9JDbPnz2Bj4jlS3Pmz8qM/Eq2Je/fOs6M/sWGihN+OY8zewjkmCRBL3581kdDAbwA5QvwTSzsg==}
     hasBin: true
     peerDependencies:
       vitest: ^2.0.0 || ^3.0.0
@@ -7176,7 +7176,7 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@linnlabs/linnkit@0.32.0(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)':
+  '@linnlabs/linnkit@0.32.1(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.9.1)(jiti@2.6.1)(jsdom@27.4.0)(tsx@4.20.6)(yaml@2.8.1))(zod@3.25.76)':
     dependencies:
       eventsource-parser: 3.1.0
       tiktoken: 1.0.22
