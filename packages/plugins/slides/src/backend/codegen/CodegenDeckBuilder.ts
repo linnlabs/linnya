@@ -62,6 +62,8 @@ export interface CodegenWorkspacePresentationPort {
 }
 
 export interface CodegenDeckBuilderDeps {
+  /** 记录实际注入源码的主题；输出 DeckSpec.theme 可能被这次源码修改，不能用来重放输入。 */
+  recordSourceTheme?: (theme: DeckSpec['theme']) => void;
   presentationRepo: Pick<
     PresentationRepositoryPort,
     'createPresentation' | 'commitPresentation' | 'getPresentation'
@@ -290,6 +292,7 @@ export class CodegenDeckBuilder {
     source: string,
     currentTheme?: DeckSpec['theme']
   ): Promise<CompiledDeckSource> {
+    this.deps.recordSourceTheme?.(currentTheme);
     let markerIndex: SlideMarkerIndex;
     try {
       markerIndex = SlideMarkerIndex.build(source);

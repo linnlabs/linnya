@@ -20,10 +20,11 @@ describe('Slides history retention transactions', () => {
   let runtime: PresentationHistoryRuntime;
   const release = vi.fn<(documentId: string, assets: readonly string[]) => void>();
   const deck: DeckSpec = { title: 'History', slides: [], layout: '16x9' };
+  const compile = vi.fn(async () => deck);
   const sources = new Map<number, string>();
 
   beforeEach(async () => {
-    release.mockReset(); sources.clear();
+    release.mockReset(); compile.mockReset().mockResolvedValue(deck); sources.clear();
     db = new Database(':memory:');
     db.pragma('foreign_keys = ON');
     for (const sql of [...CORE_SCHEMAS, ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS,
@@ -35,10 +36,10 @@ describe('Slides history retention transactions', () => {
     scope = new PresentationRevisionScope(); history = new PresentationHistoryRepository(db);
     documents = new PresentationRepository(db, {
       publishDocumentUpdated: () => undefined,
-      recordRevisionContext: (doc, id, spec) => history.recordContext(id, spec, scope.read(doc)),
+      recordRevisionContext: (doc, id) => history.recordContext(id, scope.readSourceTheme(), scope.read(doc)),
     });
     runtime = new PresentationHistoryRuntime({ history, documents, scope,
-      compile: async () => deck,
+      compile,
       render: async (documentId, version) => ({ presentationId: documentId, title: 'History', version: version.order,
         sourceKind: 'generated', slideSize: { width: 13.333333, height: 7.5 }, slides: [],
         capabilities: { hasSemanticRender: true, hasReferencePreview: false, hasHitTest: true, hasSelection: true } }),
@@ -116,5 +117,28 @@ describe('Slides history retention transactions', () => {
     const bad = before.find(row => row.order === 8);
     if (!bad) throw new Error('fixture missing revision');
     await expect(runtime.preview('doc', bad.versionId)).rejects.toMatchObject({ code: 'version_corrupt' });
+  });
+
+  it('旧版本上下文回填失败保留全部原历史，不从新主题猜测后清理', async () => {
+    db.prepare('DELETE FROM presentation_revision_contexts').run();
+    const before = history.list('doc');
+    compile.mockRejectedValueOnce(new Error('Missing historical theme'));
+    await expect(runtime.compact('doc')).rejects.toThrow('Missing historical theme');
+    expect(history.list('doc')).toEqual(before);
+    expect(bindings()).toHaveLength(20);
+    expect(release).not.toHaveBeenCalled();
+  });
+
+  it('恢复编译之后发生另一笔提交，事务校验拒绝覆盖并保留新内容', async () => {
+    const versions = history.list('doc');
+    const commit = documents.commitPresentation.bind(documents);
+    vi.spyOn(documents, 'commitPresentation').mockImplementationOnce(async (id, spec, options) => {
+      await commit(id, spec, { ...options, deckSource: 'external edit', origin: 'codegen' });
+      return commit(id, spec, options);
+    });
+    await expect(runtime.restore({ documentId: 'doc', versionId: versions[versions.length - 1].versionId,
+      expectedCurrentVersionId: versions[0].versionId })).rejects.toMatchObject({ code: 'version_conflict' });
+    expect((await documents.getPresentation('doc'))?.deckSource).toBe('external edit');
+    expect(history.list('doc')[0].order).toBe(21);
   });
 });

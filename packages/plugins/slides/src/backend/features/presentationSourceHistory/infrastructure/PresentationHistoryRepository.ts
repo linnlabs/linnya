@@ -48,21 +48,21 @@ export class PresentationHistoryRepository {
     ).get(versionId);
   }
 
-  recordContext(versionId: string, deck: DeckSpec, assets: readonly PresentationRevisionAsset[]): void {
+  recordContext(versionId: string, sourceTheme: DeckSpec['theme'], assets: readonly PresentationRevisionAsset[]): void {
     this.db.prepare('INSERT INTO presentation_revision_contexts(revision_id, theme_json) VALUES (?, ?)')
-      .run(versionId, JSON.stringify(deck.theme ?? null));
+      .run(versionId, JSON.stringify(sourceTheme ?? null));
     const insert = this.db.prepare('INSERT INTO presentation_revision_assets(revision_id, asset_id, asset_kind) VALUES (?, ?, ?)');
     for (const asset of assets) insert.run(versionId, asset.assetId, asset.kind);
   }
 
-  compact(nodeId: string, snapshot: PresentationHistorySnapshot, plan: PresentationSourceCompactionPlan, backfill: ReadonlyMap<string, { deck: DeckSpec; assets: readonly PresentationRevisionAsset[] }>): void {
+  compact(nodeId: string, snapshot: PresentationHistorySnapshot, plan: PresentationSourceCompactionPlan, backfill: ReadonlyMap<string, { sourceTheme: DeckSpec['theme']; assets: readonly PresentationRevisionAsset[] }>): void {
     this.db.transaction(() => {
       const current = this.snapshot(nodeId);
       if (current.draftKey !== snapshot.draftKey || current.versions.length !== snapshot.versions.length
         || current.versions.some((version, index) => version.versionId !== snapshot.versions[index]?.versionId)) {
         throw new DocumentHistoryError('version_conflict');
       }
-      for (const [id, value] of backfill) this.recordContext(id, value.deck, value.assets);
+      for (const [id, value] of backfill) this.recordContext(id, value.sourceTheme, value.assets);
       // 先重链所有幸存者，再按从新到旧删除，满足 parent 外键。
       const update = this.db.prepare(`UPDATE presentation_revisions SET parent_revision_id = ?, base_source_hash = ?,
         storage_kind = ?, source_checkpoint = ?, source_patch = ?, patch_bytes = ? WHERE node_id = ? AND id = ?`);

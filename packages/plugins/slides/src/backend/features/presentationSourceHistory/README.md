@@ -24,7 +24,8 @@ draft base 必保；存在失败草稿时仍可压缩源码，但暂停资产释
 
 ## 版本上下文与资产
 
-每次成功提交同时保存版本自身主题和实际采用的 image/SVG asset IDs，失败构建不产生成功引用。
+每次成功提交同时保存源码执行时实际注入的主题和采用的 image/SVG asset IDs，失败构建不产生成功引用。
+主题来自编译输入，而不是输出 DeckSpec.theme：源码可能一边引用旧 DECK_DESIGN、一边输出新主题，二者不能混为一谈。
 `presentation_revision_contexts` 保存主题，`presentation_revision_assets` 保存轻量引用，均随 revision 删除。
 旧版本缺少引用时，对所有保留点只读重建，全部成功才执行压缩；不从当前文稿借用主题。
 旧源码依赖已丢失的隐式主题或资源时，无法凭空恢复：报告维护失败并保留历史，而不是猜测后删除。

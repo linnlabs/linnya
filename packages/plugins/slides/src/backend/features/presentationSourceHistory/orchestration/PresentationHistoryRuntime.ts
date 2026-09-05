@@ -69,14 +69,14 @@ export class PresentationHistoryRuntime {
       const keep = new Set(planDocumentVersionRetention(snapshot.versions).keepVersionIds);
       if (snapshot.draftBaseId) keep.add(snapshot.draftBaseId);
       const plan = planPresentationSourceCompaction(snapshot.sources, [...keep]);
-      const backfill = new Map<string, { deck: DeckSpec; assets: readonly PresentationRevisionAsset[] }>();
+      const backfill = new Map<string, { sourceTheme: DeckSpec['theme']; assets: readonly PresentationRevisionAsset[] }>();
       // 老版本只有源码：只读重建保留点，全部成功后才允许重链和释放资产。
       for (const { revision, source } of reconstructPresentationSources(plan.retained)) {
         if (this.deps.history.readContext(revision.revisionId)) continue;
         const deck = await this.deps.compile({ nodeId: documentId, source });
         const version = this.requireVersion(documentId, revision.revisionId);
         await this.deps.render(documentId, version, deck);
-        backfill.set(revision.revisionId, { deck, assets: this.deps.scope.take(documentId) });
+        backfill.set(revision.revisionId, { sourceTheme: this.deps.scope.readSourceTheme(), assets: this.deps.scope.take(documentId) });
       }
       this.deps.history.compact(documentId, snapshot, plan, backfill);
       this.deps.history.releasePending(documentId, assets => this.deps.release(documentId, assets));

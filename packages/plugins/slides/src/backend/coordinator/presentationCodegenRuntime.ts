@@ -122,6 +122,7 @@ export class PresentationCodegenRuntime {
 
   private createCodegenDeckBuilder(): CodegenDeckBuilderPort {
     return new CodegenDeckBuilder({
+      recordSourceTheme: theme => this.deps.revisionScope?.recordSourceTheme(theme),
       presentationRepo: this.deps.presentationRepo,
       engine: this.deps.engine,
       sandbox: {

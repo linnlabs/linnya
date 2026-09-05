@@ -74,7 +74,7 @@ export function createPptCoordinator(
   let history: PresentationHistoryRuntime;
   const presentationRepo = new PresentationRepository(db, {
     publishDocumentUpdated: publishWorkspaceDocumentUpdated,
-    recordRevisionContext: (nodeId, revisionId, deck) => historyRepository.recordContext(revisionId, deck, revisionScope.read(nodeId)),
+    recordRevisionContext: (nodeId, revisionId) => historyRepository.recordContext(revisionId, revisionScope.readSourceTheme(), revisionScope.read(nodeId)),
     requestHistoryMaintenance: nodeId => history.requestMaintenance(nodeId),
   });
   const presentationDraftRepo = new PresentationDraftRepository(db);
@@ -120,6 +120,7 @@ export function createPptCoordinator(
     svgGraphicFallbackRasterizer: options.svgGraphicFallbackRasterizer ?? createPresentationSvgGraphicFallbackRasterizer(),
   });
   const historicalBuilder = new CodegenDeckBuilder({
+    recordSourceTheme: theme => revisionScope.recordSourceTheme(theme),
     presentationRepo, engine: { assembleDeck: request => historicalAssembler.assemble(request.deckSpec, request.assembleOptions) },
     sandbox: { execute: executeSandboxProfile }, buildExecution: options.buildExecution, svgGraphicOwner: historicalSvgOwner,
   });
