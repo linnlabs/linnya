@@ -29,14 +29,11 @@
               </p>
             </div>
             <div class="option-control">
-              <label class="toggle-switch">
-                <input
-                  type="checkbox"
-                  :checked="localEnableGraphIndexing"
-                  @change="updateEnableGraphIndexing"
-                />
-                <span class="slider"></span>
-              </label>
+              <Switch
+                :model-value="localEnableGraphIndexing"
+                :aria-label="knowledgeBaseMessage('knowledgeBase.parsing.graph.title')"
+                @update:model-value="updateEnableGraphIndexing"
+              />
               <p class="setting-note">
                 {{ knowledgeBaseMessage('knowledgeBase.parsing.resourceNote') }}
               </p>
@@ -82,7 +79,7 @@ import { useKnowledgeBaseStore } from '../stores/knowledgeBase'
 import { useNotificationStore } from '@/app/notification'
 import { useKnowledgeBaseLocalization } from './useKnowledgeBaseLocalization'
 import { SettingsIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { CustomSelect, Switch } from '@linnya/renderer-ui';
 
 /**
  * 解析设置属于“当前选中的知识库”：
@@ -154,7 +151,7 @@ const updatePdfParsingStrategy = (strategy) => {
   kbStore.updateParsingSettings({ forceVisionMode: newValue })
 }
 
-const updateEnableGraphIndexing = async (event) => {
+const updateEnableGraphIndexing = async (newValue) => {
   const kbId = currentKbId.value
   if (typeof kbId !== 'string' || kbId.trim().length === 0) {
     notificationStore.show(
@@ -165,7 +162,6 @@ const updateEnableGraphIndexing = async (event) => {
     return
   }
 
-  const newValue = event.target.checked === true
   localEnableGraphIndexing.value = newValue
   try {
     await kbStore.updateKbModelSettings(kbId, { enableGraphIndexing: newValue })

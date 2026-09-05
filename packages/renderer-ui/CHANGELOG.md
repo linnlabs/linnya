@@ -2,6 +2,12 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 2.2.0 - 2026-09-05
+
+- `TagChip`、`CustomCheckbox` 与 `CustomRadio` 新增明确节点的 `classNames` 合同，业务样式不再依赖组件私有 DOM selector；
+- `CustomSelect` 新增 `optionsMotionDirection: 'down' | 'up'`，向上展开场景无需覆盖私有 transition class；
+- Renderer UI 源码与插件 artifact 门禁改为扫描 `src/**` 全部 CSS，feature-local 组件样式不再漏检。
+
 ## 2.1.0 - 2026-09-03
 
 - `CustomSelect` 新增可选 `optionLabelOverflow` 合同；`marquee-on-hover` 让长选项默认显示省略号，hover 时仅对真实溢出的文本滚动到末尾，并遵守 reduced-motion；

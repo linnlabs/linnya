@@ -33,7 +33,7 @@ const shouldVerifyExtraResources = process.argv.includes('--extra-resources');
 const shouldRequireRendererAssets = process.argv.includes('--require-renderer-assets');
 const bundledPluginRoot = process.env.LINNYA_BUNDLED_PLUGIN_ROOT;
 const artifactVerification = findOfficialPluginReleaseTarget(pluginId)?.artifactVerification ?? {};
-const rendererUiStylesRoot = path.join(repoRoot, 'packages/renderer-ui/src/styles');
+const rendererUiSourceRoot = path.join(repoRoot, 'packages/renderer-ui/src');
 const allowedBackendBareSpecifiers = new Set([
   ...builtinModules,
   ...builtinModules.map(specifier => `node:${specifier}`),
@@ -387,7 +387,8 @@ const extractCssSelectorClassNames = source => {
 };
 
 const readRendererUiStyleFacts = async () => {
-  const cssFiles = (await listFiles(rendererUiStylesRoot)).filter(filePath =>
+  // feature-local CSS 也是 Renderer UI 私有样式合同，artifact 验证不能只看顶层 styles。
+  const cssFiles = (await listFiles(rendererUiSourceRoot)).filter(filePath =>
     filePath.endsWith('.css')
   );
   const tokenDefinitions = new Set();

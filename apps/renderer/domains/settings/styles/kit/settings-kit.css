@@ -112,7 +112,7 @@
 }
 
 /* 共享文本输入默认继承使用环境字号；设置页在件套边界内统一为 14px。 */
-.settings-row-control > .tt-text-field {
+.settings-row-control > .settings-text-control {
   font-size: var(--font-size-sm);
 }
 
@@ -124,8 +124,7 @@
 .settings-row.is-control-fill > .settings-row-control:has(
   > :is(
     .linnya-select-menu,
-    .tt-text-field,
-    .secret-input,
+    .settings-text-control,
     .settings-input,
     .settings-select,
     .settings-textarea,
@@ -157,11 +156,11 @@
 }
 
 /* 单选卡是多行的，圆点要对齐第一行文字而不是整块垂直居中。 */
-.settings-choice-group .radio-item {
+.settings-choice-group .settings-choice-control {
   align-items: flex-start;
 }
 
-.settings-choice-group .radio-custom {
+.settings-choice-group .settings-choice-indicator {
   margin-top: 2px;
 }
 
@@ -198,7 +197,7 @@
   color: var(--color-text-tertiary);
 }
 
-.settings-choice-group .radio-item.is-danger :is(
+.settings-choice-group .settings-choice-control.is-danger :is(
   .settings-choice-name,
   .settings-choice-description
 ) {
@@ -287,7 +286,7 @@
   outline-offset: 2px;
 }
 
-.settings-external-link > .shared-icon {
+.settings-external-link > .settings-external-link-icon {
   flex: none;
   width: 14px;
   height: 14px;

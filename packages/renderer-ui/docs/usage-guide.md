@@ -39,10 +39,10 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 | 自定义下拉容器 | `@linnya/renderer-ui` 的 `BaseDropdown` | 需要统一点击外部关闭行为、但内容不是标准选项列表时使用；标准浮层外观使用 `DROPDOWN_SURFACE_CLASSES`。 |
 | 文本浮层 | `@linnya/renderer-ui` 的 `TextPopover` | click/hover 触发的轻量文本或可信 HTML 内容；用户输入必须走插槽按普通文本渲染。 |
 | 数字输入 | `@linnya/renderer-ui` 的 `CustomNumberInput` | 带步进按钮的数字输入；业务需要调整原生 input 时传入自己的 `inputClass`。 |
-| 复选/单选 | `@linnya/renderer-ui` 的 `CustomCheckbox`、`CustomRadio` | 表单布尔、多选、单选控件。 |
+| 复选/单选 | `@linnya/renderer-ui` 的 `CustomCheckbox`、`CustomRadio` | 表单布尔、多选、单选控件；内部节点定制使用公开 `classNames`。 |
 | 开关 | `@linnya/renderer-ui` 的 `Switch` | 二元状态开关，业务层负责是否允许切换。 |
 | 分段标签页 | `@linnya/renderer-ui` 的 `SegmentedTabs` | 轻量模式切换、筛选 tab。 |
-| 标签/实体 chip | `@linnya/renderer-ui` 的 `TagChip` | 支持图标、关闭按钮和可选颜色。 |
+| 标签/实体 chip | `@linnya/renderer-ui` 的 `TagChip` | 支持图标、关闭按钮、可选颜色和明确节点的 `classNames`。 |
 | 模态框 | `@linnya/renderer-ui` 的 `Modal` | 标准居中弹窗，支持明确的滚动职责、固定 footer、尺寸和关闭行为配置。 |
 | 确认/提醒对话框 | `@linnya/renderer-ui` 的 `AlertDialog` | 基于 `Modal` 和 `ActionButtons` 的通用确认框。 |
 | 图片预览 | `@linnya/renderer-ui` 的 `ImagePreviewModal` | 全屏图片预览；业务占位内容走 slot，节点样式扩展走 `classNames`。 |
@@ -63,6 +63,8 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 
 业务确需保持交互不变并调整某个菜单节点时，使用 `classNames` 或 option 自身的 class 字段注入业务命名空间 class；`.select-*`、`.option-*` 和 `.custom-select__*` 属于 package 内部实现。独立业务面板只可通过 `DROPDOWN_SURFACE_CLASSES` 复用标准 surface，不借用内部 options class。
 
+选择面板需要向上展开时，传入 `options-motion-direction="up"`；不要覆盖 `select-fade-*` 私有 transition class。
+
 菜单宽度受限且选项名称可能很长时，传入 `option-label-overflow="ellipsis"`；若还需要在鼠标停留时阅读完整名称，使用 `option-label-overflow="marquee-on-hover"`。后者只滚动真实溢出的标签，并在 reduced-motion 环境保持静态省略号。默认值是 `visible`，不会改变既有菜单布局。
 
 ### 悬浮提示
@@ -81,6 +83,15 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 辅助等入口，但不携带 AI 业务语义。紧凑卡片或工具条需要胶囊按钮时，显式传入 `shape="pill"`。需要把
 `aria-*`、`aria-busy`、`data-*` 等属性加到真实按钮节点时，使用 `primary-button-attributes` 或
 `secondary-button-attributes`。
+
+按钮尺寸或排列由业务 owner 定制时，把自己的 class 放到组件根 `class` 以及对应的
+`primary-button-attributes.class` / `secondary-button-attributes.class`，不要引用 `.action-buttons-container` 或
+`.action-btn`。
+
+## 选择控件的节点扩展
+
+`TagChip`、`CustomCheckbox` 与 `CustomRadio` 只通过 `classNames` 暴露真实需要定制的节点。业务 class 应使用自身
+domain/feature 命名空间；`.tt-tag-chip*`、`.checkbox-*` 与 `.radio-*` 都是 package 私有实现，不构成 CSS ABI。
 
 ```vue
 <ActionButtons

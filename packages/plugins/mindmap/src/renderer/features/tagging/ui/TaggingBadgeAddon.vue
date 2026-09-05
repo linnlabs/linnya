@@ -15,6 +15,7 @@
       :background-color="kindChipColors.backgroundColor"
       :text-color="kindChipColors.textColor"
       :border-color="kindChipColors.borderColor"
+      :class-names="{ label: 'mm-tagging-chip-label' }"
     />
 
     <!-- 状态 Pill -->
@@ -27,6 +28,7 @@
       :background-color="statusChipColors.backgroundColor"
       :text-color="statusChipColors.textColor"
       :border-color="statusChipColors.borderColor"
+      :class-names="{ label: 'mm-tagging-chip-label' }"
     >
       <template #icon>
         <span class="mm-tagging-status-dot" aria-hidden="true" />
@@ -43,6 +45,7 @@
       :background-color="confidenceChipColors.backgroundColor"
       :text-color="confidenceChipColors.textColor"
       :border-color="confidenceChipColors.borderColor"
+      :class-names="{ label: 'mm-tagging-chip-label' }"
     />
 
     <!-- Refuted 解释入口 -->

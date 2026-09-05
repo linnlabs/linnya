@@ -497,7 +497,10 @@ export default defineComponent({
   setup(props) {
     const renderScheduling = inject(CONVERSATION_RENDER_SCHEDULING_PORT_KEY, null)
     // 同一个渲染实例复用同一个 md 对象，避免频繁 new
-    const md = getMarkdown('conversation-message')
+    const md = getMarkdown('conversation-message', {
+      // 文件 locator 仍由 Conversation resource-link owner 做结构与权限校验；解析器只负责保留 AST。
+      allowedLinkProtocols: ['workspace', 'conversation', 'file'],
+    })
     const parseMarkdown = (markdown: string) => parseMarkdownToStructure(markdown, md, {
       customHtmlTags: ['details', 'summary', 'u'],
       preTransformTokens: normalizeSoftbreakTokens,

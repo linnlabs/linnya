@@ -74,11 +74,11 @@
 }
 
 /* 行级 hover 需要同步高亮共享输入组件内部控件。 */
-.ask-question-item .checkbox-option:not(.option-disabled):hover .checkbox-custom {
+.ask-question-item .checkbox-option:not(.option-disabled):hover .question-checkbox-indicator {
   border-color: var(--color-accent);
 }
 
-.ask-question-item .radio-option:not(.option-disabled):hover .radio-item input[type="radio"] {
+.ask-question-item .radio-option:not(.option-disabled):hover .question-radio-indicator {
   border-color: var(--color-accent);
 }
 
@@ -171,7 +171,7 @@
 }
 
 /* 内部原生 input 默认隐藏由共享控件自身控制；这里只修正行内容顶部对齐。 */
-.ask-question-item .radio-option .radio-item,
-.ask-question-item .checkbox-option .checkbox-item {
+.ask-question-item .question-radio-control,
+.ask-question-item .question-checkbox-control {
   align-items: flex-start;
 }

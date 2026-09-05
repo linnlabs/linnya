@@ -203,7 +203,7 @@
   white-space: nowrap;
 }
 
-.plugin-store-state-chip.tt-tag-chip {
+.plugin-store-state-chip {
   min-height: 18px;
   flex: 0 0 auto;
   padding: 0 6px;
@@ -216,33 +216,33 @@
     color 0.18s ease;
 }
 
-.plugin-store-state-chip.tt-tag-chip .tt-tag-chip__label {
+.plugin-store-state-chip-label {
   max-width: 72px;
 }
 
-.plugin-store-state-chip.tt-tag-chip.is-success {
+.plugin-store-state-chip.is-success {
   color: var(--color-accent);
   background-color: var(--color-accent-bg-subtle);
 }
 
-.plugin-store-state-chip.tt-tag-chip.is-warning {
+.plugin-store-state-chip.is-warning {
   color: var(--color-text-secondary);
   background-color: var(--color-bg-disabled);
 }
 
-.plugin-store-card:hover .plugin-store-state-chip.tt-tag-chip,
-.plugin-store-card:focus-visible .plugin-store-state-chip.tt-tag-chip {
+.plugin-store-card:hover .plugin-store-state-chip,
+.plugin-store-card:focus-visible .plugin-store-state-chip {
   background-color: color-mix(in srgb, var(--color-bg-subtle) 72%, var(--color-bg-hover) 28%);
 }
 
-.plugin-store-card:hover .plugin-store-state-chip.tt-tag-chip.is-success,
-.plugin-store-card:focus-visible .plugin-store-state-chip.tt-tag-chip.is-success {
+.plugin-store-card:hover .plugin-store-state-chip.is-success,
+.plugin-store-card:focus-visible .plugin-store-state-chip.is-success {
   color: var(--color-accent);
   background-color: color-mix(in srgb, var(--color-accent-bg-subtle) 90%, var(--color-accent) 10%);
 }
 
-.plugin-store-card:hover .plugin-store-state-chip.tt-tag-chip.is-warning,
-.plugin-store-card:focus-visible .plugin-store-state-chip.tt-tag-chip.is-warning {
+.plugin-store-card:hover .plugin-store-state-chip.is-warning,
+.plugin-store-card:focus-visible .plugin-store-state-chip.is-warning {
   background-color: color-mix(
     in srgb,
     var(--color-bg-disabled) 88%,
@@ -287,16 +287,16 @@
   cursor: default;
 }
 
-.plugin-store-card-actions .action-buttons-container {
+.plugin-store-card-actions .plugin-store-install-actions {
   flex: 0 0 auto;
 }
 
-.plugin-store-card-actions .action-buttons-container .action-btn {
+.plugin-store-card-actions .plugin-store-install-button {
   min-width: 56px;
   padding: 5px 10px;
 }
 
-.plugin-store-view .plugin-store-uninstall-action.action-buttons-container .action-btn.danger {
+.plugin-store-view .plugin-store-uninstall-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -305,23 +305,20 @@
 }
 
 .plugin-store-view
-  .plugin-store-uninstall-action.action-buttons-container
-  .action-btn.danger:disabled {
+  .plugin-store-uninstall-button:disabled {
   color: var(--color-error);
   background-color: transparent;
   opacity: 0.45;
 }
 
 .plugin-store-view
-  .plugin-store-uninstall-action.action-buttons-container
-  .action-btn.danger:hover:not(:disabled) {
+  .plugin-store-uninstall-button:hover:not(:disabled) {
   color: color-mix(in srgb, var(--color-error) 82%, var(--color-text-primary));
   background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
 }
 
 .plugin-store-view
-  .plugin-store-uninstall-action.action-buttons-container
-  .action-btn.danger:focus-visible {
+  .plugin-store-uninstall-button:focus-visible {
   outline: 1px solid color-mix(in srgb, var(--color-error) 55%, transparent);
   outline-offset: 2px;
 }

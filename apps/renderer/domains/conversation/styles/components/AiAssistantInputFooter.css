@@ -391,16 +391,6 @@
   z-index: 1000;
 }
 
-.ai-assistant-input-footer .selector-group .select-fade-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
-}
-
-.ai-assistant-input-footer .selector-group .select-fade-leave-to {
-  opacity: 0;
-  transform: translateY(4px);
-}
-
 .ai-assistant-input-footer .send-button {
   display: flex;
   align-items: center;

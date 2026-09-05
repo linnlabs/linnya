@@ -198,6 +198,9 @@ clearRegisteredMarkdownPlugins()
 **选项：**
 ```typescript
 interface GetMarkdownOptions {
+  // 额外允许产出 link AST 的产品自有协议；目标校验与打开仍由调用方 owner 负责
+  allowedLinkProtocols?: readonly string[]
+
   // 要使用的 markdown-it / markdown-it-ts 插件数组
   plugin?: Array<Plugin | [Plugin, any]>
 
@@ -208,6 +211,10 @@ interface GetMarkdownOptions {
   i18n?: ((key: string) => string) | Record<string, string>
 }
 ```
+
+解析器默认保留 markdown-it 的链接安全策略。产品需要自定义协议时，只声明自己拥有的精确 scheme（例如
+`['workspace', 'conversation']`）。流式阶段重建的链接也会通过同一策略复核；被拒绝的协议只保留为普通文本，
+不会成为可点击 AST 节点。
 
 #### `parseMarkdownToStructure(content, md?, options?)`
 

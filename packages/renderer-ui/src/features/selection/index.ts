@@ -4,3 +4,8 @@ export { default as SegmentedTabs } from './ui/SegmentedTabs.vue';
 export { default as Switch } from './ui/Switch.vue';
 export { default as TagChip } from './ui/TagChip.vue';
 export type { SegmentedTabItem } from './definitions/segmentedTabItem';
+export type {
+  CustomCheckboxClassNames,
+  CustomRadioClassNames,
+  TagChipClassNames,
+} from './definitions/selectionClassNames';

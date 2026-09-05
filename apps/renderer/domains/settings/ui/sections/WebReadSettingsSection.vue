@@ -37,6 +37,7 @@
       :hint="credentialHint"
     >
       <SecretInput
+        class="settings-text-control"
         v-model="byokKey"
         :placeholder="credentialAvailableForCurrentReader
           ? settingsMessage('settings.webRead.apiKey.availablePlaceholder')
@@ -48,7 +49,7 @@
         class="settings-external-link"
         @click="openApiKeyPage"
       >
-        <LinkIcon />
+        <LinkIcon class="settings-external-link-icon" />
         <span>{{ settingsMessage('settings.webRead.apiKey.obtain') }}: {{ apiKeyDisplayUrl }}</span>
       </button>
     </SettingsRow>

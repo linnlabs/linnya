@@ -182,21 +182,21 @@
   margin-top: 8px;
 }
 
-.history-timeline .timeline-actions .action-buttons-container {
+.history-timeline .history-timeline-actions {
   flex-direction: column-reverse;
   align-items: stretch;
   gap: 4px;
   width: 100%;
 }
 
-.history-timeline .timeline-actions .action-btn {
+.history-timeline .history-timeline-action-button {
   width: 100%;
   height: 24px;
   padding: 4px 8px;
   font-size: 11px;
 }
 
-.history-timeline .timeline-actions .action-btn.secondary {
+.history-timeline .history-timeline-exit-button {
   margin-top: 2px;
 }
 

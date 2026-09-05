@@ -78,17 +78,26 @@
         <!-- Options -->
         <div class="find-replace-options">
           <div class="option-wrapper" @click="localMatchCase = !localMatchCase">
-            <CustomCheckbox v-model="localMatchCase">
+            <CustomCheckbox
+              v-model="localMatchCase"
+              :class-names="findReplaceCheckboxClassNames"
+            >
               {{ editorMessage('editor.findReplace.matchCase') }}
             </CustomCheckbox>
           </div>
           <div class="option-wrapper" @click="localWholeWord = !localWholeWord">
-            <CustomCheckbox v-model="localWholeWord">
+            <CustomCheckbox
+              v-model="localWholeWord"
+              :class-names="findReplaceCheckboxClassNames"
+            >
               {{ editorMessage('editor.findReplace.wholeWord') }}
             </CustomCheckbox>
           </div>
           <div class="option-wrapper" @click="localUseRegex = !localUseRegex">
-            <CustomCheckbox v-model="localUseRegex">
+            <CustomCheckbox
+              v-model="localUseRegex"
+              :class-names="findReplaceCheckboxClassNames"
+            >
               {{ editorMessage('editor.findReplace.regex') }}
             </CustomCheckbox>
           </div>
@@ -109,13 +118,21 @@ import { storeToRefs } from 'pinia'
 import { useFindReplaceStore } from '../store/useFindReplaceStore'
 import { useUIStore } from '@/shared/stores/ui'
 import { useDebounceFn } from '@vueuse/core'
-import { CustomCheckbox, DraggablePanel } from '@linnya/renderer-ui'
+import {
+  CustomCheckbox,
+  DraggablePanel,
+} from '@linnya/renderer-ui'
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
 
 const store = useFindReplaceStore()
 const uiStore = useUIStore()
 const { editorMessage } = useEditorLocalization()
+
+const findReplaceCheckboxClassNames = {
+  item: 'find-replace-checkbox-item',
+  label: 'find-replace-checkbox-label',
+}
 
 const editor = computed(() => uiStore.getEditor())
 

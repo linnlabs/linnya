@@ -215,7 +215,7 @@
   opacity: 0.9;
 }
 
-.mindmap-tag-node-card .mm-tagging-chip.tt-tag-chip {
+.mindmap-tag-node-card .mm-tagging-chip {
   min-height: 18px;
   padding: 1px 8px;
   font-size: 10px;
@@ -224,7 +224,7 @@
   border-radius: 999px;
 }
 
-.mindmap-tag-node-card .mm-tagging-chip.tt-tag-chip .tt-tag-chip__label {
+.mindmap-tag-node-card .mm-tagging-chip-label {
   display: inline-flex;
   align-items: center;
   height: 100%;
@@ -232,13 +232,13 @@
   transform: translateY(-0.3px);
 }
 
-.mindmap-tag-node-card .mm-tagging-chip--confidence.tt-tag-chip {
+.mindmap-tag-node-card .mm-tagging-chip--confidence {
   font-weight: 600;
   letter-spacing: 0.2px;
 }
 
-.mindmap-tag-node-card .mm-tagging-chip--unknown.tt-tag-chip,
-.mindmap-tag-node-card .mm-tagging-chip--mm-kind-badge--unknown.tt-tag-chip {
+.mindmap-tag-node-card .mm-tagging-chip--unknown,
+.mindmap-tag-node-card .mm-tagging-chip--mm-kind-badge--unknown {
   border-style: dashed;
 }
 

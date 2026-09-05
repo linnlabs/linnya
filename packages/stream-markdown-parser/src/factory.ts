@@ -12,6 +12,11 @@ import { applyRenderRules } from './renderers'
 
 export interface FactoryOptions extends Record<string, unknown> {
   markdownItOptions?: Record<string, unknown>
+  /**
+   * 允许产品层显式接纳的自定义链接协议；默认仍沿用 markdown-it 的安全校验。
+   * 这里只决定是否产出 link AST，具体 locator 合法性仍由调用方自己的 owner 校验。
+   */
+  allowedLinkProtocols?: readonly string[]
   enableMath?: boolean
   enableContainers?: boolean
   mathOptions?: { commands?: string[], escapeExclamation?: boolean }
@@ -30,6 +35,19 @@ export function factory(opts: FactoryOptions = {}) {
     stream: true,
     ...(opts.markdownItOptions ?? {}),
   })
+
+  const allowedLinkProtocols = new Set(
+    (opts.allowedLinkProtocols ?? [])
+      .map(protocol => protocol.trim().toLowerCase().replace(/:$/, ''))
+      .filter(Boolean),
+  )
+  if (allowedLinkProtocols.size > 0) {
+    const validateLink = md.validateLink.bind(md)
+    md.validateLink = (url: string) => {
+      const protocol = /^([a-z][a-z0-9+.-]*):/i.exec(url)?.[1]?.toLowerCase()
+      return (protocol !== undefined && allowedLinkProtocols.has(protocol)) || validateLink(url)
+    }
+  }
 
   if (opts.enableMath ?? true) {
     const mergedMathOptions: MathOptions = { ...(getDefaultMathOptions() ?? {}), ...(opts.mathOptions ?? {}) }

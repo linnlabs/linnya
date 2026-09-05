@@ -35,7 +35,7 @@
         type="button"
         title="拖拽移动视图"
         class="mindmap-toolbar-button"
-        :class="{ 'is-active': isMoveMode }"
+        :class="{ 'mindmap-toolbar-button--active': isMoveMode }"
         @click="handleToggleMoveMode"
       >
         <MoveIcon class="icon" />

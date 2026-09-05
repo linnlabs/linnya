@@ -199,6 +199,10 @@ Creates a configured `markdown-it-ts` instance (API-compatible with markdown-it)
 **Options:**
 ```typescript
 interface GetMarkdownOptions {
+  // Additional product-owned protocols allowed to produce link AST nodes.
+  // The caller still owns validation and opening of those link targets.
+  allowedLinkProtocols?: readonly string[]
+
   // Array of markdown-it/markdown-it-ts plugins to use
   plugin?: Array<Plugin | [Plugin, any]>
 
@@ -209,6 +213,11 @@ interface GetMarkdownOptions {
   i18n?: ((key: string) => string) | Record<string, string>
 }
 ```
+
+The parser keeps markdown-it's link safety policy by default. When a product declares custom
+protocols, pass only the exact schemes it owns (for example `['workspace', 'conversation']`).
+Reconstructed streaming links are checked against the same policy, so rejected schemes remain
+plain text instead of becoming clickable AST nodes.
 
 #### `parseMarkdownToStructure(content, md?, options?)`
 

@@ -26,6 +26,30 @@ function stripDanglingHtmlLikeTail(markdown: string) {
   return s.slice(0, lastLt)
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function sanitizeParsedLinkNodes(
+  value: unknown,
+  validateLink: (href: string) => boolean,
+): void {
+  if (Array.isArray(value)) {
+    value.forEach(child => sanitizeParsedLinkNodes(child, validateLink))
+    return
+  }
+  if (!isRecord(value)) return
+
+  if (value.type === 'link' && typeof value.href === 'string' && !validateLink(value.href)) {
+    const raw = typeof value.raw === 'string' ? value.raw : String(value.text ?? '')
+    Object.keys(value).forEach(key => delete value[key])
+    Object.assign(value, { type: 'text', content: raw, raw })
+    return
+  }
+
+  Object.values(value).forEach(child => sanitizeParsedLinkNodes(child, validateLink))
+}
+
 /**
  * 规范化块级数学公式的段落边界（面向流式/AI 输出）
  *
@@ -192,6 +216,8 @@ export function parseMarkdownToStructure(
       }
     }
   }
+  // fixLinkTokens 会为流式中间态重建 link 节点；最终 AST 必须再次服从 markdown-it 的统一安全校验。
+  sanitizeParsedLinkNodes(result, md.validateLink.bind(md))
   if (options.debug) {
     console.log('Parsed Markdown Tree Structure:', result)
   }

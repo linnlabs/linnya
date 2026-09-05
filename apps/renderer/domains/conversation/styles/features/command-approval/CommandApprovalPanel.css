@@ -149,13 +149,13 @@
   outline-offset: 2px;
 }
 
-.command-approval-deny-action.action-buttons-container,
-.command-approval-allow-action.action-buttons-container {
+.command-approval-deny-action,
+.command-approval-allow-action {
   flex-wrap: nowrap;
   gap: 0;
 }
 
-.command-approval-actions .action-btn {
+.command-approval-actions .command-approval-action-button {
   min-width: auto;
   height: 28px;
   padding: 0 11px;
@@ -168,7 +168,7 @@
   background: var(--color-accent);
 }
 
-.command-approval-allow-group.has-menu .command-approval-allow-action .action-btn {
+.command-approval-allow-group.has-menu .command-approval-allow-once-button {
   padding-right: 9px;
   border-radius: var(--radius-full) 0 0 var(--radius-full);
 }

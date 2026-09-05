@@ -154,7 +154,7 @@
   padding-left: var(--conversation-content-side-gap);
 }
 
-.conversation-host .panel-footer > .scroll-to-bottom-btn {
+.conversation-host .panel-footer > .conversation-scroll-to-bottom {
   /*
    * 回到底部按钮属于输入区的辅助操作，但不能盖住输入框本体。
    * 放在 footer 顶边之外，左右位置再由具体页面按输入框宽度微调。
@@ -164,7 +164,7 @@
   z-index: 2;
 }
 
-.conversation-host[data-conversation-content-state='filled'] .panel-footer > .scroll-to-bottom-btn {
+.conversation-host[data-conversation-content-state='filled'] .panel-footer > .conversation-scroll-to-bottom {
   right: max(
     var(--conversation-content-side-gap),
     calc((100% - var(--conversation-content-column-max-width)) / 2 + var(--conversation-content-side-gap))

@@ -192,80 +192,8 @@
 
 ### 5.3. 开关按钮样式 (Toggle Switch)
 
-为确保所有设置页面的开关按钮保持一致的外观，应遵循以下规范：
-
-- **DOM结构**:
-```html
-<div class="control-area align-right">
-  <label class="toggle-switch">
-    <input type="checkbox" v-model="someValue">
-    <span class="slider round"></span>
-  </label>
-</div>
-```
-
-- **开关尺寸**: 宽度 36px，高度 20px，内部滑块直径 16px。
-- **标准样式**:
-```css
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 36px;
-  height: 20px;
-  flex-shrink: 0;
-  margin-left: auto; /* 确保开关右对齐 */
-}
-
-/* 滑块样式 */
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--color-border-default); /* 关闭状态颜色 */
-  border-radius: 10px;
-  transition: background-color .4s;
-  padding: 2px;
-  box-sizing: border-box;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px; /* 圆点大小 */
-  width: 16px;
-  left: 2px; /* 圆点位置 */
-  top: 2px;
-  background-color: var(--color-white);
-  border-radius: 8px;
-  transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 2px var(--shadow-color-sm), 0 2px 2px var(--shadow-color-xs);
-}
-
-/* 选中状态 */
-input:checked + .slider {
-  background-color: var(--color-accent); /* 打开状态颜色 */
-  box-shadow: inset 0 2px 2px var(--shadow-color-md);
-}
-
-input:checked + .slider:before {
-  transform: translateX(16px);
-}
-
-/* 禁用状态 */
-input:disabled + .slider {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-```
-
-- **注意事项**:
-  - 所有Tab中的开关按钮应保持相同的尺寸和样式
-  - 禁用状态使用opacity而非颜色变化，保持视觉一致性
-  - 开关所在的控件区域应添加`.align-right`类，确保适当的上部内边距
+所有布尔控件统一使用 `@linnya/renderer-ui` 的 `Switch`；Settings 标准表单行优先使用
+`SettingsSwitchRow`。业务层只传受控值、可访问名称、禁用状态和更新动作，不复制开关 DOM 或 CSS。
 
 ## 6. 控件下方的文字说明 (`.setting-description`)
 

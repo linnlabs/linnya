@@ -47,12 +47,12 @@
 }
 
 .mindmap-toolbar-button:active,
-.mindmap-toolbar-button.is-active {
+.mindmap-toolbar-button--active {
   background-color: var(--color-accent-bg);
   color: var(--color-accent);
 }
 
-.mindmap-toolbar-button.is-active:hover {
+.mindmap-toolbar-button--active:hover {
   background-color: var(--color-accent-bg-hover);
 }
 

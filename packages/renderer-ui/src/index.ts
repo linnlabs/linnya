@@ -14,7 +14,12 @@ export {
   Switch,
   TagChip,
 } from './features/selection';
-export type { SegmentedTabItem } from './features/selection';
+export type {
+  CustomCheckboxClassNames,
+  CustomRadioClassNames,
+  SegmentedTabItem,
+  TagChipClassNames,
+} from './features/selection';
 export {
   CharacterCount,
   HOVER_TOOLTIP_WINDOW_FOCUS_PORT_KEY,
@@ -81,6 +86,7 @@ export type {
   CustomSelectKeyboardNavigationInput,
   CustomSelectOption,
   CustomSelectOptionLabelOverflow,
+  CustomSelectOptionsMotionDirection,
   CustomSelectOptionValue,
   CustomSelectOptionVariant,
   CustomSelectPanelItem,

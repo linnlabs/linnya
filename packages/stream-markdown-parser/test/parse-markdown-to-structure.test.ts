@@ -1,7 +1,36 @@
 import { describe, expect, it } from 'vitest'
 import { getMarkdown, parseMarkdownToStructure } from '../src'
 
+function collectLinkHrefs(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(collectLinkHrefs)
+  if (typeof value !== 'object' || value === null) return []
+
+  const record = value as Record<string, unknown>
+  const ownHref = record.type === 'link' && typeof record.href === 'string'
+    ? [record.href]
+    : []
+  return [...ownHref, ...Object.values(record).flatMap(collectLinkHrefs)]
+}
+
 describe('parseMarkdownToStructure - duplicate question rendering', () => {
+  it('只为调用方显式声明的产品协议保留 Markdown link AST', () => {
+    const md = getMarkdown('custom-link-protocols', {
+      allowedLinkProtocols: ['workspace', 'conversation:', 'file'],
+    })
+    const nodes = parseMarkdownToStructure([
+      '[文档](<workspace:/项目 报告.md>)',
+      '[预览](conversation:/renders/preview.png)',
+      '[外部文件](<file:///tmp/report.pdf>)',
+      '[危险链接](javascript:alert(1))',
+    ].join('\n\n'), md)
+
+    expect(collectLinkHrefs(nodes)).toEqual([
+      'workspace:/%E9%A1%B9%E7%9B%AE%20%E6%8A%A5%E5%91%8A.md',
+      'conversation:/renders/preview.png',
+      'file:///tmp/report.pdf',
+    ])
+  })
+
   it('does not duplicate the question text when parsing mixed math/ce commands', () => {
     const md = getMarkdown()
 

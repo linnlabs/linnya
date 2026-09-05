@@ -50,6 +50,7 @@
                   class="plugin-store-state-chip"
                   :class="`is-${getPluginStateTone(selectedDetail.state)}`"
                   :label="resolvePluginStateLabel(selectedDetail.state)"
+                  :class-names="{ label: 'plugin-store-state-chip-label' }"
                 />
               </div>
               <p>{{ selectedDetail.meta.description }}</p>
@@ -65,7 +66,9 @@
               />
               <ActionButtons
                 v-if="canInstallSelectedPlugin(selectedDetail)"
+                class="plugin-store-install-actions"
                 :primary-action-text="pluginStoreMessage('pluginStore.action.install')"
+                :primary-button-attributes="{ class: 'plugin-store-install-button' }"
                 :is-primary-action-disabled="isSelectedPluginBusy(selectedDetail)"
                 :show-secondary-action="false"
                 @primary-click="handleSelectedRemoteInstall(selectedDetail)"
@@ -123,6 +126,7 @@
             <div v-if="canUninstallPlugin(selectedDetail)" class="plugin-store-detail-danger-zone">
               <ActionButtons
                 class="plugin-store-uninstall-action"
+                :primary-button-attributes="{ class: 'plugin-store-uninstall-button' }"
                 :is-primary-action-disabled="isPluginBusy(selectedDetail.meta.id)"
                 primary-variant="danger"
                 :show-secondary-action="false"
@@ -219,6 +223,7 @@
                 class="plugin-store-state-chip"
                 :class="`is-${getPluginStateTone(item.state)}`"
                 :label="resolvePluginStateLabel(item.state)"
+                :class-names="{ label: 'plugin-store-state-chip-label' }"
               />
             </div>
 
@@ -242,7 +247,9 @@
 
             <ActionButtons
               v-if="canInstallPluginFromRemote(item)"
+              class="plugin-store-install-actions"
               :primary-action-text="pluginStoreMessage('pluginStore.action.install')"
+              :primary-button-attributes="{ class: 'plugin-store-install-button' }"
               :is-primary-action-disabled="isPluginBusy(item.meta.id)"
               :show-secondary-action="false"
               @primary-click="handleRemoteInstall(item)"

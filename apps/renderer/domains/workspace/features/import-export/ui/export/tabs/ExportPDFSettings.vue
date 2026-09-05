@@ -25,8 +25,9 @@
       <label class="form-label">{{ workspaceMessage('workspace.export.pdf.orientation') }}</label>
       <div class="control-area">
         <div class="radio-options">
-          <div class="radio-item">
+          <div class="workspace-export-radio-item">
             <input 
+              class="workspace-export-radio-input"
               type="radio" 
               id="orientation-portrait" 
               value="portrait" 
@@ -34,8 +35,9 @@
             >
             <label for="orientation-portrait">{{ workspaceMessage('workspace.export.pdf.orientationPortrait') }}</label>
           </div>
-          <div class="radio-item">
+          <div class="workspace-export-radio-item">
             <input 
+              class="workspace-export-radio-input"
               type="radio" 
               id="orientation-landscape" 
               value="landscape" 

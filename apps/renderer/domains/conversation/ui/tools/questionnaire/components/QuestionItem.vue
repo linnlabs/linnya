@@ -18,6 +18,7 @@
           @click="props.isCompleted ? null : props.updateSingleAnswer(props.question.id, option.id)"
         >
           <CustomRadio
+            :class-names="questionRadioClassNames"
             :model-value="props.answers[props.question.id] || ''"
             :value="option.id"
             :name="props.question.id"
@@ -40,6 +41,7 @@
           @click="props.isCompleted ? null : props.updateSingleAnswer(props.question.id, '__other__')"
         >
           <CustomRadio
+            :class-names="questionRadioClassNames"
             :model-value="props.answers[props.question.id] || ''"
             value="__other__"
             :name="props.question.id"
@@ -81,6 +83,7 @@
           @click="props.isCompleted ? null : onCheckboxRowClick($event, option.id)"
         >
           <CustomCheckbox
+            :class-names="questionCheckboxClassNames"
             :model-value="props.multiAnswers[props.question.id] || []"
             :value="option.id"
             :disabled="props.isCompleted"
@@ -103,6 +106,7 @@
           @click="props.isCompleted ? null : onCheckboxRowClick($event, '__other__')"
         >
           <CustomCheckbox
+            :class-names="questionCheckboxClassNames"
             :model-value="props.multiAnswers[props.question.id] || []"
             value="__other__"
             :disabled="props.isCompleted"
@@ -173,7 +177,12 @@ import type {
   TextAnswers,
   ValidationErrors,
 } from '../definitions/questionnaire';
-import { CustomCheckbox, CustomRadio } from '@linnya/renderer-ui';
+import {
+  CustomCheckbox,
+  CustomRadio,
+  type CustomCheckboxClassNames,
+  type CustomRadioClassNames,
+} from '@linnya/renderer-ui';
 import type { ConversationMessageResolver } from '../../../../definitions/conversationMessages';
 
 const props = defineProps<{
@@ -192,12 +201,21 @@ const props = defineProps<{
   updateOtherAnswer: (questionId: string, value: string) => void;
 }>();
 
+const questionRadioClassNames: CustomRadioClassNames = {
+  root: 'question-radio-control',
+  indicator: 'question-radio-indicator',
+};
+const questionCheckboxClassNames: CustomCheckboxClassNames = {
+  item: 'question-checkbox-control',
+  indicator: 'question-checkbox-indicator',
+};
+
 /**
  * 多选交互说明：
  * - 用户既可能点击“整行空白”，也可能点击“复选框/文字”；
  * - 复选框内部会触发 input change，并 emit `update:modelValue`；
  * - 为避免同一次点击触发“两次 toggle”（表现为点了没反应），这里做了明确分流：
- *   - 点在 `.checkbox-item` 内：交给 change/update:modelValue；
+ *   - 点在当前 feature 注入的复选控件 class 内：交给 change/update:modelValue；
  *   - 点在行容器空白：走行点击更新。
  */
 const onCheckboxModelValueUpdate = (optionId: string) => {
@@ -212,7 +230,7 @@ const onCheckboxRowClick = (event: MouseEvent, optionId: string) => {
     props.updateMultiAnswer(props.question, optionId);
     return;
   }
-  if (target.closest('.checkbox-item')) return;
+  if (target.closest('.question-checkbox-control')) return;
   props.updateMultiAnswer(props.question, optionId);
 };
 </script>

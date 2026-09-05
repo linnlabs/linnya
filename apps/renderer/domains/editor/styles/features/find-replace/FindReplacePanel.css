@@ -116,12 +116,12 @@
   user-select: none;
 }
 
-.find-replace-options .checkbox-item {
+.find-replace-options .find-replace-checkbox-item {
   gap: 6px;
   font-size: 12px;
 }
 
-.find-replace-options .label-content {
+.find-replace-options .find-replace-checkbox-label {
   color: var(--color-text-primary);
 }
 

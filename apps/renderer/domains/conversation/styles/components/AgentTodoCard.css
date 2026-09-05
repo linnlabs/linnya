@@ -84,7 +84,7 @@
   flex-shrink: 0;
 }
 
-.agent-todo-card .meta-right .tt-tag-chip {
+.agent-todo-card .agent-todo-summary-chip {
   font-size: 10px;
   /* 关键：覆盖 TagChip 自身 scoped 样式的注入顺序，确保在 ToDo 场景稳定垂直居中 */
   height: 18px !important;
@@ -95,7 +95,7 @@
   transform: none !important;
 }
 
-.agent-todo-card .meta-right .tt-tag-chip__label {
+.agent-todo-card .agent-todo-chip-label {
   display: inline-flex;
   align-items: center;
   line-height: 18px !important;
@@ -151,27 +151,24 @@
 .agent-todo-card .todo-checkbox {
   margin-top: 0;
   flex: 0 0 auto;
-}
-
-.agent-todo-card .todo-checkbox .checkbox-container {
   /* 压缩：只展示 checkbox，不要额外的 column 布局带来的高度 */
   display: flex;
   flex-direction: row;
   align-items: center;
 }
 
-.agent-todo-card .todo-checkbox .checkbox-item {
+.agent-todo-card .agent-todo-checkbox-item {
   gap: 0;
   margin: 0;
   line-height: 1;
 }
 
-.agent-todo-card .todo-checkbox .checkbox-custom {
+.agent-todo-card .agent-todo-checkbox-indicator {
   width: 14px;
   height: 14px;
 }
 
-.agent-todo-card .todo-checkbox .check-icon {
+.agent-todo-card .agent-todo-checkbox-check-icon {
   width: 11px;
   height: 11px;
 }
@@ -205,7 +202,7 @@
   align-items: center;
 }
 
-.agent-todo-card .item-status .tt-tag-chip {
+.agent-todo-card .agent-todo-item-chip {
   font-size: 10px;
   height: 18px !important;
   padding: 0 6px !important;
@@ -214,12 +211,6 @@
   display: inline-flex;
   align-items: center;
   transform: none !important;
-}
-
-.agent-todo-card .item-status .tt-tag-chip__label {
-  display: inline-flex;
-  align-items: center;
-  line-height: 18px !important;
 }
 
 .agent-todo-card .progress-row {

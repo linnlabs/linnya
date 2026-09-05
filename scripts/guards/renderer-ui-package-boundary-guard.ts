@@ -11,7 +11,7 @@ import {
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const rendererUiRoot = path.join(repositoryRoot, 'packages/renderer-ui');
 const rendererUiFontStackRoot = path.join(rendererUiRoot, 'src/features/font-stack');
-const rendererUiStylesRoot = path.join(rendererUiRoot, 'src/styles');
+const rendererUiSourceRoot = path.join(rendererUiRoot, 'src');
 const sourceExtensions = new Set(['.css', '.js', '.jsx', '.ts', '.tsx', '.vue']);
 const ignoredMarkers = ['/__tests__/', '/__test__/', '.test.', '.spec.', '.bench.', '/dist/'];
 const packageForbiddenImportPrefixes = [
@@ -185,7 +185,8 @@ function validateReservedTokenDefinitions(
 }
 
 async function readPackageStyleFacts(): Promise<PackageStyleFacts> {
-  const cssFiles = (await collectFiles(rendererUiStylesRoot)).filter(filePath =>
+  // 组件 CSS 按 feature 归属；只扫顶层 src/styles 会漏掉真正的私有 DOM selector。
+  const cssFiles = (await collectFiles(rendererUiSourceRoot)).filter(filePath =>
     filePath.endsWith('.css')
   );
   const tokenDefinitions = new Set<string>();

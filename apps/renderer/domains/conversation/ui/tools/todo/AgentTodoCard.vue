@@ -21,6 +21,8 @@
         </div>
         <div class="meta-right">
           <TagChip
+            class="agent-todo-summary-chip"
+            :class-names="{ label: 'agent-todo-chip-label' }"
             :label="conversationMessage('conversation.tool.todo.status.inProgress')"
             :backgroundColor="chipColors.inProgress.bg"
             :textColor="chipColors.inProgress.text"
@@ -29,6 +31,8 @@
           <span class="count-text">{{ counts.inProgress }}</span>
 
           <TagChip
+            class="agent-todo-summary-chip"
+            :class-names="{ label: 'agent-todo-chip-label' }"
             :label="conversationMessage('conversation.tool.todo.status.pending')"
             :backgroundColor="chipColors.pending.bg"
             :textColor="chipColors.pending.text"
@@ -37,6 +41,8 @@
           <span class="count-text">{{ counts.pending }}</span>
 
           <TagChip
+            class="agent-todo-summary-chip"
+            :class-names="{ label: 'agent-todo-chip-label' }"
             :label="conversationMessage('conversation.tool.todo.status.completed')"
             :backgroundColor="chipColors.completed.bg"
             :textColor="chipColors.completed.text"
@@ -65,6 +71,11 @@
           <!-- ✅ 使用已有组件：统一 checkbox 视觉（只读） -->
           <CustomCheckbox
             class="todo-checkbox"
+            :class-names="{
+              item: 'agent-todo-checkbox-item',
+              indicator: 'agent-todo-checkbox-indicator',
+              checkIcon: 'agent-todo-checkbox-check-icon',
+            }"
             :modelValue="item.status === 'completed'"
             :disabled="true"
           >
@@ -75,6 +86,8 @@
           </div>
           <div class="item-status">
             <TagChip
+              class="agent-todo-item-chip"
+              :class-names="{ label: 'agent-todo-chip-label' }"
               :label="statusLabel(item.status)"
               :backgroundColor="statusChip(item.status).bg"
               :textColor="statusChip(item.status).text"

@@ -2,18 +2,20 @@
 <template>
   <span
     class="tt-tag-chip"
+    :class="classNames?.root"
     :style="styleObject"
   >
-    <span v-if="$slots.icon" class="tt-tag-chip__icon">
+    <span v-if="$slots.icon" class="tt-tag-chip__icon" :class="classNames?.icon">
       <slot name="icon" />
     </span>
-    <span class="tt-tag-chip__label">
+    <span class="tt-tag-chip__label" :class="classNames?.label">
       {{ label }}
     </span>
     <button
       v-if="closable"
       type="button"
       class="tt-tag-chip__close"
+      :class="classNames?.closeButton"
       @click.prevent.stop="$emit('close')"
     >
       <CloseIcon />
@@ -24,6 +26,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
+import type { TagChipClassNames } from '../definitions/selectionClassNames';
 
 /**
  * 通用标签 Chip 组件。
@@ -55,6 +58,9 @@ const props = defineProps<{
    * 自定义边框颜色（可选）
    */
   borderColor?: string;
+
+  /** 业务样式只能通过这些明确节点注入自己的 class，不能依赖组件私有 selector。 */
+  classNames?: TagChipClassNames;
 }>();
 
 defineEmits<{

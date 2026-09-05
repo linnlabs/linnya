@@ -138,7 +138,9 @@ describe('ModelDetailsModal token capacity editing', () => {
     app.mount(host);
     await flushUi();
 
-    expect(document.querySelector<HTMLInputElement>('.toggle-switch input')?.checked).toBe(true);
+    expect(document.querySelector<HTMLInputElement>(
+      'input[aria-label="settings.modelCapability.imageInput"]'
+    )?.checked).toBe(true);
     expect(document.body.textContent).toContain('settings.modelCapability.imageInput');
     expect(document.body.textContent).not.toContain('settings.modelCapability.userImage');
     expect(document.body.textContent).not.toContain('settings.modelCapability.toolResultImage');

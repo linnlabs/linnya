@@ -1,6 +1,6 @@
 <template>
-  <div class="checkbox-container">
-    <label class="checkbox-item" :class="{ 'disabled-label': disabled }">
+  <div class="checkbox-container" :class="classNames?.root">
+    <label class="checkbox-item" :class="[{ 'disabled-label': disabled }, classNames?.item]">
       <input 
         type="checkbox"
         :checked="Array.isArray(modelValue) ? modelValue.includes(value) : modelValue"
@@ -8,14 +8,14 @@
         @change="onChange"
         :disabled="disabled"
       >
-      <span class="checkbox-custom">
-        <OkIcon class="check-icon" />
+      <span class="checkbox-custom" :class="classNames?.indicator">
+        <OkIcon class="check-icon" :class="classNames?.checkIcon" />
       </span>
-      <span class="label-content" v-if="$slots.default">
+      <span class="label-content" :class="classNames?.label" v-if="$slots.default">
         <slot></slot>
       </span>
     </label>
-    <div v-if="$slots.description" class="setting-description">
+    <div v-if="$slots.description" class="setting-description" :class="classNames?.description">
       <slot name="description"></slot>
     </div>
   </div>
@@ -23,16 +23,19 @@
 
 <script setup lang="ts">
 import { OkIcon } from '@linnya/renderer-ui/icons';
+import type { CustomCheckboxClassNames } from '../definitions/selectionClassNames';
 
 interface Props {
   modelValue: boolean | Array<string | number | boolean>;
   value?: string | number | boolean;
   disabled?: boolean;
+  classNames?: CustomCheckboxClassNames;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   value: true,
-  disabled: false
+  disabled: false,
+  classNames: undefined,
 });
 
 const emit = defineEmits<{

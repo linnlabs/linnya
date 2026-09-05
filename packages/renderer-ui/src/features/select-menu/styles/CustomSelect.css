@@ -474,6 +474,14 @@
   transform: translateY(-4px);
 }
 
+.custom-select__options--motion-up.select-fade-enter-from {
+  transform: translateY(8px);
+}
+
+.custom-select__options--motion-up.select-fade-leave-to {
+  transform: translateY(4px);
+}
+
 .custom-select__options.select-fade-enter-to,
 .custom-select__options.select-fade-leave-from {
   opacity: 1;

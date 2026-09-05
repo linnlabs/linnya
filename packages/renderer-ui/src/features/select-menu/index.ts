@@ -16,6 +16,7 @@ export type {
   CustomSelectKeyboardNavigationInput,
   CustomSelectOption,
   CustomSelectOptionLabelOverflow,
+  CustomSelectOptionsMotionDirection,
   CustomSelectOptionValue,
   CustomSelectOptionVariant,
   CustomSelectPanelItem,

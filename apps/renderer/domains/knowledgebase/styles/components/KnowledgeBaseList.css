@@ -95,7 +95,7 @@
     0 2px 6px color-mix(in srgb, var(--shadow-color-xs) 80%, transparent);
 }
 
-.kb-list-view .page-section-header__actions .icon {
+.kb-list-view .kb-list-header .icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -112,7 +112,7 @@
  * - 不同图标组件默认尺寸/基线可能不同，导致两个按钮的 icon 看起来“不对齐”
  * - 外迁后不再依赖 Vue SFC 的深度选择语法，统一在知识库列表根类下命中 svg
  */
-.kb-list-view .page-section-header__actions .icon svg {
+.kb-list-view .kb-list-header .icon svg {
   width: 14px;
   height: 14px;
   display: block;

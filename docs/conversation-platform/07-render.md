@@ -264,6 +264,11 @@ surface。面板没有关闭按钮，只通过再次点击触发器、点击外�
 `workspace:`、`conversation:`、`file:` 三类候选并分派到 Conversation `resource-link` feature，不能在
 冻结热路径里执行 schema admission、IPC、Workspace 查询或异步状态管理。
 
+`getMarkdown()` 默认沿用 markdown-it 的链接安全校验。Conversation 必须通过
+`allowedLinkProtocols` 精确声明上述三个产品协议，解析器才保留对应 link AST；流式链接修复产生的节点也必须
+再次通过同一校验。被 markdown-it 拒绝且未显式获准的协议不得成为可点击节点。locator 中含空格时必须使用标准 Markdown 尖括号目标，
+例如 `[报告](<workspace:/季度 报告.md>)`，禁止扩展歧义语法。
+
 资源链接组件使用消息所属的不可变 `conversationId` 请求 app-level port。Workspace owner 在 Host 中从
 Conversation 事实反查 `projectId`，再解析 VFS metadata；Renderer 只消费真实标题、node type 和内部导航
 身份，并由 document registry 决定图标与 surface。Conversation/Host owner 只返回普通文件状态和

@@ -136,13 +136,13 @@
   gap: 12px;
 }
 
-.export-settings-content .radio-item {
+.export-settings-content .workspace-export-radio-item {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.export-settings-content .export-tab-content:has(#export-txt-plain) .radio-item {
+.export-settings-content .export-tab-content:has(#export-txt-plain) .workspace-export-radio-item {
   gap: 8px;
 }
 
@@ -159,19 +159,18 @@
   padding-left: 24px;
 }
 
-.export-settings-content .radio-item label {
+.export-settings-content .workspace-export-radio-item label {
   font-size: 14px;
   color: var(--color-text-primary);
   cursor: pointer;
 }
 
-.export-settings-content .radio-item input[type='radio']:disabled + label,
-.export-settings-content .disabled-label {
+.export-settings-content .workspace-export-radio-input:disabled + label {
   color: var(--color-text-placeholder);
   cursor: not-allowed;
 }
 
-.export-settings-content .radio-item input[type='radio'] {
+.export-settings-content .workspace-export-radio-input {
   -webkit-appearance: none;
   appearance: none;
   margin: 0;
@@ -188,7 +187,7 @@
   box-shadow: 0 1px 1px var(--shadow-color-xs);
 }
 
-.export-settings-content .radio-item input[type='radio']::before {
+.export-settings-content .workspace-export-radio-input::before {
   content: '';
   width: 8px;
   height: 8px;
@@ -198,32 +197,32 @@
   transition: 0.1s transform ease-in-out;
 }
 
-.export-settings-content .radio-item input[type='radio']:checked::before {
+.export-settings-content .workspace-export-radio-input:checked::before {
   transform: scale(1);
 }
 
-.export-settings-content .radio-item input[type='radio']:hover {
+.export-settings-content .workspace-export-radio-input:hover {
   border-color: var(--color-accent);
   box-shadow: 0 1px 1px var(--shadow-color-xs);
 }
 
-.export-settings-content .radio-item input[type='radio']:checked {
+.export-settings-content .workspace-export-radio-input:checked {
   border-color: var(--color-accent);
   box-shadow: inset 0 1px 1px var(--shadow-color-sm);
 }
 
-.export-settings-content .radio-item input[type='radio']:focus-visible {
+.export-settings-content .workspace-export-radio-input:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
-.export-settings-content .radio-item input[type='radio']:disabled {
+.export-settings-content .workspace-export-radio-input:disabled {
   cursor: not-allowed;
   border-color: var(--color-border-light);
   background-color: var(--color-bg-disabled);
 }
 
-.export-settings-content .radio-item input[type='radio']:disabled::before {
+.export-settings-content .workspace-export-radio-input:disabled::before {
   background-color: var(--color-text-placeholder);
 }
 

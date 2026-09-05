@@ -54,6 +54,7 @@
               'select-options--minimal': variant === 'minimal',
               'select-options--panel': hasPanelSlot,
               'select-options--portal': isPortalMode,
+              'custom-select__options--motion-up': optionsMotionDirection === 'up',
             },
             classNames.options,
           ]"
@@ -232,6 +233,7 @@ import type {
   CustomSelectInlineNumberConfirm,
   CustomSelectOption,
   CustomSelectOptionLabelOverflow,
+  CustomSelectOptionsMotionDirection,
   CustomSelectOptionValue,
   CustomSelectSemanticRole,
   CustomSelectVariant,
@@ -260,6 +262,7 @@ interface CustomSelectProps {
   optionsMaxHeight?: string;
   optionsOverflow?: string;
   optionLabelOverflow?: CustomSelectOptionLabelOverflow;
+  optionsMotionDirection?: CustomSelectOptionsMotionDirection;
   variant?: CustomSelectVariant;
   disabled?: boolean;
   bordered?: boolean;
@@ -283,6 +286,7 @@ const props = withDefaults(defineProps<CustomSelectProps>(), {
   optionsMaxHeight: '',
   optionsOverflow: '',
   optionLabelOverflow: 'visible',
+  optionsMotionDirection: 'down',
   variant: 'default',
   disabled: false,
   bordered: true,

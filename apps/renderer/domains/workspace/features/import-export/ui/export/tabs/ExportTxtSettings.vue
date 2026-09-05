@@ -6,8 +6,9 @@
       <label class="form-label">{{ workspaceMessage('workspace.export.txt.format') }}</label>
       <div class="control-area">
         <div class="radio-options">
-          <div class="radio-item">
+          <div class="workspace-export-radio-item">
             <input 
+              class="workspace-export-radio-input"
               type="radio" 
               id="export-txt-plain" 
               value="plain" 
@@ -17,8 +18,9 @@
           </div>
 
           <div class="radio-item-with-description">
-            <div class="radio-item">
+            <div class="workspace-export-radio-item">
               <input 
+                class="workspace-export-radio-input"
                 type="radio" 
                 id="export-txt-markdown-txt" 
                 value="markdown-txt" 

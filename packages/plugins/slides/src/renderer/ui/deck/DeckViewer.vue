@@ -89,7 +89,7 @@
           <span class="stage-zoom-slider__label">{{ zoomPercent }}%</span>
           <button
             class="stage-zoom-slider__btn stage-zoom-slider__fit-btn"
-            :class="{ 'is-active': zoomMode === 'fit' }"
+            :class="{ 'stage-zoom-slider__fit-btn--active': zoomMode === 'fit' }"
             aria-label="适配窗口大小"
             title="适配窗口大小"
             @click="zoomToFit"
@@ -98,7 +98,7 @@
           </button>
           <button
             class="stage-zoom-slider__btn stage-zoom-slider__select-btn"
-            :class="{ 'is-active': sourceSelectionModeEnabled }"
+            :class="{ 'stage-zoom-slider__select-btn--active': sourceSelectionModeEnabled }"
             :disabled="!canUseSourceSelectionMode"
             :aria-pressed="sourceSelectionModeEnabled"
             aria-label="选择 PPT 元素"

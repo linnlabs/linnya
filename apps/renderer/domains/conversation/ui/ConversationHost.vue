@@ -63,6 +63,7 @@
       <div v-if="!hideFooter" class="panel-footer">
         <ScrollToBottomButton
           v-if="!subrunDetailScope"
+          class="conversation-scroll-to-bottom"
           :show="showScrollToBottomButton"
           @click="handleScrollToBottomClick"
         />

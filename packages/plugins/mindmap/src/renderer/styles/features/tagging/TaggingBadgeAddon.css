@@ -20,7 +20,7 @@
 }
 
 /* MindMap 节点内部元信息更克制：统一 10px 和 18px 高度，避免压过节点标题。 */
-.mm-tagging-badge .mm-tagging-chip.tt-tag-chip {
+.mm-tagging-badge .mm-tagging-chip {
   min-height: 18px;
   padding: 1px 8px;
   border-radius: var(--radius-full);
@@ -29,7 +29,7 @@
   line-height: 1;
 }
 
-.mm-tagging-badge .mm-tagging-chip.tt-tag-chip .tt-tag-chip__label {
+.mm-tagging-badge .mm-tagging-chip-label {
   display: inline-flex;
   align-items: center;
   height: 100%;
@@ -38,13 +38,13 @@
   transform: translateY(-0.3px);
 }
 
-.mm-tagging-badge .mm-tagging-chip--confidence.tt-tag-chip {
+.mm-tagging-badge .mm-tagging-chip--confidence {
   font-weight: 600;
   letter-spacing: 0.2px;
 }
 
-.mm-tagging-badge .mm-tagging-chip--unknown.tt-tag-chip,
-.mm-tagging-badge .mm-tagging-chip--mm-kind-badge--unknown.tt-tag-chip {
+.mm-tagging-badge .mm-tagging-chip--unknown,
+.mm-tagging-badge .mm-tagging-chip--mm-kind-badge--unknown {
   border-style: dashed;
 }
 

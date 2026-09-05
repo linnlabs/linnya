@@ -27,6 +27,7 @@
           : undefined"
       >
         <SecretInput
+          class="settings-text-control"
           v-model="byokKey"
           :placeholder="hasStoredKeyForCurrentEngine
             ? settingsMessage('settings.webSearch.apiKey.savedPlaceholder')
@@ -38,7 +39,7 @@
           class="settings-external-link"
           @click="openApiKeyPage"
         >
-          <LinkIcon />
+          <LinkIcon class="settings-external-link-icon" />
           <span>{{ settingsMessage('settings.webSearch.apiKey.obtain') }}: {{ apiKeyDisplayUrl }}</span>
         </button>
       </SettingsRow>
@@ -50,6 +51,7 @@
     >
       <SettingsRow :label="settingsMessage('settings.webSearch.searxng.urlLabel')">
         <CustomTextInput
+          class="settings-text-control"
           v-model="searxngBaseUrl"
           type="url"
           :placeholder="settingsMessage('settings.webSearch.searxng.urlPlaceholder')"

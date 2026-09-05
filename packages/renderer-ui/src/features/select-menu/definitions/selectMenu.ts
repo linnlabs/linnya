@@ -12,6 +12,8 @@ export type CustomSelectOptionVariant = 'default' | 'danger';
 
 export type CustomSelectOptionLabelOverflow = 'visible' | 'ellipsis' | 'marquee-on-hover';
 
+export type CustomSelectOptionsMotionDirection = 'down' | 'up';
+
 export type TextPopoverPlacement = 'auto' | 'top' | 'bottom' | 'left' | 'right';
 
 export type TextPopoverTriggerMode = 'click' | 'hover';

@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-import { Switch } from '@linnya/renderer-ui';
+import { CustomCheckbox, CustomRadio, Switch, TagChip } from '@linnya/renderer-ui';
 
 interface MountedSwitch {
   input: HTMLInputElement;
@@ -85,5 +85,65 @@ describe('Switch', () => {
 
     expect(mounted.input.disabled).toBe(true);
     expect(mounted.emitted).toEqual([]);
+  });
+});
+
+describe('selection classNames', () => {
+  it('把业务 class 投影到 TagChip 的明确节点', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const app = createApp({
+      render: () => h(TagChip, {
+        label: '标签',
+        closable: true,
+        classNames: {
+          root: 'consumer-chip',
+          label: 'consumer-chip-label',
+          closeButton: 'consumer-chip-close',
+        },
+      }),
+    });
+    app.mount(host);
+
+    expect(host.querySelector('.consumer-chip')).not.toBeNull();
+    expect(host.querySelector('.consumer-chip-label')?.textContent).toBe('标签');
+    expect(host.querySelector('.consumer-chip-close')).toBeInstanceOf(HTMLButtonElement);
+
+    app.unmount();
+    host.remove();
+  });
+
+  it('把业务 class 投影到复选与单选控件的明确节点', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const app = createApp({
+      render: () => h('div', [
+        h(CustomCheckbox, {
+          modelValue: false,
+          classNames: {
+            item: 'consumer-checkbox-item',
+            indicator: 'consumer-checkbox-indicator',
+          },
+        }),
+        h(CustomRadio, {
+          modelValue: 'a',
+          value: 'a',
+          name: 'selection-test',
+          classNames: {
+            root: 'consumer-radio',
+            indicator: 'consumer-radio-indicator',
+          },
+        }),
+      ]),
+    });
+    app.mount(host);
+
+    expect(host.querySelector('.consumer-checkbox-item')).not.toBeNull();
+    expect(host.querySelector('.consumer-checkbox-indicator')).not.toBeNull();
+    expect(host.querySelector('.consumer-radio')).not.toBeNull();
+    expect(host.querySelector('.consumer-radio-indicator')).not.toBeNull();
+
+    app.unmount();
+    host.remove();
   });
 });

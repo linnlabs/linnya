@@ -207,4 +207,4 @@ import {
 
 已迁移到件套的 tab：对话、外观、命令权限、网络搜索 / 网页解析、文本文档、存储空间、添加模型、模型管理、模型配置、关于。
 
-旧的 `.form-row` / `.form-label` / `.control-area` / `.toggle-switch` 仍留在 [`styles/setting-content.css`](../styles/setting-content.css) 里，只供现有弹窗表单消费。`ModelDetailsModal` 已由 `model-configuration` domain 拥有；新 Settings 代码不要继续使用这些全局类。
+旧的 `.form-row` / `.form-label` / `.control-area` 仍留在 [`styles/setting-content.css`](../styles/setting-content.css) 里，只供现有弹窗表单消费。布尔项已统一使用 `@linnya/renderer-ui` 的 `Switch` 或 `SettingsSwitchRow`，不再维护手写 `.toggle-switch`。`ModelDetailsModal` 已由 `model-configuration` domain 拥有；新 Settings 代码不要继续使用这些全局表单类。

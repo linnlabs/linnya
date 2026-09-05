@@ -135,9 +135,11 @@ const titleId = useId();
 const { conversationMessage } = useConversationLocalization();
 const denyButtonAttributes: CommandApprovalButtonAttributes = {
   'data-command-approval-choice': 'deny',
+  class: 'command-approval-action-button',
 };
 const allowOnceButtonAttributes: CommandApprovalButtonAttributes = {
   'data-command-approval-choice': 'allow_once',
+  class: 'command-approval-action-button command-approval-allow-once-button',
 };
 const pending = computed(() => {
   if (props.conversationId === undefined) return store.snapshot?.pending[0];

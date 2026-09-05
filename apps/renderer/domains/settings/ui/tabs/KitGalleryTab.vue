@@ -28,6 +28,7 @@
         description="description 说明「这一项是什么」，跟在标签下方。"
       >
         <CustomTextInput
+          class="settings-text-control"
           v-model="textValue"
           placeholder="请输入"
         />
@@ -38,6 +39,7 @@
         hint="hint 说明「选了会怎样」，跟在控件下方。"
       >
         <SecretInput
+          class="settings-text-control"
           v-model="secretValue"
           placeholder="sk-..."
         />
@@ -49,6 +51,7 @@
         hint="都用上时，注意别把同一句话说两遍。"
       >
         <CustomTextInput
+          class="settings-text-control"
           v-model="textValue"
           placeholder="请输入"
         />

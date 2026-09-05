@@ -234,7 +234,6 @@
     "guard:model-inference-boundary": "node --import tsx ./scripts/guards/model-inference-boundary-guard.ts",
     "guard:provider-package-boundary": "node --import tsx ./scripts/guards/provider-package-boundary-guard.ts",
     "generate:renderer-module-resolution": "node --import tsx ./scripts/build/renderer-module-resolution/orchestration/generateRendererTsconfigPaths.ts",
-    "generate:renderer-ui-inventory": "node --import tsx ./scripts/build/renderer-ui-inventory/orchestration/generateRendererUiInventory.ts",
     "guard:renderer-module-resolution": "node --import tsx ./scripts/guards/renderer-module-resolution-guard.ts",
     "guard:renderer-ui-boundary": "node --import tsx ./scripts/guards/renderer-ui-package-boundary-guard.ts",
     "test:renderer-ui-package-gate": "pnpm --dir packages/renderer-ui run gate && pnpm run guard:renderer-ui-boundary && vitest run packages/schemas/src/plugins/renderer-stylesheet-manifest.test.ts packages/plugins/build/rendererStylesheetManifestPlugin.test.ts src/electron-main/plugins/loader/__tests__/rendererPluginEntries.test.ts apps/renderer/app/plugins/loader/rendererHostExternalBoundary.test.ts scripts/__tests__/renderer-ui-release-contract.test.ts",

@@ -56,8 +56,13 @@
       <!-- 右侧：操作按钮组 -->
       <div v-if="selectedVersion" class="timeline-actions">
         <ActionButtons
+          class="history-timeline-actions"
           :primary-action-text="editorMessage('editor.blockHistory.timeline.applyVersion', { version: selectedVersion.version_number })"
           :secondary-action-text="editorMessage('editor.blockHistory.timeline.exit')"
+          :primary-button-attributes="{ class: 'history-timeline-action-button' }"
+          :secondary-button-attributes="{
+            class: 'history-timeline-action-button history-timeline-exit-button',
+          }"
           secondary-variant="plain"
           @primary-click="handleQuickRestore(selectedVersion.id)"
           @secondary-click="handleExit"

@@ -135,14 +135,14 @@
   pointer-events: none;
 }
 
-.deck-viewer .stage-zoom-slider__fit-btn.is-active,
-.deck-viewer .stage-zoom-slider__select-btn.is-active {
+.deck-viewer .stage-zoom-slider__fit-btn--active,
+.deck-viewer .stage-zoom-slider__select-btn--active {
   background-color: var(--color-accent-bg);
   color: var(--color-accent);
 }
 
-.deck-viewer .stage-zoom-slider__fit-btn.is-active:hover,
-.deck-viewer .stage-zoom-slider__select-btn.is-active:hover {
+.deck-viewer .stage-zoom-slider__fit-btn--active:hover,
+.deck-viewer .stage-zoom-slider__select-btn--active:hover {
   background-color: var(--color-accent-bg-hover);
 }
 

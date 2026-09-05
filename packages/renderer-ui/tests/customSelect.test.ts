@@ -51,13 +51,16 @@ function mountUnifiedActionMenu(onSelect: (value: CustomSelectValue) => void): M
   };
 }
 
-function mountCustomSelect(): MountedCustomSelect {
+function mountCustomSelect(
+  optionsMotionDirection: 'down' | 'up' = 'down',
+): MountedCustomSelect {
   const host = document.createElement('div');
   document.body.appendChild(host);
   const app = createApp({
     render() {
       return h(CustomSelect, {
         modelValue: 'model-a',
+        optionsMotionDirection,
         options: [
           {
             value: 'model-a',
@@ -199,6 +202,19 @@ afterEach(() => {
 });
 
 describe('CustomSelect 子菜单交互与定位', () => {
+  it('由公开属性控制主菜单向上展开的动效方向', async () => {
+    const mounted = mountCustomSelect('up');
+    mountedSelects.push(mounted);
+
+    const trigger = mounted.host.querySelector('.select-trigger');
+    if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
+    trigger.click();
+    await nextTick();
+
+    expect(mounted.host.querySelector('.custom-select__options')?.classList)
+      .toContain('custom-select__options--motion-up');
+  });
+
   it('长选项默认省略，并仅在真实溢出时于 hover 中滚动到末尾', async () => {
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
       callback(0);

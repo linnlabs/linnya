@@ -37,7 +37,10 @@
         {{ formatTableBlockSizeDisplay(hoveredRows, hoveredCols, editorMessage) }}
       </div>
       <div class="header-row-option">
-        <CustomCheckbox v-model="withHeaderRow">
+        <CustomCheckbox
+          v-model="withHeaderRow"
+          :class-names="{ item: 'table-size-header-checkbox-item' }"
+        >
           {{ editorMessage('editor.tableBlock.size.headerRow') }}
         </CustomCheckbox>
       </div>

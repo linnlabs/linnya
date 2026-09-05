@@ -147,7 +147,7 @@ describe('commonToolConfigs - taskstate / sharedmemory copy', () => {
             updated_at: 1,
           },
           offset: 0,
-          limit: 20_000,
+          limit: 2_000,
           truncated: false,
           has_more: false,
         },

@@ -50,12 +50,12 @@ const subrunPreviewBytes = Buffer.from(
 
 const wait = (ms) => new Promise(resolveWait => setTimeout(resolveWait, ms));
 
-function canListenOnPort(port) {
+function canListenOnPort(port, host = '127.0.0.1') {
   return new Promise((resolveCheck) => {
     const server = net.createServer();
     server.once('error', () => resolveCheck(false));
     server.once('listening', () => server.close(() => resolveCheck(true)));
-    server.listen(port, '127.0.0.1');
+    server.listen(port, host);
   });
 }
 
@@ -64,6 +64,21 @@ async function findAvailablePort(candidates) {
     if (await canListenOnPort(port)) return port;
   }
   throw new Error(`没有可用端口: ${candidates.join(', ')}`);
+}
+
+async function findAvailableViteEndpoint() {
+  for (const port of [5173, 5174]) {
+    if (await canListenOnPort(port)) {
+      return { listenHost: '127.0.0.1', urlHost: '127.0.0.1', port };
+    }
+  }
+  for (const port of [5173, 5174]) {
+    if (await canListenOnPort(port, '::1')) {
+      // CORS 的正式开发合同允许 localhost:5173/5174；这里只切换 loopback 地址族。
+      return { listenHost: '::1', urlHost: 'localhost', port };
+    }
+  }
+  throw new Error('没有可用的 Vite loopback endpoint: 5173, 5174');
 }
 
 function spawnLogged(command, args, options) {
@@ -273,7 +288,7 @@ function resourceLinkAnswer(title) {
   return [
     `${title} 回答 1`,
     '',
-    `[模型写错的标题](workspace:/${resourceLinkWorkspaceTitle})`,
+    `[模型写错的标题](<workspace:/${resourceLinkWorkspaceTitle}>)`,
     `[生成预览](${resourceLinkConversationLocator})`,
     `[外部报告](<${hostLocator}>)`,
   ].join('\n');
@@ -1257,17 +1272,35 @@ async function runConversationResourceLinks(cdp, rendererErrors) {
 
   await clickConversation(cdp, 'E2E 对话 A');
   await waitForActiveConversationReady(cdp);
-  const presentation = await waitFor(
-    () => evaluate(cdp, `(() => {
-      const links = Array.from(document.querySelectorAll('.conversation-resource-link'));
-      if (links.length !== 3 || links.some(link => link.classList.contains('is-disabled'))) return null;
-      return links.map(link => ({
-        href: link.getAttribute('href'),
-        text: link.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
-      }));
-    })()`),
-    '三个资源链接完成 owner 解析',
-  );
+  let presentation;
+  try {
+    presentation = await waitFor(
+      () => evaluate(cdp, `(() => {
+        const links = Array.from(document.querySelectorAll('.conversation-resource-link'));
+        if (links.length !== 3 || links.some(link => link.classList.contains('is-disabled'))) return null;
+        return links.map(link => ({
+          href: link.getAttribute('href'),
+          text: link.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
+        }));
+      })()`),
+      '三个资源链接完成 owner 解析',
+    );
+  } catch (error) {
+    const diagnostics = await evaluate(cdp, `(async () => {
+      const answer = Array.from(document.querySelectorAll('[data-conversation-message-id]'))
+        .find(element => element.textContent?.includes('E2E 对话 A 回答 1'));
+      return {
+        answerHtml: answer?.innerHTML ?? null,
+        matchingAnchors: Array.from(document.querySelectorAll('a'), link => ({
+          className: link.className,
+          href: link.getAttribute('href'),
+          text: link.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
+          title: link.getAttribute('title'),
+        })).filter(link => /生成预览|外部报告|模型写错|E2E 真实标题/.test(link.text)),
+      };
+    })()`);
+    throw new Error(`${error instanceof Error ? error.message : String(error)}: ${JSON.stringify(diagnostics)}`);
+  }
   if (!presentation.some(item => item.href?.startsWith('workspace:')
     && item.text.includes(resourceLinkWorkspaceTitle)
     && !item.text.includes('模型写错的标题'))) {
@@ -1343,12 +1376,13 @@ async function run() {
   mkdirSync(pluginRoot, { recursive: true });
   await restoreSourceDatabaseSnapshot();
 
-  const vitePort = await findAvailablePort([5173, 5174]);
+  const viteEndpoint = await findAvailableViteEndpoint();
   const debugPort = await findAvailablePort(Array.from({ length: 50 }, (_, index) => 9323 + index));
   const apiPort = await findAvailablePort(Array.from({ length: 100 }, (_, index) => 34000 + index));
-  const viteUrl = `http://127.0.0.1:${vitePort}`;
+  const viteUrl = `http://${viteEndpoint.urlHost}:${viteEndpoint.port}`;
   const viteProcess = spawnLogged('pnpm', [
-    'exec', 'vite', '--host', '127.0.0.1', '--port', String(vitePort), '--strictPort',
+    'exec', 'vite', '--host', viteEndpoint.listenHost,
+    '--port', String(viteEndpoint.port), '--strictPort',
   ], { label: 'vite', env: {} });
   let electronOutputTail = '';
   let duplicateDiagnosticLogOwnerFailure = false;
@@ -1454,7 +1488,7 @@ async function run() {
     );
     // fixture 在应用首次读取空列表后才写入数据库；显式走正式 history list action
     // 建立 seed 后的响应式快照，避免把测试数据注入时序误判为侧栏产品行为。
-    const seededConversationCount = await evaluate(cdp, `(async () => {
+    const seededConversationSnapshot = await evaluate(cdp, `(async () => {
       const { useHistoryListStore } = await import(
         '/apps/renderer/domains/conversation/history/store/historyListStore.ts'
       );
@@ -1465,10 +1499,13 @@ async function run() {
         loadAll: true,
         limit: 100,
       });
-      return historyListStore.getConversationsByScope(scope).length;
+      return {
+        count: historyListStore.getConversationsByScope(scope).length,
+        error: historyListStore.errorByScope(scope),
+      };
     })()`);
-    if (seededConversationCount < 2) {
-      throw new Error(`seed 后 history list 快照不完整: ${seededConversationCount}`);
+    if (seededConversationSnapshot.count < 2) {
+      throw new Error(`seed 后 history list 快照不完整: ${JSON.stringify(seededConversationSnapshot)}`);
     }
     const hasVisibleConversationList = await evaluate(cdp, `document.querySelectorAll('.chat-list-item').length >= 2`);
     if (!hasVisibleConversationList) {

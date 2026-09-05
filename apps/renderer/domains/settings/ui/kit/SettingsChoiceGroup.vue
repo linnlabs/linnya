@@ -16,6 +16,7 @@
       :value="option.value"
       :name="name"
       :disabled="disabled || option.disabled"
+      :class-names="settingsChoiceClassNames"
       :data-choice="option.value"
       :class="{ 'is-danger': option.tone === 'danger' }"
       @update:model-value="handleSelect"
@@ -38,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { CustomRadio } from '@linnya/renderer-ui';
+import { CustomRadio, type CustomRadioClassNames } from '@linnya/renderer-ui';
 import type { SettingsChoiceOption } from '../../definitions/settingsKit';
 
 defineProps<{
@@ -54,6 +55,11 @@ defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
+
+const settingsChoiceClassNames: CustomRadioClassNames = {
+  root: 'settings-choice-control',
+  indicator: 'settings-choice-indicator',
+};
 
 function handleSelect(value: string | number | boolean): void {
   if (typeof value === 'string') emit('update:modelValue', value);

@@ -66,7 +66,7 @@
   align-items: center;
 }
 
-/* CustomCheckbox 是共享组件，字号覆盖必须收口在尺寸选择器根类下。 */
-.table-size-selector .header-row-option .checkbox-item {
+/* CustomCheckbox 通过公开节点 class 保持尺寸选择器自己的字号。 */
+.table-size-selector .table-size-header-checkbox-item {
   font-size: 13px;
 }

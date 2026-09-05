@@ -23,16 +23,24 @@
         <div class="radio-options">
           <CustomRadio
             v-model="settings.lineBreakStyle"
-              value="standard" 
+            value="standard"
             name="linebreak"
+            :class-names="{
+              root: 'workspace-export-radio-item',
+              control: 'workspace-export-radio-input',
+            }"
           >
             {{ workspaceMessage('workspace.export.batch.lineBreakStandard') }}
           </CustomRadio>
           <CustomRadio
-              v-model="settings.lineBreakStyle"
-              value="newline" 
+            v-model="settings.lineBreakStyle"
+            value="newline"
             name="linebreak"
-            >
+            :class-names="{
+              root: 'workspace-export-radio-item',
+              control: 'workspace-export-radio-input',
+            }"
+          >
             {{ workspaceMessage('workspace.export.batch.lineBreakNewline') }}
           </CustomRadio>
         </div>

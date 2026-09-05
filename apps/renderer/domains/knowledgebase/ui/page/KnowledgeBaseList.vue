@@ -3,6 +3,7 @@
     <!-- 中文说明：知识库保持独立全屏页，但沿用工作台的居中内容宽度。 -->
     <div class="kb-list-inner">
       <PageSectionHeader
+        class="kb-list-header"
         :title="knowledgeBaseMessage('knowledgeBase.list.title')"
         :subtitle="knowledgeBaseMessage('knowledgeBase.list.subtitle')"
         :meta="listMeta"

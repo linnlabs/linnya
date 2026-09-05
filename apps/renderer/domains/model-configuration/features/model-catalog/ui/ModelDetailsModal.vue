@@ -132,14 +132,11 @@
           settingsMessage('settings.modelCapability.imageInput')
         }}</label>
         <div class="control-area">
-          <label class="toggle-switch">
-            <input
-              v-model="editForm.supports_image_input"
-              type="checkbox"
-              :disabled="modalState.isProcessing"
-            />
-            <span class="slider round" />
-          </label>
+          <Switch
+            v-model="editForm.supports_image_input"
+            :aria-label="settingsMessage('settings.modelCapability.imageInput')"
+            :disabled="modalState.isProcessing"
+          />
         </div>
       </div>
 
@@ -166,7 +163,7 @@
 import { reactive, watch, computed } from 'vue';
 import type { ModelCatalogItem } from '../definitions/modelCatalog';
 import type { EditableLanguageModelIssue } from '../definitions/editableLanguageModel';
-import { ActionButtons, CustomNumberInput, Modal } from '@linnya/renderer-ui';
+import { ActionButtons, CustomNumberInput, Modal, Switch } from '@linnya/renderer-ui';
 import { confirm } from '@shared/composables/confirmDialog';
 import { useSettingsLocalization } from '@/domains/settings/public';
 import { buildEditableLanguageModelUpdate } from '../functions/buildEditableLanguageModelUpdate';

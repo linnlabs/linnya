@@ -25,10 +25,20 @@
         <label class="form-label">{{ workspaceMessage('workspace.export.batch.lineBreakStyle') }}</label>
         <div class="control-area">
           <div class="radio-options">
-            <CustomRadio v-model="settings.lineBreakStyle" value="standard" name="linebreak">
+            <CustomRadio
+              v-model="settings.lineBreakStyle"
+              value="standard"
+              name="linebreak"
+              :class-names="workspaceExportRadioClassNames"
+            >
               {{ workspaceMessage('workspace.export.batch.lineBreakStandard') }}
             </CustomRadio>
-            <CustomRadio v-model="settings.lineBreakStyle" value="newline" name="linebreak">
+            <CustomRadio
+              v-model="settings.lineBreakStyle"
+              value="newline"
+              name="linebreak"
+              :class-names="workspaceExportRadioClassNames"
+            >
               {{ workspaceMessage('workspace.export.batch.lineBreakNewline') }}
             </CustomRadio>
           </div>
@@ -61,7 +71,13 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue';
 import type { MarkdownExportSettings } from '../../../../../../shared/utils/markdownSerializer';
-import { ActionButtons, CustomCheckbox, CustomRadio, Modal } from '@linnya/renderer-ui';
+import {
+  ActionButtons,
+  CustomCheckbox,
+  CustomRadio,
+  Modal,
+  type CustomRadioClassNames,
+} from '@linnya/renderer-ui';
 import { useWorkspaceLocalization } from '../../../../ui/useWorkspaceLocalization';
 
 const props = defineProps<{
@@ -74,6 +90,10 @@ const emit = defineEmits<{
   (e: 'confirm', settings: MarkdownExportSettings): void;
 }>();
 const { workspaceMessage } = useWorkspaceLocalization();
+const workspaceExportRadioClassNames: CustomRadioClassNames = {
+  root: 'workspace-export-radio-item',
+  control: 'workspace-export-radio-input',
+};
 
 type LocalMarkdownSettings = {
   escapeSpecialChars: boolean;

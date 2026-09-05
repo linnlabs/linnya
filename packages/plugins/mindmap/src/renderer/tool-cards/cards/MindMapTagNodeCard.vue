@@ -51,6 +51,7 @@
                     :background-color="t.colors?.backgroundColor"
                     :text-color="t.colors?.textColor"
                     :border-color="t.colors?.borderColor"
+                    :class-names="{ label: 'mm-tagging-chip-label' }"
                   >
                     <template v-if="t.showStatusDot" #icon>
                       <span class="mm-tagging-status-dot" aria-hidden="true" />
