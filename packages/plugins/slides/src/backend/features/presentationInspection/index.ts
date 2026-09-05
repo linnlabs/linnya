@@ -1,4 +1,5 @@
 export { buildSourceLocationMap } from './functions/buildSourceLocationMap';
+export { countSourceSpanUses } from './functions/countSourceSpanUses';
 export type { PresentationSourceStructure } from './functions/buildSourceLocationMap';
 export {
   resolvePresentationInspectionSelection,
@@ -12,6 +13,10 @@ export type {
 } from './orchestration/PresentationInspectionRuntime';
 export type {
   DiagnosticToolFeedbackPayload,
+  FocusedInspectionAxisRelation,
+  FocusedInspectionNode,
+  FocusedInspectionRelation,
+  FocusedInspectionResult,
   PresentationInspectionResult,
 } from './definitions/presentationInspection';
 export { buildInspectionObservation } from './functions/buildInspectionObservation';

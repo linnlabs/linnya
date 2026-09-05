@@ -45,13 +45,15 @@ describe('parseSlidesCliArgs', () => {
     });
   });
 
-  it('inspect 支持页选择、截断和显式启发式', () => {
+  it('inspect 支持页选择、截断、源码聚焦和显式启发式', () => {
     const invocation = parseSlidesCliArgs([
       'inspect',
       '--presentation', 'deck-1',
       '--slide', '3',
       '--max-slides', '5',
       '--heuristics',
+      '--source-range', '20:24',
+      '--source-range', '80:91',
     ]);
 
     expect(invocation).toEqual({
@@ -63,9 +65,26 @@ describe('parseSlidesCliArgs', () => {
           selection: { kind: 'single', slideNumber: 3 },
           maxSlides: 5,
           includeHeuristics: true,
+          focus: [
+            { startLine: 20, endLine: 24 },
+            { startLine: 80, endLine: 91 },
+          ],
         },
       },
     });
+  });
+
+  it('拒绝无效或超过四个的源码范围', () => {
+    expect(() => parseSlidesCliArgs([
+      'inspect', '--presentation', 'deck-1', '--source-range', '20-24',
+    ])).toThrow('--source-range must use start:end');
+    expect(() => parseSlidesCliArgs([
+      'inspect', '--presentation', 'deck-1', '--source-range', '24:20',
+    ])).toThrow('--source-range end cannot be smaller');
+    expect(() => parseSlidesCliArgs([
+      'inspect', '--presentation', 'deck-1',
+      ...Array.from({ length: 5 }, () => ['--source-range', '1:1']).flat(),
+    ])).toThrow('--source-range may be repeated at most 4 times');
   });
 
   it('不再暴露独立 diagnose 子命令', () => {

@@ -74,6 +74,7 @@ describe('PresentationInspectionRuntime', () => {
       selection: { kind: 'range', fromSlideNumber: 2, toSlideNumber: 3 },
       maxSlides: 1,
       includeHeuristics: true,
+      focus: [{ startLine: 20, endLine: 24 }],
     });
 
     expect(result.versionId).toBe('version-uuid-7');
@@ -93,6 +94,8 @@ describe('PresentationInspectionRuntime', () => {
       expect.any(Map),
       {
         includeHeuristics: true,
+        focus: [{ startLine: 20, endLine: 24 }],
+        sourceSpanUseCounts: expect.any(Map),
         sourceLocations: expect.any(Map),
       },
     );

@@ -63,8 +63,8 @@ describe('collectFindings', () => {
         overlapClass: 'forbidden',
       },
       sourceRefs: [
-        { precision: 'element', nodeId: 'node-a', startLine: 10, endLine: 12 },
-        { precision: 'element', nodeId: 'node-b', startLine: 20, endLine: 22 },
+        { kind: 'direct_creation', nodeId: 'node-a', startLine: 10, endLine: 12, generatedNodeCount: 1 },
+        { kind: 'direct_creation', nodeId: 'node-b', startLine: 20, endLine: 22, generatedNodeCount: 1 },
       ],
       remediation: {
         disposition: 'review',
@@ -159,16 +159,18 @@ describe('collectFindings', () => {
       },
       sourceRefs: expect.arrayContaining([
         expect.objectContaining({
-          precision: 'element',
+          kind: 'direct_creation',
           nodeId: 'layout:s1:root.0',
           startLine: 5,
           endLine: 12,
+          generatedNodeCount: 1,
         }),
         expect.objectContaining({
-          precision: 'element',
+          kind: 'direct_creation',
           nodeId: 'card-note',
           startLine: 8,
           endLine: 9,
+          generatedNodeCount: 1,
         }),
       ]),
     });
@@ -192,10 +194,11 @@ describe('collectFindings', () => {
         labelCount: 12,
       },
       sourceRefs: [{
-        precision: 'element',
+        kind: 'direct_creation',
         nodeId: 'chart-crowded',
         startLine: 90,
         endLine: 104,
+        generatedNodeCount: 1,
       }],
       remediation: {
         disposition: 'fix',

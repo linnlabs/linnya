@@ -55,7 +55,7 @@ const ollamaProvider = {
   connections: [
     {
       id: 'ollama',
-      display_name: 'Ollama 本地服务',
+      display_name: 'Ollama 本地',
       kind: 'local_runtime',
       release_status: 'stable',
       setup_fields: [
@@ -69,6 +69,15 @@ const ollamaProvider = {
       ],
       model_discovery: 'local_runtime',
       models: [],
+    },
+    {
+      id: 'ollama-cloud',
+      display_name: 'Ollama Cloud',
+      kind: 'direct',
+      release_status: 'preview',
+      setup_fields: [{ id: 'api_key', kind: 'secret', required: true, label: 'API Key' }],
+      model_discovery: 'bundled',
+      models: [providerModel],
     },
   ],
 } satisfies ProviderDefinition;
@@ -114,6 +123,10 @@ describe('model registration Provider options', () => {
         badge: '订阅',
       },
     ]);
+    expect(buildModelRegistrationConnectionOptions('provider:ollama', [ollamaProvider])).toEqual([
+      { value: 'connection:ollama', label: 'Ollama 本地' },
+      { value: 'connection:ollama-cloud', label: 'Ollama Cloud' },
+    ]);
     expect(
       buildModelRegistrationConnectionOptions(
         'provider:openai',
@@ -145,5 +158,8 @@ describe('model registration Provider options', () => {
     expect(
       resolveLocalRuntimeProviderConnectionDefinitionId('connection:ollama', [ollamaProvider])
     ).toBe('ollama');
+    expect(
+      resolveApiKeyProviderConnectionDefinitionId('connection:ollama-cloud', [ollamaProvider])
+    ).toBe('ollama-cloud');
   });
 });

@@ -13,16 +13,19 @@ import type { TextMeasureInput } from '@plugin/backend/textMeasurement';
 import {
   annotateLineNodeSemantics,
   classifyOverlap,
+  intersectionBox,
   isThinDecorativeShape,
   smallerBoxCoveredRatio,
 } from './SpatialSemantics.js';
 import type { QualityDiagnosticDraft } from './definitions';
 import { buildDiagnosticNodeRef } from './functions/buildDiagnosticNodeRef';
+import { buildFinalTextLineOccupancies } from './functions/buildTextLineOccupancy';
 import { lintGeneratedLayoutConstraints } from './generatedLayoutConstraints';
 
 export type LayoutLintCode =
   | 'out_of_bounds'
   | 'element_overlap'
+  | 'text_decoration_collision'
   | 'origin_stacking'
   | 'text_overflow_risk'
   | 'short_numeric_text_wrapped'
@@ -115,6 +118,7 @@ export class LayoutLint {
         slide.number,
         elements.filter((element) => element.type === 'table' && element.tableInfo != null),
       ));
+      issues.push(...this.lintTextDecorationCollisions(slide.number, elements));
 
       issues.push(...this.lintOverlaps(slide.number, elements));
       issues.push(...this.lintOriginStacking(slide.number, elements));
@@ -236,7 +240,7 @@ export class LayoutLint {
         const smallerCoveredRatio = smallerBoxCoveredRatio(left.position, right.position);
 
         if (smallerCoveredRatio > 0.35) {
-          const overlapBox = this.intersectionBox(left.position, right.position);
+          const overlapBox = intersectionBox(left.position, right.position);
           if (!overlapBox) continue;
           const orderedNodes = [
             buildDiagnosticNodeRef(left),
@@ -347,6 +351,61 @@ export class LayoutLint {
     }) ?? []);
   }
 
+  private lintTextDecorationCollisions(
+    slideNumber: number,
+    elements: Array<SlideElementInfo & { position: NonNullable<SlideElementInfo['position']> }>,
+  ): LayoutLintIssue[] {
+    const decorations = elements.filter((element) => (
+      element.type === 'shape'
+      && isThinDecorativeShape(element.position)
+      && Math.max(element.position.w, element.position.h) >= 0.3
+    ));
+    const textElements = elements.filter((element) => (
+      Boolean(element.text?.trim()) && element.textLayout != null
+    ));
+    const issues: LayoutLintIssue[] = [];
+
+    for (const decoration of decorations) {
+      for (const textElement of textElements) {
+        if ((decoration.nodeId ?? decoration.elementId) === (textElement.nodeId ?? textElement.elementId)) {
+          continue;
+        }
+        const collision = buildFinalTextLineOccupancies(textElement)
+          .map((line) => ({ line, intersection: intersectionBox(decoration.position, line.box) }))
+          .find((entry) => entry.intersection != null);
+        if (!collision?.intersection) continue;
+
+        const orderedNodes = [
+          buildDiagnosticNodeRef(decoration),
+          buildDiagnosticNodeRef(textElement),
+        ].sort((left, right) => left.nodeId.localeCompare(right.nodeId));
+        const first = orderedNodes[0];
+        const second = orderedNodes[1];
+        if (!first || !second || first.nodeId === second.nodeId) continue;
+        issues.push({
+          code: 'text_decoration_collision',
+          severity: 'warning',
+          confidence: 'high',
+          slides: [slideNumber],
+          evidence: {
+            kind: 'node_overlap',
+            nodes: [first, second],
+            intersection: { ...collision.intersection, unit: 'in' },
+            smallerCoveredRatio: smallerBoxCoveredRatio(decoration.position, collision.line.box),
+            overlapClass: 'forbidden',
+            intent: {
+              assessment: 'likely_unintentional',
+              signals: [
+                `细装饰形状与最终排版文字行相交（paragraph=${collision.line.paragraphIndex}, line=${collision.line.lineIndex}）。`,
+              ],
+            },
+          },
+        });
+      }
+    }
+    return issues;
+  }
+
   /**
    * 检测多个非装饰性元素堆叠在同一锚点的异常。
    * 当 ≥3 个实质性元素共享同一 (x,y)（0.02" 容差）时，
@@ -400,24 +459,6 @@ export class LayoutLint {
     return issues;
   }
 
-  /**
-   * 返回两个矩形的相交矩形（{x, y, w, h}），若不相交返回 null。
-   * 仅供 `lintOverlaps` 内部格式化 overlap 维度（"overlap=W"×H""）使用，
-   * 真正的相交判定走 `SpatialSemantics.intersectionArea`，避免双源重复实现。
-   */
-  private intersectionBox(
-    left: { x: number; y: number; w: number; h: number },
-    right: { x: number; y: number; w: number; h: number },
-  ): { x: number; y: number; w: number; h: number } | null {
-    const x1 = Math.max(left.x, right.x);
-    const y1 = Math.max(left.y, right.y);
-    const x2 = Math.min(left.x + left.w, right.x + right.w);
-    const y2 = Math.min(left.y + left.h, right.y + right.h);
-    const w = x2 - x1;
-    const h = y2 - y1;
-    if (w <= 0 || h <= 0) return null;
-    return { x: x1, y: y1, w, h };
-  }
 }
 
 interface FinalizedTextLayoutLintInput {

@@ -17,12 +17,17 @@ Workspace VFS、conversation 工作目录、Assets 和工具运行时之间的 a
   都不能命中；
 - PDF、Office、压缩包、数据库和可执行文件不在 generic Read 内提取，由 Shell/CLI 显式转换。
 
+普通文本在该 use case 中统一投影为 1-based 行窗口，`offset/limit` 分别表示起始行和最大行数；
+模型看到的 `行号 | 原文` 前缀只用于定位，不属于文件字节。Workspace DocumentView 是不同的结构化
+读取合同，只使用 `offset_chars/max_chars`。图片不得携带其中任何一种窗口字段。超长 observation 的
+持久化和字符 cursor 续读仍归 ToolOutputStore，file-read 不复制该能力。
+
 ## Citation 投影边界
 
 Workspace 文档中的 `CitationNode` 是 Editor 自包含的持久化快照：ref、Knowledge `docId + blockId`、Web
 URL、标题和摘录都随文档保存，目录路径不参与来源身份。因此文件移动或重命名不会破坏原引用。
 
-`read_file` 把文档交给某个 Conversation 时，调用 Citation allocator 为这些稳定来源分配当前 Conversation
+`read_file` 先在未添加展示行号的原始行窗口上完成 Citation 选择，再把文档交给某个 Conversation，调用 Citation allocator 为这些稳定来源分配当前 Conversation
 的 6 位别名，并只改写本次返回的正文、DocumentView、citation facts 与 diagnostics。该过程不回写 Editor
 文档，也不从旧 ref 猜来源。这样文档可脱离原 Conversation 独立存在，同时进入新 Conversation 后仍满足
 ref 唯一性。正文改写复用 Citation domain 的 Markdown parser，fenced/inline code 中的 `[@ref]` 示例保持

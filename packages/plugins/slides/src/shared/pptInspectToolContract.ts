@@ -3,6 +3,13 @@ import { z } from 'zod';
 const NonEmptyTextSchema = z.string().trim().min(1);
 const PositiveIntegerSchema = z.number().int().positive();
 const NonNegativeIntegerSchema = z.number().int().nonnegative();
+const InspectionSourceRangeSchema = z.object({
+  startLine: PositiveIntegerSchema,
+  endLine: PositiveIntegerSchema,
+}).strict().refine((range) => range.endLine >= range.startLine, {
+  path: ['endLine'],
+  message: 'endLine 不能小于 startLine',
+});
 
 /**
  * ppt_inspect 的插件公共入参合同。
@@ -17,6 +24,7 @@ export const PptInspectToolArgsSchema = z.object({
   slideNumber: PositiveIntegerSchema.optional(),
   endSlide: PositiveIntegerSchema.optional(),
   heuristics: z.boolean().optional(),
+  focus: z.array(InspectionSourceRangeSchema).min(1).max(4).optional(),
 }).strict().superRefine((input, context) => {
   const selectors = [input.presentation_id, input.locator, input.inode]
     .filter((value): value is string => value !== undefined);

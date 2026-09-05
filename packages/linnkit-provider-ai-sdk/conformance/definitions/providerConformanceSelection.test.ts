@@ -43,6 +43,24 @@ describe('selectAffectedProviderConformance', () => {
     });
   });
 
+  it('升级 Ollama community Provider 时选择原生 Chat conformance', () => {
+    expect(
+      selectAffectedProviderConformance({
+        factories,
+        package_names: ['ai-sdk-ollama'],
+      })
+    ).toMatchObject({
+      capability_ids: ['ai-sdk:ollama'],
+      test_files: [
+        'conformance/providers/contextCompactionRequestCodec.integration.test.ts',
+        'conformance/providers/ollamaProviderCodec.integration.test.ts',
+      ],
+      provider_packages: [
+        { package_name: 'ai-sdk-ollama', package_version: expect.any(String) },
+      ],
+    });
+  });
+
   it('升级 AI SDK Core 时选择全部已注册 capability', () => {
     const selection = selectAffectedProviderConformance({ factories, package_names: ['ai'] });
 

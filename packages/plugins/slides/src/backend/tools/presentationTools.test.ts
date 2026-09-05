@@ -426,13 +426,13 @@ function buildMinimalFindings(
             fullBleedAxes: [],
           },
           sourceRefs: source ? [{
-            precision: 'slide',
+            kind: 'slide',
             slideNumber,
             locator: source.file,
             startLine: source.startLine,
             endLine: source.endLine,
           }] : [{
-            precision: 'unavailable',
+            kind: 'unavailable',
             slideNumber,
             nodeId: node.id,
             reason: 'source_location_unavailable',
@@ -1052,7 +1052,7 @@ describe('PptInspectTool diagnostic findings', () => {
     expect(cliReport.rootGroups).toEqual([]);
     expect(toolResult.observation).toContain('| out_of_bounds');
     expect(toolResult.observation).toContain('sides=right');
-    expect(toolResult.observation).toContain('deck.js:2-9 precision=slide');
+    expect(toolResult.observation).toContain('deck.js:2-9 kind=slide');
   });
 
   it('returns slim finding stats on every inspect call', async () => {
@@ -1104,7 +1104,7 @@ describe('PptInspectTool diagnostic findings', () => {
     const result = JSON.parse(raw);
 
     expectInspectDataToBeSlim(result.data);
-    expect(result.observation).toContain('deck.js:2-9 precision=slide');
+    expect(result.observation).toContain('deck.js:2-9 kind=slide');
   });
 
   it('reports editable target counts without persisting target details', async () => {

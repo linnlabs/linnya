@@ -13,8 +13,25 @@ import {
 export const AI_SDK_NOTICE_FILE_NAME = 'THIRD_PARTY_NOTICES.txt';
 
 const EXTERNAL_AI_SDK_PROVIDER_SOURCES = {
-  '@openrouter/ai-sdk-provider': 'openrouter',
+  '@openrouter/ai-sdk-provider': {
+    upstream: 'openrouter',
+    license: 'Apache-2.0',
+    source: 'https://github.com/OpenRouterTeam/ai-sdk-provider',
+    title: 'OpenRouter AI SDK Provider',
+  },
+  'ai-sdk-ollama': {
+    upstream: 'ollama-provider',
+    license: 'MIT',
+    source: 'https://github.com/jagreehal/ai-sdk-ollama',
+    title: 'Ollama AI SDK Provider',
+  },
 } as const;
+
+type ExternalProviderPackageName = keyof typeof EXTERNAL_AI_SDK_PROVIDER_SOURCES;
+
+function isExternalProviderPackage(name: string): name is ExternalProviderPackageName {
+  return name in EXTERNAL_AI_SDK_PROVIDER_SOURCES;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -58,11 +75,7 @@ export function readAiSdkReleasePackages(rootDir: string): readonly AiSdkRelease
     const dependencies = manifest.dependencies;
     if (!isRecord(dependencies)) throw new Error(`${manifestPath} 缺少 dependencies 对象`);
     for (const [name, version] of Object.entries(dependencies)) {
-      if (
-        name !== 'ai' &&
-        !name.startsWith('@ai-sdk/') &&
-        !(name in EXTERNAL_AI_SDK_PROVIDER_SOURCES)
-      ) {
+      if (name !== 'ai' && !name.startsWith('@ai-sdk/') && !isExternalProviderPackage(name)) {
         continue;
       }
       if (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version)) {
@@ -94,9 +107,15 @@ export function readAiSdkReleasePackages(rootDir: string): readonly AiSdkRelease
     if (installedVersion !== declaredVersion) {
       throw new Error(`${name} 声明版本 ${declaredVersion} 与安装版本 ${installedVersion} 不一致`);
     }
+    const externalSource = isExternalProviderPackage(name)
+      ? EXTERNAL_AI_SDK_PROVIDER_SOURCES[name]
+      : undefined;
+    const expectedLicense = externalSource?.license ?? 'Apache-2.0';
     const license = readString(installedManifest, 'license', installedManifestPath);
-    if (license !== 'Apache-2.0') {
-      throw new Error(`${name}@${installedVersion} license 不是 Apache-2.0：${license}`);
+    if (license !== expectedLicense) {
+      throw new Error(
+        `${name}@${installedVersion} license 不是预期的 ${expectedLicense}：${license}`
+      );
     }
     const licensePath = resolveInstalledPackagePath(rootDir, name, 'LICENSE');
     if (!fs.statSync(licensePath).isFile())
@@ -104,8 +123,8 @@ export function readAiSdkReleasePackages(rootDir: string): readonly AiSdkRelease
     return {
       name,
       version: installedVersion,
-      license: 'Apache-2.0',
-      upstream: name in EXTERNAL_AI_SDK_PROVIDER_SOURCES ? 'openrouter' : 'vercel-ai',
+      license: expectedLicense,
+      upstream: externalSource?.upstream ?? 'vercel-ai',
     };
   });
 }
@@ -125,21 +144,21 @@ export function createAiSdkThirdPartyNotice(rootDir: string): string {
       );
     }
   }
-  const openRouterLicense = fs
-    .readFileSync(
-      resolveInstalledPackagePath(rootDir, '@openrouter/ai-sdk-provider', 'LICENSE'),
-      'utf8'
-    )
-    .trim();
-
   const packageLine = (packageInfo: AiSdkReleasePackage) =>
     `- ${packageInfo.name}@${packageInfo.version} — ${packageInfo.license}`;
   const vercelPackageLines = packages
     .filter(packageInfo => packageInfo.upstream === 'vercel-ai')
     .map(packageLine);
-  const openRouterPackageLines = packages
-    .filter(packageInfo => packageInfo.upstream === 'openrouter')
-    .map(packageLine);
+  const externalSections = Object.entries(EXTERNAL_AI_SDK_PROVIDER_SOURCES).flatMap(
+    ([packageName, source]) => {
+      const packageInfo = packages.find(candidate => candidate.name === packageName);
+      if (!packageInfo) return [];
+      const license = fs
+        .readFileSync(resolveInstalledPackagePath(rootDir, packageName, 'LICENSE'), 'utf8')
+        .trim();
+      return [source.title, `Source: ${source.source}`, packageLine(packageInfo), '', license, ''];
+    }
+  );
   return [
     'LINNYA THIRD-PARTY NOTICES',
     '',
@@ -151,12 +170,7 @@ export function createAiSdkThirdPartyNotice(rootDir: string): string {
     '',
     sharedLicense,
     '',
-    'OpenRouter AI SDK Provider',
-    'Source: https://github.com/OpenRouterTeam/ai-sdk-provider',
-    ...openRouterPackageLines,
-    '',
-    openRouterLicense,
-    '',
+    ...externalSections,
     MODELS_DEV_CATALOG_NOTICE.title,
     `Source: ${MODELS_DEV_CATALOG_NOTICE.source}`,
     '',
@@ -196,6 +210,7 @@ export function validateAiSdkThirdPartyNotice(
       const missingFragments = [
         ...packages.map(packageInfo => `- ${packageInfo.name}@${packageInfo.version}`),
         'https://github.com/OpenRouterTeam/ai-sdk-provider',
+        'https://github.com/jagreehal/ai-sdk-ollama',
         MODELS_DEV_CATALOG_NOTICE.title,
         MODELS_DEV_CATALOG_NOTICE.source,
         'Copyright (c) 2025 models.dev',

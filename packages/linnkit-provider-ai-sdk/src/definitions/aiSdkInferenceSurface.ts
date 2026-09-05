@@ -10,7 +10,8 @@ export type AiSdkInferenceSurface =
   | 'openai_responses'
   | 'anthropic_messages'
   | 'google_generative_ai'
-  | 'cohere_chat';
+  | 'cohere_chat'
+  | 'ollama_chat';
 
 export type AiSdkInferenceAuthProfile = 'none' | 'bearer' | 'api_key';
 export type AiSdkCredentialProfile = Exclude<AiSdkInferenceAuthProfile, 'none'>;
@@ -70,7 +71,10 @@ export interface AiSdkLanguageModelFactoryEntry {
   readonly capability_id: AiSdkInferenceCapabilityId;
   readonly surface: AiSdkInferenceSurface;
   readonly auth_profiles: readonly AiSdkInferenceAuthProfile[];
-  readonly package_name: `@ai-sdk/${string}` | '@openrouter/ai-sdk-provider';
+  readonly package_name:
+    | `@ai-sdk/${string}`
+    | '@openrouter/ai-sdk-provider'
+    | 'ai-sdk-ollama';
   readonly package_version: string;
   createLanguageModel(input: AiSdkLanguageModelFactoryInput): LanguageModelV4;
 }

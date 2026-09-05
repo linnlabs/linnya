@@ -11,6 +11,7 @@ export type {
   SlidesSourceSlicesOutput,
   SlidesSourceSliceTargetInput,
 } from './sourceSpans';
+export { buildSlideSourceSpanLocusKey } from './sourceSpans';
 export {
   SlideMarkerIndex,
   SlideMarkerIndexError,

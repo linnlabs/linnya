@@ -12,12 +12,22 @@ export interface SpatialComparable {
   isLineNode?: boolean;
 }
 
+export function intersectionBox(
+  left: SpatialBox,
+  right: SpatialBox,
+): SpatialBox | undefined {
+  const x = Math.max(left.x, right.x);
+  const y = Math.max(left.y, right.y);
+  const rightEdge = Math.min(left.x + left.w, right.x + right.w);
+  const bottomEdge = Math.min(left.y + left.h, right.y + right.h);
+  const w = rightEdge - x;
+  const h = bottomEdge - y;
+  return w > 0 && h > 0 ? { x, y, w, h } : undefined;
+}
+
 export function intersectionArea(left: SpatialBox, right: SpatialBox): number {
-  const x1 = Math.max(left.x, right.x);
-  const y1 = Math.max(left.y, right.y);
-  const x2 = Math.min(left.x + left.w, right.x + right.w);
-  const y2 = Math.min(left.y + left.h, right.y + right.h);
-  return Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+  const intersection = intersectionBox(left, right);
+  return intersection ? intersection.w * intersection.h : 0;
 }
 
 /**

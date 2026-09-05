@@ -98,6 +98,7 @@ export type {
   SlidesSourceSlicesOutput,
   SlidesSourceSliceTargetInput,
 } from './documentSource';
+export { buildSlideSourceSpanLocusKey } from './documentSource';
 export type {
   GeneratedLayoutBox,
   GeneratedLayoutComputedRatios,
@@ -311,6 +312,7 @@ export type {
   PresentationInspectionFeedbackOptions,
   PresentationInspectionRequest,
   PresentationInspectionSelection,
+  PresentationInspectionSourceRange,
   PresentationInspectionSnapshot,
 } from './presentationInspection';
 export type {

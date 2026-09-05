@@ -21,6 +21,7 @@ describe('AI SDK third-party release notice', () => {
     expect(notice).toContain('Craft Agents OAuth derived source');
     expect(notice).toContain('Copyright 2026 Craft Docs Ltd.');
     expect(notice).toContain('Source: https://github.com/OpenRouterTeam/ai-sdk-provider');
+    expect(notice).toContain('Source: https://github.com/jagreehal/ai-sdk-ollama');
     expect(validateAiSdkThirdPartyNotice(rootDir)).toEqual([]);
   });
 });

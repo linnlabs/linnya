@@ -31,7 +31,7 @@ describe('createAiSdkLanguageModelRegistry', () => {
     );
   });
 
-  it('DeepSeek、MiniMax 与 Z.AI 使用各自正式 Provider V4 factory', () => {
+  it('DeepSeek、MiniMax、Z.AI 与 Ollama 使用各自正式 Provider V4 factory', () => {
     const fetch = vi.fn<typeof globalThis.fetch>();
     const registry = createAiSdkLanguageModelRegistry(fetch);
 
@@ -54,6 +54,15 @@ describe('createAiSdkLanguageModelRegistry', () => {
         base_url: 'https://api.z.ai/api/paas/v4',
       })
     );
+    const ollama = registry.languageModel(
+      factoryInput({
+        capability_id: AI_SDK_INFERENCE_CAPABILITY_IDS.OLLAMA_CHAT,
+        surface: 'ollama_chat',
+        endpoint_id: 'ollama-cloud',
+        endpoint_model_id: 'glm-5.3',
+        base_url: 'https://ollama.com',
+      })
+    );
 
     expect(deepseek.specificationVersion).toBe('v4');
     expect(deepseek.provider).toContain('deepseek');
@@ -64,6 +73,9 @@ describe('createAiSdkLanguageModelRegistry', () => {
     expect(zai.specificationVersion).toBe('v4');
     expect(zai.provider).toContain('zai');
     expect(zai.modelId).toBe('glm-5.3');
+    expect(ollama.specificationVersion).toBe('v4');
+    expect(ollama.provider).toBe('ollama');
+    expect(ollama.modelId).toBe('glm-5.3');
   });
 
   it('在创建模型前拒绝 capability/surface 或 credential profile 错配', () => {

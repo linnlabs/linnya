@@ -11,6 +11,7 @@ import type {
   PresentationInspectionResult,
 } from '../definitions/presentationInspection';
 import { resolvePresentationInspectionSelection } from '../functions/resolvePresentationInspectionSelection';
+import { countSourceSpanUses } from '../functions/countSourceSpanUses';
 
 export interface PresentationInspectionRuntimeDeps {
   readonly loadSnapshot: (
@@ -45,6 +46,7 @@ export class PresentationInspectionRuntime {
     }
 
     const snapshot = await this.deps.loadSnapshot(request.presentationId);
+    const sourceSpanUseCounts = countSourceSpanUses(snapshot.renderModel);
     const selected = resolvePresentationInspectionSelection(
       snapshot.renderModel,
       request.selection,
@@ -58,6 +60,8 @@ export class PresentationInspectionRuntime {
       collectEditableTargetsBySlide(selected.renderModel),
       {
         includeHeuristics: request.includeHeuristics,
+        sourceSpanUseCounts,
+        ...(request.focus && request.focus.length > 0 ? { focus: request.focus } : {}),
         ...(sourceLocations ? { sourceLocations } : {}),
       },
     );

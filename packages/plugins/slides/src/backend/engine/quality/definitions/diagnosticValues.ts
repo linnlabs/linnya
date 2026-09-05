@@ -23,8 +23,28 @@ export const DiagnosticNodeRefSchema = z.object({
 }).strict();
 export type DiagnosticNodeRef = z.infer<typeof DiagnosticNodeRefSchema>;
 
-const LocatedDiagnosticSourceRefSchema = z.object({
-  precision: z.enum(['element', 'slide']),
+const DirectCreationDiagnosticSourceRefSchema = z.object({
+  kind: z.literal('direct_creation'),
+  slideNumber: z.number().int().positive(),
+  nodeId: z.string().trim().min(1),
+  locator: z.string().trim().min(1),
+  startLine: z.number().int().positive(),
+  endLine: z.number().int().positive(),
+  generatedNodeCount: z.literal(1),
+}).strict();
+
+const SharedCreationDiagnosticSourceRefSchema = z.object({
+  kind: z.literal('shared_creation'),
+  slideNumber: z.number().int().positive(),
+  nodeId: z.string().trim().min(1),
+  locator: z.string().trim().min(1),
+  startLine: z.number().int().positive(),
+  endLine: z.number().int().positive(),
+  generatedNodeCount: z.number().int().min(2),
+}).strict();
+
+const SlideDiagnosticSourceRefSchema = z.object({
+  kind: z.literal('slide'),
   slideNumber: z.number().int().positive(),
   nodeId: z.string().trim().min(1).optional(),
   locator: z.string().trim().min(1),
@@ -33,7 +53,7 @@ const LocatedDiagnosticSourceRefSchema = z.object({
 }).strict();
 
 const UnavailableDiagnosticSourceRefSchema = z.object({
-  precision: z.literal('unavailable'),
+  kind: z.literal('unavailable'),
   slideNumber: z.number().int().positive(),
   nodeId: z.string().trim().min(1).optional(),
   reason: z.enum([
@@ -43,11 +63,13 @@ const UnavailableDiagnosticSourceRefSchema = z.object({
   ]),
 }).strict();
 
-export const DiagnosticSourceRefSchema = z.discriminatedUnion('precision', [
-  LocatedDiagnosticSourceRefSchema,
+export const DiagnosticSourceRefSchema = z.discriminatedUnion('kind', [
+  DirectCreationDiagnosticSourceRefSchema,
+  SharedCreationDiagnosticSourceRefSchema,
+  SlideDiagnosticSourceRefSchema,
   UnavailableDiagnosticSourceRefSchema,
 ]).superRefine((source, context) => {
-  if (source.precision !== 'unavailable' && source.endLine < source.startLine) {
+  if (source.kind !== 'unavailable' && source.endLine < source.startLine) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['endLine'],

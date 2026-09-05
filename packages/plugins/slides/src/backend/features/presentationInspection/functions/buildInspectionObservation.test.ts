@@ -69,7 +69,7 @@ describe('buildInspectionObservation', () => {
     const slideOnly = {
       ...shortNumericFinding('diag:num-slide', 3, 'node-slide'),
       sourceRefs: [{
-        precision: 'slide' as const,
+        kind: 'slide' as const,
         slideNumber: 3,
         nodeId: 'node-slide',
         locator: 'deck.js',
@@ -93,12 +93,13 @@ describe('buildInspectionObservation', () => {
         intent: { assessment: 'unknown' as const, signals: ['需要结合渲染复核'] },
       },
       sourceRefs: [{
-        precision: 'element' as const,
+        kind: 'direct_creation' as const,
         slideNumber: 1,
         nodeId: 'review-a',
         locator: 'deck.js',
         startLine: 80,
         endLine: 80,
+        generatedNodeCount: 1 as const,
       }],
       remediation: {
         disposition: 'review' as const,
@@ -117,9 +118,9 @@ describe('buildInspectionObservation', () => {
     });
 
     expect(observation).toContain('summary | raw=4 | unique=4 | roots=1 | P0=3 | P1=0 | P2=1');
-    expect(observation).toContain('S1 | deck.js:40-40 precision=element shared=2');
-    expect(observation).toContain('G1 | P0 | shared-source | code=short_numeric_text_wrapped | findings=2 | src=S1');
-    // 两条 element 精度 finding 共用一次 action；slide 精度 finding 不能被误归因，单独保留一次。
+    expect(observation).toMatch(/S\d+ \| deck\.js:40-40 kind=shared_creation generated=2/);
+    expect(observation).toMatch(/G1 \| P0 \| shared-source \| code=short_numeric_text_wrapped \| findings=2 \| src=S\d+/);
+    // 两条 shared_creation finding 共用一次 action；slide 级位置不能被误归因，单独保留一次。
     expect(observation.match(/增大文本框宽度或使用不指定宽度的单行文本/g)).toHaveLength(2);
     expect(observation.indexOf('priority P0')).toBeLessThan(observation.indexOf('priority P2'));
   });
@@ -151,12 +152,13 @@ describe('buildInspectionObservation', () => {
         thresholdRatio: 1.35,
       },
       sourceRefs: [{
-        precision: 'element',
+        kind: 'direct_creation',
         slideNumber: 17,
         nodeId: 'chart-17',
         locator: 'deck.js',
         startLine: 810,
         endLine: 824,
+        generatedNodeCount: 1,
       }],
       remediation: {
         disposition: 'fix',
@@ -208,12 +210,13 @@ describe('buildInspectionObservation', () => {
         hiddenLineCount: 0,
       },
       sourceRefs: [{
-        precision: 'element',
+        kind: 'direct_creation',
         slideNumber: 16,
         nodeId: 'table-16',
         locator: 'deck.js',
         startLine: 390,
         endLine: 390,
+        generatedNodeCount: 1,
       }],
       remediation: {
         disposition: 'fix',
@@ -234,6 +237,46 @@ describe('buildInspectionObservation', () => {
     expect(observation).toContain('P0=0 | P1=1 | P2=0');
     expect(observation).toContain('issue=single_glyph_last_line basis=finalized lines=2 cell=rows[6][3] paragraph=0 orphan="现"');
     expect(observation).toContain('调整列宽，避免末行只剩一个字');
+  });
+
+  it('把源码聚焦结果投影为紧凑节点与轴向关系，不生成距离矩阵', () => {
+    const left = node('left', 1);
+    const right = node('right', 4);
+    const base = feedback([]);
+    const observation = buildInspectionObservation({
+      presentationId: 'deck-focus',
+      versionId: 'version-focus',
+      totalSlideCount: 1,
+      shownSlideNumbers: [1],
+      truncated: false,
+      feedback: {
+        ...base,
+        focus: {
+          ranges: [{ startLine: 10, endLine: 12 }, { startLine: 30, endLine: 31 }],
+          nodes: [
+            {
+              rangeIndexes: [1], slideNumber: 1, node: left,
+              sourceRef: { kind: 'direct_creation', slideNumber: 1, nodeId: 'left', locator: 'deck.js', startLine: 10, endLine: 12, generatedNodeCount: 1 },
+            },
+            {
+              rangeIndexes: [2], slideNumber: 1, node: right,
+              sourceRef: { kind: 'direct_creation', slideNumber: 1, nodeId: 'right', locator: 'deck.js', startLine: 30, endLine: 31, generatedNodeCount: 1 },
+            },
+          ],
+          relations: [{
+            slideNumber: 1,
+            rangeIndexes: [1, 2],
+            nodes: [left, right],
+            horizontal: { kind: 'gap', inches: 1 },
+            vertical: { kind: 'overlap', inches: 1 },
+          }],
+        },
+      },
+    });
+
+    expect(observation).toContain('focus | ranges=Q1:10-12,Q2:30-31 | matched=2 | relations=1');
+    expect(observation).toContain('relation | ranges=Q1:Q2 slide=1 nodes=N1,N2 h=gap:1in v=overlap:1in');
+    expect(observation).toContain('findings | none');
   });
 });
 
@@ -278,12 +321,13 @@ function outOfBoundsFinding(): DiagnosticFinding {
       fullBleedAxes: [],
     },
     sourceRefs: [{
-      precision: 'element',
+      kind: 'direct_creation',
       slideNumber: 3,
       nodeId: 'node-a',
       locator: 'deck.js',
       startLine: 20,
       endLine: 22,
+      generatedNodeCount: 1,
     }],
     remediation: {
       disposition: 'fix',
@@ -312,7 +356,7 @@ function compressedFinding(): Extract<DiagnosticFinding, { code: 'layout_constra
       finalToDeclaredRatio: 0.5,
     },
     sourceRefs: [{
-      precision: 'slide',
+      kind: 'slide',
       slideNumber: 2,
       locator: 'deck.js',
       startLine: 5,
@@ -353,12 +397,13 @@ function shortNumericFinding(
       hiddenLineCount: 0,
     },
     sourceRefs: [{
-      precision: 'element',
+      kind: 'shared_creation',
       slideNumber,
       nodeId,
       locator: 'deck.js',
       startLine: 40,
       endLine: 40,
+      generatedNodeCount: 2,
     }],
     remediation: {
       disposition: 'fix',

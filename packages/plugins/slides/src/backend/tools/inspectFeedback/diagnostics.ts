@@ -20,6 +20,13 @@ import {
   type QualityDiagnosticDraft,
 } from '../../engine/quality/definitions';
 import { renderModelToLintInfo } from '../../engine/quality/renderModelToLintInfo.js';
+import {
+  buildCreationDiagnosticSourceRef,
+  buildSceneNodeDiagnosticSourceRef,
+  buildUnavailableDiagnosticSourceRef,
+  deduplicateDiagnosticSourceRefs,
+  toSceneDiagnosticNodeRef,
+} from './diagnosticNodeFacts.js';
 import { walkSceneGraph } from './sceneGraph.js';
 
 interface DiagnosticContext {
@@ -29,6 +36,7 @@ interface DiagnosticContext {
   readonly constraintNodeById: ReadonlyMap<string, ConstraintNodeContext>;
   readonly slideByNumber: ReadonlyMap<number, SceneGraphSlideSummary>;
   readonly sourceLocations?: ReadonlyMap<number, SourceLocationHint>;
+  readonly sourceSpanUseCounts: ReadonlyMap<string, number>;
 }
 
 interface ConstraintNodeContext {
@@ -39,6 +47,7 @@ interface ConstraintNodeContext {
 
 interface CollectDiagnosticsOptions {
   readonly sourceLocations?: ReadonlyMap<number, SourceLocationHint>;
+  readonly sourceSpanUseCounts?: ReadonlyMap<string, number>;
 }
 
 export function evaluateQualityAnalysis(
@@ -58,7 +67,11 @@ export function collectFindings(
   const selectedSlides = changedSlides && changedSlides.length > 0
     ? new Set(changedSlides)
     : null;
-  const context = buildDiagnosticContext(sceneGraph, options.sourceLocations);
+  const context = buildDiagnosticContext(
+    sceneGraph,
+    options.sourceSpanUseCounts ?? new Map(),
+    options.sourceLocations,
+  );
   const drafts: QualityDiagnosticDraft[] = [
     ...report.layout.issues,
     ...report.aesthetic,
@@ -93,6 +106,7 @@ function finalizeDiagnosticDraft(
 
 function buildDiagnosticContext(
   sceneGraph: readonly SceneGraphSlideSummary[],
+  sourceSpanUseCounts: ReadonlyMap<string, number>,
   sourceLocations?: ReadonlyMap<number, SourceLocationHint>,
 ): DiagnosticContext {
   const nodeById = new Map<string, SceneGraphNodeSummary>();
@@ -130,6 +144,7 @@ function buildDiagnosticContext(
     nodeByElementName,
     constraintNodeById,
     slideByNumber,
+    sourceSpanUseCounts,
     sourceLocations,
   };
 }
@@ -214,24 +229,7 @@ function normalizeNode(node: DiagnosticNodeRef, context: DiagnosticContext): Dia
       ...(constraintNode.parentNodeId ? { parentNodeId: constraintNode.parentNodeId } : {}),
     };
   }
-  return {
-    nodeId: exact.nodeId,
-    kind: exact.kind,
-    label: buildSceneNodeLabel(exact),
-    finalBox: { ...exact.box, unit: 'in' },
-    zIndex: exact.zIndex,
-    ...(exact.parentNodeId ? { parentNodeId: exact.parentNodeId } : {}),
-  };
-}
-
-function buildSceneNodeLabel(node: SceneGraphNodeSummary): string {
-  const content = typeof node.content?.text === 'string'
-    ? node.content.text
-    : typeof node.content?.alt === 'string'
-      ? node.content.alt
-      : node.elementName ?? node.nodeId;
-  const normalized = content.replace(/\s+/g, ' ').trim() || node.nodeId;
-  return normalized.length <= 40 ? normalized : `${normalized.slice(0, 39)}…`;
+  return toSceneDiagnosticNodeRef(exact);
 }
 
 function collectEvidenceNodeIds(evidence: DiagnosticEvidence): string[] {
@@ -290,51 +288,32 @@ function buildSourceRefs(
       const constraint = context.constraintNodeById.get(nodeId);
       if (!constraint) return [];
       if (constraint.node.sourceSpan) {
-        return [{
-          precision: 'element' as const,
+        return [buildCreationDiagnosticSourceRef({
           slideNumber: constraint.slideNumber,
           nodeId: constraint.node.nodeId,
-          locator: 'deck.js',
-          startLine: constraint.node.sourceSpan.startLine,
-          endLine: constraint.node.sourceSpan.endLine,
-        }];
+          sourceSpan: constraint.node.sourceSpan,
+          useCounts: context.sourceSpanUseCounts,
+        })];
       }
-      return [unavailableSourceRef(
+      return [buildUnavailableDiagnosticSourceRef(
         constraint.slideNumber,
         constraint.node.nodeId,
         constraint.sourceKind,
       )];
     }
-    if (node.sourceSpan) {
-      return [{
-        precision: 'element' as const,
-        slideNumber: node.slideNumber,
-        nodeId: node.nodeId,
-        locator: 'deck.js',
-        startLine: node.sourceSpan.startLine,
-        endLine: node.sourceSpan.endLine,
-      }];
-    }
-    const slideLocation = context.sourceLocations?.get(node.slideNumber);
-    if (slideLocation) {
-      return [{
-        precision: 'slide' as const,
-        slideNumber: node.slideNumber,
-        nodeId: node.nodeId,
-        locator: slideLocation.file,
-        startLine: slideLocation.startLine,
-        endLine: slideLocation.endLine,
-      }];
-    }
-    return [unavailableSourceRef(node.slideNumber, node.nodeId, node.sourceKind)];
+    return [buildSceneNodeDiagnosticSourceRef(
+      node,
+      context.sourceLocations?.get(node.slideNumber),
+      context.sourceSpanUseCounts,
+    )];
   });
-  if (nodeRefs.length > 0) return deduplicateSourceRefs(nodeRefs);
+  if (nodeRefs.length > 0) return deduplicateDiagnosticSourceRefs(nodeRefs);
 
-  return deduplicateSourceRefs(slides.map((slideNumber) => {
+  return deduplicateDiagnosticSourceRefs(slides.map((slideNumber) => {
     const slideLocation = context.sourceLocations?.get(slideNumber);
     if (slideLocation) {
       return {
-        precision: 'slide' as const,
+        kind: 'slide' as const,
         slideNumber,
         locator: slideLocation.file,
         startLine: slideLocation.startLine,
@@ -342,35 +321,8 @@ function buildSourceRefs(
       };
     }
     const sourceKind = context.slideByNumber.get(slideNumber)?.rootNode.sourceKind;
-    return unavailableSourceRef(slideNumber, undefined, sourceKind);
+    return buildUnavailableDiagnosticSourceRef(slideNumber, undefined, sourceKind);
   }));
-}
-
-function unavailableSourceRef(
-  slideNumber: number,
-  nodeId: string | undefined,
-  sourceKind: PresentationRenderModel['sourceKind'] | undefined,
-): DiagnosticSourceRef {
-  return {
-    precision: 'unavailable',
-    slideNumber,
-    ...(nodeId ? { nodeId } : {}),
-    reason: sourceKind != null && sourceKind !== 'generated'
-      ? 'source_kind_unsupported'
-      : 'source_location_unavailable',
-  };
-}
-
-function deduplicateSourceRefs(refs: readonly DiagnosticSourceRef[]): DiagnosticSourceRef[] {
-  const seen = new Set<string>();
-  return refs.filter((ref) => {
-    const key = ref.precision === 'unavailable'
-      ? `${ref.precision}:${ref.slideNumber}:${ref.nodeId ?? ''}:${ref.reason}`
-      : `${ref.precision}:${ref.slideNumber}:${ref.nodeId ?? ''}:${ref.locator}:${ref.startLine}:${ref.endLine}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
 }
 
 function buildFindingId(

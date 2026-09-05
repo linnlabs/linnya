@@ -7,7 +7,7 @@
 `DiagnosticFinding` 只包含问题身份、级别、受影响页、严格 evidence、源码引用、可选根因键和修复验证合同。它不包含自由 `message`、`suggestion` 或任意 metadata。
 
 - `DiagnosticNodeRef` 只保留节点 id、kind、单行 label、最终 box、z-index 和 parent id。
-- `DiagnosticSourceRef` 严格区分 `element / slide / unavailable`；没有源码时必须说明原因，不能伪造 `deck.js` 行号。
+- `DiagnosticSourceRef` 只表示作者应修改的一个 `deck.js` 位置，并严格区分 `direct_creation / shared_creation / slide / unavailable`。`shared_creation` 表示同一范围在完整快照中创建多个最终节点；没有源码时必须说明原因，不能伪造行号，也不并列返回工厂位置与调用位置。
 - remediation 只表达 `fix / review / informational`、目标节点和 `inspect / render` 复验方式。自然语言行动由 inspection 投影。
 - scope 与 category 不写入 finding，由 code registry 唯一派生。
 
@@ -30,7 +30,7 @@
 | family | 必须回答的问题 |
 | --- | --- |
 | `node_bounds / node_size` | 哪个节点、最终几何、阈值与违反方向 |
-| `node_overlap / origin_stacking` | 哪些节点、相交或共同锚点、设计意图证据 |
+| `node_overlap / origin_stacking` | 哪些节点、相交或共同锚点、设计意图证据；`text_decoration_collision` 的相交区域来自细装饰形状与最终文字行占位，而不是整个文本框 |
 | `constraint_delta / parent_overflow` | 哪个父约束、声明值与最终值、直接后果 |
 | `text_layout` | 最终或估算断行、内容尺寸与溢出事实；表格内另给 `rows[row][column]`，自动断行末行孤字另给 paragraph 和 orphan text |
 | `scalar_metric / margin_balance / visual_anchor` | 页级指标、样本、阈值和比较方向 |

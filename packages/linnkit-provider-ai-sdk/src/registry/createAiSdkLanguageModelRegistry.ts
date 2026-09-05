@@ -19,6 +19,7 @@ import { MISTRAL_LANGUAGE_MODEL_FACTORIES } from '../providers/mistral/mistralLa
 import { MOONSHOT_LANGUAGE_MODEL_FACTORIES } from '../providers/moonshot/moonshotLanguageModelFactories';
 import { OPENAI_LANGUAGE_MODEL_FACTORIES } from '../providers/openai/openAiLanguageModelFactories';
 import { OPENROUTER_LANGUAGE_MODEL_FACTORIES } from '../providers/openrouter/openRouterLanguageModelFactories';
+import { OLLAMA_LANGUAGE_MODEL_FACTORIES } from '../providers/ollama/ollamaLanguageModelFactories';
 import { TOGETHERAI_LANGUAGE_MODEL_FACTORIES } from '../providers/togetherai/togetherAiLanguageModelFactories';
 import { XAI_LANGUAGE_MODEL_FACTORIES } from '../providers/xai/xAiLanguageModelFactories';
 import { ZAI_LANGUAGE_MODEL_FACTORIES } from '../providers/zai/zaiLanguageModelFactories';
@@ -42,6 +43,7 @@ const AI_SDK_LANGUAGE_MODEL_FACTORIES = {
   ...DEEPINFRA_LANGUAGE_MODEL_FACTORIES,
   ...COHERE_LANGUAGE_MODEL_FACTORIES,
   ...ZAI_LANGUAGE_MODEL_FACTORIES,
+  ...OLLAMA_LANGUAGE_MODEL_FACTORIES,
 } satisfies Record<AiSdkInferenceCapabilityId, AiSdkLanguageModelFactoryEntry>;
 
 const FACTORY_ENTRIES: readonly AiSdkLanguageModelFactoryEntry[] = Object.freeze(

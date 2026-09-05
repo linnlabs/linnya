@@ -15,6 +15,8 @@ import type {
 } from '@plugin/slides/shared';
 import type { DiagnosticToolFeedbackPayload } from '../../features/presentationInspection';
 import type { SlideBackgroundModel } from '@plugin/slides/shared';
+import type { PresentationInspectionFeedbackOptions } from '@plugin/slides/shared';
+import { buildFocusedInspection } from './focusedInspection.js';
 
 export interface BuildToolFeedbackPayloadOptions {
   /**
@@ -27,6 +29,8 @@ export interface BuildToolFeedbackPayloadOptions {
    */
   includeHeuristics?: boolean;
   sourceLocations?: ReadonlyMap<number, SourceLocationHint>;
+  sourceSpanUseCounts?: ReadonlyMap<string, number>;
+  focus?: PresentationInspectionFeedbackOptions['focus'];
   spatialAnalyzer: Pick<SlidesEngineExecutionAdapter, 'analyzeSpatial'>;
 }
 
@@ -54,7 +58,13 @@ export async function buildToolFeedbackPayload(
   const spatialAnalysis = await buildSpatialAnalysis(sceneGraph, options.spatialAnalyzer);
   const findings = collectFindings(qualityAnalysis, sceneGraph, spatialAnalysis, changedSlides, {
     sourceLocations: options.sourceLocations,
+    sourceSpanUseCounts: options.sourceSpanUseCounts ?? new Map(),
   });
+  const focus = buildFocusedInspection(
+    sceneGraph,
+    options.focus ?? [],
+    options.sourceSpanUseCounts ?? new Map(),
+  );
 
   return {
     artifact: {
@@ -67,6 +77,7 @@ export async function buildToolFeedbackPayload(
     spatialAnalysis,
     buildStatus: { state: 'ready' },
     findings,
+    ...(focus ? { focus } : {}),
   };
 }
 

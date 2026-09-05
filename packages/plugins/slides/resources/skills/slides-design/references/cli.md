@@ -23,12 +23,13 @@ CLI 的 `--presentation` 接收 presentation ID，不接收 Workspace locator、
 | 检查某个字体族 | `linnya-slides fonts check --family <name>` |
 | 按脚本查候选字体 | `linnya-slides fonts list --script <latin\|eastAsian\|complex>` |
 
-`inspect` 和 `render` 可用 `--slide N` 选择单页，或用 `--from N --to M` 选择闭区间；单页和范围不能同时传。省略这三项表示整份文稿。`inspect` 可用 `--max-slides N` 限制返回页数，也可用 `--heuristics` 附加 Tier-2 低置信提示。CLI 只执行显式选择，不会根据任务类型自动挑选页面。
+`inspect` 和 `render` 可用 `--slide N` 选择单页，或用 `--from N --to M` 选择闭区间；单页和范围不能同时传。省略这三项表示整份文稿。`inspect` 可用 `--max-slides N` 限制返回页数，也可用 `--heuristics` 附加 Tier-2 低置信提示。需要核对已知源码对象的最终几何时，可重复传 `--source-range start:end`，最多四次；范围是 1-based 闭区间。CLI 只执行显式选择，不会根据任务类型自动挑选页面。
 
 以下最小样例会由 Skill guard 送入真实参数解析器：
 
 - `linnya-slides inspect --presentation example-presentation`
 - `linnya-slides inspect --presentation example-presentation --slide 1 --heuristics`
+- `linnya-slides inspect --presentation example-presentation --source-range 120:130 --source-range 210:220`
 - `linnya-slides render --presentation example-presentation --slide 1`
 - `linnya-slides render --presentation example-presentation --from 2 --to 4`
 - `linnya-slides fonts check --family Inter`
@@ -37,7 +38,7 @@ CLI 的 `--presentation` 接收 presentation ID，不接收 Workspace locator、
 ## Shell 与输出
 
 - `inspect` 是只读命令。stdout 是一个紧凑 JSON report，运行日志在 stderr。
-- `inspect` 返回 `buildStatus + findingSummary + rootGroups + findings`，不返回综合分、passed 或美学 blocker，也不复制 `read_file` 已能提供的页面结构。先处理 P0 确定性问题，再复核 P1；P2 要结合 render 判断。`shared_source` 根因组表示多条 finding 指向同一 element 级源码控制点，可优先一次修正，不代表视觉规则替用户决定设计。
+- `inspect` 返回 `buildStatus + findingSummary + rootGroups + findings`，可选源码范围查询另返回 `focus`；不返回综合分、passed 或美学 blocker，也不复制 `read_file` 已能提供的页面结构。`focus` 只给匹配节点和每页、每对范围最近节点的横纵 `gap/overlap`，不输出全页距离矩阵。先处理 P0 确定性问题，再复核 P1；P2 要结合 render 判断。`shared_source` 根因组表示多条 finding 指向同一作者源码控制点，可优先一次修正，不代表视觉规则替用户决定设计。
 - `render` 会向当前 Conversation 工作目录写 JPEG 检查图，因此调用 Shell 时传 `requires_write_access: true`。Agent 模式不要传 `--output`、`--overwrite` 或 `--database`。
 - Shell 返回 `completed` 只表示进程已结束；仍要确认真实 process exit code 为 0。长任务若返回 process handle，用 `process` 跟进到终态。
 - render 成功后，stdout 是单行 JSON，`presentation` 给出版本，`slides[]` 逐页给出 `slideNumber + locator`。把需要查看的 locator 直接交给 `read_file`，不要拼接路径。

@@ -18,12 +18,14 @@
   - Slides：读写 `.slides` source，并通过 `ppt_inspect` 做布局诊断。
   - Sheet：`read_file` / `grep` 读取 checkpoint + `sheet_ops` 回放后的可见展示值预览；写入仍使用 `sheet_*` 专用工具，避免绕过 Sheet oplog。
 
-`read_file` 的默认结果是 VFS 的普通文本投影，保证 `read_file -> edit_file` 使用精确原文。结构化 DocumentView（例如 MindMap 的 `[#ref]`、outline 和插件 presentation）属于同一工具的显式读取模式，实施时复用 Workspace `document-read` feature，不按文件类型隐式切换默认结果。
+`read_file` 的默认结果是 VFS 的普通文本投影，使用业界主流的 1-based 行窗口：`offset` 是起始行，`limit` 是最多读取的行数，默认/上限均为 2,000 行。observation 以 `行号 | 原文` 展示，行号和分隔符只是定位信息，不属于文件内容；传给 `edit_file.old_string` 时必须去掉它们。这样 `grep`、Slides inspect 与读取定位使用同一行号语义，`read_file -> edit_file` 仍基于精确原文。
+
+结构化 DocumentView（例如 MindMap 的 `[#ref]`、outline 和插件 presentation）属于同一工具的显式读取模式，字符窗口只能使用语义明确的 `offset_chars/max_chars`，不复用普通文本的 `offset/limit`。超长普通文本 observation 继续由既有 ToolOutputStore 接管；即使一行很长，也不为 `read_file` 增加第二套字符分页语义。
 
 `read_file` 是工具族里唯一跨地址空间的动作：`workspace:/...` 进入当前项目 VFS，
 `conversation:/...` 进入当前对话工作目录，`file:///...` 进入宿主绝对路径。裸相对/绝对路径均拒绝，
 也不会通过“哪个文件存在”猜来源。物理 reader 按 magic bytes 识别 JPEG、PNG、WebP 并附加模型输入；
-AI 不声明媒体类型。图片不接纳字符窗口。inode 只属于 Workspace；每次调用与 locator 二选一。
+AI 不声明媒体类型。图片不接纳任何行/字符窗口字段。inode 只属于 Workspace；每次调用与 locator 二选一。
 
 物理文本只接受严格 UTF-8（含可选 BOM），上限 20 MiB；SVG 按文本返回。图片复用 asset domain
 现有的 10 MiB、40 MP、完整解码、内容寻址和 tool-result claim。PDF、Office、压缩包、数据库、

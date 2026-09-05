@@ -248,7 +248,7 @@ describe('ModelRegistrationSettingsPage', () => {
           connections: [
             {
               id: 'ollama',
-              display_name: 'Ollama 本地服务',
+              display_name: 'Ollama 本地',
               kind: 'local_runtime',
               release_status: 'preview',
               setup_fields: [
@@ -262,6 +262,25 @@ describe('ModelRegistrationSettingsPage', () => {
               ],
               model_discovery: 'local_runtime',
               models: [],
+            },
+            {
+              id: 'ollama-cloud',
+              display_name: 'Ollama Cloud',
+              kind: 'direct',
+              release_status: 'preview',
+              setup_fields: [{ id: 'api_key', kind: 'secret', required: true, label: 'API Key' }],
+              model_discovery: 'bundled',
+              models: [
+                {
+                  id: 'glm-5.3',
+                  display_name: 'GLM-5.3',
+                  release_status: 'active',
+                  context_window_tokens: 1_000_000,
+                  max_input_tokens: 934_464,
+                  max_output_tokens: 65_536,
+                  capabilities: { image_input: true, tool_call: true, reasoning: true },
+                },
+              ],
             },
           ],
         },
@@ -367,6 +386,7 @@ describe('ModelRegistrationSettingsPage', () => {
     expect(section.textContent).not.toContain('settings.addModel.compatibility.label');
 
     await selectProvider(container, 'Ollama');
+    await selectConnection(container, 'Ollama 本地');
 
     expect(container.querySelector('[data-registration-kind="direct-provider"]')).toBeNull();
     expect(container.querySelector('[data-registration-kind="ollama"]')).not.toBeNull();
@@ -375,6 +395,14 @@ describe('ModelRegistrationSettingsPage', () => {
     expect(inputValues(section)).not.toContain('256000');
     expect(inputValues(section)).not.toContain('16384');
     expect(mocks.listModels).toHaveBeenCalledWith('http://localhost:11434');
+
+    await selectConnection(container, 'Ollama Cloud');
+
+    expect(container.querySelector('[data-registration-kind="ollama"]')).toBeNull();
+    expect(container.querySelector('[data-registration-kind="direct-provider"]')).not.toBeNull();
+    expect(section.textContent).toContain('settings.addModel.apiKey.label');
+    expect(inputValues(section)).not.toContain('32768');
+    expect(inputValues(section)).not.toContain('4096');
   });
 
   it('自定义 Provider 内部仍单独选择兼容格式', async () => {

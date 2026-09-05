@@ -29,6 +29,7 @@ export const LANGUAGE_INFERENCE_CAPABILITY_IDS = {
   DEEPINFRA_CHAT: 'ai-sdk:deepinfra',
   COHERE_CHAT: 'ai-sdk:cohere',
   ZAI_CHAT: 'ai-sdk:zai',
+  OLLAMA_CHAT: 'ai-sdk:ollama',
 } as const;
 
 export const LANGUAGE_INFERENCE_ROUTE_PROFILES = [
@@ -183,6 +184,13 @@ export const LANGUAGE_INFERENCE_ROUTE_PROFILES = [
     auth_profiles: ['bearer'],
     image_input_support: { user_image: true, tool_result_image: false },
   },
+  {
+    id: 'ollama_chat',
+    api_surface: 'ollama_chat',
+    capability_id: LANGUAGE_INFERENCE_CAPABILITY_IDS.OLLAMA_CHAT,
+    auth_profiles: ['bearer'],
+    image_input_support: { user_image: true, tool_result_image: true },
+  },
 ] as const;
 
 export type LanguageInferenceRouteProfile = (typeof LANGUAGE_INFERENCE_ROUTE_PROFILES)[number];
@@ -204,6 +212,7 @@ const InferenceApiSurfaceSchema = z.enum([
   'anthropic_messages',
   'google_generative_ai',
   'cohere_chat',
+  'ollama_chat',
 ]);
 
 const InferenceAuthProfileSchema = z.enum(['none', 'bearer', 'api_key']);
@@ -228,6 +237,7 @@ const LanguageInferenceCapabilityIdSchema = z.enum([
   LANGUAGE_INFERENCE_CAPABILITY_IDS.DEEPINFRA_CHAT,
   LANGUAGE_INFERENCE_CAPABILITY_IDS.COHERE_CHAT,
   LANGUAGE_INFERENCE_CAPABILITY_IDS.ZAI_CHAT,
+  LANGUAGE_INFERENCE_CAPABILITY_IDS.OLLAMA_CHAT,
 ]);
 
 const CanonicalNonEmptyStringSchema = z.string().trim().min(1);

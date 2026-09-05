@@ -3,6 +3,11 @@ export interface SlideSourceSpan {
   endLine: number;
 }
 
+/** 同一静态创建位置的稳定键；只表达 authoring locus，不冒充运行实例身份。 */
+export function buildSlideSourceSpanLocusKey(span: SlideSourceSpan): string {
+  return `${span.startLine}:${span.endLine}`;
+}
+
 export interface SlidesSourceSliceTargetInput {
   elementId: string;
   slideNumber: number;

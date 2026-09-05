@@ -139,8 +139,11 @@ const WorkspaceReadFileCitationFieldsSchema = {
   citation_diagnostics: z.array(WorkspaceDocumentCitationDiagnosticSchema).optional(),
 };
 
-export const WORKSPACE_READ_FILE_DEFAULT_LIMIT = 20_000;
-export const WORKSPACE_READ_FILE_MAX_LIMIT = 120_000;
+export const WORKSPACE_READ_FILE_DEFAULT_OFFSET = 1;
+export const WORKSPACE_READ_FILE_DEFAULT_LIMIT = 2_000;
+export const WORKSPACE_READ_FILE_MAX_LIMIT = 2_000;
+export const WORKSPACE_READ_FILE_DOCUMENT_DEFAULT_MAX_CHARS = 4_000;
+export const WORKSPACE_READ_FILE_DOCUMENT_MAX_CHARS = 12_000;
 
 export const WorkspaceCoreFileNodeTypeSchema = z.enum([
   'folder',
@@ -252,8 +255,10 @@ const WorkspaceReadFileArgsInputSchema = z
   .object({
     locator: FileLocatorSchema.optional(),
     inode: NonEmptyStringSchema.optional(),
-    offset: NonNegativeIntegerSchema.optional(),
+    offset: PositiveIntegerSchema.optional(),
     limit: PositiveIntegerSchema.max(WORKSPACE_READ_FILE_MAX_LIMIT).optional(),
+    offset_chars: NonNegativeIntegerSchema.optional(),
+    max_chars: PositiveIntegerSchema.max(WORKSPACE_READ_FILE_DOCUMENT_MAX_CHARS).optional(),
     view: z.enum(['text', 'document']).default('text'),
   })
   .strict()
@@ -268,6 +273,22 @@ const WorkspaceReadFileArgsInputSchema = z
         code: z.ZodIssueCode.custom,
         path: ['view'],
         message: 'document view requires a workspace locator or inode',
+      });
+    }
+    const lineWindowKeys = args.offset !== undefined || args.limit !== undefined;
+    const characterWindowKeys = args.offset_chars !== undefined || args.max_chars !== undefined;
+    if (args.view === 'text' && characterWindowKeys) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['offset_chars'],
+        message: 'text view uses 1-based line offset/limit, not character-window fields',
+      });
+    }
+    if (args.view === 'document' && lineWindowKeys) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['offset'],
+        message: 'document view uses offset_chars/max_chars, not line-window fields',
       });
     }
   });
@@ -307,13 +328,23 @@ export const WorkspaceGrepLifecycleArgsSchema = z
 /**
  * view 只选择文本投影或结构化 DocumentView；文件的实际媒体类型由 reader 从内容识别。
  */
-export const WorkspaceReadFileArgsSchema = WorkspaceReadFileArgsInputSchema.transform(args => ({
-  view: args.view,
-  locator: args.locator,
-  inode: args.inode,
-  offset: args.offset ?? 0,
-  limit: args.limit ?? WORKSPACE_READ_FILE_DEFAULT_LIMIT,
-}));
+export const WorkspaceReadFileArgsSchema = WorkspaceReadFileArgsInputSchema.transform(args => {
+  const identity = { locator: args.locator, inode: args.inode };
+  if (args.view === 'document') {
+    return {
+      ...identity,
+      view: 'document' as const,
+      offset_chars: args.offset_chars ?? 0,
+      max_chars: args.max_chars ?? WORKSPACE_READ_FILE_DOCUMENT_DEFAULT_MAX_CHARS,
+    };
+  }
+  return {
+    ...identity,
+    view: 'text' as const,
+    offset: args.offset ?? WORKSPACE_READ_FILE_DEFAULT_OFFSET,
+    limit: args.limit ?? WORKSPACE_READ_FILE_DEFAULT_LIMIT,
+  };
+});
 
 export const WorkspaceReadFileContentTypeSchema = NonEmptyStringSchema;
 
@@ -326,11 +357,12 @@ const WorkspaceReadFileVfsResultSchema = z
         inode: NonEmptyStringSchema,
         content_type: WorkspaceReadFileContentTypeSchema,
         node: WorkspaceFileEntrySchema,
-        offset: NonNegativeIntegerSchema,
+        offset: PositiveIntegerSchema,
         limit: PositiveIntegerSchema.max(WORKSPACE_READ_FILE_MAX_LIMIT),
-        truncated: z.boolean(),
+        line_count: NonNegativeIntegerSchema,
+        total_line_count: NonNegativeIntegerSchema,
         has_more: z.boolean(),
-        next_offset: NonNegativeIntegerSchema.optional(),
+        next_offset: PositiveIntegerSchema.optional(),
         ...WorkspaceReadFileCitationFieldsSchema,
       })
       .strict()
@@ -349,20 +381,7 @@ const WorkspaceReadFileVfsResultSchema = z
             message: 'inode must match node.inode',
           });
         }
-        if (data.has_more !== (data.next_offset !== undefined)) {
-          context.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['next_offset'],
-            message: 'next_offset must exist exactly when has_more is true',
-          });
-        }
-        if (data.next_offset !== undefined && data.next_offset <= data.offset) {
-          context.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['next_offset'],
-            message: 'next_offset must advance beyond offset',
-          });
-        }
+        requireValidTextLineWindow(data, context);
         requireValidReadFileCitations(data, context);
       }),
     observation: NonEmptyPreservedStringSchema,
@@ -410,15 +429,23 @@ const PhysicalTextResultFields = {
   file_name: NonEmptyStringSchema,
   content_type: z.enum(['text/plain', 'text/markdown', 'application/json', 'image/svg+xml']),
   byte_length: NonNegativeIntegerSchema,
-  offset: NonNegativeIntegerSchema,
+  offset: PositiveIntegerSchema,
   limit: PositiveIntegerSchema.max(WORKSPACE_READ_FILE_MAX_LIMIT),
-  truncated: z.boolean(),
+  line_count: NonNegativeIntegerSchema,
+  total_line_count: NonNegativeIntegerSchema,
   has_more: z.boolean(),
-  next_offset: NonNegativeIntegerSchema.optional(),
+  next_offset: PositiveIntegerSchema.optional(),
 };
 
-function requireValidPhysicalTextWindow(
-  data: { readonly has_more: boolean; readonly next_offset?: number; readonly offset: number },
+function requireValidTextLineWindow(
+  data: {
+    readonly offset: number;
+    readonly limit: number;
+    readonly line_count: number;
+    readonly total_line_count: number;
+    readonly has_more: boolean;
+    readonly next_offset?: number;
+  },
   context: z.RefinementCtx
 ): void {
   if (data.has_more !== (data.next_offset !== undefined)) {
@@ -428,11 +455,28 @@ function requireValidPhysicalTextWindow(
       message: 'next_offset must exist exactly when has_more is true',
     });
   }
-  if (data.next_offset !== undefined && data.next_offset <= data.offset) {
+  if (data.line_count > data.limit) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['line_count'],
+      message: 'line_count must not exceed limit',
+    });
+  }
+  const expectedLineCount = data.total_line_count === 0
+    ? 0
+    : Math.min(data.limit, data.total_line_count - data.offset + 1);
+  if (data.offset > Math.max(data.total_line_count, 1) || data.line_count !== expectedLineCount) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['line_count'],
+      message: 'line window must match offset, limit, and total_line_count',
+    });
+  }
+  if (data.next_offset !== undefined && data.next_offset !== data.offset + data.line_count) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['next_offset'],
-      message: 'next_offset must advance beyond offset',
+      message: 'next_offset must point to the line after the current window',
     });
   }
 }
@@ -446,7 +490,7 @@ const WorkspaceReadFileConversationTextResultSchema = z
         ...PhysicalTextResultFields,
       })
       .strict()
-      .superRefine(requireValidPhysicalTextWindow),
+      .superRefine(requireValidTextLineWindow),
     observation: NonEmptyPreservedStringSchema,
   })
   .strict();
@@ -482,7 +526,7 @@ const WorkspaceReadFileHostTextResultSchema = z
         ...PhysicalTextResultFields,
       })
       .strict()
-      .superRefine(requireValidPhysicalTextWindow),
+      .superRefine(requireValidTextLineWindow),
     observation: NonEmptyPreservedStringSchema,
   })
   .strict();

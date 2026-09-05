@@ -58,7 +58,8 @@
     "@ai-sdk/xai": "4.0.47",
     "@ai-sdk/zai": "3.0.1",
     "@openrouter/ai-sdk-provider": "3.0.0",
-    "ai": "7.0.83"
+    "ai": "7.0.83",
+    "ai-sdk-ollama": "4.2.0"
   },
   "devDependencies": {
     "@linnlabs/linnkit": "0.32.1",

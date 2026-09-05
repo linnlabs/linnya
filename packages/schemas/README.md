@@ -252,8 +252,7 @@ shape 回放存量卡片，但这些 schema 不得重新用于注册 Agent execu
 `src/tools/workspace-file.ts` 是 Workspace 文件工具 live 合同的 owner。当前已收口
 `list_files / read_file / write_file / edit_file / grep`：工具参数边界、最大值与公开 JSON Schema 一致；结果中的节点来源、
 分页关系、命中数量均由 strict schema 接纳。文件系统 `updated_at` 允许毫秒小数，不能套用 SQLite 整数时间戳假设。
-`read_file` 只暴露通用文件事实，不把 Workspace VFS 或文档插件的内部读取详情转发到工具结果；分页时
-由 observation 明确给出下一次字符 offset。Markdown 正文窗口含已接纳引用时，VFS text 与 DocumentView
+`read_file` 只暴露通用文件事实，不把 Workspace VFS 或文档插件的内部读取详情转发到工具结果。普通文本使用 1-based 行窗口：`offset` 是起始行，`limit` 是最多行数，默认/上限均为 2,000；observation 明确给出下一次行 offset，并为原文添加仅供定位的行号。显式 DocumentView 使用独立的 `offset_chars/max_chars`，两种语义不得混用。Markdown 正文窗口含已接纳引用时，VFS text 与 DocumentView
 结果可成对携带 `data.citations.citations` 和 `data.citation_diagnostics`：ref 与来源身份必须唯一，index
 必须连续，diagnostic 只能指向同结果的 ref。结构化 snippet 与 observation source appendix 使用同一份
 预算后 excerpt，不能绕过预算。`write_file` 只保留路径、节点、
@@ -261,9 +260,8 @@ shape 回放存量卡片，但这些 schema 不得重新用于注册 Agent execu
 不进入公共结果。插件节点类型按稳定标识符接纳，具体 owner 与启用状态由文档类型 registry 判定。
 
 `read_file` 的 `view` 只选择普通读取或 VFS DocumentView，不声明文件媒体类型。conversation 文件
-只传 path；reader 按真实内容识别文本或图片，图片通过模型附件返回且没有字符窗口。`max_chars` 已从
-live admission 删除；文本默认窗口仍由 owner schema 在 admission 后物化，公开工具 schema 不再用
-default 诱导模型给图片补齐文本参数。
+只传 locator；reader 按真实内容识别文本或图片，图片通过模型附件返回且不接受行或字符窗口。普通文本
+窗口的默认值由 owner schema 在 admission 后物化，公开工具 schema 不用 default 诱导模型给图片补齐文本参数。
 
 ### Workspace document read
 

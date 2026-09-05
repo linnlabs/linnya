@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "generation_id": "models-dev-2026-08-27-a6c0f9fe29c7-p14",
-  "source_sha256": "a6c0f9fe29c76b5fedb779d337a751f7d05b811792529a4786651efde3cd3138",
+  "generation_id": "models-dev-2026-09-04-ba1c9bf0b3d2-p15",
+  "source_sha256": "ba1c9bf0b3d2f88736ee69980adba655d352dd5afb6fbf0d7f8ecacbc73c6ada",
   "bindings": [
     {
       "provider_definition_id": "openai",
@@ -10,7 +10,10 @@
       "default_base_url": "https://api.openai.com/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "openai_responses",
-      "supported_route_profile_ids": ["openai_responses", "openai_chat"],
+      "supported_route_profile_ids": [
+        "openai_responses",
+        "openai_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai"
       }
@@ -22,7 +25,9 @@
       "default_base_url": "https://chatgpt.com/backend-api/codex",
       "auth_profile": "bearer",
       "default_route_profile_id": "chatgpt_codex_responses",
-      "supported_route_profile_ids": ["chatgpt_codex_responses"],
+      "supported_route_profile_ids": [
+        "chatgpt_codex_responses"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai@4.0.50",
         "api_url": "https://chatgpt.com/backend-api"
@@ -35,7 +40,11 @@
       "default_base_url": "https://opencode.ai/zen/go/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "openai_compatible_chat",
-      "supported_route_profile_ids": ["openai_compatible_chat", "openai_responses", "anthropic_messages"],
+      "supported_route_profile_ids": [
+        "openai_compatible_chat",
+        "openai_responses",
+        "anthropic_messages"
+      ],
       "model_route_bindings": [
         {
           "model_id": "grok-4.6",
@@ -95,7 +104,9 @@
       "default_base_url": "https://api.anthropic.com/v1",
       "auth_profile": "api_key",
       "default_route_profile_id": "anthropic_messages",
-      "supported_route_profile_ids": ["anthropic_messages"],
+      "supported_route_profile_ids": [
+        "anthropic_messages"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/anthropic"
       }
@@ -107,7 +118,9 @@
       "default_base_url": "https://generativelanguage.googleapis.com/v1beta",
       "auth_profile": "api_key",
       "default_route_profile_id": "google_generative_ai",
-      "supported_route_profile_ids": ["google_generative_ai"],
+      "supported_route_profile_ids": [
+        "google_generative_ai"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/google"
       }
@@ -119,7 +132,9 @@
       "default_base_url": "https://api.deepseek.com",
       "auth_profile": "bearer",
       "default_route_profile_id": "deepseek_chat",
-      "supported_route_profile_ids": ["deepseek_chat"],
+      "supported_route_profile_ids": [
+        "deepseek_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai-compatible",
         "api_url": "https://api.deepseek.com"
@@ -132,7 +147,9 @@
       "default_base_url": "https://api.moonshot.ai/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "moonshot_chat",
-      "supported_route_profile_ids": ["moonshot_chat"],
+      "supported_route_profile_ids": [
+        "moonshot_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai-compatible",
         "api_url": "https://api.moonshot.ai/v1"
@@ -145,7 +162,9 @@
       "default_base_url": "https://api.moonshot.cn/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "moonshot_chat",
-      "supported_route_profile_ids": ["moonshot_chat"],
+      "supported_route_profile_ids": [
+        "moonshot_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai-compatible",
         "api_url": "https://api.moonshot.ai/v1"
@@ -158,7 +177,9 @@
       "default_base_url": "https://api.kimi.com/coding/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "moonshot_chat",
-      "supported_route_profile_ids": ["moonshot_chat"],
+      "supported_route_profile_ids": [
+        "moonshot_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/moonshotai@3.0.41",
         "api_url": "https://api.kimi.com/coding/v1"
@@ -171,7 +192,9 @@
       "default_base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "alibaba_chat",
-      "supported_route_profile_ids": ["alibaba_chat"],
+      "supported_route_profile_ids": [
+        "alibaba_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai-compatible",
         "api_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
@@ -184,7 +207,9 @@
       "default_base_url": "https://api.minimax.io/anthropic/v1",
       "auth_profile": "api_key",
       "default_route_profile_id": "minimax_chat",
-      "supported_route_profile_ids": ["minimax_chat"],
+      "supported_route_profile_ids": [
+        "minimax_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/anthropic",
         "api_url": "https://api.minimax.io/anthropic/v1"
@@ -197,7 +222,9 @@
       "default_base_url": "https://api.mistral.ai/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "mistral_chat",
-      "supported_route_profile_ids": ["mistral_chat"],
+      "supported_route_profile_ids": [
+        "mistral_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/mistral"
       }
@@ -209,7 +236,9 @@
       "default_base_url": "https://api.x.ai/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "xai_responses",
-      "supported_route_profile_ids": ["xai_responses"],
+      "supported_route_profile_ids": [
+        "xai_responses"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/xai"
       }
@@ -221,7 +250,9 @@
       "default_base_url": "https://api.groq.com/openai/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "groq_chat",
-      "supported_route_profile_ids": ["groq_chat"],
+      "supported_route_profile_ids": [
+        "groq_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/groq"
       }
@@ -233,7 +264,9 @@
       "default_base_url": "https://api.cerebras.ai/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "cerebras_chat",
-      "supported_route_profile_ids": ["cerebras_chat"],
+      "supported_route_profile_ids": [
+        "cerebras_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/cerebras"
       }
@@ -245,7 +278,9 @@
       "default_base_url": "https://openrouter.ai/api/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "openrouter_chat",
-      "supported_route_profile_ids": ["openrouter_chat"],
+      "supported_route_profile_ids": [
+        "openrouter_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@openrouter/ai-sdk-provider",
         "api_url": "https://openrouter.ai/api/v1"
@@ -258,7 +293,9 @@
       "default_base_url": "https://api.fireworks.ai/inference/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "fireworks_chat",
-      "supported_route_profile_ids": ["fireworks_chat"],
+      "supported_route_profile_ids": [
+        "fireworks_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai-compatible",
         "api_url": "https://api.fireworks.ai/inference/v1/"
@@ -271,7 +308,9 @@
       "default_base_url": "https://api.together.xyz/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "togetherai_chat",
-      "supported_route_profile_ids": ["togetherai_chat"],
+      "supported_route_profile_ids": [
+        "togetherai_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/togetherai"
       }
@@ -283,7 +322,9 @@
       "default_base_url": "https://api.deepinfra.com/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "deepinfra_chat",
-      "supported_route_profile_ids": ["deepinfra_chat"],
+      "supported_route_profile_ids": [
+        "deepinfra_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/deepinfra"
       }
@@ -295,7 +336,9 @@
       "default_base_url": "https://api.cohere.com/v2",
       "auth_profile": "bearer",
       "default_route_profile_id": "cohere_chat",
-      "supported_route_profile_ids": ["cohere_chat"],
+      "supported_route_profile_ids": [
+        "cohere_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/cohere"
       }
@@ -307,7 +350,9 @@
       "default_base_url": "https://api.siliconflow.com/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "openai_compatible_chat",
-      "supported_route_profile_ids": ["openai_compatible_chat"],
+      "supported_route_profile_ids": [
+        "openai_compatible_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai-compatible",
         "api_url": "https://api.siliconflow.com/v1"
@@ -320,7 +365,9 @@
       "default_base_url": "https://api.siliconflow.cn/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "openai_compatible_chat",
-      "supported_route_profile_ids": ["openai_compatible_chat"],
+      "supported_route_profile_ids": [
+        "openai_compatible_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai-compatible",
         "api_url": "https://api.siliconflow.cn/v1"
@@ -333,7 +380,9 @@
       "default_base_url": "https://api.z.ai/api/paas/v4",
       "auth_profile": "bearer",
       "default_route_profile_id": "zai_chat",
-      "supported_route_profile_ids": ["zai_chat"],
+      "supported_route_profile_ids": [
+        "zai_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai-compatible",
         "api_url": "https://api.z.ai/api/paas/v4"
@@ -346,7 +395,9 @@
       "default_base_url": "https://open.bigmodel.cn/api/paas/v4",
       "auth_profile": "bearer",
       "default_route_profile_id": "zai_chat",
-      "supported_route_profile_ids": ["zai_chat"],
+      "supported_route_profile_ids": [
+        "zai_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai-compatible",
         "api_url": "https://api.z.ai/api/paas/v4"
@@ -359,7 +410,9 @@
       "default_base_url": "https://open.bigmodel.cn/api/coding/paas/v4",
       "auth_profile": "bearer",
       "default_route_profile_id": "zai_chat",
-      "supported_route_profile_ids": ["zai_chat"],
+      "supported_route_profile_ids": [
+        "zai_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/zai@3.0.1",
         "api_url": "https://open.bigmodel.cn/api/coding/paas/v4"
@@ -372,7 +425,9 @@
       "default_base_url": "https://integrate.api.nvidia.com/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "openai_compatible_chat",
-      "supported_route_profile_ids": ["openai_compatible_chat"],
+      "supported_route_profile_ids": [
+        "openai_compatible_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai-compatible",
         "api_url": "https://integrate.api.nvidia.com/v1"
@@ -385,10 +440,27 @@
       "default_base_url": "https://api-inference.modelscope.cn/v1",
       "auth_profile": "bearer",
       "default_route_profile_id": "openai_compatible_chat",
-      "supported_route_profile_ids": ["openai_compatible_chat"],
+      "supported_route_profile_ids": [
+        "openai_compatible_chat"
+      ],
       "source_catalog_observation": {
         "package_name": "@ai-sdk/openai-compatible",
         "api_url": "https://api-inference.modelscope.cn/v1"
+      }
+    },
+    {
+      "provider_definition_id": "ollama",
+      "provider_connection_definition_id": "ollama-cloud",
+      "endpoint_id": "ollama-cloud",
+      "default_base_url": "https://ollama.com",
+      "auth_profile": "bearer",
+      "default_route_profile_id": "ollama_chat",
+      "supported_route_profile_ids": [
+        "ollama_chat"
+      ],
+      "source_catalog_observation": {
+        "package_name": "@ai-sdk/openai-compatible",
+        "api_url": "https://ollama.com/v1"
       }
     }
   ]
