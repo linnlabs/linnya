@@ -18,6 +18,7 @@
 - Citation 引用合同。
 - 插件 manifest 与插件商店共享合同。
 - Workspace mutation 事件合同。
+- 文档历史的最小版本身份、时间快照及恢复请求合同；保留规则归 [document-history](../../src/domains/document-history/README.md)，不放进 schema 包。
 - Shell command owner 与 process control 的跨进程合同。
 - Conversation 的轻量 subrun 索引合同。
 - 系统 subrun-batch 输入与结果合同。
