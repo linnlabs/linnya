@@ -14,6 +14,7 @@ export interface PresentationSourceRevisionPayload {
 export interface PresentationStoredSourceRevision extends PresentationSourceRevisionPayload {
   readonly revisionId: string;
   readonly revision: number;
+  readonly parentRevisionId: string | null;
 }
 
 export interface BuildPresentationSourceRevisionInput {
@@ -21,6 +22,11 @@ export interface BuildPresentationSourceRevisionInput {
   readonly source: string;
   readonly parentSource: string | null;
   readonly accumulatedPatchBytes: number;
+}
+
+export interface PresentationSourceCompactionPlan {
+  readonly retained: readonly PresentationStoredSourceRevision[];
+  readonly removedRevisionIds: readonly string[];
 }
 
 export class PresentationSourceConsistencyError extends Error {

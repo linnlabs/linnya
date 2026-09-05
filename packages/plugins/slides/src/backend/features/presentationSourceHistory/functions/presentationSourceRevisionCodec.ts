@@ -22,17 +22,13 @@ export function buildPresentationSourceRevision(
   const source = readNonEmptyNormalizedSource(input.source);
   const sourceHash = hashPresentationSource(source);
 
-  if (input.revision === 1) {
-    if (input.parentSource !== null) {
-      throw new PresentationSourceConsistencyError('首个 Slides revision 不能声明父源码。');
-    }
-    return buildCheckpoint(source, sourceHash, null);
+  if (input.revision === 1 && input.parentSource !== null) {
+    throw new PresentationSourceConsistencyError('首个 Slides revision 不能声明父源码。');
   }
 
+  // 稀疏压缩后的首个保留版本也必须自包含，版本号不必是 1。
   if (input.parentSource === null) {
-    throw new PresentationSourceConsistencyError(
-      `Slides revision ${input.revision} 缺少父源码。`,
-    );
+    return buildCheckpoint(source, sourceHash, null);
   }
 
   const parentSource = normalizePresentationSource(input.parentSource);
@@ -61,17 +57,31 @@ export function buildPresentationSourceRevision(
 export function reconstructPresentationSource(
   revisions: readonly PresentationStoredSourceRevision[],
 ): string {
+  let source = '';
+  for (const reconstructed of reconstructPresentationSources(revisions)) source = reconstructed.source;
+  return source;
+}
+
+/** 一次重放，按需消费源码，避免压缩每个保留点都重放整个前缀。 */
+export function* reconstructPresentationSources(
+  revisions: readonly PresentationStoredSourceRevision[],
+): Generator<{ readonly revision: PresentationStoredSourceRevision; readonly source: string }> {
   if (revisions.length === 0) {
     throw new PresentationSourceConsistencyError('Slides revision 重建链不能为空。');
   }
 
   let source: string | null = null;
-  let previousRevision = revisions[0].revision - 1;
+  let previous: PresentationStoredSourceRevision | undefined;
 
   for (const revision of revisions) {
-    if (revision.revision !== previousRevision + 1) {
+    if (previous && (revision.revision <= previous.revision || revision.parentRevisionId !== previous.revisionId)) {
       throw new PresentationSourceConsistencyError(
-        `Slides revision 重建链不连续: ${previousRevision} -> ${revision.revision}。`,
+        `Slides revision 父身份或顺序不连续: ${previous.revision} -> ${revision.revision}。`,
+      );
+    }
+    if (source !== null && revision.baseSourceHash !== hashPresentationSource(source)) {
+      throw new PresentationSourceConsistencyError(
+        `Slides revision ${revision.revision} 的 base source hash 不一致。`,
       );
     }
 
@@ -88,12 +98,6 @@ export function reconstructPresentationSource(
           `Slides revision ${revision.revision} 的 patch 载荷非法。`,
         );
       }
-      const actualBaseHash = hashPresentationSource(source);
-      if (revision.baseSourceHash !== actualBaseHash) {
-        throw new PresentationSourceConsistencyError(
-          `Slides revision ${revision.revision} 的 base source hash 不一致。`,
-        );
-      }
       source = applyPatchOrThrow(source, revision.sourcePatch, revision.revision);
     }
 
@@ -103,13 +107,10 @@ export function reconstructPresentationSource(
         `Slides revision ${revision.revision} 的 source hash 不一致。`,
       );
     }
-    previousRevision = revision.revision;
+    previous = revision;
+    yield { revision, source };
   }
 
-  if (source === null) {
-    throw new PresentationSourceConsistencyError('Slides revision 重建后没有源码。');
-  }
-  return source;
 }
 
 function readNonEmptyNormalizedSource(source: string): string {

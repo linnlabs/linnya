@@ -7,6 +7,7 @@ export type {
   PresentationRevisionStorageKind,
   PresentationSourceRevisionPayload,
   PresentationStoredSourceRevision,
+  PresentationSourceCompactionPlan,
 } from './definitions/presentationSourceRevision.js';
 export {
   PresentationRevisionNotFoundError,
@@ -23,3 +24,4 @@ export {
   reconstructPresentationSource,
 } from './functions/presentationSourceRevisionCodec.js';
 export { restorePresentationRevision } from './orchestration/restorePresentationRevision.js';
+export { planPresentationSourceCompaction } from './functions/planPresentationSourceCompaction.js';

@@ -222,7 +222,8 @@ mark 与复杂度预算；Renderer adapter 逐 layer 重置状态并解释局部
   tables 和 repository，不承载生成、布局或工具语义。
 - `presentation_documents` 每个文稿只保存一行 current
   materialization；`presentation_revisions`
-  只保存源码 checkpoint/patch。模板原始 PPTX 属于
+  只保存源码 checkpoint/patch；重放按显式父身份连接，允许版本号稀疏，规则见
+  [源码历史](features/presentationSourceHistory/README.md)。模板原始 PPTX 属于
   `presentation_templates`，不能与文稿当前 PPTX 混为一谈。
 - `presentation_image_bindings` 由 `features/presentationImageOwnership` 拥有，只保存 Slides 源码图片身份到 asset ID 的不可变绑定；asset 登记、文档 ownership 和内容复核必须走 Host 门面。
 - `presentation_svg_graphic_bindings` 由 `features/presentationSvgGraphicOwnership`

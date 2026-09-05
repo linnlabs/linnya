@@ -37,6 +37,7 @@ import {
 
 interface SourceRevisionRow {
   readonly id: string;
+  readonly parent_revision_id: string | null;
   readonly revision: number;
   readonly base_source_hash: string | null;
   readonly source_hash: string;
@@ -46,9 +47,8 @@ interface SourceRevisionRow {
   readonly patch_bytes: number;
 }
 
-interface RevisionRow extends SourceRevisionRow {
+interface RevisionRow extends Omit<SourceRevisionRow, 'source_checkpoint' | 'source_patch'> {
   readonly node_id: string;
-  readonly parent_revision_id: string | null;
   readonly created_at: number;
   readonly author_id: string | null;
   readonly origin: PresentationRevisionOrigin;
@@ -273,7 +273,7 @@ export class PresentationRepository implements PresentationRepositoryPort {
     }
 
     const rows = this.db.prepare(`
-      SELECT id, revision, base_source_hash, source_hash, storage_kind,
+      SELECT id, parent_revision_id, revision, base_source_hash, source_hash, storage_kind,
              source_checkpoint, source_patch, patch_bytes
       FROM presentation_revisions
       WHERE node_id = ? AND revision BETWEEN ? AND ?
@@ -292,7 +292,7 @@ export class PresentationRepository implements PresentationRepositoryPort {
   async listRevisions(nodeId: string): Promise<PresentationRevisionRecord[]> {
     const rows = this.db.prepare(`
       SELECT id, node_id, revision, parent_revision_id, base_source_hash, source_hash,
-             storage_kind, source_checkpoint, source_patch, patch_bytes,
+             storage_kind, patch_bytes,
              created_at, author_id, origin
       FROM presentation_revisions
       WHERE node_id = ?
@@ -553,6 +553,7 @@ function readSourceRevisionRow(value: unknown, nodeId: string): PresentationStor
   }
   return {
     revisionId: value.id,
+    parentRevisionId: value.parent_revision_id,
     revision: value.revision,
     baseSourceHash: value.base_source_hash,
     sourceHash: value.source_hash,
@@ -566,7 +567,12 @@ function readSourceRevisionRow(value: unknown, nodeId: string): PresentationStor
 function readRevisionRow(value: unknown, nodeId: string): RevisionRow {
   if (
     !isRecord(value)
-    || !isSourceRevisionRow(value)
+    || typeof value.id !== 'string'
+    || !isFiniteInteger(value.revision)
+    || !isNullableString(value.base_source_hash)
+    || typeof value.source_hash !== 'string'
+    || (value.storage_kind !== 'checkpoint' && value.storage_kind !== 'patch')
+    || !isFiniteInteger(value.patch_bytes)
     || typeof value.node_id !== 'string'
     || !isNullableString(value.parent_revision_id)
     || !isFiniteInteger(value.created_at)
@@ -583,8 +589,6 @@ function readRevisionRow(value: unknown, nodeId: string): RevisionRow {
     base_source_hash: value.base_source_hash,
     source_hash: value.source_hash,
     storage_kind: value.storage_kind,
-    source_checkpoint: value.source_checkpoint,
-    source_patch: value.source_patch,
     patch_bytes: value.patch_bytes,
     created_at: value.created_at,
     author_id: value.author_id,
@@ -595,6 +599,7 @@ function readRevisionRow(value: unknown, nodeId: string): RevisionRow {
 function isSourceRevisionRow(value: unknown): value is SourceRevisionRow {
   return isRecord(value)
     && typeof value.id === 'string'
+    && isNullableString(value.parent_revision_id)
     && isFiniteInteger(value.revision)
     && isNullableString(value.base_source_hash)
     && typeof value.source_hash === 'string'
