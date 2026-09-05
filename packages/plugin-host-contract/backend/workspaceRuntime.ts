@@ -72,15 +72,6 @@ export interface PluginSchemaProvider {
 
 export type ISchemaProvider = PluginSchemaProvider;
 
-export interface PluginVersionRetentionPolicy {
-  readonly keepFirst: boolean;
-  readonly keepRecent: number;
-  readonly sparseBucketDays: number;
-  readonly keepSparseBuckets: number;
-}
-
-export type VersionRetentionPolicy = PluginVersionRetentionPolicy;
-
 export interface PluginSqliteStatementLike {
   get?: (...params: never[]) => unknown;
   all?: (...params: never[]) => unknown[];
@@ -167,16 +158,6 @@ export declare class Logger implements PluginLoggerPort {
   warn(message: string, details?: PluginLoggerDetails): void;
   error(message: string, details?: PluginLoggerDetails): void;
 }
-
-export declare function pruneVersionTable(params: {
-  readonly db: PluginSqliteDatabaseLike;
-  readonly tableName: string;
-  readonly nodeIdColumn: string;
-  readonly versionColumn: string;
-  readonly createdAtColumn: string;
-  readonly nodeId: string;
-  readonly policy: PluginVersionRetentionPolicy;
-}): { readonly kept: number; readonly removed: number };
 
 export declare function saveWorkspaceNodeTextSnapshot(params: {
   readonly db: PluginSqliteDatabaseLike;

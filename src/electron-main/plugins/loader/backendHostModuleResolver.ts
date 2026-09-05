@@ -9,6 +9,8 @@ import * as blockReferenceRuntime from '../../../plugin-sdk/backend/blockReferen
 import * as citationSourceRuntime from '../../../plugin-sdk/backend/citationSourceRuntime';
 import * as documentTypeBackendHook from '../../../plugin-sdk/backend/documentTypeBackendHook';
 import * as documentImageAsset from '../../../plugin-sdk/backend/documentImageAsset';
+import * as documentHistory from '../../../plugin-sdk/backend/documentHistory';
+import * as documentAssetOwnership from '../../../plugin-sdk/backend/documentAssetOwnership';
 import * as documentSvgAsset from '../../../plugin-sdk/backend/documentSvgAsset';
 import * as exportArtifact from '../../../plugin-sdk/backend/exportArtifact';
 import * as fontResolution from '../../../plugin-sdk/backend/fontResolution';
@@ -43,6 +45,8 @@ const backendHostModules = new Map<string, unknown>([
   ['@plugin/backend/citationSourceRuntime', citationSourceRuntime],
   ['@plugin/backend/documentTypeBackendHook', documentTypeBackendHook],
   ['@plugin/backend/documentImageAsset', documentImageAsset],
+  ['@plugin/backend/documentHistory', documentHistory],
+  ['@plugin/backend/documentAssetOwnership', documentAssetOwnership],
   ['@plugin/backend/documentSvgAsset', documentSvgAsset],
   ['@plugin/backend/exportArtifact', exportArtifact],
   ['@plugin/backend/fontResolution', fontResolution],

@@ -25,8 +25,13 @@ Core 拥有统一的历史选择、保留规则与文档类型分发；不读取
 
 ## 实施边界
 
-当前已建立公共元数据和纯选择规则；Header/IPC、插件 capability、历史预览和实际压缩接入按后续阶段落地。
-尚未启用自动删除，不能把这些基础函数的完成理解为历史功能已验收。
+后端通过 document type hook 的可选 `history` 能力分发 `document-history:list/restore`。
+list 只返回选中的元数据；restore 携带 expectedCurrentVersionId，插件负责在编译前和提交事务中校验。
+停用、缺失和版本冲突使用标准错误码，不能转发到其他文档类型或覆盖新版本。
+
+插件通过 `@plugin/backend/documentHistory` 消费纯保留计划，通过 `@plugin/backend/documentAssetOwnership`
+精确释放文档资产归属。Markdown、Mindmap 已迁移到统一规则和各自的 SQL 删除；原表名式 pruneVersionTable 已移除。
+Slides 重链维护及前端面板接入仍在实施，不能把后端合同完成理解为全部验收。
 
 相关 owner： [文档类型](../../../docs/plugins/guides/05-document-types.md)、
 [数据库](../../../docs/plugins/guides/06-database.md)、[资产](../assets/README.md)。

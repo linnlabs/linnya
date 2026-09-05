@@ -3,6 +3,8 @@ export type * from './blockReferenceRuntime';
 export type * from './citationSourceRuntime';
 export type * from './documentTypeBackendHook';
 export type * from './documentImageAsset';
+export type * from './documentHistory';
+export type * from './documentAssetOwnership';
 export type * from './documentSvgAsset';
 export type * from './exportArtifact';
 export type * from './hiddenWorkerRuntime';

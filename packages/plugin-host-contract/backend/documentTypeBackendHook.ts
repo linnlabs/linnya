@@ -155,6 +155,7 @@ export interface DocumentTypeBackendWriteObservationParams {
 }
 
 export interface DocumentTypeBackendHook {
+  readonly history?: import('./documentHistory').DocumentHistoryCapability;
   readonly docType: string;
   readonly displayName: string;
   readonly fileExtension?: string;

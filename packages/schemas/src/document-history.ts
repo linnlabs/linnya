@@ -45,3 +45,16 @@ export const DocumentHistoryFailureCodeSchema = z.enum([
 ]);
 
 export type DocumentHistoryFailureCode = z.infer<typeof DocumentHistoryFailureCodeSchema>;
+
+export const DocumentHistoryListRequestSchema = z.object({ documentId: z.string().min(1) }).strict();
+const failure = z.object({ success: z.literal(false), code: DocumentHistoryFailureCodeSchema }).strict();
+export const DocumentHistoryListResponseSchema = z.discriminatedUnion('success', [
+  z.object({ success: z.literal(true), recent: z.array(DocumentVersionSummarySchema), earlier: z.array(DocumentVersionSummarySchema) }).strict(),
+  failure,
+]);
+export const DocumentHistoryRestoreResponseSchema = z.discriminatedUnion('success', [
+  z.object({ success: z.literal(true), current: DocumentVersionSummarySchema }).strict(),
+  failure,
+]);
+export type DocumentHistoryListResponse = z.infer<typeof DocumentHistoryListResponseSchema>;
+export type DocumentHistoryRestoreResponse = z.infer<typeof DocumentHistoryRestoreResponseSchema>;
