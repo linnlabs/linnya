@@ -12,7 +12,6 @@
 
 import { AgentsService, CreateAgentParams, UpdateAgentParams } from '../../../../features/workspace/infrastructure/sqlite/services/agents.service';
 import { Logger } from '../../../../shared/logger';
-import { isUsingNewDatabase } from '../../../config/feature-flags';
 import type { BackendRuntimeOwner } from '../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
 import type { BackendRendererIpcStyleRegistrarPort } from '../../../../app-hosts/linnya/adapters/backend-renderer-requests';
 
@@ -75,10 +74,6 @@ export function registerAgentsHandlers(
    */
   ipcMain.handle('workspace:list-agents', async (_event, args: ListAgentsArgs) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const agentsService = new AgentsService(db);
       const agents = agentsService.listAgents(args?.type);
@@ -96,10 +91,6 @@ export function registerAgentsHandlers(
    */
   ipcMain.handle('workspace:get-agent', async (_event, args: GetAgentArgs) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       if (!args?.id) {
         return { success: false, error: 'id is required' };
       }
@@ -125,10 +116,6 @@ export function registerAgentsHandlers(
    */
   ipcMain.handle('workspace:create-agent', async (_event, args: CreateAgentArgs) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       // 参数验证
       if (!args?.type || !args?.name || !args?.systemPrompt) {
         return { success: false, error: 'type, name, and systemPrompt are required' };
@@ -160,10 +147,6 @@ export function registerAgentsHandlers(
    */
   ipcMain.handle('workspace:update-agent', async (_event, args: UpdateAgentArgs) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       if (!args?.id) {
         return { success: false, error: 'id is required' };
       }
@@ -192,10 +175,6 @@ export function registerAgentsHandlers(
    */
   ipcMain.handle('workspace:delete-agent', async (_event, args: DeleteAgentArgs) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       if (!args?.id) {
         return { success: false, error: 'id is required' };
       }

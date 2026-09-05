@@ -35,7 +35,6 @@ describe('Headless Node conversation runtime composition', () => {
       distributionIdentity: { kind: 'community' as const, packaged: true as const },
       resourcesPath: '/Applications/Linnya.app/Contents/Resources',
       mainBundleDirectory: '/Applications/Linnya.app/Contents/Resources/app.asar/dist/main',
-      legacyUserDataDirectory: '/Users/test/Library/Application Support/Linnya',
       runtimePathRoots: {
         developmentRoot: '/workspace/linnya',
         appDataRoot: '/Users/test/Library/Application Support/Linnya/AIService',

@@ -1,7 +1,7 @@
 import { MindMapDocumentService } from '../../persistence/mindmap_document/services/mindmap_document.service';
 import { createWorkspaceService } from '@plugin/backend/workspaceRuntime';
 import { Logger } from '@plugin/backend/workspaceRuntime';
-import { isUsingNewDatabase, publishWorkspaceDocumentUpdated } from '@plugin/backend/workspaceRuntime';
+import { publishWorkspaceDocumentUpdated } from '@plugin/backend/workspaceRuntime';
 import type { BackendPluginIpcHandlerRegistrar } from '@plugin/backend/pluginContribution';
 import { assertPluginRuntimeEnabled } from '@plugin/backend/pluginRuntime';
 import { MINDMAP_PLUGIN_ID, MINDMAP_PLUGIN_META } from '@plugin/mindmap/shared';
@@ -55,9 +55,6 @@ export function registerMindMapDocumentHandlers(
    */
   registerBackendPluginIpcHandler('mindmap', 'mindmap-document:create', async (_event, payload) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
       assertMindmapRuntimeEnabled('创建 Mindmap 文档');
       const params = parseCreateMindMapPayload(payload);
 
@@ -83,9 +80,6 @@ export function registerMindMapDocumentHandlers(
    */
   registerBackendPluginIpcHandler('mindmap', 'mindmap-document:read', async (_event, payload) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
       assertMindmapRuntimeEnabled('读取 Mindmap 文档');
       const { documentId } = parseReadMindMapPayload(payload);
 
@@ -107,9 +101,6 @@ export function registerMindMapDocumentHandlers(
    */
   registerBackendPluginIpcHandler('mindmap', 'mindmap-document:update', async (_event, payload) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
       assertMindmapRuntimeEnabled('更新 Mindmap 文档');
       const params = parseUpdateMindMapPayload(payload);
 

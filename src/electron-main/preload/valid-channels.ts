@@ -133,7 +133,6 @@ const WORKSPACE_CHANNELS = [
   'workspace:clear-all-pending-revisions',
   'workspace:apply-all-pending-revisions',
   'workspace:apply-pending-revision',
-  'workspace:run-migration',
   'workspace:notify-document-opened',
   'workspace:get-recent-documents',
   'workspace:get-project-char-stats',

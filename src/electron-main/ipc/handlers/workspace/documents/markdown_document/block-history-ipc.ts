@@ -12,7 +12,6 @@
 
 import { BlockHistoryService, CreateBlockVersionParams } from 'src/domains/markdown';
 import { Logger } from '../../../../../../shared/logger';
-import { isUsingNewDatabase } from '../../../../../config/feature-flags';
 import type { BackendRuntimeOwner } from '../../../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
 import type { BackendRendererIpcStyleRegistrarPort } from '../../../../../../app-hosts/linnya/adapters/backend-renderer-requests';
 
@@ -37,10 +36,6 @@ export function registerBlockHistoryHandlers(
     'block-history:list-versions',
     async (_event, { documentNodeId, targetBlockId }: { documentNodeId: string; targetBlockId: string }) => {
       try {
-        if (!isUsingNewDatabase()) {
-          return { success: false, error: 'New database not enabled' };
-        }
-
         const db = databaseService.getDb();
         const blockHistoryService = new BlockHistoryService(db);
         const versions = blockHistoryService.listVersions(documentNodeId, targetBlockId);
@@ -61,10 +56,6 @@ export function registerBlockHistoryHandlers(
     'block-history:get-version',
     async (_event, { versionId }: { versionId: string }) => {
       try {
-        if (!isUsingNewDatabase()) {
-          return { success: false, error: 'New database not enabled' };
-        }
-
         const db = databaseService.getDb();
         const blockHistoryService = new BlockHistoryService(db);
         const version = blockHistoryService.getVersion(versionId);
@@ -89,10 +80,6 @@ export function registerBlockHistoryHandlers(
     'block-history:create-version',
     async (_event, params: CreateBlockVersionParams) => {
       try {
-        if (!isUsingNewDatabase()) {
-          return { success: false, error: 'New database not enabled' };
-        }
-
         const db = databaseService.getDb();
         const blockHistoryService = new BlockHistoryService(db);
         const version = blockHistoryService.createVersion(params);
@@ -120,10 +107,6 @@ export function registerBlockHistoryHandlers(
       }: { documentNodeId: string; targetBlockId: string; sourceVersionId: string }
     ) => {
       try {
-        if (!isUsingNewDatabase()) {
-          return { success: false, error: 'New database not enabled' };
-        }
-
         const db = databaseService.getDb();
         const blockHistoryService = new BlockHistoryService(db);
         const restoredVersion = blockHistoryService.restoreVersion(
@@ -151,10 +134,6 @@ export function registerBlockHistoryHandlers(
       { documentNodeId, targetBlockId }: { documentNodeId: string; targetBlockId: string }
     ) => {
       try {
-        if (!isUsingNewDatabase()) {
-          return { success: false, error: 'New database not enabled' };
-        }
-
         const db = databaseService.getDb();
         const blockHistoryService = new BlockHistoryService(db);
         const version = blockHistoryService.getLatestVersion(documentNodeId, targetBlockId);
@@ -178,10 +157,6 @@ export function registerBlockHistoryHandlers(
       { documentNodeId, targetBlockId }: { documentNodeId: string; targetBlockId: string }
     ) => {
       try {
-        if (!isUsingNewDatabase()) {
-          return { success: false, error: 'New database not enabled' };
-        }
-
         const db = databaseService.getDb();
         const blockHistoryService = new BlockHistoryService(db);
         const count = blockHistoryService.getVersionCount(documentNodeId, targetBlockId);
@@ -202,10 +177,6 @@ export function registerBlockHistoryHandlers(
     'block-history:delete-version',
     async (_event, { versionId }: { versionId: string }) => {
       try {
-        if (!isUsingNewDatabase()) {
-          return { success: false, error: 'New database not enabled' };
-        }
-
         const db = databaseService.getDb();
         const blockHistoryService = new BlockHistoryService(db);
         const changes = blockHistoryService.deleteVersion(versionId);

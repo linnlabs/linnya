@@ -42,7 +42,6 @@ function createRouteDependencies(): RouteDependencies {
       distributionIdentity: { kind: 'source', packaged: false },
       resourcesPath: '/workspace/extraResources',
       mainBundleDirectory: '/workspace/dist/main',
-      legacyUserDataDirectory: '/workspace/app-user-data',
       runtimePathRoots: {
         developmentRoot: '/workspace/linnya',
         appDataRoot: '/workspace/linnya/_dev_data',

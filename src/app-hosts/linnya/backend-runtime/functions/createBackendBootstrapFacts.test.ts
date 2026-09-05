@@ -13,7 +13,6 @@ describe('createBackendBootstrapFacts', () => {
       distributionIdentity: { kind: 'community', packaged: true },
       resourcesPath: '/Applications/Linnya.app/Contents/Resources',
       mainBundleDirectory: '/Applications/Linnya.app/Contents/Resources/app.asar/dist/main',
-      legacyUserDataDirectory: '/users/me/app-data/Linnya',
       runtimePathRoots: {
         developmentRoot: '/workspace/linnya',
         appDataRoot: '/users/me/app-data/Linnya/AIService',
@@ -32,7 +31,6 @@ describe('createBackendBootstrapFacts', () => {
       distributionIdentity: { kind: 'community', packaged: true },
       resourcesPath: '/Applications/Linnya.app/Contents/Resources',
       mainBundleDirectory: '/Applications/Linnya.app/Contents/Resources/app.asar/dist/main',
-      legacyUserDataDirectory: '/users/me/app-data/Linnya',
       runtimePathRoots: {
         developmentRoot: '/workspace/linnya',
         appDataRoot: '/users/me/app-data/Linnya/AIService',
@@ -54,7 +52,6 @@ describe('createBackendBootstrapFacts', () => {
       distributionIdentity: { kind: 'source', packaged: false },
       resourcesPath: 'resources',
       mainBundleDirectory: '/workspace/dist/main',
-      legacyUserDataDirectory: '/users/me/app-data/Linnya',
       runtimePathRoots: {
         developmentRoot: '/workspace/linnya',
         appDataRoot: '/users/me/app-data/Linnya/AIService',
@@ -75,7 +72,6 @@ describe('createBackendBootstrapFacts', () => {
       distributionIdentity: { kind: 'community', packaged: true },
       resourcesPath: '/resources',
       mainBundleDirectory: '/workspace/dist/main',
-      legacyUserDataDirectory: '/users/me/app-data/Linnya',
       runtimePathRoots: {
         developmentRoot: '/workspace/linnya',
         appDataRoot: '/users/me/app-data/Linnya/AIService',

@@ -21,7 +21,6 @@ import { installWorkspaceMutationPublisher } from '../../../../features/workspac
 import { installRuntimePathRoots } from '../../../../shared/runtime-paths';
 import { installDistributionIdentity } from '../../../../shared/distribution-identity';
 import { syncRegisteredBackendPluginRuntimeResources } from '../../plugin-registry/builtin';
-import { installLegacyWorkspaceMigrationPaths } from '../../../../electron-main/migration/legacyWorkspaceMigrationPaths';
 
 const logger = new Logger('App-Server-Backend');
 let uninstallWebPageRenderer: (() => void) | null = null;
@@ -40,7 +39,6 @@ export async function initializeAppServerBackend(
 ): Promise<BackendRuntimeOwner> {
   installRuntimePathRoots(hostDependencies.bootstrap.runtimePathRoots);
   installDistributionIdentity(hostDependencies.bootstrap.distributionIdentity);
-  installLegacyWorkspaceMigrationPaths(hostDependencies.bootstrap.legacyUserDataDirectory);
   logger.info('App Server Backend 初始化开始');
 
   try {

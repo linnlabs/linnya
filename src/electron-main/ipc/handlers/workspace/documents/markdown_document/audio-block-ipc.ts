@@ -5,7 +5,6 @@
 
 import { AudioBlockService } from 'src/domains/markdown';
 import { Logger } from '../../../../../../shared/logger';
-import { isUsingNewDatabase } from '../../../../../config/feature-flags';
 import type { BackendRuntimeOwner } from '../../../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
 import type { BackendRendererIpcStyleRegistrarPort } from '../../../../../../app-hosts/linnya/adapters/backend-renderer-requests';
 
@@ -25,7 +24,6 @@ export function registerAudioBlockHandlers(
 
   ipcMain.handle('audio-block:get-all-content', async (event, { audioBlockId }) => {
     try {
-      if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
       const db = databaseService.getDb();
       const audioBlockService = new AudioBlockService(db);
       const content = audioBlockService.getCompleteAudioBlock(audioBlockId);
@@ -51,7 +49,6 @@ export function registerAudioBlockHandlers(
 
   ipcMain.handle('audio-block:update-note', async (event, { audioBlockId, documentNodeId, content }) => {
     try {
-      if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
       const db = databaseService.getDb();
       const audioBlockService = new AudioBlockService(db);
       audioBlockService.upsertNote(audioBlockId, documentNodeId, content);
@@ -64,7 +61,6 @@ export function registerAudioBlockHandlers(
 
   ipcMain.handle('audio-block:update-transcript', async (event, { audioBlockId, documentNodeId, content, translationLanguage, translationVisible, textColumnWidth }) => {
     try {
-      if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
       const db = databaseService.getDb();
       const audioBlockService = new AudioBlockService(db);
       // The content is now a JSON string, which is what the service expects.
@@ -85,7 +81,6 @@ export function registerAudioBlockHandlers(
 
   ipcMain.handle('audio-block:update-summary', async (event, { audioBlockId, documentNodeId, content }) => {
     try {
-      if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
       const db = databaseService.getDb();
       const audioBlockService = new AudioBlockService(db);
       audioBlockService.upsertSummary(audioBlockId, documentNodeId, content);

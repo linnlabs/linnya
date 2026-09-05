@@ -8,7 +8,6 @@ import { PendingRevisionApplyService } from 'src/domains/markdown';
 import type { BackendRuntimeOwner } from '../../../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
 import { WorkspaceService } from '../../../../../services/workspace/workspace';
 import { Logger } from '../../../../../../shared/logger';
-import { isUsingNewDatabase } from '../../../../../config/feature-flags';
 import { createWorkspaceMutationPublisher } from '../../../../../../features/workspace/orchestration/workspaceMutationPublisherRegistry';
 import { createWorkspaceDocumentUpdatedEvent } from '../../../../../../features/workspace/functions/createWorkspaceDocumentMutationEvent';
 import { readWorkspaceEditorDocument } from '../../../../../../features/workspace/document-editor/orchestration/readWorkspaceEditorDocument';
@@ -43,7 +42,6 @@ export function registerMarkdownDocumentHandlers(
    */
   ipcMain.handle('workspace:read-document', async (event, { documentId }) => {
     try {
-      if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
       const db = databaseService.getDb();
 
       const workspaceService = new WorkspaceService(db);
@@ -73,7 +71,6 @@ export function registerMarkdownDocumentHandlers(
    */
   ipcMain.handle('workspace:save-document', async (event, { documentId, content }) => {
     try {
-      if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
       const db = databaseService.getDb();
 
       const workspaceService = new WorkspaceService(db);
@@ -106,7 +103,6 @@ export function registerMarkdownDocumentHandlers(
     'workspace:clear-pending-revision',
     async (event, { documentId, blockId }: { documentId: string; blockId: string }) => {
       try {
-        if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
         const db = databaseService.getDb();
         const documentService = new MarkdownDocumentService(db);
         const deletedCount = documentService.clearPendingRevision(documentId, blockId);
@@ -128,7 +124,6 @@ export function registerMarkdownDocumentHandlers(
     'workspace:clear-all-pending-revisions',
     async (event, { documentId }: { documentId: string }) => {
       try {
-        if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
         const db = databaseService.getDb();
         const documentService = new MarkdownDocumentService(db);
         const deletedCount = documentService.clearAllPendingRevisions(documentId);
@@ -156,7 +151,6 @@ export function registerMarkdownDocumentHandlers(
       { documentId, mode }: { documentId: string; mode: 'accept' | 'reject' }
     ) => {
       try {
-        if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
         if (mode !== 'accept' && mode !== 'reject') {
           return { success: false, error: `Invalid apply mode: ${mode}` };
         }
@@ -209,7 +203,6 @@ export function registerMarkdownDocumentHandlers(
       { documentId, blockId, mode }: { documentId: string; blockId: string; mode: 'accept' | 'reject' }
     ) => {
       try {
-        if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
         if (mode !== 'accept' && mode !== 'reject') {
           return { success: false, error: `Invalid apply mode: ${mode}` };
         }
@@ -266,7 +259,6 @@ export function registerMarkdownDocumentHandlers(
       }
     ) => {
       try {
-        if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
         const db = databaseService.getDb();
         const documentService = new MarkdownDocumentService(db);
         const revision = documentService.setPendingRevision(
@@ -318,7 +310,6 @@ export function registerMarkdownDocumentHandlers(
       }
     ) => {
       try {
-        if (!isUsingNewDatabase()) return { success: false, error: 'New database not enabled' };
         const db = databaseService.getDb();
         const documentService = new MarkdownDocumentService(db);
 

@@ -36,6 +36,22 @@ describe('App Server bootstrap', () => {
     })).toThrow();
   });
 
+  it('拒绝旧 Host 启动帧，不恢复退役的 Workspace 导入路径', async () => {
+    const input = new PassThrough();
+    const settlement = readAppServerBootstrap(input);
+    const bootstrap = createBootstrap();
+    input.end(`${JSON.stringify({
+      ...bootstrap,
+      schema_version: 2,
+      backend_facts: {
+        ...bootstrap.backend_facts,
+        legacyUserDataDirectory: '/app-user-data',
+      },
+    })}\n`);
+
+    await expect(settlement).rejects.toThrow();
+  });
+
   it('拒绝缺帧和多帧', async () => {
     const emptyInput = new PassThrough();
     const emptySettlement = readAppServerBootstrap(emptyInput);
@@ -52,7 +68,7 @@ describe('App Server bootstrap', () => {
 
 function createBootstrap(): AppServerBootstrap {
   return {
-    schema_version: 2,
+    schema_version: 3,
     backend_configuration: {
       qdrant: { host: '127.0.0.1', port: 6333 },
       server: { port: 3000 },
@@ -66,7 +82,6 @@ function createBootstrap(): AppServerBootstrap {
       distributionIdentity: { kind: 'source', packaged: false },
       resourcesPath: '/resources',
       mainBundleDirectory: '/repo/dist/main',
-      legacyUserDataDirectory: '/app-user-data',
       runtimePathRoots: {
         developmentRoot: '/repo',
         appDataRoot: '/app-data',

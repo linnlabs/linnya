@@ -78,7 +78,6 @@ const AppServerBootstrapSchema = z.object({
     distributionIdentity: DistributionIdentitySchema,
     resourcesPath: AbsolutePathSchema,
     mainBundleDirectory: AbsolutePathSchema,
-    legacyUserDataDirectory: AbsolutePathSchema,
     runtimePathRoots: z.object({
       developmentRoot: AbsolutePathSchema,
       appDataRoot: AbsolutePathSchema,

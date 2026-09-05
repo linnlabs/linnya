@@ -11,7 +11,6 @@ export function createBackendBootstrapFacts(input: BackendBootstrapFacts): Backe
   requireNonEmpty(input.architecture, 'architecture');
   requireAbsolute(input.resourcesPath, 'resourcesPath');
   requireAbsolute(input.mainBundleDirectory, 'mainBundleDirectory');
-  requireAbsolute(input.legacyUserDataDirectory, 'legacyUserDataDirectory');
   const distributionIdentity = createDistributionIdentity(input.distributionIdentity);
   if (distributionIdentity.packaged !== input.packaged) {
     throw new Error('Backend bootstrap packaged 与 distribution identity 不一致');

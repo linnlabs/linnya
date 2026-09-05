@@ -131,9 +131,6 @@ export async function resolveWorkspaceVfsNodeForPluginTool(
 }
 
 export {
-  isUsingNewDatabase,
-} from 'src/electron-main/config/feature-flags';
-export {
   Logger,
 } from 'src/shared/logger';
 export {

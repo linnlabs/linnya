@@ -2,7 +2,7 @@ import type { BackendBootstrapFacts } from '../../backend-runtime';
 import type { HostProcessEnvironment } from '../../../../infra/adapters/command-runtime/environment';
 import type { LocalProcessPlatformRuntime } from '../../../../infra/adapters/local-process-runtime/platform-runtime';
 
-export const APP_SERVER_BOOTSTRAP_SCHEMA_VERSION = 2 as const;
+export const APP_SERVER_BOOTSTRAP_SCHEMA_VERSION = 3 as const;
 export const APP_SERVER_BOOTSTRAP_MAX_FRAME_BYTES = 1024 * 1024;
 
 export interface AppServerBackendConfiguration {

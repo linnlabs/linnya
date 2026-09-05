@@ -21,6 +21,11 @@ epoch；当前没有必要增加这层机制。
 
 这四条链不能互相代替。删除 Host v1-v60 不等于删除插件 migration，也不影响 Cloud 数据迁移。
 
+Host 只运行上述当前 Schema 初始化与受支持的增量迁移，不提供旧 `.ablk` 文件或独立
+`conversations.sqlite` 的自动导入、手动迁移 IPC 或新旧数据库切换开关。
+业务处理器直接使用已初始化的 DatabaseService；插件也不得探测“是否启用新数据库”。
+将来存在真实旧数据导入需求时，必须单独定义来源格式、目标 owner、事务与验收合同。
+
 ## 初始化合同
 
 - 文件不存在、空文件和内存数据库属于 fresh target。Host schema providers 在同一事务中建立

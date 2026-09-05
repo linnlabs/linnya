@@ -24,6 +24,16 @@
 | R-31 | **压缩摘要承载不可信历史的提示注入残余风险** | 中 | 压缩请求禁用工具，使用固定 system 指令和带 `trust="untrusted-memory"` 的固定格式；输出必须通过结构校验，摘要事实保留替换来源 ID。第一版统一使用 system-role 摘要，不按 Provider 分叉；这能降低但不能消除模型把网页/工具输出中的恶意指令带入摘要的风险。需要继续用真实长任务与审计观察，不得用正则过滤冒充安全边界 |
 | R-32 | **压缩后长 run 更容易耗尽单一 `maxSteps`** | 中 | 旧 checkpoint 工具曾隐式重置步数预算，现已成组删除；上下文容量与步数预算重新分离。compaction 让 run 能在同一上下文窗口内继续更久，因此可能更接近 `maxSteps`。只通过 run 终态的 `steps used / max steps + terminal reason` 观测；是否调整 `maxSteps` 必须基于真实任务数据另行决策，不能让 compaction 顺带放宽 |
 
+### R-33：启动 read model 重建失败尚无用户可见的失败状态
+
+`src/electron-main/services/conversation/conversation-maintenance.ts` 当前只重建 missing/pending 会话。
+某个会话重建抛错时，外层 catch 记录日志并结束本轮循环，后续候选不会继续处理；失败会话也没有
+可供历史窗口查询的结构化失败状态，因此可能持续显示准备中。严格事件 codec 和 UI row 校验仍然有效，
+但不等于启动维护失败已经被用户界面完整接纳。
+
+后续治理应围绕单会话重建的失败隔离、可查询状态和用户重试流程设计，使用真实坏事实与多个待重建会话验证。
+不通过吞掉非法事件、伪造空历史或增加启动期全库扫描来替代这条失败状态链路。
+
 ---
 
 ## 2. 冻结区

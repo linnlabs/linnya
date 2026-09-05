@@ -14,8 +14,6 @@ export interface BackendBootstrapFacts {
   readonly distributionIdentity: DistributionIdentity;
   readonly resourcesPath: string;
   readonly mainBundleDirectory: string;
-  /** 仅供受控旧 Workspace 数据迁移读取；不能由 App Server 从 appDataRoot 猜父目录。 */
-  readonly legacyUserDataDirectory: string;
   readonly runtimePathRoots: RuntimePathRoots;
   readonly exposeProviderOutboundDebugRoutes: boolean;
 }

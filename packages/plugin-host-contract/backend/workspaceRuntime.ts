@@ -168,8 +168,6 @@ export declare class Logger implements PluginLoggerPort {
   error(message: string, details?: PluginLoggerDetails): void;
 }
 
-export declare function isUsingNewDatabase(): boolean;
-
 export declare function pruneVersionTable(params: {
   readonly db: PluginSqliteDatabaseLike;
   readonly tableName: string;

@@ -244,9 +244,6 @@ export interface IWorkspaceGateway {
     blockId: string;
     mode: ApplyAllPendingMode;
   }): Promise<OperationResult<ApplySinglePendingResultDTO>>;
-
-  // 迁移
-  'run-migration'(): Promise<OperationResult<void>>;
 }
 
 
@@ -412,11 +409,6 @@ class WorkspaceGatewayImpl implements IWorkspaceGateway {
     mode: ApplyAllPendingMode;
   }): Promise<OperationResult<ApplySinglePendingResultDTO>> {
     return this.invoke('apply-pending-revision', args);
-  }
-
-  // 迁移
-  'run-migration'(): Promise<OperationResult<void>> {
-    return this.invoke('run-migration');
   }
 }
 

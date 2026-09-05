@@ -78,7 +78,6 @@ export function buildWorkspacePreloadApi(ipcRenderer: IpcRenderer) {
       ipcRenderer.invoke('workspace:apply-all-pending-revisions', args),
     'workspace:apply-pending-revision': (args: ApplyPendingRevisionArgs) =>
       ipcRenderer.invoke('workspace:apply-pending-revision', args),
-    'workspace:run-migration': () => ipcRenderer.invoke('workspace:run-migration'),
     'workspace:notify-document-opened': (args: NotifyDocumentOpenedArgs) =>
       ipcRenderer.invoke('workspace:notify-document-opened', args),
     'workspace:get-recent-documents': (args: GetRecentDocumentsArgs) =>

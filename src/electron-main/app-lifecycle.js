@@ -329,7 +329,6 @@ export function initialize() {
         distributionIdentity,
         resourcesPath: process.resourcesPath,
         mainBundleDirectory,
-        legacyUserDataDirectory: app.getPath('userData'),
         runtimePathRoots,
         exposeProviderOutboundDebugRoutes: process.env.NODE_ENV !== 'production',
       });

@@ -10,8 +10,6 @@ import type { BackendRendererIpcStyleRegistrarPort } from '../../../../app-hosts
 import { WorkspaceService } from '../../../services/workspace/workspace';
 import { pluginWorkspaceVfsNodeTypeAccessPolicy } from '../../../../app-hosts/linnya/plugin-registry/pluginWorkspaceVfsNodeTypeAccessPolicy';
 import { Logger } from '../../../../shared/logger';
-import { isUsingNewDatabase } from '../../../config/feature-flags';
-import { runMigration } from '../../../migration/run-migration';
 import { createWorkspaceDocument } from '../../../../features/workspace/document-lifecycle/orchestration/createWorkspaceDocument';
 import { duplicateWorkspaceDocument } from '../../../../features/workspace/document-lifecycle/orchestration/duplicateWorkspaceDocument';
 import { createWorkspaceDocumentLifecycleProviderResolver } from '../../../../app-hosts/linnya/adapters/document-lifecycle/createWorkspaceDocumentLifecycleProviderResolver';
@@ -57,10 +55,6 @@ export function registerWorkspaceHandlers(
    */
   ipcMain.handle('workspace:create-project', async (event, { name, description }) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db);
       
@@ -80,10 +74,6 @@ export function registerWorkspaceHandlers(
    */
   ipcMain.handle('workspace:ensure-default-project', async () => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db, {
         mutationPublisher: workspaceMutationPublisher,
@@ -104,11 +94,6 @@ export function registerWorkspaceHandlers(
    */
   ipcMain.handle('workspace:list-projects', async () => {
     try {
-      if (!isUsingNewDatabase()) {
-        logger.warn('➡️ [IPC-LIFECYCLE] HANDLE | New database feature is not enabled. Aborting.');
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db);
       
@@ -126,10 +111,6 @@ export function registerWorkspaceHandlers(
    */
   ipcMain.handle('workspace:update-project', async (event, { projectId, name, description }) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db);
       
@@ -148,10 +129,6 @@ export function registerWorkspaceHandlers(
    */
   ipcMain.handle('workspace:delete-project', async (event, { projectId }) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db);
       
@@ -175,10 +152,6 @@ export function registerWorkspaceHandlers(
   ipcMain.handle('workspace:list-nodes', async (event, { parentId, projectId }) => {
     logger.info(`➡️ [IPC-LIFECYCLE] HANDLE | Received workspace:list-nodes for projectId: ${projectId}, parentId: ${parentId}`);
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db);
       
@@ -213,10 +186,6 @@ export function registerWorkspaceHandlers(
       }
     ) => {
       try {
-        if (!isUsingNewDatabase()) {
-          return { success: false, error: 'New database not enabled' };
-        }
-
         const db = databaseService.getDb();
         const nodes = await listWorkspaceVfsNodes({
           db,
@@ -251,10 +220,6 @@ export function registerWorkspaceHandlers(
       }
     ) => {
       try {
-        if (!isUsingNewDatabase()) {
-          return { success: false, error: 'New database not enabled' };
-        }
-
         const db = databaseService.getDb();
         const result = await readWorkspaceVfsNode({
           db,
@@ -291,10 +256,6 @@ export function registerWorkspaceHandlers(
       }
     ) => {
       try {
-        if (!isUsingNewDatabase()) {
-          return { success: false, error: 'New database not enabled' };
-        }
-
         const db = databaseService.getDb();
         const result = await searchWorkspaceVfsNodes({
           db,
@@ -323,10 +284,6 @@ export function registerWorkspaceHandlers(
   ipcMain.handle('workspace:create-folder', async (event, { projectId, parentId, name }) => {
     logger.info(`➡️ [IPC-LIFECYCLE] HANDLE | Received workspace:create-folder with name: ${name}`);
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db);
       
@@ -345,9 +302,6 @@ export function registerWorkspaceHandlers(
    */
   ipcMain.handle('workspace:create-document', async (event, { projectId, name, parentId, type: rawType = 'document' }) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db, {
         mutationPublisher: workspaceMutationPublisher,
@@ -376,10 +330,6 @@ export function registerWorkspaceHandlers(
    */
   ipcMain.handle('workspace:delete-node', async (event, { nodeId }) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db, {
         mutationPublisher: workspaceMutationPublisher,
@@ -399,10 +349,6 @@ export function registerWorkspaceHandlers(
    */
   ipcMain.handle('workspace:rename-node', async (event, { nodeId, newName }) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db, {
         mutationPublisher: workspaceMutationPublisher,
@@ -423,10 +369,6 @@ export function registerWorkspaceHandlers(
   ipcMain.handle('workspace:duplicate-node', async (event, { nodeId }) => {
     logger.info(`➡️ [IPC-LIFECYCLE] HANDLE | Received workspace:duplicate-node for nodeId: ${nodeId}`);
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db, {
         mutationPublisher: workspaceMutationPublisher,
@@ -455,10 +397,6 @@ export function registerWorkspaceHandlers(
   ipcMain.handle('workspace:move-node', async (event, { nodeId, newParentId }) => {
     logger.info(`➡️ [IPC-LIFECYCLE] HANDLE | Received workspace:move-node - nodeId: ${nodeId}, newParentId: ${newParentId}`);
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db, {
         mutationPublisher: workspaceMutationPublisher,
@@ -479,9 +417,6 @@ export function registerWorkspaceHandlers(
    */
   ipcMain.handle('workspace:inspect-node-transfer', async (_event, rawParams: unknown) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
       const params = WorkspaceNodeTransferRequestSchema.parse(rawParams);
       const data = inspectWorkspaceNodeTransfer({
         db: databaseService.getDb(),
@@ -499,9 +434,6 @@ export function registerWorkspaceHandlers(
    */
   ipcMain.handle('workspace:transfer-node', async (_event, rawParams: unknown) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
       const params = WorkspaceNodeTransferRequestSchema.parse(rawParams);
       const data = transferWorkspaceNode({
         db: databaseService.getDb(),
@@ -523,10 +455,6 @@ export function registerWorkspaceHandlers(
    */
   ipcMain.handle('workspace:notify-document-opened', async (event, { documentId }) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: true }; // 在旧模式下静默忽略
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db);
       
@@ -544,10 +472,6 @@ export function registerWorkspaceHandlers(
     args: { limit?: number; projectId?: string | null } = {},
   ) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       const db = databaseService.getDb();
       const workspaceService = new WorkspaceService(db);
       const documents = workspaceService.getRecentDocuments(args.limit ?? 8, args.projectId);
@@ -568,10 +492,6 @@ export function registerWorkspaceHandlers(
    */
   ipcMain.handle('workspace:get-project-char-stats', async (event, { projectId }) => {
     try {
-      if (!isUsingNewDatabase()) {
-        return { success: false, error: 'New database not enabled' };
-      }
-
       if (!projectId) {
         return { success: false, error: 'projectId is required' };
       }
@@ -583,26 +503,6 @@ export function registerWorkspaceHandlers(
       return { success: true, data: stats };
     } catch (error: unknown) {
       logger.error('[workspace:get-project-char-stats] Error:', error);
-      return { success: false, error: getErrorMessage(error) };
-    }
-  });
-
-  // ============================================================================
-  // 迁移工具
-  // ============================================================================
-
-  /**
-   * 手动触发数据迁移
-   */
-  ipcMain.handle('workspace:run-migration', async () => {
-    try {
-      logger.info('[workspace:run-migration] 手动触发数据迁移...');
-      
-      await runMigration();
-      
-      return { success: true };
-    } catch (error: unknown) {
-      logger.error('[workspace:run-migration] Error:', error);
       return { success: false, error: getErrorMessage(error) };
     }
   });

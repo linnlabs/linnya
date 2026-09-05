@@ -34,6 +34,9 @@
 
 ## 3. Workspace 文档读取
 
+Workspace runtime 只暴露当前数据库能力，不提供 `isUsingNewDatabase` 新旧切换探测。
+Host 在插件 Backend 初始化前完成数据库准入；插件文档操作直接使用已注入的数据库，并继续执行自身启用状态与参数校验。
+
 `DocumentTypeBackendHook.readDocument()` 返回 `DocumentTypeBackendToolReadResult`，其中 `data` 直接使用 `@app/schemas` 的 `WorkspaceDocumentReadData`。
 
 规则：

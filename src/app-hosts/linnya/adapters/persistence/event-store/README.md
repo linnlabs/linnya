@@ -84,6 +84,22 @@ Citation producer 的 ref 分配不经过上述 event projection：Host allocato
 
 Linnkit adapter 的 `PersistedEvent` 只有 `eventStoreId + event`。`eventStoreId` 是存储分页游标，`RuntimeEvent.id` 是业务事实身份；两者不得互相 fallback。adapter range 必须经 Host storage codec 重建完整事件，不能直接解析 payload body。
 
+## 开发数据与诊断边界
+
+默认开发运行态由应用级 [Development Data Lifecycle](../../../application/development-data-lifecycle/README.md)
+校验 epoch；SQLite 是否属于受支持版本由 [Host 数据库基线](../../../../../electron-main/services/database/migrations/README.md)
+在初始化前判定。Conversation 不建立第二套 epoch，也不提供按表或按领域的 reset。
+开发数据不兼容时使用 `pnpm run dev:data:reset` 整体隔离默认 `_dev_data`；外部 Workspace 不属于该命令的重置范围。
+
+当前不在每次启动时增加全库事实审计：写入、事实读取和 UI row 读取分别复用各自正式校验边界，
+启动维护只重建缺失或 pending 的 read model。epoch/schema 版本准入不保证当前库的每行数据均合法，
+ready 缓存也不能证明全部原始事件已重新校验；遇到当前版本坏事实，应通过失败事件身份定位写入方，不能猜测修复。
+如需全库诊断，应以实际故障样本和扫描成本单独评估。启动重建失败的用户可见状态缺口见
+[Conversation 风险 R-33](../../../../../../docs/conversation-platform/12-open-risks.md)。
+
+列表归属固定为：指定 `projectId` 查询该项目，未指定查询 Linnya 助手的无项目会话。
+`project_id IS NULL` 是合法产品事实，不能作为坏数据清理，也不能把缺失项目参数扩展为查询全部项目。
+
 ## RunId 约定
 
 - 普通 agent/chat run：由 linnkit `RunSupervisor.registerRun({ runId: turnId })` 先创建 root run。

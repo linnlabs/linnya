@@ -10,3 +10,6 @@ Browser Pretext worker 的启动时 availability 也作为冻结事实进入 chi
 不能加入函数、Electron 对象、Desktop port、任意方法表或业务请求。App Server 不重新读取发行清单或用环境变量推导
 官方身份；child 校验完成后才允许初始化 Backend owner，
 因此缺帧、多帧、相对路径、未知字段或超限都会在监听 HTTP 前失败。
+
+当前启动帧版本为 3，不再携带旧 Workspace 导入所用的 Desktop userData 路径。
+Main 与 App Server 必须一起构建、交付；不接纳旧版本启动帧，也不探测或补齐退役字段。
