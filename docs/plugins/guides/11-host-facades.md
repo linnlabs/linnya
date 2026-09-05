@@ -101,6 +101,11 @@ Backend 的 `@plugin/backend/imageTranscoding` 是不透明内存图片转码窄
 
 ## 门面设计纪律
 
+文档历史通过 `@plugin/backend/documentHistory` 获取窄 capability/error 合同与纯保留计划，不传表名给 Host。
+资产清理通过 `@plugin/backend/documentAssetOwnership` 提交 database、documentId、精确 assetIds，
+仅解除指定文稿归属；插件需自行完成可达性验证、串行协调和持久重试。Host 不在此门面删除物理文件。
+这两个门面仅供 backend 使用，没有 Renderer shim。规则见 [文档历史](../../../src/domains/document-history/README.md)。
+
 - **门面要窄**：只暴露插件真正需要的函数和 DTO，不要 re-export 整个 host
   service 或上帝对象。
 - **不挂插件专属函数**：通用能力让插件传自己的 id 调通用接口；`isXxxPluginEnabled`

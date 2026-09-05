@@ -22,6 +22,8 @@ export interface DocumentTypeContribution {
   readonly createBackend: 'workspace-document' | 'plugin-document';
   readonly createHandlerId?: string;
   readonly surfaceComponent: Component;
+  /** Core 提供历史容器，组件接收 documentId/versionId，只读加载并自行释放预览资源。 */
+  readonly historyPreviewComponent?: Component;
   readonly shellClass?: string;
   readonly fileHandler?: FileTypeLifecycleHandler;
   readonly label: string;

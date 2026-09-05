@@ -90,6 +90,8 @@ declare global {
     };
 
     electronAPI: {
+      'document-history:list': (request: { documentId: string }) => Promise<unknown>;
+      'document-history:restore': (request: import('@app/schemas').DocumentVersionRestoreRequest) => Promise<unknown>;
       readCommandPermissionSettings: () => Promise<unknown>;
       updateCommandPermissionSettings: (
         update: CommandPermissionSettingsUpdateV1,

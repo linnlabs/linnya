@@ -226,6 +226,10 @@ workspace 视觉上是三栏：
 
 Header 也必须投影同样的三栏结构：
 
+文档操作统一使用一个 More 菜单，合并平台 Markdown 操作、可用的历史入口和插件 documentActionMenu。
+Header 只根据响应式文档类型贡献挂载 [历史面板](../../domains/document-history/README.md)，
+不实现版本选择、恢复或插件预览逻辑；切换文档与插件停用会卸载面板。
+
 - 左侧 Header：全局按钮；
 - 中间 Header pane：跟随主 pane，显示主 pane 的标题和操作；
 - 右侧 Header pane：跟随右 pane，显示右 pane 的标题和操作。

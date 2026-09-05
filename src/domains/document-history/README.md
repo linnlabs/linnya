@@ -31,7 +31,13 @@ list 只返回选中的元数据；restore 携带 expectedCurrentVersionId，插
 
 插件通过 `@plugin/backend/documentHistory` 消费纯保留计划，通过 `@plugin/backend/documentAssetOwnership`
 精确释放文档资产归属。Markdown、Mindmap 已迁移到统一规则和各自的 SQL 删除；原表名式 pruneVersionTable 已移除。
-Slides 重链维护及前端面板接入仍在实施，不能把后端合同完成理解为全部验收。
+Header 的统一 More 菜单合并平台操作、历史入口和插件操作，不再单独渲染插件 More 按钮。
+仅启用且贡献 `historyPreviewComponent` 的文档类型显示历史入口；停用或切换文档会卸载面板。
+Core 面板管理列表、实际时间、恢复确认和冲突刷新，插件组件仅接收 documentId/versionId，负责只读内容。
+Slides 是首个完整接入者。Markdown、Mindmap 本轮只迁移保留规则，不额外开放历史 UI。
+
+前端实现见 [历史面板](../../../apps/renderer/domains/document-history/README.md)，
+Slides 存储与恢复见 [source history](../../../packages/plugins/slides/src/backend/features/presentationSourceHistory/README.md)。
 
 相关 owner： [文档类型](../../../docs/plugins/guides/05-document-types.md)、
 [数据库](../../../docs/plugins/guides/06-database.md)、[资产](../assets/README.md)。

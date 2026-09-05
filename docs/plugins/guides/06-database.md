@@ -12,6 +12,11 @@
 
 ## 规则
 
+版本保留统一消费 `@plugin/backend/documentHistory` 的纯计划，插件自行合并内部依赖并在自有事务中删除/重链。
+展示条数不是存储上限，旧的表名式 `pruneVersionTable` 接口已移除。成功保存后的维护失败只记录诊断，不能回滚保存。
+涉及图片时先确认保留版本资产可达性，再通过 Host 精确释放文稿归属，并持久记录待重试的释放计划。
+规则与恢复合同见 [文档历史](../../../src/domains/document-history/README.md)。
+
 - 新增插件表结构变更必须走 plugin migration，不再塞进主应用全局 `SCHEMA_VERSION`。
 - 全新 `workspace.sqlite` 由当前 host schema providers 直接落当前版本；随后只有当前安装插件的 lifecycle 可以建立各自 owned tables。当前 Host 基线是 v61，v1-v60 历史升级链已经删除，基线前数据库会在插件 lifecycle 之前失败。
 - 官方插件 backend contribution 禁止声明 `schemaProviders`；`PLUGIN-GUARD-06-no-plugin-schema-providers` 会拦截。

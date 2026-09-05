@@ -54,6 +54,7 @@ import { slidesApi } from '../services/slidesApi';
 import { registerMessageCatalogs } from '@app/localization';
 import { SLIDES_TOOL_CARD_MESSAGE_CATALOG } from '../tool-cards/definitions/slidesToolCardMessageCatalog';
 import { SLIDES_PREVIEW_MESSAGE_CATALOG } from '../features/previewRenderState/definitions/slidesPreviewMessageCatalog';
+import { SLIDES_HISTORY_MESSAGES } from '../features/presentationHistory/definitions/historyMessages';
 
 function readSlidesDeckPageContextInput(): SlidesDeckPageContextInput {
   const slidesStore = useSlidesStore();
@@ -88,6 +89,7 @@ function buildSlidesDocumentFragment(): string | null {
 export function registerSlidesRendererPorts(): void {
   registerMessageCatalogs(SLIDES_TOOL_CARD_MESSAGE_CATALOG);
   registerMessageCatalogs(SLIDES_PREVIEW_MESSAGE_CATALOG);
+  registerMessageCatalogs(SLIDES_HISTORY_MESSAGES);
   registerPluginDocumentCreationHandler({
     id: 'slides.document-create',
     async createDocument({ projectId, parentId, name }) {

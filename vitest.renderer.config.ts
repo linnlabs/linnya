@@ -18,6 +18,15 @@ const repositoryRoot = import.meta.dirname;
  * 测试若需要新增 Host 源码入口，必须在这里逐条说明，禁止扩回宽泛 backend alias。
  */
 const RENDERER_TEST_SUPPORT_ALIASES: readonly RendererViteAlias[] = [
+  // Markdown/插件 schema conformance 会加载版本仓储；仅接入无 IO 的历史规则，不扩宽 backend alias。
+  {
+    find: /^src\/domains\/document-history$/u,
+    replacement: path.resolve(repositoryRoot, 'src/domains/document-history/index.ts'),
+  },
+  {
+    find: /^@plugin\/backend\/documentHistory$/u,
+    replacement: path.resolve(repositoryRoot, 'src/plugin-sdk/backend/documentHistory.ts'),
+  },
   {
     find: /^@plugin\/(mindmap|slides)\/renderer$/u,
     replacement: path.resolve(repositoryRoot, 'packages/plugins/$1/src/renderer/index.ts'),

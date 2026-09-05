@@ -45,6 +45,8 @@ import type {
 
 export function buildWorkspacePreloadApi(ipcRenderer: IpcRenderer) {
   return {
+    'document-history:list': (request: { documentId: string }): Promise<unknown> => ipcRenderer.invoke('document-history:list', request),
+    'document-history:restore': (request: import('@app/schemas').DocumentVersionRestoreRequest): Promise<unknown> => ipcRenderer.invoke('document-history:restore', request),
     // --- Workspace ---
     'workspace:create-project': (args: CreateProjectArgs) => ipcRenderer.invoke('workspace:create-project', args),
     'workspace:ensure-default-project': () => ipcRenderer.invoke('workspace:ensure-default-project'),
