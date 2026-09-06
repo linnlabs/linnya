@@ -516,7 +516,7 @@
     "@node-rs/jieba": "^2.0.1",
     "@qdrant/js-client-rest": "^1.15.0",
     "@tanstack/vue-virtual": "3.13.31",
-    "@tiptap/core": "^2.12.0",
+    "@tiptap/core": "^3.30.4",
     "@tiptap/extension-character-count": "^2.11.7",
     "@tiptap/extension-code-block-lowlight": "^2.11.7",
     "@tiptap/extension-document": "^2.26.1",
