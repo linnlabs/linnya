@@ -38,6 +38,7 @@ import { countMarkdownTextUnits } from '../../functions/countMarkdownTextUnits';
 import {
   assertMarkdownDocumentBlockIdentities,
   parseMarkdownDocJson,
+  validateMarkdownDocJson,
   type MarkdownDocJson,
 } from '../../../normalization/runtime';
 export class MarkdownDocumentService {
@@ -123,14 +124,18 @@ export class MarkdownDocumentService {
 
   /**
    * 保存文档的新版本
+   *
+   * content_json 是 Markdown 文档的持久化真相，进入版本表前必须经过完整 schema
+   * 校验和规范化；这样 Renderer、VFS 和后端工具看到的是同一份正式结构。
    */
   saveNewVersion(nodeId: string, contentJson: string, authorId: string | null = null): MarkdownDocumentVersion {
-    const documentContent = parseMarkdownDocJson(JSON.parse(contentJson));
+    const documentContent = validateMarkdownDocJson(parseMarkdownDocJson(JSON.parse(contentJson)));
     assertMarkdownDocumentBlockIdentities(documentContent);
+    const normalizedContentJson = JSON.stringify(documentContent);
     const now = Date.now();
     const saved = this.versionRepository.save({
       nodeId,
-      contentJson,
+      contentJson: normalizedContentJson,
       charCount: countMarkdownTextUnits(documentContent),
       authorId,
       createdAt: now,
@@ -160,7 +165,7 @@ export class MarkdownDocumentService {
     if (!version) {
       throw new Error(`Document not found: ${documentNodeId}`);
     }
-    const document = parseMarkdownDocJson(JSON.parse(version.content_json));
+    const document = validateMarkdownDocJson(parseMarkdownDocJson(JSON.parse(version.content_json)));
     assertMarkdownDocumentBlockIdentities(document);
     return document;
   }
@@ -177,10 +182,10 @@ export class MarkdownDocumentService {
   updateDocument(documentNodeId: string, content: unknown): MarkdownDocumentVersion {
     const contentJson =
       typeof content === 'string' ? content : JSON.stringify(content);
-    const documentContent = typeof content === 'string' ? JSON.parse(contentJson) : content;
 
     return this.runInTransaction(() => {
       const version = this.saveNewVersion(documentNodeId, contentJson);
+      const documentContent = parseMarkdownDocJson(JSON.parse(version.content_json));
 
       const projectionResult = this.imageBlockProjection.syncDocumentProjection(
         documentNodeId,

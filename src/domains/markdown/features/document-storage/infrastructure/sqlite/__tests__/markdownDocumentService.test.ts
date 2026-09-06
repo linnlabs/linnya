@@ -69,6 +69,21 @@ function createDocWithImage(imageId: string, src: string): Record<string, unknow
   };
 }
 
+function createValidDocument(): Record<string, unknown> {
+  return {
+    type: 'doc',
+    content: [{
+      type: 'rootBlock',
+      attrs: { id: 'root-valid' },
+      content: [{
+        type: 'baseBlock',
+        attrs: { id: 'block-valid' },
+        content: [],
+      }],
+    }],
+  };
+}
+
 function readWorkspaceNodeUpdatedAt(db: Database.Database, id: string): number {
   const row = db.prepare('SELECT updated_at FROM workspace_nodes WHERE id = ?').get(id) as { updated_at: number } | undefined;
   if (!row) {
@@ -83,15 +98,27 @@ describe('MarkdownDocumentService', () => {
 
     expect(() => service.createDocument(documentId, {
       type: 'doc',
-      content: [{ type: 'rootBlock', attrs: {}, content: [] }],
+      content: [{
+        type: 'rootBlock',
+        attrs: {},
+        content: [{ type: 'baseBlock', attrs: { id: 'block-missing-root-id' }, content: [] }],
+      }],
     })).toThrow('missing its admitted block identity');
     expect(service.getLatestVersion(documentId)).toBeNull();
 
     expect(() => service.createDocument(documentId, {
       type: 'doc',
       content: [
-        { type: 'rootBlock', attrs: { id: 'root-duplicate' }, content: [] },
-        { type: 'rootBlock', attrs: { id: 'root-duplicate' }, content: [] },
+        {
+          type: 'rootBlock',
+          attrs: { id: 'root-duplicate' },
+          content: [{ type: 'baseBlock', attrs: { id: 'block-duplicate-a' }, content: [] }],
+        },
+        {
+          type: 'rootBlock',
+          attrs: { id: 'root-duplicate' },
+          content: [{ type: 'baseBlock', attrs: { id: 'block-duplicate-b' }, content: [] }],
+        },
       ],
     })).toThrow('repeats block identity root-duplicate');
     expect(service.getLatestVersion(documentId)).toBeNull();
@@ -103,12 +130,54 @@ describe('MarkdownDocumentService', () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date(1000));
-      service.saveNewVersion(documentId, JSON.stringify({ type: 'doc', content: [] }));
+      service.saveNewVersion(documentId, JSON.stringify(createValidDocument()));
 
       expect(readWorkspaceNodeUpdatedAt(db, documentId)).toBe(1000);
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('持久化边界拒绝不属于 Markdown schema 的节点和属性', () => {
+    const { service, documentId } = setup();
+
+    expect(() => service.createDocument(documentId, JSON.stringify({
+      type: 'doc',
+      content: [{
+        type: 'rootBlock',
+        attrs: { id: 'root-invalid', unknown: true },
+        content: [{ type: 'baseBlock', attrs: { id: 'block-invalid' }, content: [] }],
+      }],
+    }))).toThrow('未知属性 "unknown"');
+
+    expect(() => service.createDocument(documentId, JSON.stringify({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [] }],
+    }))).toThrow('未知 node "paragraph"');
+    expect(service.getLatestVersion(documentId)).toBeNull();
+  });
+
+  it('保存版本时写入 schema 规范化后的 JSON', () => {
+    const { service, documentId } = setup();
+
+    const version = service.saveNewVersion(documentId, JSON.stringify(createValidDocument()));
+
+    expect(JSON.parse(version.content_json)).toMatchObject({
+      content: [{
+        attrs: {
+          id: 'root-valid',
+          annotations: [],
+          isDragging: false,
+        },
+        content: [{
+          attrs: {
+            id: 'block-valid',
+            blockType: 'base',
+            textAlign: 'left',
+          },
+        }],
+      }],
+    });
   });
 
   it('保存版本时按中文汉字和英文单词计算内容统计单位', () => {
@@ -172,7 +241,11 @@ describe('MarkdownDocumentService', () => {
 
     service.updateDocument(documentId, {
       type: 'doc',
-      content: [{ type: 'rootBlock', attrs: { id: 'root-1' }, content: [] }],
+      content: [{
+        type: 'rootBlock',
+        attrs: { id: 'root-1' },
+        content: [{ type: 'baseBlock', attrs: { id: 'block-rollback' }, content: [] }],
+      }],
     });
     const before = service.getLatestVersion(documentId);
 

@@ -14,6 +14,7 @@
 
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
+import { validateBlockHistoryContentJson } from '../../functions/validateBlockHistoryContentJson';
 
 // ==================== 类型定义 ====================
 
@@ -72,6 +73,10 @@ export class BlockHistoryService {
    * 版本号自动递增，基于该块已有的最大版本号
    */
   createVersion(params: CreateBlockVersionParams): BlockVersion {
+    const normalizedContentJson = validateBlockHistoryContentJson(
+      params.contentJson,
+      params.targetBlockId,
+    );
     const now = Date.now();
     const id = uuidv4();
 
@@ -101,13 +106,23 @@ export class BlockHistoryService {
       params.targetBlockId,
       params.blockType,
       nextVersion,
-      params.contentJson,
+      normalizedContentJson,
       params.originType,
       params.originMetadata ? JSON.stringify(params.originMetadata) : null,
       now
     );
 
     return this.getVersion(id)!;
+  }
+
+  private validateStoredVersion(version: BlockVersion): BlockVersion {
+    return {
+      ...version,
+      content_json: validateBlockHistoryContentJson(
+        version.content_json,
+        version.target_block_id,
+      ),
+    };
   }
 
   /**
@@ -117,7 +132,8 @@ export class BlockHistoryService {
     const stmt = this.db.prepare(`
       SELECT * FROM markdown_block_versions WHERE id = ?
     `);
-    return stmt.get(versionId) as BlockVersion | null;
+    const version = stmt.get(versionId) as BlockVersion | null;
+    return version ? this.validateStoredVersion(version) : null;
   }
 
   /**
@@ -129,7 +145,8 @@ export class BlockHistoryService {
       WHERE document_node_id = ? AND target_block_id = ?
       ORDER BY version_number DESC
     `);
-    return stmt.all(documentNodeId, targetBlockId) as BlockVersion[];
+    const versions = stmt.all(documentNodeId, targetBlockId) as BlockVersion[];
+    return versions.map((version) => this.validateStoredVersion(version));
   }
 
   /**
@@ -142,7 +159,8 @@ export class BlockHistoryService {
       ORDER BY version_number DESC
       LIMIT 1
     `);
-    return stmt.get(documentNodeId, targetBlockId) as BlockVersion | null;
+    const version = stmt.get(documentNodeId, targetBlockId) as BlockVersion | null;
+    return version ? this.validateStoredVersion(version) : null;
   }
 
   /**
@@ -242,4 +260,3 @@ export class BlockHistoryService {
     }
   }
 }
-

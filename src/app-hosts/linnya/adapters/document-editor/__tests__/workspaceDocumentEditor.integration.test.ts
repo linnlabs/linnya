@@ -41,11 +41,26 @@ function markdownDocument(text: string): MarkdownDocJson {
     content: [
       {
         type: 'rootBlock',
-        attrs: { id: 'root-editor-integration' },
+        attrs: {
+          id: 'root-editor-integration',
+          annotations: [],
+          position: null,
+          isDragging: false,
+          backgroundColor: null,
+          textColor: null,
+        },
         content: [
           {
             type: 'baseBlock',
-            attrs: { id: 'base-editor-integration', blockType: 'base' },
+            attrs: {
+              id: 'base-editor-integration',
+              blockType: 'base',
+              textAlign: 'left',
+              indent: 0,
+              isEmpty: true,
+              backgroundColor: null,
+              textColor: null,
+            },
             content: text ? [{ type: 'text', text }] : [],
           },
         ],

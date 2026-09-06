@@ -254,7 +254,15 @@ describe('workspace document lifecycle orchestration', () => {
         source.documentId,
         JSON.stringify({
           type: 'doc',
-          content: [{ type: 'paragraph', text: 'hello' }],
+          content: [{
+            type: 'rootBlock',
+            attrs: { id: 'root-duplicate-source' },
+            content: [{
+              type: 'baseBlock',
+              attrs: { id: 'block-duplicate-source' },
+              content: [{ type: 'text', text: 'hello' }],
+            }],
+          }],
         }),
       );
 
@@ -266,7 +274,15 @@ describe('workspace document lifecycle orchestration', () => {
       const copied = new MarkdownDocumentService(db).getDocument(result.nodeId);
       expect(copied).toEqual({
         type: 'doc',
-        content: [{ type: 'paragraph', text: 'hello' }],
+        content: [{
+          type: 'rootBlock',
+          attrs: expect.objectContaining({ id: 'root-duplicate-source' }),
+          content: [{
+            type: 'baseBlock',
+            attrs: expect.objectContaining({ id: 'block-duplicate-source' }),
+            content: [{ type: 'text', text: 'hello' }],
+          }],
+        }],
       });
     } finally {
       db.close();

@@ -295,7 +295,11 @@ describe('workspaceDocumentReadAdapter', () => {
       documentId,
       JSON.stringify({
         type: 'doc',
-        content: [{ type: 'rootBlock', attrs: {}, content: [] }],
+        content: [{
+          type: 'rootBlock',
+          attrs: {},
+          content: [{ type: 'baseBlock', attrs: { id: 'block-without-root-identity' }, content: [] }],
+        }],
       }),
     );
 

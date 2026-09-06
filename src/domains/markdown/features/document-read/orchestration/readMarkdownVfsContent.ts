@@ -1,7 +1,7 @@
 import type { MarkdownReadDatabase } from '../../../definitions/markdownReadDatabase';
 import { MarkdownDocumentVersionReader } from '../../document-storage';
 import { MarkdownPendingRevisionReader } from '../../pending-revisions';
-import { parseMarkdownDocJson } from '../../normalization';
+import { parseMarkdownDocJson, validateMarkdownDocJson } from '../../normalization';
 import { serializeMarkdownBlocks } from '../../../shared/markdownBlockProjection';
 import type { MarkdownVfsContent } from '../definitions/markdownVfsContent';
 import { buildMarkdownCitationReadProjection } from './buildMarkdownCitationReadProjection';
@@ -20,7 +20,7 @@ export function readMarkdownVfsContent(params: {
   if (!version) return null;
 
   const parsed: unknown = JSON.parse(version.content_json);
-  const content = parseMarkdownDocJson(parsed);
+  const content = validateMarkdownDocJson(parseMarkdownDocJson(parsed));
   const pendings = new MarkdownPendingRevisionReader(params.db)
     .getPendingRevisions(params.documentId);
   const currentView = buildMarkdownCitationReadProjection({
