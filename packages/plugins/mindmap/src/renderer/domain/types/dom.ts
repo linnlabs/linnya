@@ -53,7 +53,6 @@ export interface Topic extends HTMLElement {
    * - 该区域由 `shapeTpc` 统一创建，用于挂载“feature UI”（例如证据、附件、快捷操作）。
    * - 这样 feature 可以通过 Teleport 渲染到节点内部，从而真实改变节点尺寸并触发布局重排。
    */
-  addons?: HTMLDivElement
 }
 
 /** Represents the expand/collapse button (corresponds to mm-expander element) */

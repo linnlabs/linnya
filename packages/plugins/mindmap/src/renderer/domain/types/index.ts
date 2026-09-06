@@ -336,59 +336,6 @@ export type RichContentDescriptor =
     }
 
 /**
- * 节点打标信息（推理语义）
- *
- * 中文说明：
- * - 存在于 Spine：`mindmap_versions.content_json` 中的 NodeObj
- * - 用于状态呈现与可解释入口（Refuted 感叹号）
- * - 可扩展：未来允许新增更多标签键（例如 blocked / risk_level / owner 等）
- *
- * @see packages/plugins/mindmap/src/renderer/docs/README.md
- */
-export type NodeTagging = {
-  /**
-   * 节点状态
-   *
-   * 推荐值（存储使用小写）：
-   * - 'open'：待验证（默认）
-   * - 'verified'：已证实
-   * - 'refuted'：已证伪/驳斥
-   * - 'closed'：无关/关闭
-   *
-   * 规范：
-   * - 存储值使用小写（open/verified/...），避免大小写漂移
-   * - UI 展示文案由前端映射（Open/已证实/已证伪/关闭）
-   * - 允许扩展：工具可写入未知值，UI 需有兜底呈现
-   */
-  status?: string
-
-  /**
-   * 置信度
-   *
-   * 推荐值：
-   * - 'high'：高置信度
-   * - 'medium'：中等置信度
-   * - 'low'：低置信度
-   *
-   * 扩展策略：
-   * - 允许 string：high/medium/low 或未来更多分级
-   * - 允许 number：例如 0..1 或 0..100（当需要量化时）
-   */
-  confidence?: string | number
-
-  /**
-   * 扩展标签（可选）
-   *
-   * - key：稳定语义键（建议 snake_case）
-   * - value：原子值，避免嵌套对象造成协议复杂化
-   *
-   * 示例：
-   * - { owner: 'alice', risk_level: 'high', blocked: true }
-   */
-  labels?: Record<string, string | number | boolean>
-}
-
-/**
  * MindMap node object
  *
  * @public
@@ -442,18 +389,6 @@ export interface NodeObj {
   // TODO: checkbox
   // checkbox?: boolean | undefined
 
-  /**
-   * 节点打标信息（AI 推理/验证语义）
-   *
-   * 中文说明：
-   * - 用于 Issue Tree 场景下的假设验证、状态标记、置信度评估
-   * - 由 AI 工具（workspace_tag_mindmap）写入
-   * - 前端根据 tagging.status 展示视觉反馈（如 Refuted 变灰 + 感叹号）
-   *
-   * @see NodeTagging
-   * @see packages/plugins/mindmap/src/renderer/docs/README.md
-   */
-  tagging?: NodeTagging
 }
 export type NodeObjExport = Omit<NodeObj, 'parent'>
 

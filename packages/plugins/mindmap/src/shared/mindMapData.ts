@@ -1,5 +1,3 @@
-import type { NodeTagging } from './tagging';
-
 export interface DraftMindMapNodeData {
   id?: string;
   topic?: string;
@@ -22,7 +20,6 @@ export interface MindMapNodeData {
   topic: string;
   root?: boolean;
   children: MindMapNodeData[];
-  tagging?: NodeTagging;
   [key: string]: unknown;
 }
 

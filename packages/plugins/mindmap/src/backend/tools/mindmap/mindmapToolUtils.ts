@@ -3,7 +3,7 @@
  * @description MindMap 工具共享逻辑
  *
  * 中文说明：
- * - 提取 MindMap 工具的公共逻辑，供 tag_node 和 attach_evidence 工具复用
+ * - 提取 MindMap 文本大纲工具的公共逻辑
  * - 包括：节点查找、refMap 生成、版本校验等
  */
 
@@ -119,55 +119,6 @@ export function initMindMapDocContext(
  * 初始化 MindMap 文档上下文（不校验版本号）
  *
  * 中文说明：
- * - 用于 evidence 等“卫星表写入”工具：不修改 mindmap_versions，不需要 baseVersion 乐观锁
- * - 仍然会读取当前最新版本，用于 nodeRef/nodeId 校验与节点存在性检查
- */
-export function initMindMapDocContextWithoutVersionCheck(
-  documentId: string,
-  context: ToolContext
-): { success: true; ctx: MindMapDocContext } | { success: false; error: string } {
-  const databaseService = context.databaseService;
-  if (!databaseService) {
-    return { success: false, error: '工作区数据库不可用：工具上下文缺少 databaseService。' };
-  }
-
-  const db = requireMindMapSqliteDatabase(databaseService.getDb(), 'tool document context');
-  const workspaceService = context.workspaceService ?? createWorkspaceService(db);
-  const mindMapService = new MindMapDocumentService(db, workspaceService, {
-    publishDocumentUpdated: publishWorkspaceDocumentUpdated,
-  });
-
-  const doc = mindMapService.getDocument(documentId);
-  if (!doc) {
-    return { success: false, error: `MindMap 文档不存在：${documentId}` };
-  }
-
-  // 获取文档名称（来自 workspace_nodes），供 UI 展示
-  const node = workspaceService.getNode(documentId);
-  const documentName =
-    node && typeof node.name === 'string' && node.name.trim().length > 0 ? node.name.trim() : documentId;
-
-  const content = doc.content;
-  const nodeData = content.nodeData;
-  const allNodeIds = collectAllNodeIds(nodeData);
-  const refMap = generateRefMapWithCollisionCheck(allNodeIds);
-
-  return {
-    success: true,
-    ctx: {
-      documentId,
-      documentName,
-      versionNumber: doc.versionNumber,
-      content,
-      nodeData,
-      allNodeIds,
-      refMap,
-      mindMapService,
-    },
-  };
-}
-
-/**
  * 收集所有节点 ID
  */
 export function collectAllNodeIds(node: MindMapNodeObj): string[] {

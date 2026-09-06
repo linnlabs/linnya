@@ -143,7 +143,7 @@ describe('MindMapWriteQueue 并发一致性', () => {
     // 第二个任务需要等第一个完成才能执行
     const shortTask = withMindMapWriteLock({
       documentId,
-      purpose: 'tag_node',
+      purpose: 'other',
       fn: async () => {
         await delay(10);
         return 'second';
@@ -197,7 +197,7 @@ describe('MindMapWriteQueue 并发一致性', () => {
     // 排队的任务，带 AbortSignal
     const waiter = withMindMapWriteLock({
       documentId,
-      purpose: 'tag_node',
+      purpose: 'other',
       abortSignal: controller.signal,
       fn: async () => 'should not run',
     });
@@ -234,7 +234,7 @@ describe('MindMapWriteQueue 并发一致性', () => {
     // 排队超时 = 50ms（blocker 要 200ms 才释放，必然超时）
     const waiter = withMindMapWriteLock({
       documentId,
-      purpose: 'tag_node',
+      purpose: 'other',
       timeoutMs: 50,
       fn: async () => 'should not run',
     });
@@ -277,7 +277,7 @@ describe('MindMapWriteQueue 并发一致性', () => {
     // 任务 3：应该正常执行（不受 task2 影响）
     const task3 = withMindMapWriteLock({
       documentId,
-      purpose: 'tag_node',
+      purpose: 'other',
       fn: async () => {
         executionOrder.push('task3');
         return 'ok3';
@@ -338,12 +338,12 @@ describe('MindMapWriteQueue 并发一致性', () => {
     // 再排 2 个
     const w1 = withMindMapWriteLock({
       documentId,
-      purpose: 'tag_node',
+      purpose: 'other',
       fn: async () => 'w1',
     });
     const w2 = withMindMapWriteLock({
       documentId,
-      purpose: 'tag_node',
+      purpose: 'other',
       fn: async () => 'w2',
     });
 
@@ -385,7 +385,7 @@ describe('MindMapWriteQueue 并发一致性', () => {
     const docBTasks = Array.from({ length: 3 }, (_, i) =>
       withMindMapWriteLock({
         documentId: 'doc-mix-B',
-        purpose: 'tag_node',
+        purpose: 'other',
         fn: async () => {
           docBOrder.push(i);
           await delay(10);

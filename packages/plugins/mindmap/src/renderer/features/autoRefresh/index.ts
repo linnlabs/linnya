@@ -21,14 +21,6 @@ export {
   getPendingRefreshCount,
 } from './services/mindMapAutoRefreshService'
 
-// 触发器（供 conversation 层使用）
-export {
-  clearMindMapEvidenceRefreshDedupeCache,
-  isMindMapEvidenceToolName,
-  useMindMapEvidenceRefreshTrigger,
-  type UseMindMapEvidenceRefreshTriggerParams,
-} from './services/mindMapEvidenceRefreshTrigger'
-
 // 类型导出
 export type {
   RefreshRequest,

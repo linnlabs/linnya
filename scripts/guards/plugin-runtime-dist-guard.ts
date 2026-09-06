@@ -26,12 +26,9 @@ const textExtensions = new Set([
 ]);
 
 const forbiddenMindmapBusinessSymbols = [
-  'MindMapAttachEvidenceTool',
   'MindMapCreateNodeTool',
   'MindMapDocumentSchemaProvider',
   'MindMapDocumentService',
-  'MindMapEvidenceService',
-  'MindMapTagNodeTool',
   'MindMapToolCards',
   'MindMapToolbar',
   'MindMapView',

@@ -483,9 +483,9 @@ export const useMindMapStore = defineStore('mindmap', () => {
       isApplyingDocument.value = false;
 
       // 中文说明（收敛职责 + 降低延迟）：
-      // - 视口策略不再等待 evidence counts ready（避免大图 0.5s+ 体感延迟）
+      // - 视口策略不等待额外元数据，避免大图首次打开产生不必要的延迟
       // - 首次进入：立即 scaleFit()+toCenter()
-      // - 非首次：按“根节点锚点视口”恢复（抗 addon/字体/CSS 导致的右偏漂移）
+          // - 非首次：按“根节点锚点视口”恢复，避免字体/CSS 变化造成右偏
       // - 后续布局变化由 setMind() 的 geometryFlushed listener 持续重基准
       const finalDocId = docId
       const finalInstance = targetMind
@@ -510,8 +510,7 @@ export const useMindMapStore = defineStore('mindmap', () => {
             finalInstance.toCenter()
           }
 
-          // 修复：带有 Addon 的大图，初始渲染时 Addon 可能尚未加载完成，导致 scaleFit 基于小尺寸计算。
-          // 监听后续的 geometryFlushed，如果是由 addon 引起的，再次执行适应。
+          // 监听初始结构完成后的几何刷新，避免首次布局尚未稳定时计算适应比例。
           // 设置 2000ms 超时，避免长期监听
           const TIMEOUT_MS = 2000
           let timer: number | null = null
@@ -527,9 +526,7 @@ export const useMindMapStore = defineStore('mindmap', () => {
           }
 
           const reFitHandler = (payload: { reasons: string[] }) => {
-            // 仅关注 Addon 内容变化引起的布局刷新
-            if (payload.reasons.includes('addons:content')) {
-              // 再次适应（同样需要保护性检查）
+            if (payload.reasons.includes('nodes:resize') || payload.reasons.includes('core:refresh')) {
               if (finalInstance.nodes && finalInstance.container) {
                 finalInstance.scaleFit()
                 finalInstance.toCenter()

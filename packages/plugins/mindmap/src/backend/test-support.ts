@@ -9,7 +9,6 @@
 
 export { mindmapPluginMigrations } from './persistence/migrations';
 export { MINDMAP_DOCUMENT_SCHEMAS } from './persistence/mindmap_document/schemas/core.schema';
-export { MINDMAP_EVIDENCE_SCHEMAS } from './persistence/mindmap_document/schemas/blocks/evidence.schema';
 export {
   MindMapDocumentService,
   type CreateMindMapParams,
@@ -17,18 +16,12 @@ export {
   type MindMapData,
 } from './persistence/mindmap_document/services/mindmap_document.service';
 export {
-  MindMapEvidenceService,
-  type CreateEvidenceParams,
-  type UpdateEvidenceParams,
-} from './persistence/mindmap_document/services/blocks/evidence.service';
-export {
   buildMindMapNodeRefView,
   buildMindMapObservation,
   type MindMapNodeRefViewResult,
   type MindMapUiLimits,
 } from './tools/mindmap/read/mindmapNodeRefViewBuilder';
 export { registerMindMapDocumentHandlers } from './ipc/mindmap_document/document-ipc';
-export { registerMindMapEvidenceHandlers } from './ipc/mindmap_document/evidence-ipc';
 export {
   mindmapToolClasses,
   mindmapToolManifest,

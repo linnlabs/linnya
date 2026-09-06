@@ -50,12 +50,12 @@ export const mindmapRendererPlugin: RendererPluginContribution = {
         {
           kind: 'document',
           uriPattern: 'linnya://mindmap/{documentId}',
-          description: 'Mindmap 文档本体，可作为跨插件引用的根实体。',
+          description: 'Mindmap 文档本体。',
         },
         {
           kind: 'node',
           uriPattern: 'linnya://mindmap/{documentId}#node/{nodeId}',
-          description: 'Mindmap 节点实体，用于跨插件引用议题、论点或结构位置。',
+          description: 'Mindmap 节点，用于定位文本大纲中的结构位置。',
         },
       ],
     },
@@ -73,14 +73,6 @@ export type {
   MindMapMetadata,
   MindMapViewport,
 } from './ipc/mindMapGateway';
-export { mindMapEvidenceGateway } from './ipc/mindMapEvidenceGateway';
-export type {
-  CreateEvidenceParams,
-  IMindMapEvidenceGateway,
-  MindMapEvidence,
-  MindMapEvidenceSourceType,
-  UpdateEvidenceParams,
-} from './ipc/mindMapEvidenceGateway';
 export {
   getMindMapAdapter,
   registerMindMapAdapter,
@@ -99,12 +91,6 @@ export type {
   PageContextLike,
 } from './utils/mindmapAiContext';
 export { useMindMapStore } from './domain/store/mindmapStore';
-export {
-  useMindMapEvidenceRefreshTrigger,
-} from './features/autoRefresh';
-export type {
-  UseMindMapEvidenceRefreshTriggerParams,
-} from './features/autoRefresh';
 export type { Topic } from './domain/types/dom';
 export type * from './core';
 export {

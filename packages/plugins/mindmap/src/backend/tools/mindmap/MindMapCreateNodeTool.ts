@@ -3,7 +3,7 @@
  * @description MindMap 新建节点工具 - 在指定父节点下追加子节点
  *
  * 中文说明：
- * - 用于 agent 在推理过程中“新增节点（提出假设/问题/结论等）”
+ * - 用于 agent 在文本大纲中新增节点
  * - 只做数据层写入：修改 mindmap_versions.content_json（生成新版本）
  * - 并发策略：通过 per-document 写入队列（mindmapWriteQueue）串行化"读-改-写"，避免并行写版本产生 CAS 冲突
  * - CAS 乐观锁仍然保留作为最后防线（防止绕过队列的写入路径）
@@ -25,11 +25,6 @@ import {
   type MindMapDocContext,
   type MindMapNodeObj,
 } from './mindmapToolUtils';
-import {
-  parseNodeKind,
-  normalizeTaggingForKind,
-  type NodeKind,
-} from './taggingRules';
 import { withMindMapWriteLock } from './mindmapWriteQueue';
 
 // ============================================================================
@@ -64,15 +59,6 @@ interface CreateNodeOperation {
    * 新节点标题（topic）
    */
   topic: string;
-  /**
-   * 节点语义类型（可选）
-   *
-   * 中文说明：
-   * - 推荐在创建节点时就指定类型，避免后续需要额外调用 mindmap_tag_node 设置 kind
-   * - 有效值：hypothesis（假设）/ question（子问题）/ conclusion（结论）
-   * - 只有设置了 kind 后，才能对节点设置 status/confidence
-   */
-  kind?: string;
 }
 
 interface CreateNodeResultItem {
@@ -81,8 +67,6 @@ interface CreateNodeResultItem {
   nodeId: string;
   nodeRef?: string;
   topic: string;
-  /** 节点类型（如果创建时指定了 kind） */
-  kind?: string;
 }
 
 interface CreateNodeResultData {
@@ -110,14 +94,12 @@ export class MindMapCreateNodeTool extends BaseTool {
       '在指定父节点下新建子节点（追加到 children 末尾）。',
       '',
       '使用场景：',
-      '- agent 在 Issue Tree 中提出新的假设/问题/结论节点',
+      '- agent 在文本大纲中补充主题、分支或子节点',
       '',
       '参数说明：',
       '- document_id：MindMap 文档 ID',
       '- parent_node_ref：父节点短 ref（如 #k9Q2x7 或 k9Q2x7；推荐）',
       '- topic：新节点标题',
-      '- kind：节点语义类型（推荐：hypothesis/question/conclusion）',
-      '  创建节点时指定 kind，后续才能用 mindmap_tag_node 设置 status/confidence',
       '',
       '批量新增：使用 operations 数组一次创建多个节点。',
       '',
@@ -133,10 +115,6 @@ export class MindMapCreateNodeTool extends BaseTool {
       parent_node_ref: { type: 'string', description: '父节点短 ref（如 #k9Q2x7 或 k9Q2x7）' },
       parent_node_id: { type: 'string', description: '父节点 ID（不推荐，优先使用 parent_node_ref）' },
       topic: { type: 'string', description: '新节点标题（topic）' },
-      kind: {
-        type: 'string',
-        description: '节点语义类型（推荐：hypothesis/question/conclusion）。创建时指定 kind，后续才能设置 status/confidence',
-      },
       // 批量参数
       operations: {
         type: 'array',
@@ -148,10 +126,6 @@ export class MindMapCreateNodeTool extends BaseTool {
             parent_node_ref: { type: 'string', description: '父节点短 ref（可带或不带 #）' },
             parent_node_id: { type: 'string', description: '父节点 ID（不推荐）' },
             topic: { type: 'string', description: '新节点标题（topic）' },
-            kind: {
-              type: 'string',
-              description: '节点语义类型（推荐：hypothesis/question/conclusion）',
-            },
           },
         },
       },
@@ -179,7 +153,7 @@ export class MindMapCreateNodeTool extends BaseTool {
     // - 若不串行化"读-改-写"，CAS 会导致其中一方"版本冲突 → throw"；
     // - 通过 withMindMapWriteLock 保证同一 documentId 的写入 FIFO 串行执行；
     // - 在锁内重新 initMindMapDocContext 确保 baseVersion 是最新的。
-    const abortSignal = context.abortSignal as AbortSignal | undefined;
+    const abortSignal = context.abortSignal;
 
     const { result: writeResult } = await withMindMapWriteLock({
       documentId,
@@ -265,8 +239,7 @@ export class MindMapCreateNodeTool extends BaseTool {
           if (!topic) return null;
           const parentNodeRef = readNonEmptyString(op.parent_node_ref);
           const parentNodeId = readNonEmptyString(op.parent_node_id);
-          const kind = readNonEmptyString(op.kind);
-          return { topic, parentNodeRef, parentNodeId, kind };
+          return { topic, parentNodeRef, parentNodeId };
         })
         .filter((op): op is CreateNodeOperation => !!op);
     }
@@ -276,8 +249,7 @@ export class MindMapCreateNodeTool extends BaseTool {
     if (!topic) return [];
     const parentNodeRef = readNonEmptyString(args.parent_node_ref);
     const parentNodeId = readNonEmptyString(args.parent_node_id);
-    const kind = readNonEmptyString(args.kind);
-    return [{ topic, parentNodeRef, parentNodeId, kind }];
+    return [{ topic, parentNodeRef, parentNodeId }];
   }
 
   private applyCreateNodeOperation(op: CreateNodeOperation, ctx: MindMapDocContext): CreateNodeResultItem {
@@ -295,18 +267,6 @@ export class MindMapCreateNodeTool extends BaseTool {
       children: [],
     };
 
-    // 如果指定了 kind，校验并写入 tagging.labels.kind
-    if (op.kind) {
-      const parsedKind = parseNodeKind(op.kind);
-      if (!parsedKind) {
-        throw new Error(
-          `kind "${op.kind}" 不是有效的节点类型。有效值：hypothesis / question / conclusion`
-        );
-      }
-      // 使用 normalizeTaggingForKind 生成符合规则的 tagging（自动包含 labels.kind）
-      newNode.tagging = normalizeTaggingForKind(parsedKind, undefined);
-    }
-
     const childrenValue = parent.children;
     if (childrenValue === undefined) {
       parent.children = [newNode];
@@ -321,7 +281,6 @@ export class MindMapCreateNodeTool extends BaseTool {
       parentNodeId: parent.id,
       nodeId: newNodeId,
       topic: op.topic,
-      kind: op.kind ? parseNodeKind(op.kind) : undefined,
     };
   }
 
@@ -346,11 +305,10 @@ export class MindMapCreateNodeTool extends BaseTool {
       parts.push(`已写入新版本 v${data.versionNumber}`);
     }
     if (data.createdCount > 0) {
-      // 输出每个新增节点的 ref 和 kind（如果有）
+      // 输出每个新增节点的 ref
       const descriptions = data.results.map((r) => {
         const ref = r.nodeRef ?? r.nodeId;
-        const kindSuffix = r.kind ? ` (kind=${r.kind})` : '';
-        return `${ref}${kindSuffix}`;
+        return ref;
       });
       parts.push(`新增节点：${descriptions.join('、')}`);
     }

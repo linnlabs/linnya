@@ -15,7 +15,6 @@ import type { CommandDef } from '../types'
 import { selectionCommands } from './selectionCommands'
 import { nodeCommands } from './nodeCommands'
 import { reflowCommands } from './reflowCommands'
-import { taggingCommands } from './taggingCommands'
 
 // ============================================================================
 // 所有命令聚合
@@ -25,14 +24,13 @@ import { taggingCommands } from './taggingCommands'
  * Phase 1 命令集
  *
  * 中文说明：
- * - 包含 selection / node / reflow / tagging 四类命令
+ * - 包含 selection / node / reflow 三类命令
  * - 后续 Phase 可在此扩展
  */
 export const allCommands: ReadonlyArray<CommandDef<unknown>> = [
   ...selectionCommands,
   ...nodeCommands,
   ...reflowCommands,
-  ...taggingCommands,
 ] as unknown as ReadonlyArray<CommandDef<unknown>>
 
 // ============================================================================
@@ -65,6 +63,3 @@ export type {
   ToggleExpandPayload,
 } from './nodeCommands'
 export type { ReflowRequestPayload, ReflowFlushNowPayload, FlushNowReason } from './reflowCommands'
-export type { SetKindPayload, SetStatusPayload, SetConfidencePayload } from './taggingCommands'
-export { NODE_KIND_LABELS } from './taggingCommands'
-export { NODE_KIND, type NodeKind } from '../../tagging/taggingRules'

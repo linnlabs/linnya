@@ -301,20 +301,6 @@ export type EventMap = {
   // -----------------------------
   // Feature 信号（feature:*）
   // -----------------------------
-  /**
-   * Evidence Feature：counts 已就绪
-   *
-   * 中文说明（用于消除切换时闪烁）：
-   * - Evidence counts 在 structureReady 后通过 IPC 异步加载；
-   * - counts 未就绪时，节点内引用 addon 可能不会渲染（shouldRender=false），导致节点尺寸/布局后续发生突变；
-   * - 该事件用于让上层（例如视图 readiness）知道“counts 已经是确定值”，从而选择合适的显示时机。
-   */
-  'feature:evidenceCountsReady': (payload: {
-    documentId: string
-    structureRevision: number
-    nodeCount: number
-    timestamp: number
-  }) => void
   /** 执行操作事件 */
   operation: (info: Operation) => void
 
@@ -329,10 +315,6 @@ export type EventMap = {
    * - 禁止携带 MouseEvent/HTMLElement（见 docs/MINDMAP_DEV_GUIDE.md）
    */
   'ui:openContextMenu': (payload: { nodeId?: string; x: number; y: number; trigger: 'mouse' | 'keyboard' }) => void
-  /** UI：打开“插入引用”面板（推荐新事件名） */
-  'ui:openReferenceInsertPanel': (payload: { nodeId: string; nodeTopic?: string }) => void
-  /** UI：在节点内部展开/收起引用（推荐新事件名） */
-  'ui:toggleReferenceInNode': (payload: { nodeId: string }) => void
   /**
    * UI：开始节点编辑（纯 payload 版本）
    *
@@ -615,4 +597,3 @@ export function createBus() {
     },
   }
 }
-

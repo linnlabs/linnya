@@ -3,10 +3,8 @@
 .map-container {
   position: relative;
   -webkit-tap-highlight-color: transparent;
-  /* 中文说明：节点最大宽度统一变量（mm-topic 与 addons 共享），便于全局一致调整 */
+  /* 中文说明：节点最大宽度统一变量，便于全局一致调整 */
   --mm-topic-max-width: 35em;
-  /* 中文说明：引用（Evidence）块最小宽度，避免节点过窄时引用区被压扁 */
-  --mm-evidence-min-width: 220px;
   /* 中文说明：字体必须与编辑器保持一致（统一使用主题变量 --font-family） */
   font-family: var(--font-family, sans-serif);
   user-select: none;
@@ -337,7 +335,7 @@
   --branch-color: var(--color, var(--color-text-secondary));
 
   /* 中文说明：
-   * - 节点宽度需要随内容（包括 addons）自适应收敛
+   * - 节点宽度随文本内容自适应收敛
    * - 使用 inline-block + max-width，让节点以“内容宽度”为基准，而不是被 block 撑到更宽
    */
   display: inline-block;
@@ -377,131 +375,6 @@
 .map-container mm-topic > * {
   /* 标签、图标、图片不应响应点击事件 */
   pointer-events: none;
-}
-
-.map-container mm-topic > .mm-topic-addons {
-  /**
-   * 节点内部扩展区域（addons）交互白名单
-   *
-   * 中文说明（根因修复）：
-   * - map-container 默认 `user-select: none`，会导致 addon 内无法拖拽框选文字复制
-   * - 同时 mm-topic 的直接子元素默认 `pointer-events: none`，避免误点节点标签/图标等
-   * - 但 addons 容器承载的是“节点内部 UI”（引用/富内容/未来扩展），必须允许：
-   *   1) 鼠标拖拽选择文本（复制）
-   *   2) 组件内部滚动与点击
-   *
-   * 交互穿透（pan/drag/selection）由 InteractionGate 基于 data-mm-interactive 负责拦截。
-   */
-  pointer-events: auto;
-  user-select: text;
-  cursor: text;
-  /**
-   * 关键：固定 addons 的“上下顺序”
-   *
-   * 中文说明（根因修复）：
-   * - NodeAddonsHost 会把多个 addon Teleport 到同一个 `.mm-topic-addons` 容器。
-   * - addon 的“出现/消失”受各自 store 初始化时序影响（例如 evidence counts 异步加载、tagging 数据随刷新重建），
-   *   在某些情况下 DOM 追加顺序会随挂载时序漂移，导致视觉上“有时标签在上，有时引用在上”。
-   * - 这里把 `.mm-topic-addons` 设为纵向 flex 容器，并通过子元素的 `order` 强制顺序稳定：
-   *   - 标签（Tagging badge）永远在引用（Evidence reference）上方
-   *
-   * 备注：
-   * - 当前 addons 只有 tagging 与 evidence 两种；未来如新增 addon，应在这里补充其 order（或在组件根节点加专用 class）。
-   */
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  align-self: flex-start;
-  max-width: 100%;
-}
-
-/* =========================================================================
- * Node Addons：显式顺序（视觉层）
- *
- * 中文说明：
- * - 这里是“最终兜底”的顺序规则：不依赖 Teleport 插入时序
- * - 数值越小越靠上
- * ========================================================================= */
-.map-container mm-topic > .mm-topic-addons > .mm-tagging-badge {
-  order: 10;
-}
-
-.map-container mm-topic > .mm-topic-addons > .mm-evidence-in-node {
-  order: 20;
-}
-
-.map-container mm-children mm-topic > .mm-topic-addons .mm-evidence-header {
-  /* 三级及更深：header 需要更“深/更像节点色” */
-  position: relative;
-}
-
-.map-container mm-children mm-topic > .mm-topic-addons .mm-evidence-header::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--branch-color, var(--color, transparent));
-  opacity: 0.18;
-  pointer-events: none;
-  border-radius: inherit;
-}
-
-.map-container mm-children mm-topic > .mm-topic-addons .mm-evidence-header > * {
-  position: relative;
-  z-index: 1;
-}
-
-.map-container mm-children mm-topic > .mm-topic-addons .mm-evidence-item,
-.map-container mm-children mm-topic > .mm-topic-addons .mm-evidence-preview-block {
-  /* 三级及更深：引用块更浅、更透（不影响文字清晰度） */
-  position: relative;
-  background: transparent;
-}
-
-.map-container mm-children mm-topic > .mm-topic-addons .mm-evidence-item::before,
-.map-container mm-children mm-topic > .mm-topic-addons .mm-evidence-preview-block::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--color-bg-surface);
-  opacity: 0.5;
-  pointer-events: none;
-  z-index: -1;
-  /* 中文说明：与引用卡片本体圆角保持一致，避免伪元素露出直角 */
-  border-radius: inherit;
-}
-
-/* 三级及更深：按钮 hover 走“分支色高亮”，不要灰色 */
-.map-container mm-children mm-topic > .mm-topic-addons .mm-reference-collapse-toggle:hover,
-.map-container mm-children mm-topic > .mm-topic-addons .mm-evidence-add-button:hover {
-  background: transparent;
-  color: var(--branch-color, var(--color-accent));
-}
-
-/* 仅用背景色变化（不加边框/阴影） */
-.map-container mm-children mm-topic > .mm-topic-addons .mm-reference-collapse-toggle,
-.map-container mm-children mm-topic > .mm-topic-addons .mm-evidence-add-button {
-  position: relative;
-}
-
-.map-container mm-children mm-topic > .mm-topic-addons .mm-reference-collapse-toggle:hover::before,
-.map-container mm-children mm-topic > .mm-topic-addons .mm-evidence-add-button:hover::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--branch-color, var(--color-accent));
-  opacity: 0.12;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: -1;
-}
-
-.map-container mm-topic > .mm-topic-addons * {
-  user-select: text;
-}
-
-.map-container mm-topic > .mm-topic-addons button,
-.map-container mm-topic > .mm-topic-addons svg {
-  user-select: none;
 }
 
 .map-container mm-topic > .rich-content-host {
@@ -656,62 +529,3 @@
   max-width: 200px;
   border-radius: 3px;
 }
-
-/* =========================================================================
- * Tagging 状态样式（Milestone 2: Issue Tree 打标系统）
- *
- * 中文说明：
- * - 基于 data-tagging-status 属性应用视觉样式
- * - 由 tagging feature 在 structureReady 时注入 DOM 属性
- * - 保持与核心渲染逻辑解耦（高内聚低耦合）
- * ========================================================================= */
-
-/* Refuted：只弱化节点正文，不滤灰同一个 mm-topic 内的 tagging/evidence addons。 */
-.map-container mm-node[data-tagging-status='refuted'] > mm-topic > .text {
-  opacity: 0.62;
-  filter: saturate(0.45);
-  text-decoration: line-through;
-  text-decoration-color: var(--color-error);
-  text-decoration-thickness: 1.5px;
-}
-
-.map-container mm-node[data-tagging-status='refuted'] > mm-topic::after {
-  border-style: dashed;
-  border-color: var(--color-error);
-}
-
-/* Refuted 选中态：正文略微恢复，但引用/标签仍保持原色。 */
-.map-container mm-node[data-tagging-status='refuted'] > mm-topic.selected > .text {
-  opacity: 0.78;
-}
-
-/* Verified：轻量强调（绿色标识，不改变透明度） */
-.map-container mm-node[data-tagging-status='verified'] > mm-topic::after {
-  border-color: var(--color-success);
-}
-
-/* Closed：只弱化正文，避免把引用卡片和状态 chip 一起洗灰。 */
-.map-container mm-node[data-tagging-status='closed'] > mm-topic > .text {
-  opacity: 0.58;
-  filter: saturate(0.5);
-}
-
-/* Closed 选中态 */
-.map-container mm-node[data-tagging-status='closed'] > mm-topic.selected > .text {
-  opacity: 0.74;
-}
-
-/* 三级及更深节点的 tagging 样式调整 */
-.map-container mm-children mm-node[data-tagging-status='refuted'] > mm-topic::before {
-  opacity: 0.06;
-}
-
-.map-container mm-children mm-node[data-tagging-status='closed'] > mm-topic::before {
-  opacity: 0.06;
-}
-
-/* 中文说明：
- * 旧的 `.mm-kind-badge*` CSS 已移除：
- * - kind 徽标现已统一使用 `@linnya/renderer-ui` 的 TagChip 在 Tagging addon 中渲染
- * - 颜色语义由 addon 显式传入（background/text/border），避免“全局 CSS + 业务渲染”双源漂移
- */

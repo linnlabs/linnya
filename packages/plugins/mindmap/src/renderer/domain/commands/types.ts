@@ -144,10 +144,6 @@ export type CommandName =
   | 'node.removeSelected'
   | 'node.removeByIds'
   | 'node.toggleExpand'
-  // 打标操作
-  | 'node.setKind'
-  | 'node.setStatus'
-  | 'node.setConfidence'
   // 重算
   | 'reflow.request'
   | 'reflow.flushNow'
@@ -246,31 +242,6 @@ export interface MindMapCommands {
       },
       meta?: Partial<CommandMeta>
     ) => CommandResult
-    /**
-     * 设置节点语义类型（假设/子问题/结论）
-     *
-     * 中文说明：
-     * - kind: 'hypothesis' | 'question' | 'conclusion' 或自定义值
-     * - kind 为 null/undefined 时清除类型
-     */
-    setKind: (
-      payload: { nodeId: string; kind?: string | null },
-      meta?: Partial<CommandMeta>
-    ) => CommandResult
-    /**
-     * 设置节点状态（已证实/已证伪/待验证/已关闭）
-     */
-    setStatus: (
-      payload: { nodeId: string; status?: string | null },
-      meta?: Partial<CommandMeta>
-    ) => CommandResult
-    /**
-     * 设置节点置信度（高/中/低 或数值）
-     */
-    setConfidence: (
-      payload: { nodeId: string; confidence?: string | number | null },
-      meta?: Partial<CommandMeta>
-    ) => CommandResult
   }
   reflow: {
     request: (
@@ -311,18 +282,6 @@ export interface MindMapCan {
       toNodeId: string
       position: 'before' | 'after' | 'in'
     }) => boolean
-    /**
-     * 检查是否可以设置节点语义类型
-     */
-    setKind: (payload: { nodeId: string; kind?: string | null }) => boolean
-    /**
-     * 检查是否可以设置节点状态
-     */
-    setStatus: (payload: { nodeId: string; status?: string | null }) => boolean
-    /**
-     * 检查是否可以设置节点置信度
-     */
-    setConfidence: (payload: { nodeId: string; confidence?: string | number | null }) => boolean
   }
   reflow: {
     request: (payload: { reason: string }) => boolean

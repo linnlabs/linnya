@@ -20,14 +20,8 @@
       <!-- Vue 版节点编辑器：替代原生 contentEditable -->
       <NodeEditor v-if="mind" :mind="mind" />
 
-      <!-- 富内容挂载容器 -->
+      <!-- Mindmap 的业务工具只操作文本主题与树结构；基础富内容渲染保持兼容。 -->
       <RichContentHost v-if="mind" :mind="mind" />
-
-      <!-- 节点 addons Host：统一承载引用/图片/卡片等扩展内容 -->
-      <NodeAddonsHost v-if="mind" :mind="mind" />
-
-      <!-- 插入引用面板（复用 Editor CitationPanel 同款 UX） -->
-      <ReferenceInsertPanel v-if="mind" :mind="mind" />
     </div>
   </div>
 </template>
@@ -41,11 +35,7 @@ import MindMapToolbar from '../presentation/ui/MindMapToolbar.vue';
 import MindMapContextMenu from '../presentation/ui/MindMapContextMenu.vue';
 import NodeEditor from '../presentation/ui/NodeEditor.vue';
 import RichContentHost from '../presentation/ui/RichContentHost.vue';
-import { installMindMapEvidenceFeature } from '../features/evidence';
-import { installMindMapTaggingFeature } from '../features/tagging';
 import { installMindMapAutoRefreshFeature } from '../features/autoRefresh';
-import ReferenceInsertPanel from '../features/evidence/ui/ReferenceInsertPanel.vue'
-import NodeAddonsHost from '../presentation/ui/NodeAddonsHost.vue'
 import { useMindMapStore } from '../domain/store/mindmapStore';
 import { useMindmapHotkeys } from '../presentation/composables/useMindmapHotkeys';
 import { markActiveFileDirty } from '@plugin/renderer/workspaceRuntime';
@@ -75,8 +65,22 @@ function isViewportDebugEnabled(): boolean {
   return (window as { __MM_VIEWPORT_DEBUG__?: boolean }).__MM_VIEWPORT_DEBUG__ === true
 }
 
+type MindMapEventHandlers = {
+  selectNodes: () => void
+  unselectNodes: () => void
+  scale: (scale: number) => void
+  changeDirection: (direction: number) => void
+  viewMoved: (data: { dx: number; dy: number }) => void
+}
+
 // 事件处理函数引用，用于销毁时移除监听
-let eventHandlers: Record<string, any> = {};
+let eventHandlers: MindMapEventHandlers = {
+  selectNodes: () => undefined,
+  unselectNodes: () => undefined,
+  scale: () => undefined,
+  changeDirection: () => undefined,
+  viewMoved: () => undefined,
+};
 const cleanupMindListeners: Array<() => void> = [];
 
 const bindMindEvents = (instance: MindMapInstance) => {
@@ -130,15 +134,7 @@ onMounted(() => {
   }
   bindMindEvents(instance);
 
-  // 安装 Evidence Feature（Phase 4: 数据一致性 Hook 等副作用统一在这里管理）
-  const disposeEvidenceFeature = installMindMapEvidenceFeature(instance);
-  cleanupMindListeners.push(disposeEvidenceFeature);
-
-  // 安装 Tagging Feature（Milestone 2: 打标状态呈现）
-  const disposeTaggingFeature = installMindMapTaggingFeature(instance);
-  cleanupMindListeners.push(disposeTaggingFeature);
-
-  // 安装 AutoRefresh Feature（Milestone 3: 自动刷新编排）
+  // 安装文档版本自动刷新。
   const disposeAutoRefreshFeature = installMindMapAutoRefreshFeature(instance);
   cleanupMindListeners.push(disposeAutoRefreshFeature);
 
@@ -163,7 +159,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   // 中文说明：
-  // - 必须等子组件（NodeEditor / NodeAddonsHost / RichContentHost 等）先完成卸载，
+  // - 必须等子组件（NodeEditor 等）先完成卸载，
   //   再销毁 MindMap 实例；否则 mind.destroy() 会把 mind.bus / mind.container 置空，
   //   子组件在 onUnmounted 里移除监听会直接报错，并触发 Vue 内部 patch 异常。
   //
@@ -202,7 +198,7 @@ onUnmounted(() => {
       instance.destroy();
     }
   }
-  // 兜底：若 mind.value 为 null，也确保 store 已清空
+  // 即使实例已提前清空，也确保 store 不再持有旧文档。
   store.setMind(null);
 });
 </script>

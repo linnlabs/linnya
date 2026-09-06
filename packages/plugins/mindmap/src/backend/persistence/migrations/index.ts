@@ -5,7 +5,6 @@ import {
   serializeMindmapToMarkdownOutline,
 } from '@plugin/mindmap/shared';
 
-import { MINDMAP_EVIDENCE_SCHEMAS } from '../mindmap_document/schemas/blocks/evidence.schema';
 import { MINDMAP_DOCUMENT_SCHEMAS } from '../mindmap_document/schemas/core.schema';
 
 interface MindmapSnapshotBackfillRow {
@@ -43,7 +42,7 @@ export const mindmapPluginMigrations: readonly PluginMigrationDefinition[] = [
     description: 'baseline adoption',
     up: (db) => {
       // 中文说明：v1 是基线收养迁移；表已存在时只落 plugin_migrations 账本，不搬数据。
-      for (const ddl of [...MINDMAP_DOCUMENT_SCHEMAS, ...MINDMAP_EVIDENCE_SCHEMAS]) {
+      for (const ddl of MINDMAP_DOCUMENT_SCHEMAS) {
         db.exec(ddl);
       }
     },

@@ -3,7 +3,7 @@
  * @description MindMap per-document 写入队列（FIFO 串行化）
  *
  * 中文说明（根因级设计）：
- * - MindMap 写图工具（mindmap_create_node / mindmap_tag_node）使用整文档版本链 CAS；
+ * - MindMap 写图工具使用整文档版本链 CAS；
  * - 并行子 agent 写同一文档会产生"版本冲突 → throw"的结构性问题（哪怕写不同节点）；
  * - 本模块提供 per-document 的写入串行化原语，让并行写版本变为"排队写"，避免 CAS 冲突。
  *
@@ -16,7 +16,7 @@
  *
  * 假设：单后端进程（Electron main）；多进程场景需升级为 DB 层协调。
  *
- * @see packages/plugins/mindmap/src/backend/agents/mindmap/plan.md 第 5 章
+ * @see packages/plugins/mindmap/src/backend/tools/mindmap/README.md
  */
 
 import { Logger } from '@plugin/backend/workspaceRuntime';
@@ -28,7 +28,7 @@ const logger = new Logger('MindMapWriteQueue');
 // ============================================================================
 
 /** 写入目的（用于日志/统计） */
-export type MindMapWritePurpose = 'create_node' | 'tag_node' | 'other';
+export type MindMapWritePurpose = 'create_node' | 'other';
 
 /** withMindMapWriteLock 的参数 */
 export interface MindMapWriteLockParams<T> {

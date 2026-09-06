@@ -15,10 +15,6 @@ import {
   type RendererPageContextSelection,
 } from '@plugin/renderer/pageContextProvider'
 import {
-  registerRendererToolRefreshHandler,
-  unregisterRendererToolRefreshHandler,
-} from '@plugin/renderer/toolRefreshPort'
-import {
   registerDocumentReferenceRuntimeHandler,
   unregisterDocumentReferenceRuntimeHandler,
   type DocumentReferenceFocusResult,
@@ -39,10 +35,7 @@ import {
   DEFAULT_MINDMAP_CHAT_CONTEXT_OPTIONS,
 } from '../utils/mindmapAiContext'
 import {
-  clearMindMapEvidenceRefreshDedupeCache,
-  isMindMapEvidenceToolName,
   requestRefresh,
-  useMindMapEvidenceRefreshTrigger,
 } from '../features/autoRefresh'
 import type { Topic } from '../domain/types/dom'
 import { registerMessageCatalogs } from '@app/localization'
@@ -218,12 +211,6 @@ export function registerMindmapRendererPorts(): void {
       ),
   })
 
-  registerRendererToolRefreshHandler({
-    id: 'mindmap.evidence-refresh',
-    shouldHandle: isMindMapEvidenceToolName,
-    useTrigger: useMindMapEvidenceRefreshTrigger,
-  })
-
   registerRendererDocumentMutationHandler({
     id: 'mindmap.document-mutation',
     nodeType: MINDMAP_DOCUMENT_TYPE,
@@ -245,7 +232,5 @@ export function unregisterMindmapRendererPorts(): void {
   unregisterPluginDocumentCreationHandler('mindmap.document-create')
   unregisterDocumentReferenceRuntimeHandler(MINDMAP_DOCUMENT_TYPE)
   unregisterRendererPageContextProvider('mindmap.page-context')
-  unregisterRendererToolRefreshHandler('mindmap.evidence-refresh')
   unregisterRendererDocumentMutationHandler('mindmap.document-mutation')
-  clearMindMapEvidenceRefreshDedupeCache()
 }

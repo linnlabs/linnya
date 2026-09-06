@@ -4,8 +4,7 @@
  *
  * 设计目标：
  * - 专注纯 MindMap 文档的创建与 outline 编辑
- * - 暂不处理 hypothesis / status / confidence / evidence 等研究语义
- * - 可访问知识库做参考
+ * - 不处理研究语义；研究内容由独立 workflow 承载
  */
 
 import type { PromptTemplate } from '@plugin/backend/agentRegistry';
@@ -66,7 +65,7 @@ Use this Markdown outline format:
 You have knowledge base access for reference while building MindMaps:
 - Use \`search_in_knowledgebase\` to search for relevant reference material.
 - Use \`knowledge_read\` with the returned \`doc_id\` to read reference content in detail.
-- Citation format: \`[@XXXXXX]\` for evidence-backed sources; \`[#XXXXXX]\` for MindMap node refs.
+- Node reference format: \`[#XXXXXX]\` for MindMap node refs.
 </knowledge_base>
 
 <constraints>

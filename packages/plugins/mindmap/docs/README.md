@@ -5,7 +5,7 @@
 - `docs/plugins/README.md`（权威指南入口）
 - `docs/plugins/guides/`（按模块拆分的开发、运行时与发布章节）
 
-Mindmap 已从主 bundle 中外置为官方 runtime artifact。生产路径从磁盘安装目录加载 backend/renderer，首次启动由 `extraResources` 预置包 seed，升级走 R2 manifest + zip + sha512，失败可回滚到上一 active 版本。
+Mindmap 已从主 bundle 中外置为官方 runtime artifact。生产路径从磁盘安装目录加载 backend/renderer，首次启动由 `extraResources` 预置包 seed，升级走 R2 manifest + zip + sha512，失败可回滚到上一 active 版本。当前产品语义收敛为纯文本大纲：节点业务语义只表达主题与层级，基础渲染保持兼容；研究假设、证据和置信度由独立的研究 deck 承载。
 
 ## Manifest 契约
 
@@ -16,8 +16,7 @@ Mindmap 已从主 bundle 中外置为官方 runtime artifact。生产路径从�
 - `details` / `releaseNotes` / `skills` /
   `agents`：插件商店详情页的结构化展示信息。`details` 是面向用户的必填详细介绍，不渲染 Markdown，也不承载运行时 prompt。
 - `compat.minApp`：该插件要求的最低主应用版本，由 app-host lifecycle 校验。
-- `ownedTables`：插件拥有并需要数据快照保护的表，目前是 `mindmap_versions` 与
-  `mindmap_evidence`。
+- `ownedTables`：插件拥有并需要数据快照保护的表，目前只有 `mindmap_versions`。
 - `ownedFileTypes`：插件拥有的文件/节点类型归属声明，目前是 `nodeType=mindmap`
   与 `.mindmap`。这只用于宿主在插件缺失时识别“该格式归谁”，不代表插件运行时能力已启用。
 - `migrations`：对外声明的插件迁移序号与说明；真正可执行的迁移实现从 backend
@@ -89,11 +88,10 @@ schema 仍由 backend contribution 注册，不能通过商店展示字段偷偷
 
 ## Schema 迁移
 
-Mindmap 的存量表通过插件迁移 `v1` 做基线收养：
+Mindmap 的版本表通过插件迁移 `v1` 创建：
 
-- 老用户已经由核心历史迁移创建过 `mindmap_versions` / `mindmap_evidence`，`v1`
-  使用 `CREATE TABLE IF NOT EXISTS`，只记录收养版本，不搬运数据。
-- 新用户没有这些表时，`v1` 负责创建表并写入 `plugin_migrations(mindmap, 1)`。
+- `v1` 使用 `CREATE TABLE IF NOT EXISTS` 创建 `mindmap_versions`，并写入
+  `plugin_migrations(mindmap, 1)`。
 - 核心历史迁移 v4/v5/v16/v17 保留冻结 SQL 快照，职责是让旧库重放历史可复现；它们不再 import 插件包 DDL，也不再是 Mindmap
   schema 的真源。
 
@@ -119,7 +117,7 @@ Mindmap 的升级由主应用侧 `PluginUpgradeRunner` 调度：
 卸载 Mindmap 只改变插件安装/启用状态：
 
 - 不 `DROP TABLE`。
-- 不删除 `mindmap_versions` / `mindmap_evidence`。
+- 不删除 `mindmap_versions`。
 - 不清理已应用的 `plugin_migrations`。
 - 重装后复用原数据，迁移执行器会跳过已经记录过的迁移。
 

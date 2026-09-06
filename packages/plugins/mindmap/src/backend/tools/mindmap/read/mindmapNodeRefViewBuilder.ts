@@ -4,7 +4,7 @@
  *
  * 职责：
  * - 将 MindMapData 转换为带 [#nodeRef] 的缩进大纲文本（供 Agent 工具链定位使用）
- * - 同步构建 UI 大纲（只含节点文本 + 层级，不暴露 ref / tagging / 版本号）
+ * - 同步构建 UI 大纲（只含节点文本 + 层级，不暴露 ref / 版本号）
  *
  * 输出格式符合 MindMap NodeRef View 规范：
  * - 每行以 [#nodeRef] 开头，后跟节点 topic
@@ -101,11 +101,9 @@ export function buildMindMapNodeRefView(
     }
     const indent = '  '.repeat(depth);
     const rootSuffix = isRoot ? ' (Root)' : '';
-    const taggingSuffix = buildTaggingSuffix(node);
+    lines.push(`${indent}[${ref}] ${topic}${rootSuffix}`);
 
-    lines.push(`${indent}[${ref}] ${topic}${rootSuffix}${taggingSuffix}`);
-
-    // 同步构建 UI 大纲（只保留节点内容，不暴露 ref/tagging/version）
+    // 同步构建 UI 大纲（只保留节点内容，不暴露 ref/version）
     // 若达到限制则停止写入（避免 payload 膨胀）；observation 仍会完整输出
     tryPushUiOutline({ id, depth, text: topic, hasChildren });
 
@@ -147,49 +145,4 @@ export function buildMindMapObservation(content: MindMapData): string {
     `思维导图根节点: ${rootTopic}`,
     `一级节点(${children.length}): ${childTopics.join(', ') || '无'}`
   ].join('\n');
-}
-
-// ============================================================================
-// 内部工具函数
-// ============================================================================
-
-/**
- * 从节点对象提取 tagging 信息（仅在存在时输出，避免 token 膨胀）
- *
- * 输出格式（稳定、可机器解析）：
- * - status/confidence/kind 仅在存在时输出
- * - kind 来自 node.tagging.labels.kind（手动语义类型）
- *
- * 示例：⟦status=refuted conf=high kind=hypothesis⟧
- */
-function buildTaggingSuffix(node: Record<string, unknown>): string {
-  const tagging = node.tagging && typeof node.tagging === 'object'
-    ? (node.tagging as Record<string, unknown>)
-    : null;
-  if (!tagging) return '';
-
-  const parts: string[] = [];
-
-  const status = tagging.status;
-  if (typeof status === 'string' && status.trim().length > 0) {
-    parts.push(`status=${status}`);
-  }
-
-  const confidence = tagging.confidence;
-  if (typeof confidence === 'string' && confidence.trim().length > 0) {
-    parts.push(`conf=${confidence}`);
-  } else if (typeof confidence === 'number' && Number.isFinite(confidence)) {
-    parts.push(`conf=${confidence}`);
-  }
-
-  const labels = tagging.labels && typeof tagging.labels === 'object'
-    ? (tagging.labels as Record<string, unknown>)
-    : null;
-  const kind = labels ? labels.kind : undefined;
-  if (typeof kind === 'string' && kind.trim().length > 0) {
-    parts.push(`kind=${kind}`);
-  }
-
-  if (parts.length === 0) return '';
-  return ` ⟦${parts.join(' ')}⟧`;
 }

@@ -96,7 +96,7 @@ ReflowScheduler 的职责就是：**把“重算请求”统一收敛，并在�
 
 - `presentation/ui/NodeEditor.vue`：`requestReflow('node-edit:finish')`
 - `presentation/ui/RichContentHost.vue`：`requestReflow('rich-content:resize')`
-- `features/evidence/ui/EvidenceInNode.vue`：`requestReflow('addons:toggle' | 'addons:content')`
+- 文档节点尺寸变化：通过 `requestReflow` 进入统一调度器。
 - `domain/operations/nodeOperations.ts`、`shared/utils/dom/domManipulation.ts`：已将多数散落 `linkDiv()` 迁移为 `requestReflow('node-operation:dom-changed')`
 
 ---
@@ -123,4 +123,3 @@ ReflowScheduler 的职责就是：**把“重算请求”统一收敛，并在�
 ---
 
 *最后更新：2026-02-02*
-
