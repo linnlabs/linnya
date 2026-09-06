@@ -86,9 +86,10 @@ describe('admitSvgGraphic', () => {
       source: `<!DOCTYPE svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"/>`,
     },
     {
-      name: '结束标签中的非法内容',
+      // 旧解析器的多行正则会静默接纳换行后的尾随内容；必须覆盖这个真实绕过输入。
+      name: '结束标签换行后的非法内容',
       code: 'slides.svg.invalid_xml' as const,
-      source: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"></rect invalid></svg>`,
+      source: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"></rect\ninvalid></svg>`,
     },
     {
       name: 'matrix transform',
