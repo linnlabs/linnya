@@ -12,6 +12,7 @@ import {
 } from './revisionOverlayModel'
 import { readRevisionToolbarBlockIds } from '../../functions/readRevisionToolbarBlockIds'
 import { publishRevisionToolbarBlockIds } from '../../runtime/revisionToolbarRuntimeState'
+import { readMountedEditorViewDom } from '../../functions/readMountedEditorViewDom'
 import type { RevisionOverlayItem } from './revisionOverlayTypes'
 
 interface EditorEventBusLike {
@@ -46,7 +47,7 @@ function shouldRunRevisionOverlay(editor: Editor | null): boolean {
 }
 
 function resolveScrollRoot(editor: Editor | null): HTMLElement | null {
-  const dom = editor?.view?.dom
+  const dom = readMountedEditorViewDom(editor)
   const scrollRoot = dom?.closest('.editor-shell')
   return scrollRoot instanceof HTMLElement ? scrollRoot : null
 }
@@ -112,9 +113,10 @@ export function useRevisionOverlayLayer(
     const editor = options.editor.value
     const store = revisionStore.value
     const overlayRoot = options.overlayRoot.value
+    const editorRoot = readMountedEditorViewDom(editor)
 
     isEnabled.value = shouldRunRevisionOverlay(editor)
-    if (!isEnabled.value || !editor || editor.isDestroyed || !store || !overlayRoot) {
+    if (!isEnabled.value || !editor || !store || !overlayRoot || !editorRoot) {
       items.value = []
       publishRevisionToolbarBlockIds([])
       logRevisionOverlayStage('refresh:end', [
@@ -156,7 +158,7 @@ export function useRevisionOverlayLayer(
     }
 
     const blocks = collectRevisionOverlayRootBlocks({
-      editorRoot: editor.view.dom,
+      editorRoot,
       overlayRoot,
       scrollRoot: resolveScrollRoot(editor),
       // 中文说明：pending header 已经迁移到 Shell NodeView 的文档流 slot。
@@ -208,11 +210,14 @@ export function useRevisionOverlayLayer(
   }
 
   function installEditorListeners(editor: EditorWithOptionalEventBus): () => void {
+    const editorRoot = readMountedEditorViewDom(editor)
+    if (!editorRoot) return () => {}
+
     const scrollRoot = resolveScrollRoot(editor)
     const schedule = () => scheduleRefresh()
 
-    editor.view.dom.addEventListener('pointermove', handlePointerMove)
-    editor.view.dom.addEventListener('pointerleave', handlePointerLeave)
+    editorRoot.addEventListener('pointermove', handlePointerMove)
+    editorRoot.addEventListener('pointerleave', handlePointerLeave)
     scrollRoot?.addEventListener('scroll', schedule, { passive: true })
     window.addEventListener('resize', schedule)
     editor.on('update', schedule)
@@ -221,8 +226,8 @@ export function useRevisionOverlayLayer(
     editor.eventBus?.on?.('pending-revisions-loaded', schedule)
 
     return () => {
-      editor.view.dom.removeEventListener('pointermove', handlePointerMove)
-      editor.view.dom.removeEventListener('pointerleave', handlePointerLeave)
+      editorRoot.removeEventListener('pointermove', handlePointerMove)
+      editorRoot.removeEventListener('pointerleave', handlePointerLeave)
       scrollRoot?.removeEventListener('scroll', schedule)
       window.removeEventListener('resize', schedule)
       editor.off('update', schedule)

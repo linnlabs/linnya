@@ -16,6 +16,7 @@ import {
   type ShellRevisionHeaderSession,
 } from './shellBlockRevisionHeaderDom'
 import { publishShellRevisionHeaderPerf } from './shellRevisionHeaderPerf'
+import { readMountedEditorViewDom } from '../../functions/readMountedEditorViewDom'
 
 interface EditorEventBusLike {
   on?: (eventName: string, listener: () => void) => void
@@ -121,7 +122,8 @@ export function useShellBlockRevisionHeader(
     const editor = options.editor.value
     const store = revisionStore.value
     const shellEnabled = shouldRunShellRevisionHeader(editor)
-    if (!shellEnabled || !editor || editor.isDestroyed || !store) {
+    const editorRoot = readMountedEditorViewDom(editor)
+    if (!shellEnabled || !editor || !store || !editorRoot) {
       publishShellRevisionHeaderPerf({
         kind: 'early-return',
         reason: 'editor-or-store-unavailable',
@@ -142,7 +144,7 @@ export function useShellBlockRevisionHeader(
         durationMs: Math.round((performance.now() - startedAt) * 10) / 10,
         timestamp: Date.now(),
       })
-      clearRenderedHeaders(editor?.view?.dom ?? null)
+      clearRenderedHeaders(editorRoot)
       logShellRevisionHeaderStage('sync:end', [
         'reason=editor-or-store-unavailable',
         `durationMs=${Math.round((performance.now() - startedAt) * 10) / 10}`,
@@ -174,7 +176,7 @@ export function useShellBlockRevisionHeader(
         durationMs: Math.round((performance.now() - startedAt) * 10) / 10,
         timestamp: Date.now(),
       })
-      clearRenderedHeaders(editor.view.dom)
+      clearRenderedHeaders(editorRoot)
       logShellRevisionHeaderStage('sync:end', [
         'reason=no-revision-state',
         `durationMs=${Math.round((performance.now() - startedAt) * 10) / 10}`,
@@ -194,7 +196,7 @@ export function useShellBlockRevisionHeader(
     const slotMissBlockIds: string[] = []
     const renderedBlockIdsSample: string[] = []
     for (const blockId of hydratedBlockIds) {
-      const outer = findRootBlockOuterById(editor.view.dom, blockId)
+      const outer = findRootBlockOuterById(editorRoot, blockId)
       if (!outer) {
         outerMissCount += 1
         pushPerfBlockIdSample(outerMissBlockIds, blockId)
@@ -289,7 +291,7 @@ export function useShellBlockRevisionHeader(
   watch(
     () => options.editor.value,
     (editor, _previous, onCleanup) => {
-      clearRenderedHeaders(_previous?.view?.dom ?? null)
+      clearRenderedHeaders(readMountedEditorViewDom(_previous))
       if (!editor || editor.isDestroyed) return
 
       const cleanup = installEditorListeners(editor)
@@ -321,6 +323,6 @@ export function useShellBlockRevisionHeader(
       cancelAnimationFrame(refreshRaf)
       refreshRaf = null
     }
-    clearRenderedHeaders(options.editor.value?.view?.dom ?? null)
+    clearRenderedHeaders(readMountedEditorViewDom(options.editor.value))
   })
 }

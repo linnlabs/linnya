@@ -178,6 +178,9 @@ AI 通过 `write_file/edit_file` 写入 `[@ref]` 后，引用数据经过以下�
   - `RootBlockShellView.ignoreMutation()` 的 header/history mount 约束仍适用于 Shell 压测路径，但不能再被当作大文档主路线的 pending UI 方案。
 - `features/Revision/ui/overlay/RevisionOverlayLayer.vue`
   - overlay 只适合承载 hover/selection 这类不改变布局的浮层交互。
+  - `EditorContent` 与 overlay 是兄弟组件，卸载时 Tiptap 可能先撤下真实 EditorView；Revision UI
+    必须通过 `functions/readMountedEditorViewDom.ts` 读取 DOM，并在注册监听时保存真实 DOM 引用，禁止在
+    watcher cleanup 或 `onBeforeUnmount` 中直接访问 `editor.view.dom`。
   - 不能再承担块级 pending header 的常驻显示；常驻 header 必须在 NodeView 文档流内，避免“先测坐标、再改正文布局、再重测”的双轨错位。
 - `ui/composables/useBlockActivation.ts`
   - 修订 chrome 使用 `isUiActive`。

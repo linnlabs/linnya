@@ -2,7 +2,17 @@
 
 import type { Editor } from '@tiptap/core'
 import { createPinia, setActivePinia, type Pinia } from 'pinia'
-import { computed, createApp, defineComponent, h, nextTick, ref, type App, type Ref } from 'vue'
+import {
+  computed,
+  createApp,
+  defineComponent,
+  h,
+  nextTick,
+  ref,
+  shallowRef,
+  type App,
+  type Ref,
+} from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   clearLocalizationRegistryForTest,
@@ -354,5 +364,42 @@ describe('useShellBlockRevisionHeader', () => {
 
     expect(outerA.textContent).toContain('Pending')
     expect(outerB.textContent).toContain('Pending')
+  })
+
+  it('does not access the Tiptap view after the editor has been destroyed', async () => {
+    const raf = installRafQueue()
+    const editorRoot = document.createElement('div')
+    const editor = shallowRef<ShellHeaderTestEditor | null>(createEditor(editorRoot))
+    const canonicalSessions = ref<Record<string, CanonicalPendingSession>>({})
+    const activeRevisions = ref<Record<string, BlockRevisionState>>({})
+    vi.mocked(useRevisionStore).mockReturnValue(createRevisionStoreMock({
+      canonicalSessions,
+      activeRevisions,
+    }))
+    const renderEngine = createRenderEngineMock([])
+
+    const app = mountShellHeaderHost({
+      editor,
+      renderVirtualizationEngine: renderEngine.engine,
+      pinia,
+    })
+    mountedApps.push(app)
+    await nextTick()
+    raf.flushAll()
+
+    const destroyedEditor = editor.value
+    if (!destroyedEditor) throw new Error('测试编辑器未创建')
+    Object.defineProperty(destroyedEditor, 'isDestroyed', {
+      configurable: true,
+      get: () => true,
+    })
+    Object.defineProperty(destroyedEditor, 'view', {
+      configurable: true,
+      get: () => {
+        throw new Error('destroyed editor view must not be accessed')
+      },
+    })
+
+    expect(() => app.unmount()).not.toThrow()
   })
 })
