@@ -15,12 +15,12 @@
  *
  * 3. tableHeader
  *    - 表头单元格节点。
- *    - attrs: { colspan, rowspan, colwidth } (继承自 Tiptap TableHeader)
+ *    - attrs: { colspan, rowspan, colwidth, align, style } (继承 Tiptap TableHeader，并保留项目样式属性)
  *    - content: 'tableCellContentBlock' (通过 .configure() 在 EditorContext.vue 中设置)
  *
  * 4. tableCell
  *    - 普通单元格节点。
- *    - attrs: { colspan, rowspan, colwidth } (继承自 Tiptap TableCell)
+ *    - attrs: { colspan, rowspan, colwidth, align, style } (继承 Tiptap TableCell，并保留项目样式属性)
  *    - content: 'tableCellContentBlock' (通过 .configure() 在 EditorContext.vue 中设置)
  *
  * 5. tableCellContentBlock (新节点，定义在 TableCellContentBlock.js 中)

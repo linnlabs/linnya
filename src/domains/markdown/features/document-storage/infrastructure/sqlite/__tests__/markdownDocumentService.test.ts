@@ -157,6 +157,44 @@ describe('MarkdownDocumentService', () => {
     expect(service.getLatestVersion(documentId)).toBeNull();
   });
 
+  it('保存 Tiptap v3 表格单元格的 align 属性', () => {
+    const { service, documentId } = setup();
+
+    const version = service.saveNewVersion(documentId, JSON.stringify({
+      type: 'doc',
+      content: [{
+        type: 'rootBlock',
+        attrs: { id: 'root-table' },
+        content: [{
+          type: 'table',
+          attrs: { id: 'table-1', blockType: 'table', withHeaderRow: true },
+          content: [{
+            type: 'tableRow',
+            content: [{
+              type: 'tableHeader',
+              attrs: { align: 'center' },
+              content: [{
+                type: 'tableCellContentBlock',
+                attrs: { id: 'cell-1', blockType: 'tableCellContent' },
+                content: [{ type: 'text', text: '标题' }],
+              }],
+            }],
+          }],
+        }],
+      }],
+    }));
+
+    expect(JSON.parse(version.content_json)).toMatchObject({
+      content: [{
+        content: [{
+          content: [{
+            content: [{ attrs: { align: 'center' } }],
+          }],
+        }],
+      }],
+    });
+  });
+
   it('保存版本时写入 schema 规范化后的 JSON', () => {
     const { service, documentId } = setup();
 

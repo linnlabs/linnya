@@ -164,6 +164,7 @@ function buildTableRowsFromModel(model: UnknownRecord): ProseMirrorJsonNode[] {
           colspan: 1,
           rowspan: 1,
           colwidth: null,
+          align: null,
           style: null
         },
         content: [contentBlock]
@@ -190,6 +191,7 @@ function buildTableRowsFromModel(model: UnknownRecord): ProseMirrorJsonNode[] {
           colspan: 1,
           rowspan: 1,
           colwidth: null,
+          align: null,
           style: null
         },
         content: [contentBlock]
