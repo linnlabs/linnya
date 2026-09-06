@@ -140,6 +140,8 @@ blockId / pos -> hydrate + pin -> await hydrated runtime handle -> selection / s
 
 默认等待时间在 `renderVirtualizationConstants.ts` 中集中配置。不要把这条链路退回逐帧轮询 DOM。`nodeViewLifecycle` 仍保留给 placeholder / shell 诊断和历史兼容；新增交互入口优先走 runtime registry，且必须传入当前 editor owner。
 
+拖拽后恢复操作焦点时，只有 textblock 子节点才使用内容末尾的 `TextSelection`。图片、表格、分割线等没有 inline content 的块选择整个 `rootBlock`，不能把选区放在它们的节点边界上。
+
 ## KeepAlive
 
 保活是租约语义，不是裸 `pinnedSet.add/delete`：

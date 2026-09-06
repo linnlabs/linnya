@@ -280,4 +280,46 @@ describe('validateMoveOperation', () => {
     }));
     expect(getRootBlockDragStateSnapshot().draggingRootBlockInfo).toBeNull();
   });
+
+  it('treats a drop without a valid target as a cancelled drag', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const doc = createDoc([
+      createRootBlock('block-0', 10),
+      createRootBlock('block-1', 20),
+    ]);
+    const editor = {
+      state: { doc },
+      emit: vi.fn(),
+    };
+    const event = { currentTarget: null };
+    vi.stubGlobal('document', {
+      body: {
+        setAttribute: vi.fn(),
+        removeAttribute: vi.fn(),
+      },
+    });
+    handleDragStartByRootBlockId({
+      dataTransfer: null,
+      stopPropagation: vi.fn(),
+    }, {
+      editor,
+      rootBlockId: 'block-0',
+    });
+
+    vi.spyOn(PositionUtils.prototype, 'calculateDragTargetIndex').mockReturnValue(null);
+
+    handleDragEndForEditor(event, {
+      editor,
+      fallbackBlockId: 'block-0',
+    });
+
+    expect(consoleError).not.toHaveBeenCalledWith(
+      expect.stringContaining('无法计算目标索引')
+    );
+    expect(editor.emit).not.toHaveBeenCalledWith(
+      'requestBlockMove',
+      expect.anything()
+    );
+    expect(getRootBlockDragStateSnapshot().draggingRootBlockInfo).toBeNull();
+  });
 });

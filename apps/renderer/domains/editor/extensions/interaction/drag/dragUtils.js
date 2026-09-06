@@ -284,7 +284,8 @@ export function handleDragEndForEditor(event, options) {
     const targetMs = nowMs() - targetStartedAt;
     
     if (targetIndex === null) {
-      console.error(`[BlockDrag ${fallbackBlockId}] 无法计算目标索引`);
+      // 中文说明：松手位置离开编辑器或有效 rootBlock 时，拖拽应按取消处理；
+      // 视觉层已经在 dragleave / dragend 清理，不把正常取消误报成错误。
       return;
     }
 

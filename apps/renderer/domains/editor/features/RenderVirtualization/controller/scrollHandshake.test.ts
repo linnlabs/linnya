@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { Schema } from 'prosemirror-model'
+import { Schema, type Node as ProseMirrorNode } from 'prosemirror-model'
 import { NodeSelection, EditorState } from 'prosemirror-state'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -39,7 +39,7 @@ const schema = new Schema({
     rootBlock: {
       group: 'block',
       attrs: { id: { default: null } },
-      content: 'paragraph',
+      content: 'paragraph | imageBlock',
       toDOM: (node) => ['div', { 'data-id': node.attrs.id }, 0],
       parseDOM: [{ tag: 'div[data-id]' }],
     },
@@ -49,10 +49,22 @@ const schema = new Schema({
       toDOM: () => ['p', 0],
       parseDOM: [{ tag: 'p' }],
     },
+    imageBlock: {
+      group: 'block',
+      atom: true,
+      selectable: true,
+      toDOM: () => ['div', { 'data-image-block': 'true' }],
+      parseDOM: [{ tag: 'div[data-image-block]' }],
+    },
   },
 })
 
-function createState(blockIds: string[], initialHydratedBlockCount: number): EditorState {
+function createState(
+  blockIds: string[],
+  initialHydratedBlockCount: number,
+  createRootBlockChild: (id: string) => ProseMirrorNode = (id) =>
+    schema.nodes.paragraph.create(null, schema.text(id))
+): EditorState {
   const state = EditorState.create({
     schema,
     doc: schema.nodes.doc.create(
@@ -60,7 +72,7 @@ function createState(blockIds: string[], initialHydratedBlockCount: number): Edi
       blockIds.map((id) =>
         schema.nodes.rootBlock.create(
           { id },
-          schema.nodes.paragraph.create(null, schema.text(id))
+          createRootBlockChild(id)
         )
       )
     ),
@@ -123,13 +135,20 @@ function setElementRect(
 function createEditor(
   blockIds: string[],
   initialHydratedBlockCount: number,
-  options: { registerRuntimeOnHydrate?: boolean } = {}
+  options: {
+    registerRuntimeOnHydrate?: boolean
+    createRootBlockChild?: (id: string) => ProseMirrorNode
+  } = {}
 ): {
   editor: ScrollHandshakeEditor
   dispatchMetaCount: () => number
   getState: () => EditorState
 } {
-  let state = createState(blockIds, initialHydratedBlockCount)
+  let state = createState(
+    blockIds,
+    initialHydratedBlockCount,
+    options.createRootBlockChild
+  )
   let metaCount = 0
   const registerRuntimeOnHydrate = options.registerRuntimeOnHydrate ?? true
   const editorDom = document.createElement('div')
@@ -386,6 +405,24 @@ describe('scrollEditorToBlock', () => {
     expect(getRenderVirtualizationState(getState())?.hydratedSet.has('block-b')).toBe(true)
     expect(getState().selection.from).toBeGreaterThan((result.pos ?? 0) + 1)
     expect(getState().selection.empty).toBe(true)
+  })
+
+  it('selects the moved rootBlock when its child has no inline content', async () => {
+    const { editor, getState } = createEditor(['block-image'], 0, {
+      createRootBlockChild: () => schema.nodes.imageBlock.create(),
+    })
+
+    const result = await positionCursorAtBlockEndWithHandshake(editor, 'block-image', {
+      waitFrame: async () => {},
+      temporaryPinMs: 20,
+    })
+
+    expect(result.ok).toBe(true)
+    const selection = getState().selection
+    expect(selection).toBeInstanceOf(NodeSelection)
+    if (!(selection instanceof NodeSelection)) throw new Error('应创建 rootBlock NodeSelection')
+    expect(selection.from).toBe(result.pos)
+    expect(selection.node.type.name).toBe('rootBlock')
   })
 
   it('positions an exact text selection after hydrating the containing rootBlock', async () => {

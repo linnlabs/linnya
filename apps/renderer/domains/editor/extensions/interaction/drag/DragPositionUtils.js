@@ -21,12 +21,32 @@ function findRootBlockFromElements(elements) {
   return null;
 }
 
-function findRootBlockNearPoint(x, y) {
+function readEditorRect(editor) {
+  if (!editor || editor.isDestroyed || !editor.view?.dom) return null;
+
+  const rect = editor.view.dom.getBoundingClientRect();
+  if (!Number.isFinite(rect.left) || !Number.isFinite(rect.right) || rect.width <= 0) {
+    return null;
+  }
+
+  return rect;
+}
+
+function findRootBlockNearPoint(editor, x, y) {
   if (typeof document.elementsFromPoint !== 'function') return null;
 
-  for (const offset of VIEWPORT_SAMPLE_Y_OFFSETS) {
-    const rootBlock = findRootBlockFromElements(document.elementsFromPoint(x, y + offset));
-    if (rootBlock) return rootBlock;
+  const editorRect = readEditorRect(editor);
+  const xSamples = [x];
+  if (editorRect) {
+    xSamples.push(editorRect.left + editorRect.width / 2);
+  }
+
+  const uniqueXSamples = [...new Set(xSamples)];
+  for (const sampleX of uniqueXSamples) {
+    for (const offset of VIEWPORT_SAMPLE_Y_OFFSETS) {
+      const rootBlock = findRootBlockFromElements(document.elementsFromPoint(sampleX, y + offset));
+      if (rootBlock) return rootBlock;
+    }
   }
 
   return null;
@@ -55,7 +75,7 @@ export function calculateTargetIndex(editor, event) {
 
     // 中文说明：虚拟化文档中有 1 万个 placeholder DOM。松手时不能全量 querySelector
     // 每个 block；目标 index 只需要鼠标所在的视口锚点块即可。
-    const anchorBlock = findRootBlockNearPoint(event.clientX, event.clientY);
+    const anchorBlock = findRootBlockNearPoint(editor, event.clientX, event.clientY);
     if (!anchorBlock) return null;
 
     const anchorId = anchorBlock.dataset.id;

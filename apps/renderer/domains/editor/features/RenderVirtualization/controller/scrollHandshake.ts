@@ -377,12 +377,23 @@ export async function scrollEditorToBlock(
   return { ok: true, blockId, pos: hydrated.located.pos }
 }
 
-function findContentBlockEndPos(state: EditorState, rootBlockPos: number): number | null {
+function createRootBlockEndSelection(
+  state: EditorState,
+  rootBlockPos: number
+): NodeSelection | TextSelection | null {
   const rootBlock = state.doc.nodeAt(rootBlockPos)
   if (!rootBlock || rootBlock.type.name !== 'rootBlock' || rootBlock.childCount === 0) return null
 
   const firstChild = rootBlock.child(0)
-  return rootBlockPos + 1 + firstChild.nodeSize - 1
+  if (!firstChild.isTextblock) {
+    // 中文说明：图片、表格、分割线等 rootBlock 子节点没有 inline content，不能把
+    // TextSelection 放在它们的 node boundary。此时选择整个 rootBlock，保留拖拽后
+    // 的操作焦点并避免构造非法文本选区。
+    return NodeSelection.create(state.doc, rootBlockPos)
+  }
+
+  const endPos = rootBlockPos + 1 + firstChild.nodeSize - 1
+  return TextSelection.create(state.doc, endPos)
 }
 
 export async function positionCursorAtBlockEndWithHandshake(
@@ -402,8 +413,9 @@ export async function positionCursorAtBlockEndWithHandshake(
     return hydrated
   }
 
-  const endPos = findContentBlockEndPos(editor.view.state, hydrated.located.pos)
-  if (endPos === null) {
+  const state = editor.view.state
+  const selection = createRootBlockEndSelection(state, hydrated.located.pos)
+  if (selection === null) {
     editor.commands?.focus?.()
     return {
       ok: false,
@@ -413,8 +425,7 @@ export async function positionCursorAtBlockEndWithHandshake(
     }
   }
 
-  const state = editor.view.state
-  editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, endPos)))
+  editor.view.dispatch(state.tr.setSelection(selection))
   editor.commands?.focus?.()
 
   return { ok: true, blockId, pos: hydrated.located.pos }
