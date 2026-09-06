@@ -25,7 +25,7 @@ function assertKnownAttributes(params: {
 
   const knownAttributes = schemaType.spec.attrs ?? {}
   for (const attributeName of Object.keys(value)) {
-    if (!(attributeName in knownAttributes)) {
+    if (!Object.prototype.hasOwnProperty.call(knownAttributes, attributeName)) {
       throw new Error(
         `[EditorDocumentSchema] ${path} 的 ${owner} 包含未知属性 "${attributeName}"`
       )
