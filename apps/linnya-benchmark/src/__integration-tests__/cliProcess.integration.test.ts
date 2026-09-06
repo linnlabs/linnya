@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { builtinBenchmarkCases } from '../cases';
 
 const repoRoot = path.resolve(import.meta.dirname, '../../../..');
 const entry = path.join(repoRoot, 'apps/linnya-benchmark/src/main.ts');
@@ -45,6 +46,7 @@ describe('linnya-benchmark real CLI process', () => {
     });
     expect(response.cases.map(item => item.id)).toEqual([
       'slides_consulting_commercial_space_v1',
+      'slides_consulting_embodied_intelligence_v1',
       'slides_consulting_energy_storage_v1',
       'slides_consulting_high_density_v1',
       'slides_consulting_humanoid_robotics_v1',
@@ -54,15 +56,13 @@ describe('linnya-benchmark real CLI process', () => {
       'slides_design_contract_intent_v1',
     ]);
     for (const benchmarkCase of response.cases) {
-      if (benchmarkCase.id.startsWith('slides_design_contract_')) {
-        expect(benchmarkCase.inputs).toEqual([]);
-        continue;
-      }
+      const definition = builtinBenchmarkCases.find(item => item.id === benchmarkCase.id);
+      expect(definition).toBeDefined();
       expect(benchmarkCase).toMatchObject({
         revision: expect.any(Number),
         agent_id: 'slides_agent',
-        inputs: [{ key: 'reference_image', kind: 'absolute_file' }],
       });
+      expect(benchmarkCase.inputs).toEqual(definition?.inputs);
     }
   });
 

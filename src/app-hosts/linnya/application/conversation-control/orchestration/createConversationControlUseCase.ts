@@ -86,17 +86,11 @@ function buildSendRequest(
   };
 }
 
-async function resolveWorkspaceToolProjectId(
+async function resolveConversationProjectId(
   ports: ConversationControlUseCasePorts,
-  request: Extract<ConversationControlWorkspaceToolsRequest, { action: 'call' }>,
-): Promise<string> {
+  request: Pick<ConversationControlSendRequest, 'conversation_id' | 'project_id'>,
+): Promise<string | undefined> {
   if (!request.conversation_id) {
-    if (!request.project_id) {
-      throw new ConversationControlError(
-        'invalid_request',
-        'Workspace tool call requires a project or an existing conversation',
-      );
-    }
     return request.project_id;
   }
 
@@ -109,19 +103,14 @@ async function resolveWorkspaceToolProjectId(
       `Conversation ${request.conversation_id} does not exist`,
     );
   }
-  if (persistedProjectId === null) {
-    throw new ConversationControlError(
-      'invalid_request',
-      `Conversation ${request.conversation_id} is not bound to a Workspace project`,
-    );
-  }
   if (request.project_id && request.project_id !== persistedProjectId) {
     throw new ConversationControlError(
       'invalid_request',
       `Conversation ${request.conversation_id} belongs to another Workspace project`,
     );
   }
-  return persistedProjectId;
+  // 续跑和审批均继承持久化作用域；无项目聊天仍合法，但不能借续跑迁移项目。
+  return persistedProjectId ?? undefined;
 }
 
 function buildWorkspaceToolRequest(input: {
@@ -268,11 +257,12 @@ export function createConversationControlUseCase(
           true,
         );
       }
+      const projectId = await resolveConversationProjectId(ports, request);
       if (request.selected_agent_id) {
         const updated = await ports.history.updateSelectedAgent(
           conversationId,
           request.selected_agent_id,
-          request.project_id,
+          projectId,
         );
         if (!updated) {
           throw new ConversationControlError(
@@ -282,7 +272,7 @@ export function createConversationControlUseCase(
         }
       }
       const acceptance = await ports.flow.start(
-        buildSendRequest(request, conversationId, ports.now()),
+        buildSendRequest({ ...request, project_id: projectId }, conversationId, ports.now()),
       );
       return {
         schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
@@ -360,8 +350,9 @@ export function createConversationControlUseCase(
           `Expected interaction ${request.expected_interaction_id} is no longer pending`,
         );
       }
+      const projectId = await resolveConversationProjectId(ports, request);
       const acceptance = await ports.flow.respond(
-        projectInteractionResponse(request, run, interaction, ports.now()),
+        projectInteractionResponse({ ...request, project_id: projectId }, run, interaction, ports.now()),
       );
       return {
         schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
@@ -504,7 +495,13 @@ export function createConversationControlUseCase(
         };
       }
 
-      const projectId = await resolveWorkspaceToolProjectId(ports, request);
+      const projectId = await resolveConversationProjectId(ports, request);
+      if (!projectId) {
+        throw new ConversationControlError(
+          'invalid_request',
+          'Workspace tool call requires a project or a conversation bound to a Workspace project',
+        );
+      }
       const conversationId = request.conversation_id ?? ports.createConversationId();
       const existingRuns = await ports.runs.findByConversation(conversationId);
       if (existingRuns.some(run => isForegroundRootRun(run) && isActiveRun(run))) {

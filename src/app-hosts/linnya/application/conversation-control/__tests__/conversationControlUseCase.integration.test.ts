@@ -567,6 +567,48 @@ describe('conversation-control use case', () => {
     });
   });
 
+  it('续跑从历史继承项目，并将同一作用域交给 Agent 选择与 Flow', async () => {
+    const test = fixture([run('completed')]);
+    await test.useCase.send({
+      schema_version: 1, command: 'send', message: '继续制作',
+      conversation_id: 'conversation-1',
+      selected_agent_id: ConversationSelectedAgentIdSchema.parse('plugin_agent_fixture'),
+    });
+    expect(test.startRequests[0]).toMatchObject({
+      conversation_id: 'conversation-1', project_id: 'project-1',
+      options: { project_metadata: { id: 'project-1' } },
+    });
+    expect(test.selectedAgentWrites).toEqual(['plugin_agent_fixture']);
+  });
+
+  it.each([
+    { stored: 'project-1', explicit: 'project-2' },
+    { stored: null, explicit: 'project-1' },
+    { stored: undefined, explicit: undefined },
+  ])('续跑拒绝跨项目或不存在的会话，不产生持久化副作用：%j', async ({ stored, explicit }) => {
+    const test = fixture();
+    test.setConversationProjectId(stored);
+    await expect(test.useCase.send({
+      schema_version: 1, command: 'send', message: '继续',
+      conversation_id: 'conversation-1', project_id: explicit,
+      selected_agent_id: ConversationSelectedAgentIdSchema.parse('plugin_agent_fixture'),
+    })).rejects.toMatchObject({ code: 'invalid_request' });
+    expect(test.startRequests).toEqual([]);
+    expect(test.selectedAgentWrites).toEqual([]);
+  });
+
+  it('无项目聊天可正常续跑，不猜测 Workspace', async () => {
+    const test = fixture();
+    test.setConversationProjectId(null);
+    await test.useCase.send({
+      schema_version: 1, command: 'send', message: '继续聊天',
+      conversation_id: 'conversation-1',
+    });
+    expect(test.startRequests).toHaveLength(1);
+    expect(test.startRequests[0]?.project_id).toBeUndefined();
+    expect(test.startRequests[0]?.options?.project_metadata).toBeUndefined();
+  });
+
   it('在任何持久化或 Flow side effect 前拒绝不可用的图片模型', async () => {
     const test = fixture();
     await expect(test.useCase.send({
@@ -646,6 +688,16 @@ describe('conversation-control use case', () => {
     });
     expect(JSON.stringify(status)).not.toContain('resume');
 
+    await expect(test.useCase.respond({
+      schema_version: 1,
+      command: 'respond',
+      conversation_id: 'conversation-1',
+      project_id: 'project-2',
+      expected_interaction_id: 'interaction-1',
+      response: { kind: 'approve' },
+    })).rejects.toMatchObject({ code: 'invalid_request' });
+    expect(test.responseRequests).toEqual([]);
+
     const response = await test.useCase.respond({
       schema_version: 1,
       command: 'respond',
@@ -664,6 +716,8 @@ describe('conversation-control use case', () => {
       tool_name: 'ppt_plan',
       data: { action: 'approve' },
       interaction_status: 'approved',
+      project_id: 'project-1',
+      project_metadata: { id: 'project-1' },
     });
   });
 
