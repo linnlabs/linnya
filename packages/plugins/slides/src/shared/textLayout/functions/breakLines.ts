@@ -146,8 +146,9 @@ function flattenParagraph(
       }));
     }
     const measurement = provider.getClusterAdvances(clusterTexts, resolveRunStyle(run));
-    if (measurement.advances.length !== clusters.length) {
-      throw new Error(`RunAdvanceProvider returned ${measurement.advances.length} advances for ${clusters.length} clusters`);
+    // 强制换行只参与断行，不请求字宽；数量校验必须对应实际送入 provider 的 clusters。
+    if (measurement.advances.length !== clusterTexts.length) {
+      throw new Error(`RunAdvanceProvider returned ${measurement.advances.length} advances for ${clusterTexts.length} clusters`);
     }
     let measuredIndex = 0;
     return clusters.map((cluster) => ({

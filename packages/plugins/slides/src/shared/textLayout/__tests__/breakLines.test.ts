@@ -119,4 +119,38 @@ describe('breakParagraphIntoLines', () => {
       expect(lineTexts(lines)).toEqual(['first', 'second']);
     }
   });
+
+  it.each(['\n', '\r\n'])('preserves mixed text and %j breaks without shifting measured advances', (breakText) => {
+    const provider: RunAdvanceProvider = {
+      getClusterAdvances(clusters) {
+        expect(clusters).toEqual(['A', 'B', 'C']);
+        return { advances: [0.1, 0.2, 0.3], source: 'harfbuzz' };
+      },
+    };
+    for (const wrap of ['word', 'char', 'none'] as const) {
+      const lines = breakParagraphIntoLines(
+        paragraph(`${breakText}A${breakText}${breakText}BC${breakText}`),
+        10, wrap, provider, resolveStyle,
+      );
+      expect(lineTexts(lines)).toEqual(['', 'A', '', 'BC', '']);
+      expect(lines.map((line) => line.width)).toEqual([0, 0.1, 0, 0.5, 0]);
+    }
+  });
+
+  it('combines explicit and width-driven line breaks in the same run', () => {
+    for (const wrap of ['word', 'char'] as const) {
+      const lines = breakParagraphIntoLines(
+        paragraph('ABCD\nEFGH'), 0.25, wrap, fixedAdvanceProvider, resolveStyle,
+      );
+      expect(lineTexts(lines)).toEqual(['AB', 'CD', 'EF', 'GH']);
+    }
+  });
+
+  it.each([1, 3])('rejects %i advances when only two visible clusters were requested', (count) => {
+    const provider: RunAdvanceProvider = {
+      getClusterAdvances: () => ({ advances: Array.from({ length: count }, () => 0.1), source: 'heuristic' }),
+    };
+    expect(() => breakParagraphIntoLines(paragraph('A\nB'), 10, 'word', provider, resolveStyle))
+      .toThrow(`RunAdvanceProvider returned ${count} advances for 2 clusters`);
+  });
 });
