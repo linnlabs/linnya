@@ -119,14 +119,14 @@ export const DEPENDENCY_SOURCE_OVERRIDES = [
 export const DEPENDENCY_SUPPLEMENTAL_EVIDENCE_FILES = [
   {
     packageName: '@img/sharp-libvips-darwin-arm64',
-    version: '1.0.4',
+    version: '1.3.3',
     relativePath: 'README.md',
     kind: 'notice',
     reason: '记录 libvips 及其嵌套 native libraries 的许可证选择',
   },
   {
     packageName: '@img/sharp-libvips-darwin-arm64',
-    version: '1.0.4',
+    version: '1.3.3',
     relativePath: 'versions.json',
     kind: 'metadata',
     reason: '锁定当前 macOS arm64 native runtime 的嵌套组件版本',

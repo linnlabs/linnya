@@ -86,6 +86,11 @@ describe('admitSvgGraphic', () => {
       source: `<!DOCTYPE svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"/>`,
     },
     {
+      name: '结束标签中的非法内容',
+      code: 'slides.svg.invalid_xml' as const,
+      source: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"></rect invalid></svg>`,
+    },
+    {
       name: 'matrix transform',
       code: 'slides.svg.unsupported_attribute' as const,
       source: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" transform="matrix(1 0 0 1 0 0)"/></svg>`,

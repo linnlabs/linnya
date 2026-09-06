@@ -27,6 +27,14 @@ pnpm run dev:electron
 
 `pnpm-lock.yaml` 是根工作区唯一依赖锁文件。不要在根目录或 workspace package 中运行 `npm install`，也不要提交 `node_modules`、WASM 生成目录、构建产物或本地凭据文件。
 
+安全依赖升级需要覆盖根应用、插件和独立 E2E fixture 的实际消费者，以及仍引用旧版本的
+间接依赖；检查 lock diff，避免同时刷新无关 peer 依赖。原生图像依赖升级后，除冻结安装、
+类型和业务测试外，还需执行 Slides 的 `smoke:raster-worker`，验证真实 Electron 像素链路。
+同步使用 `release:lock:production:update` 更新发行专用 `production-package-lock.json`，
+通过 `release:lock:production:verify` 与 `release:lock:production:install-smoke` 验证；
+重新生成第三方 NOTICE，并核对原生包的许可证补充证据版本。源码 lock 更新不代表发行锁、
+独立 fixture 或 NOTICE 已自动同步，macOS 冒烟也不能代替 Windows 真机验收。
+
 开发入口会先按 `config/qdrant-runtime.json` 准备并校验目标平台 Qdrant，再准备公开 workspace 依赖、Node 原生依赖和 WASM，最后启动 Renderer 与 Electron。这个过程只发生在源码开发或打包阶段；Desktop 安装包通过 `extraResources` 携带已经校验的独立 runtime，最终用户启动应用时不再下载。
 
 生成的 Qdrant 文件不进入源码版本控制。PDF 文本提取和转图统一使用 `pnpm-lock.yaml` 锁定的 `pdfjs-dist` 与 `@napi-rs/canvas`，不从 Homebrew、系统 `PATH` 或相邻仓库寻找实现，也没有额外 runtime 下载步骤。PDF 的多页内存与事件循环验证见 [`src/features/parsers/pdfParser/README.md`](../../src/features/parsers/pdfParser/README.md)。
