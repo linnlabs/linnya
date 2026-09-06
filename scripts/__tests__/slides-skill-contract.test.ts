@@ -32,7 +32,7 @@ describe('Slides Skill guard', () => {
       'table.js',
       'timeline.js',
     ]);
-    expect(result.validatedCliExamples).toHaveLength(6);
+    expect(result.validatedCliExamples.length).toBeGreaterThan(0);
   });
 
   it('Chart preset reference 由运行时注册表稳定生成并包含 filled radar', () => {

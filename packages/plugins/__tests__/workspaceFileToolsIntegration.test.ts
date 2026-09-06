@@ -378,8 +378,9 @@ class FakeVfsDatabase implements WorkspaceVfsDatabase {
     return new FakeStatement(sql, this);
   }
 
-  transaction(fn: () => void): { readonly immediate: () => void } {
-    return { immediate: fn };
+  transaction(fn: () => void): (() => void) & { readonly immediate: () => void } {
+    // better-sqlite3 的事务既可直接调用，也可通过 immediate 启动。
+    return Object.assign(() => fn(), { immediate: fn });
   }
 
   savePresentationDocument(row: PresentationDocumentRow): void {

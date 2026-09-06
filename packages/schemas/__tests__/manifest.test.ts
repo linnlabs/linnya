@@ -39,7 +39,7 @@ describe('PluginManifestSchema', () => {
     });
   });
 
-  it('parses the Slides builtin plugin manifest scaffold', () => {
+  it('parses the Slides builtin plugin manifest without losing ownership or migration declarations', () => {
     const manifest = parsePluginManifest(slidesManifest);
     expect(manifest).toMatchObject({
       id: 'slides',
@@ -56,37 +56,10 @@ describe('PluginManifestSchema', () => {
         extension: '.slides',
         label: '演示文稿',
       }],
-      ownedTables: [
-        'presentation_documents',
-        'presentation_revisions',
-        'presentation_drafts',
-        'presentation_templates',
-        'presentation_image_bindings',
-        'presentation_svg_graphic_bindings',
-      ],
-      migrations: [
-        {
-          version: 1,
-          description: 'Create and adopt Slides presentation tables',
-        },
-        {
-          version: 2,
-          description: 'Backfill workspace text snapshots from latest Slides versions',
-        },
-        {
-          version: 3,
-          description: 'Materialize current documents and source revision history',
-        },
-        {
-          version: 4,
-          description: 'Bind presentation image sources to owned assets',
-        },
-        {
-          version: 5,
-          description: 'Bind presentation SVG Graphic sources to owned assets',
-        },
-      ],
     });
+    // Schema 只验证声明可被完整接纳；具体表和迁移由插件拥有。
+    expect(manifest.ownedTables).toEqual(slidesManifest.ownedTables);
+    expect(manifest.migrations).toEqual(slidesManifest.migrations);
     expect(manifest.releaseNotes?.[0]?.version).toBe(manifest.version);
   });
 

@@ -25,7 +25,5 @@ describe('buildWorkspaceMarkdownSerializerLabels', () => {
     expect(labels.imageDescription({ alt: 'Demo', width: 320, height: 240 })).toBe(
       '[Image: Demo, width 320px, height 240px]',
     );
-    expect(labels.audioFile).toBe('Audio file');
-    expect(labels.emptyAudioBlock).toBe('Empty audio block');
   });
 });

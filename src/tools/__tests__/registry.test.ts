@@ -265,7 +265,11 @@ describe('ToolRegistry.getToolSchemas', () => {
       },
     });
     expect(schema.function.parameters.properties).not.toHaveProperty('path');
-    expect(schema.function.parameters.properties).not.toHaveProperty('max_chars');
+    expect(schema.function.parameters.properties.max_chars).toMatchObject({
+      type: 'integer',
+      minimum: 1,
+      maximum: 12000,
+    });
     expect(JSON.stringify(schema.function.parameters)).not.toContain('"image"');
   });
 
