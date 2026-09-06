@@ -69,7 +69,7 @@ function buildEnabledPluginEditHint(): string {
 
 export class EditFileTool extends BaseTool {
   readonly name = 'edit_file';
-  readonly idempotency = { scope: 'conversation' } as const;
+  // 文件可被后续编辑或恢复改变；同参调用必须针对当前内容执行，不能复用对话里的旧成功结果。
   /**
    * 工具名确定后立即建立 loading 卡片；精确替换正文不参与前端增量展示。
    */
