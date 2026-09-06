@@ -17,9 +17,20 @@ import { isAllowedRenderNavigation } from './functions/isAllowedRenderNavigation
 const DEFAULT_LOAD_TIMEOUT_MS = 20_000;
 const DEFAULT_RENDER_TIMEOUT_MS = 5_000;
 const DEFAULT_TOTAL_TIMEOUT_MS = 30_000;
-const DEFAULT_SETTLE_DELAY_MS = 1_500;
+const DEFAULT_SETTLE_DELAY_MS = 250;
+const DEFAULT_MAX_SETTLE_DELAY_MS = 3_000;
+const READINESS_POLL_INTERVAL_MS = 200;
+const READINESS_STABLE_SAMPLES = 2;
 const DEFAULT_MAX_HTML_BYTES = 5 * 1024 * 1024;
 const READ_OUTER_HTML_SCRIPT = 'document.documentElement.outerHTML';
+const READINESS_SCRIPT = `(() => {
+  const body = document.body;
+  return {
+    readyState: document.readyState,
+    textLength: body?.innerText?.length ?? 0,
+    htmlLength: document.documentElement?.outerHTML?.length ?? 0,
+  };
+})()`;
 
 export interface WebPageRenderWorkerOptions {
   readonly runtime?: WebPageRenderRuntime;
@@ -28,6 +39,7 @@ export interface WebPageRenderWorkerOptions {
   readonly renderTimeoutMs?: number;
   readonly totalTimeoutMs?: number;
   readonly settleDelayMs?: number;
+  readonly maxSettleDelayMs?: number;
   readonly maxHtmlBytes?: number;
   readonly logger?: Pick<Logger, 'info' | 'warn' | 'error'>;
 }
@@ -69,6 +81,17 @@ function delay(delayMs: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
+function isReadinessSnapshot(value: unknown): value is {
+  readonly readyState: string;
+  readonly textLength: number;
+} {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const objectValue: object = value;
+  const readyState = Reflect.get(objectValue, 'readyState');
+  const textLength = Reflect.get(objectValue, 'textLength');
+  return typeof readyState === 'string' && typeof textLength === 'number';
+}
+
 export class WebPageRenderWorker {
   private readonly runtime: WebPageRenderRuntime;
   private readonly partition: string;
@@ -76,6 +99,7 @@ export class WebPageRenderWorker {
   private readonly renderTimeoutMs: number;
   private readonly totalTimeoutMs: number;
   private readonly settleDelayMs: number;
+  private readonly maxSettleDelayMs: number;
   private readonly maxHtmlBytes: number;
   private readonly logger: Pick<Logger, 'info' | 'warn' | 'error'>;
 
@@ -94,6 +118,7 @@ export class WebPageRenderWorker {
     this.renderTimeoutMs = options.renderTimeoutMs ?? DEFAULT_RENDER_TIMEOUT_MS;
     this.totalTimeoutMs = options.totalTimeoutMs ?? DEFAULT_TOTAL_TIMEOUT_MS;
     this.settleDelayMs = options.settleDelayMs ?? DEFAULT_SETTLE_DELAY_MS;
+    this.maxSettleDelayMs = options.maxSettleDelayMs ?? DEFAULT_MAX_SETTLE_DELAY_MS;
     this.maxHtmlBytes = options.maxHtmlBytes ?? DEFAULT_MAX_HTML_BYTES;
     this.logger = options.logger ?? new Logger('WebPageRenderWorker');
   }
@@ -176,7 +201,7 @@ export class WebPageRenderWorker {
     }
 
     const renderOperation = (async (): Promise<unknown> => {
-      await raceCancellation(delay(this.settleDelayMs), cancellation);
+      await this.waitForDocumentReadiness(renderWindow, cancellation);
       return await raceCancellation(
         renderWindow.executeJavaScript(READ_OUTER_HTML_SCRIPT),
         cancellation,
@@ -213,6 +238,38 @@ export class WebPageRenderWorker {
       throw new WebPageRenderError('navigation_blocked', `网页渲染拒绝跨站导航到 ${finalUrl}。`);
     }
     return { html: rawHtml, finalUrl };
+  }
+
+  private async waitForDocumentReadiness(
+    renderWindow: WebPageRenderWindow,
+    cancellation: Promise<never>,
+  ): Promise<void> {
+    if (this.settleDelayMs > 0) {
+      await raceCancellation(delay(this.settleDelayMs), cancellation);
+    }
+
+    const deadline = Date.now() + Math.max(this.settleDelayMs, this.maxSettleDelayMs);
+    let previousTextLength: number | undefined;
+    let stableSamples = 0;
+    while (Date.now() < deadline) {
+      const snapshot = await raceCancellation(
+        renderWindow.executeJavaScript(READINESS_SCRIPT),
+        cancellation,
+      );
+      if (!isReadinessSnapshot(snapshot)) return;
+
+      if (snapshot.readyState === 'complete' && snapshot.textLength === previousTextLength) {
+        stableSamples += 1;
+      } else {
+        stableSamples = 0;
+      }
+      previousTextLength = snapshot.textLength;
+      if (snapshot.readyState === 'complete' && stableSamples >= READINESS_STABLE_SAMPLES) return;
+
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) return;
+      await raceCancellation(delay(Math.min(READINESS_POLL_INTERVAL_MS, remainingMs)), cancellation);
+    }
   }
 
   private ensureRuntime(): {

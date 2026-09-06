@@ -1,6 +1,7 @@
 import { Logger } from '@shared/logger';
 import {
   WebFailureError,
+  getWebFailureDiagnostics,
   getWebExtractionFailureStage,
   getWebFailureKind,
   isEscalatableWebFailureKind,
@@ -85,6 +86,7 @@ async function readManagedFallback(args: {
           previousFailureMessage,
           renderAttempted: args.renderAttempted,
           ...(extractionStage ? { extractionStage } : {}),
+          ...getWebFailureDiagnostics(args.previousFailure),
         },
       },
     );
@@ -119,6 +121,7 @@ async function readManagedFallback(args: {
       initialFailureStage: args.initialFailureStage,
       qualityScore: args.qualityScore,
       failureKind: getWebFailureKind(error),
+      ...getWebFailureDiagnostics(error),
     });
     throw error;
   }

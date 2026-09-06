@@ -118,17 +118,17 @@ bash 立项时必须独立评审网络隔离、文件系统隔离、进程权限
 | 搜索→读取→Evidence | — / 20s | 45s |
 | URL 内容 cache hit | — / 100ms | 500ms |
 
-优化顺序按数据执行：先消除本地热路径浪费 → 共享连接池 → 流式读取超预算即 cancel → 缓存 + in-flight 合并 → 渐进式少量高价值来源 → 质量达标即结束、仅约定原因升级 → **不做无条件重试**（禁止多层 fallback 掩盖根因）。
+优化顺序按数据执行：先消除本地热路径浪费 → 共享连接池 → 流式读取超预算即 cancel → 缓存 + in-flight 合并 → 渐进式少量高价值来源 → 质量达标即结束、仅约定原因升级 → 本地 GET 仅对瞬态失败执行一次有界重试（禁止多层 fallback 掩盖根因）。
 
 ### 9.4 生产可观察性
 
-结构化日志维度：`operation` / `provider` / `route` / `cacheStatus` / `outcome` / `failureKind` / `tookMs` / `resultCount|charCount` / `bodyBytes`；**不记** API Key、完整 query string、网页正文、敏感 URL 参数。
+结构化日志维度：`operation` / `provider` / `route` / `cacheStatus` / `outcome` / `failureKind` / `tookMs` / `resultCount|charCount` / `bodyBytes`；WebRead 本地 GET 另外记录 `status` / `contentType` / `finalUrl` / `redirectCount` / `attempt` / `retryCount`；**不记** API Key、完整 query string、网页正文、敏感 URL 参数。
 
 ## 十、关键待评估决策（已决策留档）
 
 - **真实 Provider 基准频率**：采用“发布前 + 故障排查时运行”（成本可控），不做每 PR live。
 - **95% 判定**：取消少量 live 样本的 95% 发布门禁；若未来建立正式 SLO，只使用定义过支持范围的生产滚动样本与置信区间。
-- **搜索跨供应商 failover**：**不自动 failover**（行为/费用/数据流向可预测，能暴露根因）；仅当真实报告证明单 Provider 不达标时，才评审“同 Provider、一次、有界退避”重试。读取链路的“本地抽取→Jina”是能力升级管道，只能由正文质量/JS shell 等约定原因触发一次，不等于搜索 failover。
+- **搜索跨供应商 failover**：**不自动 failover**（行为/费用/数据流向可预测，能暴露根因）。读取链路的“本地抽取→Jina”是能力升级管道，只能由正文质量/JS shell 等约定原因触发一次，不等于搜索 failover；本地 GET 对 timeout/network/429/5xx 共享一次有界退避重试。
 
 ## 十一~十三、Phase 1：单页读取（已完成 2026-07-18）
 
@@ -224,7 +224,7 @@ bash 立项时必须独立评审网络隔离、文件系统隔离、进程权限
 
 **R2（渲染接入读取阶梯）✅ 完成**
 
-- 生产阶梯已改为 `local_http → local_render → managed`：JS 壳、空正文、三类质量信号、`network_error` 和单跳 `timeout` 会尝试渲染；`captcha/login_required/http_403` 跳过渲染直达托管。`dns_error` 和 `http_5xx` 仍保持终态，整条阶梯的 90 秒总预算超时也不再升级。
+- 生产阶梯已改为 `local_http → local_render → managed`：JS 壳、空正文、三类质量信号、`network_error` 和单跳 `timeout` 会尝试渲染；`captcha/login_required/http_403` 跳过渲染直达托管。`dns_error` 仍保持终态；本地 GET 的 `timeout/network_error/429/5xx` 在阶梯判定前共享一次有界退避重试，挑战页和其他策略/内容错误不重试。整条阶梯的 90 秒总预算超时也不再升级。
 - 渲染结果复用 `extractArticle`、质量判定、Evidence 与 observation 隔离；`renderMode:'js'`、`renderAttempted`、`initialFailureKind` 和 provider 名可观测。渲染安全拒绝/取消/HTML 超限保持终态，渲染超时或进程失败才托管兜底一次。
 - 整条阶梯统一 90 秒墙钟预算；本地 HTTP/Chromium/托管 Reader 的各段上限不能简单相加突破总预算。
 - 缓存身份修复已提前完成：不同渲染层/托管层不串缓存，旧 URL-only 文件自然 miss；文件缓存 schema 同步支持 `js` 与 `renderAttempted`。
@@ -279,7 +279,7 @@ bash 立项时必须独立评审网络隔离、文件系统隔离、进程权限
 
 - **DNS rebinding / 无 IP 钉扎**（R1 审计发现）：子资源校验按 hostname 缓存、渲染连接未钉扎已验证 IP，理论上存在“校验时公网、连接时被 rebind 到内网”的窗口。危害受限（渲染窗 sandbox、独立无凭证 session，内网内容只作文本返回），但相比 `localHttp` 的 IP 钉扎，渲染路径 SSRF 防护更弱。**触发**：需要更强内网隔离保证，或渲染路径开放给爬取（R4）大规模使用时评估收紧。
 - **代理 fake-IP 与 SSRF 策略冲突（已解决）**：采用方案 A，仅允许“合法域名解析所得”的 `198.18/15`；用户直接输入该网段 IP、私网 IP以及混入私网地址的 DNS 结果仍拒绝。真实 Wikipedia 探针与 Electron live 均已验证 TUN 可正确转发。
-- **DNS/代理分段观测尚未实现**：当前只能从 `failureKind`、`initialFailureKind`、`initialFailureStage`、`escalationReason` 和 `renderAttempted` 判断阶梯路由，日志不包含逐跳 DNS 解析地址、fake-IP 分类或 DNS/连接分段耗时。排查本机 DNS/代理异常仍需外部探针；若产品要求运行内定位，应单独接入结构化观测，且不记录 URL query/header/body。
+- **DNS/代理分段观测尚未实现**：当前只能从 `failureKind`、`initialFailureKind`、`initialFailureStage`、`escalationReason`、`renderAttempted` 以及失败日志中的状态/MIME/最终 URL/重定向数/尝试次数判断阶梯路由，日志不包含逐跳 DNS 解析地址、fake-IP 分类或 DNS/连接分段耗时。排查本机 DNS/代理异常仍需外部探针；若产品要求运行内定位，应单独接入结构化观测，且不记录 URL query/header/body。
 - **渲染并发与内存**：靠并发上限 + idle 回收控制。
 - **反爬对抗**：可绕过部分 JS 检测，但验证码/行为检测仍会失败，明确失败不硬扛。
 - **渲染响应元数据**：R1 port 当前只返回最终 DOM/URL，成功的 `local_render` 结果暂按 `status:200`、`text/html` 记录；不影响质量判定与 Evidence，但不是原站响应状态的权威记录。**触发**：产品需要展示或审计原始 HTTP 状态时扩 port。

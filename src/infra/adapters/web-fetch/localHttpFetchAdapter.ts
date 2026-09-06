@@ -9,23 +9,30 @@
 import { isIP } from 'node:net';
 import iconv from 'iconv-lite';
 import { Agent, buildConnector, type Dispatcher } from 'undici';
+import { Logger } from '../../../shared/logger';
 import {
   createWebUpstreamHttpError,
   webHttpFetch,
   WebHttpError,
   type WebHttpResponse,
+  withWebHttpErrorDiagnostics,
 } from '../web-http/webHttpFetch';
 import {
   assertAllowedWebUrl,
   resolveAndAssertPublicHost,
   type ResolvedWebHost,
 } from '../../../tools/web/shared/urlPolicy';
+import { isWebChallengeResponse } from '../../../tools/web/shared/webFailure';
 
 export const LOCAL_HTTP_TIMEOUT_MS = 12_000;
 export const LOCAL_HTTP_MAX_BODY_BYTES = 5 * 1024 * 1024;
 export const LOCAL_HTTP_MAX_REDIRECTS = 5;
+export const LOCAL_HTTP_MAX_TRANSIENT_RETRIES = 1;
+export const LOCAL_HTTP_RETRY_BACKOFF_MS = 250;
+export const LOCAL_HTTP_MAX_RETRY_DELAY_MS = 1_000;
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const logger = new Logger('LocalHttpFetch');
 
 export interface LocalHttpFetchResult {
   notModified: boolean;
@@ -38,6 +45,8 @@ export interface LocalHttpFetchResult {
   rawLength: number;
   tookMs: number;
   redirectCount: number;
+  attemptCount: number;
+  retryCount: number;
   etag?: string;
   lastModified?: string;
 }
@@ -57,6 +66,7 @@ export interface LocalHttpFetchDependencies {
   resolveHost?: (url: URL) => Promise<ResolvedWebHost>;
   httpFetch?: typeof webHttpFetch;
   createDispatcher?: (resolved: ResolvedWebHost) => Dispatcher;
+  sleep?: (delayMs: number, signal?: AbortSignal) => Promise<void>;
 }
 
 function createPinnedDispatcher(resolved: ResolvedWebHost): Dispatcher {
@@ -144,6 +154,40 @@ function readOptionalHeader(response: WebHttpResponse, name: string): string | u
   return value || undefined;
 }
 
+function retryDelayMs(error: WebHttpError): number {
+  return Math.min(
+    LOCAL_HTTP_MAX_RETRY_DELAY_MS,
+    Math.max(LOCAL_HTTP_RETRY_BACKOFF_MS, error.retryAfterMs ?? 0),
+  );
+}
+
+function isTransientRetryCandidate(error: WebHttpError): boolean {
+  if (isWebChallengeResponse(error.status, error.bodyPreview)) return false;
+  return error.kind === 'timeout'
+    || error.kind === 'network_error'
+    || error.kind === 'rate_limited'
+    || error.kind === 'http_5xx';
+}
+
+function sleepWithSignal(delayMs: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return Promise.reject(createAbortError());
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, delayMs);
+    const abort = (): void => {
+      cleanup();
+      reject(createAbortError());
+    };
+    const cleanup = (): void => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', abort);
+    };
+    signal?.addEventListener('abort', abort, { once: true });
+  });
+}
+
 export async function localHttpFetch(
   rawUrl: string,
   options: LocalHttpFetchOptions = {},
@@ -160,24 +204,47 @@ export async function localHttpFetch(
   const resolveHost = dependencies.resolveHost ?? resolveAndAssertPublicHost;
   const httpFetch = dependencies.httpFetch ?? webHttpFetch;
   const dispatcherFactory = dependencies.createDispatcher ?? createPinnedDispatcher;
+  const sleep = dependencies.sleep ?? sleepWithSignal;
   let currentUrl = assertAllowedWebUrl(rawUrl);
   let redirectCount = 0;
+  let attemptCount = 0;
+  let retryCount = 0;
 
   while (true) {
     const elapsedMs = Date.now() - startedAt;
     const remainingMs = timeoutMs - elapsedMs;
     if (remainingMs <= 0) {
-      throw new WebHttpError('timeout', `本地网页抓取在 ${timeoutMs}ms 后超时。`);
+      throw new WebHttpError('timeout', `本地网页抓取在 ${timeoutMs}ms 后超时。`, {
+        url: currentUrl.toString(),
+        redirectCount,
+        attempt: attemptCount,
+        retryCount,
+      });
     }
 
-    const resolved = await resolveWithinBudget({
-      url: currentUrl,
-      signal: options.signal,
-      timeoutMs: remainingMs,
-      resolveHost,
-    });
+    let resolved: ResolvedWebHost;
+    try {
+      resolved = await resolveWithinBudget({
+        url: currentUrl,
+        signal: options.signal,
+        timeoutMs: remainingMs,
+        resolveHost,
+      });
+    } catch (error: unknown) {
+      if (error instanceof WebHttpError) {
+        throw withWebHttpErrorDiagnostics(error, {
+          url: currentUrl.toString(),
+          redirectCount,
+          attempt: attemptCount,
+          retryCount,
+        });
+      }
+      throw error;
+    }
     const dispatcher = dispatcherFactory(resolved);
     let response: WebHttpResponse;
+    let deferredRetryDelayMs: number | undefined;
+    attemptCount += 1;
     try {
       const headers: Record<string, string> = {
         Accept: 'text/html,application/xhtml+xml,text/plain,application/json,application/xml;q=0.9,*/*;q=0.1',
@@ -195,8 +262,37 @@ export async function localHttpFetch(
         redirect: 'manual',
         dispatcher,
       });
+    } catch (error: unknown) {
+      if (!(error instanceof WebHttpError)) throw error;
+      const diagnosed = withWebHttpErrorDiagnostics(error, {
+        url: currentUrl.toString(),
+        redirectCount,
+        attempt: attemptCount,
+        retryCount,
+      });
+      const remainingAfterFailure = timeoutMs - (Date.now() - startedAt);
+      if (retryCount < LOCAL_HTTP_MAX_TRANSIENT_RETRIES
+        && isTransientRetryCandidate(diagnosed)
+        && remainingAfterFailure > LOCAL_HTTP_RETRY_BACKOFF_MS) {
+        retryCount += 1;
+        logger.warn('[localHttpFetch] 瞬态失败，执行有界重试', {
+          url: currentUrl.origin,
+          kind: diagnosed.kind,
+          status: diagnosed.status,
+          attempt: attemptCount,
+          retryCount,
+        });
+        deferredRetryDelayMs = Math.min(retryDelayMs(diagnosed), remainingAfterFailure - 1);
+      } else {
+        throw diagnosed;
+      }
+      throw diagnosed;
     } finally {
       await dispatcher.close();
+    }
+    if (deferredRetryDelayMs !== undefined) {
+      await sleep(deferredRetryDelayMs, options.signal);
+      continue;
     }
 
     if (REDIRECT_STATUSES.has(response.status)) {
@@ -204,11 +300,19 @@ export async function localHttpFetch(
       if (!location) {
         throw new WebHttpError('invalid_response', `网页返回 ${response.status}，但缺少 Location。`, {
           status: response.status,
+          url: currentUrl.toString(),
+          redirectCount,
+          attempt: attemptCount,
+          retryCount,
         });
       }
       if (redirectCount >= maxRedirects) {
         throw new WebHttpError('http_error', `网页重定向次数超过上限 ${maxRedirects}。`, {
           status: response.status,
+          url: currentUrl.toString(),
+          redirectCount,
+          attempt: attemptCount,
+          retryCount,
         });
       }
       currentUrl = assertAllowedWebUrl(new URL(location, currentUrl).toString());
@@ -219,7 +323,7 @@ export async function localHttpFetch(
     const etag = readOptionalHeader(response, 'etag');
     const lastModified = readOptionalHeader(response, 'last-modified');
     if (response.status === 304 && options.validators) {
-      return {
+      const result: LocalHttpFetchResult = {
         notModified: true,
         status: 304,
         finalUrl: currentUrl.toString(),
@@ -230,14 +334,50 @@ export async function localHttpFetch(
         rawLength: 0,
         tookMs: Date.now() - startedAt,
         redirectCount,
+        attemptCount,
+        retryCount,
         ...(etag ? { etag } : {}),
         ...(lastModified ? { lastModified } : {}),
       };
+      logger.info('[localHttpFetch] 条件请求完成', {
+        url: currentUrl.origin,
+        status: result.status,
+        redirectCount,
+        attemptCount,
+        retryCount,
+      });
+      return result;
     }
-    if (!response.ok) throw createWebUpstreamHttpError('本地网页抓取', response);
+    if (!response.ok) {
+      const upstreamError = withWebHttpErrorDiagnostics(
+        createWebUpstreamHttpError('本地网页抓取', response),
+        {
+          url: currentUrl.toString(),
+          redirectCount,
+          attempt: attemptCount,
+          retryCount,
+        },
+      );
+      const remainingAfterFailure = timeoutMs - (Date.now() - startedAt);
+      if (retryCount < LOCAL_HTTP_MAX_TRANSIENT_RETRIES
+        && isTransientRetryCandidate(upstreamError)
+        && remainingAfterFailure > LOCAL_HTTP_RETRY_BACKOFF_MS) {
+        retryCount += 1;
+        logger.warn('[localHttpFetch] 上游瞬态状态，执行有界重试', {
+          url: currentUrl.origin,
+          kind: upstreamError.kind,
+          status: upstreamError.status,
+          attempt: attemptCount,
+          retryCount,
+        });
+        await sleep(Math.min(retryDelayMs(upstreamError), remainingAfterFailure - 1), options.signal);
+        continue;
+      }
+      throw upstreamError;
+    }
     const contentType = response.headers.get('content-type')?.trim() || 'application/octet-stream';
     const decoded = decodeBody(response);
-    return {
+    const result: LocalHttpFetchResult = {
       notModified: false,
       status: response.status,
       finalUrl: currentUrl.toString(),
@@ -248,8 +388,18 @@ export async function localHttpFetch(
       rawLength: response.bodyData.byteLength,
       tookMs: Date.now() - startedAt,
       redirectCount,
+      attemptCount,
+      retryCount,
       ...(etag ? { etag } : {}),
       ...(lastModified ? { lastModified } : {}),
     };
+    logger.info('[localHttpFetch] 读取完成', {
+      url: result.finalUrl.split('?')[0],
+      status: result.status,
+      redirectCount,
+      attemptCount,
+      retryCount,
+    });
+    return result;
   }
 }

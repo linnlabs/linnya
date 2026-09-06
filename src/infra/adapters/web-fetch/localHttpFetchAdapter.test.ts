@@ -2,6 +2,7 @@ import { createServer, type Server } from 'node:http';
 import { brotliCompressSync, gzipSync } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ResolvedWebHost } from '../../../tools/web/shared/urlPolicy';
+import { getWebFailureKind } from '../../../tools/web/shared/webFailure';
 import { localHttpFetch } from './localHttpFetchAdapter';
 
 describe('localHttpFetch 本地真实 HTTP 合同', () => {
@@ -9,10 +10,23 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
   let port = 0;
   const requestedPaths: string[] = [];
   let latestIfModifiedSince: string | undefined;
+  const transientAttempts = new Map<string, number>();
 
   beforeAll(async () => {
     server = createServer((request, response) => {
       requestedPaths.push(request.url ?? '');
+      if (request.url === '/retry-503' || request.url === '/retry-429') {
+        const attempts = (transientAttempts.get(request.url) ?? 0) + 1;
+        transientAttempts.set(request.url, attempts);
+        if (attempts === 1) {
+          response.writeHead(request.url === '/retry-429' ? 429 : 503, {
+            'Content-Type': 'text/plain',
+            ...(request.url === '/retry-429' ? { 'Retry-After': '0' } : {}),
+          });
+          response.end('temporary failure');
+          return;
+        }
+      }
       if (request.url === '/not-modified') {
         const header = request.headers['if-modified-since'];
         latestIfModifiedSince = Array.isArray(header) ? header.join(', ') : header;
@@ -120,6 +134,37 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
     await expect(localHttpFetch(`http://fixture.test:${port}/large`, { maxBodyBytes: 128 }, {
       resolveHost: resolveFixtureHost,
     })).rejects.toMatchObject({ kind: 'body_too_large' });
+  });
+
+  it('对单次本地 GET 瞬态 5xx/429 只重试一次并保留尝试计数', async () => {
+    const fiveHundred = await localHttpFetch(`http://fixture.test:${port}/retry-503`, {
+      timeoutMs: 2_000,
+    }, { resolveHost: resolveFixtureHost, sleep: async () => undefined });
+    expect(fiveHundred).toMatchObject({ attemptCount: 2, retryCount: 1, status: 200 });
+
+    const rateLimited = await localHttpFetch(`http://fixture.test:${port}/retry-429`, {
+      timeoutMs: 2_000,
+    }, { resolveHost: resolveFixtureHost, sleep: async () => undefined });
+    expect(rateLimited).toMatchObject({ attemptCount: 2, retryCount: 1, status: 200 });
+  });
+
+  it('挑战页不会被瞬态重试误判', async () => {
+    // 使用注入的 HTTP 函数验证分类逻辑，避免把真实测试服务改成一次性状态。
+    const error = await localHttpFetch('http://fixture.test/challenge', {}, {
+      resolveHost: resolveFixtureHost,
+      sleep: async () => undefined,
+      httpFetch: async () => ({
+        status: 419,
+        statusText: 'Page Expired',
+        ok: false,
+        bodyText: '<html><title>Human verification</title></html>',
+        bodyData: new TextEncoder().encode('<html><title>Human verification</title></html>'),
+        headers: { get: (name: string) => name === 'content-type' ? 'text/html' : null },
+        tookMs: 0,
+      }),
+    }).catch((caught: unknown) => caught);
+    expect(error).toMatchObject({ status: 419, retryCount: 0 });
+    expect(getWebFailureKind(error)).toBe('captcha');
   });
 
   it.each([

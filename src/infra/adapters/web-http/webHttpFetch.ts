@@ -32,13 +32,37 @@ export class WebHttpError extends Error {
   readonly kind: WebHttpErrorKind;
   readonly cause?: unknown;
   readonly status?: number;
+  readonly url?: string;
+  readonly contentType?: string;
+  readonly bodyPreview?: string;
+  readonly retryAfterMs?: number;
+  readonly redirectCount?: number;
+  readonly attempt?: number;
+  readonly retryCount?: number;
 
-  constructor(kind: WebHttpErrorKind, message: string, options?: { cause?: unknown; status?: number }) {
+  constructor(kind: WebHttpErrorKind, message: string, options?: {
+    cause?: unknown;
+    status?: number;
+    url?: string;
+    contentType?: string;
+    bodyPreview?: string;
+    retryAfterMs?: number;
+    redirectCount?: number;
+    attempt?: number;
+    retryCount?: number;
+  }) {
     super(message);
     this.name = 'WebHttpError';
     this.kind = kind;
     this.cause = options?.cause;
     this.status = options?.status;
+    this.url = options?.url;
+    this.contentType = options?.contentType;
+    this.bodyPreview = options?.bodyPreview;
+    this.retryAfterMs = options?.retryAfterMs;
+    this.redirectCount = options?.redirectCount;
+    this.attempt = options?.attempt;
+    this.retryCount = options?.retryCount;
   }
 }
 
@@ -83,8 +107,37 @@ export function createWebUpstreamHttpError(provider: string, response: WebHttpRe
   return new WebHttpError(
     kind,
     `${provider} 请求失败: ${response.status} ${response.statusText}${errorPreview ? ` - ${errorPreview}` : ''}`,
-    { status: response.status },
+    {
+      status: response.status,
+      contentType: response.headers.get('content-type')?.trim() || undefined,
+      bodyPreview: errorPreview.slice(0, 512),
+      retryAfterMs: parseRetryAfter(response.headers.get('retry-after')),
+    },
   );
+}
+
+/** 解析 HTTP Retry-After；调用方负责施加更小的实际等待上限。 */
+export function parseRetryAfter(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const seconds = Number(value.trim());
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.floor(seconds * 1_000);
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return undefined;
+  return Math.max(0, timestamp - Date.now());
+}
+
+export function withWebHttpErrorDiagnostics(
+  error: WebHttpError,
+  diagnostics: Pick<WebHttpError, 'url' | 'redirectCount' | 'attempt' | 'retryCount'>,
+): WebHttpError {
+  return new WebHttpError(error.kind, error.message, {
+    cause: error.cause,
+    status: error.status,
+    contentType: error.contentType,
+    bodyPreview: error.bodyPreview,
+    retryAfterMs: error.retryAfterMs,
+    ...diagnostics,
+  });
 }
 
 function createTimeoutAbortSignal(args: {

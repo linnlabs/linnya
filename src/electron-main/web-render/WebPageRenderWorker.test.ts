@@ -241,4 +241,28 @@ describe('WebPageRenderWorker', () => {
     })).rejects.toEqual(expect.objectContaining({ kind: 'html_too_large' }));
     expect(renderWindow.destroyCount).toBe(1);
   });
+
+  it('页面状态稳定后才提取 DOM，且保留动态页面的有限等待窗口', async () => {
+    const runtime = new FakeRenderRuntime();
+    const renderWindow = new FakeRenderWindow();
+    const responses: unknown[] = [
+      { readyState: 'loading', textLength: 0, htmlLength: 80 },
+      { readyState: 'complete', textLength: 100, htmlLength: 200 },
+      { readyState: 'complete', textLength: 100, htmlLength: 200 },
+      { readyState: 'complete', textLength: 100, htmlLength: 200 },
+      '<html><body>stable article</body></html>',
+    ];
+    renderWindow.executeImpl = async () => responses.shift();
+    runtime.nextWindow = renderWindow;
+
+    const result = await createWorker(runtime, {
+      settleDelayMs: 0,
+      maxSettleDelayMs: 1_000,
+      renderTimeoutMs: 1_000,
+      totalTimeoutMs: 2_000,
+    }).render({ url: 'https://example.com/dynamic' });
+
+    expect(result.html).toContain('stable article');
+    expect(responses).toHaveLength(0);
+  });
 });

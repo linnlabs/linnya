@@ -4,6 +4,7 @@ import {
   ESCALATABLE,
   WebFailureError,
   getWebExtractionFailureStage,
+  getWebFailureDiagnostics,
   getWebFailureKind,
   isEscalatableWebFailureKind,
   type EscalatableWebFailureKind,
@@ -62,5 +63,34 @@ describe('Web 终态失败分类与升级子集', () => {
   it('质量信号不冒充终态失败 kind', () => {
     expect(getWebFailureKind({ kind: 'content_too_short' })).toBe('provider_error');
     expect(getWebFailureKind({ kind: 'low_text_ratio' })).toBe('provider_error');
+  });
+
+  it('仅凭状态码不判定挑战，带有限页面特征才归类 captcha', () => {
+    expect(getWebFailureKind(new WebHttpError('http_error', '419', { status: 419 }))).toBe('http_error');
+    expect(getWebFailureKind(new WebHttpError('http_error', 'challenge', {
+      status: 419,
+      bodyPreview: '<title>Human verification</title>',
+    }))).toBe('captcha');
+  });
+
+  it('提取结构化失败诊断但不携带响应正文', () => {
+    const error = new WebHttpError('http_5xx', 'upstream', {
+      status: 503,
+      url: 'https://example.com/article?token=secret',
+      contentType: 'text/html',
+      bodyPreview: 'private body',
+      redirectCount: 1,
+      attempt: 2,
+      retryCount: 1,
+    });
+    expect(getWebFailureDiagnostics(error)).toEqual({
+      status: 503,
+      contentType: 'text/html',
+      finalUrl: 'https://example.com/article',
+      redirectCount: 1,
+      attempt: 2,
+      retryCount: 1,
+    });
+    expect(getWebFailureDiagnostics(error)).not.toHaveProperty('bodyPreview');
   });
 });

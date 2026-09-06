@@ -247,7 +247,7 @@ src/tools/web/webread/
 - HTML 抽取先用 Readability；失败或明显遗漏时，从 `article/main/[role=main]` 的可访问主区域补取正文，并过滤导航、侧栏、页脚和隐藏节点。Readability 抛错但语义正文已存在时保留正文并记录 warning，完全无正文时才产生 `extraction_error`
 - GitHub `blob` 地址在本地 HTTP 首跳自动转换为 `raw.githubusercontent.com`，转换后的域名仍完整执行 URL/DNS 校验与 IP 钉扎；`web_read` 只读取 HTML/文本，不支持 PDF，实际响应为 `application/pdf` 时返回明确的 `unsupported_mime` 错误
 - 本地抓取每一跳都做 URL/DNS 校验，并用已校验 IP 建立连接；禁止改回 fetch 自动重定向
-- 当前读取路由可观察边界是 `failureKind`、`initialFailureKind`、`initialFailureStage`、`escalationReason` 和 `renderAttempted`；`initialFailureStage` 仅用于 `dom_canonicalization/readability` 抽取阶段。尚未记录每一跳 DNS 解析地址、代理 fake-IP 判定或 DNS/连接分段耗时，不得从现有日志推断这些事实
+- 当前读取路由可观察边界是 `failureKind`、`initialFailureKind`、`initialFailureStage`、`escalationReason` 和 `renderAttempted`；失败日志还会记录状态码、响应 MIME、最终 URL、重定向数、请求尝试次数和重试次数（不记录响应正文）。`initialFailureStage` 仅用于 `dom_canonicalization/readability` 抽取阶段。尚未记录每一跳 DNS 解析地址、代理 fake-IP 判定或 DNS/连接分段耗时，不得从现有日志推断这些事实
 - 兼容 TUN 代理 fake-IP：仅域名 DNS 结果允许 `198.18/15`，字面 fake-IP、内网地址及混入内网地址的解析结果仍拒绝
 - `WebPageRenderer` port 由 Electron main 显式注入 backend bundle；渲染 worker/runtime 禁止进入 backend bundle。默认渲染 provider 只在质量信号命中后惰性创建
 - 缓存路由身份 version 4 包含渲染开关和选中 Reader，并使旧 DOM 抽取算法缓存自然 miss；开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss
@@ -272,7 +272,7 @@ src/tools/web/webread/
 
 - Provider 统一返回 `WebReadResult`：保留原始 URL 与最终 URL，并携带抽取器、渲染模式、正文哈希、质量信号和耗时；未知质量分不填充虚假默认值
 - 搜索 Provider 统一返回 `SearchResult`：在 Provider 边界完成排名、canonical URL 与调用观测映射，工具层只做去重、引用与 Evidence 物化
-- 失败分类统一由 `shared/webFailure.ts` 维护；质量不足不是终态失败，M2 只能依据该文件导出的升级子集和独立质量原因决定是否升级。`dns_error` 与 `http_5xx` 仍保持终态，不因本机 DNS 失败而自动把 URL 交给第三方，也不对上游 5xx 做隐式换路或重试
+- 失败分类统一由 `shared/webFailure.ts` 维护；质量不足不是终态失败，M2 只能依据该文件导出的升级子集和独立质量原因决定是否升级。HTTP 403/419/429 只有同时出现有限的人机验证页面特征时才归类为 `captcha`，不能仅凭状态码猜测挑战。`dns_error` 仍保持终态；本地 GET 对 timeout/network/429/5xx 共享一次、有总预算约束的瞬态重试，挑战页、权限、MIME、策略和 404 不重试，也不自动换托管 Provider
 - `data` 额外返回 `provider/renderMode/extractor/renderAttempted/escalated/escalationReason/initialFailureKind/initialFailureStage`，用于判断本次读取实际走了哪条路径并回放首跳失败；`renderMode` 可为 `http/js/managed`
 - 搜索与读取的 `data.cacheStatus` 返回 `miss/hit/revalidated/coalesced/bypass`，用于区分真实网络、缓存命中、条件请求和并发合并
 - `data`：标题/URL/正文统计 + owner schema 约束的 `citations` + `evidence_store.bundle_id`；不携带页面全文
@@ -296,7 +296,7 @@ src/tools/web/webread/
 
 目标：普通页面由本地安全 GET + Readability/语义 DOM 处理，质量不足时按需渲染；只有用户主动配置后，最后才交给第三方增强解析 Provider：
 
-- **infra adapter**：负责 HTTP、鉴权、响应解析（unknown + 类型守卫）
+- **infra adapter**：负责 HTTP、鉴权、响应解析（unknown + 类型守卫），并在本地 GET 边界执行一次有界瞬态重试
 - **provider**：负责把供应商响应映射成内部统一 `WebReadResult`
 - **functions**：负责可解释的质量信号判定；不按黑盒分数阈值偷偷改变路由
 - **orchestration**：负责 HTTP→Chromium→托管三层选择、90 秒总预算、截断、`[@ref]`、observation 与 Evidence 物化
@@ -304,7 +304,7 @@ src/tools/web/webread/
 
 Firecrawl `/scrape` 可在未来作为新的 BYOK 第三方网页解析 Provider 接入，与秘塔/Jina 同级；它不是零配置免费能力，也不改变 Linnya 默认的本地读取链路。当前不实现 `web_crawl`；若未来重新评估，多页编排仍必须与单页 `/scrape` 分开设计。
 
-Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例外：隐藏窗无 preload，启用 sandbox/contextIsolation/webSecurity、禁用 Node 集成；独立 session 拒绝权限、弹窗、下载、跨 hostname 导航和内网/回环子请求。每次任务拿到 HTML 后立即销毁远程页面，manager 只复用隔离 session，并限制并发与 idle 生命周期。该能力只返回 HTML/finalUrl，不暴露浏览器动作或 IPC 桥。
+Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例外：隐藏窗无 preload，启用 sandbox/contextIsolation/webSecurity、禁用 Node 集成；独立 session 拒绝权限、弹窗、下载、跨 hostname 导航和内网/回环子请求。每次任务拿到 HTML 后立即销毁远程页面，manager 只复用隔离 session，并限制并发与 idle 生命周期。DOM 提取不再固定等待一个不可解释的时长，而是在最小等待后按 `document.readyState` 与正文长度稳定性轮询，并受渲染阶段上限约束；该能力只返回 HTML/finalUrl，不暴露浏览器动作或 IPC 桥。
 
 ### 5.6 缓存与并发边界
 

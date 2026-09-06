@@ -12,7 +12,7 @@ import type { WebReadLadderResult } from '../definitions/readLadder';
 import type { WebReadConfig } from '../definitions/webReadConfig';
 import type { WebReadProvider } from '../providers/types';
 import { getWebReadConfig } from '../ports/webReadConfigReader';
-import { getWebFailureKind } from '../../shared/webFailure';
+import { getWebFailureDiagnostics, getWebFailureKind } from '../../shared/webFailure';
 import type { WebEvidenceWriter } from '../../shared/ports/webEvidenceWriter';
 import { requireWebEvidenceWriter } from '../../shared/orchestration/webEvidenceWriterContext';
 import type { WebCacheRuntime } from '../../shared/cache/webCacheFactory';
@@ -168,6 +168,7 @@ export async function runReadWebPage(
       route: allowedUrl.origin,
       outcome: context.abortSignal?.aborted ? 'cancelled' : 'error',
       failureKind: getWebFailureKind(error),
+      ...getWebFailureDiagnostics(error),
       tookMs: Date.now() - startedAt,
     });
     throw error;
