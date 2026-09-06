@@ -99,6 +99,16 @@ export function inferReasoningConfigByModelName(modelName: string): ModelReasoni
     };
   }
 
+  // GLM-5.3 / GLM-5.3-Flash（Ollama Cloud）：原生思考始终开启，支持 low/high/max。
+  // 当前 ai-sdk-ollama 的已验证合同只接受 low/medium/high；canonical xhigh 会映射为
+  // Ollama high，因此这里不把 max/medium 虚假暴露给前端，先公开实际可区分的 low/high。
+  if (/glm-5\.3(?:-flash)?(?:$|[:/])/.test(name)) {
+    return {
+      supported_efforts: ['low', 'high'],
+      default_effort: 'high',
+    };
+  }
+
   // deepseek-reasoner / r1 / r1-0528 / deepseek-chat 等不补契约：
   // - reasoner/r1 固定思考，原生不支持档位调节；
   // - chat 非 reasoning 模型。

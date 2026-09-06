@@ -100,6 +100,26 @@ describe('inferReasoningConfigByModelName', () => {
     });
   });
 
+  describe('GLM-5.3 系列（Ollama reasoning）', () => {
+    it('glm-5.3 / glm-5.3-flash 公开当前 Ollama codec 可执行的 low/high', () => {
+      for (const name of [
+        'glm-5.3',
+        'glm-5.3-flash',
+        'glm-5.3-flash:cloud',
+        'ollama/glm-5.3-flash',
+      ]) {
+        const cfg = inferReasoningConfigByModelName(name);
+        expect(cfg?.supported_efforts).toEqual(['low', 'high']);
+        expect(cfg?.default_effort).toBe('high');
+      }
+    });
+
+    it('不会误匹配相邻版本', () => {
+      expect(inferReasoningConfigByModelName('glm-5.2')).toBeUndefined();
+      expect(inferReasoningConfigByModelName('glm-5.30')).toBeUndefined();
+    });
+  });
+
   describe('固定思考 / 非 reasoning 模型不补契约', () => {
     it('deepseek-chat / 普通 chat / embedding / mock 模型返回 undefined', () => {
       for (const name of ['deepseek-chat', 'gpt-4o', 'BAAI/bge-m3', 'mock-chat', 'kimi-k2']) {

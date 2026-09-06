@@ -226,6 +226,9 @@ reference；不得复用 InferenceEndpoint 或恢复模型顶层 `provider`
 - 用户 credential 只允许出现在一次连接创建命令中；系统模型使用显式
   `credential_reference`，日志只允许记录缺失的环境变量名；
 - reasoning 档位使用 Linnkit 共享合同，不能扩大为任意字符串；
+- 模型的 reasoning 能力由显式目录事实优先、模型名推断兜底；推断结果必须以对应
+  Provider codec 已验证的实际档位为准。例如当前 Ollama codec 对 GLM-5.3 系列只公开
+  `low` / `high`，不能把 Ollama 文档中的 `max` 未经 codec 支持就直接暴露到 UI；
 - Cloud、本地默认和用户模型走同一个
   `processModelConfig`，不得各维护一份相似校验。
 
