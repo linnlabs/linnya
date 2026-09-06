@@ -28,6 +28,7 @@ Linnya Slides 先把 PPT 抽象成一门专用的场景图 DSL，再用 JavaScri
 - 质量问题公共合同：[backend/engine/quality/definitions](./src/backend/engine/quality/definitions/README.md)
 - Agent 结构检查与诊断投影：[backend/features/presentationInspection](./src/backend/features/presentationInspection/README.md)
 - CLI 机器报告与真实截图：[backend/features/presentationCli](./src/backend/features/presentationCli/README.md)
+- 版本历史、源码压缩与图片生命周期：[backend/features/presentationSourceHistory](./src/backend/features/presentationSourceHistory/README.md)
 - 前端预览与栅格渲染：[renderer](./src/renderer/docs/README.md)
 - PPTX 编译、解析与质量检查：[backend/engine](./src/backend/engine/README.md)
 

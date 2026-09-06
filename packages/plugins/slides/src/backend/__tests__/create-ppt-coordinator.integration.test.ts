@@ -14,6 +14,7 @@ import type {
   PluginDocumentSvgAssetRuntimePort,
 } from '@plugin/backend/documentSvgAsset';
 import { PRESENTATION_DOCUMENT_SCHEMAS } from '../persistence/schemas/presentation.schema';
+import { PRESENTATION_HISTORY_SCHEMAS } from '../features/presentationSourceHistory/definitions/presentationHistorySchema';
 import { PRESENTATION_IMAGE_BINDING_SCHEMAS } from '../persistence/schemas/presentationImageBinding.schema';
 import { PRESENTATION_SVG_GRAPHIC_BINDING_SCHEMAS } from '../persistence/schemas/presentationSvgGraphicBinding.schema';
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema.js';
@@ -91,6 +92,7 @@ function installSchemas(db: Database.Database): void {
     ...PRESENTATION_DOCUMENT_SCHEMAS,
     ...PRESENTATION_IMAGE_BINDING_SCHEMAS,
     ...PRESENTATION_SVG_GRAPHIC_BINDING_SCHEMAS,
+    ...PRESENTATION_HISTORY_SCHEMAS,
   ]) {
     db.exec(ddl);
   }
@@ -228,6 +230,50 @@ describe('createPptCoordinator — image source resolver integration', () => {
     );
     expect(localAdoptionCount).toBe(1);
     expect(ownedReadCount).toBe(1);
+
+    const history = coordinator.history;
+    if (!history) throw new Error('Production coordinator must expose history');
+    const before = history.list(result.presentationId);
+    const target = before[before.length - 1];
+    const preview = await history.preview(result.presentationId, target.versionId);
+    expect(preview.slides).toHaveLength(1);
+    expect(history.list(result.presentationId)).toEqual(before);
+    expect(readPresentationDocument(db, result.presentationId)).toEqual(updatedDocument);
+    const restored = await history.restore({ documentId: result.presentationId,
+      versionId: target.versionId, expectedCurrentVersionId: before[0].versionId });
+    expect(restored.order).toBe(before[0].order + 1);
+    expect(restored.versionId).not.toBe(target.versionId);
+    expect(readPresentationDocument(db, result.presentationId)).toEqual(firstDocument);
+    await expect(history.restore({ documentId: result.presentationId,
+      versionId: target.versionId, expectedCurrentVersionId: before[0].versionId }))
+      .rejects.toMatchObject({ code: 'version_conflict' });
+    expect(localAdoptionCount).toBe(1); // 历史预览和恢复不下载、不重新接管已经删除的原图。
+  });
+
+  it('历史重放使用当时注入的主题，而不是该次输出或当前主题', async () => {
+    db.prepare('INSERT INTO projects(id,name,created_at,updated_at) VALUES (?,?,?,?)').run('theme-p', 'Theme', 1, 1);
+    const coordinator = createPptCoordinator(db, { buildExecution: createInProcessPresentationBuildExecution() });
+    const service = coordinator.getCodegenPresentationService();
+    const context = { projectId: 'theme-p', conversationId: 'theme-c' };
+    const base = await service.write({ source: 'compose({ title: "Base", theme: {colors: {accent1: "#112233"}}, slides: [createSlide()] });' }, context);
+    const source = [
+      'const slide = createSlide();',
+      'slide.add(createText({ content: DECK_DESIGN.palette.accent1 ?? "missing", width: 4, height: 1 }));',
+      'compose({ title: "Changed theme", theme: {colors: {accent1: "#445566"}}, slides: [slide] });',
+    ].join('\n');
+    const target = await service.write({ presentation_id: base.presentationId, source }, context);
+    const expected = readPresentationDocument(db, base.presentationId);
+    expect(readFirstElement(expected.deck_spec_json).content).toBe('#112233');
+    await service.write({ presentation_id: base.presentationId, source: source.replace('Changed theme', 'Later') }, context);
+    const history = coordinator.history;
+    if (!history) throw new Error('Missing history');
+    const preview = await history.preview(base.presentationId, target.versionId);
+    expect(preview.slides[0].elements).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'text',
+      paragraphs: expect.arrayContaining([expect.objectContaining({ runs: expect.arrayContaining([expect.objectContaining({ text: '#112233' })]) })]),
+    })]));
+    await history.restore({ documentId: base.presentationId, versionId: target.versionId,
+      expectedCurrentVersionId: history.list(base.presentationId)[0].versionId });
+    expect(readPresentationDocument(db, base.presentationId)).toEqual(expected);
   });
 
   it('Agent inline SVG 经 admission/ownership 后可预览并原生写入 PPTX', async () => {

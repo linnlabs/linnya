@@ -35,12 +35,6 @@ export interface GeneratePresentationResult {
   versionId: string;
 }
 
-export interface RestorePresentationRevisionResult {
-  readonly nodeId: string;
-  readonly versionId: string;
-  readonly versionNumber: number;
-}
-
 export interface TemplateManagerPort {
   importFromPptx(buffer: Buffer, name: string, description?: string): Promise<TemplateSpec>;
   getTheme(templateId: string): Promise<ThemeSpec | null>;

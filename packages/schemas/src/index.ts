@@ -108,6 +108,7 @@ export * from './workspace-mutation-events';
 
 // ============ Workspace 节点跨项目移动 ============
 export * from './workspace-node-transfer';
+export * from './document-history';
 
 // ============ Agent 可见文件地址空间合同 ============
 export * from './file-locator';

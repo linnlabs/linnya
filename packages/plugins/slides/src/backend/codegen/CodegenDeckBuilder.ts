@@ -40,6 +40,7 @@ import {
   serializeDeckDesignAnchor,
 } from './compose/flex-layout/index.js';
 import type { ParseWarning } from './compose/inputParsers/parseContext.js';
+import { readThemeSpecInput } from './compose/inputParsers/styleParsers.js';
 import {
   mapParseWarningsToCodegenDiagnostics,
   mergeCodegenDiagnostics,
@@ -61,6 +62,8 @@ export interface CodegenWorkspacePresentationPort {
 }
 
 export interface CodegenDeckBuilderDeps {
+  /** 记录实际注入源码的主题；输出 DeckSpec.theme 可能被这次源码修改，不能用来重放输入。 */
+  recordSourceTheme?: (theme: DeckSpec['theme']) => void;
   presentationRepo: Pick<
     PresentationRepositoryPort,
     'createPresentation' | 'commitPresentation' | 'getPresentation'
@@ -189,17 +192,6 @@ export class CodegenDeckBuilder {
   }
 
   async buildFromSource(input: CodegenDeckBuildInput): Promise<CodegenDeckBuildResult> {
-    return this.buildExistingPresentation(input, 'codegen');
-  }
-
-  async restoreFromSource(input: CodegenDeckBuildInput): Promise<CodegenDeckBuildResult> {
-    return this.buildExistingPresentation(input, 'restore');
-  }
-
-  private async buildExistingPresentation(
-    input: CodegenDeckBuildInput,
-    origin: 'codegen' | 'restore'
-  ): Promise<CodegenDeckBuildResult> {
     const source = this.readNonEmptySource(input.source);
     let current: Awaited<ReturnType<PresentationRepositoryPort['getPresentation']>>;
     try {
@@ -243,7 +235,7 @@ export class CodegenDeckBuilder {
         deckSource: source,
         baseRevisionId: expectedBase.revisionId,
         baseRevision: expectedBase.revision,
-        origin,
+        origin: 'codegen',
       });
     } catch (error) {
       if (
@@ -288,10 +280,19 @@ export class CodegenDeckBuilder {
     });
   }
 
+  /** 历史编译只接受版本自身主题，不能读取当前文稿补全旧上下文。 */
+  async buildHistoricalDeckSpec(input: { nodeId: string; source: string; themeJson?: string }): Promise<DeckSpec> {
+    const theme = readThemeSpecInput(input.themeJson ? JSON.parse(input.themeJson) : undefined);
+    if (theme.error) throw new Error(theme.error);
+    const compiled = await this.compileAuthoringInputFromSource(this.readNonEmptySource(input.source), theme.theme);
+    return this.buildOwnedDeckSpec(compiled, { documentId: input.nodeId });
+  }
+
   private async compileAuthoringInputFromSource(
     source: string,
     currentTheme?: DeckSpec['theme']
   ): Promise<CompiledDeckSource> {
+    this.deps.recordSourceTheme?.(currentTheme);
     let markerIndex: SlideMarkerIndex;
     try {
       markerIndex = SlideMarkerIndex.build(source);

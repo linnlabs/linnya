@@ -4,6 +4,9 @@ import type { PluginWorkspaceDocumentUpdatedPayload } from '@plugin/backend/work
 import type { DeckSpec } from '@plugin/slides/shared';
 import {
   PresentationSourceConsistencyError,
+  buildPresentationSourceRevision,
+  planPresentationSourceCompaction,
+  type PresentationStoredSourceRevision,
 } from '../features/presentationSourceHistory';
 import {
   PresentationStaleBaseError,
@@ -245,6 +248,60 @@ describe('PresentationRepository current materialization and source revisions', 
 
     await expect(repo.getRevisionSource('deck-corrupt', 1))
       .rejects.toBeInstanceOf(PresentationSourceConsistencyError);
+  });
+
+  it('真实仓储读取稀疏链后仍可追加和恢复，版本身份与 current 不倒退', async () => {
+    insertWorkspaceNode(db, 'deck-sparse');
+    let current = await repo.createPresentation('deck-sparse', makeDeckSpec('Revision 1'), {
+      pptxBuffer: Buffer.from('pptx-1'), deckSource: SOURCE_V1, origin: 'create',
+    });
+    const chain: PresentationStoredSourceRevision[] = [];
+    let parentSource: string | null = null;
+    let accumulatedPatchBytes = 0;
+    for (let revision = 1; revision <= 30; revision += 1) {
+      const source = SOURCE_V1.replaceAll('Revision 1', `Revision ${revision}`);
+      const parentRevisionId = revision === 1 ? null : current.revisionId;
+      if (revision > 1) {
+        current = await repo.commitPresentation('deck-sparse', makeDeckSpec(`Revision ${revision}`), {
+          pptxBuffer: Buffer.from(`pptx-${revision}`), deckSource: source,
+          baseRevisionId: current.revisionId, baseRevision: current.revision, origin: 'edit',
+        });
+      }
+      const payload = buildPresentationSourceRevision({ revision, source, parentSource, accumulatedPatchBytes });
+      chain.push({ ...payload, revision, revisionId: current.revisionId, parentRevisionId });
+      parentSource = source;
+      accumulatedPatchBytes = payload.storageKind === 'checkpoint' ? 0 : accumulatedPatchBytes + payload.patchBytes;
+    }
+    const before = await repo.listRevisions('deck-sparse');
+    const keep = chain.filter(row => [1, 10, 26, 30].includes(row.revision)).map(row => row.revisionId);
+    const plan = planPresentationSourceCompaction(chain, keep);
+    // 仅测试 fixture 写入新链；生产删除还必须先完成 revision 资产引用与 CAS 编排。
+    db.transaction(() => {
+      const update = db.prepare(`UPDATE presentation_revisions SET parent_revision_id = ?, base_source_hash = ?,
+        storage_kind = ?, source_checkpoint = ?, source_patch = ?, patch_bytes = ? WHERE id = ?`);
+      for (const row of plan.retained) {
+        update.run(row.parentRevisionId, row.baseSourceHash, row.storageKind, row.sourceCheckpoint, row.sourcePatch, row.patchBytes, row.revisionId);
+      }
+      const remove = db.prepare('DELETE FROM presentation_revisions WHERE id = ?');
+      for (const id of [...plan.removedRevisionIds].reverse()) remove.run(id);
+    }).immediate();
+
+    for (const row of plan.retained) {
+      expect(await repo.getRevisionSource('deck-sparse', row.revision))
+        .toBe(SOURCE_V1.replaceAll('Revision 1', `Revision ${row.revision}`));
+      const metadata = (await repo.listRevisions('deck-sparse')).find(item => item.revisionId === row.revisionId);
+      const original = before.find(item => item.revisionId === row.revisionId);
+      expect(metadata).toMatchObject({ createdAt: original?.createdAt, origin: original?.origin, sourceHash: original?.sourceHash });
+    }
+    expect(await repo.getRevisionSource('deck-sparse', 29)).toBeNull();
+    const restored = await repo.commitPresentation('deck-sparse', makeDeckSpec('Revision 10'), {
+      pptxBuffer: Buffer.from('restored-pptx'), deckSource: SOURCE_V1.replaceAll('Revision 1', 'Revision 10'),
+      baseRevisionId: current.revisionId, baseRevision: current.revision, origin: 'restore',
+    });
+    expect(restored.revision).toBe(31);
+    expect(await repo.getRevisionSource('deck-sparse', 31)).toContain('Revision 10');
+    expect((await repo.getPresentation('deck-sparse'))?.currentRevisionId).toBe(restored.revisionId);
+    expect(db.pragma('foreign_key_check')).toEqual([]);
   });
 
   it('事务后半段失败时 current 与 revision 一起回滚', async () => {

@@ -9,7 +9,6 @@ export {
 export type {
   GeneratePresentationOptions,
   GeneratePresentationResult,
-  RestorePresentationRevisionResult,
   PresentationDocumentRecord,
   PresentationRepositoryPort,
   TemplateManagerPort,

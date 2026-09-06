@@ -144,18 +144,7 @@ describe('Phase 3 source revision integration', () => {
     const exported = await coordinator.export(created.presentationId);
     expect((await pptxReader.parse(exported.buffer)).slideCount).toBe(1);
 
-    const restored = await coordinator.restoreRevision(created.presentationId, 1);
-    const restoredDocument = await repository.getPresentation(created.presentationId);
-    expect(restored).toMatchObject({
-      nodeId: created.presentationId,
-      versionNumber: 3,
-    });
-    expect(restoredDocument?.deckSource).toBe(initialSource);
-    expect((await repository.listRevisions(created.presentationId))[0]).toMatchObject({
-      revisionId: restored.versionId,
-      revision: 3,
-      origin: 'restore',
-    });
+    // 恢复由 create-ppt-coordinator.integration 覆盖真实 history 装配，包含 expected-current 冲突校验。
   });
 
   it('returns a saved draft while keeping current materialization and revision history unchanged', async () => {

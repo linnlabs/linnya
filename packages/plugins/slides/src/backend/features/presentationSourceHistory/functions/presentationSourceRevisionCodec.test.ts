@@ -24,8 +24,8 @@ describe('presentation source revision codec', () => {
     expect(first.storageKind).toBe('checkpoint');
     expect(second.storageKind).toBe('patch');
     expect(reconstructPresentationSource([
-      { revisionId: 'rev-1', revision: 1, ...first },
-      { revisionId: 'rev-2', revision: 2, ...second },
+      { revisionId: 'rev-1', revision: 1, parentRevisionId: null, ...first },
+      { revisionId: 'rev-2', revision: 2, parentRevisionId: 'rev-1', ...second },
     ])).toBe(secondSource);
   });
 
@@ -65,6 +65,7 @@ describe('presentation source revision codec', () => {
 
     expect(() => reconstructPresentationSource([{
       revisionId: 'rev-1',
+      parentRevisionId: null,
       revision: 1,
       ...checkpoint,
       sourceHash: 'tampered',

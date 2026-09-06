@@ -93,29 +93,13 @@
               ref="docMenuButtonRef"
               class="project-workspace-action"
               type="button"
-              :aria-label="hasActiveDocument ? layoutMessage('layout.header.markdownDocumentMenu') : layoutMessage('layout.header.noMarkdownDocument')"
+              :aria-label="layoutMessage('layout.header.moreMenu')"
               @click.stop="toggleDocMenu"
             >
               <MoreIcon class="project-workspace-action-icon" direction="horizontal" />
             </button>
           </HoverTooltip>
 
-          <HoverTooltip
-            v-if="hasPluginDocumentActionMenu"
-            :text="pluginDocumentActionMenu?.tooltip ?? layoutMessage('layout.header.moreMenu')"
-            placement="bottom"
-            :disabled="showPluginDocumentMenu"
-          >
-            <button
-              ref="pluginDocumentMenuButtonRef"
-              class="project-workspace-action"
-              type="button"
-              :aria-label="pluginDocumentActionMenu?.ariaLabel ?? layoutMessage('layout.header.pluginDocumentMenu')"
-              @click.stop="togglePluginDocumentMenu"
-            >
-              <MoreIcon class="project-workspace-action-icon" direction="horizontal" />
-            </button>
-          </HoverTooltip>
 
         </template>
 
@@ -229,29 +213,13 @@
                 ref="docMenuButtonRef"
                 class="project-workspace-action"
                 type="button"
-                :aria-label="hasActiveDocument ? layoutMessage('layout.header.markdownDocumentMenu') : layoutMessage('layout.header.noMarkdownDocument')"
+                :aria-label="layoutMessage('layout.header.moreMenu')"
                 @click.stop="toggleDocMenu"
               >
                 <MoreIcon class="project-workspace-action-icon" direction="horizontal" />
               </button>
             </HoverTooltip>
 
-            <HoverTooltip
-              v-if="hasPluginDocumentActionMenu"
-              :text="pluginDocumentActionMenu?.tooltip ?? layoutMessage('layout.header.moreMenu')"
-              placement="bottom"
-              :disabled="showPluginDocumentMenu"
-            >
-              <button
-                ref="pluginDocumentMenuButtonRef"
-                class="project-workspace-action"
-                type="button"
-                :aria-label="pluginDocumentActionMenu?.ariaLabel ?? layoutMessage('layout.header.pluginDocumentMenu')"
-                @click.stop="togglePluginDocumentMenu"
-              >
-                <MoreIcon class="project-workspace-action-icon" direction="horizontal" />
-              </button>
-            </HoverTooltip>
 
           </template>
         </div>
@@ -321,7 +289,7 @@
         >
           <CustomSelect
             :model-value="null"
-            :options="docMenuOptions"
+            :options="combinedDocMenuOptions"
             :manual-mode="true"
             variant="minimal"
             :bordered="false"
@@ -333,26 +301,13 @@
       </transition>
     </Teleport>
 
-    <Teleport to="body">
-      <transition name="app-header-menu-fade">
-        <div
-          v-show="showPluginDocumentMenu"
-          ref="pluginDocumentMenuWrapperRef"
-          class="app-header-doc-menu-wrapper"
-        >
-          <CustomSelect
-            :model-value="null"
-            :options="pluginDocumentMenuOptions"
-            :manual-mode="true"
-            variant="minimal"
-            :bordered="false"
-            :external-trigger-ref="pluginDocumentMenuButtonRef"
-            @update:model-value="handlePluginDocumentMenuSelect"
-            @close="showPluginDocumentMenu = false"
-          />
-        </div>
-      </transition>
-    </Teleport>
+    <DocumentHistoryPanel
+      v-if="showDocumentHistory && activeDocumentId && historyPreviewComponent"
+      :key="activeDocumentId"
+      :document-id="activeDocumentId"
+      :preview-component="historyPreviewComponent"
+      @close="showDocumentHistory = false"
+    />
 
     <!-- 添加到知识库弹窗 -->
     <AddToKnowledgeBaseModal
@@ -401,7 +356,8 @@ import { useWorkspacePaneGeometry } from '@/app/layout/composables/useWorkspaceP
 import { useWorkspaceProjectsStore, useWorkspaceTreeStore } from '@/domains/workspace/store';
 import { useNotificationStore } from '@/app/notification';
 import { useKnowledgeBaseStore } from '@/domains/knowledgebase/stores/knowledgeBase';
-import { useDocumentActionMenu } from '@/app/plugins/composables';
+import { useDocumentActionMenu, useDocumentTypeAvailabilityByActiveType } from '@/app/plugins/composables';
+import { DocumentHistoryPanel, useHistoryMessages } from '@/domains/document-history';
 import { getDocumentTypeByActiveType, getDocumentTypeByNodeType } from '@/app/plugins/registry';
 import type { DocumentActionMenuOptionValue } from '@/app/plugins/types';
 import { CustomSelect, HoverTooltip, type CustomSelectOption } from '@linnya/renderer-ui';
@@ -454,6 +410,14 @@ const { conversationMessage } = useConversationLocalization();
 const { knowledgeBaseMessage } = useKnowledgeBaseLocalization();
 const scene = computed(() => layoutStore.state.scene);
 const activeDocumentType = computed(() => layoutStore.state.activeDocument?.type ?? null);
+const activeDocumentId = computed(() => layoutStore.state.activeDocument?.id ?? null);
+const documentAvailability = useDocumentTypeAvailabilityByActiveType(activeDocumentType);
+const historyPreviewComponent = computed(() => documentAvailability.value?.state === 'enabled'
+  ? documentAvailability.value.documentType.historyPreviewComponent : undefined);
+const showDocumentHistory = ref(false);
+const { message: historyMessage } = useHistoryMessages();
+const pluginDocumentActionMenu = useDocumentActionMenu(activeDocumentType);
+watch([activeDocumentId, historyPreviewComponent], () => { showDocumentHistory.value = false; showDocMenu.value = false; });
 const canShowProjectConversationHistory = computed(() => {
   return scene.value.kind === 'workspace' && workspaceScopeStore.currentProjectId !== null;
 });
@@ -793,10 +757,10 @@ const isMarkdownDocument = computed(() => {
 // 是否有激活的 Markdown 文档（用于控制菜单显示）
 const hasActiveDocument = computed(() => !!fileStore.currentFilePath && isMarkdownDocument.value);
 const hasStandaloneDocumentMenu = computed(() => {
-  return scene.value.kind === 'workspace' && activeDocumentType.value === 'editor' && hasActiveDocument.value;
+  return scene.value.kind === 'workspace' && combinedDocMenuOptions.value.length > 0;
 });
 
-watch(hasStandaloneDocumentMenu, (canShow) => {
+watch(hasActiveDocument, (canShow) => {
   if (!canShow && activeHeaderTool.value === 'review') {
     activeHeaderTool.value = null;
   }
@@ -821,6 +785,12 @@ const docMenuOptions = computed<CustomSelectOption<Exclude<DocMenuValue, null>>[
     { value: 'add-to-kb', text: layoutMessage('layout.header.documentMenu.addToKnowledgeBase') },
   ];
 });
+
+const combinedDocMenuOptions = computed<CustomSelectOption<DocumentActionMenuOptionValue>[]>(() => [
+  ...(historyPreviewComponent.value ? [{ value: 'document-history', text: historyMessage('history.title') }] : []),
+  ...docMenuOptions.value,
+  ...(pluginDocumentActionMenu.value?.isAvailable() ? pluginDocumentActionMenu.value.getOptions() : []),
+]);
 
 // ==================== 添加到知识库相关状态 ====================
 
@@ -878,11 +848,6 @@ const handleWindowAction = (action: 'minimize' | 'maximize' | 'close') => {
 
 // 切换文档菜单显示状态
 const toggleDocMenu = () => {
-  // 没有激活的 Markdown 文档时，不显示菜单
-  if (!hasActiveDocument.value) {
-    notificationStore.show(layoutMessage('layout.header.documentMenu.unavailable'), 'warning', 2500);
-    return;
-  }
   showDocMenu.value = !showDocMenu.value;
 };
 
@@ -897,9 +862,12 @@ type DocMenuValue =
   | null;
 
 // 处理文档菜单选项选择
-const handleDocMenuSelect = (value: DocMenuValue) => {
-  if (!value) {
-    showDocMenu.value = false;
+const handleDocMenuSelect = async (value: unknown) => {
+  showDocMenu.value = false;
+  if (value === 'document-history' && historyPreviewComponent.value) { showDocumentHistory.value = true; return; }
+  const menu = pluginDocumentActionMenu.value;
+  if (menu?.isAvailable() && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')) {
+    await menu.select(value);
     return;
   }
 
@@ -970,73 +938,6 @@ watch(showDocMenu, (isOpen) => {
     nextTick(() => {
       positionDocMenu();
     });
-  }
-});
-
-// ==================== 插件文档"更多"菜单 ====================
-
-const pluginDocumentActionMenu = useDocumentActionMenu(activeDocumentType);
-const hasPluginDocumentActionMenu = computed(() => {
-  const menu = pluginDocumentActionMenu.value;
-  return !!menu && menu.isAvailable();
-});
-
-const showPluginDocumentMenu = ref(false);
-const pluginDocumentMenuButtonRef = ref<HTMLElement | null>(null);
-const pluginDocumentMenuWrapperRef = ref<HTMLElement | null>(null);
-
-const pluginDocumentMenuOptions = computed(() => {
-  const menu = pluginDocumentActionMenu.value;
-  return menu && menu.isAvailable() ? [...menu.getOptions()] : [];
-});
-
-const togglePluginDocumentMenu = () => {
-  if (!hasPluginDocumentActionMenu.value) return;
-  showPluginDocumentMenu.value = !showPluginDocumentMenu.value;
-};
-
-function isDocumentActionMenuOptionValue(value: unknown): value is DocumentActionMenuOptionValue {
-  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
-}
-
-const handlePluginDocumentMenuSelect = async (value: unknown) => {
-  showPluginDocumentMenu.value = false;
-  const menu = pluginDocumentActionMenu.value;
-  if (!menu || !isDocumentActionMenuOptionValue(value)) return;
-  await menu.select(value);
-};
-
-const positionPluginDocumentMenu = () => {
-  const triggerEl = pluginDocumentMenuButtonRef.value;
-  const wrapperEl = pluginDocumentMenuWrapperRef.value;
-  if (!triggerEl || !wrapperEl) return;
-
-  const triggerRect = triggerEl.getBoundingClientRect();
-  const wrapperRect = wrapperEl.getBoundingClientRect();
-
-  let top = triggerRect.bottom + 4;
-  let left = triggerRect.left;
-
-  if (left + wrapperRect.width > window.innerWidth) {
-    left = triggerRect.right - wrapperRect.width;
-  }
-  if (top + wrapperRect.height > window.innerHeight) {
-    top = triggerRect.top - wrapperRect.height - 4;
-  }
-
-  wrapperEl.style.top = `${top}px`;
-  wrapperEl.style.left = `${left}px`;
-};
-
-watch(showPluginDocumentMenu, (isOpen) => {
-  if (isOpen) {
-    nextTick(() => positionPluginDocumentMenu());
-  }
-});
-
-watch(hasPluginDocumentActionMenu, (isAvailable) => {
-  if (!isAvailable) {
-    showPluginDocumentMenu.value = false;
   }
 });
 

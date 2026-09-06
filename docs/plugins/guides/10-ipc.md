@@ -4,6 +4,12 @@
 
 ## 标准通道：plugin:invoke
 
+Core 统一历史列表/恢复使用 Host 的 `document-history:list`、`document-history:restore`，
+输入和结果由 `@app/schemas/document-history` 校验，再按 enabled document hook 分发。
+元数据不携带插件私有载荷；插件历史预览继续走自己的 plugin:invoke 通道，例如 Slides 的 `slides:history-preview`。
+恢复成功必须发布既有 `workspace.document.updated`，不增加历史专用的当前文稿刷新事件。
+完整规则见 [文档历史](../../../src/domains/document-history/README.md)。
+
 插件业务 IPC 由 backend contribution 的 `ipc` 字段原子声明：
 
 - `ipc.channels` 是 `plugin:invoke` 的白名单。

@@ -1,0 +1,34 @@
+import {
+  DocumentVersionListSchema, DocumentVersionSummarySchema,
+  type DocumentVersionRestoreRequest, type DocumentHistoryListResponse, type DocumentHistoryRestoreResponse,
+} from '@app/schemas';
+import type { DocumentHistoryCapability } from '@linnya/plugin-host-contract/backend/documentHistory';
+import { DocumentHistoryError } from '../definitions/documentHistoryError';
+import type { PluginToolContext } from '@linnya/plugin-host-contract/backend/toolRuntime';
+import { selectDocumentHistory } from '../functions/selectDocumentHistory';
+
+export function createDocumentHistoryOperations(dependencies: {
+  readonly resolve: (documentId: string) => DocumentHistoryCapability;
+  readonly context: PluginToolContext;
+  readonly reportFailure: (error: unknown) => void;
+}) {
+  function failure(error: unknown, fallback: 'history_unavailable' | 'restore_failed') {
+    dependencies.reportFailure(error);
+    return { success: false, code: error instanceof DocumentHistoryError ? error.code : fallback } as const;
+  }
+  return {
+    async list(documentId: string): Promise<DocumentHistoryListResponse> {
+      try {
+        const rows = DocumentVersionListSchema.parse(await dependencies.resolve(documentId).list({ documentId, context: dependencies.context }));
+        const selection = selectDocumentHistory(rows);
+        return { success: true, recent: [...selection.recent], earlier: [...selection.earlier] };
+      } catch (error) { return failure(error, 'history_unavailable'); }
+    },
+    async restore(request: DocumentVersionRestoreRequest): Promise<DocumentHistoryRestoreResponse> {
+      try {
+        const current = await dependencies.resolve(request.documentId).restore({ ...request, context: dependencies.context });
+        return { success: true, current: DocumentVersionSummarySchema.parse(current) };
+      } catch (error) { return failure(error, 'restore_failed'); }
+    },
+  };
+}

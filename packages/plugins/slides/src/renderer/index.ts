@@ -32,6 +32,7 @@ import presentationActionCardStylesheet from './tool-cards/styles/PresentationAc
 import presentationInspectCardStylesheet from './tool-cards/styles/PresentationInspectCard.css?url';
 import pptPlanApprovalCardStylesheet from './tool-cards/styles/PptPlanApprovalCard.css?url';
 import slidesShellStylesheet from './styles/index.css?url';
+import slidesHistoryStylesheet from './features/presentationHistory/ui/SlidesHistoryPreview.css?url';
 
 export { presentationToolConfigs } from './tool-cards/presentation';
 export {
@@ -53,6 +54,7 @@ const SlidesPage = defineAsyncComponent(async () => {
 });
 
 const slidesStylesheets = [
+  slidesHistoryStylesheet,
   slidesShellStylesheet,
   slidesDraftFailureLogStylesheet,
   sourceSelectionPromptPopoverStylesheet,
@@ -84,6 +86,7 @@ export const slidesRendererPlugin: RendererPluginContribution = {
       createBackend: 'plugin-document',
       createHandlerId: 'slides.document-create',
       surfaceComponent: SlidesPage,
+      historyPreviewComponent: defineAsyncComponent(() => import('./features/presentationHistory/ui/SlidesHistoryPreview.vue')),
       shellClass: 'for-slides',
       label: '演示文稿',
       createLabel: '新建演示文稿',

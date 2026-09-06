@@ -69,7 +69,10 @@
     "presentation_drafts",
     "presentation_templates",
     "presentation_image_bindings",
-    "presentation_svg_graphic_bindings"
+    "presentation_svg_graphic_bindings",
+    "presentation_revision_contexts",
+    "presentation_revision_assets",
+    "presentation_asset_releases"
   ],
   "migrations": [
     {
@@ -91,6 +94,14 @@
     {
       "version": 5,
       "description": "Bind presentation SVG Graphic sources to owned assets"
+    },
+    {
+      "version": 6,
+      "description": "Track revision render context, asset reachability and pending ownership releases"
+    },
+    {
+      "version": 7,
+      "description": "Preserve restored version identity and original timestamp"
     }
   ],
   "ownedFileTypes": [

@@ -83,6 +83,8 @@ renderer 不得再次测量、换行、autofit 或追加省略号。普通文本
 
 `RunAdvanceProvider` 返回与输入 clusters 一一对应的 advance；长度不一致属于合同错误，必须失败。`FontMetricsProvider` 只返回 ascent/descent/lineGap，不泄漏字体目录和平台实现。
 
+强制换行（LF / CRLF）保留在断行序列中，但 advance 为 0，不送入 provider。预热、测量及返回数量校验都以排除换行符后的 clusters 为准；还原字宽时，换行符不消耗测量结果。此规则同样适用于一个 run 内混合文字和换行、连续空行及表格单元格，不能通过删除源换行来规避度量错误。
+
 shared 算法是同步的。异步初始化、预热、缓存、字体解析和日志属于 backend 调用方。所有生产布局必须先预热，禁止 cache miss 后在 renderer 静默换一套测量算法。
 
 `summarizeSlideTextLayoutProvenance()` 是 `ppt_inspect` 场景图的文本布局观察合同：聚合全部布局节点的 advance 来源与字体 identity，只展开存在字距、overflow、字体族替换、未决字体或请求/解析 face 样式不一致的节点。它可以公开字体文件内容 + face 身份的 SHA-256 以及 requested/resolved 字重和斜体事实，但禁止记录字体绝对路径或复制整段正文。
@@ -102,4 +104,5 @@ shared 算法是同步的。异步初始化、预热、缓存、字体解析和�
 - 布局、autofit、overflow：`src/shared/textLayout/__tests__/{layoutTextNode,resizeTextBoxForAutoFit}.test.ts`
 - 观察合同：`src/shared/textLayout/__tests__/summarizeTextLayoutProvenance.test.ts`
 - backend finalization：`src/backend/engine/text/__tests__/renderModelTextLayout.test.ts`
+- 多行表格的真实预热、布局、Inspect 场景图、前端绘制投影与 PPTX 导出：`src/backend/__tests__/table-forced-break.integration.test.ts`
 - renderer fail-closed：`src/renderer/features/konvaPreview/functions/builders/__tests__/{textBuilder,tableBuilder}.test.ts`

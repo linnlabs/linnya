@@ -69,7 +69,7 @@ function buildEnabledPluginCreateHint(): string {
 
 export class WriteFileTool extends BaseTool {
   readonly name = 'write_file';
-  readonly idempotency = { scope: 'conversation' } as const;
+  // 覆盖写入依赖文件当前状态；A → B → A 必须真正写回 A，不能命中历史 A 的结果。
   /**
    * 只要模型已经确定要写文件，就先让 Renderer 建立 loading 卡片。
    * 正文可能很大，标题也不依赖正文，因此不发送参数增量快照。

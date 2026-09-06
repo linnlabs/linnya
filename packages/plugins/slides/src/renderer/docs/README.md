@@ -4,6 +4,10 @@ Slides renderer 是演示文稿前端 contribution，负责文档 surface、预�
 
 renderer 是后端 `PresentationRenderModel`、`DeckPreview` 和 shared 合同的消费层，不是第二套 PPT 布局求解器。视觉或布局不一致时，优先回查 shared 合同、后端 render-model mapper、compiler 或 engine solver，再修改 renderer 映射。
 
+历史版本通过 document type 的 `historyPreviewComponent` 接入 Core 统一面板，详见
+[presentationHistory](../features/presentationHistory/README.md)。历史预览独立于当前文稿 store，
+只保留单个版本和一张选中页 bitmap；不存储历史截图，不触发当前页面刷新。
+
 ## 文档树
 
 ```text

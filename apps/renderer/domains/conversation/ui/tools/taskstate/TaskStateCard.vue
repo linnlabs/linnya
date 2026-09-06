@@ -27,7 +27,7 @@
         <!-- 核心信息：Goal -->
         <div v-if="goal" class="ts-goal">{{ goal }}</div>
 
-        <!-- 紧凑列表：Next Steps（最多 3 条） -->
+        <!-- 完整显示已接纳的 Next Steps；数量预算由共享 schema 负责。 -->
         <div v-if="nextStepRows.length > 0" class="ts-steps">
           <div v-for="step in nextStepRows" :key="step.id" class="ts-step-row">
             <div class="ts-step-bar-wrap"><div class="ts-step-bar"></div></div>

@@ -159,6 +159,8 @@ TaskState 采用同一平台原则，但 owner admission 更严格：当前值�
 
 镜像状态是双事实源，必然漂移。
 
+TaskState 卡片完整展示已接纳快照的 `next_steps`，不在 projector 再截取前 3 项。live 上限由 `@app/schemas` 统一管理（当前为 6 项），写入、读回和历史窗口加载消费同一快照。
+
 ---
 
 ## 7. Wrapper 别名（[INV-18](./00-invariants.md#inv-18--工具-wrapper-与底层工具是两个正式合同)）

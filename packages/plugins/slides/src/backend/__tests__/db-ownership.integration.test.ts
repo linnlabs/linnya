@@ -10,6 +10,7 @@ import {
   slidesBackendPlugin,
 } from '../index';
 import { SLIDES_OWNED_TABLES, SLIDES_PLUGIN_META } from '@plugin/slides/shared';
+import { PRESENTATION_HISTORY_SCHEMAS } from '../features/presentationSourceHistory';
 
 interface TableNameRow {
   readonly name: string;
@@ -34,6 +35,9 @@ const EXPECTED_SLIDES_OWNED_TABLES = [
   'presentation_templates',
   'presentation_image_bindings',
   'presentation_svg_graphic_bindings',
+  'presentation_revision_contexts',
+  'presentation_revision_assets',
+  'presentation_asset_releases',
 ] as const;
 
 function createPluginRuntimeTables(db: Database.Database): void {
@@ -105,6 +109,7 @@ function createPresentationTables(db: Database.Database): void {
 }
 
 function seedPresentationRows(db: Database.Database): void {
+  for (const ddl of PRESENTATION_HISTORY_SCHEMAS) db.exec(ddl);
   db.prepare(
     `INSERT INTO workspace_nodes (id, type, name, created_at, updated_at)
     VALUES ('slides-node-1', 'presentation', 'Before', 100, 100)`

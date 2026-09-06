@@ -41,7 +41,6 @@ export type {
   PluginToolResolvedVfsNode,
   PluginToolVfsNodeResolveInput,
   PluginToolVfsNodeResolveResult,
-  PluginVersionRetentionPolicy as VersionRetentionPolicy,
   PluginWorkspaceDocumentMutationKind,
   PluginWorkspaceDocumentUpdatedPayload,
   PluginWorkspaceRuntimeNode,
@@ -133,9 +132,6 @@ export async function resolveWorkspaceVfsNodeForPluginTool(
 export {
   Logger,
 } from 'src/shared/logger';
-export {
-  pruneVersionTable,
-} from 'src/shared/database/versionRetention';
 export {
   saveWorkspaceNodeTextSnapshot,
 } from 'src/features/workspace/infrastructure/sqlite/node-text-snapshot/nodeTextSnapshot.service';

@@ -24,6 +24,7 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 - `send` 先用与 `models` 相同的规则校验显式 Chat/图片模型，再拒绝已有 active foreground root run、保存显式 Agent 选择并进入正式 Flow admission；不存在、用途错误、缺 route 或缺凭据必须在任何持久化或 Flow side effect 前失败。
 - `image_generation_model_id` 是单次请求覆盖项，只映射到现有 Flow request，不拥有或修改 Renderer 的全局图片模型偏好。
 - `send` 的 success receipt 必须包含 durable committed user message identity 和 Host 接纳的 `turn_id / run_id / execution_id`。回执不代表运行完成。
+- `send / respond / workspace_tools call` 共用历史项目解析：已有会话省略项目时继承持久化绑定，显式项目必须与绑定一致，不存在的会话拒绝。无项目会话可继续聊天/审批，但不能调用 Workspace 工具；CLI 不负责迁移会话项目。解析出的项目同时进入 Flow 的 project identity 与 project metadata。
 - `respond` 只接纳当前 `awaiting_user` 的 exact `interaction_id`，继续同一个 `run_id`，并产生新的 `execution_id`；恢复时必须从 run 的 `agentSpecId` 还原原 Agent 路由，不能回退到 default。
 - CLI use case 只投影响应事实，不拥有 Agent 提示语。`approved` 的模型可见语义由 Flow Host 在创建 committed `tool_output` 时统一补足，因此 Renderer 与 CLI 必须得到相同的恢复行为。
 - `stop` 是唯一主动中断动作。它调用 Flow 的取消完成屏障，并重新读取 registry 验证 terminal settlement；不公开主动暂停。

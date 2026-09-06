@@ -15,6 +15,7 @@ import { taskStateToolClasses } from '..';
 import { TaskReadTool } from '../taskReadTool';
 import { TaskWriteTool } from '../taskWriteTool';
 import type { ToolContext } from '../../../types';
+import { projectTaskStatePresentation } from '../../../../../apps/renderer/domains/conversation/ui/tools/taskstate/functions/projectTaskStatePresentation';
 
 const validArgs = {
   goal: '完成 TaskState 事件真源迁移',
@@ -145,11 +146,25 @@ describe('TaskState tools (task_write/read)', () => {
     }
   });
 
-  it('TaskState 参数合同包含显式预算', () => {
-    const taskWrite = new TaskWriteTool();
-    expect(taskWrite.parameters.properties.goal?.maxLength).toBe(500);
-    expect(taskWrite.parameters.properties.current_plan?.maxItems).toBe(7);
-    expect(taskWrite.parameters.properties.next_steps?.maxItems).toBe(3);
-    expect(taskWrite.parameters.additionalProperties).toBe(false);
+  it('六项下一步可写入并从历史读回，七项被 admission 拒绝', async () => {
+    const tool = new TaskWriteTool();
+    const nextSteps = ['调研', '整理数据', '构建页面', '检查布局', '复核来源', '交付'];
+    const written = TaskStateWriteResultSchema.parse(JSON.parse(
+      await tool.run({ ...validArgs, next_steps: nextSteps }, makeContext()),
+    ));
+    const read = TaskStateReadResultSchema.parse(JSON.parse(
+      await new TaskReadTool().run({}, makeContext(pairedTaskWriteFact(written, 'six'))),
+    ));
+    expect(read.data).toMatchObject({ exists: true, taskstate: { next_steps: nextSteps } });
+    for (const input of [
+      { sourceToolName: 'task_write', args: { ...validArgs, next_steps: nextSteps }, result: written },
+      { sourceToolName: 'task_read', args: {}, result: read },
+    ]) {
+      const presentation = projectTaskStatePresentation({ ...input, uiKey: input.sourceToolName, status: 'success', phase: 'complete' });
+      expect(presentation.data).toMatchObject({ nextStepRows: nextSteps.map(text => ({ id: text, text })) });
+    }
+    await expect(tool.run({
+      ...validArgs, next_steps: [...nextSteps, '额外步骤'],
+    }, makeContext())).rejects.toThrow();
   });
 });

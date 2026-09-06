@@ -11,6 +11,10 @@
  */
 
 import type { Database } from 'better-sqlite3';
+import { executeSandboxProfile } from '@plugin/backend/sandboxRuntime';
+import { releaseDocumentAssetOwnership } from '@plugin/backend/documentAssetOwnership';
+import { CodegenDeckBuilder } from '../codegen';
+import { PresentationHistoryRepository, PresentationHistoryRuntime, PresentationRevisionScope, observeRevisionImageBindings, observeRevisionSvgBindings } from '../features/presentationSourceHistory';
 import {
   createDocumentImageAssetRuntime,
   type PluginDocumentImageAssetRuntimePort,
@@ -29,16 +33,20 @@ import {
   PptxReader,
   StructuredCompiler,
   TemplateManager,
+  PptPresentationQueryService,
   type SvgGraphicFallbackRasterizerPort,
 } from '@plugin/slides/backend-engine-core';
 import type { BrushArtworkGeneratorPort } from '../engine/brushArtwork';
 import { PresentationDraftRepository, PresentationRepository } from '../persistence';
 import {
   createPresentationImageSourceResolver,
+  createReadOnlyPresentationImageSourceResolver,
   PresentationImageBindingRepository,
 } from '../features/presentationImageOwnership';
 import {
   createPresentationSvgGraphicOwner,
+  createReadOnlyPresentationSvgGraphicOwner,
+  createReadOnlyPresentationSvgGraphicAssetResolver,
   PresentationSvgGraphicBindingRepository,
 } from '../features/presentationSvgGraphicOwnership';
 import { createPresentationSvgGraphicFallbackRasterizer } from '../features/presentationSvgGraphicFallback';
@@ -61,14 +69,23 @@ export function createPptCoordinator(
   const deckAssemblerLogger = new Logger('DeckAssembler');
   const codegenFailureLogger = new Logger('SlidesCodegen');
   const workspaceService = createWorkspaceService(db);
+  const revisionScope = new PresentationRevisionScope();
+  const historyRepository = new PresentationHistoryRepository(db);
+  let history: PresentationHistoryRuntime;
   const presentationRepo = new PresentationRepository(db, {
     publishDocumentUpdated: publishWorkspaceDocumentUpdated,
+    recordRevisionContext: (nodeId, revisionId) => historyRepository.recordContext(revisionId, revisionScope.readSourceTheme(), revisionScope.read(nodeId)),
+    requestHistoryMaintenance: nodeId => history.requestMaintenance(nodeId),
   });
   const presentationDraftRepo = new PresentationDraftRepository(db);
   const structuredCompiler = new StructuredCompiler();
+  const imageBindings = observeRevisionImageBindings(new PresentationImageBindingRepository(db), revisionScope);
+  const svgBindings = observeRevisionSvgBindings(new PresentationSvgGraphicBindingRepository(db), revisionScope);
+  const imageAssets = options.documentImageAssetRuntime ?? createDocumentImageAssetRuntime(db);
+  const svgAssets = options.documentSvgAssetRuntime ?? createDocumentSvgAssetRuntime(db);
   const imageSourceResolver = createPresentationImageSourceResolver({
-    bindingRepository: new PresentationImageBindingRepository(db),
-    documentImageAssets: options.documentImageAssetRuntime ?? createDocumentImageAssetRuntime(db),
+    bindingRepository: imageBindings,
+    documentImageAssets: imageAssets,
     ...(options.brushArtworkGenerator
       ? { brushArtworkGenerator: options.brushArtworkGenerator }
       : {}),
@@ -77,8 +94,8 @@ export function createPptCoordinator(
       : {}),
   });
   const svgGraphicRuntime = createPresentationSvgGraphicOwner({
-    bindingRepository: new PresentationSvgGraphicBindingRepository(db),
-    documentSvgAssets: options.documentSvgAssetRuntime ?? createDocumentSvgAssetRuntime(db),
+    bindingRepository: svgBindings,
+    documentSvgAssets: svgAssets,
     ...(options.conversationFilePathResolver
       ? { conversationFilePathResolver: options.conversationFilePathResolver }
       : {}),
@@ -94,6 +111,31 @@ export function createPptCoordinator(
   const pptxReader = new PptxReader();
   const templateManager = new TemplateManager(pptxReader, presentationRepo);
   const patchCompiler = new PatchCompiler(structuredCompiler, templateManager, pptxReader);
+
+  const historicalImages = createReadOnlyPresentationImageSourceResolver({ bindingReader: imageBindings, documentImageAssets: imageAssets });
+  const historicalSvgOwner = createReadOnlyPresentationSvgGraphicOwner({ bindingRepository: svgBindings, documentSvgAssets: svgAssets });
+  const historicalSvgReader = createReadOnlyPresentationSvgGraphicAssetResolver({ documentSvgAssets: svgAssets });
+  const historicalAssembler = createPresentationBuildDeckAssembler({
+    execution: options.buildExecution, imageSourceResolver: historicalImages, svgGraphicAssetResolver: historicalSvgReader,
+    svgGraphicFallbackRasterizer: options.svgGraphicFallbackRasterizer ?? createPresentationSvgGraphicFallbackRasterizer(),
+  });
+  const historicalBuilder = new CodegenDeckBuilder({
+    recordSourceTheme: theme => revisionScope.recordSourceTheme(theme),
+    presentationRepo, engine: { assembleDeck: request => historicalAssembler.assemble(request.deckSpec, request.assembleOptions) },
+    sandbox: { execute: executeSandboxProfile }, buildExecution: options.buildExecution, svgGraphicOwner: historicalSvgOwner,
+  });
+  const historicalQueries = new PptPresentationQueryService(pptxReader, historicalImages, historicalSvgReader);
+  history = new PresentationHistoryRuntime({
+    history: historyRepository, documents: presentationRepo, scope: revisionScope,
+    compile: input => historicalBuilder.buildHistoricalDeckSpec(input),
+    render: (documentId, version, deckSpec) => historicalQueries.getRenderModel(documentId, {
+      id: version.versionId, nodeId: documentId, versionNumber: version.order, deckSpec,
+      title: deckSpec.title, sourceKind: 'generated', pptxBuffer: Buffer.alloc(0),
+    }, { assetContext: { documentId } }),
+    assemble: (documentId, deck) => historicalAssembler.assemble(deck, { assetContext: { documentId } }),
+    release: (documentId, assetIds) => releaseDocumentAssetOwnership({ database: db, documentId, assetIds }),
+    reportFailure: (documentId, error) => codegenFailureLogger.error('slides_history.maintenance.failed', { documentId, error: error instanceof Error ? error.message : String(error) }),
+  });
 
   return new PptCoordinator(
     deckAssembler,
@@ -122,6 +164,8 @@ export function createPptCoordinator(
     presentationDraftRepo,
     {
       codegenFailureLogger,
+      revisionScope,
+      history,
       svgGraphicRuntime,
       buildExecution: options.buildExecution,
     }

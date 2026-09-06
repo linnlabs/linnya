@@ -28,7 +28,7 @@ Tool facade
 - `tool_call_id` 只在 run 内唯一；未路由事实和跨 run 的同值 id 都不能形成配对。
 - 裸 output、失败 output、错配 call id、旧工具名和其它工具输出都不能制造新状态。
 - live 结果不公开路由 identity、SharedMemory source、URI、文档 id 或路径。
-- TaskState 的字段长度、数组数量和 8000 字符总预算由 `@app/schemas` 唯一约束；超限明确失败。
+- TaskState 的字段长度、数组数量和 8000 字符总预算由 `@app/schemas` 唯一约束；完整计划最多 7 项，下一步最多 6 项，超限明确失败。
 - 文件型 live reference 与 `read_file` 共用 `FileLocatorSchema`：只接纳显式 `workspace:/`、`conversation:/`、`file:///` locator；外部宿主文件使用 canonical `file:///`，不接纳裸绝对或相对路径。
 - live references 不接纳已经退役的 SharedMemory / Evidence bundle / CitationSnapshot bundle URI。
 - 历史工具结果的解释属于 Renderer replay，不进入 domain port。

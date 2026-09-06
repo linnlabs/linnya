@@ -10,6 +10,7 @@
  */
 
 import type { Database } from 'better-sqlite3';
+import { DocumentHistoryError, type DocumentHistoryCapability } from '@plugin/backend/documentHistory';
 import {
   createWorkspaceService,
   type PluginWorkspaceServicePort,
@@ -134,4 +135,17 @@ export const createSlidesDocumentHookRuntime: SlidesDocumentHookRuntimeFactory =
       workspaceService.renameNode(input.nodeId, input.fileName);
     },
   };
+};
+
+export const slidesDocumentHistoryCapability: DocumentHistoryCapability = {
+  list(input) {
+    const coordinator = getSharedPptCoordinator(readDatabaseService(readToolContext(input.context)).getDb());
+    if (!coordinator.history) throw new DocumentHistoryError('history_unavailable');
+    return coordinator.history.list(input.documentId);
+  },
+  async restore(input) {
+    const coordinator = getSharedPptCoordinator(readDatabaseService(readToolContext(input.context)).getDb());
+    if (!coordinator.history) throw new DocumentHistoryError('history_unavailable');
+    return coordinator.history.restore(input);
+  },
 };

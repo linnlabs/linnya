@@ -168,6 +168,8 @@ pending -> running -> awaiting_user -> running -> completed | failed | cancelled
 
 对已有会话执行 `send --conversation <id>` 时，如果该会话已有 active foreground run，会得到 `conversation_busy`，不会并发写入第二条 foreground 主链。
 
+续跑 `send --conversation <id>` 和审批 `respond <id>` 均自动继承该会话保存的项目，不必重复 `--project`。显式传入时必须与原项目一致，否则在启动/恢复前拒绝；不能借此迁移会话。无项目聊天仍可续跑，但 Workspace 工具要求项目。模型选择仍按原有解析规则；对比测试应继续显式传 `--model`，不要把项目继承理解成冻结模型配置。
+
 ## 5. 输出与退出码
 
 普通成功命令向 stdout 写一个 JSON 值；`--pretty` 只改变普通命令的缩进。`status --watch` 向 stdout 写 JSONL，不能与 `--pretty` 组合。所有失败都向 stderr 写一个稳定 JSON 值：

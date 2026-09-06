@@ -31,6 +31,17 @@ host UI（工具卡、header、pageContext 等）显示文档类型信息时必�
 
 ## 关键边界
 
+### 可选文档历史
+
+后端 hook 的 `history` 提供元数据 list 和带 expectedCurrentVersionId 的 restore，公共类型位于
+`@plugin/backend/documentHistory`。list 必须来自单次一致快照；恢复编译前与事务提交时都校验 current，
+成功恢复新建版本并发布标准文档更新事件，不倒退当前指针。Host 只校验和分发，不读插件版本载荷。
+Renderer 同一文档类型可贡献 `historyPreviewComponent`，接收 documentId/versionId，承担只读预览及资源释放。
+Core Header 自动提供统一 More 入口和面板。未启用或缺少贡献时不显示，后端也必须通过 enabled hook 分派。
+完整身份、分层保留与错误合同见 [文档历史](../../../src/domains/document-history/README.md)。
+
+### 通用读写
+
 - **创建和写入必须走 enabled hook**。插件未启用或未安装时，宿主应报告「不支持/插件不可用」，不能保存错误格式。
 - **插件生命周期的原子性由 hook 自己负责。** Host 不会在 `better-sqlite3` 同步事务回调里 `await createDocument` / `duplicateDocument`；插件必须在 hook 内原子维护节点、私有内容和事实文本快照。永久内建 Markdown provider 则由 Host 在同步事务内同时提交节点和正文。
 - **读取入口不得在 hook 前写核心类型白名单**。`read_file(view="document")`、普通 `read_file`/grep/VFS、workspace metadata 和引用解析都必须先确认 workspace node 存在，再按核心 reader 或已注册 `DocumentTypeBackendHook` 分发；未知插件类型返回明确诊断，不能被 host 提前判成 `Document not found`。

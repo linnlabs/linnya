@@ -27,6 +27,8 @@ import type {
   ConversationAwarePresentationSvgGraphicOwnerPort,
   PresentationSvgGraphicAssetReaderPort,
   PresentationSvgGraphicBinding,
+  PresentationSvgGraphicBindingReaderPort,
+  PresentationSvgGraphicOwnerPort,
   PresentationSvgGraphicBindingRepositoryPort,
   SvgGraphicAssetReadContext,
   SvgGraphicOwnershipContext,
@@ -126,7 +128,7 @@ function assertAssetMatchesAdmission(
 }
 
 async function readBoundAsset(
-  dependencies: PresentationSvgGraphicOwnerDependencies,
+  dependencies: { readonly bindingRepository: PresentationSvgGraphicBindingReaderPort; readonly documentSvgAssets: Pick<PluginDocumentSvgAssetRuntimePort, 'readOwnedSvg'> },
   input: { readonly presentationId: string; readonly sourceIdentity: string }
 ): Promise<SvgGraphicOwnedAssetRef | null> {
   let binding: PresentationSvgGraphicBinding | null;
@@ -413,5 +415,22 @@ export function createPresentationSvgGraphicOwner(
       });
     },
     resolveSvgGraphicAsset: assetReader.resolveSvgGraphicAsset,
+  };
+}
+
+/** 历史 authoring 只解析已接管来源，绝不访问原路径或新建 binding。 */
+export function createReadOnlyPresentationSvgGraphicOwner(dependencies: {
+  readonly bindingRepository: PresentationSvgGraphicBindingReaderPort;
+  readonly documentSvgAssets: Pick<PluginDocumentSvgAssetRuntimePort, 'readOwnedSvg'>;
+}): PresentationSvgGraphicOwnerPort {
+  return {
+    async ownSource(source, context) {
+      const sourceIdentity = source.kind === 'inline_svg'
+        ? `inline_svg:${admitInlineSvg(source.svg).contentHash}`
+        : resolveExternalCandidate(source, context, undefined).sourceIdentity;
+      const owned = await readBoundAsset(dependencies, { presentationId: context.documentId, sourceIdentity });
+      if (!owned) failSvgOwnership('slides.svg.source_unavailable', 'Historical SVG source has no owned binding.');
+      return owned;
+    },
   };
 }

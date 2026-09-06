@@ -12,6 +12,9 @@ export const SLIDES_OWNED_TABLES = [
   'presentation_templates',
   'presentation_image_bindings',
   'presentation_svg_graphic_bindings',
+  'presentation_revision_contexts',
+  'presentation_revision_assets',
+  'presentation_asset_releases',
 ] as const;
 
 const manifest = parsePluginManifest(manifestJson);

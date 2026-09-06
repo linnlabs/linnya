@@ -83,8 +83,8 @@ PptCoordinator.exportPresentation
 revision 恢复：
 
 ```text
-PptCoordinator.restoreRevision
-  -> presentationSourceHistory restore orchestration
+PptCoordinator.history.restore（versionId + expectedCurrentVersionId）
+  -> presentationSourceHistory（版本主题、只读资产与并发校验）
   -> 历史源码重建与 hash 校验
   -> codegen 重新编译
   -> 以 origin=restore 提交新 revision

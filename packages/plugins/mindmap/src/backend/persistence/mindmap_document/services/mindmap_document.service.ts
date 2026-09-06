@@ -1,10 +1,10 @@
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
+import { DocumentVersionListSchema } from '@app/schemas';
+import { planDocumentVersionRetention } from '@plugin/backend/documentHistory';
 import {
-  pruneVersionTable,
   type PluginWorkspaceDocumentUpdatedPayload,
   saveWorkspaceNodeTextSnapshot,
-  type VersionRetentionPolicy,
 } from '@plugin/backend/workspaceRuntime';
 import {
   MINDMAP_PLUGIN_META,
@@ -122,25 +122,6 @@ export class MindMapDocumentService {
     private readonly workspaceService: MindMapWorkspacePort,
     private readonly options: MindMapDocumentServiceOptions = {},
   ) {}
-
-  /**
-   * MindMap 版本剪裁策略（可调）。
-   *
-   * 中文说明：
-   * - 目前产品没有“版本恢复 UI”，保留过多版本的收益很低，但成本（DB 膨胀）很高；
-   * - 因此默认策略偏收敛：
-   *   - 保留最早版本（锚点）
-   *   - 保留最近 15 个版本
-   *   - 对更早版本：每 3 天一个桶，额外保留 5 个桶的快照（从新到旧）
-   *
-   * 你可以按需调整这几个数字。
-   */
-  private static readonly VERSION_RETENTION_POLICY: VersionRetentionPolicy = {
-    keepFirst: true,
-    keepRecent: 15,
-    sparseBucketDays: 3,
-    keepSparseBuckets: 5,
-  };
 
   private saveTextSnapshot(params: {
     readonly nodeId: string;
@@ -400,22 +381,17 @@ export class MindMapDocumentService {
         updatedAt: now,
       });
 
-      // ✅ 版本剪裁：防止 mindmap_versions 无限膨胀
-      const pruned = pruneVersionTable({
-        db: this.db,
-        tableName: 'mindmap_versions',
-        nodeIdColumn: 'node_id',
-        versionColumn: 'version_number',
-        createdAtColumn: 'created_at',
-        nodeId: documentId,
-        policy: MindMapDocumentService.VERSION_RETENTION_POLICY,
-      });
-
-      if (pruned.removed > 0) {
-        console.log(
-          `[MindMapDocumentService] prune mindmap_versions: nodeId=${documentId}, removed=${pruned.removed}, kept=${pruned.kept}`
-        );
-      }
+      // Host 只选择时间恢复点；插件始终拥有自己的表和删除事务。
+      const rows = this.db.prepare<[string], { versionId: string; order: number; createdAt: number }>(`
+        SELECT id AS versionId, version_number AS "order", created_at AS createdAt
+        FROM mindmap_versions WHERE node_id = ? ORDER BY version_number DESC
+      `).all(documentId);
+      const versions = DocumentVersionListSchema.parse(rows.map((row, index) => ({
+        ...row, isCurrent: index === 0,
+      })));
+      const plan = planDocumentVersionRetention(versions);
+      const remove = this.db.prepare('DELETE FROM mindmap_versions WHERE node_id = ? AND id = ?');
+      for (const id of plan.removeVersionIds) remove.run(documentId, id);
     });
 
     // 中文说明：

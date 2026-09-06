@@ -1,20 +1,14 @@
 import type Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
 
-import { pruneVersionTable, type VersionRetentionPolicy } from 'src/shared/database/versionRetention';
+import { DocumentVersionListSchema } from '@app/schemas';
+import { planDocumentVersionRetention } from 'src/domains/document-history';
 import type {
   MarkdownDocumentVersion,
   SaveMarkdownDocumentVersionInput,
 } from '../../definitions/documentVersion';
 import { MarkdownDocumentVersionReader } from './markdownDocumentVersionReader';
 import { createMarkdownReadDatabase } from '../../../../infrastructure/sqlite/markdownReadDatabaseAdapter';
-
-const MARKDOWN_VERSION_RETENTION_POLICY: VersionRetentionPolicy = {
-  keepFirst: true,
-  keepRecent: 15,
-  sparseBucketDays: 3,
-  keepSparseBuckets: 5,
-};
 
 /** `document_versions` 的唯一 SQLite 访问边界。 */
 export class MarkdownDocumentVersionRepository extends MarkdownDocumentVersionReader {
@@ -47,21 +41,18 @@ export class MarkdownDocumentVersionRepository extends MarkdownDocumentVersionRe
       input.authorId
     );
 
-    const pruned = pruneVersionTable({
-      db: this.db,
-      tableName: 'document_versions',
-      nodeIdColumn: 'node_id',
-      versionColumn: 'version_number',
-      createdAtColumn: 'created_at',
-      nodeId: input.nodeId,
-      policy: MARKDOWN_VERSION_RETENTION_POLICY,
-    });
-    if (pruned.removed > 0) {
-      console.log(
-        `[MarkdownDocumentVersionRepository] pruned document versions: nodeId=${input.nodeId}, `
-          + `removed=${pruned.removed}, kept=${pruned.kept}`
-      );
-    }
+    const rows = this.db.prepare<[string], { versionId: string; order: number; createdAt: number }>(`
+      SELECT id AS versionId, version_number AS "order", created_at AS createdAt
+      FROM document_versions WHERE node_id = ? ORDER BY version_number DESC
+    `).all(input.nodeId);
+    const versions = DocumentVersionListSchema.parse(rows.map((row, index) => ({
+      ...row, isCurrent: index === 0,
+    })));
+    const plan = planDocumentVersionRetention(versions);
+    const remove = this.db.prepare('DELETE FROM document_versions WHERE node_id = ? AND id = ?');
+    this.db.transaction(() => {
+      for (const versionId of plan.removeVersionIds) remove.run(input.nodeId, versionId);
+    })();
 
     const saved = this.get(input.nodeId, versionNumber);
     if (!saved) {

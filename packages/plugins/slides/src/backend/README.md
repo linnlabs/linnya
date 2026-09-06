@@ -222,8 +222,12 @@ mark 与复杂度预算；Renderer adapter 逐 layer 重置状态并解释局部
   tables 和 repository，不承载生成、布局或工具语义。
 - `presentation_documents` 每个文稿只保存一行 current
   materialization；`presentation_revisions`
-  只保存源码 checkpoint/patch。模板原始 PPTX 属于
+  只保存源码 checkpoint/patch；重放按显式父身份连接，允许版本号稀疏，规则见
+  [源码历史](features/presentationSourceHistory/README.md)。模板原始 PPTX 属于
   `presentation_templates`，不能与文稿当前 PPTX 混为一谈。
+- `presentation_revision_contexts`、`presentation_revision_assets` 和 `presentation_asset_releases`
+  由 `presentationSourceHistory` 拥有，分别保存历史主题、成功引用和持久释放计划；不保存历史 PPTX 或预览图。
+  成功保存后异步压缩，失败不回滚保存。预览和恢复读取版本自身上下文，不从当前文稿补全。
 - `presentation_image_bindings` 由 `features/presentationImageOwnership` 拥有，只保存 Slides 源码图片身份到 asset ID 的不可变绑定；asset 登记、文档 ownership 和内容复核必须走 Host 门面。
 - `presentation_svg_graphic_bindings` 由 `features/presentationSvgGraphicOwnership`
   拥有，保存 source identity 到 canonical owned SVG asset 的 first-write-wins
@@ -244,7 +248,8 @@ mark 与复杂度预算；Renderer adapter 逐 layer 重置状态并解释局部
 - 新持久化字段必须同步最终空库 schema、repository 类型和 repository 测试；已发布的 migration 编号和语义不可改写。当前 v3 负责把 v1/v2 的
   `presentation_versions` 历史结构一次性物化为 `presentation_documents` +
   `presentation_revisions`，新库和旧库都必须走同一条 v1 → v2 →
-  v3 链；v4 新建源码图片绑定表。完成 v3 后不得再新增 legacy 双读或 fallback。
+  v3 链；v4 新建源码图片绑定表，v5 新建 SVG 绑定表，v6 新建版本上下文、资产引用及释放记录。
+  完成 v3 后不得再新增 legacy 双读或 fallback。
 - 新 sandbox 能力必须先在 `sandbox/`
   定义 profile 或 typecheck 能力，再由 codegen/coordinator 使用。
 - 新增 TypeScript 标准库需求时应修改 typecheck 的 canonical `lib`

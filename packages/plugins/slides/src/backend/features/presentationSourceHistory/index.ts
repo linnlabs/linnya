@@ -7,19 +7,17 @@ export type {
   PresentationRevisionStorageKind,
   PresentationSourceRevisionPayload,
   PresentationStoredSourceRevision,
+  PresentationSourceCompactionPlan,
 } from './definitions/presentationSourceRevision.js';
-export {
-  PresentationRevisionNotFoundError,
-} from './definitions/presentationRevisionRestore.js';
-export type {
-  PresentationRevisionRestoreCompiler,
-  PresentationRevisionSourceReader,
-  RestorePresentationRevisionInput,
-} from './definitions/presentationRevisionRestore.js';
 export {
   buildPresentationSourceRevision,
   hashPresentationSource,
   normalizePresentationSource,
   reconstructPresentationSource,
 } from './functions/presentationSourceRevisionCodec.js';
-export { restorePresentationRevision } from './orchestration/restorePresentationRevision.js';
+export { planPresentationSourceCompaction } from './functions/planPresentationSourceCompaction.js';
+export { PresentationRevisionScope, type PresentationRevisionAsset } from './orchestration/PresentationRevisionScope';
+export { PRESENTATION_HISTORY_SCHEMAS } from './definitions/presentationHistorySchema';
+export { PresentationHistoryRepository, type PresentationHistorySnapshot } from './infrastructure/PresentationHistoryRepository';
+export { PresentationHistoryRuntime } from './orchestration/PresentationHistoryRuntime';
+export { observeRevisionImageBindings, observeRevisionSvgBindings } from './functions/observeRevisionBindings';

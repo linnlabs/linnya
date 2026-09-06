@@ -108,7 +108,7 @@ Slides 与编辑器的内容结构不同：它的修订会从 deck.js 重新编�
 | 音频 / 视频（低频、大） | **媒体存储（指文件、不复制）** | `content_json` 记文件路径 + 登记 workspace asset（`local_path`=文件路径）作持久读授权 → `media://` 以"是否已登记 asset"放行，重启不断、用户无感、无需 grant UI |
 
 理由：
-- **图片 → 嵌入**：文档高频内容，要自包含、可分享导出；图片小，复制成本低。相比 base64 内联：①不再随 `document_versions` 按 ~16× 膨胀（保留策略 `keepRecent:15 + keepFirst`，base64 会被每版本各存一份）；②`content_json` 回归"轻量结构骨架"原设计。
+- **图片 → 嵌入**：文档高频内容，要自包含、可分享导出；图片小，复制成本低。相比 base64 内联：①不再随 `document_versions` 重复保存图片字节（版本数量按 [统一分层保留规则](../../src/domains/document-history/README.md) 变化）；②`content_json` 回归"轻量结构骨架"原设计。
 - **音视频 → 媒体存储**：低频且大（视频可达 GB），复制不现实；保持"指向文件"。授权靠 asset 登记自动持久化，**用户无感、无需授权 UI、重启不断**（替代会话 grant 的"重启即断"）。
 - 前端保留了一份暂停注册的 AudioBlock 参考实现（`apps/renderer/domains/editor/blocks/AudioBlock/`）及其专属后端链。它不属于当前生产 Markdown Editor；未来应建设独立 Audio 模块，并把这份代码仅作为录音、转录、摘要和资源解析的研究材料，重新确认领域与 asset 合同。
 

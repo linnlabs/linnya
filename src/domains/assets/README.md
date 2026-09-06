@@ -8,6 +8,11 @@ domain 只管理资源身份与可验证内容事实，不拥有项目侧栏、�
 
 ## 身份与归属是两层事实
 
+文档版本清理由插件判断自身历史可达性，通过 `@plugin/backend/documentAssetOwnership` 精确释放文档与资产的关联。
+Host 实现位于 `application/document-assets`，只删除指定 `document_asset_links`，不删除资产账本或物理文件，
+其他文档、项目和会话引用不受影响。插件须串行协调新资产接管、提交前复核和持久重试；
+详见 [文档历史](../document-history/README.md)。
+
 `assets` 是全局资源事实账本，一行只回答：
 
 - 资源 ID 与无路径语义 URI；

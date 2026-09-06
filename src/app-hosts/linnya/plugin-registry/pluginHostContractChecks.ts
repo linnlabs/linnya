@@ -13,7 +13,6 @@
 import type { BackendHiddenWorkerRuntimePort } from '../desktop-capabilities';
 import type { WorkspaceService } from '../../../electron-main/services/workspace/workspace';
 import type { SandboxJsonValue as HostSandboxJsonValue, SandboxProfile as HostSandboxProfile } from '../../../features/sandbox/types';
-import type { VersionRetentionPolicy } from '../../../shared/database/versionRetention';
 import type { ISchemaProvider } from '../../../shared/database/schema-provider';
 import type { Logger } from '../../../shared/logger';
 import type { ToolContext } from '../../../tools/types';
@@ -31,7 +30,6 @@ import type {
   PluginLoggerConstructor,
   PluginLoggerPort,
   PluginSchemaProvider,
-  PluginVersionRetentionPolicy,
   PluginWorkspaceServicePort,
 } from '@linnya/plugin-host-contract/backend/workspaceRuntime';
 
@@ -46,9 +44,6 @@ type HostWorkspaceServiceMatchesPluginPort = AssertTrue<WorkspaceService extends
 type HostLoggerMatchesPluginPort = AssertTrue<Logger extends PluginLoggerPort ? true : false>;
 type HostLoggerConstructorMatchesPluginContract = AssertTrue<typeof Logger extends PluginLoggerConstructor ? true : false>;
 type HostSchemaProviderMatchesPluginContract = AssertTrue<ISchemaProvider extends PluginSchemaProvider ? true : false>;
-type HostVersionRetentionPolicyMatchesPluginContract = AssertTrue<
-  VersionRetentionPolicy extends PluginVersionRetentionPolicy ? true : false
->;
 
 // 中文说明：插件注册表会把 contribution 里的 profile 交给 host sandbox runtime。
 // 因此 contract 版本必须能被 host runtime 消费，不能只在插件侧自洽。
@@ -76,7 +71,6 @@ export type PluginHostContractChecks =
   & HostLoggerMatchesPluginPort
   & HostLoggerConstructorMatchesPluginContract
   & HostSchemaProviderMatchesPluginContract
-  & HostVersionRetentionPolicyMatchesPluginContract
   & PluginSandboxProfileAcceptedByHost
   & HostSandboxProfileAcceptedByPluginContract
   & PluginHiddenWorkerAcceptedByHost
