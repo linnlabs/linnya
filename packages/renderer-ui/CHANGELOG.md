@@ -6,6 +6,7 @@
 
 - `TagChip`、`CustomCheckbox` 与 `CustomRadio` 新增明确节点的 `classNames` 合同，业务样式不再依赖组件私有 DOM selector；
 - `CustomSelect` 新增 `optionsMotionDirection: 'down' | 'up'`，向上展开场景无需覆盖私有 transition class；
+- `CustomSelect` 新增 `showOptionLabelTooltip`，允许长选项继续使用省略/滚动交互但关闭浏览器原生 tooltip；
 - Renderer UI 源码与插件 artifact 门禁改为扫描 `src/**` 全部 CSS，feature-local 组件样式不再漏检。
 
 ## 2.1.0 - 2026-09-03

@@ -94,7 +94,9 @@
             option.labelClassName,
             classNames.optionLabel,
           ]"
-          :title="optionLabelOverflow === 'visible' ? undefined : optionLabelText(option)"
+          :title="showOptionLabelTooltip && optionLabelOverflow !== 'visible'
+            ? optionLabelText(option)
+            : undefined"
         >
           <span class="linnya-ui-select-menu-option-label-text">{{ optionLabelText(option) }}</span>
         </span>
@@ -143,6 +145,7 @@ interface CustomSelectOptionListProps {
   showSubmenuState?: boolean;
   classNames?: CustomSelectClassNames;
   optionLabelOverflow?: CustomSelectOptionLabelOverflow;
+  showOptionLabelTooltip?: boolean;
 }
 
 const props = withDefaults(defineProps<CustomSelectOptionListProps>(), {
@@ -155,6 +158,7 @@ const props = withDefaults(defineProps<CustomSelectOptionListProps>(), {
   showSubmenuState: false,
   classNames: () => ({}),
   optionLabelOverflow: 'visible',
+  showOptionLabelTooltip: true,
 });
 
 const emit = defineEmits<{

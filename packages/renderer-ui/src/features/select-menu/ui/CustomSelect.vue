@@ -94,6 +94,7 @@
               :show-submenu-state="true"
               :class-names="classNames"
               :option-label-overflow="optionLabelOverflow"
+              :show-option-label-tooltip="showOptionLabelTooltip"
               @activate="activateOption"
               @hover="handleOptionHover"
               @open-submenu="handleOptionSubmenuOpen"
@@ -176,6 +177,7 @@
               :show-submenu-state="true"
               :class-names="classNames"
               :option-label-overflow="optionLabelOverflow"
+              :show-option-label-tooltip="showOptionLabelTooltip"
               @activate="activateSubmenuOption"
               @hover="handleNestedOptionHover"
               @open-submenu="handleNestedOptionSubmenuOpen"
@@ -215,6 +217,7 @@
             semantic-role="menu"
             :class-names="classNames"
             :option-label-overflow="optionLabelOverflow"
+            :show-option-label-tooltip="showOptionLabelTooltip"
             @activate="selectOption"
             @update-inline-number="updateInlineNumberValueDirect"
             @adjust-inline-number="adjustInlineNumber"
@@ -262,6 +265,7 @@ interface CustomSelectProps {
   optionsMaxHeight?: string;
   optionsOverflow?: string;
   optionLabelOverflow?: CustomSelectOptionLabelOverflow;
+  showOptionLabelTooltip?: boolean;
   optionsMotionDirection?: CustomSelectOptionsMotionDirection;
   variant?: CustomSelectVariant;
   disabled?: boolean;
@@ -286,6 +290,7 @@ const props = withDefaults(defineProps<CustomSelectProps>(), {
   optionsMaxHeight: '',
   optionsOverflow: '',
   optionLabelOverflow: 'visible',
+  showOptionLabelTooltip: true,
   optionsMotionDirection: 'down',
   variant: 'default',
   disabled: false,

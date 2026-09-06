@@ -104,6 +104,7 @@
             :bordered="false"
             font-size="12px"
             option-label-overflow="marquee-on-hover"
+            :show-option-label-tooltip="false"
             options-motion-direction="up"
             :class-names="{
               trigger: 'input-footer-model-trigger',
