@@ -501,4 +501,17 @@ export const slidesPluginMigrations: readonly PluginMigrationDefinition[] = [
     description: 'Track revision render context, asset reachability and pending ownership releases',
     up: db => { for (const statement of PRESENTATION_HISTORY_SCHEMAS) db.exec(statement); },
   },
+  {
+    version: 7,
+    description: 'Preserve restored version identity and original timestamp',
+    up: db => {
+      const columns = readAll(db, 'PRAGMA table_info(presentation_revisions)');
+      // 新库由最终 schema 建表，已有库补列；不猜测之前未记录的恢复来源。
+      for (const [name, type] of [['restored_from_version_id', 'TEXT'], ['restored_from_created_at', 'INTEGER']]) {
+        if (!columns.some(row => isSqliteNameRow(row) && row.name === name)) {
+          db.exec(`ALTER TABLE presentation_revisions ADD COLUMN ${name} ${type}`);
+        }
+      }
+    },
+  },
 ] as const;

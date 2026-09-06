@@ -34,6 +34,8 @@ export const PRESENTATION_DOCUMENT_SCHEMAS = [
     created_at INTEGER NOT NULL,
     author_id TEXT,
     origin TEXT NOT NULL CHECK (origin IN ('create', 'codegen', 'edit', 'relayout', 'repair', 'restore')),
+    restored_from_version_id TEXT,
+    restored_from_created_at INTEGER,
 
     FOREIGN KEY (node_id) REFERENCES presentation_documents(node_id) ON DELETE CASCADE,
     FOREIGN KEY (parent_revision_id) REFERENCES presentation_revisions(id),

@@ -181,12 +181,36 @@ describe('slidesPluginMigrations', () => {
   });
 
   it('保留已发布的迁移版本，不允许回退或重编号', () => {
-    expect(slidesPluginMigrations.map(migration => migration.version)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(slidesPluginMigrations.map(migration => migration.version)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(slidesPluginMigrations[0]?.description).toBe(
       'Create and adopt Slides presentation tables'
     );
     expect(slidesPluginMigrations[1]?.description).toBe(
       'Backfill workspace text snapshots from latest Slides versions'
     );
+  });
+
+  it('旧库补恢复来源列，重入不重复加列或猜测来源', () => {
+    const db = new Database(':memory:');
+    try {
+      createWorkspaceTables(db);
+      for (const version of [1, 2, 3, 4, 5, 6]) applyMigration(db, version);
+      db.exec('ALTER TABLE presentation_revisions DROP COLUMN restored_from_version_id');
+      db.exec('ALTER TABLE presentation_revisions DROP COLUMN restored_from_created_at');
+      db.transaction(() => {
+        db.exec(`INSERT INTO workspace_nodes(id,type,name,created_at,updated_at)
+          VALUES ('doc','presentation','Test',1000,1000)`);
+        db.exec(`INSERT INTO presentation_documents(node_id,current_revision_id,current_revision,
+          deck_source,source_hash,deck_spec_json,pptx_buffer,title,slide_count,created_at,updated_at)
+          VALUES ('doc','restored',1,'source','hash','{}',X'00','Test',0,1000,1000)`);
+        db.exec(`INSERT INTO presentation_revisions (
+          id,node_id,revision,source_hash,storage_kind,source_checkpoint,patch_bytes,created_at,origin
+        ) VALUES ('restored','doc',1,'hash','checkpoint','source',0,1000,'restore')`);
+      })();
+      applyMigration(db, 7);
+      applyMigration(db, 7);
+      expect(db.prepare('SELECT restored_from_version_id, restored_from_created_at FROM presentation_revisions').get())
+        .toEqual({ restored_from_version_id: null, restored_from_created_at: null });
+    } finally { db.close(); }
   });
 });

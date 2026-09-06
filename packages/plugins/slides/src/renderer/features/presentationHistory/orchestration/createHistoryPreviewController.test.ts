@@ -7,7 +7,13 @@ const model: PresentationRenderModel = {
   title: 'test',
   version: 1,
   sourceKind: 'generated',
-  slides: [],
+  slides: Array.from({ length: 3 }, (_, index) => ({
+    slideId: `s${index}`,
+    index,
+    layoutKey: 'freeform',
+    background: { paint: { kind: 'solid', color: '#FFFFFF' } },
+    elements: [],
+  })),
   slideSize: { width: 10, height: 7.5 },
   capabilities: {
     hasSemanticRender: true,
@@ -17,7 +23,7 @@ const model: PresentationRenderModel = {
   },
 };
 
-it('切页丢弃迟到图片，关闭后释放唯一保留的 bitmap', async () => {
+it('切页丢弃迟到正文图片，关闭后释放当前 bitmap', async () => {
   const completions: ((bitmap: ImageBitmap) => void)[] = [];
   const signals: AbortSignal[] = [];
   const publish = vi.fn();
@@ -46,6 +52,74 @@ it('切页丢弃迟到图片，关闭后释放唯一保留的 bitmap', async () 
   );
   controller.dispose();
   expect(current.close).toHaveBeenCalledOnce();
+});
+
+it('只渲染选中页；首尾不越界、无页不渲染、翻页和关闭释放图片', async () => {
+  const images: ImageBitmap[] = [];
+  const render = vi.fn(async (): Promise<ImageBitmap> => {
+    const image = { width: 1, height: 1, close: vi.fn() };
+    images.push(image);
+    return image;
+  });
+  const publish = vi.fn();
+  const controller = createHistoryPreviewController({
+    read: async () => model,
+    render,
+    publish,
+    report: vi.fn(),
+  });
+  await controller.load();
+  expect(render).toHaveBeenCalledTimes(1);
+  await controller.select(-1);
+  await controller.select(3);
+  expect(render).toHaveBeenCalledTimes(1);
+  await controller.select(1);
+  expect(images[0].close).toHaveBeenCalledOnce();
+  expect(render).toHaveBeenCalledTimes(2);
+  expect(publish).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      pageIndex: 1,
+      bitmap: images[1],
+      phase: 'ready',
+    })
+  );
+  controller.dispose();
+  expect(images.every(image => vi.mocked(image.close).mock.calls.length === 1)).toBe(true);
+  const empty = createHistoryPreviewController({
+    read: async () => ({ ...model, slides: [] }),
+    render,
+    publish,
+    report: vi.fn(),
+  });
+  await empty.load();
+  expect(publish).toHaveBeenLastCalledWith(expect.objectContaining({ phase: 'empty' }));
+  expect(render).toHaveBeenCalledTimes(2);
+  empty.dispose();
+});
+
+it('正文失败后可继续翻页，不预渲染其他页', async () => {
+  const publish = vi.fn();
+  const report = vi.fn();
+  const render = vi
+    .fn(async (): Promise<ImageBitmap> => ({ width: 1, height: 1, close() {} }))
+    .mockRejectedValueOnce(new Error('page failed'));
+  const controller = createHistoryPreviewController({
+    read: async () => model,
+    render,
+    publish,
+    report,
+  });
+  await controller.load();
+  expect(publish).toHaveBeenLastCalledWith(
+    expect.objectContaining({ phase: 'failed', pageIndex: 0 })
+  );
+  await controller.select(1);
+  expect(publish).toHaveBeenLastCalledWith(
+    expect.objectContaining({ phase: 'ready', pageIndex: 1 })
+  );
+  expect(render).toHaveBeenCalledTimes(2);
+  expect(report).toHaveBeenCalledOnce();
+  controller.dispose();
 });
 
 it('关闭时尚未返回的后端模型不触发栅格化', async () => {

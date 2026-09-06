@@ -12,6 +12,7 @@ export interface HistoryPanelState {
   readonly earlier: readonly DocumentVersionSummary[];
   readonly selectedId: string | null;
   readonly error: DocumentHistoryFailureCode | null;
+  readonly restored: boolean;
 }
 export interface HistoryPanelPort {
   list(documentId: string): Promise<DocumentHistoryListResponse>;

@@ -8,6 +8,7 @@ export function createHistoryPanelState() {
     earlier: [],
     selectedId: null,
     error: null,
+    restored: false,
   });
   return {
     state,

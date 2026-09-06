@@ -203,6 +203,7 @@ export class PresentationRepository implements PresentationRepositoryPort {
         createdAt: now,
         authorId: options.authorId,
         origin: options.origin,
+        restoredFrom: options.origin === 'restore' ? options.restoredFrom : undefined,
       });
 
       const update = this.db.prepare(`
@@ -366,14 +367,15 @@ export class PresentationRepository implements PresentationRepositoryPort {
     readonly createdAt: number;
     readonly authorId?: string;
     readonly origin: PresentationRevisionOrigin;
+    readonly restoredFrom?: PresentationCommitOptions['restoredFrom'];
   }): void {
     this.db.prepare(`
       INSERT INTO presentation_revisions (
         id, node_id, revision, parent_revision_id,
         base_source_hash, source_hash, storage_kind,
         source_checkpoint, source_patch, patch_bytes,
-        created_at, author_id, origin
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        created_at, author_id, origin, restored_from_version_id, restored_from_created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       input.revisionId,
       input.nodeId,
@@ -388,6 +390,8 @@ export class PresentationRepository implements PresentationRepositoryPort {
       input.createdAt,
       input.authorId ?? null,
       input.origin,
+      input.restoredFrom?.versionId ?? null,
+      input.restoredFrom?.createdAt ?? null,
     );
   }
 

@@ -141,4 +141,63 @@ describe('Slides history retention transactions', () => {
     expect((await documents.getPresentation('doc'))?.deckSource).toBe('external edit');
     expect(history.list('doc')[0].order).toBe(21);
   });
+
+  it('时间经过两天不改变保留点；新提交清理旧目标后拒绝过期恢复，不覆盖新文稿', async () => {
+    db.prepare('UPDATE presentation_revisions SET created_at = 1000').run();
+    await runtime.compact('doc');
+    const before = history.list('doc');
+    const target = before.find(row => row.order === 18)!;
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1000 + 2 * 86400_000);
+    try {
+      await runtime.preview('doc', target.versionId);
+      await runtime.compact('doc');
+      expect(history.list('doc')).toEqual(before);
+      for (let i = 21; i <= 30; i++) await append(i);
+      await runtime.compact('doc');
+      expect(history.list('doc').some(row => row.versionId === target.versionId)).toBe(false);
+      await expect(runtime.preview('doc', target.versionId)).rejects.toMatchObject({ code: 'version_not_found' });
+      await expect(runtime.restore({ documentId: 'doc', versionId: target.versionId,
+        expectedCurrentVersionId: before[0].versionId })).rejects.toMatchObject({ code: 'version_conflict' });
+      await expect(runtime.restore({ documentId: 'doc', versionId: target.versionId,
+        expectedCurrentVersionId: history.list('doc')[0].versionId })).rejects.toMatchObject({ code: 'version_not_found' });
+      expect((await documents.getPresentation('doc'))?.deckSource).toBe(sources.get(30));
+    } finally { clock.mockRestore(); }
+  });
+
+  it('恢复旧版本后仍能恢复到刚才的成功版本，两次恢复都创建新身份', async () => {
+    const before = history.list('doc');
+    const restored = await runtime.restore({ documentId: 'doc', versionId: before.at(-1)!.versionId,
+      expectedCurrentVersionId: before[0].versionId });
+    await runtime.compact('doc');
+    expect((await documents.getPresentation('doc'))?.deckSource).toBe(sources.get(1));
+    expect(history.list('doc').some(row => row.versionId === before[0].versionId)).toBe(true);
+    const returned = await runtime.restore({ documentId: 'doc', versionId: before[0].versionId,
+      expectedCurrentVersionId: restored.versionId });
+    expect(returned.order).toBe(22);
+    expect(returned.versionId).not.toBe(before[0].versionId);
+    expect((await documents.getPresentation('doc'))?.deckSource).toBe(sources.get(20));
+  });
+
+  it('恢复时间与来源时间分开保存；来源被清理后标注不丢失，普通修改不继承来源', async () => {
+    db.prepare('UPDATE presentation_revisions SET created_at = 1000').run();
+    const before = history.list('doc');
+    const target = before.find(row => row.order === 18)!;
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(2000);
+    try {
+      const restored = await runtime.restore({ documentId: 'doc', versionId: target.versionId,
+        expectedCurrentVersionId: before[0].versionId });
+      const restoredFrom = { versionId: target.versionId, createdAt: 1000 };
+      expect(restored).toMatchObject({ createdAt: 2000, isCurrent: true, restoredFrom });
+      expect((await documents.getPresentation('doc'))?.deckSource).toBe(sources.get(18));
+      expect(db.prepare('SELECT text FROM workspace_node_text_snapshots WHERE node_id = ?').get('doc'))
+        .toEqual({ text: sources.get(18) });
+      for (let i = 22; i <= 24; i++) await append(i);
+      await runtime.compact('doc');
+      const after = history.list('doc');
+      expect(after.some(row => row.versionId === target.versionId)).toBe(false);
+      expect(after.find(row => row.versionId === restored.versionId)?.restoredFrom).toEqual(restoredFrom);
+      expect(after[0].restoredFrom).toBeUndefined();
+      expect(db.pragma('foreign_key_check')).toEqual([]);
+    } finally { clock.mockRestore(); }
+  });
 });

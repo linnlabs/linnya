@@ -38,6 +38,8 @@ draft base 必保；存在失败草稿时仍可压缩源码，但暂停资产释
 恢复只有统一 history 入口：请求带目标 versionId 和 expectedCurrentVersionId，编译前与提交时均校验 current。
 恢复使用该历史版本主题、只读资产解析及正式编译链，随后新建 origin=restore 的成功版本、清除旧 draft，
 同步更新 VFS 文本快照并发布标准 workspace.document.updated；不把 current 指针倒回旧版本。
+恢复来源的版本 ID 与时间随新 revision 同事务保存，不设来源外键，避免阻止旧版本清理；来源被清理后仍能显示原时间。
+连续恢复记录本次实际选择的来源，不追溯替换成更早来源；普通提交不继承。v7 补齐列，未记录来源的旧恢复不猜测回填。
 旧的仅凭 revision 数字恢复入口已移除，避免绕过冲突检查或借用当前主题。
 
 ## 只读预览
@@ -45,7 +47,7 @@ draft base 必保；存在失败草稿时仍可压缩源码，但暂停资产释
 插件私有 `slides:history-preview` 重建源码并返回既有 RenderModel，不写当前物化、PPTX、截图缓存或文档事件。
 图片和 SVG 只能从既有绑定读取，不能下载、重新生成 Brush 或重新接管文件。当前编译器升级可能改变历史视觉，
 历史承诺是源码与已拥有资源，不是冻结旧版渲染引擎的像素快照。
-前端仅保留一个历史 RenderModel 和一张选中页 bitmap；切页/关闭取消栅格请求并释放 bitmap，
+前端仅保留一个历史 RenderModel 和选中页的一张 bitmap；切页/关闭取消栅格请求并释放 bitmap，
 后端已发出的 IPC 编译结果在关闭后丢弃。详见 [只读预览](../../../renderer/features/presentationHistory/README.md)。
 
 参见 [后端总览](../../README.md)、[Core 历史规则](../../../../../../../src/domains/document-history/README.md)、

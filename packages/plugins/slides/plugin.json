@@ -98,6 +98,10 @@
     {
       "version": 6,
       "description": "Track revision render context, asset reachability and pending ownership releases"
+    },
+    {
+      "version": 7,
+      "description": "Preserve restored version identity and original timestamp"
     }
   ],
   "ownedFileTypes": [

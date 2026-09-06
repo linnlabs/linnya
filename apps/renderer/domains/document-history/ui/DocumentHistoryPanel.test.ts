@@ -50,10 +50,12 @@ it('真实面板选历史、确认恢复并刷新 current；切换语言和卸�
     expect(disposed).toHaveBeenCalledWith('new');
     restoreButtons()[0].click();
     await flush();
+    expect(document.querySelector('.document-history-body')?.hasAttribute('inert')).toBe(true);
     expect(port.restore).not.toHaveBeenCalled();
     port.list.mockResolvedValue({
       success: true,
-      recent: [{ versionId: 'restored', order: 3, createdAt: 3000, isCurrent: true }],
+      recent: [{ versionId: 'restored', order: 3, createdAt: 3000, isCurrent: true,
+        restoredFrom: { versionId: 'old', createdAt: 1000 } }],
       earlier: [],
     });
     restoreButtons().at(-1)?.click();
@@ -64,9 +66,13 @@ it('真实面板选历史、确认恢复并刷新 current；切换语言和卸�
       expectedCurrentVersionId: 'new',
     });
     expect(document.querySelector('output')?.textContent).toBe('restored');
+    expect(document.body.textContent).toContain('已恢复为新版本');
+    const versionButton = document.querySelector('.document-history-version');
+    expect(versionButton?.textContent).toContain('恢复自');
     useLocalizationStore(pinia).setCurrentLocale('en-US');
     await nextTick();
     expect(document.body.textContent).toContain('Version history');
+    expect(versionButton?.textContent).toContain('Restored from');
   } finally {
     app.unmount();
     host.remove();

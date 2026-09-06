@@ -6,6 +6,11 @@ export const DocumentVersionSummarySchema = z.object({
   order: z.number().int().positive(),
   createdAt: z.number().int().nonnegative(),
   isCurrent: z.boolean(),
+  /** 恢复当时的来源快照；来源被清理后仍可显示，不参与排序或保留计算。 */
+  restoredFrom: z.object({
+    versionId: z.string().min(1),
+    createdAt: z.number().int().nonnegative(),
+  }).strict().optional(),
 }).strict();
 
 export type DocumentVersionSummary = z.infer<typeof DocumentVersionSummarySchema>;

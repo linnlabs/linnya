@@ -1,4 +1,5 @@
 import type { DeckSpec, TemplateSpec, TemplateSummary } from '@plugin/slides/shared';
+import type { DocumentVersionSummary } from '@app/schemas';
 import type { PresentationBuildFailureCode } from '../../features/presentationBuildFailure';
 import type { PresentationRevisionStorageKind } from '../../features/presentationSourceHistory/index.js';
 
@@ -24,6 +25,7 @@ export interface PresentationCommitOptions {
   readonly baseRevision: number;
   readonly authorId?: string;
   readonly origin: Exclude<PresentationRevisionOrigin, 'create'>;
+  readonly restoredFrom?: DocumentVersionSummary['restoredFrom'];
 }
 
 export interface PresentationCommitResult {

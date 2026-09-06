@@ -46,6 +46,7 @@ export class PresentationHistoryRuntime {
         const result = await this.deps.documents.commitPresentation(request.documentId, deck, {
           pptxBuffer, deckSource: source, baseRevisionId: current.currentRevisionId,
           baseRevision: current.currentRevision, origin: 'restore',
+          restoredFrom: { versionId: version.versionId, createdAt: version.createdAt },
         });
         return this.requireVersion(request.documentId, result.revisionId);
       } catch (error) {

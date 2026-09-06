@@ -17,13 +17,21 @@ export class PresentationHistoryRepository {
   constructor(private readonly db: Database.Database) {}
 
   list(nodeId: string): DocumentVersionSummary[] {
-    const rows = this.db.prepare<[string], Omit<DocumentVersionSummary, 'isCurrent'> & { isCurrent: number }>(`
+    const rows = this.db.prepare<[string], Omit<DocumentVersionSummary, 'isCurrent' | 'restoredFrom'> & {
+      isCurrent: number; restoredFromId: string | null; restoredFromTime: number | null;
+    }>(`
       SELECT r.id AS versionId, r.revision AS "order", r.created_at AS createdAt,
-             r.id = d.current_revision_id AS isCurrent
+             r.id = d.current_revision_id AS isCurrent,
+             r.restored_from_version_id AS restoredFromId, r.restored_from_created_at AS restoredFromTime
       FROM presentation_revisions r JOIN presentation_documents d ON d.node_id = r.node_id
       WHERE r.node_id = ? ORDER BY r.revision DESC
     `).all(nodeId);
-    return DocumentVersionListSchema.parse(rows.map(row => ({ ...row, isCurrent: row.isCurrent === 1 })));
+    return DocumentVersionListSchema.parse(rows.map(({ restoredFromId, restoredFromTime, ...row }) => ({
+      ...row, isCurrent: row.isCurrent === 1,
+      ...(restoredFromId === null ? {} : {
+        restoredFrom: { versionId: restoredFromId, createdAt: restoredFromTime },
+      }),
+    })));
   }
 
   snapshot(nodeId: string): PresentationHistorySnapshot {

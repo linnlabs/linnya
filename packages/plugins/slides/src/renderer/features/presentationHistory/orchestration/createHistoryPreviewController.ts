@@ -1,37 +1,24 @@
-import type { PresentationRenderModel } from '@plugin/slides/shared';
+import type { HistoryPreviewPort, HistoryPreviewState } from '../definitions/historyPreview';
 
-export interface HistoryPreviewState {
-  readonly model: PresentationRenderModel | null;
-  readonly bitmap: ImageBitmap | null;
-  readonly pageIndex: number;
-  readonly phase: 'loading' | 'ready' | 'failed';
-}
-
-/** 只保留选中版本和选中页；过期图片立即 close，不进入当前文稿 store。 */
-export function createHistoryPreviewController(input: {
-  readonly read: () => Promise<PresentationRenderModel>;
-  readonly render: (
-    model: PresentationRenderModel,
-    pageIndex: number,
-    signal: AbortSignal
-  ) => Promise<ImageBitmap>;
-  readonly publish: (state: HistoryPreviewState) => void;
-  readonly report: (error: unknown) => void;
-}) {
-  let model: PresentationRenderModel | null = null;
+/** 只渲染并保留选中页，旧请求不能把图片写入新页。 */
+export function createHistoryPreviewController(input: HistoryPreviewPort) {
+  let model: HistoryPreviewState['model'] = null;
   let bitmap: ImageBitmap | null = null;
   let generation = 0;
   let disposed = false;
   let abort: AbortController | undefined;
   const publish = (pageIndex: number, phase: HistoryPreviewState['phase']) =>
     input.publish({ model, bitmap, pageIndex, phase });
+  function release(): void {
+    bitmap?.close();
+    bitmap = null;
+  }
   async function select(pageIndex: number): Promise<void> {
-    if (!model || disposed) return;
+    if (!model || disposed || pageIndex < 0 || pageIndex >= model.slides.length) return;
     const ticket = ++generation;
     abort?.abort();
     abort = new AbortController();
-    bitmap?.close();
-    bitmap = null;
+    release();
     publish(pageIndex, 'loading');
     try {
       const next = await input.render(model, pageIndex, abort.signal);
@@ -55,6 +42,10 @@ export function createHistoryPreviewController(input: {
         const next = await input.read();
         if (disposed) return;
         model = next;
+        if (model.slides.length === 0) {
+          publish(0, 'empty');
+          return;
+        }
         await select(0);
       } catch (error) {
         if (!disposed) {
@@ -67,8 +58,7 @@ export function createHistoryPreviewController(input: {
       disposed = true;
       generation++;
       abort?.abort();
-      bitmap?.close();
-      bitmap = null;
+      release();
       model = null;
     },
   };
