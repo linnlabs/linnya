@@ -6,6 +6,7 @@
     >
       <CustomTextInput
         v-model="form.endpointModelId"
+        class="settings-text-control"
         :placeholder="settingsMessage('settings.addModel.api.modelName.placeholder')"
       />
     </SettingsRow>
@@ -16,6 +17,7 @@
     >
       <CustomTextInput
         v-model="form.displayName"
+        class="settings-text-control"
         :placeholder="settingsMessage('settings.addModel.displayName.placeholder')"
       />
     </SettingsRow>
@@ -26,6 +28,7 @@
     >
       <SecretInput
         v-model="form.credentialSecret"
+        class="settings-text-control"
         :placeholder="settingsMessage('settings.addModel.apiKey.placeholder')"
       />
     </SettingsRow>
@@ -33,6 +36,7 @@
     <SettingsRow :label="settingsMessage('settings.addModel.apiUrl.label')">
       <CustomTextInput
         v-model="form.baseUrl"
+        class="settings-text-control"
         :placeholder="settingsMessage('settings.addModel.apiUrl.placeholder')"
       />
       <template #hint>
@@ -59,6 +63,7 @@
     >
       <CustomTextInput
         v-model="form.contextWindowTokens"
+        class="settings-text-control"
         inputmode="numeric"
         pattern="[0-9]*"
         :placeholder="settingsMessage('settings.modelCapacity.contextWindow.placeholder')"
@@ -71,6 +76,7 @@
     >
       <CustomTextInput
         v-model="form.maxOutputTokens"
+        class="settings-text-control"
         inputmode="numeric"
         pattern="[0-9]*"
         :placeholder="settingsMessage('settings.modelCapacity.maxOutput.placeholder')"

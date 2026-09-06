@@ -6,6 +6,7 @@
     >
       <CustomTextInput
         v-model="form.serviceUrl"
+        class="settings-text-control"
         placeholder="http://localhost:11434"
         @blur="handleUrlBlur"
       />
@@ -46,6 +47,7 @@
     >
       <CustomTextInput
         v-model="form.displayName"
+        class="settings-text-control"
         :placeholder="settingsMessage('settings.addModel.displayName.placeholder')"
       />
     </SettingsRow>
@@ -56,6 +58,7 @@
     >
       <CustomTextInput
         v-model="form.contextWindowTokens"
+        class="settings-text-control"
         inputmode="numeric"
         pattern="[0-9]*"
         :placeholder="settingsMessage('settings.modelCapacity.contextWindow.placeholder')"
@@ -68,6 +71,7 @@
     >
       <CustomTextInput
         v-model="form.maxOutputTokens"
+        class="settings-text-control"
         inputmode="numeric"
         pattern="[0-9]*"
         :placeholder="settingsMessage('settings.modelCapacity.maxOutput.placeholder')"

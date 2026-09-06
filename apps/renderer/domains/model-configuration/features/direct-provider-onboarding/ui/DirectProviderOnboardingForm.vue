@@ -6,6 +6,7 @@
     >
       <SecretInput
         v-model="form.apiKey"
+        class="settings-text-control"
         :placeholder="settingsMessage('settings.addModel.apiKey.placeholder')"
       />
       <button
