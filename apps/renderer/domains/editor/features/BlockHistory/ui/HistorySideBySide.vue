@@ -27,6 +27,8 @@ import { computed, watch } from 'vue'
 import { useBlockHistoryStore } from '../index'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { createHistoryEditorOptions } from '../utils/createHistoryEditor'
+import { buildHistoryVersionDocument } from '../functions/buildHistoryVersionDocument'
+import { parseEditorDocumentJson } from '../../../functions/parseEditorDocumentJson'
 import type { BlockVersion } from '../../../../../shared/ipc/blockHistoryGateway'
 
 // （历史右侧仅负责内容展示，不再在本组件内渲染关闭/恢复图标，相关 UI 由上层容器负责）
@@ -99,16 +101,16 @@ watch([selectedVersion, historyEditor], ([version, editor]) => {
   if (!editor || !version) return
 
   try {
-    const rawContent = JSON.parse(version.content_json)
+    const docContent = buildHistoryVersionDocument(version.content_json)
 
-    // 构造完整的文档结构：doc -> rootBlock -> ...
-    // 注意：version.content_json 存储的是 rootBlock 这一层的 JSON
-    const docContent = {
-      type: 'doc',
-      content: [rawContent],
-    }
+    // setContent 会在 nodeFromJSON 阶段忽略未知属性，历史版本必须先经过生产历史
+    // Editor 的实际 schema 约束，避免把损坏快照静默渲染成另一份内容。
+    parseEditorDocumentJson(docContent, editor.schema)
 
-    editor.commands.setContent(docContent, { emitUpdate: false })
+    editor.commands.setContent(docContent, {
+      emitUpdate: false,
+      errorOnInvalidContent: true,
+    })
   } catch (error) {
     console.error('[HistorySideBySide] 解析/设置历史内容失败:', error)
     // 设置为空或错误提示
