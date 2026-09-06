@@ -8,8 +8,8 @@
 <template>
   <SettingsPage description="Settings Kit 的全部基元与状态。用法与取舍见 domains/settings/docs/settings-kit.md。">
     <SettingsSection
-      title="SettingsRow · control=&quot;fill&quot;"
-      description="下拉、输入框这类占满右列的控件。标签列定宽 200px，跨分区对齐成一条竖线。"
+      title="SettingsRow · control=&quot;field&quot;"
+      description="下拉、输入框使用统一字段列。标签列定宽 200px，字段再收进 100px。"
     >
       <SettingsRow
         label="仅标签"

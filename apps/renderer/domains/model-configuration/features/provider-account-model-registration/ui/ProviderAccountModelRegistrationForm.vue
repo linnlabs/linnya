@@ -1,6 +1,7 @@
 <template>
   <div class="add-model-provider-form" data-registration-kind="provider-account">
     <SettingsRow
+      control="fill"
       :label="settingsMessage('settings.addModel.account.label')"
       :hint="settingsMessage('settings.addModel.account.description')"
     >

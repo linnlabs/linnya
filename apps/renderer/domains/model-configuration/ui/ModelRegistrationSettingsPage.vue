@@ -16,6 +16,7 @@
 
       <SettingsRow
         v-if="selectedProvider !== CUSTOM_PROVIDER_SELECTION && connectionOptions.length > 1"
+        control="fill"
         :label="settingsMessage('settings.addModel.connection.label')"
         :hint="settingsMessage('settings.addModel.connection.description')"
       >

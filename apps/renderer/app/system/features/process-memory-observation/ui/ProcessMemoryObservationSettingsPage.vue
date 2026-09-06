@@ -111,6 +111,7 @@
     >
       <SettingsRow
         v-if="status === 'recording'"
+        control="fill"
         :label="systemMessage('system.memoryDiagnostics.marker.label')"
       >
         <div class="process-memory-observation__marker-control">

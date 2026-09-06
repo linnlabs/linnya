@@ -75,14 +75,14 @@
   min-width: 0;
 }
 
-/* 控件占满右列：标签列定宽，多个分区之间的标签也能对齐成一条线。 */
-.settings-row.is-control-fill > .settings-row-label-area {
+/* 字段和填充控件共用固定标签列，多个分区之间的标签能对齐成一条线。 */
+.settings-row:is(.is-control-field, .is-control-fill) > .settings-row-label-area {
   flex-shrink: 0;
   width: 200px;
   padding-right: var(--spacing-md);
 }
 
-.settings-row.is-control-fill.is-align-top > .settings-row-label-area {
+.settings-row:is(.is-control-field, .is-control-fill).is-align-top > .settings-row-label-area {
   padding-top: 7px;
 }
 
@@ -116,21 +116,12 @@
   font-size: var(--font-size-sm);
 }
 
-.settings-row.is-control-fill > .settings-row-control {
+.settings-row:is(.is-control-field, .is-control-fill) > .settings-row-control {
   flex: 1;
 }
 
-/* 输入类控件从左侧收窄 100px，右边缘继续与页面内容列对齐。 */
-.settings-row.is-control-fill > .settings-row-control:has(
-  > :is(
-    .linnya-select-menu,
-    .settings-text-control,
-    .settings-input,
-    .settings-select,
-    .settings-textarea,
-    .settings-field-with-action
-  )
-) {
+/* 标准字段显式使用同一列宽，不再根据插槽内组件的私有 class 猜控件类型。 */
+.settings-row.is-control-field > .settings-row-control {
   margin-left: 100px;
 }
 

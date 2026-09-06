@@ -15,6 +15,7 @@
     />
 
     <SettingsRow
+      control="fill"
       :label="editorMessage('editor.documentSettings.ai.triggerDelay')"
       :hint="editorMessage('editor.documentSettings.ai.triggerDelayDescription')"
     >
@@ -42,6 +43,7 @@
     </SettingsRow>
 
     <SettingsRow
+      control="fill"
       :label="editorMessage('editor.documentSettings.ai.triggerFrequency')"
       :hint="editorMessage('editor.documentSettings.ai.triggerFrequencyDescription')"
     >
@@ -69,6 +71,7 @@
     </SettingsRow>
 
     <SettingsRow
+      control="fill"
       :label="editorMessage('editor.documentSettings.ai.completionLength')"
       :hint="editorMessage('editor.documentSettings.ai.completionLengthDescription')"
     >

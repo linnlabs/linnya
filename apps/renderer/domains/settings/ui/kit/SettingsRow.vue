@@ -63,7 +63,7 @@ withDefaults(defineProps<{
   description: undefined,
   hint: undefined,
   labelFor: undefined,
-  control: 'fill',
+  control: 'field',
   align: 'top',
 });
 </script>
