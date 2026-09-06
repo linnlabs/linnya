@@ -8,9 +8,9 @@
  *
  * 注意：
  * - 这不是工具调用（不读 DB），只使用前端已加载的 `mind.nodeData`（当前打开 MindMap 的内存快照）
- * - 未来新增更多 MindMap AI 功能时，应复用本模块的"视图文本构建"与"限制策略"
+ * - 侧边栏只接收文本大纲与节点引用，研究状态由独立研究 deck 承载
  * - nodeRef 使用与后端工具一致的 SHA-256 + Base62 算法（前端 refIdGenerator），
- *   保证侧边栏上下文里的 ref 可以直接被 mindmap_tag_node / mindmap_create_node 使用
+ *   保证侧边栏上下文里的 ref 可以直接被 mindmap_create_node 使用
  */
 import { useMindMapStore } from '../domain/store/mindmapStore'
 import type { NodeObj } from '../domain/types'
@@ -23,8 +23,6 @@ export interface MindMapChatContextOptions {
   maxNodes: number
   /** 最大字符数（超过时截断） */
   maxChars: number
-  /** 是否在行内输出 tagging 信息（status/confidence/kind） */
-  includeTagging: boolean
 }
 
 /**
@@ -38,7 +36,6 @@ export const DEFAULT_MINDMAP_CHAT_CONTEXT_OPTIONS: MindMapChatContextOptions = {
   maxDepth: 6,
   maxNodes: 120,
   maxChars: 4500,
-  includeTagging: true,
 }
 
 export interface PageContextLike {
@@ -74,16 +71,7 @@ function safeString(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim().length > 0 ? v : undefined
 }
 
-/**
- * 从 nodeData 构建缩进大纲（NodeRef View）
- *
- * 中文说明：
- * - 使用预计算的 refMap（与后端工具协议一致的 SHA-256 + Base62 ref）
- * - 输出形态示例：
- *   [#aZ3kP9] Root topic ⟦kind=hypothesis status=open⟧
- *     [#mT8qX2] Child topic
- * - 格式与 Workspace document-read feature 的 MindMap NodeRef View 保持一致
- */
+/** 从 nodeData 构建带节点引用的缩进大纲。 */
 function buildNodeRefOutlineText(params: {
   root: NodeObj
   selectedNodeIds: Set<string>
@@ -104,38 +92,6 @@ function buildNodeRefOutlineText(params: {
     return true
   }
 
-  /**
-   * 构建 tagging 后缀（与 Workspace document-read feature 的 NodeRef 格式对齐）
-   *
-   * 中文说明：
-   * - 使用 ⟦⟧ 包裹，与后端工具输出格式一致
-   * - 输出 status/confidence/kind，仅在存在时输出
-   */
-  const buildTaggingSuffix = (node: NodeObj): string => {
-    if (!options.includeTagging) return ''
-    const parts: string[] = []
-
-    const status = safeString(node.tagging?.status)
-    if (status) parts.push(`status=${status}`)
-
-    const confidenceRaw = node.tagging?.confidence
-    if (typeof confidenceRaw === 'string' && confidenceRaw.trim().length > 0) {
-      parts.push(`conf=${confidenceRaw}`)
-    } else if (typeof confidenceRaw === 'number' && Number.isFinite(confidenceRaw)) {
-      parts.push(`conf=${confidenceRaw}`)
-    }
-
-    const kind = safeString(
-      node.tagging?.labels && typeof node.tagging.labels === 'object'
-        ? (node.tagging.labels as Record<string, unknown>).kind as string | undefined
-        : undefined
-    )
-    if (kind) parts.push(`kind=${kind}`)
-
-    if (parts.length === 0) return ''
-    return ` ⟦${parts.join(' ')}⟧`
-  }
-
   const visit = (node: NodeObj, depth: number, isRoot: boolean): boolean => {
     if (nodeCount >= options.maxNodes) return false
     if (depth > options.maxDepth) return true
@@ -148,9 +104,7 @@ function buildNodeRefOutlineText(params: {
     const indent = '  '.repeat(depth)
     const topic = safeString(node.topic) ?? '(empty)'
     const rootSuffix = isRoot ? ' (Root)' : ''
-    const taggingSuffix = buildTaggingSuffix(node)
-
-    const line = `${indent}${selectedMark}[${ref}] ${topic}${rootSuffix}${taggingSuffix}`
+    const line = `${indent}${selectedMark}[${ref}] ${topic}${rootSuffix}`
 
     nodeCount += 1
     if (!pushLine(line)) return false
@@ -184,7 +138,7 @@ function buildNodeRefOutlineText(params: {
  * - 只使用前端内存中的 nodeData，不做 DB 读取（避免隐式副作用）
  * - 异步：因为 nodeRef 生成需要 Web Crypto API（SHA-256）
  * - nodeRef 与后端 read_file(view="document") 输出的 ref 完全一致，
- *   Agent 可以直接将上下文中的 ref 传给 mindmap_tag_node / mindmap_create_node
+ *   Agent 可以直接将上下文中的 ref 传给 mindmap_create_node
  */
 export async function buildMindMapChatDocumentFragmentFromStore(
   pageContext: PageContextLike,

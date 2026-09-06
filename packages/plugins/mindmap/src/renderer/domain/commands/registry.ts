@@ -175,9 +175,6 @@ function buildCommandsAPI(runCommand: RunCommand): MindMapCommands {
       removeByIds: (payload, meta) => runCommand('node.removeByIds', payload, meta),
       toggleExpand: (payload, meta) => runCommand('node.toggleExpand', payload, meta),
       move: (payload, meta) => runCommand('node.move', payload, meta),
-      setKind: (payload, meta) => runCommand('node.setKind', payload, meta),
-      setStatus: (payload, meta) => runCommand('node.setStatus', payload, meta),
-      setConfidence: (payload, meta) => runCommand('node.setConfidence', payload, meta),
     },
     reflow: {
       request: (payload, meta) => runCommand('reflow.request', payload, meta),
@@ -209,9 +206,6 @@ function buildCanAPI(canCheck: (name: CommandName, payload: unknown) => boolean)
       removeByIds: (payload) => canCheck('node.removeByIds', payload),
       toggleExpand: (payload) => canCheck('node.toggleExpand', payload),
       move: (payload) => canCheck('node.move', payload),
-      setKind: (payload) => canCheck('node.setKind', payload),
-      setStatus: (payload) => canCheck('node.setStatus', payload),
-      setConfidence: (payload) => canCheck('node.setConfidence', payload),
     },
     reflow: {
       request: (payload) => canCheck('reflow.request', payload),

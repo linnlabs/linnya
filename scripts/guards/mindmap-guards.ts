@@ -42,7 +42,6 @@ const KEYDOWN_LISTENER_WHITELIST = new Set([
   'packages/plugins/mindmap/src/renderer/shared/plugin/keypress.ts',
   'packages/plugins/mindmap/src/renderer/shared/hotkeys/defaultHotkeys.ts',
   'packages/plugins/mindmap/src/renderer/shared/utils/svg/index.ts',
-  'packages/plugins/mindmap/src/renderer/features/evidence/ui/ReferenceInsertPanel.vue',
 ])
 
 const IGNORE_DIRS = new Set([
@@ -124,8 +123,7 @@ function isWhitelistedDatasetNodeidFile(filePath: string): boolean {
   return (
     isInDocs(filePath) ||
     r === 'packages/plugins/mindmap/src/renderer/shared/utils/dom/nodeId.ts' ||
-    r === 'packages/plugins/mindmap/src/renderer/shared/utils/dom/index.ts' ||
-    r === 'packages/plugins/mindmap/src/renderer/presentation/ui/NodeAddonsHost.vue'
+    r === 'packages/plugins/mindmap/src/renderer/shared/utils/dom/index.ts'
   )
 }
 

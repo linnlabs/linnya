@@ -8,15 +8,9 @@ import {
   MindmapPromptKeys,
 } from '@plugin/mindmap/shared';
 
-import mindmapReasoningCanvasAgent from './agents/mindmap/reasoning_canvas';
-import mindmapDecomposeQuestionAgent from './agents/mindmap/decompose_question';
-import mindmapProposeHypothesisAgent from './agents/mindmap/propose_hypothesis';
-import mindmapValidateHypothesisAgent from './agents/mindmap/validate_hypothesis';
-import mindmapWorkflowLeaderAgent from './agents/mindmap/workflow_leader';
 import mindmapEditorSubagent from './agents/subagent_mindmap_editor';
 import { mindmapDocumentTypeBackendHook } from './documentTypeHook';
 import { registerMindMapDocumentHandlers } from './ipc/mindmap_document/document-ipc';
-import { registerMindMapEvidenceHandlers } from './ipc/mindmap_document/evidence-ipc';
 import { mindmapPluginMigrations } from './persistence/migrations';
 import { mindmapToolManifest } from './tools/mindmap';
 
@@ -32,11 +26,6 @@ export { mindmapDocumentTypeBackendHook } from './documentTypeHook';
  * 包入口只声明 Mindmap 能贡献什么，不读取 enabled 状态。
  */
 export const mindmapAgentDefinitions = [
-  mindmapReasoningCanvasAgent,
-  mindmapDecomposeQuestionAgent,
-  mindmapProposeHypothesisAgent,
-  mindmapValidateHypothesisAgent,
-  mindmapWorkflowLeaderAgent,
   mindmapEditorSubagent,
 ] as const;
 
@@ -52,16 +41,6 @@ export const MINDMAP_IPC_CHANNELS = [
   'mindmap-document:create',
   'mindmap-document:read',
   'mindmap-document:update',
-  'mindmap-evidence:add',
-  'mindmap-evidence:update',
-  'mindmap-evidence:remove',
-  'mindmap-evidence:list',
-  'mindmap-evidence:batch-remove',
-  'mindmap-evidence:clone',
-  'mindmap-evidence:count',
-  'mindmap-evidence:soft-delete',
-  'mindmap-evidence:restore',
-  'mindmap-evidence:move',
 ] as const;
 
 export const mindmapBackendPlugin = {
@@ -73,7 +52,6 @@ export const mindmapBackendPlugin = {
     channels: MINDMAP_IPC_CHANNELS,
     register(tsServiceManager, registerBackendPluginIpcHandler) {
       registerMindMapDocumentHandlers(tsServiceManager, registerBackendPluginIpcHandler);
-      registerMindMapEvidenceHandlers(tsServiceManager, registerBackendPluginIpcHandler);
     },
   },
   ownedTables: MINDMAP_OWNED_TABLES,

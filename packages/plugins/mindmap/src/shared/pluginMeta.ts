@@ -23,7 +23,6 @@ export const MINDMAP_FILE_EXTENSION = ownedFileType.extension;
 
 export const MINDMAP_OWNED_TABLES = [
   'mindmap_versions',
-  'mindmap_evidence',
 ] as const;
 
 // 插件身份字段以 plugin.json 为唯一真源，ownedTables 保留 const 元组供 contribution 与契约测试复用。

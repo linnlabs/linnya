@@ -16,7 +16,6 @@ import { PluginMigrationRunner } from 'src/features/plugins/infrastructure/sqlit
 import { mindmapBackendPlugin, mindmapPluginMigrations } from '../index';
 import {
   MINDMAP_DOCUMENT_SCHEMAS,
-  MINDMAP_EVIDENCE_SCHEMAS,
   mindmapToolManifest,
 } from '../test-support';
 
@@ -106,7 +105,7 @@ describe('Mindmap database ownership contract', () => {
   afterEach(() => db.close());
 
   it('creates every owned table through the owner DDL contract', () => {
-    for (const statement of [...MINDMAP_DOCUMENT_SCHEMAS, ...MINDMAP_EVIDENCE_SCHEMAS]) {
+    for (const statement of MINDMAP_DOCUMENT_SCHEMAS) {
       db.exec(statement);
     }
     expect(listExistingTables(db)).toEqual(expect.arrayContaining([...MINDMAP_OWNED_TABLES]));

@@ -6,10 +6,6 @@
 @import './presentation/MindMapToolbar.css';
 @import './presentation/NodeEditor.css';
 @import './presentation/RichContentHost.css';
-@import './features/tagging/TaggingBadgeAddon.css';
-@import './features/evidence/ReferenceAddon.css';
-@import './features/evidence/ReferenceInsertPanel.css';
-@import './features/evidence/ReferenceKbTab.css';
 
 .editor-shell.for-mindmap {
   overflow: hidden;

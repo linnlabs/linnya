@@ -1,11 +1,10 @@
 import { ISchemaProvider } from '@plugin/backend/workspaceRuntime';
 import { MINDMAP_DOCUMENT_SCHEMAS } from './schemas/core.schema';
-import { MINDMAP_EVIDENCE_SCHEMAS } from './schemas/blocks/evidence.schema';
 
 export class MindMapDocumentSchemaProvider implements ISchemaProvider {
   readonly name = 'mindmap_document';
 
   getSchema(): string[] {
-    return [...MINDMAP_DOCUMENT_SCHEMAS, ...MINDMAP_EVIDENCE_SCHEMAS];
+    return [...MINDMAP_DOCUMENT_SCHEMAS];
   }
 }

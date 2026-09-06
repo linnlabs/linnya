@@ -8,7 +8,7 @@ describe('PluginManifestSchema', () => {
   it('parses the Mindmap builtin plugin manifest', () => {
     expect(parsePluginManifest(mindmapManifest)).toMatchObject({
       id: 'mindmap',
-      version: '1.0.6',
+      version: '2.0.0',
       name: 'Mindmap',
       developer: 'Linnya',
       entry: {
@@ -25,7 +25,7 @@ describe('PluginManifestSchema', () => {
         extension: '.mindmap',
         label: '思维导图',
       }],
-      ownedTables: ['mindmap_versions', 'mindmap_evidence'],
+      ownedTables: ['mindmap_versions'],
       migrations: [
         {
           version: 1,

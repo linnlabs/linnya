@@ -47,10 +47,7 @@ describe('MindMap Phase 2 - Keybinding', () => {
 
 describe('MindMap Phase 2 - KeymapRegistry', () => {
   it('should fallback to lower priority item when run returns false', () => {
-    // 中文说明：
-    // - 这是撤消/恢复失效的根因回归用例：
-    //   evidence.undo (高优先级) 返回 false，希望继续执行 history.undo (低优先级)。
-    // - 若 registry 不支持链式匹配，Mod+Z 将被 evidence.undo 吞掉，导致撤消看起来失效。
+    // 中文说明：验证快捷键命中后返回 false 时，低优先级命令仍可继续执行。
     const container = document.createElement('div')
 
     const mind = {

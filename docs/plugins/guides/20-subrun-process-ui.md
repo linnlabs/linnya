@@ -75,15 +75,8 @@ Host 自身的 `subagent/subrun_batch` 不再使用这个 bounded 卡作为父 v
 注册为工具卡。并行 subrun 应由插件包装组件按结果协议生成多张
 `SubrunCard`，每张只传自己的真实 `subrunId`。
 
-MindMap 并行工具使用后端已约定的 `parentToolCallId + index`
-身份格式，并允许最终结果返回的 `subrunId`
-覆盖它。这是该工具协议的一部分，不是所有插件都可照搬的通用推导规则。没有权威 subrun 身份时应修正后端结果协议，不能让 UI 猜。
-
-参考实现：
-
-- `packages/plugins/mindmap/src/renderer/tool-cards/mindmap.ts`
-- `packages/plugins/mindmap/src/renderer/tool-cards/cards/MindMapSubrunParallelCard.vue`
-- `packages/plugins/mindmap/src/renderer/tool-cards/cards/MindMapSubrunParallelCard.spec.ts`
+插件自己的并行工具如果需要展示多个 subrun，应在后端结果协议中提供每个子运行的权威
+`subrunId`，由插件 wrapper 原样传给 `SubrunCard`。没有权威 subrun 身份时应修正后端结果协议，不能让 UI 猜。
 
 ## 4. 实时与历史回放
 

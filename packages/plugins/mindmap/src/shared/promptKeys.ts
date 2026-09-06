@@ -8,11 +8,6 @@
  */
 export const MindmapPromptKeys = {
   SUBAGENT_MINDMAP_EDITOR: 'subagent_mindmap_editor',
-  MINDMAP_REASONING_CANVAS: 'mindmap_reasoning_canvas',
-  MINDMAP_DECOMPOSE_QUESTION: 'mindmap_decompose_question',
-  MINDMAP_PROPOSE_HYPOTHESIS: 'mindmap_propose_hypothesis',
-  MINDMAP_VALIDATE_HYPOTHESIS: 'mindmap_validate_hypothesis',
-  MINDMAP_WORKFLOW_LEADER: 'mindmap_workflow_leader',
 } as const;
 
 export type MindmapPromptKey = (typeof MindmapPromptKeys)[keyof typeof MindmapPromptKeys];

@@ -83,33 +83,7 @@ export const findEle = function (this: MindMapInstance, id: string, el?: HTMLEle
 }
 
 export const shapeTpc = function (this: MindMapInstance, tpc: Topic, nodeObj: NodeObj) {
-  /**
-   * 中文说明（根因修复）：
-   * - 节点 addons（引用/打标徽章/未来扩展）通过 `NodeAddonsHost` Teleport 到 `.mm-topic-addons` 容器。
-   * - 旧实现 `tpc.innerHTML = ''` 会把 `.mm-topic-addons` 一并销毁，Teleport 的目标节点丢失，
-   *   而 `NodeAddonsHost` 的 renderItems 计算不会因为 DOM mutation 自动重算，导致“引用突然消失”。
-   * - 因此这里必须 **保留并复用** `.mm-topic-addons` 容器（保持 targetEl 稳定），只更新其 data-nodeid。
-   */
-  const preservedAddonsEl = tpc.addons
-
-  /**
-   * - `.mm-topic-addons` 的唯一权威引用是 `tpc.addons`（由 shapeTpc 维护）。
-   * - 如果这里为 undefined，说明某处破坏了契约（例如绕过 shapeTpc 手动改 DOM、或外部错误清空了字段）。
-   * - 我们不做“查 DOM 再捞回来”的兜底恢复，以免隐藏根因；开发态直接抛错。
-   */
-  if (import.meta.env.MODE !== 'production') {
-    if (!preservedAddonsEl && tpc.childElementCount > 0) {
-      // childElementCount > 0 且 addons 丢失，通常意味着“已有节点被 reshape，但 addons 引用没了”
-      throw new Error('[shapeTpc] invariant broken: tpc.addons is missing on existing topic node')
-    }
-  }
-
-  // 先把 addons 从 DOM 中摘出来，避免被清空流程误删
-  if (preservedAddonsEl && preservedAddonsEl.parentElement === tpc) {
-    tpc.removeChild(preservedAddonsEl)
-  }
-
-  // 清空 topic 内容（不包含 preservedAddonsEl）
+  // 节点只由当前数据重建，避免旧内容在 refresh 后残留。
   while (tpc.firstChild) {
     tpc.removeChild(tpc.firstChild)
   }
@@ -132,7 +106,6 @@ export const shapeTpc = function (this: MindMapInstance, tpc: Topic, nodeObj: No
    *
    * 中文说明：
    * - richContent / dangerouslySetInnerHTML 原本会 `return` 早退，不渲染默认 topic 内容（text/link/tags...）
-   * - 我们需要保持该语义不变，但同时必须在末尾追加 addons 容器（引用等扩展仍应可用）
    */
   const richContent = nodeObj.richContent
   const dangerousHtml = nodeObj.dangerouslySetInnerHTML
@@ -169,8 +142,7 @@ export const shapeTpc = function (this: MindMapInstance, tpc: Topic, nodeObj: No
     }
     /**
      * 中文说明：
-     * - 不能直接 `tpc.innerHTML = ...`，否则会覆盖/破坏 addons 容器与 Teleport target。
-     * - 这里用单独的内容容器承载 HTML，并继续在末尾追加 addons 容器。
+     * - 这里用单独的内容容器承载 HTML。
      */
     const htmlHost = $d.createElement('div')
     htmlHost.className = 'mm-topic-html-host'
@@ -261,29 +233,6 @@ export const shapeTpc = function (this: MindMapInstance, tpc: Topic, nodeObj: No
     }
   }
 
-  /**
-   * 节点内部扩展区域（插件挂载点）
-   *
-   * 中文说明：
-   * - 统一在每个 topic 内创建一个 addons 容器，供 feature UI 使用 Teleport 挂载。
-   * - 该容器默认为空，不影响现有渲染与交互。
-   * - feature 在该容器内渲染内容时，节点尺寸会真实变化，mindmap layout 会以 DOM 尺寸为准重排。
-   * - data-nodeid 统一使用 domId（me${id}），保证 DOM 层标识一致性
-   */
-  const addonsEl = preservedAddonsEl ?? $d.createElement('div')
-  addonsEl.className = 'mm-topic-addons'
-  addonsEl.dataset.nodeid = toDomNodeId(nodeObj.id)
-  /**
-   * 交互门禁（基础设施默认行为）
-   *
-   * 中文说明：
-   * - addons 容器承载节点内部 UI（引用/卡片/未来扩展）
-   * - 必须阻止节点拖拽/画布拖拽/滚轮缩放等全局交互穿透，允许在内部选中文本复制
-   * - 交互过滤统一由 InteractionGate 基于 data-mm-interactive 处理
-   */
-  addonsEl.setAttribute('data-mm-interactive', 'true')
-  tpc.appendChild(addonsEl)
-  tpc.addons = addonsEl
 }
 
 // everything start from `Wrapper`

@@ -4,6 +4,8 @@
 
 当前包承载 Mindmap 的完整 repo-internal 插件实现：共享契约在 `src/shared`，主进程能力在 `src/backend`，渲染端 surface、文件生命周期、工具卡和 MindMap domain 实现在 `src/renderer`。主应用只能通过公开入口注册这些能力，包内调用宿主能力必须走 `@plugin/*` 下的窄 port / SDK 门面。
 
+Mindmap 当前只负责纯文本大纲：节点主题、父子层级和结构编辑是核心语义，基础渲染能力保持兼容。假设、证据、引用、置信度以及研究过程不进入 Mindmap 的数据模型和工具面，后续应在独立的研究 deck 中定义。
+
 官方插件体系的长期规则见仓库级手册：
 
 - `docs/plugins/README.md`（权威指南入口）

@@ -17,7 +17,6 @@
 | R-14 | **Annotation 跨域入口**：`AnnotationPanel → assistantStore.executeAnnotationRun → annotationRunOrchestrator` 仍经过 Conversation store | 低 | 执行态已按 conversation 收窄。应以 app-level orchestration 或窄 port 收敛，**不复制第二条入口** |
 | R-18 | **存量注释型空 catch**：部分是合法可忽略解析，部分缺乏可观察性 | 低 | 不按数量做全仓清零；按 domain 失败语义治理。优先删除仅服务 debug 二次解析的分支；新增 catch 必须写明为何可忽略 |
 | R-25 | **历史 `#ref` 与 Markdown 批注语法仍带有 Markdown 特殊化** | 中 | 本期文件 locator 链接不依赖它。历史回答继续只读兼容；新批注语法、`#ref` 退役和上下文说明清理必须单独设计，不能迁移成 node URI 或夹带进文件导航 |
-| R-26 | **MindMap 研究/假设/evidence 专用链仍待整体退役** | 中 | MindMap 后续回归纯文本思维导图，按产品专项成组删除；引用整份文件已使用 `workspace:/path`，不建设 `node_uri` 过渡层 |
 | R-27 | **普通 Web/未知协议仍使用旧 Markdown 外链分支** | 中 | 文件链接 feature 只接管三类正式 locator。`http/https` 的受控系统浏览器打开与危险/未知协议禁用需要独立安全改造和真机门禁，不扩成万能 URI router |
 | R-28 | **Workspace node type 类型联合与插件注册事实仍可能漂移** | 低 | 文件链接运行时由插件 registry 判定 opener，未注册或停用类型明确 unavailable；共享 `WorkspaceVfsNodeType` 未完整表达所有插件贡献的存量问题应由插件合同专项收敛，不能在 Conversation 中硬编码后缀 |
 | R-29 | **`openFileByPath` 只有 Renderer 类型声明，没有 preload/main 实现** | 低 | 本期没有消费这条 ghost API，而是新增 locator-scoped reveal 并限定为文件管理器定位。后续应单独删除无实现声明；若产品确实需要启动默认程序，必须重新定义文件类型与权限合同，不能复活 raw-path 入口 |
@@ -70,7 +69,6 @@
 | `types/` → `definitions/` 迁移（R-13） | 过宽出口及其调用方 | 禁止新增定义；按职责迁移后删除 |
 | Evidence Agent facade 退出评估 | 真实研究任务中的引用正确率、全文可达性和跨 subrun 成功率 | Workspace/Citation/ToolOutput 迁移已完成；仅按 [Evidence owner 文档](../../src/domains/evidence/README.md) 的退出条件决定是否删除 `evidence_resolve` |
 | Markdown `#ref` / 批注协议退役 | 历史只读兼容、上下文投影、新批注表达和 Skill 说明 | 不迁移成 node URI；等批注真实用例与历史兼容边界确定后单独实施 |
-| MindMap 研究链退役 | 研究、假设、evidence、专用 subrun 与节点工具 | 成组删除并回归纯思维导图，不为待删除能力建设过渡协议 |
 | 冻结热路径优化 | 见 §3 | 无可复现 bug 不改；单变量 + 真机门禁 |
 | `store/executionState.ts` 归属收敛 | 尚未迁移的 application contributed use case 执行态 | 正文禁止写入；迁移后删除 |
 

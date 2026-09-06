@@ -485,36 +485,12 @@ export function createDefaultKeymap(dispatcher: IntentDispatcher): KeymapItem[] 
   // 中文说明：从 operationHistory.ts 迁移而来
   // =========================================================================
 
-  // Evidence Undo: 恢复软删除的证据（更高优先级）
-  // 中文说明：从 evidenceSyncPlugin.ts 迁移而来
-  items.push({
-    id: 'evidence.undo',
-    binding: 'Mod+Z',
-    description: '恢复最近删除的证据（如果有）',
-    when: whenNotEditing,
-    priority: 5, // 高于 history.undo，先尝试恢复证据
-    run: ctx => {
-      // 检查是否有 evidence 恢复函数
-      const restoreUndo = (ctx.mind as { _evidenceRestoreUndo?: () => Promise<boolean> })._evidenceRestoreUndo
-      if (!restoreUndo) {
-        // 没有安装 evidence 插件，继续执行下一个匹配（history.undo）
-        return false
-      }
-      // 异步恢复，但不阻塞
-      // 中文说明：V1 简化方案，恢复完成后由 history.undo 继续执行
-      restoreUndo()
-      // 返回 false 让 history.undo 也能执行
-      return false
-    },
-  })
-
   // Mod+Z: 撤销
   items.push({
     id: 'history.undo',
     binding: 'Mod+Z',
     description: '撤销上一步操作',
     when: whenNotEditing,
-    priority: -5, // 较低优先级，在 evidence.undo 之后执行
     run: ctx => {
       ctx.mind.undo()
       return true

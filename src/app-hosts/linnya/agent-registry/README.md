@@ -248,7 +248,6 @@ src/app-hosts/linnya/agent-registry/
 │   ├── deep_research/
 │   ├── slides_agent/
 │   ├── review/
-│   ├── mindmap/
 │   ├── subagent_document_editor/
 │   ├── subagent_mindmap_editor/
 │   ├── subagent_general/
@@ -466,7 +465,6 @@ src/app-hosts/linnya/agent-registry/
 - [singleTurnAgents.test.ts](./agents/__tests__/singleTurnAgents.test.ts)
 - [slidesAgent.test.ts](./agents/__tests__/slidesAgent.test.ts)
 - [deepResearchAgents.test.ts](./agents/__tests__/deepResearchAgents.test.ts)
-- [mindmapWorkflowLeader.test.ts](./agents/__tests__/mindmapWorkflowLeader.test.ts)
 - [agentSkillExposure.test.ts](../../../features/skills/__tests__/agentSkillExposure.test.ts)
 
 如果改动影响 child-run / tool 调用主链，还应补跑：
@@ -474,7 +472,6 @@ src/app-hosts/linnya/agent-registry/
 - [subagentRunner.integration.test.ts](../../../tools/agent_control/subrun/shared/__tests__/subagentRunner.integration.test.ts)
 - [subagentTool.failure-recovery.integration.test.ts](../../../tools/agent_control/subrun/subagent/__tests__/subagentTool.failure-recovery.integration.test.ts)
 - [researchSubagentWorkspace.integration.test.ts](../../../tools/deep_research/__tests__/researchSubagentWorkspace.integration.test.ts)
-- [mindmapSubagentTools.test.ts](../../../../packages/plugins/mindmap/src/backend/tools/mindmap/__tests__/mindmapSubagentTools.test.ts)
 
 ---
 

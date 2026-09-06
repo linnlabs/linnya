@@ -1,19 +1,19 @@
 {
   "id": "mindmap",
-  "version": "1.0.6",
+  "version": "2.0.0",
   "name": "Mindmap",
-  "description": "用思维导图拆解问题、组织证据，并让 AI agents 沿节点协作。",
+  "description": "用纯文本大纲组织主题、层级和分支，并让 AI 协助维护结构。",
   "developer": "Linnya",
   "details": [
-    "Mindmap 为 Linnya 提供思维导图文档类型，让复杂问题可以被拆成节点、假设、证据和验证路径。它适合研究拆解、产品方案推演、写作大纲、多分支任务规划，以及需要边思考边沉淀结构的长任务。",
-    "你可以用节点表达主题、子问题、结论、状态、置信度和证据，并在选择、移动、插入父节点或兄弟节点、折叠展开和重排布局之间保持结构清晰。",
-    "Mindmap agents 可以沿着导图结构拆解问题、提出假设、验证证据，并把结果写回节点，而不是把所有上下文堆进一段长文本。"
+    "Mindmap 为 Linnya 提供纯文本思维导图文档类型，用节点和层级组织主题、分支、写作大纲和任务结构。",
+    "导图保留创建、编辑、移动、插入父节点或兄弟节点、折叠展开和重排布局等核心能力，节点内容就是简洁的主题文本。",
+    "研究假设、证据、置信度等需要独立生命周期的内容，后续放入专门的研究 deck，避免污染思维导图的基本语义。"
   ],
   "releaseNotes": [
     {
-      "version": "1.0.6",
-      "title": "切换 Renderer UI 2.0",
-      "description": "更新共享 UI 兼容合同并重建插件 artifact，现有思维导图前端 UI 与交互保持不变。"
+      "version": "2.0.0",
+      "title": "回归纯文本思维导图",
+      "description": "移除假设、证据、置信度和研究工作流，把 Mindmap 收敛为文本大纲与结构编辑器。"
     },
     {
       "version": "1.0.5",
@@ -48,24 +48,8 @@
   ],
   "agents": [
     {
-      "name": "Workflow Leader",
-      "description": "统筹拆解、提出假设和验证路径，让多个 Mindmap 子任务围绕同一张图协作。"
-    },
-    {
-      "name": "Reasoning Canvas",
-      "description": "围绕当前导图节点进行假设验证、证据挂载、状态和置信度更新。"
-    },
-    {
-      "name": "Decompose Question",
-      "description": "把复杂问题拆成更容易验证和推进的子问题节点。"
-    },
-    {
-      "name": "Propose Hypothesis",
-      "description": "围绕当前节点提出可验证的解释、路径或方案假设。"
-    },
-    {
-      "name": "Validate Hypothesis",
-      "description": "为节点搜索和整理证据，并更新验证状态与置信度。"
+      "name": "Mindmap Editor",
+      "description": "读取和维护纯文本思维导图结构，按节点层级补充大纲。"
     }
   ],
   "entry": {
@@ -80,8 +64,7 @@
     "rendererUi": "^2.0.0"
   },
   "ownedTables": [
-    "mindmap_versions",
-    "mindmap_evidence"
+    "mindmap_versions"
   ],
   "ownedFileTypes": [
     {
