@@ -28,6 +28,7 @@ const productionManifestKeys = Object.freeze([
   'repository',
   'type',
   'version',
+  'overrides',
 ]);
 
 const isRecord = value => !!value && typeof value === 'object' && !Array.isArray(value);

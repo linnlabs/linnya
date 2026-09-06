@@ -56,6 +56,26 @@ function readFirstXmlText(value: unknown): string | null {
 }
 
 /**
+ * 将 ZIP 条目解析到解压根目录内。
+ * PPTX 来自用户输入，条目名不能直接交给 path.join，否则 `../` 条目可能越出临时目录。
+ */
+export function resolvePptxEntryPath(extractDir: string, entryName: string): string {
+  const rootPath = path.resolve(extractDir);
+  const entryPath = path.resolve(rootPath, entryName);
+  const relativePath = path.relative(rootPath, entryPath);
+
+  if (
+    relativePath === '..' ||
+    relativePath.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativePath)
+  ) {
+    throw new Error(`PPTX ZIP entry escapes extraction directory: ${entryName}`);
+  }
+
+  return entryPath;
+}
+
+/**
  * **功能 (What):** PPTX文件解析器类
  * **输入 (Input):** 实现 Parser 接口
  * **输出 (Output):** 提供 parse 方法来解析 PPTX 文件
@@ -161,12 +181,12 @@ export class PptxParser implements Parser {
         zipfile!.on('entry', async (entry) => {
           if (/\/$/.test(entry.fileName)) {
             // Directory entry
-            const dirPath = path.join(extractDir, entry.fileName);
+            const dirPath = resolvePptxEntryPath(extractDir, entry.fileName);
             await fs.mkdir(dirPath, { recursive: true }).catch(() => {});
             zipfile!.readEntry();
           } else {
             // File entry
-            const filePath = path.join(extractDir, entry.fileName);
+            const filePath = resolvePptxEntryPath(extractDir, entry.fileName);
             const fileDir = path.dirname(filePath);
             await fs.mkdir(fileDir, { recursive: true }).catch(() => {});
 

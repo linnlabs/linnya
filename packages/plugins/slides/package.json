@@ -71,10 +71,10 @@
     "jszip": "^3.10.1",
     "konva": "^10.2.3",
     "p5.brush": "github:acamposuribe/p5.brush#fc37da3da3fa07e58edf880fb2788c5529a51ebe",
-    "pptx-automizer": "^0.8.1",
+    "pptx-automizer": "^0.9.3",
     "pptxgenjs": "^4.0.1",
     "typescript": "^5.5.4",
-    "uuid": "^9.0.1",
+    "uuid": "^11.1.1",
     "yoga-layout": "^3.2.1",
     "zod": "^3.25.76"
   },

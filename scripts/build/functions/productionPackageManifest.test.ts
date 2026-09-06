@@ -13,6 +13,7 @@ describe('production package manifest', () => {
   it('只移除已经编入生产 artifact 的 workspace package', () => {
     const source = {
       name: 'linnya',
+      overrides: { 'tar@6': '7.5.22' },
       dependencies: {
         ...workspaceDependencies,
         '@app/schemas': 'file:./packages/schemas',
@@ -24,6 +25,7 @@ describe('production package manifest', () => {
     };
     expect(projectProductionPackageManifest(source)).toEqual({
       name: 'linnya',
+      overrides: { 'tar@6': '7.5.22' },
       dependencies: {
         '@app/schemas': 'file:./packages/schemas',
         zod: '^3.25.0',

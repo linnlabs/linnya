@@ -35,6 +35,11 @@ pnpm run dev:electron
 重新生成第三方 NOTICE，并核对原生包的许可证补充证据版本。源码 lock 更新不代表发行锁、
 独立 fixture 或 NOTICE 已自动同步，macOS 冒烟也不能代替 Windows 真机验收。
 
+如果安全修复使用了 pnpm 的 transitive override，且该依赖会进入 Desktop 发行树，必须同时维护
+根 `package.json` 的 npm `overrides` 并重新生成发行锁；pnpm 工作区锁和 npm 发行锁是两个独立的
+解析边界。升级原生模块后还要执行一次真实安装脚本和最小加载冒烟，确认 override 没有只修复审计
+结果却破坏 ABI 或运行时加载。
+
 开发入口会先按 `config/qdrant-runtime.json` 准备并校验目标平台 Qdrant，再准备公开 workspace 依赖、Node 原生依赖和 WASM，最后启动 Renderer 与 Electron。这个过程只发生在源码开发或打包阶段；Desktop 安装包通过 `extraResources` 携带已经校验的独立 runtime，最终用户启动应用时不再下载。
 
 生成的 Qdrant 文件不进入源码版本控制。PDF 文本提取和转图统一使用 `pnpm-lock.yaml` 锁定的 `pdfjs-dist` 与 `@napi-rs/canvas`，不从 Homebrew、系统 `PATH` 或相邻仓库寻找实现，也没有额外 runtime 下载步骤。PDF 的多页内存与事件循环验证见 [`src/features/parsers/pdfParser/README.md`](../../src/features/parsers/pdfParser/README.md)。
