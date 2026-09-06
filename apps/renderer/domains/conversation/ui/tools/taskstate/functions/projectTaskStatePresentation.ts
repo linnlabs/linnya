@@ -47,7 +47,7 @@ export function projectTaskStatePresentation(
         operation,
         version: result.data.version,
         taskstate: result.data.taskstate,
-        nextStepRows: buildTaskStateStepRows(result.data.taskstate.next_steps).slice(0, 3),
+        nextStepRows: buildTaskStateStepRows(result.data.taskstate.next_steps),
       },
       title: createConversationToolTitleDescriptor('conversation.tool.taskState.readVersion', {
         version: result.data.version,
@@ -64,7 +64,7 @@ export function projectTaskStatePresentation(
       operation,
       version: result.data.version,
       taskstate: result.data.taskstate,
-      nextStepRows: buildTaskStateStepRows(result.data.taskstate.next_steps).slice(0, 3),
+      nextStepRows: buildTaskStateStepRows(result.data.taskstate.next_steps),
     },
     title: createConversationToolTitleDescriptor('conversation.tool.taskState.updateVersionPhase', {
       version: result.data.version,

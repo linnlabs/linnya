@@ -7,7 +7,7 @@ export const TASK_STATE_PROGRESS_MAX_LENGTH = 3_000;
 export const TASK_STATE_REFERENCE_MAX_LENGTH = 2_048;
 export const TASK_STATE_CONSTRAINTS_MAX_ITEMS = 10;
 export const TASK_STATE_PLAN_MAX_ITEMS = 7;
-export const TASK_STATE_NEXT_STEPS_MAX_ITEMS = 3;
+export const TASK_STATE_NEXT_STEPS_MAX_ITEMS = 6;
 export const TASK_STATE_REFERENCES_MAX_ITEMS = 20;
 
 const NonEmptyStringSchema = z.string().trim().min(1);

@@ -6,7 +6,7 @@
  * - 接受结构化参数 → 交给 TaskState domain 保存对话作用域快照
  * - 整表快照覆盖（与 todo_write 一致），不做增量 patch
  * - 写入后工具对留在上下文，AI 下一轮直接可见——不需要热注入
- * - 物理存储由 TaskStateStorePort 隔离，工具不认识 legacy 表、目录或 URI
+ * - 状态由 admitted working history 中的配对工具事实投影，不建立另一份状态存储
  */
 
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '../../types';
