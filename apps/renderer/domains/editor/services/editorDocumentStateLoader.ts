@@ -4,7 +4,7 @@
  * 大文档首开专用的内容加载快路径。
  *
  * 中文说明：
- * Tiptap 的 `setContent(JSON, ..., { preserveWhitespace: 'full' })` 会走
+ * Tiptap 3 的 `setContent(JSON, { emitUpdate: false, parseOptions: { preserveWhitespace: 'full' } })` 会走
  * `insertContentAt({ from: 0, to: oldDocSize })`，内部要对“全文替换”构造 ProseMirror
  * replace step。对 10000 个 rootBlock，这一步可能远慢于真正的 DOM 更新。
  *

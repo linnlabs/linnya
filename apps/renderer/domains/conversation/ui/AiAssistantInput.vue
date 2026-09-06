@@ -104,8 +104,7 @@ import type { Content, Editor as TiptapCoreEditor } from '@tiptap/core';
 import Document from '@tiptap/extension-document';
 import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
-import History from '@tiptap/extension-history';
-import Placeholder from '@tiptap/extension-placeholder';
+import { Placeholder, UndoRedo as History } from '@tiptap/extensions';
 import HardBreak from '@tiptap/extension-hard-break';
 import { useAssistantStore } from '../store/assistantStore';
 import { useConversationState } from '../store/conversationState';
@@ -604,7 +603,7 @@ watch(() => assistantStore.inputText, (newText) => {
   if (currentText === newText) return;
 
   // emitUpdate=false：避免“回写编辑器”再次触发 onUpdate，引发不必要的状态抖动
-  editor.value.commands.setContent(plainTextToTiptapContent(newText), false);
+  editor.value.commands.setContent(plainTextToTiptapContent(newText), { emitUpdate: false });
 });
 
 watch(isInputDisabled, syncEditorEditable);

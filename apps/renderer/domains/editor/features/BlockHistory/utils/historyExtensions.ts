@@ -59,8 +59,12 @@ export const historyExtensions = [
     
     // 禁用不需要的功能
     dropcursor: false,
-    history: false, // 历史编辑器不需要 undo/redo
+    undoRedo: false, // 历史编辑器不需要 undo/redo
     gapcursor: false,
+    // 与 Workspace 正式 schema 保持一致；Tiptap 3 StarterKit 默认新增了这些扩展。
+    link: false,
+    underline: false,
+    listKeymap: false,
     // 禁用 StarterKit 内置 code mark，改用自定义 InlineCodeMark（允许与 revisionMark 共存）
     code: false,
   }),
@@ -72,4 +76,3 @@ export const historyExtensions = [
   // 修订标记：用于渲染 insert/delete 的差异样式（只读，不涉及交互命令）
   RevisionMark,
 ]
-

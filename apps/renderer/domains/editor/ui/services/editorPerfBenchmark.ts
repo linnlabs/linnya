@@ -24,7 +24,7 @@
  *   window.__EDITOR_PERF_BENCH__.runComparison(1000)
  */
 
-import type { JSONContent } from '@tiptap/core'
+import type { JSONContent, SetContentOptions } from '@tiptap/core'
 
 import {
   getRenderVirtualizationBlockHeightCacheSnapshot,
@@ -336,7 +336,7 @@ interface DocNode {
 
 interface BenchmarkEditor extends EditorForDocumentStateLoad {
   commands: {
-    setContent: (content: JSONContent, emitUpdate?: boolean, parseOptions?: unknown) => void
+    setContent: (content: JSONContent, options?: SetContentOptions) => void
   }
   eventBus?: {
     emit?: (eventName: string) => void
@@ -1920,7 +1920,10 @@ export function runBenchmark(
       })
     } else {
       measureSetContentOperation(editor.view, () => {
-        editor.commands.setContent(doc, false, { preserveWhitespace: 'full' })
+        editor.commands.setContent(doc, {
+          emitUpdate: false,
+          parseOptions: { preserveWhitespace: 'full' },
+        })
       })
     }
     resetBenchmarkAnnotations(editor)

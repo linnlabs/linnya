@@ -93,7 +93,10 @@ function syncRootBlockStructureFromBackend(editor: CoreEditor, backendContent: u
 
   if (orderedNodes.length === 0) return false;
   const nextDoc = editor.state.schema.topNodeType.create(null, orderedNodes);
-  editor.commands.setContent(nextDoc.toJSON(), false, { preserveWhitespace: 'full' });
+  editor.commands.setContent(nextDoc.toJSON(), {
+    emitUpdate: false,
+    parseOptions: { preserveWhitespace: 'full' },
+  });
   return true;
 }
 
@@ -133,8 +136,9 @@ export async function applyPendingRevisionsToOpenMarkdownDocument(documentId: st
       if (fileStore.isDirty) {
         syncRootBlockStructureFromBackend(editor, result.data.content);
       } else {
-        editor.commands.setContent(result.data.content, false, {
-          preserveWhitespace: 'full',
+        editor.commands.setContent(result.data.content, {
+          emitUpdate: false,
+          parseOptions: { preserveWhitespace: 'full' },
         });
         fileStore.setDirty(false);
       }

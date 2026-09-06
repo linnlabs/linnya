@@ -33,9 +33,9 @@
   },
   "dependencies": {
     "@app/schemas": "workspace:*",
-    "@tiptap/core": "^2.12.0",
-    "@tiptap/starter-kit": "^2.12.0",
-    "@tiptap/vue-3": "^2.12.0",
+    "@tiptap/core": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
+    "@tiptap/vue-3": "^3.31.3",
     "@vueuse/core": "^13.1.0",
     "better-sqlite3": "13.0.3",
     "html-to-image": "^1.11.13",

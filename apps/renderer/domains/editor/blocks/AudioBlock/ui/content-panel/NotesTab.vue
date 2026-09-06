@@ -106,6 +106,9 @@ const editor = useEditor({
       heading: {
         levels: [1, 2, 3],
       },
+      link: false,
+      underline: false,
+      listKeymap: false,
     }),
     TimestampNode.configure({
       getCurrentPlayTime: () => {

@@ -379,7 +379,7 @@ window.__EDITOR_OPEN_PERF__.finalize() // 重新打印一次完整报告
 
 这里真正的根因边界是“direct-state 绕过了 Tiptap 的 `dispatchTransaction / beforeTransaction` 生命周期”。如果只更新 `view.state`，`editor.state` 会短暂停留在旧文档，后续 `editor.commands` 或 ProseMirror 内部 selection transaction 就可能把新文档回滚，或者触发 `Applying a mismatched transaction`。因此业务调用方只允许使用 `loadDocumentJsonAtomically()`；`loadDocumentJsonViaDirectState()` 是内部底层能力，业务代码不能直接调用 `view.updateState` / `view.update`。
 
-这条路径用于绕过 Tiptap `setContent(... preserveWhitespace='full')` 内部的全文 `replaceWith` transaction；它只用于完整文档打开/切换和 Apply All 返回文档，不用于普通编辑命令。
+这条路径用于绕过 Tiptap 3 `setContent(..., { parseOptions: { preserveWhitespace: 'full' } })` 内部的全文 `replaceWith` transaction；它只用于完整文档打开/切换和 Apply All 返回文档，不用于普通编辑命令。
 
 R0 基线优化已经并入 direct-state 路径，两个开关都可以在 DevTools 中独立对照：
 

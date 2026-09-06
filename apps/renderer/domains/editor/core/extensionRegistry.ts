@@ -9,8 +9,8 @@ import type { Ref } from 'vue'
 import type { Extensions } from '@tiptap/core'
 
 // --- Tiptap 核心扩展 ---
-import CharacterCount from '@tiptap/extension-character-count'
-import TableRow from '@tiptap/extension-table-row'
+import { CharacterCount } from '@tiptap/extensions'
+import { TableRow } from '@tiptap/extension-table'
 import Text from '@tiptap/extension-text'
 import StarterKit from '@tiptap/starter-kit'
 
@@ -161,8 +161,6 @@ export function getAllExtensions(dependencies: ExtensionDependencies): Extension
       bulletList: false,
       orderedList: false,
       listItem: false,
-      taskList: false,
-      taskItem: false,
       codeBlock: false,
       horizontalRule: false,
       bold: true,
@@ -170,8 +168,13 @@ export function getAllExtensions(dependencies: ExtensionDependencies): Extension
       code: false,
       italic: true,
       strike: true,
+      // Tiptap 3 默认加入 Link、Underline、ListKeymap；Workspace 使用自己的 Link
+      // mark，且正式文档 schema 不包含 underline，必须显式保持 v2 的扩展边界。
+      link: false,
+      underline: false,
+      listKeymap: false,
       dropcursor: false,
-      history: {
+      undoRedo: {
         depth: 100,
         newGroupDelay: 500,
       },

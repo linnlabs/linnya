@@ -108,12 +108,12 @@ watch([selectedVersion, historyEditor], ([version, editor]) => {
       content: [rawContent],
     }
 
-    editor.commands.setContent(docContent, false)
+    editor.commands.setContent(docContent, { emitUpdate: false })
   } catch (error) {
     console.error('[HistorySideBySide] 解析/设置历史内容失败:', error)
     // 设置为空或错误提示
     if (editor) {
-      editor.commands.setContent(null, false)
+    editor.commands.setContent(null, { emitUpdate: false })
     }
   }
 }, { immediate: true })

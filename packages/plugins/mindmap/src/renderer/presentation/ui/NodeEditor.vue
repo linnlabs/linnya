@@ -150,7 +150,13 @@ const stopObserving = () => {
 
 const editor = useEditor({
   content: '',
-  extensions: [StarterKit],
+  extensions: [
+    StarterKit.configure({
+      link: false,
+      underline: false,
+      listKeymap: false,
+    }),
+  ],
   editorProps: {
     attributes: {
       class: 'node-editor-content',
@@ -335,7 +341,7 @@ const startEdit = async (payload: StartTextEditPayload) => {
   const topicText = typeof node.topic === 'string' ? node.topic : '';
 
   const content = buildEditorContentFromTopic(topicText);
-  editor.value?.commands.setContent(content, false);
+  editor.value?.commands.setContent(content, { emitUpdate: false });
   visible.value = true;
   
   await nextTick();

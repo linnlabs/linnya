@@ -84,6 +84,15 @@ describe('Workspace Markdown 与生产 Editor schema conformance', () => {
     }
   })
 
+  it('生产 Editor 保持 Workspace 自定义格式边界', () => {
+    const editorSchema = createProductionEditorSchema()
+    const extensionNames = readProductionExtensionNames()
+
+    expect(editorSchema.marks.underline).toBeUndefined()
+    expect(Object.keys(editorSchema.marks.link.spec.attrs ?? {})).toEqual(['href', 'title'])
+    expect(extensionNames).not.toContain('listKeymap')
+  })
+
   it('后端生成的 Link 文档可被生产 Editor schema 严格解析', () => {
     const docJson = convertBlockEventsToDocJson([
       {

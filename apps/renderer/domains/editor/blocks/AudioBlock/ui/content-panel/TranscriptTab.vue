@@ -89,8 +89,7 @@ import {
 import { SubEditorFindReplaceExtension } from './SubEditorFindReplaceExtension.js'
 import { proseMirrorDocToSegments, segmentsToProseMirrorDoc } from './transcriptDataConverter.js'
 import Text from '@tiptap/extension-text'
-import History from '@tiptap/extension-history'
-import Placeholder from '@tiptap/extension-placeholder'
+import { Placeholder, UndoRedo as History } from '@tiptap/extensions'
 import {
   buildAudioBlockTranslationLanguages,
   buildAudioBlockTranslationOptions,
@@ -236,7 +235,7 @@ watch(
     
     // 只在内容真正不同时更新
     if (JSON.stringify(currentDoc) !== JSON.stringify(safeDoc)) {
-      editor.value.commands.setContent(safeDoc, false)
+      editor.value.commands.setContent(safeDoc, { emitUpdate: false })
     }
   },
   { deep: true }
