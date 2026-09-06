@@ -18,9 +18,9 @@ Linnya currently offers official support for the following plugins:
 
 ### [Slides](packages/plugins/slides)
 
-Provides presentation rendering and export capabilities.
+Turns research, plans, reviews, and reports into editable presentation decks. The Slides Agent works from maintainable deck source, renders real previews, and iterates through generation, editing, visual inspection, and refinement.
 
-<!-- Add when the screenshot is ready: ![Linnya Slides](docs/media/slides.png) -->
+![A four-slide presentation created with Linnya Slides](docs/media/slides-showcase.png)
 
 ## What is in this repository
 

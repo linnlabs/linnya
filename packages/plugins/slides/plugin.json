@@ -5,7 +5,7 @@
   "description": "用 AI 规划、生成、编辑和检查演示文稿，并让 agents 沿源码协作。",
   "developer": "Linnya",
   "details": [
-    "Slides 为 Linnya 提供 AI 演示文稿工作流，覆盖规划、生成、检查、修复和源码编辑；当前不支持 PPTX 导出。",
+    "Slides 为 Linnya 提供 AI 演示文稿工作流，覆盖规划、生成、检查、修复和源码编辑，并支持从产品界面导出 PPTX 与逐页图片。",
     "它适合需要把研究、方案、复盘或汇报快速沉淀成可演示材料的场景，并让 agents 沿着 deck 源码继续协作。",
     "Slides 作为独立 runtime 插件分发、升级和卸载，主应用只保留通用平台能力。"
   ],

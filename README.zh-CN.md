@@ -18,9 +18,9 @@ Linnya 当前官方支持以下插件：
 
 ### [Slides](packages/plugins/slides)
 
-提供演示文稿渲染与导出能力。
+把研究、方案、复盘和汇报转化为可编辑的演示文稿。Slides Agent 围绕可维护的文稿源码工作，在真实渲染结果上持续完成生成、编辑、视觉检查与修正。
 
-<!-- 截图完成后可在此加入：![Linnya Slides](docs/media/slides.png) -->
+![使用 Linnya Slides 创建的四页演示文稿](docs/media/slides-showcase.png)
 
 ## 这个仓库包含什么
 
