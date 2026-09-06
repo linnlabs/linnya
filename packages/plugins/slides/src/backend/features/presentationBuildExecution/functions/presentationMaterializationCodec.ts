@@ -368,11 +368,12 @@ function isSvgGraphicOwnedAssetRef(value: unknown): value is SvgGraphicOwnedAsse
 }
 
 function isBox(value: unknown): boolean {
+  // Yoga 可把拥挤布局压至零尺寸；保留事实供 Inspect 诊断，不能把布局问题误报为传输合同故障。
   return isRecord(value)
     && isFiniteNumber(value.x)
     && isFiniteNumber(value.y)
-    && isPositiveFiniteNumber(value.w)
-    && isPositiveFiniteNumber(value.h);
+    && isFiniteNumber(value.w) && value.w >= 0
+    && isFiniteNumber(value.h) && value.h >= 0;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
