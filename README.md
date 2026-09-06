@@ -2,6 +2,8 @@
 
 [简体中文](README.zh-CN.md)
 
+[Official website](https://linnya.com)
+
 Linnya is an **open-source desktop workspace for agents**. It brings conversational agents, project documents, knowledge tools, and extensible plugins into one app, so AI can go beyond the chat box—understanding real project context, working directly with documents, and carrying work from research and reasoning through creation and delivery.
 
 Linnya is built around Markdown and offers extensive plugin support. Plugins can introduce new document types, purpose-built interfaces, agents, skills, and workflows, allowing the same workspace to keep growing with new capabilities.
