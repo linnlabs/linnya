@@ -204,4 +204,39 @@ describe('AI SDK stream reliability integration', () => {
     });
     expect(JSON.stringify(events)).not.toContain('sensitive gateway disconnect detail');
   });
+
+  it('在失败 attempt 结束时发布可聚合的请求形状与流终态诊断', async () => {
+    const diagnostics: Array<{ readonly type: string; readonly [key: string]: unknown }> = [];
+    const capability = createAiSdkInferenceCapability(route.capability_id, route.surface, {
+      language_models: registry(modelWithStream(options => openTextStream(options, 'partial'))),
+      stream_idle_timeout_ms: 25,
+      diagnostic_sink: { publish: diagnostic => diagnostics.push(diagnostic) },
+    });
+
+    await collect(capability.stream(invocation()));
+
+    const observed = diagnostics.find(diagnostic => diagnostic.type === 'attempt_observed');
+    const timeout = diagnostics.find(diagnostic => diagnostic.type === 'stream_idle_timeout');
+    expect(timeout).toMatchObject({
+      attempt_id: 'attempt-1',
+      request_fingerprint: expect.stringMatching(/^[0-9a-f]{32}$/u),
+    });
+    expect(observed).toMatchObject({
+      attempt_id: 'attempt-1',
+      capability_id: route.capability_id,
+      surface: route.surface,
+      endpoint_id: route.endpoint_id,
+      request_fingerprint: expect.stringMatching(/^[0-9a-f]{32}$/u),
+      message_count: 1,
+      text_characters: 4,
+      estimated_input_tokens: 1,
+      tool_count: 0,
+      image_count: 0,
+      image_bytes: 0,
+      retry_count: 0,
+      terminal_event_received: true,
+      terminal_event_type: 'failure',
+      last_provider_part_type: 'abort',
+    });
+  });
 });

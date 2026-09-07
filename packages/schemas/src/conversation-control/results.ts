@@ -142,6 +142,8 @@ export const ConversationControlRunStatusSnapshotSchema = z
     agent_id: OpaqueIdSchema,
     status: ConversationControlRunStatusSchema,
     current_node: z.string().trim().min(1).optional(),
+    execution_steps_used: z.number().int().nonnegative().optional(),
+    run_iterations_used: z.number().int().nonnegative().optional(),
     iterations_used: z.number().int().nonnegative().optional(),
     started_at: z.number().finite().nonnegative(),
     updated_at: z.number().finite().nonnegative(),
@@ -405,6 +407,8 @@ const ConversationControlAuditRunSchema = z
     ]),
     started_at: z.number().finite().nonnegative(),
     updated_at: z.number().finite().nonnegative(),
+    execution_steps_used: z.number().int().nonnegative().optional(),
+    run_iterations_used: z.number().int().nonnegative().optional(),
     iterations_used: z.number().int().nonnegative().optional(),
     error_code: OpaqueIdSchema.optional(),
   })

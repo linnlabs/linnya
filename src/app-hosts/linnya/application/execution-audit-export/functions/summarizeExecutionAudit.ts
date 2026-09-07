@@ -313,11 +313,21 @@ export function summarizeExecutionAudit(input: {
     .map(freezeCompactionRun);
   const runLifecycleByRun = [...lifecycleByRun.values()]
     .sort((left, right) => left.runId.localeCompare(right.runId));
+  const runs = input.runs.map(run => {
+    const lifecycle = lifecycleByRun.get(run.runId);
+    return {
+      ...run,
+      ...(lifecycle ? { executionStepsUsed: lifecycle.stepsUsed } : {}),
+      ...(run.runIterationsUsed === undefined && run.iterationsUsed !== undefined
+        ? { runIterationsUsed: run.iterationsUsed }
+        : {}),
+    };
+  });
   const integrity = summarizeExecutionIntegrity(input.eventFacts);
 
   return {
     generatedAt: input.generatedAt,
-    runs: input.runs,
+    runs,
     sourceWindow: {
       telemetryEvents: input.telemetry.length,
       earliestTelemetryAt: timestamps.length > 0 ? Math.min(...timestamps) : undefined,

@@ -147,6 +147,7 @@ export const ShellToolPublicRejectionCodeSchema = z.enum([
 ]);
 
 export const ProcessToolPublicRejectionCodeSchema = z.enum([
+  'process_protocol_violation',
   'unknown_handle',
   'handle_expired',
   'owner_ended',

@@ -1,9 +1,11 @@
 import {
+  CommandProcessHandleSchema,
   CommandAgentRunIdSchema,
   CommandControlToolCallIdSchema,
   CommandConversationIdSchema,
   MAX_PROCESS_OUTPUT_WAIT_TIMEOUT_MS,
   MAX_PROCESS_PTY_DIMENSION,
+  ProcessToolArgumentsV1Schema,
   parseProcessToolArguments,
   type ProcessToolResultData,
   type ProcessToolRuntimeResult,
@@ -17,6 +19,20 @@ import {
 } from '../../types';
 import { parseProcessToolRuntimeResult } from 'src/app-hosts/linnya/adapters/commands/shell-runtime/definitions';
 import { formatProcessToolModelObservation } from 'src/domains/commands';
+
+type ParsedProcessArguments = ReturnType<typeof parseProcessToolArguments>;
+type ProcessProtocolViolation = {
+  readonly kind: 'protocol_violation';
+  readonly processHandle: ParsedProcessArguments['process_handle'];
+  readonly result: ProcessToolRuntimeResult;
+};
+type ParsedProcessRequest =
+  | { readonly kind: 'arguments'; readonly arguments: ParsedProcessArguments }
+  | ProcessProtocolViolation;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 const PROCESS_ACTION_PARAMETER: ToolParameterSchema['properties'][string] = {
   type: 'object',
@@ -153,8 +169,71 @@ function projectProcessToolResultData(result: ProcessToolRuntimeResult): Process
   };
 }
 
+function protocolViolationResult(
+  processHandle: ParsedProcessArguments['process_handle'],
+  message: string,
+): ProcessProtocolViolation {
+  return {
+    kind: 'protocol_violation',
+    processHandle,
+    result: {
+      status: 'rejected',
+      code: 'process_protocol_violation',
+      observation: message,
+    },
+  };
+}
+
+function processProtocolViolationMessage(args: Record<string, unknown>): string {
+  const processHandle = typeof args.process_handle === 'string' ? args.process_handle : '';
+  if (!CommandProcessHandleSchema.safeParse(processHandle).success) {
+    return '[process_protocol_violation] process 参数无效：请复制上一次 shell 结果中的 process_handle。';
+  }
+
+  const extraFields = Object.keys(args).filter(key => key !== 'process_handle' && key !== 'action');
+  if (extraFields.length > 0) {
+    return '[process_protocol_violation] process 参数无效：只能提供 process_handle 和 action。';
+  }
+
+  const action = args.action;
+  if (isRecord(action)) {
+    const actionType = action.type;
+    if (actionType === 'wait') {
+      return '[process_protocol_violation] process 参数无效：action.wait 必须包含 cursor 和 wait_timeout_ms；请复制上一次 shell 结果中的 process_handle。';
+    }
+    if (actionType === 'poll') {
+      return '[process_protocol_violation] process 参数无效：action.poll 必须包含 cursor；请复制上一次 process 结果中的 next_cursor。';
+    }
+  }
+  return '[process_protocol_violation] process 参数无效：action 必须是 poll、wait、cancel、write、submit、eof 或 resize。';
+}
+
+function parseArgumentsOrProtocolViolation(
+  args: Record<string, unknown>,
+): ParsedProcessRequest {
+  const parsed = ProcessToolArgumentsV1Schema.safeParse(args);
+  if (parsed.success) return { kind: 'arguments', arguments: parsed.data };
+
+  const processHandle = typeof args.process_handle === 'string' ? args.process_handle : '';
+  const parsedHandle = CommandProcessHandleSchema.safeParse(processHandle);
+  if (!parsedHandle.success) {
+    throw new Error(processProtocolViolationMessage(args));
+  }
+  const extraFields = Object.keys(args).filter(key => key !== 'process_handle' && key !== 'action');
+  if (extraFields.length > 0) {
+    throw new Error(processProtocolViolationMessage(args));
+  }
+  return protocolViolationResult(
+    parsedHandle.data,
+    processProtocolViolationMessage(args),
+  );
+}
+
 export class ProcessTool extends BaseTool {
   readonly name = 'process';
+
+  /** ToolRegistry 用它把 owner admission 失败归类为稳定的协议错误。 */
+  readonly argumentValidationErrorCode = 'process_protocol_violation';
 
   readonly description = `Observe or control a command previously started by the shell tool.
 
@@ -177,6 +256,16 @@ replaced with process IDs or run IDs.`;
     additionalProperties: false,
   };
 
+  protected override validateArguments(args: Record<string, unknown>): {
+    success: boolean;
+    error?: string;
+  } {
+    const parsed = ProcessToolArgumentsV1Schema.safeParse(args);
+    return parsed.success
+      ? { success: true }
+      : { success: false, error: processProtocolViolationMessage(args) };
+  }
+
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
     const runtime = context.shellToolRuntime;
     if (!runtime) {
@@ -188,21 +277,25 @@ replaced with process IDs or run IDs.`;
 
     // process 是跨 tool call 的公开入口，必须在这里再次收紧 host 返回值，不能让内部
     // scope、owner 或平台对象因实现疏忽穿透到 Agent。
-    const parsedArguments = parseProcessToolArguments(args);
-    const result = parseProcessToolRuntimeResult(await runtime.executeProcess({
-      arguments: parsedArguments,
-      conversationId: CommandConversationIdSchema.parse(context.conversationId),
-      agentRunId: CommandAgentRunIdSchema.parse(context.runId),
-      controlToolCallId: CommandControlToolCallIdSchema.parse(context.parentToolCallId),
-      commandRunPermission: context.commandRunPermission,
-      ...(context.abortSignal ? { abortSignal: context.abortSignal } : {}),
-    }));
+    const parsedOrViolation = parseArgumentsOrProtocolViolation(args);
+    const result = parsedOrViolation.kind === 'protocol_violation'
+      ? parsedOrViolation.result
+      : parseProcessToolRuntimeResult(await runtime.executeProcess({
+          arguments: parsedOrViolation.arguments,
+          conversationId: CommandConversationIdSchema.parse(context.conversationId),
+          agentRunId: CommandAgentRunIdSchema.parse(context.runId),
+          controlToolCallId: CommandControlToolCallIdSchema.parse(context.parentToolCallId),
+          commandRunPermission: context.commandRunPermission,
+          ...(context.abortSignal ? { abortSignal: context.abortSignal } : {}),
+        }));
     // 与模型出口分开投影，避免 host 新字段未经审阅就进入 renderer 持久结果。
     const data = projectProcessToolResultData(result);
     const structured: StructuredToolResult<typeof data> = {
       data,
       observation: formatProcessToolModelObservation({
-        processHandle: parsedArguments.process_handle,
+        processHandle: parsedOrViolation.kind === 'protocol_violation'
+          ? parsedOrViolation.processHandle
+          : parsedOrViolation.arguments.process_handle,
         result,
       }),
     };

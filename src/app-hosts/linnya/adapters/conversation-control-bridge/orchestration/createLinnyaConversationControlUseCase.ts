@@ -1,4 +1,5 @@
 import { generateConversationId } from '@linnlabs/linnkit/contracts';
+import { JsonValueSchema } from '@app/schemas';
 import type { FlowOrchestrator } from 'src/app-hosts/linnya/adapters/flow/flow.orchestrator';
 import type { HistoryService } from 'src/features/conversation/history/history.service';
 import type { ModelCatalog } from 'src/domains/model-catalog';
@@ -80,6 +81,7 @@ export function createLinnyaConversationControlUseCase(
           status: run.status,
           startedAt: run.startedAt,
           updatedAt: run.updatedAt,
+          runIterationsUsed: run.iterationsUsed,
           iterationsUsed: run.iterationsUsed,
           errorCode: run.errorIfAny?.errorCode,
         }));
@@ -121,10 +123,26 @@ export function createLinnyaConversationControlUseCase(
               savedAt: checkpoint.savedAt,
               ...(checkpoint.currentNode ? { currentNode: checkpoint.currentNode } : {}),
               ...(checkpoint.iterations !== undefined
-                ? { iterationsUsed: checkpoint.iterations }
+                ? { executionStepsUsed: checkpoint.iterations }
                 : {}),
             }
           : null;
+      },
+      async readLatestExecutionSteps(conversationId, runId) {
+        const telemetry = await owners.telemetry.listByConversation(conversationId);
+        let latestEmittedAt = -1;
+        let latestSteps: number | undefined;
+        for (const record of telemetry) {
+          if (
+            record.kind === 'run_lifecycle'
+            && record.runId === runId
+            && record.emittedAt >= latestEmittedAt
+          ) {
+            latestEmittedAt = record.emittedAt;
+            latestSteps = record.stepsUsed;
+          }
+        }
+        return latestSteps;
       },
     },
     history: {
@@ -167,7 +185,7 @@ export function createLinnyaConversationControlUseCase(
           return {
             name,
             description: schema.function.description,
-            parameters: schema.function.parameters,
+            parameters: JsonValueSchema.parse(schema.function.parameters),
           };
         });
       },

@@ -19,7 +19,6 @@ import type { RoutedRuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import { KnowledgeBaseService } from 'src/features/knowledge-base/application/knowledgeBaseService';
 import { FlowExecutionResult } from 'src/app-hosts/linnya/adapters/flow/flow.schemas';
-import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import { DatabaseService } from 'src/electron-main/services/database';
 import {
   createSseSummarizationRealtimePort,
@@ -139,7 +138,7 @@ export class AgentRunnerService {
       execution,
     } = runRequest;
     const signal = runHandle.signal;
-    const { eventBus, sequencer, realtimeSink, runtimeEventSink } = hostPorts;
+    const { sequencer, realtimeSink, runtimeEventSink } = hostPorts;
     const executionStartedAtMs = Date.now();
     const userMessageId = resolveExecutionUserMessageId(history, newEvents);
     const lifecycleCoordinator = new RunLifecycleCoordinator({
@@ -172,6 +171,7 @@ export class AgentRunnerService {
         publishRuntimeEvent: scopedRuntimeEventSink,
         drainPersistence: hostPorts.drainPersistence,
         runHandle,
+        readRunIterationsUsed: async () => (await runHandle.meta()).iterationsUsed,
         clearCheckpoint: runId => this.engine.clearCheckpoint(runId),
         releaseRunResources: runId => this.runtime.costCollector.release(runId),
         now: () => Date.now(),
@@ -190,6 +190,7 @@ export class AgentRunnerService {
     let commandCleanupAttempted = false;
     let commandRunEndBarrier: CommandAgentRunEndBarrier | undefined;
     let settlementContextUsage: ContextUsageSnapshot | undefined;
+    let executionStepCount = 0;
     let publishedRuntimeFailureFact: graph.RuntimeFailureFact | undefined;
 
     const endCommandAgentRun = async (): Promise<void> => {
@@ -417,6 +418,7 @@ export class AgentRunnerService {
       };
 
       const executionOutcome = await executeAgentRun();
+      executionStepCount = executionOutcome.result.stepCount ?? 0;
 
       // wait_user 只是同一 run 的暂停点；真实终态必须在宣布成功前可靠收口进程。
       if (executionOutcome.checkpointNodeId !== 'wait_user') {
@@ -425,7 +427,7 @@ export class AgentRunnerService {
 
       await executionSettlement.settleSuccessfulExecution({
         checkpointNodeId: executionOutcome.checkpointNodeId,
-        stepCount: executionOutcome.result.stepCount ?? 0,
+        stepCount: executionStepCount,
         ...(executionOutcome.waitUserEvent
           ? { waitUserEvent: executionOutcome.waitUserEvent }
           : {}),
@@ -462,29 +464,43 @@ export class AgentRunnerService {
         logger.error(`Agent mode failed for conversation ${conversationId}`, error);
       }
 
-      if (!settlementContextUsage) {
-        try {
-          const failedCheckpoint = await this.engine.peekCheckpoint(runHandle.runId);
+      try {
+        const failedCheckpoint = await this.engine.peekCheckpoint(runHandle.runId);
+        if (!settlementContextUsage) {
           settlementContextUsage = graph.readCheckpointContextUsage(failedCheckpoint?.local);
-        } catch (checkpointError: unknown) {
-          // 可选展示事实的读取失败不能阻止 failed/cancelled 权威终态收口，但必须留下可观察错误。
-          logger.error('Agent run 失败后无法接纳 checkpoint context usage', {
-            conversationId,
-            runId: runHandle.runId,
-            checkpointError,
-          });
         }
+        const checkpointLocal = failedCheckpoint?.local;
+        const checkpointExecutorLocal = checkpointLocal?.executorLocal;
+        if (
+          checkpointExecutorLocal
+          && typeof checkpointExecutorLocal === 'object'
+          && 'stepCount' in checkpointExecutorLocal
+          && typeof checkpointExecutorLocal.stepCount === 'number'
+          && Number.isInteger(checkpointExecutorLocal.stepCount)
+          && checkpointExecutorLocal.stepCount >= 0
+        ) {
+          executionStepCount = checkpointExecutorLocal.stepCount;
+        }
+      } catch (checkpointError: unknown) {
+        // 可选展示事实和失败 execution 步数的读取失败不能阻止 failed/cancelled 终态收口。
+        logger.error('Agent run 失败后无法接纳 checkpoint metrics', {
+          conversationId,
+          runId: runHandle.runId,
+          checkpointError,
+        });
       }
 
       if (isAbortError) {
         await executionSettlement.settleFailedExecution({
           kind: 'cancelled',
+          stepCount: executionStepCount,
           abortReason: signal.reason,
           ...(settlementContextUsage ? { contextUsage: settlementContextUsage } : {}),
         });
       } else if (failureFact) {
         await executionSettlement.settleFailedExecution({
           kind: 'failed',
+          stepCount: executionStepCount,
           failureFact,
           ...(settlementContextUsage ? { contextUsage: settlementContextUsage } : {}),
         });

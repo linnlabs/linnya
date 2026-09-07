@@ -20,6 +20,10 @@ import {
 } from '../functions/projectCanonicalRequestToAiSdk';
 import { projectCanonicalMessages } from '../functions/projectCanonicalMessages';
 import { projectAiSdkUsage } from '../functions/projectAiSdkUsage';
+import {
+  projectAiSdkRequestDiagnostic,
+  type AiSdkRequestDiagnosticSummary,
+} from '../functions/projectAiSdkRequestDiagnostic';
 import { assertAiSdkInferenceRouteMatchesCapability } from '../functions/assertAiSdkInferenceRouteMatchesCapability';
 import type {
   AiSdkInferenceCapability,
@@ -59,12 +63,17 @@ function failureEvent(
   signal: AbortSignal | undefined,
   phase: AiSdkFailurePhase,
   providerClassifier: AiSdkProviderFailureClassifier | undefined,
-  diagnosticSink: AiSdkLanguageDiagnosticSink | undefined
+  diagnosticSink: AiSdkLanguageDiagnosticSink | undefined,
+  diagnosticContext: {
+    readonly attempt_id: string;
+    readonly request_fingerprint: string;
+  },
 ): CanonicalInferenceEvent {
   const observation = projectAiSdkFailureObservation(error, signal, phase, providerClassifier);
   if (observation.failure.kind !== 'aborted') {
     diagnosticSink?.publish({
       type: 'failure_projected',
+      ...diagnosticContext,
       phase: observation.diagnostic.phase,
       error_shape: observation.diagnostic.error_shape,
       failure_kind: observation.failure.kind,
@@ -93,11 +102,31 @@ export function createAiSdkInferenceCapability(
   const streamReliability = resolveAiSdkStreamReliabilityPolicy(
     dependencies.stream_idle_timeout_ms
   );
+  const attemptsByTrace = new Map<string, number>();
+
+  const nextRetryCount = (traceId: string): number => {
+    const attemptNumber = attemptsByTrace.get(traceId) ?? 0;
+    attemptsByTrace.set(traceId, attemptNumber + 1);
+    // trace id 在正常 run 中只活跃很短时间；这个上限避免异常调用方长期制造无界 map。
+    if (attemptsByTrace.size > 1024) {
+      const oldest = attemptsByTrace.keys().next().value;
+      if (oldest !== undefined && oldest !== traceId) attemptsByTrace.delete(oldest);
+    }
+    return attemptNumber;
+  };
+
   return {
     id,
     api_surface: surface,
     async *stream({ request, route, credential }) {
       assertAiSdkInferenceRouteMatchesCapability(route, id, surface);
+      const requestDiagnostic: AiSdkRequestDiagnosticSummary =
+        projectAiSdkRequestDiagnostic(request);
+      const retryCount = nextRetryCount(request.invocation.trace_id);
+      const diagnosticContext = {
+        attempt_id: request.invocation.attempt_id,
+        request_fingerprint: requestDiagnostic.request_fingerprint,
+      };
       yield {
         type: 'start',
         model_id: request.model_id,
@@ -111,6 +140,9 @@ export function createAiSdkInferenceCapability(
       let nextAssistantPartIndex = 0;
       let failurePhase: AiSdkFailurePhase = 'request_projection';
       let deferredProjectionFailure: CanonicalInferenceEvent | undefined;
+      let lastProviderPartType: string | undefined;
+      let terminalEventReceived = false;
+      let terminalEventType: 'finish' | 'failure' | undefined;
       const providerAbortController = new AbortController();
       const forwardRequestAbort = () => providerAbortController.abort(request.signal?.reason);
       if (request.signal?.aborted) {
@@ -159,6 +191,7 @@ export function createAiSdkInferenceCapability(
 
         failurePhase = 'provider_stream';
         for await (const part of result.stream) {
+          lastProviderPartType = part.type;
           if (deferredProjectionFailure) continue;
           const events: CanonicalInferenceEvent[] = [];
           try {
@@ -324,6 +357,7 @@ export function createAiSdkInferenceCapability(
                 if (part.finishReason === 'error' || part.finishReason === 'other') {
                   dependencies.diagnostic_sink?.publish({
                     type: 'nonstandard_finish',
+                    ...diagnosticContext,
                     capability_id: id,
                     surface,
                     finish_reason: part.finishReason,
@@ -350,6 +384,7 @@ export function createAiSdkInferenceCapability(
                 } else {
                   dependencies.diagnostic_sink?.publish({
                     type: 'stream_idle_timeout',
+                    ...diagnosticContext,
                     capability_id: id,
                     surface,
                     idle_timeout_ms: streamReliability.idle_timeout_ms,
@@ -369,7 +404,8 @@ export function createAiSdkInferenceCapability(
                     request.signal,
                     'provider_stream',
                     dependencies.provider_failure_classifier,
-                    dependencies.diagnostic_sink
+                    dependencies.diagnostic_sink,
+                    diagnosticContext,
                   )
                 );
                 break;
@@ -404,7 +440,8 @@ export function createAiSdkInferenceCapability(
               request.signal,
               'provider_stream',
               dependencies.provider_failure_classifier,
-              dependencies.diagnostic_sink
+              dependencies.diagnostic_sink,
+              diagnosticContext,
             );
             // 发现 Host 级协议违规后先终止并排空底层流，避免异步迭代器以空 reason 取消时
             // 留下未处理 rejection；canonical 层只在 wire stream 收口后发布一次失败。
@@ -412,7 +449,15 @@ export function createAiSdkInferenceCapability(
             continue;
           }
           for (const event of events) yield event;
-          if (events.some(event => event.type === 'finish' || event.type === 'failure')) return;
+          const terminalEvent = events.find(
+            (event): event is Extract<CanonicalInferenceEvent, { type: 'finish' | 'failure' }> =>
+              event.type === 'finish' || event.type === 'failure',
+          );
+          if (terminalEvent) {
+            terminalEventReceived = true;
+            terminalEventType = terminalEvent.type;
+            return;
+          }
         }
       } catch (error: unknown) {
         if (deferredProjectionFailure) {
@@ -424,10 +469,24 @@ export function createAiSdkInferenceCapability(
           request.signal,
           failurePhase,
           dependencies.provider_failure_classifier,
-          dependencies.diagnostic_sink
+          dependencies.diagnostic_sink,
+          diagnosticContext,
         );
         return;
       } finally {
+        dependencies.diagnostic_sink?.publish({
+          type: 'attempt_observed',
+          attempt_id: request.invocation.attempt_id,
+          capability_id: id,
+          surface,
+          endpoint_id: route.endpoint_id,
+          endpoint_model_id: route.endpoint_model_id,
+          ...requestDiagnostic,
+          retry_count: retryCount,
+          terminal_event_received: terminalEventReceived,
+          ...(terminalEventType ? { terminal_event_type: terminalEventType } : {}),
+          ...(lastProviderPartType ? { last_provider_part_type: lastProviderPartType } : {}),
+        });
         request.signal?.removeEventListener('abort', forwardRequestAbort);
       }
 

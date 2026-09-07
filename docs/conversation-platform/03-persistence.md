@@ -31,7 +31,7 @@ adapter 的 `citation-ref-claims/schema-provider.ts` 独立拥有：
 |---|---|---|
 | `events` | 事实 | immutable RuntimeEvent；审计与 rebuild 的唯一来源 |
 | `conversations` | 聚合根 | 会话元信息（标题、项目归属等） |
-| `runs` | 生命周期 | RunRegistryStore 的 owner：`parentRunId + status + currentNode + iterationsUsed + errorIfAny` |
+| `runs` | 生命周期 | RunRegistryStore 的 owner：`parentRunId + status + currentNode + iterationsUsed（逻辑 run 累计步数）+ errorIfAny`；当前 execution 步数由 execution metrics / checkpoint 事实观测 |
 | `conversation_ui_messages` | read model | 可重建的 UI 行 |
 | `conversation_ui_citation_facts` | read model | 按 Conversation/ref/消息时点查询的规范化引用事实索引 |
 | `conversation_citation_ref_claims` | 生产控制状态 | Conversation 内稳定来源身份 ↔ 6 位 ref 的持久原子声明；不是 event/read model |

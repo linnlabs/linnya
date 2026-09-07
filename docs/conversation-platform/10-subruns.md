@@ -288,7 +288,7 @@ conversationId + parentMessageId + parentToolCallId + subrunId + description
 
 ## 8. Lifecycle 与后端 scope
 
-SQLite `runs` / RunRegistryStore 保存 `parentRunId + status + currentNode + iterationsUsed + errorIfAny`，是按父级查询 child lifecycle 的唯一 owner。Telemetry、CostCollector、LLM Audit 只观测，紧凑 trace 只展示，禁止从 trace 数量或 audit bucket 重建第二套 lifecycle。
+SQLite `runs` / RunRegistryStore 保存 `parentRunId + status + currentNode + iterationsUsed（逻辑 run 累计步数）+ errorIfAny`，是按父级查询 child lifecycle 的唯一 owner。单次 execution 步数来自 execution metrics / checkpoint 事实；Telemetry、CostCollector、LLM Audit 只观测，紧凑 trace 只展示，禁止从 trace 数量或 audit bucket 重建第二套 lifecycle。
 
 composition root 必须将同一 `LinnyaAgentRuntimeScope` 显式交给 Flow、AgentRunner 和 registered child invoker。child invoker 经 ToolContext 注入，递归 child 继承该实例；Flow、runner、child lifecycle 和测试都不得执行期查询全局 fallback。共享 scope 只共享基础设施端口，root / child / recursive child 仍拥有独立 routing identity。
 

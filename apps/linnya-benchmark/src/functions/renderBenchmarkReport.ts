@@ -145,11 +145,11 @@ function renderPhaseTiming(facts: BenchmarkRunFacts): string[] {
 function renderStatusTimeline(facts: BenchmarkRunFacts): string[] {
   if (facts.statusFrames.length === 0) return ['未采集到状态变化帧。'];
   return [
-    '| 序号 | 观测时间 | 状态 | 节点 | 迭代 | 等待工具 |',
-    '| ---: | --- | --- | --- | ---: | --- |',
+    '| 序号 | 观测时间 | 状态 | 节点 | Execution 步数 | Run 累计步数 | 等待工具 |',
+    '| ---: | --- | --- | --- | ---: | ---: | --- |',
     ...facts.statusFrames.map((frame, index) => {
       const snapshot = frame.snapshot;
-      return `| ${index} | ${new Date(frame.observed_at).toISOString()} | ${snapshot?.status ?? 'not_found'} | ${escapeCell(snapshot?.current_node ?? '')} | ${snapshot?.iterations_used ?? '—'} | ${escapeCell(snapshot?.pending_interaction?.tool_name ?? '')} |`;
+      return `| ${index} | ${new Date(frame.observed_at).toISOString()} | ${snapshot?.status ?? 'not_found'} | ${escapeCell(snapshot?.current_node ?? '')} | ${snapshot?.execution_steps_used ?? '—'} | ${snapshot?.run_iterations_used ?? snapshot?.iterations_used ?? '—'} | ${escapeCell(snapshot?.pending_interaction?.tool_name ?? '')} |`;
     }),
   ];
 }
@@ -181,11 +181,11 @@ function renderRunTopology(facts: BenchmarkRunFacts): string[] {
     facts.audit.response.run_lifecycle.by_run.map(summary => [summary.run_id, summary]),
   );
   return [
-    '| Run | Parent | Agent | 状态 | RunRegistry 步数 | Telemetry 步数 / 上限 | 终止原因 | 开始 | 更新/终态 | 耗时 | 错误码 |',
-    '| --- | --- | --- | --- | ---: | ---: | --- | --- | --- | ---: | --- |',
+    '| Run | Parent | Agent | 状态 | Execution 步数 | Run 累计步数 | Telemetry 步数 / 上限 | 终止原因 | 开始 | 更新/终态 | 耗时 | 错误码 |',
+    '| --- | --- | --- | --- | ---: | ---: | ---: | --- | --- | --- | ---: | --- |',
     ...facts.audit.response.runs.map(run => {
       const lifecycle = lifecycleByRun.get(run.run_id);
-      return `| ${escapeCell(run.run_id)} | ${escapeCell(run.parent_run_id ?? 'root')} | ${escapeCell(run.agent_id ?? '未上报')} | ${run.status} | ${run.iterations_used ?? '—'} | ${lifecycle ? `${lifecycle.steps_used} / ${lifecycle.max_steps}` : '—'} | ${escapeCell(lifecycle?.terminal_reason ?? '未观测')} | ${new Date(run.started_at).toISOString()} | ${new Date(run.updated_at).toISOString()} | ${formatDuration(run.updated_at - run.started_at)} | ${escapeCell(run.error_code ?? '')} |`;
+      return `| ${escapeCell(run.run_id)} | ${escapeCell(run.parent_run_id ?? 'root')} | ${escapeCell(run.agent_id ?? '未上报')} | ${run.status} | ${run.execution_steps_used ?? '—'} | ${run.run_iterations_used ?? run.iterations_used ?? '—'} | ${lifecycle ? `${lifecycle.steps_used} / ${lifecycle.max_steps}` : '—'} | ${escapeCell(lifecycle?.terminal_reason ?? '未观测')} | ${new Date(run.started_at).toISOString()} | ${new Date(run.updated_at).toISOString()} | ${formatDuration(run.updated_at - run.started_at)} | ${escapeCell(run.error_code ?? '')} |`;
     }),
   ];
 }

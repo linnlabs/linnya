@@ -157,16 +157,48 @@ function readLockfileIntegrities(lockfile: string): ReadonlyMap<string, string> 
   if (!isRecord(parsed) || !isRecord(parsed.packages)) {
     throw new Error('pnpm-lock.yaml 缺少 packages');
   }
+  const importerDependencyNames = new Map<string, Set<string>>();
+  if (isRecord(parsed.importers)) {
+    for (const importer of Object.values(parsed.importers)) {
+      if (!isRecord(importer)) continue;
+      for (const sectionName of ['dependencies', 'devDependencies', 'optionalDependencies']) {
+        const section = importer[sectionName];
+        if (!isRecord(section)) continue;
+        for (const [packageName, dependency] of Object.entries(section)) {
+          if (!isRecord(dependency) || typeof dependency.version !== 'string') continue;
+          const names = importerDependencyNames.get(dependency.version) ?? new Set<string>();
+          names.add(packageName);
+          importerDependencyNames.set(dependency.version, names);
+        }
+      }
+    }
+  }
   const byIdentity = new Map<string, Set<string>>();
+  const addIntegrity = (identity: string, integrity: string): void => {
+    const integrities = byIdentity.get(identity) ?? new Set<string>();
+    integrities.add(integrity);
+    byIdentity.set(identity, integrities);
+  };
   for (const [lockfileKey, packageRecord] of Object.entries(parsed.packages)) {
     if (!isRecord(packageRecord) || !isRecord(packageRecord.resolution)) continue;
     const integrity = packageRecord.resolution.integrity;
     if (typeof integrity !== 'string' || !integrity) continue;
     const peerSuffixIndex = lockfileKey.indexOf('(');
     const identity = peerSuffixIndex === -1 ? lockfileKey : lockfileKey.slice(0, peerSuffixIndex);
-    const integrities = byIdentity.get(identity) ?? new Set<string>();
-    integrities.add(integrity);
-    byIdentity.set(identity, integrities);
+    addIntegrity(identity, integrity);
+
+    // pnpm 会把 URL tarball 按 URL 本身作为 key（例如 xlsx@https://...），而许可证报告
+    // 按包名和 manifest 版本标识已安装包；importer 条目是锁文件中连接这两种 identity 的事实来源。
+    if (lockfileKey.includes('://') && typeof packageRecord.version === 'string') {
+      const tarball = packageRecord.resolution.tarball;
+      const importerNames =
+        (typeof tarball === 'string' && importerDependencyNames.get(tarball)) ??
+        importerDependencyNames.get(lockfileKey) ??
+        [];
+      for (const packageName of importerNames) {
+        addIntegrity(`${packageName}@${packageRecord.version}`, integrity);
+      }
+    }
   }
   const result = new Map<string, string>();
   for (const [identity, integrities] of byIdentity) {

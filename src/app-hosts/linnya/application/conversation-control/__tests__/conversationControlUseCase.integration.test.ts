@@ -209,6 +209,8 @@ function contextCompactionAuditFixture(): ExecutionAuditExport['contextCompactio
 function fixture(initialRuns: ConversationControlRunRecord[] = []) {
   let runs = [...initialRuns];
   let executionProgress: ConversationControlExecutionProgressSnapshot | null = null;
+  let latestExecutionSteps: number | undefined;
+  let latestExecutionStepsError: Error | undefined;
   const startRequests: ConversationNextRequest[] = [];
   const responseRequests: ConversationInteractionResponseRequest[] = [];
   const selectedAgentWrites: string[] = [];
@@ -251,6 +253,10 @@ function fixture(initialRuns: ConversationControlRunRecord[] = []) {
     executionProgress: {
       async read() {
         return executionProgress;
+      },
+      async readLatestExecutionSteps() {
+        if (latestExecutionStepsError) throw latestExecutionStepsError;
+        return latestExecutionSteps;
       },
     },
     models: {
@@ -411,6 +417,12 @@ function fixture(initialRuns: ConversationControlRunRecord[] = []) {
     },
     setExecutionProgress(next: typeof executionProgress) {
       executionProgress = next;
+    },
+    setLatestExecutionSteps(next: number | undefined) {
+      latestExecutionSteps = next;
+    },
+    setLatestExecutionStepsError(next: Error | undefined) {
+      latestExecutionStepsError = next;
     },
     removeFinalAnswer() {
       finalAnswer = null;
@@ -730,7 +742,7 @@ describe('conversation-control use case', () => {
     test.setExecutionProgress({
       savedAt: 120,
       currentNode: 'tool',
-      iterationsUsed: 18,
+      executionStepsUsed: 18,
     });
 
     await expect(test.useCase.status({
@@ -741,7 +753,9 @@ describe('conversation-control use case', () => {
       run: {
         status: 'running',
         current_node: 'tool',
-        iterations_used: 18,
+        execution_steps_used: 18,
+        run_iterations_used: 0,
+        iterations_used: 0,
       },
     });
   });
@@ -760,7 +774,7 @@ describe('conversation-control use case', () => {
     test.setExecutionProgress({
       savedAt: 140,
       currentNode: 'wait_user',
-      iterationsUsed: 19,
+      executionStepsUsed: 19,
     });
 
     await expect(test.useCase.status({
@@ -774,6 +788,47 @@ describe('conversation-control use case', () => {
         iterations_used: 20,
       },
     });
+  });
+
+  it('status 在终态 checkpoint 已清理时仍分别显示最近 execution 与 run 累计步数', async () => {
+    const test = fixture([run('completed', { iterationsUsed: 27 })]);
+    test.setLatestExecutionSteps(6);
+
+    await expect(test.useCase.status({
+      schema_version: 1,
+      command: 'status',
+      conversation_id: 'conversation-1',
+    })).resolves.toMatchObject({
+      run: {
+        status: 'completed',
+        execution_steps_used: 6,
+        run_iterations_used: 27,
+        iterations_used: 27,
+      },
+    });
+  });
+
+  it('终态 execution telemetry 读取失败时仍返回 RunRegistry 状态', async () => {
+    const test = fixture([run('failed', { iterationsUsed: 27 })]);
+    test.setLatestExecutionStepsError(new Error('telemetry unavailable'));
+
+    await expect(test.useCase.status({
+      schema_version: 1,
+      command: 'status',
+      conversation_id: 'conversation-1',
+    })).resolves.toMatchObject({
+      run: {
+        status: 'failed',
+        run_iterations_used: 27,
+        iterations_used: 27,
+      },
+    });
+    const response = await test.useCase.status({
+      schema_version: 1,
+      command: 'status',
+      conversation_id: 'conversation-1',
+    });
+    expect(response.run?.execution_steps_used).toBeUndefined();
   });
 
   it('stop 等待 owner 终态后返回真实 cancelled outcome', async () => {
