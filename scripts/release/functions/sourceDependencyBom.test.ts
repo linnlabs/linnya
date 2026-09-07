@@ -205,4 +205,60 @@ describe('source dependency BOM', () => {
       fs.rmSync(rootDir, { recursive: true, force: true });
     }
   });
+
+  it('把 importer 中的 URL tarball 映射为 package identity 并校验 integrity', () => {
+    const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-source-bom-url-'));
+    try {
+      const xlsxRoot = createInstalledPackage({
+        rootDir,
+        name: 'xlsx',
+        version: '0.20.3',
+        license: 'Apache-2.0',
+        source: 'https://sheetjs.com',
+        licenseText: 'SheetJS Apache license\n',
+      });
+      const tarballUrl = 'https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz';
+      const result = createSourceDependencyBom({
+        rootDir,
+        projectManifest: { name: 'linnya', version: '1.0.0' },
+        lockfile: `importers:
+  .:
+    dependencies:
+      xlsx:
+        specifier: ${tarballUrl}
+        version: ${tarballUrl}
+
+packages:
+  xlsx@${tarballUrl}:
+    resolution:
+      integrity: sha512-xlsx
+      tarball: ${tarballUrl}
+    version: 0.20.3
+`,
+        licenseReport: {
+          'Apache-2.0': [{ name: 'xlsx', versions: ['0.20.3'], paths: [xlsxRoot] }],
+        },
+        platform: 'darwin',
+        architecture: 'arm64',
+        licenseSelections: [],
+        sourceOverrides: [],
+        supplementalEvidenceFiles: [],
+        supplementalNotices: [],
+        unknownLicenseEvidence: [],
+        reviewedEvidenceFiles: [],
+        reviewedEvidenceRootDir: rootDir,
+      });
+
+      expect(result.problems).toEqual([]);
+      expect(result.bom?.packages).toMatchObject([
+        {
+          name: 'xlsx',
+          version: '0.20.3',
+          integrity: 'sha512-xlsx',
+        },
+      ]);
+    } finally {
+      fs.rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
 });

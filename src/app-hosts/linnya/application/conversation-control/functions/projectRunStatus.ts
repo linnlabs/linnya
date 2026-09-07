@@ -38,7 +38,10 @@ export function projectRunStatus(
     agent_id: run.agentSpecId,
     status: run.status,
     current_node: run.currentNode,
-    iterations_used: run.iterationsUsed,
+    execution_steps_used: run.executionStepsUsed,
+    run_iterations_used: run.runIterationsUsed ?? run.iterationsUsed,
+    // 旧 CLI/Renderer 合同仍读取 iterations_used；其语义现在固定为 run 累计步数。
+    iterations_used: run.runIterationsUsed ?? run.iterationsUsed,
     started_at: run.startedAt,
     updated_at: run.updatedAt,
     terminal_at: terminal ? run.updatedAt : undefined,

@@ -381,9 +381,9 @@ describe('file Benchmark report writer', () => {
     const report = await readFile(location.reportFile, 'utf8');
 
     expect(report).toContain('stop 原因：Benchmark timeout');
-    expect(report).toContain('| 0 | 2026-08-24T10:00:00.110Z | awaiting_user | wait_user |');
-    expect(report).toContain('| 1 | 2026-08-24T10:00:00.120Z | running | llm |');
-    expect(report).toContain('| child-1 | run-1 | research_agent | completed | 40 | 40 / 60 | completed |');
+    expect(report).toContain('| 0 | 2026-08-24T10:00:00.110Z | awaiting_user | wait_user | — | — |  |');
+    expect(report).toContain('| 1 | 2026-08-24T10:00:00.120Z | running | llm | — | — |  |');
+    expect(report).toContain('| child-1 | run-1 | research_agent | completed | — | 40 | 40 / 60 | completed |');
     expect(report).toContain('## 7. 自动上下文压缩');
     expect(report).toContain('| child-1 | run-1 | 1 / 12 | 1 | 0 / 1 / 0 / 0 |');
     expect(report).toContain('| 1 / 12 | 是 | 80%→50% | 100 / 120 | 60 / 40.00% |');

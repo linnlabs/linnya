@@ -22,4 +22,12 @@
 
 handle 不属于当前 conversation、run 已结束、对话正在删除或平台资源已经失效时，返回稳定拒绝结果。工具层不把内部异常、PID 或 native 错误对象暴露给模型。
 
+模型把 `action` 写成字符串，或把 `wait` / `poll` 缺少必需字段时，统一返回
+`process_protocol_violation`，并指出应复制的 `process_handle` / `next_cursor` 字段；这类参数协议错误不会调用 process runtime，也不会自动猜测 handle。
+
+这类错误在 `ProcessTool.validateArguments` 的 owner admission 阶段被拒绝，因而不会发布
+`tool_process(start)`。ToolRegistry 同时将它归类为 `errorKind: protocol`、
+`errorCode: process_protocol_violation`；进程已经启动后的 `unknown_handle`、`stdin_closed`
+等仍按 process runtime 拒绝结果处理，不能混入协议错误统计。
+
 实现入口：[ProcessTool.ts](./ProcessTool.ts)。生命周期测试位于 Commands process-control、App Host process-owner 和平台 runtime 的 integration 测试。

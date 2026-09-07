@@ -101,6 +101,24 @@ describe('classifyAiSdkFailure', () => {
     });
   });
 
+  it('把带 HTTP 400 的上下文过大响应体投影为 request_too_large', () => {
+    const error = new APICallError({
+      message: 'provider rejected request',
+      url: 'https://fixture.invalid/v1/chat/completions',
+      requestBodyValues: { messages: ['secret prompt'] },
+      statusCode: 400,
+      responseHeaders: {},
+      responseBody: 'context length exceeded: sensitive response detail',
+      isRetryable: false,
+    });
+
+    expect(classifyAiSdkFailure(error, undefined)).toEqual({
+      kind: 'provider',
+      code: 'provider_request_too_large',
+      retryable: false,
+    });
+  });
+
   it('把流式结构化 Provider 错误识别为可重试上游故障且不传播 message', () => {
     const failure = classifyAiSdkFailure(
       {
@@ -134,6 +152,60 @@ describe('classifyAiSdkFailure', () => {
       kind: 'provider',
       code: 'provider_stream_rate_limited',
       retryable: true,
+    });
+  });
+
+  it('解析 Ollama 原生 NDJSON error chunk，并把原始正文限制在当前分类调用内', () => {
+    const failure = classifyAiSdkFailure(
+      {
+        error: 'context length exceeded: sensitive prompt details',
+      },
+      undefined,
+      'provider_stream',
+    );
+
+    expect(failure).toEqual({
+      kind: 'provider',
+      code: 'provider_request_too_large',
+      retryable: false,
+    });
+    expect(JSON.stringify(failure)).not.toContain('sensitive prompt details');
+  });
+
+  it('识别 ai-sdk-ollama 的 OllamaError 包装并保留未知流错误的可重试语义', () => {
+    const error = new Error('upstream connection closed: sensitive gateway detail');
+    error.name = 'OllamaError';
+
+    expect(classifyAiSdkFailure(error, undefined, 'provider_stream')).toEqual({
+      kind: 'transport',
+      code: 'provider_stream_error',
+      retryable: true,
+    });
+  });
+
+  it('识别 ollama-js 将 NDJSON error chunk 转成普通 Error 后的上下文过大类别', () => {
+    expect(classifyAiSdkFailure(
+      new Error('context length exceeded: sensitive prompt details'),
+      undefined,
+      'provider_stream',
+    )).toEqual({
+      kind: 'provider',
+      code: 'provider_request_too_large',
+      retryable: false,
+    });
+  });
+
+  it('从 OllamaError 的原生 status_code cause 投影确定性 HTTP 失败', () => {
+    const responseError = new Error('model not found: sensitive model detail');
+    responseError.name = 'ResponseError';
+    Object.defineProperty(responseError, 'status_code', { value: 404 });
+    const error = new Error(responseError.message, { cause: responseError });
+    error.name = 'OllamaError';
+
+    expect(classifyAiSdkFailure(error, undefined, 'provider_stream')).toEqual({
+      kind: 'provider',
+      code: 'provider_http_404',
+      retryable: false,
     });
   });
 

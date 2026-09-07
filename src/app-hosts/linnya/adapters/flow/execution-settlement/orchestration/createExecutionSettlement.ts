@@ -30,9 +30,16 @@ export function createExecutionSettlement(
   let persistenceDrainFailed = false;
   let checkpointCleanupFailed = false;
 
+  const resolveRunIterationsUsed = async (stepCount: number): Promise<number> => {
+    const previous = await ports.readRunIterationsUsed?.() ?? 0;
+    return previous + stepCount;
+  };
+
   const publishMetricsOnce = (
     outcome: RunExecutionOutcome,
     contextUsage?: ContextUsageSnapshot,
+    executionStepsUsed?: number,
+    runIterationsUsed?: number,
   ): void => {
     if (executionMetricsPublished) return;
     ports.publishRuntimeEvent(createRunExecutionMetricsEvent(
@@ -45,6 +52,10 @@ export function createExecutionSettlement(
         duration_ms: ports.now() - scope.executionStartedAtMs,
         ...(scope.userMessageId ? { user_message_id: scope.userMessageId } : {}),
         ...(contextUsage ? { context_usage: contextUsage } : {}),
+        metadata: {
+          ...(executionStepsUsed === undefined ? {} : { execution_steps_used: executionStepsUsed }),
+          ...(runIterationsUsed === undefined ? {} : { run_iterations_used: runIterationsUsed }),
+        },
       },
     ), 'ExecutionSettlement.metrics');
     executionMetricsPublished = true;
@@ -77,16 +88,19 @@ export function createExecutionSettlement(
       throw new Error('wait_user checkpoint requires a published interaction event');
     }
 
+    const runIterationsUsed = await resolveRunIterationsUsed(input.stepCount);
     publishMetricsOnce(
       awaitingUser ? 'awaiting_user' : 'completed',
       input.contextUsage,
+      input.stepCount,
+      runIterationsUsed,
     );
     await drainOrThrow();
 
     if (awaitingUser && waitUserEvent) {
       await ports.runHandle.markAwaitingUser({
         currentNode: input.checkpointNodeId,
-        iterationsUsed: input.stepCount,
+        iterationsUsed: runIterationsUsed,
         eventId: waitUserEvent.id,
         reason: readWaitUserReason(waitUserEvent),
         interaction: {
@@ -103,7 +117,7 @@ export function createExecutionSettlement(
     await clearCheckpointOrThrow();
     await ports.runHandle.markCompleted({
       currentNode: input.checkpointNodeId,
-      iterationsUsed: input.stepCount,
+      iterationsUsed: runIterationsUsed,
     });
     ports.releaseRunResources(ports.runHandle.runId);
   };
@@ -111,7 +125,8 @@ export function createExecutionSettlement(
   const settleFailedExecution = async (
     input: FailedExecutionSettlement,
   ): Promise<void> => {
-    publishMetricsOnce(input.kind, input.contextUsage);
+    const runIterationsUsed = await resolveRunIterationsUsed(input.stepCount);
+    publishMetricsOnce(input.kind, input.contextUsage, input.stepCount, runIterationsUsed);
 
     if (!persistenceDrainFailed) {
       try {
@@ -126,13 +141,13 @@ export function createExecutionSettlement(
       await ports.runHandle.cancel({
         reason: typeof input.abortReason === 'string' ? input.abortReason : 'aborted',
         forceCleanup: false,
-      });
+      }, { iterationsUsed: runIterationsUsed });
     } else {
       await ports.runHandle.markFailed({
         errorCode: input.failureFact.error_code,
         message: input.failureFact.error,
         recoverable: input.failureFact.retryable,
-      });
+      }, { iterationsUsed: runIterationsUsed });
     }
 
     if (!checkpointCleanupFailed) {

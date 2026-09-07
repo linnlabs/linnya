@@ -191,6 +191,67 @@ describe('ProcessTool', () => {
     expect(called).toBe(false);
   });
 
+  it('把模型把 action 写成字符串的协议错误收敛为简洁错误', async () => {
+    let called = false;
+    const runtime: ShellToolRuntimePort = {
+      async executeShell() {
+        throw new Error('unexpected shell call');
+      },
+      async executeProcess() {
+        called = true;
+        throw new Error('unexpected process call');
+      },
+    };
+
+    const output = await new ProcessTool().run({
+      process_handle: PROCESS_HANDLE,
+      action: 'wait',
+    }, {
+      conversationId: 'conv_process_protocol',
+      runId: RunIdSchema.parse('run_process_protocol'),
+      parentToolCallId: ToolCallIdSchema.parse('call_process_protocol'),
+      commandRunPermission: createPermissionContext(),
+      shellToolRuntime: runtime,
+    });
+
+    const structured = ProcessToolStructuredResultSchema.parse(JSON.parse(output));
+    expect(structured.data).toMatchObject({
+      status: 'rejected',
+      code: 'process_protocol_violation',
+    });
+    expect(structured.observation).toContain('action 必须是 poll、wait、cancel、write、submit、eof 或 resize');
+    expect(called).toBe(false);
+  });
+
+  it('把 wait 缺少 cursor/timeout 的协议错误明确告诉模型', async () => {
+    const runtime: ShellToolRuntimePort = {
+      async executeShell() {
+        throw new Error('unexpected shell call');
+      },
+      async executeProcess() {
+        throw new Error('unexpected process call');
+      },
+    };
+
+    const output = await new ProcessTool().run({
+      process_handle: PROCESS_HANDLE,
+      action: { type: 'wait' },
+    }, {
+      conversationId: 'conv_process_wait_protocol',
+      runId: RunIdSchema.parse('run_process_wait_protocol'),
+      parentToolCallId: ToolCallIdSchema.parse('call_process_wait_protocol'),
+      commandRunPermission: createPermissionContext(),
+      shellToolRuntime: runtime,
+    });
+
+    const structured = ProcessToolStructuredResultSchema.parse(JSON.parse(output));
+    expect(structured.data).toMatchObject({
+      status: 'rejected',
+      code: 'process_protocol_violation',
+    });
+    expect(structured.observation).toContain('action.wait 必须包含 cursor 和 wait_timeout_ms');
+  });
+
   it('缺少当前 run 权限时明确失败', async () => {
     const runtime: ShellToolRuntimePort = {
       async executeShell() {

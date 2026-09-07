@@ -25,6 +25,8 @@ export interface ExecutionSettlementPorts {
   readonly publishRuntimeEvent: (event: RuntimeEvent, source: string) => RoutedRuntimeEvent;
   readonly drainPersistence: () => Promise<void>;
   readonly runHandle: ExecutionSettlementRunHandle;
+  /** 读取同一逻辑 run 在本 execution 前已经累计的步数。 */
+  readonly readRunIterationsUsed?: () => Promise<number | undefined>;
   readonly clearCheckpoint: (runId: string) => Promise<void>;
   readonly releaseRunResources: (runId: string) => void;
   readonly now: () => number;
@@ -40,11 +42,13 @@ export interface SuccessfulExecutionSettlement {
 export type FailedExecutionSettlement =
   | {
       readonly kind: 'cancelled';
+      readonly stepCount: number;
       readonly abortReason?: unknown;
       readonly contextUsage?: ContextUsageSnapshot;
     }
   | {
       readonly kind: 'failed';
+      readonly stepCount: number;
       readonly failureFact: graph.RuntimeFailureFact;
       readonly contextUsage?: ContextUsageSnapshot;
     };

@@ -116,7 +116,7 @@ Core 和具体 Provider packages。
 - production → `@linnlabs/linnkit-provider-ai-sdk/conformance`。
 
 `@linnlabs/linnkit` 是显式 peer dependency，本 package 只使用公开 `/ports` 和
-`/contracts`。当前 peer 最低为 `0.32.1`，开发与 Host 装配使用同一精确版本，以消费已修复的正式声明产物。
+`/contracts`。当前 peer 最低为 `0.32.2`，开发与 Host 装配使用同一精确版本，以消费已修复的正式声明产物。
 `ai`、`@ai-sdk/provider`、全部 language Provider
 package、OpenRouter 官方 package 和经过审核的 `ai-sdk-ollama` community package 是本
 package 的精确直接依赖；根应用不再替它拥有这些版本。Embedding、Image
@@ -142,7 +142,7 @@ Host 可以注入两类扩展，但不得借此污染通用 adapter：
 
 - `provider_failure_classifier`：把 Host 管理服务的安全结构化错误映射到产品 failure
   code；
-- `diagnostic_sink`：消费 adapter 已白名单化的阶段、shape、code 和 retryable 信息，并决定日志级别与文案。
+- `diagnostic_sink`：消费 adapter 已白名单化的 attempt 请求形状、负载规模（含图片所在消息角色）、流终态、阶段、shape、code 和 retryable 信息，并决定日志级别与文案。请求 fingerprint 只由安全的请求形状摘要计算，不包含 prompt、工具正文或图片字节。
 
 扩展点不能读取或返回 prompt、response body、API key、headers、base
 URL、路径、图片 bytes 或原始错误正文。

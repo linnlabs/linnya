@@ -91,8 +91,10 @@ class ArrayNormalizationTestTool extends BaseTool {
     properties: {
       pages: {
         type: 'array',
+        description: 'page list',
         items: {
           type: 'object',
+          description: 'page item',
           additionalProperties: false,
           properties: {
             title: { type: 'string', description: 'title' },
@@ -358,6 +360,24 @@ describe('ToolRegistry.executeTool', () => {
       errorKind: 'protocol',
       error: 'questions[0].maxSelect: field is not allowed for this question type',
     });
+  });
+
+  it('process owner admission 将动作协议错误标记为稳定错误码', async () => {
+    const result = await toolRegistry.executeTool(
+      'process',
+      {
+        process_handle: 'command_process_123e4567-e89b-42d3-a456-426614174000',
+        action: { type: 'wait' },
+      },
+      {},
+    );
+
+    expect(result).toMatchObject({
+      success: false,
+      errorKind: 'protocol',
+      errorCode: 'process_protocol_violation',
+    });
+    expect(result.error).toContain('action.wait 必须包含 cursor 和 wait_timeout_ms');
   });
 
   it('对缺失 required 参数的工具调用应直接返回 success=false，而不是伪装为成功 JSON', async () => {

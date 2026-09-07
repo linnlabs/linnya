@@ -10,7 +10,7 @@
 | --- | --- |
 | `ConversationControlFlowPort` | 接纳新运行、提交 HITL 响应、执行终止与完成屏障 |
 | `ConversationControlRunPort` | 查询 canonical run registry |
-| `ConversationControlExecutionProgressPort` | 读取 Graph 已持久化的当前节点与累计步数 |
+| `ConversationControlExecutionProgressPort` | 读取 Graph 已持久化的当前节点与当前 execution 步数；终态 checkpoint 清理后可从生命周期 telemetry 读取最近一次 execution 步数 |
 | `ConversationControlModelCatalogPort` | 查询安全模型投影，并按统一运行可用性规则校验显式 Chat/图片模型 |
 | `ConversationControlHistoryPort` | 会话列表、消息窗口、指定 run 最终回答、会话 Agent 选择 |
 | `ConversationControlWorkspaceToolCatalogPort` | 只读取五个获准 Workspace 工具的正式描述与参数 schema |
@@ -29,7 +29,7 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 - CLI use case 只投影响应事实，不拥有 Agent 提示语。`approved` 的模型可见语义由 Flow Host 在创建 committed `tool_output` 时统一补足，因此 Renderer 与 CLI 必须得到相同的恢复行为。
 - `stop` 是唯一主动中断动作。它调用 Flow 的取消完成屏障，并重新读取 registry 验证 terminal settlement；不公开主动暂停。
 - 历史 `paused` 状态不属于当前产品合同，遇到时明确返回 `unsupported_runtime_state`，不能伪装成 `awaiting_user`。
-- `status` 以 RunRegistry 作为生命周期 owner；仅在 `running` 时，用不早于本次 activation 的 Graph 持久执行快照补充当前节点和累计步数，不计算虚构百分比。`awaiting_user` 时仍从 durable message window 读取 pending interaction，恢复前的旧 checkpoint 不能覆盖新 execution。
+- `status` 以 RunRegistry 作为生命周期 owner；`run_iterations_used`（以及兼容字段 `iterations_used`）表示同一逻辑 run 跨 execution 的累计步数。仅在 `running` 时，用不早于本次 activation 的 Graph 持久执行快照补充 `execution_steps_used`，不计算虚构百分比。`awaiting_user` 时仍从 durable message window 读取 pending interaction，恢复前的旧 checkpoint 不能覆盖新 execution。
 - `messages` 使用会话级 read-model 游标，不支持 run 过滤，以保持 `has_more` 和游标语义一致。
 - `result --run` 先选择 exact terminal root run，再读取归属于该 run 的 durable `final_answer`。完成终态与 read-model 投影可能短暂不同步，此时显式返回 `projection_preparing`。
 - `audit` 只委托通用执行审计摘要 use case；RunRegistry 是生命周期 owner，EventStore

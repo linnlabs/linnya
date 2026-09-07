@@ -261,6 +261,7 @@ import type { StructuredToolResult } from 'src/tools/types';
   - 这属于**工具调用协议错误**，不是普通业务结果。
   - 必须通过 `parameters.required` 声明，让执行层在 `run` 前统一拦截。
   - 当前 `BaseTool.validateArguments` 只检查顶层 required 与 additional properties。数组元素、唯一性、跨字段计数等深层合同必须由工具使用正式 schema parser 校验；需要让 ToolRegistry 把它归类为 protocol error 时，应覆写 `validateArguments`，`run` 内仍保留同源解析以支持直接调用。
+  - concrete tool 如果需要稳定区分 owner admission 的业务协议码，可声明只读 `argumentValidationErrorCode`；ToolRegistry 只把它投影到 `ToolExecutionResult.errorCode`，不会从自然语言错误文本反推。Linnkit 当前 `ToolRuntimeDefinition.validateArguments` 仍只消费 `success/error`，因此 ToolNode 的准入错误码是否进入 telemetry 取决于上游合同版本。
   - 覆写后的 `validateArguments` 会通过 `ToolRuntimeDefinition` 暴露给 Linnkit ToolNode，并在 `tool_process(start)` 之前执行。失败调用不算“已启动”，只产生配对 `tool_output(error)`；Renderer 不得通过 loading 卡片补造失败。
   - 直接调用 `run()` 的测试不能证明这一时序。涉及跨字段或判别联合时，必须另有真实 `ToolNode + ToolRuntimeDefinition.validateArguments` 测试，证明错误参数不会产生 start、不会进入 provider 或业务 mutation。
   - 不要在 `run` 里把这类错误包装成 `{"data":{"error":"Missing required parameter: ..." }}` 再返回成功字符串。

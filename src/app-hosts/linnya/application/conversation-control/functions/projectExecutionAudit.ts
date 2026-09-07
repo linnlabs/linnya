@@ -99,7 +99,9 @@ export function projectExecutionAuditResponse(input: {
       status: run.status,
       started_at: run.startedAt,
       updated_at: run.updatedAt,
-      iterations_used: run.iterationsUsed,
+      execution_steps_used: run.executionStepsUsed,
+      run_iterations_used: run.runIterationsUsed ?? run.iterationsUsed,
+      iterations_used: run.runIterationsUsed ?? run.iterationsUsed,
       error_code: run.errorCode,
     })),
     llm: {

@@ -64,6 +64,9 @@ interface SettlementHarness {
     releaseResources: number;
   };
   readonly awaitingInputs: unknown[];
+  readonly completedInputs: unknown[];
+  readonly failedInputs: unknown[];
+  readonly cancelledInputs: unknown[];
 }
 
 function createHarness(input?: {
@@ -73,6 +76,9 @@ function createHarness(input?: {
   const published: RuntimeEvent[] = [];
   const order: string[] = [];
   const awaitingInputs: unknown[] = [];
+  const completedInputs: unknown[] = [];
+  const failedInputs: unknown[] = [];
+  const cancelledInputs: unknown[] = [];
   const calls = {
     drain: 0,
     awaiting: 0,
@@ -89,16 +95,19 @@ function createHarness(input?: {
       awaitingInputs.push(params);
       order.push('mark-awaiting');
     },
-    markCompleted: async () => {
+    markCompleted: async params => {
       calls.completed += 1;
+      completedInputs.push(params);
       order.push('mark-completed');
     },
-    markFailed: async () => {
+    markFailed: async (_error, params) => {
       calls.failed += 1;
+      failedInputs.push(params);
       order.push('mark-failed');
     },
-    cancel: async () => {
+    cancel: async (_opts, patch) => {
       calls.cancelled += 1;
+      cancelledInputs.push(patch);
       order.push('cancel');
     },
   };
@@ -145,6 +154,9 @@ function createHarness(input?: {
     order,
     calls,
     awaitingInputs,
+    completedInputs,
+    failedInputs,
+    cancelledInputs,
   };
 }
 
@@ -205,7 +217,52 @@ describe('execution settlement orchestration', () => {
       duration_ms: 120,
       user_message_id: 'user-message-1',
       context_usage: contextUsage,
+      metadata: {
+        execution_steps_used: 4,
+        run_iterations_used: 4,
+      },
     });
+    expect(harness.completedInputs).toEqual([
+      { currentNode: 'answer', iterationsUsed: 4 },
+    ]);
+  });
+
+  it('resume execution 将当前步数累加到同一逻辑 run 的 iterationsUsed', async () => {
+    const harness = createHarness();
+    const portsWithPrevious = {
+      readRunIterationsUsed: async () => 6,
+    } satisfies Pick<ExecutionSettlementPorts, 'readRunIterationsUsed'>;
+    const orchestration = createExecutionSettlement(
+      {
+        conversationId: 'conversation-1',
+        turnId: 'turn-1',
+        executionId: 'execution-resume',
+        executionStartedAtMs: 1000,
+      },
+      {
+        publishRuntimeEvent: event => routeRuntimeEvent(event, {
+          run_id: RunIdSchema.parse('run-1'),
+          lane: 'foreground',
+          visibility: 'conversation',
+        }),
+        drainPersistence: async () => undefined,
+        runHandle: {
+          runId: RunIdSchema.parse('run-1'),
+          markAwaitingUser: async () => undefined,
+          markCompleted: async params => {
+            expect(params).toBeDefined();
+            expect(params?.iterationsUsed).toBe(10);
+          },
+          markFailed: async () => undefined,
+          cancel: async () => undefined,
+        },
+        ...portsWithPrevious,
+        clearCheckpoint: async () => undefined,
+        releaseRunResources: () => undefined,
+        now: () => 1120,
+      },
+    );
+    await orchestration.settleSuccessfulExecution({ checkpointNodeId: 'answer', stepCount: 4 });
   });
 
   it('wait-user 在 durable drain 后落 awaiting，并保留 checkpoint 与 run 资源供 resume', async () => {
@@ -240,6 +297,7 @@ describe('execution settlement orchestration', () => {
     expect(harness.awaitingInputs).toEqual([
       expect.objectContaining({
         currentNode: 'wait_user',
+        iterationsUsed: 2,
         eventId: 'wait-user-1',
         reason: '请确认内容',
         interaction: {
@@ -283,6 +341,7 @@ describe('execution settlement orchestration', () => {
     const failureFact = createPublishedFailureFact(persistenceError);
     await harness.orchestration.settleFailedExecution({
       kind: 'failed',
+      stepCount: 4,
       failureFact,
     });
 
@@ -293,6 +352,7 @@ describe('execution settlement orchestration', () => {
     });
     expect(harness.calls.drain).toBe(1);
     expect(harness.calls.failed).toBe(1);
+    expect(harness.failedInputs).toEqual([{ iterationsUsed: 4 }]);
     expect(harness.calls.completed).toBe(0);
     expect(harness.calls.clearCheckpoint).toBe(1);
     expect(harness.calls.releaseResources).toBe(1);
@@ -312,6 +372,7 @@ describe('execution settlement orchestration', () => {
     const failureFact = createPublishedFailureFact(cleanupError);
     await harness.orchestration.settleFailedExecution({
       kind: 'failed',
+      stepCount: 4,
       failureFact,
     });
 
@@ -329,7 +390,113 @@ describe('execution settlement orchestration', () => {
     });
     expect(harness.calls.completed).toBe(0);
     expect(harness.calls.failed).toBe(1);
+    expect(harness.failedInputs).toEqual([{ iterationsUsed: 4 }]);
     expect(harness.calls.clearCheckpoint).toBe(1);
+  });
+
+  it('failed execution 将当前步数与 run 累计步数分别写入 metrics 和 failed patch', async () => {
+    const harness = createHarness();
+    const failureFact = createPublishedFailureFact(new Error('provider failed'));
+    const orchestration = createExecutionSettlement(
+      {
+        conversationId: 'conversation-1',
+        turnId: 'turn-1',
+        executionId: 'execution-failed',
+        executionStartedAtMs: 1000,
+      },
+      {
+        publishRuntimeEvent: (event, source) => {
+          harness.published.push(event);
+          harness.order.push(`publish:${event.type}`);
+          return routeRuntimeEvent(event, {
+            run_id: RunIdSchema.parse('run-1'),
+            lane: 'foreground',
+            visibility: 'conversation',
+          });
+        },
+        drainPersistence: async () => undefined,
+        runHandle: {
+          runId: RunIdSchema.parse('run-1'),
+          markAwaitingUser: async () => undefined,
+          markCompleted: async () => undefined,
+          markFailed: async (_error, patch) => {
+            expect(patch?.iterationsUsed).toBe(8);
+          },
+          cancel: async () => undefined,
+        },
+        readRunIterationsUsed: async () => 5,
+        clearCheckpoint: async () => undefined,
+        releaseRunResources: () => undefined,
+        now: () => 1120,
+      },
+    );
+
+    await orchestration.settleFailedExecution({
+      kind: 'failed',
+      stepCount: 3,
+      failureFact,
+    });
+
+    expect(harness.published[0]).toMatchObject({
+      type: 'run_execution_metrics',
+      outcome: 'failed',
+      metadata: {
+        execution_steps_used: 3,
+        run_iterations_used: 8,
+      },
+    });
+  });
+
+  it('cancelled execution 使用同一累计口径，并保留取消原因', async () => {
+    const harness = createHarness();
+    const orchestration = createExecutionSettlement(
+      {
+        conversationId: 'conversation-1',
+        turnId: 'turn-1',
+        executionId: 'execution-cancelled',
+        executionStartedAtMs: 1000,
+      },
+      {
+        publishRuntimeEvent: (event, source) => {
+          harness.published.push(event);
+          harness.order.push(`publish:${event.type}`);
+          return routeRuntimeEvent(event, {
+            run_id: RunIdSchema.parse('run-1'),
+            lane: 'foreground',
+            visibility: 'conversation',
+          });
+        },
+        drainPersistence: async () => undefined,
+        runHandle: {
+          runId: RunIdSchema.parse('run-1'),
+          markAwaitingUser: async () => undefined,
+          markCompleted: async () => undefined,
+          markFailed: async () => undefined,
+          cancel: async (_opts, patch) => {
+            expect(patch?.iterationsUsed).toBe(9);
+          },
+        },
+        readRunIterationsUsed: async () => 7,
+        clearCheckpoint: async () => undefined,
+        releaseRunResources: () => undefined,
+        now: () => 1120,
+      },
+    );
+
+    await orchestration.settleFailedExecution({
+      kind: 'cancelled',
+      stepCount: 2,
+      abortReason: 'user requested stop',
+    });
+
+    expect(harness.published[0]).toMatchObject({
+      type: 'run_execution_metrics',
+      outcome: 'cancelled',
+      metadata: {
+        execution_steps_used: 2,
+        run_iterations_used: 9,
+      },
+    });
   });
 
   it('run 失败与 execution metrics 通过同一 publisher 获得同一 run 路由身份', async () => {
@@ -386,7 +553,7 @@ describe('execution settlement orchestration', () => {
       ),
     }, (event, source) => publisher.publish(event, source));
 
-    await orchestration.settleFailedExecution({ kind: 'failed', failureFact });
+    await orchestration.settleFailedExecution({ kind: 'failed', stepCount: 0, failureFact });
 
     expect(published.map(envelope => envelope.payload)).toEqual([
       expect.objectContaining({

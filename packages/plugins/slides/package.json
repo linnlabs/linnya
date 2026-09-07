@@ -84,7 +84,7 @@
     "vue": ">=3.5.0 <4"
   },
   "devDependencies": {
-    "@linnlabs/linnkit": "0.32.1",
+    "@linnlabs/linnkit": "0.32.2",
     "@linnya/plugin-host-contract": "workspace:*",
     "@linnya/renderer-ui": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",

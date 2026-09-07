@@ -32,6 +32,8 @@ Provider / Agent mapper 只创建 draft；root 与 child 都由各自 lifecycle 
 
 `execution_seq` 表示一次 transport/execution 内所有 SSE 事件的全局顺序；`final_answer_chunk.seq` 表示单个答案内部从 `0` 开始的连续分块序号。realtime adapter 不得用前者覆盖后者。MessageProjection 只按答案内部 `seq` 拼接正文。
 
+答案 chunk 的唯一分配点属于外部 Linnkit `LlmNode` streaming adapter：只有真正发布的非空 `answer_delta` 才能分配答案序号。thought、tool、空 delta、过滤事件和 retry 不得推进该计数器；SSE、persistence 与 Renderer 只能透传或校验，不能补号、重编号或复用旧 execution 的 allocator。
+
 ### INV-06 · 释放语义分层
 
 `transport_end` 只释放对应 execution 的 thought / turn / answer 在途状态；terminal `run_status` 才释放整个 run 及其 tool 索引。侧栏切换不是 Runtime 生命周期事件，不触发任何一层释放。pre-admission transport 没有 `run_id`，只结束网络请求。HTTP、network、protocol 或 projection failure 必须先完成 reader teardown，再按精确 `conversation_id + run_id` 越过 Host execution completion 屏障并读取 durable run；不得由 transport 结果伪造 RuntimeEvent 或 run 终态。
@@ -201,7 +203,7 @@ child fact 以 child/parent-trace 身份进入 child EventBus/EventStore，不�
 
 ### INV-27 · Subrun lifecycle 汇总只属于 RunSupervisor
 
-SQLite `runs` / RunRegistryStore 保存 `parentRunId + status + currentNode + iterationsUsed + errorIfAny`，是按父级查询 child 生命周期的唯一 owner。Telemetry / CostCollector / LLM Audit 只做观测。禁止从 trace 数量、请求次数或 audit bucket 重建第二套 lifecycle。
+SQLite `runs` / RunRegistryStore 保存 `parentRunId + status + currentNode + iterationsUsed（逻辑 run 累计步数）+ errorIfAny`，是按父级查询 child 生命周期的唯一 owner。单次 execution 步数来自 execution metrics / checkpoint 事实；Telemetry / CostCollector / LLM Audit 只做观测。禁止从 trace 数量、请求次数或 audit bucket 重建第二套 lifecycle。
 
 ### INV-28 · Subrun lazy 状态不是运行状态
 

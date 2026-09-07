@@ -73,6 +73,10 @@ export interface ConversationControlRunRecord {
   readonly currentNode?: string;
   readonly startedAt: number;
   readonly updatedAt: number;
+  /** 当前 execution 的 Graph 步数；运行中由 checkpoint 补充，终态由审计生命周期观测补充。 */
+  readonly executionStepsUsed?: number;
+  /** 同一逻辑 run 跨 execution 的累计步数。 */
+  readonly runIterationsUsed?: number;
   readonly iterationsUsed?: number;
   readonly errorIfAny?: {
     readonly errorCode: string;
@@ -89,11 +93,13 @@ export interface ConversationControlRunPort {
 export interface ConversationControlExecutionProgressSnapshot {
   readonly savedAt: number;
   readonly currentNode?: string;
-  readonly iterationsUsed?: number;
+  readonly executionStepsUsed?: number;
 }
 
 export interface ConversationControlExecutionProgressPort {
   read(runId: string): Promise<ConversationControlExecutionProgressSnapshot | null>;
+  /** 终态 checkpoint 已清理时，从保留的 execution telemetry 读取最近一次执行步数。 */
+  readLatestExecutionSteps?(conversationId: string, runId: string): Promise<number | undefined>;
 }
 
 export interface ConversationControlModelCatalogPort {

@@ -195,10 +195,23 @@ async function projectStatusResponse(
     };
   }
 
-  const projectedRun = projectActiveExecutionProgress(
+  let projectedRun = projectActiveExecutionProgress(
     run,
     run.status === 'running' ? await ports.executionProgress.read(run.runId) : null,
   );
+  if (run.status !== 'running') {
+    try {
+      const executionStepsUsed = await ports.executionProgress.readLatestExecutionSteps?.(
+        request.conversation_id,
+        run.runId,
+      );
+      if (executionStepsUsed !== undefined) {
+        projectedRun = { ...projectedRun, executionStepsUsed };
+      }
+    } catch {
+      // Telemetry 只补充终态 execution 步数；读取失败不能影响 RunRegistry 的权威状态。
+    }
+  }
 
   const window = projectedRun.status === 'awaiting_user'
     ? await readInteractionWindow(ports, request.conversation_id)

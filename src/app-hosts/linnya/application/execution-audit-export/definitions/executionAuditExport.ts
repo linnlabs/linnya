@@ -12,6 +12,8 @@ export interface ExecutionAuditRunRecord {
     | 'cancelled';
   readonly startedAt: number;
   readonly updatedAt: number;
+  readonly executionStepsUsed?: number;
+  readonly runIterationsUsed?: number;
   readonly iterationsUsed?: number;
   readonly errorCode?: string;
 }

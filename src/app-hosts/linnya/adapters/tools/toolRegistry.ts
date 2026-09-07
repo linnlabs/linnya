@@ -65,6 +65,12 @@ function isDynamicToolMetadataProvider(
   );
 }
 
+function readToolArgumentValidationErrorCode(tool: BaseTool): string | undefined {
+  if (!('argumentValidationErrorCode' in tool)) return undefined;
+  const code = Reflect.get(tool, 'argumentValidationErrorCode');
+  return typeof code === 'string' && code.trim().length > 0 ? code.trim() : undefined;
+}
+
 /**
  * Linnya 默认 ToolRegistry。
  *
@@ -265,10 +271,12 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
 
       const validation = this.validateToolCall(toolName, normalizedArgs);
       if (!validation.success) {
+        const errorCode = readToolArgumentValidationErrorCode(tool);
         return {
           success: false,
           error: validation.error ?? `工具 '${toolName}' 参数校验失败`,
           errorKind: 'protocol',
+          ...(errorCode === undefined ? {} : { errorCode }),
           durationMs: Date.now() - startTime,
         };
       }
