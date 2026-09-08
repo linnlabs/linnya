@@ -8,9 +8,9 @@ import {
 } from 'src/domains/model-inference';
 import {
   beginProviderOutboundAttempt,
-  defaultProviderOutboundAudit,
-  type ProviderOutboundAuditPort,
-} from 'src/domains/audit/features/provider-outbound-audit';
+  defaultProviderOutboundDiagnostics,
+  type ProviderOutboundDiagnosticsPort,
+} from 'src/domains/provider-diagnostics/features/provider-outbound';
 import { embedWithAiSdk } from '../capabilities/ai-sdk/orchestration/embedWithAiSdk';
 import { classifyAiSdkFailure } from '@linnlabs/linnkit-provider-ai-sdk';
 
@@ -23,7 +23,7 @@ export interface EmbeddingModelCatalog {
 export interface CreateEmbeddingPortDependencies {
   readonly catalog?: EmbeddingModelCatalog;
   readonly invoke?: typeof embedWithAiSdk;
-  readonly outbound_audit?: ProviderOutboundAuditPort;
+  readonly outbound_diagnostics?: ProviderOutboundDiagnosticsPort;
 }
 
 export function createEmbeddingPort(
@@ -31,7 +31,7 @@ export function createEmbeddingPort(
 ): EmbeddingPort {
   const catalog = dependencies.catalog ?? defaultCatalog;
   const invoke = dependencies.invoke ?? embedWithAiSdk;
-  const outboundAudit = dependencies.outbound_audit ?? defaultProviderOutboundAudit;
+  const outboundDiagnostics = dependencies.outbound_diagnostics ?? defaultProviderOutboundDiagnostics;
   return {
     async embed(request) {
       await catalog.initialize();
@@ -62,7 +62,7 @@ export function createEmbeddingPort(
           `Embedding 模型 '${request.modelId}' 缺少凭据`
         );
       }
-      const attempt = beginProviderOutboundAttempt(outboundAudit, {
+      const attempt = beginProviderOutboundAttempt(outboundDiagnostics, {
         attempt_id: randomUUID(),
         operation: 'embedding',
         route: {

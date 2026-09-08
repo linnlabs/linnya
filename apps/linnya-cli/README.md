@@ -86,7 +86,7 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 | `respond <conversation-id>` | 回应当前 `awaiting_user` 交互并继续同一 run | `--interaction`，以及一个 response 选项 |
 | `stop <conversation-id>` | 终止当前 foreground root run，并等待真实终态结算 | `--run`、`--reason` |
 | `result <conversation-id>` | 读取指定或最近 terminal root run 的最终回答 | `--run` |
-| `audit <conversation-id>` | 导出安全执行摘要 | `--run` |
+| `audit <conversation-id>` | 只读导出统一 Audit Domain 的安全执行摘要 | `--run` |
 | `tools list` | 列出 CLI 允许调用的 Workspace 工具名称与简介 | 无 |
 | `tools describe <tool-name>` | 查询一个 Workspace 工具的真实参数合同 | 无 |
 | `tools call <tool-name>` | 在绑定项目的 Conversation 中执行一次 Workspace 工具调用并等待结果 | `--conversation`、`--project`、`--args-json`、`--interval`、`--timeout` |
@@ -139,7 +139,7 @@ pnpm linnya:cli tools call write_file \
 
 `linnya-slides` 不是给外部进程直连 App 的通用命令：它依赖父 Shell 临时注入的 execution token。外部 Agent 若只需要编辑当前 Linnya 项目，应使用 `linnya tools call`；若需要脱离 App 做 Slides 检查或渲染，应使用 Standalone Slides CLI。两者当前没有相互转发。Slides CLI 的完整参数与运行环境见 [`presentationCli/README.md`](../../packages/plugins/slides/src/backend/features/presentationCli/README.md)。
 
-`audit` 从 RunRegistry 读取权威 run/Agent/终态，从 EventStore 配对 durable tool decision/output，
+`audit` 是查询和导出入口，不是审计 recorder；它不会写数据库、写文件或根据 CLI 参数开启另一种审计。从 RunRegistry 读取权威 run/Agent/终态，从统一 Audit Domain 所写的 EventStore 配对 durable tool decision/output，
 并复用 Command Audit 区分 Tool error 与 Shell 子进程非零退出。`tool_pairing.complete` 及
 `paired / decision_missing / terminal_missing / duplicate_terminal` 可直接判断是否存在永久
 loading 对应的事实缺口；realtime-only `tool_process` 不会被冒充为历史开始时间。模型、

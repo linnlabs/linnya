@@ -33,7 +33,7 @@ factory、request body 或 SSE。
 
 - Provider 产品目录、stable/preview、模型资料、模型发现、onboarding 或设置 UI；
 - 模型配置、endpoint 选择、API Key/OAuth 获取、刷新和持久化；
-- Host 管理的配额、账号、订阅、日志文案、outbound audit 或模型切换；
+- Host 管理的配额、账号、订阅、日志文案、outbound diagnostics 或模型切换；
 - Agent loop、上下文管理、工具执行、调用预算、retry/fallback 和 durable
   history；
 - Embedding、Reranking、Image Generation、OCR 或 Transcription。

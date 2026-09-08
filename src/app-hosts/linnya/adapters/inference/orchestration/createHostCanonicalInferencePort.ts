@@ -5,9 +5,9 @@ import type {
 } from '@linnlabs/linnkit/ports';
 import {
   beginProviderOutboundAttempt,
-  type ProviderOutboundAuditPort,
+  type ProviderOutboundDiagnosticsPort,
   type ProviderOutboundUsageSummary,
-} from 'src/domains/audit/features/provider-outbound-audit';
+} from 'src/domains/provider-diagnostics/features/provider-outbound';
 import type {
   InferenceCapabilityRegistry,
   InferenceCredential,
@@ -20,7 +20,7 @@ import {
   InferenceAdmissionError,
 } from '../definitions/inferenceAdmissionError';
 import { assertInferenceEventRoute } from '../functions/assertInferenceEventRoute';
-import { projectInferenceAttemptAudit } from '../functions/projectInferenceAttemptAudit';
+import { projectInferenceAttemptDiagnostics } from '../functions/projectInferenceAttemptDiagnostics';
 import { projectInferenceProtocolHeaders } from '../functions/projectInferenceProtocolHeaders';
 import { resolveInferenceAttemptRoute } from '../functions/resolveInferenceAttemptRoute';
 
@@ -71,8 +71,8 @@ async function* streamAttempt(
   const attemptRoute: ResolvedInferenceAttemptRoute =
     Object.keys(headers).length > 0 ? { ...route, headers } : route;
   const attempt = beginProviderOutboundAttempt(
-    dependencies.outbound_audit,
-    projectInferenceAttemptAudit(request, attemptRoute)
+    dependencies.outbound_diagnostics,
+    projectInferenceAttemptDiagnostics(request, attemptRoute)
   );
   let usage: ProviderOutboundUsageSummary = { provenance: 'not_reported' };
   let completed = false;
@@ -138,7 +138,7 @@ export interface HostCanonicalInferenceDependencies {
   readonly model_catalog: InferenceModelCatalog;
   readonly capability_registry: InferenceCapabilityRegistry;
   readonly credential_resolver: InferenceCredentialResolver;
-  readonly outbound_audit: ProviderOutboundAuditPort;
+  readonly outbound_diagnostics: ProviderOutboundDiagnosticsPort;
 }
 
 export function createHostCanonicalInferencePort(

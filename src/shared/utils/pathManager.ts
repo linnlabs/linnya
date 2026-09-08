@@ -42,7 +42,8 @@
  * - `DocumentMedia/`：文本文档内嵌图片的私有副本
  * - `AudioRecordings/`：音频录音
  * - `Uploads/`：临时上传区
- * - `Documents/`：工作区附属数据目录（例如 LLMRunAudit 等历史运行产物）
+ * - `Documents/`：工作区附属数据目录（例如用户文档和开发辅助产物）
+ * - `Audit/v1/`：统一审计模块管理的文件型数据；当前仅包含开发诊断证据
  * - `Models/`：本地 AI 模型目录
  * - `KnowledgeBase/`：知识库根
  *   - `source_of_truth/`：事实源泉 JSON 存放目录
@@ -206,7 +207,7 @@ function getAndCreateWorkspaceSubDirectory(subDirName: string): string {
  *
  * 中文说明：
  * - Markdown 文档正文已经迁入 workspace.sqlite，这里不再是旧 `.ablk` 文档根；
- * - 该目录仍被历史运行产物使用（例如 LLMRunAudit），因此保留目录和 media 白名单。
+ * - 该目录仍被部分历史运行产物使用，因此保留目录和 media 白名单；统一 Audit 不再写入这里。
  */
 export function getDocumentsPath(): string {
   return getAndCreateWorkspaceSubDirectory('Documents');
@@ -483,17 +484,13 @@ export function getTempDirectory(): string {
 }
 
 /**
- * 获取“多阶段任务审计”产物目录
+ * 获取统一 Audit 的版本化文件根目录。
  *
- * 中文备注：
- * - 详细 trace（thought/事件序列）不应塞进 EventStore；
- * - 因此使用 Workspace Root 下的文件系统目录承载（可迁移、可清理）。
- *
- * 路径规则：
- * - 位于 Workspace Root 下的 `TaskAudit/` 子目录
+ * durable 决策账本仍由 workspace.sqlite 的 EventStore 持有；这里只承载不适合进入
+ * EventStore 的有界文件型审计数据，例如开发态 LLM debug evidence。
  */
-export function getTaskAuditPath(): string {
-  return getAndCreateWorkspaceSubDirectory('TaskAudit');
+export function getAuditDataPath(): string {
+  return getAndCreateWorkspaceSubDirectory(path.join('Audit', 'v1'));
 }
 
 /**
@@ -853,7 +850,7 @@ export const pathManager = {
   getWebReadConfigPath,
   getLogDirectory,
   getTempDirectory,
-  getTaskAuditPath,
+  getAuditDataPath,
   getArtifactsRootPath,
   getArtifactsV1Path,
   getConversationArtifactsV1Path,

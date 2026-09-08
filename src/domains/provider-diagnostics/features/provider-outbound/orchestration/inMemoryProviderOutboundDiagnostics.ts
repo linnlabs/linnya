@@ -1,14 +1,14 @@
 import type {
-  ProviderOutboundAuditPort,
-  ProviderOutboundAuditSnapshotPort,
-} from '../definitions/providerOutboundAuditPort';
+  ProviderOutboundDiagnosticsPort,
+  ProviderOutboundDiagnosticsSnapshotPort,
+} from '../definitions/providerOutboundDiagnosticsPort';
 import type { ProviderOutboundAttemptSnapshot } from '../definitions/providerOutboundAttempt';
 
-export interface InMemoryProviderOutboundAudit
-  extends ProviderOutboundAuditPort,
-    ProviderOutboundAuditSnapshotPort {}
+export interface InMemoryProviderOutboundDiagnostics
+  extends ProviderOutboundDiagnosticsPort,
+    ProviderOutboundDiagnosticsSnapshotPort {}
 
-export function createInMemoryProviderOutboundAudit(): InMemoryProviderOutboundAudit {
+export function createInMemoryProviderOutboundDiagnostics(): InMemoryProviderOutboundDiagnostics {
   let latest: ProviderOutboundAttemptSnapshot | null = null;
 
   return {
@@ -25,6 +25,6 @@ export function createInMemoryProviderOutboundAudit(): InMemoryProviderOutboundA
 
 /**
  * 当前进程的统一安全快照。Electron 主进程、worker 与测试进程各自隔离；
- * 它只服务即时排障，不冒充持久化 run audit。
+ * 它只服务即时排障，不冒充持久化 Audit。
  */
-export const defaultProviderOutboundAudit = createInMemoryProviderOutboundAudit();
+export const defaultProviderOutboundDiagnostics = createInMemoryProviderOutboundDiagnostics();

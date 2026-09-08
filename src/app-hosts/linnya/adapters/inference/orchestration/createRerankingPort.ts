@@ -3,9 +3,9 @@ import type { ModelConfig } from 'src/domains/model-catalog';
 import { modelCatalog as defaultCatalog } from 'src/domains/model-catalog';
 import {
   beginProviderOutboundAttempt,
-  defaultProviderOutboundAudit,
-  type ProviderOutboundAuditPort,
-} from 'src/domains/audit/features/provider-outbound-audit';
+  defaultProviderOutboundDiagnostics,
+  type ProviderOutboundDiagnosticsPort,
+} from 'src/domains/provider-diagnostics/features/provider-outbound';
 import {
   orderRerankingItems,
   RerankingFailure,
@@ -24,7 +24,7 @@ export interface RerankingModelCatalog {
 export interface CreateRerankingPortDependencies {
   readonly catalog?: RerankingModelCatalog;
   readonly invoke?: typeof rerankWithAiSdk;
-  readonly outbound_audit?: ProviderOutboundAuditPort;
+  readonly outbound_diagnostics?: ProviderOutboundDiagnosticsPort;
 }
 
 export function createRerankingPort(
@@ -32,7 +32,7 @@ export function createRerankingPort(
 ): RerankingPort {
   const catalog = dependencies.catalog ?? defaultCatalog;
   const invoke = dependencies.invoke ?? rerankWithAiSdk;
-  const outboundAudit = dependencies.outbound_audit ?? defaultProviderOutboundAudit;
+  const outboundDiagnostics = dependencies.outbound_diagnostics ?? defaultProviderOutboundDiagnostics;
   return {
     async rerank(request) {
       await catalog.initialize();
@@ -63,7 +63,7 @@ export function createRerankingPort(
           `Reranking 模型 '${request.modelId}' 缺少凭据`
         );
       }
-      const attempt = beginProviderOutboundAttempt(outboundAudit, {
+      const attempt = beginProviderOutboundAttempt(outboundDiagnostics, {
         attempt_id: randomUUID(),
         operation: 'reranking',
         route: {

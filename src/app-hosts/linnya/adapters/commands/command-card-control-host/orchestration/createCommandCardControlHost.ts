@@ -22,7 +22,7 @@ import type {
   CommandProcessControlPort,
   ProcessCancellationRequestV1,
 } from 'src/domains/commands';
-import type { CommandExecutionAuditPort } from 'src/domains/audit/features/command-execution-audit';
+import type { CommandExecutionAuditPort } from 'src/domains/audit';
 import type { CommandCardControlHost } from '../definitions/commandCardControlHost';
 
 interface BoundRuntime {

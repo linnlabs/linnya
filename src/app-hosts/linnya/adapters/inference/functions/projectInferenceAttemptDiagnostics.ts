@@ -1,8 +1,8 @@
 import type { CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
-import type { ProviderOutboundAttemptStart } from 'src/domains/audit/features/provider-outbound-audit';
+import type { ProviderOutboundAttemptStart } from 'src/domains/provider-diagnostics/features/provider-outbound';
 import type { ResolvedInferenceAttemptRoute } from '../definitions/inferenceCapability';
 
-export function projectInferenceAttemptAudit(
+export function projectInferenceAttemptDiagnostics(
   request: CanonicalInferenceRequest,
   route: ResolvedInferenceAttemptRoute
 ): ProviderOutboundAttemptStart {

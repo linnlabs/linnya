@@ -17,16 +17,14 @@ LINNYA_DEV_MODE=true
 # 开启：把图谱抽取的 LLM 原始输出 + 解析后的 JSON dump 到本地文件
 LINNYA_KG_DUMP_JSON=1
 
-# ========== LLM 调试 ==========
-# 开启：在控制台输出更详细的 LLM 调用日志（仅开发用）
-# LINNYA_LLM_VERBOSE_CONSOLE=true
+# ========== 统一审计 ==========
+# 日常使用默认 standard；审计事实与 RuntimeEvent 共用 workspace.sqlite。
+# LINNYA_AUDIT_LEVEL=standard
 #
-# 开启：把每次 run 的 context-manager 前/后快照写入本地文件（默认关闭）
-# - 输出目录：`<Documents>/LLMRunAudit/<conversationId>/`
-# - 开发模式下 `<Documents>` 实际为：`<项目根>/_dev_data/Documents`
-# - after 快照同时包含 contextMessages（context-manager 内部消息）与 llmMessages（最终请求消息）
-# - 仅用于排查 context-manager 裁剪/重排/参数截断问题，体积较大，建议按需临时开启
-# LINNYA_LLM_RUN_AUDIT=1
+# 排查 context-manager / LLM 输入协议问题时临时开启 debug。必须保留开发模式，
+# 普通决策继续进入 workspace.sqlite，LLM debug evidence 通过同一个 AuditPort 写入
+# `<WorkspaceRoot>/Audit/v1/dev-diagnostics/<conversationId>/<runId>.jsonl`；排查完成后恢复 standard。
+# LINNYA_AUDIT_LEVEL=debug
 
 # ========== API Keys（按你实际用到的填） ==========
 # OPENAI_API_KEY=sk-...

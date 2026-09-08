@@ -1,8 +1,8 @@
 export type {
   ProviderOutboundAttemptStart,
-  ProviderOutboundAuditPort,
-  ProviderOutboundAuditSnapshotPort,
-} from './definitions/providerOutboundAuditPort';
+  ProviderOutboundDiagnosticsPort,
+  ProviderOutboundDiagnosticsSnapshotPort,
+} from './definitions/providerOutboundDiagnosticsPort';
 export {
   beginProviderOutboundAttempt,
   type ActiveProviderOutboundAttempt,
@@ -30,7 +30,7 @@ export {
   type CompleteProviderOutboundAttemptInput,
 } from './functions/transitionProviderOutboundAttempt';
 export {
-  createInMemoryProviderOutboundAudit,
-  defaultProviderOutboundAudit,
-  type InMemoryProviderOutboundAudit,
-} from './orchestration/inMemoryProviderOutboundAudit';
+  createInMemoryProviderOutboundDiagnostics,
+  defaultProviderOutboundDiagnostics,
+  type InMemoryProviderOutboundDiagnostics,
+} from './orchestration/inMemoryProviderOutboundDiagnostics';

@@ -12,7 +12,7 @@ import type {
   CommandExecutionLifecycleObservationPort,
   CommandProcessControlPort,
 } from 'src/domains/commands';
-import type { CommandExecutionAuditPort } from 'src/domains/audit/features/command-execution-audit';
+import type { CommandExecutionAuditPort } from 'src/domains/audit';
 
 export interface CommandCardRendererControlPort {
   openRendererPage(ownerId: number, conversationId: string): Promise<CommandCardControlPageSnapshotV1 | undefined>;

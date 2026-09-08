@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ModelConfig } from 'src/domains/model-catalog';
 import { ImageGenerationFailure } from 'src/domains/image-generation';
-import { createInMemoryProviderOutboundAudit } from 'src/domains/audit/features/provider-outbound-audit';
+import { createInMemoryProviderOutboundDiagnostics } from 'src/domains/provider-diagnostics/features/provider-outbound';
 import { ModelRequestCredentialError } from '../../model-request-auth';
 import { createImageGenerationPort } from './createImageGenerationPort';
 
@@ -36,8 +36,8 @@ function imageModel(): ModelConfig {
 }
 
 describe('createImageGenerationPort', () => {
-  it('按 typed route/credential 调用 capability，并写入不含 prompt 的安全审计', async () => {
-    const audit = createInMemoryProviderOutboundAudit();
+  it('按 typed route/credential 调用 capability，并写入不含 prompt 的安全诊断', async () => {
+    const diagnostics = createInMemoryProviderOutboundDiagnostics();
     const invoke = vi.fn(async () => ({
       model: 'seedream-model',
       images: [{ bytes: new Uint8Array([137, 80, 78, 71]) }],
@@ -51,7 +51,7 @@ describe('createImageGenerationPort', () => {
         resolve: async () => ({ profile: 'bearer', secret: 'image-secret' }),
       },
       invoke,
-      outbound_audit: audit,
+      outbound_diagnostics: diagnostics,
     });
 
     const result = await port.generate({
@@ -71,14 +71,14 @@ describe('createImageGenerationPort', () => {
       }),
       expect.objectContaining({ size: '2K', count: 1 })
     );
-    expect(audit.readLatest()).toMatchObject({
+    expect(diagnostics.readLatest()).toMatchObject({
       operation: 'image_generation',
       input: { kind: 'image_generation', requested_image_count: 1 },
       status: 'succeeded',
       usage: { provenance: 'not_reported' },
     });
-    expect(JSON.stringify(audit.readLatest())).not.toContain('机密提示词');
-    expect(JSON.stringify(audit.readLatest())).not.toContain('image-secret');
+    expect(JSON.stringify(diagnostics.readLatest())).not.toContain('机密提示词');
+    expect(JSON.stringify(diagnostics.readLatest())).not.toContain('image-secret');
   });
 
   it('Provider 错误只投影稳定分类，不泄露原始错误正文', async () => {

@@ -11,8 +11,8 @@ linnkit 的 `TelemetryPort` 在 Linnya 宿主侧的实现。**双 sink**：把 e
 | 模式 | 默认路径 |
 |---|---|
 | **开发模式**（`LINNYA_DEV_MODE=true`） | `<repoRoot>/_dev_data/workspace/workspace.sqlite` |
-| **生产模式 macOS** | `~/Library/Application Support/<AppName>/AIService/workspace/workspace.sqlite` |
-| **生产模式 Windows** | `%APPDATA%/<AppName>/AIService/workspace/workspace.sqlite` |
+| **生产模式 macOS** | `~/Documents/Linnya/workspace/workspace.sqlite`（由 Desktop Host 的用户文档目录决定） |
+| **生产模式 Windows** | `%USERPROFILE%/Documents/Linnya/workspace/workspace.sqlite` |
 
 > 路径权威实现见 `src/shared/utils/pathManager.ts#getWorkspaceDataPath`。
 

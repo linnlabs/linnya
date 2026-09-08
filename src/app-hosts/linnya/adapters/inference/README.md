@@ -7,8 +7,8 @@ body。
 
 ## 目录与 owner
 
-- `definitions/`：Host 内部的窄 route、credential 与 capability 合同；安全审计合同属于 audit
-  domain。
+- `definitions/`：Host 内部的窄 route、credential 与 capability 合同；安全诊断合同属于
+  provider-diagnostics domain。
 - `functions/`：route admission、事件 route
   identity 校验和 metadata-only 安全投影。
 - `orchestration/`：按 Model Catalog 的 `capability_id`
@@ -294,9 +294,9 @@ item；不能把历史压成要求下一跳保存会话状态的
 ## 安全与可观察性
 
 `createHostCanonicalInferencePort()` 在真实 capability 边界向
-`ProviderOutboundAuditPort` 写入 `started`
+`ProviderOutboundDiagnosticsPort` 写入 `started`
 和唯一终态；Embedding、Reranking 与独立 Image Generation Host
-adapter 也在各自窄 port 写入同一合同。`projectInferenceAttemptAudit()`
+adapter 也在各自窄 port 写入同一合同。`projectInferenceAttemptDiagnostics()`
 只产出 route
 identity、消息角色计数、工具数量和图片 MIME 聚合。usage 只保留 provenance 与安全 token 聚合，不保存 raw。prompt、answer、tool
 schema/arguments、图片 bytes、API key、base
@@ -304,8 +304,8 @@ URL、headers、路径、资源身份、continuation payload 与 Provider error
 body 都不能进入快照。完整 Provider
 payload 只允许存在于 capability 调用内存和离线 conformance fixture。
 
-调试读取方统一使用 audit domain 的只读 snapshot port。旧 `LLMHttpClient`
-request-debug store 与无生产写入者的 run-audit
+调试读取方统一使用 provider-diagnostics domain 的只读 snapshot port。旧 `LLMHttpClient`
+request-debug store 与无生产写入者的 HTTP snapshot
 HTTP 快照分支均已删除，不得为新 capability 恢复第二份 Provider 请求快照。
 
 AI SDK Core 的默认错误处理会打印包含 request/response body 的
@@ -319,7 +319,7 @@ body 或请求参数。
 error；SDK schema、JSON、空响应、本地 request
 projection 与 stream 生命周期各有稳定 code。重试只读取 status 或结构化
 `type/code`，不读取或记录 `message`，因此日志、run event 与 outbound
-audit 能定位故障层级，同时不会泄漏 prompt、响应正文或 credential。
+diagnostics 能定位故障层级，同时不会泄漏 prompt、响应正文或 credential。
 
 可触发产品切模的 failure code 由 adapter package 定义，Host 的
 `definitions/modelRoutableInferenceFailure.ts` 只投影为相邻 routing
@@ -341,7 +341,7 @@ AI SDK 的统一 `finishReason=other`
 `length`；限流、上游不可用和超时类原始原因投影为可重试 Provider
 failure；未知原因也只能进入脱敏后的 `unrecognized`
 诊断类别，不能把原始字符串写入 canonical event、日志或 outbound
-audit。不得恢复“忽略 `response.incomplete`，看到 `[DONE]`
+diagnostics。不得恢复“忽略 `response.incomplete`，看到 `[DONE]`
 就按成功结束”的旧行为。
 
 正式 language capability 通过 AI SDK 原生 `firstChunkMs/chunkMs`
@@ -382,5 +382,5 @@ conformance，禁止在 Host 补厂商 codec。
 
 Host 变更必须覆盖严格 route admission、Catalog/factory
 parity、credential 投影、产品 failure policy、脱敏 diagnostic 和安全 outbound
-audit。Embedding/Reranking 继续运行各自 Host 业务测试；正式 mock 变更还必须运行
+diagnostics。Embedding/Reranking 继续运行各自 Host 业务测试；正式 mock 变更还必须运行
 `capabilities/mock/__tests__`，禁止重新产生 OpenAI-shaped SSE 或非流式兼容响应。

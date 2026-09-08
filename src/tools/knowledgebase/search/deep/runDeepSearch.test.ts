@@ -32,7 +32,7 @@ vi.mock('../../../../shared/utils/idUtils', () => ({
   generateMessageId: () => 'fixed_subrun',
 }));
 
-vi.mock('src/domains/audit/features/llm-run-audit', () => ({
+vi.mock('src/domains/audit', () => ({
   runWithLLMAuditContext: async (
     auditContext: Record<string, unknown>,
     callback: () => Promise<unknown>

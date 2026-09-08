@@ -1,7 +1,4 @@
-import {
-  flushRunContextManagerAuditToDisk,
-  runWithLLMAuditContext,
-} from 'src/domains/audit/features/llm-run-audit';
+import { flushLinnyaAudit, runWithLLMAuditContext } from 'src/domains/audit';
 import { Logger } from 'src/shared/logger';
 
 const logger = new Logger('RunAuditScope');
@@ -35,10 +32,10 @@ export async function runWithAgentAuditScope<T>(
         return await execute();
       } finally {
         try {
-          await flushRunContextManagerAuditToDisk();
+          await flushLinnyaAudit();
         } catch (error) {
           // 审计是观测能力，写盘失败必须可见，但不能覆盖业务成功或原始业务异常。
-          logger.error('[RunAuditScope] LLM run 审计最终写盘失败', {
+          logger.error('[RunAuditScope] 统一审计最终写入失败', {
             conversationId: options.conversationId,
             runId: options.runId,
             traceId: options.traceId,

@@ -14,11 +14,11 @@ export interface ProviderOutboundAttemptStart {
 }
 
 /** Provider 调用方唯一允许依赖的写入边界。 */
-export interface ProviderOutboundAuditPort {
+export interface ProviderOutboundDiagnosticsPort {
   record(snapshot: ProviderOutboundAttemptSnapshot): void;
 }
 
 /** 调试读取方只获得快照，不获得写入能力或 Provider transport。 */
-export interface ProviderOutboundAuditSnapshotPort {
+export interface ProviderOutboundDiagnosticsSnapshotPort {
   readLatest(): ProviderOutboundAttemptSnapshot | null;
 }

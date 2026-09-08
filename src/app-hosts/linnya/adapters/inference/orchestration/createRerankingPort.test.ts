@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ModelConfig } from 'src/domains/model-catalog';
 import { RerankingFailure } from 'src/domains/model-inference';
-import { createInMemoryProviderOutboundAudit } from 'src/domains/audit/features/provider-outbound-audit';
+import { createInMemoryProviderOutboundDiagnostics } from 'src/domains/provider-diagnostics/features/provider-outbound';
 import { createRerankingPort, type RerankingModelCatalog } from './createRerankingPort';
 
 function model(): ModelConfig {
@@ -35,10 +35,10 @@ function catalog(config: ModelConfig | undefined = model()): RerankingModelCatal
 
 describe('Reranking Host port', () => {
   it('只传递显式 route，并校验 Provider 返回索引', async () => {
-    const outboundAudit = createInMemoryProviderOutboundAudit();
+    const outboundDiagnostics = createInMemoryProviderOutboundDiagnostics();
     const port = createRerankingPort({
       catalog: catalog(),
-      outbound_audit: outboundAudit,
+      outbound_diagnostics: outboundDiagnostics,
       invoke: async (route, request) => {
         expect(route).toEqual({
           providerModelId: 'provider-reranking-model',
@@ -70,13 +70,13 @@ describe('Reranking Host port', () => {
       usage: { inputTokens: 5, raw: { provider_secret: 'RAW_USAGE_SECRET' } },
     });
 
-    expect(outboundAudit.readLatest()).toMatchObject({
+    expect(outboundDiagnostics.readLatest()).toMatchObject({
       operation: 'reranking',
       status: 'succeeded',
       input: { kind: 'reranking', document_count: 2 },
       usage: { provenance: 'provider_reported', input_tokens: 5 },
     });
-    const serialized = JSON.stringify(outboundAudit.readLatest());
+    const serialized = JSON.stringify(outboundDiagnostics.readLatest());
     for (const sensitive of [
       'target',
       'first',

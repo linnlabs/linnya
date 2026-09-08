@@ -1,7 +1,8 @@
 /**
- * LLM run audit 的唯一公共入口。
+ * LLM debug evidence 的内部绑定。
  *
- * 审计上下文仅服务本地观测，禁止进入模型供应商请求体或请求头。
+ * 这个 feature 不拥有 sink；它把 Linnkit 的 LLM 观测回调绑定到 Audit Domain
+ * 当前配置的 AuditPort。宿主只能通过 `src/domains/audit` 的公共入口使用它。
  */
 import { setLlmAuditRecorder } from '@linnlabs/linnkit';
 import {
@@ -13,17 +14,12 @@ import {
 } from './orchestration/llmRunAuditContext';
 
 export type {
-  ContextManagerAuditEntry,
-  ContextManagerAuditStage,
   LLMAuditContext,
-  LlmInputMaterializationAuditEntry,
   LlmInputMaterializationAuditInput,
-  RunTranscriptAuditEntry,
-  ToolProtocolErrorAuditEntry,
-  ToolProtocolErrorReplayInput,
+  RunTranscriptAuditToolset,
 } from './definitions/llmRunAudit';
 export {
-  flushRunContextManagerAuditToDisk,
+  flushLinnyaAudit,
   getCurrentLLMAuditContext,
   recordAfterContextManager,
   recordAfterContextManagerOnSystemReminderHit,
@@ -33,6 +29,8 @@ export {
   recordToolProtocolError,
   runWithLLMAuditContext,
 } from './orchestration/llmRunAuditContext';
+
+export { configureLlmRunAudit, resetLlmRunAuditForTest } from './orchestration/llmRunAuditContext';
 
 setLlmAuditRecorder({
   recordBeforeContextManager,

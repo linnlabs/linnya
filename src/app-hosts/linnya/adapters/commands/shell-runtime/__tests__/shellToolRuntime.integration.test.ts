@@ -19,7 +19,7 @@ import {
 } from '@app/schemas/commands';
 import type {
   CommandExecutionAuditEvent,
-} from '../../../../../../domains/audit/features/command-execution-audit';
+} from 'src/domains/audit';
 import {
   CLOSED_COMMAND_EXECUTION_INTERACTION,
   createUnavailableCommandSettledTextOutput,

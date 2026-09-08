@@ -15,7 +15,7 @@ import {
 } from 'src/features/workspace/assets/features/llm-image-resolution';
 import type { ImageInputProcessingProfile } from '../definitions/imageInputProcessingProfile';
 import type { ImageInputProcessingProfileRegistry } from '../definitions/imageInputProcessingProfileRegistry';
-import { recordLlmInputMaterializationEvidence } from 'src/domains/audit/features/llm-run-audit';
+import { recordLlmInputMaterializationEvidence } from 'src/domains/audit';
 import {
   collectDurableImageInputs,
   type DurableImageInputPosition,

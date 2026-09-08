@@ -3,7 +3,7 @@
 这里是 Linnya Host 对 `ImageGenerationPort` 的唯一 Provider 实现边界。Model
 Catalog 提供已准入的 `image_generation_route`、模型约束和 credential
 reference；本模块通过共享 model-request-auth 解析本次凭据，选择唯一 AI SDK
-capability、写安全 outbound audit，并把结果投影为 Provider-neutral 图片字节。
+capability、写安全 outbound diagnostics，并把结果投影为 Provider-neutral 图片字节。
 
 ## 负责与不负责
 
@@ -16,7 +16,7 @@ capability、写安全 outbound audit，并把结果投影为 Provider-neutral �
 - 固定 `maxRetries: 0`，按 route 的 `max_images_per_call`
   执行用户明确请求的批次；
 - 强制 `b64_json`，把 AI SDK `GeneratedFile` 投影为字节；
-- 写入不含 prompt、credential、base URL、Provider body 的安全审计；
+- 写入不含 prompt、credential、base URL、Provider body 的安全诊断快照；
 - 把 SDK/transport 错误收敛为稳定 Image Generation failure。
 
 不负责：
@@ -48,4 +48,4 @@ body 字段、接管响应 codec 或维护厚 middleware，说明它不属于当
 ## 测试门禁
 
 受控 HTTP 测试必须覆盖 endpoint、认证、请求体、原生尺寸、`n`
-拆分、返回字节、单 attempt 零重试和错误脱敏。Port 测试必须覆盖 route/credential、尺寸准入、结果不变量和安全 audit。真实密钥 smoke 是部署补充验证，不替代离线 conformance。
+拆分、返回字节、单 attempt 零重试和错误脱敏。Port 测试必须覆盖 route/credential、尺寸准入、结果不变量和安全诊断。真实密钥 smoke 是部署补充验证，不替代离线 conformance。

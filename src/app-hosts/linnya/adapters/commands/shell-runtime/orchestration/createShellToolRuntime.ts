@@ -32,7 +32,7 @@ import {
   projectCommandExecutionAuditRuntimeSummary,
   type CommandExecutionAuditEvent,
   type CommandExecutionAuditPort,
-} from '../../../../../../domains/audit/features/command-execution-audit';
+} from 'src/domains/audit';
 import type {
   CommandExecutionAuditFailurePort,
   CommandExecutionAuditDiagnosticPort,

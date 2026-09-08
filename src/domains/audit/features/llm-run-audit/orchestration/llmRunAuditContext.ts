@@ -1,75 +1,80 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { projectDurableLlmAuditValue } from '@linnlabs/linnkit';
+import { generateAuditEnvelopeId, projectDurableLlmAuditValue } from '@linnlabs/linnkit';
+import { AuditEnvelope, ConversationIdSchema, RunIdSchema } from '@linnlabs/linnkit/contracts';
+import type { AuditPort } from '@linnlabs/linnkit/ports';
 import { Logger } from 'src/shared/logger';
+import type { AuditLevel } from '../../../definitions/auditLevel';
 import type {
-  ContextManagerAuditEntry,
   LLMAuditContext,
-  LLMAuditStore,
   LlmInputMaterializationAuditInput,
-  RunAuditState,
-  RunTranscriptAuditEntry,
-  ToolProtocolErrorAuditEntry,
+  RunTranscriptAuditToolset,
 } from '../definitions/llmRunAudit';
-import {
-  getSystemReminderAuditMaxEntriesPerRunKey,
-  getToolProtocolErrorAuditMaxEntriesPerRunKey,
-  isLLMRunAuditEnabled,
-} from '../functions/auditConfiguration';
-import { buildCheckpointDocument, buildFinalAuditDocuments } from '../functions/buildAuditDocuments';
-import { buildRawArgumentsSummary, cloneAuditValue, isRecord } from '../functions/auditValues';
-import {
-  removeRunAuditCheckpoint,
-  resolveRunAuditPaths,
-  writeJsonAtomically,
-} from '../persistence/llmRunAuditFileRepository';
 
-const logger = new Logger('LLMRunAudit');
-const CHECKPOINT_DEBOUNCE_MS = 500;
-const CHECKPOINT_MAX_INTERVAL_MS = 2_000;
+const logger = new Logger('UnifiedAudit');
+const MAX_PROTOCOL_ERRORS_PER_RUN = 16;
+const MAX_SYSTEM_REMINDERS_PER_RUN = 16;
+const MAX_DEBUG_EVENTS_PER_RUN = 256;
+const MAX_DEBUG_EVIDENCE_BYTES = 512 * 1024;
+
 const als = new AsyncLocalStorage<LLMAuditStore>();
+let configuration: LlmRunAuditConfiguration | undefined;
 
-type AuditProjectionResult<T> =
-  | { readonly accepted: true; readonly value: T }
-  | { readonly accepted: false };
+interface LlmRunAuditConfiguration {
+  readonly level: AuditLevel;
+  readonly auditPort: AuditPort;
+}
 
-function projectAuditValue<T>(value: T, stage: string): AuditProjectionResult<T> {
-  try {
-    return { accepted: true, value: projectDurableLlmAuditValue(value) };
-  } catch (error) {
-    // 审计片段必须 fail closed，但观测失败不能覆盖正常业务结果。
-    logger.error('[LLMRunAudit] 拒绝包含 transient 图片载荷的审计片段', {
-      stage,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return { accepted: false };
-  }
+interface LlmRunAuditState {
+  readonly auditPort: AuditPort;
+  sequence: number;
+  emittedEvents: number;
+  protocolErrorCount: number;
+  systemReminderCount: number;
+  beforeRecorded: boolean;
+  flushed: boolean;
+  latestAfterPayload?: {
+    readonly contextMessages?: unknown[];
+    readonly llmMessages?: unknown[];
+    readonly toolNames?: string[];
+  };
+  pending: Promise<void>;
+}
+
+interface LLMAuditStore {
+  readonly stack: LLMAuditContext[];
+  readonly runAudit: LlmRunAuditState;
+}
+
+export function configureLlmRunAudit(options: {
+  readonly auditPort: AuditPort;
+  readonly level: AuditLevel;
+}): void {
+  configuration = options;
+}
+
+export function resetLlmRunAuditForTest(): void {
+  configuration = undefined;
 }
 
 export function getCurrentLLMAuditContext(): LLMAuditContext | undefined {
   const store = als.getStore();
-  if (!store || !Array.isArray(store.stack) || store.stack.length === 0) return undefined;
-  return store.stack[store.stack.length - 1];
+  return store?.stack[store.stack.length - 1];
 }
 
 export function recordBeforeContextManager(params: { payload: unknown }): void {
-  if (!isLLMRunAuditEnabled() || shouldSkipContextManagerAuditForCurrentChain()) return;
-  const runAudit = ensureRunAuditStore();
-  if (!runAudit || runAudit.flushed) return;
-  const projected = projectAuditValue(params.payload, 'before_context_manager');
-  if (!projected.accepted) return;
+  const state = getDebugState();
+  if (!state || state.beforeRecorded) return;
 
-  runAudit.seq += 1;
-  const bucket = ensureCurrentBucket(runAudit);
-  if (bucket.before) return;
-  bucket.before = {
-    seq: runAudit.seq,
+  const context = getCurrentLLMAuditContext();
+  if (!context || isChildRun(context)) return;
+  const payload = projectAuditValue(params.payload, 'before_context_manager');
+  if (payload === undefined) return;
+
+  state.beforeRecorded = true;
+  emitLlmAuditEvent(state, context, 'llm.context.before', {
     stage: 'before_context_manager',
-    timestamp: Date.now(),
-    at: new Date().toISOString(),
-    audit_context: buildAuditContextSnapshot(),
-    payload: cloneAuditValue(projected.value),
-  };
-  scheduleRunAuditCheckpoint(runAudit);
+    payload,
+  });
 }
 
 export function recordAfterContextManager(params: {
@@ -77,37 +82,34 @@ export function recordAfterContextManager(params: {
   llmMessages: unknown[];
   toolNames?: string[];
 }): void {
-  if (!isLLMRunAuditEnabled()) return;
-  const runAudit = ensureRunAuditStore();
-  if (!runAudit || runAudit.flushed) return;
-  const projected = projectAuditValue({
-    contextMessages: params.contextMessages,
-    llmMessages: params.llmMessages,
-    toolNames: params.toolNames,
-  }, 'after_context_manager');
-  if (!projected.accepted) return;
+  const state = getDebugState();
+  if (!state) return;
 
-  runAudit.seq += 1;
-  const bucket = ensureCurrentBucket(runAudit);
-  const entry: ContextManagerAuditEntry = {
-    seq: runAudit.seq,
+  const context = getCurrentLLMAuditContext();
+  if (!context) return;
+  const payload = projectAuditValue(params, 'after_context_manager');
+  if (!isRecord(payload)) return;
+
+  const contextMessages = Array.isArray(payload.contextMessages)
+    ? payload.contextMessages
+    : undefined;
+  const llmMessages = Array.isArray(payload.llmMessages) ? payload.llmMessages : [];
+  const toolNames =
+    Array.isArray(payload.toolNames) &&
+    payload.toolNames.every((value): value is string => typeof value === 'string')
+      ? payload.toolNames
+      : undefined;
+
+  state.latestAfterPayload = { contextMessages, llmMessages, toolNames };
+  if (isChildRun(context)) return;
+  emitLlmAuditEvent(state, context, 'llm.context.after', {
     stage: 'after_context_manager',
-    timestamp: Date.now(),
-    at: new Date().toISOString(),
-    audit_context: buildAuditContextSnapshot(),
     payload: {
-      ...(Array.isArray(projected.value.contextMessages)
-        ? { contextMessages: cloneAuditValue(projected.value.contextMessages) }
-        : {}),
-      llmMessages: cloneAuditValue(projected.value.llmMessages),
-      tool_names: projected.value.toolNames,
+      ...(contextMessages ? { contextMessages } : {}),
+      llmMessages,
+      ...(toolNames ? { toolNames } : {}),
     },
-  };
-  bucket.latestAfterForReplay = cloneAuditValue(entry);
-  if (!shouldSkipContextManagerAuditForCurrentChain()) {
-    bucket.after = entry;
-  }
-  scheduleRunAuditCheckpoint(runAudit);
+  });
 }
 
 export function recordToolProtocolError(params: {
@@ -117,60 +119,34 @@ export function recordToolProtocolError(params: {
   parsedArguments?: Record<string, unknown>;
   error: string;
 }): void {
-  if (!isLLMRunAuditEnabled()) return;
-  const runAudit = ensureRunAuditStore();
-  if (!runAudit || runAudit.flushed) return;
-  const projected = projectAuditValue(params, 'tool_protocol_error');
-  if (!projected.accepted) return;
+  const state = getDebugState();
+  if (!state || state.protocolErrorCount >= MAX_PROTOCOL_ERRORS_PER_RUN) return;
 
-  const bucket = ensureCurrentBucket(runAudit);
-  const latestAfterPayload = isRecord(bucket.latestAfterForReplay?.payload)
-    ? bucket.latestAfterForReplay.payload
-    : undefined;
-  const rawArgumentsSummary = typeof projected.value.rawArguments === 'string'
-    ? buildRawArgumentsSummary(projected.value.rawArguments)
-    : undefined;
-  runAudit.seq += 1;
-  const entry: ToolProtocolErrorAuditEntry = {
-    seq: runAudit.seq,
+  const context = getCurrentLLMAuditContext();
+  if (!context) return;
+  const payload = projectAuditValue(params, 'tool_protocol_error');
+  if (!isRecord(payload)) return;
+
+  state.protocolErrorCount += 1;
+  const latestAfter = state.latestAfterPayload;
+  emitLlmAuditEvent(state, context, 'llm.tool_protocol_error', {
     stage: 'tool_protocol_error',
-    timestamp: Date.now(),
-    at: new Date().toISOString(),
-    audit_context: buildAuditContextSnapshot(),
     payload: {
-      tool_call: {
-        toolName: projected.value.toolName,
-        ...(typeof projected.value.toolCallId === 'string' ? { toolCallId: projected.value.toolCallId } : {}),
-        ...(typeof projected.value.rawArguments === 'string' ? { rawArguments: projected.value.rawArguments } : {}),
-        ...(rawArgumentsSummary ? { rawArgumentsSummary } : {}),
-        ...(projected.value.parsedArguments
-          ? { parsedArguments: cloneAuditValue(projected.value.parsedArguments) }
+      toolCall: {
+        toolName: payload.toolName,
+        ...(typeof payload.toolCallId === 'string' ? { toolCallId: payload.toolCallId } : {}),
+        ...(typeof payload.rawArguments === 'string'
+          ? {
+              rawArguments: payload.rawArguments,
+              rawArgumentsSummary: summarizeRawArguments(payload.rawArguments),
+            }
           : {}),
+        ...(isRecord(payload.parsedArguments) ? { parsedArguments: payload.parsedArguments } : {}),
       },
-      protocol_error: { message: projected.value.error },
-      llm_request: {
-        ...(Array.isArray(latestAfterPayload?.contextMessages)
-          ? { contextMessages: cloneAuditValue(latestAfterPayload.contextMessages) }
-          : {}),
-        ...(Array.isArray(latestAfterPayload?.llmMessages)
-          ? { llmMessages: cloneAuditValue(latestAfterPayload.llmMessages) }
-          : {}),
-        ...(Array.isArray(latestAfterPayload?.tool_names)
-          ? { tool_names: cloneAuditValue(latestAfterPayload.tool_names) }
-          : {}),
-      },
+      protocolError: { message: payload.error },
+      llmRequest: latestAfter,
     },
-  };
-
-  bucket.toolProtocolErrors ??= [];
-  bucket.toolProtocolErrors.push(entry);
-  const maxEntries = getToolProtocolErrorAuditMaxEntriesPerRunKey();
-  if (bucket.toolProtocolErrors.length > maxEntries) {
-    const dropped = bucket.toolProtocolErrors.length - maxEntries;
-    bucket.toolProtocolErrors.splice(0, dropped);
-    bucket.toolProtocolErrorsDroppedCount = (bucket.toolProtocolErrorsDroppedCount ?? 0) + dropped;
-  }
-  scheduleRunAuditCheckpoint(runAudit);
+  });
 }
 
 export function recordAfterContextManagerOnSystemReminderHit(params: {
@@ -179,280 +155,280 @@ export function recordAfterContextManagerOnSystemReminderHit(params: {
   toolNames?: string[];
   systemReminder: { ruleIds: string[] };
 }): void {
-  if (!isLLMRunAuditEnabled() || shouldSkipContextManagerAuditForCurrentChain()) return;
-  const runAudit = ensureRunAuditStore();
-  if (!runAudit || runAudit.flushed) return;
-  const projected = projectAuditValue(params, 'after_context_manager_system_reminder');
-  if (!projected.accepted) return;
+  const state = getDebugState();
+  if (!state || state.systemReminderCount >= MAX_SYSTEM_REMINDERS_PER_RUN) return;
 
-  runAudit.seq += 1;
-  const bucket = ensureCurrentBucket(runAudit);
-  const entry: ContextManagerAuditEntry = {
-    seq: runAudit.seq,
+  const context = getCurrentLLMAuditContext();
+  if (!context || isChildRun(context)) return;
+  const payload = projectAuditValue(params, 'after_context_manager_system_reminder');
+  if (!isRecord(payload)) return;
+
+  state.systemReminderCount += 1;
+  emitLlmAuditEvent(state, context, 'llm.context.system_reminder', {
     stage: 'after_context_manager',
-    timestamp: Date.now(),
-    at: new Date().toISOString(),
-    audit_context: buildAuditContextSnapshot(),
-    payload: {
-      ...(Array.isArray(projected.value.contextMessages)
-        ? { contextMessages: cloneAuditValue(projected.value.contextMessages) }
-        : {}),
-      llmMessages: cloneAuditValue(projected.value.llmMessages),
-      tool_names: projected.value.toolNames,
-      system_reminder: { rule_ids: projected.value.systemReminder.ruleIds },
-    },
-  };
-
-  bucket.systemReminderAfterSnapshots ??= [];
-  bucket.systemReminderAfterSnapshots.push(entry);
-  const maxEntries = getSystemReminderAuditMaxEntriesPerRunKey();
-  if (bucket.systemReminderAfterSnapshots.length > maxEntries) {
-    const dropped = bucket.systemReminderAfterSnapshots.length - maxEntries;
-    bucket.systemReminderAfterSnapshots.splice(0, dropped);
-    bucket.systemReminderAfterSnapshotsDroppedCount =
-      (bucket.systemReminderAfterSnapshotsDroppedCount ?? 0) + dropped;
-  }
-  scheduleRunAuditCheckpoint(runAudit);
+    payload,
+  });
 }
 
 export function recordRunTranscript(params: {
   transcriptMessages: unknown[];
-  toolset?: RunTranscriptAuditEntry['payload']['toolset'];
+  toolset?: RunTranscriptAuditToolset;
 }): void {
-  if (!isLLMRunAuditEnabled()) return;
-  const runAudit = ensureRunAuditStore();
-  if (!runAudit || runAudit.flushed) return;
-  const projected = projectAuditValue(params, 'run_transcript');
-  if (!projected.accepted) return;
+  const state = getDebugState();
+  if (!state) return;
 
-  runAudit.seq += 1;
-  ensureCurrentBucket(runAudit).transcript = {
-    seq: runAudit.seq,
+  const context = getCurrentLLMAuditContext();
+  if (!context) return;
+  const payload = projectAuditValue(params, 'run_transcript');
+  if (payload === undefined) return;
+
+  emitLlmAuditEvent(state, context, 'llm.transcript', {
     stage: 'run_transcript',
-    timestamp: Date.now(),
-    at: new Date().toISOString(),
-    audit_context: buildAuditContextSnapshot(),
-    payload: {
-      transcriptMessages: cloneAuditValue(projected.value.transcriptMessages),
-      toolset: projected.value.toolset,
-    },
-  };
-  scheduleRunAuditCheckpoint(runAudit);
+    payload,
+  });
 }
 
 export function recordLlmInputMaterializationEvidence(
-  params: LlmInputMaterializationAuditInput,
+  params: LlmInputMaterializationAuditInput
 ): void {
-  if (!isLLMRunAuditEnabled()) return;
-  const runAudit = ensureRunAuditStore();
-  if (!runAudit || runAudit.flushed) return;
-  const projected = projectAuditValue(params, 'llm_input_materialization');
-  if (!projected.accepted) return;
+  const state = getDebugState();
+  if (!state) return;
 
-  runAudit.seq += 1;
-  const bucket = ensureCurrentBucket(runAudit);
-  bucket.materializationAttempts ??= [];
-  bucket.materializationAttempts.push({
-    seq: runAudit.seq,
-    stage: 'llm_input_materialization',
-    timestamp: Date.now(),
-    at: new Date().toISOString(),
-    audit_context: buildAuditContextSnapshot(),
-    payload: {
-      active_model_id: projected.value.activeModelId,
-      profile_id: projected.value.profileId,
-      estimator_version: projected.value.estimatorVersion,
-      api_surface: projected.value.apiSurface,
-      input_budget: projected.value.inputBudget,
-      non_image_estimated_tokens: projected.value.nonImageEstimatedTokens,
-      attachment_evidence: projected.value.attachmentEvidence,
-    },
-  });
-  scheduleRunAuditCheckpoint(runAudit);
-}
-
-export async function flushRunContextManagerAuditToDisk(): Promise<void> {
-  if (!isLLMRunAuditEnabled()) return;
-  const store = als.getStore();
-  if (!store?.runAudit || store.runAudit.flushed) return;
   const context = getCurrentLLMAuditContext();
   if (!context) return;
+  const payload = projectAuditValue(params, 'llm_input_materialization');
+  if (payload === undefined) return;
 
-  clearCheckpointTimers(store.runAudit);
-  const rootContext = getRootLLMAuditContext() ?? context;
-  await enqueueRunAuditCheckpoint(store.runAudit, rootContext);
-  await store.runAudit.checkpoint.writeQueue;
-  const paths = await resolveRunAuditPaths(store.runAudit, rootContext);
-  const documents = buildFinalAuditDocuments({
-    runAudit: store.runAudit,
-    auditContext: buildAuditContextSnapshot(),
-    flushedAt: new Date(),
+  emitLlmAuditEvent(state, context, 'llm.input_materialization', {
+    stage: 'llm_input_materialization',
+    payload,
   });
+}
 
-  await Promise.all([
-    writeJsonAtomically(paths.beforePath, JSON.stringify(documents.before, null, 2)),
-    writeJsonAtomically(paths.afterPath, JSON.stringify(documents.after, null, 2)),
-    writeJsonAtomically(paths.toolProtocolErrorsPath, JSON.stringify(documents.toolProtocolErrors, null, 2)),
-  ]);
+/**
+ * 排空当前 run 的统一审计队列。
+ *
+ * Phase 0 后调用方只面对统一 AuditPort。具体写入 EventStore 还是有界开发诊断目录
+ * 由 Audit Runtime 按 action 和等级决定，runner 不拥有存储路径或 retention。
+ */
+export async function flushLinnyaAudit(): Promise<void> {
+  const store = als.getStore();
+  if (!store || store.runAudit.flushed) return;
+
   store.runAudit.flushed = true;
-  // 最终文件写入期间可能已有 timer 回调进入队列；先关闭调度并排空队列，
-  // 再删除 checkpoint，才能保证终态之后不会被迟到写入重新创建。
-  clearCheckpointTimers(store.runAudit);
-  await store.runAudit.checkpoint.writeQueue;
-  await removeRunAuditCheckpoint(paths);
+  await store.runAudit.pending;
+  await store.runAudit.auditPort.flush?.();
 }
 
 export async function runWithLLMAuditContext<T>(
   contextPatch: Partial<LLMAuditContext>,
-  run: () => Promise<T>,
+  run: () => Promise<T>
 ): Promise<T> {
-  if (!isLLMRunAuditEnabled()) return await run();
+  if (configuration?.level !== 'debug') return await run();
+
   const merged = mergeAuditContext(getCurrentLLMAuditContext(), contextPatch);
   if (!merged) return await run();
 
   const parentStore = als.getStore();
-  const nextStack = parentStore ? [...parentStore.stack, merged] : [merged];
-  const store: LLMAuditStore = { stack: nextStack, runAudit: parentStore?.runAudit };
-  return await als.run(store, async () => {
-    if (!parentStore) {
-      const runAudit = ensureRunAuditStore();
-      if (runAudit) await enqueueRunAuditCheckpoint(runAudit, merged);
-    }
-    return await run();
-  });
+  const store: LLMAuditStore = parentStore ?? {
+    stack: [],
+    runAudit: createRunAuditState(),
+  };
+  return await als.run(
+    {
+      stack: [...store.stack, merged],
+      runAudit: store.runAudit,
+    },
+    run
+  );
 }
 
-function ensureRunAuditStore(): RunAuditState | undefined {
+function getDebugState(): LlmRunAuditState | undefined {
+  if (configuration?.level !== 'debug') return undefined;
   const store = als.getStore();
-  if (!store) return undefined;
-  store.runAudit ??= {
-    startedAtIso: new Date().toISOString(),
-    seq: 0,
-    byRunKey: {},
-    flushed: false,
-    checkpoint: {
-      writeQueue: Promise.resolve(),
-      lastEnqueuedSeq: -1,
-      lastWrittenSeq: -1,
-    },
-  };
+  if (!store || store.runAudit.flushed) return undefined;
   return store.runAudit;
 }
 
-function ensureCurrentBucket(runAudit: RunAuditState) {
-  const runKey = getCurrentAuditRunKey();
-  runAudit.byRunKey[runKey] ??= {};
-  return runAudit.byRunKey[runKey];
-}
-
-function buildAuditContextSnapshot(): ContextManagerAuditEntry['audit_context'] | undefined {
-  const context = getCurrentLLMAuditContext();
-  if (!context) return undefined;
+function createRunAuditState(): LlmRunAuditState {
+  const auditPort = configuration?.auditPort;
+  if (!auditPort) {
+    throw new Error('Unified audit runtime must be configured before creating an LLM audit scope');
+  }
   return {
-    conversationId: context.conversationId,
-    runId: context.runId,
-    traceId: context.traceId,
-    subrunId: context.subrunId,
-    parentToolCallId: context.parentToolCallId,
-    source: context.source,
+    auditPort,
+    sequence: 0,
+    emittedEvents: 0,
+    protocolErrorCount: 0,
+    systemReminderCount: 0,
+    beforeRecorded: false,
+    flushed: false,
+    pending: Promise.resolve(),
   };
 }
 
-function getCurrentAuditRunKey(): string {
-  const subrunId = getCurrentLLMAuditContext()?.subrunId?.trim();
-  return subrunId ? `subrun:${subrunId}` : 'root';
-}
-
-function shouldSkipContextManagerAuditForCurrentChain(): boolean {
-  return !!getCurrentLLMAuditContext()?.subrunId?.trim();
-}
-
-function getRootLLMAuditContext(): LLMAuditContext | undefined {
-  return als.getStore()?.stack[0];
-}
-
-function clearCheckpointTimers(runAudit: RunAuditState): void {
-  if (runAudit.checkpoint.debounceTimer) {
-    clearTimeout(runAudit.checkpoint.debounceTimer);
-    runAudit.checkpoint.debounceTimer = undefined;
+function emitLlmAuditEvent(
+  state: LlmRunAuditState,
+  context: LLMAuditContext,
+  action: string,
+  input: {
+    readonly stage: string;
+    readonly payload: unknown;
   }
-  if (runAudit.checkpoint.maxIntervalTimer) {
-    clearTimeout(runAudit.checkpoint.maxIntervalTimer);
-    runAudit.checkpoint.maxIntervalTimer = undefined;
-  }
-}
-
-function enqueueRunAuditCheckpoint(runAudit: RunAuditState, context: LLMAuditContext): Promise<void> {
-  if (runAudit.flushed) return runAudit.checkpoint.writeQueue;
-  const seq = runAudit.seq;
-  if (seq <= runAudit.checkpoint.lastEnqueuedSeq) return runAudit.checkpoint.writeQueue;
-
-  let serialized: string;
-  try {
-    serialized = JSON.stringify(buildCheckpointDocument({ runAudit, context, seq }), null, 2);
-  } catch (error) {
-    logger.error('[LLMRunAudit] 无法序列化增量审计快照', { runId: context.runId, seq, error });
-    return runAudit.checkpoint.writeQueue;
+): void {
+  if (state.emittedEvents >= MAX_DEBUG_EVENTS_PER_RUN) {
+    if (state.emittedEvents === MAX_DEBUG_EVENTS_PER_RUN) {
+      logger.warn('[UnifiedAudit] debug LLM 审计达到单次 run 上限，后续片段已丢弃', {
+        runId: context.runId,
+        limit: MAX_DEBUG_EVENTS_PER_RUN,
+      });
+      state.emittedEvents += 1;
+    }
+    return;
   }
 
-  runAudit.checkpoint.lastEnqueuedSeq = seq;
-  runAudit.checkpoint.writeQueue = runAudit.checkpoint.writeQueue
-    .then(async () => {
-      if (runAudit.flushed) return;
-      if (seq <= runAudit.checkpoint.lastWrittenSeq) return;
-      const paths = await resolveRunAuditPaths(runAudit, context);
-      await writeJsonAtomically(paths.checkpointPath, serialized);
-      runAudit.checkpoint.lastWrittenSeq = seq;
-    })
-    .catch((error: unknown) => {
-      logger.error('[LLMRunAudit] 增量审计快照写入失败', {
+  const projected = projectAuditValue(input.payload, input.stage);
+  if (projected === undefined) return;
+
+  state.sequence += 1;
+  state.emittedEvents += 1;
+  const envelope = createLlmAuditEnvelope({
+    context,
+    action,
+    stage: input.stage,
+    sequence: state.sequence,
+    payload: projected,
+  });
+  if (!envelope) return;
+
+  const auditPort = state.auditPort;
+  state.pending = state.pending
+    .then(async () => await auditPort.emit(envelope))
+    .catch(error => {
+      logger.error('[UnifiedAudit] debug LLM 审计写入失败', {
+        action,
         conversationId: context.conversationId,
         runId: context.runId,
-        seq,
-        error,
+        error: error instanceof Error ? error.message : String(error),
       });
     });
-  return runAudit.checkpoint.writeQueue;
 }
 
-function flushScheduledCheckpoint(runAudit: RunAuditState): void {
-  clearCheckpointTimers(runAudit);
-  if (runAudit.flushed) return;
-  const context = getRootLLMAuditContext();
-  if (context) void enqueueRunAuditCheckpoint(runAudit, context);
-}
-
-function scheduleRunAuditCheckpoint(runAudit: RunAuditState): void {
-  if (runAudit.flushed) return;
-  if (runAudit.checkpoint.debounceTimer) clearTimeout(runAudit.checkpoint.debounceTimer);
-  runAudit.checkpoint.debounceTimer = setTimeout(
-    () => flushScheduledCheckpoint(runAudit),
-    CHECKPOINT_DEBOUNCE_MS,
+function createLlmAuditEnvelope(params: {
+  readonly context: LLMAuditContext;
+  readonly action: string;
+  readonly stage: string;
+  readonly sequence: number;
+  readonly payload: unknown;
+}): ReturnType<typeof AuditEnvelope.parse> | undefined {
+  const projected = projectAuditValue(
+    {
+      stage: params.stage,
+      sequence: params.sequence,
+      payload: params.payload,
+    },
+    params.stage
   );
-  runAudit.checkpoint.debounceTimer.unref?.();
-  if (!runAudit.checkpoint.maxIntervalTimer) {
-    runAudit.checkpoint.maxIntervalTimer = setTimeout(
-      () => flushScheduledCheckpoint(runAudit),
-      CHECKPOINT_MAX_INTERVAL_MS,
-    );
-    runAudit.checkpoint.maxIntervalTimer.unref?.();
+  if (!isRecord(projected)) return undefined;
+
+  try {
+    const conversationId = ConversationIdSchema.parse(params.context.conversationId);
+    const runId = RunIdSchema.parse(params.context.runId);
+    return AuditEnvelope.parse({
+      envelopeId: generateAuditEnvelopeId(),
+      runId,
+      ts: Date.now(),
+      actor: { kind: 'host', name: 'linnya-audit' },
+      action: params.action,
+      evidence: [
+        {
+          kind: 'llm_audit',
+          metadata: projected,
+        },
+      ],
+      scope: {
+        conversationId,
+        runId,
+        ...(params.context.traceId ? { traceId: params.context.traceId } : {}),
+        ...(params.context.subrunId ? { metadata: { subrunId: params.context.subrunId } } : {}),
+        ...(params.context.parentToolCallId
+          ? {
+              metadata: {
+                ...(params.context.subrunId ? { subrunId: params.context.subrunId } : {}),
+                parentToolCallId: params.context.parentToolCallId,
+              },
+            }
+          : {}),
+      },
+    });
+  } catch (error) {
+    logger.error('[UnifiedAudit] debug LLM 审计片段未通过合同校验', {
+      action: params.action,
+      conversationId: params.context.conversationId,
+      runId: params.context.runId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return undefined;
+  }
+}
+
+function projectAuditValue(value: unknown, stage: string): unknown | undefined {
+  try {
+    const projected = projectDurableLlmAuditValue(value);
+    const serialized = JSON.stringify(projected);
+    if (serialized && Buffer.byteLength(serialized, 'utf8') > MAX_DEBUG_EVIDENCE_BYTES) {
+      logger.warn('[UnifiedAudit] debug LLM 审计片段超过大小上限，已丢弃', {
+        stage,
+        maxBytes: MAX_DEBUG_EVIDENCE_BYTES,
+      });
+      return undefined;
+    }
+    return projected;
+  } catch (error) {
+    logger.error('[UnifiedAudit] 拒绝不满足 durable 合同的 debug LLM 审计片段', {
+      stage,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return undefined;
   }
 }
 
 function mergeAuditContext(
   parent: LLMAuditContext | undefined,
-  patch: Partial<LLMAuditContext>,
+  patch: Partial<LLMAuditContext>
 ): LLMAuditContext | undefined {
   if (parent) return { ...parent, ...patch };
-  if (typeof patch.conversationId !== 'string' || patch.conversationId.trim().length === 0) return undefined;
-  if (typeof patch.runId !== 'string' || patch.runId.trim().length === 0) return undefined;
-
-  const context: LLMAuditContext = { conversationId: patch.conversationId, runId: patch.runId };
-  if (typeof patch.traceId === 'string' && patch.traceId.trim()) context.traceId = patch.traceId;
-  if (typeof patch.subrunId === 'string' && patch.subrunId.trim()) context.subrunId = patch.subrunId;
-  if (typeof patch.parentToolCallId === 'string' && patch.parentToolCallId.trim()) {
-    context.parentToolCallId = patch.parentToolCallId;
+  if (typeof patch.conversationId !== 'string' || patch.conversationId.trim().length === 0) {
+    return undefined;
   }
-  if (typeof patch.source === 'string' && patch.source.trim()) context.source = patch.source;
-  return context;
+  if (typeof patch.runId !== 'string' || patch.runId.trim().length === 0) return undefined;
+  return {
+    conversationId: patch.conversationId,
+    runId: patch.runId,
+    ...(patch.traceId ? { traceId: patch.traceId } : {}),
+    ...(patch.subrunId ? { subrunId: patch.subrunId } : {}),
+    ...(patch.parentToolCallId ? { parentToolCallId: patch.parentToolCallId } : {}),
+    ...(patch.source ? { source: patch.source } : {}),
+  };
+}
+
+function summarizeRawArguments(rawArguments: string): {
+  readonly length: number;
+  readonly head: string;
+  readonly tail: string;
+} {
+  const maxPreviewLength = 256;
+  return {
+    length: rawArguments.length,
+    head: rawArguments.slice(0, maxPreviewLength),
+    tail: rawArguments.slice(-maxPreviewLength),
+  };
+}
+
+function isChildRun(context: LLMAuditContext): boolean {
+  return Boolean(context.subrunId?.trim());
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
 }

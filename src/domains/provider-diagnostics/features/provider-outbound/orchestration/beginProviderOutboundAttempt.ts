@@ -1,7 +1,7 @@
 import type {
   ProviderOutboundAttemptStart,
-  ProviderOutboundAuditPort,
-} from '../definitions/providerOutboundAuditPort';
+  ProviderOutboundDiagnosticsPort,
+} from '../definitions/providerOutboundDiagnosticsPort';
 import type {
   ProviderOutboundAttemptSnapshot,
   ProviderOutboundFailureSummary,
@@ -20,7 +20,7 @@ export interface ActiveProviderOutboundAttempt {
 }
 
 export function beginProviderOutboundAttempt(
-  audit: ProviderOutboundAuditPort,
+  diagnostics: ProviderOutboundDiagnosticsPort,
   input: ProviderOutboundAttemptStart
 ): ActiveProviderOutboundAttempt {
   const startedTimestamp = Date.now();
@@ -31,7 +31,7 @@ export function beginProviderOutboundAttempt(
     started_at: new Date(startedTimestamp).toISOString(),
     usage: { provenance: 'pending' },
   };
-  audit.record(started);
+  diagnostics.record(started);
   let active = true;
 
   function completion() {
@@ -45,7 +45,7 @@ export function beginProviderOutboundAttempt(
     if (!active) {
       throw new Error('Provider outbound attempt 已经进入终态。');
     }
-    audit.record(snapshot);
+    diagnostics.record(snapshot);
     active = false;
   }
 

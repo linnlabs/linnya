@@ -432,7 +432,7 @@ export async function configureRoutes(
     logger.warn('⚠️ 知识库服务未初始化，跳过路由挂载');
   }
 
-  // Provider outbound 快照只在开发环境暴露，且路由只持有只读 audit port。
+  // Provider outbound 快照只在开发环境暴露，且路由只持有只读 diagnostics port。
   if (dependencies.backendBootstrap.exposeProviderOutboundDebugRoutes) {
     app.use('/api/v1/debug/provider-outbound', createProviderOutboundDebugRouter());
     logger.info('✅ Provider 调试路由已挂载: /api/v1/debug/provider-outbound/latest-attempt');

@@ -1,9 +1,9 @@
 import type { CanonicalInferencePort } from '@linnlabs/linnkit/ports';
 import { modelCatalog } from 'src/domains/model-catalog';
 import {
-  defaultProviderOutboundAudit,
-  type ProviderOutboundAuditPort,
-} from 'src/domains/audit/features/provider-outbound-audit';
+  defaultProviderOutboundDiagnostics,
+  type ProviderOutboundDiagnosticsPort,
+} from 'src/domains/provider-diagnostics/features/provider-outbound';
 import {
   type AiSdkLanguageModelRegistry,
 } from '@linnlabs/linnkit-provider-ai-sdk';
@@ -24,7 +24,7 @@ export interface DefaultHostInferencePortDependencies {
   readonly model_catalog?: InferenceModelCatalog;
   readonly credential_resolver?: InferenceCredentialResolver;
   readonly language_models?: AiSdkLanguageModelRegistry;
-  readonly outbound_audit?: ProviderOutboundAuditPort;
+  readonly outbound_diagnostics?: ProviderOutboundDiagnosticsPort;
 }
 
 const defaultModelCatalog: InferenceModelCatalog = {
@@ -59,6 +59,6 @@ export function createDefaultHostInferencePort(
     model_catalog: dependencies.model_catalog ?? defaultModelCatalog,
     capability_registry: capabilityRegistry,
     credential_resolver: dependencies.credential_resolver ?? defaultCredentialResolver,
-    outbound_audit: dependencies.outbound_audit ?? defaultProviderOutboundAudit,
+    outbound_diagnostics: dependencies.outbound_diagnostics ?? defaultProviderOutboundDiagnostics,
   });
 }

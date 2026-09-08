@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 
-import type { CommandExecutionAuditPort } from '../../../../../domains/audit/features/command-execution-audit';
+import type { CommandExecutionAuditPort } from 'src/domains/audit';
 import type { CommandPermissionSettingsPort } from '../../../../../domains/commands';
 import type { CommandProductionScope } from '../../../adapters/commands/production-runtime';
 import type { ConversationWorkDirectoryAdmissionPort } from '../../conversation-lifecycle';

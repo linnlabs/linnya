@@ -17,7 +17,7 @@ export {
   type ModelRoutableInferenceFailureCode,
 } from './definitions/modelRoutableInferenceFailure';
 export { assertInferenceEventRoute } from './functions/assertInferenceEventRoute';
-export { projectInferenceAttemptAudit } from './functions/projectInferenceAttemptAudit';
+export { projectInferenceAttemptDiagnostics } from './functions/projectInferenceAttemptDiagnostics';
 export { resolveInferenceAttemptRoute } from './functions/resolveInferenceAttemptRoute';
 export {
   createHostCanonicalInferencePort,

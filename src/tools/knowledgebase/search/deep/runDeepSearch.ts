@@ -8,7 +8,7 @@ import type { ToolContext } from '../../../types';
 import type { StructuredToolResult } from '../../../types';
 import { runRegisteredSubagent } from '../../../agent_control/subrun/shared';
 import { generateMessageId } from '../../../../shared/utils/idUtils';
-import { runWithLLMAuditContext } from 'src/domains/audit/features/llm-run-audit';
+import { runWithLLMAuditContext } from 'src/domains/audit';
 import { buildDeepSearchTaskMessage } from './taskMessageBuilder';
 import {
   parseAssembleToolOutputSummary,

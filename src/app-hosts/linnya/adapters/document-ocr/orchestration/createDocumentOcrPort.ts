@@ -16,10 +16,10 @@ import { PaddleOcrLayoutParsingCapability } from '../capabilities/paddle/orchest
 import type { DocumentOcrCapabilityConfig } from '../definitions/documentOcrCapabilityConfig';
 import {
   beginProviderOutboundAttempt,
-  defaultProviderOutboundAudit,
-  type ProviderOutboundAuditPort,
+  defaultProviderOutboundDiagnostics,
+  type ProviderOutboundDiagnosticsPort,
   type ProviderOutboundFailureSummary,
-} from 'src/domains/audit/features/provider-outbound-audit';
+} from 'src/domains/provider-diagnostics/features/provider-outbound';
 
 const logger = new Logger('DocumentOcrPort');
 
@@ -76,7 +76,7 @@ export interface DocumentOcrModelCatalog {
 
 export interface CreateDocumentOcrPortDependencies {
   readonly catalog?: DocumentOcrModelCatalog;
-  readonly outbound_audit?: ProviderOutboundAuditPort;
+  readonly outbound_diagnostics?: ProviderOutboundDiagnosticsPort;
 }
 
 function classifyOcrFailure(
@@ -103,7 +103,7 @@ export function createDocumentOcrPort(
   dependencies: CreateDocumentOcrPortDependencies = {}
 ): DocumentOcrPort {
   const catalog = dependencies.catalog ?? defaultCatalog;
-  const outboundAudit = dependencies.outbound_audit ?? defaultProviderOutboundAudit;
+  const outboundDiagnostics = dependencies.outbound_diagnostics ?? defaultProviderOutboundDiagnostics;
   return {
     async resolveModelProfile(modelId) {
       await catalog.initialize();
@@ -123,7 +123,7 @@ export function createDocumentOcrPort(
       const credential = catalog.resolveCredential(request.modelId);
       if (!credential) throw new Error(`OCR 模型 '${config.id}' 缺少 API 密钥`);
       const capability = createCapability(config, credential);
-      const attempt = beginProviderOutboundAttempt(outboundAudit, {
+      const attempt = beginProviderOutboundAttempt(outboundDiagnostics, {
         attempt_id: randomUUID(),
         operation: 'document_ocr',
         route: {

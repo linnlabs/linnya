@@ -7,7 +7,7 @@ import type {
 } from 'src/domains/commands';
 import type {
   CommandExecutionAuditPort,
-} from 'src/domains/audit/features/command-execution-audit';
+} from 'src/domains/audit';
 
 /** Commands 只需要审批宿主的业务 port 和 App owner 收口，不感知 Renderer page。 */
 export interface CommandApprovalHostPort extends CommandApprovalPort {
