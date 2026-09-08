@@ -5,10 +5,10 @@ import type { AuditPort } from '@linnlabs/linnkit/ports';
 import { Logger } from 'src/shared/logger';
 import type { AuditLevel } from '../../../definitions/auditLevel';
 import type {
-  LLMAuditContext,
-  LlmInputMaterializationAuditInput,
-  RunTranscriptAuditToolset,
-} from '../definitions/llmRunAudit';
+  LLMDebugEvidenceContext,
+  LlmInputMaterializationDebugEvidenceInput,
+  RunTranscriptDebugEvidenceToolset,
+} from '../definitions/llmDebugEvidence';
 
 const logger = new Logger('UnifiedAudit');
 const MAX_PROTOCOL_ERRORS_PER_RUN = 16;
@@ -16,15 +16,15 @@ const MAX_SYSTEM_REMINDERS_PER_RUN = 16;
 const MAX_DEBUG_EVENTS_PER_RUN = 256;
 const MAX_DEBUG_EVIDENCE_BYTES = 512 * 1024;
 
-const als = new AsyncLocalStorage<LLMAuditStore>();
-let configuration: LlmRunAuditConfiguration | undefined;
+const als = new AsyncLocalStorage<LLMDebugEvidenceStore>();
+let configuration: LlmDebugEvidenceConfiguration | undefined;
 
-interface LlmRunAuditConfiguration {
+interface LlmDebugEvidenceConfiguration {
   readonly level: AuditLevel;
   readonly auditPort: AuditPort;
 }
 
-interface LlmRunAuditState {
+interface LlmDebugEvidenceState {
   readonly auditPort: AuditPort;
   sequence: number;
   emittedEvents: number;
@@ -40,23 +40,23 @@ interface LlmRunAuditState {
   pending: Promise<void>;
 }
 
-interface LLMAuditStore {
-  readonly stack: LLMAuditContext[];
-  readonly runAudit: LlmRunAuditState;
+interface LLMDebugEvidenceStore {
+  readonly stack: LLMDebugEvidenceContext[];
+  readonly debugEvidence: LlmDebugEvidenceState;
 }
 
-export function configureLlmRunAudit(options: {
+export function configureLlmDebugEvidence(options: {
   readonly auditPort: AuditPort;
   readonly level: AuditLevel;
 }): void {
   configuration = options;
 }
 
-export function resetLlmRunAuditForTest(): void {
+export function resetLlmDebugEvidenceForTest(): void {
   configuration = undefined;
 }
 
-export function getCurrentLLMAuditContext(): LLMAuditContext | undefined {
+export function getCurrentLLMDebugEvidenceContext(): LLMDebugEvidenceContext | undefined {
   const store = als.getStore();
   return store?.stack[store.stack.length - 1];
 }
@@ -65,13 +65,13 @@ export function recordBeforeContextManager(params: { payload: unknown }): void {
   const state = getDebugState();
   if (!state || state.beforeRecorded) return;
 
-  const context = getCurrentLLMAuditContext();
+  const context = getCurrentLLMDebugEvidenceContext();
   if (!context || isChildRun(context)) return;
-  const payload = projectAuditValue(params.payload, 'before_context_manager');
+  const payload = projectDebugEvidenceValue(params.payload, 'before_context_manager');
   if (payload === undefined) return;
 
   state.beforeRecorded = true;
-  emitLlmAuditEvent(state, context, 'llm.context.before', {
+  emitLlmDebugEvidenceEvent(state, context, 'llm.context.before', {
     stage: 'before_context_manager',
     payload,
   });
@@ -85,9 +85,9 @@ export function recordAfterContextManager(params: {
   const state = getDebugState();
   if (!state) return;
 
-  const context = getCurrentLLMAuditContext();
+  const context = getCurrentLLMDebugEvidenceContext();
   if (!context) return;
-  const payload = projectAuditValue(params, 'after_context_manager');
+  const payload = projectDebugEvidenceValue(params, 'after_context_manager');
   if (!isRecord(payload)) return;
 
   const contextMessages = Array.isArray(payload.contextMessages)
@@ -102,7 +102,7 @@ export function recordAfterContextManager(params: {
 
   state.latestAfterPayload = { contextMessages, llmMessages, toolNames };
   if (isChildRun(context)) return;
-  emitLlmAuditEvent(state, context, 'llm.context.after', {
+  emitLlmDebugEvidenceEvent(state, context, 'llm.context.after', {
     stage: 'after_context_manager',
     payload: {
       ...(contextMessages ? { contextMessages } : {}),
@@ -122,14 +122,14 @@ export function recordToolProtocolError(params: {
   const state = getDebugState();
   if (!state || state.protocolErrorCount >= MAX_PROTOCOL_ERRORS_PER_RUN) return;
 
-  const context = getCurrentLLMAuditContext();
+  const context = getCurrentLLMDebugEvidenceContext();
   if (!context) return;
-  const payload = projectAuditValue(params, 'tool_protocol_error');
+  const payload = projectDebugEvidenceValue(params, 'tool_protocol_error');
   if (!isRecord(payload)) return;
 
   state.protocolErrorCount += 1;
   const latestAfter = state.latestAfterPayload;
-  emitLlmAuditEvent(state, context, 'llm.tool_protocol_error', {
+  emitLlmDebugEvidenceEvent(state, context, 'llm.tool_protocol_error', {
     stage: 'tool_protocol_error',
     payload: {
       toolCall: {
@@ -158,13 +158,13 @@ export function recordAfterContextManagerOnSystemReminderHit(params: {
   const state = getDebugState();
   if (!state || state.systemReminderCount >= MAX_SYSTEM_REMINDERS_PER_RUN) return;
 
-  const context = getCurrentLLMAuditContext();
+  const context = getCurrentLLMDebugEvidenceContext();
   if (!context || isChildRun(context)) return;
-  const payload = projectAuditValue(params, 'after_context_manager_system_reminder');
+  const payload = projectDebugEvidenceValue(params, 'after_context_manager_system_reminder');
   if (!isRecord(payload)) return;
 
   state.systemReminderCount += 1;
-  emitLlmAuditEvent(state, context, 'llm.context.system_reminder', {
+  emitLlmDebugEvidenceEvent(state, context, 'llm.context.system_reminder', {
     stage: 'after_context_manager',
     payload,
   });
@@ -172,34 +172,34 @@ export function recordAfterContextManagerOnSystemReminderHit(params: {
 
 export function recordRunTranscript(params: {
   transcriptMessages: unknown[];
-  toolset?: RunTranscriptAuditToolset;
+  toolset?: RunTranscriptDebugEvidenceToolset;
 }): void {
   const state = getDebugState();
   if (!state) return;
 
-  const context = getCurrentLLMAuditContext();
+  const context = getCurrentLLMDebugEvidenceContext();
   if (!context) return;
-  const payload = projectAuditValue(params, 'run_transcript');
+  const payload = projectDebugEvidenceValue(params, 'run_transcript');
   if (payload === undefined) return;
 
-  emitLlmAuditEvent(state, context, 'llm.transcript', {
+  emitLlmDebugEvidenceEvent(state, context, 'llm.transcript', {
     stage: 'run_transcript',
     payload,
   });
 }
 
 export function recordLlmInputMaterializationEvidence(
-  params: LlmInputMaterializationAuditInput
+  params: LlmInputMaterializationDebugEvidenceInput
 ): void {
   const state = getDebugState();
   if (!state) return;
 
-  const context = getCurrentLLMAuditContext();
+  const context = getCurrentLLMDebugEvidenceContext();
   if (!context) return;
-  const payload = projectAuditValue(params, 'llm_input_materialization');
+  const payload = projectDebugEvidenceValue(params, 'llm_input_materialization');
   if (payload === undefined) return;
 
-  emitLlmAuditEvent(state, context, 'llm.input_materialization', {
+  emitLlmDebugEvidenceEvent(state, context, 'llm.input_materialization', {
     stage: 'llm_input_materialization',
     payload,
   });
@@ -213,47 +213,49 @@ export function recordLlmInputMaterializationEvidence(
  */
 export async function flushLinnyaAudit(): Promise<void> {
   const store = als.getStore();
-  if (!store || store.runAudit.flushed) return;
+  if (!store || store.debugEvidence.flushed) return;
 
-  store.runAudit.flushed = true;
-  await store.runAudit.pending;
-  await store.runAudit.auditPort.flush?.();
+  store.debugEvidence.flushed = true;
+  await store.debugEvidence.pending;
+  await store.debugEvidence.auditPort.flush?.();
 }
 
-export async function runWithLLMAuditContext<T>(
-  contextPatch: Partial<LLMAuditContext>,
+export async function runWithLLMDebugEvidenceContext<T>(
+  contextPatch: Partial<LLMDebugEvidenceContext>,
   run: () => Promise<T>
 ): Promise<T> {
   if (configuration?.level !== 'debug') return await run();
 
-  const merged = mergeAuditContext(getCurrentLLMAuditContext(), contextPatch);
+  const merged = mergeDebugEvidenceContext(getCurrentLLMDebugEvidenceContext(), contextPatch);
   if (!merged) return await run();
 
   const parentStore = als.getStore();
-  const store: LLMAuditStore = parentStore ?? {
+  const store: LLMDebugEvidenceStore = parentStore ?? {
     stack: [],
-    runAudit: createRunAuditState(),
+    debugEvidence: createDebugEvidenceState(),
   };
   return await als.run(
     {
       stack: [...store.stack, merged],
-      runAudit: store.runAudit,
+      debugEvidence: store.debugEvidence,
     },
     run
   );
 }
 
-function getDebugState(): LlmRunAuditState | undefined {
+function getDebugState(): LlmDebugEvidenceState | undefined {
   if (configuration?.level !== 'debug') return undefined;
   const store = als.getStore();
-  if (!store || store.runAudit.flushed) return undefined;
-  return store.runAudit;
+  if (!store || store.debugEvidence.flushed) return undefined;
+  return store.debugEvidence;
 }
 
-function createRunAuditState(): LlmRunAuditState {
+function createDebugEvidenceState(): LlmDebugEvidenceState {
   const auditPort = configuration?.auditPort;
   if (!auditPort) {
-    throw new Error('Unified audit runtime must be configured before creating an LLM audit scope');
+    throw new Error(
+      'Unified audit runtime must be configured before creating an LLM debug evidence scope'
+    );
   }
   return {
     auditPort,
@@ -267,9 +269,9 @@ function createRunAuditState(): LlmRunAuditState {
   };
 }
 
-function emitLlmAuditEvent(
-  state: LlmRunAuditState,
-  context: LLMAuditContext,
+function emitLlmDebugEvidenceEvent(
+  state: LlmDebugEvidenceState,
+  context: LLMDebugEvidenceContext,
   action: string,
   input: {
     readonly stage: string;
@@ -278,7 +280,7 @@ function emitLlmAuditEvent(
 ): void {
   if (state.emittedEvents >= MAX_DEBUG_EVENTS_PER_RUN) {
     if (state.emittedEvents === MAX_DEBUG_EVENTS_PER_RUN) {
-      logger.warn('[UnifiedAudit] debug LLM 审计达到单次 run 上限，后续片段已丢弃', {
+      logger.warn('[UnifiedAudit] LLM debug evidence 达到单次 run 上限，后续片段已丢弃', {
         runId: context.runId,
         limit: MAX_DEBUG_EVENTS_PER_RUN,
       });
@@ -287,12 +289,12 @@ function emitLlmAuditEvent(
     return;
   }
 
-  const projected = projectAuditValue(input.payload, input.stage);
+  const projected = projectDebugEvidenceValue(input.payload, input.stage);
   if (projected === undefined) return;
 
   state.sequence += 1;
   state.emittedEvents += 1;
-  const envelope = createLlmAuditEnvelope({
+  const envelope = createLlmDebugEvidenceEnvelope({
     context,
     action,
     stage: input.stage,
@@ -305,7 +307,7 @@ function emitLlmAuditEvent(
   state.pending = state.pending
     .then(async () => await auditPort.emit(envelope))
     .catch(error => {
-      logger.error('[UnifiedAudit] debug LLM 审计写入失败', {
+      logger.error('[UnifiedAudit] LLM debug evidence 写入失败', {
         action,
         conversationId: context.conversationId,
         runId: context.runId,
@@ -314,14 +316,14 @@ function emitLlmAuditEvent(
     });
 }
 
-function createLlmAuditEnvelope(params: {
-  readonly context: LLMAuditContext;
+function createLlmDebugEvidenceEnvelope(params: {
+  readonly context: LLMDebugEvidenceContext;
   readonly action: string;
   readonly stage: string;
   readonly sequence: number;
   readonly payload: unknown;
 }): ReturnType<typeof AuditEnvelope.parse> | undefined {
-  const projected = projectAuditValue(
+  const projected = projectDebugEvidenceValue(
     {
       stage: params.stage,
       sequence: params.sequence,
@@ -342,7 +344,7 @@ function createLlmAuditEnvelope(params: {
       action: params.action,
       evidence: [
         {
-          kind: 'llm_audit',
+          kind: 'llm_debug_evidence',
           metadata: projected,
         },
       ],
@@ -362,7 +364,7 @@ function createLlmAuditEnvelope(params: {
       },
     });
   } catch (error) {
-    logger.error('[UnifiedAudit] debug LLM 审计片段未通过合同校验', {
+    logger.error('[UnifiedAudit] LLM debug evidence 未通过合同校验', {
       action: params.action,
       conversationId: params.context.conversationId,
       runId: params.context.runId,
@@ -372,12 +374,12 @@ function createLlmAuditEnvelope(params: {
   }
 }
 
-function projectAuditValue(value: unknown, stage: string): unknown | undefined {
+function projectDebugEvidenceValue(value: unknown, stage: string): unknown | undefined {
   try {
     const projected = projectDurableLlmAuditValue(value);
     const serialized = JSON.stringify(projected);
     if (serialized && Buffer.byteLength(serialized, 'utf8') > MAX_DEBUG_EVIDENCE_BYTES) {
-      logger.warn('[UnifiedAudit] debug LLM 审计片段超过大小上限，已丢弃', {
+      logger.warn('[UnifiedAudit] LLM debug evidence 超过大小上限，已丢弃', {
         stage,
         maxBytes: MAX_DEBUG_EVIDENCE_BYTES,
       });
@@ -385,7 +387,7 @@ function projectAuditValue(value: unknown, stage: string): unknown | undefined {
     }
     return projected;
   } catch (error) {
-    logger.error('[UnifiedAudit] 拒绝不满足 durable 合同的 debug LLM 审计片段', {
+    logger.error('[UnifiedAudit] 拒绝不满足 durable 合同的 LLM debug evidence', {
       stage,
       error: error instanceof Error ? error.message : String(error),
     });
@@ -393,10 +395,10 @@ function projectAuditValue(value: unknown, stage: string): unknown | undefined {
   }
 }
 
-function mergeAuditContext(
-  parent: LLMAuditContext | undefined,
-  patch: Partial<LLMAuditContext>
-): LLMAuditContext | undefined {
+function mergeDebugEvidenceContext(
+  parent: LLMDebugEvidenceContext | undefined,
+  patch: Partial<LLMDebugEvidenceContext>
+): LLMDebugEvidenceContext | undefined {
   if (parent) return { ...parent, ...patch };
   if (typeof patch.conversationId !== 'string' || patch.conversationId.trim().length === 0) {
     return undefined;
@@ -425,7 +427,7 @@ function summarizeRawArguments(rawArguments: string): {
   };
 }
 
-function isChildRun(context: LLMAuditContext): boolean {
+function isChildRun(context: LLMDebugEvidenceContext): boolean {
   return Boolean(context.subrunId?.trim());
 }
 

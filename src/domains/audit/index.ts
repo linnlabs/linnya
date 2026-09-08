@@ -2,7 +2,7 @@
  * Linnya Audit Domain 的唯一公共入口。
  *
  * 业务 host、command、inference 和 agent runner 不应直接拼装自己的 audit sink，
- * 也不应直接读取 llm-run-audit 的 persistence 实现。
+ * 也不应直接读取 llm-debug-evidence 的 persistence 实现。
  */
 export { AuditLevelSchema, DEFAULT_AUDIT_LEVEL, type AuditLevel } from './definitions/auditLevel';
 export { resolveAuditLevel } from './functions/resolveAuditLevel';
@@ -20,21 +20,21 @@ export {
 
 export {
   flushLinnyaAudit,
-  getCurrentLLMAuditContext,
+  getCurrentLLMDebugEvidenceContext,
   recordAfterContextManager,
   recordAfterContextManagerOnSystemReminderHit,
   recordBeforeContextManager,
   recordLlmInputMaterializationEvidence,
   recordRunTranscript,
   recordToolProtocolError,
-  runWithLLMAuditContext,
-} from './features/llm-run-audit';
-export { resetLlmRunAuditForTest } from './features/llm-run-audit';
+  runWithLLMDebugEvidenceContext,
+} from './features/llm-debug-evidence';
+export { resetLlmDebugEvidenceForTest } from './features/llm-debug-evidence';
 export type {
-  LLMAuditContext,
-  LlmInputMaterializationAuditInput,
-  RunTranscriptAuditToolset,
-} from './features/llm-run-audit';
+  LLMDebugEvidenceContext,
+  LlmInputMaterializationDebugEvidenceInput,
+  RunTranscriptDebugEvidenceToolset,
+} from './features/llm-debug-evidence';
 
 export {
   COMMAND_EXECUTION_AUDIT_ACTOR,

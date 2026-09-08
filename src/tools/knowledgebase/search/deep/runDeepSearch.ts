@@ -8,7 +8,7 @@ import type { ToolContext } from '../../../types';
 import type { StructuredToolResult } from '../../../types';
 import { runRegisteredSubagent } from '../../../agent_control/subrun/shared';
 import { generateMessageId } from '../../../../shared/utils/idUtils';
-import { runWithLLMAuditContext } from 'src/domains/audit';
+import { runWithLLMDebugEvidenceContext } from 'src/domains/audit';
 import { buildDeepSearchTaskMessage } from './taskMessageBuilder';
 import {
   parseAssembleToolOutputSummary,
@@ -90,7 +90,7 @@ export async function runDeepSearch(params: {
    * - 子 Agent 的 LLM 请求也必须写入“父 run 文件”中（同 runId），但需要带上 subrunId 标识；
    * - 这里通过 AsyncLocalStorage 在子链路上追加上下文，由 lifecycle audit 记录子运行观测。
    */
-  const result = await runWithLLMAuditContext(
+  const result = await runWithLLMDebugEvidenceContext(
     {
       subrunId,
       parentToolCallId,

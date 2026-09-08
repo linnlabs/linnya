@@ -9,9 +9,9 @@ import {
   createLinnyaAuditRuntime,
   flushLinnyaAudit,
   recordAfterContextManager,
-  resetLlmRunAuditForTest,
+  resetLlmDebugEvidenceForTest,
   resolveAuditLevel,
-  runWithLLMAuditContext,
+  runWithLLMDebugEvidenceContext,
 } from '..';
 
 const baseEnvelope = (action: string) =>
@@ -30,7 +30,7 @@ const baseEnvelope = (action: string) =>
 const tempDirectories: string[] = [];
 
 afterEach(async () => {
-  resetLlmRunAuditForTest();
+  resetLlmDebugEvidenceForTest();
   await Promise.all(
     tempDirectories.splice(0).map(directory => fsp.rm(directory, { recursive: true, force: true }))
   );
@@ -80,7 +80,7 @@ describe('unified audit runtime', () => {
     };
     createLinnyaAuditRuntime({ sink, level: 'debug', debugEvidenceDirectoryPath: directoryPath });
 
-    await runWithLLMAuditContext(
+    await runWithLLMDebugEvidenceContext(
       {
         conversationId: 'conversation-audit-runtime-test',
         runId: 'run-audit-runtime-test',
@@ -107,6 +107,6 @@ describe('unified audit runtime', () => {
     );
     expect(debugEnvelope.action).toBe('llm.context.after');
     expect(debugEnvelope.scope?.conversationId).toBe('conversation-audit-runtime-test');
-    expect(debugEnvelope.evidence?.[0]?.kind).toBe('llm_audit');
+    expect(debugEnvelope.evidence?.[0]?.kind).toBe('llm_debug_evidence');
   });
 });

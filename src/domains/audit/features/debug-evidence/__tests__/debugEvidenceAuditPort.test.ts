@@ -21,7 +21,7 @@ function envelope(runId: string, sequence: number, payload = 'debug'): AuditEnve
     ts: sequence,
     actor: { kind: 'host', name: 'debug-evidence-test' },
     action: 'llm.context.after',
-    evidence: [{ kind: 'llm_audit', metadata: { payload } }],
+    evidence: [{ kind: 'llm_debug_evidence', metadata: { payload } }],
     scope: { conversationId: 'conversation-debug-evidence', runId },
   });
 }

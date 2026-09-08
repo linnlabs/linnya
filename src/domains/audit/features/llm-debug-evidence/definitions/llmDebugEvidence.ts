@@ -1,4 +1,4 @@
-export interface LLMAuditContext {
+export interface LLMDebugEvidenceContext {
   conversationId: string;
   runId: string;
   traceId?: string;
@@ -7,11 +7,11 @@ export interface LLMAuditContext {
   source?: string;
 }
 
-export interface RunTranscriptAuditToolset {
+export interface RunTranscriptDebugEvidenceToolset {
   readonly availableTools?: string[];
 }
 
-export interface LlmInputMaterializationAuditInput {
+export interface LlmInputMaterializationDebugEvidenceInput {
   readonly activeModelId: string;
   readonly profileId: string;
   readonly estimatorVersion: string;

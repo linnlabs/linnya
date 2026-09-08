@@ -11,26 +11,26 @@ import {
   recordBeforeContextManager,
   recordRunTranscript,
   recordToolProtocolError,
-} from './orchestration/llmRunAuditContext';
+} from './orchestration/llmDebugEvidenceContext';
 
 export type {
-  LLMAuditContext,
-  LlmInputMaterializationAuditInput,
-  RunTranscriptAuditToolset,
-} from './definitions/llmRunAudit';
+  LLMDebugEvidenceContext,
+  LlmInputMaterializationDebugEvidenceInput,
+  RunTranscriptDebugEvidenceToolset,
+} from './definitions/llmDebugEvidence';
 export {
   flushLinnyaAudit,
-  getCurrentLLMAuditContext,
+  getCurrentLLMDebugEvidenceContext,
   recordAfterContextManager,
   recordAfterContextManagerOnSystemReminderHit,
   recordBeforeContextManager,
   recordLlmInputMaterializationEvidence,
   recordRunTranscript,
   recordToolProtocolError,
-  runWithLLMAuditContext,
-} from './orchestration/llmRunAuditContext';
+  runWithLLMDebugEvidenceContext,
+} from './orchestration/llmDebugEvidenceContext';
 
-export { configureLlmRunAudit, resetLlmRunAuditForTest } from './orchestration/llmRunAuditContext';
+export { configureLlmDebugEvidence, resetLlmDebugEvidenceForTest } from './orchestration/llmDebugEvidenceContext';
 
 setLlmAuditRecorder({
   recordBeforeContextManager,

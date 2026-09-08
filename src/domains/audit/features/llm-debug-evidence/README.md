@@ -20,7 +20,7 @@ evidence。它不拥有文件目录、数据库连接、配置开关或独立写
 
 ## 公开使用方式
 
-生产调用方从 `src/domains/audit` 导入 `runWithLLMAuditContext`、`record*` 和
+生产调用方从 `src/domains/audit` 导入 `runWithLLMDebugEvidenceContext`、`record*` 和
 `flushLinnyaAudit`。不要导入本目录的内部 orchestration、不要读取旧的文件路径，也不要在调用方判断
 `LINNYA_AUDIT_LEVEL`。
 

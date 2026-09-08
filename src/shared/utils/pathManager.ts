@@ -366,39 +366,6 @@ export function getPipelinePath(): string {
 }
 
 /**
- * 获取对话历史数据库目录
- *
- * 此目录用于存放AI助手的对话历史记录数据库。
- *
- * 路径规则：
- * - 位于 Workspace Root 下的 `Conversations/` 子目录
- * - 开发模式：`<项目根>/_dev_data/Conversations`
- * - 生产模式：`<用户文档>/Linnya/Conversations` 或 `<HOME>/Documents/Linnya/Conversations`
- *
- * @returns 对话历史目录的绝对路径
- */
-export function getConversationsPath(): string {
-  return getAndCreateWorkspaceSubDirectory('Conversations');
-}
-
-/**
- * 获取对话历史数据库文件的完整路径
- *
- * @returns 对话历史数据库文件路径（conversations.sqlite）
- *
- * @example
- * ```ts
- * const dbPath = getConversationsDbPath();
- * // 开发: '/Users/<用户名>/code/Linnya/_dev_data/Conversations/conversations.sqlite'
- * // 生产: '/Users/<用户名>/Documents/Linnya/Conversations/conversations.sqlite'
- * ```
- */
-export function getConversationsDbPath(): string {
-  const conversationsPath = getConversationsPath();
-  return path.join(conversationsPath, 'conversations.sqlite');
-}
-
-/**
  * 获取工作区数据库和配置文件的目录
  *
  * 目录位置：位于 Workspace Root 下的 `workspace/` 子目录
@@ -839,8 +806,6 @@ export const pathManager = {
   getKnowledgeBaseOriginalsPath,
   getBm25IndicesPath,
   getPipelinePath,
-  getConversationsPath,
-  getConversationsDbPath,
   getWorkspaceDataPath,
   getUserModelsConfigPath,
   getProviderConfigurationsConfigPath,

@@ -1,4 +1,4 @@
-import { flushLinnyaAudit, runWithLLMAuditContext } from 'src/domains/audit';
+import { flushLinnyaAudit, runWithLLMDebugEvidenceContext } from 'src/domains/audit';
 import { Logger } from 'src/shared/logger';
 
 const logger = new Logger('RunAuditScope');
@@ -12,15 +12,15 @@ export interface RunAuditScopeOptions {
 
 /**
  * 中文备注：
- * - 这层只负责包装 run 级别的 LLM audit 生命周期；
- * - 主执行函数只关心“在 audit scope 中运行什么”，不再自己关心 finally flush；
- * - 这样 audit 语义和业务执行语义可以分离。
+ * - 这层负责建立 run 级统一审计范围，并在 debug 等级下附加 LLM evidence context；
+ * - 主执行函数只关心“在审计范围中运行什么”，不再自己处理 finally flush；
+ * - Audit Domain 决定 evidence 的存储方式，runner 不持有路径和保留策略。
  */
 export async function runWithAgentAuditScope<T>(
   options: RunAuditScopeOptions,
   execute: () => Promise<T>
 ): Promise<T> {
-  return runWithLLMAuditContext(
+  return runWithLLMDebugEvidenceContext(
     {
       conversationId: options.conversationId,
       runId: options.runId,

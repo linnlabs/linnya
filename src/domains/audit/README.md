@@ -96,7 +96,7 @@ const runtimeScope = {
 ```
 
 业务代码不允许直接构造 EventStore audit sink，不允许直接写
-`workspace.sqlite`，也不允许从 `features/llm-run-audit`
+`workspace.sqlite`，也不允许从 `features/llm-debug-evidence`
 的内部目录导入。需要审计时：
 
 1. Runtime 或 Command 通过注入的 `AuditPort` 发出 `AuditEnvelope`。
