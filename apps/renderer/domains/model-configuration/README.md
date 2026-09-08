@@ -230,6 +230,11 @@ store、Conversation 或 Settings 中保存第二份容量。
 source 猜正式 Provider；Cloud、正式 Provider、自定义模型和 runtime
 availability 已由 Host 一次投影完成。
 
+当正式 Provider 的本机凭据不可用时，快照会同时返回受控的
+`credential_unavailable_reason`（缺失、系统安全存储暂不可用、密文失效/格式错误或未知错误），Settings
+以错误色展示具体原因，并提供“删除凭据并重新添加”操作。该操作通过 domain-level
+模型删除编排清理 Provider 的已激活模型、孤儿 endpoint 与本机密文，不在 Renderer 直接访问凭据文件。
+
 store 只持有最后一次严格解析后的快照、当前操作和结构化错误。HTTP、更新流程和同步 state
 action 分别位于 infrastructure、orchestration 和 store。新增目录模型不会在 Renderer 生成默认偏好；尚未 materialize 的正式 Provider 模型只服务 Settings 全目录，不进入快捷选择候选。
 

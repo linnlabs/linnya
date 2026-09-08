@@ -69,6 +69,7 @@ export type {
   ModelPurposeSelections,
 } from './features/purpose-model-bindings';
 export { deleteConfiguredModel } from './orchestration/deleteConfiguredModel';
+export { removeConfiguredProvider } from './orchestration/removeConfiguredProvider';
 export {
   getEmbeddingModelChangeImpactPort,
   registerEmbeddingModelChangeImpactPort,

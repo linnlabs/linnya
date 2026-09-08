@@ -19,6 +19,7 @@ import type {
   InferenceEndpointSelection,
   InferenceEndpointView,
   EndpointCredentialCodec,
+  EndpointCredentialStatus,
 } from '../definitions/inferenceEndpoint';
 import { processModelConfig } from '../features/catalog-admission/functions/processModelConfig';
 import { fetchCloudModels } from '../features/cloud-catalog/orchestration/fetchCloudModels';
@@ -166,6 +167,25 @@ export class ModelCatalogRegistry implements ModelCatalog {
     if (reference.kind === 'stored_secret')
       return endpointCredentialStore.has(reference.credential_id);
     return true;
+  }
+
+  getCredentialStatus(modelId: string): EndpointCredentialStatus | 'missing' {
+    const model = this.models.get(modelId);
+    if (!model) return 'missing';
+    const reference = model.inference_endpoint_id
+      ? this.inferenceEndpoints.get(model.inference_endpoint_id)?.credential_reference
+      : model.credential_reference;
+    if (!reference) return 'missing';
+    switch (reference.kind) {
+      case 'none':
+      case 'provider_account':
+      case 'host_managed':
+        return 'available';
+      case 'environment_variable':
+        return this.envVars[reference.environment_variable]?.trim() ? 'available' : 'missing';
+      case 'stored_secret':
+        return endpointCredentialStore.getStatus(reference.credential_id);
+    }
   }
 
   getInferenceEndpoints(): InferenceEndpointView[] {
@@ -444,16 +464,12 @@ export class ModelCatalogRegistry implements ModelCatalog {
       this.inferenceEndpoints.values()
     );
     const nextEndpoints = new Map(this.inferenceEndpoints);
-    const removedCredentials: Array<{ readonly id: string; readonly plaintext: string }> = [];
+    const removedCredentials: Array<{ readonly id: string; readonly plaintext?: string }> = [];
 
     try {
       for (const endpoint of orphanedEndpoints) {
         nextEndpoints.delete(endpoint.id);
-        if (
-          endpoint.credential_reference.kind !== 'stored_secret' ||
-          !endpointCredentialStore.has(endpoint.credential_reference.credential_id)
-        )
-          continue;
+        if (endpoint.credential_reference.kind !== 'stored_secret') continue;
         const credentialId = endpoint.credential_reference.credential_id;
         const credentialStillReferenced = Array.from(nextEndpoints.values()).some(
           candidate =>
@@ -461,14 +477,18 @@ export class ModelCatalogRegistry implements ModelCatalog {
             candidate.credential_reference.credential_id === credentialId
         );
         if (credentialStillReferenced) continue;
-        const plaintext = endpointCredentialStore.resolve(credentialId);
+        const plaintext = endpointCredentialStore.has(credentialId)
+          ? endpointCredentialStore.resolve(credentialId)
+          : undefined;
         await endpointCredentialStore.remove(credentialId);
         removedCredentials.push({ id: credentialId, plaintext });
       }
       await this.persistUserState(nextModels, nextEndpoints);
     } catch (error: unknown) {
       for (const credential of removedCredentials) {
-        await endpointCredentialStore.put(credential.id, credential.plaintext);
+        if (credential.plaintext !== undefined) {
+          await endpointCredentialStore.put(credential.id, credential.plaintext);
+        }
       }
       throw error;
     }

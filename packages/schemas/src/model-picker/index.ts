@@ -2,6 +2,13 @@ import { z } from 'zod';
 
 const NonEmptyStringSchema = z.string().trim().min(1);
 const ReasoningEffortSchema = z.enum(['off', 'minimal', 'low', 'medium', 'high', 'xhigh']);
+const CredentialUnavailableReasonSchema = z.enum([
+  'missing',
+  'temporarily_unavailable',
+  'invalidated',
+  'malformed_ciphertext',
+  'unknown',
+]);
 
 export const ModelPickerReasoningSchema = z
   .object({
@@ -53,6 +60,7 @@ export const ModelPickerConfiguredProviderSchema = z
     kind: z.enum(['direct', 'local_runtime']),
     picker_enabled: z.boolean(),
     credential_available: z.boolean(),
+    credential_unavailable_reason: CredentialUnavailableReasonSchema.optional(),
     models: z.array(ModelPickerProviderModelSchema),
   })
   .strict();
@@ -86,6 +94,9 @@ export type ModelPickerMaterializedModel = z.infer<typeof ModelPickerMaterialize
 export type ModelPickerUnmaterializedModel = z.infer<typeof ModelPickerUnmaterializedModelSchema>;
 export type ModelPickerProviderModel = z.infer<typeof ModelPickerProviderModelSchema>;
 export type ModelPickerConfiguredProvider = z.infer<typeof ModelPickerConfiguredProviderSchema>;
+export type ModelPickerCredentialUnavailableReason = z.infer<
+  typeof CredentialUnavailableReasonSchema
+>;
 export type ModelPickerDirectGroup = z.infer<typeof ModelPickerDirectGroupSchema>;
 export type ModelPickerSnapshot = z.infer<typeof ModelPickerSnapshotSchema>;
 export type SetModelPickerProviderVisibilityCommand = z.infer<

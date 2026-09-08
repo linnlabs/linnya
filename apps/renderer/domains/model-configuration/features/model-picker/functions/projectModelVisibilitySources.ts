@@ -1,4 +1,5 @@
 import type {
+  ModelPickerCredentialUnavailableReason,
   ModelPickerMaterializedModel,
   ModelPickerProviderModel,
   ModelPickerSnapshot,
@@ -18,6 +19,7 @@ export type ModelVisibilitySource =
       readonly configuredProviderId: string;
       readonly pickerEnabled: boolean;
       readonly credentialAvailable: boolean;
+      readonly credentialUnavailableReason?: ModelPickerCredentialUnavailableReason;
       readonly models: readonly ModelPickerProviderModel[];
     };
 
@@ -53,6 +55,9 @@ export function projectModelVisibilitySources(
       configuredProviderId: provider.configured_provider_id,
       pickerEnabled: provider.picker_enabled,
       credentialAvailable: provider.credential_available,
+      ...(provider.credential_unavailable_reason
+        ? { credentialUnavailableReason: provider.credential_unavailable_reason }
+        : {}),
       models: provider.models,
     })),
     ...(snapshot.custom_models.length > 0

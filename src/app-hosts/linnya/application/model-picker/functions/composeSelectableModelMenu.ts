@@ -13,6 +13,10 @@ import { isModelRuntimeAvailable } from '../../model-runtime-availability';
 
 import type { ComposeSelectableModelMenuInput } from '../definitions/modelPickerPorts';
 
+type CredentialUnavailableReason = NonNullable<
+  ModelPickerConfiguredProvider['credential_unavailable_reason']
+>;
+
 function modelDisplayName(model: ModelConfig): string {
   return model.display_name.trim() || model.model_name;
 }
@@ -67,28 +71,46 @@ function projectMaterializedModel(
   };
 }
 
-function providerCredentialAvailable(
+function providerCredentialStatus(
   provider: ConfiguredProvider,
   input: ComposeSelectableModelMenuInput
-): boolean {
+): { readonly available: boolean; readonly reason?: CredentialUnavailableReason } {
   const connectedAccount = input.provider_accounts.find(
     account =>
       account.provider_connection_definition_id === provider.provider_connection_definition_id
   );
   if (connectedAccount) {
-    return input.has_provider_account_credential(connectedAccount.id);
+    const status = input.get_provider_account_credential_status(connectedAccount.id);
+    return status === 'available' && input.has_provider_account_credential(connectedAccount.id)
+      ? { available: true }
+      : { available: false, reason: status === 'available' ? 'missing' : status };
   }
   const firstModelConfigId = provider.models[0]?.model_config_id;
+  if (!firstModelConfigId) return { available: false, reason: 'missing' };
   const firstEndpointId = input.models.find(
     model => model.id === firstModelConfigId
   )?.inference_endpoint_id;
-  if (!firstEndpointId) return false;
+  if (!firstEndpointId) return { available: false, reason: 'missing' };
   const endpoint = input.inference_endpoints.find(candidate => candidate.id === firstEndpointId);
-  if (!endpoint) return false;
+  if (!endpoint) return { available: false, reason: 'missing' };
   if (endpoint.credential_reference.kind === 'provider_account') {
-    return input.has_provider_account_credential(endpoint.credential_reference.account_id);
+    const status = input.get_provider_account_credential_status(
+      endpoint.credential_reference.account_id
+    );
+    return status === 'available' &&
+      input.has_provider_account_credential(endpoint.credential_reference.account_id)
+      ? { available: true }
+      : { available: false, reason: status === 'available' ? 'missing' : status };
   }
-  return endpoint.credential_status !== 'missing' && endpoint.credential_status !== 'unavailable';
+  const status = input.get_credential_status(firstModelConfigId);
+  const resolvedStatus = endpoint.credential_status === 'missing'
+    ? 'missing'
+    : endpoint.credential_status === 'unavailable' && status === 'available'
+      ? 'invalidated'
+      : status;
+  return resolvedStatus === 'available'
+    ? { available: true }
+    : { available: false, reason: resolvedStatus };
 }
 
 function providerVisible(
@@ -172,6 +194,7 @@ function projectConfiguredProvider(
     )
     .map(model => projectMaterializedModel(model, input, true));
 
+  const credential = providerCredentialStatus(provider, input);
   return {
     configured_provider_id: provider.id,
     provider_definition_id: provider.provider_definition_id,
@@ -180,7 +203,8 @@ function projectConfiguredProvider(
     connection_display_name: connection.display_name,
     kind: connection.kind,
     picker_enabled: providerVisible(provider, input),
-    credential_available: providerCredentialAvailable(provider, input),
+    credential_available: credential.available,
+    ...(credential.reason ? { credential_unavailable_reason: credential.reason } : {}),
     models: [...catalogModels, ...removedCatalogModels, ...accountModels],
   };
 }

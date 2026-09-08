@@ -35,6 +35,10 @@ export function createModelPickerUseCase(
       has_credential: modelConfigId => dependencies.modelCatalog.hasCredential(modelConfigId),
       has_provider_account_credential: accountId =>
         dependencies.providerAccounts.hasCredential(accountId),
+      get_credential_status: modelConfigId =>
+        dependencies.modelCatalog.getCredentialStatus(modelConfigId),
+      get_provider_account_credential_status: accountId =>
+        dependencies.providerAccounts.getCredentialStatus(accountId),
     });
   }
 

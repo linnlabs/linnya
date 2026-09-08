@@ -3,21 +3,28 @@ import type {
   DirectProviderModelRegistrationCommand,
   DirectProviderModelRegistrationResponse,
 } from '@app/schemas/provider-onboarding';
-import type { InferenceEndpointView, ModelConfig } from 'src/domains/model-catalog';
+import type {
+  EndpointCredentialStatus,
+  InferenceEndpointView,
+  ModelConfig,
+} from 'src/domains/model-catalog';
 import type { ProviderCatalog, ProviderDefinition } from '@linnya/provider-catalog';
 import type { ConfiguredProvider } from 'src/domains/provider-configuration';
 import type { ModelPickerPreferencesSnapshot } from 'src/domains/model-picker-preferences';
-import type { ProviderAccount } from 'src/domains/provider-account';
+import type {
+  ProviderAccount,
+  ProviderAccountCredentialStatus,
+} from 'src/domains/provider-account';
 
 export interface ModelPickerModelCatalogPort {
   getModels(): ModelConfig[];
   getModel(modelConfigId: string): ModelConfig | undefined;
   getInferenceEndpoints(): InferenceEndpointView[];
   hasCredential(modelConfigId: string): boolean;
+  getCredentialStatus(modelConfigId: string): EndpointCredentialStatus | 'missing';
 }
 
-export interface ModelPickerProviderCatalogPort
-  extends Pick<ProviderCatalog, 'list' | 'getConnection'> {}
+export type ModelPickerProviderCatalogPort = Pick<ProviderCatalog, 'list' | 'getConnection'>;
 
 export interface ModelPickerProviderConfigurationPort {
   list(): readonly ConfiguredProvider[];
@@ -27,6 +34,7 @@ export interface ModelPickerProviderConfigurationPort {
 export interface ModelPickerProviderAccountPort {
   list(): readonly ProviderAccount[];
   hasCredential(accountId: string): boolean;
+  getCredentialStatus(accountId: string): ProviderAccountCredentialStatus | 'missing';
 }
 
 export interface ModelPickerPreferencesPort {
@@ -50,6 +58,10 @@ export interface ComposeSelectableModelMenuInput {
   readonly preferences: ModelPickerPreferencesSnapshot;
   readonly has_credential: (modelConfigId: string) => boolean;
   readonly has_provider_account_credential: (accountId: string) => boolean;
+  readonly get_credential_status: (modelConfigId: string) => EndpointCredentialStatus | 'missing';
+  readonly get_provider_account_credential_status: (
+    accountId: string
+  ) => ProviderAccountCredentialStatus | 'missing';
 }
 
 export interface ModelPickerUseCase {
