@@ -9,24 +9,25 @@ import { CredentialProtectionError } from '../../../shared/credential-protection
 export function createElectronCredentialProtectionPort(): DesktopCredentialProtectionPort {
   return Object.freeze({
     async encrypt(plaintext: string) {
-      if (!safeStorage.isEncryptionAvailable()) {
+      if (!(await safeStorage.isAsyncEncryptionAvailable())) {
         throw new CredentialProtectionError('temporarily_unavailable');
       }
       try {
-        return safeStorage.encryptString(plaintext).toString('base64');
+        return (await safeStorage.encryptStringAsync(plaintext)).toString('base64');
       } catch {
         throw new CredentialProtectionError('temporarily_unavailable');
       }
     },
     async decrypt(ciphertext: string) {
-      if (!safeStorage.isEncryptionAvailable()) {
+      if (!(await safeStorage.isAsyncEncryptionAvailable())) {
         throw new CredentialProtectionError('temporarily_unavailable');
       }
       if (!ciphertext || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(ciphertext)) {
         throw new CredentialProtectionError('malformed_ciphertext');
       }
       try {
-        return safeStorage.decryptString(Buffer.from(ciphertext, 'base64'));
+        const decrypted = await safeStorage.decryptStringAsync(Buffer.from(ciphertext, 'base64'));
+        return decrypted.result;
       } catch {
         throw new CredentialProtectionError('invalidated');
       }
