@@ -23,6 +23,7 @@ const { credentialStoreMock, fetchCloudModelsMock, persisterMock } = vi.hoisted(
       initialize: vi.fn(async () => {}),
       installCodec: vi.fn(),
       has: vi.fn(() => true),
+      getStatus: vi.fn(() => 'available'),
       resolve: vi.fn(() => 'stored-secret'),
       put: vi.fn(async () => {}),
       remove: vi.fn(async () => {}),
@@ -129,6 +130,7 @@ describe('Registry cloud retry', () => {
     persisterMock.saveState.mockResolvedValue(undefined);
     credentialStoreMock.initialize.mockClear();
     credentialStoreMock.has.mockReturnValue(true);
+    credentialStoreMock.getStatus.mockReturnValue('available');
     credentialStoreMock.put.mockClear();
     credentialStoreMock.remove.mockClear();
     process.env.MODEL_REGISTRY_DEFAULTS_PATH = path.resolve(
@@ -205,6 +207,7 @@ describe('Registry default model by capability', () => {
     persisterMock.saveState.mockResolvedValue(undefined);
     credentialStoreMock.initialize.mockClear();
     credentialStoreMock.has.mockReturnValue(true);
+    credentialStoreMock.getStatus.mockReturnValue('available');
     credentialStoreMock.put.mockClear();
     credentialStoreMock.remove.mockClear();
     process.env.MODEL_REGISTRY_DEFAULTS_PATH = path.resolve(

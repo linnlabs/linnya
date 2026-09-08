@@ -64,4 +64,38 @@ describe('endpoint credential 持久化', () => {
       'inference-endpoint:fixture'
     );
   });
+
+  it('单条密文失效不阻断初始化，重新保存后恢复可用', async () => {
+    await fs.writeFile(
+      pathState.credentialFilePath,
+      JSON.stringify({
+        version: '1.0.0',
+        last_updated: '2026-09-08T00:00:00.000Z',
+        credentials: [
+          {
+            id: 'inference-endpoint:broken',
+            encrypted_secret: 'not-a-valid-test-ciphertext',
+          },
+        ],
+      }),
+      'utf8',
+    );
+
+    const store = new EndpointCredentialStore();
+    store.installCodec(codec);
+    await store.initialize();
+
+    expect(store.getStatus('inference-endpoint:broken')).toBe('invalidated');
+    expect(store.has('inference-endpoint:broken')).toBe(false);
+    expect(() => store.resolve('inference-endpoint:broken')).toThrowError(
+      expect.objectContaining({
+      name: 'EndpointCredentialUnavailableError',
+      code: 'invalidated',
+      }),
+    );
+
+    await store.put('inference-endpoint:broken', 'recovered-secret');
+    expect(store.getStatus('inference-endpoint:broken')).toBe('available');
+    expect(store.resolve('inference-endpoint:broken')).toBe('recovered-secret');
+  });
 });

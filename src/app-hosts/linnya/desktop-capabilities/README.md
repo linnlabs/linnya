@@ -4,9 +4,12 @@
 `shell` 或任意方法调用。每个 capability 必须有 data-only 合同、唯一 composition owner 和独立安全边界。
 
 当前 credential protection 在初始化/写入时异步调用系统安全存储；Provider Account 与 Model Catalog 完成初始化后，
-只在 App Server 内存中持有解密缓存，推理热路径不会跨进程等待。密文仍由各业务 domain 自己持久化，Desktop Host
-不拥有账号或模型目录。reverse RPC 只注册 `encrypt/decrypt` 两个严格字符串 DTO 方法；App Server 业务层仍只取得
-`DesktopCredentialProtectionPort`，不会接触 method name 或 raw RPC peer。
+只在 App Server 内存中持有可解密记录的缓存，推理热路径不会跨进程等待。单条密文无法解密时，store 保留业务
+metadata 并记录 `temporarily_unavailable`、`invalidated`、`malformed_ciphertext` 或 `unknown` 状态；该状态不会
+阻断 App Server 启动，真正需要凭据的请求必须在 resolver 边界 fail closed。密文仍由各业务 domain 自己持久化，
+Desktop Host 不拥有账号或模型目录。reverse RPC 只注册 `encrypt/decrypt` 两个严格字符串 DTO 方法，并把平台错误
+压缩为稳定错误 code；App Server 业务层仍只取得 `DesktopCredentialProtectionPort`，不会接触 method name、raw RPC
+peer 或 Electron 原始错误文案。
 
 Backend renderer integration 只发布已有 Model Catalog、Ingestion/任务队列、知识图谱、转录进度、Workspace mutation 和已校验的插件 push
 事实，并拥有 Model Catalog 订阅的释放函数。Backend 不读取 BrowserWindow；迁移前由 Electron adapter 投影到原

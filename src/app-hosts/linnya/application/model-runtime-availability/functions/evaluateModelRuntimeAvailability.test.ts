@@ -90,6 +90,16 @@ describe('evaluateModelRuntimeAvailability', () => {
         context: { ...baseContext, inferenceEndpoints: [endpoint] },
       }),
     ).toEqual({ available: false, reason: 'credential_missing' });
+    expect(
+      evaluateModelRuntimeAvailability({
+        model,
+        capability: 'chat',
+        context: {
+          ...baseContext,
+          inferenceEndpoints: [{ ...endpoint, credential_status: 'unavailable' }],
+        },
+      }),
+    ).toEqual({ available: false, reason: 'credential_missing' });
   });
 
   it('Model Picker 的聚合标记与具体用途共享同一判定', () => {

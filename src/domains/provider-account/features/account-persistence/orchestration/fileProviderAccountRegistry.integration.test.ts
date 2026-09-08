@@ -121,4 +121,52 @@ describe('Provider account 加密持久化', () => {
       })
     );
   });
+
+  it('单条 OAuth 密文失效不阻断初始化，重新授权后恢复可用', async () => {
+    await fs.writeFile(
+      pathState.accountFilePath,
+      JSON.stringify({
+        version: '2.0.0',
+        last_updated: '2026-09-08T00:00:00.000Z',
+        accounts: [
+          {
+            id: 'chatgpt-subscription',
+            provider_connection_definition_id: 'openai-chatgpt-subscription',
+            auth_method: 'oauth_pkce',
+            created_at: '2026-09-08T00:00:00.000Z',
+            updated_at: '2026-09-08T00:00:00.000Z',
+            encrypted_credential: 'not-a-valid-test-ciphertext',
+          },
+        ],
+      }),
+      'utf8',
+    );
+
+    const registry = new FileProviderAccountRegistry();
+    registry.installCredentialCodec(codec);
+    await registry.initialize();
+
+    expect(registry.list()).toHaveLength(1);
+    expect(registry.getCredentialStatus('chatgpt-subscription')).toBe('invalidated');
+    expect(registry.hasCredential('chatgpt-subscription')).toBe(false);
+    expect(() => registry.resolveOAuthCredential('chatgpt-subscription')).toThrow(
+      'Provider account credential 当前不可用: invalidated',
+    );
+
+    await registry.putOAuthCredential(
+      {
+        id: 'chatgpt-subscription',
+        provider_connection_definition_id: 'openai-chatgpt-subscription',
+        auth_method: 'oauth_pkce',
+      },
+      {
+        access_token: 'access-secret',
+        refresh_token: 'refresh-secret',
+        expires_at: 1_800_000_000_000,
+        account_id: 'account-1',
+      },
+    );
+    expect(registry.getCredentialStatus('chatgpt-subscription')).toBe('available');
+    expect(registry.hasCredential('chatgpt-subscription')).toBe(true);
+  });
 });

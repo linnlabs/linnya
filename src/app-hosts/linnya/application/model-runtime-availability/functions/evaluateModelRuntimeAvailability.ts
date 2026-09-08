@@ -62,7 +62,7 @@ export function evaluateModelRuntimeAvailability(
         ? { available: true }
         : unavailable('credential_missing');
     }
-    return endpoint.credential_status === 'missing'
+    return endpoint.credential_status === 'missing' || endpoint.credential_status === 'unavailable'
       ? unavailable('credential_missing')
       : { available: true };
   }
@@ -105,7 +105,7 @@ export function isModelRuntimeAvailable(
     if (endpoint.credential_reference.kind === 'provider_account') {
       return context.hasProviderAccountCredential(endpoint.credential_reference.account_id);
     }
-    return endpoint.credential_status !== 'missing';
+    return endpoint.credential_status !== 'missing' && endpoint.credential_status !== 'unavailable';
   }
   if (!model.credential_reference) return context.hasModelCredential(model.id);
   return credentialReferenceAvailable(model.credential_reference, model.id, context);

@@ -2,8 +2,16 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { pathManager } from 'src/shared/utils/pathManager';
+import {
+  readCredentialProtectionErrorCode,
+  type CredentialProtectionErrorCode,
+} from 'src/shared/credential-protection';
 
-import type { EndpointCredentialCodec } from '../../../definitions/inferenceEndpoint';
+import {
+  EndpointCredentialUnavailableError,
+  type EndpointCredentialCodec,
+  type EndpointCredentialStatus,
+} from '../../../definitions/inferenceEndpoint';
 import {
   ENDPOINT_CREDENTIAL_FILE_VERSION,
   readEndpointCredentialFile,
@@ -16,6 +24,7 @@ export class EndpointCredentialStore {
   private credentialFilePath: string | null = null;
   private credentials = new Map<string, StoredEndpointCredential>();
   private plaintextCredentials = new Map<string, string>();
+  private credentialStatuses = new Map<string, EndpointCredentialStatus>();
 
   installCodec(codec: EndpointCredentialCodec): void {
     this.credentialCodec = codec;
@@ -30,7 +39,9 @@ export class EndpointCredentialStore {
       const credentials = new Map(
         readEndpointCredentialFile(parsed).map(item => [item.id, item])
       );
-      this.plaintextCredentials = await this.decryptCredentials(credentials);
+      const decrypted = await this.decryptCredentials(credentials);
+      this.plaintextCredentials = decrypted.plaintext;
+      this.credentialStatuses = decrypted.statuses;
       this.credentials = credentials;
     } catch (error: unknown) {
       const code =
@@ -41,13 +52,20 @@ export class EndpointCredentialStore {
   }
 
   has(credentialId: string): boolean {
-    return this.credentials.has(credentialId);
+    return this.credentialStatuses.get(credentialId) === 'available';
+  }
+
+  getStatus(credentialId: string): EndpointCredentialStatus | 'missing' {
+    return this.credentialStatuses.get(credentialId) ?? 'missing';
   }
 
   resolve(credentialId: string): string {
     if (!this.credentials.has(credentialId)) {
       throw new Error(`endpoint credential 不存在: ${credentialId}`);
     }
+    const status = this.credentialStatuses.get(credentialId);
+    if (!status) throw new Error(`endpoint credential 尚未完成初始化: ${credentialId}`);
+    if (status !== 'available') throw new EndpointCredentialUnavailableError(status);
     const plaintext = this.plaintextCredentials.get(credentialId);
     if (plaintext === undefined) {
       throw new Error(`endpoint credential 尚未完成初始化: ${credentialId}`);
@@ -66,6 +84,7 @@ export class EndpointCredentialStore {
     await this.write(next);
     this.credentials = next;
     this.plaintextCredentials.set(credentialId, plaintext);
+    this.credentialStatuses.set(credentialId, 'available');
   }
 
   async remove(credentialId: string): Promise<void> {
@@ -74,6 +93,7 @@ export class EndpointCredentialStore {
     await this.write(next);
     this.credentials = next;
     this.plaintextCredentials.delete(credentialId);
+    this.credentialStatuses.delete(credentialId);
   }
 
   private async write(credentials: Map<string, StoredEndpointCredential>): Promise<void> {
@@ -94,15 +114,35 @@ export class EndpointCredentialStore {
 
   private async decryptCredentials(
     credentials: ReadonlyMap<string, StoredEndpointCredential>
-  ): Promise<Map<string, string>> {
-    if (credentials.size === 0) return new Map();
+  ): Promise<{
+    readonly plaintext: Map<string, string>;
+    readonly statuses: Map<string, EndpointCredentialStatus>;
+  }> {
+    if (credentials.size === 0) {
+      return { plaintext: new Map(), statuses: new Map() };
+    }
     const codec = this.credentialCodec;
     if (!codec) throw new Error('endpoint credential codec 尚未安装');
-    const decrypted = await Promise.all(Array.from(credentials.values(), async credential => [
-      credential.id,
-      await codec.decrypt(credential.encrypted_secret),
-    ] as const));
-    return new Map(decrypted);
+    const decrypted = await Promise.all(Array.from(credentials.values(), async credential => {
+      try {
+        return {
+          id: credential.id,
+          plaintext: await codec.decrypt(credential.encrypted_secret),
+          status: 'available' as const,
+        };
+      } catch (error: unknown) {
+        const code: CredentialProtectionErrorCode = readCredentialProtectionErrorCode(error);
+        return { id: credential.id, status: code };
+      }
+    }));
+    return {
+      plaintext: new Map(
+        decrypted.flatMap(item => item.status === 'available'
+          ? [[item.id, item.plaintext] as const]
+          : []),
+      ),
+      statuses: new Map(decrypted.map(item => [item.id, item.status])),
+    };
   }
 }
 

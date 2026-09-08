@@ -88,7 +88,7 @@ function providerCredentialAvailable(
   if (endpoint.credential_reference.kind === 'provider_account') {
     return input.has_provider_account_credential(endpoint.credential_reference.account_id);
   }
-  return endpoint.credential_status !== 'missing';
+  return endpoint.credential_status !== 'missing' && endpoint.credential_status !== 'unavailable';
 }
 
 function providerVisible(

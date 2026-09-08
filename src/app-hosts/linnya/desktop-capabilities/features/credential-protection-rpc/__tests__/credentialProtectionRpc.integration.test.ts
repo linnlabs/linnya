@@ -3,6 +3,7 @@ import { PassThrough } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAppServerRpcPeer } from '../../../../app-server-rpc';
+import { CredentialProtectionError } from '../../../../../../shared/credential-protection';
 import type { DesktopCredentialProtectionPort } from '../../../definitions/desktopCredentialProtectionPort';
 import {
   DESKTOP_CREDENTIAL_ENCRYPT_RPC_METHOD,
@@ -47,6 +48,29 @@ describe('Desktop credential protection RPC', () => {
     });
 
     await expect(client.encrypt('secret-value')).rejects.toThrow();
+  });
+
+  it('跨进程保留受控的 safeStorage 失败分类，不透传平台错误文案', async () => {
+    const pair = createPeerPair({
+      encrypt: async () => {
+        throw new CredentialProtectionError('temporarily_unavailable');
+      },
+      decrypt: async () => {
+        throw new CredentialProtectionError('invalidated');
+      },
+    });
+    const client = createDesktopCredentialProtectionRpcClient(pair.backend);
+
+    await expect(client.encrypt('secret-value')).rejects.toMatchObject({
+      name: 'CredentialProtectionError',
+      code: 'temporarily_unavailable',
+    });
+    await expect(client.decrypt('ciphertext')).rejects.toMatchObject({
+      name: 'CredentialProtectionError',
+      code: 'invalidated',
+    });
+
+    pair.dispose();
   });
 });
 

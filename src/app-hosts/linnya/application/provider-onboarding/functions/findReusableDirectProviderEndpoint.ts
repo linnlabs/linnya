@@ -29,7 +29,9 @@ export function findReusableDirectProviderEndpoint(
         ? endpoint.credential_reference.kind === 'stored_secret' &&
           (!credentialPolicy.credential_id ||
             endpoint.credential_reference.credential_id === credentialPolicy.credential_id) &&
-          (credentialPolicy.allow_missing || endpoint.credential_status !== 'missing')
+          (credentialPolicy.allow_missing
+            || (endpoint.credential_status !== 'missing'
+              && endpoint.credential_status !== 'unavailable'))
         : endpoint.credential_reference.kind === 'provider_account' &&
           endpoint.credential_reference.account_id === credentialPolicy.account_id)
   );

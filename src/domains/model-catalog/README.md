@@ -178,7 +178,9 @@ Cloud host credential 仍使用显式 reference，不复制到该文件。
 用户模型必须引用一个 InferenceEndpoint，default/Cloud 模型不得引用用户端点。端点与模型 route 的 profile、endpoint
 identity、base URL 和 auth profile 必须完全一致。App
 composition 提供异步 codec；启动时密文一次解入 App
-Server 内存，推理热路径仍同步解析且不跨进程。InferenceEndpoint 没有独立的用户生命周期：删除一个模型后仍有其他模型引用就保留；删除最后一个引用模型时，端点元数据和对应密文必须在同一目录事务中自动清理。新建模型时，credential 密文、端点元数据和模型引用同样按一个业务事务提交；目录写盘失败时撤销刚创建的密文，不留下半端点。
+Server 内存，推理热路径仍同步解析且不跨进程。单条密文无法解密时，InferenceEndpoint 仍保留并投影为 `unavailable`，
+请求前由 credential resolver 拒绝使用；重新提交 Key 后才替换旧密文并恢复 `configured`。这类凭据状态不会阻断
+App Server 启动。InferenceEndpoint 没有独立的用户生命周期：删除一个模型后仍有其他模型引用就保留；删除最后一个引用模型时，端点元数据和对应密文必须在同一目录事务中自动清理。新建模型时，credential 密文、端点元数据和模型引用同样按一个业务事务提交；目录写盘失败时撤销刚创建的密文，不留下半端点。
 
 正式 Provider connection 的 `ConfiguredProvider`/`ConfiguredProviderModel`
 与本文件分属两个 domain。跨文件注册和删除由 application use

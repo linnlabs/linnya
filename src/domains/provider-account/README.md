@@ -11,7 +11,8 @@ Catalog 的职责不同：目录描述模型和推理端点，账号描述 OAuth
 - AppData `config/provider_accounts.json` 只保存 Desktop
   Host 系统安全存储产生的密文，文件权限为
   `0600`，不跟随 Workspace 导出；初始化时通过异步 credential protection
-  port 解入 App Server 内存，推理热路径只读内存，不同步跨进程调用 Electron；
+  port 逐条尝试解入 App Server 内存，无法解密的账号仍保留 metadata 并标记为不可用，
+  不阻断 App Server 启动；推理热路径只读可用内存缓存，不同步跨进程调用 Electron；
 - Renderer、Provider Catalog、Model Catalog 和日志只允许看到不含凭据的
   `ProviderAccount`；
 - ProviderAccount 只引用账号型
@@ -32,7 +33,8 @@ Catalog 的职责不同：目录描述模型和推理端点，账号描述 OAuth
 
 授权成功后的模型目录落地不属于本 domain。App-level 授权 workflow 在凭据安全落盘后调用 Provider
 Onboarding 的窄同步端口；同步从上述账户目录注册新模型，原位刷新已存在模型的名称、容量和能力，并通过统一 durable 删除用例退出当前账号已不可见的历史模型，幂等复用同一 ConfiguredProvider、InferenceEndpoint 与 account
-reference。已有凭据在启动时沿同一用例补同步，因此进程中断、上游容量变化或历史静态目录数据都无需用户重新登录、也无需手动删除重加。
+reference。仍可解密的已有凭据在启动时沿同一用例补同步，因此进程中断、上游容量变化或历史静态目录数据都无需用户重新登录、也无需手动删除重加；
+若 Desktop 安全存储连续性丢失，账号 metadata 仍保留但状态为 disconnected，必须重新授权后才能恢复同步。
 
 账号还可能拥有不属于 `/models` 语言目录的产品能力。当前 App-level
 `provider-account-model-projection` 在 ChatGPT 凭据落盘或启动恢复后，把
