@@ -32,7 +32,8 @@
  * - 用户通过对话粘贴、拖拽或“添加附件”导入的文件是明确例外：副本位于 AppData
  *   `ConversationAttachments/`，不自动成为项目资源。该生命周期由 conversation attachment domain 管理。
  * - 用户在消息中直接输入的真实路径不属于上传，不复制也不改写路径。
- * - AppData 还用于日志、缓存、密钥等不可迁移或偏系统的数据。
+ * - AppData 还用于会话附件副本、凭据、缓存和其他不可迁移或偏系统的数据；诊断日志由
+ *   `getLogDirectory()` 统一放在 Workspace Root 下。
  * - 跨平台拼接使用 Node.js 内置 `path`，不直接写硬编码分隔符。
  * - Electron `app.getPath(...)` 只能由 Desktop Host 调用，不能进入共享后端模块。
  *
