@@ -36,7 +36,14 @@ export async function createFilePluginCredentialRuntimePort(input: {
   const values = new Map<string, Map<string, string>>();
   const ciphertexts = new Map<string, Map<string, string>>();
   const unavailable = new Set<string>();
+  let writeQueue: Promise<void> = Promise.resolve();
   await initialize(input, values, ciphertexts, unavailable);
+
+  const enqueueWrite = <T>(task: () => Promise<T>): Promise<T> => {
+    const run = writeQueue.then(task, task);
+    writeQueue = run.then(() => undefined, () => undefined);
+    return run;
+  };
 
   return {
     async read(pluginId, key) {
@@ -50,50 +57,54 @@ export async function createFilePluginCredentialRuntimePort(input: {
       }));
     },
     async write(pluginId, inputValues) {
-      const next = cloneValues(values);
-      const nextCiphertexts = cloneValues(ciphertexts);
-      const nextUnavailable = new Set(unavailable);
-      const pluginValues = new Map(next.get(pluginId) ?? []);
-      const pluginCiphertexts = new Map(nextCiphertexts.get(pluginId) ?? []);
-      for (const [key, value] of Object.entries(inputValues)) {
-        const trimmed = value?.trim();
-        if (trimmed === undefined || trimmed.length === 0) {
-          pluginValues.delete(key);
-          pluginCiphertexts.delete(key);
+      return enqueueWrite(async () => {
+        const next = cloneValues(values);
+        const nextCiphertexts = cloneValues(ciphertexts);
+        const nextUnavailable = new Set(unavailable);
+        const pluginValues = new Map(next.get(pluginId) ?? []);
+        const pluginCiphertexts = new Map(nextCiphertexts.get(pluginId) ?? []);
+        for (const [key, value] of Object.entries(inputValues)) {
+          const trimmed = value?.trim();
+          if (trimmed === undefined || trimmed.length === 0) {
+            pluginValues.delete(key);
+            pluginCiphertexts.delete(key);
+            nextUnavailable.delete(`${pluginId}\u0000${key}`);
+            continue;
+          }
+          // The encrypted file is written before the in-memory snapshot is replaced.
+          pluginCiphertexts.set(key, await input.credentialProtection.encrypt(trimmed));
+          pluginValues.set(key, trimmed);
           nextUnavailable.delete(`${pluginId}\u0000${key}`);
-          continue;
         }
-        // The encrypted file is written before the in-memory snapshot is replaced.
-        pluginCiphertexts.set(key, await input.credentialProtection.encrypt(trimmed));
-        pluginValues.set(key, trimmed);
-        nextUnavailable.delete(`${pluginId}\u0000${key}`);
-      }
-      if (pluginValues.size === 0) next.delete(pluginId);
-      else next.set(pluginId, pluginValues);
-      if (pluginCiphertexts.size === 0) nextCiphertexts.delete(pluginId);
-      else nextCiphertexts.set(pluginId, pluginCiphertexts);
+        if (pluginValues.size === 0) next.delete(pluginId);
+        else next.set(pluginId, pluginValues);
+        if (pluginCiphertexts.size === 0) nextCiphertexts.delete(pluginId);
+        else nextCiphertexts.set(pluginId, pluginCiphertexts);
 
-      await writeCiphertextFile(input.filePath, nextCiphertexts);
-      values.clear();
-      for (const [id, entries] of next) values.set(id, new Map(entries));
-      ciphertexts.clear();
-      for (const [id, entries] of nextCiphertexts) ciphertexts.set(id, new Map(entries));
-      unavailable.clear();
-      for (const key of nextUnavailable) unavailable.add(key);
-      return credentialStatuses(pluginValues, Object.keys(inputValues).sort(), unavailable, pluginId);
+        await writeCiphertextFile(input.filePath, nextCiphertexts);
+        values.clear();
+        for (const [id, entries] of next) values.set(id, new Map(entries));
+        ciphertexts.clear();
+        for (const [id, entries] of nextCiphertexts) ciphertexts.set(id, new Map(entries));
+        unavailable.clear();
+        for (const key of nextUnavailable) unavailable.add(key);
+        return credentialStatuses(pluginValues, Object.keys(inputValues).sort(), unavailable, pluginId);
+      });
     },
     async clearForTest(pluginId) {
-      const next = cloneValues(values);
-      const nextCiphertexts = cloneValues(ciphertexts);
-      next.delete(pluginId);
-      nextCiphertexts.delete(pluginId);
-      await writeCiphertextFile(input.filePath, nextCiphertexts);
-      values.clear();
-      for (const [id, entries] of next) values.set(id, new Map(entries));
-      ciphertexts.clear();
-      for (const [id, entries] of nextCiphertexts) ciphertexts.set(id, new Map(entries));
-      unavailable.forEach(key => {
-        if (key.startsWith(`${pluginId}\u0000`)) unavailable.delete(key);
+      return enqueueWrite(async () => {
+        const next = cloneValues(values);
+        const nextCiphertexts = cloneValues(ciphertexts);
+        next.delete(pluginId);
+        nextCiphertexts.delete(pluginId);
+        await writeCiphertextFile(input.filePath, nextCiphertexts);
+        values.clear();
+        for (const [id, entries] of next) values.set(id, new Map(entries));
+        ciphertexts.clear();
+        for (const [id, entries] of nextCiphertexts) ciphertexts.set(id, new Map(entries));
+        unavailable.forEach(key => {
+          if (key.startsWith(`${pluginId}\u0000`)) unavailable.delete(key);
+        });
       });
     },
   };
