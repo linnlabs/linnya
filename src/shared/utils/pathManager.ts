@@ -856,6 +856,7 @@ export const pathManager = {
   getProviderAccountsConfigPath,
   getWebSearchConfigPath,
   getWebReadConfigPath,
+  getPluginCredentialsConfigPath,
   getLogDirectory,
   getTempDirectory,
   getTaskAuditPath,
