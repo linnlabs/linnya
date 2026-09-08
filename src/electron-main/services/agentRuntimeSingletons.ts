@@ -1,5 +1,11 @@
+import path from 'node:path';
 import type Database from 'better-sqlite3';
-import { audit, graph, runSupervisor, type ToolModelInputResolverPort } from '@linnlabs/linnkit/runtime-kernel';
+import {
+  audit,
+  graph,
+  runSupervisor,
+  type ToolModelInputResolverPort,
+} from '@linnlabs/linnkit/runtime-kernel';
 import type { AuditPort, LlmInputMaterializerPort } from '@linnlabs/linnkit/ports';
 import {
   LinnyaEventStoreAdapter,
@@ -10,6 +16,12 @@ import { LinnyaRunCostCollector } from 'src/app-hosts/linnya/adapters/token-acco
 import { LinnyaTokenCalibrationCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import type { LinnyaAgentRuntimeScope } from 'src/app-hosts/linnya/adapters/runtime-assembly/agentRuntimeScope';
+import {
+  createLinnyaAuditRuntime,
+  resetLlmDebugEvidenceForTest,
+  resolveAuditLevel,
+} from 'src/domains/audit';
+import { getAuditDataPath } from 'src/shared/utils/pathManager';
 
 type DefaultRunSupervisor = runSupervisor.DefaultRunSupervisor<AgentInvokeRequest>;
 
@@ -25,17 +37,24 @@ let fallbackEventStore: graph.MemoryEventStore | null = null;
 
 function createFallbackAgentRuntimeSingletons(): LinnyaAgentRuntimeScope {
   const eventStore = getFallbackEventStore();
-  const auditPort = audit.createEventStoreAudit({ eventStore });
+  const auditLevel = resolveAuditLevel();
+  const auditRuntime = createLinnyaAuditRuntime({
+    sink: audit.createEventStoreAudit({ eventStore }),
+    level: auditLevel,
+    ...(auditLevel === 'debug'
+      ? { debugEvidenceDirectoryPath: path.join(getAuditDataPath(), 'dev-diagnostics') }
+      : {}),
+  });
   return {
     supervisor: createSupervisor({
-      auditPort,
+      auditPort: auditRuntime.auditPort,
       registryStore: new runSupervisor.MemoryRunRegistryStore(),
     }),
     costCollector: new LinnyaRunCostCollector(),
     tokenCalibrationCollector: new LinnyaTokenCalibrationCollector(),
     eventStore,
     nextEventStoreId: graph.createMonotonicEventStoreIdFactory(),
-    auditPort,
+    auditPort: auditRuntime.auditPort,
   };
 }
 
@@ -63,22 +82,30 @@ function createSupervisor(options: {
  * - 测试若没有走主进程 bootstrap，会退回 MemoryEventStore，避免把全局初始化泄漏到单元测试。
  */
 export function configureAgentRuntimeSingletons(
-  options: ConfigureAgentRuntimeSingletonsOptions,
+  options: ConfigureAgentRuntimeSingletonsOptions
 ): LinnyaAgentRuntimeScope {
   const costCollector = singletons?.costCollector ?? new LinnyaRunCostCollector();
-  const tokenCalibrationCollector = singletons?.tokenCalibrationCollector ?? new LinnyaTokenCalibrationCollector();
+  const tokenCalibrationCollector =
+    singletons?.tokenCalibrationCollector ?? new LinnyaTokenCalibrationCollector();
   const runtimeEventStore = new LinnyaEventStoreAdapter(options.db, options.eventStore);
-  const auditPort = audit.createEventStoreAudit({ eventStore: runtimeEventStore });
+  const auditLevel = resolveAuditLevel();
+  const auditRuntime = createLinnyaAuditRuntime({
+    sink: audit.createEventStoreAudit({ eventStore: runtimeEventStore }),
+    level: auditLevel,
+    ...(auditLevel === 'debug'
+      ? { debugEvidenceDirectoryPath: path.join(getAuditDataPath(), 'dev-diagnostics') }
+      : {}),
+  });
   singletons = {
     supervisor: createSupervisor({
-      auditPort,
+      auditPort: auditRuntime.auditPort,
       registryStore: new SQLiteRunRegistryStore(options.db),
     }),
     costCollector,
     tokenCalibrationCollector,
     eventStore: runtimeEventStore,
     nextEventStoreId: singletons?.nextEventStoreId ?? graph.createMonotonicEventStoreIdFactory(),
-    auditPort,
+    auditPort: auditRuntime.auditPort,
     llmInputMaterializer: options.llmInputMaterializer,
     toolModelInputResolver: options.toolModelInputResolver,
   };
@@ -91,14 +118,14 @@ export function configureAgentRuntimeSingletons(
  * 中文备注：恢复属于会话服务的启动门槛，不能放进延迟执行的通用维护任务。
  */
 export async function bootstrapAgentRuntimeSingletons(
-  options: ConfigureAgentRuntimeSingletonsOptions,
+  options: ConfigureAgentRuntimeSingletonsOptions
 ): Promise<{
   runtime: LinnyaAgentRuntimeScope;
   recoveredRuns: runSupervisor.RunOutcome[];
 }> {
   const runtime = configureAgentRuntimeSingletons(options);
   const recoveredRuns = await runtime.supervisor.recoverOnBoot(
-    'application restarted before run reached terminal status',
+    'application restarted before run reached terminal status'
   );
   return { runtime, recoveredRuns };
 }
@@ -110,6 +137,7 @@ export function getRunSupervisor(): LinnyaAgentRuntimeScope['supervisor'] {
 export function resetAgentRuntimeSingletonsForTest(): void {
   singletons = null;
   fallbackEventStore = null;
+  resetLlmDebugEvidenceForTest();
 }
 
 function getFallbackEventStore(): graph.MemoryEventStore {

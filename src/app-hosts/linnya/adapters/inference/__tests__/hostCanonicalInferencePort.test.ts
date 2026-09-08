@@ -2,13 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
 import { consumeCanonicalInferenceStream } from '@linnlabs/linnkit/runtime-kernel';
 import type { ModelConfig, ModelInferenceRoute } from 'src/domains/model-catalog';
-import { createInMemoryProviderOutboundAudit } from 'src/domains/audit/features/provider-outbound-audit';
+import { createInMemoryProviderOutboundDiagnostics } from 'src/domains/provider-diagnostics/features/provider-outbound';
 import type {
   InferenceCapability,
   InferenceCredentialResolver,
   InferenceModelCatalog,
 } from '../definitions/inferenceCapability';
-import { projectInferenceAttemptAudit } from '../functions/projectInferenceAttemptAudit';
+import { projectInferenceAttemptDiagnostics } from '../functions/projectInferenceAttemptDiagnostics';
 import { createHostCanonicalInferencePort } from '../orchestration/createHostCanonicalInferencePort';
 import { createInferenceCapabilityRegistry } from '../registry/createInferenceCapabilityRegistry';
 
@@ -94,7 +94,7 @@ describe('Host canonical inference orchestration', () => {
       model_catalog: makeCatalog(),
       capability_registry: createInferenceCapabilityRegistry([capability]),
       credential_resolver: credentialResolver,
-      outbound_audit: createInMemoryProviderOutboundAudit(),
+      outbound_diagnostics: createInMemoryProviderOutboundDiagnostics(),
     });
     const observed: CanonicalInferenceEvent[] = [];
 
@@ -106,7 +106,7 @@ describe('Host canonical inference orchestration', () => {
   });
 
   it('真实 Host attempt 写入安全终态和 Provider usage，不保存输入正文', async () => {
-    const outboundAudit = createInMemoryProviderOutboundAudit();
+    const outboundDiagnostics = createInMemoryProviderOutboundDiagnostics();
     const capability = makeCapability([
       { type: 'start', model_id: 'model-1', attempt_id: 'attempt-1' },
       {
@@ -127,7 +127,7 @@ describe('Host canonical inference orchestration', () => {
       model_catalog: makeCatalog(),
       capability_registry: createInferenceCapabilityRegistry([capability]),
       credential_resolver: makeCredentialResolver(),
-      outbound_audit: outboundAudit,
+      outbound_diagnostics: outboundDiagnostics,
     });
     const request = {
       ...makeRequest(),
@@ -138,7 +138,7 @@ describe('Host canonical inference orchestration', () => {
 
     await consumeCanonicalInferenceStream(port.stream(request), () => undefined);
 
-    expect(outboundAudit.readLatest()).toMatchObject({
+    expect(outboundDiagnostics.readLatest()).toMatchObject({
       status: 'succeeded',
       finish_reason: 'stop',
       usage: {
@@ -149,7 +149,7 @@ describe('Host canonical inference orchestration', () => {
         total_tokens: 11,
       },
     });
-    const serialized = JSON.stringify(outboundAudit.readLatest());
+    const serialized = JSON.stringify(outboundDiagnostics.readLatest());
     expect(serialized).not.toContain('PROMPT_SECRET');
     expect(serialized).not.toContain('PROVIDER_USAGE_SECRET');
     expect(serialized).not.toContain('mock://inference');
@@ -161,7 +161,7 @@ describe('Host canonical inference orchestration', () => {
       model_catalog: makeCatalog(),
       capability_registry: createInferenceCapabilityRegistry([]),
       credential_resolver: credentialResolver,
-      outbound_audit: createInMemoryProviderOutboundAudit(),
+      outbound_diagnostics: createInMemoryProviderOutboundDiagnostics(),
     });
 
     await expect(async () => {
@@ -178,7 +178,7 @@ describe('Host canonical inference orchestration', () => {
       model_catalog: makeCatalog(),
       capability_registry: createInferenceCapabilityRegistry([capability]),
       credential_resolver: makeCredentialResolver(),
-      outbound_audit: createInMemoryProviderOutboundAudit(),
+      outbound_diagnostics: createInMemoryProviderOutboundDiagnostics(),
     });
 
     await expect(async () => {
@@ -197,7 +197,7 @@ describe('Host canonical inference orchestration', () => {
       model_catalog: makeCatalog(),
       capability_registry: createInferenceCapabilityRegistry([makeCapability(events)]),
       credential_resolver: makeCredentialResolver(),
-      outbound_audit: createInMemoryProviderOutboundAudit(),
+      outbound_diagnostics: createInMemoryProviderOutboundDiagnostics(),
     });
 
     await expect(async () => {
@@ -228,7 +228,7 @@ describe('Host canonical inference orchestration', () => {
       model_catalog: makeCatalog(model),
       capability_registry: createInferenceCapabilityRegistry([capability]),
       credential_resolver: makeCredentialResolver(),
-      outbound_audit: createInMemoryProviderOutboundAudit(),
+      outbound_diagnostics: createInMemoryProviderOutboundDiagnostics(),
     });
 
     await expect(async () => {
@@ -283,7 +283,7 @@ describe('Host canonical inference orchestration', () => {
       model_catalog: makeCatalog(),
       capability_registry: createInferenceCapabilityRegistry([capability]),
       credential_resolver: makeCredentialResolver(),
-      outbound_audit: createInMemoryProviderOutboundAudit(),
+      outbound_diagnostics: createInMemoryProviderOutboundDiagnostics(),
     });
 
     await expect(async () => {
@@ -317,7 +317,7 @@ describe('Host canonical inference orchestration', () => {
         { id: 'host:mock', api_surface: 'mock', stream },
       ]),
       credential_resolver: credentialResolver,
-      outbound_audit: createInMemoryProviderOutboundAudit(),
+      outbound_diagnostics: createInMemoryProviderOutboundDiagnostics(),
     });
 
     await consumeCanonicalInferenceStream(port.stream(makeRequest()), () => undefined);
@@ -377,7 +377,7 @@ describe('Host canonical inference orchestration', () => {
         { id: 'ai-sdk:openai-responses', api_surface: 'openai_responses', stream },
       ]),
       credential_resolver: credentialResolver,
-      outbound_audit: createInMemoryProviderOutboundAudit(),
+      outbound_diagnostics: createInMemoryProviderOutboundDiagnostics(),
     });
 
     await consumeCanonicalInferenceStream(port.stream(makeRequest()), () => undefined);
@@ -395,7 +395,7 @@ describe('Host canonical inference orchestration', () => {
     );
   });
 
-  it('安全审计只投影计数与 route metadata，不包含正文、工具参数、图片 bytes 或 continuation', () => {
+  it('安全诊断只投影计数与 route metadata，不包含正文、工具参数、图片 bytes 或 continuation', () => {
     const request: CanonicalInferenceRequest = {
       ...makeRequest(),
       messages: [
@@ -433,7 +433,7 @@ describe('Host canonical inference orchestration', () => {
         },
       ],
     };
-    const projection = projectInferenceAttemptAudit(request, {
+    const projection = projectInferenceAttemptDiagnostics(request, {
       model_id: 'model-1',
       route_profile_id: 'mock',
       ...BASE_ROUTE,

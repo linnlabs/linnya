@@ -1,5 +1,8 @@
 # Command Execution Audit
 
+这是统一 Audit Domain 下的 command feature，不是第二个审计系统。它只负责把命令事实
+投影成 `AuditEnvelope`；写入必须使用 Host 组合后注入的同一个 `AuditPort`。
+
 ## 1. 审计的目的
 
 这个 feature 把命令执行中的关键事实写入既有 `AuditEnvelope`。审计用于回答“谁在什么权限上下文中请求了什么、是否审批、是否启动、怎样结束”，不是命令输出仓库，也不是调试日志系统。
@@ -26,7 +29,10 @@ terminal 事件必须在四类事实分别可判断后投影：child exit 不等
 
 ## 4. 存储和保留
 
-EventStore 是事实载体；LLM audit、应用日志和 command audit 不是同一格式。原始 stdout/stderr 在 command output artifact 中按保留策略维护，审计只存摘要、计数和状态。任何“为了方便排查”而把完整命令环境或输入写进审计的改动都必须拒绝。
+统一 Audit Domain 是事实 owner；command audit 作为 KB 级决策事实进入 EventStore 的
+`audit_envelope`，LLM debug evidence 使用同一 envelope 合同但由 debug 等级路由到有界 JSONL。
+原始 stdout/stderr 在 command output artifact 中按保留策略维护，
+审计只存摘要、计数和状态。任何“为了方便排查”而把完整命令环境或输入写进审计的改动都必须拒绝。
 
 ## 5. 设计原因
 

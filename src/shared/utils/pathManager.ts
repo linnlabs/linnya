@@ -32,7 +32,8 @@
  * - 用户通过对话粘贴、拖拽或“添加附件”导入的文件是明确例外：副本位于 AppData
  *   `ConversationAttachments/`，不自动成为项目资源。该生命周期由 conversation attachment domain 管理。
  * - 用户在消息中直接输入的真实路径不属于上传，不复制也不改写路径。
- * - AppData 还用于日志、缓存、密钥等不可迁移或偏系统的数据。
+ * - AppData 还用于会话附件副本、凭据、缓存和其他不可迁移或偏系统的数据；诊断日志由
+ *   `getLogDirectory()` 统一放在 Workspace Root 下。
  * - 跨平台拼接使用 Node.js 内置 `path`，不直接写硬编码分隔符。
  * - Electron `app.getPath(...)` 只能由 Desktop Host 调用，不能进入共享后端模块。
  *
@@ -42,7 +43,8 @@
  * - `DocumentMedia/`：文本文档内嵌图片的私有副本
  * - `AudioRecordings/`：音频录音
  * - `Uploads/`：临时上传区
- * - `Documents/`：工作区附属数据目录（例如 LLMRunAudit 等历史运行产物）
+ * - `Documents/`：工作区附属数据目录（例如用户文档和开发辅助产物）
+ * - `Audit/v1/`：统一审计模块管理的文件型数据；当前仅包含开发诊断证据
  * - `Models/`：本地 AI 模型目录
  * - `KnowledgeBase/`：知识库根
  *   - `source_of_truth/`：事实源泉 JSON 存放目录
@@ -206,7 +208,7 @@ function getAndCreateWorkspaceSubDirectory(subDirName: string): string {
  *
  * 中文说明：
  * - Markdown 文档正文已经迁入 workspace.sqlite，这里不再是旧 `.ablk` 文档根；
- * - 该目录仍被历史运行产物使用（例如 LLMRunAudit），因此保留目录和 media 白名单。
+ * - 该目录仍被部分历史运行产物使用，因此保留目录和 media 白名单；统一 Audit 不再写入这里。
  */
 export function getDocumentsPath(): string {
   return getAndCreateWorkspaceSubDirectory('Documents');
@@ -364,39 +366,6 @@ export function getPipelinePath(): string {
 }
 
 /**
- * 获取对话历史数据库目录
- *
- * 此目录用于存放AI助手的对话历史记录数据库。
- *
- * 路径规则：
- * - 位于 Workspace Root 下的 `Conversations/` 子目录
- * - 开发模式：`<项目根>/_dev_data/Conversations`
- * - 生产模式：`<用户文档>/Linnya/Conversations` 或 `<HOME>/Documents/Linnya/Conversations`
- *
- * @returns 对话历史目录的绝对路径
- */
-export function getConversationsPath(): string {
-  return getAndCreateWorkspaceSubDirectory('Conversations');
-}
-
-/**
- * 获取对话历史数据库文件的完整路径
- *
- * @returns 对话历史数据库文件路径（conversations.sqlite）
- *
- * @example
- * ```ts
- * const dbPath = getConversationsDbPath();
- * // 开发: '/Users/<用户名>/code/Linnya/_dev_data/Conversations/conversations.sqlite'
- * // 生产: '/Users/<用户名>/Documents/Linnya/Conversations/conversations.sqlite'
- * ```
- */
-export function getConversationsDbPath(): string {
-  const conversationsPath = getConversationsPath();
-  return path.join(conversationsPath, 'conversations.sqlite');
-}
-
-/**
  * 获取工作区数据库和配置文件的目录
  *
  * 目录位置：位于 Workspace Root 下的 `workspace/` 子目录
@@ -483,17 +452,13 @@ export function getTempDirectory(): string {
 }
 
 /**
- * 获取“多阶段任务审计”产物目录
+ * 获取统一 Audit 的版本化文件根目录。
  *
- * 中文备注：
- * - 详细 trace（thought/事件序列）不应塞进 EventStore；
- * - 因此使用 Workspace Root 下的文件系统目录承载（可迁移、可清理）。
- *
- * 路径规则：
- * - 位于 Workspace Root 下的 `TaskAudit/` 子目录
+ * durable 决策账本仍由 workspace.sqlite 的 EventStore 持有；这里只承载不适合进入
+ * EventStore 的有界文件型审计数据，例如开发态 LLM debug evidence。
  */
-export function getTaskAuditPath(): string {
-  return getAndCreateWorkspaceSubDirectory('TaskAudit');
+export function getAuditDataPath(): string {
+  return getAndCreateWorkspaceSubDirectory(path.join('Audit', 'v1'));
 }
 
 /**
@@ -841,8 +806,6 @@ export const pathManager = {
   getKnowledgeBaseOriginalsPath,
   getBm25IndicesPath,
   getPipelinePath,
-  getConversationsPath,
-  getConversationsDbPath,
   getWorkspaceDataPath,
   getUserModelsConfigPath,
   getProviderConfigurationsConfigPath,
@@ -853,7 +816,7 @@ export const pathManager = {
   getWebReadConfigPath,
   getLogDirectory,
   getTempDirectory,
-  getTaskAuditPath,
+  getAuditDataPath,
   getArtifactsRootPath,
   getArtifactsV1Path,
   getConversationArtifactsV1Path,

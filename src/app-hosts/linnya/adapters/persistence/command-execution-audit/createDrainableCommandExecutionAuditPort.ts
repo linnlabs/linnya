@@ -1,7 +1,7 @@
 import type {
   CommandExecutionAuditEvent,
   CommandExecutionAuditPort,
-} from '../../../../../domains/audit/features/command-execution-audit';
+} from 'src/domains/audit';
 
 export interface DrainableCommandExecutionAuditPort extends CommandExecutionAuditPort {
   /** 等待调用前已经进入端口的写入全部结算；失败仍由原 record 调用方处理。 */

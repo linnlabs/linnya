@@ -16,7 +16,7 @@
 - Parser 拥有超时、retry、并发和 partial 页策略。Host 不能在 OCR 失败后切换到通用视觉模型。
 - 不按模型名、Provider 名或 URL 关键字猜协议，不接受旧 `paddleocr` 别名。
 - 不存储、记录或返回 request/response body、base64、API key 和本地文件路径。
-- `createDocumentOcrPort()` 在真实 capability 调用边界写入统一 `ProviderOutboundAuditPort`；只投影 OCR route、输入种类、状态与安全错误分类，不复用 LLM HTTP client。
+- `createDocumentOcrPort()` 在真实 capability 调用边界写入统一 `ProviderOutboundDiagnosticsPort`；只投影 OCR route、输入种类、状态与安全错误分类，不复用 LLM HTTP client。
 
 ## 测试要求
 

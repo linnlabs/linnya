@@ -1,15 +1,15 @@
 import { Router, type Request, type Response } from 'express';
 import {
-  defaultProviderOutboundAudit,
-  type ProviderOutboundAuditSnapshotPort,
-} from 'src/domains/audit/features/provider-outbound-audit';
+  defaultProviderOutboundDiagnostics,
+  type ProviderOutboundDiagnosticsSnapshotPort,
+} from 'src/domains/provider-diagnostics/features/provider-outbound';
 
 /**
  * 开发态 Provider outbound 调试路由。
  * 路由只持有只读 snapshot port，不能接触 Provider payload、凭据或 transport。
  */
 export function createProviderOutboundDebugRouter(
-  snapshots: ProviderOutboundAuditSnapshotPort = defaultProviderOutboundAudit
+  snapshots: ProviderOutboundDiagnosticsSnapshotPort = defaultProviderOutboundDiagnostics
 ): Router {
   const router = Router();
 

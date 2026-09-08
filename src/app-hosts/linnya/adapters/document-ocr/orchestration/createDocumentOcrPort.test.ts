@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ModelConfig } from 'src/domains/model-catalog';
-import { createInMemoryProviderOutboundAudit } from 'src/domains/audit/features/provider-outbound-audit';
+import { createInMemoryProviderOutboundDiagnostics } from 'src/domains/provider-diagnostics/features/provider-outbound';
 import { createDocumentOcrPort, type DocumentOcrModelCatalog } from './createDocumentOcrPort';
 
 function makeConfig(overrides: Partial<ModelConfig> = {}): ModelConfig {
@@ -87,10 +87,10 @@ describe('createDocumentOcrPort', () => {
         }),
         { status: 200 }
       );
-    const outboundAudit = createInMemoryProviderOutboundAudit();
+    const outboundDiagnostics = createInMemoryProviderOutboundDiagnostics();
     const port = createDocumentOcrPort({
       catalog: createCatalog(makeConfig()),
-      outbound_audit: outboundAudit,
+      outbound_diagnostics: outboundDiagnostics,
     });
 
     try {
@@ -109,13 +109,13 @@ describe('createDocumentOcrPort', () => {
       globalThis.fetch = originalFetch;
     }
 
-    expect(outboundAudit.readLatest()).toMatchObject({
+    expect(outboundDiagnostics.readLatest()).toMatchObject({
       operation: 'document_ocr',
       status: 'succeeded',
       input: { kind: 'document_ocr', input_kind: 'image' },
       usage: { provenance: 'not_reported' },
     });
-    const serialized = JSON.stringify(outboundAudit.readLatest());
+    const serialized = JSON.stringify(outboundDiagnostics.readLatest());
     for (const sensitive of ['BASE64_SECRET', 'token', 'example.test', '识别结果']) {
       expect(serialized).not.toContain(sensitive);
     }

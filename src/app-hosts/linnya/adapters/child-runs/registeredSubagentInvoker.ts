@@ -2,10 +2,7 @@ import type { PromptKey } from 'src/app-hosts/linnya/agent-registry/prompt.types
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
 import { generateSubrunId, runIdFromSubrunId, type RunId } from '@linnlabs/linnkit/contracts';
 import { childRuns, tools } from '@linnlabs/linnkit/runtime-kernel';
-import {
-  recordRunTranscript,
-  runWithLLMAuditContext,
-} from 'src/domains/audit/features/llm-run-audit';
+import { recordRunTranscript, runWithLLMDebugEvidenceContext } from 'src/domains/audit';
 import { createLinnyaChildRunInvoker } from './childRunInvokerFactory';
 import {
   LinnyaRegisteredChildRunLifecycle,
@@ -260,7 +257,7 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
       try {
         await lifecycle.markRunning(lifecycleRun);
 
-        result = await runWithLLMAuditContext(
+        result = await runWithLLMDebugEvidenceContext(
           {
             ...(conversationId ? { conversationId } : {}),
             runId: childRunId,

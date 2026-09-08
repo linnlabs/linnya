@@ -28,7 +28,7 @@ import type {
 import { createCommandRunPermissionSnapshot } from '../../../../domains/commands/features/permission-settings';
 import { ToolOutputBlobManifestSchema } from '../../../../tools/tool_output';
 import type { ConversationWorkDirectoryAdmissionPort } from '../../../../app-hosts/linnya/application/conversation-lifecycle';
-import type { CommandExecutionAuditEvent } from '../../../../domains/audit/features/command-execution-audit';
+import type { CommandExecutionAuditEvent } from 'src/domains/audit';
 import { formatShellToolModelObservation } from '../../../../domains/commands';
 import { COMMAND_APPROVAL_SCHEMAS } from '../../../../app-hosts/linnya/adapters/persistence/command-approvals';
 import { COMMAND_CARD_SETTLEMENT_SCHEMAS } from '../../../../app-hosts/linnya/adapters/persistence/command-card-settlements';

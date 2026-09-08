@@ -10,9 +10,9 @@ import {
 } from 'src/domains/image-generation';
 import {
   beginProviderOutboundAttempt,
-  defaultProviderOutboundAudit,
-  type ProviderOutboundAuditPort,
-} from 'src/domains/audit/features/provider-outbound-audit';
+  defaultProviderOutboundDiagnostics,
+  type ProviderOutboundDiagnosticsPort,
+} from 'src/domains/provider-diagnostics/features/provider-outbound';
 import { generateImageWithAiSdk } from '../capabilities/ai-sdk/orchestration/generateImageWithAiSdk';
 import { classifyImageGenerationFailure } from '../capabilities/ai-sdk/functions/classifyImageGenerationFailure';
 import {
@@ -31,7 +31,7 @@ export interface CreateImageGenerationPortDependencies {
   readonly catalog?: ImageGenerationModelCatalog;
   readonly credentialResolver?: ModelRequestCredentialResolver;
   readonly invoke?: typeof generateImageWithAiSdk;
-  readonly outbound_audit?: ProviderOutboundAuditPort;
+  readonly outbound_diagnostics?: ProviderOutboundDiagnosticsPort;
 }
 
 export function createImageGenerationPort(
@@ -41,7 +41,7 @@ export function createImageGenerationPort(
   const credentialResolver =
     dependencies.credentialResolver ?? createDefaultModelRequestCredentialResolver();
   const invoke = dependencies.invoke ?? generateImageWithAiSdk;
-  const outboundAudit = dependencies.outbound_audit ?? defaultProviderOutboundAudit;
+  const outboundDiagnostics = dependencies.outbound_diagnostics ?? defaultProviderOutboundDiagnostics;
   return {
     async generate(request) {
       validateImageGenerationRequest(request);
@@ -92,7 +92,7 @@ export function createImageGenerationPort(
         }
       }
 
-      const attempt = beginProviderOutboundAttempt(outboundAudit, {
+      const attempt = beginProviderOutboundAttempt(outboundDiagnostics, {
         attempt_id: randomUUID(),
         operation: 'image_generation',
         route: {

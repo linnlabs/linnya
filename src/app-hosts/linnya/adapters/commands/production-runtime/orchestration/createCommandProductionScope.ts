@@ -5,7 +5,7 @@ import { createToolOutputTextBlobWriter } from 'src/tools/tool_output/orchestrat
 import { createFileCommandOutputArtifactPort } from 'src/infra/adapters/command-runtime/output';
 import { createNodeShellWorkingDirectoryFileSystemPort } from 'src/infra/adapters/command-runtime/working-directory';
 import type { CommandRunnerProcessPort } from 'src/domains/commands';
-import type { CommandExecutionAuditPort } from 'src/domains/audit/features/command-execution-audit';
+import type { CommandExecutionAuditPort } from 'src/domains/audit';
 import type {
   ConversationWorkDirectoryAdmissionPort,
 } from 'src/app-hosts/linnya/application/conversation-lifecycle';

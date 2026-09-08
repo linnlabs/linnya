@@ -11,7 +11,7 @@ import {
   CommandExecutionIdentitySchema,
   CommandExecutionTerminalV1Schema,
 } from '@app/schemas/commands';
-import { projectCommandExecutionAuditEnvelope } from 'src/domains/audit/features/command-execution-audit';
+import { projectCommandExecutionAuditEnvelope } from 'src/domains/audit';
 import type { IEventStore } from '../../event-store/event-store.interface';
 import {
   createEventStoreExecutionAuditEventPort,

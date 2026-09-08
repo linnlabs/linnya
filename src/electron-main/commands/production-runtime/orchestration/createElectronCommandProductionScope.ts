@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 
 import type { CommandRunnerProcessPort } from '../../../../domains/commands';
-import type { CommandExecutionAuditPort } from '../../../../domains/audit/features/command-execution-audit';
+import type { CommandExecutionAuditPort } from 'src/domains/audit';
 import type { ConversationWorkDirectoryAdmissionPort } from '../../../../app-hosts/linnya/application/conversation-lifecycle';
 import type { CommandApprovalHost } from 'src/app-hosts/linnya/adapters/commands/approval-host';
 import type { CommandCardControlHost } from 'src/app-hosts/linnya/adapters/commands/command-card-control-host';

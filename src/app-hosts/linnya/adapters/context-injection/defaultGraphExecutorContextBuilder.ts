@@ -14,7 +14,7 @@ import { LINNYA_CONTEXT_POLICY_FALLBACK } from 'src/app-hosts/linnya/context-pol
 import { getAgentTask } from 'src/app-hosts/linnya/agent-registry/agentTaskResolver';
 import { findRegisteredAgentDefinitionByPromptKey } from 'src/app-hosts/linnya/agent-registry/agentDefinitionResolver';
 import { createDefaultToolManager } from 'src/app-hosts/linnya/adapters/tools/defaultToolManager';
-import { recordAfterContextManager } from 'src/domains/audit/features/llm-run-audit';
+import { recordAfterContextManager } from 'src/domains/audit';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import { withLinnyaFenceInjections } from 'src/app-hosts/linnya/context/agent/createLinnyaFenceInjections';
 import { linnyaFenceRegistry } from 'src/app-hosts/linnya/context/agent/registerLinnyaFences';

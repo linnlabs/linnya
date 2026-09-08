@@ -4,7 +4,7 @@ import {
   projectCommandExecutionAuditEnvelope,
   type CommandExecutionAuditEvent,
   type CommandExecutionAuditPort,
-} from '../../../../../domains/audit/features/command-execution-audit';
+} from 'src/domains/audit';
 
 export interface CreateEventStoreCommandExecutionAuditPortOptions {
   readonly auditPort: AuditPort;

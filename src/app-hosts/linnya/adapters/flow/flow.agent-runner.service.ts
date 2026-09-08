@@ -225,34 +225,11 @@ export class AgentRunnerService {
         settingsPort: this.runtime.commandPermissionSettings,
       });
       /**
-       * 🔥 LLM 请求审计（开发模式落盘）
+       * 统一 Audit Domain 的 run scope。
        *
-       * 设计目标：
-       * - 以 runId（通常等于 turnId）为粒度，把本轮所有 LLM 请求写入同一个文件；
-       * - 覆盖主链路 + 工具调用 + 子 Agent（deep_search 等）；
-       * - 严禁把 runId/traceId 等内部链路信息透传到供应商请求体/请求头。
-       *
-       * 📁 审计日志落盘位置（无需再问“去哪里看”）：
-       * - 目标：每个 run 只保存 2 份最终日志（避免“每次请求都保存”导致文件过长）
-       * - 触发时机：当前 run 结束后一次性写盘（不在请求过程中追加）
-       * - 两个文件（按 runId 命名）：
-       *   - `<runId>.before_context_manager.json`：进入 context-manager 之前的完整输入（请求/历史）
-       *   - `<runId>.after_context_manager.json`：context-manager 输出后、最终将发送给 LLM 的 messages
-       * - 目录结构（基于 `getDocumentsPath()`）：
-       *   - `<Documents>/LLMRunAudit/<conversationId>/`
-       * - 开发模式（LINNYA_DEV_MODE='true'）下，`<Documents>` 实际为：
-       *   - `<项目根>/_dev_data/Documents`
-       *   - 示例：`.../linnya/_dev_data/Documents/LLMRunAudit/<conversationId>/<runId>.before_context_manager.json`
-       * - 生产模式下，`<Documents>` 实际为：
-       *   - `~/Documents/Linnya/Documents`（或 Electron 的 Documents 目录）
-       *
-       * 子 Agent（deep_search 等）：
-       * - 会被归并进父 run 的同一对文件；
-       * - 通过字段 `subrunId/source/parentToolCallId` 区分（便于审计聚合/筛选）。
-       *
-       * 实现方式：
-       * - 通过 AsyncLocalStorage 在一次 run 的异步调用链上挂载上下文；
-       * - lifecycle audit 从当前异步调用链读取上下文并落盘，不进入供应商请求。
+       * LLM debug evidence 只在 `LINNYA_AUDIT_LEVEL=debug` 且开发模式下经过
+       * 当前进程唯一的 AuditPort，由 Audit Domain 路由到有界开发诊断文件。上下文身份仅用于审计 scope，
+       * 不会进入供应商请求体或请求头；生产默认不会保存这些大体积输入证据。
        */
       lifecycleCoordinator.configureRunContext(finalRunContext);
 

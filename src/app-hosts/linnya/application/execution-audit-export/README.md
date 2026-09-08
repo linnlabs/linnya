@@ -1,8 +1,9 @@
 # Execution Audit Export Use Case
 
 这是 Linnya Host 的只读执行摘要 use case。它关联 RunRegistry 的权威生命周期、
-EventStore 的 durable 工具事实、Command Execution Audit 的命令终态与 Telemetry
-安全观测，供 Conversation CLI 等入口读取。
+统一 Audit Domain 在 EventStore 中的 durable 工具事实、Command feature 的命令终态与
+Telemetry 安全观测，供 Conversation CLI 等入口读取。它不能写审计，也不能创建第二个
+recorder。
 
 边界：
 
@@ -21,7 +22,7 @@ EventStore 的 durable 工具事实、Command Execution Audit 的命令终态与
 - `contextCompaction.attempts` 只统计已经发往 Provider 的摘要生成请求；发送前的容量或护栏阻断仍计入 `observations` 与对应 outcome，但不会污染 attempts 和 usage 覆盖。`providerActualCalls / estimateCalls / missingUsageCalls` 三者共同解释这些真实请求的 usage 质量。
 - RunRegistry 仍是 lifecycle owner；`run_lifecycle` 只补充 `steps used / max steps / terminal reason`
   观测。同一 run 经 `wait_user` 恢复可能有多条 terminal observation，对外返回最新一条并保留观测数。
-- 本阶段只提供 Benchmark 所需的安全执行摘要，不等同于完整多来源审计包；扩大导出范围时必须单独设计安全边界并同步本文。
+- 本阶段只提供 Benchmark 所需的安全执行摘要，不等同于完整审计查询器；扩大导出范围时必须复用统一 Audit Domain 的查询能力并同步本文。
 
 `functions/` 只负责 run scope 选择和纯聚合；`orchestration/` 只负责并行读取三个
 owner 并组装结果；EventStore 与 Telemetry 查询分别位于 Host persistence adapter。

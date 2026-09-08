@@ -2,7 +2,7 @@ import { createServer, type Server } from 'node:http';
 import express from 'express';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ProviderOutboundAttemptSnapshotSchema } from '@app/schemas/provider-outbound-audit';
-import { createInMemoryProviderOutboundAudit } from 'src/domains/audit/features/provider-outbound-audit';
+import { createInMemoryProviderOutboundDiagnostics } from 'src/domains/provider-diagnostics/features/provider-outbound';
 import { createProviderOutboundDebugRouter } from './providerOutboundDebugRouter';
 
 async function listen(server: Server): Promise<string> {
@@ -28,10 +28,10 @@ describe('provider outbound debug router', () => {
     );
   });
 
-  it('只返回 audit domain 的安全快照，空 store 返回 404', async () => {
-    const audit = createInMemoryProviderOutboundAudit();
+  it('只返回 provider-diagnostics domain 的安全快照，空 store 返回 404', async () => {
+    const diagnostics = createInMemoryProviderOutboundDiagnostics();
     const app = express();
-    app.use('/api/v1/debug/provider-outbound', createProviderOutboundDebugRouter(audit));
+    app.use('/api/v1/debug/provider-outbound', createProviderOutboundDebugRouter(diagnostics));
     const server = createServer(app);
     servers.push(server);
     const baseUrl = await listen(server);
@@ -40,7 +40,7 @@ describe('provider outbound debug router', () => {
       404
     );
 
-    audit.record({
+    diagnostics.record({
       schema_version: 2,
       attempt_id: 'attempt-1',
       operation: 'document_ocr',

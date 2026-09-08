@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ModelConfig } from 'src/domains/model-catalog';
 import { EmbeddingFailure } from 'src/domains/model-inference';
-import { createInMemoryProviderOutboundAudit } from 'src/domains/audit/features/provider-outbound-audit';
+import { createInMemoryProviderOutboundDiagnostics } from 'src/domains/provider-diagnostics/features/provider-outbound';
 import { createEmbeddingPort, type EmbeddingModelCatalog } from './createEmbeddingPort';
 
 function model(): ModelConfig {
@@ -35,10 +35,10 @@ function catalog(config: ModelConfig | undefined = model()): EmbeddingModelCatal
 
 describe('Embedding Host port', () => {
   it('只向 capability 传递显式 route，并校验返回向量', async () => {
-    const outboundAudit = createInMemoryProviderOutboundAudit();
+    const outboundDiagnostics = createInMemoryProviderOutboundDiagnostics();
     const port = createEmbeddingPort({
       catalog: catalog(),
-      outbound_audit: outboundAudit,
+      outbound_diagnostics: outboundDiagnostics,
       invoke: async (route, request) => {
         expect(route).toEqual({
           providerId: 'fixture',
@@ -69,13 +69,13 @@ describe('Embedding Host port', () => {
       ],
     });
 
-    expect(outboundAudit.readLatest()).toMatchObject({
+    expect(outboundDiagnostics.readLatest()).toMatchObject({
       operation: 'embedding',
       status: 'succeeded',
       input: { kind: 'embedding', value_count: 2 },
       usage: { provenance: 'provider_reported', input_tokens: 3 },
     });
-    const serialized = JSON.stringify(outboundAudit.readLatest());
+    const serialized = JSON.stringify(outboundDiagnostics.readLatest());
     for (const sensitive of [
       'first',
       'second',
