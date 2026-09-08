@@ -418,6 +418,11 @@ export function getWebReadConfigPath(): string {
   return path.join(getAppDataPath(), 'config', 'web_read.json');
 }
 
+/** 插件凭据只存 AppData 安全密文，不跟随 Workspace 导出。 */
+export function getPluginCredentialsConfigPath(): string {
+  return path.join(getAppDataPath(), 'config', 'plugin_credentials.json');
+}
+
 /**
  * 获取日志文件目录
  *
@@ -814,6 +819,7 @@ export const pathManager = {
   getProviderAccountsConfigPath,
   getWebSearchConfigPath,
   getWebReadConfigPath,
+  getPluginCredentialsConfigPath,
   getLogDirectory,
   getTempDirectory,
   getAuditDataPath,

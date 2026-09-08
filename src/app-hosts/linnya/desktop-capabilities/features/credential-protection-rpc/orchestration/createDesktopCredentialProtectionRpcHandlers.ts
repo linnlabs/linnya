@@ -3,6 +3,7 @@ import type {
   AppServerRpcHandlerRegistry,
 } from '../../../../app-server-rpc';
 import type { DesktopCredentialProtectionPort } from '../../../definitions/desktopCredentialProtectionPort';
+import { encodeCredentialProtectionError } from '../../../../../../shared/credential-protection';
 import {
   DESKTOP_CREDENTIAL_DECRYPT_RPC_METHOD,
   DESKTOP_CREDENTIAL_ENCRYPT_RPC_METHOD,
@@ -19,11 +20,19 @@ export function createDesktopCredentialProtectionRpcHandlers(
   return new Map<string, AppServerRpcHandler>([
     [DESKTOP_CREDENTIAL_ENCRYPT_RPC_METHOD, async payload => {
       const request = parseDesktopCredentialEncryptRpcRequest(payload);
-      return { ciphertext: await port.encrypt(request.plaintext) };
+      try {
+        return { ciphertext: await port.encrypt(request.plaintext) };
+      } catch (error: unknown) {
+        throw encodeCredentialProtectionError(error);
+      }
     }],
     [DESKTOP_CREDENTIAL_DECRYPT_RPC_METHOD, async payload => {
       const request = parseDesktopCredentialDecryptRpcRequest(payload);
-      return { plaintext: await port.decrypt(request.ciphertext) };
+      try {
+        return { plaintext: await port.decrypt(request.ciphertext) };
+      } catch (error: unknown) {
+        throw encodeCredentialProtectionError(error);
+      }
     }],
   ]);
 }

@@ -1,5 +1,6 @@
 import type { AppServerRpcPeer } from '../../../../app-server-rpc';
 import type { DesktopCredentialProtectionPort } from '../../../definitions/desktopCredentialProtectionPort';
+import { decodeCredentialProtectionError } from '../../../../../../shared/credential-protection';
 import {
   DESKTOP_CREDENTIAL_DECRYPT_RPC_METHOD,
   DESKTOP_CREDENTIAL_ENCRYPT_RPC_METHOD,
@@ -15,12 +16,20 @@ export function createDesktopCredentialProtectionRpcClient(
 ): DesktopCredentialProtectionPort {
   return Object.freeze({
     async encrypt(plaintext: string): Promise<string> {
-      const response = await rpc.request(DESKTOP_CREDENTIAL_ENCRYPT_RPC_METHOD, { plaintext });
-      return parseDesktopCredentialEncryptRpcResponse(response).ciphertext;
+      try {
+        const response = await rpc.request(DESKTOP_CREDENTIAL_ENCRYPT_RPC_METHOD, { plaintext });
+        return parseDesktopCredentialEncryptRpcResponse(response).ciphertext;
+      } catch (error: unknown) {
+        throw decodeCredentialProtectionError(error) ?? error;
+      }
     },
     async decrypt(ciphertext: string): Promise<string> {
-      const response = await rpc.request(DESKTOP_CREDENTIAL_DECRYPT_RPC_METHOD, { ciphertext });
-      return parseDesktopCredentialDecryptRpcResponse(response).plaintext;
+      try {
+        const response = await rpc.request(DESKTOP_CREDENTIAL_DECRYPT_RPC_METHOD, { ciphertext });
+        return parseDesktopCredentialDecryptRpcResponse(response).plaintext;
+      } catch (error: unknown) {
+        throw decodeCredentialProtectionError(error) ?? error;
+      }
     },
   });
 }

@@ -171,14 +171,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
   getInferenceEndpoints(): InferenceEndpointView[] {
     return Array.from(this.inferenceEndpoints.values()).map(endpoint => ({
       ...endpoint,
-      credential_status:
-        endpoint.credential_reference.kind === 'none'
-          ? 'not_required'
-          : endpoint.credential_reference.kind === 'stored_secret'
-            ? endpointCredentialStore.has(endpoint.credential_reference.credential_id)
-              ? 'configured'
-              : 'missing'
-            : 'configured',
+      credential_status: this.resolveEndpointCredentialStatus(endpoint),
     }));
   }
 
@@ -529,6 +522,16 @@ export class ModelCatalogRegistry implements ModelCatalog {
       case 'host_managed':
         return reference.credential_id;
     }
+  }
+
+  private resolveEndpointCredentialStatus(
+    endpoint: InferenceEndpoint,
+  ): InferenceEndpointView['credential_status'] {
+    if (endpoint.credential_reference.kind === 'none') return 'not_required';
+    if (endpoint.credential_reference.kind !== 'stored_secret') return 'configured';
+    const status = endpointCredentialStore.getStatus(endpoint.credential_reference.credential_id);
+    if (status === 'available') return 'configured';
+    return status === 'missing' ? 'missing' : 'unavailable';
   }
 
   private async loadCloudModels(): Promise<boolean> {

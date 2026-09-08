@@ -4,6 +4,9 @@
 bootstrap、托管子进程生命周期，并注册 safeStorage、隐藏 Chromium worker、文本测量、PDF、OAuth browser
 与 Web Read renderer 等窄 Desktop reverse RPC。Backend 业务、Commands owner 和 Sandbox owner 不在这里创建。
 
+插件凭据由本 composition root 迁移并写入 `appDataRoot/config/plugin_credentials.json`，文件只保存
+Desktop credential protection 产生的密文；旧 `electron-store` 的 `pluginCredentials` 仅作为一次性迁移来源。
+
 App Server 不继承 Electron Main 的环境。命令所需的完整宿主登录环境走独立 bootstrap contract；sidecar 自身只取得
 声明过的系统与 Linnya 配置变量，明确排除 `ELECTRON_RUN_AS_NODE`、`NODE_OPTIONS` 等启动注入入口。
 

@@ -15,6 +15,6 @@ export function findReusableCustomApiEndpoint(
         endpoint.endpoint_id.startsWith(`${binding.endpoint_id}:`)) &&
       endpoint.base_url === baseUrl &&
       endpoint.auth_profile === binding.auth_profile &&
-      endpoint.credential_status !== 'missing'
+      endpoint.credential_status !== 'missing' && endpoint.credential_status !== 'unavailable'
   );
 }

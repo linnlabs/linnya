@@ -44,7 +44,7 @@ import type { ElectronAppServerRuntime } from '../definitions/electronAppServerR
 import { createHiddenWorkerArtifactAdmission } from '../functions/assertHiddenWorkerDescriptorAllowed';
 import { resolveElectronAppServerProcessLaunch } from './resolveElectronAppServerProcessLaunch';
 import { createPluginCredentialRuntimeRpcHandlers } from '../../../app-hosts/linnya/plugin-registry/features/credential-runtime-rpc';
-import { createElectronStorePluginCredentialRuntimePort } from '../../../plugin-sdk/backend/electronStoreCredentialRuntime';
+import { createFilePluginCredentialRuntimePort } from '../../../plugin-sdk/backend/filePluginCredentialRuntime';
 import { store } from '../../store/index.js';
 import { createExportArtifactCommitRpcHandlers } from '../../../app-hosts/linnya/application/export-artifact-commit';
 import { commitAuthorizedExportArtifact } from '../../../features/system/export/orchestration/exportArtifactTargetRuntime';
@@ -99,14 +99,20 @@ export async function createElectronAppServerRuntime(input: {
       : []),
   ]);
   const rpcHandlers = new Map<string, AppServerRpcHandler>();
+  const credentialProtection = createElectronCredentialProtectionPort();
+  const pluginCredentialRuntime = await createFilePluginCredentialRuntimePort({
+    filePath: path.join(input.runtimePathRoots.appDataRoot, 'config', 'plugin_credentials.json'),
+    credentialProtection,
+    legacyStore: store,
+  });
   registerHandlers(rpcHandlers, createDesktopDiagnosticLogRpcHandlers({
     writeRecord: writeForwardedDiagnosticLogRecord,
   }));
   registerHandlers(rpcHandlers, createDesktopCredentialProtectionRpcHandlers(
-    createElectronCredentialProtectionPort(),
+    credentialProtection,
   ));
   registerHandlers(rpcHandlers, createPluginCredentialRuntimeRpcHandlers(
-    createElectronStorePluginCredentialRuntimePort(store),
+    pluginCredentialRuntime,
   ));
   registerHandlers(rpcHandlers, createExportArtifactCommitRpcHandlers({
     mailboxRoot,

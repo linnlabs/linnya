@@ -1,5 +1,9 @@
+import type { CredentialProtectionErrorCode } from 'src/shared/credential-protection';
+
 export const CHATGPT_PROVIDER_ACCOUNT_ID = 'chatgpt-subscription';
 export const CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID = 'openai-chatgpt-subscription';
+
+export type ProviderAccountCredentialStatus = 'available' | CredentialProtectionErrorCode;
 
 /** 用户对一个正式模型供应商完成授权后形成的账号身份。 */
 export interface ProviderAccount {
@@ -38,6 +42,16 @@ export interface ProviderAccountRegistry {
     credential: ProviderAccountOAuthCredential
   ): Promise<ProviderAccount>;
   remove(accountId: string): Promise<void>;
+}
+
+export class ProviderAccountCredentialUnavailableError extends Error {
+  readonly code: Exclude<ProviderAccountCredentialStatus, 'available'>;
+
+  constructor(code: Exclude<ProviderAccountCredentialStatus, 'available'>) {
+    super(`Provider account credential 当前不可用: ${code}`);
+    this.name = 'ProviderAccountCredentialUnavailableError';
+    this.code = code;
+  }
 }
 
 export interface ProviderAccountRequestCredential {

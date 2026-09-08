@@ -44,19 +44,3 @@ renderer 构建会把 `vue`、`pinia`、`@plugin/renderer/*` 和 Renderer UI 公
 `@plugin/backend/*`、`@app/schemas`、Electron/native 依赖。插件内部 shared 代码和 `uuid` 会打进产物，避免磁盘插件运行时依赖自己的 `node_modules`。
 
 生产启动时，主应用会把预置 artifact 复制到 `<userData>/plugins/mindmap/<version>`，通过 `active.json` 选择版本；backend 经 `require(entry.backend)` 注册，renderer 经 `plugin://mindmap/dist/renderer/index.js` 动态加载。R2 升级只做官方包的 `latest.json` / zip / sha512 完整性校验，不做第三方签名、沙箱或权限执行。
-
-## Sheet / Slides 复用结论
-
-可以直接复用：
-
-- 单包跨进程布局：`src/shared`、`src/backend`、`src/renderer` 三个构建面，加 `plugin.json` 和三条公开入口。
-- 根工程接入方式：沿用 `file:` 依赖语义、Vite / tsconfig / vitest alias 直读源码，不引入 workspaces。
-- 边界守卫打法：先用 baseline 冻结迁移债，再在收口批次清零并转阻断。
-- 宿主能力接入方式：插件包只依赖 `@plugin/backend/*`、`@plugin/renderer/*` 这类窄门面；跨 domain 协作放在 app-level orchestration 注册 port。
-- 文档类型后端 hook：通用 workspace 工具、VFS、系统视图只认按文档类型注册的 hook，不写死具体业务实现。
-
-不能机械照搬，必须另开计划：
-
-- Sheet 有独立表格引擎、公式/渲染/协同边界和可能的外部 engine/fork 依赖，包化前要先定清楚 engine 的构建与运行时边界。
-- Slides 有 presentation codegen、PPTX/资源导出和演示文稿专属工具卡链路，不能只按 MindMap 的文档生命周期搬目录。
-- Sheet / Slides 的数据表归属、迁移执行和存量数据交接要单独设计；Mindmap 已完成插件级迁移和存量表收养，但 Sheet / Slides 仍要各自定义 `ownedTables`、`v1` 基线收养和失败回滚测试。

@@ -233,7 +233,9 @@ export function createProviderOnboardingUseCase(
     );
     if (
       authMethod === 'api_key' &&
-      configuredEndpoints.some(endpoint => endpoint.credential_status === 'missing') &&
+      configuredEndpoints.some(endpoint =>
+        endpoint.credential_status === 'missing' || endpoint.credential_status === 'unavailable'
+      ) &&
       !command.api_key
     ) {
       throw new ProviderOnboardingError(
