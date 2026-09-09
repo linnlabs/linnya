@@ -24,7 +24,9 @@
   font-weight: 500;
   letter-spacing: 0.01em;
   cursor: pointer;
-  background-color: color-mix(in srgb, var(--color-black) 8%, transparent);
+  overflow: hidden;
+  isolation: isolate;
+  background-color: color-mix(in srgb, var(--color-black) 4%, transparent);
   border: 0;
   border-radius: inherit;
   transition:
@@ -32,14 +34,71 @@
     color var(--transition-fast) ease;
 }
 
+.ai-assistant-input__model-setup-overlay::before {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  content: '';
+  pointer-events: none;
+  opacity: 0.98;
+  background: linear-gradient(
+    115deg,
+    transparent 39%,
+    color-mix(in srgb, var(--color-bg-surface) 90%, transparent) 50%,
+    transparent 61%
+  );
+  background-size: 240% 100%;
+  animation: ai-assistant-input-model-setup-flow 7s linear infinite;
+}
+
+.ai-assistant-input__model-setup-overlay::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: '';
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--color-bg-disabled) 96%, transparent) 0%,
+    color-mix(in srgb, var(--color-bg-disabled) 72%, transparent) 24%,
+    transparent 56%
+  );
+  transition: opacity var(--transition-fast) ease;
+}
+
+.ai-assistant-input__model-setup-label {
+  position: relative;
+  z-index: 2;
+}
+
 .ai-assistant-input__model-setup-overlay:hover {
   color: var(--color-text-primary);
-  background-color: color-mix(in srgb, var(--color-black) 16%, transparent);
+  background-color: color-mix(in srgb, var(--color-black) 6%, transparent);
+}
+
+.ai-assistant-input__model-setup-overlay:hover::after {
+  opacity: 0.32;
 }
 
 .ai-assistant-input__model-setup-overlay:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: -3px;
+}
+
+@keyframes ai-assistant-input-model-setup-flow {
+  from {
+    background-position: 150% 0;
+  }
+
+  to {
+    background-position: -50% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-assistant-input__model-setup-overlay::before {
+    animation: none;
+  }
 }
 
 .ai-assistant-input .input-wrapper:focus-within:not(.is-selector-interacting) {

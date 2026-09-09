@@ -90,7 +90,9 @@
           :aria-label="conversationMessage('conversation.input.model.configure')"
           @click="openModelSetup"
         >
-          {{ conversationMessage('conversation.input.model.configure') }}
+          <span class="ai-assistant-input__model-setup-label">
+            {{ conversationMessage('conversation.input.model.configure') }}
+          </span>
         </button>
 
         <div
