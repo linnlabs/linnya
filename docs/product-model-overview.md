@@ -224,7 +224,7 @@ EvidenceStore 属于对话执行空间中的引用证据事实。`[@ref]` 是 Ag
 
 实现上，这个图片分支与当前运行时读取本地图片的方式相同：按受控路径读取文件字节，校验文件类型、大小和权限，再把字节物化为模型支持的视觉输入。这里的“视觉输入”是阅读结果的内部形态，不是另一个 Agent 工具。
 
-物理文本限定为严格 UTF-8，并在读取前执行 20 MiB 门禁；JPEG、PNG、WebP 复用受管图片 ingress 的 10 MiB、40 MP、完整解码与内容寻址合同。SVG 只按 UTF-8 文本返回。PDF、Office、压缩包、数据库、音视频和可执行文件必须先由 Shell/CLI 显式转换。插件 CLI 不需要理解 linnkit 的多模态协议，只需产生普通文件和 canonical locator。
+物理文本限定为严格 UTF-8，并在读取前执行 20 MiB 门禁；JPEG、PNG、WebP 复用受管图片 ingress 的单图 10 MiB、单条消息聚合 100 MiB、40 MP、完整解码与内容寻址合同。SVG 只按 UTF-8 文本返回。PDF、Office、压缩包、数据库、音视频和可执行文件必须先由 Shell/CLI 显式转换。插件 CLI 不需要理解 linnkit 的多模态协议，只需产生普通文件和 canonical locator。
 
 ---
 

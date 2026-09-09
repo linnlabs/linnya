@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ConversationImageDraftItem } from '../definitions/conversationImageAttachmentDraft';
-import { resolveConversationImageSubmitPreflight } from './conversationImageDraftRules';
+import {
+  resolveConversationImageSubmitPreflight,
+  validateConversationImageDraftAddition,
+} from './conversationImageDraftRules';
 
 const readyItem: ConversationImageDraftItem = {
   clientId: 'client-1',
@@ -17,6 +20,28 @@ const readyItem: ConversationImageDraftItem = {
     sha256: 'a'.repeat(64),
   },
 };
+
+function createSizedFile(name: string, size: number): File {
+  const file = new File([], name, { type: 'image/png' });
+  Object.defineProperty(file, 'size', { configurable: true, value: size });
+  return file;
+}
+
+describe('validateConversationImageDraftAddition', () => {
+  it('允许 100 MiB 聚合图片，但拒绝再增加会超出上限的文件', () => {
+    const currentItems: ConversationImageDraftItem[] = [
+      { ...readyItem, byteLength: 60 * 1024 * 1024 },
+    ];
+    expect(validateConversationImageDraftAddition(
+      currentItems,
+      [createSizedFile('within-limit.png', 40 * 1024 * 1024)],
+    )).toBeNull();
+    expect(validateConversationImageDraftAddition(
+      currentItems,
+      [createSizedFile('over-limit.png', 40 * 1024 * 1024 + 1)],
+    )).toBe('conversation.image.total_bytes_exceeded');
+  });
+});
 
 describe('resolveConversationImageSubmitPreflight', () => {
   it('允许图片-only，但必须全部 ready 且当前模型显式支持 image_input', () => {

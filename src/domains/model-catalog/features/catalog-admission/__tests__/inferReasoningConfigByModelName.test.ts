@@ -86,7 +86,13 @@ describe('inferReasoningConfigByModelName', () => {
 
   describe('DeepSeek 系列', () => {
     it('deepseek-v4-pro / v4-flash 档位 off/low/medium/high/xhigh，default high', () => {
-      for (const name of ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v4-pro-preview']) {
+      for (const name of [
+        'deepseek-v4-pro',
+        'deepseek-v4-flash',
+        'deepseek-v4-pro-preview',
+        // 用户自定义 endpoint 可声明尚未公开的内测模型名；不应因日期后缀丢失 V4 契约。
+        'deepseek-v4.1-flash-expires-on-0910',
+      ]) {
         const cfg = inferReasoningConfigByModelName(name);
         expect(cfg?.supported_efforts).toEqual(['off', 'low', 'medium', 'high', 'xhigh']);
         expect(cfg?.default_effort).toBe('high');

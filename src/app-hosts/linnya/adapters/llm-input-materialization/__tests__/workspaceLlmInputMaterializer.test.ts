@@ -9,6 +9,7 @@ import {
 } from '@linnlabs/linnkit/runtime-kernel';
 import type { CanonicalInferencePort } from '@linnlabs/linnkit/ports';
 import type { RuntimeResourceRef } from '@linnlabs/linnkit/contracts';
+import { CONVERSATION_IMAGE_MAX_TOTAL_BYTES } from '@app/schemas';
 import {
   WorkspaceLlmImageResolutionError,
   type WorkspaceLlmImageReference,
@@ -163,6 +164,117 @@ describe('workspace LLM input materializer', () => {
         limit_kind: 'image_count',
         actual_value: 101,
         limit_value: 100,
+      },
+    });
+    expect(resolver.resolveImages).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [
+      'OpenAI Responses',
+      OPENAI_RESPONSES_IMAGE_INPUT_PROFILE,
+      9 * 1024 * 1024,
+      11,
+      12,
+      CONVERSATION_IMAGE_MAX_TOTAL_BYTES,
+    ],
+    [
+      'Chat Completions',
+      CHAT_COMPLETIONS_IMAGE_INPUT_PROFILE,
+      9 * 1024 * 1024,
+      11,
+      12,
+      CONVERSATION_IMAGE_MAX_TOTAL_BYTES,
+    ],
+    [
+      'Ollama Chat',
+      OLLAMA_CHAT_IMAGE_INPUT_PROFILE,
+      9 * 1024 * 1024,
+      11,
+      12,
+      CONVERSATION_IMAGE_MAX_TOTAL_BYTES,
+    ],
+    [
+      'Anthropic Messages',
+      ANTHROPIC_MESSAGES_IMAGE_INPUT_PROFILE,
+      7 * 1024 * 1024,
+      2,
+      3,
+      20 * 1024 * 1024,
+    ],
+  ] as const)('%s route 按 profile 聚合限制在读取前拒绝超限图片', async (
+    _name,
+    profile,
+    imageBytes,
+    acceptedCount,
+    rejectedCount,
+    expectedTotalLimit,
+  ) => {
+    const createInputs = (count: number): {
+      readonly messages: LlmRequestMessage[];
+      readonly evidence: ImageInputAdmissionEvidence;
+    } => {
+      const references = Array.from({ length: count }, (_, index): RuntimeResourceRef => ({
+        ...firstRef,
+        id: `slides-image-${index}`,
+        resourceId: `slides-asset-${index}`,
+        byteLength: imageBytes,
+      }));
+      const messagesWithToolImages: LlmRequestMessage[] = [
+        { role: 'user', content: '制作大型演示文稿', attachments: references.slice(0, 1) },
+        ...references.slice(1).map((reference, index): LlmRequestMessage => ({
+          role: 'tool',
+          tool_call_id: `read-slide-${index}`,
+          content: `第 ${String(index + 1)} 张幻灯片图片`,
+          attachments: [reference],
+        })),
+      ];
+      return {
+        messages: messagesWithToolImages,
+        evidence: {
+          inputBudget: 1_000_000,
+          nonImageEstimatedTokens: 10,
+          initialProfileId: profile.id,
+          attachments: references.map((reference, index) => ({
+            messageIndex: index,
+            attachmentIndex: 0,
+            id: reference.id,
+            resourceId: reference.resourceId,
+            placement: index === 0 ? 'user_image' : 'tool_result_image',
+            estimatedTokens: profile.estimateTokens(reference),
+          })),
+        },
+      };
+    };
+    const resolver = createResolver();
+    const materializer = createWorkspaceLlmInputMaterializer({
+      profileRegistry: createImageInputProcessingProfileRegistry({
+        resolveRouteForModel: () => 'slides-route',
+        bindings: [{ route: 'slides-route', profile }],
+      }),
+      workspaceResolver: resolver,
+    });
+    const accepted = createInputs(acceptedCount);
+
+    await expect(materializer.materialize({
+      activeModelId: 'slides-model',
+      messages: accepted.messages,
+      admissionEvidence: accepted.evidence,
+    })).resolves.toHaveLength(acceptedCount);
+    expect(profile.limits.maxTotalImageBytes).toBe(expectedTotalLimit);
+    expect(resolver.resolveImages).toHaveBeenCalledOnce();
+
+    const rejected = createInputs(rejectedCount);
+    await expect(materializer.materialize({
+      activeModelId: 'slides-model',
+      messages: rejected.messages,
+      admissionEvidence: rejected.evidence,
+    })).rejects.toMatchObject({
+      errorCode: LLM_IMAGE_INPUT_ERROR_CODES.ROUTE_LIMIT_EXCEEDED,
+      metadata: {
+        limit_kind: 'total_image_bytes',
+        actual_value: rejectedCount * imageBytes,
+        limit_value: expectedTotalLimit,
       },
     });
     expect(resolver.resolveImages).toHaveBeenCalledOnce();
