@@ -1,5 +1,8 @@
 <template>
-  <div class="add-model-provider-form" data-registration-kind="direct-provider">
+  <div
+    class="add-model-provider-form"
+    data-registration-kind="direct-provider"
+  >
     <SettingsRow
       :label="settingsMessage('settings.addModel.apiKey.label')"
       :hint="settingsMessage('settings.addModel.apiKey.providerDescription')"
@@ -15,7 +18,7 @@
         class="settings-external-link"
         @click="openSetupHelp"
       >
-        <LinkIcon />
+        <LinkIcon class="settings-external-link-icon" />
         <span>{{ settingsMessage('settings.addModel.apiKey.obtain') }}</span>
       </button>
     </SettingsRow>
@@ -29,7 +32,10 @@
       >
         {{ submitText }}
       </button>
-      <SettingsFeedback kind="error" :message="status.error || ''" />
+      <SettingsFeedback
+        kind="error"
+        :message="status.error || ''"
+      />
     </div>
   </div>
 </template>

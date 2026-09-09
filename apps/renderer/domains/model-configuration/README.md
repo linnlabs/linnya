@@ -114,7 +114,7 @@ Feature 之间只能依赖对方的
 `orchestration/`，不要塞进任意一个 store。
 
 `ModelRegistrationSettingsPage`
-只拥有页面级“供应商品牌 → 接入方式”选择状态，默认选择“自定义 Provider”。一级下拉只展示 OpenAI、Kimi（月之暗面）、智谱 AI 等品牌；一个品牌只有一条可用 connection 时直接进入 setup，多条时用
+只拥有页面级“供应商品牌 → 接入方式”选择状态。首次进入时先展示 OpenAI、OpenCode Go、Ollama Cloud、Kimi、Claude 五个常见供应商，并提供“其他供应商”下拉和“自定义 API”入口；选择后进入现有接入详情，保留顶部 Provider 下拉。一个品牌只有一条可用 connection 时直接进入 setup，多条时用
 `SettingsChoiceGroup` 展示带说明与标签的选择卡。页面按 connection setup
 schema 只挂载当前选择对应的 API-Key、账号授权、本地 runtime 或自定义表单，并只把
 `provider_connection_definition_id`

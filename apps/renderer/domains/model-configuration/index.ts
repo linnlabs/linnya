@@ -69,6 +69,7 @@ export type {
   ModelPurposeSelections,
 } from './features/purpose-model-bindings';
 export { deleteConfiguredModel } from './orchestration/deleteConfiguredModel';
+export { shouldPromptForModelSetup } from './functions/shouldPromptForModelSetup';
 export {
   getEmbeddingModelChangeImpactPort,
   registerEmbeddingModelChangeImpactPort,

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ProviderDefinition } from '../features/provider-catalog';
 import {
+  buildModelRegistrationCommonProviderOptions,
   buildModelRegistrationConnectionOptions,
+  buildModelRegistrationOtherProviderOptions,
   buildModelRegistrationProviderOptions,
   resolveAccountProviderConnectionDefinitionId,
   resolveApiKeyProviderConnectionDefinitionId,
@@ -49,6 +51,22 @@ const openAiProvider = {
   ],
 } satisfies ProviderDefinition;
 
+const anthropicProvider = {
+  id: 'anthropic',
+  display_name: 'Anthropic',
+  connections: [
+    {
+      id: 'anthropic',
+      display_name: 'Anthropic',
+      kind: 'direct',
+      release_status: 'stable',
+      setup_fields: [{ id: 'api_key', kind: 'secret', required: true, label: 'API Key' }],
+      model_discovery: 'bundled',
+      models: [providerModel],
+    },
+  ],
+} satisfies ProviderDefinition;
+
 const ollamaProvider = {
   id: 'ollama',
   display_name: 'Ollama',
@@ -83,6 +101,65 @@ const ollamaProvider = {
 } satisfies ProviderDefinition;
 
 describe('model registration Provider options', () => {
+  it('首屏优先展示常用 Provider，并让 Ollama Cloud 直达对应接入方式', () => {
+    expect(
+      buildModelRegistrationCommonProviderOptions([
+        openAiProvider,
+        ollamaProvider,
+        anthropicProvider,
+      ])
+    ).toEqual([
+      { value: 'provider:openai', text: 'OpenAI' },
+      {
+        value: 'provider:ollama',
+        text: 'Ollama Cloud',
+        preferredConnectionDefinitionId: 'ollama-cloud',
+      },
+      { value: 'provider:anthropic', text: 'Claude' },
+    ]);
+  });
+
+  it('Ollama Cloud 已配置时仍保留 Ollama 本地入口', () => {
+    expect(
+      buildModelRegistrationCommonProviderOptions(
+        [ollamaProvider],
+        new Set(['ollama-cloud'])
+      )
+    ).toEqual([{ value: 'provider:ollama', text: 'Ollama' }]);
+    expect(
+      buildModelRegistrationOtherProviderOptions([ollamaProvider], new Set(['ollama-cloud']))
+    ).toEqual([]);
+  });
+
+  it('其他供应商下拉保留完整目录但不重复首屏品牌', () => {
+    const deepseekProvider = {
+      id: 'deepseek',
+      display_name: 'DeepSeek',
+      connections: [
+        {
+          id: 'deepseek',
+          display_name: 'DeepSeek',
+          kind: 'direct',
+          release_status: 'stable',
+          setup_fields: [{ id: 'api_key', kind: 'secret', required: true, label: 'API Key' }],
+          model_discovery: 'bundled',
+          models: [providerModel],
+        },
+      ],
+    } satisfies ProviderDefinition;
+
+    expect(
+      buildModelRegistrationOtherProviderOptions([
+        openAiProvider,
+        anthropicProvider,
+        deepseekProvider,
+        ollamaProvider,
+      ])
+    ).toEqual([
+      { value: 'provider:deepseek', text: 'DeepSeek' },
+    ]);
+  });
+
   it('品牌只出现一次，并在第二步列出同品牌的 API 与订阅接入方式', () => {
     const unsupportedProvider = {
       id: 'empty-provider',

@@ -94,6 +94,31 @@ function providerTrigger(container: Element): HTMLButtonElement {
   return trigger;
 }
 
+function quickOption(container: Element, optionText: string): HTMLButtonElement {
+  const option = Array.from(
+    container.querySelectorAll<HTMLButtonElement>('.model-registration-quick-option')
+  ).find(candidate => candidate.textContent?.trim() === optionText);
+  if (!option) throw new Error(`Quick provider option not found: ${optionText}`);
+  return option;
+}
+
+async function selectQuickOption(container: Element, optionText: string): Promise<void> {
+  quickOption(container, optionText).click();
+  await flushUi();
+}
+
+async function selectOtherProvider(container: Element, optionText: string): Promise<void> {
+  quickOption(container, 'settings.addModel.quick.other').click();
+  await nextTick();
+
+  const option = Array.from(document.querySelectorAll<HTMLButtonElement>('.select-option')).find(
+    candidate => candidate.textContent?.trim() === optionText
+  );
+  if (!option) throw new Error(`Other provider option not found: ${optionText}`);
+  option.click();
+  await flushUi();
+}
+
 function setInputValue(container: Element, placeholder: string, value: string): void {
   const input = container.querySelector<HTMLInputElement>(`input[placeholder="${placeholder}"]`);
   if (!input) throw new Error(`Input not found: ${placeholder}`);
@@ -218,12 +243,38 @@ describe('ModelRegistrationSettingsPage', () => {
           ],
         },
         {
+          id: 'anthropic',
+          display_name: 'Anthropic',
+          connections: [
+            {
+              id: 'anthropic',
+              display_name: 'Anthropic',
+              kind: 'direct',
+              release_status: 'stable',
+              setup_fields: [{ id: 'api_key', kind: 'secret', required: true, label: 'API Key' }],
+              model_discovery: 'bundled',
+              models: [
+                {
+                  id: 'claude-sonnet',
+                  display_name: 'Claude Sonnet',
+                  release_status: 'active',
+                  context_window_tokens: 200000,
+                  max_input_tokens: 180000,
+                  max_output_tokens: 8192,
+                  capabilities: { image_input: true, tool_call: true, reasoning: true },
+                },
+              ],
+            },
+          ],
+        },
+        {
           id: 'deepseek',
           display_name: 'DeepSeek',
           connections: [
             {
               id: 'deepseek',
               display_name: 'DeepSeek',
+              setup_help_url: 'https://platform.deepseek.com/api_keys',
               kind: 'direct',
               release_status: 'stable',
               setup_fields: [{ id: 'api_key', kind: 'secret', required: true, label: 'API Key' }],
@@ -266,6 +317,7 @@ describe('ModelRegistrationSettingsPage', () => {
             {
               id: 'ollama-cloud',
               display_name: 'Ollama Cloud',
+              setup_help_url: 'https://ollama.com/settings/keys',
               kind: 'direct',
               release_status: 'preview',
               setup_fields: [{ id: 'api_key', kind: 'secret', required: true, label: 'API Key' }],
@@ -285,7 +337,7 @@ describe('ModelRegistrationSettingsPage', () => {
           ],
         },
       ],
-      total: 3,
+      total: 4,
     });
     container = document.createElement('div');
     document.body.append(container);
@@ -297,7 +349,7 @@ describe('ModelRegistrationSettingsPage', () => {
     app = undefined;
   });
 
-  it('默认只显示自定义 Provider 表单，不提前挂载正式 Provider 或 Ollama', async () => {
+  it('首屏展示常用 Provider、其他供应商和自定义 API 入口', async () => {
     app = createApp(ModelRegistrationSettingsPage);
     app.use(createPinia());
     app.mount(container);
@@ -305,17 +357,16 @@ describe('ModelRegistrationSettingsPage', () => {
 
     const sections = container.querySelectorAll('.settings-section');
     expect(sections).toHaveLength(1);
-    expect(sections[0]?.textContent).toContain('settings.addModel.provider.title');
-    expect(providerTrigger(container).textContent).toContain(
-      'settings.addModel.provider.customOption'
-    );
-    expect(container.querySelector('[data-registration-kind="custom-provider"]')).not.toBeNull();
+    expect(sections[0]?.textContent).toContain('settings.addModel.quick.title');
+    expect(sections[0]?.textContent).toContain('OpenAI');
+    expect(sections[0]?.textContent).toContain('Claude');
+    expect(sections[0]?.textContent).toContain('Ollama Cloud');
+    expect(sections[0]?.textContent).toContain('settings.addModel.quick.other');
+    expect(sections[0]?.textContent).toContain('settings.addModel.quick.customApi');
+    expect(container.querySelector('.settings-row .select-trigger')).toBeNull();
+    expect(container.querySelector('[data-registration-kind="custom-provider"]')).toBeNull();
     expect(container.querySelector('[data-registration-kind="direct-provider"]')).toBeNull();
     expect(container.querySelector('[data-registration-kind="ollama"]')).toBeNull();
-    const section = sections[0];
-    if (!section) throw new Error('Provider settings section not found');
-    expect(inputValues(section)).toContain('256000');
-    expect(inputValues(section)).toContain('16384');
     expect(mocks.listModels).not.toHaveBeenCalled();
   });
 
@@ -325,6 +376,7 @@ describe('ModelRegistrationSettingsPage', () => {
     app.mount(container);
     await flushUi();
 
+    await selectQuickOption(container, 'settings.addModel.quick.customApi');
     providerTrigger(container).click();
     await nextTick();
 
@@ -334,10 +386,25 @@ describe('ModelRegistrationSettingsPage', () => {
     expect(providerOptionTexts).toEqual([
       'settings.addModel.provider.customOption',
       'OpenAI',
+      'Anthropic',
       'DeepSeek',
       'Ollama',
     ]);
     expect(document.body.textContent).not.toContain('xiaoxiao.work.gd');
+  });
+
+  it('其他供应商选择后进入相同的 Provider 接入详情', async () => {
+    app = createApp(ModelRegistrationSettingsPage);
+    app.use(createPinia());
+    app.mount(container);
+    await flushUi();
+
+    await selectOtherProvider(container, 'DeepSeek');
+
+    expect(providerTrigger(container).textContent).toContain('DeepSeek');
+    expect(container.querySelector('[data-registration-kind="direct-provider"]')).not.toBeNull();
+    expect(container.querySelector('.model-registration-quick-options')).toBeNull();
+    expect(container.querySelector('.settings-external-link-icon')).not.toBeNull();
   });
 
   it('账号型 Provider 授权后自动刷新模型管理，不再要求手动添加模型', async () => {
@@ -346,7 +413,7 @@ describe('ModelRegistrationSettingsPage', () => {
     app.mount(container);
     await flushUi();
 
-    await selectProvider(container, 'OpenAI');
+    await selectQuickOption(container, 'OpenAI');
     await selectConnection(container, 'ChatGPT 订阅');
 
     const accountForm = container.querySelector('[data-registration-kind="provider-account"]');
@@ -374,7 +441,7 @@ describe('ModelRegistrationSettingsPage', () => {
     app.mount(container);
     await flushUi();
 
-    await selectProvider(container, 'OpenAI');
+    await selectQuickOption(container, 'OpenAI');
     await selectConnection(container, 'OpenAI API');
 
     const section = container.querySelector('.settings-section');
@@ -400,6 +467,7 @@ describe('ModelRegistrationSettingsPage', () => {
 
     expect(container.querySelector('[data-registration-kind="ollama"]')).toBeNull();
     expect(container.querySelector('[data-registration-kind="direct-provider"]')).not.toBeNull();
+    expect(container.querySelector('.settings-external-link-icon')).not.toBeNull();
     expect(section.textContent).toContain('settings.addModel.apiKey.label');
     expect(inputValues(section)).not.toContain('32768');
     expect(inputValues(section)).not.toContain('4096');
@@ -410,6 +478,8 @@ describe('ModelRegistrationSettingsPage', () => {
     app.use(createPinia());
     app.mount(container);
     await flushUi();
+
+    await selectQuickOption(container, 'settings.addModel.quick.customApi');
 
     const compatibilityRow = Array.from(container.querySelectorAll('.settings-row')).find(row =>
       row.textContent?.includes('settings.addModel.compatibility.label')
@@ -435,6 +505,8 @@ describe('ModelRegistrationSettingsPage', () => {
     app.use(createPinia());
     app.mount(container);
     await flushUi();
+
+    await selectQuickOption(container, 'settings.addModel.quick.customApi');
 
     setInputValue(container, 'settings.addModel.api.modelName.placeholder', 'gpt-test');
     setInputValue(container, 'settings.addModel.apiKey.placeholder', 'test-secret');

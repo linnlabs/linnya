@@ -83,6 +83,16 @@
           @submit="handleSubmit"
         />
 
+        <button
+          v-if="isModelSetupRequired"
+          type="button"
+          class="ai-assistant-input__model-setup-overlay"
+          :aria-label="conversationMessage('conversation.input.model.configure')"
+          @click="openModelSetup"
+        >
+          {{ conversationMessage('conversation.input.model.configure') }}
+        </button>
+
         <div
           v-if="isImageDragActive"
           class="ai-assistant-input__image-drop-overlay"
@@ -111,6 +121,7 @@ import { useConversationState } from '../store/conversationState';
 import { useConversationSelectors } from '../store/selectors';
 import {
   modelAcceptsUserImageInput,
+  shouldPromptForModelSetup,
   useModelCatalogReadModel,
   useModelPickerReadModel,
   useModelPurposeBindings,
@@ -352,6 +363,9 @@ const isInputDisabled = computed(() => (
   || isSubmissionStarting.value
   || isAgentChoiceUpdating.value
 ));
+const isModelSetupRequired = computed(() => (
+  shouldPromptForModelSetup(modelPicker.snapshot.value, isInputDisabled.value)
+));
 const isImageEntryDisabled = computed(() => (
   isInputDisabled.value || activeInputExtension.value?.acceptsAttachments === false
 ));
@@ -511,6 +525,9 @@ const handleAgentChoiceChange = async (agentChoiceId: ConversationAgentChoiceId 
 const handlePrimaryModelChange = conversationModelSelection.selectPrimaryModelMenuValue;
 
 const openModelSettings = () => uiStore.openSettingsModal('model-management');
+const openModelSetup = (): void => {
+  uiStore.openSettingsModal('model');
+};
 
 /**
  * 中文说明：

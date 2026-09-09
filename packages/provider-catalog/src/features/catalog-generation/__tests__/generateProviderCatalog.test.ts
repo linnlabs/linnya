@@ -209,6 +209,7 @@ describe('generateProviderCatalog', () => {
     expect(ollamaCloud).toEqual(
       expect.objectContaining({
         display_name: 'Ollama Cloud',
+        setup_help_url: 'https://ollama.com/settings/keys',
         kind: 'direct',
         model_discovery: 'bundled',
         models: [
@@ -312,13 +313,18 @@ describe('generateProviderCatalog', () => {
         ]),
       })
     );
-    expect(deepseek?.models).toEqual([
+    expect(deepseek).toEqual(
       expect.objectContaining({
-        id: 'deepseek-test',
-        context_window_tokens: 128_000,
-        max_input_tokens: 128_000,
-      }),
-    ]);
+        setup_help_url: 'https://platform.deepseek.com/api_keys',
+        models: [
+          expect.objectContaining({
+            id: 'deepseek-test',
+            context_window_tokens: 128_000,
+            max_input_tokens: 128_000,
+          }),
+        ],
+      })
+    );
     expect(cloud).toEqual(
       expect.objectContaining({ model_discovery: 'cloud_catalog', models: [] })
     );
@@ -354,6 +360,7 @@ describe('generateProviderCatalog', () => {
     expect(openrouter).toEqual(
       expect.objectContaining({
         release_status: 'preview',
+        setup_help_url: 'https://openrouter.ai/settings/keys',
         models: [expect.objectContaining({ id: 'openrouter-agent' })],
       })
     );

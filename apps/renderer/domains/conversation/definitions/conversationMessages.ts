@@ -13,6 +13,7 @@ export type ConversationMessageKey =
   | 'conversation.input.modelGroup.provider'
   | 'conversation.input.modelGroup.current'
   | 'conversation.input.model.manage'
+  | 'conversation.input.model.configure'
   | 'conversation.input.model.imageUnsupported'
   | 'conversation.input.model.unavailable'
   | 'conversation.input.reasoning.placeholder'

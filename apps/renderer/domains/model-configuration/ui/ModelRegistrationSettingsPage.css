@@ -1,5 +1,110 @@
 /* 模型注册组合页的补充控件样式。 */
-/* 表单行已迁到 Settings Kit，这里只留「下拉 + 刷新按钮」这种组合控件的补充。 */
+/* 表单行已迁到 Settings Kit，这里只留添加模型首屏入口与组合控件的补充。 */
+
+.model-registration-settings-page .model-registration-quick-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-sm);
+  width: 100%;
+  max-width: 520px;
+}
+
+.model-registration-settings-page .model-registration-quick-option {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  background-color: var(--color-bg-subtle);
+  border: 0;
+  border-radius: var(--radius-md);
+  transition:
+    background-color var(--transition-fast) ease,
+    color var(--transition-fast) ease;
+}
+
+.model-registration-settings-page .model-registration-quick-option:hover {
+  color: var(--color-accent);
+  background-color: var(--color-bg-hover);
+}
+
+.model-registration-settings-page .model-registration-quick-option:focus-visible,
+.model-registration-settings-page .model-registration-back-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.model-registration-settings-page .model-registration-quick-option-label {
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  line-height: var(--line-height-normal);
+}
+
+.model-registration-settings-page .model-registration-quick-option-icon {
+  display: block;
+  flex-shrink: 0;
+  width: var(--spacing-md);
+  height: var(--spacing-md);
+  color: var(--color-text-tertiary);
+  transition:
+    transform var(--transition-fast) ease,
+    color var(--transition-fast) ease;
+}
+
+.model-registration-settings-page
+  .model-registration-quick-option:hover
+  .model-registration-quick-option-icon {
+  color: var(--color-accent);
+}
+
+.model-registration-settings-page .model-registration-quick-option-icon.is-open {
+  transform: rotate(90deg);
+}
+
+.model-registration-settings-page .model-registration-other-provider {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.model-registration-settings-page .model-registration-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: var(--spacing-md);
+  padding: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.model-registration-settings-page .model-registration-back-button:hover {
+  color: var(--color-accent);
+}
+
+.model-registration-settings-page .model-registration-back-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* 返回按钮已经承担上一步导航，这里不再叠加 Settings Kit 的 26px 分区外边距。 */
+.model-registration-settings-page > .model-registration-back-button + .settings-section {
+  margin-top: 0;
+}
+
+@media (max-width: 620px) {
+  .model-registration-settings-page .model-registration-quick-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 
 .add-model-select-with-action {
   display: flex;

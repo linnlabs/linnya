@@ -44,7 +44,14 @@ describe('providerCatalog', () => {
     expect(providerCatalog.getConnection('openrouter')?.connection).toEqual(
       expect.objectContaining({
         display_name: 'OpenRouter',
+        setup_help_url: 'https://openrouter.ai/settings/keys',
         release_status: 'preview',
+      })
+    );
+    expect(providerCatalog.getConnection('deepseek')?.connection).toEqual(
+      expect.objectContaining({
+        display_name: 'DeepSeek',
+        setup_help_url: 'https://platform.deepseek.com/api_keys',
       })
     );
     expect(providerCatalog.getConnection('fireworks')?.connection).toEqual(
@@ -69,16 +76,26 @@ describe('providerCatalog', () => {
       expect.objectContaining({ display_name: 'SiliconFlow (China)', release_status: 'preview' })
     );
     expect(providerCatalog.getConnection('zai-api-global')?.connection).toEqual(
-      expect.objectContaining({ display_name: 'Z.AI API（国际站）', release_status: 'preview' })
+      expect.objectContaining({
+        display_name: 'Z.AI API（国际站）',
+        setup_help_url: 'https://z.ai/manage-apikey/apikey-list',
+        release_status: 'preview',
+      })
     );
     expect(providerCatalog.getConnection('kimi-code')?.connection).toEqual(
       expect.objectContaining({ display_name: 'Kimi Code', badge: '会员' })
     );
     expect(providerCatalog.getConnection('moonshot-api-cn')?.connection).toEqual(
-      expect.objectContaining({ display_name: 'Kimi 开放平台 API（中国站）' })
+      expect.objectContaining({
+        display_name: 'Kimi 开放平台 API（中国站）',
+        setup_help_url: 'https://platform.moonshot.cn/console/api-keys',
+      })
     );
     expect(providerCatalog.getConnection('zhipu-api-cn')?.connection).toEqual(
-      expect.objectContaining({ display_name: '智谱开放平台 API（中国站）' })
+      expect.objectContaining({
+        display_name: '智谱开放平台 API（中国站）',
+        setup_help_url: 'https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys',
+      })
     );
     expect(providerCatalog.getConnection('glm-coding-plan')).toBeUndefined();
     expect(providerCatalog.getConnection('nvidia')?.connection).toEqual(

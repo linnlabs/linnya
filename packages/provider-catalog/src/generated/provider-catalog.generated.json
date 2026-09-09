@@ -1,11 +1,11 @@
 {
   "schema_version": 2,
   "generation": {
-    "id": "models-dev-2026-09-04-ba1c9bf0b3d2-p15",
+    "id": "models-dev-2026-09-04-ba1c9bf0b3d2-p16",
     "source_url": "https://models.dev/api.json",
     "source_sha256": "ba1c9bf0b3d2f88736ee69980adba655d352dd5afb6fbf0d7f8ecacbc73c6ada",
     "synced_at": "2026-09-04T12:20:07.037Z",
-    "policy_version": 15
+    "policy_version": 16
   },
   "providers": [
     {
@@ -1673,6 +1673,7 @@
         {
           "id": "deepseek",
           "display_name": "DeepSeek",
+          "setup_help_url": "https://platform.deepseek.com/api_keys",
           "kind": "direct",
           "release_status": "stable",
           "setup_fields": [
@@ -3801,6 +3802,7 @@
         {
           "id": "openrouter",
           "display_name": "OpenRouter",
+          "setup_help_url": "https://openrouter.ai/settings/keys",
           "kind": "direct",
           "release_status": "preview",
           "setup_fields": [
