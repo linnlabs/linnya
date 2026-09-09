@@ -12,7 +12,7 @@ import type {
   TextStyle,
 } from '../deckSpec';
 import type { ThemeSpec } from './themeSpec';
-import type { GradientPaint, Paint } from './paint';
+import type { GradientPaint, Paint, ShapeStrokeStyle } from './paint';
 import {
   normalizeGradientPaint,
   normalizePaint,
@@ -50,6 +50,58 @@ export function normalizeTextStyleColors(style: TextStyle, path: string): Normal
     normalized.color = colorResult.value;
   }
   return success(normalized);
+}
+
+export function normalizeChartStyleColors(
+  style: NonNullable<Extract<StructuredElement, { type: 'chart' }>['chartStyle']>,
+  path: string,
+): NormalizeResult<typeof style> {
+  const normalized = { ...style };
+  for (const key of [
+    'axisLabelColor',
+    'categoryAxisLabelColor',
+    'valueAxisLabelColor',
+    'dataLabelColor',
+    'gridlineColor',
+  ] as const) {
+    const color = style[key];
+    if (color == null) continue;
+    const result = normalizeOpaqueColor(color, `${path}.${key}`);
+    if ('error' in result) return result;
+    normalized[key] = result.value;
+  }
+  return success(normalized);
+}
+
+export function normalizeShapeStrokeColors(
+  border: ShapeStrokeStyle,
+  path: string,
+): NormalizeResult<ShapeStrokeStyle> {
+  if (!Number.isFinite(border.width) || border.width <= 0) {
+    return failure(`${path}.width 必须是大于 0 的有限数字。`);
+  }
+  if (border.paint != null && border.color != null) {
+    return failure(`${path} 不能同时提供 color 与 paint。`);
+  }
+  if (border.paint != null) {
+    const result = normalizeStrokePaint(border.paint, `${path}.paint`);
+    if ('error' in result) return result;
+    return success({
+      width: border.width,
+      dash: border.dash,
+      paint: result.value,
+    });
+  }
+  if (border.color == null) {
+    return failure(`${path} 必须提供 color 或 paint。`);
+  }
+  const result = normalizeOpaqueColor(border.color, `${path}.color`);
+  if ('error' in result) return result;
+  return success({
+    width: border.width,
+    dash: border.dash,
+    paint: { type: 'solid', color: result.value },
+  });
 }
 
 export function normalizeGradientColors(
@@ -91,27 +143,9 @@ export function normalizeShapeStyleColors(
   delete normalized.gradient;
 
   if (style.border) {
-    if (style.border.paint != null && style.border.color != null) {
-      return failure(`${path}.border 不能同时提供 color 与 paint。`);
-    }
-    if (style.border.paint == null && style.border.color == null) {
-      return failure(`${path}.border 必须提供 color 或 paint。`);
-    }
-    if (!Number.isFinite(style.border.width) || style.border.width <= 0) {
-      return failure(`${path}.border.width 必须是大于 0 的有限数字。`);
-    }
-    const borderPaint = style.border.paint != null
-      ? normalizeStrokePaint(style.border.paint, `${path}.border.paint`)
-      : normalizeShapeFillInput(style.border.color, `${path}.border.color`);
-    if ('error' in borderPaint) return borderPaint;
-    if (borderPaint.value.type === 'radial') {
-      return failure(`${path}.border.paint 暂不支持 radial stroke；请使用 linear gradient。`);
-    }
-    normalized.border = {
-      width: style.border.width,
-      dash: style.border.dash,
-      paint: borderPaint.value,
-    };
+    const borderResult = normalizeShapeStrokeColors(style.border, `${path}.border`);
+    if ('error' in borderResult) return borderResult;
+    normalized.border = borderResult.value;
   }
 
   if (style.shadow) {
@@ -284,6 +318,10 @@ function normalizeStructuredElementColors(
       });
     }
     case 'table': {
+      const borderResult = element.border
+        ? normalizeShapeStrokeColors(element.border, `${path}.border`)
+        : success(undefined);
+      if ('error' in borderResult) return borderResult;
       const rows: TableCell[][] = [];
       for (let rowIndex = 0; rowIndex < element.rows.length; rowIndex++) {
         const row: TableCell[] = [];
@@ -302,6 +340,7 @@ function normalizeStructuredElementColors(
       return success({
         ...element,
         rows,
+        ...(borderResult.value ? { border: borderResult.value } : {}),
       });
     }
     case 'image': {
@@ -317,7 +356,12 @@ function normalizeStructuredElementColors(
         shadow: shadowResult.value,
       });
     }
-    case 'chart':
+    case 'chart': {
+      if (!element.chartStyle) return success(element);
+      const chartStyleResult = normalizeChartStyleColors(element.chartStyle, `${path}.chartStyle`);
+      if ('error' in chartStyleResult) return chartStyleResult;
+      return success({ ...element, chartStyle: chartStyleResult.value });
+    }
     case 'svgGraphic':
       return success(element);
     case 'formula': {

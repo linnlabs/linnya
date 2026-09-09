@@ -5,8 +5,10 @@
 
 import type {
   Box,
+  LayoutChartStyle,
   ImageVisualShadow,
   ShapeStyle,
+  ShapeStrokeStyle,
   SlideBackgroundGradient,
   TextStyle,
   ThemeSpec,
@@ -59,6 +61,37 @@ export function parseTextStyle(value: unknown): TextStyle | null {
   }
   if (isFiniteNumber(value.letterSpacing)) style.letterSpacing = value.letterSpacing;
   return style;
+}
+
+/** 解析 deck.js 公开的图表颜色语义，不接受底层引擎 option。 */
+export function parseChartStyle(value: unknown): LayoutChartStyle | null {
+  if (!isRecord(value)) return null;
+  const style: LayoutChartStyle = {};
+  const keys: Array<keyof LayoutChartStyle> = [
+    'axisLabelColor',
+    'categoryAxisLabelColor',
+    'valueAxisLabelColor',
+    'dataLabelColor',
+    'gridlineColor',
+  ];
+  const knownKeys = new Set<string>(keys);
+  if (Object.keys(value).some((key) => !knownKeys.has(key))) return null;
+  for (const key of keys) {
+    if (value[key] != null) {
+      if (!isNonEmptyString(value[key])) return null;
+      style[key] = value[key];
+    }
+  }
+  return Object.keys(style).length > 0 ? style : null;
+}
+
+/** 表格沿用统一描边合同，避免再造一套 border 字段。 */
+export function parseTableBorder(value: unknown): ShapeStrokeStyle | null {
+  if (!isRecord(value) || !Object.keys(value).every(key => key === 'color' || key === 'width')) {
+    return null;
+  }
+  const parsed = parseShapeStyle({ border: value });
+  return parsed?.border ?? null;
 }
 
 /**

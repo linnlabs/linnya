@@ -153,10 +153,16 @@ slide.add(createChart({
   categories: ["质量", "速度"],
   series: [{ name: "方案 A", values: [88, 76] }],
   legendPosition: "bottom",
+  chartStyle: {
+    axisLabelColor: "#475569",
+    dataLabelColor: "#0F172A",
+    gridlineColor: "#CBD5E1",
+  },
 }));
 slide.add(createTable({
   headers: [{ text: "指标", fill: "#12233F", style: { color: "#FFFFFF", bold: true } }, "结果"],
   rows: [[{ text: "交付", rowspan: 2 }, 3], [true], [{ text: "总结", colspan: 2 }]],
+  border: { color: "#CBD5E1", width: 0.75 },
 }));
 slide.add(createImage({
   src: { kind: "generated_asset", assetId: "images/hero.png" },
@@ -243,7 +249,9 @@ describe('typecheckCodegenSource — rejects semantic errors against ambient.d.t
     ['Text padding', 'createText({ content: "x", padding: 0.2 });'],
     ['unknown chart preset', 'createChart({ preset: "executive-mega-chart", categories: ["A"], series: [{ name: "S", values: [1] }] });'],
     ['unknown legend position', 'createChart({ categories: ["A"], series: [{ name: "S", values: [1] }], legendPosition: "center" });'],
+    ['unknown chart style field', 'createChart({ categories: ["A"], series: [{ name: "S", values: [1] }], chartStyle: { axisLabelFontSize: 10 } });'],
     ['raw chartOptions', 'createChart({ categories: ["A"], series: [{ name: "S", values: [1] }], chartOptions: { showLegend: true } });'],
+    ['table border dash', 'createTable({ rows: [["A"]], border: { color: "#000000", width: 1, dash: "dash" } });'],
     ['raw tableOptions', 'createTable({ rows: [["A"]], tableOptions: { colW: [2] } });'],
     ['internal styleDecision', 'createSlide({ styleDecision: { layout: "hero" } });'],
     ['internal node type assignment', 'const slide = createSlide(); slide._type = "View";'],

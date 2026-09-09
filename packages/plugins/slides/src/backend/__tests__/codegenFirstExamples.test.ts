@@ -221,6 +221,63 @@ describe('slides-design runnable examples (closed loop)', () => {
     expect(firstChart.options).toMatchObject({ barGrouping: 'stacked' });
   });
 
+  it('real compose sandbox preserves chart colors and the unified table border', async () => {
+    const input = await executeAndCompileSource(`
+const slide = createSlide();
+slide.add(createChart({
+  position: "absolute",
+  x: 0.5,
+  y: 0.8,
+  width: 4.2,
+  height: 2.4,
+  categories: ["Q1", "Q2"],
+  series: [{ name: "Revenue", values: [12, 18] }],
+  showDataLabels: true,
+  chartStyle: {
+    axisLabelColor: "#475569",
+    dataLabelColor: "#0F172A",
+    gridlineColor: "#CBD5E1",
+  },
+}));
+slide.add(createTable({
+  position: "absolute",
+  x: 5.1,
+  y: 0.8,
+  width: 4.2,
+  height: 2.4,
+  rows: [["Revenue", "18"]],
+  border: { color: "#94A3B8", width: 0.75 },
+}));
+compose({ title: "Chart and table style", slides: [slide] });
+`, 'chart-table-style');
+
+    expect(input.slides[0]?.elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'chart',
+        chartStyle: {
+          axisLabelColor: '#475569',
+          dataLabelColor: '#0F172A',
+          gridlineColor: '#CBD5E1',
+        },
+      }),
+      expect.objectContaining({
+        type: 'table',
+        tableBorder: {
+          width: 0.75,
+          paint: { type: 'solid', color: '#94A3B8' },
+        },
+      }),
+    ]));
+
+    const deck = buildDeckSpecFromDirectInput(input);
+    const spec = deck.slides[0]?.spec;
+    if (spec?.type !== 'structured') throw new Error('expected structured slide');
+    expect(spec.elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'chart', chartStyle: expect.any(Object) }),
+      expect.objectContaining({ type: 'table', border: expect.any(Object) }),
+    ]));
+  });
+
   it('real compose sandbox preserves PowerPoint-style text width semantics end to end', async () => {
     const input = await executeAndCompileSource(`
 const slide = createSlide();

@@ -427,6 +427,7 @@ function buildChartElement(node: LayoutChartNode, position: Box): DirectElementI
     showDataLabels: node.showDataLabels,
     dataLabelFormat: node.dataLabelFormat,
     legendPosition: node.legendPosition,
+    chartStyle: node.chartStyle,
   }, node._sourceSpan);
 }
 
@@ -446,6 +447,7 @@ function buildTableElement(node: LayoutTableNode, position: Box): DirectElementI
     position,
     headers: tableParseResult.data.headers,
     rows: tableParseResult.data.rows,
+    tableBorder: readOptionalTableBorder(node.border, 'Table.border'),
   }, node._sourceSpan);
 }
 
@@ -529,6 +531,19 @@ function readOptionalShapeStroke(value: unknown, path: string): ShapeStrokeStyle
     ...(dash == null ? {} : { dash }),
     paint: paintResult.value,
   };
+}
+
+/** Table 的首版公开合同只允许统一纯色边框，不把 Shape 的渐变描边泄漏到表格。 */
+function readOptionalTableBorder(value: unknown, path: string): ShapeStrokeStyle | undefined {
+  if (value == null) return undefined;
+  if (!isRecord(value) || Object.keys(value).some((key) => key !== 'color' && key !== 'width')) {
+    throw new Error(`${path} 只支持 { color, width }。`);
+  }
+  const border = readOptionalShapeStroke(value, path);
+  if (!border || !border.paint || border.paint.type !== 'solid') {
+    throw new Error(`${path} 目前只支持纯色描边。`);
+  }
+  return border;
 }
 
 /**

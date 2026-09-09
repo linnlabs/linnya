@@ -74,12 +74,37 @@ export interface LayoutChartSeriesInput {
   labels?: LayoutDisplayValue[];
 }
 
+/**
+ * 图表的跨引擎颜色语义。
+ *
+ * 这里只暴露前端预览和 PPTX 都能表达的稳定字段；不要把 ECharts
+ * option 或 PptxGenJS 的原始配置直接放进 deck.js。
+ */
+export interface LayoutChartStyle {
+  /** 类目轴和数值轴标签的共同兜底颜色。 */
+  axisLabelColor?: string;
+  /** 类目轴标签颜色，未提供时回退到 axisLabelColor。 */
+  categoryAxisLabelColor?: string;
+  /** 数值轴标签颜色，未提供时回退到 axisLabelColor。 */
+  valueAxisLabelColor?: string;
+  /** 数据标签颜色。 */
+  dataLabelColor?: string;
+  /** 类目网格线和数值网格线的共同颜色。 */
+  gridlineColor?: string;
+}
+
 export interface LayoutTableCellInput {
   text: LayoutDisplayValue;
   style?: LayoutTextStyleInput;
   fill?: string;
   colspan?: number;
   rowspan?: number;
+}
+
+export interface LayoutTableBorderInput {
+  color: string;
+  /** 边框粗细，单位为 pt。 */
+  width: number;
 }
 
 export type LayoutTableCellValue = LayoutDisplayValue | LayoutTableCellInput;
@@ -319,6 +344,7 @@ export interface LayoutChartConfig extends FlexProps {
   showDataLabels?: boolean;
   dataLabelFormat?: string;
   legendPosition?: LayoutChartLegendPosition;
+  chartStyle?: LayoutChartStyle;
 }
 
 export interface LayoutChartNode extends LayoutChartConfig, LayoutSourceMetadata {
@@ -347,6 +373,8 @@ export interface LayoutTableDataLike {
 export interface LayoutTableConfig extends FlexProps {
   headers?: LayoutTableCellValue[];
   rows?: LayoutTableCellValue[][];
+  /** 整张表四边及内部网格线的统一描边。 */
+  border?: LayoutTableBorderInput;
   /** @deprecated 使用 headers 与 rows。 */
   tableData?: LayoutTableDataLike;
 }
