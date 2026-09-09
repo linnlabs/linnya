@@ -29,10 +29,10 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
     '凭据密文格式无效。请删除后重新添加。',
   'settings.modelPicker.credentialReason.unknown':
     '系统安全存储处理凭据时发生未知错误。请删除后重新添加。',
-  'settings.modelPicker.removeCredential': '删除凭据并重新添加',
-  'settings.modelPicker.removeCredential.confirm':
-    '将移除该 Provider 的本机配置及其已启用模型，之后可以重新添加。是否继续？',
-  'settings.modelPicker.removeCredential.failed': '删除凭据失败，请稍后重试。',
+  'settings.modelPicker.removeProvider': '删除 Provider',
+  'settings.modelPicker.removeProvider.confirm':
+    '将删除该 Provider 的配置、凭据及其已启用模型，之后可以重新添加。是否继续？',
+  'settings.modelPicker.removeProvider.failed': '删除 Provider 失败，请稍后重试。',
   'settings.modelPicker.runtimeUnavailable': '当前不可用',
   'settings.modelPicker.imageGeneration': '图片生成',
   'settings.tabs.about': '关于',
@@ -449,10 +449,10 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
         'The credential ciphertext is invalid. Delete it and add the Provider again.',
       'settings.modelPicker.credentialReason.unknown':
         'The system secure storage returned an unknown error. Delete it and add the Provider again.',
-      'settings.modelPicker.removeCredential': 'Delete credential and add again',
-      'settings.modelPicker.removeCredential.confirm':
-        'This will remove the Provider configuration and its activated models from this device. You can add the Provider again afterward. Continue?',
-      'settings.modelPicker.removeCredential.failed': 'Credential deletion failed. Try again later.',
+      'settings.modelPicker.removeProvider': 'Delete Provider',
+      'settings.modelPicker.removeProvider.confirm':
+        'This will delete the Provider configuration, credential, and activated models. You can add the Provider again afterward. Continue?',
+      'settings.modelPicker.removeProvider.failed': 'Provider deletion failed. Try again later.',
       'settings.modelPicker.runtimeUnavailable': 'Currently unavailable',
       'settings.modelPicker.imageGeneration': 'Image generation',
       'settings.tabs.about': 'About',

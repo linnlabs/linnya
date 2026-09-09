@@ -170,7 +170,7 @@ command 复用现有 credential，不能再次向用户索要 Key。对话域只
 read model，具体菜单层级、图片草稿禁用态和“管理模型…”交互属于 Conversation。
 
 模型管理的开关层级由来源语义决定：正式 Provider 在详情标题提供总开关，关闭后其模型区域整体不可编辑；每个模型仍有独立开关。自定义模型没有伪造的 Provider 总开关，只提供单模型开关；点击自定义模型主内容打开详情弹窗，编辑与删除复用 Model
-Catalog 的正式流程。Linnya
+Catalog 的正式流程。正式 Provider 的详情标题在总开关左侧提供删除入口；确认后通过现有删除编排清理该 Provider 的配置、凭据和已激活模型。Linnya
 Cloud 是官方管理的优先来源，客户端不显示 Provider 总开关，也不显示单模型开关；Cloud 模型的上架、下架和可用性由 Cloud
 Model
 Catalog 统一控制。图片生成默认模型也必须由 Cloud Catalog 以 `image_generation` capability 发布，客户端不得把本地环境变量模型改名伪装成 Linnya Cloud。Cloud 与正式 Provider 模型行都不提供详情点击入口。左侧来源导航只负责选择详情，不承载开关或启用数量。

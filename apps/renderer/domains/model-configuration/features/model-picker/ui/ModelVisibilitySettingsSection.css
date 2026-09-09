@@ -123,6 +123,50 @@
   min-width: 0;
 }
 
+.model-visibility-provider-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.model-visibility-provider-delete {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--transition-fast) ease,
+    background-color var(--transition-fast) ease;
+}
+
+.model-visibility-provider-delete > .shared-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.model-visibility-provider-delete:hover:not(:disabled) {
+  color: var(--color-error);
+  background-color: color-mix(in srgb, var(--color-error) 10%, transparent);
+}
+
+.model-visibility-provider-delete:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.model-visibility-provider-delete:disabled {
+  color: var(--color-text-placeholder);
+  cursor: not-allowed;
+}
+
 .model-visibility-models-content {
   display: flex;
   flex: 1;

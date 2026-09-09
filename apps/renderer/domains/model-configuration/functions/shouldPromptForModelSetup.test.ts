@@ -7,11 +7,30 @@ describe('shouldPromptForModelSetup', () => {
     expect(shouldPromptForModelSetup({ providers: [], custom_models: [] }, true)).toBe(false);
   });
 
-  it('没有 Provider 和自定义模型时提示配置', () => {
+  it('没有配置 Provider 且没有自定义模型时提示配置', () => {
     expect(shouldPromptForModelSetup({ providers: [], custom_models: [] }, false)).toBe(true);
+    expect(
+      shouldPromptForModelSetup(
+        {
+          providers: [],
+          custom_models: [
+            {
+              materialized: true,
+              model_config_id: 'custom-model',
+              display_name: 'Custom model',
+              picker_enabled: true,
+              runtime_available: true,
+              capabilities: ['chat'],
+              image_input: false,
+            },
+          ],
+        },
+        false
+      )
+    ).toBe(false);
   });
 
-  it('已有 Provider 或自定义模型时不再提示', () => {
+  it('已有 Provider 时不再提示，即使没有自定义模型', () => {
     expect(
       shouldPromptForModelSetup(
         {
@@ -29,25 +48,6 @@ describe('shouldPromptForModelSetup', () => {
             },
           ],
           custom_models: [],
-        },
-        false
-      )
-    ).toBe(false);
-    expect(
-      shouldPromptForModelSetup(
-        {
-          providers: [],
-          custom_models: [
-            {
-              materialized: true,
-              model_config_id: 'custom-model',
-              display_name: 'Custom model',
-              picker_enabled: true,
-              runtime_available: true,
-              capabilities: ['chat'],
-              image_input: false,
-            },
-          ],
         },
         false
       )

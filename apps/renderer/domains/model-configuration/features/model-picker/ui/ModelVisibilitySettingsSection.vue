@@ -66,13 +66,27 @@
             <div>
               <h4>{{ selectedSource.displayName }}</h4>
             </div>
-            <Switch
+            <div
               v-if="selectedSource.kind === 'provider'"
-              :model-value="selectedSource.pickerEnabled"
-              :ariaLabel="selectedSource.displayName"
-              :disabled="isMutating"
-              @update:model-value="setProviderVisibility(selectedSource, $event)"
-            />
+              class="model-visibility-provider-actions"
+            >
+              <button
+                type="button"
+                class="model-visibility-provider-delete"
+                :aria-label="settingsMessage('settings.modelPicker.removeProvider')"
+                :title="settingsMessage('settings.modelPicker.removeProvider')"
+                :disabled="isMutating"
+                @click="removeSelectedProvider"
+              >
+                <DeleteIcon />
+              </button>
+              <Switch
+                :model-value="selectedSource.pickerEnabled"
+                :aria-label="selectedSource.displayName"
+                :disabled="isMutating"
+                @update:model-value="setProviderVisibility(selectedSource, $event)"
+              />
+            </div>
           </header>
           <div
             class="model-visibility-models-content"
@@ -105,7 +119,7 @@
                     >
                       <Switch
                         :model-value="model.materialized && model.picker_enabled"
-                        :ariaLabel="model.display_name"
+                        :aria-label="model.display_name"
                         :disabled="isModelToggleDisabled(model)"
                         @update:model-value="setModelVisibility(model, $event)"
                       />
@@ -124,17 +138,17 @@
               :message="credentialUnavailableMessage"
             />
             <ActionButtons
-              :primary-action-text="settingsMessage('settings.modelPicker.removeCredential')"
+              :primary-action-text="settingsMessage('settings.modelPicker.removeProvider')"
               primary-variant="danger"
               :is-primary-action-disabled="isMutating || isRemovingProvider"
-              @primary-click="removeProviderCredential"
-            />
-            <SettingsFeedback
-              v-if="removalError"
-              kind="error"
-              :message="removalError"
+              @primary-click="removeSelectedProvider"
             />
           </div>
+          <SettingsFeedback
+            v-if="removalError"
+            kind="error"
+            :message="removalError"
+          />
         </div>
       </div>
       <ModelDetailsModal
@@ -154,6 +168,7 @@ import { computed, ref, watch } from 'vue';
 import type { ModelCatalogItem } from '../../model-catalog';
 import { ModelDetailsModal, useModelCatalogReadModel } from '../../model-catalog';
 import { ActionButtons, CustomTextInput, Switch } from '@linnya/renderer-ui';
+import { DeleteIcon } from '@linnya/renderer-ui/icons';
 import { confirm } from '@shared/composables/confirmDialog';
 import {
   SettingsFeedback,
@@ -282,11 +297,11 @@ function closeModelDetails(): void {
   selectedModelDetails.value = null;
 }
 
-async function removeProviderCredential(): Promise<void> {
+async function removeSelectedProvider(): Promise<void> {
   const source = selectedSource.value;
-  if (source?.kind !== 'provider' || source.credentialAvailable || isRemovingProvider.value) return;
+  if (source?.kind !== 'provider' || isRemovingProvider.value) return;
   const confirmed = await confirm({
-    message: settingsMessage('settings.modelPicker.removeCredential.confirm'),
+    message: settingsMessage('settings.modelPicker.removeProvider.confirm'),
     isDangerousAction: true,
   });
   if (!confirmed) return;
@@ -299,10 +314,10 @@ async function removeProviderCredential(): Promise<void> {
       .map(model => model.model_config_id);
     await removeConfiguredProvider(modelConfigIds);
   } catch (error: unknown) {
-    console.error('[ModelVisibility] 删除 Provider 凭据失败', {
+    console.error('[ModelVisibility] 删除 Provider 失败', {
       errorName: error instanceof Error ? error.name : 'UnknownError',
     });
-    removalError.value = settingsMessage('settings.modelPicker.removeCredential.failed');
+    removalError.value = settingsMessage('settings.modelPicker.removeProvider.failed');
   } finally {
     isRemovingProvider.value = false;
   }
