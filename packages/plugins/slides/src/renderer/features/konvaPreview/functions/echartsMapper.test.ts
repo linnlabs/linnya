@@ -91,6 +91,44 @@ describe('echartsMapper', () => {
     });
   });
 
+  it('uses RenderModel chart colors instead of renderer hard-coded defaults', () => {
+    const option = mapChartNodeToEChartsOption(createChartNode({
+      axes: {
+        x: { labelStyle: { color: '#334155' } },
+        y: { labelStyle: { color: '#475569' } },
+      },
+      dataLabels: {
+        visible: true,
+        labelStyle: { color: '#0F172A' },
+      },
+      gridlines: { y: { color: '#CBD5E1' } },
+    }));
+
+    expect(option).toMatchObject({
+      xAxis: { axisLabel: { color: '#334155' } },
+      yAxis: {
+        axisLabel: { color: '#475569' },
+        splitLine: { lineStyle: { color: '#CBD5E1' } },
+      },
+      series: [
+        { label: { color: '#0F172A' } },
+        { label: { color: '#0F172A' } },
+      ],
+    });
+  });
+
+  it('uses the same data label color for pie charts', () => {
+    const option = mapChartNodeToEChartsOption(createChartNode({
+      chartType: 'pie',
+      dataLabels: { visible: true, labelStyle: { color: '#7C3AED' } },
+      series: [{ name: 'Share', values: [20, 30] }],
+    }));
+
+    expect(option).toMatchObject({
+      series: [{ label: { show: true, color: '#7C3AED' } }],
+    });
+  });
+
   it('formats PPT-style data labels', () => {
     expect(formatDataLabelValue(1234.56, '$#,##0.0')).toBe('$1,234.6');
     expect(formatDataLabelValue(42, '#0"%"')).toBe('42%');

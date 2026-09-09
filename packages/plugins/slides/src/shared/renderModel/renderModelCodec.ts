@@ -786,9 +786,10 @@ function isGridline(value: unknown): boolean {
 
 function isRenderChartLabelStyle(value: unknown): boolean {
   return isRecord(value)
-    && hasOnlyKeys(value, ['fontFamily', 'fontSize'])
+    && hasOnlyKeys(value, ['fontFamily', 'fontSize', 'color'])
     && isOptional(value.fontFamily, isString)
-    && isOptional(value.fontSize, isFiniteNumber);
+    && isOptional(value.fontSize, isFiniteNumber)
+    && isOptional(value.color, isString);
 }
 
 function isChartPptxHints(value: unknown): boolean {

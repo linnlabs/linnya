@@ -7,6 +7,8 @@ import {
 import { INCHES_TO_PX } from '../../../../shared/constants';
 import type { TableBorderSegment, TableCellLayout } from '../konvaTable';
 
+const POINTS_TO_PX = INCHES_TO_PX / 72;
+
 export function buildTableGroupConfig(node: TableRenderNode) {
   return {
     x: node.box.x * INCHES_TO_PX,
@@ -85,7 +87,7 @@ export function buildCellBorderConfig(segment: TableBorderSegment) {
 }
 
 function normalizeStrokeWidth(stroke: RenderStroke): number {
-  return Math.max(stroke.width, 0.75);
+  return Math.max(stroke.width * POINTS_TO_PX, 0.75);
 }
 
 function resolveDashPattern(stroke: RenderStroke): number[] | undefined {

@@ -320,6 +320,7 @@ export class StructuredCompiler {
       ...mapPosition(el.position),
       chartColors: resolveChartPalette(theme).map((c) => stripHash(c, 'chart.palette')),
       ...(el.options as PptxGenJS.IChartOpts | undefined),
+      ...mapChartStyleToPptxOptions(el.chartStyle),
     };
 
     slide.addChart(el.chartType as PptxGenJS.CHART_NAME, chartData, chartOpts);
@@ -378,6 +379,7 @@ export class StructuredCompiler {
       colW: buildTableColumnWidths(el.position.w, el.headers, el.rows),
       rowH: buildTableRowHeights(el.position.h, totalRows, dense),
       ...(el.options as PptxGenJS.TableProps | undefined),
+      ...(el.border ? { border: mapTableBorderToPptx(el.border) } : {}),
     };
 
     slide.addTable(rows, tableOpts);
@@ -505,6 +507,45 @@ export class StructuredCompiler {
       slide.addShape(shapeName, shapeOpts);
     }
   }
+}
+
+function mapTableBorderToPptx(
+  border: NonNullable<Extract<StructuredElement, { type: 'table' }>['border']>,
+): PptxGenJS.BorderProps {
+  const paint = border.paint;
+  if (!paint || paint.type !== 'solid') {
+    throw new Error('Table.border 目前只支持纯色描边。');
+  }
+  return {
+    color: stripHash(paint.color, 'table.border.color'),
+    pt: border.width,
+    type: border.dash === 'dash' ? 'dash' : 'solid',
+  };
+}
+
+/** 将稳定的 chartStyle 语义映射为 PPTX 选项；原始引擎字段不进入 deck.js 合同。 */
+function mapChartStyleToPptxOptions(
+  style: Extract<StructuredElement, { type: 'chart' }>['chartStyle'],
+): Partial<PptxGenJS.IChartOpts> {
+  if (!style) return {};
+  const options: Partial<PptxGenJS.IChartOpts> = {};
+  const axisLabelColor = style.axisLabelColor;
+  const categoryAxisLabelColor = style.categoryAxisLabelColor ?? axisLabelColor;
+  if (categoryAxisLabelColor) {
+    options.catAxisLabelColor = stripHash(categoryAxisLabelColor, 'chartStyle.categoryAxisLabelColor');
+  }
+  const valueAxisLabelColor = style.valueAxisLabelColor ?? axisLabelColor;
+  if (valueAxisLabelColor) {
+    options.valAxisLabelColor = stripHash(valueAxisLabelColor, 'chartStyle.valueAxisLabelColor');
+  }
+  if (style.dataLabelColor) {
+    options.dataLabelColor = stripHash(style.dataLabelColor, 'chartStyle.dataLabelColor');
+  }
+  if (style.gridlineColor) {
+    options.catGridLine = { color: stripHash(style.gridlineColor, 'chartStyle.gridlineColor') };
+    options.valGridLine = { color: stripHash(style.gridlineColor, 'chartStyle.gridlineColor') };
+  }
+  return options;
 }
 
 function resolveBackgroundPaint(

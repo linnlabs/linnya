@@ -7,6 +7,7 @@ import type {
   RenderChartGridlines,
   RenderChartLabelStyle,
   RenderChartType,
+  RenderStroke,
   TablePptxHints,
   TableRenderNode,
 } from '@plugin/slides/shared';
@@ -64,6 +65,8 @@ export function mapStructuredChartNode(
     'catAxisLabelFontFace',
     'catAxisLabelFontSize',
     defaults.minorFontFamily,
+    element.chartStyle?.categoryAxisLabelColor ?? element.chartStyle?.axisLabelColor,
+    'catAxisLabelColor',
   );
   const hints = extractChartPptxHints(opts);
   const node: ChartRenderNode = {
@@ -79,9 +82,9 @@ export function mapStructuredChartNode(
     palette: defaults.chartPalette,
     legend: resolveChartLegendStyle(element.options),
     stacking: resolveChartStacking(opts),
-    axes: resolveChartAxes(opts, chartType, baseLabelStyle),
-    dataLabels: resolveChartDataLabels(opts),
-    gridlines: resolveChartGridlines(opts, chartType),
+    axes: resolveChartAxes(opts, chartType, baseLabelStyle, element.chartStyle),
+    dataLabels: resolveChartDataLabels(opts, element.chartStyle?.dataLabelColor),
+    gridlines: resolveChartGridlines(opts, chartType, element.chartStyle?.gridlineColor),
     labelStyle: baseLabelStyle,
     ...(hints ? { pptxHints: hints } : {}),
   };
@@ -104,6 +107,7 @@ function resolveChartAxes(
   opts: Record<string, unknown>,
   chartType: RenderChartType,
   categoryLabelStyle: RenderChartLabelStyle | undefined,
+  chartStyle: Extract<StructuredElement, { type: 'chart' }>['chartStyle'],
 ): RenderChartAxes | undefined {
   const catVisible = opts.catAxisHidden !== true;
   const valVisible = opts.valAxisHidden !== true;
@@ -113,6 +117,9 @@ function resolveChartAxes(
     opts,
     'valAxisLabelFontFace',
     'valAxisLabelFontSize',
+    undefined,
+    chartStyle?.valueAxisLabelColor ?? chartStyle?.axisLabelColor,
+    'valAxisLabelColor',
   );
 
   if (chartType === 'bar') {
@@ -128,7 +135,10 @@ function resolveChartAxes(
   };
 }
 
-function resolveChartDataLabels(opts: Record<string, unknown>): RenderChartDataLabels | undefined {
+function resolveChartDataLabels(
+  opts: Record<string, unknown>,
+  colorOverride?: string,
+): RenderChartDataLabels | undefined {
   if (opts.showValue !== true) return undefined;
 
   const posMap: Record<string, RenderChartDataLabels['position']> = {
@@ -148,25 +158,34 @@ function resolveChartDataLabels(opts: Record<string, unknown>): RenderChartDataL
       opts,
       'dataLabelFontFace',
       'dataLabelFontSize',
+      undefined,
+      colorOverride,
+      'dataLabelColor',
     ),
   };
 }
 
-function resolveChartGridlines(opts: Record<string, unknown>, chartType: RenderChartType): RenderChartGridlines | undefined {
+function resolveChartGridlines(
+  opts: Record<string, unknown>,
+  chartType: RenderChartType,
+  colorOverride?: string,
+): RenderChartGridlines | undefined {
   const catHidden = opts.catGridLine === false;
   const valHidden = opts.valGridLine === false;
-  if (!catHidden && !valHidden) return undefined;
+  const catColor = colorOverride ?? readGridlineColor(opts.catGridLine);
+  const valColor = colorOverride ?? readGridlineColor(opts.valGridLine);
+  if (!catHidden && !valHidden && !catColor && !valColor) return undefined;
 
   if (chartType === 'bar') {
     return {
-      x: valHidden ? { visible: false } : undefined,
-      y: catHidden ? { visible: false } : undefined,
+      x: valHidden ? { visible: false } : valColor ? { color: valColor } : undefined,
+      y: catHidden ? { visible: false } : catColor ? { color: catColor } : undefined,
     };
   }
 
   return {
-    x: catHidden ? { visible: false } : undefined,
-    y: valHidden ? { visible: false } : undefined,
+    x: catHidden ? { visible: false } : catColor ? { color: catColor } : undefined,
+    y: valHidden ? { visible: false } : valColor ? { color: valColor } : undefined,
   };
 }
 
@@ -197,6 +216,13 @@ export function mapStructuredTableNode(
       () => Number((base.box.h / Math.max(totalRows, 1)).toFixed(3)),
     );
   const cells: TableRenderNode['cells'] = [];
+  const tableBorder = element.border ? toRenderStroke(element.border) : undefined;
+  const cellBorders = tableBorder ? {
+    top: tableBorder,
+    right: tableBorder,
+    bottom: tableBorder,
+    left: tableBorder,
+  } : undefined;
 
   if (element.headers) {
     for (const [columnIndex, header] of element.headers.entries()) {
@@ -211,6 +237,7 @@ export function mapStructuredTableNode(
           }, defaults.minorFontFamily)],
         }],
         fill: TABLE_DEFAULT_HEADER_FILL,
+        ...(cellBorders ? { borders: cellBorders } : {}),
         padding: resolveCellPadding(dense),
         verticalAlign: 'middle',
       });
@@ -231,6 +258,7 @@ export function mapStructuredTableNode(
           lineSpacing: resolveTextStyleLineSpacing(cell.style?.lineSpacing),
         }],
         fill: cell.fill,
+        ...(cellBorders ? { borders: cellBorders } : {}),
         padding: resolveCellPadding(dense),
         verticalAlign: 'middle',
       });
@@ -272,6 +300,8 @@ function resolveChartTextStyle(
   fontFaceKey: string,
   fontSizeKey: string,
   fallbackFontFamily?: string,
+  colorOverride?: string,
+  colorKey?: string,
 ): RenderChartLabelStyle | undefined {
   const fontFamily = typeof options[fontFaceKey] === 'string'
     ? options[fontFaceKey] as string
@@ -279,10 +309,13 @@ function resolveChartTextStyle(
   const fontSize = typeof options[fontSizeKey] === 'number'
     ? options[fontSizeKey] as number
     : undefined;
-  if (fontFamily == null && fontSize == null) {
+  const rawColor = colorOverride
+    ?? (colorKey && typeof options[colorKey] === 'string' ? options[colorKey] as string : undefined);
+  const color = rawColor ? normalizeHexColor(rawColor) : undefined;
+  if (fontFamily == null && fontSize == null && color == null) {
     return undefined;
   }
-  return { fontFamily, fontSize };
+  return { fontFamily, fontSize, color };
 }
 
 function resolveRequestedFontSize(
@@ -343,7 +376,6 @@ function extractChartPptxHints(opts: Record<string, unknown>): ChartPptxHints | 
     hints.dataLabelColor = opts.dataLabelColor;
     hasAny = true;
   }
-
   return hasAny ? hints : undefined;
 }
 
@@ -364,17 +396,16 @@ function extractTablePptxHints(
     hints.tableFill = normalizeHexColor(fill);
     hasAny = true;
   } else if (fill && typeof fill === 'object' && 'color' in fill) {
-    const colorVal = (fill as { color?: unknown }).color;
+    const colorVal = Reflect.get(fill, 'color');
     if (typeof colorVal === 'string') {
       hints.tableFill = normalizeHexColor(colorVal);
       hasAny = true;
     }
   }
 
-  // 边框颜色从 border 提取
   const border = options.border;
   if (border && typeof border === 'object' && 'color' in border) {
-    const borderColor = (border as { color?: unknown }).color;
+    const borderColor = Reflect.get(border, 'color');
     if (typeof borderColor === 'string') {
       hints.borderColor = normalizeHexColor(borderColor);
       hasAny = true;
@@ -382,6 +413,29 @@ function extractTablePptxHints(
   }
 
   return hasAny ? hints : undefined;
+}
+
+function readGridlineColor(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object' || !('color' in value)) return undefined;
+  const color = Reflect.get(value, 'color');
+  return typeof color === 'string' ? normalizeHexColor(color) : undefined;
+}
+
+function toRenderStroke(
+  border: NonNullable<Extract<StructuredElement, { type: 'table' }>['border']>,
+): RenderStroke {
+  const paint = border.paint;
+  if (!paint || paint.type === 'none') {
+    throw new Error('Table.border 必须是可见的纯色描边。');
+  }
+  if (paint.type !== 'solid') {
+    throw new Error('Table.border 暂不支持渐变描边。');
+  }
+  return {
+    paint: { type: 'solid', color: paint.color, ...(paint.opacity == null ? {} : { opacity: paint.opacity }) },
+    width: border.width,
+    dash: border.dash,
+  };
 }
 
 /** 确保颜色值带 # 前缀 */

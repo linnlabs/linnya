@@ -193,6 +193,24 @@ describe('图表映射完整性', () => {
   });
 
   describe('labelStyle 映射', () => {
+    it('chartStyle 颜色进入轴标签、数据标签和网格线的正式 RenderModel 字段', () => {
+      const node = getNode<'chart'>([baseChartElement({
+        options: { showValue: true },
+        chartStyle: {
+          axisLabelColor: '#475569',
+          categoryAxisLabelColor: '#334155',
+          dataLabelColor: '#0F172A',
+          gridlineColor: '#CBD5E1',
+        },
+      })], 'chart');
+
+      expect(node.axes?.x?.labelStyle?.color).toBe('#334155');
+      expect(node.axes?.y?.labelStyle?.color).toBe('#475569');
+      expect(node.dataLabels?.labelStyle?.color).toBe('#0F172A');
+      expect(node.gridlines?.x?.color).toBe('#CBD5E1');
+      expect(node.gridlines?.y?.color).toBe('#CBD5E1');
+    });
+
     it('catAxisLabelFontFace + catAxisLabelFontSize → category axis labelStyle', () => {
       const node = getNode<'chart'>([baseChartElement({
         options: { catAxisLabelFontFace: 'Georgia', catAxisLabelFontSize: 9 },
@@ -272,6 +290,28 @@ describe('图表映射完整性', () => {
 // ─── 第六部分：表格映射 ──────────────────────────────────────────────────
 
 describe('表格映射完整性', () => {
+  it('统一边框会展开为每个单元格的四边 RenderStroke', () => {
+    const node = getNode<'table'>([{
+      type: 'table',
+      rows: [[{ text: 'A' }, { text: 'B' }]],
+      position: BOX,
+      border: {
+        width: 0.75,
+        paint: { type: 'solid', color: '#94A3B8' },
+      },
+    }], 'table');
+
+    expect(node.cells).toHaveLength(2);
+    for (const cell of node.cells) {
+      expect(cell.borders).toEqual({
+        top: { width: 0.75, paint: { type: 'solid', color: '#94A3B8' } },
+        right: { width: 0.75, paint: { type: 'solid', color: '#94A3B8' } },
+        bottom: { width: 0.75, paint: { type: 'solid', color: '#94A3B8' } },
+        left: { width: 0.75, paint: { type: 'solid', color: '#94A3B8' } },
+      });
+    }
+  });
+
   it('headers + rows 正确映射为 cells', () => {
     const node = getNode<'table'>([{
       type: 'table',

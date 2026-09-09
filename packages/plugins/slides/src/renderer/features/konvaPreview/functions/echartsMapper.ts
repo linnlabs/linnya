@@ -156,7 +156,7 @@ function buildCartesianChart(
     axisTick: { show: false },
     axisLabel: {
       show: catAxisConfig?.visible !== false,
-      color: PPT.labelColor,
+      color: catFont.color ?? PPT.labelColor,
       fontSize: catFont.fontSize,
       fontFamily: catFont.fontFamily,
     },
@@ -174,7 +174,7 @@ function buildCartesianChart(
     axisLine: { show: true, lineStyle: { color: PPT.axisLineColor } },
     axisLabel: {
       show: valAxisConfig?.visible !== false,
-      color: PPT.labelColor,
+      color: valFont.color ?? PPT.labelColor,
       fontSize: valFont.fontSize,
       fontFamily: valFont.fontFamily,
     },
@@ -182,7 +182,11 @@ function buildCartesianChart(
       show: isBar
         ? node.gridlines?.x?.visible !== false
         : node.gridlines?.y?.visible !== false,
-      lineStyle: { color: PPT.gridLineColor },
+      lineStyle: {
+        color: isBar
+          ? node.gridlines?.x?.color ?? PPT.gridLineColor
+          : node.gridlines?.y?.color ?? PPT.gridLineColor,
+      },
     },
   };
 
@@ -210,7 +214,7 @@ function buildCartesianChart(
         axisLine: { show: true, lineStyle: { color: PPT.axisLineColor } },
         axisLabel: {
           show: node.axes.y2.visible !== false,
-          color: PPT.labelColor,
+          color: y2Font.color ?? PPT.labelColor,
           fontSize: y2Font.fontSize,
         },
         splitLine: { show: false },
@@ -271,6 +275,7 @@ function buildPieChart(
       center: ['50%', '50%'],
       label: {
         show: dlVisible,
+        color: dlFont.color ?? node.pptxHints?.dataLabelColor ?? PPT.dataLabelColor,
         fontSize: dlFont.fontSize,
         fontFamily: dlFont.fontFamily,
         formatter: dlVisible
@@ -340,11 +345,15 @@ function buildRadarChart(
       // PPT 雷达图不显示刻度数值标签
       axisLabel: { show: false },
       axisLine: { lineStyle: { color: PPT.axisLineColor } },
-      splitLine: { lineStyle: { color: PPT.gridLineColor } },
+      splitLine: {
+        lineStyle: {
+          color: node.gridlines?.y?.color ?? node.gridlines?.x?.color ?? PPT.gridLineColor,
+        },
+      },
       splitArea: { show: false },
       // 维度名称字体
       axisName: {
-        color: PPT.labelColor,
+        color: node.axes?.x?.labelStyle?.color ?? node.labelStyle?.color ?? PPT.labelColor,
         fontSize: labelFont.fontSize,
         fontFamily: labelFont.fontFamily,
       },
@@ -459,13 +468,7 @@ function buildSeriesLabel(
       : undefined,
   };
 
-  // PPT 默认数据标签始终为黑色（DEF_FONT_COLOR），不区分 inside/outside
-  const hintColor = node.pptxHints?.dataLabelColor;
-  if (hintColor) {
-    labelConfig.color = hintColor.startsWith('#') ? hintColor : `#${hintColor}`;
-  } else {
-    labelConfig.color = PPT.dataLabelColor;
-  }
+  labelConfig.color = font.color ?? node.pptxHints?.dataLabelColor ?? PPT.dataLabelColor;
 
   return labelConfig;
 }
@@ -515,6 +518,7 @@ function resolveEChartsSeriesType(
 interface FontStyle {
   fontSize: number;
   fontFamily: string;
+  color?: string;
 }
 
 function resolveFontStyle(
@@ -525,6 +529,7 @@ function resolveFontStyle(
   return {
     fontSize: Math.round(rawSizePt * POINTS_TO_PX),
     fontFamily: primary?.fontFamily ?? fallback?.fontFamily ?? 'Arial',
+    color: primary?.color ?? fallback?.color,
   };
 }
 

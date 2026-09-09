@@ -28,6 +28,18 @@ async function readSlideXml(buffer: Buffer, slideNumber = 1): Promise<string> {
   return slideEntry.async('text');
 }
 
+async function readChartXml(buffer: Buffer, chartNumber = 1): Promise<string> {
+  const zip = await JSZip.loadAsync(buffer);
+  const chartEntryName = Object.keys(zip.files)
+    .filter((name) => name.startsWith('ppt/charts/chart') && name.endsWith('.xml'))
+    .sort()[chartNumber - 1];
+  const chartEntry = chartEntryName ? zip.file(chartEntryName) : null;
+  if (chartEntry == null) {
+    throw new Error(`Expected chart XML entry for chart ${chartNumber}`);
+  }
+  return chartEntry.async('text');
+}
+
 describe('StructuredCompiler', () => {
   const compiler = new StructuredCompiler();
   const validator = new PptxValidator();
@@ -249,6 +261,48 @@ describe('StructuredCompiler', () => {
 
     expect(chartXml).toContain('<a:srgbClr val="CC3333"/>');
     expect(chartXml).toContain('<a:srgbClr val="1122EE"/>');
+  });
+
+  it('exports semantic chart colors to the native PPTX chart', async () => {
+    const deck = makeDeck([structured([{
+      type: 'chart',
+      chartType: 'line',
+      data: {
+        categories: ['Q1', 'Q2'],
+        series: [{ name: 'Revenue', labels: ['Q1', 'Q2'], values: [10, 20] }],
+      },
+      chartStyle: {
+        axisLabelColor: '#475569',
+        dataLabelColor: '#0F172A',
+        gridlineColor: '#CBD5E1',
+      },
+      options: { showValue: true },
+      position: { x: 0.5, y: 1.5, w: 9, h: 4 },
+    }])]);
+
+    const xml = await readChartXml(await compiler.compileDeck(deck));
+
+    expect(xml).toContain('475569');
+    expect(xml).toContain('0F172A');
+    expect(xml).toContain('CBD5E1');
+  });
+
+  it('exports the same semantic table border used by the RenderModel', async () => {
+    const deck = makeDeck([structured([{
+      type: 'table',
+      headers: ['指标', '结果'],
+      rows: [[{ text: '收入' }, { text: '增长' }]],
+      border: {
+        width: 0.75,
+        paint: { type: 'solid', color: '#94A3B8' },
+      },
+      position: { x: 0.5, y: 1.5, w: 9, h: 2 },
+    }])]);
+
+    const xml = await readSlideXml(await compiler.compileDeck(deck));
+
+    expect(xml).toContain('94A3B8');
+    expect(xml).toContain('w="9525"');
   });
 
   it('prefers explicit theme chart palette when exporting native chart colors', async () => {
