@@ -1,3 +1,4 @@
+import { CONVERSATION_IMAGE_MAX_TOTAL_BYTES } from '@app/schemas';
 import type { ImageInputProcessingProfile } from '../definitions/imageInputProcessingProfile';
 
 const PATCH_EDGE_PX = 28;
@@ -25,6 +26,6 @@ export const OLLAMA_CHAT_IMAGE_INPUT_PROFILE: Extract<
   limits: Object.freeze({
     maxImages: 100,
     maxImageBytes: 10 * 1024 * 1024,
-    maxTotalImageBytes: 20 * 1024 * 1024,
+    maxTotalImageBytes: CONVERSATION_IMAGE_MAX_TOTAL_BYTES,
   }),
 });

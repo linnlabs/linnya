@@ -23,6 +23,9 @@ route 的最终输入。
 本模块负责：
 
 - 在读取 bytes 前校验图片数量、单图/总字节和上下文预算。
+- 产品入口把单条消息的图片聚合上限设为 100 MiB，具体 provider/transport profile 可以
+  根据 wire 编码、厂商合同或请求体容量进一步收窄；当前 Anthropic Messages 仍保留更严格的
+  20 MiB raw bytes profile。
 - 通过 Workspace resolver 重新核验 durable identity、hash、MIME 和尺寸。
 - 保持 message/attachment 顺序与 user/tool placement。
 - 在 Provider 调用前阻断仍携带 durable ref 的输入。
@@ -46,9 +49,24 @@ capability；profile 选择只读 capability ID。
 profile，以保证只有一个 profile 真相源；本模块禁止反向依赖旧 codec、AdapterFactory、AIEngine 或旧 LLM
 transport。
 
+## 图片上下文容量语义
+
+- `CONVERSATION_IMAGE_MAX_TOTAL_BYTES` 是产品入口的单条消息 raw bytes 上限，当前为
+  100 MiB；它只定义用户可提交的统一上界，不宣称每个 Provider 都能接受同样大的 wire
+  request。
+- route profile 另行定义单图、聚合图片数量和聚合 raw bytes 限制。Provider 的 base64
+  膨胀、请求体上限或特殊媒体合同需要更严格门禁时，应在 profile 收窄，而不是让用户配置
+  一组难以理解的底层参数。
+- 当前流程已经是 byte-level JIT：历史消息只携带 durable image ref，materializer 在
+  active route 的 admission 通过后才调用 Workspace resolver 读取并核验 bytes。一次请求
+  会按顺序读取整批已接纳图片，再交给 Provider；这与“历史原始图片永远常驻上下文”不同，
+  也不等同于把每张图片拆成独立 Provider 请求。
+- 图片 token 预算与 raw bytes 上限独立生效。用户图片和 tool result 图片共享同一条 active
+  route 的聚合门禁，因此连续读取多张 Slides 截图会累积到同一个总量。
+
 ## 测试要求
 
-- 覆盖 user/tool placement、顺序、100/101 图片边界、单图/总字节、fallback
+- 覆盖 user/tool placement、顺序、100/101 图片边界、100 MiB 聚合总字节、单图/总字节、fallback
   profile 重算和上下文预算。
 - 覆盖 Workspace 缺失、越界、hash/MIME/尺寸不一致等稳定错误映射。
 - 负向断言 Provider 输入不含 durable id、resource id、hash、路径等 Host 字段。

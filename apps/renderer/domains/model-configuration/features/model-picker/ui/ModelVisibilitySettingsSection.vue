@@ -65,9 +65,6 @@
           <header class="model-visibility-models-header">
             <div>
               <h4>{{ selectedSource.displayName }}</h4>
-              <p v-if="selectedSource.kind === 'provider' && !selectedSource.credentialAvailable">
-                {{ settingsMessage('settings.modelPicker.credentialUnavailable') }}
-              </p>
             </div>
             <Switch
               v-if="selectedSource.kind === 'provider'"
@@ -118,6 +115,26 @@
               </div>
             </div>
           </div>
+          <div
+            v-if="selectedSource.kind === 'provider' && !selectedSource.credentialAvailable"
+            class="model-visibility-credential-actions"
+          >
+            <SettingsFeedback
+              kind="error"
+              :message="credentialUnavailableMessage"
+            />
+            <ActionButtons
+              :primary-action-text="settingsMessage('settings.modelPicker.removeCredential')"
+              primary-variant="danger"
+              :is-primary-action-disabled="isMutating || isRemovingProvider"
+              @primary-click="removeProviderCredential"
+            />
+            <SettingsFeedback
+              v-if="removalError"
+              kind="error"
+              :message="removalError"
+            />
+          </div>
         </div>
       </div>
       <ModelDetailsModal
@@ -136,7 +153,8 @@ import { computed, ref, watch } from 'vue';
 
 import type { ModelCatalogItem } from '../../model-catalog';
 import { ModelDetailsModal, useModelCatalogReadModel } from '../../model-catalog';
-import { CustomTextInput, Switch } from '@linnya/renderer-ui';
+import { ActionButtons, CustomTextInput, Switch } from '@linnya/renderer-ui';
+import { confirm } from '@shared/composables/confirmDialog';
 import {
   SettingsFeedback,
   SettingsList,
@@ -151,6 +169,7 @@ import {
   setModelPickerProviderVisibility,
   useModelPickerReadModel,
 } from '../index';
+import { removeConfiguredProvider } from '../../../orchestration/removeConfiguredProvider';
 import {
   filterModelVisibilityModels,
   filterModelVisibilitySources,
@@ -173,6 +192,8 @@ const sourceQuery = ref('');
 const modelQuery = ref('');
 const selectedSourceId = ref<string | null>(null);
 const selectedModelDetails = ref<ModelCatalogItem | null>(null);
+const isRemovingProvider = ref(false);
+const removalError = ref<string | null>(null);
 
 const sources = computed(() =>
   modelPicker.snapshot.value
@@ -194,11 +215,26 @@ const filteredModels = computed(() =>
 const isMutating = computed(
   () =>
     (modelPicker.activeOperation.value !== null && modelPicker.activeOperation.value !== 'load') ||
-    modelCatalog.activeOperation.value !== null
+    modelCatalog.activeOperation.value !== null ||
+    isRemovingProvider.value
 );
 const isSelectedSourceDisabled = computed(
   () => selectedSource.value?.kind === 'provider' && !selectedSource.value.pickerEnabled
 );
+const credentialUnavailableMessage = computed(() => {
+  const reason = selectedSource.value?.kind === 'provider'
+    ? selectedSource.value.credentialUnavailableReason
+    : undefined;
+  if (!reason) return settingsMessage('settings.modelPicker.credentialUnavailable');
+  const messageKeys = {
+    missing: 'settings.modelPicker.credentialReason.missing',
+    temporarily_unavailable: 'settings.modelPicker.credentialReason.temporarilyUnavailable',
+    invalidated: 'settings.modelPicker.credentialReason.invalidated',
+    malformed_ciphertext: 'settings.modelPicker.credentialReason.malformedCiphertext',
+    unknown: 'settings.modelPicker.credentialReason.unknown',
+  } as const;
+  return settingsMessage(messageKeys[reason]);
+});
 const editableModelsById = computed(
   () => new Map(modelCatalog.models.value.map(model => [model.id, model]))
 );
@@ -244,6 +280,32 @@ function openCustomModelDetails(model: ModelPickerProviderModel): void {
 
 function closeModelDetails(): void {
   selectedModelDetails.value = null;
+}
+
+async function removeProviderCredential(): Promise<void> {
+  const source = selectedSource.value;
+  if (source?.kind !== 'provider' || source.credentialAvailable || isRemovingProvider.value) return;
+  const confirmed = await confirm({
+    message: settingsMessage('settings.modelPicker.removeCredential.confirm'),
+    isDangerousAction: true,
+  });
+  if (!confirmed) return;
+
+  isRemovingProvider.value = true;
+  removalError.value = null;
+  try {
+    const modelConfigIds = source.models
+      .filter(model => model.materialized)
+      .map(model => model.model_config_id);
+    await removeConfiguredProvider(modelConfigIds);
+  } catch (error: unknown) {
+    console.error('[ModelVisibility] 删除 Provider 凭据失败', {
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
+    removalError.value = settingsMessage('settings.modelPicker.removeCredential.failed');
+  } finally {
+    isRemovingProvider.value = false;
+  }
 }
 
 function handleModelDetailsSuccess(operation: 'update' | 'delete'): void {

@@ -1,3 +1,4 @@
+import { CONVERSATION_IMAGE_MAX_TOTAL_BYTES } from '@app/schemas';
 import type { ImageInputProcessingProfile } from '../definitions/imageInputProcessingProfile';
 import { estimateOpenAiImageTokens } from '../functions/estimateOpenAiImageTokens';
 
@@ -14,6 +15,6 @@ export const CHAT_COMPLETIONS_IMAGE_INPUT_PROFILE: Extract<
   limits: Object.freeze({
     maxImages: 100,
     maxImageBytes: 10 * 1024 * 1024,
-    maxTotalImageBytes: 20 * 1024 * 1024,
+    maxTotalImageBytes: CONVERSATION_IMAGE_MAX_TOTAL_BYTES,
   }),
 });

@@ -37,6 +37,7 @@ describe('Provider account request credential resolver', () => {
       list: () => [account],
       get: () => account,
       hasCredential: () => true,
+      getCredentialStatus: () => 'available',
       resolveOAuthCredential: () => expired,
       putOAuthCredential,
       remove: vi.fn(async () => undefined),

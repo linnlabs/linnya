@@ -123,12 +123,6 @@
   min-width: 0;
 }
 
-.model-visibility-models-header p {
-  margin: 4px 0 0;
-  color: var(--color-text-tertiary);
-  font-size: var(--font-size-xs);
-}
-
 .model-visibility-models-content {
   display: flex;
   flex: 1;
@@ -140,6 +134,21 @@
 
 .model-visibility-models-content.is-disabled {
   opacity: 0.5;
+}
+
+.model-visibility-credential-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+  min-width: 0;
+}
+
+.model-visibility-credential-actions .settings-feedback {
+  max-width: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 @media (max-width: 760px) {

@@ -33,6 +33,7 @@ describe('Provider account authorization use case', () => {
       list: () => (storedAccount ? [storedAccount] : []),
       get: () => storedAccount,
       hasCredential: () => storedCredential !== undefined,
+      getCredentialStatus: () => storedCredential ? 'available' : 'missing',
       resolveOAuthCredential: () => {
         if (!storedCredential) throw new Error('fixture credential missing');
         return storedCredential;

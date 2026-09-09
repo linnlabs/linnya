@@ -35,6 +35,7 @@ export interface ProviderAccountRegistry {
   list(): readonly ProviderAccount[];
   get(accountId: string): ProviderAccount | undefined;
   hasCredential(accountId: string): boolean;
+  getCredentialStatus(accountId: string): ProviderAccountCredentialStatus | 'missing';
   /** initialize 已把密文解入 App Server 内存；推理热路径不跨进程等待 Desktop Host。 */
   resolveOAuthCredential(accountId: string): ProviderAccountOAuthCredential;
   putOAuthCredential(

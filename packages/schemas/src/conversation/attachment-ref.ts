@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 export const CONVERSATION_IMAGE_MAX_ATTACHMENTS = 100;
 export const CONVERSATION_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
-export const CONVERSATION_IMAGE_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+/** 当前产品单条消息的图片聚合上限；具体 provider profile 可以进一步收窄。 */
+export const CONVERSATION_IMAGE_MAX_TOTAL_BYTES = 100 * 1024 * 1024;
 
 const NonBlankIdentitySchema = z.string().max(200).refine(
   value => value.trim().length > 0 && value === value.trim(),

@@ -19,7 +19,20 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.modelPicker.sourceSearch': '搜索模型供应商',
   'settings.modelPicker.modelSearch': '搜索模型',
   'settings.modelPicker.customModels': '自定义模型',
-  'settings.modelPicker.credentialUnavailable': '当前凭据不可用；已启用模型不会进入快捷选择器。',
+  'settings.modelPicker.credentialUnavailable': '凭据不可用，请删除后重新添加。',
+  'settings.modelPicker.credentialReason.missing': '未找到本机凭据。请删除后重新添加。',
+  'settings.modelPicker.credentialReason.temporarilyUnavailable':
+    '系统安全存储暂时不可用。请稍后重试，或删除后重新添加。',
+  'settings.modelPicker.credentialReason.invalidated':
+    '系统安全存储无法解密该凭据（可能是 macOS 钥匙串已重置）。请删除后重新添加。',
+  'settings.modelPicker.credentialReason.malformedCiphertext':
+    '凭据密文格式无效。请删除后重新添加。',
+  'settings.modelPicker.credentialReason.unknown':
+    '系统安全存储处理凭据时发生未知错误。请删除后重新添加。',
+  'settings.modelPicker.removeCredential': '删除凭据并重新添加',
+  'settings.modelPicker.removeCredential.confirm':
+    '将移除该 Provider 的本机配置及其已启用模型，之后可以重新添加。是否继续？',
+  'settings.modelPicker.removeCredential.failed': '删除凭据失败，请稍后重试。',
   'settings.modelPicker.runtimeUnavailable': '当前不可用',
   'settings.modelPicker.imageGeneration': '图片生成',
   'settings.tabs.about': '关于',
@@ -425,7 +438,21 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.modelPicker.modelSearch': 'Search models',
       'settings.modelPicker.customModels': 'Custom models',
       'settings.modelPicker.credentialUnavailable':
-        'The credential is unavailable. Enabled models will not appear in the quick picker.',
+        'The credential is unavailable. Delete it and add the Provider again.',
+      'settings.modelPicker.credentialReason.missing':
+        'The local credential was not found. Delete it and add the Provider again.',
+      'settings.modelPicker.credentialReason.temporarilyUnavailable':
+        'The system secure storage is temporarily unavailable. Try again later, or delete and add the Provider again.',
+      'settings.modelPicker.credentialReason.invalidated':
+        'The system secure storage cannot decrypt this credential (the macOS Keychain may have been reset). Delete it and add the Provider again.',
+      'settings.modelPicker.credentialReason.malformedCiphertext':
+        'The credential ciphertext is invalid. Delete it and add the Provider again.',
+      'settings.modelPicker.credentialReason.unknown':
+        'The system secure storage returned an unknown error. Delete it and add the Provider again.',
+      'settings.modelPicker.removeCredential': 'Delete credential and add again',
+      'settings.modelPicker.removeCredential.confirm':
+        'This will remove the Provider configuration and its activated models from this device. You can add the Provider again afterward. Continue?',
+      'settings.modelPicker.removeCredential.failed': 'Credential deletion failed. Try again later.',
       'settings.modelPicker.runtimeUnavailable': 'Currently unavailable',
       'settings.modelPicker.imageGeneration': 'Image generation',
       'settings.tabs.about': 'About',

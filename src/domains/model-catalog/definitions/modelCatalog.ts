@@ -20,6 +20,7 @@ import type {
   CredentialReference,
   InferenceEndpointSelection,
   InferenceEndpointView,
+  EndpointCredentialStatus,
   EndpointCredentialCodec,
 } from './inferenceEndpoint';
 
@@ -236,6 +237,9 @@ export interface ModelCatalog {
 
   /** 不解密，只报告当前进程能否解析该模型的凭据引用。 */
   hasCredential(modelId: string): boolean;
+
+  /** 返回本机凭据的可用性及受控的系统安全存储错误分类。 */
+  getCredentialStatus(modelId: string): EndpointCredentialStatus | 'missing';
 
   /** 返回不含密文和明文的内部推理 endpoint read model。 */
   getInferenceEndpoints(): InferenceEndpointView[];

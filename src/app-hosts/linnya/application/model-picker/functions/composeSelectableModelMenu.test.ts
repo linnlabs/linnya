@@ -109,6 +109,8 @@ function input(
     preferences: { provider_preferences: [], model_preferences: [] },
     has_credential: () => true,
     has_provider_account_credential: () => true,
+    get_credential_status: () => 'available',
+    get_provider_account_credential_status: () => 'available',
     ...overrides,
   };
 }
@@ -355,6 +357,7 @@ describe('composeSelectableModelMenu', () => {
     expect(result.providers[0]).toMatchObject({
       picker_enabled: false,
       credential_available: false,
+      credential_unavailable_reason: 'missing',
       models: [{ picker_enabled: true, runtime_available: false }],
     });
   });

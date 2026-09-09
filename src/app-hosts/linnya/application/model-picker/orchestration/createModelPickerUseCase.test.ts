@@ -75,13 +75,18 @@ describe('createModelPickerUseCase', () => {
         getModel: () => undefined,
         getInferenceEndpoints: () => [],
         hasCredential: () => false,
+        getCredentialStatus: () => 'missing',
       },
       preferences: {
         read: () => ({ provider_preferences: [], model_preferences: [] }),
         setProviderVisibility: vi.fn(),
         setModelVisibility: vi.fn(),
       },
-      providerAccounts: { list: () => [], hasCredential: () => false },
+      providerAccounts: {
+        list: () => [],
+        hasCredential: () => false,
+        getCredentialStatus: () => 'missing',
+      },
       providerModelActivation: { registerDirectProviderModel },
     });
 
@@ -117,13 +122,18 @@ describe('createModelPickerUseCase', () => {
         getModel: () => undefined,
         getInferenceEndpoints: () => [],
         hasCredential: () => false,
+        getCredentialStatus: () => 'missing',
       },
       preferences: {
         read: () => ({ provider_preferences: [], model_preferences: [] }),
         setProviderVisibility: vi.fn(),
         setModelVisibility: vi.fn(),
       },
-      providerAccounts: { list: () => [], hasCredential: () => false },
+      providerAccounts: {
+        list: () => [],
+        hasCredential: () => false,
+        getCredentialStatus: () => 'missing',
+      },
       providerModelActivation: { registerDirectProviderModel: vi.fn() },
     });
 

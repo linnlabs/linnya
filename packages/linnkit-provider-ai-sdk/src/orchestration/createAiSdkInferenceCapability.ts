@@ -174,6 +174,13 @@ export function createAiSdkInferenceCapability(
           maxRetries: 0,
           stopWhen: stepCountIs(1),
           includeRawChunks: false,
+          // 100 MiB 级图片输入已经由 Host materializer 一次性核验；不要再把 request
+          // body/messages 复制进 AI SDK step result，避免重试或长链路持有额外的大块内存。
+          include: {
+            requestBody: false,
+            requestMessages: false,
+            rawChunks: false,
+          },
           abortSignal: providerAbortController.signal,
           timeout: {
             firstChunkMs: streamReliability.idle_timeout_ms,
