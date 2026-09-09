@@ -121,6 +121,10 @@ renderer source selection
   代替 Chart、TableCell、rich run、Image shadow、Theme 等可写结构。
 - `chartData/tableData` 与旧 Text aliases 只用于已有 source
   admission；新示例和 skill 不主动生成兼容写法。
+- 图表局部颜色只通过 `chartStyle` 表达轴标签、数据标签和网格线；表格顶层
+  `border` 只表达整表统一的纯色边框与 pt 粗细。两者都必须进入 DeckSpec 和
+  RenderModel 正式字段，再分别投影到 ECharts 与 PptxGenJS；不得塞进
+  `chartOptions/tableOptions` 绕过跨端合同。
 - Text 的 authoring 宽度语义在 Flex compiler 统一收口：Flex 流或显式
   `width/maxWidth/左右边界` 表示固定宽度并自动换行；绝对定位且没有横向约束时，compiler
   按内容测量并物化盒宽，只保留源码中的显式换行。页码、序号和短标签可省略宽度；正文仍应声明宽度或放入 Flex 容器。

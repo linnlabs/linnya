@@ -46,6 +46,10 @@ pChart.series = [
   { name: "SMB", values: [4, 4, 3, 4] },
 ];
 pChart.legendPosition = "bottom";
+pChart.chartStyle = {
+  axisLabelColor: "#475569",
+  gridlineColor: "#D7DEE5",
+};
 primary.add(pLabel, pChart);
 
 const secondary = createFrame();
@@ -63,6 +67,7 @@ sChart.flex = 1;
 sChart.categories = ["Enterprise", "Mid-market", "SMB"];
 sChart.series = [{ name: "Share", values: [68, 19, 13] }];
 sChart.showDataLabels = true;
+sChart.chartStyle = { dataLabelColor: "#12233F" };
 secondary.add(sLabel, sChart);
 
 chartRow.add(primary, secondary);
