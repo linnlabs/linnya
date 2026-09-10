@@ -96,12 +96,12 @@
 }
 
 .model-visibility-source-group-title {
-  padding: 10px 8px 4px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
-  letter-spacing: 0.5px;
+  padding: 12px 0 4px 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  letter-spacing: normal;
+  user-select: none;
 }
 
 .model-visibility-source-item-row {
