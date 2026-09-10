@@ -13,15 +13,6 @@ export async function registerApiCustomModel(
   form: Readonly<ApiCustomModelForm>,
   gateway: CustomApiModelRegistrationGateway = httpCustomApiModelRegistrationGateway
 ): Promise<CustomModelRegistrationResult> {
-  const endpointModelId = form.endpointModelId.trim();
-  if (!endpointModelId) return { ok: false, issue: 'endpoint_model_id_required' };
-
-  const tokenLimits = parseModelTokenLimits(form.contextWindowTokens, form.maxOutputTokens);
-  if (!tokenLimits) return { ok: false, issue: 'token_limits_invalid' };
-
-  const baseUrl = normalizeCustomApiBaseUrl(form.customApiFormat, form.baseUrl);
-  if (!baseUrl) return { ok: false, issue: 'base_url_invalid' };
-
   const apiKey = form.credentialSecret?.trim() ?? '';
   const displayName = form.displayName?.trim() ?? '';
   const providerName = form.providerName?.trim() ?? '';
@@ -41,6 +32,18 @@ export async function registerApiCustomModel(
     await gateway.register(command);
     return { ok: true };
   }
+
+  const endpointModelId = form.endpointModelId.trim();
+  if (!endpointModelId) return { ok: false, issue: 'endpoint_model_id_required' };
+
+  const tokenLimits = parseModelTokenLimits(
+    form.contextWindowTokens || '256000',
+    form.maxOutputTokens || '16384'
+  );
+  if (!tokenLimits) return { ok: false, issue: 'token_limits_invalid' };
+
+  const baseUrl = normalizeCustomApiBaseUrl(form.customApiFormat, form.baseUrl);
+  if (!baseUrl) return { ok: false, issue: 'base_url_invalid' };
 
   const command: CustomApiModelRegistrationCommand = {
     api_format: form.customApiFormat,

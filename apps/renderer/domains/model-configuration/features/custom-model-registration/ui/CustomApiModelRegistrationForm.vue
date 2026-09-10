@@ -66,45 +66,43 @@
       />
     </SettingsRow>
 
-    <!-- 发现多个模型时，直接展示列表及启用/关闭开关，与模型管理中的模型列表 UI 风格完全一致 -->
-    <template v-if="discoveredModels.length > 0">
-      <div class="custom-discovered-models-section">
-        <header class="custom-discovered-models-header">
-          <span class="custom-discovered-models-title">
-            {{ settingsMessage('settings.addModel.discoveredModels.title').replace('{count}', String(discoveredModels.length)) }}
-          </span>
-          <button
-            type="button"
-            class="settings-link-button"
-            @click="toggleAllEnabled"
+    <!-- 发现多个模型时，直接展示列表及启用/关闭开关 -->
+    <div v-if="discoveredModels.length > 0" class="custom-discovered-models-section">
+      <header class="custom-discovered-models-header">
+        <span class="custom-discovered-models-title">
+          {{ settingsMessage('settings.addModel.discoveredModels.title').replace('{count}', String(discoveredModels.length)) }}
+        </span>
+        <button
+          type="button"
+          class="settings-link-button"
+          @click="toggleAllEnabled"
+        >
+          {{ allEnabled ? '全部关闭' : settingsMessage('settings.addModel.discoveredModels.enableAll') }}
+        </button>
+      </header>
+
+      <div class="custom-discovered-models-list">
+        <SettingsList :bordered="false">
+          <SettingsListRow
+            v-for="model in discoveredModels"
+            :key="model.id"
+            :title="model.name"
+            :meta="formatModelMeta(model)"
           >
-            {{ allEnabled ? '全部关闭' : settingsMessage('settings.addModel.discoveredModels.enableAll') }}
-          </button>
-        </header>
-
-        <div class="custom-discovered-models-list">
-          <SettingsList :bordered="false">
-            <SettingsListRow
-              v-for="model in discoveredModels"
-              :key="model.id"
-              :title="model.name"
-              :meta="formatModelMeta(model)"
-            >
-              <template #trailing>
-                <Switch
-                  :model-value="modelStateMap[model.id]?.enabled ?? true"
-                  :aria-label="model.name"
-                  @update:model-value="toggleModelEnabled(model.id, $event)"
-                />
-              </template>
-            </SettingsListRow>
-          </SettingsList>
-        </div>
+            <template #trailing>
+              <Switch
+                :model-value="modelStateMap[model.id]?.enabled ?? true"
+                :aria-label="model.name"
+                @update:model-value="toggleModelEnabled(model.id, $event)"
+              />
+            </template>
+          </SettingsListRow>
+        </SettingsList>
       </div>
-    </template>
+    </div>
 
-    <!-- 未获取模型列表时的手动单模型录入 -->
-    <template v-else>
+    <!-- 未获取模型列表时，允许用户展开自定义手动单模型高级设置（若不想点击探测） -->
+    <template v-else-if="showManualConfig">
       <SettingsRow
         :label="settingsMessage('settings.addModel.modelName.label')"
         :hint="settingsMessage('settings.addModel.api.modelName.description')"
@@ -115,49 +113,6 @@
           :placeholder="settingsMessage('settings.addModel.api.modelName.placeholder')"
         />
       </SettingsRow>
-
-      <SettingsRow
-        :label="settingsMessage('settings.addModel.displayName.label')"
-        :hint="settingsMessage('settings.addModel.displayName.description')"
-      >
-        <CustomTextInput
-          v-model="form.displayName"
-          class="settings-text-control"
-          :placeholder="settingsMessage('settings.addModel.displayName.placeholder')"
-        />
-      </SettingsRow>
-
-      <SettingsRow
-        :label="settingsMessage('settings.modelCapacity.contextWindow.label')"
-        :hint="settingsMessage('settings.modelCapacity.contextWindow.description')"
-      >
-        <CustomTextInput
-          v-model="form.contextWindowTokens"
-          class="settings-text-control"
-          inputmode="numeric"
-          pattern="[0-9]*"
-          :placeholder="settingsMessage('settings.modelCapacity.contextWindow.placeholder')"
-        />
-      </SettingsRow>
-
-      <SettingsRow
-        :label="settingsMessage('settings.modelCapacity.maxOutput.label')"
-        :hint="settingsMessage('settings.modelCapacity.maxOutput.description')"
-      >
-        <CustomTextInput
-          v-model="form.maxOutputTokens"
-          class="settings-text-control"
-          inputmode="numeric"
-          pattern="[0-9]*"
-          :placeholder="settingsMessage('settings.modelCapacity.maxOutput.placeholder')"
-        />
-      </SettingsRow>
-
-      <SettingsSwitchRow
-        v-model="form.supportsImageInput"
-        :label="settingsMessage('settings.modelCapability.imageInput')"
-        :description="settingsMessage('settings.addModel.imageInput.description')"
-      />
     </template>
 
     <div class="add-model-submit">
@@ -209,6 +164,7 @@ const status = reactive<RegistrationFormStatus>({
 const form = ref<ApiCustomModelForm>(createInitialForm());
 let successTimer: number | null = null;
 const userEditedProviderName = ref(false);
+const showManualConfig = ref(true);
 
 const isDiscovering = ref(false);
 const discoveredModels = ref<DiscoveredModel[]>([]);
