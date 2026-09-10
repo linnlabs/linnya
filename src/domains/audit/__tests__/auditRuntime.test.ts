@@ -6,9 +6,10 @@ import {
   createLinnyaAuditRuntime,
   flushLinnyaAudit,
   recordAfterContextManager,
-  resetLlmDebugEvidenceForTest,
+  recordLlmResponseSummary,
+  resetLlmAuditForTest,
   resolveAuditLevel,
-  runWithLLMDebugEvidenceContext,
+  runWithLlmAuditContext,
 } from '..';
 
 const baseEnvelope = (action: string) =>
@@ -25,14 +26,16 @@ const baseEnvelope = (action: string) =>
   });
 
 afterEach(() => {
-  resetLlmDebugEvidenceForTest();
+  resetLlmAuditForTest();
 });
 
 describe('unified audit runtime', () => {
   it('defaults to off and only enables audit from a development environment', () => {
     expect(resolveAuditLevel({})).toBe('off');
     expect(resolveAuditLevel({ LINNYA_AUDIT_LEVEL: 'behavior' })).toBe('off');
-    expect(resolveAuditLevel({ LINNYA_AUDIT_LEVEL: 'unknown', LINNYA_DEV_MODE: 'true' })).toBe('off');
+    expect(resolveAuditLevel({ LINNYA_AUDIT_LEVEL: 'unknown', LINNYA_DEV_MODE: 'true' })).toBe(
+      'off'
+    );
     expect(
       resolveAuditLevel({
         LINNYA_AUDIT_LEVEL: 'stream',
@@ -42,10 +45,16 @@ describe('unified audit runtime', () => {
     expect(
       resolveAuditLevel(
         { LINNYA_AUDIT_LEVEL: 'stream', LINNYA_DEV_MODE: 'true' },
-        { packaged: true },
+        { packaged: true }
       )
     ).toBe('off');
-    expect(resolveAuditLevel({ NODE_ENV: 'production', LINNYA_AUDIT_LEVEL: 'stream', LINNYA_DEV_MODE: 'true' })).toBe('off');
+    expect(
+      resolveAuditLevel({
+        NODE_ENV: 'production',
+        LINNYA_AUDIT_LEVEL: 'stream',
+        LINNYA_DEV_MODE: 'true',
+      })
+    ).toBe('off');
   });
 
   it('filters behavior actions before they reach the only sink', () => {
@@ -83,6 +92,71 @@ describe('unified audit runtime', () => {
     expect(envelopes.map(envelope => envelope.action)).toEqual(['llm.response.summary']);
   });
 
+  it('records a bounded upstream response summary without enabling stream evidence', async () => {
+    const envelopes: AuditEnvelope[] = [];
+    const sink: AuditPort = {
+      emit: envelope => {
+        envelopes.push(envelope);
+      },
+    };
+    createLinnyaAuditRuntime({ sink, level: 'response' });
+
+    await runWithLlmAuditContext(
+      {
+        conversationId: 'conversation-audit-runtime-test',
+        runId: 'run-audit-runtime-test',
+        traceId: 'trace-audit-runtime-test',
+      },
+      async () => {
+        recordAfterContextManager({
+          contextMessages: [{ role: 'user', content: 'must not be recorded at response level' }],
+          llmMessages: [{ role: 'assistant', content: 'must not be recorded at response level' }],
+        });
+        recordLlmResponseSummary({
+          attemptId: 'attempt-audit-runtime-test',
+          traceId: 'trace-audit-runtime-test',
+          modelId: 'model-audit-runtime-test',
+          endpointId: 'endpoint-audit-runtime-test',
+          endpointModelId: 'provider-model-audit-runtime-test',
+          capabilityId: 'capability-audit-runtime-test',
+          apiSurface: 'mock',
+          outcome: 'succeeded',
+          finishReason: 'stop',
+          usage: {
+            provenance: 'provider_reported',
+            inputTokens: 12,
+            outputTokens: 4,
+            totalTokens: 16,
+          },
+        });
+        await flushLinnyaAudit();
+      }
+    );
+
+    expect(envelopes).toHaveLength(1);
+    expect(envelopes[0]).toMatchObject({
+      action: 'llm.response.succeeded',
+      scope: {
+        conversationId: 'conversation-audit-runtime-test',
+        runId: 'run-audit-runtime-test',
+        traceId: 'trace-audit-runtime-test',
+        modelId: 'model-audit-runtime-test',
+      },
+      evidence: [
+        {
+          kind: 'llm_response_summary',
+          metadata: {
+            attemptId: 'attempt-audit-runtime-test',
+            outcome: 'succeeded',
+            finishReason: 'stop',
+            usage: { provenance: 'provider_reported', totalTokens: 16 },
+          },
+        },
+      ],
+    });
+    expect(JSON.stringify(envelopes)).not.toContain('must not be recorded');
+  });
+
   it('通过同一入口把 stream evidence 写入同一个 durable sink', async () => {
     const envelopes: AuditEnvelope[] = [];
     const sink: AuditPort = {
@@ -92,7 +166,7 @@ describe('unified audit runtime', () => {
     };
     createLinnyaAuditRuntime({ sink, level: 'stream' });
 
-    await runWithLLMDebugEvidenceContext(
+    await runWithLlmAuditContext(
       {
         conversationId: 'conversation-audit-runtime-test',
         runId: 'run-audit-runtime-test',
@@ -111,7 +185,7 @@ describe('unified audit runtime', () => {
     expect(envelopes).toHaveLength(1);
     expect(envelopes[0]?.action).toBe('llm.context.after');
     expect(envelopes[0]?.scope?.conversationId).toBe('conversation-audit-runtime-test');
-    expect(envelopes[0]?.evidence?.[0]?.kind).toBe('llm_debug_evidence');
+    expect(envelopes[0]?.evidence?.[0]?.kind).toBe('llm_stream_evidence');
   });
 
   it('packaged runtime ignores an explicitly requested stream level', async () => {

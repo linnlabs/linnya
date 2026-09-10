@@ -22,8 +22,8 @@ LINNYA_KG_DUMP_JSON=1
 # 低体积行为审计：Agent/run 身份、工具/命令行为、授权/拒绝和终态。
 # LINNYA_AUDIT_LEVEL=behavior
 #
-# 需要上游响应摘要时使用 response；需要流式片段时使用 stream。
-# 两者都会把安全投影后的证据写入同一个 workspace.sqlite，stream 还有单 run 16 MiB 上限。
+# 需要上游响应摘要时使用 response；需要 canonical 文本/推理/工具参数等流式片段时使用 stream。
+# 两者都会把安全投影后的证据写入同一个 workspace.sqlite，stream 还有单 run 256 片段 / 16 MiB 上限。
 # LINNYA_AUDIT_LEVEL=response
 # LINNYA_AUDIT_LEVEL=stream
 # 排查完成后恢复 off，避免高体积审计长期运行。

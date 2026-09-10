@@ -3,12 +3,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { AuditEnvelope } from '@linnlabs/linnkit/contracts';
 import type { AuditPort } from '@linnlabs/linnkit/ports';
 import {
-  configureLlmDebugEvidence,
+  configureLlmEvidence,
   flushLinnyaAudit,
   recordAfterContextManager,
   recordToolProtocolError,
-  resetLlmDebugEvidenceForTest,
-  runWithLLMDebugEvidenceContext,
+  resetLlmAuditForTest,
+  runWithLlmAuditContext,
 } from '..';
 
 const context = {
@@ -25,15 +25,15 @@ function createSink(envelopes: AuditEnvelope[]): AuditPort {
 }
 
 afterEach(() => {
-  resetLlmDebugEvidenceForTest();
+  resetLlmAuditForTest();
 });
 
-describe('LLM debug evidence', () => {
+describe('LLM stream evidence', () => {
   it('uses the configured AuditPort and keeps protocol error evidence bounded', async () => {
     const envelopes: AuditEnvelope[] = [];
-    configureLlmDebugEvidence({ auditPort: createSink(envelopes), level: 'stream' });
+    configureLlmEvidence({ auditPort: createSink(envelopes), level: 'stream' });
 
-    await runWithLLMDebugEvidenceContext(context, async () => {
+    await runWithLlmAuditContext(context, async () => {
       for (let index = 0; index < 20; index += 1) {
         recordToolProtocolError({
           toolName: 'read_file',
@@ -51,9 +51,9 @@ describe('LLM debug evidence', () => {
 
   it('fails closed for transient provider image values', async () => {
     const envelopes: AuditEnvelope[] = [];
-    configureLlmDebugEvidence({ auditPort: createSink(envelopes), level: 'stream' });
+    configureLlmEvidence({ auditPort: createSink(envelopes), level: 'stream' });
 
-    await runWithLLMDebugEvidenceContext(context, async () => {
+    await runWithLlmAuditContext(context, async () => {
       recordAfterContextManager({
         llmMessages: [{ type: 'input_image', image: new Uint8Array([1, 2, 3]) }],
       });

@@ -304,6 +304,13 @@ URL、headers、路径、资源身份、continuation payload 与 Provider error
 body 都不能进入快照。完整 Provider
 payload 只允许存在于 capability 调用内存和离线 conformance fixture。
 
+Language generation 的 Host orchestration 还会在 Provider attempt 到达成功或失败终态时，
+通过 Audit Domain 公共入口记录 `llm.response.*` 安全摘要。摘要只含 route identity、结束/错误
+分类和去 raw 的 token 聚合，并从当前 Agent run scope 取得 conversation/run 身份；Provider
+diagnostics domain 不反向依赖 Audit。`behavior` 不写这些摘要，`response` 与 `stream` 才会接纳。
+`stream` 还记录每个 canonical inference event；Audit Domain 的 projector 会先删除 continuation、
+raw usage 等 Provider 瞬态数据，并执行单片段、单 run 数量和总字节上限。
+
 调试读取方统一使用 provider-diagnostics domain 的只读 snapshot port。旧 `LLMHttpClient`
 request-debug store 与无生产写入者的 HTTP snapshot
 HTTP 快照分支均已删除，不得为新 capability 恢复第二份 Provider 请求快照。

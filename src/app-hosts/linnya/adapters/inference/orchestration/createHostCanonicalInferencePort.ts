@@ -4,9 +4,13 @@ import type {
   CanonicalInferenceRequest,
 } from '@linnlabs/linnkit/ports';
 import {
+  projectCanonicalInferenceStreamAuditEvent,
+  recordLlmResponseSummary,
+  recordLlmStreamEvent,
+} from 'src/domains/audit';
+import {
   beginProviderOutboundAttempt,
   type ProviderOutboundDiagnosticsPort,
-  type ProviderOutboundUsageSummary,
 } from 'src/domains/provider-diagnostics/features/provider-outbound';
 import type {
   InferenceCapabilityRegistry,
@@ -22,7 +26,16 @@ import {
 import { assertInferenceEventRoute } from '../functions/assertInferenceEventRoute';
 import { projectInferenceAttemptDiagnostics } from '../functions/projectInferenceAttemptDiagnostics';
 import { projectInferenceProtocolHeaders } from '../functions/projectInferenceProtocolHeaders';
+import {
+  projectInferenceResponseAuditSummary,
+  type ProjectInferenceResponseAuditSummaryInput,
+  type TerminalProviderOutboundUsageSummary,
+} from '../functions/projectInferenceResponseAuditSummary';
 import { resolveInferenceAttemptRoute } from '../functions/resolveInferenceAttemptRoute';
+
+function recordResponseAudit(input: ProjectInferenceResponseAuditSummaryInput): void {
+  recordLlmResponseSummary(projectInferenceResponseAuditSummary(input));
+}
 
 async function resolveCredential(
   route: ResolvedInferenceAttemptRoute,
@@ -74,12 +87,18 @@ async function* streamAttempt(
     dependencies.outbound_diagnostics,
     projectInferenceAttemptDiagnostics(request, attemptRoute)
   );
-  let usage: ProviderOutboundUsageSummary = { provenance: 'not_reported' };
+  let usage: TerminalProviderOutboundUsageSummary = { provenance: 'not_reported' };
   let completed = false;
 
   try {
     for await (const event of capability.stream({ request, route: attemptRoute, credential })) {
       assertInferenceEventRoute(event, request, attemptRoute);
+      recordLlmStreamEvent({
+        attemptId: request.invocation.attempt_id,
+        traceId: request.invocation.trace_id,
+        modelId: attemptRoute.model_id,
+        event: projectCanonicalInferenceStreamAuditEvent(event),
+      });
       if (event.type === 'usage') {
         usage = {
           provenance: 'provider_reported',
@@ -95,10 +114,28 @@ async function* streamAttempt(
       }
       if (event.type === 'finish') {
         attempt.succeed({ usage, finish_reason: event.reason });
+        recordResponseAudit({
+          request,
+          route: attemptRoute,
+          usage,
+          outcome: 'succeeded',
+          finishReason: event.reason,
+        });
         completed = true;
       } else if (event.type === 'failure') {
         attempt.fail({
           usage,
+          failure: {
+            kind: event.kind,
+            code: event.code,
+            retryable: event.retryable,
+          },
+        });
+        recordResponseAudit({
+          request,
+          route: attemptRoute,
+          usage,
+          outcome: 'failed',
           failure: {
             kind: event.kind,
             code: event.code,
@@ -112,25 +149,41 @@ async function* streamAttempt(
     }
   } catch (error) {
     if (!completed) {
+      const failure: NonNullable<ProjectInferenceResponseAuditSummaryInput['failure']> = {
+        kind: request.signal?.aborted ? 'aborted' : 'protocol',
+        code: request.signal?.aborted ? 'request_aborted' : 'provider_attempt_threw',
+        retryable: false,
+      };
       attempt.fail({
         usage,
-        failure: {
-          kind: request.signal?.aborted ? 'aborted' : 'protocol',
-          code: request.signal?.aborted ? 'request_aborted' : 'provider_attempt_threw',
-          retryable: false,
-        },
+        failure,
+      });
+      recordResponseAudit({
+        request,
+        route: attemptRoute,
+        usage,
+        outcome: 'failed',
+        failure,
       });
     }
     throw error;
   }
 
+  const failure: NonNullable<ProjectInferenceResponseAuditSummaryInput['failure']> = {
+    kind: 'protocol',
+    code: 'provider_stream_without_terminal',
+    retryable: false,
+  };
   attempt.fail({
     usage,
-    failure: {
-      kind: 'protocol',
-      code: 'provider_stream_without_terminal',
-      retryable: false,
-    },
+    failure,
+  });
+  recordResponseAudit({
+    request,
+    route: attemptRoute,
+    usage,
+    outcome: 'failed',
+    failure,
   });
 }
 

@@ -17,7 +17,7 @@ import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/cont
 import type { LinnyaAgentRuntimeScope } from 'src/app-hosts/linnya/adapters/runtime-assembly/agentRuntimeScope';
 import {
   createLinnyaAuditRuntime,
-  resetLlmDebugEvidenceForTest,
+  resetLlmAuditForTest,
   resolveAuditLevel,
 } from 'src/domains/audit';
 
@@ -134,7 +134,7 @@ export function getRunSupervisor(): LinnyaAgentRuntimeScope['supervisor'] {
 export function resetAgentRuntimeSingletonsForTest(): void {
   singletons = null;
   fallbackEventStore = null;
-  resetLlmDebugEvidenceForTest();
+  resetLlmAuditForTest();
 }
 
 function getFallbackEventStore(): graph.MemoryEventStore {

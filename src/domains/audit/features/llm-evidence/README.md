@@ -6,15 +6,18 @@ response/stream evidence。它不拥有文件目录、数据库连接、配置�
 ## 运行规则
 
 - `behavior` 不记录大体积 LLM 输入；`response` 只允许安全投影后的上游响应摘要；`stream`
-  才允许受限的上下文/协议诊断和流式片段。
-- 当前 `response` 只提供 action 白名单和统一过滤合同；真实 Provider response producer
-  将在后续阶段通过 Host port 接入，不能在本 feature 内读取 Provider adapter 的内部状态。
+  才允许受限的上下文/协议诊断，以及按顺序记录 canonical answer/reasoning/tool/usage/terminal
+  片段。
+- `response` 在 Host inference orchestration 的真实 Provider attempt 终态生成安全摘要；本
+  feature 只接收明确参数，不读取 Provider diagnostics 或 Provider adapter 的内部状态。
 - `response` 和 `stream` 只能在 `LINNYA_DEV_MODE=true` 的开发进程启用；packaged Host 固定为
   `off`。
 - 记录内容通过 `AuditPort` 进入统一 runtime，并写入当前 Workspace 的 `workspace.sqlite`，不再
   创建 JSONL 或其他独立正式审计文件。
 - 记录前使用 Linnkit durable projection，拒绝图片 bytes、provider
   transient 字段和其他不可长期保存的值。
+- canonical stream 写入前显式移除 provider continuation 和 raw usage；它会包含模型生成的文本与
+  工具参数 delta，因此只能在短期开发排障时使用。
 - AsyncLocalStorage 只保存当前异步链的运行身份，不把 audit
   context 发送给模型供应商。
 - root run 保存 context-manager 前后和 system reminder evidence；child
@@ -22,7 +25,7 @@ response/stream evidence。它不拥有文件目录、数据库连接、配置�
 
 ## 公开使用方式
 
-生产调用方从 `src/domains/audit` 导入 `runWithLLMDebugEvidenceContext`、`record*` 和
+生产调用方从 `src/domains/audit` 导入 `runWithLlmAuditContext`、`record*` 和
 `flushLinnyaAudit`。不要导入本目录的内部 orchestration、不要读取旧的文件路径，也不要在调用方判断
 `LINNYA_AUDIT_LEVEL`。
 
@@ -34,8 +37,8 @@ response/stream evidence。它不拥有文件目录、数据库连接、配置�
 允许记录为排查 context manager、输入物化和工具协议问题所必需的 response/stream
 evidence。禁止记录凭据、完整环境变量、图片二进制、provider raw
 request、无界 stdout/stderr 和与当前 run 无关的对象。单片段、单次 run、工具协议错误和 system
-reminder 的容量限制由统一 orchestration 实现，不能通过新的环境变量覆盖；stream 单 run 总大小
-上限为 16 MiB。
+reminder 的容量限制由统一 orchestration 实现，不能通过新的环境变量覆盖；response 单 run 最多
+64 个 attempt 摘要、总大小上限 1 MiB，stream 单 run 最多 256 个片段、总大小上限 16 MiB。
 
 本 feature 不负责 run lifecycle、Telemetry、checkpoint、内容历史、CLI 导出或数据库 retention；
 容量和脱敏在 evidence 投影阶段完成，持久化由统一 Audit/EventStore owner 负责，过期

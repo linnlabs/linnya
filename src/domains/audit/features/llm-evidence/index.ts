@@ -11,26 +11,32 @@ import {
   recordBeforeContextManager,
   recordRunTranscript,
   recordToolProtocolError,
-} from './orchestration/llmDebugEvidenceContext';
+} from './orchestration/llmEvidenceContext';
 
 export type {
-  LLMDebugEvidenceContext,
-  LlmInputMaterializationDebugEvidenceInput,
-  RunTranscriptDebugEvidenceToolset,
-} from './definitions/llmDebugEvidence';
+  LlmAuditContext,
+  LlmInputMaterializationAuditInput,
+  LlmResponseAuditSummaryInput,
+  LlmStreamAuditEvent,
+  LlmStreamAuditEventInput,
+  RunTranscriptAuditToolset,
+} from './definitions/llmEvidence';
+export { projectCanonicalInferenceStreamAuditEvent } from './functions/projectCanonicalInferenceStreamAuditEvent';
 export {
   flushLinnyaAudit,
-  getCurrentLLMDebugEvidenceContext,
+  getCurrentLlmAuditContext,
   recordAfterContextManager,
   recordAfterContextManagerOnSystemReminderHit,
   recordBeforeContextManager,
   recordLlmInputMaterializationEvidence,
+  recordLlmResponseSummary,
+  recordLlmStreamEvent,
   recordRunTranscript,
   recordToolProtocolError,
-  runWithLLMDebugEvidenceContext,
-} from './orchestration/llmDebugEvidenceContext';
+  runWithLlmAuditContext,
+} from './orchestration/llmEvidenceContext';
 
-export { configureLlmDebugEvidence, resetLlmDebugEvidenceForTest } from './orchestration/llmDebugEvidenceContext';
+export { configureLlmEvidence, resetLlmAuditForTest } from './orchestration/llmEvidenceContext';
 
 setLlmAuditRecorder({
   recordBeforeContextManager,

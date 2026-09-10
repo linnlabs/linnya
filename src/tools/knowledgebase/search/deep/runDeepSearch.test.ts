@@ -33,7 +33,7 @@ vi.mock('../../../../shared/utils/idUtils', () => ({
 }));
 
 vi.mock('src/domains/audit', () => ({
-  runWithLLMDebugEvidenceContext: async (
+  runWithLlmAuditContext: async (
     auditContext: Record<string, unknown>,
     callback: () => Promise<unknown>
   ) => {

@@ -18,21 +18,27 @@ export {
 
 export {
   flushLinnyaAudit,
-  getCurrentLLMDebugEvidenceContext,
+  getCurrentLlmAuditContext,
   recordAfterContextManager,
   recordAfterContextManagerOnSystemReminderHit,
   recordBeforeContextManager,
   recordLlmInputMaterializationEvidence,
+  recordLlmResponseSummary,
+  recordLlmStreamEvent,
   recordRunTranscript,
   recordToolProtocolError,
-  runWithLLMDebugEvidenceContext,
-} from './features/llm-debug-evidence';
-export { resetLlmDebugEvidenceForTest } from './features/llm-debug-evidence';
+  runWithLlmAuditContext,
+} from './features/llm-evidence';
+export { resetLlmAuditForTest } from './features/llm-evidence';
 export type {
-  LLMDebugEvidenceContext,
-  LlmInputMaterializationDebugEvidenceInput,
-  RunTranscriptDebugEvidenceToolset,
-} from './features/llm-debug-evidence';
+  LlmAuditContext,
+  LlmInputMaterializationAuditInput,
+  LlmResponseAuditSummaryInput,
+  LlmStreamAuditEvent,
+  LlmStreamAuditEventInput,
+  RunTranscriptAuditToolset,
+} from './features/llm-evidence';
+export { projectCanonicalInferenceStreamAuditEvent } from './features/llm-evidence';
 
 export {
   COMMAND_EXECUTION_AUDIT_ACTOR,

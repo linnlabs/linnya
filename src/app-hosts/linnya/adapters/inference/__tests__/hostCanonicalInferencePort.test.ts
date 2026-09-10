@@ -1,6 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { AuditEnvelope } from '@linnlabs/linnkit/contracts';
 import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
 import { consumeCanonicalInferenceStream } from '@linnlabs/linnkit/runtime-kernel';
+import {
+  createLinnyaAuditRuntime,
+  flushLinnyaAudit,
+  resetLlmAuditForTest,
+  runWithLlmAuditContext,
+} from 'src/domains/audit';
 import type { ModelConfig, ModelInferenceRoute } from 'src/domains/model-catalog';
 import { createInMemoryProviderOutboundDiagnostics } from 'src/domains/provider-diagnostics/features/provider-outbound';
 import type {
@@ -73,6 +80,10 @@ function makeCapability(events: readonly CanonicalInferenceEvent[]): InferenceCa
   };
 }
 
+afterEach(() => {
+  resetLlmAuditForTest();
+});
+
 describe('Host canonical inference orchestration', () => {
   it('按显式 route 选择唯一 capability，并交给 Linnkit 验证结构化终态', async () => {
     const capability = makeCapability([
@@ -107,6 +118,15 @@ describe('Host canonical inference orchestration', () => {
 
   it('真实 Host attempt 写入安全终态和 Provider usage，不保存输入正文', async () => {
     const outboundDiagnostics = createInMemoryProviderOutboundDiagnostics();
+    const auditEnvelopes: AuditEnvelope[] = [];
+    createLinnyaAuditRuntime({
+      level: 'response',
+      sink: {
+        emit: envelope => {
+          auditEnvelopes.push(envelope);
+        },
+      },
+    });
     const capability = makeCapability([
       { type: 'start', model_id: 'model-1', attempt_id: 'attempt-1' },
       {
@@ -136,7 +156,17 @@ describe('Host canonical inference orchestration', () => {
       ],
     };
 
-    await consumeCanonicalInferenceStream(port.stream(request), () => undefined);
+    await runWithLlmAuditContext(
+      {
+        conversationId: 'conversation-provider-audit',
+        runId: 'run-provider-audit',
+        traceId: request.invocation.trace_id,
+      },
+      async () => {
+        await consumeCanonicalInferenceStream(port.stream(request), () => undefined);
+        await flushLinnyaAudit();
+      }
+    );
 
     expect(outboundDiagnostics.readLatest()).toMatchObject({
       status: 'succeeded',
@@ -153,6 +183,157 @@ describe('Host canonical inference orchestration', () => {
     expect(serialized).not.toContain('PROMPT_SECRET');
     expect(serialized).not.toContain('PROVIDER_USAGE_SECRET');
     expect(serialized).not.toContain('mock://inference');
+
+    expect(auditEnvelopes).toHaveLength(1);
+    expect(auditEnvelopes[0]).toMatchObject({
+      action: 'llm.response.succeeded',
+      scope: {
+        conversationId: 'conversation-provider-audit',
+        runId: 'run-provider-audit',
+        traceId: 'trace-1',
+        modelId: 'model-1',
+      },
+      evidence: [
+        {
+          kind: 'llm_response_summary',
+          metadata: {
+            attemptId: 'attempt-1',
+            endpointId: 'synthetic',
+            endpointModelId: 'synthetic-chat',
+            capabilityId: 'host:mock',
+            apiSurface: 'mock',
+            outcome: 'succeeded',
+            finishReason: 'stop',
+            usage: {
+              provenance: 'provider_reported',
+              inputTokens: 8,
+              outputTokens: 2,
+              reasoningTokens: 1,
+              totalTokens: 11,
+            },
+          },
+        },
+      ],
+    });
+    const serializedAudit = JSON.stringify(auditEnvelopes);
+    expect(serializedAudit).not.toContain('PROMPT_SECRET');
+    expect(serializedAudit).not.toContain('PROVIDER_USAGE_SECRET');
+    expect(serializedAudit).not.toContain('mock://inference');
+  });
+
+  it('stream 等级记录每个 canonical 片段并在入库前移除 raw Provider 数据', async () => {
+    const auditEnvelopes: AuditEnvelope[] = [];
+    createLinnyaAuditRuntime({
+      level: 'stream',
+      sink: {
+        emit: envelope => {
+          auditEnvelopes.push(envelope);
+        },
+      },
+    });
+    const capability = makeCapability([
+      { type: 'start', model_id: 'model-1', attempt_id: 'attempt-1' },
+      { type: 'answer_delta', text: 'STREAM_FRAGMENT' },
+      {
+        type: 'usage',
+        usage: {
+          inputTokens: 8,
+          outputTokens: 2,
+          totalTokens: 10,
+          source: 'provider-response-usage',
+          confidence: 'actual',
+          rawUsage: { upstream_secret: 'RAW_STREAM_USAGE_SECRET' },
+        },
+      },
+      { type: 'finish', reason: 'stop' },
+    ]);
+    const port = createHostCanonicalInferencePort({
+      model_catalog: makeCatalog(),
+      capability_registry: createInferenceCapabilityRegistry([capability]),
+      credential_resolver: makeCredentialResolver(),
+      outbound_diagnostics: createInMemoryProviderOutboundDiagnostics(),
+    });
+
+    await runWithLlmAuditContext(
+      {
+        conversationId: 'conversation-provider-stream-audit',
+        runId: 'run-provider-stream-audit',
+        traceId: 'trace-1',
+      },
+      async () => {
+        await consumeCanonicalInferenceStream(port.stream(makeRequest()), () => undefined);
+        await flushLinnyaAudit();
+      }
+    );
+
+    expect(auditEnvelopes.map(envelope => envelope.action)).toEqual([
+      'llm.stream.start',
+      'llm.stream.answer_delta',
+      'llm.stream.usage',
+      'llm.stream.finish',
+      'llm.response.succeeded',
+    ]);
+    const serialized = JSON.stringify(auditEnvelopes);
+    expect(serialized).toContain('STREAM_FRAGMENT');
+    expect(serialized).not.toContain('RAW_STREAM_USAGE_SECRET');
+    expect(serialized).not.toContain('rawUsage');
+  });
+
+  it('response 等级把 Provider failure 投影为稳定分类而不是错误正文', async () => {
+    const auditEnvelopes: AuditEnvelope[] = [];
+    createLinnyaAuditRuntime({
+      level: 'response',
+      sink: {
+        emit: envelope => {
+          auditEnvelopes.push(envelope);
+        },
+      },
+    });
+    const capability = makeCapability([
+      { type: 'start', model_id: 'model-1', attempt_id: 'attempt-1' },
+      {
+        type: 'failure',
+        kind: 'provider',
+        code: 'provider_rate_limited',
+        retryable: true,
+      },
+    ]);
+    const port = createHostCanonicalInferencePort({
+      model_catalog: makeCatalog(),
+      capability_registry: createInferenceCapabilityRegistry([capability]),
+      credential_resolver: makeCredentialResolver(),
+      outbound_diagnostics: createInMemoryProviderOutboundDiagnostics(),
+    });
+
+    await runWithLlmAuditContext(
+      {
+        conversationId: 'conversation-provider-failure-audit',
+        runId: 'run-provider-failure-audit',
+        traceId: 'trace-1',
+      },
+      async () => {
+        await consumeCanonicalInferenceStream(port.stream(makeRequest()), () => undefined);
+        await flushLinnyaAudit();
+      }
+    );
+
+    expect(auditEnvelopes).toHaveLength(1);
+    expect(auditEnvelopes[0]).toMatchObject({
+      action: 'llm.response.failed',
+      evidence: [
+        {
+          metadata: {
+            outcome: 'failed',
+            failure: {
+              kind: 'provider',
+              code: 'provider_rate_limited',
+              retryable: true,
+            },
+            usage: { provenance: 'not_reported' },
+          },
+        },
+      ],
+    });
   });
 
   it('capability 未注册时在凭据解析和 Provider invocation 前 fail-closed', async () => {

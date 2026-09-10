@@ -50,7 +50,7 @@ Root，表中的根目录随宿主解析结果变化。Audit 不拥有路径解�
 | `off`      | 不写 Agent Run Audit；普通运行状态和独立日志不受影响                     | 生产固定值；测试可显式使用 |
 | `behavior` | Agent/run 身份、生命周期、工具/命令行为、授权/拒绝、安全决策和终态       | 开发低体积排障             |
 | `response` | `behavior` 加上游响应摘要、usage、结束原因和错误分类，不保存完整正文     | 开发显式开启               |
-| `stream`   | `response` 加有界流式 delta/chunk 和协议诊断                             | 仅开发诊断会话             |
+| `stream`   | `response` 加有界 canonical 流式 delta/chunk、上下文和协议诊断           | 仅开发诊断会话             |
 
 开发进程默认 `off`；必须通过 `.env.local` 或开发启动环境显式设置
 `LINNYA_AUDIT_LEVEL=behavior|response|stream`。生产 Host 根据已验证的 packaged 运行身份固定为
@@ -61,10 +61,18 @@ Root，表中的根目录随宿主解析结果变化。Audit 不拥有路径解�
 `AuditEnvelope`，并且只能追加，不能更新或删除单条审计信封。正式 Audit 只有一个数据库存储
 类别；高等级不再通过 JSONL 形成第二套正式存储。
 
-当前 Phase 0 已建立 `response` action 的安全白名单和过滤合同，但 Provider adapter 尚未自动
-生成 `llm.response.*` 摘要；Provider diagnostics 仍是进程内 latest snapshot。后续接入真实
-响应 producer 时，必须通过明确的 Host port/运行 scope 传递归属，不能让 Provider domain
-直接依赖 Audit 的内部实现，也不能把 provider raw response 写入审计。
+Host inference orchestration 会在真实 Provider attempt 到达成功或失败终态时生成
+`llm.response.succeeded|failed` 摘要，内容只包含 route identity、finish/failure 分类和安全 token
+聚合。归属来自当前 Audit run scope；Provider diagnostics 仍是独立的进程内 latest snapshot，
+Provider domain 不依赖 Audit，也不会把 provider raw response 写入审计。
+首批 producer 只覆盖 Agent 使用的 language generation canonical inference；Embedding、Reranking
+和 Image Generation 在具备稳定 Agent run scope 与各自安全投影前继续只由原 owner 观测，不能伪造
+归属或直接复制 Provider 响应进入 Audit。
+
+`stream` 还会按收到的顺序记录每个 Provider-independent canonical event，包括 answer/reasoning
+文本 delta、工具调用开始/参数 delta/结束、usage 和 terminal。写入前会移除 provider
+continuation、raw usage 等瞬态字段；达到片段或字节上限后停止追加并记录容量告警，因此它是有界
+诊断材料，不承诺在超限后仍可完整重放。
 
 ## 不同概念的边界
 
@@ -100,7 +108,7 @@ const runtimeScope = {
 ```
 
 业务代码不允许直接构造 EventStore audit sink，不允许直接写
-`workspace.sqlite`，也不允许从 `features/llm-debug-evidence`
+`workspace.sqlite`，也不允许从 `features/llm-evidence`
 的内部目录导入。需要审计时：
 
 1. Runtime 或 Command 通过注入的 `AuditPort` 发出 `AuditEnvelope`。
@@ -111,9 +119,9 @@ const runtimeScope = {
 
 LLM evidence 使用 AsyncLocalStorage 关联 conversation、run、trace、subrun 和父工具调用。
 它会经过 Linnkit 的 durable projection，拒绝图片二进制、provider transient 字段和其他不能长期保存的对象；
-单片段超过 512 KiB、单次 run 超过 256 个 stream 片段、单次 run 超过 16 个工具协议错误或 16 个
-system reminder 片段时停止继续记录；单次 run 的 stream evidence 总大小上限为 16 MiB。超过上限
-只记录容量丢弃诊断，不阻断 Agent。
+单片段超过 512 KiB、单次 run 超过 256 个 stream 片段、64 个 response attempt 摘要、16 个工具
+协议错误或 16 个 system reminder 片段时停止继续记录；单次 run 的 response 摘要总大小上限为
+1 MiB，stream evidence 总大小上限为 16 MiB。超过上限只记录容量丢弃诊断，不阻断 Agent。
 审计写入失败只记录诊断日志，不覆盖正常业务结果。
 
 ## 新增审计事件的规范
@@ -125,7 +133,8 @@ system reminder 片段时停止继续记录；单次 run 的 stream evidence 总
 - 使用 `AuditEnvelope.parse` 校验合同；`runId`、`conversationId` 和 `turnId`
   必须来自真实运行上下文。
 - evidence 只放为后续调查所需的最小字段；禁止保存凭据、完整环境变量、完整 stdout/stderr、provider
-  raw request、图片 bytes 和无限增长的 transcript 副本。
+  raw request/response、continuation、raw usage、图片 bytes 和无限增长的 transcript 副本。只有显式
+  `stream` 等级可记录模型生成的有界文本/工具参数 delta。
 - 明确该 action 属于哪个等级；`behavior` 的事实必须使用已登记的安全前缀，`response` 和
   `stream` 的高体积事实必须有独立字段白名单和容量合同。
 - 对容量、失败语义、删除语义和 CLI 查询方式补充测试与文档。

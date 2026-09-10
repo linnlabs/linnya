@@ -1,4 +1,4 @@
-import { flushLinnyaAudit, runWithLLMDebugEvidenceContext } from 'src/domains/audit';
+import { flushLinnyaAudit, runWithLlmAuditContext } from 'src/domains/audit';
 import { Logger } from 'src/shared/logger';
 
 const logger = new Logger('RunAuditScope');
@@ -20,7 +20,7 @@ export async function runWithAgentAuditScope<T>(
   options: RunAuditScopeOptions,
   execute: () => Promise<T>
 ): Promise<T> {
-  return runWithLLMDebugEvidenceContext(
+  return runWithLlmAuditContext(
     {
       conversationId: options.conversationId,
       runId: options.runId,

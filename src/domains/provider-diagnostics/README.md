@@ -4,7 +4,7 @@
 `workspace.sqlite`，不产生
 `AuditEnvelope`，不参与统一 Audit 的等级开关，也不提供历史查询。
 
-真正需要长期保存的 Runtime、Command 或 LLM debug 事实，必须进入
+真正需要长期保存的 Runtime、Command 或 LLM response/stream 事实，必须进入
 [`src/domains/audit`](../audit/README.md) 的唯一 `AuditPort`。Provider
 diagnostics 只保留 route、状态、usage 摘要和安全错误分类；prompt、response、工具参数、凭据和图片字节都不能进入快照。
 

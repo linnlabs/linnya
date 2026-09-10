@@ -1,11 +1,8 @@
 import type { AuditEnvelope } from '@linnlabs/linnkit/contracts';
 import type { AuditPort } from '@linnlabs/linnkit/ports';
 
-import { configureLlmDebugEvidence } from '../features/llm-debug-evidence/orchestration/llmDebugEvidenceContext';
-import {
-  isAuditActionEnabled,
-  type AuditLevel,
-} from '../definitions/auditLevel';
+import { configureLlmEvidence } from '../features/llm-evidence/orchestration/llmEvidenceContext';
+import { isAuditActionEnabled, type AuditLevel } from '../definitions/auditLevel';
 import { resolveAuditLevel, type AuditRuntimeTrust } from '../functions/resolveAuditLevel';
 
 export interface LinnyaAuditRuntime {
@@ -44,7 +41,7 @@ export function createLinnyaAuditRuntime(
     },
   });
 
-  configureLlmDebugEvidence({ auditPort, level });
+  configureLlmEvidence({ auditPort, level });
 
   return Object.freeze({
     level,
