@@ -450,6 +450,7 @@ export async function configureRoutes(
   let sandboxProductionScope: SandboxProductionScope | null = null;
   let storageSpaceUseCase: StorageSpaceUseCasePort | null = null;
   let conversationControlUseCase: ConversationControlUseCase | null = null;
+  let auditAvailable = false;
   let conversationInitError: unknown = null;
 
   try {
@@ -509,9 +510,11 @@ export async function configureRoutes(
     const { runtime: agentRuntime, recoveredRuns } = await bootstrapAgentRuntimeSingletons({
       db,
       eventStore: conversationEventStore,
+      packaged: dependencies.backendBootstrap.packaged,
       llmInputMaterializer,
       toolModelInputResolver,
     });
+    auditAvailable = agentRuntime.auditEnabled;
     if (recoveredRuns.length > 0) {
       logger.warn('[RunSupervisor] 启动恢复已收口遗留的活跃 run', {
         recoveredCount: recoveredRuns.length,
@@ -743,6 +746,7 @@ export async function configureRoutes(
       telemetry: telemetryPort,
       events: createEventStoreExecutionAuditEventPort(conversationEventStore),
       tools: defaultToolRuntimePort,
+      auditAvailable: agentRuntime.auditEnabled,
     });
     logger.info('✅ 历史管理服务已初始化');
     logger.info('✅ 流程编排器已初始化');
@@ -835,6 +839,7 @@ export async function configureRoutes(
         useCase: conversationControlUseCase,
         appInstanceId: hostContext.conversationControl.appInstanceId,
         appVersion: dependencies.backendBootstrap.applicationVersion,
+        auditAvailable,
         diagnostics: {
           error: (message, context) => logger.error(message, context),
         },

@@ -5,9 +5,8 @@
  * 路径清理工具函数（统一复用，避免重复实现）。
  *
  * 使用场景：
- * - 统一 Audit 的开发诊断文件按 conversation/run 身份分目录
- * - Evidence Store 存储（evidenceStore.ts）
- * - 其他需要生成安全文件/目录名的地方
+ * - 需要生成安全文件/目录名的 workspace artifact 和本地缓存
+ * - 其他不把用户输入直接拼进路径的宿主存储边界
  */
 
 /**

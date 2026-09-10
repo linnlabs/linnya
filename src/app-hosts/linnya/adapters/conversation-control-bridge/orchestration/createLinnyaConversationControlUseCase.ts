@@ -46,6 +46,7 @@ interface LinnyaConversationControlUseCaseOwners {
   readonly providerAccounts: Pick<ProviderAccountRegistry, 'hasCredential'>;
   readonly telemetry: ExecutionAuditTelemetryPort;
   readonly events: ExecutionAuditEventPort;
+  readonly auditAvailable?: boolean;
   readonly tools: Pick<ToolRuntimePort, 'getToolSchemas'>;
   readonly history: Pick<
     HistoryService,
@@ -191,6 +192,7 @@ export function createLinnyaConversationControlUseCase(
       },
     },
     audit,
+    auditAvailable: owners.auditAvailable,
     createConversationId: generateConversationId,
     now: Date.now,
   });

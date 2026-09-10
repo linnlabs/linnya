@@ -140,6 +140,11 @@ function buildPreviewText(content: string): string {
     : trimmed.slice(0, 100);
 }
 
+/** AuditEnvelope 属于隐藏执行事实，不进入 conversation history 的统计口径。 */
+function isConversationStatsEvent(event: RuntimeEvent): boolean {
+  return event.ephemeral !== true && event.type !== 'audit_envelope';
+}
+
 export class SQLiteEventStore implements IEventStore {
   private db: Database.Database;
   private readonly uiProjection: SqliteUiProjectionApplier;
@@ -439,8 +444,9 @@ export class SQLiteEventStore implements IEventStore {
   }
 
   private updateConversationStats(conversationId: string, lastEventTs: number, events: RuntimeEvent[]): void {
-    const nonEphemeralEvents = events.filter(e => e.ephemeral !== true);
-    const conversationEvents = nonEphemeralEvents.filter(runtimeEvents.isConversationUiRuntimeEvent);
+    const statsEvents = events.filter(isConversationStatsEvent);
+    if (statsEvents.length === 0) return;
+    const conversationEvents = statsEvents.filter(runtimeEvents.isConversationUiRuntimeEvent);
     const userMessageCount = conversationEvents.filter(e => e.type === 'user_input').length;
 
     // 按优先级查找预览内容：final_answer > user_input
@@ -455,14 +461,14 @@ export class SQLiteEventStore implements IEventStore {
         UPDATE conversations
         SET preview_text = ?, last_event_at = ?, total_events = total_events + ?, user_message_count = user_message_count + ?
         WHERE conversation_id = ?
-      `).run(preview, lastEventTs, nonEphemeralEvents.length, userMessageCount, conversationId);
+      `).run(preview, lastEventTs, statsEvents.length, userMessageCount, conversationId);
     } else {
       // 只更新时间戳和事件计数
       this.db.prepare(`
         UPDATE conversations
         SET last_event_at = ?, total_events = total_events + ?, user_message_count = user_message_count + ?
         WHERE conversation_id = ?
-      `).run(lastEventTs, nonEphemeralEvents.length, userMessageCount, conversationId);
+      `).run(lastEventTs, statsEvents.length, userMessageCount, conversationId);
     }
   }
 
@@ -488,12 +494,14 @@ export class SQLiteEventStore implements IEventStore {
       FROM events e
       JOIN runs r ON r.id = e.run_id
       WHERE r.conversation_id = ?
+        AND e.type <> 'audit_envelope'
       ORDER BY e.ts DESC, e.rowid DESC
     `).all(conversationId);
 
     let totalEvents = 0;
     let userMessageCount = 0;
     let previewText: string | null = null;
+    let latestStatsEventTs: number | undefined;
 
     for (const row of eventRows) {
       const event = parseStoredRuntimeEvent(row.payload, {
@@ -504,7 +512,9 @@ export class SQLiteEventStore implements IEventStore {
         parentRunId: row.parent_run_id,
         timestamp: row.ts,
       });
+      if (!isConversationStatsEvent(event)) continue;
       totalEvents += 1;
+      latestStatsEventTs ??= row.ts;
       const belongsToConversationUi = runtimeEvents.isConversationUiRuntimeEvent(event);
       if (belongsToConversationUi && event.type === 'user_input') {
         userMessageCount += 1;
@@ -522,7 +532,7 @@ export class SQLiteEventStore implements IEventStore {
       }
     }
 
-    const lastEventAt = eventRows[0]?.ts ?? conversation.created_at;
+    const lastEventAt = latestStatsEventTs ?? conversation.created_at;
 
     this.db.prepare(`
       UPDATE conversations

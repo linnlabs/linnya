@@ -12,9 +12,9 @@ export interface RunAuditScopeOptions {
 
 /**
  * 中文备注：
- * - 这层负责建立 run 级统一审计范围，并在 debug 等级下附加 LLM evidence context；
+ * - 这层负责建立 run 级统一审计范围，并在 stream 等级下附加 LLM evidence context；
  * - 主执行函数只关心“在审计范围中运行什么”，不再自己处理 finally flush；
- * - Audit Domain 决定 evidence 的存储方式，runner 不持有路径和保留策略。
+ * - Audit Domain 负责 evidence 的等级过滤、投影和统一入口，runner 不持有路径和保留策略。
  */
 export async function runWithAgentAuditScope<T>(
   options: RunAuditScopeOptions,

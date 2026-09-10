@@ -463,6 +463,12 @@ export function createConversationControlUseCase(
     },
 
     async audit(request) {
+      if (ports.auditAvailable === false) {
+        throw new ConversationControlError(
+          'capability_unavailable',
+          'Agent Run Audit is disabled in this runtime environment',
+        );
+      }
       const audit = await ports.audit.export({
         conversationId: request.conversation_id,
         runId: request.run_id,

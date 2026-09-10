@@ -227,9 +227,10 @@ export class AgentRunnerService {
       /**
        * 统一 Audit Domain 的 run scope。
        *
-       * LLM debug evidence 只在 `LINNYA_AUDIT_LEVEL=debug` 且开发模式下经过
-       * 当前进程唯一的 AuditPort，由 Audit Domain 路由到有界开发诊断文件。上下文身份仅用于审计 scope，
-       * 不会进入供应商请求体或请求头；生产默认不会保存这些大体积输入证据。
+       * LLM response/stream evidence 只在开发模式显式开启对应
+       * `LINNYA_AUDIT_LEVEL` 时经过当前进程唯一的 AuditPort，并由 Audit Domain
+       * 负责字段投影和容量限制。上下文身份仅用于审计 scope，不会进入供应商请求体或请求头；
+       * 生产环境固定关闭这些高体积输入证据。
        */
       lifecycleCoordinator.configureRunContext(finalRunContext);
 

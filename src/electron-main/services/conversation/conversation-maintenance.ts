@@ -17,6 +17,11 @@ import {
   findConversationsNeedingUiProjectionRebuild,
   rebuildConversationUiProjection,
 } from '../../../app-hosts/linnya/adapters/persistence/event-store/ui-projection/rebuildConversation';
+import { purgeStaleAuditEvents } from '../../../app-hosts/linnya/adapters/persistence/event-store';
+import {
+  AGENT_RUN_AUDIT_RETENTION_DAYS,
+  AGENT_RUN_AUDIT_RETENTION_MS,
+} from '../../../domains/audit';
 
 function yieldToEventLoop(): Promise<void> {
   return new Promise(resolve => setImmediate(resolve));
@@ -27,6 +32,13 @@ export async function runConversationMaintenanceOnce(databaseService: DatabaseSe
 
   try {
     const db = databaseService.getDb();
+    const purgedAuditEvents = purgeStaleAuditEvents(db, {
+      olderThanMs: AGENT_RUN_AUDIT_RETENTION_MS,
+    });
+    logger.info(
+      `🧹 Agent Run Audit 启动清理：删除 ${purgedAuditEvents} 条超过 ${AGENT_RUN_AUDIT_RETENTION_DAYS} 天的隐藏 audit_envelope，` +
+      '不触碰普通 RuntimeEvent',
+    );
     const candidates = findConversationsNeedingUiProjectionRebuild(db);
     logger.info(
       `🧹 会话启动维护：UI read model 待重建会话数=${candidates.length}；保留无项目会话（project_id IS NULL），它们归属于 Linnya 助手`,

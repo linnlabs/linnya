@@ -1,16 +1,18 @@
-# LLM Debug Evidence
+# LLM Response / Stream Evidence
 
-这个 feature 只负责把 LLM 上下文和协议诊断转换成统一 Audit Domain 的 debug
-evidence。它不拥有文件目录、数据库连接、配置开关或独立写入入口。
+这个 feature 只负责把 LLM 上下文、上游响应摘要和协议诊断转换成统一 Audit Domain 的
+response/stream evidence。它不拥有文件目录、数据库连接、配置开关或独立写入入口。
 
 ## 运行规则
 
-- 只有统一等级为 `debug` 时记录；`standard` 和 `minimal`
-  不记录大体积 LLM 输入证据。
-- `debug` 只能在 `LINNYA_DEV_MODE=true` 的开发进程启用。
-- 记录内容通过 `AuditPort` 进入统一 runtime；`llm.*` 证据由 Audit Domain 写入
-  `<workspaceRoot>/Audit/v1/dev-diagnostics/<conversationId>/<runId>.jsonl`，不再写
-  `<Documents>/LLMRunAudit/`、`.in_progress.json` 或单独的最终 JSON 快照。
+- `behavior` 不记录大体积 LLM 输入；`response` 只允许安全投影后的上游响应摘要；`stream`
+  才允许受限的上下文/协议诊断和流式片段。
+- 当前 `response` 只提供 action 白名单和统一过滤合同；真实 Provider response producer
+  将在后续阶段通过 Host port 接入，不能在本 feature 内读取 Provider adapter 的内部状态。
+- `response` 和 `stream` 只能在 `LINNYA_DEV_MODE=true` 的开发进程启用；packaged Host 固定为
+  `off`。
+- 记录内容通过 `AuditPort` 进入统一 runtime，并写入当前 Workspace 的 `workspace.sqlite`，不再
+  创建 JSONL 或其他独立正式审计文件。
 - 记录前使用 Linnkit durable projection，拒绝图片 bytes、provider
   transient 字段和其他不可长期保存的值。
 - AsyncLocalStorage 只保存当前异步链的运行身份，不把 audit
@@ -29,10 +31,12 @@ evidence。它不拥有文件目录、数据库连接、配置开关或独立写
 
 ## 记录边界
 
-允许记录为排查 context manager、输入物化和工具协议问题所必需的 debug
+允许记录为排查 context manager、输入物化和工具协议问题所必需的 response/stream
 evidence。禁止记录凭据、完整环境变量、图片二进制、provider raw
 request、无界 stdout/stderr 和与当前 run 无关的对象。单片段、单次 run、工具协议错误和 system
-reminder 的容量限制由统一 orchestration 实现，不能通过新的环境变量覆盖。
+reminder 的容量限制由统一 orchestration 实现，不能通过新的环境变量覆盖；stream 单 run 总大小
+上限为 16 MiB。
 
-本 feature 不负责 run lifecycle、Telemetry、checkpoint、内容历史、CLI 导出或 retention；文件容量和
-TTL 由统一 Audit Domain 的 debug evidence adapter 负责。需要其他能力时，调用相应 owner 的公开 port/query。
+本 feature 不负责 run lifecycle、Telemetry、checkpoint、内容历史、CLI 导出或数据库 retention；
+容量和脱敏在 evidence 投影阶段完成，持久化由统一 Audit/EventStore owner 负责，过期
+`audit_envelope` 由启动维护按 7 天窗口清理。需要其他能力时，调用相应 owner 的公开 port/query。

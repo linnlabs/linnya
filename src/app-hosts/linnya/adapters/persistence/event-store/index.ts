@@ -18,6 +18,7 @@ export type {
 
 export { SQLiteEventStore } from './sqlite.implementation';
 export { LinnyaEventStoreAdapter } from './linnkit-event-store.adapter';
+export { purgeStaleAuditEvents, type PurgeStaleAuditEventsOptions } from './auditMaintenance';
 export {
   CONVERSATION_RUN_KIND,
   type ConversationRunKind,

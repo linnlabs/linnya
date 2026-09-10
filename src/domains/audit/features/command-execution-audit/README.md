@@ -30,7 +30,8 @@ terminal 事件必须在四类事实分别可判断后投影：child exit 不等
 ## 4. 存储和保留
 
 统一 Audit Domain 是事实 owner；command audit 作为 KB 级决策事实进入 EventStore 的
-`audit_envelope`，LLM debug evidence 使用同一 envelope 合同但由 debug 等级路由到有界 JSONL。
+`audit_envelope`。LLM response/stream evidence 使用同一 envelope 合同，并由统一等级路由到
+当前数据库 sink；不会创建第二个文件型正式审计源。
 原始 stdout/stderr 在 command output artifact 中按保留策略维护，
 审计只存摘要、计数和状态。任何“为了方便排查”而把完整命令环境或输入写进审计的改动都必须拒绝。
 

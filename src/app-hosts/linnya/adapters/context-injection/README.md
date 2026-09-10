@@ -78,7 +78,7 @@ src/app-hosts/linnya/adapters/context-injection/
 
 主 Prompt 与 compaction 请求共用同一个 cache policy 形状：仅在 system prompt 末尾和最新 `history_summary` 末尾声明稳定 breakpoint；Provider wire 形态由 inference adapter 投影。本 adapter 不识别 Provider 名称，也不按 route 选择另一套压缩算法。
 
-开启 `LINNYA_AUDIT_LEVEL=debug`（并且进程处于开发模式）时，这里会在
+开启 `LINNYA_AUDIT_LEVEL=stream`（并且进程处于开发模式）时，这里会在
 `formatAgentLlmMessages(...)` 后通过统一 Audit Domain 记录 after evidence：
 
 - `contextMessages`：context-manager 产出的内部 `AiMessage[]`，用于检查裁剪、重排、参数截断是否正确

@@ -193,6 +193,8 @@ export interface ConversationControlUseCasePorts {
   readonly history: ConversationControlHistoryPort;
   readonly workspaceTools: ConversationControlWorkspaceToolCatalogPort;
   readonly audit: ExecutionAuditExportUseCase;
+  /** 生产 Host 关闭开发 Agent Run Audit 时，控制面必须显式返回 capability_unavailable。 */
+  readonly auditAvailable?: boolean;
   readonly createConversationId: () => string;
   readonly now: () => number;
 }

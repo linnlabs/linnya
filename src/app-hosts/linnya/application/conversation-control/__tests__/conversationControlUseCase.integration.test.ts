@@ -206,7 +206,10 @@ function contextCompactionAuditFixture(): ExecutionAuditExport['contextCompactio
   };
 }
 
-function fixture(initialRuns: ConversationControlRunRecord[] = []) {
+function fixture(
+  initialRuns: ConversationControlRunRecord[] = [],
+  options: { auditAvailable?: boolean } = {},
+) {
   let runs = [...initialRuns];
   let executionProgress: ConversationControlExecutionProgressSnapshot | null = null;
   let latestExecutionSteps: number | undefined;
@@ -403,6 +406,7 @@ function fixture(initialRuns: ConversationControlRunRecord[] = []) {
         };
       },
     },
+    auditAvailable: options.auditAvailable,
     createConversationId: () => 'conversation-1',
     now: () => 115,
   };
@@ -909,5 +913,18 @@ describe('conversation-control use case', () => {
       conversation_id: 'conversation-1',
       run_id: 'missing-run',
     })).rejects.toMatchObject({ code: 'run_not_found' });
+  });
+
+  it('生产 runtime 关闭审计时返回 capability_unavailable', async () => {
+    const test = fixture([run('completed')], { auditAvailable: false });
+    await expect(test.useCase.audit({
+      schema_version: 1,
+      command: 'audit',
+      conversation_id: 'conversation-1',
+      run_id: 'run-1',
+    })).rejects.toMatchObject({
+      code: 'capability_unavailable',
+      message: 'Agent Run Audit is disabled in this runtime environment',
+    });
   });
 });

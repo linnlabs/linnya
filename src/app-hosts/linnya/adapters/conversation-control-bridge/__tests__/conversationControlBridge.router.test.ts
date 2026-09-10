@@ -21,12 +21,16 @@ afterEach(async () => {
   })));
 });
 
-async function startBridge(useCase: ConversationControlUseCase): Promise<string> {
+async function startBridge(
+  useCase: ConversationControlUseCase,
+  options: { auditAvailable?: boolean } = {},
+): Promise<string> {
   const app = express();
   app.use(CONVERSATION_CONTROL_BRIDGE_PATH, createConversationControlBridgeRouter({
     useCase,
     appInstanceId: 'app-instance-1',
     appVersion: '1.2.3',
+    auditAvailable: options.auditAvailable,
     diagnostics: { error: vi.fn() },
   }));
   const server = await new Promise<Server>((resolve, reject) => {
@@ -83,6 +87,17 @@ describe('conversation-control bridge router', () => {
     expect(handshake.capabilities).toContain('models');
     expect(handshake.capabilities).toContain('audit');
     expect(handshake.capabilities).toContain('workspace_tools');
+  });
+
+  it('生产 runtime 关闭审计时不声明 audit capability', async () => {
+    const baseUrl = await startBridge(createUseCase(vi.fn()), { auditAvailable: false });
+    const response = await postJson(baseUrl, '/handshake', {
+      protocol_version: 1,
+      client_name: 'linnya-cli',
+      client_version: '0.1.0',
+    });
+    const handshake = ConversationControlHandshakeResponseSchema.parse(await response.json());
+    expect(handshake.capabilities).not.toContain('audit');
   });
 
   it('严格解析命令并投影工作流响应', async () => {

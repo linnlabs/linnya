@@ -17,6 +17,8 @@ export interface LinnyaAgentRuntimeScope {
   readonly eventStore: graph.EventStore;
   readonly nextEventStoreId: () => string;
   readonly auditPort: AuditPort;
+  /** 开发 Agent Run Audit 是否在当前 Host 进程启用。 */
+  readonly auditEnabled: boolean;
   readonly llmInputMaterializer?: LlmInputMaterializerPort;
   readonly toolModelInputResolver?: ToolModelInputResolverPort;
 }

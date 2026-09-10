@@ -21,6 +21,7 @@ import {
   conversationMessageIdFromToolIdentity,
 } from '@app/schemas';
 import { SQLiteEventStore } from '../sqlite.implementation';
+import { purgeStaleAuditEvents } from '..';
 import type { RunSession } from '../event-store.interface';
 import { rebuildConversationUiProjection } from '../ui-projection/rebuildConversation';
 import { readAround } from '../ui-projection/sqliteUiMessagesReader';
@@ -187,6 +188,37 @@ function makeFinalAnswer(
 }
 
 describe('SQLiteEventStore explicit run session contract', () => {
+  it('audit maintenance only purges expired audit_envelope facts', () => {
+    const { db, store } = createStore();
+    db.prepare(`
+      INSERT INTO conversations (conversation_id, created_at, last_event_at)
+      VALUES (?, ?, ?)
+    `).run('conv-audit-retention', 1, 1);
+    db.prepare(`
+      INSERT INTO runs (id, conversation_id, kind, status, start_ts)
+      VALUES (?, ?, 'agent', 'completed', ?)
+    `).run('run-audit-retention', 'conv-audit-retention', 1);
+    db.prepare(`
+      INSERT INTO events (id, run_id, type, payload, ts)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('audit-old', 'run-audit-retention', 'audit_envelope', '{}', 100);
+    db.prepare(`
+      INSERT INTO events (id, run_id, type, payload, ts)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('audit-new', 'run-audit-retention', 'audit_envelope', '{}', 900);
+    db.prepare(`
+      INSERT INTO events (id, run_id, type, payload, ts)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('runtime-old', 'run-audit-retention', 'error', '{}', 100);
+
+    expect(purgeStaleAuditEvents(db, { olderThanMs: 500, nowMs: 1_000 })).toBe(1);
+    expect(db.prepare('SELECT id FROM events ORDER BY id').all()).toEqual([
+      { id: 'audit-new' },
+      { id: 'runtime-old' },
+    ]);
+    store.close();
+  });
+
   it('fresh conversation schema has one event fact source and one UI history read model', () => {
     const { db, store } = createStore();
     const tables = db
@@ -349,7 +381,15 @@ describe('SQLiteEventStore explicit run session contract', () => {
       kind: 'agent',
     });
     await store.appendEventToRun(session, routeForSession(userInput, session));
+    const beforeAudit = db
+      .prepare('SELECT total_events, last_event_at FROM conversations WHERE conversation_id = ?')
+      .get(conversationId) as { total_events: number; last_event_at: number };
+    const beforeAuditProjection = readUiProjectionState(db, conversationId);
     await store.appendEventToRun(session, routeForSession(auditEnvelope, session));
+    expect(db
+      .prepare('SELECT total_events, last_event_at FROM conversations WHERE conversation_id = ?')
+      .get(conversationId)).toEqual(beforeAudit);
+    expect(readUiProjectionState(db, conversationId)).toEqual(beforeAuditProjection);
     await store.appendEventToRun(session, routeForSession(finalAnswer, session));
     await store.completeRun(session);
 

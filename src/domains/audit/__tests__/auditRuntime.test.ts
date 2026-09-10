@@ -1,7 +1,4 @@
-import { promises as fsp } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AuditEnvelope } from '@linnlabs/linnkit/contracts';
 import type { AuditPort } from '@linnlabs/linnkit/ports';
@@ -27,58 +24,73 @@ const baseEnvelope = (action: string) =>
     },
   });
 
-const tempDirectories: string[] = [];
-
-afterEach(async () => {
+afterEach(() => {
   resetLlmDebugEvidenceForTest();
-  await Promise.all(
-    tempDirectories.splice(0).map(directory => fsp.rm(directory, { recursive: true, force: true }))
-  );
 });
 
 describe('unified audit runtime', () => {
-  it('defaults to standard and only allows debug in development', () => {
-    expect(resolveAuditLevel({})).toBe('standard');
-    expect(resolveAuditLevel({ LINNYA_AUDIT_LEVEL: 'minimal' })).toBe('minimal');
-    expect(resolveAuditLevel({ LINNYA_AUDIT_LEVEL: 'unknown' })).toBe('standard');
-    expect(resolveAuditLevel({ LINNYA_AUDIT_LEVEL: 'debug' })).toBe('standard');
+  it('defaults to off and only enables audit from a development environment', () => {
+    expect(resolveAuditLevel({})).toBe('off');
+    expect(resolveAuditLevel({ LINNYA_AUDIT_LEVEL: 'behavior' })).toBe('off');
+    expect(resolveAuditLevel({ LINNYA_AUDIT_LEVEL: 'unknown', LINNYA_DEV_MODE: 'true' })).toBe('off');
     expect(
       resolveAuditLevel({
-        LINNYA_AUDIT_LEVEL: 'debug',
+        LINNYA_AUDIT_LEVEL: 'stream',
         LINNYA_DEV_MODE: 'true',
       })
-    ).toBe('debug');
+    ).toBe('stream');
+    expect(
+      resolveAuditLevel(
+        { LINNYA_AUDIT_LEVEL: 'stream', LINNYA_DEV_MODE: 'true' },
+        { packaged: true },
+      )
+    ).toBe('off');
+    expect(resolveAuditLevel({ NODE_ENV: 'production', LINNYA_AUDIT_LEVEL: 'stream', LINNYA_DEV_MODE: 'true' })).toBe('off');
   });
 
-  it('filters minimal actions before they reach the only sink', () => {
+  it('filters behavior actions before they reach the only sink', () => {
     const envelopes: AuditEnvelope[] = [];
     const sink: AuditPort = {
       emit: envelope => {
         envelopes.push(envelope);
       },
     };
-    const runtime = createLinnyaAuditRuntime({ sink, level: 'minimal' });
+    const runtime = createLinnyaAuditRuntime({ sink, level: 'behavior' });
 
     runtime.auditPort.emit(baseEnvelope('model.select'));
     runtime.auditPort.emit(baseEnvelope('run.cancel'));
     runtime.auditPort.emit(baseEnvelope('command.execution.started'));
 
     expect(envelopes.map(envelope => envelope.action)).toEqual([
+      'model.select',
       'run.cancel',
       'command.execution.started',
     ]);
   });
 
-  it('通过同一入口把 LLM debug evidence 路由到有界文件，不写入 durable sink', async () => {
+  it('keeps response summaries separate from stream evidence', () => {
     const envelopes: AuditEnvelope[] = [];
-    const directoryPath = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-audit-runtime-'));
-    tempDirectories.push(directoryPath);
     const sink: AuditPort = {
       emit: envelope => {
         envelopes.push(envelope);
       },
     };
-    createLinnyaAuditRuntime({ sink, level: 'debug', debugEvidenceDirectoryPath: directoryPath });
+    const runtime = createLinnyaAuditRuntime({ sink, level: 'response' });
+
+    runtime.auditPort.emit(baseEnvelope('llm.response.summary'));
+    runtime.auditPort.emit(baseEnvelope('llm.context.after'));
+
+    expect(envelopes.map(envelope => envelope.action)).toEqual(['llm.response.summary']);
+  });
+
+  it('通过同一入口把 stream evidence 写入同一个 durable sink', async () => {
+    const envelopes: AuditEnvelope[] = [];
+    const sink: AuditPort = {
+      emit: envelope => {
+        envelopes.push(envelope);
+      },
+    };
+    createLinnyaAuditRuntime({ sink, level: 'stream' });
 
     await runWithLLMDebugEvidenceContext(
       {
@@ -96,17 +108,24 @@ describe('unified audit runtime', () => {
       }
     );
 
-    expect(envelopes).toHaveLength(0);
-    const debugFile = path.join(
-      directoryPath,
-      'conversation-audit-runtime-test',
-      'run-audit-runtime-test.jsonl'
-    );
-    const debugEnvelope = AuditEnvelope.parse(
-      JSON.parse((await fsp.readFile(debugFile, 'utf8')).trim())
-    );
-    expect(debugEnvelope.action).toBe('llm.context.after');
-    expect(debugEnvelope.scope?.conversationId).toBe('conversation-audit-runtime-test');
-    expect(debugEnvelope.evidence?.[0]?.kind).toBe('llm_debug_evidence');
+    expect(envelopes).toHaveLength(1);
+    expect(envelopes[0]?.action).toBe('llm.context.after');
+    expect(envelopes[0]?.scope?.conversationId).toBe('conversation-audit-runtime-test');
+    expect(envelopes[0]?.evidence?.[0]?.kind).toBe('llm_debug_evidence');
+  });
+
+  it('packaged runtime ignores an explicitly requested stream level', async () => {
+    const sink: AuditPort = { emit: vi.fn() };
+    const runtime = createLinnyaAuditRuntime({
+      sink,
+      level: 'stream',
+      trust: { packaged: true },
+    });
+
+    await runtime.auditPort.emit(baseEnvelope('model.select'));
+    await runtime.auditPort.emit(baseEnvelope('llm.context.after'));
+
+    expect(runtime.level).toBe('off');
+    expect(sink.emit).not.toHaveBeenCalled();
   });
 });

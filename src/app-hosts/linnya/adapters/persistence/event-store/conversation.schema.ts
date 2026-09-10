@@ -155,6 +155,7 @@ export const CONVERSATION_SCHEMAS = [
   `CREATE INDEX IF NOT EXISTS idx_runs_agent_spec_id ON runs(agent_spec_id)`,
   `CREATE INDEX IF NOT EXISTS idx_runs_status_start_ts ON runs(status, start_ts DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_events_run_id ON events(run_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_events_type_ts ON events(type, ts)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_events_event_store_id_unique ON events(event_store_id) WHERE event_store_id IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS idx_subrun_trace_runs_parent
     ON subrun_trace_runs(conversation_id, parent_tool_call_id, subrun_id)`,

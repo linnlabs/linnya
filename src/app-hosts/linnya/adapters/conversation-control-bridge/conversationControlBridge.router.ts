@@ -29,6 +29,7 @@ interface CreateConversationControlBridgeRouterOptions {
   readonly useCase: ConversationControlUseCase;
   readonly appInstanceId: string;
   readonly appVersion: string;
+  readonly auditAvailable?: boolean;
   readonly diagnostics: ConversationControlBridgeDiagnosticPort;
 }
 
@@ -91,7 +92,9 @@ export function createConversationControlBridgeRouter(
       protocol_version: CONVERSATION_CONTROL_PROTOCOL_VERSION,
       app_instance_id: options.appInstanceId,
       app_version: options.appVersion,
-      capabilities: [...LINNYA_CONVERSATION_CONTROL_CAPABILITIES],
+      capabilities: LINNYA_CONVERSATION_CONTROL_CAPABILITIES.filter(
+        capability => capability !== 'audit' || options.auditAvailable !== false,
+      ),
       limits: {
         max_request_bytes: CONVERSATION_CONTROL_MAX_REQUEST_BYTES,
         max_message_chars: CONVERSATION_CONTROL_MAX_MESSAGE_CHARS,

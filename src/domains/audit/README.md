@@ -6,28 +6,26 @@
 Phase 0 的目标是收口入口和存储责任：
 
 ```text
-Runtime / Command / LLM debug evidence
+Runtime / Command / LLM response or stream evidence
               │
               ▼
 src/domains/audit/orchestration/createLinnyaAuditRuntime.ts
               │  等级过滤 + 按 action 统一路由
               ▼
        Linnya AuditPort（唯一写入入口）
-              ├──────────────► EventStore 的隐藏 audit_envelope 事件
-              │                         │
-              │                         ▼
-              │                 workspace.sqlite / CLI 只读导出
-              └──────────────► Audit/v1/dev-diagnostics/*.jsonl
-                                  （仅 debug，开发态，有界）
+              └──────────────► EventStore 的隐藏 audit_envelope 事件
+                                        │
+                                        ▼
+                                workspace.sqlite / CLI 只读导出
 ```
 
 宿主进程启动时只组合一次
 `createLinnyaAuditRuntime({ sink })`。它返回进程内唯一的 `AuditPort`。普通决策事实
 使用 Linnkit 的 EventStore audit port，最终写入当前 workspace 的 `workspace.sqlite`，事件类型为
-`audit_envelope`，可见性为 `none`，不会进入 UI、Agent 上下文或 SSE。`llm.*`
-大体积 debug evidence 仍从同一个 `AuditPort` 进入，但由 Audit Domain 写入有界的
-JSONL 目录，避免把上下文全文塞进 EventStore。没有完成主进程组合时，测试运行时使用内存
-EventStore；这不是另一种生产存储。
+`audit_envelope`，可见性为 `none`，不会进入 UI、Agent 上下文或 SSE。LLM response/stream
+evidence 也从同一个 `AuditPort` 进入当前数据库 sink；高体积证据在写入前执行字段投影、
+单片段和单 run 字节上限。没有完成主进程组合时，测试运行时使用内存 EventStore；这不是
+另一种生产存储。
 
 数据库文件路径由 `getWorkspaceDataPath()` 统一决定，而不是由 Audit 自己拼接：
 
@@ -39,28 +37,34 @@ EventStore；这不是另一种生产存储。
 
 如果宿主安装了自定义 Workspace
 Root，表中的根目录随宿主解析结果变化。Audit 不拥有路径解析，也不在
-`Documents/LLMRunAudit`、AppData 日志目录或独立数据库中写副本。开发 debug evidence
-的路径固定为 `<workspaceRoot>/Audit/v1/dev-diagnostics/<conversationId>/<runId>.jsonl`；
-文件名中的身份经过路径段清理。
+`Documents/LLMRunAudit`、AppData 日志目录或独立数据库中写副本。审计不再创建
+`Audit/v1/dev-diagnostics/*.jsonl` 或其他独立文件型正式事实。日志仍由 logging owner 写入
+独立的 console/file sink，但不属于 Audit。
 
-## 审计等级
+## 审计等级和环境策略
 
 统一开关是 `LINNYA_AUDIT_LEVEL`，可选值如下：
 
-| 等级       | 记录内容                                                                          | 适用场景                   |
-| ---------- | --------------------------------------------------------------------------------- | -------------------------- |
-| `minimal`  | 安全和关键生命周期事实，例如 command、run、工具允许/拒绝、等待用户和 sandbox 决定 | 低噪声运行、容量紧张的环境 |
-| `standard` | 所有已经通过安全投影的 Runtime/Command durable audit；默认值                      | 日常开发和生产             |
-| `debug`    | `standard` 加 LLM context、transcript、输入物化证据和工具协议错误；这些 `llm.*` 证据写入有界 JSONL | 只用于开发问题定位         |
+| 等级       | 记录内容                                                                 | 适用场景                   |
+| ---------- | ------------------------------------------------------------------------ | -------------------------- |
+| `off`      | 不写 Agent Run Audit；普通运行状态和独立日志不受影响                     | 生产固定值；测试可显式使用 |
+| `behavior` | Agent/run 身份、生命周期、工具/命令行为、授权/拒绝、安全决策和终态       | 开发低体积排障             |
+| `response` | `behavior` 加上游响应摘要、usage、结束原因和错误分类，不保存完整正文     | 开发显式开启               |
+| `stream`   | `response` 加有界流式 delta/chunk 和协议诊断                             | 仅开发诊断会话             |
 
-`debug` 只有在 `LINNYA_DEV_MODE=true` 时有效；生产进程即使误设置也会降级为
-`standard`。未知值和空值也回到 `standard`。旧的 `LINNYA_LLM_RUN_AUDIT`
-及其容量环境变量不再是配置入口。
+开发进程默认 `off`；必须通过 `.env.local` 或开发启动环境显式设置
+`LINNYA_AUDIT_LEVEL=behavior|response|stream`。生产 Host 根据已验证的 packaged 运行身份固定为
+`off`，忽略审计环境变量，不能通过 `LINNYA_DEV_MODE`、CLI 或 HTTP 控制面绕过。未知值和空值回到
+当前环境的安全默认值。旧的 `LINNYA_LLM_RUN_AUDIT` 及其容量环境变量不再是配置入口。
 
-等级只决定记录哪些事实，不改变入口。所有等级都经过同一个
-`AuditPort`，所有事件都使用 `AuditEnvelope`，并且只能追加，不能更新或删除单条审计信封。
-Audit Domain 内部可以按事实体量选择 EventStore 或有界 debug 文件，这是存储类别，不是第二套
-审计入口或第二个配置开关。
+等级只决定记录哪些事实，不改变入口。所有等级都经过同一个 `AuditPort`，所有事件都使用
+`AuditEnvelope`，并且只能追加，不能更新或删除单条审计信封。正式 Audit 只有一个数据库存储
+类别；高等级不再通过 JSONL 形成第二套正式存储。
+
+当前 Phase 0 已建立 `response` action 的安全白名单和过滤合同，但 Provider adapter 尚未自动
+生成 `llm.response.*` 摘要；Provider diagnostics 仍是进程内 latest snapshot。后续接入真实
+响应 producer 时，必须通过明确的 Host port/运行 scope 传递归属，不能让 Provider domain
+直接依赖 Audit 的内部实现，也不能把 provider raw response 写入审计。
 
 ## 不同概念的边界
 
@@ -100,15 +104,16 @@ const runtimeScope = {
 的内部目录导入。需要审计时：
 
 1. Runtime 或 Command 通过注入的 `AuditPort` 发出 `AuditEnvelope`。
-2. LLM debug evidence 通过 `src/domains/audit` 的上下文函数记录；它只在 `debug`
-   等级工作，存储路由由同一个 Audit Runtime 决定。
+2. LLM response/stream evidence 通过 `src/domains/audit` 的上下文函数记录；它只在对应
+   等级工作，存储路由由同一个 Audit Runtime 决定并进入 EventStore。
 3. CLI 和查询 use case 只读取 EventStore / RunRegistry /
    Telemetry 的公开查询能力。
 
-LLM debug evidence 使用 AsyncLocalStorage 关联 conversation、run、trace、subrun 和父工具调用。
+LLM evidence 使用 AsyncLocalStorage 关联 conversation、run、trace、subrun 和父工具调用。
 它会经过 Linnkit 的 durable projection，拒绝图片二进制、provider transient 字段和其他不能长期保存的对象；
-单片段超过 512 KiB、单次 run 超过 256 个 debug 片段、单次 run 超过 16 个工具协议错误或 16 个 system
-reminder 片段时停止继续记录。文件 sink 另外限制单个 run 文件 16 MiB、debug 目录 256 MiB、保留 7 天。
+单片段超过 512 KiB、单次 run 超过 256 个 stream 片段、单次 run 超过 16 个工具协议错误或 16 个
+system reminder 片段时停止继续记录；单次 run 的 stream evidence 总大小上限为 16 MiB。超过上限
+只记录容量丢弃诊断，不阻断 Agent。
 审计写入失败只记录诊断日志，不覆盖正常业务结果。
 
 ## 新增审计事件的规范
@@ -121,8 +126,8 @@ reminder 片段时停止继续记录。文件 sink 另外限制单个 run 文件
   必须来自真实运行上下文。
 - evidence 只放为后续调查所需的最小字段；禁止保存凭据、完整环境变量、完整 stdout/stderr、provider
   raw request、图片 bytes 和无限增长的 transcript 副本。
-- 明确该 action 属于哪个等级；`minimal`
-  的事实必须使用已登记的安全前缀，其他事实默认在 `standard` 保留。
+- 明确该 action 属于哪个等级；`behavior` 的事实必须使用已登记的安全前缀，`response` 和
+  `stream` 的高体积事实必须有独立字段白名单和容量合同。
 - 对容量、失败语义、删除语义和 CLI 查询方式补充测试与文档。
 - 不把日志、Telemetry、checkpoint 或内容历史的职责迁移到 Audit。
 
@@ -132,35 +137,29 @@ reminder 片段时停止继续记录。文件 sink 另外限制单个 run 文件
 和 run/conversation 归属。删除对话时，EventStore 的 conversation facts
 cleanup 会一起删除该对话的审计事件；从历史截断时，属于被截断 run 的事件也按同一事实源规则处理。内存 sink 只用于测试，不需要清理磁盘。
 
-Phase 0 不再创建 `<Documents>/LLMRunAudit/` 文件、`.in_progress` checkpoint 文件或
-旧的每类 JSON 审计副本。开发 debug evidence 只写入版本化的
-`<workspaceRoot>/Audit/v1/dev-diagnostics/`，由统一 Audit Domain 负责容量和 TTL。开发阶段和生产阶段的区别由
-`LINNYA_DEV_MODE` 与 `LINNYA_AUDIT_LEVEL` 控制：生产保持
-`standard`，开发排障才临时使用 `debug`。由于 `debug` 仍然是 durable
-审计入口产生的事实，排障完成后应恢复 `standard`；它的上下文文件按 7 天 TTL 和目录上限清理。
-目前文件 sink 在启动首次写入和后续写入时维护这些限制，长期 Runtime 仍需把它注册到统一 maintenance
-调度器，不能只依赖“下一次有 debug 写入”。
+审计不再创建 `<Documents>/LLMRunAudit/` 文件、`.in_progress` checkpoint 文件或 JSONL 正式审计副本。
+开发阶段和生产阶段的区别由 Host 运行身份与 `LINNYA_AUDIT_LEVEL` 控制：生产固定 `off`，开发排障
+才临时使用 `response` 或 `stream`。stream evidence 的容量上限在写入 EventStore 前执行；统一
+conversation startup maintenance 会按固定 7 天窗口清理过期的 `audit_envelope`。
 
-当前不应把 `workspace.sqlite`
-中的审计行当作永久无限保留。durable 审计随 conversation/run 事实删除；按时间清理 durable
-审计仍需单独的 retention 决策，不能为了控体积直接删除用户运行事实。debug 文件由 Audit Domain
-按 7 天 TTL、单 run 16 MiB、目录 256 MiB 管理。旧 `<Documents>/LLMRunAudit/` 目录不会被自动静默删除，
-避免升级时丢失开发证据；确认不再需要后可手工删除旧目录。
+当前不应把 `workspace.sqlite` 中的审计行当作永久无限保留。durable 审计随 conversation/run
+事实删除；启动维护还会按固定 7 天窗口删除隐藏 `audit_envelope`，不能为了控体积直接删除用户运行
+事实。stream evidence 额外受单 run 16 MiB 和事件数量上限约束。
 
 当前的清理操作按下面的规则执行：
 
-- 开发排障结束后把 `LINNYA_AUDIT_LEVEL` 恢复为 `standard`；下一次 debug 写入会先清理过期文件，正常写入也会持续执行目录上限维护。
-- 需要立即释放开发诊断空间时，先停止 Linnya，再删除当前 Workspace Root 下的 `Audit/v1/dev-diagnostics/`；这不会删除 `workspace.sqlite` 或用户文档。
-- 生产环境不接受 `debug`，因此不会新建 debug evidence 目录；生产 durable 审计通过现有 conversation 删除流程随事实删除。
+- 开发排障结束后把 `LINNYA_AUDIT_LEVEL` 恢复为 `off`；stream evidence 已写入 `workspace.sqlite`，并由启动维护按 7 天窗口清理。
+- 不要手工删除 `workspace.sqlite` 释放审计空间；需要立即释放空间时使用后续提供的 Audit maintenance/query 合同。
+- 生产环境固定为 `off`，不会新建任何 Agent Run Audit 事实；普通 Backend/terminal log 仍按 logging owner 的策略运行。
 - 当前 CLI 的 `audit` 是只读摘要，没有“清空审计”命令。不要直接删除 `workspace.sqlite`，也不要通过 CLI 另造清理路径。
 
 ## 开发和验证
 
 修改本模块后至少验证：
 
-- `resolveAuditLevel` 的默认值、非法值、生产 debug 降级；
-- `minimal` 对 action 的过滤，`standard` 的完整安全事实保留；
-- LLM debug evidence 只经统一 sink 写入，并在 flush 后可查询；
+- `resolveAuditLevel` 的默认值、非法值、开发环境等级和 packaged 生产强制 off；
+- `behavior / response / stream` 对 action 的过滤；
+- LLM stream evidence 只经统一数据库 sink 写入，并在 flush 后可查询；
 - 图片 transient、超大证据和协议错误上限按规范丢弃；
 - CLI 仍是只读投影；
 - 对话删除或历史截断不会留下脱离 conversation/run 的审计事实。

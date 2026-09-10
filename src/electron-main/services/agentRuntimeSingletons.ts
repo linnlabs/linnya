@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type Database from 'better-sqlite3';
 import {
   audit,
@@ -21,13 +20,14 @@ import {
   resetLlmDebugEvidenceForTest,
   resolveAuditLevel,
 } from 'src/domains/audit';
-import { getAuditDataPath } from 'src/shared/utils/pathManager';
 
 type DefaultRunSupervisor = runSupervisor.DefaultRunSupervisor<AgentInvokeRequest>;
 
 export interface ConfigureAgentRuntimeSingletonsOptions {
   db: Database.Database;
   eventStore: IEventStore;
+  /** 来自已验证的 Backend bootstrap；生产包不能靠环境变量打开开发审计。 */
+  packaged?: boolean;
   llmInputMaterializer?: LlmInputMaterializerPort;
   toolModelInputResolver?: ToolModelInputResolverPort;
 }
@@ -41,9 +41,6 @@ function createFallbackAgentRuntimeSingletons(): LinnyaAgentRuntimeScope {
   const auditRuntime = createLinnyaAuditRuntime({
     sink: audit.createEventStoreAudit({ eventStore }),
     level: auditLevel,
-    ...(auditLevel === 'debug'
-      ? { debugEvidenceDirectoryPath: path.join(getAuditDataPath(), 'dev-diagnostics') }
-      : {}),
   });
   return {
     supervisor: createSupervisor({
@@ -55,6 +52,7 @@ function createFallbackAgentRuntimeSingletons(): LinnyaAgentRuntimeScope {
     eventStore,
     nextEventStoreId: graph.createMonotonicEventStoreIdFactory(),
     auditPort: auditRuntime.auditPort,
+    auditEnabled: auditRuntime.level !== 'off',
   };
 }
 
@@ -88,13 +86,11 @@ export function configureAgentRuntimeSingletons(
   const tokenCalibrationCollector =
     singletons?.tokenCalibrationCollector ?? new LinnyaTokenCalibrationCollector();
   const runtimeEventStore = new LinnyaEventStoreAdapter(options.db, options.eventStore);
-  const auditLevel = resolveAuditLevel();
+  const auditLevel = resolveAuditLevel(process.env, { packaged: options.packaged });
   const auditRuntime = createLinnyaAuditRuntime({
     sink: audit.createEventStoreAudit({ eventStore: runtimeEventStore }),
     level: auditLevel,
-    ...(auditLevel === 'debug'
-      ? { debugEvidenceDirectoryPath: path.join(getAuditDataPath(), 'dev-diagnostics') }
-      : {}),
+    trust: { packaged: options.packaged },
   });
   singletons = {
     supervisor: createSupervisor({
@@ -106,6 +102,7 @@ export function configureAgentRuntimeSingletons(
     eventStore: runtimeEventStore,
     nextEventStoreId: singletons?.nextEventStoreId ?? graph.createMonotonicEventStoreIdFactory(),
     auditPort: auditRuntime.auditPort,
+    auditEnabled: auditRuntime.level !== 'off',
     llmInputMaterializer: options.llmInputMaterializer,
     toolModelInputResolver: options.toolModelInputResolver,
   };

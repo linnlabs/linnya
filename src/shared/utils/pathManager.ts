@@ -457,16 +457,6 @@ export function getTempDirectory(): string {
 }
 
 /**
- * 获取统一 Audit 的版本化文件根目录。
- *
- * durable 决策账本仍由 workspace.sqlite 的 EventStore 持有；这里只承载不适合进入
- * EventStore 的有界文件型审计数据，例如开发态 LLM debug evidence。
- */
-export function getAuditDataPath(): string {
-  return getAndCreateWorkspaceSubDirectory(path.join('Audit', 'v1'));
-}
-
-/**
  * 获取 Artifacts 根目录（通用共享产物/共享记忆的统一父目录）
  *
  * 目录位置：位于 Workspace Root 下的 `Artifacts/`
@@ -822,7 +812,6 @@ export const pathManager = {
   getPluginCredentialsConfigPath,
   getLogDirectory,
   getTempDirectory,
-  getAuditDataPath,
   getArtifactsRootPath,
   getArtifactsV1Path,
   getConversationArtifactsV1Path,

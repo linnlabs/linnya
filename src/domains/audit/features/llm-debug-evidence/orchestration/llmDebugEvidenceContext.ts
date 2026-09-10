@@ -15,6 +15,7 @@ const MAX_PROTOCOL_ERRORS_PER_RUN = 16;
 const MAX_SYSTEM_REMINDERS_PER_RUN = 16;
 const MAX_DEBUG_EVENTS_PER_RUN = 256;
 const MAX_DEBUG_EVIDENCE_BYTES = 512 * 1024;
+const MAX_DEBUG_EVIDENCE_BYTES_PER_RUN = 16 * 1024 * 1024;
 
 const als = new AsyncLocalStorage<LLMDebugEvidenceStore>();
 let configuration: LlmDebugEvidenceConfiguration | undefined;
@@ -28,6 +29,7 @@ interface LlmDebugEvidenceState {
   readonly auditPort: AuditPort;
   sequence: number;
   emittedEvents: number;
+  emittedBytes: number;
   protocolErrorCount: number;
   systemReminderCount: number;
   beforeRecorded: boolean;
@@ -208,8 +210,8 @@ export function recordLlmInputMaterializationEvidence(
 /**
  * 排空当前 run 的统一审计队列。
  *
- * Phase 0 后调用方只面对统一 AuditPort。具体写入 EventStore 还是有界开发诊断目录
- * 由 Audit Runtime 按 action 和等级决定，runner 不拥有存储路径或 retention。
+ * 调用方只面对统一 AuditPort。高体积流式证据也进入同一个 durable sink，
+ * runner 不拥有存储路径或 retention；容量和脱敏限制在本 feature 内先做一次投影。
  */
 export async function flushLinnyaAudit(): Promise<void> {
   const store = als.getStore();
@@ -224,7 +226,7 @@ export async function runWithLLMDebugEvidenceContext<T>(
   contextPatch: Partial<LLMDebugEvidenceContext>,
   run: () => Promise<T>
 ): Promise<T> {
-  if (configuration?.level !== 'debug') return await run();
+  if (configuration?.level !== 'stream') return await run();
 
   const merged = mergeDebugEvidenceContext(getCurrentLLMDebugEvidenceContext(), contextPatch);
   if (!merged) return await run();
@@ -244,7 +246,7 @@ export async function runWithLLMDebugEvidenceContext<T>(
 }
 
 function getDebugState(): LlmDebugEvidenceState | undefined {
-  if (configuration?.level !== 'debug') return undefined;
+  if (configuration?.level !== 'stream') return undefined;
   const store = als.getStore();
   if (!store || store.debugEvidence.flushed) return undefined;
   return store.debugEvidence;
@@ -254,13 +256,14 @@ function createDebugEvidenceState(): LlmDebugEvidenceState {
   const auditPort = configuration?.auditPort;
   if (!auditPort) {
     throw new Error(
-      'Unified audit runtime must be configured before creating an LLM debug evidence scope'
+      'Unified audit runtime must be configured before creating an LLM evidence scope'
     );
   }
   return {
     auditPort,
     sequence: 0,
     emittedEvents: 0,
+    emittedBytes: 0,
     protocolErrorCount: 0,
     systemReminderCount: 0,
     beforeRecorded: false,
@@ -280,7 +283,7 @@ function emitLlmDebugEvidenceEvent(
 ): void {
   if (state.emittedEvents >= MAX_DEBUG_EVENTS_PER_RUN) {
     if (state.emittedEvents === MAX_DEBUG_EVENTS_PER_RUN) {
-      logger.warn('[UnifiedAudit] LLM debug evidence 达到单次 run 上限，后续片段已丢弃', {
+      logger.warn('[UnifiedAudit] LLM stream evidence 达到单次 run 上限，后续片段已丢弃', {
         runId: context.runId,
         limit: MAX_DEBUG_EVENTS_PER_RUN,
       });
@@ -303,11 +306,24 @@ function emitLlmDebugEvidenceEvent(
   });
   if (!envelope) return;
 
+  const envelopeBytes = Buffer.byteLength(JSON.stringify(envelope), 'utf8');
+  if (state.emittedBytes + envelopeBytes > MAX_DEBUG_EVIDENCE_BYTES_PER_RUN) {
+    if (state.emittedBytes < MAX_DEBUG_EVIDENCE_BYTES_PER_RUN) {
+      logger.warn('[UnifiedAudit] LLM stream evidence 达到单次 run 字节上限，后续片段已丢弃', {
+        runId: context.runId,
+        limitBytes: MAX_DEBUG_EVIDENCE_BYTES_PER_RUN,
+      });
+      state.emittedBytes = MAX_DEBUG_EVIDENCE_BYTES_PER_RUN;
+    }
+    return;
+  }
+  state.emittedBytes += envelopeBytes;
+
   const auditPort = state.auditPort;
   state.pending = state.pending
     .then(async () => await auditPort.emit(envelope))
     .catch(error => {
-      logger.error('[UnifiedAudit] LLM debug evidence 写入失败', {
+      logger.error('[UnifiedAudit] LLM evidence 写入失败', {
         action,
         conversationId: context.conversationId,
         runId: context.runId,
@@ -364,7 +380,7 @@ function createLlmDebugEvidenceEnvelope(params: {
       },
     });
   } catch (error) {
-    logger.error('[UnifiedAudit] LLM debug evidence 未通过合同校验', {
+    logger.error('[UnifiedAudit] LLM evidence 未通过合同校验', {
       action: params.action,
       conversationId: params.context.conversationId,
       runId: params.context.runId,
@@ -379,7 +395,7 @@ function projectDebugEvidenceValue(value: unknown, stage: string): unknown | und
     const projected = projectDurableLlmAuditValue(value);
     const serialized = JSON.stringify(projected);
     if (serialized && Buffer.byteLength(serialized, 'utf8') > MAX_DEBUG_EVIDENCE_BYTES) {
-      logger.warn('[UnifiedAudit] LLM debug evidence 超过大小上限，已丢弃', {
+      logger.warn('[UnifiedAudit] LLM evidence 单片段超过大小上限，已丢弃', {
         stage,
         maxBytes: MAX_DEBUG_EVIDENCE_BYTES,
       });
@@ -387,7 +403,7 @@ function projectDebugEvidenceValue(value: unknown, stage: string): unknown | und
     }
     return projected;
   } catch (error) {
-    logger.error('[UnifiedAudit] 拒绝不满足 durable 合同的 LLM debug evidence', {
+    logger.error('[UnifiedAudit] 拒绝不满足 durable 合同的 LLM evidence', {
       stage,
       error: error instanceof Error ? error.message : String(error),
     });

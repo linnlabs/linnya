@@ -117,7 +117,7 @@ src/app-hosts/linnya/agent-registry/agents/deep_research/
      - 将 `<system-reminder>...</system-reminder>` **追加到最后一条 message.content 的末尾**
    - 关键约束：
      - 不生成 `RuntimeEvent`，不写入 `history`，不入库
-     - 仅在开发模式 `LINNYA_AUDIT_LEVEL=debug` 时允许进入统一 Audit Domain 的 LLM debug evidence（真实输入）
+     - 仅在开发模式显式开启 `LINNYA_AUDIT_LEVEL=stream` 时允许进入统一 Audit Domain 的流式 evidence（真实输入）
      - 这里说的是普通 tick Reminder；自动压缩使用完整原 Prompt 后新增的瞬态末尾 `role=user` Reminder，二者不能共用物理位置
 
 > System Reminder 的位置、role、生命周期和扩展规范见

@@ -90,6 +90,11 @@ export class SqliteUiProjectionApplier {
     event: RuntimeEvent,
     totalEventsBeforeAppend: number
   ): void {
+    // AuditEnvelope 是隐藏事实，不应改变 UI projection revision；否则高等级审计
+    // 会让前端误以为 conversation history 发生了可见更新。
+    if (event.type === 'audit_envelope') {
+      return;
+    }
     const ops = projectEventToUiRowOps(event, this.access);
     this.applyOps(conversationId, runId, ops);
     if (event.type === 'tool_output') {
