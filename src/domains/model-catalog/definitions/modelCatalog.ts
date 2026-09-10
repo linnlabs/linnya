@@ -93,6 +93,8 @@ export interface ModelConfig {
   credential_reference?: CredentialReference;
   /** 用户模型绑定的内部推理 endpoint。 */
   inference_endpoint_id?: string;
+  /** 用户自定义模型归属的自定义 provider 名称/分组 */
+  custom_provider_name?: string;
   /** 模型能力列表 */
   capabilities: string[];
   /** UI 可见性设置 */

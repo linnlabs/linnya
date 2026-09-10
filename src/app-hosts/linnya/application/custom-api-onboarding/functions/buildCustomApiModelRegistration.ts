@@ -51,13 +51,14 @@ export function buildCustomApiModelRegistration(
   return {
     model: {
       id: input.modelId,
-      model_name: input.command.endpoint_model_id,
+      model_name: input.command.endpoint_model_id!,
       catalog_source: 'user',
       capabilities: input.command.supports_image_input ? ['chat', 'image_input'] : ['chat'],
       ui_visibility: [],
-      display_name: input.command.display_name ?? input.command.endpoint_model_id,
+      display_name: input.command.display_name ?? input.command.endpoint_model_id!,
       description: '用户通过自定义 API 添加的模型',
       billing_mode: 'byok',
+      custom_provider_name: input.command.provider_name,
       inference_route: route,
     },
     inferenceEndpoint: input.reusableEndpoint

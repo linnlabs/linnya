@@ -43,28 +43,59 @@ export function createCustomApiOnboardingUseCase(
         );
       }
 
-      const modelId = dependencies.idFactory.create();
-      const endpointResourceId = reusableEndpoint?.id ?? dependencies.idFactory.create();
-      const plan = buildCustomApiModelRegistration({
-        modelId,
-        endpointResourceId,
-        command,
-        binding,
-        reusableEndpoint,
-      });
+      const modelItems = command.models && command.models.length > 0
+        ? command.models
+        : [
+            {
+              endpoint_model_id: command.endpoint_model_id!,
+              display_name: command.display_name,
+              context_window_tokens: command.context_window_tokens!,
+              max_output_tokens: command.max_output_tokens!,
+              supports_image_input: command.supports_image_input!,
+            },
+          ];
 
-      try {
-        await dependencies.modelCatalog.registerUserModel(plan.model, plan.inferenceEndpoint);
-      } catch (error: unknown) {
-        if (error instanceof CustomApiOnboardingError) throw error;
-        throw new CustomApiOnboardingError(
-          'custom_api_onboarding.registration_failed',
-          '自定义 API 模型注册失败',
-          500
-        );
+      const modelIds: string[] = [];
+
+      for (let i = 0; i < modelItems.length; i++) {
+        const item = modelItems[i];
+        const modelId = dependencies.idFactory.create();
+        modelIds.push(modelId);
+        const endpointResourceId = reusableEndpoint?.id ?? (i === 0 ? dependencies.idFactory.create() : modelIds[0]);
+        
+        const singleCommand = {
+          ...command,
+          endpoint_model_id: item.endpoint_model_id,
+          display_name: item.display_name,
+          context_window_tokens: item.context_window_tokens,
+          max_output_tokens: item.max_output_tokens,
+          supports_image_input: item.supports_image_input,
+        };
+
+        const plan = buildCustomApiModelRegistration({
+          modelId,
+          endpointResourceId,
+          command: singleCommand,
+          binding,
+          reusableEndpoint,
+        });
+
+        try {
+          await dependencies.modelCatalog.registerUserModel(plan.model, plan.inferenceEndpoint);
+        } catch (error: unknown) {
+          if (error instanceof CustomApiOnboardingError) throw error;
+          throw new CustomApiOnboardingError(
+            'custom_api_onboarding.registration_failed',
+            '自定义 API 模型注册失败',
+            500
+          );
+        }
       }
 
-      return { model_id: modelId };
+      return {
+        model_id: modelIds[0],
+        ...(modelIds.length > 1 ? { model_ids: modelIds } : {}),
+      };
     },
   });
 }

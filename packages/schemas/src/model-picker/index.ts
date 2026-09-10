@@ -72,12 +72,28 @@ export const ModelPickerDirectGroupSchema = z
   })
   .strict();
 
+export const ModelPickerCustomProviderGroupSchema = z
+  .object({
+    provider_id: NonEmptyStringSchema,
+    provider_name: NonEmptyStringSchema,
+    api_format: z.string().optional(),
+    base_url: z.string().optional(),
+    endpoint_id: z.string().optional(),
+    models: z.array(ModelPickerMaterializedModelSchema),
+  })
+  .strict();
+
+export type ModelPickerCustomProviderGroup = z.infer<
+  typeof ModelPickerCustomProviderGroupSchema
+>;
+
 /** Settings 和对话入口共同消费的 Host 投影；前端不自行猜 Provider 归属。 */
 export const ModelPickerSnapshotSchema = z
   .object({
     cloud: ModelPickerDirectGroupSchema.optional(),
     providers: z.array(ModelPickerConfiguredProviderSchema),
     custom_models: z.array(ModelPickerMaterializedModelSchema),
+    custom_providers: z.array(ModelPickerCustomProviderGroupSchema).optional(),
   })
   .strict();
 

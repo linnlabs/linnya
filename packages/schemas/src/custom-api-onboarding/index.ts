@@ -66,17 +66,42 @@ export const CUSTOM_API_ONBOARDING_ERROR_CODES = [
   'custom_api_onboarding.registration_failed',
 ] as const;
 
-/** 自定义 API 只提交用户能理解并显式填写的事实，不承载内部 route 或 Provider 字段。 */
-export const CustomApiModelRegistrationCommandSchema = z
+export const CustomApiModelItemSchema = z
   .object({
-    api_format: CustomApiFormatSchema,
-    base_url: NonEmptyStringSchema,
-    api_key: NonEmptyStringSchema.optional(),
     endpoint_model_id: NonEmptyStringSchema,
     display_name: NonEmptyStringSchema.optional(),
     context_window_tokens: PositiveSafeIntegerSchema,
     max_output_tokens: PositiveSafeIntegerSchema,
     supports_image_input: z.boolean(),
+    picker_enabled: z.boolean().optional(),
+  })
+  .strict();
+
+export type CustomApiModelItem = z.infer<typeof CustomApiModelItemSchema>;
+
+/** 从 base_url 中提取默认的 provider 标识，例如 http://xiaoxiao.work.gd/v1 -> xiaoxiao.work.gd */
+export function extractDefaultProviderNameFromBaseUrl(baseUrl: string): string {
+  try {
+    const url = new URL(baseUrl.trim());
+    return url.hostname || 'custom';
+  } catch {
+    return 'custom';
+  }
+}
+
+/** 自定义 API 只提交用户能理解并显式填写的事实，不承载内部 route 或 Provider 字段。 */
+export const CustomApiModelRegistrationCommandSchema = z
+  .object({
+    provider_name: NonEmptyStringSchema.optional(),
+    api_format: CustomApiFormatSchema,
+    base_url: NonEmptyStringSchema,
+    api_key: NonEmptyStringSchema.optional(),
+    endpoint_model_id: NonEmptyStringSchema.optional(),
+    display_name: NonEmptyStringSchema.optional(),
+    context_window_tokens: PositiveSafeIntegerSchema.optional(),
+    max_output_tokens: PositiveSafeIntegerSchema.optional(),
+    supports_image_input: z.boolean().optional(),
+    models: z.array(CustomApiModelItemSchema).optional(),
   })
   .strict()
   .transform((command, context) => {
@@ -89,11 +114,36 @@ export const CustomApiModelRegistrationCommandSchema = z
       });
       return z.NEVER;
     }
-    return { ...command, base_url: baseUrl };
+    const hasBatch = command.models && command.models.length > 0;
+    const hasSingle =
+      Boolean(command.endpoint_model_id) &&
+      command.context_window_tokens !== undefined &&
+      command.max_output_tokens !== undefined &&
+      command.supports_image_input !== undefined;
+
+    if (!hasBatch && !hasSingle) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['models'],
+        message: '必须提供单一模型配置或非空模型列表',
+      });
+      return z.NEVER;
+    }
+
+    const providerName = command.provider_name ?? extractDefaultProviderNameFromBaseUrl(baseUrl);
+
+    return {
+      ...command,
+      base_url: baseUrl,
+      provider_name: providerName,
+    };
   });
 
 export const CustomApiModelRegistrationResponseSchema = z
-  .object({ model_id: NonEmptyStringSchema })
+  .object({
+    model_id: NonEmptyStringSchema.optional(),
+    model_ids: z.array(NonEmptyStringSchema).optional(),
+  })
   .strict();
 
 export const CustomApiOnboardingErrorResponseSchema = z
