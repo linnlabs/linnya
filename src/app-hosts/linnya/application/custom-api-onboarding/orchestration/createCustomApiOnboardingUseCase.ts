@@ -56,13 +56,41 @@ export function createCustomApiOnboardingUseCase(
           ];
 
       const modelIds: string[] = [];
+      let sharedEndpointResourceId: string | undefined;
 
       for (let i = 0; i < modelItems.length; i++) {
         const item = modelItems[i];
         const modelId = dependencies.idFactory.create();
         modelIds.push(modelId);
-        const endpointResourceId = reusableEndpoint?.id ?? (i === 0 ? dependencies.idFactory.create() : modelIds[0]);
-        
+
+        let endpointSelection: import('src/domains/model-catalog').InferenceEndpointSelection;
+        let endpointId: string;
+
+        if (reusableEndpoint) {
+          endpointSelection = { kind: 'existing', inference_endpoint_id: reusableEndpoint.id };
+          endpointId = reusableEndpoint.endpoint_id;
+        } else if (i === 0) {
+          sharedEndpointResourceId = dependencies.idFactory.create();
+          endpointId = `${binding.endpoint_id}:${sharedEndpointResourceId}`;
+          endpointSelection = {
+            kind: 'create',
+            endpoint: {
+              id: sharedEndpointResourceId,
+              route_profile_id: binding.route_profile_id,
+              endpoint_id: endpointId,
+              base_url: command.base_url,
+              auth_profile: binding.auth_profile,
+              credential_secret: command.api_key,
+            },
+          };
+        } else {
+          endpointId = `${binding.endpoint_id}:${sharedEndpointResourceId!}`;
+          endpointSelection = {
+            kind: 'existing',
+            inference_endpoint_id: sharedEndpointResourceId!,
+          };
+        }
+
         const singleCommand = {
           ...command,
           endpoint_model_id: item.endpoint_model_id,
@@ -74,19 +102,28 @@ export function createCustomApiOnboardingUseCase(
 
         const plan = buildCustomApiModelRegistration({
           modelId,
-          endpointResourceId,
+          endpointResourceId: sharedEndpointResourceId ?? reusableEndpoint?.id ?? 'endpoint',
           command: singleCommand,
           binding,
           reusableEndpoint,
         });
 
+        const finalModel = {
+          ...plan.model,
+          inference_route: {
+            ...plan.model.inference_route!,
+            endpoint_id: endpointId,
+          },
+        };
+
         try {
-          await dependencies.modelCatalog.registerUserModel(plan.model, plan.inferenceEndpoint);
+          await dependencies.modelCatalog.registerUserModel(finalModel, endpointSelection);
         } catch (error: unknown) {
+          console.error('[createCustomApiOnboardingUseCase] registerUserModel error', error);
           if (error instanceof CustomApiOnboardingError) throw error;
           throw new CustomApiOnboardingError(
             'custom_api_onboarding.registration_failed',
-            '自定义 API 模型注册失败',
+            error instanceof Error ? error.message : '自定义 API 模型注册失败',
             500
           );
         }

@@ -101,25 +101,11 @@
       </div>
     </div>
 
-    <!-- 未获取模型列表时，允许用户展开自定义手动单模型高级设置（若不想点击探测） -->
-    <template v-else-if="showManualConfig">
-      <SettingsRow
-        :label="settingsMessage('settings.addModel.modelName.label')"
-        :hint="settingsMessage('settings.addModel.api.modelName.description')"
-      >
-        <CustomTextInput
-          v-model="form.endpointModelId"
-          class="settings-text-control"
-          :placeholder="settingsMessage('settings.addModel.api.modelName.placeholder')"
-        />
-      </SettingsRow>
-    </template>
-
     <div class="add-model-submit">
       <button
         type="button"
         class="settings-button full-width-button"
-        :disabled="status.isSubmitting || status.success"
+        :disabled="status.isSubmitting || status.success || discoveredModels.length === 0"
         @click="submit"
       >
         {{ submitText }}
@@ -164,7 +150,6 @@ const status = reactive<RegistrationFormStatus>({
 const form = ref<ApiCustomModelForm>(createInitialForm());
 let successTimer: number | null = null;
 const userEditedProviderName = ref(false);
-const showManualConfig = ref(true);
 
 const isDiscovering = ref(false);
 const discoveredModels = ref<DiscoveredModel[]>([]);
