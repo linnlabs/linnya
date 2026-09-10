@@ -65,6 +65,7 @@ describe('custom API onboarding router', () => {
       base_url: 'http://models.intranet:8080/v1',
       api_key: 'secret-value',
       endpoint_model_id: 'company-gpt',
+      provider_name: 'models.intranet',
       context_window_tokens: 256000,
       max_output_tokens: 16384,
       supports_image_input: true,
