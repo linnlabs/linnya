@@ -37,22 +37,76 @@
           <div class="model-visibility-scroll-host">
             <div class="model-visibility-source-list">
               <SettingsList :bordered="false">
+                <!-- 标准 / 官方提供商 -->
                 <SettingsListRow
-                  v-for="source in filteredSources"
+                  v-for="source in standardSources"
                   :key="source.id"
                   :class="{ 'is-active': source.id === selectedSourceId }"
                 >
                   <template #title>
-                    <button
-                      type="button"
-                      class="model-visibility-source-tab"
-                      :aria-pressed="source.id === selectedSourceId"
-                      @click="selectedSourceId = source.id"
-                    >
-                      <span>{{ source.displayName }}</span>
-                    </button>
+                    <div class="model-visibility-source-item-row">
+                      <button
+                        type="button"
+                        class="model-visibility-source-tab"
+                        :aria-pressed="source.id === selectedSourceId"
+                        @click="selectedSourceId = source.id"
+                      >
+                        <span>{{ source.displayName }}</span>
+                      </button>
+                      <HoverTooltip :text="settingsMessage('settings.modelPicker.refreshModels')">
+                        <button
+                          type="button"
+                          class="model-visibility-refresh-btn"
+                          :disabled="isRefreshingSourceId === source.id"
+                          @click.stop="refreshSourceModels(source)"
+                        >
+                          <RefreshIcon
+                            class="icon"
+                            :class="{ 'is-spinning': isRefreshingSourceId === source.id }"
+                          />
+                        </button>
+                      </HoverTooltip>
+                    </div>
                   </template>
                 </SettingsListRow>
+
+                <!-- 自定义模型供应商 分组 -->
+                <template v-if="customSources.length > 0">
+                  <div class="model-visibility-source-group-title">
+                    {{ settingsMessage('settings.modelPicker.customProviders') }}
+                  </div>
+                  <SettingsListRow
+                    v-for="source in customSources"
+                    :key="source.id"
+                    :class="{ 'is-active': source.id === selectedSourceId }"
+                  >
+                    <template #title>
+                      <div class="model-visibility-source-item-row">
+                        <button
+                          type="button"
+                          class="model-visibility-source-tab"
+                          :aria-pressed="source.id === selectedSourceId"
+                          @click="selectedSourceId = source.id"
+                        >
+                          <span>{{ source.displayName }}</span>
+                        </button>
+                        <HoverTooltip :text="settingsMessage('settings.modelPicker.refreshModels')">
+                          <button
+                            type="button"
+                            class="model-visibility-refresh-btn"
+                            :disabled="isRefreshingSourceId === source.id"
+                            @click.stop="refreshSourceModels(source)"
+                          >
+                            <RefreshIcon
+                              class="icon"
+                              :class="{ 'is-spinning': isRefreshingSourceId === source.id }"
+                            />
+                          </button>
+                        </HoverTooltip>
+                      </div>
+                    </template>
+                  </SettingsListRow>
+                </template>
               </SettingsList>
             </div>
           </div>
@@ -153,7 +207,8 @@ import { computed, ref, watch } from 'vue';
 
 import type { ModelCatalogItem } from '../../model-catalog';
 import { ModelDetailsModal, useModelCatalogReadModel } from '../../model-catalog';
-import { ActionButtons, CustomTextInput, Switch } from '@linnya/renderer-ui';
+import { ActionButtons, CustomTextInput, HoverTooltip, Switch } from '@linnya/renderer-ui';
+import { RefreshIcon } from '@linnya/renderer-ui/icons';
 import { confirm } from '@shared/composables/confirmDialog';
 import {
   SettingsFeedback,
@@ -170,6 +225,8 @@ import {
   useModelPickerReadModel,
 } from '../index';
 import { removeConfiguredProvider } from '../../../orchestration/removeConfiguredProvider';
+import { registerApiCustomModel } from '../../custom-model-registration/orchestration/registerApiCustomModel';
+import { httpCustomApiModelRegistrationGateway } from '../../custom-model-registration/infrastructure/httpCustomApiModelRegistrationGateway';
 import {
   filterModelVisibilityModels,
   filterModelVisibilitySources,
@@ -195,17 +252,59 @@ const selectedModelDetails = ref<ModelCatalogItem | null>(null);
 const isRemovingProvider = ref(false);
 const removalError = ref<string | null>(null);
 
-const sources = computed(() =>
-  modelPicker.snapshot.value
-    ? projectModelVisibilitySources(
-        modelPicker.snapshot.value,
-        settingsMessage('settings.modelPicker.customModels')
-      )
-    : []
+const standardSources = computed(() =>
+  filteredSources.value.filter(s => s.kind !== 'custom_provider' && s.kind !== 'custom')
 );
-const filteredSources = computed(() =>
-  filterModelVisibilitySources(sources.value, sourceQuery.value)
+
+const customSources = computed(() =>
+  filteredSources.value.filter(s => s.kind === 'custom_provider' || s.kind === 'custom')
 );
+
+const isRefreshingSourceId = ref<string | null>(null);
+
+async function refreshSourceModels(source: ModelVisibilitySource): Promise<void> {
+  if (isRefreshingSourceId.value) return;
+  isRefreshingSourceId.value = source.id;
+  try {
+    if (source.kind === 'custom_provider' && source.baseUrl && source.apiFormat) {
+      const result = await httpCustomApiModelRegistrationGateway.discoverModels?.({
+        api_format: source.apiFormat as any,
+        base_url: source.baseUrl,
+      });
+      if (result && result.models.length > 0) {
+        // 同步已有模型，添加新模型
+        const existingModelMap = new Map(source.models.map(m => [m.provider_model_id, m]));
+        const newModelsToAdd = result.models.filter(m => !existingModelMap.has(m.id));
+        if (newModelsToAdd.length > 0) {
+          await registerApiCustomModel({
+            providerName: source.providerName,
+            endpointModelId: '',
+            displayName: '',
+            credentialSecret: '',
+            baseUrl: source.baseUrl,
+            customApiFormat: source.apiFormat as any,
+            contextWindowTokens: '256000',
+            maxOutputTokens: '16384',
+            supportsImageInput: false,
+            models: newModelsToAdd.map(m => ({
+              endpoint_model_id: m.id,
+              display_name: m.name,
+              context_window_tokens: m.context_window_tokens ?? 32768,
+              max_output_tokens: m.max_output_tokens ?? 4096,
+              supports_image_input: m.supports_image_input ?? false,
+              picker_enabled: true,
+            })),
+          });
+        }
+      }
+    }
+    await loadModelPicker();
+  } catch (error) {
+    console.error('[ModelVisibility] 刷新供应商模型列表失败', error);
+  } finally {
+    isRefreshingSourceId.value = null;
+  }
+}
 const selectedSource = computed(
   () => sources.value.find(source => source.id === selectedSourceId.value) ?? null
 );
@@ -264,7 +363,7 @@ function modelStateLabel(model: ModelPickerProviderModel): string {
 
 function isCustomModelEditable(model: ModelPickerProviderModel): boolean {
   return (
-    selectedSource.value?.kind === 'custom' &&
+    (selectedSource.value?.kind === 'custom' || selectedSource.value?.kind === 'custom_provider') &&
     model.materialized &&
     modelCatalog.activeOperation.value === null &&
     editableModelsById.value.has(model.model_config_id)
@@ -272,7 +371,11 @@ function isCustomModelEditable(model: ModelPickerProviderModel): boolean {
 }
 
 function openCustomModelDetails(model: ModelPickerProviderModel): void {
-  if (selectedSource.value?.kind !== 'custom' || !model.materialized) return;
+  if (
+    (selectedSource.value?.kind !== 'custom' && selectedSource.value?.kind !== 'custom_provider') ||
+    !model.materialized
+  )
+    return;
   const currentModel = editableModelsById.value.get(model.model_config_id);
   if (!currentModel) return;
   selectedModelDetails.value = { ...currentModel };

@@ -95,6 +95,63 @@
   overflow: visible;
 }
 
+.model-visibility-source-group-title {
+  padding: 10px 8px 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.model-visibility-source-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.model-visibility-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  margin-left: 4px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast) ease, background var(--transition-fast) ease;
+}
+
+.model-visibility-refresh-btn:hover {
+  opacity: 1;
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.model-visibility-refresh-btn .icon {
+  width: 13px;
+  height: 13px;
+}
+
+.model-visibility-refresh-btn .is-spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .model-visibility-source-tab {
   display: block;
   width: 100%;

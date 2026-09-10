@@ -1,36 +1,28 @@
 <template>
   <div class="add-model-provider-form" data-registration-kind="custom-provider">
     <SettingsRow
-      :label="settingsMessage('settings.addModel.modelName.label')"
-      :hint="settingsMessage('settings.addModel.api.modelName.description')"
+      :label="settingsMessage('settings.addModel.customProvider.label')"
+      :hint="settingsMessage('settings.addModel.customProvider.description')"
     >
-      <CustomSelect
-        v-if="discoveredModelOptions.length > 0"
-        v-model="form.endpointModelId"
-        :options="discoveredModelOptions"
-        :placeholder="settingsMessage('settings.addModel.api.modelName.placeholder')"
-        class="settings-text-control"
-        bordered
-        font-size="14px"
-        @update:model-value="onModelSelect"
-      />
       <CustomTextInput
-        v-else
-        v-model="form.endpointModelId"
+        v-model="form.providerName"
         class="settings-text-control"
-        :placeholder="settingsMessage('settings.addModel.api.modelName.placeholder')"
+        :placeholder="settingsMessage('settings.addModel.customProvider.placeholder')"
+        @input="userEditedProviderName = true"
       />
     </SettingsRow>
 
-    <SettingsRow
-      :label="settingsMessage('settings.addModel.displayName.label')"
-      :hint="settingsMessage('settings.addModel.displayName.description')"
-    >
+    <SettingsRow :label="settingsMessage('settings.addModel.apiUrl.label')">
       <CustomTextInput
-        v-model="form.displayName"
+        v-model="form.baseUrl"
         class="settings-text-control"
-        :placeholder="settingsMessage('settings.addModel.displayName.placeholder')"
+        :placeholder="settingsMessage('settings.addModel.apiUrl.placeholder')"
+        @input="onBaseUrlInput"
       />
+      <template #hint>
+        {{ settingsMessage('settings.addModel.apiUrl.descriptionLine1') }}<br />
+        {{ settingsMessage('settings.addModel.apiUrl.descriptionLine2') }}
+      </template>
     </SettingsRow>
 
     <SettingsRow
@@ -42,18 +34,6 @@
         class="settings-text-control"
         :placeholder="settingsMessage('settings.addModel.apiKey.placeholder')"
       />
-    </SettingsRow>
-
-    <SettingsRow :label="settingsMessage('settings.addModel.apiUrl.label')">
-      <CustomTextInput
-        v-model="form.baseUrl"
-        class="settings-text-control"
-        :placeholder="settingsMessage('settings.addModel.apiUrl.placeholder')"
-      />
-      <template #hint>
-        {{ settingsMessage('settings.addModel.apiUrl.descriptionLine1') }}<br />
-        {{ settingsMessage('settings.addModel.apiUrl.descriptionLine2') }}
-      </template>
     </SettingsRow>
 
     <SettingsRow
@@ -86,37 +66,102 @@
       />
     </SettingsRow>
 
-    <SettingsRow
-      :label="settingsMessage('settings.modelCapacity.contextWindow.label')"
-      :hint="settingsMessage('settings.modelCapacity.contextWindow.description')"
-    >
-      <CustomTextInput
-        v-model="form.contextWindowTokens"
-        class="settings-text-control"
-        inputmode="numeric"
-        pattern="[0-9]*"
-        :placeholder="settingsMessage('settings.modelCapacity.contextWindow.placeholder')"
-      />
-    </SettingsRow>
+    <!-- 发现多个模型时，直接展示列表及启用/关闭开关 -->
+    <template v-if="discoveredModels.length > 0">
+      <div class="custom-discovered-models-section">
+        <header class="custom-discovered-models-header">
+          <span class="custom-discovered-models-title">
+            {{ settingsMessage('settings.addModel.discoveredModels.title').replace('{count}', String(discoveredModels.length)) }}
+          </span>
+          <button
+            type="button"
+            class="settings-link-button"
+            @click="toggleAllEnabled"
+          >
+            {{ allEnabled ? '全部关闭' : settingsMessage('settings.addModel.discoveredModels.enableAll') }}
+          </button>
+        </header>
 
-    <SettingsRow
-      :label="settingsMessage('settings.modelCapacity.maxOutput.label')"
-      :hint="settingsMessage('settings.modelCapacity.maxOutput.description')"
-    >
-      <CustomTextInput
-        v-model="form.maxOutputTokens"
-        class="settings-text-control"
-        inputmode="numeric"
-        pattern="[0-9]*"
-        :placeholder="settingsMessage('settings.modelCapacity.maxOutput.placeholder')"
-      />
-    </SettingsRow>
+        <div class="custom-discovered-models-list">
+          <div
+            v-for="model in discoveredModels"
+            :key="model.id"
+            class="custom-discovered-model-item"
+          >
+            <div class="custom-discovered-model-info">
+              <span class="custom-discovered-model-name">{{ model.name }}</span>
+              <span class="custom-discovered-model-id">{{ model.id }}</span>
+              <span class="custom-discovered-model-meta">
+                {{ Math.round((model.context_window_tokens ?? 32768) / 1024) }}k 上下文 ·
+                {{ model.supports_image_input ? '多模态视觉' : '文本' }}
+              </span>
+            </div>
+            <Switch
+              :model-value="modelStateMap[model.id]?.enabled ?? true"
+              :aria-label="model.name"
+              @update:model-value="toggleModelEnabled(model.id, $event)"
+            />
+          </div>
+        </div>
+      </div>
+    </template>
 
-    <SettingsSwitchRow
-      v-model="form.supportsImageInput"
-      :label="settingsMessage('settings.modelCapability.imageInput')"
-      :description="settingsMessage('settings.addModel.imageInput.description')"
-    />
+    <!-- 未获取模型列表时的手动单模型录入 -->
+    <template v-else>
+      <SettingsRow
+        :label="settingsMessage('settings.addModel.modelName.label')"
+        :hint="settingsMessage('settings.addModel.api.modelName.description')"
+      >
+        <CustomTextInput
+          v-model="form.endpointModelId"
+          class="settings-text-control"
+          :placeholder="settingsMessage('settings.addModel.api.modelName.placeholder')"
+        />
+      </SettingsRow>
+
+      <SettingsRow
+        :label="settingsMessage('settings.addModel.displayName.label')"
+        :hint="settingsMessage('settings.addModel.displayName.description')"
+      >
+        <CustomTextInput
+          v-model="form.displayName"
+          class="settings-text-control"
+          :placeholder="settingsMessage('settings.addModel.displayName.placeholder')"
+        />
+      </SettingsRow>
+
+      <SettingsRow
+        :label="settingsMessage('settings.modelCapacity.contextWindow.label')"
+        :hint="settingsMessage('settings.modelCapacity.contextWindow.description')"
+      >
+        <CustomTextInput
+          v-model="form.contextWindowTokens"
+          class="settings-text-control"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          :placeholder="settingsMessage('settings.modelCapacity.contextWindow.placeholder')"
+        />
+      </SettingsRow>
+
+      <SettingsRow
+        :label="settingsMessage('settings.modelCapacity.maxOutput.label')"
+        :hint="settingsMessage('settings.modelCapacity.maxOutput.description')"
+      >
+        <CustomTextInput
+          v-model="form.maxOutputTokens"
+          class="settings-text-control"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          :placeholder="settingsMessage('settings.modelCapacity.maxOutput.placeholder')"
+        />
+      </SettingsRow>
+
+      <SettingsSwitchRow
+        v-model="form.supportsImageInput"
+        :label="settingsMessage('settings.modelCapability.imageInput')"
+        :description="settingsMessage('settings.addModel.imageInput.description')"
+      />
+    </template>
 
     <div class="add-model-submit">
       <button
@@ -135,7 +180,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
 import type { CustomSelectOption } from '@linnya/renderer-ui';
-import { CustomSelect, CustomTextInput, SecretInput } from '@linnya/renderer-ui';
+import { CustomSelect, CustomTextInput, SecretInput, Switch } from '@linnya/renderer-ui';
 import {
   SettingsFeedback,
   SettingsRow,
@@ -152,6 +197,7 @@ import type { CustomModelRegistrationIssue } from '../definitions/customModelReg
 import { registerApiCustomModel } from '../orchestration/registerApiCustomModel';
 import { httpCustomApiModelRegistrationGateway } from '../infrastructure/httpCustomApiModelRegistrationGateway';
 import type { DiscoveredModel } from '@app/schemas';
+import { extractDefaultProviderNameFromBaseUrl } from '@app/schemas';
 import { RefreshIcon } from '@linnya/renderer-ui/icons';
 
 const props = defineProps<{ readonly refreshModelCatalog: () => Promise<void> }>();
@@ -163,86 +209,12 @@ const status = reactive<RegistrationFormStatus>({
 });
 const form = ref<ApiCustomModelForm>(createInitialForm());
 let successTimer: number | null = null;
+const userEditedProviderName = ref(false);
 
 const isDiscovering = ref(false);
 const discoveredModels = ref<DiscoveredModel[]>([]);
+const modelStateMap = ref<Record<string, { enabled: boolean }>>({});
 const discoveryFeedback = ref<{ kind: 'info' | 'error' | 'success'; message: string } | null>(null);
-
-const discoveredModelOptions = computed<CustomSelectOption[]>(() =>
-  discoveredModels.value.map(model => ({
-    value: model.id,
-    text: model.name !== model.id ? `${model.name} (${model.id})` : model.id,
-  }))
-);
-
-async function discoverModels(): Promise<void> {
-  if (!form.value.baseUrl) return;
-  isDiscovering.value = true;
-  discoveryFeedback.value = null;
-
-  try {
-    const result = await httpCustomApiModelRegistrationGateway.discoverModels?.({
-      api_format: form.value.customApiFormat,
-      base_url: form.value.baseUrl,
-      api_key: form.value.credentialSecret || undefined,
-    });
-
-    if (!result || result.models.length === 0) {
-      discoveryFeedback.value = {
-        kind: 'info',
-        message: settingsMessage('settings.addModel.discover.empty'),
-      };
-      discoveredModels.value = [];
-      return;
-    }
-
-    discoveredModels.value = [...result.models];
-    discoveryFeedback.value = {
-      kind: 'success',
-      message: settingsMessage('settings.addModel.discover.success').replace(
-        '{count}',
-        String(result.models.length)
-      ),
-    };
-
-    // 默认选中第一个
-    if (result.models[0]) {
-      applyDiscoveredModel(result.models[0]);
-    }
-  } catch (error: unknown) {
-    discoveredModels.value = [];
-    discoveryFeedback.value = {
-      kind: 'error',
-      message:
-        error instanceof Error ? error.message : settingsMessage('settings.addModel.error.unknown'),
-    };
-  } finally {
-    isDiscovering.value = false;
-  }
-}
-
-function applyDiscoveredModel(model: DiscoveredModel): void {
-  form.value.endpointModelId = model.id;
-  if (!form.value.displayName || form.value.displayName === form.value.endpointModelId) {
-    form.value.displayName = model.name;
-  }
-  if (model.context_window_tokens) {
-    form.value.contextWindowTokens = String(model.context_window_tokens);
-  }
-  if (model.max_output_tokens) {
-    form.value.maxOutputTokens = String(model.max_output_tokens);
-  }
-  if (model.supports_image_input !== undefined) {
-    form.value.supportsImageInput = model.supports_image_input;
-  }
-}
-
-function onModelSelect(modelId: string): void {
-  const target = discoveredModels.value.find(m => m.id === modelId);
-  if (target) {
-    applyDiscoveredModel(target);
-  }
-}
 
 const customApiFormatOptions = computed<CustomSelectOption[]>(() =>
   CUSTOM_API_FORMAT_OPTIONS.map(option => ({
@@ -257,8 +229,31 @@ const submitText = computed(() => {
   return settingsMessage('settings.addModel.submit.add');
 });
 
+const allEnabled = computed(() =>
+  discoveredModels.value.length > 0 &&
+  discoveredModels.value.every(m => modelStateMap.value[m.id]?.enabled ?? true)
+);
+
+function onBaseUrlInput(): void {
+  if (!userEditedProviderName.value && form.value.baseUrl.trim()) {
+    form.value.providerName = extractDefaultProviderNameFromBaseUrl(form.value.baseUrl);
+  }
+}
+
+function toggleModelEnabled(modelId: string, enabled: boolean): void {
+  modelStateMap.value[modelId] = { enabled };
+}
+
+function toggleAllEnabled(): void {
+  const next = !allEnabled.value;
+  for (const model of discoveredModels.value) {
+    modelStateMap.value[model.id] = { enabled: next };
+  }
+}
+
 function createInitialForm(): ApiCustomModelForm {
   return {
+    providerName: '',
     endpointModelId: '',
     displayName: '',
     credentialSecret: '',
@@ -289,18 +284,83 @@ function showSuccess(): void {
   }, 3000);
 }
 
+async function discoverModels(): Promise<void> {
+  if (!form.value.baseUrl) return;
+  isDiscovering.value = true;
+  discoveryFeedback.value = null;
+
+  try {
+    const result = await httpCustomApiModelRegistrationGateway.discoverModels?.({
+      api_format: form.value.customApiFormat,
+      base_url: form.value.baseUrl,
+      api_key: form.value.credentialSecret || undefined,
+    });
+
+    if (!result || result.models.length === 0) {
+      discoveryFeedback.value = {
+        kind: 'info',
+        message: settingsMessage('settings.addModel.discover.empty'),
+      };
+      discoveredModels.value = [];
+      modelStateMap.value = {};
+      return;
+    }
+
+    discoveredModels.value = [...result.models];
+    const nextMap: Record<string, { enabled: boolean }> = {};
+    for (const model of result.models) {
+      nextMap[model.id] = { enabled: true };
+    }
+    modelStateMap.value = nextMap;
+
+    discoveryFeedback.value = {
+      kind: 'success',
+      message: settingsMessage('settings.addModel.discover.success').replace(
+        '{count}',
+        String(result.models.length)
+      ),
+    };
+  } catch (error: unknown) {
+    discoveredModels.value = [];
+    modelStateMap.value = {};
+    discoveryFeedback.value = {
+      kind: 'error',
+      message:
+        error instanceof Error ? error.message : settingsMessage('settings.addModel.error.unknown'),
+    };
+  } finally {
+    isDiscovering.value = false;
+  }
+}
+
 async function submit(): Promise<void> {
   status.isSubmitting = true;
   status.success = false;
   status.error = null;
+
   try {
-    const result = await registerApiCustomModel(form.value);
+    let payload: ApiCustomModelForm = { ...form.value };
+
+    if (discoveredModels.value.length > 0) {
+      payload.models = discoveredModels.value.map(model => ({
+        endpoint_model_id: model.id,
+        display_name: model.name,
+        context_window_tokens: model.context_window_tokens ?? 32768,
+        max_output_tokens: model.max_output_tokens ?? 4096,
+        supports_image_input: model.supports_image_input ?? false,
+        picker_enabled: modelStateMap.value[model.id]?.enabled ?? true,
+      }));
+    }
+
+    const result = await registerApiCustomModel(payload);
     if (!result.ok) {
       status.error = resolveRegistrationIssue(result.issue);
       return;
     }
     form.value = createInitialForm();
+    userEditedProviderName.value = false;
     discoveredModels.value = [];
+    modelStateMap.value = {};
     discoveryFeedback.value = null;
     await props.refreshModelCatalog();
     showSuccess();

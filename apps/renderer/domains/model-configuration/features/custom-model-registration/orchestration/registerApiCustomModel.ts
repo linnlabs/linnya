@@ -22,8 +22,26 @@ export async function registerApiCustomModel(
   const baseUrl = normalizeCustomApiBaseUrl(form.customApiFormat, form.baseUrl);
   if (!baseUrl) return { ok: false, issue: 'base_url_invalid' };
 
-  const apiKey = form.credentialSecret.trim();
-  const displayName = form.displayName.trim();
+  const apiKey = form.credentialSecret?.trim() ?? '';
+  const displayName = form.displayName?.trim() ?? '';
+  const providerName = form.providerName?.trim() ?? '';
+
+  // 若存在批量模型配置
+  if (form.models && form.models.length > 0) {
+    const baseUrl = normalizeCustomApiBaseUrl(form.customApiFormat, form.baseUrl);
+    if (!baseUrl) return { ok: false, issue: 'base_url_invalid' };
+
+    const command: CustomApiModelRegistrationCommand = {
+      api_format: form.customApiFormat,
+      base_url: baseUrl,
+      ...(providerName ? { provider_name: providerName } : {}),
+      ...(apiKey ? { api_key: apiKey } : {}),
+      models: form.models,
+    };
+    await gateway.register(command);
+    return { ok: true };
+  }
+
   const command: CustomApiModelRegistrationCommand = {
     api_format: form.customApiFormat,
     base_url: baseUrl,
@@ -31,6 +49,7 @@ export async function registerApiCustomModel(
     context_window_tokens: tokenLimits.contextWindowTokens,
     max_output_tokens: tokenLimits.maxOutputTokens,
     supports_image_input: form.supportsImageInput,
+    ...(providerName ? { provider_name: providerName } : {}),
     ...(apiKey ? { api_key: apiKey } : {}),
     ...(displayName ? { display_name: displayName } : {}),
   };

@@ -113,8 +113,9 @@ describe('ModelDetailsModal token capacity editing', () => {
     );
   });
 
-  it('把推理端点的地址与协议只读展示，不提供模型级旁路', async () => {
-    app = createApp(ModelDetailsModal, { show: true, model: createModel() });
+  it('官方/提供商模型协议只读展示，不提供修改下拉框', async () => {
+    const providerModel = { ...createModel(), catalog_source: 'cloud' as const };
+    app = createApp(ModelDetailsModal, { show: true, model: providerModel });
     app.mount(host);
     await flushUi();
 

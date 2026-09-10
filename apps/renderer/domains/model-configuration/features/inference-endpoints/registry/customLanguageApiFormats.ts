@@ -7,7 +7,7 @@ import type { SettingsMessageKey } from '@/domains/settings/public';
 
 import type { ConfigurableLanguageRouteProfileId } from '../definitions/configurableLanguageRouteProfile';
 
-const CONFIGURABLE_LANGUAGE_ROUTE_PROFILE_IDS = [
+export const CONFIGURABLE_LANGUAGE_ROUTE_PROFILE_IDS = [
   'openai_chat',
   'openai_compatible_chat',
   'openai_responses',
@@ -18,6 +18,18 @@ const CONFIGURABLE_LANGUAGE_ROUTE_PROFILE_IDS = [
   'moonshot_chat',
   'alibaba_chat',
 ] as const satisfies readonly ConfigurableLanguageRouteProfileId[];
+
+export interface ConfigurableLanguageRouteProfileOption {
+  readonly id: ConfigurableLanguageRouteProfileId;
+  readonly labelKey: SettingsMessageKey;
+}
+
+export const CONFIGURABLE_LANGUAGE_ROUTE_PROFILES: readonly ConfigurableLanguageRouteProfileOption[] = [
+  { id: 'openai_compatible_chat', labelKey: 'settings.addModel.compatibility.openaiCompatible' },
+  { id: 'openai_responses', labelKey: 'settings.addModel.compatibility.openaiResponses' },
+  { id: 'anthropic_messages', labelKey: 'settings.addModel.compatibility.anthropicCompatible' },
+  { id: 'google_generative_ai', labelKey: 'settings.protocol.googleGenerativeAi' },
+];
 
 export function isConfigurableLanguageRouteProfileId(
   profileId: LanguageInferenceRouteProfileId
