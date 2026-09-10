@@ -4,7 +4,18 @@
       :label="settingsMessage('settings.addModel.modelName.label')"
       :hint="settingsMessage('settings.addModel.api.modelName.description')"
     >
+      <CustomSelect
+        v-if="discoveredModelOptions.length > 0"
+        v-model="form.endpointModelId"
+        :options="discoveredModelOptions"
+        :placeholder="settingsMessage('settings.addModel.api.modelName.placeholder')"
+        class="settings-text-control"
+        bordered
+        font-size="14px"
+        @update:model-value="onModelSelect"
+      />
       <CustomTextInput
+        v-else
         v-model="form.endpointModelId"
         class="settings-text-control"
         :placeholder="settingsMessage('settings.addModel.api.modelName.placeholder')"
@@ -49,11 +60,29 @@
       :label="settingsMessage('settings.addModel.compatibility.label')"
       :hint="settingsMessage('settings.addModel.compatibility.description')"
     >
-      <CustomSelect
-        v-model="form.customApiFormat"
-        :options="customApiFormatOptions"
-        :title="settingsMessage('settings.addModel.compatibility.selectTitle')"
-        font-size="14px"
+      <div class="settings-field-with-action add-model-select-with-action">
+        <CustomSelect
+          v-model="form.customApiFormat"
+          :options="customApiFormatOptions"
+          :title="settingsMessage('settings.addModel.compatibility.selectTitle')"
+          class="add-model-select-control flex-grow"
+          font-size="14px"
+        />
+        <button
+          type="button"
+          class="settings-button settings-button-secondary add-model-discover-button"
+          :disabled="isDiscovering || !form.baseUrl"
+          :title="settingsMessage('settings.addModel.discover.button')"
+          @click="discoverModels"
+        >
+          <RefreshIcon class="add-model-refresh-icon" :class="{ 'is-spinning': isDiscovering }" />
+          <span>{{ isDiscovering ? settingsMessage('settings.addModel.discover.fetching') : settingsMessage('settings.addModel.discover.button') }}</span>
+        </button>
+      </div>
+      <SettingsFeedback
+        v-if="discoveryFeedback"
+        :kind="discoveryFeedback.kind"
+        :message="discoveryFeedback.message"
       />
     </SettingsRow>
 
@@ -121,6 +150,9 @@ import { CUSTOM_API_FORMAT_OPTIONS } from '../definitions/customApiFormatOption'
 import { CustomApiModelRegistrationError } from '../definitions/customApiModelRegistrationError';
 import type { CustomModelRegistrationIssue } from '../definitions/customModelRegistrationResult';
 import { registerApiCustomModel } from '../orchestration/registerApiCustomModel';
+import { httpCustomApiModelRegistrationGateway } from '../infrastructure/httpCustomApiModelRegistrationGateway';
+import type { DiscoveredModel } from '@app/schemas';
+import { RefreshIcon } from '@linnya/renderer-ui/icons';
 
 const props = defineProps<{ readonly refreshModelCatalog: () => Promise<void> }>();
 const { settingsMessage } = useSettingsLocalization();
@@ -131,6 +163,86 @@ const status = reactive<RegistrationFormStatus>({
 });
 const form = ref<ApiCustomModelForm>(createInitialForm());
 let successTimer: number | null = null;
+
+const isDiscovering = ref(false);
+const discoveredModels = ref<DiscoveredModel[]>([]);
+const discoveryFeedback = ref<{ kind: 'info' | 'error' | 'success'; message: string } | null>(null);
+
+const discoveredModelOptions = computed<CustomSelectOption[]>(() =>
+  discoveredModels.value.map(model => ({
+    value: model.id,
+    text: model.name !== model.id ? `${model.name} (${model.id})` : model.id,
+  }))
+);
+
+async function discoverModels(): Promise<void> {
+  if (!form.value.baseUrl) return;
+  isDiscovering.value = true;
+  discoveryFeedback.value = null;
+
+  try {
+    const result = await httpCustomApiModelRegistrationGateway.discoverModels?.({
+      api_format: form.value.customApiFormat,
+      base_url: form.value.baseUrl,
+      api_key: form.value.credentialSecret || undefined,
+    });
+
+    if (!result || result.models.length === 0) {
+      discoveryFeedback.value = {
+        kind: 'info',
+        message: settingsMessage('settings.addModel.discover.empty'),
+      };
+      discoveredModels.value = [];
+      return;
+    }
+
+    discoveredModels.value = [...result.models];
+    discoveryFeedback.value = {
+      kind: 'success',
+      message: settingsMessage('settings.addModel.discover.success').replace(
+        '{count}',
+        String(result.models.length)
+      ),
+    };
+
+    // 默认选中第一个
+    if (result.models[0]) {
+      applyDiscoveredModel(result.models[0]);
+    }
+  } catch (error: unknown) {
+    discoveredModels.value = [];
+    discoveryFeedback.value = {
+      kind: 'error',
+      message:
+        error instanceof Error ? error.message : settingsMessage('settings.addModel.error.unknown'),
+    };
+  } finally {
+    isDiscovering.value = false;
+  }
+}
+
+function applyDiscoveredModel(model: DiscoveredModel): void {
+  form.value.endpointModelId = model.id;
+  if (!form.value.displayName || form.value.displayName === form.value.endpointModelId) {
+    form.value.displayName = model.name;
+  }
+  if (model.context_window_tokens) {
+    form.value.contextWindowTokens = String(model.context_window_tokens);
+  }
+  if (model.max_output_tokens) {
+    form.value.maxOutputTokens = String(model.max_output_tokens);
+  }
+  if (model.supports_image_input !== undefined) {
+    form.value.supportsImageInput = model.supports_image_input;
+  }
+}
+
+function onModelSelect(modelId: string): void {
+  const target = discoveredModels.value.find(m => m.id === modelId);
+  if (target) {
+    applyDiscoveredModel(target);
+  }
+}
 
 const customApiFormatOptions = computed<CustomSelectOption[]>(() =>
   CUSTOM_API_FORMAT_OPTIONS.map(option => ({
@@ -188,6 +300,8 @@ async function submit(): Promise<void> {
       return;
     }
     form.value = createInitialForm();
+    discoveredModels.value = [];
+    discoveryFeedback.value = null;
     await props.refreshModelCatalog();
     showSuccess();
   } catch (error: unknown) {

@@ -97,4 +97,46 @@ describe('custom API onboarding router', () => {
     expect(serialized).not.toContain('secret-value');
     expect(registerModel).not.toHaveBeenCalled();
   });
+
+  it('支持 /discover 端点自动探测模型列表并推断模型能力', async () => {
+    const mockFetch: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          data: [{ id: 'gpt-4o' }],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+
+    const app = express();
+    app.use(express.json());
+    const { ModelDiscoveryService } = await import('src/domains/model-catalog');
+    const discoveryService = new ModelDiscoveryService({ fetchFn: mockFetch });
+    app.use(
+      '/api/v1/custom-api-onboarding',
+      createCustomApiOnboardingRouter({ registerModel: vi.fn() }, discoveryService)
+    );
+    const server = createServer(app);
+    servers.push(server);
+    const baseUrl = await listen(server);
+
+    const response = await fetch(`${baseUrl}/api/v1/custom-api-onboarding/discover`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        api_format: 'openai_compatible',
+        base_url: 'https://api.openai.com/v1',
+        api_key: 'sk-test',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as any;
+    expect(body.models).toHaveLength(1);
+    expect(body.models[0]).toMatchObject({
+      id: 'gpt-4o',
+      context_window_tokens: 128000,
+      supports_image_input: true,
+      confidence: 'inferred',
+    });
+  });
 });

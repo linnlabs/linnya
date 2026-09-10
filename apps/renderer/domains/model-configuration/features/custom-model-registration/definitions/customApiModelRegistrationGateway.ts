@@ -1,8 +1,11 @@
 import type {
   CustomApiModelRegistrationCommand,
   CustomApiModelRegistrationResponse,
-} from '@app/schemas/custom-api-onboarding';
+  ModelDiscoveryRequest,
+  ModelDiscoveryResponse,
+} from '@app/schemas';
 
 export interface CustomApiModelRegistrationGateway {
   register(command: CustomApiModelRegistrationCommand): Promise<CustomApiModelRegistrationResponse>;
+  discoverModels?(request: ModelDiscoveryRequest): Promise<ModelDiscoveryResponse>;
 }

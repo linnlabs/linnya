@@ -129,6 +129,19 @@
   color: var(--color-text-tertiary);
 }
 
+.add-model-discover-button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  height: 32px;
+  padding: 0 var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .add-model-refresh-icon {
   width: 16px;
   height: 16px;
