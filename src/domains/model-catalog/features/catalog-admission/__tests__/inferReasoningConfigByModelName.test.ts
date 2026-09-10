@@ -10,6 +10,16 @@ import { describe, expect, it } from 'vitest';
 import { inferReasoningConfigByModelName } from '../functions/inferReasoningConfigByModelName';
 
 describe('inferReasoningConfigByModelName', () => {
+  describe('GPT-6 Astra', () => {
+    it('暴露 Responses API 支持的 reasoning 档位，不暴露不受支持的 off', () => {
+      for (const name of ['gpt-6', 'gpt6', 'gpt-6-astra', 'openai/gpt-6-astra']) {
+        const cfg = inferReasoningConfigByModelName(name);
+        expect(cfg?.supported_efforts).toEqual(['low', 'medium', 'high', 'xhigh']);
+        expect(cfg?.default_effort).toBe('medium');
+      }
+    });
+  });
+
   describe('GPT-5 系列', () => {
     it('gpt-5 全系列统一 off/low/medium/high/xhigh（UI 一致，不区分版本）', () => {
       for (const name of [

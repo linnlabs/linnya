@@ -26,6 +26,10 @@
 - 适配 AI SDK 7.0.83 的
   `StreamProviderError`，只按 type、code、status 等安全字段投影流中 Provider 故障，不传播 message 或原始 data，并保持既有 canonical
   failure code 稳定。
+- 补齐
+  `gpt-6-astra` 的 reasoning 能力准入、ChatGPT Codex reasoning 请求 conformance，
+  并把 `response.failed` 的安全 `type/code/reason` 暴露给诊断日志，便于定位 Provider
+  400 而不记录请求或响应正文。
 - 补齐 MIT 许可证、Node 22
   engines、独立 manifest 和真实制品门禁；package 保持宿主 monorepo 内部、不可发布，Linnkit
   Quickstart 继续保持自包含。

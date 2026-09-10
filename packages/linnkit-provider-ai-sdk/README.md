@@ -142,7 +142,7 @@ Host 可以注入两类扩展，但不得借此污染通用 adapter：
 
 - `provider_failure_classifier`：把 Host 管理服务的安全结构化错误映射到产品 failure
   code；
-- `diagnostic_sink`：消费 adapter 已白名单化的 attempt 请求形状、负载规模（含图片所在消息角色）、流终态、阶段、shape、code 和 retryable 信息，并决定日志级别与文案。请求 fingerprint 只由安全的请求形状摘要计算，不包含 prompt、工具正文或图片字节。
+- `diagnostic_sink`：消费 adapter 已白名单化的 attempt 请求形状、负载规模（含图片所在消息角色）、流终态、阶段、shape、Provider 的安全 `type/code/reason` 和 retryable 信息，并决定日志级别与文案。请求 fingerprint 只由安全的请求形状摘要计算，不包含 prompt、工具正文或图片字节。
 
 扩展点不能读取或返回 prompt、response body、API key、headers、base
 URL、路径、图片 bytes 或原始错误正文。

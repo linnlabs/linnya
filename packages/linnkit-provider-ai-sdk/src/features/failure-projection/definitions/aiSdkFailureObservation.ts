@@ -14,11 +14,20 @@ export type AiSdkFailureErrorShape =
   | 'plain_error'
   | 'unknown_thrown_value';
 
+/** Provider 只读的判别字段；不得包含 message、request body 或 response body。 */
+export interface AiSdkProviderSignal {
+  readonly status_code?: number;
+  readonly type?: string;
+  readonly code?: string;
+  readonly reason?: string;
+}
+
 export interface AiSdkFailureObservation {
   readonly failure: AiSdkFailureProjection;
-  /** 仅包含白名单枚举，禁止携带 Error message、Provider body 或 URL。 */
+  /** 仅包含白名单字段，禁止携带 Error message、Provider body 或 URL。 */
   readonly diagnostic: {
     readonly phase: AiSdkFailurePhase;
     readonly error_shape: AiSdkFailureErrorShape;
+    readonly provider_signal?: AiSdkProviderSignal;
   };
 }

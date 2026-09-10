@@ -234,4 +234,76 @@ describe('ChatGPT Codex Responses Provider codec conformance', () => {
     });
     expect(secondEvents).toContainEqual({ type: 'answer_delta', text: '读取完成' });
   });
+
+  it('为 gpt-6-astra 发送显式 reasoning effort，而不是依赖模型默认值', async () => {
+    let body: unknown;
+    const fixtureFetch: typeof fetch = async (_input, init) => {
+      body = JSON.parse(String(init?.body));
+      return responseEventStream([
+        {
+          type: 'response.output_item.added',
+          output_index: 0,
+          item: { type: 'message', id: 'message-gpt6', phase: 'final_answer' },
+        },
+        {
+          type: 'response.output_text.delta',
+          item_id: 'message-gpt6',
+          output_index: 0,
+          delta: 'ok',
+        },
+        {
+          type: 'response.output_item.done',
+          output_index: 0,
+          item: { type: 'message', id: 'message-gpt6', phase: 'final_answer', content: [] },
+        },
+        {
+          type: 'response.completed',
+          response: {
+            incomplete_details: null,
+            usage: {
+              input_tokens: 1,
+              input_tokens_details: { cached_tokens: 0 },
+              output_tokens: 1,
+              output_tokens_details: { reasoning_tokens: 0 },
+            },
+            reasoning: null,
+            service_tier: null,
+          },
+        },
+      ]);
+    };
+    const route = {
+      model_id: 'chatgpt:gpt-6-astra',
+      request_profile: 'chatgpt_codex_responses',
+      capability_id: 'ai-sdk:openai-responses',
+      endpoint_id: 'chatgpt-subscription',
+      endpoint_model_id: 'gpt-6-astra',
+      surface: 'openai_responses',
+      base_url: CHATGPT_CODEX_BASE_URL,
+    } satisfies AiSdkInferenceRoute;
+    const capability = createAiSdkInferenceCapability(route.capability_id, route.surface, {
+      language_models: createAiSdkLanguageModelRegistry(fixtureFetch),
+    });
+
+    const events = await collect(capability.stream({
+      route,
+      credential: { profile: 'bearer', secret: 'oauth-access-token' },
+      request: {
+        model_id: route.model_id,
+        messages: [{ role: 'user', content: [{ type: 'text', text: 'hello' }] }],
+        tools: [],
+        tool_choice: 'none',
+        sampling: { reasoning_effort: 'medium' },
+        invocation: { trace_id: 'trace-gpt6', attempt_id: 'attempt-gpt6' },
+      },
+    }));
+
+    expect(events).toContainEqual({ type: 'answer_delta', text: 'ok' });
+    expect(body).toMatchObject({
+      model: 'gpt-6-astra',
+      reasoning: { effort: 'medium', summary: 'auto' },
+      include: ['reasoning.encrypted_content'],
+    });
+    expect(body).not.toHaveProperty('max_output_tokens');
+  });
 });

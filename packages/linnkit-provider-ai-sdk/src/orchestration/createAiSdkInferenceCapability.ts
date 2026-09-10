@@ -76,6 +76,9 @@ function failureEvent(
       ...diagnosticContext,
       phase: observation.diagnostic.phase,
       error_shape: observation.diagnostic.error_shape,
+      ...(observation.diagnostic.provider_signal === undefined
+        ? {}
+        : { provider_signal: observation.diagnostic.provider_signal }),
       failure_kind: observation.failure.kind,
       failure_code: observation.failure.code,
       retryable: observation.failure.retryable,
