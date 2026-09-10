@@ -29,6 +29,7 @@ import {
   resolveShapeTextLayout,
 } from './visual/presentationVisualDefaults';
 import { resolveImageAsset, toPptxImageSource } from './assets/imageAssetResolver';
+import { resolvePptxImageFitOptions } from './assets/imageSizing';
 import { PptxPackageSanitizer } from './pptx/PptxPackageSanitizer';
 import {
   addPptxCustomGeometryShape,
@@ -374,16 +375,13 @@ export class FreeformCompiler {
     if (!el.src) return;
     const asset = resolveImageAsset(el.src);
     const position = this.applyTransform(el.position, transform);
+    const fitOptions = resolvePptxImageFitOptions(position, asset, el.fitMode);
     const imgOpts: PptxGenJS.ImageProps = {
-      ...mapPosition(position),
+      ...fitOptions,
       ...toPptxImageSource(asset),
     };
     if (el.alt) imgOpts.altText = el.alt;
-    imgOpts.sizing = {
-      type: el.fitMode === 'crop' ? 'cover' : (el.fitMode ?? 'contain'),
-      w: position.w,
-      h: position.h,
-    };
+    if (fitOptions.sizing) imgOpts.sizing = fitOptions.sizing;
     if (el.rounding != null || el.maskShape === 'circle') imgOpts.rounding = el.maskShape === 'circle' ? true : el.rounding;
     if (el.transparency != null) imgOpts.transparency = clamp(Math.round(el.transparency * 100), 0, 100);
     if (el.shadow) imgOpts.shadow = mapImageShadowToProps(el.shadow);

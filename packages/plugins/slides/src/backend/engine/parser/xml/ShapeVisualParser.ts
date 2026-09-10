@@ -367,6 +367,7 @@ function readPointElement(point: XmlElement): { x: number; y: number } | undefin
 
 /**
  * 从 `p:blipFill` 推断图片 fitMode。
+ * - 含有效 `a:srcRect` → 'cover'（图片在 frame 内保比例裁剪）
  * - 含 `a:stretch`（OOXML 默认且最常见）→ 'stretch'（imported PPT 中的"撑满 frame"行为）
  * - 含 `a:tile` → 'fill'（铺贴退化）
  * - 兜底 'stretch'，与 OOXML 规范默认一致
@@ -376,5 +377,14 @@ export function extractImageFitMode(
 ): 'fill' | 'contain' | 'cover' | 'stretch' {
   if (!blipFill) return 'stretch';
   if (getElementByTag(blipFill, 'a:tile')) return 'fill';
+  const sourceRect = getElementByTag(blipFill, 'a:srcRect');
+  if (sourceRect && hasCrop(sourceRect)) return 'cover';
   return 'stretch';
+}
+
+function hasCrop(sourceRect: XmlElement): boolean {
+  return ['l', 'r', 't', 'b'].some((attribute) => {
+    const value = Number(getAttr(sourceRect, attribute) ?? '0');
+    return Number.isFinite(value) && value !== 0;
+  });
 }

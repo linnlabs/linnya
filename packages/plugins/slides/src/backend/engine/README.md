@@ -91,6 +91,7 @@ PresentationInfo 或 RenderModel
 - 新形状轮廓先改 shared `shapeGeometry`，再同步 backend shape、parser、RenderModel、Konva、Skill 和 E2E；未知 geometry 禁止降级为 rect。
 - 新 SVG Graphic 语义先改 shared `svgGraphic`，再由 `svgGraphic/` 唯一 admission 产出 canonical bytes。
 - 新公式语义先改 shared `mathFormula`；`mathFormula/` 必须从同一 canonical IR 产生 MathML/MathJax path SVG 与原生 OMML，inline 断行继续由 shared `textLayout` 唯一负责。
+- 图片和 SVG Graphic 的 `cover` / `contain` 比例几何统一由 shared `render-geometry/imageGeometry.ts` 计算；PPTX 侧从已物化图片字节或 SVG viewBox 读取原始尺寸并转换为 `srcRect` 或居中图片框，禁止把目标框尺寸重复作为原图尺寸传给 PptxGenJS。
 - 生产 PPTX 编译只能经 `features/presentationBuildExecution` 进入 build Worker；Worker DTO 禁止携带未解析文件路径。
 - 新文本布局语义先改 shared `textLayout`，engine 只负责技术适配与测量接线。
 - 新 PPTX 读字段放 `parser/xml/`，并按需贯通 `PresentationInfo`、canonical 与 render-model。

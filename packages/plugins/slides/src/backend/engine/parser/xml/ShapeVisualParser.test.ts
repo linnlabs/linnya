@@ -1,6 +1,6 @@
 import { DOMParser } from '@xmldom/xmldom';
 import { describe, expect, it } from 'vitest';
-import { extractShapeVisual } from './ShapeVisualParser';
+import { extractImageFitMode, extractShapeVisual } from './ShapeVisualParser';
 
 describe('ShapeVisualParser custom geometry', () => {
   it('回读 move/line/quadratic/cubic/close typed path', () => {
@@ -44,5 +44,17 @@ describe('ShapeVisualParser custom geometry', () => {
       </p:spPr>
     `, 'application/xml');
     expect(extractShapeVisual(doc.documentElement).visual?.geometry).toBeUndefined();
+  });
+
+  it('回读 PPTX 的 srcRect 为 cover，而不是误判成 stretch', () => {
+    const doc = new DOMParser().parseFromString(`
+      <p:blipFill xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+        xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+        <a:blip r:embed="rId1" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/>
+        <a:srcRect l="25000" r="25000" t="0" b="0"/>
+        <a:stretch><a:fillRect/></a:stretch>
+      </p:blipFill>
+    `, 'application/xml');
+    expect(extractImageFitMode(doc.documentElement)).toBe('cover');
   });
 });

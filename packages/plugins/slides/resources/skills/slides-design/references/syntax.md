@@ -268,7 +268,7 @@ arc radius 和 flowLine length 按元素短边百分比解释。需要重复花�
 
 优先用 `createChart(preset)` 选择已注册的图表基线；完整 preset 见生成的 [`chart-presets.md`](./chart-presets.md)。正式数据结构是 `categories: (string|number|boolean)[]` 与 `series: [{ name, values, labels? }]`，每个 series 的 `values` 应与 categories 对齐。可用语义字段包括 `chartType`、`showDataLabels`、`dataLabelFormat`、`legendPosition: "top"|"bottom"|"left"|"right"|"none"`，以及跨预览/PPTX 共同生效的 `chartStyle`：
 
-```js
+```typescript
 chartStyle: {
   axisLabelColor: '#64748B',
   categoryAxisLabelColor: '#334155',
@@ -290,7 +290,7 @@ chartStyle: {
 
 Table 的正式结构是顶层 `headers + rows`。每一格既可以是字符串、数字、布尔，也可以是 TableCell 对象：`{ text, style?, fill?, colspan?, rowspan? }`，其中 `style` 接受 run 同族的排版字段。`colspan/rowspan` 必须是正整数，跨行后的下一行只写尚未被占用的单元格。需要统一设置表格边框时，在表格顶层写 `{ color, width }`：
 
-```js
+```typescript
 createTable({
   headers: ['指标', '结果'],
   rows: [['收入', '增长']],

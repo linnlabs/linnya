@@ -8,6 +8,9 @@ render-model 的跨端几何契约，供后端几何快照测试和 renderer 预
   窄合同，不计算换行或 autofit。正式文本布局由
   [`../textLayout/`](../textLayout/) 拥有，backend 通过 `LineLayoutEngine`
   生成最终逐行结果。
+- `imageGeometry.ts`：图片和 SVG Graphic 的 `cover` / `contain` / `stretch` 的
+  归一化 source 与 destination 几何。renderer 将它换算为像素裁剪，PPTX
+  adapter 将它换算为图片盒和 OOXML `srcRect`；两端不得各自重新实现比例计算。
 
 边界要求：
 

@@ -35,3 +35,11 @@ export type {
   RenderTextMeasureSourceKind,
   RenderTextMeasureStyle,
 } from './textGeometry';
+
+export type {
+  ImageFitGeometry,
+  ImageFitGeometryInput,
+  ImageFitMode,
+  NormalizedImageRect,
+} from './imageGeometry';
+export { resolveImageFitGeometry } from './imageGeometry';

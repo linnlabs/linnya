@@ -650,6 +650,10 @@ export type {
   RenderTextMeasureSourceKind,
   RenderTextMeasureStyle,
   SnappedRect,
+  ImageFitGeometry,
+  ImageFitGeometryInput,
+  ImageFitMode,
+  NormalizedImageRect,
 } from './render-geometry';
 export {
   buildCartesianRange,
@@ -667,6 +671,7 @@ export {
   snapStrokeCenter,
   valueToX,
   valueToY,
+  resolveImageFitGeometry,
 } from './render-geometry';
 export {
   assertCanonicalHexColor,
