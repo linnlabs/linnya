@@ -252,6 +252,19 @@ const selectedModelDetails = ref<ModelCatalogItem | null>(null);
 const isRemovingProvider = ref(false);
 const removalError = ref<string | null>(null);
 
+const sources = computed(() =>
+  modelPicker.snapshot.value
+    ? projectModelVisibilitySources(
+        modelPicker.snapshot.value,
+        settingsMessage('settings.modelPicker.customModels')
+      )
+    : []
+);
+
+const filteredSources = computed(() =>
+  filterModelVisibilitySources(sources.value, sourceQuery.value)
+);
+
 const standardSources = computed(() =>
   filteredSources.value.filter(s => s.kind !== 'custom_provider' && s.kind !== 'custom')
 );
