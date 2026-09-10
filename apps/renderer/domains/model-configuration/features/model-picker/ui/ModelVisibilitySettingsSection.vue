@@ -44,29 +44,14 @@
                   :class="{ 'is-active': source.id === selectedSourceId }"
                 >
                   <template #title>
-                    <div class="model-visibility-source-item-row">
-                      <button
-                        type="button"
-                        class="model-visibility-source-tab"
-                        :aria-pressed="source.id === selectedSourceId"
-                        @click="selectedSourceId = source.id"
-                      >
-                        <span>{{ source.displayName }}</span>
-                      </button>
-                      <HoverTooltip :text="settingsMessage('settings.modelPicker.refreshModels')">
-                        <button
-                          type="button"
-                          class="model-visibility-refresh-btn"
-                          :disabled="isRefreshingSourceId === source.id"
-                          @click.stop="refreshSourceModels(source)"
-                        >
-                          <RefreshIcon
-                            class="icon"
-                            :class="{ 'is-spinning': isRefreshingSourceId === source.id }"
-                          />
-                        </button>
-                      </HoverTooltip>
-                    </div>
+                    <button
+                      type="button"
+                      class="model-visibility-source-tab"
+                      :aria-pressed="source.id === selectedSourceId"
+                      @click="selectedSourceId = source.id"
+                    >
+                      <span>{{ source.displayName }}</span>
+                    </button>
                   </template>
                 </SettingsListRow>
 
@@ -81,29 +66,14 @@
                     :class="{ 'is-active': source.id === selectedSourceId }"
                   >
                     <template #title>
-                      <div class="model-visibility-source-item-row">
-                        <button
-                          type="button"
-                          class="model-visibility-source-tab"
-                          :aria-pressed="source.id === selectedSourceId"
-                          @click="selectedSourceId = source.id"
-                        >
-                          <span>{{ source.displayName }}</span>
-                        </button>
-                        <HoverTooltip :text="settingsMessage('settings.modelPicker.refreshModels')">
-                          <button
-                            type="button"
-                            class="model-visibility-refresh-btn"
-                            :disabled="isRefreshingSourceId === source.id"
-                            @click.stop="refreshSourceModels(source)"
-                          >
-                            <RefreshIcon
-                              class="icon"
-                              :class="{ 'is-spinning': isRefreshingSourceId === source.id }"
-                            />
-                          </button>
-                        </HoverTooltip>
-                      </div>
+                      <button
+                        type="button"
+                        class="model-visibility-source-tab"
+                        :aria-pressed="source.id === selectedSourceId"
+                        @click="selectedSourceId = source.id"
+                      >
+                        <span>{{ source.displayName }}</span>
+                      </button>
                     </template>
                   </SettingsListRow>
                 </template>
@@ -117,8 +87,21 @@
           class="model-visibility-models"
         >
           <header class="model-visibility-models-header">
-            <div>
+            <div class="model-visibility-models-header-left">
               <h4>{{ selectedSource.displayName }}</h4>
+              <HoverTooltip :text="settingsMessage('settings.modelPicker.refreshModels')">
+                <button
+                  type="button"
+                  class="model-visibility-refresh-btn"
+                  :disabled="isRefreshingSourceId === selectedSource.id"
+                  @click.stop="refreshSourceModels(selectedSource)"
+                >
+                  <RefreshIcon
+                    class="icon"
+                    :class="{ 'is-spinning': isRefreshingSourceId === selectedSource.id }"
+                  />
+                </button>
+              </HoverTooltip>
             </div>
             <Switch
               v-if="selectedSource.kind === 'provider'"

@@ -169,15 +169,18 @@
   outline-offset: 2px;
 }
 
+.model-visibility-models-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
 .model-visibility-models-header {
   display: flex;
   gap: var(--spacing-md);
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-}
-
-.model-visibility-models-header > div {
-  min-width: 0;
 }
 
 .model-visibility-models-content {
