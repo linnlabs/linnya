@@ -66,7 +66,7 @@
       />
     </SettingsRow>
 
-    <!-- 发现多个模型时，直接展示列表及启用/关闭开关 -->
+    <!-- 发现多个模型时，直接展示列表及启用/关闭开关，与模型管理中的模型列表 UI 风格完全一致 -->
     <template v-if="discoveredModels.length > 0">
       <div class="custom-discovered-models-section">
         <header class="custom-discovered-models-header">
@@ -83,25 +83,22 @@
         </header>
 
         <div class="custom-discovered-models-list">
-          <div
-            v-for="model in discoveredModels"
-            :key="model.id"
-            class="custom-discovered-model-item"
-          >
-            <div class="custom-discovered-model-info">
-              <span class="custom-discovered-model-name">{{ model.name }}</span>
-              <span class="custom-discovered-model-id">{{ model.id }}</span>
-              <span class="custom-discovered-model-meta">
-                {{ Math.round((model.context_window_tokens ?? 32768) / 1024) }}k 上下文 ·
-                {{ model.supports_image_input ? '多模态视觉' : '文本' }}
-              </span>
-            </div>
-            <Switch
-              :model-value="modelStateMap[model.id]?.enabled ?? true"
-              :aria-label="model.name"
-              @update:model-value="toggleModelEnabled(model.id, $event)"
-            />
-          </div>
+          <SettingsList :bordered="false">
+            <SettingsListRow
+              v-for="model in discoveredModels"
+              :key="model.id"
+              :title="model.name"
+              :meta="formatModelMeta(model)"
+            >
+              <template #trailing>
+                <Switch
+                  :model-value="modelStateMap[model.id]?.enabled ?? true"
+                  :aria-label="model.name"
+                  @update:model-value="toggleModelEnabled(model.id, $event)"
+                />
+              </template>
+            </SettingsListRow>
+          </SettingsList>
         </div>
       </div>
     </template>
@@ -183,6 +180,8 @@ import type { CustomSelectOption } from '@linnya/renderer-ui';
 import { CustomSelect, CustomTextInput, SecretInput, Switch } from '@linnya/renderer-ui';
 import {
   SettingsFeedback,
+  SettingsList,
+  SettingsListRow,
   SettingsRow,
   SettingsSwitchRow,
   useSettingsLocalization,
@@ -238,6 +237,20 @@ function onBaseUrlInput(): void {
   if (!userEditedProviderName.value && form.value.baseUrl.trim()) {
     form.value.providerName = extractDefaultProviderNameFromBaseUrl(form.value.baseUrl);
   }
+}
+
+function formatModelMeta(model: DiscoveredModel): string {
+  const parts: string[] = [];
+  if (model.id && model.id !== model.name) {
+    parts.push(model.id);
+  }
+  if (model.context_window_tokens) {
+    parts.push(`${Math.round(model.context_window_tokens / 1024)}k`);
+  }
+  if (model.supports_image_input) {
+    parts.push(settingsMessage('settings.modelCapability.imageInput'));
+  }
+  return parts.join(' · ');
 }
 
 function toggleModelEnabled(modelId: string, enabled: boolean): void {

@@ -173,3 +173,57 @@
 .add-model-provider-form > .settings-row + .settings-row {
   margin-top: 20px;
 }
+
+.custom-discovered-models-section {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.custom-discovered-models-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.custom-discovered-models-title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.custom-discovered-models-section .settings-link-button {
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.custom-discovered-models-section .settings-link-button:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.custom-discovered-models-list {
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  background-color: var(--color-bg-subtle);
+}
+
+.custom-discovered-models-list .settings-list {
+  gap: 2px;
+}
+
+.custom-discovered-models-list .settings-list-row {
+  padding: 8px 12px;
+  background-color: var(--color-bg-surface);
+  border-radius: var(--radius-sm);
+}
