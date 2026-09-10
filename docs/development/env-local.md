@@ -18,13 +18,15 @@ LINNYA_DEV_MODE=true
 LINNYA_KG_DUMP_JSON=1
 
 # ========== 统一审计 ==========
-# 日常使用默认 standard；审计事实与 RuntimeEvent 共用 workspace.sqlite。
-# LINNYA_AUDIT_LEVEL=standard
+# 开发环境默认关闭 Agent Run Audit；需要排查时显式选择一个等级。
+# 低体积行为审计：Agent/run 身份、工具/命令行为、授权/拒绝和终态。
+# LINNYA_AUDIT_LEVEL=behavior
 #
-# 排查 context-manager / LLM 输入协议问题时临时开启 debug。必须保留开发模式，
-# 普通决策继续进入 workspace.sqlite，LLM debug evidence 通过同一个 AuditPort 写入
-# `<WorkspaceRoot>/Audit/v1/dev-diagnostics/<conversationId>/<runId>.jsonl`；排查完成后恢复 standard。
-# LINNYA_AUDIT_LEVEL=debug
+# 需要上游响应摘要时使用 response；需要流式片段时使用 stream。
+# 两者都会把安全投影后的证据写入同一个 workspace.sqlite，stream 还有单 run 16 MiB 上限。
+# LINNYA_AUDIT_LEVEL=response
+# LINNYA_AUDIT_LEVEL=stream
+# 排查完成后恢复 off，避免高体积审计长期运行。
 
 # ========== API Keys（按你实际用到的填） ==========
 # OPENAI_API_KEY=sk-...

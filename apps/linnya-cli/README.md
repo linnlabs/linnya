@@ -152,6 +152,11 @@ actual usage 覆盖，并展示护栏、触发水位、前后 token、请求耗�
 工具输出或原始错误正文。Telemetry 默认保留 7 天且写入失败不阻断任务，因此 Telemetry
 部分明确标记为 `best_effort`；真实调用缺少 usage 时，`missing_usage_calls` 也不会被补成 0。
 
+CLI 不负责开启或切换 Agent Run Audit 等级。开发环境的等级由 App 启动时的
+`LINNYA_AUDIT_LEVEL=off|behavior|response|stream` 决定，修改后需要重启 App；CLI 只读取当前有效
+审计并导出安全摘要。生产 Desktop 不打包此 CLI，且生产 Host 固定关闭开发 Agent Run Audit；即使外部
+自行运行 Node 版 CLI，也不能通过控制面开启审计，`audit` 能力不会在生产握手中声明。
+
 ## 4. 状态与控制语义
 
 CLI 公开的运行状态是：
