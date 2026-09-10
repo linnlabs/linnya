@@ -325,14 +325,7 @@ async function discoverModels(): Promise<void> {
       nextMap[model.id] = { enabled: true };
     }
     modelStateMap.value = nextMap;
-
-    discoveryFeedback.value = {
-      kind: 'success',
-      message: settingsMessage('settings.addModel.discover.success').replace(
-        '{count}',
-        String(result.models.length)
-      ),
-    };
+    discoveryFeedback.value = null;
   } catch (error: unknown) {
     discoveredModels.value = [];
     modelStateMap.value = {};
