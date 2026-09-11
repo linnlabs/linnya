@@ -19,7 +19,10 @@ import {
 } from '@app/schemas/commands';
 import type {
   CommandExecutionAuditEvent,
+  CommandExecutionAuditPort,
 } from 'src/domains/audit';
+import { createLinnyaAuditRuntime } from 'src/domains/audit';
+import { createEventStoreCommandExecutionAuditPort } from '../../../persistence/command-execution-audit/createEventStoreCommandExecutionAuditPort';
 import {
   CLOSED_COMMAND_EXECUTION_INTERACTION,
   createUnavailableCommandSettledTextOutput,
@@ -306,6 +309,7 @@ function fixture(input: {
   readonly createUuid?: () => string;
   readonly approval?: CommandApprovalPort;
   readonly failAuditKinds?: ReadonlySet<CommandExecutionAuditEvent['kind']>;
+  readonly audit?: CommandExecutionAuditPort;
   readonly onAuditRecord?: (event: CommandExecutionAuditEvent) => void;
   readonly ownerNow?: () => number;
 } = {}) {
@@ -422,7 +426,7 @@ function fixture(input: {
       onSettle: input.onApprovalSettle,
       invalidateWhenAborted: input.invalidateWhenAborted,
     }),
-    audit: {
+    audit: input.audit ?? {
       async record(event) {
         if (input.failAuditKinds?.has(event.kind)) {
           throw new Error(`audit ${event.kind} unavailable`);
@@ -649,7 +653,24 @@ describe('ShellToolRuntime production orchestration', () => {
     });
   });
 
-  it('proposal 审计失败时释放 reservation、零审批、零 spawn', async () => {
+  it('统一开发审计 sink 不可写时，正常授权与命令执行不受影响', async () => {
+    let writeAttempts = 0;
+    const auditRuntime = createLinnyaAuditRuntime({
+      level: 'behavior',
+      sink: { async emit() { writeAttempts += 1; throw new Error('disk unavailable'); } },
+    });
+    const f = fixture({
+      immediate: true,
+      audit: createEventStoreCommandExecutionAuditPort({ auditPort: auditRuntime.auditPort }),
+    });
+    await expect(f.runtime.executeShell(shellRequest({ command: 'printf completed' })))
+      .resolves.toMatchObject({ status: 'completed', terminal: { outcome: 'exited', exitCode: 0 } });
+    expect(writeAttempts).toBeGreaterThan(0);
+    expect(f.launches).toHaveLength(1);
+    expect(f.auditFailureStages).toEqual([]);
+  });
+
+  it('审计 producer 合同失败时释放 reservation、零审批、零 spawn', async () => {
     const f = fixture({
       failAuditKinds: new Set<CommandExecutionAuditEvent['kind']>(['proposal_created']),
     });

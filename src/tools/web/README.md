@@ -297,6 +297,7 @@ src/tools/web/webread/
 目标：普通页面由本地安全 GET + Readability/语义 DOM 处理，质量不足时按需渲染；只有用户主动配置后，最后才交给第三方增强解析 Provider：
 
 - **infra adapter**：负责 HTTP、鉴权、响应解析（unknown + 类型守卫），并在本地 GET 边界执行一次有界瞬态重试
+- 网络异常与上游瞬态响应都必须先释放本次 dispatcher，再退避 / 重试；退避不重置总 deadline，取消后不得发送下一次请求。
 - **provider**：负责把供应商响应映射成内部统一 `WebReadResult`
 - **functions**：负责可解释的质量信号判定；不按黑盒分数阈值偷偷改变路由
 - **orchestration**：负责 HTTP→Chromium→托管三层选择、90 秒总预算、截断、`[@ref]`、observation 与 Evidence 物化

@@ -122,7 +122,7 @@ LLM evidence 使用 AsyncLocalStorage 关联 conversation、run、trace、subrun
 单片段超过 512 KiB、单次 run 超过 256 个 stream 片段、64 个 response attempt 摘要、16 个工具
 协议错误或 16 个 system reminder 片段时停止继续记录；单次 run 的 response 摘要总大小上限为
 1 MiB，stream evidence 总大小上限为 16 MiB。超过上限只记录容量丢弃诊断，不阻断 Agent。
-审计写入失败只记录诊断日志，不覆盖正常业务结果。
+审计写入 / flush 失败由唯一 Audit Runtime 记录安全诊断，不覆盖正常业务结果，也不重试或另建 sink。`off` 不调用 sink（含 flush）。事件投影 / 合同校验错误仍属于 producer 编程错误，不能被当作存储不可用吞掉。生产执行和恢复所需的授权、提交与对账记录不属于此可关闭的诊断模块。
 
 ## 新增审计事件的规范
 

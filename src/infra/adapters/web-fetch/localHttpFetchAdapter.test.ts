@@ -15,6 +15,14 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
   beforeAll(async () => {
     server = createServer((request, response) => {
       requestedPaths.push(request.url ?? '');
+      if (request.url === '/retry-network' || request.url === '/network-fails' || request.url === '/cancel-network') {
+        const attempts = (transientAttempts.get(request.url) ?? 0) + 1;
+        transientAttempts.set(request.url, attempts);
+        if (request.url !== '/retry-network' || attempts === 1) {
+          request.socket.destroy();
+          return;
+        }
+      }
       if (request.url === '/challenge-429') {
         response.writeHead(429, 'UPSTREAM_STATUS_INJECTION', { 'Content-Type': 'text/html' });
         response.end('<html><title>Human verification</title><body>UPSTREAM_BODY_INJECTION</body></html>');
@@ -163,6 +171,26 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
     expect(error).not.toHaveProperty('bodyPreview');
     expect(String(error)).not.toContain('UPSTREAM_');
     expect(requestedPaths.filter(path => path === '/challenge-429')).toHaveLength(1);
+  });
+
+  it('真实连接中断后重试一次，持续失败时不超出同一 GET 的预算', async () => {
+    const result = await localHttpFetch(`http://fixture.test:${port}/retry-network`, {}, {
+      resolveHost: resolveFixtureHost, sleep: async () => undefined,
+    });
+    expect(result).toMatchObject({ status: 200, attemptCount: 2, retryCount: 1 });
+    await expect(localHttpFetch(`http://fixture.test:${port}/network-fails`, {}, {
+      resolveHost: resolveFixtureHost, sleep: async () => undefined,
+    })).rejects.toMatchObject({ code: 'network_error', attempt: 2, retryCount: 1 });
+    expect(transientAttempts.get('/network-fails')).toBe(2);
+  });
+
+  it('网络重试退避期间取消，不再发送下一次请求', async () => {
+    const controller = new AbortController();
+    await expect(localHttpFetch(`http://fixture.test:${port}/cancel-network`, { signal: controller.signal }, {
+      resolveHost: resolveFixtureHost,
+      sleep: async () => { controller.abort(); },
+    })).rejects.toMatchObject({ code: 'aborted' });
+    expect(transientAttempts.get('/cancel-network')).toBe(1);
   });
 
   it.each([

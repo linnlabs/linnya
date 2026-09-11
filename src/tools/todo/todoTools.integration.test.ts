@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { AgentTodoToolResultSchema, AgentTodoWriteResultSchema } from '@app/schemas';
@@ -6,6 +6,8 @@ import { AgentTodoToolResultSchema, AgentTodoWriteResultSchema } from '@app/sche
 import { TodoReadTool } from './todo_read';
 import { TodoWriteTool } from './todo_write';
 import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
+import { ToolRegistry } from '../../app-hosts/linnya/adapters/tools/toolRegistry';
+import * as builtin from '../../app-hosts/linnya/plugin-registry/builtin';
 
 function todoWriteOutput(
   id: string,
@@ -27,6 +29,33 @@ function todoWriteOutput(
 }
 
 describe('Todo 普通工具历史', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('正式工具入口 A → B → A 时写出第三版，不复用第一版历史结果', async () => {
+    vi.spyOn(builtin, 'getRegisteredToolClasses').mockReturnValue([TodoWriteTool, TodoReadTool]);
+    vi.spyOn(builtin, 'getRegisteredToolContextDecorators').mockReturnValue([]);
+    const registry = new ToolRegistry({ strictInitialization: true });
+    const history: RuntimeEvent[] = [];
+    const context = createToolContextFixture({
+      conversationId: 'conversation-todo', turnId: 'turn-todo', workingHistoryEvents: history,
+    });
+    const versions: number[] = [];
+    for (const status of ['pending', 'completed', 'pending'] as const) {
+      const output = await registry.executeTool('todo_write', {
+        items: [{ id: 'item-a', content: '核对任务', status }],
+      }, context);
+      if (!output.success || typeof output.result !== 'string') throw new Error('TODO 写入失败');
+      const result = AgentTodoWriteResultSchema.parse(JSON.parse(output.result));
+      versions.push(result.data.version);
+      history.push({
+        ...todoWriteOutput(`todo-${history.length}`, result),
+        ...(output.idempotency ? { metadata: { idempotency: output.idempotency } } : {}),
+      });
+    }
+    const latest = AgentTodoToolResultSchema.parse(JSON.parse(await new TodoReadTool().run({}, context)));
+    expect(versions).toEqual([1, 2, 3]);
+    expect(latest.data).toMatchObject({ version: 3, items: [{ status: 'pending' }] });
+  });
   it('同一 run 内由 working history 继续版本并供 todo_read 读取', async () => {
     const workingHistory: RuntimeEvent[] = [];
     const context = createToolContextFixture({ workingHistoryEvents: workingHistory });

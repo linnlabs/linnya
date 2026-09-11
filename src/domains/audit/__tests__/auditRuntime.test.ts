@@ -189,7 +189,7 @@ describe('unified audit runtime', () => {
   });
 
   it('packaged runtime ignores an explicitly requested stream level', async () => {
-    const sink: AuditPort = { emit: vi.fn() };
+    const sink: AuditPort = { emit: vi.fn(), flush: vi.fn() };
     const runtime = createLinnyaAuditRuntime({
       sink,
       level: 'stream',
@@ -198,8 +198,24 @@ describe('unified audit runtime', () => {
 
     await runtime.auditPort.emit(baseEnvelope('model.select'));
     await runtime.auditPort.emit(baseEnvelope('llm.context.after'));
+    await runtime.flush();
 
     expect(runtime.level).toBe('off');
     expect(sink.emit).not.toHaveBeenCalled();
+    expect(sink.flush).not.toHaveBeenCalled();
+  });
+
+  it.each(['sync', 'async'] as const)('%s sink 失败不让运行控制或命令 producer 失败，也不重试', async mode => {
+    const emit = vi.fn(() => {
+      if (mode === 'sync') throw new Error('storage unavailable');
+      return Promise.reject(new Error('storage unavailable'));
+    });
+    const flush = vi.fn(async () => { throw new Error('flush unavailable'); });
+    const runtime = createLinnyaAuditRuntime({ sink: { emit, flush }, level: 'behavior' });
+    await expect(runtime.auditPort.emit(baseEnvelope('run.cancel'))).resolves.toBeUndefined();
+    await expect(runtime.auditPort.emit(baseEnvelope('command.execution.started'))).resolves.toBeUndefined();
+    await expect(runtime.flush()).resolves.toBeUndefined();
+    expect(emit).toHaveBeenCalledTimes(2);
+    expect(flush).toHaveBeenCalledTimes(1);
   });
 });
