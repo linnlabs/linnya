@@ -17,6 +17,7 @@ import {
   resolveParagraphAlign,
   resolveTextStyleLineSpacing,
   textStyleToRun,
+  textStyleToRuns,
   type FreeformTransform,
 } from '../../text/generatedTextRenderInput';
 import { resolveShapeTextLayout } from '../../visual/presentationVisualDefaults';
@@ -32,6 +33,7 @@ export {
   resolveParagraphAlign,
   resolveTextStyleLineSpacing,
   textStyleToRun,
+  textStyleToRuns,
   type FreeformTransform,
 };
 
@@ -73,7 +75,7 @@ export function buildShapeTextNode(
     box,
     zIndex,
     paragraphs: text.split('\n').map((line) => ({
-      runs: [textStyleToRun(line, textStyle, defaultFontFamily, layout.fontSize)],
+      runs: textStyleToRuns(line, textStyle, defaultFontFamily, layout.fontSize),
       align: resolveParagraphAlign(layout.align),
       lineSpacing: resolveTextStyleLineSpacing(textStyle.lineSpacing),
     })),
@@ -138,7 +140,7 @@ export function buildGeneratedShapeTextNode(
     valign: layout.valign,
   };
   const paragraphs = text.split('\n').map((line) => ({
-    runs: [textStyleToRun(line, textStyle, defaultFontFamily, layout.fontSize)],
+    runs: textStyleToRuns(line, textStyle, defaultFontFamily, layout.fontSize),
     align: resolveParagraphAlign(layout.align),
     lineSpacing: resolveTextStyleLineSpacing(textStyle.lineSpacing),
   }));

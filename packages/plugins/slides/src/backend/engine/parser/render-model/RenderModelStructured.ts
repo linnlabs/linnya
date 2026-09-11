@@ -23,7 +23,7 @@ import {
   resolveChartLegend,
   resolveChartType,
 } from './RenderModelShared.js';
-import { resolveTextStyleLineSpacing, textStyleToRun } from './RenderModelText.js';
+import { resolveTextStyleLineSpacing, textStyleToRuns } from './RenderModelText.js';
 import type { RenderBaseNode, RenderDefaultsContext } from './RenderModelShared.js';
 
 export function resolveTextStyle(
@@ -232,11 +232,11 @@ export function mapStructuredTableNode(
         row: 0,
         col: columnIndex,
         paragraphs: [{
-          runs: [textStyleToRun(header, {
+          runs: textStyleToRuns(header, {
             fontFamily: defaults.minorFontFamily,
             fontSize: Math.min(baseFontSize + 0.5, 11.5),
             bold: true,
-          }, defaults.minorFontFamily)],
+          }, defaults.minorFontFamily),
         }],
         fill: TABLE_DEFAULT_HEADER_FILL,
         ...(cellBorders ? { borders: cellBorders } : {}),
@@ -256,7 +256,7 @@ export function mapStructuredTableNode(
         rowSpan: cell.rowspan,
         colSpan: cell.colspan,
         paragraphs: [{
-          runs: [textStyleToRun(cell.text, cell.style, defaults.minorFontFamily, baseFontSize)],
+          runs: textStyleToRuns(cell.text, cell.style, defaults.minorFontFamily, baseFontSize),
           lineSpacing: resolveTextStyleLineSpacing(cell.style?.lineSpacing),
         }],
         fill: cell.fill,

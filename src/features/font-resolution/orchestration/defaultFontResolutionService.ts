@@ -1,3 +1,4 @@
+import { resolveFontTextSegments } from '../functions/resolveFontTextSegments.js';
 import type { FontMetadata, FontRequest, ResolvedFont, ScriptClass } from '../definitions/types.js';
 import { FontResolutionService, type FontResolutionCatalog } from './FontResolutionService.js';
 
@@ -31,4 +32,9 @@ export function resetDefaultFontResolutionService(): void {
 
 export function resolveFont(request: FontRequest): ResolvedFont {
   return defaultFontResolutionService.resolve(request);
+}
+
+
+export function resolveFontText(text: string, request: Omit<FontRequest, 'script' | 'requiredCodePoints'>) {
+  return resolveFontTextSegments(text, request, resolveFont);
 }

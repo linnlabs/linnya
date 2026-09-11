@@ -34,3 +34,5 @@
 - 确定性查询与解析测试使用可注入 catalog，并包含 Heiti SC 标点漏报与 regular/bold 竞争语料：`pnpm exec vitest run src/features/font-resolution packages/plugins/slides/src/backend/engine/text/__tests__/font-resolution-integration.test.ts`。
 - 真实系统目录与浏览器渲染 smoke：`pnpm --dir packages/plugins/slides run smoke:raster-worker`。该命令从当前机器分别读取 Latin / East Asian 候选，只使用候选明确返回的 regular+bold 样式，把主题字体经 deck.js、RenderModel 和共享文本布局送入 Electron raster worker，并检查中英文文本产生可见 PNG 像素。
 - 真实 smoke 只能证明“当前机器的候选可进入完整渲染链”，不能把 OS/2 脚本候选提升为某种自然语言的完整字形覆盖证明。
+
+`resolveFontText` 是需要混合字形回退的文本入口：按完整 grapheme 解析 cmap 覆盖，连续同 face、同脚本的片段合并。它保留每段原始请求字体，不让一个缺失汉字替换整段拉丁数字。调用方不能拆开组合字符或把解析 family 写回作者字体声明。
