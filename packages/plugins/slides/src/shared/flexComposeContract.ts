@@ -129,6 +129,7 @@ export interface LayoutThemeInput {
 }
 
 export interface FlexProps {
+  /** 正数 N 表示 grow=N、shrink=1、basis=0；无 flex 的显式主轴尺寸不收缩。 */
   flex?: number;
   width?: number | string;
   height?: number | string;

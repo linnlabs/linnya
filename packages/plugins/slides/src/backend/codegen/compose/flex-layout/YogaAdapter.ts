@@ -132,6 +132,7 @@ function createYogaNode(
   parentWidth: number,
   parentHeight: number,
   isRoot: boolean,
+  parentDirection: 'row' | 'column' = 'column',
 ): YogaNode {
   const yogaNode = yoga.Node.create(config);
 
@@ -142,14 +143,15 @@ function createYogaNode(
     yogaNode.setFlexDirection(yoga.FLEX_DIRECTION_COLUMN);
   }
 
-  applyFlexProps(yoga, yogaNode, node, isRoot);
+  applyFlexProps(yoga, yogaNode, node, isRoot, parentDirection);
 
   if (isContainerNode(node)) {
     applyContainerProps(yoga, yogaNode, node as LayoutContainerNode);
 
     for (let i = 0; i < node.children.length; i++) {
       const child = node.children[i];
-      const childYoga = createYogaNode(yoga, config, child, parentWidth, parentHeight, false);
+      const childYoga = createYogaNode(yoga, config, child, parentWidth, parentHeight, false,
+        node._type === 'View' && node.flexDirection === 'row' ? 'row' : 'column');
       yogaNode.insertChild(childYoga, i);
     }
   } else if (node._type === 'Text') {
@@ -167,17 +169,25 @@ function applyFlexProps(
   yogaNode: YogaNode,
   node: LayoutNode,
   isRoot: boolean,
+  parentDirection: 'row' | 'column',
 ): void {
   const props: FlexProps = node;
 
-  // flex-grow
+  // 数值 flex 使用零 basis，正文不再以整行宽度挤压固定标签。
   if (props.flex != null && props.flex > 0) {
     yogaNode.setFlexGrow(props.flex);
+    yogaNode.setFlexShrink(1);
+    yogaNode.setFlexBasis(0);
   }
 
   // width / height（不覆盖根节点的固定尺寸）
   // 同时支持 PPTX 风格短名 w / h（width / height 优先）。
   const positionBox = readAbsolutePositionBox(props.position);
+  const mainSize = parentDirection === 'row'
+    ? props.width ?? props.w ?? positionBox?.w
+    : props.height ?? props.h ?? positionBox?.h;
+  // shrink 作用于父容器主轴，不能因为交叉轴声明尺寸而禁用正文收缩。
+  if (props.flex == null && mainSize != null) yogaNode.setFlexShrink(0);
   if (!isRoot) {
     applyDimension(yogaNode, 'width', props.width ?? props.w ?? positionBox?.w);
     applyDimension(yogaNode, 'height', props.height ?? props.h ?? positionBox?.h);
@@ -285,14 +295,17 @@ function applyTextMeasure(
       ? node.content.map((run) => 'text' in run ? run.text : '').join('')
       : '';
 
+  const intrinsicSize = measureIntrinsicTextBox(node);
   yogaNode.setMeasureFunc((widthPt, widthMode, _heightPt, _heightMode) => {
     const availWidth = widthMode === yoga.MEASURE_MODE_UNDEFINED
-      ? Infinity
-      : toIn(widthPt);
+      ? intrinsicSize.widthInches
+      : widthMode === yoga.MEASURE_MODE_EXACTLY
+        ? toIn(widthPt)
+        : Math.min(intrinsicSize.widthInches, toIn(widthPt));
 
     const estHeight = estimateTextHeight(content, availWidth, fontSize, lineSpacing, node.letterSpacing);
     return {
-      width: widthPt,
+      width: toPt(availWidth),
       height: toPt(estHeight),
     };
   });
