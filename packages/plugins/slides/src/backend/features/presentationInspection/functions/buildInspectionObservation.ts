@@ -328,6 +328,7 @@ function formatEvidence(
       return `parent=${node(evidence.parent)} descendants=${evidence.descendants.map(node).join(',')} sides=${evidence.overflowSides.join(',')} clip=${evidence.clipSemantics}`;
     case 'text_layout':
       return `node=${node(evidence.node)} issue=${evidence.issue} basis=${evidence.basis} lines=${evidence.actualLineCount}`
+        + (evidence.advanceSource == null ? '' : ` advance=${evidence.advanceSource}`)
         + (evidence.tableCell
           ? ` cell=rows[${evidence.tableCell.rowIndex}][${evidence.tableCell.columnIndex}]`
           : '')

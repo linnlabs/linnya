@@ -149,7 +149,7 @@ describe('executeSlidesCliCommand', () => {
     expect(JSON.parse(result.stdout)).toEqual({
       kind: 'linnya.slides.render-report',
       schemaVersion: 1,
-      cliVersion: '1.8.0',
+      cliVersion: '1.9.0',
       presentation: {
         id: 'deck-1',
         versionId: 'version-uuid-7',
@@ -199,7 +199,7 @@ describe('executeSlidesCliCommand', () => {
     expect(result.exitCode).toBe(SlidesCliExitCode.SUCCESS);
     const report = JSON.parse(result.stdout);
     expect(report.presentation.versionId).toBe('version-uuid-7');
-    expect(report.schemaVersion).toBe(8);
+    expect(report.schemaVersion).toBe(9);
     expect(report).not.toHaveProperty('mode');
     expect(report).not.toHaveProperty('pages');
     expect(report.buildStatus).toEqual({ state: 'ready' });

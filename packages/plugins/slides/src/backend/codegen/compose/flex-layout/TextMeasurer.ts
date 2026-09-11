@@ -13,8 +13,9 @@ export interface IntrinsicTextBoxSize {
 }
 
 /**
- * 测量没有横向约束的 Text。wrap:none 下探测宽度不会参与断行；最终外框必须
- * 把 PowerPoint 默认文本边距一起计入，避免作者被迫猜测隐藏的可用宽度。
+ * 为 Yoga 暂估没有横向约束的 Text。Worker 不访问系统字体，wrap:none 下探测
+ * 宽度不参与断行；Backend 落库前由 engine/text/materializeIntrinsicTextBoxes
+ * 用最终排版同源的字形测量物化外框。本结果必须包含默认 inset，但不是持久化宽度。
  */
 export function measureIntrinsicTextBox(node: LayoutTextNode): IntrinsicTextBoxSize {
   const fontSize = node.fontSize ?? DEFAULT_FONT_SIZE;
@@ -56,8 +57,8 @@ export function measureIntrinsicTextBox(node: LayoutTextNode): IntrinsicTextBoxS
 }
 
 /**
- * 为 Yoga 文本节点提供统一的启发式估高入口。
- * 主进程当前仍走 fallback adapter，但调用面已经统一到 TextMeasureService。
+ * 为 Yoga 流布局提供同步估高；实际 adapter 由当前运行域装配。
+ * 无横向约束的绝对定位 Text 还会经过 Backend 同源尺寸物化，不能用这里判断最终测量来源。
  */
 export function estimateTextHeight(
   content: string,

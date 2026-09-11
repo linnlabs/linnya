@@ -32,7 +32,7 @@
 | `node_bounds / node_size` | 哪个节点、最终几何、阈值与违反方向 |
 | `node_overlap / origin_stacking` | 哪些节点、相交或共同锚点、设计意图证据；`text_decoration_collision` 的相交区域来自细装饰形状与最终文字行占位，而不是整个文本框 |
 | `constraint_delta / parent_overflow` | 哪个父约束、声明值与最终值、直接后果 |
-| `text_layout` | 最终或估算断行、内容尺寸与溢出事实；表格内另给 `rows[row][column]`，自动断行末行孤字另给 paragraph 和 orphan text |
+| `text_layout` | 最终或估算断行、内容尺寸与溢出事实；最终布局保留 `advanceSource`；表格内另给 `rows[row][column]`，自动断行末行孤字另给 paragraph 和 orphan text |
 | `scalar_metric / margin_balance / visual_anchor` | 页级指标、样本、阈值和比较方向 |
 | `font_inventory / font_resolution` | 字体解析清单或明确替换事实 |
 | `color_palette / hue_drift / color_contrast` | 色彩样本、跨页漂移或对比度推断 |
@@ -40,6 +40,8 @@
 | `slide_similarity / content_presence / text_pattern` | 对应的窄业务测量与候选对象 |
 
 逐 code 的 scope、category、evidence family、允许级别和复验策略以 [`diagnosticFindingRegistry.ts`](./diagnosticFindingRegistry.ts) 为唯一真值源。阈值仍归各 lint rule，不应搬进 registry。
+
+`text_layout.basis = finalized` 只表示布局已经完成，不能据此认定字宽来自真实字体。此时 `advanceSource` 原样记录最终布局的 `harfbuzz / pretext / heuristic`：前两者的 `text_overflow_risk` 是 high-confidence，heuristic 则为 medium-confidence，分别派生 P0 / P1。旧 imported 文本仅有盒估算时保留 `basis = estimated` 与 medium-confidence，不推测 cluster advance 来源。分级不会抹去溢出方向、行宽或行数证据，也不改变布局。
 
 ## 新规则准入
 

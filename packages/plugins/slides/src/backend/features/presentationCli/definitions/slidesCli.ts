@@ -25,13 +25,13 @@ import type {
 } from '../../presentationScreenshot';
 
 export const SLIDES_CLI_REPORT_KIND = 'linnya.slides.inspection-report' as const;
-export const SLIDES_CLI_REPORT_VERSION = 8 as const;
+export const SLIDES_CLI_REPORT_VERSION = 9 as const;
 export const SLIDES_CLI_FONT_CHECK_KIND = 'linnya.slides.font-check' as const;
 export const SLIDES_CLI_FONT_LIST_KIND = 'linnya.slides.font-list' as const;
 export const SLIDES_CLI_FONT_REPORT_VERSION = 1 as const;
 export const SLIDES_CLI_RENDER_REPORT_KIND = 'linnya.slides.render-report' as const;
 export const SLIDES_CLI_RENDER_REPORT_VERSION = 1 as const;
-export const SLIDES_CLI_VERSION = '1.8.0' as const;
+export const SLIDES_CLI_VERSION = '1.9.0' as const;
 
 export const SlidesCliExitCode = {
   SUCCESS: 0,

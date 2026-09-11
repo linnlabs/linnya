@@ -47,6 +47,8 @@ observation 对节点与源码建立本地 handle，同一源码控制点只声�
 
 文本检查同样只消费 backend finalized layout。`text_single_glyph_last_line` 只在非显式换行的段落被自动断行、且末行只剩一个字素时产生 P1；`text_decoration_collision` 只在细装饰 Shape 穿过最终文字行的真实占位区域时产生，不拿整个文本框冒充文字区域。表格通过 `cell=rows[row][column]` 定位到源码数组。inspection 不重测字宽，不把规则升级成溢出，也不修改原文。
 
+最终文本布局的 finding 还投影 `advance=harfbuzz/pretext/heuristic`，便于识别测量来源。`text_overflow_risk` 的置信度由 quality 按该来源决定：真实字体测量为 P0，启发式为 P1；Agent 与 CLI 共用这一分级，不能仅因 `basis=finalized` 就提升置信度。只有旧 imported 盒估算的 finding 不提供 advance 来源。
+
 reference frame 只报告在当前文稿物理尺寸下仍为正面积的事实。`slide` 始终存在；固定物理边距推导出的
 `safe_area` 或 `content_area` 在 1 英寸等极端合法画布上失效时直接省略，不能输出零/负尺寸，也不能为了凑齐字段伪造相对边距。
 

@@ -3,6 +3,7 @@ import type {
   PresentationRenderModel,
   SceneGraphNodeSummary,
   SpatialAnalysisSummary,
+  TextLayoutResult,
 } from '@plugin/slides/shared';
 import type { AestheticLintReport } from '../../../engine/quality/AestheticLint.js';
 import {
@@ -11,6 +12,11 @@ import {
 } from '../../../engine/quality/definitions';
 import { collectFindings, evaluateQualityAnalysis } from '../diagnostics.js';
 import { buildSceneGraph } from '../sceneGraph.js';
+import {
+  buildInspectionObservation,
+  type DiagnosticToolFeedbackPayload,
+} from '../../../features/presentationInspection';
+import { buildSlidesCliInspectionReport } from '../../../features/presentationCli/functions/buildSlidesCliInspectionReport';
 
 function makeAnalysis(drafts: readonly QualityDiagnosticDraft[] = []): AestheticLintReport {
   return {
@@ -29,6 +35,66 @@ function makeAnalysis(drafts: readonly QualityDiagnosticDraft[] = []): Aesthetic
 }
 
 describe('collectFindings', () => {
+  it.each([
+    { source: 'harfbuzz', confidence: 'high', priority: 'P0' },
+    { source: 'pretext', confidence: 'high', priority: 'P0' },
+    { source: 'heuristic', confidence: 'medium', priority: 'P1' },
+  ] satisfies ReadonlyArray<{
+    source: TextLayoutResult['advanceSource'];
+    confidence: 'high' | 'medium';
+    priority: 'P0' | 'P1';
+  }>)('$source 溢出经 admission、Agent 与 CLI 保留测量来源和一致分级', ({ source, confidence, priority }) => {
+    const model = makeOverflowRenderModel(source);
+    const sceneGraph = buildSceneGraph(model);
+    const findings = collectFindings(evaluateQualityAnalysis(model), sceneGraph, [])
+      .filter((finding) => finding.code === 'text_overflow_risk');
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      confidence,
+      evidence: {
+        basis: 'finalized',
+        advanceSource: source,
+        actualLineCount: 1,
+        contentWidthInches: 1.2,
+        maxLineWidthInches: 1.3,
+        horizontalOverflow: true,
+        verticalOverflow: true,
+      },
+      sourceRefs: [{ nodeId: 'overflow-title', startLine: 10, endLine: 12 }],
+    });
+    const feedback: DiagnosticToolFeedbackPayload = {
+      artifact: { presentationId: model.presentationId, versionId: 'version-1', slideCount: 1 },
+      pageSummaries: [],
+      sceneGraph,
+      spatialAnalysis: [],
+      buildStatus: { state: 'ready' },
+      findings,
+    };
+    const observation = buildInspectionObservation({
+      presentationId: model.presentationId,
+      versionId: 'version-1',
+      totalSlideCount: 1,
+      shownSlideNumbers: [1],
+      truncated: false,
+      feedback,
+    });
+    expect(observation).toContain(`${priority}/${confidence}`);
+    expect(observation).toContain(`advance=${source}`);
+
+    const report = buildSlidesCliInspectionReport({
+      versionId: 'version-1',
+      renderModel: model,
+      totalSlideCount: 1,
+      requestedSlideNumbers: [1],
+      truncated: false,
+      feedback,
+    });
+    expect(JSON.parse(JSON.stringify(report))).toMatchObject({
+      findings: [{ ...findings[0], priority }],
+    });
+  });
+
   it('把 pair overlap 规范化为 scene node，并保留双方精确源码位置', () => {
     const sceneGraph = buildSceneGraph(makeSourceTrackedRenderModel());
     const first = sceneGraph[0].rootNode.children[0];
@@ -305,6 +371,41 @@ function makeSourceTrackedRenderModel(): PresentationRenderModel {
           editableTarget: { elementId: 'element-b', operations: ['modify_geometry'] },
         },
       ],
+    }],
+  };
+}
+
+function makeOverflowRenderModel(advanceSource: TextLayoutResult['advanceSource']): PresentationRenderModel {
+  const model = makeEmptyRenderModel();
+  return {
+    ...model,
+    slides: [{
+      ...model.slides[0],
+      elements: [{
+        id: 'overflow-title',
+        kind: 'text',
+        box: { x: 1, y: 1, w: 1.2, h: 0.2, unit: 'in' },
+        zIndex: 0,
+        paragraphs: [{ runs: [{ text: 'Deep Canopy', fontSize: 24, bold: true }] }],
+        padding: { left: 0, right: 0, top: 0, bottom: 0 },
+        sourceSpan: { startLine: 10, endLine: 12 },
+        layout: {
+          advanceSource,
+          appliedFontScale: 1,
+          appliedLineSpacingReduction: 0,
+          contentHeightInches: 0.3,
+          overflow: { horizontal: true, vertical: true, hiddenLineCount: 0 },
+          lines: [{
+            paragraphIndex: 0,
+            y: 0,
+            baseline: 0.2,
+            height: 0.3,
+            width: 1.3,
+            align: 'left',
+            slices: [{ paragraphIndex: 0, runIndex: 0, text: 'Deep Canopy', x: 0, width: 1.3, textY: 0 }],
+          }],
+        },
+      }],
     }],
   };
 }

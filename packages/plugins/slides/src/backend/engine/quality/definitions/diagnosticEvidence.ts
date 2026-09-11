@@ -86,6 +86,8 @@ export const TextLayoutEvidenceSchema = z.object({
   node: DiagnosticNodeRefSchema,
   textPreview: z.string().trim().min(1),
   basis: z.enum(['finalized', 'estimated']),
+  // 只有最终布局拥有 cluster advance 来源；旧 imported 盒估算不得推测实际字形引擎。
+  advanceSource: z.enum(['harfbuzz', 'pretext', 'heuristic']).optional(),
   actualLineCount: z.number().int().positive(),
   paragraphIndex: z.number().int().nonnegative().optional(),
   tableCell: z.object({

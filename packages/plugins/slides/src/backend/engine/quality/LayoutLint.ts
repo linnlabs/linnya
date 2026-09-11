@@ -493,6 +493,7 @@ function lintFinalizedTextLayout(input: FinalizedTextLayoutLintInput): LayoutLin
     kind: 'text_layout' as const,
     node,
     basis: 'finalized' as const,
+    advanceSource: input.layout.advanceSource,
     actualLineCount,
     contentWidthInches: input.contentWidthInches,
     contentHeightInches: input.layout.contentHeightInches,
@@ -522,7 +523,8 @@ function lintFinalizedTextLayout(input: FinalizedTextLayoutLintInput): LayoutLin
     issues.push({
       code: 'text_overflow_risk',
       severity: 'warning',
-      confidence: 'high',
+      // finalized 表示已执行布局，不代表字宽来自真实字体。保留风险，按实际来源分档。
+      confidence: input.layout.advanceSource === 'heuristic' ? 'medium' : 'high',
       slides: [input.slideNumber],
       evidence: {
         ...commonEvidence,
