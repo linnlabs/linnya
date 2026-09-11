@@ -383,6 +383,9 @@ interface LayoutGradientStop {
 type LayoutHStackNode = LayoutViewNode;
 
 interface LayoutImageConfig extends FlexProps {
+  role?: 'background' | 'decoration';
+  /** 允许超出画布的英寸数，默认零。 */
+  bleed?: number;
   src?: LayoutImageSourceInput;
   alt?: string;
   fitMode?: 'cover' | 'contain' | 'crop';
@@ -460,6 +463,10 @@ interface LayoutRadialGradient {
 }
 
 interface LayoutShapeConfig extends FlexProps {
+  /** 声明背景或装饰意图，参与空间诊断；不改变无障碍语义。 */
+  role?: 'background' | 'decoration';
+  /** 允许超出画布的英寸数，默认零。 */
+  bleed?: number;
   geometry?: ShapeGeometrySpec;
   fill?: LayoutShapeFillInput;
   border?: LayoutShapeStroke;
@@ -519,7 +526,7 @@ interface LayoutSourceMetadata {
   };
 }
 
-interface LayoutSpacerConfig extends FlexProps {}
+type LayoutSpacerConfig = FlexProps;
 
 interface LayoutSpacerNode extends LayoutSpacerConfig, LayoutSourceMetadata {
   readonly _type: 'Spacer';
@@ -585,6 +592,8 @@ type LayoutTextAlign = 'left' | 'center' | 'right';
  * 使用固定盒宽并自动换行；绝对定位且没有横向约束时，盒宽跟随内容，只响应显式换行符。
  */
 interface LayoutTextConfig extends FlexProps {
+  /** 页边辅助信息，不计入正文的字体层级与字体族数量。 */
+  role?: 'footnote' | 'source' | 'page-number';
   content?: string | LayoutTextRun[];
   fontSize?: number;
   fontWeight?: 'bold' | 'normal' | number;

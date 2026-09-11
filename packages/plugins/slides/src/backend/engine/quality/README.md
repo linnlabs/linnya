@@ -96,3 +96,5 @@ PresentationRenderModel
 - spatial / color：`packages/plugins/slides/src/backend/__tests__/{color-utils,render-model-to-lint-info}.test.ts`
 - inspect feedback：`packages/plugins/slides/src/backend/tools/inspectFeedback/**/*.test.ts`
 - 插件全量：`pnpm run test:plugin:slides`
+
+Shape/Image 的 `role: background | decoration` 经 compiled 元数据进入空间诊断：越界保留 info 证据，边距与装饰碰撞不再要求修正；`bleed` 是节点级非负英寸授权，仅超出授权才产生越界 finding。未声明角色的细线只有在低透明度、位于文字后方时才豁免碰撞，前景相交继续报告。Text 的 `footnote/source/page-number` 角色不参与正文字号档位和字体族数量统计。CLI finding 的 `action` 与 inspect observation 共用处置短语。

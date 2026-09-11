@@ -41,6 +41,10 @@ export function buildGeneratedLayoutConstraintEvidence(input: {
     grandparent,
     grandparentPath,
   } = input;
+  const allowedBleedInches = 'bleed' in result.node ? result.node.bleed : undefined;
+  if (allowedBleedInches != null && (!Number.isFinite(allowedBleedInches) || allowedBleedInches < 0)) {
+    throw new Error('bleed 必须是非负有限英寸数。');
+  }
   const declared = readDeclaredConstraints(result.node);
   const finalBox = toGeneratedBox(result.box);
   const parentNode = buildConstraintNode(
@@ -51,6 +55,7 @@ export function buildGeneratedLayoutConstraintEvidence(input: {
   );
 
   return {
+    ...(allowedBleedInches != null ? { allowedBleedInches } : {}),
     layoutNodeId: buildLayoutNodeId(slideNumber, nodePath),
     positionMode: resolveLayoutPositionMode(result.node),
     declared,

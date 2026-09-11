@@ -208,6 +208,12 @@ function collectElements(
   // 叶子节点 → 转为 DirectElementInput
   const element = buildLeafElement(node, box);
   if (element) {
+    if ('role' in node && node.role != null) {
+      const roles = node._type === 'Text'
+        ? ['footnote', 'source', 'page-number'] : ['background', 'decoration'];
+      if (!roles.includes(node.role)) throw new Error(`${node._type}.role 不支持 ${node.role}`);
+      element._semanticRole = node.role;
+    }
     elements.push(attachLayoutConstraintEvidence(element, constraintEvidence));
   }
 }

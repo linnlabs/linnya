@@ -653,6 +653,16 @@ describe('AestheticLint', () => {
   });
 
   describe('font family consistency (Tier-1 Rule 9)', () => {
+    it('不把纯符号补字字体计为正文第三族，同时仍统计正文替换', () => {
+      const report = lint.lint(makeInfo({ slides: [{ number: 1, elements: [
+        makeResolvedFontText({ name: 'T1', text: 'A', declaredFamily: 'Inter' }),
+        makeResolvedFontText({ name: 'T2', text: 'B', declaredFamily: 'Roboto' }),
+        makeResolvedFontText({ name: 'Symbols', text: '≥ ≤ ± ₂ €', declaredFamily: 'Inter', resolvedFamily: 'Symbol', resolution: 'substituted' }),
+      ] }] }));
+      expect(report.aesthetic.find(issue => issue.code === 'font_family_inconsistent')).toBeUndefined();
+      expect(report.aesthetic.find(issue => issue.code === 'font_family_substituted')).toBeDefined();
+    });
+
     it('warns when one script uses more than 2 resolved font families', () => {
       const report = lint.lint(makeInfo({
         slideCount: 2,

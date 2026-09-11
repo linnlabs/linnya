@@ -53,6 +53,10 @@ export interface GeneratedParentLayoutConstraintFacts {
 }
 
 export interface GeneratedLayoutConstraintEvidence {
+  /** 无约束文本的最终字形测量来源；启发式来源不得伪装为系统字体测量。 */
+  readonly intrinsicTextAdvanceSource?: 'harfbuzz' | 'pretext' | 'heuristic' | 'mixed';
+  /** 作者显式授权的画布出血范围，单位英寸。 */
+  readonly allowedBleedInches?: number;
   /** 原始 Flex layout node 的稳定编译期身份，用于跨 finding 关联共同根因。 */
   readonly layoutNodeId: string;
   readonly positionMode: 'flow' | 'absolute';

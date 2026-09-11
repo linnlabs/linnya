@@ -157,6 +157,7 @@ export interface DirectElementInput {
   /** 内部追踪元数据：deck.js 工厂调用所在源码行号。 */
   _sourceSpan?: SourceSpan;
   /** Flex/Yoga 编译后的窄约束事实；不接受用户输入。 */
+  _semanticRole?: string;
   _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
 }
 
@@ -591,6 +592,7 @@ function parseElementInput(
     tableBorder,
     tableOptions: isRecord(value.tableOptions) ? value.tableOptions : undefined,
     _sourceSpan: parseSourceSpan(value._sourceSpan),
+    _semanticRole: acceptCompiledFields && isNonEmptyString(value._semanticRole) ? value._semanticRole : undefined,
     _layoutConstraintEvidence: rawLayoutConstraintEvidence,
   };
 
@@ -903,9 +905,11 @@ function requireSvgGraphicSpec(el: DirectElementInput) {
 
 function buildSourceTracking(el: DirectElementInput): {
   _sourceSpan?: SourceSpan;
+  _semanticRole?: string;
   _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
 } {
   return {
+    ...(el._semanticRole ? { _semanticRole: el._semanticRole } : {}),
     ...(el._sourceSpan ? { _sourceSpan: el._sourceSpan } : {}),
     ...(el._layoutConstraintEvidence
       ? { _layoutConstraintEvidence: el._layoutConstraintEvidence }

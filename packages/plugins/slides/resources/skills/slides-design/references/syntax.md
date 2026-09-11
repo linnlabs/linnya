@@ -333,3 +333,5 @@ createTable({
 - Text 默认左右各 0.1 英寸、上下各 0.05 英寸内边距。自动宽度包含内边距，正文可用宽度须扣除左右内边距。
 - 线性渐变优先使用 `direction`，例如 `to-bottom` 表示向下；与 `angle` 二选一。角度为 0° →、90° ↓、180° ←、270° ↑，顺时针，**不是 CSS 角度**。斜向例子 `angle: 30` 从右方向下旋转；非正方形会按 OOXML scaled 语义进一步受宽高比缩放。
 - 每页必须在顶层显式调用一次 `createSlide()`，按源码顺序传入 compose。不要在 helper、循环或条件中创建页；分页读取、搜索和源码定位依赖每页对应的源码行区间。helper 可复用页内节点。
+
+Shape/Image 可声明 `role: "background" | "decoration"` 表达构图意图，并用 `bleed` 指定允许越出画布的英寸数。角色不改变图片 `decorative` 的无障碍语义。Text 的辅助信息可用 `role: "footnote" | "source" | "page-number"`，避免占用正文的字体层级统计。
