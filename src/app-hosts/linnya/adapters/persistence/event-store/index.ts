@@ -17,6 +17,8 @@ export type {
 } from './event-store.interface';
 
 export { SQLiteEventStore } from './sqlite.implementation';
+export { readRuntimeEventsByIds } from './functions/readRuntimeEventsByIds';
+export { readRunCheckpointInteractions } from './functions/readRunCheckpointInteractions';
 export { LinnyaEventStoreAdapter } from './linnkit-event-store.adapter';
 export { purgeStaleAuditEvents, type PurgeStaleAuditEventsOptions } from './auditMaintenance';
 export {

@@ -51,11 +51,13 @@ export interface ConversationControlFlowAcceptance {
 
 export interface ConversationControlFlowPort {
   start(request: ConversationNextRequest): Promise<ConversationControlFlowAcceptance>;
-  respond(request: ConversationInteractionResponseRequest): Promise<ConversationControlFlowAcceptance>;
+  respond(
+    request: ConversationInteractionResponseRequest
+  ): Promise<ConversationControlFlowAcceptance>;
   stop(
     runId: string,
     conversationId: string,
-    reason: string,
+    reason: string
   ): Promise<ConversationRunCancelResponse>;
 }
 
@@ -75,6 +77,8 @@ export interface ConversationControlRunRecord {
   readonly currentNode?: string;
   readonly startedAt: number;
   readonly updatedAt: number;
+  readonly pausedAt?: number;
+  readonly pauseReason?: string;
   /** 当前 execution 的 Graph 步数；运行中由 checkpoint 补充，终态由审计生命周期观测补充。 */
   readonly executionStepsUsed?: number;
   /** 同一逻辑 run 跨 execution 的累计步数。 */
@@ -111,7 +115,7 @@ export interface ConversationControlModelCatalogPort {
   };
   evaluate(
     modelId: string,
-    capability: SelectableModelCapability,
+    capability: SelectableModelCapability
   ): ModelRuntimeAvailability | undefined;
 }
 
@@ -162,28 +166,28 @@ export interface ConversationControlHistoryPort {
   readBefore(
     conversationId: string,
     cursor: number,
-    limit: number,
+    limit: number
   ): Promise<ConversationControlMessageWindow>;
   readAfter(
     conversationId: string,
     cursor: number,
-    limit: number,
+    limit: number
   ): Promise<ConversationControlMessageWindow>;
   readRunFinalAnswer(
     conversationId: string,
-    runId: string,
+    runId: string
   ): Promise<ConversationControlRunFinalAnswer>;
   readConversationProjectId(conversationId: string): Promise<string | null | undefined>;
   updateSelectedAgent(
     conversationId: string,
     selectedAgentId: ConversationSelectedAgentId,
-    projectId?: string,
+    projectId?: string
   ): Promise<boolean>;
 }
 
 export interface ConversationControlWorkspaceToolCatalogPort {
   describe(
-    toolNames: readonly ConversationControlWorkspaceToolName[],
+    toolNames: readonly ConversationControlWorkspaceToolName[]
   ): readonly ConversationControlWorkspaceToolDescriptor[];
 }
 
@@ -203,7 +207,9 @@ export interface ConversationControlUseCasePorts {
 }
 
 export interface ConversationControlUseCase {
-  execute(request: ConversationControlCommandRequest): Promise<
+  execute(
+    request: ConversationControlCommandRequest
+  ): Promise<
     | ConversationControlSendResponse
     | ConversationControlModelsResponse
     | ConversationControlProjectsResponse
@@ -217,17 +223,21 @@ export interface ConversationControlUseCase {
     | ConversationControlWorkspaceToolsResponse
   >;
   send(request: ConversationControlSendRequest): Promise<ConversationControlSendResponse>;
-  projects(request: ConversationControlProjectsRequest): Promise<ConversationControlProjectsResponse>;
+  projects(
+    request: ConversationControlProjectsRequest
+  ): Promise<ConversationControlProjectsResponse>;
   models(request: ConversationControlModelsRequest): Promise<ConversationControlModelsResponse>;
   list(request: ConversationControlListRequest): Promise<ConversationControlListResponse>;
-  messages(request: ConversationControlMessagesRequest): Promise<ConversationControlMessagesResponse>;
+  messages(
+    request: ConversationControlMessagesRequest
+  ): Promise<ConversationControlMessagesResponse>;
   status(request: ConversationControlStatusRequest): Promise<ConversationControlStatusResponse>;
   respond(request: ConversationControlRespondRequest): Promise<ConversationControlRespondResponse>;
   stop(request: ConversationControlStopRequest): Promise<ConversationControlStopResponse>;
   result(request: ConversationControlResultRequest): Promise<ConversationControlResultResponse>;
   audit(request: ConversationControlAuditRequest): Promise<ConversationControlAuditResponse>;
   workspaceTools(
-    request: ConversationControlWorkspaceToolsRequest,
+    request: ConversationControlWorkspaceToolsRequest
   ): Promise<ConversationControlWorkspaceToolsResponse>;
 }
 

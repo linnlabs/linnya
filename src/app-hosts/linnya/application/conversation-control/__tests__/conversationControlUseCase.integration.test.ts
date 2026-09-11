@@ -18,7 +18,7 @@ import type { ExecutionAuditExport } from '../../execution-audit-export';
 function accepted(
   conversationId: string,
   executionId = 'execution-1',
-  incomingEventId = 'message-1',
+  incomingEventId = 'message-1'
 ): ConversationControlFlowAcceptance {
   return {
     conversationId,
@@ -33,7 +33,7 @@ function accepted(
 
 function run(
   status: ConversationControlRunRecord['status'],
-  overrides: Partial<ConversationControlRunRecord> = {},
+  overrides: Partial<ConversationControlRunRecord> = {}
 ): ConversationControlRunRecord {
   return {
     runId: 'run-1',
@@ -179,36 +179,38 @@ function contextCompactionAuditFixture(): ExecutionAuditExport['contextCompactio
       outputTokens: 580,
       cacheReadTokensReported: 5_500,
     },
-    byRun: [{
-      runId: 'run-1',
-      observations: 2,
-      attempts: 1,
-      completed: 1,
-      failed: 0,
-      insufficient: 1,
-      aborted: 0,
-      skipped: 0,
-      durationMs: 900,
-      maxCompactionsPerRun: 12,
-      compactionInputTokensReported: 6_000,
-      summaryOutputTokensReported: 600,
-      releasedTokensReported: 3_700,
-      providerActualCalls: 1,
-      estimateCalls: 0,
-      missingUsageCalls: 0,
-      actualTokens: {
-        inputTokens: 6_100,
-        outputTokens: 580,
-        cacheReadTokensReported: 5_500,
+    byRun: [
+      {
+        runId: 'run-1',
+        observations: 2,
+        attempts: 1,
+        completed: 1,
+        failed: 0,
+        insufficient: 1,
+        aborted: 0,
+        skipped: 0,
+        durationMs: 900,
+        maxCompactionsPerRun: 12,
+        compactionInputTokensReported: 6_000,
+        summaryOutputTokensReported: 600,
+        releasedTokensReported: 3_700,
+        providerActualCalls: 1,
+        estimateCalls: 0,
+        missingUsageCalls: 0,
+        actualTokens: {
+          inputTokens: 6_100,
+          outputTokens: 580,
+          cacheReadTokensReported: 5_500,
+        },
+        events: [completed, preflightRefusal],
       },
-      events: [completed, preflightRefusal],
-    }],
+    ],
   };
 }
 
 function fixture(
   initialRuns: ConversationControlRunRecord[] = [],
-  options: { auditAvailable?: boolean } = {},
+  options: { auditAvailable?: boolean } = {}
 ) {
   let runs = [...initialRuns];
   let executionProgress: ConversationControlExecutionProgressSnapshot | null = null;
@@ -229,13 +231,15 @@ function fixture(
       },
       async respond(request) {
         responseRequests.push(request);
-        runs = [run('running', {
-          metadata: {
-            lane: 'foreground',
-            turnId: 'turn-1',
-            executionId: 'execution-2',
-          },
-        })];
+        runs = [
+          run('running', {
+            metadata: {
+              lane: 'foreground',
+              turnId: 'turn-1',
+              executionId: 'execution-2',
+            },
+          }),
+        ];
         return accepted(request.conversation_id, 'execution-2', 'tool-output-1');
       },
       async stop(runId) {
@@ -266,21 +270,25 @@ function fixture(
     models: {
       list() {
         return {
-          chat: [{
-            model_config_id: 'chat-model',
-            model_name: 'chat-model-upstream',
-            display_name: 'Chat Model',
-            catalog_source: 'account',
-            available: true,
-            input_support: { user_image: true, tool_result_image: false },
-          }],
-          imageGeneration: [{
-            model_config_id: 'chatgpt-subscription-gpt-image-2',
-            model_name: 'gpt-image-2',
-            display_name: 'GPT Image 2',
-            catalog_source: 'account',
-            available: true,
-          }],
+          chat: [
+            {
+              model_config_id: 'chat-model',
+              model_name: 'chat-model-upstream',
+              display_name: 'Chat Model',
+              catalog_source: 'account',
+              available: true,
+              input_support: { user_image: true, tool_result_image: false },
+            },
+          ],
+          imageGeneration: [
+            {
+              model_config_id: 'chatgpt-subscription-gpt-image-2',
+              model_name: 'gpt-image-2',
+              display_name: 'GPT Image 2',
+              catalog_source: 'account',
+              available: true,
+            },
+          ],
         };
       },
       evaluate(modelId, capability) {
@@ -441,7 +449,9 @@ function fixture(
 describe('conversation-control use case', () => {
   it('projects 通过 Workspace 端口返回可用于工具调用的 ID', async () => {
     expect(await fixture().useCase.execute({ schema_version: 1, command: 'projects' })).toEqual({
-      schema_version: 1, ok: true, command: 'projects',
+      schema_version: 1,
+      ok: true,
+      command: 'projects',
       projects: [{ project_id: 'project-1', name: 'Slides' }],
     });
   });
@@ -509,27 +519,31 @@ describe('conversation-control use case', () => {
     expect(existing.startRequests[0]).toMatchObject({ project_id: 'project-1' });
 
     const mismatch = fixture();
-    await expect(mismatch.useCase.workspaceTools({
-      schema_version: 1,
-      command: 'workspace_tools',
-      action: 'call',
-      tool_name: 'read_file',
-      args: { locator: 'workspace:/notes.md' },
-      conversation_id: 'conversation-1',
-      project_id: 'project-2',
-    })).rejects.toMatchObject({ code: 'invalid_request' });
+    await expect(
+      mismatch.useCase.workspaceTools({
+        schema_version: 1,
+        command: 'workspace_tools',
+        action: 'call',
+        tool_name: 'read_file',
+        args: { locator: 'workspace:/notes.md' },
+        conversation_id: 'conversation-1',
+        project_id: 'project-2',
+      })
+    ).rejects.toMatchObject({ code: 'invalid_request' });
     expect(mismatch.startRequests).toEqual([]);
 
     const projectless = fixture();
     projectless.setConversationProjectId(null);
-    await expect(projectless.useCase.workspaceTools({
-      schema_version: 1,
-      command: 'workspace_tools',
-      action: 'call',
-      tool_name: 'read_file',
-      args: { locator: 'workspace:/notes.md' },
-      conversation_id: 'conversation-1',
-    })).rejects.toMatchObject({ code: 'invalid_request' });
+    await expect(
+      projectless.useCase.workspaceTools({
+        schema_version: 1,
+        command: 'workspace_tools',
+        action: 'call',
+        tool_name: 'read_file',
+        args: { locator: 'workspace:/notes.md' },
+        conversation_id: 'conversation-1',
+      })
+    ).rejects.toMatchObject({ code: 'invalid_request' });
   });
 
   it('models 返回可直接用于 CLI 选择的安全模型投影', async () => {
@@ -542,21 +556,25 @@ describe('conversation-control use case', () => {
       schema_version: 1,
       ok: true,
       command: 'models',
-      chat: [{
-        model_config_id: 'chat-model',
-        model_name: 'chat-model-upstream',
-        display_name: 'Chat Model',
-        catalog_source: 'account',
-        available: true,
-        input_support: { user_image: true, tool_result_image: false },
-      }],
-      image_generation: [{
-        model_config_id: 'chatgpt-subscription-gpt-image-2',
-        model_name: 'gpt-image-2',
-        display_name: 'GPT Image 2',
-        catalog_source: 'account',
-        available: true,
-      }],
+      chat: [
+        {
+          model_config_id: 'chat-model',
+          model_name: 'chat-model-upstream',
+          display_name: 'Chat Model',
+          catalog_source: 'account',
+          available: true,
+          input_support: { user_image: true, tool_result_image: false },
+        },
+      ],
+      image_generation: [
+        {
+          model_config_id: 'chatgpt-subscription-gpt-image-2',
+          model_name: 'gpt-image-2',
+          display_name: 'GPT Image 2',
+          catalog_source: 'account',
+          available: true,
+        },
+      ],
     });
   });
 
@@ -594,12 +612,15 @@ describe('conversation-control use case', () => {
   it('续跑从历史继承项目，并将同一作用域交给 Agent 选择与 Flow', async () => {
     const test = fixture([run('completed')]);
     await test.useCase.send({
-      schema_version: 1, command: 'send', message: '继续制作',
+      schema_version: 1,
+      command: 'send',
+      message: '继续制作',
       conversation_id: 'conversation-1',
       selected_agent_id: ConversationSelectedAgentIdSchema.parse('plugin_agent_fixture'),
     });
     expect(test.startRequests[0]).toMatchObject({
-      conversation_id: 'conversation-1', project_id: 'project-1',
+      conversation_id: 'conversation-1',
+      project_id: 'project-1',
       options: { project_metadata: { id: 'project-1' } },
     });
     expect(test.selectedAgentWrites).toEqual(['plugin_agent_fixture']);
@@ -612,11 +633,16 @@ describe('conversation-control use case', () => {
   ])('续跑拒绝跨项目或不存在的会话，不产生持久化副作用：%j', async ({ stored, explicit }) => {
     const test = fixture();
     test.setConversationProjectId(stored);
-    await expect(test.useCase.send({
-      schema_version: 1, command: 'send', message: '继续',
-      conversation_id: 'conversation-1', project_id: explicit,
-      selected_agent_id: ConversationSelectedAgentIdSchema.parse('plugin_agent_fixture'),
-    })).rejects.toMatchObject({ code: 'invalid_request' });
+    await expect(
+      test.useCase.send({
+        schema_version: 1,
+        command: 'send',
+        message: '继续',
+        conversation_id: 'conversation-1',
+        project_id: explicit,
+        selected_agent_id: ConversationSelectedAgentIdSchema.parse('plugin_agent_fixture'),
+      })
+    ).rejects.toMatchObject({ code: 'invalid_request' });
     expect(test.startRequests).toEqual([]);
     expect(test.selectedAgentWrites).toEqual([]);
   });
@@ -625,7 +651,9 @@ describe('conversation-control use case', () => {
     const test = fixture();
     test.setConversationProjectId(null);
     await test.useCase.send({
-      schema_version: 1, command: 'send', message: '继续聊天',
+      schema_version: 1,
+      command: 'send',
+      message: '继续聊天',
       conversation_id: 'conversation-1',
     });
     expect(test.startRequests).toHaveLength(1);
@@ -635,48 +663,81 @@ describe('conversation-control use case', () => {
 
   it('在任何持久化或 Flow side effect 前拒绝不可用的图片模型', async () => {
     const test = fixture();
-    await expect(test.useCase.send({
-      schema_version: 1,
-      command: 'send',
-      message: '生成一份简单 PPT',
-      selected_agent_id: ConversationSelectedAgentIdSchema.parse('plugin_agent_fixture'),
-      image_generation_model_id: 'missing-image-model',
-    })).rejects.toMatchObject({ code: 'invalid_request' });
+    await expect(
+      test.useCase.send({
+        schema_version: 1,
+        command: 'send',
+        message: '生成一份简单 PPT',
+        selected_agent_id: ConversationSelectedAgentIdSchema.parse('plugin_agent_fixture'),
+        image_generation_model_id: 'missing-image-model',
+      })
+    ).rejects.toMatchObject({ code: 'invalid_request' });
     expect(test.selectedAgentWrites).toEqual([]);
     expect(test.startRequests).toEqual([]);
   });
 
   it('在任何持久化或 Flow side effect 前拒绝不存在或用途错误的对话模型', async () => {
     const missing = fixture();
-    await expect(missing.useCase.send({
-      schema_version: 1,
-      command: 'send',
-      message: '不要创建失败会话',
-      model_id: 'missing-chat-model',
-      selected_agent_id: ConversationSelectedAgentIdSchema.parse('slides_agent'),
-    })).rejects.toMatchObject({ code: 'invalid_request' });
+    await expect(
+      missing.useCase.send({
+        schema_version: 1,
+        command: 'send',
+        message: '不要创建失败会话',
+        model_id: 'missing-chat-model',
+        selected_agent_id: ConversationSelectedAgentIdSchema.parse('slides_agent'),
+      })
+    ).rejects.toMatchObject({ code: 'invalid_request' });
     expect(missing.selectedAgentWrites).toEqual([]);
     expect(missing.startRequests).toEqual([]);
 
     const wrongCapability = fixture();
-    await expect(wrongCapability.useCase.send({
-      schema_version: 1,
-      command: 'send',
-      message: '不要把图片模型当成对话模型',
-      model_id: 'chatgpt-subscription-gpt-image-2',
-    })).rejects.toMatchObject({ code: 'invalid_request' });
+    await expect(
+      wrongCapability.useCase.send({
+        schema_version: 1,
+        command: 'send',
+        message: '不要把图片模型当成对话模型',
+        model_id: 'chatgpt-subscription-gpt-image-2',
+      })
+    ).rejects.toMatchObject({ code: 'invalid_request' });
     expect(wrongCapability.startRequests).toEqual([]);
   });
 
+  it.each([false, true])(
+    '暂停 settled=%s：只有已收口时才将普通 send 交给 Flow 原子接纳',
+    async settled => {
+      const test = fixture([run('paused', { pausedAt: settled ? 111 : undefined })]);
+      const admission = test.useCase.send({
+        schema_version: 1,
+        command: 'send',
+        message: '新的任务',
+        conversation_id: 'conversation-1',
+        selected_agent_id: ConversationSelectedAgentIdSchema.parse('plugin_agent_fixture'),
+      });
+      if (!settled) {
+        await expect(admission).rejects.toMatchObject({ code: 'conversation_busy' });
+        expect(test.selectedAgentWrites).toEqual([]);
+        expect(test.startRequests).toEqual([]);
+        return;
+      }
+      await expect(admission).resolves.toMatchObject({ command: 'send', ok: true });
+      expect(test.startRequests).toHaveLength(1);
+      expect(test.startRequests[0]).toMatchObject({
+        new_events: [{ type: 'user_input', content: '新的任务' }],
+      });
+    }
+  );
+
   it('已有活动 foreground run 时拒绝 send，不改 Agent 选择也不启动第二条 run', async () => {
     const test = fixture([run('awaiting_user')]);
-    await expect(test.useCase.send({
-      schema_version: 1,
-      command: 'send',
-      message: '不要覆盖当前 run',
-      conversation_id: 'conversation-1',
-      selected_agent_id: ConversationSelectedAgentIdSchema.parse('plugin_agent_fixture'),
-    })).rejects.toMatchObject({ code: 'conversation_busy' });
+    await expect(
+      test.useCase.send({
+        schema_version: 1,
+        command: 'send',
+        message: '不要覆盖当前 run',
+        conversation_id: 'conversation-1',
+        selected_agent_id: ConversationSelectedAgentIdSchema.parse('plugin_agent_fixture'),
+      })
+    ).rejects.toMatchObject({ code: 'conversation_busy' });
     expect(test.selectedAgentWrites).toEqual([]);
     expect(test.startRequests).toEqual([]);
   });
@@ -712,14 +773,16 @@ describe('conversation-control use case', () => {
     });
     expect(JSON.stringify(status)).not.toContain('resume');
 
-    await expect(test.useCase.respond({
-      schema_version: 1,
-      command: 'respond',
-      conversation_id: 'conversation-1',
-      project_id: 'project-2',
-      expected_interaction_id: 'interaction-1',
-      response: { kind: 'approve' },
-    })).rejects.toMatchObject({ code: 'invalid_request' });
+    await expect(
+      test.useCase.respond({
+        schema_version: 1,
+        command: 'respond',
+        conversation_id: 'conversation-1',
+        project_id: 'project-2',
+        expected_interaction_id: 'interaction-1',
+        response: { kind: 'approve' },
+      })
+    ).rejects.toMatchObject({ code: 'invalid_request' });
     expect(test.responseRequests).toEqual([]);
 
     const response = await test.useCase.respond({
@@ -746,22 +809,26 @@ describe('conversation-control use case', () => {
   });
 
   it('status 用同一次 running activation 的持久执行进度补充节点与步数', async () => {
-    const test = fixture([run('running', {
-      currentNode: 'user',
-      iterationsUsed: 0,
-      updatedAt: 110,
-    })]);
+    const test = fixture([
+      run('running', {
+        currentNode: 'user',
+        iterationsUsed: 0,
+        updatedAt: 110,
+      }),
+    ]);
     test.setExecutionProgress({
       savedAt: 120,
       currentNode: 'tool',
       executionStepsUsed: 18,
     });
 
-    await expect(test.useCase.status({
-      schema_version: 1,
-      command: 'status',
-      conversation_id: 'conversation-1',
-    })).resolves.toMatchObject({
+    await expect(
+      test.useCase.status({
+        schema_version: 1,
+        command: 'status',
+        conversation_id: 'conversation-1',
+      })
+    ).resolves.toMatchObject({
       run: {
         status: 'running',
         current_node: 'tool',
@@ -773,27 +840,31 @@ describe('conversation-control use case', () => {
   });
 
   it('status 不让恢复前的旧执行进度覆盖新的 running activation', async () => {
-    const test = fixture([run('running', {
-      currentNode: 'llm',
-      iterationsUsed: 20,
-      updatedAt: 150,
-      metadata: {
-        lane: 'foreground',
-        turnId: 'turn-1',
-        executionId: 'execution-2',
-      },
-    })]);
+    const test = fixture([
+      run('running', {
+        currentNode: 'llm',
+        iterationsUsed: 20,
+        updatedAt: 150,
+        metadata: {
+          lane: 'foreground',
+          turnId: 'turn-1',
+          executionId: 'execution-2',
+        },
+      }),
+    ]);
     test.setExecutionProgress({
       savedAt: 140,
       currentNode: 'wait_user',
       executionStepsUsed: 19,
     });
 
-    await expect(test.useCase.status({
-      schema_version: 1,
-      command: 'status',
-      conversation_id: 'conversation-1',
-    })).resolves.toMatchObject({
+    await expect(
+      test.useCase.status({
+        schema_version: 1,
+        command: 'status',
+        conversation_id: 'conversation-1',
+      })
+    ).resolves.toMatchObject({
       run: {
         execution_id: 'execution-2',
         current_node: 'llm',
@@ -806,11 +877,13 @@ describe('conversation-control use case', () => {
     const test = fixture([run('completed', { iterationsUsed: 27 })]);
     test.setLatestExecutionSteps(6);
 
-    await expect(test.useCase.status({
-      schema_version: 1,
-      command: 'status',
-      conversation_id: 'conversation-1',
-    })).resolves.toMatchObject({
+    await expect(
+      test.useCase.status({
+        schema_version: 1,
+        command: 'status',
+        conversation_id: 'conversation-1',
+      })
+    ).resolves.toMatchObject({
       run: {
         status: 'completed',
         execution_steps_used: 6,
@@ -824,11 +897,13 @@ describe('conversation-control use case', () => {
     const test = fixture([run('failed', { iterationsUsed: 27 })]);
     test.setLatestExecutionStepsError(new Error('telemetry unavailable'));
 
-    await expect(test.useCase.status({
-      schema_version: 1,
-      command: 'status',
-      conversation_id: 'conversation-1',
-    })).resolves.toMatchObject({
+    await expect(
+      test.useCase.status({
+        schema_version: 1,
+        command: 'status',
+        conversation_id: 'conversation-1',
+      })
+    ).resolves.toMatchObject({
       run: {
         status: 'failed',
         run_iterations_used: 27,
@@ -845,13 +920,15 @@ describe('conversation-control use case', () => {
 
   it('stop 等待 owner 终态后返回真实 cancelled outcome', async () => {
     const test = fixture([run('running')]);
-    await expect(test.useCase.stop({
-      schema_version: 1,
-      command: 'stop',
-      conversation_id: 'conversation-1',
-      expected_run_id: 'run-1',
-      reason: 'benchmark timeout',
-    })).resolves.toMatchObject({
+    await expect(
+      test.useCase.stop({
+        schema_version: 1,
+        command: 'stop',
+        conversation_id: 'conversation-1',
+        expected_run_id: 'run-1',
+        reason: 'benchmark timeout',
+      })
+    ).resolves.toMatchObject({
       outcome: 'cancelled',
       completed_at: 140,
       requested_reason: 'benchmark timeout',
@@ -860,23 +937,27 @@ describe('conversation-control use case', () => {
 
   it('result 只读取目标 terminal run 的 final_answer，不回退到其它消息', async () => {
     const test = fixture([run('completed', { updatedAt: 130 })]);
-    await expect(test.useCase.result({
-      schema_version: 1,
-      command: 'result',
-      conversation_id: 'conversation-1',
-      run_id: 'run-1',
-    })).resolves.toMatchObject({
+    await expect(
+      test.useCase.result({
+        schema_version: 1,
+        command: 'result',
+        conversation_id: 'conversation-1',
+        run_id: 'run-1',
+      })
+    ).resolves.toMatchObject({
       result_status: 'available',
       message: { message_id: 'answer-1', run_id: 'run-1' },
     });
 
     test.removeFinalAnswer();
-    await expect(test.useCase.result({
-      schema_version: 1,
-      command: 'result',
-      conversation_id: 'conversation-1',
-      run_id: 'run-1',
-    })).resolves.toMatchObject({
+    await expect(
+      test.useCase.result({
+        schema_version: 1,
+        command: 'result',
+        conversation_id: 'conversation-1',
+        run_id: 'run-1',
+      })
+    ).resolves.toMatchObject({
       result_status: 'unavailable',
       reason: 'final_answer_missing',
     });
@@ -884,12 +965,14 @@ describe('conversation-control use case', () => {
 
   it('audit 只投影安全聚合字段并保留 telemetry 尽力而为语义', async () => {
     const test = fixture([run('completed', { updatedAt: 130 })]);
-    await expect(test.useCase.audit({
-      schema_version: 1,
-      command: 'audit',
-      conversation_id: 'conversation-1',
-      run_id: 'run-1',
-    })).resolves.toMatchObject({
+    await expect(
+      test.useCase.audit({
+        schema_version: 1,
+        command: 'audit',
+        conversation_id: 'conversation-1',
+        run_id: 'run-1',
+      })
+    ).resolves.toMatchObject({
       command: 'audit',
       requested_run_id: 'run-1',
       completeness: {
@@ -905,32 +988,38 @@ describe('conversation-control use case', () => {
       context_compaction: {
         observations: 2,
         attempts: 1,
-        by_run: [{
-          run_id: 'run-1',
-          events: [
-            { generation_attempted: true, outcome: 'completed' },
-            { generation_attempted: false, outcome: 'insufficient' },
-          ],
-        }],
+        by_run: [
+          {
+            run_id: 'run-1',
+            events: [
+              { generation_attempted: true, outcome: 'completed' },
+              { generation_attempted: false, outcome: 'insufficient' },
+            ],
+          },
+        ],
       },
     });
 
-    await expect(test.useCase.audit({
-      schema_version: 1,
-      command: 'audit',
-      conversation_id: 'conversation-1',
-      run_id: 'missing-run',
-    })).rejects.toMatchObject({ code: 'run_not_found' });
+    await expect(
+      test.useCase.audit({
+        schema_version: 1,
+        command: 'audit',
+        conversation_id: 'conversation-1',
+        run_id: 'missing-run',
+      })
+    ).rejects.toMatchObject({ code: 'run_not_found' });
   });
 
   it('生产 runtime 关闭审计时返回 capability_unavailable', async () => {
     const test = fixture([run('completed')], { auditAvailable: false });
-    await expect(test.useCase.audit({
-      schema_version: 1,
-      command: 'audit',
-      conversation_id: 'conversation-1',
-      run_id: 'run-1',
-    })).rejects.toMatchObject({
+    await expect(
+      test.useCase.audit({
+        schema_version: 1,
+        command: 'audit',
+        conversation_id: 'conversation-1',
+        run_id: 'run-1',
+      })
+    ).rejects.toMatchObject({
       code: 'capability_unavailable',
       message: 'Agent Run Audit is disabled in this runtime environment',
     });

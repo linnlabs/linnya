@@ -15,9 +15,11 @@ import type {
   ConversationNextRequest,
   ConversationRunCancelResponse,
   ConversationRunSettlementResponse,
+  ConversationRunContinueRequest,
 } from '@app/schemas';
 import {
   generateRuntimeEventId,
+  ExecutionIdSchema,
   runIdFromTurnId,
   RunIdSchema,
   ToolCallIdSchema,
@@ -51,7 +53,10 @@ import {
 } from './interactive-run/orchestration/stopConversationFlowActivity';
 import { readForegroundRunSettlement } from './interactive-run/orchestration/readForegroundRunSettlement';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
+import type { RunDescriptor } from '../../application/run-resumption';
 import type { FlowRuntimePort } from './flow.runtime';
+import { continueFlowRun } from './flow.run-continuation';
+import { admitDurableFlowStart } from './flow.run-admission';
 import {
   admitConversationAgentChoice,
   resolveConversationAgentPromptKey,
@@ -162,15 +167,18 @@ export class FlowOrchestrator {
 
   /** interaction response durable commit 后由 Host 继续持有新的 execution。 */
   async respondInteractionDetached(
-    response: ConversationInteractionResponseRequest,
+    response: ConversationInteractionResponseRequest
   ): Promise<FlowRunAcceptance> {
     const prepared = await this.prepareInteractionResume(response);
     return this.executeDetached(prepared.request, prepared.command);
   }
 
   private async prepareInteractionResume(
-    response: ConversationInteractionResponseRequest,
-  ): Promise<{ readonly request: ConversationNextRequest; readonly command: Extract<FlowCommand, { kind: 'resume' }> }> {
+    response: ConversationInteractionResponseRequest
+  ): Promise<{
+    readonly request: ConversationNextRequest;
+    readonly command: Extract<FlowCommand, { kind: 'resume' }>;
+  }> {
     const runId = RunIdSchema.parse(response.run_id);
     const toolCallId = ToolCallIdSchema.parse(response.tool_call_id);
     const snapshot = (
@@ -273,9 +281,59 @@ export class FlowOrchestrator {
     return projectActiveForegroundRun(conversationId, runs);
   }
 
+  async pauseRun(
+    runId: string,
+    conversationId: string,
+    expectedExecutionId: string
+  ): Promise<ConversationActiveRunResponse> {
+    const id = RunIdSchema.parse(runId);
+    if (!(await this.runtime.runDescriptors?.exists(id)))
+      throw new Error('Run has no durable continuation inputs');
+    const snapshot = (await this.runtime.supervisor.findByConversation(conversationId)).find(
+      run => run.runId === id
+    );
+    if (
+      !snapshot ||
+      snapshot.conversationId !== conversationId ||
+      snapshot.parentRunId ||
+      snapshot.metadata?.lane !== 'foreground'
+    ) {
+      throw new Error('Pause target is not a foreground root run of this conversation');
+    }
+    if (snapshot.metadata?.executionId !== expectedExecutionId)
+      throw new Error('Pause execution identity is stale');
+    const pending = this.executionCompletions.findPending(id);
+    if (snapshot.status === 'running' || snapshot.status === 'pending') {
+      if (!pending) throw new Error('Running Flow has no execution completion');
+      await this.runtime.supervisor.pause(
+        id,
+        'user_pause',
+        ExecutionIdSchema.parse(expectedExecutionId)
+      );
+    }
+    if (pending) await pending;
+    return this.getActiveForegroundRun(conversationId);
+  }
+
+  continueRun(
+    runId: string,
+    command: ConversationRunContinueRequest,
+    sink: SSESink
+  ): Promise<FlowExecutionResult> {
+    return continueFlowRun({
+      runId,
+      command,
+      sink,
+      runtime: this.runtime,
+      runner: this.agentRunner,
+      persistenceCoordinator: this.persistenceCoordinator,
+      completions: this.executionCompletions,
+    });
+  }
+
   async getForegroundRunSettlement(
     conversationId: string,
-    runId: string,
+    runId: string
   ): Promise<ConversationRunSettlementResponse> {
     return readForegroundRunSettlement({
       conversationId,
@@ -291,7 +349,7 @@ export class FlowOrchestrator {
     signal: AbortSignal | undefined,
     options: { persist?: boolean } | undefined,
     command: FlowCommand,
-    lifecycleObserver?: FlowExecutionLifecycleObserver,
+    lifecycleObserver?: FlowExecutionLifecycleObserver
   ): Promise<FlowExecutionResult> {
     const request = assignIncomingEventIds(req);
     const shouldPersist = options?.persist !== false; // 默认为 true
@@ -307,6 +365,7 @@ export class FlowOrchestrator {
       persistenceCoordinator: this.persistenceCoordinator,
       eventStore: this.runtime.eventStore,
       nextEventStoreId: this.runtime.nextEventStoreId,
+      createCheckpointWriter: this.runtime.createCheckpointWriter,
     });
 
     let result: FlowExecutionResult | undefined;
@@ -318,6 +377,9 @@ export class FlowOrchestrator {
     let resumeClaim: runSupervisor.RunResumeClaim<AgentInvokeRequest> | undefined;
     let runAccepted = false;
     let runnerDispatched = false;
+    let recoveryInputs: RunDescriptor | undefined;
+    let incomingCommitted = false;
+    let replacedPausedRunId: RunId | undefined;
     let flowError: unknown;
 
     try {
@@ -356,7 +418,7 @@ export class FlowOrchestrator {
               await hostSession.failRootRunSession('HOST_ONLY_RUN_FAILED', error);
               throw error;
             }
-          },
+          }
         );
       } else {
         const registrationPrepared = preparation.prepared;
@@ -397,6 +459,26 @@ export class FlowOrchestrator {
                     return resumeClaim.handle;
                   })()
                 : await (async () => {
+                    if (shouldPersist && this.runtime.runDescriptors) {
+                      const admitted = await admitDurableFlowStart({
+                        runtime: this.runtime,
+                        runner: this.agentRunner,
+                        host: hostSession,
+                        prepared: registrationPrepared,
+                        request,
+                        conversationId,
+                        turnId,
+                        agentSpec: runnableDefinitionToAgentSpec(definition),
+                        lane: runLane,
+                        visibility: eventVisibility,
+                        signal,
+                      });
+                      recoveryInputs = admitted.descriptor;
+                      replacedPausedRunId = admitted.replacedRunId;
+                      incomingCommitted = true;
+                      runAccepted = true;
+                      return admitted.handle;
+                    }
                     const registeredHandle = await this.runtime.supervisor.registerRun({
                       concurrencyKey:
                         runLane === 'foreground'
@@ -438,9 +520,17 @@ export class FlowOrchestrator {
             const hostPorts = hostSession.createRunnerHostPorts();
             await hostSession.openRootRunSession(resolvedRunHandle.runId);
             return { resolvedRunHandle, incomingBatch, hostPorts };
-          },
+          }
         );
         const { resolvedRunHandle, incomingBatch, hostPorts } = admittedRun;
+        if (shouldPersist && this.runtime.runDescriptors) {
+          if (command.kind === 'resume') {
+            recoveryInputs =
+              (await this.runtime.runDescriptors.load(resolvedRunHandle.runId)) ?? undefined;
+            if (!recoveryInputs)
+              throw new Error('Original interaction run descriptor is unavailable');
+          }
+        }
 
         /**
          * 中文备注：
@@ -448,15 +538,35 @@ export class FlowOrchestrator {
          * - run 行必须先由 linnkit RunSupervisor 注册，保证 SQLite `runs.id`
          *   与 runtime root runId 是同一个事实。
          */
-        await this.incomingEventPreparer.persistAndRelease(incomingBatch, () =>
-          hostSession.persistIncomingEvents(request, incomingBatch)
-        );
-        if (resumeClaim) {
+        if (resumeClaim && recoveryInputs) {
+          const admission = this.runtime.runAdmissionCommit;
+          if (!admission) throw new Error('Durable interaction admission is unavailable');
+          await resumeClaim.activate({
+            executionId: hostSession.sequencer.getExecutionId(),
+            inputEventIds: incomingBatch.events.map(event => event.id),
+            admissionCommit: (previous, next) =>
+              admission.resume({ previous, next, incoming: incomingBatch }),
+          });
+          runAccepted = true;
+          incomingCommitted = true;
+        }
+        if (!incomingCommitted) await hostSession.persistIncomingEvents(request, incomingBatch);
+        if (resumeClaim && !runAccepted) {
           await resumeClaim.activate({ executionId: hostSession.sequencer.getExecutionId() });
           runAccepted = true;
         }
         hostSession.publishCommittedIncomingEvents(incomingBatch);
         hostSession.emitCommittedUserInputs(request, incomingBatch);
+        // 回执之后的 draft/旧断点维护不撤销已提交的用户输入；恢复数据仍以新 run 为 owner。
+        try {
+          await this.incomingEventPreparer.releaseCommittedDrafts(incomingBatch);
+          if (replacedPausedRunId) {
+            await this.agentRunner.discardCheckpoint(replacedPausedRunId);
+            this.runtime.costCollector.release(replacedPausedRunId);
+          }
+        } catch (cleanupError) {
+          logger.error('Committed admission resource cleanup deferred', cleanupError);
+        }
 
         lifecycleObserver?.onAccepted({
           conversationId,
@@ -468,13 +578,14 @@ export class FlowOrchestrator {
           acceptedAt: Date.now(),
         });
 
-        const executionPrepared = shouldPersist
-          ? await this.runPreparationService.prepareExecutionAfterPersistence(
-              request,
-              conversationId,
-              incomingBatch
-            )
-          : registrationPrepared;
+        const executionPrepared =
+          shouldPersist && !recoveryInputs
+            ? await this.runPreparationService.prepareExecutionAfterPersistence(
+                request,
+                conversationId,
+                incomingBatch
+              )
+            : registrationPrepared;
         const { agentInvokeReq, contextHistoryEvents, effectiveOptions } = executionPrepared;
 
         logger.info('[FlowOrchestrator] dispatching to AgentRunner', { conversationId });
@@ -487,6 +598,7 @@ export class FlowOrchestrator {
           options: effectiveOptions,
           hostPorts,
           runHandle: resolvedRunHandle,
+          recoveryInputs,
           execution:
             command.kind === 'resume'
               ? {
@@ -515,20 +627,25 @@ export class FlowOrchestrator {
         if (resumeClaim && !runAccepted) {
           await resumeClaim.release();
         } else if (runHandle && runAccepted && !runnerDispatched) {
-          turnIdForTransportEnd = hostSession.publishAdmittedRunError(
-            flowError,
-            request,
-            'FlowOrchestrator.preDispatch'
-          );
-          await hostSession.createRunnerHostPorts().drainPersistence();
-          const message = error instanceof Error ? error.message : String(error);
-          await runHandle.markFailed({
-            errorCode: 'RUN_DISPATCH_FAILED',
-            message,
-            recoverable: false,
-          });
-          await this.agentRunner.discardCheckpoint(runHandle.runId);
-          this.runtime.costCollector.release(runHandle.runId);
+          hostSession.createRunnerHostPorts().finishCheckpointWrites?.();
+          if (recoveryInputs) {
+            // 用户输入已经原子接纳，装配失败不能撤销它或清掉可继续的原输入。
+            await runHandle.markPaused({ reason: 'execution_setup_failed' });
+          } else {
+            turnIdForTransportEnd = hostSession.publishAdmittedRunError(
+              flowError,
+              request,
+              'FlowOrchestrator.preDispatch'
+            );
+            await hostSession.createRunnerHostPorts().drainPersistence();
+            await runHandle.markFailed({
+              errorCode: 'RUN_DISPATCH_FAILED',
+              message: error instanceof Error ? error.message : String(error),
+              recoverable: false,
+            });
+            await this.agentRunner.discardCheckpoint(runHandle.runId);
+            this.runtime.costCollector.release(runHandle.runId);
+          }
         } else if (!runnerDispatched) {
           turnIdForTransportEnd = hostSession.emitPreAdmissionTransportError(flowError, request);
         }
@@ -578,38 +695,33 @@ export class FlowOrchestrator {
 
   private executeDetached(
     request: ConversationNextRequest,
-    command: FlowCommand,
+    command: FlowCommand
   ): Promise<FlowRunAcceptance> {
     return new Promise<FlowRunAcceptance>((resolve, reject) => {
       let accepted = false;
-      const execution = this.execute(
-        request,
-        () => undefined,
-        undefined,
-        undefined,
-        command,
-        {
-          onAccepted: acceptance => {
-            accepted = true;
-            resolve(acceptance);
-          },
+      const execution = this.execute(request, () => undefined, undefined, undefined, command, {
+        onAccepted: acceptance => {
+          accepted = true;
+          resolve(acceptance);
         },
-      );
-
-      void execution.then(() => {
-        if (!accepted) {
-          reject(new Error('Flow completed without entering Host-owned execution'));
-        }
-      }).catch((error: unknown) => {
-        if (!accepted) {
-          reject(error);
-          return;
-        }
-        logger.error('[FlowOrchestrator] detached execution failed after acceptance', {
-          conversationId: request.conversation_id,
-          error: error instanceof Error ? error.message : String(error),
-        });
       });
+
+      void execution
+        .then(() => {
+          if (!accepted) {
+            reject(new Error('Flow completed without entering Host-owned execution'));
+          }
+        })
+        .catch((error: unknown) => {
+          if (!accepted) {
+            reject(error);
+            return;
+          }
+          logger.error('[FlowOrchestrator] detached execution failed after acceptance', {
+            conversationId: request.conversation_id,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
     });
   }
 }

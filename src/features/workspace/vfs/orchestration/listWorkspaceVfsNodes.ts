@@ -30,7 +30,8 @@ export interface WorkspaceVfsNodeTypeAccessPolicy {
 
 export const ALLOW_ALL_WORKSPACE_VFS_NODE_TYPES: WorkspaceVfsNodeTypeAccessPolicy = {
   canReadContent: () => true,
-  buildDisabledMessage: (nodeType, action) => `当前不能${action} ${nodeType} 类型的 Workspace 节点。`,
+  buildDisabledMessage: (nodeType, action) =>
+    `当前不能${action} ${nodeType} 类型的 Workspace 节点。`,
 };
 
 export interface ListWorkspaceVfsNodesParams {
@@ -98,28 +99,39 @@ function isVisibleWorkspaceNode(row: WorkspaceNodeRow): boolean {
   return !hasResourceLibraryRole(row.tags);
 }
 
-function getChildRows(db: WorkspaceVfsDatabase, projectId: string, parentId: string | null): WorkspaceNodeRow[] {
-  const query = parentId === null
-    ? `
+function getChildRows(
+  db: WorkspaceVfsDatabase,
+  projectId: string,
+  parentId: string | null
+): WorkspaceNodeRow[] {
+  const query =
+    parentId === null
+      ? `
       SELECT * FROM workspace_nodes
       WHERE parent_id IS NULL AND project_id = ? AND deleted_at IS NULL
       ORDER BY type DESC, name ASC
     `
-    : `
+      : `
       SELECT * FROM workspace_nodes
       WHERE parent_id = ? AND project_id = ? AND deleted_at IS NULL
       ORDER BY type DESC, name ASC
     `;
-  return (parentId === null
-    ? db.prepare(query).all(projectId)
-    : db.prepare(query).all(parentId, projectId)) as WorkspaceNodeRow[];
+  return (
+    parentId === null
+      ? db.prepare(query).all(projectId)
+      : db.prepare(query).all(parentId, projectId)
+  ) as WorkspaceNodeRow[];
 }
 
 function getNodeById(db: WorkspaceVfsDatabase, nodeId: string): WorkspaceNodeRow | null {
-  const row = db.prepare(`
+  const row = db
+    .prepare(
+      `
     SELECT * FROM workspace_nodes
     WHERE id = ? AND deleted_at IS NULL
-  `).get(nodeId) as WorkspaceNodeRow | undefined;
+  `
+    )
+    .get(nodeId) as WorkspaceNodeRow | undefined;
   return row ?? null;
 }
 
@@ -138,7 +150,20 @@ function buildWorkspaceNodePath(db: WorkspaceVfsDatabase, row: WorkspaceNodeRow)
   return `/${segments.join('/')}`;
 }
 
-export async function listWorkspaceVfsNodes(params: ListWorkspaceVfsNodesParams): Promise<WorkspaceVfsNode[]> {
+/** 同步 owner 事务内读取刚提交的节点身份；不遍历系统虚拟视图。 */
+export function readPersistedWorkspaceVfsNode(
+  db: WorkspaceVfsDatabase,
+  nodeId: string
+): WorkspaceVfsNode | null {
+  const row = getNodeById(db, nodeId);
+  return row && isVisibleWorkspaceNode(row)
+    ? toVfsWorkspaceNode(row, buildWorkspaceNodePath(db, row))
+    : null;
+}
+
+export async function listWorkspaceVfsNodes(
+  params: ListWorkspaceVfsNodesParams
+): Promise<WorkspaceVfsNode[]> {
   const projectId = normalizeProjectId(params.projectId);
   const parentId = params.parentId ?? null;
   const timestamp = Date.now();

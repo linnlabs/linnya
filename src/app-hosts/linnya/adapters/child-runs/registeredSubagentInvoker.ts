@@ -1,7 +1,7 @@
 import type { PromptKey } from 'src/app-hosts/linnya/agent-registry/prompt.types';
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
 import { generateSubrunId, runIdFromSubrunId, type RunId } from '@linnlabs/linnkit/contracts';
-import { childRuns, tools } from '@linnlabs/linnkit/runtime-kernel';
+import { childRuns, graph, tools } from '@linnlabs/linnkit/runtime-kernel';
 import { recordRunTranscript, runWithLlmAuditContext } from 'src/domains/audit';
 import { createLinnyaChildRunInvoker } from './childRunInvokerFactory';
 import {
@@ -12,10 +12,7 @@ import type { RegisteredAgentResolverPort } from './registeredAgentResolver';
 import { createDefaultRegisteredAgentResolver } from './registeredAgentResolver';
 import type { LinnyaAgentRuntimeScope } from 'src/app-hosts/linnya/adapters/runtime-assembly/agentRuntimeScope';
 import type { telemetry } from '@linnlabs/linnkit/runtime-kernel';
-import {
-  CommandAgentRunIdSchema,
-  CommandConversationIdSchema,
-} from '@app/schemas/commands';
+import { CommandAgentRunIdSchema, CommandConversationIdSchema } from '@app/schemas/commands';
 import type {
   CommandAgentRunEndBarrier,
   CommandAgentRunLifecyclePort,
@@ -23,6 +20,13 @@ import type {
 import { getLogger } from 'src/shared/logger';
 
 const logger = getLogger('RegisteredChildRunInvoker');
+import {
+  prepareDurableChildInvocation,
+  stableChildSubrunId,
+  type DurableChildRuntime,
+} from './durableChildInvocation';
+import { createRunToolRecoveryPort } from '../../application/run-resumption/functions/createRunToolRecoveryPort';
+import { derivePluginAwareToolContext } from '../../plugin-registry/toolContextDerivation';
 
 type RegisteredChildRunParentContext = childRuns.ChildRunInvokeConfig['parentToolContext'];
 
@@ -52,7 +56,7 @@ function resolveAbortSignal(params: RegisteredChildRunRequest): AbortSignal | un
 
 function resolveMaxSteps(
   params: RegisteredChildRunRequest,
-  agentDefinition: AgentDefinition,
+  agentDefinition: AgentDefinition
 ): number | undefined {
   return params.executionPolicy?.maxSteps ?? agentDefinition.config?.maxSteps;
 }
@@ -178,20 +182,40 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
   private readonly childRunInvoker: Pick<childRuns.ChildRunInvoker, 'invoke'>;
   private readonly lifecycle: RegisteredChildRunLifecyclePort;
   private readonly commandAgentRunLifecycle?: CommandAgentRunLifecyclePort;
+  private readonly recovery?: DurableChildRuntime;
 
   constructor(dependencies: {
     agentResolver: RegisteredAgentResolverPort;
     childRunInvoker: Pick<childRuns.ChildRunInvoker, 'invoke'>;
     lifecycle: RegisteredChildRunLifecyclePort;
     commandAgentRunLifecycle?: CommandAgentRunLifecyclePort;
+    recovery?: DurableChildRuntime;
   }) {
     this.agentResolver = dependencies.agentResolver;
     this.childRunInvoker = dependencies.childRunInvoker;
     this.lifecycle = dependencies.lifecycle;
     this.commandAgentRunLifecycle = dependencies.commandAgentRunLifecycle;
+    this.recovery = dependencies.recovery;
   }
 
   async invoke(params: RegisteredChildRunRequest): Promise<RegisteredChildRunResult> {
+    const parentId = resolveParentRunId(params);
+    const parentDescriptor = parentId
+      ? await this.recovery?.runDescriptors?.load(parentId)
+      : undefined;
+    if (parentDescriptor && !params.tracePolicy?.subrunId) {
+      const callId =
+        params.tracePolicy?.parentToolCallId ?? params.parentToolContext.parentToolCallId;
+      if (!callId)
+        throw new graph.RunRecoveryBlockedError('Durable child requires a parent tool call');
+      params = {
+        ...params,
+        tracePolicy: {
+          ...params.tracePolicy,
+          subrunId: stableChildSubrunId(parentDescriptor.runId, callId),
+        },
+      };
+    }
     const abortSignal = resolveAbortSignal(params);
 
     const { agentDefinition, agentConfig } = this.agentResolver.resolveByPromptKey(
@@ -211,26 +235,81 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
     const modelId = resolveModelId(params, agentDefinition);
     const maxSteps = resolveMaxSteps(params, agentDefinition);
     const conversationId = resolveConversationId(params);
-    const lifecycleRun = await this.lifecycle.start({
-      runId: childRunId,
-      parentRunId: requireParentRunIdForLifecycle(parentRunId, childRunId),
-      conversationId: requireConversationIdForLifecycle(conversationId, childRunId),
-      agentDefinition,
-      request: {
-        promptKey: params.promptKey,
-        userMessage: params.userMessage,
-        modelId,
-        maxSteps,
-        availableTools: agentConfig.availableTools,
-      },
-      abortSignal,
-      metadata: {
-        subrunId,
-        traceSource: params.tracePolicy?.source,
-        traceMetadata: params.tracePolicy?.metadata,
-      },
-      parentTracePublisher: traceBinding?.publisher,
-    });
+    const durable =
+      parentDescriptor && this.recovery && parentToolCallId
+        ? await prepareDurableChildInvocation({
+            runtime: this.recovery,
+            params,
+            parent: parentDescriptor,
+            agentDefinition,
+            agentConfig,
+            runId: childRunId,
+            subrunId,
+            parentToolCallId,
+            modelId,
+            maxSteps,
+            seedHistory: seedHistoryEvents,
+          }).catch(error => {
+            // 恢复输入/能力校验失败不是 child 已执行失败，不能让父工具提交失败终态后绕过它。
+            throw new graph.RunRecoveryBlockedError(
+              `Child recovery admission failed: ${error instanceof Error ? error.message : String(error)}`
+            );
+          })
+        : undefined;
+    if (durable?.record?.status === 'completed') {
+      const result = await this.childRunInvoker.invoke({
+        agentConfig,
+        userMessage: durable.descriptor.request.query,
+        parentToolContext: params.parentToolContext,
+        conversationId,
+        runId: childRunId,
+        parentRunId,
+        abortSignal,
+        runtimeEventSink: () => {
+          throw new Error('Completed child must not publish new facts');
+        },
+        persistence: {
+          checkpointer: durable.checkpointer,
+          expectedRevision: durable.checkpoint?.revision,
+          executionCheckpointPort: {
+            commit: async () => {
+              throw new Error('Completed child must not execute');
+            },
+          },
+        },
+      });
+      return toRegisteredChildRunResult({ promptKey: params.promptKey, subrunId, result });
+    }
+    const lifecycleRun = await this.lifecycle
+      .start({
+        runId: childRunId,
+        parentRunId: requireParentRunIdForLifecycle(parentRunId, childRunId),
+        conversationId: requireConversationIdForLifecycle(conversationId, childRunId),
+        agentDefinition,
+        request: {
+          promptKey: params.promptKey,
+          userMessage: params.userMessage,
+          modelId,
+          maxSteps,
+          availableTools: agentConfig.availableTools,
+        },
+        abortSignal,
+        metadata: {
+          subrunId,
+          traceSource: params.tracePolicy?.source,
+          traceMetadata: params.tracePolicy?.metadata,
+        },
+        parentTracePublisher: traceBinding?.publisher,
+        descriptor: durable?.descriptor,
+        resumeFrom: durable?.record,
+      })
+      .catch(error => {
+        if (durable)
+          throw new graph.RunRecoveryBlockedError(
+            `Child lifecycle admission failed: ${error instanceof Error ? error.message : String(error)}`
+          );
+        throw error;
+      });
     let result: childRuns.ChildRunInvokeResult;
     let commandRunEndBarrier: CommandAgentRunEndBarrier | undefined;
     const lifecycle = this.lifecycle;
@@ -239,7 +318,7 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
       if (!this.commandAgentRunLifecycle) return;
       commandRunEndBarrier = await this.commandAgentRunLifecycle.endAgentRun({
         conversationId: CommandConversationIdSchema.parse(
-          requireConversationIdForLifecycle(conversationId, childRunId),
+          requireConversationIdForLifecycle(conversationId, childRunId)
         ),
         agentRunId: CommandAgentRunIdSchema.parse(childRunId),
       });
@@ -270,7 +349,14 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
             const childResult = await this.childRunInvoker.invoke({
               agentConfig,
               userMessage: params.userMessage,
-              parentToolContext: toRegisteredChildRunParentContext(params.parentToolContext),
+              parentToolContext: durable
+                ? derivePluginAwareToolContext(params.parentToolContext, {
+                    toolResultReceipts: this.recovery?.toolResults?.forExecution(
+                      childRunId,
+                      lifecycleRun.eventBus.executionId
+                    ),
+                  })
+                : toRegisteredChildRunParentContext(params.parentToolContext),
               conversationId,
               runId: childRunId,
               parentRunId,
@@ -280,6 +366,29 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
               maxSteps,
               modelId,
               abortSignal: childAbortSignal,
+              ...(durable
+                ? {
+                    initialInput: {
+                      turnId: durable.descriptor.turnId,
+                      request: durable.descriptor.request,
+                    },
+                    seedHistoryEvents: durable.seedHistory ?? seedHistoryEvents,
+                    persistence: {
+                      checkpointer: durable.checkpointer,
+                      expectedRevision: durable.checkpoint?.revision,
+                      toolRecoveryPort: createRunToolRecoveryPort(
+                        this.recovery?.toolResults && {
+                          read: (callId, toolName) =>
+                            this.recovery?.toolResults?.read(childRunId, callId, toolName),
+                        }
+                      ),
+                      executionCheckpointPort: {
+                        commit: (key: string, state: graph.EngineState) =>
+                          lifecycleRun.persistence.commitCheckpoint(key, state),
+                      },
+                    },
+                  }
+                : {}),
             });
             if (Array.isArray(childResult.transcriptMessages)) {
               recordRunTranscript({
@@ -291,6 +400,27 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
           }
         );
       } catch (error) {
+        if (durable && (await lifecycleRun.handle.meta()).status !== 'cancelled') {
+          logger.warn('Durable child attempt interrupted', { childRunId, error });
+          // 未知 child 结果不能作为父工具失败终态；保留原子图，父图等待同一次调用恢复。
+          lifecycleRun.persistence.finishCheckpointWrites();
+          try {
+            await endCommandAgentRun();
+          } catch (cleanupError) {
+            recordSecondaryCleanupFailure(cleanupError);
+            await lifecycleRun.handle.pause('command_cleanup_pending');
+            throw new graph.RunRecoveryBlockedError('Child command cleanup is pending');
+          }
+          const checkpoint = await durable.checkpointer.load(childRunId);
+          await lifecycleRun.handle.markPaused({
+            reason: 'child_execution_interrupted',
+            currentNode: checkpoint?.nodeId,
+            iterationsUsed: checkpoint?.local?.executorLocal?.stepCount,
+          });
+          throw new graph.RunRecoveryBlockedError(
+            'Child execution interrupted; continue the original child'
+          );
+        }
         try {
           await endCommandAgentRun();
         } catch (cleanupError: unknown) {
@@ -304,10 +434,22 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
         throw error;
       }
 
+      lifecycleRun.persistence.finishCheckpointWrites();
+      // invoke 返回本 attempt 的步数；持久生命周期必须保留整个 child 的累计预算。
+      const iterationsUsed = durable
+        ? ((await durable.checkpointer.load(childRunId))?.local?.executorLocal?.stepCount ??
+          result.stepCount)
+        : result.stepCount;
       if (result.success) {
         try {
           await endCommandAgentRun();
         } catch (cleanupError: unknown) {
+          if (durable) {
+            await lifecycleRun.handle.pause('command_cleanup_pending');
+            throw new graph.RunRecoveryBlockedError(
+              'Child result is committed but command cleanup is pending'
+            );
+          }
           await lifecycle.markFailed(lifecycleRun, cleanupError, result.stepCount);
           throw cleanupError;
         }
@@ -327,7 +469,7 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
           result.stepCount
         );
       } else if (result.success) {
-        await lifecycle.markCompleted(lifecycleRun, result.stepCount);
+        await lifecycle.markCompleted(lifecycleRun, iterationsUsed);
       } else {
         await lifecycle.markFailed(
           lifecycleRun,
@@ -359,6 +501,11 @@ export function createRegisteredChildRunInvoker(dependencies: {
     | 'auditPort'
     | 'llmInputMaterializer'
     | 'toolModelInputResolver'
+    | 'runDescriptors'
+    | 'recoveryCheckpointer'
+    | 'runAdmissionCommit'
+    | 'createCheckpointWriter'
+    | 'toolResults'
   >;
   telemetryPort: telemetry.TelemetryPort;
   agentResolver?: RegisteredAgentResolverPort;
@@ -385,9 +532,13 @@ export function createRegisteredChildRunInvoker(dependencies: {
       eventStore: dependencies.runtime.eventStore,
       nextEventStoreId: dependencies.runtime.nextEventStoreId,
       costCollector: dependencies.runtime.costCollector,
+      runAdmissionCommit: dependencies.runtime.runAdmissionCommit,
+      createCheckpointWriter: dependencies.runtime.createCheckpointWriter,
     }),
-    commandAgentRunLifecycle: dependencies.commandRuntime.kind === 'enabled'
-      ? dependencies.commandRuntime.agentRunLifecycle
-      : undefined,
+    commandAgentRunLifecycle:
+      dependencies.commandRuntime.kind === 'enabled'
+        ? dependencies.commandRuntime.agentRunLifecycle
+        : undefined,
+    recovery: dependencies.runtime,
   });
 }

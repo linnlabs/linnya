@@ -12,7 +12,7 @@ import type { WebReadLadderResult } from '../definitions/readLadder';
 import type { WebReadConfig } from '../definitions/webReadConfig';
 import type { WebReadProvider } from '../providers/types';
 import { getWebReadConfig } from '../ports/webReadConfigReader';
-import { getWebFailureDiagnostics, getWebFailureKind } from '../../shared/webFailure';
+import { WebFailureError, getWebFailureDiagnostics, getWebFailureKind } from '../../shared/webFailure';
 import type { WebEvidenceWriter } from '../../shared/ports/webEvidenceWriter';
 import { requireWebEvidenceWriter } from '../../shared/orchestration/webEvidenceWriterContext';
 import type { WebCacheRuntime } from '../../shared/cache/webCacheFactory';
@@ -65,7 +65,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function tryParseProviderErrorPayload(
   content: string
-): { errCode?: number; errMsg?: string } | null {
+): { errCode?: number } | null {
   const trimmed = content.trim();
   if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null;
   try {
@@ -75,7 +75,8 @@ function tryParseProviderErrorPayload(
     const errCode = typeof record['errCode'] === 'number' ? record['errCode'] : undefined;
     const errMsg = typeof record['errMsg'] === 'string' ? record['errMsg'].trim() : undefined;
     if (errCode === undefined && !errMsg) return null;
-    return { ...(errCode !== undefined ? { errCode } : {}), ...(errMsg ? { errMsg } : {}) };
+    // 只保留数值状态；errMsg 仅参与错误形态识别，不能成为可信异常正文。
+    return { ...(errCode !== undefined ? { errCode } : {}) };
   } catch {
     return null;
   }
@@ -177,11 +178,11 @@ export async function runReadWebPage(
 
   const providerError = tryParseProviderErrorPayload(readResult.content);
   if (providerError) {
-    const errMsg = providerError.errMsg ?? '未知 provider 错误';
     const errCodeText =
       providerError.errCode !== undefined ? `（errCode=${providerError.errCode}）` : '';
-    const error = new Error(
-      `读取网页失败：目标站点或网页读取服务返回错误${errCodeText}：${errMsg}`
+    const error = new WebFailureError(
+      'invalid_response',
+      `读取网页失败：目标站点或网页读取服务返回错误${errCodeText}。`
     );
     logger.error('[runReadWebPage] Provider 返回错误正文', {
       operation: 'read',

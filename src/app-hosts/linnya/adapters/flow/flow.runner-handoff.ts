@@ -8,6 +8,19 @@ import type {
   SSESink,
 } from 'src/app-hosts/linnya/adapters/flow/flow.schemas';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
+import type { RunDescriptor } from '../../application/run-resumption';
+import type { AgentSpec, RunId } from '@linnlabs/linnkit/contracts';
+
+export interface FlowRunInputPreparation {
+  conversationId: string;
+  turnId: string;
+  request: AgentInvokeRequest;
+  history: RuntimeEvent[];
+  newEvents: RuntimeEvent[];
+  options: ConversationNextRequest['options'];
+  runId: RunId;
+  agentSpec: AgentSpec;
+}
 
 /**
  * Flow host application layer -> runner 的显式交接端口。
@@ -26,6 +39,8 @@ export interface FlowRunnerHostPorts {
   getGeneratedEvents: () => RuntimeEvent[];
   /** root run 写终态前，等待本轮全部 durable event 短事务完成。 */
   drainPersistence: () => Promise<void>;
+  executionCheckpointPort?: graph.ExecutionCheckpointPort;
+  finishCheckpointWrites?: () => void;
 }
 
 /**
@@ -47,9 +62,12 @@ export interface FlowAgentRunRequest {
    * N-3 RunHandle。runner 只读取 signal 和写生命周期状态，取消入口仍由 host 持有。
    */
   runHandle: runSupervisor.RunHandle<AgentInvokeRequest>;
+  /** 由 admission 保存的原输入，start / HITL / crash continuation 共用。 */
+  recoveryInputs?: RunDescriptor;
   execution:
     | { readonly kind: 'start' }
-    | { readonly kind: 'resume'; readonly expectedCheckpointRevision: number };
+    | { readonly kind: 'resume'; readonly expectedCheckpointRevision: number }
+    | { readonly kind: 'continue'; readonly expectedCheckpointRevision: number };
 }
 
 export interface FlowAgentRunExecution extends PromiseLike<FlowExecutionResult> {
@@ -59,6 +77,8 @@ export interface FlowAgentRunExecution extends PromiseLike<FlowExecutionResult> 
 
 /** Flow orchestration 只依赖 runner 的单一执行能力，不认识具体 GraphExecutor 实现。 */
 export interface FlowAgentRunnerPort {
+  readCheckpointRevision?(runId: string): Promise<number | null>;
+  prepareRecoveryInputs?(request: FlowRunInputPreparation): Promise<RunDescriptor>;
   run(request: FlowAgentRunRequest): FlowAgentRunExecution;
   discardCheckpoint(runId: string): Promise<void>;
 }

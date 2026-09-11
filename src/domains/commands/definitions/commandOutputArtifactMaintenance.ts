@@ -1,5 +1,6 @@
 export interface CommandOutputArtifactMaintenanceRequest {
   readonly nowMs: number;
+  readonly protectedConversationIds?: ReadonlySet<string>;
 }
 
 export interface CommandOutputArtifactMaintenanceStats {

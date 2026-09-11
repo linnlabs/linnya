@@ -50,6 +50,8 @@ export type {
  * 包含工具执行时需要的所有依赖和配置
  */
 export interface ToolContext extends ToolExecutionContext {
+  /** 当前 activation 的结果提交窄端口；不能从最新 run 状态反查并补猜身份。 */
+  toolResultReceipts?: import('../app-hosts/linnya/application/run-resumption').ToolResultReceiptPort;
   /** 会话工作目录 admission；生成图片必须直接写入受管 conversation-scoped 目录。 */
   conversationWorkDirectoryAdmission?: import('../app-hosts/linnya/application/conversation-lifecycle').ConversationWorkDirectoryAdmissionPort;
   /** Host 注入的受管图片入口；工具结果图片通过它登记为 durable asset。 */

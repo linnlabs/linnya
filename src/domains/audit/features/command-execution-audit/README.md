@@ -23,7 +23,7 @@
 
 ## 3. 事件顺序和失败
 
-启动前审计写入失败时保持零 spawn，并返回明确的审计不可用错误。启动后某一条审计写入失败不能改写真实进程终态；应标记审计不完整，并在 owner 关闭时 drain 已进入 port 的写入。
+开发审计 sink 的写入失败由统一 Audit Runtime 记录诊断，不阻止命令启动、不撤销已成立的授权，也不改写真实进程终态；`off` 不写审计。Command producer 的 schema / 身份 / 授权校验失败仍保持零 spawn，不得以 best-effort 审计为由绕过。owner 关闭时 drain 已进入 port 的写入。生产恢复依据由执行 owner 的持久记录承载，不能依赖开发审计。
 
 terminal 事件必须在四类事实分别可判断后投影：child exit 不等于完成，output drain 未完成时不能记录完整，tree 仍存活时不能宣称清理成功，resource release 失败要单独保留。
 
@@ -41,4 +41,4 @@ terminal 事件必须在四类事实分别可判断后投影：child exit 不等
 
 ## 6. 测试门禁
 
-覆盖七类事件、禁止敏感字段、重复投影、启动前失败、启动后 sink 失败、App end drain、raw artifact 与 audit 的关联以及跨重启读取。测试应验证字段白名单，而不是只断言“写了一条日志”。
+覆盖七类事件、禁止敏感字段、重复投影、非法合同的启动前拒绝、统一入口 sink 失败不改变业务、App end drain、raw artifact 与 audit 的关联以及跨重启读取。测试应验证字段白名单，而不是只断言“写了一条日志”。

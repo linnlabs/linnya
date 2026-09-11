@@ -1,10 +1,11 @@
 import type { ConversationTransportOutcome } from '../../../definitions/conversationTransport';
 import { projectRunSettlementResponse } from '../functions/projectRunSettlementResponse';
+import { projectActiveRunResponse } from '../functions/projectActiveRunResponse';
 import { useInteractiveRunStore } from '../store/interactiveRunStore';
-import { fetchForegroundRunSettlement } from './interactiveRunApi';
+import { fetchActiveForegroundRun, fetchForegroundRunSettlement } from './interactiveRunApi';
 
 function describeTransportFailure(
-  outcome: Extract<ConversationTransportOutcome, { kind: 'failed' }>,
+  outcome: Extract<ConversationTransportOutcome, { kind: 'failed' }>
 ): string {
   return outcome.failure.source === 'client'
     ? outcome.failure.error.message
@@ -18,38 +19,47 @@ function describeTransportFailure(
 export async function reconcileInteractiveRunTransportOutcome(
   conversationId: string,
   controller: AbortController,
-  outcome: ConversationTransportOutcome,
+  outcome: ConversationTransportOutcome
 ): Promise<void> {
   const store = useInteractiveRunStore();
+  if (!store.isLatestTransport(conversationId, controller)) return;
   store.releaseTransport(conversationId, controller);
-  if (outcome.kind !== 'failed') return;
-
-  const failureMessage = describeTransportFailure(outcome);
   const current = store.snapshotFor(conversationId);
-  if (!current?.runId) {
-    store.failRun(conversationId, failureMessage);
-    return;
-  }
+  if (outcome.kind !== 'failed' && current?.status !== 'paused') return;
+  const failureMessage = outcome.kind === 'failed' ? describeTransportFailure(outcome) : undefined;
+  const stillOwnsState = (): boolean =>
+    store.isLatestTransport(conversationId, controller) &&
+    store.snapshotFor(conversationId) === current;
 
   try {
-    const response = await fetchForegroundRunSettlement(conversationId, current.runId);
-    const snapshot = projectRunSettlementResponse(response, current);
+    // 新消息尚未得到 run identity 时失败，原暂停 run 可能仍被 Host 完整保留。
+    const snapshot = current?.runId
+      ? projectRunSettlementResponse(
+          await fetchForegroundRunSettlement(conversationId, current.runId),
+          current
+        )
+      : projectActiveRunResponse(await fetchActiveForegroundRun(conversationId));
+    if (!stillOwnsState()) return;
     if (!snapshot) {
-      store.failRun(conversationId, failureMessage);
+      store.failRun(conversationId, failureMessage ?? 'Paused run is no longer available');
       return;
     }
     store.synchronizeSnapshot(conversationId, snapshot);
-    const settlementMessage = snapshot.error && snapshot.error !== failureMessage
-      ? `${failureMessage}; run settlement: ${snapshot.error}`
-      : failureMessage;
+    if (!failureMessage) return;
+    const settlementMessage =
+      snapshot.error && snapshot.error !== failureMessage
+        ? `${failureMessage}; run settlement: ${snapshot.error}`
+        : failureMessage;
     store.recordCommandError(conversationId, settlementMessage);
   } catch (settlementError) {
-    const settlementMessage = settlementError instanceof Error
-      ? settlementError.message
-      : String(settlementError);
-    store.failRun(
+    if (!stillOwnsState()) return;
+    const settlementMessage =
+      settlementError instanceof Error ? settlementError.message : String(settlementError);
+    store.synchronizeSnapshot(conversationId, {
+      ...current,
       conversationId,
-      `${failureMessage}; run settlement query failed: ${settlementMessage}`,
-    );
+      status: 'reconnecting',
+      error: `${failureMessage ?? 'Unable to refresh paused run'}; run settlement query failed: ${settlementMessage}`,
+    });
   }
 }

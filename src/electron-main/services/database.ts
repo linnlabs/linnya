@@ -20,6 +20,8 @@ import { getConversationFilesSchemaProviders } from '../../app-hosts/linnya/adap
 import { getCommandApprovalsSchemaProviders } from '../../app-hosts/linnya/adapters/persistence/command-approvals/schema-providers';
 import { getCommandCardSettlementsSchemaProviders } from '../../app-hosts/linnya/adapters/persistence/command-card-settlements/schema-providers';
 import { getCheckpointerSchemaProviders } from '../../app-hosts/linnya/adapters/persistence/checkpointer/schema-providers';
+import { getRunDescriptorSchemaProviders } from '../../app-hosts/linnya/adapters/persistence/run-descriptors/schema-providers';
+import { getRunCostSchemaProviders } from '../../app-hosts/linnya/adapters/token-accounting/schema-providers';
 import { getTelemetrySchemaProviders } from '../../app-hosts/linnya/adapters/telemetry/schema-providers';
 import { getKnowledgeBaseSchemaProviders } from '../../features/knowledge-base/infrastructure/sqlite/schema-providers';
 import { getAssetSchemaProviders } from '../../domains/assets/features/asset-ledger/infrastructure/sqlite/schemaProviders';
@@ -70,6 +72,8 @@ export class DatabaseService {
       ...getCommandApprovalsSchemaProviders(),
       ...getCommandCardSettlementsSchemaProviders(),
       ...getCheckpointerSchemaProviders(),
+      ...getRunDescriptorSchemaProviders(),
+      ...getRunCostSchemaProviders(),
       ...getTelemetrySchemaProviders(),
       ...getKnowledgeBaseSchemaProviders(),
     ];

@@ -6,6 +6,11 @@
  */
 
 import { Logger } from '@shared/logger';
+import {
+  getWebFailureKind,
+  isWebChallengeResponse,
+  type WebFailureKind,
+} from '../../../tools/web/shared/webFailure';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import {
   fetch as undiciFetch,
@@ -29,12 +34,13 @@ export type WebHttpErrorKind =
   | 'invalid_response';
 
 export class WebHttpError extends Error {
+  readonly code: WebFailureKind;
   readonly kind: WebHttpErrorKind;
   readonly cause?: unknown;
   readonly status?: number;
   readonly url?: string;
   readonly contentType?: string;
-  readonly bodyPreview?: string;
+  readonly challengeDetected?: boolean;
   readonly retryAfterMs?: number;
   readonly redirectCount?: number;
   readonly attempt?: number;
@@ -45,7 +51,7 @@ export class WebHttpError extends Error {
     status?: number;
     url?: string;
     contentType?: string;
-    bodyPreview?: string;
+    challengeDetected?: boolean;
     retryAfterMs?: number;
     redirectCount?: number;
     attempt?: number;
@@ -58,11 +64,13 @@ export class WebHttpError extends Error {
     this.status = options?.status;
     this.url = options?.url;
     this.contentType = options?.contentType;
-    this.bodyPreview = options?.bodyPreview;
+    this.challengeDetected = options?.challengeDetected;
     this.retryAfterMs = options?.retryAfterMs;
     this.redirectCount = options?.redirectCount;
     this.attempt = options?.attempt;
     this.retryCount = options?.retryCount;
+    // 分类会读取网络异常的 code；传入原始事实，避免派生 code 反向触发自身分类。
+    this.code = getWebFailureKind({ kind, ...options });
   }
 }
 
@@ -103,14 +111,15 @@ export function createWebUpstreamHttpError(provider: string, response: WebHttpRe
       : response.status >= 500
         ? 'http_5xx'
         : 'http_error';
-  const errorPreview = response.bodyText.trim().slice(0, 1_000);
+  // 失败正文与 statusText 同样不可信；只在响应边界判定挑战，不把原文挂入异常链。
+  const challengeDetected = isWebChallengeResponse(response.status, response.bodyText.trim().slice(0, 512));
   return new WebHttpError(
     kind,
-    `${provider} 请求失败: ${response.status} ${response.statusText}${errorPreview ? ` - ${errorPreview}` : ''}`,
+    `${provider} 请求失败: HTTP ${response.status}。`,
     {
       status: response.status,
       contentType: response.headers.get('content-type')?.trim() || undefined,
-      bodyPreview: errorPreview.slice(0, 512),
+      challengeDetected,
       retryAfterMs: parseRetryAfter(response.headers.get('retry-after')),
     },
   );
@@ -134,7 +143,7 @@ export function withWebHttpErrorDiagnostics(
     cause: error.cause,
     status: error.status,
     contentType: error.contentType,
-    bodyPreview: error.bodyPreview,
+    challengeDetected: error.challengeDetected,
     retryAfterMs: error.retryAfterMs,
     ...diagnostics,
   });

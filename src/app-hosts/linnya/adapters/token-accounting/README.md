@@ -25,6 +25,9 @@ count surface、actual usage 校准样本和 run cost 聚合。
 - 只把 `confidence=actual` 的 response usage 配对成 route-isolated 校准样本。
 - 聚合 run/child-run token ledger，并在任一 actual usage 缺价时保持 cost
   unknown。
+- 生产通过 `agent_run_costs` 保存最小累计账本与父子关联，不依赖可关闭 Audit 或短期 Telemetry。
+  checkpoint 提交前执行账本持久屏障；重启恢复累计用量，继续不重置。崩溃时未报告 usage
+  的 LLM attempt 按 execution 身份只标记一次不确定性，不能补成 0 或伪造厂商费用。
 
 本模块不负责：
 
@@ -32,6 +35,9 @@ count surface、actual usage 校准样本和 run cost 聚合。
 - 上下文截断规则、本地 tokenizer、canonical ledger 数学和价格计算规则。
 - 从模型名、URL 或旧 adapter 名推断 count surface。
 - 长期 telemetry 存储、UI 展示或 Cloud 网关实现。
+
+最小恢复账本只含计数、价格可信度和关联，不保存 prompt/response/stream；随 run 删除级联清理。
+它不是永久诊断平台，也没有新增产品费用硬限制。
 
 AI SDK 的单 step raw usage projector 属于 `adapters/inference`；Linnkit 的 token
 contracts、ledger 与纯聚合继续属于 Linnkit。已删除的旧 Provider codec 不能作为 count

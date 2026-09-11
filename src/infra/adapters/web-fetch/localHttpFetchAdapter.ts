@@ -22,7 +22,6 @@ import {
   resolveAndAssertPublicHost,
   type ResolvedWebHost,
 } from '../../../tools/web/shared/urlPolicy';
-import { isWebChallengeResponse } from '../../../tools/web/shared/webFailure';
 
 export const LOCAL_HTTP_TIMEOUT_MS = 12_000;
 export const LOCAL_HTTP_MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -162,7 +161,7 @@ function retryDelayMs(error: WebHttpError): number {
 }
 
 function isTransientRetryCandidate(error: WebHttpError): boolean {
-  if (isWebChallengeResponse(error.status, error.bodyPreview)) return false;
+  if (error.challengeDetected) return false;
   return error.kind === 'timeout'
     || error.kind === 'network_error'
     || error.kind === 'rate_limited'
@@ -242,8 +241,7 @@ export async function localHttpFetch(
       throw error;
     }
     const dispatcher = dispatcherFactory(resolved);
-    let response: WebHttpResponse;
-    let deferredRetryDelayMs: number | undefined;
+    let fetchOutcome: WebHttpResponse | WebHttpError;
     attemptCount += 1;
     try {
       const headers: Record<string, string> = {
@@ -252,7 +250,7 @@ export async function localHttpFetch(
       };
       if (options.validators?.etag) headers['If-None-Match'] = options.validators.etag;
       if (options.validators?.lastModified) headers['If-Modified-Since'] = options.validators.lastModified;
-      response = await httpFetch({
+      fetchOutcome = await httpFetch({
         url: currentUrl,
         method: 'GET',
         headers,
@@ -264,7 +262,13 @@ export async function localHttpFetch(
       });
     } catch (error: unknown) {
       if (!(error instanceof WebHttpError)) throw error;
-      const diagnosed = withWebHttpErrorDiagnostics(error, {
+      fetchOutcome = error;
+    } finally {
+      await dispatcher.close();
+    }
+    // 连接资源先释放，再决定退避和下一次请求；异常也是一次已完成的 HTTP 尝试。
+    if (fetchOutcome instanceof WebHttpError) {
+      const diagnosed = withWebHttpErrorDiagnostics(fetchOutcome, {
         url: currentUrl.toString(),
         redirectCount,
         attempt: attemptCount,
@@ -282,18 +286,12 @@ export async function localHttpFetch(
           attempt: attemptCount,
           retryCount,
         });
-        deferredRetryDelayMs = Math.min(retryDelayMs(diagnosed), remainingAfterFailure - 1);
-      } else {
-        throw diagnosed;
+        await sleep(Math.min(retryDelayMs(diagnosed), remainingAfterFailure - 1), options.signal);
+        continue;
       }
       throw diagnosed;
-    } finally {
-      await dispatcher.close();
     }
-    if (deferredRetryDelayMs !== undefined) {
-      await sleep(deferredRetryDelayMs, options.signal);
-      continue;
-    }
+    const response = fetchOutcome;
 
     if (REDIRECT_STATUSES.has(response.status)) {
       const location = response.headers.get('location');

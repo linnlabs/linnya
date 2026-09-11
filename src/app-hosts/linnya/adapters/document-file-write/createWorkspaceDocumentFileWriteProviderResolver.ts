@@ -14,7 +14,9 @@ import { requireCitationSourceResolver } from '../../../../domains/citation';
 import type {
   WorkspaceDocumentFileWriteProvider,
   WorkspaceDocumentFileWriteProviderResolver,
+  WorkspaceDocumentFileWriteResult,
 } from '../../../../features/workspace/document-file-write/definitions/workspaceDocumentFileWrite';
+import type { ToolOwnerResultCommit } from '../../application/run-resumption';
 import type { WorkspaceMutationPublisher } from '../../../../features/workspace/definitions/workspaceMutationPublisher';
 import { createWorkspaceDocumentUpdatedEvent } from '../../../../features/workspace/functions/createWorkspaceDocumentMutationEvent';
 import { createSqliteWorkspaceDocumentMutationPort } from '../../../../features/workspace/document-mutation/infrastructure/sqlite/createSqliteWorkspaceDocumentMutationPort';
@@ -25,6 +27,7 @@ export function createWorkspaceDocumentFileWriteProviderResolver(params: {
   readonly db: Database.Database;
   readonly context: PluginToolContext;
   readonly mutationPublisher?: WorkspaceMutationPublisher;
+  readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileWriteResult>;
 }): WorkspaceDocumentFileWriteProviderResolver {
   const markdownProvider = createMarkdownFileWriteProvider(params);
   return documentType => {
@@ -46,6 +49,7 @@ function createMarkdownFileWriteProvider(params: {
   readonly db: Database.Database;
   readonly context: PluginToolContext;
   readonly mutationPublisher?: WorkspaceMutationPublisher;
+  readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileWriteResult>;
 }): WorkspaceDocumentFileWriteProvider {
   const documentStore = new MarkdownDocumentService(params.db);
   const normalizer = new MarkdownNormalizationService(params.db, documentStore);
@@ -55,6 +59,20 @@ function createMarkdownFileWriteProvider(params: {
     enabled: true,
     disabledMessage: 'Markdown 是永久启用的内建文档类型。',
     write: async request => {
+      params.resultCommit?.prepare();
+      const formatResult = (
+        write: Awaited<ReturnType<typeof writeMarkdownDocumentFromText>>
+      ): WorkspaceDocumentFileWriteResult => ({
+        observation: buildMarkdownFileWriteObservation({
+          operation: request.operation,
+          path: request.identity.path,
+          replacedCount: request.replacedCount,
+          pendingCount: write.edits.length,
+          createdAnnotationCount: write.createdAnnotationIds.length,
+          updatedAnnotationCount: write.updatedAnnotationIds.length,
+          deletedAnnotationCount: write.deletedAnnotationIds.length,
+        }),
+      });
       const normalized = await normalizer.normalizeDocumentIfNeeded(request.identity.documentId);
       if (normalized.status === 'failed') {
         throw new Error(
@@ -78,16 +96,18 @@ function createMarkdownFileWriteProvider(params: {
           },
         },
         touchDocumentUpdatedAt: workspaceMutation.touchDocumentUpdatedAt,
+        commitResult: write => params.resultCommit?.commit(formatResult(write)),
       });
       if (
-        write.edits.length > 0
-        || write.createdAnnotationIds.length > 0
-        || write.updatedAnnotationIds.length > 0
-        || write.deletedAnnotationIds.length > 0
+        write.edits.length > 0 ||
+        write.createdAnnotationIds.length > 0 ||
+        write.updatedAnnotationIds.length > 0 ||
+        write.deletedAnnotationIds.length > 0
       ) {
-        const hasAnnotationChanges = write.createdAnnotationIds.length > 0
-          || write.updatedAnnotationIds.length > 0
-          || write.deletedAnnotationIds.length > 0;
+        const hasAnnotationChanges =
+          write.createdAnnotationIds.length > 0 ||
+          write.updatedAnnotationIds.length > 0 ||
+          write.deletedAnnotationIds.length > 0;
         params.mutationPublisher?.publish(
           createWorkspaceDocumentUpdatedEvent({
             node: {
@@ -101,17 +121,7 @@ function createMarkdownFileWriteProvider(params: {
         );
       }
 
-      return {
-        observation: buildMarkdownFileWriteObservation({
-          operation: request.operation,
-          path: request.identity.path,
-          replacedCount: request.replacedCount,
-          pendingCount: write.edits.length,
-          createdAnnotationCount: write.createdAnnotationIds.length,
-          updatedAnnotationCount: write.updatedAnnotationIds.length,
-          deletedAnnotationCount: write.deletedAnnotationIds.length,
-        }),
-      };
+      return formatResult(write);
     },
   };
 }
@@ -137,9 +147,7 @@ function buildMarkdownFileWriteObservation(params: {
     facts.push(`批注 ${params.deletedAnnotationCount} 条已删除`);
   }
   if (facts.length === 0) facts.push('内容无变化');
-  const replacement = params.operation === 'edit'
-    ? `，替换 ${params.replacedCount ?? 0} 处`
-    : '';
+  const replacement = params.operation === 'edit' ? `，替换 ${params.replacedCount ?? 0} 处` : '';
   return `已处理 Markdown 文件：${params.path}${replacement}；${facts.join('，')}。`;
 }
 

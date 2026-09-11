@@ -6,6 +6,11 @@ export type ConversationMessageKey =
   | 'conversation.view.empty.title'
   | 'conversation.view.empty.description'
   | 'conversation.input.placeholder'
+  | 'conversation.input.action.send'
+  | 'conversation.input.action.pause'
+  | 'conversation.input.action.continue'
+  | 'conversation.input.action.cancel'
+  | 'conversation.input.action.waiting'
   | 'conversation.input.model.placeholder'
   | 'conversation.input.model.loading'
   | 'conversation.input.model.unknown'
@@ -572,7 +577,7 @@ export type ConversationMessageKey =
 
 export type ConversationMessageResolver = (
   key: ConversationMessageKey,
-  params?: MessageParams,
+  params?: MessageParams
 ) => string;
 
 export interface ConversationLocalizationResult {

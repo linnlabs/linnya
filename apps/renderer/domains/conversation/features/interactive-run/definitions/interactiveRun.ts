@@ -1,6 +1,10 @@
 export type InteractiveRunStatus =
   | 'starting'
   | 'running'
+  | 'pausing'
+  | 'paused'
+  | 'continuing'
+  | 'reconnecting'
   | 'awaiting_user'
   | 'submitting'
   | 'cancelling'
@@ -28,5 +32,6 @@ export interface InteractiveRunSnapshot {
   executionId?: string;
   status: InteractiveRunStatus;
   pendingInteraction?: PendingRunInteraction;
+  pause?: { settled: boolean; updatedAt: number; reason?: string };
   error?: string;
 }

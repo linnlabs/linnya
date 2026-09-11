@@ -3,7 +3,7 @@
 本目录是 Linnya 唯一的审计模块。它统一回答“谁在什么运行范围内做了什么决定，以及结果是什么”，并把所有可持久化审计事实送到同一条
 `AuditPort` 链路。
 
-Phase 0 的目标是收口入口和存储责任：
+统一入口和存储责任如下：
 
 ```text
 Runtime / Command / LLM response or stream evidence
@@ -84,6 +84,7 @@ continuation、raw usage 等瞬态字段；达到片段或字节上限后停止�
 | Backend 日志                     | logging                   | 否。用于诊断，不是事实源                                     |
 | `engine_telemetry`               | Telemetry                 | 否。用于统计和性能分析，有自己的保留周期                     |
 | checkpoint                       | runtime / recovery        | 否。用于恢复中断执行                                         |
+| RunDescriptor / tool result receipt / run cost | run-resumption / 持久化 adapters | 否。生产恢复所需的原输入、结果证明与最小累计账本；不受 Audit 开关或 TTL 控制 |
 | Document History                 | conversation/history      | 否。用于内容历史和用户可见回滚                               |
 | Provider outbound latest attempt | provider diagnostics      | 否。当前是进程内最新快照，不落库，不得被称为第二套审计       |
 | `audit_envelope`                 | Audit Domain + EventStore | 是。唯一 durable audit 事实源                                |
@@ -91,6 +92,11 @@ continuation、raw usage 等瞬态字段；达到片段或字节上限后停止�
 因此，CLI 的 `audit`
 命令不能写文件、写数据库或启动另一种 recorder。未来如果需要新的审计事实，应增加新的
 `action` 和安全投影，继续调用当前 `AuditPort`。
+
+暂停/继续的入口、提交边界、资源保留与未知副作用限制统一见
+[运行恢复](../../app-hosts/linnya/application/run-resumption/README.md)。恢复不读取诊断日志，
+也不要求启用 behavior。Backend 的常规日志可能包含请求或工具参数；分享日志前仍需核对
+敏感内容，不能把“审计 off”理解成“所有日志均不含正文”。
 
 ## 如何使用
 
@@ -122,7 +128,7 @@ LLM evidence 使用 AsyncLocalStorage 关联 conversation、run、trace、subrun
 单片段超过 512 KiB、单次 run 超过 256 个 stream 片段、64 个 response attempt 摘要、16 个工具
 协议错误或 16 个 system reminder 片段时停止继续记录；单次 run 的 response 摘要总大小上限为
 1 MiB，stream evidence 总大小上限为 16 MiB。超过上限只记录容量丢弃诊断，不阻断 Agent。
-审计写入失败只记录诊断日志，不覆盖正常业务结果。
+审计写入 / flush 失败由唯一 Audit Runtime 记录安全诊断，不覆盖正常业务结果，也不重试或另建 sink。`off` 不调用 sink（含 flush）。事件投影 / 合同校验错误仍属于 producer 编程错误，不能被当作存储不可用吞掉。生产执行和恢复所需的授权、提交与对账记录不属于此可关闭的诊断模块。
 
 ## 新增审计事件的规范
 

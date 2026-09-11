@@ -40,6 +40,29 @@ function makeRecord(overrides: Partial<RunRecord> = {}): RunRecord {
 }
 
 describe('SQLiteRunRegistryStore', () => {
+  it('两个恢复入口竞争时仅一方成功，省略可选字段不造成虚假冲突', async () => {
+    const { db, store } = createStore();
+    const original = makeRecord({ status: 'paused', pausedAt: 1000 });
+    await store.save(original);
+    const results = await Promise.all(
+      ['attempt-a', 'attempt-b'].map(executionId =>
+        store.compareAndSwap(original, {
+          ...original,
+          status: 'running',
+          pausedAt: undefined,
+          updatedAt: 2000,
+          metadata: { ...original.metadata, executionId },
+        })
+      )
+    );
+    expect(results).toEqual([true, false]);
+    expect(await store.load(original.runId)).toMatchObject({
+      status: 'running',
+      metadata: { executionId: 'attempt-a' },
+    });
+    db.close();
+  });
+
   it('saves and loads full linnkit RunRecord data', async () => {
     const { db, store } = createStore();
     const record = makeRecord({
@@ -210,9 +233,7 @@ describe('SQLiteRunRegistryStore', () => {
       })
     );
 
-    await expect(
-      store.list({ conversationId: 'conv-run-registry' })
-    ).resolves.toMatchObject({
+    await expect(store.list({ conversationId: 'conv-run-registry' })).resolves.toMatchObject({
       runs: [expect.objectContaining({ runId: 'turn-owned' })],
     });
     db.close();

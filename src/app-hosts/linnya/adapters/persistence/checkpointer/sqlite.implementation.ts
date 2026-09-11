@@ -49,19 +49,25 @@ export class SqliteCheckpointer implements Checkpointer {
 
   async load(checkpointKey: string): Promise<EngineState | null> {
     const row = this.db
-      .prepare<[string], CheckpointStateRow>(
-        'SELECT state_json FROM engine_checkpoints WHERE conversation_id = ?',
-      )
+      .prepare<
+        [string],
+        CheckpointStateRow
+      >('SELECT state_json FROM engine_checkpoints WHERE conversation_id = ?')
       .get(checkpointKey);
 
     if (!row) {
       return null;
     }
 
-    return JSON.parse(row.state_json) as EngineState;
+    return graph.parseEngineCheckpoint(JSON.parse(row.state_json));
   }
 
   async save(checkpointKey: string, state: EngineState): Promise<void> {
+    this.saveInTransaction(checkpointKey, state);
+  }
+
+  /** 同步写入供 Host 原子提交复用；不能在 better-sqlite3 事务中 await 异步 port。 */
+  saveInTransaction(checkpointKey: string, state: EngineState): void {
     const savedAt = Date.now();
     const summary = graph.summarizeCheckpoint(checkpointKey, state, savedAt);
     const stateJson = JSON.stringify({
@@ -88,7 +94,7 @@ export class SqliteCheckpointer implements Checkpointer {
           current_node           = excluded.current_node,
           iterations             = excluded.iterations,
           has_pending_tool_calls = excluded.has_pending_tool_calls
-        `,
+        `
       )
       .run(
         checkpointKey,
@@ -97,21 +103,20 @@ export class SqliteCheckpointer implements Checkpointer {
         summary.savedAt,
         summary.currentNode ?? null,
         summary.iterations ?? null,
-        summary.hasPendingToolCalls ? 1 : 0,
+        summary.hasPendingToolCalls ? 1 : 0
       );
   }
 
   async clear(checkpointKey: string): Promise<void> {
-    this.db
-      .prepare('DELETE FROM engine_checkpoints WHERE conversation_id = ?')
-      .run(checkpointKey);
+    this.db.prepare('DELETE FROM engine_checkpoints WHERE conversation_id = ?').run(checkpointKey);
   }
 
   async peekMeta(checkpointKey: string): Promise<CheckpointMeta | null> {
     const row = this.db
-      .prepare<[string], CheckpointMetaRow>(
-        `SELECT ${META_COLUMNS} FROM engine_checkpoints WHERE conversation_id = ?`,
-      )
+      .prepare<
+        [string],
+        CheckpointMetaRow
+      >(`SELECT ${META_COLUMNS} FROM engine_checkpoints WHERE conversation_id = ?`)
       .get(checkpointKey);
 
     return row ? this.rowToMeta(row) : null;
@@ -133,12 +138,13 @@ export class SqliteCheckpointer implements Checkpointer {
     }
 
     const rows = this.db
-      .prepare<typeof params, CheckpointMetaRow>(
-        `SELECT ${META_COLUMNS} FROM engine_checkpoints ${whereClause} ORDER BY saved_at DESC ${limitClause}`,
-      )
+      .prepare<
+        typeof params,
+        CheckpointMetaRow
+      >(`SELECT ${META_COLUMNS} FROM engine_checkpoints ${whereClause} ORDER BY saved_at DESC ${limitClause}`)
       .all(...params);
 
-    return rows.map((row) => this.rowToMeta(row));
+    return rows.map(row => this.rowToMeta(row));
   }
 
   private rowToMeta(row: CheckpointMetaRow): CheckpointMeta {
@@ -168,16 +174,21 @@ export class SqliteCheckpointer implements Checkpointer {
     olderThanMs: number;
     includePending?: boolean;
     now?: number;
+    protectedCheckpointKeys?: readonly string[];
   }): number {
     const now = opts.now ?? Date.now();
     const cutoff = now - opts.olderThanMs;
     const includePending = opts.includePending === true;
 
-    const sql = includePending
+    let sql = includePending
       ? 'DELETE FROM engine_checkpoints WHERE saved_at < ?'
       : 'DELETE FROM engine_checkpoints WHERE saved_at < ? AND has_pending_tool_calls = 0';
 
-    const result = this.db.prepare(sql).run(cutoff);
+    const protectedKeys = opts.protectedCheckpointKeys ?? [];
+    if (protectedKeys.length > 0) {
+      sql += ` AND conversation_id NOT IN (${protectedKeys.map(() => '?').join(',')})`;
+    }
+    const result = this.db.prepare(sql).run(cutoff, ...protectedKeys);
     return Number(result.changes);
   }
 }

@@ -2,6 +2,21 @@ import { EventEmitter } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createConversationFlowRouter } from 'src/app-hosts/linnya/adapters/flow/flow.router';
 import type { ConversationNextRequest } from 'src/app-hosts/linnya/adapters/flow/flow.schemas';
+import type { SSESink } from 'src/app-hosts/linnya/adapters/flow/flow.schemas';
+
+function uncalledControls() {
+  const unexpected = async (): Promise<never> => {
+    throw new Error('Unexpected control command');
+  };
+  return {
+    pauseRun: unexpected,
+    continueRun: unexpected,
+    getActiveForegroundRun: unexpected,
+    getForegroundRunSettlement: unexpected,
+    cancelRun: unexpected,
+    respondInteraction: unexpected,
+  };
+}
 
 class MockResponse extends EventEmitter {
   readonly headers = new Map<string, string>();
@@ -36,7 +51,7 @@ class MockResponse extends EventEmitter {
 }
 
 function createValidRequestBody(
-  overrides?: Partial<ConversationNextRequest>,
+  overrides?: Partial<ConversationNextRequest>
 ): ConversationNextRequest {
   return {
     conversation_id: 'conv_router_contract',
@@ -69,7 +84,11 @@ function getPostNextHandler(router: ReturnType<typeof createConversationFlowRout
 
   for (const layer of stack) {
     if (!isRecord(layer) || !isRecord(layer.route)) continue;
-    if (layer.route.path !== '/next' || !isRecord(layer.route.methods) || layer.route.methods.post !== true) {
+    if (
+      layer.route.path !== '/next' ||
+      !isRecord(layer.route.methods) ||
+      layer.route.methods.post !== true
+    ) {
       continue;
     }
     if (!Array.isArray(layer.route.stack)) break;
@@ -85,8 +104,8 @@ function getPostNextHandler(router: ReturnType<typeof createConversationFlowRout
 }
 
 async function flushAsyncWork(): Promise<void> {
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise(resolve => setImmediate(resolve));
+  await new Promise(resolve => setImmediate(resolve));
 }
 
 describe('Flow router/orchestrator contract regression', () => {
@@ -103,9 +122,10 @@ describe('Flow router/orchestrator contract regression', () => {
       timestamp: Date.now(),
       execution_id: 'execution_router_contract_1',
       reason: 'complete',
-    };
+    } as const;
     const orchestrator = {
-      next: vi.fn().mockImplementation(async (_body, sink) => {
+      ...uncalledControls(),
+      next: vi.fn().mockImplementation(async (_body: ConversationNextRequest, sink: SSESink) => {
         sink(transportEndEvent);
         return {
           conversation_id: 'conv_router_contract',
@@ -113,7 +133,7 @@ describe('Flow router/orchestrator contract regression', () => {
           stepCount: 0,
         };
       }),
-    } as any;
+    };
 
     const handler = getPostNextHandler(createConversationFlowRouter(orchestrator));
     const req = { body: createValidRequestBody() };
@@ -127,8 +147,8 @@ describe('Flow router/orchestrator contract regression', () => {
         conversation_id: 'conv_router_contract',
       }),
       expect.any(Function),
-      expect.any(AbortSignal),
-      { persist: false },
+      undefined,
+      { persist: false }
     );
     expect(res.headers.get('Content-Type')).toBe('text/event-stream');
     expect(res.writes).toEqual([
@@ -140,8 +160,9 @@ describe('Flow router/orchestrator contract regression', () => {
 
   it('does not write router-owned error SSE when orchestrator throws', async () => {
     const orchestrator = {
+      ...uncalledControls(),
       next: vi.fn().mockRejectedValue(new Error('router contract failure')),
-    } as any;
+    };
 
     const handler = getPostNextHandler(createConversationFlowRouter(orchestrator));
     const req = { body: createValidRequestBody({ options: { persist: true } }) };
@@ -156,31 +177,32 @@ describe('Flow router/orchestrator contract regression', () => {
     expect(res.jsonBody).toBeUndefined();
   });
 
-  it('aborts orchestrator signal on client close before response ends', async () => {
+  it('client close detaches transport but leaves execution running until Host completes', async () => {
     let capturedSignal: AbortSignal | undefined;
+    let complete!: () => void;
+    const execution = new Promise<void>(resolve => {
+      complete = resolve;
+    });
     const orchestrator = {
-      next: vi.fn().mockImplementation(
-        async (_body: ConversationNextRequest, _sink: (event: unknown) => void, signal?: AbortSignal) => {
-          capturedSignal = signal;
-          await new Promise((_, reject) => {
-            signal?.addEventListener(
-              'abort',
-              () => {
-                const error = new Error('aborted by client close');
-                error.name = 'AbortError';
-                reject(error);
-              },
-              { once: true },
-            );
-          });
-          return {
-            conversation_id: 'conv_router_contract',
-            events: [],
-            stepCount: 0,
-          };
-        },
-      ),
-    } as any;
+      ...uncalledControls(),
+      next: vi
+        .fn()
+        .mockImplementation(
+          async (
+            _body: ConversationNextRequest,
+            _sink: (event: unknown) => void,
+            signal?: AbortSignal
+          ) => {
+            capturedSignal = signal;
+            await execution;
+            return {
+              conversation_id: 'conv_router_contract',
+              events: [],
+              stepCount: 0,
+            };
+          }
+        ),
+    };
 
     const handler = getPostNextHandler(createConversationFlowRouter(orchestrator));
     const req = { body: createValidRequestBody({ options: { persist: true } }) };
@@ -191,8 +213,11 @@ describe('Flow router/orchestrator contract regression', () => {
     res.emit('close');
     await flushAsyncWork();
 
-    expect(capturedSignal?.aborted).toBe(true);
+    expect(capturedSignal).toBeUndefined();
     expect(res.writes).toEqual([]);
+    expect(res.endCallCount).toBe(0);
+    complete();
+    await flushAsyncWork();
     expect(res.endCallCount).toBe(1);
   });
 });

@@ -113,9 +113,8 @@ function parseResponse(json: unknown): Omit<BaiduQianfanWebSearchResult, 'tookMs
   const code = readString(json['code']);
   const message = readString(json['message']);
   if (references.length === 0 && code && message) {
-    throw new Error(
-      `百度千帆 web_search 调用失败: code=${code}, message=${message}${requestId ? `, request_id=${requestId}` : ''}`
-    );
+    // 错误对象会被上层作为 cause 保留；供应商自由文本不能借异常链进入诊断。
+    throw new Error('百度千帆 web_search 返回业务失败。');
   }
 
   return { requestId, references };

@@ -1,24 +1,34 @@
 import { useInteractiveRunStore } from '../store/interactiveRunStore';
-import { restoreInteractiveRun } from './restoreInteractiveRun';
+import { fetchActiveForegroundRun } from './interactiveRunApi';
+import { projectActiveRunResponse } from '../functions/projectActiveRunResponse';
 
 export async function reconcileInteractiveRunCommandFailure(
   conversationId: string,
-  error: unknown,
+  error: unknown
 ): Promise<void> {
   const message = error instanceof Error ? error.message : String(error);
   const store = useInteractiveRunStore();
+  const before = store.snapshotFor(conversationId);
 
   try {
-    const activeRun = await restoreInteractiveRun(conversationId);
+    const activeRun = projectActiveRunResponse(await fetchActiveForegroundRun(conversationId));
+    if (store.snapshotFor(conversationId) !== before) return;
     if (activeRun) {
+      store.synchronizeSnapshot(conversationId, activeRun);
       store.recordCommandError(conversationId, message);
       return;
     }
   } catch (restoreError) {
-    const restoreMessage = restoreError instanceof Error
-      ? restoreError.message
-      : String(restoreError);
-    store.failRun(conversationId, `${message}; active run query failed: ${restoreMessage}`);
+    if (store.snapshotFor(conversationId) !== before) return;
+    const restoreMessage =
+      restoreError instanceof Error ? restoreError.message : String(restoreError);
+    // 控制请求和查询同时断网时结果未知；保留原身份，由无 reader 观察流程继续对账。
+    store.synchronizeSnapshot(conversationId, {
+      ...before,
+      conversationId,
+      status: 'reconnecting',
+      error: `${message}; active run query failed: ${restoreMessage}`,
+    });
     return;
   }
 

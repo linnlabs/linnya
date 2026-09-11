@@ -4,13 +4,13 @@ import { useInteractiveRunStore } from '../store/interactiveRunStore';
 import { fetchActiveForegroundRun } from './interactiveRunApi';
 
 export async function restoreInteractiveRun(
-  conversationId: string,
+  conversationId: string
 ): Promise<InteractiveRunSnapshot | undefined> {
+  const store = useInteractiveRunStore();
+  const before = store.snapshotFor(conversationId);
   const response = await fetchActiveForegroundRun(conversationId);
+  if (store.snapshotFor(conversationId) !== before) return store.snapshotFor(conversationId);
   const snapshot = projectActiveRunResponse(response);
-  useInteractiveRunStore().synchronizeSnapshot(
-    conversationId,
-    snapshot,
-  );
+  store.synchronizeSnapshot(conversationId, snapshot);
   return snapshot;
 }

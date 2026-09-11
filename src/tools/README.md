@@ -289,6 +289,7 @@ import type { StructuredToolResult } from 'src/tools/types';
 - 旧 16 hex key 不双读；升级后按 cache miss 处理。
 - cache hit 后，模型附件等 scope-sensitive 后处理仍按当前上下文重新解析，不能直接复用旧 durable ref。
 - 对可变文件的写入/编辑不能仅按同参历史结果去重：相同参数不代表当前文件仍是上次操作后的状态，见 [Workspace 工具合同](workspace/README.md)。
+- `todo_write` 同样不声明历史同参幂等：它替换当前整表快照，每次新调用从最新成功事实递增版本；A→B→A 是三次写入意图。恢复同一已完成 call 应复用该 call 的执行事实，而不是按参数命中另一条历史调用。
 
 权威合同与完整验收矩阵见 [独立 Linnkit 仓的 `docs/integration/tool-development-guide.md §3.2`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/tool-development-guide.md#32-幂等执行合同)；底层 owner 见 [独立 Linnkit 仓的 `src/runtime-kernel/tools/README.md`](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/tools/README.md)。
 

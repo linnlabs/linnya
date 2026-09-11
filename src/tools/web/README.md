@@ -297,6 +297,7 @@ src/tools/web/webread/
 目标：普通页面由本地安全 GET + Readability/语义 DOM 处理，质量不足时按需渲染；只有用户主动配置后，最后才交给第三方增强解析 Provider：
 
 - **infra adapter**：负责 HTTP、鉴权、响应解析（unknown + 类型守卫），并在本地 GET 边界执行一次有界瞬态重试
+- 网络异常与上游瞬态响应都必须先释放本次 dispatcher，再退避 / 重试；退避不重置总 deadline，取消后不得发送下一次请求。
 - **provider**：负责把供应商响应映射成内部统一 `WebReadResult`
 - **functions**：负责可解释的质量信号判定；不按黑盒分数阈值偷偷改变路由
 - **orchestration**：负责 HTTP→Chromium→托管三层选择、90 秒总预算、截断、`[@ref]`、observation 与 Evidence 物化
@@ -336,6 +337,13 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 - bash 上线后可用 `curl`/`wget`/脚本处理 sitemap、API 文档等明确批量场景，但命令行请求不会经过 Web 域的 `urlPolicy`、DNS/SSRF 防护、正文质量 gate 或 Evidence 写入。
 - Shell 输出不会自动获得 `[@ref]`、Web citation 或 Evidence 回放能力。需要引用的页面仍应走 `web_read`，或由未来明确的窄 port 完成物化，禁止从任意命令输出猜造 Evidence。
 - bash 的网络隔离、文件系统隔离、进程权限与资源预算属于 bash 自身安全模型，不能复用“Web 已经安全”这一结论。
+
+### 5.10 失败内容与工具错误码
+
+- HTTP 失败的 `bodyText`、`statusText`，以及供应商 JSON / MCP 错误中的 `message/detail` 都是不可信外部内容，不能拼入工具异常、observation、RuntimeEvent、审计或日志。错误文案由 Web owner 的固定模板与数值状态生成；成功网页正文仍走现有动态不可信边界。
+- 挑战页识别只在 HTTP 响应边界读取有限正文，错误对象仅保留 `challengeDetected` 判定，不携带 `bodyPreview`。重试与读取阶梯复用该判定，不能为删正文而丢失 captcha 分类或改变升级规则。
+- `WebHttpError` 通过既有分类函数暴露只读 `code`，`WebFailureError.code` 与其 `kind` 一致；Host ToolRegistry 只转交通用错误合同，不理解 Web 枚举。运行时的 `errorKind=execution` 与 owner 的 `error_code` 分别保留，不能互相覆盖。
+- 无内容失败不能写成功 Evidence；401 不因错误文案或状态码而自动交给第三方 Reader。错误安全不新增 fallback、审计开关或新的导出协议。
 
 ---
 

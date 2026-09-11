@@ -1,7 +1,7 @@
 /**
  * @file package/schemas/src/api-dtos.ts
  * @description API 请求/响应的 Zod schema 定义
- * 
+ *
  * 定义前后端 API 通信的数据传输对象（DTO），
  * 确保 API 边界的类型安全和数据校验。
  */
@@ -27,15 +27,19 @@ import { ConversationSelectedAgentIdSchema } from './conversation/selected-agent
 /**
  * 增量事件 - 前端可以发送给后端的事件子集
  */
-export const ConversationExistingAttachmentSelectionItemSchema = z.object({
-  source: z.literal('existing'),
-  attachmentId: z.string().min(1).max(200),
-}).strict();
+export const ConversationExistingAttachmentSelectionItemSchema = z
+  .object({
+    source: z.literal('existing'),
+    attachmentId: z.string().min(1).max(200),
+  })
+  .strict();
 
-export const ConversationDraftAttachmentSelectionItemSchema = z.object({
-  source: z.literal('draft'),
-  draft: ConversationDraftAttachmentRefSchema,
-}).strict();
+export const ConversationDraftAttachmentSelectionItemSchema = z
+  .object({
+    source: z.literal('draft'),
+    draft: ConversationDraftAttachmentRefSchema,
+  })
+  .strict();
 
 export const ConversationAttachmentSelectionItemSchema = z.discriminatedUnion('source', [
   ConversationExistingAttachmentSelectionItemSchema,
@@ -44,64 +48,72 @@ export const ConversationAttachmentSelectionItemSchema = z.discriminatedUnion('s
 
 export const ConversationAttachmentSelectionSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('preserve') }).strict(),
-  z.object({
-    mode: z.literal('replace'),
-    items: z.array(ConversationAttachmentSelectionItemSchema)
-      .max(CONVERSATION_IMAGE_MAX_ATTACHMENTS),
-  }).strict(),
+  z
+    .object({
+      mode: z.literal('replace'),
+      items: z
+        .array(ConversationAttachmentSelectionItemSchema)
+        .max(CONVERSATION_IMAGE_MAX_ATTACHMENTS),
+    })
+    .strict(),
 ]);
 
 const IncrementalUserInputEventSchema = z.object({
-    type: z.literal('user_input'),
-    timestamp: z.number(),
-    content: z.string(),
-    raw_content: z.string().optional(),
-    id: z.string().optional(),
-    turn_id: z.string().optional(),
-    /** host 已完成 ingress 校验的草稿附件；发送 commit 后由 host 替换成 durable refs。 */
-    attachments: z.array(ConversationDraftAttachmentRefSchema)
-      .min(1)
-      .max(CONVERSATION_IMAGE_MAX_ATTACHMENTS)
-      .optional(),
-    /** edit/regenerate 上行 mutation command；不会进入 durable user message。 */
-    attachment_selection: ConversationAttachmentSelectionSchema.optional(),
-    metadata: ConversationUserInputMetadataSchema.optional(),
-    source: z.enum(['user', 'editor', 'system']).default('user'),
+  type: z.literal('user_input'),
+  timestamp: z.number(),
+  content: z.string(),
+  raw_content: z.string().optional(),
+  id: z.string().optional(),
+  turn_id: z.string().optional(),
+  /** host 已完成 ingress 校验的草稿附件；发送 commit 后由 host 替换成 durable refs。 */
+  attachments: z
+    .array(ConversationDraftAttachmentRefSchema)
+    .min(1)
+    .max(CONVERSATION_IMAGE_MAX_ATTACHMENTS)
+    .optional(),
+  /** edit/regenerate 上行 mutation command；不会进入 durable user message。 */
+  attachment_selection: ConversationAttachmentSelectionSchema.optional(),
+  metadata: ConversationUserInputMetadataSchema.optional(),
+  source: z.enum(['user', 'editor', 'system']).default('user'),
 });
 
 const IncrementalToolOutputEventSchema = z.discriminatedUnion('status', [
-  z.object({
-    type: z.literal('tool_output'),
-    timestamp: z.number(),
-    tool_call_id: z.string(),
-    /**
-     * 工具名（必填）
-     *
-     * 说明：
-     * - 后端会将 tool_output 持久化为 RuntimeEvent（其 tool_name 为必填字段）；
-     * - 若缺失 tool_name，会导致历史回放/渲染链路无法稳定关联工具语义。
-     */
-    tool_name: z.string(),
-    status: z.literal('success'),
-    observation: z.string().trim().min(1),
-    data: JsonValueSchema,
-    id: z.string().optional(),
-    turn_id: z.string().optional(),
-    metadata: ConversationInteractionResponseToolMetadataSchema.optional(),
-  }).strict(),
-  z.object({
-    type: z.literal('tool_output'),
-    timestamp: z.number(),
-    tool_call_id: z.string(),
-    tool_name: z.string(),
-    status: z.literal('error'),
-    observation: z.string().trim().min(1),
-    error: z.string().trim().min(1),
-    error_code: z.string().trim().min(1).optional(),
-    id: z.string().optional(),
-    turn_id: z.string().optional(),
-    metadata: ConversationInteractionResponseToolMetadataSchema.optional(),
-  }).strict(),
+  z
+    .object({
+      type: z.literal('tool_output'),
+      timestamp: z.number(),
+      tool_call_id: z.string(),
+      /**
+       * 工具名（必填）
+       *
+       * 说明：
+       * - 后端会将 tool_output 持久化为 RuntimeEvent（其 tool_name 为必填字段）；
+       * - 若缺失 tool_name，会导致历史回放/渲染链路无法稳定关联工具语义。
+       */
+      tool_name: z.string(),
+      status: z.literal('success'),
+      observation: z.string().trim().min(1),
+      data: JsonValueSchema,
+      id: z.string().optional(),
+      turn_id: z.string().optional(),
+      metadata: ConversationInteractionResponseToolMetadataSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('tool_output'),
+      timestamp: z.number(),
+      tool_call_id: z.string(),
+      tool_name: z.string(),
+      status: z.literal('error'),
+      observation: z.string().trim().min(1),
+      error: z.string().trim().min(1),
+      error_code: z.string().trim().min(1).optional(),
+      id: z.string().optional(),
+      turn_id: z.string().optional(),
+      metadata: ConversationInteractionResponseToolMetadataSchema.optional(),
+    })
+    .strict(),
 ]);
 
 export const IncrementalEvent = z.union([
@@ -111,7 +123,9 @@ export const IncrementalEvent = z.union([
 
 export type IncrementalEvent = z.infer<typeof IncrementalEvent>;
 export type ConversationAttachmentSelection = z.infer<typeof ConversationAttachmentSelectionSchema>;
-export type ConversationAttachmentSelectionItem = z.infer<typeof ConversationAttachmentSelectionItemSchema>;
+export type ConversationAttachmentSelectionItem = z.infer<
+  typeof ConversationAttachmentSelectionItemSchema
+>;
 
 export const ConversationImageAttachmentErrorCodeSchema = z.enum([
   'conversation.image.invalid_request',
@@ -130,58 +144,74 @@ export const ConversationImageAttachmentErrorCodeSchema = z.enum([
   'conversation.image.preview_failed',
 ]);
 
-export type ConversationImageAttachmentErrorCode = z.infer<typeof ConversationImageAttachmentErrorCodeSchema>;
+export type ConversationImageAttachmentErrorCode = z.infer<
+  typeof ConversationImageAttachmentErrorCodeSchema
+>;
 
-export const ConversationImageDraftStageResponseSchema = z.object({
-  draft: ConversationDraftAttachmentRefSchema,
-  mediaType: ConversationImageMediaTypeSchema,
-  byteLength: z.number().int().positive().max(CONVERSATION_IMAGE_MAX_BYTES),
-  width: z.number().int().positive(),
-  height: z.number().int().positive(),
-  sha256: z.string().regex(/^[a-f0-9]{64}$/),
-}).strict();
+export const ConversationImageDraftStageResponseSchema = z
+  .object({
+    draft: ConversationDraftAttachmentRefSchema,
+    mediaType: ConversationImageMediaTypeSchema,
+    byteLength: z.number().int().positive().max(CONVERSATION_IMAGE_MAX_BYTES),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
 
-export type ConversationImageDraftStageResponse = z.infer<typeof ConversationImageDraftStageResponseSchema>;
+export type ConversationImageDraftStageResponse = z.infer<
+  typeof ConversationImageDraftStageResponseSchema
+>;
 
-export const ConversationImageAttachmentErrorResponseSchema = z.object({
-  code: ConversationImageAttachmentErrorCodeSchema,
-}).strict();
+export const ConversationImageAttachmentErrorResponseSchema = z
+  .object({
+    code: ConversationImageAttachmentErrorCodeSchema,
+  })
+  .strict();
 
-export type ConversationImageAttachmentErrorResponse = z.infer<typeof ConversationImageAttachmentErrorResponseSchema>;
+export type ConversationImageAttachmentErrorResponse = z.infer<
+  typeof ConversationImageAttachmentErrorResponseSchema
+>;
 
-export const ConversationUserInputCommittedEventSchema = z.object({
-  id: z.string().min(1),
-  type: z.literal('user_input_committed'),
-  timestamp: z.number(),
-  conversation_id: z.string().min(1),
-  turn_id: z.string().min(1),
-  operation: z.enum(['append', 'replace']),
-  replaced_from_message_id: z.string().min(1).optional(),
-  content: z.string(),
-  /** 用户实际提交的 message；不得混入 Host 注入上下文、引用或附件描述。 */
-  raw_content: z.string(),
-  metadata: ConversationUserInputMetadataSchema.optional(),
-  attachments: z.array(ConversationAttachmentRefSchema)
-    .max(CONVERSATION_IMAGE_MAX_ATTACHMENTS)
-    .optional(),
-}).strict().superRefine((event, context) => {
-  if (event.operation === 'append' && event.replaced_from_message_id !== undefined) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['replaced_from_message_id'],
-      message: 'append ack 不能携带 replaced_from_message_id',
-    });
-  }
-  if (event.operation === 'replace' && event.replaced_from_message_id !== event.id) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['replaced_from_message_id'],
-      message: 'replace ack 必须绑定同一个稳定 message ID',
-    });
-  }
-});
+export const ConversationUserInputCommittedEventSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('user_input_committed'),
+    timestamp: z.number(),
+    conversation_id: z.string().min(1),
+    turn_id: z.string().min(1),
+    operation: z.enum(['append', 'replace']),
+    replaced_from_message_id: z.string().min(1).optional(),
+    content: z.string(),
+    /** 用户实际提交的 message；不得混入 Host 注入上下文、引用或附件描述。 */
+    raw_content: z.string(),
+    metadata: ConversationUserInputMetadataSchema.optional(),
+    attachments: z
+      .array(ConversationAttachmentRefSchema)
+      .max(CONVERSATION_IMAGE_MAX_ATTACHMENTS)
+      .optional(),
+  })
+  .strict()
+  .superRefine((event, context) => {
+    if (event.operation === 'append' && event.replaced_from_message_id !== undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['replaced_from_message_id'],
+        message: 'append ack 不能携带 replaced_from_message_id',
+      });
+    }
+    if (event.operation === 'replace' && event.replaced_from_message_id !== event.id) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['replaced_from_message_id'],
+        message: 'replace ack 必须绑定同一个稳定 message ID',
+      });
+    }
+  });
 
-export type ConversationUserInputCommittedEvent = z.infer<typeof ConversationUserInputCommittedEventSchema>;
+export type ConversationUserInputCommittedEvent = z.infer<
+  typeof ConversationUserInputCommittedEventSchema
+>;
 
 /**
  * 对话请求选项
@@ -360,51 +390,67 @@ export const ConversationOptions = z.object({
   completion_length_hint: z.string().optional(),
 
   /** 最近被拒绝的建议列表（最多2条，用于避免重复建议） */
-  recentRejections: z.array(z.object({
-    /** 被拒绝的建议文本 */
-    suggestionText: z.string(),
-    /** 用户拒绝后继续输入的文本（可选） */
-    userContinuedWith: z.string().optional(),
-  })).optional(),
-  recent_rejections: z.array(z.object({
-    suggestionText: z.string(),
-    userContinuedWith: z.string().optional(),
-  })).optional(),
+  recentRejections: z
+    .array(
+      z.object({
+        /** 被拒绝的建议文本 */
+        suggestionText: z.string(),
+        /** 用户拒绝后继续输入的文本（可选） */
+        userContinuedWith: z.string().optional(),
+      })
+    )
+    .optional(),
+  recent_rejections: z
+    .array(
+      z.object({
+        suggestionText: z.string(),
+        userContinuedWith: z.string().optional(),
+      })
+    )
+    .optional(),
 
-  intentKey: z.enum([
-    'continue_paragraph',
-    'list_next_item',
-    'bridge_to_suffix_delimiter',
-    'rewrite_after_large_delete',
-    'structure_editing',
-  ]).optional(),
-  intent_key: z.enum([
-    'continue_paragraph',
-    'list_next_item',
-    'bridge_to_suffix_delimiter',
-    'rewrite_after_large_delete',
-    'structure_editing',
-  ]).optional(),
+  intentKey: z
+    .enum([
+      'continue_paragraph',
+      'list_next_item',
+      'bridge_to_suffix_delimiter',
+      'rewrite_after_large_delete',
+      'structure_editing',
+    ])
+    .optional(),
+  intent_key: z
+    .enum([
+      'continue_paragraph',
+      'list_next_item',
+      'bridge_to_suffix_delimiter',
+      'rewrite_after_large_delete',
+      'structure_editing',
+    ])
+    .optional(),
   intentConfidence: z.number().optional(),
   intent_confidence: z.number().optional(),
   intentConstraints: z.array(z.string()).optional(),
   intent_constraints: z.array(z.string()).optional(),
-  behaviorSummary: z.object({
-    totalEvents: z.number(),
-    totalInsertedChars: z.number(),
-    totalDeletedChars: z.number(),
-    recentDeletedChars: z.number().optional(),
-    hasLargeRecentDelete: z.boolean().optional(),
-    typingSpeedCps: z.number().optional(),
-  }).optional(),
-  behavior_summary: z.object({
-    totalEvents: z.number(),
-    totalInsertedChars: z.number(),
-    totalDeletedChars: z.number(),
-    recentDeletedChars: z.number().optional(),
-    hasLargeRecentDelete: z.boolean().optional(),
-    typingSpeedCps: z.number().optional(),
-  }).optional(),
+  behaviorSummary: z
+    .object({
+      totalEvents: z.number(),
+      totalInsertedChars: z.number(),
+      totalDeletedChars: z.number(),
+      recentDeletedChars: z.number().optional(),
+      hasLargeRecentDelete: z.boolean().optional(),
+      typingSpeedCps: z.number().optional(),
+    })
+    .optional(),
+  behavior_summary: z
+    .object({
+      totalEvents: z.number(),
+      totalInsertedChars: z.number(),
+      totalDeletedChars: z.number(),
+      recentDeletedChars: z.number().optional(),
+      hasLargeRecentDelete: z.boolean().optional(),
+      typingSpeedCps: z.number().optional(),
+    })
+    .optional(),
 });
 
 export type ConversationOptions = z.infer<typeof ConversationOptions>;
@@ -412,147 +458,178 @@ export type ConversationOptions = z.infer<typeof ConversationOptions>;
 /**
  * /api/v1/conversation/next 请求体
  */
-const ConversationNextRequestBody = z.object({
-  /** 对话ID */
-  conversation_id: z.string().optional(),
-  /** 新增：项目ID */
-  project_id: z.string().optional(),
-  /** 新的增量事件 */
-  new_events: z.array(IncrementalEvent).optional(),
-  /** 请求选项 */
-  options: ConversationOptions.optional(),
-}).superRefine((request, context) => {
-  if (request.options?.selected_agent_id !== undefined && request.options.promptKey !== undefined) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['options', 'selected_agent_id'],
-      message: 'selected_agent_id 与 promptKey 不能同时出现',
-    });
-  }
-  const isUserInputReplacement = request.options?.truncateFromMessageId !== undefined
-    && (request.options.truncateReason === 'edit' || request.options.truncateReason === 'regenerate');
-  for (const [eventIndex, event] of (request.new_events ?? []).entries()) {
-    if (event.type !== 'user_input') continue;
-    if (isUserInputReplacement && event.attachment_selection === undefined) {
+const ConversationNextRequestBody = z
+  .object({
+    /** 对话ID */
+    conversation_id: z.string().optional(),
+    /** 新增：项目ID */
+    project_id: z.string().optional(),
+    /** 新的增量事件 */
+    new_events: z.array(IncrementalEvent).optional(),
+    /** 请求选项 */
+    options: ConversationOptions.optional(),
+  })
+  .superRefine((request, context) => {
+    if (
+      request.options?.selected_agent_id !== undefined &&
+      request.options.promptKey !== undefined
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['new_events', eventIndex, 'attachment_selection'],
-        message: 'edit/regenerate replace 请求必须显式声明附件选择',
-      });
-      continue;
-    }
-    if (event.attachment_selection === undefined) continue;
-    if (event.attachments !== undefined) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['new_events', eventIndex, 'attachments'],
-        message: 'attachment_selection 与普通发送 attachments 不能同时出现',
+        path: ['options', 'selected_agent_id'],
+        message: 'selected_agent_id 与 promptKey 不能同时出现',
       });
     }
-    if (!request.options?.truncateFromMessageId || !request.options.truncateReason) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['new_events', eventIndex, 'attachment_selection'],
-        message: 'attachment_selection 只能用于 edit/regenerate replace 请求',
-      });
+    const isUserInputReplacement =
+      request.options?.truncateFromMessageId !== undefined &&
+      (request.options.truncateReason === 'edit' ||
+        request.options.truncateReason === 'regenerate');
+    for (const [eventIndex, event] of (request.new_events ?? []).entries()) {
+      if (event.type !== 'user_input') continue;
+      if (isUserInputReplacement && event.attachment_selection === undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['new_events', eventIndex, 'attachment_selection'],
+          message: 'edit/regenerate replace 请求必须显式声明附件选择',
+        });
+        continue;
+      }
+      if (event.attachment_selection === undefined) continue;
+      if (event.attachments !== undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['new_events', eventIndex, 'attachments'],
+          message: 'attachment_selection 与普通发送 attachments 不能同时出现',
+        });
+      }
+      if (!request.options?.truncateFromMessageId || !request.options.truncateReason) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['new_events', eventIndex, 'attachment_selection'],
+          message: 'attachment_selection 只能用于 edit/regenerate replace 请求',
+        });
+      }
+      if (
+        request.options?.truncateReason === 'regenerate' &&
+        event.attachment_selection.mode !== 'preserve'
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['new_events', eventIndex, 'attachment_selection', 'mode'],
+          message: 'regenerate 只能 preserve 原附件',
+        });
+      }
     }
-    if (request.options?.truncateReason === 'regenerate' && event.attachment_selection.mode !== 'preserve') {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['new_events', eventIndex, 'attachment_selection', 'mode'],
-        message: 'regenerate 只能 preserve 原附件',
-      });
-    }
-  }
-});
+  });
 
 export const ConversationNextRequest = ConversationNextRequestBody.optional().default({});
 
 export type ConversationNextRequest = z.infer<typeof ConversationNextRequest>;
 
 /** 用户对一个已暂停 foreground run 的一次性响应命令。 */
-export const ConversationInteractionResponseRequest = z.object({
-  conversation_id: z.string().min(1),
-  run_id: z.string().min(1),
-  interaction_id: z.string().min(1),
-  resume_token: z.string().min(1),
-  checkpoint_revision: z.number().int().nonnegative(),
-  tool_call_id: z.string().min(1),
-  tool_name: z.string().min(1),
-  observation: z.string().trim().min(1),
-  data: JsonValueSchema,
-  interaction_status: z.enum(['submitted', 'skipped', 'approved', 'modified']),
-  interaction_submitted_at: z.number().nonnegative(),
-  interaction_response: JsonValueSchema.optional(),
-  project_id: z.string().optional(),
-  project_metadata: ProjectMetadata.optional(),
-}).strict();
-
-export type ConversationInteractionResponseRequest = z.infer<typeof ConversationInteractionResponseRequest>;
-
-export const ConversationActiveRun = z.object({
-  run_id: z.string().min(1),
-  turn_id: z.string().min(1),
-  execution_id: z.string().min(1).optional(),
-  status: z.enum(['pending', 'running', 'awaiting_user']),
-  lane: z.literal('foreground'),
-  pending_interaction: z.object({
-    interaction_id: z.string().min(1),
+export const ConversationInteractionResponseRequest = z
+  .object({
+    conversation_id: z.string().min(1),
     run_id: z.string().min(1),
-    tool_call_id: z.string().min(1),
-    checkpoint_revision: z.number().int().nonnegative(),
+    interaction_id: z.string().min(1),
     resume_token: z.string().min(1),
-  }).strict().optional(),
-}).strict();
+    checkpoint_revision: z.number().int().nonnegative(),
+    tool_call_id: z.string().min(1),
+    tool_name: z.string().min(1),
+    observation: z.string().trim().min(1),
+    data: JsonValueSchema,
+    interaction_status: z.enum(['submitted', 'skipped', 'approved', 'modified']),
+    interaction_submitted_at: z.number().nonnegative(),
+    interaction_response: JsonValueSchema.optional(),
+    project_id: z.string().optional(),
+    project_metadata: ProjectMetadata.optional(),
+  })
+  .strict();
+
+export type ConversationInteractionResponseRequest = z.infer<
+  typeof ConversationInteractionResponseRequest
+>;
+
+export const ConversationActiveRun = z
+  .object({
+    run_id: z.string().min(1),
+    turn_id: z.string().min(1),
+    execution_id: z.string().min(1).optional(),
+    status: z.enum(['pending', 'running', 'awaiting_user', 'paused']),
+    lane: z.literal('foreground'),
+    pause: z
+      .object({
+        settled: z.boolean(),
+        updated_at: z.number().int().nonnegative(),
+        reason: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    pending_interaction: z
+      .object({
+        interaction_id: z.string().min(1),
+        run_id: z.string().min(1),
+        tool_call_id: z.string().min(1),
+        checkpoint_revision: z.number().int().nonnegative(),
+        resume_token: z.string().min(1),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
 
 export type ConversationActiveRun = z.infer<typeof ConversationActiveRun>;
 
-export const ConversationActiveRunResponse = z.object({
-  conversation_id: z.string().min(1),
-  run: ConversationActiveRun.nullable(),
-}).strict();
+export const ConversationActiveRunResponse = z
+  .object({
+    conversation_id: z.string().min(1),
+    run: ConversationActiveRun.nullable(),
+  })
+  .strict();
 
 export type ConversationActiveRunResponse = z.infer<typeof ConversationActiveRunResponse>;
 
 export const ConversationRunTerminalStatus = z.enum(['completed', 'failed', 'cancelled']);
 
-export const ConversationRunSettlementTerminal = z.object({
-  run_id: z.string().min(1),
-  status: ConversationRunTerminalStatus,
-  lane: z.literal('foreground'),
-  error: z.object({
-    error_code: z.string().min(1),
-    message: z.string(),
-    recoverable: z.boolean(),
-  }).strict().optional(),
-}).strict();
+export const ConversationRunSettlementTerminal = z
+  .object({
+    run_id: z.string().min(1),
+    status: ConversationRunTerminalStatus,
+    lane: z.literal('foreground'),
+    error: z
+      .object({
+        error_code: z.string().min(1),
+        message: z.string(),
+        recoverable: z.boolean(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
 
-export type ConversationRunSettlementTerminal = z.infer<
-  typeof ConversationRunSettlementTerminal
->;
+export type ConversationRunSettlementTerminal = z.infer<typeof ConversationRunSettlementTerminal>;
 
 /**
  * transport teardown 后按 runId 读取的控制面结算快照。
  * active variant 复用现有 active-run contract；terminal variant 只表达 durable run 终态，
  * 不向 Renderer 补造 RuntimeEvent。
  */
-export const ConversationRunSettlementResponse = z.object({
-  conversation_id: z.string().min(1),
-  requested_run_id: z.string().min(1),
-  run: z.union([
-    ConversationActiveRun,
-    ConversationRunSettlementTerminal,
-  ]).nullable(),
-}).strict();
+export const ConversationRunSettlementResponse = z
+  .object({
+    conversation_id: z.string().min(1),
+    requested_run_id: z.string().min(1),
+    run: z.union([ConversationActiveRun, ConversationRunSettlementTerminal]).nullable(),
+  })
+  .strict();
 
-export type ConversationRunSettlementResponse = z.infer<
-  typeof ConversationRunSettlementResponse
->;
+export type ConversationRunSettlementResponse = z.infer<typeof ConversationRunSettlementResponse>;
 
-export const ConversationRunCancelRequest = z.object({
-  conversation_id: z.string().min(1),
-  reason: z.string().min(1).max(500),
-}).strict();
+export const ConversationRunCancelRequest = z
+  .object({
+    conversation_id: z.string().min(1),
+    reason: z.string().min(1).max(500),
+  })
+  .strict();
 
 export type ConversationRunCancelRequest = z.infer<typeof ConversationRunCancelRequest>;
 
@@ -561,18 +638,22 @@ export type ConversationRunCancelRequest = z.infer<typeof ConversationRunCancelR
  * outcome 必须保留这层竞争结果，Renderer 才不会把 completed/failed 伪装成 cancelled。
  */
 export const ConversationRunCancelResponse = z.discriminatedUnion('outcome', [
-  z.object({
-    success: z.literal(true),
-    run_id: z.string().min(1),
-    outcome: z.literal('cancelled'),
-    terminal_status: z.literal('cancelled'),
-  }).strict(),
-  z.object({
-    success: z.literal(true),
-    run_id: z.string().min(1),
-    outcome: z.literal('already_terminal'),
-    terminal_status: ConversationRunTerminalStatus,
-  }).strict(),
+  z
+    .object({
+      success: z.literal(true),
+      run_id: z.string().min(1),
+      outcome: z.literal('cancelled'),
+      terminal_status: z.literal('cancelled'),
+    })
+    .strict(),
+  z
+    .object({
+      success: z.literal(true),
+      run_id: z.string().min(1),
+      outcome: z.literal('already_terminal'),
+      terminal_status: ConversationRunTerminalStatus,
+    })
+    .strict(),
 ]);
 
 export type ConversationRunCancelResponse = z.infer<typeof ConversationRunCancelResponse>;
@@ -657,14 +738,18 @@ export const ChatMessage = z.object({
   /** 工具调用ID */
   tool_call_id: z.string().optional(),
   /** 工具调用数组 */
-  tool_calls: z.array(z.object({
-    id: z.string(),
-    type: z.literal('function'),
-    function: z.object({
-      name: z.string(),
-      arguments: z.string(),
-    }),
-  })).optional(),
+  tool_calls: z
+    .array(
+      z.object({
+        id: z.string(),
+        type: z.literal('function'),
+        function: z.object({
+          name: z.string(),
+          arguments: z.string(),
+        }),
+      })
+    )
+    .optional(),
 });
 
 export type ChatMessage = z.infer<typeof ChatMessage>;
@@ -692,29 +777,33 @@ export type KnowledgeBaseSearchRequest = z.infer<typeof KnowledgeBaseSearchReque
  */
 export const KnowledgeBaseSearchResponse = z.object({
   /** 搜索结果 */
-  results: z.array(z.object({
-    /** 文档ID */
-    doc_id: z.string(),
-    /** 块ID */
-    block_id: z.string(),
-    /** 内容 */
-    content: z.string(),
-    /** 相似度分数 */
-    score: z.number(),
-    /** 元数据 */
-    metadata: z.record(z.any()).optional(),
-  })),
+  results: z.array(
+    z.object({
+      /** 文档ID */
+      doc_id: z.string(),
+      /** 块ID */
+      block_id: z.string(),
+      /** 内容 */
+      content: z.string(),
+      /** 相似度分数 */
+      score: z.number(),
+      /** 元数据 */
+      metadata: z.record(z.any()).optional(),
+    })
+  ),
   /** 查询统计 */
-  stats: z.object({
-    /** 总搜索时间 */
-    search_time_ms: z.number(),
-    /** 嵌入时间 */
-    embedding_time_ms: z.number().optional(),
-    /** 重排序时间 */
-    rerank_time_ms: z.number().optional(),
-    /** 结果总数 */
-    total_results: z.number(),
-  }).optional(),
+  stats: z
+    .object({
+      /** 总搜索时间 */
+      search_time_ms: z.number(),
+      /** 嵌入时间 */
+      embedding_time_ms: z.number().optional(),
+      /** 重排序时间 */
+      rerank_time_ms: z.number().optional(),
+      /** 结果总数 */
+      total_results: z.number(),
+    })
+    .optional(),
 });
 
 export type KnowledgeBaseSearchResponse = z.infer<typeof KnowledgeBaseSearchResponse>;
@@ -760,7 +849,7 @@ export type ApiResponse = z.infer<typeof ApiResponse>;
 /**
  * 验证函数
  */
-export const validateConversationNextRequest = (req: unknown) => 
+export const validateConversationNextRequest = (req: unknown) =>
   ConversationNextRequest.safeParse(req);
 
 export const validateConversationInteractionResponseRequest = (req: unknown) =>
@@ -778,10 +867,9 @@ export const validateConversationRunCancelRequest = (req: unknown) =>
 export const validateConversationRunCancelResponse = (response: unknown) =>
   ConversationRunCancelResponse.safeParse(response);
 
-export const validateAgentInvokeRequest = (req: unknown) => 
-  AgentInvokeRequest.safeParse(req);
+export const validateAgentInvokeRequest = (req: unknown) => AgentInvokeRequest.safeParse(req);
 
-export const validateKnowledgeBaseSearchRequest = (req: unknown) => 
+export const validateKnowledgeBaseSearchRequest = (req: unknown) =>
   KnowledgeBaseSearchRequest.safeParse(req);
 
 /**
@@ -828,10 +916,12 @@ export const createToolOutputEvent = (
   toolName: string,
   observation: string,
   data: JsonValue,
-  options: Partial<Omit<
-    Extract<IncrementalEvent, { type: 'tool_output'; status: 'success' }>,
-    'tool_name' | 'status' | 'observation' | 'data'
-  >> = {}
+  options: Partial<
+    Omit<
+      Extract<IncrementalEvent, { type: 'tool_output'; status: 'success' }>,
+      'tool_name' | 'status' | 'observation' | 'data'
+    >
+  > = {}
 ): Extract<IncrementalEvent, { type: 'tool_output'; status: 'success' }> => ({
   type: 'tool_output',
   timestamp: Date.now(),
@@ -841,4 +931,4 @@ export const createToolOutputEvent = (
   data,
   status: 'success',
   ...options,
-}); 
+});

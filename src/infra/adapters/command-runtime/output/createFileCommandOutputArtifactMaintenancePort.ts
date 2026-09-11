@@ -7,12 +7,8 @@ import {
   CommandOutputArtifactManifestSchema,
   type CommandOutputArtifactManifest,
 } from '../../../../domains/commands/definitions/commandOutputArtifact';
-import type {
-  CommandOutputArtifactMaintenanceStats,
-} from '../../../../domains/commands/definitions/commandOutputArtifactMaintenance';
-import type {
-  CommandOutputArtifactMaintenancePort,
-} from '../../../../domains/commands/ports/commandOutputArtifactMaintenancePort';
+import type { CommandOutputArtifactMaintenanceStats } from '../../../../domains/commands/definitions/commandOutputArtifactMaintenance';
+import type { CommandOutputArtifactMaintenancePort } from '../../../../domains/commands/ports/commandOutputArtifactMaintenancePort';
 import { deriveCommandOutputArtifactRelativePaths } from './functions/deriveCommandOutputArtifactRelativePaths';
 
 const HASHED_CONVERSATION_DIRECTORY = /^conversation_[a-f0-9]{64}$/;
@@ -31,14 +27,16 @@ function readNodeErrorCode(error: unknown): string | undefined {
 
 function assertTimestamp(value: number): number {
   if (!Number.isSafeInteger(value) || value < 0) {
-    throw new Error('command output artifact maintenance nowMs must be a non-negative safe integer');
+    throw new Error(
+      'command output artifact maintenance nowMs must be a non-negative safe integer'
+    );
   }
   return value;
 }
 
 async function listMatchingDirectories(
   parentPath: string,
-  acceptsName: (name: string) => boolean,
+  acceptsName: (name: string) => boolean
 ): Promise<string[]> {
   let entries;
   try {
@@ -52,7 +50,9 @@ async function listMatchingDirectories(
     .map(entry => path.join(parentPath, entry.name));
 }
 
-async function readSealedManifest(executionDirectory: string): Promise<CommandOutputArtifactManifest> {
+async function readSealedManifest(
+  executionDirectory: string
+): Promise<CommandOutputArtifactManifest> {
   const manifestPath = path.join(executionDirectory, MANIFEST_FILE_NAME);
   const stat = await fsp.lstat(manifestPath);
   if (!stat.isFile() || stat.isSymbolicLink()) {
@@ -73,7 +73,7 @@ function assertManifestOwnsDirectory(input: {
 }): void {
   const relativePaths = deriveCommandOutputArtifactRelativePaths(
     input.manifest.owner,
-    input.manifest.mode,
+    input.manifest.mode
   );
   const expectedDirectory = path.join(input.storageRoot, ...relativePaths.directorySegments);
   if (path.resolve(input.executionDirectory) !== path.resolve(expectedDirectory)) {
@@ -89,14 +89,13 @@ async function discoverExecutionDirectories(input: {
   let failed = 0;
   let conversationDirectories: string[];
   try {
-    conversationDirectories = await listMatchingDirectories(
-      input.storageRoot,
-      name => HASHED_CONVERSATION_DIRECTORY.test(name),
+    conversationDirectories = await listMatchingDirectories(input.storageRoot, name =>
+      HASHED_CONVERSATION_DIRECTORY.test(name)
     );
   } catch (error: unknown) {
     input.logger.warn(
-      `原始命令输出扫描失败: root=${input.storageRoot}, `
-      + `err=${error instanceof Error ? error.message : String(error)}`,
+      `原始命令输出扫描失败: root=${input.storageRoot}, ` +
+        `err=${error instanceof Error ? error.message : String(error)}`
     );
     return { directories, failed: 1 };
   }
@@ -105,30 +104,31 @@ async function discoverExecutionDirectories(input: {
     const instancesRoot = path.join(conversationDirectory, 'instances');
     let instanceDirectories: string[];
     try {
-      instanceDirectories = await listMatchingDirectories(
-        instancesRoot,
-        name => HASHED_INSTANCE_DIRECTORY.test(name),
+      instanceDirectories = await listMatchingDirectories(instancesRoot, name =>
+        HASHED_INSTANCE_DIRECTORY.test(name)
       );
     } catch (error: unknown) {
       failed += 1;
       input.logger.warn(
-        `原始命令输出扫描失败: root=${instancesRoot}, `
-        + `err=${error instanceof Error ? error.message : String(error)}`,
+        `原始命令输出扫描失败: root=${instancesRoot}, ` +
+          `err=${error instanceof Error ? error.message : String(error)}`
       );
       continue;
     }
     for (const instanceDirectory of instanceDirectories) {
       const commandOutputRoot = path.join(instanceDirectory, 'command-output');
       try {
-        directories.push(...await listMatchingDirectories(
-          commandOutputRoot,
-          name => CommandExecutionIdSchema.safeParse(name).success,
-        ));
+        directories.push(
+          ...(await listMatchingDirectories(
+            commandOutputRoot,
+            name => CommandExecutionIdSchema.safeParse(name).success
+          ))
+        );
       } catch (error: unknown) {
         failed += 1;
         input.logger.warn(
-          `原始命令输出扫描失败: root=${commandOutputRoot}, `
-          + `err=${error instanceof Error ? error.message : String(error)}`,
+          `原始命令输出扫描失败: root=${commandOutputRoot}, ` +
+            `err=${error instanceof Error ? error.message : String(error)}`
         );
       }
     }
@@ -164,7 +164,10 @@ export function createFileCommandOutputArtifactMaintenancePort(input: {
         try {
           const manifest = await readSealedManifest(executionDirectory);
           assertManifestOwnsDirectory({ storageRoot, executionDirectory, manifest });
-          if (manifest.retention_until_ms > nowMs) {
+          if (
+            manifest.retention_until_ms > nowMs ||
+            request.protectedConversationIds?.has(manifest.owner.identity.conversation_id)
+          ) {
             stats.retained += 1;
             continue;
           }
@@ -177,8 +180,8 @@ export function createFileCommandOutputArtifactMaintenancePort(input: {
         } catch (error: unknown) {
           stats.failed += 1;
           input.logger.warn(
-            `原始命令输出清理失败: path=${executionDirectory}, `
-            + `err=${error instanceof Error ? error.message : String(error)}`,
+            `原始命令输出清理失败: path=${executionDirectory}, ` +
+              `err=${error instanceof Error ? error.message : String(error)}`
           );
         }
       }

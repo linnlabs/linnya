@@ -12,14 +12,20 @@ import {
 
 export const useInteractiveRunStore = defineStore('conversationInteractiveRun', () => {
   const runsByConversation = ref(new Map<string, InteractiveRunSnapshot>());
-  const controllersByConversation = new Map<string, {
-    readonly controller: AbortController;
-    executionId?: string;
-  }>();
+  // reader 关闭后还要做状态对账；保留最近请求身份，阻止旧请求覆盖下一代状态。
+  const latestTransportByConversation = new Map<string, AbortController>();
+  const controllersByConversation = new Map<
+    string,
+    {
+      readonly controller: AbortController;
+      executionId?: string;
+    }
+  >();
 
   const beginStart = (conversationId: string, controller: AbortController): void => {
     assertInteractiveRunCanStart(conversationId, runsByConversation.value.get(conversationId));
     controllersByConversation.set(conversationId, { controller });
+    latestTransportByConversation.set(conversationId, controller);
     runsByConversation.value.set(conversationId, { conversationId, status: 'starting' });
   };
 
@@ -29,9 +35,23 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
       throw new Error(`Conversation ${conversationId} does not have a pending interaction`);
     }
     controllersByConversation.set(conversationId, { controller });
+    latestTransportByConversation.set(conversationId, controller);
     runsByConversation.value.set(conversationId, {
       ...current,
       status: 'submitting',
+      error: undefined,
+    });
+  };
+
+  const beginContinuation = (
+    snapshot: InteractiveRunSnapshot,
+    controller: AbortController
+  ): void => {
+    controllersByConversation.set(snapshot.conversationId, { controller });
+    latestTransportByConversation.set(snapshot.conversationId, controller);
+    runsByConversation.value.set(snapshot.conversationId, {
+      ...snapshot,
+      status: 'continuing',
       error: undefined,
     });
   };
@@ -41,17 +61,14 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
     const next = reduceInteractiveRunEvent(current, event);
     const controllerOwner = controllersByConversation.get(event.conversation_id);
     if (
-      controllerOwner
-      && next !== current
-      && event.type !== 'transport_end'
-      && event.execution_id
+      controllerOwner &&
+      next !== current &&
+      event.type !== 'transport_end' &&
+      event.execution_id
     ) {
       controllerOwner.executionId = event.execution_id;
     }
-    if (
-      event.type === 'transport_end'
-      && controllerOwner?.executionId === event.execution_id
-    ) {
+    if (event.type === 'transport_end' && controllerOwner?.executionId === event.execution_id) {
       controllersByConversation.delete(event.conversation_id);
     }
     // reducer 返回原快照表示该事件没有当前 foreground run 的控制权。
@@ -59,20 +76,24 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
     if (next) runsByConversation.value.set(event.conversation_id, next);
   };
 
-  const snapshotFor = (conversationId: string | null | undefined): InteractiveRunSnapshot | undefined => (
-    conversationId ? runsByConversation.value.get(conversationId) : undefined
-  );
+  const snapshotFor = (
+    conversationId: string | null | undefined
+  ): InteractiveRunSnapshot | undefined =>
+    conversationId ? runsByConversation.value.get(conversationId) : undefined;
 
   const abortTransport = (conversationId: string): void => {
     controllersByConversation.get(conversationId)?.controller.abort();
     controllersByConversation.delete(conversationId);
+    latestTransportByConversation.delete(conversationId);
   };
 
+  const isLatestTransport = (conversationId: string, controller: AbortController): boolean =>
+    latestTransportByConversation.get(conversationId) === controller;
+  const hasTransport = (conversationId: string): boolean =>
+    controllersByConversation.has(conversationId);
+
   /** transport owner 已完成 reader teardown 后，只释放仍属于该请求的 controller。 */
-  const releaseTransport = (
-    conversationId: string,
-    controller: AbortController,
-  ): boolean => {
+  const releaseTransport = (conversationId: string, controller: AbortController): boolean => {
     const owner = controllersByConversation.get(conversationId);
     if (owner?.controller !== controller) return false;
     controllersByConversation.delete(conversationId);
@@ -88,7 +109,7 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
 
   const completeTerminalSettlement = (
     conversationId: string,
-    status: InteractiveRunTerminalStatus,
+    status: InteractiveRunTerminalStatus
   ): void => {
     const current = runsByConversation.value.get(conversationId);
     if (!current) return;
@@ -99,6 +120,7 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
       status,
       pendingInteraction: undefined,
     });
+    latestTransportByConversation.delete(conversationId);
   };
 
   const recordCommandError = (conversationId: string, error: string): void => {
@@ -129,7 +151,7 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
 
   const synchronizeSnapshot = (
     conversationId: string,
-    snapshot: InteractiveRunSnapshot | undefined,
+    snapshot: InteractiveRunSnapshot | undefined
   ): void => {
     if (!snapshot) {
       controllersByConversation.delete(conversationId);
@@ -146,10 +168,13 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
     runsByConversation,
     beginStart,
     beginSubmitting,
+    beginContinuation,
     observeEvent,
     snapshotFor,
     abortTransport,
     releaseTransport,
+    isLatestTransport,
+    hasTransport,
     beginCancelling,
     completeTerminalSettlement,
     recordCommandError,

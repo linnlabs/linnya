@@ -29,6 +29,8 @@ import {
 import { workspacePathFromLocator } from '../shared/workspaceFileLocator';
 import { validateWorkspaceFileToolArguments } from '../shared/workspaceFileToolContract';
 import { applyExactTextReplacement } from '../../../features/workspace/document-file-write/functions/applyExactTextReplacement';
+import type { WorkspaceDocumentFileWriteResult } from '../../../features/workspace/document-file-write/definitions/workspaceDocumentFileWrite';
+import { createFileToolResultCommit } from '../shared/fileToolRecovery';
 
 const MAX_EDIT_SOURCE_CHARS = 1_500_000;
 const MAX_VISIBLE_EDIT_CHANGES = 50;
@@ -248,6 +250,27 @@ export class EditFileTool extends BaseTool {
     }
     const resolvedContext = ensureWorkspaceServiceToolContext(context);
     const expectedSourceKey = readMetadataString(read.metadata, 'sourceKey');
+    const serialize = (write: WorkspaceDocumentFileWriteResult): string => {
+      const diagnostics = renderDocumentDiagnostics(write.diagnostics);
+      const changes = replacement.changes.slice(0, MAX_VISIBLE_EDIT_CHANGES);
+      const changesTruncatedCount = replacement.changes.length - changes.length;
+      return serializeEditFileResult(
+        {
+          ...diagnostics.data,
+          source_kind: 'workspace_vfs',
+          locator: formatWorkspaceFileLocator(node.path),
+          inode: node.inode,
+          documentId: node.id,
+          node: toFileToolEntry(node),
+          replaced: replacement.count,
+          changes,
+          ...(changesTruncatedCount > 0 ? { changesTruncatedCount } : {}),
+          diff: replacement.diff,
+          ...(replacement.diffTruncated ? { diffTruncated: true } : {}),
+        },
+        appendDocumentDiagnosticsObservation(write.observation, diagnostics)
+      );
+    };
     const write = await writeWorkspaceDocumentFile({
       request: {
         identity: {
@@ -266,33 +289,13 @@ export class EditFileTool extends BaseTool {
       resolveProvider: createWorkspaceDocumentFileWriteProviderResolver({
         db: databaseService.getDb(),
         context: resolvedContext.context,
+        resultCommit: createFileToolResultCommit(context, this.name, serialize),
         ...(context.workspaceMutationPublisher
           ? { mutationPublisher: context.workspaceMutationPublisher }
           : {}),
       }),
     });
-    const renderedDiagnostics = renderDocumentDiagnostics(write.diagnostics);
-    const visibleChanges = replacement.changes.slice(0, MAX_VISIBLE_EDIT_CHANGES);
-    const changesTruncatedCount = replacement.changes.length - visibleChanges.length;
-
-    const data: WorkspaceEditFileResult['data'] = {
-      ...renderedDiagnostics.data,
-      source_kind: 'workspace_vfs',
-      locator: formatWorkspaceFileLocator(node.path),
-      inode: node.inode,
-      documentId: node.id,
-      node: toFileToolEntry(node),
-      replaced: replacement.count,
-      changes: visibleChanges,
-      ...(changesTruncatedCount > 0 ? { changesTruncatedCount } : {}),
-      diff: replacement.diff,
-      ...(replacement.diffTruncated ? { diffTruncated: true } : {}),
-    };
-
-    return serializeEditFileResult(
-      data,
-      appendDocumentDiagnosticsObservation(write.observation, renderedDiagnostics)
-    );
+    return serialize(write);
   }
 }
 

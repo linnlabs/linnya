@@ -5,7 +5,7 @@ import {
 } from 'src/app-hosts/linnya/plugin-registry/builtin';
 import { pluginDiagnostics } from 'src/app-hosts/linnya/plugin-registry/diagnostics';
 import type { BackendPluginToolContextDecorator } from 'src/app-hosts/linnya/plugin-registry/types';
-import type { LinnyaToolSchemaContext } from 'src/tools/types';
+import type { LinnyaToolSchemaContext, ToolContext } from 'src/tools/types';
 import { deriveLinnyaToolSchemaContext } from './functions/deriveLinnyaToolSchemaContext';
 import { readToolExecutionErrorCode } from './functions/readToolExecutionErrorCode';
 
@@ -313,6 +313,10 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
       }
 
       const result = await tool.run(normalizedArgs, context);
+      const hostContext: ToolContext = context;
+      if (typeof result === 'string' && context.parentToolCallId) {
+        hostContext.toolResultReceipts?.returned(context.parentToolCallId, toolName, result);
+      }
       const durationMs = Date.now() - startTime;
       console.log(`[ToolRegistry] ✅ 工具 ${toolName} 执行成功 (${durationMs}ms)`);
 
@@ -324,6 +328,13 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
       };
     } catch (error) {
       const durationMs = Date.now() - startTime;
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error.code === 'RUN_RECOVERY_BLOCKED' || error.code === 'RUN_PAUSE_REQUESTED')
+      )
+        throw error;
       if (error instanceof Error && error.name === 'AbortError') {
         console.warn(`[ToolRegistry] 🛑 工具 ${toolName} 收到 AbortError，向上抛出中断语义`);
         throw error;

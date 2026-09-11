@@ -1,12 +1,7 @@
 import { Socket } from 'node:net';
 
-import {
-  readAppServerBootstrap,
-} from '../../app-server-bootstrap';
-import {
-  runAppServerControlHost,
-  type AppServerOwnedLifecycle,
-} from '../../app-server-control';
+import { readAppServerBootstrap } from '../../app-server-bootstrap';
+import { runAppServerControlHost, type AppServerOwnedLifecycle } from '../../app-server-control';
 import {
   createAppServerRpcPeer,
   type AppServerRpcHandler,
@@ -30,6 +25,7 @@ import { registerExportArtifactCommitPort } from '../../../../plugin-sdk/backend
 import { enableDiagnosticLogForwarding, Logger } from '../../../../shared/logger';
 import { createAppServerDiagnosticLogForwarder } from '../features/diagnostic-log-rpc';
 import { createNodeEventLoopResponsivenessMonitor } from '../../../../infra/observability/event-loop';
+import { acquireWorkspaceRuntimeOwnership } from '../../backend-runtime/features/workspace-ownership/acquireWorkspaceRuntimeOwnership';
 
 /**
  * fd 3/4/5 分别是 bootstrap、child→Main RPC 与 Main→child RPC。完整 Backend 只在本进程创建；
@@ -40,6 +36,12 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
   const bootstrap = await readAppServerBootstrap(bootstrapInput);
   bootstrapInput.destroy();
 
+  // 在任何数据库恢复或 GC 前排除第二个活 owner；退出失败也不能提前让出 Workspace。
+  const workspaceOwnership = acquireWorkspaceRuntimeOwnership(
+    bootstrap.backend_facts.runtimePathRoots.workspaceRoot
+  );
+  process.once('exit', () => workspaceOwnership.release());
+
   const rpcOutput = new Socket({ fd: 4, readable: false, writable: true });
   const rpcInput = new Socket({ fd: 5, readable: true, writable: false });
   const rpcHandlers = new Map<string, AppServerRpcHandler>();
@@ -48,9 +50,11 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
     output: rpcOutput,
     handlers: rpcHandlers,
   });
-  enableDiagnosticLogForwarding(createAppServerDiagnosticLogForwarder(rpc, error => {
-    console.error('[App Server] 诊断日志转发失败', error);
-  }));
+  enableDiagnosticLogForwarding(
+    createAppServerDiagnosticLogForwarder(rpc, error => {
+      console.error('[App Server] 诊断日志转发失败', error);
+    })
+  );
   const responsivenessLogger = new Logger('App-Server-Responsiveness');
   const responsivenessMonitor = createNodeEventLoopResponsivenessMonitor({
     component: 'app-server',
@@ -68,7 +72,7 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
   });
   responsivenessMonitor.start();
   const mailboxRoot = resolveBackendRendererRequestMailboxRoot(
-    bootstrap.backend_facts.runtimePathRoots.appDataRoot,
+    bootstrap.backend_facts.runtimePathRoots.appDataRoot
   );
   await prepareBackendRendererRequestMailboxRoot(mailboxRoot);
 
@@ -89,7 +93,7 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
 
     const runtimeOwner = await initializeAppServerBackend(
       bootstrap.backend_configuration,
-      composition.backendHostDependencies,
+      composition.backendHostDependencies
     );
     registerRpcHandlers(rpcHandlers, createAppServerActivityRpcHandlers(runtimeOwner));
     const rendererRequests = createBackendRendererRequestRegistry();
@@ -103,10 +107,13 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
       distributionIdentity: bootstrap.backend_facts.distributionIdentity,
       fileReveal: composition.fileReveal,
     });
-    registerRpcHandlers(rpcHandlers, createBackendRendererRequestRpcHandlers({
-      registry: rendererRequests,
-      mailboxRoot,
-    }));
+    registerRpcHandlers(
+      rpcHandlers,
+      createBackendRendererRequestRpcHandlers({
+        registry: rendererRequests,
+        mailboxRoot,
+      })
+    );
     const apiPort = runtimeOwner.getPort();
     if (apiPort === null) throw new Error('App Server Backend ready 时缺少实际 API port');
     return Object.freeze({
@@ -157,7 +164,7 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
 
 function registerRpcHandlers(
   target: Map<string, AppServerRpcHandler>,
-  source: AppServerRpcHandlerRegistry,
+  source: AppServerRpcHandlerRegistry
 ): void {
   for (const [method, handler] of source) {
     if (target.has(method)) throw new Error(`App Server RPC method 重复注册: ${method}`);

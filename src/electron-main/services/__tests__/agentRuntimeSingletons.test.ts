@@ -10,13 +10,14 @@ import {
   resetAgentRuntimeSingletonsForTest,
 } from '../agentRuntimeSingletons';
 import { RunIdSchema } from '@linnlabs/linnkit/contracts';
+import { RUN_DESCRIPTORS_SCHEMA } from 'src/app-hosts/linnya/adapters/persistence/run-descriptors/schema-providers';
 
 type RunRecord = runSupervisor.RunRecord;
 
 function createDatabase(): Database.Database {
   const db = new Database(':memory:');
   db.exec('CREATE TABLE projects (id TEXT PRIMARY KEY)');
-  for (const schema of CONVERSATION_SCHEMAS) {
+  for (const schema of [...CONVERSATION_SCHEMAS, ...RUN_DESCRIPTORS_SCHEMA]) {
     db.exec(schema);
   }
   db.prepare(

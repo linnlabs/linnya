@@ -6,16 +6,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import { generateRefId } from '../../../../../shared/utils/refIdGenerator';
 import type { PendingRevisionMetadata } from '../../pending-revisions';
-import {
-  buildMarkdownCitationReadProjection,
-} from '../../document-read';
-import {
-  planMarkdownBlocks,
-} from '../../normalization';
-import {
-  serializeMarkdownBlocks,
-  type FlattenedMarkdownBlock,
-} from '../../../shared';
+import { buildMarkdownCitationReadProjection } from '../../document-read';
+import { planMarkdownBlocks } from '../../normalization';
+import { serializeMarkdownBlocks, type FlattenedMarkdownBlock } from '../../../shared';
 import { normalizeMarkdownCitationTokenSpelling } from '../../../../citation';
 import type { MarkdownAnnotationMeta } from '@app/schemas';
 import {
@@ -147,7 +140,11 @@ export async function writeMarkdownDocumentFromText(params: {
     readonly meta: MarkdownAnnotationMeta;
   };
   readonly touchDocumentUpdatedAt: (documentId: string, updatedAt: number) => void;
+  /** Host 的结果凭据必须与正文/pending 同事务；失败整体回滚，不传入任何运行时身份。 */
+  readonly commitResult?: (result: MarkdownFileWriteResult) => void;
 }): Promise<MarkdownFileWriteResult> {
+  // 编译可能等待 worker；读取当前正文必须在等待之后，避免按旧块快照提交修订。
+  const planned = await planMarkdownBlocks(params.targetText);
   const content = params.documentStore.getDocument(params.documentId);
   // edit_file 的 old_string 来自 citation-aware VFS 文本。写入规划必须复用同一当前视图，
   // 否则持久层里的 UI label（如 `[1]`）会和 Agent 看到的 `[@ref]` 不同，导致未修改的引用块被误写。
@@ -163,7 +160,6 @@ export async function writeMarkdownDocumentFromText(params: {
     includeAnnotations: false,
   });
   const currentBlocks: readonly FlattenedMarkdownBlock[] = currentBodyProjection.viewBlocks;
-  const planned = await planMarkdownBlocks(params.targetText);
   const targetBlocks = planned.bodyBlocks;
   const targetComparisonBlocks = targetBlocks.map(normalizeMarkdownCitationTokenSpelling);
   const currentText = serializeMarkdownBlocks(currentProjection.viewBlocks);
@@ -194,30 +190,39 @@ export async function writeMarkdownDocumentFromText(params: {
       const block = currentBlocks[index];
       const target = targetBlocks[index];
       const targetComparison = targetComparisonBlocks[index];
-      if (!block || typeof target !== 'string' || typeof targetComparison !== 'string'
-        || block.text === targetComparison) continue;
-      executed.push(setPending({
-        markdownService: params.documentStore,
-        documentId: params.documentId,
-        block,
-        markdown: target,
-        operation: 'update',
-        toolName: params.toolName,
-        extraMeta: params.pendingMetaByMarkdown?.get(target),
-      }));
+      if (
+        !block ||
+        typeof target !== 'string' ||
+        typeof targetComparison !== 'string' ||
+        block.text === targetComparison
+      )
+        continue;
+      executed.push(
+        setPending({
+          markdownService: params.documentStore,
+          documentId: params.documentId,
+          block,
+          markdown: target,
+          operation: 'update',
+          toolName: params.toolName,
+          extraMeta: params.pendingMetaByMarkdown?.get(target),
+        })
+      );
     }
 
     for (let index = targetBlocks.length; index < currentBlocks.length; index += 1) {
       const block = currentBlocks[index];
       if (!block) continue;
-      executed.push(setPending({
-        markdownService: params.documentStore,
-        documentId: params.documentId,
-        block,
-        markdown: '',
-        operation: 'delete',
-        toolName: params.toolName,
-      }));
+      executed.push(
+        setPending({
+          markdownService: params.documentStore,
+          documentId: params.documentId,
+          block,
+          markdown: '',
+          operation: 'delete',
+          toolName: params.toolName,
+        })
+      );
     }
 
     let anchorBlockId = currentBlocks[currentBlocks.length - 1]?.blockId;
@@ -240,21 +245,18 @@ export async function writeMarkdownDocumentFromText(params: {
       params.touchDocumentUpdatedAt(params.documentId, Date.now());
     }
 
-    return {
+    const result: MarkdownFileWriteResult = {
+      documentId: params.documentId,
+      currentText,
+      targetText: planned.blocks.join('\n\n'),
       edits: executed,
       createdAnnotationIds: annotationMutation.created.map(item => item.annotation.id),
       updatedAnnotationIds: annotationMutation.updated.map(item => item.annotation.id),
       deletedAnnotationIds: annotationMutation.deleted.map(item => item.annotationId),
     };
+    params.commitResult?.(result);
+    return result;
   });
 
-  return {
-    documentId: params.documentId,
-    edits: writeResult.edits,
-    currentText,
-    targetText: planned.blocks.join('\n\n'),
-    createdAnnotationIds: writeResult.createdAnnotationIds,
-    updatedAnnotationIds: writeResult.updatedAnnotationIds,
-    deletedAnnotationIds: writeResult.deletedAnnotationIds,
-  };
+  return writeResult;
 }

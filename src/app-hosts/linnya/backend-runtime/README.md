@@ -21,6 +21,9 @@ Provider Onboarding 的账号模型同步 lifecycle 在路由装配时注册到�
 远端模型发现不阻塞 ready。关闭时先发出取消并停止接收新请求，等待同步和已开始的单条目录事务结束后再释放业务服务。
 这项生命周期是具体用例的窄合同，不扩展为通用后台任务 registry。
 
+App Server 在启动维护前取得 [Workspace 排他运行锁](./features/workspace-ownership/README.md)，
+一直持有到进程退出；同一 Workspace 不能同时有两个执行 owner。
+
 数据库启动事实只携带当前受管运行路径。bootstrap 不传旧 Workspace 迁移专用的 Desktop userData 根，
 Backend 不安装旧数据路径 registry，也不从当前路径推导旧文件来源。数据库版本准入由 DatabaseService 负责。
 

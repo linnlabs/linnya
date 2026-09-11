@@ -216,6 +216,11 @@ ID、URI、hash、locator 与宿主路径都不能进入 provider body。
 
 ## 删除与损坏
 
+原 Agent run 的恢复继续消费 EventStore 已提交的附件 / 图片引用；这些正式 event links
+在暂停期间仍保留所有权，启动 GC 不会将它们当成无引用资源。进程内 tool-result claim
+不随 checkpoint 恢复：若工具尚未提交 durable 图片结果就崩溃，不能用过期 claim 或
+同名物理文件猜造授权。支持范围见 [Run Resumption](../../app-hosts/linnya/application/run-resumption/README.md)。
+
 - 删除项目 link 只表示移出资源库，不代表可以删除 asset。
 - truncate/delete conversation 会删除 event links；只有所有 ownership
   link 都消失后才能回收 asset。

@@ -6,10 +6,7 @@ import type { PendingInteractionControl } from './readPendingInteraction';
 function readMetadataString(run: ConversationControlRunRecord, key: string): string {
   const value = run.metadata?.[key];
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new ConversationControlError(
-      'internal_error',
-      `Run ${run.runId} is missing ${key}`,
-    );
+    throw new ConversationControlError('internal_error', `Run ${run.runId} is missing ${key}`);
   }
   return value;
 }
@@ -17,15 +14,10 @@ function readMetadataString(run: ConversationControlRunRecord, key: string): str
 export function projectRunStatus(
   run: ConversationControlRunRecord,
   interaction: PendingInteractionControl | undefined,
-  resultAvailable: boolean,
+  resultAvailable: boolean
 ): ConversationControlRunStatusSnapshot {
-  if (run.status === 'paused') {
-    throw new ConversationControlError(
-      'unsupported_runtime_state',
-      `Run ${run.runId} is in unsupported runtime state paused`,
-    );
-  }
-  const terminal = run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled';
+  const terminal =
+    run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled';
   if (!run.agentSpecId) {
     throw new ConversationControlError('internal_error', `Run ${run.runId} is missing agentSpecId`);
   }
@@ -44,6 +36,10 @@ export function projectRunStatus(
     iterations_used: run.runIterationsUsed ?? run.iterationsUsed,
     started_at: run.startedAt,
     updated_at: run.updatedAt,
+    pause:
+      run.status === 'paused'
+        ? { settled: run.pausedAt !== undefined, reason: run.pauseReason }
+        : undefined,
     terminal_at: terminal ? run.updatedAt : undefined,
     pending_interaction: interaction
       ? {

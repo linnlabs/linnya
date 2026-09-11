@@ -51,13 +51,13 @@
 
         <!-- 上栏：文本输入区域 -->
         <div class="input-top-section">
-          <EditorContent 
+          <EditorContent
             :editor="editor ?? undefined"
             class="input-editor"
             :class="{ 'is-disabled': isInputDisabled }"
           />
         </div>
-        
+
         <!-- 下栏：选择器和发送按钮 -->
         <AiAssistantInputFooter
           :variant="variant"
@@ -69,11 +69,15 @@
           :is-loading="isLoading"
           :is-streaming="isStreaming"
           :can-send="canSend"
+          :primary-action="primaryAction"
+          :is-primary-action-disabled="isPrimaryActionDisabled"
           :is-models-loading="isModelsLoading"
           :is-image-attachment-disabled="isImageEntryDisabled"
           :context-window-usage="contextWindowUsage"
           :context-window-conversation-information="contextWindowConversationInformation"
-          :context-window-usage-scope-key="conversationSelectors.activeConversation.value?.id ?? 'draft'"
+          :context-window-usage-scope-key="
+            conversationSelectors.activeConversation.value?.id ?? 'draft'
+          "
           :disabled="isInputDisabled"
           @update:agent-choice="handleAgentChoiceChange"
           @update:primary-model-value="handlePrimaryModelChange"
@@ -100,9 +104,13 @@
           class="ai-assistant-input__image-drop-overlay"
           :class="{ 'is-blocked': isImageEntryDisabled }"
         >
-          {{ conversationMessage(isImageEntryDisabled
-            ? 'conversation.input.image.dropBlocked'
-            : 'conversation.input.image.drop') }}
+          {{
+            conversationMessage(
+              isImageEntryDisabled
+                ? 'conversation.input.image.dropBlocked'
+                : 'conversation.input.image.drop'
+            )
+          }}
         </div>
       </div>
     </div>
@@ -174,6 +182,13 @@ import {
 } from '../features/context-window-usage';
 import { useHistoryListStore } from '../history/store/historyListStore';
 import { useUIStore } from '../../../shared/stores/ui';
+import {
+  useInteractiveRunStore,
+  pauseInteractiveRun,
+  continueInteractiveRun,
+  useDetachedInteractiveRunObservation,
+} from '../features/interactive-run';
+import { resolveComposerRunAction } from '../features/interactive-run/functions/resolveComposerRunAction';
 
 const props = defineProps<{
   placeholder?: string;
@@ -186,6 +201,8 @@ const variant = computed(() => props.variant ?? 'regular');
 
 // Store
 const assistantStore = useAssistantStore();
+const interactiveRunStore = useInteractiveRunStore();
+useDetachedInteractiveRunObservation(() => assistantStore.activeConversationId);
 const conversationState = useConversationState();
 const conversationSelectors = useConversationSelectors(conversationState);
 const historyListStore = useHistoryListStore();
@@ -207,14 +224,14 @@ const contextWindowConversationInformation = computed(() => {
   const conversation = conversationSelectors.activeConversation.value;
   if (!conversation) return null;
 
-  const historyConversation = historyListStore.conversations.find(candidate => (
-    candidate.conversation_id === conversation.id
-  ));
+  const historyConversation = historyListStore.conversations.find(
+    candidate => candidate.conversation_id === conversation.id
+  );
   return projectConversationInformation({
     createdAt: conversation.createdAt,
     messages: conversationSelectors.activeMessages.value,
-    persistedUserMessageCount: historyConversation?.user_message_count
-      ?? conversation.userMessageCount,
+    persistedUserMessageCount:
+      historyConversation?.user_message_count ?? conversation.userMessageCount,
   });
 });
 // 编排器
@@ -234,7 +251,8 @@ const activeInputExtension = inputExecution.activeExtension;
 const referenceSuggestion = useConversationReferenceSuggestion({
   canUseReferences: () => activeInputExtension.value?.acceptsReferences ?? true,
 });
-const { store: imageDraftStore, controller: imageDraftController } = useConversationImageAttachmentDrafts();
+const { store: imageDraftStore, controller: imageDraftController } =
+  useConversationImageAttachmentDrafts();
 const imageEntryMessage = ref('');
 const isSubmissionStarting = ref(false);
 const isAgentChoiceUpdating = ref(false);
@@ -264,10 +282,14 @@ const inputContextBarHandles: ConversationInputContextBarHandles = {
   composer: {
     insertInlineToken(token): boolean {
       if (!editor.value) return false;
-      return editor.value.chain().focus().insertContent({
-        type: token.type,
-        attrs: { ...token.attributes },
-      }).run();
+      return editor.value
+        .chain()
+        .focus()
+        .insertContent({
+          type: token.type,
+          attrs: { ...token.attributes },
+        })
+        .run();
     },
   },
   deactivate(): void | Promise<void> {
@@ -341,7 +363,7 @@ const enabledConversationAgentChoices = useConversationAgentChoices();
 const activeConversationAgentChoice = computed(() =>
   resolveConversationAgentChoice(
     assistantStore.activeConversation?.selectedAgentId ?? null,
-    enabledConversationAgentChoices.value,
+    enabledConversationAgentChoices.value
   )
 );
 const activeAgentChoiceId = computed<ConversationAgentChoiceId | null>(() => {
@@ -349,33 +371,38 @@ const activeAgentChoiceId = computed<ConversationAgentChoiceId | null>(() => {
 });
 const activeAgentChoicePillText = computed(() => {
   const agentChoice = activeConversationAgentChoice.value;
-  return agentChoice ? resolveConversationAgentChoiceTextPresentation(agentChoice, t).pillText : null;
+  return agentChoice
+    ? resolveConversationAgentChoiceTextPresentation(agentChoice, t).pillText
+    : null;
 });
 const activeAgentChoiceAriaLabel = computed(() => {
   const agentChoice = activeConversationAgentChoice.value;
-  return agentChoice ? resolveConversationAgentChoiceTextPresentation(agentChoice, t).ariaLabel : null;
+  return agentChoice
+    ? resolveConversationAgentChoiceTextPresentation(agentChoice, t).ariaLabel
+    : null;
 });
 
 const isLoading = inputExecution.isLoading;
 const isStreaming = inputExecution.isStreaming;
-const isInputDisabled = computed(() => (
-  props.disabled === true
-  || isLoading.value
-  || isStreaming.value
-  || isSubmissionStarting.value
-  || isAgentChoiceUpdating.value
-));
-const isModelSetupRequired = computed(() => (
+const isInputDisabled = computed(
+  () =>
+    props.disabled === true ||
+    isLoading.value ||
+    isStreaming.value ||
+    isSubmissionStarting.value ||
+    isAgentChoiceUpdating.value
+);
+const isModelSetupRequired = computed(() =>
   shouldPromptForModelSetup(modelPicker.snapshot.value, isInputDisabled.value)
-));
-const isImageEntryDisabled = computed(() => (
-  isInputDisabled.value || activeInputExtension.value?.acceptsAttachments === false
-));
-const imageEntryTitle = computed(() => (
+);
+const isImageEntryDisabled = computed(
+  () => isInputDisabled.value || activeInputExtension.value?.acceptsAttachments === false
+);
+const imageEntryTitle = computed(() =>
   activeInputExtension.value?.acceptsAttachments === false
     ? conversationMessage('conversation.input.image.extensionUnsupported')
     : conversationMessage('conversation.input.image.add')
-));
+);
 
 function openImageAttachmentPicker(): void {
   imageAttachmentPickerRef.value?.openPicker();
@@ -387,12 +414,14 @@ const activeChatModel = computed(() => {
   const activeModelId = modelBindings.effectivePrimaryModelId.value;
   return modelCatalog.models.value.find(model => model.id === activeModelId);
 });
-const imageSubmitPreflight = computed(() => resolveConversationImageSubmitPreflight({
-  text: assistantStore.inputText,
-  items: imageDraftStore.items,
-  activeModelAcceptsUserImages: modelAcceptsUserImageInput(activeChatModel.value),
-  extensionAcceptsAttachments: activeInputExtension.value?.acceptsAttachments ?? true,
-}));
+const imageSubmitPreflight = computed(() =>
+  resolveConversationImageSubmitPreflight({
+    text: assistantStore.inputText,
+    items: imageDraftStore.items,
+    activeModelAcceptsUserImages: modelAcceptsUserImageInput(activeChatModel.value),
+    extensionAcceptsAttachments: activeInputExtension.value?.acceptsAttachments ?? true,
+  })
+);
 const imageSubmitMessage = computed(() => {
   if (imageEntryMessage.value) return imageEntryMessage.value;
   if (imageDraftStore.items.length === 0 || imageSubmitPreflight.value.ok) return '';
@@ -408,6 +437,22 @@ const imageSubmitMessage = computed(() => {
 const canSend = computed(() => {
   return imageSubmitPreflight.value.ok && !isInputDisabled.value;
 });
+const primaryAction = computed(() =>
+  resolveComposerRunAction({
+    // 非空但尚未就绪的附件仍表示发送意图；禁用发送，不能误点成继续旧运行。
+    hasDraft: imageSubmitPreflight.value.ok || imageSubmitPreflight.value.reason !== 'empty_input',
+    run: activeInputExtension.value
+      ? undefined
+      : interactiveRunStore.snapshotFor(assistantStore.activeConversationId),
+    extensionStreaming: Boolean(activeInputExtension.value && isStreaming.value),
+  })
+);
+const isPrimaryActionDisabled = computed(
+  () =>
+    props.disabled === true ||
+    primaryAction.value === 'waiting' ||
+    (primaryAction.value === 'send' && !canSend.value)
+);
 
 function stageImageFiles(input: {
   readonly source: ConversationImageEntrySource;
@@ -418,15 +463,18 @@ function stageImageFiles(input: {
   if (selection.files.length === 0) return false;
   if (isImageEntryDisabled.value) {
     if (activeInputExtension.value?.acceptsAttachments === false) {
-      imageEntryMessage.value = conversationMessage('conversation.input.image.extensionUnsupported');
+      imageEntryMessage.value = conversationMessage(
+        'conversation.input.image.extensionUnsupported'
+      );
     }
     return selection.shouldConsumeEvent;
   }
 
   const result = imageDraftController.stageFiles(selection.files);
-  imageEntryMessage.value = result.kind === 'rejected'
-    ? conversationMessage(resolveImageAttachmentErrorMessage(result.code))
-    : '';
+  imageEntryMessage.value =
+    result.kind === 'rejected'
+      ? conversationMessage(resolveImageAttachmentErrorMessage(result.code))
+      : '';
   return selection.shouldConsumeEvent;
 }
 
@@ -481,7 +529,7 @@ function handleImageDrop(event: DragEvent): void {
 const isModelsLoading = computed(() => modelCatalog.activeOperation.value !== null);
 const isFooterSelectorInteracting = ref(false);
 const isSelectorInteracting = computed(
-  () => isFooterSelectorInteracting.value || referenceSuggestion.isOpen.value,
+  () => isFooterSelectorInteracting.value || referenceSuggestion.isOpen.value
 );
 
 const inputPlaceholder = computed(() => {
@@ -542,8 +590,19 @@ const handleSelectorInteractionChange = (value: boolean) => {
 };
 
 const handleSubmit = async () => {
-  // 如果正在流式传输，则取消当前流
-  if (isStreaming.value) {
+  if (isPrimaryActionDisabled.value) return;
+  const conversationId = assistantStore.activeConversationId;
+  if (primaryAction.value === 'pause' || primaryAction.value === 'continue') {
+    if (!conversationId) return;
+    try {
+      if (primaryAction.value === 'pause') await pauseInteractiveRun(conversationId);
+      else await continueInteractiveRun(conversationId, assistantStore.handleSseEvent);
+    } catch (error) {
+      console.error('[AiAssistantInput] 运行控制失败:', error);
+    }
+    return;
+  }
+  if (primaryAction.value === 'cancel') {
     inputExecution.cancel();
     return;
   }
@@ -561,7 +620,9 @@ const handleSubmit = async () => {
   // 在清空之前快照当前扩展与引用，确保结构化 userQuote 不因清空 composer 丢失。
   const extensionSnapshot = activeInputExtension.value;
   const conversationReferencesSnapshot = [...composerReferences.references.value];
-  const userQuotePayload = buildUserQuotePayloadFromConversationReferences(conversationReferencesSnapshot);
+  const userQuotePayload = buildUserQuotePayloadFromConversationReferences(
+    conversationReferencesSnapshot
+  );
   const extensionSubmitPayload: ConversationInputExtensionSubmitPayload = {
     text: message,
     references: conversationReferencesSnapshot,
@@ -575,10 +636,14 @@ const handleSubmit = async () => {
         clearDraftAfterStart: clearComposerDraft,
       });
     } else {
-      await chatFlowOrchestrator.sendChatMessage({
-        text: message,
-        ...(userQuotePayload ? { userQuote: userQuotePayload } : {}),
-      }, {}, imageSubmission);
+      await chatFlowOrchestrator.sendChatMessage(
+        {
+          text: message,
+          ...(userQuotePayload ? { userQuote: userQuotePayload } : {}),
+        },
+        {},
+        imageSubmission
+      );
     }
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') return;
@@ -609,21 +674,24 @@ const syncEditorEditable = () => {
 };
 
 // 监听来自 store 的 inputText 变化，并同步到编辑器
-watch(() => assistantStore.inputText, (newText) => {
-  if (!editor.value) return;
+watch(
+  () => assistantStore.inputText,
+  newText => {
+    if (!editor.value) return;
 
-  /**
-   * 根因修复：
-   * - 之前用 `editor.getText()` 做比较，遇到 hard_break/原子节点时序列化规则不一致，导致误判“内容不同”；
-   * - 随后 `setContent(string)` 会把 '\n' 当作普通文本/HTML 解析掉，直接抹掉换行节点；
-   * - 这里改为：用同一套序列化函数 `getEditorPlainText` 对齐比较口径，并用 JSON content 回写，确保换行稳定。
-   */
-  const currentText = getEditorPlainText(editor.value);
-  if (currentText === newText) return;
+    /**
+     * 根因修复：
+     * - 之前用 `editor.getText()` 做比较，遇到 hard_break/原子节点时序列化规则不一致，导致误判“内容不同”；
+     * - 随后 `setContent(string)` 会把 '\n' 当作普通文本/HTML 解析掉，直接抹掉换行节点；
+     * - 这里改为：用同一套序列化函数 `getEditorPlainText` 对齐比较口径，并用 JSON content 回写，确保换行稳定。
+     */
+    const currentText = getEditorPlainText(editor.value);
+    if (currentText === newText) return;
 
-  // emitUpdate=false：避免“回写编辑器”再次触发 onUpdate，引发不必要的状态抖动
-  editor.value.commands.setContent(plainTextToTiptapContent(newText), { emitUpdate: false });
-});
+    // emitUpdate=false：避免“回写编辑器”再次触发 onUpdate，引发不必要的状态抖动
+    editor.value.commands.setContent(plainTextToTiptapContent(newText), { emitUpdate: false });
+  }
+);
 
 watch(isInputDisabled, syncEditorEditable);
 
@@ -689,11 +757,12 @@ onMounted(() => {
         }
         return false;
       },
-      handlePaste: (_view, event) => stageImageFiles({
-        source: 'paste',
-        files: Array.from(event.clipboardData?.files ?? []),
-        hasPlainText: (event.clipboardData?.getData('text/plain').length ?? 0) > 0,
-      }),
+      handlePaste: (_view, event) =>
+        stageImageFiles({
+          source: 'paste',
+          files: Array.from(event.clipboardData?.files ?? []),
+          hasPlainText: (event.clipboardData?.getData('text/plain').length ?? 0) > 0,
+        }),
     },
     onUpdate: ({ editor }) => {
       // 使用统一序列化逻辑，确保换行稳定保留

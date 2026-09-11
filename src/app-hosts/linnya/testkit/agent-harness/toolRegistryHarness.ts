@@ -33,7 +33,7 @@ interface ToolRuntimeHarnessFallback {
   executeTool(
     toolName: string,
     args: ToolArgs,
-    context: ToolExecutionContext,
+    context: ToolExecutionContext
   ): Promise<ToolExecutionResult>;
 }
 
@@ -83,6 +83,14 @@ async function executeCustomTool(params: {
       durationMs: Date.now() - startedAt,
     };
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error;
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error.code === 'RUN_RECOVERY_BLOCKED' || error.code === 'RUN_PAUSE_REQUESTED')
+    )
+      throw error;
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
@@ -94,10 +102,11 @@ async function executeCustomTool(params: {
 export function createToolRuntimeHarness(
   tools: BaseTool[],
   fallback: ToolRuntimeHarnessFallback = {
-    getToolDefinition: (toolName) => defaultToolRuntimePort.getToolDefinition(toolName),
-    getToolSchemas: (input) => defaultToolRuntimePort.getToolSchemas(input),
-    executeTool: (toolName, args, context) => defaultToolRuntimePort.executeTool(toolName, args, context),
-  },
+    getToolDefinition: toolName => defaultToolRuntimePort.getToolDefinition(toolName),
+    getToolSchemas: input => defaultToolRuntimePort.getToolSchemas(input),
+    executeTool: (toolName, args, context) =>
+      defaultToolRuntimePort.executeTool(toolName, args, context),
+  }
 ): ToolRuntimeHarness {
   const ownsPluginRuntimeState = !isPluginRuntimeDatabaseReady();
   if (ownsPluginRuntimeState) {
@@ -108,22 +117,22 @@ export function createToolRuntimeHarness(
       enabledPluginIds: ['platform'],
     });
   }
-  const toolMap = new Map<string, BaseTool>(tools.map((tool) => [tool.name, tool]));
+  const toolMap = new Map<string, BaseTool>(tools.map(tool => [tool.name, tool]));
   const executions: ToolExecutionRecord[] = [];
 
   const runtime: ToolRuntimePort = {
     getToolSchemas(input: ToolSchemaBuildRequest): FunctionToolSchema[] {
-      const names = Array.isArray(input.toolNames) ? input.toolNames : tools.map((tool) => tool.name);
+      const names = Array.isArray(input.toolNames) ? input.toolNames : tools.map(tool => tool.name);
       const customSchemas = names
-        .map((name) => toolMap.get(name))
+        .map(name => toolMap.get(name))
         .filter((tool): tool is BaseTool => !!tool)
-        .map((tool) => buildSchema(tool));
+        .map(tool => buildSchema(tool));
 
       if (customSchemas.length === names.length) {
         return customSchemas;
       }
 
-      const remainingNames = names.filter((name) => !toolMap.has(name));
+      const remainingNames = names.filter(name => !toolMap.has(name));
       return [
         ...customSchemas,
         ...fallback.getToolSchemas({ ...input, toolNames: remainingNames }),
@@ -141,7 +150,7 @@ export function createToolRuntimeHarness(
     async executeTool(
       toolName: string,
       args: ToolArgs,
-      context: ToolExecutionContext,
+      context: ToolExecutionContext
     ): Promise<ToolExecutionResult> {
       const customTool = toolMap.get(toolName);
       if (!customTool) {

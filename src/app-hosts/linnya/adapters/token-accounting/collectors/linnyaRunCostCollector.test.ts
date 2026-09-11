@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import Database from 'better-sqlite3';
 import type { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import type { CanonicalLlmUsage, TokenPricing, TokenRoute } from '@linnlabs/linnkit/contracts';
 import { LinnyaRunCostCollector } from './linnyaRunCostCollector';
+import { SqliteRunCostStateStore } from './sqliteRunCostStateStore';
+import { getRunCostSchemaProviders } from '../schema-providers';
 
 function llmCallEvent(params?: {
   promptTokens?: number;
@@ -46,6 +49,35 @@ function canonicalUsage(overrides: Partial<CanonicalLlmUsage> = {}): CanonicalLl
     ...overrides,
   };
 }
+
+it('SQLite 重建 collector 保留累计 usage 和 child 关系，缺失费用不冒充零', () => {
+  const db = new Database(':memory:');
+  try {
+    db.exec(
+      "CREATE TABLE runs (id TEXT PRIMARY KEY); INSERT INTO runs VALUES ('parent'), ('child');"
+    );
+    for (const provider of getRunCostSchemaProviders())
+      for (const ddl of provider.getSchema()) db.exec(ddl);
+    const first = new LinnyaRunCostCollector(() => undefined, new SqliteRunCostStateStore(db));
+    first.ingest('parent', llmCallEvent({ runId: 'parent', canonicalUsage: canonicalUsage() }));
+    first.ingest(
+      'child',
+      llmCallEvent({ runId: 'child', parentRunId: 'parent', canonicalUsage: canonicalUsage() })
+    );
+    const before = first.snapshot('parent');
+    const resumed = new LinnyaRunCostCollector(() => undefined, new SqliteRunCostStateStore(db));
+    expect(resumed.snapshot('parent')).toEqual(before);
+    resumed.ingest('parent', llmCallEvent({ runId: 'parent', canonicalUsage: canonicalUsage() }));
+    expect(resumed.snapshot('parent').tokensInput).toBe(200);
+    expect(resumed.snapshot('parent').childrenTotal?.tokensInput).toBe(100);
+    resumed.markUncertainExecution('parent', 'lost-attempt');
+    resumed.markUncertainExecution('parent', 'lost-attempt');
+    expect(resumed.recoveryUsage('parent')).toMatchObject({ calls: 2, unknownCostCalls: 3 });
+    expect(resumed.snapshot('parent').totalCostUsd).toBeUndefined();
+  } finally {
+    db.close();
+  }
+});
 
 function contextBuildEvent(params?: {
   runId?: string;
@@ -113,8 +145,14 @@ describe('LinnyaRunCostCollector', () => {
   it('按单个 run 累计 LLM token 与耗时', () => {
     const collector = new LinnyaRunCostCollector();
 
-    collector.ingest('run1', llmCallEvent({ promptTokens: 100, completionTokens: 50, durationMs: 20 }));
-    collector.ingest('run1', llmCallEvent({ promptTokens: 100, completionTokens: 50, durationMs: 30 }));
+    collector.ingest(
+      'run1',
+      llmCallEvent({ promptTokens: 100, completionTokens: 50, durationMs: 20 })
+    );
+    collector.ingest(
+      'run1',
+      llmCallEvent({ promptTokens: 100, completionTokens: 50, durationMs: 30 })
+    );
 
     expect(collector.snapshot('run1')).toEqual({
       tokensInput: 200,
@@ -136,14 +174,27 @@ describe('LinnyaRunCostCollector', () => {
   it('按 parentRunId 聚合 child-run cost，同时保留父子 run 独立快照', () => {
     const collector = new LinnyaRunCostCollector();
 
-    collector.ingest('parent-run', llmCallEvent({ promptTokens: 10, completionTokens: 5, runId: 'parent-run' }));
+    collector.ingest(
+      'parent-run',
+      llmCallEvent({ promptTokens: 10, completionTokens: 5, runId: 'parent-run' })
+    );
     collector.ingest(
       'child-run-1',
-      llmCallEvent({ promptTokens: 30, completionTokens: 7, runId: 'child-run-1', parentRunId: 'parent-run' }),
+      llmCallEvent({
+        promptTokens: 30,
+        completionTokens: 7,
+        runId: 'child-run-1',
+        parentRunId: 'parent-run',
+      })
     );
     collector.ingest(
       'child-run-2',
-      llmCallEvent({ promptTokens: 40, completionTokens: 8, runId: 'child-run-2', parentRunId: 'parent-run' }),
+      llmCallEvent({
+        promptTokens: 40,
+        completionTokens: 8,
+        runId: 'child-run-2',
+        parentRunId: 'parent-run',
+      })
     );
 
     expect(collector.snapshot('child-run-1')).toEqual({
@@ -214,18 +265,21 @@ describe('LinnyaRunCostCollector', () => {
   it('以 canonicalUsage 聚合 tokenUsage，并用 legacy tokensInput/tokensOutput 保持兼容', () => {
     const collector = new LinnyaRunCostCollector(() => ({ route, pricing }));
 
-    collector.ingest('run1', llmCallEvent({
-      modelId: 'gpt-test',
-      promptTokens: 999,
-      completionTokens: 999,
-      canonicalUsage: canonicalUsage({
-        inputTokens: 90,
-        outputTokens: 25,
-        reasoningTokens: 5,
-        cacheReadTokens: 30,
-        totalTokens: 150,
-      }),
-    }));
+    collector.ingest(
+      'run1',
+      llmCallEvent({
+        modelId: 'gpt-test',
+        promptTokens: 999,
+        completionTokens: 999,
+        canonicalUsage: canonicalUsage({
+          inputTokens: 90,
+          outputTokens: 25,
+          reasoningTokens: 5,
+          cacheReadTokens: 30,
+          totalTokens: 150,
+        }),
+      })
+    );
 
     expect(collector.snapshot('run1')).toMatchObject({
       tokensInput: 90,
@@ -259,13 +313,16 @@ describe('LinnyaRunCostCollector', () => {
       },
     }));
 
-    collector.ingest('run1', llmCallEvent({
-      canonicalUsage: canonicalUsage({
-        inputTokens: 100,
-        outputTokens: 20,
-        reasoningTokens: 5,
-      }),
-    }));
+    collector.ingest(
+      'run1',
+      llmCallEvent({
+        canonicalUsage: canonicalUsage({
+          inputTokens: 100,
+          outputTokens: 20,
+          reasoningTokens: 5,
+        }),
+      })
+    );
 
     expect(collector.snapshot('run1')).toMatchObject({
       tokensInput: 100,
@@ -282,14 +339,17 @@ describe('LinnyaRunCostCollector', () => {
   it('estimate usage 进入 tokenUsage，但不进入真实 cost', () => {
     const collector = new LinnyaRunCostCollector(() => ({ pricing }));
 
-    collector.ingest('run1', llmCallEvent({
-      canonicalUsage: canonicalUsage({
-        inputTokens: 60,
-        outputTokens: 10,
-        source: 'local-estimate',
-        confidence: 'estimate',
-      }),
-    }));
+    collector.ingest(
+      'run1',
+      llmCallEvent({
+        canonicalUsage: canonicalUsage({
+          inputTokens: 60,
+          outputTokens: 10,
+          source: 'local-estimate',
+          confidence: 'estimate',
+        }),
+      })
+    );
 
     const snapshot = collector.snapshot('run1');
     expect(snapshot.tokenUsage?.own.llmUsage).toMatchObject({
@@ -323,17 +383,19 @@ describe('LinnyaRunCostCollector', () => {
   it('内部摘要 LLM usage 计入触发它的主 run', () => {
     const collector = new LinnyaRunCostCollector(() => ({ pricing }));
 
-    collector.ingestTelemetry(llmCallEvent({
-      runId: 'run-summary',
-      modelId: 'summary-model',
-      canonicalUsage: canonicalUsage({
-        inputTokens: 70,
-        outputTokens: 9,
-        totalTokens: 79,
-      }),
-      phase: 'context-internal',
-      purpose: 'summarization',
-    }));
+    collector.ingestTelemetry(
+      llmCallEvent({
+        runId: 'run-summary',
+        modelId: 'summary-model',
+        canonicalUsage: canonicalUsage({
+          inputTokens: 70,
+          outputTokens: 9,
+          totalTokens: 79,
+        }),
+        phase: 'context-internal',
+        purpose: 'summarization',
+      })
+    );
 
     expect(collector.snapshot('run-summary')).toMatchObject({
       tokensInput: 70,
@@ -365,25 +427,31 @@ describe('LinnyaRunCostCollector', () => {
       totalTokens: 53,
     });
 
-    collector.ingestTelemetry(llmCallEvent({
-      runId: 'run-without-summary',
-      modelId: 'main-model',
-      canonicalUsage: mainUsage,
-      phase: 'main',
-    }));
-    collector.ingestTelemetry(llmCallEvent({
-      runId: 'run-with-summary',
-      modelId: 'main-model',
-      canonicalUsage: mainUsage,
-      phase: 'main',
-    }));
-    collector.ingestTelemetry(llmCallEvent({
-      runId: 'run-with-summary',
-      modelId: 'summary-model',
-      canonicalUsage: summaryUsage,
-      phase: 'context-internal',
-      purpose: 'summarization',
-    }));
+    collector.ingestTelemetry(
+      llmCallEvent({
+        runId: 'run-without-summary',
+        modelId: 'main-model',
+        canonicalUsage: mainUsage,
+        phase: 'main',
+      })
+    );
+    collector.ingestTelemetry(
+      llmCallEvent({
+        runId: 'run-with-summary',
+        modelId: 'main-model',
+        canonicalUsage: mainUsage,
+        phase: 'main',
+      })
+    );
+    collector.ingestTelemetry(
+      llmCallEvent({
+        runId: 'run-with-summary',
+        modelId: 'summary-model',
+        canonicalUsage: summaryUsage,
+        phase: 'context-internal',
+        purpose: 'summarization',
+      })
+    );
 
     const withoutSummary = collector.snapshot('run-without-summary');
     const withSummary = collector.snapshot('run-with-summary');
@@ -400,15 +468,21 @@ describe('LinnyaRunCostCollector', () => {
   it('父 run 的 own cost 与 childrenTotal 分离，避免重复计费', () => {
     const collector = new LinnyaRunCostCollector(() => ({ pricing }));
 
-    collector.ingest('parent-run', llmCallEvent({
-      runId: 'parent-run',
-      canonicalUsage: canonicalUsage({ inputTokens: 100, outputTokens: 50 }),
-    }));
-    collector.ingest('child-run', llmCallEvent({
-      runId: 'child-run',
-      parentRunId: 'parent-run',
-      canonicalUsage: canonicalUsage({ inputTokens: 200, outputTokens: 100 }),
-    }));
+    collector.ingest(
+      'parent-run',
+      llmCallEvent({
+        runId: 'parent-run',
+        canonicalUsage: canonicalUsage({ inputTokens: 100, outputTokens: 50 }),
+      })
+    );
+    collector.ingest(
+      'child-run',
+      llmCallEvent({
+        runId: 'child-run',
+        parentRunId: 'parent-run',
+        canonicalUsage: canonicalUsage({ inputTokens: 200, outputTokens: 100 }),
+      })
+    );
 
     const parent = collector.snapshot('parent-run');
     expect(parent.totalCostUsd).toBe(0.002);
@@ -426,24 +500,30 @@ describe('LinnyaRunCostCollector', () => {
   it('父 run 汇总多个 child 的图片输入分项，但 legacy input 与费用不重复累计', () => {
     const collector = new LinnyaRunCostCollector(() => ({ pricing }));
 
-    collector.ingest('child-image-1', llmCallEvent({
-      runId: 'child-image-1',
-      parentRunId: 'parent-image',
-      canonicalUsage: canonicalUsage({
-        inputTokens: 100,
-        imageInputTokens: 25,
-        outputTokens: 20,
-      }),
-    }));
-    collector.ingest('child-image-2', llmCallEvent({
-      runId: 'child-image-2',
-      parentRunId: 'parent-image',
-      canonicalUsage: canonicalUsage({
-        inputTokens: 40,
-        imageInputTokens: 10,
-        outputTokens: 5,
-      }),
-    }));
+    collector.ingest(
+      'child-image-1',
+      llmCallEvent({
+        runId: 'child-image-1',
+        parentRunId: 'parent-image',
+        canonicalUsage: canonicalUsage({
+          inputTokens: 100,
+          imageInputTokens: 25,
+          outputTokens: 20,
+        }),
+      })
+    );
+    collector.ingest(
+      'child-image-2',
+      llmCallEvent({
+        runId: 'child-image-2',
+        parentRunId: 'parent-image',
+        canonicalUsage: canonicalUsage({
+          inputTokens: 40,
+          imageInputTokens: 10,
+          outputTokens: 5,
+        }),
+      })
+    );
 
     const parent = collector.snapshot('parent-image');
     expect(parent.childrenTotal).toMatchObject({

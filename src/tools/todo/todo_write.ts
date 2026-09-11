@@ -45,8 +45,7 @@ function normalizeItems(raw: TodoWriteArgs['items']): AgentTodoToolItem[] {
 
 export class TodoWriteTool extends BaseTool {
   readonly name = 'todo_write';
-  // 中文备注：旧编排概念已移除；todo_write 的幂等作用域收敛为 conversation（同会话重试不重复写入快照）。
-  readonly idempotency = { scope: 'conversation' } as const;
+  // 每次调用表达新的整表快照意图；A→B→A 必须产生第三版，不能按历史同参结果去重。
 
   readonly description = `Writes the Agent TODO list (working memory) for the active conversation.
 

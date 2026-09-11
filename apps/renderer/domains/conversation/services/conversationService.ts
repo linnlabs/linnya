@@ -1,13 +1,13 @@
 /**
  * @file apps/renderer/domains/conversation/services/conversationService.ts
  * @description AI 助手会话 API 客户端
- * 
+ *
  * @brief 职责划分
  * 功能 (What): 封装对后端 `/api/v1/conversation/next` 接口的底层网络调用。
  * 输入 (Input): 符合后端契约的请求对象 (`ConversationNextRequest`)、一组回调函数和 AbortSignal。
  * 输出 (Output): 通过回调函数实时分发后端推送的 Server-Sent Events (SSE)。
  * 副作用 (Side-effects): 发起 fetch 网络请求。
- * 
+ *
  * @design 核心设计
  * 本文件是纯粹的“网络层”或“信使 (Messenger)”。它不包含任何业务逻辑，
  * 比如如何构建请求、如何处理思考标签 (`<think>`) 等。
@@ -25,11 +25,11 @@ import type {
   ConversationTransportError,
   ConversationTransportOutcome,
 } from '../definitions/conversationTransport';
-import type { 
+import type {
   ConversationUserInputCommittedEvent,
   ConversationInteractionResponseRequest,
-  ConversationNextRequest, 
-  IncrementalEvent
+  ConversationNextRequest,
+  IncrementalEvent,
 } from '@app/schemas';
 import { ConversationUserInputCommittedEventSchema } from '@app/schemas';
 import {
@@ -142,7 +142,7 @@ class SseProtocolError extends Error {
 function createSseCallbackDispatchError(
   eventType: string,
   data: unknown,
-  error: unknown,
+  error: unknown
 ): SseCallbackDispatchError {
   return new SseCallbackDispatchError(eventType, data, error);
 }
@@ -159,7 +159,7 @@ function toError(error: unknown): Error {
 
 async function publishTransportOutcome(
   callbacks: ConversationStreamCallbacks,
-  outcome: ConversationTransportOutcome,
+  outcome: ConversationTransportOutcome
 ): Promise<ConversationTransportOutcome> {
   if (outcome.kind === 'failed') {
     await callbacks.onTransportError?.(outcome.failure);
@@ -175,18 +175,21 @@ async function publishTransportOutcome(
 /**
  * @function streamConversation
  * @description 核心函数，用于向后端发送会话请求并发起一个长连接来接收流式事件。
- * 
+ *
  * @param req {ConversationNextRequest} - 发送给后端的请求对象，包含新事件和各种选项。
  * @param callbacks {ConversationStreamCallbacks} - 用于处理流式事件的回调函数集合。
  * @param signal {AbortSignal | undefined} - 用于中断 fetch 请求的 AbortSignal。
- * 
+ *
  * @returns {Promise<void>} - 该函数本身不返回数据，所有数据都通过回调函数进行处理。
  */
 export async function streamConversation(
-  req: ConversationNextRequest | ConversationInteractionResponseRequest,
+  req:
+    | ConversationNextRequest
+    | ConversationInteractionResponseRequest
+    | import('@app/schemas').ConversationRunContinueRequest,
   callbacks: ConversationStreamCallbacks,
   signal?: AbortSignal,
-  endpoint = '/api/v1/conversation/next',
+  endpoint = '/api/v1/conversation/next'
 ): Promise<ConversationTransportOutcome> {
   let response: Response;
   try {
@@ -195,7 +198,7 @@ export async function streamConversation(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
+        Accept: 'text/event-stream',
         'Cache-Control': 'no-cache',
       },
       body: JSON.stringify(req),
@@ -218,13 +221,16 @@ export async function streamConversation(
   // 处理请求失败的情况
   if (!response.ok) {
     const bodyText = await readResponseBodyText(response);
-    const normalized = normalizeHttpErrorPayload({
-      status: response.status,
-      statusText: response.statusText,
-      bodyText,
-    }, {
-      resolveMessage: resolveCurrentConversationMessage,
-    });
+    const normalized = normalizeHttpErrorPayload(
+      {
+        status: response.status,
+        statusText: response.statusText,
+        bodyText,
+      },
+      {
+        resolveMessage: resolveCurrentConversationMessage,
+      }
+    );
     return publishTransportOutcome(callbacks, {
       kind: 'failed',
       failure: {
@@ -251,7 +257,7 @@ export async function streamConversation(
       },
     });
   }
-  
+
   const reader = response.body.getReader();
   const frameParser = createServerSentEventFrameParser();
   let transportEndEvent: SSETransportEndEvent | undefined;
@@ -270,7 +276,7 @@ export async function streamConversation(
       const reason = error instanceof Error ? error.message : String(error);
       throw new SseProtocolError(
         `Invalid SSE JSON payload: event=${eventType}, reason=${reason}`,
-        error,
+        error
       );
     }
 
@@ -281,7 +287,7 @@ export async function streamConversation(
       } catch (error) {
         throw new SseProtocolError(
           `Invalid SSE payload for event=${eventType}: ${toError(error).message}`,
-          error,
+          error
         );
       }
       try {
@@ -295,13 +301,13 @@ export async function streamConversation(
     const validation = validateSSEEvent(data);
     if (!validation.success) {
       throw new SseProtocolError(
-        `Invalid SSE payload for event=${eventType}: ${validation.error.message}`,
+        `Invalid SSE payload for event=${eventType}: ${validation.error.message}`
       );
     }
     const event = validation.data;
     if (event.type !== eventType) {
       throw new SseProtocolError(
-        `SSE event name/payload mismatch: event=${eventType}, payload=${event.type}`,
+        `SSE event name/payload mismatch: event=${eventType}, payload=${event.type}`
       );
     }
 
@@ -410,16 +416,20 @@ export async function streamConversation(
      * 此后的底层连接异常不再转化为新的用户可见错误。
      */
     if (transportEndEvent) {
-      console.warn('[ConversationService] 流读取异常发生在 transport_end 之后（忽略为非致命噪声）:', e);
+      console.warn(
+        '[ConversationService] 流读取异常发生在 transport_end 之后（忽略为非致命噪声）:',
+        e
+      );
     } else if (!isAbortError(e)) {
       console.error('[ConversationService] 流读取异常:', e);
       transportFailure = {
         source: 'client',
-        kind: e instanceof SseCallbackDispatchError
-          ? 'projection'
-          : e instanceof SseProtocolError
-            ? 'protocol'
-            : 'network',
+        kind:
+          e instanceof SseCallbackDispatchError
+            ? 'projection'
+            : e instanceof SseProtocolError
+              ? 'protocol'
+              : 'network',
         error: toError(e),
       };
     } else {
@@ -459,7 +469,7 @@ export async function streamConversation(
 /**
  * @function fetchConversationEvents
  * @description 拉取指定会话的事件快照，主要用于 DevTools 或调试。
- * 
+ *
  * @param conversationId {string} - 要查询的会话 ID。
  * @param from {number | undefined} - 从哪个事件版本号开始拉取（增量更新）。
  * @returns 会话事件快照，包含当前 revision、查询起点与事件列表。
@@ -471,7 +481,7 @@ export async function fetchConversationEvents(
   const baseUrl = await getApiBaseUrl();
   const qs = typeof from === 'number' && from > 0 ? `?from=${from}` : '';
   const url = `${baseUrl}/api/v1/conversation/events/${encodeURIComponent(conversationId)}${qs}`;
-  const res = await apiFetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+  const res = await apiFetch(url, { method: 'GET', headers: { Accept: 'application/json' } });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(text || `Failed to fetch events (${res.status})`);

@@ -64,8 +64,8 @@ function readJsonRpcResult(response: WebHttpResponse, id: number): Record<string
   if (isRecord(message['error'])) {
     const error = message['error'];
     const code = typeof error['code'] === 'number' ? ` code=${error['code']}` : '';
-    const detail = typeof error['message'] === 'string' ? ` ${error['message']}` : '';
-    throw new WebHttpError('invalid_response', `Parallel Free MCP 调用失败:${code}${detail}`.trim());
+    // MCP error.message 属于上游正文，不能借失败分支变成可信工具指令。
+    throw new WebHttpError('invalid_response', `Parallel Free MCP 调用失败${code}。`);
   }
   if (!isRecord(message['result'])) {
     throw new WebHttpError('invalid_response', 'Parallel Free MCP 响应缺少 result。');

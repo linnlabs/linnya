@@ -36,9 +36,7 @@ import {
 } from '../../../shared/utils/pathManager';
 import { LINNYA_FLOW_IMAGE_INGRESS_POLICY } from '../../../app-hosts/linnya/adapters/flow/incoming-events/definitions/flowImageIngressPolicy';
 import { cleanupToolOutputStoreByTime } from '../../../tools/tool_output/orchestration/cleanupToolOutputStore';
-import {
-  createFileCommandOutputArtifactMaintenancePort,
-} from '../../../infra/adapters/command-runtime/output/createFileCommandOutputArtifactMaintenancePort';
+import { createFileCommandOutputArtifactMaintenancePort } from '../../../infra/adapters/command-runtime/output/createFileCommandOutputArtifactMaintenancePort';
 
 export interface StartupMaintenanceDeps {
   databaseService: DatabaseService;
@@ -62,7 +60,7 @@ export interface ManagedImageStartupMaintenanceDeps {
 let scheduled = false;
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
@@ -106,7 +104,7 @@ async function waitForQdrantReachable(params: {
  * asset 删除与新 ingress 可能争用同一路径，导致新文件被旧回收任务删除。
  */
 export async function runManagedImageStartupMaintenance(
-  deps: ManagedImageStartupMaintenanceDeps,
+  deps: ManagedImageStartupMaintenanceDeps
 ): Promise<void> {
   const logger = new Logger('ManagedImageStartupMaintenance');
   const db = deps.databaseService.getDb();
@@ -138,17 +136,19 @@ export async function runManagedImageStartupMaintenance(
       quarantineRetentionMs: 30 * 24 * 60 * 60 * 1_000,
     });
     logger.info(
-      `受管图片维护汇总: legacyMigrated=${attachmentMigration.migrated}/${attachmentMigration.scanned}, `
-      + `migrationSkipped=${attachmentMigration.skipped}, migrationFailed=${attachmentMigration.failed}, `
-      + `orphanAssets=${orphanAssets.deletedAssets}, orphanFiles=${orphanAssets.deletedFiles}, `
-      + `orphanFileFailed=${orphanAssets.failedFiles}, `
-      + `pendingScanned=${pendingStats.scanned}, pendingCompleted=${pendingStats.completed}, `
-      + `pendingQuarantined=${pendingStats.quarantined}, quarantineDeleted=${pendingStats.quarantineDeleted}, `
-      + `pendingFailed=${pendingStats.failed}`,
+      `受管图片维护汇总: legacyMigrated=${attachmentMigration.migrated}/${attachmentMigration.scanned}, ` +
+        `migrationSkipped=${attachmentMigration.skipped}, migrationFailed=${attachmentMigration.failed}, ` +
+        `orphanAssets=${orphanAssets.deletedAssets}, orphanFiles=${orphanAssets.deletedFiles}, ` +
+        `orphanFileFailed=${orphanAssets.failedFiles}, ` +
+        `pendingScanned=${pendingStats.scanned}, pendingCompleted=${pendingStats.completed}, ` +
+        `pendingQuarantined=${pendingStats.quarantined}, quarantineDeleted=${pendingStats.quarantineDeleted}, ` +
+        `pendingFailed=${pendingStats.failed}`
     );
   } catch (error: unknown) {
     // 维护失败不能阻止用户打开应用；关键是失败任务已经结束，不会与 ingress 并发。
-    logger.warn(`受管图片启动维护执行失败: ${error instanceof Error ? error.message : String(error)}`);
+    logger.warn(
+      `受管图片启动维护执行失败: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
@@ -159,7 +159,9 @@ export async function runManagedImageStartupMaintenance(
  * 或尚未发布 manifest 的目录误判为孤儿。这里与受管图片维护一样同步等待，但失败只记日志，
  * 保证清理任务已经停止后再继续启动，不与本进程的新 writer 并发。
  */
-export async function runToolOutputStoreStartupMaintenance(): Promise<void> {
+export async function runToolOutputStoreStartupMaintenance(
+  protectedConversationIds?: ReadonlySet<string>
+): Promise<void> {
   const logger = new Logger('ToolOutputStoreStartupMaintenance');
   const retentionDays = 7;
   try {
@@ -167,14 +169,15 @@ export async function runToolOutputStoreStartupMaintenance(): Promise<void> {
       logger,
       retentionDays,
       workspaceRoot: getWorkspaceRoot(),
+      protectedConversationIds,
     });
     logger.info(
-      `ToolOutputStore 启动清理完成: retentionDays=${retentionDays}, `
-      + `scanned=${stats.scanned}, deleted=${stats.deleted}, failed=${stats.failed}`,
+      `ToolOutputStore 启动清理完成: retentionDays=${retentionDays}, ` +
+        `scanned=${stats.scanned}, deleted=${stats.deleted}, failed=${stats.failed}`
     );
   } catch (error: unknown) {
     logger.warn(
-      `ToolOutputStore 启动清理执行失败: ${error instanceof Error ? error.message : String(error)}`,
+      `ToolOutputStore 启动清理执行失败: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
@@ -186,19 +189,23 @@ export async function runToolOutputStoreStartupMaintenance(): Promise<void> {
 export async function runCommandOutputArtifactStartupMaintenance(input?: {
   readonly storageRoot?: string;
   readonly nowMs?: number;
+  readonly protectedConversationIds?: ReadonlySet<string>;
 }): Promise<void> {
   const logger = new Logger('CommandOutputArtifactStartupMaintenance');
   const storageRoot = input?.storageRoot ?? getConversationArtifactsV1Path();
   try {
     const maintenance = createFileCommandOutputArtifactMaintenancePort({ storageRoot, logger });
-    const stats = await maintenance.cleanupExpired({ nowMs: input?.nowMs ?? Date.now() });
+    const stats = await maintenance.cleanupExpired({
+      nowMs: input?.nowMs ?? Date.now(),
+      protectedConversationIds: input?.protectedConversationIds,
+    });
     logger.info(
-      `原始命令输出启动清理完成: scanned=${stats.scanned}, retained=${stats.retained}, `
-      + `deleted=${stats.deleted}, failed=${stats.failed}`,
+      `原始命令输出启动清理完成: scanned=${stats.scanned}, retained=${stats.retained}, ` +
+        `deleted=${stats.deleted}, failed=${stats.failed}`
     );
   } catch (error: unknown) {
     logger.warn(
-      `原始命令输出启动清理执行失败: ${error instanceof Error ? error.message : String(error)}`,
+      `原始命令输出启动清理执行失败: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
@@ -215,13 +222,13 @@ export function scheduleStartupMaintenanceOnce(
 
   const logger = new Logger('StartupMaintenance');
   const initialDelayMs =
-    typeof options?.initialDelayMs === 'number' && Number.isFinite(options.initialDelayMs) && options.initialDelayMs >= 0
+    typeof options?.initialDelayMs === 'number' &&
+    Number.isFinite(options.initialDelayMs) &&
+    options.initialDelayMs >= 0
       ? options.initialDelayMs
       : 10_000;
 
-  logger.info(
-    `已调度启动维护任务：首次延迟 ${initialDelayMs} ms（仅启动一次）`
-  );
+  logger.info(`已调度启动维护任务：首次延迟 ${initialDelayMs} ms（仅启动一次）`);
 
   setTimeout(async () => {
     const start = Date.now();
@@ -263,10 +270,12 @@ export function scheduleStartupMaintenanceOnce(
         qdrantRepository: deps.qdrantRepository,
         logger,
         maxWaitMs: 120_000,
-        pollIntervalMs: 5_000
+        pollIntervalMs: 5_000,
       });
       if (!qdrantReachable) {
-        logger.warn('Qdrant 在启动维护窗口内仍不可达，跳过本轮知识库维护（避免误删），后续可由用户/后台触发再次维护');
+        logger.warn(
+          'Qdrant 在启动维护窗口内仍不可达，跳过本轮知识库维护（避免误删），后续可由用户/后台触发再次维护'
+        );
         logger.info(`✅ 启动维护任务结束(跳过知识库维护): costMs=${Date.now() - start}`);
         return;
       }

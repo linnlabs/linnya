@@ -26,6 +26,7 @@ import type {
   RoutedFlowIncomingEventBatch,
 } from './incoming-events/definitions/flowIncomingEventBatch';
 import { mapRuntimeAttachmentsToUi } from '../persistence/event-store/ui-projection/attachments';
+import type { CheckpointWriter } from '../persistence/execution-commit';
 
 const logger = new Logger('FlowHostSessionService');
 type RunStatus = runSupervisor.RunStatus;
@@ -37,6 +38,7 @@ export interface FlowHostSessionServiceOptions {
   persistenceCoordinator: EventPersistenceCoordinator;
   eventStore: graph.EventStore;
   nextEventStoreId: () => string;
+  createCheckpointWriter?: (runId: string, executionId: string) => CheckpointWriter;
 }
 
 export interface FinalizeFlowHostSessionOptions {
@@ -79,6 +81,18 @@ export class FlowHostSessionService {
         eventBus: this.eventBus,
         eventStore: options.eventStore,
         nextEventStoreId: options.nextEventStoreId,
+        ...(options.createCheckpointWriter
+          ? {
+              checkpointWriter: input => {
+                if (!this.runIdentity || !options.createCheckpointWriter)
+                  throw new Error('Checkpoint owner is not bound');
+                return options.createCheckpointWriter(
+                  this.runIdentity.runId,
+                  this.sequencer.getExecutionId()
+                )(input);
+              },
+            }
+          : {}),
       });
       this.runEventPersistence.connect();
     }
@@ -109,6 +123,15 @@ export class FlowHostSessionService {
           }
         : {}),
       getGeneratedEvents: () => this.requireRuntimeEventPublisher().getGeneratedEvents(),
+      ...(persistence && this.options.createCheckpointWriter
+        ? {
+            executionCheckpointPort: {
+              commit: (key: string, state: graph.EngineState) =>
+                persistence.commitCheckpoint(key, state),
+            },
+            finishCheckpointWrites: () => persistence.finishCheckpointWrites(),
+          }
+        : {}),
       drainPersistence: async () => {
         await this.runEventPersistence?.drain();
       },
@@ -265,7 +288,7 @@ export class FlowHostSessionService {
   async withConversationAdmissionForIncoming<T>(
     request: ConversationNextRequest,
     eventsToPersist: readonly RuntimeEvent[],
-    admitted: () => Promise<T> | T,
+    admitted: () => Promise<T> | T
   ): Promise<T> {
     if (!this.options.shouldPersist) {
       return admitted();

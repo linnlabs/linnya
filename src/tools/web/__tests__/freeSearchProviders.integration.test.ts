@@ -6,6 +6,7 @@ import { DuckDuckGoProvider } from '../websearch/providers/duckDuckGo';
 import { createWebSearchProviderFromConfig } from '../websearch/providers/factory';
 import { ParallelFreeProvider } from '../websearch/providers/parallelFree';
 import { SearXNGProvider } from '../websearch/providers/searxng';
+import { UNTRUSTED_FAILURE_TEXT } from './fixtures/webUpstreamFixtureServer';
 
 function readBody(request: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -88,6 +89,13 @@ describe('免费 Web Search Provider 真实 HTTP 合同', () => {
           return;
         }
         observed.parallelSessionHeader = String(request.headers['mcp-session-id'] ?? '');
+        if (url.pathname === '/parallel-error') {
+          respondJson(response, {
+            jsonrpc: '2.0', id: 2,
+            error: { code: -32000, message: UNTRUSTED_FAILURE_TEXT },
+          });
+          return;
+        }
         if (url.pathname === '/parallel-sse') {
           response.setHeader('Content-Type', 'text/event-stream');
           response.end(`event: message\ndata: ${JSON.stringify(createMcpSearchResult())}\n\n`);
@@ -178,6 +186,15 @@ describe('免费 Web Search Provider 真实 HTTP 合同', () => {
     await expect(provider.search({ query: 'missing session' })).rejects.toMatchObject({
       kind: 'invalid_response',
       message: expect.stringContaining('Mcp-Session-Id'),
+    });
+  });
+
+  it('Parallel Free RPC 失败保留数值错误码，不透传外部指令', async () => {
+    const provider = new ParallelFreeProvider({ baseUrl: `${origin}/parallel-error` });
+    await expect(provider.search({ query: 'rpc failure' })).rejects.toMatchObject({
+      code: 'invalid_response',
+      message: 'Parallel Free MCP 调用失败 code=-32000。',
+      cause: undefined,
     });
   });
 

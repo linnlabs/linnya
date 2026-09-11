@@ -2,7 +2,7 @@ import type { ConversationActiveRunResponse } from '@app/schemas';
 import type { InteractiveRunSnapshot } from '../definitions/interactiveRun';
 
 export function projectActiveRunResponse(
-  response: ConversationActiveRunResponse,
+  response: ConversationActiveRunResponse
 ): InteractiveRunSnapshot | undefined {
   const run = response.run;
   if (!run) return undefined;
@@ -26,5 +26,14 @@ export function projectActiveRunResponse(
     executionId: run.execution_id,
     status: run.status === 'pending' ? 'starting' : run.status,
     pendingInteraction,
+    ...(run.pause
+      ? {
+          pause: {
+            settled: run.pause.settled,
+            updatedAt: run.pause.updated_at,
+            reason: run.pause.reason,
+          },
+        }
+      : {}),
   };
 }

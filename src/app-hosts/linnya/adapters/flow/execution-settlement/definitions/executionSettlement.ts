@@ -6,7 +6,10 @@ import type {
 import type { graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 
-export type WaitUserRuntimeEvent = Extract<RoutedRuntimeEvent, { type: 'requires_user_interaction' }>;
+export type WaitUserRuntimeEvent = Extract<
+  RoutedRuntimeEvent,
+  { type: 'requires_user_interaction' }
+>;
 
 export type ExecutionSettlementRunHandle = Pick<
   runSupervisor.RunHandle<AgentInvokeRequest>,
@@ -30,11 +33,15 @@ export interface ExecutionSettlementPorts {
   readonly clearCheckpoint: (runId: string) => Promise<void>;
   readonly releaseRunResources: (runId: string) => void;
   readonly now: () => number;
+  /** yielded checkpoint 已持久化；先写不可逆终态，遗留 checkpoint 由 owner 清理。 */
+  readonly durableContinuation?: boolean;
 }
 
 export interface SuccessfulExecutionSettlement {
   readonly checkpointNodeId: string;
   readonly stepCount: number;
+  /** 可恢复运行直接读取 checkpoint 的累计数；stepCount 仍表示本次 execution。 */
+  readonly runIterationsUsed?: number;
   readonly waitUserEvent?: WaitUserRuntimeEvent;
   readonly contextUsage?: ContextUsageSnapshot;
 }

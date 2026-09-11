@@ -50,12 +50,6 @@ function readStatus(error: Record<string, unknown>): number | undefined {
   return typeof error['status'] === 'number' ? error['status'] : undefined;
 }
 
-function readString(error: Record<string, unknown>, key: string): string | undefined {
-  return typeof error[key] === 'string' && error[key].trim().length > 0
-    ? error[key].trim()
-    : undefined;
-}
-
 function sanitizeDiagnosticUrl(value: string): string {
   try {
     const url = new URL(value);
@@ -140,6 +134,11 @@ export class WebFailureError<TReason extends string = WebFailureKind> extends Er
     this.details = options?.details;
     this.cause = options?.cause;
   }
+
+  /** 稳定业务码沿用既有 kind，不为工具执行或审计维护第二套错误枚举。 */
+  get code(): WebFailureKind {
+    return this.kind;
+  }
 }
 
 export function getWebExtractionFailureStage(
@@ -167,7 +166,7 @@ export function getWebFailureKind(error: unknown): WebFailureKind {
   if (isRecord(error)) {
     if (error['name'] === 'AbortError') return 'aborted';
     const status = readStatus(error);
-    if (isWebChallengeResponse(status, readString(error, 'bodyPreview'))) return 'captcha';
+    if (error['challengeDetected'] === true) return 'captcha';
     if (status === 403) return 'http_403';
     if (status === 404) return 'http_404';
     if (hasDnsFailure(error)) return 'dns_error';

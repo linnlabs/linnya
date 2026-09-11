@@ -13,6 +13,7 @@ export type {
   TokenCountSurface,
 } from './definitions/tokenCountCapability';
 export { createRunCostTelemetryPort } from './orchestration/createRunCostTelemetryPort';
+export { SqliteRunCostStateStore } from './collectors/sqliteRunCostStateStore';
 export {
   createDefaultLinnyaTokenCounter,
   LinnyaTokenCounter,

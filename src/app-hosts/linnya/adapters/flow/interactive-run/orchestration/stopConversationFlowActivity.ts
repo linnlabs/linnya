@@ -67,10 +67,7 @@ function mergePendingExecutions(
   }
 }
 
-function isFlowRoot(
-  run: runSupervisor.RunSnapshot,
-  pendingRunIds: ReadonlySet<RunId>
-): boolean {
+function isFlowRoot(run: runSupervisor.RunSnapshot, pendingRunIds: ReadonlySet<RunId>): boolean {
   return (
     run.parentRunId === undefined &&
     (pendingRunIds.has(run.runId) || run.metadata?.originalSource === 'flow')
@@ -91,7 +88,12 @@ async function stopFlowRoot(
   reason: string
 ): Promise<readonly FlowActivityStopFailure[]> {
   const isActive = !isTerminalStatus(activity.status);
-  if (isActive && !activity.completion && activity.status !== 'awaiting_user') {
+  if (
+    isActive &&
+    !activity.completion &&
+    activity.status !== 'awaiting_user' &&
+    activity.status !== 'paused'
+  ) {
     return [
       toFailure(
         activity.runId,
@@ -122,9 +124,7 @@ async function stopFlowRoot(
         cancellationError = undefined;
       }
     } catch (completionError: unknown) {
-      const failures = [
-        toFailure(activity.runId, 'await_execution_completion', completionError),
-      ];
+      const failures = [toFailure(activity.runId, 'await_execution_completion', completionError)];
       if (cancellationError !== undefined) {
         failures.unshift(toFailure(activity.runId, 'cancel_run', cancellationError));
       }
@@ -200,7 +200,12 @@ export async function stopFlowRunAndWait(input: {
   const wasAlreadyTerminal = isTerminalStatus(snapshot.status);
   const completion =
     completionBeforeSnapshot ?? input.runtime.executionCompletions.findPending(input.runId);
-  if (!wasAlreadyTerminal && !completion && snapshot.status !== 'awaiting_user') {
+  if (
+    !wasAlreadyTerminal &&
+    !completion &&
+    snapshot.status !== 'awaiting_user' &&
+    snapshot.status !== 'paused'
+  ) {
     throw new Error(`Active run ${input.runId} has no registered Flow execution completion`);
   }
 
@@ -226,9 +231,7 @@ export async function stopFlowRunAndWait(input: {
   }
   return {
     outcome:
-      wasAlreadyTerminal || settledRun.status !== 'cancelled'
-        ? 'already_terminal'
-        : 'cancelled',
+      wasAlreadyTerminal || settledRun.status !== 'cancelled' ? 'already_terminal' : 'cancelled',
     terminalStatus: settledRun.status,
   };
 }
@@ -250,10 +253,9 @@ export async function stopConversationFlowActivity(input: {
   );
   // completed 的结算顺序已经证明 checkpoint 清理成功，不应扫描和重复清理全部成功历史。
   // failed/cancelled 可能在终态后清理失败，因此继续作为 cleanup job 的持久发现事实。
-  const conversationRuns = await input.runtime.supervisor.findByConversation(
-    input.conversationId,
-    { status: ['pending', 'running', 'awaiting_user', 'paused', 'failed', 'cancelled'] }
-  );
+  const conversationRuns = await input.runtime.supervisor.findByConversation(input.conversationId, {
+    status: ['pending', 'running', 'awaiting_user', 'paused', 'failed', 'cancelled'],
+  });
   mergePendingExecutions(
     pendingByRunId,
     input.runtime.executionCompletions.snapshotPendingByConversation(input.conversationId)
@@ -262,17 +264,20 @@ export async function stopConversationFlowActivity(input: {
 
   const flowRootsByRunId = new Map(
     conversationRuns
-    .filter(run => isFlowRoot(run, pendingRunIds))
-    .map(run => [
-      run.runId,
-      {
-        runId: run.runId,
-        status: run.status,
-        ...(pendingByRunId.has(run.runId)
-          ? { completion: pendingByRunId.get(run.runId) }
-          : {}),
-      } satisfies FlowRootActivity,
-    ] as const)
+      .filter(run => isFlowRoot(run, pendingRunIds))
+      .map(
+        run =>
+          [
+            run.runId,
+            {
+              runId: run.runId,
+              status: run.status,
+              ...(pendingByRunId.has(run.runId)
+                ? { completion: pendingByRunId.get(run.runId) }
+                : {}),
+            } satisfies FlowRootActivity,
+          ] as const
+      )
   );
 
   // execution 可能在持久查询期间先写 completed、后做 Host finalize。它不在上面的恢复
@@ -289,9 +294,7 @@ export async function stopConversationFlowActivity(input: {
   const persistentRootIds = new Set(flowRoots.map(run => run.runId));
 
   const rootResults = await Promise.all(
-    flowRoots.map(run =>
-      stopFlowRoot(run, input.runtime, 'conversation deletion requested')
-    )
+    flowRoots.map(run => stopFlowRoot(run, input.runtime, 'conversation deletion requested'))
   );
   const failures = rootResults.flat();
   const failedRootIds = new Set(failures.map(failure => failure.runId));
@@ -308,10 +311,9 @@ export async function stopConversationFlowActivity(input: {
     }
   }
 
-  const remaining = await input.runtime.supervisor.findActiveByConversation(
-    input.conversationId,
-    { includeChildren: true }
-  );
+  const remaining = await input.runtime.supervisor.findActiveByConversation(input.conversationId, {
+    includeChildren: true,
+  });
   for (const run of remaining) {
     if (run.parentRunId !== undefined && run.metadata?.source === 'registered-child-run') {
       failures.push(

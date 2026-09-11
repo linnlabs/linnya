@@ -16,7 +16,7 @@ export interface ReadForegroundRunSettlementInput {
 function selectRequestedRootRun(
   conversationId: string,
   runId: RunId,
-  runs: readonly RunSnapshot[],
+  runs: readonly RunSnapshot[]
 ): RunSnapshot | undefined {
   const run = runs.find(candidate => candidate.runId === runId);
   if (!run) return undefined;
@@ -33,7 +33,7 @@ function selectRequestedRootRun(
 }
 
 async function readRequestedRun(
-  input: ReadForegroundRunSettlementInput,
+  input: ReadForegroundRunSettlementInput
 ): Promise<RunSnapshot | undefined> {
   const runs = await input.supervisor.findByConversation(input.conversationId);
   return selectRequestedRootRun(input.conversationId, input.runId, runs);
@@ -46,12 +46,16 @@ async function readRequestedRun(
  * finalize。必须先跨过这个屏障再读 durable registry，不能用 timer 猜取消何时完成。
  */
 export async function readForegroundRunSettlement(
-  input: ReadForegroundRunSettlementInput,
+  input: ReadForegroundRunSettlementInput
 ): Promise<ConversationRunSettlementResponse> {
   const pendingCompletion = input.executionCompletions.findPending(input.runId);
-  if (pendingCompletion) await pendingCompletion;
-
-  const run = await readRequestedRun(input);
+  let run = await readRequestedRun(input);
+  // 订阅断开不停止 Backend；仍在执行时查询必须立即返回，不能等整个任务结束。
+  // 已进入结算的状态仍须跨过事实写入/资源收口屏障。
+  if (pendingCompletion && run?.status !== 'running' && run?.status !== 'pending') {
+    await pendingCompletion;
+    run = await readRequestedRun(input);
+  }
   if (!run) {
     return {
       conversation_id: input.conversationId,
@@ -61,9 +65,10 @@ export async function readForegroundRunSettlement(
   }
 
   if (
-    run.status === 'pending'
-    || run.status === 'running'
-    || run.status === 'awaiting_user'
+    run.status === 'pending' ||
+    run.status === 'running' ||
+    run.status === 'awaiting_user' ||
+    run.status === 'paused'
   ) {
     const active = projectActiveForegroundRun(input.conversationId, [run]);
     return {
@@ -73,11 +78,7 @@ export async function readForegroundRunSettlement(
     };
   }
 
-  if (
-    run.status !== 'completed'
-    && run.status !== 'failed'
-    && run.status !== 'cancelled'
-  ) {
+  if (run.status !== 'completed' && run.status !== 'failed' && run.status !== 'cancelled') {
     throw new Error(`Run ${input.runId} has unsupported settlement status ${run.status}`);
   }
 
