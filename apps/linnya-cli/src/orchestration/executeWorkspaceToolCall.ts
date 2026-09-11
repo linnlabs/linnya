@@ -7,6 +7,7 @@ import {
   LinnyaCliError,
   type ConversationControlClient,
 } from '../definitions/cli';
+import { workspaceToolSucceeded } from '../functions/workspaceToolOutcome';
 import { watchConversationStatus } from './watchConversationStatus';
 
 interface ExecuteWorkspaceToolCallOptions {
@@ -87,7 +88,7 @@ export async function executeWorkspaceToolCall(options: ExecuteWorkspaceToolCall
       if (matches.length === 1 && matches[0]) {
         return {
           schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
-          ok: matches[0].payload.status === 'success',
+          ok: workspaceToolSucceeded(matches[0]),
           command: 'workspace_tools' as const,
           action: 'call' as const,
           conversation_id: accepted.receipt.conversation_id,

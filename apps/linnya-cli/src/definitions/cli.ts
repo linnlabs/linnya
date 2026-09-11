@@ -65,6 +65,8 @@ export type LinnyaCliInvocation =
     }
   | {
       readonly kind: 'workspace-tool-call';
+      readonly argsFile?: string;
+      readonly omitArgs: boolean;
       readonly request: Extract<ConversationControlWorkspaceToolsRequest, { action: 'call' }>;
       readonly intervalMs: number;
       readonly timeoutMs: number;

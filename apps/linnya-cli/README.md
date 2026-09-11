@@ -18,6 +18,8 @@ pnpm linnya:cli models --pretty
 pnpm linnya:cli list --limit 5
 ```
 
+脚本消费 JSON 时使用 `pnpm --silent linnya:cli` 去掉 pnpm 横幅，或直接调用已构建的 `node apps/linnya-cli/bin/linnya.cjs`。
+
 这里不需要在脚本名后再加 `--`；多余分隔符会被 CLI 当作位置参数。
 
 构建并运行独立 bundle：
@@ -89,7 +91,7 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 | `audit <conversation-id>` | 只读导出统一 Audit Domain 的安全执行摘要 | `--run` |
 | `tools list` | 列出 CLI 允许调用的 Workspace 工具名称与简介 | 无 |
 | `tools describe <tool-name>` | 查询一个 Workspace 工具的真实参数合同 | 无 |
-| `tools call <tool-name>` | 在绑定项目的 Conversation 中执行一次 Workspace 工具调用并等待结果 | `--conversation`、`--project`、`--args-json`、`--interval`、`--timeout` |
+| `tools call <tool-name>` | 在绑定项目的 Conversation 中执行一次 Workspace 工具调用并等待结果 | `--conversation`、`--project`、`--args-json` / `--args-file`、`--omit-args`、`--interval`、`--timeout` |
 
 `messages` 的游标属于整个会话，所以不提供 `--run` 过滤。按 run 精确读取结果应使用 `result --run`；客户端先分页再过滤会让 `has_more` 与实际结果不一致。
 
@@ -126,6 +128,8 @@ pnpm linnya:cli tools call write_file \
 - 只传 `--project`：创建一个绑定该项目、前端可见的新 Conversation，并返回 `conversation_id`。
 - 只传 `--conversation`：从已有 Conversation 取得项目；不存在或未绑定项目时拒绝执行。
 - 两者都传：验证 Conversation 确实属于该项目；不一致时拒绝执行。两者都不传同样拒绝。
+
+`--args-file <path>` 从 UTF-8 JSON 文件读取整个工具参数对象，与 `--args-json` 互斥，适合大型 deck.js。`--omit-args` 只省略 CLI 回显中的工具入参，保留结果和诊断；不修改 App 历史。结果含 error 级文档诊断时也返回退出码 `8`，即使源码保存成功。
 
 `tools call` 不调用 LLM。它仍通过正式 Flow、ToolNode、ToolContext、权限、审计、pending revision 和 Conversation UI 投影执行，因此前端能看到这次工具调用的历史，写入行为也与 Linnya Agent 使用同一工具时完全一致。CLI 会等待 run 和工具卡都完成：工具成功时把完整工具消息写到 stdout；工具自身返回 error 时把同一消息写到 stderr，并以退出码 `8` 结束。
 

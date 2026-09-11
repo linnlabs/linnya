@@ -30,6 +30,7 @@ const BOOLEAN_OPTIONS = new Set([
   'watch',
   'approve',
   'skip',
+  'omit-args',
 ]);
 
 function usageError(message: string): never {
@@ -305,10 +306,13 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
       }
       if (action === 'call') {
         assertAllowedOptions(tokens, [
-          'conversation', 'project', 'args-json', 'interval', 'timeout',
+          'conversation', 'project', 'args-json', 'args-file', 'omit-args', 'interval', 'timeout',
         ]);
         if (tokens.positionals.length !== 2) {
           usageError('tools call requires exactly one tool name');
+        }
+        if (readString(tokens, 'args-file') && readString(tokens, 'args-json')) {
+          usageError('--args-file and --args-json are mutually exclusive');
         }
         const request = ConversationControlWorkspaceToolsCallRequestSchema.parse({
           schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
@@ -323,6 +327,8 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
         });
         return {
           kind: 'workspace-tool-call',
+          argsFile: readString(tokens, 'args-file'),
+          omitArgs: tokens.options.has('omit-args'),
           request,
           intervalMs: readPositiveInteger(tokens, 'interval', 250),
           timeoutMs: readPositiveInteger(tokens, 'timeout', 60_000),
