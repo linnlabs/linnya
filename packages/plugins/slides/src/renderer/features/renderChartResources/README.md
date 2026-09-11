@@ -25,7 +25,7 @@ renderChartResources/
 
 ## 身份、缓存与取消
 
-- PNG 身份包含尺寸、数据、palette、轴、图例、标签、网格线、stacking、PPTX hints 和 pixel ratio。
+- PNG 身份包含尺寸、数据与逐系列样式、palette、绘图区底色、折线宽度、轴、图例、标签、网格线、stacking、PPTX hints 和 pixel ratio。
 - `x/y/zIndex/rotation/opacity/id` 不改变 PNG，由 Konva 组合，因此移动图表不会触发重栅格。
 - 注册表用紧凑哈希查找，再用完整稳定签名校验；碰撞不能返回另一张图表。
 - 默认最多缓存 48 个已解码图表、约 128 MiB RGBA 体积，按 LRU 淘汰 settled 条目。

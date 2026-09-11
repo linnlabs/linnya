@@ -21,6 +21,8 @@ export function createChartResourceIdentity(
     categories: node.categories,
     series: node.series,
     palette: node.palette,
+    plotBackgroundColor: node.plotBackgroundColor,
+    seriesLineWidth: node.seriesLineWidth,
     axes: node.axes,
     legend: node.legend,
     dataLabels: node.dataLabels,

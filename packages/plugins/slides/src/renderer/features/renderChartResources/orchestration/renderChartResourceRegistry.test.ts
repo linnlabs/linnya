@@ -46,6 +46,22 @@ function createDecodedImage(width = 800, height = 500): HTMLImageElement {
 }
 
 describe('renderChartResourceRegistry', () => {
+  it('rerenders visual edits but reuses the resulting image when the chart only moves', async () => {
+    const renderImage = vi.fn(async () => createDecodedImage());
+    const registry = createRenderChartResourceRegistry({ renderImage });
+    const node = createChartNode('editable-chart');
+    await registry.load(node, 1);
+    node.plotBackgroundColor = '#102030';
+    await registry.load(node, 1);
+    node.seriesLineWidth = 3;
+    await registry.load(node, 1);
+    node.series[0].lineDash = 'dash';
+    const latest = await registry.load(node, 1);
+    node.box.x += 2;
+    expect(await registry.load(node, 1)).toBe(latest);
+    expect(renderImage).toHaveBeenCalledTimes(4);
+  });
+
   it('deduplicates the same chart raster across slide consumers and ignores placement-only changes', async () => {
     const latches: RenderLatch[] = [];
     const renderImage = vi.fn(() => new Promise<HTMLImageElement>((resolve, reject) => {
