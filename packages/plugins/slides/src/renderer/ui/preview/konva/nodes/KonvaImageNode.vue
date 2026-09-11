@@ -1,14 +1,19 @@
 <template>
-  <v-group :config="groupConfig">
+  <v-group
+    :__use-strict-mode="true"
+    :config="groupConfig"
+  >
     <!-- 只有资源明确加载失败时才会进入占位分支；加载中不会提交新页面。 -->
     <v-rect
       v-if="!props.imageResource"
+      :__use-strict-mode="true"
       :config="placeholderConfig"
     />
 
     <!-- 图片加载成功后渲染 -->
     <v-image
       v-else
+      :__use-strict-mode="true"
       :config="imageConfig"
     />
   </v-group>

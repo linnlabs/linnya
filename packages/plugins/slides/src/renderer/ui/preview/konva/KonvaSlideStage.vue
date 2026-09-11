@@ -1,6 +1,8 @@
+<!-- Slides 节点完全由 RenderModel 驱动；所有 v-* 使用 strict config，禁止保留画布侧隐式状态。 -->
 <template>
   <div class="konva-slide-stage">
     <v-stage
+      :__use-strict-mode="true"
       :config="stageConfig"
     >
       <!-- 背景层：不接受交互 -->

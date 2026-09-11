@@ -1,7 +1,11 @@
 <template>
-  <v-group :config="groupConfig">
+  <v-group
+    :__use-strict-mode="true"
+    :config="groupConfig"
+  >
     <component
       :is="primitiveComponent"
+      :__use-strict-mode="true"
       :config="instruction.config"
     />
 

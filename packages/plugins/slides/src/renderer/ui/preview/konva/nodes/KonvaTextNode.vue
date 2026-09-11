@@ -1,14 +1,19 @@
 <template>
-  <v-group :config="groupConfig">
+  <v-group
+    :__use-strict-mode="true"
+    :config="groupConfig"
+  >
     <!-- 文本框背景（调试用，后续可关闭） -->
     <v-text
       v-for="(line, idx) in flattenedLines"
       :key="idx"
+      :__use-strict-mode="true"
       :config="line"
     />
     <v-image
       v-for="formula in inlineFormulaImages"
       :key="formula.key"
+      :__use-strict-mode="true"
       :config="formula.config"
     />
   </v-group>

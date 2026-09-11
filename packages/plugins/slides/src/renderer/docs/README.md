@@ -190,3 +190,5 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 - raster worker 生产构建门禁：`pnpm --filter @plugin/slides build:raster-worker`
 
 保真回归使用 `smoke:raster-worker`：真实 Electron 像素覆盖 8 个线性渐变角度与 2:1 椭圆径向渐变。主预览和离屏渲染共用形状 scene renderer；命中画布单独写 Konva identity 色，不能复用视觉渐变。图表图例色、绘图区色和线宽从 RenderModel 读取。
+
+切页保真需同时验证资源原子提交与持久 Konva 节点属性同步。主预览所有绑定使用严格 config；`smoke:preview-transitions` 覆盖真实 Vue 更新后的像素，不可只用新建 stage 的离屏截图代替。详见 [Konva Preview](../features/konvaPreview/README.md#持久画布的属性同步)。
