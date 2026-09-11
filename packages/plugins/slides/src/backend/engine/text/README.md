@@ -64,3 +64,5 @@ DeckSpec / CanonicalDeck
 - PPTX textbox options：`src/backend/engine/text/__tests__/textLayoutPptxOptions.test.ts`
 - OOXML paragraph 行距：`src/backend/__tests__/{structured-compiler,freeform-compiler}.test.ts`
 - 前端/PPTX 几何对齐：`src/backend/__tests__/render-pptx-alignment.test.ts`
+
+`materializeIntrinsicTextBoxes` 在 codegen 落库与 PPTX 物化前处理无横向约束的绝对定位 Text：复用本模块的字体解析、预热与最终布局，保留左右/底部锚点并按 EMU 向上量化外框宽度。Yoga 的临时启发式盒不能成为自动宽度的持久化事实。来源记录在 generated constraint evidence 的 `intrinsicTextAdvanceSource`；系统测量不可用时仍如实标记 heuristic。

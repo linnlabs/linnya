@@ -22,3 +22,5 @@
 - BrowserWindow worker 托管仍归 `src/electron-main/measurement` 和 `HiddenWorkerHost`，其 Electron adapter 位于 `src/electron-main/desktop-capabilities/text-measurement-worker`；Backend 只能接收批量测量端口。
 - cache、prewarm、同步读取和 fallback 属于本 feature，不能迁入 Desktop adapter，否则 App Server cutover 会改变热路径与排版语义。
 - 系统字体文件、HarfBuzz shaping 与格式桥属于本 feature 的 headless 基础设施。
+
+Slides 自动宽度 materialization 在 Backend 完成：预热与最终排版使用相同 cluster provider，Worker 的同步启发式只提供临时布局值。最终编译证据记录实际 advance source；不可用系统测量时保留 heuristic 标记。

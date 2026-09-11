@@ -37,3 +37,5 @@ Host 发送前发现的 materialization DTO admission 失败属于确定性的 `
 开发态 `pnpm run dev:electron` 同样先执行 Slides 正式 backend build，并在启动 Electron 前等待该 Worker 制品存在。不能只构建 inline App Server backend：inline bundle 负责插件源码入口，不会替代插件自有的 Worker 与运行时资源。
 
 Flex 的同步文本估算复用 `@linnya/text-measurement-core`。该 portable package 与宿主共享同一 deterministic heuristic，Worker 不反向加载 Plugin SDK、Electron 或 Main 的文本测量装配。
+
+无横向约束的绝对定位 Text 不参与 Flex 流。Worker 返回其临时估算盒后，codegen 在 Host 已装配的系统字体 runtime 中通过 `engine/text/materializeIntrinsicTextBoxes` 完成最终尺寸物化，再落库和请求 PPTX 构建；Worker 不因此获得字体文件访问能力。
