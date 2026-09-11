@@ -10,6 +10,7 @@ import {
   DESKTOP_RENDERER_MODEL_CATALOG_DISCONNECT_RPC_METHOD,
   DESKTOP_RENDERER_PLUGIN_PUSH_RPC_METHOD,
   DESKTOP_RENDERER_PLUGINS_CHANGED_RPC_METHOD,
+  DESKTOP_RENDERER_MODELS_CHANGED_RPC_METHOD,
   DESKTOP_RENDERER_QUEUE_COMPLETION_RPC_METHOD,
   DESKTOP_RENDERER_QUEUE_FAILURE_RPC_METHOD,
   DESKTOP_RENDERER_QUEUE_PROGRESS_RPC_METHOD,
@@ -95,6 +96,11 @@ export function createDesktopRendererIntegrationRpcHandlers(
     [DESKTOP_RENDERER_TODOS_CHANGED_RPC_METHOD, payload => {
       const request = RendererIntegrationTodosChangedRpcSchema.parse(payload);
       port.publishTodosChanged(request.projectId);
+      return null;
+    }],
+    [DESKTOP_RENDERER_MODELS_CHANGED_RPC_METHOD, payload => {
+      RendererIntegrationVoidRpcSchema.parse(payload);
+      port.publishModelsChanged();
       return null;
     }],
     [DESKTOP_RENDERER_PLUGINS_CHANGED_RPC_METHOD, payload => {

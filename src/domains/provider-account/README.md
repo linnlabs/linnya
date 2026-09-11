@@ -33,8 +33,12 @@ Catalog 的职责不同：目录描述模型和推理端点，账号描述 OAuth
 
 授权成功后的模型目录落地不属于本 domain。App-level 授权 workflow 在凭据安全落盘后调用 Provider
 Onboarding 的窄同步端口；同步从上述账户目录注册新模型，原位刷新已存在模型的名称、容量和能力，并通过统一 durable 删除用例退出当前账号已不可见的历史模型，幂等复用同一 ConfiguredProvider、InferenceEndpoint 与 account
-reference。仍可解密的已有凭据在启动时沿同一用例补同步，因此进程中断、上游容量变化或历史静态目录数据都无需用户重新登录、也无需手动删除重加；
+reference。仍可解密的已有凭据在本地启动恢复完成后沿同一用例后台补同步，远端目录不属于 App Server ready 的前置条件；因此进程中断、上游容量变化或历史静态目录数据都无需用户重新登录、也无需手动删除重加；
 若 Desktop 安全存储连续性丢失，账号 metadata 仍保留但状态为 disconnected，必须重新授权后才能恢复同步。
+
+模型发现接收调用方的取消信号，与自身 HTTP 超时共同约束目录请求。凭据 resolver 的 OAuth refresh 可能被推理
+共享，不能随单个目录请求一起取消；取消发生在共享 refresh 期间时，等待 refresh 收口后立即停止目录请求。
+授权 workflow 在登出或替换凭据前等待旧同步结束，避免旧刷新重新写回已退出的账号。
 
 账号还可能拥有不属于 `/models` 语言目录的产品能力。当前 App-level
 `provider-account-model-projection` 在 ChatGPT 凭据落盘或启动恢复后，把

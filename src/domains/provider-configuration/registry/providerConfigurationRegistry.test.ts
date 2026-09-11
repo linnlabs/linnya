@@ -52,6 +52,61 @@ const registration = {
 } as const;
 
 describe('ProviderConfigurationRegistry', () => {
+  it('后台同步与用户操作并发时保留各自 intent、提交和删除结果', async () => {
+    const repository = new MemoryRepository();
+    const registry = new ProviderConfigurationRegistry(repository);
+    await registry.initialize(catalog());
+    const second = {
+      ...registration,
+      intent_id: 'registration-2',
+      configured_provider_id: 'configured-subscription',
+      provider_connection_definition_id: 'openai-chatgpt-subscription',
+      model_config_id: 'subscription-model',
+    };
+    await Promise.all([
+      registry.beginModelRegistration(registration),
+      registry.beginModelRegistration(second),
+    ]);
+    expect(repository.current().pending_model_registrations).toHaveLength(2);
+    await Promise.all([
+      registry.completeModelRegistration(registration.intent_id),
+      registry.completeModelRegistration(second.intent_id),
+    ]);
+    expect(registry.list()).toHaveLength(2);
+    expect(repository.current().pending_model_registrations).toEqual([]);
+    await Promise.all([
+      registry.beginModelRemoval({ intent_id: 'remove-1', model_config_id: registration.model_config_id }),
+      registry.beginModelRemoval({ intent_id: 'remove-2', model_config_id: second.model_config_id }),
+    ]);
+    await Promise.all([registry.completeModelRemoval('remove-1'), registry.completeModelRemoval('remove-2')]);
+    expect(registry.list()).toEqual([]);
+    expect(repository.current().pending_model_removals).toEqual([]);
+  });
+
+  it('一条写盘失败不发布内存状态，已排队的后续命令仍可完成', async () => {
+    const memory = new MemoryRepository();
+    let failNextSave = true;
+    const repository: ProviderConfigurationRepository = {
+      load: () => memory.load(),
+      async save(snapshot) {
+        if (failNextSave) {
+          failNextSave = false;
+          throw new Error('fixture disk write failed');
+        }
+        await memory.save(snapshot);
+      },
+    };
+    const registry = new ProviderConfigurationRegistry(repository);
+    await registry.initialize(catalog());
+    const first = registry.beginModelRegistration(registration);
+    const next = registry.beginModelRegistration({ ...registration, intent_id: 'retry-intent' });
+    await expect(first).rejects.toThrow('fixture disk write failed');
+    await next;
+    await registry.completeModelRegistration('retry-intent');
+    expect(registry.getByModelConfigId(registration.model_config_id)).toBeDefined();
+    expect(memory.current().pending_model_registrations).toEqual([]);
+  });
+
   it('先持久化注册意图，再提交稳定 Provider 与模型归属', async () => {
     const repository = new MemoryRepository();
     const registry = new ProviderConfigurationRegistry(repository);

@@ -75,6 +75,7 @@ export function createProviderAccountAuthorizationUseCase(
           logger.info('authorization.token_exchanged', {
             provider_connection_definition_id: CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID,
           });
+          await dependencies.providerModels.cancelAndWait(CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID);
           let account: ProviderAccount;
           try {
             account = await dependencies.accounts.putOAuthCredential(
@@ -163,6 +164,7 @@ export function createProviderAccountAuthorizationUseCase(
     },
 
     async disconnectChatGpt() {
+      await dependencies.providerModels.cancelAndWait(CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID);
       await dependencies.accounts.remove(CHATGPT_PROVIDER_ACCOUNT_ID);
       dependencies.accountModels.remove(CHATGPT_PROVIDER_ACCOUNT_ID);
       return {

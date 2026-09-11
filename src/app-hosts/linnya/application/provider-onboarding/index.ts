@@ -18,3 +18,6 @@ export {
   createProviderOnboardingUseCase,
   type CreateProviderOnboardingUseCaseDependencies,
 } from './orchestration/createProviderOnboardingUseCase';
+
+export type { ProviderModelSynchronizationLifecycle } from './definitions/providerModelSynchronizationLifecycle';
+export { createProviderModelSynchronizationLifecycle } from './orchestration/createProviderModelSynchronizationLifecycle';

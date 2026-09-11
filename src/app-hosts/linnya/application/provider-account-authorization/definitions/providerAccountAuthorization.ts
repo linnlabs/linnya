@@ -33,6 +33,7 @@ export interface ProviderAccountAuthorizationUseCase {
 /** 授权 use case 只发起账号型 Provider 的模型同步，不依赖 onboarding 内部实现。 */
 export interface ConnectedProviderModelSynchronizationPort {
   synchronizeConnectedProviderModels(providerConnectionDefinitionId: string): Promise<void>;
+  cancelAndWait(providerConnectionDefinitionId: string): Promise<void>;
 }
 
 export interface ProviderAccountAuthorizationDependencies {

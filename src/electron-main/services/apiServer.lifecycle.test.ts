@@ -64,6 +64,7 @@ function createRouteDependencies(): RouteDependencies {
       publishWorkspaceMutation: () => undefined,
       publishPluginRendererPush: () => undefined,
       publishTodosChanged: () => undefined,
+      publishModelsChanged: vi.fn(),
       publishPluginsChanged: () => undefined,
     },
     conversationExecutionRuntimeFactory: {
@@ -72,6 +73,7 @@ function createRouteDependencies(): RouteDependencies {
       },
     },
     commandOwnerLifecycleRegistration: { register: () => undefined },
+    providerModelSynchronizationLifecycleRegistration: { register: () => undefined },
     sandboxOwnerLifecycleRegistration: { register: () => undefined },
   };
 }

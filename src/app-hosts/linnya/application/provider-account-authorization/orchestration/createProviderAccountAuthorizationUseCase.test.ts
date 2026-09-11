@@ -53,6 +53,7 @@ describe('Provider account authorization use case', () => {
     };
     const browser: ExternalAuthorizationBrowserPort = { open: vi.fn(async () => undefined) };
     const synchronizeConnectedProviderModels = vi.fn(async () => undefined);
+    const cancelAndWait = vi.fn(async (): Promise<void> => {});
     const synchronizeAccountModels = vi.fn();
     const removeAccountModels = vi.fn();
     const credential: ProviderAccountOAuthCredential = {
@@ -69,7 +70,7 @@ describe('Provider account authorization use case', () => {
         exchangeAuthorizationCode: vi.fn(async () => credential),
         refreshCredential: vi.fn(async current => current),
       },
-      providerModels: { synchronizeConnectedProviderModels },
+      providerModels: { synchronizeConnectedProviderModels, cancelAndWait },
       accountModels: {
         synchronize: synchronizeAccountModels,
         remove: removeAccountModels,
@@ -95,6 +96,7 @@ describe('Provider account authorization use case', () => {
       credential
     );
     expect(close).toHaveBeenCalledOnce();
+    expect(cancelAndWait.mock.invocationCallOrder[0]).toBeLessThan(putOAuthCredential.mock.invocationCallOrder[0]);
     expect(synchronizeAccountModels).toHaveBeenCalledWith(
       'openai-chatgpt-subscription',
       'chatgpt-subscription'
@@ -102,7 +104,15 @@ describe('Provider account authorization use case', () => {
     expect(synchronizeConnectedProviderModels).toHaveBeenCalledWith('openai-chatgpt-subscription');
     expect(useCase.getChatGptStatus().status).toBe('connected');
 
-    await expect(useCase.disconnectChatGpt()).resolves.toMatchObject({
+    let completeOldSynchronization!: () => void;
+    const oldSynchronization = new Promise<void>(resolve => { completeOldSynchronization = resolve; });
+    cancelAndWait.mockImplementationOnce(() => oldSynchronization);
+    const disconnect = useCase.disconnectChatGpt();
+    await Promise.resolve();
+    expect(accounts.remove).not.toHaveBeenCalled();
+    expect(removeAccountModels).not.toHaveBeenCalled();
+    completeOldSynchronization();
+    await expect(disconnect).resolves.toMatchObject({
       status: 'disconnected',
     });
     expect(removeAccountModels).toHaveBeenCalledWith('chatgpt-subscription');

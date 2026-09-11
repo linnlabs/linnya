@@ -132,6 +132,7 @@ function applyRegistration(
 
 export class ProviderConfigurationRegistry {
   private snapshot: ProviderConfigurationSnapshot | null = null;
+  private mutationTail: Promise<void> = Promise.resolve();
 
   constructor(private readonly repository: ProviderConfigurationRepository) {}
 
@@ -173,154 +174,168 @@ export class ProviderConfigurationRegistry {
   async completeLegacyFormalProviderMigration(
     migratedProviders: readonly ConfiguredProvider[]
   ): Promise<void> {
-    const current = this.requireSnapshot();
-    if (current.legacy_formal_provider_migration === 'completed') return;
-    const next: ProviderConfigurationSnapshot = {
-      ...cloneSnapshot(current),
-      legacy_formal_provider_migration: 'completed',
-      configured_providers: [
-        ...current.configured_providers.map(cloneProvider),
-        ...migratedProviders.map(cloneProvider),
-      ],
-    };
-    assertUniqueSnapshot(next);
-    await this.commit(next);
+    return this.runMutation(async () => {
+      const current = this.requireSnapshot();
+      if (current.legacy_formal_provider_migration === 'completed') return;
+      const next: ProviderConfigurationSnapshot = {
+        ...cloneSnapshot(current),
+        legacy_formal_provider_migration: 'completed',
+        configured_providers: [
+          ...current.configured_providers.map(cloneProvider),
+          ...migratedProviders.map(cloneProvider),
+        ],
+      };
+      assertUniqueSnapshot(next);
+      await this.commit(next);
+    });
   }
 
   async beginModelRegistration(
     input: BeginProviderModelRegistrationInput
   ): Promise<PendingProviderModelRegistration> {
-    const current = this.requireSnapshot();
-    const existing = current.configured_providers.find(
-      provider =>
-        provider.provider_connection_definition_id === input.provider_connection_definition_id
-    );
-    if (
-      existing &&
-      (existing.id !== input.configured_provider_id ||
-        existing.provider_definition_id !== input.provider_definition_id)
-    ) {
-      throw new Error(
-        `正式 connection ${input.provider_connection_definition_id} 的配置身份不一致`
+    return this.runMutation(async () => {
+      const current = this.requireSnapshot();
+      const existing = current.configured_providers.find(
+        provider =>
+          provider.provider_connection_definition_id === input.provider_connection_definition_id
       );
-    }
-    if (
-      current.configured_providers.some(provider =>
-        provider.models.some(model => model.model_config_id === input.model_config_id)
-      ) ||
-      current.pending_model_registrations.some(
-        intent => intent.model_config_id === input.model_config_id
-      )
-    ) {
-      throw new Error(`ModelConfig 已存在 Provider 归属: ${input.model_config_id}`);
-    }
-    if (
-      existing?.models.some(model => model.provider_model_id === input.provider_model_id) ||
-      current.pending_model_registrations.some(
-        intent =>
-          intent.provider_connection_definition_id === input.provider_connection_definition_id &&
-          intent.provider_model_id === input.provider_model_id
-      )
-    ) {
-      throw new Error(`Provider 模型已经激活: ${input.provider_model_id}`);
-    }
-    const intent: PendingProviderModelRegistration = {
-      id: input.intent_id,
-      configured_provider_id: input.configured_provider_id,
-      provider_definition_id: input.provider_definition_id,
-      provider_connection_definition_id: input.provider_connection_definition_id,
-      inference_endpoint_id: input.inference_endpoint_id,
-      provider_model_id: input.provider_model_id,
-      model_config_id: input.model_config_id,
-    };
-    const next: ProviderConfigurationSnapshot = {
-      ...cloneSnapshot(current),
-      pending_model_registrations: [
-        ...current.pending_model_registrations.map(candidate => ({ ...candidate })),
-        intent,
-      ],
-    };
-    assertUniqueSnapshot(next);
-    await this.commit(next);
-    return { ...intent };
+      if (
+        existing &&
+        (existing.id !== input.configured_provider_id ||
+          existing.provider_definition_id !== input.provider_definition_id)
+      ) {
+        throw new Error(
+          `正式 connection ${input.provider_connection_definition_id} 的配置身份不一致`
+        );
+      }
+      if (
+        current.configured_providers.some(provider =>
+          provider.models.some(model => model.model_config_id === input.model_config_id)
+        ) ||
+        current.pending_model_registrations.some(
+          intent => intent.model_config_id === input.model_config_id
+        )
+      ) {
+        throw new Error(`ModelConfig 已存在 Provider 归属: ${input.model_config_id}`);
+      }
+      if (
+        existing?.models.some(model => model.provider_model_id === input.provider_model_id) ||
+        current.pending_model_registrations.some(
+          intent =>
+            intent.provider_connection_definition_id === input.provider_connection_definition_id &&
+            intent.provider_model_id === input.provider_model_id
+        )
+      ) {
+        throw new Error(`Provider 模型已经激活: ${input.provider_model_id}`);
+      }
+      const intent: PendingProviderModelRegistration = {
+        id: input.intent_id,
+        configured_provider_id: input.configured_provider_id,
+        provider_definition_id: input.provider_definition_id,
+        provider_connection_definition_id: input.provider_connection_definition_id,
+        inference_endpoint_id: input.inference_endpoint_id,
+        provider_model_id: input.provider_model_id,
+        model_config_id: input.model_config_id,
+      };
+      const next: ProviderConfigurationSnapshot = {
+        ...cloneSnapshot(current),
+        pending_model_registrations: [
+          ...current.pending_model_registrations.map(candidate => ({ ...candidate })),
+          intent,
+        ],
+      };
+      assertUniqueSnapshot(next);
+      await this.commit(next);
+      return { ...intent };
+    });
   }
 
   async completeModelRegistration(intentId: string): Promise<void> {
-    const current = this.requireSnapshot();
-    const intent = current.pending_model_registrations.find(candidate => candidate.id === intentId);
-    if (!intent) throw new Error(`Provider model registration intent 不存在: ${intentId}`);
-    const next: ProviderConfigurationSnapshot = {
-      ...cloneSnapshot(current),
-      configured_providers: applyRegistration(current.configured_providers, intent),
-      pending_model_registrations: current.pending_model_registrations
-        .filter(candidate => candidate.id !== intentId)
-        .map(candidate => ({ ...candidate })),
-    };
-    assertUniqueSnapshot(next);
-    await this.commit(next);
+    return this.runMutation(async () => {
+      const current = this.requireSnapshot();
+      const intent = current.pending_model_registrations.find(candidate => candidate.id === intentId);
+      if (!intent) throw new Error(`Provider model registration intent 不存在: ${intentId}`);
+      const next: ProviderConfigurationSnapshot = {
+        ...cloneSnapshot(current),
+        configured_providers: applyRegistration(current.configured_providers, intent),
+        pending_model_registrations: current.pending_model_registrations
+          .filter(candidate => candidate.id !== intentId)
+          .map(candidate => ({ ...candidate })),
+      };
+      assertUniqueSnapshot(next);
+      await this.commit(next);
+    });
   }
 
   async cancelModelRegistration(intentId: string): Promise<void> {
-    const current = this.requireSnapshot();
-    if (!current.pending_model_registrations.some(intent => intent.id === intentId)) return;
-    await this.commit({
-      ...cloneSnapshot(current),
-      pending_model_registrations: current.pending_model_registrations
-        .filter(intent => intent.id !== intentId)
-        .map(intent => ({ ...intent })),
+    return this.runMutation(async () => {
+      const current = this.requireSnapshot();
+      if (!current.pending_model_registrations.some(intent => intent.id === intentId)) return;
+      await this.commit({
+        ...cloneSnapshot(current),
+        pending_model_registrations: current.pending_model_registrations
+          .filter(intent => intent.id !== intentId)
+          .map(intent => ({ ...intent })),
+      });
     });
   }
 
   async beginModelRemoval(
     input: BeginProviderModelRemovalInput
   ): Promise<PendingProviderModelRemoval | null> {
-    const current = this.requireSnapshot();
-    if (!this.getByModelConfigId(input.model_config_id)) return null;
-    if (
-      current.pending_model_removals.some(
-        intent => intent.model_config_id === input.model_config_id
-      )
-    ) {
-      throw new Error(`ModelConfig 已在删除中: ${input.model_config_id}`);
-    }
-    const intent: PendingProviderModelRemoval = {
-      id: input.intent_id,
-      model_config_id: input.model_config_id,
-    };
-    await this.commit({
-      ...cloneSnapshot(current),
-      pending_model_removals: [
-        ...current.pending_model_removals.map(candidate => ({ ...candidate })),
-        intent,
-      ],
+    return this.runMutation(async () => {
+      const current = this.requireSnapshot();
+      if (!this.getByModelConfigId(input.model_config_id)) return null;
+      if (
+        current.pending_model_removals.some(
+          intent => intent.model_config_id === input.model_config_id
+        )
+      ) {
+        throw new Error(`ModelConfig 已在删除中: ${input.model_config_id}`);
+      }
+      const intent: PendingProviderModelRemoval = {
+        id: input.intent_id,
+        model_config_id: input.model_config_id,
+      };
+      await this.commit({
+        ...cloneSnapshot(current),
+        pending_model_removals: [
+          ...current.pending_model_removals.map(candidate => ({ ...candidate })),
+          intent,
+        ],
+      });
+      return { ...intent };
     });
-    return { ...intent };
   }
 
   async completeModelRemoval(intentId: string): Promise<void> {
-    const current = this.requireSnapshot();
-    const intent = current.pending_model_removals.find(candidate => candidate.id === intentId);
-    if (!intent) throw new Error(`Provider model removal intent 不存在: ${intentId}`);
-    await this.commit({
-      ...cloneSnapshot(current),
-      configured_providers: removeModelAssociation(
-        current.configured_providers,
-        intent.model_config_id
-      ),
-      pending_model_removals: current.pending_model_removals
-        .filter(candidate => candidate.id !== intentId)
-        .map(candidate => ({ ...candidate })),
+    return this.runMutation(async () => {
+      const current = this.requireSnapshot();
+      const intent = current.pending_model_removals.find(candidate => candidate.id === intentId);
+      if (!intent) throw new Error(`Provider model removal intent 不存在: ${intentId}`);
+      await this.commit({
+        ...cloneSnapshot(current),
+        configured_providers: removeModelAssociation(
+          current.configured_providers,
+          intent.model_config_id
+        ),
+        pending_model_removals: current.pending_model_removals
+          .filter(candidate => candidate.id !== intentId)
+          .map(candidate => ({ ...candidate })),
+      });
     });
   }
 
   async cancelModelRemoval(intentId: string): Promise<void> {
-    const current = this.requireSnapshot();
-    if (!current.pending_model_removals.some(intent => intent.id === intentId)) return;
-    await this.commit({
-      ...cloneSnapshot(current),
-      pending_model_removals: current.pending_model_removals
-        .filter(intent => intent.id !== intentId)
-        .map(intent => ({ ...intent })),
+    return this.runMutation(async () => {
+      const current = this.requireSnapshot();
+      if (!current.pending_model_removals.some(intent => intent.id === intentId)) return;
+      await this.commit({
+        ...cloneSnapshot(current),
+        pending_model_removals: current.pending_model_removals
+          .filter(intent => intent.id !== intentId)
+          .map(intent => ({ ...intent })),
+      });
     });
   }
 
@@ -359,6 +374,13 @@ export class ProviderConfigurationRegistry {
     };
     assertUniqueSnapshot(next);
     return next;
+  }
+
+  /** intent 的校验、读快照、写盘与发布属于同一事务，避免后台同步覆盖用户操作。 */
+  private runMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.mutationTail.then(operation);
+    this.mutationTail = result.then(() => undefined, () => undefined);
+    return result;
   }
 
   private async commit(next: ProviderConfigurationSnapshot): Promise<void> {

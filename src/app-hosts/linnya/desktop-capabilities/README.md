@@ -19,6 +19,10 @@ Transcription、Knowledge Graph、Workspace feature 与插件 SDK 都只看到�
 Model Catalog bridge 会等待 Desktop 订阅安装完成后才允许 Backend 启动继续；其它已有事实通过逐类严格 DTO 的
 单向 publish RPC 投影，Backend 不能提交任意 Renderer channel 名。
 
+App Server 自己完成的账号目录同步通过 `publishModelsChanged()` 发出无 payload 的目录失效通知，
+Desktop 投影到既有 `models-updated` channel；它不借用只覆盖 Cloud 的目录订阅。Renderer 先订阅再初次读取，
+因此窗口创建前完成的同步也能由首次 HTTP 快照接纳，不需要缓存通知或向 Main 复制一份模型目录。
+
 Backend hidden worker runtime 保留已有插件 `hiddenWorkers` contribution、worker id、codec、同步 registry 与调用语义。
 `createBackendHiddenWorkerRuntime` 在 Backend 内把请求、取消和响应编解码，Desktop 的
 `DesktopHiddenWorkerHostPort` 只接收 worker descriptor 与已经编码的原始 envelope，不接收 codec function、插件实例或

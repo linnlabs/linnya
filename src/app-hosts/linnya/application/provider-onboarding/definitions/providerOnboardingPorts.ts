@@ -59,7 +59,8 @@ export interface ProviderOnboardingAccountPort {
 export interface ProviderOnboardingAccountModelDiscoveryPort {
   discoverModels(
     providerConnectionDefinitionId: string,
-    accountId: string
+    accountId: string,
+    signal?: AbortSignal,
   ): Promise<readonly ProviderAccountModelDefinition[]>;
 }
 
@@ -83,5 +84,5 @@ export interface ProviderOnboardingUseCase {
   refreshRegisteredBundledProviderModels(
     providerConnectionDefinitionId: string
   ): Promise<void>;
-  synchronizeConnectedProviderModels(providerConnectionDefinitionId: string): Promise<void>;
+  synchronizeConnectedProviderModels(providerConnectionDefinitionId: string, signal?: AbortSignal): Promise<void>;
 }

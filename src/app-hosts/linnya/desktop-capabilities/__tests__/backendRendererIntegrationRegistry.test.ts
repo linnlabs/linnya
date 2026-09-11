@@ -34,6 +34,7 @@ function createPort(): BackendRendererIntegrationPort {
     publishWorkspaceMutation: vi.fn(),
     publishPluginRendererPush: vi.fn(),
     publishTodosChanged: vi.fn(),
+    publishModelsChanged: vi.fn(),
     publishPluginsChanged: vi.fn(),
   });
 }

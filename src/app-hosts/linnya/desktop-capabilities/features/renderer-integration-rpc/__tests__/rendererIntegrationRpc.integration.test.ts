@@ -59,9 +59,11 @@ describe('Backend Renderer integration RPC', () => {
     });
     client.publishTodosChanged('project-1');
     client.publishPluginsChanged();
+    client.publishModelsChanged();
 
     await vi.waitFor(() => {
       expect(port.publishPluginsChanged).toHaveBeenCalledOnce();
+      expect(port.publishModelsChanged).toHaveBeenCalledOnce();
     });
     expect(port.connectModelCatalogUpdates).toHaveBeenCalledOnce();
     expect(port.publishKnowledgeGraphProgress).toHaveBeenCalledWith({
@@ -166,6 +168,7 @@ function createRendererPort(
     publishWorkspaceMutation: vi.fn(),
     publishPluginRendererPush: vi.fn(),
     publishTodosChanged: vi.fn(),
+    publishModelsChanged: vi.fn(),
     publishPluginsChanged: vi.fn(),
   };
 }

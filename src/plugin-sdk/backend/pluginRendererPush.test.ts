@@ -32,6 +32,7 @@ describe('pluginRendererPush', () => {
       publishWorkspaceMutation: vi.fn(),
       publishPluginRendererPush,
       publishTodosChanged: vi.fn(),
+      publishModelsChanged: vi.fn(),
       publishPluginsChanged: vi.fn(),
     });
   });

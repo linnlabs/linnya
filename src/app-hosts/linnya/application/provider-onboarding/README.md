@@ -32,6 +32,13 @@ route placement，不自动激活新模型，也不删除已从公开目录退�
 
 ## 边界
 
+- 启动时的本地 intent 恢复与 bundled 元数据刷新在 ready 前完成；远端账号目录由本 owner 的
+  `ProviderModelSynchronizationLifecycle` 在路由完成后后台刷新。BackendRuntimeOwner 持有它的 start/stop，
+  同一 connection 的并发同步共用一个执行，不建立第二条模型写入主链。
+- 登出或替换授权凭据前取消并等待旧同步；关闭 Backend 时先取消同步，再在释放服务前等待收口。
+  取消会中断目录 HTTP 请求，并在逐模型提交边界检查；已经开始的单条 durable 事务必须完成，不能中途丢弃。
+- 同步结束后通过 Renderer integration 的窄通知重读模型目录，失败但已有部分提交时同样通知；日志只包含
+  connection、耗时、取消状态和稳定错误类型，不记录上游响应或凭据。
 - Provider Catalog 不知道凭据、route 或 AI SDK package。
 - Runtime binding 不向 Renderer 暴露，也不能替代 inference factory registry。
 - Model Catalog 只校验和保存最终 typed route，不识别 Provider 产品。

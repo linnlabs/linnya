@@ -83,5 +83,5 @@ export interface ProviderAccountModelDefinition {
 }
 
 export interface ProviderAccountModelDiscovery {
-  listModels(accountId: string): Promise<readonly ProviderAccountModelDefinition[]>;
+  listModels(accountId: string, signal?: AbortSignal): Promise<readonly ProviderAccountModelDefinition[]>;
 }

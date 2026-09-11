@@ -25,6 +25,7 @@ import { processModelConfig } from '../features/catalog-admission/functions/proc
 import { fetchCloudModels } from '../features/cloud-catalog/orchestration/fetchCloudModels';
 import { isLinnyaCloudClientEnabled } from '../features/cloud-catalog/functions/isLinnyaCloudClientEnabled';
 import { resolveDefaultModelsPath } from '../features/default-catalog/functions/resolveDefaultModelsPath';
+import { applyCommittedModelChanges } from '../features/user-model-persistence/functions/applyCommittedModelChanges';
 import { modelPersister } from '../features/user-model-persistence/orchestration/modelPersister';
 import { assertEndpointMatchesModel } from '../features/inference-endpoints/functions/assertEndpointMatchesModel';
 import { findUnreferencedInferenceEndpoints } from '../features/inference-endpoints/functions/findUnreferencedInferenceEndpoints';
@@ -72,6 +73,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
   private static instance: ModelCatalogRegistry | null = null;
 
   private models = new Map<string, ModelConfig>();
+  private userMutationTail: Promise<void> = Promise.resolve();
   private readonly accountModelIds = new Map<string, Set<string>>();
   private inferenceEndpoints = new Map<string, InferenceEndpoint>();
   private envVars: Record<string, string> = {};
@@ -199,98 +201,101 @@ export class ModelCatalogRegistry implements ModelCatalog {
     model: ModelConfig,
     selection: InferenceEndpointSelection
   ): Promise<void> {
-    if (this.models.has(model.id)) throw new Error(`模型已存在: ${model.id}`);
-    const nextEndpoints = new Map(this.inferenceEndpoints);
-    let endpoint: InferenceEndpoint;
-    let createdCredentialId: string | undefined;
-    let replacedCredential:
-      | { readonly id: string; readonly previousPlaintext?: string }
-      | undefined;
+    return this.runUserMutation(async () => {
+      if (this.models.has(model.id)) throw new Error(`模型已存在: ${model.id}`);
+      const nextEndpoints = new Map(this.inferenceEndpoints);
+      let endpoint: InferenceEndpoint;
+      let createdCredentialId: string | undefined;
+      let replacedCredential:
+        | { readonly id: string; readonly previousPlaintext?: string }
+        | undefined;
 
-    if (selection.kind === 'existing') {
-      endpoint = this.requireInferenceEndpoint(selection.inference_endpoint_id);
-      const replacementSecret = selection.credential_secret?.trim();
-      if (replacementSecret) {
-        if (endpoint.credential_reference.kind !== 'stored_secret') {
-          throw new Error(`InferenceEndpoint ${endpoint.id} 不接受本地凭据替换`);
-        }
-        const credentialId = endpoint.credential_reference.credential_id;
-        replacedCredential = {
-          id: credentialId,
-          previousPlaintext: endpointCredentialStore.has(credentialId)
-            ? endpointCredentialStore.resolve(credentialId)
-            : undefined,
-        };
-        await endpointCredentialStore.put(credentialId, replacementSecret);
-      } else if (
-        endpoint.credential_reference.kind === 'stored_secret' &&
-        !endpointCredentialStore.has(endpoint.credential_reference.credential_id)
-      ) {
-        throw new Error(`InferenceEndpoint ${endpoint.id} 的凭据不可用`);
-      }
-    } else {
-      const input = selection.endpoint;
-      if (nextEndpoints.has(input.id)) throw new Error(`InferenceEndpoint 已存在: ${input.id}`);
-      const credentialReference: CredentialReference =
-        input.credential_reference ??
-        (input.auth_profile === 'none'
-          ? { kind: 'none' }
-          : { kind: 'stored_secret', credential_id: `inference-endpoint:${input.id}` });
-      endpoint = readInferenceEndpoint({
-        ...input,
-        credential_reference: credentialReference,
-      });
-      if (credentialReference.kind === 'stored_secret') {
-        const credentialId = credentialReference.credential_id;
-        const credentialSecret = input.credential_secret?.trim();
-        const credentialExists = endpointCredentialStore.has(credentialId);
-        if (!credentialSecret && !credentialExists) {
-          throw new Error('需要认证的 InferenceEndpoint 缺少 credential secret');
-        }
-        if (credentialSecret) {
-          if (credentialExists) {
-            replacedCredential = {
-              id: credentialId,
-              previousPlaintext: endpointCredentialStore.resolve(credentialId),
-            };
-          } else {
-            createdCredentialId = credentialId;
+      if (selection.kind === 'existing') {
+        endpoint = this.requireInferenceEndpoint(selection.inference_endpoint_id);
+        const replacementSecret = selection.credential_secret?.trim();
+        if (replacementSecret) {
+          if (endpoint.credential_reference.kind !== 'stored_secret') {
+            throw new Error(`InferenceEndpoint ${endpoint.id} 不接受本地凭据替换`);
           }
-          await endpointCredentialStore.put(credentialId, credentialSecret);
+          const credentialId = endpoint.credential_reference.credential_id;
+          replacedCredential = {
+            id: credentialId,
+            previousPlaintext: endpointCredentialStore.has(credentialId)
+              ? endpointCredentialStore.resolve(credentialId)
+              : undefined,
+          };
+          await endpointCredentialStore.put(credentialId, replacementSecret);
+        } else if (
+          endpoint.credential_reference.kind === 'stored_secret' &&
+          !endpointCredentialStore.has(endpoint.credential_reference.credential_id)
+        ) {
+          throw new Error(`InferenceEndpoint ${endpoint.id} 的凭据不可用`);
         }
+      } else {
+        const input = selection.endpoint;
+        if (nextEndpoints.has(input.id)) throw new Error(`InferenceEndpoint 已存在: ${input.id}`);
+        const credentialReference: CredentialReference =
+          input.credential_reference ??
+          (input.auth_profile === 'none'
+            ? { kind: 'none' }
+            : { kind: 'stored_secret', credential_id: `inference-endpoint:${input.id}` });
+        endpoint = readInferenceEndpoint({
+          ...input,
+          credential_reference: credentialReference,
+        });
+        if (credentialReference.kind === 'stored_secret') {
+          const credentialId = credentialReference.credential_id;
+          const credentialSecret = input.credential_secret?.trim();
+          const credentialExists = endpointCredentialStore.has(credentialId);
+          if (!credentialSecret && !credentialExists) {
+            throw new Error('需要认证的 InferenceEndpoint 缺少 credential secret');
+          }
+          if (credentialSecret) {
+            if (credentialExists) {
+              replacedCredential = {
+                id: credentialId,
+                previousPlaintext: endpointCredentialStore.resolve(credentialId),
+              };
+            } else {
+              createdCredentialId = credentialId;
+            }
+            await endpointCredentialStore.put(credentialId, credentialSecret);
+          }
+        }
+        nextEndpoints.set(endpoint.id, endpoint);
       }
-      nextEndpoints.set(endpoint.id, endpoint);
-    }
 
-    const processedModel = processModelConfig({
-      modelData: {
-        ...model,
-        credential_reference: undefined,
-        inference_endpoint_id: endpoint.id,
-      },
-      envVars: this.envVars,
-    });
-    assertEndpointMatchesModel(endpoint, processedModel);
-    const nextModels = new Map(this.models);
-    nextModels.set(processedModel.id, processedModel);
-    try {
-      await this.persistUserState(nextModels, nextEndpoints);
-    } catch (error: unknown) {
-      if (createdCredentialId) await endpointCredentialStore.remove(createdCredentialId);
-      if (replacedCredential) {
-        if (replacedCredential.previousPlaintext === undefined) {
-          await endpointCredentialStore.remove(replacedCredential.id);
-        } else {
-          await endpointCredentialStore.put(
-            replacedCredential.id,
-            replacedCredential.previousPlaintext
-          );
+      const processedModel = processModelConfig({
+        modelData: {
+          ...model,
+          credential_reference: undefined,
+          inference_endpoint_id: endpoint.id,
+        },
+        envVars: this.envVars,
+      });
+      assertEndpointMatchesModel(endpoint, processedModel);
+      const previousModels = new Map(this.models);
+      const nextModels = new Map(previousModels);
+      nextModels.set(processedModel.id, processedModel);
+      try {
+        await this.persistUserState(nextModels, nextEndpoints);
+      } catch (error: unknown) {
+        if (createdCredentialId) await endpointCredentialStore.remove(createdCredentialId);
+        if (replacedCredential) {
+          if (replacedCredential.previousPlaintext === undefined) {
+            await endpointCredentialStore.remove(replacedCredential.id);
+          } else {
+            await endpointCredentialStore.put(
+              replacedCredential.id,
+              replacedCredential.previousPlaintext
+            );
+          }
         }
+        throw error;
       }
-      throw error;
-    }
-    this.models = nextModels;
-    this.inferenceEndpoints = nextEndpoints;
+      this.models = applyCommittedModelChanges(this.models, previousModels, nextModels);
+      this.inferenceEndpoints = nextEndpoints;
+    });
   }
 
   replaceAccountModels(accountId: string, models: readonly ModelConfig[]): void {
@@ -341,46 +346,54 @@ export class ModelCatalogRegistry implements ModelCatalog {
   }
 
   async addModel(model: ModelConfig): Promise<void> {
-    const nextModels = new Map(this.models);
-    const processedModel = processModelConfig({ modelData: model, envVars: this.envVars });
-    this.assertModelEndpoint(processedModel);
-    nextModels.set(processedModel.id, processedModel);
-    await this.commitModelsAndPruneEndpoints(nextModels);
+    return this.runUserMutation(async () => {
+      const nextModels = new Map(this.models);
+      const processedModel = processModelConfig({ modelData: model, envVars: this.envVars });
+      this.assertModelEndpoint(processedModel);
+      nextModels.set(processedModel.id, processedModel);
+      await this.commitModelsAndPruneEndpoints(nextModels);
+    });
   }
 
   async updateModel(model: ModelConfig): Promise<void> {
-    if (!this.models.has(model.id)) throw new Error(`模型不存在: ${model.id}`);
-    const nextModels = new Map(this.models);
-    const processedModel = processModelConfig({ modelData: model, envVars: this.envVars });
-    this.assertModelEndpoint(processedModel);
-    nextModels.set(processedModel.id, processedModel);
-    await this.commitModelsAndPruneEndpoints(nextModels);
+    return this.runUserMutation(async () => {
+      if (!this.models.has(model.id)) throw new Error(`模型不存在: ${model.id}`);
+      const nextModels = new Map(this.models);
+      const processedModel = processModelConfig({ modelData: model, envVars: this.envVars });
+      this.assertModelEndpoint(processedModel);
+      nextModels.set(processedModel.id, processedModel);
+      await this.commitModelsAndPruneEndpoints(nextModels);
+    });
   }
 
   async removeModel(id: string): Promise<void> {
-    if (!this.models.has(id)) throw new Error(`模型不存在: ${id}`);
-    const nextModels = new Map(this.models);
-    nextModels.delete(id);
-    await this.commitModelsAndPruneEndpoints(nextModels);
+    return this.runUserMutation(async () => {
+      if (!this.models.has(id)) throw new Error(`模型不存在: ${id}`);
+      const nextModels = new Map(this.models);
+      nextModels.delete(id);
+      await this.commitModelsAndPruneEndpoints(nextModels);
+    });
   }
 
   async applyDiff(diff: ModelDiff): Promise<void> {
-    const nextModels = new Map(this.models);
-    for (const model of diff.added) {
-      const processed = processModelConfig({ modelData: model, envVars: this.envVars });
-      this.assertModelEndpoint(processed);
-      nextModels.set(processed.id, processed);
-    }
-    for (const model of diff.updated) {
-      if (!nextModels.has(model.id)) throw new Error(`模型不存在: ${model.id}`);
-      const processed = processModelConfig({ modelData: model, envVars: this.envVars });
-      this.assertModelEndpoint(processed);
-      nextModels.set(processed.id, processed);
-    }
-    for (const id of diff.removed) {
-      if (!nextModels.delete(id)) throw new Error(`模型不存在: ${id}`);
-    }
-    await this.commitModelsAndPruneEndpoints(nextModels);
+    return this.runUserMutation(async () => {
+      const nextModels = new Map(this.models);
+      for (const model of diff.added) {
+        const processed = processModelConfig({ modelData: model, envVars: this.envVars });
+        this.assertModelEndpoint(processed);
+        nextModels.set(processed.id, processed);
+      }
+      for (const model of diff.updated) {
+        if (!nextModels.has(model.id)) throw new Error(`模型不存在: ${model.id}`);
+        const processed = processModelConfig({ modelData: model, envVars: this.envVars });
+        this.assertModelEndpoint(processed);
+        nextModels.set(processed.id, processed);
+      }
+      for (const id of diff.removed) {
+        if (!nextModels.delete(id)) throw new Error(`模型不存在: ${id}`);
+      }
+      await this.commitModelsAndPruneEndpoints(nextModels);
+    });
   }
 
   getModelsByCapability(capability: string): ModelConfig[] {
@@ -458,7 +471,15 @@ export class ModelCatalogRegistry implements ModelCatalog {
     }
   }
 
+  /** 从读取当前目录到凭据/文件提交都串行，失败后下一条事务仍可继续。 */
+  private runUserMutation(operation: () => Promise<void>): Promise<void> {
+    const result = this.userMutationTail.then(operation);
+    this.userMutationTail = result.then(() => undefined, () => undefined);
+    return result;
+  }
+
   private async commitModelsAndPruneEndpoints(nextModels: Map<string, ModelConfig>): Promise<void> {
+    const previousModels = new Map(this.models);
     const orphanedEndpoints = findUnreferencedInferenceEndpoints(
       nextModels.values(),
       this.inferenceEndpoints.values()
@@ -493,7 +514,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
       throw error;
     }
 
-    this.models = nextModels;
+    this.models = applyCommittedModelChanges(this.models, previousModels, nextModels);
     this.inferenceEndpoints = nextEndpoints;
   }
 

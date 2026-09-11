@@ -552,6 +552,53 @@ describe('Registry default model by capability', () => {
     );
   });
 
+  it('并发用户修改串行提交，写盘期间的账号投影不会被旧快照覆盖', async () => {
+    const first = buildUserModel('first', 'shared');
+    const second = buildUserModel('second', 'shared');
+    persisterMock.loadState.mockResolvedValue({
+      models: [first, second], inferenceEndpoints: [buildUserEndpoint('shared')],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await registry.initialize(createSourceDistributionIdentity());
+    let complete!: () => void;
+    persisterMock.saveState.mockImplementationOnce(() => new Promise<void>(resolve => { complete = resolve; }));
+    const firstWrite = registry.updateModel({ ...first, display_name: 'first updated' });
+    await vi.waitFor(() => expect(persisterMock.saveState).toHaveBeenCalledOnce());
+    const secondWrite = registry.updateModel({ ...second, display_name: 'second updated' });
+    await Promise.resolve();
+    expect(persisterMock.saveState).toHaveBeenCalledOnce();
+    registry.replaceAccountModels('account', [buildAccountImageModel('image', 'account')]);
+    complete();
+    await Promise.all([firstWrite, secondWrite]);
+    expect(registry.getModel('first')?.display_name).toBe('first updated');
+    expect(registry.getModel('second')?.display_name).toBe('second updated');
+    expect(registry.getModel('image')?.catalog_source).toBe('account');
+  });
+
+  it('前一事务失败不吞掉后一事务，也不覆盖退出登录删除的投影', async () => {
+    const model = buildUserModel('user', 'endpoint');
+    persisterMock.loadState.mockResolvedValue({
+      models: [model], inferenceEndpoints: [buildUserEndpoint('endpoint')],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await registry.initialize(createSourceDistributionIdentity());
+    registry.replaceAccountModels('account', [buildAccountImageModel('image', 'account')]);
+    persisterMock.saveState.mockRejectedValueOnce(new Error('disk unavailable'));
+    const failed = registry.updateModel({ ...model, display_name: 'failed' });
+    let complete!: () => void;
+    persisterMock.saveState.mockImplementationOnce(() => new Promise<void>(resolve => { complete = resolve; }));
+    const successful = registry.updateModel({ ...model, display_name: 'saved' });
+    await expect(failed).rejects.toThrow('disk unavailable');
+    await vi.waitFor(() => expect(persisterMock.saveState).toHaveBeenCalledTimes(2));
+    registry.removeAccountModels('account');
+    complete();
+    await successful;
+    expect(registry.getModel('user')?.display_name).toBe('saved');
+    expect(registry.getModel('image')).toBeUndefined();
+  });
+
   it('用户目录写入失败时不提交内存变更', async () => {
     fetchCloudModelsMock.mockResolvedValueOnce({
       success: true,

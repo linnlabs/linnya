@@ -81,6 +81,9 @@ export async function initializeAppServerBackend(
         rendererIntegration: hostDependencies.rendererIntegration,
         conversationExecutionRuntimeFactory:
           hostDependencies.conversationExecutionRuntimeFactory,
+        providerModelSynchronizationLifecycleRegistration: {
+          register: lifecycle => runtimeOwner.registerProviderModelSynchronization(lifecycle),
+        },
         commandOwnerLifecycleRegistration: {
           register: lifecycle => runtimeOwner.registerCommandOwnerLifecycle(lifecycle),
         },
@@ -129,6 +132,7 @@ export async function initializeAppServerBackend(
         `App Server Backend ready: port=${port}`,
       );
     }
+    runtimeOwner.startProviderModelSynchronization();
     return runtimeOwner;
   } catch (error: unknown) {
     uninstallWebPageRenderer?.();

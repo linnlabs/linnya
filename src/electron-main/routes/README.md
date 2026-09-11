@@ -19,6 +19,9 @@
 
 `src/app-hosts/linnya/backend-runtime/orchestration/backendLifecycle.ts` 在 App Server 内创建唯一 `BackendRuntimeOwner`，取得 `ApiServer` 和已初始化服务后调用 `configureRoutes()`。`src/electron-main/services/apiServer.ts` 虽仍在历史目录，但同样运行于 App Server，负责 loopback HTTP Server、middleware、安全 token、CORS、请求体限制和关闭生命周期。
 
+Provider route 装配完成本地 durable intent 恢复与账号能力投影后，只注册远端模型同步 lifecycle，不等待上游网络。
+具体同步顺序由 Provider Onboarding 拥有，启动与关闭由 BackendRuntimeOwner 拥有；授权和登出复用同一个 lifecycle，避免并发写入与退出后的迟到更新。
+
 主要入口：
 
 - `index.ts`：`RouteDependencies`、route family 组合、Conversation runtime 初始化结果和可观测摘要；

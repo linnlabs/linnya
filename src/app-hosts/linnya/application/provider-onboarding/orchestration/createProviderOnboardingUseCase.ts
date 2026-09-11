@@ -502,7 +502,8 @@ export function createProviderOnboardingUseCase(
       });
     },
 
-    async synchronizeConnectedProviderModels(providerConnectionDefinitionId: string) {
+    async synchronizeConnectedProviderModels(providerConnectionDefinitionId: string, signal?: AbortSignal) {
+      signal?.throwIfAborted();
       const catalogEntry = dependencies.providerCatalog.getConnection(
         providerConnectionDefinitionId
       );
@@ -535,8 +536,9 @@ export function createProviderOnboardingUseCase(
       }
 
       const providerModels = (
-        await dependencies.accountModels.discoverModels(connection.id, providerAccountId)
+        await dependencies.accountModels.discoverModels(connection.id, providerAccountId, signal)
       ).map(projectProviderAccountModelDefinition);
+      signal?.throwIfAborted();
       let registeredModelCount = 0;
       let updatedModelCount = 0;
       let existingModelCount = 0;
@@ -546,6 +548,8 @@ export function createProviderOnboardingUseCase(
         discovered_model_count: providerModels.length,
       });
       for (const providerModel of providerModels) {
+        // 不取消进行中的 durable 提交；只在两个完整模型操作之间停止。
+        signal?.throwIfAborted();
         const configuredProvider =
           dependencies.providerConfigurations.getByProviderConnectionDefinitionId(connection.id);
         const configuredModel = configuredProvider?.models.find(
@@ -593,6 +597,7 @@ export function createProviderOnboardingUseCase(
         providerModels
       );
       for (const staleModel of staleModels) {
+        signal?.throwIfAborted();
         await dependencies.modelRemoval.remove(staleModel.model_config_id);
       }
       logger.info('provider_model_synchronization.completed', {

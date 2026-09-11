@@ -26,6 +26,7 @@ import {
   type InitializedServices,
   type ServiceInitializationConfig,
 } from '../../../../electron-main/services/serviceInitializer';
+import type { ProviderModelSynchronizationLifecycle } from '../../application/provider-onboarding';
 import type { RouteConfigurationResult } from '../../../../electron-main/routes/index';
 import type { AppServerBackendConfiguration } from '../../app-server-bootstrap';
 import { QueueManager } from '../../../../infra/task-queue/queues';
@@ -73,6 +74,7 @@ export class BackendRuntimeOwner {
   private routeConfigurationResult: RouteConfigurationResult | null = null;
   private commandOwnerLifecycle: CommandAppOwnerLifecyclePort | null = null;
   private commandAppOwnerEnded = false;
+  private providerModelSynchronization: ProviderModelSynchronizationLifecycle | null = null;
   private sandboxOwnerLifecycle: SandboxAppOwnerLifecyclePort | null = null;
   private sandboxAppOwnerEnded = false;
   private shutdownSettlement: Promise<void> | null = null;
@@ -185,7 +187,8 @@ export class BackendRuntimeOwner {
       !this.services &&
       !this.qdrantManager &&
       !this.commandOwnerLifecycle &&
-      !this.sandboxOwnerLifecycle
+      !this.sandboxOwnerLifecycle &&
+      !this.providerModelSynchronization
     ) {
       return Promise.resolve();
     }
@@ -217,7 +220,10 @@ export class BackendRuntimeOwner {
     };
 
     // 先停止接收新请求，随后命令 owner 才能在没有新 admission 的前提下可信收口。
+    // 先同步发出取消，防止 HTTP drain 期间目录刷新继续接单或发起下一轮写入。
+    const modelSynchronizationStopped = this.providerModelSynchronization?.stop();
     await stopStage('API服务器', () => this.apiServer.stop());
+    await stopStage('账号模型同步', async () => { await modelSynchronizationStopped; });
     if (this.commandOwnerLifecycle) {
       const commandOwnerLifecycle = this.commandOwnerLifecycle;
       try {
@@ -316,6 +322,17 @@ export class BackendRuntimeOwner {
 
   setRouteConfigurationResult(result: RouteConfigurationResult): void {
     this.routeConfigurationResult = result;
+  }
+
+  registerProviderModelSynchronization(lifecycle: ProviderModelSynchronizationLifecycle): void {
+    if (this.providerModelSynchronization) {
+      throw new Error('当前 App owner 已注册账号模型同步');
+    }
+    this.providerModelSynchronization = lifecycle;
+  }
+
+  startProviderModelSynchronization(): void {
+    this.providerModelSynchronization?.start();
   }
 
   registerCommandOwnerLifecycle(lifecycle: CommandAppOwnerLifecyclePort): void {

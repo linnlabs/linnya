@@ -39,7 +39,11 @@ import { modelCatalog } from 'src/domains/model-catalog';
 import { providerConfigurationRegistry } from 'src/domains/provider-configuration';
 import { modelPickerPreferencesRegistry } from 'src/domains/model-picker-preferences';
 import { providerOnboardingRuntimeBindingRegistry } from 'src/app-hosts/linnya/adapters/inference';
-import { createProviderOnboardingUseCase } from 'src/app-hosts/linnya/application/provider-onboarding';
+import {
+  createProviderOnboardingUseCase,
+  createProviderModelSynchronizationLifecycle,
+  type ProviderModelSynchronizationLifecycle,
+} from 'src/app-hosts/linnya/application/provider-onboarding';
 import { createCustomApiOnboardingUseCase } from 'src/app-hosts/linnya/application/custom-api-onboarding';
 import { createConfiguredModelRemovalUseCase } from 'src/app-hosts/linnya/application/configured-model-removal';
 import { createOllamaOnboardingUseCase } from 'src/app-hosts/linnya/application/ollama-onboarding';
@@ -203,6 +207,9 @@ export interface RouteDependencies {
   readonly sandboxOwnerLifecycleRegistration: {
     register(lifecycle: SandboxAppOwnerLifecyclePort): void;
   };
+  readonly providerModelSynchronizationLifecycleRegistration: {
+    register(lifecycle: ProviderModelSynchronizationLifecycle): void;
+  };
   // chatService 已移除，使用新的统一架构
 }
 
@@ -304,11 +311,11 @@ export async function configureRoutes(
           )?.id,
     },
     accountModels: {
-      discoverModels: (providerConnectionDefinitionId, accountId) => {
+      discoverModels: (providerConnectionDefinitionId, accountId, signal) => {
         if (providerConnectionDefinitionId !== CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID) {
           throw new Error(`账号模型发现尚未注册 connection: ${providerConnectionDefinitionId}`);
         }
-        return chatGptAccountModels.listModels(accountId);
+        return chatGptAccountModels.listModels(accountId, signal);
       },
     },
     modelRemoval: {
@@ -339,28 +346,27 @@ export async function configureRoutes(
     modelCatalog,
     runtimeBindings: providerOnboardingRuntimeBindingRegistry,
   });
-  if (providerAccountRegistry.hasCredential(CHATGPT_PROVIDER_ACCOUNT_ID)) {
-    try {
-      providerAccountModels.synchronize(
-        CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID,
-        CHATGPT_PROVIDER_ACCOUNT_ID
-      );
-      await providerOnboardingUseCase.synchronizeConnectedProviderModels(
-        CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID
-      );
-    } catch (error: unknown) {
-      logger.warn('ChatGPT 已授权账号模型启动同步失败', {
-        provider_connection_definition_id: CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID,
-        failure_type: error instanceof Error ? error.name : 'unknown',
-      });
-    }
+  const connectedChatGpt = providerAccountRegistry.hasCredential(CHATGPT_PROVIDER_ACCOUNT_ID);
+  if (connectedChatGpt) {
+    providerAccountModels.synchronize(
+      CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID,
+      CHATGPT_PROVIDER_ACCOUNT_ID,
+    );
   }
+  // 本地恢复是 ready 前置；远端刷新由 App owner 在路由完成后启动并负责退出收口。
+  const providerModelSynchronization = createProviderModelSynchronizationLifecycle({
+    publishModelsChanged: () => dependencies.rendererIntegration.publishModelsChanged(),
+    startupConnectionIds: connectedChatGpt ? [CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID] : [],
+    synchronize: (connectionId, signal) =>
+      providerOnboardingUseCase.synchronizeConnectedProviderModels(connectionId, signal),
+  });
+  dependencies.providerModelSynchronizationLifecycleRegistration.register(providerModelSynchronization);
   const providerAccountAuthorization = createProviderAccountAuthorizationUseCase({
     accounts: providerAccountRegistry,
     chatGptTokens: createChatGptOAuthTokenClient(),
     loopback: createChatGptOAuthLoopbackPort(),
     browser: dependencies.externalAuthorizationBrowser,
-    providerModels: providerOnboardingUseCase,
+    providerModels: providerModelSynchronization,
     accountModels: providerAccountModels,
   });
   app.use('/api/v1/provider-accounts', createProviderAccountRouter(providerAccountAuthorization));

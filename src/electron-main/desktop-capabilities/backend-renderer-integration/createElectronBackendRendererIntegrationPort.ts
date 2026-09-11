@@ -128,6 +128,10 @@ export function createElectronBackendRendererIntegrationPort(): BackendRendererI
     publishTodosChanged(projectId) {
       publishToPrimaryRenderer('todos-changed', { projectId });
     },
+    publishModelsChanged() {
+      // 只发送失效信号；Renderer 先订阅再读取 HTTP，开窗前完成也不会遗漏目录事实。
+      publishToPrimaryRenderer('models-updated', undefined);
+    },
     publishPluginsChanged() {
       publishToPrimaryRenderer('plugins-changed', undefined);
     },

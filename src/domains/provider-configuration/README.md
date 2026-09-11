@@ -48,6 +48,9 @@ persist intent -> mutate Model Catalog -> commit association
 只存在于事务 intent，提交后的归属不重复保存它。普通失败由 application use
 case 取消 intent；domain registry 不反向调用 Model Catalog。
 
+Registry 串行执行每条 intent 命令的校验、快照读取、写盘和内存发布，防止账号后台同步与用户注册/删除互相
+覆盖 pending intent 或已提交归属。一条写盘失败只影响该命令，后续命令继续基于最后一次成功快照执行。
+
 ## 目录
 
 ```text

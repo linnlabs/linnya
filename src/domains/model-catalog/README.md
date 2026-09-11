@@ -196,7 +196,10 @@ workflow；workflow 只向本 domain 提交已决定好的 `ModelConfig`
 与 InferenceEndpoint selection。这保证 Renderer 无法绕过 Provider
 membership、credential 生命周期和 typed route 准入。
 
-Registry 对增、改、删和 diff 先计算完整下一快照，再一次性写入临时文件并 rename；只有写盘成功才替换内存 Map。这样目录读写不会出现“接口报告成功但重启丢失”或“磁盘失败、当前进程却继续使用幽灵模型”的分叉。
+Registry 串行执行用户注册、增、改、删和 diff 的完整事务，从读取当前目录到凭据与文件提交均属于同一队列；
+一条事务失败不会阻塞后续事务。每次先计算下一快照，再写入临时文件并 rename，只有成功后才发布本次变更。
+内存发布按事务前后差异应用，保留写盘期间发生的其他账号/Cloud 投影变化，不能用旧的整份 Map 覆盖当前目录。
+这样后台模型同步与用户编辑不会互相覆盖，也不会出现“接口报告成功但重启丢失”或“磁盘失败、当前进程却继续使用幽灵模型”的分叉。
 
 旧用户模型缺少当前 typed
 route 时不进入运行时。当前开发期升级不提供 adapter、URL 或 model-name

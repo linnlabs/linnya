@@ -22,3 +22,6 @@ export const DESKTOP_RENDERER_TODOS_CHANGED_RPC_METHOD =
   'desktop.renderer_integration.todos.changed' as const;
 export const DESKTOP_RENDERER_PLUGINS_CHANGED_RPC_METHOD =
   'desktop.renderer_integration.plugins.changed' as const;
+
+export const DESKTOP_RENDERER_MODELS_CHANGED_RPC_METHOD =
+  'desktop.renderer_integration.models.changed' as const;

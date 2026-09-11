@@ -17,6 +17,10 @@ App Server bootstrap 使用独立 fd 3 一次性 pipe，不进入 argv 或 lifec
 
 Backend 的 start、stop、ready、health 和配置生命周期只属于 App owner。Renderer 不拥有启停或重启 Backend 的 IPC；前端只消费已经过认证的业务 HTTP/SSE 与明确的 Desktop capability。
 
+Provider Onboarding 的账号模型同步 lifecycle 在路由装配时注册到本 owner，本地恢复和 route admission 完成后启动，
+远端模型发现不阻塞 ready。关闭时先发出取消并停止接收新请求，等待同步和已开始的单条目录事务结束后再释放业务服务。
+这项生命周期是具体用例的窄合同，不扩展为通用后台任务 registry。
+
 数据库启动事实只携带当前受管运行路径。bootstrap 不传旧 Workspace 迁移专用的 Desktop userData 根，
 Backend 不安装旧数据路径 registry，也不从当前路径推导旧文件来源。数据库版本准入由 DatabaseService 负责。
 
