@@ -452,6 +452,8 @@ export interface ChartRenderNode extends RenderNodeBase {
   series: RenderChartSeries[];
   /** 颜色调色板（hex 数组） */
   palette: [string, ...string[]];
+  plotBackgroundColor?: string;
+  seriesLineWidth?: number;
   axes?: RenderChartAxes;
   legend?: RenderChartLegend;
   dataLabels?: RenderChartDataLabels;

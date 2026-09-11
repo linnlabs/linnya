@@ -14,6 +14,8 @@
 
 ## 统一语义
 
+Authoring 线性渐变可用 `direction` 的八个 `to-*` 方向或 `angle`，二选一；admission 立即归一为 canonical angle，持久化与 adapter 不保存第二份方向事实。角度 0° 向右、90° 向下、顺时针，区别于 CSS；非正方形按 OOXML scaled 语义缩放。
+
 - 颜色输入只接受 hex；进入 shared Paint 后统一为 `#RRGGBB`。
 - gradient 至少有两个 stop，按 position 非递减排列。position 和 stop opacity 都是 0–1；重复 position 用于硬切色。
 - linear angle 以 0° 向右、90° 向下为基准，顺时针增长；admission 将任意有限角度归一到 0–360°。

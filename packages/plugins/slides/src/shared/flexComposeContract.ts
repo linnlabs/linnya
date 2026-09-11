@@ -81,6 +81,12 @@ export interface LayoutChartSeriesInput {
  * option 或 PptxGenJS 的原始配置直接放进 deck.js。
  */
 export interface LayoutChartStyle {
+  /** 图例文字颜色。 */
+  legendColor?: string;
+  /** 绘图区背景颜色。 */
+  plotBackgroundColor?: string;
+  /** 折线宽度，单位 pt，必须大于零。 */
+  seriesLineWidth?: number;
   /** 类目轴和数值轴标签的共同兜底颜色。 */
   axisLabelColor?: string;
   /** 类目轴标签颜色，未提供时回退到 axisLabelColor。 */
@@ -198,12 +204,26 @@ export interface LayoutGradientStop {
   opacity?: number;
 }
 
-export interface LayoutLinearGradient {
+export type LayoutGradientDirection =
+  | 'to-right' | 'to-bottom-right' | 'to-bottom' | 'to-bottom-left'
+  | 'to-left' | 'to-top-left' | 'to-top' | 'to-top-right';
+
+export type LayoutLinearGradient = {
   type: 'linear';
-  angle: number;
   stops: [LayoutGradientStop, LayoutGradientStop, ...LayoutGradientStop[]];
   rotateWithShape?: boolean;
-}
+} & (
+  | {
+    /** 0° 向右、90° 向下，顺时针；不同于 CSS。非正方形按 OOXML scaled 语义缩放方向。 */
+    angle: number;
+    direction?: never;
+  }
+  | {
+    /** 语义方向，与 angle 二选一；日常创作优先使用。 */
+    direction: LayoutGradientDirection;
+    angle?: never;
+  }
+);
 
 export interface LayoutRadialGradient {
   type: 'radial';

@@ -58,6 +58,8 @@ export function normalizeChartStyleColors(
 ): NormalizeResult<typeof style> {
   const normalized = { ...style };
   for (const key of [
+    'legendColor',
+    'plotBackgroundColor',
     'axisLabelColor',
     'categoryAxisLabelColor',
     'valueAxisLabelColor',

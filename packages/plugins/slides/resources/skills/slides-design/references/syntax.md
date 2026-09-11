@@ -325,3 +325,11 @@ createTable({
 - 写入失败按可见错误消息修复；不要按内部数字错误码分支。看到 `Type 'string' is not assignable to type '"linear" | …'` 这类消息时，先回到 §2 检查是不是把含字面量字段的对象写成了属性赋值。
 - 写入成功后先处理 observation 中带 code、line、message 的 document diagnostics，再运行整份 deck 的 inspect。
 - 当字段不确定时读 `.d.ts`；当结构不确定时读最接近的 example；当审美取舍不确定时读 `design.md`。
+
+
+### 容易混淆的尺寸和方向约定
+
+- `flex: N`（正数）表示 grow=N、shrink=1、basis=0。无 flex 的显式主轴宽高不被兄弟节点压缩；`minWidth/minHeight` 用于约束弹性节点。
+- Text 默认左右各 0.1 英寸、上下各 0.05 英寸内边距。自动宽度包含内边距，正文可用宽度须扣除左右内边距。
+- 线性渐变优先使用 `direction`，例如 `to-bottom` 表示向下；与 `angle` 二选一。角度为 0° →、90° ↓、180° ←、270° ↑，顺时针，**不是 CSS 角度**。斜向例子 `angle: 30` 从右方向下旋转；非正方形会按 OOXML scaled 语义进一步受宽高比缩放。
+- 每页必须在顶层显式调用一次 `createSlide()`，按源码顺序传入 compose。不要在 helper、循环或条件中创建页；分页读取、搜索和源码定位依赖每页对应的源码行区间。helper 可复用页内节点。

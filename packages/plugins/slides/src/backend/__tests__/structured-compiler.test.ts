@@ -272,16 +272,22 @@ describe('StructuredCompiler', () => {
         series: [{ name: 'Revenue', labels: ['Q1', 'Q2'], values: [10, 20] }],
       },
       chartStyle: {
+        legendColor: '#F1F5F9',
+        plotBackgroundColor: '#123456',
+        seriesLineWidth: 3,
         axisLabelColor: '#475569',
         dataLabelColor: '#0F172A',
         gridlineColor: '#CBD5E1',
       },
-      options: { showValue: true },
+      options: { showValue: true, showLegend: true },
       position: { x: 0.5, y: 1.5, w: 9, h: 4 },
     }])]);
 
     const xml = await readChartXml(await compiler.compileDeck(deck));
 
+    expect(xml).toContain('F1F5F9');
+    expect(xml).toContain('123456');
+    expect(xml).toContain('w="38100"');
     expect(xml).toContain('475569');
     expect(xml).toContain('0F172A');
     expect(xml).toContain('CBD5E1');

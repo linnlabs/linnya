@@ -195,8 +195,11 @@ describe('图表映射完整性', () => {
   describe('labelStyle 映射', () => {
     it('chartStyle 颜色进入轴标签、数据标签和网格线的正式 RenderModel 字段', () => {
       const node = getNode<'chart'>([baseChartElement({
-        options: { showValue: true },
+        options: { showValue: true, showLegend: true },
         chartStyle: {
+          legendColor: '#F1F5F9',
+          plotBackgroundColor: '#123456',
+          seriesLineWidth: 3,
           axisLabelColor: '#475569',
           categoryAxisLabelColor: '#334155',
           dataLabelColor: '#0F172A',
@@ -204,6 +207,9 @@ describe('图表映射完整性', () => {
         },
       })], 'chart');
 
+      expect(node.legend?.labelStyle?.color).toBe('#F1F5F9');
+      expect(node.plotBackgroundColor).toBe('#123456');
+      expect(node.seriesLineWidth).toBe(3);
       expect(node.axes?.x?.labelStyle?.color).toBe('#334155');
       expect(node.axes?.y?.labelStyle?.color).toBe('#475569');
       expect(node.dataLabels?.labelStyle?.color).toBe('#0F172A');

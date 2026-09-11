@@ -441,12 +441,13 @@ function parseElementInput(
       data: value.data,
     })
     : {};
-  const chartStyle = type === 'chart' && value.chartStyle != null
-    ? parseChartStyle(value.chartStyle) ?? undefined
+  const chartStyleResult = type === 'chart' && value.chartStyle != null
+    ? parseChartStyle(value.chartStyle)
     : undefined;
-  if (type === 'chart' && value.chartStyle != null && chartStyle == null) {
-    return { error: `${prefix}.chartStyle 必须是包含合法颜色字符串的对象。` };
+  if (chartStyleResult && 'error' in chartStyleResult) {
+    return { error: `${prefix}.chartStyle: ${chartStyleResult.error}` };
   }
+  const chartStyle = chartStyleResult?.value;
   const tableBorder = type === 'table' && value.border != null
     ? parseTableBorder(value.border) ?? undefined
     : undefined;

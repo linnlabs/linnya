@@ -163,6 +163,7 @@ describe('presentationComposeInput', () => {
       }] }],
     });
     expect(chart.error).toContain('chartStyle');
+    expect(chart.error).toContain('axisLabelFontSize');
 
     const table = readDirectComposeInput({
       title: 'Broken Table Border',

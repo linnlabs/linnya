@@ -527,6 +527,11 @@ function mapChartStyleToPptxOptions(
 ): Partial<PptxGenJS.IChartOpts> {
   if (!style) return {};
   const options: Partial<PptxGenJS.IChartOpts> = {};
+  if (style.legendColor) options.legendColor = stripHash(style.legendColor, 'chartStyle.legendColor');
+  if (style.plotBackgroundColor) {
+    options.plotArea = { fill: { color: stripHash(style.plotBackgroundColor, 'chartStyle.plotBackgroundColor') } };
+  }
+  if (style.seriesLineWidth != null) options.lineSize = style.seriesLineWidth;
   const axisLabelColor = style.axisLabelColor;
   const categoryAxisLabelColor = style.categoryAxisLabelColor ?? axisLabelColor;
   if (categoryAxisLabelColor) {

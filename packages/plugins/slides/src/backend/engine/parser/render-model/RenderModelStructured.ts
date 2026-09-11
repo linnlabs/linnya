@@ -80,7 +80,9 @@ export function mapStructuredChartNode(
       color: defaults.chartPalette[index % defaults.chartPalette.length],
     })),
     palette: defaults.chartPalette,
-    legend: resolveChartLegendStyle(element.options),
+    legend: resolveChartLegendStyle(element.options, element.chartStyle?.legendColor, defaults.minorFontFamily),
+    plotBackgroundColor: element.chartStyle?.plotBackgroundColor,
+    seriesLineWidth: element.chartStyle?.seriesLineWidth,
     stacking: resolveChartStacking(opts),
     axes: resolveChartAxes(opts, chartType, baseLabelStyle, element.chartStyle),
     dataLabels: resolveChartDataLabels(opts, element.chartStyle?.dataLabelColor),
@@ -280,6 +282,8 @@ export function mapStructuredTableNode(
 
 function resolveChartLegendStyle(
   options: Record<string, unknown> | undefined,
+  color?: string,
+  fontFamily?: string,
 ): ChartRenderNode['legend'] {
   const legend = resolveChartLegend(options);
   if (!legend) {
@@ -291,6 +295,9 @@ function resolveChartLegendStyle(
       options ?? {},
       'legendFontFace',
       'legendFontSize',
+      fontFamily,
+      color,
+      'legendColor',
     ),
   };
 }

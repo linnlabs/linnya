@@ -88,3 +88,17 @@ describe('Slides Paint 归一化', () => {
   });
 });
 
+
+
+describe('authoring gradient direction', () => {
+  it.each([
+    ['to-right', 0], ['to-bottom-right', 45], ['to-bottom', 90], ['to-bottom-left', 135],
+    ['to-left', 180], ['to-top-left', 225], ['to-top', 270], ['to-top-right', 315],
+  ])('normalizes %s to canonical angle %s', (direction, angle) => {
+    const paint = { type: 'linear', direction, stops: [
+      { position: 0, color: '#000000' }, { position: 1, color: '#FFFFFF' },
+    ] };
+    expect(normalizeGradientPaint(paint, 'fill')).toMatchObject({ value: { angle } });
+    expect(normalizeGradientPaint({ ...paint, angle }, 'fill')).toHaveProperty('error');
+  });
+});

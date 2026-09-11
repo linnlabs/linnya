@@ -23,6 +23,22 @@ function createChartNode(overrides: Partial<ChartRenderNode> = {}): ChartRenderN
 }
 
 describe('echartsMapper', () => {
+  it('保留深色图例和绘图区样式，饼图标签换行并为图例留位', () => {
+    const style = {
+      legend: { visible: true, position: 'right' as const, labelStyle: { color: '#FFFFFF' } },
+      plotBackgroundColor: '#123456',
+      seriesLineWidth: 3,
+    };
+    expect(mapChartNodeToEChartsOption(createChartNode({ ...style, chartType: 'line' })))
+      .toMatchObject({
+        legend: { textStyle: { color: '#FFFFFF' } },
+        grid: { show: true, backgroundColor: '#123456' },
+        series: [{ lineStyle: { width: 4 } }, { lineStyle: { width: 4 } }],
+      });
+    expect(mapChartNodeToEChartsOption(createChartNode({ ...style, chartType: 'pie' })))
+      .toMatchObject({ series: [{ right: '18%', label: { overflow: 'break' } }] });
+  });
+
   it('returns a transparent non-animated option for empty chart series', () => {
     const option = mapChartNodeToEChartsOption(createChartNode({ series: [] }));
 

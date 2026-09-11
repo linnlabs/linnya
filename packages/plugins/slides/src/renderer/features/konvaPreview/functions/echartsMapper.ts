@@ -125,7 +125,7 @@ function buildCartesianChart(
     if (seriesType === 'line') {
       item.symbol = 'circle';
       item.symbolSize = 6;
-      const lineWidth = (hints?.lineSize ?? PPT.lineWidthPt) * POINTS_TO_PX;
+      const lineWidth = (node.seriesLineWidth ?? hints?.lineSize ?? PPT.lineWidthPt) * POINTS_TO_PX;
       item.lineStyle = { width: lineWidth };
       if (hints?.lineSmooth) {
         item.smooth = true;
@@ -272,8 +272,14 @@ function buildPieChart(
       type: 'pie',
       data,
       radius,
+      // 饼图也为图例留通道；标签允许换行，避免 ECharts 默认省略正文。
+      left: node.legend?.visible && node.legend.position === 'left' ? '18%' : 0,
+      right: node.legend?.visible && node.legend.position === 'right' ? '18%' : 0,
+      top: node.legend?.visible && node.legend.position === 'top' ? '18%' : 0,
+      bottom: node.legend?.visible && node.legend.position === 'bottom' ? '18%' : 0,
       center: ['50%', '50%'],
       label: {
+        overflow: 'break',
         show: dlVisible,
         color: dlFont.color ?? node.pptxHints?.dataLabelColor ?? PPT.dataLabelColor,
         fontSize: dlFont.fontSize,
@@ -374,6 +380,8 @@ function buildGrid(node: ChartRenderNode): Record<string, unknown> {
 
   return {
     containLabel: true,
+    show: node.plotBackgroundColor != null,
+    backgroundColor: node.plotBackgroundColor,
     left: legendVisible && pos === 'left' ? '18%' : '5%',
     right: legendVisible && pos === 'right' ? '18%' : '5%',
     top: legendVisible && pos === 'top' ? '18%' : '8%',
@@ -395,7 +403,7 @@ function buildLegendConfig(node: ChartRenderNode): Record<string, unknown> {
     textStyle: {
       fontSize: font.fontSize,
       fontFamily: font.fontFamily,
-      color: PPT.labelColor,
+      color: font.color ?? PPT.labelColor,
     },
     itemWidth: Math.max(Math.round(font.fontSize * 0.9), 8),
     itemHeight: Math.max(Math.round(font.fontSize * 0.7), 6),
