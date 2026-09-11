@@ -379,6 +379,22 @@ describe('LayoutLint', () => {
     expect(report.issues.some((issue) => issue.code === 'element_overlap')).toBe(false);
   });
 
+  it.each([
+    { opacity: 0.1, zIndex: 0, collision: false },
+    { opacity: 0.1, zIndex: 2, collision: true },
+    { opacity: 1, zIndex: 0, collision: true },
+  ])('细线遮挡结合透明度和层级判断：$opacity/$zIndex', ({ opacity, zIndex, collision }) => {
+    const report = lint.lint(makeInfo({ slides: [{ number: 1, elements: [
+      { name: 'Caption', nodeId: 'caption', type: 'text', text: 'A', zIndex: 1,
+        position: { x: 1, y: 1, w: 2, h: 0.8 },
+        textBody: { padding: { top: 0, right: 0, bottom: 0, left: 0 } },
+        textLayout: makeTextLayout(['A']) },
+      { name: 'Divider', nodeId: 'divider', type: 'shape', opacity, zIndex,
+        position: { x: 0.9, y: 1.06, w: 0.5, h: 0.04 } },
+    ] }] }));
+    expect(report.issues.some(issue => issue.code === 'text_decoration_collision')).toBe(collision);
+  });
+
   it('does not confuse empty text-box space with an occupied text line', () => {
     const report = lint.lint(makeInfo({
       slides: [{

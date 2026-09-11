@@ -335,3 +335,7 @@ createTable({
 - 每页必须在顶层显式调用一次 `createSlide()`，按源码顺序传入 compose。不要在 helper、循环或条件中创建页；分页读取、搜索和源码定位依赖每页对应的源码行区间。helper 可复用页内节点。
 
 Shape/Image 可声明 `role: "background" | "decoration"` 表达构图意图，并用 `bleed` 指定允许越出画布的英寸数。角色不改变图片 `decorative` 的无障碍语义。Text 的辅助信息可用 `role: "footnote" | "source" | "page-number"`，避免占用正文的字体层级统计。
+
+### 页面身份规则
+
+每页必须由顶层 `createSlide()` 创建。不能放进函数、循环或条件分支中，也不能用 helper 动态产页。页身份由源码行区间定义，按页读取、搜索和诊断定位都依赖这个合同。检测到嵌套调用时会直接报告“非顶层 createSlide()”；请把页面创建移到顶层，helper 只负责创建页内元素。

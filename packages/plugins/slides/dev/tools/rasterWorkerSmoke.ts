@@ -1,3 +1,7 @@
+import { assertChartPlotBackgrounds } from './rasterChartFidelity';
+import { assertIntrinsicTextFidelity } from './intrinsicTextFidelity';
+import { materializeIntrinsicTextBoxes } from '../../src/backend/engine/text/materializeIntrinsicTextBoxes';
+import { assertGradientFidelityRenders } from './rasterGradientFidelity';
 import { promises as fs } from 'node:fs';
 import { createHash } from 'node:crypto';
 import os from 'node:os';
@@ -34,7 +38,7 @@ import {
   registerHiddenWorker,
 } from '../../../../../src/electron-main/hidden-worker/standaloneHiddenWorkerRuntime';
 import { clearHiddenWorkersForTests } from '../../../../../src/electron-main/hidden-worker/hiddenWorkerRuntime';
-import { createSystemFontCatalogQueryRuntime } from '@plugin/backend/fontResolution';
+import { createSystemFontResolutionRuntime } from '@plugin/backend/fontResolution';
 import {
   TEXT_CLIPPING_AUDIT_CASES,
   createTextClippingAuditDeckSource,
@@ -164,6 +168,7 @@ async function run(): Promise<void> {
       console.log(`${smokeCase.label} passed: ${result.widthPx}x${result.heightPx}, ${result.bytes.byteLength} bytes`);
     }
 
+    await assertGradientFidelityRenders(request);
     await assertSvgGraphicFallbackRenders();
     await assertTransparentChartRenders();
 
@@ -277,6 +282,7 @@ async function assertTransparentChartRenders(): Promise<void> {
     );
   }
   console.log(`transparent ECharts export passed: ${raster.widthPx}x${raster.heightPx}`);
+  await assertChartPlotBackgrounds(chartRequest);
 }
 
 async function assertSvgGraphicFallbackRenders(): Promise<void> {
@@ -365,6 +371,7 @@ async function compileDeckSourceToRenderModel(source: string, presentationId: st
     throw new Error(`Flex compose failed: ${compiled.error ?? 'missing input'}`);
   }
   const deckSpec = buildDeckSpecFromDirectInput(compiled.input);
+  await materializeIntrinsicTextBoxes(deckSpec);
   const slideSize = resolveSlideSizeInches(deckSpec.layout);
   const renderModel = new RenderModelMapper().fromGeneratedDeck(
     presentationId,
@@ -379,9 +386,9 @@ async function compileDeckSourceToRenderModel(source: string, presentationId: st
 
 async function assertSystemFontDecksRender(): Promise<void> {
   const runtimeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'slides-font-smoke-'));
+  const fontRuntime = createSystemFontResolutionRuntime({ runtimeDataDirectory: runtimeRoot });
   try {
-    const fontRuntime = createSystemFontCatalogQueryRuntime({ runtimeDataDirectory: runtimeRoot });
-    await fontRuntime.scan();
+    await fontRuntime.initialize();
     const [latin, eastAsian] = await Promise.all([
       fontRuntime.listFontFamilies({ script: 'latin', offset: 0, limit: 30 }),
       fontRuntime.listFontFamilies({ script: 'eastAsian', offset: 0, limit: 30 }),
@@ -442,7 +449,9 @@ async function assertSystemFontDecksRender(): Promise<void> {
       candidate.family === 'Avenir Next' && candidate.styles.includes('bold')
     ))?.family ?? cases[0].family;
     await assertTextClippingAuditRenders(clippingFontFamily);
+    await assertIntrinsicTextFidelity(clippingFontFamily, compileDeckSourceToRenderModel);
   } finally {
+    fontRuntime.dispose();
     await fs.rm(runtimeRoot, { recursive: true, force: true });
   }
 }
