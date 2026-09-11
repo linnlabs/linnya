@@ -1,9 +1,13 @@
-import type { CustomApiOnboardingErrorCode } from '@app/schemas/custom-api-onboarding';
+import type { CustomApiOnboardingErrorCode, ModelDiscoveryErrorCode } from '@app/schemas';
+
+export type CustomApiModelRegistrationErrorCode =
+  | CustomApiOnboardingErrorCode
+  | ModelDiscoveryErrorCode;
 
 export class CustomApiModelRegistrationError extends Error {
-  readonly code: CustomApiOnboardingErrorCode;
+  readonly code: CustomApiModelRegistrationErrorCode;
 
-  constructor(code: CustomApiOnboardingErrorCode, message: string) {
+  constructor(code: CustomApiModelRegistrationErrorCode, message: string) {
     super(message);
     this.name = 'CustomApiModelRegistrationError';
     this.code = code;

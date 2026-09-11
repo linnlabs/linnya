@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { CustomApiModelRegistrationCommand } from '@app/schemas/custom-api-onboarding';
+import type { CustomApiModelRegistrationRequest } from '@app/schemas/custom-api-onboarding';
 
 import type { CustomApiModelRegistrationGateway } from '../definitions/customApiModelRegistrationGateway';
 import { registerApiCustomModel } from './registerApiCustomModel';
 
 function recordingGateway(
-  commands: CustomApiModelRegistrationCommand[]
+  commands: CustomApiModelRegistrationRequest[]
 ): CustomApiModelRegistrationGateway {
   return {
     register: vi.fn(async command => {
@@ -17,7 +17,7 @@ function recordingGateway(
 
 describe('registerApiCustomModel', () => {
   it('只提交用户配置事实，允许内网 HTTP，不拼内部 route 或 Provider', async () => {
-    const commands: CustomApiModelRegistrationCommand[] = [];
+    const commands: CustomApiModelRegistrationRequest[] = [];
     const result = await registerApiCustomModel(
       {
         endpointModelId: 'company-gpt',
@@ -28,6 +28,7 @@ describe('registerApiCustomModel', () => {
         contextWindowTokens: '256000',
         maxOutputTokens: '16384',
         supportsImageInput: true,
+        providerName: '',
       },
       recordingGateway(commands)
     );
@@ -51,7 +52,7 @@ describe('registerApiCustomModel', () => {
   });
 
   it('按所选 API 格式补全纯域名后再提交', async () => {
-    const commands: CustomApiModelRegistrationCommand[] = [];
+    const commands: CustomApiModelRegistrationRequest[] = [];
     await expect(
       registerApiCustomModel(
         {
@@ -63,6 +64,7 @@ describe('registerApiCustomModel', () => {
           contextWindowTokens: '256000',
           maxOutputTokens: '16384',
           supportsImageInput: false,
+          providerName: '',
         },
         recordingGateway(commands)
       )
@@ -72,7 +74,7 @@ describe('registerApiCustomModel', () => {
   });
 
   it('允许 Key 留空，由 Host 决定能否复用已有 credential', async () => {
-    const commands: CustomApiModelRegistrationCommand[] = [];
+    const commands: CustomApiModelRegistrationRequest[] = [];
     await expect(
       registerApiCustomModel(
         {
@@ -84,6 +86,7 @@ describe('registerApiCustomModel', () => {
           contextWindowTokens: '200000',
           maxOutputTokens: '16384',
           supportsImageInput: false,
+          providerName: '',
         },
         recordingGateway(commands)
       )
@@ -94,7 +97,7 @@ describe('registerApiCustomModel', () => {
   });
 
   it('允许 OpenAI-compatible 模型声明图片输入语义能力', async () => {
-    const commands: CustomApiModelRegistrationCommand[] = [];
+    const commands: CustomApiModelRegistrationRequest[] = [];
     await expect(
       registerApiCustomModel(
         {
@@ -106,6 +109,7 @@ describe('registerApiCustomModel', () => {
           contextWindowTokens: '64000',
           maxOutputTokens: '8192',
           supportsImageInput: true,
+          providerName: '',
         },
         recordingGateway(commands)
       )
@@ -114,7 +118,7 @@ describe('registerApiCustomModel', () => {
   });
 
   it('本地字段校验失败时不调用后端', async () => {
-    const commands: CustomApiModelRegistrationCommand[] = [];
+    const commands: CustomApiModelRegistrationRequest[] = [];
     const gateway = recordingGateway(commands);
     const baseForm = {
       endpointModelId: 'model',
@@ -125,6 +129,7 @@ describe('registerApiCustomModel', () => {
       contextWindowTokens: '64000',
       maxOutputTokens: '8192',
       supportsImageInput: false,
+      providerName: '',
     };
 
     await expect(

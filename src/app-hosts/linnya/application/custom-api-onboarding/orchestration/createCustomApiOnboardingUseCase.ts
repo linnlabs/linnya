@@ -43,23 +43,10 @@ export function createCustomApiOnboardingUseCase(
         );
       }
 
-      const modelItems = command.models && command.models.length > 0
-        ? command.models
-        : [
-            {
-              endpoint_model_id: command.endpoint_model_id!,
-              display_name: command.display_name,
-              context_window_tokens: command.context_window_tokens!,
-              max_output_tokens: command.max_output_tokens!,
-              supports_image_input: command.supports_image_input!,
-            },
-          ];
-
       const modelIds: string[] = [];
       let sharedEndpointResourceId: string | undefined;
 
-      for (let i = 0; i < modelItems.length; i++) {
-        const item = modelItems[i];
+      for (const [index, item] of command.models.entries()) {
         const modelId = dependencies.idFactory.create();
         modelIds.push(modelId);
 
@@ -69,7 +56,7 @@ export function createCustomApiOnboardingUseCase(
         if (reusableEndpoint) {
           endpointSelection = { kind: 'existing', inference_endpoint_id: reusableEndpoint.id };
           endpointId = reusableEndpoint.endpoint_id;
-        } else if (i === 0) {
+        } else if (index === 0) {
           sharedEndpointResourceId = dependencies.idFactory.create();
           endpointId = `${binding.endpoint_id}:${sharedEndpointResourceId}`;
           endpointSelection = {
@@ -84,40 +71,26 @@ export function createCustomApiOnboardingUseCase(
             },
           };
         } else {
-          endpointId = `${binding.endpoint_id}:${sharedEndpointResourceId!}`;
+          if (!sharedEndpointResourceId) {
+            throw new Error('批量注册的共享 endpoint 尚未建立');
+          }
+          endpointId = `${binding.endpoint_id}:${sharedEndpointResourceId}`;
           endpointSelection = {
             kind: 'existing',
-            inference_endpoint_id: sharedEndpointResourceId!,
+            inference_endpoint_id: sharedEndpointResourceId,
           };
         }
 
-        const singleCommand = {
-          ...command,
-          endpoint_model_id: item.endpoint_model_id,
-          display_name: item.display_name,
-          context_window_tokens: item.context_window_tokens,
-          max_output_tokens: item.max_output_tokens,
-          supports_image_input: item.supports_image_input,
-        };
-
-        const plan = buildCustomApiModelRegistration({
+        const model = buildCustomApiModelRegistration({
           modelId,
-          endpointResourceId: sharedEndpointResourceId ?? reusableEndpoint?.id ?? 'endpoint',
-          command: singleCommand,
+          endpointId,
+          command,
+          model: item,
           binding,
-          reusableEndpoint,
         });
 
-        const finalModel = {
-          ...plan.model,
-          inference_route: {
-            ...plan.model.inference_route!,
-            endpoint_id: endpointId,
-          },
-        };
-
         try {
-          await dependencies.modelCatalog.registerUserModel(finalModel, endpointSelection);
+          await dependencies.modelCatalog.registerUserModel(model, endpointSelection);
         } catch (error: unknown) {
           console.error('[createCustomApiOnboardingUseCase] registerUserModel error', error);
           if (error instanceof CustomApiOnboardingError) throw error;

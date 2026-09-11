@@ -7,9 +7,10 @@ onboarding，不创建 `ProviderDefinition`、`ProviderAccount` 或模型 `provi
 
 ## 公开用例
 
-`registerModel` 只接收用户能理解的三种格式之一、HTTP/HTTPS
-URL、可选 Key、endpoint model id、展示名、容量和图片输入开关。HTTP
-adapter 用共享 strict schema 先完成字段准入与 URL 规范化。纯域名会按所选 API
+HTTP adapter 接收用户能理解的三种格式之一、HTTP/HTTPS
+URL、可选 Key，以及单个模型字段或批量模型列表。共享 strict schema 先完成字段准入与 URL
+规范化，再把两种 wire request 收敛成带非空 `models` 列表和明确 `provider_name` 的 Host
+command；`registerModel` 只接收这份已准入命令。纯域名会按所选 API
 格式补全默认 `/v1` 基线路径；只要用户填写了路径，就保留该显式网关路径，不再猜测或改写。
 
 内部 route profile、auth profile、endpoint identity 和 capability
@@ -19,7 +20,8 @@ command。
 ## 固定流程
 
 ```text
-解析 CustomApiModelRegistrationCommand
+解析 CustomApiModelRegistrationRequest
+  -> 归一化为 CustomApiModelRegistrationCommand
   -> 读取该 API 格式的 Host runtime binding
   -> 创建或复用内部 InferenceEndpoint
   -> 投影 User ModelConfig 与 typed route

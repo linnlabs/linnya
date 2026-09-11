@@ -1,6 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import express from 'express';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ModelDiscoveryResponseSchema } from '@app/schemas';
 import {
   CustomApiModelRegistrationResponseSchema,
   CustomApiOnboardingErrorResponseSchema,
@@ -64,11 +65,15 @@ describe('custom API onboarding router', () => {
       api_format: 'openai_responses',
       base_url: 'http://models.intranet:8080/v1',
       api_key: 'secret-value',
-      endpoint_model_id: 'company-gpt',
       provider_name: 'models.intranet',
-      context_window_tokens: 256000,
-      max_output_tokens: 16384,
-      supports_image_input: true,
+      models: [
+        {
+          endpoint_model_id: 'company-gpt',
+          context_window_tokens: 256000,
+          max_output_tokens: 16384,
+          supports_image_input: true,
+        },
+      ],
     });
   });
 
@@ -105,7 +110,7 @@ describe('custom API onboarding router', () => {
         JSON.stringify({
           data: [{ id: 'gpt-4o' }],
         }),
-        { status: 200, headers: { 'content-type': 'application/json' } },
+        { status: 200, headers: { 'content-type': 'application/json' } }
       );
 
     const app = express();
@@ -131,7 +136,7 @@ describe('custom API onboarding router', () => {
     });
 
     expect(response.status).toBe(200);
-    const body = (await response.json()) as any;
+    const body = ModelDiscoveryResponseSchema.parse(await response.json());
     expect(body.models).toHaveLength(1);
     expect(body.models[0]).toMatchObject({
       id: 'gpt-4o',

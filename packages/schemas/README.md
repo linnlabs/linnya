@@ -27,6 +27,7 @@
 - Model inference 的 language/embedding/reranking、document OCR 与音频转写跨端 route 合同；完整模块边界见 [Model Inference README](../../src/domains/model-inference/README.md)。
 - Provider Catalog 的公开生成资产和 HTTP list/get read model；Host 私有 runtime binding 不属于共享合同。
 - Provider Account 授权状态、授权结果和脱敏错误的 HTTP 合同；OAuth token 与刷新凭据不属于共享合同。
+- Custom API 注册的 strict wire request、Host admission command 与模型发现 DTO；request 和 admission 后的类型不得混用。
 
 ## 2. 边界
 
@@ -80,6 +81,7 @@
 | `src/model-inference/` | language、embedding、reranking 的严格 typed route |
 | `src/provider-catalog/` | Provider/模型公开资料、generation 与 HTTP list/get DTO；不含 package/route/auth |
 | `src/provider-account/` | Provider 账号授权状态、结果和脱敏错误 DTO；不含 token/refresh secret |
+| `src/custom-api-onboarding/` | Custom API 单模型/批量 wire request、规范化 Host command 与错误合同 |
 | `src/document-ocr/` | Paddle layout/job 文档 OCR 的严格 typed route |
 | `src/transcription/` | OpenAI Audio 与 DashScope Qwen ASR 的严格 typed route |
 | `src/conversation-control/` | CLI ↔ App 的版本化 command、response、status frame、handshake 与私有连接描述合同；不含业务编排和 HTTP 实现 |

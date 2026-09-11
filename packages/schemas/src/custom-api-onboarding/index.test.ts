@@ -35,11 +35,15 @@ describe('CustomApiModelRegistrationCommandSchema', () => {
       api_format: 'openai_responses',
       base_url: 'http://models.intranet:8080/v1',
       api_key: 'secret-value',
-      endpoint_model_id: 'company-gpt',
       provider_name: 'models.intranet',
-      context_window_tokens: 256_000,
-      max_output_tokens: 16_384,
-      supports_image_input: true,
+      models: [
+        {
+          endpoint_model_id: 'company-gpt',
+          context_window_tokens: 256_000,
+          max_output_tokens: 16_384,
+          supports_image_input: true,
+        },
+      ],
     });
   });
 

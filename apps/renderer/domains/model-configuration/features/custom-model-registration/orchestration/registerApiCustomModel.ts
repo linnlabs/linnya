@@ -1,6 +1,6 @@
 import {
   normalizeCustomApiBaseUrl,
-  type CustomApiModelRegistrationCommand,
+  type CustomApiModelRegistrationRequest,
 } from '@app/schemas/custom-api-onboarding';
 
 import type { ApiCustomModelForm } from '../definitions/customModelRegistrationForm';
@@ -22,7 +22,7 @@ export async function registerApiCustomModel(
     const baseUrl = normalizeCustomApiBaseUrl(form.customApiFormat, form.baseUrl);
     if (!baseUrl) return { ok: false, issue: 'base_url_invalid' };
 
-    const command: CustomApiModelRegistrationCommand = {
+    const command: CustomApiModelRegistrationRequest = {
       api_format: form.customApiFormat,
       base_url: baseUrl,
       ...(providerName ? { provider_name: providerName } : {}),
@@ -45,7 +45,7 @@ export async function registerApiCustomModel(
   const baseUrl = normalizeCustomApiBaseUrl(form.customApiFormat, form.baseUrl);
   if (!baseUrl) return { ok: false, issue: 'base_url_invalid' };
 
-  const command: CustomApiModelRegistrationCommand = {
+  const command: CustomApiModelRegistrationRequest = {
     api_format: form.customApiFormat,
     base_url: baseUrl,
     endpoint_model_id: endpointModelId,

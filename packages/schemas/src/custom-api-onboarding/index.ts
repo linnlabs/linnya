@@ -114,14 +114,27 @@ export const CustomApiModelRegistrationCommandSchema = z
       });
       return z.NEVER;
     }
-    const hasBatch = command.models && command.models.length > 0;
-    const hasSingle =
-      Boolean(command.endpoint_model_id) &&
+    let models: [CustomApiModelItem, ...CustomApiModelItem[]];
+    const batchModels = command.models;
+    const firstBatchModel = batchModels?.[0];
+    if (batchModels && firstBatchModel) {
+      models = [firstBatchModel, ...batchModels.slice(1)];
+    } else if (
+      command.endpoint_model_id !== undefined &&
       command.context_window_tokens !== undefined &&
       command.max_output_tokens !== undefined &&
-      command.supports_image_input !== undefined;
-
-    if (!hasBatch && !hasSingle) {
+      command.supports_image_input !== undefined
+    ) {
+      models = [
+        {
+          endpoint_model_id: command.endpoint_model_id,
+          context_window_tokens: command.context_window_tokens,
+          max_output_tokens: command.max_output_tokens,
+          supports_image_input: command.supports_image_input,
+          ...(command.display_name ? { display_name: command.display_name } : {}),
+        },
+      ];
+    } else {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['models'],
@@ -133,9 +146,11 @@ export const CustomApiModelRegistrationCommandSchema = z
     const providerName = command.provider_name ?? extractDefaultProviderNameFromBaseUrl(baseUrl);
 
     return {
-      ...command,
+      api_format: command.api_format,
       base_url: baseUrl,
       provider_name: providerName,
+      ...(command.api_key ? { api_key: command.api_key } : {}),
+      models,
     };
   });
 
@@ -170,7 +185,13 @@ export function projectCustomApiFormatImageInputSupport(
   );
 }
 
-export type CustomApiModelRegistrationCommand = z.infer<
+/** Renderer 与 HTTP client 提交的 wire request；默认 provider 等事实由 Host admission 补齐。 */
+export type CustomApiModelRegistrationRequest = z.input<
+  typeof CustomApiModelRegistrationCommandSchema
+>;
+
+/** Schema admission 后的规范化命令；Host 只处理非空模型列表。 */
+export type CustomApiModelRegistrationCommand = z.output<
   typeof CustomApiModelRegistrationCommandSchema
 >;
 export type CustomApiModelRegistrationResponse = z.infer<
