@@ -8,7 +8,7 @@ import { describe, it, expect, vi } from 'vitest';
 // 这里将其 mock 掉，避免依赖真实的 ProseMirror 文档结构。
 vi.mock('../../../position/NodeFinder', () => {
   return {
-    NodeFinder: vi.fn().mockImplementation(() => {
+    NodeFinder: vi.fn().mockImplementation(function MockNodeFinder() {
       return {
         // 返回一个伪造的节点信息，pos 任意给一个非 0 的整数即可
         findNodeById: () => ({ pos: 5 }),

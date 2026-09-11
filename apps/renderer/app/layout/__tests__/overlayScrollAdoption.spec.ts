@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { createApp, defineComponent, h, nextTick, ref } from 'vue';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import type {
   OverlayScrollViewportController,
@@ -11,12 +11,12 @@ import ConversationChatSurface from '@/domains/conversation/ui/ConversationChatS
 import ConversationSidePane from '@/app/layout/chat/ConversationSidePane.vue';
 
 interface MockOverlayController extends OverlayScrollViewportController {
-  init: ReturnType<typeof vi.fn>;
-  update: ReturnType<typeof vi.fn>;
-  scheduleUpdate: ReturnType<typeof vi.fn>;
-  destroy: ReturnType<typeof vi.fn>;
-  getViewport: ReturnType<typeof vi.fn>;
-  getInstance: ReturnType<typeof vi.fn>;
+  init: Mock<OverlayScrollViewportController['init']>;
+  update: Mock<OverlayScrollViewportController['update']>;
+  scheduleUpdate: Mock<OverlayScrollViewportController['scheduleUpdate']>;
+  destroy: Mock<OverlayScrollViewportController['destroy']>;
+  getViewport: Mock<OverlayScrollViewportController['getViewport']>;
+  getInstance: Mock<OverlayScrollViewportController['getInstance']>;
 }
 
 interface OverlayCall {

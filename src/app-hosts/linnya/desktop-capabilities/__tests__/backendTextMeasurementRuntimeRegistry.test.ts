@@ -22,13 +22,15 @@ describe('Backend text measurement runtime registry', () => {
 });
 
 function createDependencies(): BackendTextMeasurementRuntimeDependencies {
+  const worker: BackendTextMeasurementRuntimeDependencies['worker'] = Object.freeze({
+    availability: { available: true as const },
+    measureBatch: vi.fn<BackendTextMeasurementRuntimeDependencies['worker']['measureBatch']>(),
+    measureClusterAdvancesBatch:
+      vi.fn<NonNullable<BackendTextMeasurementRuntimeDependencies['worker']['measureClusterAdvancesBatch']>>(),
+    touch: vi.fn<BackendTextMeasurementRuntimeDependencies['worker']['touch']>(),
+  });
   const dependencies: BackendTextMeasurementRuntimeDependencies = {
-    worker: Object.freeze({
-      availability: { available: true },
-      measureBatch: vi.fn(),
-      measureClusterAdvancesBatch: vi.fn(),
-      touch: vi.fn(),
-    }),
+    worker,
     useBrowserPretext: true,
     useHarfBuzz: true,
   };

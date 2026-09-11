@@ -6,7 +6,7 @@ import Text from '@tiptap/extension-text'
 import { Node } from '@tiptap/core'
 import { Editor as VueTiptapEditor } from '@tiptap/vue-3'
 import { computed, ref } from 'vue'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi, type Mock } from 'vitest'
 import type { BlockVersion, CreateBlockVersionParams } from '../../../../../shared/ipc/blockHistoryGateway'
 import type { BlockHistoryStore, BlockHistoryUiState } from '../store/useBlockHistoryStore'
 import { restoreBlockHistoryVersionForRootBlock } from './restoreBlockHistoryVersionForRootBlock'
@@ -104,16 +104,16 @@ function createDefaultUiState(): BlockHistoryUiState {
 }
 
 function createStore(versions: readonly BlockVersion[]): BlockHistoryStore & {
-  createVersionSpy: ReturnType<typeof vi.fn<[CreateBlockVersionParams], Promise<BlockVersion | null>>>
-  exitHistoryModeSpy: ReturnType<typeof vi.fn<[string], void>>
+  createVersionSpy: Mock<(params: CreateBlockVersionParams) => Promise<BlockVersion | null>>
+  exitHistoryModeSpy: Mock<(blockId: string) => void>
 } {
   const versionsByBlock = ref<Record<string, BlockVersion[]>>({
     'root-a': [...versions],
   })
   const uiStateByBlock = ref<Record<string, BlockHistoryUiState>>({})
 
-  const createVersionSpy = vi.fn<[CreateBlockVersionParams], Promise<BlockVersion | null>>(
-    async (params) => {
+  const createVersionSpy = vi.fn(
+    async (params: CreateBlockVersionParams): Promise<BlockVersion | null> => {
       const version = createVersion({
         id: 'created-current-version',
         content_json: params.contentJson,
@@ -126,7 +126,7 @@ function createStore(versions: readonly BlockVersion[]): BlockHistoryStore & {
       return version
     }
   )
-  const exitHistoryModeSpy = vi.fn<[string], void>()
+  const exitHistoryModeSpy = vi.fn<(blockId: string) => void>()
 
   return {
     versionsByBlock,
