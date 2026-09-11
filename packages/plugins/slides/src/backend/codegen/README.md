@@ -121,7 +121,9 @@ renderer source selection
   代替 Chart、TableCell、rich run、Image shadow、Theme 等可写结构。
 - `chartData/tableData` 与旧 Text aliases 只用于已有 source
   admission；新示例和 skill 不主动生成兼容写法。
-- 图表样式通过 `chartStyle` 表达图例、轴标签、数据标签、网格线、绘图区背景和折线 pt 宽度；表格顶层
+- 图表的轴范围/单位、标签、堆叠、系列样式与显式双轴组合由 `LayoutChartControls` / `LayoutChartSeriesInput`
+  表达，输入统一经过 `inputParsers/chartParsers.ts`。`chartStyle` 表达字体、字号、颜色和折线 pt 宽度；
+  原生导出和预览共用的解析及边界见 [`engine/chart`](../engine/chart/README.md)。表格顶层
   `border` 只表达整表统一的纯色边框与 pt 粗细。两者都必须进入 DeckSpec 和
   RenderModel 正式字段，再分别投影到 ECharts 与 PptxGenJS；不得塞进
   `chartOptions/tableOptions` 绕过跨端合同。

@@ -14,6 +14,7 @@ backend/engine/
 ├── StructuredCompiler.ts      # structured slide -> PPTX
 ├── FreeformCompiler.ts        # freeform slide -> PPTX
 ├── assets/                    # 图片来源解析、预取和写入前归一化
+├── chart/                     # 图表公开控制、原生系列分组与细粒度样式物化
 ├── coordinator/               # engine 内 query、导入稿 patch、生成校验
 ├── deck/                      # 默认 DeckSpec builder
 ├── execution/                 # engine 执行 adapter
@@ -94,6 +95,8 @@ PresentationInfo 或 RenderModel
 - 图片和 SVG Graphic 的 `cover` / `contain` 比例几何统一由 shared `render-geometry/imageGeometry.ts` 计算；PPTX 侧从已物化图片字节或 SVG viewBox 读取原始尺寸并转换为 `srcRect` 或居中图片框，禁止把目标框尺寸重复作为原图尺寸传给 PptxGenJS。
 - 生产 PPTX 编译只能经 `features/presentationBuildExecution` 进入 build Worker；Worker DTO 禁止携带未解析文件路径。
 - 新文本布局语义先改 shared `textLayout`，engine 只负责技术适配与测量接线。
+- 图表控制先改 shared authoring 类型与 inputParsers，再接 [`chart/`](./chart/README.md)、RenderModel 和 ECharts；
+  不为逐系列样式拆分原生图表组，不在 renderer 猜测系列所属坐标轴。
 - 新 PPTX 读字段放 `parser/xml/`，并按需贯通 `PresentationInfo`、canonical 与 render-model。
 - 新 quality 规则放 `quality/`，消费 shared DTO 或明确 lint input，不直接读取 PPTX zip。
 

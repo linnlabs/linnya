@@ -139,7 +139,7 @@ export const CHART_PRESETS = {
   // 默认对齐前端 ECharts pie 的 label 形态：
   //   外引线 + "类别: 数值" + 底部图例
   // 不开 showPercent，避免与 showValue 叠加导致 PPT 端出现 "58 / 58%" 双行。
-  // 百分比标签目前只属于内部 DirectCompose 选项，不作为 deck.js 的公开语法。
+  // deck.js 可用 dataLabelContent 显式改为 value / percentage / category。
 
   'pie': {
     chartType: 'pie',
@@ -227,6 +227,7 @@ export function buildChartOptionsFromParams(params: {
   const simpleOpts: Record<string, unknown> = {};
   if (params.showDataLabels != null) {
     simpleOpts.showValue = params.showDataLabels;
+    if (!params.showDataLabels) { simpleOpts.showPercent = false; simpleOpts.showLabel = false; }
   }
   if (params.dataLabelFormat) {
     simpleOpts.dataLabelFormatCode = params.dataLabelFormat;
@@ -235,6 +236,7 @@ export function buildChartOptionsFromParams(params: {
     simpleOpts.showLegend = true;
     simpleOpts.legendPos = mapLegendPosition(params.legendPosition);
   }
+  if (params.legendPosition === 'none') simpleOpts.showLegend = false;
 
   const merged = {
     ...preset?.options,

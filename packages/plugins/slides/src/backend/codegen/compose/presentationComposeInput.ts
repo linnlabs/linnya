@@ -58,7 +58,6 @@ import {
   type ParseWarning,
 } from './inputParsers/parseContext.js';
 import {
-  parseChartStyle,
   parseImageVisualShadow,
   parseTableBorder,
   parseTextStyle,
@@ -72,6 +71,8 @@ import {
   parseTableDataLike,
 } from './inputParsers/dataParsers.js';
 import { resolveChartPreset, buildChartOptionsFromParams } from './chartPresets.js';
+import type { LayoutChartControls } from '@plugin/slides/shared';
+import { parseChartControls, parseChartStyle, validateChartSemantics } from './inputParsers/chartParsers.js';
 
 // ─── 公共解析入口 ──────────────────────────────────────────────────────────
 
@@ -96,7 +97,7 @@ export interface DirectSlideInput {
   notes?: string;
 }
 
-export interface DirectElementInput {
+export interface DirectElementInput extends LayoutChartControls {
   type: 'text' | 'shape' | 'image' | 'svgGraphic' | 'formula' | 'chart' | 'table';
   position: Box;
   /* text / shape 通用：纯字符串或富文本/公式 run 数组。 */
@@ -449,6 +450,8 @@ function parseElementInput(
     return { error: `${prefix}.chartStyle: ${chartStyleResult.error}` };
   }
   const chartStyle = chartStyleResult?.value;
+  const chartControls = type === 'chart' ? parseChartControls(value) : { value: {} };
+  if ('error' in chartControls) return { error: `${prefix}: ${chartControls.error}` };
   const tableBorder = type === 'table' && value.border != null
     ? parseTableBorder(value.border) ?? undefined
     : undefined;
@@ -548,6 +551,7 @@ function parseElementInput(
     : value.decorative;
 
   const element: DirectElementInput = {
+    ...chartControls.value,
     type,
     position,
     content: isNonEmptyString(value.content) ? value.content : undefined,
@@ -775,8 +779,11 @@ function buildStructuredElement(el: DirectElementInput): StructuredElement {
       };
     case 'chart': {
       const preset = el.chartPreset ? resolveChartPreset(el.chartPreset) : undefined;
-      return {
+      const controls = parseChartControls(el);
+      if ('error' in controls) throw new Error(`Chart: ${controls.error}`);
+      const chart: Extract<StructuredElement, { type: 'chart' }> = {
         type: 'chart',
+        ...controls.value,
         chartType: el.chartType ?? preset?.chartType ?? 'bar',
         data: {
           categories: el.categories ?? [],
@@ -793,6 +800,8 @@ function buildStructuredElement(el: DirectElementInput): StructuredElement {
         chartStyle: el.chartStyle,
         ...sourceTracking,
       };
+      validateChartSemantics(chart);
+      return chart;
     }
     case 'table':
       return {

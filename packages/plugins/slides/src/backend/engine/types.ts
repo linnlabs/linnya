@@ -20,6 +20,7 @@ import type {
 } from '@plugin/slides/shared';
 import type { PptxPaintCompileContext } from './visual/pptxPaintPatchPlan';
 import type { FormulaPptxCompileContext } from './mathFormula/pptx/formulaPptxPlan';
+import type { ChartPptxContext } from './chart/chartPptx';
 
 export interface SlidesAssetResolveContext {
   readonly documentId?: string;
@@ -85,7 +86,8 @@ export interface StructuredCompilerPort {
     theme?: ThemeSpec,
     paintContext?: PptxPaintCompileContext,
     svgGraphicContext?: SvgGraphicCompileContext,
-    formulaContext?: FormulaPptxCompileContext
+    formulaContext?: FormulaPptxCompileContext,
+    chartContext?: ChartPptxContext,
   ): void;
   compileDeck(deckSpec: DeckSpec): Promise<Buffer>;
 }

@@ -25,6 +25,7 @@ import {
 } from './RenderModelShared.js';
 import { resolveTextStyleLineSpacing, textStyleToRuns } from './RenderModelText.js';
 import type { RenderBaseNode, RenderDefaultsContext } from './RenderModelShared.js';
+import { resolveChartOptions } from '../../chart/chartOptions';
 
 export function resolveTextStyle(
   element: StructuredElement | undefined,
@@ -54,7 +55,7 @@ export function mapStructuredChartNode(
   element: Extract<StructuredElement, { type: 'chart' }>,
   defaults: RenderDefaultsContext,
 ): ChartRenderNode {
-  const opts = (element.options ?? {}) as Record<string, unknown>;
+  const opts: Record<string, unknown> = { ...resolveChartOptions(element) };
   // barDir 决定横向/纵向：'bar' = 横向，'col'/默认 = 纵向
   const rawType = resolveGeneratedRenderChartType(element.chartType);
   const chartType = (rawType === 'column' && opts.barDir === 'bar')
@@ -75,21 +76,32 @@ export function mapStructuredChartNode(
     chartType,
     categories: element.data.categories,
     series: element.data.series.map((series, index) => ({
+      ...series,
       name: series.name,
       values: series.values,
-      color: defaults.chartPalette[index % defaults.chartPalette.length],
+      chartType: series.chartType === 'bar' ? 'column' : series.chartType,
+      color: series.color ?? (chartType === 'pie' || chartType === 'doughnut' ? undefined : defaults.chartPalette[index % defaults.chartPalette.length]),
     })),
     palette: defaults.chartPalette,
-    legend: resolveChartLegendStyle(element.options, element.chartStyle?.legendColor, defaults.minorFontFamily),
+    legend: resolveChartLegendStyle(opts, element.chartStyle?.legendColor, defaults.minorFontFamily),
     plotBackgroundColor: element.chartStyle?.plotBackgroundColor,
     seriesLineWidth: element.chartStyle?.seriesLineWidth,
     stacking: resolveChartStacking(opts),
     axes: resolveChartAxes(opts, chartType, baseLabelStyle, element.chartStyle),
-    dataLabels: resolveChartDataLabels(opts, element.chartStyle?.dataLabelColor),
+    dataLabels: resolveChartDataLabels(opts, element.chartStyle?.dataLabelColor, element.data.series.some(s => s.showDataLabels === true)),
     gridlines: resolveChartGridlines(opts, chartType, element.chartStyle?.gridlineColor),
     labelStyle: baseLabelStyle,
     ...(hints ? { pptxHints: hints } : {}),
   };
+
+  if (node.axes && element.secondaryValueAxis) {
+    const axis = element.secondaryValueAxis;
+    const { numberFormat, ...controls } = axis;
+    node.axes.y2 = {
+      ...controls, format: numberFormat, labelStyle: node.axes.y?.labelStyle,
+    };
+  }
+  if (element.dataLabelContent && node.dataLabels) node.dataLabels.content = element.dataLabelContent;
 
   return node;
 }
@@ -123,35 +135,48 @@ function resolveChartAxes(
     chartStyle?.valueAxisLabelColor ?? chartStyle?.axisLabelColor,
     'valAxisLabelColor',
   );
+  const categoryAxis = {
+    visible: catVisible, labelStyle: categoryLabelStyle,
+    title: typeof opts.catAxisTitle === 'string' ? opts.catAxisTitle : undefined,
+    labelRotation: typeof opts.catAxisLabelRotate === 'number' ? opts.catAxisLabelRotate : undefined,
+  };
+  const valueAxis = {
+    visible: valVisible, min: valMin, max: valMax, labelStyle: valueLabelStyle,
+    title: typeof opts.valAxisTitle === 'string' ? opts.valAxisTitle : undefined,
+    format: typeof opts.valAxisLabelFormatCode === 'string' ? opts.valAxisLabelFormatCode : undefined,
+    majorUnit: typeof opts.valAxisMajorUnit === 'number' ? opts.valAxisMajorUnit : undefined,
+  };
 
   if (chartType === 'bar') {
     return {
-      x: { visible: valVisible, min: valMin, max: valMax, labelStyle: valueLabelStyle },
-      y: { visible: catVisible, labelStyle: categoryLabelStyle },
+      x: valueAxis,
+      y: categoryAxis,
     };
   }
 
   return {
-    x: { visible: catVisible, labelStyle: categoryLabelStyle },
-    y: { visible: valVisible, min: valMin, max: valMax, labelStyle: valueLabelStyle },
+    x: categoryAxis,
+    y: valueAxis,
   };
 }
 
 function resolveChartDataLabels(
   opts: Record<string, unknown>,
   colorOverride?: string,
+  hasSeriesLabels = false,
 ): RenderChartDataLabels | undefined {
-  if (opts.showValue !== true) return undefined;
-
+  if (!hasSeriesLabels && opts.showValue !== true && opts.showPercent !== true && opts.showLabel !== true) return undefined;
   const posMap: Record<string, RenderChartDataLabels['position']> = {
     outEnd: 'outside',
     inEnd: 'inside',
     ctr: 'center',
     inBase: 'inside',
+    t: 'outside', b: 'inside',
   };
 
   return {
-    visible: true,
+    visible: opts.showValue === true || opts.showPercent === true || opts.showLabel === true,
+    content: opts.showPercent === true ? 'percentage' : opts.showValue === false && opts.showLabel === true ? 'category' : undefined,
     format: typeof opts.dataLabelFormatCode === 'string' ? opts.dataLabelFormatCode : undefined,
     position: typeof opts.dataLabelPosition === 'string'
       ? (posMap[opts.dataLabelPosition] ?? 'outside')
@@ -172,8 +197,8 @@ function resolveChartGridlines(
   chartType: RenderChartType,
   colorOverride?: string,
 ): RenderChartGridlines | undefined {
-  const catHidden = opts.catGridLine === false;
-  const valHidden = opts.valGridLine === false;
+  const catHidden = opts.catGridLine === false || readGridlineHidden(opts.catGridLine);
+  const valHidden = opts.valGridLine === false || readGridlineHidden(opts.valGridLine);
   const catColor = colorOverride ?? readGridlineColor(opts.catGridLine);
   const valColor = colorOverride ?? readGridlineColor(opts.valGridLine);
   if (!catHidden && !valHidden && !catColor && !valColor) return undefined;
@@ -426,6 +451,10 @@ function readGridlineColor(value: unknown): string | undefined {
   if (!value || typeof value !== 'object' || !('color' in value)) return undefined;
   const color = Reflect.get(value, 'color');
   return typeof color === 'string' ? normalizeHexColor(color) : undefined;
+}
+
+function readGridlineHidden(value: unknown): boolean {
+  return value != null && typeof value === 'object' && 'style' in value && value.style === 'none';
 }
 
 function toRenderStroke(

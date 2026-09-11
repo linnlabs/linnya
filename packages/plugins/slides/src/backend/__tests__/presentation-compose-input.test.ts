@@ -159,11 +159,11 @@ describe('presentationComposeInput', () => {
         position: { x: 0, y: 0, w: 5, h: 3 },
         categories: ['A'],
         series: [{ name: 'S', values: [1] }],
-        chartStyle: { axisLabelColor: '#475569', axisLabelFontSize: 10 },
+        chartStyle: { axisLabelColor: '#475569', arbitraryEchartsOption: 10 },
       }] }],
     });
     expect(chart.error).toContain('chartStyle');
-    expect(chart.error).toContain('axisLabelFontSize');
+    expect(chart.error).toContain('arbitraryEchartsOption');
 
     const table = readDirectComposeInput({
       title: 'Broken Table Border',

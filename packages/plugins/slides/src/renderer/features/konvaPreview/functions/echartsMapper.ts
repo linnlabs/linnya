@@ -15,7 +15,11 @@ import type {
   ChartRenderNode,
   RenderChartLabelStyle,
   RenderChartType,
+  RenderChartSeries,
+  RenderChartAxis,
 } from '../../../types/render';
+import { formatChartValue as formatDataLabelValue } from '@plugin/slides/shared/chart/numberFormat';
+export { formatChartValue as formatDataLabelValue } from '@plugin/slides/shared/chart/numberFormat';
 import { CHART_DEFAULT_LABEL_FONT_SIZE_PT } from '@plugin/slides/shared/renderModel';
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../shared/constants';
 
@@ -103,9 +107,21 @@ function buildCartesianChart(
     const item: Record<string, unknown> = {
       name: s.name,
       type: seriesType,
-      data: values,
+      data: values.map((value, point) => {
+        const color = s.pointColors?.[point];
+        const insideEnd = seriesType === 'bar' && node.dataLabels?.position === 'inside';
+        if (color == null && !insideEnd) return value;
+        return {
+          value,
+          ...(color != null ? { itemStyle: { color } } : {}),
+          // inEnd 沿柱的值方向定位，负值不能仍贴上边/右边。
+          ...(insideEnd ? { label: { position: isBar
+            ? value >= 0 ? 'insideRight' : 'insideLeft'
+            : value >= 0 ? 'insideTop' : 'insideBottom' } } : {}),
+        };
+      }),
       itemStyle: { color: palette[idx % palette.length] },
-      label: buildSeriesLabel(node, isBar, isStacked),
+      label: buildSeriesLabel(node, isBar, isStacked, s),
     };
 
     if (isStacked) item.stack = 'total';
@@ -123,10 +139,10 @@ function buildCartesianChart(
 
     // 折线图样式
     if (seriesType === 'line') {
-      item.symbol = 'circle';
+      item.symbol = s.marker ?? 'circle';
       item.symbolSize = 6;
-      const lineWidth = (node.seriesLineWidth ?? hints?.lineSize ?? PPT.lineWidthPt) * POINTS_TO_PX;
-      item.lineStyle = { width: lineWidth };
+      const lineWidth = (s.lineWidth ?? node.seriesLineWidth ?? hints?.lineSize ?? PPT.lineWidthPt) * POINTS_TO_PX;
+      item.lineStyle = { width: lineWidth, type: s.lineDash === 'dot' ? 'dotted' : s.lineDash === 'dash' ? 'dashed' : 'solid' };
       if (hints?.lineSmooth) {
         item.smooth = true;
       }
@@ -150,6 +166,7 @@ function buildCartesianChart(
     || (hints?.catAxisOrientation == null && isBar);
 
   const categoryAxis: Record<string, unknown> = {
+    show: catAxisConfig?.visible !== false,
     type: 'category',
     data: node.categories,
     axisLine: { show: true, lineStyle: { color: PPT.axisLineColor } },
@@ -159,7 +176,12 @@ function buildCartesianChart(
       color: catFont.color ?? PPT.labelColor,
       fontSize: catFont.fontSize,
       fontFamily: catFont.fontFamily,
+      rotate: catAxisConfig?.labelRotation,
     },
+    name: catAxisConfig?.title,
+    nameLocation: 'middle',
+    nameGap: catFont.fontSize * 2.5,
+    nameTextStyle: { color: catFont.color ?? PPT.labelColor, fontSize: catFont.fontSize, fontFamily: catFont.fontFamily },
     ...(shouldInverse ? { inverse: true } : {}),
   };
 
@@ -170,6 +192,7 @@ function buildCartesianChart(
     node.labelStyle,
   );
   const valueAxis: Record<string, unknown> = {
+    show: valAxisConfig?.visible !== false,
     type: 'value',
     axisLine: { show: true, lineStyle: { color: PPT.axisLineColor } },
     axisLabel: {
@@ -192,9 +215,15 @@ function buildCartesianChart(
 
   if (valAxisConfig?.min != null) valueAxis.min = valAxisConfig.min;
   if (valAxisConfig?.max != null) valueAxis.max = valAxisConfig.max;
+  Object.assign(valueAxis, valueAxisDetails(valAxisConfig, node));
   if (isPercent) {
-    valueAxis.min = 0;
-    valueAxis.max = 100;
+    valueAxis.min = node.series.some(s => s.values.some(v => v < 0)) ? -100 : 0;
+    valueAxis.max = node.series.some(s => s.values.some(v => v > 0)) ? 100 : 0;
+    if (valAxisConfig?.majorUnit) valueAxis.interval = valAxisConfig.majorUnit * 100;
+    valueAxis.axisLabel = {
+      ...axisLabelConfig(valAxisConfig, node),
+      formatter: (value: number) => formatDataLabelValue(value / 100, valAxisConfig?.format ?? '0%'),
+    };
   }
 
   // ── Combo 双 Y 轴 ──
@@ -206,24 +235,19 @@ function buildCartesianChart(
     yAxis = categoryAxis;
   } else if (node.chartType === 'combo' && node.axes?.y2) {
     xAxis = categoryAxis;
-    const y2Font = resolveFontStyle(node.axes.y2.labelStyle, node.labelStyle);
     yAxis = [
       valueAxis,
       {
         type: 'value',
         axisLine: { show: true, lineStyle: { color: PPT.axisLineColor } },
-        axisLabel: {
-          show: node.axes.y2.visible !== false,
-          color: y2Font.color ?? PPT.labelColor,
-          fontSize: y2Font.fontSize,
-        },
         splitLine: { show: false },
+        ...valueAxisDetails(node.axes.y2, node),
       },
     ];
-    // 把非 bar/column 系列分配到第二 Y 轴
+    // 轴是数据语义，不从折线/柱状类型推断。
     series.forEach((s, idx) => {
       const orig = node.series[idx];
-      if (orig?.chartType === 'line' || orig?.chartType === 'area') {
+      if (orig?.axis === 'secondary') {
         s.yAxisIndex = 1;
       }
     });
@@ -246,6 +270,26 @@ function buildCartesianChart(
 
 // ─── 饼图 / 甜甜圈 ──────────────────────────────────────────────────────
 
+function axisLabelConfig(axis: RenderChartAxis | undefined, node: ChartRenderNode): Record<string, unknown> {
+  const font = resolveFontStyle(axis?.labelStyle, node.labelStyle);
+  return {
+    show: axis?.visible !== false, color: font.color ?? PPT.labelColor,
+    fontSize: font.fontSize, fontFamily: font.fontFamily,
+    ...(axis?.format ? { formatter: (value: number) => formatDataLabelValue(value, axis.format ?? 'General') } : {}),
+  };
+}
+
+function valueAxisDetails(axis: RenderChartAxis | undefined, node: ChartRenderNode): Record<string, unknown> {
+  const font = resolveFontStyle(axis?.labelStyle, node.labelStyle);
+  return {
+    show: axis?.visible !== false,
+    name: axis?.title, nameTextStyle: { color: font.color ?? PPT.labelColor, fontSize: font.fontSize, fontFamily: font.fontFamily },
+    min: axis?.min, max: axis?.max, interval: axis?.majorUnit,
+    axisLabel: axisLabelConfig(axis, node),
+    ...(axis?.showGridlines != null ? { splitLine: { show: axis.showGridlines } } : {}),
+  };
+}
+
 function buildPieChart(
   node: ChartRenderNode,
   palette: string[],
@@ -257,12 +301,12 @@ function buildPieChart(
   const data = node.categories.map((name, idx) => ({
     name,
     value: Math.max(firstSeries.values[idx] ?? 0, 0),
-    itemStyle: { color: palette[idx % palette.length] },
+    itemStyle: { color: firstSeries.pointColors?.[idx] ?? firstSeries.color ?? palette[idx % palette.length] },
   }));
 
   const legendPosition = node.legend?.position ?? 'right';
-  const dlVisible = node.dataLabels?.visible === true;
-  const dlFormat = node.dataLabels?.format;
+  const dlVisible = firstSeries.showDataLabels ?? node.dataLabels?.visible === true;
+  const dlFormat = firstSeries.dataLabelFormat ?? node.dataLabels?.format;
   const dlFont = resolveFontStyle(node.dataLabels?.labelStyle, node.labelStyle);
 
   return {
@@ -281,6 +325,7 @@ function buildPieChart(
       bottom: node.legend?.visible && legendPosition === 'bottom' ? '18%' : 0,
       center: ['50%', '50%'],
       label: {
+        position: node.dataLabels?.position === 'center' || node.dataLabels?.position === 'inside' ? 'inside' : 'outside',
         overflow: 'break',
         show: dlVisible,
         color: dlFont.color ?? node.pptxHints?.dataLabelColor ?? PPT.dataLabelColor,
@@ -290,12 +335,18 @@ function buildPieChart(
           ? (params: Record<string, unknown>) => {
             const value = typeof params.value === 'number' ? params.value : 0;
             const name = typeof params.name === 'string' ? params.name : '';
+            if (node.dataLabels?.content === 'category') return name;
+            if (node.dataLabels?.content === 'percentage') {
+              const total = firstSeries.values.reduce((sum, value) => sum + value, 0);
+              return formatDataLabelValue(total === 0 ? 0 : value / total, dlFormat ?? '0%');
+            }
             if (dlFormat) return formatDataLabelValue(value, dlFormat);
+            if (node.dataLabels?.content === 'value') return String(value);
             return `${name}: ${value}`;
           }
           : undefined,
       },
-      labelLine: { show: dlVisible },
+      labelLine: { show: dlVisible && node.dataLabels?.position !== 'inside' && node.dataLabels?.position !== 'center' },
     }],
     legend: buildLegendConfig(node, node.categories),
   };
@@ -405,7 +456,7 @@ function buildGrid(node: ChartRenderNode): Record<string, unknown> {
     show: node.plotBackgroundColor != null,
     backgroundColor: node.plotBackgroundColor,
     left: legendVisible && pos === 'left' ? '18%' : '5%',
-    right: legendVisible && pos === 'right' ? '18%' : '5%',
+    right: legendVisible && pos === 'right' ? '18%' : node.axes?.y2 ? '10%' : '5%',
     top: legendVisible && pos === 'top' ? '18%' : '8%',
     bottom: legendVisible && pos === 'bottom' ? '18%' : '10%',
   };
@@ -471,19 +522,23 @@ function buildSeriesLabel(
   node: ChartRenderNode,
   isBar: boolean,
   isStacked: boolean,
+  series: RenderChartSeries,
 ): Record<string, unknown> {
-  if (!node.dataLabels?.visible) return { show: false };
+  if (!(series.showDataLabels ?? node.dataLabels?.visible)) return { show: false };
 
-  const pos = node.dataLabels.position ?? (isStacked ? 'inside' : 'outside');
-  const format = node.dataLabels.format;
-  const font = resolveFontStyle(node.dataLabels.labelStyle, node.labelStyle);
+  const pos = node.dataLabels?.position ?? (isStacked ? 'inside' : 'outside');
+  const format = series.dataLabelFormat ?? node.dataLabels?.format;
+  const font = resolveFontStyle(node.dataLabels?.labelStyle, node.labelStyle);
 
   // 映射 position 到 ECharts 标签位置
   let echartsPosition: string;
-  if (pos === 'inside' || pos === 'center' || isStacked) {
+  const line = resolveEChartsSeriesType(node.chartType, series.chartType) === 'line';
+  if (line) {
+    echartsPosition = pos === 'center' ? 'inside' : pos === 'inside' ? 'bottom' : 'top';
+  } else if (pos === 'inside' || pos === 'center') {
     echartsPosition = 'inside';
-  } else if (isBar) {
-    echartsPosition = 'right';
+  } else if (resolveEChartsSeriesType(node.chartType, series.chartType) === 'bar') {
+    echartsPosition = 'outside';
   } else {
     echartsPosition = 'top';
   }
@@ -493,12 +548,11 @@ function buildSeriesLabel(
     position: echartsPosition,
     fontSize: font.fontSize,
     fontFamily: font.fontFamily,
-    formatter: format
-      ? (params: Record<string, unknown>) => {
-        const val = typeof params.value === 'number' ? params.value : 0;
-        return formatDataLabelValue(val, format);
-      }
-      : undefined,
+    formatter: (params: Record<string, unknown>) => {
+      // 百分比堆叠只改变柱高，标签仍显示原始数值，与原生 PPT 图表一致。
+      const val = typeof params.dataIndex === 'number' ? series.values[params.dataIndex] : typeof params.value === 'number' ? params.value : 0;
+      return format ? formatDataLabelValue(val, format) : String(val);
+    },
   };
 
   labelConfig.color = font.color ?? node.pptxHints?.dataLabelColor ?? PPT.dataLabelColor;
@@ -592,56 +646,4 @@ function resolveBarCategoryGap(hints?: ChartPptxHints): string {
     return `${Math.round(gap)}%`;
   }
   return '20%';
-}
-
-/**
- * 数据标签值格式化，兼容 PptxGenJS 常见格式码：
- * - '$#,##0.0'   → '$1,234.5'
- * - '$#,##0.0"B"' → '$1,234.5B'
- * - '#0"%"'      → '42%'
- * - '#,##0.0'    → '1,234.5'
- * - '#,##0'      → '1,234'
- * - '0.0%'       → '42.0%'（乘以 100 再加 %）
- */
-export function formatDataLabelValue(value: number, format: string): string {
-  // 百分比格式（0.0% 类 — 值乘 100）
-  if (format.includes('%') && !format.includes('"')) {
-    const decimals = (format.match(/\.(0+)/) ?? [])[1]?.length ?? 0;
-    return (value * 100).toFixed(decimals) + '%';
-  }
-  // 引号百分比（"%"）
-  if (format.includes('"%"')) {
-    return Math.round(value) + '%';
-  }
-
-  // 通用数字格式：提取前缀（如 $）、引号后缀（如 "B"）、小数位
-  const prefix = extractFormatPrefix(format);
-  const suffix = extractFormatSuffix(format);
-
-  if (format.includes('#,##0.0')) {
-    const formatted = value.toLocaleString(undefined, {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    });
-    return `${prefix}${formatted}${suffix}`;
-  }
-  if (format.includes('#,##0')) {
-    const formatted = value.toLocaleString(undefined, { maximumFractionDigits: 0 });
-    return `${prefix}${formatted}${suffix}`;
-  }
-
-  const base = Number.isInteger(value) ? `${value}` : value.toFixed(1);
-  return `${prefix}${base}${suffix}`;
-}
-
-/** 提取格式码的字面前缀，如 '$#,##0.0' → '$' */
-function extractFormatPrefix(format: string): string {
-  const match = format.match(/^([^#0]+?)(?=[#0])/);
-  return match?.[1] ?? '';
-}
-
-/** 提取格式码的引号后缀，如 '$#,##0.0"B"' → 'B' */
-function extractFormatSuffix(format: string): string {
-  const match = format.match(/"([^"]+)"\s*$/);
-  return match?.[1] ?? '';
 }

@@ -425,6 +425,12 @@ function buildChartElement(node: LayoutChartNode, position: Box): DirectElementI
 
   return attachSourceSpan({
     type: 'chart',
+    categoryAxis: node.categoryAxis,
+    valueAxis: node.valueAxis,
+    secondaryValueAxis: node.secondaryValueAxis,
+    stacking: node.stacking,
+    dataLabelContent: node.dataLabelContent,
+    dataLabelPosition: node.dataLabelPosition,
     position,
     chartPreset: node.preset,
     chartType: chartParseResult.data.chartType,

@@ -255,7 +255,14 @@ interface LayoutBorderInput {
 interface LayoutBrushArtworkConfig
   extends Omit<LayoutImageConfig, 'src'>, BrushArtworkIntent {}
 
-interface LayoutChartConfig extends FlexProps {
+interface LayoutChartCategoryAxis {
+  title?: string;
+  visible?: boolean;
+  /** 标签旋转角度，-90 到 90 度。 */
+  labelRotation?: number;
+}
+
+interface LayoutChartConfig extends FlexProps, LayoutChartControls {
   preset?: LayoutChartPresetName;
   chartType?: LayoutChartType;
   categories?: LayoutDisplayValue[];
@@ -266,6 +273,17 @@ interface LayoutChartConfig extends FlexProps {
   dataLabelFormat?: string;
   legendPosition?: LayoutChartLegendPosition;
   chartStyle?: LayoutChartStyle;
+}
+
+/** 只表达图表自身语义，不决定图表或相邻说明在页面上的布局。 */
+interface LayoutChartControls {
+  categoryAxis?: LayoutChartCategoryAxis;
+  valueAxis?: LayoutChartValueAxis;
+  secondaryValueAxis?: LayoutChartValueAxis;
+  stacking?: 'none' | 'stacked' | 'percent';
+  /** percentage/category 仅用于饼/环；不会把数值格式的 % 当作占比计算。 */
+  dataLabelContent?: 'value' | 'percentage' | 'category';
+  dataLabelPosition?: 'inside' | 'outside' | 'center';
 }
 
 /** @deprecated 使用 chartType、categories 与 series。 */
@@ -303,15 +321,34 @@ interface LayoutChartSeriesInput {
   name: string;
   values: number[];
   labels?: LayoutDisplayValue[];
+  /** combo 中显式指定系列类型；bar 表示纵向柱。 */
+  chartType?: 'bar' | 'line' | 'area';
+  /** 默认 primary；secondary 必须同时声明 secondaryValueAxis。 */
+  axis?: 'primary' | 'secondary';
+  color?: string;
+  lineWidth?: number;
+  lineDash?: 'solid' | 'dash' | 'dot';
+  marker?: 'none' | 'circle' | 'square' | 'diamond' | 'triangle';
+  /** 按数据点顺序覆盖颜色，null 沿用系列色；仅柱/饼/环图。 */
+  pointColors?: (string | null)[];
+  showDataLabels?: boolean;
+  dataLabelFormat?: string;
 }
 
 /**
- * 图表的跨引擎颜色语义。
+ * 图表的跨引擎样式语义。
  *
  * 这里只暴露前端预览和 PPTX 都能表达的稳定字段；不要把 ECharts
  * option 或 PptxGenJS 的原始配置直接放进 deck.js。
  */
 interface LayoutChartStyle {
+  /** 图表内字体；字号和线宽均为 pt，不随图表盒自动缩放。 */
+  fontFamily?: string;
+  axisLabelFontSize?: number;
+  categoryAxisLabelFontSize?: number;
+  valueAxisLabelFontSize?: number;
+  dataLabelFontSize?: number;
+  legendFontSize?: number;
   /** 图例文字颜色。 */
   legendColor?: string;
   /** 绘图区背景颜色。 */
@@ -337,7 +374,20 @@ type LayoutChartType =
   | 'doughnut'
   | 'scatter'
   | 'area'
-  | 'radar';
+  | 'radar'
+  | 'combo';
+
+interface LayoutChartValueAxis {
+  title?: string;
+  visible?: boolean;
+  min?: number;
+  max?: number;
+  /** 主刻度间隔，必须大于零。 */
+  majorUnit?: number;
+  /** 数值格式，例如 0.0%、#,##0 或 0.0"亿元"；百分号使用 ASCII %。 */
+  numberFormat?: string;
+  showGridlines?: boolean;
+}
 
 type LayoutContainerNode = LayoutSlideNode | LayoutViewNode;
 

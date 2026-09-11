@@ -24,7 +24,6 @@ import {
   mapPosition,
   mapShapeShadowToProps,
   mapTextParagraphStyleToProps,
-  resolveChartPalette,
   resolveShapeTextLayout,
   stripHash,
 } from './visual/presentationVisualDefaults';
@@ -50,6 +49,7 @@ import {
   type PptxPaintCompileContext,
 } from './visual/pptxPaintPatchPlan';
 import { initializePptxDocument } from './pptx/initializePptxDocument';
+import { addNativeChart, type ChartPptxContext, type ChartPptxPatch } from './chart/chartPptx';
 import { buildSvgGraphicImageProps } from './svgGraphic/rendering/svgGraphicPptx';
 import type { SvgGraphicCompileContext } from './types';
 import {
@@ -78,6 +78,7 @@ export class StructuredCompiler {
     paintContext?: PptxPaintCompileContext,
     svgGraphicContext?: SvgGraphicCompileContext,
     formulaContext?: FormulaPptxCompileContext,
+    chartContext?: ChartPptxContext,
   ): void {
     const inst = pptx as PptxGenJS;
     const slide = inst.addSlide();
@@ -99,7 +100,7 @@ export class StructuredCompiler {
 
     // 元素
     for (const el of spec.elements) {
-      this.compileElement(slide, el, inst, theme, paintContext, svgGraphicContext, formulaContext);
+      this.compileElement(slide, el, inst, theme, paintContext, svgGraphicContext, formulaContext, chartContext);
     }
 
     // 演讲者备注
@@ -115,6 +116,7 @@ export class StructuredCompiler {
 
     const paintPlan = createPptxPaintPatchPlan();
     const formulaPlan = createFormulaPptxPatchPlan();
+    const chartPlan: ChartPptxPatch[] = [];
     for (let slideIndex = 0; slideIndex < deckSpec.slides.length; slideIndex++) {
       const entry = deckSpec.slides[slideIndex];
       if (entry.spec.type !== 'structured') {
@@ -129,6 +131,7 @@ export class StructuredCompiler {
         createPptxPaintCompileContext(paintPlan, slideIndex),
         undefined,
         createFormulaPptxCompileContext(formulaPlan, slideIndex),
+        { plan: chartPlan, slideIndex },
       );
     }
 
@@ -136,6 +139,7 @@ export class StructuredCompiler {
     return this.sanitizer.sanitize(Buffer.from(result as ArrayBuffer), {
       paintPlan,
       formulaPlan,
+      chartPlan,
       declaredThemeFonts: deckSpec.theme?.fonts,
     });
   }
@@ -150,6 +154,7 @@ export class StructuredCompiler {
     paintContext?: PptxPaintCompileContext,
     svgGraphicContext?: SvgGraphicCompileContext,
     formulaContext?: FormulaPptxCompileContext,
+    chartContext?: ChartPptxContext,
   ): void {
     switch (el.type) {
       case 'title':
@@ -165,7 +170,7 @@ export class StructuredCompiler {
         this.addNumberedList(slide, el);
         break;
       case 'chart':
-        this.addChart(slide, el, pptx, theme);
+        addNativeChart(slide, el, theme, chartContext);
         break;
       case 'table':
         this.addTable(slide, el);
@@ -303,28 +308,6 @@ export class StructuredCompiler {
       ...mapPosition(el.position),
       ...resolveGeneratedPptxTextLayoutOptions(el.position, 'resize-shape', 'bullet-textbox'),
     } as PptxGenJS.TextPropsOptions);
-  }
-
-  private addChart(
-    slide: PptxGenJS.Slide,
-    el: Extract<StructuredElement, { type: 'chart' }>,
-    pptx: PptxGenJS,
-    theme?: ThemeSpec,
-  ): void {
-    const chartData: PptxGenJS.OptsChartData[] = el.data.series.map((s) => ({
-      name: s.name,
-      labels: (s.labels && s.labels.length > 0) ? s.labels : el.data.categories,
-      values: s.values,
-    }));
-
-    const chartOpts: PptxGenJS.IChartOpts = {
-      ...mapPosition(el.position),
-      chartColors: resolveChartPalette(theme).map((c) => stripHash(c, 'chart.palette')),
-      ...(el.options as PptxGenJS.IChartOpts | undefined),
-      ...mapChartStyleToPptxOptions(el.chartStyle),
-    };
-
-    slide.addChart(el.chartType as PptxGenJS.CHART_NAME, chartData, chartOpts);
   }
 
   private addTable(
@@ -519,36 +502,6 @@ function mapTableBorderToPptx(
     pt: border.width,
     type: border.dash === 'dash' ? 'dash' : 'solid',
   };
-}
-
-/** 将稳定的 chartStyle 语义映射为 PPTX 选项；原始引擎字段不进入 deck.js 合同。 */
-function mapChartStyleToPptxOptions(
-  style: Extract<StructuredElement, { type: 'chart' }>['chartStyle'],
-): Partial<PptxGenJS.IChartOpts> {
-  if (!style) return {};
-  const options: Partial<PptxGenJS.IChartOpts> = {};
-  if (style.legendColor) options.legendColor = stripHash(style.legendColor, 'chartStyle.legendColor');
-  if (style.plotBackgroundColor) {
-    options.plotArea = { fill: { color: stripHash(style.plotBackgroundColor, 'chartStyle.plotBackgroundColor') } };
-  }
-  if (style.seriesLineWidth != null) options.lineSize = style.seriesLineWidth;
-  const axisLabelColor = style.axisLabelColor;
-  const categoryAxisLabelColor = style.categoryAxisLabelColor ?? axisLabelColor;
-  if (categoryAxisLabelColor) {
-    options.catAxisLabelColor = stripHash(categoryAxisLabelColor, 'chartStyle.categoryAxisLabelColor');
-  }
-  const valueAxisLabelColor = style.valueAxisLabelColor ?? axisLabelColor;
-  if (valueAxisLabelColor) {
-    options.valAxisLabelColor = stripHash(valueAxisLabelColor, 'chartStyle.valueAxisLabelColor');
-  }
-  if (style.dataLabelColor) {
-    options.dataLabelColor = stripHash(style.dataLabelColor, 'chartStyle.dataLabelColor');
-  }
-  if (style.gridlineColor) {
-    options.catGridLine = { color: stripHash(style.gridlineColor, 'chartStyle.gridlineColor') };
-    options.valGridLine = { color: stripHash(style.gridlineColor, 'chartStyle.gridlineColor') };
-  }
-  return options;
 }
 
 function resolveBackgroundPaint(

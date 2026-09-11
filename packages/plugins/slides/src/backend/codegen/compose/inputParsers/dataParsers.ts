@@ -22,6 +22,7 @@ import {
   parseDisplayString,
 } from './typeGuards.js';
 import { KNOWN_TEXT_STYLE_KEYS, parseTextStyle } from './styleParsers.js';
+import { parseChartSeriesFields } from './chartParsers.js';
 
 // ─── 图表 ─────────────────────────────────────────────────────────────────
 
@@ -39,11 +40,12 @@ export function parseChartSeries(value: unknown): ChartSeries | null {
   if (!labels) {
     return null;
   }
-  return {
+  return parseChartSeriesFields({
+    ...value,
     name: value.name,
     labels,
     values: rawValues,
-  };
+  });
 }
 
 export function parseChartSeriesArray(value: unknown): ChartSeries[] | null {
@@ -61,13 +63,11 @@ export function parseChartSeriesArray(value: unknown): ChartSeries[] | null {
   return series;
 }
 
-const VALID_CHART_TYPES = new Set<ChartType>(['bar', 'line', 'pie', 'doughnut', 'scatter', 'area', 'radar']);
-
 export function parseChartType(value: unknown): ChartType | undefined {
-  if (isNonEmptyString(value) && VALID_CHART_TYPES.has(value as ChartType)) {
-    return value as ChartType;
+  switch (value) {
+    case 'bar': case 'line': case 'pie': case 'doughnut': case 'scatter': case 'area': case 'radar': case 'combo': return value;
+    default: return undefined;
   }
-  return undefined;
 }
 
 export interface NormalizedChartData {
@@ -94,7 +94,7 @@ export function parseChartDataLike(
   const rawChartType = value.chartType;
   const chartType = rawChartType == null ? undefined : parseChartType(rawChartType);
   if (rawChartType != null && chartType == null) {
-    return { error: 'chartType 必须是 bar / line / pie / doughnut / scatter / area / radar 之一。' };
+    return { error: 'chartType 必须是 bar / line / pie / doughnut / scatter / area / radar / combo 之一。' };
   }
   if (options?.requireChartType && chartType == null) {
     return { error: '图表数据缺少 chartType。' };

@@ -515,6 +515,13 @@ export interface RenderChartSeries {
   /** combo 图表中此系列的图表类型 */
   chartType?: RenderChartType;
   color?: string;
+  axis?: 'primary' | 'secondary';
+  lineWidth?: number;
+  lineDash?: 'solid' | 'dash' | 'dot';
+  marker?: 'none' | 'circle' | 'square' | 'diamond' | 'triangle';
+  pointColors?: (string | null)[];
+  showDataLabels?: boolean;
+  dataLabelFormat?: string;
 }
 
 export interface RenderChartAxes {
@@ -528,6 +535,9 @@ export interface RenderChartAxis {
   visible?: boolean;
   min?: number;
   max?: number;
+  majorUnit?: number;
+  labelRotation?: number;
+  showGridlines?: boolean;
   /** 刻度格式化（如 '%', '$', '0.0'） */
   format?: string;
   /** 轴标签样式 */
@@ -543,6 +553,7 @@ export interface RenderChartLegend {
 
 export interface RenderChartDataLabels {
   visible?: boolean;
+  content?: 'value' | 'percentage' | 'category';
   format?: string;
   position?: 'inside' | 'outside' | 'center';
   /** 数据标签样式 */

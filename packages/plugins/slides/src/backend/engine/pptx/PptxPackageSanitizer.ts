@@ -14,12 +14,15 @@ import { applySvgGraphicPptxFallbacks } from '../svgGraphic/pptx/applySvgGraphic
 import type { SvgGraphicPptxFallbackPlanEntry } from '../svgGraphic/pptx/svgGraphicPptxPlan';
 import { applyFormulaPptxPatches } from '../mathFormula/pptx/applyFormulaPptxPatches';
 import type { FormulaPptxPatchPlan } from '../mathFormula/pptx/formulaPptxPlan';
+import type { ChartPptxPatch } from '../chart/chartPptx';
+import { applyChartPptxStyles } from '../chart/applyChartPptxStyles';
 
 export interface PptxPackageSanitizeOptions {
   readonly paintPlan?: PptxPaintPatchPlan;
   readonly declaredThemeFonts?: NonNullable<ThemeSpec['fonts']>;
   readonly svgGraphicFallbacks?: readonly SvgGraphicPptxFallbackPlanEntry[];
   readonly formulaPlan?: FormulaPptxPatchPlan;
+  readonly chartPlan?: readonly ChartPptxPatch[];
 }
 
 /**
@@ -106,6 +109,8 @@ export class PptxPackageSanitizer {
     mutated = mutated || svgFallbackMutated;
     const formulaMutated = await applyFormulaPptxPatches(zip, options.formulaPlan);
     mutated = mutated || formulaMutated;
+    const chartMutated = await applyChartPptxStyles(zip, options.chartPlan);
+    mutated = mutated || chartMutated;
 
     if (!mutated) {
       return buffer;

@@ -11,10 +11,11 @@ inputParsers/
 ├── typeGuards.ts      # 通用类型守卫与字符串集合解析
 ├── parseContext.ts    # ParseWarning 通道与路径派生
 ├── styleParsers.ts    # TextStyle、ShapeStyle、图片阴影、Box、Theme
+├── chartParsers.ts    # 图表轴/标签/系列/样式与组合语义准入
 └── dataParsers.ts     # 图表、表格、图片与 SVG authoring source
 ```
 
-依赖只允许 `typeGuards/parseContext -> styleParsers -> dataParsers`。解析器可以依赖 `@plugin/slides/shared`，禁止反向依赖 tools、engine、renderer 或旧 host 迁移目录。
+`dataParsers` 可依赖 `styleParsers` / `chartParsers`；字段族解析可依赖 `typeGuards/parseContext` 和 shared 合同/纯规则。禁止反向依赖 tools、engine、renderer 或旧 host 迁移目录。
 
 ## 单一事实来源
 
@@ -25,7 +26,7 @@ inputParsers/
 | 图片阴影 | `parseImageVisualShadow` |
 | 几何盒 | `parsePartialBox` |
 | Theme | `readThemeSpecInput` |
-| 图表 | `parseChartDataLike` / `parseChartSeries` |
+| 图表 | `parseChartDataLike` / `parseChartSeries` 归一数据，`chartParsers` 唯一校验轴、标签、系列样式与组合限制 |
 | 表格 | `parseTableDataLike` / `parseTableCell` |
 | 图片与 SVG 来源 | `parseImageSourceInput` / `parseSvgGraphicAuthoringSource` |
 

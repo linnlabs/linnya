@@ -150,5 +150,8 @@ describe('echartsMapper', () => {
     expect(formatDataLabelValue(42, '#0"%"')).toBe('42%');
     expect(formatDataLabelValue(0.42, '0.0%')).toBe('42.0%');
     expect(formatDataLabelValue(1234.56, '$#,##0.0"B"')).toBe('$1,234.6B');
+    expect(formatDataLabelValue(1, '000')).toBe('001');
+    expect(formatDataLabelValue(1.23, '0.0#"亿元"')).toBe('1.23亿元');
+    expect(formatDataLabelValue(1.2, '0.0#"亿元"')).toBe('1.2亿元');
   });
 });

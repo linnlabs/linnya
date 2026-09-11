@@ -25,6 +25,7 @@ import {
   createPptxPaintPatchPlan,
 } from './visual/pptxPaintPatchPlan';
 import { initializePptxDocument } from './pptx/initializePptxDocument';
+import type { ChartPptxPatch } from './chart/chartPptx';
 import { createSvgGraphicPptxPlan } from './svgGraphic/pptx/svgGraphicPptxPlan';
 import { SvgGraphicMaterializationError } from './svgGraphic/definitions/svgGraphicMaterializationError';
 import {
@@ -125,6 +126,7 @@ export class DeckAssembler {
     const pptx = this.createPptx();
     const paintPlan = createPptxPaintPatchPlan();
     const formulaPlan = createFormulaPptxPatchPlan();
+    const chartPlan: ChartPptxPatch[] = [];
     initializePptxDocument(pptx, materializedDeckSpec);
 
     for (let slideIndex = 0; slideIndex < materializedDeckSpec.slides.length; slideIndex++) {
@@ -138,6 +140,7 @@ export class DeckAssembler {
           paintContext,
           svgGraphicPptxPlan?.createCompileContext(slideIndex + 1, svgAssets),
           createFormulaPptxCompileContext(formulaPlan, slideIndex),
+          { plan: chartPlan, slideIndex },
         );
       } else if (entry.spec.type === 'freeform') {
         this.freeformCompiler.compileSlide(
@@ -175,6 +178,7 @@ export class DeckAssembler {
       declaredThemeFonts: materializedDeckSpec.theme?.fonts,
       svgGraphicFallbacks: svgGraphicPptxPlan?.fallbackEntries,
       formulaPlan,
+      chartPlan,
     });
     this.logger.info('[assemble] Sanitized PPTX buffer ready', {
       title: materializedDeckSpec.title,

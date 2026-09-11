@@ -1,4 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
+import JSZip from 'jszip';
+import { DOMParser } from '@xmldom/xmldom';
+import { StructuredCompiler } from '../engine/StructuredCompiler';
+import { FreeformCompiler } from '../engine/FreeformCompiler';
+import { DeckAssembler } from '../engine/DeckAssembler';
+import { RenderModelMapper } from '../engine/parser/RenderModelMapper';
+import { getElements, getElementByTag, directChildren } from '../engine/parser/xml/XmlNode';
+import { mapChartNodeToEChartsOption } from '../../renderer/features/konvaPreview/functions/echartsMapper';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,6 +80,7 @@ const EXPECTED_EXAMPLES = [
   'media-and-paint',
   'card-grid',
   'chart-analysis',
+  'chart-controls',
   'table',
   'timeline',
   'native-formula',
@@ -219,6 +228,158 @@ describe('slides-design runnable examples (closed loop)', () => {
       throw new Error('chart-analysis first chart is missing');
     }
     expect(firstChart.options).toMatchObject({ barGrouping: 'stacked' });
+  });
+
+  it.each(['structured', 'mixed'])('chart-controls flows through sandbox, preview and native PPTX: %s', async (mode) => {
+    const input = await executeAndCompileExample('chart-controls');
+    const deck = buildDeckSpecFromDirectInput(input);
+    const model = new RenderModelMapper().fromGeneratedDeck('charts', 1, deck.title, deck, { width: 10, height: 5.625 });
+    const nodes = model.slides.map(slide => slide.elements.find(n => n.kind === 'chart'));
+    const combo = nodes[0];
+    if (!combo || combo.kind !== 'chart') throw new Error('Missing combo render node');
+    expect(combo).toMatchObject({ chartType: 'combo', axes: { y: { min: 0, max: 180, majorUnit: 30 }, y2: { min: 0, max: 0.3, format: '0%' } } });
+    expect(mapChartNodeToEChartsOption(combo)).toMatchObject({
+      yAxis: [{ min: 0, max: 180, interval: 30 }, { min: 0, max: 0.3, interval: 0.1 }],
+      series: [
+        { type: 'bar', data: [80, 100, { value: 128, itemStyle: { color: '#2563EB' } }, 156] },
+        { type: 'line', yAxisIndex: 1, lineStyle: { width: expect.closeTo(2.5 * 96 / 72) }, label: { show: true } },
+        { type: 'line', yAxisIndex: 1, symbol: 'none', lineStyle: { type: 'dashed' }, label: { show: false } },
+      ],
+    });
+    // 真正调用 ECharts，而不只比对 option：验证标签百分比、轴单位可绘制。
+    const { init } = await import('echarts');
+    const previews = nodes.map(node => {
+      if (!node || node.kind !== 'chart') throw new Error('Missing chart node');
+      const chart = init(null, undefined, { renderer: 'svg', ssr: true, width: 900, height: 480 });
+      try {
+        chart.setOption(mapChartNodeToEChartsOption(node));
+        return chart.renderToSVGString();
+      } finally { chart.dispose(); }
+    });
+    expect(previews[0]).toContain('22%');
+    expect(previews[0]).toContain('营收（亿元）');
+    expect(previews[1]).toContain('100%');
+    expect(previews[2]).toContain('72.0%');
+    const exportDeck: DeckSpec = mode === 'mixed' ? {
+      ...deck, slides: [...deck.slides, { slideNumber: 4, spec: { type: 'freeform', elements: [] } }],
+    } : deck;
+    const assembler = new DeckAssembler(new StructuredCompiler(), new FreeformCompiler());
+    const zip = await JSZip.loadAsync(await assembler.assemble(exportDeck));
+    const paths = Object.keys(zip.files).filter(p => /^ppt\/charts\/chart.*\.xml$/.test(p)).sort();
+    expect(paths).toHaveLength(3);
+    const xmls = await Promise.all(paths.map(p => {
+      const file = zip.file(p);
+      if (!file) throw new Error(`Missing chart ${p}`);
+      return file.async('text');
+    }));
+    const doc = new DOMParser().parseFromString(xmls[0], 'application/xml');
+    expect(getElements(doc, 'c:barChart')).toHaveLength(1);
+    const lines = getElements(doc, 'c:lineChart');
+    expect(lines).toHaveLength(1);
+    expect(directChildren(lines[0], 'c:ser')).toHaveLength(2);
+    const barAxis = directChildren(getElements(doc, 'c:barChart')[0], 'c:axId')[1].getAttribute('val');
+    const lineAxis = directChildren(lines[0], 'c:axId')[1].getAttribute('val');
+    expect(lineAxis).not.toBe(barAxis);
+    expect(getElements(doc, 'c:valAx')).toHaveLength(2);
+    expect(xmls[0]).toContain('formatCode="0%"');
+    expect(xmls[0]).toContain('<a:ln w="31750"');
+    expect(xmls[0]).toContain('<a:prstDash val="dash"');
+    const highlight = getElements(doc, 'c:dPt').find(p => getElementByTag(p, 'c:idx')?.getAttribute('val') === '2');
+    expect(highlight && getElementByTag(highlight, 'a:srgbClr')?.getAttribute('val')).toBe('2563EB');
+    expect(xmls[1]).toContain('grouping val="percentStacked"');
+    expect(xmls[2]).toContain('showPercent val="1"');
+    expect(xmls[2]).toContain('showVal val="0"');
+    // 原始数值缓存与可编辑工作簿必须存在，不以图片替代扩展能力。
+    expect(xmls[0]).toContain('<c:v>0.22</c:v>');
+    expect(Object.keys(zip.files).filter(p => p.startsWith('ppt/embeddings/') && p.endsWith('.xlsx'))).toHaveLength(3);
+    const pie = new DOMParser().parseFromString(xmls[2], 'application/xml');
+    for (const label of getElements(pie, 'c:dLbl')) {
+      expect(getElementByTag(label, 'c:dLblPos')?.getAttribute('val')).toBe('inEnd');
+      expect(getElementByTag(label, 'c:showPercent')?.getAttribute('val')).toBe('1');
+      expect(getElementByTag(label, 'c:showVal')?.getAttribute('val')).toBe('0');
+    }
+  });
+
+  it('keeps axis units independent and preserves source series order with selective labels', async () => {
+    const input = await executeAndCompileSource(`
+const s = createSlide();
+s.add(createChart({ chartType: "combo", width: 8, height: 4,
+  categories: ["Q1", "Q2"],
+  series: [
+    {name: "A", chartType: "line", values: [10, 20], color: "#112233"},
+    {name: "B", chartType: "bar", values: [20, 30], color: "#223344", showDataLabels: true},
+    {name: "C", chartType: "line", values: [30, 40], color: "#334455"},
+    {name: "D", chartType: "line", axis: "secondary", values: [0.2, 0.4], color: "#445566"}
+  ], valueAxis: {min: 10, max: 100, majorUnit: 10, numberFormat: '0"万元"', title: "左轴"},
+  secondaryValueAxis: {}, showDataLabels: false, legendPosition: "none",
+  chartStyle: {dataLabelFontSize: 12, dataLabelColor: "#123456"}
+})); compose({title: "Axis isolation", slides: [s]});`, 'axis-isolation');
+    const deck = buildDeckSpecFromDirectInput(input);
+    const model = new RenderModelMapper().fromGeneratedDeck('charts', 1, deck.title, deck, { width: 10, height: 5.625 });
+    const node = model.slides[0].elements.find(n => n.kind === 'chart');
+    if (!node || node.kind !== 'chart') throw new Error('Missing chart');
+    expect(mapChartNodeToEChartsOption(node)).toMatchObject({
+      series: [{label: {show: false}}, {label: {show: true, fontSize: 16, color: '#123456'}}, {label: {show: false}}, {label: {show: false}, yAxisIndex: 1}],
+      yAxis: [{min: 10, max: 100}, {min: undefined, max: undefined, name: undefined}],
+      legend: {show: false},
+    });
+    const zip = await JSZip.loadAsync(await new StructuredCompiler().compileDeck(deck));
+    const file = Object.values(zip.files).find(f => /^ppt\/charts\/chart.*\.xml$/.test(f.name));
+    if (!file) throw new Error('Missing native chart');
+    const doc = new DOMParser().parseFromString(await file.async('text'), 'application/xml');
+    const axes = getElements(doc, 'c:valAx');
+    expect(getElements(axes[1], 'c:min')).toHaveLength(0);
+    expect(getElements(axes[1], 'c:max')).toHaveLength(0);
+    expect(getElements(axes[1], 'c:title')).toHaveLength(0);
+    expect(getElementByTag(axes[1], 'c:numFmt')?.getAttribute('formatCode')).toBe('General');
+    const series = getElements(doc, 'c:ser');
+    expect(series.map(s => getElementByTag(s, 'c:order')?.getAttribute('val'))).toEqual(['0', '2', '1', '3']);
+    expect(getElements(series[2], 'c:showVal').map(n => n.getAttribute('val'))).toEqual(['1']);
+    expect(getElementByTag(series[2], 'a:defRPr')?.getAttribute('sz')).toBe('1200');
+    const colors = series.filter(s => getElementByTag(s, 'c:marker')).map(s => {
+      const marker = getElementByTag(s, 'c:marker');
+      return marker ? getElementByTag(marker, 'a:srgbClr')?.getAttribute('val') : null;
+    });
+    expect(colors).toEqual(['112233', '334455', '445566']);
+  });
+
+  it.each([
+    ['missing secondary axis', 'chartType: "combo", series: [{ name: "A", chartType: "line", axis: "secondary", values: [1, 2] }]'],
+    ['wrong point count', 'series: [{ name: "A", values: [1, 2], pointColors: ["#FF0000"] }]'],
+    ['mismatched data length', 'series: [{ name: "A", values: [1] }]'],
+    ['invalid range', 'valueAxis: { min: 10, max: 1 }, series: [{ name: "A", values: [1, 2] }]'],
+    ['percentage is not numeric formatting', 'dataLabelContent: "percentage", series: [{ name: "A", values: [1, 2] }]'],
+    ['unsupported Excel format', 'valueAxis: {numberFormat: "0.0E+00"}, series: [{ name: "A", values: [1, 2] }]'],
+  ])('rejects unsupported chart semantics before export: %s', async (_name, config) => {
+    await expect((async () => {
+      const input = await executeAndCompileSource(`const slide = createSlide(); slide.add(createChart({ chartType: "bar", categories: ["A", "B"], ${config} })); compose({title: "Rejected chart", slides: [slide]});`, 'invalid-chart');
+      return buildDeckSpecFromDirectInput(input);
+    })()).rejects.toThrow();
+  });
+
+  it.each([true, false])('pie series visibility overrides the opposite chart setting: %s', async (visible) => {
+    const input = await executeAndCompileSource(`
+const s = createSlide();
+s.add(createChart({chartType: "pie", width: 8, height: 4,
+  categories: ["主业", "其他"], series: [{name: "Share", values: [72, 28], color: "#112233", pointColors: [null, "#445566"], showDataLabels: ${visible}}],
+  showDataLabels: ${!visible}, dataLabelContent: "percentage"
+})); compose({title: "Pie labels", slides: [s]});`, 'pie-label-visibility');
+    const deck = buildDeckSpecFromDirectInput(input);
+    const model = new RenderModelMapper().fromGeneratedDeck('charts', 1, deck.title, deck, {width: 10, height: 5.625});
+    const node = model.slides[0].elements.find(n => n.kind === 'chart');
+    if (!node || node.kind !== 'chart') throw new Error('Missing chart');
+    expect(mapChartNodeToEChartsOption(node)).toMatchObject({series: [{
+      label: {show: visible}, data: [{itemStyle: {color: '#112233'}}, {itemStyle: {color: '#445566'}}],
+    }]});
+    const zip = await JSZip.loadAsync(await new StructuredCompiler().compileDeck(deck));
+    const file = Object.values(zip.files).find(f => /^ppt\/charts\/chart.*\.xml$/.test(f.name));
+    if (!file) throw new Error('Missing native chart');
+    const doc = new DOMParser().parseFromString(await file.async('text'), 'application/xml');
+    for (const label of getElements(doc, 'c:dLbl')) {
+      expect(getElementByTag(label, 'c:showPercent')?.getAttribute('val')).toBe(visible ? '1' : '0');
+      expect(getElementByTag(label, 'c:showVal')?.getAttribute('val')).toBe('0');
+      expect(getElementByTag(label, 'c:numFmt')?.getAttribute('formatCode')).toBe('0%');
+    }
   });
 
   it('real compose sandbox preserves chart colors and the unified table border', async () => {

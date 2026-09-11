@@ -266,23 +266,33 @@ arc radius 和 flowLine length 按元素短边百分比解释。需要重复花�
 
 ## 9. Chart
 
-优先用 `createChart(preset)` 选择已注册的图表基线；完整 preset 见生成的 [`chart-presets.md`](./chart-presets.md)。正式数据结构是 `categories: (string|number|boolean)[]` 与 `series: [{ name, values, labels? }]`，每个 series 的 `values` 应与 categories 对齐。可用语义字段包括 `chartType`、`showDataLabels`、`dataLabelFormat`、`legendPosition: "top"|"bottom"|"left"|"right"|"none"`，以及跨预览/PPTX 共同生效的 `chartStyle`：
+可用 `createChart(preset)` 选择图表基线，或直接声明 `chartType`；preset 见生成的 [`chart-presets.md`](./chart-presets.md)。正式数据结构仍是 `categories: (string|number|boolean)[]` 与 `series: [{ name, values, labels? }]`，数值必须有限并与 categories 等长；可选 labels 必须与 categories 一致，不是另一套 X 轴。精确类型见 [`layoutPrimitives.d.ts`](./layoutPrimitives.d.ts)。
 
-```typescript
-chartStyle: {
-  axisLabelColor: '#64748B',
-  categoryAxisLabelColor: '#334155',
-  valueAxisLabelColor: '#475569',
-  dataLabelColor: '#0F172A',
-  gridlineColor: '#CBD5E1',
-}
-```
+| 位置 | 正式字段 | 含义与边界 |
+|---|---|---|
+| Chart | `chartType` | bar、line、pie、doughnut、scatter、area、radar、combo；bar 默认纵向，横向用 horizontal-bar / stacked-bar preset |
+| Chart | `categoryAxis: { title?, visible?, labelRotation? }` | 类目轴标题、显隐和 -90～90 度标签旋转；仅柱/线/面积/combo |
+| Chart | `valueAxis` / `secondaryValueAxis` | `{ title?, visible?, min?, max?, majorUnit?, numberFormat?, showGridlines? }`；min < max，主刻度间隔 > 0 |
+| Chart | `stacking` | none / stacked / percent；仅柱/条，不与 combo 混用；percent 的刻度以 0～1 为单位，不另设 min/max |
+| Chart | `showDataLabels` / `dataLabelFormat` | 全局标签显隐、数字格式；系列可覆盖，格式不会改变底层数据 |
+| Chart | `dataLabelContent` | value / percentage / category；后两者仅饼/环，percentage 按该系列合计计算占比 |
+| Chart | `dataLabelPosition` | inside / outside / center；柱和饼环为内部/外部/内部居中，折线为点下/点上/点中心；本轮不扩展雷达/散点的标签内容和位置 |
+| Chart | `legendPosition` | top / bottom / left / right / none |
+| series | `chartType` / `axis` | combo 每个系列必须显式指定 bar / line / area；axis 默认为 primary，secondary 必须同时声明 secondaryValueAxis，至少保留一个 primary 系列 |
+| series | `color` / `pointColors` | 基色覆盖 theme（散点暂不支持）；pointColors 仅柱/饼/环，与 values 等长，null 继承基色/调色板 |
+| series | `lineWidth` / `lineDash` / `marker` | 仅折线；宽度为正数 pt，solid / dash / dot，none / circle / square / diamond / triangle |
+| series | `showDataLabels` / `dataLabelFormat` | 只标重点系列或按系列单位格式化；本轮不支持雷达/散点的逐系列标签覆盖 |
+| chartStyle | `fontFamily`、`axisLabelFontSize`、`categoryAxisLabelFontSize`、`valueAxisLabelFontSize`、`dataLabelFontSize`、`legendFontSize` | 字号均为正数 pt，单轴字号覆盖共同字号；不随图表框自动放大 |
+| chartStyle | `axisLabelColor`、`categoryAxisLabelColor`、`valueAxisLabelColor`、`dataLabelColor`、`legendColor`、`gridlineColor` | 单轴颜色覆盖共同颜色；gridlineColor 设置现有网格线颜色，显隐由轴配置决定 |
+| chartStyle | `plotBackgroundColor` / `seriesLineWidth` | 绘图区底色、折线默认 pt 宽度，系列线宽优先 |
 
-`axisLabelColor` 是两个坐标轴的共同兜底，单轴字段可以覆盖它；`gridlineColor` 同时设置类目网格线和数值网格线。只写真实需要的字段，不要为了“统一”复制同一个颜色。不要写原始 `chartOptions`。
+数字格式支持 `General`、`0`、`000`、`#,##0.0`、`0.0%`、`0.0"亿元"` 等简单写法，最多 20 位小数；单位文字用双引号，货币前缀可用 `$` / `¥` / `￥` / `€` / `£`。`0.2 + 0% → 20%`；`20 + 0"%" → 20%`；饼/环的 percentage 则先算占比再格式化。日期、科学计数、条件分段格式不支持。百分比堆叠只规范化柱高，标签仍是原始数值。
 
-`chartData`、`datasets`、`xLabels`、`xAxisLabels` 是旧 source 的兼容入口；`series.data` 不是正式写法。新代码只写顶层 categories/series。需要运行时尚未公开的轴、标记线或 PptxGenJS option 时，应当把它视为 Slides 模块缺失的跨端能力，而不是绕过 authoring contract。
+组合图是原生 PPT 图表，柱为纵向，不使用横向/堆叠 preset。目标线可作为同轴的常数 line 系列（显式填 values），用虚线区分；不要虚构 markLine。实际/预测可用独立系列样式区分，当前 values 不支持 null 缺测点，不用 0 冒充缺失。
 
-图表配色由 `compose()` 的 `theme.chart.palette` 决定，它是一个颜色数组，按 series 顺序取用；不写则使用运行时默认调色板。整份 deck 的图表应共用同一份 palette。
+图表配色由 `compose().theme.chart.palette` 按系列顺序取用，饼/环按扇区取用；`series.color` 是局部覆盖，`pointColors` 优先。只写需要改变的字段。轴、标签与样式语义贯通预览和原生 PPTX，但两套引擎不保证像素一致；用户可在导出界面选择图表转图片。
+
+原子示例见 [`chart-controls.js`](./examples/chart-controls.js)：双轴营收/利润率与目标线、百分比堆叠、环图占比。它不是整页模板，也不负责自动布局。`chartData`、`datasets`、`xLabels`、`xAxisLabels` 只用于维护旧 source；新代码只写顶层 categories/series，不写 `series.data`、`chartOptions`、`echartsOption` 或其他底层库参数。
 
 图表用于表达比较、趋势、构成、关系或分布，不用于装饰。图表标题、关键结论和数据来源应由相邻 Text 节点承担，不把整段解释塞进图内。
 

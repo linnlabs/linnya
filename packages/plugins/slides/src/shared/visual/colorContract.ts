@@ -358,10 +358,28 @@ function normalizeStructuredElementColors(
       });
     }
     case 'chart': {
-      if (!element.chartStyle) return success(element);
-      const chartStyleResult = normalizeChartStyleColors(element.chartStyle, `${path}.chartStyle`);
+      const chartStyleResult = normalizeChartStyleColors(element.chartStyle ?? {}, `${path}.chartStyle`);
       if ('error' in chartStyleResult) return chartStyleResult;
-      return success({ ...element, chartStyle: chartStyleResult.value });
+      const series = [];
+      for (const [index, source] of element.data.series.entries()) {
+        const entry = { ...source };
+        if (source.color != null) {
+          const color = normalizeOpaqueColor(source.color, `${path}.data.series[${index}].color`);
+          if ('error' in color) return color;
+          entry.color = color.value;
+        }
+        if (source.pointColors) {
+          entry.pointColors = [];
+          for (const [pointIndex, value] of source.pointColors.entries()) {
+            if (value == null) { entry.pointColors.push(null); continue; }
+            const color = normalizeOpaqueColor(value, `${path}.data.series[${index}].pointColors[${pointIndex}]`);
+            if ('error' in color) return color;
+            entry.pointColors.push(color.value);
+          }
+        }
+        series.push(entry);
+      }
+      return success({ ...element, ...(element.chartStyle ? { chartStyle: chartStyleResult.value } : {}), data: { ...element.data, series } });
     }
     case 'svgGraphic':
       return success(element);

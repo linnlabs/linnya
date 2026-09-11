@@ -4,7 +4,7 @@ description: Plan, create, edit, inspect, and visually verify Linnya Slides thro
 metadata:
   author: linnya
   pluginId: slides
-  version: "7.12"
+  version: "7.13"
 ---
 
 # Slides Design
@@ -43,7 +43,7 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 
 对象选择遵循语义优先：文字、原生数学公式、数据图表、表格、照片和简单可编辑几何继续使用 Text/Formula、Chart、Table、Image、Shape；复杂流程、架构或机制示意图在“整体编辑即可”时使用 `createSvgGraphic()`；需要手绘插画、笔触、纸面边框或水彩时使用 `createBrushArtwork()`。Brush 通过有序 layers 组合 stroke、watercolor/wash/mass、hatch、field 与几何 marks；复杂画面优先用多个语义图层和不同质感，不要把排线当成唯一纹理。它仍是带显式纯色背景的不透明图片资产，不是透明贴图：背景色应与所在纯色区域一致，下面是照片、渐变或纹理时不要叠加使用。文字和标签用原生 Text 覆盖；块公式和段内公式都使用正式 Formula 语义，不要画成 Brush、SVG 或图片。精确合同见 [`syntax.md`](./references/syntax.md)。
 
-图表的 `chartStyle` 与表格顶层 `border` 是少量、跨前端预览与 PPTX 导出的正式语义；只在页面确实需要局部颜色或统一边框时使用。不要改写成 `chartOptions`、`tableOptions` 或其他底层引擎字段。
+图表可通过轴、标签、逐系列样式、单点高亮、堆叠和显式双轴组合表达分析重点；只读取 [`syntax.md` 的 Chart 合同](./references/syntax.md#9-chart) 与相关原子示例，不机械套用示例版式。图表 `chartStyle` 与表格 `border` 是跨预览/PPTX 的正式语义，不改写成 `chartOptions`、`tableOptions` 或其他底层引擎字段。
 
 ### 查看与检查
 - 看 source、页面内容与代码组织：`read_file`。
@@ -80,6 +80,7 @@ presentation-owned 资产。
 - [`media-and-paint.js`](./references/examples/media-and-paint.js)：图片适配与遮罩、渐变与半透明、自定义几何、富文本 run、TableCell 逐格样式。
 - [`card-grid.js`](./references/examples/card-grid.js)：卡片行的四种变形，最后一页是"同内容换构图"的对照。
 - [`chart-analysis.js`](./references/examples/chart-analysis.js)：图表数据结构与主副图配比。
+- [`chart-controls.js`](./references/examples/chart-controls.js)：双轴组合、目标线、单点高亮、百分比堆叠与占比标签。
 - [`table.js`](./references/examples/table.js)：表格基本结构。
 - [`timeline.js`](./references/examples/timeline.js)：absolute 坐标算术与添加顺序决定的层级。
 - [`native-formula.js`](./references/examples/native-formula.js)：独立原生公式与同段行内公式。

@@ -14,7 +14,7 @@ import type { SvgGraphicElementSpec } from '../svgGraphic';
 import type { BrushArtworkSourceRef } from '../brushArtwork';
 import type { TextLineSpacing } from '../textLayout/definitions/lineSpacing';
 import type { TextWrapPolicy } from '../textLayout/definitions/contract';
-import type { LayoutChartStyle } from '../flexComposeContract';
+import type { LayoutChartControls, LayoutChartSeriesInput, LayoutChartStyle, LayoutChartType } from '../flexComposeContract';
 import type {
   GradientPaint,
   GradientStop,
@@ -102,12 +102,10 @@ export type SlideBackgroundGradientStop = GradientStop;
 /** @deprecated 使用 GradientPaint；保留名称用于旧调用方平滑迁移。 */
 export type SlideBackgroundGradient = GradientPaint;
 
-export type ChartType = 'bar' | 'line' | 'pie' | 'doughnut' | 'scatter' | 'area' | 'radar';
+export type ChartType = LayoutChartType;
 
-export interface ChartSeries {
-  name: string;
+export interface ChartSeries extends Omit<LayoutChartSeriesInput, 'labels'> {
   labels: string[];
-  values: number[];
 }
 
 export interface TableCell {
@@ -165,7 +163,7 @@ export type StructuredElement =
       _sourceSpan?: SourceSpan;
       _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
     }
-  | {
+  | (LayoutChartControls & {
       type: 'chart';
       chartType: ChartType;
       data: {
@@ -181,7 +179,7 @@ export type StructuredElement =
       _overlayId?: string;
       _sourceSpan?: SourceSpan;
       _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
-    }
+    })
   | {
       type: 'table';
       headers?: string[];

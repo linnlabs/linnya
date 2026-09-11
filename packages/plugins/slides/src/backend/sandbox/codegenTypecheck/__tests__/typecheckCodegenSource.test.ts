@@ -249,7 +249,7 @@ describe('typecheckCodegenSource — rejects semantic errors against ambient.d.t
     ['Text padding', 'createText({ content: "x", padding: 0.2 });'],
     ['unknown chart preset', 'createChart({ preset: "executive-mega-chart", categories: ["A"], series: [{ name: "S", values: [1] }] });'],
     ['unknown legend position', 'createChart({ categories: ["A"], series: [{ name: "S", values: [1] }], legendPosition: "center" });'],
-    ['unknown chart style field', 'createChart({ categories: ["A"], series: [{ name: "S", values: [1] }], chartStyle: { axisLabelFontSize: 10 } });'],
+    ['unknown chart style field', 'createChart({ categories: ["A"], series: [{ name: "S", values: [1] }], chartStyle: { arbitraryEchartsOption: 10 } });'],
     ['raw chartOptions', 'createChart({ categories: ["A"], series: [{ name: "S", values: [1] }], chartOptions: { showLegend: true } });'],
     ['table border dash', 'createTable({ rows: [["A"]], border: { color: "#000000", width: 1, dash: "dash" } });'],
     ['raw tableOptions', 'createTable({ rows: [["A"]], tableOptions: { colW: [2] } });'],
