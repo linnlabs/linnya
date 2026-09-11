@@ -15,6 +15,7 @@
 ## 归属纪律
 
 - 这里不依赖 Slides、renderer 或 Electron 窗口对象。
+- macOS 同时扫描标准字体目录和 `AssetsV2/com_apple_MobileAsset_Font8` 按需字体资产目录；未下载的字体仍报告未安装，不下载或复制系统字体。
 - `.ttc` collection 是 macOS 字体目录的主路径；扫描时必须枚举所有 face，不能默认取第一个 face。
 - FontCatalog 只缓存系统字体 metadata 与文件身份（path/mtime/size），不复制、不缓存、不打包字体文件本体。
 - FontCatalog 以 `idle -> scanning -> ready | failed` 表达扫描生命周期。查询必须等待 `ready/failed` 真实终态；`failed` 或尚未启动扫描时抛出稳定的 `FontCatalogUnavailableError`，不能返回假的空目录。

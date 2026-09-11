@@ -425,6 +425,8 @@ function defaultScanRoots(): readonly string[] {
   if (process.platform === 'darwin') {
     return [
       '/System/Library/Fonts',
+      // PingFang 等按需字体位于系统资产库；仍只扫描字体文件和缓存 metadata。
+      '/System/Library/AssetsV2/com_apple_MobileAsset_Font8',
       '/Library/Fonts',
       join(home, 'Library/Fonts'),
     ];
