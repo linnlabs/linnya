@@ -175,6 +175,12 @@ maxPendingBytes  = 4 MiB
 
 ### 6.2 Agent text
 
+暂停运行需要的已封口 artifact 由 App Host 按 conversation 保留：启动维护先读取
+非终态 run tree 的保护集合，再调用 output maintenance。root 终态释放恢复保护后，
+到期 artifact 才重新进入正常清理。该保护不是永久保存全部 stdout；未封口输出也不能
+证明某个工具已成功。崩溃后缺少正式结果凭据的外部命令保持受阻，不能凭 PID、文本或
+退出码盲目重放；恢复合同见 [Run Resumption](../../app-hosts/linnya/application/run-resumption/README.md)。
+
 解码、控制序列处理、CR 逻辑行和 preview 位于 infra/runtime。Commands domain 只看到稳定 observation 和 cursor，不拥有 decoder 或正文缓存。
 
 ### 6.3 Card / PTY

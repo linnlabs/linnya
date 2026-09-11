@@ -78,13 +78,17 @@ export const ConversationControlModelsResponseSchema = z
   })
   .strict();
 
-export const ConversationControlProjectsResponseSchema = z.object({
-  ...SuccessBaseFields,
-  command: z.literal('projects'),
-  projects: z.array(z.object({ project_id: OpaqueIdSchema, name: z.string() }).strict()),
-}).strict();
+export const ConversationControlProjectsResponseSchema = z
+  .object({
+    ...SuccessBaseFields,
+    command: z.literal('projects'),
+    projects: z.array(z.object({ project_id: OpaqueIdSchema, name: z.string() }).strict()),
+  })
+  .strict();
 
-export type ConversationControlProjectsResponse = z.infer<typeof ConversationControlProjectsResponseSchema>;
+export type ConversationControlProjectsResponse = z.infer<
+  typeof ConversationControlProjectsResponseSchema
+>;
 
 export const ConversationControlListResponseSchema = z
   .object({
@@ -126,6 +130,7 @@ export const ConversationControlMessagesResponseSchema = z.discriminatedUnion('s
 export const ConversationControlRunStatusSchema = z.enum([
   'pending',
   'running',
+  'paused',
   'awaiting_user',
   'completed',
   'failed',
@@ -155,6 +160,7 @@ export const ConversationControlRunStatusSnapshotSchema = z
     iterations_used: z.number().int().nonnegative().optional(),
     started_at: z.number().finite().nonnegative(),
     updated_at: z.number().finite().nonnegative(),
+    pause: z.object({ settled: z.boolean(), reason: z.string().optional() }).strict().optional(),
     terminal_at: z.number().finite().nonnegative().optional(),
     pending_interaction: ConversationControlPendingInteractionSchema.optional(),
     result_available: z.boolean(),
@@ -196,9 +202,11 @@ export const ConversationControlRespondResponseSchema = z
   .object({
     ...SuccessBaseFields,
     command: z.literal('respond'),
-    receipt: ConversationControlAcceptedReceiptSchema.omit({ user_message_id: true }).extend({
-      interaction_id: OpaqueIdSchema,
-    }).strict(),
+    receipt: ConversationControlAcceptedReceiptSchema.omit({ user_message_id: true })
+      .extend({
+        interaction_id: OpaqueIdSchema,
+      })
+      .strict(),
   })
   .strict();
 
@@ -230,7 +238,7 @@ export const ConversationControlResultResponseSchema = z.discriminatedUnion('res
       result_status: z.literal('available'),
       message: ConversationUiMessageSchema.refine(
         message => message.message_type === 'final_answer',
-        'result message must be a final_answer',
+        'result message must be a final_answer'
       ),
     })
     .strict(),
@@ -243,15 +251,15 @@ export const ConversationControlResultResponseSchema = z.discriminatedUnion('res
     .strict(),
 ]);
 
-export const ConversationControlWorkspaceToolSummarySchema = z.object({
-  name: ConversationControlWorkspaceToolNameSchema,
-  description: z.string().trim().min(1),
-}).strict();
+export const ConversationControlWorkspaceToolSummarySchema = z
+  .object({
+    name: ConversationControlWorkspaceToolNameSchema,
+    description: z.string().trim().min(1),
+  })
+  .strict();
 
 export const ConversationControlWorkspaceToolDescriptorSchema =
-  ConversationControlWorkspaceToolSummarySchema
-    .extend({ parameters: JsonValueSchema })
-    .strict();
+  ConversationControlWorkspaceToolSummarySchema.extend({ parameters: JsonValueSchema }).strict();
 
 const WorkspaceToolsResponseBaseFields = {
   ...SuccessBaseFields,
@@ -259,22 +267,28 @@ const WorkspaceToolsResponseBaseFields = {
 } as const;
 
 export const ConversationControlWorkspaceToolsResponseSchema = z.discriminatedUnion('action', [
-  z.object({
-    ...WorkspaceToolsResponseBaseFields,
-    action: z.literal('list'),
-    tools: z.array(ConversationControlWorkspaceToolSummarySchema),
-  }).strict(),
-  z.object({
-    ...WorkspaceToolsResponseBaseFields,
-    action: z.literal('describe'),
-    tool: ConversationControlWorkspaceToolDescriptorSchema,
-  }).strict(),
-  z.object({
-    ...WorkspaceToolsResponseBaseFields,
-    action: z.literal('call'),
-    tool_name: ConversationControlWorkspaceToolNameSchema,
-    receipt: ConversationControlAcceptedReceiptSchema,
-  }).strict(),
+  z
+    .object({
+      ...WorkspaceToolsResponseBaseFields,
+      action: z.literal('list'),
+      tools: z.array(ConversationControlWorkspaceToolSummarySchema),
+    })
+    .strict(),
+  z
+    .object({
+      ...WorkspaceToolsResponseBaseFields,
+      action: z.literal('describe'),
+      tool: ConversationControlWorkspaceToolDescriptorSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...WorkspaceToolsResponseBaseFields,
+      action: z.literal('call'),
+      tool_name: ConversationControlWorkspaceToolNameSchema,
+      receipt: ConversationControlAcceptedReceiptSchema,
+    })
+    .strict(),
 ]);
 
 const ConversationControlAuditTokenTotalsSchema = z
@@ -443,42 +457,45 @@ const ConversationControlAuditToolPairingRecordSchema = z
 
 const ConversationControlAuditCommandProcessExitSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('not_started') }).strict(),
-  z.object({
-    status: z.literal('observed'),
-    exit_code: z.number().int().safe().nullable(),
-    signal: z.string().min(1).nullable(),
-  }).strict(),
-  z.object({
-    status: z.literal('unavailable'),
-    reason: z.enum(['runtime_lost', 'platform_not_reported']),
-  }).strict(),
+  z
+    .object({
+      status: z.literal('observed'),
+      exit_code: z.number().int().safe().nullable(),
+      signal: z.string().min(1).nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      status: z.literal('unavailable'),
+      reason: z.enum(['runtime_lost', 'platform_not_reported']),
+    })
+    .strict(),
 ]);
 
 const ConversationControlAuditCommandTerminalFields = {
-    run_id: OpaqueIdSchema,
-    tool_call_id: OpaqueIdSchema,
-    command_execution_id: OpaqueIdSchema,
-    terminal_observations: z.number().int().positive(),
-    process_exit: ConversationControlAuditCommandProcessExitSchema,
-    emitted_at: z.number().finite().nonnegative(),
+  run_id: OpaqueIdSchema,
+  tool_call_id: OpaqueIdSchema,
+  command_execution_id: OpaqueIdSchema,
+  terminal_observations: z.number().int().positive(),
+  process_exit: ConversationControlAuditCommandProcessExitSchema,
+  emitted_at: z.number().finite().nonnegative(),
 } as const;
 
 const ConversationControlAuditCommandTerminalSchema = z.discriminatedUnion('outcome', [
-  z.object({
-    ...ConversationControlAuditCommandTerminalFields,
-    outcome: z.literal('execution_ended'),
-    termination_cause: z.enum([
-      'natural_exit',
-      'user_cancelled',
-      'hard_timeout',
-      'owner_ended',
-    ]),
-  }).strict(),
-  z.object({
-    ...ConversationControlAuditCommandTerminalFields,
-    outcome: z.literal('runtime_failure'),
-    runtime_failure_code: OpaqueIdSchema,
-  }).strict(),
+  z
+    .object({
+      ...ConversationControlAuditCommandTerminalFields,
+      outcome: z.literal('execution_ended'),
+      termination_cause: z.enum(['natural_exit', 'user_cancelled', 'hard_timeout', 'owner_ended']),
+    })
+    .strict(),
+  z
+    .object({
+      ...ConversationControlAuditCommandTerminalFields,
+      outcome: z.literal('runtime_failure'),
+      runtime_failure_code: OpaqueIdSchema,
+    })
+    .strict(),
 ]);
 
 export const ConversationControlAuditResponseSchema = z
@@ -590,27 +607,27 @@ export const ConversationControlErrorCodeSchema = z.enum([
   'internal_error',
 ]);
 
-export type ConversationControlErrorCode = z.infer<
-  typeof ConversationControlErrorCodeSchema
->;
+export type ConversationControlErrorCode = z.infer<typeof ConversationControlErrorCodeSchema>;
 
 export const ConversationControlErrorResponseSchema = z
   .object({
     schema_version: z.literal(CONVERSATION_CONTROL_SCHEMA_VERSION),
     ok: z.literal(false),
-    command: z.enum([
-      'send',
-      'models',
-      'projects',
-      'list',
-      'messages',
-      'status',
-      'respond',
-      'stop',
-      'result',
-      'audit',
-      'workspace_tools',
-    ]).optional(),
+    command: z
+      .enum([
+        'send',
+        'models',
+        'projects',
+        'list',
+        'messages',
+        'status',
+        'respond',
+        'stop',
+        'result',
+        'audit',
+        'workspace_tools',
+      ])
+      .optional(),
     error: z
       .object({
         code: ConversationControlErrorCodeSchema,
@@ -636,18 +653,12 @@ export const ConversationControlCommandResponseSchema = z.union([
   ConversationControlErrorResponseSchema,
 ]);
 
-export type ConversationControlSendResponse = z.infer<
-  typeof ConversationControlSendResponseSchema
->;
-export type ConversationControlModelSummary = z.infer<
-  typeof ConversationControlModelSummarySchema
->;
+export type ConversationControlSendResponse = z.infer<typeof ConversationControlSendResponseSchema>;
+export type ConversationControlModelSummary = z.infer<typeof ConversationControlModelSummarySchema>;
 export type ConversationControlModelsResponse = z.infer<
   typeof ConversationControlModelsResponseSchema
 >;
-export type ConversationControlListResponse = z.infer<
-  typeof ConversationControlListResponseSchema
->;
+export type ConversationControlListResponse = z.infer<typeof ConversationControlListResponseSchema>;
 export type ConversationControlMessagesResponse = z.infer<
   typeof ConversationControlMessagesResponseSchema
 >;
@@ -660,9 +671,7 @@ export type ConversationControlProgressFrame = z.infer<
 export type ConversationControlRespondResponse = z.infer<
   typeof ConversationControlRespondResponseSchema
 >;
-export type ConversationControlStopResponse = z.infer<
-  typeof ConversationControlStopResponseSchema
->;
+export type ConversationControlStopResponse = z.infer<typeof ConversationControlStopResponseSchema>;
 export type ConversationControlResultResponse = z.infer<
   typeof ConversationControlResultResponseSchema
 >;

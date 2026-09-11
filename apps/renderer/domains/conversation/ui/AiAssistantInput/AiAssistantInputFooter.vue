@@ -22,7 +22,7 @@
             :disabled="isInputControlsDisabled"
             :title="conversationMessage('conversation.input.actionMenu.open')"
             aria-haspopup="menu"
-            :aria-expanded="showInputActionMenu.toString()"
+            :aria-expanded="showInputActionMenu"
             @click="toggleInputActionMenu"
             @keydown.down.prevent="openInputActionMenu"
             @keydown.up.prevent="openInputActionMenu"
@@ -96,9 +96,11 @@
             :model-value="primaryModelValue"
             :options="modelSelectOptions"
             @update:modelValue="handlePrimaryModelChange"
-            :placeholder="isModelsLoading
-              ? conversationMessage('conversation.input.model.loading')
-              : conversationMessage('conversation.input.model.placeholder')"
+            :placeholder="
+              isModelsLoading
+                ? conversationMessage('conversation.input.model.loading')
+                : conversationMessage('conversation.input.model.placeholder')
+            "
             :disabled="isModelsLoading || isInputControlsDisabled"
             variant="minimal"
             :bordered="false"
@@ -114,15 +116,10 @@
             }"
           >
             <template #arrow-icon="{ isOpen }">
-              <ChevronIcon
-                direction="up"
-                class="selector-chevron"
-                :class="{ 'is-open': isOpen }"
-              />
+              <ChevronIcon direction="up" class="selector-chevron" :class="{ 'is-open': isOpen }" />
             </template>
           </CustomSelect>
         </div>
-
       </div>
     </div>
 
@@ -134,23 +131,26 @@
       />
 
       <button
-        :class="['send-button', { disabled: !canSend && !isStreaming }]"
-        :disabled="!canSend && !isStreaming"
+        :class="['send-button', { disabled: isPrimaryActionDisabled }]"
+        :disabled="isPrimaryActionDisabled"
+        :aria-label="conversationMessage(`conversation.input.action.${primaryAction}`)"
+        :title="conversationMessage(`conversation.input.action.${primaryAction}`)"
         @click="handleSubmit"
       >
-        <!-- 流式传输时显示停止图标 -->
-        <span v-if="isStreaming" class="stop-icon">
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <rect x="6" y="6" width="12" height="12" rx="1" />
+        <span
+          v-if="
+            primaryAction === 'pause' || primaryAction === 'continue' || primaryAction === 'cancel'
+          "
+          class="stop-icon"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <path v-if="primaryAction === 'continue'" d="M7 4v16l13-8z" />
+            <path v-else-if="primaryAction === 'pause'" d="M6 4h4v16H6zm8 0h4v16h-4z" />
+            <rect v-else x="6" y="6" width="12" height="12" rx="1" />
           </svg>
         </span>
         <!-- 加载时显示转圈圈 -->
-        <span v-else-if="isLoading" class="loading-spinner">
+        <span v-else-if="primaryAction === 'waiting' || isLoading" class="loading-spinner">
           <svg
             width="12"
             height="12"
@@ -195,6 +195,7 @@ import type {
   ConversationInformationPresentation,
 } from '../../features/context-window-usage';
 import { useConversationLocalization } from '../useConversationLocalization';
+import type { ComposerRunAction } from '../../features/interactive-run/functions/resolveComposerRunAction';
 import {
   CONVERSATION_IMAGE_ATTACHMENT_MENU_VALUE,
   buildConversationInputActionMenuOptions,
@@ -203,6 +204,8 @@ import {
 } from '../../features/input-action-menu';
 
 const props = defineProps({
+  primaryAction: { type: String as PropType<ComposerRunAction>, required: true },
+  isPrimaryActionDisabled: { type: Boolean, required: true },
   activeAgentChoiceId: {
     type: String as PropType<ConversationAgentChoiceId | null>,
     default: null,
@@ -277,10 +280,12 @@ const emit = defineEmits<{
 const conversationAgentChoices = useConversationAgentChoices();
 const { conversationMessage } = useConversationLocalization();
 const { t } = useLocalization();
-const isInputControlsDisabled = computed(() => props.disabled || props.isLoading || props.isStreaming);
+const isInputControlsDisabled = computed(
+  () => props.disabled || props.isLoading || props.isStreaming
+);
 
 const inputActionMenuOptions = computed<ConversationInputActionMenuOption[]>(() => {
-  const agents = conversationAgentChoices.value.map((agentChoice) => {
+  const agents = conversationAgentChoices.value.map(agentChoice => {
     const agentChoiceText = resolveConversationAgentChoiceTextPresentation(agentChoice, t);
     return {
       id: agentChoice.id,
@@ -302,8 +307,10 @@ const inputActionMenuOptions = computed<ConversationInputActionMenuOption[]>(() 
 
 const activeAgentChoiceIconComponent = computed<Component | null>(() => {
   if (!props.activeAgentChoiceId) return null;
-  return conversationAgentChoices.value
-    .find((agentChoice) => agentChoice.id === props.activeAgentChoiceId)?.iconComponent ?? null;
+  return (
+    conversationAgentChoices.value.find(agentChoice => agentChoice.id === props.activeAgentChoiceId)
+      ?.iconComponent ?? null
+  );
 });
 
 const showInputActionMenu = ref(false);
@@ -407,7 +414,7 @@ const positionInputActionMenu = () => {
   wrapperEl.style.left = `${left}px`;
 };
 
-watch(showInputActionMenu, (isOpen) => {
+watch(showInputActionMenu, isOpen => {
   if (isOpen) {
     nextTick(() => {
       positionInputActionMenu();
@@ -415,7 +422,7 @@ watch(showInputActionMenu, (isOpen) => {
   }
 });
 
-watch(isInputControlsDisabled, (disabled) => {
+watch(isInputControlsDisabled, disabled => {
   if (disabled) {
     showInputActionMenu.value = false;
   }

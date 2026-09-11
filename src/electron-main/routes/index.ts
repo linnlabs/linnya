@@ -182,6 +182,10 @@ import { createStorageSpaceRouter } from 'src/features/storage-space/storageSpac
 import { CONVERSATION_CONTROL_BRIDGE_PATH } from '@app/schemas';
 import type { ConversationControlUseCase } from 'src/app-hosts/linnya/application/conversation-control';
 import { WorkspaceService } from '../services/workspace/workspace';
+import {
+  selectRunRecoveryRetention,
+  releaseTerminalRunRecovery,
+} from 'src/app-hosts/linnya/application/run-resumption';
 import type { BackendRendererIntegrationPort } from 'src/app-hosts/linnya/desktop-capabilities';
 import {
   createConversationControlBridgeRouter,
@@ -336,8 +340,7 @@ export async function configureRoutes(
       );
     } catch (error: unknown) {
       logger.warn('bundled Provider 已注册模型启动刷新失败', {
-        provider_connection_definition_id:
-          configuredProvider.provider_connection_definition_id,
+        provider_connection_definition_id: configuredProvider.provider_connection_definition_id,
         failure_type: error instanceof Error ? error.name : 'unknown',
       });
     }
@@ -350,7 +353,7 @@ export async function configureRoutes(
   if (connectedChatGpt) {
     providerAccountModels.synchronize(
       CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID,
-      CHATGPT_PROVIDER_ACCOUNT_ID,
+      CHATGPT_PROVIDER_ACCOUNT_ID
     );
   }
   // 本地恢复是 ready 前置；远端刷新由 App owner 在路由完成后启动并负责退出收口。
@@ -360,7 +363,9 @@ export async function configureRoutes(
     synchronize: (connectionId, signal) =>
       providerOnboardingUseCase.synchronizeConnectedProviderModels(connectionId, signal),
   });
-  dependencies.providerModelSynchronizationLifecycleRegistration.register(providerModelSynchronization);
+  dependencies.providerModelSynchronizationLifecycleRegistration.register(
+    providerModelSynchronization
+  );
   const providerAccountAuthorization = createProviderAccountAuthorizationUseCase({
     accounts: providerAccountRegistry,
     chatGptTokens: createChatGptOAuthTokenClient(),
@@ -411,10 +416,13 @@ export async function configureRoutes(
 
   // 转录服务路由
   if (dependencies.transcriptionService) {
-    app.use('/api/v1/transcription', createTranscriptionRouter(
-      dependencies.transcriptionService,
-      dependencies.rendererIntegration.publishTranscriptionProgress,
-    ));
+    app.use(
+      '/api/v1/transcription',
+      createTranscriptionRouter(
+        dependencies.transcriptionService,
+        dependencies.rendererIntegration.publishTranscriptionProgress
+      )
+    );
     logger.info('✅ 转录服务路由已挂载: /api/v1/transcription');
   } else {
     logger.warn('⚠️ 转录服务未初始化，跳过路由挂载');
@@ -530,6 +538,10 @@ export async function configureRoutes(
       });
     }
     const auditPort = agentRuntime.auditPort;
+    const runDescriptors = agentRuntime.runDescriptors;
+    const executionCheckpoints = agentRuntime.executionCheckpoints;
+    if (!runDescriptors || !executionCheckpoints)
+      throw new Error('Production run recovery scope is incomplete');
     logger.info('[诊断] new SQLiteEventStore(db) 调用已成功返回');
 
     // C1：启动时跑一次 GC，清理 30 天以上、无 pending tool call 的旧 checkpoint
@@ -537,6 +549,9 @@ export async function configureRoutes(
     try {
       const purged = checkpointer.purgeStale({
         olderThanMs: ENGINE_CHECKPOINT_RETENTION_MS,
+        protectedCheckpointKeys: selectRunRecoveryRetention(
+          (await agentRuntime.supervisor.list({})).runs
+        ).checkpointKeys,
       });
       if (purged > 0) {
         logger.info(`[Checkpointer] 启动 GC：清理了 ${purged} 条 30+ 天旧 EngineState`);
@@ -571,6 +586,7 @@ export async function configureRoutes(
     // 🔥 初始化 GraphExecutor（注入 telemetryPort 以便 graph_node 事件落库）
     const executor = new GraphExecutor(checkpointer, {
       telemetryPort,
+      executionCheckpointPort: executionCheckpoints,
     });
 
     // 注册所有图节点（统一走静态 ESM import，避免 runtime require 字符串
@@ -666,6 +682,18 @@ export async function configureRoutes(
       commandRuntime: commandAgentRuntimes.child,
     });
     const agentRunner = new AgentRunnerService(executor, knowledgeBaseService, dbService, {
+      recovery: {
+        bindings: executionCheckpoints,
+        checkpointer,
+        descriptors: runDescriptors,
+        releaseTerminalRun: runId =>
+          releaseTerminalRunRecovery({
+            runId,
+            supervisor: agentRuntime.supervisor,
+            checkpointer,
+            descriptors: runDescriptors,
+          }),
+      },
       costCollector: agentRuntime.costCollector,
       registeredChildRunInvoker,
       commandPermissionSettings,
@@ -760,9 +788,9 @@ export async function configureRoutes(
     logger.info('✅ 流程编排器已初始化');
   } catch (e) {
     if (
-      e instanceof ConversationRuntimeInitializationError
-      && !commandProductionScope
-      && !sandboxProductionScope
+      e instanceof ConversationRuntimeInitializationError &&
+      !commandProductionScope &&
+      !sandboxProductionScope
     ) {
       // Factory 已经创建过 production owner 并完成失败收口；不能把它降级成可重试的
       // “会话路由不可用”，否则同一 App 进程可能再次创建第二套 owner。

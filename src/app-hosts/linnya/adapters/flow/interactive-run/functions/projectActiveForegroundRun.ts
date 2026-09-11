@@ -25,7 +25,7 @@ function readCheckpointRevision(record: Record<string, unknown>, context: string
 
 export function projectActiveForegroundRun(
   conversationId: string,
-  runs: readonly RunSnapshot[],
+  runs: readonly RunSnapshot[]
 ): ConversationActiveRunResponse {
   const foregroundRuns = runs.filter(run => run.metadata?.lane === 'foreground');
   if (foregroundRuns.length > 1) {
@@ -35,18 +35,20 @@ export function projectActiveForegroundRun(
   const run = foregroundRuns[0];
   if (!run) return { conversation_id: conversationId, run: null };
   if (
-    run.status !== 'pending'
-    && run.status !== 'running'
-    && run.status !== 'awaiting_user'
+    run.status !== 'pending' &&
+    run.status !== 'running' &&
+    run.status !== 'awaiting_user' &&
+    run.status !== 'paused'
   ) {
     throw new Error(`Run ${run.runId} is not active`);
   }
 
   const metadata = run.metadata ?? {};
   const turnId = readRequiredString(metadata, 'turnId', `Run ${run.runId}`);
-  const executionId = typeof metadata.executionId === 'string' && metadata.executionId.length > 0
-    ? metadata.executionId
-    : undefined;
+  const executionId =
+    typeof metadata.executionId === 'string' && metadata.executionId.length > 0
+      ? metadata.executionId
+      : undefined;
 
   let pendingInteraction: NonNullable<ConversationActiveRunResponse['run']>['pending_interaction'];
   if (run.status === 'awaiting_user') {
@@ -59,7 +61,11 @@ export function projectActiveForegroundRun(
       throw new Error(`Run ${run.runId} awaiting interaction is not pending`);
     }
     pendingInteraction = {
-      interaction_id: readRequiredString(interaction, 'interactionId', `Run ${run.runId} interaction`),
+      interaction_id: readRequiredString(
+        interaction,
+        'interactionId',
+        `Run ${run.runId} interaction`
+      ),
       run_id: run.runId,
       tool_call_id: readRequiredString(interaction, 'toolCallId', `Run ${run.runId} interaction`),
       checkpoint_revision: readCheckpointRevision(interaction, `Run ${run.runId} interaction`),
@@ -75,6 +81,15 @@ export function projectActiveForegroundRun(
       execution_id: executionId,
       status: run.status,
       lane: 'foreground',
+      ...(run.status === 'paused'
+        ? {
+            pause: {
+              settled: run.pausedAt !== undefined,
+              updated_at: run.updatedAt,
+              reason: run.pauseReason,
+            },
+          }
+        : {}),
       pending_interaction: pendingInteraction,
     },
   };

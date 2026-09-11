@@ -62,7 +62,7 @@ pnpm linnya:cli send \
 pnpm linnya:cli status <conversation-id> --run <run-id> --watch
 ```
 
-`--watch` 输出 JSONL，只在状态快照变化时写一行。到达 `awaiting_user` 或任一终态后退出。若需要用户输入，使用该帧中的 `pending_interaction.interaction_id`：
+`--watch` 输出 JSONL，只在状态快照变化时写一行。到达已收口 `paused`、`awaiting_user` 或任一终态后退出；仍在收口的暂停继续观察。无消息继续目前使用 Desktop 输入框，CLI 的 `send` 仍是新消息，成功接纳才替代旧暂停运行。若需要用户输入，使用该帧中的 `pending_interaction.interaction_id`：
 
 ```bash
 pnpm linnya:cli respond <conversation-id> \

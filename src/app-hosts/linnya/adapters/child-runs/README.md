@@ -5,6 +5,14 @@ Layer: `host-adapter/child-runs`
 这里承接 Linnya 宿主对 child-run 的默认装配与注册解析。  
 如果要回答“工具触发已注册 agent 时，默认是怎么解析 agent、怎么装配 invoker、怎么走 child-run 主链的”，应该看这里。
 
+## 持久运行合同
+
+恢复 Host 使用父 run + tool call + batch slot 确定 child identity；显式 subrun ID 必须与该父调用
+匹配，不能跨调用复用。首次启动先保存原 child 描述，再进入图；继续使用原 child request、turn、
+权限和 checkpoint，不读取新的默认值。已完成 child 的 yielded checkpoint 保留至根 run 结算，
+父调用恢复时只读取原结果，不再执行 child 或补发事实。未完成 child 异常向父图传播为可恢复中断，
+不是一份成功返回的“子任务失败”工具结果。同步审批仍应上提到 foreground。
+
 ---
 
 ## 1. 模块定位

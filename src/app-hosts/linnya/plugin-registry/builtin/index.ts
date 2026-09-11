@@ -52,7 +52,7 @@ const diskPluginDirsById = new Map<PluginId, string>();
 
 function registerBackendPluginIfMissing(
   contribution: PluginBackendContribution,
-  options: { readonly allowPluginCli?: boolean } = {},
+  options: { readonly allowPluginCli?: boolean } = {}
 ): void {
   if (!backendPluginRegistry.has(contribution.meta.id)) {
     backendPluginRegistry.register(contribution, {
@@ -71,19 +71,17 @@ function formatPluginIds(pluginIds: readonly PluginId[]): string {
   return pluginIds.join(', ');
 }
 
-function registerDiskBackendPlugins(
-  options: {
-    readonly applicationVersion: string;
-    readonly directPluginDirs?: readonly string[];
-    readonly trustedDirectPluginDirs?: readonly string[];
-    readonly trustedBundledPluginIds?: ReadonlySet<PluginId>;
-    readonly onActiveRollback?: (params: {
-      readonly pluginId: PluginId;
-      readonly failedVersion: string;
-      readonly toVersion: string;
-    }) => void;
-  },
-): void {
+function registerDiskBackendPlugins(options: {
+  readonly applicationVersion: string;
+  readonly directPluginDirs?: readonly string[];
+  readonly trustedDirectPluginDirs?: readonly string[];
+  readonly trustedBundledPluginIds?: ReadonlySet<PluginId>;
+  readonly onActiveRollback?: (params: {
+    readonly pluginId: PluginId;
+    readonly failedVersion: string;
+    readonly toVersion: string;
+  }) => void;
+}): void {
   const loaded = loadBackendPluginsFromDisk({
     pluginRoot: process.env.LINNYA_PLUGIN_ROOT,
     directPluginDirs: options.directPluginDirs ?? readDirectPluginDirsFromEnv(),
@@ -92,13 +90,14 @@ function registerDiskBackendPlugins(
   });
 
   const trustedDirectPluginDirs = new Set(
-    (options.trustedDirectPluginDirs ?? []).map((pluginDir) => path.resolve(pluginDir)),
+    (options.trustedDirectPluginDirs ?? []).map(pluginDir => path.resolve(pluginDir))
   );
   for (const item of loaded) {
     // 中文说明：高信任能力跟装配来源走，不跟某个插件 ID 走。开发者明确传入的
     // Backend direct dir，以及当前发行版随包清单中的插件，才允许贡献 Plugin CLI。
-    const allowPluginCli = trustedDirectPluginDirs.has(path.resolve(item.pluginDir))
-      || options.trustedBundledPluginIds?.has(item.contribution.meta.id) === true;
+    const allowPluginCli =
+      trustedDirectPluginDirs.has(path.resolve(item.pluginDir)) ||
+      options.trustedBundledPluginIds?.has(item.contribution.meta.id) === true;
     registerBackendPluginIfMissing(item.contribution, { allowPluginCli });
     diskPluginDirsById.set(item.contribution.meta.id, item.pluginDir);
   }
@@ -111,7 +110,9 @@ function syncPluginSkillSourceRoots(enabledIds: ReadonlySet<PluginId> | null): v
     contributionRoots: backendPluginRegistry.getSkillResourceRootRegistrations(resolvedEnabledIds),
     pluginDirsById: diskPluginDirsById,
   });
-  for (const registration of backendPluginRegistry.getAgentDefinitionRegistrations(resolvedEnabledIds)) {
+  for (const registration of backendPluginRegistry.getAgentDefinitionRegistrations(
+    resolvedEnabledIds
+  )) {
     validatePluginAgentRequiredSkills({
       pluginId: registration.pluginId,
       definitions: registration.definitions,
@@ -131,9 +132,9 @@ export function buildPluginSkillSourceRootsForRuntime(options: {
     ...Array.from(options.pluginDirsById.entries())
       .filter(([pluginId]) => options.enabledIds.has(pluginId))
       .map(([pluginId, pluginDir]) => ({
-      pluginId,
-      root: path.join(pluginDir, 'resources', 'skills'),
-    })),
+        pluginId,
+        root: path.join(pluginDir, 'resources', 'skills'),
+      })),
     ...(options.contributionRoots ?? [])
       .filter(({ pluginId }) => options.enabledIds.has(pluginId))
       .map(({ pluginId, root }) => ({ pluginId, root })),
@@ -143,9 +144,9 @@ export function buildPluginSkillSourceRootsForRuntime(options: {
 function assertBuiltinBackendPluginRegistrationComplete(hasPluginSource: boolean): void {
   if (registrationPhase === 'complete') return;
   throw new Error(
-    '[plugin-registry] 后端插件注册尚未完成'
-    + ` phase=${registrationPhase}`
-    + ` hasPluginSource=${hasPluginSource}`,
+    '[plugin-registry] 后端插件注册尚未完成' +
+      ` phase=${registrationPhase}` +
+      ` hasPluginSource=${hasPluginSource}`
   );
 }
 
@@ -162,15 +163,14 @@ export function ensureBuiltinBackendPluginsRegistered(
       readonly failedVersion: string;
       readonly toVersion: string;
     }) => void;
-  } = {},
+  } = {}
 ): void {
   if (registrationPhase === 'complete') return;
   ensurePluginSkillAvailabilityRegistered();
   const backendDirectPluginDirs = readBackendDirectPluginDirsFromEnv();
-  const directPluginDirs = [...new Set([
-    ...backendDirectPluginDirs,
-    ...readDirectPluginDirsFromEnv(),
-  ])];
+  const directPluginDirs = [
+    ...new Set([...backendDirectPluginDirs, ...readDirectPluginDirsFromEnv()]),
+  ];
   const hasPluginSource = !!process.env.LINNYA_PLUGIN_ROOT || directPluginDirs.length > 0;
   registerBackendPluginIfMissing(platformBackendPlugin);
 
@@ -190,10 +190,10 @@ export function ensureBuiltinBackendPluginsRegistered(
     return;
   }
 
-  const bundledPluginRoot = process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT
-    ?? process.env.LINNYA_BUNDLED_PLUGIN_ROOT;
+  const bundledPluginRoot =
+    process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT ?? process.env.LINNYA_BUNDLED_PLUGIN_ROOT;
   const trustedBundledPluginIds = new Set<PluginId>(
-    bundledPluginRoot ? listBundledPluginManifestIds(bundledPluginRoot) : [],
+    bundledPluginRoot ? listBundledPluginManifestIds(bundledPluginRoot) : []
   );
   registerDiskBackendPlugins({
     applicationVersion,
@@ -207,7 +207,7 @@ export function ensureBuiltinBackendPluginsRegistered(
 
 function readInstalledPluginIds(
   db: Database.Database,
-  metas: readonly PluginMeta[] = backendPluginRegistry.listMeta(),
+  metas: readonly PluginMeta[] = backendPluginRegistry.listMeta()
 ): ReadonlySet<PluginId> {
   const stateService = new PluginStateService(db);
   const installedIds = new Set<PluginId>();
@@ -220,22 +220,32 @@ function readInstalledPluginIds(
   return installedIds;
 }
 
-function applyRegisteredPluginSchemas(db: Database.Database, installedIds: ReadonlySet<PluginId>): void {
+function applyRegisteredPluginSchemas(
+  db: Database.Database,
+  installedIds: ReadonlySet<PluginId>
+): void {
   const providers = backendPluginRegistry.getSchemaProviders(installedIds);
   if (providers.length === 0) {
     console.log('[PluginLifecycleBootstrap] No plugin schema providers to apply.');
     return;
   }
 
-  console.log(`[PluginLifecycleBootstrap] Applying ${providers.length} plugin schema provider(s)...`);
+  console.log(
+    `[PluginLifecycleBootstrap] Applying ${providers.length} plugin schema provider(s)...`
+  );
   const transaction = db.transaction(() => {
     for (const provider of providers) {
-      console.log(`[PluginLifecycleBootstrap] Applying schema from plugin provider: ${provider.name}`);
+      console.log(
+        `[PluginLifecycleBootstrap] Applying schema from plugin provider: ${provider.name}`
+      );
       for (const ddl of provider.getSchema()) {
         try {
           db.exec(ddl);
         } catch (error) {
-          console.error(`[PluginLifecycleBootstrap] Failed to execute DDL from ${provider.name}:`, error);
+          console.error(
+            `[PluginLifecycleBootstrap] Failed to execute DDL from ${provider.name}:`,
+            error
+          );
           console.error(`[PluginLifecycleBootstrap] DDL statement:\n${ddl}`);
           throw error;
         }
@@ -248,14 +258,14 @@ function applyRegisteredPluginSchemas(db: Database.Database, installedIds: Reado
 function runRegisteredPluginLifecycle(
   db: Database.Database,
   installedIds: ReadonlySet<PluginId>,
-  applicationVersion: string,
+  applicationVersion: string
 ): void {
   const plans = backendPluginRegistry.getLifecyclePlans(installedIds);
   console.log(
-    `[PluginLifecycleBootstrap] Installed plugin ids: ${formatPluginIds(Array.from(installedIds)) || '(none)'}.`,
+    `[PluginLifecycleBootstrap] Installed plugin ids: ${formatPluginIds(Array.from(installedIds)) || '(none)'}.`
   );
   console.log(
-    `[PluginLifecycleBootstrap] Lifecycle plans: ${plans.map((plan) => `${plan.pluginId}@${plan.targetVersion}/schema${latestMigrationVersion(plan.migrations)}`).join(', ') || '(none)'}.`,
+    `[PluginLifecycleBootstrap] Lifecycle plans: ${plans.map(plan => `${plan.pluginId}@${plan.targetVersion}/schema${latestMigrationVersion(plan.migrations)}`).join(', ') || '(none)'}.`
   );
   if (plans.length === 0) {
     console.log('[PluginLifecycleBootstrap] No plugin lifecycle plans to apply.');
@@ -264,42 +274,49 @@ function runRegisteredPluginLifecycle(
 
   const runner = new PluginUpgradeRunner(db, {
     appVersion: applicationVersion,
-    recordDiagnostic: (diagnostic) => {
+    recordDiagnostic: diagnostic => {
       pluginDiagnostics.record(diagnostic);
     },
   });
   for (const plan of plans) {
     console.log(
-      `[PluginLifecycleBootstrap] Running ${plan.pluginId} plugin lifecycle plan `
-      + `(target=${plan.targetVersion}, migrations=[${plan.migrations.map((migration) => migration.version).join(',')}], `
-      + `ownedTables=${plan.ownedTables.length}).`,
+      `[PluginLifecycleBootstrap] Running ${plan.pluginId} plugin lifecycle plan ` +
+        `(target=${plan.targetVersion}, migrations=[${plan.migrations.map(migration => migration.version).join(',')}], ` +
+        `ownedTables=${plan.ownedTables.length}).`
     );
     const result = runner.run(plan);
     if (result.status === 'upgraded') {
       console.log(
-        `[PluginLifecycleBootstrap] Applied ${plan.pluginId} plugin lifecycle ${result.fromVersion} -> ${result.toVersion}; schema v${result.migrationResult.toVersion}.`,
+        `[PluginLifecycleBootstrap] Applied ${plan.pluginId} plugin lifecycle ${result.fromVersion} -> ${result.toVersion}; schema v${result.migrationResult.toVersion}.`
       );
       continue;
     }
     if (result.status === 'skipped') {
-      console.log(`[PluginLifecycleBootstrap] ${plan.pluginId} plugin lifecycle skipped: ${result.reason}.`);
+      console.log(
+        `[PluginLifecycleBootstrap] ${plan.pluginId} plugin lifecycle skipped: ${result.reason}.`
+      );
     } else if (result.status === 'incompatible') {
-      console.warn(`[PluginLifecycleBootstrap] ${plan.pluginId} plugin lifecycle incompatible: ${result.reason}.`);
+      console.warn(
+        `[PluginLifecycleBootstrap] ${plan.pluginId} plugin lifecycle incompatible: ${result.reason}.`
+      );
     } else {
-      console.error(`[PluginLifecycleBootstrap] ${plan.pluginId} plugin lifecycle failed: ${result.error}.`);
+      console.error(
+        `[PluginLifecycleBootstrap] ${plan.pluginId} plugin lifecycle failed: ${result.error}.`
+      );
     }
   }
 }
 
 function latestMigrationVersion(migrations: readonly { readonly version: number }[]): number {
-  return migrations.length === 0 ? 0 : migrations[migrations.length - 1]?.version ?? 0;
+  return migrations.length === 0 ? 0 : (migrations[migrations.length - 1]?.version ?? 0);
 }
 
 function activateStagedBundledPluginVersions(
   db: Database.Database,
-  applicationVersion: string,
+  applicationVersion: string
 ): void {
-  const bundledPluginRoot = process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT ?? process.env.LINNYA_BUNDLED_PLUGIN_ROOT;
+  const bundledPluginRoot =
+    process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT ?? process.env.LINNYA_BUNDLED_PLUGIN_ROOT;
   const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
   if (!bundledPluginRoot || !userPluginRoot) {
     return;
@@ -323,7 +340,9 @@ function activateStagedBundledPluginVersions(
       directPluginDirs: [candidate.pluginDir],
       appVersion: applicationVersion,
     });
-    const contribution = loaded.find((item) => item.contribution.meta.id === candidate.pluginId)?.contribution;
+    const contribution = loaded.find(
+      item => item.contribution.meta.id === candidate.pluginId
+    )?.contribution;
     if (!contribution) {
       pluginDiagnostics.record({
         level: 'error',
@@ -334,10 +353,7 @@ function activateStagedBundledPluginVersions(
       continue;
     }
 
-    stateService.ensureBuiltinInstalled([
-      platformBackendPlugin.meta,
-      contribution.meta,
-    ]);
+    stateService.ensureBuiltinInstalled([platformBackendPlugin.meta, contribution.meta]);
     try {
       stateService.setInstalled(contribution.meta.id, true, [
         platformBackendPlugin.meta,
@@ -367,7 +383,7 @@ function activateStagedBundledPluginVersions(
         ownedTables: contribution.ownedTables ?? [],
         migrations: contribution.pluginMigrations ?? [],
       },
-      recordDiagnostic: (diagnostic) => pluginDiagnostics.record(diagnostic),
+      recordDiagnostic: diagnostic => pluginDiagnostics.record(diagnostic),
     });
     if (result.status === 'activated') {
       activatedAny = true;
@@ -378,7 +394,7 @@ function activateStagedBundledPluginVersions(
         ]);
       }
       console.log(
-        `[PluginLifecycleBootstrap] Activated staged bundled plugin ${result.pluginId}@${result.version}.`,
+        `[PluginLifecycleBootstrap] Activated staged bundled plugin ${result.pluginId}@${result.version}.`
       );
       continue;
     }
@@ -410,7 +426,7 @@ function activateStagedBundledPluginVersions(
 
 export function bootstrapBuiltinPluginLifecycle(
   db: Database.Database,
-  applicationVersion: string,
+  applicationVersion: string
 ): void {
   // 中文说明：随包 seed 只复制版本目录，不提前切 active；这里在核心 DB 表
   // 就绪后先用 staged artifact 跑迁移，成功后再写 active.json，避免启动窗口内
@@ -421,12 +437,13 @@ export function bootstrapBuiltinPluginLifecycle(
     reconcilePluginActiveVersions({
       db,
       userPluginRoot,
-      recordDiagnostic: (diagnostic) => pluginDiagnostics.record({
-        level: diagnostic.level,
-        pluginId: diagnostic.pluginId,
-        capability: 'migration',
-        message: diagnostic.message,
-      }),
+      recordDiagnostic: diagnostic =>
+        pluginDiagnostics.record({
+          level: diagnostic.level,
+          pluginId: diagnostic.pluginId,
+          capability: 'migration',
+          message: diagnostic.message,
+        }),
     });
   }
   ensureBuiltinBackendPluginsRegistered({
@@ -444,7 +461,7 @@ export function bootstrapBuiltinPluginLifecycle(
   const metas = backendPluginRegistry.listMeta();
 
   // 中文说明：核心迁移完成后才登记内置插件；此时 installed_plugins/plugin_migrations 已存在。
-  stateService.ensureBuiltinInstalled(metas.filter((meta) => meta.builtin));
+  stateService.ensureBuiltinInstalled(metas.filter(meta => meta.builtin));
   const installedIds = readInstalledPluginIds(db, metas);
   applyRegisteredPluginSchemas(db, installedIds);
   runRegisteredPluginLifecycle(db, installedIds, applicationVersion);
@@ -455,7 +472,9 @@ export function listRegisteredBackendPluginMetas() {
   return backendPluginRegistry.listMeta();
 }
 
-function resolveEnabledIds(enabledIds?: ReadonlySet<PluginId> | null): ReadonlySet<PluginId> | null {
+function resolveEnabledIds(
+  enabledIds?: ReadonlySet<PluginId> | null
+): ReadonlySet<PluginId> | null {
   return enabledIds === undefined ? getRuntimeEnabledPluginIds() : enabledIds;
 }
 
@@ -469,15 +488,18 @@ export function getRegisteredToolContextDecorators(enabledIds?: ReadonlySet<Plug
   return backendPluginRegistry.getToolContextDecorators(resolveEnabledIds(enabledIds));
 }
 
-export function getRegisteredToolContextBindingMigrators(enabledIds?: ReadonlySet<PluginId> | null) {
+export function getRegisteredToolContextBindingMigrators(
+  enabledIds?: ReadonlySet<PluginId> | null
+) {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
   return backendPluginRegistry.getToolContextBindingMigrators(resolveEnabledIds(enabledIds));
 }
 
 export function getRegisteredAgentFenceDescriptors(enabledIds?: ReadonlySet<PluginId> | null) {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
-  return backendPluginRegistry.getAgentFenceRegistrations(resolveEnabledIds(enabledIds))
-    .map((registration) => registration.descriptor);
+  return backendPluginRegistry
+    .getAgentFenceRegistrations(resolveEnabledIds(enabledIds))
+    .map(registration => registration.descriptor);
 }
 
 export function getBackendPluginRegistryRevision(): number {
@@ -495,64 +517,71 @@ export function registerRegisteredBackendPluginIpcHandlers(serviceManager: unkno
       clearBackendPluginIpcHandlersForPlugin(registration.pluginId);
       clearedPluginIds.add(registration.pluginId);
     }
-    registration.register(serviceManager, (
-      pluginId: string,
-      channel: string,
-      handler: BackendPluginIpcHandler,
-    ) => {
-      if (pluginId !== registration.pluginId) {
-        throw new Error(
-          `[plugin-registry] IPC contribution pluginId 不一致: expected=${registration.pluginId}, actual=${pluginId}`,
-        );
+    registration.register(
+      serviceManager,
+      (pluginId: string, channel: string, handler: BackendPluginIpcHandler) => {
+        if (pluginId !== registration.pluginId) {
+          throw new Error(
+            `[plugin-registry] IPC contribution pluginId 不一致: expected=${registration.pluginId}, actual=${pluginId}`
+          );
+        }
+        registeredChannels.add(channel);
+        registerBackendPluginIpcHandler(pluginId, channel, handler);
       }
-      registeredChannels.add(channel);
-      registerBackendPluginIpcHandler(pluginId, channel, handler);
-    });
+    );
 
     if (registration.source === 'legacy') {
       continue;
     }
 
-    const undeclared = Array.from(registeredChannels).filter((channel) => !declaredChannels.has(channel));
-    const missing = Array.from(declaredChannels).filter((channel) => !registeredChannels.has(channel));
+    const undeclared = Array.from(registeredChannels).filter(
+      channel => !declaredChannels.has(channel)
+    );
+    const missing = Array.from(declaredChannels).filter(
+      channel => !registeredChannels.has(channel)
+    );
     if (undeclared.length > 0 || missing.length > 0) {
       throw new Error(
-        `[plugin-registry] IPC contribution 声明与注册不一致: ${registration.pluginId}`
-        + ` undeclared=[${undeclared.join(',')}] missing=[${missing.join(',')}]`,
+        `[plugin-registry] IPC contribution 声明与注册不一致: ${registration.pluginId}` +
+          ` undeclared=[${undeclared.join(',')}] missing=[${missing.join(',')}]`
       );
     }
   }
 }
 
-export function syncRegisteredBackendPluginSandboxProfiles(enabledIds?: ReadonlySet<PluginId> | null): void {
+export function syncRegisteredBackendPluginSandboxProfiles(
+  enabledIds?: ReadonlySet<PluginId> | null
+): void {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
   syncBackendPluginSandboxProfiles(
-    backendPluginRegistry.getSandboxProfileRegistrations(resolveEnabledIds(enabledIds)),
+    backendPluginRegistry.getSandboxProfileRegistrations(resolveEnabledIds(enabledIds))
   );
 }
 
 export async function syncRegisteredBackendPluginRuntimeResources(
-  enabledIds?: ReadonlySet<PluginId> | null,
+  enabledIds?: ReadonlySet<PluginId> | null
 ): Promise<void> {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
   const resolvedEnabledIds = resolveEnabledIds(enabledIds);
   syncPluginSkillSourceRoots(resolvedEnabledIds);
-  const runtimeEffectRegistrations = backendPluginRegistry.getRuntimeEffectRegistrations(resolvedEnabledIds);
-  const pluginCliRegistrations = backendPluginRegistry.getPluginCliRegistrations(resolvedEnabledIds);
+  const runtimeEffectRegistrations =
+    backendPluginRegistry.getRuntimeEffectRegistrations(resolvedEnabledIds);
+  const pluginCliRegistrations =
+    backendPluginRegistry.getPluginCliRegistrations(resolvedEnabledIds);
   await deactivateStaleBackendPluginClis(pluginCliRegistrations);
   await deactivateStaleBackendPluginRuntimeEffects(runtimeEffectRegistrations);
   syncBackendPluginSandboxProfiles(
-    backendPluginRegistry.getSandboxProfileRegistrations(resolvedEnabledIds),
+    backendPluginRegistry.getSandboxProfileRegistrations(resolvedEnabledIds)
   );
   await syncBackendPluginHiddenWorkers(
-    backendPluginRegistry.getHiddenWorkerRegistrations(resolvedEnabledIds),
+    backendPluginRegistry.getHiddenWorkerRegistrations(resolvedEnabledIds)
   );
   await activateDesiredBackendPluginRuntimeEffects(runtimeEffectRegistrations);
   activateDesiredBackendPluginClis(pluginCliRegistrations);
 }
 
 export function getRegisteredBackendPluginCli(
-  pluginId: PluginId,
+  pluginId: PluginId
 ): import('../registry').BackendPluginCliRegistration | undefined {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
   return backendPluginRegistry
@@ -586,12 +615,26 @@ export function getRegisteredBackendPluginRendererPushChannels(
   enabledIds?: ReadonlySet<PluginId> | null
 ) {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
-  return backendPluginRegistry.getRendererPushChannelsForPlugin(pluginId, resolveEnabledIds(enabledIds));
+  return backendPluginRegistry.getRendererPushChannelsForPlugin(
+    pluginId,
+    resolveEnabledIds(enabledIds)
+  );
 }
 
 export function getRegisteredAgentDefinitions(enabledIds?: ReadonlySet<PluginId>) {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
   return backendPluginRegistry.getAgentDefinitions(resolveEnabledIds(enabledIds));
+}
+
+/** 恢复只读取已启用 artifact 的版本身份，不把 migration 或插件内部实现交给 Flow。 */
+export function getRegisteredBackendPluginVersions(): ReadonlyArray<{
+  id: string;
+  version: string;
+}> {
+  ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
+  return backendPluginRegistry
+    .getLifecyclePlans(resolveEnabledIds())
+    .map(plan => ({ id: plan.pluginId, version: plan.targetVersion }));
 }
 
 /**

@@ -1,7 +1,11 @@
 import { promises as fsp } from 'node:fs';
 import path from 'node:path';
 
-import { TOOL_OUTPUT_MANIFEST_FILE_NAME } from '../definitions/toolOutputBlob';
+import {
+  TOOL_OUTPUT_MANIFEST_FILE_NAME,
+  TOOL_OUTPUT_MANIFEST_MAX_BYTES,
+  ToolOutputBlobManifestSchema,
+} from '../definitions/toolOutputBlob';
 
 export interface ToolOutputStoreCleanupStats {
   readonly scanned: number;
@@ -40,18 +44,13 @@ async function listChildDirectories(pathname: string): Promise<string[]> {
     if (readNodeErrorCode(error) === 'ENOENT') return [];
     throw error;
   }
-  return entries
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => path.join(pathname, entry.name));
+  return entries.filter(entry => entry.isDirectory()).map(entry => path.join(pathname, entry.name));
 }
 
 async function listToolOutputBlobDirectories(workspaceRoot: string): Promise<string[]> {
-  const conversationsRoot = await existingDirectory(path.join(
-    workspaceRoot,
-    'Artifacts',
-    'v1',
-    'conversations',
-  ));
+  const conversationsRoot = await existingDirectory(
+    path.join(workspaceRoot, 'Artifacts', 'v1', 'conversations')
+  );
   if (!conversationsRoot) return [];
 
   const result: string[] = [];
@@ -59,11 +58,9 @@ async function listToolOutputBlobDirectories(workspaceRoot: string): Promise<str
     const instancesRoot = await existingDirectory(path.join(conversationDirectory, 'instances'));
     if (!instancesRoot) continue;
     for (const instanceDirectory of await listChildDirectories(instancesRoot)) {
-      const blobsDirectory = await existingDirectory(path.join(
-        instanceDirectory,
-        'tool_output',
-        'blobs',
-      ));
+      const blobsDirectory = await existingDirectory(
+        path.join(instanceDirectory, 'tool_output', 'blobs')
+      );
       if (blobsDirectory) result.push(blobsDirectory);
     }
   }
@@ -86,6 +83,7 @@ async function cleanupBlobRoot(input: {
   readonly now: number;
   readonly retentionMs: number;
   readonly logger: ToolOutputStoreCleanupLogger;
+  readonly protectedConversationIds?: ReadonlySet<string>;
 }): Promise<ToolOutputStoreCleanupStats> {
   let scanned = 0;
   let deleted = 0;
@@ -136,13 +134,19 @@ async function cleanupBlobRoot(input: {
         throw new Error('manifest 不是普通文件');
       }
       if (input.now - manifestStat.mtimeMs <= input.retentionMs) continue;
+      if (manifestStat.size > TOOL_OUTPUT_MANIFEST_MAX_BYTES)
+        throw new Error('ToolOutput manifest exceeds its size limit');
+      const manifest = ToolOutputBlobManifestSchema.parse(
+        JSON.parse(await fsp.readFile(manifestPath, 'utf8'))
+      );
+      if (input.protectedConversationIds?.has(manifest.conversation_id)) continue;
       await removePublishedBlobDirectory(fullPath);
       deleted += 1;
     } catch (error: unknown) {
       failed += 1;
       input.logger.warn(
-        `ToolOutputStore 清理失败: path=${fullPath}, `
-        + `err=${error instanceof Error ? error.message : String(error)}`,
+        `ToolOutputStore 清理失败: path=${fullPath}, ` +
+          `err=${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
@@ -155,6 +159,7 @@ export async function cleanupToolOutputStoreByTime(input: {
   readonly retentionDays: number;
   readonly workspaceRoot: string;
   readonly now?: number;
+  readonly protectedConversationIds?: ReadonlySet<string>;
 }): Promise<ToolOutputStoreCleanupStats> {
   const retentionMs = Math.max(1, Math.floor(input.retentionDays)) * 24 * 60 * 60 * 1000;
   const now = input.now ?? Date.now();
@@ -165,8 +170,8 @@ export async function cleanupToolOutputStoreByTime(input: {
   } catch (error: unknown) {
     total.failed += 1;
     input.logger.warn(
-      `ToolOutputStore 扫描失败: root=${input.workspaceRoot}, `
-      + `err=${error instanceof Error ? error.message : String(error)}`,
+      `ToolOutputStore 扫描失败: root=${input.workspaceRoot}, ` +
+        `err=${error instanceof Error ? error.message : String(error)}`
     );
     return total;
   }
@@ -177,6 +182,7 @@ export async function cleanupToolOutputStoreByTime(input: {
         now,
         retentionMs,
         logger: input.logger,
+        protectedConversationIds: input.protectedConversationIds,
       });
       total.scanned += result.scanned;
       total.deleted += result.deleted;
@@ -184,8 +190,8 @@ export async function cleanupToolOutputStoreByTime(input: {
     } catch (error: unknown) {
       total.failed += 1;
       input.logger.warn(
-        `ToolOutputStore 扫描失败: root=${blobsDirectory}, `
-        + `err=${error instanceof Error ? error.message : String(error)}`,
+        `ToolOutputStore 扫描失败: root=${blobsDirectory}, ` +
+          `err=${error instanceof Error ? error.message : String(error)}`
       );
     }
   }

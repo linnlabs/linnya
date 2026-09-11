@@ -1,8 +1,16 @@
 import type { AuditPort, LlmInputMaterializerPort } from '@linnlabs/linnkit/ports';
-import type { graph, runSupervisor, ToolModelInputResolverPort } from '@linnlabs/linnkit/runtime-kernel';
+import type {
+  graph,
+  runSupervisor,
+  ToolModelInputResolverPort,
+} from '@linnlabs/linnkit/runtime-kernel';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import type { LinnyaRunCostCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
 import type { LinnyaTokenCalibrationCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
+import type { RunDescriptorStore, RunAdmissionCommitPort } from '../../application/run-resumption';
+import type { ExecutionCheckpointBindings } from '../../application/run-resumption';
+import type { CheckpointWriter } from '../persistence/execution-commit';
+import type { SqliteToolResultReceipts } from '../persistence/execution-commit';
 
 /**
  * 一次 Linnya 应用运行期共享的 Agent 基础设施作用域。
@@ -21,4 +29,10 @@ export interface LinnyaAgentRuntimeScope {
   readonly auditEnabled: boolean;
   readonly llmInputMaterializer?: LlmInputMaterializerPort;
   readonly toolModelInputResolver?: ToolModelInputResolverPort;
+  readonly runDescriptors?: RunDescriptorStore;
+  readonly toolResults?: SqliteToolResultReceipts;
+  readonly recoveryCheckpointer?: graph.Checkpointer;
+  readonly runAdmissionCommit?: RunAdmissionCommitPort;
+  readonly executionCheckpoints?: ExecutionCheckpointBindings;
+  readonly createCheckpointWriter?: (runId: string, executionId: string) => CheckpointWriter;
 }

@@ -12,7 +12,7 @@ function createRun(
     executionId?: string;
     interactionId?: string;
     errorIfAny?: runSupervisor.RunSnapshot['errorIfAny'];
-  } = {},
+  } = {}
 ): runSupervisor.RunSnapshot {
   const awaitingUser = options.interactionId
     ? {
@@ -48,7 +48,7 @@ describe('readForegroundRunSettlement', () => {
       complete = resolve;
     });
     let currentRuns: readonly runSupervisor.RunSnapshot[] = [
-      createRun('running', { executionId: 'execution-before-teardown' }),
+      createRun('cancelled', { executionId: 'execution-before-teardown' }),
     ];
     let reads = 0;
 
@@ -65,7 +65,7 @@ describe('readForegroundRunSettlement', () => {
     });
 
     await Promise.resolve();
-    expect(reads).toBe(0);
+    expect(reads).toBe(1);
     currentRuns = [
       createRun('cancelled', {
         errorIfAny: {
@@ -91,7 +91,20 @@ describe('readForegroundRunSettlement', () => {
         },
       },
     });
-    expect(reads).toBe(1);
+    expect(reads).toBe(2);
+  });
+
+  it('断连后仍在工作的 Backend 立即返回 running，不等待执行 completion', async () => {
+    await expect(
+      readForegroundRunSettlement({
+        conversationId,
+        runId,
+        supervisor: {
+          findByConversation: async () => [createRun('running', { executionId: 'live' })],
+        },
+        executionCompletions: { findPending: () => new Promise<void>(() => {}) },
+      })
+    ).resolves.toMatchObject({ run: { status: 'running', execution_id: 'live' } });
   });
 
   it('response command 未接纳时保留原 awaiting-user interaction', async () => {
@@ -100,12 +113,14 @@ describe('readForegroundRunSettlement', () => {
       interactionId: 'interaction-original',
     });
 
-    await expect(readForegroundRunSettlement({
-      conversationId,
-      runId,
-      supervisor: { findByConversation: async () => [originalAwaiting] },
-      executionCompletions: { findPending: () => undefined },
-    })).resolves.toMatchObject({
+    await expect(
+      readForegroundRunSettlement({
+        conversationId,
+        runId,
+        supervisor: { findByConversation: async () => [originalAwaiting] },
+        executionCompletions: { findPending: () => undefined },
+      })
+    ).resolves.toMatchObject({
       run: {
         status: 'awaiting_user',
         execution_id: 'execution-original',
@@ -119,12 +134,14 @@ describe('readForegroundRunSettlement', () => {
   it('同一 run 已开始新 execution 时返回新的 active identity', async () => {
     const resumed = createRun('running', { executionId: 'execution-resumed' });
 
-    await expect(readForegroundRunSettlement({
-      conversationId,
-      runId,
-      supervisor: { findByConversation: async () => [resumed] },
-      executionCompletions: { findPending: () => undefined },
-    })).resolves.toMatchObject({
+    await expect(
+      readForegroundRunSettlement({
+        conversationId,
+        runId,
+        supervisor: { findByConversation: async () => [resumed] },
+        executionCompletions: { findPending: () => undefined },
+      })
+    ).resolves.toMatchObject({
       run: {
         run_id: runId,
         status: 'running',
@@ -134,12 +151,14 @@ describe('readForegroundRunSettlement', () => {
   });
 
   it('durable registry 中没有该 run 时返回 null', async () => {
-    await expect(readForegroundRunSettlement({
-      conversationId,
-      runId,
-      supervisor: { findByConversation: async () => [] },
-      executionCompletions: { findPending: () => undefined },
-    })).resolves.toEqual({
+    await expect(
+      readForegroundRunSettlement({
+        conversationId,
+        runId,
+        supervisor: { findByConversation: async () => [] },
+        executionCompletions: { findPending: () => undefined },
+      })
+    ).resolves.toEqual({
       conversation_id: conversationId,
       requested_run_id: runId,
       run: null,

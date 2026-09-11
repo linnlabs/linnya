@@ -41,10 +41,7 @@ import {
   parseStoredRuntimeEvent,
   serializeStoredRuntimeEvent,
 } from './functions/runtimeEventStorageCodec';
-import {
-  ConversationSelectedAgentIdSchema,
-  type ConversationSelectedAgentId,
-} from '@app/schemas';
+import { ConversationSelectedAgentIdSchema, type ConversationSelectedAgentId } from '@app/schemas';
 import { SqliteSubrunTraceHistoryCleanup } from '../subrun-trace-history/sqliteSubrunTraceHistoryCleanup';
 
 const logger = getLogger('SQLiteEventStore');
@@ -85,7 +82,9 @@ interface RunOwnerRow {
   parent_run_id: string | null;
 }
 
-function readConversationMode(row: Pick<ConversationRow, 'conversation_id' | 'metadata'>): string | undefined {
+function readConversationMode(
+  row: Pick<ConversationRow, 'conversation_id' | 'metadata'>
+): string | undefined {
   try {
     if (!row.metadata) return undefined;
     const meta = JSON.parse(row.metadata) as { mode?: unknown };
@@ -109,9 +108,10 @@ function toConversationListItem(row: ConversationRow): ConversationListItem {
     is_pinned: row.is_pinned === 1,
     pinned_at: typeof row.pinned_at === 'number' ? row.pinned_at : undefined,
     mode: readConversationMode(row),
-    selected_agent_id: row.selected_agent_id === null
-      ? null
-      : ConversationSelectedAgentIdSchema.parse(row.selected_agent_id),
+    selected_agent_id:
+      row.selected_agent_id === null
+        ? null
+        : ConversationSelectedAgentIdSchema.parse(row.selected_agent_id),
   };
 }
 
@@ -119,14 +119,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function parseConversationMetadata(conversationId: string, metadata: string | null): Record<string, unknown> {
+function parseConversationMetadata(
+  conversationId: string,
+  metadata: string | null
+): Record<string, unknown> {
   if (!metadata) {
     return {};
   }
 
   const parsed: unknown = JSON.parse(metadata);
   if (!isRecord(parsed)) {
-    throw new Error(`[SQLiteEventStore] conversation ${conversationId} metadata must be a JSON object`);
+    throw new Error(
+      `[SQLiteEventStore] conversation ${conversationId} metadata must be a JSON object`
+    );
   }
 
   return { ...parsed };
@@ -135,9 +140,7 @@ function parseConversationMetadata(conversationId: string, metadata: string | nu
 function buildPreviewText(content: string): string {
   const trimmed = content.trim();
   const firstSentenceMatch = trimmed.match(/^[^。？！.?!\n]+[。？！.?!]?/);
-  return firstSentenceMatch
-    ? firstSentenceMatch[0].slice(0, 100)
-    : trimmed.slice(0, 100);
+  return firstSentenceMatch ? firstSentenceMatch[0].slice(0, 100) : trimmed.slice(0, 100);
 }
 
 /** AuditEnvelope 属于隐藏执行事实，不进入 conversation history 的统计口径。 */
@@ -153,7 +156,7 @@ export class SQLiteEventStore implements IEventStore {
   /**
    * 构造函数（重构版）
    * @param db 由 DatabaseService 提供的统一数据库连接
-   * 
+   *
    * 注意：数据库连接和表创建已由 DatabaseService 统一管理，
    * 此服务只负责对话相关的业务逻辑。
    */
@@ -171,7 +174,7 @@ export class SQLiteEventStore implements IEventStore {
   async beginRunSession(
     conversationId: string,
     runId: string,
-    metadata: RunMetadata,
+    metadata: RunMetadata
   ): Promise<RunSession> {
     if (runId.trim().length === 0) {
       throw new Error('[SQLiteEventStore] beginRunSession requires an explicit runId');
@@ -186,19 +189,23 @@ export class SQLiteEventStore implements IEventStore {
   }
 
   async openRunSession(conversationId: string, runId: string): Promise<RunSession> {
-    const row = this.db.prepare(`
+    const row = this.db
+      .prepare(
+        `
       SELECT id, conversation_id, start_ts
       FROM runs
       WHERE id = ?
       LIMIT 1
-    `).get(runId) as { id: string; conversation_id: string; start_ts: number } | undefined;
+    `
+      )
+      .get(runId) as { id: string; conversation_id: string; start_ts: number } | undefined;
 
     if (!row) {
       throw new Error(`[SQLiteEventStore] run ${runId} does not exist`);
     }
     if (row.conversation_id !== conversationId) {
       throw new Error(
-        `[SQLiteEventStore] run ${runId} belongs to conversation ${row.conversation_id}, cannot append events for ${conversationId}`,
+        `[SQLiteEventStore] run ${runId} belongs to conversation ${row.conversation_id}, cannot append events for ${conversationId}`
       );
     }
 
@@ -208,8 +215,20 @@ export class SQLiteEventStore implements IEventStore {
   async appendEventToRun(
     session: RunSession,
     event: RoutedRuntimeEvent,
-    opts: AppendEventToRunOptions = {},
+    opts: AppendEventToRunOptions = {}
   ): Promise<void> {
+    this.appendEventInTransaction(session, event, opts);
+  }
+
+  /**
+   * 同步事务边界供执行 checkpoint 提交复用；事件、资产引用与 UI 投影仍只有这一条写链。
+   * 外层存在 SQLite 事务时，better-sqlite3 使用 savepoint，外层失败会回滚本次全部投影。
+   */
+  appendEventInTransaction(
+    session: RunSession,
+    event: RoutedRuntimeEvent,
+    opts: AppendEventToRunOptions = {}
+  ): void {
     this.assertEventScope(session, event);
     const transaction = this.db.transaction(() => {
       const totalEventsBeforeAppend = readConversationTotalEvents(this.db, session.conversationId);
@@ -219,7 +238,12 @@ export class SQLiteEventStore implements IEventStore {
         event,
         assetCommits: opts.assetCommits ?? [],
       });
-      this.uiProjection.projectAppendedEvent(session.conversationId, session.runId, event, totalEventsBeforeAppend);
+      this.uiProjection.projectAppendedEvent(
+        session.conversationId,
+        session.runId,
+        event,
+        totalEventsBeforeAppend
+      );
       this.updateConversationStats(session.conversationId, Date.now(), [event]);
     });
 
@@ -230,8 +254,17 @@ export class SQLiteEventStore implements IEventStore {
     session: RunSession,
     targetEventId: string,
     replacement: RoutedRuntimeEvent,
-    opts: ReplaceUserInputEventOptions = {},
+    opts: ReplaceUserInputEventOptions = {}
   ): Promise<ReplaceUserInputEventResult> {
+    return this.replaceUserInputInTransaction(session, targetEventId, replacement, opts);
+  }
+
+  replaceUserInputInTransaction(
+    session: RunSession,
+    targetEventId: string,
+    replacement: RoutedRuntimeEvent,
+    opts: ReplaceUserInputEventOptions = {}
+  ): ReplaceUserInputEventResult {
     if (replacement.type !== 'user_input') {
       throw new Error('[SQLiteEventStore] replacement event must be user_input');
     }
@@ -241,26 +274,32 @@ export class SQLiteEventStore implements IEventStore {
     this.assertEventScope(session, replacement);
 
     const transaction = this.db.transaction((): ReplaceUserInputEventResult => {
-      const destinationRun = this.db.prepare(`
+      const destinationRun = this.db
+        .prepare(
+          `
         SELECT id, conversation_id
         FROM runs
         WHERE id = ?
         LIMIT 1
-      `).get(session.runId) as { id: string; conversation_id: string } | undefined;
+      `
+        )
+        .get(session.runId) as { id: string; conversation_id: string } | undefined;
       if (!destinationRun || destinationRun.conversation_id !== session.conversationId) {
         throw new Error(
-          `[SQLiteEventStore] destination run ${session.runId} is not open for conversation ${session.conversationId}`,
+          `[SQLiteEventStore] destination run ${session.runId} is not open for conversation ${session.conversationId}`
         );
       }
 
       const target = readStoredEventTarget(this.db, session.conversationId, targetEventId);
       if (!target || target.event.type !== 'user_input') {
         throw new Error(
-          `[SQLiteEventStore] replacement target ${targetEventId} is not a user_input fact in conversation ${session.conversationId}`,
+          `[SQLiteEventStore] replacement target ${targetEventId} is not a user_input fact in conversation ${session.conversationId}`
         );
       }
       if (target.runId === session.runId) {
-        throw new Error(`[SQLiteEventStore] replacement target cannot belong to destination run ${session.runId}`);
+        throw new Error(
+          `[SQLiteEventStore] replacement target cannot belong to destination run ${session.runId}`
+        );
       }
 
       const deleted = deleteHistoryFromRun({
@@ -282,7 +321,7 @@ export class SQLiteEventStore implements IEventStore {
         session.conversationId,
         session.runId,
         replacement,
-        readConversationTotalEvents(this.db, session.conversationId),
+        readConversationTotalEvents(this.db, session.conversationId)
       );
       this.recomputeConversationMetadataAfterTruncate(session.conversationId);
 
@@ -313,31 +352,52 @@ export class SQLiteEventStore implements IEventStore {
     transaction();
   }
 
-  private insertRunRecord(runId: string, conversationId: string, metadata: RunMetadata, startTs: number): void {
-    this.db.prepare(`
+  private insertRunRecord(
+    runId: string,
+    conversationId: string,
+    metadata: RunMetadata,
+    startTs: number
+  ): void {
+    this.db
+      .prepare(
+        `
       INSERT INTO runs (id, conversation_id, kind, status, model_key, toolset_version, start_ts, updated_ts)
       VALUES (?, ?, ?, 'running', ?, ?, ?, ?)
-    `).run(runId, conversationId, metadata.kind, metadata.model_key || null, metadata.toolset_version || null, startTs, startTs);
+    `
+      )
+      .run(
+        runId,
+        conversationId,
+        metadata.kind,
+        metadata.model_key || null,
+        metadata.toolset_version || null,
+        startTs,
+        startTs
+      );
   }
 
   private insertEventRecord(
     runId: string,
     conversationId: string,
     event: RoutedRuntimeEvent,
-    eventStoreId?: string,
+    eventStoreId?: string
   ): void {
     try {
-      this.db.prepare(`
+      this.db
+        .prepare(
+          `
         INSERT INTO events (id, run_id, type, payload, ts, event_store_id)
         VALUES (?, ?, ?, ?, ?, ?)
-      `).run(
-        event.id,
-        runId,
-        event.type,
-        serializeStoredRuntimeEvent(event),
-        event.timestamp,
-        eventStoreId ?? null,
-      );
+      `
+        )
+        .run(
+          event.id,
+          runId,
+          event.type,
+          serializeStoredRuntimeEvent(event),
+          event.timestamp,
+          eventStoreId ?? null
+        );
     } catch (e) {
       /**
        * 根因定位日志：events.id 主键冲突
@@ -364,10 +424,10 @@ export class SQLiteEventStore implements IEventStore {
           `
         )
         .get(event.id) as
-          | { id: string; run_id: string; type: string; ts: number; conversation_id: string | null }
-          | undefined;
+        | { id: string; run_id: string; type: string; ts: number; conversation_id: string | null }
+        | undefined;
       const existingEventStoreId = eventStoreId
-        ? this.db
+        ? (this.db
             .prepare(
               `
               SELECT
@@ -381,18 +441,18 @@ export class SQLiteEventStore implements IEventStore {
               LEFT JOIN runs r ON r.id = e.run_id
               WHERE e.event_store_id = ?
               LIMIT 1
-              `,
+              `
             )
             .get(eventStoreId) as
-              | {
-                  id: string;
-                  run_id: string;
-                  type: string;
-                  ts: number;
-                  event_store_id: string;
-                  conversation_id: string | null;
-                }
-              | undefined
+            | {
+                id: string;
+                run_id: string;
+                type: string;
+                ts: number;
+                event_store_id: string;
+                conversation_id: string | null;
+              }
+            | undefined)
         : undefined;
       const sqliteCode =
         e && typeof e === 'object' && 'code' in e && typeof e.code === 'string'
@@ -432,58 +492,86 @@ export class SQLiteEventStore implements IEventStore {
   }
 
   private completeRunRecord(runId: string, endTs: number): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       UPDATE runs SET status = 'completed', updated_ts = ?, end_ts = ? WHERE id = ?
-    `).run(endTs, endTs, runId);
+    `
+      )
+      .run(endTs, endTs, runId);
   }
 
   private failRunRecord(runId: string, endTs: number): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       UPDATE runs SET status = 'failed', updated_ts = ?, end_ts = ? WHERE id = ?
-    `).run(endTs, endTs, runId);
+    `
+      )
+      .run(endTs, endTs, runId);
   }
 
-  private updateConversationStats(conversationId: string, lastEventTs: number, events: RuntimeEvent[]): void {
+  private updateConversationStats(
+    conversationId: string,
+    lastEventTs: number,
+    events: RuntimeEvent[]
+  ): void {
     const statsEvents = events.filter(isConversationStatsEvent);
     if (statsEvents.length === 0) return;
     const conversationEvents = statsEvents.filter(runtimeEvents.isConversationUiRuntimeEvent);
     const userMessageCount = conversationEvents.filter(e => e.type === 'user_input').length;
 
     // 按优先级查找预览内容：final_answer > user_input
-    const previewEvent = conversationEvents.find(e => e.type === 'final_answer')
-      || conversationEvents.find(e => e.type === 'user_input');
+    const previewEvent =
+      conversationEvents.find(e => e.type === 'final_answer') ||
+      conversationEvents.find(e => e.type === 'user_input');
 
-    const previewContent = previewEvent ? getRenderableRuntimeEventContent(previewEvent) : undefined;
+    const previewContent = previewEvent
+      ? getRenderableRuntimeEventContent(previewEvent)
+      : undefined;
     if (previewContent) {
       const preview = buildPreviewText(previewContent);
 
-      this.db.prepare(`
+      this.db
+        .prepare(
+          `
         UPDATE conversations
         SET preview_text = ?, last_event_at = ?, total_events = total_events + ?, user_message_count = user_message_count + ?
         WHERE conversation_id = ?
-      `).run(preview, lastEventTs, statsEvents.length, userMessageCount, conversationId);
+      `
+        )
+        .run(preview, lastEventTs, statsEvents.length, userMessageCount, conversationId);
     } else {
       // 只更新时间戳和事件计数
-      this.db.prepare(`
+      this.db
+        .prepare(
+          `
         UPDATE conversations
         SET last_event_at = ?, total_events = total_events + ?, user_message_count = user_message_count + ?
         WHERE conversation_id = ?
-      `).run(lastEventTs, statsEvents.length, userMessageCount, conversationId);
+      `
+        )
+        .run(lastEventTs, statsEvents.length, userMessageCount, conversationId);
     }
   }
 
   private recomputeConversationMetadataAfterTruncate(conversationId: string): void {
     const conversation = this.db
-      .prepare<unknown[], ConversationIdentityRow>(
-        'SELECT conversation_id, created_at, metadata FROM conversations WHERE conversation_id = ? LIMIT 1'
-      )
+      .prepare<
+        unknown[],
+        ConversationIdentityRow
+      >('SELECT conversation_id, created_at, metadata FROM conversations WHERE conversation_id = ? LIMIT 1')
       .get(conversationId);
 
     if (!conversation) {
-      throw new Error(`[SQLiteEventStore] conversation ${conversationId} not found while recomputing metadata`);
+      throw new Error(
+        `[SQLiteEventStore] conversation ${conversationId} not found while recomputing metadata`
+      );
     }
 
-    const eventRows = this.db.prepare<unknown[], EventPayloadRow>(`
+    const eventRows = this.db
+      .prepare<unknown[], EventPayloadRow>(
+        `
       SELECT
         e.id as id,
         e.type as type,
@@ -496,7 +584,9 @@ export class SQLiteEventStore implements IEventStore {
       WHERE r.conversation_id = ?
         AND e.type <> 'audit_envelope'
       ORDER BY e.ts DESC, e.rowid DESC
-    `).all(conversationId);
+    `
+      )
+      .all(conversationId);
 
     let totalEvents = 0;
     let userMessageCount = 0;
@@ -521,9 +611,9 @@ export class SQLiteEventStore implements IEventStore {
       }
 
       if (
-        belongsToConversationUi
-        && !previewText
-        && (event.type === 'final_answer' || event.type === 'user_input')
+        belongsToConversationUi &&
+        !previewText &&
+        (event.type === 'final_answer' || event.type === 'user_input')
       ) {
         const previewContent = getRenderableRuntimeEventContent(event);
         if (previewContent?.trim()) {
@@ -534,11 +624,15 @@ export class SQLiteEventStore implements IEventStore {
 
     const lastEventAt = latestStatsEventTs ?? conversation.created_at;
 
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       UPDATE conversations
       SET total_events = ?, last_event_at = ?, user_message_count = ?, preview_text = ?
       WHERE conversation_id = ?
-    `).run(totalEvents, lastEventAt, userMessageCount, previewText ?? '', conversationId);
+    `
+      )
+      .run(totalEvents, lastEventAt, userMessageCount, previewText ?? '', conversationId);
   }
 
   async readEvents(
@@ -632,17 +726,19 @@ export class SQLiteEventStore implements IEventStore {
     });
 
     const nextCursor = hasMore
-      ? (direction === 'backward' ? resultRows[0].seq : resultRows[resultRows.length - 1].seq)
+      ? direction === 'backward'
+        ? resultRows[0].seq
+        : resultRows[resultRows.length - 1].seq
       : undefined;
     return { events, nextCursor, hasMore };
   }
 
   async listConversations(
-    options: { limit?: number; cursor?: string; search?: string; projectId?: string; } = {}
+    options: { limit?: number; cursor?: string; search?: string; projectId?: string } = {}
   ): Promise<{ conversations: ConversationListItem[]; nextCursor?: string; hasMore: boolean }> {
     const limit = options.limit || 30;
     const cursor = decodeConversationListCursor(options.cursor);
-    
+
     logger.info('Listing conversations', {
       limit,
       cursor,
@@ -695,12 +791,13 @@ export class SQLiteEventStore implements IEventStore {
     const conversations = resultRows.map(toConversationListItem);
 
     const lastRow = resultRows[resultRows.length - 1];
-    const nextCursor = hasMore && lastRow
-      ? encodeConversationListCursor({
-          sortCursor: lastRow.sort_cursor,
-          conversationId: lastRow.conversation_id,
-        })
-      : undefined;
+    const nextCursor =
+      hasMore && lastRow
+        ? encodeConversationListCursor({
+            sortCursor: lastRow.sort_cursor,
+            conversationId: lastRow.conversation_id,
+          })
+        : undefined;
 
     logger.info(`Retrieved ${conversations.length} conversations, hasMore: ${hasMore}`);
     return { conversations, nextCursor, hasMore };
@@ -715,9 +812,9 @@ export class SQLiteEventStore implements IEventStore {
      * conversation event asset links 即使在 FK 关闭的维护连接中也必须显式删除。
      */
     const transaction = this.db.transaction(() => {
-      const rows = this.db.prepare(
-        'SELECT conversation_id FROM conversations WHERE project_id IS NULL',
-      ).all() as Array<{ conversation_id: string }>;
+      const rows = this.db
+        .prepare('SELECT conversation_id FROM conversations WHERE project_id IS NULL')
+        .all() as Array<{ conversation_id: string }>;
       for (const row of rows) {
         this.deleteConversationFacts(row.conversation_id);
       }
@@ -728,7 +825,7 @@ export class SQLiteEventStore implements IEventStore {
 
   async getConversationMetadata(conversationId: string): Promise<ConversationListItem | null> {
     logger.info(`Getting metadata for conversation ${conversationId}`);
-    
+
     const row = this.db
       .prepare('SELECT * FROM conversations WHERE conversation_id = ?')
       .get(conversationId) as ConversationRow | undefined;
@@ -743,13 +840,17 @@ export class SQLiteEventStore implements IEventStore {
 
   async updateTitle(conversationId: string, title: string): Promise<boolean> {
     logger.info(`Updating title for conversation ${conversationId}`);
-    
+
     try {
-      const result = this.db.prepare(`
+      const result = this.db
+        .prepare(
+          `
         UPDATE conversations
         SET title = ?
         WHERE conversation_id = ?
-      `).run(title, conversationId);
+      `
+        )
+        .run(title, conversationId);
 
       if (result.changes > 0) {
         logger.info(`Successfully updated title for conversation ${conversationId}`);
@@ -764,15 +865,23 @@ export class SQLiteEventStore implements IEventStore {
     }
   }
 
-  async updatePinned(conversationId: string, pinned: boolean, pinnedAt: number | null): Promise<boolean> {
+  async updatePinned(
+    conversationId: string,
+    pinned: boolean,
+    pinnedAt: number | null
+  ): Promise<boolean> {
     logger.info(`Updating pinned state for conversation ${conversationId}`, { pinned, pinnedAt });
 
     try {
-      const result = this.db.prepare(`
+      const result = this.db
+        .prepare(
+          `
         UPDATE conversations
         SET is_pinned = ?, pinned_at = ?
         WHERE conversation_id = ?
-      `).run(pinned ? 1 : 0, pinned ? pinnedAt : null, conversationId);
+      `
+        )
+        .run(pinned ? 1 : 0, pinned ? pinnedAt : null, conversationId);
 
       if (result.changes > 0) {
         logger.info(`Successfully updated pinned state for conversation ${conversationId}`);
@@ -790,7 +899,7 @@ export class SQLiteEventStore implements IEventStore {
   async updateSelectedAgent(
     conversationId: string,
     selectedAgentId: ConversationSelectedAgentId | null,
-    projectId: string | null,
+    projectId: string | null
   ): Promise<boolean> {
     logger.info('Materializing conversation selected agent', {
       conversationId,
@@ -798,7 +907,9 @@ export class SQLiteEventStore implements IEventStore {
       projectId,
     });
 
-    const result = this.db.prepare(`
+    const result = this.db
+      .prepare(
+        `
       INSERT INTO conversations (
         conversation_id,
         created_at,
@@ -808,14 +919,16 @@ export class SQLiteEventStore implements IEventStore {
       ) VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(conversation_id) DO UPDATE SET
         selected_agent_id = excluded.selected_agent_id
-    `).run(conversationId, Date.now(), Date.now(), projectId, selectedAgentId);
+    `
+      )
+      .run(conversationId, Date.now(), Date.now(), projectId, selectedAgentId);
 
     return result.changes > 0;
   }
 
   async deleteConversation(conversationId: string): Promise<boolean> {
     logger.info(`Deleting conversation ${conversationId}`);
-    
+
     try {
       const transaction = this.db.transaction((convId: string) => {
         return this.deleteConversationFacts(convId);
@@ -842,23 +955,25 @@ export class SQLiteEventStore implements IEventStore {
   ): Promise<TruncateHistoryFromEventResult> {
     logger.info(`Truncating conversation ${conversationId} from event ${eventId}`);
 
-    const transaction = this.db.transaction((convId: string, targetEventId: string): TruncateHistoryFromEventResult => {
-      const target = readStoredEventTarget(this.db, convId, targetEventId);
-      if (!target) {
-        return { found: false, deletedEventCount: 0, deletedRunCount: 0 };
-      }
+    const transaction = this.db.transaction(
+      (convId: string, targetEventId: string): TruncateHistoryFromEventResult => {
+        const target = readStoredEventTarget(this.db, convId, targetEventId);
+        if (!target) {
+          return { found: false, deletedEventCount: 0, deletedRunCount: 0 };
+        }
 
-      const deleted = deleteHistoryFromRun({
-        db: this.db,
-        uiProjection: this.uiProjection,
-        eventAssetLinks: this.eventAssetLinks,
-        conversationId: convId,
-        firstRunRowId: target.runRowId,
-      });
-      this.uiProjection.bumpProjectionRevision(convId);
-      this.recomputeConversationMetadataAfterTruncate(convId);
-      return { found: true, ...deleted };
-    });
+        const deleted = deleteHistoryFromRun({
+          db: this.db,
+          uiProjection: this.uiProjection,
+          eventAssetLinks: this.eventAssetLinks,
+          conversationId: convId,
+          firstRunRowId: target.runRowId,
+        });
+        this.uiProjection.bumpProjectionRevision(convId);
+        this.recomputeConversationMetadataAfterTruncate(convId);
+        return { found: true, ...deleted };
+      }
+    );
 
     const result = transaction(conversationId, eventId);
 
@@ -869,31 +984,49 @@ export class SQLiteEventStore implements IEventStore {
   /**
    * 🔥 新实现：确保会话存在
    */
-  async ensureConversation(conversationId: string, initialEvents: RuntimeEvent[], projectId?: string, mode?: string): Promise<void> {
-    logger.info(`[ensureConversation] Called with conversationId: ${conversationId}, projectId: ${projectId}, mode: ${mode}`);
+  async ensureConversation(
+    conversationId: string,
+    initialEvents: RuntimeEvent[],
+    projectId?: string,
+    mode?: string
+  ): Promise<void> {
+    logger.info(
+      `[ensureConversation] Called with conversationId: ${conversationId}, projectId: ${projectId}, mode: ${mode}`
+    );
     const conv = this.db
-      .prepare<unknown[], ConversationIdentityRow>(
-        'SELECT conversation_id, created_at, metadata FROM conversations WHERE conversation_id = ? LIMIT 1'
-      )
+      .prepare<
+        unknown[],
+        ConversationIdentityRow
+      >('SELECT conversation_id, created_at, metadata FROM conversations WHERE conversation_id = ? LIMIT 1')
       .get(conversationId);
 
     if (!conv) {
       const firstUserEvent = initialEvents.find(e => e.type === 'user_input');
-      const firstUserContent = firstUserEvent ? getRenderableRuntimeEventContent(firstUserEvent) : undefined;
+      const firstUserContent = firstUserEvent
+        ? getRenderableRuntimeEventContent(firstUserEvent)
+        : undefined;
       const preview = firstUserContent ? firstUserContent.slice(0, 100) : '';
       const now = Date.now();
 
       const projectIdToInsert = projectId || null;
       const metadataJson = mode ? JSON.stringify({ mode }) : null;
-      
-      logger.info(`[ensureConversation] Creating NEW conversation. projectId to insert: ${projectIdToInsert}, mode: ${mode}`);
 
-      this.db.prepare(`
+      logger.info(
+        `[ensureConversation] Creating NEW conversation. projectId to insert: ${projectIdToInsert}, mode: ${mode}`
+      );
+
+      this.db
+        .prepare(
+          `
         INSERT INTO conversations (conversation_id, created_at, last_event_at, preview_text, total_events, user_message_count, project_id, metadata)
         VALUES (?, ?, ?, ?, 0, 0, ?, ?)
-      `).run(conversationId, now, now, preview, projectIdToInsert, metadataJson);
-      
-      logger.info(`[ensureConversation] ✅ Created new conversation ${conversationId} for project ${projectIdToInsert} with mode: ${mode}`);
+      `
+        )
+        .run(conversationId, now, now, preview, projectIdToInsert, metadataJson);
+
+      logger.info(
+        `[ensureConversation] ✅ Created new conversation ${conversationId} for project ${projectIdToInsert} with mode: ${mode}`
+      );
     } else {
       // 如果会话已存在，尝试更新 mode（如果提供了 mode 且与当前不同）
       if (mode) {
@@ -902,9 +1035,12 @@ export class SQLiteEventStore implements IEventStore {
         // 只有当 mode 确实改变时才更新，其他 metadata 字段必须原样保留。
         if (currentMeta.mode !== mode) {
           currentMeta.mode = mode;
-          this.db.prepare('UPDATE conversations SET metadata = ? WHERE conversation_id = ?')
+          this.db
+            .prepare('UPDATE conversations SET metadata = ? WHERE conversation_id = ?')
             .run(JSON.stringify(currentMeta), conversationId);
-          logger.info(`[ensureConversation] Updated existing conversation ${conversationId} mode to ${mode}`);
+          logger.info(
+            `[ensureConversation] Updated existing conversation ${conversationId} mode to ${mode}`
+          );
         }
       }
       logger.info(`[ensureConversation] Conversation ${conversationId} already exists.`);
@@ -927,51 +1063,59 @@ export class SQLiteEventStore implements IEventStore {
     this.eventAssetLinks.deleteForConversation(conversationId);
     this.uiProjection.deleteProjectionRowsForConversation(conversationId);
     new SqliteSubrunTraceHistoryCleanup(this.db).deleteForConversation(conversationId);
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       DELETE FROM events
       WHERE run_id IN (SELECT id FROM runs WHERE conversation_id = ?)
-    `).run(conversationId);
+    `
+      )
+      .run(conversationId);
     this.db.prepare('DELETE FROM runs WHERE conversation_id = ?').run(conversationId);
-    return this.db.prepare(
-      'DELETE FROM conversations WHERE conversation_id = ?',
-    ).run(conversationId).changes;
+    return this.db
+      .prepare('DELETE FROM conversations WHERE conversation_id = ?')
+      .run(conversationId).changes;
   }
 
   private assertEventScope(session: RunSession, event: RuntimeEvent): void {
     runtimeEvents.requirePersistableRoutedRuntimeEvent(event);
     if (event.conversation_id !== session.conversationId) {
       throw new Error(
-        `[SQLiteEventStore] event ${event.id} belongs to conversation ${event.conversation_id}, `
-        + `cannot append it to ${session.conversationId}`,
+        `[SQLiteEventStore] event ${event.id} belongs to conversation ${event.conversation_id}, ` +
+          `cannot append it to ${session.conversationId}`
       );
     }
     const identity = parseRuntimeEventRoutingIdentity(event);
     if (identity.run_id !== session.runId) {
       throw new Error(
-        `[SQLiteEventStore] event ${event.id} belongs to run ${identity.run_id}, `
-        + `cannot append it to ${session.runId}`,
+        `[SQLiteEventStore] event ${event.id} belongs to run ${identity.run_id}, ` +
+          `cannot append it to ${session.runId}`
       );
     }
 
-    const owner = this.db.prepare<unknown[], RunOwnerRow>(`
+    const owner = this.db
+      .prepare<unknown[], RunOwnerRow>(
+        `
       SELECT conversation_id, parent_run_id
       FROM runs
       WHERE id = ?
       LIMIT 1
-    `).get(session.runId);
+    `
+      )
+      .get(session.runId);
     if (!owner) {
       throw new Error(`[SQLiteEventStore] run ${session.runId} does not exist`);
     }
     if (owner.conversation_id !== session.conversationId) {
       throw new Error(
-        `[SQLiteEventStore] run ${session.runId} belongs to conversation ${owner.conversation_id}, `
-        + `but the session belongs to ${session.conversationId}`,
+        `[SQLiteEventStore] run ${session.runId} belongs to conversation ${owner.conversation_id}, ` +
+          `but the session belongs to ${session.conversationId}`
       );
     }
     if ((identity.parent_run_id ?? null) !== owner.parent_run_id) {
       throw new Error(
-        `[SQLiteEventStore] event ${event.id} has parent run ${identity.parent_run_id ?? 'none'}, `
-        + `but run ${session.runId} declares ${owner.parent_run_id ?? 'none'}`,
+        `[SQLiteEventStore] event ${event.id} has parent run ${identity.parent_run_id ?? 'none'}, ` +
+          `but run ${session.runId} declares ${owner.parent_run_id ?? 'none'}`
       );
     }
   }

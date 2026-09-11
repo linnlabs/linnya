@@ -6,6 +6,11 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.view.empty.title': '开启新对话',
   'conversation.view.empty.description': '输入你的问题，或交给 Linnya 一个任务',
   'conversation.input.placeholder': '输入您的问题...',
+  'conversation.input.action.send': '发送',
+  'conversation.input.action.pause': '暂停运行',
+  'conversation.input.action.continue': '继续原运行',
+  'conversation.input.action.cancel': '终止运行',
+  'conversation.input.action.waiting': '正在处理运行控制',
   'conversation.input.model.placeholder': '选择模型',
   'conversation.input.model.loading': '加载中...',
   'conversation.input.model.unknown': '未知模型',
@@ -25,13 +30,15 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.input.reasoning.xhigh': '超高',
   'conversation.contextUsage.title': '上下文用量',
   'conversation.contextUsage.trigger.unavailable': '上下文用量暂不可用',
-  'conversation.contextUsage.trigger.available': '上下文已使用 {percentage}，{used} / {budget} Tokens',
+  'conversation.contextUsage.trigger.available':
+    '上下文已使用 {percentage}，{used} / {budget} Tokens',
   'conversation.contextUsage.summary': '已使用 {percentage}',
   'conversation.contextUsage.total': '{used} / {budget} Tokens',
   'conversation.contextUsage.row.systemPrompt': '系统提示词',
   'conversation.contextUsage.row.conversation': '对话消息',
   'conversation.contextUsage.row.toolDefinitions': '工具定义',
-  'conversation.contextUsage.empty.tailUnavailable': '当前只加载了部分历史消息；回到对话尾部后才能确定最近一次上下文用量。',
+  'conversation.contextUsage.empty.tailUnavailable':
+    '当前只加载了部分历史消息；回到对话尾部后才能确定最近一次上下文用量。',
   'conversation.contextUsage.conversationInfo.createdAt': '创建时间',
   'conversation.contextUsage.conversationInfo.userMessageCount': '用户消息数',
   'conversation.input.actionMenu.open': '添加',
@@ -56,7 +63,8 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.input.image.genericTitle': '图片',
   'conversation.commandApproval.title': '允许执行这条命令吗？',
   'conversation.commandApproval.terminal': '终端',
-  'conversation.commandApproval.description': '请确认命令和运行目录。命令会使用当前对话的权限执行。',
+  'conversation.commandApproval.description':
+    '请确认命令和运行目录。命令会使用当前对话的权限执行。',
   'conversation.commandApproval.command': '命令',
   'conversation.commandApproval.cwd': '运行目录',
   'conversation.commandApproval.processing': '正在保存选择并准备执行...',
@@ -94,7 +102,8 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.sidebar.deleting': '正在删除…',
   'conversation.sidebar.cleanupPending': '清理未完成',
   'conversation.sidebar.cleanupRetry.title': '重试清理',
-  'conversation.sidebar.cleanupRetry.message': '上次清理“{title}”时没有完成。重试会继续原来的清理操作。',
+  'conversation.sidebar.cleanupRetry.message':
+    '上次清理“{title}”时没有完成。重试会继续原来的清理操作。',
   'conversation.sidebar.cleanupRetry.confirm': '重试',
   'conversation.sidebar.cleanupRetry.success': '清理已完成：{title}',
   'conversation.sidebar.deleteSuccess': '已删除对话：{title}',
@@ -105,7 +114,8 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.sidebar.batchDelete.title': '批量删除对话',
   'conversation.sidebar.batchDelete.message': '确定要删除选中的 {count} 个对话吗？此操作无法撤销。',
   'conversation.sidebar.batchDelete.success': '已删除 {count} 个对话',
-  'conversation.sidebar.batchDelete.partial': '已删除 {successCount} 个对话，{failCount} 个删除失败',
+  'conversation.sidebar.batchDelete.partial':
+    '已删除 {successCount} 个对话，{failCount} 个删除失败',
   'conversation.history.group.recent': '最近对话',
   'conversation.history.loading': '加载中...',
   'conversation.history.empty': '暂无对话历史',
@@ -116,8 +126,10 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.error.regenerateNoConversation': '没有可重新生成的对话',
   'conversation.error.regenerateMessageNotFound': '未找到要重新生成的用户消息',
   'conversation.error.generic': '发生错误，请稍后重试。',
-  'conversation.error.rateLimit': '请求过于频繁（触发限流），请稍后再试。若频繁出现，可尝试切换模型或降低请求频率。',
-  'conversation.error.providerLimit': '模型服务返回 429，可能是额度已用尽或请求过于频繁。请稍后重试，或切换模型。',
+  'conversation.error.rateLimit':
+    '请求过于频繁（触发限流），请稍后再试。若频繁出现，可尝试切换模型或降低请求频率。',
+  'conversation.error.providerLimit':
+    '模型服务返回 429，可能是额度已用尽或请求过于频繁。请稍后重试，或切换模型。',
   'conversation.error.serviceUnavailable': '服务暂时不可用，请稍后再试。',
   'conversation.error.badRequest': '请求参数错误，请检查输入或重试。',
   'conversation.error.auth': '权限校验失败，请检查模型配置或登录状态。',
@@ -126,24 +138,38 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.error.http502': '上游服务暂时不可用（502），请稍后重试。',
   'conversation.error.http503': '服务暂时不可用（503），请稍后重试。',
   'conversation.error.http504': '请求超时（504），请稍后重试。',
-  'conversation.error.providerUnavailable': '模型服务当前拥堵（Overloaded），请稍后重试。若持续出现，可尝试切换模型或降低并发。',
-  'conversation.error.thinkingProtocolMismatch': '模型开启了“思考(Thinking)”模式，但本轮消息格式不符合供应商要求，导致请求被拒绝。请尝试切换非 Thinking 模型，或关闭 Thinking 后重试。',
-  'conversation.error.outputLimitReached': '模型输出达到当前上限，本次回答未完成。请继续任务或改用输出容量更大的模型。',
+  'conversation.error.providerUnavailable':
+    '模型服务当前拥堵（Overloaded），请稍后重试。若持续出现，可尝试切换模型或降低并发。',
+  'conversation.error.thinkingProtocolMismatch':
+    '模型开启了“思考(Thinking)”模式，但本轮消息格式不符合供应商要求，导致请求被拒绝。请尝试切换非 Thinking 模型，或关闭 Thinking 后重试。',
+  'conversation.error.outputLimitReached':
+    '模型输出达到当前上限，本次回答未完成。请继续任务或改用输出容量更大的模型。',
   'conversation.error.contentFiltered': '模型服务因内容过滤中止了本次回答。请调整请求后重试。',
   'conversation.error.imageModelUnsupported': '当前模型不支持图片识别，请切换到支持图片的模型。',
-  'conversation.error.imageModelUnsupportedWithAlternatives': '当前模型不支持图片识别，可切换到：{models}。',
-  'conversation.error.imagePlacementUnsupported': '当前模型的连接方式暂不支持此处的图片输入，请切换模型或连接方式。',
-  'conversation.error.imagePlacementUnsupportedWithAlternatives': '当前模型的连接方式暂不支持此处的图片输入，可切换到：{models}。',
-  'conversation.error.userImagePlacementUnsupported': '当前模型的连接方式不支持用户发送的图片，请切换模型或连接方式。',
-  'conversation.error.userImagePlacementUnsupportedWithAlternatives': '当前模型的连接方式不支持用户发送的图片，可切换到：{models}。',
-  'conversation.error.toolResultImagePlacementUnsupported': '当前模型的连接方式不支持工具返回的图片；图片结果仍会保留在对话中。',
-  'conversation.error.toolResultImagePlacementUnsupportedWithAlternatives': '当前模型的连接方式不支持工具返回的图片，可切换到：{models}；图片结果仍会保留在对话中。',
+  'conversation.error.imageModelUnsupportedWithAlternatives':
+    '当前模型不支持图片识别，可切换到：{models}。',
+  'conversation.error.imagePlacementUnsupported':
+    '当前模型的连接方式暂不支持此处的图片输入，请切换模型或连接方式。',
+  'conversation.error.imagePlacementUnsupportedWithAlternatives':
+    '当前模型的连接方式暂不支持此处的图片输入，可切换到：{models}。',
+  'conversation.error.userImagePlacementUnsupported':
+    '当前模型的连接方式不支持用户发送的图片，请切换模型或连接方式。',
+  'conversation.error.userImagePlacementUnsupportedWithAlternatives':
+    '当前模型的连接方式不支持用户发送的图片，可切换到：{models}。',
+  'conversation.error.toolResultImagePlacementUnsupported':
+    '当前模型的连接方式不支持工具返回的图片；图片结果仍会保留在对话中。',
+  'conversation.error.toolResultImagePlacementUnsupportedWithAlternatives':
+    '当前模型的连接方式不支持工具返回的图片，可切换到：{models}；图片结果仍会保留在对话中。',
   'conversation.error.imageMaterializationPending': '图片尚未准备好发送，请稍后重试。',
   'conversation.error.imageAttachmentUnavailable': '图片文件已不可用，请重新添加或移除后再发送。',
-  'conversation.error.imageAttachmentIntegrityFailed': '图片文件已损坏或发生变化，请重新添加后再发送。',
-  'conversation.error.imageRouteLimitExceeded': '当前模型连接无法接收这么多或这么大的图片，请移除部分图片或切换连接。',
-  'conversation.error.imageMappingUnsupported': '当前模型连接暂时无法正确发送图片，请切换模型或连接方式。',
-  'conversation.error.imageContextBudgetExceeded': '这些图片超出了当前会话的上下文容量，请移除旧图片、切换更大上下文模型或新建会话。',
+  'conversation.error.imageAttachmentIntegrityFailed':
+    '图片文件已损坏或发生变化，请重新添加后再发送。',
+  'conversation.error.imageRouteLimitExceeded':
+    '当前模型连接无法接收这么多或这么大的图片，请移除部分图片或切换连接。',
+  'conversation.error.imageMappingUnsupported':
+    '当前模型连接暂时无法正确发送图片，请切换模型或连接方式。',
+  'conversation.error.imageContextBudgetExceeded':
+    '这些图片超出了当前会话的上下文容量，请移除旧图片、切换更大上下文模型或新建会话。',
   'conversation.error.imageUploadInvalidRequest': '图片上传请求无效，请重新选择图片。',
   'conversation.error.imageTooLarge': '图片文件过大，请选择不超过 10 MB 的图片。',
   'conversation.error.imageUnsupportedFormat': '仅支持 JPEG、PNG 和 WebP 图片。',
@@ -197,17 +223,22 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.quote.label': '引用内容',
   'conversation.quote.clear': '清空引用',
   'conversation.quote.remove': '移除引用',
-  'conversation.flow.missingProjectForSend': '当前版本会话必须依附项目：缺少 projectId，已中止发送。',
-  'conversation.flow.missingProjectForRun': '当前版本会话必须依附项目：缺少 projectId，已中止运行。',
-  'conversation.flow.pluginRun.missingProject': '无法启动 AI 运行：当前未绑定项目（缺少 projectId）。',
-  'conversation.flow.pluginRun.agentChoiceUnavailable': '当前会话 Agent 未注册或未启用: {agentChoiceId}',
+  'conversation.flow.missingProjectForSend':
+    '当前版本会话必须依附项目：缺少 projectId，已中止发送。',
+  'conversation.flow.missingProjectForRun':
+    '当前版本会话必须依附项目：缺少 projectId，已中止运行。',
+  'conversation.flow.pluginRun.missingProject':
+    '无法启动 AI 运行：当前未绑定项目（缺少 projectId）。',
+  'conversation.flow.pluginRun.agentChoiceUnavailable':
+    '当前会话 Agent 未注册或未启用: {agentChoiceId}',
   'conversation.flow.pluginRun.noConversation': '无法启动 AI 运行：当前没有可用对话。',
   'conversation.flow.pluginRun.executionFailed': 'AI 运行失败，请稍后重试。',
   'conversation.flow.subrun.missingProject': '无法发起子运行：当前未绑定项目。',
   'conversation.flow.subrun.noConversation': '无法发起子运行：当前没有可用对话。',
   'conversation.flow.subrun.executionFailed': '子运行执行失败，请稍后重试。',
   'conversation.flow.deepResearch.resetFallback': '下周一 00:00',
-  'conversation.flow.deepResearch.weeklyLimitReached': '本周 Deep Research 已达上限（{usedCount}/{limit}）。\n恢复时间：{resetText}',
+  'conversation.flow.deepResearch.weeklyLimitReached':
+    '本周 Deep Research 已达上限（{usedCount}/{limit}）。\n恢复时间：{resetText}',
   'conversation.flow.chatInvocationFailed': '发送消息失败，请稍后重试。',
   'conversation.flow.taskInvocationFailed': '任务执行失败，请稍后重试。',
   'conversation.flow.conversationExecutionFailed': 'Conversation 执行失败',
@@ -257,14 +288,17 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.tool.command.cancel': '取消命令',
   'conversation.tool.command.protectedInput.open': '保护输入',
   'conversation.tool.command.protectedInput.title': '向命令发送保护输入',
-  'conversation.tool.command.protectedInput.description': '输入会直接发送到当前交互命令，不会加入对话或提供给 Agent。',
+  'conversation.tool.command.protectedInput.description':
+    '输入会直接发送到当前交互命令，不会加入对话或提供给 Agent。',
   'conversation.tool.command.protectedInput.label': '密码、验证码或口令',
-  'conversation.tool.command.protectedInput.boundary': '目标命令仍可能自行回显、保存或发送这些内容。',
+  'conversation.tool.command.protectedInput.boundary':
+    '目标命令仍可能自行回显、保存或发送这些内容。',
   'conversation.tool.command.protectedInput.cancel': '取消',
   'conversation.tool.command.protectedInput.send': '发送',
   'conversation.tool.command.protectedInput.sending': '正在发送...',
   'conversation.tool.command.protectedInput.unavailable': '当前交互命令已结束或输入入口已失效。',
-  'conversation.tool.command.protectedInput.failed': '保护输入发送失败，请确认命令仍在等待输入后重试。',
+  'conversation.tool.command.protectedInput.failed':
+    '保护输入发送失败，请确认命令仍在等待输入后重试。',
   'conversation.tool.command.settlementSaveFailed': '命令已结束，但状态保存失败。',
   'conversation.tool.command.controlUnavailable': '无法读取当前命令状态。',
   'conversation.tool.command.cancelFailed': '取消命令失败，请重试。',
@@ -314,15 +348,21 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.tool.workspace.reference.paragraphLabel': '第{index}段',
   'conversation.tool.workspace.reference.locateTitle': '定位到 {ref}',
   'conversation.tool.workspace.reference.noContextDocument': '未找到可用于解析引用的上下文文档',
-  'conversation.tool.workspace.reference.missingTarget': '该引用未指定目标文档：请使用 #ref@文档类型:documentId 或 #ref@documentId',
-  'conversation.tool.workspace.reference.markdownNotFound': '未找到对应段落引用：可能已删除或属于其他文档',
-  'conversation.tool.workspace.reference.ambiguous': '该引用在多个文档中都能匹配：请使用 [#ref@documentId] 指明目标文档',
+  'conversation.tool.workspace.reference.missingTarget':
+    '该引用未指定目标文档：请使用 #ref@文档类型:documentId 或 #ref@documentId',
+  'conversation.tool.workspace.reference.markdownNotFound':
+    '未找到对应段落引用：可能已删除或属于其他文档',
+  'conversation.tool.workspace.reference.ambiguous':
+    '该引用在多个文档中都能匹配：请使用 [#ref@documentId] 指明目标文档',
   'conversation.tool.workspace.reference.editorNotReady': '编辑器尚未就绪，请稍后重试',
-  'conversation.tool.workspace.reference.paragraphNotFound': '未找到对应段落，可能已删除或位于其他文档',
-  'conversation.tool.workspace.reference.pluginNotFound': '未找到对应文档引用：可能已删除或属于其他文档',
+  'conversation.tool.workspace.reference.paragraphNotFound':
+    '未找到对应段落，可能已删除或位于其他文档',
+  'conversation.tool.workspace.reference.pluginNotFound':
+    '未找到对应文档引用：可能已删除或属于其他文档',
   'conversation.tool.workspace.reference.pluginDisabled': '对应插件未启用，无法定位该文档引用',
   'conversation.tool.workspace.reference.documentNotReady': '文档尚未就绪，请稍后重试',
-  'conversation.tool.workspace.reference.targetNotFound': '未找到对应引用目标（可能被折叠或已删除）',
+  'conversation.tool.workspace.reference.targetNotFound':
+    '未找到对应引用目标（可能被折叠或已删除）',
   'conversation.tool.workspace.reference.locateFailed': '定位失败，请稍后重试。',
   'conversation.tool.workspace.reference.locateFailedGeneric': '定位失败，请稍后重试。',
   'conversation.tool.evidence.write': '写入证据库',
@@ -372,7 +412,8 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.tool.webRead.truncated': '已截断',
   'conversation.tool.webRead.empty': '未获取到网页内容',
   'conversation.tool.knowledgeSearch.relatedDocuments': '发现 {count} 个相关文档',
-  'conversation.tool.knowledgeSearch.snapshotPointerWithCount': '结果已写入引用快照库：{count} 条（可按需加载）',
+  'conversation.tool.knowledgeSearch.snapshotPointerWithCount':
+    '结果已写入引用快照库：{count} 条（可按需加载）',
   'conversation.tool.knowledgeSearch.snapshotPointer': '结果已写入引用快照库（可按需加载）',
   'conversation.tool.knowledgeSearch.empty': '没有找到相关结果，请尝试调整搜索词',
   'conversation.tool.knowledgeSearch.loadLoading': '加载中...',
@@ -382,9 +423,12 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.tool.knowledgeSearch.loadFailed': '加载失败，请稍后重试。',
   'conversation.tool.knowledgeSearch.loadFailedGeneric': '加载失败，请稍后重试。',
   'conversation.tool.knowledgeSearch.error': '搜索知识库时发生错误',
-  'conversation.tool.knowledgeSearch.noActiveConversationLoad': '当前没有活跃会话，无法加载 Citation Snapshot Bundle',
-  'conversation.tool.knowledgeSearch.invalidSnapshotBundle': 'Citation Snapshot Bundle 结构不符合预期',
-  'conversation.tool.knowledgeSearch.noActiveConversationExport': '当前没有活跃会话，无法导出 Citation Snapshot Bundle',
+  'conversation.tool.knowledgeSearch.noActiveConversationLoad':
+    '当前没有活跃会话，无法加载 Citation Snapshot Bundle',
+  'conversation.tool.knowledgeSearch.invalidSnapshotBundle':
+    'Citation Snapshot Bundle 结构不符合预期',
+  'conversation.tool.knowledgeSearch.noActiveConversationExport':
+    '当前没有活跃会话，无法导出 Citation Snapshot Bundle',
   'conversation.tool.knowledgeSearch.unknownDocument': '未知文档',
   'conversation.tool.knowledgeSearch.scopeDocument': '在文档「{docName}」中',
   'conversation.tool.knowledgeSearch.scopeKnowledgeBase': '在知识库中',
@@ -506,8 +550,10 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.tool.askQuestions.validation.multiOtherRequired': '已选择"其他"，请填写内容',
   'conversation.tool.askQuestions.validation.maxSelect': '最多可选 {count} 项',
   'conversation.tool.askQuestions.validation.textRequired': '此题为必填项，请填写文本',
-  'conversation.tool.askQuestions.validation.submitMissingToolCall': '提交失败：缺少 toolCallId（请刷新会话后重试）',
-  'conversation.tool.askQuestions.validation.actionMissingToolCall': '操作失败：缺少 toolCallId（请刷新会话后重试）',
+  'conversation.tool.askQuestions.validation.submitMissingToolCall':
+    '提交失败：缺少 toolCallId（请刷新会话后重试）',
+  'conversation.tool.askQuestions.validation.actionMissingToolCall':
+    '操作失败：缺少 toolCallId（请刷新会话后重试）',
   'conversation.tool.image.loading': '正在生成图片...',
   'conversation.tool.image.alt': 'AI 生成的图片',
   'conversation.tool.image.altIndexed': 'AI 生成的图片 {index}',
@@ -580,6 +626,11 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.view.empty.title': 'Start a new chat',
       'conversation.view.empty.description': 'Ask a question, or give Linnya a task',
       'conversation.input.placeholder': 'Ask anything...',
+      'conversation.input.action.send': 'Send',
+      'conversation.input.action.pause': 'Pause run',
+      'conversation.input.action.continue': 'Continue original run',
+      'conversation.input.action.cancel': 'End run',
+      'conversation.input.action.waiting': 'Applying run control',
       'conversation.input.model.placeholder': 'Select model',
       'conversation.input.model.loading': 'Loading...',
       'conversation.input.model.unknown': 'Unknown model',
@@ -599,13 +650,15 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.input.reasoning.xhigh': 'Extra high',
       'conversation.contextUsage.title': 'Context Usage',
       'conversation.contextUsage.trigger.unavailable': 'Context usage is not available yet',
-      'conversation.contextUsage.trigger.available': 'Context {percentage} used, {used} / {budget} Tokens',
+      'conversation.contextUsage.trigger.available':
+        'Context {percentage} used, {used} / {budget} Tokens',
       'conversation.contextUsage.summary': '{percentage} used',
       'conversation.contextUsage.total': '{used} / {budget} Tokens',
       'conversation.contextUsage.row.systemPrompt': 'System prompt',
       'conversation.contextUsage.row.conversation': 'Conversation',
       'conversation.contextUsage.row.toolDefinitions': 'Tool definitions',
-      'conversation.contextUsage.empty.tailUnavailable': 'Only part of the history is loaded. Return to the conversation tail to resolve the latest context usage.',
+      'conversation.contextUsage.empty.tailUnavailable':
+        'Only part of the history is loaded. Return to the conversation tail to resolve the latest context usage.',
       'conversation.contextUsage.conversationInfo.createdAt': 'Created',
       'conversation.contextUsage.conversationInfo.userMessageCount': 'User messages',
       'conversation.input.actionMenu.open': 'Add',
@@ -613,11 +666,13 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.input.actionMenu.agentGroup': 'Agent',
       'conversation.input.agentChoice.closeCurrent': 'Close current agent',
       'conversation.input.agentChoice.close': 'Close',
-      'conversation.input.agentChoice.persistFailed': 'Unable to update the conversation agent. Please try again.',
+      'conversation.input.agentChoice.persistFailed':
+        'Unable to update the conversation agent. Please try again.',
       'conversation.input.mention.empty': 'No matching references',
       'conversation.input.image.add': 'Add images',
       'conversation.input.image.menuItem': 'Images',
-      'conversation.input.image.extensionUnsupported': 'The current input mode does not support image attachments.',
+      'conversation.input.image.extensionUnsupported':
+        'The current input mode does not support image attachments.',
       'conversation.input.image.drafts': 'Images to send',
       'conversation.input.image.preview': 'Preview image',
       'conversation.input.image.uploading': 'Uploading',
@@ -630,22 +685,29 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.input.image.genericTitle': 'Image',
       'conversation.commandApproval.title': 'Allow this command?',
       'conversation.commandApproval.terminal': 'Terminal',
-      'conversation.commandApproval.description': 'Review the command and working directory. It will run with this conversation\'s current permission.',
+      'conversation.commandApproval.description':
+        "Review the command and working directory. It will run with this conversation's current permission.",
       'conversation.commandApproval.command': 'Command',
       'conversation.commandApproval.cwd': 'Working directory',
       'conversation.commandApproval.processing': 'Saving your choice and preparing the command...',
       'conversation.commandApproval.queue': '{count} more commands are waiting for approval',
       'conversation.commandApproval.allowOnce': 'Allow once',
-      'conversation.commandApproval.allowForConversation': 'Allow the same command in this conversation',
+      'conversation.commandApproval.allowForConversation':
+        'Allow the same command in this conversation',
       'conversation.commandApproval.moreAllowOptions': 'More approval options',
       'conversation.commandApproval.rememberedPrefix': 'Command remembered for this conversation',
       'conversation.commandApproval.deny': 'Deny',
-      'conversation.commandApproval.reason.permissionElevation': 'This command needs permission to write files.',
+      'conversation.commandApproval.reason.permissionElevation':
+        'This command needs permission to write files.',
       'conversation.commandApproval.reason.delete': 'This command may delete files or folders.',
-      'conversation.commandApproval.reason.moveOverwriteRename': 'This command may move, overwrite, or rename files.',
-      'conversation.commandApproval.reason.externalUpload': 'This command may upload data to an external location.',
-      'conversation.commandApproval.reason.downloadAndExecute': 'This command may download and run content.',
-      'conversation.commandApproval.reason.systemOrDiskImpact': 'This command may affect the system or disk.',
+      'conversation.commandApproval.reason.moveOverwriteRename':
+        'This command may move, overwrite, or rename files.',
+      'conversation.commandApproval.reason.externalUpload':
+        'This command may upload data to an external location.',
+      'conversation.commandApproval.reason.downloadAndExecute':
+        'This command may download and run content.',
+      'conversation.commandApproval.reason.systemOrDiskImpact':
+        'This command may affect the system or disk.',
       'conversation.sidebar.loading': 'Loading...',
       'conversation.sidebar.newConversation': 'New chat',
       'conversation.sidebar.noConversation': 'No conversation',
@@ -669,11 +731,13 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.sidebar.deleteFailed': 'Delete failed. Please try again later.',
       'conversation.sidebar.loadFailed': 'Failed to load conversations. Please try again later.',
       'conversation.sidebar.renameFailedGeneric': 'Rename failed. Please try again later.',
-  'conversation.sidebar.deleteFailedGeneric': 'Delete failed. Please try again later.',
-  'conversation.sidebar.batchDelete.title': 'Delete conversations',
-  'conversation.sidebar.batchDelete.message': 'Delete the selected {count} conversations? This cannot be undone.',
-  'conversation.sidebar.batchDelete.success': 'Deleted {count} conversations',
-  'conversation.sidebar.batchDelete.partial': 'Deleted {successCount} conversations; {failCount} failed',
+      'conversation.sidebar.deleteFailedGeneric': 'Delete failed. Please try again later.',
+      'conversation.sidebar.batchDelete.title': 'Delete conversations',
+      'conversation.sidebar.batchDelete.message':
+        'Delete the selected {count} conversations? This cannot be undone.',
+      'conversation.sidebar.batchDelete.success': 'Deleted {count} conversations',
+      'conversation.sidebar.batchDelete.partial':
+        'Deleted {successCount} conversations; {failCount} failed',
       'conversation.history.group.recent': 'Recent conversations',
       'conversation.history.loading': 'Loading...',
       'conversation.history.empty': 'No conversation history',
@@ -682,48 +746,81 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.error.title': 'Error',
       'conversation.error.close': 'Close',
       'conversation.error.regenerateNoConversation': 'No conversation is available to regenerate',
-      'conversation.error.regenerateMessageNotFound': 'The user message to regenerate was not found',
+      'conversation.error.regenerateMessageNotFound':
+        'The user message to regenerate was not found',
       'conversation.error.generic': 'Something went wrong. Please try again later.',
-      'conversation.error.rateLimit': 'Requests are being sent too frequently. Please try again later. If this keeps happening, switch models or reduce the request rate.',
-      'conversation.error.providerLimit': 'The model service returned 429. Its quota may be exhausted or requests may be too frequent. Try again later or switch models.',
-      'conversation.error.serviceUnavailable': 'The service is temporarily unavailable. Please try again later.',
+      'conversation.error.rateLimit':
+        'Requests are being sent too frequently. Please try again later. If this keeps happening, switch models or reduce the request rate.',
+      'conversation.error.providerLimit':
+        'The model service returned 429. Its quota may be exhausted or requests may be too frequent. Try again later or switch models.',
+      'conversation.error.serviceUnavailable':
+        'The service is temporarily unavailable. Please try again later.',
       'conversation.error.badRequest': 'The request is invalid. Check your input and try again.',
-      'conversation.error.auth': 'Authentication failed. Check your model configuration or sign-in status.',
+      'conversation.error.auth':
+        'Authentication failed. Check your model configuration or sign-in status.',
       'conversation.error.requestFailed': 'The request failed. Please try again later.',
-      'conversation.error.quotaExceeded': 'This model has reached its quota. Try again tomorrow or switch to another model.',
-      'conversation.error.http502': 'The upstream service is temporarily unavailable (502). Please try again later.',
-      'conversation.error.http503': 'The service is temporarily unavailable (503). Please try again later.',
+      'conversation.error.quotaExceeded':
+        'This model has reached its quota. Try again tomorrow or switch to another model.',
+      'conversation.error.http502':
+        'The upstream service is temporarily unavailable (502). Please try again later.',
+      'conversation.error.http503':
+        'The service is temporarily unavailable (503). Please try again later.',
       'conversation.error.http504': 'The request timed out (504). Please try again later.',
-      'conversation.error.providerUnavailable': 'The model service is currently overloaded. Please try again later. If this continues, switch models or reduce concurrency.',
-      'conversation.error.thinkingProtocolMismatch': 'This model has Thinking mode enabled, but the current message format does not meet the provider requirements. Switch to a non-Thinking model or disable Thinking and try again.',
-      'conversation.error.outputLimitReached': 'The model reached its output limit before completing this turn. Continue the task or switch to a model with a larger output capacity.',
-      'conversation.error.contentFiltered': 'The model service stopped this response because of content filtering. Revise the request and try again.',
-      'conversation.error.imageModelUnsupported': 'The current model does not support image understanding. Switch to an image-capable model.',
-      'conversation.error.imageModelUnsupportedWithAlternatives': 'The current model does not support image understanding. Available alternatives: {models}.',
-      'conversation.error.imagePlacementUnsupported': 'The current model connection does not support images from this source. Switch models or connections.',
-      'conversation.error.imagePlacementUnsupportedWithAlternatives': 'The current model connection does not support images from this source. Available alternatives: {models}.',
-      'conversation.error.userImagePlacementUnsupported': 'The current model connection does not support images sent by the user. Switch models or connections.',
-      'conversation.error.userImagePlacementUnsupportedWithAlternatives': 'The current model connection does not support images sent by the user. Available alternatives: {models}.',
-      'conversation.error.toolResultImagePlacementUnsupported': 'The current model connection does not support images returned by tools. The image result remains available in the conversation.',
-      'conversation.error.toolResultImagePlacementUnsupportedWithAlternatives': 'The current model connection does not support images returned by tools. Available alternatives: {models}. The image result remains available in the conversation.',
-      'conversation.error.imageMaterializationPending': 'The image is not ready to send yet. Please try again shortly.',
-      'conversation.error.imageAttachmentUnavailable': 'The image file is no longer available. Add it again or remove it before sending.',
-      'conversation.error.imageAttachmentIntegrityFailed': 'The image file is damaged or has changed. Add it again before sending.',
-      'conversation.error.imageRouteLimitExceeded': 'This model connection cannot accept this many images or images this large. Remove some images or switch connections.',
-      'conversation.error.imageMappingUnsupported': 'This model connection cannot send images correctly yet. Switch models or connections.',
-      'conversation.error.imageContextBudgetExceeded': 'These images exceed the conversation context capacity. Remove older images, switch to a larger-context model, or start a new conversation.',
-      'conversation.error.imageUploadInvalidRequest': 'The image upload request is invalid. Select the image again.',
-      'conversation.error.imageTooLarge': 'The image is too large. Choose an image no larger than 10 MB.',
+      'conversation.error.providerUnavailable':
+        'The model service is currently overloaded. Please try again later. If this continues, switch models or reduce concurrency.',
+      'conversation.error.thinkingProtocolMismatch':
+        'This model has Thinking mode enabled, but the current message format does not meet the provider requirements. Switch to a non-Thinking model or disable Thinking and try again.',
+      'conversation.error.outputLimitReached':
+        'The model reached its output limit before completing this turn. Continue the task or switch to a model with a larger output capacity.',
+      'conversation.error.contentFiltered':
+        'The model service stopped this response because of content filtering. Revise the request and try again.',
+      'conversation.error.imageModelUnsupported':
+        'The current model does not support image understanding. Switch to an image-capable model.',
+      'conversation.error.imageModelUnsupportedWithAlternatives':
+        'The current model does not support image understanding. Available alternatives: {models}.',
+      'conversation.error.imagePlacementUnsupported':
+        'The current model connection does not support images from this source. Switch models or connections.',
+      'conversation.error.imagePlacementUnsupportedWithAlternatives':
+        'The current model connection does not support images from this source. Available alternatives: {models}.',
+      'conversation.error.userImagePlacementUnsupported':
+        'The current model connection does not support images sent by the user. Switch models or connections.',
+      'conversation.error.userImagePlacementUnsupportedWithAlternatives':
+        'The current model connection does not support images sent by the user. Available alternatives: {models}.',
+      'conversation.error.toolResultImagePlacementUnsupported':
+        'The current model connection does not support images returned by tools. The image result remains available in the conversation.',
+      'conversation.error.toolResultImagePlacementUnsupportedWithAlternatives':
+        'The current model connection does not support images returned by tools. Available alternatives: {models}. The image result remains available in the conversation.',
+      'conversation.error.imageMaterializationPending':
+        'The image is not ready to send yet. Please try again shortly.',
+      'conversation.error.imageAttachmentUnavailable':
+        'The image file is no longer available. Add it again or remove it before sending.',
+      'conversation.error.imageAttachmentIntegrityFailed':
+        'The image file is damaged or has changed. Add it again before sending.',
+      'conversation.error.imageRouteLimitExceeded':
+        'This model connection cannot accept this many images or images this large. Remove some images or switch connections.',
+      'conversation.error.imageMappingUnsupported':
+        'This model connection cannot send images correctly yet. Switch models or connections.',
+      'conversation.error.imageContextBudgetExceeded':
+        'These images exceed the conversation context capacity. Remove older images, switch to a larger-context model, or start a new conversation.',
+      'conversation.error.imageUploadInvalidRequest':
+        'The image upload request is invalid. Select the image again.',
+      'conversation.error.imageTooLarge':
+        'The image is too large. Choose an image no larger than 10 MB.',
       'conversation.error.imageUnsupportedFormat': 'Only JPEG, PNG, and WebP images are supported.',
       'conversation.error.imageInvalid': 'This image cannot be read. Choose a valid image file.',
-      'conversation.error.imagePixelLimitExceeded': 'The image dimensions are too large. Resize it and add it again.',
-      'conversation.error.imageInvalidFileName': 'The image file name is invalid. Rename it and add it again.',
-      'conversation.error.imageStagingFailed': 'The image cannot be added right now. Try again later.',
+      'conversation.error.imagePixelLimitExceeded':
+        'The image dimensions are too large. Resize it and add it again.',
+      'conversation.error.imageInvalidFileName':
+        'The image file name is invalid. Rename it and add it again.',
+      'conversation.error.imageStagingFailed':
+        'The image cannot be added right now. Try again later.',
       'conversation.error.imageDraftUnavailable': 'The image draft has expired. Add it again.',
       'conversation.error.imageTooManyAttachments': 'A message can contain up to 100 images.',
-      'conversation.error.imageTotalBytesExceeded': 'The images exceed the total size limit. Remove some images.',
+      'conversation.error.imageTotalBytesExceeded':
+        'The images exceed the total size limit. Remove some images.',
       'conversation.error.imagePreviewUnavailable': 'The image preview is unavailable.',
-      'conversation.error.imagePreviewIntegrityFailed': 'The image is damaged or has changed and cannot be previewed.',
+      'conversation.error.imagePreviewIntegrityFailed':
+        'The image is damaged or has changed and cannot be previewed.',
       'conversation.error.imagePreviewFailed': 'The image preview failed to load. Try again later.',
       'conversation.userMessage.action.edit': 'Edit',
       'conversation.userMessage.action.regenerate': 'Regenerate',
@@ -765,31 +862,44 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.quote.label': 'Referenced content',
       'conversation.quote.clear': 'Clear references',
       'conversation.quote.remove': 'Remove reference',
-      'conversation.flow.missingProjectForSend': 'This conversation must belong to a project. projectId is missing, so sending was stopped.',
-      'conversation.flow.missingProjectForRun': 'This conversation must belong to a project. projectId is missing, so the run was stopped.',
-      'conversation.flow.pluginRun.missingProject': 'The AI run cannot start because the current project is missing projectId.',
-      'conversation.flow.pluginRun.agentChoiceUnavailable': 'The current conversation agent is not registered or enabled: {agentChoiceId}',
-      'conversation.flow.pluginRun.noConversation': 'The AI run cannot start because no conversation is available.',
+      'conversation.flow.missingProjectForSend':
+        'This conversation must belong to a project. projectId is missing, so sending was stopped.',
+      'conversation.flow.missingProjectForRun':
+        'This conversation must belong to a project. projectId is missing, so the run was stopped.',
+      'conversation.flow.pluginRun.missingProject':
+        'The AI run cannot start because the current project is missing projectId.',
+      'conversation.flow.pluginRun.agentChoiceUnavailable':
+        'The current conversation agent is not registered or enabled: {agentChoiceId}',
+      'conversation.flow.pluginRun.noConversation':
+        'The AI run cannot start because no conversation is available.',
       'conversation.flow.pluginRun.executionFailed': 'The AI run failed. Please try again later.',
-      'conversation.flow.subrun.missingProject': 'Subruns cannot start because the current project is unavailable.',
-      'conversation.flow.subrun.noConversation': 'Subruns cannot start because no conversation is available.',
-      'conversation.flow.subrun.executionFailed': 'Subrun execution failed. Please try again later.',
+      'conversation.flow.subrun.missingProject':
+        'Subruns cannot start because the current project is unavailable.',
+      'conversation.flow.subrun.noConversation':
+        'Subruns cannot start because no conversation is available.',
+      'conversation.flow.subrun.executionFailed':
+        'Subrun execution failed. Please try again later.',
       'conversation.flow.deepResearch.resetFallback': 'Next Monday 00:00',
-      'conversation.flow.deepResearch.weeklyLimitReached': "Deep Research has reached this week's limit ({usedCount}/{limit}).\nReset time: {resetText}",
-      'conversation.flow.chatInvocationFailed': 'Failed to send the message. Please try again later.',
+      'conversation.flow.deepResearch.weeklyLimitReached':
+        "Deep Research has reached this week's limit ({usedCount}/{limit}).\nReset time: {resetText}",
+      'conversation.flow.chatInvocationFailed':
+        'Failed to send the message. Please try again later.',
       'conversation.flow.taskInvocationFailed': 'Task execution failed. Please try again later.',
       'conversation.flow.conversationExecutionFailed': 'Conversation execution failed',
       'conversation.flow.agentExecutionFailed': 'Agent execution failed',
       'conversation.flow.streamFailed': 'The AI response was interrupted. Please try again later.',
-      'conversation.flow.continueFailed': 'Failed to continue AI execution. Please try again later.',
+      'conversation.flow.continueFailed':
+        'Failed to continue AI execution. Please try again later.',
       'conversation.flow.resumeFailed': 'Failed to resume Agent execution. Please try again later.',
       'conversation.tool.error.title': '{toolName} · execution failed',
       'conversation.tool.error.fallbackTitle': 'Execution failed',
       'conversation.tool.error.unknown': 'Unknown error',
       'conversation.tool.error.imageModelNotConfigured': 'No image generation model is configured.',
       'conversation.tool.error.configureImageModel': 'Configure',
-      'conversation.tool.error.openDocumentFailed': 'Failed to open the file. Please try again later.',
-      'conversation.tool.error.openDocumentFailedGeneric': 'Failed to open the file. Please try again later.',
+      'conversation.tool.error.openDocumentFailed':
+        'Failed to open the file. Please try again later.',
+      'conversation.tool.error.openDocumentFailedGeneric':
+        'Failed to open the file. Please try again later.',
       'conversation.tool.command.running': 'Running command',
       'conversation.tool.command.completed': 'Command completed',
       'conversation.tool.command.rejected': 'Command not executed',
@@ -801,8 +911,10 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.command.terminal': 'Terminal output',
       'conversation.tool.command.omittedLines': '{count} earlier lines omitted',
       'conversation.tool.command.outputIncomplete': 'Full output is incomplete',
-      'conversation.tool.command.outputIncomplete.retainedWindowOmitted': 'Earlier output is outside the retained window',
-      'conversation.tool.command.outputIncomplete.textProjectionFailed': 'Some output could not be converted to safe text',
+      'conversation.tool.command.outputIncomplete.retainedWindowOmitted':
+        'Earlier output is outside the retained window',
+      'conversation.tool.command.outputIncomplete.textProjectionFailed':
+        'Some output could not be converted to safe text',
       'conversation.tool.command.auditIncomplete': 'Audit record incomplete',
       'conversation.tool.command.copy': 'Copy command and output',
       'conversation.tool.command.starting': 'Starting...',
@@ -825,15 +937,21 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.command.cancel': 'Cancel command',
       'conversation.tool.command.protectedInput.open': 'Protected input',
       'conversation.tool.command.protectedInput.title': 'Send protected input to command',
-      'conversation.tool.command.protectedInput.description': 'This input goes directly to the current interactive command. It is not added to the conversation or shared with the Agent.',
-      'conversation.tool.command.protectedInput.label': 'Password, verification code, or passphrase',
-      'conversation.tool.command.protectedInput.boundary': 'The target command may still echo, store, or transmit this content.',
+      'conversation.tool.command.protectedInput.description':
+        'This input goes directly to the current interactive command. It is not added to the conversation or shared with the Agent.',
+      'conversation.tool.command.protectedInput.label':
+        'Password, verification code, or passphrase',
+      'conversation.tool.command.protectedInput.boundary':
+        'The target command may still echo, store, or transmit this content.',
       'conversation.tool.command.protectedInput.cancel': 'Cancel',
       'conversation.tool.command.protectedInput.send': 'Send',
       'conversation.tool.command.protectedInput.sending': 'Sending...',
-      'conversation.tool.command.protectedInput.unavailable': 'The interactive command has ended or this input capability is no longer valid.',
-      'conversation.tool.command.protectedInput.failed': 'Protected input could not be sent. Confirm that the command is still waiting for input, then try again.',
-      'conversation.tool.command.settlementSaveFailed': 'The command ended, but its status could not be saved.',
+      'conversation.tool.command.protectedInput.unavailable':
+        'The interactive command has ended or this input capability is no longer valid.',
+      'conversation.tool.command.protectedInput.failed':
+        'Protected input could not be sent. Confirm that the command is still waiting for input, then try again.',
+      'conversation.tool.command.settlementSaveFailed':
+        'The command ended, but its status could not be saved.',
       'conversation.tool.command.controlUnavailable': 'The current command status is unavailable.',
       'conversation.tool.command.cancelFailed': 'The command could not be cancelled. Try again.',
       'conversation.tool.command.terminated.timed_out': 'Timed out',
@@ -881,18 +999,30 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.workspace.reference.documentLabel': 'Document reference',
       'conversation.tool.workspace.reference.paragraphLabel': 'Paragraph {index}',
       'conversation.tool.workspace.reference.locateTitle': 'Go to {ref}',
-      'conversation.tool.workspace.reference.noContextDocument': 'No context document was found for resolving this reference',
-      'conversation.tool.workspace.reference.missingTarget': 'This reference does not specify a target document. Use #ref@documentType:documentId or #ref@documentId.',
-      'conversation.tool.workspace.reference.markdownNotFound': 'Could not find the matching paragraph reference. It may have been deleted or belong to another document.',
-      'conversation.tool.workspace.reference.ambiguous': 'This reference matches multiple documents. Use [#ref@documentId] to specify the target document.',
-      'conversation.tool.workspace.reference.editorNotReady': 'The editor is not ready yet. Try again shortly.',
-      'conversation.tool.workspace.reference.paragraphNotFound': 'Could not find the matching paragraph. It may have been deleted or be in another document.',
-      'conversation.tool.workspace.reference.pluginNotFound': 'Could not find the matching document reference. It may have been deleted or belong to another document.',
-      'conversation.tool.workspace.reference.pluginDisabled': 'The matching plugin is not enabled, so this document reference cannot be located.',
-      'conversation.tool.workspace.reference.documentNotReady': 'The document is not ready yet. Try again shortly.',
-      'conversation.tool.workspace.reference.targetNotFound': 'Could not find the matching reference target. It may be collapsed or deleted.',
-      'conversation.tool.workspace.reference.locateFailed': 'Failed to locate the reference. Please try again later.',
-      'conversation.tool.workspace.reference.locateFailedGeneric': 'Failed to locate the reference. Please try again later.',
+      'conversation.tool.workspace.reference.noContextDocument':
+        'No context document was found for resolving this reference',
+      'conversation.tool.workspace.reference.missingTarget':
+        'This reference does not specify a target document. Use #ref@documentType:documentId or #ref@documentId.',
+      'conversation.tool.workspace.reference.markdownNotFound':
+        'Could not find the matching paragraph reference. It may have been deleted or belong to another document.',
+      'conversation.tool.workspace.reference.ambiguous':
+        'This reference matches multiple documents. Use [#ref@documentId] to specify the target document.',
+      'conversation.tool.workspace.reference.editorNotReady':
+        'The editor is not ready yet. Try again shortly.',
+      'conversation.tool.workspace.reference.paragraphNotFound':
+        'Could not find the matching paragraph. It may have been deleted or be in another document.',
+      'conversation.tool.workspace.reference.pluginNotFound':
+        'Could not find the matching document reference. It may have been deleted or belong to another document.',
+      'conversation.tool.workspace.reference.pluginDisabled':
+        'The matching plugin is not enabled, so this document reference cannot be located.',
+      'conversation.tool.workspace.reference.documentNotReady':
+        'The document is not ready yet. Try again shortly.',
+      'conversation.tool.workspace.reference.targetNotFound':
+        'Could not find the matching reference target. It may be collapsed or deleted.',
+      'conversation.tool.workspace.reference.locateFailed':
+        'Failed to locate the reference. Please try again later.',
+      'conversation.tool.workspace.reference.locateFailedGeneric':
+        'Failed to locate the reference. Please try again later.',
       'conversation.tool.evidence.write': 'Write evidence library',
       'conversation.tool.evidence.read': 'Read evidence library',
       'conversation.tool.evidence.assemble': 'Assemble results',
@@ -940,19 +1070,26 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.webRead.truncated': 'Truncated',
       'conversation.tool.webRead.empty': 'No web page content was returned',
       'conversation.tool.knowledgeSearch.relatedDocuments': 'Found {count} related documents',
-      'conversation.tool.knowledgeSearch.snapshotPointerWithCount': 'Results were saved to the citation snapshot library: {count} items (load on demand)',
-      'conversation.tool.knowledgeSearch.snapshotPointer': 'Results were saved to the citation snapshot library (load on demand)',
-      'conversation.tool.knowledgeSearch.empty': 'No relevant results found. Try adjusting the search terms.',
+      'conversation.tool.knowledgeSearch.snapshotPointerWithCount':
+        'Results were saved to the citation snapshot library: {count} items (load on demand)',
+      'conversation.tool.knowledgeSearch.snapshotPointer':
+        'Results were saved to the citation snapshot library (load on demand)',
+      'conversation.tool.knowledgeSearch.empty':
+        'No relevant results found. Try adjusting the search terms.',
       'conversation.tool.knowledgeSearch.loadLoading': 'Loading...',
       'conversation.tool.knowledgeSearch.loadDetails': 'Load details',
       'conversation.tool.knowledgeSearch.exportLoading': 'Exporting...',
       'conversation.tool.knowledgeSearch.exportJson': 'Export JSON',
       'conversation.tool.knowledgeSearch.loadFailed': 'Load failed. Please try again later.',
       'conversation.tool.knowledgeSearch.loadFailedGeneric': 'Load failed. Please try again later.',
-      'conversation.tool.knowledgeSearch.error': 'An error occurred while searching the knowledge base',
-      'conversation.tool.knowledgeSearch.noActiveConversationLoad': 'No active conversation is available to load the Citation Snapshot Bundle',
-      'conversation.tool.knowledgeSearch.invalidSnapshotBundle': 'Citation Snapshot Bundle has an unexpected structure',
-      'conversation.tool.knowledgeSearch.noActiveConversationExport': 'No active conversation is available to export the Citation Snapshot Bundle',
+      'conversation.tool.knowledgeSearch.error':
+        'An error occurred while searching the knowledge base',
+      'conversation.tool.knowledgeSearch.noActiveConversationLoad':
+        'No active conversation is available to load the Citation Snapshot Bundle',
+      'conversation.tool.knowledgeSearch.invalidSnapshotBundle':
+        'Citation Snapshot Bundle has an unexpected structure',
+      'conversation.tool.knowledgeSearch.noActiveConversationExport':
+        'No active conversation is available to export the Citation Snapshot Bundle',
       'conversation.tool.knowledgeSearch.unknownDocument': 'Unknown document',
       'conversation.tool.knowledgeSearch.scopeDocument': 'In "{docName}"',
       'conversation.tool.knowledgeSearch.scopeKnowledgeBase': 'In the knowledge base',
@@ -960,8 +1097,10 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.knowledgeSearch.actionSearch': 'Search',
       'conversation.tool.knowledgeSearch.configListTitle': 'View knowledge base',
       'conversation.tool.knowledgeSearch.configSearchTitle': 'Search knowledge base',
-      'conversation.tool.knowledgeSearch.configSearchInDocument': 'Search knowledge base: in "{docName}"',
-      'conversation.tool.knowledgeSearch.configSearchKeyword': 'Search knowledge base: keyword "{query}"',
+      'conversation.tool.knowledgeSearch.configSearchInDocument':
+        'Search knowledge base: in "{docName}"',
+      'conversation.tool.knowledgeSearch.configSearchKeyword':
+        'Search knowledge base: keyword "{query}"',
       'conversation.tool.knowledgeSearch.compactQuery': 'Search the knowledge base for “{query}”',
       'conversation.tool.knowledgeSearch.configReadDocument': 'Read knowledge base file',
       'conversation.tool.knowledgeSearch.traceExecuting': 'Running deep search',
@@ -983,7 +1122,8 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.documentContent.paragraph': 'Paragraph {start}',
       'conversation.tool.documentContent.paragraphRange': 'Paragraphs {start}–{end}',
       'conversation.tool.documentContent.failed': 'Failed to read document',
-      'conversation.tool.taskState.notCreated': 'TaskState has not been created. Use task_write when needed.',
+      'conversation.tool.taskState.notCreated':
+        'TaskState has not been created. Use task_write when needed.',
       'conversation.tool.taskState.planCount': '{count} plans',
       'conversation.tool.taskState.nextStepCount': '{count} next steps',
       'conversation.tool.taskState.loadingUpdate': 'Updating TaskState...',
@@ -994,12 +1134,16 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.subrun.title': 'Subtask · {description}',
       'conversation.tool.subrun.batchTitle': 'Parallel subtasks · {count}',
       'conversation.tool.subrun.headerFallback': 'Task',
-      'conversation.tool.subrun.failedNoFinalAnswer': 'The subrun did not complete successfully and returned no final answer.',
-      'conversation.tool.subrun.completedNoFinalAnswer': 'The subrun completed but returned no renderable final answer.',
+      'conversation.tool.subrun.failedNoFinalAnswer':
+        'The subrun did not complete successfully and returned no final answer.',
+      'conversation.tool.subrun.completedNoFinalAnswer':
+        'The subrun completed but returned no renderable final answer.',
       'conversation.tool.subrunDetail.back': 'Back to conversation',
       'conversation.tool.subrunDetail.open': 'View details',
-      'conversation.tool.subrunDetail.parentMissing': 'The parent task is no longer in the current message window.',
-      'conversation.tool.subrunDetail.projectionFailed': 'The subtask trace failed presentation admission.',
+      'conversation.tool.subrunDetail.parentMissing':
+        'The parent task is no longer in the current message window.',
+      'conversation.tool.subrunDetail.projectionFailed':
+        'The subtask trace failed presentation admission.',
       'conversation.tool.subrunDetail.loadFailed': 'Failed to load the subtask trace.',
       'conversation.tool.subrunDetail.status.running': 'Subtask running',
       'conversation.tool.subrunDetail.status.completed': 'Subtask completed',
@@ -1030,7 +1174,8 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.sharedMemory.readCitationSnapshotLoading': 'Reading citation snapshot...',
       'conversation.tool.sharedMemory.readSharedMemoryFailed': 'Failed to read internal artifact',
       'conversation.tool.sharedMemory.readEvidenceFailed': 'Failed to read evidence',
-      'conversation.tool.sharedMemory.readCitationSnapshotFailed': 'Failed to read citation snapshot',
+      'conversation.tool.sharedMemory.readCitationSnapshotFailed':
+        'Failed to read citation snapshot',
       'conversation.tool.sharedMemory.writeLoading': 'Writing internal artifact...',
       'conversation.tool.sharedMemory.untitledDocument': 'Untitled document',
       'conversation.tool.sharedMemory.updatedUnits': 'Updated {count} words',
@@ -1055,7 +1200,8 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.askQuestions.loading': 'Creating questions...',
       'conversation.tool.askQuestions.emptyTitle': 'No questions',
       'conversation.tool.askQuestions.emptyText': 'No available questions',
-      'conversation.tool.askQuestions.emptyError': 'The question tool did not return usable questions. Please try again later.',
+      'conversation.tool.askQuestions.emptyError':
+        'The question tool did not return usable questions. Please try again later.',
       'conversation.tool.askQuestions.otherOption': 'Other',
       'conversation.tool.askQuestions.otherPlaceholder': 'Type here...',
       'conversation.tool.askQuestions.textPlaceholder': 'Enter your answer...',
@@ -1068,14 +1214,21 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.askQuestions.skipAction': 'Skip',
       'conversation.tool.askQuestions.submitting': 'Submitting...',
       'conversation.tool.askQuestions.submitFallback': 'Submit',
-      'conversation.tool.askQuestions.validation.singleRequired': 'This question is required. Select one option.',
-      'conversation.tool.askQuestions.validation.singleOtherRequired': 'You selected "Other". Please enter a value.',
-      'conversation.tool.askQuestions.validation.multiRequired': 'This question is required. Select at least one option.',
-      'conversation.tool.askQuestions.validation.multiOtherRequired': 'You selected "Other". Please enter a value.',
+      'conversation.tool.askQuestions.validation.singleRequired':
+        'This question is required. Select one option.',
+      'conversation.tool.askQuestions.validation.singleOtherRequired':
+        'You selected "Other". Please enter a value.',
+      'conversation.tool.askQuestions.validation.multiRequired':
+        'This question is required. Select at least one option.',
+      'conversation.tool.askQuestions.validation.multiOtherRequired':
+        'You selected "Other". Please enter a value.',
       'conversation.tool.askQuestions.validation.maxSelect': 'Select at most {count} items',
-      'conversation.tool.askQuestions.validation.textRequired': 'This question is required. Enter text.',
-      'conversation.tool.askQuestions.validation.submitMissingToolCall': 'Submit failed: missing toolCallId. Refresh the conversation and try again.',
-      'conversation.tool.askQuestions.validation.actionMissingToolCall': 'Action failed: missing toolCallId. Refresh the conversation and try again.',
+      'conversation.tool.askQuestions.validation.textRequired':
+        'This question is required. Enter text.',
+      'conversation.tool.askQuestions.validation.submitMissingToolCall':
+        'Submit failed: missing toolCallId. Refresh the conversation and try again.',
+      'conversation.tool.askQuestions.validation.actionMissingToolCall':
+        'Action failed: missing toolCallId. Refresh the conversation and try again.',
       'conversation.tool.image.loading': 'Generating image...',
       'conversation.tool.image.alt': 'AI-generated image',
       'conversation.tool.image.altIndexed': 'AI-generated image {index}',
@@ -1084,7 +1237,8 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.image.preview': 'Full-screen preview',
       'conversation.tool.image.download': 'Download image',
       'conversation.tool.image.failed': 'Image generation failed',
-      'conversation.tool.image.retryLater': 'Something went wrong while generating the image. Try again later.',
+      'conversation.tool.image.retryLater':
+        'Something went wrong while generating the image. Try again later.',
       'conversation.tool.image.empty': 'No image content',
       'conversation.tool.imageRead.title': 'View image',
       'conversation.tool.imageRead.unavailable': 'Image content is unavailable',
@@ -1119,11 +1273,13 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.resourceLink.status.unavailable': 'Unavailable',
       'conversation.resourceLink.status.resolving': 'Resolving',
       'conversation.resourceLink.status.missing': 'File not found',
-      'conversation.resourceLink.tooltip.missing': 'The file is missing or its path changed: {locator}',
+      'conversation.resourceLink.tooltip.missing':
+        'The file is missing or its path changed: {locator}',
       'conversation.resourceLink.tooltip.unavailable': 'This file cannot be opened: {locator}',
       'conversation.resourceLink.openFailed': 'Unable to open this file link',
       'conversation.startupSubtitle.newProject': 'Ready to start a new project?',
-      'conversation.startupSubtitle.linkInsights': 'Organize your thoughts and connect the insights.',
+      'conversation.startupSubtitle.linkInsights':
+        'Organize your thoughts and connect the insights.',
       'conversation.startupSubtitle.paper': 'Let your thoughts land on the page.',
       'conversation.startupSubtitle.oneSentence': 'A single sentence is a fine place to begin.',
       'conversation.startupSubtitle.newChapter': 'Open a new chapter.',

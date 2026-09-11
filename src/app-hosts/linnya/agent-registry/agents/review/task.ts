@@ -32,19 +32,24 @@ function requireNumber(value: number | undefined, fieldName: string): number {
 
 export class ReviewAgentTask extends contextManager.agentTasks.BaseAgentTask {
   readonly name = 'ReviewAgentTask(Registry)';
+  readonly supportsFrozenSystemPrompt = true;
 
   constructor() {
     super({ fenceRegistry: linnyaFenceRegistry });
   }
 
   protected getSystemPrompt(request: AgentInvokeRequest): string {
-    const agentSystemPrompt = requireNonEmptyString(request.agent_system_prompt, 'agent_system_prompt');
+    if (request.frozenSystemPrompt !== undefined) return request.frozenSystemPrompt;
+    const agentSystemPrompt = requireNonEmptyString(
+      request.agent_system_prompt,
+      'agent_system_prompt'
+    );
     // agent_name 在旧实现里用于模板变量，这里 prompt 不需要，但仍保持校验一致性（避免 enricher 漏注入）
     requireNonEmptyString(request.agent_name, 'agent_name');
 
     return buildPrompt(REVIEW_AGENT_PROMPT, {
       agent_system_prompt: agentSystemPrompt,
-      language_instruction: '请使用中文回答，除非用户明确要求使用其他语言。'
+      language_instruction: '请使用中文回答，除非用户明确要求使用其他语言。',
     });
   }
 
@@ -65,7 +70,7 @@ export class ReviewAgentTask extends contextManager.agentTasks.BaseAgentTask {
         fencePlacement: 'after-system',
         fragmentType: 'review_context',
         source: 'review',
-      }
+      },
     };
 
     const systemPromptIndex = messages.findIndex(m => m.type === 'system_prompt');
@@ -81,7 +86,8 @@ export class ReviewAgentTask extends contextManager.agentTasks.BaseAgentTask {
   private buildReviewContextContent(request: AgentInvokeRequest): string {
     const sections: string[] = [];
 
-    const reviewBackground = typeof request.review_background === 'string' ? request.review_background.trim() : '';
+    const reviewBackground =
+      typeof request.review_background === 'string' ? request.review_background.trim() : '';
     const reviewGoal = typeof request.review_goal === 'string' ? request.review_goal.trim() : '';
 
     if (reviewBackground || reviewGoal) {

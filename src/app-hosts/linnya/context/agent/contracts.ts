@@ -39,6 +39,8 @@ export interface AgentAutocompleteBehaviorSummary {
 }
 
 export interface AgentInvokeRequest extends AgentProfileRequest {
+  /** Host 首次接纳时物化的系统提示；续跑不得重新渲染动态时间或 Skill catalog。 */
+  frozenSystemPrompt?: string;
   model_id?: string;
   imageGenerationModelId?: string;
   context_before?: string;

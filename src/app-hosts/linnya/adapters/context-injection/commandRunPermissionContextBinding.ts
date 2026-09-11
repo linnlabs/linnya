@@ -20,7 +20,7 @@ function freezeContext(context: CommandRunPermissionContext): CommandRunPermissi
  */
 export function resolveCommandRunPermissionContext(input: {
   readonly runOwner: object;
-  readonly executionKind: 'start' | 'resume';
+  readonly executionKind: 'start' | 'resume' | 'continue';
   readonly rootAgentRunId: CommandAgentRunId;
   readonly settingsPort: CommandPermissionSettingsPort;
   readonly now?: () => number;
@@ -30,7 +30,7 @@ export function resolveCommandRunPermissionContext(input: {
     return existing;
   }
 
-  if (input.executionKind === 'resume') {
+  if (input.executionKind !== 'start') {
     const unavailable = freezeContext({
       status: 'unavailable',
       code: 'permission_settings_unavailable',
@@ -40,11 +40,13 @@ export function resolveCommandRunPermissionContext(input: {
     return unavailable;
   }
 
-  const context = freezeContext(snapshotCommandPermissionSettingsForRun({
-    port: input.settingsPort,
-    rootAgentRunId: input.rootAgentRunId,
-    now: input.now,
-  }));
+  const context = freezeContext(
+    snapshotCommandPermissionSettingsForRun({
+      port: input.settingsPort,
+      rootAgentRunId: input.rootAgentRunId,
+      now: input.now,
+    })
+  );
   runPermissionBindings.set(input.runOwner, context);
   return context;
 }

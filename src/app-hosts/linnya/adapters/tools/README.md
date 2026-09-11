@@ -66,6 +66,10 @@ adapter 只负责原子事务和双唯一约束；Knowledge/Web/Workspace produc
 
 工具声明 `idempotency` 时，registry 只能调用 Linnkit 的 `computeToolIdempotencyKey()` 与正式 history helper，不能在 Host 复制 key 算法或恢复旧 16-hex 合同。这里的 history 命中服务 Host 直接执行入口；Graph ToolNode 仍拥有进程内 in-flight 合并。两者都不提供跨进程强幂等，后者必须由持久化锁或唯一索引另行保证。
 
+`RUN_RECOVERY_BLOCKED` 与 `RUN_PAUSE_REQUESTED` 是运行控制信号，必须向 Graph 传播，不能转成
+一条已完成的 tool error。未决调用恢复由应用层 run-resumption 协调：明确只读工具可重新读取；
+child 工具只在原 child identity / checkpoint 合同下重新进入；外部写入没有 owner 凭据时阻塞。
+
 ---
 
 ## 4. 开发注意事项

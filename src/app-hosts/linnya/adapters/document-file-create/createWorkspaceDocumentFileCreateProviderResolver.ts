@@ -15,7 +15,9 @@ import type {
   WorkspaceDocumentFileCreateFormat,
   WorkspaceDocumentFileCreateProvider,
   WorkspaceDocumentFileCreateProviderResolver,
+  WorkspaceDocumentFileCreateResult,
 } from '../../../../features/workspace/document-file-create/definitions/workspaceDocumentFileCreate';
+import type { ToolOwnerResultCommit } from '../../application/run-resumption';
 import type { WorkspaceService } from '../../../../electron-main/services/workspace/workspace';
 import {
   findFormatOwnershipByExtension,
@@ -27,9 +29,10 @@ export function createWorkspaceDocumentFileCreateProviderResolver(params: {
   readonly db: Database.Database;
   readonly context: PluginToolContext;
   readonly workspaceService: WorkspaceService;
+  readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileCreateResult>;
 }): WorkspaceDocumentFileCreateProviderResolver {
   const markdownProvider = createMarkdownFileCreateProvider(params);
-  return (fileName) => {
+  return fileName => {
     const registeredHook = findPluginDocumentHookByFileName(fileName, { includeDisabled: true });
     if (registeredHook) {
       return createPluginFileCreateProvider({
@@ -63,18 +66,19 @@ export function createWorkspaceDocumentFileCreateProviderResolver(params: {
 
 export function listWorkspaceDocumentFileCreateFormats(): readonly WorkspaceDocumentFileCreateFormat[] {
   return listDocumentTypeBackendHooks()
-    .filter((hook) => hook.createDocument)
-    .map((hook) => ({
+    .filter(hook => hook.createDocument)
+    .map(hook => ({
       displayName: hook.displayName,
       extensions: listHookFileExtensions(hook),
     }))
-    .filter((format) => format.extensions.length > 0);
+    .filter(format => format.extensions.length > 0);
 }
 
 function createMarkdownFileCreateProvider(params: {
   readonly db: Database.Database;
   readonly context: PluginToolContext;
   readonly workspaceService: WorkspaceService;
+  readonly resultCommit?: ToolOwnerResultCommit<WorkspaceDocumentFileCreateResult>;
 }): WorkspaceDocumentFileCreateProvider {
   const documentStore = new MarkdownDocumentService(params.db);
   const normalizer = new MarkdownNormalizationService(params.db, documentStore);
@@ -83,29 +87,31 @@ function createMarkdownFileCreateProvider(params: {
     enabled: true,
     disabledMessage: 'Markdown 是永久启用的内建文档类型。',
     create: async request => {
+      params.resultCommit?.prepare();
       const built = await buildMarkdownDocumentFromText({
         markdown: request.content,
         normalizer,
-        resolveCitationSources: refs => (
-          requireCitationSourceResolver(params.context).resolveSources(refs)
-        ),
+        resolveCitationSources: refs =>
+          requireCitationSourceResolver(params.context).resolveSources(refs),
       });
-      let documentId = '';
-      params.db.transaction(() => {
-        documentId = params.workspaceService.createDocument(
-          request.projectId,
-          request.name,
-          request.parentId,
-          'document',
-        );
-        documentStore.createDocument(documentId, built.content);
-      }).immediate();
-      return {
-        documentId,
-        buildObservation: identity => (
-          `已创建 Markdown 文件：${identity.path}。inode: ${identity.inode}。`
-        ),
-      };
+      return params.db
+        .transaction(() => {
+          const documentId = params.workspaceService.createDocument(
+            request.projectId,
+            request.name,
+            request.parentId,
+            'document'
+          );
+          documentStore.createDocument(documentId, built.content);
+          const result: WorkspaceDocumentFileCreateResult = {
+            documentId,
+            buildObservation: identity =>
+              `已创建 Markdown 文件：${identity.path}。inode: ${identity.inode}。`,
+          };
+          params.resultCommit?.commit(result);
+          return result;
+        })
+        .immediate();
     },
   };
 }
@@ -133,13 +139,14 @@ function createPluginFileCreateProvider(params: {
       return {
         documentId: result.documentId,
         ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}),
-        buildObservation: identity => params.enabledHook?.formatCreateObservation
-          ? params.enabledHook.formatCreateObservation({
-              path: identity.path,
-              inode: identity.inode,
-              result,
-            })
-          : `已创建 ${params.registeredHook.displayName} 文件：${identity.path}。inode: ${identity.inode}。`,
+        buildObservation: identity =>
+          params.enabledHook?.formatCreateObservation
+            ? params.enabledHook.formatCreateObservation({
+                path: identity.path,
+                inode: identity.inode,
+                result,
+              })
+            : `已创建 ${params.registeredHook.displayName} 文件：${identity.path}。inode: ${identity.inode}。`,
       };
     },
   };
@@ -150,19 +157,20 @@ function listHookFileExtensions(hook: DocumentTypeBackendHook): string[] {
     ...(typeof hook.fileExtension === 'string' ? [hook.fileExtension] : []),
     ...(hook.fileExtensions ?? []),
   ]
-    .map((extension) => extension.trim().toLowerCase())
-    .filter((extension) => extension.length > 0);
+    .map(extension => extension.trim().toLowerCase())
+    .filter(extension => extension.length > 0);
   return Array.from(new Set(extensions));
 }
 
 function findPluginDocumentHookByFileName(
   fileName: string,
-  options: { readonly includeDisabled?: boolean } = {},
+  options: { readonly includeDisabled?: boolean } = {}
 ): DocumentTypeBackendHook | undefined {
   const lower = fileName.toLowerCase();
-  return listDocumentTypeBackendHooks(options).find((hook) =>
-    !!hook.createDocument
-    && listHookFileExtensions(hook).some((extension) => lower.endsWith(extension))
+  return listDocumentTypeBackendHooks(options).find(
+    hook =>
+      !!hook.createDocument &&
+      listHookFileExtensions(hook).some(extension => lower.endsWith(extension))
   );
 }
 

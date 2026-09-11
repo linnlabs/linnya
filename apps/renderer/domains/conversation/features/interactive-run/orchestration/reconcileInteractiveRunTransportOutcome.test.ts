@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { fetchForegroundRunSettlement } from './interactiveRunApi';
+import { fetchActiveForegroundRun, fetchForegroundRunSettlement } from './interactiveRunApi';
 import { useInteractiveRunStore } from '../store/interactiveRunStore';
 import { reconcileInteractiveRunTransportOutcome } from './reconcileInteractiveRunTransportOutcome';
 
 vi.mock('./interactiveRunApi', () => ({
   fetchForegroundRunSettlement: vi.fn(),
+  fetchActiveForegroundRun: vi.fn(),
 }));
 
 const fetchSettlementMock = vi.mocked(fetchForegroundRunSettlement);
@@ -112,7 +113,7 @@ describe('reconcileInteractiveRunTransportOutcome', () => {
     });
   });
 
-  it('结算查询失败时本地进入 failed，不保留无限 busy', async () => {
+  it('结算查询失败时保留原运行并等待重连，不伪造 failed 终态', async () => {
     const store = useInteractiveRunStore();
     const controller = new AbortController();
     store.beginStart('conversation-1', controller);
@@ -133,7 +134,7 @@ describe('reconcileInteractiveRunTransportOutcome', () => {
     });
 
     expect(store.snapshotFor('conversation-1')).toMatchObject({
-      status: 'failed',
+      status: 'reconnecting',
       error: 'socket closed; run settlement query failed: Host unavailable',
     });
   });
@@ -152,5 +153,65 @@ describe('reconcileInteractiveRunTransportOutcome', () => {
     expect(fetchSettlementMock).not.toHaveBeenCalled();
     store.abortTransport('conversation-1');
     expect(controller.signal.aborted).toBe(false);
+  });
+
+  it('暂停通知后补读正式继续凭证，不把正常暂停记录成网络失败', async () => {
+    const store = useInteractiveRunStore();
+    const controller = new AbortController();
+    store.beginStart('conversation-1', controller);
+    store.synchronizeSnapshot('conversation-1', {
+      conversationId: 'conversation-1',
+      runId: 'run-1',
+      status: 'paused',
+    });
+    fetchSettlementMock.mockResolvedValue({
+      conversation_id: 'conversation-1',
+      requested_run_id: 'run-1',
+      run: {
+        run_id: 'run-1',
+        turn_id: 'turn-1',
+        execution_id: 'execution-1',
+        status: 'paused',
+        lane: 'foreground',
+        pause: { settled: true, updated_at: 4, reason: 'user_pause' },
+      },
+    });
+    await reconcileInteractiveRunTransportOutcome('conversation-1', controller, {
+      kind: 'interrupted',
+    });
+    expect(store.snapshotFor('conversation-1')).toMatchObject({
+      status: 'paused',
+      pause: { settled: true, updatedAt: 4 },
+    });
+    expect(store.snapshotFor('conversation-1')?.error).toBeUndefined();
+  });
+
+  it('新消息未接纳时恢复旧暂停身份，旧请求迟到的失败不覆盖新继续请求', async () => {
+    const store = useInteractiveRunStore();
+    const controller = new AbortController();
+    store.beginStart('conversation-1', controller);
+    vi.mocked(fetchActiveForegroundRun).mockResolvedValue({
+      conversation_id: 'conversation-1',
+      run: {
+        run_id: 'old-run',
+        turn_id: 'old-turn',
+        execution_id: 'old-execution',
+        status: 'paused',
+        lane: 'foreground',
+        pause: { settled: true, updated_at: 4 },
+      },
+    });
+    const failure = {
+      kind: 'failed',
+      failure: { source: 'client', kind: 'network', error: new Error('send failed') },
+    } as const;
+    await reconcileInteractiveRunTransportOutcome('conversation-1', controller, failure);
+    const restored = store.snapshotFor('conversation-1');
+    expect(restored).toMatchObject({ runId: 'old-run', status: 'paused', error: 'send failed' });
+    if (!restored) throw new Error('Missing restored pause');
+    store.beginContinuation(restored, new AbortController());
+    await reconcileInteractiveRunTransportOutcome('conversation-1', controller, failure);
+    expect(store.snapshotFor('conversation-1')?.status).toBe('continuing');
+    expect(fetchSettlementMock).not.toHaveBeenCalled();
   });
 });

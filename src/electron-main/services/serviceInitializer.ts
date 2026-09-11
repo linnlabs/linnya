@@ -11,6 +11,8 @@
  */
 
 import { ServiceRegistry } from '@core/di/ServiceRegistry';
+import { SQLiteRunRegistryStore } from 'src/app-hosts/linnya/adapters/persistence/run-registry';
+import { selectRunRecoveryRetention } from 'src/app-hosts/linnya/application/run-resumption';
 import { randomUUID } from 'node:crypto';
 import {
   KnowledgeBaseService,
@@ -103,7 +105,7 @@ export class ServiceInitializer {
   constructor(
     private readonly queueWorkerRuntime: QueueWorkerRuntime,
     private readonly runtimePathRoots: RuntimePathRoots,
-    private readonly applicationVersion: string,
+    private readonly applicationVersion: string
   ) {
     this.serviceRegistry = ServiceRegistry.getInstance();
   }
@@ -128,9 +130,15 @@ export class ServiceInitializer {
       const databaseService = await this.initializeDatabaseService();
       // 内容寻址文件 GC 必须在路由和 Agent ingress 开放前结束，否则旧孤儿回收
       // 可能删除本进程刚重新登记或尚未发布 manifest 的文件。
+      // 在任何到期删除前读取上次进程的持久运行身份；不能等 Graph 恢复之后才补保护。
+      const recoveryRetention = selectRunRecoveryRetention(
+        (await new SQLiteRunRegistryStore(databaseService.getDb()).list({})).runs
+      );
       await runManagedImageStartupMaintenance({ databaseService });
-      await runCommandOutputArtifactStartupMaintenance();
-      await runToolOutputStoreStartupMaintenance();
+      await runCommandOutputArtifactStartupMaintenance({
+        protectedConversationIds: recoveryRetention.conversationIds,
+      });
+      await runToolOutputStoreStartupMaintenance(recoveryRetention.conversationIds);
       setPluginRuntimeDatabase(databaseService.getDb());
       await syncRegisteredBackendPluginRuntimeResources();
       console.log('[🔥 SERVICE-INIT] initializeDatabaseService() completed.');
@@ -234,9 +242,7 @@ export class ServiceInitializer {
   /**
    * 初始化产品模型目录
    */
-  private async initializeModelCatalog(
-    _config: ServiceInitializationConfig
-  ): Promise<() => void> {
+  private async initializeModelCatalog(_config: ServiceInitializationConfig): Promise<() => void> {
     console.log('[ServiceInitializer] 🤖 Step 3: 初始化产品模型目录...');
 
     const systemCredentialCodec = getDesktopCredentialProtectionPort();

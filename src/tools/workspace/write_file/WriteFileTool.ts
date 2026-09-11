@@ -29,12 +29,40 @@ import {
 } from '../shared/documentDiagnostics';
 import { workspacePathFromLocator } from '../shared/workspaceFileLocator';
 import { validateWorkspaceFileToolArguments } from '../shared/workspaceFileToolContract';
+import { createFileToolResultCommit } from '../shared/fileToolRecovery';
+import { readPersistedWorkspaceVfsNode } from '../../../features/workspace/vfs';
+import type { WorkspaceVfsNode } from '../../../features/workspace/vfs/definitions/workspaceVfsNode';
+import type { WorkspaceDocumentFileCreateResult } from '../../../features/workspace/document-file-create/definitions/workspaceDocumentFileCreate';
+import type { WorkspaceDocumentFileWriteResult } from '../../../features/workspace/document-file-write/definitions/workspaceDocumentFileWrite';
 
 function serializeWriteFileResult(
   data: WorkspaceWriteFileResult['data'],
   observation: string
 ): string {
   return JSON.stringify(WorkspaceWriteFileResultSchema.parse({ data, observation }), null, 2);
+}
+
+function serializeCreatedFileResult(
+  created: WorkspaceDocumentFileCreateResult,
+  node: WorkspaceVfsNode
+): string {
+  const entry = toFileToolEntry(node);
+  const diagnostics = renderDocumentDiagnostics(created.diagnostics);
+  return serializeWriteFileResult(
+    {
+      ...diagnostics.data,
+      source_kind: 'workspace_vfs',
+      locator: formatWorkspaceFileLocator(node.path),
+      inode: entry.inode,
+      operation: 'create',
+      documentId: created.documentId,
+      node: entry,
+    },
+    appendDocumentDiagnosticsObservation(
+      created.buildObservation({ path: node.path, inode: entry.inode }),
+      diagnostics
+    )
+  );
 }
 
 interface FileCreateTarget {
@@ -216,6 +244,21 @@ export class WriteFileTool extends BaseTool {
     }
     const db = databaseService.getDb();
     const resolvedContext = ensureWorkspaceServiceToolContext(context);
+    const serialize = (write: WorkspaceDocumentFileWriteResult): string => {
+      const diagnostics = renderDocumentDiagnostics(write.diagnostics);
+      return serializeWriteFileResult(
+        {
+          ...diagnostics.data,
+          source_kind: 'workspace_vfs',
+          locator: formatWorkspaceFileLocator(node.path),
+          inode: node.inode,
+          operation: 'update',
+          documentId: node.id,
+          node: toFileToolEntry(node),
+        },
+        appendDocumentDiagnosticsObservation(write.observation, diagnostics)
+      );
+    };
     const write = await writeWorkspaceDocumentFile({
       request: {
         identity: {
@@ -232,27 +275,13 @@ export class WriteFileTool extends BaseTool {
       resolveProvider: createWorkspaceDocumentFileWriteProviderResolver({
         db,
         context: resolvedContext.context,
+        resultCommit: createFileToolResultCommit(context, this.name, serialize),
         ...(context.workspaceMutationPublisher
           ? { mutationPublisher: context.workspaceMutationPublisher }
           : {}),
       }),
     });
-    const renderedDiagnostics = renderDocumentDiagnostics(write.diagnostics);
-
-    const data: WorkspaceWriteFileResult['data'] = {
-      ...renderedDiagnostics.data,
-      source_kind: 'workspace_vfs',
-      locator: formatWorkspaceFileLocator(node.path),
-      inode: node.inode,
-      operation: 'update',
-      documentId: node.id,
-      node: toFileToolEntry(node),
-    };
-
-    return serializeWriteFileResult(
-      data,
-      appendDocumentDiagnosticsObservation(write.observation, renderedDiagnostics)
-    );
+    return serialize(write);
   }
 
   private async resolveFileCreateTarget(params: {
@@ -331,6 +360,15 @@ export class WriteFileTool extends BaseTool {
         db,
         context: resolvedContext.context,
         workspaceService: resolvedContext.workspaceService,
+        resultCommit: createFileToolResultCommit(
+          context,
+          this.name,
+          (created: WorkspaceDocumentFileCreateResult) => {
+            const node = readPersistedWorkspaceVfsNode(db, created.documentId);
+            if (!node) throw new Error('Created document has no committed Workspace identity');
+            return serializeCreatedFileResult(created, node);
+          }
+        ),
       }),
     });
     if (!createResult) {
@@ -357,23 +395,6 @@ export class WriteFileTool extends BaseTool {
       );
     }
 
-    const entry = toFileToolEntry(created.node);
-    const renderedDiagnostics = renderDocumentDiagnostics(createResult.diagnostics);
-    const data: WorkspaceWriteFileResult['data'] = {
-      ...renderedDiagnostics.data,
-      source_kind: 'workspace_vfs',
-      locator: formatWorkspaceFileLocator(created.node.path),
-      inode: entry.inode,
-      operation: 'create',
-      documentId: createResult.documentId,
-      node: entry,
-    };
-    return serializeWriteFileResult(
-      data,
-      appendDocumentDiagnosticsObservation(
-        createResult.buildObservation({ path: created.node.path, inode: entry.inode }),
-        renderedDiagnostics
-      )
-    );
+    return serializeCreatedFileResult(createResult, created.node);
   }
 }

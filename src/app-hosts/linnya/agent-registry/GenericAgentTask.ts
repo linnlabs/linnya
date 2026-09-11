@@ -18,6 +18,7 @@ export class GenericAgentTask
   implements contextManager.agentTasks.IAgentTask
 {
   readonly name: string;
+  readonly supportsFrozenSystemPrompt = true;
   private readonly definition: AgentDefinition;
 
   constructor(definition: AgentDefinition) {
@@ -27,6 +28,7 @@ export class GenericAgentTask
   }
 
   protected getSystemPrompt(request: AgentInvokeRequest): string {
+    if (request.frozenSystemPrompt !== undefined) return request.frozenSystemPrompt;
     const builder = this.definition.task?.systemPromptBuilder;
     const basePrompt = builder ? builder(request) : '';
     return appendSkillCatalogSection({

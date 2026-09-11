@@ -8,5 +8,11 @@ import type { LinnyaAgentRuntimeScope } from 'src/app-hosts/linnya/adapters/runt
  */
 export type FlowRuntimePort = Pick<
   LinnyaAgentRuntimeScope,
-  'supervisor' | 'costCollector' | 'eventStore' | 'nextEventStoreId'
+  | 'supervisor'
+  | 'costCollector'
+  | 'eventStore'
+  | 'nextEventStoreId'
+  | 'runDescriptors'
+  | 'createCheckpointWriter'
+  | 'runAdmissionCommit'
 >;

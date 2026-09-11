@@ -11,16 +11,17 @@ import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/cont
  * - 具体字段如何拼 user message 仍由各 task 自己实现，避免把产品字段堆进通用基类。
  */
 export abstract class SingleTurnAgentTask extends contextManager.agentTasks.BaseAgentTask {
+  readonly supportsFrozenSystemPrompt = true;
   protected abstract buildSystemPrompt(request: AgentInvokeRequest): string;
   protected abstract buildUserMessage(request: AgentInvokeRequest): string;
 
   protected getSystemPrompt(request: AgentInvokeRequest): string {
-    return this.buildSystemPrompt(request);
+    return request.frozenSystemPrompt ?? this.buildSystemPrompt(request);
   }
 
   buildMessages(request: AgentInvokeRequest, _history: AiMessage[]): AiMessage[] {
     const now = Date.now();
-    const systemPrompt = this.buildSystemPrompt(request).trim();
+    const systemPrompt = this.getSystemPrompt(request).trim();
     const userMessage = this.buildUserMessage(request);
     const messages: AiMessage[] = [];
 

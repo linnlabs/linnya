@@ -28,7 +28,9 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 - `respond` 只接纳当前 `awaiting_user` 的 exact `interaction_id`，继续同一个 `run_id`，并产生新的 `execution_id`；恢复时必须从 run 的 `agentSpecId` 还原原 Agent 路由，不能回退到 default。
 - CLI use case 只投影响应事实，不拥有 Agent 提示语。`approved` 的模型可见语义由 Flow Host 在创建 committed `tool_output` 时统一补足，因此 Renderer 与 CLI 必须得到相同的恢复行为。
 - `stop` 是唯一主动中断动作。它调用 Flow 的取消完成屏障，并重新读取 registry 验证 terminal settlement；不公开主动暂停。
-- 历史 `paused` 状态不属于当前产品合同，遇到时明确返回 `unsupported_runtime_state`，不能伪装成 `awaiting_user`。
+- `paused` 是可继续的正式状态，投影 settled 与原因，不能伪装成 `awaiting_user`。已收口暂停
+  允许新 Send 经 Flow 原子替代；仅预检查成功不代表接纳。CLI 不新增 pause/continue 命令，
+  当前无消息继续由 Desktop 输入框与正式 HTTP 控制合同提供。
 - `status` 以 RunRegistry 作为生命周期 owner；`run_iterations_used`（以及兼容字段 `iterations_used`）表示同一逻辑 run 跨 execution 的累计步数。仅在 `running` 时，用不早于本次 activation 的 Graph 持久执行快照补充 `execution_steps_used`，不计算虚构百分比。`awaiting_user` 时仍从 durable message window 读取 pending interaction，恢复前的旧 checkpoint 不能覆盖新 execution。
 - `messages` 使用会话级 read-model 游标，不支持 run 过滤，以保持 `has_more` 和游标语义一致。
 - `result --run` 先选择 exact terminal root run，再读取归属于该 run 的 durable `final_answer`。完成终态与 read-model 投影可能短暂不同步，此时显式返回 `projection_preparing`。

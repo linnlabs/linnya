@@ -2,13 +2,13 @@
 
 Layer: `app-host`
 
-本目录是 Conversation 后端请求的应用层编排边界，拥有 run admission、RuntimeEvent publisher、EventBus 消费、SSE 传输和 EventStore 持久化。
+本目录是 Conversation 后端请求的应用层编排边界，拥有 run admission、RuntimeEvent publisher、EventBus 消费、SSE 传输和 EventStore 持久化。生产暂停、无消息继续、原 child 与恢复资源合同统一见 [run-resumption](../../application/run-resumption/README.md)。
 
 ## 1. 模块边界
 
 Flow 负责：
 
-- 接收 start / resume / cancel；
+- 接收 start / interaction response / pause / continue / cancel；
 - 为每次 transport 创建 EventSequencer、EventBus 与 SsePort；
 - 通过 RunSupervisor 建立逻辑 run 的唯一控制权；
 - 持久化 incoming facts；
@@ -38,7 +38,7 @@ Flow 不负责：
 8. AgentRunner 只在 publisher 前补充 execution-scoped 非路由 metadata，并将该 runtimeEventSink 与基于同一 persistence 队列的 durable commit port 注入 Graph；
 9. Graph 发布的每个 RuntimeEvent 进入 EventBus；
 10. SsePort 与 RunEventPersistence 独立消费同一 envelope；
-11. RunEventPersistence drain 成功后，completed 分支先清 checkpoint，再写不可逆 completed；awaiting_user 保留 checkpoint 后写暂停态；
+11. 生产 Graph 将步骤事实与 checkpoint 同事务提交；drain 成功后先写 completed，再释放恢复输入；awaiting_user 保留原等待断点，Host 此时才写等待态；
 12. Host 发布权威 `run_status`；
 13. Host 发布 `transport_end`，结束当前 transport 并关闭 EventBus。
 
@@ -87,7 +87,7 @@ SsePort 和 RunEventPersistence 是 EventBus 的平级消费者。
 
 Graph mapper、bridge 与 local state 不持有 routing identity。它们只创建事实草稿并调用必需的 runtimeEventSink；Graph journal 只保存 sink 返回的 routed fact。缺 sink、sink 发布失败或 journal 收到未路由事件都必须中止 execution，Host 不得从返回结果补发。
 
-RunEventPersistence 的首个写入错误会阻止后续写入；drain 将错误传播给 AgentRunner。run 必须先标 failed，不能留下 completed 假象。
+RunEventPersistence 的首个写入错误会阻止后续写入；drain 将错误传播给 AgentRunner。生产可恢复运行保留最后提交边界并暂停，不能留下 completed 假象；未装配恢复能力的内部 Host 仍按 failed 结算。
 
 ## 5. 答案、工具和 WaitUser
 
@@ -155,7 +155,7 @@ run admission 前失败使用 `transport_error`；run admission 后失败使用 
 
 `interactive-run/orchestration/flowExecutionCompletionRegistry.ts` 是 cancel command、对话 cleanup 与原 Flow execution 之间唯一的进程内完成屏障。它不替代 RunSupervisor、不保存持久业务状态，也不允许用 timeout 猜测 settlement。start 在 RunSupervisor admission 后立即登记 `runId + conversationId`；resume 在 claim 前登记，使 claim、incoming commit、activate、runner settlement 与 Host finalize 属于同一屏障。Supervisor 的精确 run 查询是异步的，必须保留查询前后捕获到的 completion；active running/pending run 缺少注册记录必须在取消前直接失败。自然完成从 active 列表消失不是失败，按持久 run 终态返回 `already_terminal`；run 不存在或 conversation/parent 身份不匹配仍必须失败。
 
-对话 cleanup 必须在持久 cleanup job 阻止新 admission 后调用 `stopConversationActivityAndWait()`。它处理同一 conversation 的全部 foreground/auxiliary root；Supervisor 已先写取消终态时仍等待按 conversation 捕获的 completion，纯 `awaiting_user` 才允许没有 completion。cleanup job 的失败重放不能依赖内存 registry：每轮通过 RunSupervisor 按 conversation/status 读取持久 `runs`，重新发现带 `originalSource=flow` 的 failed/cancelled root，并从 checkpoint clear 到 cost release 幂等重试。completed 只有在 checkpoint clear 成功后才能写入，因此不扫描成功历史；仍在 Host finalize 的 completed execution 由 pending completion 的 runId 精确补查。只有 typed `RunNotFoundError` 与成功 completion 共同出现时才忽略取消竞态，其他取消错误不得吞掉。全部 root 完成后还要复查 registered child；child 仍活跃说明父链没有按合同收口，必须失败。该能力只证明 Flow/Host 收尾，不证明任意 CLI 进程树为空，也不能替代未来 Commands activity owner。
+对话 cleanup 必须在持久 cleanup job 阻止新 admission 后调用 `stopConversationActivityAndWait()`。它处理同一 conversation 的全部 foreground/auxiliary root；Supervisor 已先写取消终态时仍等待按 conversation 捕获的 completion，纯 `awaiting_user` 才允许没有 completion。cleanup job 的失败重放不能依赖内存 registry：每轮通过 RunSupervisor 按 conversation/status 读取持久 `runs`，重新发现带 `originalSource=flow` 的 failed/cancelled root，并从 checkpoint clear 到 cost release 幂等重试。生产 completed 先写终态再释放恢复输入；启动用例按仍存在的根描述重试释放，不扫描或复活已清理的成功历史；仍在 Host finalize 的 completed execution 由 pending completion 的 runId 精确补查。只有 typed `RunNotFoundError` 与成功 completion 共同出现时才忽略取消竞态，其他取消错误不得吞掉。全部 root 完成后还要复查 registered child；child 仍活跃说明父链没有按合同收口，必须失败。该能力只证明 Flow/Host 收尾，不证明任意 CLI 进程树为空，也不能替代未来 Commands activity owner。
 
 Flow 主体与 Host settlement 是显式的两个阶段：无论主体成功或失败，都先完成 Host finalize 并结算 completion，再统一返回结果或抛错。两阶段同时失败时必须保留两份错误上下文；禁止在 `finally` 中抛错覆盖原始 execution failure。
 
@@ -167,7 +167,7 @@ Flow 主体与 Host settlement 是显式的两个阶段：无论主体成功或�
 2. 明确事实创建者与字段 owner；
 3. 只把 runtimeEventSink 注入事实创建边界；
 4. realtime 与 persistence 只能增加消费者，不能增加事实源；
-5. run 终态必须等待 persistence drain；completed 还必须等待 checkpoint 清理；
+5. run 终态必须等待 persistence drain；生产 completed 先持久化，再清理 checkpoint，释放失败留待启动重试；
 6. metrics → drain → terminal cleanup / run status → transport end 的时序不得改写；
 7. cancel success 必须等待原 execution 完成事实 drain 与 Host finalize；resume completion 必须覆盖 claim 前到 finalize 的完整区间，RunSupervisor 的 `awaiting_user/cancelled` 记录都不能冒充该完成屏障；cancel 与自然终态竞争时必须返回真实 terminal status，禁止用 active 列表缺失制造 409；
 8. 对话 cleanup 必须枚举全部 foreground/auxiliary root，并在 root completion 后复查 child；不能只复用 foreground UI 投影或逐 child 等 Supervisor terminal；
@@ -209,7 +209,7 @@ Flow 主体与 Host settlement 是显式的两个阶段：无论主体成功或�
 - 工具前答案段、工具事件、工具后答案段的顺序；
 - wait-user 立即可见、切会话重载、提交 resume；
 - AbortError 保留 partial final answer，不生成普通 runtime error；
-- persistence drain 失败时 run 为 failed；
+- persistence drain 失败时生产 run 暂停，未装配恢复的内部 Host 为 failed；
 - foreground 与 auxiliary 同时运行不串消息；
 - wait-user resume 在 claim / incoming commit 期间并发取消时，cancel 不得先于该 Host execution finalize 返回；
 - 多 child trace 归属正确；

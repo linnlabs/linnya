@@ -509,7 +509,7 @@
     "@app/schemas": "file:./packages/schemas",
     "@chenglou/pretext": "^0.0.5",
     "@discordjs/opus": "^0.10.0",
-    "@linnlabs/linnkit": "0.32.3",
+    "@linnlabs/linnkit": "0.36.0",
     "@linnlabs/linnkit-provider-ai-sdk": "workspace:*",
     "@linnya/provider-catalog": "workspace:*",
     "@linnya/renderer-ui": "workspace:*",

@@ -24,14 +24,14 @@ const logger = new Logger('ExecutionSettlement');
  */
 export function createExecutionSettlement(
   scope: ExecutionSettlementScope,
-  ports: ExecutionSettlementPorts,
+  ports: ExecutionSettlementPorts
 ): ExecutionSettlementOrchestration {
   let executionMetricsPublished = false;
   let persistenceDrainFailed = false;
   let checkpointCleanupFailed = false;
 
   const resolveRunIterationsUsed = async (stepCount: number): Promise<number> => {
-    const previous = await ports.readRunIterationsUsed?.() ?? 0;
+    const previous = (await ports.readRunIterationsUsed?.()) ?? 0;
     return previous + stepCount;
   };
 
@@ -39,14 +39,11 @@ export function createExecutionSettlement(
     outcome: RunExecutionOutcome,
     contextUsage?: ContextUsageSnapshot,
     executionStepsUsed?: number,
-    runIterationsUsed?: number,
+    runIterationsUsed?: number
   ): void => {
     if (executionMetricsPublished) return;
-    ports.publishRuntimeEvent(createRunExecutionMetricsEvent(
-      generateRuntimeEventId(),
-      scope.conversationId,
-      scope.turnId,
-      {
+    ports.publishRuntimeEvent(
+      createRunExecutionMetricsEvent(generateRuntimeEventId(), scope.conversationId, scope.turnId, {
         execution_id: scope.executionId,
         outcome,
         duration_ms: ports.now() - scope.executionStartedAtMs,
@@ -56,8 +53,9 @@ export function createExecutionSettlement(
           ...(executionStepsUsed === undefined ? {} : { execution_steps_used: executionStepsUsed }),
           ...(runIterationsUsed === undefined ? {} : { run_iterations_used: runIterationsUsed }),
         },
-      },
-    ), 'ExecutionSettlement.metrics');
+      }),
+      'ExecutionSettlement.metrics'
+    );
     executionMetricsPublished = true;
   };
 
@@ -79,21 +77,20 @@ export function createExecutionSettlement(
     }
   };
 
-  const settleSuccessfulExecution = async (
-    input: SuccessfulExecutionSettlement,
-  ): Promise<void> => {
+  const settleSuccessfulExecution = async (input: SuccessfulExecutionSettlement): Promise<void> => {
     const awaitingUser = input.checkpointNodeId === 'wait_user';
     const waitUserEvent = input.waitUserEvent;
     if (awaitingUser && !waitUserEvent) {
       throw new Error('wait_user checkpoint requires a published interaction event');
     }
 
-    const runIterationsUsed = await resolveRunIterationsUsed(input.stepCount);
+    const runIterationsUsed =
+      input.runIterationsUsed ?? (await resolveRunIterationsUsed(input.stepCount));
     publishMetricsOnce(
       awaitingUser ? 'awaiting_user' : 'completed',
       input.contextUsage,
       input.stepCount,
-      runIterationsUsed,
+      runIterationsUsed
     );
     await drainOrThrow();
 
@@ -113,18 +110,23 @@ export function createExecutionSettlement(
       return;
     }
 
-    // completed 是不可逆终态，必须先完成可能失败的 checkpoint 清理。
-    await clearCheckpointOrThrow();
+    // 可恢复 Graph 已持久保存 yielded 边界。先删除会留下“尚未 completed 却没有断点”的崩溃窗口。
+    if (!ports.durableContinuation) await clearCheckpointOrThrow();
     await ports.runHandle.markCompleted({
       currentNode: input.checkpointNodeId,
       iterationsUsed: runIterationsUsed,
     });
     ports.releaseRunResources(ports.runHandle.runId);
+    if (ports.durableContinuation) {
+      try {
+        await clearCheckpointOrThrow();
+      } catch (error) {
+        logger.error('Completed run checkpoint cleanup deferred to owner maintenance', error);
+      }
+    }
   };
 
-  const settleFailedExecution = async (
-    input: FailedExecutionSettlement,
-  ): Promise<void> => {
+  const settleFailedExecution = async (input: FailedExecutionSettlement): Promise<void> => {
     const runIterationsUsed = await resolveRunIterationsUsed(input.stepCount);
     publishMetricsOnce(input.kind, input.contextUsage, input.stepCount, runIterationsUsed);
 
@@ -138,16 +140,22 @@ export function createExecutionSettlement(
     }
 
     if (input.kind === 'cancelled') {
-      await ports.runHandle.cancel({
-        reason: typeof input.abortReason === 'string' ? input.abortReason : 'aborted',
-        forceCleanup: false,
-      }, { iterationsUsed: runIterationsUsed });
+      await ports.runHandle.cancel(
+        {
+          reason: typeof input.abortReason === 'string' ? input.abortReason : 'aborted',
+          forceCleanup: false,
+        },
+        { iterationsUsed: runIterationsUsed }
+      );
     } else {
-      await ports.runHandle.markFailed({
-        errorCode: input.failureFact.error_code,
-        message: input.failureFact.error,
-        recoverable: input.failureFact.retryable,
-      }, { iterationsUsed: runIterationsUsed });
+      await ports.runHandle.markFailed(
+        {
+          errorCode: input.failureFact.error_code,
+          message: input.failureFact.error,
+          recoverable: input.failureFact.retryable,
+        },
+        { iterationsUsed: runIterationsUsed }
+      );
     }
 
     if (!checkpointCleanupFailed) {

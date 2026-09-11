@@ -11,6 +11,7 @@ import type {
   TokenRoute,
 } from '@linnlabs/linnkit/contracts';
 import { modelCatalog } from 'src/domains/model-catalog';
+import type { RunCostStateStore } from '../definitions/runCostState';
 
 type RunCost = runSupervisor.RunCost;
 type RunCostCollector = runSupervisor.RunCostCollector;
@@ -21,7 +22,9 @@ interface ModelTokenAccountingMetadata {
   route?: TokenRoute;
 }
 
-export type ModelTokenAccountingResolver = (modelId: string) => ModelTokenAccountingMetadata | undefined;
+export type ModelTokenAccountingResolver = (
+  modelId: string
+) => ModelTokenAccountingMetadata | undefined;
 
 interface RunCostAccumulator {
   tokensInput: number;
@@ -35,6 +38,7 @@ interface RunCostAccumulator {
   computedActualCostCount: number;
   unknownActualCostCount: number;
   childRunIds: Set<string>;
+  uncertainExecutions: Set<string>;
 }
 
 function createEmptyCost(): RunCost {
@@ -60,6 +64,7 @@ export class LinnyaRunCostCollector implements RunCostCollector {
 
   constructor(
     private readonly resolveTokenAccounting: ModelTokenAccountingResolver = defaultResolveTokenAccounting,
+    private readonly stateStore?: RunCostStateStore
   ) {}
 
   ingest(runId: string, event: TelemetryEvent): void {
@@ -82,10 +87,45 @@ export class LinnyaRunCostCollector implements RunCostCollector {
 
     if (usage) {
       const metadata = this.resolveTokenAccounting(event.modelId);
-      const ledgerEntry = event.tokenLedgerEntry ?? this.createLedgerEntry(runId, event, usage, metadata?.route, bucket);
+      const ledgerEntry =
+        event.tokenLedgerEntry ??
+        this.createLedgerEntry(runId, event, usage, metadata?.route, bucket);
       bucket.tokenLedgerEntries.push(ledgerEntry);
       this.recordCost(bucket, usage, metadata?.pricing);
-    }
+    } else bucket.unknownActualCostCount += 1;
+    this.persist(runId);
+  }
+
+  /** Graph 提交前重试当前账本写入；观测 sink 的异常不能让下一步绕过恢复账本。 */
+  persist(runId: string): void {
+    const bucket = this.buckets.get(runId);
+    if (!bucket || !this.stateStore) return;
+    this.stateStore.save(runId, {
+      ...bucket,
+      childRunIds: [...bucket.childRunIds],
+      uncertainExecutions: [...bucket.uncertainExecutions],
+      parentRunId: this.parentByRunId.get(runId),
+    });
+    const parentRunId = this.parentByRunId.get(runId);
+    if (parentRunId) this.persist(parentRunId);
+  }
+
+  markUncertainExecution(runId: string, executionId: string): void {
+    const bucket = this.ensureBucket(runId);
+    if (bucket.uncertainExecutions.has(executionId)) return;
+    bucket.uncertainExecutions.add(executionId);
+    bucket.unknownActualCostCount += 1;
+    this.persist(runId);
+  }
+
+  recoveryUsage(runId: string) {
+    const bucket = this.ensureBucket(runId);
+    return {
+      knownInputTokens: bucket.tokensInput,
+      knownOutputTokens: bucket.tokensOutput,
+      calls: bucket.llmCallCount,
+      unknownCostCalls: bucket.unknownActualCostCount,
+    };
   }
 
   ingestTelemetry(event: TelemetryEvent): void {
@@ -113,10 +153,7 @@ export class LinnyaRunCostCollector implements RunCostCollector {
   }
 
   snapshot(runId: string): RunCost {
-    const bucket = this.buckets.get(runId);
-    if (!bucket) {
-      return createEmptyCost();
-    }
+    const bucket = this.ensureBucket(runId);
 
     const childrenTotal = this.snapshotChildren(bucket.childRunIds);
     const tokenUsage = this.snapshotTokenUsage(bucket, childrenTotal?.tokenUsage);
@@ -162,7 +199,7 @@ export class LinnyaRunCostCollector implements RunCostCollector {
       if (childCost.totalCostUsd !== undefined) {
         totalCostUsd += childCost.totalCostUsd;
         hasComputedCost = true;
-      } else if (hasLlmUsage(childCost.tokenUsage)) {
+      } else if (this.hasUnknownCost(childRunId) || hasLlmUsage(childCost.tokenUsage)) {
         costComplete = false;
       }
       if (childCost.childrenTotal) {
@@ -193,6 +230,18 @@ export class LinnyaRunCostCollector implements RunCostCollector {
       return existing;
     }
 
+    const persisted = this.stateStore?.load(runId);
+    if (persisted) {
+      const restored = {
+        ...persisted,
+        childRunIds: new Set(persisted.childRunIds),
+        uncertainExecutions: new Set(persisted.uncertainExecutions),
+      };
+      this.buckets.set(runId, restored);
+      if (persisted.parentRunId) this.parentByRunId.set(runId, persisted.parentRunId);
+      return restored;
+    }
+
     const bucket: RunCostAccumulator = {
       tokensInput: 0,
       tokensOutput: 0,
@@ -205,9 +254,18 @@ export class LinnyaRunCostCollector implements RunCostCollector {
       computedActualCostCount: 0,
       unknownActualCostCount: 0,
       childRunIds: new Set<string>(),
+      uncertainExecutions: new Set<string>(),
     };
     this.buckets.set(runId, bucket);
     return bucket;
+  }
+
+  private hasUnknownCost(runId: string): boolean {
+    const bucket = this.ensureBucket(runId);
+    return (
+      bucket.unknownActualCostCount > 0 ||
+      [...bucket.childRunIds].some(childRunId => this.hasUnknownCost(childRunId))
+    );
   }
 
   private createLedgerEntry(
@@ -215,7 +273,7 @@ export class LinnyaRunCostCollector implements RunCostCollector {
     event: Extract<TelemetryEvent, { kind: 'llm_call' }>,
     usage: CanonicalLlmUsage,
     route: TokenRoute | undefined,
-    bucket: RunCostAccumulator,
+    bucket: RunCostAccumulator
   ): LlmUsageTokenLedgerEntry {
     bucket.tokenLedgerSequence += 1;
     return tokenAccounting.createLlmUsageLedgerEntry({
@@ -231,22 +289,27 @@ export class LinnyaRunCostCollector implements RunCostCollector {
     });
   }
 
-  private ingestContextBuild(runId: string, event: Extract<TelemetryEvent, { kind: 'context_build' }>): void {
+  private ingestContextBuild(
+    runId: string,
+    event: Extract<TelemetryEvent, { kind: 'context_build' }>
+  ): void {
     this.linkParentRun(runId, event.scope.parentRunId);
     const bucket = this.ensureBucket(runId);
-    const ledgerEntry = event.tokenLedgerEntry ?? this.createContextLedgerEntry(runId, event, bucket);
+    const ledgerEntry =
+      event.tokenLedgerEntry ?? this.createContextLedgerEntry(runId, event, bucket);
     if (!ledgerEntry) {
       return;
     }
     bucket.tokenLedgerEntries.push(ledgerEntry);
+    this.persist(runId);
   }
 
   private createContextLedgerEntry(
     runId: string,
     event: Extract<TelemetryEvent, { kind: 'context_build' }>,
-    bucket: RunCostAccumulator,
+    bucket: RunCostAccumulator
   ): ContextComponentTokenLedgerEntry | undefined {
-    const components = event.tokenComponents?.filter((component) => component.kept !== false) ?? [];
+    const components = event.tokenComponents?.filter(component => component.kept !== false) ?? [];
     if (components.length === 0) {
       return undefined;
     }
@@ -263,8 +326,13 @@ export class LinnyaRunCostCollector implements RunCostCollector {
     });
   }
 
-  private recordCost(bucket: RunCostAccumulator, usage: CanonicalLlmUsage, pricing: TokenPricing | undefined): void {
+  private recordCost(
+    bucket: RunCostAccumulator,
+    usage: CanonicalLlmUsage,
+    pricing: TokenPricing | undefined
+  ): void {
     if (usage.confidence !== 'actual') {
+      bucket.unknownActualCostCount += 1;
       return;
     }
 
@@ -279,7 +347,7 @@ export class LinnyaRunCostCollector implements RunCostCollector {
 
   private snapshotTokenUsage(
     bucket: RunCostAccumulator,
-    children: RunTokenUsageAggregate | undefined,
+    children: RunTokenUsageAggregate | undefined
   ): RunTokenUsageAggregate | undefined {
     if (bucket.tokenLedgerEntries.length === 0 && !children) {
       return undefined;
@@ -316,12 +384,14 @@ function defaultResolveTokenAccounting(modelId: string): ModelTokenAccountingMet
   };
 }
 
-function readCanonicalUsage(event: Extract<TelemetryEvent, { kind: 'llm_call' }>): CanonicalLlmUsage | undefined {
+function readCanonicalUsage(
+  event: Extract<TelemetryEvent, { kind: 'llm_call' }>
+): CanonicalLlmUsage | undefined {
   return event.tokenLedgerEntry?.usage ?? event.canonicalUsage ?? event.usage?.canonicalUsage;
 }
 
 function collectTokenLedgerEntryIds(bucket: RunCostAccumulator): string[] {
-  return bucket.tokenLedgerEntries.map((entry) => entry.id);
+  return bucket.tokenLedgerEntries.map(entry => entry.id);
 }
 
 function emptyLedgerAggregate(): TokenLedgerAggregate {
@@ -333,7 +403,10 @@ function emptyLedgerAggregate(): TokenLedgerAggregate {
   };
 }
 
-function mergeOptionalTokenCount(left: number | undefined, right: number | undefined): number | undefined {
+function mergeOptionalTokenCount(
+  left: number | undefined,
+  right: number | undefined
+): number | undefined {
   if (left === undefined) {
     return right;
   }
@@ -349,7 +422,7 @@ function mergeTotalTokens(left: number | undefined, right: number | undefined): 
 
 function mergeLedgerAggregate(
   left: TokenLedgerAggregate | undefined,
-  right: TokenLedgerAggregate | undefined,
+  right: TokenLedgerAggregate | undefined
 ): TokenLedgerAggregate | undefined {
   if (!left) {
     return right;
@@ -360,21 +433,31 @@ function mergeLedgerAggregate(
 
   const leftUsage = left.llmUsage;
   const rightUsage = right.llmUsage;
-  const llmUsage = leftUsage && rightUsage
-    ? {
-        inputTokens: leftUsage.inputTokens + rightUsage.inputTokens,
-        imageInputTokens: mergeOptionalTokenCount(
-          leftUsage.imageInputTokens,
-          rightUsage.imageInputTokens,
-        ),
-        outputTokens: leftUsage.outputTokens + rightUsage.outputTokens,
-        reasoningTokens: mergeOptionalTokenCount(leftUsage.reasoningTokens, rightUsage.reasoningTokens),
-        cacheReadTokens: mergeOptionalTokenCount(leftUsage.cacheReadTokens, rightUsage.cacheReadTokens),
-        cacheWriteTokens: mergeOptionalTokenCount(leftUsage.cacheWriteTokens, rightUsage.cacheWriteTokens),
-        totalTokens: mergeTotalTokens(leftUsage.totalTokens, rightUsage.totalTokens),
-        usageCount: leftUsage.usageCount + rightUsage.usageCount,
-      }
-    : leftUsage ?? rightUsage;
+  const llmUsage =
+    leftUsage && rightUsage
+      ? {
+          inputTokens: leftUsage.inputTokens + rightUsage.inputTokens,
+          imageInputTokens: mergeOptionalTokenCount(
+            leftUsage.imageInputTokens,
+            rightUsage.imageInputTokens
+          ),
+          outputTokens: leftUsage.outputTokens + rightUsage.outputTokens,
+          reasoningTokens: mergeOptionalTokenCount(
+            leftUsage.reasoningTokens,
+            rightUsage.reasoningTokens
+          ),
+          cacheReadTokens: mergeOptionalTokenCount(
+            leftUsage.cacheReadTokens,
+            rightUsage.cacheReadTokens
+          ),
+          cacheWriteTokens: mergeOptionalTokenCount(
+            leftUsage.cacheWriteTokens,
+            rightUsage.cacheWriteTokens
+          ),
+          totalTokens: mergeTotalTokens(leftUsage.totalTokens, rightUsage.totalTokens),
+          usageCount: leftUsage.usageCount + rightUsage.usageCount,
+        }
+      : (leftUsage ?? rightUsage);
 
   return {
     ...(llmUsage ? { llmUsage } : {}),
@@ -391,7 +474,7 @@ function flattenRunTokenUsage(tokenUsage: RunTokenUsageAggregate): TokenLedgerAg
 
 function mergeRunTokenUsage(
   left: RunTokenUsageAggregate | undefined,
-  right: RunTokenUsageAggregate | undefined,
+  right: RunTokenUsageAggregate | undefined
 ): RunTokenUsageAggregate | undefined {
   if (!left) {
     return right;
@@ -406,8 +489,7 @@ function mergeRunTokenUsage(
 }
 
 function hasLlmUsage(tokenUsage: RunTokenUsageAggregate | undefined): boolean {
-  return Boolean(tokenUsage && (
-    tokenUsage.own.llmCallCount > 0 ||
-    (tokenUsage.children?.llmCallCount ?? 0) > 0
-  ));
+  return Boolean(
+    tokenUsage && (tokenUsage.own.llmCallCount > 0 || (tokenUsage.children?.llmCallCount ?? 0) > 0)
+  );
 }

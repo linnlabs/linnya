@@ -45,7 +45,7 @@ describe('SqliteCheckpointer contract', () => {
       'conv-1',
       createEngineState({
         nodeId: 'answer',
-        schemaVersion: 7,
+        schemaVersion: 1,
         local: {
           pendingToolCalls: [
             {
@@ -64,7 +64,7 @@ describe('SqliteCheckpointer contract', () => {
 
     await expect(checkpointer.load('conv-1')).resolves.toMatchObject({
       nodeId: 'answer',
-      schemaVersion: 7,
+      schemaVersion: 1,
     });
 
     expect(checkpointer.peekMeta).toBeTypeOf('function');
@@ -75,7 +75,7 @@ describe('SqliteCheckpointer contract', () => {
 
     await expect(peekMeta.call(checkpointer, 'conv-1')).resolves.toEqual({
       checkpointKey: 'conv-1',
-      schemaVersion: 7,
+      schemaVersion: 1,
       savedAt: Date.parse('2026-04-22T09:30:00.000Z'),
       currentNode: 'answer',
       iterations: 3,
@@ -187,7 +187,7 @@ describe('SqliteCheckpointer contract', () => {
       foregroundRunId,
       createEngineState({
         nodeId: 'wait_user',
-        schemaVersion: 4,
+        schemaVersion: 1,
         local: {
           pendingToolCalls: [
             {
@@ -203,17 +203,17 @@ describe('SqliteCheckpointer contract', () => {
       titleRunId,
       createEngineState({
         nodeId: 'answer',
-        schemaVersion: 2,
+        schemaVersion: 1,
       })
     );
 
     await expect(checkpointer.load(foregroundRunId)).resolves.toMatchObject({
       nodeId: 'wait_user',
-      schemaVersion: 4,
+      schemaVersion: 1,
     });
     await expect(checkpointer.load(titleRunId)).resolves.toMatchObject({
       nodeId: 'answer',
-      schemaVersion: 2,
+      schemaVersion: 1,
     });
 
     await checkpointer.clear(titleRunId);
@@ -226,6 +226,20 @@ describe('SqliteCheckpointer contract', () => {
       },
     });
 
+    db.close();
+  });
+
+  it('拒绝不兼容断点以及意外序列化的执行能力，不用类型断言恢复', async () => {
+    const db = freshDb();
+    const checkpointer = new SqliteCheckpointer(db);
+    await checkpointer.save('unsupported', createEngineState({ schemaVersion: 99 }));
+    await expect(checkpointer.load('unsupported')).rejects.toThrow();
+    await checkpointer.save('capability', createEngineState());
+    db.prepare('UPDATE engine_checkpoints SET state_json = ? WHERE conversation_id = ?').run(
+      JSON.stringify({ schemaVersion: 1, nodeId: 'llm', local: { signal: {} } }),
+      'capability'
+    );
+    await expect(checkpointer.load('capability')).rejects.toThrow();
     db.close();
   });
 

@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { isDeepStrictEqual } from 'node:util';
 import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { CONVERSATION_RUN_KIND } from '../definitions/conversationRunKind';
@@ -126,6 +127,39 @@ export class SQLiteRunRegistryStore implements RunRegistryStore {
   constructor(private readonly db: Database.Database) {}
 
   async save(record: RunRecord): Promise<void> {
+    this.saveInTransaction(record);
+  }
+
+  async compareAndSwap(previous: RunRecord, next: RunRecord): Promise<boolean> {
+    return this.compareAndSwapInTransaction(previous, next);
+  }
+
+  compareAndSwapInTransaction(previous: RunRecord, next: RunRecord): boolean {
+    return this.db.transaction(() => {
+      // SQLite JSON 不保存 undefined；比较持久形态，不能把省略可选字段误判成并发写入。
+      const current: unknown = JSON.parse(JSON.stringify(this.loadRecord(previous.runId)));
+      const expected: unknown = JSON.parse(JSON.stringify(previous));
+      if (previous.runId !== next.runId || !isDeepStrictEqual(current, expected)) return false;
+      this.saveInTransaction(next);
+      return true;
+    })();
+  }
+
+  /** 同一 SQLite 提交事务内校验 activation；暂停收口期间仍允许原执行保存安全边界。 */
+  requireExecutionOwner(runId: string, executionId: string): RunRecord {
+    const record = this.loadRecord(runId);
+    const canCommit =
+      record?.status === 'running' ||
+      (record?.status === 'paused' && record.pausedAt === undefined);
+    if (!record || !canCommit || record.metadata?.executionId !== executionId) {
+      throw new Error(
+        `[SQLiteRunRegistryStore] execution ${executionId} no longer owns run ${runId}`
+      );
+    }
+    return record;
+  }
+
+  saveInTransaction(record: RunRecord): void {
     const existingOwner = this.db
       .prepare(
         `
@@ -201,6 +235,10 @@ export class SQLiteRunRegistryStore implements RunRegistryStore {
   }
 
   async load(runId: string): Promise<RunRecord | null> {
+    return this.loadRecord(runId);
+  }
+
+  private loadRecord(runId: string): RunRecord | null {
     const row = this.db
       .prepare(
         `
@@ -238,9 +276,9 @@ export class SQLiteRunRegistryStore implements RunRegistryStore {
     }
     if (filter.status !== undefined) {
       const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
-      predicates.push(statuses.length === 0
-        ? '0 = 1'
-        : `status IN (${statuses.map(() => '?').join(', ')})`);
+      predicates.push(
+        statuses.length === 0 ? '0 = 1' : `status IN (${statuses.map(() => '?').join(', ')})`
+      );
       parameters.push(...statuses);
     }
     const whereClause = predicates.length === 0 ? '' : `WHERE ${predicates.join(' AND ')}`;

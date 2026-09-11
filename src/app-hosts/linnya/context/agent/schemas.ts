@@ -13,10 +13,7 @@
  */
 
 import { z } from 'zod';
-import {
-  PromptKeys,
-  UserQuoteSchema,
-} from '@app/schemas';
+import { PromptKeys, UserQuoteSchema } from '@app/schemas';
 import { generateAiMessageId } from '@linnlabs/linnkit/contracts';
 import * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { graph } from '@linnlabs/linnkit/runtime-kernel';
@@ -65,31 +62,43 @@ const FenceInjectionSchema = z.object({
 export const AgentInvokeRequestSchema = z
   .object({
     query: z.string().describe('用户查询'),
-    currentUserEventId: z.string().refine(
-      value => value.trim().length > 0 && value === value.trim(),
-      { message: 'currentUserEventId 必须非空且不包含首尾空白' },
-    ).optional().describe('当前 user_input 的不可变事件ID'),
-    currentUserAttachments: z.array(RuntimeResourceRefSchema)
+    frozenSystemPrompt: z.string().optional(),
+    currentUserEventId: z
+      .string()
+      .refine(value => value.trim().length > 0 && value === value.trim(), {
+        message: 'currentUserEventId 必须非空且不包含首尾空白',
+      })
+      .optional()
+      .describe('当前 user_input 的不可变事件ID'),
+    currentUserAttachments: z
+      .array(RuntimeResourceRefSchema)
       .min(1)
       .optional()
       .describe('当前轮尚未进入历史时所需的 durable 资源引用'),
     promptKey: z.string().default(PromptKeys.DEFAULT).describe('任务提示键'),
     model_id: z.string().optional().describe('使用的模型ID'),
+    modelId: z.string().optional(),
     imageGenerationModelId: z.string().optional().describe('图片生成模型ID'),
     context_before: z.string().optional().describe('光标前的内容'),
     context_after: z.string().optional().describe('光标后的内容'),
+    currentBlockContent: z.string().optional(),
     document_fragment: z.string().optional().describe('文档片段'),
     current_paragraph: z.string().optional().describe('当前段落'),
     document_title: z.string().optional().describe('文档标题'),
     document_toc: z.string().optional().describe('文档目录'),
     document_list: z.string().optional().describe('可用文档列表'),
     knowledgeBaseId: z.string().optional().describe('知识库ID'),
-    maxSteps: z.number().optional().default(AGENT_CONSTANTS.DEFAULT_MAX_STEPS).describe('最大推理步数'),
+    maxSteps: z
+      .number()
+      .optional()
+      .default(AGENT_CONSTANTS.DEFAULT_MAX_STEPS)
+      .describe('最大推理步数'),
     enableTools: z.boolean().optional().default(true).describe('是否启用工具使用'),
     availableTools: z.array(z.string()).optional().describe('可用工具列表'),
     conversationHistory: z.array(AiMessageSchema).optional().describe('对话历史'),
     reasoning_effort: z
       .enum(['off', 'minimal', 'low', 'medium', 'high', 'xhigh'])
+      .nullable()
       .optional()
       .describe('思考努力程度（统一语义）'),
     fences: z.array(FenceInjectionSchema).optional().describe('结构化上下文围栏'),
@@ -111,6 +120,27 @@ export const AgentInvokeRequestSchema = z
   })
   .extend({
     completionLengthHint: z.string().optional().describe('补全长度提示'),
+    intentKey: z
+      .enum([
+        'continue_paragraph',
+        'list_next_item',
+        'bridge_to_suffix_delimiter',
+        'rewrite_after_large_delete',
+        'structure_editing',
+      ])
+      .optional(),
+    intentConfidence: z.number().optional(),
+    intentConstraints: z.array(z.string()).optional(),
+    behaviorSummary: z
+      .object({
+        totalEvents: z.number(),
+        totalInsertedChars: z.number(),
+        totalDeletedChars: z.number(),
+        recentDeletedChars: z.number().optional(),
+        hasLargeRecentDelete: z.boolean().optional(),
+        typingSpeedCps: z.number().optional(),
+      })
+      .optional(),
     recentRejections: z
       .array(
         z.object({
@@ -286,7 +316,10 @@ export interface AgentMessageBuildContext {
   history?: AiMessage[];
 }
 
-export function createSystemMessage(content: string, type: SystemMessage['type'] = 'system_prompt'): SystemMessage {
+export function createSystemMessage(
+  content: string,
+  type: SystemMessage['type'] = 'system_prompt'
+): SystemMessage {
   return {
     id: generateAiMessageId(),
     role: 'system',
@@ -296,7 +329,10 @@ export function createSystemMessage(content: string, type: SystemMessage['type']
   };
 }
 
-export function createUserMessage(content: string, type: UserMessage['type'] = 'user_input'): UserMessage {
+export function createUserMessage(
+  content: string,
+  type: UserMessage['type'] = 'user_input'
+): UserMessage {
   return {
     id: generateAiMessageId(),
     role: 'user',

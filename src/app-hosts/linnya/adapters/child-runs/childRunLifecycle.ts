@@ -1,10 +1,12 @@
 import type { PromptKey } from 'src/app-hosts/linnya/agent-registry/prompt.types';
 import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
-import type { RunId } from '@linnlabs/linnkit/contracts';
+import { ExecutionIdSchema, type RunId } from '@linnlabs/linnkit/contracts';
 import { childRunTrace, execution, graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import type { SubRunTracePublisher } from '@linnlabs/linnkit/runtime-kernel';
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
 import { runnableDefinitionToAgentSpec } from 'src/app-hosts/linnya/adapters/runtime/agentDefinitionToAgentSpec';
+import type { RunDescriptor, RunAdmissionCommitPort } from '../../application/run-resumption';
+import type { CheckpointWriter } from '../persistence/execution-commit';
 
 type RunHandle = runSupervisor.RunHandle<AgentInvocationRequest>;
 
@@ -13,6 +15,8 @@ export interface LinnyaRegisteredChildRunLifecycleDependencies {
   eventStore: graph.EventStore;
   nextEventStoreId: () => string;
   costCollector: runSupervisor.RunCostCollector;
+  runAdmissionCommit?: RunAdmissionCommitPort;
+  createCheckpointWriter?: (runId: string, executionId: string) => CheckpointWriter;
 }
 
 export interface RegisteredChildRunLifecycleRequest {
@@ -32,6 +36,8 @@ export interface RegisteredChildRunLifecycleStartParams {
   abortSignal?: AbortSignal;
   metadata?: Record<string, unknown>;
   parentTracePublisher?: SubRunTracePublisher;
+  descriptor?: RunDescriptor;
+  resumeFrom?: runSupervisor.RunSnapshot;
 }
 
 export interface RegisteredChildRunLifecycleStartResult {
@@ -40,6 +46,7 @@ export interface RegisteredChildRunLifecycleStartResult {
   runtimeEventSink: graph.RuntimeEventSink;
   runtimeEventCommitPort: graph.RuntimeEventCommitPort;
   persistence: execution.EventBusEventPersistence;
+  durableContinuation?: boolean;
   parentTraceProjection?: childRunTrace.ChildRunParentTraceProjection;
 }
 
@@ -109,6 +116,9 @@ export class LinnyaRegisteredChildRunLifecycle implements RegisteredChildRunLife
       eventBus,
       eventStore,
       nextEventStoreId: this.dependencies.nextEventStoreId,
+      checkpointWriter: params.descriptor
+        ? this.dependencies.createCheckpointWriter?.(params.runId, sequencer.getExecutionId())
+        : undefined,
     });
     persistence.connect();
     const parentTraceProjection = params.parentTracePublisher
@@ -120,22 +130,49 @@ export class LinnyaRegisteredChildRunLifecycle implements RegisteredChildRunLife
     parentTraceProjection?.connect();
     const costCollector = this.dependencies.costCollector;
     try {
-      handle = await supervisor.registerRun({
-        runId: params.runId,
-        parentRunId: params.parentRunId,
-        parentSignal: params.abortSignal,
-        conversationId: params.conversationId,
-        agentSpec: runnableDefinitionToAgentSpec(params.agentDefinition),
-        request: toAgentInvocationRequest(params.request),
-        eventBus,
-        eventStore,
-        costCollector,
-        metadata: {
-          source: 'registered-child-run',
-          promptKey: params.request.promptKey,
-          ...(params.metadata ?? {}),
-        },
-      });
+      handle = params.resumeFrom
+        ? await supervisor.resumePausedRun({
+            runId: params.runId,
+            expectedUpdatedAt: params.resumeFrom.updatedAt,
+            expectedExecutionId: ExecutionIdSchema.parse(params.resumeFrom.metadata?.executionId),
+            executionId: sequencer.getExecutionId(),
+            eventBus,
+            parentSignal: params.abortSignal,
+          })
+        : await supervisor.registerRun({
+            runId: params.runId,
+            parentRunId: params.parentRunId,
+            parentSignal: params.abortSignal,
+            conversationId: params.conversationId,
+            agentSpec: runnableDefinitionToAgentSpec(params.agentDefinition),
+            request: params.descriptor?.request ?? toAgentInvocationRequest(params.request),
+            eventBus,
+            eventStore,
+            costCollector,
+            metadata: {
+              executionId: sequencer.getExecutionId(),
+              lane: 'child',
+              visibility: 'parent-trace',
+              ...(params.descriptor ? { turnId: params.descriptor.turnId } : {}),
+              source: 'registered-child-run',
+              promptKey: params.request.promptKey,
+              ...(params.metadata ?? {}),
+            },
+            ...(params.descriptor
+              ? {
+                  admissionCommit: (record: runSupervisor.RunRecord) => {
+                    const admission = this.dependencies.runAdmissionCommit;
+                    if (!admission || !params.descriptor)
+                      throw new Error('Durable child admission is not assembled');
+                    return admission.start({
+                      record,
+                      descriptor: params.descriptor,
+                      incoming: { events: [], assetCommitsByEventId: new Map() },
+                    });
+                  },
+                }
+              : {}),
+          });
     } catch (error) {
       eventBus.close();
       throw error;
@@ -145,11 +182,12 @@ export class LinnyaRegisteredChildRunLifecycle implements RegisteredChildRunLife
       handle,
       eventBus,
       runtimeEventSink: (event, source) => runtimeEventPublisher.publish(event, source),
-      runtimeEventCommitPort: async (event) => {
+      runtimeEventCommitPort: async event => {
         const routed = runtimeEventPublisher.route(event);
         await persistence.commitBeforePublish(routed);
       },
       persistence,
+      durableContinuation: Boolean(params.descriptor),
       ...(parentTraceProjection ? { parentTraceProjection } : {}),
     };
   }
@@ -164,14 +202,24 @@ export class LinnyaRegisteredChildRunLifecycle implements RegisteredChildRunLife
   ): Promise<void> {
     try {
       await this.drain(result);
+      await result.handle.markCompleted({
+        currentNode: 'completed',
+        iterationsUsed: stepCount,
+      });
     } catch (error) {
+      if (result.durableContinuation) {
+        // 子图结果已经提交，结算失败不能把它变为不可恢复的 failed 并让父图跳过原结果。
+        await result.handle.markPaused({
+          reason: 'child_settlement_interrupted',
+          iterationsUsed: stepCount,
+        });
+        throw new graph.RunRecoveryBlockedError(
+          `Child settlement interrupted: ${toFailureMessage(error)}`
+        );
+      }
       await this.markFactPipelineFailed(result.handle, error, stepCount);
       throw error;
     }
-    await result.handle.markCompleted({
-      currentNode: 'completed',
-      iterationsUsed: stepCount,
-    });
   }
 
   async markFailed(

@@ -27,6 +27,9 @@ host 侧使用独立有界队列把系统 pipe 与可等待的文本 writer 隔�
 - 不在每个工具里复制截断、落盘或 cursor 协议。
 - `tool_output_read` 只信任 blob 身份、cursor 和计量；续读正文统一进入动态不可信数据边界。原工具的可信骨架不能从任意中间字符窗口伪造恢复。
 - 维护任务按 manifest 身份清理，不按文件名或 mtime 猜测归属。
+- 启动维护先接收恢复用例提供的 protectedConversationIds；未结算 root 的原上下文可能引用
+  更早输出，因此保护该会话的已发布 manifest，包含已完成 child 的结果。root 终态释放后
+  再按原 TTL 清理。尚未发布的 pending 数据仍可清理；旧无 manifest 格式不新增恢复保证。
 
 ## Agent 入口迁移边界
 

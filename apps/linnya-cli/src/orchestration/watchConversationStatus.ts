@@ -17,24 +17,26 @@ interface WatchConversationStatusOptions {
   readonly sleep?: (durationMs: number) => Promise<void>;
 }
 
-function hasWatchSettled(
-  status: ConversationControlRunStatusSnapshot['status'],
-): boolean {
-  return status === 'awaiting_user'
-    || status === 'completed'
-    || status === 'failed'
-    || status === 'cancelled';
+function hasWatchSettled(snapshot: ConversationControlRunStatusSnapshot): boolean {
+  const status = snapshot.status;
+  return (
+    status === 'awaiting_user' ||
+    (status === 'paused' && snapshot.pause?.settled === true) ||
+    status === 'completed' ||
+    status === 'failed' ||
+    status === 'cancelled'
+  );
 }
 
 export async function watchConversationStatus(
-  options: WatchConversationStatusOptions,
+  options: WatchConversationStatusOptions
 ): Promise<ConversationControlRunStatusSnapshot | null> {
   if (options.intervalMs < options.client.handshake.limits.min_watch_interval_ms) {
     throw new LinnyaCliError(
       'invalid_request',
       `--interval must be at least ${options.client.handshake.limits.min_watch_interval_ms}ms`,
       false,
-      'status',
+      'status'
     );
   }
   if (options.timeoutMs > options.client.handshake.limits.max_watch_timeout_ms) {
@@ -42,12 +44,13 @@ export async function watchConversationStatus(
       'invalid_request',
       `--timeout must not exceed ${options.client.handshake.limits.max_watch_timeout_ms}ms`,
       false,
-      'status',
+      'status'
     );
   }
 
   const now = options.now ?? Date.now;
-  const sleep = options.sleep ?? (durationMs => new Promise(resolve => setTimeout(resolve, durationMs)));
+  const sleep =
+    options.sleep ?? (durationMs => new Promise(resolve => setTimeout(resolve, durationMs)));
   const startedAt = now();
   let sequence = 0;
   let previousSnapshot: string | undefined;
@@ -55,7 +58,10 @@ export async function watchConversationStatus(
   while (true) {
     const response = await options.client.execute(options.request);
     if (response.command !== 'status') {
-      throw new LinnyaCliError('protocol_incompatible', 'Status command returned another response type');
+      throw new LinnyaCliError(
+        'protocol_incompatible',
+        'Status command returned another response type'
+      );
     }
     const serialized = JSON.stringify(response.run);
     if (serialized !== previousSnapshot) {
@@ -70,13 +76,13 @@ export async function watchConversationStatus(
       previousSnapshot = serialized;
       sequence += 1;
     }
-    if (!response.run || hasWatchSettled(response.run.status)) return response.run;
+    if (!response.run || hasWatchSettled(response.run)) return response.run;
     if (now() - startedAt >= options.timeoutMs) {
       throw new LinnyaCliError(
         'transport_failure',
         `Status watch timed out after ${options.timeoutMs}ms`,
         true,
-        'status',
+        'status'
       );
     }
     await sleep(options.intervalMs);

@@ -1,11 +1,8 @@
 import type { SSEEvent } from '@linnlabs/linnkit/contracts';
-import type {
-  InteractiveRunSnapshot,
-  PendingRunInteraction,
-} from '../definitions/interactiveRun';
+import type { InteractiveRunSnapshot, PendingRunInteraction } from '../definitions/interactiveRun';
 
 export function readPendingRunInteraction(
-  event: Extract<SSEEvent, { type: 'requires_user_interaction' }>,
+  event: Extract<SSEEvent, { type: 'requires_user_interaction' }>
 ): PendingRunInteraction {
   return {
     interactionId: event.interaction_id,
@@ -18,27 +15,37 @@ export function readPendingRunInteraction(
 
 export function reduceInteractiveRunEvent(
   current: InteractiveRunSnapshot | undefined,
-  event: SSEEvent,
+  event: SSEEvent
 ): InteractiveRunSnapshot | undefined {
   if (event.lane === 'auxiliary' || event.visibility === 'none') return current;
+  if (
+    current?.executionId &&
+    event.execution_id &&
+    current.executionId !== event.execution_id &&
+    current.status !== 'starting' &&
+    current.status !== 'submitting' &&
+    current.status !== 'continuing'
+  ) {
+    return current;
+  }
   /**
    * 用户可以在旧 transport 的 transport_end 到达前提交问卷。beginSubmitting 已把控制权
    * 交给新的 resume transport，此后旧 execution 的迟到事件不得让状态倒退，也不得释放
    * 新 transport 的 controller。每次 resume 都由 host 分配新的 executionId。
    */
   if (
-    current?.status === 'submitting'
-    && current.executionId
-    && event.execution_id === current.executionId
+    (current?.status === 'submitting' || current?.status === 'continuing') &&
+    current.executionId &&
+    event.execution_id === current.executionId
   ) {
     return current;
   }
   // 同一 conversation 只允许一个 foreground run；活跃期内其它 run 的迟到事件没有控制权。
   if (
-    isInteractiveRunBusy(current)
-    && current?.runId
-    && event.run_id
-    && event.run_id !== current.runId
+    isInteractiveRunBusy(current) &&
+    current?.runId &&
+    event.run_id &&
+    event.run_id !== current.runId
   ) {
     return current;
   }
@@ -72,19 +79,20 @@ export function reduceInteractiveRunEvent(
     if (event.status === 'pending' || event.status === 'running' || event.status === 'paused') {
       return {
         ...identity,
-        status: event.status === 'pending' ? 'starting' : 'running',
+        status: event.status === 'pending' ? 'starting' : event.status,
         pendingInteraction: current?.pendingInteraction,
       };
     }
     return {
       ...identity,
-      status: event.status === 'cancelled'
-        ? 'cancelled'
-        : event.status === 'failed'
-          ? 'failed'
-          : 'completed',
+      status:
+        event.status === 'cancelled'
+          ? 'cancelled'
+          : event.status === 'failed'
+            ? 'failed'
+            : 'completed',
       pendingInteraction: undefined,
-      error: event.status === 'failed' ? event.reason_message ?? current?.error : current?.error,
+      error: event.status === 'failed' ? (event.reason_message ?? current?.error) : current?.error,
     };
   }
   if (event.type === 'run_execution_metrics' || event.type === 'transport_end') return current;
@@ -96,19 +104,24 @@ export function reduceInteractiveRunEvent(
 }
 
 export function isInteractiveRunBusy(snapshot: InteractiveRunSnapshot | undefined): boolean {
-  return snapshot?.status === 'starting'
-    || snapshot?.status === 'running'
-    || snapshot?.status === 'awaiting_user'
-    || snapshot?.status === 'submitting'
-    || snapshot?.status === 'cancelling';
+  return (
+    snapshot?.status === 'starting' ||
+    snapshot?.status === 'running' ||
+    snapshot?.status === 'pausing' ||
+    snapshot?.status === 'continuing' ||
+    snapshot?.status === 'reconnecting' ||
+    snapshot?.status === 'awaiting_user' ||
+    snapshot?.status === 'submitting' ||
+    snapshot?.status === 'cancelling'
+  );
 }
 
 export function assertInteractiveRunCanStart(
   conversationId: string,
-  snapshot: InteractiveRunSnapshot | undefined,
+  snapshot: InteractiveRunSnapshot | undefined
 ): void {
   if (!isInteractiveRunBusy(snapshot)) return;
   throw new Error(
-    `Conversation ${conversationId} already has active foreground run ${snapshot?.runId ?? 'pending-registration'}`,
+    `Conversation ${conversationId} already has active foreground run ${snapshot?.runId ?? 'pending-registration'}`
   );
 }

@@ -10,6 +10,11 @@
 
 ## 模块定位
 
+持久运行输入通过 `freezeAgentRunInput.ts` 物化真实 task 的系统提示（含首次接纳时的时间与 Skill
+catalog），交给 Host 的运行描述保存。Generic task 消费 `frozenSystemPrompt`；custom task 必须
+显式声明 `supportsFrozenSystemPrompt` 并消费同一字段，否则不能接纳为可恢复 run。恢复不能重新
+运行 request enricher 或重新渲染系统提示；这不承诺冻结外部模型输出或任意 Workspace 内容。
+
 `agent-registry` 负责三件事：
 
 1. 声明产品可用的 `AgentDefinition / ChatDefinition / internal definition`

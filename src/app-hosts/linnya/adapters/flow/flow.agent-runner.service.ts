@@ -14,6 +14,8 @@ import {
   generateRuntimeEventId,
   generateToolCallId,
   type ContextUsageSnapshot,
+  toSerializableJsonRecord,
+  SerializableJsonRecord,
 } from '@linnlabs/linnkit/contracts';
 import type { RoutedRuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { graph } from '@linnlabs/linnkit/runtime-kernel';
@@ -46,6 +48,7 @@ import { recordRootRunTranscript } from 'src/app-hosts/linnya/adapters/flow/agen
 import type {
   FlowAgentRunExecution,
   FlowAgentRunRequest,
+  FlowRunInputPreparation,
 } from 'src/app-hosts/linnya/adapters/flow/flow.runner-handoff';
 import type { WorkspaceMutationPublisher } from 'src/features/workspace/definitions/workspaceMutationPublisher';
 import type { RegisteredChildRunInvokerPort } from 'src/app-hosts/linnya/adapters/child-runs/registeredSubagentInvoker';
@@ -53,10 +56,7 @@ import type { LinnyaRunCostCollector } from 'src/app-hosts/linnya/adapters/token
 import type { CommandPermissionSettingsPort } from 'src/domains/commands/ports';
 import type { ToolContext } from 'src/tools/types';
 import { resolveCommandRunPermissionContext } from 'src/app-hosts/linnya/adapters/context-injection/commandRunPermissionContextBinding';
-import {
-  CommandAgentRunIdSchema,
-  CommandConversationIdSchema,
-} from '@app/schemas/commands';
+import { CommandAgentRunIdSchema, CommandConversationIdSchema } from '@app/schemas/commands';
 import type { ShellToolRuntimePort } from 'src/app-hosts/linnya/adapters/commands/shell-runtime/definitions';
 import type { PhysicalFileReaderPort } from 'src/app-hosts/linnya/application/file-read';
 import type { ConversationWorkDirectoryAdmissionPort } from 'src/app-hosts/linnya/application/conversation-lifecycle';
@@ -64,11 +64,28 @@ import type {
   CommandAgentRunEndBarrier,
   CommandAgentRunLifecyclePort,
 } from 'src/app-hosts/linnya/adapters/commands/process-owner';
+import { freezeAgentRunInput } from '../../agent-registry/freezeAgentRunInput';
+import { createDefaultModelResolver } from '../runtime-assembly/graphRuntimeFactory';
+import {
+  RunDescriptorSchema,
+  type RunDescriptor,
+  type RunDescriptorStore,
+  type ExecutionCheckpointBindings,
+} from '../../application/run-resumption';
+import { captureRuntimeCompatibility } from '../../application/run-resumption/functions/runtimeCompatibility';
+import { createRunToolRecoveryPort } from '../../application/run-resumption/functions/createRunToolRecoveryPort';
+import { SqliteToolResultReceipts } from '../persistence/execution-commit';
 
 const logger = new Logger('AgentRunnerService');
 type GraphExecutor = graph.GraphExecutor;
 
 export interface AgentRunnerRuntimePort {
+  readonly recovery?: {
+    readonly bindings: ExecutionCheckpointBindings;
+    readonly checkpointer: graph.Checkpointer;
+    readonly descriptors: RunDescriptorStore;
+    readonly releaseTerminalRun: (runId: string) => Promise<void>;
+  };
   readonly costCollector: LinnyaRunCostCollector;
   readonly registeredChildRunInvoker: RegisteredChildRunInvokerPort;
   readonly commandPermissionSettings: CommandPermissionSettingsPort;
@@ -101,7 +118,7 @@ export class AgentRunnerService {
     private readonly engine: GraphExecutor,
     private readonly knowledgeBaseService: KnowledgeBaseService,
     private readonly databaseService: DatabaseService,
-    private readonly runtime: AgentRunnerRuntimePort,
+    private readonly runtime: AgentRunnerRuntimePort
   ) {}
 
   /**
@@ -122,7 +139,76 @@ export class AgentRunnerService {
   }
 
   async discardCheckpoint(runId: string): Promise<void> {
+    if (this.runtime.recovery) {
+      await this.runtime.recovery.releaseTerminalRun(runId);
+      return;
+    }
     await this.engine.clearCheckpoint(runId);
+  }
+
+  async readCheckpointRevision(runId: string): Promise<number | null> {
+    const checkpoint = await this.engine.peekCheckpoint(runId);
+    if (!checkpoint) {
+      if (await this.runtime.recovery?.descriptors.hasCommittedCheckpoint(runId)) {
+        throw new Error(
+          'Committed run checkpoint is missing; refusing to restart the original task'
+        );
+      }
+      return null;
+    }
+    if (!checkpoint.executionStatus || checkpoint.revision === undefined) {
+      throw new Error('Run checkpoint does not support durable continuation');
+    }
+    return checkpoint.revision;
+  }
+
+  /** 接纳前物化一次；没有副作用工具或 Provider 调用，持久失败时不能给用户发送接纳回执。 */
+  async prepareRecoveryInputs(input: FlowRunInputPreparation): Promise<RunDescriptor> {
+    const bootstrap = await prepareRunBootstrap({
+      databaseService: this.databaseService,
+      conversationId: input.conversationId,
+      turnId: input.turnId,
+      runId: input.runId,
+      request: input.request,
+    });
+    const modelId = createDefaultModelResolver().resolveModelId(
+      bootstrap.finalReq.modelId ?? bootstrap.finalReq.model_id
+    );
+    const request = freezeAgentRunInput({ ...bootstrap.finalReq, modelId, model_id: modelId });
+    const policy = assembleExecutionPolicy({
+      request,
+      options: input.options,
+      newEvents: input.newEvents,
+    });
+    const commandPermission = resolveCommandRunPermissionContext({
+      runOwner: input,
+      executionKind: 'start',
+      rootAgentRunId: CommandAgentRunIdSchema.parse(
+        bootstrap.finalRunContext.rootRunId ?? input.runId
+      ),
+      settingsPort: this.runtime.commandPermissionSettings,
+    });
+    const toolContextPatch = SerializableJsonRecord.parse(bootstrap.toolContextPatch);
+    return RunDescriptorSchema.parse({
+      schemaVersion: 1,
+      runId: input.runId,
+      conversationId: input.conversationId,
+      turnId: input.turnId,
+      createdAt: Date.now(),
+      agentSpec: input.agentSpec,
+      request,
+      options: input.options && { ...input.options, conversationHistory: undefined },
+      historyEventIds: input.history.map(event => event.id),
+      incomingEventIds: input.newEvents.map(event => event.id),
+      runContext: {
+        ...bootstrap.finalRunContext,
+        tags: toSerializableJsonRecord(bootstrap.finalRunContext.tags),
+      },
+      toolContextPatch,
+      executorLocal: policy.executorLocal,
+      commandPermission,
+      compatibility: captureRuntimeCompatibility(request.promptKey, modelId),
+    });
   }
 
   private async execute(runRequest: FlowAgentRunRequest): Promise<FlowExecutionResult> {
@@ -153,10 +239,7 @@ export class AgentRunnerService {
     const scopedRuntimeEventCommitPort: graph.RuntimeEventCommitPort | undefined =
       runtimeEventCommitPort
         ? async (event, source) => {
-            await runtimeEventCommitPort(
-              lifecycleCoordinator.enrichRuntimeEvent(event),
-              source,
-            );
+            await runtimeEventCommitPort(lifecycleCoordinator.enrichRuntimeEvent(event), source);
           }
         : undefined;
     const executionSettlement = createExecutionSettlement(
@@ -172,9 +255,10 @@ export class AgentRunnerService {
         drainPersistence: hostPorts.drainPersistence,
         runHandle,
         readRunIterationsUsed: async () => (await runHandle.meta()).iterationsUsed,
-        clearCheckpoint: runId => this.engine.clearCheckpoint(runId),
+        clearCheckpoint: runId => this.discardCheckpoint(runId),
         releaseRunResources: runId => this.runtime.costCollector.release(runId),
         now: () => Date.now(),
+        durableContinuation: Boolean(runRequest.recoveryInputs),
       }
     );
 
@@ -192,6 +276,14 @@ export class AgentRunnerService {
     let settlementContextUsage: ContextUsageSnapshot | undefined;
     let executionStepCount = 0;
     let publishedRuntimeFailureFact: graph.RuntimeFailureFact | undefined;
+    const checkpointRecovery = this.runtime.recovery;
+    const releaseCheckpointBinding = checkpointRecovery?.bindings.bind(
+      runHandle.runId,
+      hostPorts.executionCheckpointPort ?? {
+        // persist=false 的内部任务没有事件事务；仍复用同一个临时 checkpoint owner，终态即释放。
+        commit: (key, state) => checkpointRecovery.checkpointer.save(key, state),
+      }
+    );
 
     const endCommandAgentRun = async (): Promise<void> => {
       if (!commandAgentRunId || this.runtime.commandRuntime.kind !== 'enabled') return;
@@ -205,25 +297,34 @@ export class AgentRunnerService {
     try {
       // resume 必须使用原 run 注册时冻结的请求，禁止从新请求或历史 metadata 猜 Agent 身份。
       const sessionRequest = execution.kind === 'resume' ? await runHandle.request() : enrichedReq;
-      const bootstrap = await prepareRunBootstrap({
-        databaseService: this.databaseService,
-        conversationId,
-        turnId,
-        runId: runHandle.runId,
-        request: sessionRequest,
-      });
+      const recoveryInputs = runRequest.recoveryInputs;
+      const bootstrap = recoveryInputs
+        ? {
+            finalReq: recoveryInputs.request,
+            finalRunContext: recoveryInputs.runContext,
+            toolContextPatch: recoveryInputs.toolContextPatch,
+          }
+        : await prepareRunBootstrap({
+            databaseService: this.databaseService,
+            conversationId,
+            turnId,
+            runId: runHandle.runId,
+            request: sessionRequest,
+          });
       const finalReq = bootstrap.finalReq;
       const toolContextPatch = bootstrap.toolContextPatch;
       const finalRunContext = bootstrap.finalRunContext;
       commandAgentRunId = CommandAgentRunIdSchema.parse(finalRunContext.runId);
-      const commandRunPermission = resolveCommandRunPermissionContext({
-        runOwner: runHandle,
-        executionKind: execution.kind,
-        rootAgentRunId: CommandAgentRunIdSchema.parse(
-          finalRunContext.rootRunId ?? finalRunContext.runId,
-        ),
-        settingsPort: this.runtime.commandPermissionSettings,
-      });
+      const commandRunPermission =
+        recoveryInputs?.commandPermission ??
+        resolveCommandRunPermissionContext({
+          runOwner: runHandle,
+          executionKind: execution.kind,
+          rootAgentRunId: CommandAgentRunIdSchema.parse(
+            finalRunContext.rootRunId ?? finalRunContext.runId
+          ),
+          settingsPort: this.runtime.commandPermissionSettings,
+        });
       /**
        * 统一 Audit Domain 的 run scope。
        *
@@ -237,6 +338,7 @@ export class AgentRunnerService {
       const executeAgentRun = async (): Promise<{
         result: FlowExecutionResult;
         checkpointNodeId: string;
+        runIterationsUsed?: number;
         waitUserEvent?: Extract<RoutedRuntimeEvent, { type: 'requires_user_interaction' }>;
       }> => {
         return await runWithAgentAuditScope(
@@ -246,27 +348,30 @@ export class AgentRunnerService {
             traceId: finalRunContext.traceId,
           },
           async () => {
-            const { executionStartNode, hostToolCall, executorLocal } = assembleExecutionPolicy({
+            const executionPolicy = assembleExecutionPolicy({
               request: finalReq,
               options,
               newEvents,
             });
+            const { executionStartNode, hostToolCall } = executionPolicy;
+            const executorLocal = recoveryInputs?.executorLocal ?? executionPolicy.executorLocal;
             // wire DTO 已在 Flow incoming-events feature 中一次性物化为 RuntimeEvent。
             const runtimeNewEvents = newEvents;
             const initialHistory = [...history, ...runtimeNewEvents];
-            const hostToolBootstrap = hostToolCall
-              ? graph.createHostToolCallBootstrap({
-                  eventId: generateRuntimeEventId(),
-                  conversationId,
-                  turnId,
-                  toolName: hostToolCall.tool_name,
-                  toolCallId: generateToolCallId(),
-                  args: hostToolCall.args,
-                  history: initialHistory,
-                  metadata: lifecycleCoordinator.getMappingContext().metadata,
-                  completionMode: hostToolCall.completion_mode,
-                })
-              : undefined;
+            const hostToolBootstrap =
+              hostToolCall && execution.kind === 'start'
+                ? graph.createHostToolCallBootstrap({
+                    eventId: generateRuntimeEventId(),
+                    conversationId,
+                    turnId,
+                    toolName: hostToolCall.tool_name,
+                    toolCallId: generateToolCallId(),
+                    args: hostToolCall.args,
+                    history: initialHistory,
+                    metadata: lifecycleCoordinator.getMappingContext().metadata,
+                    completionMode: hostToolCall.completion_mode,
+                  })
+                : undefined;
             const publishedHostToolDecision = hostToolBootstrap
               ? scopedRuntimeEventSink(hostToolBootstrap.decisionEvent, 'HostToolCallBootstrap')
               : undefined;
@@ -278,9 +383,10 @@ export class AgentRunnerService {
                 knowledgeBaseService: this.knowledgeBaseService,
                 databaseService: this.databaseService,
                 workspaceMutationPublisher: this.runtime.workspaceMutationPublisher,
-                shellToolRuntime: this.runtime.commandRuntime.kind === 'enabled'
-                  ? this.runtime.commandRuntime.shellToolRuntime
-                  : undefined,
+                shellToolRuntime:
+                  this.runtime.commandRuntime.kind === 'enabled'
+                    ? this.runtime.commandRuntime.shellToolRuntime
+                    : undefined,
                 physicalFileReader: this.runtime.physicalFileReader,
                 conversationWorkDirectoryAdmission: this.runtime.conversationWorkDirectoryAdmission,
                 managedImageIngress: this.runtime.managedImageIngress,
@@ -294,7 +400,7 @@ export class AgentRunnerService {
                 turnId,
                 registeredChildRunInvoker: this.runtime.registeredChildRunInvoker,
                 subrunTraceHistoryProjector: new SqliteSubrunTraceHistoryProjector(
-                  this.databaseService.getDb(),
+                  this.databaseService.getDb()
                 ),
               }),
               request: finalReq,
@@ -304,6 +410,13 @@ export class AgentRunnerService {
               conversationId,
               turnId,
             });
+            const receipts = recoveryInputs
+              ? new SqliteToolResultReceipts(this.databaseService.getDb())
+              : undefined;
+            toolContext.toolResultReceipts = receipts?.forExecution(
+              runHandle.runId,
+              sequencer.getExecutionId()
+            );
 
             try {
               const startNode = hostToolBootstrap?.nodeId ?? executionStartNode ?? 'user';
@@ -337,30 +450,55 @@ export class AgentRunnerService {
                 conversationId,
                 turnId,
                 signal,
+                toolRecoveryPort: recoveryInputs
+                  ? createRunToolRecoveryPort(
+                      receipts && {
+                        read: (callId, toolName) =>
+                          receipts.read(runHandle.runId, callId, toolName),
+                      }
+                    )
+                  : undefined,
               };
 
               logger.info('开始执行 GraphExecutor.runUntilYield');
+              if (recoveryInputs && execution.kind === 'resume') {
+                const original = await this.engine.peekCheckpoint(checkpointKey);
+                if (!original?.local?.history)
+                  throw new Error('Original interaction checkpoint history is unavailable');
+                // 响应只追加到等待边界的原历史；不能用请求开始时的 history 丢掉中间工具结果。
+                sessionLocal.history = [...original.local.history, ...runtimeNewEvents];
+              }
               const {
                 events: graphEvents,
                 stepCount,
                 checkpoint,
-              } = execution.kind === 'resume'
-                ? await this.engine.resumeSession(checkpointKey, {
+              } = execution.kind === 'continue'
+                ? await this.engine.continueSession(checkpointKey, {
                     expectedRevision: execution.expectedCheckpointRevision,
-                    expectedNodeId: 'wait_user',
-                    nodeId: 'llm',
-                    localPatch: sessionLocal,
-                    maxSteps: finalReq.maxSteps,
+                    capabilities: {
+                      signal,
+                      toolContext,
+                      runtimeEventSink: scopedRuntimeEventSink,
+                      runtimeEventCommitPort: scopedRuntimeEventCommitPort,
+                      runtimeFailureFactSink: sessionLocal.runtimeFailureFactSink,
+                      summarizationCallbacks,
+                      toolRecoveryPort: sessionLocal.toolRecoveryPort,
+                    },
                   })
-                : await this.engine.startSession(
-                    checkpointKey,
-                    sessionLocal,
-                    startNode,
-                    { maxSteps: finalReq.maxSteps },
-                  );
+                : execution.kind === 'resume'
+                  ? await this.engine.resumeSession(checkpointKey, {
+                      expectedRevision: execution.expectedCheckpointRevision,
+                      expectedNodeId: 'wait_user',
+                      nodeId: 'llm',
+                      localPatch: sessionLocal,
+                      maxSteps: finalReq.maxSteps,
+                    })
+                  : await this.engine.startSession(checkpointKey, sessionLocal, startNode, {
+                      maxSteps: finalReq.maxSteps,
+                    });
               logger.info(`GraphExecutor 完成：${stepCount} 步，最终节点：${checkpoint.nodeId}`);
               settlementContextUsage = graph.readCheckpointContextUsage(checkpoint.local);
-              const waitUserEvents = graphEvents.filter(
+              const waitUserEvents = [...(checkpoint.local?.history ?? []), ...graphEvents].filter(
                 (
                   event
                 ): event is Extract<RoutedRuntimeEvent, { type: 'requires_user_interaction' }> =>
@@ -381,6 +519,9 @@ export class AgentRunnerService {
               return {
                 result,
                 checkpointNodeId: checkpoint.nodeId,
+                runIterationsUsed: recoveryInputs
+                  ? checkpoint.local?.executorLocal?.stepCount
+                  : undefined,
                 waitUserEvent: waitUserEvents[waitUserEvents.length - 1],
               };
             } catch (error) {
@@ -396,6 +537,7 @@ export class AgentRunnerService {
       };
 
       const executionOutcome = await executeAgentRun();
+      hostPorts.finishCheckpointWrites?.();
       executionStepCount = executionOutcome.result.stepCount ?? 0;
 
       // wait_user 只是同一 run 的暂停点；真实终态必须在宣布成功前可靠收口进程。
@@ -406,6 +548,7 @@ export class AgentRunnerService {
       await executionSettlement.settleSuccessfulExecution({
         checkpointNodeId: executionOutcome.checkpointNodeId,
         stepCount: executionStepCount,
+        runIterationsUsed: executionOutcome.runIterationsUsed,
         ...(executionOutcome.waitUserEvent
           ? { waitUserEvent: executionOutcome.waitUserEvent }
           : {}),
@@ -417,6 +560,63 @@ export class AgentRunnerService {
         events: hostPorts.getGeneratedEvents(),
       };
     } catch (error) {
+      hostPorts.finishCheckpointWrites?.();
+      if (runRequest.recoveryInputs) {
+        const record = await runHandle.meta();
+        // 明确取消是终态；网络重试耗尽、暂停和持久化失败只是 attempt 结束。
+        if (
+          record.status !== 'cancelled' &&
+          record.status !== 'completed' &&
+          record.status !== 'failed'
+        ) {
+          try {
+            await endCommandAgentRun();
+          } catch (cleanupError) {
+            logger.error('Paused run command owner reconciliation remains pending', {
+              runId: runHandle.runId,
+              cleanupError,
+            });
+            // 停止进程失败不等于安全暂停；保留未收口的 pause intent，禁止继续抢占。
+            await runHandle.pause('command_cleanup_pending');
+            return finalizeFailedRun({
+              conversationId,
+              events: hostPorts.getGeneratedEvents(),
+              isAbortError: true,
+            });
+          }
+          try {
+            await hostPorts.drainPersistence();
+          } catch (persistenceError) {
+            logger.error('Paused execution retains last committed checkpoint', {
+              runId: runHandle.runId,
+              persistenceError,
+            });
+          }
+          const saved = await this.engine.peekCheckpoint(runHandle.runId);
+          await runHandle.markPaused({
+            currentNode: saved?.nodeId,
+            iterationsUsed: saved?.local?.executorLocal?.stepCount ?? record.iterationsUsed,
+            reason: graph.isRunPauseSignal(signal)
+              ? 'user_pause'
+              : typeof error === 'object' &&
+                  error !== null &&
+                  'code' in error &&
+                  error.code === 'RUN_RECOVERY_BLOCKED'
+                ? 'tool_reconciliation_required'
+                : 'execution_interrupted',
+          });
+          logger.warn('Run paused at durable execution boundary', {
+            runId: runHandle.runId,
+            nodeId: saved?.nodeId,
+            error,
+          });
+          return finalizeFailedRun({
+            conversationId,
+            events: hostPorts.getGeneratedEvents(),
+            isAbortError: true,
+          });
+        }
+      }
       if (!commandCleanupAttempted) {
         try {
           await endCommandAgentRun();
@@ -432,10 +632,8 @@ export class AgentRunnerService {
       const isAbortError = error instanceof Error && error.name === 'AbortError';
       const failureFact = isAbortError
         ? undefined
-        : publishedRuntimeFailureFact ?? publishRunFailureFact(
-            { conversationId, turnId, error },
-            scopedRuntimeEventSink,
-          );
+        : (publishedRuntimeFailureFact ??
+          publishRunFailureFact({ conversationId, turnId, error }, scopedRuntimeEventSink));
       if (isAbortError) {
         logger.info(`Agent mode interrupted for conversation ${conversationId}`);
       } else {
@@ -450,12 +648,12 @@ export class AgentRunnerService {
         const checkpointLocal = failedCheckpoint?.local;
         const checkpointExecutorLocal = checkpointLocal?.executorLocal;
         if (
-          checkpointExecutorLocal
-          && typeof checkpointExecutorLocal === 'object'
-          && 'stepCount' in checkpointExecutorLocal
-          && typeof checkpointExecutorLocal.stepCount === 'number'
-          && Number.isInteger(checkpointExecutorLocal.stepCount)
-          && checkpointExecutorLocal.stepCount >= 0
+          checkpointExecutorLocal &&
+          typeof checkpointExecutorLocal === 'object' &&
+          'stepCount' in checkpointExecutorLocal &&
+          typeof checkpointExecutorLocal.stepCount === 'number' &&
+          Number.isInteger(checkpointExecutorLocal.stepCount) &&
+          checkpointExecutorLocal.stepCount >= 0
         ) {
           executionStepCount = checkpointExecutorLocal.stepCount;
         }
@@ -490,6 +688,7 @@ export class AgentRunnerService {
         isAbortError,
       });
     } finally {
+      releaseCheckpointBinding?.();
       // 此处已经离开 Graph、工具执行和执行结算流程，之后不会再产生该 run 的 tool call。
       commandRunEndBarrier?.release();
     }

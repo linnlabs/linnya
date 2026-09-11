@@ -47,7 +47,7 @@ function executionDirectory(input: {
 }): string {
   return path.join(
     input.storageRoot,
-    ...deriveCommandOutputArtifactRelativePaths(input.owner, input.mode).directorySegments,
+    ...deriveCommandOutputArtifactRelativePaths(input.owner, input.mode).directorySegments
   );
 }
 
@@ -91,8 +91,40 @@ async function createSealedArtifact(input: {
 }
 
 describe('原始命令输出启动维护', () => {
+  it('未完成运行保护会话的过期原始输出，终态释放后恢复正常清理', async () => {
+    const storageRoot = await fsp.mkdtemp(
+      path.join(os.tmpdir(), 'linnya-command-artifact-recovery-')
+    );
+    roots.push(storageRoot);
+    const owner = createOwner({
+      conversationId: 'paused-conversation',
+      instanceId: 'completed-child',
+    });
+    const directory = await createSealedArtifact({
+      storageRoot,
+      owner,
+      mode: 'pipe',
+      retentionUntilMs: 150,
+    });
+    const maintenance = createFileCommandOutputArtifactMaintenancePort({
+      storageRoot,
+      logger: { warn: vi.fn() },
+    });
+    expect(
+      await maintenance.cleanupExpired({
+        nowMs: 200,
+        protectedConversationIds: new Set(['paused-conversation']),
+      })
+    ).toMatchObject({ retained: 1, deleted: 0 });
+    await expect(fsp.readFile(path.join(directory, 'stdout.bin'), 'utf8')).resolves.toBe('stdout');
+    expect(await maintenance.cleanupExpired({ nowMs: 200 })).toMatchObject({ deleted: 1 });
+    await expect(fsp.stat(directory)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
   it('按每份已封口 manifest 的冻结期限精准清理 pipe，并保留尚未到期的 PTY', async () => {
-    const storageRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-command-artifact-maintenance-'));
+    const storageRoot = await fsp.mkdtemp(
+      path.join(os.tmpdir(), 'linnya-command-artifact-maintenance-')
+    );
     roots.push(storageRoot);
     const expiredOwner = createOwner({ conversationId: 'conversation-a', instanceId: 'run-a' });
     const retainedOwner = createOwner({ conversationId: 'conversation-b', instanceId: 'run-b' });
@@ -122,15 +154,29 @@ describe('原始命令输出启动维护', () => {
   });
 
   it('保留未封口、损坏和身份错位目录，且不触碰不属于固定路径形状的内容', async () => {
-    const storageRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-command-artifact-preserve-'));
+    const storageRoot = await fsp.mkdtemp(
+      path.join(os.tmpdir(), 'linnya-command-artifact-preserve-')
+    );
     roots.push(storageRoot);
     const unsealedOwner = createOwner({ conversationId: 'conversation-a', instanceId: 'run-a' });
     const malformedOwner = createOwner({ conversationId: 'conversation-b', instanceId: 'run-b' });
     const misplacedOwner = createOwner({ conversationId: 'conversation-c', instanceId: 'run-c' });
     const otherOwner = createOwner({ conversationId: 'conversation-d', instanceId: 'run-d' });
-    const unsealedDirectory = executionDirectory({ storageRoot, owner: unsealedOwner, mode: 'pipe' });
-    const malformedDirectory = executionDirectory({ storageRoot, owner: malformedOwner, mode: 'pipe' });
-    const misplacedDirectory = executionDirectory({ storageRoot, owner: misplacedOwner, mode: 'pipe' });
+    const unsealedDirectory = executionDirectory({
+      storageRoot,
+      owner: unsealedOwner,
+      mode: 'pipe',
+    });
+    const malformedDirectory = executionDirectory({
+      storageRoot,
+      owner: malformedOwner,
+      mode: 'pipe',
+    });
+    const misplacedDirectory = executionDirectory({
+      storageRoot,
+      owner: misplacedOwner,
+      mode: 'pipe',
+    });
     await fsp.mkdir(unsealedDirectory, { recursive: true });
     await fsp.writeFile(path.join(unsealedDirectory, 'stdout.bin'), 'partial', 'utf8');
     await fsp.mkdir(malformedDirectory, { recursive: true });
@@ -162,7 +208,7 @@ describe('原始命令输出启动维护', () => {
     await fsp.writeFile(
       path.join(misplacedDirectory, 'manifest.json'),
       JSON.stringify(misplacedManifest),
-      'utf8',
+      'utf8'
     );
     const unrelatedDirectory = path.join(storageRoot, 'conversation-not-owned');
     await fsp.mkdir(unrelatedDirectory, { recursive: true });
@@ -173,7 +219,11 @@ describe('原始命令输出启动维护', () => {
     await fsp.mkdir(path.dirname(linkedDirectory), { recursive: true });
     await fsp.mkdir(linkedTarget, { recursive: true });
     await fsp.writeFile(path.join(linkedTarget, 'keep.txt'), 'linked target', 'utf8');
-    await fsp.symlink(linkedTarget, linkedDirectory, process.platform === 'win32' ? 'junction' : 'dir');
+    await fsp.symlink(
+      linkedTarget,
+      linkedDirectory,
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
     const logger = { warn: vi.fn() };
 
     const stats = await createFileCommandOutputArtifactMaintenancePort({
@@ -185,13 +235,19 @@ describe('原始命令输出启动维护', () => {
     await expect(fsp.stat(unsealedDirectory)).resolves.toBeTruthy();
     await expect(fsp.stat(malformedDirectory)).resolves.toBeTruthy();
     await expect(fsp.stat(misplacedDirectory)).resolves.toBeTruthy();
-    await expect(fsp.readFile(path.join(unrelatedDirectory, 'keep.txt'), 'utf8')).resolves.toBe('keep');
-    await expect(fsp.readFile(path.join(linkedTarget, 'keep.txt'), 'utf8')).resolves.toBe('linked target');
+    await expect(fsp.readFile(path.join(unrelatedDirectory, 'keep.txt'), 'utf8')).resolves.toBe(
+      'keep'
+    );
+    await expect(fsp.readFile(path.join(linkedTarget, 'keep.txt'), 'utf8')).resolves.toBe(
+      'linked target'
+    );
     expect(logger.warn).toHaveBeenCalledTimes(3);
   });
 
   it('单个损坏 artifact 不阻止同一扫描中的合法过期 artifact 清理', async () => {
-    const storageRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-command-artifact-isolation-'));
+    const storageRoot = await fsp.mkdtemp(
+      path.join(os.tmpdir(), 'linnya-command-artifact-isolation-')
+    );
     roots.push(storageRoot);
     const brokenOwner = createOwner({ conversationId: 'conversation-a', instanceId: 'run-a' });
     const expiredOwner = createOwner({ conversationId: 'conversation-b', instanceId: 'run-b' });
@@ -217,7 +273,9 @@ describe('原始命令输出启动维护', () => {
   });
 
   it('一个损坏的 conversation 路径不会阻止其他 conversation 的合法清理', async () => {
-    const storageRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-command-artifact-scan-isolation-'));
+    const storageRoot = await fsp.mkdtemp(
+      path.join(os.tmpdir(), 'linnya-command-artifact-scan-isolation-')
+    );
     roots.push(storageRoot);
     const brokenOwner = createOwner({ conversationId: 'conversation-a', instanceId: 'run-a' });
     const brokenRelativePaths = deriveCommandOutputArtifactRelativePaths(brokenOwner, 'pipe');

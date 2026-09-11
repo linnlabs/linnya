@@ -22,7 +22,6 @@ export * from './model-picker';
 export * from './model-discovery';
 export type {
   IncrementalEvent,
-  ConversationOptions,
   ConversationNextRequest,
   ConversationNextResponse,
   AgentInvokeRequest,
@@ -36,6 +35,7 @@ export type {
 
 // ============ 便捷导出：常用的验证函数 ============
 export {
+  ConversationOptions,
   validateConversationNextRequest,
   validateAgentInvokeRequest,
   validateKnowledgeBaseSearchRequest,
@@ -73,6 +73,7 @@ export type { PromptKey } from './agent-config/index';
 export * from './conversation/selected-agent';
 export * from './conversation/history';
 export * from './conversation/file-link';
+export * from './conversation/run-continuation';
 
 // ============ Storage Space HTTP 合同 ============
 export * from './storage-space';

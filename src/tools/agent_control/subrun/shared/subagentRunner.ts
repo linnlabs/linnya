@@ -156,9 +156,10 @@ export async function runRegisteredSubagentsInParallel(
   for (let i = 0; i < params.subruns.length; i += maxConcurrency) {
     const batch = params.subruns.slice(i, i + maxConcurrency);
     const batchResults = await Promise.all(
-      batch.map(t =>
+      batch.map((t, batchIndex) =>
         runRegisteredSubagent({
           ...t,
+          subrunId: t.subrunId ?? `${requireParentTraceBinding(params.context)}_${i + batchIndex}`,
           context: params.context,
         })
       )
