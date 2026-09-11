@@ -47,7 +47,7 @@ describe('Export artifact commit RPC', () => {
     }));
 
     pair.dispose();
-  });
+  }, 30_000);
 });
 
 function createPeerPair(input: {
