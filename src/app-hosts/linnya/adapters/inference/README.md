@@ -337,9 +337,9 @@ fixture；Linnya Cloud 等产品错误只修改 Host
 `provider-failure-policy`，不能要求 Linnkit、Renderer 或 Model Catalog 理解 SDK
 shape。
 
-OpenAI Responses 在已经产生输出后仍可能以 SDK 解码后的嵌套 `response.failed`
-结束。Adapter
-package 必须从该结构的安全判别字段区分限流、上游不可用、超时与请求错误，并保持 Provider 的可重试语义；不得把这种 Provider 终态误报为 Linnkit
+OpenAI Responses 可能在首个终态就以 SDK 解码后的嵌套 `response.failed`
+结束，也可能在已经产生部分输出后才结束。Adapter
+package 必须从该结构的安全判别字段区分 `invalid_prompt`、限流、上游不可用、超时与请求错误，并保持 Provider 的可重试语义；不得把这种 Provider 终态误报为 Linnkit
 stream 生命周期损坏，也不得把嵌套 message 写入日志或 canonical event。
 
 AI SDK 的统一 `finishReason=other`

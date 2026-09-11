@@ -33,3 +33,5 @@
 - 补齐 MIT 许可证、Node 22
   engines、独立 manifest 和真实制品门禁；package 保持宿主 monorepo 内部、不可发布，Linnkit
   Quickstart 继续保持自包含。
+- 将上游 `invalid_prompt` 映射为独立的不可重试
+  `provider_invalid_prompt`，不再将其泛化为 `provider_http_400`；该错误不参与切模或 fallback。

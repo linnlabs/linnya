@@ -49,6 +49,9 @@ function classifyProviderSemanticFailure(error: APICallError): string | undefine
 
 function classifyApiCallResponseDetail(error: APICallError): AiSdkFailureProjection | undefined {
   const detailCategory = readProviderDetail(error.responseBody);
+  if (detailCategory === 'invalid_prompt') {
+    return { kind: 'provider', code: 'provider_invalid_prompt', retryable: false };
+  }
   if (detailCategory === 'request_too_large') {
     return { kind: 'provider', code: 'provider_request_too_large', retryable: false };
   }
@@ -78,6 +81,7 @@ type ProviderErrorDetailCategory =
   | 'not_found'
   | 'request_too_large'
   | 'unsupported'
+  | 'invalid_prompt'
   | 'invalid_request';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -108,6 +112,7 @@ function readHttpStatus(value: unknown): number | undefined {
 }
 
 function classifyProviderDetail(detail: string): ProviderErrorDetailCategory | undefined {
+  if (detail.includes('invalid_prompt')) return 'invalid_prompt';
   if (/(insufficient[_ -]?quota|quota|usage limit)/u.test(detail)) return 'quota';
   if (/(rate[_ -]?limit|too[_ -]?many[_ -]?requests|rate limit)/u.test(detail)) {
     return 'rate_limit';
@@ -121,7 +126,7 @@ function classifyProviderDetail(detail: string): ProviderErrorDetailCategory | u
   if (/(not[_ -]?found|does not exist|unknown model)/u.test(detail)) return 'not_found';
   if (
     /(context[_ -]?length|context window|request[_ -]?too[_ -]?large|payload[_ -]?too[_ -]?large|too large|token limit|maximum.*token)/u.test(
-      detail,
+      detail
     )
   ) {
     return 'request_too_large';
@@ -152,7 +157,7 @@ function hasStructuredProviderSignal(error: StructuredProviderError): boolean {
 
 function mergeStructuredProviderErrors(
   outer: StructuredProviderError,
-  nested: StructuredProviderError | undefined,
+  nested: StructuredProviderError | undefined
 ): StructuredProviderError | undefined {
   const merged: StructuredProviderError = {
     ...(outer.status === undefined ? {} : { status: outer.status }),
@@ -161,10 +166,14 @@ function mergeStructuredProviderErrors(
     ...(outer.reason === undefined ? {} : { reason: outer.reason }),
     ...(outer.detail_category === undefined ? {} : { detail_category: outer.detail_category }),
     ...(outer.retryable === undefined ? {} : { retryable: outer.retryable }),
-    ...(nested?.status !== undefined && outer.status === undefined ? { status: nested.status } : {}),
+    ...(nested?.status !== undefined && outer.status === undefined
+      ? { status: nested.status }
+      : {}),
     ...(nested?.code !== undefined && outer.code === undefined ? { code: nested.code } : {}),
     ...(nested?.type !== undefined && outer.type === undefined ? { type: nested.type } : {}),
-    ...(nested?.reason !== undefined && outer.reason === undefined ? { reason: nested.reason } : {}),
+    ...(nested?.reason !== undefined && outer.reason === undefined
+      ? { reason: nested.reason }
+      : {}),
     ...(nested?.detail_category !== undefined && outer.detail_category === undefined
       ? { detail_category: nested.detail_category }
       : {}),
@@ -182,7 +191,7 @@ function mergeStructuredProviderErrors(
  */
 function readStructuredProviderError(
   error: unknown,
-  depth = 0,
+  depth = 0
 ): StructuredProviderError | undefined {
   if (depth > 3) return undefined;
 
@@ -197,7 +206,8 @@ function readStructuredProviderError(
       typeof error.type === 'string' && error.type.length > 0
         ? error.type.toLowerCase()
         : undefined;
-    const nested = error.data === undefined ? undefined : readStructuredProviderError(error.data, depth + 1);
+    const nested =
+      error.data === undefined ? undefined : readStructuredProviderError(error.data, depth + 1);
     return mergeStructuredProviderErrors(
       {
         ...(error.statusCode === undefined ? {} : { status: error.statusCode }),
@@ -205,21 +215,23 @@ function readStructuredProviderError(
         ...(type === undefined ? {} : { type }),
         retryable: error.isRetryable,
       },
-      nested,
+      nested
     );
   }
 
   if (error instanceof Error) {
     const causeValue = Reflect.get(error, 'cause');
-    const cause = causeValue === undefined ? undefined : readStructuredProviderError(causeValue, depth + 1);
+    const cause =
+      causeValue === undefined ? undefined : readStructuredProviderError(causeValue, depth + 1);
     const data = Reflect.get(error, 'data');
-    const nestedData = data === undefined ? undefined : readStructuredProviderError(data, depth + 1);
+    const nestedData =
+      data === undefined ? undefined : readStructuredProviderError(data, depth + 1);
     const nested = mergeStructuredProviderErrors(cause ?? {}, nestedData);
     // ollama-js 会把流中的 NDJSON `{ error }` 转成普通 Error(message)，这里只提取
     // 稳定类别；原始 message 不能进入 canonical failure、诊断日志或用户可见结果。
     const detailCategory = readProviderDetail(error.message);
     const status = readHttpStatus(
-      Reflect.get(error, 'status_code') ?? Reflect.get(error, 'statusCode'),
+      Reflect.get(error, 'status_code') ?? Reflect.get(error, 'statusCode')
     );
     const codeValue = Reflect.get(error, 'code');
     const code =
@@ -229,13 +241,13 @@ function readStructuredProviderError(
           ? codeValue.toLowerCase()
           : undefined;
     const typeValue = Reflect.get(error, 'type');
-    const type = typeof typeValue === 'string' && typeValue.length > 0
-      ? typeValue.toLowerCase()
-      : undefined;
+    const type =
+      typeof typeValue === 'string' && typeValue.length > 0 ? typeValue.toLowerCase() : undefined;
     const reasonValue = Reflect.get(error, 'reason');
-    const reason = typeof reasonValue === 'string' && reasonValue.length > 0
-      ? reasonValue.toLowerCase()
-      : undefined;
+    const reason =
+      typeof reasonValue === 'string' && reasonValue.length > 0
+        ? reasonValue.toLowerCase()
+        : undefined;
     // ai-sdk-ollama 用普通 Error 包装原生客户端的 `{ error }`，该包装没有 status/code。
     return mergeStructuredProviderErrors(
       {
@@ -246,7 +258,7 @@ function readStructuredProviderError(
         ...(detailCategory === undefined ? {} : { detail_category: detailCategory }),
         ...(error.name === 'OllamaError' ? { retryable: true } : {}),
       },
-      nested,
+      nested
     );
   }
 
@@ -257,33 +269,34 @@ function readStructuredProviderError(
   const type = readOptionalString(record, 'type');
   const reason = readOptionalString(record, 'reason');
   const retryable = readOptionalBoolean(record, 'isRetryable', 'is_retryable', 'retryable');
-  const nested = record.error === undefined
-    ? undefined
-    : readStructuredProviderError(record.error, depth + 1);
+  const nested =
+    record.error === undefined ? undefined : readStructuredProviderError(record.error, depth + 1);
   const detailCategory = readProviderDetail(record.error);
 
-  // @ai-sdk/openai 在 Responses 流已经产生输出后，会把 response.failed 作为嵌套普通对象交给 Core。
+  // @ai-sdk/openai 会把 Responses 的 response.failed 作为嵌套普通对象交给 Core；
+  // 它既可能是首个终态，也可能发生在已有部分输出之后。
   const response = isRecord(record.response) ? record.response : undefined;
   const responseError = isRecord(response?.error) ? response.error : undefined;
   const incompleteDetails = isRecord(response?.incomplete_details)
     ? response.incomplete_details
     : undefined;
-  const responseFailure = type === 'response.failed'
-    ? {
-        ...(readHttpStatus(responseError?.code) === undefined
-          ? {}
-          : { status: readHttpStatus(responseError?.code) }),
-        ...(responseError === undefined
-          ? {}
-          : (() => {
-              const responseCode = readOptionalString(responseError, 'code');
-              return responseCode === undefined ? {} : { code: responseCode };
-            })()),
-        ...(incompleteDetails === undefined
-          ? {}
-          : { reason: readOptionalString(incompleteDetails, 'reason') }),
-      }
-    : {};
+  const responseFailure =
+    type === 'response.failed'
+      ? {
+          ...(readHttpStatus(responseError?.code) === undefined
+            ? {}
+            : { status: readHttpStatus(responseError?.code) }),
+          ...(responseError === undefined
+            ? {}
+            : (() => {
+                const responseCode = readOptionalString(responseError, 'code');
+                return responseCode === undefined ? {} : { code: responseCode };
+              })()),
+          ...(incompleteDetails === undefined
+            ? {}
+            : { reason: readOptionalString(incompleteDetails, 'reason') }),
+        }
+      : {};
 
   return mergeStructuredProviderErrors(
     {
@@ -299,7 +312,7 @@ function readStructuredProviderError(
         : { retryable }),
       ...responseFailure,
     },
-    nested,
+    nested
   );
 }
 
@@ -325,6 +338,14 @@ export function projectAiSdkProviderSignal(error: unknown): AiSdkProviderSignal 
 }
 
 function classifyStructuredProviderError(error: StructuredProviderError): AiSdkFailureProjection {
+  if (
+    error.code === 'invalid_prompt' ||
+    error.reason === 'invalid_prompt' ||
+    error.type === 'invalid_prompt' ||
+    error.detail_category === 'invalid_prompt'
+  ) {
+    return { kind: 'provider', code: 'provider_invalid_prompt', retryable: false };
+  }
   // AI SDK 7 会从 response.failed 的 message 推断出 500；canonical code 仍按流中途失败语义保持稳定。
   if (error.type === 'response.failed' && (error.status === undefined || error.status >= 500)) {
     return { kind: 'provider', code: 'provider_stream_unavailable', retryable: true };

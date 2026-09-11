@@ -26,8 +26,16 @@ describe('default model routing policy', () => {
   });
 
   it('不从错误文案猜 Provider 语义', () => {
-    expect(createDefaultModelRoutingPolicy().decideOnError(
-      new Error('user location is not supported; missing thought_signature')
-    )).toEqual({ action: 'none' });
+    expect(
+      createDefaultModelRoutingPolicy().decideOnError(
+        new Error('user location is not supported; missing thought_signature')
+      )
+    ).toEqual({ action: 'none' });
+  });
+
+  it('invalid_prompt 只作为当前请求失败，不触发切模', () => {
+    expect(
+      createDefaultModelRoutingPolicy().decideOnError(canonicalFailure('provider_invalid_prompt'))
+    ).toEqual({ action: 'none' });
   });
 });

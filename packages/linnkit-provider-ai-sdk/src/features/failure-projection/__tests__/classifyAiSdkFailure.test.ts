@@ -119,6 +119,24 @@ describe('classifyAiSdkFailure', () => {
     });
   });
 
+  it('把 HTTP 400 的 invalid_prompt 投影为独立 failure code', () => {
+    const error = new APICallError({
+      message: 'provider rejected request',
+      url: 'https://fixture.invalid/v1/responses',
+      requestBodyValues: { input: 'secret prompt' },
+      statusCode: 400,
+      responseHeaders: {},
+      responseBody: '{"type":"invalid_request_error","code":"invalid_prompt"}',
+      isRetryable: false,
+    });
+
+    expect(classifyAiSdkFailure(error, undefined)).toEqual({
+      kind: 'provider',
+      code: 'provider_invalid_prompt',
+      retryable: false,
+    });
+  });
+
   it('把流式结构化 Provider 错误识别为可重试上游故障且不传播 message', () => {
     const failure = classifyAiSdkFailure(
       {
@@ -161,7 +179,7 @@ describe('classifyAiSdkFailure', () => {
         error: 'context length exceeded: sensitive prompt details',
       },
       undefined,
-      'provider_stream',
+      'provider_stream'
     );
 
     expect(failure).toEqual({
@@ -184,11 +202,13 @@ describe('classifyAiSdkFailure', () => {
   });
 
   it('识别 ollama-js 将 NDJSON error chunk 转成普通 Error 后的上下文过大类别', () => {
-    expect(classifyAiSdkFailure(
-      new Error('context length exceeded: sensitive prompt details'),
-      undefined,
-      'provider_stream',
-    )).toEqual({
+    expect(
+      classifyAiSdkFailure(
+        new Error('context length exceeded: sensitive prompt details'),
+        undefined,
+        'provider_stream'
+      )
+    ).toEqual({
       kind: 'provider',
       code: 'provider_request_too_large',
       retryable: false,
@@ -256,15 +276,38 @@ describe('classifyAiSdkFailure', () => {
         },
       }),
       undefined,
-      'provider_stream',
+      'provider_stream'
     );
 
+    expect(observation.failure).toEqual({
+      kind: 'provider',
+      code: 'provider_invalid_prompt',
+      retryable: false,
+    });
     expect(observation.diagnostic.provider_signal).toEqual({
       type: 'response.failed',
       code: 'invalid_request_error',
       reason: 'invalid_prompt',
     });
     expect(JSON.stringify(observation)).not.toContain('secret prompt detail');
+  });
+
+  it('把首个流终态携带的 invalid_prompt 识别为请求级失败', () => {
+    expect(
+      classifyAiSdkFailure(
+        {
+          type: 'invalid_request_error',
+          code: 'invalid_prompt',
+          status: 400,
+        },
+        undefined,
+        'provider_stream'
+      )
+    ).toEqual({
+      kind: 'provider',
+      code: 'provider_invalid_prompt',
+      retryable: false,
+    });
   });
 
   it('识别 OpenAI Responses 在已有输出后的嵌套 response.failed', () => {
