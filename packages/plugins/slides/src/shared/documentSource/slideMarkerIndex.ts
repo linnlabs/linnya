@@ -86,9 +86,9 @@ function buildRangesFromCreateSlideAst(source: string, lines: string[]): SlideSo
   });
   const startLines: number[] = [];
 
-  function visit(value: unknown): void {
+  function visit(value: unknown, nested = false): void {
     if (Array.isArray(value)) {
-      value.forEach(visit);
+      value.forEach(child => visit(child, nested));
       return;
     }
     if (!isRecord(value)) {
@@ -96,13 +96,22 @@ function buildRangesFromCreateSlideAst(source: string, lines: string[]): SlideSo
     }
 
     if (isCreateSlideCall(value)) {
+      if (nested) {
+        throw new SlideMarkerIndexError('line_range_invalid',
+          '检测到非顶层 createSlide()：每页必须在模块顶层显式创建；helper 只能复用页内节点。');
+      }
       const location = readStartLine(value);
       if (location !== null) {
         startLines.push(location);
       }
     }
 
-    Object.values(value).forEach(visit);
+    const insideControlFlow = nested || (typeof value.type === 'string' && [
+      'FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression',
+      'ForStatement', 'ForOfStatement', 'ForInStatement', 'WhileStatement', 'DoWhileStatement',
+      'IfStatement', 'ConditionalExpression', 'SwitchStatement',
+    ].includes(value.type));
+    Object.values(value).forEach(child => visit(child, insideControlFlow));
   }
 
   visit(sourceFile);

@@ -18,6 +18,9 @@ import { SlideMarkerIndex } from './slideMarkerIndex';
  */
 
 describe('SlideMarkerIndex (AST-only分页)', () => {
+  it.each(['function page() { return createSlide(); }', 'for (;;) { createSlide(); break; }'])('非顶层产页明确指出源码合同：%s', source => {
+    expect(() => SlideMarkerIndex.build(source)).toThrow('非顶层 createSlide()');
+  });
   it('linear createSlide() calls map 1:1 to slides with end line inferred from next call / EOF', () => {
     const source = [
       'const accent = "#fff";',

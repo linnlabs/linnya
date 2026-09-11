@@ -1,4 +1,5 @@
 import {
+  getDiagnosticAction,
   projectDiagnosticFindings,
   summarizeDiagnosticProjection,
   type PresentationInspectionResult,
@@ -55,6 +56,7 @@ export function buildSlidesCliInspectionReport(
       const policy = getDiagnosticCodePolicy(finding.code);
       return {
         ...finding,
+        action: getDiagnosticAction(finding.code),
         scope: policy.scope,
         category: policy.category,
         priority: classifyDiagnosticPriority(finding),

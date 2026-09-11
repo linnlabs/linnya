@@ -25,7 +25,7 @@ export async function executeSlidesCliCommand(
       const report = buildSlidesCliRenderReport(command, result);
       return {
         exitCode: SlidesCliExitCode.SUCCESS,
-        stdout: `${JSON.stringify(report)}\n`,
+        stdout: `${JSON.stringify(report, null, command.format === 'pretty' ? 2 : undefined)}\n`,
         stderr: '',
       };
     }
@@ -38,7 +38,7 @@ export async function executeSlidesCliCommand(
     const report = buildSlidesCliInspectionReport(inspection);
     return {
       exitCode: SlidesCliExitCode.SUCCESS,
-      stdout: `${JSON.stringify(report)}\n`,
+      stdout: `${JSON.stringify(report, null, command.format === 'pretty' ? 2 : undefined)}\n`,
       stderr: '',
     };
   } catch (error) {

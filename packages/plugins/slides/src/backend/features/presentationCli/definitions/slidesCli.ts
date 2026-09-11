@@ -25,13 +25,13 @@ import type {
 } from '../../presentationScreenshot';
 
 export const SLIDES_CLI_REPORT_KIND = 'linnya.slides.inspection-report' as const;
-export const SLIDES_CLI_REPORT_VERSION = 7 as const;
+export const SLIDES_CLI_REPORT_VERSION = 8 as const;
 export const SLIDES_CLI_FONT_CHECK_KIND = 'linnya.slides.font-check' as const;
 export const SLIDES_CLI_FONT_LIST_KIND = 'linnya.slides.font-list' as const;
 export const SLIDES_CLI_FONT_REPORT_VERSION = 1 as const;
 export const SLIDES_CLI_RENDER_REPORT_KIND = 'linnya.slides.render-report' as const;
 export const SLIDES_CLI_RENDER_REPORT_VERSION = 1 as const;
-export const SLIDES_CLI_VERSION = '1.7.0' as const;
+export const SLIDES_CLI_VERSION = '1.8.0' as const;
 
 export const SlidesCliExitCode = {
   SUCCESS: 0,
@@ -46,6 +46,7 @@ export const SlidesCliExitCode = {
 export type SlidesCliExitCode = (typeof SlidesCliExitCode)[keyof typeof SlidesCliExitCode];
 
 interface SlidesCliPresentationCommandBase {
+  readonly format?: 'json' | 'pretty';
   readonly databasePath?: string;
   readonly presentationId: string;
 }
@@ -65,11 +66,13 @@ export interface SlidesCliInspectCommand extends SlidesCliPresentationCommandBas
 export type SlidesCliPresentationCommand = SlidesCliRenderCommand | SlidesCliInspectCommand;
 
 export interface SlidesCliFontCheckCommand {
+  readonly format?: 'json' | 'pretty';
   readonly kind: 'fonts-check';
   readonly family: string;
 }
 
 export interface SlidesCliFontListCommand {
+  readonly format?: 'json' | 'pretty';
   readonly kind: 'fonts-list';
   readonly request: PluginFontFamilyListRequest;
 }
@@ -128,6 +131,7 @@ export class SlidesCliError extends Error {
 
 /** CLI 审计投影补充 registry 派生维度；finding 事实本身不重复存储它们。 */
 export type SlidesCliDiagnosticFinding = DiagnosticFinding & {
+  readonly action: string;
   readonly scope: DiagnosticScope;
   readonly category: DiagnosticCategory;
   readonly priority: DiagnosticPriority;
