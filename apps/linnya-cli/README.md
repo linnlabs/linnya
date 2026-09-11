@@ -243,3 +243,9 @@ pnpm build:linnya-cli
 CLI 新能力应先成为 Host application use case 的窄 public contract，再通过 bridge 暴露，最后接入命令；不能从 CLI 直接绕过现有控制面。
 
 Workspace 五件套的参数、locator 与 pending revision 语义见 [`src/tools/workspace/README.md`](../../src/tools/workspace/README.md)。
+
+### 项目发现
+
+先运行 `pnpm --silent linnya:cli projects`，从响应的 `projects[].project_id` 选择 `tools call --project` 或 `send --project` 的目标。命令复用当前 App 的 Workspace owner，仅返回未删除项目的 ID 和名称；旧 App 未声明 `projects` capability 时会明确拒绝。
+
+写入后若构建失败，文档可能保存为 draft；`read_file` 的 `sourceOrigin: draft` 表示当前草稿源码，而版本 ID/编号仍对应最后成功 revision。这不代表成功构建；请结合 error diagnostics 与 build failure 判断，并在修复后重新写入。

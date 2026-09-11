@@ -49,6 +49,7 @@ function createUseCase(
     execute,
     send: unused,
     models: unused,
+    projects: unused,
     list: unused,
     messages: unused,
     status: unused,

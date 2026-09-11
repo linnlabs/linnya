@@ -29,6 +29,7 @@ export function linnyaCliUsage(): string {
     'Usage:',
     '  linnya send <message> [--conversation ID] [--agent ID] [--project ID] [--model ID] [--image-model ID] [--reasoning LEVEL]',
     '  linnya models',
+    '  linnya projects',
     '  linnya list [--limit N] [--cursor CURSOR] [--search TEXT] [--project ID]',
     '  linnya messages <conversation-id> [--before N | --after N] [--limit N]',
     '  linnya status <conversation-id> [--run ID] [--watch] [--interval MS] [--timeout MS]',

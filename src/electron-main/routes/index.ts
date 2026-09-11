@@ -177,6 +177,7 @@ import { createLocalManagedStorageInventoryPort } from 'src/infra/adapters/stora
 import { createStorageSpaceRouter } from 'src/features/storage-space/storageSpace.router';
 import { CONVERSATION_CONTROL_BRIDGE_PATH } from '@app/schemas';
 import type { ConversationControlUseCase } from 'src/app-hosts/linnya/application/conversation-control';
+import { WorkspaceService } from '../services/workspace/workspace';
 import type { BackendRendererIntegrationPort } from 'src/app-hosts/linnya/desktop-capabilities';
 import {
   createConversationControlBridgeRouter,
@@ -734,6 +735,7 @@ export async function configureRoutes(
     );
     historyService = initializedHistoryService;
     conversationControlUseCase = createLinnyaConversationControlUseCase({
+      workspace: new WorkspaceService(db),
       flow: initializedFlowOrchestrator,
       runs: agentRuntime.supervisor,
       executionProgress: checkpointer,

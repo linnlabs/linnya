@@ -62,7 +62,7 @@ async function createScriptedBridge(
           app_instance_id: 'app-process-test',
           app_version: '0.0.38',
           capabilities: [
-            'send', 'models', 'list', 'messages', 'status', 'respond', 'stop', 'result',
+            'send', 'models', 'projects', 'list', 'messages', 'status', 'respond', 'stop', 'result',
             'audit', 'workspace_tools',
           ],
           limits: {
@@ -168,6 +168,21 @@ describe('linnya CLI real process -> scripted bridge', () => {
       command: 'workspace_tools',
       action: 'list',
     }]);
+  });
+
+  it('真实子进程列举可用于写入的项目 ID', async () => {
+    const bridge = await createScriptedBridge(request => {
+      if (request.command !== 'projects') throw new Error('expected projects command');
+      return { schema_version: 1, ok: true, command: 'projects',
+        projects: [{ project_id: 'project-1', name: '演示文稿' }] };
+    });
+    const result = await runCliProcess(['projects'], bridge.connectionFile);
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      command: 'projects', projects: [{ project_id: 'project-1', name: '演示文稿' }],
+    });
+    expect(bridge.receivedCommands).toEqual([{ schema_version: 1, command: 'projects' }]);
   });
 
   it('真实子进程查询当前 App 的可调用模型', async () => {

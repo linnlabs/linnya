@@ -4,13 +4,13 @@ import {
   ConversationControlCommandRequestSchema,
   ConversationControlListRequestSchema,
   ConversationControlModelsRequestSchema,
+  ConversationControlProjectsRequestSchema,
   ConversationControlMessagesRequestSchema,
   ConversationControlRespondRequestSchema,
   ConversationControlResultRequestSchema,
   ConversationControlSendRequestSchema,
   ConversationControlStatusRequestSchema,
   ConversationControlStopRequestSchema,
-  ConversationControlWorkspaceToolsRequestSchema,
   ConversationControlWorkspaceToolsCallRequestSchema,
   ConversationControlWorkspaceToolsDescribeRequestSchema,
   ConversationControlWorkspaceToolsListRequestSchema,
@@ -162,6 +162,15 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
         cursor: readString(tokens, 'cursor'),
         search: readString(tokens, 'search'),
         project_id: readString(tokens, 'project'),
+      });
+      return { kind: 'command', request, pretty };
+    }
+    case 'projects': {
+      assertAllowedOptions(tokens, []);
+      if (tokens.positionals.length > 0) usageError('projects does not accept positional arguments');
+      const request = ConversationControlProjectsRequestSchema.parse({
+        schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+        command: 'projects',
       });
       return { kind: 'command', request, pretty };
     }

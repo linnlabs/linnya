@@ -41,7 +41,7 @@ function createClient(
       app_instance_id: 'app-1',
       app_version: '0.0.38',
       capabilities: [
-        'send', 'models', 'list', 'messages', 'status', 'respond', 'stop', 'result',
+        'send', 'models', 'projects', 'list', 'messages', 'status', 'respond', 'stop', 'result',
         'workspace_tools',
       ],
       limits: {

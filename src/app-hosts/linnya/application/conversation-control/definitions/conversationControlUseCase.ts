@@ -7,6 +7,8 @@ import type {
   ConversationControlListResponse,
   ConversationControlModelSummary,
   ConversationControlModelsRequest,
+  ConversationControlProjectsRequest,
+  ConversationControlProjectsResponse,
   ConversationControlModelsResponse,
   ConversationControlMessagesRequest,
   ConversationControlMessagesResponse,
@@ -190,6 +192,7 @@ export interface ConversationControlUseCasePorts {
   readonly runs: ConversationControlRunPort;
   readonly executionProgress: ConversationControlExecutionProgressPort;
   readonly models: ConversationControlModelCatalogPort;
+  readonly projects: { list(): ConversationControlProjectsResponse['projects'] };
   readonly history: ConversationControlHistoryPort;
   readonly workspaceTools: ConversationControlWorkspaceToolCatalogPort;
   readonly audit: ExecutionAuditExportUseCase;
@@ -201,6 +204,7 @@ export interface ConversationControlUseCase {
   execute(request: ConversationControlCommandRequest): Promise<
     | ConversationControlSendResponse
     | ConversationControlModelsResponse
+    | ConversationControlProjectsResponse
     | ConversationControlListResponse
     | ConversationControlMessagesResponse
     | ConversationControlStatusResponse
@@ -211,6 +215,7 @@ export interface ConversationControlUseCase {
     | ConversationControlWorkspaceToolsResponse
   >;
   send(request: ConversationControlSendRequest): Promise<ConversationControlSendResponse>;
+  projects(request: ConversationControlProjectsRequest): Promise<ConversationControlProjectsResponse>;
   models(request: ConversationControlModelsRequest): Promise<ConversationControlModelsResponse>;
   list(request: ConversationControlListRequest): Promise<ConversationControlListResponse>;
   messages(request: ConversationControlMessagesRequest): Promise<ConversationControlMessagesResponse>;

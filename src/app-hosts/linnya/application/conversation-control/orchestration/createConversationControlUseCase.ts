@@ -241,6 +241,7 @@ export function createConversationControlUseCase(
       switch (request.command) {
         case 'send': return useCase.send(request);
         case 'models': return useCase.models(request);
+        case 'projects': return useCase.projects(request);
         case 'list': return useCase.list(request);
         case 'messages': return useCase.messages(request);
         case 'status': return useCase.status(request);
@@ -300,6 +301,15 @@ export function createConversationControlUseCase(
           agent_id: acceptance.agentId,
           accepted_at: acceptance.acceptedAt,
         },
+      };
+    },
+
+    async projects() {
+      return {
+        schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+        ok: true,
+        command: 'projects',
+        projects: ports.projects.list(),
       };
     },
 
