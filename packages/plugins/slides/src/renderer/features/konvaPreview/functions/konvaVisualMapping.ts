@@ -58,6 +58,7 @@ export function resolveKonvaShapeFillConfig(
   width: number,
   height: number,
   fillOpacity?: number,
+  origin: KonvaPoint = { x: 0, y: 0 },
 ): KonvaShapeFillConfig {
   if (!fill || fill.type === 'none') {
     return {};
@@ -73,21 +74,7 @@ export function resolveKonvaShapeFillConfig(
   ]);
 
   if (fill.type === 'radial') {
-    const center = fill.center ?? { x: 0.5, y: 0.5 };
-    const radius = fill.radius ?? { x: 0.5, y: 0.5 };
-    const point = {
-      x: round3(width * center.x),
-      y: round3(height * center.y),
-    };
-    return {
-      fillRadialGradientStartPoint: point,
-      fillRadialGradientEndPoint: point,
-      fillRadialGradientStartRadius: 0,
-      // Konva 的径向 API 使用单一半径；取两个归一化轴映射后的较大值，
-      // 让渐变至少覆盖完整边界框，非正方形一致性由视觉校准用例持续约束。
-      fillRadialGradientEndRadius: round3(Math.max(width * radius.x, height * radius.y)),
-      fillRadialGradientColorStops: colorStops,
-    };
+    throw new Error('Radial Paint requires the shared elliptical scene renderer');
   }
 
   // 0° 向右、90° 向下、顺时针测量；OOXML adapter 必须复用同一角度合同。
@@ -97,8 +84,8 @@ export function resolveKonvaShapeFillConfig(
   const axis = resolveLinearGradientAxis(fill.angle, width, height);
 
   return {
-    fillLinearGradientStartPoint: axis.start,
-    fillLinearGradientEndPoint: axis.end,
+    fillLinearGradientStartPoint: { x: axis.start.x + origin.x, y: axis.start.y + origin.y },
+    fillLinearGradientEndPoint: { x: axis.end.x + origin.x, y: axis.end.y + origin.y },
     fillLinearGradientColorStops: colorStops,
   };
 }
@@ -107,6 +94,7 @@ export function resolveKonvaShapeStrokeConfig(
   stroke: RenderFill | undefined,
   width: number,
   height: number,
+  origin: KonvaPoint = { x: 0, y: 0 },
 ): KonvaShapeStrokeConfig {
   if (!stroke || stroke.type === 'none' || stroke.type === 'radial') return {};
   if (stroke.type === 'solid') {
@@ -115,8 +103,8 @@ export function resolveKonvaShapeStrokeConfig(
 
   const axis = resolveLinearGradientAxis(stroke.angle, width, height);
   return {
-    strokeLinearGradientStartPoint: axis.start,
-    strokeLinearGradientEndPoint: axis.end,
+    strokeLinearGradientStartPoint: { x: axis.start.x + origin.x, y: axis.start.y + origin.y },
+    strokeLinearGradientEndPoint: { x: axis.end.x + origin.x, y: axis.end.y + origin.y },
     strokeLinearGradientColorStops: stroke.stops.flatMap((stop) => [
       stop.position,
       applyColorOpacity(stop.color, stop.opacity),

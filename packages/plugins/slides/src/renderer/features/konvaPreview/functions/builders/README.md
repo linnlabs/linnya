@@ -131,3 +131,5 @@ konva-builders/
 - `packages/plugins/slides/src/renderer/features/konvaPreview/functions/konvaVisualMapping.test.ts`
 - `packages/plugins/slides/src/renderer/features/konvaPreview/functions/shapePathPresets.test.ts`
 - 跨端对齐：`packages/plugins/slides/src/backend/__tests__/render-pptx-alignment.test.ts`
+
+径向填充使用共享 sceneFunc，在目标 Canvas 上变换渐变坐标并反向归一原始路径，保持轮廓与阴影，不产生位图或异步资源。Ellipse 的局部坐标以中心为原点，填充与描边渐变都必须减去半边长；其余原语以左上角为原点。

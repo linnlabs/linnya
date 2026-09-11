@@ -1,3 +1,4 @@
+import { createRadialGradientScene } from '../radialGradientScene';
 import type { ShapeConfig } from 'konva/lib/Shape';
 import type { EllipseConfig } from 'konva/lib/shapes/Ellipse';
 import type { LineConfig } from 'konva/lib/shapes/Line';
@@ -25,8 +26,8 @@ export type KonvaShapePrimitive = 'rect' | 'ellipse' | 'line' | 'path';
 export type KonvaShapeRenderInstruction =
   | { primitive: 'rect'; config: RectConfig }
   | { primitive: 'ellipse'; config: EllipseConfig }
-  | { primitive: 'line'; config: LineConfig }
-  | { primitive: 'path'; config: PathConfig };
+  | { primitive: 'line'; config: LineConfig & { points: number[] } }
+  | { primitive: 'path'; config: PathConfig & { data: string } };
 
 type KonvaShapeVisualConfig = KonvaShapeFillConfig & KonvaShapeStrokeConfig & Pick<
   ShapeConfig,
@@ -67,9 +68,36 @@ export function buildShapeGroupConfig(node: ShapeRenderNode) {
  * 任何“geometry 用什么原语”的判断都应该改这里、不要在调用方再分支。
  */
 export function buildShapeRenderInstruction(node: ShapeRenderNode): KonvaShapeRenderInstruction {
+  const instruction = buildBaseShapeRenderInstruction(node);
+  if (node.fill?.type !== 'radial') return instruction;
   const width = node.box.w * INCHES_TO_PX;
   const height = node.box.h * INCHES_TO_PX;
-  const fillConfig = resolveKonvaShapeFillConfig(node.fill, width, height, node.opacity);
+  Object.assign(instruction.config, createRadialGradientScene(node.fill, width, height, () => {
+    const path = new Path2D();
+    switch (instruction.primitive) {
+      case 'ellipse': path.ellipse(0, 0, width / 2, height / 2, 0, 0, Math.PI * 2); break;
+      case 'rect': path.roundRect(0, 0, width, height, instruction.config.cornerRadius ?? 0); break;
+      case 'path': return new Path2D(instruction.config.data);
+      case 'line': {
+        const points = instruction.config.points;
+        path.moveTo(points[0], points[1]);
+        for (let index = 2; index < points.length; index += 2) path.lineTo(points[index], points[index + 1]);
+        if (instruction.config.closed) path.closePath();
+        break;
+      }
+    }
+    return path;
+  }, node.opacity, instruction.primitive === 'ellipse' ? { x: -width / 2, y: -height / 2 } : undefined));
+  return instruction;
+}
+
+function buildBaseShapeRenderInstruction(node: ShapeRenderNode): KonvaShapeRenderInstruction {
+  const width = node.box.w * INCHES_TO_PX;
+  const height = node.box.h * INCHES_TO_PX;
+  const origin = node.geometry.type === 'preset' && node.geometry.name === 'ellipse'
+    ? { x: -width / 2, y: -height / 2 } : { x: 0, y: 0 };
+  const fillConfig = node.fill?.type === 'radial' ? {}
+    : resolveKonvaShapeFillConfig(node.fill, width, height, node.opacity, origin);
   const strokeConfig = buildStrokeConfig(node);
   const shadowConfig = buildShadowConfig(node);
   const baseVisual = {
@@ -243,6 +271,8 @@ function buildStrokeConfig(
       stroke.paint,
       node.box.w * INCHES_TO_PX,
       node.box.h * INCHES_TO_PX,
+      node.geometry.type === 'preset' && node.geometry.name === 'ellipse'
+        ? { x: -node.box.w * INCHES_TO_PX / 2, y: -node.box.h * INCHES_TO_PX / 2 } : undefined,
     ),
     strokeWidth: stroke.width * POINTS_TO_PX,
     dash: stroke.dash === 'dash' ? [8, 4] : stroke.dash === 'dot' ? [2, 4] : undefined,

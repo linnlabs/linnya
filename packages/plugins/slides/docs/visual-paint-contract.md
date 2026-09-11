@@ -78,3 +78,5 @@ linear 使用 `a:lin`。radial 使用圆形 `a:path`，焦点由 `a:fillToRect` 
 8. PowerPoint ground-truth 视觉 smoke。
 
 结构测试只能证明 XML 节点位置，不能代替 PowerPoint、LibreOffice 或 Keynote 的实际插值验证。
+
+径向预览通过目标 Canvas 的 sceneFunc 变换表达 `width × radius.x` 与 `height × radius.y`，不能取两轴最大值压成圆。Ellipse 原语的中心坐标必须转换到局部坐标；页面背景与其他 Shape 使用同一 scene renderer。

@@ -9,7 +9,6 @@ import type {
   ImageVisualShadow,
   ShapeStyle,
   ShapeStrokeStyle,
-  SlideBackgroundGradient,
   TextStyle,
   ThemeSpec,
 } from '@plugin/slides/shared';

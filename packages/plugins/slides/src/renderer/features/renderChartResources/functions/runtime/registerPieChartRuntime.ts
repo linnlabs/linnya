@@ -1,6 +1,6 @@
 import { PieChart } from 'echarts/charts';
-import { LegendComponent } from 'echarts/components';
+import { GraphicComponent, LegendComponent } from 'echarts/components';
 import { LabelLayout } from 'echarts/features';
 import { echarts } from './echartsCoreRuntime';
 
-echarts.use([PieChart, LegendComponent, LabelLayout]);
+echarts.use([GraphicComponent, PieChart, LegendComponent, LabelLayout]);

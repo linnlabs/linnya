@@ -25,7 +25,6 @@ import {
 } from './themeChart';
 import {
   failure,
-  normalizeFillColor,
   normalizeOpaqueColor,
   normalizeShadowColor,
   success,

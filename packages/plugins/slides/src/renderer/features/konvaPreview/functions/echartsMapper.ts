@@ -17,7 +17,7 @@ import type {
   RenderChartType,
 } from '../../../types/render';
 import { CHART_DEFAULT_LABEL_FONT_SIZE_PT } from '@plugin/slides/shared/renderModel';
-import { SLIDES_RENDER_COLORS } from '../../../shared/constants';
+import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../shared/constants';
 
 // ─── 常量 ────────────────────────────────────────────────────────────────
 
@@ -260,6 +260,7 @@ function buildPieChart(
     itemStyle: { color: palette[idx % palette.length] },
   }));
 
+  const legendPosition = node.legend?.position ?? 'right';
   const dlVisible = node.dataLabels?.visible === true;
   const dlFormat = node.dataLabels?.format;
   const dlFont = resolveFontStyle(node.dataLabels?.labelStyle, node.labelStyle);
@@ -267,16 +268,17 @@ function buildPieChart(
   return {
     animation: false,
     backgroundColor: CHART_BG,
+    graphic: buildNonCartesianPlotBackground(node),
     color: palette,
     series: [{
       type: 'pie',
       data,
       radius,
       // 饼图也为图例留通道；标签允许换行，避免 ECharts 默认省略正文。
-      left: node.legend?.visible && node.legend.position === 'left' ? '18%' : 0,
-      right: node.legend?.visible && node.legend.position === 'right' ? '18%' : 0,
-      top: node.legend?.visible && node.legend.position === 'top' ? '18%' : 0,
-      bottom: node.legend?.visible && node.legend.position === 'bottom' ? '18%' : 0,
+      left: node.legend?.visible && legendPosition === 'left' ? '18%' : 0,
+      right: node.legend?.visible && legendPosition === 'right' ? '18%' : 0,
+      top: node.legend?.visible && legendPosition === 'top' ? '18%' : 0,
+      bottom: node.legend?.visible && legendPosition === 'bottom' ? '18%' : 0,
       center: ['50%', '50%'],
       label: {
         overflow: 'break',
@@ -295,7 +297,7 @@ function buildPieChart(
       },
       labelLine: { show: dlVisible },
     }],
-    legend: buildLegendConfig(node),
+    legend: buildLegendConfig(node, node.categories),
   };
 }
 
@@ -324,7 +326,7 @@ function buildRadarChart(
     const item: Record<string, unknown> = {
       name: s.name,
       value: s.values,
-      lineStyle: { color, width: 2 },
+      lineStyle: { color, width: (node.seriesLineWidth ?? node.pptxHints?.lineSize ?? PPT.lineWidthPt) * POINTS_TO_PX },
       itemStyle: { color },
       symbol: 'none',
       symbolSize: 0,
@@ -344,6 +346,7 @@ function buildRadarChart(
   return {
     animation: false,
     backgroundColor: CHART_BG,
+    graphic: buildNonCartesianPlotBackground(node),
     color: palette,
     radar: {
       indicator,
@@ -372,6 +375,25 @@ function buildRadarChart(
   };
 }
 
+/** 饼图/雷达图没有 ECharts grid，绘图区色必须独立于含图例的 chart 背景。 */
+function buildNonCartesianPlotBackground(node: ChartRenderNode): Record<string, unknown>[] {
+  if (!node.plotBackgroundColor) return [];
+  const position = node.legend?.visible ? node.legend.position ?? 'right' : undefined;
+  const left = position === 'left' ? 0.18 : 0;
+  const top = position === 'top' ? 0.18 : 0;
+  const width = Math.round(node.box.w * INCHES_TO_PX);
+  const height = Math.round(node.box.h * INCHES_TO_PX);
+  return [{
+    type: 'rect', silent: true, z: -1,
+    shape: {
+      x: width * left, y: height * top,
+      width: width * (position === 'left' || position === 'right' ? 0.82 : 1),
+      height: height * (position === 'top' || position === 'bottom' ? 0.82 : 1),
+    },
+    style: { fill: node.plotBackgroundColor },
+  }];
+}
+
 // ─── Grid 布局 ───────────────────────────────────────────────────────────
 
 function buildGrid(node: ChartRenderNode): Record<string, unknown> {
@@ -391,7 +413,10 @@ function buildGrid(node: ChartRenderNode): Record<string, unknown> {
 
 // ─── 图例 ────────────────────────────────────────────────────────────────
 
-function buildLegendConfig(node: ChartRenderNode): Record<string, unknown> {
+function buildLegendConfig(
+  node: ChartRenderNode,
+  labels = node.series.map(series => series.name),
+): Record<string, unknown> {
   if (!node.legend?.visible) return { show: false };
 
   const pos = node.legend.position ?? 'right';
@@ -399,7 +424,7 @@ function buildLegendConfig(node: ChartRenderNode): Record<string, unknown> {
 
   const config: Record<string, unknown> = {
     show: true,
-    data: node.series.map(s => s.name),
+    data: labels,
     textStyle: {
       fontSize: font.fontSize,
       fontFamily: font.fontFamily,

@@ -36,7 +36,7 @@ describe('echartsMapper', () => {
         series: [{ lineStyle: { width: 4 } }, { lineStyle: { width: 4 } }],
       });
     expect(mapChartNodeToEChartsOption(createChartNode({ ...style, chartType: 'pie' })))
-      .toMatchObject({ series: [{ right: '18%', label: { overflow: 'break' } }] });
+      .toMatchObject({ legend: { data: ['Q1', 'Q2'] }, graphic: [{ style: { fill: '#123456' } }], series: [{ right: '18%', label: { overflow: 'break' } }] });
   });
 
   it('returns a transparent non-animated option for empty chart series', () => {
