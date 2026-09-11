@@ -7,7 +7,6 @@ import type {
   ResolvedLlmInputMessage,
 } from '@linnlabs/linnkit/ports';
 import { llm } from '@linnlabs/linnkit/runtime-kernel';
-import type { ToolModelMessage } from 'ai';
 import { expect } from 'vitest';
 import { findLanguageInferenceRouteProfileForRoute } from '@app/schemas/model-inference';
 
@@ -132,10 +131,11 @@ export async function assertToolImageAiSdkInput(params: {
     base_url: 'https://fixture.invalid/v1',
   };
   const projected = projectCanonicalMessages(capturedRequest.messages, route);
-  const toolMessage = projected.find(
-    (message): message is ToolModelMessage => message.role === 'tool',
-  );
-  const toolResult = toolMessage?.content.find(part => part.type === 'tool-result');
+  const toolMessage = projected.find(message => message.role === 'tool');
+  if (!toolMessage || toolMessage.role !== 'tool') {
+    throw new Error('Expected projected messages to contain a tool result.');
+  }
+  const toolResult = toolMessage.content.find(part => part.type === 'tool-result');
   if (!toolResult || toolResult.output.type !== 'content') {
     throw new Error('Expected projected tool output to contain image content.');
   }
