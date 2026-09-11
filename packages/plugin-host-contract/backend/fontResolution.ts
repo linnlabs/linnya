@@ -118,3 +118,9 @@ export interface PluginSystemFontResolutionRuntime {
 export declare function createSystemFontResolutionRuntime(options: {
   readonly runtimeDataDirectory: string;
 }): PluginSystemFontResolutionRuntime;
+
+/** 保留完整 grapheme，连续相同 face 合并；原始字体请求仍随结果保留。 */
+export declare function resolveFontText(
+  text: string,
+  request: Omit<PluginFontRequest, 'script' | 'requiredCodePoints'>,
+): Array<{ text: string; font: PluginResolvedFont }>;

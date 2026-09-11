@@ -84,6 +84,27 @@ describe('FlexLayoutCompiler', () => {
     resetDefaultTextMeasureServiceForTests();
   });
 
+  it('固定标签与 flex 正文共享一行时保留声明宽度，正文只占剩余空间', () => {
+    const result = compileSlide(makeSlide([
+      makeView([
+        makeText('02', { width: 1.5, fontSize: 100 }),
+        makeText('正文 '.repeat(100), { flex: 1, fontSize: 20 }),
+      ], { flexDirection: 'row', width: 10, height: 2 }),
+    ]), SLIDE_W, SLIDE_H);
+    expect(result.elements[0].position.w).toBeCloseTo(1.5, 5);
+    expect(result.elements[1].position.w).toBeCloseTo(8.5, 5);
+  });
+
+  it('无 flex 的固定主轴尺寸在空间不足时保留，交由越界诊断处理', () => {
+    const result = compileSlide(makeSlide([
+      makeView([
+        makeShape({ width: 6, height: 1 }),
+        makeShape({ width: 6, height: 1 }),
+      ], { flexDirection: 'row', width: 10, height: 2 }),
+    ]), SLIDE_W, SLIDE_H);
+    expect(result.elements.map(element => element.position.w)).toEqual([6, 6]);
+  });
+
   describe('基本 column flex 分配（Slide 默认 column）', () => {
     it('两个等权重子节点平分高度', () => {
       const slide = makeSlide([
@@ -140,8 +161,8 @@ describe('FlexLayoutCompiler', () => {
         layoutNodeId: 'layout:s3:root.0.0',
         positionMode: 'flow',
         declared: { widthInches: 8, heightInches: 1 },
-        finalBox: { x: 0, y: 0, w: 5, h: 1, unit: 'in' },
-        computedRatios: { widthToDeclared: 0.625, heightToDeclared: 1 },
+        finalBox: { x: 0, y: 0, w: 8, h: 1, unit: 'in' },
+        computedRatios: { widthToDeclared: 1, heightToDeclared: 1 },
         parent: {
           nodeId: 'layout:s3:root.0',
           kind: 'layout_container',
@@ -463,6 +484,29 @@ describe('FlexLayoutCompiler', () => {
       approxBox(result.elements[0], 0, 0, SLIDE_W, SLIDE_H);
     });
 
+    it('Chart 的跨端颜色语义会保留到 DirectComposeInput', () => {
+      const slide = makeSlide([{
+        _type: 'Chart',
+        flex: 1,
+        chartType: 'line',
+        categories: ['A', 'B'],
+        series: [{ name: '趋势', values: [1, 2] }],
+        chartStyle: {
+          axisLabelColor: '#475569',
+          dataLabelColor: '#0F172A',
+          gridlineColor: '#CBD5E1',
+        },
+      } as LayoutChartNode]);
+
+      const result = compileSlide(slide, SLIDE_W, SLIDE_H);
+
+      expect(result.elements[0].chartStyle).toEqual({
+        axisLabelColor: '#475569',
+        dataLabelColor: '#0F172A',
+        gridlineColor: '#CBD5E1',
+      });
+    });
+
     it('Table 叶子节点坐标正确', () => {
       const slide = makeSlide([
         ({
@@ -476,6 +520,37 @@ describe('FlexLayoutCompiler', () => {
       expect(result.elements).toHaveLength(1);
       expect(result.elements[0].type).toBe('table');
       approxBox(result.elements[0], 0, 0, SLIDE_W, SLIDE_H);
+    });
+
+    it('Table 的统一边框会归一化为 canonical stroke', () => {
+      const slide = makeSlide([{
+        _type: 'Table',
+        flex: 1,
+        rows: [['A', 'B']],
+        border: { color: '#94A3B8', width: 0.75 },
+      } as LayoutTableNode]);
+
+      const result = compileSlide(slide, SLIDE_W, SLIDE_H);
+
+      expect(result.elements[0].tableBorder).toEqual({
+        width: 0.75,
+        paint: { type: 'solid', color: '#94A3B8' },
+      });
+    });
+
+    it('Table 不接受 Shape 专属的虚线和渐变描边', () => {
+      const borderWithExtraField = { color: '#94A3B8', width: 0.75, dash: 'dash' };
+      const table: LayoutTableNode = {
+        _type: 'Table',
+        flex: 1,
+        rows: [['A']],
+        border: borderWithExtraField,
+      };
+      const slide = makeSlide([table]);
+
+      expect(() => compileSlide(slide, SLIDE_W, SLIDE_H)).toThrow(
+        'Table.border 只支持 { color, width }',
+      );
     });
 
     it('Table 通过 tableData 嵌套传入数据也能正确编译', () => {

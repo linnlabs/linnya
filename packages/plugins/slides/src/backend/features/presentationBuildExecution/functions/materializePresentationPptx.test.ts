@@ -18,8 +18,8 @@ describe('materializePresentationPptx', () => {
       slides: [{ _type: 'Slide', children: [{
         _type: 'View', height: 0.2, padding: 0.2, flexDirection: 'column',
         children: [
-          { _type: 'Text', content: 'Crowded heading', height: 0.26, _sourceSpan: { startLine: 4, endLine: 4 } },
-          { _type: 'Table', rows: [['Category', 'Amount'], ['A', '10']], height: 1, _sourceSpan: { startLine: 5, endLine: 5 } },
+          { _type: 'Text', content: 'Crowded heading', flex: 1, height: 0.26, _sourceSpan: { startLine: 4, endLine: 4 } },
+          { _type: 'Table', rows: [['Category', 'Amount'], ['A', '10']], flex: 1, height: 1, _sourceSpan: { startLine: 5, endLine: 5 } },
         ],
       }] }],
     });

@@ -15,6 +15,7 @@
 ## 归属纪律
 
 - 这里不依赖 Slides、renderer 或 Electron 窗口对象。
+- macOS 同时扫描标准字体目录和 `AssetsV2/com_apple_MobileAsset_Font8` 按需字体资产目录；未下载的字体仍报告未安装，不下载或复制系统字体。
 - `.ttc` collection 是 macOS 字体目录的主路径；扫描时必须枚举所有 face，不能默认取第一个 face。
 - FontCatalog 只缓存系统字体 metadata 与文件身份（path/mtime/size），不复制、不缓存、不打包字体文件本体。
 - FontCatalog 以 `idle -> scanning -> ready | failed` 表达扫描生命周期。查询必须等待 `ready/failed` 真实终态；`failed` 或尚未启动扫描时抛出稳定的 `FontCatalogUnavailableError`，不能返回假的空目录。
@@ -33,3 +34,5 @@
 - 确定性查询与解析测试使用可注入 catalog，并包含 Heiti SC 标点漏报与 regular/bold 竞争语料：`pnpm exec vitest run src/features/font-resolution packages/plugins/slides/src/backend/engine/text/__tests__/font-resolution-integration.test.ts`。
 - 真实系统目录与浏览器渲染 smoke：`pnpm --dir packages/plugins/slides run smoke:raster-worker`。该命令从当前机器分别读取 Latin / East Asian 候选，只使用候选明确返回的 regular+bold 样式，把主题字体经 deck.js、RenderModel 和共享文本布局送入 Electron raster worker，并检查中英文文本产生可见 PNG 像素。
 - 真实 smoke 只能证明“当前机器的候选可进入完整渲染链”，不能把 OS/2 脚本候选提升为某种自然语言的完整字形覆盖证明。
+
+`resolveFontText` 是需要混合字形回退的文本入口：按完整 grapheme 解析 cmap 覆盖，连续同 face、同脚本的片段合并。它保留每段原始请求字体，不让一个缺失汉字替换整段拉丁数字。调用方不能拆开组合字符或把解析 family 写回作者字体声明。

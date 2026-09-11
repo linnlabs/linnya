@@ -46,6 +46,7 @@ export {
   defaultFontResolutionService,
   resetDefaultFontResolutionService,
   resolveFont,
+  resolveFontText,
 } from './orchestration/defaultFontResolutionService.js';
 export {
   DEFAULT_PENALTY_WEIGHTS,

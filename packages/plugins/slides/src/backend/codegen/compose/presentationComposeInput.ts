@@ -10,6 +10,7 @@ import type {
   Box,
   ChartSeries,
   ChartType,
+  LayoutChartStyle,
   DeckSpec,
   FreeformSlideSpec,
   FreeformElement,
@@ -22,6 +23,7 @@ import type {
   MathFormulaSource,
   Paint,
   ShapeStyle,
+  ShapeStrokeStyle,
   ShapeGeometrySpec,
   SourceSpan,
   StructuredElement,
@@ -55,7 +57,14 @@ import {
   formatParseWarnings,
   type ParseWarning,
 } from './inputParsers/parseContext.js';
-import { parseImageVisualShadow, parseTextStyle, parseShapeStyle, readThemeSpecInput } from './inputParsers/styleParsers.js';
+import {
+  parseChartStyle,
+  parseImageVisualShadow,
+  parseTableBorder,
+  parseTextStyle,
+  parseShapeStyle,
+  readThemeSpecInput,
+} from './inputParsers/styleParsers.js';
 import {
   parseChartDataLike,
   parseImageSourceInput,
@@ -135,15 +144,20 @@ export interface DirectElementInput {
   dataLabelFormat?: string;
   /** 图例位置 */
   legendPosition?: string;
+  /** 跨预览/PPTX 的图表颜色语义。 */
+  chartStyle?: LayoutChartStyle;
   /** 内部逃生口：原始 PptxGenJS 选项（不暴露在 tool schema 中） */
   chartOptions?: Record<string, unknown>;
   /* table 专用 */
   headers?: string[];
   rows?: TableCell[][];
+  /** 已归一化的统一表格描边。 */
+  tableBorder?: ShapeStrokeStyle;
   tableOptions?: Record<string, unknown>;
   /** 内部追踪元数据：deck.js 工厂调用所在源码行号。 */
   _sourceSpan?: SourceSpan;
   /** Flex/Yoga 编译后的窄约束事实；不接受用户输入。 */
+  _semanticRole?: string;
   _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
 }
 
@@ -428,6 +442,19 @@ function parseElementInput(
       data: value.data,
     })
     : {};
+  const chartStyleResult = type === 'chart' && value.chartStyle != null
+    ? parseChartStyle(value.chartStyle)
+    : undefined;
+  if (chartStyleResult && 'error' in chartStyleResult) {
+    return { error: `${prefix}.chartStyle: ${chartStyleResult.error}` };
+  }
+  const chartStyle = chartStyleResult?.value;
+  const tableBorder = type === 'table' && value.border != null
+    ? parseTableBorder(value.border) ?? undefined
+    : undefined;
+  if (type === 'table' && value.border != null && tableBorder == null) {
+    return { error: `${prefix}.border 必须是 { color, width } 描边对象。` };
+  }
   const imageSource: ReturnType<typeof parseImageSourceInput> = type === 'image'
     ? parseImageSourceInput(value.src)
     : {};
@@ -558,11 +585,14 @@ function parseElementInput(
     showDataLabels: typeof value.showDataLabels === 'boolean' ? value.showDataLabels : undefined,
     dataLabelFormat: isNonEmptyString(value.dataLabelFormat) ? value.dataLabelFormat : undefined,
     legendPosition: isNonEmptyString(value.legendPosition) ? value.legendPosition : undefined,
+    chartStyle,
     chartOptions: isRecord(value.chartOptions) ? value.chartOptions : undefined,
     headers: tableParseResult.data?.headers,
     rows: tableParseResult.data?.rows,
+    tableBorder,
     tableOptions: isRecord(value.tableOptions) ? value.tableOptions : undefined,
     _sourceSpan: parseSourceSpan(value._sourceSpan),
+    _semanticRole: acceptCompiledFields && isNonEmptyString(value._semanticRole) ? value._semanticRole : undefined,
     _layoutConstraintEvidence: rawLayoutConstraintEvidence,
   };
 
@@ -760,6 +790,7 @@ function buildStructuredElement(el: DirectElementInput): StructuredElement {
           legendPosition: el.legendPosition,
           chartOptions: el.chartOptions,
         }),
+        chartStyle: el.chartStyle,
         ...sourceTracking,
       };
     }
@@ -768,6 +799,7 @@ function buildStructuredElement(el: DirectElementInput): StructuredElement {
         type: 'table',
         headers: el.headers,
         rows: el.rows ?? [],
+        border: el.tableBorder,
         position: el.position,
         options: el.tableOptions,
         ...sourceTracking,
@@ -873,9 +905,11 @@ function requireSvgGraphicSpec(el: DirectElementInput) {
 
 function buildSourceTracking(el: DirectElementInput): {
   _sourceSpan?: SourceSpan;
+  _semanticRole?: string;
   _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
 } {
   return {
+    ...(el._semanticRole ? { _semanticRole: el._semanticRole } : {}),
     ...(el._sourceSpan ? { _sourceSpan: el._sourceSpan } : {}),
     ...(el._layoutConstraintEvidence
       ? { _layoutConstraintEvidence: el._layoutConstraintEvidence }

@@ -1,10 +1,12 @@
 <template>
   <v-image
     v-if="props.chartResource"
+    :__use-strict-mode="true"
     :config="imageConfig"
   />
   <v-rect
     v-else
+    :__use-strict-mode="true"
     :config="placeholderConfig"
   />
 </template>

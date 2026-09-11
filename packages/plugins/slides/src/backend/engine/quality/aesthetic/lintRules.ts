@@ -1,3 +1,4 @@
+import { hasDecorativeRole, isChromeTextRole } from '../SpatialSemantics';
 /**
  * AestheticLint 通用规则（slide-level + deck-level）
  *
@@ -407,7 +408,7 @@ export function lintFontSizeTiers(
 ): AestheticLintIssue[] {
   const sizes: number[] = [];
   for (const element of elements) {
-    if (element.type !== 'text') continue;
+    if (element.type !== 'text' || isChromeTextRole(element.semanticRole)) continue;
     const size = element.fontSize;
     if (typeof size === 'number' && Number.isFinite(size) && size > 0) {
       sizes.push(size);
@@ -465,7 +466,7 @@ export function lintEdgeMargins(
 
   for (const element of elements) {
     const p = element.position;
-    if (!p) continue;
+    if (!p || hasDecorativeRole(element.semanticRole)) continue;
     // 元素超出画布或负坐标本身是 LayoutLint 关注点，这里只看真正"在画布内但贴边"的情形
     if (p.w <= 0 || p.h <= 0) continue;
     if (p.x < 0 || p.y < 0) continue;
@@ -533,7 +534,7 @@ export function lintFontFamilyConsistency(info: PresentationInfo): AestheticLint
   const unresolved = new Map<string, AggregatedFontUsage>();
   for (const slide of info.slides) {
     for (const element of flattenSlideElements(slide.elements)) {
-      if (element.paragraphs == null) continue;
+      if (element.paragraphs == null || isChromeTextRole(element.semanticRole)) continue;
       for (const run of element.paragraphs.flatMap((paragraph) => paragraph.runs)) {
         collectResolvedFontUsage(run, slide.number, familiesByScript, unresolved);
       }
@@ -743,6 +744,9 @@ function collectResolvedFontUsage(
     return;
   }
   if (run.fontResolution === 'not-ready' || run.fontScript == null) return;
+  // 数学/货币符号与上下标数字是中性字形；它们的补字字体不代表正文选了新字体族。
+  // 未解析字体仍由上面的分支报告，不能因此隐藏真实缺字。
+  if (run.fontResolution === 'substituted' && !/[\p{Letter}\p{Decimal_Number}]/u.test(run.text)) return;
 
   const resolvedFamily = run.resolvedFontFamily?.trim();
   if (!resolvedFamily) return;

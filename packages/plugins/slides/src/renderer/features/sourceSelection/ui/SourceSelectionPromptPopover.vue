@@ -23,7 +23,7 @@
           class="source-selection-prompt__textarea"
           autocomplete="off"
           :disabled="disabled"
-          placeholder="告诉 Linnya 怎么改"
+          placeholder="随意修改..."
           rows="1"
           @input="resizeTextarea"
           @keydown="handleTextareaKeydown"

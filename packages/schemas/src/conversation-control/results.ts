@@ -78,6 +78,14 @@ export const ConversationControlModelsResponseSchema = z
   })
   .strict();
 
+export const ConversationControlProjectsResponseSchema = z.object({
+  ...SuccessBaseFields,
+  command: z.literal('projects'),
+  projects: z.array(z.object({ project_id: OpaqueIdSchema, name: z.string() }).strict()),
+}).strict();
+
+export type ConversationControlProjectsResponse = z.infer<typeof ConversationControlProjectsResponseSchema>;
+
 export const ConversationControlListResponseSchema = z
   .object({
     ...SuccessBaseFields,
@@ -593,6 +601,7 @@ export const ConversationControlErrorResponseSchema = z
     command: z.enum([
       'send',
       'models',
+      'projects',
       'list',
       'messages',
       'status',
@@ -615,6 +624,7 @@ export const ConversationControlErrorResponseSchema = z
 export const ConversationControlCommandResponseSchema = z.union([
   ConversationControlSendResponseSchema,
   ConversationControlModelsResponseSchema,
+  ConversationControlProjectsResponseSchema,
   ConversationControlListResponseSchema,
   ConversationControlMessagesResponseSchema,
   ConversationControlStatusResponseSchema,

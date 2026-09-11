@@ -1,5 +1,8 @@
 <template>
-  <v-group :config="groupConfig">
+  <v-group
+    :__use-strict-mode="true"
+    :config="groupConfig"
+  >
     <KonvaNodeRenderer
       v-for="child in sortedChildren"
       :key="child.id"

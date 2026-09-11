@@ -2,6 +2,7 @@ import type { CanonicalInferenceRequest, ProviderContinuation } from '@linnlabs/
 import { describe, expect, it } from 'vitest';
 import type { AiSdkInferenceRoute } from '../definitions/aiSdkInferenceSurface';
 import {
+  projectAiSdkGenerationSettings,
   projectAiSdkRequestProviderOptions,
   projectCanonicalToolConfiguration,
 } from './projectCanonicalRequestToAiSdk';
@@ -56,6 +57,38 @@ function request(): CanonicalInferenceRequest {
 }
 
 describe('projectCanonicalRequestToAiSdk', () => {
+  it('把 canonical none 投影为不发送 Responses reasoning 字段', () => {
+    const settings = projectAiSdkGenerationSettings(
+      {
+        ...request(),
+        sampling: { reasoning_effort: 'none' },
+      },
+      {
+        ...route,
+        request_profile: 'chatgpt_codex_responses',
+        endpoint_model_id: 'gpt-6-astra',
+      },
+    );
+
+    expect(settings).not.toHaveProperty('reasoning');
+  });
+
+  it('把有效 reasoning 档位投影为 Responses reasoning 字段', () => {
+    const settings = projectAiSdkGenerationSettings(
+      {
+        ...request(),
+        sampling: { reasoning_effort: 'medium' },
+      },
+      {
+        ...route,
+        request_profile: 'chatgpt_codex_responses',
+        endpoint_model_id: 'gpt-6-astra',
+      },
+    );
+
+    expect(settings).toEqual({ reasoning: 'medium' });
+  });
+
   it('原样投影 JSON Schema，工具对象不具有 execute 或 approval 能力', () => {
     const input = request();
     const configuration = projectCanonicalToolConfiguration(input);

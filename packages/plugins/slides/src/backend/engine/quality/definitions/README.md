@@ -46,3 +46,5 @@
 新增 code 必须同时完成：注册唯一 policy、绑定严格 evidence、提供生产 fixture、证明 runtime admission 拒绝错配，并在 inspection 与 CLI 投影中穷尽接入。新增 remediation policy 还必须验证派生 priority 是否符合行动顺序。若现有 evidence 无法准确表达事实，应先扩展正式合同；禁止先上线 message-only warning。
 
 上游证据来源与限制见 [`../README.md`](../README.md)。模型可见的低 token 投影见 [`../../../features/presentationInspection/README.md`](../../../features/presentationInspection/README.md)，完整机器报告见 [`../../../features/presentationCli/README.md`](../../../features/presentationCli/README.md)。
+
+生成内容可显式声明 `background / decoration`，空间规则共用角色判定；越界仍保留 evidence，但该角色降为 info，节点 bleed 范围内不报告越界。文字后方 opacity ≤ 0.15 的细线及相交比例低于 5% 的细线不按确定遮挡报告。页脚/来源/页码不参与正文字体层级统计；纯符号的补字字体不增加正文 family 数量，替换和未解析事实仍可观察。CLI finding 外包络的 `action` 复用 inspection 处置目录，不扩展本层 strict schema。

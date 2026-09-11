@@ -129,6 +129,19 @@
   color: var(--color-text-tertiary);
 }
 
+.add-model-discover-button {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  height: 32px;
+  padding: 0 var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .add-model-refresh-icon {
   width: 16px;
   height: 16px;
@@ -159,4 +172,78 @@
 .settings-row + .add-model-provider-form,
 .add-model-provider-form > .settings-row + .settings-row {
   margin-top: 20px;
+}
+
+.custom-discovered-models-section {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.custom-discovered-models-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.custom-discovered-models-title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.custom-discovered-models-section .settings-link-button {
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.custom-discovered-models-section .settings-link-button:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.custom-discovered-models-list {
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.custom-discovered-models-list::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.custom-discovered-models-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-discovered-models-list::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-normal) ease;
+}
+
+.custom-discovered-models-list::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+.custom-discovered-models-list .settings-list {
+  gap: 2px;
+}
+
+.custom-discovered-models-list .settings-list-row {
+  padding: 6px 8px;
+  background: transparent;
+  border-radius: var(--radius-sm);
 }

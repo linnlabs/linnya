@@ -393,7 +393,7 @@ export interface TablePptxHints {
   tableFill?: string;
   /** 表头背景色 */
   headerFill?: string;
-  /** 边框颜色 */
+  /** 旧 RenderModel 的内部边框颜色提示；新的 DeckSpec 使用 table.border。 */
   borderColor?: string;
 }
 
@@ -452,6 +452,8 @@ export interface ChartRenderNode extends RenderNodeBase {
   series: RenderChartSeries[];
   /** 颜色调色板（hex 数组） */
   palette: [string, ...string[]];
+  plotBackgroundColor?: string;
+  seriesLineWidth?: number;
   axes?: RenderChartAxes;
   legend?: RenderChartLegend;
   dataLabels?: RenderChartDataLabels;
@@ -486,13 +488,14 @@ export interface ChartPptxHints {
   holeSize?: number;
   /** 类目轴方向（PptxGenJS catAxisOrientation） */
   catAxisOrientation?: 'minMax' | 'maxMin';
-  /** 数据标签颜色（PptxGenJS dataLabelColor） */
+  /** 旧 RenderModel 的内部数据标签颜色提示；新的 DeckSpec 使用 chartStyle。 */
   dataLabelColor?: string;
 }
 
 export interface RenderChartLabelStyle {
   fontFamily?: string;
   fontSize?: number;
+  color?: string;
 }
 
 export type RenderChartType =

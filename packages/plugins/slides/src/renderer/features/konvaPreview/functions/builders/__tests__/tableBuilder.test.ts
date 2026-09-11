@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TableRenderNode } from '../../../../../types/render';
-import { buildCellTextNode } from '../tableBuilder';
+import { buildCellBorderConfig, buildCellTextNode } from '../tableBuilder';
 import { buildTableCellLayouts } from '../../konvaTable';
 
 function makeTable(): TableRenderNode {
@@ -41,5 +41,15 @@ describe('tableBuilder shared text layout contract', () => {
     const node = buildCellTextNode(table, buildTableCellLayouts(table)[0]!);
 
     expect(node.layout).toBe(textLayout);
+  });
+
+  it('converts the canonical point border width to preview pixels', () => {
+    expect(buildCellBorderConfig({
+      points: [0, 0, 1, 0],
+      stroke: { paint: { type: 'solid', color: '#94A3B8' }, width: 0.75 },
+    })).toMatchObject({
+      stroke: '#94A3B8',
+      strokeWidth: 1,
+    });
   });
 });

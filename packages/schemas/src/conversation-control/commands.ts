@@ -41,6 +41,13 @@ export const ConversationControlModelsRequestSchema = z
   })
   .strict();
 
+export const ConversationControlProjectsRequestSchema = z.object({
+  ...CommandBaseFields,
+  command: z.literal('projects'),
+}).strict();
+
+export type ConversationControlProjectsRequest = z.infer<typeof ConversationControlProjectsRequestSchema>;
+
 const MessagesRequestBaseFields = {
   ...CommandBaseFields,
   command: z.literal('messages'),
@@ -181,6 +188,7 @@ export const ConversationControlWorkspaceToolsRequestSchema = z.union([
 export const ConversationControlCommandRequestSchema = z.union([
   ConversationControlSendRequestSchema,
   ConversationControlModelsRequestSchema,
+  ConversationControlProjectsRequestSchema,
   ConversationControlListRequestSchema,
   ConversationControlMessagesRequestSchema,
   ConversationControlStatusRequestSchema,

@@ -158,7 +158,7 @@ export function parseShape(
 
 /**
  * 解析 `p:pic`（图片）。
- * 图片资源路径通过 `slideRelMap` 解析；fitMode 走 §4.5 契约（默认 stretch / 含 a:tile ⇒ fill）。
+ * 图片资源路径通过 `slideRelMap` 解析；fitMode 走 §4.5 契约（默认 stretch / 含 a:tile ⇒ fill / 含 srcRect ⇒ cover）。
  */
 export function parsePicture(
   pic: XmlElement,

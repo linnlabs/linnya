@@ -74,6 +74,7 @@ describe('createPresentationImageSourceResolver', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
@@ -142,6 +143,24 @@ describe('createPresentationImageSourceResolver', () => {
       conversationId: 'conversation-1',
       relativePath: 'generated/image.png',
     });
+  });
+
+  it('conversation admission 缺失时保留环境错误，不伪装成本地来源缺失', async () => {
+    vi.stubEnv('LINNYA_CONVERSATION_ROOT', '');
+    const resolver = createPresentationImageSourceResolver({
+      bindingRepository: createBindingRepository(),
+      documentImageAssets,
+    });
+
+    await expect(
+      resolver.resolveImageSource(
+        { kind: 'generated_asset', assetId: 'conversation:/assets/generated.png' },
+        { documentId: 'presentation-1', conversationId: 'conversation-1' },
+      ),
+    ).rejects.toMatchObject({
+      failure: { code: 'slides.environment.workspace_unavailable', sourceFixable: false },
+    });
+    expect(documentImageAssets.adoptLocalImage).not.toHaveBeenCalled();
   });
 
   it('data URI 按真实 bytes 身份绑定，重复解析不再次 ingress', async () => {

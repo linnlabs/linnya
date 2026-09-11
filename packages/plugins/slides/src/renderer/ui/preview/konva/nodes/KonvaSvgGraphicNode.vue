@@ -1,11 +1,16 @@
 <template>
-  <v-group :config="groupConfig">
+  <v-group
+    :__use-strict-mode="true"
+    :config="groupConfig"
+  >
     <v-rect
       v-if="!props.imageResource"
+      :__use-strict-mode="true"
       :config="placeholderConfig"
     />
     <v-image
       v-else
+      :__use-strict-mode="true"
       :config="imageConfig"
     />
   </v-group>

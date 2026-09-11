@@ -16,6 +16,8 @@ export function isGeneratedLayoutConstraintEvidence(
 ): value is GeneratedLayoutConstraintEvidence {
   return isRecord(value)
     && hasOnlyKeys(value, [
+      'intrinsicTextAdvanceSource',
+      'allowedBleedInches',
       'layoutNodeId',
       'positionMode',
       'declared',
@@ -25,6 +27,11 @@ export function isGeneratedLayoutConstraintEvidence(
       'parentConstraint',
       'clipSemantics',
     ])
+    && (value.intrinsicTextAdvanceSource === undefined
+      || value.intrinsicTextAdvanceSource === 'harfbuzz' || value.intrinsicTextAdvanceSource === 'pretext'
+      || value.intrinsicTextAdvanceSource === 'heuristic' || value.intrinsicTextAdvanceSource === 'mixed')
+    && (value.allowedBleedInches === undefined
+      || (isFiniteNumber(value.allowedBleedInches) && value.allowedBleedInches >= 0))
     && isNonEmptyString(value.layoutNodeId)
     && isPositionMode(value.positionMode)
     && isGeneratedLayoutDeclaredConstraints(value.declared)

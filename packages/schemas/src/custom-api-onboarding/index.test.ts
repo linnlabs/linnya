@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { CustomApiModelRegistrationCommandSchema } from './index';
+import {
+  CustomApiModelRegistrationCommandSchema,
+  readCustomApiFormatForRouteProfileId,
+} from './index';
 
 describe('CustomApiModelRegistrationCommandSchema', () => {
   it.each(['openai_compatible', 'openai_responses', 'anthropic_compatible'] as const)(
@@ -35,10 +38,15 @@ describe('CustomApiModelRegistrationCommandSchema', () => {
       api_format: 'openai_responses',
       base_url: 'http://models.intranet:8080/v1',
       api_key: 'secret-value',
-      endpoint_model_id: 'company-gpt',
-      context_window_tokens: 256_000,
-      max_output_tokens: 16_384,
-      supports_image_input: true,
+      provider_name: 'models.intranet',
+      models: [
+        {
+          endpoint_model_id: 'company-gpt',
+          context_window_tokens: 256_000,
+          max_output_tokens: 16_384,
+          supports_image_input: true,
+        },
+      ],
     });
   });
 
@@ -69,5 +77,16 @@ describe('CustomApiModelRegistrationCommandSchema', () => {
         route_profile_id: 'openai_compatible_chat',
       }).success
     ).toBe(false);
+  });
+
+  it('只把三种 Custom API route profile 回投为用户格式', () => {
+    expect(readCustomApiFormatForRouteProfileId('openai_compatible_chat')).toBe(
+      'openai_compatible'
+    );
+    expect(readCustomApiFormatForRouteProfileId('openai_responses')).toBe('openai_responses');
+    expect(readCustomApiFormatForRouteProfileId('anthropic_messages')).toBe(
+      'anthropic_compatible'
+    );
+    expect(readCustomApiFormatForRouteProfileId('ollama_chat')).toBeUndefined();
   });
 });

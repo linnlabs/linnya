@@ -15,6 +15,8 @@ import {
   classifyDominantScript,
   collectRequiredGlyphCodePoints,
   resolveFont,
+  resolveFontText,
+  type PluginResolvedFont,
 } from '@plugin/backend/fontResolution';
 import { compileMathFormula } from '../mathFormula/compiler/compileMathFormula';
 export {
@@ -35,7 +37,7 @@ export function buildParagraphs(
   if (specElement?.type === 'bulletList' || specElement?.type === 'numberedList') {
     const lineSpacing = resolveTextStyleLineSpacing(specElement.style?.lineSpacing);
     return specElement.items.map((item) => ({
-      runs: [textStyleToRun(item.text, specElement.style, defaultFontFamily)],
+      runs: textStyleToRuns(item.text, specElement.style, defaultFontFamily),
       align: resolveParagraphAlign(style.align),
       lineSpacing,
       indent: resolveBulletIndent(item.level),
@@ -49,13 +51,13 @@ export function buildParagraphs(
   const lineSpacing = resolveTextStyleLineSpacing(style.lineSpacing);
   if (Array.isArray(text)) {
     return [{
-      runs: text.map((run) => freeformRunToRenderRun(run, style, defaultFontFamily)),
+      runs: text.flatMap((run) => freeformRunToRenderRun(run, style, defaultFontFamily)),
       align: resolveParagraphAlign(style.align),
       lineSpacing,
     }];
   }
   return text.split('\n').map((line) => ({
-      runs: [textStyleToRun(line, style, defaultFontFamily)],
+      runs: textStyleToRuns(line, style, defaultFontFamily),
       align: resolveParagraphAlign(style.align),
       lineSpacing,
     }));
@@ -69,7 +71,7 @@ export function buildFreeformParagraphs(
   if (typeof content === 'string') {
     const lineSpacing = resolveTextStyleLineSpacing(style.lineSpacing);
     return content.split('\n').map((line) => ({
-      runs: [textStyleToRun(line, style, defaultFontFamily)],
+      runs: textStyleToRuns(line, style, defaultFontFamily),
       align: resolveParagraphAlign(style.align),
       lineSpacing,
     }));
@@ -78,14 +80,14 @@ export function buildFreeformParagraphs(
   if (Array.isArray(content)) {
     const lineSpacing = resolveTextStyleLineSpacing(style.lineSpacing);
     return [{
-      runs: content.map((run) => freeformRunToRenderRun(run, style, defaultFontFamily)),
+      runs: content.flatMap((run) => freeformRunToRenderRun(run, style, defaultFontFamily)),
       align: resolveParagraphAlign(style.align),
       lineSpacing,
     }];
   }
 
   return [{
-    runs: [textStyleToRun('', style, defaultFontFamily)],
+    runs: textStyleToRuns('', style, defaultFontFamily),
     lineSpacing: resolveTextStyleLineSpacing(style.lineSpacing),
   }];
 }
@@ -101,11 +103,12 @@ export function textStyleToRun(
   style: TextStyle | undefined,
   defaultFontFamily: string,
   defaultFontSize?: number,
+  resolvedSegment?: PluginResolvedFont,
 ): RenderTextRun {
   const resolvedFontSize = style?.fontSize ?? defaultFontSize;
   const fontFamily = style?.fontFamily ?? defaultFontFamily;
   const fontScript = classifyDominantScript(text);
-  const resolvedFont = resolveFont({
+  const resolvedFont = resolvedSegment ?? resolveFont({
     family: fontFamily,
     bold: style?.bold === true,
     italic: style?.italic === true,
@@ -135,18 +138,18 @@ function freeformRunToRenderRun(
   run: FreeformInlineRun,
   fallbackStyle: TextStyle,
   defaultFontFamily: string,
-): RenderInlineRun {
+): RenderInlineRun[] {
   if ('formula' in run) {
-    return {
+    return [{
       kind: 'formula',
       projection: compileMathFormula(run.formula).renderProjection,
-    };
+    }];
   }
   const mergedStyle: TextStyle = {
     ...fallbackStyle,
     ...run.style,
   };
-  return textStyleToRun(run.text, mergedStyle, defaultFontFamily);
+  return textStyleToRuns(run.text, mergedStyle, defaultFontFamily);
 }
 
 export function resolveParagraphAlign(
@@ -164,4 +167,16 @@ export function resolveParagraphAlign(
 
 function resolveBulletIndent(level: number | undefined): number {
   return BULLET_HANGING_INDENT_INCHES * ((level ?? 0) + 1);
+}
+
+
+/** 分段只发生在字体解析边界；后续预热、布局和 renderer 消费同一组 run。 */
+export function textStyleToRuns(
+  text: string, style: TextStyle | undefined, defaultFontFamily: string, defaultFontSize?: number,
+): RenderTextRun[] {
+  return resolveFontText(text, {
+    family: style?.fontFamily ?? defaultFontFamily,
+    bold: style?.bold === true,
+    italic: style?.italic === true,
+  }).map(segment => textStyleToRun(segment.text, style, defaultFontFamily, defaultFontSize, segment.font));
 }

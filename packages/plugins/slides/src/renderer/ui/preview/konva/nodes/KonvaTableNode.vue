@@ -1,18 +1,28 @@
 <template>
-  <v-group :config="groupConfig">
-    <v-rect :config="tableBackgroundConfig" />
+  <v-group
+    :__use-strict-mode="true"
+    :config="groupConfig"
+  >
+    <v-rect
+      :__use-strict-mode="true"
+      :config="tableBackgroundConfig"
+    />
 
     <template
       v-for="layout in cellLayouts"
       :key="`${node.id}-${layout.cell.row}-${layout.cell.col}`"
     >
-      <v-rect :config="cellRectConfig(layout)" />
+      <v-rect
+        :__use-strict-mode="true"
+        :config="cellRectConfig(layout)"
+      />
       <KonvaTextNode :node="cellTextNode(layout)" />
     </template>
 
     <v-line
       v-for="(segment, index) in borderSegments"
       :key="`${node.id}-border-${index}`"
+      :__use-strict-mode="true"
       :config="borderConfig(segment)"
     />
   </v-group>

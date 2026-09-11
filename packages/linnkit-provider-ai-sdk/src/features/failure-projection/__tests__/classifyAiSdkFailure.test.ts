@@ -231,9 +231,40 @@ describe('classifyAiSdkFailure', () => {
       diagnostic: {
         phase: 'provider_stream',
         error_shape: 'stream_provider_error',
+        provider_signal: {
+          type: 'server_error',
+          code: 'upstream_error',
+        },
       },
     });
     expect(JSON.stringify(observation)).not.toContain('sensitive');
+  });
+
+  it('从 response.failed 提取 code/reason，帮助定位 400 而不记录 Provider message', () => {
+    const observation = projectAiSdkFailureObservation(
+      new StreamProviderError({
+        message: 'sensitive upstream message',
+        type: 'response.failed',
+        code: 'invalid_request_error',
+        isRetryable: false,
+        data: {
+          type: 'response.failed',
+          response: {
+            error: { code: 'invalid_request_error', message: 'secret prompt detail' },
+            incomplete_details: { reason: 'invalid_prompt' },
+          },
+        },
+      }),
+      undefined,
+      'provider_stream',
+    );
+
+    expect(observation.diagnostic.provider_signal).toEqual({
+      type: 'response.failed',
+      code: 'invalid_request_error',
+      reason: 'invalid_prompt',
+    });
+    expect(JSON.stringify(observation)).not.toContain('secret prompt detail');
   });
 
   it('识别 OpenAI Responses 在已有输出后的嵌套 response.failed', () => {

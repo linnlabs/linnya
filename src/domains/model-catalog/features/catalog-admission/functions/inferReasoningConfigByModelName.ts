@@ -29,6 +29,17 @@ import type { ModelReasoningConfig } from '@linnlabs/linnkit/contracts';
 export function inferReasoningConfigByModelName(modelName: string): ModelReasoningConfig | undefined {
   const name = modelName.toLowerCase();
 
+  // GPT-6 Astra：Responses API 要求显式 reasoning effort，不支持关闭 reasoning。
+  // `off` 是 Linnya 的统一语义，不应在这里暴露给该模型；kernel 会在用户未选择时
+  // 使用 medium，adapter 再把它投影为 Responses 的 reasoning.effort。
+  // 匹配 gpt-6、gpt6、gpt-6-astra 以及未来的 GPT-6 变体。
+  if (/gpt-?6(?:[.-]|$)/.test(name)) {
+    return {
+      supported_efforts: ['low', 'medium', 'high', 'xhigh'],
+      default_effort: 'medium',
+    };
+  }
+
   // GPT-5 全系列：统一 off/low/medium/high/xhigh
   //
   // 产品决策：UI 一致优先，不区分版本（用户要求「低中高最高，无极低」）。

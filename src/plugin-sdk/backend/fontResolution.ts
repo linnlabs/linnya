@@ -17,6 +17,7 @@ export {
   FontCatalogUnavailableError,
   listFontFamilies,
   resolveFont,
+  resolveFontText,
 } from 'src/features/font-resolution';
 
 export type {

@@ -1,17 +1,26 @@
 <template>
-  <v-layer :config="layerConfig">
-    <v-group :config="transform">
+  <v-layer
+    :__use-strict-mode="true"
+    :config="layerConfig"
+  >
+    <v-group
+      :__use-strict-mode="true"
+      :config="transform"
+    >
       <v-line
         v-if="hoveredLineConfig"
+        :__use-strict-mode="true"
         :config="hoveredLineConfig"
       />
       <v-line
         v-for="line in selectedLineConfigs"
         :key="line.key"
+        :__use-strict-mode="true"
         :config="line.config"
       />
       <v-line
         v-if="marqueeLineConfig"
+        :__use-strict-mode="true"
         :config="marqueeLineConfig"
       />
     </v-group>

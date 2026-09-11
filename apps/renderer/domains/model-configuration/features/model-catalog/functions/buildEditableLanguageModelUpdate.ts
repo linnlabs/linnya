@@ -31,7 +31,7 @@ export function buildEditableLanguageModelUpdate(
   if (!tokenLimits) return { ok: false, issue: 'token_limits_invalid' };
 
   const capabilities = setImageInputCapability(model.capabilities, form.supportsImageInput);
-  const currentProfileId = resolveConfigurableLanguageRouteProfileId(model.inference_route);
+  const targetProfileId = form.protocolProfileId ?? resolveConfigurableLanguageRouteProfileId(model.inference_route);
   return {
     ok: true,
     command: {
@@ -39,7 +39,7 @@ export function buildEditableLanguageModelUpdate(
       model_name: modelName,
       capabilities,
       inference_route: buildConfigurableLanguageModelRoute({
-        profile_id: currentProfileId,
+        profile_id: targetProfileId,
         endpoint_id: model.inference_route.endpoint_id,
         endpoint_model_id: modelName,
         base_url: model.inference_route.base_url,

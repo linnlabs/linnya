@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   registerOllama: vi.fn(),
   registerCustomApi: vi.fn(),
+  discoverModels: vi.fn(),
   listModels: vi.fn(),
   loadModels: vi.fn(),
   loadModelPicker: vi.fn(),
@@ -30,7 +31,10 @@ vi.mock('../features/ollama-model-registration/infrastructure/ollamaModelDiscove
 vi.mock(
   '../features/custom-model-registration/infrastructure/httpCustomApiModelRegistrationGateway',
   () => ({
-    httpCustomApiModelRegistrationGateway: { register: mocks.registerCustomApi },
+    httpCustomApiModelRegistrationGateway: {
+      register: mocks.registerCustomApi,
+      discoverModels: (...args: unknown[]) => mocks.discoverModels(...args),
+    },
   })
 );
 
@@ -500,7 +504,7 @@ describe('ModelRegistrationSettingsPage', () => {
     ]);
   });
 
-  it('自定义 Provider 注册成功后只刷新模型事实源', async () => {
+  it('自定义 Provider 探测并注册成功后只刷新模型事实源', async () => {
     app = createApp(ModelRegistrationSettingsPage);
     app.use(createPinia());
     app.mount(container);
@@ -508,9 +512,37 @@ describe('ModelRegistrationSettingsPage', () => {
 
     await selectQuickOption(container, 'settings.addModel.quick.customApi');
 
-    setInputValue(container, 'settings.addModel.api.modelName.placeholder', 'gpt-test');
-    setInputValue(container, 'settings.addModel.apiKey.placeholder', 'test-secret');
-    setInputValue(container, 'settings.addModel.apiUrl.placeholder', 'http://gateway.intranet/v1');
+    const urlInput = container.querySelector<HTMLInputElement>(
+      `input[placeholder="settings.addModel.apiUrl.placeholder"]`
+    );
+    if (!urlInput) throw new Error('URL input not found');
+    urlInput.value = 'http://gateway.intranet/v1';
+    urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushUi();
+
+    mocks.discoverModels.mockResolvedValue({
+      models: [
+        {
+          id: 'gpt-test',
+          name: 'GPT Test',
+          context_window_tokens: 128000,
+          max_output_tokens: 4096,
+          supports_image_input: false,
+        },
+      ],
+    });
+
+    const discoverButton = container.querySelector<HTMLButtonElement>(
+      '[data-registration-kind="custom-provider"] .add-model-discover-button'
+    );
+    if (!discoverButton) throw new Error('Custom Provider discover button not found');
+    discoverButton.click();
+    await flushUi();
+
+    await vi.waitFor(() => {
+      expect(mocks.discoverModels).toHaveBeenCalled();
+    });
+    await flushUi();
 
     const submitButton = container.querySelector<HTMLButtonElement>(
       '[data-registration-kind="custom-provider"] .full-width-button'
@@ -523,8 +555,12 @@ describe('ModelRegistrationSettingsPage', () => {
     });
     expect(mocks.registerCustomApi).toHaveBeenCalledWith(
       expect.objectContaining({
-        endpoint_model_id: 'gpt-test',
         base_url: 'http://gateway.intranet/v1',
+        models: expect.arrayContaining([
+          expect.objectContaining({
+            endpoint_model_id: 'gpt-test',
+          }),
+        ]),
       })
     );
   });

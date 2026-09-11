@@ -7,8 +7,8 @@ import type {
 
 export type ModelVisibilitySource =
   | {
-      readonly id: 'cloud' | 'custom';
-      readonly kind: 'cloud' | 'custom';
+      readonly id: 'cloud';
+      readonly kind: 'cloud';
       readonly displayName: string;
       readonly models: readonly ModelPickerMaterializedModel[];
     }
@@ -21,6 +21,22 @@ export type ModelVisibilitySource =
       readonly credentialAvailable: boolean;
       readonly credentialUnavailableReason?: ModelPickerCredentialUnavailableReason;
       readonly models: readonly ModelPickerProviderModel[];
+    }
+  | {
+      readonly id: string;
+      readonly kind: 'custom_provider';
+      readonly displayName: string;
+      readonly providerName: string;
+      readonly apiFormat?: string;
+      readonly baseUrl?: string;
+      readonly endpointId?: string;
+      readonly models: readonly ModelPickerMaterializedModel[];
+    }
+  | {
+      readonly id: 'custom';
+      readonly kind: 'custom';
+      readonly displayName: string;
+      readonly models: readonly ModelPickerMaterializedModel[];
     };
 
 export function projectModelVisibilitySources(
@@ -34,6 +50,21 @@ export function projectModelVisibilitySources(
       (connectionCountByProviderId.get(provider.provider_definition_id) ?? 0) + 1
     );
   }
+
+  const customProviders = (snapshot.custom_providers ?? []).map(group => ({
+    id: group.provider_id,
+    kind: 'custom_provider' as const,
+    displayName: group.provider_name,
+    providerName: group.provider_name,
+    apiFormat: group.api_format,
+    baseUrl: group.base_url,
+    endpointId: group.endpoint_id,
+    models: group.models,
+  }));
+
+  // 如果没有按 custom_providers 组织，回退到以前单一的 custom_models
+  const hasCustomProviders = customProviders.length > 0;
+
   return [
     ...(snapshot.cloud
       ? [
@@ -60,7 +91,8 @@ export function projectModelVisibilitySources(
         : {}),
       models: provider.models,
     })),
-    ...(snapshot.custom_models.length > 0
+    ...customProviders,
+    ...(!hasCustomProviders && snapshot.custom_models.length > 0
       ? [
           {
             id: 'custom' as const,

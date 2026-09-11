@@ -1,3 +1,4 @@
+import { materializeIntrinsicTextBoxes } from '../engine/text/materializeIntrinsicTextBoxes';
 import { randomUUID } from 'node:crypto';
 import { MathFormulaError, SlideMarkerIndex, type DeckSpec } from '@plugin/slides/shared';
 import {
@@ -343,6 +344,7 @@ export class CodegenDeckBuilder {
     let deckSpec: DeckSpec;
     try {
       deckSpec = buildDeckSpecFromDirectInput(ownedInput);
+      await materializeIntrinsicTextBoxes(deckSpec);
     } catch (error) {
       if (error instanceof PresentationBuildFailureError) throw error;
       failBuild('slides.codegen.compose_contract', safeSourceFailureSummary(error));

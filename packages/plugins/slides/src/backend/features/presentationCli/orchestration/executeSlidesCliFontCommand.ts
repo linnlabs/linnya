@@ -30,7 +30,7 @@ export async function executeSlidesCliFontCommand(
         cliVersion: SLIDES_CLI_VERSION,
         ...result,
       };
-      return success(report);
+      return success(report, command.format);
     }
 
     const result = await execution.listFontFamilies(command.request);
@@ -41,7 +41,7 @@ export async function executeSlidesCliFontCommand(
       cliVersion: SLIDES_CLI_VERSION,
       ...result,
     };
-    return success(report);
+    return success(report, command.format);
   } catch (error) {
     if (signal?.aborted) throw error;
     if (!(error instanceof FontCatalogUnavailableError)) {
@@ -59,10 +59,10 @@ export async function executeSlidesCliFontCommand(
   }
 }
 
-function success(report: SlidesCliFontCheckReport | SlidesCliFontListReport): SlidesCliExecutionResult {
+function success(report: SlidesCliFontCheckReport | SlidesCliFontListReport, format?: 'json' | 'pretty'): SlidesCliExecutionResult {
   return {
     exitCode: SlidesCliExitCode.SUCCESS,
-    stdout: `${JSON.stringify(report, null, 2)}\n`,
+    stdout: `${JSON.stringify(report, null, format === 'pretty' ? 2 : undefined)}\n`,
     stderr: '',
   };
 }

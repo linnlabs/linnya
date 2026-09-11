@@ -1,0 +1,6 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "types": ["node", "electron"] },
+  "include": ["tools/previewTransitionBrowser.ts", "tools/previewTransitionSmoke.ts", "../host-types/rendererEnv.d.ts"],
+  "exclude": []
+}

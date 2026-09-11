@@ -428,4 +428,22 @@ describe('processModelConfig - reasoning 字段校验', () => {
 
     expect(result.reasoning).toBeUndefined();
   });
+
+  it('gpt-6-astra 未显式保存 reasoning 时仍按模型能力补齐契约', () => {
+    const result = processModelConfig({
+      modelData: makeModelData({
+        model_name: 'gpt-6-astra',
+        inference_route: {
+          ...makeModelData().inference_route,
+          endpoint_model_id: 'gpt-6-astra',
+        },
+      }),
+      envVars: {},
+    });
+
+    expect(result.reasoning).toEqual({
+      supported_efforts: ['low', 'medium', 'high', 'xhigh'],
+      default_effort: 'medium',
+    });
+  });
 });

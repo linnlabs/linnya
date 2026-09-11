@@ -702,6 +702,8 @@ function isChartRenderNode(value: Record<string, unknown>): boolean {
       'legend',
       'dataLabels',
       'gridlines',
+      'plotBackgroundColor',
+      'seriesLineWidth',
       'stacking',
       'labelStyle',
       'pptxHints',
@@ -715,6 +717,8 @@ function isChartRenderNode(value: Record<string, unknown>): boolean {
     && isOptional(value.axes, isRenderChartAxes)
     && isOptional(value.legend, isRenderChartLegend)
     && isOptional(value.dataLabels, isRenderChartDataLabels)
+    && isOptional(value.plotBackgroundColor, isString)
+    && isOptional(value.seriesLineWidth, width => isFiniteNumber(width) && width > 0)
     && isOptional(value.gridlines, isRenderChartGridlines)
     && isOptional(value.stacking, stacking => isOneOf(stacking, ['none', 'stacked', 'percent']))
     && isOptional(value.labelStyle, isRenderChartLabelStyle)
@@ -786,9 +790,10 @@ function isGridline(value: unknown): boolean {
 
 function isRenderChartLabelStyle(value: unknown): boolean {
   return isRecord(value)
-    && hasOnlyKeys(value, ['fontFamily', 'fontSize'])
+    && hasOnlyKeys(value, ['fontFamily', 'fontSize', 'color'])
     && isOptional(value.fontFamily, isString)
-    && isOptional(value.fontSize, isFiniteNumber);
+    && isOptional(value.fontSize, isFiniteNumber)
+    && isOptional(value.color, isString);
 }
 
 function isChartPptxHints(value: unknown): boolean {

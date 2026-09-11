@@ -125,3 +125,5 @@ shared/
 - backend / renderer 使用 shared 合同的集成测试：`pnpm run test:plugin:slides`
 
 文档或纯导出调整至少跑 `git diff --check`。涉及合同字段、布局、颜色、source span、render-model 或 tool feedback 行为时，应补对应业务测试，而不是只改类型。
+
+Paint 的 `direction` 与 `angle` 二选一，接纳时统一为 OOXML 角度（0° 向右、顺时针）；非正方形按 scaled 坐标映射。径向 center/radius 分别按宽、高归一化，预览必须保留双轴半径。详见 [视觉 Paint 合同](../../docs/visual-paint-contract.md)。

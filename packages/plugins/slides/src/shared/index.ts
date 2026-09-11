@@ -253,6 +253,7 @@ export type {
   LayoutChartDataLike,
   LayoutChartLegendPosition,
   LayoutChartNode,
+  LayoutChartStyle,
   LayoutChartPresetName,
   LayoutChartSeriesInput,
   LayoutChartType,
@@ -287,6 +288,7 @@ export type {
   LayoutSpacerConfig,
   LayoutSpacerNode,
   LayoutTableCellInput,
+  LayoutTableBorderInput,
   LayoutTableCellValue,
   LayoutTableConfig,
   LayoutTableDataLike,
@@ -648,6 +650,10 @@ export type {
   RenderTextMeasureSourceKind,
   RenderTextMeasureStyle,
   SnappedRect,
+  ImageFitGeometry,
+  ImageFitGeometryInput,
+  ImageFitMode,
+  NormalizedImageRect,
 } from './render-geometry';
 export {
   buildCartesianRange,
@@ -665,6 +671,7 @@ export {
   snapStrokeCenter,
   valueToX,
   valueToY,
+  resolveImageFitGeometry,
 } from './render-geometry';
 export {
   assertCanonicalHexColor,

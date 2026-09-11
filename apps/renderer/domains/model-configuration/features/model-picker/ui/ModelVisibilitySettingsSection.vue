@@ -37,8 +37,9 @@
           <div class="model-visibility-scroll-host">
             <div class="model-visibility-source-list">
               <SettingsList :bordered="false">
+                <!-- 标准 / 官方提供商 -->
                 <SettingsListRow
-                  v-for="source in filteredSources"
+                  v-for="source in standardSources"
                   :key="source.id"
                   :class="{ 'is-active': source.id === selectedSourceId }"
                 >
@@ -53,6 +54,29 @@
                     </button>
                   </template>
                 </SettingsListRow>
+
+                <!-- 自定义模型供应商 分组 -->
+                <template v-if="customSources.length > 0">
+                  <div class="model-visibility-source-group-title">
+                    {{ settingsMessage('settings.modelPicker.customProviders') }}
+                  </div>
+                  <SettingsListRow
+                    v-for="source in customSources"
+                    :key="source.id"
+                    :class="{ 'is-active': source.id === selectedSourceId }"
+                  >
+                    <template #title>
+                      <button
+                        type="button"
+                        class="model-visibility-source-tab"
+                        :aria-pressed="source.id === selectedSourceId"
+                        @click="selectedSourceId = source.id"
+                      >
+                        <span>{{ source.displayName }}</span>
+                      </button>
+                    </template>
+                  </SettingsListRow>
+                </template>
               </SettingsList>
             </div>
           </div>
@@ -63,8 +87,21 @@
           class="model-visibility-models"
         >
           <header class="model-visibility-models-header">
-            <div>
+            <div class="model-visibility-models-header-left">
               <h4>{{ selectedSource.displayName }}</h4>
+              <HoverTooltip :text="settingsMessage('settings.modelPicker.refreshModels')">
+                <button
+                  type="button"
+                  class="model-visibility-refresh-btn"
+                  :disabled="isRefreshingSourceId === selectedSource.id"
+                  @click.stop="refreshSourceModels(selectedSource)"
+                >
+                  <RefreshIcon
+                    class="icon"
+                    :class="{ 'is-spinning': isRefreshingSourceId === selectedSource.id }"
+                  />
+                </button>
+              </HoverTooltip>
             </div>
             <div
               v-if="selectedSource.kind === 'provider'"
@@ -82,7 +119,7 @@
               </button>
               <Switch
                 :model-value="selectedSource.pickerEnabled"
-                :aria-label="selectedSource.displayName"
+                :ariaLabel="selectedSource.displayName"
                 :disabled="isMutating"
                 @update:model-value="setProviderVisibility(selectedSource, $event)"
               />
@@ -119,7 +156,7 @@
                     >
                       <Switch
                         :model-value="model.materialized && model.picker_enabled"
-                        :aria-label="model.display_name"
+                        :ariaLabel="model.display_name"
                         :disabled="isModelToggleDisabled(model)"
                         @update:model-value="setModelVisibility(model, $event)"
                       />
@@ -167,8 +204,8 @@ import { computed, ref, watch } from 'vue';
 
 import type { ModelCatalogItem } from '../../model-catalog';
 import { ModelDetailsModal, useModelCatalogReadModel } from '../../model-catalog';
-import { ActionButtons, CustomTextInput, Switch } from '@linnya/renderer-ui';
-import { DeleteIcon } from '@linnya/renderer-ui/icons';
+import { ActionButtons, CustomTextInput, HoverTooltip, Switch } from '@linnya/renderer-ui';
+import { DeleteIcon, RefreshIcon } from '@linnya/renderer-ui/icons';
 import { confirm } from '@shared/composables/confirmDialog';
 import {
   SettingsFeedback,
@@ -185,6 +222,8 @@ import {
   useModelPickerReadModel,
 } from '../index';
 import { removeConfiguredProvider } from '../../../orchestration/removeConfiguredProvider';
+import { registerApiCustomModel } from '../../custom-model-registration/orchestration/registerApiCustomModel';
+import { httpCustomApiModelRegistrationGateway } from '../../custom-model-registration/infrastructure/httpCustomApiModelRegistrationGateway';
 import {
   filterModelVisibilityModels,
   filterModelVisibilitySources,
@@ -218,9 +257,64 @@ const sources = computed(() =>
       )
     : []
 );
+
 const filteredSources = computed(() =>
   filterModelVisibilitySources(sources.value, sourceQuery.value)
 );
+
+const standardSources = computed(() =>
+  filteredSources.value.filter(s => s.kind !== 'custom_provider' && s.kind !== 'custom')
+);
+
+const customSources = computed(() =>
+  filteredSources.value.filter(s => s.kind === 'custom_provider' || s.kind === 'custom')
+);
+
+const isRefreshingSourceId = ref<string | null>(null);
+
+async function refreshSourceModels(source: ModelVisibilitySource): Promise<void> {
+  if (isRefreshingSourceId.value) return;
+  isRefreshingSourceId.value = source.id;
+  try {
+    if (source.kind === 'custom_provider' && source.baseUrl && source.apiFormat) {
+      const result = await httpCustomApiModelRegistrationGateway.discoverModels?.({
+        api_format: source.apiFormat,
+        base_url: source.baseUrl,
+      });
+      if (result && result.models.length > 0) {
+        // 同步已有模型，添加新模型
+        const existingModelMap = new Map(source.models.map(m => [m.provider_model_id, m]));
+        const newModelsToAdd = result.models.filter(m => !existingModelMap.has(m.id));
+        if (newModelsToAdd.length > 0) {
+          await registerApiCustomModel({
+            providerName: source.providerName,
+            endpointModelId: '',
+            displayName: '',
+            credentialSecret: '',
+            baseUrl: source.baseUrl,
+            customApiFormat: source.apiFormat,
+            contextWindowTokens: '256000',
+            maxOutputTokens: '16384',
+            supportsImageInput: false,
+            models: newModelsToAdd.map(m => ({
+              endpoint_model_id: m.id,
+              display_name: m.name,
+              context_window_tokens: m.context_window_tokens ?? 32768,
+              max_output_tokens: m.max_output_tokens ?? 4096,
+              supports_image_input: m.supports_image_input ?? false,
+              picker_enabled: true,
+            })),
+          });
+        }
+      }
+    }
+    await loadModelPicker();
+  } catch (error) {
+    console.error('[ModelVisibility] 刷新供应商模型列表失败', error);
+  } finally {
+    isRefreshingSourceId.value = null;
+  }
+}
 const selectedSource = computed(
   () => sources.value.find(source => source.id === selectedSourceId.value) ?? null
 );
@@ -279,7 +373,7 @@ function modelStateLabel(model: ModelPickerProviderModel): string {
 
 function isCustomModelEditable(model: ModelPickerProviderModel): boolean {
   return (
-    selectedSource.value?.kind === 'custom' &&
+    (selectedSource.value?.kind === 'custom' || selectedSource.value?.kind === 'custom_provider') &&
     model.materialized &&
     modelCatalog.activeOperation.value === null &&
     editableModelsById.value.has(model.model_config_id)
@@ -287,7 +381,11 @@ function isCustomModelEditable(model: ModelPickerProviderModel): boolean {
 }
 
 function openCustomModelDetails(model: ModelPickerProviderModel): void {
-  if (selectedSource.value?.kind !== 'custom' || !model.materialized) return;
+  if (
+    (selectedSource.value?.kind !== 'custom' && selectedSource.value?.kind !== 'custom_provider') ||
+    !model.materialized
+  )
+    return;
   const currentModel = editableModelsById.value.get(model.model_config_id);
   if (!currentModel) return;
   selectedModelDetails.value = { ...currentModel };

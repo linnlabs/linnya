@@ -106,3 +106,5 @@ shared 算法是同步的。异步初始化、预热、缓存、字体解析和�
 - backend finalization：`src/backend/engine/text/__tests__/renderModelTextLayout.test.ts`
 - 多行表格的真实预热、布局、Inspect 场景图、前端绘制投影与 PPTX 导出：`src/backend/__tests__/table-forced-break.integration.test.ts`
 - renderer fail-closed：`src/renderer/features/konvaPreview/functions/builders/__tests__/{textBuilder,tableBuilder}.test.ts`
+
+无横向约束的生成文本在 Backend 落库前由 `engine/text/materializeIntrinsicTextBoxes` 调用本模块同源排版，以最终行宽和默认 inset 得到盒宽；宽度向上量化到 OOXML EMU。左右默认 inset 各 0.1in、上下各 0.05in，诊断 evidence 使用相同口径。编译证据保留 `intrinsicTextAdvanceSource`，不得把 heuristic 标成 HarfBuzz。

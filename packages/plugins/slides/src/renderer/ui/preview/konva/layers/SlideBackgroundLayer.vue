@@ -1,12 +1,22 @@
 <template>
-  <v-layer :config="layerConfig">
-    <v-group :config="transform">
-      <!-- 背景色矩形 -->
-      <v-rect :config="bgRectConfig" />
+  <v-layer
+    :__use-strict-mode="true"
+    :config="layerConfig"
+  >
+    <v-group
+      :__use-strict-mode="true"
+      :config="transform"
+    >
+      <!-- 配置是唯一事实：strict 模式会恢复切换 Paint 类型时已被删除、但仍留在绑定器旧缓存中的属性。 -->
+      <v-rect
+        :__use-strict-mode="true"
+        :config="bgRectConfig"
+      />
 
       <!-- 背景图片（如有） -->
       <v-image
         v-if="props.imageResource"
+        :__use-strict-mode="true"
         :config="bgImageConfig"
       />
     </v-group>

@@ -10,6 +10,7 @@ export const CONVERSATION_CONTROL_CONNECTION_FILE_NAME = 'conversation-control-v
 export const ConversationControlCapabilitySchema = z.enum([
   'send',
   'models',
+  'projects',
   'list',
   'messages',
   'status',

@@ -1,5 +1,6 @@
 import {
   DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
+  PPTX_DEFAULT_TEXT_INSET,
   flattenSlideElements,
   segmentClusters,
   type SlideElementTableCellTextInfo,
@@ -12,6 +13,7 @@ import { defaultTextMeasureService } from '@plugin/backend/textMeasurement';
 import type { TextMeasureInput } from '@plugin/backend/textMeasurement';
 import {
   annotateLineNodeSemantics,
+  hasDecorativeRole,
   classifyOverlap,
   intersectionBox,
   isThinDecorativeShape,
@@ -171,16 +173,17 @@ export class LayoutLint {
       });
     }
 
-    if (x < 0 || y < 0 || x + w > slideSize.width || y + h > slideSize.height) {
+    const bleed = element.layoutConstraintEvidence?.allowedBleedInches ?? 0;
+    if (x < -bleed || y < -bleed || x + w > slideSize.width + bleed || y + h > slideSize.height + bleed) {
       const violatedSides: Array<'left' | 'right' | 'top' | 'bottom'> = [];
-      if (x < 0) violatedSides.push('left');
-      if (x + w > slideSize.width) violatedSides.push('right');
-      if (y < 0) violatedSides.push('top');
-      if (y + h > slideSize.height) violatedSides.push('bottom');
+      if (x < -bleed) violatedSides.push('left');
+      if (x + w > slideSize.width + bleed) violatedSides.push('right');
+      if (y < -bleed) violatedSides.push('top');
+      if (y + h > slideSize.height + bleed) violatedSides.push('bottom');
 
       issues.push({
         code: 'out_of_bounds',
-        severity: 'warning',
+        severity: hasDecorativeRole(element.semanticRole) ? 'info' : 'warning',
         confidence: 'high',
         slides: [slideNumber],
         evidence: {
@@ -190,7 +193,7 @@ export class LayoutLint {
           referenceBox,
           margins,
           violatedSides,
-          thresholdInches: 0,
+          thresholdInches: bleed,
           policyId: 'slide_bounds',
           fullBleedAxes: [],
         },
@@ -357,6 +360,7 @@ export class LayoutLint {
   ): LayoutLintIssue[] {
     const decorations = elements.filter((element) => (
       element.type === 'shape'
+      && !hasDecorativeRole(element.semanticRole)
       && isThinDecorativeShape(element.position)
       && Math.max(element.position.w, element.position.h) >= 0.3
     ));
@@ -370,9 +374,14 @@ export class LayoutLint {
         if ((decoration.nodeId ?? decoration.elementId) === (textElement.nodeId ?? textElement.elementId)) {
           continue;
         }
+        // 低透明度且位于文字后方的细线不会遮挡文字；前景线仍需检查。
+        if ((decoration.opacity ?? 1) <= 0.15
+          && decoration.zIndex != null && textElement.zIndex != null
+          && decoration.zIndex < textElement.zIndex) continue;
         const collision = buildFinalTextLineOccupancies(textElement)
           .map((line) => ({ line, intersection: intersectionBox(decoration.position, line.box) }))
-          .find((entry) => entry.intersection != null);
+          .find((entry) => entry.intersection != null
+            && smallerBoxCoveredRatio(decoration.position, entry.line.box) >= 0.05);
         if (!collision?.intersection) continue;
 
         const orderedNodes = [
@@ -596,7 +605,7 @@ function resolveFinalTextContentWidth(
 ): number {
   const padding = element.textBody?.padding;
   return Number(Math.max(
-    element.position.w - (padding?.left ?? 0) - (padding?.right ?? 0),
+    element.position.w - (padding?.left ?? PPTX_DEFAULT_TEXT_INSET.left) - (padding?.right ?? PPTX_DEFAULT_TEXT_INSET.right),
     0,
   ).toFixed(6));
 }

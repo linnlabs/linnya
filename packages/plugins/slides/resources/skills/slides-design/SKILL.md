@@ -43,6 +43,8 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 
 对象选择遵循语义优先：文字、原生数学公式、数据图表、表格、照片和简单可编辑几何继续使用 Text/Formula、Chart、Table、Image、Shape；复杂流程、架构或机制示意图在“整体编辑即可”时使用 `createSvgGraphic()`；需要手绘插画、笔触、纸面边框或水彩时使用 `createBrushArtwork()`。Brush 通过有序 layers 组合 stroke、watercolor/wash/mass、hatch、field 与几何 marks；复杂画面优先用多个语义图层和不同质感，不要把排线当成唯一纹理。它仍是带显式纯色背景的不透明图片资产，不是透明贴图：背景色应与所在纯色区域一致，下面是照片、渐变或纹理时不要叠加使用。文字和标签用原生 Text 覆盖；块公式和段内公式都使用正式 Formula 语义，不要画成 Brush、SVG 或图片。精确合同见 [`syntax.md`](./references/syntax.md)。
 
+图表的 `chartStyle` 与表格顶层 `border` 是少量、跨前端预览与 PPTX 导出的正式语义；只在页面确实需要局部颜色或统一边框时使用。不要改写成 `chartOptions`、`tableOptions` 或其他底层引擎字段。
+
 ### 查看与检查
 - 看 source、页面内容与代码组织：`read_file`。
 - 看构建状态、检查提示及其证据：直接阅读可用 `ppt_inspect`；机器化处理、Shell 管道或自动化可用 `linnya-slides inspect`。

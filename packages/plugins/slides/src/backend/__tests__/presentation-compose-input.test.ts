@@ -107,6 +107,76 @@ describe('presentationComposeInput', () => {
     });
   });
 
+  it('keeps chartStyle and table border as canonical cross-renderer semantics', () => {
+    const parsed = readDirectComposeInput({
+      title: 'Visual Style Contract',
+      slides: [{
+        elements: [
+          {
+            type: 'chart',
+            position: { x: 0, y: 0, w: 5, h: 3 },
+            chartType: 'line',
+            categories: ['A', 'B'],
+            series: [{ name: 'S', values: [1, 2] }],
+            chartStyle: {
+              axisLabelColor: '#475569',
+              dataLabelColor: '#0F172A',
+              gridlineColor: '#CBD5E1',
+            },
+          },
+          {
+            type: 'table',
+            position: { x: 5, y: 0, w: 5, h: 3 },
+            rows: [['A']],
+            border: { color: '#94A3B8', width: 0.75 },
+          },
+        ],
+      }],
+    });
+
+    expect(parsed.error).toBeUndefined();
+    if (!parsed.input) throw new Error('expected direct compose input');
+    const deck = buildDeckSpecFromDirectInput(parsed.input);
+    const slide = deck.slides[0]?.spec;
+    if (slide?.type !== 'structured') throw new Error('expected structured slide');
+    expect(slide.elements[0]).toMatchObject({
+      chartStyle: {
+        axisLabelColor: '#475569',
+        dataLabelColor: '#0F172A',
+        gridlineColor: '#CBD5E1',
+      },
+    });
+    expect(slide.elements[1]).toMatchObject({
+      border: { width: 0.75, paint: { type: 'solid', color: '#94A3B8' } },
+    });
+  });
+
+  it('rejects fields outside the public chart and table style contracts', () => {
+    const chart = readDirectComposeInput({
+      title: 'Broken Chart Style',
+      slides: [{ elements: [{
+        type: 'chart',
+        position: { x: 0, y: 0, w: 5, h: 3 },
+        categories: ['A'],
+        series: [{ name: 'S', values: [1] }],
+        chartStyle: { axisLabelColor: '#475569', axisLabelFontSize: 10 },
+      }] }],
+    });
+    expect(chart.error).toContain('chartStyle');
+    expect(chart.error).toContain('axisLabelFontSize');
+
+    const table = readDirectComposeInput({
+      title: 'Broken Table Border',
+      slides: [{ elements: [{
+        type: 'table',
+        position: { x: 0, y: 0, w: 5, h: 3 },
+        rows: [['A']],
+        border: { color: '#94A3B8', width: 0.75, dash: 'dash' },
+      }] }],
+    });
+    expect(table.error).toContain('{ color, width }');
+  });
+
   it('rejects invalid chart series instead of filtering malformed entries', () => {
     const parsed = readDirectComposeInput({
       title: 'Broken Chart',

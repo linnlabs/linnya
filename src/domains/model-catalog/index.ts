@@ -53,6 +53,18 @@ export {
   sourceDefaultModelsPath,
 } from './features/default-catalog/functions/resolveDefaultModelsPath';
 export {
+  ModelDiscoveryService,
+  ModelDiscoveryError,
+  buildDiscoveryUrl,
+  parseModelListingResponse,
+} from './features/model-discovery/modelDiscoveryService';
+export {
+  inferModelCapabilitiesById,
+  inferContextWindowByModelId,
+  inferMaxOutputTokensByModelId,
+  inferImageInputSupportByModelId,
+} from './features/catalog-admission/functions/inferModelCapabilitiesById';
+export {
   ModelCatalogRegistry,
   modelCatalog,
   type CloudModelsLoadedEvent,

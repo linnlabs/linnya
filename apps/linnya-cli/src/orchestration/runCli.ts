@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { ConversationControlWorkspaceToolsCallRequestSchema } from '@app/schemas';
 import { ZodError } from 'zod';
 import type { ConversationControlProgressFrame } from '@app/schemas';
 import {
@@ -27,6 +29,7 @@ export function linnyaCliUsage(): string {
     'Usage:',
     '  linnya send <message> [--conversation ID] [--agent ID] [--project ID] [--model ID] [--image-model ID] [--reasoning LEVEL]',
     '  linnya models',
+    '  linnya projects',
     '  linnya list [--limit N] [--cursor CURSOR] [--search TEXT] [--project ID]',
     '  linnya messages <conversation-id> [--before N | --after N] [--limit N]',
     '  linnya status <conversation-id> [--run ID] [--watch] [--interval MS] [--timeout MS]',
@@ -36,7 +39,7 @@ export function linnyaCliUsage(): string {
     '  linnya audit <conversation-id> [--run ID]',
     '  linnya tools list',
     '  linnya tools describe <tool-name>',
-    '  linnya tools call <tool-name> (--conversation ID | --project ID) [--args-json JSON] [--interval MS] [--timeout MS]',
+    '  linnya tools call <tool-name> (--conversation ID | --project ID) [--args-json JSON | --args-file PATH] [--omit-args] [--interval MS] [--timeout MS]',
     '',
     'Output:',
     '  Single commands write one JSON value to stdout. status --watch writes JSONL frames.',
@@ -62,6 +65,17 @@ export async function runCli(
     let invocation;
     try {
       invocation = parseCliInvocation(argv);
+      if (invocation.kind === 'workspace-tool-call' && invocation.argsFile) {
+        let args: unknown;
+        try {
+          args = JSON.parse(await readFile(invocation.argsFile, 'utf8'));
+        } catch {
+          throw new LinnyaCliError('invalid_request', '--args-file must name a readable UTF-8 JSON file');
+        }
+        invocation = { ...invocation, request: ConversationControlWorkspaceToolsCallRequestSchema.parse({
+          ...invocation.request, args,
+        }) };
+      }
     } catch (error: unknown) {
       if (error instanceof LinnyaCliError) throw error;
       if (error instanceof ZodError) {
@@ -92,7 +106,11 @@ export async function runCli(
         now: options.now,
         sleep: options.sleep,
       });
-      const output = serialize(result, invocation.pretty);
+      // 裁剪只影响此次 CLI 输出，不能改写 durable 工具卡或移除错误证据。
+      const outputResult = invocation.omitArgs
+        ? { ...result, tool: { ...result.tool, payload: { ...result.tool.payload, args: undefined } } }
+        : result;
+      const output = serialize(outputResult, invocation.pretty);
       if (result.ok) {
         io.write(output);
         return LINNYA_CLI_EXIT.success;

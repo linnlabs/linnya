@@ -1,6 +1,7 @@
-import type { CustomApiFormat } from '@app/schemas/custom-api-onboarding';
+import type { CustomApiFormat, CustomApiModelItem } from '@app/schemas';
 
 export interface ApiCustomModelForm {
+  providerName: string;
   endpointModelId: string;
   displayName: string;
   credentialSecret: string;
@@ -9,6 +10,7 @@ export interface ApiCustomModelForm {
   contextWindowTokens: string;
   maxOutputTokens: string;
   supportsImageInput: boolean;
+  models?: CustomApiModelItem[];
 }
 
 export interface RegistrationFormStatus {

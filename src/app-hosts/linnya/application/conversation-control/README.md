@@ -1,6 +1,6 @@
 # Conversation Control Use Case
 
-本 feature 是 Linnya Conversation 外部控制动作的产品级 use case。它把 `send / models / list / messages / status / respond / stop / result / audit / workspace_tools` 编排到现有模型目录、Flow、run registry、durable history、工具目录和执行审计 ports，供 CLI 等入口复用。
+本 feature 是 Linnya Conversation 外部控制动作的产品级 use case。它把 `send / models / projects / list / messages / status / respond / stop / result / audit / workspace_tools` 编排到现有模型目录、Flow、run registry、durable history、工具目录和执行审计 ports，供 CLI 等入口复用。
 
 它不拥有 HTTP、鉴权、命令行解析、数据库 SQL 或 Agent runtime。共享 wire 合同位于 `packages/schemas/src/conversation-control/`；本地传输位于 `adapters/conversation-control-bridge/`。
 
@@ -56,3 +56,5 @@ pnpm exec vitest run \
 集成测试使用窄 ports 穿过真实 use case，覆盖 durable acceptance、active-run 冲突、`awaiting_user` exact interaction resume、stop terminal settlement、exact-run result、安全 audit 投影，以及 Workspace 工具的 allowlist、项目作用域与 Host 请求。执行摘要自身的父子 run scope、token 可信度和工具失败聚合由 `application/execution-audit-export/__tests__/` 覆盖；字段严格性由 `packages/schemas/src/conversation-control/conversation-control.test.ts` 负责。Flow 的交互响应测试还必须验证 `approved` 已被投影为“等待条件已满足”的自包含 observation，不能只断言状态枚举和 JSON payload。
 
 CLI 使用方法和端到端测试分层见 `apps/linnya-cli/README.md`。
+
+`projects` 通过注入的 Workspace 查询端口列出未删除项目，只投影 `project_id` 与 `name`。CLI 不读取数据库或物理路径。

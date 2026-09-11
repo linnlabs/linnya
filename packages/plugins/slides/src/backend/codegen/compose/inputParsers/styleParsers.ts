@@ -5,9 +5,10 @@
 
 import type {
   Box,
+  LayoutChartStyle,
   ImageVisualShadow,
   ShapeStyle,
-  SlideBackgroundGradient,
+  ShapeStrokeStyle,
   TextStyle,
   ThemeSpec,
 } from '@plugin/slides/shared';
@@ -59,6 +60,43 @@ export function parseTextStyle(value: unknown): TextStyle | null {
   }
   if (isFiniteNumber(value.letterSpacing)) style.letterSpacing = value.letterSpacing;
   return style;
+}
+
+/** 解析 deck.js 公开的图表颜色语义，不接受底层引擎 option。 */
+export function parseChartStyle(value: unknown): { value: LayoutChartStyle } | { error: string } {
+  if (!isRecord(value)) return { error: '必须是图表样式对象。' };
+  const style: LayoutChartStyle = {};
+  const colorKeys = [
+    'legendColor', 'plotBackgroundColor', 'axisLabelColor',
+    'categoryAxisLabelColor', 'valueAxisLabelColor', 'dataLabelColor', 'gridlineColor',
+  ] as const;
+  const knownKeys = new Set<string>([...colorKeys, 'seriesLineWidth']);
+  const unknownKeys = Object.keys(value).filter(key => !knownKeys.has(key));
+  if (unknownKeys.length > 0) {
+    return { error: `未知字段 ${unknownKeys.join(', ')}；支持字段：${[...knownKeys].join(', ')}。` };
+  }
+  for (const key of colorKeys) {
+    if (value[key] != null) {
+      if (!isNonEmptyString(value[key])) return { error: `${key} 必须是非空颜色字符串。` };
+      style[key] = value[key];
+    }
+  }
+  if (value.seriesLineWidth != null) {
+    if (!isFiniteNumber(value.seriesLineWidth) || value.seriesLineWidth <= 0) {
+      return { error: 'seriesLineWidth 必须是大于零的有限 pt 数值。' };
+    }
+    style.seriesLineWidth = value.seriesLineWidth;
+  }
+  return { value: style };
+}
+
+/** 表格沿用统一描边合同，避免再造一套 border 字段。 */
+export function parseTableBorder(value: unknown): ShapeStrokeStyle | null {
+  if (!isRecord(value) || !Object.keys(value).every(key => key === 'color' || key === 'width')) {
+    return null;
+  }
+  const parsed = parseShapeStyle({ border: value });
+  return parsed?.border ?? null;
 }
 
 /**

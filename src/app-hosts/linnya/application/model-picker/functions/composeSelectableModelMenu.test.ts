@@ -116,6 +116,20 @@ function input(
 }
 
 describe('composeSelectableModelMenu', () => {
+  it('按 route profile 把用户模型投影为可刷新 Custom API 分组', () => {
+    const model = chatModel('company-gpt', 'user', 'custom-endpoint', 'Company GPT');
+    model.custom_provider_name = 'Company Gateway';
+
+    expect(composeSelectableModelMenu(input({ models: [model] })).custom_providers).toEqual([
+      expect.objectContaining({
+        provider_name: 'Company Gateway',
+        api_format: 'openai_responses',
+        base_url: 'https://custom-endpoint.example.com/v1',
+        models: [expect.objectContaining({ model_config_id: 'company-gpt' })],
+      }),
+    ]);
+  });
+
   it('把 ChatGPT 订阅生图模型归入 OpenAI Provider，而不是系统模型', () => {
     const definition = providerCatalog.get('openai');
     if (!definition) throw new Error('OpenAI 目录缺失');

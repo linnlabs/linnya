@@ -36,6 +36,7 @@ table.rows = [
   ["团队要求", "全栈 5 人", "1 人运营", "后端 2 人"],
   ["推荐度", "×", "△", "✓"],
 ];
+table.border = { color: "#CBD5E1", width: 0.75 };
 container.add(table);
 
 const recommend = createText("推荐：混合方案 — 兼顾上线速度（3 个月）与定制能力；TCO 中等可控。");

@@ -43,28 +43,69 @@ export function createCustomApiOnboardingUseCase(
         );
       }
 
-      const modelId = dependencies.idFactory.create();
-      const endpointResourceId = reusableEndpoint?.id ?? dependencies.idFactory.create();
-      const plan = buildCustomApiModelRegistration({
-        modelId,
-        endpointResourceId,
-        command,
-        binding,
-        reusableEndpoint,
-      });
+      const modelIds: string[] = [];
+      let sharedEndpointResourceId: string | undefined;
 
-      try {
-        await dependencies.modelCatalog.registerUserModel(plan.model, plan.inferenceEndpoint);
-      } catch (error: unknown) {
-        if (error instanceof CustomApiOnboardingError) throw error;
-        throw new CustomApiOnboardingError(
-          'custom_api_onboarding.registration_failed',
-          '自定义 API 模型注册失败',
-          500
-        );
+      for (const [index, item] of command.models.entries()) {
+        const modelId = dependencies.idFactory.create();
+        modelIds.push(modelId);
+
+        let endpointSelection: import('src/domains/model-catalog').InferenceEndpointSelection;
+        let endpointId: string;
+
+        if (reusableEndpoint) {
+          endpointSelection = { kind: 'existing', inference_endpoint_id: reusableEndpoint.id };
+          endpointId = reusableEndpoint.endpoint_id;
+        } else if (index === 0) {
+          sharedEndpointResourceId = dependencies.idFactory.create();
+          endpointId = `${binding.endpoint_id}:${sharedEndpointResourceId}`;
+          endpointSelection = {
+            kind: 'create',
+            endpoint: {
+              id: sharedEndpointResourceId,
+              route_profile_id: binding.route_profile_id,
+              endpoint_id: endpointId,
+              base_url: command.base_url,
+              auth_profile: binding.auth_profile,
+              credential_secret: command.api_key,
+            },
+          };
+        } else {
+          if (!sharedEndpointResourceId) {
+            throw new Error('批量注册的共享 endpoint 尚未建立');
+          }
+          endpointId = `${binding.endpoint_id}:${sharedEndpointResourceId}`;
+          endpointSelection = {
+            kind: 'existing',
+            inference_endpoint_id: sharedEndpointResourceId,
+          };
+        }
+
+        const model = buildCustomApiModelRegistration({
+          modelId,
+          endpointId,
+          command,
+          model: item,
+          binding,
+        });
+
+        try {
+          await dependencies.modelCatalog.registerUserModel(model, endpointSelection);
+        } catch (error: unknown) {
+          console.error('[createCustomApiOnboardingUseCase] registerUserModel error', error);
+          if (error instanceof CustomApiOnboardingError) throw error;
+          throw new CustomApiOnboardingError(
+            'custom_api_onboarding.registration_failed',
+            error instanceof Error ? error.message : '自定义 API 模型注册失败',
+            500
+          );
+        }
       }
 
-      return { model_id: modelId };
+      return {
+        model_id: modelIds[0],
+        ...(modelIds.length > 1 ? { model_ids: modelIds } : {}),
+      };
     },
   });
 }

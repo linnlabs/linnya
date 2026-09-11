@@ -14,6 +14,7 @@ import type { SvgGraphicElementSpec } from '../svgGraphic';
 import type { BrushArtworkSourceRef } from '../brushArtwork';
 import type { TextLineSpacing } from '../textLayout/definitions/lineSpacing';
 import type { TextWrapPolicy } from '../textLayout/definitions/contract';
+import type { LayoutChartStyle } from '../flexComposeContract';
 import type {
   GradientPaint,
   GradientStop,
@@ -172,6 +173,8 @@ export type StructuredElement =
         series: ChartSeries[];
       };
       position: Box;
+      /** deck.js 的稳定颜色语义；进入 RenderModel 前仍保留原始意图。 */
+      chartStyle?: LayoutChartStyle;
       options?: Record<string, unknown>;
       _semanticNodeId?: string;
       _semanticRole?: string;
@@ -184,6 +187,8 @@ export type StructuredElement =
       headers?: string[];
       rows: TableCell[][];
       position: Box;
+      /** 已归一化的统一表格描边。 */
+      border?: ShapeStrokeStyle;
       options?: Record<string, unknown>;
       _semanticNodeId?: string;
       _semanticRole?: string;

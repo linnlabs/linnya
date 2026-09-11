@@ -245,3 +245,14 @@ export function classifyOverlap(
 
   return 'forbidden';
 }
+
+
+/** 显式背景/装饰语义在所有空间规则中使用相同口径。 */
+export function hasDecorativeRole(role: string | undefined): boolean {
+  const normalized = normalizedRole(role);
+  return BACKGROUND_ROLES.has(normalized) || DECORATIVE_ROLES.has(normalized);
+}
+
+export function isChromeTextRole(role: string | undefined): boolean {
+  return role === 'footnote' || role === 'source' || role === 'page-number';
+}

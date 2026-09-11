@@ -257,10 +257,10 @@ Chat-only endpoint 可以让多模态模型接收用户附件，而不承诺读�
 
 根 `ModelRegistrationSettingsPage`
 只负责统一选择并条件挂载自定义 API、Ollama 和正式 Provider 三个独立 feature，不读取或合并表单内部状态。自定义 API 编排只校验用户输入并提交共享 strict
-command，Host use case 生成内部 route 后通过 Model
+request，Host HTTP 边界将单模型或批量请求归一化为非空模型列表，再由 use case 生成内部 route 并通过 Model
 Catalog 原子保存。它要求 URL、首次配置所需的 API
 Key 和三选一兼容格式；相同 URL 与格式已有凭据时可留空复用。它不要求用户命名一层“连接”，也不会把 URL
-host 当成 Provider 名称持久化。
+host 暴露成独立连接实体。用户未填写供应商名称时，Host 使用 URL hostname 生成稳定的模型分组名称。
 
 填写自定义 API 地址时，用户按服务文档选择三种 API 格式：`OpenAI 兼容` 对应
 `openai_compatible_chat` 与 `/chat/completions`，`OpenAI Responses` 对应

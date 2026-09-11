@@ -14,6 +14,7 @@ import type {
   AiSdkFailureProjection,
   AiSdkProviderFailureClassifier,
 } from '../definitions/aiSdkFailureProjection';
+import type { AiSdkProviderSignal } from '../definitions/aiSdkFailureObservation';
 import { AiSdkHostStreamInvariantError } from '../definitions/aiSdkHostStreamInvariantError';
 
 function retryableStatus(statusCode: number | undefined): boolean {
@@ -263,15 +264,21 @@ function readStructuredProviderError(
 
   // @ai-sdk/openai 在 Responses 流已经产生输出后，会把 response.failed 作为嵌套普通对象交给 Core。
   const response = isRecord(record.response) ? record.response : undefined;
-  const responseError = response?.error;
+  const responseError = isRecord(response?.error) ? response.error : undefined;
   const incompleteDetails = isRecord(response?.incomplete_details)
     ? response.incomplete_details
     : undefined;
   const responseFailure = type === 'response.failed'
     ? {
-        ...(readHttpStatus(responseError) === undefined
+        ...(readHttpStatus(responseError?.code) === undefined
           ? {}
-          : { status: readHttpStatus(responseError) }),
+          : { status: readHttpStatus(responseError?.code) }),
+        ...(responseError === undefined
+          ? {}
+          : (() => {
+              const responseCode = readOptionalString(responseError, 'code');
+              return responseCode === undefined ? {} : { code: responseCode };
+            })()),
         ...(incompleteDetails === undefined
           ? {}
           : { reason: readOptionalString(incompleteDetails, 'reason') }),
@@ -294,6 +301,27 @@ function readStructuredProviderError(
     },
     nested,
   );
+}
+
+function readBoundedDiagnosticString(value: string | undefined): string | undefined {
+  return value !== undefined && value.length <= 128 ? value : undefined;
+}
+
+/** 从 SDK/Provider 错误中提取可安全记录的判别字段，不读取原始 message。 */
+export function projectAiSdkProviderSignal(error: unknown): AiSdkProviderSignal | undefined {
+  const structured = readStructuredProviderError(error);
+  if (!structured) return undefined;
+
+  const type = readBoundedDiagnosticString(structured.type);
+  const code = readBoundedDiagnosticString(structured.code);
+  const reason = readBoundedDiagnosticString(structured.reason);
+  const signal: AiSdkProviderSignal = {
+    ...(structured.status === undefined ? {} : { status_code: structured.status }),
+    ...(type === undefined ? {} : { type }),
+    ...(code === undefined ? {} : { code }),
+    ...(reason === undefined ? {} : { reason }),
+  };
+  return Object.keys(signal).length === 0 ? undefined : signal;
 }
 
 function classifyStructuredProviderError(error: StructuredProviderError): AiSdkFailureProjection {

@@ -1,3 +1,6 @@
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type {
   ConversationControlClient,
@@ -38,7 +41,7 @@ function createClient(
       app_instance_id: 'app-1',
       app_version: '0.0.38',
       capabilities: [
-        'send', 'models', 'list', 'messages', 'status', 'respond', 'stop', 'result',
+        'send', 'models', 'projects', 'list', 'messages', 'status', 'respond', 'stop', 'result',
         'workspace_tools',
       ],
       limits: {
@@ -58,10 +61,14 @@ function connect(client: ConversationControlClient): ConversationControlConnecti
 }
 
 describe('runCli', () => {
-  it('工具调用等待 run 与投影结算，并返回同一工具卡的完整结果', async () => {
+  it.each(['warning', 'error'] as const)('工具调用从文件读取参数、保留 %s 诊断并裁剪回显', async severity => {
+    const directory = await mkdtemp(join(tmpdir(), 'linnya-cli-args-'));
+    const argsFile = join(directory, 'args.json');
+    await writeFile(argsFile, JSON.stringify({ locator: 'workspace:/notes.md', content: '大段源码'.repeat(10000) }));
     let statusCalls = 0;
     const execute: ConversationControlClient['execute'] = async request => {
       if (request.command === 'workspace_tools') {
+        expect(request).toMatchObject({ args: { content: '大段源码'.repeat(10000) } });
         return {
           schema_version: 1,
           ok: true,
@@ -124,7 +131,8 @@ describe('runCli', () => {
               tool_name: 'read_file',
               status: 'success',
               phase: 'complete',
-              data: { content: 'file contents' },
+              args: { content: '大段源码'.repeat(10000) },
+              data: { diagnostics: [{ severity, code: 'document_build' }] },
               started_at: 2,
               completed_at: 3,
             },
@@ -140,7 +148,7 @@ describe('runCli', () => {
     await expect(runCli([
       'tools', 'call', 'read_file',
       '--conversation', 'conversation-1',
-      '--args-json', '{"locator":"workspace:/notes.md"}',
+      '--args-file', argsFile, '--omit-args',
       '--interval', '1',
       '--timeout', '1000',
     ], {
@@ -148,14 +156,17 @@ describe('runCli', () => {
       io: output.io,
       now: () => 10,
       sleep: async () => undefined,
-    })).resolves.toBe(0);
-    expect(JSON.parse(output.stdout())).toMatchObject({
-      ok: true,
+    })).resolves.toBe(severity === 'error' ? 8 : 0);
+    await rm(directory, { recursive: true });
+    const text = severity === 'error' ? output.stderr() : output.stdout();
+    expect(text).not.toContain('大段源码');
+    expect(JSON.parse(text)).toMatchObject({
+      ok: severity !== 'error',
       conversation_id: 'conversation-1',
       run_id: 'run-1',
       tool: { payload: { tool_name: 'read_file', status: 'success' } },
     });
-    expect(output.stderr()).toBe('');
+    expect(severity === 'error' ? output.stdout() : output.stderr()).toBe('');
   });
 
   it('models 输出可复制到 send 参数的模型配置 ID', async () => {

@@ -44,6 +44,12 @@ export type AiSdkLanguageDiagnostic =
       readonly request_fingerprint?: string;
       readonly phase: AiSdkFailurePhase;
       readonly error_shape: AiSdkFailureErrorShape;
+      readonly provider_signal?: Readonly<{
+        readonly status_code?: number;
+        readonly type?: string;
+        readonly code?: string;
+        readonly reason?: string;
+      }>;
       readonly failure_kind: string;
       readonly failure_code: string;
       readonly retryable: boolean;

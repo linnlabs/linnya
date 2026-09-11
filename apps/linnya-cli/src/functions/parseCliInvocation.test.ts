@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { parseCliInvocation } from './parseCliInvocation';
 
 describe('parseCliInvocation', () => {
+  it('拒绝两种参数来源同时出现', () => {
+    expect(() => parseCliInvocation(['tools', 'call', 'write_file', '--project', 'p',
+      '--args-file', 'args.json', '--args-json', '{}'])).toThrow('mutually exclusive');
+  });
   it('只接受五个 Workspace 工具，并要求调用绑定项目或会话', () => {
     expect(parseCliInvocation(['tools', 'list'])).toMatchObject({
       request: { command: 'workspace_tools', action: 'list' },

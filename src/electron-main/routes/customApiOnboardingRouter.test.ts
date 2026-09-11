@@ -1,6 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import express from 'express';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ModelDiscoveryResponseSchema } from '@app/schemas';
 import {
   CustomApiModelRegistrationResponseSchema,
   CustomApiOnboardingErrorResponseSchema,
@@ -64,10 +65,15 @@ describe('custom API onboarding router', () => {
       api_format: 'openai_responses',
       base_url: 'http://models.intranet:8080/v1',
       api_key: 'secret-value',
-      endpoint_model_id: 'company-gpt',
-      context_window_tokens: 256000,
-      max_output_tokens: 16384,
-      supports_image_input: true,
+      provider_name: 'models.intranet',
+      models: [
+        {
+          endpoint_model_id: 'company-gpt',
+          context_window_tokens: 256000,
+          max_output_tokens: 16384,
+          supports_image_input: true,
+        },
+      ],
     });
   });
 
@@ -96,5 +102,47 @@ describe('custom API onboarding router', () => {
     );
     expect(serialized).not.toContain('secret-value');
     expect(registerModel).not.toHaveBeenCalled();
+  });
+
+  it('支持 /discover 端点自动探测模型列表并推断模型能力', async () => {
+    const mockFetch: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          data: [{ id: 'gpt-4o' }],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      );
+
+    const app = express();
+    app.use(express.json());
+    const { ModelDiscoveryService } = await import('src/domains/model-catalog');
+    const discoveryService = new ModelDiscoveryService({ fetchFn: mockFetch });
+    app.use(
+      '/api/v1/custom-api-onboarding',
+      createCustomApiOnboardingRouter({ registerModel: vi.fn() }, discoveryService)
+    );
+    const server = createServer(app);
+    servers.push(server);
+    const baseUrl = await listen(server);
+
+    const response = await fetch(`${baseUrl}/api/v1/custom-api-onboarding/discover`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        api_format: 'openai_compatible',
+        base_url: 'https://api.openai.com/v1',
+        api_key: 'sk-test',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const body = ModelDiscoveryResponseSchema.parse(await response.json());
+    expect(body.models).toHaveLength(1);
+    expect(body.models[0]).toMatchObject({
+      id: 'gpt-4o',
+      context_window_tokens: 128000,
+      supports_image_input: true,
+      confidence: 'inferred',
+    });
   });
 });

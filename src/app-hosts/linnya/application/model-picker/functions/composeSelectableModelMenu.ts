@@ -4,6 +4,11 @@ import type {
   ModelPickerProviderModel,
   ModelPickerSnapshot,
 } from '@app/schemas/model-picker';
+import {
+  readCustomApiFormatForRouteProfileId,
+  type CustomApiFormat,
+} from '@app/schemas/custom-api-onboarding';
+import { findLanguageInferenceRouteProfileForRoute } from '@app/schemas/model-inference';
 import type { ModelConfig } from 'src/domains/model-catalog';
 import type {
   ConfiguredProvider,
@@ -223,9 +228,47 @@ export function composeSelectableModelMenu(
   const cloudModels = input.models
     .filter(model => model.catalog_source === 'cloud')
     .map(model => projectMaterializedModel(model, input, model.ui_visibility.includes('chat')));
-  const customModels = input.models
-    .filter(model => model.catalog_source === 'user' && !configuredModelIds.has(model.id))
+  const customModelsRaw = input.models
+    .filter(model => model.catalog_source === 'user' && !configuredModelIds.has(model.id));
+  const customModels = customModelsRaw
     .map(model => projectMaterializedModel(model, input, true));
+
+  // 按 custom_provider_name 分组
+  const customProvidersMap = new Map<string, {
+    provider_name: string;
+    api_format?: CustomApiFormat;
+    base_url?: string;
+    endpoint_id?: string;
+    models: typeof customModels;
+  }>();
+  for (const rawModel of customModelsRaw) {
+    const providerName = rawModel.custom_provider_name?.trim() || '自定义模型';
+    const groupKey = providerName;
+    const materialized = projectMaterializedModel(rawModel, input, true);
+    if (!customProvidersMap.has(groupKey)) {
+      customProvidersMap.set(groupKey, {
+        provider_name: providerName,
+        api_format: rawModel.inference_route
+          ? readCustomApiFormatForRouteProfileId(
+              findLanguageInferenceRouteProfileForRoute(rawModel.inference_route).id
+            )
+          : undefined,
+        base_url: rawModel.inference_route?.base_url,
+        endpoint_id: rawModel.inference_endpoint_id,
+        models: [],
+      });
+    }
+    customProvidersMap.get(groupKey)!.models.push(materialized);
+  }
+
+  const customProviders = Array.from(customProvidersMap.entries()).map(([key, group]) => ({
+    provider_id: `custom:${key}`,
+    provider_name: group.provider_name,
+    api_format: group.api_format,
+    base_url: group.base_url,
+    endpoint_id: group.endpoint_id,
+    models: group.models,
+  }));
 
   return {
     ...(cloudModels.length > 0
@@ -235,5 +278,6 @@ export function composeSelectableModelMenu(
       provider => projectConfiguredProvider(provider, input) ?? []
     ),
     custom_models: customModels,
+    custom_providers: customProviders,
   };
 }

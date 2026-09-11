@@ -1,4 +1,7 @@
-export { classifyAiSdkFailure } from './functions/classifyAiSdkFailure';
+export {
+  classifyAiSdkFailure,
+  projectAiSdkProviderSignal,
+} from './functions/classifyAiSdkFailure';
 export { projectAiSdkFailureObservation } from './functions/projectAiSdkFailureObservation';
 export { projectAiSdkFinishReason } from './functions/projectAiSdkFinishReason';
 export {
@@ -9,6 +12,7 @@ export type { AiSdkHostStreamInvariantCode } from './definitions/aiSdkHostStream
 export type {
   AiSdkFailureErrorShape,
   AiSdkFailureObservation,
+  AiSdkProviderSignal,
 } from './definitions/aiSdkFailureObservation';
 export type {
   AiSdkFailurePhase,

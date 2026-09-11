@@ -74,12 +74,43 @@ export interface LayoutChartSeriesInput {
   labels?: LayoutDisplayValue[];
 }
 
+/**
+ * 图表的跨引擎颜色语义。
+ *
+ * 这里只暴露前端预览和 PPTX 都能表达的稳定字段；不要把 ECharts
+ * option 或 PptxGenJS 的原始配置直接放进 deck.js。
+ */
+export interface LayoutChartStyle {
+  /** 图例文字颜色。 */
+  legendColor?: string;
+  /** 绘图区背景颜色。 */
+  plotBackgroundColor?: string;
+  /** 折线宽度，单位 pt，必须大于零。 */
+  seriesLineWidth?: number;
+  /** 类目轴和数值轴标签的共同兜底颜色。 */
+  axisLabelColor?: string;
+  /** 类目轴标签颜色，未提供时回退到 axisLabelColor。 */
+  categoryAxisLabelColor?: string;
+  /** 数值轴标签颜色，未提供时回退到 axisLabelColor。 */
+  valueAxisLabelColor?: string;
+  /** 数据标签颜色。 */
+  dataLabelColor?: string;
+  /** 类目网格线和数值网格线的共同颜色。 */
+  gridlineColor?: string;
+}
+
 export interface LayoutTableCellInput {
   text: LayoutDisplayValue;
   style?: LayoutTextStyleInput;
   fill?: string;
   colspan?: number;
   rowspan?: number;
+}
+
+export interface LayoutTableBorderInput {
+  color: string;
+  /** 边框粗细，单位为 pt。 */
+  width: number;
 }
 
 export type LayoutTableCellValue = LayoutDisplayValue | LayoutTableCellInput;
@@ -104,6 +135,7 @@ export interface LayoutThemeInput {
 }
 
 export interface FlexProps {
+  /** 正数 N 表示 grow=N、shrink=1、basis=0；无 flex 的显式主轴尺寸不收缩。 */
   flex?: number;
   width?: number | string;
   height?: number | string;
@@ -172,12 +204,26 @@ export interface LayoutGradientStop {
   opacity?: number;
 }
 
-export interface LayoutLinearGradient {
+export type LayoutGradientDirection =
+  | 'to-right' | 'to-bottom-right' | 'to-bottom' | 'to-bottom-left'
+  | 'to-left' | 'to-top-left' | 'to-top' | 'to-top-right';
+
+export type LayoutLinearGradient = {
   type: 'linear';
-  angle: number;
   stops: [LayoutGradientStop, LayoutGradientStop, ...LayoutGradientStop[]];
   rotateWithShape?: boolean;
-}
+} & (
+  | {
+    /** 0° 向右、90° 向下，顺时针；不同于 CSS。非正方形按 OOXML scaled 语义缩放方向。 */
+    angle: number;
+    direction?: never;
+  }
+  | {
+    /** 语义方向，与 angle 二选一；日常创作优先使用。 */
+    direction: LayoutGradientDirection;
+    angle?: never;
+  }
+);
 
 export interface LayoutRadialGradient {
   type: 'radial';
@@ -262,6 +308,8 @@ export type LayoutHStackNode = LayoutViewNode;
  * 使用固定盒宽并自动换行；绝对定位且没有横向约束时，盒宽跟随内容，只响应显式换行符。
  */
 export interface LayoutTextConfig extends FlexProps {
+  /** 页边辅助信息，不计入正文的字体层级与字体族数量。 */
+  role?: 'footnote' | 'source' | 'page-number';
   content?: string | LayoutTextRun[];
   fontSize?: number;
   fontWeight?: 'bold' | 'normal' | number;
@@ -296,6 +344,10 @@ export interface LayoutTextNode extends LayoutTextConfig, LayoutSourceMetadata {
 }
 
 export interface LayoutShapeConfig extends FlexProps {
+  /** 声明背景或装饰意图，参与空间诊断；不改变无障碍语义。 */
+  role?: 'background' | 'decoration';
+  /** 允许超出画布的英寸数，默认零。 */
+  bleed?: number;
   geometry?: ShapeGeometrySpec;
   fill?: LayoutShapeFillInput;
   border?: LayoutShapeStroke;
@@ -319,6 +371,7 @@ export interface LayoutChartConfig extends FlexProps {
   showDataLabels?: boolean;
   dataLabelFormat?: string;
   legendPosition?: LayoutChartLegendPosition;
+  chartStyle?: LayoutChartStyle;
 }
 
 export interface LayoutChartNode extends LayoutChartConfig, LayoutSourceMetadata {
@@ -347,6 +400,8 @@ export interface LayoutTableDataLike {
 export interface LayoutTableConfig extends FlexProps {
   headers?: LayoutTableCellValue[];
   rows?: LayoutTableCellValue[][];
+  /** 整张表四边及内部网格线的统一描边。 */
+  border?: LayoutTableBorderInput;
   /** @deprecated 使用 headers 与 rows。 */
   tableData?: LayoutTableDataLike;
 }
@@ -356,6 +411,9 @@ export interface LayoutTableNode extends LayoutTableConfig, LayoutSourceMetadata
 }
 
 export interface LayoutImageConfig extends FlexProps {
+  role?: 'background' | 'decoration';
+  /** 允许超出画布的英寸数，默认零。 */
+  bleed?: number;
   src?: LayoutImageSourceInput;
   alt?: string;
   fitMode?: 'cover' | 'contain' | 'crop';
@@ -408,7 +466,7 @@ export interface LayoutFormulaNode extends LayoutFormulaConfig, LayoutSourceMeta
   readonly _type: 'Formula';
 }
 
-export interface LayoutSpacerConfig extends FlexProps {}
+export type LayoutSpacerConfig = FlexProps;
 
 export interface LayoutSpacerNode extends LayoutSpacerConfig, LayoutSourceMetadata {
   readonly _type: 'Spacer';

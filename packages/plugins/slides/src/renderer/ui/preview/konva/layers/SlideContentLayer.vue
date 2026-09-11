@@ -1,6 +1,9 @@
 <template>
-  <v-layer>
-    <v-group :config="transform">
+  <v-layer :__use-strict-mode="true">
+    <v-group
+      :__use-strict-mode="true"
+      :config="transform"
+    >
       <KonvaNodeRenderer
         v-for="node in sortedElements"
         :key="node.id"

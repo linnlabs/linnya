@@ -17,6 +17,11 @@ import type {
   StrokePaint,
 } from '../definitions/paint';
 
+const DIRECTION_ANGLES = new Map<string, number>([
+  ['to-right', 0], ['to-bottom-right', 45], ['to-bottom', 90], ['to-bottom-left', 135],
+  ['to-left', 180], ['to-top-left', 225], ['to-top', 270], ['to-top-right', 315],
+]);
+
 const DEFAULT_RADIAL_CENTER: NormalizedPaintPoint = { x: 0.5, y: 0.5 };
 const DEFAULT_RADIAL_RADIUS: NormalizedPaintRadius = { x: 0.5, y: 0.5 };
 
@@ -126,12 +131,18 @@ export function normalizeGradientPaint(
   const rotateWithShape = value.rotateWithShape ?? true;
 
   if (value.type === 'linear') {
-    if (!isFiniteNumber(value.angle)) {
-      return failure(`${path}.angle 必须是有限数字。`);
+    if (value.angle != null && value.direction != null) {
+      return failure(`${path} 的 angle 与 direction 必须二选一。`);
+    }
+    const angle = value.direction != null
+      ? typeof value.direction === 'string' ? DIRECTION_ANGLES.get(value.direction) : undefined
+      : value.angle;
+    if (!isFiniteNumber(angle)) {
+      return failure(`${path} 必须提供有限数字 angle 或合法的 direction（${[...DIRECTION_ANGLES.keys()].join(', ')}）。`);
     }
     return success({
       type: 'linear',
-      angle: normalizeGradientAngle(value.angle),
+      angle: normalizeGradientAngle(angle),
       stops: stops.value,
       rotateWithShape,
     });

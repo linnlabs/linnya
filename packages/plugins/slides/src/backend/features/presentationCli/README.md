@@ -107,3 +107,7 @@ Linux 下 Electron CLI 的 presentation 命令需要 `DISPLAY` 或 `WAYLAND_DISP
 - 真实验收需要以实际 workspace presentation 分别执行 inspect 和 render，并确认成功报告版本正确、每个 locator 可读取且页码与 JPEG 一一对应；同一文稿保存新版本后再 render，应只剩最新成功版本工作集。
 - 发布验收还必须使用真实 packaged Linnya 可执行文件覆盖未知 command ID、`slides --help` 和 render。只运行仓库 CLI 或 `extraResources` entry 不能证明 app bundle 的原生依赖、worker 与模块解析布局正确。
 - `scripts/e2e/commands/fixtures/slides-yoga-runtime-probe.cjs` 只用于生成后的测试 app：临时替换已登记 CLI entry，验证 command mode 能从 packaged host 定位 `yoga-layout/load`、加载 ESM 并实际计算布局。探针不能进入正式插件 artifact，验收后必须恢复真实 CLI 再跑 render。
+
+开发启动器 `pnpm --silent slides:cli -- ...` 按源码、构建配置、lockfile、Node/平台身份与构建产物内容校验缓存；连续调用且输入和产物未变化时不重建。成功构建日志不进入 JSON 输出，失败时日志写 stderr。缓存仅属于开发态启动器，正式 standalone entry 不执行源码构建。
+
+所有命令默认输出紧凑 JSON；`--format pretty` 用两空格缩进。Inspect report v8 的 finding 新增 `action`，由 inspection 的统一处置目录提供，不修改 strict finding 本体。

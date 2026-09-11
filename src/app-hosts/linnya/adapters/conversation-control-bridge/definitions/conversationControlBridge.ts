@@ -13,6 +13,7 @@ export const CONVERSATION_CONTROL_MAX_WATCH_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 export const LINNYA_CONVERSATION_CONTROL_CAPABILITIES = [
   'send',
   'models',
+  'projects',
   'list',
   'messages',
   'status',

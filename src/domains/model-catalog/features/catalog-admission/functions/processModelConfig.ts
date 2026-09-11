@@ -232,6 +232,9 @@ export function processModelConfig(args: {
     catalog_source: readCatalogSource(modelData.catalog_source),
     credential_reference: credentialReference,
     inference_endpoint_id: inferenceEndpointId,
+    ...(typeof modelData.custom_provider_name === 'string' && modelData.custom_provider_name.trim().length > 0
+      ? { custom_provider_name: modelData.custom_provider_name.trim() }
+      : {}),
     capabilities,
     ui_visibility: Array.isArray(modelData.ui_visibility)
       ? modelData.ui_visibility.filter((value): value is string => typeof value === 'string')

@@ -19,6 +19,7 @@ export * from './provider-account';
 export * from './custom-api-onboarding';
 export * from './ollama-onboarding';
 export * from './model-picker';
+export * from './model-discovery';
 export type {
   IncrementalEvent,
   ConversationOptions,

@@ -11,6 +11,7 @@ import {
   configureDefaultFontResolutionService,
   resetDefaultFontResolutionService,
 } from 'src/features/font-resolution';
+import { textStyleToRuns } from '../generatedTextRenderInput';
 import { extractParagraphInfo } from '../../parser/xml/TextBodyParser.js';
 import { getElementByTag } from '../../parser/xml/XmlNode.js';
 
@@ -20,6 +21,17 @@ const FACE_FINGERPRINT = 'b'.repeat(64);
 describe('Slides font resolution integration', () => {
   afterEach(() => {
     resetDefaultFontResolutionService();
+  });
+
+  it('一个汉字只替换自己的 grapheme，拉丁数字保留作者字体', () => {
+    configureDefaultFontResolutionService({ catalog: new FakeFontCatalog([
+      makeMeta({ family: 'Latin Display', glyphCodePointRanges: [[0x20, 0x7f]] }),
+      makeMeta({ family: 'CJK Sans', unicodeRanges: rangesWithBits([59]), glyphCodePointRanges: [[0x4e00, 0x9fff]] }),
+    ]) });
+    const runs = textStyleToRuns('1,000万', { fontFamily: 'Latin Display', fontSize: 40 }, 'Arial');
+    expect(runs.map(run => [run.text, run.fontFamily, run.resolvedFontFamily])).toEqual([
+      ['1,000', 'Latin Display', 'Latin Display'], ['万', 'Latin Display', 'CJK Sans'],
+    ]);
   });
 
   it('preserves original fontFamily while layout prewarm consumes resolvedFontFamily', () => {

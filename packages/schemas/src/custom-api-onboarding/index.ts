@@ -66,17 +66,42 @@ export const CUSTOM_API_ONBOARDING_ERROR_CODES = [
   'custom_api_onboarding.registration_failed',
 ] as const;
 
-/** 自定义 API 只提交用户能理解并显式填写的事实，不承载内部 route 或 Provider 字段。 */
-export const CustomApiModelRegistrationCommandSchema = z
+export const CustomApiModelItemSchema = z
   .object({
-    api_format: CustomApiFormatSchema,
-    base_url: NonEmptyStringSchema,
-    api_key: NonEmptyStringSchema.optional(),
     endpoint_model_id: NonEmptyStringSchema,
     display_name: NonEmptyStringSchema.optional(),
     context_window_tokens: PositiveSafeIntegerSchema,
     max_output_tokens: PositiveSafeIntegerSchema,
     supports_image_input: z.boolean(),
+    picker_enabled: z.boolean().optional(),
+  })
+  .strict();
+
+export type CustomApiModelItem = z.infer<typeof CustomApiModelItemSchema>;
+
+/** 从 base_url 中提取默认的 provider 标识，例如 http://xiaoxiao.work.gd/v1 -> xiaoxiao.work.gd */
+export function extractDefaultProviderNameFromBaseUrl(baseUrl: string): string {
+  try {
+    const url = new URL(baseUrl.trim());
+    return url.hostname || 'custom';
+  } catch {
+    return 'custom';
+  }
+}
+
+/** 自定义 API 只提交用户能理解并显式填写的事实，不承载内部 route 或 Provider 字段。 */
+export const CustomApiModelRegistrationCommandSchema = z
+  .object({
+    provider_name: NonEmptyStringSchema.optional(),
+    api_format: CustomApiFormatSchema,
+    base_url: NonEmptyStringSchema,
+    api_key: NonEmptyStringSchema.optional(),
+    endpoint_model_id: NonEmptyStringSchema.optional(),
+    display_name: NonEmptyStringSchema.optional(),
+    context_window_tokens: PositiveSafeIntegerSchema.optional(),
+    max_output_tokens: PositiveSafeIntegerSchema.optional(),
+    supports_image_input: z.boolean().optional(),
+    models: z.array(CustomApiModelItemSchema).optional(),
   })
   .strict()
   .transform((command, context) => {
@@ -89,11 +114,51 @@ export const CustomApiModelRegistrationCommandSchema = z
       });
       return z.NEVER;
     }
-    return { ...command, base_url: baseUrl };
+    let models: [CustomApiModelItem, ...CustomApiModelItem[]];
+    const batchModels = command.models;
+    const firstBatchModel = batchModels?.[0];
+    if (batchModels && firstBatchModel) {
+      models = [firstBatchModel, ...batchModels.slice(1)];
+    } else if (
+      command.endpoint_model_id !== undefined &&
+      command.context_window_tokens !== undefined &&
+      command.max_output_tokens !== undefined &&
+      command.supports_image_input !== undefined
+    ) {
+      models = [
+        {
+          endpoint_model_id: command.endpoint_model_id,
+          context_window_tokens: command.context_window_tokens,
+          max_output_tokens: command.max_output_tokens,
+          supports_image_input: command.supports_image_input,
+          ...(command.display_name ? { display_name: command.display_name } : {}),
+        },
+      ];
+    } else {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['models'],
+        message: '必须提供单一模型配置或非空模型列表',
+      });
+      return z.NEVER;
+    }
+
+    const providerName = command.provider_name ?? extractDefaultProviderNameFromBaseUrl(baseUrl);
+
+    return {
+      api_format: command.api_format,
+      base_url: baseUrl,
+      provider_name: providerName,
+      ...(command.api_key ? { api_key: command.api_key } : {}),
+      models,
+    };
   });
 
 export const CustomApiModelRegistrationResponseSchema = z
-  .object({ model_id: NonEmptyStringSchema })
+  .object({
+    model_id: NonEmptyStringSchema.optional(),
+    model_ids: z.array(NonEmptyStringSchema).optional(),
+  })
   .strict();
 
 export const CustomApiOnboardingErrorResponseSchema = z
@@ -109,6 +174,15 @@ export function readCustomApiFormatRouteProfileId(
   return readCustomApiFormatDefinition(format).route_profile_id;
 }
 
+/** 只有 Custom API 注册支持的 route profile 才能回投为用户侧格式。 */
+export function readCustomApiFormatForRouteProfileId(
+  profileId: LanguageInferenceRouteProfileId
+): CustomApiFormat | undefined {
+  return CUSTOM_API_FORMAT_DEFINITIONS.find(
+    definition => definition.route_profile_id === profileId
+  )?.id;
+}
+
 /** 自定义模型只声明语义能力，API 格式负责决定两个图片来源能否真正进入 route。 */
 export function projectCustomApiFormatImageInputSupport(
   format: CustomApiFormat,
@@ -120,7 +194,13 @@ export function projectCustomApiFormatImageInputSupport(
   );
 }
 
-export type CustomApiModelRegistrationCommand = z.infer<
+/** Renderer 与 HTTP client 提交的 wire request；默认 provider 等事实由 Host admission 补齐。 */
+export type CustomApiModelRegistrationRequest = z.input<
+  typeof CustomApiModelRegistrationCommandSchema
+>;
+
+/** Schema admission 后的规范化命令；Host 只处理非空模型列表。 */
+export type CustomApiModelRegistrationCommand = z.output<
   typeof CustomApiModelRegistrationCommandSchema
 >;
 export type CustomApiModelRegistrationResponse = z.infer<

@@ -276,7 +276,10 @@ export function createPresentationImageSourceResolver(
     let sourcePath: string;
     try {
       sourcePath = await candidate.resolveSourcePath();
-    } catch {
+    } catch (error) {
+      // Resolver 自己已经给出的 build failure（例如 conversation admission 缺失）
+      // 必须原样保留；这里只把未分类的物理路径异常归入 source unavailable。
+      if (error instanceof PresentationBuildFailureError) throw error;
       failImageResolution(
         'slides.asset.local_source_unavailable',
         'The referenced local image could not be resolved.'

@@ -22,6 +22,7 @@ import {
 } from 'src/app-hosts/linnya/application/model-runtime-availability';
 
 interface LinnyaConversationControlUseCaseOwners {
+  readonly workspace: { getAllProjects(): readonly { id: string; name: string }[] };
   readonly flow: Pick<
     FlowOrchestrator,
     'nextDetached' | 'respondInteractionDetached' | 'cancelRun'
@@ -100,6 +101,11 @@ export function createLinnyaConversationControlUseCase(
         owners.flow.cancelRun(runId, conversationId, reason),
     },
     runs: owners.runs,
+    projects: {
+      list: () => owners.workspace.getAllProjects().map(project => ({
+        project_id: project.id, name: project.name,
+      })),
+    },
     models: {
       list() {
         const context = modelAvailabilityContext();

@@ -41,6 +41,9 @@ function logDiagnostic(logger: Logger, diagnostic: AiSdkLanguageDiagnostic): voi
           : { request_fingerprint: diagnostic.request_fingerprint }),
         phase: diagnostic.phase,
         error_shape: diagnostic.error_shape,
+        ...(diagnostic.provider_signal === undefined
+          ? {}
+          : { provider_signal: diagnostic.provider_signal }),
         failure_kind: diagnostic.failure_kind,
         failure_code: diagnostic.failure_code,
         retryable: diagnostic.retryable,

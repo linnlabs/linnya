@@ -21,6 +21,7 @@ Common options:
   --slide <number>        Select one slide (1-based)
   --from <number>         Select range start (requires --to)
   --to <number>           Select range end (requires --from)
+  --format <json|pretty>  JSON formatting for all commands (default: json)
   --help                  Show this help
 
 Render options:
@@ -114,6 +115,7 @@ export function parseSlidesCliArgs(
     }
     const command: SlidesCliCommand = {
       kind: 'render',
+      format: readOutputFormat(parsed.values.format),
       ...(databasePath ? { databasePath } : {}),
       ...(managedOutput
         ? { outputDirectoryReference: managedOutput.directoryReference }
@@ -151,6 +153,7 @@ export function parseSlidesCliArgs(
   const focus = parseSourceRanges(parsed.values['source-range']);
   const command: SlidesCliCommand = {
     kind: commandName,
+      format: readOutputFormat(parsed.values.format),
     ...(databasePath ? { databasePath } : {}),
     presentationId,
     request: {
@@ -188,6 +191,7 @@ function parseFontCommand(args: readonly string[]): SlidesCliInvocation {
       kind: 'command',
       command: {
         kind: 'fonts-check',
+      format: readOutputFormat(parsed.values.format),
         family: requireNonEmpty(parsed.values.family, '--family'),
       },
     };
@@ -201,6 +205,7 @@ function parseFontCommand(args: readonly string[]): SlidesCliInvocation {
     kind: 'command',
     command: {
       kind: 'fonts-list',
+      format: readOutputFormat(parsed.values.format),
       request: {
         script,
         limit: readBoundedPositiveInteger(parsed.values.limit, '--limit', 30, 100),
@@ -217,6 +222,7 @@ function parseCommandOptions(args: readonly string[]) {
     strict: true,
     options: {
       help: { type: 'boolean', short: 'h' },
+      format: { type: 'string' },
       database: { type: 'string' },
       presentation: { type: 'string' },
       slide: { type: 'string' },
@@ -390,4 +396,9 @@ function usageError(message: string): SlidesCliError {
     SlidesCliExitCode.INVALID_ARGUMENTS,
     message,
   );
+}
+
+function readOutputFormat(value: string | undefined): 'json' | 'pretty' | undefined {
+  if (value === undefined || value === 'json' || value === 'pretty') return value;
+  throw usageError('--format must be json or pretty');
 }

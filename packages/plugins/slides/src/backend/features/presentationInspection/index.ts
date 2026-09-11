@@ -33,3 +33,5 @@ export type {
   DiagnosticRootGroup,
   DiagnosticSharedSourceRootGroup,
 } from './functions/projectDiagnosticFindings';
+
+export { getDiagnosticAction } from './functions/diagnosticActionCatalog';

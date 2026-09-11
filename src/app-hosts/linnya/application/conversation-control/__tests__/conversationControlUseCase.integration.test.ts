@@ -262,6 +262,7 @@ function fixture(
         return latestExecutionSteps;
       },
     },
+    projects: { list: () => [{ project_id: 'project-1', name: 'Slides' }] },
     models: {
       list() {
         return {
@@ -438,6 +439,13 @@ function fixture(
 }
 
 describe('conversation-control use case', () => {
+  it('projects 通过 Workspace 端口返回可用于工具调用的 ID', async () => {
+    expect(await fixture().useCase.execute({ schema_version: 1, command: 'projects' })).toEqual({
+      schema_version: 1, ok: true, command: 'projects',
+      projects: [{ project_id: 'project-1', name: 'Slides' }],
+    });
+  });
+
   it('只列出五个正式 Workspace 工具，并复用其真实参数合同', async () => {
     const response = await fixture().useCase.workspaceTools({
       schema_version: 1,

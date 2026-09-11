@@ -1,4 +1,5 @@
 import type { ImageRenderNode, RenderFill } from '../../../types/render';
+import { resolveImageFitGeometry } from '@plugin/slides/shared/render-geometry';
 
 export interface KonvaPoint {
   x: number;
@@ -57,6 +58,7 @@ export function resolveKonvaShapeFillConfig(
   width: number,
   height: number,
   fillOpacity?: number,
+  origin: KonvaPoint = { x: 0, y: 0 },
 ): KonvaShapeFillConfig {
   if (!fill || fill.type === 'none') {
     return {};
@@ -72,21 +74,7 @@ export function resolveKonvaShapeFillConfig(
   ]);
 
   if (fill.type === 'radial') {
-    const center = fill.center ?? { x: 0.5, y: 0.5 };
-    const radius = fill.radius ?? { x: 0.5, y: 0.5 };
-    const point = {
-      x: round3(width * center.x),
-      y: round3(height * center.y),
-    };
-    return {
-      fillRadialGradientStartPoint: point,
-      fillRadialGradientEndPoint: point,
-      fillRadialGradientStartRadius: 0,
-      // Konva 的径向 API 使用单一半径；取两个归一化轴映射后的较大值，
-      // 让渐变至少覆盖完整边界框，非正方形一致性由视觉校准用例持续约束。
-      fillRadialGradientEndRadius: round3(Math.max(width * radius.x, height * radius.y)),
-      fillRadialGradientColorStops: colorStops,
-    };
+    throw new Error('Radial Paint requires the shared elliptical scene renderer');
   }
 
   // 0° 向右、90° 向下、顺时针测量；OOXML adapter 必须复用同一角度合同。
@@ -96,8 +84,8 @@ export function resolveKonvaShapeFillConfig(
   const axis = resolveLinearGradientAxis(fill.angle, width, height);
 
   return {
-    fillLinearGradientStartPoint: axis.start,
-    fillLinearGradientEndPoint: axis.end,
+    fillLinearGradientStartPoint: { x: axis.start.x + origin.x, y: axis.start.y + origin.y },
+    fillLinearGradientEndPoint: { x: axis.end.x + origin.x, y: axis.end.y + origin.y },
     fillLinearGradientColorStops: colorStops,
   };
 }
@@ -106,6 +94,7 @@ export function resolveKonvaShapeStrokeConfig(
   stroke: RenderFill | undefined,
   width: number,
   height: number,
+  origin: KonvaPoint = { x: 0, y: 0 },
 ): KonvaShapeStrokeConfig {
   if (!stroke || stroke.type === 'none' || stroke.type === 'radial') return {};
   if (stroke.type === 'solid') {
@@ -114,8 +103,8 @@ export function resolveKonvaShapeStrokeConfig(
 
   const axis = resolveLinearGradientAxis(stroke.angle, width, height);
   return {
-    strokeLinearGradientStartPoint: axis.start,
-    strokeLinearGradientEndPoint: axis.end,
+    strokeLinearGradientStartPoint: { x: axis.start.x + origin.x, y: axis.start.y + origin.y },
+    strokeLinearGradientEndPoint: { x: axis.end.x + origin.x, y: axis.end.y + origin.y },
     strokeLinearGradientColorStops: stroke.stops.flatMap((stop) => [
       stop.position,
       applyColorOpacity(stop.color, stop.opacity),
@@ -181,74 +170,35 @@ export function resolveKonvaImageFitConfig(input: KonvaImageFitInput): KonvaImag
     return { x: 0, y: 0, width: boxWidth, height: boxHeight };
   }
 
-  switch (fitMode) {
-    case 'cover':
-    case 'crop':
-      return resolveCoverCrop(naturalWidth, naturalHeight, boxWidth, boxHeight);
-    case 'contain':
-      return resolveContainBox(naturalWidth, naturalHeight, boxWidth, boxHeight);
-    case 'fill':
-    case 'stretch':
-    default:
-      return { x: 0, y: 0, width: boxWidth, height: boxHeight };
-  }
-}
-
-function resolveCoverCrop(
-  naturalWidth: number,
-  naturalHeight: number,
-  boxWidth: number,
-  boxHeight: number,
-): KonvaImageFitConfig {
-  const sourceRatio = naturalWidth / naturalHeight;
-  const boxRatio = boxWidth / boxHeight;
-
-  if (sourceRatio > boxRatio) {
-    const cropWidth = naturalHeight * boxRatio;
-    return {
-      x: 0,
-      y: 0,
-      width: boxWidth,
-      height: boxHeight,
-      crop: {
-        x: round3((naturalWidth - cropWidth) / 2),
-        y: 0,
-        width: round3(cropWidth),
-        height: naturalHeight,
-      },
+  const geometry = resolveImageFitGeometry({
+    naturalWidth,
+    naturalHeight,
+    boxWidth,
+    boxHeight,
+    fitMode,
+  });
+  const destination = geometry.destination;
+  const source = geometry.source;
+  const config: KonvaImageFitConfig = {
+    x: round3(destination.x * boxWidth),
+    y: round3(destination.y * boxHeight),
+    width: round3(destination.width * boxWidth),
+    height: round3(destination.height * boxHeight),
+  };
+  if (
+    source.x !== 0
+    || source.y !== 0
+    || source.width !== 1
+    || source.height !== 1
+  ) {
+    config.crop = {
+      x: round3(source.x * naturalWidth),
+      y: round3(source.y * naturalHeight),
+      width: round3(source.width * naturalWidth),
+      height: round3(source.height * naturalHeight),
     };
   }
-
-  const cropHeight = naturalWidth / boxRatio;
-  return {
-    x: 0,
-    y: 0,
-    width: boxWidth,
-    height: boxHeight,
-    crop: {
-      x: 0,
-      y: round3((naturalHeight - cropHeight) / 2),
-      width: naturalWidth,
-      height: round3(cropHeight),
-    },
-  };
-}
-
-function resolveContainBox(
-  naturalWidth: number,
-  naturalHeight: number,
-  boxWidth: number,
-  boxHeight: number,
-): KonvaImageFitConfig {
-  const scale = Math.min(boxWidth / naturalWidth, boxHeight / naturalHeight);
-  const width = naturalWidth * scale;
-  const height = naturalHeight * scale;
-  return {
-    x: round3((boxWidth - width) / 2),
-    y: round3((boxHeight - height) / 2),
-    width: round3(width),
-    height: round3(height),
-  };
+  return config;
 }
 
 function round3(value: number): number {

@@ -1,6 +1,7 @@
 import type { SvgGraphicRenderNode } from '../../../types/render';
 import type { LoadedRenderImage } from '../../renderImageResources';
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../shared/constants';
+import { resolveImageFitGeometry } from '@plugin/slides/shared/render-geometry';
 
 export function svgGraphicDataUri(node: SvgGraphicRenderNode): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(node.canonicalSvg)}`;
@@ -29,9 +30,19 @@ export function buildSvgGraphicImageConfig(
 export function resolveSvgGraphicFitConfig(node: SvgGraphicRenderNode) {
   const boxWidth = node.box.w * INCHES_TO_PX;
   const boxHeight = node.box.h * INCHES_TO_PX;
-  return node.fit === 'contain'
-    ? contain(node.viewBox.width, node.viewBox.height, boxWidth, boxHeight)
-    : { x: 0, y: 0, width: boxWidth, height: boxHeight };
+  const destination = resolveImageFitGeometry({
+    naturalWidth: node.viewBox.width,
+    naturalHeight: node.viewBox.height,
+    boxWidth,
+    boxHeight,
+    fitMode: node.fit,
+  }).destination;
+  return {
+    x: destination.x * boxWidth,
+    y: destination.y * boxHeight,
+    width: destination.width * boxWidth,
+    height: destination.height * boxHeight,
+  };
 }
 
 export function buildSvgGraphicPlaceholderConfig(node: SvgGraphicRenderNode) {
@@ -43,22 +54,5 @@ export function buildSvgGraphicPlaceholderConfig(node: SvgGraphicRenderNode) {
     fill: SLIDES_RENDER_COLORS.imagePlaceholderFill,
     stroke: SLIDES_RENDER_COLORS.imagePlaceholderStroke,
     strokeWidth: 1,
-  };
-}
-
-function contain(
-  sourceWidth: number,
-  sourceHeight: number,
-  boxWidth: number,
-  boxHeight: number,
-) {
-  const scale = Math.min(boxWidth / sourceWidth, boxHeight / sourceHeight);
-  const width = sourceWidth * scale;
-  const height = sourceHeight * scale;
-  return {
-    x: (boxWidth - width) / 2,
-    y: (boxHeight - height) / 2,
-    width,
-    height,
   };
 }

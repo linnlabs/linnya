@@ -13,7 +13,7 @@ POST /api/v1/conversation-control/commands
 
 `handshake` 返回协议版本、App 实例 ID、实际能力和请求/watch 上限；`commands` 使用共享 strict schema 接纳与返回命令。非法 JSON、超限 body、合同错误和 use-case 错误都投影为稳定 JSON，不落到 Express HTML 错误页。
 
-当前握手声明 `send / models / list / messages / status / respond / stop / result / audit / workspace_tools`。
+当前握手声明 `send / models / projects / list / messages / status / respond / stop / result / audit / workspace_tools`。
 
 ## 安全边界
 
@@ -43,3 +43,5 @@ pnpm exec vitest run \
 ```
 
 门禁覆盖真实 HTTP router、strict request/response、描述文件原子发布与权限、实例安全撤销、Renderer/CLI token 双向隔离，以及 API Server 启停生命周期。真实 CLI 子进程测试见 `apps/linnya-cli/src/__integration-tests__/cliProcess.integration.test.ts`。
+
+`projects` 通过注入的 Workspace 查询端口列出未删除项目，只投影 `project_id` 与 `name`。CLI 不读取数据库或物理路径。

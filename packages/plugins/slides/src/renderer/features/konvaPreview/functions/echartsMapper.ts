@@ -17,7 +17,7 @@ import type {
   RenderChartType,
 } from '../../../types/render';
 import { CHART_DEFAULT_LABEL_FONT_SIZE_PT } from '@plugin/slides/shared/renderModel';
-import { SLIDES_RENDER_COLORS } from '../../../shared/constants';
+import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../shared/constants';
 
 // ─── 常量 ────────────────────────────────────────────────────────────────
 
@@ -125,7 +125,7 @@ function buildCartesianChart(
     if (seriesType === 'line') {
       item.symbol = 'circle';
       item.symbolSize = 6;
-      const lineWidth = (hints?.lineSize ?? PPT.lineWidthPt) * POINTS_TO_PX;
+      const lineWidth = (node.seriesLineWidth ?? hints?.lineSize ?? PPT.lineWidthPt) * POINTS_TO_PX;
       item.lineStyle = { width: lineWidth };
       if (hints?.lineSmooth) {
         item.smooth = true;
@@ -156,7 +156,7 @@ function buildCartesianChart(
     axisTick: { show: false },
     axisLabel: {
       show: catAxisConfig?.visible !== false,
-      color: PPT.labelColor,
+      color: catFont.color ?? PPT.labelColor,
       fontSize: catFont.fontSize,
       fontFamily: catFont.fontFamily,
     },
@@ -174,7 +174,7 @@ function buildCartesianChart(
     axisLine: { show: true, lineStyle: { color: PPT.axisLineColor } },
     axisLabel: {
       show: valAxisConfig?.visible !== false,
-      color: PPT.labelColor,
+      color: valFont.color ?? PPT.labelColor,
       fontSize: valFont.fontSize,
       fontFamily: valFont.fontFamily,
     },
@@ -182,7 +182,11 @@ function buildCartesianChart(
       show: isBar
         ? node.gridlines?.x?.visible !== false
         : node.gridlines?.y?.visible !== false,
-      lineStyle: { color: PPT.gridLineColor },
+      lineStyle: {
+        color: isBar
+          ? node.gridlines?.x?.color ?? PPT.gridLineColor
+          : node.gridlines?.y?.color ?? PPT.gridLineColor,
+      },
     },
   };
 
@@ -210,7 +214,7 @@ function buildCartesianChart(
         axisLine: { show: true, lineStyle: { color: PPT.axisLineColor } },
         axisLabel: {
           show: node.axes.y2.visible !== false,
-          color: PPT.labelColor,
+          color: y2Font.color ?? PPT.labelColor,
           fontSize: y2Font.fontSize,
         },
         splitLine: { show: false },
@@ -256,6 +260,7 @@ function buildPieChart(
     itemStyle: { color: palette[idx % palette.length] },
   }));
 
+  const legendPosition = node.legend?.position ?? 'right';
   const dlVisible = node.dataLabels?.visible === true;
   const dlFormat = node.dataLabels?.format;
   const dlFont = resolveFontStyle(node.dataLabels?.labelStyle, node.labelStyle);
@@ -263,14 +268,22 @@ function buildPieChart(
   return {
     animation: false,
     backgroundColor: CHART_BG,
+    graphic: buildNonCartesianPlotBackground(node),
     color: palette,
     series: [{
       type: 'pie',
       data,
       radius,
+      // 饼图也为图例留通道；标签允许换行，避免 ECharts 默认省略正文。
+      left: node.legend?.visible && legendPosition === 'left' ? '18%' : 0,
+      right: node.legend?.visible && legendPosition === 'right' ? '18%' : 0,
+      top: node.legend?.visible && legendPosition === 'top' ? '18%' : 0,
+      bottom: node.legend?.visible && legendPosition === 'bottom' ? '18%' : 0,
       center: ['50%', '50%'],
       label: {
+        overflow: 'break',
         show: dlVisible,
+        color: dlFont.color ?? node.pptxHints?.dataLabelColor ?? PPT.dataLabelColor,
         fontSize: dlFont.fontSize,
         fontFamily: dlFont.fontFamily,
         formatter: dlVisible
@@ -284,7 +297,7 @@ function buildPieChart(
       },
       labelLine: { show: dlVisible },
     }],
-    legend: buildLegendConfig(node),
+    legend: buildLegendConfig(node, node.categories),
   };
 }
 
@@ -313,7 +326,7 @@ function buildRadarChart(
     const item: Record<string, unknown> = {
       name: s.name,
       value: s.values,
-      lineStyle: { color, width: 2 },
+      lineStyle: { color, width: (node.seriesLineWidth ?? node.pptxHints?.lineSize ?? PPT.lineWidthPt) * POINTS_TO_PX },
       itemStyle: { color },
       symbol: 'none',
       symbolSize: 0,
@@ -333,6 +346,7 @@ function buildRadarChart(
   return {
     animation: false,
     backgroundColor: CHART_BG,
+    graphic: buildNonCartesianPlotBackground(node),
     color: palette,
     radar: {
       indicator,
@@ -340,11 +354,15 @@ function buildRadarChart(
       // PPT 雷达图不显示刻度数值标签
       axisLabel: { show: false },
       axisLine: { lineStyle: { color: PPT.axisLineColor } },
-      splitLine: { lineStyle: { color: PPT.gridLineColor } },
+      splitLine: {
+        lineStyle: {
+          color: node.gridlines?.y?.color ?? node.gridlines?.x?.color ?? PPT.gridLineColor,
+        },
+      },
       splitArea: { show: false },
       // 维度名称字体
       axisName: {
-        color: PPT.labelColor,
+        color: node.axes?.x?.labelStyle?.color ?? node.labelStyle?.color ?? PPT.labelColor,
         fontSize: labelFont.fontSize,
         fontFamily: labelFont.fontFamily,
       },
@@ -357,6 +375,25 @@ function buildRadarChart(
   };
 }
 
+/** 饼图/雷达图没有 ECharts grid，绘图区色必须独立于含图例的 chart 背景。 */
+function buildNonCartesianPlotBackground(node: ChartRenderNode): Record<string, unknown>[] {
+  if (!node.plotBackgroundColor) return [];
+  const position = node.legend?.visible ? node.legend.position ?? 'right' : undefined;
+  const left = position === 'left' ? 0.18 : 0;
+  const top = position === 'top' ? 0.18 : 0;
+  const width = Math.round(node.box.w * INCHES_TO_PX);
+  const height = Math.round(node.box.h * INCHES_TO_PX);
+  return [{
+    type: 'rect', silent: true, z: -1,
+    shape: {
+      x: width * left, y: height * top,
+      width: width * (position === 'left' || position === 'right' ? 0.82 : 1),
+      height: height * (position === 'top' || position === 'bottom' ? 0.82 : 1),
+    },
+    style: { fill: node.plotBackgroundColor },
+  }];
+}
+
 // ─── Grid 布局 ───────────────────────────────────────────────────────────
 
 function buildGrid(node: ChartRenderNode): Record<string, unknown> {
@@ -365,6 +402,8 @@ function buildGrid(node: ChartRenderNode): Record<string, unknown> {
 
   return {
     containLabel: true,
+    show: node.plotBackgroundColor != null,
+    backgroundColor: node.plotBackgroundColor,
     left: legendVisible && pos === 'left' ? '18%' : '5%',
     right: legendVisible && pos === 'right' ? '18%' : '5%',
     top: legendVisible && pos === 'top' ? '18%' : '8%',
@@ -374,7 +413,10 @@ function buildGrid(node: ChartRenderNode): Record<string, unknown> {
 
 // ─── 图例 ────────────────────────────────────────────────────────────────
 
-function buildLegendConfig(node: ChartRenderNode): Record<string, unknown> {
+function buildLegendConfig(
+  node: ChartRenderNode,
+  labels = node.series.map(series => series.name),
+): Record<string, unknown> {
   if (!node.legend?.visible) return { show: false };
 
   const pos = node.legend.position ?? 'right';
@@ -382,11 +424,11 @@ function buildLegendConfig(node: ChartRenderNode): Record<string, unknown> {
 
   const config: Record<string, unknown> = {
     show: true,
-    data: node.series.map(s => s.name),
+    data: labels,
     textStyle: {
       fontSize: font.fontSize,
       fontFamily: font.fontFamily,
-      color: PPT.labelColor,
+      color: font.color ?? PPT.labelColor,
     },
     itemWidth: Math.max(Math.round(font.fontSize * 0.9), 8),
     itemHeight: Math.max(Math.round(font.fontSize * 0.7), 6),
@@ -459,13 +501,7 @@ function buildSeriesLabel(
       : undefined,
   };
 
-  // PPT 默认数据标签始终为黑色（DEF_FONT_COLOR），不区分 inside/outside
-  const hintColor = node.pptxHints?.dataLabelColor;
-  if (hintColor) {
-    labelConfig.color = hintColor.startsWith('#') ? hintColor : `#${hintColor}`;
-  } else {
-    labelConfig.color = PPT.dataLabelColor;
-  }
+  labelConfig.color = font.color ?? node.pptxHints?.dataLabelColor ?? PPT.dataLabelColor;
 
   return labelConfig;
 }
@@ -515,6 +551,7 @@ function resolveEChartsSeriesType(
 interface FontStyle {
   fontSize: number;
   fontFamily: string;
+  color?: string;
 }
 
 function resolveFontStyle(
@@ -525,6 +562,7 @@ function resolveFontStyle(
   return {
     fontSize: Math.round(rawSizePt * POINTS_TO_PX),
     fontFamily: primary?.fontFamily ?? fallback?.fontFamily ?? 'Arial',
+    color: primary?.color ?? fallback?.color,
   };
 }
 

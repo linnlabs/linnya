@@ -23,6 +23,22 @@ function createChartNode(overrides: Partial<ChartRenderNode> = {}): ChartRenderN
 }
 
 describe('echartsMapper', () => {
+  it('保留深色图例和绘图区样式，饼图标签换行并为图例留位', () => {
+    const style = {
+      legend: { visible: true, position: 'right' as const, labelStyle: { color: '#FFFFFF' } },
+      plotBackgroundColor: '#123456',
+      seriesLineWidth: 3,
+    };
+    expect(mapChartNodeToEChartsOption(createChartNode({ ...style, chartType: 'line' })))
+      .toMatchObject({
+        legend: { textStyle: { color: '#FFFFFF' } },
+        grid: { show: true, backgroundColor: '#123456' },
+        series: [{ lineStyle: { width: 4 } }, { lineStyle: { width: 4 } }],
+      });
+    expect(mapChartNodeToEChartsOption(createChartNode({ ...style, chartType: 'pie' })))
+      .toMatchObject({ legend: { data: ['Q1', 'Q2'] }, graphic: [{ style: { fill: '#123456' } }], series: [{ right: '18%', label: { overflow: 'break' } }] });
+  });
+
   it('returns a transparent non-animated option for empty chart series', () => {
     const option = mapChartNodeToEChartsOption(createChartNode({ series: [] }));
 
@@ -88,6 +104,44 @@ describe('echartsMapper', () => {
         label: { show: true },
       }],
       legend: { show: false },
+    });
+  });
+
+  it('uses RenderModel chart colors instead of renderer hard-coded defaults', () => {
+    const option = mapChartNodeToEChartsOption(createChartNode({
+      axes: {
+        x: { labelStyle: { color: '#334155' } },
+        y: { labelStyle: { color: '#475569' } },
+      },
+      dataLabels: {
+        visible: true,
+        labelStyle: { color: '#0F172A' },
+      },
+      gridlines: { y: { color: '#CBD5E1' } },
+    }));
+
+    expect(option).toMatchObject({
+      xAxis: { axisLabel: { color: '#334155' } },
+      yAxis: {
+        axisLabel: { color: '#475569' },
+        splitLine: { lineStyle: { color: '#CBD5E1' } },
+      },
+      series: [
+        { label: { color: '#0F172A' } },
+        { label: { color: '#0F172A' } },
+      ],
+    });
+  });
+
+  it('uses the same data label color for pie charts', () => {
+    const option = mapChartNodeToEChartsOption(createChartNode({
+      chartType: 'pie',
+      dataLabels: { visible: true, labelStyle: { color: '#7C3AED' } },
+      series: [{ name: 'Share', values: [20, 30] }],
+    }));
+
+    expect(option).toMatchObject({
+      series: [{ label: { show: true, color: '#7C3AED' } }],
     });
   });
 

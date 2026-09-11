@@ -81,6 +81,7 @@ finalized RenderModel
 - 新 RenderNode 类型：先扩 shared schema 和后端 render-model mapper，再新增 builder，并接主视图与离屏缩略图。
 - 新视觉字段：RenderModel 是唯一输入来源，不能在前端凭元素类型自创样式。
 - 单位换算：box/cornerRadius/borderRadius 为 inches，fontSize/stroke/shadow 为 pt，rotation 为 degree，opacity 为 0-1。
+- 图例颜色、绘图区背景和折线 pt 宽度消费 RenderModel 的显式样式；笛卡尔图的背景仅作用于 grid。饼图为四侧图例预留通道，并允许数据标签换行，不使用默认 truncate。
 - 图表统一走 ECharts option 到 raster image 的路径；palette 缺失时回查后端合同。
 - 图片节点禁止创建 `Image`、读取本地文件或监听 source；只允许消费 `renderImageResources` 已准备好的资源。
 - SVG Graphic 节点只消费 admitted RenderModel 与已解码资源；不得在 Konva 组件中解析 XML、读取作者路径或复制 fit 规则。
@@ -93,3 +94,20 @@ finalized RenderModel
 - 文本/table fail-closed：`packages/plugins/slides/src/renderer/features/konvaPreview/functions/builders/__tests__/{textBuilder,tableBuilder}.test.ts`
 - stage/raster 编排：`packages/plugins/slides/src/renderer/features/konvaPreview/orchestration/**/*.test.ts`
 - 插件全量：`pnpm run test:plugin:slides`
+
+## 持久画布的属性同步
+
+Slides 的 RenderModel/config 是 Konva 属性的唯一事实。所有主预览 `v-*` 节点和动态 shape primitive
+必须启用 `__useStrictMode`（模板写作 `:__use-strict-mode="true"`），包括背景、内容、图片、文字、表格
+与 overlay。没有绕过 config 的拖拽写入；未来交互也必须先更新正式状态，再由 config 投影。
+
+`vue-konva@3.4.0` 的非严格模式仅比较当前 props 与内部历史 props。它用 Object.assign 累积历史值，
+移除属性时会删除 Konva 属性，却不删除历史缓存项。纯色 A → 渐变 → 同色 A 的切换中，fill 被删除后
+可能被误判为“没有变化”，留下透明背景；其他可选属性也有相同风险。严格模式同时比对实际 Konva
+属性，确保重新出现的同值属性恢复到当前 config。不能靠 page key 重建整个舞台、延时重绘或补白底
+处理此问题，否则同页编辑和其他节点的配置漂移仍会存在。
+
+`smoke:preview-transitions` 在真实 Electron 内挂载生产 Vue 组件与当前宿主依赖的 vue-konva，复用同一
+节点连续切换，并将每帧像素与新建节点的独立渲染比较。覆盖纯色、线性、径向、无填充及恢复原值，
+测试背景与 shape 两条链。可附加一个 Paint JSON 数组路径重放具体文稿的背景序列；测试不写数据库。
+普通 raster smoke 每页都新建 stage，不能替代这项持久实例验收。

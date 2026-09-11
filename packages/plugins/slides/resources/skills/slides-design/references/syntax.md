@@ -266,7 +266,19 @@ arc radius 和 flowLine length 按元素短边百分比解释。需要重复花�
 
 ## 9. Chart
 
-优先用 `createChart(preset)` 选择已注册的图表基线；完整 preset 见生成的 [`chart-presets.md`](./chart-presets.md)。正式数据结构是 `categories: (string|number|boolean)[]` 与 `series: [{ name, values, labels? }]`，每个 series 的 `values` 应与 categories 对齐。可用语义字段只有 `chartType`、`showDataLabels`、`dataLabelFormat`、`legendPosition: "top"|"bottom"|"left"|"right"|"none"`；不要写原始 `chartOptions`。
+优先用 `createChart(preset)` 选择已注册的图表基线；完整 preset 见生成的 [`chart-presets.md`](./chart-presets.md)。正式数据结构是 `categories: (string|number|boolean)[]` 与 `series: [{ name, values, labels? }]`，每个 series 的 `values` 应与 categories 对齐。可用语义字段包括 `chartType`、`showDataLabels`、`dataLabelFormat`、`legendPosition: "top"|"bottom"|"left"|"right"|"none"`，以及跨预览/PPTX 共同生效的 `chartStyle`：
+
+```typescript
+chartStyle: {
+  axisLabelColor: '#64748B',
+  categoryAxisLabelColor: '#334155',
+  valueAxisLabelColor: '#475569',
+  dataLabelColor: '#0F172A',
+  gridlineColor: '#CBD5E1',
+}
+```
+
+`axisLabelColor` 是两个坐标轴的共同兜底，单轴字段可以覆盖它；`gridlineColor` 同时设置类目网格线和数值网格线。只写真实需要的字段，不要为了“统一”复制同一个颜色。不要写原始 `chartOptions`。
 
 `chartData`、`datasets`、`xLabels`、`xAxisLabels` 是旧 source 的兼容入口；`series.data` 不是正式写法。新代码只写顶层 categories/series。需要运行时尚未公开的轴、标记线或 PptxGenJS option 时，应当把它视为 Slides 模块缺失的跨端能力，而不是绕过 authoring contract。
 
@@ -276,7 +288,17 @@ arc radius 和 flowLine length 按元素短边百分比解释。需要重复花�
 
 ## 10. Table
 
-Table 的正式结构是顶层 `headers + rows`。每一格既可以是字符串、数字、布尔，也可以是 TableCell 对象：`{ text, style?, fill?, colspan?, rowspan? }`，其中 `style` 接受 run 同族的排版字段。`colspan/rowspan` 必须是正整数，跨行后的下一行只写尚未被占用的单元格。用逐格 `fill` 与 `style` 表达表头、强调列和结论行，比在表格外另加色块更可靠。
+Table 的正式结构是顶层 `headers + rows`。每一格既可以是字符串、数字、布尔，也可以是 TableCell 对象：`{ text, style?, fill?, colspan?, rowspan? }`，其中 `style` 接受 run 同族的排版字段。`colspan/rowspan` 必须是正整数，跨行后的下一行只写尚未被占用的单元格。需要统一设置表格边框时，在表格顶层写 `{ color, width }`：
+
+```typescript
+createTable({
+  headers: ['指标', '结果'],
+  rows: [['收入', '增长']],
+  border: { color: '#CBD5E1', width: 0.75 },
+})
+```
+
+`width` 单位为 pt；当前语义是整张表的外框和内部网格线，前端预览与 PPTX 导出使用同一描边事实。第一版不开放逐单元格边框、`tableOptions`、`colW` 或 `rowH`，也不把底层 PptxGenJS/ECharts 参数泄漏到 deck.js。用逐格 `fill` 与 `style` 表达表头、强调列和结论行，比在表格外另加色块更可靠。
 
 `tableData/body/data` 只用于兼容旧 source。原始 `tableOptions`、`colW`、`rowH` 不是 deck.js 正式语法；当前列宽与行高由表格布局链计算，不能借 PptxGenJS 参数绕过。
 
@@ -303,3 +325,17 @@ Table 的正式结构是顶层 `headers + rows`。每一格既可以是字符串
 - 写入失败按可见错误消息修复；不要按内部数字错误码分支。看到 `Type 'string' is not assignable to type '"linear" | …'` 这类消息时，先回到 §2 检查是不是把含字面量字段的对象写成了属性赋值。
 - 写入成功后先处理 observation 中带 code、line、message 的 document diagnostics，再运行整份 deck 的 inspect。
 - 当字段不确定时读 `.d.ts`；当结构不确定时读最接近的 example；当审美取舍不确定时读 `design.md`。
+
+
+### 容易混淆的尺寸和方向约定
+
+- `flex: N`（正数）表示 grow=N、shrink=1、basis=0。无 flex 的显式主轴宽高不被兄弟节点压缩；`minWidth/minHeight` 用于约束弹性节点。
+- Text 默认左右各 0.1 英寸、上下各 0.05 英寸内边距。自动宽度包含内边距，正文可用宽度须扣除左右内边距。
+- 线性渐变优先使用 `direction`，例如 `to-bottom` 表示向下；与 `angle` 二选一。角度为 0° →、90° ↓、180° ←、270° ↑，顺时针，**不是 CSS 角度**。斜向例子 `angle: 30` 从右方向下旋转；非正方形会按 OOXML scaled 语义进一步受宽高比缩放。
+- 每页必须在顶层显式调用一次 `createSlide()`，按源码顺序传入 compose。不要在 helper、循环或条件中创建页；分页读取、搜索和源码定位依赖每页对应的源码行区间。helper 可复用页内节点。
+
+Shape/Image 可声明 `role: "background" | "decoration"` 表达构图意图，并用 `bleed` 指定允许越出画布的英寸数。角色不改变图片 `decorative` 的无障碍语义。Text 的辅助信息可用 `role: "footnote" | "source" | "page-number"`，避免占用正文的字体层级统计。
+
+### 页面身份规则
+
+每页必须由顶层 `createSlide()` 创建。不能放进函数、循环或条件分支中，也不能用 helper 动态产页。页身份由源码行区间定义，按页读取、搜索和诊断定位都依赖这个合同。检测到嵌套调用时会直接报告“非顶层 createSlide()”；请把页面创建移到顶层，helper 只负责创建页内元素。

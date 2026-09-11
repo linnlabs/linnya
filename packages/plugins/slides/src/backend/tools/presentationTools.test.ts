@@ -8,7 +8,6 @@ import type {
   PresentationRenderModel,
   RenderNode,
   SceneGraphNodeSummary,
-  ToolFeedbackPayload,
 } from '@plugin/slides/shared';
 import {
   buildNodeToolCapabilities,
@@ -178,7 +177,6 @@ function makeMockCodegenPresentationService(
 
 function makeMockRenderModel(): PresentationRenderModel {
   const textOps: EditableOperation[] = ['modify_text', 'modify_style', 'modify_geometry', 'reorder_layer'];
-  const chartOps: EditableOperation[] = ['update_chart', 'modify_geometry', 'reorder_layer'];
   return {
     presentationId: 'pres-1',
     title: 'Test Deck',
@@ -1039,6 +1037,7 @@ describe('PptInspectTool diagnostic findings', () => {
     expect(cliReport.findings).toHaveLength(1);
     expect(finding).toEqual({
       ...sourceFinding,
+      action: expect.any(String),
       scope: policy.scope,
       category: policy.category,
       priority: 'P0',
