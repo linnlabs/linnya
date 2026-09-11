@@ -16,7 +16,8 @@
         "echarts/features",
         "echarts/renderers",
         "konva"
-      ]
+      ],
+      "backendWatchConfig": "tsup.plugin.config.ts"
     }
   },
   "exports": {

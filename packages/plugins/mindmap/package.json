@@ -14,7 +14,8 @@
         "@tiptap/vue-3",
         "@vueuse/core",
         "html-to-image"
-      ]
+      ],
+      "backendWatchConfig": "tsup.plugin.config.ts"
     }
   },
   "exports": {

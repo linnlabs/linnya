@@ -1,18 +1,21 @@
+import { defineAsyncComponent } from 'vue';
 import { registerSettingsContribution } from './settingsRegistry';
-import AboutTab from '../ui/tabs/AboutTab.vue';
 import {
   ModelRegistrationSettingsPage,
   ModelConfigurationSettingsPage,
   ModelManagementSettingsPage,
 } from '@/domains/model-configuration';
-import AppearanceTab from '../ui/tabs/AppearanceTab.vue';
-import ConversationTab from '../ui/tabs/ConversationTab.vue';
-import KitGalleryTab from '../ui/tabs/KitGalleryTab.vue';
-import WebSearchTab from '../ui/tabs/WebSearchTab.vue';
-import CommandPermissionSettingsTab from '../features/command-permission-settings/ui/CommandPermissionSettingsTab.vue';
-import StorageSpaceSettingsTab from '../features/storage-space/ui/StorageSpaceSettingsTab.vue';
 import { ensureSettingsLocalizationRegistered } from '../orchestration/ensureSettingsLocalizationRegistered';
 import { SETTINGS_MESSAGE_FALLBACKS } from '../definitions/settingsMessageCatalog';
+
+// 注册时只保留组件入口，用户进入对应 Tab 时再加载页面依赖。
+const AboutTab = defineAsyncComponent(() => import('../ui/tabs/AboutTab.vue'));
+const AppearanceTab = defineAsyncComponent(() => import('../ui/tabs/AppearanceTab.vue'));
+const ConversationTab = defineAsyncComponent(() => import('../ui/tabs/ConversationTab.vue'));
+const KitGalleryTab = defineAsyncComponent(() => import('../ui/tabs/KitGalleryTab.vue'));
+const WebSearchTab = defineAsyncComponent(() => import('../ui/tabs/WebSearchTab.vue'));
+const CommandPermissionSettingsTab = defineAsyncComponent(() => import('../features/command-permission-settings/ui/CommandPermissionSettingsTab.vue'));
+const StorageSpaceSettingsTab = defineAsyncComponent(() => import('../features/storage-space/ui/StorageSpaceSettingsTab.vue'));
 
 let registered = false;
 

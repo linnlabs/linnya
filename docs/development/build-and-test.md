@@ -40,7 +40,17 @@ pnpm run dev:electron
 解析边界。升级原生模块后还要执行一次真实安装脚本和最小加载冒烟，确认 override 没有只修复审计
 结果却破坏 ABI 或运行时加载。
 
-开发入口会先按 `config/qdrant-runtime.json` 准备并校验目标平台 Qdrant，再准备公开 workspace 依赖、Node 原生依赖和 WASM，最后启动 Renderer 与 Electron。这个过程只发生在源码开发或打包阶段；Desktop 安装包通过 `extraResources` 携带已经校验的独立 runtime，最终用户启动应用时不再下载。
+开发入口按依赖图并行准备 runtime、WASM、资源和 workspace package。每个长期 watcher 只执行一次首次构建；
+收到本轮成功事件、完成资源复制和 Backend/原生依赖门禁后才启动 Electron。Vite 在自己的依赖就绪后提前启动并预热入口。
+开发会话退出或首次构建失败时，统一关闭本次创建的进程和 Vite。只验证准备阶段、不打开应用可运行
+`pnpm run dev:electron --build-only`；具体职责见 [build-session](../../scripts/development/features/build-session/README.md)。
+
+Qdrant 与 Headless Node 按各自锁定目录准备。已安装 Node 的 manifest、目标平台、归档身份与可执行文件 hash
+通过正式 runtime resolver 校验后直接复用；宿主目标还验证实际 Node 版本。损坏或版本变化才重新准备，不能仅凭文件存在跳过校验。
+这些准备只发生在源码开发或打包阶段；Desktop 安装包通过 `extraResources` 携带已经校验的独立 runtime，最终用户启动应用时不再下载。
+
+App Server ready 仍要求本地数据库、目录恢复和正式路由可用；账号的远端模型目录刷新在此后由 Backend owner
+后台执行，完成后通知 Renderer 重读目录。上游网络慢不会阻塞开窗。设置页面按实际进入的 Tab 加载；Vite 不监听运行数据与隐藏窗口生成物，避免写日志或 worker 构建触发主页面重载。
 
 生成的 Qdrant 文件不进入源码版本控制。PDF 文本提取和转图统一使用 `pnpm-lock.yaml` 锁定的 `pdfjs-dist` 与 `@napi-rs/canvas`，不从 Homebrew、系统 `PATH` 或相邻仓库寻找实现，也没有额外 runtime 下载步骤。PDF 的多页内存与事件循环验证见 [`src/features/parsers/pdfParser/README.md`](../../src/features/parsers/pdfParser/README.md)。
 

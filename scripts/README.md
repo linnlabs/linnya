@@ -15,13 +15,13 @@ Electron 开发入口由 `development/orchestration/startElectronDevelopment.mjs
 dev server，再把实际 renderer URL 传给 Electron。服务只绑定 `127.0.0.1`，默认使用
 `5173`，占用时切换到 `5174`；这两个端口与本地 API 的 CORS 安全边界保持一致。
 
-Electron Backend 的公开 build/dev/watch 入口统一先执行
-`prepare:backend-workspace-dependencies`。当前顺序是先构建跨端 schema，再构建运行时外置的
-`@linnya/provider-catalog`，最后才允许 Backend bundle 启动；开发态磁盘插件的统一 backend
-构建入口也必须先完成这条准备链，再发现并构建各插件。`watch:backend:dev` 是
-`dev:electron` 完成初始构建后的内部 watcher，不是独立开发入口。不得依赖历史 `dist`、PATH
-搜索或运行时 fallback 掩盖 workspace package 未构建；新增外置运行时 package 时必须进入同一
-显式准备链，并提供可执行打包 smoke。
+`dev:electron` 的构建会话由 [build-session](./development/features/build-session/README.md)
+持有：按依赖启动 watcher，以本轮首次成功事件放行消费者，随后保留同一个 watcher；不再先全量构建再重启一套监听。
+Schema 的 CJS/ESM 完成后构建 `@linnya/provider-catalog`，再启动 Backend 与磁盘插件 Backend；
+独立 runtime、WASM 和资源任务并行准备。单独使用 Backend build/dev 入口时仍通过
+`prepare:backend-workspace-dependencies` 准备同一依赖链；`watch:backend:dev` 只适合已完成依赖准备的会话。
+不得依赖历史 `dist`、PATH 搜索或运行时 fallback 掩盖 workspace package 未构建；新增外置运行时 package
+时必须进入显式依赖链，并提供可执行打包 smoke。
 
 开发持久化断代统一执行 `pnpm run dev:data:reset`。入口位于
 `maintenance/reset-development-data.ts`，只负责参数和结果展示；epoch、固定路径、准入和整体隔离规则由

@@ -18,7 +18,7 @@ prepareHeadlessNodeRuntime({
   allowCrossTarget,
 }).then(result => {
   process.stdout.write(
-    `[headless-node-runtime] Node runtime 已准备：${result.executablePath}\n`,
+    `[headless-node-runtime] Node runtime ${result.changed ? '已准备' : '校验通过，复用现有产物'}：${result.executablePath}\n`,
   );
 }).catch(error => {
   process.stderr.write(

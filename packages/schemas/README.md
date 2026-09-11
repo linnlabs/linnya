@@ -387,6 +387,10 @@ Agent/runtime 类型必须从 `linnkit/contracts` 导入，不允许在 `@app/sc
 
 ## 13. 构建与验证
 
+`pnpm --filter @app/schemas dev` 同时监听 CommonJS 和 ESM，启动时清理本包生成物。ESM 编译后执行正式
+specifier 修正；两种格式和 runtime exports 校验均完成才向开发会话发送首次成功事件。不能只监听 CJS、让
+Renderer 或 ESM 消费者继续使用历史产物。独立 build/pack gate 仍是发行合同的验收入口。
+
 常用门禁：
 
 - 构建包：`pnpm --filter @app/schemas build`。

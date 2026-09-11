@@ -1,4 +1,7 @@
-export { default as ModelRegistrationSettingsPage } from './ui/ModelRegistrationSettingsPage.vue';
+import { defineAsyncComponent } from 'vue';
+
+// 公开组件保持同一合同；读取模型状态不应顺带加载整套设置表单。
+export const ModelRegistrationSettingsPage = defineAsyncComponent(() => import('./ui/ModelRegistrationSettingsPage.vue'));
 export { loadProviderCatalog, useProviderCatalogReadModel } from './features/provider-catalog';
 export type {
   ProviderCatalogGeneration,
@@ -75,8 +78,8 @@ export {
   getEmbeddingModelChangeImpactPort,
   registerEmbeddingModelChangeImpactPort,
 } from './ports/embeddingModelChangeImpactPort';
-export { default as ModelConfigurationSettingsPage } from './ui/ModelConfigurationSettingsPage.vue';
-export { default as ModelManagementSettingsPage } from './ui/ModelManagementSettingsPage.vue';
+export const ModelConfigurationSettingsPage = defineAsyncComponent(() => import('./ui/ModelConfigurationSettingsPage.vue'));
+export const ModelManagementSettingsPage = defineAsyncComponent(() => import('./ui/ModelManagementSettingsPage.vue'));
 export { default as AuxiliaryModelPurposeSelectGroup } from './features/purpose-model-bindings/ui/AuxiliaryModelPurposeSelectGroup.vue';
 export type {
   EmbeddingModelChangeImpact,

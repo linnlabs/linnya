@@ -1,10 +1,14 @@
 const { spawnSync } = require('node:child_process');
 const { createHash, randomUUID } = require('node:crypto');
-const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 
 const JSZip = require('jszip');
+const { require: requireTypeScript } = require('tsx/cjs/api');
+const { resolveHeadlessNodeRuntime } = requireTypeScript(
+  '../../../../src/infra/adapters/headless-node-runtime/index.ts',
+  __filename,
+);
 
 const {
   readHeadlessNodeRuntimeCatalog,
@@ -149,6 +153,12 @@ async function prepareHeadlessNodeRuntime(input) {
   const catalog = readHeadlessNodeRuntimeCatalog();
   const target = resolveHeadlessNodeRuntimeTarget(catalog, input.platform, input.architecture);
   if (!input.allowCrossTarget) assertHostTarget(target.platform, target.architecture);
+  const targetDirectory = resolvePreparedRuntimeDirectory(input.rootDir, target);
+  const current = await inspectPreparedHeadlessNodeRuntime({ catalog, target, targetDirectory });
+  if (current) {
+    if (!input.allowCrossTarget) verifyPreparedNodeExecutable(current.executablePath, catalog.nodeVersion);
+    return Object.freeze({ directory: targetDirectory, ...current, changed: false });
+  }
   const sourceUrl = `${NODE_DISTRIBUTION_BASE_URL}/v${catalog.nodeVersion}/${target.archiveFileName}`;
   const cachePath = path.join(
     input.rootDir,
@@ -163,7 +173,6 @@ async function prepareHeadlessNodeRuntime(input) {
     expectedSha256: target.archiveSha256,
   });
 
-  const targetDirectory = resolvePreparedRuntimeDirectory(input.rootDir, target);
   const parentDirectory = path.dirname(targetDirectory);
   await fsp.mkdir(parentDirectory, { recursive: true, mode: 0o755 });
   const stagingDirectory = await fsp.mkdtemp(
@@ -215,6 +224,7 @@ async function prepareHeadlessNodeRuntime(input) {
     await fsp.rm(targetDirectory, { recursive: true, force: true });
     await fsp.rename(stagingDirectory, targetDirectory);
     return Object.freeze({
+      changed: true,
       directory: targetDirectory,
       executablePath: path.join(targetDirectory, target.executableRelativePath),
       manifestPath: path.join(targetDirectory, HEADLESS_NODE_RUNTIME_MANIFEST_FILE_NAME),
@@ -225,10 +235,28 @@ async function prepareHeadlessNodeRuntime(input) {
   }
 }
 
+/** 复用正式 runtime 验证器；下载缓存命中不等于已经安装的可执行文件仍然完整。 */
+async function inspectPreparedHeadlessNodeRuntime({ catalog, target, targetDirectory }) {
+  try {
+    return await resolveHeadlessNodeRuntime({
+      catalog,
+      runtimeDirectory: targetDirectory,
+      platform: target.platform,
+      architecture: target.architecture,
+      verifyPreparedExecutableHash: true,
+    });
+  } catch (error) {
+    // 权限或 I/O 错误不应触发替换；缺失、过期或损坏的制品才由准备链重建。
+    if (error?.code && error.code !== 'ENOENT' && error.code !== 'ENOTDIR') throw error;
+    return null;
+  }
+}
+
 module.exports = {
   NODE_DISTRIBUTION_BASE_URL,
   HEADLESS_NODE_RUNTIME_MANIFEST_FILE_NAME,
   prepareHeadlessNodeRuntime,
+  inspectPreparedHeadlessNodeRuntime,
   resolvePreparedRuntimeDirectory,
   sha256,
 };

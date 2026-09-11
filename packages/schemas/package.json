@@ -9,7 +9,7 @@
   "scripts": {
     "build": "rimraf dist && tsc -p tsconfig.json && tsc -p tsconfig.esm.json && node -e \"const fs=require('fs'); fs.mkdirSync('dist/esm',{recursive:true}); fs.writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}, null, 2));\" && node scripts/fix-esm-specifiers.cjs && node scripts/verify-runtime-exports.cjs",
     "pack-smoke": "pnpm run build && node scripts/verify-packed-runtime.mjs",
-    "dev": "tsc --watch",
+    "dev": "node scripts/watch-runtime.cjs",
     "clean": "rimraf dist"
   },
   "files": [

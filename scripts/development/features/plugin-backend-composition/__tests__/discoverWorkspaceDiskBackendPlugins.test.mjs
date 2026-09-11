@@ -14,7 +14,7 @@ function createPlugin(repositoryRoot, directoryName, pluginId, backendLoading) {
   fs.writeFileSync(path.join(packageDir, 'package.json'), `${JSON.stringify({
     name: `@plugin/${pluginId}`,
     ...(backendLoading === undefined ? {} : {
-      linnya: { development: { backendLoading } },
+      linnya: { development: { backendLoading, backendWatchConfig: 'tsup.plugin.config.ts' } },
     }),
   })}\n`);
   return packageDir;
@@ -36,6 +36,7 @@ describe('workspace disk backend plugin discovery', () => {
     expect(discoverWorkspaceDiskBackendPlugins(repositoryRoot)).toEqual([{
       pluginId: 'private-plugin',
       packageDir: diskPluginDir,
+      backendWatchConfig: 'tsup.plugin.config.ts',
     }]);
   });
 

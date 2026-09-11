@@ -56,7 +56,12 @@ export function discoverWorkspaceDiskBackendPlugins(repositoryRoot = process.cwd
       throw new Error(`开发态磁盘 backend 插件 ID 重复: ${pluginId}`);
     }
     seenIds.add(pluginId);
-    plugins.push(Object.freeze({ pluginId, packageDir }));
+    const backendWatchConfig = packageJson.linnya.development.backendWatchConfig;
+    if (typeof backendWatchConfig !== 'string' || !backendWatchConfig.trim() || path.isAbsolute(backendWatchConfig)
+      || backendWatchConfig.split(/[\\/]/).includes('..')) {
+      throw new Error(`${packageJsonPath}: backendWatchConfig 必须是包内相对配置路径`);
+    }
+    plugins.push(Object.freeze({ pluginId, packageDir, backendWatchConfig }));
   }
 
   return plugins.sort((left, right) => left.pluginId.localeCompare(right.pluginId));

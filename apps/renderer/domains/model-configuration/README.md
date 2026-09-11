@@ -14,6 +14,9 @@ Tab，也不得在“模型配置”重复提供模型管理入口。
 Settings 只注册这里公开的设置页面；Conversation、Knowledge Base、Editor 和 app
 workflow 只能消费本 domain 的公开合同，不能自行读取模型目录内部状态。
 
+公开的三个设置页面是按需加载的 Vue async component，名称与组件使用方式不变。公开查询、port 和 lifecycle
+不依赖页面加载，避免 Conversation 只导入目录查询时就拉入全部设置表单。
+
 > Provider 产品目录与发布状态的长期合同见
 > [`packages/provider-catalog/README.md`](../../../../packages/provider-catalog/README.md)；推理执行、Provider SDK、conformance 和 usage 审计的长期合同见
 > [`src/app-hosts/linnya/adapters/inference/README.md`](../../../../src/app-hosts/linnya/adapters/inference/README.md)

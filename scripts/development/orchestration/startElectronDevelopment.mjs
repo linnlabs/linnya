@@ -1,28 +1,16 @@
-import { concurrently } from 'concurrently';
+import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 
 import { discoverWorkspaceDiskBackendPlugins } from '../features/plugin-backend-composition/functions/discoverWorkspaceDiskBackendPlugins.mjs';
 
-const SUPPORTED_RENDERER_PORTS = new Set([5173, 5174]);
+import { createDevelopmentProcessScope } from '../features/build-session/orchestration/createDevelopmentProcessScope.mjs';
+import { runDevelopmentBuildGraph } from '../features/build-session/orchestration/runDevelopmentBuildGraph.mjs';
+import { createElectronDevelopmentBuilds } from '../features/build-session/definitions/electronDevelopmentBuilds.mjs';
 
-const DEVELOPMENT_COMMANDS = [
-  { command: 'pnpm run watch:main', name: 'main' },
-  { command: 'pnpm run watch:preload', name: 'preload' },
-  { command: 'pnpm run watch:measurement-worker', name: 'measurement-worker' },
-  { command: 'pnpm run watch:measurement-preload', name: 'measurement-preload' },
-  { command: 'pnpm run watch:slides-raster-worker', name: 'slides-raster-worker' },
-  { command: 'pnpm run watch:slides-raster-preload', name: 'slides-raster-preload' },
-  { command: 'pnpm run watch:slides-brush-worker', name: 'slides-brush-worker' },
-  { command: 'pnpm run watch:slides-brush-preload', name: 'slides-brush-preload' },
-  { command: 'pnpm run watch:worker', name: 'worker' },
-  { command: 'pnpm run watch:backend:dev', name: 'backend' },
-  { command: 'pnpm run watch:sandbox-runner', name: 'sandbox-runner' },
-  { command: 'pnpm run watch:command-runner', name: 'command-runner' },
-  { command: 'pnpm run watch:schemas', name: 'schemas' },
-  { command: 'pnpm run start:electron', name: 'electron' },
-];
+const SUPPORTED_RENDERER_PORTS = new Set([5173, 5174]);
 
 function readListeningPort(viteServer) {
   const address = viteServer.httpServer?.address();
@@ -59,47 +47,59 @@ export async function startRendererDevelopmentServer() {
   return { viteServer, url };
 }
 
-function resolveFailureExitCode(closeEvents) {
-  if (!Array.isArray(closeEvents)) return 1;
-  const failedEvent = closeEvents.find(({ exitCode, killed }) => (
-    !killed && typeof exitCode === 'number' && exitCode !== 0
-  ));
-  return failedEvent?.exitCode ?? 1;
-}
-
-export async function runElectronDevelopment() {
-  const { viteServer, url } = await startRendererDevelopmentServer();
-  const workspaceDiskBackendDirs = discoverWorkspaceDiskBackendPlugins()
-    .map((plugin) => plugin.packageDir);
+export async function runElectronDevelopment({ buildOnly = false } = {}) {
+  const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+  const pnpmCli = process.env.npm_execpath;
+  if (!pnpmCli) throw new Error('请通过 pnpm run dev:electron 启动开发会话');
+  const plugins = discoverWorkspaceDiskBackendPlugins(repositoryRoot);
   const configuredDiskBackendDirs = (process.env.LINNYA_PLUGIN_BACKEND_DIRECT_DIRS ?? '')
-    .split(path.delimiter)
-    .map((entry) => entry.trim())
-    .filter(Boolean);
+    .split(path.delimiter).map(entry => entry.trim()).filter(Boolean);
   const backendDirectDirs = [...new Set([
-    ...workspaceDiskBackendDirs,
-    ...configuredDiskBackendDirs,
+    ...plugins.map(plugin => plugin.packageDir), ...configuredDiskBackendDirs,
   ])];
-  const commands = DEVELOPMENT_COMMANDS.map((command) => ({
-    ...command,
-    env: {
-      VITE_DEV_SERVER_URL: url,
-      ...(backendDirectDirs.length > 0
-        ? { LINNYA_PLUGIN_BACKEND_DIRECT_DIRS: backendDirectDirs.join(path.delimiter) }
-        : {}),
-    },
-  }));
+  const scope = createDevelopmentProcessScope();
+  const requestedStop = Promise.withResolvers();
+  const requestStop = () => requestedStop.resolve('stop');
+  process.on('SIGINT', requestStop);
+  process.on('SIGTERM', requestStop);
+  let rendererStartup;
+  const tasks = createElectronDevelopmentBuilds({ repositoryRoot, pnpmCli, plugins });
+  tasks.push({ id: 'renderer', dependencies: ['schemas', 'provider-catalog', 'wasm'] });
+  const failed = scope.failure.then(error => { throw error; });
 
   try {
-    const { result } = concurrently(commands, {
-      handleInput: true,
-      killOthersOn: ['failure', 'success'],
-      prefix: 'name',
+    const outcome = await Promise.race([
+      runDevelopmentBuildGraph(tasks, task => {
+        if (task.id !== 'renderer') return scope.start(task);
+        rendererStartup = startRendererDevelopmentServer();
+        return { ready: rendererStartup };
+      }).then(() => 'ready'),
+      failed,
+      requestedStop.promise,
+    ]);
+    if (outcome === 'stop' || buildOnly) return;
+    const { url } = await rendererStartup;
+    const packageJson = JSON.parse(readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'));
+    const require = createRequire(import.meta.url);
+    // 已收到本轮全部成功事件；此处不再运行 wait-on 或第二轮编译。
+    const electron = scope.start({
+      id: 'electron', cwd: repositoryRoot, file: process.execPath,
+      args: [require.resolve('electron/cli.js'), 'dist/main/main.cjs'], watch: false,
+      env: {
+        NODE_ENV: 'development', LINNYA_DEV_MODE: 'true', APP_VERSION: packageJson.version,
+        VITE_DEV_SERVER_URL: url,
+        LINNYA_PLUGIN_BACKEND_DIRECT_DIRS: backendDirectDirs.join(path.delimiter),
+      },
     });
-    await result;
-  } catch (closeEvents) {
-    process.exitCode = resolveFailureExitCode(closeEvents);
+    await Promise.race([electron.done, failed, requestedStop.promise]);
   } finally {
-    await viteServer.close();
+    await scope.stop();
+    if (rendererStartup) {
+      const renderer = await rendererStartup.catch(() => null);
+      await renderer?.viteServer.close();
+    }
+    process.off('SIGINT', requestStop);
+    process.off('SIGTERM', requestStop);
   }
 }
 
@@ -108,7 +108,7 @@ const invokedModuleUrl = process.argv[1] === undefined
   : pathToFileURL(process.argv[1]).href;
 
 if (import.meta.url === invokedModuleUrl) {
-  runElectronDevelopment().catch((error) => {
+  runElectronDevelopment({ buildOnly: process.argv.includes('--build-only') }).catch((error) => {
     console.error('[dev:electron] 启动失败:', error);
     process.exitCode = 1;
   });
