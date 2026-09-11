@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { SerializableJsonRecord } from '@linnlabs/linnkit/contracts';
-import packageManifest from '../../../../../../package.json';
+// JSON named exports 使 bundler 只保留版本与依赖事实，不能默认导入整份根配置及 scripts。
+import { version as hostVersion, dependencies } from '../../../../../../package.json';
 import { modelCatalog } from 'src/domains/model-catalog';
 import {
   getAllSkillMetadata,
@@ -97,8 +98,8 @@ export function captureRuntimeCompatibility(
           .map(skill => skill.name)
       : [];
   return {
-    hostVersion: packageManifest.version,
-    frameworkVersion: packageManifest.dependencies['@linnlabs/linnkit'],
+    hostVersion,
+    frameworkVersion: dependencies['@linnlabs/linnkit'],
     agentConfiguration: serializeConfiguration(definition.config ?? {}),
     models: Object.fromEntries(modelIds.map(id => [id, readModelBinding(id)])),
     plugins: (original
