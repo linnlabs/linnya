@@ -1,6 +1,11 @@
 import { promises as fsp } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { inspect } from 'node:util';
+import { PromptKeys } from '@app/schemas';
+import { runtimeKernel } from '@linnlabs/linnkit';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
+import { createGraphLoopHarness, createScriptedInferenceHarness } from '@linnlabs/linnkit/testkit';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { WebSearchServiceRequest } from '../websearch/definitions/webSearchService';
 import type { WebReadServiceRequest } from '../webread/definitions/webReadService';
@@ -16,11 +21,18 @@ import { MetasoReaderProvider } from '../webread/providers/metaso';
 import { installWebReadConfigReader } from '../webread/ports/webReadConfigReader';
 import { WebSearchTool } from '../websearch/WebSearchTool';
 import { WebReadTool } from '../webread/WebReadTool';
-import { WebUpstreamFixtureServer } from './fixtures/webUpstreamFixtureServer';
+import { UNTRUSTED_FAILURE_TEXT, WebUpstreamFixtureServer } from './fixtures/webUpstreamFixtureServer';
 import { WebFailureError } from '../shared/webFailure';
 import { attachCitationRefAllocator, attachCitationSequence } from '../../../domains/citation';
 import { createCitationRefAllocatorFixture } from '../../../domains/citation/testkit/citationRefAllocatorFixture';
 import { decorateWebEvidenceWriterToolContext } from '../../../app-hosts/linnya/adapters/tools/webEvidenceWriterToolContextDecorator';
+import { ToolRegistry } from '../../../app-hosts/linnya/adapters/tools/toolRegistry';
+import * as builtinPluginRegistry from '../../../app-hosts/linnya/plugin-registry/builtin';
+import { clearPluginRuntimeStateForTests, setPluginRuntimeStateForTests } from '../../../app-hosts/linnya/plugin-registry/pluginRuntimeState';
+import { defaultObservationPreviewPort } from '../../../app-hosts/linnya/adapters/tools/defaultPorts';
+import { createDefaultLlmNode } from '../../../app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
+import { createScriptedChatModelCatalog, SCRIPTED_MODEL_ID } from '../../../app-hosts/linnya/testkit/agent-harness/modelCatalogHarness';
+import { Logger } from '../../../shared/logger';
 
 const createSearchProviderMock = vi.hoisted(() => vi.fn());
 const createLocalReadProviderMock = vi.hoisted(() => vi.fn());
@@ -83,6 +95,8 @@ describe('Web Phase 1 本地优先读取业务 E2E', () => {
     uninstallWebReadConfigReader?.();
     uninstallWebReadConfigReader = undefined;
     vi.clearAllMocks();
+    vi.restoreAllMocks();
+    clearPluginRuntimeStateForTests();
     fixture.reset();
     resetWorkspaceRootToDefault();
     if (tempRoot) await fsp.rm(tempRoot, { recursive: true, force: true });
@@ -222,5 +236,84 @@ describe('Web Phase 1 本地优先读取业务 E2E', () => {
     setTimeout(() => controller.abort(), 30);
 
     await expect(promise).rejects.toMatchObject({ kind: 'aborted' });
+  });
+
+  it.each([
+    ['unauthorized', 'auth', 401],
+    ['forbidden', 'http_403', 403],
+  ] as const)('%s 失败经正式注册入口和图执行后，不污染模型、事件或诊断', async (scenario, code, status) => {
+    const context = await prepareBusinessContext();
+    fixture.searchScenario = scenario;
+    vi.spyOn(builtinPluginRegistry, 'getRegisteredToolClasses').mockReturnValue([WebSearchTool]);
+    setPluginRuntimeStateForTests({ enabledPluginIds: ['platform'] });
+    vi.spyOn(builtinPluginRegistry, 'getRegisteredToolContextDecorators').mockReturnValue([]);
+    const registry = new ToolRegistry({ strictInitialization: true });
+    const execution = vi.spyOn(registry, 'executeTool');
+    const diagnostic = vi.spyOn(Logger.prototype, 'error');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const auditPort = { emit: vi.fn() };
+    const conversationId = 'web_e2e_conversation';
+    const turnId = 'web_e2e_turn';
+    const query = '请搜索夹具页面并说明结果';
+    const modelCatalog = createScriptedChatModelCatalog();
+    const modelResolver = new runtimeKernel.llm.ModelResolver({ modelCatalog });
+    const ai = createScriptedInferenceHarness([
+      { toolCalls: [{ id: 'call_web_failure', name: 'web_search', argumentsJson: '{"query":"failure case"}' }] },
+      { contentChunks: ['搜索失败，未获得可引用的内容。'] },
+    ], { modelCatalog });
+    const sequencer = new runtimeKernel.execution.EventSequencer(conversationId);
+    const bus = new runtimeKernel.execution.EventBus(sequencer.getExecutionId());
+    const publisher = new runtimeKernel.execution.RuntimeEventPublisher(bus, sequencer, {
+      run_id: RunIdSchema.parse(turnId), lane: 'foreground', visibility: 'conversation',
+    });
+
+    // 使用 npm 框架与真实 Host registry，不在测试替身中重新实现错误码转交。
+    await createGraphLoopHarness({
+      conversationId, turnId, query, toolContext: context,
+      request: {
+        query, promptKey: PromptKeys.DEFAULT, model_id: SCRIPTED_MODEL_ID,
+        maxSteps: 4, enableTools: true, availableTools: ['web_search'],
+      },
+      llmCaller: ai.getLlmCaller(), toolRuntime: registry,
+      observationPreview: defaultObservationPreviewPort, auditPort,
+      createLlmNode: ({ llmCaller, toolRuntime }) => createDefaultLlmNode({
+        llmCaller, toolRuntime, modelCatalog, modelResolver, auditPort,
+      }),
+      runtimeEventSink: (event, source) => publisher.publish(event, source),
+    }).run();
+
+    ai.assertAllTurnsConsumed();
+    expect(execution).toHaveBeenCalledTimes(1);
+    await expect(execution.mock.results[0]?.value).resolves.toMatchObject({
+      success: false, errorKind: 'execution', errorCode: code,
+      error: expect.stringContaining(`HTTP ${status}`),
+    });
+    const events = publisher.getGeneratedEvents();
+    const outputs = events.filter(event => event.type === 'tool_output');
+    expect(outputs).toHaveLength(1);
+    expect(outputs[0]).toMatchObject({ status: 'error', error_code: code });
+    expect(outputs[0]?.ephemeral).not.toBe(true);
+    const nextInput = ai.getCalls()[1]?.messages;
+    expect(JSON.stringify(nextInput)).toContain(`HTTP ${status}`);
+    expect(diagnostic).toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalled();
+    expect(auditPort.emit).toHaveBeenCalled();
+    for (const boundary of [nextInput, events, diagnostic.mock.calls, consoleError.mock.calls, auditPort.emit.mock.calls]) {
+      expect(inspect(boundary, { depth: null })).not.toContain(UNTRUSTED_FAILURE_TEXT);
+    }
+    expect(createReadProviderMock).not.toHaveBeenCalled();
+    const bundlesDir = pathManager.getConversationEvidenceBundlesDir({
+      conversationId, instanceId: 'web_e2e_instance',
+    });
+    expect(await fsp.readdir(bundlesDir).catch(() => [])).toEqual([]);
+  });
+
+  it('搜索 HTTP 200 业务错误的嵌套 cause 不携带上游自由文本', async () => {
+    const context = await prepareBusinessContext();
+    fixture.searchScenario = 'business_error';
+    const error = await new WebSearchTool().run({ query: 'business error' }, context)
+      .catch((caught: unknown) => caught);
+    expect(error).toMatchObject({ code: 'invalid_response' });
+    expect(inspect(error, { depth: null })).not.toContain(UNTRUSTED_FAILURE_TEXT);
   });
 });

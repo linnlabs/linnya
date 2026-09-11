@@ -7,6 +7,7 @@ import {
   getWebFailureDiagnostics,
   getWebFailureKind,
   isEscalatableWebFailureKind,
+  isWebChallengeResponse,
   type EscalatableWebFailureKind,
   type WebFailureKind,
 } from './webFailure';
@@ -67,9 +68,10 @@ describe('Web 终态失败分类与升级子集', () => {
 
   it('仅凭状态码不判定挑战，带有限页面特征才归类 captcha', () => {
     expect(getWebFailureKind(new WebHttpError('http_error', '419', { status: 419 }))).toBe('http_error');
+    expect(isWebChallengeResponse(419, '<title>Human verification</title>')).toBe(true);
     expect(getWebFailureKind(new WebHttpError('http_error', 'challenge', {
       status: 419,
-      bodyPreview: '<title>Human verification</title>',
+      challengeDetected: true,
     }))).toBe('captcha');
   });
 
@@ -78,7 +80,6 @@ describe('Web 终态失败分类与升级子集', () => {
       status: 503,
       url: 'https://example.com/article?token=secret',
       contentType: 'text/html',
-      bodyPreview: 'private body',
       redirectCount: 1,
       attempt: 2,
       retryCount: 1,

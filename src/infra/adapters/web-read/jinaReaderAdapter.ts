@@ -57,11 +57,11 @@ function assertSuccessfulBusinessStatus(value: Record<string, unknown>): void {
   const failedStatus = typeof status === 'number' && status !== 20_000;
   if (!failedCode && !failedStatus) return;
 
-  const detail = readTrimmedString(value, 'message') ?? readTrimmedString(value, 'detail');
+  // HTTP 200 中的业务失败正文也不可信；仅保留供应商的数值状态。
   throw new WebHttpError(
     'invalid_response',
     `Jina Reader 返回业务失败状态${typeof code === 'number' ? ` code=${code}` : ''}` +
-      `${typeof status === 'number' ? ` status=${status}` : ''}${detail ? `: ${detail}` : '。'}`,
+      `${typeof status === 'number' ? ` status=${status}` : ''}。`,
   );
 }
 

@@ -15,6 +15,11 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
   beforeAll(async () => {
     server = createServer((request, response) => {
       requestedPaths.push(request.url ?? '');
+      if (request.url === '/challenge-429') {
+        response.writeHead(429, 'UPSTREAM_STATUS_INJECTION', { 'Content-Type': 'text/html' });
+        response.end('<html><title>Human verification</title><body>UPSTREAM_BODY_INJECTION</body></html>');
+        return;
+      }
       if (request.url === '/retry-503' || request.url === '/retry-429') {
         const attempts = (transientAttempts.get(request.url) ?? 0) + 1;
         transientAttempts.set(request.url, attempts);
@@ -149,22 +154,15 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
   });
 
   it('挑战页不会被瞬态重试误判', async () => {
-    // 使用注入的 HTTP 函数验证分类逻辑，避免把真实测试服务改成一次性状态。
-    const error = await localHttpFetch('http://fixture.test/challenge', {}, {
+    const error = await localHttpFetch(`http://fixture.test:${port}/challenge-429`, {}, {
       resolveHost: resolveFixtureHost,
       sleep: async () => undefined,
-      httpFetch: async () => ({
-        status: 419,
-        statusText: 'Page Expired',
-        ok: false,
-        bodyText: '<html><title>Human verification</title></html>',
-        bodyData: new TextEncoder().encode('<html><title>Human verification</title></html>'),
-        headers: { get: (name: string) => name === 'content-type' ? 'text/html' : null },
-        tookMs: 0,
-      }),
     }).catch((caught: unknown) => caught);
-    expect(error).toMatchObject({ status: 419, retryCount: 0 });
+    expect(error).toMatchObject({ status: 429, code: 'captcha', challengeDetected: true, retryCount: 0 });
     expect(getWebFailureKind(error)).toBe('captcha');
+    expect(error).not.toHaveProperty('bodyPreview');
+    expect(String(error)).not.toContain('UPSTREAM_');
+    expect(requestedPaths.filter(path => path === '/challenge-429')).toHaveLength(1);
   });
 
   it.each([

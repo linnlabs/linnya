@@ -59,4 +59,14 @@ describe('JinaReaderProvider 本地真实 HTTP 集成', () => {
     setTimeout(() => controller.abort(), 30);
     await expect(promise).rejects.toMatchObject({ kind: 'aborted' });
   });
+
+  it('HTTP 200 业务失败不把上游 message/detail 带入异常', async () => {
+    fixture.jinaScenario = 'business_error';
+    const provider = new JinaReaderProvider(createConfig(`${fixture.baseUrl}/jina`));
+    await expect(provider.read({ url: 'https://example.com/source' })).rejects.toMatchObject({
+      code: 'invalid_response',
+      message: 'Jina Reader 返回业务失败状态 code=422 status=42201。',
+      cause: undefined,
+    });
+  });
 });

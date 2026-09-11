@@ -22,7 +22,6 @@ import {
   resolveAndAssertPublicHost,
   type ResolvedWebHost,
 } from '../../../tools/web/shared/urlPolicy';
-import { isWebChallengeResponse } from '../../../tools/web/shared/webFailure';
 
 export const LOCAL_HTTP_TIMEOUT_MS = 12_000;
 export const LOCAL_HTTP_MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -162,7 +161,7 @@ function retryDelayMs(error: WebHttpError): number {
 }
 
 function isTransientRetryCandidate(error: WebHttpError): boolean {
-  if (isWebChallengeResponse(error.status, error.bodyPreview)) return false;
+  if (error.challengeDetected) return false;
   return error.kind === 'timeout'
     || error.kind === 'network_error'
     || error.kind === 'rate_limited'
