@@ -7,11 +7,13 @@ const warnSpy = vi.hoisted(() => vi.fn());
 const errorSpy = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../../shared/logger', () => ({
-  Logger: vi.fn().mockImplementation(() => ({
-    info: infoSpy,
-    warn: warnSpy,
-    error: errorSpy,
-  })),
+  Logger: vi.fn().mockImplementation(function MockLogger() {
+    return {
+      info: infoSpy,
+      warn: warnSpy,
+      error: errorSpy,
+    };
+  }),
 }));
 
 function createDependencies(options: {

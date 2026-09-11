@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, type Mock } from 'vitest';
 import type {
   NormalizedTextMeasureInput,
   TextMeasureAdapter,
@@ -9,11 +9,14 @@ import {
   normalizeTextMeasureInput,
 } from '../../../index.js';
 import { MeasurementCache } from '../MeasurementCache.js';
-import { MeasurementClient } from '../MeasurementClient.js';
+import {
+  MeasurementClient,
+  type MeasurementWorkerManagerPort,
+} from '../MeasurementClient.js';
 
 interface MeasurementWorkerPortStub {
-  measureBatch: ReturnType<typeof vi.fn>;
-  touch: ReturnType<typeof vi.fn>;
+  measureBatch: Mock<MeasurementWorkerManagerPort['measureBatch']>;
+  touch: Mock<MeasurementWorkerManagerPort['touch']>;
 }
 
 function createInput(text: string): NormalizedTextMeasureInput {

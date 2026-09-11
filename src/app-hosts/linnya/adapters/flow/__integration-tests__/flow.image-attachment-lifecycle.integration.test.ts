@@ -13,13 +13,13 @@ import {
 } from '@app/schemas';
 import { agentContext, agentUtils, formatAgentLlmMessages } from '@linnlabs/linnkit/context-manager';
 import type { LlmRequestMessage, TokenizerPort } from '@linnlabs/linnkit/ports';
-import { mapUiMessagesWindowDtoToRows } from 'apps/renderer/domains/conversation/message-window/functions/mapUiMessageDto';
-import { readUiMessagesWindowDto } from 'apps/renderer/domains/conversation/message-window/functions/uiMessagesDtoGuards';
-import { createConversationImageDraftSubmissionSnapshot } from 'apps/renderer/domains/conversation/features/image-attachments/functions/conversationImageDraftRules';
-import { createConversationImageAttachmentApi } from 'apps/renderer/domains/conversation/features/image-attachments/orchestration/conversationImageAttachmentApi';
-import { createConversationImageAttachmentDraftController } from 'apps/renderer/domains/conversation/features/image-attachments/orchestration/conversationImageAttachmentDraftController';
-import { createConversationImagePreviewApi } from 'apps/renderer/domains/conversation/features/image-attachments/orchestration/conversationImagePreviewApi';
-import { useConversationImageAttachmentDraftStore } from 'apps/renderer/domains/conversation/features/image-attachments/store/conversationImageAttachmentDraftStore';
+import { mapUiMessagesWindowDtoToRows } from '@/domains/conversation/message-window/functions/mapUiMessageDto';
+import { readUiMessagesWindowDto } from '@/domains/conversation/message-window/functions/uiMessagesDtoGuards';
+import { createConversationImageDraftSubmissionSnapshot } from '@/domains/conversation/features/image-attachments/functions/conversationImageDraftRules';
+import { createConversationImageAttachmentApi } from '@/domains/conversation/features/image-attachments/orchestration/conversationImageAttachmentApi';
+import { createConversationImageAttachmentDraftController } from '@/domains/conversation/features/image-attachments/orchestration/conversationImageAttachmentDraftController';
+import { createConversationImagePreviewApi } from '@/domains/conversation/features/image-attachments/orchestration/conversationImagePreviewApi';
+import { useConversationImageAttachmentDraftStore } from '@/domains/conversation/features/image-attachments/store/conversationImageAttachmentDraftStore';
 import {
   createImageInputProcessingProfileRegistry,
   createWorkspaceLlmInputMaterializer,

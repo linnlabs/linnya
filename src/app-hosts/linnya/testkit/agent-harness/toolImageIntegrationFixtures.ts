@@ -131,27 +131,24 @@ export async function assertToolImageAiSdkInput(params: {
     base_url: 'https://fixture.invalid/v1',
   };
   const projected = projectCanonicalMessages(capturedRequest.messages, route);
-  expect(projected).toEqual(expect.arrayContaining([
-    expect.objectContaining({
-      role: 'tool',
-      content: expect.arrayContaining([
-        expect.objectContaining({
-          type: 'tool-result',
-          output: {
-            type: 'content',
-            value: expect.arrayContaining([
-              expect.objectContaining({
-                type: 'file',
-                data: {
-                  type: 'data',
-                  data: Uint8Array.from(Buffer.from(params.expectedBase64, 'base64')),
-                },
-                mediaType: 'image/png',
-              }),
-            ]),
-          },
-        }),
-      ]),
-    }),
-  ]));
+  const toolMessage = projected.find(message => message.role === 'tool');
+  if (!toolMessage || toolMessage.role !== 'tool') {
+    throw new Error('Expected projected messages to contain a tool result.');
+  }
+  const toolResult = toolMessage.content.find(part => part.type === 'tool-result');
+  if (!toolResult || toolResult.output.type !== 'content') {
+    throw new Error('Expected projected tool output to contain image content.');
+  }
+  const file = toolResult.output.value.find(part => part.type === 'file');
+  if (!file || file.data.type !== 'data') {
+    throw new Error('Expected projected tool output to contain inline image bytes.');
+  }
+
+  const actualBytes = typeof file.data.data === 'string'
+    ? Buffer.from(file.data.data, 'base64')
+    : file.data.data instanceof ArrayBuffer
+      ? Buffer.from(new Uint8Array(file.data.data))
+      : Buffer.from(file.data.data);
+  expect(file.mediaType).toBe('image/png');
+  expect(actualBytes).toEqual(Buffer.from(params.expectedBase64, 'base64'));
 }

@@ -11,11 +11,13 @@ vi.mock('../functions/cloudModelIds', () => ({
   toCloudModelId: vi.fn((id: string) => `cloud:${id}`),
 }));
 vi.mock('src/shared/logger', () => ({
-  Logger: vi.fn().mockImplementation(() => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  })),
+  Logger: vi.fn().mockImplementation(function MockLogger() {
+    return {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+  }),
 }));
 
 import { fetchCloudModels } from '../orchestration/fetchCloudModels';

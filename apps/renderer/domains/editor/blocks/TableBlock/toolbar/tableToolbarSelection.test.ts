@@ -3,7 +3,7 @@
 import { Schema, type Node as ProseMirrorNode } from 'prosemirror-model';
 import { EditorState, TextSelection, type Transaction } from 'prosemirror-state';
 import { CellSelection } from '@tiptap/pm/tables';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, type Mock } from 'vitest';
 import {
   collapseSelectionToTopLeftCell,
   ensureCellSelection,
@@ -70,7 +70,7 @@ const nonTableSchema = new Schema({
 
 interface EditorFixture {
   editor: TableToolbarEditor;
-  dispatch: ReturnType<typeof vi.fn>;
+  dispatch: Mock<(transaction: Transaction) => void>;
   tableNode: ProseMirrorNode;
   tablePos: number;
   getState(): EditorState;

@@ -9,6 +9,7 @@ import { assertProductionPackageLock } from '../functions/productionPackageLock.
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const outputPath = path.join(rootDir, 'production-package-lock.json');
+const MAX_LOCK_CONVERGENCE_PASSES = 8;
 
 function writeJson(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -39,6 +40,32 @@ function createCleanNpmEnvironment(tempRoot) {
   };
 }
 
+function generateStablePackageLock(tempRoot) {
+  const packageLockPath = path.join(tempRoot, 'package-lock.json');
+  let previous = fs.existsSync(packageLockPath)
+    ? fs.readFileSync(packageLockPath, 'utf8')
+    : undefined;
+
+  for (let pass = 1; pass <= MAX_LOCK_CONVERGENCE_PASSES; pass += 1) {
+    execFileSync(
+      'npm',
+      ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'],
+      {
+        cwd: tempRoot,
+        env: createCleanNpmEnvironment(tempRoot),
+        stdio: 'inherit',
+      }
+    );
+    const current = fs.readFileSync(packageLockPath, 'utf8');
+    if (current === previous) return JSON.parse(current);
+    previous = current;
+  }
+
+  // npm 会分轮传播 optional peer 的 dev/devOptional 标记。若有限轮次内仍不稳定，
+  // 继续写出只会让 update 成功、verify 失败，因此必须在发行边界显式终止。
+  throw new Error(`生产 package lock 在 ${MAX_LOCK_CONVERGENCE_PASSES} 轮 npm 解析后仍未收敛`);
+}
+
 export function updateProductionPackageLock(input = {}) {
   const fresh = input.fresh === true;
   const verify = input.verify === true;
@@ -58,18 +85,7 @@ export function updateProductionPackageLock(input = {}) {
       fs.copyFileSync(outputPath, path.join(tempRoot, 'package-lock.json'));
     }
 
-    execFileSync(
-      'npm',
-      ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'],
-      {
-        cwd: tempRoot,
-        env: createCleanNpmEnvironment(tempRoot),
-        stdio: 'inherit',
-      }
-    );
-    const generatedLock = JSON.parse(
-      fs.readFileSync(path.join(tempRoot, 'package-lock.json'), 'utf8')
-    );
+    const generatedLock = generateStablePackageLock(tempRoot);
     assertProductionPackageLock(generatedLock, productionManifest);
     const serialized = `${JSON.stringify(generatedLock, null, 2)}\n`;
     if (verifyInstall) {
