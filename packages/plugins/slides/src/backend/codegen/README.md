@@ -118,6 +118,10 @@ renderer source selection
   统一拥有。页面显式声明 `slideKey`，作者对象显式声明 `editKey`；Flex compiler 校验
   文稿内页面唯一性与页内对象唯一性，再把完整 ref 投影到 DeckSpec 和 RenderModel。
   旧源码没有 key 时继续编译，但不能从页码、数组下标、sourceSpan 或几何位置伪造稳定身份。
+- `compose({ manualEdits })` 先经过 shared 严格 codec。文本完整值在 Yoga 前投影，保证
+  固有尺寸和换行继续走正式 owner；位移在 Yoga 后按 Frame／子对象层级累加，再进入
+  DeckSpec、RenderModel 与 PPTX。dangling ref、重复 key、未知字段和目标类型不符都属于
+  compose contract 错误，不选择相似文字或第一个同名对象作为 fallback。
 - `scripts/codegen/layoutDts/` 从 shared contract、shape geometry 与 sandbox
   globals 生成两份同内容 d.ts：sandbox typecheck 使用一份，Slides
   skill 分发一份。禁止手改生成文件。

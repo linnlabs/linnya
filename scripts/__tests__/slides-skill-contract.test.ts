@@ -28,6 +28,7 @@ describe('Slides Skill guard', () => {
       'chart-controls.js',
       'complete-deck.js',
       'cover-variants.js',
+      'manual-edits.js',
       'media-and-paint.js',
       'native-formula.js',
       'table.js',

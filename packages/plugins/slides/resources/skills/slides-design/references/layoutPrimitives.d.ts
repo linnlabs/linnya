@@ -213,6 +213,7 @@ interface FlexComposeInput {
   title: string;
   layout?: SlideLayout;
   theme?: LayoutThemeInput;
+  manualEdits?: SlidesManualEdits;
   slides: LayoutSlideNode[];
 }
 
@@ -879,6 +880,59 @@ interface SlideSizeEmu {
 interface SlideSizeInches {
   readonly width: number;
   readonly height: number;
+}
+
+interface SlidesManualAtomicEdit extends SlidesManualEditBase {
+  readonly kind: SlidesManualAtomicEditKind;
+  readonly translation: SlidesManualTranslation;
+}
+
+type SlidesManualAtomicEditKind =
+  | 'shape'
+  | 'image'
+  | 'table'
+  | 'chart'
+  | 'svgGraphic'
+  | 'formula';
+
+interface SlidesManualEditBase {
+  readonly editKey: string;
+  readonly translation?: SlidesManualTranslation;
+}
+
+/** deck.js 中唯一的人工值块；字段表示当前有效值，不是操作日志。 */
+interface SlidesManualEdits {
+  readonly version: 1;
+  readonly slides: readonly SlidesManualSlideEdits[];
+}
+
+interface SlidesManualFrameEdit extends SlidesManualEditBase {
+  readonly kind: 'frame';
+  readonly translation: SlidesManualTranslation;
+}
+
+interface SlidesManualSlideEdits {
+  readonly slideKey: string;
+  readonly targets: readonly SlidesManualTargetEdit[];
+}
+
+type SlidesManualTargetEdit =
+  | SlidesManualTextEdit
+  | SlidesManualFrameEdit
+  | SlidesManualAtomicEdit;
+
+type SlidesManualTargetKind = SlidesManualTargetEdit['kind'];
+
+interface SlidesManualTextEdit extends SlidesManualEditBase {
+  readonly kind: 'text';
+  /** 当前首期只开放纯文本内容；rich/formula runs 保持只读。 */
+  readonly content?: string;
+}
+
+interface SlidesManualTranslation {
+  /** 相对未应用人工位移的布局结果，单位 inches。 */
+  readonly dx: number;
+  readonly dy: number;
 }
 
 type SvgGraphicAccessibility =

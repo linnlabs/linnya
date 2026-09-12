@@ -2,7 +2,7 @@
 
 `authoringEditing` owns the cross-process contract used to identify editable objects in a generated `deck.js` document. A target is the pair `slideKey + editKey`; both keys are explicit author facts and remain independent from page order, render order, source lines, content and geometry.
 
-The current slice only establishes and projects identity. Manual values and write commands must extend this package with narrow discriminated contracts; they must not accept arbitrary property paths or generic JSON patches.
+`manualEdits` is a versioned, strictly parsed authoring value block. It currently supports complete plain-text replacement and cumulative post-layout translation. Frame and atomic visual nodes only accept translation. Rich text, image source, table content and chart data remain outside the contract until their full-value semantics and editing UI are implemented. It never accepts arbitrary property paths or generic JSON patches.
 
 Rules:
 
@@ -11,4 +11,5 @@ Rules:
 - a node with `editKey` requires its slide to have `slideKey`;
 - old sources without keys continue to compile, but do not receive an authoring edit reference;
 - `RenderNode.id` remains a render-tree detail; persistence and commands use `authoringRef`.
-
+- manual targets form a discriminated union, reject unknown fields and are unique within their slide record;
+- translation is measured in inches relative to the layout result before manual translation; stored records are current values, not an append-only operation log.

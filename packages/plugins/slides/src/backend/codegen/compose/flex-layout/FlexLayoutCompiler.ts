@@ -42,6 +42,7 @@ import {
   resolveSlideSizeInches,
   normalizeMathFormulaSource,
   isSlidesAuthoringKey,
+  parseSlidesManualEdits,
 } from '@plugin/slides/shared';
 import type {
   Box,
@@ -51,12 +52,17 @@ import type {
   Paint,
   ShapeStrokeStyle,
   SlidesAuthoringEditRef,
+  SlidesManualSlideEdits,
   SourceSpan,
 } from '@plugin/slides/shared';
 import { resolveLayoutTextWrapPolicy } from './TextBoxSizing.js';
 import { buildGeneratedLayoutConstraintEvidence } from './LayoutConstraintFacts.js';
 import { FlexComposeContractError } from './FlexComposeContractError.js';
 import { readLayoutTableData } from './TableLayoutInput.js';
+import {
+  prepareSlideManualEditProjection,
+  translateManualLayoutResult,
+} from './ManualEditProjection.js';
 
 // ─── 公共 API ──────────────────────────────────────────────────────────────────
 
@@ -114,6 +120,18 @@ export function compileFlexInput(raw: FlexComposeInput): FlexCompileResult {
     slideKeys.add(slideNode.slideKey);
   }
 
+  let manualSlides: readonly SlidesManualSlideEdits[] = [];
+  if (raw.manualEdits != null) {
+    const manualResult = parseSlidesManualEdits(raw.manualEdits);
+    if ('error' in manualResult) return manualResult;
+    manualSlides = manualResult.value.slides;
+  }
+  const manualBySlide = new Map(manualSlides.map(slide => [slide.slideKey, slide]));
+  const danglingSlide = manualSlides.find(slide => !slideKeys.has(slide.slideKey));
+  if (danglingSlide) {
+    return { error: `人工编辑页面 \"${danglingSlide.slideKey}\" 在作者树中不存在。` };
+  }
+
   const slides: DirectSlideInput[] = [];
   const rejectedSlides: RejectedSlide[] = [];
 
@@ -125,7 +143,13 @@ export function compileFlexInput(raw: FlexComposeInput): FlexCompileResult {
     }
 
     try {
-      const compiled = compileSlide(slideNode, canvas.width, canvas.height, i + 1);
+      const compiled = compileSlide(
+        slideNode,
+        canvas.width,
+        canvas.height,
+        i + 1,
+        slideNode.slideKey ? manualBySlide.get(slideNode.slideKey) : undefined,
+      );
       slides.push(compiled);
     } catch (err) {
       if (!(err instanceof FlexComposeContractError)) throw err;
@@ -159,9 +183,14 @@ export function compileSlide(
   slideWidth: number,
   slideHeight: number,
   slideNumber = 1,
+  manualEdits?: SlidesManualSlideEdits,
 ): DirectSlideInput {
   validateSlideAuthoringIdentity(slideNode, slideNumber);
-  const layoutResult = computeSlideLayout(slideNode, slideWidth, slideHeight);
+  const projection = prepareSlideManualEditProjection(slideNode, manualEdits);
+  const layoutResult = translateManualLayoutResult(
+    computeSlideLayout(projection.slideNode, slideWidth, slideHeight),
+    projection.editsByKey,
+  );
   const elements: DirectElementInput[] = [];
   collectElements(layoutResult, elements, {
     slideNumber,

@@ -246,10 +246,22 @@ export {
   buildSlidesAuthoringRenderNodeId,
   isSlidesAuthoringEditRef,
   isSlidesAuthoringKey,
+  parseSlidesManualEdits,
   SLIDES_AUTHORING_KEY_PATTERN,
 } from './authoringEditing';
 export type {
   SlidesAuthoringEditRef,
+  SlidesManualAtomicEdit,
+  SlidesManualAtomicEditKind,
+  SlidesManualEdits,
+  SlidesManualEditBase,
+  SlidesManualEditsParseResult,
+  SlidesManualFrameEdit,
+  SlidesManualSlideEdits,
+  SlidesManualTargetEdit,
+  SlidesManualTargetKind,
+  SlidesManualTextEdit,
+  SlidesManualTranslation,
 } from './authoringEditing';
 export type {
   AbsolutePositionBox,

@@ -4,7 +4,13 @@ import {
   buildDeckSpecFromDirectInput,
   readCompiledDirectComposeInput,
 } from '../../presentationComposeInput';
-import type { FlexComposeInput, LayoutShapeNode, LayoutSlideNode } from '../LayoutTypes';
+import type {
+  FlexComposeInput,
+  LayoutShapeNode,
+  LayoutSlideNode,
+  LayoutTextNode,
+  LayoutViewNode,
+} from '../LayoutTypes';
 import { compileFlexInput } from '../FlexLayoutCompiler';
 import { initYoga } from '../YogaAdapter';
 
@@ -15,6 +21,25 @@ function shape(editKey: string): LayoutShapeNode {
     width: 2,
     height: 1,
     fill: '#224466',
+  };
+}
+
+function text(editKey: string, content: string): LayoutTextNode {
+  return {
+    _type: 'Text',
+    editKey,
+    content,
+    position: { x: 5, y: 1, w: 3, h: 1 },
+  };
+}
+
+function frame(editKey: string, children: LayoutViewNode['children']): LayoutViewNode {
+  return {
+    _type: 'View',
+    editKey,
+    children,
+    position: { x: 1, y: 1, w: 3, h: 2 },
+    backgroundColor: '#EEEEEE',
   };
 }
 
@@ -76,6 +101,63 @@ describe('authoring identity projection', () => {
       }],
     });
     expect(admitted.error).toContain('_authoringRef 不是有效的内部编译结果');
+  });
+
+  it('在 Yoga 前应用文本，在 Yoga 后累加 Frame 与子对象位移', () => {
+    const originalText = text('headline', 'Original');
+    const input = deck([
+      slide('overview', [
+        frame('hero_group', [shape('hero_art')]),
+        originalText,
+      ]),
+    ]);
+    input.manualEdits = {
+      version: 1,
+      slides: [{
+        slideKey: 'overview',
+        targets: [
+          { kind: 'frame', editKey: 'hero_group', translation: { dx: 0.5, dy: 0.2 } },
+          { kind: 'shape', editKey: 'hero_art', translation: { dx: 0.1, dy: 0.3 } },
+          { kind: 'text', editKey: 'headline', content: 'Updated' },
+        ],
+      }],
+    };
+
+    const compiled = compileFlexInput(input);
+    if (!compiled.input) throw new Error(compiled.error ?? 'Expected compiled manual edits.');
+    expect(originalText.content).toBe('Original');
+    expect(compiled.input.slides[0].elements).toMatchObject([
+      { position: { x: 1.5, y: 1.2 }, _authoringRef: { editKey: 'hero_group' } },
+      { position: { x: 1.6, y: 1.5 }, _authoringRef: { editKey: 'hero_art' } },
+      { content: 'Updated', position: { x: 5, y: 1 }, _authoringRef: { editKey: 'headline' } },
+    ]);
+  });
+
+  it('拒绝 dangling 与类型不符的人工记录', () => {
+    const baseSlide = slide('overview', [shape('hero_art')]);
+    const dangling = compileFlexInput({
+      ...deck([baseSlide]),
+      manualEdits: {
+        version: 1,
+        slides: [{
+          slideKey: 'overview',
+          targets: [{ kind: 'shape', editKey: 'missing', translation: { dx: 1, dy: 0 } }],
+        }],
+      },
+    });
+    expect(dangling.error).toContain('overview/missing');
+
+    const mismatch = compileFlexInput({
+      ...deck([baseSlide]),
+      manualEdits: {
+        version: 1,
+        slides: [{
+          slideKey: 'overview',
+          targets: [{ kind: 'chart', editKey: 'hero_art', translation: { dx: 1, dy: 0 } }],
+        }],
+      },
+    });
+    expect(mismatch.error).toContain('类型为 chart，实际作者对象为 shape');
   });
 
   it('拒绝页面内重复 editKey 与文稿内重复 slideKey', () => {
