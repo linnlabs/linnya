@@ -8,6 +8,7 @@ import { PRESENTATION_DOCUMENT_SCHEMAS } from './schemas/presentation.schema.js'
 import { PRESENTATION_IMAGE_BINDING_SCHEMAS } from './schemas/presentationImageBinding.schema.js';
 import { PRESENTATION_SVG_GRAPHIC_BINDING_SCHEMAS } from './schemas/presentationSvgGraphicBinding.schema.js';
 import { PRESENTATION_HISTORY_SCHEMAS } from '../features/presentationSourceHistory/definitions/presentationHistorySchema';
+import { PRESENTATION_MANUAL_EDIT_SCHEMAS } from '../features/presentationManualEditing/definitions/presentationManualEditSchema';
 
 const PRESENTATION_NODE_TYPE = 'presentation';
 
@@ -512,6 +513,13 @@ export const slidesPluginMigrations: readonly PluginMigrationDefinition[] = [
           db.exec(`ALTER TABLE presentation_revisions ADD COLUMN ${name} ${type}`);
         }
       }
+    },
+  },
+  {
+    version: 8,
+    description: 'Persist idempotent presentation manual edit command receipts',
+    up: db => {
+      for (const statement of PRESENTATION_MANUAL_EDIT_SCHEMAS) db.exec(statement);
     },
   },
 ] as const;

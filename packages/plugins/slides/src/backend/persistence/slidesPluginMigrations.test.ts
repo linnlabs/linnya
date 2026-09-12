@@ -181,13 +181,31 @@ describe('slidesPluginMigrations', () => {
   });
 
   it('保留已发布的迁移版本，不允许回退或重编号', () => {
-    expect(slidesPluginMigrations.map(migration => migration.version)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(slidesPluginMigrations.map(migration => migration.version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
     expect(slidesPluginMigrations[0]?.description).toBe(
       'Create and adopt Slides presentation tables'
     );
     expect(slidesPluginMigrations[1]?.description).toBe(
       'Backfill workspace text snapshots from latest Slides versions'
     );
+  });
+
+  it('v8 建立与 revision 绑定的人工编辑 command receipt', () => {
+    const db = new Database(':memory:');
+    try {
+      createWorkspaceTables(db);
+      for (const version of [1, 2, 3, 4, 5, 6, 7, 8]) applyMigration(db, version);
+      expect(tableNames(db)).toContain('presentation_manual_edit_receipts');
+      const foreignKeys = db.prepare(
+        'PRAGMA foreign_key_list(presentation_manual_edit_receipts)',
+      ).all().map(row => Reflect.get(row, 'table'));
+      expect(foreignKeys).toEqual(expect.arrayContaining([
+        'presentation_documents',
+        'presentation_revisions',
+      ]));
+    } finally {
+      db.close();
+    }
   });
 
   it('旧库补恢复来源列，重入不重复加列或猜测来源', () => {

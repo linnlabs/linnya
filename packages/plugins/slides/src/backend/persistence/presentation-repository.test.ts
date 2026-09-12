@@ -9,8 +9,12 @@ import {
   type PresentationStoredSourceRevision,
 } from '../features/presentationSourceHistory';
 import {
+  type PresentationCommitOptions,
   PresentationStaleBaseError,
+  PresentationDraftConflictError,
+  PresentationManualEditCommandConflictError,
 } from './definitions/presentationRepository';
+import { PRESENTATION_MANUAL_EDIT_SCHEMAS } from '../features/presentationManualEditing';
 import { PresentationRepository } from './repositories/PresentationRepository';
 import { PRESENTATION_DOCUMENT_SCHEMAS } from './schemas/presentation.schema';
 
@@ -64,6 +68,7 @@ function installWorkspaceSchema(db: Database.Database): void {
   for (const ddl of PRESENTATION_DOCUMENT_SCHEMAS) {
     db.exec(ddl);
   }
+  for (const ddl of PRESENTATION_MANUAL_EDIT_SCHEMAS) db.exec(ddl);
 }
 
 function insertWorkspaceNode(db: Database.Database, nodeId: string): void {
@@ -206,6 +211,74 @@ describe('PresentationRepository current materialization and source revisions', 
       origin: 'codegen',
     })).rejects.toBeInstanceOf(PresentationStaleBaseError);
     expect(db.prepare('SELECT COUNT(*) FROM presentation_revisions').pluck().get()).toBe(2);
+  });
+
+  it('人工提交在最终事务拒绝当前 base 上的新 draft', async () => {
+    insertWorkspaceNode(db, 'deck-manual-draft');
+    const created = await repo.createPresentation('deck-manual-draft', makeDeckSpec('Revision 1'), {
+      pptxBuffer: Buffer.from('pptx-v1'),
+      deckSource: SOURCE_V1,
+      origin: 'create',
+    });
+    db.prepare(`
+      INSERT INTO presentation_drafts (
+        node_id, deck_source, source_hash, base_revision_id, base_revision,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run('deck-manual-draft', SOURCE_V1, 'draft-hash', created.revisionId, 1, 1, 1);
+
+    await expect(repo.commitPresentation('deck-manual-draft', makeDeckSpec('Revision 2'), {
+      pptxBuffer: Buffer.from('pptx-v2'),
+      deckSource: SOURCE_V1.replaceAll('Revision 1', 'Revision 2'),
+      baseRevisionId: created.revisionId,
+      baseRevision: 1,
+      origin: 'edit',
+      expectedDraftState: 'absent',
+    })).rejects.toBeInstanceOf(PresentationDraftConflictError);
+    expect(await repo.listRevisions('deck-manual-draft')).toHaveLength(1);
+  });
+
+  it('人工 command receipt 与 revision 同事务保存并幂等返回', async () => {
+    insertWorkspaceNode(db, 'deck-manual-receipt');
+    const created = await repo.createPresentation('deck-manual-receipt', makeDeckSpec('Revision 1'), {
+      pptxBuffer: Buffer.from('pptx-v1'),
+      deckSource: SOURCE_V1,
+      origin: 'create',
+    });
+    const options: PresentationCommitOptions = {
+      pptxBuffer: Buffer.from('pptx-v2'),
+      deckSource: SOURCE_V1.replaceAll('Revision 1', 'Revision 2'),
+      baseRevisionId: created.revisionId,
+      baseRevision: 1,
+      origin: 'edit',
+      expectedDraftState: 'absent',
+      manualEditReceipt: { commandId: 'command-1', payloadDigest: 'digest-1' },
+    };
+
+    const committed = await repo.commitPresentation(
+      'deck-manual-receipt',
+      makeDeckSpec('Revision 2'),
+      options,
+    );
+    expect(await repo.getManualEditReceipt('command-1')).toMatchObject({
+      commandId: 'command-1',
+      nodeId: 'deck-manual-receipt',
+      payloadDigest: 'digest-1',
+      revisionId: committed.revisionId,
+      revision: 2,
+    });
+
+    await expect(repo.commitPresentation(
+      'deck-manual-receipt',
+      makeDeckSpec('Ignored duplicate'),
+      options,
+    )).resolves.toEqual(committed);
+    expect(await repo.listRevisions('deck-manual-receipt')).toHaveLength(2);
+
+    await expect(repo.commitPresentation('deck-manual-receipt', makeDeckSpec('Conflict'), {
+      ...options,
+      manualEditReceipt: { commandId: 'command-1', payloadDigest: 'different' },
+    })).rejects.toBeInstanceOf(PresentationManualEditCommandConflictError);
   });
 
   it('第 25 个 revision 写 checkpoint，前后源码都可重建', async () => {

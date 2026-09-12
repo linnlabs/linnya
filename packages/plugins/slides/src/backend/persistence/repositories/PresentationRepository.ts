@@ -19,11 +19,14 @@ import {
 } from '../../features/presentationSourceHistory/index.js';
 import {
   PresentationStaleBaseError,
+  PresentationDraftConflictError,
+  PresentationManualEditCommandConflictError,
   type PresentationCommitOptions,
   type PresentationCommitResult,
   type PresentationCreateOptions,
   type PresentationDocumentRecord,
   type PresentationRepositoryPort,
+  type PresentationManualEditReceiptRecord,
   type PresentationRevisionOrigin,
   type PresentationRevisionRecord,
   type PresentationTemplateRecord,
@@ -75,6 +78,19 @@ interface TemplateSummaryRow {
 
 interface WorkspaceProjectRow {
   readonly project_id: string | null;
+}
+
+interface ManualEditReceiptRow {
+  readonly command_id: string;
+  readonly node_id: string;
+  readonly payload_digest: string;
+  readonly revision_id: string;
+  readonly revision: number;
+  readonly created_at: number;
+}
+
+interface CommitTransactionResult extends PresentationCommitResult {
+  readonly reusedReceipt: boolean;
 }
 
 export interface PresentationRepositoryOptions {
@@ -164,7 +180,24 @@ export class PresentationRepository implements PresentationRepositoryPort {
     const revisionId = uuidv4();
     const now = Date.now();
 
-    const commitTx = this.db.transaction((): number => {
+    const commitTx = this.db.transaction((): CommitTransactionResult => {
+      const existingReceipt = options.manualEditReceipt
+        ? this.readManualEditReceipt(options.manualEditReceipt.commandId)
+        : null;
+      if (existingReceipt) {
+        if (
+          existingReceipt.nodeId !== nodeId
+          || existingReceipt.payloadDigest !== options.manualEditReceipt?.payloadDigest
+        ) {
+          throw new PresentationManualEditCommandConflictError(existingReceipt.commandId);
+        }
+        return {
+          revisionId: existingReceipt.revisionId,
+          revision: existingReceipt.revision,
+          reusedReceipt: true,
+        };
+      }
+
       const current = this.readDocumentRow(nodeId);
       if (
         !current
@@ -185,6 +218,9 @@ export class PresentationRepository implements PresentationRepositoryPort {
         throw new PresentationSourceConsistencyError(
           `Slides current document ${nodeId} 的 source hash 不一致。`,
         );
+      }
+      if (options.expectedDraftState === 'absent' && this.hasActiveDraft(nodeId, current)) {
+        throw new PresentationDraftConflictError(nodeId);
       }
 
       const nextRevision = current.current_revision + 1;
@@ -250,15 +286,31 @@ export class PresentationRepository implements PresentationRepositoryPort {
 
       this.commitWorkspaceProjection(nodeId, normalizedSource, now);
       this.options.recordRevisionContext?.(nodeId, revisionId);
+      if (options.manualEditReceipt) {
+        this.db.prepare(`
+          INSERT INTO presentation_manual_edit_receipts (
+            command_id, node_id, payload_digest, revision_id, revision, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?)
+        `).run(
+          options.manualEditReceipt.commandId,
+          nodeId,
+          options.manualEditReceipt.payloadDigest,
+          revisionId,
+          nextRevision,
+          now,
+        );
+      }
       // 成功恢复和普通提交都替代当前草稿，不能让旧失败状态遮住新文稿。
       this.db.prepare('DELETE FROM presentation_drafts WHERE node_id = ?').run(nodeId);
-      return nextRevision;
+      return { revisionId, revision: nextRevision, reusedReceipt: false };
     });
 
-    const revision = commitTx.immediate();
-    this.enqueueDocumentUpdated(nodeId, revision);
-    this.options.requestHistoryMaintenance?.(nodeId);
-    return { revisionId, revision };
+    const result = commitTx.immediate();
+    if (!result.reusedReceipt) {
+      this.enqueueDocumentUpdated(nodeId, result.revision);
+      this.options.requestHistoryMaintenance?.(nodeId);
+    }
+    return { revisionId: result.revisionId, revision: result.revision };
   }
 
   async getPresentation(nodeId: string): Promise<PresentationDocumentRecord | null> {
@@ -309,6 +361,40 @@ export class PresentationRepository implements PresentationRepositoryPort {
       ORDER BY revision DESC
     `).all(nodeId);
     return rows.map((row) => mapRevisionRow(readRevisionRow(row, nodeId)));
+  }
+
+  async getManualEditReceipt(commandId: string): Promise<PresentationManualEditReceiptRecord | null> {
+    return this.readManualEditReceipt(commandId);
+  }
+
+  private readManualEditReceipt(commandId: string): PresentationManualEditReceiptRecord | null {
+    const row: unknown = this.db.prepare(`
+      SELECT command_id, node_id, payload_digest, revision_id, revision, created_at
+      FROM presentation_manual_edit_receipts
+      WHERE command_id = ?
+    `).get(commandId);
+    if (row === undefined) return null;
+    if (!isManualEditReceiptRow(row)) {
+      throw new Error('Slides manual edit receipt row has an invalid shape.');
+    }
+    return {
+      commandId: row.command_id,
+      nodeId: row.node_id,
+      payloadDigest: row.payload_digest,
+      revisionId: row.revision_id,
+      revision: row.revision,
+      createdAt: row.created_at,
+    };
+  }
+
+  private hasActiveDraft(nodeId: string, current: StoredPresentationDocumentRow): boolean {
+    const row: unknown = this.db.prepare(`
+      SELECT 1 AS found
+      FROM presentation_drafts
+      WHERE node_id = ? AND base_revision_id = ? AND base_revision = ?
+      LIMIT 1
+    `).get(nodeId, current.current_revision_id, current.current_revision);
+    return row !== undefined;
   }
 
   async saveTemplate(template: TemplateSpec, sourcePptxBuffer: Buffer): Promise<string> {
@@ -674,6 +760,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isFiniteInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value);
+}
+
+function isManualEditReceiptRow(value: unknown): value is ManualEditReceiptRow {
+  return isRecord(value)
+    && typeof value.command_id === 'string'
+    && typeof value.node_id === 'string'
+    && typeof value.payload_digest === 'string'
+    && typeof value.revision_id === 'string'
+    && isFiniteInteger(value.revision)
+    && isFiniteInteger(value.created_at);
 }
 
 function isNullableString(value: unknown): value is string | null {

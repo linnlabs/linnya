@@ -13,7 +13,7 @@ import type {
   SandboxExecutionResult,
   SandboxJsonObject,
 } from '@plugin/backend/sandboxRuntime';
-import type { PresentationRepositoryPort } from '../persistence';
+import type { PresentationCommitOptions, PresentationRepositoryPort } from '../persistence';
 import type { PresentationSvgGraphicOwnerPort } from '../features/presentationSvgGraphicOwnership';
 import {
   PresentationBuildExecutionError,
@@ -90,6 +90,9 @@ export interface CodegenDeckBuildInput {
   source: string;
   conversationId?: string;
   expectedBase?: CodegenDeckExpectedBase;
+  expectedDraftState?: PresentationCommitOptions['expectedDraftState'];
+  manualEditReceipt?: PresentationCommitOptions['manualEditReceipt'];
+  origin?: 'codegen' | 'edit';
 }
 
 export interface CodegenDeckExpectedBase {
@@ -236,7 +239,9 @@ export class CodegenDeckBuilder {
         deckSource: source,
         baseRevisionId: expectedBase.revisionId,
         baseRevision: expectedBase.revision,
-        origin: 'codegen',
+        origin: input.origin ?? 'codegen',
+        ...(input.expectedDraftState ? { expectedDraftState: input.expectedDraftState } : {}),
+        ...(input.manualEditReceipt ? { manualEditReceipt: input.manualEditReceipt } : {}),
       });
     } catch (error) {
       if (

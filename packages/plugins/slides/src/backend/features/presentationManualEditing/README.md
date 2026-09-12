@@ -10,3 +10,7 @@ Current source rules:
 - text writes replace the complete plain-text author value; translation writes the complete cumulative `dx / dy` value;
 - source size is checked before the candidate reaches the build pipeline.
 
+Repository integration adds two commit invariants for this feature:
+
+- `expectedDraftState: "absent"` is checked inside the final revision transaction, so an Agent draft created during a user edit cannot be silently deleted by the manual commit;
+- the command ID, payload digest and committed revision are stored in `presentation_manual_edit_receipts` in that same transaction. Retrying the same command returns its original revision; reusing the ID with another payload fails.

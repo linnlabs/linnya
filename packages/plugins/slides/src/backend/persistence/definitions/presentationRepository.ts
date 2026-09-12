@@ -26,6 +26,13 @@ export interface PresentationCommitOptions {
   readonly authorId?: string;
   readonly origin: Exclude<PresentationRevisionOrigin, 'create'>;
   readonly restoredFrom?: DocumentVersionSummary['restoredFrom'];
+  /** 人工编辑必须在最终提交事务确认没有绑定当前 base 的 draft。 */
+  readonly expectedDraftState?: 'absent';
+  /** 与 revision 同事务保存，供请求结果丢失后的幂等收口。 */
+  readonly manualEditReceipt?: {
+    readonly commandId: string;
+    readonly payloadDigest: string;
+  };
 }
 
 export interface PresentationCommitResult {
@@ -61,6 +68,15 @@ export interface PresentationRevisionRecord {
   readonly createdAt: number;
   readonly authorId?: string;
   readonly origin: PresentationRevisionOrigin;
+}
+
+export interface PresentationManualEditReceiptRecord {
+  readonly commandId: string;
+  readonly nodeId: string;
+  readonly payloadDigest: string;
+  readonly revisionId: string;
+  readonly revision: number;
+  readonly createdAt: number;
 }
 
 /** 历史值只用于读取旧 draft；新写入统一使用稳定的 Slides failure code。 */
@@ -132,6 +148,24 @@ export class PresentationDraftStaleBaseError extends Error {
   }
 }
 
+export class PresentationDraftConflictError extends Error {
+  readonly code = 'PRESENTATION_DRAFT_CONFLICT';
+
+  constructor(readonly nodeId: string) {
+    super(`Presentation has an unresolved draft: ${nodeId}`);
+    this.name = 'PresentationDraftConflictError';
+  }
+}
+
+export class PresentationManualEditCommandConflictError extends Error {
+  readonly code = 'PRESENTATION_MANUAL_EDIT_COMMAND_CONFLICT';
+
+  constructor(readonly commandId: string) {
+    super(`Presentation manual edit command was reused with different input: ${commandId}`);
+    this.name = 'PresentationManualEditCommandConflictError';
+  }
+}
+
 export interface PresentationDraftRepositoryPort {
   upsert(
     nodeId: string,
@@ -172,6 +206,7 @@ export interface PresentationRepositoryPort {
   discardCreatedPresentation?(nodeId: string): Promise<void>;
   getRevisionSource(nodeId: string, revision: number): Promise<string | null>;
   listRevisions(nodeId: string): Promise<PresentationRevisionRecord[]>;
+  getManualEditReceipt(commandId: string): Promise<PresentationManualEditReceiptRecord | null>;
   saveTemplate(template: TemplateSpec, sourcePptxBuffer: Buffer): Promise<string>;
   getTemplate(templateId: string): Promise<PresentationTemplateRecord | null>;
   listTemplates(): Promise<TemplateSummary[]>;
