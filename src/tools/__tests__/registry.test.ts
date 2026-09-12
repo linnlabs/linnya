@@ -377,7 +377,8 @@ describe('ToolRegistry.executeTool', () => {
       errorKind: 'protocol',
       errorCode: 'process_protocol_violation',
     });
-    expect(result.error).toContain('action.wait 必须包含 cursor 和 wait_timeout_ms');
+    expect(result.error).toContain('action.cursor：缺少必需字段');
+    expect(result.error).toContain('action.wait_timeout_ms：缺少必需字段');
   });
 
   it('对缺失 required 参数的工具调用应直接返回 success=false，而不是伪装为成功 JSON', async () => {

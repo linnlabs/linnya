@@ -25,6 +25,7 @@ describe('Slides Skill guard', () => {
       'brush-artwork.js',
       'card-grid.js',
       'chart-analysis.js',
+      'chart-controls.js',
       'complete-deck.js',
       'cover-variants.js',
       'media-and-paint.js',

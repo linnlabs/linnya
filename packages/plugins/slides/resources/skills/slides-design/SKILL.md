@@ -54,11 +54,9 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 删轴或删单位试错，把已经正确的内容改错。
 
 ### 查看与检查
-- 看 source、页面内容与代码组织：`read_file`。
-- 看构建状态、检查提示及其证据：直接阅读可用 `ppt_inspect`；机器化处理、Shell 管道或自动化可用 `linnya-slides inspect`。
-- 看真实像素：`linnya-slides render`，再读取成功 JSON 中逐页给出的 JPEG 检查图 locator。
-- 查本机字体：新建、整体换风格或用户明确换字体时使用 `linnya-slides fonts`。
-- 如果你有视觉能力，渲染Slides为图片并查看，以确认是否符合预期或需调整。
+用 `read_file` 看 source；用 `ppt_inspect` 看低 token 诊断，机器化处理才用
+`linnya-slides inspect`；用 `linnya-slides render` 取得真实像素并读取返回的 JPEG locator。
+新建、整体换风格或用户明确换字体时使用 `linnya-slides fonts`。有视觉能力时必须读图判断效果。
 
 CLI 的参数、输出消费顺序和 Agent 限制见 [`references/cli.md`](./references/cli.md)。
 
@@ -82,18 +80,13 @@ presentation-owned 资产。
 | 确认某个能力具体怎么写 | [`examples/`](./references/examples/) 中覆盖该能力的 `.js` | 语法与能力示范，不是版式模板 |
 | 调用 CLI、消费 JSON/图片 locator | [`cli.md`](./references/cli.md) | Agent CLI 合同 |
 
-示例按覆盖的能力划分，不按"页面类型"划分：
-
-- [`cover-variants.js`](./references/examples/cover-variants.js)：五种结构不同的封面构造法（字体主导、图片主导、数据主导、编辑出版、色块宣言）。
-- [`media-and-paint.js`](./references/examples/media-and-paint.js)：图片适配与遮罩、渐变与半透明、自定义几何、富文本 run、TableCell 逐格样式。
-- [`card-grid.js`](./references/examples/card-grid.js)：卡片行的四种变形，最后一页是"同内容换构图"的对照。
-- [`chart-analysis.js`](./references/examples/chart-analysis.js)：图表数据结构与主副图配比。
-- [`chart-controls.js`](./references/examples/chart-controls.js)：双轴组合、目标线、单点高亮、百分比堆叠与占比标签。
-- [`table.js`](./references/examples/table.js)：表格基本结构。
-- [`timeline.js`](./references/examples/timeline.js)：absolute 坐标算术与添加顺序决定的层级。
-- [`native-formula.js`](./references/examples/native-formula.js)：独立原生公式与同段行内公式。
-- [`brush-artwork.js`](./references/examples/brush-artwork.js)：声明式 Brush 图层、deck.js 循环、不透明背景合同与竖版画布。
-- [`complete-deck.js`](./references/examples/complete-deck.js)：多页 deck 的组织方式与页面节奏。
+示例按能力而非页面类型划分：结构与节奏看
+[`cover-variants.js`](./references/examples/cover-variants.js)、[`card-grid.js`](./references/examples/card-grid.js)、
+[`complete-deck.js`](./references/examples/complete-deck.js)；图表和表格看
+[`chart-analysis.js`](./references/examples/chart-analysis.js)、[`chart-controls.js`](./references/examples/chart-controls.js)、
+[`table.js`](./references/examples/table.js)；媒体、公式、手绘和绝对布局分别看
+[`media-and-paint.js`](./references/examples/media-and-paint.js)、[`native-formula.js`](./references/examples/native-formula.js)、
+[`brush-artwork.js`](./references/examples/brush-artwork.js)、[`timeline.js`](./references/examples/timeline.js)。
 
 示例中的颜色、字体和版式是各自的一次性选择，不是 Linnya 的默认风格，也不构成推荐版式。读示例是为了确认某个能力的写法，视觉决策应当在读示例之前就由内容和受众定下来。
 
