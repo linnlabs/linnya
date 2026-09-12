@@ -128,6 +128,7 @@ renderer source selection
   RenderModel 正式字段，再分别投影到 ECharts 与 PptxGenJS；不得塞进
   `chartOptions/tableOptions` 绕过跨端合同。
 - 正数 `flex: N` 映射为 grow=N、shrink=1、basis=0。未声明 flex 的显式主轴尺寸保持固定；`minWidth/minHeight` 用于限制弹性节点下界。Text 在 Yoga 的 AT_MOST 测量中返回固有宽度与可用宽度的较小值，EXACTLY 才使用分配宽度。
+- Table 未声明高度时通过 [`engine/table`](../engine/table/README.md) 计算文字与合并单元格所需固有高度，参与正常 Flex 流。Yoga 和最终预览/PPTX 使用同一表格规则；显式尺寸仍归作者所有，受压缩内容由诊断报告，不在输出层额外扩大行高。
 - Text 的 authoring 宽度语义在 Flex compiler 统一收口：Flex 流或显式
   `width/maxWidth/左右边界` 表示固定宽度并自动换行；绝对定位且没有横向约束时，compiler
   先由 Yoga 估算，落库前通过 `engine/text/materializeIntrinsicTextBoxes` 使用最终排版同源的字体解析、cluster advance 与行布局物化盒宽，只保留源码中的显式换行。页码、序号和短标签可省略宽度；正文仍应声明宽度或放入 Flex 容器。

@@ -90,25 +90,6 @@ export function buildTableColumnWidths(
   return weights.map((weight) => Number(((weight / totalWeight) * totalWidth).toFixed(3)));
 }
 
-export function buildTableRowHeights(
-  totalHeight: number,
-  totalRows: number,
-  dense: boolean,
-): number[] | undefined {
-  if (totalRows <= 0) return undefined;
-
-  const desiredHeader = dense ? 0.28 : 0.32;
-  const headerHeight = Math.min(totalHeight, desiredHeader);
-  const bodyHeight = totalRows > 1
-    ? Math.max(0.16, (totalHeight - headerHeight) / (totalRows - 1))
-    : totalHeight;
-  const heights = [headerHeight];
-  for (let i = 1; i < totalRows; i++) {
-    heights.push(bodyHeight);
-  }
-  return heights.map((height) => Number(height.toFixed(3)));
-}
-
 export function estimateTableDensity(
   headers: string[] | undefined,
   rows: DomainTableCell[][],

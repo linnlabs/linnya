@@ -118,7 +118,14 @@ try {
       _type: 'Slide',
       children: [{
         _type: 'Text',
-        content: 'Yoga is loaded from the packaged worker artifact.',
+        content: [
+          { text: 'Packaged rich text ', style: { bold: true, color: '#A13456' } },
+          { formula: 'E=mc^2', style: { fontSize: 12 } },
+        ],
+        width: 4, height: 0.5,
+      }, {
+        _type: 'Table', width: 4,
+        headers: ['Method', 'Mean'], rows: [['Exact', '5.1111'], ['Sensitivity', '4.8500']],
       }],
     }],
   });
@@ -127,8 +134,25 @@ try {
     || compiled.result?.ok !== true
     || compiled.result.input?.slides?.[0]?.elements?.[0]?.type !== 'text'
     || compiled.result.input.slides[0].elements[0].textWrap !== 'word'
+    || compiled.result.input.slides[0].elements[0].content?.[0]?.style?.bold !== true
+    || compiled.result.input.slides[0].elements[0].content?.[1]?.formula?.display !== 'inline'
+    || !(compiled.result.input.slides[0].elements[1].position.h > 0)
   ) {
     throw new Error('Slides presentation build worker did not compile packaged Yoga layout.');
+  }
+  const tableMaterialized = await materialize({
+    title: compiled.result.input.title,
+    slides: [{ slideNumber: 1, spec: { type: 'structured', elements: compiled.result.input.slides[0].elements } }],
+  });
+  if (tableMaterialized.type !== 'materialize_result') throw new Error('Packaged table materialization failed.');
+  const tableZip = await JSZip.loadAsync(tableMaterialized.buffer);
+  const tableXml = await tableZip.file('ppt/slides/slide1.xml')?.async('text');
+  if (!tableXml?.includes('5.1111') || !tableXml.includes('A13456')
+    || !/<a14:m(?:\s|>)/u.test(tableXml) || tableXml.includes('<a:tr h="0"')) {
+    throw new Error(`Packaged compose/materialize roundtrip failed: ${JSON.stringify({
+      tableValue: tableXml?.includes('5.1111'), richColor: tableXml?.includes('A13456'),
+      inlineFormula: /<a14:m(?:\s|>)/u.test(tableXml ?? ''), zeroRow: tableXml?.includes('<a:tr h="0"'),
+    })}`);
   }
   const unsupportedFormula = await materialize({
     title: 'Unsupported formula smoke',

@@ -46,6 +46,8 @@ import { DEFAULT_TEXT_LINE_SPACING_MULTIPLE } from '@plugin/slides/shared';
 import { isContainerNode } from './LayoutTypes.js';
 import { estimateTextHeight, measureIntrinsicTextBox } from './TextMeasurer.js';
 import { resolveLayoutTextWrapPolicy } from './TextBoxSizing.js';
+import { readLayoutTableData } from './TableLayoutInput.js';
+import { resolveGeneratedTableLayout } from '../../../engine/table';
 import {
   readAbsolutePositionBox,
   resolveLayoutPositionMode,
@@ -156,8 +158,20 @@ function createYogaNode(
     }
   } else if (node._type === 'Text') {
     applyTextMeasure(yoga, yogaNode, node as LayoutTextNode);
+  } else if (node._type === 'Table') {
+    const data = readLayoutTableData(node);
+    const intrinsic = resolveGeneratedTableLayout(data);
+    yogaNode.setMeasureFunc((widthPt, widthMode) => {
+      const width = widthMode === yoga.MEASURE_MODE_UNDEFINED
+        ? intrinsic.width
+        : widthMode === yoga.MEASURE_MODE_EXACTLY
+          ? toIn(widthPt)
+          : Math.min(intrinsic.width, toIn(widthPt));
+      const layout = resolveGeneratedTableLayout({ ...data, width });
+      return { width: toPt(width), height: toPt(layout.height) };
+    });
   }
-  // Shape / Chart / Table / Image / Spacer: 由 flex/width/height 控制尺寸
+  // Shape / Chart / Image / Spacer: 由 flex/width/height 控制尺寸
 
   return yogaNode;
 }

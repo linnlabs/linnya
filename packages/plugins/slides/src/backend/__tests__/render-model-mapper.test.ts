@@ -69,12 +69,16 @@ describe('RenderModelMapper', () => {
       palette: ['#B64646', '#4776B1', '#59714B', '#7A548E', '#41A5B4', '#D88C3A'],
       legend: { visible: false },
     });
-    expect(model.slides[0].elements[2]).toMatchObject({
+    const table = model.slides[0].elements[2];
+    expect(table).toMatchObject({
       kind: 'table',
       headerRows: 1,
-      columns: [1.224, 1.376],
-      rows: [0.28, 1.52],
     });
+    if (table.kind !== 'table') throw new Error('Expected generated table');
+    expect(table.columns.reduce((sum, width) => sum + width, 0)).toBeCloseTo(table.box.w, 8);
+    expect(table.rows.reduce((sum, height) => sum + height, 0)).toBeCloseTo(table.box.h, 8);
+    expect(table.cells.flatMap(cell => cell.paragraphs.flatMap(paragraph => paragraph.runs.map(run => run.text))))
+      .toEqual(['Region', 'Growth', 'NA', '18%']);
   });
 
   it('preserves generated background gradient source semantics', () => {

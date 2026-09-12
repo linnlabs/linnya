@@ -16,10 +16,7 @@ import type {
 } from '@plugin/slides/shared';
 import { TABLE_DEFAULT_HEADER_FILL } from '@plugin/slides/shared';
 import {
-  buildTableColumnWidths,
-  buildTableRowHeights,
   clamp,
-  estimateTableDensity,
   mapImageShadowToProps,
   mapPosition,
   mapShapeShadowToProps,
@@ -27,6 +24,7 @@ import {
   resolveShapeTextLayout,
   stripHash,
 } from './visual/presentationVisualDefaults';
+import { resolveGeneratedTableLayout } from './table';
 import { resolveImageAsset, toPptxImageSource } from './assets/imageAssetResolver';
 import { resolvePptxImageFitOptions } from './assets/imageSizing';
 import { PptxPackageSanitizer } from './pptx/PptxPackageSanitizer';
@@ -314,22 +312,11 @@ export class StructuredCompiler {
     slide: PptxGenJS.Slide,
     el: Extract<StructuredElement, { type: 'table' }>,
   ): void {
-    const density = estimateTableDensity(el.headers, el.rows);
-    const totalRows = el.rows.length + (el.headers?.length ? 1 : 0);
-    const dense = density > 110 || totalRows >= 5 || el.position.h <= 1.9;
-    const requestedFontSize = (
-      el.options
-      && typeof el.options === 'object'
-      && 'fontSize' in el.options
-      && typeof (el.options as { fontSize?: unknown }).fontSize === 'number'
-    )
-      ? (el.options as { fontSize: number }).fontSize
-      : undefined;
-    const baseFontSize = clamp(
-      requestedFontSize ?? (dense ? 9.5 : 11),
-      8.5,
-      el.position.h <= 1.6 ? 9.5 : 11.5,
-    );
+    const layout = resolveGeneratedTableLayout({
+      width: el.position.w, height: el.position.h, headers: el.headers, rows: el.rows,
+      fontSize: typeof el.options?.fontSize === 'number' ? el.options.fontSize : undefined,
+    });
+    const baseFontSize = layout.fontSize;
     const rows: PptxGenJS.TableRow[] = [];
 
     // 表头行（B8：fill 走 TABLE_DEFAULT_HEADER_FILL 共享常量，与 render-model / 前端三端对齐）
@@ -340,8 +327,8 @@ export class StructuredCompiler {
           options: {
             bold: true,
             fill: { color: stripHash(TABLE_DEFAULT_HEADER_FILL, 'table.headerFill') },
-            fontSize: Math.min(baseFontSize + 0.5, 11.5),
-            margin: dense ? 0.03 : 0.05,
+            fontSize: layout.headerFontSize,
+            margin: layout.padding,
             fit: 'shrink',
           },
         } as PptxGenJS.TableCell)),
@@ -350,19 +337,19 @@ export class StructuredCompiler {
 
     // 数据行
     for (const row of el.rows) {
-      rows.push(row.map((cell) => this.mapTableCell(cell, { fontSize: baseFontSize, dense })));
+      rows.push(row.map((cell) => this.mapTableCell(cell, { fontSize: baseFontSize, padding: layout.padding })));
     }
 
     // PptxGenJS 类型上 TableProps 未包含 fit（fit 在 TextPropsOptions）；运行时表格 opt 会下发到单元格文本体，库会读取 options.fit
     const tableOpts: PptxGenJS.TableProps & Pick<PptxGenJS.TextPropsOptions, 'fit'> = {
       ...mapPosition(el.position),
       fontSize: baseFontSize,
-      margin: dense ? 0.03 : 0.05,
+      margin: layout.padding,
       fit: 'shrink',
       valign: 'middle',
-      colW: buildTableColumnWidths(el.position.w, el.headers, el.rows),
-      rowH: buildTableRowHeights(el.position.h, totalRows, dense),
       ...(el.options as PptxGenJS.TableProps | undefined),
+      colW: layout.columns,
+      rowH: layout.rows,
       ...(el.border ? { border: mapTableBorderToPptx(el.border) } : {}),
     };
 
@@ -371,12 +358,12 @@ export class StructuredCompiler {
 
   private mapTableCell(
     cell: DomainTableCell,
-    defaults?: { fontSize: number; dense: boolean },
+    defaults: { fontSize: number; padding: number },
   ): PptxGenJS.TableCell {
     const opts: PptxGenJS.TableCellProps = {
       ...mapTextParagraphStyleToProps(cell.style),
-      fontSize: cell.style?.fontSize ?? defaults?.fontSize,
-      margin: defaults?.dense ? 0.03 : 0.05,
+      fontSize: cell.style?.fontSize ?? defaults.fontSize,
+      margin: defaults.padding,
     };
     if (cell.fill) opts.fill = { color: stripHash(cell.fill, 'table.fill') };
     if (cell.colspan != null) opts.colspan = cell.colspan;

@@ -23,6 +23,7 @@ backend/engine/
 ├── pptx/                      # PPTX 包级清洗、主题字体补全和结构校验
 ├── quality/                   # LayoutLint、AestheticLint、QualityGate、空间分析
 ├── shape/                     # ShapeGeometry -> PptxGenJS adapter
+├── table/                     # 生成表格固有尺寸、合并占位与跨端格线
 ├── shared/                    # engine 内跨子模块共享纯算法
 ├── svgGraphic/                # SVG Graphic admission、canonicalization 与 PPTX 语义
 ├── mathFormula/               # 受控公式 compiler、MathJax SVG/OMML 双投影与 PPTX patch

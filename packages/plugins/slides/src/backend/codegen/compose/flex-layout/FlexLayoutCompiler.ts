@@ -31,7 +31,6 @@ import { readThemeSpecInput } from '../inputParsers/styleParsers.js';
 import {
   parseChartDataLike,
   parseSvgGraphicAuthoringSource,
-  parseTableDataLike,
 } from '../inputParsers/dataParsers.js';
 import { isRecord } from '../inputParsers/typeGuards.js';
 import {
@@ -55,6 +54,7 @@ import type {
 import { resolveLayoutTextWrapPolicy } from './TextBoxSizing.js';
 import { buildGeneratedLayoutConstraintEvidence } from './LayoutConstraintFacts.js';
 import { FlexComposeContractError } from './FlexComposeContractError.js';
+import { readLayoutTableData } from './TableLayoutInput.js';
 
 // ─── 公共 API ──────────────────────────────────────────────────────────────────
 
@@ -446,21 +446,13 @@ function buildChartElement(node: LayoutChartNode, position: Box): DirectElementI
 }
 
 function buildTableElement(node: LayoutTableNode, position: Box): DirectElementInput {
-  // 与 buildChartElement 对齐：合并 tableData 子对象与顶层字段，顶层优先
-  const tableParseResult = parseTableDataLike({
-    ...(node.tableData ?? {}),
-    headers: node.headers ?? node.tableData?.headers,
-    rows: node.rows ?? node.tableData?.rows ?? node.tableData?.body ?? node.tableData?.data,
-  });
-  if (tableParseResult.error || !tableParseResult.data) {
-    throw new FlexComposeContractError(tableParseResult.error ?? 'Table 数据解析失败。');
-  }
+  const table = readLayoutTableData(node);
 
   return attachSourceSpan({
     type: 'table',
     position,
-    headers: tableParseResult.data.headers,
-    rows: tableParseResult.data.rows,
+    headers: table.headers,
+    rows: table.rows,
     tableBorder: readOptionalTableBorder(node.border, 'Table.border'),
   }, node._sourceSpan);
 }

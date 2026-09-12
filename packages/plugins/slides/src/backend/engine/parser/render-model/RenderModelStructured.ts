@@ -13,12 +13,9 @@ import type {
 } from '@plugin/slides/shared';
 import { TABLE_DEFAULT_HEADER_FILL } from '@plugin/slides/shared';
 import {
-  clamp,
-  buildTableColumnWidths,
-  buildTableRowHeights,
-  estimateTableDensity,
   resolveGeneratedRenderChartType,
 } from '../../visual/presentationVisualDefaults';
+import { resolveGeneratedTableLayout } from '../../table';
 import {
   resolveChartLegend,
   resolveChartType,
@@ -234,27 +231,10 @@ export function mapStructuredTableNode(
   element: Extract<StructuredElement, { type: 'table' }>,
   defaults: RenderDefaultsContext,
 ): TableRenderNode {
-  const bodyColumnCount = element.rows.reduce((max, row) => {
-    const rowSpanCount = row.reduce((sum, cell) => sum + (cell.colspan ?? 1), 0);
-    return Math.max(max, rowSpanCount);
-  }, 0);
-  const columnCount = Math.max(element.headers?.length ?? 0, bodyColumnCount, 1);
-  const totalRows = element.rows.length + (element.headers ? 1 : 0);
-  const density = estimateTableDensity(element.headers, element.rows);
-  const dense = density > 110 || totalRows >= 5 || base.box.h <= 1.9;
-  const requestedFontSize = resolveRequestedFontSize(element.options);
-  const baseFontSize = clamp(
-    requestedFontSize ?? (dense ? 9.5 : 11),
-    8.5,
-    base.box.h <= 1.6 ? 9.5 : 11.5,
-  );
-  const columnWidths = buildTableColumnWidths(base.box.w, element.headers, element.rows)
-    ?? Array.from({ length: columnCount }, () => Number((base.box.w / columnCount).toFixed(3)));
-  const rowHeights = buildTableRowHeights(base.box.h, Math.max(totalRows, 1), dense)
-    ?? Array.from(
-      { length: Math.max(totalRows, 1) },
-      () => Number((base.box.h / Math.max(totalRows, 1)).toFixed(3)),
-    );
+  const layout = resolveGeneratedTableLayout({
+    width: base.box.w, height: base.box.h, headers: element.headers, rows: element.rows,
+    fontSize: typeof element.options?.fontSize === 'number' ? element.options.fontSize : undefined,
+  });
   const cells: TableRenderNode['cells'] = [];
   const tableBorder = element.border ? toRenderStroke(element.border) : undefined;
   const cellBorders = tableBorder ? {
@@ -264,54 +244,32 @@ export function mapStructuredTableNode(
     left: tableBorder,
   } : undefined;
 
-  if (element.headers) {
-    for (const [columnIndex, header] of element.headers.entries()) {
-      cells.push({
-        row: 0,
-        col: columnIndex,
-        paragraphs: [{
-          runs: textStyleToRuns(header, {
-            fontFamily: defaults.minorFontFamily,
-            fontSize: Math.min(baseFontSize + 0.5, 11.5),
-            bold: true,
-          }, defaults.minorFontFamily),
-        }],
-        fill: TABLE_DEFAULT_HEADER_FILL,
-        ...(cellBorders ? { borders: cellBorders } : {}),
-        padding: resolveCellPadding(dense),
-        verticalAlign: 'middle',
-      });
-    }
-  }
-
-  const bodyOffset = element.headers ? 1 : 0;
-  for (const [rowIndex, row] of element.rows.entries()) {
-    let columnCursor = 0;
-    for (const cell of row) {
-      cells.push({
-        row: rowIndex + bodyOffset,
-        col: columnCursor,
-        rowSpan: cell.rowspan,
-        colSpan: cell.colspan,
-        paragraphs: [{
-          runs: textStyleToRuns(cell.text, cell.style, defaults.minorFontFamily, baseFontSize),
-          lineSpacing: resolveTextStyleLineSpacing(cell.style?.lineSpacing),
-        }],
-        fill: cell.fill,
-        ...(cellBorders ? { borders: cellBorders } : {}),
-        padding: resolveCellPadding(dense),
-        verticalAlign: 'middle',
-      });
-      columnCursor += cell.colspan ?? 1;
-    }
+  for (const placement of layout.cells) {
+    const cell = placement.cell;
+    cells.push({
+      row: placement.row,
+      col: placement.column,
+      rowSpan: cell.rowspan,
+      colSpan: cell.colspan,
+      paragraphs: [{
+        runs: textStyleToRuns(cell.text, placement.isHeader
+          ? { bold: true, fontSize: layout.headerFontSize }
+          : cell.style, defaults.minorFontFamily, layout.fontSize),
+        lineSpacing: resolveTextStyleLineSpacing(cell.style?.lineSpacing),
+      }],
+      fill: placement.isHeader ? TABLE_DEFAULT_HEADER_FILL : cell.fill,
+      ...(cellBorders ? { borders: cellBorders } : {}),
+      padding: { top: layout.padding, right: layout.padding, bottom: layout.padding, left: layout.padding },
+      verticalAlign: 'middle',
+    });
   }
 
   const tableHints = extractTablePptxHints(element.options);
   return {
     ...base,
     kind: 'table',
-    columns: columnWidths,
-    rows: rowHeights,
+    columns: layout.columns,
+    rows: layout.rows,
     cells,
     headerRows: element.headers ? 1 : undefined,
     ...(tableHints ? { pptxHints: tableHints } : {}),
@@ -361,22 +319,6 @@ function resolveChartTextStyle(
     return undefined;
   }
   return { fontFamily, fontSize, color };
-}
-
-function resolveRequestedFontSize(
-  options: Record<string, unknown> | undefined,
-): number | undefined {
-  return typeof options?.fontSize === 'number' ? options.fontSize : undefined;
-}
-
-function resolveCellPadding(dense: boolean): TableRenderNode['cells'][number]['padding'] {
-  const inset = dense ? 0.03 : 0.05;
-  return {
-    top: inset,
-    right: inset,
-    bottom: inset,
-    left: inset,
-  };
 }
 
 // ─── PptxHints 提取：纯字段拷贝，不做语义转换 ─────────────────────────────
