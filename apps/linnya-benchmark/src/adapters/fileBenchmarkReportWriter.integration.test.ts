@@ -199,6 +199,11 @@ describe('file Benchmark report writer', () => {
               },
             ],
           },
+          workspace_documents: { observations: 1, observations_with_errors: 1,
+            observations_with_warnings: 0, visible: { error: 2, warning: 0, info: 0 },
+            truncated_count: 3, by_observation: [{ run_id: 'run-1', tool_call_id: 'call-write',
+              tool_name: 'write_file', emitted_at: observedBase + 130,
+              visible: { error: 2, warning: 0, info: 0 }, truncated_count: 3 }] },
           tool_pairing: {
             complete: false,
             paired: 2,
@@ -394,6 +399,9 @@ describe('file Benchmark report writer', () => {
     expect(report).toContain('完整性：不完整；paired 2，decision missing 0，terminal missing 1');
     expect(report).toContain('| run-1 | root | call-shell | shell | terminal_missing | 1 / 0 | — | 是 |');
     expect(report).toContain('### Shell / Process 命令终态');
+    expect(report).toContain('### Workspace 文档写入诊断');
+    expect(report).toContain('已见诊断：error 2 / warning 0 / info 0；另 3 条');
+    expect(report).toContain('保存成功不等于编译或视觉验收通过');
     expect(report).toContain('命令执行 1；durable 终态观测 1；非零退出 1；runtime failure 0');
     expect(report).toContain('| execution_ended | exit=70, signal=null | natural_exit |');
     expect(report).toContain('Usage 覆盖：actual 1 / estimate 0 / missing 0');

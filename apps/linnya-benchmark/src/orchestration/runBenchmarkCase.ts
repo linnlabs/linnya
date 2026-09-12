@@ -10,6 +10,7 @@ import type {
   RunBenchmarkCaseRequest,
 } from '../definitions/benchmarkRun';
 import { summarizeConversationMessages } from '../functions/summarizeConversationMessages';
+import { resolveBenchmarkObservationOutcome } from '../functions/resolveBenchmarkObservationOutcome';
 
 interface RunBenchmarkCaseOptions {
   readonly cli: BenchmarkConversationCliPort;
@@ -31,20 +32,6 @@ function projectError(stage: string, error: unknown): BenchmarkRunError {
     message: error instanceof Error ? error.message : 'Unknown Benchmark runner error',
     retryable: false,
   };
-}
-
-function terminalOutcome(
-  snapshot: ConversationControlRunStatusSnapshot,
-): BenchmarkRunOutcome | undefined {
-  switch (snapshot.status) {
-    case 'completed': return 'completed';
-    case 'failed': return 'failed';
-    case 'cancelled': return 'cancelled';
-    case 'pending':
-    case 'running':
-    case 'awaiting_user':
-      return undefined;
-  }
 }
 
 export async function runBenchmarkCase(
@@ -107,9 +94,9 @@ export async function runBenchmarkCase(
       if (!lastSnapshot) {
         throw new Error(`Run ${receipt.run_id} was not visible to status`);
       }
-      const terminal = terminalOutcome(lastSnapshot);
-      if (terminal) {
-        outcome = terminal;
+      const observedOutcome = resolveBenchmarkObservationOutcome(lastSnapshot);
+      if (observedOutcome) {
+        outcome = observedOutcome;
         break;
       }
       if (lastSnapshot.status !== 'awaiting_user') continue;
@@ -145,7 +132,7 @@ export async function runBenchmarkCase(
     }
   }
 
-  if (receipt && outcome !== 'requires_user' && outcome !== 'runner_failed') {
+  if (receipt && (outcome === 'completed' || outcome === 'failed' || outcome === 'cancelled')) {
     try {
       result = await options.cli.result(receipt.conversation_id, receipt.run_id);
     } catch (error: unknown) {

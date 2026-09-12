@@ -13,6 +13,7 @@ export type BenchmarkRunOutcome =
   | 'failed'
   | 'cancelled'
   | 'requires_user'
+  | 'requires_recovery'
   | 'runner_failed';
 
 export interface BenchmarkRunError {

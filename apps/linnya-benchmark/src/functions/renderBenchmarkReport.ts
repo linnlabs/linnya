@@ -57,9 +57,13 @@ function resolveProviderTokenTotals(tokens: AuditTokenTotals): {
 }
 
 function renderManagementSummary(facts: BenchmarkRunFacts): string[] {
+  const recoveryNotice = facts.outcome === 'requires_recovery'
+    ? ['- Run 已暂停并完成收口；本轮观察已结束，尚未完成任务。恢复必须显式发起并另行记录，本轮未自动恢复或取消。']
+    : [];
   if (facts.audit.status !== 'available') {
     return [
       `- 控制面结果：\`${facts.outcome}\`；执行审计${facts.audit.status === 'unavailable' ? `不可用（${escapeCell(facts.audit.code)}）` : '未请求'}。`,
+      ...recoveryNotice,
       '- 视觉、内容和导出质量仍须人工验收，不能从运行终态推断。',
     ];
   }
@@ -68,6 +72,7 @@ function renderManagementSummary(facts: BenchmarkRunFacts): string[] {
   const tokenTotals = resolveProviderTokenTotals(audit.llm.actual_tokens);
   return [
     `- 控制面结果：\`${facts.outcome}\`；总墙钟 ${formatDuration(facts.durationMs)}。`,
+    ...recoveryNotice,
     `- 执行拓扑：${audit.runs.length} 个 Run，其中 ${childRuns.length} 个 child Run；LLM ${audit.llm.calls} 次，工具 ${audit.tools.calls} 次。`,
     `- Provider actual：总输入 ${formatInteger(tokenTotals.providerInput)}（非缓存 ${formatInteger(tokenTotals.uncachedInput)}），输出 ${formatInteger(audit.llm.actual_tokens.output_tokens)}；usage 覆盖率 ${formatPercent(audit.llm.provider_actual_calls, audit.llm.calls)}。`,
     `- 上下文压缩：完成 ${audit.context_compaction.completed} 次 / Provider attempt ${audit.context_compaction.attempts} 次，覆盖 ${audit.context_compaction.by_run.length} 个 Run。`,
@@ -78,9 +83,12 @@ function renderManagementSummary(facts: BenchmarkRunFacts): string[] {
   ];
 }
 
-function resolveExecutionEnd(facts: BenchmarkRunFacts): number {
+function resolveObservationEnd(facts: BenchmarkRunFacts): number {
   if (facts.stop) return facts.stop.completed_at;
   if (facts.result) return facts.result.completedAt;
+  if (facts.outcome === 'requires_user' || facts.outcome === 'requires_recovery') {
+    return facts.statusFrames.at(-1)?.observed_at ?? facts.finishedAt;
+  }
   if (facts.audit.status === 'available' && facts.receipt) {
     const root = facts.audit.response.runs.find(run => run.run_id === facts.receipt?.run_id);
     if (root) return root.updated_at;
@@ -96,7 +104,7 @@ function renderPhaseTiming(facts: BenchmarkRunFacts): string[] {
         frame => frame.observed_at > awaitingFrame.observed_at && frame.snapshot?.status === 'running',
       )
     : undefined;
-  const executionEnd = resolveExecutionEnd(facts);
+  const executionEnd = resolveObservationEnd(facts);
   const phases: Array<{ name: string; start: number; end: number; evidence: string }> = [];
 
   if (awaitingFrame) {
@@ -115,18 +123,20 @@ function renderPhaseTiming(facts: BenchmarkRunFacts): string[] {
       evidence: `${facts.interactionResponses.length} 次 respond`,
     });
   }
-  phases.push({
-    name: awaitingFrame ? '批准后执行' : '接纳后执行',
-    start: resumedFrame?.observed_at ?? acceptedAt,
-    end: executionEnd,
-    evidence: facts.stop ? facts.stop.requested_reason : `终态 ${facts.outcome}`,
-  });
+  if (!awaitingFrame || resumedFrame) {
+    phases.push({
+      name: resumedFrame ? '批准后执行' : '接纳后执行',
+      start: resumedFrame?.observed_at ?? acceptedAt,
+      end: executionEnd,
+      evidence: facts.stop ? facts.stop.requested_reason : `观察结束 ${facts.outcome}`,
+    });
+  }
   if (facts.finishedAt > executionEnd) {
     phases.push({
-      name: '终态后报告采集',
+      name: '观察结束后报告采集',
       start: executionEnd,
       end: facts.finishedAt,
-      evidence: 'result / messages / audit / 文件写入',
+      evidence: facts.result ? 'result / messages / audit' : 'messages / audit',
     });
   }
 
@@ -233,6 +243,7 @@ function renderToolAudit(facts: BenchmarkRunFacts): string[] {
     .sort((left, right) => right.duration_ms - left.duration_ms);
   const pairing = audit.tool_pairing;
   const commands = audit.commands;
+  const documents = audit.workspace_documents;
   const pairingRecords = [...pairing.records].sort((left, right) => {
     if (left.pairing_status === right.pairing_status) {
       return left.tool_call_id.localeCompare(right.tool_call_id);
@@ -248,7 +259,7 @@ function renderToolAudit(facts: BenchmarkRunFacts): string[] {
     '### 工具状态聚合',
     '',
     `- 工具调用 ${tools.calls}；状态失败 ${tools.failed_calls}；失败率 ${formatPercent(tools.failed_calls, tools.calls)}；累计工具耗时 ${formatDuration(tools.duration_ms)}。`,
-    '- 工具状态失败、Shell 子进程非零和 Slides 业务诊断是不同层级，不能混加。',
+    '- 工具状态失败、Shell 子进程非零和 Workspace 文档诊断是不同层级，不能混加。',
     '',
     ...(sorted.length === 0
       ? ['没有工具调用明细。']
@@ -273,6 +284,20 @@ function renderToolAudit(facts: BenchmarkRunFacts): string[] {
             `| ${escapeCell(record.run_id)} | ${escapeCell(record.parent_run_id ?? 'root')} | ${escapeCell(record.tool_call_id)} | ${escapeCell(record.tool_name)} | ${record.pairing_status} | ${record.decision_count} / ${record.terminal_count} | ${record.terminal_status ?? '—'} | ${record.name_consistent ? '是' : '否'} |`,
           ),
         ]),
+    '',
+    '### Workspace 文档写入诊断',
+    '',
+    `- 成功写入的 durable 结果观测 ${documents.observations}；含 error ${documents.observations_with_errors}，含 warning ${documents.observations_with_warnings}。保存成功不等于编译或视觉验收通过。`,
+    `- 已见诊断：error ${documents.visible.error} / warning ${documents.visible.warning} / info ${documents.visible.info}；另 ${documents.truncated_count} 条因原工具预算未展示，其严重度未知，因此已见计数是下界。`,
+    '- 此处累计写入时的诊断观测，不代表当前仍未修复的问题数；无 error 也不代表质量通过。code/message/target 没有安全文本合同，均不导出。',
+    '',
+    ...(documents.by_observation.length === 0 ? ['没有 Workspace 文档写入诊断观测。'] : [
+      '| 时间 | Run | Parent | Tool call | 工具 | 已见 error / warning / info | 未展示 |',
+      '| --- | --- | --- | --- | --- | --- | ---: |',
+      ...documents.by_observation.map(observation =>
+        `| ${new Date(observation.emitted_at).toISOString()} | ${escapeCell(observation.run_id)} | ${escapeCell(observation.parent_run_id ?? 'root')} | ${escapeCell(observation.tool_call_id)} | ${observation.tool_name} | ${observation.visible.error} / ${observation.visible.warning} / ${observation.visible.info} | ${observation.truncated_count} |`,
+      ),
+    ]),
     '',
     '### Shell / Process 命令终态',
     '',

@@ -7,8 +7,12 @@ import { slidesConsultingInnovativePharmaCase } from './slidesConsultingInnovati
 import { slidesConsultingReferenceCase } from './slidesConsultingReference';
 import { slidesDesignContractBaselineCase } from './slidesDesignContractBaseline';
 import { slidesDesignContractIntentCase } from './slidesDesignContractIntent';
+import { slidesArgFrontierComplexCase } from './slidesArgFrontierComplex';
+import { slidesDataIntegrityStressCase } from './slidesDataIntegrityStress';
 
 export const builtinBenchmarkCases = [
+  slidesArgFrontierComplexCase,
+  slidesDataIntegrityStressCase,
   slidesConsultingEmbodiedIntelligenceCase,
   slidesConsultingCommercialSpaceCase,
   slidesConsultingEnergyStorageCase,

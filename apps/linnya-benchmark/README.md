@@ -28,6 +28,21 @@ pnpm benchmark:agent run slides_consulting_reference_v1 \
 图片不作为 CLI attachment 发送。Runner 只校验它是可读的绝对文件路径，再将路径插入
 case prompt；文件读取、权限和失败语义都由真实 Agent/Host 链路负责。
 
+### 复杂图表与数据完整性
+
+`slides_arg_frontier_complex_v1` 要求 20 页学术综述、可核验的近期文献与七类数据任务；
+`slides_data_integrity_stress_v1` 使用同一输入制作 8 页技术汇报，排除联网检索变量，
+额外核验累计分母、流量守恒和跨页数字一致性。输入使用
+`fixtures/arg-surveillance-synthetic-v1.json` 的绝对路径，以 `--input dataset=...` 传入。
+数据完全虚构，不是监测结果或生物实验输入。数据构造与人工复算口径见
+[fixture 说明](./fixtures/README.md)。
+
+两个 case 均采用人工确认策略；大纲等待不会被自动视为生成成功。Runner 遇到
+`awaiting_user` 会保存 `requires_user` 报告并结束。审阅者可依据报告中的 identity，
+通过 `linnya respond` 批准具体大纲，再继续观察同一个 run；必须另行记录批准、
+修改和续跑终态，不能用重新执行 case 冒充续跑，也不能覆盖首次报告来隐去干预。
+人工续跑时仍需遵守原 case 总时间预算，并在超时后停止精确 run。
+
 ## 注册一个 Case
 
 一个 case 是 `src/cases/` 下的自包含 TypeScript 声明文件，只定义：稳定 ID 与 revision、
@@ -51,13 +66,21 @@ case 禁止启动进程、访问数据库、实现评分器或复制执行流程
 1. 在任何 Agent 副作用前校验 case 与文件输入。
 2. 调用真实 `linnya send`，记录 conversation/run/execution identity。
 3. 用 `status --watch` 等待状态变化；只按 case 声明处理 `awaiting_user`。
+   遇到 `paused` 且 `pause.settled=true` 时，以 `requires_recovery` 结束本轮观察；
+   尚未收口的暂停继续等待，不自行批准、恢复或取消。
 4. 达到 case 超时时终止 exact root run，并等待真实 terminal settlement。
-5. 收集 final result、消息数量摘要和 `audit` 安全执行摘要。
+5. 仅对 completed/failed/cancelled 收集 final result；所有已接纳运行均收集消息数量摘要
+   和 `audit` 安全执行摘要。
 6. 原子写入 `facts.json` 与 `report.md`。
 
 Runner 被手动关闭不会杀掉 App 所拥有的 run；可用报告/终端中的 ID 执行
 `pnpm linnya:cli stop <conversation-id> --run <run-id>`。Runner 自己判定超时时则会自动
 调用 stop，避免遗留后台任务。
+
+`requires_recovery` 不是成功、失败或取消终态，也不是 `requires_user` 大纲确认。
+Runner 保存暂停事实后退出（CLI exit code 3），不会重新启动立即返回的 watch 形成观察风暴。
+审阅者应依据 exact conversation/run identity 检查暂停原因和恢复条件，再显式恢复或停止；
+续跑的干预与时间预算必须独立记录，不能覆盖本轮事实报告。
 
 ## 报告
 
@@ -72,6 +95,10 @@ _dev_data/benchmark-results/<case-id>/<timestamp>-r<revision>-<run-id>/
 `facts.json` 保存身份、配置、状态轨迹、wait_user 回应、终态、消息数量、错误和
 `linnya audit` 的安全聚合。`audit` 的 Telemetry 部分固定标记为 `best_effort`；actual、
 estimate、missing usage 分开统计，不用 0 补缺失。
+
+`workspace_documents` 单列成功写入中返回的文档诊断，只包含严重度计数、调用身份与
+截断总数。分严重度计数是已见下界；累计观测不是当前未修复问题数。保存成功不代表
+编译或视觉通过；诊断 code/message/target 不满足安全文本合同，均不进入审计导出。
 
 `report.md` 把机器事实和人工审阅分开。自动部分包含管理层摘要、测试身份、阶段墙钟、
 连续状态轨迹、审计来源完整度、父子 Run、模型与 token/cache 口径、工具 decision/output

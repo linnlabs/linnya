@@ -45,6 +45,7 @@ describe('linnya-benchmark real CLI process', () => {
       schema_version: 1,
     });
     expect(response.cases.map(item => item.id)).toEqual([
+      'slides_arg_frontier_complex_v1',
       'slides_consulting_commercial_space_v1',
       'slides_consulting_embodied_intelligence_v1',
       'slides_consulting_energy_storage_v1',
@@ -52,6 +53,7 @@ describe('linnya-benchmark real CLI process', () => {
       'slides_consulting_humanoid_robotics_v1',
       'slides_consulting_innovative_pharma_v1',
       'slides_consulting_reference_v1',
+      'slides_data_integrity_stress_v1',
       'slides_design_contract_baseline_v1',
       'slides_design_contract_intent_v1',
     ]);

@@ -22,7 +22,7 @@ function benchmark(): ResolvedBenchmarkCase {
   };
 }
 
-function frame(sequence: number, status: 'running' | 'awaiting_user' | 'completed') {
+function frame(sequence: number, status: 'running' | 'awaiting_user' | 'completed' | 'paused', settled = true) {
   return ConversationControlProgressFrameSchema.parse({
     schema_version: 1,
     frame: 'status',
@@ -38,6 +38,7 @@ function frame(sequence: number, status: 'running' | 'awaiting_user' | 'complete
       started_at: 100,
       updated_at: 110 + sequence,
       terminal_at: status === 'completed' ? 110 + sequence : undefined,
+      pause: status === 'paused' ? { settled, reason: 'execution_interrupted' } : undefined,
       pending_interaction: status === 'awaiting_user' ? {
         interaction_id: 'interaction-1',
         tool_name: 'ppt_plan',
@@ -132,6 +133,9 @@ function commonCli(overrides: Partial<BenchmarkConversationCliPort>): BenchmarkC
           by_model: [],
         },
         tools: { calls: 0, failed_calls: 0, duration_ms: 0, by_tool: [] },
+        workspace_documents: { observations: 0, observations_with_errors: 0,
+          observations_with_warnings: 0, visible: { error: 0, warning: 0, info: 0 },
+          truncated_count: 0, by_observation: [] },
         tool_pairing: {
           complete: true,
           paired: 0,
@@ -171,6 +175,41 @@ function commonCli(overrides: Partial<BenchmarkConversationCliPort>): BenchmarkC
 }
 
 describe('run Benchmark case', () => {
+  it('settled paused 只结束一次观察，不请求完成结果、批准或取消，保留审计事实', async () => {
+    const watchStatus = vi.fn(commonCli({}).watchStatus)
+      .mockResolvedValueOnce({ frames: [frame(0, 'paused', false), frame(1, 'paused')], timedOut: false })
+      .mockRejectedValue(new Error('must not rewatch a settled pause'));
+    const stop = vi.fn(commonCli({}).stop);
+    const approve = vi.fn(commonCli({}).approve);
+    const result = vi.fn(commonCli({}).result);
+    const facts = await runBenchmarkCase({ benchmark: benchmark(), projectId: 'project-1' }, {
+      cli: commonCli({ watchStatus, stop, approve, result }),
+      now: () => 100,
+    });
+    expect(facts.outcome).toBe('requires_recovery');
+    expect(watchStatus).toHaveBeenCalledTimes(1);
+    expect(stop).not.toHaveBeenCalled();
+    expect(approve).not.toHaveBeenCalled();
+    expect(result).not.toHaveBeenCalled();
+    expect(facts.statusFrames).toHaveLength(2);
+    expect(facts.statusFrames.at(-1)?.snapshot?.pause).toEqual({ settled: true, reason: 'execution_interrupted' });
+    expect(facts.messages?.status).toBe('preparing');
+    expect(facts.audit.status).toBe('available');
+    expect(facts.errors).toEqual([]);
+  });
+
+  it('尚未 settled 的暂停仍等待正式收口，不提前报告需恢复', async () => {
+    const watchStatus = vi.fn(commonCli({}).watchStatus)
+      .mockResolvedValueOnce({ frames: [frame(0, 'paused', false)], timedOut: false })
+      .mockResolvedValueOnce({ frames: [frame(1, 'completed')], timedOut: false });
+    const facts = await runBenchmarkCase({ benchmark: benchmark(), projectId: 'project-1' }, {
+      cli: commonCli({ watchStatus }),
+      now: () => 100,
+    });
+    expect(facts.outcome).toBe('completed');
+    expect(watchStatus).toHaveBeenCalledTimes(2);
+  });
+
   it('真实流程遇到 wait_user 时按 case 批准，再收集终态、消息和审计', async () => {
     let watches = 0;
     const approve = vi.fn(commonCli({}).approve);
