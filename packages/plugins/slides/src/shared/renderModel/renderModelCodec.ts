@@ -7,7 +7,7 @@ import type {
 import type { Paint } from '../visual/paint';
 import { isPresetShapeName } from '../shapeGeometry';
 import { isGeneratedLayoutConstraintEvidence } from '../generatedLayoutConstraints';
-import { isSlidesAuthoringEditRef } from '../authoringEditing';
+import { isSlidesAuthoringObjectRef } from '../authoringEditing';
 
 const NODE_BASE_KEYS = [
   'id',
@@ -172,7 +172,7 @@ function hasRenderNodeBase(value: unknown): value is Record<string, unknown> {
     && isRenderBox(value.box)
     && isFiniteNumber(value.zIndex)
     && isOptional(value.editableTarget, isEditableTarget)
-    && isOptional(value.authoringRef, isSlidesAuthoringEditRef)
+    && isOptional(value.authoringRef, isSlidesAuthoringObjectRef)
     && isOptional(value.rotation, isFiniteNumber)
     && isOptional(value.opacity, isFiniteNumber)
     && isOptional(value.visible, isBoolean)

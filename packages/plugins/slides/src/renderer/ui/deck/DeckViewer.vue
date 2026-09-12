@@ -56,7 +56,16 @@
           v-else
           :source-edit-busy="sourceEditBusy"
           @source-edit-submit="emit('sourceEditSubmit', $event)"
+          @manual-edit-submit="emit('manualEditSubmit', $event)"
         />
+
+        <div
+          v-if="manualEditError"
+          class="stage-manual-edit-error"
+          role="status"
+        >
+          {{ manualEditError }}
+        </div>
 
         <!-- 右下角缩放控件只更新自身数值，不参与文稿内容切换。 -->
         <div v-if="deckPreview" class="stage-zoom-slider">
@@ -97,6 +106,17 @@
             <HomeIcon class="stage-zoom-slider__icon" />
           </button>
           <button
+            class="stage-zoom-slider__btn stage-zoom-slider__edit-btn"
+            :class="{ 'stage-zoom-slider__edit-btn--active': manualEditingEnabled }"
+            :disabled="!canUseManualEditing || manualEditingSubmitting"
+            :aria-pressed="manualEditingEnabled"
+            :aria-label="manualEditingMessage('slides.manualEditing.toggle.label')"
+            :title="manualEditingButtonTitle"
+            @click="toggleManualEditing"
+          >
+            <EditIcon class="stage-zoom-slider__icon" />
+          </button>
+          <button
             class="stage-zoom-slider__btn stage-zoom-slider__select-btn"
             :class="{ 'stage-zoom-slider__select-btn--active': sourceSelectionModeEnabled }"
             :disabled="!canUseSourceSelectionMode"
@@ -132,6 +152,7 @@ import { useSlidesUiStore } from '../../store/slidesUiStore';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import {
   AddIcon,
+  EditIcon,
   HomeIcon,
   MinusIcon,
   SelectObjectIcon,
@@ -155,6 +176,12 @@ import {
 } from '../../features/sourceSelection';
 import { isKonvaNodeSupported } from '../../features/konvaPreview';
 import { useSlidesPreviewLocalization } from '../../features/previewRenderState';
+import {
+  resolveManualEditingAvailability,
+  useManualEditingLocalization,
+  useSlidesManualEditingStore,
+} from '../../features/manualEditing';
+import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 
 defineProps<{
   sourceEditBusy?: boolean;
@@ -162,6 +189,7 @@ defineProps<{
 
 const emit = defineEmits<{
   sourceEditSubmit: [payload: SourceSelectionEditSubmitPayload];
+  manualEditSubmit: [operation: SlidesManualEditOperation];
 }>();
 
 const ZOOM_PERCENT_MIN = Math.round(ZOOM_MIN * 100);
@@ -172,6 +200,8 @@ const ZOOM_PERCENT_SLIDER_STEP = Math.round(ZOOM_SLIDER_STEP * 100);
 const slidesStore = useSlidesStore();
 const slidesUiStore = useSlidesUiStore();
 const slidesRenderStore = useSlidesRenderStore();
+const manualEditingStore = useSlidesManualEditingStore();
+const { manualEditingMessage } = useManualEditingLocalization();
 const { slidesPreviewMessage } = useSlidesPreviewLocalization();
 
 const {
@@ -189,6 +219,11 @@ const {
   fitZoomLevel,
   sourceSelectionModeEnabled,
 } = storeToRefs(slidesUiStore);
+const {
+  enabled: manualEditingEnabled,
+  submitting: manualEditingSubmitting,
+  errorMessage: manualEditError,
+} = storeToRefs(manualEditingStore);
 const {
   renderLoading,
   renderModel,
@@ -285,6 +320,19 @@ const sourceSelectionAvailability = computed(() =>
 
 const canUseSourceSelectionMode = computed(() => sourceSelectionAvailability.value.canEnableMode);
 
+const manualEditingAvailability = computed(() => resolveManualEditingAvailability({
+  buildState: documentBuildState.value,
+  renderModel: renderModel.value,
+  currentSlide: currentSlideRender.value,
+}));
+const canUseManualEditing = computed(() => manualEditingAvailability.value.available);
+const manualEditingButtonTitle = computed(() => {
+  if (manualEditingSubmitting.value) return manualEditingMessage('slides.manualEditing.toggle.saving');
+  if (manualEditingEnabled.value) return manualEditingMessage('slides.manualEditing.toggle.disable');
+  if (canUseManualEditing.value) return manualEditingMessage('slides.manualEditing.toggle.enable');
+  return manualEditingMessage('slides.manualEditing.toggle.unavailable');
+});
+
 const sourceSelectionButtonTitle = computed(() =>
   canUseSourceSelectionMode.value
     ? (sourceSelectionModeEnabled.value ? '关闭元素选择模式' : '打开元素选择模式')
@@ -321,7 +369,14 @@ function toggleSourceSelectionMode() {
   if (!canUseSourceSelectionMode.value) {
     return;
   }
+  manualEditingStore.setEnabled(false);
   slidesUiStore.toggleSourceSelectionMode();
+}
+
+function toggleManualEditing() {
+  if (!canUseManualEditing.value || manualEditingSubmitting.value) return;
+  slidesUiStore.setSourceSelectionModeEnabled(false);
+  manualEditingStore.setEnabled(!manualEditingEnabled.value);
 }
 
 function updateSliderProgress() {
@@ -336,5 +391,8 @@ watch(canUseSourceSelectionMode, (enabled) => {
   if (!enabled && sourceSelectionModeEnabled.value) {
     slidesUiStore.setSourceSelectionModeEnabled(false);
   }
+});
+watch(canUseManualEditing, (available) => {
+  if (!available && manualEditingEnabled.value) manualEditingStore.setEnabled(false);
 });
 </script>

@@ -25,7 +25,7 @@ import type {
   ShapeStyle,
   ShapeStrokeStyle,
   ShapeGeometrySpec,
-  SlidesAuthoringEditRef,
+  SlidesAuthoringObjectRef,
   SourceSpan,
   StructuredElement,
   StructuredSlideSpec,
@@ -49,7 +49,7 @@ import {
   parseShapeGeometrySpec,
   ShapeGeometryError,
   isGeneratedLayoutConstraintEvidence,
-  isSlidesAuthoringEditRef,
+  isSlidesAuthoringObjectRef,
   normalizeMathFormulaSource,
 } from '@plugin/slides/shared';
 import { isRecord, isNonEmptyString, isFiniteNumber } from './inputParsers/typeGuards.js';
@@ -161,7 +161,7 @@ export interface DirectElementInput extends LayoutChartControls {
   /** 内部追踪元数据：deck.js 工厂调用所在源码行号。 */
   _sourceSpan?: SourceSpan;
   /** Flex compiler 产生的稳定作者身份；普通 direct compose 不得注入。 */
-  _authoringRef?: SlidesAuthoringEditRef;
+  _authoringRef?: SlidesAuthoringObjectRef;
   /** Flex/Yoga 编译后的窄约束事实；不接受用户输入。 */
   _semanticRole?: string;
   _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
@@ -538,7 +538,7 @@ function parseElementInput(
   ) {
     return { error: `${prefix}._layoutConstraintEvidence 不是有效的内部编译结果。` };
   }
-  const authoringRef = acceptCompiledFields && isSlidesAuthoringEditRef(value._authoringRef)
+  const authoringRef = acceptCompiledFields && isSlidesAuthoringObjectRef(value._authoringRef)
     ? value._authoringRef
     : undefined;
   if (acceptCompiledFields && value._authoringRef !== undefined && !authoringRef) {
@@ -929,7 +929,7 @@ function requireSvgGraphicSpec(el: DirectElementInput) {
 
 function buildSourceTracking(el: DirectElementInput): {
   _sourceSpan?: SourceSpan;
-  _authoringRef?: SlidesAuthoringEditRef;
+  _authoringRef?: SlidesAuthoringObjectRef;
   _semanticRole?: string;
   _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
 } {

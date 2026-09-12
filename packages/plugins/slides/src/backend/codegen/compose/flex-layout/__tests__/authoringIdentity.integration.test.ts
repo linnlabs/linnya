@@ -65,6 +65,7 @@ describe('authoring identity projection', () => {
     expect(compiled.input.slides[0].elements[0]._authoringRef).toEqual({
       slideKey: 'overview',
       editKey: 'hero_art',
+      targetKind: 'shape',
     });
 
     const admitted = readCompiledDirectComposeInput(structuredClone(compiled.input));
@@ -80,7 +81,7 @@ describe('authoring identity projection', () => {
 
     expect(model.slides[0].elements[0]).toMatchObject({
       id: 'authoring-overview-hero_art',
-      authoringRef: { slideKey: 'overview', editKey: 'hero_art' },
+      authoringRef: { slideKey: 'overview', editKey: 'hero_art', targetKind: 'shape' },
     });
   });
 
@@ -127,9 +128,9 @@ describe('authoring identity projection', () => {
     if (!compiled.input) throw new Error(compiled.error ?? 'Expected compiled manual edits.');
     expect(originalText.content).toBe('Original');
     expect(compiled.input.slides[0].elements).toMatchObject([
-      { position: { x: 1.5, y: 1.2 }, _authoringRef: { editKey: 'hero_group' } },
-      { position: { x: 1.6, y: 1.5 }, _authoringRef: { editKey: 'hero_art' } },
-      { content: 'Updated', position: { x: 5, y: 1 }, _authoringRef: { editKey: 'headline' } },
+      { position: { x: 1.5, y: 1.2 }, _authoringRef: { editKey: 'hero_group', targetKind: 'frame' } },
+      { position: { x: 1.6, y: 1.5 }, _authoringRef: { editKey: 'hero_art', targetKind: 'shape' } },
+      { content: 'Updated', position: { x: 5, y: 1 }, _authoringRef: { editKey: 'headline', targetKind: 'text' } },
     ]);
   });
 

@@ -88,7 +88,7 @@ describe('compilePresentationComposePayload', () => {
             type: 'text',
             content: 'Updated',
             position: { x: 1.25, y: 0.9, w: 4, h: 1 },
-            _authoringRef: { slideKey: 'overview', editKey: 'headline' },
+            _authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'text' },
           }],
         }],
       },

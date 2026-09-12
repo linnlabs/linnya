@@ -51,7 +51,7 @@ import type {
   LayoutTextRun,
   Paint,
   ShapeStrokeStyle,
-  SlidesAuthoringEditRef,
+  SlidesAuthoringObjectRef,
   SlidesManualSlideEdits,
   SourceSpan,
 } from '@plugin/slides/shared';
@@ -61,6 +61,7 @@ import { FlexComposeContractError } from './FlexComposeContractError.js';
 import { readLayoutTableData } from './TableLayoutInput.js';
 import {
   prepareSlideManualEditProjection,
+  resolveManualTargetKind,
   translateManualLayoutResult,
 } from './ManualEditProjection.js';
 
@@ -236,7 +237,11 @@ function collectElements(
       elements.push(attachLayoutConstraintEvidence(
         attachAuthoringRef(
           buildContainerBackground(container, box),
-          buildAuthoringRef(context.slideKey, readLayoutEditKey(container)),
+          buildAuthoringRef(
+            context.slideKey,
+            readLayoutEditKey(container),
+            resolveManualTargetKind(container),
+          ),
         ),
         constraintEvidence,
       ));
@@ -267,7 +272,11 @@ function collectElements(
       element._semanticRole = node.role;
     }
     elements.push(attachLayoutConstraintEvidence(
-      attachAuthoringRef(element, buildAuthoringRef(context.slideKey, readLayoutEditKey(node))),
+      attachAuthoringRef(element, buildAuthoringRef(
+        context.slideKey,
+        readLayoutEditKey(node),
+        resolveManualTargetKind(node),
+      )),
       constraintEvidence,
     ));
   }
@@ -539,7 +548,7 @@ function attachSourceSpan<T extends DirectElementInput>(
 
 function attachAuthoringRef<T extends DirectElementInput>(
   element: T,
-  authoringRef: SlidesAuthoringEditRef | undefined,
+  authoringRef: SlidesAuthoringObjectRef | undefined,
 ): T {
   return authoringRef ? { ...element, _authoringRef: authoringRef } : element;
 }
@@ -547,8 +556,9 @@ function attachAuthoringRef<T extends DirectElementInput>(
 function buildAuthoringRef(
   slideKey: string | undefined,
   editKey: string | undefined,
-): SlidesAuthoringEditRef | undefined {
-  return slideKey && editKey ? { slideKey, editKey } : undefined;
+  targetKind: SlidesAuthoringObjectRef['targetKind'],
+): SlidesAuthoringObjectRef | undefined {
+  return slideKey && editKey ? { slideKey, editKey, targetKind } : undefined;
 }
 
 function readLayoutEditKey(node: LayoutNode): string | undefined {

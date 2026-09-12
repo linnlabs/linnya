@@ -9,6 +9,7 @@
       v-else
       :source-edit-busy="sourceEditBusy"
       @source-edit-submit="emit('sourceEditSubmit', $event)"
+      @manual-edit-submit="handleManualEditSubmit"
     />
   </div>
 </template>
@@ -24,6 +25,14 @@ import { useSlidesStore } from '../store/slidesStore';
 import { useSlidesUiStore } from '../store/slidesUiStore';
 import type { SourceSelectionEditSubmitPayload } from '../features/sourceSelection';
 import { usePresentationExportStore } from '../features/presentationExport';
+import {
+  readManualEditErrorMessage,
+  submitManualEdit,
+  useManualEditingLocalization,
+  useSlidesManualEditingStore,
+} from '../features/manualEditing';
+import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
+import { slidesApi } from '../services/slidesApi';
 
 defineProps<{
   sourceEditBusy?: boolean;
@@ -44,6 +53,35 @@ const {
 const slidesUiStore = useSlidesUiStore();
 const slidesSessionStore = useSlidesSessionStore();
 const presentationExportStore = usePresentationExportStore();
+const manualEditingStore = useSlidesManualEditingStore();
+const { manualEditingMessage } = useManualEditingLocalization();
+
+async function handleManualEditSubmit(operation: SlidesManualEditOperation): Promise<void> {
+  const documentId = currentDeckId.value;
+  if (!documentId || manualEditingStore.submitting) return;
+  manualEditingStore.beginSubmit();
+  try {
+    const outcome = await submitManualEdit({
+      documentId,
+      buildState: documentBuildState.value,
+      renderVersion: slidesRenderStore.renderModel?.version ?? null,
+      operation,
+    }, {
+      createCommandId: () => crypto.randomUUID(),
+      submit: command => slidesApi.submitManualEdit(command),
+      refreshDocument: nodeId => slidesStore.refreshDeck(nodeId),
+    });
+    manualEditingStore.finishSubmit(
+      readManualEditErrorMessage(outcome, manualEditingMessage) ?? undefined,
+    );
+  } catch (error) {
+    manualEditingStore.finishSubmit(
+      error instanceof Error
+        ? error.message
+        : manualEditingMessage('slides.manualEditing.error.saveFailed'),
+    );
+  }
+}
 
 /** 上一次加载 renderModel 时对应的 deckId，用于区分"首次加载"和"刷新" */
 let lastRenderDeckId: string | null = null;
@@ -60,6 +98,7 @@ watch(currentDeckId, () => {
   slidesUiStore.$reset();
   slidesSessionStore.$reset();
   presentationExportStore.$reset();
+  manualEditingStore.$reset();
   lastRenderDeckId = null;
   pendingInitialPreview = false;
   slidesRenderStore.clearRenderModel();

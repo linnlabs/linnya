@@ -11,6 +11,7 @@
         :image-resource="backgroundImageResource"
         :logical-size="logicalSize"
         :transform="contentTransform"
+        :preview-translations="props.previewTranslations"
       />
 
       <!-- 内容层：渲染所有元素 -->
@@ -28,6 +29,8 @@
         :selected-targets="props.selectedTargets"
         :hovered-target="props.hoveredTarget"
         :marquee-rect="props.marqueeRect"
+        :manual-selected-target="props.manualSelectedTarget"
+        :manual-translation-preview="props.manualTranslationPreview"
       />
     </v-stage>
   </div>
@@ -51,6 +54,10 @@ import type {
 import SlideBackgroundLayer from './layers/SlideBackgroundLayer.vue';
 import SlideContentLayer from './layers/SlideContentLayer.vue';
 import SlideOverlayLayer from './layers/SlideOverlayLayer.vue';
+import type {
+  ManualEditableTarget,
+  ManualEditingTranslationPreview,
+} from '../../../features/manualEditing';
 
 const props = defineProps<{
   slideRender: SlideRenderModel;
@@ -61,6 +68,9 @@ const props = defineProps<{
   selectedTargets: readonly SourceSelectableElement[];
   hoveredTarget: SourceSelectableElement | null;
   marqueeRect: SourceSelectionRect | null;
+  previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
+  manualSelectedTarget?: ManualEditableTarget | null;
+  manualTranslationPreview?: ManualEditingTranslationPreview | null;
 }>();
 
 const backgroundImageResource = computed(() => (

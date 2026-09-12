@@ -20,7 +20,7 @@ import type { MathFormulaMetrics, MathFormulaRenderProjection } from '../mathFor
 import type { RenderSlideSizeInches } from '../deckSpec';
 import type { ResolvedShapeGeometry } from '../shapeGeometry';
 import type { SvgGraphicFit, SvgGraphicViewBox } from '../svgGraphic';
-import type { SlidesAuthoringEditRef } from '../authoringEditing';
+import type { SlidesAuthoringObjectRef } from '../authoringEditing';
 import type {
   TextLineSpacing,
   TextLineSpacingResolution,
@@ -188,7 +188,7 @@ export interface RenderNodeBase {
   box: RenderBox;
   editableTarget?: EditableTarget;
   /** generated deck.js 中显式声明的稳定作者对象身份。 */
-  authoringRef?: SlidesAuthoringEditRef;
+  authoringRef?: SlidesAuthoringObjectRef;
   rotation?: number;
   opacity?: number;
   visible?: boolean;

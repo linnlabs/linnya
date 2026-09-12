@@ -73,4 +73,6 @@ export const SLIDES_RENDER_COLORS = {
   sourceSelectionStroke: '#347B45',
   sourceSelectionHoverFill: 'rgba(52, 123, 69, 0.05)',
   sourceSelectionMarqueeFill: 'rgba(52, 123, 69, 0.08)',
+  manualEditingStroke: '#2563EB',
+  manualEditingFill: 'rgba(37, 99, 235, 0.06)',
 } as const;

@@ -115,7 +115,7 @@ function applyPreLayoutManualEdits(
   }
 }
 
-function resolveManualTargetKind(node: LayoutNode): SlidesManualTargetKind {
+export function resolveManualTargetKind(node: LayoutNode): SlidesManualTargetKind {
   switch (node._type) {
     case 'View':
       return 'frame';

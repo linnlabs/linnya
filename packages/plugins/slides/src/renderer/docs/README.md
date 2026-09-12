@@ -21,6 +21,7 @@ src/renderer/
 │   ├── documentReference/           # 文档引用与展示用纯规则
 │   ├── documentRuntime/             # surface 挂载后的 deck 加载、定位和生命周期编排
 │   ├── elementAiEdit/               # source-backed 元素 AI 编辑编排
+│   ├── manualEditing/                # 稳定作者对象的移动、纯文本编辑与 CAS 提交流程
 │   ├── presentationExport/          # PPTX/图片菜单、独立弹窗与导出交互编排；见 feature README
 │   ├── konvaPreview/                # Konva 配置与 ECharts option 纯映射
 │   ├── renderImageResources/        # 图片解析、解码去重与 LRU
@@ -107,6 +108,19 @@ SlideStage sourceSelection
   -> @plugin/renderer/aiInvocationPort 注入 selected-slides-element fence
   -> conversation 使用 read_file / edit_file / write_file 修改 deck.js source
 ```
+
+有限人工编辑链路：
+
+```text
+SlideStage authoring target click / drag / text double-click
+  -> manualEditing 临时选择与位移预览（不修改 RenderModel）
+  -> SlidesView submitManualEdit orchestration
+  -> slides:manual-edit(revisionId + revision + sourceHash + operation)
+  -> backend 改写 compose.manualEdits 并完整编译/物化
+  -> revision 原子提交后 refreshDeck / RenderModel 原子替换
+```
+
+当前直接开放作者对象移动，以及单段单 run 纯文本的完整内容替换。富文本、内联公式文本与多段文本保持文本只读；图片源、表格内容和图表数据需要各自的完整值编辑器后再开放。Flex Frame 因 RenderModel 仍扁平化其装饰和后代，暂不在前端显示为可拖动目标，避免拖动预览与最终提交不一致。详细边界见 [`../features/manualEditing/README.md`](../features/manualEditing/README.md)。
 
 导出链路只有 Host 文档“更多”菜单一个真实入口，当前开放两个选项并分别打开独立弹窗：
 

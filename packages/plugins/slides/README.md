@@ -31,6 +31,7 @@ Linnya Slides 先把 PPT 抽象成一门专用的场景图 DSL，再用 JavaScri
 - 版本历史、源码压缩与图片生命周期：[backend/features/presentationSourceHistory](./src/backend/features/presentationSourceHistory/README.md)
 - generated deck 人工编辑源码与原子提交：[backend/features/presentationManualEditing](./src/backend/features/presentationManualEditing/README.md)
 - 前端预览与栅格渲染：[renderer](./src/renderer/docs/README.md)
+- 前端有限人工编辑：[renderer/features/manualEditing](./src/renderer/features/manualEditing/README.md)
 - PPTX 编译、解析与质量检查：[backend/engine](./src/backend/engine/README.md)
 
 ## Agent 工作流
@@ -265,4 +266,4 @@ host 不复制 presentation 字段。
 - **图表无法跨渲染器完全保真。** Linnya 前端使用 ECharts，PowerPoint 使用自己的图表渲染器，两者的字体、间距和标签布局无法保证完全一致。因此，[Slides 导出 UI 合同](./src/renderer/features/presentationExport/README.md)提供“将图表转换为图片”设置。该设置默认关闭：需要视觉一致时主动开启，需要继续编辑图表时保留默认的 PowerPoint 原生图表。
 - **Brush 视觉资产暂不支持透明底。** 当前 pinned p5.brush standalone 合成器会把最终画布写成不透明。首版只支持显式纯色背景的整区资产；需要透出下层内容时改用 Shape 或受控 SVG。后续若上游提供稳定 alpha 合同，可在不改写现有不透明 intent 的前提下扩展。
 - **PDF 导出暂不开放。** 已实现的栅格 PDF 不含可选择、搜索和复制的文字对象，因此不再挂载产品入口。真正的语义/矢量 PDF 仍需完成独立的可行性与 ROI 验证。
-- **前端暂不支持人工编辑。** 当前只能通过 Agent 修改文稿源码，不能直接在预览画布中拖动元素或编辑内容；前端人工编辑能力已经加入后续排期。
+- **前端人工编辑是有限能力。** 带稳定作者身份的新 generated deck 可在预览画布移动文本、图片、表格、图表、形状、SVG Graphic 和公式，并可双击修改单段单 run 的纯文本。富文本、内联公式文本、多段文本、Frame 整体拖动，以及图片源、表格内容和图表数据仍保持只读；旧文稿需先由 Agent 补齐 `slideKey/editKey` 才能出现编辑入口。

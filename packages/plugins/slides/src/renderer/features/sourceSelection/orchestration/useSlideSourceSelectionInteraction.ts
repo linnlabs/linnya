@@ -1,7 +1,6 @@
 import { computed, type Ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { SlideRenderModel } from '../../../types/render';
-import { INCHES_TO_PX } from '../../../shared/constants';
 import type {
   SourceSelectableElement,
   SourceSelectionPoint,
@@ -18,6 +17,7 @@ import {
   resolveSourceElementClickSelection,
   resolveSourceMarqueeSelection,
 } from '../functions/sourceSelectionState';
+import { resolveSlidePointerPoint } from '../functions/slidePointerPoint';
 import { useSlidesSourceSelectionStore } from '../store/slidesSourceSelectionStore';
 
 interface SlideSourceSelectionSize {
@@ -232,11 +232,13 @@ export function useSlideSourceSelectionInteraction(options: SlideSourceSelection
     }
 
     const rect = element.getBoundingClientRect();
-    const xPx = (event.clientX - rect.left) / options.renderScale.value;
-    const yPx = (event.clientY - rect.top) / options.renderScale.value;
-    const x = clampNumber(xPx / INCHES_TO_PX, 0, options.actualSlideSize.value.width);
-    const y = clampNumber(yPx / INCHES_TO_PX, 0, options.actualSlideSize.value.height);
-    return { x, y };
+    return resolveSlidePointerPoint({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      wrapperRect: rect,
+      renderScale: options.renderScale.value,
+      slideSize: options.actualSlideSize.value,
+    });
   }
 
   return {
@@ -251,8 +253,4 @@ export function useSlideSourceSelectionInteraction(options: SlideSourceSelection
     resetSourceSelection,
     reconcileSourceSelection,
   };
-}
-
-function clampNumber(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(value, max));
 }

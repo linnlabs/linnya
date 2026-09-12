@@ -10,6 +10,7 @@
         :node="node"
         :image-resources="props.imageResources"
         :chart-resources="props.chartResources"
+        :preview-translations="props.previewTranslations"
       />
     </v-group>
   </v-layer>
@@ -22,6 +23,7 @@ import type { SlideImageResourceMap } from '../../../../features/renderImageReso
 import type { SlideChartResourceMap } from '../../../../features/renderChartResources';
 import KonvaNodeRenderer from '../nodes/KonvaNodeRenderer.vue';
 import { sortNodesByZIndex } from '../../../../features/konvaPreview';
+import type { ManualEditingTranslationPreview } from '../../../../features/manualEditing';
 
 const props = defineProps<{
   elements: RenderNode[];
@@ -29,6 +31,7 @@ const props = defineProps<{
   chartResources: SlideChartResourceMap;
   logicalSize: { width: number; height: number };
   transform: { x: number; y: number; scaleX: number; scaleY: number };
+  previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
 }>();
 
 const sortedElements = computed(() =>

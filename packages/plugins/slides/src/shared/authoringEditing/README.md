@@ -11,5 +11,6 @@ Rules:
 - a node with `editKey` requires its slide to have `slideKey`;
 - old sources without keys continue to compile, but do not receive an authoring edit reference;
 - `RenderNode.id` remains a render-tree detail; persistence and commands use `authoringRef`.
+- compiled `authoringRef` also carries `targetKind` so Renderer can distinguish a decorated Frame from a Shape; this field does not participate in identity and command targets still use only the two keys;
 - manual targets form a discriminated union, reject unknown fields and are unique within their slide record;
 - translation is measured in inches relative to the layout result before manual translation; stored records are current values, not an append-only operation log.

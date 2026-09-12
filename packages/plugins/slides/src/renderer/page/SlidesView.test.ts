@@ -7,6 +7,7 @@ import type { DeckPreviewViewModel } from '../types/preview';
 import type { PresentationRenderModel } from '../types/render';
 
 const getRenderModelMock = vi.hoisted(() => vi.fn());
+const submitManualEditMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../services/slidesRenderApi', () => ({
   slidesRenderApi: {
@@ -14,10 +15,22 @@ vi.mock('../services/slidesRenderApi', () => ({
   },
 }));
 
+vi.mock('../services/slidesApi', () => ({
+  slidesApi: {
+    submitManualEdit: submitManualEditMock,
+  },
+}));
+
 vi.mock('../ui/deck/DeckViewer.vue', () => ({
   default: {
     name: 'DeckViewerStub',
-    template: '<div class="deck-viewer-stub" />',
+    emits: ['manualEditSubmit'],
+    template: `<button class="deck-viewer-stub" @click="$emit('manualEditSubmit', {
+      op: 'translate_by',
+      target: { slideKey: 'overview', editKey: 'hero' },
+      targetKind: 'image',
+      delta: { dx: 0.2, dy: -0.1 }
+    })" />`,
   },
 }));
 
@@ -171,6 +184,7 @@ describe('SlidesView render-model lifecycle', () => {
       presentationId: 'deck-1',
       versionId: 'version-1',
       versionNumber: 1,
+      sourceHash: '1'.padStart(64, '0'),
       draftStatus: {
         baseVersionId: 'version-1',
         baseVersionNumber: 1,
@@ -183,5 +197,42 @@ describe('SlidesView render-model lifecycle', () => {
     await flushUpdates();
 
     expect(renderStore.renderModel).toBeNull();
+  });
+
+  it('把画布人工移动提交为精确 revision 命令并刷新文稿', async () => {
+    getRenderModelMock.mockResolvedValueOnce(makeRenderModel(3));
+    submitManualEditMock.mockImplementationOnce(async command => ({
+      status: 'committed',
+      commandId: command.commandId,
+      documentId: command.documentId,
+      revisionId: 'version-4',
+      revision: 4,
+    }));
+
+    const slidesStore = useSlidesStore();
+    const refreshDeck = vi.spyOn(slidesStore, 'refreshDeck').mockResolvedValue();
+    slidesStore.currentDeckId = 'deck-1';
+    slidesStore.documentBuildState = readyBuildState(3);
+    slidesStore.deckPreview = makeDeckPreview(3);
+    await flushUpdates();
+
+    document.querySelector<HTMLButtonElement>('.deck-viewer-stub')?.click();
+    await flushUpdates();
+
+    expect(submitManualEditMock).toHaveBeenCalledWith(expect.objectContaining({
+      documentId: 'deck-1',
+      expectedBase: {
+        revisionId: 'version-3',
+        revision: 3,
+        sourceHash: '3'.padStart(64, '0'),
+      },
+      operation: {
+        op: 'translate_by',
+        target: { slideKey: 'overview', editKey: 'hero' },
+        targetKind: 'image',
+        delta: { dx: 0.2, dy: -0.1 },
+      },
+    }));
+    expect(refreshDeck).toHaveBeenCalledWith('deck-1');
   });
 });

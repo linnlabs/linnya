@@ -1,4 +1,7 @@
-export type { SlidesAuthoringEditRef } from './definitions/authoringIdentity';
+export type {
+  SlidesAuthoringEditRef,
+  SlidesAuthoringObjectRef,
+} from './definitions/authoringIdentity';
 export type {
   SlidesManualEditCommand,
   SlidesManualEditCommandResult,
@@ -26,6 +29,7 @@ export type {
 export {
   buildSlidesAuthoringRenderNodeId,
   isSlidesAuthoringEditRef,
+  isSlidesAuthoringObjectRef,
   isSlidesAuthoringKey,
 } from './functions/authoringIdentity';
 export { parseSlidesManualEdits } from './functions/manualEditsCodec';

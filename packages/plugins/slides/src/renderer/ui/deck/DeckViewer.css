@@ -136,14 +136,32 @@
 }
 
 .deck-viewer .stage-zoom-slider__fit-btn--active,
+.deck-viewer .stage-zoom-slider__edit-btn--active,
 .deck-viewer .stage-zoom-slider__select-btn--active {
   background-color: var(--color-accent-bg);
   color: var(--color-accent);
 }
 
 .deck-viewer .stage-zoom-slider__fit-btn--active:hover,
+.deck-viewer .stage-zoom-slider__edit-btn--active:hover,
 .deck-viewer .stage-zoom-slider__select-btn--active:hover {
   background-color: var(--color-accent-bg-hover);
+}
+
+.deck-viewer .stage-manual-edit-error {
+  position: absolute;
+  left: 50%;
+  bottom: 58px;
+  z-index: 12;
+  max-width: min(520px, calc(100% - 48px));
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-error) 35%, transparent);
+  border-radius: 8px;
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  font-size: 12px;
+  box-shadow: 0 4px 18px var(--shadow-color-sm);
 }
 
 .deck-viewer .stage-zoom-slider__label {

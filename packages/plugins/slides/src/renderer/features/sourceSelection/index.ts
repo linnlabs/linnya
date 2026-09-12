@@ -19,6 +19,7 @@ export {
 export {
   rectFromPoints,
 } from './functions/sourceSelectionGeometry';
+export { resolveSlidePointerPoint } from './functions/slidePointerPoint';
 export {
   resolveSourceSelectionPromptPosition,
   type SourceSelectionPromptPosition,

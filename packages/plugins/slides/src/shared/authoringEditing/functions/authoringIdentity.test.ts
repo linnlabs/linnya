@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildSlidesAuthoringRenderNodeId,
   isSlidesAuthoringEditRef,
+  isSlidesAuthoringObjectRef,
   isSlidesAuthoringKey,
 } from './authoringIdentity';
 
@@ -19,5 +20,11 @@ describe('Slides authoring identity', () => {
     expect(isSlidesAuthoringEditRef({ ...ref, page: 1 })).toBe(false);
     expect(buildSlidesAuthoringRenderNodeId(ref)).toBe('authoring-overview-headline');
   });
-});
 
+  it('编译产物额外携带不参与 ID 的作者目标类型', () => {
+    const ref = { slideKey: 'overview', editKey: 'headline', targetKind: 'text' } as const;
+    expect(isSlidesAuthoringObjectRef(ref)).toBe(true);
+    expect(isSlidesAuthoringEditRef(ref)).toBe(false);
+    expect(buildSlidesAuthoringRenderNodeId(ref)).toBe('authoring-overview-headline');
+  });
+});

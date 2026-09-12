@@ -245,12 +245,14 @@ export {
 export {
   buildSlidesAuthoringRenderNodeId,
   isSlidesAuthoringEditRef,
+  isSlidesAuthoringObjectRef,
   isSlidesAuthoringKey,
   parseSlidesManualEdits,
   SLIDES_AUTHORING_KEY_PATTERN,
 } from './authoringEditing';
 export type {
   SlidesAuthoringEditRef,
+  SlidesAuthoringObjectRef,
   SlidesManualEditCommand,
   SlidesManualEditCommandResult,
   SlidesManualEditBuildFailureResult,
