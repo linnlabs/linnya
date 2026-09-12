@@ -62,7 +62,7 @@ PACKAGES
 - @jridgewell/resolve-uri@3.1.2 — MIT — https://github.com/jridgewell/resolve-uri — sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==
 - @jridgewell/sourcemap-codec@1.5.5 — MIT — https://github.com/jridgewell/sourcemaps — sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==
 - @jridgewell/trace-mapping@0.3.31 — MIT — https://github.com/jridgewell/sourcemaps — sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==
-- @linnlabs/linnkit@0.37.1 — MIT — https://github.com/linnlabs/linnkit — sha512-oI5vh/EgGN8GZsG/XZoLnAmrQxcGonWcl7a1SUmAiUEGfWmK66/mL5Gb0Z7Sm3QvLvNio08igz2HddjvrAuBgA==
+- @linnlabs/linnkit@0.37.2 — MIT — https://github.com/linnlabs/linnkit — sha512-Kga9iv7AQYVspRIUPLfX6PSLj6FmKlFmE6tAslrnGSGlzvk4DwuH+X2YCya4DW8aNUFgd8957inqgF1hZjYpAg==
 - @mozilla/readability@0.6.0 — Apache-2.0 — https://github.com/mozilla/readability — sha512-juG5VWh4qAivzTAeMzvY9xs9HY5rAcr2E4I7tiSSCokRFi7XIZCAu92ZkSTsIj1OPceCifL3cpfteP3pDT9/QQ==
 - @napi-rs/canvas@1.0.8 — MIT — https://github.com/Brooooooklyn/canvas — sha512-/SaLcvlqGWdm0HSCWMgHu7cjJiQXfP8/mOY+6dUyV9flQz7sPBBZ+ed2zYtoukojPmxOaL7bm+d/G4GeWWoN7g==
 - @napi-rs/canvas-darwin-arm64@1.0.8 — MIT — https://github.com/Brooooooklyn/canvas — sha512-7jQ47gi+fZ7KJmfc/5rNyy1CYw/cu4kZ0KPIYbo9UUgSdW0bKQJpt+WihEor6s4Lyp7+xc3a+3HeyXmAEbbnPg==
@@ -10408,7 +10408,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ----- LICENSE 8c31548fa2c52289476712b65d26bd5c5e229ca68df683cecda4975311aab232 -----
-Applies to: @linnlabs/linnkit@0.37.1
+Applies to: @linnlabs/linnkit@0.37.2
 Installed file names: LICENSE
 
 MIT License
