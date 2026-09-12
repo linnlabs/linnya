@@ -12,6 +12,12 @@
 
 主进程还负责在后端和 worker 启动前冻结默认模型配置路径。完整 App 验收和企业部署可以通过 `MODEL_REGISTRY_DEFAULTS_PATH` 提供已经存在的绝对路径；相对路径或不存在的路径会明确阻止启动。未显式配置时，发布态只读取 `app.getAppPath()/dist/domains/model-catalog/default_models.json`，开发态只读取启动 cwd 所代表仓库根下的源码资产。`app.getAppPath()` 在 `electron dist/main/main.cjs` 开发命令中是 bundle 入口目录，不能当作仓库根；这里不搜索父目录、不维护候选路径，也不建立第二套模型目录或缺失文件回退。
 
+产品版本同样由 App owner 在启动时解析一次：发布包使用 `app.getVersion()`；源码运行必须使用
+正式 `dev:electron` / `start:electron` 启动器从根 manifest 注入的 `APP_VERSION`。开发命令直接
+启动 Main bundle 时，Electron 的 `getVersion()` 是运行时版本，不能作为 Linnya 版本回退。
+缺少开发版本会阻止启动；Main 不把根 manifest 打进 bundle，也不在运行时搜索文件。
+发行身份校验、Backend bootstrap、ready 与 CLI doctor 共享这份版本事实，Backend 不重新读取环境。
+
 命令执行 owner 的退出收口属于本目录与 [Electron Command Hosts](../commands/README.md) 的组合合同；具体命令终态仍由 Commands owner 提供，窗口层不能自行猜测。
 
 诊断日志也属于 App owner 生命周期。`app-lifecycle.js` 在任何业务日志写入前确定正式日志路径并启用唯一文件 writer，退出时负责 drain。App Server 和 Worker 都只生产严格日志 envelope：App Server 通过非阻塞 reverse RPC、Worker 通过所属 owner 转发，不能自行打开第二个日志文件或让日志反压阻塞业务事件循环。

@@ -43,6 +43,7 @@ import { installDistributionIdentity } from '../shared/distribution-identity/ind
 import { resolveElectronDistributionIdentity } from './distribution/index.ts';
 import { resolveBackendRuntimePathRoots } from './app-lifecycle/functions/resolveBackendRuntimePathRoots.ts';
 import { resolveAppServerBundleDirectory } from './app-lifecycle/functions/resolveAppServerBundleDirectory.ts';
+import { resolveAppVersion } from './app-lifecycle/functions/resolveAppVersion.ts';
 import {
   createElectronAppServerRuntime,
   registerBackendRendererRequestIpcHandlers,
@@ -54,10 +55,16 @@ import { registerCommandCardControlHandlers } from './ipc/handlers/commands/comm
 import { registerCommandProtectedInputHandler } from './ipc/handlers/commands/command-protected-input-ipc.ts';
 
 const logger = new Logger('app-lifecycle');
+// 版本只在 App owner 启动时解析一次，发行身份与 Backend/CLI 共享同一产品事实。
+const applicationVersion = resolveAppVersion({
+  packaged: app.isPackaged,
+  electronApplicationVersion: app.getVersion(),
+  developmentApplicationVersion: process.env.APP_VERSION,
+});
 const distributionResolution = resolveElectronDistributionIdentity({
   packaged: app.isPackaged,
   resourcesPath: process.resourcesPath,
-  applicationVersion: app.getVersion(),
+  applicationVersion,
 });
 const distributionIdentity = installDistributionIdentity(distributionResolution.identity);
 if (distributionResolution.diagnostic) {
@@ -321,7 +328,7 @@ export function initialize() {
         developmentMainBundleDirectory: __dirname,
       });
       const backendBootstrap = createBackendBootstrapFacts({
-        applicationVersion: app.getVersion(),
+        applicationVersion,
         applicationExecutablePath: process.execPath,
         platform: process.platform,
         architecture: process.arch,
