@@ -130,7 +130,7 @@ export function createLinnyaConversationControlUseCase(
               savedAt: checkpoint.savedAt,
               ...(checkpoint.currentNode ? { currentNode: checkpoint.currentNode } : {}),
               ...(checkpoint.iterations !== undefined
-                ? { executionStepsUsed: checkpoint.iterations }
+                ? { runIterationsUsed: checkpoint.iterations }
                 : {}),
             }
           : null;

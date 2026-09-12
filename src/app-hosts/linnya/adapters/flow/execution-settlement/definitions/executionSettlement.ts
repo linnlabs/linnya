@@ -49,13 +49,16 @@ export interface SuccessfulExecutionSettlement {
 export type FailedExecutionSettlement =
   | {
       readonly kind: 'cancelled';
-      readonly stepCount: number;
+      /** Graph 未正常返回时本次 attempt 步数未知，不用 0 或累计 checkpoint 填补。 */
+      readonly stepCount?: number;
+      readonly runIterationsUsed?: number;
       readonly abortReason?: unknown;
       readonly contextUsage?: ContextUsageSnapshot;
     }
   | {
       readonly kind: 'failed';
-      readonly stepCount: number;
+      readonly stepCount?: number;
+      readonly runIterationsUsed?: number;
       readonly failureFact: graph.RuntimeFailureFact;
       readonly contextUsage?: ContextUsageSnapshot;
     };

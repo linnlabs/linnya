@@ -839,7 +839,7 @@ describe('conversation-control use case', () => {
     test.setExecutionProgress({
       savedAt: 120,
       currentNode: 'tool',
-      executionStepsUsed: 18,
+      runIterationsUsed: 18,
     });
 
     await expect(
@@ -852,9 +852,9 @@ describe('conversation-control use case', () => {
       run: {
         status: 'running',
         current_node: 'tool',
-        execution_steps_used: 18,
-        run_iterations_used: 0,
-        iterations_used: 0,
+        execution_steps_used: undefined,
+        run_iterations_used: 18,
+        iterations_used: 18,
       },
     });
   });
@@ -875,7 +875,7 @@ describe('conversation-control use case', () => {
     test.setExecutionProgress({
       savedAt: 140,
       currentNode: 'wait_user',
-      executionStepsUsed: 19,
+      runIterationsUsed: 19,
     });
 
     await expect(

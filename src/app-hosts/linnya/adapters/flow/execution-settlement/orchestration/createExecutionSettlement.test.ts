@@ -72,6 +72,7 @@ interface SettlementHarness {
 function createHarness(input?: {
   readonly drainFailure?: Error;
   readonly checkpointCleanupFailure?: Error;
+  readonly previousIterations?: number;
 }): SettlementHarness {
   const published: RuntimeEvent[] = [];
   const order: string[] = [];
@@ -127,6 +128,7 @@ function createHarness(input?: {
       if (input?.drainFailure) throw input.drainFailure;
     },
     runHandle,
+    readRunIterationsUsed: async () => input?.previousIterations,
     clearCheckpoint: async () => {
       calls.clearCheckpoint += 1;
       order.push('clear-checkpoint');
@@ -161,6 +163,24 @@ function createHarness(input?: {
 }
 
 describe('execution settlement orchestration', () => {
+  it.each(['cancelled', 'failed'] as const)('恢复后的 %s 直接采用 durable 累计量，不重复相加，也不把未知 attempt 写成累计数', async kind => {
+    const harness = createHarness({ previousIterations: 40 });
+    await harness.orchestration.settleFailedExecution(kind === 'cancelled'
+      ? { kind, runIterationsUsed: 47 }
+      : { kind, runIterationsUsed: 47, failureFact: createPublishedFailureFact(new Error('Failure')) });
+    expect(kind === 'cancelled' ? harness.cancelledInputs : harness.failedInputs)
+      .toEqual([{ iterationsUsed: 47 }]);
+    const metrics = harness.published.find(event => event.type === 'run_execution_metrics');
+    expect(metrics?.metadata).toEqual({ run_iterations_used: 47 });
+  });
+
+  it('失败后无法读取 checkpoint 时保留未知口径，不伪造零步或覆盖 Registry 预算', async () => {
+    const harness = createHarness({ previousIterations: 40 });
+    await harness.orchestration.settleFailedExecution({ kind: 'cancelled' });
+    expect(harness.cancelledInputs).toEqual([{}]);
+    expect(harness.published.find(event => event.type === 'run_execution_metrics')?.metadata).toEqual({});
+  });
+
   it('主 Prompt 容量拒绝通过标准 run failure 链发布 typed error fact', () => {
     const failureFact = createPublishedFailureFact(
       new graph.PrimaryPromptCapacityError({
@@ -228,7 +248,6 @@ describe('execution settlement orchestration', () => {
   });
 
   it('resume execution 将当前步数累加到同一逻辑 run 的 iterationsUsed', async () => {
-    const harness = createHarness();
     const portsWithPrevious = {
       readRunIterationsUsed: async () => 6,
     } satisfies Pick<ExecutionSettlementPorts, 'readRunIterationsUsed'>;
@@ -405,7 +424,7 @@ describe('execution settlement orchestration', () => {
         executionStartedAtMs: 1000,
       },
       {
-        publishRuntimeEvent: (event, source) => {
+        publishRuntimeEvent: event => {
           harness.published.push(event);
           harness.order.push(`publish:${event.type}`);
           return routeRuntimeEvent(event, {
@@ -457,7 +476,7 @@ describe('execution settlement orchestration', () => {
         executionStartedAtMs: 1000,
       },
       {
-        publishRuntimeEvent: (event, source) => {
+        publishRuntimeEvent: event => {
           harness.published.push(event);
           harness.order.push(`publish:${event.type}`);
           return routeRuntimeEvent(event, {

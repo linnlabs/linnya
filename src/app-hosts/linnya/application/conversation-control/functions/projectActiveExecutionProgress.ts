@@ -18,6 +18,7 @@ export function projectActiveExecutionProgress(
   return {
     ...run,
     currentNode: progress.currentNode ?? run.currentNode,
-    executionStepsUsed: progress.executionStepsUsed ?? run.executionStepsUsed,
+    runIterationsUsed: progress.runIterationsUsed ?? run.runIterationsUsed,
+    iterationsUsed: progress.runIterationsUsed ?? run.iterationsUsed,
   };
 }

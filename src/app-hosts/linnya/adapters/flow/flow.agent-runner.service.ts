@@ -275,7 +275,8 @@ export class AgentRunnerService {
     let commandCleanupAttempted = false;
     let commandRunEndBarrier: CommandAgentRunEndBarrier | undefined;
     let settlementContextUsage: ContextUsageSnapshot | undefined;
-    let executionStepCount = 0;
+    let executionStepCount: number | undefined;
+    let runIterationsUsed: number | undefined;
     let publishedRuntimeFailureFact: graph.RuntimeFailureFact | undefined;
     const checkpointRecovery = this.runtime.recovery;
     const releaseCheckpointBinding = checkpointRecovery?.bindings.bind(
@@ -498,6 +499,8 @@ export class AgentRunnerService {
                       maxSteps: finalReq.maxSteps,
                     });
               logger.info(`GraphExecutor 完成：${stepCount} 步，最终节点：${checkpoint.nodeId}`);
+              executionStepCount = stepCount;
+              runIterationsUsed = checkpoint.local?.executorLocal?.stepCount;
               settlementContextUsage = graph.readCheckpointContextUsage(checkpoint.local);
               const waitUserEvents = [...(checkpoint.local?.history ?? []), ...graphEvents].filter(
                 (
@@ -639,20 +642,10 @@ export class AgentRunnerService {
         if (!settlementContextUsage) {
           settlementContextUsage = graph.readCheckpointContextUsage(failedCheckpoint?.local);
         }
-        const checkpointLocal = failedCheckpoint?.local;
-        const checkpointExecutorLocal = checkpointLocal?.executorLocal;
-        if (
-          checkpointExecutorLocal &&
-          typeof checkpointExecutorLocal === 'object' &&
-          'stepCount' in checkpointExecutorLocal &&
-          typeof checkpointExecutorLocal.stepCount === 'number' &&
-          Number.isInteger(checkpointExecutorLocal.stepCount) &&
-          checkpointExecutorLocal.stepCount >= 0
-        ) {
-          executionStepCount = checkpointExecutorLocal.stepCount;
-        }
+        // Checkpointer 已执行正式 schema admission；累计预算不是当前 execution 的步数。
+        runIterationsUsed = failedCheckpoint?.local?.executorLocal?.stepCount ?? runIterationsUsed;
       } catch (checkpointError: unknown) {
-        // 可选展示事实和失败 execution 步数的读取失败不能阻止 failed/cancelled 终态收口。
+        // 可选快照读取失败不能阻止终态；未知累计量缺省，不把旧 Registry 当作本次完整预算。
         logger.error('Agent run 失败后无法接纳 checkpoint metrics', {
           conversationId,
           runId: runHandle.runId,
@@ -664,6 +657,7 @@ export class AgentRunnerService {
         await executionSettlement.settleFailedExecution({
           kind: 'cancelled',
           stepCount: executionStepCount,
+          runIterationsUsed,
           abortReason: signal.reason,
           ...(settlementContextUsage ? { contextUsage: settlementContextUsage } : {}),
         });
@@ -671,6 +665,7 @@ export class AgentRunnerService {
         await executionSettlement.settleFailedExecution({
           kind: 'failed',
           stepCount: executionStepCount,
+          runIterationsUsed,
           failureFact,
           ...(settlementContextUsage ? { contextUsage: settlementContextUsage } : {}),
         });

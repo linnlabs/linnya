@@ -6,6 +6,11 @@
 
 固定顺序是：发布 durable `run_execution_metrics`，等待 persistence drain，再落定 RunHandle 状态和终态资源。`awaiting_user` 保留 checkpoint 和 run 资源，供下一次 resume execution 使用。
 
+步数必须区分本次 Graph 调用与同一 run 的累计预算。成功和失败/取消都优先采用 checkpoint
+提供的绝对 `runIterationsUsed`，不能与旧 Registry 再相加。只有明确拿到本次 `stepCount`
+且没有绝对累计输入的非恢复接入才使用增量结算。Graph 异常退出时本次 attempt 计数可以未知，
+metrics 省略该字段；checkpoint 读取也失败时不覆盖 Registry 预算，不补造零或从遥测反推。
+
 `completed` 是不可逆终态。生产 durable continuation 先保存 yielded checkpoint，再写 completed，最后清理恢复资源；清理失败只能记录为运维故障，不能把 completed 改成 failed。这样避免“run 尚未完成却已丢失断点”的崩溃窗口。未启用 durable continuation 的接入仍先清理 checkpoint 再写 completed。failed / cancelled 分支优先保证权威终态，再清理 checkpoint 和成本资源；清理失败不能阻止 run 离开 running，也不能反复重试同一次失败清理。
 
 一次 execution 最多发布一条 metrics。Graph 已完成后若 persistence drain 失败，未启用恢复的接入进入 failed；生产 durable continuation 保留最后提交的 checkpoint，由 Flow 收口为 paused，等待显式恢复。两者都不能补造第二条 `outcome=failed` 覆盖既有 Graph execution 事实。metrics 不驱动前端控制态，权威控制态始终来自后续 `run_status`。

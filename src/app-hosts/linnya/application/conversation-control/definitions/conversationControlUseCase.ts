@@ -79,7 +79,7 @@ export interface ConversationControlRunRecord {
   readonly updatedAt: number;
   readonly pausedAt?: number;
   readonly pauseReason?: string;
-  /** 当前 execution 的 Graph 步数；运行中由 checkpoint 补充，终态由审计生命周期观测补充。 */
+  /** 当前 execution 的 Graph 步数；有生命周期观测时提供，不能用累计 checkpoint 冒认。 */
   readonly executionStepsUsed?: number;
   /** 同一逻辑 run 跨 execution 的累计步数。 */
   readonly runIterationsUsed?: number;
@@ -99,7 +99,7 @@ export interface ConversationControlRunPort {
 export interface ConversationControlExecutionProgressSnapshot {
   readonly savedAt: number;
   readonly currentNode?: string;
-  readonly executionStepsUsed?: number;
+  readonly runIterationsUsed?: number;
 }
 
 export interface ConversationControlExecutionProgressPort {

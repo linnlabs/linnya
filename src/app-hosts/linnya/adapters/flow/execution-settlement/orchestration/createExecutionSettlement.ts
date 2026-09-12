@@ -13,6 +13,7 @@ import type {
   SuccessfulExecutionSettlement,
 } from '../definitions/executionSettlement';
 import { readWaitUserReason } from '../functions/readWaitUserReason';
+import { resolveRunIterationsUsed } from '../functions/resolveRunIterationsUsed';
 
 const logger = new Logger('ExecutionSettlement');
 
@@ -29,11 +30,6 @@ export function createExecutionSettlement(
   let executionMetricsPublished = false;
   let persistenceDrainFailed = false;
   let checkpointCleanupFailed = false;
-
-  const resolveRunIterationsUsed = async (stepCount: number): Promise<number> => {
-    const previous = (await ports.readRunIterationsUsed?.()) ?? 0;
-    return previous + stepCount;
-  };
 
   const publishMetricsOnce = (
     outcome: RunExecutionOutcome,
@@ -84,8 +80,11 @@ export function createExecutionSettlement(
       throw new Error('wait_user checkpoint requires a published interaction event');
     }
 
-    const runIterationsUsed =
-      input.runIterationsUsed ?? (await resolveRunIterationsUsed(input.stepCount));
+    const runIterationsUsed = resolveRunIterationsUsed(
+      input.stepCount, input.runIterationsUsed,
+      input.runIterationsUsed === undefined && input.stepCount !== undefined
+        ? await ports.readRunIterationsUsed?.() : undefined,
+    );
     publishMetricsOnce(
       awaitingUser ? 'awaiting_user' : 'completed',
       input.contextUsage,
@@ -127,7 +126,13 @@ export function createExecutionSettlement(
   };
 
   const settleFailedExecution = async (input: FailedExecutionSettlement): Promise<void> => {
-    const runIterationsUsed = await resolveRunIterationsUsed(input.stepCount);
+    // Durable checkpoint 是绝对累计量；异常路径与成功路径遵循同一口径，不能再加 Registry。
+    const runIterationsUsed = resolveRunIterationsUsed(
+      input.stepCount, input.runIterationsUsed,
+      input.runIterationsUsed === undefined && input.stepCount !== undefined
+        ? await ports.readRunIterationsUsed?.() : undefined,
+    );
+    const iterationsPatch = runIterationsUsed === undefined ? {} : { iterationsUsed: runIterationsUsed };
     publishMetricsOnce(input.kind, input.contextUsage, input.stepCount, runIterationsUsed);
 
     if (!persistenceDrainFailed) {
@@ -145,7 +150,7 @@ export function createExecutionSettlement(
           reason: typeof input.abortReason === 'string' ? input.abortReason : 'aborted',
           forceCleanup: false,
         },
-        { iterationsUsed: runIterationsUsed }
+        iterationsPatch
       );
     } else {
       await ports.runHandle.markFailed(
@@ -154,7 +159,7 @@ export function createExecutionSettlement(
           message: input.failureFact.error,
           recoverable: input.failureFact.retryable,
         },
-        { iterationsUsed: runIterationsUsed }
+        iterationsPatch
       );
     }
 
