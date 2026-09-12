@@ -10,6 +10,7 @@ import type {
   SceneGraphNodeSummary,
 } from '@plugin/slides/shared';
 import {
+  PptInspectToolResultSchema,
   buildNodeToolCapabilities,
   buildSlideTools,
   collectEditableTargetsBySlide,
@@ -733,7 +734,7 @@ describe('PptInspectTool', () => {
     );
 
     expect(tool.getExecutionSummary(raw)).toBe(
-      'ppt_inspect：Test Deck（pres-1@version-id-1），页 1，finding 0/0，根因组 0，P0/P1/P2=0/0/0。',
+      'ppt_inspect：Test Deck（pres-1@version-id-1），已查 1/1 页（1），所查范围 finding 0/0，根因组 0，P0/P1/P2=0/0/0。',
     );
     expect(tool.getExecutionSummary('{"data":{}}')).toBe('ppt_inspect：结果无法解析。');
   });
@@ -995,6 +996,37 @@ describe('PptInspectTool', () => {
 
 describe('PptInspectTool diagnostic findings', () => {
   const tool = new PptInspectTool();
+
+  it('20 页整稿必须显式分批，第二批的 P0 不被前十页的零问题掩盖', async () => {
+    const coordinator = makeMockCoordinator();
+    const base = makeMockRenderModel();
+    const slide = base.slides[0];
+    if (!slide) throw new Error('Missing fixture slide');
+    coordinator.getRenderModel.mockResolvedValue({
+      ...base,
+      slides: Array.from({ length: 20 }, (_, index) => ({
+        ...slide, slideId: `slide-${index + 1}`, index,
+        elements: index === 10 ? slide.elements.map((element, elementIndex) => elementIndex === 0
+          ? { ...element, box: { x: 9.4, y: 1, w: 1.2, h: 1, unit: 'in' as const } }
+          : element) : slide.elements,
+      })),
+    });
+    const context = makeContext(coordinator);
+    await expect(tool.run({ presentation_id: 'pres-1' }, context)).rejects.toThrow('PPT_INSPECT_SCOPE_REQUIRED');
+    const first = PptInspectToolResultSchema.parse(JSON.parse(await tool.run({
+      presentation_id: 'pres-1', slideNumber: 1, endSlide: 10,
+    }, context)));
+    const second = PptInspectToolResultSchema.parse(JSON.parse(await tool.run({
+      presentation_id: 'pres-1', slideNumber: 11, endSlide: 20,
+    }, context)));
+    expect(first.data.pages).toHaveLength(10);
+    expect(second.data.pages).toHaveLength(10);
+    expect(first.data.findingSummary.p0Count).toBe(0);
+    expect(second.data.findingSummary.p0Count).toBeGreaterThan(0);
+    expect(first.observation).toContain('coverage | partial (10/20)');
+    expect(second.observation).toContain('remaining pages are unverified');
+    expect(first.data.artifact.versionId).toBe(second.data.artifact.versionId);
+  });
 
   it('keeps CLI findings and ppt_inspect summary on the same inspection facts', async () => {
     const coordinator = makeMockCoordinator();

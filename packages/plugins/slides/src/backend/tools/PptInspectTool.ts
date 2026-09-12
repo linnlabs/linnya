@@ -101,7 +101,7 @@ export class PptInspectTool extends BaseTool {
       'observation 按统一 finding 合同给出问题代码、级别、证据、目标、源码位置与复验动作；data 只返回前端卡片需要的轻量统计。',
       '查看 deck.js 原文和页面组织请使用 read_file；修改时再用 edit_file。',
       '可选 heuristics=true 附加 Tier-2 低置信启发式提示。',
-      `单次最多返回 ${MAX_PAGES_PER_CALL} 页，超出部分需用 slideNumber+endSlide 分批查看。`,
+      `单次最多检查 ${MAX_PAGES_PER_CALL} 页；超出时返回 PPT_INSPECT_SCOPE_REQUIRED，不返回局部成功报告。请用 slideNumber+endSlide 分批检查。`,
     ].join(' ');
   }
 
@@ -226,7 +226,8 @@ export class PptInspectTool extends BaseTool {
       const summary = result.data.findingSummary;
       return `ppt_inspect：${result.data.document.title}`
         + `（${result.data.artifact.presentationId}@${result.data.artifact.versionId}），`
-        + `页 ${pages}，finding ${summary.uniqueFindingCount}/${summary.rawFindingCount}，`
+        + `已查 ${result.data.selection.shownSlideNumbers.length}/${result.data.artifact.slideCount} 页（${pages}），`
+        + `所查范围 finding ${summary.uniqueFindingCount}/${summary.rawFindingCount}，`
         + `根因组 ${summary.rootGroupCount}，`
         + `P0/P1/P2=${summary.p0Count}/${summary.p1Count}/${summary.p2Count}。`;
     } catch {
@@ -257,6 +258,19 @@ export class PptInspectTool extends BaseTool {
       ...(input.focus ? { focus: input.focus } : {}),
     });
     const { feedback, renderModel: limitedModel, truncated } = inspection;
+    if (truncated) {
+      const requested = inspection.requestedSlideNumbers;
+      const ranges: string[] = [];
+      for (let index = 0; index < requested.length; index += MAX_PAGES_PER_CALL) {
+        const batch = requested.slice(index, index + MAX_PAGES_PER_CALL);
+        ranges.push(`slideNumber=${batch[0]},endSlide=${batch[batch.length - 1]}`);
+      }
+      // 未完整检查的请求没有可交付的成功统计，防止前半稿的 P0=0 被当作整稿通过。
+      throw new Error(`PPT_INSPECT_SCOPE_REQUIRED: presentation=${presentationId}, version=${inspection.versionId}, `
+        + `totalSlides=${inspection.totalSlideCount}, requestedSlides=${requested.length}. `
+        + `每次最多检查 ${MAX_PAGES_PER_CALL} 页。请依次调用 ${ranges.join('；')}。`
+        + '本次未返回完整检查结果，不能据此宣称任何请求范围已验收。');
+    }
 
     const observationData: PptInspectObservationData = {
       presentationId: limitedModel.presentationId,

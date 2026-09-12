@@ -40,6 +40,12 @@ export function buildInspectionObservation(input: InspectionObservationInput): s
       + ` | roots=${summary.rootGroupCount} | P0=${summary.p0Count}`
       + ` | P1=${summary.p1Count} | P2=${summary.p2Count}`,
   ];
+  if (input.truncated || input.shownSlideNumbers.length < input.totalSlideCount) {
+    lines.splice(1, 0, `coverage | partial (${input.shownSlideNumbers.length}/${input.totalSlideCount})`
+      + ' | counts apply only to shown pages; remaining pages are unverified, not passed');
+  } else {
+    lines.splice(1, 0, `coverage | full (${input.totalSlideCount}/${input.totalSlideCount})`);
+  }
 
   if (nodeCatalog.entries.length > 0) {
     lines.push('nodes');

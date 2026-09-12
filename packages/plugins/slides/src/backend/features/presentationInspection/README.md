@@ -28,6 +28,8 @@ PptCoordinator.inspectPresentation
 
 ## Agent 投影与工具结果
 
+`ppt_inspect` 单次最多 10 页。选择超过上限时返回 `PPT_INSPECT_SCOPE_REQUIRED`，包含真实 version、总页数与建议分批范围，不返回只检查前十页的成功报告。成功报告和历史摘要均声明覆盖范围：分批得到的零 finding 只代表当前页范围，其他页是未检查而非通过。整稿验收必须覆盖同一最终 version 的全部页；CLI 完整机器检查不受此 Agent 单次输出预算限制。
+
 inspect 先按完整 evidence 去重，再生成两种有证据的根因组：quality 明确提供的约束 `rootCauseKey`；以及至少两个 finding 指向完全相同作者源码范围的 `shared_source` 组。后者表示同一作者控制点可以一次修复多处后果，不会用“同页、同父节点、同 code”或相似文案猜根因；页级与不可用位置也不参与共享源码归组。
 
 源码定位只有一个概念：**作者应修改的 `deck.js` 位置**。`DiagnosticSourceRef.kind` 只说明该位置与最终节点的关系，不再同时暴露“工厂位置”和“实例位置”：

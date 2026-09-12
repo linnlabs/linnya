@@ -3,6 +3,7 @@ import { buildPrompt } from '@plugin/backend/agentRegistry';
 import { SLIDES_AGENT_ID, SlidesPromptKeys } from '@plugin/slides/shared';
 import { SLIDES_AGENT_PROMPT } from './prompt';
 import { slidesToolManifest } from '../../toolManifest';
+import { SLIDES_CONTEXT_POLICY, SLIDES_FINALIZATION_STEPS } from './executionPolicy';
 
 function buildSystemPrompt(): string {
   return buildPrompt(SLIDES_AGENT_PROMPT);
@@ -23,11 +24,7 @@ export const SLIDES_AGENT_DEFINITION: AgentDefinition = {
   defaultMode: 'agent',
   description: 'PPT 场景专用 SlidesAgent',
   config: {
-    contextPolicy: {
-      profileId: 'agent',
-      toolHistory: { strategy: 'per-run', keepLatestRuns: 2 },
-      systemReminder: { enabledRuleIds: ['max_steps_force_final_answer', 'last_steps_hint'] },
-    },
+    contextPolicy: SLIDES_CONTEXT_POLICY,
     enableTools: true,
     availableTools: slidesToolManifest.agentTools.slidesAgent,
     skill: {
@@ -40,7 +37,7 @@ export const SLIDES_AGENT_DEFINITION: AgentDefinition = {
     preferredModelCapability: 'tool_calling',
     stepPolicy: {
       kind: 'final_answer',
-      lastStepsHintThreshold: 12,
+      lastStepsHintThreshold: SLIDES_FINALIZATION_STEPS,
     },
   },
   task: {

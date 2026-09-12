@@ -4,7 +4,7 @@ description: Plan, create, edit, inspect, and visually verify Linnya Slides thro
 metadata:
   author: linnya
   pluginId: slides
-  version: "7.13"
+  version: "7.15"
 ---
 
 # Slides Design
@@ -44,6 +44,14 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 对象选择遵循语义优先：文字、原生数学公式、数据图表、表格、照片和简单可编辑几何继续使用 Text/Formula、Chart、Table、Image、Shape；复杂流程、架构或机制示意图在“整体编辑即可”时使用 `createSvgGraphic()`；需要手绘插画、笔触、纸面边框或水彩时使用 `createBrushArtwork()`。Brush 通过有序 layers 组合 stroke、watercolor/wash/mass、hatch、field 与几何 marks；复杂画面优先用多个语义图层和不同质感，不要把排线当成唯一纹理。它仍是带显式纯色背景的不透明图片资产，不是透明贴图：背景色应与所在纯色区域一致，下面是照片、渐变或纹理时不要叠加使用。文字和标签用原生 Text 覆盖；块公式和段内公式都使用正式 Formula 语义，不要画成 Brush、SVG 或图片。精确合同见 [`syntax.md`](./references/syntax.md)。
 
 图表可通过轴、标签、逐系列样式、单点高亮、堆叠和显式双轴组合表达分析重点；只读取 [`syntax.md` 的 Chart 合同](./references/syntax.md#9-chart) 与相关原子示例，不机械套用示例版式。图表 `chartStyle` 与表格 `border` 是跨预览/PPTX 的正式语义，不改写成 `chartOptions`、`tableOptions` 或其他底层引擎字段。
+
+科研数据先保存可复算的派生结果和计算规则，再用同一组结构化常量生成图表、图例、表格与跨页摘要。
+明确样本数、分母、单位、时间范围、缺失/零/删失值、聚合方法和真实/模拟来源；不要用人工抄写的
+第二套数字维护摘要。视觉调整和排障不得改变这些不变量；日期标签必须保留年份与真实日期，
+不能为缩短标签制造不存在的月份。修改后重新核对数据数量、范围、总量、归一化与重复引用。
+用 SVG/Shape 表达不支持的复杂图表时，还要验证位置、对数刻度、面积/宽度等实际编码与文字说明
+一致；数值相等不代表图形表达正确。缺少可操作的渲染错误时先定位合同或报告阻碍，不能靠删数据、
+删轴或删单位试错，把已经正确的内容改错。
 
 ### 查看与检查
 - 看 source、页面内容与代码组织：`read_file`。
@@ -93,9 +101,14 @@ presentation-owned 资产。
 
 ## 完成标准
 
+长任务使用 `task_write` 记录当前阶段（调研/建稿/验收）、下一批页面与可验证的退出条件。每个建稿批次和验收轮次只更新一次进度：页数、当前 versionId、已查页范围、未解决的 P0/P1。调研形成足以支撑逐页计划的证据后进入建稿；计划内页面完整且可编译后进入验收。不要用增加版本或工具调用次数充当进展。
+
+验收按“收齐同范围证据 → 合并根因修改 → 新版本复验”推进。`ppt_inspect` 单次最多十页，超出会返回 `PPT_INSPECT_SCOPE_REQUIRED` 与建议范围；必须分批覆盖请求页面。`coverage=partial` 的计数只代表所查页，不能据此前几页结果宣称整稿通过。连续两轮同范围的 P0/P1 问题没有实质改善时改变修复方法，三轮仍无进展则保留可用成果并说明具体阻碍、未验收页和需要的决定；不能继续无依据微调或声称已完成。最终版本的必要检查完成后立即交付。
+
 - 内容与用户批准的计划或局部修改要求一致；事实和来源没有被臆造。
 - 新建或整体改版的文稿在 `compose({ theme })` 中声明了视觉系统。
 - 最终内容已核对语言一致性与单位表达，尤其区分百分比、百分点和其他容易混淆的口径。
 - 写入 observation 中没有未处理的 error；inspect 的 `buildStatus` 可用，findings 已结合证据和设计意图逐项判断。
 - 需要视觉确认的页面已经按最终 revision 的策略 render 并检查，而不是只凭 source 猜效果，也不是沿用较早 revision 的截图。
+- 仅能对真实成功渲染并已读图的页面声明视觉检查完成；render 失败页、未读页与旧版本图片都不能计入当前全页验收。文稿中的检查声明和最终答复遵循相同要求。
 - 最终渲染已经逐项通过 [`design.md`](./references/design.md#高频问题重点复核) 的高频问题复核；`inspect` 通过或最终回答自述不能代替像素判断。
