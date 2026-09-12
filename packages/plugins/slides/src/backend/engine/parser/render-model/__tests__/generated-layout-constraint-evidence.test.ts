@@ -1,7 +1,11 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { isSlideRenderModel } from '@plugin/slides/shared/renderModel';
+import type { PresentationRenderModel } from '@plugin/slides/shared/renderModel';
 import { LayoutLint } from '../../../quality/LayoutLint';
 import { renderModelToLintInfo } from '../../../quality/renderModelToLintInfo';
+import { SpatialAnalyzer } from '../../../quality/SpatialAnalyzer';
+import { classifyDiagnosticPriority } from '../../../quality/definitions';
+import { buildToolFeedbackPayload } from '../../../../tools/inspectFeedback/feedbackPayload';
 import { compilePresentationComposePayload } from '../../../../features/presentationBuildExecution/functions/compilePresentationComposePayload';
 import { buildDeckSpecFromDirectInput, readCompiledDirectComposeInput } from '../../../../codegen/compose/presentationComposeInput.js';
 import { compileFlexInput } from '../../../../codegen/compose/flex-layout/FlexLayoutCompiler.js';
@@ -14,12 +18,14 @@ describe('generated layout constraint evidence pipeline', () => {
     await initYoga();
   });
 
-  it('装饰意图与出血授权经过 Worker DTO、DeckSpec、RenderModel 到达诊断', async () => {
+  it('装饰意图与出血授权经过 Worker DTO、DeckSpec、RenderModel 和正式 finding 准入', async () => {
     const compiled = await compilePresentationComposePayload({
       title: 'Bleed intent',
       slides: [{ _type: 'Slide', children: [
         { _type: 'Shape', role: 'decoration', bleed: 0.2, x: -0.1, y: 1, width: 2, height: 1, fill: '#123456' },
         { _type: 'Shape', role: 'background', x: -0.3, y: 3, width: 2, height: 1, fill: '#654321' },
+        { _type: 'Shape', role: 'decoration', x: 9.8, y: 1, width: 1, height: 1, fill: '#123456' },
+        { _type: 'Shape', x: 9.8, y: 3, width: 1, height: 1, fill: '#654321' },
       ] }],
     });
     if (!compiled.ok) throw new Error(compiled.message);
@@ -29,13 +35,26 @@ describe('generated layout constraint evidence pipeline', () => {
     const slide = mapGeneratedSlide(deck.slides[0], 0, resolveRenderDefaults(deck.theme), new Map());
     expect(isSlideRenderModel(slide)).toBe(true);
     expect(slide.elements[0].editableTarget?.semanticRole).toBe('decoration');
-    const info = renderModelToLintInfo({
+    const model: PresentationRenderModel = {
       presentationId: 'test', version: 1, title: 'Bleed intent', sourceKind: 'generated',
       slideSize: { width: 10, height: 5.625, unit: 'in' }, slides: [slide],
-    });
+      capabilities: { hasSemanticRender: true, hasReferencePreview: false, hasHitTest: true, hasSelection: true },
+    };
+    const info = renderModelToLintInfo(model);
     const bounds = new LayoutLint().lint(info).issues.filter(issue => issue.code === 'out_of_bounds');
-    expect(bounds).toHaveLength(1);
-    expect(bounds[0].severity).toBe('info');
+    expect(bounds.map(issue => issue.severity)).toEqual(['info', 'info', 'warning']);
+
+    // 只验证 producer 会漏掉 registry 漂移；必须穿过 Agent/CLI 共用的最终准入边界。
+    const spatial = new SpatialAnalyzer();
+    const feedback = await buildToolFeedbackPayload('test', 'revision-1', model, new Map(), {
+      spatialAnalyzer: { analyzeSpatial: async ({ slideNodes }) => spatial.analyze([...slideNodes]) },
+    });
+    expect(feedback.buildStatus.state).toBe('ready');
+    const findings = feedback.findings.filter(finding => finding.code === 'out_of_bounds');
+    expect(findings.map(finding => finding.severity)).toEqual(['info', 'info', 'warning']);
+    expect(findings.map(classifyDiagnosticPriority)).toEqual(['P2', 'P2', 'P0']);
+    expect(findings.map(finding => finding.evidence.node.nodeId)).toEqual(slide.elements.slice(1).map(node => node.id));
+    expect(findings.map(finding => finding.evidence.violatedSides)).toEqual([['left'], ['right'], ['right']]);
   });
 
   it('从 Flex 编译事实无损进入 DeckSpec、RenderModel 与 strict codec', () => {

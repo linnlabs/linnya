@@ -50,3 +50,5 @@
 上游证据来源与限制见 [`../README.md`](../README.md)。模型可见的低 token 投影见 [`../../../features/presentationInspection/README.md`](../../../features/presentationInspection/README.md)，完整机器报告见 [`../../../features/presentationCli/README.md`](../../../features/presentationCli/README.md)。
 
 生成内容可显式声明 `background / decoration`，空间规则共用角色判定；越界仍保留 evidence，但该角色降为 info，节点 bleed 范围内不报告越界。文字后方 opacity ≤ 0.15 的细线及相交比例低于 5% 的细线不按确定遮挡报告。页脚/来源/页码不参与正文字体层级统计；纯符号的补字字体不增加正文 family 数量，替换和未解析事实仍可观察。CLI finding 外包络的 `action` 复用 inspection 处置目录，不扩展本层 strict schema。
+
+`out_of_bounds` 的 registry 因而同时准入 `warning / info`，置信度仍仅为 high：普通内容越界派生 P0，显式背景/装饰越界派生 P2。涉及角色或严重度的生产回归必须覆盖到 inspection 的正式 finding admission，不能只断言 LayoutLint 的中间 draft；否则会出现规则已正确保留设计意图、最终整次检查却被合同拒绝的漂移。
