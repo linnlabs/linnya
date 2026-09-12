@@ -16,6 +16,7 @@ export { createWorkspaceLlmInputMaterializer } from './orchestration/createWorks
 export { assertLlmInputMaterialized } from './orchestration/assertLlmInputMaterialized';
 export { ANTHROPIC_MESSAGES_IMAGE_INPUT_PROFILE } from './registry/anthropicMessagesImageInputProfile';
 export { CHAT_COMPLETIONS_IMAGE_INPUT_PROFILE } from './registry/chatCompletionsImageInputProfile';
+export { DEEPSEEK_CHAT_IMAGE_INPUT_PROFILE } from './registry/deepSeekChatImageInputProfile';
 export { defaultImageInputProcessingProfileRegistry } from './registry/defaultImageInputProcessingProfileRegistry';
 export { OLLAMA_CHAT_IMAGE_INPUT_PROFILE } from './registry/ollamaChatImageInputProfile';
 export { OPENAI_RESPONSES_IMAGE_INPUT_PROFILE } from './registry/openAiResponsesImageInputProfile';

@@ -13,6 +13,8 @@ export interface ImageInputRouteLimits {
   readonly maxImages: number;
   readonly maxImageBytes: number;
   readonly maxTotalImageBytes: number;
+  /** 厂商按整次请求图片数量收紧每边尺寸；未声明时不额外限制 Workspace 已核验的尺寸。 */
+  readonly maxImageEdgePixels?: (imageCount: number) => number;
 }
 
 interface ImageInputProcessingProfileBase {

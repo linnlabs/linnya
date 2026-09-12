@@ -35,11 +35,9 @@ describe('ModelInferenceRouteSchema', () => {
 
   it('只在容量字段真正缺失时规范化为 256K/16K canonical route', () => {
     const route = routeFor(LANGUAGE_INFERENCE_ROUTE_PROFILES[1]);
-    const {
-      context_window_tokens: _contextWindowTokens,
-      max_output_tokens: _maxOutputTokens,
-      ...withoutTokenLimits
-    } = route;
+    const withoutTokenLimits = Object.fromEntries(Object.entries(route).filter(
+      ([field]) => field !== 'context_window_tokens' && field !== 'max_output_tokens'
+    ));
 
     expect(ModelInferenceRouteSchema.parse(withoutTokenLimits)).toMatchObject({
       context_window_tokens: DEFAULT_LANGUAGE_CONTEXT_WINDOW_TOKENS,
@@ -97,7 +95,9 @@ describe('ModelInferenceRouteSchema', () => {
 
   it('拒绝缺少 continuation 或使用 profile 未批准的认证方式', () => {
     const route = routeFor(LANGUAGE_INFERENCE_ROUTE_PROFILES[1]);
-    const { continuation: _continuation, ...withoutContinuation } = route;
+    const withoutContinuation = Object.fromEntries(Object.entries(route).filter(
+      ([field]) => field !== 'continuation'
+    ));
     expect(ModelInferenceRouteSchema.safeParse(withoutContinuation).success).toBe(false);
     expect(ModelInferenceRouteSchema.safeParse({ ...route, auth_profile: 'none' }).success).toBe(
       false
@@ -134,6 +134,14 @@ describe('ModelInferenceRouteSchema', () => {
     expect(projectLanguageInferenceImageInputSupport('ollama_chat', true)).toEqual({
       user_image: true,
       tool_result_image: true,
+    });
+    expect(projectLanguageInferenceImageInputSupport('deepseek_chat', true)).toEqual({
+      user_image: true,
+      tool_result_image: true,
+    });
+    expect(projectLanguageInferenceImageInputSupport('deepseek_chat', false)).toEqual({
+      user_image: false,
+      tool_result_image: false,
     });
     expect(projectLanguageInferenceImageInputSupport('openai_responses', false)).toEqual({
       user_image: false,

@@ -8,21 +8,21 @@ route 的最终输入。
 
 - `definitions/`：Host 图片处理 profile、route
   limits、estimator 与 materialization guard 合同。
-- `functions/`：收集 durable 图片、判断未物化引用、Provider-independent
-  token 估算纯函数。
+- `functions/`：收集 durable 图片、判断未物化引用、执行 profile 声明的容量/尺寸规则和 token
+  估算纯函数。
 - `orchestration/`：核对 admission
   evidence、route/profile、上下文预算和 Workspace 解析结果，再生成 resolved
   attachments。
 - `registry/`：已验证 route
   capability 到冻结 profile 的唯一绑定。默认注册表只绑定生产 AI SDK
-  route；Ollama 原生 Chat 使用独立的 inline base64 profile。
+  route；DeepSeek Chat 和 Ollama 原生 Chat 均使用自己的 inline profile。
 - `index.ts`：Host public contract；外部模块不得导入内部文件。
 
 ## 负责与不负责
 
 本模块负责：
 
-- 在读取 bytes 前校验图片数量、单图/总字节和上下文预算。
+- 在读取 bytes 前校验图片数量、单图/总字节、profile 声明的每边尺寸和上下文预算。
 - 产品入口把单条消息的图片聚合上限设为 100 MiB，具体 provider/transport profile 可以
   根据 wire 编码、厂商合同或请求体容量进一步收窄；当前 Anthropic Messages 仍保留更严格的
   20 MiB raw bytes profile。
@@ -64,6 +64,34 @@ transport。
 - 图片 token 预算与 raw bytes 上限独立生效。用户图片和 tool result 图片共享同一条 active
   route 的聚合门禁，因此连续读取多张 Slides 截图会累积到同一个总量。
 
+## DeepSeek Chat 图片 profile
+
+`deepSeekChatImageInputProfile.ts` 只绑定正式 `DEEPSEEK_CHAT` capability，不按模型别名、URL
+或通用 Chat surface 猜测。登记前已由 Provider package 的版本化 SDK codec 与受控双轮请求验证
+user/tool 图片编码；这里补充独立的 Host admission/materialization 规则，不替代模型自身的
+`input_support` 准入，也不扩展 Files API 或修改图片。
+
+限制依据 [DeepSeek Vision 官方合同](https://api-docs.deepseek.com/guides/vision/)（核对日期
+2026-09-12），区分厂商约束与 Host 策略：
+
+| 项目 | 本 profile 的规则与来源 |
+| --- | --- |
+| 单图原始字节 | 官方 inline 上限 32 MiB |
+| 请求图片数 | 官方上限 600 张，user/tool 和跨消息历史合并计算 |
+| 每边像素 | 官方上限 8192；整次请求达到 15 张时降至 4096 |
+| 聚合原始字节 | Host 收窄至 32 MiB；官方无 `file_id` 的 raw 上限是 64 MiB，但完整请求体另受 48 MiB 限制 |
+| 图片上下文估计 | 每图按官方公布的 1024 token 上界接纳，不是精确计费或其他 Provider 的 patch 公式 |
+
+Host 的 32 MiB raw 策略经 base64 编码约占 42.67 MiB，给 48 MiB 请求体留出余量；这里没有
+Provider 最终 JSON body，因此不能证明包含非图片正文、工具 schema 等内容后的完整请求一定
+小于 48 MiB。超长非图片内容仍可能触发 Provider 的正式请求体错误，不能吞掉或宣称已全面验收。
+Workspace/Canonical 当前仅接纳 JPEG、PNG、WebP；厂商支持 GIF 不意味着 Host 自动扩大媒体合同。
+
+每边尺寸在读取 bytes 前按 durable metadata 检查；通过后仍由 Workspace resolver 核对账本、hash、
+真实 MIME 和解码尺寸，声明通过不代表真实图片已经通过。新增工具图片使计数达到 15 时，历史图片
+也必须按 4096 px 重检。尺寸失败保持 `ROUTE_LIMIT_EXCEEDED`，附真实 actual/limit 与附件位置；
+Linnkit 0.37.x 尚未定义尺寸专属 `limit_kind`，该可选字段不填，不能冒用 bytes 类型。
+
 ## 测试要求
 
 - 覆盖 user/tool placement、顺序、100/101 图片边界、100 MiB 聚合总字节、单图/总字节、fallback
@@ -72,3 +100,6 @@ transport。
 - 负向断言 Provider 输入不含 durable id、resource id、hash、路径等 Host 字段。
 - 新 route 必须先有真实 converter 与受控请求测试，再加入默认 profile
   registry；禁止只添加常量或快照测试。
+- DeepSeek 回归通过默认 registry、真实 Workspace 资产解析和公共 LlmCaller 检查三种图片的
+  user/tool 顺序与无 Host identity 泄露；另覆盖 600/601、14→15 联动尺寸、单图/总字节、token
+  边界，以及声明通过但真实图片尺寸不符或损坏时不进入 Provider 的失败路径。

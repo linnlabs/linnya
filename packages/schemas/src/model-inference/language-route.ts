@@ -91,7 +91,8 @@ export const LANGUAGE_INFERENCE_ROUTE_PROFILES = [
     api_surface: 'openai_chat_completions',
     capability_id: LANGUAGE_INFERENCE_CAPABILITY_IDS.DEEPSEEK_CHAT,
     auth_profiles: ['bearer'],
-    image_input_support: { user_image: true, tool_result_image: false },
+    // 专属 SDK 的版本化图片 codec 已验收；仍与模型自身 image 能力相交，不借用通用 Chat。
+    image_input_support: { user_image: true, tool_result_image: true },
   },
   {
     id: 'minimax_chat',

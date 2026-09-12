@@ -20,6 +20,7 @@ import {
   collectDurableImageInputs,
   type DurableImageInputPosition,
 } from '../functions/collectDurableImageInputs';
+import { assertImageInputRouteLimits } from '../functions/assertImageInputRouteLimits';
 
 function failMapping(
   activeModelId: string,
@@ -64,64 +65,6 @@ function assertEvidenceMatchesInputs(params: {
       failMapping(params.activeModelId, input, 'Image admission evidence does not match final context.');
     }
   });
-}
-
-function assertRouteLimits(params: {
-  readonly activeModelId: string;
-  readonly profile: ImageInputProcessingProfile;
-  readonly inputs: readonly DurableImageInputPosition[];
-}): void {
-  const { limits } = params.profile;
-  if (params.inputs.length > limits.maxImages) {
-    throw new LlmImageInputError(
-      LLM_IMAGE_INPUT_ERROR_CODES.ROUTE_LIMIT_EXCEEDED,
-      'Image count exceeds the active route limit.',
-      {
-        active_model_id: params.activeModelId,
-        profile_id: params.profile.id,
-        limit_kind: 'image_count',
-        actual_value: params.inputs.length,
-        limit_value: limits.maxImages,
-      },
-    );
-  }
-
-  let totalBytes = 0;
-  for (const input of params.inputs) {
-    totalBytes += input.reference.byteLength;
-    if (input.reference.byteLength > limits.maxImageBytes) {
-      throw new LlmImageInputError(
-        LLM_IMAGE_INPUT_ERROR_CODES.ROUTE_LIMIT_EXCEEDED,
-        'Image bytes exceed the active route limit.',
-        {
-          active_model_id: params.activeModelId,
-          placement: input.placement,
-          message_id: input.messageId,
-          attachment_id: input.reference.id,
-          resource_id: input.reference.resourceId,
-          message_index: input.messageIndex,
-          attachment_index: input.attachmentIndex,
-          profile_id: params.profile.id,
-          limit_kind: 'single_image_bytes',
-          actual_value: input.reference.byteLength,
-          limit_value: limits.maxImageBytes,
-        },
-      );
-    }
-  }
-  if (totalBytes > limits.maxTotalImageBytes) {
-    throw new LlmImageInputError(
-      LLM_IMAGE_INPUT_ERROR_CODES.ROUTE_LIMIT_EXCEEDED,
-      'Total image bytes exceed the active route limit.',
-      {
-        active_model_id: params.activeModelId,
-        profile_id: params.profile.id,
-        limit_kind: 'total_image_bytes',
-        actual_value: totalBytes,
-        limit_value: limits.maxTotalImageBytes,
-      },
-    );
-  }
 }
 
 function assertContextBudget(params: {
@@ -185,8 +128,8 @@ function replaceAttachments(
   let offset = 0;
   return messages.map(message => {
     if (!('attachments' in message)) return message;
-    const attachmentCount = message.attachments?.length ?? 0;
-    const { attachments: _durableAttachments, ...messageWithoutDurableAttachments } = message;
+    const { attachments: durableAttachments, ...messageWithoutDurableAttachments } = message;
+    const attachmentCount = durableAttachments?.length ?? 0;
     if (attachmentCount === 0) return messageWithoutDurableAttachments;
     const attachments = resolved.slice(offset, offset + attachmentCount);
     offset += attachmentCount;
@@ -211,7 +154,7 @@ export function createWorkspaceLlmInputMaterializer(params: {
       if (!profile) {
         failMapping(attempt.activeModelId, inputs[0], 'No image input processing profile is registered for the active model route.');
       }
-      assertRouteLimits({ activeModelId: attempt.activeModelId, profile, inputs });
+      assertImageInputRouteLimits({ activeModelId: attempt.activeModelId, profile, inputs });
       assertContextBudget({
         activeModelId: attempt.activeModelId,
         profile,
