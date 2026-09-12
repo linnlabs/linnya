@@ -116,7 +116,7 @@ Core 和具体 Provider packages。
 - production → `@linnlabs/linnkit-provider-ai-sdk/conformance`。
 
 `@linnlabs/linnkit` 是显式 peer dependency，本 package 只使用公开 `/ports` 和
-`/contracts`。当前 peer 最低为 `0.32.2`，开发与 Host 装配使用同一精确版本，以消费已修复的正式声明产物。
+`/contracts`。当前 peer 为 `^0.37.0`，开发与 Host 装配使用同一精确版本，以消费已修复的正式声明产物。
 `ai`、`@ai-sdk/provider`、全部 language Provider
 package、OpenRouter 官方 package 和经过审核的 `ai-sdk-ollama` community package 是本
 package 的精确直接依赖；根应用不再替它拥有这些版本。Embedding、Image
@@ -178,6 +178,43 @@ package，不构成退回通用 codec 的理由。
 
 模型目录更新不修改本 package factory；Provider
 package 更新也不修改 Host 的模型资料、onboarding、Linnkit 或 Agent 语义。
+
+### DeepSeek 原生工具图片的版本化上游修复
+
+当前使用 `@ai-sdk/deepseek@3.0.44`。该版本修复 `deepseek-flash` 的跨用户轮次
+reasoning 回放，并保留空 tool-call delta 前后的 reasoning 流。模型 ID 与视觉元数据仍由
+Host Catalog 拥有；旧 `deepseek-v4-flash-vision-exp` 是否路由至新版模型，以
+[DeepSeek 官方更新](https://api-docs.deepseek.com/updates/)为准，不能由本 package 猜测。
+
+2026-09-12 对 npm 正式 `3.0.44` 进行了两轮真实 codec 复现：user 图片正常编码，
+tool 的 `content` 输出却被 JSON.stringify 成含图片字节对象的普通文本。
+[官方 Chat Completions 合同](https://api-docs.deepseek.com/api/create-chat-completion/)已声明
+tool.content 可以是文本、image_url 或 file 内容块数组；仅修改 Host 能力布尔值无法补齐编码。
+当前通过根 `pnpm-workspace.yaml` 的精确 patchedDependencies 与
+[`patches/@ai-sdk__deepseek@3.0.44.patch`](../../patches/@ai-sdk__deepseek@3.0.44.patch)
+维护这一已复现缺口，不直接修改安装目录、不增加 Host fetch 重写，也不复制 body/SSE 实现。
+
+补丁只将原有 user 图片编码提取为 SDK 内部共用函数，再用于 tool content；工具角色、
+tool_call_id、文本/JSON/拒绝输出、reasoning、usage、认证和 zero-retry 仍由同一个上游 SDK
+拥有。不创建 synthetic user 消息。源码和正式 ESM/内部入口同步修改；这些上游修改文件带有
+修改者/日期说明，Apache-2.0 许可及上游署名保留。旧 source map 已不再从修改后的入口引用，
+防止错误映射；Host 构建按修改后的字节生成自己的 bundle 证据。
+
+替代方案已经核对：最新官方版本仍有该缺口，公开 `/internal` 只开放 model 类，私有 getArgs
+不能作为稳定 codec hook；现有 OpenAI Chat adapter 同样文本化 tool content，换 adapter
+不能解决问题；fetch 重写会产生第二份消息/字节转换真源；引入 Responses 属于不同 surface
+准入，不是这次补丁的必要条件。因此采用精确版本补丁，并以上游发布原生 tool image 支持为退出条件：
+届时优先升级、删除补丁和 patchedDependencies，重跑同一 conformance，禁止累积兼容分支。
+
+`conformance/providers/deepSeekProviderCodec.integration.test.ts` 负责新版 ID、旧视觉别名、
+历史 reasoning、用户/工具图片、非法图片拒绝和两轮 usage 的业务验收；pack smoke 同时检查
+CJS/ESM tarball 入口的原生 tool 图片数组。Backend 的 `tsup.backend.config.ts` 在构建期内联
+经过 frozen patch 安装的 SDK，`guard:backend-ai-sdk-runtime` 禁止运行时外部加载未修复的 SDK；
+发行 NOTICE 仍需由根正式生成器刷新。本内部 adapter tarball 不承诺脱离宿主 frozen workspace
+独立安装后仍携带 pnpm patch，不能当作公开 npm 分发制品。
+
+离线 codec 通过只证明编码合同；Host placement 准入与真实 Provider 图片验收是另外两道门禁。
+不得由本 patch 自行放宽 Host 的 tool_result_image，也不能把模型原生视觉与 App 工具图片链混为一谈。
 
 `conformance:affected` 支持重复传入 `--package <npm-name>` 和
 `--capability <id>`；`--all` 选择全部 capability，`--list`

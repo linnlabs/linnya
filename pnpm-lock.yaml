@@ -48,6 +48,9 @@ overrides:
   yaml: 2.8.3
 
 patchedDependencies:
+  '@ai-sdk/deepseek@3.0.44':
+    hash: 6245db93cefdc19b9d9d5da6cbf53b8a43533258c9afe80fe685fde64a64178e
+    path: patches/@ai-sdk__deepseek@3.0.44.patch
   pptxgenjs@4.0.1:
     hash: efff727b13af61964ed2c0dec9a5cb62d6290060c68cb4d0704874b62c608570
     path: patches/pptxgenjs@4.0.1.patch
@@ -594,8 +597,8 @@ importers:
         specifier: 3.0.39
         version: 3.0.39(zod@3.25.76)
       '@ai-sdk/deepseek':
-        specifier: 3.0.35
-        version: 3.0.35(zod@3.25.76)
+        specifier: 3.0.44
+        version: 3.0.44(patch_hash=6245db93cefdc19b9d9d5da6cbf53b8a43533258c9afe80fe685fde64a64178e)(zod@3.25.76)
       '@ai-sdk/fireworks':
         specifier: 3.0.42
         version: 3.0.42(zod@3.25.76)
@@ -1022,8 +1025,8 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/deepseek@3.0.35':
-    resolution: {integrity: sha512-j3OobU0uEK6/UN3TlP0w6N6n+mqmCkuNiHA105MiT2AFG4rWydKqZQPkI/t8B5QL6WP8oJ30RtX9sqEFFXDuMw==}
+  '@ai-sdk/deepseek@3.0.44':
+    resolution: {integrity: sha512-yhHGVJFpM5tdhhr33lE6Co8ziu8dNZxk7j5r3L3Pc04NMCTDmnXZ072FY4tqRDsRtIfBEgWqm/zPXNRvdHb44w==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -1087,6 +1090,16 @@ packages:
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/provider-utils@5.0.40':
+    resolution: {integrity: sha512-zsXPwSAQ9mRJ2hvyITaLOYUyuGrBmzFhJXOg4mllGmla1PfNxZcm4GwqMiV2xQaDgcgBMdUGxXkp9xekZZNIkg==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/provider@4.0.14':
+    resolution: {integrity: sha512-yukP2tbcQQErG5gLCMBGvpvb/rM3D3KlTKG6eKKOdNHLHqtNNDEeBxdYrY/JL+O76B2ig5dXY19H/f1HFSvRiQ==}
+    engines: {node: '>=22'}
 
   '@ai-sdk/provider@4.0.8':
     resolution: {integrity: sha512-aWO7iwhFUGf347tCwNGggggfmZigaSu7TF739IZSrWWABUp7zkb4Cr3fMqvBe5EIS7ABJJu3Cadn0g/zs1G0QQ==}
@@ -6495,10 +6508,10 @@ snapshots:
       '@ai-sdk/provider-utils': 5.0.32(zod@3.25.76)
       zod: 3.25.76
 
-  '@ai-sdk/deepseek@3.0.35(zod@3.25.76)':
+  '@ai-sdk/deepseek@3.0.44(patch_hash=6245db93cefdc19b9d9d5da6cbf53b8a43533258c9afe80fe685fde64a64178e)(zod@3.25.76)':
     dependencies:
-      '@ai-sdk/provider': 4.0.8
-      '@ai-sdk/provider-utils': 5.0.32(zod@3.25.76)
+      '@ai-sdk/provider': 4.0.14
+      '@ai-sdk/provider-utils': 5.0.40(zod@3.25.76)
       zod: 3.25.76
 
   '@ai-sdk/fireworks@3.0.42(zod@3.25.76)':
@@ -6566,6 +6579,19 @@ snapshots:
       eventsource-parser: 3.1.0
       undici: 7.29.1
       zod: 3.25.76
+
+  '@ai-sdk/provider-utils@5.0.40(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.14
+      '@standard-schema/spec': 1.1.0
+      '@workflow/serde': 4.1.0
+      eventsource-parser: 3.1.0
+      undici: 7.29.1
+      zod: 3.25.76
+
+  '@ai-sdk/provider@4.0.14':
+    dependencies:
+      json-schema: 0.4.0
 
   '@ai-sdk/provider@4.0.8':
     dependencies:

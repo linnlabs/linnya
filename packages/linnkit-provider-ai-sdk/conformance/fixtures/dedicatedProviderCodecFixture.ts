@@ -133,6 +133,7 @@ export async function runToolRoundTrip(args: {
   readonly firstResponse: readonly Record<string, unknown>[];
   readonly secondResponse: readonly Record<string, unknown>[];
   readonly responseEncoding?: 'sse' | 'ndjson';
+  readonly initialMessages?: readonly CanonicalInferenceMessage[];
   readonly toolResultContent?: Extract<CanonicalInferenceMessage, { role: 'tool' }>['content'];
 }): Promise<{
   readonly requests: readonly CapturedRequest[];
@@ -158,7 +159,10 @@ export async function runToolRoundTrip(args: {
     args.resolvedRoute.surface,
     { language_models: createAiSdkLanguageModelRegistry(fixtureFetch) }
   );
-  const initialRequest = firstRequest(args.resolvedRoute);
+  const initialRequest: CanonicalInferenceRequest = {
+    ...firstRequest(args.resolvedRoute),
+    ...(args.initialMessages ? { messages: args.initialMessages } : {}),
+  };
   const firstEvents = await collect(
     capability.stream(invocation(initialRequest, args.resolvedRoute))
   );

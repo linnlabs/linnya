@@ -6,6 +6,22 @@ export interface SourceDependencySupplementalNotice {
   readonly title: string;
 }
 
+/** SDK 会内联进 Backend，修改声明必须随根 NOTICE 分发，不能只留在构建前源码注释。 */
+export const DEEPSEEK_TOOL_IMAGE_PATCH_NOTICE = {
+  id: 'deepseek-3.0.44-tool-image-modification',
+  title: '@ai-sdk/deepseek 3.0.44 native tool-image modification',
+  source: 'https://registry.npmjs.org/@ai-sdk/deepseek/-/deepseek-3.0.44.tgz',
+  licenseExpression: 'Apache-2.0',
+  content: `Copyright 2023 Vercel, Inc.
+
+Linnya modified @ai-sdk/deepseek 3.0.44 on 2026-09-12.
+The chat message converter and tool-message type, including their distributed
+runtime counterparts, share the upstream image encoder between user and native
+tool content. Other request, streaming and usage behavior remains upstream-owned.
+The versioned modification is recorded in patches/@ai-sdk__deepseek@3.0.44.patch.
+The original Apache License, Version 2.0 applies.`,
+} as const satisfies SourceDependencySupplementalNotice;
+
 /** 原生平台包只有聚合许可证声明时，锁定其内部静态组件审计证据。 */
 export const NAPI_RS_CANVAS_NATIVE_NOTICE_EVIDENCE = {
   packageName: '@napi-rs/canvas',

@@ -80,7 +80,7 @@ async function verifyRuntime(label, runtime, conformance) {
     `${label} registry capability 数量异常`
   );
 
-  const modelId = 'deepseek-package-smoke';
+  const modelId = 'deepseek-flash';
   const resolvedRoute = conformance.createDedicatedProviderConformanceRoute({
     capabilityId: 'ai-sdk:deepseek',
     surface: 'openai_chat_completions',
@@ -91,11 +91,41 @@ async function verifyRuntime(label, runtime, conformance) {
     resolvedRoute,
     firstResponse: firstResponse(modelId),
     secondResponse: secondResponse(modelId),
+    initialMessages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: '比较用户与工具图片。' },
+        { type: 'image', media_type: 'image/png', bytes: Uint8Array.from([1, 2, 3]) },
+      ],
+    }],
+    toolResultContent: [
+      { type: 'text', text: '工具图片。' },
+      { type: 'image', media_type: 'image/png', bytes: Uint8Array.from([4, 5, 6]) },
+    ],
   });
 
   assert.equal(result.requests.length, 2, `${label} 没有完成两轮 Provider 请求`);
   assert.equal(result.replay.at(-1)?.type, 'tool_call', `${label} 没有保留工具调用回放`);
   assert.deepEqual(result.secondEvents.at(-1), { type: 'finish', reason: 'stop' });
+  // Packed 入口必须解析到 frozen patch 后的 SDK；仅版本号正确不代表工具图片没有退回字符串。
+  assert.deepEqual(result.requests[1].body.messages, [
+    { role: 'user', content: [
+      { type: 'text', text: '比较用户与工具图片。' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,AQID' } },
+    ] },
+    {
+      role: 'assistant',
+      content: '',
+      reasoning_content: '',
+      tool_calls: [{ id: 'call-1', type: 'function', function: {
+        name: 'read_file', arguments: '{"path":"/tmp/a"}',
+      } }],
+    },
+    { role: 'tool', tool_call_id: 'call-1', content: [
+      { type: 'text', text: '工具图片。' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,BAUG' } },
+    ] },
+  ]);
 }
 
 try {

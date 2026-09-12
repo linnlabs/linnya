@@ -132,6 +132,11 @@ diff。正式构建不会重新解析依赖，而是把经过合同校验的 loc
 `Resources/THIRD_PARTY_NOTICES.txt`
 发布。门禁不从网络猜测 license，也不接受手工维护的漂移版本表。
 
+版本化上游 SDK 修改同时保留被改文件的修改声明，并通过 Source BOM 的补充 NOTICE 随产品分发；
+Backend 内联可能移除源码注释，不能只靠 patch 文件声明。当前 DeepSeek 工具图片修改的
+来源、范围与退出条件由 [AI SDK adapter](../../packages/linnkit-provider-ai-sdk/README.md) 拥有；
+升级移除该 patch 时同步移除对应补充声明，再重建 NOTICE，不维护另一套 SDK 版本选择。
+
 依赖聚合器报告 `Unknown` 时，使用 `pnpm run guard:dependency-license-evidence`
 校验开源准备期精确基线；它允许已登记的公开阻断项继续存在，但拒绝新增 Unknown、版本/integrity 漂移和许可证文件 hash 漂移。生成公开 clean-root 候选时改用
 `pnpm run guard:dependency-license-evidence:public`，任何阻断项都会失败。evidence 只处理依赖 manifest 漏标，不登记 Linnya 自有 workspace 的根许可证问题，也不能替代 installer/plugin

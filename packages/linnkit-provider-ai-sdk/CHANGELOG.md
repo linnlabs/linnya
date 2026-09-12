@@ -2,6 +2,11 @@
 
 ## 0.1.0
 
+- 将 `@ai-sdk/deepseek` 升级到 `3.0.44`，验证 `deepseek-flash` 历史 reasoning 与空 tool delta
+  回放；通过精确 pnpm patch 复用上游图片编码，修复 native tool.content 图片被字符串化的问题。
+  补齐用户/工具图片、非法格式拒绝、两轮 usage 与 CJS/ESM packed 验收；Host placement 和
+  Provider Catalog 仍独立准入，补丁来源、边界、发行条件与退出标准见本 package README。
+
 - 建立可选 Linnkit AI SDK adapter workspace
   package、生产出口、conformance 测试出口和独立构建边界。
 - 迁入 canonical request、usage、continuation、failure 和 stream

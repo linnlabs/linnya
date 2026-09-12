@@ -6,6 +6,9 @@
 *.ps1 text eol=crlf
 *.sh text eol=lf
 
+# Unified patches encode an empty context line as one space; validate patched source separately.
+patches/*.patch whitespace=-blank-at-eol,-blank-at-eof
+
 # Never apply line-ending conversion to binary source fixtures and runtime assets.
 *.gif binary
 *.ico binary
