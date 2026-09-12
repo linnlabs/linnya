@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as contextManager from '@linnlabs/linnkit/context-manager';
 
 import { GenericAgentTask } from 'src/app-hosts/linnya/agent-registry/GenericAgentTask';
+import { createGraphLoopHarness } from 'src/app-hosts/linnya/testkit/agent-harness/graphLoopHarness';
 import { withLinnyaFenceInjections } from 'src/app-hosts/linnya/context/agent/createLinnyaFenceInjections';
 import { linnyaFenceRegistry } from 'src/app-hosts/linnya/context/agent/registerLinnyaFences';
 import { LINNYA_CONTEXT_POLICY_FALLBACK } from 'src/app-hosts/linnya/context-policies/defaultContextPolicy';
@@ -21,6 +22,7 @@ describe('slides agent element selection context', () => {
       backendPluginRegistry.register({
         meta: slidesBackendPlugin.meta,
         agentFences: slidesBackendPlugin.agentFences,
+        agentDefinitions: slidesBackendPlugin.agentDefinitions,
       });
     }
     setPluginRuntimeStateForTests({ enabledPluginIds: ['platform', 'slides'] });
@@ -45,6 +47,34 @@ describe('slides agent element selection context', () => {
     expect(slidesAgent.config?.maxSteps).toBe(800);
     expect(systemPrompt).toContain('Activate and follow the `slides-design` Skill before planning');
     expect(systemPrompt).not.toContain('For a new deck, use `ppt_plan`');
+  });
+
+  it.each([
+    ['正文中的 <think>示例</think> 不应被删除。'],
+    ['正文中的 <thi', 'nk>示例', '</think>', ' 不应被删除。'],
+  ])('真实 Slides Graph 保留 canonical 正文，不按传输分片猜推理标签（%j）', async (...chunks) => {
+    const harness = createGraphLoopHarness({
+      tools: [],
+      requestPatch: { promptKey: SlidesPromptKeys.SLIDES_AGENT },
+      turns: [{ thoughtDeltas: ['独立推理通道测试内容'], contentChunks: chunks }],
+    });
+    try {
+      await harness.run();
+      const events = harness.getSinkRuntimeEvents();
+      const answerChunks = events.filter(event => event.type === 'final_answer_chunk');
+      expect(answerChunks.map(event => event.content)).toEqual(chunks);
+      expect(answerChunks.map(event => event.seq)).toEqual(chunks.map((_, index) => index));
+      const completeThoughts = events.filter(event => event.type === 'thought' && event.is_complete);
+      expect(completeThoughts).toHaveLength(1);
+      expect(completeThoughts[0]).toMatchObject({ content: '独立推理通道测试内容' });
+      const answers = events.filter(event => event.type === 'final_answer');
+      expect(answers).toHaveLength(1);
+      expect(answers[0]).toMatchObject({ content: chunks.join('') });
+      expect(new GenericAgentTask(SLIDES_AGENT_DEFINITION).processResponse(chunks.join(''))).toBe(chunks.join(''));
+      harness.assertAllTurnsConsumed();
+    } finally {
+      harness.restore();
+    }
   });
 
   it('injects element selection source slices into the actual slides_agent LLM messages', () => {

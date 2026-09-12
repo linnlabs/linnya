@@ -9,15 +9,6 @@ function buildSystemPrompt(): string {
   return buildPrompt(SLIDES_AGENT_PROMPT);
 }
 
-function processResponse(rawResponse: string): string {
-  return rawResponse.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-}
-
-function processStreamChunk(chunk: string): string {
-  if (chunk.includes('<think>') || chunk.includes('</think>')) return '';
-  return chunk;
-}
-
 export const SLIDES_AGENT_DEFINITION: AgentDefinition = {
   id: SLIDES_AGENT_ID,
   promptKey: SlidesPromptKeys.SLIDES_AGENT,
@@ -42,8 +33,7 @@ export const SLIDES_AGENT_DEFINITION: AgentDefinition = {
   },
   task: {
     systemPromptBuilder: buildSystemPrompt,
-    responseProcessor: processResponse,
-    streamChunkProcessor: processStreamChunk,
+    // 推理/正文已由 Provider canonical 合同分流；插件不能按正文中的标签或传输分片再次猜测。
   },
 };
 
