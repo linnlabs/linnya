@@ -282,8 +282,8 @@ geometryBody.add(geometryTitle, geometryRow);
 geometrySlide.add(geometryBody);
 
 // slide 4 — 富文本 run。
-// 注意能力边界：含 chart 或 table 的页面走 structured 路径，该路径不保留 run，
-// 富文本会被静默展平成纯字符串。所以富文本必须放在没有 chart/table 的页面上。
+// Text 在普通页面和含 chart/table 的页面都保留 run 及局部样式。
+// Shape 内文只支持纯文本；需要段落内混合样式时使用独立 Text。
 const richSlide = createSlide({ background: { color: "#FFFFFF" } });
 
 const richTitle = createText("富文本 run：段落内混合样式");

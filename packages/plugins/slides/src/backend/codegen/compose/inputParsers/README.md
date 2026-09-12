@@ -11,6 +11,7 @@ inputParsers/
 ├── typeGuards.ts      # 通用类型守卫与字符串集合解析
 ├── parseContext.ts    # ParseWarning 通道与路径派生
 ├── styleParsers.ts    # TextStyle、ShapeStyle、图片阴影、Box、Theme
+├── textContentParser.ts # 字符串、富文本与 canonical inline 公式的无损准入
 ├── chartParsers.ts    # 图表轴/标签/系列/样式与组合语义准入
 └── dataParsers.ts     # 图表、表格、图片与 SVG authoring source
 ```
@@ -22,6 +23,7 @@ inputParsers/
 | 字段族 | 权威入口 |
 |---|---|
 | 文本样式 | `parseTextStyle` |
+| 文本正文 | `parseTextContent`；保留字符串（包括空白）、run 顺序与局部样式，公式复用 canonical admission |
 | 形状样式与 Paint | `parseShapeStyle` |
 | 图片阴影 | `parseImageVisualShadow` |
 | 几何盒 | `parsePartialBox` |

@@ -3,8 +3,33 @@ import * as flexLayout from '../../../codegen/compose/flex-layout';
 
 import { compilePresentationComposePayload } from './compilePresentationComposePayload';
 import { createInProcessPresentationBuildExecution } from '../infrastructure/inProcessPresentationBuildExecution';
+import { readDirectComposeInput } from '../../../codegen/compose/presentationComposeInput';
 
 describe('compilePresentationComposePayload', () => {
+  it('正文在 Direct JSON 回读保留空白与局部样式；非法 run 返回字段原因而非成功丢字', async () => {
+    const input = { title: 'Text admission', slides: [{ elements: [{
+      type: 'text', position: { x: 1, y: 1, w: 4, h: 1 },
+      content: [{ text: '  Methods\n', style: { bold: true, color: '#A13456' } }, { text: '' }],
+    }] }] };
+    const compiled = await compilePresentationComposePayload(input);
+    if (!compiled.ok) throw new Error(compiled.message);
+    expect(readDirectComposeInput(compiled.input).input?.slides[0].elements[0].content)
+      .toEqual(input.slides[0].elements[0].content);
+    for (const content of [
+      [{ text: 42 }], [{ text: 'Methods', bold: true }],
+      [{ text: 'Methods', style: { fontSize: 'large' } }],
+      [{ text: 'Methods', style: { unknown: true } }],
+      [{ formula: { latex: 'x' } }],
+    ]) {
+      const rejected = await compilePresentationComposePayload({ ...input, slides: [{ elements: [{
+        ...input.slides[0].elements[0], content,
+      }] }] });
+      expect(rejected).toMatchObject({ ok: false, kind: 'compose_contract' });
+      if (rejected.ok) throw new Error('Invalid content must not become a successful blank element');
+      expect(rejected.message).toContain('slides[0].elements[0].content[0]');
+    }
+  });
+
   it('compiles Flex/Yoga scene graphs into transport-safe direct compose input', async () => {
     const result = await compilePresentationComposePayload({
       title: 'Worker layout',

@@ -73,6 +73,7 @@ import {
 import { resolveChartPreset, buildChartOptionsFromParams } from './chartPresets.js';
 import type { LayoutChartControls } from '@plugin/slides/shared';
 import { parseChartControls, parseChartStyle, validateChartSemantics } from './inputParsers/chartParsers.js';
+import { parseTextContent } from './inputParsers/textContentParser.js';
 
 // ─── 公共解析入口 ──────────────────────────────────────────────────────────
 
@@ -550,11 +551,14 @@ function parseElementInput(
     ? value.svgDecorative
     : value.decorative;
 
+  const content = parseTextContent(value.content, `${prefix}.content`);
+  if ('error' in content) return content;
+
   const element: DirectElementInput = {
     ...chartControls.value,
     type,
     position,
-    content: isNonEmptyString(value.content) ? value.content : undefined,
+    content: content.value,
     textWrap: rawTextWrap,
     style: mergedStyle,
     geometry,
@@ -717,7 +721,7 @@ function buildFreeformSlideSpec(slide: DirectSlideInput): FreeformSlideSpec {
   };
 }
 
-/** 富文本数组展平为纯字符串（structured 路径不支持 runs） */
+/** Shape 内文只支持纯文本；普通 structured Text 保留完整 rich/formula runs。 */
 function flattenContent(content: string | FreeformInlineRun[] | undefined): string {
   if (typeof content === 'string') return content;
   if (Array.isArray(content)) {

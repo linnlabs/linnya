@@ -4,10 +4,8 @@ import { SandboxProfileRegistry } from 'src/features/sandbox/SandboxProfileRegis
 import { SandboxService } from 'src/features/sandbox/SandboxService';
 import { createSandboxEvaluatorTestRunner } from 'src/features/sandbox/testing/createSandboxEvaluatorTestRunner';
 import { pptComposeProfile, readPptComposeRawPayload } from '../../sandbox/pptComposeProfile';
-import { isFlexComposeInput } from '@plugin/slides/shared';
-import { compileFlexInput } from '../compose/flex-layout/FlexLayoutCompiler';
-import { initYoga } from '../compose/flex-layout/YogaAdapter';
-import { buildDeckSpecFromDirectInput } from '../compose/presentationComposeInput';
+import { buildDeckSpecFromDirectInput, readCompiledDirectComposeInput } from '../compose/presentationComposeInput';
+import { compilePresentationComposePayload } from '../../features/presentationBuildExecution/functions/compilePresentationComposePayload';
 import { RenderModelMapper } from '../../engine/parser/RenderModelMapper';
 import {
   createPresentationBuildWorkerMaterializeRequest,
@@ -31,7 +29,7 @@ slide.add(createFormula({
   height: 2,
 }));
 const sentence = createText([
-  { text: '能量关系 ' },
+  { text: '能量关系 ', style: { bold: true, color: '#A13456' } },
   { formula: 'E = mc^2', style: { fontSize: 24, color: '#1F2A44' } },
   { text: ' 保持在同一段。' },
 ]);
@@ -46,13 +44,15 @@ compose({ title: 'Native Formula', slides: [slide] });
 `;
 
 describe('Formula codegen integration', () => {
-  it('从公开 DSL 生成前端 SVG 投影与可编辑 OMML', async () => {
+  it.each(['freeform', 'structured'])('%s 从公开 DSL 经 compose 回读保留富文本、样式与可编辑 OMML', async (kind) => {
     const service = createSandboxService();
     const execution = await service.execute({
       profileId: 'ppt_compose',
       language: 'javascript',
       profileMode: 'codegen-source',
-      source: SOURCE,
+      source: kind === 'structured'
+        ? SOURCE.replace('compose({', `slide.add(createTable({ headers: ['Measure'], rows: [['Energy']], width: 2, height: 1 }));\ncompose({`)
+        : SOURCE,
       capabilities: [{ name: 'host.compose', maxBytes: 256 * 1024 }],
     });
     expect(execution.success).toBe(true);
@@ -60,12 +60,13 @@ describe('Formula codegen integration', () => {
     expect(payload).not.toBeNull();
     if (!payload) throw new Error('Expected compose payload.');
 
-    if (!isFlexComposeInput(payload.rawPayload)) throw new Error('Expected Flex compose input.');
-    await initYoga();
-    const compiled = compileFlexInput(payload.rawPayload);
-    expect(compiled.error).toBeUndefined();
-    if (!compiled.input) throw new Error(compiled.error ?? 'Expected compiled input.');
-    const deck = buildDeckSpecFromDirectInput(compiled.input);
+    // 与生产一致：Worker 的 JSON 输出必须经 Host compiled reader，不能直接使用 Flex 对象。
+    const compiled = await compilePresentationComposePayload(payload.rawPayload);
+    if (!compiled.ok) throw new Error(compiled.message);
+    const readback = readCompiledDirectComposeInput(compiled.input);
+    if (!readback.input) throw new Error(readback.error ?? 'Expected compiled input.');
+    const deck = buildDeckSpecFromDirectInput(readback.input);
+    expect(deck.slides[0].spec.type).toBe(kind);
     expect(deck.slides[0].spec.elements[0]).toEqual(expect.objectContaining({
       type: 'formula',
       source: expect.objectContaining({
@@ -76,6 +77,7 @@ describe('Formula codegen integration', () => {
     expect(deck.slides[0].spec.elements[1]).toEqual(expect.objectContaining({
       type: 'text',
       content: expect.arrayContaining([
+        { text: '能量关系 ', style: { bold: true, color: '#A13456' } },
         expect.objectContaining({
           formula: expect.objectContaining({ latex: 'E = mc^2', display: 'inline' }),
         }),
@@ -114,6 +116,7 @@ describe('Formula codegen integration', () => {
     expect(slideXml).toContain('<m:f>');
     expect(slideXml).toContain('<m:rad>');
     expect(slideXml).toContain('能量关系 ');
+    expect(slideXml).toContain('A13456');
     expect(slideXml).toContain(' 保持在同一段。');
     expect(slideXml).not.toContain('LINNYA_FORMULA_');
     expect(slideXml).not.toContain('\\frac');
