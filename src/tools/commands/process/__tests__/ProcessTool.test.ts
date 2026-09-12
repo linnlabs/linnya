@@ -219,7 +219,9 @@ describe('ProcessTool', () => {
       status: 'rejected',
       code: 'process_protocol_violation',
     });
-    expect(structured.observation).toContain('action 必须是 poll、wait、cancel、write、submit、eof 或 resize');
+    expect(structured.observation).toContain('action：必须是对象');
+    expect(structured.observation).toContain('动作名写在 action.type');
+    expect(structured.observation).toContain('"action":{"type":"wait","cursor":0,"wait_timeout_ms":1000}');
     expect(called).toBe(false);
   });
 
@@ -249,7 +251,8 @@ describe('ProcessTool', () => {
       status: 'rejected',
       code: 'process_protocol_violation',
     });
-    expect(structured.observation).toContain('action.wait 必须包含 cursor 和 wait_timeout_ms');
+    expect(structured.observation).toContain('action.cursor：缺少必需字段');
+    expect(structured.observation).toContain('action.wait_timeout_ms：缺少必需字段');
   });
 
   it('缺少当前 run 权限时明确失败', async () => {

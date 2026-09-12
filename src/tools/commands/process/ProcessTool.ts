@@ -4,6 +4,7 @@ import {
   CommandControlToolCallIdSchema,
   CommandConversationIdSchema,
   MAX_PROCESS_OUTPUT_WAIT_TIMEOUT_MS,
+  MAX_PROCESS_INTERACTION_INPUT_BYTES,
   MAX_PROCESS_PTY_DIMENSION,
   ProcessToolArgumentsV1Schema,
   parseProcessToolArguments,
@@ -19,6 +20,7 @@ import {
 } from '../../types';
 import { parseProcessToolRuntimeResult } from 'src/app-hosts/linnya/adapters/commands/shell-runtime/definitions';
 import { formatProcessToolModelObservation } from 'src/domains/commands';
+import { processProtocolViolationMessage } from './functions/processProtocolViolationMessage';
 
 type ParsedProcessArguments = ReturnType<typeof parseProcessToolArguments>;
 type ProcessProtocolViolation = {
@@ -30,13 +32,9 @@ type ParsedProcessRequest =
   | { readonly kind: 'arguments'; readonly arguments: ParsedProcessArguments }
   | ProcessProtocolViolation;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 const PROCESS_ACTION_PARAMETER: ToolParameterSchema['properties'][string] = {
   type: 'object',
-  description: 'Choose exactly one process action contract.',
+  description: 'Object with a type discriminator and only that action’s fields; never a string.',
   oneOf: [
     {
       type: 'object',
@@ -47,6 +45,7 @@ const PROCESS_ACTION_PARAMETER: ToolParameterSchema['properties'][string] = {
           type: 'integer',
           description: 'Output cursor returned by the previous shell or process result.',
           minimum: 0,
+          maximum: Number.MAX_SAFE_INTEGER,
         },
       },
       required: ['type', 'cursor'],
@@ -61,6 +60,7 @@ const PROCESS_ACTION_PARAMETER: ToolParameterSchema['properties'][string] = {
           type: 'integer',
           description: 'Output cursor returned by the previous shell or process result.',
           minimum: 0,
+          maximum: Number.MAX_SAFE_INTEGER,
         },
         wait_timeout_ms: {
           type: 'integer',
@@ -86,7 +86,11 @@ const PROCESS_ACTION_PARAMETER: ToolParameterSchema['properties'][string] = {
       description: 'Write non-empty input to an interactive terminal.',
       properties: {
         type: { type: 'string', description: 'Write terminal input.', enum: ['write'] },
-        input: { type: 'string', minLength: 1, description: 'Input bytes to write.' },
+        input: {
+          type: 'string',
+          minLength: 1,
+          description: `Input to write; at most ${MAX_PROCESS_INTERACTION_INPUT_BYTES} UTF-8 bytes.`,
+        },
       },
       required: ['type', 'input'],
       additionalProperties: false,
@@ -96,7 +100,10 @@ const PROCESS_ACTION_PARAMETER: ToolParameterSchema['properties'][string] = {
       description: 'Write input and send the platform Enter key.',
       properties: {
         type: { type: 'string', description: 'Submit terminal input.', enum: ['submit'] },
-        input: { type: 'string', description: 'Input to submit; may be empty.' },
+        input: {
+          type: 'string',
+          description: `Input to submit; may be empty; at most ${MAX_PROCESS_INTERACTION_INPUT_BYTES} UTF-8 bytes.`,
+        },
       },
       required: ['type', 'input'],
       additionalProperties: false,
@@ -184,48 +191,25 @@ function protocolViolationResult(
   };
 }
 
-function processProtocolViolationMessage(args: Record<string, unknown>): string {
-  const processHandle = typeof args.process_handle === 'string' ? args.process_handle : '';
-  if (!CommandProcessHandleSchema.safeParse(processHandle).success) {
-    return '[process_protocol_violation] process 参数无效：请复制上一次 shell 结果中的 process_handle。';
-  }
-
-  const extraFields = Object.keys(args).filter(key => key !== 'process_handle' && key !== 'action');
-  if (extraFields.length > 0) {
-    return '[process_protocol_violation] process 参数无效：只能提供 process_handle 和 action。';
-  }
-
-  const action = args.action;
-  if (isRecord(action)) {
-    const actionType = action.type;
-    if (actionType === 'wait') {
-      return '[process_protocol_violation] process 参数无效：action.wait 必须包含 cursor 和 wait_timeout_ms；请复制上一次 shell 结果中的 process_handle。';
-    }
-    if (actionType === 'poll') {
-      return '[process_protocol_violation] process 参数无效：action.poll 必须包含 cursor；请复制上一次 process 结果中的 next_cursor。';
-    }
-  }
-  return '[process_protocol_violation] process 参数无效：action 必须是 poll、wait、cancel、write、submit、eof 或 resize。';
-}
-
 function parseArgumentsOrProtocolViolation(
   args: Record<string, unknown>,
 ): ParsedProcessRequest {
   const parsed = ProcessToolArgumentsV1Schema.safeParse(args);
   if (parsed.success) return { kind: 'arguments', arguments: parsed.data };
+  const message = processProtocolViolationMessage(args, parsed.error);
 
   const processHandle = typeof args.process_handle === 'string' ? args.process_handle : '';
   const parsedHandle = CommandProcessHandleSchema.safeParse(processHandle);
   if (!parsedHandle.success) {
-    throw new Error(processProtocolViolationMessage(args));
+    throw new Error(message);
   }
   const extraFields = Object.keys(args).filter(key => key !== 'process_handle' && key !== 'action');
   if (extraFields.length > 0) {
-    throw new Error(processProtocolViolationMessage(args));
+    throw new Error(message);
   }
   return protocolViolationResult(
     parsedHandle.data,
-    processProtocolViolationMessage(args),
+    message,
   );
 }
 
@@ -240,7 +224,11 @@ export class ProcessTool extends BaseTool {
 Use the opaque process handle returned by shell. Poll returns immediately; wait waits for output
 or completion. Interactive terminal processes also accept write, submit, eof and resize. Cancel
 stops the complete process tree. Completed handles are retained temporarily. Handles cannot be
-replaced with process IDs or run IDs.`;
+replaced with process IDs or run IDs.
+
+The only top-level fields are process_handle and action. action must be an object: put the action
+name in action.type, and put cursor/wait_timeout_ms/input/columns/rows inside that action object.
+For poll/wait, copy next_cursor from the latest result for the same process; do not guess it.`;
 
   readonly parameters: ToolParameterSchema = {
     type: 'object',
@@ -263,7 +251,7 @@ replaced with process IDs or run IDs.`;
     const parsed = ProcessToolArgumentsV1Schema.safeParse(args);
     return parsed.success
       ? { success: true }
-      : { success: false, error: processProtocolViolationMessage(args) };
+      : { success: false, error: processProtocolViolationMessage(args, parsed.error) };
   }
 
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
