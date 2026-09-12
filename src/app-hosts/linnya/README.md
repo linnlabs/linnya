@@ -9,6 +9,7 @@
 | Agent framework 一般如何运行 | [独立 Linnkit 仓](https://github.com/linnlabs/linnkit) |
 | Linnya 如何装配、接纳请求、传输和持久化 | `src/app-hosts/linnya/` |
 | Workspace、TaskState、知识库等工具做什么 | `src/tools/` 或对应 product domain |
+| 富文本、表格几何、图表比例、文稿检查与导出 | 对应插件；Slides 见 [插件架构](../../../packages/plugins/slides/README.md) |
 | 跨 Host/Renderer 的 Linnya DTO | `packages/schemas/` |
 | 前端对话如何投影与渲染 | `apps/renderer/domains/conversation/` |
 
@@ -183,10 +184,20 @@ Workspace document read、TaskState、问卷和 tool-output read 的跨端 schem
 
 禁止把产品特判写入 Linnkit，禁止让 App Host 变成第二个 Runtime owner，也禁止用兼容 bridge 掩盖真实目录和合同。
 
+插件任务暴露的错误不自动归属于插件，也不自动归属于 framework。先把复现拆成两部分：
+通用事件顺序、取消结算、checkpoint 或上下文协议由 Linnkit 使用无业务含义的夹具验证；
+富文本解析、表格布局、科研图表语义和导出保真留在插件中验证。App Host 只验证 ports 的
+产品装配与事实投影，不能通过开放 metadata、特殊 tool 名或第二套检查规则把插件业务倒灌
+框架。框架测试也不能复制产品 Agent ID、文稿格式或工具 payload 作为默认场景。
+
+涉及跨仓修改时分别说明仓库、owner、commit 与发布状态；同一轮完成的 Slides 修复不能
+列为 Linnkit 发布内容。Linnkit 公共合同收紧必须先按独立仓版本规范发布，再升级精确 npm
+依赖并验证 Host；不得用相邻源码或本地链接绕过此顺序。
+
 ## 8. 阅读顺序
 
-1. 独立 Linnkit 仓的 `src/runtime-kernel/README.md`
-2. 独立 Linnkit 仓的 `docs/integration/realtime.md`
+1. [Linnkit 公开接入总览](https://github.com/linnlabs/linnkit/blob/main/docs/integration/README.md)
+2. [Linnkit Runtime 事件与实时合同](https://github.com/linnlabs/linnkit/blob/main/docs/integration/realtime.md)
 3. 本文
 4. `adapters/flow/README.md`
 5. `application/README.md`

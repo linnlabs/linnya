@@ -28,6 +28,10 @@ Layer: `app-host`
 
 Linnya host 会把当前轮的页面上下文、文档片段、引用内容等产品语义转换成 `fences[]`，再交给 linnkit 的 context manager 组装进最终 LLM messages。
 
+产品请求中的 `document_fragment/context_before/context_after` 由本层读取并转换，不是
+Linnkit 的消息类型。框架接入只使用 `context_injection` 与注册的 fence；不能因为旧 npm
+版本的 schema 曾接受同名消息类型，就绕过 Host 转换或在框架内保留产品兼容分支。
+
 约定：
 
 - `document-context` 是当前轮 user-side 上下文，只应在最终当前 user message 的 `<user_request>` 前出现。
@@ -40,6 +44,6 @@ Linnya host 会把当前轮的页面上下文、文档片段、引用内容等�
 推荐阅读：
 
 - `src/app-hosts/linnya/context/agent-context-unification-plan.md`
-- 独立 Linnkit 仓的 `src/context-manager/README.md`
+- [Linnkit Context Fence 合同](https://github.com/linnlabs/linnkit/blob/main/docs/integration/context-fences.md)
 - `src/app-hosts/linnya/context-policies/README.md`
 - `src/app-hosts/linnya/agent-registry/README.md`
