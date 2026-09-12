@@ -18,3 +18,10 @@
 当前协议版本是 v3：在统一 Paint wire contract 上增加 `transparentBackground`，让原子 SVG fallback 复用同一 renderer 时保留 alpha。破坏性修改必须直接升级协议并让旧 worker 在 ready 阶段失败；开发期不保留双 codec，也不把旧 `color/gradient` 转回当前 Paint。取消边界只传经过 codec 校验的 `requestId`：`AbortController` 属于 renderer 隔离世界，不能作为 `contextBridge` 参数跨进程/上下文传播。
 
 worker request 必须自包含。图片资源只能是已经物化的 `data:image/jpeg|png|webp;base64,...`，不能携带本机路径、相对 embedded path 或 HTTP URL。读取已授权文件、验证图片和转换 data URI 属于 backend 调用编排，不属于 shared 合同，也不能通过扩大 preload 权限完成。
+
+本地 request admission 使用具名 `SlideRasterRequestError`，携带稳定
+`slides.raster.invalid_request` 和由 codec 生成的安全字段路径。路径只使用已知合同名称与数组
+索引，不回显未知 key、元素文字、图表数值或资源来源。page raster 与 screenshot 必须保留
+这类确定性拒绝和原页码，不能包装成普通 `render_failed`；未知执行异常仍不透传原始 message。
+图表字段的严格闭合校验与 generated mapper 必须共同验证，单独手写简化 RenderModel 的
+worker smoke 不能代替真实作者输入链路。

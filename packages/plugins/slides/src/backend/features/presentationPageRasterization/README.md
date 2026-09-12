@@ -10,6 +10,11 @@
 
 图表图片化也复用此能力：调用方构造只含一个 Chart 的透明临时页面，本 feature 不理解 PPTX 图表替换规则。
 
+Host 发送前的 `SlideRasterRequestError` 属于确定性的 `invalid_request`，必须映射为页级同类
+错误并携带原页码与 codec 生成的安全字段路径。不能因 worker 尚未返回 `SlideRasterResult`
+就把 admission 拒绝统一当作 `render_failed`。未知异常内容不得作为对外诊断；截图和导出
+继续使用稳定 code。任一页被拒绝都禁止发布已经完成的页面子集。
+
 当前运行时保持逐页串行。真实 30 页 4K 图片导出的观测窗口约 102 秒，全进程 working set 峰值相对基线增加约 529 MB，已经作为可接受基线完成验收。后续只有新的真实样本证明墙钟或内存不可接受时，才重新评估有界并行；不能预先建设全页 `Promise.all`、第二套 worker pool 或任意页数限制。
 
 ## 测试

@@ -27,6 +27,15 @@ export interface PresentationComposeExecutionPort {
   ): Promise<PresentationComposeCompilationResult>;
 }
 
+/** 仅进程内诊断，不属于 Worker wire result、draft 或工具输出合同。 */
+export interface PresentationComposeDiagnosticsPort {
+  recordRuntimeFailure(failure: {
+    readonly phase: 'layout_initialize' | 'compose_layout';
+    readonly slideCount: number;
+    readonly error: unknown;
+  }): void;
+}
+
 export interface PresentationMaterializedSvgFallback {
   readonly assetId: string;
   readonly contentHash: string;

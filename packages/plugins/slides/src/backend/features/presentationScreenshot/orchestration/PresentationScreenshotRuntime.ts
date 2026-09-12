@@ -149,7 +149,7 @@ function normalizeScreenshotError(error: unknown): SlidesScreenshotError {
       case 'slides.page-raster.invalid_request':
         return new SlidesScreenshotError(
           'slides.screenshot.invalid_request',
-          'Screenshot raster request was rejected',
+          error.message,
           error.slideNumber,
         );
       case 'slides.page-raster.resource_load_failed':

@@ -37,6 +37,12 @@ marker 和 series 索引必须唯一命中，否则编译失败，不能输出�
 ## 预览与承诺
 
 generated RenderModel 直接来自 DeckSpec，经 ECharts 绘图；轴、标签、series 样式和数据共用事实。
+mapper 必须逐字段投影 `RenderChartSeries`，不能展开整个 DeckSpec series：作者/原生导出使用的
+`labels` 不属于 RenderModel。新增轴步长、旋转、次轴、系列线型/点型/单点颜色或标签内容时，
+必须同步 `renderModelCodec` 的闭合字段与值校验；类型允许但 worker 拒绝同样属于合同缺陷，
+不能通过删除合法控制、跳过 codec 或改为图片规避。
+series、axis 和 dataLabels 的 validator 字段集合对正式 TypeScript 合同作穷尽检查，新增字段
+遗漏运行时校验会直接阻断类型门禁；准入仍逐字段检查值，不能仅凭穷尽的 key 列表恢复类型。
 百分比堆叠只改变柱高，标签仍为原值；饼/环 percentage 标签先计算占比，百分号格式再负责显示。
 字体、字号、绘图区底色、线宽等所有像素属性进入 [图表资源缓存身份](../../../renderer/features/renderChartResources/README.md)。
 
@@ -50,4 +56,6 @@ ECharts 与 Office 的排版不保证像素级一致。`PptxReader` 当前只识
   组合分组、右轴隔离、原始顺序、单点颜色、逐系列标签、百分比、无效组合。
 - `backend/__tests__/render-model-mapping-chart-table.test.ts` 与 `renderer/.../echartsMapper.test.ts`：既有图表回归。
 - 图表资源 registry 测试：编辑颜色/线宽/背景后重绘，移动时复用，不返回旧像素。
+- `smoke:raster-worker` 另覆盖真实 deck.js 折线与百分比堆叠柱 → generated RenderModel →
+  backend/preload 严格 admission → ECharts PNG，检查尺寸和系列可见像素。
 - 类型检查、生成 d.ts、Skill gate、Slides 全量测试和插件构建。实际 Office 字体/标签排版仍需 PowerPoint 人工验收。

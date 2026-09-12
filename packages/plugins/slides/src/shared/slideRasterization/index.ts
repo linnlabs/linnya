@@ -1,5 +1,6 @@
 export {
   SLIDE_RASTER_FORMAT,
+  SlideRasterRequestError,
 } from './definitions/slideRasterization';
 export type {
   SlideRasterErrorCode,

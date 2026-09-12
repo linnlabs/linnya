@@ -3,6 +3,7 @@ export type {
   PresentationBuildExecutionPort,
   PresentationBuildExecutionRuntime,
   PresentationComposeCompilationResult,
+  PresentationComposeDiagnosticsPort,
   PresentationComposeExecutionPort,
   PresentationMaterializationExecutionPort,
   PresentationMaterializationInput,

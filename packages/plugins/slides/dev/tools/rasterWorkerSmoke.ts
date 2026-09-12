@@ -1,4 +1,4 @@
-import { assertChartPlotBackgrounds } from './rasterChartFidelity';
+import { assertChartPlotBackgrounds, assertGeneratedChartRenders, GENERATED_CHART_RASTER_SOURCE } from './rasterChartFidelity';
 import { assertIntrinsicTextFidelity } from './intrinsicTextFidelity';
 import { materializeIntrinsicTextBoxes } from '../../src/backend/engine/text/materializeIntrinsicTextBoxes';
 import { assertGradientFidelityRenders } from './rasterGradientFidelity';
@@ -171,6 +171,10 @@ async function run(): Promise<void> {
     await assertGradientFidelityRenders(request);
     await assertSvgGraphicFallbackRenders();
     await assertTransparentChartRenders();
+    await assertGeneratedChartRenders(await compileDeckSourceToRenderModel(
+      GENERATED_CHART_RASTER_SOURCE,
+      'generated-chart-raster-contract',
+    ));
 
     await assertDeckSourceShapeGeometryRenders();
     await assertSystemFontDecksRender();

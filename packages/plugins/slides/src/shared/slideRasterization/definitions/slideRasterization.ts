@@ -37,6 +37,16 @@ export type SlideRasterErrorCode =
   | 'slides.raster.render_failed'
   | 'slides.raster.encode_failed';
 
+/** 本地 admission 的安全领域错误；字段路径由 codec 生成，不携带输入值。 */
+export class SlideRasterRequestError extends Error {
+  readonly name = 'SlideRasterRequestError';
+  readonly code = 'slides.raster.invalid_request';
+
+  constructor(readonly fieldPath: string, summary = 'Invalid slide raster request') {
+    super(`${summary} (${fieldPath})`);
+  }
+}
+
 export interface SlideRasterSuccess {
   status: 'success';
   requestId: string;

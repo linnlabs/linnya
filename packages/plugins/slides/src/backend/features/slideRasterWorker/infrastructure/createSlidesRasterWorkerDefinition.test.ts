@@ -68,7 +68,7 @@ describe('createSlidesRasterWorkerDefinition', () => {
       .toThrow('Invalid slide raster request');
     expect(diagnostics).toEqual([
       `[slides-raster-worker] registration mode=artifact-runtime rootSource=explicit protocol=${SLIDES_RASTER_WORKER_PROTOCOL_VERSION} html=dist/raster-worker/worker.html preload=dist/backend/raster-worker-preload.cjs`,
-      '[slides-raster-worker] stage=backend-admission outcome=rejected reason=Invalid slide raster request slide',
+      '[slides-raster-worker] stage=backend-admission outcome=rejected reason=Invalid slide raster request slide (request.slide)',
     ]);
     expect(diagnostics.join('\n')).not.toContain('/plugin');
   });

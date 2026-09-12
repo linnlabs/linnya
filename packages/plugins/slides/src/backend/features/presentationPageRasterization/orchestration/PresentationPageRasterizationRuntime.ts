@@ -4,6 +4,7 @@ import {
   isSlideRasterPixelSizeWithinBudget,
   resolveSlideRasterPixelSize,
   SLIDES_RASTER_MAX_OUTPUT_PIXELS,
+  SlideRasterRequestError,
   type SlideRasterErrorCode,
   type SlideRasterRequest,
   type SlideRasterResult,
@@ -60,15 +61,28 @@ export class PresentationPageRasterizationRuntime {
         slide,
         sourcePackageBytes: request.source.sourcePackageBytes,
       });
-      const result = await this.invokeRasterWorker(
-        {
-          requestId: `${runId}:slide:${slideNumber}`,
-          slide: materializedSlide,
-          slideSize: request.source.renderModel.slideSize,
-          profile: request.profile,
-        },
-        options.signal ? { signal: options.signal } : undefined,
-      );
+      let result: SlideRasterResult;
+      try {
+        result = await this.invokeRasterWorker(
+          {
+            requestId: `${runId}:slide:${slideNumber}`,
+            slide: materializedSlide,
+            slideSize: request.source.renderModel.slideSize,
+            profile: request.profile,
+          },
+          options.signal ? { signal: options.signal } : undefined,
+        );
+      } catch (error) {
+        // Host admission 在发往 worker 前执行；它不是 renderer 执行失败。
+        if (error instanceof SlideRasterRequestError) {
+          throw new SlidesPageRasterizationError(
+            'slides.page-raster.invalid_request',
+            `Presentation page raster request was rejected (${error.fieldPath})`,
+            slideNumber,
+          );
+        }
+        throw error;
+      }
       options.signal?.throwIfAborted();
       const verified = await verifyRasterResult(result, pixelSize, slideNumber);
       pages.push({

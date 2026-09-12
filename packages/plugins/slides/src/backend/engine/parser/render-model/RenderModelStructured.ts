@@ -76,11 +76,18 @@ export function mapStructuredChartNode(
     chartType,
     categories: element.data.categories,
     series: element.data.series.map((series, index) => ({
-      ...series,
+      // DeckSpec 的 labels 等作者/导出字段不属于 RenderModel；跨端只投影正式消费合同。
       name: series.name,
       values: series.values,
       chartType: series.chartType === 'bar' ? 'column' : series.chartType,
       color: series.color ?? (chartType === 'pie' || chartType === 'doughnut' ? undefined : defaults.chartPalette[index % defaults.chartPalette.length]),
+      axis: series.axis,
+      lineWidth: series.lineWidth,
+      lineDash: series.lineDash,
+      marker: series.marker,
+      pointColors: series.pointColors,
+      showDataLabels: series.showDataLabels,
+      dataLabelFormat: series.dataLabelFormat,
     })),
     palette: defaults.chartPalette,
     legend: resolveChartLegendStyle(opts, element.chartStyle?.legendColor, defaults.minorFontFamily),
@@ -96,9 +103,15 @@ export function mapStructuredChartNode(
 
   if (node.axes && element.secondaryValueAxis) {
     const axis = element.secondaryValueAxis;
-    const { numberFormat, ...controls } = axis;
     node.axes.y2 = {
-      ...controls, format: numberFormat, labelStyle: node.axes.y?.labelStyle,
+      title: axis.title,
+      visible: axis.visible,
+      min: axis.min,
+      max: axis.max,
+      majorUnit: axis.majorUnit,
+      showGridlines: axis.showGridlines,
+      format: axis.numberFormat,
+      labelStyle: node.axes.y?.labelStyle,
     };
   }
   if (element.dataLabelContent && node.dataLabels) node.dataLabels.content = element.dataLabelContent;

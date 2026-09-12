@@ -8,6 +8,7 @@ import type {
   LayoutNode,
 } from './LayoutTypes.js';
 import type { LayoutResult } from './YogaAdapter.js';
+import { FlexComposeContractError } from './FlexComposeContractError.js';
 
 export function readAbsolutePositionBox(
   position: FlexProps['position'],
@@ -43,7 +44,7 @@ export function buildGeneratedLayoutConstraintEvidence(input: {
   } = input;
   const allowedBleedInches = 'bleed' in result.node ? result.node.bleed : undefined;
   if (allowedBleedInches != null && (!Number.isFinite(allowedBleedInches) || allowedBleedInches < 0)) {
-    throw new Error('bleed 必须是非负有限英寸数。');
+    throw new FlexComposeContractError('bleed 必须是非负有限英寸数。');
   }
   const declared = readDeclaredConstraints(result.node);
   const finalBox = toGeneratedBox(result.box);

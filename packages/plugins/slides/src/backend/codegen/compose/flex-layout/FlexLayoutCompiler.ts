@@ -54,6 +54,7 @@ import type {
 } from '@plugin/slides/shared';
 import { resolveLayoutTextWrapPolicy } from './TextBoxSizing.js';
 import { buildGeneratedLayoutConstraintEvidence } from './LayoutConstraintFacts.js';
+import { FlexComposeContractError } from './FlexComposeContractError.js';
 
 // ─── 公共 API ──────────────────────────────────────────────────────────────────
 
@@ -79,6 +80,7 @@ export interface FlexCompileResult {
  * 对于 title/layout/theme 等全局参数错误会直接返回 error。
  * 对于单张 slide 的编译失败，会跳过该 slide 并记录到 rejectedSlides，
  * 只有全部 slide 都失败时才返回整体 error。
+ * 该部分结果仅供诊断；正式整稿提交必须拒绝 rejectedSlides。未知 runtime 异常继续抛出。
  */
 export function compileFlexInput(raw: FlexComposeInput): FlexCompileResult {
   const title = raw.title;
@@ -104,7 +106,7 @@ export function compileFlexInput(raw: FlexComposeInput): FlexCompileResult {
   for (let i = 0; i < raw.slides.length; i++) {
     const slideNode = raw.slides[i];
     if (!slideNode || slideNode._type !== 'Slide') {
-      rejectedSlides.push({ index: i, reason: `slides[${i}] 必须是 Slide(...) 节点。` });
+      rejectedSlides.push({ index: i, reason: `第 ${i + 1} 页（slides[${i}]）必须是 Slide(...) 节点。` });
       continue;
     }
 
@@ -112,8 +114,8 @@ export function compileFlexInput(raw: FlexComposeInput): FlexCompileResult {
       const compiled = compileSlide(slideNode, canvas.width, canvas.height, i + 1);
       slides.push(compiled);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      rejectedSlides.push({ index: i, reason: `slides[${i}] 编译失败：${msg}` });
+      if (!(err instanceof FlexComposeContractError)) throw err;
+      rejectedSlides.push({ index: i, reason: `第 ${i + 1} 页（slides[${i}]）编译失败：${err.message}` });
     }
   }
 
@@ -211,7 +213,7 @@ function collectElements(
     if ('role' in node && node.role != null) {
       const roles = node._type === 'Text'
         ? ['footnote', 'source', 'page-number'] : ['background', 'decoration'];
-      if (!roles.includes(node.role)) throw new Error(`${node._type}.role 不支持 ${node.role}`);
+      if (!roles.includes(node.role)) throw new FlexComposeContractError(`节点 role 必须使用当前节点允许的语义角色。`);
       element._semanticRole = node.role;
     }
     elements.push(attachLayoutConstraintEvidence(element, constraintEvidence));
@@ -294,7 +296,7 @@ function buildFormulaElement(
     align: node.align,
     altText: node.altText,
   });
-  if ('error' in normalized) throw new Error(normalized.error);
+  if ('error' in normalized) throw new FlexComposeContractError(normalized.error);
   const source = normalized.value;
   return attachSourceSpan({
     type: 'formula',
@@ -309,25 +311,25 @@ function buildSvgGraphicElement(
 ): DirectElementInput {
   const parsedSource = parseSvgGraphicAuthoringSource(node.source);
   if (parsedSource.error || !parsedSource.source) {
-    throw new Error(parsedSource.error ?? 'SVG Graphic 节点必须提供 source。');
+    throw new FlexComposeContractError(parsedSource.error ?? 'SVG Graphic 节点必须提供 source。');
   }
   if (node.fit != null && node.fit !== 'contain' && node.fit !== 'stretch') {
-    throw new Error('SVG Graphic.fit 必须是 contain / stretch。');
+    throw new FlexComposeContractError('SVG Graphic.fit 必须是 contain / stretch。');
   }
   if (node.opacity != null && (
     !Number.isFinite(node.opacity) || node.opacity < 0 || node.opacity > 1
   )) {
-    throw new Error('SVG Graphic.opacity 必须是 0..1 的有限数字。');
+    throw new FlexComposeContractError('SVG Graphic.opacity 必须是 0..1 的有限数字。');
   }
   if (node.rotate != null && !Number.isFinite(node.rotate)) {
-    throw new Error('SVG Graphic.rotate 必须是有限数字。');
+    throw new FlexComposeContractError('SVG Graphic.rotate 必须是有限数字。');
   }
   const altText = node.altText?.trim();
   if (node.decorative === true && altText) {
-    throw new Error('装饰性 SVG Graphic 不能同时提供 altText。');
+    throw new FlexComposeContractError('装饰性 SVG Graphic 不能同时提供 altText。');
   }
   if (node.decorative !== true && !altText) {
-    throw new Error('非装饰性 SVG Graphic 必须提供 altText。');
+    throw new FlexComposeContractError('非装饰性 SVG Graphic 必须提供 altText。');
   }
 
   return attachSourceSpan({
@@ -391,7 +393,7 @@ function normalizeLayoutTextContent(
       fontSize: run.style?.fontSize ?? node.fontSize,
       color: run.style?.color ?? node.color,
     }, 'inline');
-    if ('error' in normalized) throw new Error(normalized.error);
+    if ('error' in normalized) throw new FlexComposeContractError(normalized.error);
     return { formula: normalized.value };
   });
 }
@@ -420,7 +422,7 @@ function buildChartElement(node: LayoutChartNode, position: Box): DirectElementI
     chartType: node.chartType ?? node.chartData?.chartType,
   });
   if (chartParseResult.error || !chartParseResult.data) {
-    throw new Error(chartParseResult.error ?? 'Chart 数据解析失败。');
+    throw new FlexComposeContractError(chartParseResult.error ?? 'Chart 数据解析失败。');
   }
 
   return attachSourceSpan({
@@ -451,7 +453,7 @@ function buildTableElement(node: LayoutTableNode, position: Box): DirectElementI
     rows: node.rows ?? node.tableData?.rows ?? node.tableData?.body ?? node.tableData?.data,
   });
   if (tableParseResult.error || !tableParseResult.data) {
-    throw new Error(tableParseResult.error ?? 'Table 数据解析失败。');
+    throw new FlexComposeContractError(tableParseResult.error ?? 'Table 数据解析失败。');
   }
 
   return attachSourceSpan({
@@ -465,7 +467,7 @@ function buildTableElement(node: LayoutTableNode, position: Box): DirectElementI
 
 function buildImageElement(node: LayoutImageNode, position: Box): DirectElementInput {
   if (node.src == null || (typeof node.src === 'string' && node.src.trim().length === 0)) {
-    throw new Error('Image 节点必须提供 src。');
+    throw new FlexComposeContractError('Image 节点必须提供 src。');
   }
   return attachSourceSpan({
     type: 'image',
@@ -506,36 +508,36 @@ function attachLayoutConstraintEvidence<T extends DirectElementInput>(
 function readOptionalShapePaint(value: unknown, path: string): Paint | undefined {
   if (value == null) return undefined;
   const normalized = normalizeShapeFillInput(value, path);
-  if ('error' in normalized) throw new Error(normalized.error);
+  if ('error' in normalized) throw new FlexComposeContractError(normalized.error);
   return normalized.value;
 }
 
 function readOptionalShapeStroke(value: unknown, path: string): ShapeStrokeStyle | undefined {
   if (value == null) return undefined;
   if (!isRecord(value)) {
-    throw new Error(`${path} 必须是描边对象。`);
+    throw new FlexComposeContractError(`${path} 必须是描边对象。`);
   }
 
   const stroke = value;
   if (typeof stroke['width'] !== 'number'
     || !Number.isFinite(stroke['width'])
     || stroke['width'] <= 0) {
-    throw new Error(`${path}.width 必须是大于 0 的有限数字。`);
+    throw new FlexComposeContractError(`${path}.width 必须是大于 0 的有限数字。`);
   }
   const dash = stroke['dash'];
   if (dash != null && dash !== 'solid' && dash !== 'dash' && dash !== 'dot') {
-    throw new Error(`${path}.dash 必须是 solid / dash / dot 之一。`);
+    throw new FlexComposeContractError(`${path}.dash 必须是 solid / dash / dot 之一。`);
   }
   if (stroke['paint'] != null && stroke['color'] != null) {
-    throw new Error(`${path} 不能同时提供 color 与 paint。`);
+    throw new FlexComposeContractError(`${path} 不能同时提供 color 与 paint。`);
   }
 
   const paintResult = stroke['paint'] != null
     ? normalizeStrokePaint(stroke['paint'], `${path}.paint`)
     : normalizeShapeFillInput(stroke['color'], `${path}.color`);
-  if ('error' in paintResult) throw new Error(paintResult.error);
+  if ('error' in paintResult) throw new FlexComposeContractError(paintResult.error);
   if (paintResult.value.type === 'radial') {
-    throw new Error(`${path}.paint 暂不支持 radial stroke；请使用 linear gradient。`);
+    throw new FlexComposeContractError(`${path}.paint 暂不支持 radial stroke；请使用 linear gradient。`);
   }
 
   return {
@@ -549,11 +551,11 @@ function readOptionalShapeStroke(value: unknown, path: string): ShapeStrokeStyle
 function readOptionalTableBorder(value: unknown, path: string): ShapeStrokeStyle | undefined {
   if (value == null) return undefined;
   if (!isRecord(value) || Object.keys(value).some((key) => key !== 'color' && key !== 'width')) {
-    throw new Error(`${path} 只支持 { color, width }。`);
+    throw new FlexComposeContractError(`${path} 只支持 { color, width }。`);
   }
   const border = readOptionalShapeStroke(value, path);
   if (!border || !border.paint || border.paint.type !== 'solid') {
-    throw new Error(`${path} 目前只支持纯色描边。`);
+    throw new FlexComposeContractError(`${path} 目前只支持纯色描边。`);
   }
   return border;
 }
@@ -572,12 +574,12 @@ function normalizeSlideBackground(
 
   const sourceCount = Number(bg.color != null) + Number(bg.gradient != null) + Number(bg.image != null);
   if (sourceCount > 1) {
-    throw new Error('Slide.background 的 color / gradient / image 互斥。');
+    throw new FlexComposeContractError('Slide.background 的 color / gradient / image 互斥。');
   }
   if (bg.image != null) return { image: bg.image };
   if (bg.gradient != null) {
     const normalized = normalizeGradientPaint(bg.gradient, 'Slide.background.gradient');
-    if ('error' in normalized) throw new Error(normalized.error);
+    if ('error' in normalized) throw new FlexComposeContractError(normalized.error);
     return { paint: normalized.value };
   }
   return { paint: readOptionalShapePaint(bg.color, 'Slide.background.color') };

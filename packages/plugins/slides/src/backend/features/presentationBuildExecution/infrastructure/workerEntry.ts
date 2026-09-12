@@ -39,7 +39,14 @@ async function handleBuildRequest(message: unknown): Promise<void> {
       case 'compile_compose':
         buildWorkerPort.postMessage(createPresentationBuildWorkerCompileComposeResultMessage({
           requestId,
-          result: await compilePresentationComposePayload(request.payload),
+          result: await compilePresentationComposePayload(request.payload, {
+            recordRuntimeFailure(failure) {
+              // 原异常只留在 Worker 所属 App Server 的内部 stderr，不进入 response DTO。
+              console.error('[slides-build-execution] compose runtime failed', {
+                execution: 'worker', requestId, ...failure,
+              });
+            },
+          }),
         }));
         break;
       case 'materialize': {

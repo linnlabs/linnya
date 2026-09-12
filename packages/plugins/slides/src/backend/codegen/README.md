@@ -172,6 +172,8 @@ renderer source selection
 - 可信 typecheck、Flex/Yoga 和 PPTX 构建的物理隔离统一沿
   `presentationBuildExecution` 扩展；禁止在 service 内直接新建 Worker，或因 Worker 不可用静默退回 in-process。
 - compose/layout 跨 Worker 只传严格 JSON。Direct 输入保持公开 DTO 后由 App Server 复验；Flex 输出使用专用可信结果读取器恢复内部 text wrap、SVG source 与 generated layout constraint evidence。禁止让普通 compose parser 接受这些内部字段，也禁止用类型断言跳过结果校验。
+- 整稿编译在 `presentationBuildExecution` 拒绝任何 `rejectedSlides`，只把全部请求页均成功的结果
+  交给 builder。底层部分结果只服务诊断，不能靠最终页数断言替代具体拒绝页与字段原因。
 - `editSourceText.ts` 是 codegen 唯一的 exact
   replacement 规则；不要再建立带相同匹配语义的 service/class。draft 保存、编译和 revision 提交属于
   `CodegenPresentationService` 编排，不属于字符串替换函数。

@@ -30,6 +30,17 @@ PPTX 物化前的数据库、Workspace、图片授权、本地图片读取与 SV
 
 协议版本、request id、source/payload byte limit、严格 JSON 值与全部结果字段都经过 codec 校验。Flex 编译结果只有在 Worker 内通过 compiled compose 语义复验后才能返回成功；非法自定义几何等源码问题返回 `compose_contract` 及具体字段路径，不能伪装成 Worker 或协议故障。App Server 仍会在消费端复验同一结果，形成跨进程边界的双向合同。PPTX 输入额外限制 slide、element、SVG 数量以及 JSON/二进制总字节，拒绝任何未物化的文件路径；公式 element 与 inline formula run 必须通过 `shared/mathFormula` 的 canonical admission，不能在 Worker codec 另建一套公式定义。结果必须是 64 MiB 内的 ZIP，并以 transferable `ArrayBuffer` 返回。领域对象里的 `undefined` 可选字段在 Worker 边界统一投影为真实 JSON，诊断条数和文本长度也在出口截断，避免极端输入把大结果解析成本重新带回 UI 共享进程。
 
+正式 compose 是整稿原子合同：底层 Flex compiler 为诊断保留的 `rejectedSlides` 只要非空，
+就必须返回 `compose_contract`，保留原 1-based 页码、0-based 源数组索引及作者字段原因，不能
+返回缩水的 `ok:true` 再让上层仅报页数不符。Flex 字段 admission 使用具名
+`FlexComposeContractError`；未知 Yoga/runtime 异常不回显内部 message，也不伪装成可改稿问题，
+而是要求恢复运行环境后重试同一源码。修改稿成功后必须仍保留所有请求页。
+
+未知 layout 异常通过 feature-local `PresentationComposeDiagnosticsPort` 保留原 error、执行阶段
+与请求页数。生产 Worker entry 在自己的内部 stderr 追加 requestId；显式 in-process adapter
+也绑定诊断接收方。该端口是进程内观测，不进入 Worker response、draft、CLI 或工具 observation，
+也不让纯编译函数加载 Host logger。安全失败结果不能替代内部根因记录。
+
 Host 发送前发现的 materialization DTO admission 失败属于确定性的 `contract` 错误，并投影为 `slides.materialization.contract_invalid`。它表示内部 DeckSpec 与 Worker 合同失配，Agent 不应重试或改稿。Worker 内的 `MathFormulaError` 通过独立 `formula` failure 保留稳定 code：作者可修正的 LaTeX、宽度和行高问题只失败当前请求且继续使用健康 Worker；公式投影或 PPTX patch 缺陷则交由 build-failure 策略阻止随机改稿。只有 Worker 启动、协议响应、超时、未知执行异常或 crash 才属于 `build_executor_unavailable`。这三类语义会直接影响 Agent 的恢复动作，禁止重新合并。
 
 发布制品固定为 `dist/backend/presentation-build-worker.cjs`。backend build 会用真实 Worker 验证合法/非法 TypeScript、从发布目录加载 Yoga 完成一次 Flex 编译，先确认不支持的 LaTeX 返回稳定公式 code，再实际生成、解压一份包含 block/inline 原生公式的 PPTX，确认同一 Worker 可继续工作、OMML 存在且 placeholder 已清零；同时把 Worker 限制在 1.6 MiB、完整 backend 限制在 16 MiB。生产缺少 Worker、Yoga helper、PptxGenJS/JSZip 或 runtime 制品时 fail closed，不回退到 App Server 内执行。

@@ -2,7 +2,8 @@
 
 import { describe, expect, it } from 'vitest';
 import type { StructuredElement } from '@plugin/slides/shared';
-import { BOX, getNode } from './helpers/render-model-mapping-harness.js';
+import { BOX, getNode, renderSlide } from './helpers/render-model-mapping-harness.js';
+import { parseSlideRasterRequest } from '@plugin/slides/shared/slideRasterization';
 
 // ─── 第五部分：图表映射 ──────────────────────────────────────────────────
 
@@ -19,6 +20,61 @@ describe('图表映射完整性', () => {
     },
     position: BOX,
     ...overrides,
+  });
+
+  it('正式 generated 图表完整控制可跨过 worker admission，作者 labels 不泄漏到 RenderModel', () => {
+    const combo = baseChartElement({
+      chartType: 'combo',
+      categoryAxis: { title: 'Month', labelRotation: 35 },
+      valueAxis: { min: 0, max: 100, majorUnit: 20 },
+      secondaryValueAxis: { title: 'Ratio', min: 0, max: 1, majorUnit: 0.25, showGridlines: false, numberFormat: '0%' },
+      dataLabelContent: 'value',
+      showDataLabels: true,
+      data: {
+        categories: ['Jan', 'Feb', 'Mar'],
+        series: [{
+          name: 'Count', chartType: 'bar', axis: 'primary',
+          labels: ['Jan', 'Feb', 'Mar'], values: [10, 20, 30],
+          pointColors: ['#4472C4', null, '#C00000'],
+        }, {
+          name: 'Rate', labels: ['Jan', 'Feb', 'Mar'], values: [10, 20, 30],
+          chartType: 'line', axis: 'secondary', lineWidth: 2, lineDash: 'dash', marker: 'diamond',
+          showDataLabels: true, dataLabelFormat: '0.0',
+        }],
+      },
+    });
+    const percentBar = baseChartElement({
+      stacking: 'percent', showDataLabels: true, dataLabelContent: 'value',
+      valueAxis: { majorUnit: 0.25, numberFormat: '0%' },
+    });
+    const slide = renderSlide([combo, percentBar]);
+    const request = {
+      requestId: 'generated-chart-admission', slide,
+      slideSize: { width: 10, height: 5.625, unit: 'in' },
+      profile: { id: 'chart-gate', viewportWidthPx: 1600, viewportHeightPx: 900, pixelRatio: 1, format: 'png' },
+    };
+    const admitted = parseSlideRasterRequest(request);
+    expect(admitted.slide).toEqual(slide);
+    const chart = admitted.slide.elements.find(node => node.kind === 'chart');
+    if (!chart || chart.kind !== 'chart') throw new Error('Chart was lost during projection');
+    expect(chart.series[0]).not.toHaveProperty('labels');
+    expect(chart.series[0]).toMatchObject({ axis: 'primary', pointColors: ['#4472C4', null, '#C00000'] });
+    expect(chart.series[1]).toMatchObject({ axis: 'secondary', lineWidth: 2, lineDash: 'dash', marker: 'diamond' });
+    expect(chart.axes?.x?.labelRotation).toBe(35);
+    expect(chart.axes?.y?.majorUnit).toBe(20);
+    expect(chart.axes?.y2).toMatchObject({ majorUnit: 0.25, showGridlines: false, format: '0%' });
+    expect(chart.dataLabels?.content).toBe('value');
+
+    for (const malformed of [
+      { ...chart, series: [{ ...chart.series[0], labels: ['not-a-render-field'] }] },
+      { ...chart, series: [{ ...chart.series[0], marker: 'unknown' }] },
+      { ...chart, series: [{ ...chart.series[0], pointColors: [42] }] },
+      { ...chart, axes: { y: { majorUnit: 0 } } },
+      { ...chart, dataLabels: { content: 'unknown' } },
+    ]) {
+      expect(() => parseSlideRasterRequest({ ...request, slide: { ...slide, elements: [malformed] } }))
+        .toThrow('request.slide.elements[0]');
+    }
   });
 
   describe('chartType 映射', () => {

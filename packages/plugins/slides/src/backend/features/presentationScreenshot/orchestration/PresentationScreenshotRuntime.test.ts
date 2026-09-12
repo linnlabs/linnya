@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PresentationRenderModel } from '@plugin/slides/shared';
 import type { SlideRasterResult } from '@plugin/slides/shared/slideRasterization';
+import { parseSlideRasterRequest } from '@plugin/slides/shared/slideRasterization';
 import type {
   PresentationScreenshotRequest,
   PresentationScreenshotSource,
@@ -35,7 +36,7 @@ function createSource(versionNumber = 7): PresentationScreenshotSource {
       slideId: `slide-${index + 1}`,
       index,
       layoutKey: 'blank',
-      background: { color: '#FFFFFF' },
+      background: { paint: { type: 'solid', color: '#FFFFFF' } },
       elements: [],
     })),
     capabilities: {
@@ -168,6 +169,32 @@ describe('PresentationScreenshotRuntime', () => {
     await expect(runtime.render(directoryRequest(outputRoot))).rejects.toMatchObject({
       code: 'slides.screenshot.invalid_png',
       slideNumber: 2,
+    });
+    expect(await fs.readdir(outputRoot)).toEqual([]);
+  });
+
+  it('真实 admission 拒绝第 2 页时保留页码和安全字段路径，不发布第 1 页', async () => {
+    const outputRoot = await createOutputRoot();
+    const source = createSource();
+    source.renderModel.slides[1].elements = [{
+      id: 'chart', kind: 'chart', chartType: 'line', zIndex: 0,
+      box: { x: 0, y: 0, w: 1, h: 1, unit: 'in' },
+      categories: ['A'], palette: ['#4472C4'],
+      series: [{ name: 'Rate', values: [1], lineWidth: Number.NaN }],
+    }];
+    const runtime = new PresentationScreenshotRuntime({
+      loadSource: async () => source,
+      invokeRasterWorker: async request => {
+        const admitted = parseSlideRasterRequest(request);
+        return successResult(admitted.slide.index + 1);
+      },
+      createRunId: () => 'run-1',
+    });
+
+    await expect(runtime.render(directoryRequest(outputRoot))).rejects.toMatchObject({
+      code: 'slides.screenshot.invalid_request',
+      slideNumber: 2,
+      message: 'Presentation page raster request was rejected (request.slide.elements[0].series[0])',
     });
     expect(await fs.readdir(outputRoot)).toEqual([]);
   });

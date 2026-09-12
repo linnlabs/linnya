@@ -20,7 +20,7 @@ function createRenderModel(): PresentationRenderModel {
       slideId: `slide-${index}`,
       index: index - 1,
       layoutKey: 'blank',
-      background: { color: '#FFFFFF' },
+      background: { paint: { type: 'solid', color: '#FFFFFF' } },
       elements: [],
     })),
     capabilities: {

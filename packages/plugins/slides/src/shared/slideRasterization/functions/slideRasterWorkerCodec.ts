@@ -1,9 +1,10 @@
 import type {
   RenderSlideSize,
 } from '../../renderModel';
-import { isSlideRenderModel } from '../../renderModel';
+import { isSlideRenderModel, findSlideRenderModelFailurePath } from '../../renderModel';
 import {
   SLIDE_RASTER_FORMAT,
+  SlideRasterRequestError,
   type SlideRasterErrorCode,
   type SlideRasterFailure,
   type SlideRasterRequest,
@@ -120,14 +121,20 @@ export function parseSlideRasterWorkerReadyPayload(
 
 export function parseSlideRasterRequest(payload: unknown): SlideRasterRequest {
   if (!isRecord(payload) || !hasOnlyKeys(payload, ['requestId', 'slide', 'slideSize', 'profile'])) {
-    throw new Error('Invalid slide raster request');
+    throw new SlideRasterRequestError('request');
   }
-  const requestId = readNonEmptyString(payload.requestId, 'request.requestId');
+  if (!isNonEmptyString(payload.requestId)) {
+    throw new SlideRasterRequestError('request.requestId');
+  }
+  const requestId = payload.requestId;
   if (!isSlideRenderModel(payload.slide)) {
-    throw new Error('Invalid slide raster request slide');
+    throw new SlideRasterRequestError(
+      `request.${findSlideRenderModelFailurePath(payload.slide)}`,
+      'Invalid slide raster request slide',
+    );
   }
   if (!isRenderSlideSize(payload.slideSize)) {
-    throw new Error('Invalid slide raster request slideSize');
+    throw new SlideRasterRequestError('request.slideSize');
   }
   if (!isRecord(payload.profile)
     || !hasOnlyKeys(payload.profile, [
@@ -138,27 +145,33 @@ export function parseSlideRasterRequest(payload: unknown): SlideRasterRequest {
       'format',
       'transparentBackground',
     ])) {
-    throw new Error('Invalid slide raster request profile');
+    throw new SlideRasterRequestError('request.profile');
   }
   const profile = payload.profile;
+  if (!isNonEmptyString(profile.id)) throw new SlideRasterRequestError('request.profile.id');
+  if (!isPositiveFinite(profile.viewportWidthPx)) throw new SlideRasterRequestError('request.profile.viewportWidthPx');
+  if (!isPositiveFinite(profile.viewportHeightPx)) throw new SlideRasterRequestError('request.profile.viewportHeightPx');
+  if (!isPositiveFinite(profile.pixelRatio)) throw new SlideRasterRequestError('request.profile.pixelRatio');
+  if (profile.format !== SLIDE_RASTER_FORMAT) throw new SlideRasterRequestError('request.profile.format');
+  if (profile.transparentBackground !== undefined && typeof profile.transparentBackground !== 'boolean') {
+    throw new SlideRasterRequestError(
+      'request.profile.transparentBackground',
+      'request.profile.transparentBackground must be a boolean',
+    );
+  }
   return {
     requestId,
     slide: payload.slide,
     slideSize: payload.slideSize,
     profile: {
-      id: readNonEmptyString(profile.id, 'request.profile.id'),
-      viewportWidthPx: readPositiveFinite(profile.viewportWidthPx, 'request.profile.viewportWidthPx'),
-      viewportHeightPx: readPositiveFinite(profile.viewportHeightPx, 'request.profile.viewportHeightPx'),
-      pixelRatio: readPositiveFinite(profile.pixelRatio, 'request.profile.pixelRatio'),
-      format: readRasterFormat(profile.format),
-      ...(profile.transparentBackground == null
+      id: profile.id,
+      viewportWidthPx: profile.viewportWidthPx,
+      viewportHeightPx: profile.viewportHeightPx,
+      pixelRatio: profile.pixelRatio,
+      format: profile.format,
+      ...(profile.transparentBackground === undefined
         ? {}
-        : {
-            transparentBackground: readBoolean(
-              profile.transparentBackground,
-              'request.profile.transparentBackground',
-            ),
-          }),
+        : { transparentBackground: profile.transparentBackground }),
     },
   };
 }
@@ -227,6 +240,7 @@ function parseFailure(payload: Record<string, unknown>): SlideRasterFailure {
 
 function isRenderSlideSize(value: unknown): value is RenderSlideSize {
   return isRecord(value)
+    && hasOnlyKeys(value, ['width', 'height', 'unit'])
     && isPositiveFinite(value.width)
     && isPositiveFinite(value.height)
     && value.unit === 'in';
@@ -264,13 +278,6 @@ function readNonEmptyString(value: unknown, fieldName: string): string {
 function readPositiveFinite(value: unknown, fieldName: string): number {
   if (!isPositiveFinite(value)) {
     throw new Error(`${fieldName} must be a positive finite number`);
-  }
-  return value;
-}
-
-function readBoolean(value: unknown, fieldName: string): boolean {
-  if (typeof value !== 'boolean') {
-    throw new Error(`${fieldName} must be a boolean`);
   }
   return value;
 }

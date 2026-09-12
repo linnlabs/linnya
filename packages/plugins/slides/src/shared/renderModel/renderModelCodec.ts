@@ -1,4 +1,9 @@
-import type { SlideRenderModel } from './renderModel';
+import type {
+  RenderChartAxis,
+  RenderChartDataLabels,
+  RenderChartSeries,
+  SlideRenderModel,
+} from './renderModel';
 import type { Paint } from '../visual/paint';
 import { isPresetShapeName } from '../shapeGeometry';
 import { isGeneratedLayoutConstraintEvidence } from '../generatedLayoutConstraints';
@@ -37,6 +42,32 @@ export function isSlideRenderModel(value: unknown): value is SlideRenderModel {
     && isArrayOf(value.elements, isRenderNode)
     && isOptional(value.diagnostics, isSlideDiagnostics)
     && isOptional(value.referencePreview, isSlideReferencePreview);
+}
+
+/** 只定位失败合同，不回显未知字段名、节点内容或资源路径。 */
+export function findSlideRenderModelFailurePath(value: unknown): string {
+  if (!isRecord(value) || !Array.isArray(value.elements)) return 'slide';
+  return findNodeFailurePath(value.elements, 'slide.elements') ?? 'slide';
+}
+
+function findNodeFailurePath(nodes: readonly unknown[], path: string): string | undefined {
+  for (const [index, node] of nodes.entries()) {
+    if (isRenderNode(node)) continue;
+    const nodePath = `${path}[${index}]`;
+    if (!isRecord(node)) return nodePath;
+    if (node.kind === 'group' && Array.isArray(node.children)) {
+      return findNodeFailurePath(node.children, `${nodePath}.children`) ?? nodePath;
+    }
+    if (node.kind === 'chart') {
+      if (!Array.isArray(node.series)) return `${nodePath}.series`;
+      const seriesIndex = node.series.findIndex(series => !isRenderChartSeries(series));
+      if (seriesIndex !== -1) return `${nodePath}.series[${seriesIndex}]`;
+      if (!isOptional(node.axes, isRenderChartAxes)) return `${nodePath}.axes`;
+      if (!isOptional(node.dataLabels, isRenderChartDataLabels)) return `${nodePath}.dataLabels`;
+    }
+    return nodePath;
+  }
+  return undefined;
 }
 
 function isSlideBackground(value: unknown): boolean {
@@ -729,13 +760,25 @@ function isChartType(value: unknown): boolean {
   return isOneOf(value, ['bar', 'column', 'line', 'pie', 'doughnut', 'scatter', 'area', 'radar', 'combo']);
 }
 
+// 字段集合同时是严格准入和类型穷尽检查；新增正式控制必须补 validator，不能再次静默漂移。
+type FieldValidators<T> = { [Key in keyof T]-?: (value: unknown) => boolean };
+
+const CHART_SERIES_FIELDS = {
+  name: isString,
+  values: (value: unknown) => isArrayOf(value, isFiniteNumber),
+  chartType: (value: unknown) => isOptional(value, isChartType),
+  color: (value: unknown) => isOptional(value, isString),
+  axis: (value: unknown) => isOptional(value, axis => isOneOf(axis, ['primary', 'secondary'])),
+  lineWidth: (value: unknown) => isOptional(value, width => isFiniteNumber(width) && width > 0),
+  lineDash: (value: unknown) => isOptional(value, dash => isOneOf(dash, ['solid', 'dash', 'dot'])),
+  marker: (value: unknown) => isOptional(value, marker => isOneOf(marker, ['none', 'circle', 'square', 'diamond', 'triangle'])),
+  pointColors: (value: unknown) => isOptional(value, colors => isArrayOf(colors, color => color === null || isString(color))),
+  showDataLabels: (value: unknown) => isOptional(value, isBoolean),
+  dataLabelFormat: (value: unknown) => isOptional(value, isString),
+} satisfies FieldValidators<RenderChartSeries>;
+
 function isRenderChartSeries(value: unknown): boolean {
-  return isRecord(value)
-    && hasOnlyKeys(value, ['name', 'values', 'chartType', 'color'])
-    && isString(value.name)
-    && isArrayOf(value.values, isFiniteNumber)
-    && isOptional(value.chartType, isChartType)
-    && isOptional(value.color, isString);
+  return hasValidatedFields(value, CHART_SERIES_FIELDS);
 }
 
 function isRenderChartAxes(value: unknown): boolean {
@@ -746,15 +789,20 @@ function isRenderChartAxes(value: unknown): boolean {
     && isOptional(value.y2, isRenderChartAxis);
 }
 
+const CHART_AXIS_FIELDS = {
+  title: (value: unknown) => isOptional(value, isString),
+  visible: (value: unknown) => isOptional(value, isBoolean),
+  min: (value: unknown) => isOptional(value, isFiniteNumber),
+  max: (value: unknown) => isOptional(value, isFiniteNumber),
+  majorUnit: (value: unknown) => isOptional(value, unit => isFiniteNumber(unit) && unit > 0),
+  labelRotation: (value: unknown) => isOptional(value, isFiniteNumber),
+  showGridlines: (value: unknown) => isOptional(value, isBoolean),
+  format: (value: unknown) => isOptional(value, isString),
+  labelStyle: (value: unknown) => isOptional(value, isRenderChartLabelStyle),
+} satisfies FieldValidators<RenderChartAxis>;
+
 function isRenderChartAxis(value: unknown): boolean {
-  return isRecord(value)
-    && hasOnlyKeys(value, ['title', 'visible', 'min', 'max', 'format', 'labelStyle'])
-    && isOptional(value.title, isString)
-    && isOptional(value.visible, isBoolean)
-    && isOptional(value.min, isFiniteNumber)
-    && isOptional(value.max, isFiniteNumber)
-    && isOptional(value.format, isString)
-    && isOptional(value.labelStyle, isRenderChartLabelStyle);
+  return hasValidatedFields(value, CHART_AXIS_FIELDS);
 }
 
 function isRenderChartLegend(value: unknown): boolean {
@@ -765,13 +813,25 @@ function isRenderChartLegend(value: unknown): boolean {
     && isOptional(value.labelStyle, isRenderChartLabelStyle);
 }
 
+const CHART_DATA_LABEL_FIELDS = {
+  visible: (value: unknown) => isOptional(value, isBoolean),
+  content: (value: unknown) => isOptional(value, content => isOneOf(content, ['value', 'percentage', 'category'])),
+  format: (value: unknown) => isOptional(value, isString),
+  position: (value: unknown) => isOptional(value, position => isOneOf(position, ['inside', 'outside', 'center'])),
+  labelStyle: (value: unknown) => isOptional(value, isRenderChartLabelStyle),
+} satisfies FieldValidators<RenderChartDataLabels>;
+
 function isRenderChartDataLabels(value: unknown): boolean {
+  return hasValidatedFields(value, CHART_DATA_LABEL_FIELDS);
+}
+
+function hasValidatedFields(
+  value: unknown,
+  validators: Record<string, (entry: unknown) => boolean>,
+): boolean {
   return isRecord(value)
-    && hasOnlyKeys(value, ['visible', 'format', 'position', 'labelStyle'])
-    && isOptional(value.visible, isBoolean)
-    && isOptional(value.format, isString)
-    && isOptional(value.position, position => isOneOf(position, ['inside', 'outside', 'center']))
-    && isOptional(value.labelStyle, isRenderChartLabelStyle);
+    && hasOnlyKeys(value, Object.keys(validators))
+    && Object.entries(validators).every(([key, predicate]) => predicate(value[key]));
 }
 
 function isRenderChartGridlines(value: unknown): boolean {

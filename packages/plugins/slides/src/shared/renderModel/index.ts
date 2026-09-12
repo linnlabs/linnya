@@ -63,7 +63,7 @@ export {
   flattenRenderNodes,
   visitRenderNodes,
 } from './renderModelTraversal';
-export { isSlideRenderModel } from './renderModelCodec';
+export { isSlideRenderModel, findSlideRenderModelFailurePath } from './renderModelCodec';
 export type {
   RenderNodeVisitContext,
 } from './renderModelTraversal';

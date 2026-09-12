@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import * as flexLayout from '../../../codegen/compose/flex-layout';
 
 import { compilePresentationComposePayload } from './compilePresentationComposePayload';
+import { createInProcessPresentationBuildExecution } from '../infrastructure/inProcessPresentationBuildExecution';
 
 describe('compilePresentationComposePayload', () => {
   it('compiles Flex/Yoga scene graphs into transport-safe direct compose input', async () => {
@@ -39,6 +41,81 @@ describe('compilePresentationComposePayload', () => {
       ok: false,
       kind: 'compose_contract',
     });
+  });
+
+  it('整稿中间页失败时返回原页码和字段原因，不提交缩短的成功子集', async () => {
+    const validSlide = { _type: 'Slide', children: [{ _type: 'Text', content: 'Valid page' }] };
+    const rejected = await compilePresentationComposePayload({
+      title: 'Whole deck admission',
+      slides: [validSlide, {
+        _type: 'Slide',
+        children: [{ _type: 'Table', headers: ['name'], rows: [[{ foo: 'invalid' }]] }],
+      }, validSlide],
+    });
+
+    expect(rejected).toMatchObject({ ok: false, kind: 'compose_contract' });
+    if (rejected.ok) throw new Error('A rejected slide must fail the complete deck');
+    expect(rejected.message).toContain('第 2 页（slides[1]）');
+    expect(rejected.message).toContain('rows/body/data');
+    expect(rejected).not.toHaveProperty('input');
+
+    const allRejected = await compilePresentationComposePayload({
+      title: 'All pages rejected',
+      slides: [
+        { _type: 'Slide', children: [{ _type: 'Image' }] },
+        { _type: 'Slide', children: [{ _type: 'Table', rows: [[{ foo: 'invalid' }]] }] },
+      ],
+    });
+    if (allRejected.ok) throw new Error('All rejected pages must fail the complete deck');
+    expect(allRejected.message).toContain('第 1 页（slides[0]）编译失败：Image');
+    expect(allRejected.message).toContain('第 2 页（slides[1]）编译失败：表格');
+
+    const corrected = await compilePresentationComposePayload({
+      title: 'Whole deck admission',
+      slides: [validSlide, validSlide, validSlide],
+    });
+    expect(corrected).toMatchObject({ ok: true, input: { slides: [expect.anything(), expect.anything(), expect.anything()] } });
+  });
+
+  it('未知 layout 异常不回显内部消息，也不诱导作者随机改稿', async () => {
+    const internalError = new Error('Internal runtime failed at /private/runtime/loader.cjs:42');
+    const recordRuntimeFailure = vi.fn();
+    const execution = createInProcessPresentationBuildExecution({ recordRuntimeFailure });
+    const compile = vi.spyOn(flexLayout, 'compileFlexInput').mockImplementation(() => {
+      throw internalError;
+    });
+    try {
+      await expect(execution.compileComposePayload({
+        title: 'Runtime fault', slides: [{ _type: 'Slide', children: [] }],
+      })).resolves.toEqual({
+        ok: false,
+        kind: 'layout_unavailable',
+        message: 'The Slides layout runtime failed. Retry the same source after restoring the runtime.',
+      });
+      expect(recordRuntimeFailure).toHaveBeenCalledExactlyOnceWith({
+        phase: 'compose_layout', slideCount: 1, error: internalError,
+      });
+    } finally {
+      compile.mockRestore();
+    }
+  });
+
+  it('布局初始化失败同样记录内部原因，但结果只保留安全分类', async () => {
+    const internalError = new Error('Internal module loading failure');
+    const recordRuntimeFailure = vi.fn();
+    const initialize = vi.spyOn(flexLayout, 'initYoga').mockRejectedValue(internalError);
+    try {
+      await expect(compilePresentationComposePayload({
+        title: 'Initialization fault', slides: [{ _type: 'Slide', children: [] }],
+      }, { recordRuntimeFailure })).resolves.toEqual({
+        ok: false, kind: 'layout_unavailable', message: 'The Slides layout runtime is unavailable.',
+      });
+      expect(recordRuntimeFailure).toHaveBeenCalledExactlyOnceWith({
+        phase: 'layout_initialize', slideCount: 1, error: internalError,
+      });
+    } finally {
+      initialize.mockRestore();
+    }
   });
 
   it('把 Flex 自定义几何的语义错误返回为 compose contract，而不是成功 DTO', async () => {
