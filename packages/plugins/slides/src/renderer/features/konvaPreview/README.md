@@ -83,6 +83,7 @@ finalized RenderModel
 - 单位换算：box/cornerRadius/borderRadius 为 inches，fontSize/stroke/shadow 为 pt，rotation 为 degree，opacity 为 0-1。
 - 图例颜色、绘图区背景和折线 pt 宽度消费 RenderModel 的显式样式；笛卡尔图的背景仅作用于 grid。饼图为四侧图例预留通道，并允许数据标签换行，不使用默认 truncate。
 - 图表统一走 ECharts option 到 raster image 的路径；palette 缺失时回查后端合同。
+- 笛卡尔图使用 ECharts 6 `outerBoundsMode: auto` 与 `outerBoundsContain: all`，以图表画布扣除图例通道后的边界同时容纳刻度和轴名。不要恢复只包含刻度的旧 `containLabel`，也不要用 `same` 把轴外文字再次挤进数据绘图区，或按字号追加固定留白：紧凑图高、双轴标题和旋转标签必须由图表布局器一起求解。
 - 图片节点禁止创建 `Image`、读取本地文件或监听 source；只允许消费 `renderImageResources` 已准备好的资源。
 - SVG Graphic 节点只消费 admitted RenderModel 与已解码资源；不得在 Konva 组件中解析 XML、读取作者路径或复制 fit 规则。
 - 图表节点禁止创建 ECharts 实例或监听 node 发起渲染；只允许消费 `renderChartResources` 已准备好的资源。
@@ -91,6 +92,7 @@ finalized RenderModel
 ## 测试入口
 
 - builder 与映射规则：`packages/plugins/slides/src/renderer/features/konvaPreview/functions/**/*.test.ts`
+- 轴标题裁切：`functions/echartsAxisBounds.integration.test.ts` 实际调用 ECharts SVG 布局，检查紧凑柱图、折线和双轴图的标题绘制边界；不是 option 数值快照。
 - 文本/table fail-closed：`packages/plugins/slides/src/renderer/features/konvaPreview/functions/builders/__tests__/{textBuilder,tableBuilder}.test.ts`
 - stage/raster 编排：`packages/plugins/slides/src/renderer/features/konvaPreview/orchestration/**/*.test.ts`
 - 插件全量：`pnpm run test:plugin:slides`

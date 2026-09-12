@@ -452,7 +452,16 @@ function buildGrid(node: ChartRenderNode): Record<string, unknown> {
   const pos = node.legend?.position ?? 'right';
 
   return {
-    containLabel: true,
+    // ECharts 6 的旧 containLabel 分支只保护刻度；紧凑图表的轴标题会越过 PNG 边缘。
+    // 以图表画布（扣除图例通道）约束刻度与轴名，不把轴外文字再次压进数据绘图区。
+    outerBoundsMode: 'auto',
+    outerBoundsContain: 'all',
+    outerBounds: {
+      left: legendVisible && pos === 'left' ? '18%' : 0,
+      right: legendVisible && pos === 'right' ? '18%' : 0,
+      top: legendVisible && pos === 'top' ? '18%' : 0,
+      bottom: legendVisible && pos === 'bottom' ? '18%' : 0,
+    },
     show: node.plotBackgroundColor != null,
     backgroundColor: node.plotBackgroundColor,
     left: legendVisible && pos === 'left' ? '18%' : '5%',
