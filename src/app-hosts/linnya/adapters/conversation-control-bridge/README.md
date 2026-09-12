@@ -15,6 +15,8 @@ POST /api/v1/conversation-control/commands
 
 当前握手声明 `send / models / projects / list / messages / status / respond / stop / result / audit / workspace_tools`。
 
+能力公告允许未来新增合法标识符，消费者忽略不认识的能力；命令 union 和响应 schema 仍然封闭且严格。改变既有协议语义必须升级 protocol，不能借能力扩展绕过合同校验。
+
 ## 安全边界
 
 - API Server 只绑定 `127.0.0.1`。

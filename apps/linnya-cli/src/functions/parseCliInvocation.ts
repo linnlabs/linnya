@@ -134,6 +134,11 @@ function parseJsonOption(tokens: ParsedTokens, name: string): unknown {
 function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocation {
   const pretty = readBoolean(tokens, 'pretty');
   switch (command) {
+    case 'doctor': {
+      assertAllowedOptions(tokens, []);
+      if (tokens.positionals.length > 0) usageError('doctor does not accept positional arguments');
+      return { kind: 'doctor', pretty };
+    }
     case 'send': {
       assertAllowedOptions(tokens, [
         'conversation', 'project', 'agent', 'model', 'image-model', 'reasoning',
@@ -258,7 +263,7 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
       return { kind: 'command', request, pretty };
     }
     case 'stop': {
-      assertAllowedOptions(tokens, ['run', 'reason']);
+      assertAllowedOptions(tokens, ['run', 'reason', 'timeout']);
       const request = ConversationControlStopRequestSchema.parse({
         schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
         command: 'stop',
@@ -266,7 +271,8 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
         expected_run_id: readString(tokens, 'run'),
         reason: readString(tokens, 'reason') ?? 'terminated by linnya CLI',
       });
-      return { kind: 'command', request, pretty };
+      return { kind: 'stop', request, pretty,
+        timeoutMs: readPositiveInteger(tokens, 'timeout', 60_000) };
     }
     case 'result': {
       assertAllowedOptions(tokens, ['run']);
@@ -352,7 +358,10 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
 }
 
 export function parseCliInvocation(argv: readonly string[]): LinnyaCliInvocation {
+  // pnpm run script -- ... 与直接调用共享同一入口；仅移除命令前的分隔符。
+  if (argv[0] === '--') return parseCliInvocation(argv.slice(1));
   if (argv.length === 0) return { kind: 'help' };
+  if (argv[0] === '--help' || argv[0] === '-h') return { kind: 'help' };
   if (argv[0] === '--version' || argv[0] === '-v' || argv[0] === 'version') {
     if (argv.length !== 1) usageError('version does not accept arguments');
     return { kind: 'version' };
@@ -365,6 +374,7 @@ export function parseCliInvocation(argv: readonly string[]): LinnyaCliInvocation
   if (
     invocation.kind === 'command'
     || invocation.kind === 'status'
+    || invocation.kind === 'stop'
     || invocation.kind === 'workspace-tool-call'
   ) {
     ConversationControlCommandRequestSchema.parse(invocation.request);

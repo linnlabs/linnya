@@ -48,6 +48,11 @@ export class SqliteCheckpointer implements Checkpointer {
   constructor(private readonly db: Database.Database) {}
 
   async load(checkpointKey: string): Promise<EngineState | null> {
+    return this.loadInTransaction(checkpointKey);
+  }
+
+  /** 供执行提交在同一同步事务里核对前一边界，避免清理后被迟到结果复活。 */
+  loadInTransaction(checkpointKey: string): EngineState | null {
     const row = this.db
       .prepare<
         [string],

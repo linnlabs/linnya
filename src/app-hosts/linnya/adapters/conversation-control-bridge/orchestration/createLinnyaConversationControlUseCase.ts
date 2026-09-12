@@ -166,6 +166,10 @@ export function createLinnyaConversationControlUseCase(
         const metadata = await owners.history.getConversationMetadata(conversationId);
         return metadata ? metadata.project_id : undefined;
       },
+      async readSelectedAgent(conversationId) {
+        const metadata = await owners.history.getConversationMetadata(conversationId);
+        return metadata?.selected_agent_id ?? null;
+      },
       updateSelectedAgent: (conversationId, selectedAgentId, projectId) =>
         owners.history.updateConversationSelectedAgent(
           conversationId,

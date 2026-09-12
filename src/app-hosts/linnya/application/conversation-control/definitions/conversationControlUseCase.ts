@@ -178,6 +178,7 @@ export interface ConversationControlHistoryPort {
     runId: string
   ): Promise<ConversationControlRunFinalAnswer>;
   readConversationProjectId(conversationId: string): Promise<string | null | undefined>;
+  readSelectedAgent(conversationId: string): Promise<ConversationSelectedAgentId | null>;
   updateSelectedAgent(
     conversationId: string,
     selectedAgentId: ConversationSelectedAgentId,

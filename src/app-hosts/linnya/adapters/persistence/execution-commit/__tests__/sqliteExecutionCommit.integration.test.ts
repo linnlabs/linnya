@@ -166,4 +166,24 @@ describe('EventBus → SQLite execution checkpoint commit', () => {
       expect(await runtime.eventStore.range(conversationId)).toEqual([]);
     }
   );
+
+  it('取消收尾提交原工具结果一次，动作权限不恢复；清理后不能复活断点', async () => {
+    const runtime = await createRuntime();
+    await runtime.checkpoints.save(runId, { ...runtime.checkpoint, revision: 1, executionStatus: 'executing' });
+    const current = await runtime.runs.load(runId);
+    if (!current) throw new Error('Missing run');
+    await runtime.runs.save({ ...current, status: 'cancelled', updatedAt: 2 });
+    expect(() => runtime.runs.requireExecutionOwner(runId, 'attempt-1')).toThrow('no longer owns run');
+    const fact = runtime.publishResult();
+    const terminal = { ...runtime.checkpoint, executionStatus: 'yielded' as const, local: { pendingToolCalls: [] } };
+    await runtime.persistence.commitCheckpoint(runId, terminal);
+    expect((await runtime.eventStore.range(conversationId)).map(row => row.event)).toEqual([fact]);
+    const writer = new SqliteExecutionCommit(runtime.db).forExecution(runId, 'attempt-1');
+    await expect(writer({ checkpointKey: runId, checkpoint: { ...terminal, revision: 3 }, events: [] }))
+      .rejects.toThrow('invalid cancellation settlement boundary');
+    await runtime.checkpoints.clear(runId);
+    await expect(writer({ checkpointKey: runId, checkpoint: terminal, events: [] }))
+      .rejects.toThrow('invalid cancellation settlement boundary');
+    expect(await runtime.checkpoints.load(runId)).toBeNull();
+  });
 });

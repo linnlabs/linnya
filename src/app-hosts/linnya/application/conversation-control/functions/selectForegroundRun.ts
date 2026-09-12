@@ -68,6 +68,24 @@ export function selectStatusRun(
   );
 }
 
+/** exact run 是 stop 的幂等身份；重试旧终态不能误停同一会话的新 run。 */
+export function selectStopRun(
+  conversationId: string,
+  runs: readonly ConversationControlRunRecord[],
+  expectedRunId?: string,
+): ConversationControlRunRecord {
+  if (expectedRunId) {
+    const target = selectStatusRun(conversationId, runs, expectedRunId);
+    if (target) return target;
+  }
+  const active = runs.filter(run => isForegroundRootRun(run) && isActiveRun(run));
+  if (active.length !== 1 || !active[0]) {
+    throw new ConversationControlError('no_active_run',
+      `Conversation ${conversationId} has no single active foreground run; use --run to confirm a specific run's settlement`);
+  }
+  return active[0];
+}
+
 export function selectLatestTerminalRun(
   conversationId: string,
   runs: readonly ConversationControlRunRecord[],

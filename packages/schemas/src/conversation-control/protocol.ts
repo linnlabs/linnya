@@ -61,7 +61,9 @@ export const ConversationControlHandshakeResponseSchema = z
     protocol_version: z.literal(CONVERSATION_CONTROL_PROTOCOL_VERSION),
     app_instance_id: z.string().trim().min(1),
     app_version: z.string().trim().min(1),
-    capabilities: z.array(ConversationControlCapabilitySchema),
+    // 能力公告是可扩展名称集合。未知名称不授予执行权限；旧客户端仍能使用认识的命令。
+    // command DTO 继续使用封闭联合，破坏性 wire 变化必须提升 protocol_version。
+    capabilities: z.array(z.string().regex(/^[a-z][a-z0-9_]*$/)).max(128),
     limits: z
       .object({
         max_request_bytes: z.number().int().positive(),

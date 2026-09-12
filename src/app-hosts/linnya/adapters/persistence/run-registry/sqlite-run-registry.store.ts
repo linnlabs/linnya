@@ -159,6 +159,15 @@ export class SQLiteRunRegistryStore implements RunRegistryStore {
     return record;
   }
 
+  /** 取消后由 execution-commit 核验原执行的收尾链；工具效果写入仍走严格 owner 检查。 */
+  requireCheckpointExecutionOwner(runId: string, executionId: string): RunRecord {
+    const record = this.loadRecord(runId);
+    if (record?.status === 'cancelled' && record.metadata?.executionId === executionId) {
+      return record;
+    }
+    return this.requireExecutionOwner(runId, executionId);
+  }
+
   saveInTransaction(record: RunRecord): void {
     const existingOwner = this.db
       .prepare(

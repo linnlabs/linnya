@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@app/schemas": "workspace:*",
-    "@linnlabs/linnkit": "0.36.0",
+    "@linnlabs/linnkit": "0.37.0",
     "zod": "^3.25.76"
   },
   "peerDependencies": {

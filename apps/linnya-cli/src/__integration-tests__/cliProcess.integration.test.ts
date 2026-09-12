@@ -13,7 +13,8 @@ import {
 import { afterEach, describe, expect, it } from 'vitest';
 
 const repoRoot = path.resolve(import.meta.dirname, '../../../..');
-const cliEntry = path.join(repoRoot, 'apps/linnya-cli/src/main.ts');
+const bundleMode = process.env.LINNYA_CLI_TEST_ENTRY === 'bundle';
+const cliEntry = path.join(repoRoot, bundleMode ? 'apps/linnya-cli/bin/linnya.cjs' : 'apps/linnya-cli/src/main.ts');
 const servers: Server[] = [];
 const temporaryRoots: string[] = [];
 
@@ -41,7 +42,8 @@ function sendJson(response: ServerResponse, status: number, body: unknown): void
 }
 
 async function createScriptedBridge(
-  execute: (request: ConversationControlCommandRequest) => unknown,
+  execute: (request: ConversationControlCommandRequest, response: ServerResponse) => unknown,
+  capabilities: readonly unknown[] = ['send', 'models', 'projects', 'list', 'messages', 'status', 'respond', 'stop', 'result', 'audit', 'workspace_tools', 'future_additive_capability'],
 ): Promise<{
   readonly connectionFile: string;
   readonly receivedCommands: ConversationControlCommandRequest[];
@@ -61,10 +63,7 @@ async function createScriptedBridge(
           protocol_version: 1,
           app_instance_id: 'app-process-test',
           app_version: '0.0.38',
-          capabilities: [
-            'send', 'models', 'projects', 'list', 'messages', 'status', 'respond', 'stop', 'result',
-            'audit', 'workspace_tools',
-          ],
+          capabilities,
           limits: {
             max_request_bytes: 1024 * 1024,
             max_message_chars: 200_000,
@@ -78,7 +77,8 @@ async function createScriptedBridge(
       if (request.url?.endsWith('/commands')) {
         const command = ConversationControlCommandRequestSchema.parse(await readJsonRequest(request));
         receivedCommands.push(command);
-        sendJson(response, 200, execute(command));
+        const result = await execute(command, response);
+        if (!response.destroyed) sendJson(response, 200, result);
         return;
       }
       sendJson(response, 404, { error: 'not_found' });
@@ -118,7 +118,7 @@ function runCliProcess(
   connectionFile: string,
 ): Promise<{ readonly exitCode: number | null; readonly stdout: string; readonly stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['--import', 'tsx', cliEntry, ...args], {
+    const child = spawn(process.execPath, [...(bundleMode ? [] : ['--import', 'tsx']), cliEntry, ...args], {
       cwd: repoRoot,
       env: {
         ...process.env,
@@ -138,6 +138,67 @@ function runCliProcess(
 }
 
 describe('linnya CLI real process -> scripted bridge', () => {
+  it('doctor 接受新增能力并报告双方身份，输出不泄露连接凭据', async () => {
+    const bridge = await createScriptedBridge(() => { throw new Error('doctor must not mutate'); });
+    const result = await runCliProcess(['doctor'], bridge.connectionFile);
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ ok: true, app: { version: '0.0.38' } });
+    expect(result.stdout).toContain('future_additive_capability');
+    expect(result.stdout).not.toContain('d'.repeat(64));
+    expect(result.stdout).not.toContain(bridge.connectionFile);
+    expect(bridge.receivedCommands).toEqual([]);
+  });
+
+  it('非法能力类型仍在握手阶段被拒绝', async () => {
+    const bridge = await createScriptedBridge(() => null, ['projects', 42]);
+    const result = await runCliProcess(['projects'], bridge.connectionFile);
+    expect(result.exitCode).toBe(4);
+    expect(JSON.parse(result.stderr)).toMatchObject({ error: { code: 'protocol_incompatible' } });
+    expect(bridge.receivedCommands).toEqual([]);
+  });
+
+  it.each([true, false])('stop 丢失响应只重试同一 run，显式 run=%s', async explicitRun => {
+    let attempts = 0;
+    const bridge = await createScriptedBridge((request, response) => {
+      if (request.command === 'status') {
+        return { schema_version: 1, ok: true, command: 'status', conversation_id: 'conversation-1',
+          run: { conversation_id: 'conversation-1', run_id: attempts === 0 ? 'run-original' : 'run-new',
+            turn_id: 'turn-1', execution_id: 'execution-1', agent_id: 'slides_agent', status: 'running',
+            started_at: 1, updated_at: 1, result_available: false } };
+      }
+      if (request.command !== 'stop') throw new Error('expected exact stop');
+      attempts += 1;
+      if (attempts === 1) response.destroy();
+      return { schema_version: 1, ok: true, command: 'stop', conversation_id: 'conversation-1',
+        run_id: 'run-original', outcome: 'cancelled', requested_reason: 'CLI stop', completed_at: 140 };
+    });
+    const result = await runCliProcess(['stop', 'conversation-1', ...(explicitRun ? ['--run', 'run-original'] : [])], bridge.connectionFile);
+    expect(result.exitCode).toBe(0);
+    const stops = bridge.receivedCommands.filter(request => request.command === 'stop');
+    expect(stops).toHaveLength(2);
+    expect(stops.every(request => request.expected_run_id === 'run-original')).toBe(true);
+    expect(bridge.receivedCommands.filter(request => request.command === 'status')).toHaveLength(explicitRun ? 0 : 1);
+  });
+
+  it('stop 等待超过旧 5 秒限制的后端收尾', async () => {
+    const bridge = await createScriptedBridge(async request => {
+      if (request.command !== 'stop') throw new Error('expected exact stop');
+      await new Promise(resolve => setTimeout(resolve, 5200));
+      return { schema_version: 1, ok: true, command: 'stop', conversation_id: 'conversation-1',
+        run_id: 'run-original', outcome: 'cancelled', requested_reason: 'CLI stop', completed_at: 140 };
+    });
+    const result = await runCliProcess(['stop', 'conversation-1', '--run', 'run-original', '--timeout', '8000'], bridge.connectionFile);
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ outcome: 'cancelled' });
+    expect(bridge.receivedCommands).toHaveLength(1);
+  }, 10_000);
+
+  it.each([['--help'], ['-h'], ['--', '--help']])('帮助可离线使用：%j', async (...args) => {
+    const result = await runCliProcess(args, '/missing/connection.json');
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('doctor');
+  });
+
   it('真实子进程查询严格受限的 Workspace 工具目录', async () => {
     const bridge = await createScriptedBridge(request => {
       if (request.command !== 'workspace_tools' || request.action !== 'list') {

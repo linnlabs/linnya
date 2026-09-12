@@ -219,6 +219,7 @@ function fixture(
   const startRequests: ConversationNextRequest[] = [];
   const responseRequests: ConversationInteractionResponseRequest[] = [];
   const selectedAgentWrites: string[] = [];
+  const stopRequests: string[] = [];
   let finalAnswer: ReturnType<typeof finalAnswerMessage> | null = finalAnswerMessage();
   let conversationProjectId: string | null | undefined = 'project-1';
 
@@ -243,13 +244,15 @@ function fixture(
         return accepted(request.conversation_id, 'execution-2', 'tool-output-1');
       },
       async stop(runId) {
-        runs = [run('cancelled', { runId, updatedAt: 140 })];
-        return {
-          success: true,
-          run_id: runId,
-          outcome: 'cancelled',
-          terminal_status: 'cancelled',
-        };
+        stopRequests.push(runId);
+        const current = runs.find(run => run.runId === runId);
+        if (!current) throw new Error('Missing selected run');
+        const terminal = ['cancelled', 'failed', 'completed'].includes(current.status);
+        runs = runs.map(run => run.runId === runId && !terminal ? { ...run, status: 'cancelled', updatedAt: 140 } : run);
+        if (current.status === 'completed' || current.status === 'failed' || current.status === 'cancelled') {
+          return { success: true, run_id: runId, outcome: 'already_terminal', terminal_status: current.status };
+        }
+        return { success: true, run_id: runId, outcome: 'cancelled', terminal_status: 'cancelled' };
       },
     },
     runs: {
@@ -345,6 +348,9 @@ function fixture(
       async readConversationProjectId() {
         return conversationProjectId;
       },
+      async readSelectedAgent() {
+        return ConversationSelectedAgentIdSchema.parse('slides_agent');
+      },
       async updateSelectedAgent(_conversationId, selectedAgentId) {
         selectedAgentWrites.push(selectedAgentId);
         return true;
@@ -425,6 +431,7 @@ function fixture(
     startRequests,
     responseRequests,
     selectedAgentWrites,
+    stopRequests,
     setRuns(next: ConversationControlRunRecord[]) {
       runs = [...next];
     },
@@ -624,6 +631,16 @@ describe('conversation-control use case', () => {
       options: { project_metadata: { id: 'project-1' } },
     });
     expect(test.selectedAgentWrites).toEqual(['plugin_agent_fixture']);
+  });
+
+  it('续跑省略 agent 沿用保存的 Slides agent，新会话仍由正式默认选择', async () => {
+    const continued = fixture([run('completed')]);
+    await continued.useCase.send({ schema_version: 1, command: 'send', conversation_id: 'conversation-1', message: '继续' });
+    expect(continued.startRequests[0]?.options?.selected_agent_id).toBe('slides_agent');
+    expect(continued.selectedAgentWrites).toEqual([]);
+    const fresh = fixture();
+    await fresh.useCase.send({ schema_version: 1, command: 'send', message: '开始' });
+    expect(fresh.startRequests[0]?.options?.selected_agent_id).toBeUndefined();
   });
 
   it.each([
@@ -933,6 +950,18 @@ describe('conversation-control use case', () => {
       completed_at: 140,
       requested_reason: 'benchmark timeout',
     });
+  });
+
+  it('exact stop 可重查旧终态，不能停止同会话新 run；错误身份不调用 owner', async () => {
+    const test = fixture([run('cancelled'), run('running', { runId: 'run-new' })]);
+    await expect(test.useCase.stop({ schema_version: 1, command: 'stop', conversation_id: 'conversation-1', expected_run_id: 'run-1', reason: 'retry' }))
+      .resolves.toMatchObject({ outcome: 'cancelled', run_id: 'run-1' });
+    expect(test.stopRequests).toEqual(['run-1']);
+    await expect(test.useCase.status({ schema_version: 1, command: 'status', conversation_id: 'conversation-1' }))
+      .resolves.toMatchObject({ run: { run_id: 'run-new', status: 'running' } });
+    await expect(test.useCase.stop({ schema_version: 1, command: 'stop', conversation_id: 'conversation-1', expected_run_id: 'foreign-run', reason: 'retry' }))
+      .rejects.toMatchObject({ code: 'run_not_found' });
+    expect(test.stopRequests).toEqual(['run-1']);
   });
 
   it('result 只读取目标 terminal run 的 final_answer，不回退到其它消息', async () => {

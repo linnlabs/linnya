@@ -5,6 +5,7 @@ import type { ConversationControlProgressFrame } from '@app/schemas';
 import {
   LINNYA_CLI_EXIT,
   LINNYA_CLI_VERSION,
+  LINNYA_CLI_BUILD_ID,
   LinnyaCliError,
   type ConversationControlConnectionPort,
   type LinnyaCliIo,
@@ -14,6 +15,7 @@ import { exitCodeForError, projectCliError } from '../functions/projectCliError'
 import { createConversationControlConnection } from './createConversationControlConnection';
 import { watchConversationStatus } from './watchConversationStatus';
 import { executeWorkspaceToolCall } from './executeWorkspaceToolCall';
+import { stopConversationRun } from './stopConversationRun';
 
 interface RunCliOptions {
   readonly connection?: ConversationControlConnectionPort;
@@ -27,6 +29,9 @@ export function linnyaCliUsage(): string {
     'Linnya conversation CLI',
     '',
     'Usage:',
+    '  linnya doctor [--pretty]   Check CLI build, App connection, protocol and capabilities (read-only)',
+    '  linnya --version          Show version and source/bundle build identity',
+    '  linnya --help             Show this help (also -h or <command> --help)',
     '  linnya send <message> [--conversation ID] [--agent ID] [--project ID] [--model ID] [--image-model ID] [--reasoning LEVEL]',
     '  linnya models',
     '  linnya projects',
@@ -34,7 +39,7 @@ export function linnyaCliUsage(): string {
     '  linnya messages <conversation-id> [--before N | --after N] [--limit N]',
     '  linnya status <conversation-id> [--run ID] [--watch] [--interval MS] [--timeout MS]',
     '  linnya respond <conversation-id> --interaction ID (--approve | --skip | --submit-json JSON | --modify-json JSON) [--project ID]',
-    '  linnya stop <conversation-id> [--run ID] [--reason TEXT]',
+    '  linnya stop <conversation-id> [--run ID] [--reason TEXT] [--timeout MS]',
     '  linnya result <conversation-id> [--run ID]',
     '  linnya audit <conversation-id> [--run ID]',
     '  linnya tools list',
@@ -44,6 +49,13 @@ export function linnyaCliUsage(): string {
     'Output:',
     '  Single commands write one JSON value to stdout. status --watch writes JSONL frames.',
     '  Errors write one stable JSON value to stderr. --pretty is available for single commands.',
+    '',
+    'Workflow:',
+    '  Run doctor, projects and models first; use the returned project/model IDs with send.',
+    '  Save receipt.conversation_id and receipt.run_id, then status <conversation-id> --run <run-id> --watch.',
+    '  send --conversation inherits the saved Agent and project; --agent explicitly changes the Agent.',
+    '  stop --run is safe to repeat and waits for tool/persistence settlement (default 60000ms).',
+    '  A watch timeout only ends observation; it does not stop the App-owned run.',
     '',
   ].join('\n');
 }
@@ -92,11 +104,29 @@ export async function runCli(
       return LINNYA_CLI_EXIT.success;
     }
     if (invocation.kind === 'version') {
-      io.write(`${LINNYA_CLI_VERSION}\n`);
+      io.write(`${LINNYA_CLI_VERSION} (${LINNYA_CLI_BUILD_ID === 'source' ? 'source' : `bundle ${LINNYA_CLI_BUILD_ID}`})\n`);
       return LINNYA_CLI_EXIT.success;
     }
 
     const client = await (options.connection ?? createConversationControlConnection()).connect();
+    if (invocation.kind === 'doctor') {
+      io.write(serialize({
+        schema_version: 1, ok: true, command: 'doctor',
+        cli: { version: LINNYA_CLI_VERSION, build_id: LINNYA_CLI_BUILD_ID,
+          mode: LINNYA_CLI_BUILD_ID === 'source' ? 'source' : 'bundle' },
+        app: { version: client.handshake.app_version, instance_id: client.handshake.app_instance_id },
+        protocol_version: client.handshake.protocol_version,
+        capabilities: client.handshake.capabilities,
+        limits: client.handshake.limits,
+      }, invocation.pretty));
+      return LINNYA_CLI_EXIT.success;
+    }
+    if (invocation.kind === 'stop') {
+      const response = await stopConversationRun({ client, request: invocation.request,
+        timeoutMs: invocation.timeoutMs, now: options.now });
+      io.write(serialize(response, invocation.pretty));
+      return LINNYA_CLI_EXIT.success;
+    }
     if (invocation.kind === 'workspace-tool-call') {
       const result = await executeWorkspaceToolCall({
         client,

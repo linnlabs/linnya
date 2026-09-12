@@ -12,6 +12,7 @@ import {
 } from '@app/schemas';
 import {
   LINNYA_CLI_VERSION,
+  LINNYA_CLI_BUILD_ID,
   LinnyaCliError,
   requireCapability,
   type ConversationControlClient,
@@ -50,12 +51,14 @@ async function postJson(
   options: HttpConversationControlClientOptions,
   path: '/handshake' | '/commands',
   body: unknown,
+  timeoutMs = options.requestTimeoutMs ?? 5000,
+  command?: ConversationControlCommandRequest['command'],
 ): Promise<{ readonly response: Response; readonly body: unknown }> {
   const fetchImplementation = options.fetchImplementation ?? fetch;
   const controller = new AbortController();
   const timeout = setTimeout(
     () => controller.abort('conversation-control request timeout'),
-    options.requestTimeoutMs ?? 5000,
+    timeoutMs,
   );
   try {
     const response = await fetchImplementation(
@@ -72,11 +75,14 @@ async function postJson(
     );
     return { response, body: await readResponseBody(response) };
   } catch (error: unknown) {
-    if (error instanceof LinnyaCliError) throw error;
+    if (error instanceof LinnyaCliError && !controller.signal.aborted) throw error;
     throw new LinnyaCliError(
-      'stale_connection',
-      'Cannot reach the Linnya App conversation-control bridge',
+      controller.signal.aborted ? 'transport_failure' : 'stale_connection',
+      controller.signal.aborted
+        ? `Linnya ${command ?? 'handshake'} response timed out after ${timeoutMs}ms; the App may still be processing it. Check the exact run before retrying a mutation.`
+        : 'Cannot reach the Linnya App conversation-control bridge. Check that the App is running; use linnya doctor to verify the connection.',
       true,
+      command,
     );
   } finally {
     clearTimeout(timeout);
@@ -89,7 +95,7 @@ async function handshake(
   const result = await postJson(options, '/handshake', {
     protocol_version: CONVERSATION_CONTROL_PROTOCOL_VERSION,
     client_name: 'linnya-cli',
-    client_version: LINNYA_CLI_VERSION,
+    client_version: `${LINNYA_CLI_VERSION}+${LINNYA_CLI_BUILD_ID}`,
   });
   const wireError = ConversationControlErrorResponseSchema.safeParse(result.body);
   if (wireError.success) throwWireError(wireError.data);
@@ -97,7 +103,7 @@ async function handshake(
   if (!result.response.ok || !parsed.success) {
     throw new LinnyaCliError(
       'protocol_incompatible',
-      'Linnya App handshake does not match this CLI protocol',
+      `Linnya App handshake does not match CLI ${LINNYA_CLI_VERSION} (${LINNYA_CLI_BUILD_ID}), protocol ${CONVERSATION_CONTROL_PROTOCOL_VERSION}. Rebuild with pnpm build:linnya-cli and verify the running App version.`,
     );
   }
   if (parsed.data.app_instance_id !== options.descriptor.app_instance_id) {
@@ -117,7 +123,7 @@ export async function createHttpConversationControlClient(
   return {
     descriptor: options.descriptor,
     handshake: connectedHandshake,
-    async execute(request): Promise<ConversationControlSuccessResponse> {
+    async execute(request, requestOptions): Promise<ConversationControlSuccessResponse> {
       requireCapability(connectedHandshake.capabilities, request.command);
       const encoded = JSON.stringify(request);
       if (Buffer.byteLength(encoded, 'utf8') > connectedHandshake.limits.max_request_bytes) {
@@ -128,7 +134,12 @@ export async function createHttpConversationControlClient(
           request.command,
         );
       }
-      const result = await postJson(options, '/commands', request);
+      const isMutation = request.command === 'send' || request.command === 'respond'
+        || request.command === 'stop'
+        || (request.command === 'workspace_tools' && request.action === 'call');
+      const result = await postJson(options, '/commands', request,
+        requestOptions?.timeoutMs ?? options.requestTimeoutMs ?? (isMutation ? 60_000 : 5000),
+        request.command);
       const parsed = ConversationControlCommandResponseSchema.safeParse(result.body);
       if (!parsed.success) {
         throw new LinnyaCliError(
@@ -139,6 +150,10 @@ export async function createHttpConversationControlClient(
         );
       }
       if (!parsed.data.ok) throwWireError(parsed.data);
+      if (parsed.data.command !== request.command) {
+        throw new LinnyaCliError('protocol_incompatible',
+          `Expected ${request.command} response, received ${parsed.data.command}`, false, request.command);
+      }
       if (!result.response.ok) {
         throw new LinnyaCliError(
           'transport_failure',

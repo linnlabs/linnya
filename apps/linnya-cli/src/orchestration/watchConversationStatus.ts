@@ -80,7 +80,7 @@ export async function watchConversationStatus(
     if (now() - startedAt >= options.timeoutMs) {
       throw new LinnyaCliError(
         'transport_failure',
-        `Status watch timed out after ${options.timeoutMs}ms`,
+        `Status watch timed out after ${options.timeoutMs}ms; the run was not stopped. Continue observing: linnya status ${options.request.conversation_id} --run ${response.run.run_id} --watch`,
         true,
         'status'
       );

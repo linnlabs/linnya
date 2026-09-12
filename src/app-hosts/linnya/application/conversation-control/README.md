@@ -28,6 +28,8 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 - `respond` 只接纳当前 `awaiting_user` 的 exact `interaction_id`，继续同一个 `run_id`，并产生新的 `execution_id`；恢复时必须从 run 的 `agentSpecId` 还原原 Agent 路由，不能回退到 default。
 - CLI use case 只投影响应事实，不拥有 Agent 提示语。`approved` 的模型可见语义由 Flow Host 在创建 committed `tool_output` 时统一补足，因此 Renderer 与 CLI 必须得到相同的恢复行为。
 - `stop` 是唯一主动中断动作。它调用 Flow 的取消完成屏障，并重新读取 registry 验证 terminal settlement；不公开主动暂停。
+- `stop --run` 以 exact foreground root run 为幂等目标，已终态仍交给 Flow 确认收尾；不能在控制面用 active-only 检查截断重查，也不能改停新 run。省略 run 时必须唯一选择活跃 root。
+- 已有会话省略 `selected_agent_id` 时，通过 History port 读取保存的 Agent，显式选择才写回；新会话保持正式默认解析。不能依赖 Renderer 当前选择或在 CLI 硬编码 Slides。
 - `paused` 是可继续的正式状态，投影 settled 与原因，不能伪装成 `awaiting_user`。已收口暂停
   允许新 Send 经 Flow 原子替代；仅预检查成功不代表接纳。CLI 不新增 pause/continue 命令，
   当前无消息继续由 Desktop 输入框与正式 HTTP 控制合同提供。

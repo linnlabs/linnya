@@ -29,7 +29,20 @@ export class SqliteExecutionCommit {
       this.db.transaction(() => {
         if (checkpointKey !== runId)
           throw new Error('Execution checkpoint key differs from run identity');
-        const run = this.runs.requireExecutionOwner(runId, executionId);
+        const run = this.runs.requireCheckpointExecutionOwner(runId, executionId);
+        if (run.status === 'cancelled') {
+          const previous = this.checkpoints.loadInTransaction(checkpointKey);
+          // Supervisor 先撤销动作权限，Graph 随后收尾。取消时队列中可能已有一个 ready/executing
+          // 提交：原 activation 可沿现存 revision 链排空到 yielded，但不能覆盖终止边界或复活断点。
+          // 这里只允许事实/位置落盘；工具效果仍必须通过 requireExecutionOwner，取消后始终拒绝。
+          if (!previous || previous.executionStatus === 'yielded'
+            || checkpoint.revision !== (previous.revision ?? 0) + 1
+            || (checkpoint.executionStatus === 'yielded'
+              && ((checkpoint.local?.pendingToolCalls?.length ?? 0) !== 0
+                || checkpoint.local?.executingToolCallId !== undefined))) {
+            throw new Error(`[SqliteExecutionCommit] execution ${executionId} no longer owns run ${runId}: invalid cancellation settlement boundary`);
+          }
+        }
         const session = { runId, conversationId: run.conversationId, startedAt: run.startedAt };
         for (const persisted of events) {
           this.events.appendEventInTransaction(session, persisted.event, {

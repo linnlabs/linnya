@@ -1,16 +1,20 @@
 import type {
-  ConversationControlCapability,
   ConversationControlCommandRequest,
   ConversationControlCommandResponse,
   ConversationControlConnectionDescriptor,
   ConversationControlErrorCode,
   ConversationControlHandshakeResponse,
   ConversationControlStatusRequest,
+  ConversationControlStopRequest,
   ConversationControlWorkspaceToolsRequest,
 } from '@app/schemas';
 import packageManifest from '../../package.json';
 
 export const LINNYA_CLI_VERSION = packageManifest.version;
+
+declare const __LINNYA_CLI_BUILD_ID__: string | undefined;
+export const LINNYA_CLI_BUILD_ID = typeof __LINNYA_CLI_BUILD_ID__ === 'undefined'
+  ? 'source' : __LINNYA_CLI_BUILD_ID__;
 
 export const LINNYA_CLI_EXIT = {
   success: 0,
@@ -36,7 +40,10 @@ export interface LinnyaCliIo {
 export interface ConversationControlClient {
   readonly descriptor: ConversationControlConnectionDescriptor;
   readonly handshake: ConversationControlHandshakeResponse;
-  execute(request: ConversationControlCommandRequest): Promise<ConversationControlSuccessResponse>;
+  execute(
+    request: ConversationControlCommandRequest,
+    options?: { readonly timeoutMs: number },
+  ): Promise<ConversationControlSuccessResponse>;
 }
 
 export interface ConversationControlConnectionPort {
@@ -46,11 +53,19 @@ export interface ConversationControlConnectionPort {
 export type LinnyaCliInvocation =
   | { readonly kind: 'help' }
   | { readonly kind: 'version' }
+  | { readonly kind: 'doctor'; readonly pretty: boolean }
+  | {
+      readonly kind: 'stop';
+      readonly request: ConversationControlStopRequest;
+      readonly timeoutMs: number;
+      readonly pretty: boolean;
+    }
   | {
       readonly kind: 'command';
       readonly request: Exclude<
         ConversationControlCommandRequest,
         | ConversationControlStatusRequest
+        | ConversationControlStopRequest
         | Extract<ConversationControlWorkspaceToolsRequest, { action: 'call' }>
       >;
       readonly pretty: boolean;
@@ -86,7 +101,7 @@ export class LinnyaCliError extends Error {
 }
 
 export function requireCapability(
-  capabilities: readonly ConversationControlCapability[],
+  capabilities: readonly string[],
   command: ConversationControlCommandRequest['command'],
 ): void {
   if (capabilities.includes(command)) return;

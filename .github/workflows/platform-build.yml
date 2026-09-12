@@ -51,3 +51,5 @@ jobs:
           pnpm run build:plugin:mindmap
           pnpm run build:plugin:slides
           pnpm run build:linnya-cli
+      - name: Verify built CLI against bridge
+        run: pnpm exec cross-env LINNYA_CLI_TEST_ENTRY=bundle vitest run apps/linnya-cli/src/__integration-tests__

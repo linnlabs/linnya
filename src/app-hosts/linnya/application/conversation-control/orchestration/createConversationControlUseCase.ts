@@ -21,11 +21,10 @@ import type {
   ConversationControlUseCasePorts,
 } from '../definitions/conversationControlUseCase';
 import {
-  isActiveRun,
   blocksForegroundAdmission,
-  isForegroundRootRun,
   selectLatestTerminalRun,
   selectStatusRun,
+  selectStopRun,
 } from '../functions/selectForegroundRun';
 import { readPendingInteraction } from '../functions/readPendingInteraction';
 import { projectRunStatus } from '../functions/projectRunStatus';
@@ -287,6 +286,10 @@ export function createConversationControlUseCase(
         );
       }
       const projectId = await resolveConversationProjectId(ports, request);
+      const selectedAgentId = request.selected_agent_id
+        ?? (request.conversation_id
+          ? await ports.history.readSelectedAgent(request.conversation_id) ?? undefined
+          : undefined);
       if (request.selected_agent_id) {
         const updated = await ports.history.updateSelectedAgent(
           conversationId,
@@ -301,7 +304,8 @@ export function createConversationControlUseCase(
         }
       }
       const acceptance = await ports.flow.start(
-        buildSendRequest({ ...request, project_id: projectId }, conversationId, ports.now())
+        buildSendRequest({ ...request, project_id: projectId, selected_agent_id: selectedAgentId },
+          conversationId, ports.now())
       );
       return {
         schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
@@ -416,21 +420,10 @@ export function createConversationControlUseCase(
 
     async stop(request: ConversationControlStopRequest) {
       const before = await ports.runs.findByConversation(request.conversation_id);
-      const active = before.filter(run => isForegroundRootRun(run) && isActiveRun(run));
-      if (active.length !== 1 || !active[0]) {
-        throw new ConversationControlError(
-          'no_active_run',
-          `Conversation ${request.conversation_id} has no single active foreground run`
-        );
-      }
-      if (request.expected_run_id && request.expected_run_id !== active[0].runId) {
-        throw new ConversationControlError(
-          'run_mismatch',
-          `Expected run ${request.expected_run_id}, current run is ${active[0].runId}`
-        );
-      }
+      const target = selectStopRun(request.conversation_id, before, request.expected_run_id);
+      // 即使 registry 已写 cancelled，也必须等待 Flow completion；状态不是收尾屏障。
       const settlement = await ports.flow.stop(
-        active[0].runId,
+        target.runId,
         request.conversation_id,
         request.reason
       );

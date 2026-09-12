@@ -20,16 +20,19 @@ pnpm linnya:cli list --limit 5
 
 脚本消费 JSON 时使用 `pnpm --silent linnya:cli` 去掉 pnpm 横幅，或直接调用已构建的 `node apps/linnya-cli/bin/linnya.cjs`。
 
-这里不需要在脚本名后再加 `--`；多余分隔符会被 CLI 当作位置参数。
+支持 `help / --help / -h`；pnpm 脚本后的可选 `--` 分隔符也可正常使用。
 
 构建并运行独立 bundle：
 
 ```bash
 pnpm build:linnya-cli
 node apps/linnya-cli/bin/linnya.cjs help
+node apps/linnya-cli/bin/linnya.cjs doctor --pretty
 ```
 
 当前仓库已经产出可独立执行的 CommonJS bundle 和 `bin/linnya.cjs`，但桌面安装器尚未把它安装到系统 `PATH`，也没有随 CLI 打包 Node runtime。因此当前正式使用仍要求 Node.js 20；安装器集成属于发行工作，不属于 Conversation 控制面。Electron 的 `runAsNode` fuse 已关闭，不能把 Electron 可执行文件当作 CLI 的 Node 替代品。
+
+独立分发必须同时携带 `bin/linnya.cjs`、`dist/cli.cjs` 和 `dist/build.json`。launcher 核对产物 SHA-256；在包含源码的仓库内还核对 CLI、公共 Schema、构建输入与锁文件的内容指纹。产物缺失、损坏或源码变更后未重建会以退出码 4 明确拒绝，不自动切换运行入口。版本号不变也能发现旧 bundle。`--version` 显示 `source` 或 bundle 指纹；`doctor` 只读显示 CLI 身份、App 实例、协议与能力，不打印连接 token 或描述文件。
 
 ## 2. 一个最小的 PPT 真实请求
 
@@ -82,11 +85,13 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 | --- | --- | --- |
 | `send <message>` | 新建会话并发送消息；或向空闲的已有会话发送下一条消息 | `--conversation`、`--project`、`--agent`、`--model`、`--image-model`、`--reasoning` |
 | `models` | 查询可用于 `--model` 与 `--image-model` 的本地模型配置 | 无 |
+| `projects` | 查询 Workspace 项目 ID 与名称 | 无 |
+| `doctor` | 只读核验 CLI 与运行中 App 的连接、身份和能力 | `--pretty` |
 | `list` | 查询已有会话 | `--limit`、`--cursor`、`--search`、`--project` |
 | `messages <conversation-id>` | 按会话查询 durable 消息窗口 | `--limit`、`--before`、`--after` |
 | `status <conversation-id>` | 查询当前或指定 root run 的状态 | `--run`、`--watch`、`--interval`、`--timeout` |
 | `respond <conversation-id>` | 回应当前 `awaiting_user` 交互并继续同一 run | `--interaction`，以及一个 response 选项 |
-| `stop <conversation-id>` | 终止当前 foreground root run，并等待真实终态结算 | `--run`、`--reason` |
+| `stop <conversation-id>` | 终止 foreground root run，并等待真实终态结算 | `--run`、`--reason`、`--timeout`（毫秒，默认 60000） |
 | `result <conversation-id>` | 读取指定或最近 terminal root run 的最终回答 | `--run` |
 | `audit <conversation-id>` | 只读导出统一 Audit Domain 的安全执行摘要 | `--run` |
 | `tools list` | 列出 CLI 允许调用的 Workspace 工具名称与简介 | 无 |
@@ -94,6 +99,12 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 | `tools call <tool-name>` | 在绑定项目的 Conversation 中执行一次 Workspace 工具调用并等待结果 | `--conversation`、`--project`、`--args-json` / `--args-file`、`--omit-args`、`--interval`、`--timeout` |
 
 `messages` 的游标属于整个会话，所以不提供 `--run` 过滤。按 run 精确读取结果应使用 `result --run`；客户端先分页再过滤会让 `has_more` 与实际结果不一致。
+
+向已有 `--conversation` 发送消息时，省略 `--agent` 会继承该会话保存的 Agent；显式传入才修改选择。新会话省略时仍走产品默认选择，不猜测 Slides。
+
+读取请求与握手默认等待 5 秒，接纳/响应/工具调用默认等待 60 秒；`stop --timeout` 单独控制停止等待。stop 未传 run 时先选择并固定一个活跃 foreground root run；网络响应丢失最多重试一次，始终使用同一 run、共用等待预算。重查已终止 run 会返回其真实终态，不会误停同会话的新 run。只有 exact stop 自动重试；send/respond 不盲重试。超时仅表示结果尚未确认，不代表 App 没有执行；错误会给出精确重查命令。watch 超时也不会停止后端运行。
+
+握手中的 capabilities 是可扩展的能力公告：同协议新增能力不影响已知命令，实际命令、响应和 schema/protocol 版本仍严格校验。
 
 `send` 的单条消息上限是 200,000 个字符（按协议字符串长度计），由 App 握手的 `limits.max_message_chars` 正式声明。它只是 Conversation CLI 的 Host 入口限制，不是 Linnkit 的 token 上限；最终模型输入仍由 Agent 的上下文预算统一计量和接纳。
 
@@ -221,7 +232,7 @@ CLI token 只允许访问 `/api/v1/conversation-control/*`，Renderer token 也�
 ```bash
 pnpm typecheck:linnya-cli
 pnpm test:linnya-cli
-pnpm build:linnya-cli
+pnpm test:linnya-cli:bundle
 ```
 
 测试按真实风险分层：
