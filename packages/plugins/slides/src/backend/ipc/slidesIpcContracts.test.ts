@@ -96,6 +96,18 @@ describe('slides backend IPC contracts', () => {
     };
     expect(parseSlidesManualEditPayload(payload)).toEqual(payload);
 
+    expect(parseSlidesManualEditPayload({
+      ...payload,
+      operation: {
+        op: 'translate_by',
+        target: payload.operation.target,
+        targetKind: 'image',
+        delta: { dx: -0.2, dy: 0.4 },
+      },
+    })).toMatchObject({
+      operation: { op: 'translate_by', targetKind: 'image', delta: { dx: -0.2, dy: 0.4 } },
+    });
+
     expect(() => parseSlidesManualEditPayload({
       ...payload,
       expectedBase: { ...payload.expectedBase, sourceHash: 'not-a-hash' },

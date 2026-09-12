@@ -18,6 +18,12 @@ export type SlidesManualEditOperation =
       readonly target: SlidesAuthoringEditRef;
       readonly targetKind: SlidesManualTargetKind;
       readonly translation: SlidesManualTranslation;
+    }
+  | {
+      readonly op: 'translate_by';
+      readonly target: SlidesAuthoringEditRef;
+      readonly targetKind: SlidesManualTargetKind;
+      readonly delta: SlidesManualTranslation;
     };
 
 export interface SlidesManualEditCommand {

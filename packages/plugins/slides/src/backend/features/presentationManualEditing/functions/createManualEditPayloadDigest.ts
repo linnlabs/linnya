@@ -12,13 +12,20 @@ export function createManualEditPayloadDigest(command: SlidesManualEditCommand):
         editKey: command.operation.target.editKey,
         content: command.operation.content,
       }
-    : {
+    : command.operation.op === 'set_translation' ? {
         op: command.operation.op,
         slideKey: command.operation.target.slideKey,
         editKey: command.operation.target.editKey,
         targetKind: command.operation.targetKind,
         dx: command.operation.translation.dx,
         dy: command.operation.translation.dy,
+      } : {
+        op: command.operation.op,
+        slideKey: command.operation.target.slideKey,
+        editKey: command.operation.target.editKey,
+        targetKind: command.operation.targetKind,
+        dx: command.operation.delta.dx,
+        dy: command.operation.delta.dy,
       };
   return createHash('sha256').update(JSON.stringify({
     documentId: command.documentId,

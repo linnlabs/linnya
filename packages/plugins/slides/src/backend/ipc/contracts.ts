@@ -240,6 +240,25 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
       },
     };
   }
+  if (payload.operation.op === 'translate_by') {
+    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'delta'], 'operation');
+    if (!isRecord(payload.operation.delta)) {
+      throw new Error('operation.delta must be an object.');
+    }
+    assertOnlyKeys(payload.operation.delta, ['dx', 'dy'], 'operation.delta');
+    return {
+      ...base,
+      operation: {
+        op: 'translate_by',
+        target,
+        targetKind: readManualTargetKind(payload.operation.targetKind),
+        delta: {
+          dx: readFiniteNumber(payload.operation.delta.dx, 'operation.delta.dx'),
+          dy: readFiniteNumber(payload.operation.delta.dy, 'operation.delta.dy'),
+        },
+      },
+    };
+  }
   throw new Error('operation.op is invalid.');
 }
 

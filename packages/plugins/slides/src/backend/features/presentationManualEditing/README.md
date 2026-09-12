@@ -7,7 +7,7 @@ Current source rules:
 - the document contains exactly one `compose({...})` object;
 - `manualEdits` is a static JSON literal and is parsed by the shared strict codec;
 - unrelated source text and comments remain byte-for-byte unchanged;
-- text writes replace the complete plain-text author value; translation writes the complete cumulative `dx / dy` value;
+- text writes replace the complete plain-text author value; absolute translation writes the complete cumulative `dx / dy` value, while renderer drag commands use `translate_by` so repeated drags accumulate against the checked base revision;
 - source size is checked before the candidate reaches the build pipeline.
 
 Repository integration adds two commit invariants for this feature:

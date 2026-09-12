@@ -159,6 +159,13 @@ function applyTargetOperation(
     };
   }
 
+  const translation = operation.op === 'translate_by'
+    ? {
+        dx: (existing?.translation?.dx ?? 0) + operation.delta.dx,
+        dy: (existing?.translation?.dy ?? 0) + operation.delta.dy,
+      }
+    : operation.translation;
+
   if (existing && existing.kind !== operation.targetKind) {
     throw new SlidesManualEditSourceError(
       'operation_invalid',
@@ -172,13 +179,13 @@ function applyTargetOperation(
       ...(existing?.kind === 'text' && existing.content !== undefined
         ? { content: existing.content }
         : {}),
-      translation: operation.translation,
+      translation,
     };
   }
   if (operation.targetKind === 'frame') {
-    return { kind: 'frame', editKey: operation.target.editKey, translation: operation.translation };
+    return { kind: 'frame', editKey: operation.target.editKey, translation };
   }
-  return { kind: operation.targetKind, editKey: operation.target.editKey, translation: operation.translation };
+  return { kind: operation.targetKind, editKey: operation.target.editKey, translation };
 }
 
 function validateOperation(operation: SlidesManualEditOperation): void {
@@ -194,10 +201,8 @@ function validateOperation(operation: SlidesManualEditOperation): void {
     }
     return;
   }
-  if (
-    !Number.isFinite(operation.translation.dx)
-    || !Number.isFinite(operation.translation.dy)
-  ) {
+  const translation = operation.op === 'translate_by' ? operation.delta : operation.translation;
+  if (!Number.isFinite(translation.dx) || !Number.isFinite(translation.dy)) {
     throw new SlidesManualEditSourceError('operation_invalid', '人工位移必须是有限数字。');
   }
 }

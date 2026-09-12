@@ -100,5 +100,25 @@ describe('writeManualEditsToDeckSource', () => {
       translation: { dx: 1, dy: 0 },
     })).toThrow('已记录为 text');
   });
-});
 
+  it('把连续 translate_by 累加到同一作者目标的当前位移', () => {
+    const first = writeManualEditsToDeckSource(BASE_SOURCE, {
+      op: 'translate_by',
+      target: { slideKey: 'overview', editKey: 'headline' },
+      targetKind: 'text',
+      delta: { dx: 0.25, dy: -0.1 },
+    });
+    const second = writeManualEditsToDeckSource(first.source, {
+      op: 'translate_by',
+      target: { slideKey: 'overview', editKey: 'headline' },
+      targetKind: 'text',
+      delta: { dx: -0.05, dy: 0.3 },
+    });
+
+    expect(second.manualEdits.slides[0].targets[0]).toEqual({
+      kind: 'text',
+      editKey: 'headline',
+      translation: { dx: 0.2, dy: 0.19999999999999998 },
+    });
+  });
+});
