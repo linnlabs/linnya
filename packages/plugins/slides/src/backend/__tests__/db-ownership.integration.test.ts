@@ -38,6 +38,7 @@ const EXPECTED_SLIDES_OWNED_TABLES = [
   'presentation_revision_contexts',
   'presentation_revision_assets',
   'presentation_asset_releases',
+  'presentation_manual_edit_receipts',
 ] as const;
 
 function createPluginRuntimeTables(db: Database.Database): void {
@@ -86,6 +87,12 @@ function createPresentationTables(db: Database.Database): void {
       base_revision_id TEXT NOT NULL, base_revision INTEGER NOT NULL,
       last_error_summary TEXT, last_error_kind TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
       FOREIGN KEY (node_id) REFERENCES presentation_documents(node_id) ON DELETE CASCADE
+    );
+    CREATE TABLE presentation_manual_edit_receipts (
+      command_id TEXT PRIMARY KEY, node_id TEXT NOT NULL, payload_digest TEXT NOT NULL,
+      revision_id TEXT NOT NULL, revision INTEGER NOT NULL, created_at INTEGER NOT NULL,
+      FOREIGN KEY (node_id) REFERENCES presentation_documents(node_id) ON DELETE CASCADE,
+      FOREIGN KEY (revision_id) REFERENCES presentation_revisions(id) ON DELETE CASCADE
     );
     CREATE TABLE presentation_templates (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, template_spec_json TEXT NOT NULL,
@@ -230,7 +237,7 @@ describe('Slides DB ownership', () => {
 
     db.transaction(() => {
       db.exec(
-        'DELETE FROM presentation_svg_graphic_bindings; DELETE FROM presentation_image_bindings; DELETE FROM presentation_drafts; DELETE FROM presentation_revisions; DELETE FROM presentation_documents; DELETE FROM presentation_templates;'
+        'DELETE FROM presentation_manual_edit_receipts; DELETE FROM presentation_svg_graphic_bindings; DELETE FROM presentation_image_bindings; DELETE FROM presentation_drafts; DELETE FROM presentation_revisions; DELETE FROM presentation_documents; DELETE FROM presentation_templates;'
       );
     })();
     db.transaction(() => backup.restore(snapshot))();
