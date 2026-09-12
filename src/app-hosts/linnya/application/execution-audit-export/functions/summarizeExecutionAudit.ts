@@ -12,6 +12,7 @@ import type {
   ExecutionAuditUsage,
 } from '../definitions/executionAuditExport';
 import { summarizeExecutionIntegrity } from './summarizeExecutionIntegrity';
+import { summarizeWorkspaceDocumentDiagnostics } from './summarizeWorkspaceDocumentDiagnostics';
 
 interface MutableTokenTotals {
   inputTokens: number;
@@ -350,6 +351,7 @@ export function summarizeExecutionAudit(input: {
       byTool,
     },
     ...integrity,
+    workspaceDocuments: summarizeWorkspaceDocumentDiagnostics(input.eventFacts),
     contextCompaction: {
       ...compactionTotals,
       actualTokens: freezeTokens(compactionTotals.actualTokens),

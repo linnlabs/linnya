@@ -74,10 +74,20 @@ async function postJson(baseUrl: string, suffix: string, body: unknown): Promise
 }
 
 describe('conversation-control bridge router', () => {
+  it('拒绝旧版本握手，不能静默放行破坏性审计合同变化', async () => {
+    const execute = vi.fn<ConversationControlUseCase['execute']>();
+    const baseUrl = await startBridge(createUseCase(execute));
+    const response = await postJson(baseUrl, '/handshake', {
+      protocol_version: 1, client_name: 'linnya-cli', client_version: '0.1.0',
+    });
+    expect(response.status).toBe(400);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('握手声明 Host 已实现的 conversation control 能力', async () => {
     const baseUrl = await startBridge(createUseCase(vi.fn()));
     const response = await postJson(baseUrl, '/handshake', {
-      protocol_version: 1,
+      protocol_version: 2,
       client_name: 'linnya-cli',
       client_version: '0.1.0',
     });
@@ -93,7 +103,7 @@ describe('conversation-control bridge router', () => {
   it('生产 runtime 关闭审计时不声明 audit capability', async () => {
     const baseUrl = await startBridge(createUseCase(vi.fn()), { auditAvailable: false });
     const response = await postJson(baseUrl, '/handshake', {
-      protocol_version: 1,
+      protocol_version: 2,
       client_name: 'linnya-cli',
       client_version: '0.1.0',
     });

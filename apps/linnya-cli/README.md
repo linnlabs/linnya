@@ -108,6 +108,9 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 
 `send` 的单条消息上限是 200,000 个字符（按协议字符串长度计），由 App 握手的 `limits.max_message_chars` 正式声明。它只是 Conversation CLI 的 Host 入口限制，不是 Linnkit 的 token 上限；最终模型输入仍由 Agent 的上下文预算统一计量和接纳。
 
+`list` 不带 `--project` 时只查询无项目会话，不是全局列表。项目内会话必须先用
+`projects` 取得项目 ID，再显式传入 `--project`；空结果不能证明其他项目没有会话。
+
 ### 3.1 调用 Workspace 工具
 
 CLI 固定只开放 `list_files / read_file / grep / write_file / edit_file`。它不会接受 Shell、插件工具或任意注册工具。`tools list` 只返回名称与简介；需要调用时再用 `tools describe` 读取 App 当前注册的完整正式 schema，避免为发现工具反复传输全部参数合同：
@@ -182,6 +185,7 @@ pending -> running -> awaiting_user -> running -> completed | failed | cancelled
 
 - 没有主动 `pause` 命令。
 - `awaiting_user` 是 Runtime 被动等待，不是人为暂停；通过 `respond` 继续。
+- `paused` 保留原 run 的断点，不是失败终态。`pause.reason=tool.protocol_fuse` 表示连续工具参数错误；先查看最近工具错误，确认正确合同后由用户在 App 中继续。`tool_reconciliation_required` 表示未知副作用需正式 owner 对账，不能原样重发工具；`execution_interrupted` 则是未分类中断，需要进一步诊断。原因来自持久 RunRegistry，不解析日志或原始错误正文。
 - `stop` 是唯一主动中断动作。它会等待 Host 的取消完成屏障，并返回真实的 `cancelled`、`completed` 或 `failed` 结算，避免把“已发取消请求”误报成“已经取消”。
 - `status` 不虚构百分比。生命周期来自 RunRegistry；运行中的节点与累计步数来自同一 activation 已持久化的 Graph 执行快照，交互、错误和结果可用性继续由各自 owner 投影。
 - `send` 返回后 CLI 可以退出，后台运行归 Linnya App 所有，不依赖 CLI 进程存活。

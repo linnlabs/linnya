@@ -51,6 +51,7 @@ export function linnyaCliUsage(): string {
     '  Errors write one stable JSON value to stderr. --pretty is available for single commands.',
     '',
     'Workflow:',
+    '  list without --project shows unprojected conversations only, not a global list.',
     '  Run doctor, projects and models first; use the returned project/model IDs with send.',
     '  Save receipt.conversation_id and receipt.run_id, then status <conversation-id> --run <run-id> --watch.',
     '  send --conversation inherits the saved Agent and project; --agent explicitly changes the Agent.',

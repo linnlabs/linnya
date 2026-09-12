@@ -40,6 +40,8 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
   提供完整 durable tool decision/output，Command Audit 提供 Shell 进程终态，Telemetry
   仅按 `best_effort` 聚合 LLM、tool、context compaction 与 run terminal 观测。输出不含
   prompt、摘要正文、工具参数、工具输出或原始错误正文。
+  `workspace_documents` 另行报告成功保存中的文档诊断严重度计数与截断数；不把它混入
+  tool failure，不输出诊断 code/message/target，也不从零 error 推断编译通过。
 - `workspace_tools` 是固定五工具的窄入口：`list_files / read_file / grep / write_file / edit_file`。`list / describe` 读取真实 Tool registry schema；`call` 必须绑定项目或已有 Conversation，并复用正式 Flow admission 与 ToolNode 执行。
 - 只给项目时创建前端可见的新 Conversation；只给 Conversation 时从历史 owner 解析项目；同时提供时必须一致。Workspace locator 本身不携带项目身份，禁止按当前前端页面或文件存在性猜测作用域。
 - Host 工具请求使用 `yield_after_batch`：完整工具批次结算后结束 run，不调用 LLM。工具 decision/output、权限、审计、pending revision 与 UI projection 仍走普通工具链，不能在本 feature 复制 Workspace 执行逻辑。

@@ -159,6 +159,22 @@ export function projectExecutionAuditResponse(input: {
       runtime_failure_executions: input.audit.commands.runtimeFailureExecutions,
       by_execution: input.audit.commands.byExecution.map(projectCommandTerminal),
     },
+    workspace_documents: {
+      observations: input.audit.workspaceDocuments.observations,
+      observations_with_errors: input.audit.workspaceDocuments.observationsWithErrors,
+      observations_with_warnings: input.audit.workspaceDocuments.observationsWithWarnings,
+      visible: input.audit.workspaceDocuments.visible,
+      truncated_count: input.audit.workspaceDocuments.truncatedCount,
+      by_observation: input.audit.workspaceDocuments.byObservation.map(observation => ({
+        run_id: observation.runId,
+        parent_run_id: observation.parentRunId,
+        tool_call_id: observation.toolCallId,
+        tool_name: observation.toolName,
+        emitted_at: observation.emittedAt,
+        visible: observation.visible,
+        truncated_count: observation.truncatedCount,
+      })),
+    },
     context_compaction: {
       observations: input.audit.contextCompaction.observations,
       attempts: input.audit.contextCompaction.attempts,

@@ -5,6 +5,7 @@ import { ConversationUiMessageSchema } from '../conversation/ui-message';
 import { ModelPickerReasoningSchema } from '../model-picker';
 import { CONVERSATION_CONTROL_SCHEMA_VERSION } from './protocol';
 import { ConversationControlWorkspaceToolNameSchema } from './commands';
+import { ConversationControlAuditWorkspaceDocumentsSchema } from './workspaceDocumentAudit';
 
 const SuccessBaseFields = {
   schema_version: z.literal(CONVERSATION_CONTROL_SCHEMA_VERSION),
@@ -561,6 +562,7 @@ export const ConversationControlAuditResponseSchema = z
         by_execution: z.array(ConversationControlAuditCommandTerminalSchema),
       })
       .strict(),
+    workspace_documents: ConversationControlAuditWorkspaceDocumentsSchema,
     context_compaction: z
       .object({
         observations: z.number().int().nonnegative(),

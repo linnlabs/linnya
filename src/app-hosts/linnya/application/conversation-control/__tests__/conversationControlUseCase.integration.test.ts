@@ -400,6 +400,9 @@ function fixture(
             durationMs: 10,
             byTool: [],
           },
+          workspaceDocuments: { observations: 0, observationsWithErrors: 0,
+            observationsWithWarnings: 0, visible: { error: 0, warning: 0, info: 0 },
+            truncatedCount: 0, byObservation: [] },
           toolPairing: {
             complete: true,
             paired: 0,

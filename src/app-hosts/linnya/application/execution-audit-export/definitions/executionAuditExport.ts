@@ -1,3 +1,12 @@
+import type { WorkspaceDocumentDiagnostic } from '@app/schemas';
+
+/** code 尚无安全标识符合同；与 message、target 一起排除，只携带严重度。 */
+export interface ExecutionAuditWorkspaceDocumentFacts {
+  readonly toolName: 'write_file' | 'edit_file';
+  readonly severities: readonly WorkspaceDocumentDiagnostic['severity'][];
+  readonly truncatedCount: number;
+}
+
 export interface ExecutionAuditRunRecord {
   readonly runId: string;
   readonly parentRunId?: string;
@@ -124,6 +133,7 @@ export type ExecutionAuditEventFact =
       readonly toolCallId: string;
       readonly toolName: string;
       readonly status: 'success' | 'error';
+      readonly workspaceDocument?: ExecutionAuditWorkspaceDocumentFacts;
     }
   | ({
       readonly kind: 'command_terminal';
@@ -260,6 +270,22 @@ export type ExecutionAuditCommandTerminalSummary = ExecutionAuditCommandTerminal
     }
 );
 
+export interface ExecutionAuditDiagnosticCounts {
+  readonly error: number;
+  readonly warning: number;
+  readonly info: number;
+}
+
+export interface ExecutionAuditWorkspaceDocumentObservation {
+  readonly runId: string;
+  readonly parentRunId?: string;
+  readonly toolCallId: string;
+  readonly toolName: 'write_file' | 'edit_file';
+  readonly emittedAt: number;
+  readonly visible: ExecutionAuditDiagnosticCounts;
+  readonly truncatedCount: number;
+}
+
 export interface ExecutionAuditExport {
   readonly generatedAt: number;
   readonly runs: readonly ExecutionAuditRunRecord[];
@@ -299,6 +325,14 @@ export interface ExecutionAuditExport {
     readonly nonZeroExitExecutions: number;
     readonly runtimeFailureExecutions: number;
     readonly byExecution: readonly ExecutionAuditCommandTerminalSummary[];
+  };
+  readonly workspaceDocuments: {
+    readonly observations: number;
+    readonly observationsWithErrors: number;
+    readonly observationsWithWarnings: number;
+    readonly visible: ExecutionAuditDiagnosticCounts;
+    readonly truncatedCount: number;
+    readonly byObservation: readonly ExecutionAuditWorkspaceDocumentObservation[];
   };
   readonly contextCompaction: {
     readonly observations: number;

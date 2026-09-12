@@ -14,7 +14,16 @@ recorder。
 - Shell 子进程退出来自既有 `command.execution.terminal` 审计信封，与 Tool success/error
   分栏展示，因此非零 exit 不会被误报为工具基础设施错误。
 - 模型耗时、canonical token usage、工具完成、context compaction 和 run terminal 观测来自 Telemetry。
-- 不读取或导出 prompt、模型正文、工具参数、工具输出、原始错误正文和凭据。
+- `workspaceDocuments` 单列成功 `write_file/edit_file` 的 durable 文档诊断观测，按正式
+  Workspace data 合同提取严重度计数。保存成功与文档编译/质量成功是不同事实，不能把
+  error 诊断改记为工具执行失败，也不能把零 error 当作验收通过。
+- 诊断只输出调用身份、时间、error/warning/info 已见计数和原结果的未展示总数；
+  截断项严重度未知，分严重度计数是下界。它累计每次写入的观测，不代表文档当前剩余问题，
+  重复 terminal 仍由配对完整度栏揭示，不能从累计数推断“多少次独立编译失败”。
+- 标准诊断 `code` 当前只有非空字符串约束，并无禁止正文的安全合同，因此和
+  `message/target` 一起排除；不以正则猜测安全 code，也不解释插件 ID 或诊断正文。
+- 不读取或导出 prompt、模型正文、工具参数、observation、原始错误正文和凭据。
+  Workspace 写入只接纳正式结构化 data 并立即投影上述安全计数，不导出文档身份、地址、diff 或源码。
 - Telemetry 默认只保留 7 天，而且写入失败不阻断业务，因此对外必须标为
   `best_effort`，缺失 usage 必须计入 `missing_usage_calls`，不能补成 0。
 - `context_compaction` 按 root / child run 分栏聚合触发水位、前后 token、请求成本、

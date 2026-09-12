@@ -60,7 +60,7 @@ async function createScriptedBridge(
         await readJsonRequest(request);
         sendJson(response, 200, {
           schema_version: 1,
-          protocol_version: 1,
+          protocol_version: 2,
           app_instance_id: 'app-process-test',
           app_version: '0.0.38',
           capabilities,
@@ -100,7 +100,7 @@ async function createScriptedBridge(
   temporaryRoots.push(temporaryRoot);
   const connectionFile = path.join(temporaryRoot, 'connection.json');
   const descriptor = ConversationControlConnectionDescriptorSchema.parse({
-    protocol_version: 1,
+    protocol_version: 2,
     app_instance_id: 'app-process-test',
     pid: process.pid,
     host: '127.0.0.1',
@@ -138,6 +138,18 @@ function runCliProcess(
 }
 
 describe('linnya CLI real process -> scripted bridge', () => {
+  it('旧协议连接在命令执行前明确拒绝，不把新审计字段误当传输损坏', async () => {
+    const bridge = await createScriptedBridge(() => { throw new Error('must not execute'); });
+    const descriptor = ConversationControlConnectionDescriptorSchema.parse(
+      JSON.parse(await fs.readFile(bridge.connectionFile, 'utf8')),
+    );
+    await fs.writeFile(bridge.connectionFile, JSON.stringify({ ...descriptor, protocol_version: 1 }), { mode: 0o600 });
+    const result = await runCliProcess(['audit', 'conversation-1'], bridge.connectionFile);
+    expect(result.exitCode).toBe(4);
+    expect(JSON.parse(result.stderr)).toMatchObject({ error: { code: 'protocol_incompatible' } });
+    expect(bridge.receivedCommands).toEqual([]);
+  });
+
   it('doctor 接受新增能力并报告双方身份，输出不泄露连接凭据', async () => {
     const bridge = await createScriptedBridge(() => { throw new Error('doctor must not mutate'); });
     const result = await runCliProcess(['doctor'], bridge.connectionFile);
@@ -434,6 +446,9 @@ describe('linnya CLI real process -> scripted bridge', () => {
           by_model: [],
         },
         tools: { calls: 0, failed_calls: 0, duration_ms: 0, by_tool: [] },
+        workspace_documents: { observations: 0, observations_with_errors: 0,
+          observations_with_warnings: 0, visible: { error: 0, warning: 0, info: 0 },
+          truncated_count: 0, by_observation: [] },
         tool_pairing: {
           complete: true,
           paired: 0,

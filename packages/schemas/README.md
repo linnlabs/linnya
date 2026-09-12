@@ -266,6 +266,11 @@ shape 回放存量卡片，但这些 schema 不得重新用于注册 Agent execu
 只传 locator；reader 按真实内容识别文本或图片，图片通过模型附件返回且不接受行或字符窗口。普通文本
 窗口的默认值由 owner schema 在 admission 后物化，公开工具 schema 不用 default 诱导模型给图片补齐文本参数。
 
+Conversation CLI 的 `audit.workspace_documents` 只交换诊断严重度计数、调用身份与截断数，
+独立合同位于 `src/conversation-control/workspaceDocumentAudit.ts`。诊断 code/message/target
+没有安全文本保证，均不进入导出；工具保存成功、诊断结果和内容质量不得合成一个成功布尔值。
+该必填响应变化使用 wire protocol 2，旧 CLI 必须通过明确版本拒绝后升级，不能宽松双读。
+
 ### Workspace document read
 
 `src/tools/workspace-document-read.ts` 使用 `presentation.kind` 判别联合：

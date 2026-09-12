@@ -2,6 +2,7 @@ import { ToolCallWire, type RoutedRuntimeEvent } from '@linnlabs/linnkit/contrac
 
 import { CommandExecutionTerminalV1Schema } from '@app/schemas/commands';
 import type { ExecutionAuditEventFact } from 'src/app-hosts/linnya/application/execution-audit-export';
+import { projectWorkspaceDocumentDiagnosticFacts } from './projectWorkspaceDocumentDiagnosticFacts';
 
 function projectToolDecision(
   event: Extract<RoutedRuntimeEvent, { type: 'tool_call_decision' }>,
@@ -78,6 +79,7 @@ export function projectExecutionAuditEventFacts(
         toolCallId: event.tool_call_id,
         toolName: event.tool_name,
         status: event.status,
+        workspaceDocument: projectWorkspaceDocumentDiagnosticFacts(event),
       }];
     case 'audit_envelope': {
       const fact = projectCommandTerminal(event);

@@ -17,6 +17,11 @@ POST /api/v1/conversation-control/commands
 
 能力公告允许未来新增合法标识符，消费者忽略不认识的能力；命令 union 和响应 schema 仍然封闭且严格。改变既有协议语义必须升级 protocol，不能借能力扩展绕过合同校验。
 
+当前 wire protocol 为 2：audit 增加必填 `workspace_documents` 安全诊断栏，旧客户端必须
+重建升级后使用。协议号在连接描述与 handshake 中一致验证；URL 命名空间和连接文件名中的
+`v1` 是稳定发现地址，不参与 wire 版本协商。旧版本应明确 `protocol_incompatible`，
+不能通过 optional 字段、双读或宽松 response parser 静默兼容。
+
 ## 安全边界
 
 - API Server 只绑定 `127.0.0.1`。
