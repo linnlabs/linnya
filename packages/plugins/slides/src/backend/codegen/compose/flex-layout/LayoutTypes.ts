@@ -15,6 +15,7 @@ export type {
   EdgeInsets,
   FlexComposeInput,
   FlexProps,
+  LayoutAuthoringTargetConfig,
   LayoutBorderInput,
   LayoutChartConfig,
   LayoutChartDataLike,

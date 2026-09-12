@@ -6,6 +6,7 @@ import type {
   TextStyle,
 } from '@plugin/slides/shared';
 import { resolveShapeGeometry } from '@plugin/slides/shared';
+import { buildSlidesAuthoringRenderNodeId } from '@plugin/slides/shared';
 import type {
   GroupRenderNode,
   RenderNode,
@@ -93,7 +94,9 @@ function mapStructuredElement(
   defaults: RenderDefaultsContext,
   svgAssets: ReadonlyMap<string, SvgGraphicResolvedAsset>,
 ): RenderNode {
-  const elementId = `s${slideNumber}-generated-${zIndex}`;
+  const elementId = element._authoringRef
+    ? buildSlidesAuthoringRenderNodeId(element._authoringRef)
+    : `s${slideNumber}-generated-${zIndex}`;
   const base = makeBaseNode(
     elementId,
     toRenderBox(element.position),
@@ -101,6 +104,7 @@ function mapStructuredElement(
     buildGeneratedEditableTarget(slideNumber, elementId, element),
     element._sourceSpan,
     element._layoutConstraintEvidence,
+    element._authoringRef,
   );
 
   switch (element.type) {
@@ -223,7 +227,9 @@ function mapFreeformElement(
     return [mapFreeformGroup(slideNumber, element, zIndex, transform, defaults, svgAssets)];
   }
 
-  const elementId = `s${slideNumber}-freeform-${zIndex}`;
+  const elementId = element._authoringRef
+    ? buildSlidesAuthoringRenderNodeId(element._authoringRef)
+    : `s${slideNumber}-freeform-${zIndex}`;
   const base = makeBaseNode(
     elementId,
     toRenderBox(applyFreeformTransform(element.position, transform)),
@@ -231,6 +237,7 @@ function mapFreeformElement(
     buildGeneratedEditableTarget(slideNumber, elementId, element),
     element._sourceSpan,
     element._layoutConstraintEvidence,
+    element._authoringRef,
   );
 
   switch (element.type) {
@@ -288,7 +295,9 @@ function mapFreeformGroup(
   defaults: RenderDefaultsContext,
   svgAssets: ReadonlyMap<string, SvgGraphicResolvedAsset>,
 ): GroupRenderNode {
-  const groupId = `s${slideNumber}-freeform-${zIndex}`;
+  const groupId = element._authoringRef
+    ? buildSlidesAuthoringRenderNodeId(element._authoringRef)
+    : `s${slideNumber}-freeform-${zIndex}`;
   const groupBox = toRenderBox(applyFreeformTransform(element.position, parentTransform));
   const base = makeBaseNode(
     groupId,
@@ -297,6 +306,7 @@ function mapFreeformGroup(
     buildGeneratedEditableTarget(slideNumber, groupId, element),
     element._sourceSpan,
     element._layoutConstraintEvidence,
+    element._authoringRef,
   );
   if (!element.children?.length) {
     return {

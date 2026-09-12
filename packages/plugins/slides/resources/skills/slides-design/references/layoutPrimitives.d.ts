@@ -245,6 +245,11 @@ interface FlexProps {
   y?: number;
 }
 
+/** deck.js 显式声明的稳定作者对象身份；不从 sourceSpan 或执行顺序推导。 */
+interface LayoutAuthoringTargetConfig {
+  editKey?: string;
+}
+
 interface LayoutBorderInput {
   color: string;
   width: number;
@@ -262,7 +267,7 @@ interface LayoutChartCategoryAxis {
   labelRotation?: number;
 }
 
-interface LayoutChartConfig extends FlexProps, LayoutChartControls {
+interface LayoutChartConfig extends FlexProps, LayoutChartControls, LayoutAuthoringTargetConfig {
   preset?: LayoutChartPresetName;
   chartType?: LayoutChartType;
   categories?: LayoutDisplayValue[];
@@ -393,7 +398,7 @@ type LayoutContainerNode = LayoutSlideNode | LayoutViewNode;
 
 type LayoutDisplayValue = string | number | boolean;
 
-interface LayoutFormulaConfig extends FlexProps {
+interface LayoutFormulaConfig extends FlexProps, LayoutAuthoringTargetConfig {
   /** 受控 LaTeX profile；不支持的命令会直接报错。 */
   latex: string;
   /** PowerPoint 原生公式字号，单位 pt。 */
@@ -432,7 +437,7 @@ interface LayoutGradientStop {
 /** @deprecated 使用 LayoutViewNode + flexDirection: 'row'。 */
 type LayoutHStackNode = LayoutViewNode;
 
-interface LayoutImageConfig extends FlexProps {
+interface LayoutImageConfig extends FlexProps, LayoutAuthoringTargetConfig {
   role?: 'background' | 'decoration';
   /** 允许超出画布的英寸数，默认零。 */
   bleed?: number;
@@ -512,7 +517,7 @@ interface LayoutRadialGradient {
   rotateWithShape?: boolean;
 }
 
-interface LayoutShapeConfig extends FlexProps {
+interface LayoutShapeConfig extends FlexProps, LayoutAuthoringTargetConfig {
   /** 声明背景或装饰意图，参与空间诊断；不改变无障碍语义。 */
   role?: 'background' | 'decoration';
   /** 允许超出画布的英寸数，默认零。 */
@@ -560,6 +565,8 @@ type LayoutSlideBackground =
   | { gradient: LayoutGradient; color?: never; image?: never };
 
 interface LayoutSlideConfig extends FlexProps, ContainerDecoration {
+  /** 文稿内稳定且唯一的页面身份。 */
+  slideKey?: string;
   background?: LayoutSlideBackground;
   notes?: string;
 }
@@ -582,7 +589,7 @@ interface LayoutSpacerNode extends LayoutSpacerConfig, LayoutSourceMetadata {
   readonly _type: 'Spacer';
 }
 
-interface LayoutSvgGraphicConfig extends FlexProps {
+interface LayoutSvgGraphicConfig extends FlexProps, LayoutAuthoringTargetConfig {
   source?: LayoutSvgGraphicSourceInput;
   fit?: SvgGraphicFit;
   opacity?: number;
@@ -614,7 +621,7 @@ interface LayoutTableCellInput {
 
 type LayoutTableCellValue = LayoutDisplayValue | LayoutTableCellInput;
 
-interface LayoutTableConfig extends FlexProps {
+interface LayoutTableConfig extends FlexProps, LayoutAuthoringTargetConfig {
   headers?: LayoutTableCellValue[];
   rows?: LayoutTableCellValue[][];
   /** 整张表四边及内部网格线的统一描边。 */
@@ -641,7 +648,7 @@ type LayoutTextAlign = 'left' | 'center' | 'right';
  * Text 的横向约束决定换行语义：Flex 流中的 Text 或显式 width/maxWidth/左右边界
  * 使用固定盒宽并自动换行；绝对定位且没有横向约束时，盒宽跟随内容，只响应显式换行符。
  */
-interface LayoutTextConfig extends FlexProps {
+interface LayoutTextConfig extends FlexProps, LayoutAuthoringTargetConfig {
   /** 页边辅助信息，不计入正文的字体层级与字体族数量。 */
   role?: 'footnote' | 'source' | 'page-number';
   content?: string | LayoutTextRun[];
@@ -713,7 +720,7 @@ type LayoutVStackNode = LayoutViewNode;
 
 type LayoutVerticalAlign = 'top' | 'middle' | 'bottom';
 
-interface LayoutViewConfig extends FlexProps, ContainerDecoration {
+interface LayoutViewConfig extends FlexProps, ContainerDecoration, LayoutAuthoringTargetConfig {
   flexDirection?: 'column' | 'row';
   padding?: number | EdgeInsets;
   gap?: number;

@@ -242,6 +242,15 @@ export {
   isFlexComposeInput,
   isLeafNode,
 } from './flexComposeContract';
+export {
+  buildSlidesAuthoringRenderNodeId,
+  isSlidesAuthoringEditRef,
+  isSlidesAuthoringKey,
+  SLIDES_AUTHORING_KEY_PATTERN,
+} from './authoringEditing';
+export type {
+  SlidesAuthoringEditRef,
+} from './authoringEditing';
 export type {
   AbsolutePositionBox,
   ContainerDecoration,
@@ -249,6 +258,7 @@ export type {
   FlexComposeInput,
   FlexProps,
   LayoutBorderInput,
+  LayoutAuthoringTargetConfig,
   LayoutChartConfig,
   LayoutChartControls,
   LayoutChartCategoryAxis,

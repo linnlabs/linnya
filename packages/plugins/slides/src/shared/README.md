@@ -17,6 +17,7 @@ shared/
 ├── documentSource/                   # presentation 来源、source span、slide marker 纯索引
 ├── generatedLayoutConstraints/       # generated Flex/Yoga 的窄布局事实合同
 ├── deckSpec/                         # DeckSpec、SlideSpec、PatchSpec、尺寸、asset ref、semantic role
+├── authoringEditing/                 # generated deck 稳定编辑身份与后续人工写回合同
 ├── visual/                           # 颜色合同、theme、chart palette
 ├── renderModel/                      # PresentationRenderModel、RenderNode 遍历、editable target 纯规则
 ├── svgGraphic/                       # SVG Graphic 来源、owned ref、admission DTO 与错误码
@@ -48,6 +49,7 @@ shared/
 | 文档来源与源码定位 | `documentSource/` | presentation 来源、deck.js source span、slide marker 行号索引 |
 | Generated 布局事实 | `generatedLayoutConstraints/` | 声明约束、Yoga 最终盒、比例与 computed 父容器身份；不是 authoring API |
 | DeckSpec 与 patch 合同 | `deckSpec/` | 生成结果、导入稿 patch、元素、尺寸、图片引用和语义角色 |
+| 作者编辑合同 | `authoringEditing/` | `slideKey + editKey` 稳定身份、严格校验与后续人工编辑命令 |
 | 视觉与主题合同 | `visual/` | 颜色规范化、主题与 chart palette |
 | compose DSL 合同 | `flexComposeContract.ts` | deck.js scene graph DSL |
 | 读路径与质量输入合同 | `presentationInfo.ts`、`canonicalDeck.ts`、`deckPreview.ts` | PPTX reader、RenderModel 派生的窄 lint facts、canonical deck、preview DTO |

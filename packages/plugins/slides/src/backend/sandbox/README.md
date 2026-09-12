@@ -66,6 +66,8 @@ deck.js source
 
 - sandbox 可以依赖 `@plugin/backend/sandboxRuntime` 的类型和执行协议。
 - sandbox 可以依赖 shared compose DSL 类型，用于校验 `compose()` payload。
+- `slideKey` / `editKey` 是普通、显式的 authoring config；sandbox 只负责按源码值保留，
+  唯一性与是否可编辑由 Flex compiler 和 `shared/authoringEditing` 合同判定。
 - sandbox 不访问 DB、workspace、repository、IPC 或 renderer。
 - `pptComposeProfile` 只接受 `codegen-source` profile
   mode；deck 修改应通过 source-based write/edit 工作流完成。

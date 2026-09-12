@@ -125,6 +125,19 @@ compose({ title: "text tracking", slides: [slide] });
     expect(r.records).toEqual([]);
   });
 
+  it('accepts explicit stable authoring keys on slides, frames and elements', () => {
+    const r = typecheckCodegenSource(`
+const slide = createSlide({ slideKey: "overview" });
+const frame = createFrame({ editKey: "hero_group" });
+frame.add(createText({ editKey: "headline", content: "Q4 review" }));
+frame.add(createImage({ editKey: "hero_image", src: "https://example.com/hero.png" }));
+slide.add(frame);
+compose({ title: "editable", slides: [slide] });
+`);
+    expect(r.records).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
   it('accepts the complete advanced authoring contract with exact nested types', () => {
     const r = typecheckCodegenSource(`
 const slide = createSlide({

@@ -31,7 +31,7 @@ Slides 是“代码及文件”：Workspace 中的 `.slides` 是正式文档，`
 ### 创建与编辑
 1. 先了解现有材料与 source。普通文本部分读取使用 1-based 行号：`offset` 是起始行，`limit` 是最多行数；复制到 `edit_file.old_string` 时去掉展示行号与 `|`。只有显式 `view="document"` 的结构化读取才使用 `offset_chars/max_chars`。
 2. 按任务读取下表中的最少资源，了解Slides的语法。不要一次加载全部 reference。
-3. deck.js 必须是 plain JavaScript；不写 `import`、`require`、TypeScript 注解或类型声明。每个顶层 `createSlide()` 对应一页，页面必须显式放进 `compose({ slides: [...] })`，整份 source 只调用一次 `compose()`。
+3. deck.js 使用 plain JavaScript；不写模块导入或 TypeScript。每页在顶层 `createSlide()`，整稿只调用一次 `compose()`。新稿为页面和可编辑对象声明稳定、唯一的 `slideKey`／`editKey`；规则见 [`syntax.md`](./references/syntax.md)。
 4. 新建文稿或整体改版时，把用户已批准的 `visualDirection` 落实为页面设计，再确定颜色、字体和图表调色板并写进 `compose({ theme })`。`visualDirection` 约束方向，`theme` 保存实际视觉常量；后者是跨页一致性的唯一运行时依据，也是后续编辑读到的 `DECK_DESIGN` 的来源。判断依据见 [`design.md`](./references/design.md)。
 5. 新建文稿使用 `write_file`，只传 `locator="workspace:/.../*.slides"`，不传 inode。
 6. 局部替换优先 `edit_file`；整体重写才用 `write_file`。示例文件都是独立 source 起点，不能直接互相拼接。同一份 Slides 的写操作必须串行。修改声明与引用时先用 `grep` 找全关联处；删除按“先移除引用、后删除声明”，新增按“先增加声明、后增加引用”，保证每次写入都是可编译状态。能由一段更大且唯一的 `old_string` 覆盖时，优先一次完成关联修改。

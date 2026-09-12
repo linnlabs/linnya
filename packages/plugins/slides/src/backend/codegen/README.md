@@ -114,6 +114,10 @@ renderer source selection
 
 - `src/shared/flexComposeContract.ts` 是 deck.js 场景图的公开类型真值；其中
   `Layout*Config` 表示 Agent 可写输入，`Layout*Node` 还包含运行时只读结构。
+- generated deck 的前端编辑身份由 [`shared/authoringEditing`](../../shared/authoringEditing/README.md)
+  统一拥有。页面显式声明 `slideKey`，作者对象显式声明 `editKey`；Flex compiler 校验
+  文稿内页面唯一性与页内对象唯一性，再把完整 ref 投影到 DeckSpec 和 RenderModel。
+  旧源码没有 key 时继续编译，但不能从页码、数组下标、sourceSpan 或几何位置伪造稳定身份。
 - `scripts/codegen/layoutDts/` 从 shared contract、shape geometry 与 sandbox
   globals 生成两份同内容 d.ts：sandbox typecheck 使用一份，Slides
   skill 分发一份。禁止手改生成文件。
@@ -149,7 +153,7 @@ renderer source selection
   shape 不改写，公开类型、生成 d.ts 与 skill 仍只描述 `{ width, height }`。
 - typed path 的 `close` 表示闭合轮廓，不是所有路径的必填终止符。engine 必须保留不含 `close`
   的开放折线/曲线；不能为了通过物化而自动补闭合命令。
-- `_type/children/_sourceSpan/_layoutConstraintEvidence`
+- `_type/children/_sourceSpan/_authoringRef/_layoutConstraintEvidence`
   是内部结构，`chartOptions/tableOptions`
   是 DirectCompose/PptxGenJS 内部入口；它们不属于工厂 config，也不能被描述为 deck.js 高级能力。
 - Flex compiler 在 `LayoutResult.node + box` 同时可用时派生
