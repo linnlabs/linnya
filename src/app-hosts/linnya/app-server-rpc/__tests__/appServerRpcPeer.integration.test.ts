@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   APP_SERVER_RPC_SCHEMA_VERSION,
+  APP_SERVER_RPC_MAX_PENDING_REQUESTS,
   createAppServerRpcPeer,
   encodeAppServerRpcFrame,
   type AppServerRpcHandler,
@@ -72,6 +73,88 @@ describe('App Server RPC peer', () => {
     await expect(pair.desktop.request('backend.echo', true)).resolves.toBe(true);
 
     pair.dispose();
+  });
+
+  it('超过原 deadline 的迟到响应结算一次，后续业务存活，但重复响应仍拒绝', async () => {
+    let lateRequestId = '';
+    const pair = createPeerPair(new Map(), new Map([['backend.echo', (payload, context) => {
+      if (payload === 'late') lateRequestId = context.requestId;
+      return payload;
+    }]]));
+    // 对端已写回，但接收事件循环暂时没有消费响应，模拟进程负载下的真实管道延迟。
+    pair.backendToDesktop.pause();
+    void pair.desktop.completed.catch(() => undefined);
+    try {
+      await expect(pair.desktop.request('backend.echo', 'late', { timeoutMs: 10 }))
+        .rejects.toThrow('超时');
+      await new Promise(resolve => setTimeout(resolve, 40));
+      pair.backendToDesktop.resume();
+      await new Promise(resolve => setImmediate(resolve));
+      await expect(pair.desktop.request('backend.echo', 'still-alive')).resolves.toBe('still-alive');
+      pair.backendToDesktop.write(encodeAppServerRpcFrame({
+        schema_version: APP_SERVER_RPC_SCHEMA_VERSION, kind: 'response',
+        request_id: lateRequestId, ok: true, result: 'duplicate',
+      }));
+      await expect(pair.desktop.completed).rejects.toThrow('没有匹配 request');
+    } finally {
+      pair.dispose();
+    }
+  });
+
+  it('取消后仍等待 terminal 的请求占用容量，接到回复才释放，不能无界积累墓碑', async () => {
+    const pair = createPeerPair(new Map(), new Map([['backend.echo', echoHandler]]));
+    pair.backendToDesktop.pause();
+    const controller = new AbortController();
+    const requests = Array.from({ length: APP_SERVER_RPC_MAX_PENDING_REQUESTS }, (_, index) =>
+      pair.desktop.request('backend.echo', index, { signal: controller.signal }));
+    const settled = Promise.allSettled(requests);
+    try {
+      // 确保请求已经送入对端，避免把取消前队列排序与本例容量规则混为一谈。
+      await new Promise(resolve => setImmediate(resolve));
+      controller.abort();
+      expect((await settled).every(result => result.status === 'rejected')).toBe(true);
+      await expect(pair.desktop.request('backend.echo', 'over-capacity', { timeoutMs: 10 })).rejects.toThrow('容量上限');
+      pair.backendToDesktop.resume();
+      await new Promise(resolve => setImmediate(resolve));
+      await expect(pair.desktop.request('backend.echo', 'capacity-released')).resolves.toBe('capacity-released');
+    } finally {
+      pair.dispose();
+    }
+  });
+
+  it('尚在 writer 队列的 request 被取消时，cancel 不能越过自己的 request', async () => {
+    const input = new PassThrough();
+    const output = new GatedWritable();
+    let nextId = 0;
+    const peer = createAppServerRpcPeer({
+      input, output, handlers: new Map(), requestIdFactory: { create: () => `queued-${++nextId}` },
+    });
+    const first = peer.request('backend.echo', 1).catch(() => undefined);
+    const controller = new AbortController();
+    const second = peer.request('backend.echo', 2, { signal: controller.signal });
+    const cancelled = expect(second).rejects.toThrow('已取消');
+    try {
+      controller.abort();
+      await cancelled;
+      output.releaseNextWrite();
+      await waitFor(() => output.pendingWriteCount === 1);
+      output.releaseNextWrite();
+      await waitFor(() => output.pendingWriteCount === 1);
+      output.releaseNextWrite();
+      expect(output.frames.map(frame => {
+        const value: unknown = JSON.parse(frame);
+        return value;
+      })).toEqual([
+        expect.objectContaining({ kind: 'request', request_id: 'queued-1' }),
+        expect.objectContaining({ kind: 'request', request_id: 'queued-2' }),
+        expect.objectContaining({ kind: 'cancel', request_id: 'queued-2' }),
+      ]);
+    } finally {
+      peer.dispose();
+      input.destroy();
+      output.destroy();
+      await first;
+    }
   });
 
   it('不接受没有 pending request 的孤立 response', async () => {
@@ -165,6 +248,7 @@ function createPeerPair(
   return {
     desktop,
     backend,
+    backendToDesktop,
     dispose() {
       desktop.dispose();
       backend.dispose();

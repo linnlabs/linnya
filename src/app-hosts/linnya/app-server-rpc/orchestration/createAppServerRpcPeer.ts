@@ -39,7 +39,8 @@ export function createAppServerRpcPeer(input: {
   const requestIdFactory = input.requestIdFactory ?? { create: randomUUID };
   const pendingOutbound = new Map<string, PendingOutboundRequest>();
   const activeInbound = new Map<string, ActiveInboundRequest>();
-  const ignoredOutboundResponses = new Map<string, NodeJS.Timeout>();
+  // 调用方已结算不等于线协议已结算；保留身份直到对端唯一 terminal 到达，不按墙钟遗忘。
+  const cancelledOutbound = new Set<string>();
   const recentInboundTerminal = new Set<string>();
   let disposed = false;
   let completedResolve: (() => void) | null = null;
@@ -60,8 +61,7 @@ export function createAppServerRpcPeer(input: {
     pendingOutbound.clear();
     for (const request of activeInbound.values()) request.controller.abort(reason);
     activeInbound.clear();
-    for (const timeout of ignoredOutboundResponses.values()) clearTimeout(timeout);
-    ignoredOutboundResponses.clear();
+    cancelledOutbound.clear();
     completedResolve?.();
   };
 
@@ -77,8 +77,7 @@ export function createAppServerRpcPeer(input: {
     pendingOutbound.clear();
     for (const request of activeInbound.values()) request.controller.abort(failure);
     activeInbound.clear();
-    for (const timeout of ignoredOutboundResponses.values()) clearTimeout(timeout);
-    ignoredOutboundResponses.clear();
+    cancelledOutbound.clear();
     completedReject?.(failure);
   };
 
@@ -151,12 +150,7 @@ export function createAppServerRpcPeer(input: {
   };
 
   const handleResponse = (frame: Extract<AppServerRpcFrame, { kind: 'response' }>): void => {
-    const ignoredTimeout = ignoredOutboundResponses.get(frame.request_id);
-    if (ignoredTimeout) {
-      clearTimeout(ignoredTimeout);
-      ignoredOutboundResponses.delete(frame.request_id);
-      return;
-    }
+    if (cancelledOutbound.delete(frame.request_id)) return;
     const pending = pendingOutbound.get(frame.request_id);
     if (!pending) {
       fail(new Error(`App Server RPC response 没有匹配 request: ${frame.request_id}`));
@@ -227,7 +221,8 @@ export function createAppServerRpcPeer(input: {
     options: { readonly signal?: AbortSignal; readonly timeoutMs?: number } = {},
   ): Promise<JsonValue> => {
     if (disposed) return Promise.reject(new Error('App Server RPC peer 已关闭'));
-    if (pendingOutbound.size >= APP_SERVER_RPC_MAX_PENDING_REQUESTS) {
+    // 取消后等待回执的身份也占容量，避免慢对端让“已取消”集合无界增长。
+    if (pendingOutbound.size + cancelledOutbound.size >= APP_SERVER_RPC_MAX_PENDING_REQUESTS) {
       return Promise.reject(new Error('App Server RPC pending request 已达容量上限'));
     }
     const timeoutMs = options.timeoutMs ?? APP_SERVER_RPC_DEFAULT_TIMEOUT_MS;
@@ -241,15 +236,17 @@ export function createAppServerRpcPeer(input: {
       return Promise.reject(toError(error));
     }
     const requestId = requestIdFactory.create();
-    if (pendingOutbound.has(requestId) || ignoredOutboundResponses.has(requestId)) {
+    if (pendingOutbound.has(requestId) || cancelledOutbound.has(requestId)) {
       return Promise.reject(new Error(`App Server RPC request id 重复: ${requestId}`));
     }
     return new Promise<JsonValue>((resolve, reject) => {
-      const rememberIgnoredResponse = (): void => {
-        const cleanup = setTimeout(() => {
-          ignoredOutboundResponses.delete(requestId);
-        }, timeoutMs);
-        ignoredOutboundResponses.set(requestId, cleanup);
+      let requestWritten = false;
+      const writeCancel = (): void => {
+        void writer.write({
+          schema_version: APP_SERVER_RPC_SCHEMA_VERSION,
+          kind: 'cancel',
+          request_id: requestId,
+        }, 'urgent').catch(fail);
       };
       const cancel = (message: string): void => {
         const pending = pendingOutbound.get(requestId);
@@ -257,13 +254,10 @@ export function createAppServerRpcPeer(input: {
         pendingOutbound.delete(requestId);
         clearTimeout(pending.timeout);
         pending.removeAbortListener();
-        rememberIgnoredResponse();
+        cancelledOutbound.add(requestId);
         pending.reject(new Error(message));
-        void writer.write({
-          schema_version: APP_SERVER_RPC_SCHEMA_VERSION,
-          kind: 'cancel',
-          request_id: requestId,
-        }, 'urgent').catch(fail);
+        // urgent 可以越过其他 request，不能越过它自己尚未写出的 request。
+        if (requestWritten) writeCancel();
       };
       const abort = (): void => cancel(`App Server RPC ${method} 已取消`);
       const timeout = setTimeout(() => {
@@ -282,7 +276,10 @@ export function createAppServerRpcPeer(input: {
         request_id: requestId,
         method,
         payload,
-      }, 'normal').catch((error: unknown) => {
+      }, 'normal').then(() => {
+        requestWritten = true;
+        if (cancelledOutbound.has(requestId)) writeCancel();
+      }).catch((error: unknown) => {
         const pending = pendingOutbound.get(requestId);
         if (pending) {
           pendingOutbound.delete(requestId);
