@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RunIdSchema } from '@linnlabs/linnkit/contracts';
+import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import { ConversationControlRunStatusSnapshotSchema } from '@app/schemas';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import { ProcessTool } from 'src/tools/commands/process/ProcessTool';
@@ -34,7 +35,70 @@ afterEach(() => {
   rmSync(directory, { recursive: true, force: true });
 });
 
-describe('protocol fuse through real Flow, Graph, SQLite and CLI status projection', () => {
+describe('execution pause through real Flow, Graph, SQLite and CLI status projection', () => {
+  it('已发布的模型失败分类优先于随后抛出的冲突错误，持久控制态保留主终因', async () => {
+    fixture = await createDurableFlowHarness(join(directory, 'workspace.sqlite'), [{
+      failure: { kind: 'provider', code: 'auth_failed', retryable: false },
+    }]);
+    const startSession = graph.GraphExecutor.prototype.startSession;
+    let originalFailure: unknown;
+    vi.spyOn(graph.GraphExecutor.prototype, 'startSession').mockImplementation(async function (
+      this: graph.GraphExecutor,
+      ...args: Parameters<graph.GraphExecutor['startSession']>
+    ) {
+      try {
+        return await startSession.apply(this, args);
+      } catch (error) {
+        originalFailure = error;
+        // 保留真实 LlmNode 已发布的失败；只在 Graph 出口模拟后续异常，不伪造 failure sink。
+        throw Object.assign(new Error('Secondary execution failure'), { errorCode: 'tool.protocol_fuse' });
+      }
+    });
+    const conversationId = 'published-failure-conversation';
+    await fixture.flow.next({
+      conversation_id: conversationId,
+      new_events: [{ type: 'user_input', content: 'Read a document', source: 'user', timestamp: 1 }],
+      options: { promptKey: 'default', model_id: 'scripted-test-model' },
+    }, () => {});
+
+    expect(originalFailure).toMatchObject({ errorCode: 'llm.auth_failed' });
+    const active = (await fixture.flow.getActiveForegroundRun(conversationId)).run;
+    if (!active) throw new Error('Expected paused run');
+    const record = await new SQLiteRunRegistryStore(fixture.db).load(RunIdSchema.parse(active.run_id));
+    expect(record).toMatchObject({ status: 'paused', pauseReason: 'llm.auth_failed' });
+    if (!record) throw new Error('Expected durable run record');
+    const cliStatus = ConversationControlRunStatusSnapshotSchema.parse(projectRunStatus(record, undefined, false));
+    expect(cliStatus.pause).toEqual({ settled: true, reason: 'llm.auth_failed' });
+    expect(cliStatus.error).toBeUndefined();
+    expect(fixture.ai.getCalls()).toHaveLength(1);
+    fixture.ai.assertAllTurnsConsumed();
+  });
+
+  it('未知 Provider 分类不进入持久暂停原因或 CLI 状态正文', async () => {
+    const privateCode = 'PROVIDER_PRIVATE_CLASSIFICATION';
+    fixture = await createDurableFlowHarness(join(directory, 'workspace.sqlite'), [{
+      failure: { kind: 'provider', code: privateCode, retryable: false },
+    }]);
+    const conversationId = 'unknown-failure-conversation';
+    await fixture.flow.next({
+      conversation_id: conversationId,
+      new_events: [{ type: 'user_input', content: 'Read a document', source: 'user', timestamp: 1 }],
+      options: { promptKey: 'default', model_id: 'scripted-test-model' },
+    }, () => {});
+
+    const active = (await fixture.flow.getActiveForegroundRun(conversationId)).run;
+    if (!active) throw new Error('Expected paused run');
+    const record = await new SQLiteRunRegistryStore(fixture.db).load(RunIdSchema.parse(active.run_id));
+    expect(record).toMatchObject({ status: 'paused', pauseReason: 'execution_interrupted' });
+    if (!record) throw new Error('Expected durable run record');
+    const cliStatus = ConversationControlRunStatusSnapshotSchema.parse(projectRunStatus(record, undefined, false));
+    expect(cliStatus.pause).toEqual({ settled: true, reason: 'execution_interrupted' });
+    expect(cliStatus.error).toBeUndefined();
+    expect(JSON.stringify(cliStatus)).not.toContain(privateCode);
+    expect(fixture.ai.getCalls()).toHaveLength(1);
+    fixture.ai.assertAllTurnsConsumed();
+  });
+
   it('持久化全部拒绝结果及安全暂停原因；显式继续消费原错误历史且不重跑工具', async () => {
     const callIds = Array.from({ length: 4 }, (_, index) => `process-invalid-${index + 1}`);
     fixture = await createDurableFlowHarness(join(directory, 'workspace.sqlite'), [

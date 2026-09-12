@@ -24,6 +24,7 @@ import {
 } from 'src/domains/markdown';
 import { BaseTool, type ToolContext } from 'src/tools/types';
 import { AskTool } from 'src/tools/agent_control/ask/AskTool';
+import { SQLiteRunRegistryStore } from '../../persistence/run-registry';
 
 const conversationId = 'durable-conversation';
 const request: ConversationNextRequest = {
@@ -95,6 +96,18 @@ describe('durable root Flow continuation, production Audit off', () => {
       ],
       [tool]
     );
+    const startSession = graph.GraphExecutor.prototype.startSession;
+    vi.spyOn(graph.GraphExecutor.prototype, 'startSession').mockImplementation(async function (
+      this: graph.GraphExecutor,
+      ...args: Parameters<graph.GraphExecutor['startSession']>
+    ) {
+      try {
+        return await startSession.apply(this, args);
+      } catch {
+        // 用户已请求暂停；随后执行收口的对账异常不能覆盖这一显式控制意图。
+        throw new graph.RunRecoveryBlockedError('Execution reconciliation interrupted');
+      }
+    });
     const executing = fixture.flow.next(request, () => {});
     await started;
     const active = (await fixture.flow.getActiveForegroundRun(conversationId)).run;
@@ -102,6 +115,9 @@ describe('durable root Flow continuation, production Audit off', () => {
     await fixture.flow.pauseRun(active.run_id, conversationId, active.execution_id);
     await executing;
     const root = await paused(fixture);
+    expect(root.pause.reason).toBe('user_pause');
+    expect(await new SQLiteRunRegistryStore(fixture.db).load(RunIdSchema.parse(root.run_id)))
+      .toMatchObject({ status: 'paused', pauseReason: 'user_pause' });
     const used =
       (await fixture.checkpointer.load(root.run_id))?.local?.executorLocal?.stepCount ?? 0;
     vi.spyOn(tool, 'run').mockResolvedValue('Original read continued');
