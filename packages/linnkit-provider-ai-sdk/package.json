@@ -62,7 +62,7 @@
     "ai-sdk-ollama": "4.2.0"
   },
   "devDependencies": {
-    "@linnlabs/linnkit": "0.37.2",
+    "@linnlabs/linnkit": "0.37.3",
     "@types/node": "^24.3.0",
     "tsup": "^8.0.0",
     "tsx": "^4.20.3",
