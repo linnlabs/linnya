@@ -105,6 +105,7 @@ function makeCoordinator(): SlidesIpcCoordinatorPort {
       presentationId: 'presentation-1',
       versionId: 'version-1',
       versionNumber: 1,
+      sourceHash: 'a'.repeat(64),
     })),
     getRenderModel: vi.fn(async () => renderModel),
     submitManualEdit: vi.fn(async command => ({
@@ -187,6 +188,7 @@ describe('slides IPC handlers', () => {
       presentationId: 'presentation-1',
       versionId: 'version-1',
       versionNumber: 1,
+      sourceHash: 'a'.repeat(64),
       draftStatus: {
         baseVersionId: 'version-1',
         baseVersionNumber: 1,

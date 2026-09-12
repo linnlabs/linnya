@@ -46,6 +46,7 @@ describe('slidesStore', () => {
       presentationId: nodeId,
       versionId: 'version-1',
       versionNumber: 1,
+      sourceHash: 'a'.repeat(64),
     }));
   });
 

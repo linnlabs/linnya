@@ -151,6 +151,7 @@ describe('PptCoordinator', () => {
       presentationId: 'node-1',
       versionId: 'revision-7',
       versionNumber: 7,
+      sourceHash: 'source-hash-7',
       draftStatus: {
         baseVersionId: 'revision-7',
         baseVersionNumber: 7,

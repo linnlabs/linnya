@@ -144,7 +144,8 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 | 通道 | 用途 |
 |---|---|
 | `slides:preview` | 获取 `DeckPreview` |
-| `slides:build-state` | 查询源码是 `ready` 还是 unresolved `draft` |
+| `slides:build-state` | 查询源码是 `ready` 还是 unresolved `draft`，并返回当前 revision ID、序号和 source hash 快照 |
+| `slides:manual-edit` | 基于精确 revision/source 快照提交有限人工编辑 |
 | `slides:render-model` | 获取 `PresentationRenderModel` |
 | `slides:inspect` | 获取 `PresentationInfo` |
 | `slides:source-slices` | 获取源码切片 |
@@ -152,7 +153,7 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 | `slides:templates-list` | 列出模板 |
 | `slides:template-import` | 上传 PPTX 作为模板来源 |
 
-文稿创建与编辑统一走 deck.js 的 `write_file / edit_file` 工具链，不提供 renderer 私有的 generate/patch IPC。当前也没有直接 PPTX 文档导入到 editable deck 的 renderer 通道；接入前必须补 imported deck 到 Konva render-model 的保真验收。
+文稿创建和 AI 编辑统一走 deck.js 的 `write_file / edit_file` 工具链；有限人工编辑走严格的 `slides:manual-edit` 命令，并仍然写回 deck.js 的 `compose.manualEdits`。当前没有直接 PPTX 文档导入到 editable deck 的 renderer 通道；接入前必须补 imported deck 到 Konva render-model 的保真验收。
 
 ## 开发规范
 

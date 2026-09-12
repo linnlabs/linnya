@@ -149,6 +149,7 @@ export class PresentationQueryRuntime {
         presentationId: nodeId,
         versionId: document.currentRevisionId,
         versionNumber: document.currentRevision,
+        sourceHash: document.sourceHash,
         draftStatus: toSlidesDraftStatus(draft),
       };
     }
@@ -157,6 +158,7 @@ export class PresentationQueryRuntime {
       presentationId: nodeId,
       versionId: document.currentRevisionId,
       versionNumber: document.currentRevision,
+      sourceHash: document.sourceHash,
     };
   }
 

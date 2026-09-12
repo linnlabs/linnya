@@ -93,6 +93,7 @@ function readyBuildState(versionNumber: number) {
     presentationId: 'deck-1',
     versionId: `version-${versionNumber}`,
     versionNumber,
+    sourceHash: String(versionNumber).padStart(64, '0'),
   };
 }
 
