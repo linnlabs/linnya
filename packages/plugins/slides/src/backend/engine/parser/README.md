@@ -96,6 +96,7 @@ a:p / a:r / a:br
 - `SlideElementParser` 必须按 `spTree` 与 group 的原始直接子节点顺序分派元素；按类型分批收集会改变 z-order。
 - `render-model/` 只把 shared `DeckSpec`、`PresentationInfo`、`CanonicalDeck` 映射为 render contract，不直接依赖 Konva 或 Vue。
 - 单位输出必须是 shared 合同单位：长度 inches，字号/线宽/阴影 pt，旋转 degree，opacity 0-1。
+- freeform 的正反变换与 group children 相对化必须保留计算精度；不得为了快照易比较而提前 round3。自动宽度在文本物化阶段已向上量化到 OOXML EMU，再截小会造成真实字体行宽大于预览盒。只有输出编码/人类展示边界可以量化，几何回归比较位置时使用数值容差。
 - OOXML 文本 run 在解析时通过平台字体 port 补 `resolvedFontFamily / resolvedBold / resolvedItalic / fontScript / fontResolution / fontFaceFingerprint`，原始 `fontFamily / bold / italic` 继续保留给 PPTX 语义；canonical 与 RenderModel 映射不得丢掉请求和解析两组事实。`fontFaceFingerprint` 是字体文件内容 + face 身份的 SHA-256，inspect/manifest 可以公开它，但不得暴露字体文件路径。
 - Canonical imageRef 是 PPTX `r:embed` 的包内 part path（如 `../media/image1.png`），映射为 RenderModel `embedded`；它不是 deck.js 相对路径或 generated asset ID。HTTP(S) target 不得借 imported 路径进入 renderer。
 - parser 可以解析 PPTX，但当前没有对外的直接 PPTX 文档导入 IPC。`slides:template-import` 是模板上传通道，不等同于 editable deck 导入。

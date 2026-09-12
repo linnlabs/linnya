@@ -46,7 +46,10 @@ quality/aesthetic/
 - **规则不回调主类的方法**：所有依赖（`abbreviateLabel`、`clusterByGranularity`、阈值）通过 `import` 拿到。
 - **不生成综合分**：不同规则维度不可加权成可靠的设计质量结论；消费者读取具体 code、evidence 与 metrics。
 - **不重新解析字体**：run 级字体规则只读取上游平台字体服务写入的 requested/resolved family、script、resolution 与真实 face 样式。Latin/CJK 分开统计；family substitution、unresolved 与 style substitution 分开提示；缺少正式解析事实时宁可跳过，不用元素级回退字符串猜。
+- **图表标签容量使用旋转事实**：`renderModelToLintInfo` 把最终类目轴角度投影到窄 `chartInfo`，未声明时为 0 度。`chartReadability` 按相邻旋转文字矩形沿类目轴的分离距离估计间距，横轴与竖轴共用规则；不能把旋转后的外接框重叠等同于文字相交。类目轴 finding 保留角度证据，外置数据标签合同不变。字号宽度和绘图区跨度仍是估算，因此保持 medium confidence 和现有容量余量，不把未命中视为完整标签或 Office 像素验收。
 - **不引入页面背景色**：`lintTextContrast` 故意只判断"包含该文本的最小 shape fill"，避免误用全局背景色，因为 lint 不持有页面背景。如未来要扩展，请显式从 PresentationInfo 中读 deck/slide bg，不要回到 lint 内部猜。
+
+旋转容量回归见 [`chart-label-capacity.test.ts`](../../../__tests__/chart-label-capacity.test.ts)：覆盖 generated mapper → lint → strict finding，以及无 I/O 的 ECharts SVG 标签输出。
 
 ## 关联模块
 

@@ -13,7 +13,8 @@
  * 禁止在外部重新实现。
  *
  * 设计要点：
- * - 所有出口 box 都过 `round3`，避免浮点精度引发的等值判定漂移；
+ * - 变换保留输入精度；只在 OOXML 输出或展示边界量化。提前 round3 会再次截窄
+ *   已按真实字宽物化的文本盒，制造并不存在的溢出；
  * - `measureFreeformChildrenBounds` 一律对 w/h 夹逼 ≥ 0，防止子节点跨界后产生负宽高；
  * - 没有子节点 / bounds 为空时退化为"只移动不缩放"，避免除零。
  */
@@ -34,10 +35,6 @@ export const IDENTITY_FREEFORM_TRANSFORM: FreeformTransform = {
   scaleY: 1,
 };
 
-function round3(value: number): number {
-  return Math.round(value * 1000) / 1000;
-}
-
 /**
  * 把局部坐标 box 用 transform 投到全局。
  *
@@ -47,10 +44,10 @@ function round3(value: number): number {
  */
 export function applyFreeformTransform(box: Box, transform: FreeformTransform): Box {
   return {
-    x: round3(transform.offsetX + box.x * transform.scaleX),
-    y: round3(transform.offsetY + box.y * transform.scaleY),
-    w: round3(box.w * transform.scaleX),
-    h: round3(box.h * transform.scaleY),
+    x: transform.offsetX + box.x * transform.scaleX,
+    y: transform.offsetY + box.y * transform.scaleY,
+    w: box.w * transform.scaleX,
+    h: box.h * transform.scaleY,
   };
 }
 
@@ -69,10 +66,10 @@ export function toLocalFreeformBox(
   transform: FreeformTransform,
 ): Box {
   return {
-    x: patch.x != null ? round3((patch.x - transform.offsetX) / transform.scaleX) : current.x,
-    y: patch.y != null ? round3((patch.y - transform.offsetY) / transform.scaleY) : current.y,
-    w: patch.w != null ? round3(patch.w / transform.scaleX) : current.w,
-    h: patch.h != null ? round3(patch.h / transform.scaleY) : current.h,
+    x: patch.x != null ? (patch.x - transform.offsetX) / transform.scaleX : current.x,
+    y: patch.y != null ? (patch.y - transform.offsetY) / transform.scaleY : current.y,
+    w: patch.w != null ? patch.w / transform.scaleX : current.w,
+    h: patch.h != null ? patch.h / transform.scaleY : current.h,
   };
 }
 

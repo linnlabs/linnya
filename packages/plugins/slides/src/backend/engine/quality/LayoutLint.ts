@@ -430,8 +430,11 @@ export class LayoutLint {
     const SNAP = 0.02;
     const MIN_STACK_COUNT = 3;
 
-    // 只考虑有实质面积的元素，排除装饰性窄条
-    const substantive = elements.filter((el) => !isThinDecorativeShape(el.position));
+    // 与 pair overlap 共用已声明的角色语义；path 的 box 可以只是共用 viewBox，
+    // 不能把作者声明的装饰、容器与独立内容混为定位失败。
+    const substantive = elements.filter((el) => el.type !== 'group'
+      && !hasDecorativeRole(el.semanticRole)
+      && !(el.type === 'shape' && isThinDecorativeShape(el.position)));
     if (substantive.length < MIN_STACK_COUNT) return [];
 
     // 按量化后的 (x, y) 分组
@@ -446,6 +449,18 @@ export class LayoutLint {
     const issues: LayoutLintIssue[] = [];
     for (const [anchor, group] of buckets) {
       if (group.length < MIN_STACK_COUNT) continue;
+      const comparable = annotateLineNodeSemantics(group.map((element) => ({
+        nodeId: element.nodeId ?? element.elementId,
+        parentNodeId: element.parentNodeId,
+        kind: element.type,
+        box: element.position,
+        zIndex: element.zIndex,
+        opacity: element.opacity,
+        semanticRole: element.semanticRole,
+      })));
+      const unexplained = group.filter((_, index) => comparable.some((other, otherIndex) =>
+        index !== otherIndex && classifyOverlap(comparable[index]!, other) === 'forbidden'));
+      if (unexplained.length < MIN_STACK_COUNT) continue;
       const [anchorX, anchorY] = anchor.split(',').map(Number);
       if (!Number.isFinite(anchorX) || !Number.isFinite(anchorY)) continue;
       issues.push({
@@ -457,10 +472,10 @@ export class LayoutLint {
           kind: 'origin_stacking',
           anchor: { x: anchorX, y: anchorY, unit: 'in' },
           toleranceInches: SNAP,
-          nodes: group.map(buildDiagnosticNodeRef),
+          nodes: unexplained.map(buildDiagnosticNodeRef),
           intent: {
             assessment: 'likely_unintentional',
-            signals: ['三个或更多实质元素共用同一锚点，通常表示定位约束没有生效。'],
+            signals: ['三个或更多独立内容共用同一锚点，且没有装饰或容器语义解释碰撞，通常表示定位约束没有生效。'],
           },
         },
       });

@@ -135,6 +135,8 @@ export interface SlideElementChartInfo {
   categoryAxis: {
     visible: boolean;
     fontSizePt: number;
+    /** 最终标签旋转角度；未声明时与渲染器一致为 0 度。 */
+    labelRotationDegrees: number;
   };
 }
 

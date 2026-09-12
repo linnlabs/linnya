@@ -545,7 +545,8 @@ describe('RenderModelMapper', () => {
       box: { x: 1, y: 1, w: 4, h: 2, unit: 'in' },
       children: [{
         kind: 'text',
-        box: { x: 0.2, y: 0.3, w: 1.8, h: 0.5, unit: 'in' },
+        // 坐标变换保留完整精度；断言业务位置，不要求提前截到三位小数。
+        box: { x: expect.closeTo(0.2, 12), y: expect.closeTo(0.3, 12), w: 1.8, h: 0.5, unit: 'in' },
         editableTarget: {
           elementId: 'cid-text',
           creationId: 'child',

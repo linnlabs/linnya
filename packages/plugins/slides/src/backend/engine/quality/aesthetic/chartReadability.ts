@@ -123,10 +123,12 @@ function lintChartLabelCapacity(
     if (categoryLabels.length >= 2) {
       const direction = chart.chartType === 'bar' ? 'vertical' : 'horizontal';
       const availableSpanInches = resolveCategoryAxisSpan(element, chart, direction);
-      const estimatedRequiredSpanInches = direction === 'vertical'
-        ? estimateLineHeightInches(chart.categoryAxis.fontSizePt) * categoryLabels.length
-        : estimateMaxLabelWidthInches(categoryLabels, chart.categoryAxis.fontSizePt)
-          * categoryLabels.length;
+      const estimatedRequiredSpanInches = estimateCategoryLabelSpacingInches(
+        categoryLabels,
+        chart.categoryAxis.fontSizePt,
+        direction,
+        chart.categoryAxis.labelRotationDegrees,
+      ) * categoryLabels.length;
       const issue = buildCapacityIssue({
         slideNumber,
         element,
@@ -208,6 +210,9 @@ function buildCapacityIssue(input: CapacityIssueInput): AestheticLintIssue | und
       labelCount: input.labels.length,
       maxLabel: abbreviateLabel(longestLabel(input.labels)),
       fontSizePt: input.fontSizePt,
+      ...(input.channel === 'category_axis'
+        ? { labelRotationDegrees: input.chart.categoryAxis.labelRotationDegrees }
+        : {}),
       availableSpanInches: input.availableSpanInches,
       estimatedRequiredSpanInches: input.estimatedRequiredSpanInches,
       capacityRatio,
@@ -242,6 +247,28 @@ function estimateLineHeightInches(fontSizePt: number): number {
 
 function estimateMaxLabelWidthInches(labels: readonly string[], fontSizePt: number): number {
   return Math.max(...labels.map((label) => estimateLabelWidthInches(label, fontSizePt)), 0);
+}
+
+/**
+ * 相邻标签沿类目轴平移，只要在文字宽/高任一方向分离便不会相交。
+ * 旋转后的轴对齐外接框可能重叠，不能把外接框宽度当作标签所需间距。
+ * 此处等价于 min(width / |cos|, height / |sin|)，乘积形式避免 0°/90° 除零。
+ * 宽高仍是保守估算，不代替 ECharts 的字体测量、自动间隔或最终像素复核。
+ */
+function estimateCategoryLabelSpacingInches(
+  labels: readonly string[],
+  fontSizePt: number,
+  direction: 'horizontal' | 'vertical',
+  labelRotationDegrees: number,
+): number {
+  const width = estimateMaxLabelWidthInches(labels, fontSizePt);
+  const height = estimateLineHeightInches(fontSizePt);
+  const axisRotationDegrees = direction === 'horizontal' ? 0 : 90;
+  const relativeRotation = (axisRotationDegrees - labelRotationDegrees) * Math.PI / 180;
+  return width * height / Math.max(
+    height * Math.abs(Math.cos(relativeRotation)),
+    width * Math.abs(Math.sin(relativeRotation)),
+  );
 }
 
 /**

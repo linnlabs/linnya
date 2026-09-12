@@ -86,6 +86,8 @@ PresentationRenderModel
 - 新 layout 问题 code 放 `LayoutLint.ts` 对应类型和规则，并补最小业务 case。
 - 新 aesthetic 规则先在 `aesthetic/types.ts` 定义 code，再在 `thresholds.ts` 放阈值。单条通用规则放 `lintRules.ts`；图表可读性这类内部共享同一事实与边界的规则族放独立高内聚模块，并由 `AestheticLint` 薄编排接入。
 - 新空间关系语义优先放 `SpatialSemantics.ts`，避免多个 lint 规则各自判断 overlap 是否合理。当前分类会综合 containment、显式组件 parent、线—节点邻接、z-order、opacity、semanticRole 和面积比例；调用方必须传递已有事实，不能退化为只传 kind/box。只有非 slide 的共同 parent 且至少一方为 Shape 时才表示组件装饰关系；另一个明确例外是较低 z-order 的 Shape 完整承载 Chart，此时 Shape 是图表面板。反向层叠、部分覆盖、同页普通顶层元素和组件内的 text-text 重叠都不能因此互相豁免。
+- `origin_stacking` 只聚合同锚点且无法由上述语义解释的独立内容；Group 与显式背景/装饰不参与。Shape path 的外盒可以是共用 viewBox，不能把已声明的装饰路径当成定位失败。细盒的装饰推断仅适用于 Shape，不能豁免小字号文字或窄表格。两个 Text 共用锚点不等于父子容器。
+- 普通 `element_overlap` 仍是 medium-confidence 盒相交复核事实；例如表格压住页脚可有真实交集，但仅凭盒与 z-order 不足以证明具体字形被不透明内容遮住。它不因人工在某张图上确认遮挡而统一升级 high-confidence；规则优先级与最终可读性不能互相替代。
 - 面积覆盖率等数学上有界的几何派生值必须在 `SpatialSemantics` 的生产端消除浮点越界，再进入 strict evidence schema；CLI 和 Agent 投影不得各自修正数值。
 - 新规则不得增加综合评分或美学 passed 阈值；无法构建的事实进入 build-failure feature，视觉现象进入 findings。
 - finding 文案应说明对象、证据、置信度、可能的设计意图和可行动线索，禁止使用“必须修复”描述启发式判断。

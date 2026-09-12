@@ -108,6 +108,7 @@ function makeChartElement(options: {
       categoryAxis: {
         visible: options.categoryAxisVisible ?? true,
         fontSizePt,
+        labelRotationDegrees: 0,
       },
     },
   };
@@ -189,6 +190,7 @@ describe('AestheticLint', () => {
           labelCount: 12,
         },
       });
+      expect(issue?.evidence).not.toHaveProperty('labelRotationDegrees');
     });
 
     it('reports long category labels in a narrow chart and keeps normal charts quiet', () => {

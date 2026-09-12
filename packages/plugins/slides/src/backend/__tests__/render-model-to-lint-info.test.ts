@@ -298,7 +298,7 @@ describe('renderModelToLintInfo - color & fit channels', () => {
           fontSizePt: 9,
           includesCategoryName: true,
         },
-        categoryAxis: { visible: false, fontSizePt: 8 },
+        categoryAxis: { visible: false, fontSizePt: 8, labelRotationDegrees: 0 },
       },
     });
     expect(info.slides[0].elements[0].chartInfo).not.toHaveProperty('seriesValues');

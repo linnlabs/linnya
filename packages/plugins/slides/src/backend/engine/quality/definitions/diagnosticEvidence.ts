@@ -238,6 +238,8 @@ export const ChartLabelCapacityEvidenceSchema = ChartReadabilityBaseEvidenceSche
   labelCount: z.number().int().positive(),
   maxLabel: z.string().trim().min(1),
   fontSizePt: z.number().finite().positive(),
+  /** 类目轴容量证据记录实际角度；外置数据标签不生成此字段。 */
+  labelRotationDegrees: z.number().finite().optional(),
   availableSpanInches: z.number().finite().positive(),
   estimatedRequiredSpanInches: z.number().finite().positive(),
   capacityRatio: z.number().finite().positive(),

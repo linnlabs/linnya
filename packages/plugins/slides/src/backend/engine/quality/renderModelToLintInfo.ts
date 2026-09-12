@@ -139,6 +139,7 @@ function renderNodeToElementInfo(node: RenderNode, parentNodeId?: string): Slide
         fontSizePt: categoryAxis?.labelStyle?.fontSize
           ?? node.labelStyle?.fontSize
           ?? CHART_DEFAULT_LABEL_FONT_SIZE_PT,
+        labelRotationDegrees: categoryAxis?.labelRotation ?? 0,
       },
     };
   }

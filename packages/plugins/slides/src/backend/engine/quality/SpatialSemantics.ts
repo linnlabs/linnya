@@ -227,19 +227,10 @@ export function classifyOverlap(
     }
   }
 
-  if (left.kind === 'text' && right.kind === 'text') {
-    const sameAnchor = Math.abs(left.box.x - right.box.x) <= 0.02
-      && Math.abs(left.box.y - right.box.y) <= 0.02
-      && Math.abs(left.box.w - right.box.w) <= 0.05;
-    if (
-      sameAnchor
-      && (containsWithPadding(left.box, right.box, -0.02) || containsWithPadding(right.box, left.box, -0.02))
-    ) {
-      return 'container';
-    }
-  }
-
-  if (isThinDecorativeShape(left.box) || isThinDecorativeShape(right.box)) {
+  // 细长只是 Shape 的装饰线索；小字号文字或窄表格仍是内容，不能因此豁免碰撞。
+  // 两个 Text 共用锚点也不构成父子承载关系，保留真实的重复定位风险。
+  if ((left.kind === 'shape' && isThinDecorativeShape(left.box))
+    || (right.kind === 'shape' && isThinDecorativeShape(right.box))) {
     return 'decorative';
   }
 

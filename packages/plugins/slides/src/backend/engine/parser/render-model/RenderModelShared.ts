@@ -269,10 +269,6 @@ export function makeBaseNode(
   };
 }
 
-function round3(value: number): number {
-  return Math.round(value * 1000) / 1000;
-}
-
 /**
  * GroupRenderNode children 坐标契约（B10 / CONTRACTS §4.7）：
  *
@@ -299,8 +295,8 @@ export function relativizeGroupChildren(group: GroupRenderNode): GroupRenderNode
     children: group.children.map(child => {
       const relativeBox = {
         ...child.box,
-        x: round3(child.box.x - group.box.x),
-        y: round3(child.box.y - group.box.y),
+        x: child.box.x - group.box.x,
+        y: child.box.y - group.box.y,
       };
       return { ...child, box: relativeBox };
     }),
