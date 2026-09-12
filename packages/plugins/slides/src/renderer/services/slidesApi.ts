@@ -14,6 +14,10 @@ import {
   type SlidesIpcChannel,
 } from '@plugin/slides/shared/ipc';
 import type {
+  SlidesManualEditCommand,
+  SlidesManualEditCommandResult,
+} from '@plugin/slides/shared/authoringEditing';
+import type {
   PresentationImageExportProgress,
   PresentationExportRequest,
   PresentationExportResult,
@@ -84,6 +88,13 @@ export const slidesApi = {
   /** 获取源码与可渲染物化之间的正式状态。 */
   async getDocumentBuildState(nodeId: string): Promise<SlidesDocumentBuildState> {
     return invokeSlidesIpc<SlidesDocumentBuildState>(SLIDES_IPC.buildState, { nodeId });
+  },
+
+  /** 基于当前 revision 快照提交一次文本或位置人工编辑。 */
+  async submitManualEdit(
+    command: SlidesManualEditCommand,
+  ): Promise<SlidesManualEditCommandResult> {
+    return invokeSlidesIpc<SlidesManualEditCommandResult>(SLIDES_IPC.manualEdit, command);
   },
 
   /** 解析 PPTX 结构（inspect） */

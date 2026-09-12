@@ -9,6 +9,7 @@ export const SLIDES_IPC = {
   preview: 'slides:preview',
   buildState: 'slides:build-state',
   renderModel: 'slides:render-model',
+  manualEdit: 'slides:manual-edit',
   historyPreview: 'slides:history-preview',
   templatesList: 'slides:templates-list',
   // M6 决策：PPTX -> editable deck 的直接导入入口仍暂停。
@@ -24,6 +25,7 @@ export const SLIDES_IPC_CHANNELS = [
   SLIDES_IPC.preview,
   SLIDES_IPC.buildState,
   SLIDES_IPC.renderModel,
+  SLIDES_IPC.manualEdit,
   SLIDES_IPC.templatesList,
   SLIDES_IPC.templateImport,
   SLIDES_IPC.export,

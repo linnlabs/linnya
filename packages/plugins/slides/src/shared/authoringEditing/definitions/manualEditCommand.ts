@@ -28,9 +28,45 @@ export interface SlidesManualEditCommand {
 }
 
 export interface SlidesManualEditCommitResult {
+  readonly status: 'committed';
   readonly commandId: string;
   readonly documentId: string;
   readonly revisionId: string;
   readonly revision: number;
 }
 
+export type SlidesManualEditConflictReason =
+  | 'stale_base'
+  | 'draft_present'
+  | 'command_reused';
+
+export interface SlidesManualEditConflictResult {
+  readonly status: 'conflict';
+  readonly commandId: string;
+  readonly documentId: string;
+  readonly reason: SlidesManualEditConflictReason;
+}
+
+export interface SlidesManualEditValidationFailureResult {
+  readonly status: 'validation_failed';
+  readonly commandId: string;
+  readonly documentId: string;
+  readonly code: string;
+  readonly message: string;
+}
+
+export interface SlidesManualEditBuildFailureResult {
+  readonly status: 'build_failed';
+  readonly commandId: string;
+  readonly documentId: string;
+  readonly code: string;
+  readonly message: string;
+  readonly retryable: boolean;
+  readonly referenceId?: string;
+}
+
+export type SlidesManualEditCommandResult =
+  | SlidesManualEditCommitResult
+  | SlidesManualEditConflictResult
+  | SlidesManualEditValidationFailureResult
+  | SlidesManualEditBuildFailureResult;

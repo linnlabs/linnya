@@ -1,5 +1,7 @@
 import type {
   DeckSpec,
+  SlidesManualEditCommand,
+  SlidesManualEditCommandResult,
   SlidesSourceSliceTargetInput,
   SlidesSourceSlicesOutput,
 } from '@plugin/slides/shared';
@@ -27,6 +29,7 @@ import type {
 } from './types.js';
 import type { PresentationSvgGraphicOwnerPort } from '../features/presentationSvgGraphicOwnership';
 import type { PresentationBuildExecutionPort } from '../features/presentationBuildExecution';
+import { PresentationManualEditingRuntime } from '../features/presentationManualEditing';
 
 export interface CodegenDeckBuilderPort {
   buildNewPresentation(input: CodegenDeckCreateInput): Promise<CodegenDeckCreateResult>;
@@ -59,6 +62,8 @@ export class PresentationCodegenRuntime {
   private readonly deckReadStateRegistry = new DeckReadStateRegistry();
   private codegenPresentationService?: CodegenPresentationService;
   private codegenDeckBuilder?: CodegenDeckBuilderPort;
+  private rawCodegenDeckBuilder?: CodegenDeckBuilderPort;
+  private manualEditingRuntime?: PresentationManualEditingRuntime;
 
   constructor(private readonly deps: PresentationCodegenRuntimeDeps) {}
 
@@ -80,7 +85,7 @@ export class PresentationCodegenRuntime {
 
   getDeckBuilder(): CodegenDeckBuilderPort {
     if (!this.codegenDeckBuilder) {
-      const builder = this.deps.codegenDeckBuilderFactory?.() ?? this.createCodegenDeckBuilder();
+      const builder = this.getRawDeckBuilder();
       const scope = this.deps.revisionScope;
       this.codegenDeckBuilder = scope ? {
         buildNewPresentation: input => scope.run(`create:${crypto.randomUUID()}`, () => builder.buildNewPresentation(input)),
@@ -89,6 +94,20 @@ export class PresentationCodegenRuntime {
       } : builder;
     }
     return this.codegenDeckBuilder;
+  }
+
+  async submitManualEdit(
+    command: SlidesManualEditCommand,
+  ): Promise<SlidesManualEditCommandResult> {
+    if (!this.manualEditingRuntime) {
+      this.manualEditingRuntime = new PresentationManualEditingRuntime({
+        presentationRepo: this.deps.presentationRepo,
+        ...(this.deps.draftRepo ? { draftRepo: this.deps.draftRepo } : {}),
+        builder: this.getRawDeckBuilder(),
+        ...(this.deps.revisionScope ? { revisionScope: this.deps.revisionScope } : {}),
+      });
+    }
+    return this.manualEditingRuntime.submit(command);
   }
 
   async readSourceSlicesForAiEdit(input: {
@@ -133,6 +152,14 @@ export class PresentationCodegenRuntime {
       ...(this.deps.failureLogger ? { failureLogger: this.deps.failureLogger } : {}),
       ...(this.deps.svgGraphicOwner ? { svgGraphicOwner: this.deps.svgGraphicOwner } : {}),
     });
+  }
+
+  private getRawDeckBuilder(): CodegenDeckBuilderPort {
+    if (!this.rawCodegenDeckBuilder) {
+      this.rawCodegenDeckBuilder = this.deps.codegenDeckBuilderFactory?.()
+        ?? this.createCodegenDeckBuilder();
+    }
+    return this.rawCodegenDeckBuilder;
   }
 
   private createInitialDraftCreator(): InitialPresentationDraftCreator | undefined {

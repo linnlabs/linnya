@@ -1,6 +1,9 @@
 import {
   SLIDES_TEMPLATE_IMPORT_MAX_BYTES,
   type SlideSourceSpan,
+  SLIDES_AUTHORING_KEY_PATTERN,
+  type SlidesManualEditCommand,
+  type SlidesManualTargetKind,
   type SlidesIpcChannel,
   type SlidesSourceSliceTargetInput,
   parsePresentationExportRequest,
@@ -49,6 +52,46 @@ function readOptionalNonEmptyString(value: unknown, fieldName: string): string |
     return undefined;
   }
   return readNonEmptyString(value, fieldName);
+}
+
+function assertOnlyKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  fieldName: string,
+): void {
+  const unknownKey = Object.keys(value).find(key => !allowed.includes(key));
+  if (unknownKey) throw new Error(`${fieldName} contains unknown field ${unknownKey}.`);
+}
+
+function readAuthoringKey(value: unknown, fieldName: string): string {
+  const key = readNonEmptyString(value, fieldName);
+  if (!SLIDES_AUTHORING_KEY_PATTERN.test(key)) {
+    throw new Error(`${fieldName} must be a valid Slides authoring key.`);
+  }
+  return key;
+}
+
+function readManualTargetKind(value: unknown): SlidesManualTargetKind {
+  switch (value) {
+    case 'text':
+    case 'frame':
+    case 'shape':
+    case 'image':
+    case 'table':
+    case 'chart':
+    case 'svgGraphic':
+    case 'formula':
+      return value;
+    default:
+      throw new Error('operation.targetKind is invalid.');
+  }
+}
+
+function readFiniteNumber(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`${fieldName} must be a finite number.`);
+  }
+  return value;
 }
 
 function isSourceSpan(value: unknown): value is SlideSourceSpan {
@@ -132,6 +175,72 @@ export function parseSlidesTemplateImportPayload(payload: unknown): SlidesTempla
     name: readNonEmptyString(payload.name, 'name'),
     description: readOptionalNonEmptyString(payload.description, 'description'),
   };
+}
+
+export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEditCommand {
+  if (!isRecord(payload)) throw new Error('slides:manual-edit payload must be an object.');
+  assertOnlyKeys(payload, ['commandId', 'documentId', 'expectedBase', 'operation'], 'payload');
+  const commandId = readNonEmptyString(payload.commandId, 'commandId');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(commandId)) {
+    throw new Error('commandId must be a UUID.');
+  }
+  if (!isRecord(payload.expectedBase)) throw new Error('expectedBase must be an object.');
+  assertOnlyKeys(payload.expectedBase, ['revisionId', 'revision', 'sourceHash'], 'expectedBase');
+  const revision = payload.expectedBase.revision;
+  if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 1) {
+    throw new Error('expectedBase.revision must be a positive safe integer.');
+  }
+  const sourceHash = readNonEmptyString(payload.expectedBase.sourceHash, 'expectedBase.sourceHash');
+  if (!/^[0-9a-f]{64}$/u.test(sourceHash)) {
+    throw new Error('expectedBase.sourceHash must be a lowercase SHA-256 digest.');
+  }
+  if (!isRecord(payload.operation)) throw new Error('operation must be an object.');
+  if (!isRecord(payload.operation.target)) throw new Error('operation.target must be an object.');
+  assertOnlyKeys(payload.operation.target, ['slideKey', 'editKey'], 'operation.target');
+  const target = {
+    slideKey: readAuthoringKey(payload.operation.target.slideKey, 'operation.target.slideKey'),
+    editKey: readAuthoringKey(payload.operation.target.editKey, 'operation.target.editKey'),
+  };
+  const base = {
+    commandId,
+    documentId: readNonEmptyString(payload.documentId, 'documentId'),
+    expectedBase: {
+      revisionId: readNonEmptyString(payload.expectedBase.revisionId, 'expectedBase.revisionId'),
+      revision,
+      sourceHash,
+    },
+  };
+
+  if (payload.operation.op === 'set_text_content') {
+    assertOnlyKeys(payload.operation, ['op', 'target', 'content'], 'operation');
+    if (typeof payload.operation.content !== 'string') {
+      throw new Error('operation.content must be a string.');
+    }
+    return {
+      ...base,
+      operation: { op: 'set_text_content', target, content: payload.operation.content },
+    };
+  }
+  if (payload.operation.op === 'set_translation') {
+    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'translation'], 'operation');
+    if (!isRecord(payload.operation.translation)) {
+      throw new Error('operation.translation must be an object.');
+    }
+    assertOnlyKeys(payload.operation.translation, ['dx', 'dy'], 'operation.translation');
+    return {
+      ...base,
+      operation: {
+        op: 'set_translation',
+        target,
+        targetKind: readManualTargetKind(payload.operation.targetKind),
+        translation: {
+          dx: readFiniteNumber(payload.operation.translation.dx, 'operation.translation.dx'),
+          dy: readFiniteNumber(payload.operation.translation.dy, 'operation.translation.dy'),
+        },
+      },
+    };
+  }
+  throw new Error('operation.op is invalid.');
 }
 
 export function readSlidesIpcErrorMessage(error: unknown): string {

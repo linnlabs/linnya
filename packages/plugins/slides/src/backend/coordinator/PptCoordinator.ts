@@ -6,6 +6,8 @@
 
 import type {
   PresentationInspectionRequest,
+  SlidesManualEditCommand,
+  SlidesManualEditCommandResult,
   SlidesDocumentBuildState,
   SlidesSourceSliceTargetInput,
   SlidesSourceSlicesOutput,
@@ -325,6 +327,13 @@ export class PptCoordinator {
     targets: SlidesSourceSliceTargetInput[];
   }): Promise<SlidesSourceSlicesOutput> {
     return this.codegenRuntime.readSourceSlicesForAiEdit(input);
+  }
+
+  /** 提交一次基于明确 revision 快照的有限人工编辑。 */
+  async submitManualEdit(
+    command: SlidesManualEditCommand,
+  ): Promise<SlidesManualEditCommandResult> {
+    return this.codegenRuntime.submitManualEdit(command);
   }
 
   /** 导入模板 */

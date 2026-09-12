@@ -1,9 +1,14 @@
 export type { SlidesAuthoringEditRef } from './definitions/authoringIdentity';
 export type {
   SlidesManualEditCommand,
+  SlidesManualEditCommandResult,
+  SlidesManualEditBuildFailureResult,
   SlidesManualEditCommitResult,
+  SlidesManualEditConflictReason,
+  SlidesManualEditConflictResult,
   SlidesManualEditExpectedBase,
   SlidesManualEditOperation,
+  SlidesManualEditValidationFailureResult,
 } from './definitions/manualEditCommand';
 export { SLIDES_AUTHORING_KEY_PATTERN } from './definitions/authoringIdentity';
 export type {

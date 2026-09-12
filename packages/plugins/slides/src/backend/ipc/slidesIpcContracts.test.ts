@@ -6,6 +6,7 @@ import {
 } from '@plugin/slides/shared';
 import {
   parseSlidesSourceSlicesPayload,
+  parseSlidesManualEditPayload,
   parseSlidesTemplateImportPayload,
   SLIDES_IPC,
   SLIDES_IPC_CHANNELS,
@@ -75,6 +76,34 @@ describe('slides backend IPC contracts', () => {
       description: 'demo',
     });
     expect(Buffer.compare(parsed.buffer, Buffer.from([1, 2, 3]))).toBe(0);
+  });
+
+  it('strictly parses the version snapshot and supported manual edit operations', () => {
+    const payload = {
+      commandId: 'c8356051-a487-4cd3-863f-47db0079f991',
+      documentId: 'presentation-1',
+      expectedBase: {
+        revisionId: 'revision-1',
+        revision: 1,
+        sourceHash: 'a'.repeat(64),
+      },
+      operation: {
+        op: 'set_translation',
+        target: { slideKey: 'overview', editKey: 'headline' },
+        targetKind: 'text',
+        translation: { dx: 0.25, dy: -0.1 },
+      },
+    };
+    expect(parseSlidesManualEditPayload(payload)).toEqual(payload);
+
+    expect(() => parseSlidesManualEditPayload({
+      ...payload,
+      expectedBase: { ...payload.expectedBase, sourceHash: 'not-a-hash' },
+    })).toThrow('lowercase SHA-256');
+    expect(() => parseSlidesManualEditPayload({
+      ...payload,
+      operation: { ...payload.operation, ignored: true },
+    })).toThrow('unknown field ignored');
   });
 
   it('enforces a template upload size limit before importing PPTX content', () => {
