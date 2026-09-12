@@ -6,9 +6,9 @@
 
 固定顺序是：发布 durable `run_execution_metrics`，等待 persistence drain，再落定 RunHandle 状态和终态资源。`awaiting_user` 保留 checkpoint 和 run 资源，供下一次 resume execution 使用。
 
-`completed` 是不可逆终态，因此必须在清理 checkpoint 后才写入；否则清理失败后再尝试 `markFailed` 会被 RunSupervisor 正确拒绝，留下“结果报错但 run 已 completed”的分裂状态。failed / cancelled 分支优先保证权威终态，再清理 checkpoint 和成本资源；此时 checkpoint 清理失败属于可观察的运维故障，不能阻止 run 离开 running，也不能反复重试同一次失败清理。
+`completed` 是不可逆终态。生产 durable continuation 先保存 yielded checkpoint，再写 completed，最后清理恢复资源；清理失败只能记录为运维故障，不能把 completed 改成 failed。这样避免“run 尚未完成却已丢失断点”的崩溃窗口。未启用 durable continuation 的接入仍先清理 checkpoint 再写 completed。failed / cancelled 分支优先保证权威终态，再清理 checkpoint 和成本资源；清理失败不能阻止 run 离开 running，也不能反复重试同一次失败清理。
 
-一次 execution 最多发布一条 metrics。Graph 已完成后若 persistence drain 失败，RunHandle 必须进入 failed，但不能补造第二条 `outcome=failed` 覆盖既有 Graph execution 事实。metrics 不驱动前端控制态，权威控制态始终来自后续 `run_status`。
+一次 execution 最多发布一条 metrics。Graph 已完成后若 persistence drain 失败，未启用恢复的接入进入 failed；生产 durable continuation 保留最后提交的 checkpoint，由 Flow 收口为 paused，等待显式恢复。两者都不能补造第二条 `outcome=failed` 覆盖既有 Graph execution 事实。metrics 不驱动前端控制态，权威控制态始终来自后续 `run_status`。
 
 `run_execution_metrics.context_usage` 是可选的最近成功 Prompt 快照。成功路径从 Graph 返回 checkpoint 读取；失败/取消路径必须在 checkpoint 清理前读取持久 checkpoint，并通过 LinnKit 公共 schema admission。它只属于当前 foreground conversation execution，不从 telemetry、成本账本或开放 metadata 补值。读取可选快照失败时记录完整错误并继续收口 failed/cancelled 权威终态，不能让展示事实反向卡住 run lifecycle。
 
@@ -19,6 +19,12 @@ Graph 运行中已经通过 ephemeral `context_usage_snapshot` 提供更高频�
 `wait_user` 是成功结算的特殊分支：Graph checkpoint 必须同时返回已经由统一 publisher 发布的 `requires_user_interaction` 事实。settlement 会在发布 metrics 和 drain 前校验该不变量，避免落下一条无法 resume 的 `awaiting_user` 记录。
 
 本 feature 不负责 Graph 执行、SSE transport 收尾、RuntimeEvent 到 SSE 的映射或 Renderer 投影。
+
+可恢复 execution 的暂停原因由 `resolveExecutionPauseReason` 分类后交给 RunSupervisor
+持久保存：用户暂停和工具对账优先，其余只接纳 Linnkit `ENGINE_ERROR_CODES` 的稳定错误码（例如
+`tool.protocol_fuse`），未知异常保持 `execution_interrupted`。不把错误 message、stack 或
+Provider 自定义正文塞入 pause reason，也不从工具卡或日志反推控制态。CLI status 直接读取
+这份持久事实，paused 仍不是 failed；继续必须由用户显式触发。
 
 禁止事项：
 

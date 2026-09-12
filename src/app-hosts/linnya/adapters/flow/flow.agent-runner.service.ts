@@ -42,6 +42,7 @@ import { resolveExecutionUserMessageId } from 'src/app-hosts/linnya/adapters/flo
 import {
   createExecutionSettlement,
   publishRunFailureFact,
+  resolveExecutionPauseReason,
 } from 'src/app-hosts/linnya/adapters/flow/execution-settlement';
 import { runWithAgentAuditScope } from 'src/app-hosts/linnya/adapters/flow/agent-runner/runAuditScope';
 import { recordRootRunTranscript } from 'src/app-hosts/linnya/adapters/flow/agent-runner/runAuditTranscript';
@@ -596,14 +597,7 @@ export class AgentRunnerService {
           await runHandle.markPaused({
             currentNode: saved?.nodeId,
             iterationsUsed: saved?.local?.executorLocal?.stepCount ?? record.iterationsUsed,
-            reason: graph.isRunPauseSignal(signal)
-              ? 'user_pause'
-              : typeof error === 'object' &&
-                  error !== null &&
-                  'code' in error &&
-                  error.code === 'RUN_RECOVERY_BLOCKED'
-                ? 'tool_reconciliation_required'
-                : 'execution_interrupted',
+            reason: resolveExecutionPauseReason({ signal, error, failureFact: publishedRuntimeFailureFact }),
           });
           logger.warn('Run paused at durable execution boundary', {
             runId: runHandle.runId,
