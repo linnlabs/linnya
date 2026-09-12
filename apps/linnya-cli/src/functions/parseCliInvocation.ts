@@ -232,6 +232,18 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
         pretty,
       };
     }
+    case 'resume': {
+      assertAllowedOptions(tokens, ['run', 'timeout']);
+      const runId = readString(tokens, 'run');
+      if (!runId) usageError('resume requires --run <id> to identify the exact paused run');
+      return {
+        kind: 'resume',
+        conversationId: requireConversationId(tokens, 'resume'),
+        runId,
+        timeoutMs: readPositiveInteger(tokens, 'timeout', 60_000),
+        pretty,
+      };
+    }
     case 'respond': {
       assertAllowedOptions(tokens, [
         'interaction', 'approve', 'skip', 'submit-json', 'modify-json', 'project',

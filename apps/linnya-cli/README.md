@@ -1,8 +1,8 @@
 # Linnya Conversation CLI
 
-`linnya` 是正在运行的 Linnya 桌面 App 的轻量命令行控制面。它复用 App Host 的正式 Conversation admission、Flow、持久化和 read model，不直接读写 SQLite，也不在 CLI 进程里启动第二套 Agent runtime。
+`linnya` 是正在运行的 Linnya 桌面 App 的轻量命令行控制面。它复用 App Host 的正式 Conversation admission、Flow、持久化和 read model，不直接读写 SQLite，也不在 CLI 进程里启动第二套 Agent runtime。当前仅供仓库内开发、评测与 Benchmark 使用，尚未作为生产功能开放或随桌面产品分发。
 
-适用场景：脚本化发消息、查询会话与消息、观察运行状态、处理 `awaiting_user`、终止运行、读取最终回答、调用五个基础 Workspace 工具，以及作为 Benchmark 或外部 Agent 的稳定进程入口。
+当前适用场景：开发环境中脚本化发消息、查询会话与消息、观察运行状态、处理 `awaiting_user`、终止运行、读取最终回答、调用五个基础 Workspace 工具，以及作为 Benchmark 的进程入口。
 
 ## 1. 运行前提
 
@@ -30,7 +30,7 @@ node apps/linnya-cli/bin/linnya.cjs help
 node apps/linnya-cli/bin/linnya.cjs doctor --pretty
 ```
 
-当前仓库已经产出可独立执行的 CommonJS bundle 和 `bin/linnya.cjs`，但桌面安装器尚未把它安装到系统 `PATH`，也没有随 CLI 打包 Node runtime。因此当前正式使用仍要求 Node.js 20；安装器集成属于发行工作，不属于 Conversation 控制面。Electron 的 `runAsNode` fuse 已关闭，不能把 Electron 可执行文件当作 CLI 的 Node 替代品。
+当前仓库可以产出供开发测试的 CommonJS bundle 和 `bin/linnya.cjs`，但桌面安装器不把它安装到系统 `PATH`，也没有随 CLI 打包 Node runtime；这不构成生产 CLI 发行。仓库内使用要求 Node.js 20。Electron 的 `runAsNode` fuse 已关闭，不能把 Electron 可执行文件当作 CLI 的 Node 替代品。
 
 独立分发必须同时携带 `bin/linnya.cjs`、`dist/cli.cjs` 和 `dist/build.json`。launcher 核对产物 SHA-256；在包含源码的仓库内还核对 CLI、公共 Schema、构建输入与锁文件的内容指纹。产物缺失、损坏或源码变更后未重建会以退出码 4 明确拒绝，不自动切换运行入口。版本号不变也能发现旧 bundle。`--version` 显示 `source` 或 bundle 指纹；`doctor` 只读显示 CLI 身份、App 实例、协议与能力，不打印连接 token 或描述文件。
 
@@ -65,7 +65,13 @@ pnpm linnya:cli send \
 pnpm linnya:cli status <conversation-id> --run <run-id> --watch
 ```
 
-`--watch` 输出 JSONL，只在状态快照变化时写一行。到达已收口 `paused`、`awaiting_user` 或任一终态后退出；仍在收口的暂停继续观察。无消息继续目前使用 Desktop 输入框，CLI 的 `send` 仍是新消息，成功接纳才替代旧暂停运行。若需要用户输入，使用该帧中的 `pending_interaction.interaction_id`：
+`--watch` 输出 JSONL，只在状态快照变化时写一行。到达已收口 `paused`、`awaiting_user` 或任一终态后退出；仍在收口的暂停继续观察。恢复已收口暂停必须指定 exact run：
+
+```bash
+pnpm linnya:cli resume <conversation-id> --run <run-id>
+```
+
+CLI 会先读取该 run 的当前 `execution_id / updated_at`，再通过 Host 正式 continuation 提交同一暂停快照的 fence；它不调用 `send`、不创建 `user_input`，也不会把 HITL 当作普通暂停。若需要用户输入，使用状态帧中的 `pending_interaction.interaction_id`：
 
 ```bash
 pnpm linnya:cli respond <conversation-id> \
@@ -90,6 +96,7 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 | `list` | 查询已有会话 | `--limit`、`--cursor`、`--search`、`--project` |
 | `messages <conversation-id>` | 按会话查询 durable 消息窗口 | `--limit`、`--before`、`--after` |
 | `status <conversation-id>` | 查询当前或指定 root run 的状态 | `--run`、`--watch`、`--interval`、`--timeout` |
+| `resume <conversation-id>` | 精确恢复一个已收口 `paused` 原 run | 必填 `--run`；可选 `--timeout`（毫秒，默认 60000） |
 | `respond <conversation-id>` | 回应当前 `awaiting_user` 交互并继续同一 run | `--interaction`，以及一个 response 选项 |
 | `stop <conversation-id>` | 终止 foreground root run，并等待真实终态结算 | `--run`、`--reason`、`--timeout`（毫秒，默认 60000） |
 | `result <conversation-id>` | 读取指定或最近 terminal root run 的最终回答 | `--run` |
@@ -102,7 +109,7 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 
 向已有 `--conversation` 发送消息时，省略 `--agent` 会继承该会话保存的 Agent；显式传入才修改选择。新会话省略时仍走产品默认选择，不猜测 Slides。
 
-读取请求与握手默认等待 5 秒，接纳/响应/工具调用默认等待 60 秒；`stop --timeout` 单独控制停止等待。stop 未传 run 时先选择并固定一个活跃 foreground root run；网络响应丢失最多重试一次，始终使用同一 run、共用等待预算。重查已终止 run 会返回其真实终态，不会误停同会话的新 run。只有 exact stop 自动重试；send/respond 不盲重试。超时仅表示结果尚未确认，不代表 App 没有执行；错误会给出精确重查命令。watch 超时也不会停止后端运行。
+读取请求与握手默认等待 5 秒，接纳/响应/恢复/工具调用默认等待 60 秒；`resume --timeout` 与 `stop --timeout` 分别控制恢复接纳和停止结算等待。stop 未传 run 时先选择并固定一个活跃 foreground root run；网络响应丢失最多重试一次，始终使用同一 run、共用等待预算。重查已终止 run 会返回其真实终态，不会误停同会话的新 run。只有 exact stop 自动重试；send/respond/resume 不盲重试。resume 的 fence 在首次接纳后即失效，响应丢失时应先用 exact status 确认新的 execution，不能重复发送或自动推进。超时仅表示结果尚未确认，不代表 App 没有执行；错误会给出精确重查命令。watch 超时也不会停止后端运行。
 
 握手中的 capabilities 是可扩展的能力公告：同协议新增能力不影响已知命令，实际命令、响应和 schema/protocol 版本仍严格校验。
 
@@ -185,14 +192,14 @@ pending -> running -> awaiting_user -> running -> completed | failed | cancelled
 
 - 没有主动 `pause` 命令。
 - `awaiting_user` 是 Runtime 被动等待，不是人为暂停；通过 `respond` 继续。
-- `paused` 保留原 run 的断点，不是失败终态。`pause.reason=tool.protocol_fuse` 表示连续工具参数错误；先查看最近工具错误，确认正确合同后由用户在 App 中继续。`tool_reconciliation_required` 表示未知副作用需正式 owner 对账，不能原样重发工具；`execution_interrupted` 则是未分类中断，需要进一步诊断。原因来自持久 RunRegistry，不解析日志或原始错误正文。
+- `paused` 保留原 run 的断点，不是失败终态；已收口后可用 `resume --run` 精确恢复。该命令复用原 `run_id / turn_id` 并取得新 `execution_id`，不创建用户消息。`pause.reason=tool.protocol_fuse` 表示连续工具参数错误；先查看最近工具错误，确认正确合同后再恢复。`tool_reconciliation_required` 表示未知副作用需正式 owner 对账；恢复仍会被 Graph 对账门禁阻止，CLI 不重放调用或越过 owner。`execution_interrupted` 则是未分类中断，需要进一步诊断。原因来自持久 RunRegistry，不解析日志或原始错误正文。
 - `stop` 是唯一主动中断动作。它会等待 Host 的取消完成屏障，并返回真实的 `cancelled`、`completed` 或 `failed` 结算，避免把“已发取消请求”误报成“已经取消”。
 - `status` 不虚构百分比。生命周期来自 RunRegistry；运行中的节点与累计步数来自同一 activation 已持久化的 Graph 执行快照，交互、错误和结果可用性继续由各自 owner 投影。
 - `send` 返回后 CLI 可以退出，后台运行归 Linnya App 所有，不依赖 CLI 进程存活。
 
 对已有会话执行 `send --conversation <id>` 时，如果该会话已有 active foreground run，会得到 `conversation_busy`，不会并发写入第二条 foreground 主链。
 
-续跑 `send --conversation <id>` 和审批 `respond <id>` 均自动继承该会话保存的项目，不必重复 `--project`。显式传入时必须与原项目一致，否则在启动/恢复前拒绝；不能借此迁移会话。无项目聊天仍可续跑，但 Workspace 工具要求项目。模型选择仍按原有解析规则；对比测试应继续显式传 `--model`，不要把项目继承理解成冻结模型配置。
+后续新消息 `send --conversation <id>` 和审批 `respond <id>` 均自动继承该会话保存的项目，不必重复 `--project`。显式传入时必须与原项目一致，否则在启动/恢复前拒绝；不能借此迁移会话。`resume` 不重新解析项目、Agent 或模型，而是使用原 run 的 durable descriptor 与 checkpoint。无项目聊天仍可发送后续消息，但 Workspace 工具要求项目。
 
 ## 5. 输出与退出码
 

@@ -13,7 +13,7 @@ POST /api/v1/conversation-control/commands
 
 `handshake` 返回协议版本、App 实例 ID、实际能力和请求/watch 上限；`commands` 使用共享 strict schema 接纳与返回命令。非法 JSON、超限 body、合同错误和 use-case 错误都投影为稳定 JSON，不落到 Express HTML 错误页。
 
-当前握手声明 `send / models / projects / list / messages / status / respond / stop / result / audit / workspace_tools`。
+当前握手声明 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / workspace_tools`。
 
 能力公告允许未来新增合法标识符，消费者忽略不认识的能力；命令 union 和响应 schema 仍然封闭且严格。改变既有协议语义必须升级 protocol，不能借能力扩展绕过合同校验。
 
@@ -28,7 +28,7 @@ POST /api/v1/conversation-control/commands
 - CLI 使用独立的随机 256-bit session token；它不能访问 Renderer API，Renderer token 也不能访问 CLI 命名空间。
 - 鉴权位于 body parser 前，避免未授权大请求先占用解析资源。
 - 诊断日志只记录命令名与收敛后的错误类型，不记录 token 或请求正文。
-- bridge 只消费共享 command DTO，不能把 Flow 内部开关、resume token 或数据库结构暴露为 wire。
+- bridge 只消费共享 command DTO，不能把 Flow 内部开关、HITL resume token 或数据库结构暴露为 wire。`resume` wire 只携带 exact run 与暂停 fence，并由 composition root 映射到 Flow 正式 continuation。
 
 ## 连接描述生命周期
 

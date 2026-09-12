@@ -61,11 +61,19 @@ export type LinnyaCliInvocation =
       readonly pretty: boolean;
     }
   | {
+      readonly kind: 'resume';
+      readonly conversationId: string;
+      readonly runId: string;
+      readonly timeoutMs: number;
+      readonly pretty: boolean;
+    }
+  | {
       readonly kind: 'command';
       readonly request: Exclude<
         ConversationControlCommandRequest,
         | ConversationControlStatusRequest
         | ConversationControlStopRequest
+        | Extract<ConversationControlCommandRequest, { command: 'resume' }>
         | Extract<ConversationControlWorkspaceToolsRequest, { action: 'call' }>
       >;
       readonly pretty: boolean;

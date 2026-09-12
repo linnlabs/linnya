@@ -17,6 +17,7 @@ export const LINNYA_CONVERSATION_CONTROL_CAPABILITIES = [
   'list',
   'messages',
   'status',
+  'resume',
   'respond',
   'stop',
   'result',

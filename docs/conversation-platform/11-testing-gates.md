@@ -134,7 +134,7 @@ pnpm exec vitest run apps/renderer/domains/conversation packages/schemas
 
 ### 2.3.1 Linnya Conversation CLI
 
-CLI 是生产控制面的薄进程入口，测试不能只锁参数字符串。日常变更至少运行：
+CLI 当前是开发、评测与 Benchmark 使用的薄进程入口，尚未作为生产功能分发；但它连接的是正式 Host 控制流程，测试不能只锁参数字符串。日常变更至少运行：
 
 ```bash
 pnpm typecheck:linnya-cli
@@ -161,10 +161,10 @@ pnpm exec vitest run \
 | --- | --- | --- |
 | parser / schema | 参数和 wire 严格 | 实际 bridge 或运行执行 |
 | 子进程 + scripted bridge | CLI I/O、连接、watch、退出码 | Linnya Flow、数据库和模型 |
-| workflow + ApiServer 集成 | durable acceptance、状态/取消/HITL/结果语义、token 与 descriptor 生命周期 | 真实 Provider 和 Slides 工具产物 |
+| workflow + ApiServer 集成 | durable acceptance、exact paused-run resume、状态/取消/HITL/结果语义、token 与 descriptor 生命周期 | 真实 Provider 和 Slides 工具产物 |
 | 运行中 App smoke | 当前模型配置、Agent、工具与产物真实可用 | 所有错误分支 |
 
-发版前至少用运行中的 App 执行一次短任务；Slides 版本应使用 `slides_agent` 生成 3 页 PPT，保存 `conversation_id + run_id`，关闭首次 CLI 进程后继续 watch，按需 respond，最后用 exact run 读取 result。另跑一次运行中 `stop --run`，验证返回真实 terminal settlement。完整操作见 [`apps/linnya-cli/README.md`](../../apps/linnya-cli/README.md)。Benchmark 必须调用 CLI 子进程并解析 JSON/JSONL，不得复制 bridge 或直读数据库。
+涉及 CLI/Host 控制流程的开发版本在合入前至少用运行中的 App 执行一次短任务；Slides 验收应使用 `slides_agent` 生成 3 页 PPT，保存 `conversation_id + run_id`，关闭首次 CLI 进程后继续 watch，按需 respond，最后用 exact run 读取 result。另跑一次 settled pause 的 `resume --run` 和运行中的 `stop --run`，分别验证原 run continuation 与真实 terminal settlement。完整操作见 [`apps/linnya-cli/README.md`](../../apps/linnya-cli/README.md)。Benchmark 必须调用 CLI 子进程并解析 JSON/JSONL，不得复制 bridge 或直读数据库。
 
 ### 2.4 `conversation.messages` 写入 guard（[INV-01](./00-invariants.md#inv-01--runtimeevent-是唯一事实源)）
 

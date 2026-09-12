@@ -218,6 +218,11 @@ function fixture(
   let latestExecutionStepsError: Error | undefined;
   const startRequests: ConversationNextRequest[] = [];
   const responseRequests: ConversationInteractionResponseRequest[] = [];
+  const resumeRequests: Array<{
+    readonly runId: string;
+    readonly expectedExecutionId: string;
+    readonly expectedUpdatedAt: number;
+  }> = [];
   const selectedAgentWrites: string[] = [];
   const stopRequests: string[] = [];
   let finalAnswer: ReturnType<typeof finalAnswerMessage> | null = finalAnswerMessage();
@@ -242,6 +247,24 @@ function fixture(
           }),
         ];
         return accepted(request.conversation_id, 'execution-2', 'tool-output-1');
+      },
+      async resume(runId, request) {
+        resumeRequests.push({
+          runId,
+          expectedExecutionId: request.expected_execution_id,
+          expectedUpdatedAt: request.expected_updated_at,
+        });
+        runs = runs.map(candidate => candidate.runId === runId
+          ? {
+              ...candidate,
+              status: 'running',
+              pausedAt: undefined,
+              pauseReason: undefined,
+              updatedAt: 150,
+              metadata: { ...candidate.metadata, executionId: 'execution-2' },
+            }
+          : candidate);
+        return accepted(request.conversation_id, 'execution-2');
       },
       async stop(runId) {
         stopRequests.push(runId);
@@ -435,6 +458,7 @@ function fixture(
     responseRequests,
     selectedAgentWrites,
     stopRequests,
+    resumeRequests,
     setRuns(next: ConversationControlRunRecord[]) {
       runs = [...next];
     },
@@ -760,6 +784,58 @@ describe('conversation-control use case', () => {
     ).rejects.toMatchObject({ code: 'conversation_busy' });
     expect(test.selectedAgentWrites).toEqual([]);
     expect(test.startRequests).toEqual([]);
+  });
+
+  it('resume 只恢复 exact settled pause，并把同一 fence 交给正式 Flow continuation', async () => {
+    const test = fixture([run('paused', { pausedAt: 109, pauseReason: 'user_pause' })]);
+    const response = await test.useCase.resume({
+      schema_version: 1,
+      command: 'resume',
+      conversation_id: 'conversation-1',
+      expected_run_id: 'run-1',
+      expected_execution_id: 'execution-1',
+      expected_updated_at: 110,
+    });
+    expect(response).toMatchObject({
+      command: 'resume',
+      receipt: {
+        conversation_id: 'conversation-1',
+        run_id: 'run-1',
+        turn_id: 'turn-1',
+        execution_id: 'execution-2',
+      },
+    });
+    expect(response.receipt).not.toHaveProperty('user_message_id');
+    expect(response.receipt).not.toHaveProperty('interaction_id');
+    expect(test.resumeRequests).toEqual([{
+      runId: 'run-1',
+      expectedExecutionId: 'execution-1',
+      expectedUpdatedAt: 110,
+    }]);
+    expect(test.startRequests).toEqual([]);
+    expect(test.responseRequests).toEqual([]);
+  });
+
+  it.each([
+    { status: 'paused' as const, pausedAt: 109, execution: 'stale', updatedAt: 110 },
+    { status: 'paused' as const, pausedAt: 109, execution: 'execution-1', updatedAt: 109 },
+    { status: 'paused' as const, pausedAt: undefined, execution: 'execution-1', updatedAt: 110 },
+    { status: 'awaiting_user' as const, pausedAt: undefined, execution: 'execution-1', updatedAt: 110 },
+  ])('resume 在 Host side effect 前拒绝 stale/unsettled/HITL：%j', async candidate => {
+    const test = fixture([run(candidate.status, { pausedAt: candidate.pausedAt })]);
+    await expect(test.useCase.resume({
+      schema_version: 1,
+      command: 'resume',
+      conversation_id: 'conversation-1',
+      expected_run_id: 'run-1',
+      expected_execution_id: candidate.execution,
+      expected_updated_at: candidate.updatedAt,
+    })).rejects.toMatchObject({
+      code: candidate.status === 'paused' && candidate.pausedAt !== undefined
+        ? 'run_mismatch'
+        : 'unsupported_runtime_state',
+    });
+    expect(test.resumeRequests).toEqual([]);
   });
 
   it('status 只暴露 public interaction，respond 从 Host owner 读取一次性凭证并沿用 run', async () => {

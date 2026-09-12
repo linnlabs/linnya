@@ -292,16 +292,23 @@ describe('durable root Flow continuation, production Audit off', () => {
     resetAgentRuntimeSingletonsForTest();
     const resumed = await open([], [new UnknownEffect()]);
     const root = await paused(resumed);
-    await resumed.flow.continueRun(
+    const acceptance = await resumed.flow.continueRunDetached(
       root.run_id,
       {
         conversation_id: conversationId,
         expected_execution_id: root.execution_id,
         expected_updated_at: root.pause.updated_at,
-      },
-      () => {}
+      }
     );
-    expect((await paused(resumed)).pause.reason).toBe('tool_reconciliation_required');
+    expect(acceptance).toMatchObject({
+      conversationId,
+      runId: root.run_id,
+      turnId: root.turn_id,
+      incomingEventIds: [],
+    });
+    await vi.waitFor(async () => {
+      expect((await paused(resumed)).pause.reason).toBe('tool_reconciliation_required');
+    });
     expect(resumed.getToolExecutions()).toHaveLength(0);
     expect(resumed.ai.getConsumedTurnCount()).toBe(0);
   });

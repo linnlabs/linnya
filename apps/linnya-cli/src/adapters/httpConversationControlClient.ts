@@ -135,6 +135,7 @@ export async function createHttpConversationControlClient(
         );
       }
       const isMutation = request.command === 'send' || request.command === 'respond'
+        || request.command === 'resume'
         || request.command === 'stop'
         || (request.command === 'workspace_tools' && request.action === 'call');
       const result = await postJson(options, '/commands', request,

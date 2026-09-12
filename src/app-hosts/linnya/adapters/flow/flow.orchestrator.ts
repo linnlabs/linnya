@@ -55,7 +55,7 @@ import { readForegroundRunSettlement } from './interactive-run/orchestration/rea
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import type { RunDescriptor } from '../../application/run-resumption';
 import type { FlowRuntimePort } from './flow.runtime';
-import { continueFlowRun } from './flow.run-continuation';
+import { continueFlowRun, continueFlowRunDetached } from './flow.run-continuation';
 import { admitDurableFlowStart } from './flow.run-admission';
 import {
   admitConversationAgentChoice,
@@ -328,6 +328,27 @@ export class FlowOrchestrator {
       runner: this.agentRunner,
       persistenceCoordinator: this.persistenceCoordinator,
       completions: this.executionCompletions,
+    });
+  }
+
+  continueRunDetached(
+    runId: string,
+    command: ConversationRunContinueRequest
+  ): Promise<FlowRunAcceptance> {
+    return continueFlowRunDetached({
+      runId,
+      command,
+      runtime: this.runtime,
+      runner: this.agentRunner,
+      persistenceCoordinator: this.persistenceCoordinator,
+      completions: this.executionCompletions,
+      onExecutionFailure: error => {
+        logger.error('[FlowOrchestrator] detached continuation failed after acceptance', {
+          conversationId: command.conversation_id,
+          runId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      },
     });
   }
 

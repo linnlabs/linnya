@@ -49,6 +49,7 @@ function createClient(execute: ConversationControlClient['execute']): Conversati
         'list',
         'messages',
         'status',
+        'resume',
         'respond',
         'stop',
         'result',
@@ -252,6 +253,73 @@ describe('runCli', () => {
       })
     ).resolves.toBe(0);
     expect(JSON.parse(output.stdout())).toMatchObject({ command: 'list', ok: true });
+    expect(output.stderr()).toBe('');
+  });
+
+  it('resume 从 exact status 读取 fence，并只调用正式 resume 命令', async () => {
+    const observedCommands: string[] = [];
+    const execute: ConversationControlClient['execute'] = async request => {
+      observedCommands.push(request.command);
+      if (request.command === 'status') {
+        expect(request.expected_run_id).toBe('run-1');
+        return {
+          schema_version: 1,
+          ok: true,
+          command: 'status',
+          conversation_id: request.conversation_id,
+          run: {
+            conversation_id: request.conversation_id,
+            run_id: 'run-1',
+            turn_id: 'turn-1',
+            execution_id: 'execution-paused',
+            agent_id: 'plugin_agent_fixture',
+            status: 'paused',
+            started_at: 10,
+            updated_at: 42,
+            pause: { settled: true, reason: 'user_pause' },
+            result_available: false,
+          },
+        };
+      }
+      if (request.command === 'resume') {
+        expect(request).toEqual({
+          schema_version: 1,
+          command: 'resume',
+          conversation_id: 'conversation-1',
+          expected_run_id: 'run-1',
+          expected_execution_id: 'execution-paused',
+          expected_updated_at: 42,
+        });
+        return {
+          schema_version: 1,
+          ok: true,
+          command: 'resume',
+          receipt: {
+            conversation_id: 'conversation-1',
+            turn_id: 'turn-1',
+            run_id: 'run-1',
+            execution_id: 'execution-resumed',
+            agent_id: 'plugin_agent_fixture',
+            accepted_at: 50,
+          },
+        };
+      }
+      throw new Error(`unexpected command ${request.command}`);
+    };
+    const output = createIo();
+    await expect(runCli([
+      'resume', 'conversation-1', '--run', 'run-1', '--timeout', '5000',
+    ], {
+      connection: connect(createClient(execute)),
+      io: output.io,
+    })).resolves.toBe(0);
+    expect(observedCommands).toEqual(['status', 'resume']);
+    expect(JSON.parse(output.stdout())).toMatchObject({
+      command: 'resume',
+      receipt: { run_id: 'run-1', execution_id: 'execution-resumed' },
+    });
+    expect(output.stdout()).not.toContain('user_message_id');
+    expect(output.stdout()).not.toContain('interaction_id');
     expect(output.stderr()).toBe('');
   });
 

@@ -211,6 +211,15 @@ export const ConversationControlRespondResponseSchema = z
   })
   .strict();
 
+export const ConversationControlResumeResponseSchema = z
+  .object({
+    ...SuccessBaseFields,
+    command: z.literal('resume'),
+    // continuation 不提交 user_input，也不消费 interaction，因此回执只描述 execution ownership。
+    receipt: ConversationControlAcceptedReceiptSchema.omit({ user_message_id: true }).strict(),
+  })
+  .strict();
+
 export const ConversationControlStopResponseSchema = z
   .object({
     ...SuccessBaseFields,
@@ -623,6 +632,7 @@ export const ConversationControlErrorResponseSchema = z
         'list',
         'messages',
         'status',
+        'resume',
         'respond',
         'stop',
         'result',
@@ -647,6 +657,7 @@ export const ConversationControlCommandResponseSchema = z.union([
   ConversationControlListResponseSchema,
   ConversationControlMessagesResponseSchema,
   ConversationControlStatusResponseSchema,
+  ConversationControlResumeResponseSchema,
   ConversationControlRespondResponseSchema,
   ConversationControlStopResponseSchema,
   ConversationControlResultResponseSchema,
@@ -669,6 +680,9 @@ export type ConversationControlStatusResponse = z.infer<
 >;
 export type ConversationControlProgressFrame = z.infer<
   typeof ConversationControlProgressFrameSchema
+>;
+export type ConversationControlResumeResponse = z.infer<
+  typeof ConversationControlResumeResponseSchema
 >;
 export type ConversationControlRespondResponse = z.infer<
   typeof ConversationControlRespondResponseSchema

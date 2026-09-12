@@ -57,6 +57,7 @@ function createUseCase(
     list: unused,
     messages: unused,
     status: unused,
+    resume: unused,
     respond: unused,
     stop: unused,
     result: unused,
@@ -96,6 +97,7 @@ describe('conversation-control bridge router', () => {
     expect(handshake.app_instance_id).toBe('app-instance-1');
     expect(handshake.capabilities).toContain('send');
     expect(handshake.capabilities).toContain('models');
+    expect(handshake.capabilities).toContain('resume');
     expect(handshake.capabilities).toContain('audit');
     expect(handshake.capabilities).toContain('workspace_tools');
   });

@@ -16,6 +16,7 @@ import { createConversationControlConnection } from './createConversationControl
 import { watchConversationStatus } from './watchConversationStatus';
 import { executeWorkspaceToolCall } from './executeWorkspaceToolCall';
 import { stopConversationRun } from './stopConversationRun';
+import { resumeConversationRun } from './resumeConversationRun';
 
 interface RunCliOptions {
   readonly connection?: ConversationControlConnectionPort;
@@ -38,6 +39,7 @@ export function linnyaCliUsage(): string {
     '  linnya list [--limit N] [--cursor CURSOR] [--search TEXT] [--project ID]',
     '  linnya messages <conversation-id> [--before N | --after N] [--limit N]',
     '  linnya status <conversation-id> [--run ID] [--watch] [--interval MS] [--timeout MS]',
+    '  linnya resume <conversation-id> --run ID [--timeout MS]',
     '  linnya respond <conversation-id> --interaction ID (--approve | --skip | --submit-json JSON | --modify-json JSON) [--project ID]',
     '  linnya stop <conversation-id> [--run ID] [--reason TEXT] [--timeout MS]',
     '  linnya result <conversation-id> [--run ID]',
@@ -56,6 +58,7 @@ export function linnyaCliUsage(): string {
     '  Save receipt.conversation_id and receipt.run_id, then status <conversation-id> --run <run-id> --watch.',
     '  send --conversation inherits the saved Agent and project; --agent explicitly changes the Agent.',
     '  stop --run is safe to repeat and waits for tool/persistence settlement (default 60000ms).',
+    '  resume requires an exact settled paused run; awaiting_user must use respond.',
     '  A watch timeout only ends observation; it does not stop the App-owned run.',
     '',
   ].join('\n');
@@ -125,6 +128,16 @@ export async function runCli(
     if (invocation.kind === 'stop') {
       const response = await stopConversationRun({ client, request: invocation.request,
         timeoutMs: invocation.timeoutMs, now: options.now });
+      io.write(serialize(response, invocation.pretty));
+      return LINNYA_CLI_EXIT.success;
+    }
+    if (invocation.kind === 'resume') {
+      const response = await resumeConversationRun({
+        client,
+        conversationId: invocation.conversationId,
+        runId: invocation.runId,
+        timeoutMs: invocation.timeoutMs,
+      });
       io.write(serialize(response, invocation.pretty));
       return LINNYA_CLI_EXIT.success;
     }

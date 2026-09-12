@@ -43,7 +43,7 @@ function sendJson(response: ServerResponse, status: number, body: unknown): void
 
 async function createScriptedBridge(
   execute: (request: ConversationControlCommandRequest, response: ServerResponse) => unknown,
-  capabilities: readonly unknown[] = ['send', 'models', 'projects', 'list', 'messages', 'status', 'respond', 'stop', 'result', 'audit', 'workspace_tools', 'future_additive_capability'],
+  capabilities: readonly unknown[] = ['send', 'models', 'projects', 'list', 'messages', 'status', 'resume', 'respond', 'stop', 'result', 'audit', 'workspace_tools', 'future_additive_capability'],
 ): Promise<{
   readonly connectionFile: string;
   readonly receivedCommands: ConversationControlCommandRequest[];
@@ -323,6 +323,62 @@ describe('linnya CLI real process -> scripted bridge', () => {
       selected_agent_id: 'plugin_agent_fixture',
       image_generation_model_id: 'chatgpt-subscription-gpt-image-2',
     }]);
+  });
+
+  it('真实子进程用 status 快照的 fence 精确恢复原 run', async () => {
+    const bridge = await createScriptedBridge(request => {
+      if (request.command === 'status') {
+        return {
+          schema_version: 1,
+          ok: true,
+          command: 'status',
+          conversation_id: request.conversation_id,
+          run: {
+            conversation_id: request.conversation_id,
+            run_id: 'run-paused',
+            turn_id: 'turn-original',
+            execution_id: 'execution-paused',
+            agent_id: 'slides_agent',
+            status: 'paused',
+            started_at: 10,
+            updated_at: 42,
+            pause: { settled: true, reason: 'user_pause' },
+            result_available: false,
+          },
+        };
+      }
+      if (request.command !== 'resume') throw new Error('expected resume command');
+      expect(request).toMatchObject({
+        conversation_id: 'conversation-1',
+        expected_run_id: 'run-paused',
+        expected_execution_id: 'execution-paused',
+        expected_updated_at: 42,
+      });
+      return {
+        schema_version: 1,
+        ok: true,
+        command: 'resume',
+        receipt: {
+          conversation_id: 'conversation-1',
+          turn_id: 'turn-original',
+          run_id: 'run-paused',
+          execution_id: 'execution-resumed',
+          agent_id: 'slides_agent',
+          accepted_at: 50,
+        },
+      };
+    });
+    const result = await runCliProcess([
+      'resume', 'conversation-1', '--run', 'run-paused',
+    ], bridge.connectionFile);
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      command: 'resume',
+      receipt: { run_id: 'run-paused', execution_id: 'execution-resumed' },
+    });
+    expect(bridge.receivedCommands.map(command => command.command)).toEqual(['status', 'resume']);
+    expect(JSON.stringify(bridge.receivedCommands)).not.toContain('user_input');
   });
 
   it('messages 默认查询发送不带 cursor 的 tail 窗口', async () => {

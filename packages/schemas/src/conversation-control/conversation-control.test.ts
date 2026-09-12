@@ -191,6 +191,38 @@ describe('conversation-control wire contract', () => {
     ).toBe(false);
   });
 
+  it('resume 必须精确钉住 settled pause 身份，不能携带新消息或审批', () => {
+    expect(
+      ConversationControlCommandRequestSchema.parse({
+        schema_version: 1,
+        command: 'resume',
+        conversation_id: 'conversation-1',
+        expected_run_id: 'run-1',
+        expected_execution_id: 'execution-1',
+        expected_updated_at: 110,
+      })
+    ).toMatchObject({ command: 'resume', expected_run_id: 'run-1' });
+    expect(
+      ConversationControlCommandRequestSchema.safeParse({
+        schema_version: 1,
+        command: 'resume',
+        conversation_id: 'conversation-1',
+        expected_run_id: 'run-1',
+        expected_execution_id: 'execution-1',
+        expected_updated_at: 110,
+        message: '继续',
+      }).success
+    ).toBe(false);
+    expect(
+      ConversationControlCommandRequestSchema.safeParse({
+        schema_version: 1,
+        command: 'resume',
+        conversation_id: 'conversation-1',
+        expected_run_id: 'run-1',
+      }).success
+    ).toBe(false);
+  });
+
   it('连接描述只允许 loopback 和固定长度 session token', () => {
     const base = {
       protocol_version: 2,

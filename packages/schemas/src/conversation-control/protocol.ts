@@ -14,6 +14,7 @@ export const ConversationControlCapabilitySchema = z.enum([
   'list',
   'messages',
   'status',
+  'resume',
   'respond',
   'stop',
   'result',

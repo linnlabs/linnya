@@ -44,6 +44,11 @@ HTTP 的 pause 携带 expected_execution_id，continue 还携带 expected_update
 Renderer 在没有 reader 时观察原 run 状态；Backend 不可达显示重连，不伪造 failed 终态。
 重启先恢复控制态，等待用户继续，不自动发起模型或工具调用。
 
+Conversation CLI 的 `resume <conversation-id> --run <run-id>` 先读取 exact settled pause，再把
+观察到的 execution/update fence 交给同一 Host continue 流程。CLI 仅等待新的 execution ownership
+接纳，后续运行仍归 App；它不以 send 冒充恢复、不写 user_input、不批准 HITL，也不解释或跳过
+未知工具副作用的 receipt/reconcile 门禁。
+
 ## 副作用支持范围
 
 | 原调用状态 | 当前动作 |

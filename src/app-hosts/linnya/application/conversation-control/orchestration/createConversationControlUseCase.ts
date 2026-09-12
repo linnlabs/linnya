@@ -6,6 +6,7 @@ import {
   type ConversationControlModelsRequest,
   type ConversationControlMessagesRequest,
   type ConversationControlRespondRequest,
+  type ConversationControlResumeRequest,
   type ConversationControlResultRequest,
   type ConversationControlSendRequest,
   type ConversationControlStatusRequest,
@@ -31,6 +32,7 @@ import { projectRunStatus } from '../functions/projectRunStatus';
 import { projectInteractionResponse } from '../functions/projectInteractionResponse';
 import { projectExecutionAuditResponse } from '../functions/projectExecutionAudit';
 import { projectActiveExecutionProgress } from '../functions/projectActiveExecutionProgress';
+import { selectRunResumeTarget } from '../functions/selectRunResumeTarget';
 
 function firstIncomingEventId(acceptance: ConversationControlFlowAcceptance): string {
   const eventId = acceptance.incomingEventIds[0];
@@ -258,6 +260,8 @@ export function createConversationControlUseCase(
           return useCase.messages(request);
         case 'status':
           return useCase.status(request);
+        case 'resume':
+          return useCase.resume(request);
         case 'respond':
           return useCase.respond(request);
         case 'stop':
@@ -372,6 +376,40 @@ export function createConversationControlUseCase(
 
     status(request: ConversationControlStatusRequest) {
       return projectStatusResponse(ports, request);
+    },
+
+    async resume(request: ConversationControlResumeRequest) {
+      const runs = await ports.runs.findByConversation(request.conversation_id);
+      const target = selectRunResumeTarget(request, runs);
+      const run = target.run;
+      const acceptance = await ports.flow.resume(run.runId, {
+        conversation_id: request.conversation_id,
+        expected_execution_id: request.expected_execution_id,
+        expected_updated_at: request.expected_updated_at,
+      });
+      if (
+        acceptance.conversationId !== request.conversation_id
+        || acceptance.runId !== run.runId
+        || acceptance.turnId !== target.turnId
+      ) {
+        throw new ConversationControlError(
+          'internal_error',
+          `Host resumed a different execution identity for run ${run.runId}`
+        );
+      }
+      return {
+        schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+        ok: true,
+        command: 'resume',
+        receipt: {
+          conversation_id: acceptance.conversationId,
+          turn_id: acceptance.turnId,
+          run_id: acceptance.runId,
+          execution_id: acceptance.executionId,
+          agent_id: acceptance.agentId,
+          accepted_at: acceptance.acceptedAt,
+        },
+      };
     },
 
     async respond(request: ConversationControlRespondRequest) {

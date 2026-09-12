@@ -106,7 +106,7 @@ Conversation Agent run 的 application orchestration：请求接纳、Host sessi
 
 ### `application/conversation-control/`
 
-编排外部调用方的发消息、历史查询、运行状态、`awaiting_user` 响应、终止与最终回答读取。它通过窄 ports 复用正式 Flow、run registry 和 durable read model，不提供主动暂停，也不拥有 HTTP 或数据库实现；详见该目录 `README.md`。
+编排外部调用方的发消息、历史查询、运行状态、settled pause 精确恢复、`awaiting_user` 响应、终止与最终回答读取。恢复复用正式 Flow continuation 与原 run descriptor/checkpoint，不创建新消息；该 feature 通过窄 ports 复用正式 Flow、run registry 和 durable read model，不提供主动暂停，也不拥有 HTTP 或数据库实现；详见该目录 `README.md`。
 
 ### `testkit/`
 

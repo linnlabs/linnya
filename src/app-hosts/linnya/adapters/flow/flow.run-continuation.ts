@@ -4,7 +4,7 @@ import { CommittedResumeInputsSchema } from '../../application/run-resumption';
 import type { FlowRuntimePort } from './flow.runtime';
 import type { FlowAgentRunnerPort } from './flow.runner-handoff';
 import type { EventPersistenceCoordinator } from './flow.persistence';
-import type { SSESink, FlowExecutionResult } from './flow.schemas';
+import type { SSESink, FlowExecutionResult, FlowRunAcceptance } from './flow.schemas';
 import { FlowHostSessionService } from './flow.host-session.service';
 import type { FlowExecutionCompletionRegistry } from './interactive-run/orchestration/flowExecutionCompletionRegistry';
 import { requireRuntimeCompatibility } from '../../application/run-resumption/functions/runtimeCompatibility';
@@ -22,7 +22,7 @@ class RunContinuationSettlementError extends Error {
 }
 
 /** 独立控制操作：不调用 /next，不执行 incoming admission，不创建用户消息。 */
-export async function continueFlowRun(input: {
+interface ContinueFlowRunInput {
   runId: string;
   command: ConversationRunContinueRequest;
   sink: SSESink;
@@ -30,7 +30,10 @@ export async function continueFlowRun(input: {
   runner: FlowAgentRunnerPort;
   persistenceCoordinator: EventPersistenceCoordinator;
   completions: FlowExecutionCompletionRegistry;
-}): Promise<FlowExecutionResult> {
+  lifecycleObserver?: { readonly onAccepted: (acceptance: FlowRunAcceptance) => void };
+}
+
+export async function continueFlowRun(input: ContinueFlowRunInput): Promise<FlowExecutionResult> {
   const runId = RunIdSchema.parse(input.runId);
   const descriptors = input.runtime.runDescriptors;
   if (
@@ -95,6 +98,15 @@ export async function continueFlowRun(input: {
     );
     host.bindRunIdentity({ runId, lane: 'foreground', visibility: 'conversation' });
     await host.openRootRunSession(runId);
+    input.lifecycleObserver?.onAccepted({
+      conversationId: descriptor.conversationId,
+      incomingEventIds: [],
+      turnId: descriptor.turnId,
+      runId,
+      executionId: host.sequencer.getExecutionId(),
+      agentId: descriptor.agentSpec.id,
+      acceptedAt: Date.now(),
+    });
     const execution = input.runner.run({
       conversationId: descriptor.conversationId,
       turnId: descriptor.turnId,
@@ -145,4 +157,39 @@ export async function continueFlowRun(input: {
   if (didThrow) throw failure;
   if (!result) throw new Error('Run continuation produced no execution result');
   return result;
+}
+
+/**
+ * CLI 等短连接只等待 Host 取得原 run 的新 execution ownership；后续执行继续由 App 持有。
+ * 恢复规则仍全部落在 continueFlowRun，不能另建简化恢复路径。
+ */
+export function continueFlowRunDetached(
+  input: Omit<ContinueFlowRunInput, 'sink' | 'lifecycleObserver'> & {
+    readonly onExecutionFailure: (error: unknown) => void;
+  }
+): Promise<FlowRunAcceptance> {
+  return new Promise<FlowRunAcceptance>((resolve, reject) => {
+    let accepted = false;
+    const execution = continueFlowRun({
+      ...input,
+      sink: () => undefined,
+      lifecycleObserver: {
+        onAccepted: acceptance => {
+          accepted = true;
+          resolve(acceptance);
+        },
+      },
+    });
+    void execution
+      .then(() => {
+        if (!accepted) reject(new Error('Run continuation completed without Host acceptance'));
+      })
+      .catch((error: unknown) => {
+        if (!accepted) {
+          reject(error);
+          return;
+        }
+        input.onExecutionFailure(error);
+      });
+  });
 }

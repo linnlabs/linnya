@@ -25,7 +25,7 @@ interface LinnyaConversationControlUseCaseOwners {
   readonly workspace: { getAllProjects(): readonly { id: string; name: string }[] };
   readonly flow: Pick<
     FlowOrchestrator,
-    'nextDetached' | 'respondInteractionDetached' | 'cancelRun'
+    'nextDetached' | 'respondInteractionDetached' | 'continueRunDetached' | 'cancelRun'
   >;
   readonly runs: {
     findByConversation(
@@ -97,6 +97,7 @@ export function createLinnyaConversationControlUseCase(
     flow: {
       start: request => owners.flow.nextDetached(request),
       respond: request => owners.flow.respondInteractionDetached(request),
+      resume: (runId, request) => owners.flow.continueRunDetached(runId, request),
       stop: (runId, conversationId, reason) =>
         owners.flow.cancelRun(runId, conversationId, reason),
     },

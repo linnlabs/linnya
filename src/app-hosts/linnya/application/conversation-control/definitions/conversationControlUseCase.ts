@@ -1,5 +1,4 @@
 import type {
-  ConversationControlAcceptedReceipt,
   ConversationControlAuditRequest,
   ConversationControlAuditResponse,
   ConversationControlCommandRequest,
@@ -14,6 +13,8 @@ import type {
   ConversationControlMessagesResponse,
   ConversationControlRespondRequest,
   ConversationControlRespondResponse,
+  ConversationControlResumeRequest,
+  ConversationControlResumeResponse,
   ConversationControlResultRequest,
   ConversationControlResultResponse,
   ConversationControlSendRequest,
@@ -29,6 +30,7 @@ import type {
   ConversationHistoryListItem,
   ConversationInteractionResponseRequest,
   ConversationNextRequest,
+  ConversationRunContinueRequest,
   ConversationRunCancelResponse,
   ConversationSelectedAgentId,
   ConversationUiMessage,
@@ -53,6 +55,10 @@ export interface ConversationControlFlowPort {
   start(request: ConversationNextRequest): Promise<ConversationControlFlowAcceptance>;
   respond(
     request: ConversationInteractionResponseRequest
+  ): Promise<ConversationControlFlowAcceptance>;
+  resume(
+    runId: string,
+    request: ConversationRunContinueRequest
   ): Promise<ConversationControlFlowAcceptance>;
   stop(
     runId: string,
@@ -217,6 +223,7 @@ export interface ConversationControlUseCase {
     | ConversationControlListResponse
     | ConversationControlMessagesResponse
     | ConversationControlStatusResponse
+    | ConversationControlResumeResponse
     | ConversationControlRespondResponse
     | ConversationControlStopResponse
     | ConversationControlResultResponse
@@ -233,6 +240,7 @@ export interface ConversationControlUseCase {
     request: ConversationControlMessagesRequest
   ): Promise<ConversationControlMessagesResponse>;
   status(request: ConversationControlStatusRequest): Promise<ConversationControlStatusResponse>;
+  resume(request: ConversationControlResumeRequest): Promise<ConversationControlResumeResponse>;
   respond(request: ConversationControlRespondRequest): Promise<ConversationControlRespondResponse>;
   stop(request: ConversationControlStopRequest): Promise<ConversationControlStopResponse>;
   result(request: ConversationControlResultRequest): Promise<ConversationControlResultResponse>;
@@ -241,8 +249,3 @@ export interface ConversationControlUseCase {
     request: ConversationControlWorkspaceToolsRequest
   ): Promise<ConversationControlWorkspaceToolsResponse>;
 }
-
-export type ConversationControlResumeReceipt = Omit<
-  ConversationControlAcceptedReceipt,
-  'user_message_id'
-> & { readonly interaction_id: string };

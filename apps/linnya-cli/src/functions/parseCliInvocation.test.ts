@@ -138,4 +138,22 @@ describe('parseCliInvocation', () => {
       'status', 'conversation-1', '--watch', '--pretty',
     ])).toThrow('--pretty cannot be combined');
   });
+
+  it('resume 强制指定 exact run，不接受伪装成恢复的新消息', () => {
+    expect(parseCliInvocation([
+      'resume', 'conversation-1', '--run', 'run-1', '--timeout', '5000',
+    ])).toEqual({
+      kind: 'resume',
+      conversationId: 'conversation-1',
+      runId: 'run-1',
+      timeoutMs: 5000,
+      pretty: false,
+    });
+    expect(() => parseCliInvocation(['resume', 'conversation-1'])).toThrow(
+      'resume requires --run',
+    );
+    expect(() => parseCliInvocation([
+      'resume', 'conversation-1', '继续', '--run', 'run-1',
+    ])).toThrow('requires exactly one conversation id');
+  });
 });

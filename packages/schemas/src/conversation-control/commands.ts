@@ -87,6 +87,21 @@ export const ConversationControlStatusRequestSchema = z
   })
   .strict();
 
+/**
+ * 恢复 settled pause 必须钉住一次明确观察到的 execution 与更新时间。
+ * expected_run_id 也保持必填，避免“当前 run”在读取与写入之间漂移。
+ */
+export const ConversationControlResumeRequestSchema = z
+  .object({
+    ...CommandBaseFields,
+    command: z.literal('resume'),
+    conversation_id: OpaqueIdSchema,
+    expected_run_id: OpaqueIdSchema,
+    expected_execution_id: OpaqueIdSchema,
+    expected_updated_at: z.number().int().nonnegative(),
+  })
+  .strict();
+
 export const ConversationControlInteractionResponseSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('approve') }).strict(),
   z.object({ kind: z.literal('skip') }).strict(),
@@ -192,6 +207,7 @@ export const ConversationControlCommandRequestSchema = z.union([
   ConversationControlListRequestSchema,
   ConversationControlMessagesRequestSchema,
   ConversationControlStatusRequestSchema,
+  ConversationControlResumeRequestSchema,
   ConversationControlRespondRequestSchema,
   ConversationControlStopRequestSchema,
   ConversationControlResultRequestSchema,
@@ -213,6 +229,9 @@ export type ConversationControlMessagesRequest = z.infer<
 >;
 export type ConversationControlStatusRequest = z.infer<
   typeof ConversationControlStatusRequestSchema
+>;
+export type ConversationControlResumeRequest = z.infer<
+  typeof ConversationControlResumeRequestSchema
 >;
 export type ConversationControlRespondRequest = z.infer<
   typeof ConversationControlRespondRequestSchema
