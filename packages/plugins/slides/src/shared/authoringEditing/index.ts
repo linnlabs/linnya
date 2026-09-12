@@ -1,4 +1,10 @@
 export type { SlidesAuthoringEditRef } from './definitions/authoringIdentity';
+export type {
+  SlidesManualEditCommand,
+  SlidesManualEditCommitResult,
+  SlidesManualEditExpectedBase,
+  SlidesManualEditOperation,
+} from './definitions/manualEditCommand';
 export { SLIDES_AUTHORING_KEY_PATTERN } from './definitions/authoringIdentity';
 export type {
   SlidesManualAtomicEdit,

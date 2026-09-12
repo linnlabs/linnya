@@ -251,6 +251,10 @@ export {
 } from './authoringEditing';
 export type {
   SlidesAuthoringEditRef,
+  SlidesManualEditCommand,
+  SlidesManualEditCommitResult,
+  SlidesManualEditExpectedBase,
+  SlidesManualEditOperation,
   SlidesManualAtomicEdit,
   SlidesManualAtomicEditKind,
   SlidesManualEdits,
