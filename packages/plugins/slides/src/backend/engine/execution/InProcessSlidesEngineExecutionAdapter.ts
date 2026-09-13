@@ -10,6 +10,7 @@ import type {
   SlidesEngineLogger,
   SlidesEngineParsePptxRequest,
   SlidesEnginePreviewRequest,
+  SlidesEngineRenderModelRequest,
   SlidesEngineResolvePatchImageSourceRequest,
   SlidesPresentationQueryPort,
   SlidesEngineVersionRequest,
@@ -103,7 +104,7 @@ export class InProcessSlidesEngineExecutionAdapter implements SlidesEngineExecut
     );
   }
 
-  async buildRenderModel(request: SlidesEngineVersionRequest) {
+  async buildRenderModel(request: SlidesEngineRenderModelRequest) {
     return await this.runWithTelemetry(request.context, async () =>
       this.presentationQueries.getRenderModel(
         request.nodeId,

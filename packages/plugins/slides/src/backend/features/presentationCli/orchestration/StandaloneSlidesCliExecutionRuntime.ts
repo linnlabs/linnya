@@ -7,7 +7,7 @@ import type {
 } from '@plugin/slides/shared/presentationInspection';
 import type { PresentationInspectionResult } from '../../presentationInspection';
 import type { PresentationRenderModel } from '@plugin/slides/shared/renderModel';
-import type { SlidesEngineVersionSnapshot } from '../../../engine/types';
+import type { SlidesEngineGeneratedVersionSnapshot } from '../../../engine/types';
 import { GeneratedPresentationRenderModelBuilder } from '../../../engine/coordinator/GeneratedPresentationRenderModelBuilder';
 import { deckSpecHasSourceSpan } from '../../../engine/coordinator/deckSpecSourceSpans';
 import { SpatialAnalyzer } from '../../../engine/quality/SpatialAnalyzer';
@@ -121,7 +121,7 @@ export class StandaloneSlidesCliExecutionRuntime implements SlidesCliExecutionPo
   }
 
   private async loadRenderModelSnapshot(presentationId: string): Promise<{
-    readonly version: SlidesEngineVersionSnapshot;
+    readonly version: SlidesEngineGeneratedVersionSnapshot;
     readonly renderModel: PresentationRenderModel;
   }> {
     const snapshot = await this.requireSnapshot(presentationId, 'render model');
@@ -194,7 +194,7 @@ function normalizeDraftFailureCode(value: string | null): PresentationBuildFailu
   }
 }
 
-function toEngineVersion(snapshot: StandalonePresentationSnapshot): SlidesEngineVersionSnapshot {
+function toEngineVersion(snapshot: StandalonePresentationSnapshot): SlidesEngineGeneratedVersionSnapshot {
   const { document } = snapshot;
   return {
     id: document.currentRevisionId,

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { DeckSpec } from '@plugin/slides/shared';
 import { PptPresentationQueryService } from '../engine/coordinator/PptPresentationQueryService.js';
-import type { PptxReaderPort, SlidesEnginePreviewSnapshot } from '../engine/types.js';
+import type { PptxReaderPort, SlidesEngineRenderModelSnapshot } from '../engine/types.js';
 
 const deckSpec: DeckSpec = {
   title: 'Imported deck',
@@ -12,7 +12,7 @@ const deckSpec: DeckSpec = {
   }],
 };
 
-function makeGeneratedVersion(): SlidesEnginePreviewSnapshot {
+function makeGeneratedVersion(): SlidesEngineRenderModelSnapshot {
   return {
     id: 'revision-1',
     nodeId: 'deck-1',
@@ -23,7 +23,7 @@ function makeGeneratedVersion(): SlidesEnginePreviewSnapshot {
   };
 }
 
-function makeImportedVersion(): SlidesEnginePreviewSnapshot {
+function makeImportedVersion(): SlidesEngineRenderModelSnapshot {
   return {
     ...makeGeneratedVersion(),
     sourceKind: 'imported',
@@ -31,7 +31,7 @@ function makeImportedVersion(): SlidesEnginePreviewSnapshot {
   };
 }
 
-describe('PptPresentationQueryService preview source', () => {
+describe('PptPresentationQueryService derived read sources', () => {
   it('builds generated previews from DeckSpec without reading the PPTX package', async () => {
     const pptxReader: PptxReaderPort = {
       parse: vi.fn(async () => {
@@ -75,17 +75,28 @@ describe('PptPresentationQueryService preview source', () => {
       })),
     };
 
-    const preview = await new PptPresentationQueryService(pptxReader).getPreview(
+    const queryService = new PptPresentationQueryService(pptxReader);
+    const preview = await queryService.getPreview(
+      'deck-1',
+      makeImportedVersion(),
+    );
+    const renderModel = await queryService.getRenderModel(
       'deck-1',
       makeImportedVersion(),
     );
 
-    expect(pptxReader.parse).toHaveBeenCalledOnce();
-    expect(pptxReader.parse).toHaveBeenCalledWith(Buffer.from('pptx-source'));
+    expect(pptxReader.parse).toHaveBeenCalledTimes(2);
+    expect(pptxReader.parse).toHaveBeenNthCalledWith(1, Buffer.from('pptx-source'));
+    expect(pptxReader.parse).toHaveBeenNthCalledWith(2, Buffer.from('pptx-source'));
     expect(preview.slides[0]).toMatchObject({
       slideId: 's1',
       layoutName: 'Imported layout',
       elements: [{ type: 'text', text: 'Read from OOXML' }],
+    });
+    expect(renderModel).toMatchObject({
+      presentationId: 'deck-1',
+      sourceKind: 'imported',
+      slides: [{ layoutKey: 'Imported layout', elements: [{ kind: 'text' }] }],
     });
   });
 });

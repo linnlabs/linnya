@@ -130,7 +130,7 @@ export function createPptCoordinator(
     compile: input => historicalBuilder.buildHistoricalDeckSpec(input),
     render: (documentId, version, deckSpec) => historicalQueries.getRenderModel(documentId, {
       id: version.versionId, nodeId: documentId, versionNumber: version.order, deckSpec,
-      title: deckSpec.title, sourceKind: 'generated', pptxBuffer: Buffer.alloc(0),
+      title: deckSpec.title, sourceKind: 'generated',
     }, { assetContext: { documentId } }),
     assemble: (documentId, deck) => historicalAssembler.assemble(deck, { assetContext: { documentId } }),
     release: (documentId, assetIds) => releaseDocumentAssetOwnership({ database: db, documentId, assetIds }),

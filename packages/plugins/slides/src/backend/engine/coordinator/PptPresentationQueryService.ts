@@ -3,6 +3,7 @@ import {
   type ExportedPresentationFile,
   type PptxReaderPort,
   type SlidesEngineRenderModelOptions,
+  type SlidesEngineRenderModelSnapshot,
   type SlidesEnginePreviewSnapshot,
   type SlidesEngineVersionSnapshot,
   type ImageSourceResolverPort,
@@ -102,7 +103,7 @@ export class PptPresentationQueryService {
 
   async getRenderModel(
     nodeId: string,
-    version: SlidesEngineVersionSnapshot,
+    version: SlidesEngineRenderModelSnapshot,
     assembleOptions?: DeckAssembleOptions,
     options: SlidesEngineRenderModelOptions = {},
   ): Promise<PresentationRenderModel> {

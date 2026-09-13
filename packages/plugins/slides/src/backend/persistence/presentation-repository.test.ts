@@ -127,6 +127,14 @@ describe('PresentationRepository current materialization and source revisions', 
       deckSpec: makeDeckSpec('Revision 1'),
       title: 'Revision 1',
     });
+    await expect(repo.getPresentationRenderSource('deck-1')).resolves.toEqual({
+      nodeId: 'deck-1',
+      currentRevisionId: result.revisionId,
+      currentRevision: 1,
+      deckSource: SOURCE_V1,
+      deckSpec: makeDeckSpec('Revision 1'),
+      title: 'Revision 1',
+    });
 
     const revisions = await repo.listRevisions('deck-1');
     expect(revisions).toEqual([

@@ -178,7 +178,7 @@ export interface SlidesPresentationQueryPort {
   ): Promise<DeckPreview>;
   getRenderModel(
     nodeId: string,
-    version: SlidesEngineVersionSnapshot,
+    version: SlidesEngineRenderModelSnapshot,
     assembleOptions?: DeckAssembleOptions,
     options?: SlidesEngineRenderModelOptions
   ): Promise<PresentationRenderModel>;
@@ -266,6 +266,10 @@ export interface SlidesEngineVersionSnapshot {
   readonly title: string;
 }
 
+export type SlidesEngineGeneratedVersionSnapshot = SlidesEngineVersionSnapshot & {
+  readonly sourceKind: 'generated';
+};
+
 interface SlidesEnginePreviewSnapshotBase {
   readonly id: string;
   readonly nodeId: string;
@@ -290,12 +294,33 @@ export interface SlidesEnginePreviewRequest {
   readonly context: SlidesEngineExecutionContext;
 }
 
+export interface SlidesEngineGeneratedRenderModelSnapshot extends SlidesEnginePreviewSnapshotBase {
+  readonly sourceKind: 'generated';
+  readonly deckSource?: string;
+}
+
+/** generated RenderModel 不携带 package；imported / patched 映射仍由 PPTX canonical 事实驱动。 */
+export type SlidesEngineRenderModelSnapshot =
+  | SlidesEngineGeneratedRenderModelSnapshot
+  | (SlidesEnginePreviewSnapshotBase & {
+      readonly sourceKind: Exclude<SlidesEnginePresentationSourceKind, 'generated'>;
+      readonly pptxBuffer: Buffer;
+      readonly deckSource?: string;
+    });
+
+export interface SlidesEngineRenderModelRequest {
+  readonly nodeId: string;
+  readonly version: SlidesEngineRenderModelSnapshot;
+  readonly assembleOptions?: DeckAssembleOptions;
+  readonly context: SlidesEngineExecutionContext;
+  readonly renderModelOptions?: SlidesEngineRenderModelOptions;
+}
+
 export interface SlidesEngineVersionRequest {
   readonly nodeId: string;
   readonly version: SlidesEngineVersionSnapshot;
   readonly assembleOptions?: DeckAssembleOptions;
   readonly context: SlidesEngineExecutionContext;
-  readonly renderModelOptions?: SlidesEngineRenderModelOptions;
 }
 
 export interface SlidesEngineExecutionAdapter {
@@ -307,7 +332,7 @@ export interface SlidesEngineExecutionAdapter {
   inspectPresentation(request: SlidesEngineVersionRequest): Promise<PresentationInfo>;
   exportPresentation(request: SlidesEngineVersionRequest): Promise<ExportedPresentationFile>;
   buildPreview(request: SlidesEnginePreviewRequest): Promise<DeckPreview>;
-  buildRenderModel(request: SlidesEngineVersionRequest): Promise<PresentationRenderModel>;
+  buildRenderModel(request: SlidesEngineRenderModelRequest): Promise<PresentationRenderModel>;
 }
 
 export function createSlidesEngineExecutionContext(

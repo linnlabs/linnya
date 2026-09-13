@@ -98,6 +98,14 @@ describe('PptCoordinator', () => {
         deckSpec,
         title: deckSpec.title,
       })),
+      getPresentationRenderSource: vi.fn(async () => ({
+        nodeId: 'node-1',
+        currentRevisionId: 'revision-7',
+        currentRevision: 7,
+        deckSource: makeDocument().deckSource,
+        deckSpec,
+        title: deckSpec.title,
+      })),
       getRevisionSource: vi.fn(async () => null),
       listRevisions: vi.fn(async () => []),
       saveTemplate: vi.fn(async () => 'template-1'),
@@ -206,16 +214,19 @@ describe('PptCoordinator', () => {
     expect(exported.buffer).toEqual(Buffer.from('stored-pptx'));
   });
 
-  it('uses narrow current projections for status, source kind, and generated preview', async () => {
+  it('uses narrow current projections for renderer document queries', async () => {
     const buildState = await coordinator.getDocumentBuildState('node-1');
     const sourceKind = await coordinator.getSourceKind('node-1');
     const preview = await coordinator.getPreview('node-1');
+    const renderModel = await coordinator.getRenderModel('node-1');
 
     expect(buildState).toMatchObject({ versionId: 'revision-7', versionNumber: 7 });
     expect(sourceKind).toBe('generated');
     expect(preview).toMatchObject({ nodeId: 'node-1', versionNumber: 7 });
+    expect(renderModel).toMatchObject({ presentationId: 'node-1', version: 7 });
     expect(presentationRepo.getPresentationIdentity).toHaveBeenCalledTimes(2);
     expect(presentationRepo.getPresentationPreviewSource).toHaveBeenCalledOnce();
+    expect(presentationRepo.getPresentationRenderSource).toHaveBeenCalledOnce();
     expect(presentationRepo.getPresentation).not.toHaveBeenCalled();
   });
 
@@ -236,9 +247,15 @@ describe('PptCoordinator', () => {
           : slide.spec,
       })),
     };
-    vi.mocked(presentationRepo.getPresentation).mockResolvedValue(
-      makeDocument({ deckSpec: specWithoutSourceSpan }),
-    );
+    const renderSourceDocument = makeDocument({ deckSpec: specWithoutSourceSpan });
+    vi.mocked(presentationRepo.getPresentationRenderSource).mockResolvedValue({
+      nodeId: renderSourceDocument.nodeId,
+      currentRevisionId: renderSourceDocument.currentRevisionId,
+      currentRevision: renderSourceDocument.currentRevision,
+      deckSource: renderSourceDocument.deckSource,
+      deckSpec: renderSourceDocument.deckSpec,
+      title: renderSourceDocument.title,
+    });
     const recoveredDeckSpec = deckSpec;
     const codegenBuilder = {
       buildNewPresentation: vi.fn(async () => ({

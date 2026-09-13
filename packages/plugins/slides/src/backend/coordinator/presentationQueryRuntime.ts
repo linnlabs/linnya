@@ -1,4 +1,5 @@
 import type {
+  DeckSpec,
   DeckPreview,
   PresentationInfo,
   PresentationRenderModel,
@@ -10,9 +11,10 @@ import type {
   ExportedPresentationFile,
   PresentationDraftRepositoryPort,
   PresentationDocumentIdentity,
+  PresentationDocumentQueryPort,
   PresentationDocumentRecord,
   PresentationPreviewSourceRecord,
-  PresentationRepositoryPort,
+  PresentationRenderSourceRecord,
   PresentationSourceKind,
   WorkspacePresentationPort,
 } from './types.js';
@@ -20,17 +22,19 @@ import {
   createSlidesEngineExecutionContext,
   type SlidesEngineExecutionAdapter,
   type SlidesEngineExecutionScope,
+  type SlidesEngineRenderModelSnapshot,
   type SlidesEngineVersionSnapshot,
 } from '@plugin/slides/backend-engine-core';
 import type { CodegenDeckBuilderPort } from './presentationCodegenRuntime';
 import {
   toSlidesEnginePreviewSnapshot,
+  toSlidesEngineRenderModelSnapshot,
   toSlidesEngineVersionSnapshot,
 } from './functions/presentationDocumentSnapshot.js';
 import { deckSpecHasSourceSpan } from '../engine/coordinator/deckSpecSourceSpans.js';
 
-interface RenderModelVersionResolution {
-  readonly version: SlidesEngineVersionSnapshot;
+interface RenderModelDeckSpecResolution {
+  readonly deckSpec: DeckSpec;
   readonly canEditSourceSelection: boolean;
 }
 
@@ -40,7 +44,7 @@ export interface PresentationRenderModelSnapshot {
 }
 
 export interface PresentationQueryRuntimeDeps {
-  readonly presentationRepo: PresentationRepositoryPort;
+  readonly presentationRepo: PresentationDocumentQueryPort;
   readonly workspaceService?: WorkspacePresentationPort;
   readonly draftRepo?: PresentationDraftRepositoryPort;
   readonly engine: SlidesEngineExecutionAdapter;
@@ -109,29 +113,30 @@ export class PresentationQueryRuntime {
   }
 
   async getRenderModel(nodeId: string): Promise<PresentationRenderModel> {
-    return (await this.getRenderModelSnapshot(nodeId)).renderModel;
+    const source = await this.requirePresentationRenderSource(nodeId);
+    const version = toSlidesEngineRenderModelSnapshot(source);
+    this.assertNoPendingCodegenDraft(nodeId, 'render model');
+    const resolution = await this.resolveRenderModelDeckSpec(nodeId, version);
+    return await this.buildRenderModel(
+      nodeId,
+      { ...version, deckSpec: resolution.deckSpec },
+      resolution.canEditSourceSelection,
+    );
   }
 
   async getRenderModelSnapshot(nodeId: string): Promise<PresentationRenderModelSnapshot> {
     const document = await this.requirePresentation(nodeId);
     const version = toSlidesEngineVersionSnapshot(document);
     this.assertNoPendingCodegenDraft(nodeId, 'render model');
-    const projectId = await this.resolvePresentationProjectId(nodeId);
-    const renderModelVersion = await this.resolveRenderModelVersionWithSourceSpans(nodeId, version);
-    const renderModel = await this.deps.engine.buildRenderModel({
+    const resolution = await this.resolveRenderModelDeckSpec(nodeId, version);
+    const renderModelVersion = { ...version, deckSpec: resolution.deckSpec };
+    const renderModel = await this.buildRenderModel(
       nodeId,
-      version: renderModelVersion.version,
-      assembleOptions: this.buildDeckAssembleOptions(nodeId, projectId),
-      context: this.createEngineContext('buildRenderModel', {
-        nodeId,
-        versionId: renderModelVersion.version.id,
-      }),
-      renderModelOptions: {
-        canEditSourceSelection: renderModelVersion.canEditSourceSelection,
-      },
-    });
+      renderModelVersion,
+      resolution.canEditSourceSelection,
+    );
     return {
-      version: renderModelVersion.version,
+      version: renderModelVersion,
       renderModel,
     };
   }
@@ -189,6 +194,34 @@ export class PresentationQueryRuntime {
     return source;
   }
 
+  private async requirePresentationRenderSource(
+    nodeId: string,
+  ): Promise<PresentationRenderSourceRecord> {
+    const source = await this.deps.presentationRepo.getPresentationRenderSource(nodeId);
+    if (!source) {
+      throw new Error(`Presentation not found: ${nodeId}`);
+    }
+    return source;
+  }
+
+  private async buildRenderModel(
+    nodeId: string,
+    version: SlidesEngineRenderModelSnapshot,
+    canEditSourceSelection: boolean,
+  ): Promise<PresentationRenderModel> {
+    const projectId = await this.resolvePresentationProjectId(nodeId);
+    return await this.deps.engine.buildRenderModel({
+      nodeId,
+      version,
+      assembleOptions: this.buildDeckAssembleOptions(nodeId, projectId),
+      context: this.createEngineContext('buildRenderModel', {
+        nodeId,
+        versionId: version.id,
+      }),
+      renderModelOptions: { canEditSourceSelection },
+    });
+  }
+
   private buildDeckAssembleOptions(nodeId: string, projectId: string | null): DeckAssembleOptions {
     return {
       assetContext: {
@@ -219,20 +252,20 @@ export class PresentationQueryRuntime {
     );
   }
 
-  private async resolveRenderModelVersionWithSourceSpans(
+  private async resolveRenderModelDeckSpec(
     nodeId: string,
-    version: SlidesEngineVersionSnapshot
-  ): Promise<RenderModelVersionResolution> {
+    version: Pick<SlidesEngineRenderModelSnapshot, 'id' | 'deckSource' | 'deckSpec'>,
+  ): Promise<RenderModelDeckSpecResolution> {
     if (!version.deckSource?.trim()) {
       return {
-        version,
+        deckSpec: version.deckSpec,
         canEditSourceSelection: false,
       };
     }
 
     if (deckSpecHasSourceSpan(version.deckSpec)) {
       return {
-        version,
+        deckSpec: version.deckSpec,
         canEditSourceSelection: true,
       };
     }
@@ -243,10 +276,7 @@ export class PresentationQueryRuntime {
         source: version.deckSource,
       });
       return {
-        version: {
-          ...version,
-          deckSpec,
-        },
+        deckSpec,
         canEditSourceSelection: deckSpecHasSourceSpan(deckSpec),
       };
     } catch (error) {
@@ -256,7 +286,7 @@ export class PresentationQueryRuntime {
         error,
       });
       return {
-        version,
+        deckSpec: version.deckSpec,
         canEditSourceSelection: false,
       };
     }

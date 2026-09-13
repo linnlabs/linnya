@@ -10,6 +10,7 @@ import type {
   PresentationDocumentIdentity,
   PresentationDocumentRecord,
   PresentationPreviewSourceRecord,
+  PresentationRenderSourceRecord,
 } from '../definitions/presentationRepository.js';
 
 export interface StoredPresentationIdentityRow {
@@ -25,6 +26,10 @@ export interface StoredPresentationPreviewSourceRow {
   readonly current_revision: number;
   readonly deck_spec_json: string;
   readonly title: string;
+}
+
+export interface StoredPresentationRenderSourceRow extends StoredPresentationPreviewSourceRow {
+  readonly deck_source: string;
 }
 
 /** SQLite current document 的稳定行合同，供读写 repository 与 standalone 只读 adapter 共用。 */
@@ -104,6 +109,28 @@ export function mapPresentationPreviewSourceRow(
     currentRevision: row.current_revision,
     deckSpec: parseStoredDeckSpec(row.deck_spec_json),
     title: row.title,
+  };
+}
+
+export function readPresentationRenderSourceRow(
+  value: unknown,
+): StoredPresentationRenderSourceRow {
+  const previewSource = readPresentationPreviewSourceRow(value);
+  if (!isRecord(value) || typeof value.deck_source !== 'string') {
+    throw new PresentationSourceConsistencyError('Slides render source 行结构非法。');
+  }
+  return {
+    ...previewSource,
+    deck_source: value.deck_source,
+  };
+}
+
+export function mapPresentationRenderSourceRow(
+  row: StoredPresentationRenderSourceRow,
+): PresentationRenderSourceRecord {
+  return {
+    ...mapPresentationPreviewSourceRow(row),
+    deckSource: row.deck_source,
   };
 }
 

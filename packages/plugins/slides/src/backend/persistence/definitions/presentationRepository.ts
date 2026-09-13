@@ -73,6 +73,16 @@ export interface PresentationPreviewSourceRecord {
   readonly title: string;
 }
 
+/** generated RenderModel 的最小持久化事实；deckSource 只用于旧稿 source-span 恢复。 */
+export interface PresentationRenderSourceRecord {
+  readonly nodeId: string;
+  readonly currentRevisionId: string;
+  readonly currentRevision: number;
+  readonly deckSource: string;
+  readonly deckSpec: DeckSpec;
+  readonly title: string;
+}
+
 export interface PresentationRevisionRecord {
   readonly revisionId: string;
   readonly nodeId: string;
@@ -207,7 +217,15 @@ export interface PresentationTemplateRecord {
   readonly usageCount: number;
 }
 
-export interface PresentationRepositoryPort {
+/** current 文稿读模型的窄查询端口；query runtime 不依赖 mutation/history/template 能力。 */
+export interface PresentationDocumentQueryPort {
+  getPresentation(nodeId: string): Promise<PresentationDocumentRecord | null>;
+  getPresentationIdentity(nodeId: string): Promise<PresentationDocumentIdentity | null>;
+  getPresentationPreviewSource(nodeId: string): Promise<PresentationPreviewSourceRecord | null>;
+  getPresentationRenderSource(nodeId: string): Promise<PresentationRenderSourceRecord | null>;
+}
+
+export interface PresentationRepositoryPort extends PresentationDocumentQueryPort {
   createPresentation(
     nodeId: string,
     deckSpec: DeckSpec,
@@ -218,9 +236,6 @@ export interface PresentationRepositoryPort {
     deckSpec: DeckSpec,
     options: PresentationCommitOptions
   ): Promise<PresentationCommitResult>;
-  getPresentation(nodeId: string): Promise<PresentationDocumentRecord | null>;
-  getPresentationIdentity(nodeId: string): Promise<PresentationDocumentIdentity | null>;
-  getPresentationPreviewSource(nodeId: string): Promise<PresentationPreviewSourceRecord | null>;
   /** 仅供创建流程失败后的补偿回滚；不能用于普通用户删除文稿。 */
   discardCreatedPresentation?(nodeId: string): Promise<void>;
   getRevisionSource(nodeId: string, revision: number): Promise<string | null>;
