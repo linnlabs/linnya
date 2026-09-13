@@ -19,7 +19,10 @@ import { useSlideTextEditingSession } from '../../textEditing';
 import { createManualVisualPreview } from '../functions/manualVisualPreview';
 
 export interface SlideManualEditingInteractionOptions {
-  readonly canEdit: Ref<boolean>;
+  /** 当前正式画面是否仍可命中。提交中的旧画面也应允许用户表达下一次选择。 */
+  readonly canSelect: Ref<boolean>;
+  /** 当前 revision 是否允许产生新的作者操作。 */
+  readonly canMutate: Ref<boolean>;
   readonly currentSlide: Ref<SlideRenderModel | null>;
   readonly renderScale: Ref<number>;
   readonly slideSize: Ref<{ readonly width: number; readonly height: number }>;
@@ -54,45 +57,52 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     readonly anchor: SourceSelectionPoint;
     readonly screenX: number;
     readonly screenY: number;
+    readonly canTranslate: boolean;
     dragged: boolean;
   } | null = null;
+  let deferredSelectionElementId: string | null | undefined;
 
   function handlePointerDown(event: PointerEvent): void {
-    if (!options.canEdit.value || event.button !== 0) return;
-    if (textEditing.target.value) {
-      const result = textEditing.requestCommit();
-      if (result !== 'closed') {
-        event.preventDefault();
-        return;
-      }
-    }
+    if (!options.canSelect.value || event.button !== 0) return;
     const point = readPoint(event);
     const slide = options.currentSlide.value;
     if (!point || !slide) return;
     const path = findManualEditableTargetPathAtPoint(slide.elements, point);
-    const outermostTarget = path[0];
-    if (!outermostTarget) {
+    const selection = resolveClickSelection(path, selectedTarget.value?.elementId);
+    if (textEditing.target.value) {
+      if (submitting.value) {
+        deferSelection(selection.target?.elementId ?? null);
+        event.preventDefault();
+        return;
+      }
+      const result = textEditing.requestCommit();
+      if (result === 'submitted') {
+        deferSelection(selection.target?.elementId ?? null);
+        event.preventDefault();
+        return;
+      }
+      if (result === 'blocked') {
+        event.preventDefault();
+        return;
+      }
+    }
+    if (!selection.target || !selection.clickTarget) {
       store.clearSelection();
       return;
     }
-    const selectedIndex = selectedTarget.value
-      ? path.findIndex(target => target.elementId === selectedTarget.value?.elementId)
-      : -1;
-    const target = selectedIndex >= 0 ? path[selectedIndex] ?? outermostTarget : outermostTarget;
-    const clickTarget = selectedIndex >= 0
-      ? path[Math.min(selectedIndex + 1, path.length - 1)] ?? target
-      : target;
     event.preventDefault();
     capturePointer(event);
-    store.selectTarget(target, path);
+    store.selectTarget(selection.target, path);
     pointerSession = {
       pointerId: event.pointerId,
-      target,
+      target: selection.target,
       path,
-      clickTarget,
+      clickTarget: selection.clickTarget,
       anchor: point,
       screenX: event.clientX,
       screenY: event.clientY,
+      canTranslate: options.canMutate.value
+        && selection.target.capabilities.includes('translate'),
       dragged: false,
     };
   }
@@ -108,6 +118,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
       event.clientY - session.screenY,
     ) < DRAG_THRESHOLD_PX) return;
     session.dragged = true;
+    if (!session.canTranslate || !options.canMutate.value) return;
     store.setTranslationPreview({
       elementId: session.target.elementId,
       affectedElementIds: session.target.translationElementIds,
@@ -127,6 +138,10 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
       if (session.clickTarget.elementId !== session.target.elementId) {
         store.selectTarget(session.clickTarget, session.path);
       }
+      return;
+    }
+    if (!session.canTranslate || !options.canMutate.value) {
+      store.setTranslationPreview(null);
       return;
     }
     if (!preview || preview.elementId !== session.target.elementId) return;
@@ -152,7 +167,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
   }
 
   function handleDoubleClick(event: MouseEvent): void {
-    if (!options.canEdit.value) return;
+    if (!options.canMutate.value) return;
     const point = readPoint(event);
     const slide = options.currentSlide.value;
     if (!point || !slide) return;
@@ -171,7 +186,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
 
   function submitVisualOperation(operation: ManualEditingVisualOperation): void {
     const target = selectedTarget.value;
-    if (!target || submitting.value) return;
+    if (!target || !options.canMutate.value) return;
     const preview = createManualVisualPreview(target, operation);
     if (!preview) return;
     store.beginSubmit(operation, undefined, preview);
@@ -192,8 +207,38 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
 
   function resetInteraction(): void {
     pointerSession = null;
+    deferredSelectionElementId = undefined;
     store.clearSelection();
     textEditing.reset();
+  }
+
+  function completeTextEditing(): void {
+    textEditing.complete();
+    applyDeferredSelection();
+  }
+
+  function rejectDeferredSelection(): void {
+    deferredSelectionElementId = undefined;
+  }
+
+  function deferSelection(elementId: string | null): void {
+    deferredSelectionElementId = elementId;
+  }
+
+  function applyDeferredSelection(): void {
+    if (deferredSelectionElementId === undefined) return;
+    const elementId = deferredSelectionElementId;
+    deferredSelectionElementId = undefined;
+    if (elementId === null) {
+      store.clearSelection();
+      return;
+    }
+    const slide = options.currentSlide.value;
+    const path = slide
+      ? findManualEditableTargetPathByElementId(slide.elements, elementId)
+      : [];
+    const target = path.find(candidate => candidate.elementId === elementId) ?? null;
+    store.selectTarget(target, path);
   }
 
   function readPoint(event: Pick<MouseEvent, 'clientX' | 'clientY'>): SourceSelectionPoint | null {
@@ -229,10 +274,30 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     handleTextCompositionEnd: textEditing.endComposition,
     handleTextEditorEscape: textEditing.handleEscape,
     handleTextEditorSubmitShortcut: textEditing.handleCommitShortcut,
-    completeTextEditing: textEditing.complete,
+    completeTextEditing,
+    rejectDeferredSelection,
     reconcileSelection,
     resetInteraction,
   };
+}
+
+function resolveClickSelection(
+  path: readonly ManualEditableTarget[],
+  selectedElementId: string | undefined,
+): {
+  readonly target: ManualEditableTarget | null;
+  readonly clickTarget: ManualEditableTarget | null;
+} {
+  const outermostTarget = path[0];
+  if (!outermostTarget) return { target: null, clickTarget: null };
+  const selectedIndex = selectedElementId
+    ? path.findIndex(target => target.elementId === selectedElementId)
+    : -1;
+  const target = selectedIndex >= 0 ? path[selectedIndex] ?? outermostTarget : outermostTarget;
+  const clickTarget = selectedIndex >= 0
+    ? path[Math.min(selectedIndex + 1, path.length - 1)] ?? target
+    : target;
+  return { target, clickTarget };
 }
 
 function capturePointer(event: PointerEvent): void {

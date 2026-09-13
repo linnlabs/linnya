@@ -14,10 +14,8 @@ export function resolveManualSelectionBreadcrumbStyle(
   viewport: ManualSelectionBreadcrumbViewport,
 ): ManualSelectionBreadcrumbStyle {
   return {
-    left: `${viewport.slideLeft + target.bounds.x * INCHES_TO_PX * viewport.renderScale}px`,
-    top: `${Math.max(
-      4,
-      viewport.slideTop + target.bounds.y * INCHES_TO_PX * viewport.renderScale - 30,
-    )}px`,
+    left: `${viewport.slideLeft
+      + (target.bounds.x + target.bounds.w / 2) * INCHES_TO_PX * viewport.renderScale}px`,
+    top: `${viewport.slideTop + target.bounds.y * INCHES_TO_PX * viewport.renderScale}px`,
   };
 }

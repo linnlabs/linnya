@@ -39,7 +39,7 @@ const emit = defineEmits<{
 }>();
 
 const positionStyle = computed(() => {
-  const target = props.path[0];
+  const target = props.path.find(candidate => candidate.elementId === props.selectedElementId);
   if (!target) return {};
   return resolveManualSelectionBreadcrumbStyle(target, {
     slideLeft: props.slideLeft,

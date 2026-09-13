@@ -99,12 +99,12 @@
           @select="selectManualHierarchyTarget"
         />
         <ElementPropertyPanel
-          v-if="manualSelectedTarget && !textEditorTarget"
+          v-if="manualSelectedTarget && showElementPropertyControls && !textEditorTarget"
           :target="manualSelectedTarget"
           :slide-left="currentLayout.slideLeft"
           :slide-top="currentLayout.slideTop"
           :scaled-slide-width="currentLayout.scaledSlideWidth"
-          :busy="manualEditingSubmitting"
+          :busy="!canManualEdit"
           @submit="submitManualVisualOperation"
         />
       </div>
@@ -155,6 +155,7 @@ import {
 } from '../../features/konvaPreview';
 import { useReadySlideVisualResources } from '../../features/renderVisualResources';
 import {
+  collectManualEditableTargets,
   resolveManualEditingAvailability,
   manualEditPresentationTrace,
   ManualSelectionBreadcrumb,
@@ -163,7 +164,10 @@ import {
   useManualEditingLocalization,
 } from '../../features/manualEditing';
 import { InlineTextEditor } from '../../features/textEditing';
-import { ElementPropertyPanel } from '../../features/elementProperties';
+import {
+  ElementPropertyPanel,
+  hasElementPropertyControls,
+} from '../../features/elementProperties';
 import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 
 const props = defineProps<{
@@ -314,6 +318,13 @@ const canManualEdit = computed(() => (
   && !preparingSlideVisuals.value
   && displayedSlideId.value === activeSlideId.value
 ));
+const canManualSelect = computed(() => (
+  manualEditingEnabled.value
+  && renderModel.value?.sourceKind === 'generated'
+  && displayedSlide.value !== null
+  && displayedSlideId.value === activeSlideId.value
+  && collectManualEditableTargets(displayedSlide.value.elements).length > 0
+));
 
 function updateViewport(force = false) {
   const element = scrollHostRef.value;
@@ -424,10 +435,12 @@ const {
   handleTextEditorEscape,
   handleTextEditorSubmitShortcut,
   completeTextEditing,
+  rejectDeferredSelection,
   reconcileSelection: reconcileManualSelection,
   resetInteraction: resetManualInteraction,
 } = useSlideManualEditingInteraction({
-  canEdit: canManualEdit,
+  canSelect: canManualSelect,
+  canMutate: canManualEdit,
   currentSlide: displayedSlide,
   renderScale,
   slideSize: actualSlideSize,
@@ -443,6 +456,11 @@ const manualPreviewTranslations = computed(() => {
 });
 const manualSelectedTranslation = computed(() => (
   manualTranslationPreview.value ?? manualPendingTranslation.value
+));
+const showElementPropertyControls = computed(() => (
+  manualSelectedTarget.value
+    ? hasElementPropertyControls(manualSelectedTarget.value)
+    : false
 ));
 
 function handleStagePointerDown(event: PointerEvent): void {
@@ -749,9 +767,9 @@ watch(
 );
 
 watch(textSubmissionPending, (pending, previous) => {
-  if (previous && !pending && !manualEditingStore.errorMessage) {
-    completeTextEditing();
-  }
+  if (!previous || pending) return;
+  if (manualEditingStore.errorMessage) rejectDeferredSelection();
+  else completeTextEditing();
 });
 
 watch(

@@ -6,10 +6,6 @@
     @pointerdown.stop
     @keydown.stop
   >
-    <div class="slides-element-property-panel__heading">
-      <strong>{{ props.target.targetKind === 'frame' ? 'Frame' : props.target.authoringRef.editKey }}</strong>
-    </div>
-
     <label v-if="canEditTextStyle" class="slides-element-property-panel__field">
       <span>{{ elementPropertyMessage('slides.elementProperties.fontSize') }}</span>
       <input

@@ -22,15 +22,6 @@
   backdrop-filter: blur(8px);
 }
 
-.slides-element-property-panel__heading {
-  margin-bottom: 8px;
-  overflow: hidden;
-  color: var(--color-text-primary);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .slides-element-property-panel__field {
   display: flex;
   align-items: center;

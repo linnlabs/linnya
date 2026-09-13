@@ -1,4 +1,5 @@
 export { default as ElementPropertyPanel } from './ui/ElementPropertyPanel.vue';
+export { hasElementPropertyControls } from './functions/hasElementPropertyControls';
 export { ELEMENT_PROPERTY_MESSAGE_CATALOG } from './definitions/elementPropertyMessageCatalog';
 export type { ElementPropertyOperation } from './definitions/elementPropertyTypes';
 export {

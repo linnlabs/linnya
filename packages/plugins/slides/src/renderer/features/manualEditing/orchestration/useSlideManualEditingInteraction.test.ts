@@ -54,6 +54,7 @@ const frameSlide: SlideRenderModel = {
 function createInteraction(
   submitOperation: ReturnType<typeof vi.fn>,
   currentSlide: SlideRenderModel = slide,
+  gates: { readonly canSelect?: boolean; readonly canMutate?: boolean } = {},
 ) {
   const wrapper = document.createElement('div');
   wrapper.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 960, height: 540 });
@@ -61,7 +62,8 @@ function createInteraction(
   wrapper.releasePointerCapture = vi.fn();
   wrapper.hasPointerCapture = vi.fn(() => true);
   const interaction = useSlideManualEditingInteraction({
-    canEdit: ref(true),
+    canSelect: ref(gates.canSelect ?? true),
+    canMutate: ref(gates.canMutate ?? true),
     currentSlide: ref(currentSlide),
     renderScale: ref(1),
     slideSize: ref({ width: 10, height: 5.625 }),
@@ -174,6 +176,65 @@ describe('useSlideManualEditingInteraction', () => {
       'authoring-overview-card1',
       'authoring-overview-card1Label',
     ]);
+  });
+
+  it('keeps the committed frame selectable while the next mutation is gated', () => {
+    const submitOperation = vi.fn();
+    const { interaction, wrapper } = createInteraction(
+      submitOperation,
+      frameSlide,
+      { canMutate: false },
+    );
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, pointerId: 7, clientX: 144, clientY: 144,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, pointerId: 7, clientX: 240, clientY: 192,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, button: 0, pointerId: 7, clientX: 240, clientY: 192,
+    }));
+
+    expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-card1');
+    expect(interaction.translationPreview.value).toBeNull();
+    expect(submitOperation).not.toHaveBeenCalled();
+  });
+
+  it('applies the next selection after an edited text revision is presented', () => {
+    const nextSlide: SlideRenderModel = {
+      ...slide,
+      elements: [
+        ...slide.elements,
+        {
+          id: 'authoring-overview-accent',
+          kind: 'shape',
+          box: { x: 5, y: 1, w: 2, h: 1, unit: 'in' },
+          zIndex: 2,
+          geometry: { type: 'preset', name: 'rect' },
+          authoringRef: { slideKey: 'overview', editKey: 'accent', targetKind: 'shape' },
+          authoringEdit: { capabilities: ['translate', 'set_fill_color'] },
+        },
+      ],
+    };
+    const submitOperation = vi.fn();
+    const { interaction, wrapper } = createInteraction(submitOperation, nextSlide);
+    wrapper.dispatchEvent(new MouseEvent('dblclick', {
+      bubbles: true, button: 0, clientX: 144, clientY: 144,
+    }));
+    interaction.textDraft.value = '新的标题';
+
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, pointerId: 9, clientX: 528, clientY: 144,
+    }));
+
+    expect(submitOperation).toHaveBeenCalledWith(expect.objectContaining({
+      op: 'set_text_content',
+    }));
+    expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-headline');
+
+    interaction.completeTextEditing();
+    expect(interaction.textEditorTarget.value).toBeNull();
+    expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-accent');
   });
 
   it('starts an immediate property preview and clears selection for Frame deletion', () => {
