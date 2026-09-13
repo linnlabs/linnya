@@ -1,5 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import JSZip from 'jszip';
 import { RenderModelMapper } from '../../../../engine/parser/RenderModelMapper';
+import { materializePresentationPptx } from '../../../../features/presentationBuildExecution';
 import {
   buildDeckSpecFromDirectInput,
   readCompiledDirectComposeInput,
@@ -277,6 +279,51 @@ describe('authoring identity projection', () => {
     if (!compiled.input) throw new Error(compiled.error ?? 'Expected Frame deletion.');
     expect(compiled.input.slides[0].elements.map(element => element._authoringRef?.editKey))
       .toEqual(['headline']);
+  });
+
+  it('把 v2 样式、视觉尺寸与 Frame 删除带入正式 PPTX', async () => {
+    const input = deck([
+      slide('overview', [
+        frame('removed_group', [text('removed_copy', 'Delete me')]),
+        shape('hero_art'),
+        text('headline', 'Keep me'),
+      ]),
+    ]);
+    input.manualEdits = {
+      version: 2,
+      slides: [{
+        slideKey: 'overview',
+        targets: [
+          { kind: 'frame', editKey: 'removed_group', deleted: true },
+          {
+            kind: 'shape',
+            editKey: 'hero_art',
+            fillColor: '#445566',
+            visualSize: { width: 2.5, height: 1.25 },
+          },
+          { kind: 'text', editKey: 'headline', fontSizePt: 30, color: '#778899' },
+        ],
+      }],
+    };
+
+    const compiled = compileFlexInput(input);
+    if (!compiled.input) throw new Error(compiled.error ?? 'Expected compiled manual edits.');
+    const admitted = readCompiledDirectComposeInput(structuredClone(compiled.input));
+    if (!admitted.input) throw new Error(admitted.error ?? 'Expected admitted compiled input.');
+    const deckSpec = buildDeckSpecFromDirectInput(admitted.input);
+    const pptx = await materializePresentationPptx({ deckSpec, svgAssets: [], svgFallbacks: [] });
+    const zip = await JSZip.loadAsync(pptx);
+    const slideFile = zip.file('ppt/slides/slide1.xml');
+    if (!slideFile) throw new Error('Expected slide XML.');
+    const slideXml = await slideFile.async('text');
+
+    expect(slideXml).toContain('445566');
+    expect(slideXml).toContain('778899');
+    expect(slideXml).toContain('cx="2286000"');
+    expect(slideXml).toContain('cy="1143000"');
+    expect(slideXml).toContain('sz="3000"');
+    expect(slideXml).toContain('Keep me');
+    expect(slideXml).not.toContain('Delete me');
   });
 
   it('拒绝 dangling 与类型不符的人工记录', () => {

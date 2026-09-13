@@ -40,3 +40,8 @@ frame after the complete slide resource frame is installed. The terminal event r
 `inputToResponseMs`, `responseToRefreshMs`, `refreshToFrameMs` and `inputToFrameMs`. A negative
 intermediate duration is retained when push delivery presents the revision before the IPC/refresh
 path completes; this describes the real race instead of rewriting its order.
+
+The Flex authoring integration test materializes a real PPTX from a v2 edit fixture and inspects the
+slide XML for text/font color, point size, Shape width/height, fill color and deleted Frame content.
+This keeps export evidence on the same compiler output instead of duplicating manual-edit rules in an
+export-only test adapter.
