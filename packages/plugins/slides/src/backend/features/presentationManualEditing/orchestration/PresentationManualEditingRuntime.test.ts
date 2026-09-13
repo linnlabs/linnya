@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { DeckSpec, SlidesManualEditCommand } from '@plugin/slides/shared';
 import type { PresentationDocumentRecord } from '../../../persistence/index.js';
 import {
+  PresentationDraftConflictError,
+  PresentationManualEditCommandConflictError,
+} from '../../../persistence/index.js';
+import {
   PresentationBuildFailureError,
   createPresentationBuildFailure,
 } from '../../presentationBuildFailure/index.js';
@@ -171,6 +175,17 @@ describe('PresentationManualEditingRuntime', () => {
       message: '文本修改导致源码类型检查失败。',
       retryable: false,
       referenceId: 'failure-1',
+    });
+  });
+
+  it.each([
+    ['draft_present', new PresentationDraftConflictError('deck-1')],
+    ['command_reused', new PresentationManualEditCommandConflictError('command-1')],
+  ] as const)('把 commit 时才发现的 %s 保持为显式冲突', async (reason, buildError) => {
+    const { runtime } = makeRuntime({ buildError });
+    await expect(runtime.submit(COMMAND)).resolves.toMatchObject({
+      status: 'conflict',
+      reason,
     });
   });
 });

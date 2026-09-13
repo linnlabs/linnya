@@ -233,6 +233,6 @@ describe('SlidesView render-model lifecycle', () => {
         delta: { dx: 0.2, dy: -0.1 },
       },
     }));
-    expect(refreshDeck).toHaveBeenCalledWith('deck-1');
+    expect(refreshDeck).toHaveBeenCalledWith('deck-1', 4);
   });
 });

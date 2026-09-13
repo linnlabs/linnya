@@ -169,7 +169,7 @@ export function registerSlidesRendererPorts(): void {
       if (event.mutationKind !== 'version') return;
       const slidesStore = useSlidesStore();
       if (slidesStore.currentDeckId !== event.documentId) return;
-      await slidesStore.refreshDeck(event.documentId);
+      await slidesStore.refreshDeck(event.documentId, event.versionNumber);
     },
   });
 

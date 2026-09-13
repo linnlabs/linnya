@@ -16,6 +16,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   const textSubmissionPending = ref(false);
   const activeOperation = shallowRef<SlidesManualEditOperation | null>(null);
   const pendingPresentationRevision = ref<number | null>(null);
+  const presentedRevision = ref<number | null>(null);
   const submitting = ref(false);
   const errorMessage = ref<string | null>(null);
 
@@ -77,6 +78,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     submitting.value = false;
     activeOperation.value = null;
     pendingPresentationRevision.value = revision;
+    reconcilePresentedRevision();
   }
 
   function failSubmit(error: string): void {
@@ -89,15 +91,22 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   }
 
   /** 只有新 RenderModel 已呈现 committed revision，才能撤下乐观视觉。 */
-  function reconcilePresentedRevision(revision: number): void {
+  function recordPresentedRevision(revision: number): void {
+    presentedRevision.value = revision;
+    reconcilePresentedRevision();
+  }
+
+  function reconcilePresentedRevision(): void {
     if (
       pendingPresentationRevision.value === null
-      || revision < pendingPresentationRevision.value
+      || presentedRevision.value === null
+      || presentedRevision.value < pendingPresentationRevision.value
     ) {
       return;
     }
     pendingTranslation.value = null;
     pendingPresentationRevision.value = null;
+    presentedRevision.value = null;
     if (textSubmissionPending.value) closeTextEditor();
     textSubmissionPending.value = false;
   }
@@ -114,6 +123,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     pendingTranslation.value = null;
     activeOperation.value = null;
     pendingPresentationRevision.value = null;
+    presentedRevision.value = null;
     textSubmissionPending.value = false;
     closeTextEditor();
     clearSelection();
@@ -129,6 +139,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     textSubmissionPending,
     activeOperation,
     pendingPresentationRevision,
+    presentedRevision,
     submitting,
     errorMessage,
     setEnabled,
@@ -141,7 +152,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     beginSubmit,
     commitSubmit,
     failSubmit,
-    reconcilePresentedRevision,
+    recordPresentedRevision,
     clearSelection,
     $reset,
   };

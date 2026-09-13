@@ -45,9 +45,9 @@ describe('slidesManualEditingStore', () => {
 
     store.commitSubmit(4);
     expect(store.submitting).toBe(false);
-    store.reconcilePresentedRevision(3);
+    store.recordPresentedRevision(3);
     expect(store.pendingTranslation).toEqual(preview);
-    store.reconcilePresentedRevision(4);
+    store.recordPresentedRevision(4);
     expect(store.pendingTranslation).toBeNull();
   });
 
@@ -68,8 +68,23 @@ describe('slidesManualEditingStore', () => {
 
     store.beginSubmit(operation);
     store.commitSubmit(5);
-    store.reconcilePresentedRevision(5);
+    store.recordPresentedRevision(5);
     expect(store.textEditorTarget).toBeNull();
     expect(store.textDraft).toBe('');
+  });
+
+  it('settles immediately when the visual frame arrived before the command response', () => {
+    const store = useSlidesManualEditingStore();
+    const operation = {
+      op: 'translate_by' as const,
+      target: target.authoringRef,
+      targetKind: target.targetKind,
+      delta: { dx: 0.2, dy: 0.1 },
+    };
+    store.beginSubmit(operation, { elementId: target.elementId, dx: 0.2, dy: 0.1 });
+    store.recordPresentedRevision(4);
+    store.commitSubmit(4);
+    expect(store.pendingTranslation).toBeNull();
+    expect(store.pendingPresentationRevision).toBeNull();
   });
 });

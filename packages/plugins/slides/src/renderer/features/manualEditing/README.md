@@ -5,7 +5,7 @@
 ## Current interaction
 
 - The toolbar edit button is available only for a ready generated document whose visible RenderModel version equals the build-state revision and whose current slide contains at least one editable author object.
-- Clicking an object selects it. Dragging previews a translation on the main Konva stage; releasing promotes that delta to a local pending translation before sending one `translate_by` operation in inches. The object therefore stays under the pointer while the source-first rebuild runs. The pending visual is removed only after the committed RenderModel revision is actually presented, or rolled back on failure.
+- Clicking an object selects it. Dragging previews a translation on the main Konva stage; releasing promotes that delta to a local pending translation before sending one `translate_by` operation in inches. The object therefore stays under the pointer while the source-first rebuild runs. The pending visual is removed only after the committed RenderModel revision and its current-page image/chart resources form the displayed frame, or rolled back on failure.
 - Double-clicking a text object whose backend `authoringEdit` projection declares `set_text_content` opens a focused textarea over its bounds. The editor lives in the scroll-content overlay rather than inside the clipped slide canvas. Save replaces the complete author string and runs the normal backend text measurement and layout pipeline. IME composition cannot accidentally trigger the save shortcut; a failed save retains the editor and draft for correction or retry. Multiline strings and strings split into Latin/East Asian render runs remain editable because their author value is still one string.
 - Rich author runs and inline formula runs remain text-read-only because replacing them with one string would destroy run semantics. They may still move.
 - Image, table, chart, shape, SVG Graphic and formula author objects may move. Their content/data/source editors are later independent feature slices.
@@ -28,7 +28,7 @@ ui/
   localization adapter
 ```
 
-The store never calls IPC and never contains geometry or conflict rules. Generic world-coordinate traversal belongs to the sibling `renderNodeSelection` feature; manual editing contributes only its author-capability predicate and target mapping. `SlidesView` is the app-level assembly point: it supplies the current document snapshot to `submitManualEdit`, invokes `slidesApi`, and refreshes the document after commit or conflict. `SlideStage` only connects pointer events and renders the transient overlay.
+The store never calls IPC and never contains geometry or conflict rules. Generic world-coordinate traversal belongs to the sibling `renderNodeSelection` feature; manual editing contributes only its author-capability predicate and target mapping. `SlidesView` is the app-level assembly point: it supplies the current document snapshot to `submitManualEdit`, invokes `slidesApi`, and requests the committed revision. `SlideStage` records presentation only when `renderVisualResources` has atomically installed the target page frame.
 
 ## Conflict and failure behavior
 
@@ -36,7 +36,8 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 - An unresolved AI draft refreshes into the existing draft failure screen; manual editing never deletes it.
 - Source validation or full-build failure keeps the current compiled revision visible and shows the returned failure summary.
 - While a command is running, additional manual pointer operations are disabled, but the stage keeps a normal cursor and the accepted local visual instead of flashing back and showing a global wait cursor.
-- A committed response is an accepted source revision, not proof that the new pixels are visible. The feature keeps `pendingPresentationRevision` until the matching or newer RenderModel reaches the stage.
+- A committed response is an accepted source revision, not proof that the new pixels are visible. The feature keeps `pendingPresentationRevision` until the matching or newer complete visual frame reaches the stage. It also handles the inverse race where that frame arrives before the command response.
+- Command refresh and `workspace.document.updated(version)` refresh carry the target revision into one coalesced read. A completed duplicate is skipped, and a late request for a previously open document cannot reactivate or overwrite the current document.
 - If the first IPC response is lost, the workflow retries once with the same command ID; the backend receipt returns the already committed revision instead of creating a duplicate.
 - A document switch resets all feature state. A RenderModel revision update reconciles selection by stable render ID.
 

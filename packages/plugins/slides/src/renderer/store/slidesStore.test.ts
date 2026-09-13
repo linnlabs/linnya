@@ -6,6 +6,19 @@ const getDeckPreviewMock = vi.fn();
 const getDocumentBuildStateMock = vi.fn();
 const notifyDocumentOpenedMock = vi.fn(async () => ({ success: true }));
 
+interface Deferred<T> {
+  readonly promise: Promise<T>;
+  readonly resolve: (value: T) => void;
+}
+
+function createDeferred<T>(): Deferred<T> {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(promiseResolve => {
+    resolve = promiseResolve;
+  });
+  return { promise, resolve };
+}
+
 vi.mock('../services/slidesApi', () => ({
   slidesApi: {
     getDeckPreview: getDeckPreviewMock,
@@ -40,7 +53,9 @@ function makeDeckPreview(nodeId: string, versionNumber: number, slideCount: numb
 describe('slidesStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
-    vi.clearAllMocks();
+    getDeckPreviewMock.mockReset();
+    getDocumentBuildStateMock.mockReset();
+    notifyDocumentOpenedMock.mockClear();
     getDocumentBuildStateMock.mockImplementation(async (nodeId: string) => ({
       state: 'ready',
       presentationId: nodeId,
@@ -81,6 +96,71 @@ describe('slidesStore', () => {
     expect(store.currentSlideIndex).toBe(2);
     expect(store.deckPreview?.versionNumber).toBe(1);
     expect(notifyDocumentOpenedMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces mutation and command refreshes for the same committed revision', async () => {
+    const nextBuildState = createDeferred<{
+      state: 'ready'; presentationId: string; versionId: string;
+      versionNumber: number; sourceHash: string;
+    }>();
+    getDeckPreviewMock
+      .mockResolvedValueOnce(makeDeckPreview('deck-1', 1, 2))
+      .mockResolvedValueOnce(makeDeckPreview('deck-1', 2, 2));
+
+    const { useSlidesStore } = await import('./slidesStore');
+    const store = useSlidesStore();
+    await store.loadDeck('deck-1');
+    getDocumentBuildStateMock.mockReturnValueOnce(nextBuildState.promise);
+
+    const commandRefresh = store.refreshDeck('deck-1', 2);
+    const mutationRefresh = store.refreshDeck('deck-1', 2);
+    nextBuildState.resolve({
+      state: 'ready', presentationId: 'deck-1', versionId: 'version-2',
+      versionNumber: 2, sourceHash: 'b'.repeat(64),
+    });
+    await Promise.all([commandRefresh, mutationRefresh]);
+
+    expect(getDocumentBuildStateMock).toHaveBeenCalledTimes(2);
+    expect(getDeckPreviewMock).toHaveBeenCalledTimes(2);
+    await store.refreshDeck('deck-1', 2);
+    expect(getDocumentBuildStateMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('never lets a stale refresh reactivate or overwrite a newly opened deck', async () => {
+    const staleBuildState = createDeferred<{
+      state: 'ready'; presentationId: string; versionId: string;
+      versionNumber: number; sourceHash: string;
+    }>();
+    getDocumentBuildStateMock
+      .mockResolvedValueOnce({
+        state: 'ready', presentationId: 'deck-a', versionId: 'version-1',
+        versionNumber: 1, sourceHash: 'a'.repeat(64),
+      })
+      .mockReturnValueOnce(staleBuildState.promise)
+      .mockResolvedValueOnce({
+        state: 'ready', presentationId: 'deck-b', versionId: 'version-1',
+        versionNumber: 1, sourceHash: 'b'.repeat(64),
+      });
+    getDeckPreviewMock
+      .mockResolvedValueOnce(makeDeckPreview('deck-a', 1, 2))
+      .mockResolvedValueOnce(makeDeckPreview('deck-b', 1, 3));
+
+    const { useSlidesStore } = await import('./slidesStore');
+    const store = useSlidesStore();
+    await store.loadDeck('deck-a');
+    const staleRefresh = store.refreshDeck('deck-a', 2);
+    await store.loadDeck('deck-b');
+    staleBuildState.resolve({
+      state: 'ready', presentationId: 'deck-a', versionId: 'version-2',
+      versionNumber: 2, sourceHash: 'c'.repeat(64),
+    });
+    await staleRefresh;
+
+    expect(store.currentDeckId).toBe('deck-b');
+    expect(store.deckPreview?.nodeId).toBe('deck-b');
+    expect(store.documentBuildState?.presentationId).toBe('deck-b');
+    await store.refreshDeck('deck-a', 2);
+    expect(getDocumentBuildStateMock).toHaveBeenCalledTimes(3);
   });
 
   it('把未解决 draft 作为已打开但不可预览的文档状态', async () => {

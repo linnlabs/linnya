@@ -719,9 +719,16 @@ watch(canSelectSourceElements, (enabled) => {
 });
 
 watch(
-  () => [renderModel.value?.presentationId, renderModel.value?.version] as const,
-  ([, version]) => {
-    if (version !== undefined) manualEditingStore.reconcilePresentedRevision(version);
+  () => [
+    displayedSlide.value,
+    currentSlideRender.value,
+    renderModel.value?.presentationId,
+    renderModel.value?.version,
+  ] as const,
+  ([displayed, target, , version]) => {
+    // RenderModel 到达后仍需等待当前页图片/图表形成完整帧；同一对象引用表示该帧已提交。
+    if (!displayed || displayed !== target) return;
+    if (version !== undefined) manualEditingStore.recordPresentedRevision(version);
     reconcileSourceSelection();
     reconcileManualSelection();
   },

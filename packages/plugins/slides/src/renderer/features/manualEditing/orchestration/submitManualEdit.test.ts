@@ -45,7 +45,7 @@ describe('submitManualEdit', () => {
       },
       operation: input.operation,
     });
-    expect(refreshDocument).toHaveBeenCalledWith('deck-1');
+    expect(refreshDocument).toHaveBeenCalledWith('deck-1', 4);
   });
 
   it('does not submit when the displayed model is behind the build snapshot', async () => {
@@ -68,7 +68,7 @@ describe('submitManualEdit', () => {
       refreshDocument,
     });
     expect(conflict.status).toBe('conflict');
-    expect(refreshDocument).toHaveBeenCalledTimes(1);
+    expect(refreshDocument).toHaveBeenCalledWith('deck-1');
 
     refreshDocument.mockClear();
     await submitManualEdit(input, {

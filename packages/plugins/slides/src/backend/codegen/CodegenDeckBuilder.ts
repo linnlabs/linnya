@@ -20,7 +20,12 @@ import {
   PresentationFormulaBuildExecutionError,
   type PresentationComposeExecutionPort,
 } from '../features/presentationBuildExecution';
-import { PresentationStaleBaseError, PresentationStaleSourceError } from '../persistence';
+import {
+  PresentationDraftConflictError,
+  PresentationManualEditCommandConflictError,
+  PresentationStaleBaseError,
+  PresentationStaleSourceError,
+} from '../persistence';
 import {
   createPresentationBuildFailure,
   PresentationBuildFailureError,
@@ -245,8 +250,10 @@ export class CodegenDeckBuilder {
       });
     } catch (error) {
       if (
-        error instanceof PresentationStaleBaseError ||
-        error instanceof PresentationStaleSourceError
+        error instanceof PresentationDraftConflictError
+        || error instanceof PresentationManualEditCommandConflictError
+        || error instanceof PresentationStaleBaseError
+        || error instanceof PresentationStaleSourceError
       ) {
         throw error;
       }

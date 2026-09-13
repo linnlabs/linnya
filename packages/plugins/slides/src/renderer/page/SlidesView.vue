@@ -77,15 +77,11 @@ async function handleManualEditSubmit(operation: SlidesManualEditOperation): Pro
     }, {
       createCommandId: () => crypto.randomUUID(),
       submit: command => slidesApi.submitManualEdit(command),
-      refreshDocument: nodeId => slidesStore.refreshDeck(nodeId),
+      refreshDocument: (nodeId, expectedVersion) => slidesStore.refreshDeck(nodeId, expectedVersion),
     });
     if (currentDeckId.value !== documentId) return;
     if (outcome.status === 'committed') {
       manualEditingStore.commitSubmit(outcome.revision);
-      const presentedVersion = slidesRenderStore.renderModel?.version;
-      if (presentedVersion !== undefined) {
-        manualEditingStore.reconcilePresentedRevision(presentedVersion);
-      }
       return;
     }
     manualEditingStore.failSubmit(

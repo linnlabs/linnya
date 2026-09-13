@@ -9,7 +9,7 @@ import { createManualEditCommand } from '../functions/createManualEditCommand';
 export interface SubmitManualEditPorts {
   readonly createCommandId: () => string;
   readonly submit: (command: SlidesManualEditCommand) => Promise<SlidesManualEditCommandResult>;
-  readonly refreshDocument: (documentId: string) => Promise<void>;
+  readonly refreshDocument: (documentId: string, expectedVersion?: number) => Promise<void>;
 }
 
 export type SubmitManualEditOutcome =
@@ -41,7 +41,9 @@ export async function submitManualEdit(input: {
     // 第一次响应可能在 revision 已提交后丢失；同 commandId 重试由 backend receipt 收口。
     result = await ports.submit(command);
   }
-  if (result.status === 'committed' || result.status === 'conflict') {
+  if (result.status === 'committed') {
+    await ports.refreshDocument(input.documentId, result.revision);
+  } else if (result.status === 'conflict') {
     await ports.refreshDocument(input.documentId);
   }
   return result;
