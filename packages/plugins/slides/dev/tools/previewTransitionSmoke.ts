@@ -9,6 +9,7 @@ async function run(): Promise<void> {
     const result: unknown = await window.webContents.executeJavaScript('window.previewTransitionSmoke');
     assertFrameCount(result, 16);
     assertManualTranslationFrames(result, 2);
+    assertManualVisualFrames(result, 5);
     console.log('Slides live Vue/Konva transition pixels passed:', JSON.stringify(result));
     const fixtureFile = process.argv[2];
     if (fixtureFile) {
@@ -37,6 +38,17 @@ function assertManualTranslationFrames(result: unknown, expected: number): void 
     || result.manualTranslationFrames !== expected
   ) {
     throw new Error(`Preview transition smoke did not finish ${expected} manual translation comparisons`);
+  }
+}
+
+function assertManualVisualFrames(result: unknown, expected: number): void {
+  if (
+    typeof result !== 'object'
+    || result === null
+    || !('manualVisualFrames' in result)
+    || result.manualVisualFrames !== expected
+  ) {
+    throw new Error(`Preview transition smoke did not finish ${expected} manual visual comparisons`);
   }
 }
 

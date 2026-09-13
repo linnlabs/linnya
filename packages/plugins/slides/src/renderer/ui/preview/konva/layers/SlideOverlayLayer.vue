@@ -43,9 +43,11 @@ import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../../shared/constants
 import type {
   ManualEditableTarget,
   ManualEditingTranslationPreview,
-  ManualEditingVisualPreview,
 } from '../../../../features/manualEditing';
-import { projectManualVisualPreviewToSelectionPolygon } from '../../../../features/manualEditing';
+import {
+  projectManualVisualPreviewToSelectionPolygon,
+  type ManualEditingVisualPreview,
+} from '../../../../features/manualEditing/manualVisualProjection';
 
 interface OverlayLineEntry {
   key: string;

@@ -10,7 +10,10 @@ import type {
   ShapeRenderNode,
   SlideRenderModel,
 } from '../../src/renderer/types/render';
-import type { ManualEditingTranslationPreview } from '../../src/renderer/features/manualEditing';
+import type {
+  ManualEditingTranslationPreview,
+  ManualEditingVisualPreview,
+} from '../../src/renderer/features/manualEditing';
 
 const size = { width: 320, height: 180 };
 const transform = { x: 0, y: 0, scaleX: 1, scaleY: 1 };
@@ -26,7 +29,11 @@ const sequence: RenderFill[] = [solid, gradient, solid, radial, solid, { type: '
 
 declare global {
   interface Window {
-    previewTransitionSmoke: Promise<{ frames: number; manualTranslationFrames: number }>;
+    previewTransitionSmoke: Promise<{
+      frames: number;
+      manualTranslationFrames: number;
+      manualVisualFrames: number;
+    }>;
     verifyPreviewPaintSequence(input: unknown): Promise<{ frames: number }>;
   }
 }
@@ -149,6 +156,106 @@ async function verifyManualTranslation(): Promise<{ manualTranslationFrames: num
   }
 }
 
+/** 在同一生产 Konva 节点上验证属性乐观值与撤回，防止只测纯函数却漏传组件合同。 */
+async function verifyManualVisual(): Promise<{ manualVisualFrames: number }> {
+  const manualVisualPreview = shallowRef<ManualEditingVisualPreview | null>(null);
+  const host = document.createElement('div');
+  document.body.append(host);
+  const before = new Set(Konva.stages);
+  const slideRender: SlideRenderModel = {
+    slideId: 'manual-visual',
+    index: 0,
+    layoutKey: 'LAYOUT_WIDE',
+    background: { paint: { type: 'none' } },
+    elements: [shape(solid)],
+  };
+  const app = createApp({
+    setup: () => () => h(KonvaSlideStage, {
+      slideRender,
+      imageResources: new Map(),
+      chartResources: new Map(),
+      slideSize: { width: size.width / 96, height: size.height / 96, unit: 'in' },
+      rasterScale: 1,
+      selectedTargets: [],
+      hoveredTarget: null,
+      marqueeRect: null,
+      manualVisualPreview: manualVisualPreview.value,
+    }),
+  });
+  app.use(VueKonva);
+  app.mount(host);
+  try {
+    const stage = Konva.stages.find(candidate => !before.has(candidate));
+    if (!stage) throw new Error('Manual visual stage was not mounted');
+    await nextTick();
+    assertShapeVisual(stage, { color: '#08140F', width: 320, height: 180, visible: true });
+
+    manualVisualPreview.value = {
+      elementId: 'stable-shape',
+      affectedElementIds: ['stable-shape'],
+      operation: {
+        op: 'set_fill_color',
+        target: { slideKey: 'overview', editKey: 'shape' },
+        targetKind: 'shape',
+        color: '#DC2626',
+      },
+    };
+    await nextTick();
+    assertShapeVisual(stage, { color: '#DC2626', width: 320, height: 180, visible: true });
+
+    manualVisualPreview.value = {
+      elementId: 'stable-shape',
+      affectedElementIds: ['stable-shape'],
+      operation: {
+        op: 'set_visual_size',
+        target: { slideKey: 'overview', editKey: 'shape' },
+        targetKind: 'shape',
+        visualSize: { width: 2, height: 1 },
+      },
+    };
+    await nextTick();
+    assertShapeVisual(stage, { color: '#08140F', width: 192, height: 96, visible: true });
+
+    manualVisualPreview.value = {
+      elementId: 'stable-shape',
+      affectedElementIds: ['stable-shape'],
+      operation: {
+        op: 'delete_target',
+        target: { slideKey: 'overview', editKey: 'frame' },
+        targetKind: 'frame',
+      },
+    };
+    await nextTick();
+    assertShapeVisual(stage, { color: '#08140F', width: 320, height: 180, visible: false });
+
+    manualVisualPreview.value = null;
+    await nextTick();
+    assertShapeVisual(stage, { color: '#08140F', width: 320, height: 180, visible: true });
+    return { manualVisualFrames: 5 };
+  } finally {
+    app.unmount();
+    host.remove();
+  }
+}
+
+function assertShapeVisual(
+  stage: Konva.Stage,
+  expected: { readonly color: string; readonly width: number; readonly height: number; readonly visible: boolean },
+): void {
+  const node = stage.getLayers()[1]?.findOne<Konva.Rect>('Rect');
+  if (!node) throw new Error('Manual visual shape was not rendered');
+  if (
+    node.fill() !== expected.color
+    || node.width() !== expected.width
+    || node.height() !== expected.height
+    || node.isVisible() !== expected.visible
+  ) {
+    throw new Error(
+      `Manual visual differs: actual=(${node.fill()}, ${node.width()}, ${node.height()}, ${node.isVisible()}), expected=(${expected.color}, ${expected.width}, ${expected.height}, ${expected.visible})`,
+    );
+  }
+}
+
 function assertShapePositions(
   stage: Konva.Stage,
   expectedPositions: ReadonlyArray<readonly [number, number]>,
@@ -181,4 +288,5 @@ window.verifyPreviewPaintSequence = (input: unknown) => {
 window.previewTransitionSmoke = (async () => ({
   ...await run(sequence),
   ...await verifyManualTranslation(),
+  ...await verifyManualVisual(),
 }))();

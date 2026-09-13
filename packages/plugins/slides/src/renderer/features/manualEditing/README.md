@@ -54,7 +54,7 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 - `features/textEditing`: committed text projection, zoomed DOM geometry, IME-safe submission, unchanged-draft close and failed-save draft ownership.
 - `page/SlidesView.test.ts`: component-level command submission and post-commit refresh.
 - Backend orchestration, IPC parsing, source rewrite, CAS, draft protection and receipt tests remain in `backend/features/presentationManualEditing`, `backend/ipc` and persistence suites.
-- `smoke:preview-transitions` mounts the production `KonvaSlideStage` and verifies that one Frame preview delta moves multiple related content nodes in the same real Chromium frame, in addition to the existing persistent-paint pixel comparisons.
+- `smoke:preview-transitions` mounts the production `KonvaSlideStage` and verifies that one Frame preview delta moves multiple related content nodes in the same real Chromium frame. On one persistent Shape node it also checks fill, visual size, Frame-delete hiding and A→B→A restoration, in addition to the existing persistent-paint pixel comparisons.
 
 ## Performance trace
 

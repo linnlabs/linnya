@@ -61,9 +61,9 @@ import KonvaTextNode from './KonvaTextNode.vue';
 import { INCHES_TO_PX } from '../../../../shared/constants';
 import {
   projectManualVisualPreviewToRenderNode,
-  type ManualEditingTranslationPreview,
   type ManualEditingVisualPreview,
-} from '../../../../features/manualEditing';
+} from '../../../../features/manualEditing/manualVisualProjection';
+import type { ManualEditingTranslationPreview } from '../../../../features/manualEditing';
 
 const props = defineProps<{
   node: RenderNode;
