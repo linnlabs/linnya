@@ -222,11 +222,24 @@ describe('slidesPluginMigrations', () => {
         db.exec(`INSERT INTO presentation_revisions(
           id,node_id,revision,source_hash,storage_kind,source_checkpoint,patch_bytes,created_at,origin
         ) VALUES ('revision-1','doc',1,'hash','checkpoint','source',0,1000,'create')`);
+        db.exec(`INSERT INTO presentation_image_bindings(
+          presentation_id,source_identity,asset_id,created_at
+        ) VALUES ('doc','image-source','image-asset',1000)`);
+        db.exec(`INSERT INTO presentation_svg_graphic_bindings(
+          presentation_id,source_identity,asset_id,content_hash,byte_length,
+          viewbox_width,viewbox_height,created_at
+        ) VALUES ('doc','svg-source','svg-asset','svg-hash',10,100,100,1000)`);
       })();
       applyMigration(db, 9);
       applyMigration(db, 9);
       expect(db.prepare('SELECT pptx_revision_id FROM presentation_documents').pluck().get())
         .toBe('revision-1');
+      expect(db.prepare(`
+        SELECT asset_id, asset_kind FROM presentation_revision_assets ORDER BY asset_kind
+      `).all()).toEqual([
+        { asset_id: 'image-asset', asset_kind: 'image' },
+        { asset_id: 'svg-asset', asset_kind: 'svg' },
+      ]);
     } finally {
       db.close();
     }

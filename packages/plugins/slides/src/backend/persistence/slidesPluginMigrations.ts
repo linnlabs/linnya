@@ -536,6 +536,21 @@ export const slidesPluginMigrations: readonly PluginMigrationDefinition[] = [
         SET pptx_revision_id = current_revision_id
         WHERE pptx_revision_id IS NULL
       `);
+      // v6 以前的 current revision 可能尚未被历史维护回放；升级时先建立可继承的保守可达性。
+      db.exec(`
+        INSERT OR IGNORE INTO presentation_revision_contexts(revision_id, theme_json)
+        SELECT current_revision_id,
+               COALESCE(json_extract(deck_spec_json, '$.theme'), 'null')
+        FROM presentation_documents;
+        INSERT OR IGNORE INTO presentation_revision_assets(revision_id, asset_id, asset_kind)
+        SELECT d.current_revision_id, b.asset_id, 'image'
+        FROM presentation_documents d
+        JOIN presentation_image_bindings b ON b.presentation_id = d.node_id;
+        INSERT OR IGNORE INTO presentation_revision_assets(revision_id, asset_id, asset_kind)
+        SELECT d.current_revision_id, b.asset_id, 'svg'
+        FROM presentation_documents d
+        JOIN presentation_svg_graphic_bindings b ON b.presentation_id = d.node_id;
+      `);
     },
   },
 ] as const;
