@@ -275,6 +275,12 @@ describe('PptCoordinator', () => {
         diagnostics: [],
         parseWarnings: [],
       })),
+      buildFromProjectedDeckSpec: vi.fn(async input => ({
+        versionId: 'revision-8',
+        versionNumber: 8,
+        deckSpec: input.deckSpec,
+        pptxBuffer: Buffer.from('pptx'),
+      })),
       buildDeckSpecFromSource: vi.fn(async () => recoveredDeckSpec),
     };
     const codegenBuilderFactory = vi.fn(() => codegenBuilder);

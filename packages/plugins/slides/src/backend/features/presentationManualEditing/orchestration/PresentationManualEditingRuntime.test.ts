@@ -22,14 +22,13 @@ const DECK_SPEC: DeckSpec = {
   layout: '16x9',
   slides: [{
     slideNumber: 1,
-    slideKey: 'overview',
     spec: {
       type: 'freeform',
       elements: [{
         type: 'text',
-        editKey: 'headline',
         content: 'Original',
         position: { x: 0, y: 0, w: 2, h: 1 },
+        _authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'text' },
       }],
     },
   }],
@@ -91,15 +90,24 @@ function makeRuntime(options: {
       parseWarnings: [],
     };
   });
+  const buildFromProjectedDeckSpec = vi.fn(async () => {
+    if (options.buildError) throw options.buildError;
+    return {
+      versionId: 'revision-2',
+      versionNumber: 2,
+      deckSpec: DECK_SPEC,
+      pptxBuffer: Buffer.from('pptx-2'),
+    };
+  });
   const runtime = new PresentationManualEditingRuntime({
     presentationRepo: {
       getPresentation: vi.fn(async () => options.document === undefined ? makeDocument() : options.document),
       getManualEditReceipt: vi.fn(async () => options.receipt ?? null),
     },
     draftRepo: { has: vi.fn(() => options.hasDraft ?? false) },
-    builder: { buildFromSource },
+    builder: { buildFromSource, buildFromProjectedDeckSpec },
   });
-  return { runtime, buildFromSource };
+  return { runtime, buildFromSource, buildFromProjectedDeckSpec };
 }
 
 describe('PresentationManualEditingRuntime', () => {
@@ -124,6 +132,39 @@ describe('PresentationManualEditingRuntime', () => {
       origin: 'edit',
     }));
     expect(buildFromSource.mock.calls[0][0].source).toContain('content": "Updated"');
+  });
+
+  it('对唯一顶层对象的增量位移跳过 sandbox 与整稿布局', async () => {
+    const { runtime, buildFromSource, buildFromProjectedDeckSpec } = makeRuntime();
+    const command: SlidesManualEditCommand = {
+      ...COMMAND,
+      operation: {
+        op: 'translate_by',
+        target: { slideKey: 'overview', editKey: 'headline' },
+        targetKind: 'text',
+        delta: { dx: 0.25, dy: -0.1 },
+      },
+    };
+
+    await expect(runtime.submit(command)).resolves.toMatchObject({
+      status: 'committed',
+      revisionId: 'revision-2',
+      revision: 2,
+    });
+    expect(buildFromSource).not.toHaveBeenCalled();
+    expect(buildFromProjectedDeckSpec).toHaveBeenCalledWith(expect.objectContaining({
+      nodeId: 'deck-1',
+      source: expect.stringContaining('"dx": 0.25'),
+      deckSpec: expect.objectContaining({
+        slides: [expect.objectContaining({
+          spec: expect.objectContaining({
+            elements: [expect.objectContaining({
+              position: { x: 0.25, y: -0.1, w: 2, h: 1 },
+            })],
+          }),
+        })],
+      }),
+    }));
   });
 
   it('同一 command 与 payload 重试时返回原 revision，且不重复构建', async () => {

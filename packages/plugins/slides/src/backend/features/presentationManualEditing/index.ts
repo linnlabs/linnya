@@ -7,6 +7,11 @@ export {
 export { PRESENTATION_MANUAL_EDIT_SCHEMAS } from './definitions/presentationManualEditSchema.js';
 export { createManualEditPayloadDigest } from './functions/createManualEditPayloadDigest.js';
 export {
+  projectManualTranslationToDeckSpec,
+  SlidesManualEditDeckProjectionError,
+  type ManualTranslationDeckProjection,
+} from './functions/projectManualTranslationToDeckSpec.js';
+export {
   PresentationManualEditingRuntime,
   type PresentationManualEditingRuntimeDeps,
 } from './orchestration/PresentationManualEditingRuntime.js';

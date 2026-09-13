@@ -5,6 +5,8 @@ import type {
 import type {
   CodegenDeckBuildInput,
   CodegenDeckBuildResult,
+  CodegenProjectedDeckBuildInput,
+  CodegenProjectedDeckBuildResult,
 } from '../../../codegen/index.js';
 import {
   PresentationDraftConflictError,
@@ -18,6 +20,11 @@ import { PresentationBuildFailureError } from '../../presentationBuildFailure/in
 import type { PresentationRevisionScope } from '../../presentationSourceHistory/index.js';
 import { createManualEditPayloadDigest } from '../functions/createManualEditPayloadDigest.js';
 import {
+  projectManualTranslationToDeckSpec,
+  SlidesManualEditDeckProjectionError,
+  type ManualTranslationDeckProjection,
+} from '../functions/projectManualTranslationToDeckSpec.js';
+import {
   SlidesManualEditSourceError,
   writeManualEditsToDeckSource,
 } from '../functions/writeManualEditsToDeckSource.js';
@@ -30,11 +37,14 @@ export interface PresentationManualEditingRuntimeDeps {
   readonly draftRepo?: Pick<PresentationDraftRepositoryPort, 'has'>;
   readonly builder: {
     buildFromSource(input: CodegenDeckBuildInput): Promise<CodegenDeckBuildResult>;
+    buildFromProjectedDeckSpec(
+      input: CodegenProjectedDeckBuildInput,
+    ): Promise<CodegenProjectedDeckBuildResult>;
   };
   readonly revisionScope?: PresentationRevisionScope;
 }
 
-/** 人工编辑的唯一写入口：先验证快照，再完整编译，最后由 repository 原子提交。 */
+/** 人工编辑的唯一写入口：验证快照，选择可证明等价的计算路径，再由 repository 原子提交。 */
 export class PresentationManualEditingRuntime {
   constructor(private readonly deps: PresentationManualEditingRuntimeDeps) {}
 
@@ -79,17 +89,22 @@ export class PresentationManualEditingRuntime {
     }
 
     let source: string;
+    let projection: ManualTranslationDeckProjection;
     try {
       source = writeManualEditsToDeckSource(current.deckSource, command.operation).source;
+      projection = projectManualTranslationToDeckSpec(current.deckSpec, command.operation);
     } catch (error) {
-      if (error instanceof SlidesManualEditSourceError) {
+      if (
+        error instanceof SlidesManualEditSourceError
+        || error instanceof SlidesManualEditDeckProjectionError
+      ) {
         return this.validationFailure(command, error.code, error.message);
       }
       throw error;
     }
 
     try {
-      const result = await this.deps.builder.buildFromSource({
+      const buildInput: CodegenDeckBuildInput = {
         nodeId: command.documentId,
         source,
         expectedBase: command.expectedBase,
@@ -99,7 +114,13 @@ export class PresentationManualEditingRuntime {
           payloadDigest,
         },
         origin: 'edit',
-      });
+      };
+      const result = projection.kind === 'projected'
+        ? await this.deps.builder.buildFromProjectedDeckSpec({
+            ...buildInput,
+            deckSpec: projection.deckSpec,
+          })
+        : await this.deps.builder.buildFromSource(buildInput);
       return {
         status: 'committed',
         commandId: command.commandId,

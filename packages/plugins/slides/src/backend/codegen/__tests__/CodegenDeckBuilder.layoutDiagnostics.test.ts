@@ -117,6 +117,76 @@ describe('CodegenDeckBuilder layout diagnostics', () => {
     ).rejects.toBeInstanceOf(PresentationStaleBaseError);
     expect(execute).not.toHaveBeenCalled();
   });
+
+  it('对已证明等价的 DeckSpec 投影跳过 sandbox，并保留正式物化与 CAS 提交', async () => {
+    const source = 'compose({ title: "Deck", slides: [] });';
+    const projectedDeck = {
+      title: 'Deck',
+      layout: '16x9' as const,
+      theme: { colors: { accent1: '#123456' } },
+      slides: [],
+    };
+    const execute = vi.fn(async (): Promise<SandboxExecutionResult> => sandboxResult());
+    const assembleDeck = vi.fn(async () => Buffer.from('projected-pptx'));
+    const commitPresentation = vi.fn(async () => ({ revisionId: 'revision-2', revision: 2 }));
+    const recordSourceTheme = vi.fn();
+    const builder = new CodegenDeckBuilder({
+      recordSourceTheme,
+      presentationRepo: {
+        createPresentation: vi.fn(async () => ({ revisionId: 'revision-1', revision: 1 })),
+        commitPresentation,
+        getPresentation: vi.fn(async () => ({
+          nodeId: 'deck-1',
+          currentRevisionId: 'revision-1',
+          currentRevision: 1,
+          deckSource: source,
+          sourceHash: 'source-hash-1',
+          deckSpec: projectedDeck,
+          pptxBuffer: Buffer.from('pptx-1'),
+          title: 'Deck',
+          slideCount: 0,
+          layout: '16x9',
+          createdAt: 1,
+          updatedAt: 1,
+        })),
+      },
+      engine: { assembleDeck },
+      sandbox: { execute },
+      buildExecution: createInProcessPresentationBuildExecution(),
+    });
+
+    await expect(builder.buildFromProjectedDeckSpec({
+      nodeId: 'deck-1',
+      source,
+      deckSpec: projectedDeck,
+      expectedBase: {
+        revisionId: 'revision-1',
+        revision: 1,
+        sourceHash: 'source-hash-1',
+      },
+      expectedDraftState: 'absent',
+      origin: 'edit',
+    })).resolves.toMatchObject({
+      versionId: 'revision-2',
+      versionNumber: 2,
+      deckSpec: projectedDeck,
+    });
+    expect(execute).not.toHaveBeenCalled();
+    expect(recordSourceTheme).toHaveBeenCalledWith(projectedDeck.theme);
+    expect(assembleDeck).toHaveBeenCalledOnce();
+    expect(commitPresentation).toHaveBeenCalledWith(
+      'deck-1',
+      projectedDeck,
+      expect.objectContaining({
+        pptxBuffer: Buffer.from('projected-pptx'),
+        deckSource: source,
+        baseRevisionId: 'revision-1',
+        baseRevision: 1,
+        expectedDraftState: 'absent',
+        origin: 'edit',
+      }),
+    );
+  });
 });
 
 function sandboxResult(): SandboxExecutionResult {

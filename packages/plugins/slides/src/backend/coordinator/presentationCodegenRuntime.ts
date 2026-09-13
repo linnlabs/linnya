@@ -14,6 +14,8 @@ import {
   type CodegenDeckBuildResult,
   type CodegenDeckCreateInput,
   type CodegenDeckCreateResult,
+  type CodegenProjectedDeckBuildInput,
+  type CodegenProjectedDeckBuildResult,
   CodegenPresentationService,
   createBlankPresentationSource,
   DeckReadStateRegistry,
@@ -34,6 +36,9 @@ import { PresentationManualEditingRuntime } from '../features/presentationManual
 export interface CodegenDeckBuilderPort {
   buildNewPresentation(input: CodegenDeckCreateInput): Promise<CodegenDeckCreateResult>;
   buildFromSource(input: CodegenDeckBuildInput): Promise<CodegenDeckBuildResult>;
+  buildFromProjectedDeckSpec(
+    input: CodegenProjectedDeckBuildInput,
+  ): Promise<CodegenProjectedDeckBuildResult>;
   buildDeckSpecFromSource(input: CodegenDeckBuildInput): Promise<DeckSpec>;
 }
 
@@ -90,6 +95,10 @@ export class PresentationCodegenRuntime {
       this.codegenDeckBuilder = scope ? {
         buildNewPresentation: input => scope.run(`create:${crypto.randomUUID()}`, () => builder.buildNewPresentation(input)),
         buildFromSource: input => scope.run(input.nodeId, () => builder.buildFromSource(input)),
+        buildFromProjectedDeckSpec: input => scope.run(
+          input.nodeId,
+          () => builder.buildFromProjectedDeckSpec(input),
+        ),
         buildDeckSpecFromSource: input => scope.run(input.nodeId, () => builder.buildDeckSpecFromSource(input)),
       } : builder;
     }

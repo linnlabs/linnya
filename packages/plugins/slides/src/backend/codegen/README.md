@@ -122,6 +122,10 @@ renderer source selection
   固有尺寸和换行继续走正式 owner；位移在 Yoga 后按 Frame／子对象层级累加，再进入
   DeckSpec、RenderModel 与 PPTX。dangling ref、重复 key、未知字段和目标类型不符都属于
   compose contract 错误，不选择相似文字或第一个同名对象作为 fallback。
+- 人工 `translate_by` 对唯一顶层原子作者对象属于 post-layout 纯位移。manualEditing feature 可从精确
+  current DeckSpec 投影同一 delta，再通过 `buildFromProjectedDeckSpec` 复用正式资产解析、PPTX 物化和
+  CAS 提交，从而跳过 sandbox 与整稿 Yoga。Frame、嵌套 group、文本内容和无法证明等价的目标继续走
+  完整作者编译；投影入口不能扩张为通用 DeckSpec patch API。
 - `scripts/codegen/layoutDts/` 从 shared contract、shape geometry 与 sandbox
   globals 生成两份同内容 d.ts：sandbox typecheck 使用一份，Slides
   skill 分发一份。禁止手改生成文件。

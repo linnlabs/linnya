@@ -14,6 +14,8 @@ export type {
   CodegenDeckCreateOptions,
   CodegenDeckCreateResult,
   CodegenDeckExpectedBase,
+  CodegenProjectedDeckBuildInput,
+  CodegenProjectedDeckBuildResult,
   CodegenSandboxExecutor,
   CodegenWorkspacePresentationPort,
 } from './CodegenDeckBuilder';
