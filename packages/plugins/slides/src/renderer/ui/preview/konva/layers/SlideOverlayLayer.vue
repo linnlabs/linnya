@@ -43,7 +43,9 @@ import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../../shared/constants
 import type {
   ManualEditableTarget,
   ManualEditingTranslationPreview,
+  ManualEditingVisualPreview,
 } from '../../../../features/manualEditing';
+import { projectManualVisualPreviewToSelectionPolygon } from '../../../../features/manualEditing';
 
 interface OverlayLineEntry {
   key: string;
@@ -65,6 +67,7 @@ const props = defineProps<{
   marqueeRect: SourceSelectionRect | null;
   manualSelectedTarget?: ManualEditableTarget | null;
   manualTranslationPreview?: ManualEditingTranslationPreview | null;
+  manualVisualPreview?: ManualEditingVisualPreview | null;
 }>();
 
 /** overlay 层默认不监听事件，按需在子组件内开启 */
@@ -125,8 +128,9 @@ const manualSelectionLineConfig = computed(() => {
   const preview = props.manualTranslationPreview?.elementId === target.elementId
     ? props.manualTranslationPreview
     : null;
+  const polygon = projectManualVisualPreviewToSelectionPolygon(target, props.manualVisualPreview);
   return {
-    points: toPxPoints(target.polygon.map(point => ({
+    points: toPxPoints(polygon.map(point => ({
       x: point.x + (preview?.dx ?? 0),
       y: point.y + (preview?.dy ?? 0),
     }))),

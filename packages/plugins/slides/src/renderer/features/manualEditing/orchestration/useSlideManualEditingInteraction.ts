@@ -6,13 +6,17 @@ import {
   resolveSlidePointerPoint,
   type SourceSelectionPoint,
 } from '../../sourceSelection';
-import type { ManualEditableTarget } from '../definitions/manualEditingTypes';
+import type {
+  ManualEditableTarget,
+  ManualEditingVisualOperation,
+} from '../definitions/manualEditingTypes';
 import {
   findManualEditableTargetPathAtPoint,
   findManualEditableTargetPathByElementId,
 } from '../functions/manualEditableTargets';
 import { useSlidesManualEditingStore } from '../store/slidesManualEditingStore';
 import { useSlideTextEditingSession } from '../../textEditing';
+import { createManualVisualPreview } from '../functions/manualVisualPreview';
 
 export interface SlideManualEditingInteractionOptions {
   readonly canEdit: Ref<boolean>;
@@ -32,6 +36,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     selectionPath,
     translationPreview,
     pendingTranslation,
+    pendingVisual,
     submitting,
   } = storeToRefs(store);
   const textEditing = useSlideTextEditingSession({
@@ -164,6 +169,16 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     store.selectTarget(target, selectionPath.value);
   }
 
+  function submitVisualOperation(operation: ManualEditingVisualOperation): void {
+    const target = selectedTarget.value;
+    if (!target || submitting.value) return;
+    const preview = createManualVisualPreview(target, operation);
+    if (!preview) return;
+    store.beginSubmit(operation, undefined, preview);
+    if (operation.op === 'delete_target') store.clearSelection();
+    options.submitOperation(operation);
+  }
+
   function reconcileSelection(): void {
     const selectedId = selectedTarget.value?.elementId;
     if (!selectedId) return;
@@ -198,6 +213,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     selectionPath,
     translationPreview,
     pendingTranslation,
+    pendingVisual,
     textEditorTarget: textEditing.target,
     textDraft: textEditing.draft,
     handlePointerDown,
@@ -206,6 +222,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     handlePointerCancel,
     handleDoubleClick,
     selectHierarchyTarget,
+    submitVisualOperation,
     submitTextEdit: textEditing.requestCommit,
     closeTextEditor: textEditing.cancel,
     handleTextCompositionStart: textEditing.beginComposition,

@@ -53,6 +53,7 @@ function buildManualEditableTarget(
     elementId: geometry.elementId,
     nodeKind: geometry.nodeKind,
     targetKind: node.authoringRef.targetKind,
+    capabilities: node.authoringEdit.capabilities,
     authoringRef: {
       slideKey: node.authoringRef.slideKey,
       editKey: node.authoringRef.editKey,
@@ -64,6 +65,24 @@ function buildManualEditableTarget(
       ? collectFrameTranslationRoots(nodes, node.authoringRef)
       : [geometry.elementId],
     ...(textEditing ? { textEditing } : {}),
+    ...(node.authoringEdit.fill ? { fill: node.authoringEdit.fill } : {}),
+    ...(node.authoringEdit.capabilities.includes('set_visual_size')
+      ? { visualSize: readVisualSize(geometry) }
+      : {}),
+  };
+}
+
+function readVisualSize(geometry: RenderNodeSelectionGeometry): {
+  readonly width: number;
+  readonly height: number;
+} {
+  const origin = geometry.polygon[0];
+  const horizontalEnd = geometry.polygon[1];
+  const verticalEnd = geometry.polygon[3];
+  if (!origin || !horizontalEnd || !verticalEnd) return { width: 0, height: 0 };
+  return {
+    width: Math.hypot(horizontalEnd.x - origin.x, horizontalEnd.y - origin.y),
+    height: Math.hypot(verticalEnd.x - origin.x, verticalEnd.y - origin.y),
   };
 }
 

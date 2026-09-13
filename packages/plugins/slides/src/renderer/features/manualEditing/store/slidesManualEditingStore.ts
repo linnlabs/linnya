@@ -4,6 +4,7 @@ import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringE
 import type {
   ManualEditableTarget,
   ManualEditingTranslationPreview,
+  ManualEditingVisualPreview,
 } from '../definitions/manualEditingTypes';
 
 export const useSlidesManualEditingStore = defineStore('slides-manual-editing', () => {
@@ -12,6 +13,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   const selectionPath = shallowRef<readonly ManualEditableTarget[]>([]);
   const translationPreview = shallowRef<ManualEditingTranslationPreview | null>(null);
   const pendingTranslation = shallowRef<ManualEditingTranslationPreview | null>(null);
+  const pendingVisual = shallowRef<ManualEditingVisualPreview | null>(null);
   const textSubmissionPending = ref(false);
   const activeOperation = shallowRef<SlidesManualEditOperation | null>(null);
   const pendingPresentationRevision = ref<number | null>(null);
@@ -51,11 +53,13 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   function beginSubmit(
     operation: SlidesManualEditOperation,
     optimisticTranslation?: ManualEditingTranslationPreview,
+    optimisticVisual?: ManualEditingVisualPreview,
   ): void {
     submitting.value = true;
     activeOperation.value = operation;
     pendingPresentationRevision.value = null;
     pendingTranslation.value = optimisticTranslation ?? null;
+    pendingVisual.value = optimisticVisual ?? null;
     textSubmissionPending.value = operation.op === 'set_text_content';
     translationPreview.value = null;
     errorMessage.value = null;
@@ -72,6 +76,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     submitting.value = false;
     activeOperation.value = null;
     pendingTranslation.value = null;
+    pendingVisual.value = null;
     pendingPresentationRevision.value = null;
     textSubmissionPending.value = false;
     errorMessage.value = error;
@@ -92,6 +97,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
       return;
     }
     pendingTranslation.value = null;
+    pendingVisual.value = null;
     pendingPresentationRevision.value = null;
     presentedRevision.value = null;
     textSubmissionPending.value = false;
@@ -108,6 +114,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     submitting.value = false;
     errorMessage.value = null;
     pendingTranslation.value = null;
+    pendingVisual.value = null;
     activeOperation.value = null;
     pendingPresentationRevision.value = null;
     presentedRevision.value = null;
@@ -121,6 +128,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     selectionPath,
     translationPreview,
     pendingTranslation,
+    pendingVisual,
     textSubmissionPending,
     activeOperation,
     pendingPresentationRevision,

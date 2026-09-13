@@ -1,0 +1,86 @@
+.slides-element-property-panel {
+  --slides-property-black: #111827;
+  --slides-property-slate: #64748b;
+  --slides-property-blue: #2563eb;
+  --slides-property-cyan: #0891b2;
+  --slides-property-green: #16a34a;
+  --slides-property-yellow: #eab308;
+  --slides-property-orange: #ea580c;
+  --slides-property-red: #dc2626;
+  --slides-property-purple: #9333ea;
+  --slides-property-white: #ffffff;
+
+  position: absolute;
+  z-index: 22;
+  width: 212px;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-bg-primary) 96%, transparent);
+  box-shadow: 0 6px 20px var(--shadow-color-md);
+  backdrop-filter: blur(8px);
+}
+
+.slides-element-property-panel__heading {
+  margin-bottom: 8px;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slides-element-property-panel__field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.slides-element-property-panel__field input[type='number'] {
+  width: 64px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  padding: 3px 5px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+.slides-element-property-panel__field input[type='color'] {
+  width: 30px;
+  height: 24px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.slides-element-property-panel__size {
+  margin-top: 8px;
+}
+
+.slides-element-property-panel button {
+  width: 100%;
+  border: 1px solid var(--color-border-default);
+  border-radius: 5px;
+  padding: 5px 8px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.slides-element-property-panel button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.slides-element-property-panel .slides-element-property-panel__delete {
+  margin-top: 10px;
+  border-color: var(--color-danger-border, #dc2626);
+  color: var(--color-danger-text, #dc2626);
+}

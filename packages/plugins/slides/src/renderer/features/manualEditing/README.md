@@ -7,8 +7,9 @@
 - The toolbar edit button is available only for a ready generated document whose visible RenderModel version equals the build-state revision and whose current slide contains at least one editable author object.
 - Clicking an object resolves one author hierarchy path from the compiler-projected `authoringAncestorRefs`. The first click selects the outermost visible Frame; another click at the same child location enters the next layer. A breadcrumb shows the current path and lets the user return to any ancestor. Pointer-down locks the current layer as the gesture owner, so dragging over a child moves the selected Frame rather than switching targets mid-gesture. Releasing promotes the delta to a local pending translation before sending one `translate_by` operation in inches. The pending visual is removed only after the committed RenderModel revision and its current-page image/chart resources form the displayed frame, or rolled back on failure.
 - Double-clicking a text object whose backend `authoringEdit` projection declares `set_text_content` starts the sibling [`textEditing`](../textEditing/README.md) feature. It overlays a browser textarea on the exact committed text geometry and hides only that RenderNode's Canvas text for the duration of the session. Blur or `Ctrl/Cmd+Enter` replaces the complete author string and runs the normal backend text measurement and layout pipeline. IME composition cannot accidentally trigger submission; a failed save retains the editor and draft for correction or retry. Multiline strings and strings split into Latin/East Asian render runs remain editable because their author value is still one string.
+- Selecting an object opens the sibling [`elementProperties`](../elementProperties/README.md) feature. It exposes only compiler-projected actions: plain-text font size/color, Frame/Shape solid color, Shape/Image visual width/height, and deletion of a Frame with every descendant. There is no generic property inspector.
 - Rich author runs and inline formula runs remain text-read-only because replacing them with one string would destroy run semantics. They may still move.
-- Image, table, chart, shape, SVG Graphic and formula author objects may move. Their content/data/source editors are later independent feature slices.
+- Image and Shape author objects may resize when projected as safe; Table, Chart, SVG Graphic and formula author objects currently only move. Their content/data/source editors remain later independent feature slices.
 - A decorated Flex Frame is selected through its background and moves as one author object. The compiler projects every flattened descendant's `authoringAncestorRefs`; the target mapper turns that relation into the exact RenderNode roots that share one optimistic translation. Child text and visual objects keep their own author identity, so clicking them can still select and edit the child independently. Nested rendered Groups contribute only their outer affected root, avoiding a double transform.
 
 The existing source-selection/AI-edit mode and manual-edit mode are mutually exclusive. Both consume compiler facts from the same RenderModel and share the same pointer-to-slide coordinate function. Source selection may admit any node with source ownership, while manual editing additionally requires an explicit author identity and capability; their transient selections and write workflows remain in separate feature stores.
@@ -23,7 +24,7 @@ functions/
 orchestration/
   pointer selection/drag + submit/refresh workflow
 store/
-  mode, selected target, gesture/pending visual state, submission/presentation state
+  mode, selected target, gesture/pending translation/property visual state, submission/presentation state
 ui/
   localization adapter
 ```
@@ -47,7 +48,9 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 - `functions/manualEditingAvailability.test.ts`: generated/ready/exact-version gate.
 - `orchestration/submitManualEdit.test.ts`: exact command snapshot, refresh behavior and unavailable snapshots.
 - `orchestration/useSlideManualEditingInteraction.test.ts`: drag-to-pending promotion, parent-first repeated-click descent, stable Frame drag ownership and integration with the text-editing session.
-- `store/slidesManualEditingStore.test.ts`: optimistic translation and committed revision presentation settlement.
+- `functions/manualVisualPreview.test.ts`: immediate text/fill/size/deletion projection and size-selection geometry.
+- `store/slidesManualEditingStore.test.ts`: optimistic translation/property visuals, failure rollback and committed revision presentation settlement.
+- `features/elementProperties`: capability-bound command construction and property-panel assembly.
 - `features/textEditing`: committed text projection, zoomed DOM geometry, IME-safe submission, unchanged-draft close and failed-save draft ownership.
 - `page/SlidesView.test.ts`: component-level command submission and post-commit refresh.
 - Backend orchestration, IPC parsing, source rewrite, CAS, draft protection and receipt tests remain in `backend/features/presentationManualEditing`, `backend/ipc` and persistence suites.

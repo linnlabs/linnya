@@ -1,45 +1,46 @@
 <template>
   <v-group :__use-strict-mode="true" :config="previewTranslationConfig">
     <KonvaTextNode
-      v-if="node.kind === 'text'"
-      :node="node"
+      v-if="renderNode.kind === 'text'"
+      :node="renderNode"
       :image-resources="props.imageResources"
     />
     <KonvaShapeNode
-      v-else-if="node.kind === 'shape'"
-      :node="node"
+      v-else-if="renderNode.kind === 'shape'"
+      :node="renderNode"
     />
     <KonvaImageNode
-      v-else-if="node.kind === 'image'"
-      :node="node"
+      v-else-if="renderNode.kind === 'image'"
+      :node="renderNode"
       :image-resource="props.imageResources.get(node.id) ?? null"
     />
     <KonvaSvgGraphicNode
-      v-else-if="node.kind === 'svgGraphic'"
-      :node="node"
+      v-else-if="renderNode.kind === 'svgGraphic'"
+      :node="renderNode"
       :image-resource="props.imageResources.get(node.id) ?? null"
     />
     <KonvaFormulaNode
-      v-else-if="node.kind === 'formula'"
-      :node="node"
+      v-else-if="renderNode.kind === 'formula'"
+      :node="renderNode"
       :image-resource="props.imageResources.get(node.id) ?? null"
     />
     <KonvaTableNode
-      v-else-if="node.kind === 'table'"
-      :node="node"
+      v-else-if="renderNode.kind === 'table'"
+      :node="renderNode"
     />
     <EChartsChartNode
-      v-else-if="node.kind === 'chart'"
-      :node="node"
+      v-else-if="renderNode.kind === 'chart'"
+      :node="renderNode"
       :chart-resource="props.chartResources.get(node.id) ?? null"
     />
     <KonvaGroupNode
       v-else
-      :node="node"
+      :node="renderNode"
       :image-resources="props.imageResources"
       :chart-resources="props.chartResources"
       :preview-translations="props.previewTranslations"
       :hidden-text-element-id="props.hiddenTextElementId"
+      :manual-visual-preview="props.manualVisualPreview"
     />
   </v-group>
 </template>
@@ -58,7 +59,11 @@ import KonvaFormulaNode from './KonvaFormulaNode.vue';
 import KonvaTableNode from './KonvaTableNode.vue';
 import KonvaTextNode from './KonvaTextNode.vue';
 import { INCHES_TO_PX } from '../../../../shared/constants';
-import type { ManualEditingTranslationPreview } from '../../../../features/manualEditing';
+import {
+  projectManualVisualPreviewToRenderNode,
+  type ManualEditingTranslationPreview,
+  type ManualEditingVisualPreview,
+} from '../../../../features/manualEditing';
 
 const props = defineProps<{
   node: RenderNode;
@@ -66,7 +71,13 @@ const props = defineProps<{
   chartResources: SlideChartResourceMap;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
   hiddenTextElementId?: string;
+  manualVisualPreview?: ManualEditingVisualPreview | null;
 }>();
+
+const renderNode = computed(() => projectManualVisualPreviewToRenderNode(
+  props.node,
+  props.manualVisualPreview,
+));
 
 const previewTranslationConfig = computed(() => {
   const translation = props.previewTranslations?.get(props.node.id);

@@ -20,7 +20,7 @@ const slide: SlideRenderModel = {
     paragraphs: [{ runs: [{ text: '增长' }, { text: ' 2026' }] }],
     authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'text' },
     authoringEdit: {
-      capabilities: ['translate', 'set_text_content'],
+      capabilities: ['translate', 'set_text_content', 'set_text_style'],
       text: { kind: 'plain_text', content: '增长 2026' },
     },
   }],
@@ -36,7 +36,7 @@ const frameSlide: SlideRenderModel = {
       zIndex: 1,
       geometry: { type: 'preset', name: 'roundRect' },
       authoringRef: { slideKey: 'overview', editKey: 'card1', targetKind: 'frame' },
-      authoringEdit: { capabilities: ['translate'] },
+      authoringEdit: { capabilities: ['translate', 'set_fill_color', 'delete'] },
     },
     {
       ...slide.elements[0],
@@ -171,6 +171,43 @@ describe('useSlideManualEditingInteraction', () => {
       targetKind: 'frame',
     }));
     expect(interaction.pendingTranslation.value?.affectedElementIds).toEqual([
+      'authoring-overview-card1',
+      'authoring-overview-card1Label',
+    ]);
+  });
+
+  it('starts an immediate property preview and clears selection for Frame deletion', () => {
+    const submitOperation = vi.fn();
+    const { interaction, wrapper } = createInteraction(submitOperation, frameSlide);
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, pointerId: 1, clientX: 144, clientY: 144,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, button: 0, pointerId: 1, clientX: 144, clientY: 144,
+    }));
+
+    interaction.submitVisualOperation({
+      op: 'set_fill_color',
+      target: { slideKey: 'overview', editKey: 'card1' },
+      targetKind: 'frame',
+      color: '#2563EB',
+    });
+    expect(interaction.pendingVisual.value).toMatchObject({
+      elementId: 'authoring-overview-card1',
+      operation: { op: 'set_fill_color', color: '#2563EB' },
+    });
+    expect(submitOperation).toHaveBeenLastCalledWith(expect.objectContaining({
+      op: 'set_fill_color',
+    }));
+
+    useSlidesManualEditingStore().failSubmit('测试下一条操作');
+    interaction.submitVisualOperation({
+      op: 'delete_target',
+      target: { slideKey: 'overview', editKey: 'card1' },
+      targetKind: 'frame',
+    });
+    expect(interaction.selectedTarget.value).toBeNull();
+    expect(interaction.pendingVisual.value?.affectedElementIds).toEqual([
       'authoring-overview-card1',
       'authoring-overview-card1Label',
     ]);

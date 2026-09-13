@@ -16,7 +16,7 @@ function textNode(overrides: Partial<TextRenderNode> = {}): TextRenderNode {
     sourceSpan: { startLine: 3, endLine: 3 },
     authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'text' },
     authoringEdit: {
-      capabilities: ['translate', 'set_text_content'],
+      capabilities: ['translate', 'set_text_content', 'set_text_style'],
       text: { kind: 'plain_text', content: 'Quarterly growth' },
     },
     ...overrides,
@@ -46,7 +46,7 @@ describe('manual editable targets', () => {
           { runs: [{ text: '下一行' }] },
         ],
         authoringEdit: {
-          capabilities: ['translate', 'set_text_content'],
+          capabilities: ['translate', 'set_text_content', 'set_text_style'],
           text: { kind: 'plain_text', content: '增长 2026\n下一行' },
         },
       }),

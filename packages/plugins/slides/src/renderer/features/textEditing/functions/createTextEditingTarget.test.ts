@@ -41,7 +41,7 @@ describe('createTextEditingTarget', () => {
       },
       authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'text' },
       authoringEdit: {
-        capabilities: ['translate', 'set_text_content'],
+        capabilities: ['translate', 'set_text_content', 'set_text_style'],
         text: { kind: 'plain_text', content: '季度增长' },
       },
     };

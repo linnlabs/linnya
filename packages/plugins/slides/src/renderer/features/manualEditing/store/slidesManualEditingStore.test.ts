@@ -6,6 +6,7 @@ const target = {
   elementId: 'authoring-overview-headline',
   nodeKind: 'text' as const,
   targetKind: 'text' as const,
+  capabilities: ['translate', 'set_text_style'] as const,
   authoringRef: { slideKey: 'overview', editKey: 'headline' },
   authoringAncestorRefs: [],
   bounds: { x: 1, y: 1, w: 3, h: 1 },
@@ -99,5 +100,31 @@ describe('slidesManualEditingStore', () => {
     store.commitSubmit(4);
     expect(store.pendingTranslation).toBeNull();
     expect(store.pendingPresentationRevision).toBeNull();
+  });
+
+  it('keeps a property preview until presentation and removes it on failure', () => {
+    const store = useSlidesManualEditingStore();
+    const operation = {
+      op: 'set_text_style' as const,
+      target: target.authoringRef,
+      color: '#2563EB',
+    };
+    const preview = {
+      elementId: target.elementId,
+      affectedElementIds: [target.elementId],
+      operation,
+    };
+    store.beginSubmit(operation, undefined, preview);
+    expect(store.pendingVisual).toEqual(preview);
+    store.commitSubmit(7);
+    store.recordPresentedRevision(6);
+    expect(store.pendingVisual).toEqual(preview);
+    store.recordPresentedRevision(7);
+    expect(store.pendingVisual).toBeNull();
+
+    store.beginSubmit(operation, undefined, preview);
+    store.failSubmit('编译失败');
+    expect(store.pendingVisual).toBeNull();
+    expect(store.errorMessage).toBe('编译失败');
   });
 });

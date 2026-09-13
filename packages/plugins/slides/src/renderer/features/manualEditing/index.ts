@@ -2,6 +2,8 @@ export type {
   ManualEditableTarget,
   ManualEditableTargetPath,
   ManualEditingTranslationPreview,
+  ManualEditingVisualOperation,
+  ManualEditingVisualPreview,
 } from './definitions/manualEditingTypes';
 export {
   collectManualEditableTargets,
@@ -9,6 +11,11 @@ export {
   findManualEditableTargetPathAtPoint,
   findManualEditableTargetPathByElementId,
 } from './functions/manualEditableTargets';
+export {
+  createManualVisualPreview,
+  projectManualVisualPreviewToRenderNode,
+  projectManualVisualPreviewToSelectionPolygon,
+} from './functions/manualVisualPreview';
 export {
   resolveManualEditingAvailability,
   type ManualEditingAvailability,

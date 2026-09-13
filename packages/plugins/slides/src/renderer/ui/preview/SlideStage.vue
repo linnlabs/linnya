@@ -59,6 +59,7 @@
               :preview-translations="manualPreviewTranslations"
               :manual-selected-target="manualSelectedTarget"
               :manual-translation-preview="manualSelectedTranslation"
+              :manual-visual-preview="manualPendingVisual"
               :hidden-text-element-id="textEditorTarget?.elementId"
             />
           </div>
@@ -96,6 +97,15 @@
           :render-scale="renderScale"
           :label="manualEditingMessage('slides.manualEditing.hierarchy.ariaLabel')"
           @select="selectManualHierarchyTarget"
+        />
+        <ElementPropertyPanel
+          v-if="manualSelectedTarget && !textEditorTarget"
+          :target="manualSelectedTarget"
+          :slide-left="currentLayout.slideLeft"
+          :slide-top="currentLayout.slideTop"
+          :scaled-slide-width="currentLayout.scaledSlideWidth"
+          :busy="manualEditingSubmitting"
+          @submit="submitManualVisualOperation"
         />
       </div>
     </div>
@@ -153,6 +163,7 @@ import {
   useManualEditingLocalization,
 } from '../../features/manualEditing';
 import { InlineTextEditor } from '../../features/textEditing';
+import { ElementPropertyPanel } from '../../features/elementProperties';
 import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 
 const props = defineProps<{
@@ -397,6 +408,7 @@ const {
   selectionPath: manualSelectionPath,
   translationPreview: manualTranslationPreview,
   pendingTranslation: manualPendingTranslation,
+  pendingVisual: manualPendingVisual,
   textEditorTarget,
   textDraft,
   handlePointerDown: handleManualPointerDown,
@@ -405,6 +417,7 @@ const {
   handlePointerCancel: handleManualPointerCancel,
   handleDoubleClick: handleManualDoubleClick,
   selectHierarchyTarget: selectManualHierarchyTarget,
+  submitVisualOperation: submitManualVisualOperation,
   submitTextEdit,
   handleTextCompositionStart,
   handleTextCompositionEnd,
