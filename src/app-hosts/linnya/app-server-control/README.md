@@ -7,7 +7,7 @@
   最多积压 8 个串行写入，并等待 Writable callback 后才结算 ready/ping/shutdown，不能绕过 pipe 背压。
 - `ready` 只能在数据库、HTTP/SSE 和业务 owner 全部可接流量后发布，并返回真实 API port、
   renderer session token、应用版本和 `database_ready=true`；仅仅 child 进程存活不能冒充 ready。
-- Main 是唯一 process owner；显式 `shutdown` 与 stdin EOF 都必须收口 App Server。
+- 启动 App Server 的 Desktop Main 或 CLI Runtime 是唯一 process owner；显式 `shutdown`、stdin EOF、parent pipe error 与 bootstrap parent identity 消失都必须进入同一收口。
 - App Server 不 detach、不跨 App 复用，也不提供退出 App 后继续任务的入口。
 - 协议错误 fail closed，不回退到 Main 内运行 Backend。
 

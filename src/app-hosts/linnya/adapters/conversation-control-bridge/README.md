@@ -1,6 +1,6 @@
 # Conversation Control Bridge
 
-本 adapter 把 `application/conversation-control/` 暴露为仅供本机 Linnya CLI 使用的 HTTP bridge，并负责当前 App 实例的连接描述生命周期。它只做传输、安全和依赖装配，不拥有 Conversation 业务规则。
+本 adapter 把 `application/conversation-control/` 暴露为仅供本机 Linnya CLI 使用的 HTTP bridge，并负责当前 Desktop 或 CLI Runtime Host 实例的连接描述生命周期。它只做传输、安全和依赖装配，不拥有 Conversation 业务规则。
 
 ## 接口
 
@@ -34,7 +34,7 @@ POST /api/v1/conversation-control/commands
 
 默认文件为 `~/.linnya/runtime/conversation-control-v1.json`，可用 `LINNYA_CLI_CONNECTION_FILE` 为测试或多实例场景覆盖。
 
-descriptor owner 在 API Server 已绑定真实端口且路由装配成功后才原子发布文件。目录和文件权限分别为 `0700`、`0600`。撤销时只删除仍属于当前 `app_instance_id` 的文件，避免旧进程删除新实例刚发布的连接信息；Server 关闭时先撤销描述，再关闭 listener。
+descriptor owner 在 API Server 已绑定真实端口且 Conversation 路由装配成功后才原子发布文件。目录和文件权限分别为 `0700`、`0600`。撤销时只删除仍属于当前 `app_instance_id` 的文件，避免旧进程删除新实例刚发布的连接信息；Server 关闭时先撤销描述，再关闭 listener。异常退出遗留的文件不代表 owner 存活；新 Host 仍必须先取得 Workspace 排他锁，再用新实例 identity 原子替换。
 
 ## 依赖装配
 
@@ -49,6 +49,6 @@ pnpm exec vitest run \
   src/electron-main/services/apiServer.lifecycle.test.ts
 ```
 
-门禁覆盖真实 HTTP router、strict request/response、描述文件原子发布与权限、实例安全撤销、Renderer/CLI token 双向隔离，以及 API Server 启停生命周期。真实 CLI 子进程测试见 `apps/linnya-cli/src/__integration-tests__/cliProcess.integration.test.ts`。
+门禁覆盖真实 HTTP router、strict request/response、描述文件原子发布与权限、实例安全撤销、Renderer/CLI token 双向隔离，以及 API Server 启停生命周期。普通 CLI 子进程测试见 `apps/linnya-cli/src/__integration-tests__/cliProcess.integration.test.ts`；无 Electron Runtime 的冷启动、并行、owner 竞争、重启和强制终止恢复见 `runtimeHostProcess.e2e.test.ts`。
 
 `projects` 通过注入的 Workspace 查询端口列出未删除项目，只投影 `project_id` 与 `name`。CLI 不读取数据库或物理路径。

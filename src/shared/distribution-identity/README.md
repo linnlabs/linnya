@@ -13,7 +13,7 @@
 热加载和诊断语义。普通环境变量、Renderer 输入和 App Server 自行探测都不能提升发行
 身份。
 
-Electron Main 解析身份后通过 `installDistributionIdentity` 在当前运行域冻结，并把同一
+Desktop Electron Main 验证打包身份；源码 CLI Runtime 只能创建 `source` 身份。Host 通过 `installDistributionIdentity` 在当前运行域冻结，并把同一
 data-only DTO 放入 App Server bootstrap。App Server 严格解析后再次安装；后端 owner
 只能通过本目录公开入口读取，不能重新读取发行清单或环境变量。
 

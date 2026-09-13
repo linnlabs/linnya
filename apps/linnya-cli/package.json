@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "license": "Apache-2.0",
-  "description": "Thin command-line control plane for a running Linnya desktop App",
+  "description": "Linnya conversation control plane and foreground source Runtime host",
   "bin": {
     "linnya": "bin/linnya.cjs"
   },

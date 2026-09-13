@@ -64,6 +64,7 @@ App Server ready 仍要求本地数据库、目录恢复和正式路由可用；
 | --- | --- |
 | Renderer TypeScript | `pnpm run typecheck:renderer` |
 | Linnya CLI TypeScript | `pnpm run typecheck:linnya-cli` |
+| 无 Electron CLI Runtime | `pnpm run test:linnya-runtime:e2e` |
 | 单个测试或业务链路 | `pnpm test -- <test-file>` |
 | Renderer UI package | `pnpm --dir packages/renderer-ui run gate` |
 | Schemas package | `pnpm run test:schemas-package-gate` |
@@ -90,6 +91,8 @@ pnpm run build:wasm
 pnpm run build:frontend
 pnpm run build:main
 ```
+
+源码开发可用 `pnpm run build:linnya-runtime` 同时构建 Backend、固定 runtime 辅助产物和 CLI bundle，再用 `pnpm linnya:runtime --workspace <绝对路径>` 启动前台 Host。这个入口不启动 Electron，也不代表安装器已经把 CLI 发布到系统 `PATH`。完整使用与能力限制见 [`apps/linnya-cli/README.md`](../../apps/linnya-cli/README.md)。
 
 正式 Desktop 安装器还涉及原生资源、签名、公证、SBOM、NOTICE 和三平台验收。普通贡献者不需要发布凭据；本地构建通过不等于产物可以发布。
 

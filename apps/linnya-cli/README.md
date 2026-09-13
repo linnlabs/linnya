@@ -1,13 +1,13 @@
 # Linnya Conversation CLI
 
-`linnya` 是正在运行的 Linnya 桌面 App 的轻量命令行控制面。它复用 App Host 的正式 Conversation admission、Flow、持久化和 read model，不直接读写 SQLite，也不在 CLI 进程里启动第二套 Agent runtime。当前仅供仓库内开发、评测与 Benchmark 使用，尚未作为生产功能开放或随桌面产品分发。
+`linnya` 同时提供轻量命令行控制面和源码开发用的前台 Runtime Host。普通命令连接当前 Workspace 的唯一 Backend，复用正式 Conversation admission、Flow、持久化和 read model；`runtime start` 则在不启动 Electron 的情况下监督同一 App Server 实现。两种入口都不让 CLI 直读 SQLite，也不创建每 Agent 一套 Backend。当前仅供仓库内开发、评测与 Benchmark 使用，尚未作为生产功能开放或随桌面产品分发。
 
-当前适用场景：开发环境中脚本化发消息、查询会话与消息、观察运行状态、处理 `awaiting_user`、终止运行、读取最终回答、调用五个基础 Workspace 工具，以及作为 Benchmark 的进程入口。
+当前适用场景：开发环境中脚本化发消息、查询会话与消息、观察运行状态、处理 `awaiting_user`、终止运行、读取最终回答、调用五个基础 Workspace 工具，以及在没有 Electron 时启动可运行多个会话/Agent 的前台 Backend。
 
 ## 1. 运行前提
 
-- Node.js 20 或更高版本。
-- Linnya 桌面 App 正在运行，且后端路由已经完成初始化。
+- 仓库开发使用项目声明的 Node.js 24；App Server 始终使用仓库准备并校验过的固定 headless Node。
+- 普通命令需要 Linnya Desktop 或 `linnya runtime start` 已为目标 Workspace 启动 Backend。
 - 在仓库内开发时已执行 `pnpm install`。
 
 源码模式：
@@ -30,7 +30,24 @@ node apps/linnya-cli/bin/linnya.cjs help
 node apps/linnya-cli/bin/linnya.cjs doctor --pretty
 ```
 
-当前仓库可以产出供开发测试的 CommonJS bundle 和 `bin/linnya.cjs`，但桌面安装器不把它安装到系统 `PATH`，也没有随 CLI 打包 Node runtime；这不构成生产 CLI 发行。仓库内使用要求 Node.js 20。Electron 的 `runAsNode` fuse 已关闭，不能把 Electron 可执行文件当作 CLI 的 Node 替代品。
+无 Electron 的源码 Runtime：
+
+```bash
+pnpm linnya:runtime --workspace <workspace-absolute-path>
+
+# 也可以先构建，再直接运行 bundle
+pnpm build:linnya-runtime
+node apps/linnya-cli/bin/linnya.cjs runtime start \
+  --workspace <workspace-absolute-path>
+```
+
+Runtime 在 stdout 输出一次 ready JSON 后保持前台运行；另一个终端中的普通 `linnya` 命令通过同一私有连接描述访问它。`--api-port 0` 是默认值，由 OS 选择空闲 loopback 端口；`--qdrant-port` 默认 6333。一个 Workspace 同时只允许一个 Desktop 或 CLI Runtime owner，竞争启动以 `conversation_busy` 拒绝，不做隐式 attach、接管或另开数据库。
+
+关闭某个 `send/status` 客户端不会停止已接纳的 run。关闭 Runtime 终端、Ctrl+C 或 SIGTERM 会停止该 Runtime 拥有的 Backend、所有任务和子进程；CLI launcher 被强制终止时，App Server 也会按 parent identity 收口并释放 Workspace owner。这里没有 daemon、系统服务、开机启动或关闭 Linnya 后继续运行。
+
+交互式 TTY 会在 stderr 呈现 shell command approval，并只接受 Host 声明的选择；stdout 仍只保留机器可读 JSON。stdin/stderr 不是 TTY 时命令审批能力明确不可用，不会自动批准。普通 HITL 继续使用 `respond`，它与 shell 审批是两条不同合同。
+
+当前仓库可以产出供开发测试的 CommonJS CLI/Runtime bundle 和 `bin/linnya.cjs`，但桌面安装器不把它安装到系统 `PATH`，也没有形成独立 CLI 安装包；这不构成生产 CLI 发行。Electron 的 `runAsNode` fuse 已关闭，不能把 Electron 可执行文件当作 CLI 的 Node 替代品。
 
 独立分发必须同时携带 `bin/linnya.cjs`、`dist/cli.cjs` 和 `dist/build.json`。launcher 核对产物 SHA-256；在包含源码的仓库内还核对 CLI、公共 Schema、构建输入与锁文件的内容指纹。产物缺失、损坏或源码变更后未重建会以退出码 4 明确拒绝，不自动切换运行入口。版本号不变也能发现旧 bundle。`--version` 显示 `source` 或 bundle 指纹；`doctor` 只读显示 CLI 身份、App 实例、协议与能力，不打印连接 token 或描述文件。
 
@@ -89,6 +106,7 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 
 | 命令 | 作用 | 主要选项 |
 | --- | --- | --- |
+| `runtime start` | 不启动 Electron，前台监督当前 Workspace 的唯一 App Server Backend | `--workspace`、`--api-port`、`--qdrant-port` |
 | `send <message>` | 新建会话并发送消息；或向空闲的已有会话发送下一条消息 | `--conversation`、`--project`、`--agent`、`--model`、`--image-model`、`--reasoning` |
 | `models` | 查询可用于 `--model` 与 `--image-model` 的本地模型配置 | 无 |
 | `projects` | 查询 Workspace 项目 ID 与名称 | 无 |
@@ -158,7 +176,7 @@ pnpm linnya:cli tools call write_file \
 
 | 入口 | 适用调用方 | 当前职责 | 是否依赖正在运行的 Linnya |
 | --- | --- | --- | --- |
-| `linnya ...` | 外部 Agent、脚本、人 | Conversation 控制，以及五个 Workspace 工具；可读写 `.slides` 源码 | 是 |
+| `linnya ...` | 外部 Agent、脚本、人 | 启动源码 Runtime、Conversation 控制，以及五个 Workspace 工具；可读写 `.slides` 源码 | 普通命令依赖 Desktop 或 CLI Runtime；`runtime start` 不依赖 Electron |
 | `linnya-slides ...` | Linnya Agent 的 `shell` | 通过当前 Shell 的临时 bridge 执行 Slides `inspect / render / fonts` | 是，而且只能在受管 Shell execution 内使用 |
 | `pnpm slides:cli -- ...` / 插件 `entry.command` | 外部 Agent、人、CI | Standalone Slides 只读诊断、检查图与字体查询 | 否；自行提供数据库和输出目录 |
 
@@ -195,7 +213,7 @@ pending -> running -> awaiting_user -> running -> completed | failed | cancelled
 - `paused` 保留原 run 的断点，不是失败终态；已收口后可用 `resume --run` 精确恢复。该命令复用原 `run_id / turn_id` 并取得新 `execution_id`，不创建用户消息。`pause.reason=tool.protocol_fuse` 表示连续工具参数错误；先查看最近工具错误，确认正确合同后再恢复。`tool_reconciliation_required` 表示未知副作用需正式 owner 对账；恢复仍会被 Graph 对账门禁阻止，CLI 不重放调用或越过 owner。`execution_interrupted` 则是未分类中断，需要进一步诊断。原因来自持久 RunRegistry，不解析日志或原始错误正文。
 - `stop` 是唯一主动中断动作。它会等待 Host 的取消完成屏障，并返回真实的 `cancelled`、`completed` 或 `failed` 结算，避免把“已发取消请求”误报成“已经取消”。
 - `status` 不虚构百分比。生命周期来自 RunRegistry；运行中的节点与累计步数来自同一 activation 已持久化的 Graph 执行快照，交互、错误和结果可用性继续由各自 owner 投影。
-- `send` 返回后 CLI 可以退出，后台运行归 Linnya App 所有，不依赖 CLI 进程存活。
+- `send` 返回后该短命客户端可以退出，后台运行归当前 Desktop 或 CLI Runtime Host 所有。Runtime Host 自己退出时会收口其拥有的运行。
 
 对已有会话执行 `send --conversation <id>` 时，如果该会话已有 active foreground run，会得到 `conversation_busy`，不会并发写入第二条 foreground 主链。
 
@@ -226,13 +244,13 @@ Benchmark 应把 CLI 当作子进程，解析 stdout 的 JSON/JSONL，并用退�
 
 ## 6. 本地连接与安全
 
-App 启动后原子发布当前实例的私有连接描述：
+Desktop 或 CLI Runtime 启动后原子发布当前实例的私有连接描述：
 
 ```text
 ~/.linnya/runtime/conversation-control-v1.json
 ```
 
-测试或多实例隔离可以设置 `LINNYA_CLI_CONNECTION_FILE` 覆盖路径。目录权限为 `0700`，文件权限为 `0600`；文件包含 loopback 地址、实际端口、App 实例 ID 和随机 session token。App 正常退出会撤销自己发布的描述文件。
+测试或多实例隔离可以设置 `LINNYA_CLI_CONNECTION_FILE` 覆盖路径。目录权限为 `0700`，文件权限为 `0600`；文件包含 loopback 地址、实际端口、App 实例 ID 和随机 session token。Host 正常退出会撤销自己发布的描述文件；异常终止后新 owner 会以 Workspace 排他锁和实例身份安全替换陈旧描述。
 
 CLI token 只允许访问 `/api/v1/conversation-control/*`，Renderer token 也不能访问该命名空间。token 在 body parser 前校验，不写入普通日志。CLI 连接时还会校验协议版本、握手返回的 App 实例 ID 和能力上限，避免使用陈旧文件连到另一个进程。
 
@@ -244,6 +262,7 @@ CLI token 只允许访问 `/api/v1/conversation-control/*`，Renderer token 也�
 pnpm typecheck:linnya-cli
 pnpm test:linnya-cli
 pnpm test:linnya-cli:bundle
+pnpm test:linnya-runtime:e2e
 ```
 
 测试按真实风险分层：
@@ -253,6 +272,7 @@ pnpm test:linnya-cli:bundle
 | schema 合同 | 非法字段与组合被拒，状态、回执和错误 wire 保持 strict |
 | parser / orchestration | 命令映射、JSON 响应、退出码、watch 去重与停止条件正确 |
 | CLI 进程集成 | 真实 Node 子进程连接脚本化 HTTP bridge，验证 stdout/stderr、JSONL 和稳定退出码 |
+| Runtime 进程 E2E | 构建后的 CLI → 固定 Node App Server → 临时 SQLite/Qdrant，验证无 Electron 冷启动、不同 Agent 并行、唯一 Workspace owner、正常/异常退出与历史重启 |
 | Host use case 集成 | send durable acceptance、busy、HITL resume、stop settlement、run 精确结果读取 |
 | ApiServer / bridge 集成 | token 双向隔离、loopback、描述文件权限和生命周期、稳定 HTTP 错误 |
 | 真实 App smoke | 穿过实际 Linnya App、模型、Slides Agent 与 PPT 工具链，验证产品可用性 |
@@ -265,7 +285,7 @@ pnpm test:linnya-cli:bundle
 - 产品业务编排：`src/app-hosts/linnya/application/conversation-control/`。
 - 模型运行可用性：`src/app-hosts/linnya/application/model-runtime-availability/`。
 - 本地 HTTP、鉴权与连接描述：`src/app-hosts/linnya/adapters/conversation-control-bridge/`。
-- CLI 只负责参数、连接、输出和 watch；不能导入 Flow、数据库或 Electron 内部实现。
+- 普通 CLI 命令只负责参数、连接、输出和 watch；Runtime launcher 只动态加载带版本的 Host bundle。两者都不能导入 Flow、数据库或 Electron 内部实现。
 
 CLI 新能力应先成为 Host application use case 的窄 public contract，再通过 bridge 暴露，最后接入命令；不能从 CLI 直接绕过现有控制面。
 

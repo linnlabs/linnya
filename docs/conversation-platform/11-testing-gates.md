@@ -140,6 +140,7 @@ CLI 当前是开发、评测与 Benchmark 使用的薄进程入口，尚未作�
 pnpm typecheck:linnya-cli
 pnpm test:linnya-cli
 pnpm build:linnya-cli
+pnpm test:linnya-runtime:e2e
 ```
 
 `test:linnya-cli` 同时覆盖 parser/orchestration 与真实 Node 子进程：子进程通过私有连接描述连接脚本化 HTTP bridge，验证单值 JSON、watch JSONL、stderr、退出码、App 不在线、Host busy 和可选能力缺失。它证明 CLI 进程合同，但不能单独证明 Host 主链。
@@ -162,6 +163,7 @@ pnpm exec vitest run \
 | parser / schema | 参数和 wire 严格 | 实际 bridge 或运行执行 |
 | 子进程 + scripted bridge | CLI I/O、连接、watch、退出码 | Linnya Flow、数据库和模型 |
 | workflow + ApiServer 集成 | durable acceptance、exact paused-run resume、状态/取消/HITL/结果语义、token 与 descriptor 生命周期 | 真实 Provider 和 Slides 工具产物 |
+| built Runtime 进程 E2E | 无 Electron 冷启动、固定 Node、真实临时 SQLite/Qdrant、不同 Agent 并行、Workspace owner 竞争、正常/强制退出和历史重启 | 真实收费 Provider、打包 CLI、Windows 原生环境 |
 | 运行中 App smoke | 当前模型配置、Agent、工具与产物真实可用 | 所有错误分支 |
 
 涉及 CLI/Host 控制流程的开发版本在合入前至少用运行中的 App 执行一次短任务；Slides 验收应使用 `slides_agent` 生成 3 页 PPT，保存 `conversation_id + run_id`，关闭首次 CLI 进程后继续 watch，按需 respond，最后用 exact run 读取 result。另跑一次 settled pause 的 `resume --run` 和运行中的 `stop --run`，分别验证原 run continuation 与真实 terminal settlement。完整操作见 [`apps/linnya-cli/README.md`](../../apps/linnya-cli/README.md)。Benchmark 必须调用 CLI 子进程并解析 JSON/JSONL，不得复制 bridge 或直读数据库。

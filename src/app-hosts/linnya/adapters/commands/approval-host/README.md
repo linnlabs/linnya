@@ -2,9 +2,11 @@
 
 ## 1. 作用
 
-审批 host 位于 App Host，维护 pending approval 的真实状态，并把当前有效 Renderer 页面当作一个可替换的显示终端。它不解析风险规则、不读取权限文件，也不相信 Renderer 传来的 conversation 或 sender 字段；Electron Main 只验证真实 sender 并转发页面操作。
+审批 host 位于 App Server，维护 pending approval 的真实状态，并允许当前有效 Renderer 页面或 CLI Runtime Host presenter 作为可替换的显示终端。它不解析风险规则、不读取权限文件，也不相信 Renderer 传来的 conversation 或 sender 字段；Electron Main 只验证真实 sender 并转发页面操作。
 
 把 pending 放在 App Server owner 而不是 Main 或 Vue store 的原因是页面会 reload、切换对话、被销毁或暂时不可用；这些都不应该让一个已经需要用户确认的命令自动运行。
+
+CLI Runtime presenter 使用父子进程私有 RPC，只取得安全 pending projection 并提交 Host 声明的 choice。它不创建 Renderer owner/page ticket；Renderer 与 Host 回复复用同一个 `submitReply`，竞争时只有第一个合法回复结算，后续返回 `stale`。App owner 结束后 Host presenter 立即 unavailable。
 
 ## 2. 代码树和对象
 
@@ -36,9 +38,9 @@ resolver 只结算一次。`allow_once`、`allow_for_conversation`、`deny` 是�
 runtime submits immutable request
   → host verifies proposal/execution binding
   → pending enters App Server owner
-  → current page receives projected snapshot
-  → page reply includes request id + page ticket
-  → Main verifies event.sender.id; host verifies owner id and ticket
+  → current Renderer page or CLI Host presenter receives projected snapshot
+  → Renderer reply includes request id + page ticket；Host reply 走私有 parent pipe
+  → Renderer 路径校验 event.sender.id/owner/ticket；Host 路径校验 presenter lifecycle
   → optional conversation approval is persisted first
   → resolver returns approved / denied / unavailable
   → pending removed after terminal settlement
@@ -66,4 +68,4 @@ Renderer 只拿到安全投影：不包含 PID、完整环境、内部路径和�
 
 ## 7. 测试门禁
 
-`commandApprovalHost.integration.test.ts` 至少覆盖：单次允许、对话记忆、拒绝、重复 reply、两个页面竞争、reload 旧 ticket、owner end、持久化失败和 App drain。Electron IPC 测试另行覆盖 `sender.id` 伪造。测试应验证 resolver 只结算一次，不测试颜色、布局和弹窗宽度。
+`commandApprovalHost.integration.test.ts` 至少覆盖：单次允许、对话记忆、拒绝、重复 reply、Renderer/Host 竞争、reload 旧 ticket、owner end、持久化失败和 App drain。`host-presenter-rpc` 另行覆盖真实双向 pipe、严格 response 与通知合并；Electron IPC 测试覆盖 `sender.id` 伪造。测试应验证 resolver 只结算一次，不测试颜色、布局和弹窗宽度。

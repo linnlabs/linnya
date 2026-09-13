@@ -175,6 +175,16 @@ interaction；同一 run 已换到新 execution 时替换旧 `submitting` snapsh
 响应的 conversation、requested run 与 payload run 身份必须逐项相等。全过程不补造 RuntimeEvent、
 `run_status` 或工具终态。
 
+### 3.6 Desktop 与 CLI Runtime Host
+
+Conversation Backend 有一套业务 owner、两种启动 Host：Desktop Electron Main 和源码 `linnya runtime start`。普通 CLI 命令只是短命客户端；`send` 返回或 `status --watch` 断开不会终止已接纳的 run。CLI Runtime launcher 是前台 App owner，Ctrl+C、SIGTERM 或终端关闭会收口它拥有的全部 run 和子进程，不提供退出后常驻。
+
+同一 Workspace 通过 App Server 的 SQLite 排他锁只允许一个 Desktop/CLI owner。两种 Host 使用同一 HistoryService、RunRegistry、Flow 和投影，因此 CLI Runtime 写入的历史可在后续 Desktop 中读取；这不等于同时打开第二个 owner 直连数据库。不同 conversation 的 foreground run 可以并行，同一 conversation 的 foreground 主链仍互斥。
+
+Renderer 页面、SSE reader 和终端观察者都不拥有执行事实。命令审批的 pending/settlement 也只在 App Server 保存：Desktop 使用已验证的 Renderer page，交互式 CLI Runtime 使用私有 Host presenter RPC，竞争回复只结算一次。普通 HITL 继续使用 Conversation Control `respond`，不能把两类审批身份混用。
+
+App Server ready 必须同时满足数据库和 Conversation routes 可接流量。launcher 强制退出后，parent identity 会触发同一业务 shutdown；完成后关闭残余 pipe、撤销连接描述并释放 Workspace owner，允许原 Workspace 安全重启。
+
 ---
 
 ## 4. HITL

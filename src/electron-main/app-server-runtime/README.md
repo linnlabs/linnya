@@ -1,11 +1,11 @@
 # Electron App Server Runtime
 
 本目录是 Desktop Main 对独立 App Server 的 composition root。Main 只解析随包固定 Node、编码一次性
-bootstrap、托管子进程生命周期，并注册 safeStorage、隐藏 Chromium worker、文本测量、PDF、OAuth browser
+bootstrap、托管子进程生命周期，并注册系统 keyring/旧 safeStorage 迁移、隐藏 Chromium worker、文本测量、PDF、OAuth browser
 与 Web Read renderer 等窄 Desktop reverse RPC。Backend 业务、Commands owner 和 Sandbox owner 不在这里创建。
 
 插件凭据由本 composition root 迁移并写入 `appDataRoot/config/plugin_credentials.json`，文件只保存
-Desktop credential protection 产生的密文；旧 `electron-store` 的 `pluginCredentials` 仅作为一次性迁移来源。
+credential protection 产生的版本化密文；旧 `electron-store` 的 `pluginCredentials` 仅作为一次性迁移来源。Desktop 可以建立系统 keyring master key，并在各业务 owner 的文件事务中把旧 safeStorage 密文 rewrap；CLI Runtime 只消费同一 key，不能建立第二个信任根。
 
 App Server 不继承 Electron Main 的环境。命令所需的完整宿主登录环境走独立 bootstrap contract；sidecar 自身只取得
 声明过的系统与 Linnya 配置变量，明确排除 `ELECTRON_RUN_AS_NODE`、`NODE_OPTIONS` 等启动注入入口。

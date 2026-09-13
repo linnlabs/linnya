@@ -2,7 +2,7 @@
 
 该模块只定义一个跨业务、跨进程稳定的基础合同：当前 JavaScript 运行域使用哪一组持久化根目录。
 
-Desktop Host 是生产路径的唯一解析者。它在启动时读取 Electron 的 `userData` / `documents`、开发根目录和 `LINNYA_WORKSPACE_DIR`，生成并冻结 `RuntimePathRoots`，然后把纯数据事实传给 App Server 和 Queue Worker。App Server、Worker 与业务 domain 不得再次加载 Electron、读取自己的 `cwd` 或用用户 Home 目录猜另一套路径。
+最外层 Host 是路径的唯一解析者。Desktop 读取 Electron 的 `userData` / `documents`、开发根目录和 `LINNYA_WORKSPACE_DIR`；源码 CLI Runtime 使用仓库 `_dev_data` 并接受显式 `--workspace`。两者都生成并冻结 `RuntimePathRoots`，再把纯数据事实传给 App Server 和 Queue Worker。App Server、Worker 与业务 domain 不得再次加载 Electron、读取自己的 `cwd` 或用用户 Home 目录猜另一套路径。
 
 `registry/` 只解决同一运行域内大量历史 `pathManager` 调用尚未完成依赖注入的问题：同值安装幂等，不同值安装失败。它不是可切换配置中心，也不能被 feature 当成新的全局 service。新增业务应优先接收所需的窄路径或 storage port；待历史调用迁完后删除该 registry 和 `pathManager` 聚合对象。
 

@@ -19,7 +19,11 @@ App Host 不定义 RuntimeEvent、Graph、tool/child-run kernel 协议，也不�
 
 ### `backend-runtime/`
 
-定义 Backend owner 的 data-only 启动事实与窄宿主依赖。Electron Main 和 headless App Server 复用同一合同，不能把 Electron 对象或完整环境变量跨入业务后端。
+定义 Backend owner 的 data-only 启动事实与窄宿主依赖。Desktop、CLI Runtime 和 headless App Server 复用同一合同，不能把 Electron 对象或完整环境变量跨入业务后端。
+
+### `app-server-runtime/` 与 `cli-runtime/`
+
+`app-server-runtime/` 是唯一 headless Node Backend composition root；Desktop Main 和源码 CLI Runtime 都监督这个 App Server，不复制 Flow、数据库或命令 owner。`cli-runtime/` 只负责无 Electron 的前台 launcher、系统凭据 adapter、终端 command approval presenter 和不具备 Desktop 能力时的显式 unavailable ports。详细合同见各目录 README。
 
 ### `adapters/runtime-assembly/`
 
