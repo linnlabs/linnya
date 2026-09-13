@@ -7,20 +7,20 @@ import type {
 } from '@plugin/slides/shared';
 import type { SlidesEngineExecutionAdapter } from '@plugin/slides/backend-engine-core';
 import { executeSandboxProfile } from '@plugin/backend/sandboxRuntime';
-import {
-  CodegenDeckBuilder,
-  type CodegenDeckBuilderFailureLogger,
-  type CodegenDeckBuildInput,
-  type CodegenDeckBuildResult,
-  type CodegenDeckCreateInput,
-  type CodegenDeckCreateResult,
-  type CodegenManualEditCommitResult,
-  type CodegenProjectedDeckBuildInput,
-  CodegenPresentationService,
-  createBlankPresentationSource,
-  DeckReadStateRegistry,
-  InitialPresentationDraftCreator,
-} from '../codegen';
+import { CodegenDeckBuilder } from '../codegen/CodegenDeckBuilder';
+import { CodegenPresentationService } from '../codegen/CodegenPresentationService';
+import { createBlankPresentationSource } from '../codegen/createBlankPresentationSource';
+import { DeckReadStateRegistry } from '../codegen/DeckReadStateRegistry';
+import { InitialPresentationDraftCreator } from '../codegen/InitialPresentationDraftCreator';
+import type {
+  CodegenDeckBuilderFailureLogger,
+  CodegenDeckBuildInput,
+  CodegenDeckBuildResult,
+  CodegenDeckCreateInput,
+  CodegenDeckCreateResult,
+  CodegenManualEditCommitResult,
+  CodegenProjectedDeckBuildInput,
+} from '../codegen/definitions/codegenDeckBuilder';
 import type { PresentationRevisionScope } from '../features/presentationSourceHistory';
 import type {
   GeneratePresentationOptions,

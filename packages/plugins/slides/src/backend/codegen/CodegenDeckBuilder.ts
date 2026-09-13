@@ -3,17 +3,17 @@ import { randomUUID } from 'node:crypto';
 import { MathFormulaError, SlideMarkerIndex, type DeckSpec } from '@plugin/slides/shared';
 import {
   createSlidesEngineExecutionContext,
-  SvgGraphicMaterializationError,
   type DeckAssembleOptions,
   type SlidesEngineExecutionScope,
-} from '@plugin/slides/backend-engine-core';
+} from '../engine/types';
+import { SvgGraphicMaterializationError } from '../engine/svgGraphic/definitions/svgGraphicMaterializationError';
 import type { SandboxExecutionResult, SandboxJsonObject } from '@plugin/backend/sandboxRuntime';
 import type { PresentationRepositoryPort } from '../persistence';
 import {
   PresentationBuildExecutionError,
   PresentationFormulaBuildExecutionError,
   type PresentationComposeExecutionPort,
-} from '../features/presentationBuildExecution';
+} from '../features/presentationBuildExecution/definitions/presentationBuildExecution';
 import {
   PresentationDraftConflictError,
   PresentationManualEditCommandConflictError,

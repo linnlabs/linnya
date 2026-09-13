@@ -8,7 +8,6 @@ import type {
   DeckAssembleOptions,
   DeckAssemblerPort,
   ImageSourceResolverPort,
-  PatchCompilerPort,
   PptxReaderPort,
 } from '@plugin/slides/backend-engine-core';
 import type {
@@ -56,7 +55,6 @@ export type {
   DeckAssemblerPort,
   ExportedPresentationFile,
   ImageSourceResolverPort,
-  PatchCompilerPort,
   PresentationDraftErrorKind,
   PresentationDraftRecord,
   PresentationDraftRepositoryPort,

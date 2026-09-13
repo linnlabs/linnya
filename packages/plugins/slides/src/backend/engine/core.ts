@@ -64,7 +64,6 @@ export type {
   PatchCompilerPort,
   PptxReaderPort,
   SlidesEngineAssembleDeckRequest,
-  SlidesEngineCompilePatchRequest,
   SlidesEngineExecutionAdapter,
   SlidesEngineExecutionContext,
   SlidesEngineExecutionScope,

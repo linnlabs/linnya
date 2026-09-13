@@ -11,7 +11,6 @@ import type {
 import type { DeckSpec } from '@plugin/slides/shared';
 import type {
   DeckAssemblerPort,
-  PatchCompilerPort,
   PptxReaderPort,
 } from '../engine/types.js';
 import { createInProcessPresentationBuildExecution } from '../features/presentationBuildExecution';
@@ -72,9 +71,6 @@ describe('PptCoordinator', () => {
   beforeEach(() => {
     deckAssembler = {
       assemble: vi.fn(async () => Buffer.from('compiled-pptx')),
-    };
-    const patchCompiler: PatchCompilerPort = {
-      compile: vi.fn(async () => Buffer.from('patched-pptx')),
     };
     pptxReader = {
       parse: vi.fn(async () => ({
@@ -148,7 +144,6 @@ describe('PptCoordinator', () => {
 
     coordinator = new PptCoordinator(
       deckAssembler,
-      patchCompiler,
       pptxReader,
       templateManager,
       presentationRepo,
@@ -300,7 +295,6 @@ describe('PptCoordinator', () => {
     const codegenBuilderFactory = vi.fn(() => codegenBuilder);
     coordinator = new PptCoordinator(
       deckAssembler,
-      { compile: vi.fn(async () => Buffer.from('patched-pptx')) },
       pptxReader,
       {
         importFromPptx: vi.fn(async () => {

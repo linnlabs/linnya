@@ -23,7 +23,7 @@ import {
   type SlidesEngineExecutionAdapter,
   type SlidesEngineExecutionScope,
   type SlidesEngineRenderModelSnapshot,
-} from '@plugin/slides/backend-engine-core';
+} from '../engine/types';
 import type { CodegenDeckBuilderPort } from './presentationCodegenRuntime';
 import {
   toSlidesEnginePreviewSnapshot,

@@ -22,7 +22,6 @@ import type {
   GeneratePresentationOptions,
   GeneratePresentationResult,
   ImageSourceResolverPort,
-  PatchCompilerPort,
   PresentationDraftRepositoryPort,
   PresentationRepositoryPort,
   PptxReaderPort,
@@ -34,12 +33,10 @@ import type {
   CodegenDeckBuilderFailureLogger,
   CodegenPresentationService,
 } from '../codegen';
-import {
-  createSlidesEngineExecutionContext,
-  InProcessSlidesEngineExecutionAdapter,
-  PptPresentationQueryService,
-  type SlidesEngineExecutionAdapter,
-} from '@plugin/slides/backend-engine-core';
+import { InProcessSlidesEngineExecutionAdapter } from '../engine/execution/InProcessSlidesEngineExecutionAdapter';
+import { PptPresentationQueryService } from '../engine/coordinator/PptPresentationQueryService';
+import { createSlidesEngineExecutionContext } from '../engine/types';
+import type { SlidesEngineExecutionAdapter } from '../engine/types';
 import { buildToolFeedbackPayloadAsync } from '@plugin/slides/backend-tools';
 import { PresentationQueryRuntime } from './presentationQueryRuntime';
 import {
@@ -107,7 +104,6 @@ export class PptCoordinator {
 
   constructor(
     deckAssembler: DeckAssemblerPort,
-    patchCompiler: PatchCompilerPort,
     pptxReader: PptxReaderPort,
     private readonly templateManager: TemplateManagerPort,
     private readonly presentationRepo: PresentationRepositoryPort,
@@ -127,7 +123,6 @@ export class PptCoordinator {
       runtimeOptions.engineAdapter ??
       new InProcessSlidesEngineExecutionAdapter({
         deckAssembler,
-        patchCompiler,
         pptxReader,
         presentationQueries,
       });

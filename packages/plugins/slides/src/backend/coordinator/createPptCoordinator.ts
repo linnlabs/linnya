@@ -13,7 +13,7 @@
 import type { Database } from 'better-sqlite3';
 import { executeSandboxProfile } from '@plugin/backend/sandboxRuntime';
 import { releaseDocumentAssetOwnership } from '@plugin/backend/documentAssetOwnership';
-import { CodegenDeckBuilder } from '../codegen';
+import { CodegenDeckBuilder } from '../codegen/CodegenDeckBuilder';
 import { PresentationHistoryRepository, PresentationHistoryRuntime, PresentationRevisionScope, observeRevisionImageBindings, observeRevisionSvgBindings } from '../features/presentationSourceHistory';
 import {
   createDocumentImageAssetRuntime,
@@ -28,14 +28,10 @@ import {
   createWorkspaceService,
   publishWorkspaceDocumentUpdated,
 } from '@plugin/backend/workspaceRuntime';
-import {
-  PatchCompiler,
-  PptxReader,
-  StructuredCompiler,
-  TemplateManager,
-  PptPresentationQueryService,
-  type SvgGraphicFallbackRasterizerPort,
-} from '@plugin/slides/backend-engine-core';
+import { PptPresentationQueryService } from '../engine/coordinator/PptPresentationQueryService';
+import { PptxReader } from '../engine/parser/PptxReader';
+import { TemplateManager } from '../engine/template/TemplateManager';
+import type { SvgGraphicFallbackRasterizerPort } from '../engine/types';
 import type { BrushArtworkGeneratorPort } from '../engine/brushArtwork';
 import { PresentationDraftRepository, PresentationRepository } from '../persistence';
 import {
@@ -53,7 +49,7 @@ import { createPresentationSvgGraphicFallbackRasterizer } from '../features/pres
 import { PptCoordinator } from './PptCoordinator';
 import type { PluginConversationFilePathResolverPort } from '@linnya/plugin-host-contract/backend/workspaceRuntime';
 import type { PresentationBuildExecutionPort } from '../features/presentationBuildExecution';
-import { createPresentationBuildDeckAssembler } from '../features/presentationBuildExecution';
+import { createPresentationBuildDeckAssembler } from '../features/presentationBuildExecution/orchestration/createPresentationBuildDeckAssembler';
 import { createPresentationManualEditTraceLogger } from '../features/presentationManualEditing';
 
 export function createPptCoordinator(
@@ -83,7 +79,6 @@ export function createPptCoordinator(
     requestHistoryMaintenance: nodeId => history.requestMaintenance(nodeId),
   });
   const presentationDraftRepo = new PresentationDraftRepository(db);
-  const structuredCompiler = new StructuredCompiler();
   const imageBindings = observeRevisionImageBindings(new PresentationImageBindingRepository(db), revisionScope);
   const svgBindings = observeRevisionSvgBindings(new PresentationSvgGraphicBindingRepository(db), revisionScope);
   const imageAssets = options.documentImageAssetRuntime ?? createDocumentImageAssetRuntime(db);
@@ -115,7 +110,6 @@ export function createPptCoordinator(
   });
   const pptxReader = new PptxReader();
   const templateManager = new TemplateManager(pptxReader, presentationRepo);
-  const patchCompiler = new PatchCompiler(structuredCompiler, templateManager, pptxReader);
 
   const historicalImages = createReadOnlyPresentationImageSourceResolver({ bindingReader: imageBindings, documentImageAssets: imageAssets });
   const historicalSvgOwner = createReadOnlyPresentationSvgGraphicOwner({ bindingRepository: svgBindings, documentSvgAssets: svgAssets });
@@ -144,7 +138,6 @@ export function createPptCoordinator(
 
   return new PptCoordinator(
     deckAssembler,
-    patchCompiler,
     pptxReader,
     templateManager,
     presentationRepo,

@@ -10,7 +10,9 @@ import {
   SLIDES_TYPESCRIPT_STANDARD_LIB_ROOTS,
 } from './build/copyTypeScriptRuntime.mjs';
 
-const MAX_BACKEND_ENTRY_BYTES = 4 * 1024 * 1024;
+// App Server 入口只负责编排、查询与持久化；PPTX 生成依赖属于 build Worker。
+// 2.25 MiB 为当前 1.96 MiB 入口保留约 15% 漂移空间，同时阻止整套物化栈回流。
+const MAX_BACKEND_ENTRY_BYTES = 2.25 * 1024 * 1024;
 // TypeScript/Yoga、PptxGenJS/JSZip 与原生公式装配均归同一 build Worker；1.6 MiB
 // 只保留小幅依赖漂移空间，防止 parser、Host SDK 或完整 backend 被意外卷入。
 const MAX_PRESENTATION_BUILD_WORKER_BYTES = 1.6 * 1024 * 1024;
@@ -20,6 +22,13 @@ const MAX_PRESENTATION_BUILD_WORKER_BYTES = 1.6 * 1024 * 1024;
 const MAX_BACKEND_DIRECTORY_BYTES = 16 * 1024 * 1024;
 const TYPESCRIPT_INPUT_PATTERN =
   /node_modules\/(?:\.pnpm\/typescript@[^/]+\/node_modules\/)?typescript\//u;
+const PRESENTATION_BUILD_WORKER_ONLY_INPUT_PATTERNS = Object.freeze([
+  /node_modules\/(?:\.pnpm\/pptxgenjs@[^/]+\/node_modules\/)?pptxgenjs\//u,
+  /node_modules\/(?:\.pnpm\/pptx-automizer@[^/]+\/node_modules\/)?pptx-automizer\//u,
+  /packages\/plugins\/slides\/src\/backend\/engine\/(?:DeckAssembler|FreeformCompiler|StructuredCompiler)\.ts$/u,
+  /packages\/plugins\/slides\/src\/backend\/engine\/patch\/PatchCompiler\.ts$/u,
+  /packages\/plugins\/slides\/src\/backend\/features\/presentationBuildExecution\/functions\/materializePresentationPptx\.ts$/u,
+]);
 const TYPESCRIPT_RUNTIME_RELATIVE_DIR = 'node_modules/typescript';
 
 /** Backend 门禁同时约束启动入口依赖图和完整自包含 runtime，而不是只看 zip。 */
@@ -47,6 +56,14 @@ export async function verifySlidesBackendBundle({ backendDir, bundlePath, metafi
   const inputPaths = Object.keys(entryOutput.inputs ?? {}).map(normalizePath);
   if (inputPaths.some(inputPath => TYPESCRIPT_INPUT_PATTERN.test(inputPath))) {
     throw new Error('Slides backend entry eagerly bundles the TypeScript compiler.');
+  }
+  const misplacedBuildInputs = inputPaths.filter(inputPath =>
+    PRESENTATION_BUILD_WORKER_ONLY_INPUT_PATTERNS.some(pattern => pattern.test(inputPath))
+  );
+  if (misplacedBuildInputs.length > 0) {
+    throw new Error(
+      `Slides backend entry bundles presentation build Worker inputs: ${misplacedBuildInputs.join(', ')}`
+    );
   }
 
   const runtimeDir = path.join(backendDir, TYPESCRIPT_RUNTIME_RELATIVE_DIR);

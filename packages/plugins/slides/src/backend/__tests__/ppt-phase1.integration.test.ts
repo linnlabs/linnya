@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import JSZip from 'jszip';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PptCoordinator } from '@plugin/slides/backend-coordinator';import { DeckAssembler } from '../engine/DeckAssembler.js';import { FreeformCompiler } from '../engine/FreeformCompiler.js';import { PatchCompiler } from '../engine/patch/PatchCompiler.js';import { PptxReader } from '../engine/parser/PptxReader.js';import { StructuredCompiler } from '../engine/StructuredCompiler.js';import { TemplateManager } from '../engine/template/TemplateManager.js';
+import { PptCoordinator } from '@plugin/slides/backend-coordinator';import { DeckAssembler } from '../engine/DeckAssembler.js';import { FreeformCompiler } from '../engine/FreeformCompiler.js';import { PptxReader } from '../engine/parser/PptxReader.js';import { StructuredCompiler } from '../engine/StructuredCompiler.js';import { TemplateManager } from '../engine/template/TemplateManager.js';
 import { PresentationRepository } from '../persistence';
 import { PRESENTATION_DOCUMENT_SCHEMAS } from '../persistence/schemas/presentation.schema';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace.js';
@@ -75,11 +75,8 @@ describe('Phase 1 end-to-end chain', () => {
     const repository = new PresentationRepository(db);
     const pptxReader = new PptxReader();
     const templateManager = new TemplateManager(pptxReader, repository);
-    const patchCompiler = new PatchCompiler(structuredCompiler);
-
     const coordinator = new PptCoordinator(
       deckAssembler,
-      patchCompiler,
       pptxReader,
       templateManager,
       repository,
@@ -142,12 +139,10 @@ describe('Phase 1 end-to-end chain', () => {
     const repository = new PresentationRepository(db);
     const pptxReader = new PptxReader();
     const templateManager = new TemplateManager(pptxReader, repository);
-    const patchCompiler = new PatchCompiler(structuredCompiler);
     const deckAssembler = new DeckAssembler(structuredCompiler, freeformCompiler);
 
     const coordinator = new PptCoordinator(
       deckAssembler,
-      patchCompiler,
       pptxReader,
       templateManager,
       repository,

@@ -1,9 +1,7 @@
 import type {
   DeckAssemblerPort,
-  PatchCompilerPort,
   PptxReaderPort,
   SlidesEngineAssembleDeckRequest,
-  SlidesEngineCompilePatchRequest,
   SlidesEngineAnalyzeSpatialRequest,
   SlidesEngineExecutionAdapter,
   SlidesEngineExecutionContext,
@@ -20,7 +18,6 @@ import { resolveImageAsset } from '../assets/imageAssetResolver';
 
 export interface InProcessSlidesEngineExecutionAdapterDeps {
   readonly deckAssembler: DeckAssemblerPort;
-  readonly patchCompiler: PatchCompilerPort;
   readonly pptxReader: PptxReaderPort;
   readonly presentationQueries: SlidesPresentationQueryPort;
   readonly logger?: SlidesEngineLogger;
@@ -33,14 +30,12 @@ const noopLogger: SlidesEngineLogger = {
 
 export class InProcessSlidesEngineExecutionAdapter implements SlidesEngineExecutionAdapter {
   private readonly deckAssembler: DeckAssemblerPort;
-  private readonly patchCompiler: PatchCompilerPort;
   private readonly pptxReader: PptxReaderPort;
   private readonly presentationQueries: SlidesPresentationQueryPort;
   private readonly logger: SlidesEngineLogger;
 
   constructor(deps: InProcessSlidesEngineExecutionAdapterDeps) {
     this.deckAssembler = deps.deckAssembler;
-    this.patchCompiler = deps.patchCompiler;
     this.pptxReader = deps.pptxReader;
     this.presentationQueries = deps.presentationQueries;
     this.logger = deps.logger ?? noopLogger;
@@ -57,12 +52,6 @@ export class InProcessSlidesEngineExecutionAdapter implements SlidesEngineExecut
   async parsePptx(request: SlidesEngineParsePptxRequest) {
     return await this.runWithTelemetry(request.context, async () =>
       this.pptxReader.parse(request.buffer)
-    );
-  }
-
-  async compilePatch(request: SlidesEngineCompilePatchRequest): Promise<Buffer> {
-    return await this.runWithTelemetry(request.context, async () =>
-      this.patchCompiler.compile(request.sourcePptxBuffer, request.patchSpec)
     );
   }
 

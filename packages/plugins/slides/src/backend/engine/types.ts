@@ -195,7 +195,6 @@ export interface SlidesEngineRenderModelOptions {
 export type SlidesEngineOperationName =
   | 'assembleDeck'
   | 'parsePptx'
-  | 'compilePatch'
   | 'analyzeSpatial'
   | 'resolvePatchImageSource'
   | 'inspectPresentation'
@@ -235,12 +234,6 @@ export interface SlidesEngineParsePptxRequest {
 
 export interface SlidesEngineResolvePatchImageSourceRequest {
   readonly source: ImageSourceInput;
-  readonly context: SlidesEngineExecutionContext;
-}
-
-export interface SlidesEngineCompilePatchRequest {
-  readonly sourcePptxBuffer: Buffer;
-  readonly patchSpec: PatchSpec;
   readonly context: SlidesEngineExecutionContext;
 }
 
@@ -326,7 +319,6 @@ export interface SlidesEngineVersionRequest {
 export interface SlidesEngineExecutionAdapter {
   assembleDeck(request: SlidesEngineAssembleDeckRequest): Promise<Buffer>;
   parsePptx(request: SlidesEngineParsePptxRequest): Promise<PresentationInfo>;
-  compilePatch(request: SlidesEngineCompilePatchRequest): Promise<Buffer>;
   analyzeSpatial(request: SlidesEngineAnalyzeSpatialRequest): Promise<SpatialAnalysisSummary>;
   resolvePatchImageSource(request: SlidesEngineResolvePatchImageSourceRequest): Promise<string>;
   inspectPresentation(request: SlidesEngineVersionRequest): Promise<PresentationInfo>;
