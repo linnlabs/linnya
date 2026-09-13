@@ -82,7 +82,51 @@ describe('authoring identity projection', () => {
     expect(model.slides[0].elements[0]).toMatchObject({
       id: 'authoring-overview-hero_art',
       authoringRef: { slideKey: 'overview', editKey: 'hero_art', targetKind: 'shape' },
+      authoringEdit: { capabilities: ['translate'] },
     });
+  });
+
+  it('按作者内容声明改字能力，不从渲染后的段落和 run 数量反推', () => {
+    const richText: LayoutTextNode = {
+      _type: 'Text',
+      editKey: 'rich_copy',
+      content: [
+        { text: 'Rich ', style: { bold: true } },
+        { text: 'copy' },
+      ],
+      position: { x: 1, y: 3, w: 4, h: 1 },
+    };
+    const compiled = compileFlexInput(deck([
+      slide('overview', [text('headline', '增长 2026\n下一行'), richText]),
+    ]));
+    if (!compiled.input) throw new Error(compiled.error ?? 'Expected compiled Flex input.');
+    const admitted = readCompiledDirectComposeInput(structuredClone(compiled.input));
+    if (!admitted.input) throw new Error(admitted.error ?? 'Expected admitted compiled input.');
+    const deckSpec = buildDeckSpecFromDirectInput(admitted.input);
+    const model = new RenderModelMapper().fromGeneratedDeck(
+      'presentation-1',
+      1,
+      deckSpec.title,
+      deckSpec,
+      { width: 13.333, height: 7.5 },
+    );
+
+    expect(model.slides[0].elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        authoringRef: expect.objectContaining({ editKey: 'headline' }),
+        authoringEdit: {
+          capabilities: ['translate', 'set_text_content'],
+          text: { kind: 'plain_text', content: '增长 2026\n下一行' },
+        },
+      }),
+      expect.objectContaining({
+        authoringRef: expect.objectContaining({ editKey: 'rich_copy' }),
+        authoringEdit: {
+          capabilities: ['translate'],
+          text: { kind: 'rich_text' },
+        },
+      }),
+    ]));
   });
 
   it('拒绝没有 slideKey 的孤立 editKey', () => {
@@ -159,6 +203,25 @@ describe('authoring identity projection', () => {
       },
     });
     expect(mismatch.error).toContain('类型为 chart，实际作者对象为 shape');
+  });
+
+  it('拒绝用纯文本人工记录覆盖富文本作者对象', () => {
+    const result = compileFlexInput({
+      ...deck([slide('overview', [{
+        _type: 'Text',
+        editKey: 'rich_copy',
+        content: [{ text: 'Rich', style: { bold: true } }],
+        position: { x: 1, y: 1, w: 3, h: 1 },
+      }])]),
+      manualEdits: {
+        version: 1,
+        slides: [{
+          slideKey: 'overview',
+          targets: [{ kind: 'text', editKey: 'rich_copy', content: 'Flattened' }],
+        }],
+      },
+    });
+    expect(result.error).toContain('不是可直接改字的纯文本作者对象');
   });
 
   it('拒绝页面内重复 editKey 与文稿内重复 slideKey', () => {

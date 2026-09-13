@@ -4,7 +4,13 @@ import VueKonva, { Stage as VueStage, Layer as VueLayer } from 'vue-konva';
 import Konva from 'konva';
 import SlideBackgroundLayer from '../../src/renderer/ui/preview/konva/layers/SlideBackgroundLayer.vue';
 import KonvaShapeNode from '../../src/renderer/ui/preview/konva/nodes/KonvaShapeNode.vue';
-import type { RenderFill, ShapeRenderNode } from '../../src/renderer/types/render';
+import KonvaSlideStage from '../../src/renderer/ui/preview/konva/KonvaSlideStage.vue';
+import type {
+  RenderFill,
+  ShapeRenderNode,
+  SlideRenderModel,
+} from '../../src/renderer/types/render';
+import type { ManualEditingTranslationPreview } from '../../src/renderer/features/manualEditing';
 
 const size = { width: 320, height: 180 };
 const transform = { x: 0, y: 0, scaleX: 1, scaleY: 1 };
@@ -20,7 +26,7 @@ const sequence: RenderFill[] = [solid, gradient, solid, radial, solid, { type: '
 
 declare global {
   interface Window {
-    previewTransitionSmoke: Promise<{ frames: number }>;
+    previewTransitionSmoke: Promise<{ frames: number; manualTranslationFrames: number }>;
     verifyPreviewPaintSequence(input: unknown): Promise<{ frames: number }>;
   }
 }
@@ -82,6 +88,66 @@ async function run(paints: readonly RenderFill[]): Promise<{ frames: number }> {
   return { frames };
 }
 
+/** 真实挂载 KonvaSlideStage，防止位移预览被误传给无关图层。 */
+async function verifyManualTranslation(): Promise<{ manualTranslationFrames: number }> {
+  const previewTranslations = shallowRef<ReadonlyMap<string, ManualEditingTranslationPreview>>(
+    new Map(),
+  );
+  const host = document.createElement('div');
+  document.body.append(host);
+  const before = new Set(Konva.stages);
+  const slideRender: SlideRenderModel = {
+    slideId: 'manual-translation',
+    index: 0,
+    layoutKey: 'LAYOUT_WIDE',
+    background: { paint: { type: 'none' } },
+    elements: [shape(solid)],
+  };
+  const app = createApp({
+    setup: () => () => h(KonvaSlideStage, {
+      slideRender,
+      imageResources: new Map(),
+      chartResources: new Map(),
+      slideSize: { width: size.width / 96, height: size.height / 96, unit: 'in' },
+      rasterScale: 1,
+      selectedTargets: [],
+      hoveredTarget: null,
+      marqueeRect: null,
+      previewTranslations: previewTranslations.value,
+    }),
+  });
+  app.use(VueKonva);
+  app.mount(host);
+  try {
+    const stage = Konva.stages.find(candidate => !before.has(candidate));
+    if (!stage) throw new Error('Manual editing stage was not mounted');
+    await nextTick();
+    assertShapePosition(stage, 0, 0);
+    previewTranslations.value = new Map([[
+      'stable-shape',
+      { elementId: 'stable-shape', dx: 1, dy: 0.5 },
+    ]]);
+    await nextTick();
+    assertShapePosition(stage, 96, 48);
+    return { manualTranslationFrames: 2 };
+  } finally {
+    app.unmount();
+    host.remove();
+  }
+}
+
+function assertShapePosition(stage: Konva.Stage, expectedX: number, expectedY: number): void {
+  const contentLayer = stage.getLayers()[1];
+  const node = contentLayer?.findOne('Rect');
+  if (!node) throw new Error('Manual editing shape was not rendered in the content layer');
+  const position = node.getAbsolutePosition();
+  if (position.x !== expectedX || position.y !== expectedY) {
+    throw new Error(
+      `Manual translation differs: actual=(${position.x}, ${position.y}), expected=(${expectedX}, ${expectedY})`,
+    );
+  }
+}
+
 window.verifyPreviewPaintSequence = (input: unknown) => {
   if (!Array.isArray(input) || input.length === 0) throw new Error('Expected a nonempty paint sequence');
   const paints = input.map((paint: unknown, index: number) => {
@@ -91,4 +157,7 @@ window.verifyPreviewPaintSequence = (input: unknown) => {
   });
   return run(paints);
 };
-window.previewTransitionSmoke = run(sequence);
+window.previewTransitionSmoke = (async () => ({
+  ...await run(sequence),
+  ...await verifyManualTranslation(),
+}))();

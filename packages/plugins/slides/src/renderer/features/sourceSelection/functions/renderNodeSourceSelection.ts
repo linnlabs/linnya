@@ -15,31 +15,31 @@ import type {
   SourceSelectionRect,
 } from '../definitions/sourceSelectionTypes';
 import {
-  applyMatrix,
-  identityMatrix,
-  invertMatrix,
-  multiplyMatrix,
-  pointInRect,
-  polygonBounds,
   rectsIntersect,
-  rotateMatrix,
-  translateMatrix,
-  type SourceSelectionMatrix,
 } from './sourceSelectionGeometry';
+import {
+  collectRenderNodeSelectionGeometries,
+  findRenderNodeSelectionGeometryAtPoint,
+  type RenderNodeSelectionGeometry,
+} from '../../renderNodeSelection';
 
 type SourceTrackedRenderNode = RenderNode & { sourceSpan: RenderSourceSpan };
 
 export function collectSourceSelectableElements(nodes: readonly RenderNode[]): SourceSelectableElement[] {
-  const collected: SourceSelectableElement[] = [];
-  collectFromNodes(nodes, identityMatrix(), [], collected);
-  return collected;
+  return collectRenderNodeSelectionGeometries(nodes, hasSelectableSourceSpan)
+    .map(buildSelectableElement);
 }
 
 export function findSourceElementAtPoint(
   nodes: readonly RenderNode[],
   point: SourceSelectionPoint,
 ): SourceSelectableElement | null {
-  return findInNodes(nodes, point, identityMatrix(), []);
+  const geometry = findRenderNodeSelectionGeometryAtPoint(
+    nodes,
+    point,
+    hasSelectableSourceSpan,
+  );
+  return geometry ? buildSelectableElement(geometry) : null;
 }
 
 export function collectSourceElementsInRect(
@@ -65,104 +65,18 @@ export function findSourceElementsByIds(
   );
 }
 
-function collectFromNodes(
-  nodes: readonly RenderNode[],
-  parentMatrix: SourceSelectionMatrix,
-  parentZPath: readonly number[],
-  collected: SourceSelectableElement[],
-): void {
-  for (const node of sortByZIndex(nodes, 'asc')) {
-    if (node.visible === false) {
-      continue;
-    }
-
-    const matrix = buildNodeMatrix(parentMatrix, node);
-    const zPath = [...parentZPath, node.zIndex];
-    if (hasSelectableSourceSpan(node)) {
-      collected.push(buildSelectableElement(node, matrix, zPath));
-    }
-
-    if (node.kind === 'group') {
-      collectFromNodes(node.children, matrix, zPath, collected);
-    }
-  }
-}
-
-function findInNodes(
-  nodes: readonly RenderNode[],
-  point: SourceSelectionPoint,
-  parentMatrix: SourceSelectionMatrix,
-  parentZPath: readonly number[],
-): SourceSelectableElement | null {
-  for (const node of sortByZIndex(nodes, 'desc')) {
-    if (node.visible === false) {
-      continue;
-    }
-
-    const matrix = buildNodeMatrix(parentMatrix, node);
-    const localPoint = toLocalPoint(matrix, point);
-    if (!localPoint || !pointInNodeBox(localPoint, node)) {
-      continue;
-    }
-
-    const zPath = [...parentZPath, node.zIndex];
-    if (node.kind === 'group') {
-      const childHit = findInNodes(node.children, point, matrix, zPath);
-      if (childHit) {
-        return childHit;
-      }
-    }
-
-    if (hasSelectableSourceSpan(node)) {
-      return buildSelectableElement(node, matrix, zPath);
-    }
-  }
-
-  return null;
-}
-
-function buildNodeMatrix(
-  parentMatrix: SourceSelectionMatrix,
-  node: RenderNode,
-): SourceSelectionMatrix {
-  const rotation = node.rotation ?? 0;
-  return multiplyMatrix(
-    multiplyMatrix(parentMatrix, translateMatrix(node.box.x, node.box.y)),
-    rotateMatrix(rotation),
-  );
-}
-
-function toLocalPoint(
-  matrix: SourceSelectionMatrix,
-  point: SourceSelectionPoint,
-): SourceSelectionPoint | null {
-  const inverse = invertMatrix(matrix);
-  return inverse ? applyMatrix(inverse, point) : null;
-}
-
-function pointInNodeBox(point: SourceSelectionPoint, node: RenderNode): boolean {
-  return pointInRect(point, {
-    x: 0,
-    y: 0,
-    w: node.box.w,
-    h: node.box.h,
-  });
-}
-
 function buildSelectableElement(
-  node: SourceTrackedRenderNode,
-  matrix: SourceSelectionMatrix,
-  zPath: readonly number[],
+  geometry: RenderNodeSelectionGeometry<SourceTrackedRenderNode>,
 ): SourceSelectableElement {
-  const polygon = buildNodePolygon(node, matrix);
+  const { node } = geometry;
   return {
-    elementId: node.id,
+    elementId: geometry.elementId,
     kind: node.kind,
     summary: summarizeRenderNode(node),
     sourceSpan: node.sourceSpan,
-    bounds: polygonBounds(polygon),
-    polygon,
-    zPath,
+    bounds: geometry.bounds,
+    polygon: geometry.polygon,
+    zPath: geometry.zPath,
   };
 }
 
@@ -242,28 +156,6 @@ function truncateSummary(value: string): string {
   return value.length > 140 ? `${value.slice(0, 137)}...` : value;
 }
 
-function buildNodePolygon(
-  node: RenderNode,
-  matrix: SourceSelectionMatrix,
-): readonly SourceSelectionPoint[] {
-  const width = node.box.w;
-  const height = node.box.h;
-  return [
-    applyMatrix(matrix, { x: 0, y: 0 }),
-    applyMatrix(matrix, { x: width, y: 0 }),
-    applyMatrix(matrix, { x: width, y: height }),
-    applyMatrix(matrix, { x: 0, y: height }),
-  ];
-}
-
 function hasSelectableSourceSpan(node: RenderNode): node is SourceTrackedRenderNode {
   return node.sourceSpan != null && !node.id.endsWith('-inner');
-}
-
-function sortByZIndex(
-  nodes: readonly RenderNode[],
-  direction: 'asc' | 'desc',
-): RenderNode[] {
-  const sign = direction === 'asc' ? 1 : -1;
-  return [...nodes].sort((left, right) => (left.zIndex - right.zIndex) * sign);
 }

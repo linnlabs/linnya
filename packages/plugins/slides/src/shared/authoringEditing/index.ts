@@ -3,6 +3,12 @@ export type {
   SlidesAuthoringObjectRef,
 } from './definitions/authoringIdentity';
 export type {
+  SlidesAuthoringEditCapability,
+  SlidesAuthoringEditProjection,
+  SlidesAuthoringEditUnavailableReason,
+  SlidesAuthoringTextEditProjection,
+} from './definitions/authoringEditProjection';
+export type {
   SlidesManualEditCommand,
   SlidesManualEditCommandResult,
   SlidesManualEditBuildFailureResult,
@@ -32,5 +38,6 @@ export {
   isSlidesAuthoringObjectRef,
   isSlidesAuthoringKey,
 } from './functions/authoringIdentity';
+export { isSlidesAuthoringEditProjection } from './functions/authoringEditProjection';
 export { parseSlidesManualEdits } from './functions/manualEditsCodec';
 export type { SlidesManualEditsParseResult } from './functions/manualEditsCodec';

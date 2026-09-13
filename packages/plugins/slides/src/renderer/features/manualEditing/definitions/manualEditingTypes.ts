@@ -4,17 +4,17 @@ import type {
 } from '@plugin/slides/shared/authoringEditing';
 import type { RenderNodeKind } from '../../../types/render';
 import type {
-  SourceSelectionPoint,
-  SourceSelectionRect,
-} from '../../sourceSelection';
+  RenderNodeSelectionPoint,
+  RenderNodeSelectionRect,
+} from '../../renderNodeSelection';
 
 export interface ManualEditableTarget {
   readonly elementId: string;
   readonly nodeKind: RenderNodeKind;
   readonly targetKind: SlidesManualTargetKind;
   readonly authoringRef: SlidesAuthoringEditRef;
-  readonly bounds: SourceSelectionRect;
-  readonly polygon: readonly SourceSelectionPoint[];
+  readonly bounds: RenderNodeSelectionRect;
+  readonly polygon: readonly RenderNodeSelectionPoint[];
   readonly textContent?: string;
 }
 

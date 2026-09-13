@@ -244,6 +244,7 @@ export {
 } from './flexComposeContract';
 export {
   buildSlidesAuthoringRenderNodeId,
+  isSlidesAuthoringEditProjection,
   isSlidesAuthoringEditRef,
   isSlidesAuthoringObjectRef,
   isSlidesAuthoringKey,
@@ -252,7 +253,11 @@ export {
 } from './authoringEditing';
 export type {
   SlidesAuthoringEditRef,
+  SlidesAuthoringEditCapability,
+  SlidesAuthoringEditProjection,
+  SlidesAuthoringEditUnavailableReason,
   SlidesAuthoringObjectRef,
+  SlidesAuthoringTextEditProjection,
   SlidesManualEditCommand,
   SlidesManualEditCommandResult,
   SlidesManualEditBuildFailureResult,

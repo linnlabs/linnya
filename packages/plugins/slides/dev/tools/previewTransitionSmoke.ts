@@ -8,6 +8,7 @@ async function run(): Promise<void> {
     await window.loadFile(path.resolve(__dirname, 'preview-transitions/previewTransitionSmoke.html'));
     const result: unknown = await window.webContents.executeJavaScript('window.previewTransitionSmoke');
     assertFrameCount(result, 16);
+    assertManualTranslationFrames(result, 2);
     console.log('Slides live Vue/Konva transition pixels passed:', JSON.stringify(result));
     const fixtureFile = process.argv[2];
     if (fixtureFile) {
@@ -25,6 +26,17 @@ async function run(): Promise<void> {
 function assertFrameCount(result: unknown, expected: number): void {
   if (typeof result !== 'object' || result === null || !('frames' in result) || result.frames !== expected) {
     throw new Error(`Preview transition smoke did not finish ${expected} frame comparisons`);
+  }
+}
+
+function assertManualTranslationFrames(result: unknown, expected: number): void {
+  if (
+    typeof result !== 'object'
+    || result === null
+    || !('manualTranslationFrames' in result)
+    || result.manualTranslationFrames !== expected
+  ) {
+    throw new Error(`Preview transition smoke did not finish ${expected} manual translation comparisons`);
   }
 }
 

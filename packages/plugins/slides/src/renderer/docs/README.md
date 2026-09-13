@@ -22,6 +22,7 @@ src/renderer/
 │   ├── documentRuntime/             # surface 挂载后的 deck 加载、定位和生命周期编排
 │   ├── elementAiEdit/               # source-backed 元素 AI 编辑编排
 │   ├── manualEditing/                # 稳定作者对象的移动、纯文本编辑与 CAS 提交流程
+│   ├── renderNodeSelection/           # RenderNode 世界坐标遍历、命中与选择几何
 │   ├── presentationExport/          # PPTX/图片菜单、独立弹窗与导出交互编排；见 feature README
 │   ├── konvaPreview/                # Konva 配置与 ECharts option 纯映射
 │   ├── renderImageResources/        # 图片解析、解码去重与 LRU
@@ -112,7 +113,7 @@ SlideStage sourceSelection
 有限人工编辑链路：
 
 ```text
-SlideStage authoring target click / drag / text double-click
+SlideStage authoring-capability target click / drag / text double-click
   -> manualEditing 临时选择与位移预览（不修改 RenderModel）
   -> SlidesView submitManualEdit orchestration
   -> slides:manual-edit(revisionId + revision + sourceHash + operation)
@@ -120,7 +121,7 @@ SlideStage authoring target click / drag / text double-click
   -> revision 原子提交后 refreshDeck / RenderModel 原子替换
 ```
 
-当前直接开放作者对象移动，以及单段单 run 纯文本的完整内容替换。富文本、内联公式文本与多段文本保持文本只读；图片源、表格内容和图表数据需要各自的完整值编辑器后再开放。Flex Frame 因 RenderModel 仍扁平化其装饰和后代，暂不在前端显示为可拖动目标，避免拖动预览与最终提交不一致。详细边界见 [`../features/manualEditing/README.md`](../features/manualEditing/README.md)。
+当前直接开放作者对象移动，以及作者值仍为字符串的文本完整替换。是否可改字由 backend 投影的 `authoringEdit` 决定，不能从 RenderModel 的段落或字体 run 数量反推；所以多行字符串和因字体解析拆分的中英混排仍可编辑，富文本与内联公式 run 保持文本只读。图片源、表格内容和图表数据需要各自的完整值编辑器后再开放。Flex Frame 因 RenderModel 仍扁平化其装饰和后代，暂不在前端显示为可拖动目标，避免拖动预览与最终提交不一致。详细边界见 [`../features/manualEditing/README.md`](../features/manualEditing/README.md)。
 
 导出链路只有 Host 文档“更多”菜单一个真实入口，当前开放两个选项并分别打开独立弹窗：
 
@@ -206,4 +207,4 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 
 保真回归使用 `smoke:raster-worker`：真实 Electron 像素覆盖 8 个线性渐变角度与 2:1 椭圆径向渐变。主预览和离屏渲染共用形状 scene renderer；命中画布单独写 Konva identity 色，不能复用视觉渐变。图表图例色、绘图区色和线宽从 RenderModel 读取。
 
-切页保真需同时验证资源原子提交与持久 Konva 节点属性同步。主预览所有绑定使用严格 config；`smoke:preview-transitions` 覆盖真实 Vue 更新后的像素，不可只用新建 stage 的离屏截图代替。详见 [Konva Preview](../features/konvaPreview/README.md#持久画布的属性同步)。
+切页保真需同时验证资源原子提交与持久 Konva 节点属性同步。主预览所有绑定使用严格 config；`smoke:preview-transitions` 覆盖真实 Vue 更新后的像素，并挂载生产 `KonvaSlideStage` 验证人工位移进入内容层，不可只用新建 stage 的离屏截图代替。详见 [Konva Preview](../features/konvaPreview/README.md#持久画布的属性同步)。

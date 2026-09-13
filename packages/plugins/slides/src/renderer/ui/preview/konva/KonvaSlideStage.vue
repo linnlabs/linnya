@@ -11,7 +11,6 @@
         :image-resource="backgroundImageResource"
         :logical-size="logicalSize"
         :transform="contentTransform"
-        :preview-translations="props.previewTranslations"
       />
 
       <!-- 内容层：渲染所有元素 -->
@@ -21,6 +20,7 @@
         :chart-resources="props.chartResources"
         :logical-size="logicalSize"
         :transform="contentTransform"
+        :preview-translations="props.previewTranslations"
       />
 
       <!-- Overlay 层：选中 / 诊断高亮（FE-K4 填充） -->

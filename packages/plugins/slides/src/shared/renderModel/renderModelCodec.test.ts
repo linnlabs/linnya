@@ -72,6 +72,54 @@ describe('renderModelCodec font identity', () => {
   });
 });
 
+describe('renderModelCodec authoring edit projection', () => {
+  const baseTextNode = {
+    id: 'text-1',
+    kind: 'text',
+    box: { x: 1, y: 1, w: 4, h: 1, unit: 'in' },
+    zIndex: 0,
+    paragraphs: [{ runs: [{ text: 'Hello' }] }],
+  };
+  const baseModel = {
+    slideId: 'slide-1',
+    index: 0,
+    layoutKey: 'blank',
+    background: { paint: { type: 'solid', color: '#FFFFFF' } },
+  };
+
+  it('accepts a text projection bound to a text author target', () => {
+    expect(isSlideRenderModel({
+      ...baseModel,
+      elements: [{
+        ...baseTextNode,
+        authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'text' },
+        authoringEdit: {
+          capabilities: ['translate', 'set_text_content'],
+          text: { kind: 'plain_text', content: 'Hello' },
+        },
+      }],
+    })).toBe(true);
+  });
+
+  it('rejects missing identities and target-kind mismatches', () => {
+    expect(isSlideRenderModel({
+      ...baseModel,
+      elements: [{
+        ...baseTextNode,
+        authoringEdit: { capabilities: ['translate'], text: { kind: 'rich_text' } },
+      }],
+    })).toBe(false);
+    expect(isSlideRenderModel({
+      ...baseModel,
+      elements: [{
+        ...baseTextNode,
+        authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'shape' },
+        authoringEdit: { capabilities: ['translate'], text: { kind: 'rich_text' } },
+      }],
+    })).toBe(false);
+  });
+});
+
 describe('renderModelCodec inline text layout', () => {
   it('接受共享文本 finalizer 产生的文本与行内公式切片', () => {
     const formulaProjection = {

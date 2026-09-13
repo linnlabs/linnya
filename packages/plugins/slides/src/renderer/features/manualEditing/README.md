@@ -6,8 +6,8 @@
 
 - The toolbar edit button is available only for a ready generated document whose visible RenderModel version equals the build-state revision and whose current slide contains at least one editable author object.
 - Clicking an object selects it. Dragging previews a translation on the main Konva stage; releasing sends one `translate_by` operation in inches. Repeated drags accumulate in backend `manualEdits`.
-- Double-clicking a single-paragraph, single-run text object opens a focused textarea over its bounds. Save replaces the complete author text and runs the normal backend text measurement and layout pipeline.
-- Rich text, inline formula text and multi-paragraph text remain text-read-only because replacing them with one string would destroy run semantics. They may still move.
+- Double-clicking a text object whose backend `authoringEdit` projection declares `set_text_content` opens a focused textarea over its bounds. Save replaces the complete author string and runs the normal backend text measurement and layout pipeline. Multiline strings and strings split into Latin/East Asian render runs remain editable because their author value is still one string.
+- Rich author runs and inline formula runs remain text-read-only because replacing them with one string would destroy run semantics. They may still move.
 - Image, table, chart, shape, SVG Graphic and formula author objects may move. Their content/data/source editors are later independent feature slices.
 - Flex Frame targets are currently withheld from the UI. The generated RenderModel flattens a Frame into a decoration plus descendants, so moving only the decoration during preview would misrepresent the committed result. The compiler still carries `targetKind: "frame"` for a later whole-subtree interaction.
 
@@ -19,7 +19,7 @@ The existing source-selection/AI-edit mode and manual-edit mode are mutually exc
 definitions/
   manualEditingTypes + localized message catalog
 functions/
-  editable-target projection, hit testing, availability, command creation, result messages
+  author-capability target projection, hit testing, availability, command creation, result messages
 orchestration/
   pointer drag/text session + submit/refresh workflow
 store/
@@ -28,7 +28,7 @@ ui/
   localization adapter
 ```
 
-The store never calls IPC and never contains geometry or conflict rules. `SlidesView` is the app-level assembly point: it supplies the current document snapshot to `submitManualEdit`, invokes `slidesApi`, and refreshes the document after commit or conflict. `SlideStage` only connects pointer events and renders the transient overlay.
+The store never calls IPC and never contains geometry or conflict rules. Generic world-coordinate traversal belongs to the sibling `renderNodeSelection` feature; manual editing contributes only its author-capability predicate and target mapping. `SlidesView` is the app-level assembly point: it supplies the current document snapshot to `submitManualEdit`, invokes `slidesApi`, and refreshes the document after commit or conflict. `SlideStage` only connects pointer events and renders the transient overlay.
 
 ## Conflict and failure behavior
 
@@ -41,9 +41,10 @@ The store never calls IPC and never contains geometry or conflict rules. `Slides
 
 ## Tests
 
-- `functions/manualEditableTargets.test.ts`: author identity, topmost hit testing, locked/rich/formula text boundaries.
+- `functions/manualEditableTargets.test.ts`: explicit author capabilities, topmost hit testing, source-span independence, locked/rich/formula text boundaries.
 - `functions/manualEditingAvailability.test.ts`: generated/ready/exact-version gate.
 - `orchestration/submitManualEdit.test.ts`: exact command snapshot, refresh behavior and unavailable snapshots.
 - `store/slidesManualEditingStore.test.ts`: synchronous feature state transitions.
 - `page/SlidesView.test.ts`: component-level command submission and post-commit refresh.
 - Backend orchestration, IPC parsing, source rewrite, CAS, draft protection and receipt tests remain in `backend/features/presentationManualEditing`, `backend/ipc` and persistence suites.
+- `smoke:preview-transitions` mounts the production `KonvaSlideStage` and verifies that a reactive manual translation reaches the content node in real Chromium, in addition to the existing persistent-paint pixel comparisons.

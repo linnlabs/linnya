@@ -95,9 +95,13 @@ function applyPreLayoutManualEdits(
       return { ...node, children: node.children.map(child => applyPreLayoutManualEdits(child, editsByKey)) };
     case 'Text': {
       const edit = node.editKey ? editsByKey.get(node.editKey) : undefined;
-      return edit?.kind === 'text' && edit.content !== undefined
-        ? { ...node, content: edit.content }
-        : node;
+      if (edit?.kind !== 'text' || edit.content === undefined) return node;
+      if (typeof node.content !== 'string') {
+        throw new FlexComposeContractError(
+          `人工编辑目标 "${node.editKey}" 不是可直接改字的纯文本作者对象。`,
+        );
+      }
+      return { ...node, content: edit.content };
     }
     case 'Shape':
     case 'Chart':

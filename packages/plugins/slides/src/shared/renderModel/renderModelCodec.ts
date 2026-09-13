@@ -7,7 +7,10 @@ import type {
 import type { Paint } from '../visual/paint';
 import { isPresetShapeName } from '../shapeGeometry';
 import { isGeneratedLayoutConstraintEvidence } from '../generatedLayoutConstraints';
-import { isSlidesAuthoringObjectRef } from '../authoringEditing';
+import {
+  isSlidesAuthoringEditProjection,
+  isSlidesAuthoringObjectRef,
+} from '../authoringEditing';
 
 const NODE_BASE_KEYS = [
   'id',
@@ -15,6 +18,7 @@ const NODE_BASE_KEYS = [
   'box',
   'editableTarget',
   'authoringRef',
+  'authoringEdit',
   'rotation',
   'opacity',
   'visible',
@@ -173,6 +177,8 @@ function hasRenderNodeBase(value: unknown): value is Record<string, unknown> {
     && isFiniteNumber(value.zIndex)
     && isOptional(value.editableTarget, isEditableTarget)
     && isOptional(value.authoringRef, isSlidesAuthoringObjectRef)
+    && isOptional(value.authoringEdit, isSlidesAuthoringEditProjection)
+    && isAuthoringEditBinding(value.authoringRef, value.authoringEdit)
     && isOptional(value.rotation, isFiniteNumber)
     && isOptional(value.opacity, isFiniteNumber)
     && isOptional(value.visible, isBoolean)
@@ -181,6 +187,23 @@ function hasRenderNodeBase(value: unknown): value is Record<string, unknown> {
     && isOptional(value.sourceSpan, isSourceSpan)
     && isOptional(value.layoutConstraintEvidence, isGeneratedLayoutConstraintEvidence)
     && isOptional(value.diagnosticsRefIds, value => isArrayOf(value, isString));
+}
+
+function isAuthoringEditBinding(authoringRef: unknown, authoringEdit: unknown): boolean {
+  if (authoringEdit === undefined) return true;
+  if (
+    !isSlidesAuthoringObjectRef(authoringRef)
+    || !isSlidesAuthoringEditProjection(authoringEdit)
+  ) {
+    return false;
+  }
+  if (authoringRef.targetKind === 'frame') {
+    return authoringEdit.unavailableReason === 'frame_members_unavailable';
+  }
+  if (authoringEdit.unavailableReason !== undefined) return false;
+  return authoringRef.targetKind === 'text'
+    ? authoringEdit.text !== undefined
+    : authoringEdit.text === undefined;
 }
 
 function hasNodeKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
