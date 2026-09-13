@@ -205,9 +205,40 @@ function isAuthoringEditBinding(authoringRef: unknown, authoringEdit: unknown): 
   ) {
     return false;
   }
-  return authoringRef.targetKind === 'text'
-    ? authoringEdit.text !== undefined
-    : authoringEdit.text === undefined;
+  const capabilities = new Set(authoringEdit.capabilities);
+  switch (authoringRef.targetKind) {
+    case 'text':
+      return authoringEdit.text !== undefined
+        && authoringEdit.fill === undefined
+        && !capabilities.has('set_fill_color')
+        && !capabilities.has('set_visual_size')
+        && !capabilities.has('delete');
+    case 'frame':
+      return authoringEdit.text === undefined
+        && authoringEdit.fill !== undefined
+        && capabilities.has('set_fill_color')
+        && capabilities.has('delete')
+        && !capabilities.has('set_visual_size');
+    case 'shape':
+      return authoringEdit.text === undefined
+        && authoringEdit.fill !== undefined
+        && capabilities.has('set_fill_color')
+        && capabilities.has('set_visual_size')
+        && !capabilities.has('delete');
+    case 'image':
+      return authoringEdit.text === undefined
+        && authoringEdit.fill === undefined
+        && capabilities.has('set_visual_size')
+        && !capabilities.has('set_fill_color')
+        && !capabilities.has('delete');
+    case 'table':
+    case 'chart':
+    case 'svgGraphic':
+    case 'formula':
+      return authoringEdit.text === undefined
+        && authoringEdit.fill === undefined
+        && authoringEdit.capabilities.length === 1;
+  }
 }
 
 function hasNodeKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {

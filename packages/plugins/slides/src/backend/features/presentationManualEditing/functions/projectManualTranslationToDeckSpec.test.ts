@@ -68,7 +68,7 @@ describe('projectManualTranslationToDeckSpec', () => {
     const fullyCompiled = compileFlexInput({
       ...sourceInput,
       manualEdits: {
-        version: 1,
+        version: 2,
         slides: [{
           slideKey: 'overview',
           targets: [{

@@ -108,6 +108,41 @@ describe('slides backend IPC contracts', () => {
       operation: { op: 'translate_by', targetKind: 'image', delta: { dx: -0.2, dy: 0.4 } },
     });
 
+    expect(parseSlidesManualEditPayload({
+      ...payload,
+      operation: {
+        op: 'set_text_style',
+        target: payload.operation.target,
+        fontSizePt: 28,
+        color: '#123456',
+      },
+    })).toMatchObject({
+      operation: { op: 'set_text_style', fontSizePt: 28, color: '#123456' },
+    });
+
+    expect(parseSlidesManualEditPayload({
+      ...payload,
+      operation: {
+        op: 'set_visual_size',
+        target: payload.operation.target,
+        targetKind: 'shape',
+        visualSize: { width: 3, height: 1.5 },
+      },
+    })).toMatchObject({
+      operation: {
+        op: 'set_visual_size', targetKind: 'shape', visualSize: { width: 3, height: 1.5 },
+      },
+    });
+
+    expect(parseSlidesManualEditPayload({
+      ...payload,
+      operation: {
+        op: 'delete_target',
+        target: payload.operation.target,
+        targetKind: 'frame',
+      },
+    })).toMatchObject({ operation: { op: 'delete_target', targetKind: 'frame' } });
+
     expect(() => parseSlidesManualEditPayload({
       ...payload,
       expectedBase: { ...payload.expectedBase, sourceHash: 'not-a-hash' },

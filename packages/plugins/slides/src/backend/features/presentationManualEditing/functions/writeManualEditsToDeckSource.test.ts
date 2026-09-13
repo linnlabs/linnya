@@ -25,7 +25,7 @@ describe('writeManualEditsToDeckSource', () => {
     });
 
     expect(result.manualEdits).toEqual({
-      version: 1,
+      version: 2,
       slides: [{
         slideKey: 'overview',
         targets: [{ kind: 'text', editKey: 'headline', content: 'Updated' }],
@@ -119,6 +119,53 @@ describe('writeManualEditsToDeckSource', () => {
       kind: 'text',
       editKey: 'headline',
       translation: { dx: 0.2, dy: 0.19999999999999998 },
+    });
+  });
+
+  it('合并 v2 样式和尺寸时保留同一目标的其他人工值', () => {
+    const moved = writeManualEditsToDeckSource(BASE_SOURCE, {
+      op: 'set_translation',
+      target: { slideKey: 'overview', editKey: 'headline' },
+      targetKind: 'text',
+      translation: { dx: 0.2, dy: -0.1 },
+    });
+    const sized = writeManualEditsToDeckSource(moved.source, {
+      op: 'set_text_style',
+      target: { slideKey: 'overview', editKey: 'headline' },
+      fontSizePt: 28,
+      color: '#123456',
+    });
+    const content = writeManualEditsToDeckSource(sized.source, {
+      op: 'set_text_content',
+      target: { slideKey: 'overview', editKey: 'headline' },
+      content: 'Final',
+    });
+
+    expect(content.manualEdits.slides[0].targets[0]).toEqual({
+      kind: 'text',
+      editKey: 'headline',
+      translation: { dx: 0.2, dy: -0.1 },
+      fontSizePt: 28,
+      color: '#123456',
+      content: 'Final',
+    });
+  });
+
+  it('删除 Frame 时清除该目标过去的样式和位移值', () => {
+    const colored = writeManualEditsToDeckSource(BASE_SOURCE, {
+      op: 'set_fill_color',
+      target: { slideKey: 'overview', editKey: 'card' },
+      targetKind: 'frame',
+      color: '#ABCDEF',
+    });
+    const removed = writeManualEditsToDeckSource(colored.source, {
+      op: 'delete_target',
+      target: { slideKey: 'overview', editKey: 'card' },
+      targetKind: 'frame',
+    });
+
+    expect(removed.manualEdits.slides[0].targets[0]).toEqual({
+      kind: 'frame', editKey: 'card', deleted: true,
     });
   });
 });

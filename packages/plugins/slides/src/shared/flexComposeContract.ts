@@ -1,7 +1,7 @@
 import type { ShapeGeometrySpec } from './shapeGeometry';
 import type { BrushArtworkIntent, BrushArtworkSourceRef } from './brushArtwork';
 import type { SlideLayout } from './deckSpec/slideSize';
-import type { SlidesManualEdits } from './authoringEditing';
+import type { SlidesManualEditsInput } from './authoringEditing';
 import type {
   SvgGraphicAuthoringSource,
   SvgGraphicFit,
@@ -546,7 +546,7 @@ export interface FlexComposeInput {
   title: string;
   layout?: SlideLayout;
   theme?: LayoutThemeInput;
-  manualEdits?: SlidesManualEdits;
+  manualEdits?: SlidesManualEditsInput;
   slides: LayoutSlideNode[];
 }
 

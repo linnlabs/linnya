@@ -4,6 +4,7 @@ export type {
 } from './definitions/authoringIdentity';
 export type {
   SlidesAuthoringEditCapability,
+  SlidesAuthoringFillEditProjection,
   SlidesAuthoringEditProjection,
   SlidesAuthoringTextEditProjection,
 } from './definitions/authoringEditProjection';
@@ -23,13 +24,19 @@ export type {
   SlidesManualAtomicEdit,
   SlidesManualAtomicEditKind,
   SlidesManualEdits,
+  SlidesManualEditsInput,
   SlidesManualEditBase,
   SlidesManualFrameEdit,
+  SlidesManualImageEdit,
+  SlidesManualShapeEdit,
   SlidesManualSlideEdits,
   SlidesManualTargetEdit,
   SlidesManualTargetKind,
   SlidesManualTextEdit,
   SlidesManualTranslation,
+  SlidesManualTranslationOnlyEdit,
+  SlidesManualTranslationOnlyEditKind,
+  SlidesManualVisualSize,
 } from './definitions/manualEdits';
 export {
   buildSlidesAuthoringRenderNodeId,

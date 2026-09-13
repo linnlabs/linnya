@@ -4,8 +4,10 @@ import { isSlidesAuthoringEditProjection } from './authoringEditProjection';
 describe('authoring edit projection', () => {
   it('accepts explicit plain text authoring facts independently of render runs', () => {
     expect(isSlidesAuthoringEditProjection({
-      capabilities: ['translate', 'set_text_content'],
-      text: { kind: 'plain_text', content: '增长 2026\n下一行' },
+      capabilities: ['translate', 'set_text_content', 'set_text_style'],
+      text: {
+        kind: 'plain_text', content: '增长 2026\n下一行', fontSizePt: 24, color: '#123456',
+      },
     })).toBe(true);
   });
 
@@ -15,14 +17,15 @@ describe('authoring edit projection', () => {
       text: { kind: 'rich_text' },
     })).toBe(true);
     expect(isSlidesAuthoringEditProjection({
-      capabilities: ['translate', 'set_text_content'],
+      capabilities: ['translate', 'set_text_content', 'set_text_style'],
       text: { kind: 'rich_text' },
     })).toBe(false);
   });
 
   it('accepts frame translation as an explicit authoring capability', () => {
     expect(isSlidesAuthoringEditProjection({
-      capabilities: ['translate'],
+      capabilities: ['translate', 'set_fill_color', 'delete'],
+      fill: { kind: 'solid', color: '#EEEEEE' },
     })).toBe(true);
   });
 

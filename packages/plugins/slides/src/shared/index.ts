@@ -255,6 +255,7 @@ export {
 export type {
   SlidesAuthoringEditRef,
   SlidesAuthoringEditCapability,
+  SlidesAuthoringFillEditProjection,
   SlidesAuthoringEditProjection,
   SlidesAuthoringObjectRef,
   SlidesAuthoringTextEditProjection,
@@ -270,14 +271,20 @@ export type {
   SlidesManualAtomicEdit,
   SlidesManualAtomicEditKind,
   SlidesManualEdits,
+  SlidesManualEditsInput,
   SlidesManualEditBase,
   SlidesManualEditsParseResult,
   SlidesManualFrameEdit,
+  SlidesManualImageEdit,
+  SlidesManualShapeEdit,
   SlidesManualSlideEdits,
   SlidesManualTargetEdit,
   SlidesManualTargetKind,
   SlidesManualTextEdit,
   SlidesManualTranslation,
+  SlidesManualTranslationOnlyEdit,
+  SlidesManualTranslationOnlyEditKind,
+  SlidesManualVisualSize,
 } from './authoringEditing';
 export type {
   AbsolutePositionBox,

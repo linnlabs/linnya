@@ -179,6 +179,36 @@ describe('PresentationManualEditingRuntime', () => {
     }));
   });
 
+  it('样式和结构操作保持完整编译路径', async () => {
+    const operations: readonly SlidesManualEditCommand['operation'][] = [
+      {
+        op: 'set_text_style',
+        target: { slideKey: 'overview', editKey: 'headline' },
+        fontSizePt: 30,
+        color: '#2563EB',
+      },
+      {
+        op: 'delete_target',
+        target: { slideKey: 'overview', editKey: 'card' },
+        targetKind: 'frame',
+      },
+    ];
+
+    for (const operation of operations) {
+      const { runtime, buildFromSource, buildFromProjectedDeckSpec, traceRecord } = makeRuntime();
+      await expect(runtime.submit({ ...COMMAND, operation })).resolves.toMatchObject({
+        status: 'committed',
+        revision: 2,
+      });
+      expect(buildFromSource).toHaveBeenCalledOnce();
+      expect(buildFromProjectedDeckSpec).not.toHaveBeenCalled();
+      expect(traceRecord).toHaveBeenCalledWith(expect.objectContaining({
+        stage: 'semantic_build_started',
+        path: 'full_compile',
+      }));
+    }
+  });
+
   it('同一 command 与 payload 重试时返回原 revision，且不重复构建', async () => {
     const { runtime, buildFromSource } = makeRuntime({
       receipt: {

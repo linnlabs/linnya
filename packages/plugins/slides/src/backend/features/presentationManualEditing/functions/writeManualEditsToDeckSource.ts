@@ -68,7 +68,7 @@ export function writeManualEditsToDeckSource(
     throw new SlidesManualEditSourceError('manual_edits_invalid', 'compose.manualEdits 不能重复声明。');
   }
 
-  let current: SlidesManualEdits = { version: 1, slides: [] };
+  let current: SlidesManualEdits = { version: 2, slides: [] };
   const manualProperty = manualProperties[0];
   if (manualProperty) {
     if (!typescript.isPropertyAssignment(manualProperty)) {
@@ -137,55 +137,143 @@ function applyOperation(
   const slides = slideIndex === -1
     ? [...current.slides, nextSlide]
     : current.slides.map((entry, index) => index === slideIndex ? nextSlide : entry);
-  return { version: 1, slides };
+  return { version: 2, slides };
 }
 
 function applyTargetOperation(
   existing: SlidesManualTargetEdit | undefined,
   operation: SlidesManualEditOperation,
 ): SlidesManualTargetEdit {
-  if (operation.op === 'set_text_content') {
-    if (existing && existing.kind !== 'text') {
-      throw new SlidesManualEditSourceError(
-        'operation_invalid',
-        `目标 ${operation.target.slideKey}/${operation.target.editKey} 已记录为 ${existing.kind}。`,
-      );
+  if (operation.op === 'set_text_content' || operation.op === 'set_text_style') {
+    assertExistingKind(existing, 'text', operation);
+    const text = existing?.kind === 'text' ? existing : undefined;
+    return operation.op === 'set_text_content'
+      ? {
+          ...text,
+          kind: 'text',
+          editKey: operation.target.editKey,
+          content: operation.content,
+        }
+      : {
+          ...text,
+          kind: 'text',
+          editKey: operation.target.editKey,
+          ...(operation.fontSizePt !== undefined ? { fontSizePt: operation.fontSizePt } : {}),
+          ...(operation.color !== undefined ? { color: operation.color } : {}),
+        };
+  }
+
+  if (operation.op === 'set_fill_color') {
+    assertExistingKind(existing, operation.targetKind, operation);
+    if (existing?.kind === 'frame' && existing.deleted === true) {
+      throw deletedTargetError(operation);
     }
+    if (operation.targetKind === 'frame') {
+      const frame = existing?.kind === 'frame' ? existing : undefined;
+      return {
+        ...frame,
+        kind: 'frame',
+        editKey: operation.target.editKey,
+        backgroundColor: operation.color,
+      };
+    }
+    const shape = existing?.kind === 'shape' ? existing : undefined;
     return {
-      kind: 'text',
+      ...shape,
+      kind: 'shape',
       editKey: operation.target.editKey,
-      content: operation.content,
-      ...(existing?.translation ? { translation: existing.translation } : {}),
+      fillColor: operation.color,
     };
   }
 
+  if (operation.op === 'set_visual_size') {
+    assertExistingKind(existing, operation.targetKind, operation);
+    if (operation.targetKind === 'shape') {
+      const shape = existing?.kind === 'shape' ? existing : undefined;
+      return {
+        ...shape,
+        kind: 'shape',
+        editKey: operation.target.editKey,
+        visualSize: operation.visualSize,
+      };
+    }
+    const image = existing?.kind === 'image' ? existing : undefined;
+    return {
+      ...image,
+      kind: 'image',
+      editKey: operation.target.editKey,
+      visualSize: operation.visualSize,
+    };
+  }
+
+  if (operation.op === 'delete_target') {
+    assertExistingKind(existing, 'frame', operation);
+    return { kind: 'frame', editKey: operation.target.editKey, deleted: true };
+  }
+
+  assertExistingKind(existing, operation.targetKind, operation);
+  if (existing?.kind === 'frame' && existing.deleted === true) throw deletedTargetError(operation);
+  const previousTranslation = existing && 'translation' in existing
+    ? existing.translation
+    : undefined;
   const translation = operation.op === 'translate_by'
     ? {
-        dx: (existing?.translation?.dx ?? 0) + operation.delta.dx,
-        dy: (existing?.translation?.dy ?? 0) + operation.delta.dy,
+        dx: (previousTranslation?.dx ?? 0) + operation.delta.dx,
+        dy: (previousTranslation?.dy ?? 0) + operation.delta.dy,
       }
     : operation.translation;
-
-  if (existing && existing.kind !== operation.targetKind) {
-    throw new SlidesManualEditSourceError(
-      'operation_invalid',
-      `目标 ${operation.target.slideKey}/${operation.target.editKey} 已记录为 ${existing.kind}。`,
-    );
-  }
   if (operation.targetKind === 'text') {
     return {
+      ...(existing?.kind === 'text' ? existing : {}),
       kind: 'text',
       editKey: operation.target.editKey,
-      ...(existing?.kind === 'text' && existing.content !== undefined
-        ? { content: existing.content }
-        : {}),
       translation,
     };
   }
   if (operation.targetKind === 'frame') {
-    return { kind: 'frame', editKey: operation.target.editKey, translation };
+    return {
+      ...(existing?.kind === 'frame' ? existing : {}),
+      kind: 'frame',
+      editKey: operation.target.editKey,
+      translation,
+    };
+  }
+  if (operation.targetKind === 'shape') {
+    return {
+      ...(existing?.kind === 'shape' ? existing : {}),
+      kind: 'shape',
+      editKey: operation.target.editKey,
+      translation,
+    };
+  }
+  if (operation.targetKind === 'image') {
+    return {
+      ...(existing?.kind === 'image' ? existing : {}),
+      kind: 'image',
+      editKey: operation.target.editKey,
+      translation,
+    };
   }
   return { kind: operation.targetKind, editKey: operation.target.editKey, translation };
+}
+
+function assertExistingKind(
+  existing: SlidesManualTargetEdit | undefined,
+  expectedKind: SlidesManualTargetEdit['kind'],
+  operation: SlidesManualEditOperation,
+): void {
+  if (!existing || existing.kind === expectedKind) return;
+  throw new SlidesManualEditSourceError(
+    'operation_invalid',
+    `目标 ${operation.target.slideKey}/${operation.target.editKey} 已记录为 ${existing.kind}。`,
+  );
+}
+
+function deletedTargetError(operation: SlidesManualEditOperation): SlidesManualEditSourceError {
+  return new SlidesManualEditSourceError(
+    'operation_invalid',
+    `目标 ${operation.target.slideKey}/${operation.target.editKey} 已删除。`,
+  );
 }
 
 function validateOperation(operation: SlidesManualEditOperation): void {
@@ -195,16 +283,58 @@ function validateOperation(operation: SlidesManualEditOperation): void {
   ) {
     throw new SlidesManualEditSourceError('operation_invalid', '人工编辑目标包含无效的作者 key。');
   }
-  if (operation.op === 'set_text_content') {
-    if (typeof operation.content !== 'string') {
-      throw new SlidesManualEditSourceError('operation_invalid', '文本人工值必须是字符串。');
+  switch (operation.op) {
+    case 'set_text_content':
+      if (typeof operation.content !== 'string') {
+        throw new SlidesManualEditSourceError('operation_invalid', '文本人工值必须是字符串。');
+      }
+      return;
+    case 'set_text_style':
+      if (operation.fontSizePt === undefined && operation.color === undefined) {
+        throw new SlidesManualEditSourceError('operation_invalid', '文本样式操作至少需要一个值。');
+      }
+      if (operation.fontSizePt !== undefined && !isFontSize(operation.fontSizePt)) {
+        throw new SlidesManualEditSourceError('operation_invalid', '文本字号必须是 1–400 pt 内的有限数字。');
+      }
+      if (operation.color !== undefined && !isHexColor(operation.color)) {
+        throw new SlidesManualEditSourceError('operation_invalid', '文本颜色必须是 #RRGGBB。');
+      }
+      return;
+    case 'set_fill_color':
+      if (!isHexColor(operation.color)) {
+        throw new SlidesManualEditSourceError('operation_invalid', '填充颜色必须是 #RRGGBB。');
+      }
+      return;
+    case 'set_visual_size':
+      if (
+        !isPositiveFiniteNumber(operation.visualSize.width)
+        || !isPositiveFiniteNumber(operation.visualSize.height)
+      ) {
+        throw new SlidesManualEditSourceError('operation_invalid', '视觉尺寸必须是有限正数。');
+      }
+      return;
+    case 'delete_target':
+      return;
+    case 'set_translation':
+    case 'translate_by': {
+      const translation = operation.op === 'translate_by' ? operation.delta : operation.translation;
+      if (!Number.isFinite(translation.dx) || !Number.isFinite(translation.dy)) {
+        throw new SlidesManualEditSourceError('operation_invalid', '人工位移必须是有限数字。');
+      }
     }
-    return;
   }
-  const translation = operation.op === 'translate_by' ? operation.delta : operation.translation;
-  if (!Number.isFinite(translation.dx) || !Number.isFinite(translation.dy)) {
-    throw new SlidesManualEditSourceError('operation_invalid', '人工位移必须是有限数字。');
-  }
+}
+
+function isFontSize(value: number): boolean {
+  return Number.isFinite(value) && value >= 1 && value <= 400;
+}
+
+function isPositiveFiniteNumber(value: number): boolean {
+  return Number.isFinite(value) && value > 0;
+}
+
+function isHexColor(value: string): boolean {
+  return /^#[0-9A-Fa-f]{6}$/u.test(value);
 }
 
 function replaceManualEditsInitializer(

@@ -14,7 +14,7 @@ describe('Slides manual edits codec', () => {
       }],
     })).toEqual({
       value: {
-        version: 1,
+        version: 2,
         slides: [{
           slideKey: 'overview',
           targets: [
@@ -29,6 +29,66 @@ describe('Slides manual edits codec', () => {
         }],
       },
     });
+  });
+
+  it('接纳 v2 文本样式、填充、视觉尺寸和 Frame 子树删除', () => {
+    expect(parseSlidesManualEdits({
+      version: 2,
+      slides: [{
+        slideKey: 'overview',
+        targets: [
+          { kind: 'text', editKey: 'headline', fontSizePt: 28, color: '#123456' },
+          { kind: 'shape', editKey: 'accent', fillColor: '#ABCDEF', visualSize: { width: 3, height: 1.5 } },
+          { kind: 'image', editKey: 'hero', visualSize: { width: 4, height: 2 } },
+          { kind: 'frame', editKey: 'card', deleted: true },
+        ],
+      }],
+    })).toEqual({
+      value: {
+        version: 2,
+        slides: [{
+          slideKey: 'overview',
+          targets: [
+            {
+              kind: 'text', editKey: 'headline', fontSizePt: 28, color: '#123456',
+              content: undefined, translation: undefined,
+            },
+            {
+              kind: 'shape', editKey: 'accent', fillColor: '#ABCDEF',
+              visualSize: { width: 3, height: 1.5 }, translation: undefined,
+            },
+            {
+              kind: 'image', editKey: 'hero', visualSize: { width: 4, height: 2 },
+              translation: undefined,
+            },
+            { kind: 'frame', editKey: 'card', deleted: true },
+          ],
+        }],
+      },
+    });
+  });
+
+  it('拒绝越界样式、非正尺寸和带残留值的 Frame 删除', () => {
+    expect(parseSlidesManualEdits({
+      version: 2,
+      slides: [{ slideKey: 'overview', targets: [
+        { kind: 'text', editKey: 'headline', fontSizePt: 0 },
+      ] }],
+    })).toEqual({ error: 'manualEdits.slides[0].targets[0].fontSizePt 必须是 1–400 pt 内的有限数字。' });
+
+    expect(parseSlidesManualEdits({
+      version: 2,
+      slides: [{ slideKey: 'overview', targets: [
+        { kind: 'image', editKey: 'hero', visualSize: { width: 0, height: 2 } },
+      ] }],
+    })).toEqual({ error: 'manualEdits.slides[0].targets[0].visualSize.width / height 必须是有限正数。' });
+
+    expect(parseSlidesManualEdits({
+      version: 2,
+      slides: [{ slideKey: 'overview', targets: [
+        { kind: 'frame', editKey: 'card', deleted: true, translation: { dx: 1, dy: 0 } },
+      ] }],
+    })).toEqual({ error: 'manualEdits.slides[0].targets[0] 删除 Frame 时不能同时保留其他人工值。' });
   });
 
   it('拒绝重复目标、未知字段与空操作', () => {
@@ -75,4 +135,3 @@ describe('Slides manual edits codec', () => {
     })).toEqual({ error: 'manualEdits.slides 中 slideKey "overview" 重复。' });
   });
 });
-

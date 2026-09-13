@@ -94,7 +94,7 @@ describe('renderModelCodec authoring edit projection', () => {
         ...baseTextNode,
         authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'text' },
         authoringEdit: {
-          capabilities: ['translate', 'set_text_content'],
+          capabilities: ['translate', 'set_text_content', 'set_text_style'],
           text: { kind: 'plain_text', content: 'Hello' },
         },
       }],
@@ -106,7 +106,7 @@ describe('renderModelCodec authoring edit projection', () => {
       ...baseTextNode,
       authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'text' },
       authoringEdit: {
-        capabilities: ['translate', 'set_text_content'],
+        capabilities: ['translate', 'set_text_content', 'set_text_style'],
         text: { kind: 'plain_text', content: 'Hello' },
       },
     };

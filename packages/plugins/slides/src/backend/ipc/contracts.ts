@@ -259,7 +259,80 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
       },
     };
   }
+  if (payload.operation.op === 'set_text_style') {
+    assertOnlyKeys(payload.operation, ['op', 'target', 'fontSizePt', 'color'], 'operation');
+    const fontSizePt = payload.operation.fontSizePt === undefined
+      ? undefined
+      : readFiniteNumber(payload.operation.fontSizePt, 'operation.fontSizePt');
+    if (fontSizePt !== undefined && (fontSizePt < 1 || fontSizePt > 400)) {
+      throw new Error('operation.fontSizePt must be between 1 and 400.');
+    }
+    const color = payload.operation.color === undefined
+      ? undefined
+      : readHexColor(payload.operation.color, 'operation.color');
+    if (fontSizePt === undefined && color === undefined) {
+      throw new Error('operation must include fontSizePt or color.');
+    }
+    return {
+      ...base,
+      operation: {
+        op: 'set_text_style',
+        target,
+        ...(fontSizePt !== undefined ? { fontSizePt } : {}),
+        ...(color !== undefined ? { color } : {}),
+      },
+    };
+  }
+  if (payload.operation.op === 'set_fill_color') {
+    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'color'], 'operation');
+    const targetKind = readManualTargetKind(payload.operation.targetKind);
+    if (targetKind !== 'frame' && targetKind !== 'shape') {
+      throw new Error('operation.targetKind must be frame or shape.');
+    }
+    return {
+      ...base,
+      operation: {
+        op: 'set_fill_color',
+        target,
+        targetKind,
+        color: readHexColor(payload.operation.color, 'operation.color'),
+      },
+    };
+  }
+  if (payload.operation.op === 'set_visual_size') {
+    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'visualSize'], 'operation');
+    const targetKind = readManualTargetKind(payload.operation.targetKind);
+    if (targetKind !== 'shape' && targetKind !== 'image') {
+      throw new Error('operation.targetKind must be shape or image.');
+    }
+    if (!isRecord(payload.operation.visualSize)) {
+      throw new Error('operation.visualSize must be an object.');
+    }
+    assertOnlyKeys(payload.operation.visualSize, ['width', 'height'], 'operation.visualSize');
+    const width = readFiniteNumber(payload.operation.visualSize.width, 'operation.visualSize.width');
+    const height = readFiniteNumber(payload.operation.visualSize.height, 'operation.visualSize.height');
+    if (width <= 0 || height <= 0) {
+      throw new Error('operation.visualSize width and height must be positive.');
+    }
+    return {
+      ...base,
+      operation: { op: 'set_visual_size', target, targetKind, visualSize: { width, height } },
+    };
+  }
+  if (payload.operation.op === 'delete_target') {
+    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind'], 'operation');
+    const targetKind = readManualTargetKind(payload.operation.targetKind);
+    if (targetKind !== 'frame') throw new Error('operation.targetKind must be frame.');
+    return { ...base, operation: { op: 'delete_target', target, targetKind } };
+  }
   throw new Error('operation.op is invalid.');
+}
+
+function readHexColor(value: unknown, path: string): string {
+  if (typeof value !== 'string' || !/^#[0-9A-Fa-f]{6}$/u.test(value)) {
+    throw new Error(`${path} must be #RRGGBB.`);
+  }
+  return value;
 }
 
 export function readSlidesIpcErrorMessage(error: unknown): string {

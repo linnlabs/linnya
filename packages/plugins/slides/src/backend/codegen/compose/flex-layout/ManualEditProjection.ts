@@ -57,7 +57,7 @@ export function prepareSlideManualEditProjection(
   return {
     slideNode: {
       ...slideNode,
-      children: slideNode.children.map(child => applyPreLayoutManualEdits(child, editsByKey)),
+      children: applyPreLayoutManualEditsToChildren(slideNode.children, editsByKey),
     },
     editsByKey,
   };
@@ -70,7 +70,11 @@ export function translateManualLayoutResult(
   inherited = { dx: 0, dy: 0 },
 ): LayoutResult {
   const editKey = readLayoutEditKey(result.node);
-  const ownTranslation = editKey ? editsByKey.get(editKey)?.translation : undefined;
+  const ownEdit = editKey ? editsByKey.get(editKey) : undefined;
+  const ownTranslation = ownEdit && 'translation' in ownEdit ? ownEdit.translation : undefined;
+  const ownVisualSize = ownEdit?.kind === 'shape' || ownEdit?.kind === 'image'
+    ? ownEdit.visualSize
+    : undefined;
   const translation = {
     dx: inherited.dx + (ownTranslation?.dx ?? 0),
     dy: inherited.dy + (ownTranslation?.dy ?? 0),
@@ -81,6 +85,9 @@ export function translateManualLayoutResult(
       ...result.box,
       x: result.box.x + translation.dx,
       y: result.box.y + translation.dy,
+      ...(ownVisualSize
+        ? { w: ownVisualSize.width, h: ownVisualSize.height }
+        : {}),
     },
     children: result.children.map(child => translateManualLayoutResult(child, editsByKey, translation)),
   };
@@ -89,21 +96,40 @@ export function translateManualLayoutResult(
 function applyPreLayoutManualEdits(
   node: LayoutNode,
   editsByKey: ReadonlyMap<string, SlidesManualTargetEdit>,
-): LayoutNode {
+): LayoutNode | null {
   switch (node._type) {
-    case 'View':
-      return { ...node, children: node.children.map(child => applyPreLayoutManualEdits(child, editsByKey)) };
+    case 'View': {
+      const edit = node.editKey ? editsByKey.get(node.editKey) : undefined;
+      if (edit?.kind === 'frame' && edit.deleted === true) return null;
+      return {
+        ...node,
+        ...(edit?.kind === 'frame' && edit.backgroundColor
+          ? { backgroundColor: edit.backgroundColor }
+          : {}),
+        children: applyPreLayoutManualEditsToChildren(node.children, editsByKey),
+      };
+    }
     case 'Text': {
       const edit = node.editKey ? editsByKey.get(node.editKey) : undefined;
-      if (edit?.kind !== 'text' || edit.content === undefined) return node;
-      if (typeof node.content !== 'string') {
+      if (edit?.kind !== 'text') return node;
+      if (edit.content !== undefined && typeof node.content !== 'string') {
         throw new FlexComposeContractError(
           `人工编辑目标 "${node.editKey}" 不是可直接改字的纯文本作者对象。`,
         );
       }
-      return { ...node, content: edit.content };
+      return {
+        ...node,
+        ...(edit.content !== undefined ? { content: edit.content } : {}),
+        ...(edit.fontSizePt !== undefined ? { fontSize: edit.fontSizePt } : {}),
+        ...(edit.color !== undefined ? { color: edit.color } : {}),
+      };
     }
-    case 'Shape':
+    case 'Shape': {
+      const edit = node.editKey ? editsByKey.get(node.editKey) : undefined;
+      return edit?.kind === 'shape' && edit.fillColor
+        ? { ...node, fill: edit.fillColor }
+        : node;
+    }
     case 'Chart':
     case 'Table':
     case 'Image':
@@ -114,9 +140,19 @@ function applyPreLayoutManualEdits(
     case 'Slide':
       return {
         ...node,
-        children: node.children.map(child => applyPreLayoutManualEdits(child, editsByKey)),
+        children: applyPreLayoutManualEditsToChildren(node.children, editsByKey),
       };
   }
+}
+
+function applyPreLayoutManualEditsToChildren(
+  children: readonly LayoutNode[],
+  editsByKey: ReadonlyMap<string, SlidesManualTargetEdit>,
+): LayoutNode[] {
+  return children.flatMap((child) => {
+    const next = applyPreLayoutManualEdits(child, editsByKey);
+    return next ? [next] : [];
+  });
 }
 
 export function resolveManualTargetKind(node: LayoutNode): SlidesManualTargetKind {

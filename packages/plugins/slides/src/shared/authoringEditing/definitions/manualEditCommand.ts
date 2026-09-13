@@ -1,5 +1,9 @@
 import type { SlidesAuthoringEditRef } from './authoringIdentity';
-import type { SlidesManualTargetKind, SlidesManualTranslation } from './manualEdits';
+import type {
+  SlidesManualTargetKind,
+  SlidesManualTranslation,
+  SlidesManualVisualSize,
+} from './manualEdits';
 
 export interface SlidesManualEditExpectedBase {
   readonly revisionId: string;
@@ -24,6 +28,29 @@ export type SlidesManualEditOperation =
       readonly target: SlidesAuthoringEditRef;
       readonly targetKind: SlidesManualTargetKind;
       readonly delta: SlidesManualTranslation;
+    }
+  | {
+      readonly op: 'set_text_style';
+      readonly target: SlidesAuthoringEditRef;
+      readonly fontSizePt?: number;
+      readonly color?: string;
+    }
+  | {
+      readonly op: 'set_fill_color';
+      readonly target: SlidesAuthoringEditRef;
+      readonly targetKind: 'frame' | 'shape';
+      readonly color: string;
+    }
+  | {
+      readonly op: 'set_visual_size';
+      readonly target: SlidesAuthoringEditRef;
+      readonly targetKind: 'shape' | 'image';
+      readonly visualSize: SlidesManualVisualSize;
+    }
+  | {
+      readonly op: 'delete_target';
+      readonly target: SlidesAuthoringEditRef;
+      readonly targetKind: 'frame';
     };
 
 export interface SlidesManualEditCommand {
