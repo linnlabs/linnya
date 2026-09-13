@@ -43,7 +43,9 @@ PPTX 物化前的数据库、Workspace、图片授权、本地图片读取与 SV
 
 Host 发送前发现的 materialization DTO admission 失败属于确定性的 `contract` 错误，并投影为 `slides.materialization.contract_invalid`。它表示内部 DeckSpec 与 Worker 合同失配，Agent 不应重试或改稿。Worker 内的 `MathFormulaError` 通过独立 `formula` failure 保留稳定 code：作者可修正的 LaTeX、宽度和行高问题只失败当前请求且继续使用健康 Worker；公式投影或 PPTX patch 缺陷则交由 build-failure 策略阻止随机改稿。只有 Worker 启动、协议响应、超时、未知执行异常或 crash 才属于 `build_executor_unavailable`。这三类语义会直接影响 Agent 的恢复动作，禁止重新合并。
 
-发布制品固定为 `dist/backend/presentation-build-worker.cjs`。backend build 会用真实 Worker 验证合法/非法 TypeScript、从发布目录加载 Yoga 完成一次 Flex 编译，先确认不支持的 LaTeX 返回稳定公式 code，再实际生成、解压一份包含 block/inline 原生公式的 PPTX，确认同一 Worker 可继续工作、OMML 存在且 placeholder 已清零；同时把 Worker 限制在 1.6 MiB、App Server 入口限制在 2.25 MiB、完整 backend 限制在 13.5 MiB。metafile 门禁还会拒绝入口引用 PptxGenJS、Pptx Automizer、DeckAssembler、Structured/FreeformCompiler、PatchCompiler 或 materialize 函数，防止公共 barrel 把 Worker 私有构建图重新卷入启动制品。生产缺少 Worker、Yoga helper、PptxGenJS/JSZip 或 runtime 制品时 fail closed，不回退到 App Server 内执行。
+发布制品固定为 `dist/backend/presentation-build-worker.cjs`。backend build 会用真实 Worker 验证合法/非法 TypeScript、从发布目录加载 Yoga 完成一次 Flex 编译，先确认不支持的 LaTeX 返回稳定公式 code，再实际生成、解压一份包含 block/inline 原生公式的 PPTX，确认同一 Worker 可继续工作、OMML 存在且 placeholder 已清零；同时把 Worker 限制在 1.6 MiB、App Server 入口限制在 2.1 MiB、完整 backend 限制在 13.5 MiB。metafile 门禁还会拒绝入口引用 PptxGenJS、Pptx Automizer、DeckAssembler、Structured/FreeformCompiler、PatchCompiler 或 materialize 函数，防止公共 barrel 把 Worker 私有构建图重新卷入启动制品。生产缺少 Worker、Yoga helper、PptxGenJS/JSZip 或 runtime 制品时 fail closed，不回退到 App Server 内执行。
+
+backend 的四个 CJS entry 统一启用 esbuild syntax minification，只约简等价表达式；identifier 和 whitespace minification 保持关闭，继续保留运行时标识符与行结构。当前 App Server 入口为 1.83 MiB，build Worker 为 1.43 MiB。不能为追求体积打开 identifier minification，除非先证明错误分类、日志和第三方运行时不依赖名称语义。
 
 Yoga 运行时从 `yoga-layout/load` 出发递归收集相对 ESM import，只发布实际加载的 JS/WASM-base64 模块、最小 package export 与 runtime manifest。构建门禁会重新计算闭包并要求制品文件集合完全相等；C++/TypeScript 源码、声明文件和 sourcemap 不进入生产 artifact。升级 Yoga 时由模块引用关系自动调整复制集合，不能恢复整包目录复制。
 

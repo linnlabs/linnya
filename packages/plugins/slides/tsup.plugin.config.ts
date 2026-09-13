@@ -108,6 +108,8 @@ export default defineConfig({
   clean: true,
   splitting: false,
   treeshake: true,
+  // 保留标识符和行结构供运行时诊断，只约简可证明等价的表达式。
+  minifySyntax: true,
   metafile: true,
   esbuildPlugins: [
     externalMathFormulaRuntimePlugin(),
