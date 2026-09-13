@@ -31,7 +31,10 @@ import type {
 } from './types.js';
 import type { PresentationSvgGraphicOwnerPort } from '../features/presentationSvgGraphicOwnership';
 import type { PresentationBuildExecutionPort } from '../features/presentationBuildExecution';
-import { PresentationManualEditingRuntime } from '../features/presentationManualEditing';
+import {
+  PresentationManualEditingRuntime,
+  type PresentationManualEditTracePort,
+} from '../features/presentationManualEditing';
 
 export interface CodegenDeckBuilderPort {
   buildNewPresentation(input: CodegenDeckCreateInput): Promise<CodegenDeckCreateResult>;
@@ -57,6 +60,7 @@ export interface PresentationCodegenRuntimeDeps {
   readonly failureLogger?: CodegenDeckBuilderFailureLogger;
   readonly svgGraphicOwner?: PresentationSvgGraphicOwnerPort;
   readonly buildExecution: PresentationBuildExecutionPort;
+  readonly manualEditTrace?: PresentationManualEditTracePort;
 }
 
 /**
@@ -120,6 +124,7 @@ export class PresentationCodegenRuntime {
         presentationRepo: this.deps.presentationRepo,
         ...(this.deps.draftRepo ? { draftRepo: this.deps.draftRepo } : {}),
         builder: this.getRawDeckBuilder(),
+        ...(this.deps.manualEditTrace ? { trace: this.deps.manualEditTrace } : {}),
         ...(this.deps.revisionScope ? { revisionScope: this.deps.revisionScope } : {}),
       });
     }

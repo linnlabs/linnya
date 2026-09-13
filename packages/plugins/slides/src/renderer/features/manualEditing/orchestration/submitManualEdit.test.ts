@@ -29,11 +29,21 @@ describe('submitManualEdit', () => {
       revision: 4,
     }));
     const refreshDocument = vi.fn(async () => undefined);
+    const trace = {
+      begin: vi.fn(),
+      recordTransportRetry: vi.fn(),
+      recordResponse: vi.fn(),
+      recordTransportFailure: vi.fn(),
+      recordRefreshCompleted: vi.fn(),
+      recordPresented: vi.fn(),
+      clear: vi.fn(),
+    };
 
     await expect(submitManualEdit(input, {
       createCommandId: () => 'c8356051-a487-4cd3-863f-47db0079f991',
       submit,
       refreshDocument,
+      trace,
     })).resolves.toMatchObject({ status: 'committed', revision: 4 });
     expect(submit).toHaveBeenCalledWith({
       commandId: 'c8356051-a487-4cd3-863f-47db0079f991',
@@ -46,6 +56,11 @@ describe('submitManualEdit', () => {
       operation: input.operation,
     });
     expect(refreshDocument).toHaveBeenCalledWith('deck-1', 4);
+    expect(trace.begin).toHaveBeenCalledWith(submit.mock.calls[0]?.[0]);
+    expect(trace.recordResponse).toHaveBeenCalledWith(expect.objectContaining({ revision: 4 }));
+    expect(trace.recordRefreshCompleted).toHaveBeenCalledWith(
+      'c8356051-a487-4cd3-863f-47db0079f991',
+    );
   });
 
   it('does not submit when the displayed model is behind the build snapshot', async () => {

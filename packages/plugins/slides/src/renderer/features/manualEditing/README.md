@@ -51,3 +51,13 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 - `page/SlidesView.test.ts`: component-level command submission and post-commit refresh.
 - Backend orchestration, IPC parsing, source rewrite, CAS, draft protection and receipt tests remain in `backend/features/presentationManualEditing`, `backend/ipc` and persistence suites.
 - `smoke:preview-transitions` mounts the production `KonvaSlideStage` and verifies that a reactive manual translation reaches the content node in real Chromium, in addition to the existing persistent-paint pixel comparisons.
+
+## Performance trace
+
+Each accepted command uses its UUID as the Renderer/Backend correlation ID. When
+`localStorage['linnya.slides.debug']` is set to `verbose`, the Renderer emits structured
+`Slides/ManualEditTrace` events for request start, retry, response, refresh completion and the first
+browser animation frame after the complete target revision is installed. The terminal
+`frame_presented` event includes input-to-response, response-to-refresh, refresh-to-frame and total
+input-to-frame timings. Backend `slides_manual_edit.backend_trace` events use the same command ID and
+identify `projected_translation` versus `full_compile` without logging source or edited content.

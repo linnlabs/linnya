@@ -54,6 +54,7 @@ import { PptCoordinator } from './PptCoordinator';
 import type { PluginConversationFilePathResolverPort } from '@linnya/plugin-host-contract/backend/workspaceRuntime';
 import type { PresentationBuildExecutionPort } from '../features/presentationBuildExecution';
 import { createPresentationBuildDeckAssembler } from '../features/presentationBuildExecution';
+import { createPresentationManualEditTraceLogger } from '../features/presentationManualEditing';
 
 export function createPptCoordinator(
   db: Database,
@@ -68,6 +69,9 @@ export function createPptCoordinator(
 ): PptCoordinator {
   const deckAssemblerLogger = new Logger('DeckAssembler');
   const codegenFailureLogger = new Logger('SlidesCodegen');
+  const manualEditTraceLogger = createPresentationManualEditTraceLogger(
+    new Logger('SlidesManualEditTrace'),
+  );
   const workspaceService = createWorkspaceService(db);
   const revisionScope = new PresentationRevisionScope();
   const historyRepository = new PresentationHistoryRepository(db);
@@ -169,6 +173,7 @@ export function createPptCoordinator(
       history,
       svgGraphicRuntime,
       buildExecution: options.buildExecution,
+      manualEditTrace: manualEditTraceLogger,
     }
   );
 }

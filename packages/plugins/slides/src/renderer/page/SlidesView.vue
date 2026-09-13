@@ -27,6 +27,7 @@ import type { SourceSelectionEditSubmitPayload } from '../features/sourceSelecti
 import { usePresentationExportStore } from '../features/presentationExport';
 import {
   readManualEditErrorMessage,
+  manualEditPresentationTrace,
   submitManualEdit,
   useManualEditingLocalization,
   useSlidesManualEditingStore,
@@ -78,6 +79,7 @@ async function handleManualEditSubmit(operation: SlidesManualEditOperation): Pro
       createCommandId: () => crypto.randomUUID(),
       submit: command => slidesApi.submitManualEdit(command),
       refreshDocument: (nodeId, expectedVersion) => slidesStore.refreshDeck(nodeId, expectedVersion),
+      trace: manualEditPresentationTrace,
     });
     if (currentDeckId.value !== documentId) return;
     if (outcome.status === 'committed') {
@@ -114,6 +116,7 @@ watch(currentDeckId, () => {
   slidesSessionStore.$reset();
   presentationExportStore.$reset();
   manualEditingStore.$reset();
+  manualEditPresentationTrace.clear();
   lastRenderDeckId = null;
   pendingInitialPreview = false;
   slidesRenderStore.clearRenderModel();

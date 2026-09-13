@@ -24,3 +24,18 @@ The repository marks these revisions with no current PPTX artifact and inherits 
 Expected validation, build and conflict outcomes return the shared `SlidesManualEditCommandResult` union; unexpected infrastructure failures still propagate to the IPC envelope. `CodegenDeckBuilder` preserves stale-base, stale-source, draft and command-receipt exceptions raised by the final repository transaction, so the runtime can map races discovered at commit time to the same explicit conflict union instead of misreporting them as persistence build failures.
 
 The Renderer reaches this flow only through `slides:manual-edit`. The backend parser rejects unknown fields, invalid author keys, non-finite translations, malformed revision snapshots and non-UUID command IDs before coordinator logic runs.
+
+## End-to-end trace
+
+The command UUID is also the cross-process trace identity. Production backend wiring emits
+`slides_manual_edit.backend_trace` for request admission, snapshot validation, source rewrite,
+selected build path, semantic commit and terminal rejection. Events contain IDs, stage, path,
+revision and elapsed milliseconds; they never contain edited text or deck source.
+
+The Renderer feature owns the user-visible half of the trace. With Slides verbose diagnostics enabled
+(`localStorage['linnya.slides.debug'] = 'verbose'`), `ManualEditTrace` records request start, an
+idempotent transport retry, IPC response, revision-targeted refresh completion and the first animation
+frame after the complete slide resource frame is installed. The terminal event reports
+`inputToResponseMs`, `responseToRefreshMs`, `refreshToFrameMs` and `inputToFrameMs`. A negative
+intermediate duration is retained when push delivery presents the revision before the IPC/refresh
+path completes; this describes the real race instead of rewriting its order.

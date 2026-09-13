@@ -67,6 +67,7 @@ import {
   type PresentationExportRuntimePorts,
 } from '../features/presentationExport';
 import { PresentationPageRasterizationRuntime } from '../features/presentationPageRasterization';
+import type { PresentationManualEditTracePort } from '../features/presentationManualEditing';
 import { PresentationPptxArtifactRuntime } from '../features/presentationPptxArtifact';
 import type {
   PresentationExportRequest,
@@ -91,6 +92,7 @@ export interface PptCoordinatorRuntimeOptions {
   readonly svgGraphicRuntime?: ConversationAwarePresentationSvgGraphicOwnerPort;
   readonly commitExportArtifact?: PresentationExportRuntimePorts['commitArtifact'];
   readonly buildExecution: PresentationBuildExecutionPort;
+  readonly manualEditTrace?: PresentationManualEditTracePort;
 }
 
 export class PptCoordinator {
@@ -145,6 +147,7 @@ export class PptCoordinator {
         ? { svgGraphicOwner: runtimeOptions.svgGraphicRuntime }
         : {}),
       buildExecution: runtimeOptions.buildExecution,
+      ...(runtimeOptions.manualEditTrace ? { manualEditTrace: runtimeOptions.manualEditTrace } : {}),
     });
     const pptxArtifacts = new PresentationPptxArtifactRuntime({
       repository: this.presentationRepo,

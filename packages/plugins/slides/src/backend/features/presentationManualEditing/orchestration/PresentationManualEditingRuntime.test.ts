@@ -79,6 +79,7 @@ function makeRuntime(options: {
   readonly hasDraft?: boolean;
   readonly buildError?: Error;
 } = {}) {
+  const traceRecord = vi.fn();
   const buildFromSource = vi.fn(async () => {
     if (options.buildError) throw options.buildError;
     return {
@@ -109,13 +110,14 @@ function makeRuntime(options: {
       commitManualEditFromSource: buildFromSource,
       commitManualEditFromProjectedDeckSpec: buildFromProjectedDeckSpec,
     },
+    trace: { record: traceRecord },
   });
-  return { runtime, buildFromSource, buildFromProjectedDeckSpec };
+  return { runtime, buildFromSource, buildFromProjectedDeckSpec, traceRecord };
 }
 
 describe('PresentationManualEditingRuntime', () => {
   it('改写源码并携带基线、draft guard 与幂等回执完成提交', async () => {
-    const { runtime, buildFromSource } = makeRuntime();
+    const { runtime, buildFromSource, traceRecord } = makeRuntime();
 
     await expect(runtime.submit(COMMAND)).resolves.toEqual({
       status: 'committed',
@@ -135,6 +137,13 @@ describe('PresentationManualEditingRuntime', () => {
       origin: 'edit',
     }));
     expect(buildFromSource.mock.calls[0][0].source).toContain('content": "Updated"');
+    expect(traceRecord.mock.calls.map(([event]) => event.stage)).toEqual([
+      'request_received',
+      'snapshot_validated',
+      'source_rewritten',
+      'semantic_build_started',
+      'revision_committed',
+    ]);
   });
 
   it('对唯一顶层对象的增量位移跳过 sandbox 与整稿布局', async () => {

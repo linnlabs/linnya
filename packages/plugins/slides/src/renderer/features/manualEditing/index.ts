@@ -21,3 +21,9 @@ export {
 export { useSlidesManualEditingStore } from './store/slidesManualEditingStore';
 export { useSlideManualEditingInteraction } from './orchestration/useSlideManualEditingInteraction';
 export { useManualEditingLocalization } from './ui/useManualEditingLocalization';
+export {
+  ManualEditPresentationTrace,
+  manualEditPresentationTrace,
+  type ManualEditPresentationTraceDeps,
+} from './orchestration/ManualEditPresentationTrace';
+export type { ManualEditPresentationTracePort } from './definitions/manualEditPresentationTrace';

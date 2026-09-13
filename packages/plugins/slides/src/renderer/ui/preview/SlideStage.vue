@@ -150,6 +150,7 @@ import {
 import { useReadySlideVisualResources } from '../../features/renderVisualResources';
 import {
   resolveManualEditingAvailability,
+  manualEditPresentationTrace,
   useSlideManualEditingInteraction,
   useSlidesManualEditingStore,
   useManualEditingLocalization,
@@ -725,10 +726,18 @@ watch(
     renderModel.value?.presentationId,
     renderModel.value?.version,
   ] as const,
-  ([displayed, target, , version]) => {
+  ([displayed, target, presentationId, version]) => {
     // RenderModel 到达后仍需等待当前页图片/图表形成完整帧；同一对象引用表示该帧已提交。
     if (!displayed || displayed !== target) return;
-    if (version !== undefined) manualEditingStore.recordPresentedRevision(version);
+    if (version !== undefined) {
+      manualEditingStore.recordPresentedRevision(version);
+      if (presentationId) {
+        // watcher 表示完整资源帧已提交；再跨一个 rAF 才是浏览器可绘制边界。
+        window.requestAnimationFrame(() => {
+          manualEditPresentationTrace.recordPresented(presentationId, version);
+        });
+      }
+    }
     reconcileSourceSelection();
     reconcileManualSelection();
   },

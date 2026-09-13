@@ -15,3 +15,9 @@ export {
   PresentationManualEditingRuntime,
   type PresentationManualEditingRuntimeDeps,
 } from './orchestration/PresentationManualEditingRuntime.js';
+export { createPresentationManualEditTraceLogger } from './infrastructure/createPresentationManualEditTraceLogger.js';
+export type {
+  PresentationManualEditBackendStage,
+  PresentationManualEditTraceEvent,
+  PresentationManualEditTracePort,
+} from './definitions/presentationManualEditTrace.js';
