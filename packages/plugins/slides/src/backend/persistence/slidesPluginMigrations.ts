@@ -9,6 +9,7 @@ import { PRESENTATION_IMAGE_BINDING_SCHEMAS } from './schemas/presentationImageB
 import { PRESENTATION_SVG_GRAPHIC_BINDING_SCHEMAS } from './schemas/presentationSvgGraphicBinding.schema.js';
 import { PRESENTATION_HISTORY_SCHEMAS } from '../features/presentationSourceHistory/definitions/presentationHistorySchema';
 import { PRESENTATION_MANUAL_EDIT_SCHEMAS } from '../features/presentationManualEditing/definitions/presentationManualEditSchema';
+import { backfillFrameAuthoringAncestors } from './migrations/backfillFrameAuthoringAncestors';
 
 const PRESENTATION_NODE_TYPE = 'presentation';
 
@@ -67,6 +68,11 @@ interface SqliteNameRow {
   readonly name: string;
 }
 
+interface CurrentDeckSpecRow {
+  readonly node_id: string;
+  readonly deck_spec_json: string;
+}
+
 interface LegacyVersionRow {
   readonly id: string;
   readonly node_id: string;
@@ -122,6 +128,12 @@ function isBufferOrNull(value: unknown): value is Buffer | null {
 
 function isSqliteNameRow(value: unknown): value is SqliteNameRow {
   return isRecord(value) && typeof value.name === 'string';
+}
+
+function isCurrentDeckSpecRow(value: unknown): value is CurrentDeckSpecRow {
+  return isRecord(value)
+    && typeof value.node_id === 'string'
+    && typeof value.deck_spec_json === 'string';
 }
 
 function isLegacyVersionRow(value: unknown): value is LegacyVersionRow {
@@ -551,6 +563,27 @@ export const slidesPluginMigrations: readonly PluginMigrationDefinition[] = [
         FROM presentation_documents d
         JOIN presentation_svg_graphic_bindings b ON b.presentation_id = d.node_id;
       `);
+    },
+  },
+  {
+    version: 10,
+    description: 'Preserve flattened Frame authoring ancestry in current DeckSpec',
+    up: db => {
+      const rows = readAll(db, 'SELECT node_id, deck_spec_json FROM presentation_documents');
+      const update = db.prepare(
+        'UPDATE presentation_documents SET deck_spec_json = ? WHERE node_id = ?',
+      );
+      if (!update.run) {
+        throw new Error('Slides v10 migration 需要 SQLite statement.run 能力。');
+      }
+      for (const row of rows) {
+        if (!isCurrentDeckSpecRow(row)) {
+          throw new Error('presentation_documents 返回了无效的 DeckSpec migration row。');
+        }
+        const deckSpec: unknown = JSON.parse(row.deck_spec_json);
+        if (!backfillFrameAuthoringAncestors(deckSpec)) continue;
+        update.run(JSON.stringify(deckSpec), row.node_id);
+      }
     },
   },
 ] as const;

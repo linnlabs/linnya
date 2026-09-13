@@ -31,6 +31,10 @@ backend/
 └── tools/                   # ppt_plan / ppt_inspect、inspect feedback，以及未向 Agent 暴露的 legacy export 实现
 ```
 
+Persistence migration v10 upgrades existing current generated DeckSpecs from the former Flex
+`layoutNodeId` hierarchy to the formal `_authoringAncestorRefs` contract. This is a one-time data
+upgrade for Frame editing; runtime RenderModel mapping consumes only the new authoring contract.
+
 `__tests__/`、各子目录测试和 fixtures 是 backend 回归与验收测试，不属于生产装配路径。
 
 ## 架构与数据流

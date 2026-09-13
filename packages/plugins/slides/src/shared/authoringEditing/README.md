@@ -8,6 +8,8 @@
 
 Flex compilation flattens a decorated Frame into one background render node plus its descendant render nodes. `_authoringAncestorRefs` preserves the author hierarchy through DirectComposeInput and DeckSpec; RenderModel exposes it as `authoringAncestorRefs`. The list may contain only same-slide, non-duplicated Frame identities in outer-to-inner order. Renderer uses this compiler-owned relation to preview a Frame translation across its complete rendered subtree. It must not derive membership from source spans, layout diagnostic paths, overlap or geometry.
 
+Plugin migration v10 upgrades current DeckSpecs produced before this field existed. The one-time migration reads the old compiler's deterministic `layoutNodeId` hierarchy and writes `_authoringAncestorRefs`; normal RenderModel construction has no legacy dual-read path. Historical source revisions remain source-first and receive the current contract when restored or rebuilt.
+
 Rules:
 
 - keys use `^[A-Za-z][A-Za-z0-9_-]{0,63}$` so they are deterministic, readable and safe in source and render identities;

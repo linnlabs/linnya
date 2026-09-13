@@ -181,7 +181,7 @@ describe('slidesPluginMigrations', () => {
   });
 
   it('保留已发布的迁移版本，不允许回退或重编号', () => {
-    expect(slidesPluginMigrations.map(migration => migration.version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(slidesPluginMigrations.map(migration => migration.version)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(slidesPluginMigrations[0]?.description).toBe(
       'Create and adopt Slides presentation tables'
     );
@@ -267,5 +267,55 @@ describe('slidesPluginMigrations', () => {
       expect(db.prepare('SELECT restored_from_version_id, restored_from_created_at FROM presentation_revisions').get())
         .toEqual({ restored_from_version_id: null, restored_from_created_at: null });
     } finally { db.close(); }
+  });
+
+  it('v10 为既有 current DeckSpec 补齐摊平 Frame 的作者祖先', () => {
+    const db = new Database(':memory:');
+    try {
+      createWorkspaceTables(db);
+      for (const version of [1, 2, 3, 4, 5, 6, 7, 8, 9]) applyMigration(db, version);
+      const deckSpec = {
+        slides: [{
+          spec: {
+            elements: [
+              {
+                type: 'shape',
+                _authoringRef: { slideKey: 'overview', editKey: 'card1', targetKind: 'frame' },
+                _layoutConstraintEvidence: { layoutNodeId: 'layout:s1:root.0.1' },
+              },
+              {
+                type: 'text',
+                _authoringRef: { slideKey: 'overview', editKey: 'card1Label', targetKind: 'text' },
+                _layoutConstraintEvidence: { layoutNodeId: 'layout:s1:root.0.1.0' },
+              },
+            ],
+          },
+        }],
+      };
+      db.transaction(() => {
+        db.exec(`INSERT INTO workspace_nodes(id,type,name,created_at,updated_at)
+          VALUES ('doc','presentation','Test',1000,1000)`);
+        db.prepare(`INSERT INTO presentation_documents(node_id,current_revision_id,current_revision,
+          deck_source,source_hash,deck_spec_json,pptx_buffer,title,slide_count,created_at,updated_at,
+          pptx_revision_id)
+          VALUES ('doc','revision-1',1,'source','hash',?,X'CAFE','Test',1,1000,1000,'revision-1')`)
+          .run(JSON.stringify(deckSpec));
+        db.exec(`INSERT INTO presentation_revisions(
+          id,node_id,revision,source_hash,storage_kind,source_checkpoint,patch_bytes,created_at,origin
+        ) VALUES ('revision-1','doc',1,'hash','checkpoint','source',0,1000,'create')`);
+      })();
+
+      applyMigration(db, 10);
+      const migratedJson = db.prepare(
+        'SELECT deck_spec_json FROM presentation_documents WHERE node_id = ?',
+      ).pluck().get('doc');
+      if (typeof migratedJson !== 'string') throw new Error('Expected migrated DeckSpec JSON.');
+      const migrated = JSON.parse(migratedJson);
+      expect(migrated.slides[0].spec.elements[1]._authoringAncestorRefs).toEqual([
+        { slideKey: 'overview', editKey: 'card1', targetKind: 'frame' },
+      ]);
+    } finally {
+      db.close();
+    }
   });
 });
