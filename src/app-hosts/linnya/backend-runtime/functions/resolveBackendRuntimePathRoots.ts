@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { createRuntimePathRoots, type RuntimePathRoots } from '../../../shared/runtime-paths';
+import { createRuntimePathRoots, type RuntimePathRoots } from '../../../../shared/runtime-paths';
 
 export interface BackendRuntimePathRootInput {
   readonly developmentRoot: string;
@@ -11,7 +11,7 @@ export interface BackendRuntimePathRootInput {
 }
 
 /**
- * Desktop Host 在启动时把 Electron 目录和开发模式收敛为纯数据事实。
+ * App Host 在启动时把平台目录和开发模式收敛为纯数据事实。
  * App Server 只接收结果，不能再次读取 Electron 或根据自己的 cwd 猜路径。
  */
 export function resolveBackendRuntimePathRoots(

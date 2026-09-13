@@ -12,7 +12,7 @@ import {
 } from '@app/schemas/commands';
 import { ConversationToolMessagePayloadSchema } from '@app/schemas';
 import { app } from 'electron';
-import { resolveElectronLocalProcessPlatformRuntime } from '../../../../../src/electron-main/local-process-runtime/production-runtime';
+import { resolveLocalProcessPlatformRuntime } from '../../../../../src/infra/adapters/local-process-runtime/production-runtime';
 import express from 'express';
 import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import {
@@ -241,7 +241,7 @@ export async function runProductionChildAgentScenario(input: {
       platform: process.platform,
       environment: process.env,
       revision: randomUUID(),
-      platformRuntime: resolveElectronLocalProcessPlatformRuntime({
+      platformRuntime: resolveLocalProcessPlatformRuntime({
         platform: process.platform,
         architecture: process.arch,
         applicationVersion: app.getVersion(),

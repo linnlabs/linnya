@@ -34,15 +34,17 @@ import { runAppShutdownStages } from './app-lifecycle/runAppShutdownStages.ts';
 import { createAppShutdownLifecycle } from './app-lifecycle/orchestration/createAppShutdownLifecycle.ts';
 import { createElectronUpdaterHandoff } from './update/orchestration/electronUpdaterHandoff.ts';
 import { configureInstallDownloadedUpdateRequest } from './update/orchestration/installDownloadedUpdate.ts';
-import { resolveAppDefaultModelsPath } from './app-lifecycle/functions/resolveAppDefaultModelsPath.ts';
+import {
+  createBackendBootstrapFacts,
+  resolveAppDefaultModelsPath,
+  resolveBackendRuntimePathRoots,
+} from '../app-hosts/linnya/backend-runtime/index.ts';
+import { resolveAppServerBundleDirectory } from '../app-hosts/linnya/app-server-runtime/functions/resolveAppServerBundleDirectory.ts';
 import { createHostProcessEnvironment } from '../infra/adapters/command-runtime/environment/index.ts';
 import { createNodeEventLoopResponsivenessMonitor } from '../infra/observability/event-loop/index.ts';
-import { createBackendBootstrapFacts } from '../app-hosts/linnya/backend-runtime/index.ts';
 import { installRuntimePathRoots } from '../shared/runtime-paths/index.ts';
 import { installDistributionIdentity } from '../shared/distribution-identity/index.ts';
 import { resolveElectronDistributionIdentity } from './distribution/index.ts';
-import { resolveBackendRuntimePathRoots } from './app-lifecycle/functions/resolveBackendRuntimePathRoots.ts';
-import { resolveAppServerBundleDirectory } from './app-lifecycle/functions/resolveAppServerBundleDirectory.ts';
 import { resolveAppVersion } from './app-lifecycle/functions/resolveAppVersion.ts';
 import {
   createElectronAppServerRuntime,

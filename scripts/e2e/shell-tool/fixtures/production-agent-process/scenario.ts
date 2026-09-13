@@ -4,7 +4,7 @@ import { promises as fsp } from 'node:fs';
 import path from 'node:path';
 
 import { app } from 'electron';
-import { resolveElectronLocalProcessPlatformRuntime } from '../../../../../src/electron-main/local-process-runtime/production-runtime';
+import { resolveLocalProcessPlatformRuntime } from '../../../../../src/infra/adapters/local-process-runtime/production-runtime';
 import { ConversationToolMessagePayloadSchema } from '@app/schemas';
 import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import {
@@ -182,7 +182,7 @@ export async function runProductionAgentProcessScenario(input: {
       platform: process.platform,
       environment: process.env,
       revision: randomUUID(),
-      platformRuntime: resolveElectronLocalProcessPlatformRuntime({
+      platformRuntime: resolveLocalProcessPlatformRuntime({
         platform: process.platform,
         architecture: process.arch,
         applicationVersion: app.getVersion(),

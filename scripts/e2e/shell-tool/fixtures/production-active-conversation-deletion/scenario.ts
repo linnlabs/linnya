@@ -5,7 +5,7 @@ import http from 'node:http';
 import path from 'node:path';
 
 import { app } from 'electron';
-import { resolveElectronLocalProcessPlatformRuntime } from '../../../../../src/electron-main/local-process-runtime/production-runtime';
+import { resolveLocalProcessPlatformRuntime } from '../../../../../src/infra/adapters/local-process-runtime/production-runtime';
 import express from 'express';
 import {
   CommandAgentRunIdSchema,
@@ -231,7 +231,7 @@ export async function runProductionActiveConversationDeletionScenario(input: {
       platform: process.platform,
       environment: process.env,
       revision: randomUUID(),
-      platformRuntime: resolveElectronLocalProcessPlatformRuntime({
+      platformRuntime: resolveLocalProcessPlatformRuntime({
         platform: process.platform,
         architecture: process.arch,
         applicationVersion: app.getVersion(),

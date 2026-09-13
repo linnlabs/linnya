@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { resolveElectronLocalProcessPlatformRuntime } from './resolveElectronLocalProcessPlatformRuntime';
+import { resolveLocalProcessPlatformRuntime } from './resolveLocalProcessPlatformRuntime';
 
-describe('resolveElectronLocalProcessPlatformRuntime', () => {
+describe('resolveLocalProcessPlatformRuntime', () => {
   it('macOS 只产生通用 PGID owner 事实', () => {
-    expect(resolveElectronLocalProcessPlatformRuntime({
+    expect(resolveLocalProcessPlatformRuntime({
       platform: 'darwin',
       architecture: 'arm64',
       applicationVersion: '0.0.38',
@@ -25,13 +25,13 @@ describe('resolveElectronLocalProcessPlatformRuntime', () => {
       hostEnvironment: { SystemRoot: 'C:\\Windows' },
     };
     const missingPublisher = { readAuthenticodePublisher: vi.fn(() => undefined) };
-    expect(() => resolveElectronLocalProcessPlatformRuntime({
+    expect(() => resolveLocalProcessPlatformRuntime({
       ...base,
       packaged: true,
       publisherProbe: missingPublisher,
     })).toThrow('requires a valid signed application publisher');
 
-    const release = resolveElectronLocalProcessPlatformRuntime({
+    const release = resolveLocalProcessPlatformRuntime({
       ...base,
       packaged: true,
       publisherProbe: { readAuthenticodePublisher: vi.fn(() => 'CN=Linnya') },
@@ -39,7 +39,7 @@ describe('resolveElectronLocalProcessPlatformRuntime', () => {
     expect(release).toMatchObject({
       trust: { kind: 'release', expected_publisher_identity: 'CN=Linnya' },
     });
-    expect(resolveElectronLocalProcessPlatformRuntime({
+    expect(resolveLocalProcessPlatformRuntime({
       ...base,
       packaged: false,
     })).toMatchObject({ trust: { kind: 'development' } });
@@ -47,7 +47,7 @@ describe('resolveElectronLocalProcessPlatformRuntime', () => {
 
   it('Windows manifest 路径跟随 App 架构，并拒绝未发布的架构', () => {
     const create = (architecture: NodeJS.Architecture) => (
-      resolveElectronLocalProcessPlatformRuntime({
+      resolveLocalProcessPlatformRuntime({
         platform: 'win32',
         architecture,
         applicationVersion: '0.0.38',

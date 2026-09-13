@@ -19,7 +19,7 @@ describe('resolveBackendRuntimePathRoots', () => {
     });
   });
 
-  it('生产态由 Desktop Host 决定 Electron 目录，并固定相对 Workspace 覆盖的解析基准', () => {
+  it('生产态由 App Host 决定平台目录，并固定相对 Workspace 覆盖的解析基准', () => {
     expect(
       resolveBackendRuntimePathRoots({
         developmentRoot: '/workspace/linnya',

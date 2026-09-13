@@ -42,7 +42,7 @@ import type { PluginRuntimeEnvironmentResult } from '../../plugins/loader/plugin
 import type { RuntimePathRoots } from '../../../shared/runtime-paths';
 import type { ElectronAppServerRuntime } from '../definitions/electronAppServerRuntime';
 import { createHiddenWorkerArtifactAdmission } from '../functions/assertHiddenWorkerDescriptorAllowed';
-import { resolveElectronAppServerProcessLaunch } from './resolveElectronAppServerProcessLaunch';
+import { resolveAppServerProcessLaunch } from '../../../app-hosts/linnya/app-server-runtime/orchestration/resolveAppServerProcessLaunch';
 import { createPluginCredentialRuntimeRpcHandlers } from '../../../app-hosts/linnya/plugin-registry/features/credential-runtime-rpc';
 import { createFilePluginCredentialRuntimePort } from '../../../plugin-sdk/backend/filePluginCredentialRuntime';
 import { store } from '../../store/index.js';
@@ -70,7 +70,7 @@ export async function createElectronAppServerRuntime(input: {
   const textMeasurement = createElectronTextMeasurementWorkerRuntime();
   let launch: AppServerProcessLaunch;
   try {
-    launch = await resolveElectronAppServerProcessLaunch({
+    launch = await resolveAppServerProcessLaunch({
       backendConfiguration: input.backendConfiguration,
       backendFacts: input.backendFacts,
       commandHostEnvironment: input.commandHostEnvironment,

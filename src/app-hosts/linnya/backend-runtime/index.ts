@@ -4,3 +4,5 @@ export type {
   BackendProcessRuntimeDependencies,
 } from './definitions/backendHostDependencies';
 export { createBackendBootstrapFacts } from './functions/createBackendBootstrapFacts';
+export { resolveAppDefaultModelsPath } from './functions/resolveAppDefaultModelsPath';
+export { resolveBackendRuntimePathRoots } from './functions/resolveBackendRuntimePathRoots';

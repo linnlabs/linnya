@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   parseLocalProcessPlatformRuntime,
   type LocalProcessPlatformRuntime,
-} from '../../../../infra/adapters/local-process-runtime/platform-runtime';
+} from '../../platform-runtime';
 
 const WINDOWS_LOCAL_PROCESS_RUNTIME_VERSION = '0.1.0';
 
@@ -70,7 +70,7 @@ const nodeWindowsApplicationPublisherProbe: WindowsApplicationPublisherProbePort
  * Electron host 只在 App owner 启动时验证一次本地进程 owner 的发布事实。后续
  * Commands、Sandbox 与 Qdrant 共享同一个 data-only DTO，不各自猜 manifest 或信任来源。
  */
-export function resolveElectronLocalProcessPlatformRuntime(input: {
+export function resolveLocalProcessPlatformRuntime(input: {
   readonly platform: NodeJS.Platform;
   readonly architecture: NodeJS.Architecture;
   readonly applicationVersion: string;

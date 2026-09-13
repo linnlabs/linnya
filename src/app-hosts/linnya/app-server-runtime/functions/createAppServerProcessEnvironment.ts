@@ -52,7 +52,7 @@ const APP_SERVER_ENVIRONMENT_KEYS = Object.freeze([
   'WORKER_PROJECT_ROOT',
   'QDRANT_URL',
 
-  // Web provider 的开发/部署级 fallback credential；用户在 UI 保存的密钥仍走 safeStorage RPC。
+  // Web provider 的开发/部署级 fallback credential；用户保存的密钥仍走系统凭据保护 RPC。
   'BAIDU_SEARCH_API_KEY',
   'SERPER_API_KEY',
   'JINA_API_KEY',

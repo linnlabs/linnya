@@ -3,7 +3,7 @@
 这里是桌面 Host 对公共 `local-process-runtime` 的启动事实组合层，不包含 Commands、Sandbox
 或 Qdrant 的业务策略。
 
-- `production-runtime/functions/resolveElectronLocalProcessPlatformRuntime.ts` 在 App owner
+- `../../infra/adapters/local-process-runtime/production-runtime/functions/resolveLocalProcessPlatformRuntime.ts` 在 App owner
   启动时一次性解析平台 DTO；
 - macOS 只需要 PGID owner 版本事实；
 - Windows 固定 native manifest、运行时版本、App 版本与签名发布者；

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { promises as fsp } from 'node:fs';
 
 import { app } from 'electron';
-import { resolveElectronLocalProcessPlatformRuntime } from '../../../../../src/electron-main/local-process-runtime/production-runtime';
+import { resolveLocalProcessPlatformRuntime } from '../../../../../src/infra/adapters/local-process-runtime/production-runtime';
 import {
   CommandAgentRunIdSchema,
   CommandConversationIdSchema,
@@ -220,7 +220,7 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
       platform: process.platform,
       environment: environment.entries,
       revision: ENVIRONMENT_REVISION,
-      platformRuntime: resolveElectronLocalProcessPlatformRuntime({
+      platformRuntime: resolveLocalProcessPlatformRuntime({
         platform: process.platform,
         architecture: process.arch,
         applicationVersion: app.getVersion(),

@@ -1,32 +1,31 @@
 import path from 'node:path';
 
-import headlessNodeRuntimeCatalogSource from '../../../../config/headless-node-runtime.json';
+import headlessNodeRuntimeCatalogSource from '../../../../../config/headless-node-runtime.json';
 import {
   APP_SERVER_BOOTSTRAP_SCHEMA_VERSION,
   encodeAppServerBootstrap,
   type AppServerBackendConfiguration,
-} from '../../../app-hosts/linnya/app-server-bootstrap';
-import type { BackendBootstrapFacts } from '../../../app-hosts/linnya/backend-runtime';
-import type {
-  DesktopTextMeasurementWorkerPort,
-} from '../../../app-hosts/linnya/desktop-capabilities';
-import type { HostProcessEnvironment } from '../../../infra/adapters/command-runtime/environment';
-import type { AppServerProcessLaunch } from '../../../infra/adapters/app-server-process';
+} from '../../app-server-bootstrap';
+import type { BackendBootstrapFacts } from '../../backend-runtime';
+import type { HostProcessEnvironment } from '../../../../infra/adapters/command-runtime/environment';
+import type { AppServerProcessLaunch } from '../../../../infra/adapters/app-server-process';
 import {
   parseHeadlessNodeRuntimeCatalog,
   resolveHeadlessNodeRuntime,
-} from '../../../infra/adapters/headless-node-runtime';
-import { resolveElectronLocalProcessPlatformRuntime } from '../../local-process-runtime/production-runtime';
+} from '../../../../infra/adapters/headless-node-runtime';
+import { resolveLocalProcessPlatformRuntime } from '../../../../infra/adapters/local-process-runtime/production-runtime';
 import { createAppServerProcessEnvironment } from '../functions/createAppServerProcessEnvironment';
 
-export async function resolveElectronAppServerProcessLaunch(input: {
+export async function resolveAppServerProcessLaunch(input: {
   readonly backendConfiguration: AppServerBackendConfiguration;
   readonly backendFacts: BackendBootstrapFacts;
   readonly commandHostEnvironment: HostProcessEnvironment;
   readonly textMeasurement: {
     readonly useBrowserPretext: boolean;
     readonly useHarfBuzz: boolean;
-    readonly availability: DesktopTextMeasurementWorkerPort['availability'];
+    readonly availability:
+      | { readonly available: true }
+      | { readonly available: false; readonly reason: string };
   };
   readonly processEnvironment: NodeJS.ProcessEnv;
 }): Promise<AppServerProcessLaunch> {
@@ -45,7 +44,7 @@ export async function resolveElectronAppServerProcessLaunch(input: {
     architecture: input.backendFacts.architecture,
     verifyPreparedExecutableHash: !input.backendFacts.packaged,
   });
-  const localProcessPlatformRuntime = resolveElectronLocalProcessPlatformRuntime({
+  const localProcessPlatformRuntime = resolveLocalProcessPlatformRuntime({
     platform: input.backendFacts.platform,
     architecture: input.backendFacts.architecture,
     applicationVersion: input.backendFacts.applicationVersion,

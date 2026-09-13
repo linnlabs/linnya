@@ -41,7 +41,7 @@ const MIGRATED_PUBLIC_HOST_FILES = [
   'src/app-hosts/linnya/plugin-registry/builtin/index.ts',
   'src/app-hosts/linnya/plugin-registry/builtin/platform-meta.ts',
   'src/app-hosts/linnya/plugin-registry/formatOwnershipCatalog.ts',
-  'src/electron-main/app-server-runtime/functions/createAppServerProcessEnvironment.ts',
+  'src/app-hosts/linnya/app-server-runtime/functions/createAppServerProcessEnvironment.ts',
   'src/electron-main/ipc/handlers/plugins/plugins-ipc.ts',
   'src/electron-main/plugins/loader/pluginLayout.ts',
   'tsup.backend.config.ts',

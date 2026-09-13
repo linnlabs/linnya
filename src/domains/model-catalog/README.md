@@ -25,7 +25,7 @@ codec、usage/continuation 投影和单次请求编排位于
 | InferenceEndpoint、CredentialReference 与安全密文 | `features/inference-endpoints/`                                                                                        |
 | `user_models.json` 格式与原子写入                 | `features/user-model-persistence/`                                                                                     |
 | 四个来源如何合并、CRUD、Cloud retry/event         | `registry/modelCatalogRegistry.ts`                                                                                     |
-| Electron 启动如何冻结默认目录路径                 | `electron-main/app-lifecycle/functions/resolveAppDefaultModelsPath.ts`                                                 |
+| App Host 启动如何冻结默认目录路径                 | `app-hosts/linnya/backend-runtime/functions/resolveAppDefaultModelsPath.ts`                                             |
 | HTTP 模型查询/编辑/删除入口                       | `electron-main/routes/modelRouter.ts`                                                                                  |
 | 模型注册入口                                      | `app-hosts/linnya/application/provider-onboarding/`、`custom-api-onboarding/` 与 `ollama-onboarding/`                  |
 | 推理 route 跨端 schema                            | `packages/schemas/src/model-inference/`、`packages/schemas/src/document-ocr/` 与 `packages/schemas/src/transcription/` |
