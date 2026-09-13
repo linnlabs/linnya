@@ -7,6 +7,7 @@ import path from 'node:path';
 
 import {
   collectTypeScriptStandardLibClosure,
+  SLIDES_TYPESCRIPT_COMPILER_TRANSFORM,
   SLIDES_TYPESCRIPT_STANDARD_LIB_ROOTS,
 } from './build/copyTypeScriptRuntime.mjs';
 import {
@@ -20,10 +21,11 @@ const MAX_BACKEND_ENTRY_BYTES = 2.25 * 1024 * 1024;
 // TypeScript/Yoga、PptxGenJS/JSZip 与原生公式装配均归同一 build Worker；1.6 MiB
 // 只保留小幅依赖漂移空间，防止 parser、Host SDK 或完整 backend 被意外卷入。
 const MAX_PRESENTATION_BUILD_WORKER_BYTES = 1.6 * 1024 * 1024;
-// TypeScript compiler约 9.7 MiB；MathJax/STIX2 作为 backend、build Worker 与 CLI
-// 共用的单一自包含 runtime 约 1.8 MiB。16 MiB 是当前两类明确运行时加入口制品后的总门禁，
+// TypeScript compiler artifact约 6.3 MiB；MathJax/STIX2 作为 backend、build Worker 与 CLI
+// 共用的单一自包含 runtime 约 1.8 MiB。13.5 MiB 为当前完整制品保留约 10% 漂移空间，
 // 不能通过再次内联 MathJax、复制 runtime 或顺带打入新依赖来消耗。
-const MAX_BACKEND_DIRECTORY_BYTES = 16 * 1024 * 1024;
+const MAX_BACKEND_DIRECTORY_BYTES = 13.5 * 1024 * 1024;
+const MAX_TYPESCRIPT_COMPILER_RUNTIME_BYTES = 6.5 * 1024 * 1024;
 const TYPESCRIPT_INPUT_PATTERN =
   /node_modules\/(?:\.pnpm\/typescript@[^/]+\/node_modules\/)?typescript\//u;
 const PRESENTATION_BUILD_WORKER_ONLY_INPUT_PATTERNS = Object.freeze([
@@ -93,7 +95,7 @@ export async function verifySlidesBackendBundle({ backendDir, bundlePath, metafi
   process.stdout.write(
     `[slides-backend] bundle guard passed: entry=${formatMiB(bundleStats.size)} / ${formatMiB(MAX_BACKEND_ENTRY_BYTES)}, ` +
       `backend=${formatMiB(backendBytes)} / ${formatMiB(MAX_BACKEND_DIRECTORY_BYTES)}, ` +
-      `typescript=${runtimeSummary.packageVersion}, libs=${runtimeSummary.standardLibFiles.length}, ` +
+      `typescript=${runtimeSummary.packageVersion}/${formatMiB(runtimeSummary.compilerBytes)}, libs=${runtimeSummary.standardLibFiles.length}, ` +
       `yoga=${yogaSummary.packageVersion}, modules=${yogaSummary.moduleFiles.length}\n`
   );
 }
@@ -168,8 +170,9 @@ async function verifyPackagedTypeScriptRuntime(runtimeDir) {
     await readFile(path.join(runtimeDir, 'runtime-manifest.json'), 'utf8')
   );
   if (
-    manifest.schemaVersion !== 1 ||
+    manifest.schemaVersion !== 2 ||
     typeof manifest.packageVersion !== 'string' ||
+    !sameJson(manifest.compilerTransform, SLIDES_TYPESCRIPT_COMPILER_TRANSFORM) ||
     !Array.isArray(manifest.standardLibRoots) ||
     !Array.isArray(manifest.standardLibFiles)
   ) {
@@ -197,6 +200,12 @@ async function verifyPackagedTypeScriptRuntime(runtimeDir) {
   }
 
   const packageRequire = createRequire(path.resolve(runtimeDir, 'package.json'));
+  const compilerStats = await stat(path.join(libDir, 'typescript.js'));
+  if (compilerStats.size > MAX_TYPESCRIPT_COMPILER_RUNTIME_BYTES) {
+    throw new Error(
+      `Slides packaged TypeScript compiler is ${formatMiB(compilerStats.size)}, exceeding the ${formatMiB(MAX_TYPESCRIPT_COMPILER_RUNTIME_BYTES)} budget.`
+    );
+  }
   const typescript = packageRequire('./lib/typescript.js');
   assertTypeScriptCompilerApi(typescript);
   verifyCompilerProgram(typescript, expectedLibFiles, true);
@@ -205,6 +214,7 @@ async function verifyPackagedTypeScriptRuntime(runtimeDir) {
   return {
     packageVersion: manifest.packageVersion,
     standardLibFiles: expectedLibFiles,
+    compilerBytes: compilerStats.size,
   };
 }
 
@@ -364,6 +374,10 @@ async function listRelativeFiles(directory, relativeDirectory = '') {
 
 function sameStrings(left, right) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function normalizePath(value) {

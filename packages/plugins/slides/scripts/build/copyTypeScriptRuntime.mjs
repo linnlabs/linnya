@@ -1,10 +1,19 @@
 import { createRequire } from 'node:module';
 import { copyFile, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { transform } from 'esbuild';
 
 const require = createRequire(import.meta.url);
 
 export const SLIDES_TYPESCRIPT_STANDARD_LIB_ROOTS = Object.freeze(['lib.es2020.d.ts']);
+
+export const SLIDES_TYPESCRIPT_COMPILER_TRANSFORM = Object.freeze({
+  format: 'cjs',
+  target: 'node20',
+  minifyWhitespace: true,
+  minifySyntax: true,
+  minifyIdentifiers: false,
+});
 
 const TYPESCRIPT_RUNTIME_FILES = Object.freeze(['LICENSE.txt', 'ThirdPartyNoticeText.txt']);
 
@@ -25,9 +34,17 @@ export async function copySlidesTypeScriptRuntime(options = {}) {
 
   await rm(targetDir, { recursive: true, force: true });
   await mkdir(path.join(targetDir, 'lib'), { recursive: true });
-  await copyFile(
-    path.join(sourceLibDir, 'typescript.js'),
-    path.join(targetDir, 'lib', 'typescript.js')
+  const compilerSource = await readFile(path.join(sourceLibDir, 'typescript.js'), 'utf8');
+  const compilerArtifact = await transform(compilerSource, {
+    ...SLIDES_TYPESCRIPT_COMPILER_TRANSFORM,
+    loader: 'js',
+    legalComments: 'none',
+    sourcefile: 'typescript.js',
+  });
+  await writeFile(
+    path.join(targetDir, 'lib', 'typescript.js'),
+    compilerArtifact.code,
+    'utf8'
   );
   for (const fileName of standardLibFiles) {
     await copyFile(path.join(sourceLibDir, fileName), path.join(targetDir, 'lib', fileName));
@@ -52,8 +69,9 @@ export async function copySlidesTypeScriptRuntime(options = {}) {
     path.join(targetDir, 'runtime-manifest.json'),
     `${JSON.stringify(
       {
-        schemaVersion: 1,
+        schemaVersion: 2,
         packageVersion: packageJson.version,
+        compilerTransform: SLIDES_TYPESCRIPT_COMPILER_TRANSFORM,
         standardLibRoots: SLIDES_TYPESCRIPT_STANDARD_LIB_ROOTS,
         standardLibFiles,
       },
