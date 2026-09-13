@@ -30,12 +30,46 @@ describe('slidesManualEditingStore', () => {
     expect(store.translationPreview).toBeNull();
   });
 
-  it('stores only submission state and user-facing failure text', () => {
+  it('keeps a translation visible until the committed RenderModel revision is presented', () => {
     const store = useSlidesManualEditingStore();
-    store.beginSubmit();
+    const operation = {
+      op: 'translate_by' as const,
+      target: target.authoringRef,
+      targetKind: target.targetKind,
+      delta: { dx: 0.2, dy: -0.1 },
+    };
+    const preview = { elementId: target.elementId, dx: 0.2, dy: -0.1 };
+    store.beginSubmit(operation, preview);
     expect(store.submitting).toBe(true);
-    store.finishSubmit('版本已变化');
+    expect(store.pendingTranslation).toEqual(preview);
+
+    store.commitSubmit(4);
     expect(store.submitting).toBe(false);
+    store.reconcilePresentedRevision(3);
+    expect(store.pendingTranslation).toEqual(preview);
+    store.reconcilePresentedRevision(4);
+    expect(store.pendingTranslation).toBeNull();
+  });
+
+  it('preserves a text draft after failure and closes it only after committed presentation', () => {
+    const store = useSlidesManualEditingStore();
+    store.openTextEditor(target);
+    store.updateTextDraft('Changed title');
+    const operation = {
+      op: 'set_text_content' as const,
+      target: target.authoringRef,
+      content: 'Changed title',
+    };
+    store.beginSubmit(operation);
+    store.failSubmit('版本已变化');
     expect(store.errorMessage).toBe('版本已变化');
+    expect(store.textEditorTarget).toEqual(target);
+    expect(store.textDraft).toBe('Changed title');
+
+    store.beginSubmit(operation);
+    store.commitSubmit(5);
+    store.reconcilePresentedRevision(5);
+    expect(store.textEditorTarget).toBeNull();
+    expect(store.textDraft).toBe('');
   });
 });

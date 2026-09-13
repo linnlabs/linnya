@@ -58,8 +58,16 @@ const { manualEditingMessage } = useManualEditingLocalization();
 
 async function handleManualEditSubmit(operation: SlidesManualEditOperation): Promise<void> {
   const documentId = currentDeckId.value;
-  if (!documentId || manualEditingStore.submitting) return;
-  manualEditingStore.beginSubmit();
+  if (!documentId) {
+    manualEditingStore.failSubmit(manualEditingMessage('slides.manualEditing.error.saveFailed'));
+    return;
+  }
+  // SlideStage 会先建立乐观会话；测试或其他合法入口也可在页面编排层直接提交。
+  if (!manualEditingStore.submitting) {
+    manualEditingStore.beginSubmit(operation);
+  } else if (manualEditingStore.activeOperation !== operation) {
+    return;
+  }
   try {
     const outcome = await submitManualEdit({
       documentId,
@@ -71,11 +79,22 @@ async function handleManualEditSubmit(operation: SlidesManualEditOperation): Pro
       submit: command => slidesApi.submitManualEdit(command),
       refreshDocument: nodeId => slidesStore.refreshDeck(nodeId),
     });
-    manualEditingStore.finishSubmit(
-      readManualEditErrorMessage(outcome, manualEditingMessage) ?? undefined,
+    if (currentDeckId.value !== documentId) return;
+    if (outcome.status === 'committed') {
+      manualEditingStore.commitSubmit(outcome.revision);
+      const presentedVersion = slidesRenderStore.renderModel?.version;
+      if (presentedVersion !== undefined) {
+        manualEditingStore.reconcilePresentedRevision(presentedVersion);
+      }
+      return;
+    }
+    manualEditingStore.failSubmit(
+      readManualEditErrorMessage(outcome, manualEditingMessage)
+        ?? manualEditingMessage('slides.manualEditing.error.saveFailed'),
     );
   } catch (error) {
-    manualEditingStore.finishSubmit(
+    if (currentDeckId.value !== documentId) return;
+    manualEditingStore.failSubmit(
       error instanceof Error
         ? error.message
         : manualEditingMessage('slides.manualEditing.error.saveFailed'),

@@ -148,6 +148,7 @@ describe('DeckViewer document transition', () => {
           geometry: { type: 'preset', name: 'rect' },
           sourceSpan: { startLine: 3, endLine: 3 },
           authoringRef: { slideKey: 'overview', editKey: 'card', targetKind: 'shape' },
+          authoringEdit: { capabilities: ['translate'] },
         }],
       }],
       capabilities: {
@@ -168,6 +169,16 @@ describe('DeckViewer document transition', () => {
     await nextTick();
     expect(manualStore.enabled).toBe(true);
     expect(button?.getAttribute('aria-pressed')).toBe('true');
+
+    slidesStore.documentBuildState = {
+      ...slidesStore.documentBuildState,
+      state: 'ready',
+      versionId: 'revision-3',
+      versionNumber: 3,
+    };
+    await nextTick();
+    expect(manualStore.enabled).toBe(true);
+    expect(button?.disabled).toBe(true);
 
     app.unmount();
   });

@@ -26,6 +26,7 @@ const model: PresentationRenderModel = {
       zIndex: 1,
       sourceSpan: { startLine: 3, endLine: 3 },
       authoringRef: { slideKey: 'overview', editKey: 'hero', targetKind: 'image' },
+      authoringEdit: { capabilities: ['translate'] },
       src: 'data:image/png;base64,AA==',
     }],
   }],

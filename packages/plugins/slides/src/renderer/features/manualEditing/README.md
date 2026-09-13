@@ -5,8 +5,8 @@
 ## Current interaction
 
 - The toolbar edit button is available only for a ready generated document whose visible RenderModel version equals the build-state revision and whose current slide contains at least one editable author object.
-- Clicking an object selects it. Dragging previews a translation on the main Konva stage; releasing sends one `translate_by` operation in inches. Repeated drags accumulate in backend `manualEdits`.
-- Double-clicking a text object whose backend `authoringEdit` projection declares `set_text_content` opens a focused textarea over its bounds. Save replaces the complete author string and runs the normal backend text measurement and layout pipeline. Multiline strings and strings split into Latin/East Asian render runs remain editable because their author value is still one string.
+- Clicking an object selects it. Dragging previews a translation on the main Konva stage; releasing promotes that delta to a local pending translation before sending one `translate_by` operation in inches. The object therefore stays under the pointer while the source-first rebuild runs. The pending visual is removed only after the committed RenderModel revision is actually presented, or rolled back on failure.
+- Double-clicking a text object whose backend `authoringEdit` projection declares `set_text_content` opens a focused textarea over its bounds. The editor lives in the scroll-content overlay rather than inside the clipped slide canvas. Save replaces the complete author string and runs the normal backend text measurement and layout pipeline. IME composition cannot accidentally trigger the save shortcut; a failed save retains the editor and draft for correction or retry. Multiline strings and strings split into Latin/East Asian render runs remain editable because their author value is still one string.
 - Rich author runs and inline formula runs remain text-read-only because replacing them with one string would destroy run semantics. They may still move.
 - Image, table, chart, shape, SVG Graphic and formula author objects may move. Their content/data/source editors are later independent feature slices.
 - Flex Frame targets are currently withheld from the UI. The generated RenderModel flattens a Frame into a decoration plus descendants, so moving only the decoration during preview would misrepresent the committed result. The compiler still carries `targetKind: "frame"` for a later whole-subtree interaction.
@@ -23,7 +23,7 @@ functions/
 orchestration/
   pointer drag/text session + submit/refresh workflow
 store/
-  mode, selected target, transient translation preview, submission/error state
+  mode, selected target, gesture/pending visual state, text draft, submission/presentation state
 ui/
   localization adapter
 ```
@@ -35,7 +35,8 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 - A stale revision/source snapshot refreshes the document and explains that another operation won.
 - An unresolved AI draft refreshes into the existing draft failure screen; manual editing never deletes it.
 - Source validation or full-build failure keeps the current compiled revision visible and shows the returned failure summary.
-- While a command is running, additional manual pointer operations are disabled.
+- While a command is running, additional manual pointer operations are disabled, but the stage keeps a normal cursor and the accepted local visual instead of flashing back and showing a global wait cursor.
+- A committed response is an accepted source revision, not proof that the new pixels are visible. The feature keeps `pendingPresentationRevision` until the matching or newer RenderModel reaches the stage.
 - If the first IPC response is lost, the workflow retries once with the same command ID; the backend receipt returns the already committed revision instead of creating a duplicate.
 - A document switch resets all feature state. A RenderModel revision update reconciles selection by stable render ID.
 
@@ -44,7 +45,8 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 - `functions/manualEditableTargets.test.ts`: explicit author capabilities, topmost hit testing, source-span independence, locked/rich/formula text boundaries.
 - `functions/manualEditingAvailability.test.ts`: generated/ready/exact-version gate.
 - `orchestration/submitManualEdit.test.ts`: exact command snapshot, refresh behavior and unavailable snapshots.
-- `store/slidesManualEditingStore.test.ts`: synchronous feature state transitions.
+- `orchestration/useSlideManualEditingInteraction.test.ts`: drag-to-pending promotion, operation payload and IME-safe text submission.
+- `store/slidesManualEditingStore.test.ts`: optimistic translation settlement and failed/committed text draft lifecycle.
 - `page/SlidesView.test.ts`: component-level command submission and post-commit refresh.
 - Backend orchestration, IPC parsing, source rewrite, CAS, draft protection and receipt tests remain in `backend/features/presentationManualEditing`, `backend/ipc` and persistence suites.
 - `smoke:preview-transitions` mounts the production `KonvaSlideStage` and verifies that a reactive manual translation reaches the content node in real Chromium, in addition to the existing persistent-paint pixel comparisons.

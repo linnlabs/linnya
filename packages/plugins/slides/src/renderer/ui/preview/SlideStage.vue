@@ -58,33 +58,9 @@
               :marquee-rect="sourceMarqueeRect"
               :preview-translations="manualPreviewTranslations"
               :manual-selected-target="manualSelectedTarget"
-              :manual-translation-preview="manualTranslationPreview"
+              :manual-translation-preview="manualSelectedTranslation"
             />
           </div>
-          <form
-            v-if="textEditorTarget"
-            class="slide-stage-text-editor"
-            :style="textEditorStyle"
-            @submit.prevent="submitTextEdit"
-          >
-            <textarea
-              ref="textEditorInputRef"
-              v-model="textDraft"
-              class="slide-stage-text-editor__input"
-              :aria-label="manualEditingMessage('slides.manualEditing.text.ariaLabel')"
-              @keydown.esc.prevent="closeTextEditor"
-              @keydown.ctrl.enter.prevent="submitTextEdit"
-              @keydown.meta.enter.prevent="submitTextEdit"
-            />
-            <div class="slide-stage-text-editor__actions">
-              <button type="button" @click="closeTextEditor">
-                {{ manualEditingMessage('slides.manualEditing.text.cancel') }}
-              </button>
-              <button type="submit">
-                {{ manualEditingMessage('slides.manualEditing.text.save') }}
-              </button>
-            </div>
-          </form>
           <SourceSelectionPromptPopover
             v-if="renderState.shouldShowSourcePrompt && !manualEditingEnabled"
             :targets="selectedSourceTargets"
@@ -94,6 +70,37 @@
             @cancel="resetSourceSelection"
           />
         </div>
+        <!-- 编辑器挂在滚动内容上，避免被幻灯片画布的裁剪边界截断操作区。 -->
+        <form
+          v-if="textEditorTarget"
+          class="slide-stage-text-editor"
+          :style="textEditorStyle"
+          :aria-busy="manualEditingSubmitting"
+          @submit.prevent="submitTextEdit"
+        >
+          <textarea
+            ref="textEditorInputRef"
+            v-model="textDraft"
+            class="slide-stage-text-editor__input"
+            :aria-label="manualEditingMessage('slides.manualEditing.text.ariaLabel')"
+            :disabled="manualEditingSubmitting"
+            @compositionstart="handleTextCompositionStart"
+            @compositionend="handleTextCompositionEnd"
+            @keydown.esc="handleTextEditorEscape"
+            @keydown.ctrl.enter="handleTextEditorSubmitShortcut"
+            @keydown.meta.enter="handleTextEditorSubmitShortcut"
+          />
+          <div class="slide-stage-text-editor__actions">
+            <button type="button" :disabled="manualEditingSubmitting" @click="closeTextEditor">
+              {{ manualEditingMessage('slides.manualEditing.text.cancel') }}
+            </button>
+            <button type="submit" :disabled="manualEditingSubmitting">
+              {{ manualEditingSubmitting
+                ? manualEditingMessage('slides.manualEditing.text.saving')
+                : manualEditingMessage('slides.manualEditing.text.save') }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -388,6 +395,7 @@ const {
 const {
   selectedTarget: manualSelectedTarget,
   translationPreview: manualTranslationPreview,
+  pendingTranslation: manualPendingTranslation,
   textEditorTarget,
   textDraft,
   handlePointerDown: handleManualPointerDown,
@@ -397,7 +405,12 @@ const {
   handleDoubleClick: handleManualDoubleClick,
   submitTextEdit,
   closeTextEditor,
+  handleTextCompositionStart,
+  handleTextCompositionEnd,
+  handleTextEditorEscape,
+  handleTextEditorSubmitShortcut,
   reconcileSelection: reconcileManualSelection,
+  resetInteraction: resetManualInteraction,
 } = useSlideManualEditingInteraction({
   canEdit: canManualEdit,
   currentSlide: displayedSlide,
@@ -408,16 +421,19 @@ const {
 });
 
 const manualPreviewTranslations = computed(() => {
-  const preview = manualTranslationPreview.value;
+  const preview = manualTranslationPreview.value ?? manualPendingTranslation.value;
   return preview ? new Map([[preview.elementId, preview]]) : new Map();
 });
+const manualSelectedTranslation = computed(() => (
+  manualTranslationPreview.value ?? manualPendingTranslation.value
+));
 const textEditorInputRef = ref<HTMLTextAreaElement | null>(null);
 const textEditorStyle = computed(() => {
   const target = textEditorTarget.value;
   if (!target) return {};
   return {
-    left: `${target.bounds.x * INCHES_TO_PX * renderScale.value}px`,
-    top: `${target.bounds.y * INCHES_TO_PX * renderScale.value}px`,
+    left: `${currentLayout.value.slideLeft + target.bounds.x * INCHES_TO_PX * renderScale.value}px`,
+    top: `${currentLayout.value.slideTop + target.bounds.y * INCHES_TO_PX * renderScale.value}px`,
     width: `${Math.max(180, target.bounds.w * INCHES_TO_PX * renderScale.value)}px`,
     minHeight: `${Math.max(84, target.bounds.h * INCHES_TO_PX * renderScale.value)}px`,
   };
@@ -533,7 +549,7 @@ const konvaWrapperStyle = computed(() => {
   const safeRasterScale = konvaRasterScale.value > 0 ? konvaRasterScale.value : 1;
   const wrapperScale = renderScale.value / safeRasterScale;
   const sourceSelectionCursor = manualEditingEnabled.value
-    ? (manualEditingSubmitting.value ? 'wait' : 'move')
+    ? 'move'
     : hoveredSourceTarget.value ? 'pointer' : KONVA_WRAPPER_CURSOR;
 
   return {
@@ -683,8 +699,7 @@ watch(
   () => activeSlideId.value,
   async () => {
     resetSourceSelection();
-    manualEditingStore.clearSelection();
-    closeTextEditor();
+    resetManualInteraction();
     latestZoomCommitId += 1;
     commitKonvaRasterScale(renderScale.value);
     if (zoomCommitRafId !== null) {
@@ -705,7 +720,8 @@ watch(canSelectSourceElements, (enabled) => {
 
 watch(
   () => [renderModel.value?.presentationId, renderModel.value?.version] as const,
-  () => {
+  ([, version]) => {
+    if (version !== undefined) manualEditingStore.reconcilePresentedRevision(version);
     reconcileSourceSelection();
     reconcileManualSelection();
   },
@@ -716,10 +732,6 @@ watch(textEditorTarget, async (target) => {
   await nextTick();
   textEditorInputRef.value?.focus();
   textEditorInputRef.value?.select();
-});
-
-watch(canManualEdit, (enabled) => {
-  if (!enabled) closeTextEditor();
 });
 
 watch(

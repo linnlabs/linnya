@@ -114,11 +114,12 @@ SlideStage sourceSelection
 
 ```text
 SlideStage authoring-capability target click / drag / text double-click
-  -> manualEditing 临时选择与位移预览（不修改 RenderModel）
+  -> manualEditing gesture preview / pending local visual（不修改 RenderModel）
   -> SlidesView submitManualEdit orchestration
   -> slides:manual-edit(revisionId + revision + sourceHash + operation)
   -> backend 改写 compose.manualEdits 并完整编译/物化
   -> revision 原子提交后 refreshDeck / RenderModel 原子替换
+  -> matching RenderModel 真正呈现后撤下 pending visual
 ```
 
 当前直接开放作者对象移动，以及作者值仍为字符串的文本完整替换。是否可改字由 backend 投影的 `authoringEdit` 决定，不能从 RenderModel 的段落或字体 run 数量反推；所以多行字符串和因字体解析拆分的中英混排仍可编辑，富文本与内联公式 run 保持文本只读。图片源、表格内容和图表数据需要各自的完整值编辑器后再开放。Flex Frame 因 RenderModel 仍扁平化其装饰和后代，暂不在前端显示为可拖动目标，避免拖动预览与最终提交不一致。详细边界见 [`../features/manualEditing/README.md`](../features/manualEditing/README.md)。

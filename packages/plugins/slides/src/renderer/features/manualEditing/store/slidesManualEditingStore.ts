@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, shallowRef } from 'vue';
+import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 import type {
   ManualEditableTarget,
   ManualEditingTranslationPreview,
@@ -9,12 +10,21 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   const enabled = ref(false);
   const selectedTarget = shallowRef<ManualEditableTarget | null>(null);
   const translationPreview = shallowRef<ManualEditingTranslationPreview | null>(null);
+  const pendingTranslation = shallowRef<ManualEditingTranslationPreview | null>(null);
+  const textEditorTarget = shallowRef<ManualEditableTarget | null>(null);
+  const textDraft = ref('');
+  const textSubmissionPending = ref(false);
+  const activeOperation = shallowRef<SlidesManualEditOperation | null>(null);
+  const pendingPresentationRevision = ref<number | null>(null);
   const submitting = ref(false);
   const errorMessage = ref<string | null>(null);
 
   function setEnabled(value: boolean): void {
     enabled.value = value;
-    if (!value) clearSelection();
+    if (!value) {
+      clearSelection();
+      closeTextEditor();
+    }
   }
 
   function selectTarget(target: ManualEditableTarget | null): void {
@@ -23,19 +33,73 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     errorMessage.value = null;
   }
 
+  function reconcileSelectedTarget(target: ManualEditableTarget | null): void {
+    selectedTarget.value = target;
+    if (textEditorTarget.value?.elementId !== selectedTarget.value?.elementId) {
+      closeTextEditor();
+      return;
+    }
+    if (target) textEditorTarget.value = target;
+  }
+
   function setTranslationPreview(preview: ManualEditingTranslationPreview | null): void {
     translationPreview.value = preview;
   }
 
-  function beginSubmit(): void {
+  function openTextEditor(target: ManualEditableTarget): void {
+    textEditorTarget.value = target;
+    textDraft.value = target.textContent ?? '';
+  }
+
+  function updateTextDraft(value: string): void {
+    textDraft.value = value;
+  }
+
+  function closeTextEditor(): void {
+    textEditorTarget.value = null;
+    textDraft.value = '';
+  }
+
+  function beginSubmit(
+    operation: SlidesManualEditOperation,
+    optimisticTranslation?: ManualEditingTranslationPreview,
+  ): void {
     submitting.value = true;
+    activeOperation.value = operation;
+    pendingPresentationRevision.value = null;
+    pendingTranslation.value = optimisticTranslation ?? null;
+    textSubmissionPending.value = operation.op === 'set_text_content';
+    translationPreview.value = null;
     errorMessage.value = null;
   }
 
-  function finishSubmit(error?: string): void {
+  function commitSubmit(revision: number): void {
     submitting.value = false;
-    translationPreview.value = null;
-    errorMessage.value = error ?? null;
+    activeOperation.value = null;
+    pendingPresentationRevision.value = revision;
+  }
+
+  function failSubmit(error: string): void {
+    submitting.value = false;
+    activeOperation.value = null;
+    pendingTranslation.value = null;
+    pendingPresentationRevision.value = null;
+    textSubmissionPending.value = false;
+    errorMessage.value = error;
+  }
+
+  /** 只有新 RenderModel 已呈现 committed revision，才能撤下乐观视觉。 */
+  function reconcilePresentedRevision(revision: number): void {
+    if (
+      pendingPresentationRevision.value === null
+      || revision < pendingPresentationRevision.value
+    ) {
+      return;
+    }
+    pendingTranslation.value = null;
+    pendingPresentationRevision.value = null;
+    if (textSubmissionPending.value) closeTextEditor();
+    textSubmissionPending.value = false;
   }
 
   function clearSelection(): void {
@@ -47,6 +111,11 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     enabled.value = false;
     submitting.value = false;
     errorMessage.value = null;
+    pendingTranslation.value = null;
+    activeOperation.value = null;
+    pendingPresentationRevision.value = null;
+    textSubmissionPending.value = false;
+    closeTextEditor();
     clearSelection();
   }
 
@@ -54,13 +123,25 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     enabled,
     selectedTarget,
     translationPreview,
+    pendingTranslation,
+    textEditorTarget,
+    textDraft,
+    textSubmissionPending,
+    activeOperation,
+    pendingPresentationRevision,
     submitting,
     errorMessage,
     setEnabled,
     selectTarget,
+    reconcileSelectedTarget,
     setTranslationPreview,
+    openTextEditor,
+    updateTextDraft,
+    closeTextEditor,
     beginSubmit,
-    finishSubmit,
+    commitSubmit,
+    failSubmit,
+    reconcilePresentedRevision,
     clearSelection,
     $reset,
   };

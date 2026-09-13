@@ -393,6 +393,14 @@ watch(canUseSourceSelectionMode, (enabled) => {
   }
 });
 watch(canUseManualEditing, (available) => {
-  if (!available && manualEditingEnabled.value) manualEditingStore.setEnabled(false);
+  const availability = manualEditingAvailability.value;
+  if (
+    !available
+    && manualEditingEnabled.value
+    && !availability.available
+    && availability.reason !== 'version_not_ready'
+  ) {
+    manualEditingStore.setEnabled(false);
+  }
 });
 </script>
