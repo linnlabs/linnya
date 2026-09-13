@@ -8,6 +8,8 @@
 
 - 模块名白名单写在 host 代码中，模型、manifest 和用户参数不能提供 package specifier。
 - 调用方必须绑定当前插件 CLI 和允许目录。
+- `fontkit`、Yoga、HarfBuzz、Sharp 等随 App 发布的重型运行时由 Host 解析；包自己的传递依赖继续按
+  Host `node_modules` 闭包加载，插件 artifact 不复制这些依赖。
 - 插件停用、目录身份不匹配、模块不在白名单或发布版路径不完整时关闭解析。
 - Shell、Python、npm、brew、pnpm 等普通 CLI 不经过这里，也不由 Linnya 安装或升级。
 

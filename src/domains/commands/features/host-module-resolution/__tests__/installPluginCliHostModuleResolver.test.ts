@@ -20,6 +20,8 @@ describe('plugin CLI host module resolver', () => {
     restoreResolver = null;
 
     fs.mkdirSync(path.join(hostAppRoot, 'node_modules/sharp'), { recursive: true });
+    fs.mkdirSync(path.join(hostAppRoot, 'node_modules/fontkit'), { recursive: true });
+    fs.mkdirSync(path.join(hostAppRoot, 'node_modules/fontkit/node_modules/brotli'), { recursive: true });
     fs.mkdirSync(path.join(hostAppRoot, 'node_modules/yoga-layout'), { recursive: true });
     fs.mkdirSync(path.join(hostAppRoot, 'node_modules/unlisted-runtime'), { recursive: true });
     fs.mkdirSync(cliDirectory, { recursive: true });
@@ -28,6 +30,16 @@ describe('plugin CLI host module resolver', () => {
     fs.writeFileSync(
       path.join(hostAppRoot, 'node_modules/sharp/index.js'),
       'module.exports = { source: "host" };\n',
+      'utf8',
+    );
+    fs.writeFileSync(
+      path.join(hostAppRoot, 'node_modules/fontkit/index.js'),
+      'module.exports = { parser: require("brotli") };\n',
+      'utf8',
+    );
+    fs.writeFileSync(
+      path.join(hostAppRoot, 'node_modules/fontkit/node_modules/brotli/index.js'),
+      'module.exports = "host-transitive-runtime";\n',
       'utf8',
     );
     fs.writeFileSync(
@@ -81,6 +93,15 @@ describe('plugin CLI host module resolver', () => {
     expect(requireFromCli(entryPath)).toBe(
       fs.realpathSync(path.join(hostAppRoot, 'node_modules/yoga-layout/load.js')),
     );
+  });
+
+  it('从 host 加载字体解析器及其宿主闭包', () => {
+    const entryPath = path.join(cliDirectory, 'entry.cjs');
+    fs.writeFileSync(entryPath, 'module.exports = require("fontkit");\n', 'utf8');
+    installResolver();
+
+    const requireFromCli = createRequire(entryPath);
+    expect(requireFromCli(entryPath)).toEqual({ parser: 'host-transitive-runtime' });
   });
 
   it('不向 CLI 目录外暴露 host 运行时', () => {
