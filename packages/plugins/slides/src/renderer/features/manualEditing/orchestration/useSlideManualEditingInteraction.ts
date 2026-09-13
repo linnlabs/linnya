@@ -90,6 +90,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     session.dragged = true;
     store.setTranslationPreview({
       elementId: session.target.elementId,
+      affectedElementIds: session.target.translationElementIds,
       dx: point.x - session.anchor.x,
       dy: point.y - session.anchor.y,
     });

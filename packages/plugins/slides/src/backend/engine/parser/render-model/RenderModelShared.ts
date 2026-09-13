@@ -55,6 +55,7 @@ export interface RenderBaseNode {
   zIndex: number;
   editableTarget?: EditableTarget;
   authoringRef?: SlidesAuthoringObjectRef;
+  authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
   authoringEdit?: SlidesAuthoringEditProjection;
   sourceSpan?: RenderSourceSpan;
   layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
@@ -261,6 +262,7 @@ export function makeBaseNode(
   layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence,
   authoringRef?: SlidesAuthoringObjectRef,
   authoringEdit?: SlidesAuthoringEditProjection,
+  authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[],
 ): RenderBaseNode {
   return {
     id,
@@ -268,6 +270,7 @@ export function makeBaseNode(
     zIndex,
     editableTarget,
     authoringRef,
+    authoringAncestorRefs,
     authoringEdit,
     sourceSpan,
     layoutConstraintEvidence,

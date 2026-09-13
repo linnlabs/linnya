@@ -101,7 +101,15 @@ async function verifyManualTranslation(): Promise<{ manualTranslationFrames: num
     index: 0,
     layoutKey: 'LAYOUT_WIDE',
     background: { paint: { type: 'none' } },
-    elements: [shape(solid)],
+    elements: [
+      shape(solid),
+      {
+        ...shape({ type: 'solid', color: '#FFFFFF' }),
+        id: 'stable-frame-child',
+        zIndex: 1,
+        box: { x: 1, y: 0.25, w: 0.5, h: 0.5, unit: 'in' },
+      },
+    ],
   };
   const app = createApp({
     setup: () => () => h(KonvaSlideStage, {
@@ -122,13 +130,18 @@ async function verifyManualTranslation(): Promise<{ manualTranslationFrames: num
     const stage = Konva.stages.find(candidate => !before.has(candidate));
     if (!stage) throw new Error('Manual editing stage was not mounted');
     await nextTick();
-    assertShapePosition(stage, 0, 0);
-    previewTranslations.value = new Map([[
-      'stable-shape',
-      { elementId: 'stable-shape', dx: 1, dy: 0.5 },
-    ]]);
+    assertShapePositions(stage, [[0, 0], [96, 24]]);
+    const framePreview: ManualEditingTranslationPreview = {
+      elementId: 'stable-shape',
+      affectedElementIds: ['stable-shape', 'stable-frame-child'],
+      dx: 1,
+      dy: 0.5,
+    };
+    previewTranslations.value = new Map(
+      framePreview.affectedElementIds.map(elementId => [elementId, framePreview]),
+    );
     await nextTick();
-    assertShapePosition(stage, 96, 48);
+    assertShapePositions(stage, [[96, 48], [192, 72]]);
     return { manualTranslationFrames: 2 };
   } finally {
     app.unmount();
@@ -136,15 +149,23 @@ async function verifyManualTranslation(): Promise<{ manualTranslationFrames: num
   }
 }
 
-function assertShapePosition(stage: Konva.Stage, expectedX: number, expectedY: number): void {
+function assertShapePositions(
+  stage: Konva.Stage,
+  expectedPositions: ReadonlyArray<readonly [number, number]>,
+): void {
   const contentLayer = stage.getLayers()[1];
-  const node = contentLayer?.findOne('Rect');
-  if (!node) throw new Error('Manual editing shape was not rendered in the content layer');
-  const position = node.getAbsolutePosition();
-  if (position.x !== expectedX || position.y !== expectedY) {
-    throw new Error(
-      `Manual translation differs: actual=(${position.x}, ${position.y}), expected=(${expectedX}, ${expectedY})`,
-    );
+  const nodes = contentLayer?.find('Rect') ?? [];
+  if (nodes.length !== expectedPositions.length) {
+    throw new Error(`Manual editing rendered ${nodes.length} shapes; expected ${expectedPositions.length}`);
+  }
+  for (const [index, node] of nodes.entries()) {
+    const [expectedX, expectedY] = expectedPositions[index] ?? [];
+    const position = node.getAbsolutePosition();
+    if (position.x !== expectedX || position.y !== expectedY) {
+      throw new Error(
+        `Manual translation ${index} differs: actual=(${position.x}, ${position.y}), expected=(${expectedX}, ${expectedY})`,
+      );
+    }
   }
 }
 

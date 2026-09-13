@@ -101,6 +101,35 @@ describe('renderModelCodec authoring edit projection', () => {
     })).toBe(true);
   });
 
+  it('accepts only compiler-owned Frame ancestry on the same slide', () => {
+    const node = {
+      ...baseTextNode,
+      authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'text' },
+      authoringEdit: {
+        capabilities: ['translate', 'set_text_content'],
+        text: { kind: 'plain_text', content: 'Hello' },
+      },
+    };
+    expect(isSlideRenderModel({
+      ...baseModel,
+      elements: [{
+        ...node,
+        authoringAncestorRefs: [{
+          slideKey: 'overview', editKey: 'card', targetKind: 'frame',
+        }],
+      }],
+    })).toBe(true);
+    expect(isSlideRenderModel({
+      ...baseModel,
+      elements: [{
+        ...node,
+        authoringAncestorRefs: [{
+          slideKey: 'other', editKey: 'card', targetKind: 'frame',
+        }],
+      }],
+    })).toBe(false);
+  });
+
   it('rejects missing identities and target-kind mismatches', () => {
     expect(isSlideRenderModel({
       ...baseModel,

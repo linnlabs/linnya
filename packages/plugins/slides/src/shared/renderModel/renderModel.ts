@@ -192,6 +192,11 @@ export interface RenderNodeBase {
   editableTarget?: EditableTarget;
   /** generated deck.js 中显式声明的稳定作者对象身份。 */
   authoringRef?: SlidesAuthoringObjectRef;
+  /**
+   * 当前渲染节点所属的作者对象祖先，从外到内排列。
+   * Flex 编译会摊平 Frame；交互层只能消费这里保留的正式层级。
+   */
+  authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
   /** 编译器根据作者输入产生的有限编辑能力和值；禁止从 paragraphs/layout 反推。 */
   authoringEdit?: SlidesAuthoringEditProjection;
   rotation?: number;

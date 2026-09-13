@@ -8,6 +8,7 @@ import type { Paint } from '../visual/paint';
 import { isPresetShapeName } from '../shapeGeometry';
 import { isGeneratedLayoutConstraintEvidence } from '../generatedLayoutConstraints';
 import {
+  isSlidesAuthoringAncestorRefs,
   isSlidesAuthoringEditProjection,
   isSlidesAuthoringObjectRef,
 } from '../authoringEditing';
@@ -18,6 +19,7 @@ const NODE_BASE_KEYS = [
   'box',
   'editableTarget',
   'authoringRef',
+  'authoringAncestorRefs',
   'authoringEdit',
   'rotation',
   'opacity',
@@ -177,6 +179,12 @@ function hasRenderNodeBase(value: unknown): value is Record<string, unknown> {
     && isFiniteNumber(value.zIndex)
     && isOptional(value.editableTarget, isEditableTarget)
     && isOptional(value.authoringRef, isSlidesAuthoringObjectRef)
+    && isOptional(value.authoringAncestorRefs, refs => (
+      isSlidesAuthoringAncestorRefs(
+        refs,
+        isSlidesAuthoringObjectRef(value.authoringRef) ? value.authoringRef : undefined,
+      )
+    ))
     && isOptional(value.authoringEdit, isSlidesAuthoringEditProjection)
     && isAuthoringEditBinding(value.authoringRef, value.authoringEdit)
     && isOptional(value.rotation, isFiniteNumber)
@@ -197,10 +205,6 @@ function isAuthoringEditBinding(authoringRef: unknown, authoringEdit: unknown): 
   ) {
     return false;
   }
-  if (authoringRef.targetKind === 'frame') {
-    return authoringEdit.unavailableReason === 'frame_members_unavailable';
-  }
-  if (authoringEdit.unavailableReason !== undefined) return false;
   return authoringRef.targetKind === 'text'
     ? authoringEdit.text !== undefined
     : authoringEdit.text === undefined;

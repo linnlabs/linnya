@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildSlidesAuthoringRenderNodeId,
+  isSlidesAuthoringAncestorRefs,
   isSlidesAuthoringEditRef,
   isSlidesAuthoringObjectRef,
   isSlidesAuthoringKey,
@@ -26,5 +27,21 @@ describe('Slides authoring identity', () => {
     expect(isSlidesAuthoringObjectRef(ref)).toBe(true);
     expect(isSlidesAuthoringEditRef(ref)).toBe(false);
     expect(buildSlidesAuthoringRenderNodeId(ref)).toBe('authoring-overview-headline');
+  });
+
+  it('只接受同页、无重复的 Frame 作者祖先', () => {
+    const descendant = {
+      slideKey: 'overview', editKey: 'headline', targetKind: 'text',
+    } as const;
+    expect(isSlidesAuthoringAncestorRefs([
+      { slideKey: 'overview', editKey: 'section', targetKind: 'frame' },
+      { slideKey: 'overview', editKey: 'card', targetKind: 'frame' },
+    ], descendant)).toBe(true);
+    expect(isSlidesAuthoringAncestorRefs([
+      { slideKey: 'other', editKey: 'card', targetKind: 'frame' },
+    ], descendant)).toBe(false);
+    expect(isSlidesAuthoringAncestorRefs([
+      { slideKey: 'overview', editKey: 'card', targetKind: 'shape' },
+    ], descendant)).toBe(false);
   });
 });

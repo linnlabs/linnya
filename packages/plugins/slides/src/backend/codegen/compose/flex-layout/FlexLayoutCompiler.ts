@@ -197,6 +197,7 @@ export function compileSlide(
     slideNumber,
     slideKey: slideNode.slideKey,
     nodePath: 'root',
+    authoringAncestorRefs: [],
   });
 
   return {
@@ -220,6 +221,8 @@ interface LayoutTraversalContext {
   readonly parentPath?: string;
   readonly grandparent?: LayoutResult;
   readonly grandparentPath?: string;
+  /** 摊平前的正式作者对象祖先；只在编译边界生成，不由下游猜测。 */
+  readonly authoringAncestorRefs: readonly SlidesAuthoringObjectRef[];
 }
 
 function collectElements(
@@ -229,25 +232,29 @@ function collectElements(
 ): void {
   const { node, box, children } = result;
   const constraintEvidence = buildConstraintEvidence(result, context);
+  const editKey = readLayoutEditKey(node);
+  const authoringRef = editKey
+    ? buildAuthoringRef(context.slideKey, editKey, resolveManualTargetKind(node))
+    : undefined;
 
   if (isContainerNode(node)) {
     // 容器装饰 → 背景 shape 元素（在子元素之前，确保 z-order 底层）
     const container = node as LayoutContainerNode;
     if (container.backgroundColor || container.border) {
+      const background = attachAuthoringRef(
+        buildContainerBackground(container, box),
+        authoringRef,
+      );
       elements.push(attachLayoutConstraintEvidence(
-        attachAuthoringRef(
-          buildContainerBackground(container, box),
-          buildAuthoringRef(
-            context.slideKey,
-            readLayoutEditKey(container),
-            resolveManualTargetKind(container),
-          ),
-        ),
+        attachAuthoringAncestors(background, context.authoringAncestorRefs),
         constraintEvidence,
       ));
     }
 
     // 递归处理子节点
+    const childAuthoringAncestors = authoringRef
+      ? [...context.authoringAncestorRefs, authoringRef]
+      : context.authoringAncestorRefs;
     for (const [index, child] of children.entries()) {
       collectElements(child, elements, {
         slideNumber: context.slideNumber,
@@ -257,6 +264,7 @@ function collectElements(
         parentPath: context.nodePath,
         grandparent: context.parent,
         grandparentPath: context.parentPath,
+        authoringAncestorRefs: childAuthoringAncestors,
       });
     }
     return;
@@ -272,11 +280,10 @@ function collectElements(
       element._semanticRole = node.role;
     }
     elements.push(attachLayoutConstraintEvidence(
-      attachAuthoringRef(element, buildAuthoringRef(
-        context.slideKey,
-        readLayoutEditKey(node),
-        resolveManualTargetKind(node),
-      )),
+      attachAuthoringAncestors(
+        attachAuthoringRef(element, authoringRef),
+        context.authoringAncestorRefs,
+      ),
       constraintEvidence,
     ));
   }
@@ -551,6 +558,15 @@ function attachAuthoringRef<T extends DirectElementInput>(
   authoringRef: SlidesAuthoringObjectRef | undefined,
 ): T {
   return authoringRef ? { ...element, _authoringRef: authoringRef } : element;
+}
+
+function attachAuthoringAncestors<T extends DirectElementInput>(
+  element: T,
+  authoringAncestorRefs: readonly SlidesAuthoringObjectRef[],
+): T {
+  return authoringAncestorRefs.length > 0
+    ? { ...element, _authoringAncestorRefs: authoringAncestorRefs }
+    : element;
 }
 
 function buildAuthoringRef(

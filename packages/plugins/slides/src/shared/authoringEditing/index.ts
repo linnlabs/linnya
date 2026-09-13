@@ -5,7 +5,6 @@ export type {
 export type {
   SlidesAuthoringEditCapability,
   SlidesAuthoringEditProjection,
-  SlidesAuthoringEditUnavailableReason,
   SlidesAuthoringTextEditProjection,
 } from './definitions/authoringEditProjection';
 export type {
@@ -34,6 +33,7 @@ export type {
 } from './definitions/manualEdits';
 export {
   buildSlidesAuthoringRenderNodeId,
+  isSlidesAuthoringAncestorRefs,
   isSlidesAuthoringEditRef,
   isSlidesAuthoringObjectRef,
   isSlidesAuthoringKey,

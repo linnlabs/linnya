@@ -20,10 +20,9 @@ describe('authoring edit projection', () => {
     })).toBe(false);
   });
 
-  it('accepts an unavailable frame without writable capabilities', () => {
+  it('accepts frame translation as an explicit authoring capability', () => {
     expect(isSlidesAuthoringEditProjection({
-      capabilities: [],
-      unavailableReason: 'frame_members_unavailable',
+      capabilities: ['translate'],
     })).toBe(true);
   });
 

@@ -173,9 +173,36 @@ describe('authoring identity projection', () => {
     expect(originalText.content).toBe('Original');
     expect(compiled.input.slides[0].elements).toMatchObject([
       { position: { x: 1.5, y: 1.2 }, _authoringRef: { editKey: 'hero_group', targetKind: 'frame' } },
-      { position: { x: 1.6, y: 1.5 }, _authoringRef: { editKey: 'hero_art', targetKind: 'shape' } },
+      {
+        position: { x: 1.6, y: 1.5 },
+        _authoringRef: { editKey: 'hero_art', targetKind: 'shape' },
+        _authoringAncestorRefs: [{ editKey: 'hero_group', targetKind: 'frame' }],
+      },
       { content: 'Updated', position: { x: 5, y: 1 }, _authoringRef: { editKey: 'headline', targetKind: 'text' } },
     ]);
+
+    const admitted = readCompiledDirectComposeInput(structuredClone(compiled.input));
+    if (!admitted.input) throw new Error(admitted.error ?? 'Expected admitted compiled input.');
+    const deckSpec = buildDeckSpecFromDirectInput(admitted.input);
+    const model = new RenderModelMapper().fromGeneratedDeck(
+      'presentation-1',
+      1,
+      deckSpec.title,
+      deckSpec,
+      { width: 13.333, height: 7.5 },
+    );
+    expect(model.slides[0].elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'authoring-overview-hero_group',
+        authoringEdit: { capabilities: ['translate'] },
+      }),
+      expect.objectContaining({
+        id: 'authoring-overview-hero_art',
+        authoringAncestorRefs: [expect.objectContaining({
+          slideKey: 'overview', editKey: 'hero_group', targetKind: 'frame',
+        })],
+      }),
+    ]));
   });
 
   it('拒绝 dangling 与类型不符的人工记录', () => {

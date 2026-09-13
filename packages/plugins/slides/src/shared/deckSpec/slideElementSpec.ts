@@ -129,6 +129,7 @@ export type StructuredElement =
       _overlayId?: string;
       _sourceSpan?: SourceSpan;
       _authoringRef?: SlidesAuthoringObjectRef;
+      _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
       _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
     }
   | {
@@ -142,6 +143,7 @@ export type StructuredElement =
       _overlayId?: string;
       _sourceSpan?: SourceSpan;
       _authoringRef?: SlidesAuthoringObjectRef;
+      _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
       _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
     }
   | {
@@ -154,6 +156,7 @@ export type StructuredElement =
       _overlayId?: string;
       _sourceSpan?: SourceSpan;
       _authoringRef?: SlidesAuthoringObjectRef;
+      _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
       _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
     }
   | {
@@ -166,6 +169,7 @@ export type StructuredElement =
       _overlayId?: string;
       _sourceSpan?: SourceSpan;
       _authoringRef?: SlidesAuthoringObjectRef;
+      _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
       _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
     }
   | (LayoutChartControls & {
@@ -184,6 +188,7 @@ export type StructuredElement =
       _overlayId?: string;
       _sourceSpan?: SourceSpan;
       _authoringRef?: SlidesAuthoringObjectRef;
+      _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
       _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
     })
   | {
@@ -199,6 +204,7 @@ export type StructuredElement =
       _overlayId?: string;
       _sourceSpan?: SourceSpan;
       _authoringRef?: SlidesAuthoringObjectRef;
+      _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
       _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
     }
   | {
@@ -219,6 +225,7 @@ export type StructuredElement =
       _overlayId?: string;
       _sourceSpan?: SourceSpan;
       _authoringRef?: SlidesAuthoringObjectRef;
+      _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
       _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
     }
   | {
@@ -232,6 +239,7 @@ export type StructuredElement =
       _overlayId?: string;
       _sourceSpan?: SourceSpan;
       _authoringRef?: SlidesAuthoringObjectRef;
+      _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
       _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
     }
   | StructuredSvgGraphicElement
@@ -246,6 +254,7 @@ export interface StructuredFormulaElement {
   _overlayId?: string;
   _sourceSpan?: SourceSpan;
   _authoringRef?: SlidesAuthoringObjectRef;
+  _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
   _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
 }
 
@@ -257,6 +266,7 @@ export type StructuredSvgGraphicElement = SvgGraphicElementSpec & {
   _overlayId?: string;
   _sourceSpan?: SourceSpan;
   _authoringRef?: SlidesAuthoringObjectRef;
+  _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
   _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
 };
 
@@ -298,6 +308,7 @@ export interface FreeformElementBase {
   /** 内部标记：deck.js 源码定位，不进 PPTX，仅供选区 AI 编辑 */
   _sourceSpan?: SourceSpan;
   _authoringRef?: SlidesAuthoringObjectRef;
+  _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
   _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
 }
 

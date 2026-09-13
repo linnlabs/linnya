@@ -15,11 +15,14 @@ export interface ManualEditableTarget {
   readonly authoringRef: SlidesAuthoringEditRef;
   readonly bounds: RenderNodeSelectionRect;
   readonly polygon: readonly RenderNodeSelectionPoint[];
+  /** 乐观预览必须共同平移的 RenderNode 根节点。 */
+  readonly translationElementIds: readonly string[];
   readonly textContent?: string;
 }
 
 export interface ManualEditingTranslationPreview {
   readonly elementId: string;
+  readonly affectedElementIds: readonly string[];
   readonly dx: number;
   readonly dy: number;
 }

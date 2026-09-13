@@ -84,6 +84,55 @@ describe('manual editable targets', () => {
       .toMatchObject({ elementId: shape.id, targetKind: 'shape' });
   });
 
+  it('projects a flattened Frame as one translation scope', () => {
+    const frameRef = { slideKey: 'overview', editKey: 'card1', targetKind: 'frame' } as const;
+    const nodes: RenderNode[] = [
+      {
+        id: 'authoring-overview-card1',
+        kind: 'shape',
+        box: { x: 1, y: 1, w: 4, h: 2, unit: 'in' },
+        zIndex: 1,
+        geometry: { type: 'preset', name: 'roundRect' },
+        authoringRef: frameRef,
+        authoringEdit: { capabilities: ['translate'] },
+      },
+      {
+        ...textNode({
+          id: 'authoring-overview-card1Label',
+          box: { x: 1.4, y: 1.4, w: 2, h: 0.5, unit: 'in' },
+          zIndex: 2,
+          authoringRef: {
+            slideKey: 'overview', editKey: 'card1Label', targetKind: 'text',
+          },
+        }),
+        authoringAncestorRefs: [frameRef],
+      },
+      {
+        id: 'authoring-overview-card1Badge',
+        kind: 'shape',
+        box: { x: 4, y: 1.3, w: 0.5, h: 0.5, unit: 'in' },
+        zIndex: 3,
+        geometry: { type: 'preset', name: 'ellipse' },
+        authoringRef: {
+          slideKey: 'overview', editKey: 'card1Badge', targetKind: 'shape',
+        },
+        authoringAncestorRefs: [frameRef],
+        authoringEdit: { capabilities: ['translate'] },
+      },
+    ];
+
+    const frame = collectManualEditableTargets(nodes)
+      .find(target => target.elementId === 'authoring-overview-card1');
+    expect(frame).toMatchObject({
+      targetKind: 'frame',
+      translationElementIds: [
+        'authoring-overview-card1',
+        'authoring-overview-card1Label',
+        'authoring-overview-card1Badge',
+      ],
+    });
+  });
+
   it('hit-tests the topmost editable authoring polygon', () => {
     const bottom = textNode();
     const top = textNode({

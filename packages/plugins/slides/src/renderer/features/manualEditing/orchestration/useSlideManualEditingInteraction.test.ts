@@ -66,7 +66,10 @@ describe('useSlideManualEditingInteraction', () => {
     const store = useSlidesManualEditingStore();
     expect(store.translationPreview).toBeNull();
     expect(store.pendingTranslation).toEqual({
-      elementId: 'authoring-overview-headline', dx: 1, dy: 0.5,
+      elementId: 'authoring-overview-headline',
+      affectedElementIds: ['authoring-overview-headline'],
+      dx: 1,
+      dy: 0.5,
     });
     expect(submitOperation).toHaveBeenCalledWith({
       op: 'translate_by',

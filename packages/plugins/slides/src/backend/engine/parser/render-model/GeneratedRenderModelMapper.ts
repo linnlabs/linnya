@@ -107,6 +107,7 @@ function mapStructuredElement(
     element._layoutConstraintEvidence,
     element._authoringRef,
     buildAuthoringEditProjection(element),
+    element._authoringAncestorRefs,
   );
 
   switch (element.type) {
@@ -241,6 +242,7 @@ function mapFreeformElement(
     element._layoutConstraintEvidence,
     element._authoringRef,
     buildAuthoringEditProjection(element),
+    element._authoringAncestorRefs,
   );
 
   switch (element.type) {
@@ -311,6 +313,7 @@ function mapFreeformGroup(
     element._layoutConstraintEvidence,
     element._authoringRef,
     buildAuthoringEditProjection(element),
+    element._authoringAncestorRefs,
   );
   if (!element.children?.length) {
     return {
@@ -346,13 +349,6 @@ function buildAuthoringEditProjection(
 ): SlidesAuthoringEditProjection | undefined {
   const authoringRef = element._authoringRef;
   if (!authoringRef) return undefined;
-  if (authoringRef.targetKind === 'frame') {
-    return {
-      capabilities: [],
-      unavailableReason: 'frame_members_unavailable',
-    };
-  }
-
   const capabilities: Array<'translate' | 'set_text_content'> = ['translate'];
   if (authoringRef.targetKind !== 'text') return { capabilities };
   if (

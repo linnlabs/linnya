@@ -28,6 +28,28 @@ export function isSlidesAuthoringObjectRef(value: unknown): value is SlidesAutho
     && isSlidesManualTargetKind(value.targetKind);
 }
 
+/**
+ * 摊平渲染节点只允许声明同一页面内的 Frame 祖先。
+ * 顺序表达作者树层级，因此重复祖先同样属于无效编译结果。
+ */
+export function isSlidesAuthoringAncestorRefs(
+  value: unknown,
+  descendantRef?: SlidesAuthoringObjectRef,
+): value is readonly SlidesAuthoringObjectRef[] {
+  if (!Array.isArray(value) || value.length === 0 || !value.every(isSlidesAuthoringObjectRef)) {
+    return false;
+  }
+  const slideKey = descendantRef?.slideKey ?? value[0]?.slideKey;
+  const editKeys = new Set<string>();
+  return value.every(ref => {
+    if (ref.targetKind !== 'frame' || ref.slideKey !== slideKey || editKeys.has(ref.editKey)) {
+      return false;
+    }
+    editKeys.add(ref.editKey);
+    return true;
+  });
+}
+
 function isSlidesManualTargetKind(value: unknown): boolean {
   return value === 'text'
     || value === 'frame'

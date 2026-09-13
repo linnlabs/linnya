@@ -6,8 +6,6 @@ export type SlidesAuthoringTextEditProjection =
   | { readonly kind: 'plain_text'; readonly content: string }
   | { readonly kind: 'rich_text' };
 
-export type SlidesAuthoringEditUnavailableReason = 'frame_members_unavailable';
-
 /**
  * 编译器投影给 Renderer 的最小编辑合同。
  *
@@ -16,5 +14,4 @@ export type SlidesAuthoringEditUnavailableReason = 'frame_members_unavailable';
 export interface SlidesAuthoringEditProjection {
   readonly capabilities: readonly SlidesAuthoringEditCapability[];
   readonly text?: SlidesAuthoringTextEditProjection;
-  readonly unavailableReason?: SlidesAuthoringEditUnavailableReason;
 }

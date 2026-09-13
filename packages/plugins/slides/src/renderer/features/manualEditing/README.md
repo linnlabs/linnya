@@ -9,9 +9,9 @@
 - Double-clicking a text object whose backend `authoringEdit` projection declares `set_text_content` opens a focused textarea over its bounds. The editor lives in the scroll-content overlay rather than inside the clipped slide canvas. Save replaces the complete author string and runs the normal backend text measurement and layout pipeline. IME composition cannot accidentally trigger the save shortcut; a failed save retains the editor and draft for correction or retry. Multiline strings and strings split into Latin/East Asian render runs remain editable because their author value is still one string.
 - Rich author runs and inline formula runs remain text-read-only because replacing them with one string would destroy run semantics. They may still move.
 - Image, table, chart, shape, SVG Graphic and formula author objects may move. Their content/data/source editors are later independent feature slices.
-- Flex Frame targets are currently withheld from the UI. The generated RenderModel flattens a Frame into a decoration plus descendants, so moving only the decoration during preview would misrepresent the committed result. The compiler still carries `targetKind: "frame"` for a later whole-subtree interaction.
+- A decorated Flex Frame is selected through its background and moves as one author object. The compiler projects every flattened descendant's `authoringAncestorRefs`; the target mapper turns that relation into the exact RenderNode roots that share one optimistic translation. Child text and visual objects keep their own author identity, so clicking them can still select and edit the child independently. Nested rendered Groups contribute only their outer affected root, avoiding a double transform.
 
-The existing source-selection/AI-edit mode and manual-edit mode are mutually exclusive. Both share the same pointer-to-slide coordinate function, while their selections and workflows remain in separate feature stores.
+The existing source-selection/AI-edit mode and manual-edit mode are mutually exclusive. Both consume compiler facts from the same RenderModel and share the same pointer-to-slide coordinate function. Source selection may admit any node with source ownership, while manual editing additionally requires an explicit author identity and capability; their transient selections and write workflows remain in separate feature stores.
 
 ## Layers
 
@@ -43,14 +43,14 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 
 ## Tests
 
-- `functions/manualEditableTargets.test.ts`: explicit author capabilities, topmost hit testing, source-span independence, locked/rich/formula text boundaries.
+- `functions/manualEditableTargets.test.ts`: explicit author capabilities, topmost hit testing, source-span independence, flattened Frame translation scope, locked/rich/formula text boundaries.
 - `functions/manualEditingAvailability.test.ts`: generated/ready/exact-version gate.
 - `orchestration/submitManualEdit.test.ts`: exact command snapshot, refresh behavior and unavailable snapshots.
 - `orchestration/useSlideManualEditingInteraction.test.ts`: drag-to-pending promotion, operation payload and IME-safe text submission.
 - `store/slidesManualEditingStore.test.ts`: optimistic translation settlement and failed/committed text draft lifecycle.
 - `page/SlidesView.test.ts`: component-level command submission and post-commit refresh.
 - Backend orchestration, IPC parsing, source rewrite, CAS, draft protection and receipt tests remain in `backend/features/presentationManualEditing`, `backend/ipc` and persistence suites.
-- `smoke:preview-transitions` mounts the production `KonvaSlideStage` and verifies that a reactive manual translation reaches the content node in real Chromium, in addition to the existing persistent-paint pixel comparisons.
+- `smoke:preview-transitions` mounts the production `KonvaSlideStage` and verifies that one Frame preview delta moves multiple related content nodes in the same real Chromium frame, in addition to the existing persistent-paint pixel comparisons.
 
 ## Performance trace
 

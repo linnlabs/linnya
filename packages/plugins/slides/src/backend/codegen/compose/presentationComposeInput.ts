@@ -50,6 +50,7 @@ import {
   ShapeGeometryError,
   isGeneratedLayoutConstraintEvidence,
   isSlidesAuthoringObjectRef,
+  isSlidesAuthoringAncestorRefs,
   normalizeMathFormulaSource,
 } from '@plugin/slides/shared';
 import { isRecord, isNonEmptyString, isFiniteNumber } from './inputParsers/typeGuards.js';
@@ -162,6 +163,8 @@ export interface DirectElementInput extends LayoutChartControls {
   _sourceSpan?: SourceSpan;
   /** Flex compiler 产生的稳定作者身份；普通 direct compose 不得注入。 */
   _authoringRef?: SlidesAuthoringObjectRef;
+  /** Flex compiler 保留的作者对象祖先；摊平 Frame 后仍维持整体交互语义。 */
+  _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
   /** Flex/Yoga 编译后的窄约束事实；不接受用户输入。 */
   _semanticRole?: string;
   _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
@@ -544,6 +547,17 @@ function parseElementInput(
   if (acceptCompiledFields && value._authoringRef !== undefined && !authoringRef) {
     return { error: `${prefix}._authoringRef 不是有效的内部编译结果。` };
   }
+  const authoringAncestorRefs = acceptCompiledFields
+    && isSlidesAuthoringAncestorRefs(value._authoringAncestorRefs, authoringRef)
+    ? value._authoringAncestorRefs
+    : undefined;
+  if (
+    acceptCompiledFields
+    && value._authoringAncestorRefs !== undefined
+    && !authoringAncestorRefs
+  ) {
+    return { error: `${prefix}._authoringAncestorRefs 不是有效的内部编译结果。` };
+  }
 
   const rawSvgFit = acceptCompiledFields && value.svgFit !== undefined
     ? value.svgFit
@@ -611,6 +625,7 @@ function parseElementInput(
     tableOptions: isRecord(value.tableOptions) ? value.tableOptions : undefined,
     _sourceSpan: parseSourceSpan(value._sourceSpan),
     _authoringRef: authoringRef,
+    _authoringAncestorRefs: authoringAncestorRefs,
     _semanticRole: acceptCompiledFields && isNonEmptyString(value._semanticRole) ? value._semanticRole : undefined,
     _layoutConstraintEvidence: rawLayoutConstraintEvidence,
   };
@@ -930,6 +945,7 @@ function requireSvgGraphicSpec(el: DirectElementInput) {
 function buildSourceTracking(el: DirectElementInput): {
   _sourceSpan?: SourceSpan;
   _authoringRef?: SlidesAuthoringObjectRef;
+  _authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
   _semanticRole?: string;
   _layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
 } {
@@ -937,6 +953,9 @@ function buildSourceTracking(el: DirectElementInput): {
     ...(el._semanticRole ? { _semanticRole: el._semanticRole } : {}),
     ...(el._sourceSpan ? { _sourceSpan: el._sourceSpan } : {}),
     ...(el._authoringRef ? { _authoringRef: el._authoringRef } : {}),
+    ...(el._authoringAncestorRefs?.length
+      ? { _authoringAncestorRefs: el._authoringAncestorRefs }
+      : {}),
     ...(el._layoutConstraintEvidence
       ? { _layoutConstraintEvidence: el._layoutConstraintEvidence }
       : {}),

@@ -423,7 +423,9 @@ const {
 
 const manualPreviewTranslations = computed(() => {
   const preview = manualTranslationPreview.value ?? manualPendingTranslation.value;
-  return preview ? new Map([[preview.elementId, preview]]) : new Map();
+  return preview
+    ? new Map(preview.affectedElementIds.map(elementId => [elementId, preview]))
+    : new Map();
 });
 const manualSelectedTranslation = computed(() => (
   manualTranslationPreview.value ?? manualPendingTranslation.value

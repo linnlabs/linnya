@@ -7,7 +7,7 @@ import type {
 export function isSlidesAuthoringEditProjection(
   value: unknown,
 ): value is SlidesAuthoringEditProjection {
-  if (!isRecord(value) || !hasOnlyKeys(value, ['capabilities', 'text', 'unavailableReason'])) {
+  if (!isRecord(value) || !hasOnlyKeys(value, ['capabilities', 'text'])) {
     return false;
   }
   if (!Array.isArray(value.capabilities) || !value.capabilities.every(isCapability)) {
@@ -17,18 +17,8 @@ export function isSlidesAuthoringEditProjection(
 
   const text = value.text;
   if (text !== undefined && !isTextProjection(text)) return false;
-  if (
-    value.unavailableReason !== undefined
-    && value.unavailableReason !== 'frame_members_unavailable'
-  ) {
-    return false;
-  }
-
   const canSetText = value.capabilities.includes('set_text_content');
   if (canSetText !== (text?.kind === 'plain_text')) return false;
-  if (value.unavailableReason !== undefined) {
-    return value.capabilities.length === 0 && text === undefined;
-  }
   return value.capabilities.includes('translate');
 }
 
