@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue';
+import type { Ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 import type { SlideRenderModel } from '../../../types/render';
@@ -8,8 +8,8 @@ import {
 } from '../../sourceSelection';
 import type { ManualEditableTarget } from '../definitions/manualEditingTypes';
 import {
-  collectManualEditableTargets,
-  findManualEditableTargetAtPoint,
+  findManualEditableTargetPathAtPoint,
+  findManualEditableTargetPathByElementId,
 } from '../functions/manualEditableTargets';
 import { useSlidesManualEditingStore } from '../store/slidesManualEditingStore';
 import { useSlideTextEditingSession } from '../../textEditing';
@@ -29,6 +29,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
   const store = useSlidesManualEditingStore();
   const {
     selectedTarget,
+    selectionPath,
     translationPreview,
     pendingTranslation,
     submitting,
@@ -43,15 +44,13 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
   let pointerSession: {
     readonly pointerId: number;
     readonly target: ManualEditableTarget;
+    readonly path: readonly ManualEditableTarget[];
+    readonly clickTarget: ManualEditableTarget;
     readonly anchor: SourceSelectionPoint;
     readonly screenX: number;
     readonly screenY: number;
     dragged: boolean;
   } | null = null;
-
-  const editableTargets = computed(() => options.currentSlide.value
-    ? collectManualEditableTargets(options.currentSlide.value.elements)
-    : []);
 
   function handlePointerDown(event: PointerEvent): void {
     if (!options.canEdit.value || event.button !== 0) return;
@@ -65,17 +64,27 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     const point = readPoint(event);
     const slide = options.currentSlide.value;
     if (!point || !slide) return;
-    const target = findManualEditableTargetAtPoint(slide.elements, point);
-    if (!target) {
+    const path = findManualEditableTargetPathAtPoint(slide.elements, point);
+    const outermostTarget = path[0];
+    if (!outermostTarget) {
       store.clearSelection();
       return;
     }
+    const selectedIndex = selectedTarget.value
+      ? path.findIndex(target => target.elementId === selectedTarget.value?.elementId)
+      : -1;
+    const target = selectedIndex >= 0 ? path[selectedIndex] ?? outermostTarget : outermostTarget;
+    const clickTarget = selectedIndex >= 0
+      ? path[Math.min(selectedIndex + 1, path.length - 1)] ?? target
+      : target;
     event.preventDefault();
     capturePointer(event);
-    store.selectTarget(target);
+    store.selectTarget(target, path);
     pointerSession = {
       pointerId: event.pointerId,
       target,
+      path,
+      clickTarget,
       anchor: point,
       screenX: event.clientX,
       screenY: event.clientY,
@@ -109,7 +118,13 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     releasePointer(event);
     pointerSession = null;
     const preview = translationPreview.value;
-    if (!session.dragged || !preview || preview.elementId !== session.target.elementId) return;
+    if (!session.dragged) {
+      if (session.clickTarget.elementId !== session.target.elementId) {
+        store.selectTarget(session.clickTarget, session.path);
+      }
+      return;
+    }
+    if (!preview || preview.elementId !== session.target.elementId) return;
     if (Math.abs(preview.dx) <= Number.EPSILON && Math.abs(preview.dy) <= Number.EPSILON) {
       store.setTranslationPreview(null);
       return;
@@ -136,18 +151,27 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     const point = readPoint(event);
     const slide = options.currentSlide.value;
     if (!point || !slide) return;
-    const target = findManualEditableTargetAtPoint(slide.elements, point);
+    const path = findManualEditableTargetPathAtPoint(slide.elements, point);
+    const target = path[path.length - 1];
     if (!target?.textEditing) return;
     event.preventDefault();
-    store.selectTarget(target);
+    store.selectTarget(target, path);
     textEditing.open(target.textEditing);
+  }
+
+  function selectHierarchyTarget(target: ManualEditableTarget): void {
+    if (!selectionPath.value.some(candidate => candidate.elementId === target.elementId)) return;
+    store.selectTarget(target, selectionPath.value);
   }
 
   function reconcileSelection(): void {
     const selectedId = selectedTarget.value?.elementId;
     if (!selectedId) return;
-    const next = editableTargets.value.find(target => target.elementId === selectedId) ?? null;
-    store.reconcileSelectedTarget(next);
+    const path = options.currentSlide.value
+      ? findManualEditableTargetPathByElementId(options.currentSlide.value.elements, selectedId)
+      : [];
+    const next = path.find(target => target.elementId === selectedId) ?? null;
+    store.reconcileSelectedTarget(next, path);
     textEditing.reconcileTarget(next?.textEditing ?? null);
   }
 
@@ -171,6 +195,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
 
   return {
     selectedTarget,
+    selectionPath,
     translationPreview,
     pendingTranslation,
     textEditorTarget: textEditing.target,
@@ -180,6 +205,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     handlePointerUp,
     handlePointerCancel,
     handleDoubleClick,
+    selectHierarchyTarget,
     submitTextEdit: textEditing.requestCommit,
     closeTextEditor: textEditing.cancel,
     handleTextCompositionStart: textEditing.beginComposition,

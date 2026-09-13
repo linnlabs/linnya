@@ -26,7 +26,35 @@ const slide: SlideRenderModel = {
   }],
 };
 
-function createInteraction(submitOperation: ReturnType<typeof vi.fn>) {
+const frameSlide: SlideRenderModel = {
+  ...slide,
+  elements: [
+    {
+      id: 'authoring-overview-card1',
+      kind: 'shape',
+      box: { x: 1, y: 1, w: 4, h: 2, unit: 'in' },
+      zIndex: 1,
+      geometry: { type: 'preset', name: 'roundRect' },
+      authoringRef: { slideKey: 'overview', editKey: 'card1', targetKind: 'frame' },
+      authoringEdit: { capabilities: ['translate'] },
+    },
+    {
+      ...slide.elements[0],
+      id: 'authoring-overview-card1Label',
+      box: { x: 1.4, y: 1.4, w: 2, h: 0.5, unit: 'in' },
+      zIndex: 2,
+      authoringRef: { slideKey: 'overview', editKey: 'card1Label', targetKind: 'text' },
+      authoringAncestorRefs: [{
+        slideKey: 'overview', editKey: 'card1', targetKind: 'frame',
+      }],
+    },
+  ],
+};
+
+function createInteraction(
+  submitOperation: ReturnType<typeof vi.fn>,
+  currentSlide: SlideRenderModel = slide,
+) {
   const wrapper = document.createElement('div');
   wrapper.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 960, height: 540 });
   wrapper.setPointerCapture = vi.fn();
@@ -34,7 +62,7 @@ function createInteraction(submitOperation: ReturnType<typeof vi.fn>) {
   wrapper.hasPointerCapture = vi.fn(() => true);
   const interaction = useSlideManualEditingInteraction({
     canEdit: ref(true),
-    currentSlide: ref(slide),
+    currentSlide: ref(currentSlide),
     renderScale: ref(1),
     slideSize: ref({ width: 10, height: 5.625 }),
     wrapperRef: ref(wrapper),
@@ -101,5 +129,50 @@ describe('useSlideManualEditingInteraction', () => {
     store.failSubmit('保存失败');
     expect(interaction.textEditorTarget.value?.elementId).toBe('authoring-overview-headline');
     expect(interaction.textDraft.value).toBe('新的标题');
+  });
+
+  it('selects a Frame first and enters its child on the next click', () => {
+    const { interaction, wrapper } = createInteraction(vi.fn(), frameSlide);
+
+    for (let click = 0; click < 2; click += 1) {
+      wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+        bubbles: true, button: 0, pointerId: click + 1, clientX: 144, clientY: 144,
+      }));
+      wrapper.dispatchEvent(new PointerEvent('pointerup', {
+        bubbles: true, button: 0, pointerId: click + 1, clientX: 144, clientY: 144,
+      }));
+      expect(interaction.selectedTarget.value?.elementId).toBe(
+        click === 0 ? 'authoring-overview-card1' : 'authoring-overview-card1Label',
+      );
+    }
+
+    expect(interaction.selectionPath.value.map(target => target.elementId)).toEqual([
+      'authoring-overview-card1',
+      'authoring-overview-card1Label',
+    ]);
+  });
+
+  it('keeps a Frame as the drag owner when the pointer starts over a child', () => {
+    const submitOperation = vi.fn();
+    const { interaction, wrapper } = createInteraction(submitOperation, frameSlide);
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, pointerId: 7, clientX: 144, clientY: 144,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, pointerId: 7, clientX: 240, clientY: 192,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, pointerId: 7, clientX: 240, clientY: 192,
+    }));
+
+    expect(submitOperation).toHaveBeenCalledWith(expect.objectContaining({
+      op: 'translate_by',
+      target: { slideKey: 'overview', editKey: 'card1' },
+      targetKind: 'frame',
+    }));
+    expect(interaction.pendingTranslation.value?.affectedElementIds).toEqual([
+      'authoring-overview-card1',
+      'authoring-overview-card1Label',
+    ]);
   });
 });

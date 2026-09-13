@@ -87,6 +87,16 @@
           @escape="handleTextEditorEscape"
           @commit-shortcut="handleTextEditorSubmitShortcut"
         />
+        <ManualSelectionBreadcrumb
+          v-if="manualSelectionPath.length > 1 && manualSelectedTarget && !textEditorTarget"
+          :path="manualSelectionPath"
+          :selected-element-id="manualSelectedTarget.elementId"
+          :slide-left="currentLayout.slideLeft"
+          :slide-top="currentLayout.slideTop"
+          :render-scale="renderScale"
+          :label="manualEditingMessage('slides.manualEditing.hierarchy.ariaLabel')"
+          @select="selectManualHierarchyTarget"
+        />
       </div>
     </div>
   </div>
@@ -137,6 +147,7 @@ import { useReadySlideVisualResources } from '../../features/renderVisualResourc
 import {
   resolveManualEditingAvailability,
   manualEditPresentationTrace,
+  ManualSelectionBreadcrumb,
   useSlideManualEditingInteraction,
   useSlidesManualEditingStore,
   useManualEditingLocalization,
@@ -383,6 +394,7 @@ const {
 
 const {
   selectedTarget: manualSelectedTarget,
+  selectionPath: manualSelectionPath,
   translationPreview: manualTranslationPreview,
   pendingTranslation: manualPendingTranslation,
   textEditorTarget,
@@ -392,6 +404,7 @@ const {
   handlePointerUp: handleManualPointerUp,
   handlePointerCancel: handleManualPointerCancel,
   handleDoubleClick: handleManualDoubleClick,
+  selectHierarchyTarget: selectManualHierarchyTarget,
   submitTextEdit,
   handleTextCompositionStart,
   handleTextCompositionEnd,

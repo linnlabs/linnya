@@ -22,6 +22,24 @@ export function findManualEditableTargetAtPoint(
   return buildManualEditableTarget(nodes, geometry);
 }
 
+export function findManualEditableTargetPathAtPoint(
+  nodes: readonly RenderNode[],
+  point: RenderNodeSelectionPoint,
+): readonly ManualEditableTarget[] {
+  const target = findManualEditableTargetAtPoint(nodes, point);
+  if (!target) return [];
+  return buildTargetPath(collectManualEditableTargets(nodes), target);
+}
+
+export function findManualEditableTargetPathByElementId(
+  nodes: readonly RenderNode[],
+  elementId: string,
+): readonly ManualEditableTarget[] {
+  const targets = collectManualEditableTargets(nodes);
+  const target = targets.find(candidate => candidate.elementId === elementId);
+  return target ? buildTargetPath(targets, target) : [];
+}
+
 function buildManualEditableTarget(
   nodes: readonly RenderNode[],
   geometry: RenderNodeSelectionGeometry<RenderNode & {
@@ -39,6 +57,7 @@ function buildManualEditableTarget(
       slideKey: node.authoringRef.slideKey,
       editKey: node.authoringRef.editKey,
     },
+    authoringAncestorRefs: node.authoringAncestorRefs ?? [],
     bounds: geometry.bounds,
     polygon: geometry.polygon,
     translationElementIds: node.authoringRef.targetKind === 'frame'
@@ -46,6 +65,23 @@ function buildManualEditableTarget(
       : [geometry.elementId],
     ...(textEditing ? { textEditing } : {}),
   };
+}
+
+function buildTargetPath(
+  targets: readonly ManualEditableTarget[],
+  target: ManualEditableTarget,
+): readonly ManualEditableTarget[] {
+  const ancestors = target.authoringAncestorRefs.flatMap((ancestorRef) => {
+    const ancestor = targets.find(candidate => (
+      candidate.targetKind === ancestorRef.targetKind
+      && candidate.authoringRef.slideKey === ancestorRef.slideKey
+      && candidate.authoringRef.editKey === ancestorRef.editKey
+    ));
+    return ancestor ? [ancestor] : [];
+  });
+  return ancestors.some(ancestor => ancestor.elementId === target.elementId)
+    ? ancestors
+    : [...ancestors, target];
 }
 
 /**

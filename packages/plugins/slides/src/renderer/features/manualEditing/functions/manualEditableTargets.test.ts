@@ -3,6 +3,7 @@ import type { RenderNode, TextRenderNode } from '../../../types/render';
 import {
   collectManualEditableTargets,
   findManualEditableTargetAtPoint,
+  findManualEditableTargetPathAtPoint,
 } from './manualEditableTargets';
 
 function textNode(overrides: Partial<TextRenderNode> = {}): TextRenderNode {
@@ -136,6 +137,34 @@ describe('manual editable targets', () => {
         'authoring-overview-card1Badge',
       ],
     });
+  });
+
+  it('returns the visible Frame before the child under the same point', () => {
+    const frameRef = { slideKey: 'overview', editKey: 'card1', targetKind: 'frame' } as const;
+    const frame: RenderNode = {
+      id: 'authoring-overview-card1',
+      kind: 'shape',
+      box: { x: 1, y: 1, w: 4, h: 2, unit: 'in' },
+      zIndex: 1,
+      geometry: { type: 'preset', name: 'roundRect' },
+      authoringRef: frameRef,
+      authoringEdit: { capabilities: ['translate'] },
+    };
+    const child = textNode({
+      id: 'authoring-overview-card1Label',
+      box: { x: 1.4, y: 1.4, w: 2, h: 0.5, unit: 'in' },
+      zIndex: 2,
+      authoringRef: { slideKey: 'overview', editKey: 'card1Label', targetKind: 'text' },
+      authoringAncestorRefs: [frameRef],
+    });
+
+    expect(findManualEditableTargetPathAtPoint([frame, child], { x: 1.5, y: 1.5 })
+      .map(target => target.elementId)).toEqual([
+      'authoring-overview-card1',
+      'authoring-overview-card1Label',
+    ]);
+    expect(findManualEditableTargetPathAtPoint([frame, child], { x: 3.8, y: 2.5 })
+      .map(target => target.elementId)).toEqual(['authoring-overview-card1']);
   });
 
   it('hit-tests the topmost editable authoring polygon', () => {

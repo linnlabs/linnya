@@ -7,6 +7,7 @@ const target = {
   nodeKind: 'text' as const,
   targetKind: 'text' as const,
   authoringRef: { slideKey: 'overview', editKey: 'headline' },
+  authoringAncestorRefs: [],
   bounds: { x: 1, y: 1, w: 3, h: 1 },
   polygon: [
     { x: 1, y: 1 }, { x: 4, y: 1 }, { x: 4, y: 2 }, { x: 1, y: 2 },

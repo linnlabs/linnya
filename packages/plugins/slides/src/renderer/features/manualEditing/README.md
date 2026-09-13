@@ -5,7 +5,7 @@
 ## Current interaction
 
 - The toolbar edit button is available only for a ready generated document whose visible RenderModel version equals the build-state revision and whose current slide contains at least one editable author object.
-- Clicking an object selects it. Dragging previews a translation on the main Konva stage; releasing promotes that delta to a local pending translation before sending one `translate_by` operation in inches. The object therefore stays under the pointer while the source-first rebuild runs. The pending visual is removed only after the committed RenderModel revision and its current-page image/chart resources form the displayed frame, or rolled back on failure.
+- Clicking an object resolves one author hierarchy path from the compiler-projected `authoringAncestorRefs`. The first click selects the outermost visible Frame; another click at the same child location enters the next layer. A breadcrumb shows the current path and lets the user return to any ancestor. Pointer-down locks the current layer as the gesture owner, so dragging over a child moves the selected Frame rather than switching targets mid-gesture. Releasing promotes the delta to a local pending translation before sending one `translate_by` operation in inches. The pending visual is removed only after the committed RenderModel revision and its current-page image/chart resources form the displayed frame, or rolled back on failure.
 - Double-clicking a text object whose backend `authoringEdit` projection declares `set_text_content` starts the sibling [`textEditing`](../textEditing/README.md) feature. It overlays a browser textarea on the exact committed text geometry and hides only that RenderNode's Canvas text for the duration of the session. Blur or `Ctrl/Cmd+Enter` replaces the complete author string and runs the normal backend text measurement and layout pipeline. IME composition cannot accidentally trigger submission; a failed save retains the editor and draft for correction or retry. Multiline strings and strings split into Latin/East Asian render runs remain editable because their author value is still one string.
 - Rich author runs and inline formula runs remain text-read-only because replacing them with one string would destroy run semantics. They may still move.
 - Image, table, chart, shape, SVG Graphic and formula author objects may move. Their content/data/source editors are later independent feature slices.
@@ -19,7 +19,7 @@ The existing source-selection/AI-edit mode and manual-edit mode are mutually exc
 definitions/
   manualEditingTypes + localized message catalog
 functions/
-  author-capability target projection, hit testing, availability, command creation, result messages
+  author-capability target/path projection, hit testing, availability, command creation, result messages
 orchestration/
   pointer selection/drag + submit/refresh workflow
 store/
@@ -43,10 +43,10 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 
 ## Tests
 
-- `functions/manualEditableTargets.test.ts`: explicit author capabilities, topmost hit testing, source-span independence, flattened Frame translation scope, locked/rich/formula text boundaries.
+- `functions/manualEditableTargets.test.ts`: explicit author capabilities, topmost hit testing, parent-first Frame paths, source-span independence, flattened Frame translation scope, locked/rich/formula text boundaries.
 - `functions/manualEditingAvailability.test.ts`: generated/ready/exact-version gate.
 - `orchestration/submitManualEdit.test.ts`: exact command snapshot, refresh behavior and unavailable snapshots.
-- `orchestration/useSlideManualEditingInteraction.test.ts`: drag-to-pending promotion, operation payload and integration with the text-editing session.
+- `orchestration/useSlideManualEditingInteraction.test.ts`: drag-to-pending promotion, parent-first repeated-click descent, stable Frame drag ownership and integration with the text-editing session.
 - `store/slidesManualEditingStore.test.ts`: optimistic translation and committed revision presentation settlement.
 - `features/textEditing`: committed text projection, zoomed DOM geometry, IME-safe submission, unchanged-draft close and failed-save draft ownership.
 - `page/SlidesView.test.ts`: component-level command submission and post-commit refresh.

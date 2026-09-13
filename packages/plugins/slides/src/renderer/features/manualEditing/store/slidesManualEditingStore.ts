@@ -9,6 +9,7 @@ import type {
 export const useSlidesManualEditingStore = defineStore('slides-manual-editing', () => {
   const enabled = ref(false);
   const selectedTarget = shallowRef<ManualEditableTarget | null>(null);
+  const selectionPath = shallowRef<readonly ManualEditableTarget[]>([]);
   const translationPreview = shallowRef<ManualEditingTranslationPreview | null>(null);
   const pendingTranslation = shallowRef<ManualEditingTranslationPreview | null>(null);
   const textSubmissionPending = ref(false);
@@ -25,14 +26,22 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     }
   }
 
-  function selectTarget(target: ManualEditableTarget | null): void {
+  function selectTarget(
+    target: ManualEditableTarget | null,
+    path: readonly ManualEditableTarget[] = target ? [target] : [],
+  ): void {
     selectedTarget.value = target;
+    selectionPath.value = target ? path : [];
     translationPreview.value = null;
     errorMessage.value = null;
   }
 
-  function reconcileSelectedTarget(target: ManualEditableTarget | null): void {
+  function reconcileSelectedTarget(
+    target: ManualEditableTarget | null,
+    path: readonly ManualEditableTarget[] = target ? [target] : [],
+  ): void {
     selectedTarget.value = target;
+    selectionPath.value = target ? path : [];
   }
 
   function setTranslationPreview(preview: ManualEditingTranslationPreview | null): void {
@@ -90,6 +99,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
 
   function clearSelection(): void {
     selectedTarget.value = null;
+    selectionPath.value = [];
     translationPreview.value = null;
   }
 
@@ -108,6 +118,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   return {
     enabled,
     selectedTarget,
+    selectionPath,
     translationPreview,
     pendingTranslation,
     textSubmissionPending,

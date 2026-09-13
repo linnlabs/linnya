@@ -1,10 +1,13 @@
 export type {
   ManualEditableTarget,
+  ManualEditableTargetPath,
   ManualEditingTranslationPreview,
 } from './definitions/manualEditingTypes';
 export {
   collectManualEditableTargets,
   findManualEditableTargetAtPoint,
+  findManualEditableTargetPathAtPoint,
+  findManualEditableTargetPathByElementId,
 } from './functions/manualEditableTargets';
 export {
   resolveManualEditingAvailability,
@@ -21,6 +24,7 @@ export {
 export { useSlidesManualEditingStore } from './store/slidesManualEditingStore';
 export { useSlideManualEditingInteraction } from './orchestration/useSlideManualEditingInteraction';
 export { useManualEditingLocalization } from './ui/useManualEditingLocalization';
+export { default as ManualSelectionBreadcrumb } from './ui/ManualSelectionBreadcrumb.vue';
 export {
   ManualEditPresentationTrace,
   manualEditPresentationTrace,
