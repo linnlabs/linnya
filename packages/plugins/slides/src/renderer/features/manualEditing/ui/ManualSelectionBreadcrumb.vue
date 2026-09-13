@@ -11,7 +11,6 @@
         type="button"
         class="slides-manual-selection-breadcrumb__item"
         :class="{ 'is-active': target.elementId === props.selectedElementId }"
-        :title="`${target.targetKind}: ${target.authoringRef.editKey}`"
         @click="emit('select', target)"
       >
         {{ target.targetKind === 'frame' ? 'Frame' : target.authoringRef.editKey }}

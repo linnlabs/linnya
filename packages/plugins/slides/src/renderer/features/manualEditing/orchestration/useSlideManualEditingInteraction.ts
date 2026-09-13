@@ -32,6 +32,10 @@ export interface SlideManualEditingInteractionOptions {
 
 const DRAG_THRESHOLD_PX = 3;
 
+interface DeferredManualSelection {
+  readonly elementId: string | null;
+}
+
 export function useSlideManualEditingInteraction(options: SlideManualEditingInteractionOptions) {
   const store = useSlidesManualEditingStore();
   const {
@@ -60,7 +64,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     readonly canTranslate: boolean;
     dragged: boolean;
   } | null = null;
-  let deferredSelectionElementId: string | null | undefined;
+  let deferredSelection: DeferredManualSelection | null = null;
 
   function handlePointerDown(event: PointerEvent): void {
     if (!options.canSelect.value || event.button !== 0) return;
@@ -207,7 +211,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
 
   function resetInteraction(): void {
     pointerSession = null;
-    deferredSelectionElementId = undefined;
+    deferredSelection = null;
     store.clearSelection();
     textEditing.reset();
   }
@@ -218,17 +222,17 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
   }
 
   function rejectDeferredSelection(): void {
-    deferredSelectionElementId = undefined;
+    deferredSelection = null;
   }
 
   function deferSelection(elementId: string | null): void {
-    deferredSelectionElementId = elementId;
+    deferredSelection = { elementId };
   }
 
   function applyDeferredSelection(): void {
-    if (deferredSelectionElementId === undefined) return;
-    const elementId = deferredSelectionElementId;
-    deferredSelectionElementId = undefined;
+    if (!deferredSelection) return;
+    const { elementId } = deferredSelection;
+    deferredSelection = null;
     if (elementId === null) {
       store.clearSelection();
       return;
