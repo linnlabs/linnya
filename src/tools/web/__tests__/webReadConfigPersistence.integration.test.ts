@@ -64,6 +64,43 @@ describe('R3 网络读取配置持久化', () => {
     });
   });
 
+  it('打开旧宿主密文后原子迁移两个 Reader，随后无需旧解密器即可重启', async () => {
+    const configPath = createConfigPath();
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, `${JSON.stringify({
+      version: 1,
+      settings: {
+        renderEnabled: true,
+        managedReader: 'metaso_reader',
+        slots: {
+          metaso_reader: { encryptedByokKey: 'legacy:metaso-secret' },
+          jina_reader: { encryptedByokKey: 'legacy:jina-secret' },
+        },
+      },
+    })}\n`, { mode: 0o600 });
+    const desktopCodec = {
+      encrypt: testCodec.encrypt,
+      decrypt: async (ciphertext: string) => ciphertext.replace(/^(?:legacy|current):/u, ''),
+      rewrap: async (ciphertext: string) => ciphertext.startsWith('legacy:')
+        ? ciphertext.replace(/^legacy:/u, 'current:')
+        : undefined,
+    };
+
+    const migrated = await FileWebReadConfigStore.open(configPath, desktopCodec);
+    expect(migrated.read()).toMatchObject({ managedReader: 'metaso_reader', byokKey: 'metaso-secret' });
+    expect(fs.readFileSync(configPath, 'utf8')).not.toContain('legacy:');
+
+    const cliCodec = {
+      encrypt: testCodec.encrypt,
+      decrypt: async (ciphertext: string) => {
+        if (!ciphertext.startsWith('current:')) throw new Error('不支持旧宿主密文');
+        return ciphertext.replace(/^current:/u, '');
+      },
+    };
+    const restarted = await FileWebReadConfigStore.open(configPath, cliCodec);
+    expect(restarted.read()).toMatchObject({ managedReader: 'metaso_reader', byokKey: 'metaso-secret' });
+  });
+
   it('损坏文件显式失败，重新保存有效配置后恢复', async () => {
     const configPath = createConfigPath();
     fs.mkdirSync(path.dirname(configPath), { recursive: true });

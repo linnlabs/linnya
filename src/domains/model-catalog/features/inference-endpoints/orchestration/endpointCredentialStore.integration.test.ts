@@ -98,4 +98,35 @@ describe('endpoint credential 持久化', () => {
     expect(store.getStatus('inference-endpoint:broken')).toBe('available');
     expect(store.resolve('inference-endpoint:broken')).toBe('recovered-secret');
   });
+
+  it('Desktop 初始化时原子重包旧密文，随后 CLI codec 可直接读取', async () => {
+    await fs.writeFile(pathState.credentialFilePath, JSON.stringify({
+      version: '1.0.0',
+      last_updated: '2026-09-13T00:00:00.000Z',
+      credentials: [{ id: 'inference-endpoint:legacy', encrypted_secret: 'legacy:secret' }],
+    }), 'utf8');
+    const desktopStore = new EndpointCredentialStore();
+    desktopStore.installCodec({
+      encrypt: async plaintext => `current:${plaintext}`,
+      decrypt: async ciphertext => ciphertext.slice('current:'.length),
+      rewrap: async ciphertext => ciphertext.startsWith('legacy:')
+        ? `current:${ciphertext.slice('legacy:'.length)}`
+        : undefined,
+    });
+    await desktopStore.initialize();
+
+    const persisted = await fs.readFile(pathState.credentialFilePath, 'utf8');
+    expect(persisted).toContain('current:secret');
+    expect(persisted).not.toContain('legacy:secret');
+    const cliStore = new EndpointCredentialStore();
+    cliStore.installCodec({
+      encrypt: async plaintext => `current:${plaintext}`,
+      decrypt: async ciphertext => {
+        if (!ciphertext.startsWith('current:')) throw new Error('migration required');
+        return ciphertext.slice('current:'.length);
+      },
+    });
+    await cliStore.initialize();
+    expect(cliStore.resolve('inference-endpoint:legacy')).toBe('secret');
+  });
 });

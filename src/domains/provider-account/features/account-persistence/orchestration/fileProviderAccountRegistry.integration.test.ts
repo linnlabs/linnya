@@ -169,4 +169,36 @@ describe('Provider account 加密持久化', () => {
     expect(registry.getCredentialStatus('chatgpt-subscription')).toBe('available');
     expect(registry.hasCredential('chatgpt-subscription')).toBe(true);
   });
+
+  it('重包旧 OAuth 密文时与账号文件一次提交', async () => {
+    const plaintext = JSON.stringify({
+      access_token: 'access', refresh_token: 'refresh', expires_at: 1, account_id: 'account',
+    });
+    await fs.writeFile(pathState.accountFilePath, JSON.stringify({
+      version: '2.0.0',
+      last_updated: '2026-09-13T00:00:00.000Z',
+      accounts: [{
+        id: 'chatgpt-subscription',
+        provider_connection_definition_id: 'openai-chatgpt-subscription',
+        auth_method: 'oauth_pkce',
+        created_at: '2026-09-13T00:00:00.000Z',
+        updated_at: '2026-09-13T00:00:00.000Z',
+        encrypted_credential: `legacy:${plaintext}`,
+      }],
+    }), 'utf8');
+    const registry = new FileProviderAccountRegistry();
+    registry.installCredentialCodec({
+      encrypt: async value => `current:${value}`,
+      decrypt: async value => value.slice('current:'.length),
+      rewrap: async value => value.startsWith('legacy:')
+        ? `current:${value.slice('legacy:'.length)}`
+        : undefined,
+    });
+    await registry.initialize();
+
+    expect(registry.resolveOAuthCredential('chatgpt-subscription').access_token).toBe('access');
+    const persisted = await fs.readFile(pathState.accountFilePath, 'utf8');
+    expect(persisted).toContain('current:');
+    expect(persisted).not.toContain('legacy:');
+  });
 });

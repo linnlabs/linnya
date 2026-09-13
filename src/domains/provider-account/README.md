@@ -13,6 +13,9 @@ Catalog 的职责不同：目录描述模型和推理端点，账号描述 OAuth
   `0600`，不跟随 Workspace 导出；初始化时通过异步 credential protection
   port 逐条尝试解入 App Server 内存，无法解密的账号仍保留 metadata 并标记为不可用，
   不阻断 App Server 启动；推理热路径只读可用内存缓存，不同步跨进程调用 Electron；
+- 新密文由 Desktop 与 CLI 共用的系统 keyring master key 保护；新版 Desktop 在本 domain 的文件事务中
+  重包旧 `safeStorage` 密文，独立 CLI 不复制 Chromium 解密逻辑。尚未迁移或系统 keyring 不可用时保留
+  账号 metadata，并分别投影稳定的不可用原因；
 - Renderer、Provider Catalog、Model Catalog 和日志只允许看到不含凭据的
   `ProviderAccount`；
 - ProviderAccount 只引用账号型

@@ -9,6 +9,7 @@ const LEGACY_STORE_KEY = 'pluginCredentials';
 interface CredentialProtectionPort {
   encrypt(plaintext: string): Promise<string>;
   decrypt(ciphertext: string): Promise<string>;
+  rewrap?(ciphertext: string): Promise<string | undefined>;
 }
 
 interface LegacyStoreLike {
@@ -25,7 +26,7 @@ interface PluginCredentialFile {
 type CredentialValues = Map<string, Map<string, string>>;
 
 /**
- * File-backed plugin credentials. The file contains only safeStorage ciphertext;
+ * File-backed plugin credentials. The file contains only system-protected ciphertext;
  * plaintext values are kept in memory for the lifetime of the App Server.
  */
 export async function createFilePluginCredentialRuntimePort(input: {
@@ -122,19 +123,27 @@ async function initialize(
 ): Promise<void> {
   try {
     const parsed = parseFile(await fs.readFile(input.filePath, 'utf8'));
+    let migrated = false;
     for (const [pluginId, entries] of Object.entries(parsed.credentials)) {
       for (const [key, ciphertext] of Object.entries(entries)) {
         setValue(ciphertexts, pluginId, key, ciphertext);
       }
       for (const [key, ciphertext] of Object.entries(entries)) {
         try {
-          const plaintext = await input.credentialProtection.decrypt(ciphertext);
+          const migratedCiphertext = await input.credentialProtection.rewrap?.(ciphertext);
+          const effectiveCiphertext = migratedCiphertext ?? ciphertext;
+          if (migratedCiphertext !== undefined) {
+            setValue(ciphertexts, pluginId, key, migratedCiphertext);
+            migrated = true;
+          }
+          const plaintext = await input.credentialProtection.decrypt(effectiveCiphertext);
           if (plaintext.trim().length > 0) setValue(values, pluginId, key, plaintext);
         } catch {
           unavailable.add(`${pluginId}\u0000${key}`);
         }
       }
     }
+    if (migrated) await writeCiphertextFile(input.filePath, ciphertexts);
     return;
   } catch (error: unknown) {
     if (!isMissingFileError(error)) return;

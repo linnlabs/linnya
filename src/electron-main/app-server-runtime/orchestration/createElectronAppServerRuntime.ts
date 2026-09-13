@@ -99,7 +99,9 @@ export async function createElectronAppServerRuntime(input: {
       : []),
   ]);
   const rpcHandlers = new Map<string, AppServerRpcHandler>();
-  const credentialProtection = createElectronCredentialProtectionPort();
+  const credentialProtection = createElectronCredentialProtectionPort({
+    appDataRoot: input.runtimePathRoots.appDataRoot,
+  });
   const pluginCredentialRuntime = await createFilePluginCredentialRuntimePort({
     filePath: path.join(input.runtimePathRoots.appDataRoot, 'config', 'plugin_credentials.json'),
     credentialProtection,

@@ -61,6 +61,39 @@ describe('Web Search 配置保存与重启恢复', () => {
     expect(fs.readFileSync(configPath, 'utf8')).not.toContain('tavily-key');
   });
 
+  it('打开旧宿主密文后迁移全部搜索引擎凭据，CLI codec 可直接读取', async () => {
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, `${JSON.stringify({
+      version: 3,
+      settings: {
+        engine: 'tavily',
+        slots: {
+          serper: { keySource: 'byok', encryptedByokKey: 'legacy:serper-key' },
+          tavily: { keySource: 'byok', encryptedByokKey: 'legacy:tavily-key' },
+        },
+      },
+    })}\n`, { mode: 0o600 });
+    const desktopCodec = {
+      encrypt: testCodec.encrypt,
+      decrypt: async (ciphertext: string) => ciphertext.replace(/^(?:legacy|current):/u, ''),
+      rewrap: async (ciphertext: string) => ciphertext.startsWith('legacy:')
+        ? ciphertext.replace(/^legacy:/u, 'current:')
+        : undefined,
+    };
+    await FileWebSearchConfigStore.open(configPath, desktopCodec);
+    expect(fs.readFileSync(configPath, 'utf8')).not.toContain('legacy:');
+
+    const cliCodec = {
+      encrypt: testCodec.encrypt,
+      decrypt: async (ciphertext: string) => {
+        if (!ciphertext.startsWith('current:')) throw new Error('不支持旧宿主密文');
+        return ciphertext.replace(/^current:/u, '');
+      },
+    };
+    const restarted = await FileWebSearchConfigStore.open(configPath, cliCodec);
+    expect(restarted.read()).toMatchObject({ engine: 'tavily', byokKey: 'tavily-key' });
+  });
+
   it('旧版本配置明确失败，不保留 Cloud 搜索兼容读取', async () => {
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify({

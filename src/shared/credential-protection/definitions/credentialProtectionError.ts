@@ -1,5 +1,5 @@
 /**
- * Desktop safeStorage 失败在跨进程边界上的稳定分类。
+ * 系统凭据保护失败在跨进程边界上的稳定分类。
  *
  * Electron 的原始错误文案属于平台实现细节，不能被 domain store 当作合同解析。
  */
@@ -7,6 +7,7 @@ export type CredentialProtectionErrorCode =
   | 'temporarily_unavailable'
   | 'invalidated'
   | 'malformed_ciphertext'
+  | 'migration_required'
   | 'unknown';
 
 const WIRE_PREFIX = 'linnya_credential_protection_error:';
@@ -15,6 +16,7 @@ const DEFAULT_MESSAGES: Readonly<Record<CredentialProtectionErrorCode, string>> 
   temporarily_unavailable: '系统安全存储暂时不可用。',
   invalidated: '系统安全存储无法解密该凭据。',
   malformed_ciphertext: '凭据密文格式无效。',
+  migration_required: '该凭据需要先由 Linnya Desktop 完成安全迁移。',
   unknown: '系统安全存储处理凭据时发生未知错误。',
 };
 

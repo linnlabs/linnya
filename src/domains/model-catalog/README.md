@@ -175,6 +175,10 @@ Key 和 API 格式是在配置一个推理端点，不是在创建 Provider。�
 root 负责安装加解密 codec；Model Catalog 不 import Electron。环境变量和 Linnya
 Cloud host credential 仍使用显式 reference，不复制到该文件。
 
+当前密文由 Desktop 与 CLI 共用的系统 keyring master key 保护。升级后第一次 Desktop 初始化会先用
+旧 `safeStorage` 解密，再由本 store 在自己的文件事务中重包；写盘成功前不替换内存快照。独立 CLI
+不解析旧 Chromium 密文，尚未迁移的记录保持 `migration_required`，需要先运行新版 Desktop 完成迁移。
+
 用户模型必须引用一个 InferenceEndpoint，default/Cloud 模型不得引用用户端点。端点与模型 route 的 profile、endpoint
 identity、base URL 和 auth profile 必须完全一致。App
 composition 提供异步 codec；启动时密文一次解入 App

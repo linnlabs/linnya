@@ -40,6 +40,8 @@ pnpm run guard:better:electron
 - `@discordjs/opus` 使用 N-API v3。安装流程按当前 Electron ABI 生成唯一发布目录，并验证平台/架构。
 - `node-pty` 使用 N-API，但还包含 macOS `spawn-helper`；发布前必须同时验证 `.node`、helper 权限、签名和打包路径。
 - `sharp`、`@img/*`、`@node-rs/*` 使用平台制品；生产包只允许包含目标平台和架构。
+- `@napi-rs/keyring` 通过 N-API 连接 macOS Keychain / Windows Credential Manager；Desktop 与独立
+  CLI 必须在各自 Node/Electron 运行时加载同一目标平台制品，并用隔离测试 account 验证往返后删除。
 - 任何仍直接绑定 V8 ABI 的模块都必须由 `@electron/rebuild` 的公共 API针对精确 Electron 版本重建。
 
 `scripts/native/run-electron-rebuild.cjs` 是仓库唯一的 electron-rebuild 调用入口。业务脚本不能依赖 `@electron/rebuild/lib/*` 内部路径，也不能用 `npx` 临时下载另一版本。

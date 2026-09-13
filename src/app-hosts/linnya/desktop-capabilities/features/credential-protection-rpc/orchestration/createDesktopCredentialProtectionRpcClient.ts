@@ -4,13 +4,15 @@ import { decodeCredentialProtectionError } from '../../../../../../shared/creden
 import {
   DESKTOP_CREDENTIAL_DECRYPT_RPC_METHOD,
   DESKTOP_CREDENTIAL_ENCRYPT_RPC_METHOD,
+  DESKTOP_CREDENTIAL_REWRAP_RPC_METHOD,
 } from '../definitions/credentialProtectionRpc';
 import {
   parseDesktopCredentialDecryptRpcResponse,
   parseDesktopCredentialEncryptRpcResponse,
+  parseDesktopCredentialRewrapRpcResponse,
 } from '../functions/credentialProtectionRpcCodec';
 
-/** App Server 侧只取得 credential port，不取得 raw RPC 或 Electron safeStorage。 */
+/** App Server 侧只取得 credential port，不取得 raw RPC 或系统 keyring。 */
 export function createDesktopCredentialProtectionRpcClient(
   rpc: Pick<AppServerRpcPeer, 'request'>,
 ): DesktopCredentialProtectionPort {
@@ -27,6 +29,14 @@ export function createDesktopCredentialProtectionRpcClient(
       try {
         const response = await rpc.request(DESKTOP_CREDENTIAL_DECRYPT_RPC_METHOD, { ciphertext });
         return parseDesktopCredentialDecryptRpcResponse(response).plaintext;
+      } catch (error: unknown) {
+        throw decodeCredentialProtectionError(error) ?? error;
+      }
+    },
+    async rewrap(ciphertext: string): Promise<string | undefined> {
+      try {
+        const response = await rpc.request(DESKTOP_CREDENTIAL_REWRAP_RPC_METHOD, { ciphertext });
+        return parseDesktopCredentialRewrapRpcResponse(response).ciphertext ?? undefined;
       } catch (error: unknown) {
         throw decodeCredentialProtectionError(error) ?? error;
       }

@@ -8,6 +8,7 @@ const CredentialUnavailableReasonSchema = z.enum([
   'temporarily_unavailable',
   'invalidated',
   'malformed_ciphertext',
+  'migration_required',
   'unknown',
 ]);
 

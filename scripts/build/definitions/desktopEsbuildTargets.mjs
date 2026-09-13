@@ -5,7 +5,7 @@ export const desktopEsbuildTargets = {
     platform: 'node',
     outfile: 'dist/main/main.cjs',
     format: 'cjs',
-    external: ['electron', 'pdfjs-dist', '@napi-rs/canvas', '@node-rs/jieba', 'better-sqlite3', 'yoga-layout', 'harfbuzzjs', 'sharp'],
+    external: ['electron', 'pdfjs-dist', '@napi-rs/canvas', '@napi-rs/keyring', '@node-rs/jieba', 'better-sqlite3', 'yoga-layout', 'harfbuzzjs', 'sharp'],
   },
   preload: {
     entryPoints: ['src/electron-main/preload/index.ts'],

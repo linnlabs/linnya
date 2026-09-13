@@ -29,5 +29,6 @@ function createPort(prefix: string): DesktopCredentialProtectionPort {
   return Object.freeze({
     encrypt: async (plaintext: string) => `${prefix}:${plaintext}`,
     decrypt: async (ciphertext: string) => ciphertext.slice(prefix.length + 1),
+    rewrap: async () => undefined,
   });
 }

@@ -27,6 +27,7 @@ export interface ProviderAccountOAuthCredential {
 export interface ProviderAccountCredentialCodec {
   encrypt(plaintext: string): Promise<string>;
   decrypt(ciphertext: string): Promise<string>;
+  rewrap?(ciphertext: string): Promise<string | undefined>;
 }
 
 export interface ProviderAccountRegistry {

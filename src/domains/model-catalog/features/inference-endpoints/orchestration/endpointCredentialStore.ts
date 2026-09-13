@@ -42,7 +42,8 @@ export class EndpointCredentialStore {
       const decrypted = await this.decryptCredentials(credentials);
       this.plaintextCredentials = decrypted.plaintext;
       this.credentialStatuses = decrypted.statuses;
-      this.credentials = credentials;
+      this.credentials = decrypted.credentials;
+      if (decrypted.migrated) await this.write(decrypted.credentials);
     } catch (error: unknown) {
       const code =
         error instanceof Error && 'code' in error ? Reflect.get(error, 'code') : undefined;
@@ -115,33 +116,47 @@ export class EndpointCredentialStore {
   private async decryptCredentials(
     credentials: ReadonlyMap<string, StoredEndpointCredential>
   ): Promise<{
+    readonly credentials: Map<string, StoredEndpointCredential>;
     readonly plaintext: Map<string, string>;
     readonly statuses: Map<string, EndpointCredentialStatus>;
+    readonly migrated: boolean;
   }> {
     if (credentials.size === 0) {
-      return { plaintext: new Map(), statuses: new Map() };
+      return { credentials: new Map(), plaintext: new Map(), statuses: new Map(), migrated: false };
     }
     const codec = this.credentialCodec;
     if (!codec) throw new Error('endpoint credential codec 尚未安装');
     const decrypted = await Promise.all(Array.from(credentials.values(), async credential => {
       try {
+        const migratedCiphertext = await codec.rewrap?.(credential.encrypted_secret);
+        const effectiveCredential = migratedCiphertext !== undefined
+          ? { ...credential, encrypted_secret: migratedCiphertext }
+          : credential;
         return {
           id: credential.id,
-          plaintext: await codec.decrypt(credential.encrypted_secret),
+          credential: effectiveCredential,
+          plaintext: await codec.decrypt(effectiveCredential.encrypted_secret),
           status: 'available' as const,
+          migrated: migratedCiphertext !== undefined,
         };
       } catch (error: unknown) {
         const code: CredentialProtectionErrorCode = readCredentialProtectionErrorCode(error);
         return { id: credential.id, status: code };
       }
     }));
+    const effectiveCredentials = new Map(credentials);
+    for (const item of decrypted) {
+      if (item.status === 'available') effectiveCredentials.set(item.id, item.credential);
+    }
     return {
+      credentials: effectiveCredentials,
       plaintext: new Map(
         decrypted.flatMap(item => item.status === 'available'
           ? [[item.id, item.plaintext] as const]
           : []),
       ),
       statuses: new Map(decrypted.map(item => [item.id, item.status])),
+      migrated: decrypted.some(item => item.status === 'available' && item.migrated),
     };
   }
 }

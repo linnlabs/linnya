@@ -45,10 +45,10 @@ export class FileProviderAccountRegistry implements ProviderAccountRegistry {
         (migrated ?? readProviderAccountFile(parsed)).map(account => [account.id, account])
       );
       const decrypted = await this.decryptCredentials(accounts);
-      this.accounts = accounts;
+      this.accounts = decrypted.accounts;
       this.plaintextCredentials = decrypted.plaintext;
       this.credentialStatuses = decrypted.statuses;
-      if (migrated) await this.write(accounts);
+      if (migrated || decrypted.migrated) await this.write(decrypted.accounts);
     } catch (error: unknown) {
       const code =
         error instanceof Error && 'code' in error ? Reflect.get(error, 'code') : undefined;
@@ -145,32 +145,48 @@ export class FileProviderAccountRegistry implements ProviderAccountRegistry {
   private async decryptCredentials(
     accounts: ReadonlyMap<string, StoredProviderAccount>
   ): Promise<{
+    readonly accounts: Map<string, StoredProviderAccount>;
     readonly plaintext: Map<string, ProviderAccountOAuthCredential>;
     readonly statuses: Map<string, ProviderAccountCredentialStatus>;
+    readonly migrated: boolean;
   }> {
-    if (accounts.size === 0) return { plaintext: new Map(), statuses: new Map() };
+    if (accounts.size === 0) {
+      return { accounts: new Map(), plaintext: new Map(), statuses: new Map(), migrated: false };
+    }
     const codec = this.credentialCodec;
     if (!codec) throw new Error('Provider account credential codec 尚未安装');
     const decrypted = await Promise.all(Array.from(accounts.values(), async account => {
       try {
-        const plaintext = await codec.decrypt(account.encrypted_credential);
+        const migratedCiphertext = await codec.rewrap?.(account.encrypted_credential);
+        const effectiveAccount = migratedCiphertext !== undefined
+          ? { ...account, encrypted_credential: migratedCiphertext }
+          : account;
+        const plaintext = await codec.decrypt(effectiveAccount.encrypted_credential);
         return {
           id: account.id,
+          account: effectiveAccount,
           credential: readProviderAccountOAuthCredential(JSON.parse(plaintext)),
           status: 'available' as const,
+          migrated: migratedCiphertext !== undefined,
         };
       } catch (error: unknown) {
         const code: CredentialProtectionErrorCode = readCredentialProtectionErrorCode(error);
         return { id: account.id, status: code };
       }
     }));
+    const effectiveAccounts = new Map(accounts);
+    for (const item of decrypted) {
+      if (item.status === 'available') effectiveAccounts.set(item.id, item.account);
+    }
     return {
+      accounts: effectiveAccounts,
       plaintext: new Map(
         decrypted.flatMap(item => item.status === 'available'
           ? [[item.id, item.credential] as const]
           : []),
       ),
       statuses: new Map(decrypted.map(item => [item.id, item.status])),
+      migrated: decrypted.some(item => item.status === 'available' && item.migrated),
     };
   }
 }

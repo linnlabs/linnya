@@ -56,6 +56,40 @@ describe('file plugin credential runtime', () => {
       await rm(directory, { recursive: true, force: true });
     }
   });
+
+  it('启动时重包全部可解密旧密文并保留失败项', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'linnya-plugin-credentials-'));
+    const filePath = path.join(directory, 'plugin_credentials.json');
+    try {
+      await import('node:fs/promises').then(({ writeFile }) => writeFile(filePath, JSON.stringify({
+        version: '1.0.0',
+        last_updated: new Date().toISOString(),
+        credentials: { demo: { OLD: 'legacy:secret', BAD: 'broken' } },
+      })));
+      const runtime = await createFilePluginCredentialRuntimePort({
+        filePath,
+        credentialProtection: {
+          encrypt: async value => `enc:${value}`,
+          decrypt: async value => {
+            if (!value.startsWith('enc:')) throw new Error('invalid ciphertext');
+            return value.slice(4);
+          },
+          rewrap: async value => value.startsWith('legacy:')
+            ? `enc:${value.slice('legacy:'.length)}`
+            : undefined,
+        },
+      });
+
+      await expect(runtime.read('demo', 'OLD')).resolves.toBe('secret');
+      await expect(runtime.read('demo', 'BAD')).resolves.toBeUndefined();
+      const persisted = await readFile(filePath, 'utf8');
+      expect(persisted).toContain('enc:secret');
+      expect(persisted).toContain('broken');
+      expect(persisted).not.toContain('legacy:secret');
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 });
 
 class PrefixProtection {

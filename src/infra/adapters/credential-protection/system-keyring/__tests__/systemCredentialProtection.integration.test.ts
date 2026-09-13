@@ -1,0 +1,79 @@
+import { describe, expect, it } from 'vitest';
+
+import { CredentialProtectionError } from '../../../../../shared/credential-protection';
+import type { SystemKeyringEntryFactory } from '../definitions/systemKeyring';
+import { createSystemCredentialProtectionPort } from '../orchestration/createSystemCredentialProtectionPort';
+
+function createMemoryKeyring(): {
+  readonly factory: SystemKeyringEntryFactory;
+  readonly passwords: Map<string, string>;
+} {
+  const passwords = new Map<string, string>();
+  return {
+    passwords,
+    factory: {
+      create(service, account) {
+        const key = `${service}\u0000${account}`;
+        return {
+          async getPassword() { return passwords.get(key); },
+          async setPassword(password) { passwords.set(key, password); },
+        };
+      },
+    },
+  };
+}
+
+describe('system credential protection', () => {
+  it('让同一 vault 的 Desktop 与 CLI adapter 共享密文，但隔离不同 vault', async () => {
+    const keyring = createMemoryKeyring();
+    const desktop = createSystemCredentialProtectionPort({
+      vaultId: '/app-data/a', allowMasterKeyCreation: true, entryFactory: keyring.factory,
+    });
+    const cli = createSystemCredentialProtectionPort({
+      vaultId: '/app-data/a', allowMasterKeyCreation: false, entryFactory: keyring.factory,
+    });
+    const other = createSystemCredentialProtectionPort({
+      vaultId: '/app-data/b', allowMasterKeyCreation: true, entryFactory: keyring.factory,
+    });
+
+    const ciphertext = await desktop.encrypt('密钥 secret');
+    await expect(cli.decrypt(ciphertext)).resolves.toBe('密钥 secret');
+    await expect(other.decrypt(ciphertext)).rejects.toMatchObject({ code: 'invalidated' });
+    expect(ciphertext).not.toContain('secret');
+  });
+
+  it('CLI 不创建缺失的系统 master key，Desktop 并发加密只创建一次', async () => {
+    const keyring = createMemoryKeyring();
+    const cli = createSystemCredentialProtectionPort({
+      vaultId: '/app-data/empty', allowMasterKeyCreation: false, entryFactory: keyring.factory,
+    });
+    await expect(cli.encrypt('secret')).rejects.toMatchObject({ code: 'temporarily_unavailable' });
+    expect(keyring.passwords.size).toBe(0);
+
+    const desktop = createSystemCredentialProtectionPort({
+      vaultId: '/app-data/empty', allowMasterKeyCreation: true, entryFactory: keyring.factory,
+    });
+    const [first, second] = await Promise.all([desktop.encrypt('first'), desktop.encrypt('second')]);
+    expect(keyring.passwords.size).toBe(1);
+    await expect(desktop.decrypt(first)).resolves.toBe('first');
+    await expect(desktop.decrypt(second)).resolves.toBe('second');
+  });
+
+  it('区分旧密文、损坏 envelope 与认证失败', async () => {
+    const keyring = createMemoryKeyring();
+    const port = createSystemCredentialProtectionPort({
+      vaultId: '/app-data/a', allowMasterKeyCreation: true, entryFactory: keyring.factory,
+    });
+    await port.encrypt('seed');
+
+    await expect(port.decrypt('legacy-base64')).rejects.toEqual(
+      new CredentialProtectionError('migration_required'),
+    );
+    await expect(port.decrypt('linnya-keyring:v1:***')).rejects.toMatchObject({
+      code: 'malformed_ciphertext',
+    });
+    const valid = await port.encrypt('secret');
+    const tampered = `${valid.slice(0, -1)}${valid.endsWith('A') ? 'B' : 'A'}`;
+    await expect(port.decrypt(tampered)).rejects.toMatchObject({ code: 'invalidated' });
+  });
+});

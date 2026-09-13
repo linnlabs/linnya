@@ -233,7 +233,7 @@ src/tools/web/webread/
 
 ### 5.2 显式读取配置与 Provider 选择
 
-产品配置入口与搜索配置合并在设置页“网络搜索”Tab，但读取仍持久化到 AppData 的独立 `config/web_read.json`，并使用独立 gateway/IPC 合同；同页展示不代表两份配置共同保存。Key 由 Electron `safeStorage` 加密，不进入工作区导出。Reader 的服务地址与环境变量名由 Web Read 自己的静态服务定义拥有，不查询 Model Catalog，也不注册模型或模型 Provider。
+产品配置入口与搜索配置合并在设置页“网络搜索”Tab，但读取仍持久化到 AppData 的独立 `config/web_read.json`，并使用独立 gateway/IPC 合同；同页展示不代表两份配置共同保存。Key 由 Desktop 与 CLI 共用的系统 keyring master key 加密，不进入工作区导出；新版 Desktop 会在各配置文件自己的事务内重包旧 `safeStorage` 密文。Reader 的服务地址与环境变量名由 Web Read 自己的静态服务定义拥有，不查询 Model Catalog，也不注册模型或模型 Provider。
 
 - `LocalHttpProvider` 是固定的生产首跳，不依赖 Model Catalog 或外部凭证
 - 新用户默认关闭“第三方网页解析”开关，对应配置值 `none`；已有配置文件保持用户原选择，不迁移覆盖。开关打开后可选择秘塔或 Jina，工厂按显式 `serviceId` 创建所选 Reader

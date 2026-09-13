@@ -8,7 +8,6 @@ import {
   type WebSearchSettings,
 } from '../../../tools/web/websearch/definitions/webSearchConfig';
 import {
-  normalizeWebSearchConfig,
   normalizeWebSearchSettings,
 } from '../../../tools/web/websearch/functions/normalizeWebSearchConfig';
 import { projectActiveWebSearchConfig } from '../../../tools/web/websearch/functions/projectActiveWebSearchConfig';
@@ -18,6 +17,7 @@ import type { WebSearchConfigReader } from '../../../tools/web/websearch/ports/w
 export interface WebSearchCredentialCodec {
   encrypt(plaintext: string): Promise<string>;
   decrypt(ciphertext: string): Promise<string>;
+  rewrap?(ciphertext: string): Promise<string | undefined>;
 }
 
 type StoreState =
@@ -37,7 +37,7 @@ export class FileWebSearchConfigStore implements WebSearchConfigReader {
     private state: StoreState,
   ) {}
 
-  /** 凭据解密可能经 Desktop reverse RPC 完成，因此必须在 Backend ready 前显式等待。 */
+  /** 凭据解密可能跨宿主边界完成，因此必须在 Backend ready 前显式等待。 */
   static async open(
     filePath: string,
     credentialCodec: WebSearchCredentialCodec,
@@ -97,16 +97,7 @@ export class FileWebSearchConfigStore implements WebSearchConfigReader {
       version: 3,
       settings: { engine: settings.engine, slots: storedSlots },
     }, null, 2)}\n`;
-    const directory = path.dirname(this.filePath);
-    fs.mkdirSync(directory, { recursive: true });
-    const temporaryPath = `${this.filePath}.${process.pid}.${Date.now()}.tmp`;
-    try {
-      fs.writeFileSync(temporaryPath, document, { encoding: 'utf8', mode: 0o600 });
-      fs.renameSync(temporaryPath, this.filePath);
-    } catch (error: unknown) {
-      fs.rmSync(temporaryPath, { force: true });
-      throw error;
-    }
+    this.writeDocument(document);
     this.state = { ok: true, settings };
     return settings;
   }
@@ -139,6 +130,8 @@ export class FileWebSearchConfigStore implements WebSearchConfigReader {
   ): Promise<WebSearchSettings | undefined> {
     if (!isRecord(document.settings) || !isRecord(document.settings.slots)) return undefined;
     const slots: Record<string, unknown> = {};
+    const migratedStoredSlots: Record<string, unknown> = { ...document.settings.slots };
+    let migrated = false;
     for (const engine of WEB_SEARCH_ENGINE_IDS) {
       const storedSlot = document.settings.slots[engine];
       if (storedSlot === undefined) continue;
@@ -147,14 +140,42 @@ export class FileWebSearchConfigStore implements WebSearchConfigReader {
       if (encryptedByokKey !== undefined && typeof encryptedByokKey !== 'string') {
         throw new Error('加密凭证字段格式错误。');
       }
+      const rewrapped = encryptedByokKey
+        ? await this.credentialCodec.rewrap?.(encryptedByokKey)
+        : undefined;
+      const ciphertext = rewrapped ?? encryptedByokKey;
       slots[engine] = {
         keySource: storedSlot.keySource,
         searxngBaseUrl: storedSlot.searxngBaseUrl,
-        ...(encryptedByokKey
-          ? { byokKey: await this.credentialCodec.decrypt(encryptedByokKey) }
+        ...(ciphertext
+          ? { byokKey: await this.credentialCodec.decrypt(ciphertext) }
           : {}),
       };
+      if (rewrapped !== undefined) {
+        migrated = true;
+        migratedStoredSlots[engine] = { ...storedSlot, encryptedByokKey: rewrapped };
+      }
     }
-    return normalizeWebSearchSettings({ engine: document.settings.engine, slots });
+    const settings = normalizeWebSearchSettings({ engine: document.settings.engine, slots });
+    if (migrated) {
+      this.writeDocument(`${JSON.stringify({
+        ...document,
+        settings: { ...document.settings, slots: migratedStoredSlots },
+      }, null, 2)}\n`);
+    }
+    return settings;
+  }
+
+  private writeDocument(document: string): void {
+    const directory = path.dirname(this.filePath);
+    fs.mkdirSync(directory, { recursive: true });
+    const temporaryPath = `${this.filePath}.${process.pid}.${Date.now()}.tmp`;
+    try {
+      fs.writeFileSync(temporaryPath, document, { encoding: 'utf8', mode: 0o600 });
+      fs.renameSync(temporaryPath, this.filePath);
+    } catch (error: unknown) {
+      fs.rmSync(temporaryPath, { force: true });
+      throw error;
+    }
   }
 }

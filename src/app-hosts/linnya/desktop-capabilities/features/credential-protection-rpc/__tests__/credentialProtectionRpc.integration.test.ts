@@ -16,12 +16,17 @@ describe('Desktop credential protection RPC', () => {
     const electronPort: DesktopCredentialProtectionPort = {
       encrypt: vi.fn(async plaintext => `sealed:${plaintext}`),
       decrypt: vi.fn(async ciphertext => ciphertext.replace(/^sealed:/u, '')),
+      rewrap: vi.fn(async ciphertext => ciphertext.startsWith('legacy:')
+        ? `sealed:${ciphertext.slice('legacy:'.length)}`
+        : undefined),
     };
     const pair = createPeerPair(electronPort);
     const client = createDesktopCredentialProtectionRpcClient(pair.backend);
 
     await expect(client.encrypt('secret-value')).resolves.toBe('sealed:secret-value');
     await expect(client.decrypt('sealed:secret-value')).resolves.toBe('secret-value');
+    await expect(client.rewrap('legacy:secret-value')).resolves.toBe('sealed:secret-value');
+    await expect(client.rewrap('sealed:secret-value')).resolves.toBeUndefined();
     expect(electronPort.encrypt).toHaveBeenCalledWith('secret-value');
     expect(electronPort.decrypt).toHaveBeenCalledWith('sealed:secret-value');
 
@@ -32,6 +37,7 @@ describe('Desktop credential protection RPC', () => {
     const handlers = createDesktopCredentialProtectionRpcHandlers({
       encrypt: async plaintext => plaintext,
       decrypt: async ciphertext => ciphertext,
+      rewrap: async () => undefined,
     });
     const handler = handlers.get(DESKTOP_CREDENTIAL_ENCRYPT_RPC_METHOD);
     if (!handler) throw new Error('credential encrypt handler 未注册');
@@ -58,6 +64,7 @@ describe('Desktop credential protection RPC', () => {
       decrypt: async () => {
         throw new CredentialProtectionError('invalidated');
       },
+      rewrap: async () => undefined,
     });
     const client = createDesktopCredentialProtectionRpcClient(pair.backend);
 
