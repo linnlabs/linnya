@@ -18,8 +18,6 @@ export const PRESENTATION_DOCUMENT_SCHEMAS = [
 
     FOREIGN KEY (node_id) REFERENCES workspace_nodes(id) ON DELETE CASCADE,
     FOREIGN KEY (current_revision_id) REFERENCES presentation_revisions(id)
-      DEFERRABLE INITIALLY DEFERRED,
-    FOREIGN KEY (pptx_revision_id) REFERENCES presentation_revisions(id)
       DEFERRABLE INITIALLY DEFERRED
   )`,
 
