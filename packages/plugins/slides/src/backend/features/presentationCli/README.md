@@ -43,8 +43,10 @@ render-model、inspection、quality 与 screenshot 编排。它不为缺失的�
 standalone CLI 注册 `slides-raster` 时必须相对自身 `dist/cli/slides-cli.cjs` 计算 Slides artifact root，再从同一根加载 `dist/backend/raster-worker-preload.cjs` 与 `dist/raster-worker/worker.html`。禁止读取 cwd、用户 active root 或 `extraResources` 作为候选；Agent bridge 继续复用当前 App 已注册的 worker，不新增第二套定位规则。
 
 CLI 的生产值依赖必须从所属 shared 模块的窄入口导入，不能从 `@plugin/slides/shared` 总 barrel 取值；类型导入不受此限制。否则新增与 inspect/render 无关的 authoring runtime 时，会被总 barrel 意外带入 standalone bundle，破坏 CLI 只读边界和体积门禁。
+跨包 schema 同样必须使用 `@app/schemas/*` 的公开窄入口；CLI 的构建图会拒绝根 schema barrel，避免仅因
+Slides Agent 身份等无关初始化而带入 Conversation、Command 与模型配置 DTO。
 
-CLI 将 `sharp`、`better-sqlite3`、Yoga、HarfBuzz、jieba 和 PDF.js 等重型运行时保留为 external。它们的加载与 ESM 子路径定位都由 Linnya command host 按固定白名单从主应用运行时解析，插件不自行查找 `app.asar`、unpacked 目录或 `node_modules`。MathJax/STIX2 属于 Slides 自有公式能力，不依赖 Host：backend、build Worker 与 CLI 只分发一份 `slides-mathjax-runtime`，CLI 通过同 artifact 内的固定 bridge 使用它，禁止再次内联或复制字形表。新增依赖必须先进入 host 的明确发布与安全边界，不能在 CLI 内增加逐包路径 fallback。
+CLI 将 `sharp`、`better-sqlite3`、`fontkit`、Yoga、HarfBuzz、jieba 和 PDF.js 等重型运行时保留为 external。它们的加载与 ESM 子路径定位都由 Linnya command host 按固定白名单从主应用运行时解析，插件不自行查找 `app.asar`、unpacked 目录或 `node_modules`。`fontkit` 及其 Brotli 字典属于系统字体目录的实现闭包，不能复制进只读 Slides command entry。MathJax/STIX2 属于 Slides 自有公式能力，不依赖 Host：backend、build Worker 与 CLI 只分发一份 `slides-mathjax-runtime`，CLI 通过同 artifact 内的固定 bridge 使用它，禁止再次内联或复制字形表。新增依赖必须先进入 host 的明确发布与安全边界，不能在 CLI 内增加逐包路径 fallback。
 
 ## 命令
 
@@ -95,8 +97,9 @@ Linux 下 Electron CLI 的 presentation 命令需要 `DISPLAY` 或 `WAYLAND_DISP
 ## 构建与验证
 
 - `build:cli` 构建 Electron entry，并把 Yoga、HarfBuzz loader 与指向 backend 单一 MathJax runtime 的窄 bridge 放到同一 `dist/cli`。构建同时读取 esbuild
-  metafile：raw entry 不得超过 4 MiB、不得内联 MathJax，且依赖图不得出现 TypeScript compiler、PPT 作者/变更链、完整
-  workspace runtime、完整 Slides coordinator/codegen 或其他内置插件源码。entry 只启用 syntax-only 压缩，保留函数名和可诊断结构；metafile 只用于构建门禁，不进入 artifact。
+  metafile：raw entry 不得超过 1.9 MiB、不得内联 MathJax、`fontkit` 或其 Brotli 字典，并且必须保留明确的
+  `fontkit` external import；依赖图不得出现 TypeScript compiler、PPT 作者/变更链、完整 workspace runtime、完整
+  Slides coordinator/codegen 或其他内置插件源码。entry 只启用 syntax-only 压缩，保留函数名和可诊断结构；metafile 只用于构建门禁，不进入 artifact。
 - `pnpm run dev:electron` 会在启动 Electron 前通过根脚本 `build:slides-cli` 重建该 bundle；修改
   CLI 或其 host runtime 后应重启开发会话，让命令入口与当前源码、数据库 schema 保持同一版本。
 - Slides 完整 `build`、plugin zip、SHA512 和 `extraResources` 验证都包含 CLI entry、Yoga 与 HarfBuzz loader。
@@ -104,6 +107,8 @@ Linux 下 Electron CLI 的 presentation 命令需要 `DISPLAY` 或 `WAYLAND_DISP
   current document hash 一致性与 standalone 页级源码位置。
 - Agent 集成 smoke 使用自包含 presentation 验证真实 AgentDefinition → `shell` → `linnya-slides` thin client → 当前 App bridge → 共享 coordinator/worker → `conversation:` 截图 locator → `read_file` 模型输入。
 - standalone CLI smoke 另行验证 Electron command mode、只读 DB adapter、packaged external 与 `file:` locator；不能用它替代父 Shell 权限、bridge token 生命周期和 draining 验收。
+- `pnpm run test:slides-cli:command-mode` 把 CLI 与公式 runtime 复制到仓库外的临时插件 artifact，先证明该入口无法
+  自行解析 `fontkit`，再经真实 Electron command mode 执行字体查询；该测试锁定 Host resolver 必须早于 entry 加载。
 - 真实验收需要以实际 workspace presentation 分别执行 inspect 和 render，并确认成功报告版本正确、每个 locator 可读取且页码与 JPEG 一一对应；同一文稿保存新版本后再 render，应只剩最新成功版本工作集。
 - 发布验收还必须使用真实 packaged Linnya 可执行文件覆盖未知 command ID、`slides --help` 和 render。只运行仓库 CLI 或 `extraResources` entry 不能证明 app bundle 的原生依赖、worker 与模块解析布局正确。
 - `scripts/e2e/commands/fixtures/slides-yoga-runtime-probe.cjs` 只用于生成后的测试 app：临时替换已登记 CLI entry，验证 command mode 能从 packaged host 定位 `yoga-layout/load`、加载 ESM 并实际计算布局。探针不能进入正式插件 artifact，验收后必须恢复真实 CLI 再跑 render。

@@ -2,7 +2,9 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { readFile, stat } from 'node:fs/promises';
 
-const MAX_STANDALONE_CLI_BYTES = 4 * 1024 * 1024;
+const MAX_STANDALONE_CLI_BYTES = Math.floor(1.9 * 1024 * 1024);
+
+const REQUIRED_EXTERNAL_IMPORTS = ['fontkit'];
 
 const FORBIDDEN_INPUTS = [
   { label: 'TypeScript compiler', pattern: /node_modules\/(?:\.pnpm\/typescript@[^/]+\/node_modules\/)?typescript\// },
@@ -13,6 +15,9 @@ const FORBIDDEN_INPUTS = [
   { label: 'full Slides coordinator', pattern: /(?:^|\/)src\/backend\/coordinator\/(?:PptCoordinator|createPptCoordinator|presentationCodegenRuntime)\.ts$/ },
   { label: 'full workspace runtime', pattern: /(?:^|\/)src\/plugin-sdk\/backend\/workspaceRuntime\.ts$/ },
   { label: 'unrelated plugin package', pattern: /(?:^|\/)packages\/plugins\/(?!slides\/)[^/]+\/src\// },
+  { label: 'broad application schemas barrel', pattern: /schemas\/src\/index\.ts$/ },
+  { label: 'inlined fontkit runtime', pattern: /node_modules\/(?:\.pnpm\/fontkit@[^/]+\/node_modules\/)?fontkit\// },
+  { label: 'inlined fontkit Brotli dictionary', pattern: /node_modules\/(?:\.pnpm\/brotli@[^/]+\/node_modules\/)?brotli\// },
 ];
 
 /** 构建图是 standalone CLI 的架构门禁，不只检查最终文件大小。 */
@@ -33,13 +38,33 @@ export async function verifySlidesCliBundle({ bundlePath, metafilePath }) {
   }
 
   const metafile = JSON.parse(rawMetafile);
-  const inputPaths = Object.keys(metafile.inputs ?? {}).map(normalizePath);
+  // esbuild 记录的是相对构建 cwd 的路径；先还原绝对身份，避免门禁因 metafile
+  // 使用 `../mindmap` 或 `../../schemas` 形式而漏检跨插件与宽 barrel 依赖。
+  const inputPaths = Object.keys(metafile.inputs ?? {}).map((inputPath) => (
+    normalizePath(path.resolve(inputPath))
+  ));
   const violations = FORBIDDEN_INPUTS.flatMap(({ label, pattern }) => (
     inputPaths.some((inputPath) => pattern.test(inputPath)) ? [label] : []
   ));
   if (violations.length > 0) {
     throw new Error(
       `Slides standalone CLI contains forbidden dependency classes: ${violations.join(', ')}.`,
+    );
+  }
+  const output = Object.values(metafile.outputs ?? {}).find((candidate) => (
+    candidate.entryPoint && normalizePath(candidate.entryPoint).endsWith('/presentationCli/infrastructure/electronMain.ts')
+  ));
+  const externalImports = new Set(
+    (output?.imports ?? [])
+      .filter((entry) => entry.external === true)
+      .map((entry) => entry.path),
+  );
+  const missingExternalImports = REQUIRED_EXTERNAL_IMPORTS.filter((specifier) => (
+    !externalImports.has(specifier)
+  ));
+  if (missingExternalImports.length > 0) {
+    throw new Error(
+      `Slides standalone CLI must keep host runtime imports external: ${missingExternalImports.join(', ')}.`,
     );
   }
   const runtime = createRequire(path.resolve(bundlePath))('@linnya/slides-mathjax-runtime');
