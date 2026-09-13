@@ -174,8 +174,7 @@ export interface SlidesPresentationQueryPort {
   ): Promise<ExportedPresentationFile>;
   getPreview(
     nodeId: string,
-    version: SlidesEngineVersionSnapshot,
-    assembleOptions?: DeckAssembleOptions
+    version: SlidesEnginePreviewSnapshot
   ): Promise<DeckPreview>;
   getRenderModel(
     nodeId: string,
@@ -267,6 +266,30 @@ export interface SlidesEngineVersionSnapshot {
   readonly title: string;
 }
 
+interface SlidesEnginePreviewSnapshotBase {
+  readonly id: string;
+  readonly nodeId: string;
+  readonly versionNumber: number;
+  readonly deckSpec: DeckSpec;
+  readonly title: string;
+}
+
+/** generated preview 不携带 PPTX；package-backed preview 才拥有可解析的 package bytes。 */
+export type SlidesEnginePreviewSnapshot =
+  | (SlidesEnginePreviewSnapshotBase & {
+      readonly sourceKind: 'generated';
+    })
+  | (SlidesEnginePreviewSnapshotBase & {
+      readonly sourceKind: Exclude<SlidesEnginePresentationSourceKind, 'generated'>;
+      readonly pptxBuffer: Buffer;
+    });
+
+export interface SlidesEnginePreviewRequest {
+  readonly nodeId: string;
+  readonly version: SlidesEnginePreviewSnapshot;
+  readonly context: SlidesEngineExecutionContext;
+}
+
 export interface SlidesEngineVersionRequest {
   readonly nodeId: string;
   readonly version: SlidesEngineVersionSnapshot;
@@ -283,7 +306,7 @@ export interface SlidesEngineExecutionAdapter {
   resolvePatchImageSource(request: SlidesEngineResolvePatchImageSourceRequest): Promise<string>;
   inspectPresentation(request: SlidesEngineVersionRequest): Promise<PresentationInfo>;
   exportPresentation(request: SlidesEngineVersionRequest): Promise<ExportedPresentationFile>;
-  buildPreview(request: SlidesEngineVersionRequest): Promise<DeckPreview>;
+  buildPreview(request: SlidesEnginePreviewRequest): Promise<DeckPreview>;
   buildRenderModel(request: SlidesEngineVersionRequest): Promise<PresentationRenderModel>;
 }
 

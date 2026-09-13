@@ -153,7 +153,10 @@ plugin 或已打包 App 副本。
   是唯一编辑事实。所有正式创建、编辑与恢复入口都必须先得到可编译源码，再通过同一 codegen
   commit 编排落库。
 - `presentation_documents` 每个文稿只保存当前
-  `deck_source + DeckSpec + PPTX`，PPTX 只保存一份；preview、inspect、screenshot 以及未向 Agent/CLI 暴露的内部 PPTX 读取都使用这行 current materialization。
+  `deck_source + DeckSpec + PPTX`，PPTX 只保存一份。读路径按用途选择窄投影：build state/source kind
+  只读 revision identity，generated preview 只读 `DeckSpec + title`，inspect、原生导出及需要 package
+  bytes 的内部能力才读取 PPTX。generated preview 与 RenderModel 都从同一 revision 的 DeckSpec 派生，
+  不把刚保存的 PPTX 再 parse 一次。
 - `presentation_revisions` 只保存 source
   checkpoint/patch、hash 和审计 metadata。每 25 个 revision、累计 patch 达到完整源码大小或单 patch 不小于完整源码时写 checkpoint。
 - 恢复历史 revision 时先重建源码并校验 hash，再重新编译，并把恢复结果作为新的

@@ -72,6 +72,8 @@ export type {
   SlidesEngineOperationName,
   SlidesEngineParsePptxRequest,
   SlidesEnginePresentationSourceKind,
+  SlidesEnginePreviewRequest,
+  SlidesEnginePreviewSnapshot,
   SlidesEngineVersionRequest,
   SlidesEngineVersionSnapshot,
   SlidesPresentationQueryPort,

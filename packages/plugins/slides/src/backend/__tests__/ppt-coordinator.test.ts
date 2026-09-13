@@ -85,6 +85,19 @@ describe('PptCoordinator', () => {
       createPresentation: vi.fn(async () => ({ revisionId: 'revision-1', revision: 1 })),
       commitPresentation: vi.fn(async () => ({ revisionId: 'revision-8', revision: 8 })),
       getPresentation: vi.fn(async () => makeDocument()),
+      getPresentationIdentity: vi.fn(async () => ({
+        nodeId: 'node-1',
+        currentRevisionId: 'revision-7',
+        currentRevision: 7,
+        sourceHash: 'source-hash-7',
+      })),
+      getPresentationPreviewSource: vi.fn(async () => ({
+        nodeId: 'node-1',
+        currentRevisionId: 'revision-7',
+        currentRevision: 7,
+        deckSpec,
+        title: deckSpec.title,
+      })),
       getRevisionSource: vi.fn(async () => null),
       listRevisions: vi.fn(async () => []),
       saveTemplate: vi.fn(async () => 'template-1'),
@@ -193,6 +206,19 @@ describe('PptCoordinator', () => {
     expect(exported.buffer).toEqual(Buffer.from('stored-pptx'));
   });
 
+  it('uses narrow current projections for status, source kind, and generated preview', async () => {
+    const buildState = await coordinator.getDocumentBuildState('node-1');
+    const sourceKind = await coordinator.getSourceKind('node-1');
+    const preview = await coordinator.getPreview('node-1');
+
+    expect(buildState).toMatchObject({ versionId: 'revision-7', versionNumber: 7 });
+    expect(sourceKind).toBe('generated');
+    expect(preview).toMatchObject({ nodeId: 'node-1', versionNumber: 7 });
+    expect(presentationRepo.getPresentationIdentity).toHaveBeenCalledTimes(2);
+    expect(presentationRepo.getPresentationPreviewSource).toHaveBeenCalledOnce();
+    expect(presentationRepo.getPresentation).not.toHaveBeenCalled();
+  });
+
   it('recovers missing source spans through the shared codegen builder', async () => {
     const specWithoutSourceSpan: DeckSpec = {
       ...deckSpec,
@@ -202,7 +228,8 @@ describe('PptCoordinator', () => {
           ? {
             ...slide.spec,
             elements: slide.spec.elements.map((element) => {
-              const { _sourceSpan, ...withoutSourceSpan } = element;
+              const withoutSourceSpan = { ...element };
+              delete withoutSourceSpan._sourceSpan;
               return withoutSourceSpan;
             }),
           }
@@ -265,7 +292,7 @@ describe('PptCoordinator', () => {
   });
 
   it('reports missing current documents directly', async () => {
-    vi.mocked(presentationRepo.getPresentation).mockResolvedValue(null);
+    vi.mocked(presentationRepo.getPresentationPreviewSource).mockResolvedValue(null);
 
     await expect(coordinator.getPreview('missing-node')).rejects.toThrow(
       'Presentation not found: missing-node',

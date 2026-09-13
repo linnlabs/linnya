@@ -3,6 +3,7 @@ import {
   type ExportedPresentationFile,
   type PptxReaderPort,
   type SlidesEngineRenderModelOptions,
+  type SlidesEnginePreviewSnapshot,
   type SlidesEngineVersionSnapshot,
   type ImageSourceResolverPort,
   type SvgGraphicAssetResolverPort,
@@ -61,7 +62,7 @@ export class PptPresentationQueryService {
 
   async getPreview(
     nodeId: string,
-    version: SlidesEngineVersionSnapshot,
+    version: SlidesEnginePreviewSnapshot,
   ): Promise<DeckPreview> {
     if (version.sourceKind === 'generated') {
       return this.generatedPreviewMapper.toPreview({
@@ -133,7 +134,7 @@ export class PptPresentationQueryService {
   }
 
   private resolvePresentationBuffer(
-    version: SlidesEngineVersionSnapshot,
+    version: { readonly pptxBuffer: Buffer },
   ): Buffer {
     return version.pptxBuffer;
   }

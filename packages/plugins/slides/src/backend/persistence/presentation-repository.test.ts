@@ -114,6 +114,19 @@ describe('PresentationRepository current materialization and source revisions', 
       authorId: 'author-1',
     });
     expect(document?.pptxBuffer.equals(Buffer.from('pptx-v1'))).toBe(true);
+    await expect(repo.getPresentationIdentity('deck-1')).resolves.toEqual({
+      nodeId: 'deck-1',
+      currentRevisionId: result.revisionId,
+      currentRevision: 1,
+      sourceHash: document?.sourceHash,
+    });
+    await expect(repo.getPresentationPreviewSource('deck-1')).resolves.toEqual({
+      nodeId: 'deck-1',
+      currentRevisionId: result.revisionId,
+      currentRevision: 1,
+      deckSpec: makeDeckSpec('Revision 1'),
+      title: 'Revision 1',
+    });
 
     const revisions = await repo.listRevisions('deck-1');
     expect(revisions).toEqual([

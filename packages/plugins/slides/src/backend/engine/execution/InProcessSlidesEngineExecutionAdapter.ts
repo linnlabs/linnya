@@ -9,6 +9,7 @@ import type {
   SlidesEngineExecutionContext,
   SlidesEngineLogger,
   SlidesEngineParsePptxRequest,
+  SlidesEnginePreviewRequest,
   SlidesEngineResolvePatchImageSourceRequest,
   SlidesPresentationQueryPort,
   SlidesEngineVersionRequest,
@@ -96,9 +97,9 @@ export class InProcessSlidesEngineExecutionAdapter implements SlidesEngineExecut
     );
   }
 
-  async buildPreview(request: SlidesEngineVersionRequest) {
+  async buildPreview(request: SlidesEnginePreviewRequest) {
     return await this.runWithTelemetry(request.context, async () =>
-      this.presentationQueries.getPreview(request.nodeId, request.version, request.assembleOptions)
+      this.presentationQueries.getPreview(request.nodeId, request.version)
     );
   }
 

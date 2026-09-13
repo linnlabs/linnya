@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { DeckSpec } from '@plugin/slides/shared';
 import { PptPresentationQueryService } from '../engine/coordinator/PptPresentationQueryService.js';
-import type { PptxReaderPort, SlidesEngineVersionSnapshot } from '../engine/types.js';
+import type { PptxReaderPort, SlidesEnginePreviewSnapshot } from '../engine/types.js';
 
 const deckSpec: DeckSpec = {
   title: 'Imported deck',
@@ -12,15 +12,22 @@ const deckSpec: DeckSpec = {
   }],
 };
 
-function makeVersion(sourceKind: SlidesEngineVersionSnapshot['sourceKind']): SlidesEngineVersionSnapshot {
+function makeGeneratedVersion(): SlidesEnginePreviewSnapshot {
   return {
     id: 'revision-1',
     nodeId: 'deck-1',
     versionNumber: 1,
     deckSpec,
-    pptxBuffer: Buffer.from('pptx-source'),
-    sourceKind,
+    sourceKind: 'generated',
     title: deckSpec.title,
+  };
+}
+
+function makeImportedVersion(): SlidesEnginePreviewSnapshot {
+  return {
+    ...makeGeneratedVersion(),
+    sourceKind: 'imported',
+    pptxBuffer: Buffer.from('pptx-source'),
   };
 }
 
@@ -34,7 +41,7 @@ describe('PptPresentationQueryService preview source', () => {
 
     const preview = await new PptPresentationQueryService(pptxReader).getPreview(
       'deck-1',
-      makeVersion('generated'),
+      makeGeneratedVersion(),
     );
 
     expect(pptxReader.parse).not.toHaveBeenCalled();
@@ -70,7 +77,7 @@ describe('PptPresentationQueryService preview source', () => {
 
     const preview = await new PptPresentationQueryService(pptxReader).getPreview(
       'deck-1',
-      makeVersion('imported'),
+      makeImportedVersion(),
     );
 
     expect(pptxReader.parse).toHaveBeenCalledOnce();

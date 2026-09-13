@@ -6,7 +6,26 @@ import {
 import { normalizeDeckSpecColors } from '@plugin/slides/shared/visual';
 import { PresentationSourceConsistencyError } from '../../features/presentationSourceHistory/definitions/presentationSourceRevision.js';
 import { hashPresentationSource } from '../../features/presentationSourceHistory/functions/presentationSourceHash.js';
-import type { PresentationDocumentRecord } from '../definitions/presentationRepository.js';
+import type {
+  PresentationDocumentIdentity,
+  PresentationDocumentRecord,
+  PresentationPreviewSourceRecord,
+} from '../definitions/presentationRepository.js';
+
+export interface StoredPresentationIdentityRow {
+  readonly node_id: string;
+  readonly current_revision_id: string;
+  readonly current_revision: number;
+  readonly source_hash: string;
+}
+
+export interface StoredPresentationPreviewSourceRow {
+  readonly node_id: string;
+  readonly current_revision_id: string;
+  readonly current_revision: number;
+  readonly deck_spec_json: string;
+  readonly title: string;
+}
 
 /** SQLite current document 的稳定行合同，供读写 repository 与 standalone 只读 adapter 共用。 */
 export interface StoredPresentationDocumentRow {
@@ -23,6 +42,69 @@ export interface StoredPresentationDocumentRow {
   readonly created_at: number;
   readonly updated_at: number;
   readonly author_id: string | null;
+}
+
+export function readPresentationIdentityRow(value: unknown): StoredPresentationIdentityRow {
+  if (
+    !isRecord(value)
+    || typeof value.node_id !== 'string'
+    || typeof value.current_revision_id !== 'string'
+    || !isFiniteInteger(value.current_revision)
+    || typeof value.source_hash !== 'string'
+  ) {
+    throw new PresentationSourceConsistencyError('Slides current document identity 行结构非法。');
+  }
+  return {
+    node_id: value.node_id,
+    current_revision_id: value.current_revision_id,
+    current_revision: value.current_revision,
+    source_hash: value.source_hash,
+  };
+}
+
+export function mapPresentationIdentityRow(
+  row: StoredPresentationIdentityRow,
+): PresentationDocumentIdentity {
+  return {
+    nodeId: row.node_id,
+    currentRevisionId: row.current_revision_id,
+    currentRevision: row.current_revision,
+    sourceHash: row.source_hash,
+  };
+}
+
+export function readPresentationPreviewSourceRow(
+  value: unknown,
+): StoredPresentationPreviewSourceRow {
+  if (
+    !isRecord(value)
+    || typeof value.node_id !== 'string'
+    || typeof value.current_revision_id !== 'string'
+    || !isFiniteInteger(value.current_revision)
+    || typeof value.deck_spec_json !== 'string'
+    || typeof value.title !== 'string'
+  ) {
+    throw new PresentationSourceConsistencyError('Slides preview source 行结构非法。');
+  }
+  return {
+    node_id: value.node_id,
+    current_revision_id: value.current_revision_id,
+    current_revision: value.current_revision,
+    deck_spec_json: value.deck_spec_json,
+    title: value.title,
+  };
+}
+
+export function mapPresentationPreviewSourceRow(
+  row: StoredPresentationPreviewSourceRow,
+): PresentationPreviewSourceRecord {
+  return {
+    nodeId: row.node_id,
+    currentRevisionId: row.current_revision_id,
+    currentRevision: row.current_revision,
+    deckSpec: parseStoredDeckSpec(row.deck_spec_json),
+    title: row.title,
+  };
 }
 
 export function readPresentationDocumentRow(value: unknown): StoredPresentationDocumentRow {

@@ -9,7 +9,9 @@ import type {
   DeckAssembleOptions,
   ExportedPresentationFile,
   PresentationDraftRepositoryPort,
+  PresentationDocumentIdentity,
   PresentationDocumentRecord,
+  PresentationPreviewSourceRecord,
   PresentationRepositoryPort,
   PresentationSourceKind,
   WorkspacePresentationPort,
@@ -21,7 +23,10 @@ import {
   type SlidesEngineVersionSnapshot,
 } from '@plugin/slides/backend-engine-core';
 import type { CodegenDeckBuilderPort } from './presentationCodegenRuntime';
-import { toSlidesEngineVersionSnapshot } from './functions/presentationDocumentSnapshot.js';
+import {
+  toSlidesEnginePreviewSnapshot,
+  toSlidesEngineVersionSnapshot,
+} from './functions/presentationDocumentSnapshot.js';
 import { deckSpecHasSourceSpan } from '../engine/coordinator/deckSpecSourceSpans.js';
 
 interface RenderModelVersionResolution {
@@ -90,16 +95,12 @@ export class PresentationQueryRuntime {
   }
 
   async getPreview(nodeId: string): Promise<DeckPreview> {
-    const document = await this.requirePresentation(nodeId);
-    const version = toSlidesEngineVersionSnapshot(document);
+    const source = await this.requirePresentationPreviewSource(nodeId);
+    const version = toSlidesEnginePreviewSnapshot(source);
     this.assertNoPendingCodegenDraft(nodeId, 'preview');
     return this.deps.engine.buildPreview({
       nodeId,
       version,
-      assembleOptions: this.buildDeckAssembleOptions(
-        nodeId,
-        await this.resolvePresentationProjectId(nodeId)
-      ),
       context: this.createEngineContext('buildPreview', {
         nodeId,
         versionId: version.id,
@@ -136,12 +137,12 @@ export class PresentationQueryRuntime {
   }
 
   async getSourceKind(nodeId: string): Promise<PresentationSourceKind> {
-    await this.requirePresentation(nodeId);
+    await this.requirePresentationIdentity(nodeId);
     return 'generated';
   }
 
   async getDocumentBuildState(nodeId: string): Promise<SlidesDocumentBuildState> {
-    const document = await this.requirePresentation(nodeId);
+    const document = await this.requirePresentationIdentity(nodeId);
     const draft = this.deps.draftRepo?.get(nodeId) ?? null;
     if (draft) {
       return {
@@ -168,6 +169,24 @@ export class PresentationQueryRuntime {
       throw new Error(`Presentation not found: ${nodeId}`);
     }
     return document;
+  }
+
+  private async requirePresentationIdentity(nodeId: string): Promise<PresentationDocumentIdentity> {
+    const identity = await this.deps.presentationRepo.getPresentationIdentity(nodeId);
+    if (!identity) {
+      throw new Error(`Presentation not found: ${nodeId}`);
+    }
+    return identity;
+  }
+
+  private async requirePresentationPreviewSource(
+    nodeId: string,
+  ): Promise<PresentationPreviewSourceRecord> {
+    const source = await this.deps.presentationRepo.getPresentationPreviewSource(nodeId);
+    if (!source) {
+      throw new Error(`Presentation not found: ${nodeId}`);
+    }
+    return source;
   }
 
   private buildDeckAssembleOptions(nodeId: string, projectId: string | null): DeckAssembleOptions {

@@ -24,7 +24,9 @@ import {
   type PresentationCommitOptions,
   type PresentationCommitResult,
   type PresentationCreateOptions,
+  type PresentationDocumentIdentity,
   type PresentationDocumentRecord,
+  type PresentationPreviewSourceRecord,
   type PresentationRepositoryPort,
   type PresentationManualEditReceiptRecord,
   type PresentationRevisionOrigin,
@@ -32,9 +34,13 @@ import {
   type PresentationTemplateRecord,
 } from '../definitions/presentationRepository.js';
 import {
+  mapPresentationIdentityRow,
   mapPresentationDocumentRow,
+  mapPresentationPreviewSourceRow,
   normalizeDeckSpecOrThrow as normalizeStoredDeckSpecOrThrow,
+  readPresentationIdentityRow,
   readPresentationDocumentRow,
+  readPresentationPreviewSourceRow,
   type StoredPresentationDocumentRow,
 } from '../functions/presentationDocumentRecordCodec.js';
 
@@ -319,6 +325,30 @@ export class PresentationRepository implements PresentationRepositoryPort {
       return null;
     }
     return mapPresentationDocumentRow(row);
+  }
+
+  async getPresentationIdentity(nodeId: string): Promise<PresentationDocumentIdentity | null> {
+    const row = this.db.prepare(`
+      SELECT node_id, current_revision_id, current_revision, source_hash
+      FROM presentation_documents
+      WHERE node_id = ?
+    `).get(nodeId);
+    return row === undefined
+      ? null
+      : mapPresentationIdentityRow(readPresentationIdentityRow(row));
+  }
+
+  async getPresentationPreviewSource(
+    nodeId: string,
+  ): Promise<PresentationPreviewSourceRecord | null> {
+    const row = this.db.prepare(`
+      SELECT node_id, current_revision_id, current_revision, deck_spec_json, title
+      FROM presentation_documents
+      WHERE node_id = ?
+    `).get(nodeId);
+    return row === undefined
+      ? null
+      : mapPresentationPreviewSourceRow(readPresentationPreviewSourceRow(row));
   }
 
   async getRevisionSource(nodeId: string, revision: number): Promise<string | null> {
