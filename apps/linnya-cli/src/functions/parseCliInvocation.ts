@@ -112,6 +112,17 @@ function readPositiveInteger(
   return parsed;
 }
 
+function readPort(tokens: ParsedTokens, name: string, fallback: number, allowZero = false): number {
+  const value = readString(tokens, name);
+  if (value === undefined) return fallback;
+  const parsed = Number(value);
+  const minimum = allowZero ? 0 : 1;
+  if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > 65_535) {
+    usageError(`Option --${name} must be an integer between ${minimum} and 65535`);
+  }
+  return parsed;
+}
+
 function requireConversationId(tokens: ParsedTokens, command: string): string {
   const conversationId = tokens.positionals[0]?.trim();
   if (!conversationId || tokens.positionals.length !== 1) {
@@ -134,6 +145,19 @@ function parseJsonOption(tokens: ParsedTokens, name: string): unknown {
 function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocation {
   const pretty = readBoolean(tokens, 'pretty');
   switch (command) {
+    case 'runtime': {
+      assertAllowedOptions(tokens, ['workspace', 'api-port', 'qdrant-port']);
+      if (tokens.positionals.length !== 1 || tokens.positionals[0] !== 'start') {
+        usageError('runtime requires exactly: runtime start');
+      }
+      return {
+        kind: 'runtime-start',
+        workspaceDirectory: readString(tokens, 'workspace'),
+        apiPort: readPort(tokens, 'api-port', 0, true),
+        qdrantPort: readPort(tokens, 'qdrant-port', 6333),
+        pretty,
+      };
+    }
     case 'doctor': {
       assertAllowedOptions(tokens, []);
       if (tokens.positionals.length > 0) usageError('doctor does not accept positional arguments');

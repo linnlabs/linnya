@@ -72,6 +72,36 @@ function connect(client: ConversationControlClient): ConversationControlConnecti
 }
 
 describe('runCli', () => {
+  it('runtime start 不连接现有 App，并在 Backend ready 后保持 launcher 生命周期', async () => {
+    const output = createIo();
+    const connection = { connect: vi.fn() };
+    const runtimeLauncher = {
+      run: vi.fn(async input => {
+        input.onReady({
+          pid: 321,
+          applicationVersion: '0.0.38',
+          apiPort: 43123,
+          databaseReady: true,
+        });
+      }),
+    };
+    await expect(runCli(['runtime', 'start'], {
+      connection,
+      runtimeLauncher,
+      io: output.io,
+    })).resolves.toBe(0);
+    expect(connection.connect).not.toHaveBeenCalled();
+    expect(runtimeLauncher.run).toHaveBeenCalledWith(expect.objectContaining({
+      apiPort: 0,
+      qdrantPort: 6333,
+    }));
+    expect(JSON.parse(output.stdout())).toMatchObject({
+      command: 'runtime',
+      state: 'ready',
+      runtime: { pid: 321, api_port: 43123, database_ready: true },
+    });
+    expect(output.stderr()).toBe('');
+  });
   it.each(['warning', 'error'] as const)(
     '工具调用从文件读取参数、保留 %s 诊断并裁剪回显',
     async severity => {

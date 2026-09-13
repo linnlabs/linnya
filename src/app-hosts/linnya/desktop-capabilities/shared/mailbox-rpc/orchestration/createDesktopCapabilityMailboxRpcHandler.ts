@@ -7,7 +7,7 @@ import type {
 import {
   publishBackendRendererResponseMailbox,
   readBackendRendererRequestMailbox,
-} from '../../../../adapters/backend-renderer-requests';
+} from '../../../../adapters/backend-renderer-requests/functions/backendRendererRequestMailbox';
 import { DESKTOP_CAPABILITY_MAILBOX_PROTOCOL_VERSION } from '../definitions/desktopCapabilityMailboxRpc';
 import { parseDesktopCapabilityMailboxRpcReference } from '../functions/desktopCapabilityMailboxRpcCodec';
 

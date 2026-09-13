@@ -9,8 +9,10 @@ import {
   type AppServerRpcHandler,
   type AppServerRpcHandlerRegistry,
 } from '../../../../../app-hosts/linnya/app-server-rpc';
+import { installAppServerChildSignalOwnership } from '../../../../../app-hosts/linnya/app-server-runtime/functions/installAppServerChildSignalOwnership';
 
 async function main(): Promise<void> {
+  const signalOwnership = installAppServerChildSignalOwnership();
   // child_process 的额外 stdio fd 是非阻塞 IPC pipe，必须按 Node 文档用 net.Socket 读取。
   const bootstrapInput = new Socket({ fd: 3, readable: true, writable: false });
   const bootstrap = await readAppServerBootstrap(bootstrapInput);
@@ -63,6 +65,7 @@ async function main(): Promise<void> {
   await host.completed;
   await waitForReadableEnd(rpcInput);
   await endSocket(rpcOutput);
+  signalOwnership.dispose();
 }
 
 void main().then(() => {

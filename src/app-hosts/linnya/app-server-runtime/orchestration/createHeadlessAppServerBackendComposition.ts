@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import type { AppServerRpcPeer } from '../../app-server-rpc';
+import type { AppServerRpcHandler, AppServerRpcPeer } from '../../app-server-rpc';
 import type { AppServerBootstrap } from '../../app-server-bootstrap';
 import type { HeadlessAppServerBackendComposition } from '../definitions/headlessAppServerBackendComposition';
 import {
@@ -28,6 +28,10 @@ import {
   attachCommandRendererChangeRpcPublisher,
   createCommandBackendRpcHandlers,
 } from '../../adapters/commands/renderer-rpc';
+import {
+  attachCommandApprovalHostPresenterPublisher,
+  createCommandApprovalHostPresenterBackendRpcHandlers,
+} from '../../adapters/commands/host-presenter-rpc';
 import { createHeadlessNodeConversationExecutionRuntimeFactory } from '../../adapters/conversation-runtime/headless-node-runtime';
 import { createLocalProcessPlatformLauncher } from '../../../../infra/adapters/local-process-runtime/production-runtime';
 import { resolveQdrantProcessRuntime } from '../../../../infra/adapters/vector-store/qdrant';
@@ -56,6 +60,12 @@ export function createHeadlessAppServerBackendComposition(input: {
     initializationMarkerPath: `${permissionSettingsPath}.initialized`,
   });
   const commandApprovalHost = createCommandApprovalHost();
+  const commandApprovalPresenter = input.bootstrap.host_capabilities.command_approval_presenter;
+  if (commandApprovalPresenter.available) {
+    // CLI Runtime 的 API descriptor 会在 parent presenter 接上前出现；先在唯一
+    // command owner 内启用 pipe-authenticated Host 通道，使最早的审批进入 pending。
+    commandApprovalHost.enableHostPresenter();
+  }
   const commandCardControlHost = createCommandCardControlHost({
     reportPersistenceFailure(context) {
       input.reportAsyncFailure(new Error(
@@ -64,16 +74,40 @@ export function createHeadlessAppServerBackendComposition(input: {
       ));
     },
   });
-  const rendererChangePublisher = attachCommandRendererChangeRpcPublisher({
-    rpc: input.rpc,
-    approval: commandApprovalHost,
-    card: commandCardControlHost,
-    onFailure: input.reportAsyncFailure,
-  });
+  const rendererChangePublisher = input.bootstrap.host_kind === 'desktop'
+    ? attachCommandRendererChangeRpcPublisher({
+        rpc: input.rpc,
+        approval: commandApprovalHost,
+        card: commandCardControlHost,
+        onFailure: input.reportAsyncFailure,
+      })
+    : null;
+  const hostPresenterPublisher = commandApprovalPresenter.available
+    ? attachCommandApprovalHostPresenterPublisher({
+        rpc: input.rpc,
+        approval: commandApprovalHost,
+        onFailure: input.reportAsyncFailure,
+      })
+    : null;
   const rendererIntegration = createBackendRendererIntegrationRpcClient({
     rpc: input.rpc,
     onAsyncFailure: input.reportAsyncFailure,
   });
+
+  const backendRpcHandlers = new Map<string, AppServerRpcHandler>();
+  registerHandlers(backendRpcHandlers, createCommandBackendRpcHandlers({
+    permissionSettings: createLocalCommandPermissionSettingsRendererGateway(
+      commandPermissionSettings,
+    ),
+    approval: commandApprovalHost,
+    card: commandCardControlHost,
+  }));
+  if (commandApprovalPresenter.available) {
+    registerHandlers(
+      backendRpcHandlers,
+      createCommandApprovalHostPresenterBackendRpcHandlers(commandApprovalHost),
+    );
+  }
 
   return Object.freeze({
     backendHostDependencies: Object.freeze({
@@ -125,20 +159,25 @@ export function createHeadlessAppServerBackendComposition(input: {
       externalAuthorizationBrowser: createExternalAuthorizationBrowserRpcClient(input.rpc),
       webPageRenderer: createDesktopWebPageRendererRpcClient(mailbox),
     }),
-    backendRpcHandlers: createCommandBackendRpcHandlers({
-      permissionSettings: createLocalCommandPermissionSettingsRendererGateway(
-        commandPermissionSettings,
-      ),
-      approval: commandApprovalHost,
-      card: commandCardControlHost,
-    }),
+    backendRpcHandlers,
     exportArtifactCommit: createExportArtifactCommitRpcClient(mailbox),
     fileReveal: createDesktopFileRevealRpcClient(input.rpc),
     pluginCredentialRuntime: createPluginCredentialRuntimeRpcClient(input.rpc),
     dispose() {
-      rendererChangePublisher.dispose();
+      rendererChangePublisher?.dispose();
+      hostPresenterPublisher?.dispose();
     },
   });
+}
+
+function registerHandlers(
+  target: Map<string, AppServerRpcHandler>,
+  source: ReadonlyMap<string, AppServerRpcHandler>,
+): void {
+  for (const [method, handler] of source) {
+    if (target.has(method)) throw new Error(`Command Backend RPC method 重复注册: ${method}`);
+    target.set(method, handler);
+  }
 }
 
 function toError(error: unknown): Error {

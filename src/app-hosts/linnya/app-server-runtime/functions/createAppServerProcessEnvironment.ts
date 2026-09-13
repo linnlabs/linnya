@@ -42,6 +42,9 @@ const APP_SERVER_ENVIRONMENT_KEYS = Object.freeze([
   'LINNYA_BUNDLED_PLUGIN_ROOT',
   'MODEL_REGISTRY_DEFAULTS_PATH',
   'LINNYA_AUDIT_LEVEL',
+  // 控制面描述文件是 Host 显式选择的本机 transport 事实；测试与并行 Workspace
+  // 必须能隔离它，不能被 sidecar 环境白名单静默丢弃。
+  'LINNYA_CLI_CONNECTION_FILE',
   'LINNYA_KG_DUMP_JSON',
   'PDF_IMG_DEBUG',
   'AUDIO_SAMPLE_RATE',

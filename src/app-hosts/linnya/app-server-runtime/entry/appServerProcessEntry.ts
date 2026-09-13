@@ -1,5 +1,7 @@
 import { Console } from 'node:console';
+import { createRequire } from 'node:module';
 import path from 'node:path';
+import { installAppServerChildSignalOwnership } from '../functions/installAppServerChildSignalOwnership';
 
 interface AppServerBackendModule {
   readonly runLinnyaAppServerProcess: () => Promise<void>;
@@ -14,8 +16,10 @@ Object.defineProperty(globalThis, 'console', {
   value: new Console({ stdout: process.stderr, stderr: process.stderr }),
 });
 
+const signalOwnership = installAppServerChildSignalOwnership();
+const requireModule = createRequire(__filename);
 const backendModule = parseBackendModule(
-  require(path.join(__dirname, 'app-server-backend.cjs')),
+  requireModule(path.join(__dirname, 'app-server-backend.cjs')),
 );
 
 void backendModule.runLinnyaAppServerProcess().then(() => {
@@ -25,6 +29,8 @@ void backendModule.runLinnyaAppServerProcess().then(() => {
     `[App Server] fatal: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
   );
   process.exitCode = 1;
+}).finally(() => {
+  signalOwnership.dispose();
 });
 
 function parseBackendModule(value: unknown): AppServerBackendModule {
@@ -37,4 +43,3 @@ function parseBackendModule(value: unknown): AppServerBackendModule {
   }
   return Object.freeze({ runLinnyaAppServerProcess: () => Promise.resolve(run()) });
 }
-

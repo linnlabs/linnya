@@ -21,8 +21,16 @@ export interface AppServerProcessIdentity {
   readonly databaseReady: true;
 }
 
+export interface AppServerProcessExit {
+  readonly code: number | null;
+  readonly signal: NodeJS.Signals | null;
+  readonly expected: boolean;
+}
+
 export interface AppServerProcessSupervisor {
   start(): Promise<AppServerProcessIdentity>;
+  /** start 后等待真实 child exit；宿主据此区分主动收口与运行期崩溃。 */
+  waitForExit(): Promise<AppServerProcessExit>;
   request(
     method: string,
     payload: JsonValue,

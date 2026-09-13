@@ -3,7 +3,7 @@ import type { JsonValue } from '@app/schemas';
 import {
   parseBackendRendererRequestOperationId,
   parseBackendRendererRequestToken,
-} from '../../../../adapters/backend-renderer-requests';
+} from '../../../../adapters/backend-renderer-requests/functions/backendRendererRequestRpcCodec';
 import { DESKTOP_CAPABILITY_MAILBOX_PROTOCOL_VERSION } from '../definitions/desktopCapabilityMailboxRpc';
 
 export interface DesktopCapabilityMailboxRpcReference {

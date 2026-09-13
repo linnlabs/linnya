@@ -48,13 +48,18 @@ describe('Node App Server process supervisor', () => {
     expect(identity.rendererSessionToken).toHaveLength(64);
     expect(identity.databaseReady).toBe(true);
     expect(reversePayload).toEqual({ from: 'backend' });
+    process.kill(identity.pid, 'SIGINT');
+    await new Promise(resolve => setTimeout(resolve, 25));
+    await expect(supervisor.ping()).resolves.toBeUndefined();
     await expect(supervisor.request('backend.fixture.echo', { from: 'desktop' }))
       .resolves.toEqual({ from: 'desktop' });
     await expect(supervisor.ping()).resolves.toBeUndefined();
     const activeRequest = supervisor.request('backend.fixture.wait', null, { timeoutMs: 5_000 });
     const activeRequestExpectation = expect(activeRequest).rejects.toThrow('正在关闭');
     await waitFor(() => stderr.join('').includes('fixture-rpc-handler-started'));
+    const exit = supervisor.waitForExit();
     await expect(supervisor.shutdown()).resolves.toBeUndefined();
+    await expect(exit).resolves.toMatchObject({ code: 0, signal: null, expected: true });
     await activeRequestExpectation;
     expect(stderr.join('')).toContain('fixture-owner-shutdown');
     expect(stderr.join('')).toContain('fixture-rpc-handler-aborted');
@@ -71,6 +76,20 @@ describe('Node App Server process supervisor', () => {
       },
       rpcHandlers: new Map(),
     })).toThrow('必须是绝对路径');
+  });
+
+  it('未 start 时拒绝等待退出，避免把调用顺序错误变成永久等待', () => {
+    const supervisor = createNodeAppServerProcessSupervisor({
+      launch: {
+        executablePath: process.execPath,
+        entryPath: fixturePath,
+        workingDirectory: repositoryRoot,
+        environment: collectTestEnvironment(),
+        bootstrapBytes: encodeAppServerBootstrap(createBootstrap()),
+      },
+      rpcHandlers: new Map(),
+    });
+    expect(() => supervisor.waitForExit()).toThrow('尚未启动');
   });
 
   it('拒绝超出固定预算的 bootstrap，不能把额外 pipe 变成无界输入', () => {
@@ -140,7 +159,9 @@ function collectTestEnvironment(): Readonly<Record<string, string>> {
 
 function createBootstrap(): AppServerBootstrap {
   return {
-    schema_version: 3,
+    schema_version: 5,
+    host_kind: 'desktop',
+    host_process: { pid: process.pid },
     backend_configuration: {
       qdrant: { host: '127.0.0.1', port: 6333 },
       server: { port: 3000 },
@@ -170,6 +191,9 @@ function createBootstrap(): AppServerBootstrap {
     local_process_platform_runtime: {
       schema_version: 1,
       platform: 'darwin',
+    },
+    host_capabilities: {
+      command_approval_presenter: { available: false },
     },
     text_measurement: {
       use_browser_pretext: true,

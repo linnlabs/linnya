@@ -2,6 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { parseCliInvocation } from './parseCliInvocation';
 
 describe('parseCliInvocation', () => {
+  it('把 runtime start 解析为前台宿主启动参数并允许 OS 分配 API port', () => {
+    expect(parseCliInvocation(['runtime', 'start', '--workspace', '/tmp/workspace'])).toEqual({
+      kind: 'runtime-start',
+      workspaceDirectory: '/tmp/workspace',
+      apiPort: 0,
+      qdrantPort: 6333,
+      pretty: false,
+    });
+    expect(parseCliInvocation([
+      'runtime', 'start', '--api-port', '43123', '--qdrant-port', '6433',
+    ])).toMatchObject({ apiPort: 43123, qdrantPort: 6433 });
+    expect(() => parseCliInvocation(['runtime', 'stop'])).toThrow('runtime start');
+    expect(() => parseCliInvocation(['runtime', 'start', '--api-port', '65536'])).toThrow();
+  });
   it('拒绝两种参数来源同时出现', () => {
     expect(() => parseCliInvocation(['tools', 'call', 'write_file', '--project', 'p',
       '--args-file', 'args.json', '--args-json', '{}'])).toThrow('mutually exclusive');

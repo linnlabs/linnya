@@ -9,7 +9,9 @@ import {
   LinnyaCliError,
   type ConversationControlConnectionPort,
   type LinnyaCliIo,
+  type LinnyaCliRuntimeLauncherPort,
 } from '../definitions/cli';
+import { createBundledCliRuntimeLauncher } from '../adapters/bundledCliRuntimeLauncher';
 import { parseCliInvocation } from '../functions/parseCliInvocation';
 import { exitCodeForError, projectCliError } from '../functions/projectCliError';
 import { createConversationControlConnection } from './createConversationControlConnection';
@@ -23,6 +25,7 @@ interface RunCliOptions {
   readonly io?: LinnyaCliIo;
   readonly now?: () => number;
   readonly sleep?: (durationMs: number) => Promise<void>;
+  readonly runtimeLauncher?: LinnyaCliRuntimeLauncherPort;
 }
 
 export function linnyaCliUsage(): string {
@@ -31,6 +34,7 @@ export function linnyaCliUsage(): string {
     '',
     'Usage:',
     '  linnya doctor [--pretty]   Check CLI build, App connection, protocol and capabilities (read-only)',
+    '  linnya runtime start [--workspace PATH] [--api-port PORT] [--qdrant-port PORT]',
     '  linnya --version          Show version and source/bundle build identity',
     '  linnya --help             Show this help (also -h or <command> --help)',
     '  linnya send <message> [--conversation ID] [--agent ID] [--project ID] [--model ID] [--image-model ID] [--reasoning LEVEL]',
@@ -109,6 +113,29 @@ export async function runCli(
     }
     if (invocation.kind === 'version') {
       io.write(`${LINNYA_CLI_VERSION} (${LINNYA_CLI_BUILD_ID === 'source' ? 'source' : `bundle ${LINNYA_CLI_BUILD_ID}`})\n`);
+      return LINNYA_CLI_EXIT.success;
+    }
+    if (invocation.kind === 'runtime-start') {
+      const launcher = options.runtimeLauncher ?? createBundledCliRuntimeLauncher();
+      await launcher.run({
+        workspaceDirectory: invocation.workspaceDirectory,
+        apiPort: invocation.apiPort,
+        qdrantPort: invocation.qdrantPort,
+        onReady(identity) {
+          io.write(serialize({
+            schema_version: 1,
+            ok: true,
+            command: 'runtime',
+            state: 'ready',
+            runtime: {
+              pid: identity.pid,
+              application_version: identity.applicationVersion,
+              api_port: identity.apiPort,
+              database_ready: identity.databaseReady,
+            },
+          }, invocation.pretty));
+        },
+      });
       return LINNYA_CLI_EXIT.success;
     }
 

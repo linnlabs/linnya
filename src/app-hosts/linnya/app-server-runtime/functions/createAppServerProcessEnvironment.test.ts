@@ -9,6 +9,7 @@ describe('createAppServerProcessEnvironment', () => {
       PATH: '/usr/bin',
       LINNYA_PLUGIN_ROOT: '/plugins',
       LINNYA_PLUGIN_BACKEND_DIRECT_DIRS: '/workspace/private-plugin',
+      LINNYA_CLI_CONNECTION_FILE: '/tmp/linnya-runtime.json',
       ELECTRON_RUN_AS_NODE: '1',
       NODE_OPTIONS: '--require=/tmp/inject.js',
       UNRELATED_SECRET: 'secret',
@@ -17,6 +18,7 @@ describe('createAppServerProcessEnvironment', () => {
       PATH: '/usr/bin',
       LINNYA_PLUGIN_ROOT: '/plugins',
       LINNYA_PLUGIN_BACKEND_DIRECT_DIRS: '/workspace/private-plugin',
+      LINNYA_CLI_CONNECTION_FILE: '/tmp/linnya-runtime.json',
     });
   });
 });

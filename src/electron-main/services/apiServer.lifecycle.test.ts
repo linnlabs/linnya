@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import { createServer } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -155,5 +156,22 @@ describe('ApiServer lifecycle', () => {
 
     await server.stop();
     await expect(fs.stat(connectionFile)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('最高端口冲突时保留原始错误，不尝试越过 TCP 端口范围', async () => {
+    const occupied = createServer();
+    await new Promise<void>((resolve, reject) => {
+      occupied.once('error', reject);
+      occupied.listen(65_535, '127.0.0.1', resolve);
+    });
+    try {
+      const server = new ApiServer();
+      startedServers.push(server);
+      await expect(server.start(65_535)).rejects.toMatchObject({ code: 'EADDRINUSE' });
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        occupied.close(error => error ? reject(error) : resolve());
+      });
+    }
   });
 });

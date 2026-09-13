@@ -218,6 +218,8 @@ export class ApiServer {
       if (!(error instanceof Error && 'code' in error && error.code === 'EADDRINUSE')) {
         throw error;
       }
+      // 65535 没有合法的相邻端口；保留原始 EADDRINUSE 才能让 Host 给出正确失败原因。
+      if (port >= 65_535) throw error;
       const fallbackPort = port + 1;
       console.error(`[Backend Service] Port ${port} is already in use. Trying ${fallbackPort}...`);
       return this.listen(fallbackPort);

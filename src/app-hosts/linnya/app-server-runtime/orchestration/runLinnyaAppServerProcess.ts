@@ -1,4 +1,5 @@
 import { Socket } from 'node:net';
+import type { Writable } from 'node:stream';
 
 import { readAppServerBootstrap } from '../../app-server-bootstrap';
 import { runAppServerControlHost, type AppServerOwnedLifecycle } from '../../app-server-control';
@@ -26,6 +27,7 @@ import { enableDiagnosticLogForwarding, Logger } from '../../../../shared/logger
 import { createAppServerDiagnosticLogForwarder } from '../features/diagnostic-log-rpc';
 import { createNodeEventLoopResponsivenessMonitor } from '../../../../infra/observability/event-loop';
 import { acquireWorkspaceRuntimeOwnership } from '../../backend-runtime/features/workspace-ownership/acquireWorkspaceRuntimeOwnership';
+import { createParentProcessLivenessMonitor } from '../functions/createParentProcessLivenessMonitor';
 
 /**
  * fd 3/4/5 分别是 bootstrap、child→Main RPC 与 Main→child RPC。完整 Backend 只在本进程创建；
@@ -35,12 +37,6 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
   const bootstrapInput = new Socket({ fd: 3, readable: true, writable: false });
   const bootstrap = await readAppServerBootstrap(bootstrapInput);
   bootstrapInput.destroy();
-
-  // 在任何数据库恢复或 GC 前排除第二个活 owner；退出失败也不能提前让出 Workspace。
-  const workspaceOwnership = acquireWorkspaceRuntimeOwnership(
-    bootstrap.backend_facts.runtimePathRoots.workspaceRoot
-  );
-  process.once('exit', () => workspaceOwnership.release());
 
   const rpcOutput = new Socket({ fd: 4, readable: false, writable: true });
   const rpcInput = new Socket({ fd: 5, readable: true, writable: false });
@@ -77,8 +73,16 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
   await prepareBackendRendererRequestMailboxRoot(mailboxRoot);
 
   let composition: ReturnType<typeof createHeadlessAppServerBackendComposition> | null = null;
+  let parentLiveness: ReturnType<typeof createParentProcessLivenessMonitor> | null = null;
+  let workspaceOwnership: ReturnType<typeof acquireWorkspaceRuntimeOwnership> | null = null;
   let shutdownSettlement: Promise<void> | null = null;
   const ready = (async () => {
+    // 先建立 control host，再在任何数据库恢复或 GC 前排除第二个活 owner。
+    // 获取失败会成为有结构的 startup fatal 帧，而不是被 RPC EOF 抹成泛化错误。
+    workspaceOwnership = acquireWorkspaceRuntimeOwnership(
+      bootstrap.backend_facts.runtimePathRoots.workspaceRoot
+    );
+    process.once('exit', () => workspaceOwnership?.release());
     composition = createHeadlessAppServerBackendComposition({
       bootstrap,
       rpc,
@@ -138,9 +142,12 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
           failures.push(error);
         }
         responsivenessMonitor.stop();
+        parentLiveness?.dispose();
         composition?.dispose();
         rpc.dispose(new Error('App Server Backend owner 正在关闭'));
         if (failures.length > 0) throw failures[0];
+        workspaceOwnership?.release();
+        workspaceOwnership = null;
       })();
       return shutdownSettlement;
     },
@@ -150,6 +157,14 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
     output: process.stdout,
     lifecycle,
   });
+  parentLiveness = createParentProcessLivenessMonitor({
+    expectedParentPid: bootstrap.host_process.pid,
+    onParentLost() {
+      // 走 control input error 的统一收口路径；不在 monitor 内直接操作业务 owner。
+      process.stdin.destroy(new Error('App Server parent process 已退出'));
+    },
+  });
+  parentLiveness.start();
   void rpc.completed.catch((error: unknown) => {
     const failure = toError(error);
     console.error('[App Server] RPC 数据面失败', failure);
@@ -158,8 +173,11 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
 
   process.stdin.resume();
   await controlHost.completed;
-  await waitForReadableEnd(rpcInput);
+  // lifecycle.shutdown 已先 dispose RPC 业务请求。部分平台在 parent SIGKILL 后不会
+  // 为额外 pipe 投递 EOF，继续等待 readable end 会让已收口 Backend 永久占住 Workspace lock。
+  rpcInput.destroy();
   await endSocket(rpcOutput);
+  await endSocket(process.stdout);
 }
 
 function registerRpcHandlers(
@@ -172,15 +190,7 @@ function registerRpcHandlers(
   }
 }
 
-function waitForReadableEnd(input: Socket): Promise<void> {
-  if (input.readableEnded || input.destroyed) return Promise.resolve();
-  return new Promise<void>((resolve, reject) => {
-    input.once('end', resolve);
-    input.once('error', reject);
-  });
-}
-
-function endSocket(output: Socket): Promise<void> {
+function endSocket(output: Writable): Promise<void> {
   if (output.destroyed || output.writableEnded) return Promise.resolve();
   return new Promise<void>((resolve, reject) => {
     output.once('error', reject);

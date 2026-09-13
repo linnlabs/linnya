@@ -37,6 +37,22 @@ export interface LinnyaCliIo {
   readonly writeError: (text: string) => void;
 }
 
+export interface LinnyaCliRuntimeIdentity {
+  readonly pid: number;
+  readonly applicationVersion: string;
+  readonly apiPort: number;
+  readonly databaseReady: true;
+}
+
+export interface LinnyaCliRuntimeLauncherPort {
+  run(input: {
+    readonly workspaceDirectory?: string;
+    readonly apiPort: number;
+    readonly qdrantPort: number;
+    readonly onReady: (identity: LinnyaCliRuntimeIdentity) => void;
+  }): Promise<void>;
+}
+
 export interface ConversationControlClient {
   readonly descriptor: ConversationControlConnectionDescriptor;
   readonly handshake: ConversationControlHandshakeResponse;
@@ -54,6 +70,13 @@ export type LinnyaCliInvocation =
   | { readonly kind: 'help' }
   | { readonly kind: 'version' }
   | { readonly kind: 'doctor'; readonly pretty: boolean }
+  | {
+      readonly kind: 'runtime-start';
+      readonly workspaceDirectory?: string;
+      readonly apiPort: number;
+      readonly qdrantPort: number;
+      readonly pretty: boolean;
+    }
   | {
       readonly kind: 'stop';
       readonly request: ConversationControlStopRequest;

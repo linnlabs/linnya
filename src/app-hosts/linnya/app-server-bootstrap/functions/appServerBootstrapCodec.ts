@@ -16,6 +16,7 @@ const AbsolutePathSchema = NonEmptyStringSchema.refine(value => path.isAbsolute(
   message: '必须是绝对路径',
 });
 const PortSchema = z.number().int().min(1).max(65_535);
+const ApiPortSchema = z.number().int().min(0).max(65_535);
 const PlatformSchema = z.enum([
   'aix',
   'android',
@@ -60,13 +61,16 @@ const DistributionIdentitySchema = z.discriminatedUnion('kind', [
 
 const AppServerBootstrapSchema = z.object({
   schema_version: z.literal(APP_SERVER_BOOTSTRAP_SCHEMA_VERSION),
+  host_kind: z.enum(['desktop', 'cli_runtime']),
+  host_process: z.object({ pid: z.number().int().positive() }).strict(),
   backend_configuration: z.object({
     qdrant: z.object({
       host: NonEmptyStringSchema,
       port: PortSchema,
     }).strict(),
     server: z.object({
-      port: PortSchema,
+      // 0 由 CLI Runtime 用于请求 OS 分配空闲 loopback port；ready 帧仍返回实际端口。
+      port: ApiPortSchema,
     }).strict(),
   }).strict(),
   backend_facts: z.object({
@@ -92,6 +96,9 @@ const AppServerBootstrapSchema = z.object({
   }).strict(),
   headless_node_executable_path: AbsolutePathSchema,
   local_process_platform_runtime: z.unknown(),
+  host_capabilities: z.object({
+    command_approval_presenter: z.object({ available: z.boolean() }).strict(),
+  }).strict(),
   text_measurement: z.object({
     use_browser_pretext: z.boolean(),
     use_harfbuzz: z.boolean(),
@@ -115,6 +122,8 @@ export function parseAppServerBootstrap(value: unknown): AppServerBootstrap {
   }
   return Object.freeze({
     schema_version: APP_SERVER_BOOTSTRAP_SCHEMA_VERSION,
+    host_kind: parsed.host_kind,
+    host_process: Object.freeze(parsed.host_process),
     backend_configuration: Object.freeze({
       qdrant: Object.freeze(parsed.backend_configuration.qdrant),
       server: Object.freeze(parsed.backend_configuration.server),
@@ -125,6 +134,11 @@ export function parseAppServerBootstrap(value: unknown): AppServerBootstrap {
     ),
     headless_node_executable_path: parsed.headless_node_executable_path,
     local_process_platform_runtime: localProcessPlatformRuntime,
+    host_capabilities: Object.freeze({
+      command_approval_presenter: Object.freeze(
+        parsed.host_capabilities.command_approval_presenter,
+      ),
+    }),
     text_measurement: Object.freeze(parsed.text_measurement),
   });
 }

@@ -139,9 +139,11 @@ export function runAppServerControlHost(input: {
     decoder.end();
     void shutdown('parent_eof');
   });
-  input.input.once('error', error => {
+  input.input.once('error', () => {
     acceptingRequests = false;
-    completedReject?.(error);
+    // parent 被 SIGKILL 时，RPC pipe 和 control stdin 可能同时报错。此处不能先
+    // reject completed，否则顶层会在 Backend 撤销 descriptor、关闭数据库前退出。
+    // 输入错误只说明 owner 已失联；收口本身失败时 shutdown 会保留真正的 failure。
     void shutdown('parent_eof');
   });
 

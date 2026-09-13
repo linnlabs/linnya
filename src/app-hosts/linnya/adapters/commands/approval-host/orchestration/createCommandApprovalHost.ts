@@ -6,6 +6,8 @@ import {
   CommandApprovalReplyV1Schema,
   hasSameCommandExecutionIdentity,
   type CommandApprovalPageTicket,
+  type CommandApprovalChoice,
+  type CommandApprovalRequestId,
   type CommandApprovalRequestV1,
   type CommandApprovalSettlementV1,
 } from '@app/schemas/commands';
@@ -43,6 +45,7 @@ export function createCommandApprovalHost(input: {
   const rendererPages = new Map<CommandApprovalRendererOwnerId, CommandApprovalPageTicket>();
   const listeners = new Set<() => void>();
   let ownerActive = true;
+  let hostPresenterActive = false;
 
   const notify = (): void => {
     // UI projection 是审批事实的观察者。renderer 发送竞态或单个观察者故障不能回滚
@@ -56,19 +59,23 @@ export function createCommandApprovalHost(input: {
     }
   };
 
+  const projectPending = () => (
+    Array.from(pending.values())
+      .sort((left, right) => left.request.requested_at_ms - right.request.requested_at_ms)
+      .flatMap(entry => entry.status === 'invalidated'
+        ? []
+        : [projectCommandApprovalPending({
+            request: entry.request,
+            status: entry.status,
+          })])
+  );
+
   const projectPage = (pageTicket: CommandApprovalPageTicket) => (
     CommandApprovalPageSnapshotV1Schema.parse({
       protocol_version: 1,
       kind: 'command_approval_page_snapshot',
       page_ticket: pageTicket,
-      pending: Array.from(pending.values())
-        .sort((left, right) => left.request.requested_at_ms - right.request.requested_at_ms)
-        .flatMap(entry => entry.status === 'invalidated'
-          ? []
-          : [projectCommandApprovalPending({
-              request: entry.request,
-              status: entry.status,
-            })]),
+      pending: projectPending(),
     })
   );
 
@@ -84,12 +91,43 @@ export function createCommandApprovalHost(input: {
     }
   };
 
+  const submitReply = (
+    approvalRequestId: CommandApprovalRequestId,
+    choice: CommandApprovalChoice,
+  ): 'accepted' | 'stale' => {
+    const entry = pending.get(approvalRequestId);
+    if (
+      !entry
+      || entry.status !== 'awaiting_reply'
+      || !isCommandApprovalChoiceAvailable({ request: entry.request, choice })
+    ) {
+      return 'stale';
+    }
+    entry.status = 'processing';
+    entry.responseDelivered = true;
+    entry.resolve({
+      status: 'replied',
+      reply: CommandApprovalReplyV1Schema.parse({
+        protocol_version: 1,
+        kind: 'command_approval_reply',
+        approval_request_id: approvalRequestId,
+        choice,
+      }),
+    });
+    notify();
+    return 'accepted';
+  };
+
   const host: CommandApprovalHost = {
     async request({ request, abortSignal }) {
       if (abortSignal?.aborted) {
         return { status: 'invalidated', reason: 'run_cancelled' };
       }
-      if (!ownerActive || rendererPages.size === 0 || pending.has(request.approval_request_id)) {
+      if (
+        !ownerActive
+        || (rendererPages.size === 0 && !hostPresenterActive)
+        || pending.has(request.approval_request_id)
+      ) {
         return { status: 'failed', reason: 'authorization_unavailable' };
       }
 
@@ -147,36 +185,31 @@ export function createCommandApprovalHost(input: {
       if (!ownerActive || rendererPages.get(ownerId) !== submission.page_ticket) {
         return { success: true, status: 'invalid_page' };
       }
-      const entry = pending.get(submission.approval_request_id);
-      if (
-        !entry
-        || entry.status !== 'awaiting_reply'
-        || !isCommandApprovalChoiceAvailable({
-          request: entry.request,
-          choice: submission.choice,
-        })
-      ) {
-        return { success: true, status: 'stale' };
-      }
+      return {
+        success: true,
+        status: submitReply(submission.approval_request_id, submission.choice),
+      };
+    },
 
-      entry.status = 'processing';
-      entry.responseDelivered = true;
-      entry.resolve({
-        status: 'replied',
-        reply: CommandApprovalReplyV1Schema.parse({
-          protocol_version: 1,
-          kind: 'command_approval_reply',
-          approval_request_id: submission.approval_request_id,
-          choice: submission.choice,
-        }),
-      });
-      notify();
-      return { success: true, status: 'accepted' };
+    enableHostPresenter() {
+      if (!ownerActive) throw new Error('Command approval owner 已结束');
+      hostPresenterActive = true;
+    },
+
+    readHostPresenter() {
+      if (!ownerActive || !hostPresenterActive) return undefined;
+      return Object.freeze({ pending: Object.freeze(projectPending()) });
+    },
+
+    submitHostReply({ approvalRequestId, choice }) {
+      if (!ownerActive || !hostPresenterActive) return { status: 'unavailable' };
+      return { status: submitReply(approvalRequestId, choice) };
     },
 
     endOwner() {
       if (!ownerActive) return;
       ownerActive = false;
+      hostPresenterActive = false;
       rendererPages.clear();
       for (const entry of pending.values()) {
         entry.removeAbortListener();

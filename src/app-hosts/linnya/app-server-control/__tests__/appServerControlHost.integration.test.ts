@@ -92,6 +92,30 @@ describe('App Server control host', () => {
     expect(shutdown).toHaveBeenCalledOnce();
   });
 
+  it('parent pipe 报错时等待业务 owner 收口完成后再结束进程生命周期', async () => {
+    const parentInput = new PassThrough();
+    const childOutput = new PassThrough();
+    let releaseShutdown: (() => void) | undefined;
+    const shutdown = vi.fn(() => new Promise<void>(resolve => {
+      releaseShutdown = resolve;
+    }));
+    const host = runAppServerControlHost({
+      input: parentInput,
+      output: childOutput,
+      lifecycle: { ready: Promise.resolve(createReadyFacts()), shutdown },
+    });
+
+    parentInput.destroy(new Error('parent pipe lost'));
+    await waitFor(() => shutdown.mock.calls.length === 1);
+    let completed = false;
+    void host.completed.then(() => { completed = true; });
+    await Promise.resolve();
+    expect(completed).toBe(false);
+
+    releaseShutdown?.();
+    await expect(host.completed).resolves.toBeUndefined();
+  });
+
   it('shutdown confirmation 写入被堵塞时不提前完成生命周期', async () => {
     const parentInput = new PassThrough();
     const childOutput = new GatedWritable();

@@ -1,6 +1,6 @@
 import type { ExportArtifactCommitPort } from '../../../../../features/system/export/definitions/exportArtifactCommitPort';
 import type { AppServerRpcHandlerRegistry } from '../../../app-server-rpc';
-import { createDesktopCapabilityMailboxRpcHandler } from '../../../desktop-capabilities';
+import { createDesktopCapabilityMailboxRpcHandler } from '../../../desktop-capabilities/shared/mailbox-rpc/orchestration/createDesktopCapabilityMailboxRpcHandler';
 import {
   EXPORT_ARTIFACT_COMMIT_MAILBOX_CHANNEL,
   EXPORT_ARTIFACT_COMMIT_RPC_METHOD,

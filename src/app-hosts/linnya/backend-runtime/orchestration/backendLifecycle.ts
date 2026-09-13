@@ -94,14 +94,14 @@ export async function initializeAppServerBackend(
       const routeResult = await apiServer.configureRoutes(routeDependencies);
       runtimeOwner.setRouteConfigurationResult(routeResult);
 
-      if (routeResult.conversationRoutesMounted) {
-        logger.info('App Server Backend 路由配置完成');
-      } else {
-        logger.error(
-          'App Server Backend 路由仅部分可用：conversation routes unavailable',
-          { conversationInitError: routeResult.conversationInitError },
+      if (!routeResult.conversationRoutesMounted) {
+        // App Server 的 ready 是 Host 可以接收新会话的业务承诺。只启动 HTTP 端口
+        // 不能算 ready，否则 CLI 会拿到一个 doctor 可达、send 却必然失败的假运行时。
+        throw new Error(
+          `App Server conversation routes 初始化失败: ${routeResult.conversationInitError ?? 'unknown_error'}`,
         );
       }
+      logger.info('App Server Backend 路由配置完成');
     } catch (routeError: unknown) {
       logger.error(
         'App Server Backend 路由配置失败',
@@ -122,16 +122,7 @@ export async function initializeAppServerBackend(
       throw routeError;
     }
 
-    const routeConfigurationResult = runtimeOwner.getRouteConfigurationResult();
-    if (routeConfigurationResult?.conversationRoutesMounted === false) {
-      logger.warn(
-        `App Server Backend 已启动但 conversation routes 不可用: port=${port}`,
-      );
-    } else {
-      logger.info(
-        `App Server Backend ready: port=${port}`,
-      );
-    }
+    logger.info(`App Server Backend ready: port=${port}`);
     runtimeOwner.startProviderModelSynchronization();
     return runtimeOwner;
   } catch (error: unknown) {

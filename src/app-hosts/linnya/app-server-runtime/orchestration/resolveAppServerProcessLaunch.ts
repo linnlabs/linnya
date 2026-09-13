@@ -17,6 +17,7 @@ import { resolveLocalProcessPlatformRuntime } from '../../../../infra/adapters/l
 import { createAppServerProcessEnvironment } from '../functions/createAppServerProcessEnvironment';
 
 export async function resolveAppServerProcessLaunch(input: {
+  readonly hostKind: 'desktop' | 'cli_runtime';
   readonly backendConfiguration: AppServerBackendConfiguration;
   readonly backendFacts: BackendBootstrapFacts;
   readonly commandHostEnvironment: HostProcessEnvironment;
@@ -28,6 +29,7 @@ export async function resolveAppServerProcessLaunch(input: {
       | { readonly available: false; readonly reason: string };
   };
   readonly processEnvironment: NodeJS.ProcessEnv;
+  readonly commandApprovalPresenter: { readonly available: boolean };
 }): Promise<AppServerProcessLaunch> {
   const runtimeDirectory = path.join(
     input.backendFacts.packaged
@@ -67,11 +69,18 @@ export async function resolveAppServerProcessLaunch(input: {
     environment: createAppServerProcessEnvironment(input.processEnvironment),
     bootstrapBytes: encodeAppServerBootstrap({
       schema_version: APP_SERVER_BOOTSTRAP_SCHEMA_VERSION,
+      host_kind: input.hostKind,
+      host_process: { pid: process.pid },
       backend_configuration: input.backendConfiguration,
       backend_facts: input.backendFacts,
       command_host_environment: input.commandHostEnvironment,
       headless_node_executable_path: headlessNode.executablePath,
       local_process_platform_runtime: localProcessPlatformRuntime,
+      host_capabilities: {
+        command_approval_presenter: {
+          available: input.commandApprovalPresenter.available,
+        },
+      },
       text_measurement: {
         use_browser_pretext: input.textMeasurement.useBrowserPretext,
         use_harfbuzz: input.textMeasurement.useHarfBuzz,

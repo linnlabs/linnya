@@ -1,5 +1,8 @@
 export type {
   CommandApprovalHost,
+  CommandApprovalHostPresenterGatewayPort,
+  CommandApprovalHostPresenterPort,
+  CommandApprovalHostPresenterSnapshot,
   CommandApprovalRendererGatewayPort,
   CommandApprovalRendererPagePort,
   CommandApprovalRendererOwnerId,

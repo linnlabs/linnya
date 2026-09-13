@@ -1,4 +1,7 @@
 import type {
+  CommandApprovalChoice,
+  CommandApprovalPendingProjectionV1,
+  CommandApprovalRequestId,
   CommandApprovalPageSnapshotV1,
   CommandApprovalPageTicket,
   CommandApprovalReplyResultV1,
@@ -43,7 +46,31 @@ export interface CommandApprovalRendererGatewayPort {
   subscribe(listener: () => void): () => void;
 }
 
+export interface CommandApprovalHostPresenterSnapshot {
+  readonly pending: readonly CommandApprovalPendingProjectionV1[];
+}
+
+export interface CommandApprovalHostPresenterPort {
+  enableHostPresenter(): void;
+  readHostPresenter(): CommandApprovalHostPresenterSnapshot | undefined;
+  submitHostReply(input: {
+    readonly approvalRequestId: CommandApprovalRequestId;
+    readonly choice: CommandApprovalChoice;
+  }): { readonly status: 'accepted' | 'stale' | 'unavailable' };
+  subscribe(listener: () => void): () => void;
+}
+
+export interface CommandApprovalHostPresenterGatewayPort {
+  read(): Promise<CommandApprovalHostPresenterSnapshot | undefined>;
+  submit(input: {
+    readonly approvalRequestId: CommandApprovalRequestId;
+    readonly choice: CommandApprovalChoice;
+  }): Promise<{ readonly status: 'accepted' | 'stale' | 'unavailable' }>;
+  subscribe(listener: () => void): () => void;
+}
+
 export interface CommandApprovalHost
-  extends CommandApprovalPort, CommandApprovalRendererPagePort {
+  extends CommandApprovalPort, CommandApprovalRendererPagePort,
+    CommandApprovalHostPresenterPort {
   endOwner(): void;
 }

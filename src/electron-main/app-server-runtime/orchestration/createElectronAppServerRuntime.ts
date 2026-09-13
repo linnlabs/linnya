@@ -71,10 +71,12 @@ export async function createElectronAppServerRuntime(input: {
   let launch: AppServerProcessLaunch;
   try {
     launch = await resolveAppServerProcessLaunch({
+      hostKind: 'desktop',
       backendConfiguration: input.backendConfiguration,
       backendFacts: input.backendFacts,
       commandHostEnvironment: input.commandHostEnvironment,
       processEnvironment: input.processEnvironment,
+      commandApprovalPresenter: { available: false },
       textMeasurement: {
         useBrowserPretext: input.processEnvironment.MEASUREMENT_USE_MAIN_PRETEXT !== 'false',
         useHarfBuzz: input.processEnvironment.MEASUREMENT_USE_HARFBUZZ !== 'false',

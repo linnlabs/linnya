@@ -25,6 +25,7 @@ import { createBoundedJsonLineDecoder } from '../../../../app-hosts/linnya/app-s
 import { APP_SERVER_BOOTSTRAP_MAX_FRAME_BYTES } from '../../../../app-hosts/linnya/app-server-bootstrap';
 import type {
   AppServerProcessIdentity,
+  AppServerProcessExit,
   AppServerProcessLaunch,
   AppServerProcessSupervisor,
 } from '../definitions/appServerProcess';
@@ -67,6 +68,10 @@ export function createNodeAppServerProcessSupervisor(input: {
   let startTimeout: NodeJS.Timeout | null = null;
   let exitSettlement: Promise<void> | null = null;
   let exitResolve: (() => void) | null = null;
+  let observedExitResolve: ((exit: AppServerProcessExit) => void) | null = null;
+  const observedExit = new Promise<AppServerProcessExit>(resolve => {
+    observedExitResolve = resolve;
+  });
   const pending = new Map<string, PendingRequest>();
 
   const rejectPending = (error: Error): void => {
@@ -206,6 +211,12 @@ export function createNodeAppServerProcessSupervisor(input: {
       clearStartTimeout();
       exitResolve?.();
       exitResolve = null;
+      observedExitResolve?.(Object.freeze({
+        code,
+        signal,
+        expected: shutdownSettlement !== null,
+      }));
+      observedExitResolve = null;
       const failure = new Error(
         `App Server process 已退出：code=${String(code)} signal=${String(signal)}`,
       );
@@ -301,6 +312,10 @@ export function createNodeAppServerProcessSupervisor(input: {
 
   return Object.freeze({
     start,
+    waitForExit() {
+      if (!startSettlement) throw new Error('App Server 尚未启动');
+      return observedExit;
+    },
     async request(
       method: string,
       payload: JsonValue,

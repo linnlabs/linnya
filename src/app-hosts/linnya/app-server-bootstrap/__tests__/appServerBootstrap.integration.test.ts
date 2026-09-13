@@ -20,6 +20,8 @@ describe('App Server bootstrap', () => {
     expect(parsed.command_host_environment.entries).toEqual({ LANG: 'zh_CN.UTF-8' });
     expect(parsed.headless_node_executable_path).toBe('/runtime/bin/node');
     expect(parsed.local_process_platform_runtime.platform).toBe('darwin');
+    expect(parsed.host_process.pid).toBe(process.pid);
+    expect(parsed.host_capabilities.command_approval_presenter).toEqual({ available: false });
     expect(Object.isFrozen(parsed)).toBe(true);
     expect(Object.isFrozen(parsed.backend_facts.runtimePathRoots)).toBe(true);
   });
@@ -68,7 +70,9 @@ describe('App Server bootstrap', () => {
 
 function createBootstrap(): AppServerBootstrap {
   return {
-    schema_version: 3,
+    schema_version: 5,
+    host_kind: 'desktop',
+    host_process: { pid: process.pid },
     backend_configuration: {
       qdrant: { host: '127.0.0.1', port: 6333 },
       server: { port: 3000 },
@@ -98,6 +102,9 @@ function createBootstrap(): AppServerBootstrap {
     local_process_platform_runtime: {
       schema_version: 1,
       platform: 'darwin',
+    },
+    host_capabilities: {
+      command_approval_presenter: { available: false },
     },
     text_measurement: {
       use_browser_pretext: true,

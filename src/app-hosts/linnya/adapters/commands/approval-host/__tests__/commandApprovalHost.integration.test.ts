@@ -99,6 +99,38 @@ describe('command approval pending host', () => {
     });
   });
 
+  it('Host presenter 无需 Renderer ticket，并与 Renderer 竞争同一 pending 终态', async () => {
+    const host = createCommandApprovalHost({ createUuid: () => 'renderer-page' });
+    host.enableHostPresenter();
+    const renderer = host.openRendererPage(19);
+    if (!renderer) throw new Error('Renderer approval page 未打开');
+    const approval = request(2);
+
+    const response = host.request({ request: approval });
+    expect(host.readHostPresenter()).toMatchObject({
+      pending: [{ approval_request_id: approval.approval_request_id }],
+    });
+    expect(host.submitHostReply({
+      approvalRequestId: approval.approval_request_id,
+      choice: 'allow_once',
+    })).toEqual({ status: 'accepted' });
+    expect(host.submitRendererReply({
+      ownerId: 19,
+      submission: submission({ pageTicket: renderer.page_ticket, value: approval }),
+    })).toEqual({ success: true, status: 'stale' });
+    await expect(response).resolves.toMatchObject({
+      status: 'replied',
+      reply: { choice: 'allow_once' },
+    });
+
+    host.endOwner();
+    expect(host.readHostPresenter()).toBeUndefined();
+    expect(host.submitHostReply({
+      approvalRequestId: approval.approval_request_id,
+      choice: 'deny',
+    })).toEqual({ status: 'unavailable' });
+  });
+
   it('单个 projection listener 抛错不打断 pending，其他观察者仍收到变化', async () => {
     const host = createCommandApprovalHost();
     host.openRendererPage(17);

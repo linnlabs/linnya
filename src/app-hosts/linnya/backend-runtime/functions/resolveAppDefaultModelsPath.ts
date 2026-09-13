@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   resolveExplicitDefaultModelsPath,
   sourceDefaultModelsPath,
-} from '../../../../domains/model-catalog';
+} from '../../../../domains/model-catalog/features/default-catalog/functions/resolveDefaultModelsPath';
 
 export interface AppDefaultModelsPathResolution {
   readonly path: string;
