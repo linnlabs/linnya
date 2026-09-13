@@ -8,6 +8,7 @@ export const PRESENTATION_DOCUMENT_SCHEMAS = [
     source_hash TEXT NOT NULL,
     deck_spec_json TEXT NOT NULL,
     pptx_buffer BLOB NOT NULL,
+    pptx_revision_id TEXT,
     title TEXT NOT NULL,
     slide_count INTEGER NOT NULL CHECK (slide_count >= 0),
     layout TEXT,
@@ -17,6 +18,8 @@ export const PRESENTATION_DOCUMENT_SCHEMAS = [
 
     FOREIGN KEY (node_id) REFERENCES workspace_nodes(id) ON DELETE CASCADE,
     FOREIGN KEY (current_revision_id) REFERENCES presentation_revisions(id)
+      DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (pptx_revision_id) REFERENCES presentation_revisions(id)
       DEFERRABLE INITIALLY DEFERRED
   )`,
 

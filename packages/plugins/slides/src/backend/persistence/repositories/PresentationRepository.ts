@@ -27,6 +27,7 @@ import {
   type PresentationDocumentIdentity,
   type PresentationDocumentRecord,
   type PresentationPreviewSourceRecord,
+  type PresentationPptxArtifactSourceRecord,
   type PresentationRenderSourceRecord,
   type PresentationRepositoryPort,
   type PresentationManualEditReceiptRecord,
@@ -38,6 +39,7 @@ import {
   mapPresentationIdentityRow,
   mapPresentationDocumentRow,
   mapPresentationPreviewSourceRow,
+  mapPresentationPptxArtifactSourceRow,
   mapPresentationRenderSourceRow,
   normalizeDeckSpecOrThrow as normalizeStoredDeckSpecOrThrow,
   readPresentationIdentityRow,
@@ -105,6 +107,8 @@ interface CommitTransactionResult extends PresentationCommitResult {
 export interface PresentationRepositoryOptions {
   /** 同一提交事务中记录本次物化实际使用的资产，失败事务不会留下 revision 引用。 */
   readonly recordRevisionContext?: (nodeId: string, revisionId: string) => void;
+  /** 延迟物化的人工 revision 沿用 base 的资产可达性。 */
+  readonly inheritRevisionContext?: (baseRevisionId: string, revisionId: string) => void;
   readonly requestHistoryMaintenance?: (nodeId: string) => void;
   readonly publishDocumentUpdated?: (payload: PluginWorkspaceDocumentUpdatedPayload) => void;
 }
@@ -135,9 +139,9 @@ export class PresentationRepository implements PresentationRepositoryPort {
       this.db.prepare(`
         INSERT INTO presentation_documents (
           node_id, current_revision_id, current_revision,
-          deck_source, source_hash, deck_spec_json, pptx_buffer,
+          deck_source, source_hash, deck_spec_json, pptx_buffer, pptx_revision_id,
           title, slide_count, layout, created_at, updated_at, author_id
-        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         nodeId,
         revisionId,
@@ -145,6 +149,7 @@ export class PresentationRepository implements PresentationRepositoryPort {
         sourceRevision.sourceHash,
         JSON.stringify(normalizedDeckSpec),
         options.pptxBuffer,
+        revisionId,
         normalizedDeckSpec.title,
         normalizedDeckSpec.slides.length,
         createSlideLayoutKey(normalizedDeckSpec.layout),
@@ -259,6 +264,7 @@ export class PresentationRepository implements PresentationRepositoryPort {
             source_hash = ?,
             deck_spec_json = ?,
             pptx_buffer = ?,
+            pptx_revision_id = ?,
             title = ?,
             slide_count = ?,
             layout = ?,
@@ -273,7 +279,8 @@ export class PresentationRepository implements PresentationRepositoryPort {
         normalizedSource,
         sourceRevision.sourceHash,
         JSON.stringify(normalizedDeckSpec),
-        options.pptxBuffer,
+        options.deferPptx === true ? current.pptx_buffer : options.pptxBuffer,
+        options.deferPptx === true ? null : revisionId,
         normalizedDeckSpec.title,
         normalizedDeckSpec.slides.length,
         createSlideLayoutKey(normalizedDeckSpec.layout),
@@ -294,7 +301,11 @@ export class PresentationRepository implements PresentationRepositoryPort {
       }
 
       this.commitWorkspaceProjection(nodeId, normalizedSource, now);
-      this.options.recordRevisionContext?.(nodeId, revisionId);
+      if (options.revisionContext === 'inherit_base') {
+        this.options.inheritRevisionContext?.(options.baseRevisionId, revisionId);
+      } else {
+        this.options.recordRevisionContext?.(nodeId, revisionId);
+      }
       if (options.manualEditReceipt) {
         this.db.prepare(`
           INSERT INTO presentation_manual_edit_receipts (
@@ -366,6 +377,26 @@ export class PresentationRepository implements PresentationRepositoryPort {
     return row === undefined
       ? null
       : mapPresentationRenderSourceRow(readPresentationRenderSourceRow(row));
+  }
+
+  async getPresentationPptxArtifactSource(
+    nodeId: string,
+  ): Promise<PresentationPptxArtifactSourceRecord | null> {
+    const row = this.readDocumentRow(nodeId);
+    return row ? mapPresentationPptxArtifactSourceRow(row) : null;
+  }
+
+  async savePresentationPptxArtifact(
+    nodeId: string,
+    revisionId: string,
+    pptxBuffer: Buffer,
+  ): Promise<boolean> {
+    const result = this.db.prepare(`
+      UPDATE presentation_documents
+      SET pptx_buffer = ?, pptx_revision_id = ?
+      WHERE node_id = ? AND current_revision_id = ?
+    `).run(pptxBuffer, revisionId, nodeId, revisionId);
+    return result.changes === 1;
   }
 
   async getRevisionSource(nodeId: string, revision: number): Promise<string | null> {
@@ -531,7 +562,7 @@ export class PresentationRepository implements PresentationRepositoryPort {
   private readDocumentRow(nodeId: string): StoredPresentationDocumentRow | null {
     const row = this.db.prepare(`
       SELECT node_id, current_revision_id, current_revision,
-             deck_source, source_hash, deck_spec_json, pptx_buffer,
+             deck_source, source_hash, deck_spec_json, pptx_buffer, pptx_revision_id,
              title, slide_count, layout, created_at, updated_at, author_id
       FROM presentation_documents
       WHERE node_id = ?

@@ -134,8 +134,9 @@ describe('Phase 2 integration', () => {
     expect(texts).toContain('Phase 2 Test');
     expect(texts).toContain('Testing inspect flow');
     expect(assembleSpy).toHaveBeenCalledTimes(1);
-    expect((await repository.getPresentation(created.presentationId))?.pptxBuffer.length)
-      .toBeGreaterThan(0);
+    const document = await repository.getPresentation(created.presentationId);
+    expect(document?.pptxArtifact.state === 'ready'
+      && document.pptxArtifact.buffer.length > 0).toBe(true);
   });
 
   it('throws for a missing current presentation', async () => {

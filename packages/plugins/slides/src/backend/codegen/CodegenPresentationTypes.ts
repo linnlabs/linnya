@@ -18,7 +18,7 @@ import type {
   CodegenDeckBuildResult,
   CodegenDeckCreateResult,
   CodegenDeckExpectedBase,
-} from './CodegenDeckBuilder.js';
+} from './definitions/codegenDeckBuilder.js';
 import type { CodegenDiagnostic } from './writeDiagnostics';
 import type { PresentationTypecheckExecutionPort } from '../features/presentationBuildExecution';
 

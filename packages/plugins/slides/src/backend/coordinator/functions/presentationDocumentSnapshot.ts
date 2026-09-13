@@ -4,19 +4,19 @@ import type {
   SlidesEngineGeneratedVersionSnapshot,
 } from '@plugin/slides/backend-engine-core';
 import type {
-  PresentationDocumentRecord,
   PresentationPreviewSourceRecord,
   PresentationRenderSourceRecord,
 } from '../../persistence/index.js';
+import type { PresentationPptxArtifactSnapshot } from '../../features/presentationPptxArtifact/index.js';
 
 /** 把持久化 current document 映射为现有引擎快照，隔离数据库 revision 术语。 */
 export function toSlidesEngineVersionSnapshot(
-  document: PresentationDocumentRecord,
+  document: PresentationPptxArtifactSnapshot,
 ): SlidesEngineGeneratedVersionSnapshot {
   return {
-    id: document.currentRevisionId,
+    id: document.revisionId,
     nodeId: document.nodeId,
-    versionNumber: document.currentRevision,
+    versionNumber: document.revision,
     deckSpec: document.deckSpec,
     pptxBuffer: document.pptxBuffer,
     sourceKind: 'generated',

@@ -107,6 +107,10 @@
     {
       "version": 8,
       "description": "Persist idempotent presentation manual edit command receipts"
+    },
+    {
+      "version": 9,
+      "description": "Track the revision represented by the current PPTX artifact"
     }
   ],
   "ownedFileTypes": [

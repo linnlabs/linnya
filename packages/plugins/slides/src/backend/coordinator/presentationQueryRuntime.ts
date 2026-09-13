@@ -12,18 +12,17 @@ import type {
   PresentationDraftRepositoryPort,
   PresentationDocumentIdentity,
   PresentationDocumentQueryPort,
-  PresentationDocumentRecord,
   PresentationPreviewSourceRecord,
   PresentationRenderSourceRecord,
   PresentationSourceKind,
   WorkspacePresentationPort,
 } from './types.js';
+import type { PresentationPptxArtifactPort } from '../features/presentationPptxArtifact/index.js';
 import {
   createSlidesEngineExecutionContext,
   type SlidesEngineExecutionAdapter,
   type SlidesEngineExecutionScope,
   type SlidesEngineRenderModelSnapshot,
-  type SlidesEngineVersionSnapshot,
 } from '@plugin/slides/backend-engine-core';
 import type { CodegenDeckBuilderPort } from './presentationCodegenRuntime';
 import {
@@ -39,7 +38,7 @@ interface RenderModelDeckSpecResolution {
 }
 
 export interface PresentationRenderModelSnapshot {
-  readonly version: SlidesEngineVersionSnapshot;
+  readonly version: SlidesEngineRenderModelSnapshot;
   readonly renderModel: PresentationRenderModel;
 }
 
@@ -49,6 +48,7 @@ export interface PresentationQueryRuntimeDeps {
   readonly draftRepo?: PresentationDraftRepositoryPort;
   readonly engine: SlidesEngineExecutionAdapter;
   readonly getCodegenDeckBuilder: () => CodegenDeckBuilderPort;
+  readonly pptxArtifacts: PresentationPptxArtifactPort;
 }
 
 /**
@@ -63,9 +63,9 @@ export class PresentationQueryRuntime {
   constructor(private readonly deps: PresentationQueryRuntimeDeps) {}
 
   async inspect(nodeId: string): Promise<PresentationInfo> {
-    const document = await this.requirePresentation(nodeId);
-    const version = toSlidesEngineVersionSnapshot(document);
     this.assertNoPendingCodegenDraft(nodeId, 'inspect');
+    const document = await this.deps.pptxArtifacts.loadCurrent(nodeId);
+    const version = toSlidesEngineVersionSnapshot(document);
     return this.deps.engine.inspectPresentation({
       nodeId,
       version,
@@ -81,9 +81,9 @@ export class PresentationQueryRuntime {
   }
 
   async export(nodeId: string): Promise<ExportedPresentationFile> {
-    const document = await this.requirePresentation(nodeId);
-    const version = toSlidesEngineVersionSnapshot(document);
     this.assertNoPendingCodegenDraft(nodeId, 'export');
+    const document = await this.deps.pptxArtifacts.loadCurrent(nodeId);
+    const version = toSlidesEngineVersionSnapshot(document);
     return this.deps.engine.exportPresentation({
       nodeId,
       version,
@@ -125,8 +125,8 @@ export class PresentationQueryRuntime {
   }
 
   async getRenderModelSnapshot(nodeId: string): Promise<PresentationRenderModelSnapshot> {
-    const document = await this.requirePresentation(nodeId);
-    const version = toSlidesEngineVersionSnapshot(document);
+    const source = await this.requirePresentationRenderSource(nodeId);
+    const version = toSlidesEngineRenderModelSnapshot(source);
     this.assertNoPendingCodegenDraft(nodeId, 'render model');
     const resolution = await this.resolveRenderModelDeckSpec(nodeId, version);
     const renderModelVersion = { ...version, deckSpec: resolution.deckSpec };
@@ -166,14 +166,6 @@ export class PresentationQueryRuntime {
       versionNumber: document.currentRevision,
       sourceHash: document.sourceHash,
     };
-  }
-
-  private async requirePresentation(nodeId: string): Promise<PresentationDocumentRecord> {
-    const document = await this.deps.presentationRepo.getPresentation(nodeId);
-    if (!document) {
-      throw new Error(`Presentation not found: ${nodeId}`);
-    }
-    return document;
   }
 
   private async requirePresentationIdentity(nodeId: string): Promise<PresentationDocumentIdentity> {

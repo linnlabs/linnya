@@ -57,7 +57,7 @@ function makeDocument(): PresentationDocumentRecord {
     deckSource: SOURCE,
     sourceHash: 'a'.repeat(64),
     deckSpec: DECK_SPEC,
-    pptxBuffer: Buffer.from('pptx'),
+    pptxArtifact: { state: 'ready', revisionId: 'revision-1', buffer: Buffer.from('pptx') },
     title: 'Demo',
     slideCount: 1,
     layout: '16x9',
@@ -105,7 +105,10 @@ function makeRuntime(options: {
       getManualEditReceipt: vi.fn(async () => options.receipt ?? null),
     },
     draftRepo: { has: vi.fn(() => options.hasDraft ?? false) },
-    builder: { buildFromSource, buildFromProjectedDeckSpec },
+    builder: {
+      commitManualEditFromSource: buildFromSource,
+      commitManualEditFromProjectedDeckSpec: buildFromProjectedDeckSpec,
+    },
   });
   return { runtime, buildFromSource, buildFromProjectedDeckSpec };
 }

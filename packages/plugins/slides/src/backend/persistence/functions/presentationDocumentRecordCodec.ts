@@ -9,6 +9,7 @@ import { hashPresentationSource } from '../../features/presentationSourceHistory
 import type {
   PresentationDocumentIdentity,
   PresentationDocumentRecord,
+  PresentationPptxArtifactSourceRecord,
   PresentationPreviewSourceRecord,
   PresentationRenderSourceRecord,
 } from '../definitions/presentationRepository.js';
@@ -41,6 +42,7 @@ export interface StoredPresentationDocumentRow {
   readonly source_hash: string;
   readonly deck_spec_json: string;
   readonly pptx_buffer: Buffer;
+  readonly pptx_revision_id: string | null;
   readonly title: string;
   readonly slide_count: number;
   readonly layout: string | null;
@@ -144,6 +146,7 @@ export function readPresentationDocumentRow(value: unknown): StoredPresentationD
     || typeof value.source_hash !== 'string'
     || typeof value.deck_spec_json !== 'string'
     || !Buffer.isBuffer(value.pptx_buffer)
+    || !isNullableString(value.pptx_revision_id)
     || typeof value.title !== 'string'
     || !isFiniteInteger(value.slide_count)
     || !isNullableString(value.layout)
@@ -161,6 +164,7 @@ export function readPresentationDocumentRow(value: unknown): StoredPresentationD
     source_hash: value.source_hash,
     deck_spec_json: value.deck_spec_json,
     pptx_buffer: value.pptx_buffer,
+    pptx_revision_id: value.pptx_revision_id,
     title: value.title,
     slide_count: value.slide_count,
     layout: value.layout,
@@ -181,13 +185,30 @@ export function mapPresentationDocumentRow(
     deckSource: row.deck_source,
     sourceHash: row.source_hash,
     deckSpec: parseStoredDeckSpec(row.deck_spec_json),
-    pptxBuffer: row.pptx_buffer,
+    pptxArtifact: row.pptx_revision_id === row.current_revision_id
+      ? { state: 'ready', revisionId: row.pptx_revision_id, buffer: row.pptx_buffer }
+      : { state: 'deferred' },
     title: row.title,
     slideCount: row.slide_count,
     layout: row.layout ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     authorId: row.author_id ?? undefined,
+  };
+}
+
+export function mapPresentationPptxArtifactSourceRow(
+  row: StoredPresentationDocumentRow,
+): PresentationPptxArtifactSourceRecord {
+  const document = mapPresentationDocumentRow(row);
+  return {
+    nodeId: document.nodeId,
+    currentRevisionId: document.currentRevisionId,
+    currentRevision: document.currentRevision,
+    deckSource: document.deckSource,
+    deckSpec: document.deckSpec,
+    title: document.title,
+    artifact: document.pptxArtifact,
   };
 }
 

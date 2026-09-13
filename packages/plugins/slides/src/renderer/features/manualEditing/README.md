@@ -1,6 +1,6 @@
 # Slides limited manual editing
 
-`manualEditing` owns the Renderer side of limited editing for generated `deck.js` presentations. It selects only compiler-projected author objects, previews a drag without mutating RenderModel, and submits a strict command against the exact revision/source snapshot. The backend remains the only writer. It may use the proven post-layout translation projection for a unique top-level atomic object; all other edits use the full author compiler. Both paths materialize the committed PPTX and publish the same revision contract.
+`manualEditing` owns the Renderer side of limited editing for generated `deck.js` presentations. It selects only compiler-projected author objects, previews a drag without mutating RenderModel, and submits a strict command against the exact revision/source snapshot. The backend remains the only writer. It may use the proven post-layout translation projection for a unique top-level atomic object; all other edits use the full author compiler. Both paths commit the semantic revision without waiting for PPTX assembly and publish the same revision contract.
 
 ## Current interaction
 

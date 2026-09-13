@@ -14,8 +14,8 @@ import {
   type CodegenDeckBuildResult,
   type CodegenDeckCreateInput,
   type CodegenDeckCreateResult,
+  type CodegenManualEditCommitResult,
   type CodegenProjectedDeckBuildInput,
-  type CodegenProjectedDeckBuildResult,
   CodegenPresentationService,
   createBlankPresentationSource,
   DeckReadStateRegistry,
@@ -36,9 +36,12 @@ import { PresentationManualEditingRuntime } from '../features/presentationManual
 export interface CodegenDeckBuilderPort {
   buildNewPresentation(input: CodegenDeckCreateInput): Promise<CodegenDeckCreateResult>;
   buildFromSource(input: CodegenDeckBuildInput): Promise<CodegenDeckBuildResult>;
-  buildFromProjectedDeckSpec(
+  commitManualEditFromSource(
+    input: CodegenDeckBuildInput,
+  ): Promise<CodegenManualEditCommitResult>;
+  commitManualEditFromProjectedDeckSpec(
     input: CodegenProjectedDeckBuildInput,
-  ): Promise<CodegenProjectedDeckBuildResult>;
+  ): Promise<CodegenManualEditCommitResult>;
   buildDeckSpecFromSource(input: CodegenDeckBuildInput): Promise<DeckSpec>;
 }
 
@@ -95,9 +98,13 @@ export class PresentationCodegenRuntime {
       this.codegenDeckBuilder = scope ? {
         buildNewPresentation: input => scope.run(`create:${crypto.randomUUID()}`, () => builder.buildNewPresentation(input)),
         buildFromSource: input => scope.run(input.nodeId, () => builder.buildFromSource(input)),
-        buildFromProjectedDeckSpec: input => scope.run(
+        commitManualEditFromSource: input => scope.run(
           input.nodeId,
-          () => builder.buildFromProjectedDeckSpec(input),
+          () => builder.commitManualEditFromSource(input),
+        ),
+        commitManualEditFromProjectedDeckSpec: input => scope.run(
+          input.nodeId,
+          () => builder.commitManualEditFromProjectedDeckSpec(input),
         ),
         buildDeckSpecFromSource: input => scope.run(input.nodeId, () => builder.buildDeckSpecFromSource(input)),
       } : builder;

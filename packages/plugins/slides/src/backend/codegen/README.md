@@ -123,9 +123,12 @@ renderer source selection
   DeckSpec、RenderModel 与 PPTX。dangling ref、重复 key、未知字段和目标类型不符都属于
   compose contract 错误，不选择相似文字或第一个同名对象作为 fallback。
 - 人工 `translate_by` 对唯一顶层原子作者对象属于 post-layout 纯位移。manualEditing feature 可从精确
-  current DeckSpec 投影同一 delta，再通过 `buildFromProjectedDeckSpec` 复用正式资产解析、PPTX 物化和
-  CAS 提交，从而跳过 sandbox 与整稿 Yoga。Frame、嵌套 group、文本内容和无法证明等价的目标继续走
+  current DeckSpec 投影同一 delta，再通过 `commitManualEditFromProjectedDeckSpec` 做语义 revision 的
+  CAS 提交，从而跳过 sandbox、整稿 Yoga 与 PPTX 物化。Frame、嵌套 group、文本内容和无法证明等价的目标继续走
   完整作者编译；投影入口不能扩张为通用 DeckSpec patch API。
+- 人工文本编辑在 sandbox/Flex/文本排版验证后同样只提交 `deckSource + DeckSpec`。PPTX 是由 revision
+  派生的 artifact，原生导出与 OOXML 检查按需物化；普通 Agent codegen 和历史恢复仍在提交前完整物化，
+  因为这些写入可能改变资产绑定与更广泛的 package 语义。
 - `scripts/codegen/layoutDts/` 从 shared contract、shape geometry 与 sandbox
   globals 生成两份同内容 d.ts：sandbox typecheck 使用一份，Slides
   skill 分发一份。禁止手改生成文件。

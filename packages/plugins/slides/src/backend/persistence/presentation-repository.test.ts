@@ -113,7 +113,12 @@ describe('PresentationRepository current materialization and source revisions', 
       slideCount: 1,
       authorId: 'author-1',
     });
-    expect(document?.pptxBuffer.equals(Buffer.from('pptx-v1'))).toBe(true);
+    expect(document?.pptxArtifact).toMatchObject({
+      state: 'ready',
+      revisionId: result.revisionId,
+    });
+    expect(document?.pptxArtifact.state === 'ready'
+      && document.pptxArtifact.buffer.equals(Buffer.from('pptx-v1'))).toBe(true);
     await expect(repo.getPresentationIdentity('deck-1')).resolves.toEqual({
       nodeId: 'deck-1',
       currentRevisionId: result.revisionId,
@@ -206,6 +211,45 @@ describe('PresentationRepository current materialization and source revisions', 
       .map((column) => Reflect.get(column, 'name'));
     expect(revisionColumns).not.toContain('deck_spec_json');
     expect(revisionColumns).not.toContain('pptx_buffer');
+  });
+
+  it('延迟 artifact 的新 revision 不暴露旧 PPTX，并以 current revision CAS 附着', async () => {
+    insertWorkspaceNode(db, 'deck-deferred');
+    const created = await repo.createPresentation('deck-deferred', makeDeckSpec('Revision 1'), {
+      pptxBuffer: Buffer.from('pptx-v1'),
+      deckSource: SOURCE_V1,
+      origin: 'create',
+    });
+    const committed = await repo.commitPresentation(
+      'deck-deferred',
+      makeDeckSpec('Revision 2'),
+      {
+        deferPptx: true,
+        deckSource: SOURCE_V1.replaceAll('Revision 1', 'Revision 2'),
+        baseRevisionId: created.revisionId,
+        baseRevision: 1,
+        origin: 'edit',
+        revisionContext: 'inherit_base',
+      },
+    );
+
+    await expect(repo.getPresentationPptxArtifactSource('deck-deferred')).resolves.toMatchObject({
+      currentRevisionId: committed.revisionId,
+      artifact: { state: 'deferred' },
+    });
+    expect(await repo.savePresentationPptxArtifact(
+      'deck-deferred',
+      created.revisionId,
+      Buffer.from('stale'),
+    )).toBe(false);
+    expect(await repo.savePresentationPptxArtifact(
+      'deck-deferred',
+      committed.revisionId,
+      Buffer.from('pptx-v2'),
+    )).toBe(true);
+    const artifact = await repo.getPresentationPptxArtifactSource('deck-deferred');
+    expect(artifact?.artifact.state === 'ready'
+      && artifact.artifact.buffer.equals(Buffer.from('pptx-v2'))).toBe(true);
   });
 
   it('拒绝 stale base，且不会追加孤立 revision', async () => {

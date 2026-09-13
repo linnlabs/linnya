@@ -4,9 +4,8 @@ import type {
 } from '@plugin/slides/shared';
 import type {
   CodegenDeckBuildInput,
-  CodegenDeckBuildResult,
+  CodegenManualEditCommitResult,
   CodegenProjectedDeckBuildInput,
-  CodegenProjectedDeckBuildResult,
 } from '../../../codegen/index.js';
 import {
   PresentationDraftConflictError,
@@ -36,10 +35,12 @@ export interface PresentationManualEditingRuntimeDeps {
   >;
   readonly draftRepo?: Pick<PresentationDraftRepositoryPort, 'has'>;
   readonly builder: {
-    buildFromSource(input: CodegenDeckBuildInput): Promise<CodegenDeckBuildResult>;
-    buildFromProjectedDeckSpec(
+    commitManualEditFromSource(
+      input: CodegenDeckBuildInput,
+    ): Promise<CodegenManualEditCommitResult>;
+    commitManualEditFromProjectedDeckSpec(
       input: CodegenProjectedDeckBuildInput,
-    ): Promise<CodegenProjectedDeckBuildResult>;
+    ): Promise<CodegenManualEditCommitResult>;
   };
   readonly revisionScope?: PresentationRevisionScope;
 }
@@ -116,11 +117,11 @@ export class PresentationManualEditingRuntime {
         origin: 'edit',
       };
       const result = projection.kind === 'projected'
-        ? await this.deps.builder.buildFromProjectedDeckSpec({
+        ? await this.deps.builder.commitManualEditFromProjectedDeckSpec({
             ...buildInput,
             deckSpec: projection.deckSpec,
           })
-        : await this.deps.builder.buildFromSource(buildInput);
+        : await this.deps.builder.commitManualEditFromSource(buildInput);
       return {
         status: 'committed',
         commandId: command.commandId,

@@ -522,4 +522,20 @@ export const slidesPluginMigrations: readonly PluginMigrationDefinition[] = [
       for (const statement of PRESENTATION_MANUAL_EDIT_SCHEMAS) db.exec(statement);
     },
   },
+  {
+    version: 9,
+    description: 'Track the revision represented by the current PPTX artifact',
+    up: db => {
+      const columns = readAll(db, 'PRAGMA table_info(presentation_documents)');
+      if (!columns.some(row => isSqliteNameRow(row) && row.name === 'pptx_revision_id')) {
+        db.exec('ALTER TABLE presentation_documents ADD COLUMN pptx_revision_id TEXT');
+      }
+      // v9 之前每次 revision 提交都同步写入 PPTX，因此现存 bytes 与 current 精确对应。
+      db.exec(`
+        UPDATE presentation_documents
+        SET pptx_revision_id = current_revision_id
+        WHERE pptx_revision_id IS NULL
+      `);
+    },
+  },
 ] as const;

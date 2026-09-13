@@ -24,6 +24,7 @@ export class StandalonePresentationSnapshotReader {
         `
       SELECT p.node_id, p.current_revision_id, p.current_revision,
              p.deck_source, p.source_hash, p.deck_spec_json, p.pptx_buffer,
+             p.pptx_revision_id,
              p.title, p.slide_count, p.layout, p.created_at, p.updated_at, p.author_id,
              w.project_id,
              d.node_id AS draft_node_id,

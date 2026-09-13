@@ -118,7 +118,7 @@ describe('CodegenDeckBuilder layout diagnostics', () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
-  it('对已证明等价的 DeckSpec 投影跳过 sandbox，并保留正式物化与 CAS 提交', async () => {
+  it('对已证明等价的 DeckSpec 投影跳过 sandbox、整稿布局与 PPTX 物化', async () => {
     const source = 'compose({ title: "Deck", slides: [] });';
     const projectedDeck = {
       title: 'Deck',
@@ -142,7 +142,11 @@ describe('CodegenDeckBuilder layout diagnostics', () => {
           deckSource: source,
           sourceHash: 'source-hash-1',
           deckSpec: projectedDeck,
-          pptxBuffer: Buffer.from('pptx-1'),
+          pptxArtifact: {
+            state: 'ready',
+            revisionId: 'revision-1',
+            buffer: Buffer.from('pptx-1'),
+          },
           title: 'Deck',
           slideCount: 0,
           layout: '16x9',
@@ -155,7 +159,7 @@ describe('CodegenDeckBuilder layout diagnostics', () => {
       buildExecution: createInProcessPresentationBuildExecution(),
     });
 
-    await expect(builder.buildFromProjectedDeckSpec({
+    await expect(builder.commitManualEditFromProjectedDeckSpec({
       nodeId: 'deck-1',
       source,
       deckSpec: projectedDeck,
@@ -173,17 +177,18 @@ describe('CodegenDeckBuilder layout diagnostics', () => {
     });
     expect(execute).not.toHaveBeenCalled();
     expect(recordSourceTheme).toHaveBeenCalledWith(projectedDeck.theme);
-    expect(assembleDeck).toHaveBeenCalledOnce();
+    expect(assembleDeck).not.toHaveBeenCalled();
     expect(commitPresentation).toHaveBeenCalledWith(
       'deck-1',
       projectedDeck,
       expect.objectContaining({
-        pptxBuffer: Buffer.from('projected-pptx'),
+        deferPptx: true,
         deckSource: source,
         baseRevisionId: 'revision-1',
         baseRevision: 1,
         expectedDraftState: 'absent',
         origin: 'edit',
+        revisionContext: 'inherit_base',
       }),
     );
   });

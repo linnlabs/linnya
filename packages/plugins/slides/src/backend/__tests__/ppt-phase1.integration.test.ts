@@ -120,13 +120,14 @@ describe('Phase 1 end-to-end chain', () => {
     const document = await repository.getPresentation(nodeId);
     expect(document?.currentRevisionId).toBe(created.versionId);
     expect(document?.deckSource).toBe(testSource);
-    expect(document?.pptxBuffer).toBeInstanceOf(Buffer);
+    expect(document?.pptxArtifact.state).toBe('ready');
     expect(await repository.getRevisionSource(nodeId, 1)).toBe(testSource);
     expect(await repository.listRevisions(nodeId)).toHaveLength(1);
 
     const exported = await coordinator.export(nodeId);
     expect(exported.fileName).toBe('Integration Deck.pptx');
-    expect(exported.buffer.equals(document?.pptxBuffer ?? Buffer.alloc(0))).toBe(true);
+    expect(document?.pptxArtifact.state === 'ready'
+      && exported.buffer.equals(document.pptxArtifact.buffer)).toBe(true);
     expect(assembleSpy).toHaveBeenCalledTimes(1);
 
     const zip = await JSZip.loadAsync(exported.buffer);

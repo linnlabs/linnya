@@ -14,11 +14,12 @@ export type {
   CodegenDeckCreateOptions,
   CodegenDeckCreateResult,
   CodegenDeckExpectedBase,
+  CodegenManualEditCommitResult,
   CodegenProjectedDeckBuildInput,
   CodegenProjectedDeckBuildResult,
   CodegenSandboxExecutor,
   CodegenWorkspacePresentationPort,
-} from './CodegenDeckBuilder';
+} from './definitions/codegenDeckBuilder';
 export type {
   CodegenDiagnostic,
   ParseCodegenDiagnostic,

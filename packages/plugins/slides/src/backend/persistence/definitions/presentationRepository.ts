@@ -18,8 +18,7 @@ export interface PresentationCreateOptions {
   readonly origin: 'create' | 'codegen';
 }
 
-export interface PresentationCommitOptions {
-  readonly pptxBuffer: Buffer;
+interface PresentationCommitBaseOptions {
   readonly deckSource: string;
   readonly baseRevisionId: string;
   readonly baseRevision: number;
@@ -33,7 +32,14 @@ export interface PresentationCommitOptions {
     readonly commandId: string;
     readonly payloadDigest: string;
   };
+  /** 人工编辑只提交语义 revision；artifact 在导出或旧 PPTX inspect 时按需物化。 */
+  readonly revisionContext?: 'inherit_base';
 }
+
+export type PresentationCommitOptions = PresentationCommitBaseOptions & (
+  | { readonly pptxBuffer: Buffer; readonly deferPptx?: never }
+  | { readonly deferPptx: true; readonly pptxBuffer?: never }
+);
 
 export interface PresentationCommitResult {
   readonly revisionId: string;
@@ -47,13 +53,22 @@ export interface PresentationDocumentRecord {
   readonly deckSource: string;
   readonly sourceHash: string;
   readonly deckSpec: DeckSpec;
-  readonly pptxBuffer: Buffer;
+  readonly pptxArtifact: PresentationCurrentPptxArtifact;
   readonly title: string;
   readonly slideCount: number;
   readonly layout?: string;
   readonly createdAt: number;
   readonly updatedAt: number;
   readonly authorId?: string;
+}
+
+export type PresentationCurrentPptxArtifact =
+  | { readonly state: 'ready'; readonly revisionId: string; readonly buffer: Buffer }
+  | { readonly state: 'deferred' };
+
+/** 按需物化 PPTX 所需的 revision 快照；只会返回与 current revision 精确匹配的 bytes。 */
+export interface PresentationPptxArtifactSourceRecord extends PresentationRenderSourceRecord {
+  readonly artifact: PresentationCurrentPptxArtifact;
 }
 
 /** current revision 的轻量身份；状态查询不得为此读取源码、DeckSpec 或 PPTX bytes。 */
@@ -223,6 +238,9 @@ export interface PresentationDocumentQueryPort {
   getPresentationIdentity(nodeId: string): Promise<PresentationDocumentIdentity | null>;
   getPresentationPreviewSource(nodeId: string): Promise<PresentationPreviewSourceRecord | null>;
   getPresentationRenderSource(nodeId: string): Promise<PresentationRenderSourceRecord | null>;
+  getPresentationPptxArtifactSource(
+    nodeId: string,
+  ): Promise<PresentationPptxArtifactSourceRecord | null>;
 }
 
 export interface PresentationRepositoryPort extends PresentationDocumentQueryPort {
@@ -236,6 +254,12 @@ export interface PresentationRepositoryPort extends PresentationDocumentQueryPor
     deckSpec: DeckSpec,
     options: PresentationCommitOptions
   ): Promise<PresentationCommitResult>;
+  /** 仅当目标仍是 current revision 时附着 artifact；不会产生新的语义 revision。 */
+  savePresentationPptxArtifact(
+    nodeId: string,
+    revisionId: string,
+    pptxBuffer: Buffer,
+  ): Promise<boolean>;
   /** 仅供创建流程失败后的补偿回滚；不能用于普通用户删除文稿。 */
   discardCreatedPresentation?(nodeId: string): Promise<void>;
   getRevisionSource(nodeId: string, revision: number): Promise<string | null>;

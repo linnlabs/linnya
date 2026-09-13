@@ -67,6 +67,7 @@ import {
   type PresentationExportRuntimePorts,
 } from '../features/presentationExport';
 import { PresentationPageRasterizationRuntime } from '../features/presentationPageRasterization';
+import { PresentationPptxArtifactRuntime } from '../features/presentationPptxArtifact';
 import type {
   PresentationExportRequest,
   PresentationExportResult,
@@ -145,12 +146,33 @@ export class PptCoordinator {
         : {}),
       buildExecution: runtimeOptions.buildExecution,
     });
+    const pptxArtifacts = new PresentationPptxArtifactRuntime({
+      repository: this.presentationRepo,
+      materialize: async source => {
+        const projectId = await this.workspaceService?.getPresentationProjectId?.(source.nodeId) ?? null;
+        return await this.engine.assembleDeck({
+          deckSpec: source.deckSpec,
+          assembleOptions: {
+            assetContext: {
+              documentId: source.nodeId,
+              ...(projectId ? { projectId } : {}),
+            },
+          },
+          context: createSlidesEngineExecutionContext('assembleDeck', {
+            nodeId: source.nodeId,
+            versionId: source.currentRevisionId,
+            ...(projectId ? { projectId } : {}),
+          }),
+        });
+      },
+    });
     this.queryRuntime = new PresentationQueryRuntime({
       presentationRepo: this.presentationRepo,
       ...(this.workspaceService ? { workspaceService: this.workspaceService } : {}),
       ...(this.draftRepo ? { draftRepo: this.draftRepo } : {}),
       engine: this.engine,
       getCodegenDeckBuilder: () => this.codegenRuntime.getDeckBuilder(),
+      pptxArtifacts,
     });
     const exportPageRasterization = new PresentationPageRasterizationRuntime();
     this.presentationExportRuntime = new PresentationExportRuntime({
@@ -159,7 +181,6 @@ export class PptCoordinator {
         const snapshot = await this.queryRuntime.getRenderModelSnapshot(nodeId);
         return {
           renderModel: snapshot.renderModel,
-          sourcePackageBytes: snapshot.version.pptxBuffer,
           deckSpec: snapshot.version.deckSpec,
         };
       },
@@ -196,7 +217,6 @@ export class PptCoordinator {
             sourceKind: snapshot.version.sourceKind,
           },
           renderModel: snapshot.renderModel,
-          sourcePackageBytes: snapshot.version.pptxBuffer,
         };
       },
     });

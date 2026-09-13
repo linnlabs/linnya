@@ -75,6 +75,7 @@ export function createPptCoordinator(
   const presentationRepo = new PresentationRepository(db, {
     publishDocumentUpdated: publishWorkspaceDocumentUpdated,
     recordRevisionContext: (nodeId, revisionId) => historyRepository.recordContext(revisionId, revisionScope.readSourceTheme(), revisionScope.read(nodeId)),
+    inheritRevisionContext: (baseRevisionId, revisionId) => historyRepository.inheritContext(baseRevisionId, revisionId),
     requestHistoryMaintenance: nodeId => history.requestMaintenance(nodeId),
   });
   const presentationDraftRepo = new PresentationDraftRepository(db);

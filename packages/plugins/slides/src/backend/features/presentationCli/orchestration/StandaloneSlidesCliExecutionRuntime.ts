@@ -7,7 +7,7 @@ import type {
 } from '@plugin/slides/shared/presentationInspection';
 import type { PresentationInspectionResult } from '../../presentationInspection';
 import type { PresentationRenderModel } from '@plugin/slides/shared/renderModel';
-import type { SlidesEngineGeneratedVersionSnapshot } from '../../../engine/types';
+import type { SlidesEngineGeneratedRenderModelSnapshot } from '../../../engine/types';
 import { GeneratedPresentationRenderModelBuilder } from '../../../engine/coordinator/GeneratedPresentationRenderModelBuilder';
 import { deckSpecHasSourceSpan } from '../../../engine/coordinator/deckSpecSourceSpans';
 import { SpatialAnalyzer } from '../../../engine/quality/SpatialAnalyzer';
@@ -66,7 +66,6 @@ export class StandaloneSlidesCliExecutionRuntime implements SlidesCliExecutionPo
             sourceKind: snapshot.version.sourceKind,
           },
           renderModel: snapshot.renderModel,
-          sourcePackageBytes: snapshot.version.pptxBuffer,
         };
       },
     });
@@ -121,7 +120,7 @@ export class StandaloneSlidesCliExecutionRuntime implements SlidesCliExecutionPo
   }
 
   private async loadRenderModelSnapshot(presentationId: string): Promise<{
-    readonly version: SlidesEngineGeneratedVersionSnapshot;
+    readonly version: SlidesEngineGeneratedRenderModelSnapshot;
     readonly renderModel: PresentationRenderModel;
   }> {
     const snapshot = await this.requireSnapshot(presentationId, 'render model');
@@ -194,14 +193,13 @@ function normalizeDraftFailureCode(value: string | null): PresentationBuildFailu
   }
 }
 
-function toEngineVersion(snapshot: StandalonePresentationSnapshot): SlidesEngineGeneratedVersionSnapshot {
+function toEngineVersion(snapshot: StandalonePresentationSnapshot): SlidesEngineGeneratedRenderModelSnapshot {
   const { document } = snapshot;
   return {
     id: document.currentRevisionId,
     nodeId: document.nodeId,
     versionNumber: document.currentRevision,
     deckSpec: document.deckSpec,
-    pptxBuffer: document.pptxBuffer,
     sourceKind: 'generated',
     deckSource: document.deckSource,
     title: document.title,
