@@ -7,12 +7,12 @@
 - `createTextEditingTarget` consumes one world-coordinate `RenderNodeSelectionGeometry` and the committed `TextRenderNode`. It accepts only `authoringEdit.text.kind === 'plain_text'`; rich runs and formula runs are rejected because a whole-string replacement cannot preserve their semantics.
 - The target records the world polygon origin, dimensions, cumulative rotation, padding, vertical alignment offset and the first rendered text style. It never reads Konva instances or DOM layout back into author state.
 - `InlineTextEditor` converts inches and points into CSS pixels using the current stage scale. During the session, `SlideStage` passes the target element ID down the Konva render tree so exactly one duplicate Canvas text node is hidden.
-- The feature emits the existing `set_text_content` operation. The backend remains the only source writer, and the draft stays open until `manualEditing` observes the committed revision in a complete visual frame. A failed command therefore preserves the user's draft.
+- The feature emits the existing `set_text_content` operation. The backend remains the only source writer, and the draft stays open until `manualEditing` observes the committed revision in a complete visual frame. A failed command therefore preserves the user's draft and cancels any deferred outside-click selection.
 
 ## Interaction
 
 - Double-click opens the textarea and places the caret at the end.
-- Blur or `Ctrl/Cmd+Enter` requests a commit. An unchanged draft closes without a command.
+- Blur or `Ctrl/Cmd+Enter` requests a commit. An unchanged draft closes without a command. When the user clicks another slide object to blur a changed draft, `manualEditing` retains that click and applies the requested selection after the committed visual revision is presented.
 - `Escape` cancels the local draft.
 - Composition events block commit and cancel shortcuts until the browser ends the IME composition.
 - Pointer events inside the textarea do not reach the stage drag interaction.
