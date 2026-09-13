@@ -9,6 +9,10 @@ import {
   collectTypeScriptStandardLibClosure,
   SLIDES_TYPESCRIPT_STANDARD_LIB_ROOTS,
 } from './build/copyTypeScriptRuntime.mjs';
+import {
+  collectYogaRuntimeModuleClosure,
+  SLIDES_YOGA_RUNTIME_ROOT,
+} from './build/copyYogaRuntime.mjs';
 
 // App Server 入口只负责编排、查询与持久化；PPTX 生成依赖属于 build Worker。
 // 2.25 MiB 为当前 1.96 MiB 入口保留约 15% 漂移空间，同时阻止整套物化栈回流。
@@ -30,6 +34,7 @@ const PRESENTATION_BUILD_WORKER_ONLY_INPUT_PATTERNS = Object.freeze([
   /packages\/plugins\/slides\/src\/backend\/features\/presentationBuildExecution\/functions\/materializePresentationPptx\.ts$/u,
 ]);
 const TYPESCRIPT_RUNTIME_RELATIVE_DIR = 'node_modules/typescript';
+const YOGA_RUNTIME_RELATIVE_DIR = 'node_modules/yoga-layout';
 
 /** Backend 门禁同时约束启动入口依赖图和完整自包含 runtime，而不是只看 zip。 */
 export async function verifySlidesBackendBundle({ backendDir, bundlePath, metafilePath }) {
@@ -68,6 +73,9 @@ export async function verifySlidesBackendBundle({ backendDir, bundlePath, metafi
 
   const runtimeDir = path.join(backendDir, TYPESCRIPT_RUNTIME_RELATIVE_DIR);
   const runtimeSummary = await verifyPackagedTypeScriptRuntime(runtimeDir);
+  const yogaSummary = await verifyPackagedYogaRuntime(
+    path.join(backendDir, YOGA_RUNTIME_RELATIVE_DIR)
+  );
   verifyNoVmIncompatibleNodeImports(bundleSource);
   verifyPptxGenVmRuntime();
   verifyLazyBackendRuntime(bundlePath);
@@ -85,7 +93,8 @@ export async function verifySlidesBackendBundle({ backendDir, bundlePath, metafi
   process.stdout.write(
     `[slides-backend] bundle guard passed: entry=${formatMiB(bundleStats.size)} / ${formatMiB(MAX_BACKEND_ENTRY_BYTES)}, ` +
       `backend=${formatMiB(backendBytes)} / ${formatMiB(MAX_BACKEND_DIRECTORY_BYTES)}, ` +
-      `typescript=${runtimeSummary.packageVersion}, libs=${runtimeSummary.standardLibFiles.length}\n`
+      `typescript=${runtimeSummary.packageVersion}, libs=${runtimeSummary.standardLibFiles.length}, ` +
+      `yoga=${yogaSummary.packageVersion}, modules=${yogaSummary.moduleFiles.length}\n`
   );
 }
 
@@ -199,6 +208,45 @@ async function verifyPackagedTypeScriptRuntime(runtimeDir) {
   };
 }
 
+async function verifyPackagedYogaRuntime(runtimeDir) {
+  const [manifest, packageJson] = await Promise.all([
+    readFile(path.join(runtimeDir, 'runtime-manifest.json'), 'utf8').then(JSON.parse),
+    readFile(path.join(runtimeDir, 'package.json'), 'utf8').then(JSON.parse),
+  ]);
+  if (
+    manifest.schemaVersion !== 1
+    || typeof manifest.packageVersion !== 'string'
+    || manifest.root !== SLIDES_YOGA_RUNTIME_ROOT
+    || !Array.isArray(manifest.moduleFiles)
+  ) {
+    throw new Error('Slides packaged Yoga runtime manifest is invalid.');
+  }
+  if (
+    packageJson.name !== 'yoga-layout'
+    || packageJson.version !== manifest.packageVersion
+    || packageJson.type !== 'module'
+    || packageJson.exports?.['./load'] !== `./${SLIDES_YOGA_RUNTIME_ROOT}`
+  ) {
+    throw new Error('Slides packaged Yoga runtime package contract is invalid.');
+  }
+
+  const expectedModuleFiles = await collectYogaRuntimeModuleClosure({
+    packageDir: runtimeDir,
+    root: SLIDES_YOGA_RUNTIME_ROOT,
+  });
+  const actualModuleFiles = (await listRelativeFiles(runtimeDir))
+    .filter(fileName => fileName !== 'package.json' && fileName !== 'runtime-manifest.json');
+  if (
+    !sameStrings(expectedModuleFiles, actualModuleFiles)
+    || !sameStrings(expectedModuleFiles, manifest.moduleFiles)
+  ) {
+    throw new Error(
+      `Slides packaged Yoga runtime is not the exact ESM module closure: expected=${expectedModuleFiles.length}, actual=${actualModuleFiles.length}.`
+    );
+  }
+  return { packageVersion: manifest.packageVersion, moduleFiles: expectedModuleFiles };
+}
+
 function verifyCompilerProgram(typescript, expectedLibFiles, legal) {
   const virtualFileName = '/virtual/slides-artifact-check.js';
   const source = legal
@@ -295,6 +343,23 @@ async function measureDirectoryBytes(directory, excludedPaths) {
     }
   }
   return total;
+}
+
+async function listRelativeFiles(directory, relativeDirectory = '') {
+  const files = [];
+  const currentDirectory = path.join(directory, relativeDirectory);
+  for (const entry of await readdir(currentDirectory, { withFileTypes: true })) {
+    const relativePath = path.posix.join(
+      relativeDirectory.replaceAll('\\', '/'),
+      entry.name
+    );
+    if (entry.isDirectory()) {
+      files.push(...await listRelativeFiles(directory, relativePath));
+    } else if (entry.isFile()) {
+      files.push(relativePath);
+    }
+  }
+  return files.sort((left, right) => left.localeCompare(right));
 }
 
 function sameStrings(left, right) {

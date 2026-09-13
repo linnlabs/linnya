@@ -45,6 +45,8 @@ Host 发送前发现的 materialization DTO admission 失败属于确定性的 `
 
 发布制品固定为 `dist/backend/presentation-build-worker.cjs`。backend build 会用真实 Worker 验证合法/非法 TypeScript、从发布目录加载 Yoga 完成一次 Flex 编译，先确认不支持的 LaTeX 返回稳定公式 code，再实际生成、解压一份包含 block/inline 原生公式的 PPTX，确认同一 Worker 可继续工作、OMML 存在且 placeholder 已清零；同时把 Worker 限制在 1.6 MiB、App Server 入口限制在 2.25 MiB、完整 backend 限制在 16 MiB。metafile 门禁还会拒绝入口引用 PptxGenJS、Pptx Automizer、DeckAssembler、Structured/FreeformCompiler、PatchCompiler 或 materialize 函数，防止公共 barrel 把 Worker 私有构建图重新卷入启动制品。生产缺少 Worker、Yoga helper、PptxGenJS/JSZip 或 runtime 制品时 fail closed，不回退到 App Server 内执行。
 
+Yoga 运行时从 `yoga-layout/load` 出发递归收集相对 ESM import，只发布实际加载的 JS/WASM-base64 模块、最小 package export 与 runtime manifest。构建门禁会重新计算闭包并要求制品文件集合完全相等；C++/TypeScript 源码、声明文件和 sourcemap 不进入生产 artifact。升级 Yoga 时由模块引用关系自动调整复制集合，不能恢复整包目录复制。
+
 `PatchCompiler` 仍是独立 engine 能力，供显式 harness 与 patch 回归测试使用；当前生产 coordinator 没有 patch 调用者，因此不实例化它，也不在 `SlidesEngineExecutionAdapter` 暴露无调用者的 `compilePatch`。如果恢复产品级 PPTX patch，必须先为它定义可序列化输入和 Worker 执行合同，不能把 Pptx Automizer 接回 App Server 入口。
 
 开发态 `pnpm run dev:electron` 同样先执行 Slides 正式 backend build，并在启动 Electron 前等待该 Worker 制品存在。不能只构建 inline App Server backend：inline bundle 负责插件源码入口，不会替代插件自有的 Worker 与运行时资源。
