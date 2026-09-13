@@ -140,6 +140,12 @@
       "require": "./dist/conversation/selected-agent.js",
       "default": "./dist/esm/conversation/selected-agent.js"
     },
+    "./conversation/attachment-ref": {
+      "types": "./dist/conversation/attachment-ref.d.ts",
+      "import": "./dist/esm/conversation/attachment-ref.js",
+      "require": "./dist/conversation/attachment-ref.js",
+      "default": "./dist/esm/conversation/attachment-ref.js"
+    },
     "./conversation/reference-identity": {
       "types": "./dist/conversation/reference-identity.d.ts",
       "import": "./dist/esm/conversation/reference-identity.js",

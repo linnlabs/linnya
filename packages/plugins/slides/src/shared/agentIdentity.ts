@@ -1,4 +1,4 @@
-import { ConversationSelectedAgentIdSchema } from '@app/schemas';
+import { ConversationSelectedAgentIdSchema } from '@app/schemas/conversation/selected-agent';
 
 /** Slides 插件拥有的 Agent 身份与 prompt key。 */
 export const SLIDES_AGENT_ID = ConversationSelectedAgentIdSchema.parse('slides_agent');

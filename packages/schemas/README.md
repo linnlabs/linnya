@@ -87,6 +87,7 @@
 | `src/conversation-control/` | CLI ↔ App 的版本化 command、response、status frame、handshake 与私有连接描述合同；不含业务编排和 HTTP 实现 |
 | `src/conversation/ui-message.ts` | Host → HTTP → Renderer 共用的 Conversation timeline message 判别联合 |
 | `src/conversation/message-metadata.ts` | user/thought/answer metadata、answer seal 状态联合与插件 message extension |
+| `src/conversation/attachment-ref.ts` | 会话图片附件引用、单项与整批准入预算；独立 runtime 使用公开窄入口 |
 | `src/conversation/tool-message.ts` | Conversation 工具消息 lifecycle、payload 与 Renderer metadata 合同 |
 | `src/conversation/presentation.ts` | durable message presentation 与请求 UI spec |
 | `src/conversation/summary-message.ts` | durable history summary payload、Renderer 摘要进度 metadata 与 presentation identity |
@@ -360,6 +361,8 @@ P1 兼容脚手架已在 P4 删除；固定三项、环境开关、conversation 
 `@app/schemas/document-ocr`，不得改为内部源码路径或从包根随意扩大依赖面。
 
 禁止直接导入 `packages/schemas/src/*` 内部路径。新增子入口必须同时更新 package exports、CommonJS/ESM 构建和类型产物，不能只依赖 monorepo tsconfig 别名碰巧可用。
+系统图片准入等独立 runtime 应从 `@app/schemas/conversation/attachment-ref` 读取附件预算，避免把完整
+Conversation API、Command 和模型配置合同带进插件 CLI 或 worker。
 
 Agent/runtime 类型必须从 `linnkit/contracts` 导入，不允许在 `@app/schemas` 恢复兼容别名。
 
