@@ -5,6 +5,7 @@ import {
   type RenderNodeSelectionGeometry,
   type RenderNodeSelectionPoint,
 } from '../../renderNodeSelection';
+import { createTextEditingTarget } from '../../textEditing';
 import type { ManualEditableTarget } from '../definitions/manualEditingTypes';
 
 export function collectManualEditableTargets(nodes: readonly RenderNode[]): ManualEditableTarget[] {
@@ -29,7 +30,7 @@ function buildManualEditableTarget(
   }>,
 ): ManualEditableTarget {
   const { node } = geometry;
-  const text = node.authoringEdit?.text;
+  const textEditing = createTextEditingTarget(geometry);
   return {
     elementId: geometry.elementId,
     nodeKind: geometry.nodeKind,
@@ -43,7 +44,7 @@ function buildManualEditableTarget(
     translationElementIds: node.authoringRef.targetKind === 'frame'
       ? collectFrameTranslationRoots(nodes, node.authoringRef)
       : [geometry.elementId],
-    ...(text?.kind === 'plain_text' ? { textContent: text.content } : {}),
+    ...(textEditing ? { textEditing } : {}),
   };
 }
 

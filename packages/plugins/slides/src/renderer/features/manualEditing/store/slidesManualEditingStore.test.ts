@@ -11,7 +11,7 @@ const target = {
   polygon: [
     { x: 1, y: 1 }, { x: 4, y: 1 }, { x: 4, y: 2 }, { x: 1, y: 2 },
   ],
-  textContent: 'Title',
+  translationElementIds: ['authoring-overview-headline'],
 };
 
 describe('slidesManualEditingStore', () => {
@@ -21,7 +21,12 @@ describe('slidesManualEditingStore', () => {
     const store = useSlidesManualEditingStore();
     store.setEnabled(true);
     store.selectTarget(target);
-    store.setTranslationPreview({ elementId: target.elementId, dx: 0.2, dy: -0.1 });
+    store.setTranslationPreview({
+      elementId: target.elementId,
+      affectedElementIds: target.translationElementIds,
+      dx: 0.2,
+      dy: -0.1,
+    });
     expect(store.selectedTarget).toEqual(target);
     expect(store.translationPreview).toMatchObject({ dx: 0.2, dy: -0.1 });
 
@@ -38,7 +43,12 @@ describe('slidesManualEditingStore', () => {
       targetKind: target.targetKind,
       delta: { dx: 0.2, dy: -0.1 },
     };
-    const preview = { elementId: target.elementId, dx: 0.2, dy: -0.1 };
+    const preview = {
+      elementId: target.elementId,
+      affectedElementIds: target.translationElementIds,
+      dx: 0.2,
+      dy: -0.1,
+    };
     store.beginSubmit(operation, preview);
     expect(store.submitting).toBe(true);
     expect(store.pendingTranslation).toEqual(preview);
@@ -51,10 +61,8 @@ describe('slidesManualEditingStore', () => {
     expect(store.pendingTranslation).toBeNull();
   });
 
-  it('preserves a text draft after failure and closes it only after committed presentation', () => {
+  it('settles text submission only after the committed revision is presented', () => {
     const store = useSlidesManualEditingStore();
-    store.openTextEditor(target);
-    store.updateTextDraft('Changed title');
     const operation = {
       op: 'set_text_content' as const,
       target: target.authoringRef,
@@ -63,14 +71,13 @@ describe('slidesManualEditingStore', () => {
     store.beginSubmit(operation);
     store.failSubmit('版本已变化');
     expect(store.errorMessage).toBe('版本已变化');
-    expect(store.textEditorTarget).toEqual(target);
-    expect(store.textDraft).toBe('Changed title');
+    expect(store.textSubmissionPending).toBe(false);
 
     store.beginSubmit(operation);
     store.commitSubmit(5);
+    expect(store.textSubmissionPending).toBe(true);
     store.recordPresentedRevision(5);
-    expect(store.textEditorTarget).toBeNull();
-    expect(store.textDraft).toBe('');
+    expect(store.textSubmissionPending).toBe(false);
   });
 
   it('settles immediately when the visual frame arrived before the command response', () => {
@@ -81,7 +88,12 @@ describe('slidesManualEditingStore', () => {
       targetKind: target.targetKind,
       delta: { dx: 0.2, dy: 0.1 },
     };
-    store.beginSubmit(operation, { elementId: target.elementId, dx: 0.2, dy: 0.1 });
+    store.beginSubmit(operation, {
+      elementId: target.elementId,
+      affectedElementIds: target.translationElementIds,
+      dx: 0.2,
+      dy: 0.1,
+    });
     store.recordPresentedRevision(4);
     store.commitSubmit(4);
     expect(store.pendingTranslation).toBeNull();

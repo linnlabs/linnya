@@ -1,0 +1,22 @@
+.slides-inline-text-editor {
+  position: absolute;
+  z-index: 20;
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  outline: 1px solid var(--color-accent);
+  outline-offset: 1px;
+  resize: none;
+  overflow: auto;
+  transform-origin: left top;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  caret-color: currentColor;
+}
+
+.slides-inline-text-editor:disabled {
+  cursor: text;
+}
+

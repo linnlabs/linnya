@@ -7,6 +7,7 @@ import type {
   RenderNodeSelectionPoint,
   RenderNodeSelectionRect,
 } from '../../renderNodeSelection';
+import type { TextEditingTarget } from '../../textEditing';
 
 export interface ManualEditableTarget {
   readonly elementId: string;
@@ -17,7 +18,7 @@ export interface ManualEditableTarget {
   readonly polygon: readonly RenderNodeSelectionPoint[];
   /** 乐观预览必须共同平移的 RenderNode 根节点。 */
   readonly translationElementIds: readonly string[];
-  readonly textContent?: string;
+  readonly textEditing?: TextEditingTarget;
 }
 
 export interface ManualEditingTranslationPreview {

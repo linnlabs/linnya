@@ -10,6 +10,7 @@
       :image-resources="props.imageResources"
       :chart-resources="props.chartResources"
       :preview-translations="props.previewTranslations"
+      :hidden-text-element-id="props.hiddenTextElementId"
     />
   </v-group>
 </template>
@@ -28,6 +29,7 @@ const props = defineProps<{
   imageResources: SlideImageResourceMap;
   chartResources: SlideChartResourceMap;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
+  hiddenTextElementId?: string;
 }>();
 
 const groupConfig = computed(() => buildGroupConfig(props.node));

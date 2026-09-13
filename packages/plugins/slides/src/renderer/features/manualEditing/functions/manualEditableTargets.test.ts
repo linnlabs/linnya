@@ -23,12 +23,17 @@ function textNode(overrides: Partial<TextRenderNode> = {}): TextRenderNode {
 }
 
 describe('manual editable targets', () => {
-  it('collects stable authoring targets and exposes plain text content', () => {
+  it('collects stable authoring targets and exposes an in-place text projection', () => {
     expect(collectManualEditableTargets([textNode()])).toEqual([expect.objectContaining({
       elementId: 'authoring-overview-headline',
       targetKind: 'text',
       authoringRef: { slideKey: 'overview', editKey: 'headline' },
-      textContent: 'Quarterly growth',
+      textEditing: expect.objectContaining({
+        content: 'Quarterly growth',
+        origin: { x: 1, y: 1 },
+        width: 4,
+        height: 1,
+      }),
     })]);
   });
 
@@ -66,8 +71,8 @@ describe('manual editable targets', () => {
 
     const targets = collectManualEditableTargets(nodes);
     expect(targets).toHaveLength(3);
-    expect(targets[0]?.textContent).toBe('增长 2026\n下一行');
-    expect(targets.slice(1).every(target => target.textContent === undefined)).toBe(true);
+    expect(targets[0]?.textEditing?.content).toBe('增长 2026\n下一行');
+    expect(targets.slice(1).every(target => target.textEditing === undefined)).toBe(true);
   });
 
   it('selects an author shape without coupling manual editing to sourceSpan', () => {

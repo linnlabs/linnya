@@ -21,6 +21,7 @@
         :logical-size="logicalSize"
         :transform="contentTransform"
         :preview-translations="props.previewTranslations"
+        :hidden-text-element-id="props.hiddenTextElementId"
       />
 
       <!-- Overlay 层：选中 / 诊断高亮（FE-K4 填充） -->
@@ -71,6 +72,7 @@ const props = defineProps<{
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
   manualSelectedTarget?: ManualEditableTarget | null;
   manualTranslationPreview?: ManualEditingTranslationPreview | null;
+  hiddenTextElementId?: string;
 }>();
 
 const backgroundImageResource = computed(() => (

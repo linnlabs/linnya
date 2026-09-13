@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, type Ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 import type { SlideRenderModel } from '../../../types/render';
@@ -12,6 +12,7 @@ import {
   findManualEditableTargetAtPoint,
 } from '../functions/manualEditableTargets';
 import { useSlidesManualEditingStore } from '../store/slidesManualEditingStore';
+import { useSlideTextEditingSession } from '../../textEditing';
 
 export interface SlideManualEditingInteractionOptions {
   readonly canEdit: Ref<boolean>;
@@ -30,15 +31,15 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     selectedTarget,
     translationPreview,
     pendingTranslation,
-    textEditorTarget,
-    textDraft: storedTextDraft,
     submitting,
   } = storeToRefs(store);
-  const textDraft = computed({
-    get: () => storedTextDraft.value,
-    set: (value: string) => store.updateTextDraft(value),
+  const textEditing = useSlideTextEditingSession({
+    submitting,
+    submitOperation: operation => {
+      store.beginSubmit(operation);
+      options.submitOperation(operation);
+    },
   });
-  const isTextComposing = ref(false);
   let pointerSession: {
     readonly pointerId: number;
     readonly target: ManualEditableTarget;
@@ -54,19 +55,24 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
 
   function handlePointerDown(event: PointerEvent): void {
     if (!options.canEdit.value || event.button !== 0) return;
+    if (textEditing.target.value) {
+      const result = textEditing.requestCommit();
+      if (result !== 'closed') {
+        event.preventDefault();
+        return;
+      }
+    }
     const point = readPoint(event);
     const slide = options.currentSlide.value;
     if (!point || !slide) return;
     const target = findManualEditableTargetAtPoint(slide.elements, point);
     if (!target) {
       store.clearSelection();
-      closeTextEditor();
       return;
     }
     event.preventDefault();
     capturePointer(event);
     store.selectTarget(target);
-    closeTextEditor();
     pointerSession = {
       pointerId: event.pointerId,
       target,
@@ -131,52 +137,10 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     const slide = options.currentSlide.value;
     if (!point || !slide) return;
     const target = findManualEditableTargetAtPoint(slide.elements, point);
-    if (!target || target.textContent === undefined) return;
+    if (!target?.textEditing) return;
     event.preventDefault();
     store.selectTarget(target);
-    store.openTextEditor(target);
-  }
-
-  function submitTextEdit(): void {
-    const target = textEditorTarget.value;
-    if (submitting.value || isTextComposing.value) return;
-    if (!target || target.textContent === undefined || textDraft.value === target.textContent) {
-      closeTextEditor();
-      return;
-    }
-    const operation: SlidesManualEditOperation = {
-      op: 'set_text_content',
-      target: target.authoringRef,
-      content: textDraft.value,
-    };
-    store.beginSubmit(operation);
-    options.submitOperation(operation);
-  }
-
-  function closeTextEditor(): void {
-    if (submitting.value) return;
-    isTextComposing.value = false;
-    store.closeTextEditor();
-  }
-
-  function handleTextCompositionStart(): void {
-    isTextComposing.value = true;
-  }
-
-  function handleTextCompositionEnd(): void {
-    isTextComposing.value = false;
-  }
-
-  function handleTextEditorEscape(event: KeyboardEvent): void {
-    if (event.isComposing || isTextComposing.value) return;
-    event.preventDefault();
-    closeTextEditor();
-  }
-
-  function handleTextEditorSubmitShortcut(event: KeyboardEvent): void {
-    if (event.isComposing || isTextComposing.value) return;
-    event.preventDefault();
-    submitTextEdit();
+    textEditing.open(target.textEditing);
   }
 
   function reconcileSelection(): void {
@@ -184,13 +148,13 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     if (!selectedId) return;
     const next = editableTargets.value.find(target => target.elementId === selectedId) ?? null;
     store.reconcileSelectedTarget(next);
+    textEditing.reconcileTarget(next?.textEditing ?? null);
   }
 
   function resetInteraction(): void {
     pointerSession = null;
-    isTextComposing.value = false;
     store.clearSelection();
-    store.closeTextEditor();
+    textEditing.reset();
   }
 
   function readPoint(event: Pick<MouseEvent, 'clientX' | 'clientY'>): SourceSelectionPoint | null {
@@ -209,19 +173,20 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     selectedTarget,
     translationPreview,
     pendingTranslation,
-    textEditorTarget,
-    textDraft,
+    textEditorTarget: textEditing.target,
+    textDraft: textEditing.draft,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,
     handleDoubleClick,
-    submitTextEdit,
-    closeTextEditor,
-    handleTextCompositionStart,
-    handleTextCompositionEnd,
-    handleTextEditorEscape,
-    handleTextEditorSubmitShortcut,
+    submitTextEdit: textEditing.requestCommit,
+    closeTextEditor: textEditing.cancel,
+    handleTextCompositionStart: textEditing.beginComposition,
+    handleTextCompositionEnd: textEditing.endComposition,
+    handleTextEditorEscape: textEditing.handleEscape,
+    handleTextEditorSubmitShortcut: textEditing.handleCommitShortcut,
+    completeTextEditing: textEditing.complete,
     reconcileSelection,
     resetInteraction,
   };

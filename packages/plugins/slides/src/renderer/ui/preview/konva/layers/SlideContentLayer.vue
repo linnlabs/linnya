@@ -11,6 +11,7 @@
         :image-resources="props.imageResources"
         :chart-resources="props.chartResources"
         :preview-translations="props.previewTranslations"
+        :hidden-text-element-id="props.hiddenTextElementId"
       />
     </v-group>
   </v-layer>
@@ -32,6 +33,7 @@ const props = defineProps<{
   logicalSize: { width: number; height: number };
   transform: { x: number; y: number; scaleX: number; scaleY: number };
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
+  hiddenTextElementId?: string;
 }>();
 
 const sortedElements = computed(() =>

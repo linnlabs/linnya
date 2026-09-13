@@ -11,8 +11,6 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   const selectedTarget = shallowRef<ManualEditableTarget | null>(null);
   const translationPreview = shallowRef<ManualEditingTranslationPreview | null>(null);
   const pendingTranslation = shallowRef<ManualEditingTranslationPreview | null>(null);
-  const textEditorTarget = shallowRef<ManualEditableTarget | null>(null);
-  const textDraft = ref('');
   const textSubmissionPending = ref(false);
   const activeOperation = shallowRef<SlidesManualEditOperation | null>(null);
   const pendingPresentationRevision = ref<number | null>(null);
@@ -24,7 +22,6 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     enabled.value = value;
     if (!value) {
       clearSelection();
-      closeTextEditor();
     }
   }
 
@@ -36,29 +33,10 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
 
   function reconcileSelectedTarget(target: ManualEditableTarget | null): void {
     selectedTarget.value = target;
-    if (textEditorTarget.value?.elementId !== selectedTarget.value?.elementId) {
-      closeTextEditor();
-      return;
-    }
-    if (target) textEditorTarget.value = target;
   }
 
   function setTranslationPreview(preview: ManualEditingTranslationPreview | null): void {
     translationPreview.value = preview;
-  }
-
-  function openTextEditor(target: ManualEditableTarget): void {
-    textEditorTarget.value = target;
-    textDraft.value = target.textContent ?? '';
-  }
-
-  function updateTextDraft(value: string): void {
-    textDraft.value = value;
-  }
-
-  function closeTextEditor(): void {
-    textEditorTarget.value = null;
-    textDraft.value = '';
   }
 
   function beginSubmit(
@@ -107,7 +85,6 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     pendingTranslation.value = null;
     pendingPresentationRevision.value = null;
     presentedRevision.value = null;
-    if (textSubmissionPending.value) closeTextEditor();
     textSubmissionPending.value = false;
   }
 
@@ -125,7 +102,6 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     pendingPresentationRevision.value = null;
     presentedRevision.value = null;
     textSubmissionPending.value = false;
-    closeTextEditor();
     clearSelection();
   }
 
@@ -134,8 +110,6 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     selectedTarget,
     translationPreview,
     pendingTranslation,
-    textEditorTarget,
-    textDraft,
     textSubmissionPending,
     activeOperation,
     pendingPresentationRevision,
@@ -146,9 +120,6 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     selectTarget,
     reconcileSelectedTarget,
     setTranslationPreview,
-    openTextEditor,
-    updateTextDraft,
-    closeTextEditor,
     beginSubmit,
     commitSubmit,
     failSubmit,

@@ -59,6 +59,7 @@
               :preview-translations="manualPreviewTranslations"
               :manual-selected-target="manualSelectedTarget"
               :manual-translation-preview="manualSelectedTranslation"
+              :hidden-text-element-id="textEditorTarget?.elementId"
             />
           </div>
           <SourceSelectionPromptPopover
@@ -70,37 +71,22 @@
             @cancel="resetSourceSelection"
           />
         </div>
-        <!-- 编辑器挂在滚动内容上，避免被幻灯片画布的裁剪边界截断操作区。 -->
-        <form
+        <!-- 原位 DOM 输入负责浏览器文本编辑能力；同一元素的 Canvas 文字在会话期间隐藏。 -->
+        <InlineTextEditor
           v-if="textEditorTarget"
-          class="slide-stage-text-editor"
-          :style="textEditorStyle"
-          :aria-busy="manualEditingSubmitting"
-          @submit.prevent="submitTextEdit"
-        >
-          <textarea
-            ref="textEditorInputRef"
-            v-model="textDraft"
-            class="slide-stage-text-editor__input"
-            :aria-label="manualEditingMessage('slides.manualEditing.text.ariaLabel')"
-            :disabled="manualEditingSubmitting"
-            @compositionstart="handleTextCompositionStart"
-            @compositionend="handleTextCompositionEnd"
-            @keydown.esc="handleTextEditorEscape"
-            @keydown.ctrl.enter="handleTextEditorSubmitShortcut"
-            @keydown.meta.enter="handleTextEditorSubmitShortcut"
-          />
-          <div class="slide-stage-text-editor__actions">
-            <button type="button" :disabled="manualEditingSubmitting" @click="closeTextEditor">
-              {{ manualEditingMessage('slides.manualEditing.text.cancel') }}
-            </button>
-            <button type="submit" :disabled="manualEditingSubmitting">
-              {{ manualEditingSubmitting
-                ? manualEditingMessage('slides.manualEditing.text.saving')
-                : manualEditingMessage('slides.manualEditing.text.save') }}
-            </button>
-          </div>
-        </form>
+          v-model="textDraft"
+          :target="textEditorTarget"
+          :slide-left="currentLayout.slideLeft"
+          :slide-top="currentLayout.slideTop"
+          :render-scale="renderScale"
+          :label="manualEditingMessage('slides.manualEditing.text.ariaLabel')"
+          :disabled="manualEditingSubmitting"
+          @commit="submitTextEdit"
+          @composition-start="handleTextCompositionStart"
+          @composition-end="handleTextCompositionEnd"
+          @escape="handleTextEditorEscape"
+          @commit-shortcut="handleTextEditorSubmitShortcut"
+        />
       </div>
     </div>
   </div>
@@ -155,6 +141,7 @@ import {
   useSlidesManualEditingStore,
   useManualEditingLocalization,
 } from '../../features/manualEditing';
+import { InlineTextEditor } from '../../features/textEditing';
 import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 
 const props = defineProps<{
@@ -184,6 +171,7 @@ const { documentBuildState } = storeToRefs(slidesStore);
 const {
   enabled: manualEditingEnabled,
   submitting: manualEditingSubmitting,
+  textSubmissionPending,
 } = storeToRefs(manualEditingStore);
 const allRenderSlides = computed(() => renderModel.value?.slides ?? []);
 const {
@@ -405,11 +393,11 @@ const {
   handlePointerCancel: handleManualPointerCancel,
   handleDoubleClick: handleManualDoubleClick,
   submitTextEdit,
-  closeTextEditor,
   handleTextCompositionStart,
   handleTextCompositionEnd,
   handleTextEditorEscape,
   handleTextEditorSubmitShortcut,
+  completeTextEditing,
   reconcileSelection: reconcileManualSelection,
   resetInteraction: resetManualInteraction,
 } = useSlideManualEditingInteraction({
@@ -430,17 +418,6 @@ const manualPreviewTranslations = computed(() => {
 const manualSelectedTranslation = computed(() => (
   manualTranslationPreview.value ?? manualPendingTranslation.value
 ));
-const textEditorInputRef = ref<HTMLTextAreaElement | null>(null);
-const textEditorStyle = computed(() => {
-  const target = textEditorTarget.value;
-  if (!target) return {};
-  return {
-    left: `${currentLayout.value.slideLeft + target.bounds.x * INCHES_TO_PX * renderScale.value}px`,
-    top: `${currentLayout.value.slideTop + target.bounds.y * INCHES_TO_PX * renderScale.value}px`,
-    width: `${Math.max(180, target.bounds.w * INCHES_TO_PX * renderScale.value)}px`,
-    minHeight: `${Math.max(84, target.bounds.h * INCHES_TO_PX * renderScale.value)}px`,
-  };
-});
 
 function handleStagePointerDown(event: PointerEvent): void {
   if (manualEditingEnabled.value) handleManualPointerDown(event);
@@ -745,11 +722,10 @@ watch(
   },
 );
 
-watch(textEditorTarget, async (target) => {
-  if (!target) return;
-  await nextTick();
-  textEditorInputRef.value?.focus();
-  textEditorInputRef.value?.select();
+watch(textSubmissionPending, (pending, previous) => {
+  if (previous && !pending && !manualEditingStore.errorMessage) {
+    completeTextEditing();
+  }
 });
 
 watch(

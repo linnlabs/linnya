@@ -39,6 +39,7 @@
       :image-resources="props.imageResources"
       :chart-resources="props.chartResources"
       :preview-translations="props.previewTranslations"
+      :hidden-text-element-id="props.hiddenTextElementId"
     />
   </v-group>
 </template>
@@ -64,6 +65,7 @@ const props = defineProps<{
   imageResources: SlideImageResourceMap;
   chartResources: SlideChartResourceMap;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
+  hiddenTextElementId?: string;
 }>();
 
 const previewTranslationConfig = computed(() => {
@@ -72,6 +74,7 @@ const previewTranslationConfig = computed(() => {
     x: (translation?.dx ?? 0) * INCHES_TO_PX,
     y: (translation?.dy ?? 0) * INCHES_TO_PX,
     listening: false,
+    visible: props.node.id !== props.hiddenTextElementId,
   };
 });
 </script>
