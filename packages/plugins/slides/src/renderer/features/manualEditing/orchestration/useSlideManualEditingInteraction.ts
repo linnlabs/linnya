@@ -14,6 +14,7 @@ import type {
 import {
   findManualEditableTargetPathAtPoint,
   findManualEditableTargetPathByElementId,
+  type ManualEditingHitProjection,
 } from '../functions/manualEditableTargets';
 import { useSlidesManualEditingStore } from '../store/slidesManualEditingStore';
 import { useSlideTextEditingSession } from '../../textEditing';
@@ -69,7 +70,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     const point = readPoint(event);
     const slide = options.currentSlide.value;
     if (!point || !slide) return;
-    const path = findManualEditableTargetPathAtPoint(slide.elements, point);
+    const path = findManualEditableTargetPathAtPoint(slide.elements, point, readHitProjection());
     const selection = resolveManualClickSelection(
       path,
       selectionPath.value,
@@ -177,7 +178,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     const point = readPoint(event);
     const slide = options.currentSlide.value;
     if (!point || !slide) return;
-    const path = findManualEditableTargetPathAtPoint(slide.elements, point);
+    const path = findManualEditableTargetPathAtPoint(slide.elements, point, readHitProjection());
     const target = path[path.length - 1];
     if (!target?.textEditing) return;
     event.preventDefault();
@@ -215,6 +216,15 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     deferredSelection = null;
     store.clearSelection();
     textEditing.reset();
+  }
+
+  function readHitProjection(): ManualEditingHitProjection {
+    return {
+      transientTranslation: translationPreview.value,
+      pendingTranslation: pendingTranslation.value,
+      pendingVisual: pendingVisual.value,
+      queuedIntents: queuedIntents.value,
+    };
   }
 
   function completeTextEditing(): void {

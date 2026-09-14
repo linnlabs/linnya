@@ -6,7 +6,25 @@ import {
   type RenderNodeSelectionPoint,
 } from '../../renderNodeSelection';
 import { createTextEditingTarget } from '../../textEditing';
-import type { ManualEditableTarget } from '../definitions/manualEditingTypes';
+import type {
+  ManualEditIntent,
+  ManualEditableTarget,
+  ManualEditingTranslationPreview,
+  ManualEditingVisualPreview,
+} from '../definitions/manualEditingTypes';
+import {
+  collectManualTranslationPreviews,
+  collectManualVisualPreviews,
+  mergeManualTranslationPreviews,
+} from './manualIntentPreviews';
+import { projectManualVisualPreviewsToSelectionPolygon } from './manualVisualPreview';
+
+export interface ManualEditingHitProjection {
+  readonly transientTranslation: ManualEditingTranslationPreview | null;
+  readonly pendingTranslation: ManualEditingTranslationPreview | null;
+  readonly pendingVisual: ManualEditingVisualPreview | null;
+  readonly queuedIntents: readonly ManualEditIntent[];
+}
 
 export function collectManualEditableTargets(nodes: readonly RenderNode[]): ManualEditableTarget[] {
   return collectRenderNodeSelectionGeometries(nodes, isManualEditableNode)
@@ -25,10 +43,73 @@ export function findManualEditableTargetAtPoint(
 export function findManualEditableTargetPathAtPoint(
   nodes: readonly RenderNode[],
   point: RenderNodeSelectionPoint,
+  projection?: ManualEditingHitProjection,
 ): readonly ManualEditableTarget[] {
+  if (projection) {
+    return findProjectedTargetPathAtPoint(nodes, point, projection);
+  }
   const target = findManualEditableTargetAtPoint(nodes, point);
   if (!target) return [];
   return buildTargetPath(collectManualEditableTargets(nodes), target);
+}
+
+/** 预览已经改变画面时，命中也必须读取同一派生几何，不能要求用户点击旧位置。 */
+function findProjectedTargetPathAtPoint(
+  nodes: readonly RenderNode[],
+  point: RenderNodeSelectionPoint,
+  projection: ManualEditingHitProjection,
+): readonly ManualEditableTarget[] {
+  const targets = collectManualEditableTargets(nodes);
+  const translations = mergeManualTranslationPreviews(collectManualTranslationPreviews(
+    projection.transientTranslation,
+    projection.pendingTranslation,
+    projection.queuedIntents,
+  ));
+  const visuals = collectManualVisualPreviews(
+    projection.pendingVisual,
+    projection.queuedIntents,
+  );
+  for (let index = targets.length - 1; index >= 0; index -= 1) {
+    const target = targets[index];
+    if (!target || isHiddenByPreview(target, visuals)) continue;
+    const resized = projectManualVisualPreviewsToSelectionPolygon(target, visuals);
+    const translation = translations.get(target.elementId);
+    const polygon = translation
+      ? resized.map(vertex => ({ x: vertex.x + translation.dx, y: vertex.y + translation.dy }))
+      : resized;
+    if (isPointInsideConvexPolygon(point, polygon)) return buildTargetPath(targets, target);
+  }
+  return [];
+}
+
+function isHiddenByPreview(
+  target: ManualEditableTarget,
+  previews: readonly ManualEditingVisualPreview[],
+): boolean {
+  return previews.some(preview => (
+    preview.operation.op === 'delete_target'
+    && preview.affectedElementIds.includes(target.elementId)
+  ));
+}
+
+function isPointInsideConvexPolygon(
+  point: RenderNodeSelectionPoint,
+  polygon: readonly RenderNodeSelectionPoint[],
+): boolean {
+  if (polygon.length < 3) return false;
+  let direction = 0;
+  for (let index = 0; index < polygon.length; index += 1) {
+    const start = polygon[index];
+    const end = polygon[(index + 1) % polygon.length];
+    if (!start || !end) return false;
+    const cross = (end.x - start.x) * (point.y - start.y)
+      - (end.y - start.y) * (point.x - start.x);
+    if (Math.abs(cross) <= Number.EPSILON) continue;
+    const nextDirection = Math.sign(cross);
+    if (direction !== 0 && direction !== nextDirection) return false;
+    direction = nextDirection;
+  }
+  return true;
 }
 
 export function findManualEditableTargetPathByElementId(

@@ -287,6 +287,36 @@ describe('useSlideManualEditingInteraction', () => {
     expect(interaction.queuedIntents.value).toHaveLength(1);
   });
 
+  it('starts the next drag from the pending target visible position', () => {
+    const submitOperation = vi.fn();
+    const { interaction, wrapper } = createInteraction(submitOperation);
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, pointerId: 7, clientX: 144, clientY: 144,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, pointerId: 7, clientX: 528, clientY: 240,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, pointerId: 7, clientX: 528, clientY: 240,
+    }));
+
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, pointerId: 8, clientX: 528, clientY: 240,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, pointerId: 8, clientX: 624, clientY: 240,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, pointerId: 8, clientX: 624, clientY: 240,
+    }));
+
+    expect(submitOperation).toHaveBeenCalledTimes(2);
+    expect(interaction.queuedIntents.value[0]?.operation).toMatchObject({
+      op: 'translate_by',
+      delta: { dx: 1, dy: 0 },
+    });
+  });
+
   it('applies the next selection after an edited text revision is presented', () => {
     const nextSlide: SlideRenderModel = {
       ...slide,

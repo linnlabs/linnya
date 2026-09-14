@@ -179,4 +179,60 @@ describe('manual editable targets', () => {
     expect(findManualEditableTargetAtPoint([bottom, top], { x: 1, y: 1 })?.elementId)
       .toBe('authoring-overview-top');
   });
+
+  it('hit-tests the visible queued translation instead of the committed position', () => {
+    const node = textNode();
+    const projection = {
+      transientTranslation: null,
+      pendingTranslation: {
+        elementId: node.id,
+        affectedElementIds: [node.id],
+        dx: 4,
+        dy: 1,
+      },
+      pendingVisual: null,
+      queuedIntents: [],
+    };
+
+    expect(findManualEditableTargetPathAtPoint([node], { x: 5.5, y: 2.5 }, projection))
+      .toHaveLength(1);
+    expect(findManualEditableTargetPathAtPoint([node], { x: 1.5, y: 1.5 }, projection))
+      .toEqual([]);
+  });
+
+  it('excludes a Frame and its descendants after a queued delete preview', () => {
+    const frameRef = { slideKey: 'overview', editKey: 'card1', targetKind: 'frame' } as const;
+    const frame: RenderNode = {
+      id: 'authoring-overview-card1',
+      kind: 'shape',
+      box: { x: 1, y: 1, w: 4, h: 2, unit: 'in' },
+      zIndex: 1,
+      geometry: { type: 'preset', name: 'roundRect' },
+      authoringRef: frameRef,
+      authoringEdit: { capabilities: ['translate', 'delete'] },
+    };
+    const child = textNode({
+      id: 'authoring-overview-card1Label',
+      authoringRef: { slideKey: 'overview', editKey: 'card1Label', targetKind: 'text' },
+      authoringAncestorRefs: [frameRef],
+    });
+    const operation = {
+      op: 'delete_target' as const,
+      target: { slideKey: 'overview', editKey: 'card1' },
+      targetKind: 'frame' as const,
+    };
+    const projection = {
+      transientTranslation: null,
+      pendingTranslation: null,
+      pendingVisual: {
+        elementId: frame.id,
+        affectedElementIds: [frame.id, child.id],
+        operation,
+      },
+      queuedIntents: [],
+    };
+
+    expect(findManualEditableTargetPathAtPoint([frame, child], { x: 1.5, y: 1.5 }, projection))
+      .toEqual([]);
+  });
 });
