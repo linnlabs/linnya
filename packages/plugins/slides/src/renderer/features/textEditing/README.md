@@ -7,12 +7,12 @@
 - `createTextEditingTarget` consumes one world-coordinate `RenderNodeSelectionGeometry` and the committed `TextRenderNode`. It accepts only `authoringEdit.text.kind === 'plain_text'`; rich runs and formula runs are rejected because a whole-string replacement cannot preserve their semantics.
 - The target records the world polygon origin, dimensions, cumulative rotation, padding, vertical alignment offset and the first rendered text style. It never reads Konva instances or DOM layout back into author state.
 - `InlineTextEditor` converts inches and points into CSS pixels using the current stage scale. During the session, `SlideStage` passes the target element ID down the Konva render tree so exactly one duplicate Canvas text node is hidden.
-- The feature emits the existing `set_text_content` operation. The backend remains the only source writer, and the draft stays open until `manualEditing` observes the committed revision in a complete visual frame. A failed command therefore preserves the user's draft and cancels any deferred outside-click selection.
+- The feature emits the existing `set_text_content` operation into `manualEditing`'s typed intent queue. The editor owns only its local submission-pending flag, so another manual command does not prevent opening or committing a text session. The backend remains the only source writer, and the draft stays open until `manualEditing` observes that text intent's committed revision in a complete visual frame. A failed active command rolls back the queue, preserves the user's draft and cancels any deferred outside-click selection.
 
 ## Interaction
 
 - Double-click opens the textarea and places the caret at the end.
-- Blur or `Ctrl/Cmd+Enter` requests a commit. An unchanged draft closes without a command. When the user clicks another slide object to blur a changed draft, `manualEditing` retains that click and applies the requested selection after the committed visual revision is presented.
+- Blur or `Ctrl/Cmd+Enter` requests one commit and locally blocks duplicate submission until success or failure settles. An unchanged draft closes without a command. When the user clicks another slide object to blur a changed draft, `manualEditing` retains that click and applies the requested selection after the committed visual revision is presented.
 - `Escape` cancels the local draft.
 - Composition events block commit and cancel shortcuts until the browser ends the IME composition.
 - Pointer events inside the textarea do not reach the stage drag interaction.
@@ -36,5 +36,5 @@ ui/
 
 - `functions/createTextEditingTarget.test.ts` covers world rotation, geometry, vertical alignment, font-scale projection and the rich-text boundary.
 - `functions/createInlineTextEditorStyle.test.ts` covers the stage-to-DOM coordinate conversion under zoom.
-- `orchestration/useSlideTextEditingSession.test.ts` covers IME blocking, command creation, draft retention until presentation and unchanged-draft close.
+- `orchestration/useSlideTextEditingSession.test.ts` covers IME blocking, duplicate-submit blocking, failed-draft retry, draft retention until presentation and unchanged-draft close.
 - `manualEditing/orchestration/useSlideManualEditingInteraction.test.ts` covers the stage integration and failed-command draft retention.
