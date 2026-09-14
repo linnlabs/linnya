@@ -29,9 +29,16 @@ export function createManualVisualPreview(
  * 编译期间只投影用户刚提交的视觉值，正式 RenderModel 到达后整体撤下。
  * 文本换行仍以编译器结果为准；这里提供即时字号/颜色反馈，不复制排版算法。
  */
-export function projectManualVisualPreviewToRenderNode(
+export function projectManualVisualPreviewsToRenderNode(
   node: RenderNode,
-  preview: ManualEditingVisualPreview | null | undefined,
+  previews: readonly ManualEditingVisualPreview[],
+): RenderNode {
+  return previews.reduce(projectManualVisualPreviewToRenderNode, node);
+}
+
+function projectManualVisualPreviewToRenderNode(
+  node: RenderNode,
+  preview: ManualEditingVisualPreview,
 ): RenderNode {
   if (!preview) return node;
   if (preview.operation.op === 'delete_target') {
@@ -80,10 +87,11 @@ export function projectManualVisualPreviewToRenderNode(
 }
 
 /** 尺寸预览沿当前局部坐标轴缩放选框，旋转元素不会在提交瞬间跳回轴对齐。 */
-export function projectManualVisualPreviewToSelectionPolygon(
+export function projectManualVisualPreviewsToSelectionPolygon(
   target: ManualEditableTarget,
-  preview: ManualEditingVisualPreview | null | undefined,
+  previews: readonly ManualEditingVisualPreview[],
 ): readonly RenderNodeSelectionPoint[] {
+  const preview = findLastVisualSizePreview(target, previews);
   if (
     !preview
     || preview.elementId !== target.elementId
@@ -112,4 +120,18 @@ export function projectManualVisualPreviewToSelectionPolygon(
     { x: origin.x + horizontal.x + vertical.x, y: origin.y + horizontal.y + vertical.y },
     { x: origin.x + vertical.x, y: origin.y + vertical.y },
   ];
+}
+
+function findLastVisualSizePreview(
+  target: ManualEditableTarget,
+  previews: readonly ManualEditingVisualPreview[],
+): ManualEditingVisualPreview | undefined {
+  for (let index = previews.length - 1; index >= 0; index -= 1) {
+    const preview = previews[index];
+    if (
+      preview?.elementId === target.elementId
+      && preview.operation.op === 'set_visual_size'
+    ) return preview;
+  }
+  return undefined;
 }

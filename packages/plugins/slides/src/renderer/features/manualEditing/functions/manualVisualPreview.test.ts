@@ -3,8 +3,8 @@ import type { RenderNode } from '../../../types/render';
 import type { ManualEditableTarget } from '../definitions/manualEditingTypes';
 import {
   createManualVisualPreview,
-  projectManualVisualPreviewToRenderNode,
-  projectManualVisualPreviewToSelectionPolygon,
+  projectManualVisualPreviewsToRenderNode,
+  projectManualVisualPreviewsToSelectionPolygon,
 } from './manualVisualPreview';
 
 function target(targetKind: ManualEditableTarget['targetKind']): ManualEditableTarget {
@@ -38,7 +38,7 @@ describe('manual visual preview', () => {
       paragraphs: [{ runs: [{ text: 'A', fontSize: 14 }, { text: 'B', color: '#000000' }] }],
     };
 
-    expect(projectManualVisualPreviewToRenderNode(node, preview)).toMatchObject({
+    expect(projectManualVisualPreviewsToRenderNode(node, preview ? [preview] : [])).toMatchObject({
       box: node.box,
       paragraphs: [{ runs: [
         { text: 'A', fontSize: 30, color: '#2563EB' },
@@ -63,7 +63,10 @@ describe('manual visual preview', () => {
       targetKind: 'shape',
       color: '#16A34A',
     });
-    expect(projectManualVisualPreviewToRenderNode(shapeNode, fillPreview)).toMatchObject({
+    expect(projectManualVisualPreviewsToRenderNode(
+      shapeNode,
+      fillPreview ? [fillPreview] : [],
+    )).toMatchObject({
       fill: { type: 'solid', color: '#16A34A' },
     });
 
@@ -81,10 +84,16 @@ describe('manual visual preview', () => {
       targetKind: 'image',
       visualSize: { width: 4, height: 2.5 },
     });
-    expect(projectManualVisualPreviewToRenderNode(imageNode, sizePreview)).toMatchObject({
+    expect(projectManualVisualPreviewsToRenderNode(
+      imageNode,
+      sizePreview ? [sizePreview] : [],
+    )).toMatchObject({
       box: { x: 1, y: 1, w: 4, h: 2.5, unit: 'in' },
     });
-    expect(projectManualVisualPreviewToSelectionPolygon(image, sizePreview)).toEqual([
+    expect(projectManualVisualPreviewsToSelectionPolygon(
+      image,
+      sizePreview ? [sizePreview] : [],
+    )).toEqual([
       { x: 1, y: 1 }, { x: 5, y: 1 }, { x: 5, y: 3.5 }, { x: 1, y: 3.5 },
     ]);
   });
@@ -105,8 +114,9 @@ describe('manual visual preview', () => {
     };
     const unrelated: RenderNode = { ...child, id: 'authoring-overview-unrelated' };
 
-    expect(projectManualVisualPreviewToRenderNode(child, preview).visible).toBe(false);
-    expect(projectManualVisualPreviewToRenderNode(unrelated, preview)).toBe(unrelated);
+    const previews = preview ? [preview] : [];
+    expect(projectManualVisualPreviewsToRenderNode(child, previews).visible).toBe(false);
+    expect(projectManualVisualPreviewsToRenderNode(unrelated, previews)).toBe(unrelated);
   });
 
   it('rejects a preview when the operation targets a different authoring object', () => {

@@ -12,7 +12,7 @@
         :chart-resources="props.chartResources"
         :preview-translations="props.previewTranslations"
         :hidden-text-element-id="props.hiddenTextElementId"
-        :manual-visual-preview="props.manualVisualPreview"
+        :manual-visual-previews="props.manualVisualPreviews"
       />
     </v-group>
   </v-layer>
@@ -38,7 +38,7 @@ const props = defineProps<{
   transform: { x: number; y: number; scaleX: number; scaleY: number };
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
   hiddenTextElementId?: string;
-  manualVisualPreview?: ManualEditingVisualPreview | null;
+  manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();
 
 const sortedElements = computed(() =>

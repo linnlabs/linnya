@@ -4,6 +4,6 @@ export type {
   ManualEditingVisualPreview,
 } from './definitions/manualEditingTypes';
 export {
-  projectManualVisualPreviewToRenderNode,
-  projectManualVisualPreviewToSelectionPolygon,
+  projectManualVisualPreviewsToRenderNode,
+  projectManualVisualPreviewsToSelectionPolygon,
 } from './functions/manualVisualPreview';

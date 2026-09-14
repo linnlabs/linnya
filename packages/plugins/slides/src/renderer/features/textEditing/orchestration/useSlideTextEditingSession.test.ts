@@ -1,5 +1,4 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TextEditingTarget } from '../definitions/textEditingTypes';
 import { useSlideTextEditingSession } from './useSlideTextEditingSession';
@@ -30,8 +29,7 @@ describe('useSlideTextEditingSession', () => {
 
   it('blocks submission during IME composition and keeps the draft until presentation completes', () => {
     const submitOperation = vi.fn();
-    const submitting = ref(false);
-    const session = useSlideTextEditingSession({ submitting, submitOperation });
+    const session = useSlideTextEditingSession({ submitOperation });
     session.open(target);
     session.draft.value = '新标题';
 
@@ -56,11 +54,28 @@ describe('useSlideTextEditingSession', () => {
 
   it('closes an unchanged draft without creating a revision', () => {
     const submitOperation = vi.fn();
-    const session = useSlideTextEditingSession({ submitting: ref(false), submitOperation });
+    const session = useSlideTextEditingSession({ submitOperation });
     session.open(target);
 
     expect(session.requestCommit()).toBe('closed');
     expect(session.target.value).toBeNull();
     expect(submitOperation).not.toHaveBeenCalled();
+  });
+
+  it('blocks duplicate commits but keeps a failed draft available for retry', () => {
+    const submitOperation = vi.fn();
+    const session = useSlideTextEditingSession({ submitOperation });
+    session.open(target);
+    session.draft.value = '待重试标题';
+
+    expect(session.requestCommit()).toBe('submitted');
+    expect(session.requestCommit()).toBe('blocked');
+    expect(submitOperation).toHaveBeenCalledTimes(1);
+
+    session.rejectSubmission();
+    expect(session.target.value).toEqual(target);
+    expect(session.draft.value).toBe('待重试标题');
+    expect(session.requestCommit()).toBe('submitted');
+    expect(submitOperation).toHaveBeenCalledTimes(2);
   });
 });

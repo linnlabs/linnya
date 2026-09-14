@@ -127,4 +127,75 @@ describe('slidesManualEditingStore', () => {
     expect(store.pendingVisual).toBeNull();
     expect(store.errorMessage).toBe('编译失败');
   });
+
+  it('starts queued intents one at a time after the prior revision is presented', () => {
+    const store = useSlidesManualEditingStore();
+    const first = {
+      operation: {
+        op: 'set_text_style' as const,
+        target: target.authoringRef,
+        fontSizePt: 24,
+      },
+      visualPreview: {
+        elementId: target.elementId,
+        affectedElementIds: [target.elementId],
+        operation: {
+          op: 'set_text_style' as const,
+          target: target.authoringRef,
+          fontSizePt: 24,
+        },
+      },
+    };
+    const second = {
+      operation: {
+        op: 'set_text_style' as const,
+        target: target.authoringRef,
+        color: '#2563EB',
+      },
+      visualPreview: {
+        elementId: target.elementId,
+        affectedElementIds: [target.elementId],
+        operation: {
+          op: 'set_text_style' as const,
+          target: target.authoringRef,
+          color: '#2563EB',
+        },
+      },
+    };
+    store.enqueueIntent(first);
+    expect(store.startNextSubmit()).toEqual(first);
+    expect(store.pendingVisual).toEqual(first.visualPreview);
+
+    store.enqueueIntent(second);
+    expect(store.queuedIntents).toEqual([second]);
+
+    store.commitSubmit(8);
+    expect(store.startNextSubmit()).toBeNull();
+    store.recordPresentedRevision(8);
+    expect(store.startNextSubmit()).toEqual(second);
+    expect(store.pendingVisual).toEqual(second.visualPreview);
+  });
+
+  it('rolls back every queued preview when the active command fails', () => {
+    const store = useSlidesManualEditingStore();
+    store.enqueueIntent({
+      operation: {
+        op: 'set_text_style',
+        target: target.authoringRef,
+        color: '#2563EB',
+      },
+    });
+    store.enqueueIntent({
+      operation: {
+        op: 'set_text_style',
+        target: target.authoringRef,
+        fontSizePt: 32,
+      },
+    });
+    store.startNextSubmit();
+    store.failSubmit('编译失败');
+
+    expect(store.queuedIntents).toEqual([]);
+    expect(store.pendingVisual).toBeNull();
+  });
 });

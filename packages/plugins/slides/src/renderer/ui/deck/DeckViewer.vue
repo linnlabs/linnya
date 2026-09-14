@@ -181,7 +181,7 @@ import {
   useManualEditingLocalization,
   useSlidesManualEditingStore,
 } from '../../features/manualEditing';
-import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
+import type { ManualEditIntent } from '../../features/manualEditing';
 
 defineProps<{
   sourceEditBusy?: boolean;
@@ -189,7 +189,7 @@ defineProps<{
 
 const emit = defineEmits<{
   sourceEditSubmit: [payload: SourceSelectionEditSubmitPayload];
-  manualEditSubmit: [operation: SlidesManualEditOperation];
+  manualEditSubmit: [intent: ManualEditIntent];
 }>();
 
 const ZOOM_PERCENT_MIN = Math.round(ZOOM_MIN * 100);

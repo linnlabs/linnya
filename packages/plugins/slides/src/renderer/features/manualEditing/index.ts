@@ -1,6 +1,7 @@
 export type {
   ManualEditableTarget,
   ManualEditableTargetPath,
+  ManualEditIntent,
   ManualEditingTranslationPreview,
   ManualEditingVisualOperation,
   ManualEditingVisualPreview,
@@ -12,11 +13,18 @@ export {
   findManualEditableTargetPathByElementId,
 } from './functions/manualEditableTargets';
 export { resolveManualClickSelection } from './functions/resolveManualClickSelection';
+export { appendManualEditIntent } from './functions/appendManualEditIntent';
 export {
   createManualVisualPreview,
-  projectManualVisualPreviewToRenderNode,
-  projectManualVisualPreviewToSelectionPolygon,
+  projectManualVisualPreviewsToRenderNode,
+  projectManualVisualPreviewsToSelectionPolygon,
 } from './functions/manualVisualPreview';
+export {
+  collectManualTranslationPreviews,
+  collectManualVisualPreviews,
+  mergeManualTranslationPreviews,
+  resolveManualTargetTranslation,
+} from './functions/manualIntentPreviews';
 export {
   resolveManualEditingAvailability,
   type ManualEditingAvailability,

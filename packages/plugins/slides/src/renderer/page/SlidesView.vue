@@ -27,12 +27,12 @@ import type { SourceSelectionEditSubmitPayload } from '../features/sourceSelecti
 import { usePresentationExportStore } from '../features/presentationExport';
 import {
   readManualEditErrorMessage,
+  type ManualEditIntent,
   manualEditPresentationTrace,
   submitManualEdit,
   useManualEditingLocalization,
   useSlidesManualEditingStore,
 } from '../features/manualEditing';
-import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 import { slidesApi } from '../services/slidesApi';
 
 defineProps<{
@@ -57,24 +57,33 @@ const presentationExportStore = usePresentationExportStore();
 const manualEditingStore = useSlidesManualEditingStore();
 const { manualEditingMessage } = useManualEditingLocalization();
 
-async function handleManualEditSubmit(operation: SlidesManualEditOperation): Promise<void> {
+function handleManualEditSubmit(intent: ManualEditIntent): void {
+  manualEditingStore.enqueueIntent(intent);
+  void processManualEditQueue();
+}
+
+let processingManualEditQueue = false;
+
+async function processManualEditQueue(): Promise<void> {
+  if (processingManualEditQueue) return;
   const documentId = currentDeckId.value;
-  if (!documentId) {
-    manualEditingStore.failSubmit(manualEditingMessage('slides.manualEditing.error.saveFailed'));
-    return;
-  }
-  // SlideStage 会先建立乐观会话；测试或其他合法入口也可在页面编排层直接提交。
-  if (!manualEditingStore.submitting) {
-    manualEditingStore.beginSubmit(operation);
-  } else if (manualEditingStore.activeOperation !== operation) {
-    return;
-  }
+  const buildState = documentBuildState.value;
+  const renderVersion = slidesRenderStore.renderModel?.version ?? null;
+  if (
+    !documentId
+    || buildState?.state !== 'ready'
+    || buildState.presentationId !== documentId
+    || renderVersion !== buildState.versionNumber
+  ) return;
+  const intent = manualEditingStore.startNextSubmit();
+  if (!intent) return;
+  processingManualEditQueue = true;
   try {
     const outcome = await submitManualEdit({
       documentId,
-      buildState: documentBuildState.value,
-      renderVersion: slidesRenderStore.renderModel?.version ?? null,
-      operation,
+      buildState,
+      renderVersion,
+      operation: intent.operation,
     }, {
       createCommandId: () => crypto.randomUUID(),
       submit: command => slidesApi.submitManualEdit(command),
@@ -97,8 +106,26 @@ async function handleManualEditSubmit(operation: SlidesManualEditOperation): Pro
         ? error.message
         : manualEditingMessage('slides.manualEditing.error.saveFailed'),
     );
+  } finally {
+    processingManualEditQueue = false;
+    void processManualEditQueue();
   }
 }
+
+watch(
+  () => [
+    manualEditingStore.queuedIntents.length,
+    manualEditingStore.submitting,
+    manualEditingStore.pendingPresentationRevision,
+    documentBuildState.value?.state === 'ready'
+      ? documentBuildState.value.versionNumber
+      : null,
+    slidesRenderStore.renderModel?.version ?? null,
+  ] as const,
+  () => {
+    void processManualEditQueue();
+  },
+);
 
 /** 上一次加载 renderModel 时对应的 deckId，用于区分"首次加载"和"刷新" */
 let lastRenderDeckId: string | null = null;

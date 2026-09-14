@@ -52,3 +52,10 @@ export interface ManualEditingVisualPreview {
   readonly affectedElementIds: readonly string[];
   readonly operation: ManualEditingVisualOperation;
 }
+
+/** Renderer 内部 intent；operation 是正式写入，preview 只服务提交队列的即时画面。 */
+export interface ManualEditIntent {
+  readonly operation: SlidesManualEditOperation;
+  readonly translationPreview?: ManualEditingTranslationPreview;
+  readonly visualPreview?: ManualEditingVisualPreview;
+}

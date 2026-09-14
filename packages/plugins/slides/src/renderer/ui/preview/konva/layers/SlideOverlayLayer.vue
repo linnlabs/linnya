@@ -45,7 +45,7 @@ import type {
   ManualEditingTranslationPreview,
 } from '../../../../features/manualEditing';
 import {
-  projectManualVisualPreviewToSelectionPolygon,
+  projectManualVisualPreviewsToSelectionPolygon,
   type ManualEditingVisualPreview,
 } from '../../../../features/manualEditing/manualVisualProjection';
 
@@ -69,7 +69,7 @@ const props = defineProps<{
   marqueeRect: SourceSelectionRect | null;
   manualSelectedTarget?: ManualEditableTarget | null;
   manualTranslationPreview?: ManualEditingTranslationPreview | null;
-  manualVisualPreview?: ManualEditingVisualPreview | null;
+  manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();
 
 /** overlay 层默认不监听事件，按需在子组件内开启 */
@@ -130,7 +130,10 @@ const manualSelectionLineConfig = computed(() => {
   const preview = props.manualTranslationPreview?.elementId === target.elementId
     ? props.manualTranslationPreview
     : null;
-  const polygon = projectManualVisualPreviewToSelectionPolygon(target, props.manualVisualPreview);
+  const polygon = projectManualVisualPreviewsToSelectionPolygon(
+    target,
+    props.manualVisualPreviews ?? [],
+  );
   return {
     points: toPxPoints(polygon.map(point => ({
       x: point.x + (preview?.dx ?? 0),

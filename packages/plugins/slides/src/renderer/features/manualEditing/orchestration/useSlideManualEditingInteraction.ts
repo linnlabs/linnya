@@ -7,6 +7,7 @@ import {
   type SourceSelectionPoint,
 } from '../../sourceSelection';
 import type {
+  ManualEditIntent,
   ManualEditableTarget,
   ManualEditingVisualOperation,
 } from '../definitions/manualEditingTypes';
@@ -22,13 +23,11 @@ import { resolveManualClickSelection } from '../functions/resolveManualClickSele
 export interface SlideManualEditingInteractionOptions {
   /** 当前正式画面是否仍可命中。提交中的旧画面也应允许用户表达下一次选择。 */
   readonly canSelect: Ref<boolean>;
-  /** 当前 revision 是否允许产生新的作者操作。 */
-  readonly canMutate: Ref<boolean>;
   readonly currentSlide: Ref<SlideRenderModel | null>;
   readonly renderScale: Ref<number>;
   readonly slideSize: Ref<{ readonly width: number; readonly height: number }>;
   readonly wrapperRef: Ref<HTMLElement | null>;
-  readonly submitOperation: (operation: SlidesManualEditOperation) => void;
+  readonly submitIntent: (intent: ManualEditIntent) => void;
 }
 
 const DRAG_THRESHOLD_PX = 3;
@@ -45,13 +44,11 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     translationPreview,
     pendingTranslation,
     pendingVisual,
-    submitting,
+    queuedIntents,
   } = storeToRefs(store);
   const textEditing = useSlideTextEditingSession({
-    submitting,
     submitOperation: operation => {
-      store.beginSubmit(operation);
-      options.submitOperation(operation);
+      options.submitIntent({ operation });
     },
   });
   let pointerSession: {
@@ -79,7 +76,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
       selectedTarget.value?.elementId,
     );
     if (textEditing.target.value) {
-      if (submitting.value) {
+      if (textEditing.submissionPending.value) {
         deferSelection(selection.target?.elementId ?? null);
         event.preventDefault();
         return;
@@ -110,7 +107,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
       anchor: point,
       screenX: event.clientX,
       screenY: event.clientY,
-      canTranslate: options.canMutate.value
+      canTranslate: options.canSelect.value
         && selection.target.capabilities.includes('translate'),
       dragged: false,
     };
@@ -127,7 +124,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
       event.clientY - session.screenY,
     ) < DRAG_THRESHOLD_PX) return;
     session.dragged = true;
-    if (!session.canTranslate || !options.canMutate.value) return;
+    if (!session.canTranslate) return;
     store.setTranslationPreview({
       elementId: session.target.elementId,
       affectedElementIds: session.target.translationElementIds,
@@ -149,7 +146,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
       }
       return;
     }
-    if (!session.canTranslate || !options.canMutate.value) {
+    if (!session.canTranslate) {
       store.setTranslationPreview(null);
       return;
     }
@@ -164,8 +161,8 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
       targetKind: session.target.targetKind,
       delta: { dx: preview.dx, dy: preview.dy },
     };
-    store.beginSubmit(operation, preview);
-    options.submitOperation(operation);
+    store.setTranslationPreview(null);
+    options.submitIntent({ operation, translationPreview: preview });
   }
 
   function handlePointerCancel(event: PointerEvent): void {
@@ -176,7 +173,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
   }
 
   function handleDoubleClick(event: MouseEvent): void {
-    if (!options.canMutate.value) return;
+    if (!options.canSelect.value) return;
     const point = readPoint(event);
     const slide = options.currentSlide.value;
     if (!point || !slide) return;
@@ -195,12 +192,11 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
 
   function submitVisualOperation(operation: ManualEditingVisualOperation): void {
     const target = selectedTarget.value;
-    if (!target || !options.canMutate.value) return;
+    if (!target || !options.canSelect.value) return;
     const preview = createManualVisualPreview(target, operation);
     if (!preview) return;
-    store.beginSubmit(operation, undefined, preview);
+    options.submitIntent({ operation, visualPreview: preview });
     if (operation.op === 'delete_target') store.clearSelection();
-    options.submitOperation(operation);
   }
 
   function reconcileSelection(): void {
@@ -268,8 +264,10 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     translationPreview,
     pendingTranslation,
     pendingVisual,
+    queuedIntents,
     textEditorTarget: textEditing.target,
     textDraft: textEditing.draft,
+    textEditorSubmissionPending: textEditing.submissionPending,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
@@ -285,6 +283,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     handleTextEditorSubmitShortcut: textEditing.handleCommitShortcut,
     completeTextEditing,
     rejectDeferredSelection,
+    rejectTextEditingSubmission: textEditing.rejectSubmission,
     reconcileSelection,
     resetInteraction,
   };

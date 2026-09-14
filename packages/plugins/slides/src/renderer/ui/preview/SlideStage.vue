@@ -59,7 +59,7 @@
               :preview-translations="manualPreviewTranslations"
               :manual-selected-target="manualSelectedTarget"
               :manual-translation-preview="manualSelectedTranslation"
-              :manual-visual-preview="manualPendingVisual"
+              :manual-visual-previews="manualVisualPreviews"
               :hidden-text-element-id="textEditorTarget?.elementId"
             />
           </div>
@@ -81,7 +81,7 @@
           :slide-top="currentLayout.slideTop"
           :render-scale="renderScale"
           :label="manualEditingMessage('slides.manualEditing.text.ariaLabel')"
-          :disabled="manualEditingSubmitting"
+          :disabled="textEditorSubmissionPending"
           @commit="submitTextEdit"
           @composition-start="handleTextCompositionStart"
           @composition-end="handleTextCompositionEnd"
@@ -104,7 +104,7 @@
           :slide-left="currentLayout.slideLeft"
           :slide-top="currentLayout.slideTop"
           :scaled-slide-width="currentLayout.scaledSlideWidth"
-          :busy="!canManualEdit"
+          :busy="!canManualSelect"
           @submit="submitManualVisualOperation"
         />
       </div>
@@ -156,7 +156,10 @@ import {
 import { useReadySlideVisualResources } from '../../features/renderVisualResources';
 import {
   collectManualEditableTargets,
-  resolveManualEditingAvailability,
+  collectManualTranslationPreviews,
+  collectManualVisualPreviews,
+  mergeManualTranslationPreviews,
+  resolveManualTargetTranslation,
   manualEditPresentationTrace,
   ManualSelectionBreadcrumb,
   useSlideManualEditingInteraction,
@@ -168,7 +171,7 @@ import {
   ElementPropertyPanel,
   hasElementPropertyControls,
 } from '../../features/elementProperties';
-import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
+import type { ManualEditIntent } from '../../features/manualEditing';
 
 const props = defineProps<{
   sourceEditBusy?: boolean;
@@ -176,7 +179,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   sourceEditSubmit: [payload: SourceSelectionEditSubmitPayload];
-  manualEditSubmit: [operation: SlidesManualEditOperation];
+  manualEditSubmit: [intent: ManualEditIntent];
 }>();
 
 const slidesStore = useSlidesStore();
@@ -193,10 +196,8 @@ const {
   sourceSelectionModeEnabled,
 } = storeToRefs(uiStore);
 const { currentSlideRender, renderModel } = storeToRefs(renderStore);
-const { documentBuildState } = storeToRefs(slidesStore);
 const {
   enabled: manualEditingEnabled,
-  submitting: manualEditingSubmitting,
   textSubmissionPending,
 } = storeToRefs(manualEditingStore);
 const allRenderSlides = computed(() => renderModel.value?.slides ?? []);
@@ -306,18 +307,6 @@ const canSelectSourceElements = computed(() => (
   && displayedSlideId.value === activeSlideId.value
 ));
 
-const manualEditingAvailability = computed(() => resolveManualEditingAvailability({
-  buildState: documentBuildState.value,
-  renderModel: renderModel.value,
-  currentSlide: displayedSlide.value,
-}));
-const canManualEdit = computed(() => (
-  manualEditingEnabled.value
-  && manualEditingAvailability.value.available
-  && !manualEditingSubmitting.value
-  && !preparingSlideVisuals.value
-  && displayedSlideId.value === activeSlideId.value
-));
 const canManualSelect = computed(() => (
   manualEditingEnabled.value
   && renderModel.value?.sourceKind === 'generated'
@@ -420,8 +409,10 @@ const {
   translationPreview: manualTranslationPreview,
   pendingTranslation: manualPendingTranslation,
   pendingVisual: manualPendingVisual,
+  queuedIntents: manualQueuedIntents,
   textEditorTarget,
   textDraft,
+  textEditorSubmissionPending,
   handlePointerDown: handleManualPointerDown,
   handlePointerMove: handleManualPointerMove,
   handlePointerUp: handleManualPointerUp,
@@ -436,26 +427,33 @@ const {
   handleTextEditorSubmitShortcut,
   completeTextEditing,
   rejectDeferredSelection,
+  rejectTextEditingSubmission,
   reconcileSelection: reconcileManualSelection,
   resetInteraction: resetManualInteraction,
 } = useSlideManualEditingInteraction({
   canSelect: canManualSelect,
-  canMutate: canManualEdit,
   currentSlide: displayedSlide,
   renderScale,
   slideSize: actualSlideSize,
   wrapperRef: konvaWrapperRef,
-  submitOperation: operation => emit('manualEditSubmit', operation),
+  submitIntent: intent => emit('manualEditSubmit', intent),
 });
 
+const manualTranslationPreviews = computed(() => collectManualTranslationPreviews(
+  manualTranslationPreview.value,
+  manualPendingTranslation.value,
+  manualQueuedIntents.value,
+));
 const manualPreviewTranslations = computed(() => {
-  const preview = manualTranslationPreview.value ?? manualPendingTranslation.value;
-  return preview
-    ? new Map(preview.affectedElementIds.map(elementId => [elementId, preview]))
-    : new Map();
+  return mergeManualTranslationPreviews(manualTranslationPreviews.value);
 });
-const manualSelectedTranslation = computed(() => (
-  manualTranslationPreview.value ?? manualPendingTranslation.value
+const manualSelectedTranslation = computed(() => resolveManualTargetTranslation(
+  manualSelectedTarget.value?.elementId,
+  manualTranslationPreviews.value,
+));
+const manualVisualPreviews = computed(() => collectManualVisualPreviews(
+  manualPendingVisual.value,
+  manualQueuedIntents.value,
 ));
 const showElementPropertyControls = computed(() => (
   manualSelectedTarget.value
@@ -768,7 +766,10 @@ watch(
 
 watch(textSubmissionPending, (pending, previous) => {
   if (!previous || pending) return;
-  if (manualEditingStore.errorMessage) rejectDeferredSelection();
+  if (manualEditingStore.errorMessage) {
+    rejectDeferredSelection();
+    rejectTextEditingSubmission();
+  }
   else completeTextEditing();
 });
 

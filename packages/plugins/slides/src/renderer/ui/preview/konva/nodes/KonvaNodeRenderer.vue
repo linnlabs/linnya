@@ -40,7 +40,7 @@
       :chart-resources="props.chartResources"
       :preview-translations="props.previewTranslations"
       :hidden-text-element-id="props.hiddenTextElementId"
-      :manual-visual-preview="props.manualVisualPreview"
+      :manual-visual-previews="props.manualVisualPreviews"
     />
   </v-group>
 </template>
@@ -60,7 +60,7 @@ import KonvaTableNode from './KonvaTableNode.vue';
 import KonvaTextNode from './KonvaTextNode.vue';
 import { INCHES_TO_PX } from '../../../../shared/constants';
 import {
-  projectManualVisualPreviewToRenderNode,
+  projectManualVisualPreviewsToRenderNode,
   type ManualEditingVisualPreview,
 } from '../../../../features/manualEditing/manualVisualProjection';
 import type { ManualEditingTranslationPreview } from '../../../../features/manualEditing';
@@ -71,12 +71,12 @@ const props = defineProps<{
   chartResources: SlideChartResourceMap;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
   hiddenTextElementId?: string;
-  manualVisualPreview?: ManualEditingVisualPreview | null;
+  manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();
 
-const renderNode = computed(() => projectManualVisualPreviewToRenderNode(
+const renderNode = computed(() => projectManualVisualPreviewsToRenderNode(
   props.node,
-  props.manualVisualPreview,
+  props.manualVisualPreviews ?? [],
 ));
 
 const previewTranslationConfig = computed(() => {

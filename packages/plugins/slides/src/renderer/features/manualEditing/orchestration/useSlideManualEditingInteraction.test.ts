@@ -78,20 +78,26 @@ function createInteraction(
   wrapper.setPointerCapture = vi.fn();
   wrapper.releasePointerCapture = vi.fn();
   wrapper.hasPointerCapture = vi.fn(() => true);
+  const canSelect = ref(gates.canSelect ?? true);
+  const canMutate = ref(gates.canMutate ?? true);
   const interaction = useSlideManualEditingInteraction({
-    canSelect: ref(gates.canSelect ?? true),
-    canMutate: ref(gates.canMutate ?? true),
+    canSelect,
     currentSlide: ref(currentSlide),
     renderScale: ref(1),
     slideSize: ref({ width: 10, height: 5.625 }),
     wrapperRef: ref(wrapper),
-    submitOperation,
+    submitIntent: intent => {
+      submitOperation(intent);
+      const store = useSlidesManualEditingStore();
+      store.enqueueIntent(intent);
+      if (canMutate.value) store.startNextSubmit();
+    },
   });
   wrapper.addEventListener('pointerdown', interaction.handlePointerDown);
   wrapper.addEventListener('pointermove', interaction.handlePointerMove);
   wrapper.addEventListener('pointerup', interaction.handlePointerUp);
   wrapper.addEventListener('dblclick', interaction.handleDoubleClick);
-  return { interaction, wrapper };
+  return { interaction, wrapper, canMutate };
 }
 
 describe('useSlideManualEditingInteraction', () => {
@@ -119,10 +125,18 @@ describe('useSlideManualEditingInteraction', () => {
       dy: 0.5,
     });
     expect(submitOperation).toHaveBeenCalledWith({
-      op: 'translate_by',
-      target: { slideKey: 'overview', editKey: 'headline' },
-      targetKind: 'text',
-      delta: { dx: 1, dy: 0.5 },
+      operation: {
+        op: 'translate_by',
+        target: { slideKey: 'overview', editKey: 'headline' },
+        targetKind: 'text',
+        delta: { dx: 1, dy: 0.5 },
+      },
+      translationPreview: {
+        elementId: 'authoring-overview-headline',
+        affectedElementIds: ['authoring-overview-headline'],
+        dx: 1,
+        dy: 0.5,
+      },
     });
   });
 
@@ -140,9 +154,11 @@ describe('useSlideManualEditingInteraction', () => {
     interaction.handleTextCompositionEnd();
     interaction.submitTextEdit();
     expect(submitOperation).toHaveBeenCalledWith({
-      op: 'set_text_content',
-      target: { slideKey: 'overview', editKey: 'headline' },
-      content: '新的标题',
+      operation: {
+        op: 'set_text_content',
+        target: { slideKey: 'overview', editKey: 'headline' },
+        content: '新的标题',
+      },
     });
     const store = useSlidesManualEditingStore();
     store.failSubmit('保存失败');
@@ -193,6 +209,33 @@ describe('useSlideManualEditingInteraction', () => {
     expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-card1Value');
   });
 
+  it('switches directly to a sibling after the selected child starts a style revision', () => {
+    const { interaction, wrapper } = createInteraction(vi.fn(), siblingSlide);
+    for (let click = 0; click < 2; click += 1) {
+      wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+        bubbles: true, button: 0, pointerId: click + 1, clientX: 144, clientY: 144,
+      }));
+      wrapper.dispatchEvent(new PointerEvent('pointerup', {
+        bubbles: true, button: 0, pointerId: click + 1, clientX: 144, clientY: 144,
+      }));
+    }
+    interaction.submitVisualOperation({
+      op: 'set_text_style',
+      target: { slideKey: 'overview', editKey: 'card1Label' },
+      color: '#2563EB',
+    });
+
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, pointerId: 3, clientX: 288, clientY: 144,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, button: 0, pointerId: 3, clientX: 288, clientY: 144,
+    }));
+
+    expect(useSlidesManualEditingStore().submitting).toBe(true);
+    expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-card1Value');
+  });
+
   it('keeps a Frame as the drag owner when the pointer starts over a child', () => {
     const submitOperation = vi.fn();
     const { interaction, wrapper } = createInteraction(submitOperation, frameSlide);
@@ -207,9 +250,11 @@ describe('useSlideManualEditingInteraction', () => {
     }));
 
     expect(submitOperation).toHaveBeenCalledWith(expect.objectContaining({
-      op: 'translate_by',
-      target: { slideKey: 'overview', editKey: 'card1' },
-      targetKind: 'frame',
+      operation: expect.objectContaining({
+        op: 'translate_by',
+        target: { slideKey: 'overview', editKey: 'card1' },
+        targetKind: 'frame',
+      }),
     }));
     expect(interaction.pendingTranslation.value?.affectedElementIds).toEqual([
       'authoring-overview-card1',
@@ -217,7 +262,7 @@ describe('useSlideManualEditingInteraction', () => {
     ]);
   });
 
-  it('keeps the committed frame selectable while the next mutation is gated', () => {
+  it('queues a drag while the prior revision still owns the mutation gate', () => {
     const submitOperation = vi.fn();
     const { interaction, wrapper } = createInteraction(
       submitOperation,
@@ -236,7 +281,10 @@ describe('useSlideManualEditingInteraction', () => {
 
     expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-card1');
     expect(interaction.translationPreview.value).toBeNull();
-    expect(submitOperation).not.toHaveBeenCalled();
+    expect(submitOperation).toHaveBeenCalledWith(expect.objectContaining({
+      operation: expect.objectContaining({ op: 'translate_by' }),
+    }));
+    expect(interaction.queuedIntents.value).toHaveLength(1);
   });
 
   it('applies the next selection after an edited text revision is presented', () => {
@@ -267,7 +315,7 @@ describe('useSlideManualEditingInteraction', () => {
     }));
 
     expect(submitOperation).toHaveBeenCalledWith(expect.objectContaining({
-      op: 'set_text_content',
+      operation: expect.objectContaining({ op: 'set_text_content' }),
     }));
     expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-headline');
 
@@ -297,7 +345,7 @@ describe('useSlideManualEditingInteraction', () => {
       operation: { op: 'set_fill_color', color: '#2563EB' },
     });
     expect(submitOperation).toHaveBeenLastCalledWith(expect.objectContaining({
-      op: 'set_fill_color',
+      operation: expect.objectContaining({ op: 'set_fill_color' }),
     }));
 
     useSlidesManualEditingStore().failSubmit('测试下一条操作');
@@ -311,5 +359,36 @@ describe('useSlideManualEditingInteraction', () => {
       'authoring-overview-card1',
       'authoring-overview-card1Label',
     ]);
+  });
+
+  it('queues another property intent while the active revision is still compiling', () => {
+    const submitOperation = vi.fn();
+    const { interaction, wrapper, canMutate } = createInteraction(submitOperation, frameSlide);
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, pointerId: 1, clientX: 144, clientY: 144,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, button: 0, pointerId: 1, clientX: 144, clientY: 144,
+    }));
+
+    interaction.submitVisualOperation({
+      op: 'set_fill_color',
+      target: { slideKey: 'overview', editKey: 'card1' },
+      targetKind: 'frame',
+      color: '#2563EB',
+    });
+    canMutate.value = false;
+    interaction.submitVisualOperation({
+      op: 'set_fill_color',
+      target: { slideKey: 'overview', editKey: 'card1' },
+      targetKind: 'frame',
+      color: '#DC2626',
+    });
+
+    expect(interaction.pendingVisual.value?.operation).toMatchObject({ color: '#2563EB' });
+    expect(interaction.queuedIntents.value).toHaveLength(1);
+    expect(interaction.queuedIntents.value[0]?.visualPreview?.operation).toMatchObject({
+      color: '#DC2626',
+    });
   });
 });

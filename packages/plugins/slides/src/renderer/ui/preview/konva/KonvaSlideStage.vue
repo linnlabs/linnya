@@ -22,7 +22,7 @@
         :transform="contentTransform"
         :preview-translations="props.previewTranslations"
         :hidden-text-element-id="props.hiddenTextElementId"
-        :manual-visual-preview="props.manualVisualPreview"
+        :manual-visual-previews="props.manualVisualPreviews"
       />
 
       <!-- Overlay 层：选中 / 诊断高亮（FE-K4 填充） -->
@@ -33,7 +33,7 @@
         :marquee-rect="props.marqueeRect"
         :manual-selected-target="props.manualSelectedTarget"
         :manual-translation-preview="props.manualTranslationPreview"
-        :manual-visual-preview="props.manualVisualPreview"
+        :manual-visual-previews="props.manualVisualPreviews"
       />
     </v-stage>
   </div>
@@ -76,7 +76,7 @@ const props = defineProps<{
   manualSelectedTarget?: ManualEditableTarget | null;
   manualTranslationPreview?: ManualEditingTranslationPreview | null;
   hiddenTextElementId?: string;
-  manualVisualPreview?: ManualEditingVisualPreview | null;
+  manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();
 
 const backgroundImageResource = computed(() => (

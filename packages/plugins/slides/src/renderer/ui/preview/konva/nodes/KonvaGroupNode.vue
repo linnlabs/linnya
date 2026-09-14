@@ -11,7 +11,7 @@
       :chart-resources="props.chartResources"
       :preview-translations="props.previewTranslations"
       :hidden-text-element-id="props.hiddenTextElementId"
-      :manual-visual-preview="props.manualVisualPreview"
+      :manual-visual-previews="props.manualVisualPreviews"
     />
   </v-group>
 </template>
@@ -34,7 +34,7 @@ const props = defineProps<{
   chartResources: SlideChartResourceMap;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
   hiddenTextElementId?: string;
-  manualVisualPreview?: ManualEditingVisualPreview | null;
+  manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();
 
 const groupConfig = computed(() => buildGroupConfig(props.node));

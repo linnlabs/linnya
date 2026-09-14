@@ -158,7 +158,7 @@ async function verifyManualTranslation(): Promise<{ manualTranslationFrames: num
 
 /** 在同一生产 Konva 节点上验证属性乐观值与撤回，防止只测纯函数却漏传组件合同。 */
 async function verifyManualVisual(): Promise<{ manualVisualFrames: number }> {
-  const manualVisualPreview = shallowRef<ManualEditingVisualPreview | null>(null);
+  const manualVisualPreviews = shallowRef<readonly ManualEditingVisualPreview[]>([]);
   const host = document.createElement('div');
   document.body.append(host);
   const before = new Set(Konva.stages);
@@ -179,7 +179,7 @@ async function verifyManualVisual(): Promise<{ manualVisualFrames: number }> {
       selectedTargets: [],
       hoveredTarget: null,
       marqueeRect: null,
-      manualVisualPreview: manualVisualPreview.value,
+      manualVisualPreviews: manualVisualPreviews.value,
     }),
   });
   app.use(VueKonva);
@@ -190,7 +190,7 @@ async function verifyManualVisual(): Promise<{ manualVisualFrames: number }> {
     await nextTick();
     assertShapeVisual(stage, { color: '#08140F', width: 320, height: 180, visible: true });
 
-    manualVisualPreview.value = {
+    manualVisualPreviews.value = [{
       elementId: 'stable-shape',
       affectedElementIds: ['stable-shape'],
       operation: {
@@ -199,24 +199,36 @@ async function verifyManualVisual(): Promise<{ manualVisualFrames: number }> {
         targetKind: 'shape',
         color: '#DC2626',
       },
-    };
+    }];
     await nextTick();
     assertShapeVisual(stage, { color: '#DC2626', width: 320, height: 180, visible: true });
 
-    manualVisualPreview.value = {
-      elementId: 'stable-shape',
-      affectedElementIds: ['stable-shape'],
-      operation: {
-        op: 'set_visual_size',
-        target: { slideKey: 'overview', editKey: 'shape' },
-        targetKind: 'shape',
-        visualSize: { width: 2, height: 1 },
+    manualVisualPreviews.value = [
+      {
+        elementId: 'stable-shape',
+        affectedElementIds: ['stable-shape'],
+        operation: {
+          op: 'set_fill_color',
+          target: { slideKey: 'overview', editKey: 'shape' },
+          targetKind: 'shape',
+          color: '#DC2626',
+        },
       },
-    };
+      {
+        elementId: 'stable-shape',
+        affectedElementIds: ['stable-shape'],
+        operation: {
+          op: 'set_visual_size',
+          target: { slideKey: 'overview', editKey: 'shape' },
+          targetKind: 'shape',
+          visualSize: { width: 2, height: 1 },
+        },
+      },
+    ];
     await nextTick();
-    assertShapeVisual(stage, { color: '#08140F', width: 192, height: 96, visible: true });
+    assertShapeVisual(stage, { color: '#DC2626', width: 192, height: 96, visible: true });
 
-    manualVisualPreview.value = {
+    manualVisualPreviews.value = [{
       elementId: 'stable-shape',
       affectedElementIds: ['stable-shape'],
       operation: {
@@ -224,11 +236,11 @@ async function verifyManualVisual(): Promise<{ manualVisualFrames: number }> {
         target: { slideKey: 'overview', editKey: 'frame' },
         targetKind: 'frame',
       },
-    };
+    }];
     await nextTick();
     assertShapeVisual(stage, { color: '#08140F', width: 320, height: 180, visible: false });
 
-    manualVisualPreview.value = null;
+    manualVisualPreviews.value = [];
     await nextTick();
     assertShapeVisual(stage, { color: '#08140F', width: 320, height: 180, visible: true });
     return { manualVisualFrames: 5 };

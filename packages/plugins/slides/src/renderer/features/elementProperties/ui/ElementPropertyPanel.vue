@@ -179,9 +179,12 @@ function submitSize(): void {
 function syncVisualSize(changedDimension: 'width' | 'height'): void {
   const committedSize = props.target.visualSize;
   if (!committedSize) return;
+  const currentSize = props.target.targetKind === 'image'
+    ? committedSize
+    : { width: width.value, height: height.value };
   const next = resolveVisualSizeAfterDimensionChange(
     props.target.targetKind,
-    committedSize,
+    currentSize,
     changedDimension,
     changedDimension === 'width' ? width.value : height.value,
   );

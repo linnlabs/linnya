@@ -2,10 +2,12 @@ import { defineStore } from 'pinia';
 import { ref, shallowRef } from 'vue';
 import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 import type {
+  ManualEditIntent,
   ManualEditableTarget,
   ManualEditingTranslationPreview,
   ManualEditingVisualPreview,
 } from '../definitions/manualEditingTypes';
+import { appendManualEditIntent } from '../functions/appendManualEditIntent';
 
 export const useSlidesManualEditingStore = defineStore('slides-manual-editing', () => {
   const enabled = ref(false);
@@ -14,6 +16,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
   const translationPreview = shallowRef<ManualEditingTranslationPreview | null>(null);
   const pendingTranslation = shallowRef<ManualEditingTranslationPreview | null>(null);
   const pendingVisual = shallowRef<ManualEditingVisualPreview | null>(null);
+  const queuedIntents = shallowRef<readonly ManualEditIntent[]>([]);
   const textSubmissionPending = ref(false);
   const activeOperation = shallowRef<SlidesManualEditOperation | null>(null);
   const pendingPresentationRevision = ref<number | null>(null);
@@ -65,6 +68,33 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     errorMessage.value = null;
   }
 
+  function enqueueIntent(intent: ManualEditIntent): void {
+    queuedIntents.value = appendManualEditIntent(queuedIntents.value, intent);
+    if (intent.operation.op === 'set_text_content') textSubmissionPending.value = true;
+    errorMessage.value = null;
+  }
+
+  function startNextSubmit(): ManualEditIntent | null {
+    if (
+      submitting.value
+      || pendingPresentationRevision.value !== null
+      || queuedIntents.value.length === 0
+    ) {
+      return null;
+    }
+    const [intent, ...remaining] = queuedIntents.value;
+    if (!intent) return null;
+    queuedIntents.value = remaining;
+    beginSubmit(intent.operation, intent.translationPreview, intent.visualPreview);
+    if (
+      intent.operation.op !== 'set_text_content'
+      && queuedIntents.value.some(candidate => candidate.operation.op === 'set_text_content')
+    ) {
+      textSubmissionPending.value = true;
+    }
+    return intent;
+  }
+
   function commitSubmit(revision: number): void {
     submitting.value = false;
     activeOperation.value = null;
@@ -79,6 +109,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     pendingVisual.value = null;
     pendingPresentationRevision.value = null;
     textSubmissionPending.value = false;
+    queuedIntents.value = [];
     errorMessage.value = error;
   }
 
@@ -100,7 +131,9 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     pendingVisual.value = null;
     pendingPresentationRevision.value = null;
     presentedRevision.value = null;
-    textSubmissionPending.value = false;
+    textSubmissionPending.value = queuedIntents.value.some(
+      intent => intent.operation.op === 'set_text_content',
+    );
   }
 
   function clearSelection(): void {
@@ -119,6 +152,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     pendingPresentationRevision.value = null;
     presentedRevision.value = null;
     textSubmissionPending.value = false;
+    queuedIntents.value = [];
     clearSelection();
   }
 
@@ -129,6 +163,7 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     translationPreview,
     pendingTranslation,
     pendingVisual,
+    queuedIntents,
     textSubmissionPending,
     activeOperation,
     pendingPresentationRevision,
@@ -140,6 +175,8 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     reconcileSelectedTarget,
     setTranslationPreview,
     beginSubmit,
+    enqueueIntent,
+    startNextSubmit,
     commitSubmit,
     failSubmit,
     recordPresentedRevision,

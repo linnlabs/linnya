@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue';
+import { computed, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 import type {
@@ -8,25 +8,25 @@ import type {
 import { useSlidesTextEditingStore } from '../store/slidesTextEditingStore';
 
 export interface SlideTextEditingSessionOptions {
-  readonly submitting: Ref<boolean>;
   readonly submitOperation: (operation: SlidesManualEditOperation) => void;
 }
 
 export function useSlideTextEditingSession(options: SlideTextEditingSessionOptions) {
   const store = useSlidesTextEditingStore();
   const { target, draft, composing } = storeToRefs(store);
+  const submissionPending = ref(false);
   const model = computed({
     get: () => draft.value,
     set: (value: string) => store.updateDraft(value),
   });
 
   function open(next: TextEditingTarget): void {
-    if (options.submitting.value) return;
+    if (submissionPending.value) return;
     store.open(next);
   }
 
   function requestCommit(): TextEditingCommitResult {
-    if (options.submitting.value || composing.value) return 'blocked';
+    if (submissionPending.value || composing.value) return 'blocked';
     const current = target.value;
     if (!current) return 'closed';
     if (draft.value === current.content) {
@@ -38,11 +38,12 @@ export function useSlideTextEditingSession(options: SlideTextEditingSessionOptio
       target: current.authoringRef,
       content: draft.value,
     });
+    submissionPending.value = true;
     return 'submitted';
   }
 
   function cancel(): void {
-    if (options.submitting.value) return;
+    if (submissionPending.value) return;
     store.close();
   }
 
@@ -72,6 +73,7 @@ export function useSlideTextEditingSession(options: SlideTextEditingSessionOptio
     target,
     draft: model,
     composing,
+    submissionPending,
     open,
     requestCommit,
     cancel,
@@ -80,8 +82,16 @@ export function useSlideTextEditingSession(options: SlideTextEditingSessionOptio
     handleEscape,
     handleCommitShortcut,
     reconcileTarget: store.reconcileTarget,
-    complete: store.close,
-    reset: store.close,
+    complete: () => {
+      submissionPending.value = false;
+      store.close();
+    },
+    rejectSubmission: () => {
+      submissionPending.value = false;
+    },
+    reset: () => {
+      submissionPending.value = false;
+      store.close();
+    },
   };
 }
-
