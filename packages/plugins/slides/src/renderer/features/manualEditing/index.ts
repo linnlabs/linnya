@@ -11,6 +11,7 @@ export {
   findManualEditableTargetPathAtPoint,
   findManualEditableTargetPathByElementId,
 } from './functions/manualEditableTargets';
+export { resolveManualClickSelection } from './functions/resolveManualClickSelection';
 export {
   createManualVisualPreview,
   projectManualVisualPreviewToRenderNode,

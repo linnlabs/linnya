@@ -17,6 +17,7 @@ import {
 import { useSlidesManualEditingStore } from '../store/slidesManualEditingStore';
 import { useSlideTextEditingSession } from '../../textEditing';
 import { createManualVisualPreview } from '../functions/manualVisualPreview';
+import { resolveManualClickSelection } from '../functions/resolveManualClickSelection';
 
 export interface SlideManualEditingInteractionOptions {
   /** 当前正式画面是否仍可命中。提交中的旧画面也应允许用户表达下一次选择。 */
@@ -72,7 +73,11 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     const slide = options.currentSlide.value;
     if (!point || !slide) return;
     const path = findManualEditableTargetPathAtPoint(slide.elements, point);
-    const selection = resolveClickSelection(path, selectedTarget.value?.elementId);
+    const selection = resolveManualClickSelection(
+      path,
+      selectionPath.value,
+      selectedTarget.value?.elementId,
+    );
     if (textEditing.target.value) {
       if (submitting.value) {
         deferSelection(selection.target?.elementId ?? null);
@@ -283,25 +288,6 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     reconcileSelection,
     resetInteraction,
   };
-}
-
-function resolveClickSelection(
-  path: readonly ManualEditableTarget[],
-  selectedElementId: string | undefined,
-): {
-  readonly target: ManualEditableTarget | null;
-  readonly clickTarget: ManualEditableTarget | null;
-} {
-  const outermostTarget = path[0];
-  if (!outermostTarget) return { target: null, clickTarget: null };
-  const selectedIndex = selectedElementId
-    ? path.findIndex(target => target.elementId === selectedElementId)
-    : -1;
-  const target = selectedIndex >= 0 ? path[selectedIndex] ?? outermostTarget : outermostTarget;
-  const clickTarget = selectedIndex >= 0
-    ? path[Math.min(selectedIndex + 1, path.length - 1)] ?? target
-    : target;
-  return { target, clickTarget };
 }
 
 function capturePointer(event: PointerEvent): void {

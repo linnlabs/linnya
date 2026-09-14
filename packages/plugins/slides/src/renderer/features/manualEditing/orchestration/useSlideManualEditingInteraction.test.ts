@@ -51,6 +51,23 @@ const frameSlide: SlideRenderModel = {
   ],
 };
 
+const siblingSlide: SlideRenderModel = {
+  ...frameSlide,
+  elements: [
+    ...frameSlide.elements,
+    {
+      ...slide.elements[0],
+      id: 'authoring-overview-card1Value',
+      box: { x: 2.6, y: 1.4, w: 2, h: 0.5, unit: 'in' },
+      zIndex: 3,
+      authoringRef: { slideKey: 'overview', editKey: 'card1Value', targetKind: 'text' },
+      authoringAncestorRefs: [{
+        slideKey: 'overview', editKey: 'card1', targetKind: 'frame',
+      }],
+    },
+  ],
+};
+
 function createInteraction(
   submitOperation: ReturnType<typeof vi.fn>,
   currentSlide: SlideRenderModel = slide,
@@ -152,6 +169,28 @@ describe('useSlideManualEditingInteraction', () => {
       'authoring-overview-card1',
       'authoring-overview-card1Label',
     ]);
+  });
+
+  it('switches directly between children of the selected Frame', () => {
+    const { interaction, wrapper } = createInteraction(vi.fn(), siblingSlide);
+    for (let click = 0; click < 2; click += 1) {
+      wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+        bubbles: true, button: 0, pointerId: click + 1, clientX: 144, clientY: 144,
+      }));
+      wrapper.dispatchEvent(new PointerEvent('pointerup', {
+        bubbles: true, button: 0, pointerId: click + 1, clientX: 144, clientY: 144,
+      }));
+    }
+    expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-card1Label');
+
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, pointerId: 3, clientX: 288, clientY: 144,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, button: 0, pointerId: 3, clientX: 288, clientY: 144,
+    }));
+
+    expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-card1Value');
   });
 
   it('keeps a Frame as the drag owner when the pointer starts over a child', () => {
