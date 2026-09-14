@@ -17,7 +17,7 @@
   padding: 10px;
   border: 1px solid var(--color-border-default);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--color-bg-primary) 96%, transparent);
+  background: color-mix(in srgb, var(--color-bg-elevated) 96%, transparent);
   box-shadow: 0 6px 20px var(--shadow-color-md);
   backdrop-filter: blur(8px);
 }
@@ -38,7 +38,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: 4px;
   padding: 3px 5px;
-  background: var(--color-bg-primary);
+  background: var(--color-bg-elevated);
   color: var(--color-text-primary);
 }
 
@@ -59,7 +59,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: 5px;
   padding: 5px 8px;
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-subtle);
   color: var(--color-text-primary);
   font-size: 11px;
   cursor: pointer;

@@ -8,7 +8,7 @@
   padding: 0 3px;
   border: 1px solid var(--color-accent);
   border-radius: 4px;
-  background: var(--color-bg-primary);
+  background: var(--color-bg-elevated);
   transform: translate(-50%, -50%);
   white-space: nowrap;
 }
@@ -34,7 +34,7 @@
 
 .slides-manual-selection-breadcrumb__item:hover,
 .slides-manual-selection-breadcrumb__item.is-active {
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-subtle);
   color: var(--color-text-primary);
 }
 
