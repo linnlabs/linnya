@@ -29,7 +29,7 @@ ui/
   localization adapter
 ```
 
-The store never calls IPC and never contains geometry or conflict rules. Generic world-coordinate traversal belongs to the sibling `renderNodeSelection` feature; manual editing contributes only its author-capability predicate and target mapping. `SlidesView` is the app-level assembly point: it drains typed edit intents one at a time, supplies the current document snapshot to `submitManualEdit`, invokes `slidesApi`, and requests the committed revision. The next intent starts only after the prior committed revision is both the current build version and the installed RenderModel version. `SlideStage` records presentation only when `renderVisualResources` has atomically installed the target page frame. Active and queued previews are projected together, so the canvas does not jump back while compilation catches up. Adjacent queued edits of the same kind and author target are coalesced; for example, a font-size change followed quickly by a color change becomes one `set_text_style` compile.
+The store never calls IPC and never contains geometry or conflict rules. Generic world-coordinate traversal belongs to the sibling `renderNodeSelection` feature; manual editing contributes only its author-capability predicate and target mapping. `SlidesView` is the app-level assembly point: it drains typed edit intents one at a time, supplies the current document snapshot to `submitManualEdit`, invokes `slidesApi`, and requests the committed revision. The next intent starts only after the prior committed revision is both the current build version and the installed RenderModel version. `SlideStage` records presentation only when `renderVisualResources` has atomically installed the target page frame. Active and queued previews are projected into both painting and hit testing, so the canvas does not jump back and a moved or resized target remains selectable at its visible position while compilation catches up. Adjacent queued edits of the same kind and author target are coalesced; for example, a font-size change followed quickly by a color change becomes one `set_text_style` compile.
 
 ## Conflict and failure behavior
 
@@ -44,7 +44,7 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 
 ## Tests
 
-- `functions/manualEditableTargets.test.ts`: explicit author capabilities, topmost hit testing, parent-first Frame paths, source-span independence, flattened Frame translation scope, locked/rich/formula text boundaries.
+- `functions/manualEditableTargets.test.ts`: explicit author capabilities, topmost and projected-preview hit testing, parent-first Frame paths, source-span independence, flattened Frame translation scope, queued deletion exclusion, locked/rich/formula text boundaries.
 - `functions/manualEditingAvailability.test.ts`: generated/ready/exact-version gate.
 - `orchestration/submitManualEdit.test.ts`: exact command snapshot, refresh behavior and unavailable snapshots.
 - `functions/resolveManualClickSelection.test.ts`: parent-first descent, direct sibling switching, nested branch boundaries and unrelated paths.
