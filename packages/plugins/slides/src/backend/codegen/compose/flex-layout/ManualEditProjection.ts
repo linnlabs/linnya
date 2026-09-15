@@ -71,8 +71,11 @@ export function translateManualLayoutResult(
 ): LayoutResult {
   const editKey = readLayoutEditKey(result.node);
   const ownEdit = editKey ? editsByKey.get(editKey) : undefined;
-  const ownTranslation = ownEdit && 'translation' in ownEdit ? ownEdit.translation : undefined;
-  const ownVisualSize = ownEdit?.kind === 'shape' || ownEdit?.kind === 'image'
+  const ownTranslation = ownEdit?.deleted !== true && ownEdit && 'translation' in ownEdit
+    ? ownEdit.translation
+    : undefined;
+  const ownVisualSize = ownEdit?.deleted !== true
+    && (ownEdit?.kind === 'shape' || ownEdit?.kind === 'image')
     ? ownEdit.visualSize
     : undefined;
   const translation = {
@@ -97,10 +100,12 @@ function applyPreLayoutManualEdits(
   node: LayoutNode,
   editsByKey: ReadonlyMap<string, SlidesManualTargetEdit>,
 ): LayoutNode | null {
+  const editKey = readLayoutEditKey(node);
+  const edit = editKey ? editsByKey.get(editKey) : undefined;
+  if (edit?.deleted === true) return null;
+
   switch (node._type) {
     case 'View': {
-      const edit = node.editKey ? editsByKey.get(node.editKey) : undefined;
-      if (edit?.kind === 'frame' && edit.deleted === true) return null;
       return {
         ...node,
         ...(edit?.kind === 'frame' && edit.backgroundColor
@@ -110,7 +115,6 @@ function applyPreLayoutManualEdits(
       };
     }
     case 'Text': {
-      const edit = node.editKey ? editsByKey.get(node.editKey) : undefined;
       if (edit?.kind !== 'text') return node;
       if (edit.content !== undefined && typeof node.content !== 'string') {
         throw new FlexComposeContractError(
@@ -125,7 +129,6 @@ function applyPreLayoutManualEdits(
       };
     }
     case 'Shape': {
-      const edit = node.editKey ? editsByKey.get(node.editKey) : undefined;
       return edit?.kind === 'shape' && edit.fillColor
         ? { ...node, fill: edit.fillColor }
         : node;

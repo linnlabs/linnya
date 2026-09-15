@@ -31,7 +31,7 @@ describe('Slides manual edits codec', () => {
     });
   });
 
-  it('接纳 v2 文本样式、填充、视觉尺寸和 Frame 子树删除', () => {
+  it('接纳 v2 样式、尺寸、原子删除和 Frame 子树删除', () => {
     expect(parseSlidesManualEdits({
       version: 2,
       slides: [{
@@ -40,6 +40,8 @@ describe('Slides manual edits codec', () => {
           { kind: 'text', editKey: 'headline', fontSizePt: 28, color: '#123456' },
           { kind: 'shape', editKey: 'accent', fillColor: '#ABCDEF', visualSize: { width: 3, height: 1.5 } },
           { kind: 'image', editKey: 'hero', visualSize: { width: 4, height: 2 } },
+          { kind: 'text', editKey: 'footnote', deleted: true },
+          { kind: 'image', editKey: 'photo', deleted: true },
           { kind: 'frame', editKey: 'card', deleted: true },
         ],
       }],
@@ -61,6 +63,8 @@ describe('Slides manual edits codec', () => {
               kind: 'image', editKey: 'hero', visualSize: { width: 4, height: 2 },
               translation: undefined,
             },
+            { kind: 'text', editKey: 'footnote', deleted: true },
+            { kind: 'image', editKey: 'photo', deleted: true },
             { kind: 'frame', editKey: 'card', deleted: true },
           ],
         }],
@@ -68,7 +72,7 @@ describe('Slides manual edits codec', () => {
     });
   });
 
-  it('拒绝越界样式、非正尺寸和带残留值的 Frame 删除', () => {
+  it('拒绝越界样式、非正尺寸和带残留值的目标删除', () => {
     expect(parseSlidesManualEdits({
       version: 2,
       slides: [{ slideKey: 'overview', targets: [
@@ -86,9 +90,9 @@ describe('Slides manual edits codec', () => {
     expect(parseSlidesManualEdits({
       version: 2,
       slides: [{ slideKey: 'overview', targets: [
-        { kind: 'frame', editKey: 'card', deleted: true, translation: { dx: 1, dy: 0 } },
+        { kind: 'shape', editKey: 'card', deleted: true, translation: { dx: 1, dy: 0 } },
       ] }],
-    })).toEqual({ error: 'manualEdits.slides[0].targets[0] 删除 Frame 时不能同时保留其他人工值。' });
+    })).toEqual({ error: 'manualEdits.slides[0].targets[0] 删除目标时不能同时保留其他人工值。' });
   });
 
   it('拒绝重复目标、未知字段与空操作', () => {

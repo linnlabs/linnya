@@ -143,6 +143,15 @@ describe('slides backend IPC contracts', () => {
       },
     })).toMatchObject({ operation: { op: 'delete_target', targetKind: 'frame' } });
 
+    expect(parseSlidesManualEditPayload({
+      ...payload,
+      operation: {
+        op: 'delete_target',
+        target: payload.operation.target,
+        targetKind: 'image',
+      },
+    })).toMatchObject({ operation: { op: 'delete_target', targetKind: 'image' } });
+
     expect(() => parseSlidesManualEditPayload({
       ...payload,
       expectedBase: { ...payload.expectedBase, sourceHash: 'not-a-hash' },

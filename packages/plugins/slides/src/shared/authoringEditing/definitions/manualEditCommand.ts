@@ -50,7 +50,7 @@ export type SlidesManualEditOperation =
   | {
       readonly op: 'delete_target';
       readonly target: SlidesAuthoringEditRef;
-      readonly targetKind: 'frame';
+      readonly targetKind: SlidesManualTargetKind;
     };
 
 export interface SlidesManualEditCommand {

@@ -151,7 +151,7 @@ describe('writeManualEditsToDeckSource', () => {
     });
   });
 
-  it('删除 Frame 时清除该目标过去的样式和位移值', () => {
+  it('删除任意作者目标时清除过去人工值并保留目标类型', () => {
     const colored = writeManualEditsToDeckSource(BASE_SOURCE, {
       op: 'set_fill_color',
       target: { slideKey: 'overview', editKey: 'card' },
@@ -167,5 +167,24 @@ describe('writeManualEditsToDeckSource', () => {
     expect(removed.manualEdits.slides[0].targets[0]).toEqual({
       kind: 'frame', editKey: 'card', deleted: true,
     });
+
+    const text = writeManualEditsToDeckSource(BASE_SOURCE, {
+      op: 'set_text_content',
+      target: { slideKey: 'overview', editKey: 'headline' },
+      content: 'Temporary',
+    });
+    const removedText = writeManualEditsToDeckSource(text.source, {
+      op: 'delete_target',
+      target: { slideKey: 'overview', editKey: 'headline' },
+      targetKind: 'text',
+    });
+    expect(removedText.manualEdits.slides[0].targets[0]).toEqual({
+      kind: 'text', editKey: 'headline', deleted: true,
+    });
+    expect(() => writeManualEditsToDeckSource(removedText.source, {
+      op: 'set_text_style',
+      target: { slideKey: 'overview', editKey: 'headline' },
+      color: '#123456',
+    })).toThrow('已删除');
   });
 });

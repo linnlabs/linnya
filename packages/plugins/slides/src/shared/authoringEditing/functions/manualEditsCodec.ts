@@ -89,6 +89,14 @@ function parseTargetEdit(
 
   if (version === 1) return parseV1TargetEdit(value, kind, editKey, path);
 
+  if (value.deleted === true) {
+    if (!hasOnlyKeys(value, ['kind', 'editKey', 'deleted'])) {
+      return { error: `${path} 删除目标时不能同时保留其他人工值。` };
+    }
+    return { value: { kind, editKey, deleted: true } };
+  }
+  if (value.deleted !== undefined) return { error: `${path}.deleted 只能是 true。` };
+
   if (value.kind === 'text') {
     if (!hasOnlyKeys(value, ['kind', 'editKey', 'content', 'fontSizePt', 'color', 'translation'])) {
       return { error: `${path} 含有 text 人工编辑不支持的字段。` };
@@ -125,16 +133,9 @@ function parseTargetEdit(
   }
 
   if (value.kind === 'frame') {
-    if (!hasOnlyKeys(value, ['kind', 'editKey', 'translation', 'backgroundColor', 'deleted'])) {
+    if (!hasOnlyKeys(value, ['kind', 'editKey', 'translation', 'backgroundColor'])) {
       return { error: `${path} 含有 frame 人工编辑不支持的字段。` };
     }
-    if (value.deleted === true) {
-      if (!hasOnlyKeys(value, ['kind', 'editKey', 'deleted'])) {
-        return { error: `${path} 删除 Frame 时不能同时保留其他人工值。` };
-      }
-      return { value: { kind: 'frame', editKey: value.editKey, deleted: true } };
-    }
-    if (value.deleted !== undefined) return { error: `${path}.deleted 只能是 true。` };
     const translation = parseOptionalTranslation(value.translation, `${path}.translation`);
     if ('error' in translation) return translation;
     if (value.backgroundColor !== undefined && !isHexColor(value.backgroundColor)) {

@@ -322,7 +322,6 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
   if (payload.operation.op === 'delete_target') {
     assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind'], 'operation');
     const targetKind = readManualTargetKind(payload.operation.targetKind);
-    if (targetKind !== 'frame') throw new Error('operation.targetKind must be frame.');
     return { ...base, operation: { op: 'delete_target', target, targetKind } };
   }
   throw new Error('operation.op is invalid.');

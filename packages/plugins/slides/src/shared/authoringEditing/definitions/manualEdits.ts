@@ -10,9 +10,20 @@ export interface SlidesManualVisualSize {
   readonly height: number;
 }
 
+export type SlidesManualTargetKind =
+  | 'text'
+  | 'frame'
+  | 'shape'
+  | 'image'
+  | 'table'
+  | 'chart'
+  | 'svgGraphic'
+  | 'formula';
+
 export interface SlidesManualEditBase {
   readonly editKey: string;
   readonly translation?: SlidesManualTranslation;
+  readonly deleted?: never;
 }
 
 export interface SlidesManualTextEdit extends SlidesManualEditBase {
@@ -23,18 +34,10 @@ export interface SlidesManualTextEdit extends SlidesManualEditBase {
   readonly color?: string;
 }
 
-export type SlidesManualFrameEdit =
-  | (SlidesManualEditBase & {
-      readonly kind: 'frame';
-      readonly backgroundColor?: string;
-      readonly deleted?: never;
-    })
-  | {
-      readonly kind: 'frame';
-      readonly editKey: string;
-      /** 删除 Frame 同时删除作者树中的完整子树。 */
-      readonly deleted: true;
-    };
+export interface SlidesManualFrameEdit extends SlidesManualEditBase {
+  readonly kind: 'frame';
+  readonly backgroundColor?: string;
+}
 
 export interface SlidesManualShapeEdit extends SlidesManualEditBase {
   readonly kind: 'shape';
@@ -68,10 +71,20 @@ export type SlidesManualAtomicEdit =
   | SlidesManualImageEdit
   | SlidesManualTranslationOnlyEdit;
 
+/** 删除值与其他人工值互斥；Frame 的删除自然覆盖完整作者子树。 */
+export type SlidesManualDeletedTargetEdit = {
+  readonly [Kind in SlidesManualTargetKind]: {
+    readonly kind: Kind;
+    readonly editKey: string;
+    readonly deleted: true;
+  };
+}[SlidesManualTargetKind];
+
 export type SlidesManualTargetEdit =
   | SlidesManualTextEdit
   | SlidesManualFrameEdit
-  | SlidesManualAtomicEdit;
+  | SlidesManualAtomicEdit
+  | SlidesManualDeletedTargetEdit;
 
 export interface SlidesManualSlideEdits {
   readonly slideKey: string;
@@ -107,5 +120,3 @@ export type SlidesManualEditsInput = SlidesManualEdits | {
   readonly version: 1;
   readonly slides: readonly SlidesManualV1SlideEdits[];
 };
-
-export type SlidesManualTargetKind = SlidesManualTargetEdit['kind'];

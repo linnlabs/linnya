@@ -351,10 +351,10 @@ function buildAuthoringEditProjection(
 ): SlidesAuthoringEditProjection | undefined {
   const authoringRef = element._authoringRef;
   if (!authoringRef) return undefined;
-  const capabilities: SlidesAuthoringEditCapability[] = ['translate'];
+  const capabilities: SlidesAuthoringEditCapability[] = ['translate', 'delete'];
   switch (authoringRef.targetKind) {
     case 'frame':
-      capabilities.push('set_fill_color', 'delete');
+      capabilities.push('set_fill_color');
       return { capabilities, fill: projectAuthoringFill(element) };
     case 'shape':
       capabilities.push('set_fill_color', 'set_visual_size');

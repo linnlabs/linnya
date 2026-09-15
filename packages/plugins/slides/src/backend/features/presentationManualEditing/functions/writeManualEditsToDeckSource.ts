@@ -144,8 +144,16 @@ function applyTargetOperation(
   existing: SlidesManualTargetEdit | undefined,
   operation: SlidesManualEditOperation,
 ): SlidesManualTargetEdit {
+  const targetKind = operation.op === 'set_text_content' || operation.op === 'set_text_style'
+    ? 'text'
+    : operation.targetKind;
+  assertExistingKind(existing, targetKind, operation);
+  if (operation.op === 'delete_target') {
+    return { kind: targetKind, editKey: operation.target.editKey, deleted: true };
+  }
+  if (existing?.deleted === true) throw deletedTargetError(operation);
+
   if (operation.op === 'set_text_content' || operation.op === 'set_text_style') {
-    assertExistingKind(existing, 'text', operation);
     const text = existing?.kind === 'text' ? existing : undefined;
     return operation.op === 'set_text_content'
       ? {
@@ -164,10 +172,6 @@ function applyTargetOperation(
   }
 
   if (operation.op === 'set_fill_color') {
-    assertExistingKind(existing, operation.targetKind, operation);
-    if (existing?.kind === 'frame' && existing.deleted === true) {
-      throw deletedTargetError(operation);
-    }
     if (operation.targetKind === 'frame') {
       const frame = existing?.kind === 'frame' ? existing : undefined;
       return {
@@ -187,7 +191,6 @@ function applyTargetOperation(
   }
 
   if (operation.op === 'set_visual_size') {
-    assertExistingKind(existing, operation.targetKind, operation);
     if (operation.targetKind === 'shape') {
       const shape = existing?.kind === 'shape' ? existing : undefined;
       return {
@@ -206,13 +209,6 @@ function applyTargetOperation(
     };
   }
 
-  if (operation.op === 'delete_target') {
-    assertExistingKind(existing, 'frame', operation);
-    return { kind: 'frame', editKey: operation.target.editKey, deleted: true };
-  }
-
-  assertExistingKind(existing, operation.targetKind, operation);
-  if (existing?.kind === 'frame' && existing.deleted === true) throw deletedTargetError(operation);
   const previousTranslation = existing && 'translation' in existing
     ? existing.translation
     : undefined;

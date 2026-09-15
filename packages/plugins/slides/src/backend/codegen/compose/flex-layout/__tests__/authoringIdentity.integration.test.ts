@@ -85,7 +85,7 @@ describe('authoring identity projection', () => {
       id: 'authoring-overview-hero_art',
       authoringRef: { slideKey: 'overview', editKey: 'hero_art', targetKind: 'shape' },
       authoringEdit: {
-        capabilities: ['translate', 'set_fill_color', 'set_visual_size'],
+        capabilities: ['translate', 'delete', 'set_fill_color', 'set_visual_size'],
         fill: { kind: 'solid', color: '#224466' },
       },
     });
@@ -120,14 +120,14 @@ describe('authoring identity projection', () => {
       expect.objectContaining({
         authoringRef: expect.objectContaining({ editKey: 'headline' }),
         authoringEdit: {
-          capabilities: ['translate', 'set_text_content', 'set_text_style'],
+          capabilities: ['translate', 'delete', 'set_text_content', 'set_text_style'],
           text: { kind: 'plain_text', content: '增长 2026\n下一行' },
         },
       }),
       expect.objectContaining({
         authoringRef: expect.objectContaining({ editKey: 'rich_copy' }),
         authoringEdit: {
-          capabilities: ['translate'],
+          capabilities: ['translate', 'delete'],
           text: { kind: 'rich_text' },
         },
       }),
@@ -200,7 +200,7 @@ describe('authoring identity projection', () => {
       expect.objectContaining({
         id: 'authoring-overview-hero_group',
         authoringEdit: {
-          capabilities: ['translate', 'set_fill_color', 'delete'],
+          capabilities: ['translate', 'delete', 'set_fill_color'],
           fill: { kind: 'solid', color: '#EEEEEE' },
         },
       }),
@@ -279,6 +279,30 @@ describe('authoring identity projection', () => {
     if (!compiled.input) throw new Error(compiled.error ?? 'Expected Frame deletion.');
     expect(compiled.input.slides[0].elements.map(element => element._authoringRef?.editKey))
       .toEqual(['headline']);
+  });
+
+  it('删除原子作者元素时只剪除该元素', () => {
+    const input = deck([
+      slide('overview', [
+        frame('hero_group', [shape('hero_art'), text('hero_copy', 'Keep child')]),
+        text('headline', 'Remove me'),
+      ]),
+    ]);
+    input.manualEdits = {
+      version: 2,
+      slides: [{
+        slideKey: 'overview',
+        targets: [
+          { kind: 'shape', editKey: 'hero_art', deleted: true },
+          { kind: 'text', editKey: 'headline', deleted: true },
+        ],
+      }],
+    };
+
+    const compiled = compileFlexInput(input);
+    if (!compiled.input) throw new Error(compiled.error ?? 'Expected atomic deletion.');
+    expect(compiled.input.slides[0].elements.map(element => element._authoringRef?.editKey))
+      .toEqual(['hero_group', 'hero_copy']);
   });
 
   it('把 v2 样式、视觉尺寸与 Frame 删除带入正式 PPTX', async () => {
