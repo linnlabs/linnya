@@ -4,7 +4,11 @@ import type {
   ManualEditingVisualOperation,
   ManualEditingVisualPreview,
 } from '../definitions/manualEditingTypes';
-import type { RenderNodeSelectionPoint } from '../../renderNodeSelection';
+import {
+  polygonBounds,
+  rectToPolygon,
+  type RenderNodeSelectionPoint,
+} from '../../renderNodeSelection';
 
 export function createManualVisualPreview(
   target: ManualEditableTarget,
@@ -91,21 +95,63 @@ export function projectManualVisualPreviewsToSelectionPolygon(
   target: ManualEditableTarget,
   previews: readonly ManualEditingVisualPreview[],
 ): readonly RenderNodeSelectionPoint[] {
-  const preview = findLastVisualSizePreview(target, previews);
+  return projectManualEditableTargetSelection(target, new Map(), previews).polygon;
+}
+
+/** 选框与内容绘制消费同一批位移／属性预览；Frame 取全部可见成员的当前几何并集。 */
+export function projectManualEditableTargetSelection(
+  target: ManualEditableTarget,
+  translations: ReadonlyMap<string, { readonly dx: number; readonly dy: number }>,
+  previews: readonly ManualEditingVisualPreview[],
+): ManualEditableTarget {
+  const fragments = target.frameSelectionFragments ?? [{
+    elementId: target.elementId,
+    polygon: target.polygon,
+  }];
+  const projectedFragments = fragments.flatMap((fragment) => {
+    if (isElementHiddenByPreview(fragment.elementId, previews)) return [];
+    const resized = projectVisualSizeToPolygon(fragment.elementId, fragment.polygon, previews);
+    const translation = translations.get(fragment.elementId);
+    return [{
+      elementId: fragment.elementId,
+      polygon: translation
+        ? resized.map(point => ({
+            x: point.x + translation.dx,
+            y: point.y + translation.dy,
+          }))
+        : resized,
+    }];
+  });
+  if (projectedFragments.length === 0) return target;
+  const polygon = target.frameSelectionFragments
+    ? rectToPolygon(polygonBounds(projectedFragments.flatMap(fragment => fragment.polygon)))
+    : projectedFragments[0]?.polygon ?? target.polygon;
+  return {
+    ...target,
+    bounds: polygonBounds(polygon),
+    polygon,
+  };
+}
+
+function projectVisualSizeToPolygon(
+  elementId: string,
+  polygon: readonly RenderNodeSelectionPoint[],
+  previews: readonly ManualEditingVisualPreview[],
+): readonly RenderNodeSelectionPoint[] {
+  const preview = findLastVisualSizePreview(elementId, previews);
   if (
     !preview
-    || preview.elementId !== target.elementId
     || preview.operation.op !== 'set_visual_size'
   ) {
-    return target.polygon;
+    return polygon;
   }
-  const origin = target.polygon[0];
-  const horizontalEnd = target.polygon[1];
-  const verticalEnd = target.polygon[3];
-  if (!origin || !horizontalEnd || !verticalEnd) return target.polygon;
+  const origin = polygon[0];
+  const horizontalEnd = polygon[1];
+  const verticalEnd = polygon[3];
+  if (!origin || !horizontalEnd || !verticalEnd) return polygon;
   const horizontalLength = Math.hypot(horizontalEnd.x - origin.x, horizontalEnd.y - origin.y);
   const verticalLength = Math.hypot(verticalEnd.x - origin.x, verticalEnd.y - origin.y);
-  if (horizontalLength === 0 || verticalLength === 0) return target.polygon;
+  if (horizontalLength === 0 || verticalLength === 0) return polygon;
   const horizontal = {
     x: (horizontalEnd.x - origin.x) / horizontalLength * preview.operation.visualSize.width,
     y: (horizontalEnd.y - origin.y) / horizontalLength * preview.operation.visualSize.width,
@@ -123,15 +169,25 @@ export function projectManualVisualPreviewsToSelectionPolygon(
 }
 
 function findLastVisualSizePreview(
-  target: ManualEditableTarget,
+  elementId: string,
   previews: readonly ManualEditingVisualPreview[],
 ): ManualEditingVisualPreview | undefined {
   for (let index = previews.length - 1; index >= 0; index -= 1) {
     const preview = previews[index];
     if (
-      preview?.elementId === target.elementId
+      preview?.elementId === elementId
       && preview.operation.op === 'set_visual_size'
     ) return preview;
   }
   return undefined;
+}
+
+function isElementHiddenByPreview(
+  elementId: string,
+  previews: readonly ManualEditingVisualPreview[],
+): boolean {
+  return previews.some(preview => (
+    preview.operation.op === 'delete_target'
+    && preview.affectedElementIds.includes(elementId)
+  ));
 }

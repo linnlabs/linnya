@@ -126,7 +126,7 @@ SlideStage authoring-capability target click / drag / text double-click
   -> matching RenderModel + 当前页完整视觉资源原子呈现后撤下 pending visual
 ```
 
-当前直接开放作者对象移动，以及作者值仍为字符串的文本完整替换。是否可改字由 backend 投影的 `authoringEdit` 决定，不能从 RenderModel 的段落或字体 run 数量反推；所以多行字符串和因字体解析拆分的中英混排仍可编辑，富文本与内联公式 run 保持文本只读。图片源、表格内容和图表数据需要各自的完整值编辑器后再开放。Flex Frame 因 RenderModel 仍扁平化其装饰和后代，暂不在前端显示为可拖动目标，避免拖动预览与最终提交不一致。详细边界见 [`../features/manualEditing/README.md`](../features/manualEditing/README.md)。
+当前开放作者对象移动与删除、作者字符串文本完整替换及字号／颜色、Frame／Shape 纯色和 Shape／Image 有限视觉尺寸。是否可改字由 backend 投影的 `authoringEdit` 决定，不能从 RenderModel 的段落或字体 run 数量反推；所以多行字符串和因字体解析拆分的中英混排仍可编辑，富文本与内联公式 run 保持文本只读。图片源、表格内容和图表数据需要各自的完整值编辑器后再开放。Flex Frame 虽在 RenderModel 中摊平，Renderer 只消费 compiler 投影的正式作者祖先：父级选择、移动、删除和选框都使用同一成员关系；父选框包含移出背景范围的可见后代，但实际命中仍只认对象几何，不把成员之间的空白变成热区。详细边界见 [`../features/manualEditing/README.md`](../features/manualEditing/README.md)。
 
 导出链路只有 Host 文档“更多”菜单一个真实入口，当前开放两个选项并分别打开独立弹窗：
 

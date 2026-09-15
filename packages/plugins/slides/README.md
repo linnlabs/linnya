@@ -270,4 +270,4 @@ host 不复制 presentation 字段。
 - **图表无法跨渲染器完全保真。** Linnya 前端使用 ECharts，PowerPoint 使用自己的图表渲染器，两者的字体、间距和标签布局无法保证完全一致。因此，[Slides 导出 UI 合同](./src/renderer/features/presentationExport/README.md)提供“将图表转换为图片”设置。该设置默认关闭：需要视觉一致时主动开启，需要继续编辑图表时保留默认的 PowerPoint 原生图表。
 - **Brush 视觉资产暂不支持透明底。** 当前 pinned p5.brush standalone 合成器会把最终画布写成不透明。首版只支持显式纯色背景的整区资产；需要透出下层内容时改用 Shape 或受控 SVG。后续若上游提供稳定 alpha 合同，可在不改写现有不透明 intent 的前提下扩展。
 - **PDF 导出暂不开放。** 已实现的栅格 PDF 不含可选择、搜索和复制的文字对象，因此不再挂载产品入口。真正的语义/矢量 PDF 仍需完成独立的可行性与 ROI 验证。
-- **前端人工编辑是有限能力。** 带稳定作者身份的新 generated deck 可在预览画布移动文本、图片、表格、图表、形状、SVG Graphic 和公式，并可双击修改单段单 run 的纯文本。富文本、内联公式文本、多段文本、Frame 整体拖动，以及图片源、表格内容和图表数据仍保持只读；旧文稿需先由 Agent 补齐 `slideKey/editKey` 才能出现编辑入口。
+- **前端人工编辑是有限能力。** 带稳定作者身份的新 generated deck 可移动或删除已有作者对象；Flex Frame 可按正式作者层级整体选择、移动和删除。作者值仍为字符串的文本支持原位完整替换、字号和颜色，多行及字体拆分的多个渲染 run 不改变这一能力；Frame／Shape 支持纯色，Shape／Image 支持有限视觉尺寸。富文本、内联公式文本、图片源、表格内容、图表数据、新建、复制、编组和 reparent 仍保持只读；旧文稿需先由 Agent 补齐 `slideKey/editKey` 才能出现编辑入口。

@@ -11,7 +11,7 @@
 - Selecting an object exposes the sibling [`elementProperties`](../elementProperties/README.md) feature only when the compiler projects at least one visible property action: plain-text font size/color, Frame/Shape solid color, Shape/Image visual width/height, or the explicit Frame subtree deletion control. Keyboard-only deletion does not create a panel for an otherwise move-only object, and the panel does not repeat an author key as a floating title.
 - Rich author runs and inline formula runs remain text-read-only because replacing them with one string would destroy run semantics. They may still move.
 - Image and Shape author objects may resize when projected as safe; Table, Chart, SVG Graphic and formula author objects currently only move. Their content/data/source editors remain later independent feature slices.
-- A decorated Flex Frame is selected through its background and moves as one author object. The compiler projects every flattened descendant's `authoringAncestorRefs`; the target mapper turns that relation into the exact RenderNode roots that share one optimistic translation. Child text and visual objects keep their own author identity, so clicking them can still select and edit the child independently. Nested rendered Groups contribute only their outer affected root, avoiding a double transform.
+- A decorated Flex Frame is selected through its background and moves as one author object. The compiler projects every flattened descendant's `authoringAncestorRefs`; the target mapper turns that relation into the exact RenderNode roots shared by optimistic translation, deletion and parent selection geometry. The parent outline is the world-coordinate union of the visible roots, so a child moved beyond the Frame background remains inside the parent selection. Hit testing still uses each real object polygon rather than the union rectangle, so empty space between members does not become clickable. Active and queued child previews feed the same union before compilation finishes. Child text and visual objects keep their own author identity, so clicking them can still select and edit the child independently. Nested rendered Groups contribute only their outer affected root, avoiding a double transform.
 
 The existing source-selection/AI-edit mode and manual-edit mode are mutually exclusive. Both consume compiler facts from the same RenderModel and share the same pointer-to-slide coordinate function. Source selection may admit any node with source ownership, while manual editing additionally requires an explicit author identity and capability; their transient selections and write workflows remain in separate feature stores.
 
@@ -45,7 +45,7 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 
 ## Tests
 
-- `functions/manualEditableTargets.test.ts`: explicit author capabilities, topmost and projected-preview hit testing, parent-first Frame paths, source-span independence, flattened Frame translation scope, queued deletion exclusion, locked/rich/formula text boundaries.
+- `functions/manualEditableTargets.test.ts`: explicit author capabilities, topmost and projected-preview hit testing, parent-first Frame paths, source-span independence, flattened Frame translation scope, outlying-child selection union without empty-gap hit expansion, queued deletion exclusion, locked/rich/formula text boundaries.
 - `functions/manualEditingAvailability.test.ts`: generated/ready/exact-version gate.
 - `orchestration/submitManualEdit.test.ts`: exact command snapshot, refresh behavior and unavailable snapshots.
 - `functions/resolveManualClickSelection.test.ts`: parent-first descent, direct sibling switching, nested branch boundaries and unrelated paths.
@@ -53,7 +53,7 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 - `orchestration/useSlideManualEditingInteraction.test.ts`: drag-to-pending promotion, parent-first repeated-click descent, sibling switching during a style revision, stable Frame drag ownership, queued interaction during compilation, atomic deletion and deferred selection after text presentation.
 - `functions/createManualDeleteOperation.test.ts` and `functions/manualDeleteShortcut.test.ts`: capability-bound target-kind preservation and native editing-control keyboard ownership.
 - `functions/resolveManualSelectionBreadcrumbStyle.test.ts`: selected-bounds top-edge-center placement.
-- `functions/manualVisualPreview.test.ts`: immediate text/fill/size/deletion projection and size-selection geometry.
+- `functions/manualVisualPreview.test.ts`: immediate text/fill/size/deletion projection, size-selection geometry and parent outline expansion around an optimistically moved child.
 - `store/slidesManualEditingStore.test.ts`: serialized intent state, optimistic translation/property visuals, whole-queue failure rollback and committed revision presentation settlement.
 - `features/elementProperties`: capability-bound command construction, move-only panel suppression and property-panel assembly.
 - `features/textEditing`: committed text projection, zoomed DOM geometry, IME-safe submission, unchanged-draft close and failed-save draft ownership.

@@ -42,12 +42,7 @@ import type {
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../../shared/constants';
 import type {
   ManualEditableTarget,
-  ManualEditingTranslationPreview,
 } from '../../../../features/manualEditing';
-import {
-  projectManualVisualPreviewsToSelectionPolygon,
-  type ManualEditingVisualPreview,
-} from '../../../../features/manualEditing/manualVisualProjection';
 
 interface OverlayLineEntry {
   key: string;
@@ -68,8 +63,6 @@ const props = defineProps<{
   hoveredTarget: SourceSelectableElement | null;
   marqueeRect: SourceSelectionRect | null;
   manualSelectedTarget?: ManualEditableTarget | null;
-  manualTranslationPreview?: ManualEditingTranslationPreview | null;
-  manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();
 
 /** overlay 层默认不监听事件，按需在子组件内开启 */
@@ -127,18 +120,8 @@ const marqueeLineConfig = computed(() => {
 const manualSelectionLineConfig = computed(() => {
   const target = props.manualSelectedTarget;
   if (!target) return null;
-  const preview = props.manualTranslationPreview?.elementId === target.elementId
-    ? props.manualTranslationPreview
-    : null;
-  const polygon = projectManualVisualPreviewsToSelectionPolygon(
-    target,
-    props.manualVisualPreviews ?? [],
-  );
   return {
-    points: toPxPoints(polygon.map(point => ({
-      x: point.x + (preview?.dx ?? 0),
-      y: point.y + (preview?.dy ?? 0),
-    }))),
+    points: toPxPoints(target.polygon),
     closed: true,
     stroke: SLIDES_RENDER_COLORS.manualEditingStroke,
     strokeWidth: strokeWidth.value,

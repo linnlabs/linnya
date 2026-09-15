@@ -1,6 +1,7 @@
 export type {
   ManualEditableTarget,
   ManualEditableTargetPath,
+  ManualEditingSelectionFragment,
   ManualEditIntent,
   ManualEditingTranslationPreview,
   ManualEditingVisualOperation,
@@ -16,6 +17,7 @@ export { resolveManualClickSelection } from './functions/resolveManualClickSelec
 export { appendManualEditIntent } from './functions/appendManualEditIntent';
 export {
   createManualVisualPreview,
+  projectManualEditableTargetSelection,
   projectManualVisualPreviewsToRenderNode,
   projectManualVisualPreviewsToSelectionPolygon,
 } from './functions/manualVisualPreview';

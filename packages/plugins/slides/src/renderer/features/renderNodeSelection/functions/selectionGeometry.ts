@@ -87,6 +87,18 @@ export function rectFromPoints(
   });
 }
 
+export function rectToPolygon(
+  rect: RenderNodeSelectionRect,
+): readonly RenderNodeSelectionPoint[] {
+  const normalized = normalizeRect(rect);
+  return [
+    { x: normalized.x, y: normalized.y },
+    { x: normalized.x + normalized.w, y: normalized.y },
+    { x: normalized.x + normalized.w, y: normalized.y + normalized.h },
+    { x: normalized.x, y: normalized.y + normalized.h },
+  ];
+}
+
 export function polygonBounds(points: readonly RenderNodeSelectionPoint[]): RenderNodeSelectionRect {
   const first = points[0];
   if (!first) return { x: 0, y: 0, w: 0, h: 0 };

@@ -57,8 +57,7 @@
               :hovered-target="hoveredSourceTarget"
               :marquee-rect="sourceMarqueeRect"
               :preview-translations="manualPreviewTranslations"
-              :manual-selected-target="manualSelectedTarget"
-              :manual-translation-preview="manualSelectedTranslation"
+              :manual-selected-target="manualPresentedSelectedTarget"
               :manual-visual-previews="manualVisualPreviews"
               :hidden-text-element-id="textEditorTarget?.elementId"
             />
@@ -90,7 +89,7 @@
         />
         <ManualSelectionBreadcrumb
           v-if="manualSelectionPath.length > 1 && manualSelectedTarget && !textEditorTarget"
-          :path="manualSelectionPath"
+          :path="manualPresentedSelectionPath"
           :selected-element-id="manualSelectedTarget.elementId"
           :slide-left="currentLayout.slideLeft"
           :slide-top="currentLayout.slideTop"
@@ -159,7 +158,7 @@ import {
   collectManualTranslationPreviews,
   collectManualVisualPreviews,
   mergeManualTranslationPreviews,
-  resolveManualTargetTranslation,
+  projectManualEditableTargetSelection,
   manualEditPresentationTrace,
   ManualSelectionBreadcrumb,
   shouldHandleManualDeleteShortcut,
@@ -449,14 +448,25 @@ const manualTranslationPreviews = computed(() => collectManualTranslationPreview
 const manualPreviewTranslations = computed(() => {
   return mergeManualTranslationPreviews(manualTranslationPreviews.value);
 });
-const manualSelectedTranslation = computed(() => resolveManualTargetTranslation(
-  manualSelectedTarget.value?.elementId,
-  manualTranslationPreviews.value,
-));
 const manualVisualPreviews = computed(() => collectManualVisualPreviews(
   manualPendingVisual.value,
   manualQueuedIntents.value,
 ));
+const manualPresentedSelectedTarget = computed(() => {
+  const target = manualSelectedTarget.value;
+  return target
+    ? projectManualEditableTargetSelection(
+        target,
+        manualPreviewTranslations.value,
+        manualVisualPreviews.value,
+      )
+    : null;
+});
+const manualPresentedSelectionPath = computed(() => manualSelectionPath.value.map(target => (
+  target.elementId === manualPresentedSelectedTarget.value?.elementId
+    ? manualPresentedSelectedTarget.value
+    : target
+)));
 const showElementPropertyControls = computed(() => (
   manualSelectedTarget.value
     ? hasElementPropertyControls(manualSelectedTarget.value)

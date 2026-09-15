@@ -17,6 +17,7 @@ export {
   pointInRect,
   polygonBounds,
   rectFromPoints,
+  rectToPolygon,
   rectsIntersect,
   rotateMatrix,
   translateMatrix,

@@ -90,7 +90,7 @@ describe('manual editable targets', () => {
       .toMatchObject({ elementId: shape.id, targetKind: 'shape' });
   });
 
-  it('projects a flattened Frame as one translation scope', () => {
+  it('projects one Frame scope whose selection bounds include an outlying child', () => {
     const frameRef = { slideKey: 'overview', editKey: 'card1', targetKind: 'frame' } as const;
     const nodes: RenderNode[] = [
       {
@@ -116,7 +116,7 @@ describe('manual editable targets', () => {
       {
         id: 'authoring-overview-card1Badge',
         kind: 'shape',
-        box: { x: 4, y: 1.3, w: 0.5, h: 0.5, unit: 'in' },
+        box: { x: 6.25, y: 1.3, w: 0.5, h: 0.5, unit: 'in' },
         zIndex: 3,
         geometry: { type: 'preset', name: 'ellipse' },
         authoringRef: {
@@ -131,10 +131,22 @@ describe('manual editable targets', () => {
       .find(target => target.elementId === 'authoring-overview-card1');
     expect(frame).toMatchObject({
       targetKind: 'frame',
+      bounds: { x: 1, y: 1, w: 5.75, h: 2 },
+      polygon: [
+        { x: 1, y: 1 },
+        { x: 6.75, y: 1 },
+        { x: 6.75, y: 3 },
+        { x: 1, y: 3 },
+      ],
       translationElementIds: [
         'authoring-overview-card1',
         'authoring-overview-card1Label',
         'authoring-overview-card1Badge',
+      ],
+      frameSelectionFragments: [
+        expect.objectContaining({ elementId: 'authoring-overview-card1' }),
+        expect.objectContaining({ elementId: 'authoring-overview-card1Label' }),
+        expect.objectContaining({ elementId: 'authoring-overview-card1Badge' }),
       ],
     });
   });
@@ -165,6 +177,40 @@ describe('manual editable targets', () => {
     ]);
     expect(findManualEditableTargetPathAtPoint([frame, child], { x: 3.8, y: 2.5 })
       .map(target => target.elementId)).toEqual(['authoring-overview-card1']);
+  });
+
+  it('does not turn the empty gap inside expanded Frame bounds into a hit area', () => {
+    const frameRef = { slideKey: 'overview', editKey: 'card1', targetKind: 'frame' } as const;
+    const frame: RenderNode = {
+      id: 'authoring-overview-card1',
+      kind: 'shape',
+      box: { x: 1, y: 1, w: 2, h: 2, unit: 'in' },
+      zIndex: 1,
+      geometry: { type: 'preset', name: 'roundRect' },
+      authoringRef: frameRef,
+      authoringEdit: { capabilities: ['translate'] },
+    };
+    const child = textNode({
+      id: 'authoring-overview-card1Label',
+      box: { x: 5, y: 1.4, w: 1, h: 0.5, unit: 'in' },
+      zIndex: 2,
+      authoringRef: { slideKey: 'overview', editKey: 'card1Label', targetKind: 'text' },
+      authoringAncestorRefs: [frameRef],
+    });
+    const projection = {
+      transientTranslation: null,
+      pendingTranslation: null,
+      pendingVisual: null,
+      queuedIntents: [],
+    };
+
+    expect(findManualEditableTargetPathAtPoint([frame, child], { x: 4, y: 1.5 }, projection))
+      .toEqual([]);
+    expect(findManualEditableTargetPathAtPoint([frame, child], { x: 5.5, y: 1.5 }, projection)
+      .map(target => target.elementId)).toEqual([
+      'authoring-overview-card1',
+      'authoring-overview-card1Label',
+    ]);
   });
 
   it('hit-tests the topmost editable authoring polygon', () => {

@@ -23,6 +23,8 @@ export interface ManualEditableTarget {
   readonly authoringAncestorRefs: readonly SlidesAuthoringObjectRef[];
   readonly bounds: RenderNodeSelectionRect;
   readonly polygon: readonly RenderNodeSelectionPoint[];
+  /** Frame 摊平后的可见渲染根；父级选框以这些正式成员的几何并集为准。 */
+  readonly frameSelectionFragments?: readonly ManualEditingSelectionFragment[];
   /** 乐观预览必须共同平移的 RenderNode 根节点。 */
   readonly translationElementIds: readonly string[];
   readonly textEditing?: TextEditingTarget;
@@ -31,6 +33,11 @@ export interface ManualEditableTarget {
     readonly width: number;
     readonly height: number;
   };
+}
+
+export interface ManualEditingSelectionFragment {
+  readonly elementId: string;
+  readonly polygon: readonly RenderNodeSelectionPoint[];
 }
 
 export type ManualEditableTargetPath = readonly ManualEditableTarget[];

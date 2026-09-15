@@ -2,6 +2,8 @@ import type { RenderNode } from '../../../types/render';
 import {
   collectRenderNodeSelectionGeometries,
   findRenderNodeSelectionGeometryAtPoint,
+  polygonBounds,
+  rectToPolygon,
   type RenderNodeSelectionGeometry,
   type RenderNodeSelectionPoint,
 } from '../../renderNodeSelection';
@@ -9,6 +11,7 @@ import { createTextEditingTarget } from '../../textEditing';
 import type {
   ManualEditIntent,
   ManualEditableTarget,
+  ManualEditingSelectionFragment,
   ManualEditingTranslationPreview,
   ManualEditingVisualPreview,
 } from '../definitions/manualEditingTypes';
@@ -17,7 +20,7 @@ import {
   collectManualVisualPreviews,
   mergeManualTranslationPreviews,
 } from './manualIntentPreviews';
-import { projectManualVisualPreviewsToSelectionPolygon } from './manualVisualPreview';
+import { projectManualEditableTargetSelection } from './manualVisualPreview';
 
 export interface ManualEditingHitProjection {
   readonly transientTranslation: ManualEditingTranslationPreview | null;
@@ -72,14 +75,31 @@ function findProjectedTargetPathAtPoint(
   for (let index = targets.length - 1; index >= 0; index -= 1) {
     const target = targets[index];
     if (!target || isHiddenByPreview(target, visuals)) continue;
-    const resized = projectManualVisualPreviewsToSelectionPolygon(target, visuals);
-    const translation = translations.get(target.elementId);
-    const polygon = translation
-      ? resized.map(vertex => ({ x: vertex.x + translation.dx, y: vertex.y + translation.dy }))
-      : resized;
-    if (isPointInsideConvexPolygon(point, polygon)) return buildTargetPath(targets, target);
+    const hitPolygon = projectManualTargetHitPolygon(target, translations, visuals);
+    if (isPointInsideConvexPolygon(point, hitPolygon)) {
+      return buildTargetPath(targets, target);
+    }
   }
   return [];
+}
+
+/** Frame 的展示框可以包住越界后代，但命中仍只认其真实背景，不能吞掉成员间空白。 */
+function projectManualTargetHitPolygon(
+  target: ManualEditableTarget,
+  translations: ReadonlyMap<string, ManualEditingTranslationPreview>,
+  visuals: readonly ManualEditingVisualPreview[],
+): readonly RenderNodeSelectionPoint[] {
+  const ownFragment = target.frameSelectionFragments
+    ?.find(fragment => fragment.elementId === target.elementId);
+  if (!ownFragment) {
+    return projectManualEditableTargetSelection(target, translations, visuals).polygon;
+  }
+  return projectManualEditableTargetSelection({
+    ...target,
+    bounds: polygonBounds(ownFragment.polygon),
+    polygon: ownFragment.polygon,
+    frameSelectionFragments: undefined,
+  }, translations, visuals).polygon;
 }
 
 function isHiddenByPreview(
@@ -130,6 +150,15 @@ function buildManualEditableTarget(
 ): ManualEditableTarget {
   const { node } = geometry;
   const textEditing = createTextEditingTarget(geometry);
+  const translationElementIds = node.authoringRef.targetKind === 'frame'
+    ? collectFrameTranslationRoots(nodes, node.authoringRef)
+    : [geometry.elementId];
+  const frameSelectionFragments = node.authoringRef.targetKind === 'frame'
+    ? collectFrameSelectionFragments(nodes, translationElementIds)
+    : undefined;
+  const selectionPolygon = frameSelectionFragments
+    ? rectToPolygon(polygonBounds(frameSelectionFragments.flatMap(fragment => fragment.polygon)))
+    : geometry.polygon;
   return {
     elementId: geometry.elementId,
     nodeKind: geometry.nodeKind,
@@ -140,17 +169,29 @@ function buildManualEditableTarget(
       editKey: node.authoringRef.editKey,
     },
     authoringAncestorRefs: node.authoringAncestorRefs ?? [],
-    bounds: geometry.bounds,
-    polygon: geometry.polygon,
-    translationElementIds: node.authoringRef.targetKind === 'frame'
-      ? collectFrameTranslationRoots(nodes, node.authoringRef)
-      : [geometry.elementId],
+    bounds: polygonBounds(selectionPolygon),
+    polygon: selectionPolygon,
+    ...(frameSelectionFragments ? { frameSelectionFragments } : {}),
+    translationElementIds,
     ...(textEditing ? { textEditing } : {}),
     ...(node.authoringEdit.fill ? { fill: node.authoringEdit.fill } : {}),
     ...(node.authoringEdit.capabilities.includes('set_visual_size')
       ? { visualSize: readVisualSize(geometry) }
       : {}),
   };
+}
+
+function collectFrameSelectionFragments(
+  nodes: readonly RenderNode[],
+  translationElementIds: readonly string[],
+): readonly ManualEditingSelectionFragment[] {
+  const elementIds = new Set(translationElementIds);
+  return collectRenderNodeSelectionGeometries(nodes, isRenderNode)
+    .filter(geometry => elementIds.has(geometry.elementId))
+    .map(geometry => ({
+      elementId: geometry.elementId,
+      polygon: geometry.polygon,
+    }));
 }
 
 function readVisualSize(geometry: RenderNodeSelectionGeometry): {
@@ -231,4 +272,8 @@ function isManualEditableNode(node: RenderNode): node is RenderNode & {
     && node.authoringEdit.capabilities.length > 0
     && node.locked !== true
     && !node.id.endsWith('-inner');
+}
+
+function isRenderNode(node: RenderNode): node is RenderNode {
+  return true;
 }

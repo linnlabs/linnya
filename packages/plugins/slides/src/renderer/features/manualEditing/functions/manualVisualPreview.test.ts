@@ -3,11 +3,15 @@ import type { RenderNode } from '../../../types/render';
 import type { ManualEditableTarget } from '../definitions/manualEditingTypes';
 import {
   createManualVisualPreview,
+  projectManualEditableTargetSelection,
   projectManualVisualPreviewsToRenderNode,
   projectManualVisualPreviewsToSelectionPolygon,
 } from './manualVisualPreview';
 
 function target(targetKind: ManualEditableTarget['targetKind']): ManualEditableTarget {
+  const selectionPolygon = [
+    { x: 1, y: 1 }, { x: 3, y: 1 }, { x: 3, y: 2 }, { x: 1, y: 2 },
+  ];
   return {
     elementId: `authoring-overview-${targetKind}`,
     nodeKind: targetKind === 'text' ? 'text' : targetKind === 'image' ? 'image' : 'shape',
@@ -16,7 +20,20 @@ function target(targetKind: ManualEditableTarget['targetKind']): ManualEditableT
     authoringRef: { slideKey: 'overview', editKey: targetKind },
     authoringAncestorRefs: [],
     bounds: { x: 1, y: 1, w: 2, h: 1 },
-    polygon: [{ x: 1, y: 1 }, { x: 3, y: 1 }, { x: 3, y: 2 }, { x: 1, y: 2 }],
+    polygon: selectionPolygon,
+    ...(targetKind === 'frame'
+      ? {
+          frameSelectionFragments: [
+            { elementId: 'authoring-overview-frame', polygon: selectionPolygon },
+            {
+              elementId: 'authoring-overview-child',
+              polygon: [
+                { x: 2, y: 2 }, { x: 3, y: 2 }, { x: 3, y: 3 }, { x: 2, y: 3 },
+              ],
+            },
+          ],
+        }
+      : {}),
     translationElementIds: [`authoring-overview-${targetKind}`, 'authoring-overview-child'],
   };
 }
@@ -117,6 +134,28 @@ describe('manual visual preview', () => {
     const previews = preview ? [preview] : [];
     expect(projectManualVisualPreviewsToRenderNode(child, previews).visible).toBe(false);
     expect(projectManualVisualPreviewsToRenderNode(unrelated, previews)).toBe(unrelated);
+  });
+
+  it('expands a Frame selection around a child moved beyond its background', () => {
+    const frame = target('frame');
+    const projected = projectManualEditableTargetSelection(
+      frame,
+      new Map([[
+        'authoring-overview-child',
+        { dx: 4, dy: 0 },
+      ]]),
+      [],
+    );
+
+    expect(projected).toMatchObject({
+      bounds: { x: 1, y: 1, w: 6, h: 2 },
+      polygon: [
+        { x: 1, y: 1 },
+        { x: 7, y: 1 },
+        { x: 7, y: 3 },
+        { x: 1, y: 3 },
+      ],
+    });
   });
 
   it('rejects a preview when the operation targets a different authoring object', () => {

@@ -32,8 +32,6 @@
         :hovered-target="props.hoveredTarget"
         :marquee-rect="props.marqueeRect"
         :manual-selected-target="props.manualSelectedTarget"
-        :manual-translation-preview="props.manualTranslationPreview"
-        :manual-visual-previews="props.manualVisualPreviews"
       />
     </v-stage>
   </div>
@@ -74,7 +72,6 @@ const props = defineProps<{
   marqueeRect: SourceSelectionRect | null;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
   manualSelectedTarget?: ManualEditableTarget | null;
-  manualTranslationPreview?: ManualEditingTranslationPreview | null;
   hiddenTextElementId?: string;
   manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();
