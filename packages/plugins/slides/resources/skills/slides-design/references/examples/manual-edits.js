@@ -25,6 +25,15 @@ overview.add(createChart({
   h: 3.2,
 }));
 
+overview.add(createShape({
+  editKey: "obsolete_badge",
+  x: 7.2,
+  y: 0.6,
+  w: 1.2,
+  h: 0.4,
+  fill: "#C66A3D",
+}));
+
 compose({
   title: "Manual edits",
   theme: {
@@ -34,12 +43,13 @@ compose({
   },
   slides: [overview],
   manualEdits: {
-    version: 1,
+    version: 2,
     slides: [{
       slideKey: "overview",
       targets: [
         { kind: "text", editKey: "headline", content: "Updated headline" },
         { kind: "chart", editKey: "revenue_chart", translation: { dx: 0.2, dy: 0 } },
+        { kind: "shape", editKey: "obsolete_badge", deleted: true },
       ],
     }],
   },

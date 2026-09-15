@@ -213,7 +213,7 @@ interface FlexComposeInput {
   title: string;
   layout?: SlideLayout;
   theme?: LayoutThemeInput;
-  manualEdits?: SlidesManualEdits;
+  manualEdits?: SlidesManualEditsInput;
   slides: LayoutSlideNode[];
 }
 
@@ -882,33 +882,57 @@ interface SlideSizeInches {
   readonly height: number;
 }
 
-interface SlidesManualAtomicEdit extends SlidesManualEditBase {
-  readonly kind: SlidesManualAtomicEditKind;
-  readonly translation: SlidesManualTranslation;
-}
+type SlidesManualAtomicEdit =
+  | SlidesManualShapeEdit
+  | SlidesManualImageEdit
+  | SlidesManualTranslationOnlyEdit;
 
 type SlidesManualAtomicEditKind =
   | 'shape'
   | 'image'
-  | 'table'
-  | 'chart'
-  | 'svgGraphic'
-  | 'formula';
+  | SlidesManualTranslationOnlyEditKind;
+
+/** 删除值与其他人工值互斥；Frame 的删除自然覆盖完整作者子树。 */
+type SlidesManualDeletedTargetEdit = {
+  readonly [Kind in SlidesManualTargetKind]: {
+    readonly kind: Kind;
+    readonly editKey: string;
+    readonly deleted: true;
+  };
+}[SlidesManualTargetKind];
 
 interface SlidesManualEditBase {
   readonly editKey: string;
   readonly translation?: SlidesManualTranslation;
+  readonly deleted?: never;
 }
 
 /** deck.js 中唯一的人工值块；字段表示当前有效值，不是操作日志。 */
 interface SlidesManualEdits {
-  readonly version: 1;
+  readonly version: 2;
   readonly slides: readonly SlidesManualSlideEdits[];
 }
 
+/** 仅供 compose 输入兼容既有 v1；codec 读取后统一产出当前 v2。 */
+type SlidesManualEditsInput = SlidesManualEdits | {
+  readonly version: 1;
+  readonly slides: readonly SlidesManualV1SlideEdits[];
+};
+
 interface SlidesManualFrameEdit extends SlidesManualEditBase {
   readonly kind: 'frame';
-  readonly translation: SlidesManualTranslation;
+  readonly backgroundColor?: string;
+}
+
+interface SlidesManualImageEdit extends SlidesManualEditBase {
+  readonly kind: 'image';
+  readonly visualSize?: SlidesManualVisualSize;
+}
+
+interface SlidesManualShapeEdit extends SlidesManualEditBase {
+  readonly kind: 'shape';
+  readonly fillColor?: string;
+  readonly visualSize?: SlidesManualVisualSize;
 }
 
 interface SlidesManualSlideEdits {
@@ -919,20 +943,48 @@ interface SlidesManualSlideEdits {
 type SlidesManualTargetEdit =
   | SlidesManualTextEdit
   | SlidesManualFrameEdit
-  | SlidesManualAtomicEdit;
+  | SlidesManualAtomicEdit
+  | SlidesManualDeletedTargetEdit;
 
-type SlidesManualTargetKind = SlidesManualTargetEdit['kind'];
+type SlidesManualTargetKind =
+  | 'text'
+  | 'frame'
+  | 'shape'
+  | 'image'
+  | 'table'
+  | 'chart'
+  | 'svgGraphic'
+  | 'formula';
 
 interface SlidesManualTextEdit extends SlidesManualEditBase {
   readonly kind: 'text';
-  /** 当前首期只开放纯文本内容；rich/formula runs 保持只读。 */
+  /** 当前只开放纯文本内容；rich/formula runs 保持只读。 */
   readonly content?: string;
+  readonly fontSizePt?: number;
+  readonly color?: string;
 }
 
 interface SlidesManualTranslation {
   /** 相对未应用人工位移的布局结果，单位 inches。 */
   readonly dx: number;
   readonly dy: number;
+}
+
+interface SlidesManualTranslationOnlyEdit extends SlidesManualEditBase {
+  readonly kind: SlidesManualTranslationOnlyEditKind;
+  readonly translation: SlidesManualTranslation;
+}
+
+type SlidesManualTranslationOnlyEditKind =
+  | 'table'
+  | 'chart'
+  | 'svgGraphic'
+  | 'formula';
+
+interface SlidesManualVisualSize {
+  /** 覆盖 Yoga 结果的最终可见宽高，单位 inches；不改变 Flex 占位。 */
+  readonly width: number;
+  readonly height: number;
 }
 
 type SvgGraphicAccessibility =

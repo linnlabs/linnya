@@ -153,6 +153,7 @@ compose({
       targets: [
         { kind: "text", editKey: "headline", content: "Updated" },
         { kind: "chart", editKey: "revenue_chart", translation: { dx: 0.2, dy: 0 } },
+        { kind: "shape", editKey: "obsolete_badge", deleted: true },
       ],
     }],
   },

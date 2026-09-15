@@ -213,7 +213,7 @@ interface FlexComposeInput {
   title: string;
   layout?: SlideLayout;
   theme?: LayoutThemeInput;
-  manualEdits?: SlidesManualEdits;
+  manualEdits?: SlidesManualEditsInput;
   slides: LayoutSlideNode[];
 }
 
@@ -882,60 +882,46 @@ interface SlideSizeInches {
   readonly height: number;
 }
 
+type SlidesManualAtomicEdit =
+  | SlidesManualShapeEdit
+  | SlidesManualImageEdit
+  | SlidesManualTranslationOnlyEdit;
+
 type SlidesManualAtomicEditKind =
   | 'shape'
   | 'image'
-  | 'table'
-  | 'chart'
-  | 'svgGraphic'
-  | 'formula';
+  | SlidesManualTranslationOnlyEditKind;
+
+/** 删除值与其他人工值互斥；Frame 的删除自然覆盖完整作者子树。 */
+type SlidesManualDeletedTargetEdit = {
+  readonly [Kind in SlidesManualTargetKind]: {
+    readonly kind: Kind;
+    readonly editKey: string;
+    readonly deleted: true;
+  };
+}[SlidesManualTargetKind];
 
 interface SlidesManualEditBase {
   readonly editKey: string;
   readonly translation?: SlidesManualTranslation;
+  readonly deleted?: never;
 }
 
 /** deck.js 中唯一的人工值块；字段表示当前有效值，不是操作日志。 */
-type SlidesManualEdits = SlidesManualEditsV2 | {
-  readonly version: 1;
-  readonly slides: readonly SlidesManualV1SlideEdits[];
-};
-
-interface SlidesManualEditsV2 {
+interface SlidesManualEdits {
   readonly version: 2;
   readonly slides: readonly SlidesManualSlideEdits[];
 }
 
-interface SlidesManualV1SlideEdits {
-  readonly slideKey: string;
-  readonly targets: readonly SlidesManualV1TargetEdit[];
-}
+/** 仅供 compose 输入兼容既有 v1；codec 读取后统一产出当前 v2。 */
+type SlidesManualEditsInput = SlidesManualEdits | {
+  readonly version: 1;
+  readonly slides: readonly SlidesManualV1SlideEdits[];
+};
 
-type SlidesManualV1TargetEdit =
-  | {
-      readonly kind: 'text';
-      readonly editKey: string;
-      readonly content?: string;
-      readonly translation?: SlidesManualTranslation;
-    }
-  | {
-      readonly kind: Exclude<SlidesManualTargetKind, 'text'>;
-      readonly editKey: string;
-      readonly translation: SlidesManualTranslation;
-    };
-
-type SlidesManualFrameEdit =
-  | (SlidesManualEditBase & {
-      readonly kind: 'frame';
-      readonly backgroundColor?: string;
-      readonly deleted?: never;
-    })
-  | { readonly kind: 'frame'; readonly editKey: string; readonly deleted: true };
-
-interface SlidesManualShapeEdit extends SlidesManualEditBase {
-  readonly kind: 'shape';
-  readonly fillColor?: string;
-  readonly visualSize?: SlidesManualVisualSize;
+interface SlidesManualFrameEdit extends SlidesManualEditBase {
+  readonly kind: 'frame';
+  readonly backgroundColor?: string;
 }
 
 interface SlidesManualImageEdit extends SlidesManualEditBase {
@@ -943,17 +929,11 @@ interface SlidesManualImageEdit extends SlidesManualEditBase {
   readonly visualSize?: SlidesManualVisualSize;
 }
 
-type SlidesManualTranslationOnlyEditKind = 'table' | 'chart' | 'svgGraphic' | 'formula';
-
-interface SlidesManualTranslationOnlyEdit extends SlidesManualEditBase {
-  readonly kind: SlidesManualTranslationOnlyEditKind;
-  readonly translation: SlidesManualTranslation;
+interface SlidesManualShapeEdit extends SlidesManualEditBase {
+  readonly kind: 'shape';
+  readonly fillColor?: string;
+  readonly visualSize?: SlidesManualVisualSize;
 }
-
-type SlidesManualAtomicEdit =
-  | SlidesManualShapeEdit
-  | SlidesManualImageEdit
-  | SlidesManualTranslationOnlyEdit;
 
 interface SlidesManualSlideEdits {
   readonly slideKey: string;
@@ -963,9 +943,18 @@ interface SlidesManualSlideEdits {
 type SlidesManualTargetEdit =
   | SlidesManualTextEdit
   | SlidesManualFrameEdit
-  | SlidesManualAtomicEdit;
+  | SlidesManualAtomicEdit
+  | SlidesManualDeletedTargetEdit;
 
-type SlidesManualTargetKind = SlidesManualTargetEdit['kind'];
+type SlidesManualTargetKind =
+  | 'text'
+  | 'frame'
+  | 'shape'
+  | 'image'
+  | 'table'
+  | 'chart'
+  | 'svgGraphic'
+  | 'formula';
 
 interface SlidesManualTextEdit extends SlidesManualEditBase {
   readonly kind: 'text';
@@ -980,6 +969,17 @@ interface SlidesManualTranslation {
   readonly dx: number;
   readonly dy: number;
 }
+
+interface SlidesManualTranslationOnlyEdit extends SlidesManualEditBase {
+  readonly kind: SlidesManualTranslationOnlyEditKind;
+  readonly translation: SlidesManualTranslation;
+}
+
+type SlidesManualTranslationOnlyEditKind =
+  | 'table'
+  | 'chart'
+  | 'svgGraphic'
+  | 'formula';
 
 interface SlidesManualVisualSize {
   /** 覆盖 Yoga 结果的最终可见宽高，单位 inches；不改变 Flex 占位。 */
