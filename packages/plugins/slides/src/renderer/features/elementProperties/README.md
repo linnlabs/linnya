@@ -9,6 +9,8 @@ Supported controls:
 - Shape: set visual width and height independently in inches; Image: changing either dimension preserves the committed display ratio;
 - Frame: delete the Frame and every descendant.
 
+The explicit destructive button remains Frame-only because its subtree scope needs a visible control. The sibling `manualEditing` feature owns `Backspace` / `Delete` for every selected author target; that keyboard capability does not create an otherwise empty property panel.
+
 The panel intentionally has no create, group, reparent, gradient editor, image crop/source editor, rich-text run editor or free-form property path. `elementPropertyOperations.ts` validates the same user-value ranges as the shared command codec and checks both target kind and projected capability before creating an operation. `SlideStage` remains the app-level assembly point and passes accepted operations to `manualEditing`, which owns optimistic presentation and submission lifecycle.
 
 The color palette reuses the stable Renderer UI color-picker contract. The feature keeps its own Slides-specific palette and localization catalog because those values belong to this interaction rather than the cross-domain component library. The Vue component contains only field state and event wiring; operation rules and panel geometry live in pure functions.
