@@ -96,12 +96,44 @@ function createInteraction(
   wrapper.addEventListener('pointerdown', interaction.handlePointerDown);
   wrapper.addEventListener('pointermove', interaction.handlePointerMove);
   wrapper.addEventListener('pointerup', interaction.handlePointerUp);
+  wrapper.addEventListener('pointerleave', interaction.handlePointerLeave);
   wrapper.addEventListener('dblclick', interaction.handleDoubleClick);
   return { interaction, wrapper, canMutate };
 }
 
 describe('useSlideManualEditingInteraction', () => {
   beforeEach(() => setActivePinia(createPinia()));
+
+  it('hovers only real author targets and leaves the slide background inactive', () => {
+    const { interaction, wrapper } = createInteraction(vi.fn());
+
+    wrapper.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, pointerId: 1, clientX: 48, clientY: 48,
+    }));
+    expect(interaction.hoveredTarget.value).toBeNull();
+
+    wrapper.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, pointerId: 1, clientX: 144, clientY: 144,
+    }));
+    expect(interaction.hoveredTarget.value?.elementId).toBe('authoring-overview-headline');
+
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, pointerId: 2, clientX: 144, clientY: 144,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, button: 0, pointerId: 2, clientX: 144, clientY: 144,
+    }));
+    expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-headline');
+
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, pointerId: 3, clientX: 48, clientY: 48,
+    }));
+    expect(interaction.selectedTarget.value).toBeNull();
+    expect(interaction.hoveredTarget.value).toBeNull();
+
+    wrapper.dispatchEvent(new PointerEvent('pointerleave', { bubbles: true, pointerId: 1 }));
+    expect(interaction.hoveredTarget.value).toBeNull();
+  });
 
   it('promotes a drag preview to an optimistic translation before submitting', () => {
     const submitOperation = vi.fn();

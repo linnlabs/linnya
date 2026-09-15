@@ -1,4 +1,4 @@
-import type { Ref } from 'vue';
+import { shallowRef, type Ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 import type { SlideRenderModel } from '../../../types/render';
@@ -48,6 +48,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     pendingVisual,
     queuedIntents,
   } = storeToRefs(store);
+  const hoveredTarget = shallowRef<ManualEditableTarget | null>(null);
   const textEditing = useSlideTextEditingSession({
     submitOperation: operation => {
       options.submitIntent({ operation });
@@ -77,6 +78,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
       selectionPath.value,
       selectedTarget.value?.elementId,
     );
+    hoveredTarget.value = selection.target;
     if (textEditing.target.value) {
       if (textEditing.submissionPending.value) {
         deferSelection(selection.target?.elementId ?? null);
@@ -117,7 +119,11 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
 
   function handlePointerMove(event: PointerEvent): void {
     const session = pointerSession;
-    if (!session || session.pointerId !== event.pointerId) return;
+    if (!session) {
+      updateHoveredTarget(event);
+      return;
+    }
+    if (session.pointerId !== event.pointerId) return;
     const point = readPoint(event);
     if (!point) return;
     event.preventDefault();
@@ -172,6 +178,11 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     releasePointer(event);
     pointerSession = null;
     store.setTranslationPreview(null);
+    hoveredTarget.value = null;
+  }
+
+  function handlePointerLeave(): void {
+    if (!pointerSession) hoveredTarget.value = null;
   }
 
   function handleDoubleClick(event: MouseEvent): void {
@@ -198,7 +209,10 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     const preview = createManualVisualPreview(target, operation);
     if (!preview) return false;
     options.submitIntent({ operation, visualPreview: preview });
-    if (operation.op === 'delete_target') store.clearSelection();
+    if (operation.op === 'delete_target') {
+      hoveredTarget.value = null;
+      store.clearSelection();
+    }
     return true;
   }
 
@@ -219,11 +233,13 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     const next = path.find(target => target.elementId === selectedId) ?? null;
     store.reconcileSelectedTarget(next, path);
     textEditing.reconcileTarget(next?.textEditing ?? null);
+    hoveredTarget.value = null;
   }
 
   function resetInteraction(): void {
     pointerSession = null;
     deferredSelection = null;
+    hoveredTarget.value = null;
     store.clearSelection();
     textEditing.reset();
   }
@@ -235,6 +251,21 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
       pendingVisual: pendingVisual.value,
       queuedIntents: queuedIntents.value,
     };
+  }
+
+  function updateHoveredTarget(event: Pick<PointerEvent, 'clientX' | 'clientY'>): void {
+    const point = readPoint(event);
+    const slide = options.currentSlide.value;
+    if (!options.canSelect.value || !point || !slide) {
+      hoveredTarget.value = null;
+      return;
+    }
+    const path = findManualEditableTargetPathAtPoint(slide.elements, point, readHitProjection());
+    hoveredTarget.value = resolveManualClickSelection(
+      path,
+      selectionPath.value,
+      selectedTarget.value?.elementId,
+    ).target;
   }
 
   function completeTextEditing(): void {
@@ -285,6 +316,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     pendingTranslation,
     pendingVisual,
     queuedIntents,
+    hoveredTarget,
     textEditorTarget: textEditing.target,
     textDraft: textEditing.draft,
     textEditorSubmissionPending: textEditing.submissionPending,
@@ -292,6 +324,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,
+    handlePointerLeave,
     handleDoubleClick,
     selectHierarchyTarget,
     submitVisualOperation,

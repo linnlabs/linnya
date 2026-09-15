@@ -38,6 +38,10 @@ export {
   type ManualDeleteOperation,
 } from './functions/createManualDeleteOperation';
 export { shouldHandleManualDeleteShortcut } from './functions/manualDeleteShortcut';
+export {
+  resolveManualEditingCursor,
+  type ManualEditingCursor,
+} from './functions/manualEditingCursor';
 export { readManualEditErrorMessage } from './functions/manualEditOutcomeMessage';
 export {
   submitManualEdit,

@@ -159,6 +159,7 @@ import {
   collectManualVisualPreviews,
   mergeManualTranslationPreviews,
   projectManualEditableTargetSelection,
+  resolveManualEditingCursor,
   manualEditPresentationTrace,
   ManualSelectionBreadcrumb,
   shouldHandleManualDeleteShortcut,
@@ -410,6 +411,7 @@ const {
   pendingTranslation: manualPendingTranslation,
   pendingVisual: manualPendingVisual,
   queuedIntents: manualQueuedIntents,
+  hoveredTarget: manualHoveredTarget,
   textEditorTarget,
   textDraft,
   textEditorSubmissionPending,
@@ -417,6 +419,7 @@ const {
   handlePointerMove: handleManualPointerMove,
   handlePointerUp: handleManualPointerUp,
   handlePointerCancel: handleManualPointerCancel,
+  handlePointerLeave: handleManualPointerLeave,
   handleDoubleClick: handleManualDoubleClick,
   selectHierarchyTarget: selectManualHierarchyTarget,
   submitVisualOperation: submitManualVisualOperation,
@@ -495,7 +498,8 @@ function handleStagePointerCancel(event: PointerEvent): void {
 }
 
 function handleStagePointerLeave(): void {
-  if (!manualEditingEnabled.value) handleSourcePointerLeave();
+  if (manualEditingEnabled.value) handleManualPointerLeave();
+  else handleSourcePointerLeave();
 }
 
 function handleStageDoubleClick(event: MouseEvent): void {
@@ -584,7 +588,7 @@ const konvaWrapperStyle = computed(() => {
   const safeRasterScale = konvaRasterScale.value > 0 ? konvaRasterScale.value : 1;
   const wrapperScale = renderScale.value / safeRasterScale;
   const sourceSelectionCursor = manualEditingEnabled.value
-    ? 'move'
+    ? resolveManualEditingCursor(canManualSelect.value ? manualHoveredTarget.value : null)
     : hoveredSourceTarget.value ? 'pointer' : KONVA_WRAPPER_CURSOR;
 
   return {
