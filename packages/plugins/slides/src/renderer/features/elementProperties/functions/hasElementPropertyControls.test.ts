@@ -4,11 +4,12 @@ import { hasElementPropertyControls } from './hasElementPropertyControls';
 
 function createTarget(
   capabilities: ManualEditableTarget['capabilities'],
+  targetKind: ManualEditableTarget['targetKind'] = 'text',
 ): ManualEditableTarget {
   return {
     elementId: 'authoring-overview-title',
     nodeKind: 'text',
-    targetKind: 'text',
+    targetKind,
     capabilities,
     authoringRef: { slideKey: 'overview', editKey: 'title' },
     authoringAncestorRefs: [],
@@ -30,5 +31,10 @@ describe('hasElementPropertyControls', () => {
 
   it('shows controls when the target exposes an editable property', () => {
     expect(hasElementPropertyControls(createTarget(['translate', 'set_text_style']))).toBe(true);
+  });
+
+  it('keeps keyboard-only deletion out of ordinary property panels', () => {
+    expect(hasElementPropertyControls(createTarget(['translate', 'delete']))).toBe(false);
+    expect(hasElementPropertyControls(createTarget(['translate', 'delete'], 'frame'))).toBe(true);
   });
 });

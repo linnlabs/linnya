@@ -162,6 +162,7 @@ import {
   resolveManualTargetTranslation,
   manualEditPresentationTrace,
   ManualSelectionBreadcrumb,
+  shouldHandleManualDeleteShortcut,
   useSlideManualEditingInteraction,
   useSlidesManualEditingStore,
   useManualEditingLocalization,
@@ -426,6 +427,7 @@ const {
   handleTextEditorEscape,
   handleTextEditorSubmitShortcut,
   completeTextEditing,
+  deleteSelectedTarget: deleteManualSelectedTarget,
   rejectDeferredSelection,
   rejectTextEditingSubmission,
   reconcileSelection: reconcileManualSelection,
@@ -462,6 +464,7 @@ const showElementPropertyControls = computed(() => (
 ));
 
 function handleStagePointerDown(event: PointerEvent): void {
+  if (!textEditorTarget.value) scrollHostRef.value?.focus({ preventScroll: true });
   if (manualEditingEnabled.value) handleManualPointerDown(event);
   else handleSourcePointerDown(event);
 }
@@ -643,6 +646,15 @@ async function resetViewportScroll(): Promise<void> {
 /** 上下方向键切换幻灯片（需先点击舞台使其获得焦点） */
 function handleKeydown(e: globalThis.KeyboardEvent) {
   if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
+  if (
+    manualEditingEnabled.value
+    && shouldHandleManualDeleteShortcut(e)
+    && deleteManualSelectedTarget()
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
   if (e.key === 'ArrowUp') {
     e.preventDefault();
     slidesStore.prevSlide();
@@ -770,7 +782,10 @@ watch(textSubmissionPending, (pending, previous) => {
     rejectDeferredSelection();
     rejectTextEditingSubmission();
   }
-  else completeTextEditing();
+  else {
+    completeTextEditing();
+    void nextTick(() => scrollHostRef.value?.focus({ preventScroll: true }));
+  }
 });
 
 watch(

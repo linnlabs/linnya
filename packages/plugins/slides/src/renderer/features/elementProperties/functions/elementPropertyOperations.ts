@@ -1,4 +1,4 @@
-import type { ManualEditableTarget } from '../../manualEditing';
+import { createManualDeleteOperation, type ManualEditableTarget } from '../../manualEditing';
 import type { ElementPropertyOperation } from '../definitions/elementPropertyTypes';
 
 export function resolveVisualSizeAfterDimensionChange(
@@ -74,8 +74,8 @@ export function createVisualSizeOperation(
 export function createDeleteFrameOperation(
   target: ManualEditableTarget,
 ): ElementPropertyOperation | null {
-  if (target.targetKind !== 'frame' || !target.capabilities.includes('delete')) return null;
-  return { op: 'delete_target', target: target.authoringRef, targetKind: 'frame' };
+  if (target.targetKind !== 'frame') return null;
+  return createManualDeleteOperation(target);
 }
 
 function isPositiveFiniteNumber(value: number): boolean {

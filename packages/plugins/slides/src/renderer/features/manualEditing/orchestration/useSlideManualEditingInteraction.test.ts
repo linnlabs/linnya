@@ -20,7 +20,7 @@ const slide: SlideRenderModel = {
     paragraphs: [{ runs: [{ text: '增长' }, { text: ' 2026' }] }],
     authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'text' },
     authoringEdit: {
-      capabilities: ['translate', 'set_text_content', 'set_text_style'],
+      capabilities: ['translate', 'delete', 'set_text_content', 'set_text_style'],
       text: { kind: 'plain_text', content: '增长 2026' },
     },
   }],
@@ -389,6 +389,50 @@ describe('useSlideManualEditingInteraction', () => {
       'authoring-overview-card1',
       'authoring-overview-card1Label',
     ]);
+  });
+
+  it('deletes the selected atomic target through the same optimistic intent queue', () => {
+    const submitOperation = vi.fn();
+    const { interaction, wrapper } = createInteraction(submitOperation);
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, pointerId: 1, clientX: 144, clientY: 144,
+    }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, button: 0, pointerId: 1, clientX: 144, clientY: 144,
+    }));
+
+    expect(interaction.deleteSelectedTarget()).toBe(true);
+    expect(submitOperation).toHaveBeenCalledWith({
+      operation: {
+        op: 'delete_target',
+        target: { slideKey: 'overview', editKey: 'headline' },
+        targetKind: 'text',
+      },
+      visualPreview: {
+        elementId: 'authoring-overview-headline',
+        affectedElementIds: ['authoring-overview-headline'],
+        operation: {
+          op: 'delete_target',
+          target: { slideKey: 'overview', editKey: 'headline' },
+          targetKind: 'text',
+        },
+      },
+    });
+    expect(interaction.selectedTarget.value).toBeNull();
+    expect(interaction.pendingVisual.value?.affectedElementIds).toEqual([
+      'authoring-overview-headline',
+    ]);
+  });
+
+  it('does not delete the selected target while inline text editing owns the keyboard', () => {
+    const submitOperation = vi.fn();
+    const { interaction, wrapper } = createInteraction(submitOperation);
+    wrapper.dispatchEvent(new MouseEvent('dblclick', {
+      bubbles: true, button: 0, clientX: 144, clientY: 144,
+    }));
+
+    expect(interaction.deleteSelectedTarget()).toBe(false);
+    expect(submitOperation).not.toHaveBeenCalled();
   });
 
   it('queues another property intent while the active revision is still compiling', () => {

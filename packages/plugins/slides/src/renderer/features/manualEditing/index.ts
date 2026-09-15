@@ -31,6 +31,11 @@ export {
   type ManualEditingUnavailableReason,
 } from './functions/manualEditingAvailability';
 export { createManualEditCommand } from './functions/createManualEditCommand';
+export {
+  createManualDeleteOperation,
+  type ManualDeleteOperation,
+} from './functions/createManualDeleteOperation';
+export { shouldHandleManualDeleteShortcut } from './functions/manualDeleteShortcut';
 export { readManualEditErrorMessage } from './functions/manualEditOutcomeMessage';
 export {
   submitManualEdit,

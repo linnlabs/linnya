@@ -20,6 +20,7 @@ import { useSlidesManualEditingStore } from '../store/slidesManualEditingStore';
 import { useSlideTextEditingSession } from '../../textEditing';
 import { createManualVisualPreview } from '../functions/manualVisualPreview';
 import { resolveManualClickSelection } from '../functions/resolveManualClickSelection';
+import { createManualDeleteOperation } from '../functions/createManualDeleteOperation';
 
 export interface SlideManualEditingInteractionOptions {
   /** 当前正式画面是否仍可命中。提交中的旧画面也应允许用户表达下一次选择。 */
@@ -191,13 +192,22 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     store.selectTarget(target, selectionPath.value);
   }
 
-  function submitVisualOperation(operation: ManualEditingVisualOperation): void {
+  function submitVisualOperation(operation: ManualEditingVisualOperation): boolean {
     const target = selectedTarget.value;
-    if (!target || !options.canSelect.value) return;
+    if (!target || !options.canSelect.value) return false;
     const preview = createManualVisualPreview(target, operation);
-    if (!preview) return;
+    if (!preview) return false;
     options.submitIntent({ operation, visualPreview: preview });
     if (operation.op === 'delete_target') store.clearSelection();
+    return true;
+  }
+
+  function deleteSelectedTarget(): boolean {
+    if (textEditing.target.value) return false;
+    const target = selectedTarget.value;
+    if (!target) return false;
+    const operation = createManualDeleteOperation(target);
+    return operation ? submitVisualOperation(operation) : false;
   }
 
   function reconcileSelection(): void {
@@ -285,6 +295,7 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     handleDoubleClick,
     selectHierarchyTarget,
     submitVisualOperation,
+    deleteSelectedTarget,
     submitTextEdit: textEditing.requestCommit,
     closeTextEditor: textEditing.cancel,
     handleTextCompositionStart: textEditing.beginComposition,

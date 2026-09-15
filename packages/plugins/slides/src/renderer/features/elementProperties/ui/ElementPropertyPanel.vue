@@ -121,7 +121,9 @@ const height = ref(1);
 const canEditTextStyle = computed(() => props.target.capabilities.includes('set_text_style'));
 const canEditFill = computed(() => props.target.capabilities.includes('set_fill_color'));
 const canEditSize = computed(() => props.target.capabilities.includes('set_visual_size'));
-const canDeleteFrame = computed(() => props.target.capabilities.includes('delete'));
+const canDeleteFrame = computed(() => (
+  props.target.targetKind === 'frame' && props.target.capabilities.includes('delete')
+));
 const currentTextColor = computed(() => props.target.textEditing?.color ?? '#000000');
 const currentFillColor = computed(() => (
   props.target.fill?.kind === 'solid' ? props.target.fill.color : '#000000'
