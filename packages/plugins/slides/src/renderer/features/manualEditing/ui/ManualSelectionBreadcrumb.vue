@@ -10,7 +10,7 @@
       <button
         type="button"
         class="slides-manual-selection-breadcrumb__item"
-        :class="{ 'is-active': target.elementId === props.selectedElementId }"
+        :class="{ 'slides-manual-selection-breadcrumb__item--active': target.elementId === props.selectedElementId }"
         @click="emit('select', target)"
       >
         {{ target.targetKind === 'frame' ? 'Frame' : target.authoringRef.editKey }}
@@ -47,5 +47,3 @@ const positionStyle = computed(() => {
   });
 });
 </script>
-
-<style src="./ManualSelectionBreadcrumb.css"></style>

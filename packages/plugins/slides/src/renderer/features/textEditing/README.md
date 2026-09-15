@@ -19,6 +19,8 @@
 
 ## Layers
 
+`InlineTextEditor.css` is feature-owned and registered by the Renderer entry through `slidesStylesheets`. Do not add an SFC side-effect style import: installed plugin artifacts must declare this stylesheet and load it through the Host lifecycle.
+
 ```text
 definitions/
   input-session and committed visual projection contracts

@@ -30,6 +30,7 @@ export function mountManualPropertySmoke() {
       geometry: { type: 'preset', name: 'rect' }, fill: { type: 'solid', color: '#2563EB' } }],
   };
   const queued = shallowRef<readonly ManualEditingVisualPreview[]>([]);
+  const disabled = shallowRef(false);
   const transient = shallowRef<ManualEditingVisualPreview | null>(null);
   const previews = computed(() => [...queued.value, ...(transient.value ? [transient.value] : [])]);
   const presented = computed(() => projectManualEditableTargetSelection(target, new Map(), previews.value));
@@ -56,7 +57,7 @@ export function mountManualPropertySmoke() {
     h(ManualResizeHandles, { target: presented.value, slideLeft: 48, slideTop: 48, renderScale: 1,
       onPreview: (value: ManualEditingVisualPreview | null) => { transient.value = value; }, onSubmit: submit,
       onFinish: () => host.focus({ preventScroll: true }) }),
-    h(ElementPropertyPanel, { target: properties.value, slideLeft: 48, slideTop: 48, scaledSlideWidth: 640, onSubmit: submit }),
+    h(ElementPropertyPanel, { target: properties.value, slideLeft: 48, slideTop: 48, scaledSlideWidth: 640, busy: disabled.value, onSubmit: submit }),
   ] });
   app.use(VueKonva);
   app.mount(host);
@@ -84,7 +85,7 @@ export function mountManualPropertySmoke() {
       await click('[title="#DC2626"]');
       assert(button('[title="#DC2626"]').classList.contains('is-current'), 'Pending preset is not selected');
       assert(getComputedStyle(button('[title="#DC2626"]')).backgroundColor === 'rgb(220, 38, 38)', 'Panel styles replaced the actual preset color');
-      assert(!button('.slides-element-color__custom').classList.contains('is-current'), 'Preset also selected custom');
+      assert(button('.slides-element-color__custom').getAttribute('aria-pressed') === 'false', 'Preset also selected custom');
       await click('.slides-element-color__custom');
       await input('.slides-element-color__hex input', '#12');
       assert(button('.action-btn.primary').disabled, 'Invalid HEX can be submitted');
@@ -131,6 +132,21 @@ export function mountManualPropertySmoke() {
       await nextTick();
       if (!host.querySelector('.slides-element-color__editor')) await click('.slides-element-color__custom');
     },
+    async prepareSliderKeyboard() {
+      await input('.slides-element-color__hex input', '#FF0000');
+      const slider = host.querySelector('input[type="range"]');
+      if (!(slider instanceof HTMLInputElement)) throw new Error('Hue slider missing');
+      slider.focus();
+    },
+    async assertSliderKeyboard(hue: number) {
+      await nextTick();
+      const slider = host.querySelector('input[type="range"]');
+      assert(slider instanceof HTMLInputElement && slider.valueAsNumber === hue, 'Native slider keyboard value differs');
+      const hex = host.querySelector('.slides-element-color__hex input');
+      assert(hex instanceof HTMLInputElement && hex.value !== '#426A91', 'Slider did not update the color draft');
+      assert(properties.value.fill?.kind === 'solid' && properties.value.fill.color === '#426A91', 'Slider draft unexpectedly submitted');
+    },
+    async disableSlider() { disabled.value = true; await nextTick(); },
     dispose() { app.unmount(); host.remove(); },
   };
 }

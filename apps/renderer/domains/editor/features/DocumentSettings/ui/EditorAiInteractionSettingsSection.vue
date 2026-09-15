@@ -22,18 +22,14 @@
       <div class="editor-ai-range-control">
         <span class="editor-ai-range-value">{{ delayLabel }}</span>
         <div class="editor-ai-range-track">
-          <input
-            ref="delayRangeInput"
+          <CustomSlider
             v-model="delayLevel"
-            type="range"
-            class="editor-ai-range"
-            min="1"
-            max="5"
-            step="1"
+            :min="1"
+            :max="5"
+            :step="1"
             :disabled="!isAutocompleteEnabled"
             :aria-label="editorMessage('editor.documentSettings.ai.triggerDelay')"
-            @input="updateRangeProgress"
-          >
+          />
           <div class="editor-ai-range-labels">
             <span>{{ editorMessage('editor.documentSettings.ai.scale.slowest') }}</span>
             <span>{{ editorMessage('editor.documentSettings.ai.scale.fastest') }}</span>
@@ -50,18 +46,14 @@
       <div class="editor-ai-range-control">
         <span class="editor-ai-range-value">{{ frequencyLabel }}</span>
         <div class="editor-ai-range-track">
-          <input
-            ref="frequencyRangeInput"
+          <CustomSlider
             v-model="frequencyLevel"
-            type="range"
-            class="editor-ai-range"
-            min="1"
-            max="6"
-            step="1"
+            :min="1"
+            :max="6"
+            :step="1"
             :disabled="!isAutocompleteEnabled"
             :aria-label="editorMessage('editor.documentSettings.ai.triggerFrequency')"
-            @input="updateRangeProgress"
-          >
+          />
           <div class="editor-ai-range-labels">
             <span>{{ editorMessage('editor.documentSettings.ai.scale.lowest') }}</span>
             <span>{{ editorMessage('editor.documentSettings.ai.scale.always') }}</span>
@@ -78,18 +70,14 @@
       <div class="editor-ai-range-control">
         <span class="editor-ai-range-value">{{ completionLengthLabel }}</span>
         <div class="editor-ai-range-track">
-          <input
-            ref="completionLengthRangeInput"
+          <CustomSlider
             v-model="completionLengthLevel"
-            type="range"
-            class="editor-ai-range"
-            min="1"
-            max="3"
-            step="1"
+            :min="1"
+            :max="3"
+            :step="1"
             :disabled="!isAutocompleteEnabled"
             :aria-label="editorMessage('editor.documentSettings.ai.completionLength')"
-            @input="updateRangeProgress"
-          >
+          />
           <div class="editor-ai-range-labels">
             <span>{{ editorMessage('editor.documentSettings.ai.scale.short') }}</span>
             <span>{{ editorMessage('editor.documentSettings.ai.scale.long') }}</span>
@@ -101,7 +89,8 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed } from 'vue';
+import { CustomSlider } from '@linnya/renderer-ui';
 import { useAiSettingsStore } from '@/shared/stores/aiSettings';
 import {
   SettingsRow,
@@ -112,10 +101,6 @@ import { useEditorLocalization } from '../../../ui/useEditorLocalization';
 
 const aiSettingsStore = useAiSettingsStore();
 const { editorMessage } = useEditorLocalization();
-
-const delayRangeInput = ref(null);
-const frequencyRangeInput = ref(null);
-const completionLengthRangeInput = ref(null);
 
 const isAutocompleteEnabled = computed({
   get: () => aiSettingsStore.isAutocompleteEnabled,
@@ -169,39 +154,5 @@ const completionLengthLabel = computed(() => {
     case 3: return editorMessage('editor.documentSettings.ai.scale.long');
     default: return editorMessage('editor.documentSettings.ai.scale.medium');
   }
-});
-
-function updateSliderProgress(inputRef, value = null) {
-  if (!inputRef) return;
-
-  const min = Number.parseInt(inputRef.min, 10);
-  const max = Number.parseInt(inputRef.max, 10);
-  const currentValue = value !== null ? Number.parseInt(value, 10) : Number.parseInt(inputRef.value, 10);
-  const percentage = ((currentValue - min) / (max - min)) * 100;
-
-  inputRef.style.setProperty('--range-progress', `${percentage}%`);
-}
-
-function initAllSliderProgress() {
-  updateSliderProgress(delayRangeInput.value);
-  updateSliderProgress(frequencyRangeInput.value);
-  updateSliderProgress(completionLengthRangeInput.value);
-}
-
-function updateRangeProgress(event) {
-  if (!(event.target instanceof HTMLInputElement)) return;
-  updateSliderProgress(event.target);
-}
-
-onMounted(() => {
-  nextTick(initAllSliderProgress);
-});
-
-watch([delayLevel, frequencyLevel, completionLengthLevel], () => {
-  nextTick(() => {
-    updateSliderProgress(delayRangeInput.value, delayLevel.value);
-    updateSliderProgress(frequencyRangeInput.value, frequencyLevel.value);
-    updateSliderProgress(completionLengthRangeInput.value, completionLengthLevel.value);
-  });
 });
 </script>

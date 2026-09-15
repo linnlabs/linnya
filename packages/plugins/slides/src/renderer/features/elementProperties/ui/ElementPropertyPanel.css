@@ -85,7 +85,7 @@
   cursor: pointer;
 }
 .slides-element-color__custom:hover { background: var(--color-bg-hover); }
-.slides-element-color__custom.is-current {
+.slides-element-color__custom--current {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 1px var(--color-accent);
 }
@@ -148,12 +148,6 @@
   align-items: center;
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
-}
-.slides-element-color__slider input {
-  width: 100%;
-  min-width: 0;
-  margin: 0;
-  accent-color: var(--color-accent);
 }
 .slides-element-color__hex {
   display: flex;

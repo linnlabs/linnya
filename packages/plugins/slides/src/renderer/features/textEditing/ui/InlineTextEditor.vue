@@ -67,5 +67,3 @@ function handleInput(event: Event): void {
   }
 }
 </script>
-
-<style src="./InlineTextEditor.css"></style>

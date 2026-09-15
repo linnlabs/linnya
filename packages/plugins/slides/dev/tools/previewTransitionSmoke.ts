@@ -82,6 +82,18 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
     const screenshot = await window.webContents.capturePage();
     await writeFile(path.resolve(__dirname, `manual-properties-${theme}.png`), screenshot.toPNG());
   }
+  await evaluate('window.manualPropertySmoke.prepareSliderKeyboard()');
+  for (const [keyCode, expected] of [['Right', 1], ['End', 359], ['Home', 0]] as const) {
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode });
+    window.webContents.sendInputEvent({ type: 'keyUp', keyCode });
+    await settle();
+    await evaluate(`window.manualPropertySmoke.assertSliderKeyboard(${expected})`);
+  }
+  await evaluate('window.manualPropertySmoke.disableSlider()');
+  window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Right' });
+  window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Right' });
+  await settle();
+  await evaluate('window.manualPropertySmoke.assertSliderKeyboard(0)');
   await evaluate('window.manualPropertySmoke.dispose()');
   console.log('Slides property UI and native resize input passed:', JSON.stringify(colorResult));
 }

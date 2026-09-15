@@ -6,7 +6,7 @@ Slides 是 Linnya 的官方演示文稿 runtime 插件包，负责演示文稿�
 runner、字体/文本测量平台能力由 host 平台提供，Slides 通过窄门面消费这些能力。
 
 Renderer 基础 UI 直接依赖 `@linnya/renderer-ui`：`peerDependencies` 与
-`plugin.json.compat.rendererUi` 使用同一 range，开发依赖使用 `workspace:*`。Slides 不装载 package CSS；renderer
+`plugin.json.compat.rendererUi` 使用同一 range `^2.3.0`，开发依赖使用 `workspace:*`。缩放与自定义颜色复用公开 `CustomSlider` 的 compact 变体，数值换算、草稿和提交仍由各业务 owner 负责。Slides 不装载 package CSS；renderer
 artifact 把公开入口映射为 Host external，兼容的 package patch/minor 不要求重建 Slides。
 
 ## Slides 的实现原理

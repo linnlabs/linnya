@@ -63,6 +63,7 @@ import DeckViewer from './DeckViewer.vue';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import { useSlidesStore } from '../../store/slidesStore';
 import { useSlidesManualEditingStore } from '../../features/manualEditing';
+import { useSlidesUiStore } from '../../store/slidesUiStore';
 
 describe('DeckViewer document transition', () => {
   beforeEach(() => {
@@ -103,6 +104,17 @@ describe('DeckViewer document transition', () => {
 
     expect(host.querySelector('.slides-status-state-stub')).not.toBeNull();
     expect(host.querySelector('.deck-outline-stub')).not.toBeNull();
+
+    const zoom = host.querySelector<HTMLInputElement>('input[type="range"]');
+    if (!zoom) throw new Error('Zoom slider missing');
+    zoom.value = '150';
+    zoom.dispatchEvent(new Event('input', { bubbles: true }));
+    await nextTick();
+    expect(useSlidesUiStore().zoomLevel).toBe(1.5);
+    expect(useSlidesUiStore().zoomMode).toBe('manual');
+    useSlidesUiStore().setZoom(2, 'manual');
+    await nextTick();
+    expect(zoom.valueAsNumber).toBe(200);
 
     slidesStore.deckPreview = null;
     slidesStore.deckLoading = true;

@@ -33,11 +33,11 @@
 }
 
 .slides-manual-selection-breadcrumb__item:hover,
-.slides-manual-selection-breadcrumb__item.is-active {
+.slides-manual-selection-breadcrumb__item--active {
   background: var(--color-bg-subtle);
   color: var(--color-text-primary);
 }
 
-.slides-manual-selection-breadcrumb__item.is-active {
+.slides-manual-selection-breadcrumb__item--active {
   color: var(--color-accent);
 }

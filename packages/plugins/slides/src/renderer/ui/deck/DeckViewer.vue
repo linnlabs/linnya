@@ -77,16 +77,16 @@
           >
             <MinusIcon class="stage-zoom-slider__icon" />
           </button>
-          <input
-            ref="sliderInput"
+          <CustomSlider
             class="stage-zoom-slider__input"
-            type="range"
+            variant="compact"
             :min="ZOOM_PERCENT_MIN"
             :max="ZOOM_PERCENT_MAX"
             :step="ZOOM_PERCENT_SLIDER_STEP"
-            :value="zoomPercent"
-            @input="onSliderInput"
-          >
+            :model-value="zoomPercent"
+            aria-label="缩放比例"
+            @update:model-value="setZoomPercent"
+          />
           <button
             class="stage-zoom-slider__btn"
             :disabled="zoomPercent >= ZOOM_PERCENT_MAX"
@@ -145,8 +145,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
+import { CustomSlider } from '@linnya/renderer-ui';
 import { useSlidesStore } from '../../store/slidesStore';
 import { useSlidesUiStore } from '../../store/slidesUiStore';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
@@ -249,7 +250,6 @@ const draftFailureLog = computed(() => {
 const stageHostRef = ref<globalThis.HTMLElement | null>(null);
 const stageViewportWidth = ref(0);
 const stageViewportHeight = ref(0);
-const sliderInput = ref<HTMLInputElement | null>(null);
 
 function clampZoomLevel(level: number): number {
   return Math.max(ZOOM_MIN, Math.min(level, ZOOM_MAX));
@@ -348,17 +348,10 @@ function reload() {
 function setZoomPercent(value: number) {
   const clamped = Math.max(ZOOM_PERCENT_MIN, Math.min(ZOOM_PERCENT_MAX, value));
   slidesUiStore.setZoom(clamped / 100, 'manual');
-  updateSliderProgress();
 }
 
 function adjustZoom(delta: number) {
   setZoomPercent(zoomPercent.value + delta);
-}
-
-function onSliderInput(event: Event) {
-  const value = Number((event.target as HTMLInputElement).value);
-  if (!Number.isFinite(value)) return;
-  setZoomPercent(value);
 }
 
 function zoomToFit() {
@@ -379,14 +372,6 @@ function toggleManualEditing() {
   manualEditingStore.setEnabled(!manualEditingEnabled.value);
 }
 
-function updateSliderProgress() {
-  const input = sliderInput.value;
-  if (!input) return;
-  const pct = ((zoomPercent.value - ZOOM_PERCENT_MIN) / (ZOOM_PERCENT_MAX - ZOOM_PERCENT_MIN)) * 100;
-  input.style.setProperty('--range-progress', `${Math.max(0, Math.min(100, pct))}%`);
-}
-
-watch(zoomPercent, () => nextTick(updateSliderProgress));
 watch(canUseSourceSelectionMode, (enabled) => {
   if (!enabled && sourceSelectionModeEnabled.value) {
     slidesUiStore.setSourceSelectionModeEnabled(false);

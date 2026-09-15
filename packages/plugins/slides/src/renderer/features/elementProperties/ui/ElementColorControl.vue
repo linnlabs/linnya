@@ -23,7 +23,7 @@
     <button
       ref="trigger"
       class="slides-element-color__custom"
-      :class="{ 'is-current': isCustom }"
+      :class="{ 'slides-element-color__custom--current': isCustom }"
       type="button"
       :aria-pressed="isCustom"
       :aria-expanded="open"
@@ -66,36 +66,36 @@
       </div>
       <label class="slides-element-color__slider">
         <span>{{ message('slides.elementProperties.hue') }}</span>
-        <input
-          type="range"
-          min="0"
-          max="359"
-          :value="hsv.hue"
+        <CustomSlider
+          variant="compact"
+          :min="0"
+          :max="359"
+          :model-value="hsv.hue"
           :disabled="disabled"
-          @input="setChannel('hue', $event)"
-        >
+          @update:model-value="setChannel('hue', $event)"
+        />
       </label>
       <label class="slides-element-color__slider">
         <span>{{ message('slides.elementProperties.saturation') }}</span>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          :value="hsv.saturation * 100"
+        <CustomSlider
+          variant="compact"
+          :min="0"
+          :max="100"
+          :model-value="hsv.saturation * 100"
           :disabled="disabled"
-          @input="setChannel('saturation', $event)"
-        >
+          @update:model-value="setChannel('saturation', $event)"
+        />
       </label>
       <label class="slides-element-color__slider">
         <span>{{ message('slides.elementProperties.brightness') }}</span>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          :value="hsv.brightness * 100"
+        <CustomSlider
+          variant="compact"
+          :min="0"
+          :max="100"
+          :model-value="hsv.brightness * 100"
           :disabled="disabled"
-          @input="setChannel('brightness', $event)"
-        >
+          @update:model-value="setChannel('brightness', $event)"
+        />
       </label>
       <div class="slides-element-color__hex">
         <span
@@ -130,7 +130,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { ActionButtons, ColorPickerPanel, CustomTextInput } from '@linnya/renderer-ui';
+import { ActionButtons, ColorPickerPanel, CustomSlider, CustomTextInput } from '@linnya/renderer-ui';
 import { ChevronRightIcon } from '@linnya/renderer-ui/icons';
 import { ELEMENT_PROPERTY_COLOR_OPTIONS } from '../definitions/elementPropertyPalette';
 import type { CustomColorHsv } from '../definitions/customColor';
@@ -186,9 +186,8 @@ function setHex(value: string): void {
   const valid = normalizeCustomColor(value);
   if (valid) hsv.value = colorToHsv(valid);
 }
-function setChannel(channel: keyof CustomColorHsv, event: Event): void {
-  if (!(event.target instanceof HTMLInputElement)) return;
-  hsv.value = { ...hsv.value, [channel]: Number(event.target.value) / (channel === 'hue' ? 1 : 100) };
+function setChannel(channel: keyof CustomColorHsv, value: number): void {
+  hsv.value = { ...hsv.value, [channel]: value / (channel === 'hue' ? 1 : 100) };
   hexDraft.value = draftColor.value;
 }
 function beginPlane(event: PointerEvent): void {

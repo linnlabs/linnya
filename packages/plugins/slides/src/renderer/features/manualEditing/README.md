@@ -19,6 +19,8 @@ The existing source-selection/AI-edit mode and manual-edit mode are mutually exc
 
 ## Layers
 
+The hierarchy label's CSS remains owned by this feature and is registered by the Renderer entry through `slidesStylesheets`. It follows the plugin stylesheet lifecycle rather than an SFC side-effect import, so installed artifacts declare and load the same styles as development builds. Business state classes use the feature's own BEM modifiers.
+
 ```text
 definitions/
   manualEditingTypes + localized message catalog
