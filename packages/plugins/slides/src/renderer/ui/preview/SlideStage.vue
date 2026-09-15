@@ -87,6 +87,17 @@
           @escape="handleTextEditorEscape"
           @commit-shortcut="handleTextEditorSubmitShortcut"
         />
+        <ManualResizeHandles
+          v-if="manualPresentedSelectedTarget && canManualSelect && !textEditorTarget && canResizeManualTarget(manualPresentedSelectedTarget)"
+          :key="manualPresentedSelectedTarget.elementId"
+          :target="manualPresentedSelectedTarget"
+          :slide-left="currentLayout.slideLeft"
+          :slide-top="currentLayout.slideTop"
+          :render-scale="renderScale"
+          @preview="manualResizePreview = $event"
+          @submit="submitManualVisualOperation"
+          @finish="scrollHostRef?.focus({ preventScroll: true })"
+        />
         <ManualSelectionBreadcrumb
           v-if="manualSelectionPath.length > 1 && manualSelectedTarget && !textEditorTarget"
           :path="manualPresentedSelectionPath"
@@ -98,8 +109,8 @@
           @select="selectManualHierarchyTarget"
         />
         <ElementPropertyPanel
-          v-if="manualSelectedTarget && showElementPropertyControls && !textEditorTarget"
-          :target="manualSelectedTarget"
+          v-if="manualPropertyTarget && showElementPropertyControls && !textEditorTarget"
+          :target="manualPropertyTarget"
           :slide-left="currentLayout.slideLeft"
           :slide-top="currentLayout.slideTop"
           :scaled-slide-width="currentLayout.scaledSlideWidth"
@@ -112,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, shallowRef, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useSlidesUiStore } from '../../store/slidesUiStore';
 import {
@@ -162,6 +173,8 @@ import {
   resolveManualEditingCursor,
   manualEditPresentationTrace,
   ManualSelectionBreadcrumb,
+  ManualResizeHandles,
+  canResizeManualTarget,
   shouldHandleManualDeleteShortcut,
   useSlideManualEditingInteraction,
   useSlidesManualEditingStore,
@@ -171,8 +184,9 @@ import { InlineTextEditor } from '../../features/textEditing';
 import {
   ElementPropertyPanel,
   hasElementPropertyControls,
+  projectElementPropertyTarget,
 } from '../../features/elementProperties';
-import type { ManualEditIntent } from '../../features/manualEditing';
+import type { ManualEditIntent, ManualEditingVisualPreview } from '../../features/manualEditing';
 
 const props = defineProps<{
   sourceEditBusy?: boolean;
@@ -451,10 +465,11 @@ const manualTranslationPreviews = computed(() => collectManualTranslationPreview
 const manualPreviewTranslations = computed(() => {
   return mergeManualTranslationPreviews(manualTranslationPreviews.value);
 });
-const manualVisualPreviews = computed(() => collectManualVisualPreviews(
+const manualResizePreview = shallowRef<ManualEditingVisualPreview | null>(null);
+const manualVisualPreviews = computed(() => [...collectManualVisualPreviews(
   manualPendingVisual.value,
   manualQueuedIntents.value,
-));
+), ...(manualResizePreview.value ? [manualResizePreview.value] : [])]);
 const manualPresentedSelectedTarget = computed(() => {
   const target = manualSelectedTarget.value;
   return target
@@ -475,6 +490,9 @@ const showElementPropertyControls = computed(() => (
     ? hasElementPropertyControls(manualSelectedTarget.value)
     : false
 ));
+const manualPropertyTarget = computed(() => manualSelectedTarget.value
+  ? projectElementPropertyTarget(manualSelectedTarget.value, manualVisualPreviews.value)
+  : null);
 
 function handleStagePointerDown(event: PointerEvent): void {
   if (!textEditorTarget.value) scrollHostRef.value?.focus({ preventScroll: true });

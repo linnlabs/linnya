@@ -11,6 +11,9 @@ export type ManualEditingMessageKey =
   | 'slides.manualEditing.text.save'
   | 'slides.manualEditing.text.saving'
   | 'slides.manualEditing.hierarchy.ariaLabel'
+  | 'slides.manualEditing.resize.right'
+  | 'slides.manualEditing.resize.bottom'
+  | 'slides.manualEditing.resize.corner'
   | 'slides.manualEditing.error.snapshotUnavailable'
   | 'slides.manualEditing.error.draftPresent'
   | 'slides.manualEditing.error.commandReused'
@@ -33,6 +36,9 @@ export const MANUAL_EDITING_MESSAGE_FALLBACKS = {
   'slides.manualEditing.text.save': '保存',
   'slides.manualEditing.text.saving': '保存中…',
   'slides.manualEditing.hierarchy.ariaLabel': '元素层级',
+  'slides.manualEditing.resize.right': '调整宽度',
+  'slides.manualEditing.resize.bottom': '调整高度',
+  'slides.manualEditing.resize.corner': '调整宽度和高度',
   'slides.manualEditing.error.snapshotUnavailable': '页面版本正在更新，请稍后再试。',
   'slides.manualEditing.error.draftPresent': 'AI 编辑产生了待修复草稿，已刷新当前文稿。',
   'slides.manualEditing.error.commandReused': '编辑请求身份发生冲突，请重新操作。',
@@ -51,6 +57,9 @@ const MANUAL_EDITING_EN_US_MESSAGES = {
   'slides.manualEditing.text.save': 'Save',
   'slides.manualEditing.text.saving': 'Saving…',
   'slides.manualEditing.hierarchy.ariaLabel': 'Element hierarchy',
+  'slides.manualEditing.resize.right': 'Resize width',
+  'slides.manualEditing.resize.bottom': 'Resize height',
+  'slides.manualEditing.resize.corner': 'Resize width and height',
   'slides.manualEditing.error.snapshotUnavailable': 'The slide version is updating. Try again shortly.',
   'slides.manualEditing.error.draftPresent': 'An AI edit has an unresolved draft. The presentation was refreshed.',
   'slides.manualEditing.error.commandReused': 'The edit request identity conflicted. Please try the edit again.',

@@ -52,6 +52,8 @@ export { useSlidesManualEditingStore } from './store/slidesManualEditingStore';
 export { useSlideManualEditingInteraction } from './orchestration/useSlideManualEditingInteraction';
 export { useManualEditingLocalization } from './ui/useManualEditingLocalization';
 export { default as ManualSelectionBreadcrumb } from './ui/ManualSelectionBreadcrumb.vue';
+export { default as ManualResizeHandles } from './ui/ManualResizeHandles.vue';
+export { canResizeManualTarget } from './functions/manualResize';
 export {
   ManualEditPresentationTrace,
   manualEditPresentationTrace,

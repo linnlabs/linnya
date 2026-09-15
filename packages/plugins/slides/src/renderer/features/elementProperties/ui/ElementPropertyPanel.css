@@ -11,67 +11,156 @@
   --slides-property-white: #ffffff;
 
   position: absolute;
-  z-index: 22;
-  width: 212px;
+  z-index: var(--linnya-ui-layer-picker);
+  width: 224px;
   box-sizing: border-box;
-  padding: 10px;
+  padding: var(--spacing-sm);
   border: 1px solid var(--color-border-default);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-bg-elevated) 96%, transparent);
-  box-shadow: 0 6px 20px var(--shadow-color-md);
-  backdrop-filter: blur(8px);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
 }
 
 .slides-element-property-panel__field {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin: 6px 0;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-sm) 0;
   color: var(--color-text-secondary);
-  font-size: 11px;
-}
-
-.slides-element-property-panel__field input[type='number'] {
-  width: 64px;
-  box-sizing: border-box;
-  border: 1px solid var(--color-border-default);
-  border-radius: 4px;
-  padding: 3px 5px;
-  background: var(--color-bg-elevated);
-  color: var(--color-text-primary);
-}
-
-.slides-element-property-panel__field input[type='color'] {
-  width: 30px;
-  height: 24px;
-  border: 0;
-  padding: 0;
-  background: transparent;
+  font-size: var(--font-size-xs);
 }
 
 .slides-element-property-panel__size {
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
 }
 
-.slides-element-property-panel button {
+.slides-element-property-panel__delete {
   width: 100%;
-  border: 1px solid var(--color-border-default);
-  border-radius: 5px;
-  padding: 5px 8px;
+  margin-top: var(--spacing-sm);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
   background: var(--color-bg-subtle);
-  color: var(--color-text-primary);
-  font-size: 11px;
+  color: var(--color-error);
+  font-size: var(--font-size-xs);
   cursor: pointer;
 }
 
-.slides-element-property-panel button:disabled {
+.slides-element-property-panel__delete:disabled {
   cursor: default;
   opacity: 0.55;
 }
 
-.slides-element-property-panel .slides-element-property-panel__delete {
-  margin-top: 10px;
-  border-color: var(--color-danger-border, #dc2626);
-  color: var(--color-danger-text, #dc2626);
+.slides-element-property-panel__hint {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.slides-element-property-panel__delete:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.slides-element-color__palette {
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--spacing-sm);
+  min-width: 0;
+}
+.slides-element-color__custom {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-align: left;
+  cursor: pointer;
+}
+.slides-element-color__custom:hover { background: var(--color-bg-hover); }
+.slides-element-color__custom.is-current {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+.slides-element-color__custom:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.slides-element-color__custom:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.slides-element-color__caption {
+  display: grid;
+  gap: var(--spacing-xxs);
+  flex: 1;
+}
+.slides-element-color__value { color: var(--color-text-secondary); }
+.slides-element-color__chevron {
+  width: 14px;
+  height: 14px;
+}
+.slides-element-color__swatch {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--slides-custom-color);
+}
+.slides-element-color__editor {
+  display: grid;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+/* 黑白与色相属于取色内容坐标，不随 UI 主题变化。 */
+.slides-element-color__plane {
+  position: relative;
+  height: 112px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent), var(--slides-color-hue);
+  touch-action: none;
+  cursor: crosshair;
+}
+.slides-element-color__marker {
+  position: absolute;
+  left: var(--slides-color-saturation);
+  top: var(--slides-color-darkness);
+  width: 10px;
+  height: 10px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #000;
+  border-radius: var(--radius-full);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.slides-element-color__slider {
+  display: grid;
+  grid-template-columns: 3.5em minmax(0, 1fr);
+  gap: var(--spacing-sm);
+  align-items: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+.slides-element-color__slider input {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+.slides-element-color__hex {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+.slides-element-color__error {
+  color: var(--color-error);
+  font-size: var(--font-size-xs);
 }

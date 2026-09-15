@@ -12,6 +12,7 @@
 - Selecting an object exposes the sibling [`elementProperties`](../elementProperties/README.md) feature only when the compiler projects at least one visible property action: plain-text font size/color, Frame/Shape solid color, Shape/Image visual width/height, or the explicit Frame subtree deletion control. Keyboard-only deletion does not create a panel for an otherwise move-only object, and the panel does not repeat an author key as a floating title.
 - Rich author runs and inline formula runs remain text-read-only because replacing them with one string would destroy run semantics. They may still move.
 - Image and Shape author objects may resize when projected as safe; Table, Chart, SVG Graphic and formula author objects currently only move. Their content/data/source editors remain later independent feature slices.
+- Resizable Shape/Image selections expose right, bottom and bottom-right handles. These keep the local top-left anchor fixed, matching the existing `set_visual_size` contract; shapes adjust independent dimensions and images preserve their current aspect ratio. Rotated targets project pointer displacement onto their local axes, with the same zoom conversion as the stage. The gesture starts from the currently presented geometry, including queued edits. Pointer capture keeps dragging active outside the handle; local Canvas, selection and property previews update together, with no per-move IPC. Release promotes exactly one final operation into the existing queue before removing the transient preview. Escape/pointer cancellation clears only the current gesture; a click or return to the original size submits nothing. Completion returns keyboard focus to the stage, preserving Delete/Backspace. Accessible numeric inputs remain the keyboard resizing path. Left/top handles, Frame resizing and a second position/size command are intentionally absent.
 - A decorated Flex Frame is selected through its background and moves as one author object. The compiler projects every flattened descendant's `authoringAncestorRefs`; the target mapper turns that relation into the exact RenderNode roots shared by optimistic translation, deletion and parent selection geometry. The parent outline is the world-coordinate union of the visible roots, so a child moved beyond the Frame background remains inside the parent selection. Hit testing still uses each real object polygon rather than the union rectangle, so empty space between members does not become clickable. Active and queued child previews feed the same union before compilation finishes. Child text and visual objects keep their own author identity, so clicking them can still select and edit the child independently. Nested rendered Groups contribute only their outer affected root, avoiding a double transform.
 
 The existing source-selection/AI-edit mode and manual-edit mode are mutually exclusive. Both consume compiler facts from the same RenderModel and share the same pointer-to-slide coordinate function. Source selection may admit any node with source ownership, while manual editing additionally requires an explicit author identity and capability; their transient selections and write workflows remain in separate feature stores.
@@ -22,13 +23,13 @@ The existing source-selection/AI-edit mode and manual-edit mode are mutually exc
 definitions/
   manualEditingTypes + localized message catalog
 functions/
-  author-capability target/path projection, hit testing, availability, delete command/shortcut rules, command creation, result messages
+  author-capability target/path projection, hit testing, resize geometry, availability, delete command/shortcut rules, command creation, result messages
 orchestration/
-  pointer selection/drag + submit/refresh workflow
+  pointer selection/drag, captured resize gesture + submit/refresh workflow
 store/
   mode, selected target, gesture/queued preview state, synchronous intent queue state
 ui/
-  localization adapter
+  localization adapter, hierarchy label and resize handles
 ```
 
 The store never calls IPC and never contains geometry or conflict rules. Generic world-coordinate traversal belongs to the sibling `renderNodeSelection` feature; manual editing contributes only its author-capability predicate and target mapping. `SlidesView` is the app-level assembly point: it drains typed edit intents one at a time, supplies the current document snapshot to `submitManualEdit`, invokes `slidesApi`, and requests the committed revision. The next intent starts only after the prior committed revision is both the current build version and the installed RenderModel version. `SlideStage` records presentation only when `renderVisualResources` has atomically installed the target page frame. Active and queued previews are projected into both painting and hit testing, so the canvas does not jump back and a moved or resized target remains selectable at its visible position while compilation catches up. Adjacent queued edits of the same kind and author target are coalesced; for example, a font-size change followed quickly by a color change becomes one `set_text_style` compile.
@@ -53,6 +54,7 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 - `functions/appendManualEditIntent.test.ts`: adjacent style and translation coalescing without crossing author targets.
 - `orchestration/useSlideManualEditingInteraction.test.ts`: target-only hover and background deselection, drag-to-pending promotion, parent-first repeated-click descent, sibling switching during a style revision, stable Frame drag ownership, queued interaction during compilation, atomic deletion and deferred selection after text presentation.
 - `functions/manualEditingCursor.test.ts`: default background, selectable-only and movable-target cursor semantics.
+- `functions/manualResize.test.ts`: zoomed/rotated resizing, a second resize from pending geometry, image aspect ratio, minimum dimensions and no-op/capability boundaries.
 - `functions/createManualDeleteOperation.test.ts` and `functions/manualDeleteShortcut.test.ts`: capability-bound target-kind preservation and native editing-control keyboard ownership.
 - `functions/resolveManualSelectionBreadcrumbStyle.test.ts`: selected-bounds top-edge-center placement.
 - `functions/manualVisualPreview.test.ts`: immediate text/fill/size/deletion projection, size-selection geometry and parent outline expansion around an optimistically moved child.
@@ -62,6 +64,7 @@ The store never calls IPC and never contains geometry or conflict rules. Generic
 - `page/SlidesView.test.ts`: component-level command submission, post-commit refresh and next-intent dispatch against the newly presented exact revision.
 - Backend orchestration, IPC parsing, source rewrite, CAS, draft protection and receipt tests remain in `backend/features/presentationManualEditing`, `backend/ipc` and persistence suites.
 - `smoke:preview-transitions` mounts the production `KonvaSlideStage` and verifies that one Frame preview delta moves multiple related content nodes in the same real Chromium frame. On one persistent Shape node it also checks fill, visual size, Frame-delete hiding and A→B→A restoration, in addition to the existing persistent-paint pixel comparisons.
+- The same smoke mounts production `ManualResizeHandles` and `ElementPropertyPanel`; Electron native pointer input verifies intermediate preview without submission, one submission per release, a consecutive resize before revision installation, Escape rollback, click-without-drag and keyboard focus restoration. It saves theme screenshots under `dist/dev/manual-properties-*.png`. Localization uses fixture fallback text; no user database or backend write is involved.
 
 ## Performance trace
 
