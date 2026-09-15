@@ -177,7 +177,7 @@ Teleport、Popover、Dropdown、Modal 和 fixed overlay 不在触发组件的 DO
 
 统一使用共享能力的典型场景包括：
 
-- 文本、密文、数字和多行输入。
+- 文本、密文、数字、范围滑块和多行输入。
 - Select、Checkbox、Radio、Switch 和 Segmented Tabs。
 - Modal、AlertDialog、Tooltip、Dropdown 和操作按钮。
 - 标签、日期时间、颜色选择和可拖拽面板。
