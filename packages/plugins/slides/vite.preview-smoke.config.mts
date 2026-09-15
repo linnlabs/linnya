@@ -8,7 +8,13 @@ export default defineConfig({
   root: path.resolve(import.meta.dirname, 'dev/fixtures'),
   base: './',
   plugins: [vue()],
-  resolve: { ...rasterConfig.resolve, dedupe: ['vue', 'konva'] },
+  resolve: {
+    alias: [
+      ...(rasterConfig.resolve?.alias ?? []),
+      { find: '@app/localization', replacement: path.resolve(import.meta.dirname, 'dev/tools/previewLocalization.ts') },
+    ],
+    dedupe: ['vue', 'konva'],
+  },
   define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/dev/preview-transitions'),

@@ -1,4 +1,5 @@
 import { normalizePaint } from '../../src/shared/visual/paint';
+import { mountManualPropertySmoke } from './manualPropertyBrowser';
 import { createApp, h, nextTick, shallowRef } from 'vue';
 import VueKonva, { Stage as VueStage, Layer as VueLayer } from 'vue-konva';
 import Konva from 'konva';
@@ -35,6 +36,8 @@ declare global {
       manualVisualFrames: number;
     }>;
     verifyPreviewPaintSequence(input: unknown): Promise<{ frames: number }>;
+    mountManualPropertySmoke: typeof mountManualPropertySmoke;
+    manualPropertySmoke: ReturnType<typeof mountManualPropertySmoke>;
   }
 }
 
@@ -302,3 +305,4 @@ window.previewTransitionSmoke = (async () => ({
   ...await verifyManualTranslation(),
   ...await verifyManualVisual(),
 }))();
+window.mountManualPropertySmoke = mountManualPropertySmoke;
