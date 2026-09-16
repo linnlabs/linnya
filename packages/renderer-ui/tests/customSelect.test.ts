@@ -246,7 +246,7 @@ describe('CustomSelect 子菜单交互与定位', () => {
     await nextTick();
 
     expect(mounted.host.querySelector('.custom-select__options')?.classList)
-      .toContain('custom-select__options--motion-up');
+      .toContain('linnya-dropdown-up-enter-active');
   });
 
   it('长选项默认省略，并仅在真实溢出时于 hover 中滚动到末尾', async () => {

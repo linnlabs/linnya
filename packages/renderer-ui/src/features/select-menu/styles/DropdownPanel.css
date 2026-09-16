@@ -1,0 +1,38 @@
+.linnya-dropdown-panel {
+  position: absolute;
+  z-index: var(--linnya-ui-layer-floating-panel);
+  box-sizing: border-box;
+  overflow: auto;
+  border: none;
+  border-radius: 8px;
+  outline: none;
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: normal;
+  box-shadow: var(--shadow-floating-panel);
+}
+.linnya-dropdown-down-enter-active,
+.linnya-dropdown-down-leave-active,
+.linnya-dropdown-up-enter-active,
+.linnya-dropdown-up-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.linnya-dropdown-down-enter-from { opacity: 0; transform: translateY(-8px); }
+.linnya-dropdown-down-leave-to { opacity: 0; transform: translateY(-4px); }
+.linnya-dropdown-up-enter-from { opacity: 0; transform: translateY(8px); }
+.linnya-dropdown-up-leave-to { opacity: 0; transform: translateY(4px); }
+.linnya-dropdown-down-enter-to,
+.linnya-dropdown-down-leave-from,
+.linnya-dropdown-up-enter-to,
+.linnya-dropdown-up-leave-from { opacity: 1; transform: translateY(0); }
+/* 退出中的旧面板不可吞下一次选择；快速重开由 Vue Transition 中断旧动画。 */
+.linnya-dropdown-down-leave-active,
+.linnya-dropdown-up-leave-active { pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .linnya-dropdown-down-enter-active,
+  .linnya-dropdown-down-leave-active,
+  .linnya-dropdown-up-enter-active,
+  .linnya-dropdown-up-leave-active { transition: none; }
+}

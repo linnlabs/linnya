@@ -4,6 +4,7 @@ import type { DropdownElementReference } from '../definitions/selectMenu';
 
 interface UseDropdownOptions {
   manualMode?: boolean;
+  deferOutsideListener?: boolean;
   containerRef?: Ref<HTMLElement | null> | null;
   externalTriggerRef?: Ref<DropdownElementReference> | DropdownElementReference;
   dropdownRef?: Ref<DropdownElementReference> | DropdownElementReference;
@@ -21,6 +22,7 @@ function resolveElement(
 /** 管理下拉框的开关状态与点击外部关闭行为。 */
 export function useDropdown({
   manualMode = false,
+  deferOutsideListener = manualMode,
   containerRef = null,
   externalTriggerRef = null,
   dropdownRef = null,
@@ -59,7 +61,7 @@ export function useDropdown({
   };
 
   onMounted(() => {
-    if (manualMode) {
+    if (deferOutsideListener) {
       delayedListenerTimer = window.setTimeout(() => {
         document.addEventListener('click', handleClickOutside);
         delayedListenerTimer = null;

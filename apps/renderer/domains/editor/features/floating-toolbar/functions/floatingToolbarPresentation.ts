@@ -69,22 +69,6 @@ export function readFloatingToolbarHeadingOptions(
   ];
 }
 
-export function readFloatingToolbarColorPanelOptions(
-  editorMessage: EditorMessageResolver,
-): readonly FloatingToolbarSelectOption[] {
-  return [
-    { value: 'panel', text: editorMessage('editor.floatingToolbar.colorPanel') },
-  ];
-}
-
-export function readFloatingToolbarHighlightPanelOptions(
-  editorMessage: EditorMessageResolver,
-): readonly FloatingToolbarSelectOption[] {
-  return [
-    { value: 'panel', text: editorMessage('editor.floatingToolbar.highlightPanel') },
-  ];
-}
-
 export function readFloatingToolbarTextColors(
   editorMessage: EditorMessageResolver,
 ): readonly FloatingToolbarColorOption[] {

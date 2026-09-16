@@ -23,5 +23,6 @@
 @import '../features/color-selection/styles/index.css';
 @import '../features/floating-panels/styles/index.css';
 @import '../features/toolbars/styles/FloatingToolbar.css';
+@import '../features/toolbars/styles/ToolbarButton.css';
 
 /* Host 只加载这个完整入口；插件不重复装载 package CSS。 */

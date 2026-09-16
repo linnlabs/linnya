@@ -1,24 +1,29 @@
 <template>
   <ToolbarGroup class="text-selection-toolbar">
     <!-- AI 引用按钮 -->
-    <button class="ai-quote-button" @click="handleAiQuote">
+    <button
+      class="ai-quote-button"
+      @click="handleAiQuote"
+    >
       <AiIcon class="ai-icon" />
       <span>{{ editorMessage('editor.floatingToolbar.aiReference') }}</span>
     </button>
-    
+
     <!-- 分隔线 -->
-    <div class="divider"></div>
-    
+    <div class="divider" />
+
     <!-- 文本格式化按钮组 -->
     <div class="format-buttons">
       <!-- 标题按钮容器 -->
       <div class="heading-button-container">
-        <button 
+        <ToolbarButton
           ref="headingButtonRef"
-          class="format-button" 
-          :class="{ 'is-active': isAnyHeadingActive, 'is-menu-open': showHeadingDropdown }"
+
+          class="text-selection-heading-button"
+          :active="isAnyHeadingActive || showHeadingDropdown"
+          :aria-expanded="showHeadingDropdown"
+          :label="currentHeadingText"
           @click="toggleHeadingDropdown"
-          :title="currentHeadingText"
         >
           <template v-if="currentHeadingLevel">
             <span class="heading-level">H{{ currentHeadingLevel }}</span>
@@ -26,15 +31,15 @@
           <template v-else>
             <HeadingIcon class="format-icon" />
           </template>
-          <ChevronIcon 
-            class="chevron-icon" 
-            direction="down" 
+          <ChevronIcon
+            class="chevron-icon"
+            direction="down"
           />
-        </button>
-        
+        </ToolbarButton>
+
         <!-- 标题下拉菜单 -->
         <transition name="heading-menu-fade">
-          <div 
+          <div
             v-if="showHeadingDropdown"
             class="heading-select-wrapper"
           >
@@ -52,140 +57,109 @@
           </div>
         </transition>
       </div>
-      
+
       <!-- 加粗按钮 -->
-      <button 
-        class="format-button" 
-        :class="{ 'is-active': isBoldActive }"
+      <ToolbarButton
+
+        :active="isBoldActive"
+        :label="editorMessage('editor.floatingToolbar.bold')"
         @click="toggleBold"
-        :title="editorMessage('editor.floatingToolbar.bold')"
       >
         <BoldIcon class="format-icon" />
-      </button>
-      
+      </ToolbarButton>
+
       <!-- 斜体按钮 -->
-      <button 
-        class="format-button" 
-        :class="{ 'is-active': isItalicActive }"
+      <ToolbarButton
+
+        :active="isItalicActive"
+        :label="editorMessage('editor.floatingToolbar.italic')"
         @click="toggleItalic"
-        :title="editorMessage('editor.floatingToolbar.italic')"
       >
         <ItalicIcon class="format-icon" />
-      </button>
-      
+      </ToolbarButton>
+
       <!-- 删除线按钮 -->
-      <button 
-        class="format-button" 
-        :class="{ 'is-active': isStrikethroughActive }"
+      <ToolbarButton
+
+        :active="isStrikethroughActive"
+        :label="editorMessage('editor.floatingToolbar.strikethrough')"
         @click="toggleStrikethrough"
-        :title="editorMessage('editor.floatingToolbar.strikethrough')"
       >
         <StrikethroughIcon class="format-icon" />
-      </button>
+      </ToolbarButton>
 
-      <!-- 文字颜色按钮 -->
-      <div class="color-button-wrapper" ref="colorButtonWrapper">
-        <button 
-          class="format-button color-button" 
-          :class="{ 'is-active': showColorPanel }"
-          @click="toggleColorPanel"
-          :title="editorMessage('editor.floatingToolbar.textColor')"
-        >
-          <span class="color-icon">
-            A
-            <span 
-              class="color-indicator" 
-              :style="{
-                backgroundColor: currentTextColorCssValue
-              }"
-            ></span>
-          </span>
-        </button>
-
-        <transition name="color-panel-fade">
-          <div v-if="showColorPanel" class="color-panel">
-            <CustomSelect
-              :model-value="null"
-              :options="inlineColorPanelOptions"
-              :manual-mode="true"
-              :parent-is-open="showColorPanel"
-              :external-trigger-ref="colorButtonWrapper"
-              variant="default"
-              :bordered="false"
-              min-width="220px"
-              @close="closeInlineColorPicker"
-            >
-              <template #panel>
-                <InlineTextColorPicker
-                  :model-value="currentTextColor"
-                  :has-color="selectionHasTextColor"
-                  :title="editorMessage('editor.floatingToolbar.textColor')"
-                  :clear-label="editorMessage('editor.floatingToolbar.clearColor')"
-                  :text-colors="textColors"
-                  @update:model-value="handleInlineColorChange"
-                  @select="commitInlineColor"
-                  @clear="clearInlineColor"
-                />
-              </template>
-            </CustomSelect>
-          </div>
-        </transition>
-      </div>
-
-      <!-- 文字高亮按钮 -->
-      <div class="highlight-button-wrapper" ref="highlightButtonWrapper">
-        <button 
-          class="format-button highlight-button" 
-          :class="{ 'is-active': showHighlightPanel }"
-          @click="toggleHighlightPanel"
-          :title="editorMessage('editor.floatingToolbar.textHighlight')"
-        >
-          <span class="highlight-icon">
-            <EditIcon class="highlight-edit-icon" />
-            <span 
-              class="highlight-indicator" 
-              :style="{
-                backgroundColor: currentHighlightCssValue
-              }"
-            ></span>
-          </span>
-        </button>
-
-        <transition name="highlight-panel-fade">
-          <div v-if="showHighlightPanel" class="highlight-panel">
-            <CustomSelect
-              :model-value="null"
-              :options="inlineHighlightPanelOptions"
-              :manual-mode="true"
-              :parent-is-open="showHighlightPanel"
-              :external-trigger-ref="highlightButtonWrapper"
-              variant="default"
-              :bordered="false"
-              min-width="220px"
-              @close="closeInlineHighlightPicker"
-            >
-              <template #panel>
-                <InlineTextHighlightPicker
-                  :model-value="currentTextHighlight"
-                  :has-highlight="selectionHasTextHighlight"
-                  :title="editorMessage('editor.floatingToolbar.textHighlight')"
-                  :clear-label="editorMessage('editor.floatingToolbar.clearHighlight')"
-                  :highlight-colors="highlightColors"
-                  @update:model-value="handleInlineHighlightChange"
-                  @select="commitInlineHighlight"
-                  @clear="clearInlineHighlight"
-                />
-              </template>
-            </CustomSelect>
-          </div>
-        </transition>
-      </div>
+      <BaseDropdown
+        :manual-mode="true"
+        :is-open="showColorPanel"
+        @open="toggleColorPanel"
+        @close="closeInlineColorPicker"
+      >
+        <template #trigger="{ toggle }">
+          <ToolbarColorButton
+            kind="text"
+            :color="currentTextColorCssValue"
+            :expanded="showColorPanel"
+            :label="editorMessage('editor.floatingToolbar.textColor')"
+            @click="toggle"
+          />
+        </template>
+        <template #content>
+          <DropdownPanel
+            :show="showColorPanel"
+            class="text-selection-color-panel"
+          >
+            <InlineTextColorPicker
+              :model-value="currentTextColor"
+              :has-color="selectionHasTextColor"
+              :title="editorMessage('editor.floatingToolbar.textColor')"
+              :clear-label="editorMessage('editor.floatingToolbar.clearColor')"
+              :text-colors="textColors"
+              @update:model-value="handleInlineColorChange"
+              @select="commitInlineColor"
+              @clear="clearInlineColor"
+            />
+          </DropdownPanel>
+        </template>
+      </BaseDropdown>
+      <BaseDropdown
+        :manual-mode="true"
+        :is-open="showHighlightPanel"
+        @open="toggleHighlightPanel"
+        @close="closeInlineHighlightPicker"
+      >
+        <template #trigger="{ toggle }">
+          <ToolbarColorButton
+            kind="background"
+            :color="currentHighlightCssValue"
+            :expanded="showHighlightPanel"
+            :label="editorMessage('editor.floatingToolbar.textHighlight')"
+            @click="toggle"
+          />
+        </template>
+        <template #content>
+          <DropdownPanel
+            :show="showHighlightPanel"
+            class="text-selection-color-panel"
+          >
+            <InlineTextHighlightPicker
+              :model-value="currentTextHighlight"
+              :has-highlight="selectionHasTextHighlight"
+              :title="editorMessage('editor.floatingToolbar.textHighlight')"
+              :clear-label="editorMessage('editor.floatingToolbar.clearHighlight')"
+              :highlight-colors="highlightColors"
+              @update:model-value="handleInlineHighlightChange"
+              @select="commitInlineHighlight"
+              @clear="clearInlineHighlight"
+            />
+          </DropdownPanel>
+        </template>
+      </BaseDropdown>
     </div>
   </ToolbarGroup>
 </template>
 
 <script setup>
-import { ToolbarGroup } from '@linnya/renderer-ui';
+import { BaseDropdown, DropdownPanel, ToolbarColorButton, ToolbarButton, ToolbarGroup } from '@linnya/renderer-ui';
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { AiIcon } from '@linnya/renderer-ui/icons';
 import { BoldIcon } from '@linnya/renderer-ui/icons';
@@ -193,7 +167,6 @@ import { ItalicIcon } from '@linnya/renderer-ui/icons';
 import { StrikethroughIcon } from '@linnya/renderer-ui/icons';
 import { HeadingIcon } from '@linnya/renderer-ui/icons';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
-import { EditIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect } from '@linnya/renderer-ui';
 import InlineTextColorPicker from './InlineTextColorPicker.vue';
 import InlineTextHighlightPicker from './InlineTextHighlightPicker.vue';
@@ -202,10 +175,8 @@ import { useNotificationStore } from '@/app/notification';
 import * as ConversionCommands from '../../../extensions/core/commands/ConversionCommands';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
 import {
-  readFloatingToolbarColorPanelOptions,
   readFloatingToolbarHeadingOptions,
   readFloatingToolbarHighlightColors,
-  readFloatingToolbarHighlightPanelOptions,
   readFloatingToolbarTextColors,
 } from '../functions/floatingToolbarPresentation';
 
@@ -224,24 +195,16 @@ const { editorMessage } = useEditorLocalization();
 const showHeadingDropdown = ref(false);
 const headingButtonRef = ref(null);
 const showColorPanel = ref(false);
-const colorButtonWrapper = ref(null);
 const currentTextColor = ref(null);
 // 当前选区是否包含任意文字颜色标记，用于控制「清除颜色」按钮可用状态
 const selectionHasTextColor = ref(false);
 
 const showHighlightPanel = ref(false);
-const highlightButtonWrapper = ref(null);
 const currentTextHighlight = ref(null);
 // 当前选区是否包含任意文字高亮标记，用于控制「清除高亮」按钮可用状态
 const selectionHasTextHighlight = ref(false);
 
 const headingOptions = computed(() => readFloatingToolbarHeadingOptions(editorMessage));
-
-// 文字颜色面板使用的占位 options（panel 模式下不会真正渲染为列表）
-const inlineColorPanelOptions = computed(() => readFloatingToolbarColorPanelOptions(editorMessage));
-
-// 文字高亮面板使用的占位 options（panel 模式下不会真正渲染为列表）
-const inlineHighlightPanelOptions = computed(() => readFloatingToolbarHighlightPanelOptions(editorMessage));
 
 const textColors = computed(() => readFloatingToolbarTextColors(editorMessage));
 const highlightColors = computed(() => readFloatingToolbarHighlightColors(editorMessage));
@@ -351,7 +314,7 @@ const syncCurrentTextColor = () => {
   const colorSet = new Set();
   state.doc.nodesBetween(from, to, (node) => {
     if (!node.isText) return;
-    
+
     const textColorMark = node.marks && node.marks.find(mark => mark.type.name === 'textColor');
     if (textColorMark && textColorMark.attrs?.color) {
       colorSet.add(textColorMark.attrs.color);
@@ -363,7 +326,7 @@ const syncCurrentTextColor = () => {
   });
 
   // colorSet 中包含所有颜色值（可能有 null，表示无色）
-  
+
   // 计算是否允许清除：只要有任意非 null 的颜色，就允许清除
   let hasAnyColor = false;
   for (const c of colorSet) {
@@ -427,7 +390,7 @@ const syncCurrentTextHighlight = () => {
   const highlightSet = new Set();
   state.doc.nodesBetween(from, to, (node) => {
     if (!node.isText) return;
-    
+
     const highlightMark = node.marks && node.marks.find(mark => mark.type.name === 'textHighlight');
     if (highlightMark && highlightMark.attrs?.color) {
       highlightSet.add(highlightMark.attrs.color);
@@ -577,12 +540,15 @@ const setupEditorSelectionListener = () => {
   if (!currentEditor || typeof currentEditor.on !== 'function') {
     return;
   }
-  detachSelectionUpdateListener = currentEditor.on('selectionUpdate', () => {
+  const handleSelectionUpdate = () => {
     syncCurrentTextColor();
     syncCurrentTextHighlight();
     closeInlineColorPicker();
     closeInlineHighlightPicker();
-  });
+  };
+  currentEditor.on('selectionUpdate', handleSelectionUpdate);
+  // Tiptap on 返回 Editor 本身；必须用同一 callback 解除旧文稿订阅。
+  detachSelectionUpdateListener = () => currentEditor.off('selectionUpdate', handleSelectionUpdate);
 };
 
 watch(
@@ -607,14 +573,14 @@ const toggleHeadingDropdown = () => {
 // 选择标题级别
 const selectHeadingLevel = (level) => {
   if (!editor.value) return;
-  
+
   // 检查命令是否存在
-  if (typeof ConversionCommands.convertToHeading !== 'function' || 
+  if (typeof ConversionCommands.convertToHeading !== 'function' ||
       typeof ConversionCommands.setBaseBlock !== 'function') {
     console.error('[TextSelectionToolbar] ConversionCommands 不可用');
     return;
   }
-  
+
   if (level === null) {
     // 转换为普通文本
     ConversionCommands.setBaseBlock()({
@@ -628,10 +594,10 @@ const selectHeadingLevel = (level) => {
       dispatch: editor.value.view.dispatch
     });
   }
-  
+
   // 关闭下拉菜单
   showHeadingDropdown.value = false;
-  
+
   // 重新聚焦编辑器
   editor.value.commands.focus();
 };

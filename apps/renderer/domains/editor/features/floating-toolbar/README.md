@@ -27,3 +27,9 @@ provider，service 持有短生命周期展示状态，`ui/` 执行格式命令�
 ## 验证
 
 `ui/FloatingToolbarContainer.test.ts` 使用真实 Tiptap Editor、extension、registry、容器和共享外壳，验证点击格式按钮保留选区并实际加粗；点击另一个业务的共享工具条关闭 Editor 浮条，不影响另一实例。jsdom 只替代没有布局能力的选区坐标读取。修订条接受／拒绝和选区追踪继续由 `Revision/ui/useDocumentRevisionToolbar.test.ts` 验证；共享包测试负责普通输入可聚焦和实例隔离。
+
+文字／高亮入口使用共享 ToolbarColorButton（A／EditIcon＋色条），其他格式动作使用 ToolbarButton。颜色面板直接组合 BaseDropdown 与 DropdownPanel，不再创建虚构的 CustomSelect panel options，也不维护第二套按钮／图标／颜色面板过渡 CSS。具体色板、内容颜色解析和格式命令仍属于 Editor。旧色板局部处理器只吞 Escape 却不关闭面板，已删除；统一由 BaseDropdown 关闭并归还焦点。
+
+`ui/TextSelectionToolbar.test.ts` 进一步挂载生产 TextSelectionToolbar 与真实文字色／高亮 Mark，验证范围保留、颜色／高亮提交、重开和色板 Escape 焦点交接。
+
+选区订阅通过 on 注册、off 解除同一个回调；on 返回 Editor，不是取消函数。切换 Editor 实例后，旧文稿的 selectionUpdate 不能关闭新文稿色板；生产工具条集成测试覆盖这一场景。

@@ -8,3 +8,16 @@ export interface FloatingToolbarProps {
   readonly show: boolean;
   readonly position: FloatingToolbarPosition;
 }
+
+export interface ToolbarButtonProps {
+  readonly label: string;
+  readonly active?: boolean;
+  readonly disabled?: boolean;
+}
+
+export interface ToolbarColorButtonProps extends ToolbarButtonProps {
+  readonly kind: 'text' | 'background';
+  /** 调用方解析内容颜色；包内不认识业务颜色 token 或保存格式。 */
+  readonly color: string;
+  readonly expanded: boolean;
+}

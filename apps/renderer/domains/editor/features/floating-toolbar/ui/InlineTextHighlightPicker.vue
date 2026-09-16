@@ -8,7 +8,6 @@
     class="inline-highlight-picker block-color-picker"
     ref="containerRef"
     tabindex="0"
-    @keydown="handleKeyDown"
     @click.stop
   >
     <div class="color-section">
@@ -63,7 +62,7 @@ const emit = defineEmits<{
   (event: 'clear'): void;
 }>();
 
-// 容器引用 + Esc 关闭支持
+// Escape 由外层 BaseDropdown 统一关闭并归还焦点。
 const containerRef = ref(null);
 
 const handleSelect = (value: string) => {
@@ -76,12 +75,6 @@ const handleClear = () => {
   emit('clear');
 };
 
-const handleKeyDown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') {
-    event.stopPropagation();
-    event.preventDefault();
-  }
-};
 
 // 获取混合比例，与 TextHighlightMark 保持一致
 const getMixRatio = (colorValue: string) => {

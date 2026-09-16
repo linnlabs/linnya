@@ -1,0 +1,50 @@
+.linnya-toolbar-button {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 28px;
+  height: 28px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: normal;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.linnya-toolbar-button:hover:not(:disabled, .linnya-toolbar-button--active) { background-color: var(--color-bg-hover-light); }
+.linnya-toolbar-button--active {
+  color: var(--color-accent);
+  background-color: var(--color-accent-bg);
+}
+.linnya-toolbar-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.linnya-toolbar-button:disabled { opacity: 0.55; cursor: default; }
+.linnya-toolbar-color-button { min-width: 36px; }
+.linnya-toolbar-color-button__symbol {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.linnya-toolbar-color-button__icon { flex-shrink: 0; width: 16px; height: 16px; }
+.linnya-toolbar-color-button__indicator {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 14px;
+  height: 3px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .linnya-toolbar-button { transition: none; }
+}
