@@ -178,8 +178,9 @@
   min-height: 0;
 }
 
-.editor-shell.for-chat-centric .scroll-content-wrapper,
-.editor-shell.for-workspace-stage .scroll-content-wrapper {
+/* 只向工作台直属包装层传递高度；嵌套文档的包装层需随正文自然撑开，底部留白才会跟随文末。 */
+.editor-shell.for-chat-centric > .scroll-content-wrapper,
+.editor-shell.for-workspace-stage > .scroll-content-wrapper {
   height: 100%;
   display: flex;
   flex-direction: column;

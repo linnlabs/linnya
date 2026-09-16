@@ -267,6 +267,16 @@ Header 和 `WorkspaceStage` 中的中右分割线通过 `interactionGroup="works
 
 不要在 Vue 组件里手写按钮宽度、窗口控制区宽度、pane 边界魔数。Header 和 WorkspaceStage 必须从同一套语义派生边界。
 
+## Markdown 滚动与文末留白
+
+WorkspaceStage 外层 shell 只负责传递可用高度，Markdown Document Surface 的内层 shell
+独立滚动。工作台的满高规则必须用直属子选择器限定 `.scroll-content-wrapper`，不能命中
+嵌套文档中的同名包装层；文档包装层由正文自然撑开，才能让 shell 的 `50vh` 底部留白
+始终跟在最后一个块之后。若把它限制为 `height: 100%`，长文档会溢出包装层并覆盖留白。
+
+文末留白属于 shell 布局，不写入文档空块，也不计入最后一个 RootBlock 的高度缓存。
+验收需在工作台嵌套结构中检查长文档滚到底、短文档、窄 pane 和末尾光标定位。
+
 ## Pane 显隐契约
 
 `mounted`、`visible`、`occupied` 是三件不同的事：
