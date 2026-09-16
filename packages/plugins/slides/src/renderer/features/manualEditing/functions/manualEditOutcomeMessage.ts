@@ -1,4 +1,5 @@
-import type { SubmitManualEditOutcome } from '../orchestration/submitManualEdit';
+import type { ManualEditQueueEntry } from '../definitions/manualEditQueue';
+import type { SubmitManualEditOutcome } from '../definitions/manualEditSubmission';
 import type { ManualEditingMessageResolver } from '../definitions/manualEditingMessageCatalog';
 
 export function readManualEditErrorMessage(
@@ -18,4 +19,18 @@ export function readManualEditErrorMessage(
       if (outcome.reason === 'command_reused') return message('slides.manualEditing.error.commandReused');
       return message('slides.manualEditing.error.staleBase');
   }
+}
+
+export function describeManualEditQueueFailure(
+  error: string,
+  active: ManualEditQueueEntry,
+  waiting: readonly ManualEditQueueEntry[],
+  message: ManualEditingMessageResolver,
+): string {
+  return [
+    error,
+    ...(waiting.length ? [message('slides.manualEditing.error.dependentEditsBlocked')] : []),
+    ...([active, ...waiting].some(entry => entry.intent.operation.op === 'set_text_content')
+      ? [message('slides.manualEditing.error.textDraftRetained')] : []),
+  ].join(' ');
 }

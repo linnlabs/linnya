@@ -36,5 +36,3 @@ export interface TextEditingTarget {
   readonly letterSpacingPt?: number;
   readonly opacity: number;
 }
-
-export type TextEditingCommitResult = 'submitted' | 'closed' | 'blocked';

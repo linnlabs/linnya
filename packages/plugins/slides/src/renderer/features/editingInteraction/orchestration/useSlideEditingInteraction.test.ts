@@ -4,8 +4,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SlideRenderModel } from '../../../types/render';
-import { useSlidesManualEditingStore } from '../store/slidesManualEditingStore';
-import { useSlideManualEditingInteraction } from './useSlideManualEditingInteraction';
+import { useSlidesManualEditingStore, type ManualEditIntent, type ManualEditQueueEntry } from '../../manualEditing';
+import { useSlideEditingInteraction } from './useSlideEditingInteraction';
 
 const slide: SlideRenderModel = {
   slideId: 'slide-1',
@@ -80,7 +80,7 @@ function createInteraction(
   wrapper.hasPointerCapture = vi.fn(() => true);
   const canSelect = ref(gates.canSelect ?? true);
   const canMutate = ref(gates.canMutate ?? true);
-  const interaction = useSlideManualEditingInteraction({
+  const interaction = useSlideEditingInteraction({
     canSelect,
     currentSlide: ref(currentSlide),
     renderScale: ref(1),
@@ -89,8 +89,12 @@ function createInteraction(
     submitIntent: intent => {
       submitOperation(intent);
       const store = useSlidesManualEditingStore();
-      store.enqueueIntent(intent);
-      if (canMutate.value) store.startNextSubmit();
+      const clientOperationId = crypto.randomUUID();
+      const entry: ManualEditQueueEntry = { intent, clientOperationIds: [clientOperationId] };
+      if (canMutate.value && store.submission.phase === 'idle') {
+        store.setSubmission({ phase: 'submitting', entry, commandId: 'pointer-fixture' });
+      } else store.setQueue([...store.queue, entry]);
+      return { clientOperationId, settled: new Promise(() => {}) };
     },
   });
   wrapper.addEventListener('pointerdown', interaction.handlePointerDown);
@@ -101,7 +105,7 @@ function createInteraction(
   return { interaction, wrapper, canMutate };
 }
 
-describe('useSlideManualEditingInteraction', () => {
+describe('useSlideEditingInteraction', () => {
   beforeEach(() => setActivePinia(createPinia()));
 
   it('double-clicks shape content through the same session and submits the shape identity', () => {
@@ -116,7 +120,7 @@ describe('useSlideManualEditingInteraction', () => {
     }] };
     const { interaction, wrapper } = createInteraction(submit, shapeSlide);
     const store = useSlidesManualEditingStore();
-    store.enqueueIntent({ operation: {
+    enqueuePreview({ operation: {
       op: 'set_visual_size', targetKind: 'shape', target: { slideKey: 'overview', editKey: 'badge' },
       visualSize: { width: 4, height: 2 },
     }, visualPreview: {
@@ -202,7 +206,7 @@ describe('useSlideManualEditingInteraction', () => {
     });
   });
 
-  it('does not submit text during IME composition and preserves the draft on failure', () => {
+  it('does not submit text during IME composition and hands off without holding input focus', () => {
     const submitOperation = vi.fn();
     const { interaction, wrapper } = createInteraction(submitOperation);
     wrapper.dispatchEvent(new MouseEvent('dblclick', {
@@ -223,9 +227,8 @@ describe('useSlideManualEditingInteraction', () => {
       },
     });
     const store = useSlidesManualEditingStore();
-    store.failSubmit('保存失败');
-    expect(interaction.textEditorTarget.value?.elementId).toBe('authoring-overview-headline');
-    expect(interaction.textDraft.value).toBe('新的标题');
+    expect(interaction.textEditorTarget.value).toBeNull();
+    expect(interaction.textPresentations.value[0]?.content).toBe('新的标题');
   });
 
   it('selects a Frame first and enters its child on the next click', () => {
@@ -379,7 +382,7 @@ describe('useSlideManualEditingInteraction', () => {
     });
   });
 
-  it('applies the next selection after an edited text revision is presented', () => {
+  it('applies an outside selection immediately while the edited text is still pending', () => {
     const nextSlide: SlideRenderModel = {
       ...slide,
       elements: [
@@ -409,9 +412,6 @@ describe('useSlideManualEditingInteraction', () => {
     expect(submitOperation).toHaveBeenCalledWith(expect.objectContaining({
       operation: expect.objectContaining({ op: 'set_text_content' }),
     }));
-    expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-headline');
-
-    interaction.completeTextEditing();
     expect(interaction.textEditorTarget.value).toBeNull();
     expect(interaction.selectedTarget.value?.elementId).toBe('authoring-overview-accent');
   });
@@ -440,7 +440,7 @@ describe('useSlideManualEditingInteraction', () => {
       operation: expect.objectContaining({ op: 'set_fill_color' }),
     }));
 
-    useSlidesManualEditingStore().failSubmit('测试下一条操作');
+    useSlidesManualEditingStore().setSubmission({ phase: 'idle' });
     interaction.submitVisualOperation({
       op: 'delete_target',
       target: { slideKey: 'overview', editKey: 'card1' },
@@ -528,3 +528,8 @@ describe('useSlideManualEditingInteraction', () => {
     });
   });
 });
+
+function enqueuePreview(intent: ManualEditIntent): void {
+  const store = useSlidesManualEditingStore();
+  store.setQueue([...store.queue, { intent, clientOperationIds: ['preview-fixture'] }]);
+}

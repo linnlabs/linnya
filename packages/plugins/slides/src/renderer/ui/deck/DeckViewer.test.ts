@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { createApp, nextTick } from 'vue';
+import { createApp, h, nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -62,7 +62,7 @@ vi.mock('@linnya/renderer-ui/icons', () => ({
 import DeckViewer from './DeckViewer.vue';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import { useSlidesStore } from '../../store/slidesStore';
-import { useSlidesManualEditingStore } from '../../features/manualEditing';
+import { useSlidesManualEditingStore, provideManualEditSubmission } from '../../features/manualEditing';
 import { useSlidesUiStore } from '../../store/slidesUiStore';
 
 describe('DeckViewer document transition', () => {
@@ -99,7 +99,13 @@ describe('DeckViewer document transition', () => {
 
     const host = document.createElement('div');
     document.body.append(host);
-    const app = createApp(DeckViewer);
+    const app = createApp({ setup() {
+      provideManualEditSubmission({
+        enqueue: () => { throw new Error('Stubbed Stage must not submit an edit'); },
+        refreshPresentation: async () => undefined,
+      });
+      return () => h(DeckViewer);
+    } });
     app.mount(host);
 
     expect(host.querySelector('.slides-status-state-stub')).not.toBeNull();
@@ -171,7 +177,13 @@ describe('DeckViewer document transition', () => {
 
     const host = document.createElement('div');
     document.body.append(host);
-    const app = createApp(DeckViewer);
+    const app = createApp({ setup() {
+      provideManualEditSubmission({
+        enqueue: () => { throw new Error('Stubbed Stage must not submit an edit'); },
+        refreshPresentation: async () => undefined,
+      });
+      return () => h(DeckViewer);
+    } });
     app.mount(host);
     await nextTick();
 

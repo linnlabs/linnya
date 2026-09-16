@@ -18,7 +18,11 @@ export type ManualEditingMessageKey =
   | 'slides.manualEditing.error.draftPresent'
   | 'slides.manualEditing.error.commandReused'
   | 'slides.manualEditing.error.staleBase'
-  | 'slides.manualEditing.error.saveFailed';
+  | 'slides.manualEditing.error.saveFailed'
+  | 'slides.manualEditing.error.presentationRefreshFailed'
+  | 'slides.manualEditing.refreshPresentation'
+  | 'slides.manualEditing.error.dependentEditsBlocked'
+  | 'slides.manualEditing.error.textDraftRetained';
 
 export type ManualEditingMessageResolver = (
   key: ManualEditingMessageKey,
@@ -44,6 +48,10 @@ export const MANUAL_EDITING_MESSAGE_FALLBACKS = {
   'slides.manualEditing.error.commandReused': '编辑请求身份发生冲突，请重新操作。',
   'slides.manualEditing.error.staleBase': '文稿已被其他操作更新，已刷新到最新版本。',
   'slides.manualEditing.error.saveFailed': '保存人工编辑失败。',
+  'slides.manualEditing.error.presentationRefreshFailed': '修改已保存，但画面刷新失败。可重试刷新，或继续选择和编辑。',
+  'slides.manualEditing.refreshPresentation': '重试刷新',
+  'slides.manualEditing.error.dependentEditsBlocked': '后续修改尚未提交，请重新操作。',
+  'slides.manualEditing.error.textDraftRetained': '未保存文字已保留，双击相应元素可继续编辑。',
 } as const satisfies Readonly<Record<ManualEditingMessageKey, string>>;
 
 const MANUAL_EDITING_EN_US_MESSAGES = {
@@ -65,6 +73,10 @@ const MANUAL_EDITING_EN_US_MESSAGES = {
   'slides.manualEditing.error.commandReused': 'The edit request identity conflicted. Please try the edit again.',
   'slides.manualEditing.error.staleBase': 'Another operation updated the presentation. The latest version was loaded.',
   'slides.manualEditing.error.saveFailed': 'Failed to save the manual edit.',
+  'slides.manualEditing.error.presentationRefreshFailed': 'Changes saved, but the preview refresh failed. Retry refreshing or continue editing.',
+  'slides.manualEditing.refreshPresentation': 'Retry refresh',
+  'slides.manualEditing.error.dependentEditsBlocked': 'Later edits were not submitted. Please apply them again.',
+  'slides.manualEditing.error.textDraftRetained': 'Unsaved text was retained. Double-click the object to continue editing.',
 } as const satisfies Readonly<Record<ManualEditingMessageKey, string>>;
 
 export const MANUAL_EDITING_MESSAGE_CATALOG: MessageCatalogContribution = {

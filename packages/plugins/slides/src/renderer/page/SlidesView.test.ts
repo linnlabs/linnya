@@ -24,8 +24,8 @@ vi.mock('../services/slidesApi', () => ({
 vi.mock('../ui/deck/DeckViewer.vue', () => ({
   default: {
     name: 'DeckViewerStub',
-    emits: ['manualEditSubmit'],
-    template: `<button class="deck-viewer-stub" @click="$emit('manualEditSubmit', {
+    setup() { return { enqueue: useManualEditSubmission().enqueue }; },
+    template: `<button class="deck-viewer-stub" @click="enqueue({
       operation: {
         op: 'translate_by',
         target: { slideKey: 'overview', editKey: 'hero' },
@@ -52,7 +52,7 @@ vi.mock('../ui/shared/SlidesStatusState.vue', () => ({
 import SlidesView from './SlidesView.vue';
 import { useSlidesRenderStore } from '../store/slidesRenderStore';
 import { useSlidesStore } from '../store/slidesStore';
-import { useSlidesManualEditingStore } from '../features/manualEditing';
+import { useSlidesManualEditingStore, useManualEditSubmission } from '../features/manualEditing';
 
 interface Deferred<T> {
   readonly promise: Promise<T>;

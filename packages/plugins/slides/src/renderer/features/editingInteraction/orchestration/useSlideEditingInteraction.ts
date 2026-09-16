@@ -1,45 +1,31 @@
-import { shallowRef, type Ref } from 'vue';
+import { computed, shallowRef } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
-import type { SlideRenderModel } from '../../../types/render';
 import {
   resolveSlidePointerPoint,
   type SourceSelectionPoint,
 } from '../../sourceSelection';
-import type {
-  ManualEditIntent,
-  ManualEditableTarget,
-  ManualEditingVisualOperation,
-} from '../definitions/manualEditingTypes';
 import {
+  type ManualEditableTarget,
+  type ManualEditingVisualOperation,
   createPresentedTextEditingTarget,
   findManualEditableTargetPathAtPoint,
   findManualEditableTargetPathByElementId,
   type ManualEditingHitProjection,
-} from '../functions/manualEditableTargets';
-import { useSlidesManualEditingStore } from '../store/slidesManualEditingStore';
-import { useSlideTextEditingSession } from '../../textEditing';
-import { createManualVisualPreview } from '../functions/manualVisualPreview';
-import { resolveManualClickSelection } from '../functions/resolveManualClickSelection';
-import { createManualDeleteOperation } from '../functions/createManualDeleteOperation';
+  useSlidesManualEditingStore,
+  createManualVisualPreview,
+  resolveManualClickSelection,
+  createManualDeleteOperation,
+} from '../../manualEditing';
+import { useTextInputSession } from './useTextInputSession';
+import { useSlidesEditingInteractionStore } from '../store/slidesEditingInteractionStore';
+import { projectTextDraftPresentations } from '../functions/projectTextDraftPresentations';
 
-export interface SlideManualEditingInteractionOptions {
-  /** 当前正式画面是否仍可命中。提交中的旧画面也应允许用户表达下一次选择。 */
-  readonly canSelect: Ref<boolean>;
-  readonly currentSlide: Ref<SlideRenderModel | null>;
-  readonly renderScale: Ref<number>;
-  readonly slideSize: Ref<{ readonly width: number; readonly height: number }>;
-  readonly wrapperRef: Ref<HTMLElement | null>;
-  readonly submitIntent: (intent: ManualEditIntent) => void;
-}
+import type { SlideEditingInteractionOptions } from '../definitions/editingInteractionTypes';
 
 const DRAG_THRESHOLD_PX = 3;
 
-interface DeferredManualSelection {
-  readonly elementId: string | null;
-}
-
-export function useSlideManualEditingInteraction(options: SlideManualEditingInteractionOptions) {
+export function useSlideEditingInteraction(options: SlideEditingInteractionOptions) {
   const store = useSlidesManualEditingStore();
   const {
     selectedTarget,
@@ -50,11 +36,16 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     queuedIntents,
   } = storeToRefs(store);
   const hoveredTarget = shallowRef<ManualEditableTarget | null>(null);
-  const textEditing = useSlideTextEditingSession({
-    submitOperation: operation => {
-      options.submitIntent({ operation });
-    },
-  });
+  const interactionStore = useSlidesEditingInteractionStore();
+  const textEditing = useTextInputSession({ enqueue: options.submitIntent });
+  const textPresentations = computed(() => projectTextDraftPresentations(
+    options.currentSlide.value?.elements ?? [], interactionStore.textDrafts,
+    readHitProjection(), textEditing.target.value?.elementId,
+  ));
+  const hiddenTextElementIds = computed(() => new Set([
+    ...textPresentations.value.map(entry => entry.target.elementId),
+    ...(textEditing.target.value ? [textEditing.target.value.elementId] : []),
+  ]));
   let pointerSession: {
     readonly pointerId: number;
     readonly target: ManualEditableTarget;
@@ -66,7 +57,6 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     readonly canTranslate: boolean;
     dragged: boolean;
   } | null = null;
-  let deferredSelection: DeferredManualSelection | null = null;
 
   function handlePointerDown(event: PointerEvent): void {
     if (!options.canSelect.value || event.button !== 0) return;
@@ -80,22 +70,13 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
       selectedTarget.value?.elementId,
     );
     hoveredTarget.value = selection.target;
-    if (textEditing.target.value) {
-      if (textEditing.submissionPending.value) {
-        deferSelection(selection.target?.elementId ?? null);
-        event.preventDefault();
-        return;
-      }
-      const result = textEditing.requestCommit();
-      if (result === 'submitted') {
-        deferSelection(selection.target?.elementId ?? null);
-        event.preventDefault();
-        return;
-      }
-      if (result === 'blocked') {
-        event.preventDefault();
-        return;
-      }
+    // 点击切换立即生效；输入结束与保存/编译完成不再互相等待。
+    // IME 先让浏览器自然 blur，compositionend 会完成已请求的文字交接。
+    const composing = textEditing.composing.value;
+    textEditing.requestCommit();
+    if (composing) {
+      store.selectTarget(selection.target, path);
+      return;
     }
     if (!selection.target || !selection.clickTarget) {
       store.clearSelection();
@@ -235,16 +216,22 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
       : [];
     const next = path.find(target => target.elementId === selectedId) ?? null;
     store.reconcileSelectedTarget(next, path);
-    textEditing.reconcileTarget(next?.textEditing ?? null);
+    const editingId = textEditing.target.value?.elementId;
+    if (editingId && options.currentSlide.value) {
+      const editingTarget = findManualEditableTargetPathByElementId(options.currentSlide.value.elements, editingId)
+        .find(candidate => candidate.elementId === editingId);
+      textEditing.reconcileTarget(editingTarget
+        ? createPresentedTextEditingTarget(options.currentSlide.value.elements, editingTarget, readHitProjection())
+        : null);
+    }
     hoveredTarget.value = null;
   }
 
   function resetInteraction(): void {
     pointerSession = null;
-    deferredSelection = null;
     hoveredTarget.value = null;
     store.clearSelection();
-    textEditing.reset();
+    textEditing.requestCommit();
   }
 
   function readHitProjection(): ManualEditingHitProjection {
@@ -271,35 +258,6 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     ).target;
   }
 
-  function completeTextEditing(): void {
-    textEditing.complete();
-    applyDeferredSelection();
-  }
-
-  function rejectDeferredSelection(): void {
-    deferredSelection = null;
-  }
-
-  function deferSelection(elementId: string | null): void {
-    deferredSelection = { elementId };
-  }
-
-  function applyDeferredSelection(): void {
-    if (!deferredSelection) return;
-    const { elementId } = deferredSelection;
-    deferredSelection = null;
-    if (elementId === null) {
-      store.clearSelection();
-      return;
-    }
-    const slide = options.currentSlide.value;
-    const path = slide
-      ? findManualEditableTargetPathByElementId(slide.elements, elementId)
-      : [];
-    const target = path.find(candidate => candidate.elementId === elementId) ?? null;
-    store.selectTarget(target, path);
-  }
-
   function readPoint(event: Pick<MouseEvent, 'clientX' | 'clientY'>): SourceSelectionPoint | null {
     const wrapper = options.wrapperRef.value;
     if (!wrapper) return null;
@@ -322,7 +280,9 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     hoveredTarget,
     textEditorTarget: textEditing.target,
     textDraft: textEditing.draft,
-    textEditorSubmissionPending: textEditing.submissionPending,
+    textSessionId: textEditing.sessionId,
+    textPresentations,
+    hiddenTextElementIds,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
@@ -336,11 +296,14 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     closeTextEditor: textEditing.cancel,
     handleTextCompositionStart: textEditing.beginComposition,
     handleTextCompositionEnd: textEditing.endComposition,
-    handleTextEditorEscape: textEditing.handleEscape,
-    handleTextEditorSubmitShortcut: textEditing.handleCommitShortcut,
-    completeTextEditing,
-    rejectDeferredSelection,
-    rejectTextEditingSubmission: textEditing.rejectSubmission,
+    handleTextEditorEscape: (event: KeyboardEvent) => {
+      textEditing.handleEscape(event);
+      if (!textEditing.target.value) options.focusCanvas?.();
+    },
+    handleTextEditorSubmitShortcut: (event: KeyboardEvent) => {
+      textEditing.handleCommitShortcut(event);
+      if (!textEditing.target.value) options.focusCanvas?.();
+    },
     reconcileSelection,
     resetInteraction,
   };

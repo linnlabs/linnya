@@ -17,6 +17,8 @@
   caret-color: currentColor;
 }
 
-.slides-inline-text-editor:disabled {
-  cursor: text;
+.slides-inline-text-editor--preview {
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
 }

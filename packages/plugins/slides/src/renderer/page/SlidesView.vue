@@ -9,7 +9,6 @@
       v-else
       :source-edit-busy="sourceEditBusy"
       @source-edit-submit="emit('sourceEditSubmit', $event)"
-      @manual-edit-submit="handleManualEditSubmit"
     />
   </div>
 </template>
@@ -26,13 +25,12 @@ import { useSlidesUiStore } from '../store/slidesUiStore';
 import type { SourceSelectionEditSubmitPayload } from '../features/sourceSelection';
 import { usePresentationExportStore } from '../features/presentationExport';
 import {
-  readManualEditErrorMessage,
-  type ManualEditIntent,
   manualEditPresentationTrace,
-  submitManualEdit,
+  useManualEditQueue,
+  provideManualEditSubmission,
   useManualEditingLocalization,
-  useSlidesManualEditingStore,
 } from '../features/manualEditing';
+import { useSlidesEditingInteractionStore } from '../features/editingInteraction';
 import { slidesApi } from '../services/slidesApi';
 
 defineProps<{
@@ -54,78 +52,18 @@ const {
 const slidesUiStore = useSlidesUiStore();
 const slidesSessionStore = useSlidesSessionStore();
 const presentationExportStore = usePresentationExportStore();
-const manualEditingStore = useSlidesManualEditingStore();
+const editingInteractionStore = useSlidesEditingInteractionStore();
 const { manualEditingMessage } = useManualEditingLocalization();
 
-function handleManualEditSubmit(intent: ManualEditIntent): void {
-  manualEditingStore.enqueueIntent(intent);
-  void processManualEditQueue();
-}
-
-let processingManualEditQueue = false;
-
-async function processManualEditQueue(): Promise<void> {
-  if (processingManualEditQueue) return;
-  const documentId = currentDeckId.value;
-  const buildState = documentBuildState.value;
-  const renderVersion = slidesRenderStore.renderModel?.version ?? null;
-  if (
-    !documentId
-    || buildState?.state !== 'ready'
-    || buildState.presentationId !== documentId
-    || renderVersion !== buildState.versionNumber
-  ) return;
-  const intent = manualEditingStore.startNextSubmit();
-  if (!intent) return;
-  processingManualEditQueue = true;
-  try {
-    const outcome = await submitManualEdit({
-      documentId,
-      buildState,
-      renderVersion,
-      operation: intent.operation,
-    }, {
-      createCommandId: () => crypto.randomUUID(),
-      submit: command => slidesApi.submitManualEdit(command),
-      refreshDocument: (nodeId, expectedVersion) => slidesStore.refreshDeck(nodeId, expectedVersion),
-      trace: manualEditPresentationTrace,
-    });
-    if (currentDeckId.value !== documentId) return;
-    if (outcome.status === 'committed') {
-      manualEditingStore.commitSubmit(outcome.revision);
-      return;
-    }
-    manualEditingStore.failSubmit(
-      readManualEditErrorMessage(outcome, manualEditingMessage)
-        ?? manualEditingMessage('slides.manualEditing.error.saveFailed'),
-    );
-  } catch (error) {
-    if (currentDeckId.value !== documentId) return;
-    manualEditingStore.failSubmit(
-      error instanceof Error
-        ? error.message
-        : manualEditingMessage('slides.manualEditing.error.saveFailed'),
-    );
-  } finally {
-    processingManualEditQueue = false;
-    void processManualEditQueue();
-  }
-}
-
-watch(
-  () => [
-    manualEditingStore.queuedIntents.length,
-    manualEditingStore.submitting,
-    manualEditingStore.pendingPresentationRevision,
-    documentBuildState.value?.state === 'ready'
-      ? documentBuildState.value.versionNumber
-      : null,
-    slidesRenderStore.renderModel?.version ?? null,
-  ] as const,
-  () => {
-    void processManualEditQueue();
-  },
-);
+provideManualEditSubmission(useManualEditQueue({
+  readSnapshot: () => ({ documentId: currentDeckId.value, buildState: documentBuildState.value,
+    renderVersion: slidesRenderStore.renderModel?.version ?? null }),
+  createCommandId: () => crypto.randomUUID(),
+  submit: command => slidesApi.submitManualEdit(command),
+  refreshDocument: (id, version) => slidesStore.refreshDeck(id, version),
+  message: manualEditingMessage,
+  trace: manualEditPresentationTrace,
+}));
 
 /** 上一次加载 renderModel 时对应的 deckId，用于区分"首次加载"和"刷新" */
 let lastRenderDeckId: string | null = null;
@@ -142,7 +80,7 @@ watch(currentDeckId, () => {
   slidesUiStore.$reset();
   slidesSessionStore.$reset();
   presentationExportStore.$reset();
-  manualEditingStore.$reset();
+  editingInteractionStore.$reset();
   manualEditPresentationTrace.clear();
   lastRenderDeckId = null;
   pendingInitialPreview = false;

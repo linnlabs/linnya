@@ -1,46 +1,19 @@
-# Slides in-place text editing
+# Slides 原位文字视图
 
-`textEditing` owns the browser-native input session for one compiler-projected plain-text author object. It is intentionally independent from `manualEditing`: the latter owns selection, drag, command submission and revision presentation, while this feature owns the active text target, draft, IME state and DOM visual projection.
+`textEditing` 只负责正式 RenderModel 到原位 DOM 文字的投影、原生 textarea 和无焦点文字预览。交互会话、草稿和 IME 状态由 [`editingInteraction`](../editingInteraction/README.md) 唯一拥有；提交与 revision 呈现由 [`manualEditing`](../manualEditing/README.md) 负责。本模块没有独立 pending、store 或提交 watcher。
 
-## Contract
+## 合同
 
-- `createTextEditingTarget` consumes one world-coordinate `RenderNodeSelectionGeometry` and the committed `TextRenderNode` or Shape's `innerText`. It accepts only `authoringEdit.text.kind === 'plain_text'`; rich runs and formula runs are rejected because a whole-string replacement cannot preserve their semantics.
-- The target records the world polygon origin, dimensions, cumulative rotation, padding, vertical alignment offset and the first rendered text style. It never reads Konva instances or DOM layout back into author state.
-- `InlineTextEditor` converts inches and points into CSS pixels using the current stage scale. During the session, `SlideStage` passes the target element ID down the Konva render tree so exactly one duplicate Canvas text node is hidden.
-- The feature emits the existing `set_text_content` operation into `manualEditing`'s typed intent queue. The editor owns only its local submission-pending flag, so another manual command does not prevent opening or committing a text session. The backend remains the only source writer, and the draft stays open until `manualEditing` observes that text intent's committed revision in a complete visual frame. A failed active command rolls back the queue, preserves the user's draft and cancels any deferred outside-click selection.
+- `createTextEditingTarget` 消费世界坐标几何及 Text 或 Shape.innerText，仅接受 backend 声明的 plain_text 作者能力。富文本和公式不能被整体字符串替换。
+- 目标保存作者身份、当前内容、原点、尺寸、旋转、padding、垂直偏移和文字样式；不读取 Konva 实例或 DOM 测量来反写作者事实。
+- `InlineTextEditor` 按 Stage 比例投影 inches/pt。sessionId 是组件 key，双击打开后聚焦到末尾。textarea 不因保存而 disabled，普通 Enter 保留浏览器默认换行。
+- compositionend 先发送最终 DOM 值，再通知会话组合输入结束。blur、组合输入和快捷键由上层会话统一处理。
+- `TextDraftPreview` 以相同样式显示交接后的内容，pointer-events 为 none，不接受焦点、输入或选择。Stage 把当前输入与预览对应的 ID 集合传入 Konva，仅隐藏重复的文字，保留 Shape 的 fill/stroke。
+- Shape 文字和独立 Text 使用同一输入组件。唯一蓝色边界由 Canvas 选框拥有，DOM 不增加第二个边框或焦点环。
+- Shape 拉伸的本地预览只重对齐已有正式行，不在浏览器重建文本测量器；正式换行／autofit 仍由 backend text finalization 拥有。
 
-## Interaction
+`InlineTextEditor.css` 通过 renderer `slidesStylesheets` 注册，安装产物走 Host stylesheet 生命周期，不增加 SFC 样式旁路。
 
-- Plain-string Shape content uses the same session and commit flow as Text. Immediately after a move/resize, opening uses the currently projected geometry. The Shape stays visible while only its Canvas inner text is hidden. The canvas selection owns the single blue editing outline; the textarea adds no second border or focus ring.
-- During Shape resizing, local previews update the inner text box and realign existing committed line slices immediately. They preserve font size and line breaks; final reflow/autofit remains owned by backend text finalization, without a second browser measurement algorithm.
+## 验证
 
-- Double-click opens the textarea and places the caret at the end.
-- Blur or `Ctrl/Cmd+Enter` requests one commit and locally blocks duplicate submission until success or failure settles. An unchanged draft closes without a command. When the user clicks another slide object to blur a changed draft, `manualEditing` retains that click and applies the requested selection after the committed visual revision is presented.
-- `Escape` cancels the local draft.
-- Composition events block commit and cancel shortcuts until the browser ends the IME composition.
-- Pointer events inside the textarea do not reach the stage drag interaction.
-
-## Layers
-
-`InlineTextEditor.css` is feature-owned and registered by the Renderer entry through `slidesStylesheets`. Do not add an SFC side-effect style import: installed plugin artifacts must declare this stylesheet and load it through the Host lifecycle.
-
-```text
-definitions/
-  input-session and committed visual projection contracts
-functions/
-  RenderModel-to-editor target and target-to-CSS projection
-orchestration/
-  open, IME, commit, cancel and presentation-complete session flow
-store/
-  active target, draft and composition state
-ui/
-  thin textarea overlay
-```
-
-## Tests
-
-- `functions/createTextEditingTarget.test.ts` covers world rotation, geometry, vertical alignment, font-scale projection and the rich-text boundary.
-- `functions/createInlineTextEditorStyle.test.ts` covers the stage-to-DOM coordinate conversion under zoom.
-- `orchestration/useSlideTextEditingSession.test.ts` covers IME blocking, duplicate-submit blocking, failed-draft retry, draft retention until presentation and unchanged-draft close.
-- `manualEditing/orchestration/useSlideManualEditingInteraction.test.ts` covers the stage integration and failed-command draft retention.
-- `smoke:preview-transitions` drives a native Chromium double click on a production Shape preview, checks that only one outline and one text representation remain, blocks IME submission, and commits one Shape-typed command. Its resize fixture checks text alignment before pointer release, across consecutive resizes and Escape rollback. These synthetic browser checks do not replace real-document save/reopen/history acceptance.
+`functions/createTextEditingTarget.test.ts` 与 `createInlineTextEditorStyle.test.ts` 验证作者能力及视觉坐标。完整交接与失败恢复见 editingInteraction 的组合测试；生产 Stage／原生 Enter 和 Shape 双击见 `smoke:preview-transitions`。

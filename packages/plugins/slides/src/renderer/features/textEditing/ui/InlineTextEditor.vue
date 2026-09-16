@@ -5,13 +5,11 @@
     :style="editorStyle"
     :value="props.modelValue"
     :aria-label="props.label"
-    :aria-busy="props.disabled"
-    :disabled="props.disabled"
     @input="handleInput"
     @blur="emit('commit')"
     @pointerdown.stop
     @compositionstart="emit('composition-start')"
-    @compositionend="emit('composition-end')"
+    @compositionend="handleCompositionEnd"
     @keydown.esc="emit('escape', $event)"
     @keydown.ctrl.enter="emit('commit-shortcut', $event)"
     @keydown.meta.enter="emit('commit-shortcut', $event)"
@@ -30,7 +28,6 @@ const props = defineProps<{
   slideTop: number;
   renderScale: number;
   label: string;
-  disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -60,6 +57,12 @@ watch(
   },
   { immediate: true },
 );
+
+function handleCompositionEnd(event: CompositionEvent): void {
+  // compositionend 的最终文本必须先交给会话，再处理之前的 blur 请求。
+  handleInput(event);
+  emit('composition-end');
+}
 
 function handleInput(event: Event): void {
   if (event.target instanceof HTMLTextAreaElement) {

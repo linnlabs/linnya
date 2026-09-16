@@ -8,7 +8,7 @@
     <KonvaShapeNode
       v-else-if="renderNode.kind === 'shape'"
       :node="renderNode"
-      :hide-text="props.node.id === props.hiddenTextElementId"
+      :hide-text="props.hiddenTextElementIds?.has(props.node.id)"
     />
     <KonvaImageNode
       v-else-if="renderNode.kind === 'image'"
@@ -40,7 +40,7 @@
       :image-resources="props.imageResources"
       :chart-resources="props.chartResources"
       :preview-translations="props.previewTranslations"
-      :hidden-text-element-id="props.hiddenTextElementId"
+      :hidden-text-element-ids="props.hiddenTextElementIds"
       :manual-visual-previews="props.manualVisualPreviews"
     />
   </v-group>
@@ -71,7 +71,7 @@ const props = defineProps<{
   imageResources: SlideImageResourceMap;
   chartResources: SlideChartResourceMap;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
-  hiddenTextElementId?: string;
+  hiddenTextElementIds?: ReadonlySet<string>;
   manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();
 
@@ -86,7 +86,7 @@ const previewTranslationConfig = computed(() => {
     x: (translation?.dx ?? 0) * INCHES_TO_PX,
     y: (translation?.dy ?? 0) * INCHES_TO_PX,
     listening: false,
-    visible: props.node.kind !== 'text' || props.node.id !== props.hiddenTextElementId,
+    visible: props.node.kind !== 'text' || !props.hiddenTextElementIds?.has(props.node.id),
   };
 });
 </script>

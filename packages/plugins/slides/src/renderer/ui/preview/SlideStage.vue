@@ -59,7 +59,7 @@
               :preview-translations="manualPreviewTranslations"
               :manual-selected-target="manualPresentedSelectedTarget"
               :manual-visual-previews="manualVisualPreviews"
-              :hidden-text-element-id="textEditorTarget?.elementId"
+              :hidden-text-element-ids="hiddenTextElementIds"
             />
           </div>
           <SourceSelectionPromptPopover
@@ -72,7 +72,17 @@
           />
         </div>
         <!-- 原位 DOM 输入负责浏览器文本编辑能力；同一元素的 Canvas 文字在会话期间隐藏。 -->
+        <TextDraftPreview
+          v-for="draft in textPresentations"
+          :key="draft.clientOperationId"
+          :target="draft.target"
+          :content="draft.content"
+          :slide-left="currentLayout.slideLeft"
+          :slide-top="currentLayout.slideTop"
+          :render-scale="renderScale"
+        />
         <InlineTextEditor
+          :key="textSessionId ?? undefined"
           v-if="textEditorTarget"
           v-model="textDraft"
           :target="textEditorTarget"
@@ -80,7 +90,6 @@
           :slide-top="currentLayout.slideTop"
           :render-scale="renderScale"
           :label="manualEditingMessage('slides.manualEditing.text.ariaLabel')"
-          :disabled="textEditorSubmissionPending"
           @commit="submitTextEdit"
           @composition-start="handleTextCompositionStart"
           @composition-end="handleTextCompositionEnd"
@@ -176,17 +185,18 @@ import {
   ManualResizeHandles,
   canResizeManualTarget,
   shouldHandleManualDeleteShortcut,
-  useSlideManualEditingInteraction,
+  useManualEditSubmission,
   useSlidesManualEditingStore,
   useManualEditingLocalization,
 } from '../../features/manualEditing';
-import { InlineTextEditor } from '../../features/textEditing';
+import { useSlideEditingInteraction } from '../../features/editingInteraction';
+import { InlineTextEditor, TextDraftPreview } from '../../features/textEditing';
 import {
   ElementPropertyPanel,
   hasElementPropertyControls,
   projectElementPropertyTarget,
 } from '../../features/elementProperties';
-import type { ManualEditIntent, ManualEditingVisualPreview } from '../../features/manualEditing';
+import type { ManualEditingVisualPreview } from '../../features/manualEditing';
 
 const props = defineProps<{
   sourceEditBusy?: boolean;
@@ -194,7 +204,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   sourceEditSubmit: [payload: SourceSelectionEditSubmitPayload];
-  manualEditSubmit: [intent: ManualEditIntent];
 }>();
 
 const slidesStore = useSlidesStore();
@@ -213,7 +222,6 @@ const {
 const { currentSlideRender, renderModel } = storeToRefs(renderStore);
 const {
   enabled: manualEditingEnabled,
-  textSubmissionPending,
 } = storeToRefs(manualEditingStore);
 const allRenderSlides = computed(() => renderModel.value?.slides ?? []);
 const {
@@ -428,7 +436,9 @@ const {
   hoveredTarget: manualHoveredTarget,
   textEditorTarget,
   textDraft,
-  textEditorSubmissionPending,
+  textSessionId,
+  textPresentations,
+  hiddenTextElementIds,
   handlePointerDown: handleManualPointerDown,
   handlePointerMove: handleManualPointerMove,
   handlePointerUp: handleManualPointerUp,
@@ -442,19 +452,17 @@ const {
   handleTextCompositionEnd,
   handleTextEditorEscape,
   handleTextEditorSubmitShortcut,
-  completeTextEditing,
   deleteSelectedTarget: deleteManualSelectedTarget,
-  rejectDeferredSelection,
-  rejectTextEditingSubmission,
   reconcileSelection: reconcileManualSelection,
   resetInteraction: resetManualInteraction,
-} = useSlideManualEditingInteraction({
+} = useSlideEditingInteraction({
   canSelect: canManualSelect,
   currentSlide: displayedSlide,
   renderScale,
   slideSize: actualSlideSize,
   wrapperRef: konvaWrapperRef,
-  submitIntent: intent => emit('manualEditSubmit', intent),
+  submitIntent: useManualEditSubmission().enqueue,
+  focusCanvas: () => scrollHostRef.value?.focus({ preventScroll: true }),
 });
 
 const manualTranslationPreviews = computed(() => collectManualTranslationPreviews(
@@ -495,9 +503,9 @@ const manualPropertyTarget = computed(() => manualSelectedTarget.value
   : null);
 
 function handleStagePointerDown(event: PointerEvent): void {
-  if (!textEditorTarget.value) scrollHostRef.value?.focus({ preventScroll: true });
   if (manualEditingEnabled.value) handleManualPointerDown(event);
   else handleSourcePointerDown(event);
+  if (!textEditorTarget.value) scrollHostRef.value?.focus({ preventScroll: true });
 }
 
 function handleStagePointerMove(event: PointerEvent): void {
@@ -808,16 +816,8 @@ watch(
   },
 );
 
-watch(textSubmissionPending, (pending, previous) => {
-  if (!previous || pending) return;
-  if (manualEditingStore.errorMessage) {
-    rejectDeferredSelection();
-    rejectTextEditingSubmission();
-  }
-  else {
-    completeTextEditing();
-    void nextTick(() => scrollHostRef.value?.focus({ preventScroll: true }));
-  }
+watch(manualEditingEnabled, enabled => {
+  if (!enabled) resetManualInteraction();
 });
 
 watch(
