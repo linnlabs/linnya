@@ -31,6 +31,8 @@ import {
   useManualEditingLocalization,
 } from '../features/manualEditing';
 import { useSlidesEditingInteractionStore } from '../features/editingInteraction';
+import { refreshSlidesDocumentPresentation } from './orchestration/refreshSlidesDocumentPresentation';
+import { useSlidesDocumentSave } from './orchestration/useSlidesDocumentSave';
 import { slidesApi } from '../services/slidesApi';
 
 defineProps<{
@@ -46,6 +48,7 @@ const slidesRenderStore = useSlidesRenderStore();
 const {
   currentDeckId,
   hasOpenDeck,
+  deckPreview,
   documentBuildState,
 } = storeToRefs(slidesStore);
 const slidesUiStore = useSlidesUiStore();
@@ -54,15 +57,18 @@ const presentationExportStore = usePresentationExportStore();
 const editingInteractionStore = useSlidesEditingInteractionStore();
 const { manualEditingMessage } = useManualEditingLocalization();
 
-provideManualEditSubmission(useManualEditQueue({
+const manualEditSubmission = useManualEditQueue({
   readSnapshot: () => ({ documentId: currentDeckId.value, buildState: documentBuildState.value,
-    renderVersion: slidesRenderStore.renderModel?.version ?? null }),
+    renderVersion: slidesRenderStore.renderModel?.version ?? null,
+    presentationError: slidesRenderStore.renderError }),
   createCommandId: () => crypto.randomUUID(),
   submit: command => slidesApi.submitManualEdit(command),
-  refreshDocument: (id, version) => slidesStore.refreshDeck(id, version),
+  refreshDocument: refreshSlidesDocumentPresentation,
   message: manualEditingMessage,
   trace: manualEditPresentationTrace,
-}));
+});
+provideManualEditSubmission(manualEditSubmission);
+useSlidesDocumentSave(manualEditSubmission);
 
 /** 文档身份重置交互；渲染刷新只由正式 revision 驱动，与页面挂载先后无关。 */
 watch(currentDeckId, () => {
@@ -75,14 +81,14 @@ watch(currentDeckId, () => {
 }, { immediate: true });
 
 let requestedRevision: string | null = null;
-watch([currentDeckId, documentBuildState], ([nodeId, buildState]) => {
+watch([currentDeckId, documentBuildState, deckPreview], ([nodeId, buildState]) => {
   if (!nodeId || buildState?.state !== 'ready' || buildState.presentationId !== nodeId) {
     requestedRevision = null;
     slidesRenderStore.clearRenderModel();
     return;
   }
   const revision = `${nodeId}:${buildState.versionId}`;
-  if (requestedRevision === revision) return;
+  if (requestedRevision === revision && slidesRenderStore.renderError === null) return;
   requestedRevision = revision;
   // ready 说明对应 DeckSpec 已落盘，不必再等待另一个 preview 事件。
   // 首次 preview 若在挂载前到达，也不能吞掉后续第一次保存的刷新。

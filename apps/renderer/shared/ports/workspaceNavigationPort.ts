@@ -37,7 +37,7 @@ export interface WorkspaceNavigationPort {
   openProjectSetup(projectId: string): Promise<void>;
   /**
    * 工具卡/实体引用打开文档内目标时使用。
-   * 当前面向由 documentRuntimeLoaders 接管的 runtime 文档，避免通用 port 暴露具体插件方法名。
+   * 优先复用 fileSession 的保存/关闭生命周期；只读 runtime 文档仍走 documentRuntimeLoaders。
    */
   openDocumentTarget(request: WorkspaceDocumentNavigationRequest): Promise<void>;
   openConversation(request: WorkspaceConversationNavigationRequest): Promise<void>;

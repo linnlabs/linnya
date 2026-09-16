@@ -65,6 +65,10 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
       store.setSubmission({ phase: 'idle' });
       store.setError(null);
     }
+    if (store.submission.phase === 'awaiting_frame' && ports.readSnapshot().presentationError) {
+      store.setError(ports.message('slides.manualEditing.error.presentationRefreshFailed'));
+      return;
+    }
     if (processing || store.submission.phase !== 'idle') return;
     const snapshot = ports.readSnapshot();
     if (!isManualEditSnapshotReady(snapshot) || !snapshot.documentId) return;
@@ -123,6 +127,29 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
     return { clientOperationId, settled };
   }
 
+  function flush(): Promise<void> {
+    const requestEpoch = epoch;
+    return new Promise<void>((resolve, reject) => {
+      const inspect = (): boolean => {
+        if (requestEpoch !== epoch) {
+          reject(new Error(ports.message('slides.manualEditing.error.snapshotUnavailable')));
+        } else if (store.queue.length === 0 && store.submission.phase === 'awaiting_frame') {
+          // 最后一条 committed 已落盘，资源加载或画面刷新失败不改变这个事实。
+          resolve();
+        } else if (store.errorMessage) {
+          reject(new Error(store.errorMessage));
+        } else if (store.queue.length === 0 && store.submission.phase !== 'submitting') {
+          resolve();
+        } else return false;
+        return true;
+      };
+      if (inspect()) return;
+      const stop = watch(() => [store.queue, store.submission, store.errorMessage], () => {
+        if (inspect()) stop();
+      });
+    });
+  }
+
   function reset(): void {
     epoch += 1;
     processing = false;
@@ -134,5 +161,5 @@ export function useManualEditQueue(ports: ManualEditQueuePorts): ManualEditSubmi
   watch(() => ports.readSnapshot().documentId, reset, { flush: 'sync', immediate: true });
   watch(() => [ports.readSnapshot(), store.presentedRevision, store.submission, store.queue], () => { void processQueue(); });
   onScopeDispose(reset);
-  return { enqueue, refreshPresentation };
+  return { enqueue, refreshPresentation, flush };
 }

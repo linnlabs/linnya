@@ -1,12 +1,22 @@
 // @vitest-environment jsdom
-import { createPinia, setActivePinia } from 'pinia';
+import { createPinia, setActivePinia, storeToRefs } from 'pinia';
 import { effectScope, nextTick, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SlidesManualEditCommand, SlidesManualEditCommandResult } from '@plugin/slides/shared/authoringEditing';
 import { useManualEditQueue, useSlidesManualEditingStore } from '../../manualEditing';
 import type { TextEditingTarget } from '../../textEditing';
 import { useSlidesEditingInteractionStore } from '../store/slidesEditingInteractionStore';
+import { useSlidesStore } from '../../../store/slidesStore';
+import { useSlidesDocumentSave } from '../../../page/orchestration/useSlidesDocumentSave';
+import { slidesFileHandler } from '../../documentRuntime';
 import { useTextInputSession } from './useTextInputSession';
+
+vi.mock('@plugin/renderer/workspaceRuntime', () => ({
+  getActiveFileSession: () => ({ documentId: 'deck', type: 'slides' }),
+  markActiveFileDirty: vi.fn(),
+  showWorkspaceNotification: vi.fn(),
+  throwIfFileSessionOpenCancelled: vi.fn(),
+}));
 
 const target: TextEditingTarget = {
   elementId: 'badge', targetKind: 'shape', authoringRef: { slideKey: 'overview', editKey: 'badge' },
@@ -19,7 +29,8 @@ const other = { ...target, elementId: 'other', authoringRef: { ...target.authori
 const scopes: ReturnType<typeof effectScope>[] = [];
 
 function createWorkflow() {
-  const documentId = ref<string | null>('deck');
+  const { currentDeckId: documentId } = storeToRefs(useSlidesStore());
+  documentId.value = 'deck';
   const revision = ref(1);
   const commands: { command: SlidesManualEditCommand; resolve: (value: SlidesManualEditCommandResult) => void }[] = [];
   const submit = vi.fn((command: SlidesManualEditCommand) => new Promise<SlidesManualEditCommandResult>(resolve => {
@@ -33,10 +44,11 @@ function createWorkflow() {
   const workflow = scope.run(() => {
     const queue = useManualEditQueue({
       createCommandId: () => crypto.randomUUID(), submit, refreshDocument: refresh, message: key => key,
-      readSnapshot: () => ({ documentId: documentId.value, renderVersion: revision.value,
+      readSnapshot: () => ({ documentId: documentId.value, presentationError: null, renderVersion: revision.value,
         buildState: documentId.value === null ? null : { state: 'ready', presentationId: documentId.value,
           versionId: `v${revision.value}`, versionNumber: revision.value, sourceHash: 'a'.repeat(64) } }),
     });
+    useSlidesDocumentSave(queue);
     return { queue, text: useTextInputSession(queue), store: useSlidesManualEditingStore(), drafts: useSlidesEditingInteractionStore() };
   });
   if (!workflow) throw new Error('Fixture scope failed');
@@ -118,6 +130,7 @@ describe('editing interaction + real submission queue', () => {
     expect(w.store.submission.phase).toBe('awaiting_frame');
     expect(w.store.errorMessage).toContain('presentationRefreshFailed');
     expect(w.drafts.textDrafts[0]?.status).toBe('pending');
+    await expect(w.queue.flush()).resolves.toBeUndefined();
     w.text.open(other);
     w.text.draft.value = 'Another pending edit';
     w.text.requestCommit();
@@ -157,6 +170,29 @@ describe('editing interaction + real submission queue', () => {
     await expect(second.settled).resolves.toMatchObject({ status: 'presented', commandId: w.commands[1]?.command.commandId });
   });
 
+  it('保存屏障等待所有排队修改落盘，但不等待最后一帧', async () => {
+    const w = createWorkflow();
+    w.text.open(target); w.text.draft.value = 'A'; w.text.requestCommit();
+    w.text.open(other); w.text.draft.value = 'B'; w.text.requestCommit();
+    let saved = false;
+    const saving = w.queue.flush().then(() => { saved = true; });
+    w.commit(0, 2); await flush();
+    expect(saved).toBe(false);
+    w.store.recordPresentedRevision(2); await flush();
+    expect(w.commands).toHaveLength(2);
+    w.commit(1, 3); await saving;
+    expect(saved).toBe(true);
+    expect(w.store.presentedRevision).toBe(2);
+  });
+
+  it('保存屏障传播失败，禁止把未提交队列当成已保存', async () => {
+    const w = createWorkflow();
+    w.text.open(target); w.text.draft.value = 'A'; w.text.requestCommit();
+    const saving = expect(w.queue.flush()).rejects.toThrow('Cannot rewrite source');
+    w.reject(0); await saving;
+    expect(w.drafts.textDrafts[0]?.status).toBe('failed');
+  });
+
   it('rejects admission explicitly when the document has closed, without leaving a pending ticket', async () => {
     const w = createWorkflow();
     w.documentId.value = null;
@@ -164,6 +200,45 @@ describe('editing interaction + real submission queue', () => {
     await expect(ticket.settled).resolves.toMatchObject({ status: 'failed', message: expect.stringContaining('snapshotUnavailable') });
     expect(w.commands).toHaveLength(0);
     expect(w.store.queue).toEqual([]);
+  });
+
+  it('Host 离开前保存会提交尚未 blur 的输入，并等待最后写回后才允许关闭', async () => {
+    const w = createWorkflow();
+    w.text.open(target); w.text.draft.value = 'Saved before leaving';
+    const saving = slidesFileHandler.save?.({ reason: 'view-switch', session: { documentId: 'deck', type: slidesFileHandler.type } });
+    expect(w.commands[0]?.command.operation).toMatchObject({ content: 'Saved before leaving' });
+    // 等待期间继续输入另一段，也必须进入离开前的保存屏障。
+    w.text.open(other); w.text.draft.value = 'Typed while saving';
+    w.commit(0, 2); await flush();
+    w.store.recordPresentedRevision(2); await flush();
+    expect(w.commands[1]?.command.operation).toMatchObject({ content: 'Typed while saving' });
+    w.commit(1, 3);
+    await expect(saving).resolves.toBe(true);
+    await slidesFileHandler.close?.({ documentId: 'deck', type: slidesFileHandler.type });
+    expect(w.documentId.value).toBeNull();
+  });
+
+  it('后台自动保存不结束正在输入的会话，也不让 Host 清掉 dirty', async () => {
+    const w = createWorkflow();
+    w.text.open(target); w.text.draft.value = 'Still typing';
+    await expect(slidesFileHandler.save?.({ reason: 'auto', session: { documentId: 'deck', type: slidesFileHandler.type } })).resolves.toBe(false);
+    expect(w.text.target.value?.elementId).toBe('badge');
+    expect(w.text.draft.value).toBe('Still typing');
+    expect(w.commands).toHaveLength(0);
+  });
+
+  it('Host 保存失败或输入法尚未确认时返回 false，保留原文稿和草稿', async () => {
+    const w = createWorkflow();
+    const context = { reason: 'view-switch' as const, session: { documentId: 'deck', type: slidesFileHandler.type } };
+    w.text.open(target); w.text.draft.value = '中文'; w.text.beginComposition();
+    await expect(slidesFileHandler.save?.(context)).resolves.toBe(false);
+    expect(w.commands).toHaveLength(0);
+    w.text.endComposition();
+    const saving = slidesFileHandler.save?.(context);
+    w.reject(0);
+    await expect(saving).resolves.toBe(false);
+    expect(w.documentId.value).toBe('deck');
+    expect(w.drafts.textDrafts[0]).toMatchObject({ content: '中文', status: 'failed' });
   });
 
   it('respects IME confirmation and Escape while completing a blur requested during composition', () => {

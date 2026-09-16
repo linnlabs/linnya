@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import type {
   PresentationExportRequest,
   PresentationImageExportProgress,
 } from '@plugin/slides/shared/presentationExport';
+import { registerSlidesDocumentSaveParticipant } from '../../documentRuntime';
 import { runPresentationExport } from './presentationExportWorkflow';
 import { usePresentationExportStore } from '../store/presentationExportStore';
 import { useSlidesStore } from '../../../store/slidesStore';
@@ -30,6 +31,8 @@ vi.mock('../../../services/slidesApi', () => ({
 }));
 
 describe('runPresentationExport', () => {
+  let unregister: (() => void) | undefined;
+  afterEach(() => unregister?.());
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
@@ -75,6 +78,32 @@ describe('runPresentationExport', () => {
       'success',
       2500,
     );
+  });
+
+  it('选定导出目标后等待保存屏障，再读取后端文稿', async () => {
+    usePresentationExportStore().open('pptx');
+    let finishSave!: () => void;
+    const saved = new Promise<void>(resolve => { finishSave = resolve; });
+    unregister = registerSlidesDocumentSaveParticipant({ readDocumentId: () => 'deck-1', save: async () => { await saved; return true; } });
+    requestTargetMock.mockResolvedValueOnce({ status: 'selected', target: { token: 'target', fileName: 'Deck.pptx' } });
+    exportPresentationMock.mockResolvedValueOnce({ format: 'pptx', fileName: 'Deck.pptx', byteLength: 1 });
+    const exporting = runPresentationExport('pptx');
+    await Promise.resolve();
+    expect(exportPresentationMock).not.toHaveBeenCalled();
+    finishSave(); await exporting;
+    expect(exportPresentationMock).toHaveBeenCalledOnce();
+  });
+
+  it('保存失败时不导出旧 revision，并在弹窗显示真实错误', async () => {
+    const store = usePresentationExportStore();
+    store.open('pptx');
+    unregister = registerSlidesDocumentSaveParticipant({ readDocumentId: () => 'deck-1',
+      save: async () => { throw new Error('Unsaved text'); } });
+    requestTargetMock.mockResolvedValueOnce({ status: 'selected', target: { token: 'target', fileName: 'Deck.pptx' } });
+    await runPresentationExport('pptx');
+    expect(exportPresentationMock).not.toHaveBeenCalled();
+    expect(store.activeDialog).toBe('pptx');
+    expect(showNotificationMock).toHaveBeenCalledWith('导出失败：Unsaved text', 'error', 4000);
   });
 
   it('图片导出只接纳本次导出的页级进度，并在完成后取消订阅', async () => {

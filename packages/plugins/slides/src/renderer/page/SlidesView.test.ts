@@ -9,6 +9,11 @@ import type { PresentationRenderModel } from '../types/render';
 const getRenderModelMock = vi.hoisted(() => vi.fn());
 const submitManualEditMock = vi.hoisted(() => vi.fn());
 
+vi.mock('@plugin/renderer/workspaceRuntime', () => ({
+  getActiveFileSession: () => ({ documentId: 'deck-1', type: 'presentation' }),
+  markActiveFileDirty: vi.fn(),
+}));
+
 vi.mock('../services/slidesRenderApi', () => ({
   slidesRenderApi: {
     getRenderModel: getRenderModelMock,

@@ -1,5 +1,6 @@
 import { requestExportArtifactTarget } from '@plugin/renderer/exportArtifact';
 import { showWorkspaceNotification } from '@plugin/renderer/workspaceRuntime';
+import { saveSlidesDocument } from '../../documentRuntime';
 import { slidesApi } from '../../../services/slidesApi';
 import { useSlidesStore } from '../../../store/slidesStore';
 import type { PresentationExportUiFormat } from '../definitions/presentationExportUi';
@@ -27,6 +28,8 @@ export async function runPresentationExport(format: PresentationExportUiFormat):
       exportStore.finishExport();
       return;
     }
+
+    await saveSlidesDocument(nodeId);
 
     const exportId = globalThis.crypto.randomUUID();
     const stopProgress = format === 'images'

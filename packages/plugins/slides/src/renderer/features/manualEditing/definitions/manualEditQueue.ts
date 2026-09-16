@@ -25,5 +25,7 @@ export interface ManualEditTicket {
 /** 交互只接收身份明确的回执，不观察全局 submitting 布尔边沿。 */
 export interface ManualEditSubmissionPort {
   readonly enqueue: (intent: ManualEditIntent) => ManualEditTicket;
+  /** 等待已接纳修改落盘；最后一帧尚未呈现不影响保存成功。 */
+  readonly flush: () => Promise<void>;
   readonly refreshPresentation: () => Promise<void>;
 }

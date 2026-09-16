@@ -22,7 +22,8 @@ export type ManualEditingMessageKey =
   | 'slides.manualEditing.error.presentationRefreshFailed'
   | 'slides.manualEditing.refreshPresentation'
   | 'slides.manualEditing.error.dependentEditsBlocked'
-  | 'slides.manualEditing.error.textDraftRetained';
+  | 'slides.manualEditing.error.textDraftRetained'
+  | 'slides.manualEditing.error.compositionUnfinished';
 
 export type ManualEditingMessageResolver = (
   key: ManualEditingMessageKey,
@@ -35,6 +36,7 @@ export const MANUAL_EDITING_MESSAGE_FALLBACKS = {
   'slides.manualEditing.toggle.disable': '关闭有限编辑',
   'slides.manualEditing.toggle.saving': '正在保存人工编辑',
   'slides.manualEditing.toggle.unavailable': '当前页面没有可人工编辑的作者对象',
+  'slides.manualEditing.error.compositionUnfinished': '请先确认当前输入法文字，再保存或离开文稿。',
   'slides.manualEditing.text.ariaLabel': '编辑文本框内容',
   'slides.manualEditing.text.cancel': '取消',
   'slides.manualEditing.text.save': '保存',
@@ -60,6 +62,7 @@ const MANUAL_EDITING_EN_US_MESSAGES = {
   'slides.manualEditing.toggle.disable': 'Exit limited editing',
   'slides.manualEditing.toggle.saving': 'Saving manual edit',
   'slides.manualEditing.toggle.unavailable': 'This slide has no manually editable author objects',
+  'slides.manualEditing.error.compositionUnfinished': 'Confirm the current text composition before saving or leaving the presentation.',
   'slides.manualEditing.text.ariaLabel': 'Edit text box content',
   'slides.manualEditing.text.cancel': 'Cancel',
   'slides.manualEditing.text.save': 'Save',

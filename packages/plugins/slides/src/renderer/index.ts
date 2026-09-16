@@ -10,7 +10,7 @@ import {
 } from '@plugin/slides/shared/pluginMeta';
 import { SLIDES_AGENT_ID } from '@plugin/slides/shared/agentIdentity';
 import SlidesIcon from './icon/SlidesIcon.vue';
-import { slidesDocumentRuntimeLoader } from './features/documentRuntime';
+import { slidesFileHandler } from './features/documentRuntime';
 import { slidesDocumentActionMenu } from './features/presentationExport';
 import {
   registerSlidesRendererPorts,
@@ -90,6 +90,8 @@ export const slidesRendererPlugin: RendererPluginContribution = {
       pluginId: SLIDES_PLUGIN_ID,
       nodeType: SLIDES_DOCUMENT_TYPE,
       activeDocumentType: SLIDES_ACTIVE_DOCUMENT_TYPE,
+      fileSessionType: SLIDES_ACTIVE_DOCUMENT_TYPE,
+      fileHandler: slidesFileHandler,
       createRequestType: SLIDES_DOCUMENT_TYPE,
       createBackend: 'plugin-document',
       createHandlerId: 'slides.document-create',
@@ -128,7 +130,6 @@ export const slidesRendererPlugin: RendererPluginContribution = {
   ],
   toolCards: presentationToolConfigs,
   documentActionMenus: [slidesDocumentActionMenu],
-  documentRuntimeLoaders: [slidesDocumentRuntimeLoader],
 };
 
 export const rendererPlugin = slidesRendererPlugin;

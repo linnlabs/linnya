@@ -101,6 +101,7 @@ describe('DeckViewer document transition', () => {
     document.body.append(host);
     const app = createApp({ setup() {
       provideManualEditSubmission({
+        flush: async () => {},
         enqueue: () => { throw new Error('Stubbed Stage must not submit an edit'); },
         refreshPresentation: async () => undefined,
       });
@@ -179,6 +180,7 @@ describe('DeckViewer document transition', () => {
     document.body.append(host);
     const app = createApp({ setup() {
       provideManualEditSubmission({
+        flush: async () => {},
         enqueue: () => { throw new Error('Stubbed Stage must not submit an edit'); },
         refreshPresentation: async () => undefined,
       });

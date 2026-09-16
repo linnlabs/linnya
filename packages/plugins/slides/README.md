@@ -272,3 +272,5 @@ host 不复制 presentation 字段。
 - **Brush 视觉资产暂不支持透明底。** 当前 pinned p5.brush standalone 合成器会把最终画布写成不透明。首版只支持显式纯色背景的整区资产；需要透出下层内容时改用 Shape 或受控 SVG。后续若上游提供稳定 alpha 合同，可在不改写现有不透明 intent 的前提下扩展。
 - **PDF 导出暂不开放。** 已实现的栅格 PDF 不含可选择、搜索和复制的文字对象，因此不再挂载产品入口。真正的语义/矢量 PDF 仍需完成独立的可行性与 ROI 验证。
 - **前端人工编辑是有限能力。** 带稳定作者身份的新 generated deck 可移动或删除已有作者对象；Flex Frame 可按正式作者层级整体选择、移动和删除。作者值仍为字符串的文本支持原位完整替换、字号和颜色，多行及字体拆分的多个渲染 run 不改变这一能力；Frame／Shape 支持纯色，Shape／Image 支持有限视觉尺寸。富文本、内联公式文本、图片源、表格内容、图表数据、新建、复制、编组和 reparent 仍保持只读；旧文稿需先由 Agent 补齐 `slideKey/editKey` 才能出现编辑入口。
+
+有限编辑的正常切换／关闭和导出共用 [documentRuntime 保存屏障](src/renderer/features/documentRuntime/README.md)：原位输入先交给串行写队列，所有修改落盘后才允许离开或读取导出 snapshot。画布即时预览不代表已保存；正式 revision 驱动渲染刷新，不依赖页面和预览的挂载先后。

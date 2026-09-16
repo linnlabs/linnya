@@ -96,7 +96,7 @@ export function mountShapeTextEditingSmoke() {
   present(1);
   const app = createApp({ setup() {
     provideManualEditSubmission(useManualEditQueue({
-      readSnapshot: () => ({ documentId: slides.currentDeckId, buildState: slides.documentBuildState, renderVersion: render.renderModel?.version ?? null }),
+      readSnapshot: () => ({ documentId: slides.currentDeckId, presentationError: render.renderError, buildState: slides.documentBuildState, renderVersion: render.renderModel?.version ?? null }),
       createCommandId: () => crypto.randomUUID(), message: key => key,
       submit: command => new Promise(resolve => commands.push({ command, resolve })),
       refreshDocument: async (_id, revision) => { slides.documentBuildState = buildState(revision ?? savedRevision); },

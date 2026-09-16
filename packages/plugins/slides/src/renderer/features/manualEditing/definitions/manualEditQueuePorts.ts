@@ -5,6 +5,7 @@ import type { ManualEditingMessageResolver } from './manualEditingMessageCatalog
 export interface ManualEditQueueSnapshot {
   readonly documentId: string | null;
   readonly buildState: SlidesDocumentBuildState | null;
+  readonly presentationError: string | null;
   readonly renderVersion: number | null;
 }
 
