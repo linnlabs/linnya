@@ -24,7 +24,8 @@ export function isSlidesAuthoringEditProjection(
   const canSetTextStyle = value.capabilities.includes('set_text_style');
   const canSetFill = value.capabilities.includes('set_fill_color');
   if (canSetText !== (text?.kind === 'plain_text')) return false;
-  if (canSetTextStyle !== (text?.kind === 'plain_text')) return false;
+  // 改字和改样式是独立能力；Shape 字符串可改字，但尚未开放文字样式。
+  if (canSetTextStyle && text?.kind !== 'plain_text') return false;
   if (canSetFill !== (fill !== undefined)) return false;
   return value.capabilities.includes('translate');
 }

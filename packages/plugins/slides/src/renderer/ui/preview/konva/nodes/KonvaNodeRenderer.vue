@@ -8,6 +8,7 @@
     <KonvaShapeNode
       v-else-if="renderNode.kind === 'shape'"
       :node="renderNode"
+      :hide-text="props.node.id === props.hiddenTextElementId"
     />
     <KonvaImageNode
       v-else-if="renderNode.kind === 'image'"
@@ -85,7 +86,7 @@ const previewTranslationConfig = computed(() => {
     x: (translation?.dx ?? 0) * INCHES_TO_PX,
     y: (translation?.dy ?? 0) * INCHES_TO_PX,
     listening: false,
-    visible: props.node.id !== props.hiddenTextElementId,
+    visible: props.node.kind !== 'text' || props.node.id !== props.hiddenTextElementId,
   };
 });
 </script>

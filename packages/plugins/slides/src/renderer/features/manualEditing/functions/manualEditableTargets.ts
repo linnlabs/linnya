@@ -20,7 +20,7 @@ import {
   collectManualVisualPreviews,
   mergeManualTranslationPreviews,
 } from './manualIntentPreviews';
-import { projectManualEditableTargetSelection } from './manualVisualPreview';
+import { projectManualEditableTargetSelection, projectManualVisualPreviewsToRenderNode } from './manualVisualPreview';
 
 export interface ManualEditingHitProjection {
   readonly transientTranslation: ManualEditingTranslationPreview | null;
@@ -32,6 +32,28 @@ export interface ManualEditingHitProjection {
 export function collectManualEditableTargets(nodes: readonly RenderNode[]): ManualEditableTarget[] {
   return collectRenderNodeSelectionGeometries(nodes, isManualEditableNode)
     .map(geometry => buildManualEditableTarget(nodes, geometry));
+}
+
+/** 原位输入也消费当前可见几何，避免刚拉伸/移动后双击时输入框回到旧位置。 */
+export function createPresentedTextEditingTarget(
+  nodes: readonly RenderNode[],
+  target: ManualEditableTarget,
+  projection: ManualEditingHitProjection,
+) {
+  const geometry = collectRenderNodeSelectionGeometries(nodes, isManualEditableNode)
+    .find(candidate => candidate.elementId === target.elementId);
+  if (!geometry) return null;
+  const visuals = collectManualVisualPreviews(projection.pendingVisual, projection.queuedIntents);
+  const translations = mergeManualTranslationPreviews(collectManualTranslationPreviews(
+    projection.transientTranslation, projection.pendingTranslation, projection.queuedIntents,
+  ));
+  const presented = projectManualEditableTargetSelection(target, translations, visuals);
+  return createTextEditingTarget({
+    ...geometry,
+    node: projectManualVisualPreviewsToRenderNode(geometry.node, visuals),
+    polygon: presented.polygon,
+    bounds: presented.bounds,
+  });
 }
 
 export function findManualEditableTargetAtPoint(

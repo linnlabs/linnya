@@ -774,7 +774,8 @@ function buildStructuredElement(el: DirectElementInput): StructuredElement {
         geometry: el.geometry ?? 'rect',
         position: el.position,
         style: el.style,
-        text: flattenContent(el.content) || undefined,
+        // 清空形状文字仍是可编辑的空字符串，不能退化为“从未有文字”的形状。
+        text: typeof el.content === 'string' ? el.content : flattenContent(el.content) || undefined,
         ...sourceTracking,
       };
     case 'image':

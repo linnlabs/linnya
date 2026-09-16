@@ -5,6 +5,7 @@ import { useSlideTextEditingSession } from './useSlideTextEditingSession';
 
 const target: TextEditingTarget = {
   elementId: 'headline',
+  targetKind: 'text',
   authoringRef: { slideKey: 'overview', editKey: 'headline' },
   content: '旧标题',
   origin: { x: 1, y: 1 },
@@ -40,7 +41,7 @@ describe('useSlideTextEditingSession', () => {
     session.endComposition();
     expect(session.requestCommit()).toBe('submitted');
     expect(submitOperation).toHaveBeenCalledWith({
-      op: 'set_text_content',
+      op: 'set_text_content', targetKind: 'text',
       target: target.authoringRef,
       content: '新标题',
     });

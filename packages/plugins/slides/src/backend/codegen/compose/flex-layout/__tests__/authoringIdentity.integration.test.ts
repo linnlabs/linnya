@@ -91,6 +91,58 @@ describe('authoring identity projection', () => {
     });
   });
 
+  it('形状改字保留作者身份和尺寸/填充，并进入 RenderModel 与 PPTX', async () => {
+    const original = { ...shape('badge'), content: 'Before' };
+    const input = deck([slide('overview', [original])]);
+    input.manualEdits = {
+      version: 2,
+      slides: [{ slideKey: 'overview', targets: [{
+        kind: 'shape', editKey: 'badge', content: 'After', fillColor: '#445566',
+        visualSize: { width: 3, height: 2 }, translation: { dx: 0.5, dy: 0.25 },
+      }] }],
+    };
+    const compiled = compileFlexInput(input);
+    if (!compiled.input) throw new Error(compiled.error);
+    const admitted = readCompiledDirectComposeInput(structuredClone(compiled.input));
+    if (!admitted.input) throw new Error(admitted.error);
+    const spec = buildDeckSpecFromDirectInput(admitted.input);
+    const model = new RenderModelMapper().fromGeneratedDeck('p', 2, spec.title, spec, { width: 13.333, height: 7.5 });
+    expect(original.content).toBe('Before');
+    expect(model.slides[0].elements[0]).toMatchObject({
+      kind: 'shape', box: { w: 3, h: 2 },
+      fill: { type: 'solid', color: '#445566' },
+      authoringRef: { slideKey: 'overview', editKey: 'badge', targetKind: 'shape' },
+      authoringEdit: {
+        capabilities: ['translate', 'delete', 'set_fill_color', 'set_visual_size', 'set_text_content'],
+        text: { kind: 'plain_text', content: 'After' },
+      },
+      innerText: { paragraphs: [{ runs: [expect.objectContaining({ text: 'After' })] }] },
+    });
+    const zip = await JSZip.loadAsync(await materializePresentationPptx({ deckSpec: spec, svgAssets: [], svgFallbacks: [] }));
+    const xml = await zip.file('ppt/slides/slide1.xml')?.async('string');
+    expect(xml).toContain('After');
+    expect(xml).not.toContain('Before');
+    const rich: LayoutShapeNode = { ...original, content: [{ text: 'Rich' }] };
+    expect(compileFlexInput({ ...input, slides: [slide('overview', [rich])] }).error).toContain('不是带有纯文本的形状');
+    expect(compileFlexInput({ ...input, slides: [slide('overview', [shape('badge')])] }).error).toContain('不是带有纯文本的形状');
+  });
+
+  it.each([false, true])('形状清空文字后仍可再次编辑，structured=%s', (structured) => {
+    const compiled = compileFlexInput({
+      ...deck([slide('overview', [{ ...shape('badge'), content: 'Before' }])]),
+      manualEdits: { version: 2, slides: [{ slideKey: 'overview', targets: [{ kind: 'shape', editKey: 'badge', content: '' }] }] },
+    });
+    if (!compiled.input) throw new Error(compiled.error);
+    if (structured) compiled.input.slides[0].elements.push({
+      type: 'table', position: { x: 4, y: 1, w: 2, h: 1 }, headers: ['Header'], rows: [[{ text: 'Value' }]],
+    });
+    const spec = buildDeckSpecFromDirectInput(compiled.input);
+    const model = new RenderModelMapper().fromGeneratedDeck('p', 2, spec.title, spec, { width: 13.333, height: 7.5 });
+    expect(model.slides[0].elements[0]).toMatchObject({
+      authoringEdit: { text: { kind: 'plain_text', content: '' } }, innerText: { kind: 'text' },
+    });
+  });
+
   it('按作者内容声明改字能力，不从渲染后的段落和 run 数量反推', () => {
     const richText: LayoutTextNode = {
       _type: 'Text',

@@ -1,4 +1,5 @@
 import type { RenderNode } from '../../../types/render';
+import { resizeShapeTextPreview } from './resizeShapeTextPreview';
 import type {
   ManualEditableTarget,
   ManualEditingVisualOperation,
@@ -53,6 +54,13 @@ function projectManualVisualPreviewToRenderNode(
     if (node.kind !== 'shape' && node.kind !== 'image') return node;
     return {
       ...node,
+      ...(node.kind === 'shape' && node.innerText ? {
+        innerText: resizeShapeTextPreview(
+          node.innerText,
+          preview.operation.visualSize.width - node.box.w,
+          preview.operation.visualSize.height - node.box.h,
+        ),
+      } : {}),
       box: {
         ...node.box,
         w: preview.operation.visualSize.width,

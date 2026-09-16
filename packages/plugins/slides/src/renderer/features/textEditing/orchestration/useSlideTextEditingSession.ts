@@ -35,6 +35,7 @@ export function useSlideTextEditingSession(options: SlideTextEditingSessionOptio
     }
     options.submitOperation({
       op: 'set_text_content',
+      targetKind: current.targetKind,
       target: current.authoringRef,
       content: draft.value,
     });

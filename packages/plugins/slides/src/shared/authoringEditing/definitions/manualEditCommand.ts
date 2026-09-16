@@ -14,6 +14,7 @@ export interface SlidesManualEditExpectedBase {
 export type SlidesManualEditOperation =
   | {
       readonly op: 'set_text_content';
+      readonly targetKind: 'text' | 'shape';
       readonly target: SlidesAuthoringEditRef;
       readonly content: string;
     }

@@ -19,7 +19,7 @@ compose({
 describe('writeManualEditsToDeckSource', () => {
   it('向唯一 compose 对象插入规范人工值且保留其他源码', () => {
     const result = writeManualEditsToDeckSource(BASE_SOURCE, {
-      op: 'set_text_content',
+      op: 'set_text_content', targetKind: 'text',
       target: { slideKey: 'overview', editKey: 'headline' },
       content: 'Updated',
     });
@@ -44,7 +44,7 @@ describe('writeManualEditsToDeckSource', () => {
       translation: { dx: 0.2, dy: -0.1 },
     });
     const updated = writeManualEditsToDeckSource(withTranslation.source, {
-      op: 'set_text_content',
+      op: 'set_text_content', targetKind: 'text',
       target: { slideKey: 'overview', editKey: 'headline' },
       content: 'Final title',
     });
@@ -60,13 +60,38 @@ describe('writeManualEditsToDeckSource', () => {
       .toBe(BASE_SOURCE.replace('  slides: [slide],', '  slides: [slide],\n  manualEdits: <value>'));
   });
 
+  it('形状内嵌改字与尺寸/颜色/位移合并，空字符串仍是有效内容', () => {
+    const source = BASE_SOURCE.replace('createText', 'createShape');
+    const target = { slideKey: 'overview', editKey: 'headline' };
+    const filled = writeManualEditsToDeckSource(source, {
+      op: 'set_fill_color', target, targetKind: 'shape', color: '#123456',
+    });
+    const moved = writeManualEditsToDeckSource(filled.source, {
+      op: 'translate_by', target, targetKind: 'shape', delta: { dx: 1, dy: 2 },
+    });
+    const sized = writeManualEditsToDeckSource(moved.source, {
+      op: 'set_visual_size', target, targetKind: 'shape', visualSize: { width: 3, height: 2 },
+    });
+    const edited = writeManualEditsToDeckSource(sized.source, {
+      op: 'set_text_content', target, targetKind: 'shape', content: '',
+    });
+    expect(edited.manualEdits.slides[0].targets[0]).toEqual({
+      kind: 'shape', editKey: 'headline', content: '', fillColor: '#123456',
+      translation: { dx: 1, dy: 2 }, visualSize: { width: 3, height: 2 },
+    });
+    expect(typecheckCodegenSource(edited.source).ok).toBe(true);
+    expect(() => writeManualEditsToDeckSource(edited.source, {
+      op: 'set_text_content', target, targetKind: 'text', content: 'Wrong owner',
+    })).toThrow('已记录为 shape');
+  });
+
   it('拒绝动态人工值、重复 compose 和超限候选', () => {
     const dynamic = BASE_SOURCE.replace(
       '  slides: [slide],',
       '  slides: [slide],\n  manualEdits: buildManualEdits(),',
     );
     expect(() => writeManualEditsToDeckSource(dynamic, {
-      op: 'set_text_content',
+      op: 'set_text_content', targetKind: 'text',
       target: { slideKey: 'overview', editKey: 'headline' },
       content: 'Updated',
     })).toThrowError(SlidesManualEditSourceError);
@@ -74,14 +99,14 @@ describe('writeManualEditsToDeckSource', () => {
     expect(() => writeManualEditsToDeckSource(
       `${BASE_SOURCE}\ncompose({ title: "Again", slides: [slide] });`,
       {
-        op: 'set_text_content',
+        op: 'set_text_content', targetKind: 'text',
         target: { slideKey: 'overview', editKey: 'headline' },
         content: 'Updated',
       },
     )).toThrow('只包含一个 compose');
 
     expect(() => writeManualEditsToDeckSource(BASE_SOURCE, {
-      op: 'set_text_content',
+      op: 'set_text_content', targetKind: 'text',
       target: { slideKey: 'overview', editKey: 'headline' },
       content: 'Updated',
     }, { maxSourceBytes: 10 })).toThrow('超过 10 bytes');
@@ -89,7 +114,7 @@ describe('writeManualEditsToDeckSource', () => {
 
   it('拒绝把已有目标改写为另一种作者类型', () => {
     const current = writeManualEditsToDeckSource(BASE_SOURCE, {
-      op: 'set_text_content',
+      op: 'set_text_content', targetKind: 'text',
       target: { slideKey: 'overview', editKey: 'headline' },
       content: 'Updated',
     });
@@ -136,7 +161,7 @@ describe('writeManualEditsToDeckSource', () => {
       color: '#123456',
     });
     const content = writeManualEditsToDeckSource(sized.source, {
-      op: 'set_text_content',
+      op: 'set_text_content', targetKind: 'text',
       target: { slideKey: 'overview', editKey: 'headline' },
       content: 'Final',
     });
@@ -169,7 +194,7 @@ describe('writeManualEditsToDeckSource', () => {
     });
 
     const text = writeManualEditsToDeckSource(BASE_SOURCE, {
-      op: 'set_text_content',
+      op: 'set_text_content', targetKind: 'text',
       target: { slideKey: 'overview', editKey: 'headline' },
       content: 'Temporary',
     });

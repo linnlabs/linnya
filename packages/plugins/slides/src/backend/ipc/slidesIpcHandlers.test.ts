@@ -210,7 +210,7 @@ describe('slides IPC handlers', () => {
     });
   });
 
-  it('validates and forwards a manual text edit as a typed business command', async () => {
+  it.each(['text', 'shape'] as const)('validates and forwards a %s text edit as a typed business command', async (targetKind) => {
     const coordinator = makeCoordinator();
     registerSlidesIpcHandlersForCoordinator(coordinator, registerBackendPluginIpcHandler);
     const command = {
@@ -222,7 +222,7 @@ describe('slides IPC handlers', () => {
         sourceHash: 'a'.repeat(64),
       },
       operation: {
-        op: 'set_text_content',
+        op: 'set_text_content', targetKind,
         target: { slideKey: 'overview', editKey: 'headline' },
         content: 'Updated',
       },

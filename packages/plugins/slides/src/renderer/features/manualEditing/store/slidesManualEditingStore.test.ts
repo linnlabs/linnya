@@ -66,7 +66,7 @@ describe('slidesManualEditingStore', () => {
   it('settles text submission only after the committed revision is presented', () => {
     const store = useSlidesManualEditingStore();
     const operation = {
-      op: 'set_text_content' as const,
+      op: 'set_text_content' as const, targetKind: 'text' as const,
       target: target.authoringRef,
       content: 'Changed title',
     };

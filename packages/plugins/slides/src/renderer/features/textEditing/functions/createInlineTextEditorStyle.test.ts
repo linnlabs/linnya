@@ -4,6 +4,7 @@ import { createInlineTextEditorStyle } from './createInlineTextEditorStyle';
 
 const target: TextEditingTarget = {
   elementId: 'headline',
+  targetKind: 'text',
   authoringRef: { slideKey: 'overview', editKey: 'headline' },
   content: '标题',
   origin: { x: 1, y: 2 },

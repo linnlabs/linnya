@@ -144,7 +144,7 @@ function applyTargetOperation(
   existing: SlidesManualTargetEdit | undefined,
   operation: SlidesManualEditOperation,
 ): SlidesManualTargetEdit {
-  const targetKind = operation.op === 'set_text_content' || operation.op === 'set_text_style'
+  const targetKind = operation.op === 'set_text_style'
     ? 'text'
     : operation.targetKind;
   assertExistingKind(existing, targetKind, operation);
@@ -152,6 +152,11 @@ function applyTargetOperation(
     return { kind: targetKind, editKey: operation.target.editKey, deleted: true };
   }
   if (existing?.deleted === true) throw deletedTargetError(operation);
+
+  if (operation.op === 'set_text_content' && operation.targetKind === 'shape') {
+    const shape = existing?.kind === 'shape' ? existing : undefined;
+    return { ...shape, kind: 'shape', editKey: operation.target.editKey, content: operation.content };
+  }
 
   if (operation.op === 'set_text_content' || operation.op === 'set_text_style') {
     const text = existing?.kind === 'text' ? existing : undefined;

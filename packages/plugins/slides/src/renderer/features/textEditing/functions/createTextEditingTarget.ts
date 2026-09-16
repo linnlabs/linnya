@@ -8,11 +8,13 @@ const DEFAULT_TEXT_COLOR = '#000000';
 export function createTextEditingTarget(
   geometry: RenderNodeSelectionGeometry<RenderNode>,
 ): TextEditingTarget | null {
-  const { node, polygon } = geometry;
-  if (node.kind !== 'text') return null;
-  const authoringRef = node.authoringRef;
-  const text = node.authoringEdit?.text;
-  if (!authoringRef || text?.kind !== 'plain_text') return null;
+  const { node: owner, polygon } = geometry;
+  const node = owner.kind === 'text' ? owner : owner.kind === 'shape' ? owner.innerText : undefined;
+  const authoringRef = owner.authoringRef;
+  const text = owner.authoringEdit?.text;
+  if (!node || !authoringRef || text?.kind !== 'plain_text'
+    || !owner.authoringEdit?.capabilities.includes('set_text_content')) return null;
+  if (authoringRef.targetKind !== 'text' && authoringRef.targetKind !== 'shape') return null;
 
   const origin = polygon[0];
   const horizontalEnd = polygon[1];
@@ -43,6 +45,7 @@ export function createTextEditingTarget(
 
   return {
     elementId: geometry.elementId,
+    targetKind: authoringRef.targetKind,
     authoringRef: {
       slideKey: authoringRef.slideKey,
       editKey: authoringRef.editKey,
@@ -72,7 +75,7 @@ export function createTextEditingTarget(
     ...(firstRun?.letterSpacing === undefined
       ? {}
       : { letterSpacingPt: firstRun.letterSpacing * appliedFontScale }),
-    opacity: node.opacity ?? 1,
+    opacity: owner.opacity ?? 1,
   };
 }
 

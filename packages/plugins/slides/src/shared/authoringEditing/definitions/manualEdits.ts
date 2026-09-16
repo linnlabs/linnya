@@ -41,6 +41,8 @@ export interface SlidesManualFrameEdit extends SlidesManualEditBase {
 
 export interface SlidesManualShapeEdit extends SlidesManualEditBase {
   readonly kind: 'shape';
+  /** 内嵌纯文本属于形状自身，不创建虚构的子 Text 作者身份。 */
+  readonly content?: string;
   readonly fillColor?: string;
   readonly visualSize?: SlidesManualVisualSize;
 }

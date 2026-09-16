@@ -212,13 +212,16 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
   };
 
   if (payload.operation.op === 'set_text_content') {
-    assertOnlyKeys(payload.operation, ['op', 'target', 'content'], 'operation');
+    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'content'], 'operation');
+    if (payload.operation.targetKind !== 'text' && payload.operation.targetKind !== 'shape') {
+      throw new Error('operation.targetKind must be text or shape.');
+    }
     if (typeof payload.operation.content !== 'string') {
       throw new Error('operation.content must be a string.');
     }
     return {
       ...base,
-      operation: { op: 'set_text_content', target, content: payload.operation.content },
+      operation: { op: 'set_text_content', target, targetKind: payload.operation.targetKind, content: payload.operation.content },
     };
   }
   if (payload.operation.op === 'set_translation') {

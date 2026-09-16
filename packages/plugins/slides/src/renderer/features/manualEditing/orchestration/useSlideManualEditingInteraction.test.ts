@@ -104,6 +104,36 @@ function createInteraction(
 describe('useSlideManualEditingInteraction', () => {
   beforeEach(() => setActivePinia(createPinia()));
 
+  it('double-clicks shape content through the same session and submits the shape identity', () => {
+    const submit = vi.fn();
+    const shapeSlide: SlideRenderModel = { ...slide, elements: [{
+      id: 'badge', kind: 'shape', box: { x: 1, y: 1, w: 3, h: 1, unit: 'in' }, zIndex: 0,
+      geometry: { type: 'preset', name: 'rect' },
+      authoringRef: { slideKey: 'overview', editKey: 'badge', targetKind: 'shape' },
+      authoringEdit: { capabilities: ['translate', 'set_text_content'], text: { kind: 'plain_text', content: 'Old' } },
+      innerText: { id: 'badge-inner', kind: 'text', box: { x: 1, y: 1, w: 3, h: 1, unit: 'in' },
+        zIndex: 0, paragraphs: [{ align: 'center', runs: [{ text: 'Old' }] }], verticalAlign: 'middle' },
+    }] };
+    const { interaction, wrapper } = createInteraction(submit, shapeSlide);
+    const store = useSlidesManualEditingStore();
+    store.enqueueIntent({ operation: {
+      op: 'set_visual_size', targetKind: 'shape', target: { slideKey: 'overview', editKey: 'badge' },
+      visualSize: { width: 4, height: 2 },
+    }, visualPreview: {
+      elementId: 'badge', affectedElementIds: ['badge'], operation: {
+        op: 'set_visual_size', targetKind: 'shape', target: { slideKey: 'overview', editKey: 'badge' },
+        visualSize: { width: 4, height: 2 },
+      },
+    } });
+    wrapper.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: 144, clientY: 144 }));
+    expect(interaction.textEditorTarget.value).toMatchObject({ elementId: 'badge', targetKind: 'shape', content: 'Old', width: 4, height: 2, verticalOffset: 1 });
+    interaction.textDraft.value = 'New';
+    interaction.submitTextEdit();
+    expect(submit).toHaveBeenCalledExactlyOnceWith({ operation: {
+      op: 'set_text_content', targetKind: 'shape', target: { slideKey: 'overview', editKey: 'badge' }, content: 'New',
+    } });
+  });
+
   it('hovers only real author targets and leaves the slide background inactive', () => {
     const { interaction, wrapper } = createInteraction(vi.fn());
 
@@ -187,7 +217,7 @@ describe('useSlideManualEditingInteraction', () => {
     interaction.submitTextEdit();
     expect(submitOperation).toHaveBeenCalledWith({
       operation: {
-        op: 'set_text_content',
+        op: 'set_text_content', targetKind: 'text',
         target: { slideKey: 'overview', editKey: 'headline' },
         content: '新的标题',
       },

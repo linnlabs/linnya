@@ -15,6 +15,7 @@ export interface TextEditingPadding {
 /** 原位输入只消费当前正式视觉，不从 DOM 或 Canvas 实例反推作者值。 */
 export interface TextEditingTarget {
   readonly elementId: string;
+  readonly targetKind: 'text' | 'shape';
   readonly authoringRef: SlidesAuthoringEditRef;
   readonly content: string;
   readonly origin: TextEditingPoint;

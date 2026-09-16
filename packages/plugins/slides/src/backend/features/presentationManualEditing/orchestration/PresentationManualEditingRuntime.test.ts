@@ -43,7 +43,7 @@ const COMMAND: SlidesManualEditCommand = {
     sourceHash: 'a'.repeat(64),
   },
   operation: {
-    op: 'set_text_content',
+    op: 'set_text_content', targetKind: 'text',
     target: { slideKey: 'overview', editKey: 'headline' },
     content: 'Updated',
   },

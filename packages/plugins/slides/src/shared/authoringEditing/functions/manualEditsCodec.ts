@@ -155,17 +155,20 @@ function parseTargetEdit(
   }
 
   if (value.kind === 'shape') {
-    if (!hasOnlyKeys(value, ['kind', 'editKey', 'translation', 'fillColor', 'visualSize'])) {
+    if (!hasOnlyKeys(value, ['kind', 'editKey', 'translation', 'fillColor', 'visualSize', 'content'])) {
       return { error: `${path} 含有 shape 人工编辑不支持的字段。` };
     }
     const translation = parseOptionalTranslation(value.translation, `${path}.translation`);
     if ('error' in translation) return translation;
+    if (value.content !== undefined && typeof value.content !== 'string') {
+      return { error: `${path}.content 必须是字符串。` };
+    }
     if (value.fillColor !== undefined && !isHexColor(value.fillColor)) {
       return { error: `${path}.fillColor 必须是 #RRGGBB。` };
     }
     const visualSize = parseOptionalVisualSize(value.visualSize, `${path}.visualSize`);
     if ('error' in visualSize) return visualSize;
-    if (translation.value === undefined && value.fillColor === undefined && visualSize.value === undefined) {
+    if (translation.value === undefined && value.fillColor === undefined && visualSize.value === undefined && value.content === undefined) {
       return { error: `${path} 至少需要一个 shape 人工值。` };
     }
     return {
@@ -173,6 +176,7 @@ function parseTargetEdit(
         kind: 'shape',
         editKey: value.editKey,
         translation: translation.value,
+        content: value.content,
         fillColor: value.fillColor,
         visualSize: visualSize.value,
       },

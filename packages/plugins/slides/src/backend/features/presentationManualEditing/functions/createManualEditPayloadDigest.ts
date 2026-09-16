@@ -20,7 +20,7 @@ function serializeOperation(operation: SlidesManualEditCommand['operation']): ob
   };
   switch (operation.op) {
     case 'set_text_content':
-      return { op: operation.op, ...target, content: operation.content };
+      return { op: operation.op, ...target, targetKind: operation.targetKind, content: operation.content };
     case 'set_text_style':
       return {
         op: operation.op,

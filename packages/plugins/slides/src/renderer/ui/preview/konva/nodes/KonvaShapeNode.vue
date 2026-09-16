@@ -10,7 +10,7 @@
     />
 
     <KonvaTextNode
-      v-if="node.innerText"
+      v-if="node.innerText && !hideText"
       :node="innerTextNode"
     />
   </v-group>
@@ -29,6 +29,7 @@ import {
 
 const props = defineProps<{
   node: ShapeRenderNode;
+  hideText?: boolean;
 }>();
 
 const groupConfig = computed(() => buildShapeGroupConfig(props.node));

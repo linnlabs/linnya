@@ -7,7 +7,7 @@ Current source rules:
 - the document contains exactly one `compose({...})` object;
 - `manualEdits` is a static JSON literal and is parsed by the shared strict codec;
 - unrelated source text and comments remain byte-for-byte unchanged;
-- text writes replace the complete plain-text author value; text style writes merge font size/color; Frame/Shape fill writes replace the solid background/fill; Shape/Image visual-size writes replace width/height; deleting any editable author target replaces its record with the exclusive deletion marker;
+- text writes carry explicit Text/Shape target kind and replace the complete plain-text author value; Shape content merges with its existing fill, size and translation rather than creating a child Text record; text style writes merge font size/color; Frame/Shape fill writes replace the solid background/fill; Shape/Image visual-size writes replace width/height; deleting any editable author target replaces its record with the exclusive deletion marker;
 - absolute translation writes the complete cumulative `dx / dy` value, while renderer drag commands use `translate_by` so repeated drags accumulate against the checked base revision;
 - source size is checked before the candidate reaches the build pipeline.
 

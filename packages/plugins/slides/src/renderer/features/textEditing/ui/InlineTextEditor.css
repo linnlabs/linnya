@@ -6,8 +6,9 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  outline: 1px solid var(--color-accent);
-  outline-offset: 1px;
+  /* 画布选框拥有唯一蓝色边界，DOM 输入不能再叠加第二层焦点框。 */
+  outline: none;
+  box-shadow: none;
   resize: none;
   overflow: auto;
   transform-origin: left top;

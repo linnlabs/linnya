@@ -12,6 +12,8 @@ Plugin migration v10 upgrades current DeckSpecs produced before this field exist
 
 Rules:
 
+- `set_text_content` carries an explicit `targetKind: 'text' | 'shape'`. A Shape's string content belongs to that Shape identity, not a synthetic child text target. Shape content is stored alongside its fill, size and translation in the same manual record; rich content remains read-only. This does not enable shape text-style editing.
+
 - keys use `^[A-Za-z][A-Za-z0-9_-]{0,63}$` so they are deterministic, readable and safe in source and render identities;
 - `slideKey` is unique in one deck and `editKey` is unique in one slide authoring tree;
 - a node with `editKey` requires its slide to have `slideKey`;

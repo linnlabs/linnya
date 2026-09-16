@@ -12,6 +12,7 @@ import type {
   ManualEditingVisualOperation,
 } from '../definitions/manualEditingTypes';
 import {
+  createPresentedTextEditingTarget,
   findManualEditableTargetPathAtPoint,
   findManualEditableTargetPathByElementId,
   type ManualEditingHitProjection,
@@ -193,9 +194,11 @@ export function useSlideManualEditingInteraction(options: SlideManualEditingInte
     const path = findManualEditableTargetPathAtPoint(slide.elements, point, readHitProjection());
     const target = path[path.length - 1];
     if (!target?.textEditing) return;
+    const editorTarget = createPresentedTextEditingTarget(slide.elements, target, readHitProjection());
+    if (!editorTarget) return;
     event.preventDefault();
     store.selectTarget(target, path);
-    textEditing.open(target.textEditing);
+    textEditing.open(editorTarget);
   }
 
   function selectHierarchyTarget(target: ManualEditableTarget): void {
