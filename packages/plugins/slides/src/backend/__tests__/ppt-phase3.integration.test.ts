@@ -5,7 +5,6 @@ import { PptCoordinator } from '@plugin/slides/backend-coordinator';
 import { pptComposeProfile } from '@plugin/slides/backend-sandbox';
 import { DeckAssembler } from '../engine/DeckAssembler.js';
 import { FreeformCompiler } from '../engine/FreeformCompiler.js';
-import { PatchCompiler } from '../engine/patch/PatchCompiler.js';
 import { PptxReader } from '../engine/parser/PptxReader.js';
 import { StructuredCompiler } from '../engine/StructuredCompiler.js';
 import { TemplateManager } from '../engine/template/TemplateManager.js';
@@ -54,7 +53,6 @@ function createStack(db: Database.Database) {
   const pptxReader = new PptxReader();
   const coordinator = new PptCoordinator(
     deckAssembler,
-    new PatchCompiler(structuredCompiler),
     pptxReader,
     new TemplateManager(pptxReader, repository),
     repository,

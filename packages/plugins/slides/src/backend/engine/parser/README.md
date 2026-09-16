@@ -11,6 +11,7 @@ parser/
 ├── PptxReader.ts                 # PPTX 解压、slide glue、layout 名解析、EditableTarget 注入
 ├── CanonicalBuilder.ts           # PresentationInfo -> CanonicalDeck
 ├── PreviewMapper.ts              # PresentationInfo / CanonicalDeck -> DeckPreview
+├── GeneratedPreviewMapper.ts     # generated DeckSpec -> 轻量 DeckPreview
 ├── RenderModelMapper.ts          # generated / canonical -> PresentationRenderModel
 ├── InspectSnapshot.ts            # inspect 输出快照派生
 ├── README.md                     # 本说明
@@ -52,6 +53,18 @@ PresentationInfo
   -> CanonicalDeck
   -> PreviewMapper 或 RenderModelMapper.fromCanonicalDeck()
 ```
+
+generated preview：
+
+```text
+DeckSpec
+  -> GeneratedPreviewMapper
+  -> DeckPreview
+```
+
+generated 文稿的 `DeckPreview` 与 RenderModel 使用同一 revision 的 `DeckSpec`。它只投影
+outline 和 page context 所需的页面、文本、元素身份与位置，不解压同 revision 已经生成的
+PPTX。PPTX parse 只属于 imported / patched read path、inspect 与明确的导出读取。
 
 generated render-model：
 

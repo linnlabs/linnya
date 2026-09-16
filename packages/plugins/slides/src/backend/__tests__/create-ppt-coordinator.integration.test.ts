@@ -428,6 +428,7 @@ describe('createPptCoordinator — image source resolver integration', () => {
     ).toEqual({ text: fixedSource });
     await expect(coordinator.getDocumentBuildState(created.presentationId)).resolves.toMatchObject({
       state: 'ready',
+      sourceHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
       versionNumber: 2,
     });
     await expect(coordinator.getPreview(created.presentationId)).resolves.toMatchObject({

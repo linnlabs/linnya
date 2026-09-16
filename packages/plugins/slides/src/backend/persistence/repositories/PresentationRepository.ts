@@ -19,19 +19,33 @@ import {
 } from '../../features/presentationSourceHistory/index.js';
 import {
   PresentationStaleBaseError,
+  PresentationDraftConflictError,
+  PresentationManualEditCommandConflictError,
   type PresentationCommitOptions,
   type PresentationCommitResult,
   type PresentationCreateOptions,
+  type PresentationDocumentIdentity,
   type PresentationDocumentRecord,
+  type PresentationPreviewSourceRecord,
+  type PresentationPptxArtifactSourceRecord,
+  type PresentationRenderSourceRecord,
   type PresentationRepositoryPort,
+  type PresentationManualEditReceiptRecord,
   type PresentationRevisionOrigin,
   type PresentationRevisionRecord,
   type PresentationTemplateRecord,
 } from '../definitions/presentationRepository.js';
 import {
+  mapPresentationIdentityRow,
   mapPresentationDocumentRow,
+  mapPresentationPreviewSourceRow,
+  mapPresentationPptxArtifactSourceRow,
+  mapPresentationRenderSourceRow,
   normalizeDeckSpecOrThrow as normalizeStoredDeckSpecOrThrow,
+  readPresentationIdentityRow,
   readPresentationDocumentRow,
+  readPresentationPreviewSourceRow,
+  readPresentationRenderSourceRow,
   type StoredPresentationDocumentRow,
 } from '../functions/presentationDocumentRecordCodec.js';
 
@@ -77,9 +91,24 @@ interface WorkspaceProjectRow {
   readonly project_id: string | null;
 }
 
+interface ManualEditReceiptRow {
+  readonly command_id: string;
+  readonly node_id: string;
+  readonly payload_digest: string;
+  readonly revision_id: string;
+  readonly revision: number;
+  readonly created_at: number;
+}
+
+interface CommitTransactionResult extends PresentationCommitResult {
+  readonly reusedReceipt: boolean;
+}
+
 export interface PresentationRepositoryOptions {
   /** 同一提交事务中记录本次物化实际使用的资产，失败事务不会留下 revision 引用。 */
   readonly recordRevisionContext?: (nodeId: string, revisionId: string) => void;
+  /** 延迟物化的人工 revision 沿用 base 的资产可达性。 */
+  readonly inheritRevisionContext?: (baseRevisionId: string, revisionId: string) => void;
   readonly requestHistoryMaintenance?: (nodeId: string) => void;
   readonly publishDocumentUpdated?: (payload: PluginWorkspaceDocumentUpdatedPayload) => void;
 }
@@ -110,9 +139,9 @@ export class PresentationRepository implements PresentationRepositoryPort {
       this.db.prepare(`
         INSERT INTO presentation_documents (
           node_id, current_revision_id, current_revision,
-          deck_source, source_hash, deck_spec_json, pptx_buffer,
+          deck_source, source_hash, deck_spec_json, pptx_buffer, pptx_revision_id,
           title, slide_count, layout, created_at, updated_at, author_id
-        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         nodeId,
         revisionId,
@@ -120,6 +149,7 @@ export class PresentationRepository implements PresentationRepositoryPort {
         sourceRevision.sourceHash,
         JSON.stringify(normalizedDeckSpec),
         options.pptxBuffer,
+        revisionId,
         normalizedDeckSpec.title,
         normalizedDeckSpec.slides.length,
         createSlideLayoutKey(normalizedDeckSpec.layout),
@@ -164,7 +194,24 @@ export class PresentationRepository implements PresentationRepositoryPort {
     const revisionId = uuidv4();
     const now = Date.now();
 
-    const commitTx = this.db.transaction((): number => {
+    const commitTx = this.db.transaction((): CommitTransactionResult => {
+      const existingReceipt = options.manualEditReceipt
+        ? this.readManualEditReceipt(options.manualEditReceipt.commandId)
+        : null;
+      if (existingReceipt) {
+        if (
+          existingReceipt.nodeId !== nodeId
+          || existingReceipt.payloadDigest !== options.manualEditReceipt?.payloadDigest
+        ) {
+          throw new PresentationManualEditCommandConflictError(existingReceipt.commandId);
+        }
+        return {
+          revisionId: existingReceipt.revisionId,
+          revision: existingReceipt.revision,
+          reusedReceipt: true,
+        };
+      }
+
       const current = this.readDocumentRow(nodeId);
       if (
         !current
@@ -185,6 +232,9 @@ export class PresentationRepository implements PresentationRepositoryPort {
         throw new PresentationSourceConsistencyError(
           `Slides current document ${nodeId} 的 source hash 不一致。`,
         );
+      }
+      if (options.expectedDraftState === 'absent' && this.hasActiveDraft(nodeId, current)) {
+        throw new PresentationDraftConflictError(nodeId);
       }
 
       const nextRevision = current.current_revision + 1;
@@ -214,6 +264,7 @@ export class PresentationRepository implements PresentationRepositoryPort {
             source_hash = ?,
             deck_spec_json = ?,
             pptx_buffer = ?,
+            pptx_revision_id = ?,
             title = ?,
             slide_count = ?,
             layout = ?,
@@ -228,7 +279,8 @@ export class PresentationRepository implements PresentationRepositoryPort {
         normalizedSource,
         sourceRevision.sourceHash,
         JSON.stringify(normalizedDeckSpec),
-        options.pptxBuffer,
+        options.deferPptx === true ? current.pptx_buffer : options.pptxBuffer,
+        options.deferPptx === true ? null : revisionId,
         normalizedDeckSpec.title,
         normalizedDeckSpec.slides.length,
         createSlideLayoutKey(normalizedDeckSpec.layout),
@@ -249,16 +301,36 @@ export class PresentationRepository implements PresentationRepositoryPort {
       }
 
       this.commitWorkspaceProjection(nodeId, normalizedSource, now);
-      this.options.recordRevisionContext?.(nodeId, revisionId);
+      if (options.revisionContext === 'inherit_base') {
+        this.options.inheritRevisionContext?.(options.baseRevisionId, revisionId);
+      } else {
+        this.options.recordRevisionContext?.(nodeId, revisionId);
+      }
+      if (options.manualEditReceipt) {
+        this.db.prepare(`
+          INSERT INTO presentation_manual_edit_receipts (
+            command_id, node_id, payload_digest, revision_id, revision, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?)
+        `).run(
+          options.manualEditReceipt.commandId,
+          nodeId,
+          options.manualEditReceipt.payloadDigest,
+          revisionId,
+          nextRevision,
+          now,
+        );
+      }
       // 成功恢复和普通提交都替代当前草稿，不能让旧失败状态遮住新文稿。
       this.db.prepare('DELETE FROM presentation_drafts WHERE node_id = ?').run(nodeId);
-      return nextRevision;
+      return { revisionId, revision: nextRevision, reusedReceipt: false };
     });
 
-    const revision = commitTx.immediate();
-    this.enqueueDocumentUpdated(nodeId, revision);
-    this.options.requestHistoryMaintenance?.(nodeId);
-    return { revisionId, revision };
+    const result = commitTx.immediate();
+    if (!result.reusedReceipt) {
+      this.enqueueDocumentUpdated(nodeId, result.revision);
+      this.options.requestHistoryMaintenance?.(nodeId);
+    }
+    return { revisionId: result.revisionId, revision: result.revision };
   }
 
   async getPresentation(nodeId: string): Promise<PresentationDocumentRecord | null> {
@@ -267,6 +339,64 @@ export class PresentationRepository implements PresentationRepositoryPort {
       return null;
     }
     return mapPresentationDocumentRow(row);
+  }
+
+  async getPresentationIdentity(nodeId: string): Promise<PresentationDocumentIdentity | null> {
+    const row = this.db.prepare(`
+      SELECT node_id, current_revision_id, current_revision, source_hash
+      FROM presentation_documents
+      WHERE node_id = ?
+    `).get(nodeId);
+    return row === undefined
+      ? null
+      : mapPresentationIdentityRow(readPresentationIdentityRow(row));
+  }
+
+  async getPresentationPreviewSource(
+    nodeId: string,
+  ): Promise<PresentationPreviewSourceRecord | null> {
+    const row = this.db.prepare(`
+      SELECT node_id, current_revision_id, current_revision, deck_spec_json, title
+      FROM presentation_documents
+      WHERE node_id = ?
+    `).get(nodeId);
+    return row === undefined
+      ? null
+      : mapPresentationPreviewSourceRow(readPresentationPreviewSourceRow(row));
+  }
+
+  async getPresentationRenderSource(
+    nodeId: string,
+  ): Promise<PresentationRenderSourceRecord | null> {
+    const row = this.db.prepare(`
+      SELECT node_id, current_revision_id, current_revision,
+             deck_source, deck_spec_json, title
+      FROM presentation_documents
+      WHERE node_id = ?
+    `).get(nodeId);
+    return row === undefined
+      ? null
+      : mapPresentationRenderSourceRow(readPresentationRenderSourceRow(row));
+  }
+
+  async getPresentationPptxArtifactSource(
+    nodeId: string,
+  ): Promise<PresentationPptxArtifactSourceRecord | null> {
+    const row = this.readDocumentRow(nodeId);
+    return row ? mapPresentationPptxArtifactSourceRow(row) : null;
+  }
+
+  async savePresentationPptxArtifact(
+    nodeId: string,
+    revisionId: string,
+    pptxBuffer: Buffer,
+  ): Promise<boolean> {
+    const result = this.db.prepare(`
+      UPDATE presentation_documents
+      SET pptx_buffer = ?, pptx_revision_id = ?
+      WHERE node_id = ? AND current_revision_id = ?
+    `).run(pptxBuffer, revisionId, nodeId, revisionId);
+    return result.changes === 1;
   }
 
   async getRevisionSource(nodeId: string, revision: number): Promise<string | null> {
@@ -309,6 +439,40 @@ export class PresentationRepository implements PresentationRepositoryPort {
       ORDER BY revision DESC
     `).all(nodeId);
     return rows.map((row) => mapRevisionRow(readRevisionRow(row, nodeId)));
+  }
+
+  async getManualEditReceipt(commandId: string): Promise<PresentationManualEditReceiptRecord | null> {
+    return this.readManualEditReceipt(commandId);
+  }
+
+  private readManualEditReceipt(commandId: string): PresentationManualEditReceiptRecord | null {
+    const row: unknown = this.db.prepare(`
+      SELECT command_id, node_id, payload_digest, revision_id, revision, created_at
+      FROM presentation_manual_edit_receipts
+      WHERE command_id = ?
+    `).get(commandId);
+    if (row === undefined) return null;
+    if (!isManualEditReceiptRow(row)) {
+      throw new Error('Slides manual edit receipt row has an invalid shape.');
+    }
+    return {
+      commandId: row.command_id,
+      nodeId: row.node_id,
+      payloadDigest: row.payload_digest,
+      revisionId: row.revision_id,
+      revision: row.revision,
+      createdAt: row.created_at,
+    };
+  }
+
+  private hasActiveDraft(nodeId: string, current: StoredPresentationDocumentRow): boolean {
+    const row: unknown = this.db.prepare(`
+      SELECT 1 AS found
+      FROM presentation_drafts
+      WHERE node_id = ? AND base_revision_id = ? AND base_revision = ?
+      LIMIT 1
+    `).get(nodeId, current.current_revision_id, current.current_revision);
+    return row !== undefined;
   }
 
   async saveTemplate(template: TemplateSpec, sourcePptxBuffer: Buffer): Promise<string> {
@@ -398,7 +562,7 @@ export class PresentationRepository implements PresentationRepositoryPort {
   private readDocumentRow(nodeId: string): StoredPresentationDocumentRow | null {
     const row = this.db.prepare(`
       SELECT node_id, current_revision_id, current_revision,
-             deck_source, source_hash, deck_spec_json, pptx_buffer,
+             deck_source, source_hash, deck_spec_json, pptx_buffer, pptx_revision_id,
              title, slide_count, layout, created_at, updated_at, author_id
       FROM presentation_documents
       WHERE node_id = ?
@@ -674,6 +838,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isFiniteInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value);
+}
+
+function isManualEditReceiptRow(value: unknown): value is ManualEditReceiptRow {
+  return isRecord(value)
+    && typeof value.command_id === 'string'
+    && typeof value.node_id === 'string'
+    && typeof value.payload_digest === 'string'
+    && typeof value.revision_id === 'string'
+    && isFiniteInteger(value.revision)
+    && isFiniteInteger(value.created_at);
 }
 
 function isNullableString(value: unknown): value is string | null {

@@ -7,7 +7,7 @@ import {
   activateSharedPresentationBuildExecution,
   deactivateSharedPresentationBuildExecution,
   getSharedPresentationBuildExecution,
-} from '../features/presentationBuildExecution';
+} from '../features/presentationBuildExecution/orchestration/sharedPresentationBuildExecution';
 
 let sharedPptCoordinators = new WeakMap<Database, PptCoordinator>();
 let isSharedPptCoordinatorRuntimeActive = false;

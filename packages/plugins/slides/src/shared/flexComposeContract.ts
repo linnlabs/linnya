@@ -1,6 +1,7 @@
 import type { ShapeGeometrySpec } from './shapeGeometry';
 import type { BrushArtworkIntent, BrushArtworkSourceRef } from './brushArtwork';
 import type { SlideLayout } from './deckSpec/slideSize';
+import type { SlidesManualEditsInput } from './authoringEditing';
 import type {
   SvgGraphicAuthoringSource,
   SvgGraphicFit,
@@ -234,6 +235,11 @@ export interface LayoutSourceMetadata {
   };
 }
 
+/** deck.js 显式声明的稳定作者对象身份；不从 sourceSpan 或执行顺序推导。 */
+export interface LayoutAuthoringTargetConfig {
+  editKey?: string;
+}
+
 export interface LayoutBorderInput {
   color: string;
   width: number;
@@ -315,6 +321,8 @@ export type LayoutSlideBackground =
   | { gradient: LayoutGradient; color?: never; image?: never };
 
 export interface LayoutSlideConfig extends FlexProps, ContainerDecoration {
+  /** 文稿内稳定且唯一的页面身份。 */
+  slideKey?: string;
   background?: LayoutSlideBackground;
   notes?: string;
 }
@@ -324,7 +332,7 @@ export interface LayoutSlideNode extends LayoutSlideConfig, LayoutSourceMetadata
   readonly children: readonly LayoutNode[];
 }
 
-export interface LayoutViewConfig extends FlexProps, ContainerDecoration {
+export interface LayoutViewConfig extends FlexProps, ContainerDecoration, LayoutAuthoringTargetConfig {
   flexDirection?: 'column' | 'row';
   padding?: number | EdgeInsets;
   gap?: number;
@@ -357,7 +365,7 @@ export type LayoutHStackNode = LayoutViewNode;
  * Text 的横向约束决定换行语义：Flex 流中的 Text 或显式 width/maxWidth/左右边界
  * 使用固定盒宽并自动换行；绝对定位且没有横向约束时，盒宽跟随内容，只响应显式换行符。
  */
-export interface LayoutTextConfig extends FlexProps {
+export interface LayoutTextConfig extends FlexProps, LayoutAuthoringTargetConfig {
   /** 页边辅助信息，不计入正文的字体层级与字体族数量。 */
   role?: 'footnote' | 'source' | 'page-number';
   content?: string | LayoutTextRun[];
@@ -393,7 +401,7 @@ export interface LayoutTextNode extends LayoutTextConfig, LayoutSourceMetadata {
   readonly _type: 'Text';
 }
 
-export interface LayoutShapeConfig extends FlexProps {
+export interface LayoutShapeConfig extends FlexProps, LayoutAuthoringTargetConfig {
   /** 声明背景或装饰意图，参与空间诊断；不改变无障碍语义。 */
   role?: 'background' | 'decoration';
   /** 允许超出画布的英寸数，默认零。 */
@@ -411,7 +419,7 @@ export interface LayoutShapeNode extends LayoutShapeConfig, LayoutSourceMetadata
   readonly _type: 'Shape';
 }
 
-export interface LayoutChartConfig extends FlexProps, LayoutChartControls {
+export interface LayoutChartConfig extends FlexProps, LayoutChartControls, LayoutAuthoringTargetConfig {
   preset?: LayoutChartPresetName;
   chartType?: LayoutChartType;
   categories?: LayoutDisplayValue[];
@@ -447,7 +455,7 @@ export interface LayoutTableDataLike {
   data?: LayoutTableCellValue[][];
 }
 
-export interface LayoutTableConfig extends FlexProps {
+export interface LayoutTableConfig extends FlexProps, LayoutAuthoringTargetConfig {
   headers?: LayoutTableCellValue[];
   rows?: LayoutTableCellValue[][];
   /** 整张表四边及内部网格线的统一描边。 */
@@ -460,7 +468,7 @@ export interface LayoutTableNode extends LayoutTableConfig, LayoutSourceMetadata
   readonly _type: 'Table';
 }
 
-export interface LayoutImageConfig extends FlexProps {
+export interface LayoutImageConfig extends FlexProps, LayoutAuthoringTargetConfig {
   role?: 'background' | 'decoration';
   /** 允许超出画布的英寸数，默认零。 */
   bleed?: number;
@@ -487,7 +495,7 @@ export interface LayoutBrushArtworkConfig
 
 export type LayoutSvgGraphicSourceInput = SvgGraphicAuthoringSource | string;
 
-export interface LayoutSvgGraphicConfig extends FlexProps {
+export interface LayoutSvgGraphicConfig extends FlexProps, LayoutAuthoringTargetConfig {
   source?: LayoutSvgGraphicSourceInput;
   fit?: SvgGraphicFit;
   opacity?: number;
@@ -501,7 +509,7 @@ export interface LayoutSvgGraphicNode extends LayoutSvgGraphicConfig, LayoutSour
   readonly _type: 'SvgGraphic';
 }
 
-export interface LayoutFormulaConfig extends FlexProps {
+export interface LayoutFormulaConfig extends FlexProps, LayoutAuthoringTargetConfig {
   /** 受控 LaTeX profile；不支持的命令会直接报错。 */
   latex: string;
   /** PowerPoint 原生公式字号，单位 pt。 */
@@ -538,6 +546,7 @@ export interface FlexComposeInput {
   title: string;
   layout?: SlideLayout;
   theme?: LayoutThemeInput;
+  manualEdits?: SlidesManualEditsInput;
   slides: LayoutSlideNode[];
 }
 

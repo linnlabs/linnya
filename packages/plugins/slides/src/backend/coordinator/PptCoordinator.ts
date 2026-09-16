@@ -6,6 +6,8 @@
 
 import type {
   PresentationInspectionRequest,
+  SlidesManualEditCommand,
+  SlidesManualEditCommandResult,
   SlidesDocumentBuildState,
   SlidesSourceSliceTargetInput,
   SlidesSourceSlicesOutput,
@@ -20,7 +22,6 @@ import type {
   GeneratePresentationOptions,
   GeneratePresentationResult,
   ImageSourceResolverPort,
-  PatchCompilerPort,
   PresentationDraftRepositoryPort,
   PresentationRepositoryPort,
   PptxReaderPort,
@@ -32,12 +33,10 @@ import type {
   CodegenDeckBuilderFailureLogger,
   CodegenPresentationService,
 } from '../codegen';
-import {
-  createSlidesEngineExecutionContext,
-  InProcessSlidesEngineExecutionAdapter,
-  PptPresentationQueryService,
-  type SlidesEngineExecutionAdapter,
-} from '@plugin/slides/backend-engine-core';
+import { InProcessSlidesEngineExecutionAdapter } from '../engine/execution/InProcessSlidesEngineExecutionAdapter';
+import { PptPresentationQueryService } from '../engine/coordinator/PptPresentationQueryService';
+import { createSlidesEngineExecutionContext } from '../engine/types';
+import type { SlidesEngineExecutionAdapter } from '../engine/types';
 import { buildToolFeedbackPayloadAsync } from '@plugin/slides/backend-tools';
 import { PresentationQueryRuntime } from './presentationQueryRuntime';
 import {
@@ -65,6 +64,8 @@ import {
   type PresentationExportRuntimePorts,
 } from '../features/presentationExport';
 import { PresentationPageRasterizationRuntime } from '../features/presentationPageRasterization';
+import type { PresentationManualEditTracePort } from '../features/presentationManualEditing';
+import { PresentationPptxArtifactRuntime } from '../features/presentationPptxArtifact';
 import type {
   PresentationExportRequest,
   PresentationExportResult,
@@ -88,6 +89,7 @@ export interface PptCoordinatorRuntimeOptions {
   readonly svgGraphicRuntime?: ConversationAwarePresentationSvgGraphicOwnerPort;
   readonly commitExportArtifact?: PresentationExportRuntimePorts['commitArtifact'];
   readonly buildExecution: PresentationBuildExecutionPort;
+  readonly manualEditTrace?: PresentationManualEditTracePort;
 }
 
 export class PptCoordinator {
@@ -102,7 +104,6 @@ export class PptCoordinator {
 
   constructor(
     deckAssembler: DeckAssemblerPort,
-    patchCompiler: PatchCompilerPort,
     pptxReader: PptxReaderPort,
     private readonly templateManager: TemplateManagerPort,
     private readonly presentationRepo: PresentationRepositoryPort,
@@ -122,7 +123,6 @@ export class PptCoordinator {
       runtimeOptions.engineAdapter ??
       new InProcessSlidesEngineExecutionAdapter({
         deckAssembler,
-        patchCompiler,
         pptxReader,
         presentationQueries,
       });
@@ -142,6 +142,27 @@ export class PptCoordinator {
         ? { svgGraphicOwner: runtimeOptions.svgGraphicRuntime }
         : {}),
       buildExecution: runtimeOptions.buildExecution,
+      ...(runtimeOptions.manualEditTrace ? { manualEditTrace: runtimeOptions.manualEditTrace } : {}),
+    });
+    const pptxArtifacts = new PresentationPptxArtifactRuntime({
+      repository: this.presentationRepo,
+      materialize: async source => {
+        const projectId = await this.workspaceService?.getPresentationProjectId?.(source.nodeId) ?? null;
+        return await this.engine.assembleDeck({
+          deckSpec: source.deckSpec,
+          assembleOptions: {
+            assetContext: {
+              documentId: source.nodeId,
+              ...(projectId ? { projectId } : {}),
+            },
+          },
+          context: createSlidesEngineExecutionContext('assembleDeck', {
+            nodeId: source.nodeId,
+            versionId: source.currentRevisionId,
+            ...(projectId ? { projectId } : {}),
+          }),
+        });
+      },
     });
     this.queryRuntime = new PresentationQueryRuntime({
       presentationRepo: this.presentationRepo,
@@ -149,6 +170,7 @@ export class PptCoordinator {
       ...(this.draftRepo ? { draftRepo: this.draftRepo } : {}),
       engine: this.engine,
       getCodegenDeckBuilder: () => this.codegenRuntime.getDeckBuilder(),
+      pptxArtifacts,
     });
     const exportPageRasterization = new PresentationPageRasterizationRuntime();
     this.presentationExportRuntime = new PresentationExportRuntime({
@@ -157,7 +179,6 @@ export class PptCoordinator {
         const snapshot = await this.queryRuntime.getRenderModelSnapshot(nodeId);
         return {
           renderModel: snapshot.renderModel,
-          sourcePackageBytes: snapshot.version.pptxBuffer,
           deckSpec: snapshot.version.deckSpec,
         };
       },
@@ -194,7 +215,6 @@ export class PptCoordinator {
             sourceKind: snapshot.version.sourceKind,
           },
           renderModel: snapshot.renderModel,
-          sourcePackageBytes: snapshot.version.pptxBuffer,
         };
       },
     });
@@ -325,6 +345,13 @@ export class PptCoordinator {
     targets: SlidesSourceSliceTargetInput[];
   }): Promise<SlidesSourceSlicesOutput> {
     return this.codegenRuntime.readSourceSlicesForAiEdit(input);
+  }
+
+  /** 提交一次基于明确 revision 快照的有限人工编辑。 */
+  async submitManualEdit(
+    command: SlidesManualEditCommand,
+  ): Promise<SlidesManualEditCommandResult> {
+    return this.codegenRuntime.submitManualEdit(command);
   }
 
   /** 导入模板 */

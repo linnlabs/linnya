@@ -6,7 +6,32 @@ import {
 import { normalizeDeckSpecColors } from '@plugin/slides/shared/visual';
 import { PresentationSourceConsistencyError } from '../../features/presentationSourceHistory/definitions/presentationSourceRevision.js';
 import { hashPresentationSource } from '../../features/presentationSourceHistory/functions/presentationSourceHash.js';
-import type { PresentationDocumentRecord } from '../definitions/presentationRepository.js';
+import type {
+  PresentationDocumentIdentity,
+  PresentationDocumentRecord,
+  PresentationPptxArtifactSourceRecord,
+  PresentationPreviewSourceRecord,
+  PresentationRenderSourceRecord,
+} from '../definitions/presentationRepository.js';
+
+export interface StoredPresentationIdentityRow {
+  readonly node_id: string;
+  readonly current_revision_id: string;
+  readonly current_revision: number;
+  readonly source_hash: string;
+}
+
+export interface StoredPresentationPreviewSourceRow {
+  readonly node_id: string;
+  readonly current_revision_id: string;
+  readonly current_revision: number;
+  readonly deck_spec_json: string;
+  readonly title: string;
+}
+
+export interface StoredPresentationRenderSourceRow extends StoredPresentationPreviewSourceRow {
+  readonly deck_source: string;
+}
 
 /** SQLite current document 的稳定行合同，供读写 repository 与 standalone 只读 adapter 共用。 */
 export interface StoredPresentationDocumentRow {
@@ -17,12 +42,98 @@ export interface StoredPresentationDocumentRow {
   readonly source_hash: string;
   readonly deck_spec_json: string;
   readonly pptx_buffer: Buffer;
+  readonly pptx_revision_id: string | null;
   readonly title: string;
   readonly slide_count: number;
   readonly layout: string | null;
   readonly created_at: number;
   readonly updated_at: number;
   readonly author_id: string | null;
+}
+
+export function readPresentationIdentityRow(value: unknown): StoredPresentationIdentityRow {
+  if (
+    !isRecord(value)
+    || typeof value.node_id !== 'string'
+    || typeof value.current_revision_id !== 'string'
+    || !isFiniteInteger(value.current_revision)
+    || typeof value.source_hash !== 'string'
+  ) {
+    throw new PresentationSourceConsistencyError('Slides current document identity 行结构非法。');
+  }
+  return {
+    node_id: value.node_id,
+    current_revision_id: value.current_revision_id,
+    current_revision: value.current_revision,
+    source_hash: value.source_hash,
+  };
+}
+
+export function mapPresentationIdentityRow(
+  row: StoredPresentationIdentityRow,
+): PresentationDocumentIdentity {
+  return {
+    nodeId: row.node_id,
+    currentRevisionId: row.current_revision_id,
+    currentRevision: row.current_revision,
+    sourceHash: row.source_hash,
+  };
+}
+
+export function readPresentationPreviewSourceRow(
+  value: unknown,
+): StoredPresentationPreviewSourceRow {
+  if (
+    !isRecord(value)
+    || typeof value.node_id !== 'string'
+    || typeof value.current_revision_id !== 'string'
+    || !isFiniteInteger(value.current_revision)
+    || typeof value.deck_spec_json !== 'string'
+    || typeof value.title !== 'string'
+  ) {
+    throw new PresentationSourceConsistencyError('Slides preview source 行结构非法。');
+  }
+  return {
+    node_id: value.node_id,
+    current_revision_id: value.current_revision_id,
+    current_revision: value.current_revision,
+    deck_spec_json: value.deck_spec_json,
+    title: value.title,
+  };
+}
+
+export function mapPresentationPreviewSourceRow(
+  row: StoredPresentationPreviewSourceRow,
+): PresentationPreviewSourceRecord {
+  return {
+    nodeId: row.node_id,
+    currentRevisionId: row.current_revision_id,
+    currentRevision: row.current_revision,
+    deckSpec: parseStoredDeckSpec(row.deck_spec_json),
+    title: row.title,
+  };
+}
+
+export function readPresentationRenderSourceRow(
+  value: unknown,
+): StoredPresentationRenderSourceRow {
+  const previewSource = readPresentationPreviewSourceRow(value);
+  if (!isRecord(value) || typeof value.deck_source !== 'string') {
+    throw new PresentationSourceConsistencyError('Slides render source 行结构非法。');
+  }
+  return {
+    ...previewSource,
+    deck_source: value.deck_source,
+  };
+}
+
+export function mapPresentationRenderSourceRow(
+  row: StoredPresentationRenderSourceRow,
+): PresentationRenderSourceRecord {
+  return {
+    ...mapPresentationPreviewSourceRow(row),
+    deckSource: row.deck_source,
+  };
 }
 
 export function readPresentationDocumentRow(value: unknown): StoredPresentationDocumentRow {
@@ -35,6 +146,7 @@ export function readPresentationDocumentRow(value: unknown): StoredPresentationD
     || typeof value.source_hash !== 'string'
     || typeof value.deck_spec_json !== 'string'
     || !Buffer.isBuffer(value.pptx_buffer)
+    || !isNullableString(value.pptx_revision_id)
     || typeof value.title !== 'string'
     || !isFiniteInteger(value.slide_count)
     || !isNullableString(value.layout)
@@ -52,6 +164,7 @@ export function readPresentationDocumentRow(value: unknown): StoredPresentationD
     source_hash: value.source_hash,
     deck_spec_json: value.deck_spec_json,
     pptx_buffer: value.pptx_buffer,
+    pptx_revision_id: value.pptx_revision_id,
     title: value.title,
     slide_count: value.slide_count,
     layout: value.layout,
@@ -72,13 +185,30 @@ export function mapPresentationDocumentRow(
     deckSource: row.deck_source,
     sourceHash: row.source_hash,
     deckSpec: parseStoredDeckSpec(row.deck_spec_json),
-    pptxBuffer: row.pptx_buffer,
+    pptxArtifact: row.pptx_revision_id === row.current_revision_id
+      ? { state: 'ready', revisionId: row.pptx_revision_id, buffer: row.pptx_buffer }
+      : { state: 'deferred' },
     title: row.title,
     slideCount: row.slide_count,
     layout: row.layout ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     authorId: row.author_id ?? undefined,
+  };
+}
+
+export function mapPresentationPptxArtifactSourceRow(
+  row: StoredPresentationDocumentRow,
+): PresentationPptxArtifactSourceRecord {
+  const document = mapPresentationDocumentRow(row);
+  return {
+    nodeId: document.nodeId,
+    currentRevisionId: document.currentRevisionId,
+    currentRevision: document.currentRevision,
+    deckSource: document.deckSource,
+    deckSpec: document.deckSpec,
+    title: document.title,
+    artifact: document.pptxArtifact,
   };
 }
 

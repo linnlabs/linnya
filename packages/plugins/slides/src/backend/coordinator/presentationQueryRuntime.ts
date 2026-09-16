@@ -1,4 +1,5 @@
 import type {
+  DeckSpec,
   DeckPreview,
   PresentationInfo,
   PresentationRenderModel,
@@ -9,37 +10,45 @@ import type {
   DeckAssembleOptions,
   ExportedPresentationFile,
   PresentationDraftRepositoryPort,
-  PresentationDocumentRecord,
-  PresentationRepositoryPort,
+  PresentationDocumentIdentity,
+  PresentationDocumentQueryPort,
+  PresentationPreviewSourceRecord,
+  PresentationRenderSourceRecord,
   PresentationSourceKind,
   WorkspacePresentationPort,
 } from './types.js';
+import type { PresentationPptxArtifactPort } from '../features/presentationPptxArtifact/index.js';
 import {
   createSlidesEngineExecutionContext,
   type SlidesEngineExecutionAdapter,
   type SlidesEngineExecutionScope,
-  type SlidesEngineVersionSnapshot,
-} from '@plugin/slides/backend-engine-core';
+  type SlidesEngineRenderModelSnapshot,
+} from '../engine/types';
 import type { CodegenDeckBuilderPort } from './presentationCodegenRuntime';
-import { toSlidesEngineVersionSnapshot } from './functions/presentationDocumentSnapshot.js';
+import {
+  toSlidesEnginePreviewSnapshot,
+  toSlidesEngineRenderModelSnapshot,
+  toSlidesEngineVersionSnapshot,
+} from './functions/presentationDocumentSnapshot.js';
 import { deckSpecHasSourceSpan } from '../engine/coordinator/deckSpecSourceSpans.js';
 
-interface RenderModelVersionResolution {
-  readonly version: SlidesEngineVersionSnapshot;
+interface RenderModelDeckSpecResolution {
+  readonly deckSpec: DeckSpec;
   readonly canEditSourceSelection: boolean;
 }
 
 export interface PresentationRenderModelSnapshot {
-  readonly version: SlidesEngineVersionSnapshot;
+  readonly version: SlidesEngineRenderModelSnapshot;
   readonly renderModel: PresentationRenderModel;
 }
 
 export interface PresentationQueryRuntimeDeps {
-  readonly presentationRepo: PresentationRepositoryPort;
+  readonly presentationRepo: PresentationDocumentQueryPort;
   readonly workspaceService?: WorkspacePresentationPort;
   readonly draftRepo?: PresentationDraftRepositoryPort;
   readonly engine: SlidesEngineExecutionAdapter;
   readonly getCodegenDeckBuilder: () => CodegenDeckBuilderPort;
+  readonly pptxArtifacts: PresentationPptxArtifactPort;
 }
 
 /**
@@ -54,9 +63,9 @@ export class PresentationQueryRuntime {
   constructor(private readonly deps: PresentationQueryRuntimeDeps) {}
 
   async inspect(nodeId: string): Promise<PresentationInfo> {
-    const document = await this.requirePresentation(nodeId);
-    const version = toSlidesEngineVersionSnapshot(document);
     this.assertNoPendingCodegenDraft(nodeId, 'inspect');
+    const document = await this.deps.pptxArtifacts.loadCurrent(nodeId);
+    const version = toSlidesEngineVersionSnapshot(document);
     return this.deps.engine.inspectPresentation({
       nodeId,
       version,
@@ -72,9 +81,9 @@ export class PresentationQueryRuntime {
   }
 
   async export(nodeId: string): Promise<ExportedPresentationFile> {
-    const document = await this.requirePresentation(nodeId);
-    const version = toSlidesEngineVersionSnapshot(document);
     this.assertNoPendingCodegenDraft(nodeId, 'export');
+    const document = await this.deps.pptxArtifacts.loadCurrent(nodeId);
+    const version = toSlidesEngineVersionSnapshot(document);
     return this.deps.engine.exportPresentation({
       nodeId,
       version,
@@ -90,16 +99,12 @@ export class PresentationQueryRuntime {
   }
 
   async getPreview(nodeId: string): Promise<DeckPreview> {
-    const document = await this.requirePresentation(nodeId);
-    const version = toSlidesEngineVersionSnapshot(document);
+    const source = await this.requirePresentationPreviewSource(nodeId);
+    const version = toSlidesEnginePreviewSnapshot(source);
     this.assertNoPendingCodegenDraft(nodeId, 'preview');
     return this.deps.engine.buildPreview({
       nodeId,
       version,
-      assembleOptions: this.buildDeckAssembleOptions(
-        nodeId,
-        await this.resolvePresentationProjectId(nodeId)
-      ),
       context: this.createEngineContext('buildPreview', {
         nodeId,
         versionId: version.id,
@@ -108,40 +113,41 @@ export class PresentationQueryRuntime {
   }
 
   async getRenderModel(nodeId: string): Promise<PresentationRenderModel> {
-    return (await this.getRenderModelSnapshot(nodeId)).renderModel;
+    const source = await this.requirePresentationRenderSource(nodeId);
+    const version = toSlidesEngineRenderModelSnapshot(source);
+    this.assertNoPendingCodegenDraft(nodeId, 'render model');
+    const resolution = await this.resolveRenderModelDeckSpec(nodeId, version);
+    return await this.buildRenderModel(
+      nodeId,
+      { ...version, deckSpec: resolution.deckSpec },
+      resolution.canEditSourceSelection,
+    );
   }
 
   async getRenderModelSnapshot(nodeId: string): Promise<PresentationRenderModelSnapshot> {
-    const document = await this.requirePresentation(nodeId);
-    const version = toSlidesEngineVersionSnapshot(document);
+    const source = await this.requirePresentationRenderSource(nodeId);
+    const version = toSlidesEngineRenderModelSnapshot(source);
     this.assertNoPendingCodegenDraft(nodeId, 'render model');
-    const projectId = await this.resolvePresentationProjectId(nodeId);
-    const renderModelVersion = await this.resolveRenderModelVersionWithSourceSpans(nodeId, version);
-    const renderModel = await this.deps.engine.buildRenderModel({
+    const resolution = await this.resolveRenderModelDeckSpec(nodeId, version);
+    const renderModelVersion = { ...version, deckSpec: resolution.deckSpec };
+    const renderModel = await this.buildRenderModel(
       nodeId,
-      version: renderModelVersion.version,
-      assembleOptions: this.buildDeckAssembleOptions(nodeId, projectId),
-      context: this.createEngineContext('buildRenderModel', {
-        nodeId,
-        versionId: renderModelVersion.version.id,
-      }),
-      renderModelOptions: {
-        canEditSourceSelection: renderModelVersion.canEditSourceSelection,
-      },
-    });
+      renderModelVersion,
+      resolution.canEditSourceSelection,
+    );
     return {
-      version: renderModelVersion.version,
+      version: renderModelVersion,
       renderModel,
     };
   }
 
   async getSourceKind(nodeId: string): Promise<PresentationSourceKind> {
-    await this.requirePresentation(nodeId);
+    await this.requirePresentationIdentity(nodeId);
     return 'generated';
   }
 
   async getDocumentBuildState(nodeId: string): Promise<SlidesDocumentBuildState> {
-    const document = await this.requirePresentation(nodeId);
+    const document = await this.requirePresentationIdentity(nodeId);
     const draft = this.deps.draftRepo?.get(nodeId) ?? null;
     if (draft) {
       return {
@@ -149,6 +155,7 @@ export class PresentationQueryRuntime {
         presentationId: nodeId,
         versionId: document.currentRevisionId,
         versionNumber: document.currentRevision,
+        sourceHash: document.sourceHash,
         draftStatus: toSlidesDraftStatus(draft),
       };
     }
@@ -157,15 +164,54 @@ export class PresentationQueryRuntime {
       presentationId: nodeId,
       versionId: document.currentRevisionId,
       versionNumber: document.currentRevision,
+      sourceHash: document.sourceHash,
     };
   }
 
-  private async requirePresentation(nodeId: string): Promise<PresentationDocumentRecord> {
-    const document = await this.deps.presentationRepo.getPresentation(nodeId);
-    if (!document) {
+  private async requirePresentationIdentity(nodeId: string): Promise<PresentationDocumentIdentity> {
+    const identity = await this.deps.presentationRepo.getPresentationIdentity(nodeId);
+    if (!identity) {
       throw new Error(`Presentation not found: ${nodeId}`);
     }
-    return document;
+    return identity;
+  }
+
+  private async requirePresentationPreviewSource(
+    nodeId: string,
+  ): Promise<PresentationPreviewSourceRecord> {
+    const source = await this.deps.presentationRepo.getPresentationPreviewSource(nodeId);
+    if (!source) {
+      throw new Error(`Presentation not found: ${nodeId}`);
+    }
+    return source;
+  }
+
+  private async requirePresentationRenderSource(
+    nodeId: string,
+  ): Promise<PresentationRenderSourceRecord> {
+    const source = await this.deps.presentationRepo.getPresentationRenderSource(nodeId);
+    if (!source) {
+      throw new Error(`Presentation not found: ${nodeId}`);
+    }
+    return source;
+  }
+
+  private async buildRenderModel(
+    nodeId: string,
+    version: SlidesEngineRenderModelSnapshot,
+    canEditSourceSelection: boolean,
+  ): Promise<PresentationRenderModel> {
+    const projectId = await this.resolvePresentationProjectId(nodeId);
+    return await this.deps.engine.buildRenderModel({
+      nodeId,
+      version,
+      assembleOptions: this.buildDeckAssembleOptions(nodeId, projectId),
+      context: this.createEngineContext('buildRenderModel', {
+        nodeId,
+        versionId: version.id,
+      }),
+      renderModelOptions: { canEditSourceSelection },
+    });
   }
 
   private buildDeckAssembleOptions(nodeId: string, projectId: string | null): DeckAssembleOptions {
@@ -198,20 +244,20 @@ export class PresentationQueryRuntime {
     );
   }
 
-  private async resolveRenderModelVersionWithSourceSpans(
+  private async resolveRenderModelDeckSpec(
     nodeId: string,
-    version: SlidesEngineVersionSnapshot
-  ): Promise<RenderModelVersionResolution> {
+    version: Pick<SlidesEngineRenderModelSnapshot, 'id' | 'deckSource' | 'deckSpec'>,
+  ): Promise<RenderModelDeckSpecResolution> {
     if (!version.deckSource?.trim()) {
       return {
-        version,
+        deckSpec: version.deckSpec,
         canEditSourceSelection: false,
       };
     }
 
     if (deckSpecHasSourceSpan(version.deckSpec)) {
       return {
-        version,
+        deckSpec: version.deckSpec,
         canEditSourceSelection: true,
       };
     }
@@ -222,10 +268,7 @@ export class PresentationQueryRuntime {
         source: version.deckSource,
       });
       return {
-        version: {
-          ...version,
-          deckSpec,
-        },
+        deckSpec,
         canEditSourceSelection: deckSpecHasSourceSpan(deckSpec),
       };
     } catch (error) {
@@ -235,7 +278,7 @@ export class PresentationQueryRuntime {
         error,
       });
       return {
-        version,
+        deckSpec: version.deckSpec,
         canEditSourceSelection: false,
       };
     }

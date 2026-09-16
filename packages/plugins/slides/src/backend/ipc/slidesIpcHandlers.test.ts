@@ -105,8 +105,16 @@ function makeCoordinator(): SlidesIpcCoordinatorPort {
       presentationId: 'presentation-1',
       versionId: 'version-1',
       versionNumber: 1,
+      sourceHash: 'a'.repeat(64),
     })),
     getRenderModel: vi.fn(async () => renderModel),
+    submitManualEdit: vi.fn(async command => ({
+      status: 'committed',
+      commandId: command.commandId,
+      documentId: command.documentId,
+      revisionId: 'version-2',
+      revision: 2,
+    })),
     listTemplates: vi.fn(async () => [templateSummary]),
     importTemplate: vi.fn(async () => template),
     exportPresentation: vi.fn(async request => ({
@@ -180,6 +188,7 @@ describe('slides IPC handlers', () => {
       presentationId: 'presentation-1',
       versionId: 'version-1',
       versionNumber: 1,
+      sourceHash: 'a'.repeat(64),
       draftStatus: {
         baseVersionId: 'version-1',
         baseVersionNumber: 1,
@@ -199,6 +208,37 @@ describe('slides IPC handlers', () => {
         draftStatus: { errorKind: 'slides.codegen.typecheck' },
       },
     });
+  });
+
+  it('validates and forwards a manual text edit as a typed business command', async () => {
+    const coordinator = makeCoordinator();
+    registerSlidesIpcHandlersForCoordinator(coordinator, registerBackendPluginIpcHandler);
+    const command = {
+      commandId: 'c8356051-a487-4cd3-863f-47db0079f991',
+      documentId: 'presentation-1',
+      expectedBase: {
+        revisionId: 'version-1',
+        revision: 1,
+        sourceHash: 'a'.repeat(64),
+      },
+      operation: {
+        op: 'set_text_content',
+        target: { slideKey: 'overview', editKey: 'headline' },
+        content: 'Updated',
+      },
+    } as const;
+
+    await expect(invokeRegisteredHandler('slides:manual-edit', command)).resolves.toEqual({
+      success: true,
+      data: {
+        status: 'committed',
+        commandId: command.commandId,
+        documentId: 'presentation-1',
+        revisionId: 'version-2',
+        revision: 2,
+      },
+    });
+    expect(coordinator.submitManualEdit).toHaveBeenCalledWith(command);
   });
 
   it('transfers template buffers and strict export requests through OperationResult data', async () => {

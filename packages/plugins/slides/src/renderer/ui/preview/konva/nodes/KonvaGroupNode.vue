@@ -9,6 +9,9 @@
       :node="child"
       :image-resources="props.imageResources"
       :chart-resources="props.chartResources"
+      :preview-translations="props.previewTranslations"
+      :hidden-text-element-id="props.hiddenTextElementId"
+      :manual-visual-previews="props.manualVisualPreviews"
     />
   </v-group>
 </template>
@@ -20,11 +23,18 @@ import type { SlideImageResourceMap } from '../../../../features/renderImageReso
 import type { SlideChartResourceMap } from '../../../../features/renderChartResources';
 import KonvaNodeRenderer from './KonvaNodeRenderer.vue';
 import { buildGroupConfig, sortNodesByZIndex } from '../../../../features/konvaPreview';
+import type {
+  ManualEditingTranslationPreview,
+  ManualEditingVisualPreview,
+} from '../../../../features/manualEditing';
 
 const props = defineProps<{
   node: GroupRenderNode;
   imageResources: SlideImageResourceMap;
   chartResources: SlideChartResourceMap;
+  previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
+  hiddenTextElementId?: string;
+  manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();
 
 const groupConfig = computed(() => buildGroupConfig(props.node));

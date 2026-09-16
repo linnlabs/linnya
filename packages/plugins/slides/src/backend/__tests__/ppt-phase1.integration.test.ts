@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import JSZip from 'jszip';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PptCoordinator } from '@plugin/slides/backend-coordinator';import { DeckAssembler } from '../engine/DeckAssembler.js';import { FreeformCompiler } from '../engine/FreeformCompiler.js';import { PatchCompiler } from '../engine/patch/PatchCompiler.js';import { PptxReader } from '../engine/parser/PptxReader.js';import { StructuredCompiler } from '../engine/StructuredCompiler.js';import { TemplateManager } from '../engine/template/TemplateManager.js';
+import { PptCoordinator } from '@plugin/slides/backend-coordinator';import { DeckAssembler } from '../engine/DeckAssembler.js';import { FreeformCompiler } from '../engine/FreeformCompiler.js';import { PptxReader } from '../engine/parser/PptxReader.js';import { StructuredCompiler } from '../engine/StructuredCompiler.js';import { TemplateManager } from '../engine/template/TemplateManager.js';
 import { PresentationRepository } from '../persistence';
 import { PRESENTATION_DOCUMENT_SCHEMAS } from '../persistence/schemas/presentation.schema';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace.js';
@@ -75,11 +75,8 @@ describe('Phase 1 end-to-end chain', () => {
     const repository = new PresentationRepository(db);
     const pptxReader = new PptxReader();
     const templateManager = new TemplateManager(pptxReader, repository);
-    const patchCompiler = new PatchCompiler(structuredCompiler);
-
     const coordinator = new PptCoordinator(
       deckAssembler,
-      patchCompiler,
       pptxReader,
       templateManager,
       repository,
@@ -120,13 +117,14 @@ describe('Phase 1 end-to-end chain', () => {
     const document = await repository.getPresentation(nodeId);
     expect(document?.currentRevisionId).toBe(created.versionId);
     expect(document?.deckSource).toBe(testSource);
-    expect(document?.pptxBuffer).toBeInstanceOf(Buffer);
+    expect(document?.pptxArtifact.state).toBe('ready');
     expect(await repository.getRevisionSource(nodeId, 1)).toBe(testSource);
     expect(await repository.listRevisions(nodeId)).toHaveLength(1);
 
     const exported = await coordinator.export(nodeId);
     expect(exported.fileName).toBe('Integration Deck.pptx');
-    expect(exported.buffer.equals(document?.pptxBuffer ?? Buffer.alloc(0))).toBe(true);
+    expect(document?.pptxArtifact.state === 'ready'
+      && exported.buffer.equals(document.pptxArtifact.buffer)).toBe(true);
     expect(assembleSpy).toHaveBeenCalledTimes(1);
 
     const zip = await JSZip.loadAsync(exported.buffer);
@@ -141,12 +139,10 @@ describe('Phase 1 end-to-end chain', () => {
     const repository = new PresentationRepository(db);
     const pptxReader = new PptxReader();
     const templateManager = new TemplateManager(pptxReader, repository);
-    const patchCompiler = new PatchCompiler(structuredCompiler);
     const deckAssembler = new DeckAssembler(structuredCompiler, freeformCompiler);
 
     const coordinator = new PptCoordinator(
       deckAssembler,
-      patchCompiler,
       pptxReader,
       templateManager,
       repository,

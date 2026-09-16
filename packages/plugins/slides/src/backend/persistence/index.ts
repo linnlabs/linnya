@@ -2,7 +2,9 @@ export { PresentationDraftRepository } from './repositories/PresentationDraftRep
 export { PresentationRepository } from './repositories/PresentationRepository';
 export { toSlidesDraftStatus } from './functions/toSlidesDraftStatus';
 export {
+  PresentationDraftConflictError,
   PresentationDraftStaleBaseError,
+  PresentationManualEditCommandConflictError,
   PresentationStaleBaseError,
   PresentationStaleSourceError,
 } from './definitions/presentationRepository';
@@ -12,10 +14,17 @@ export type {
   PresentationDraftErrorKind,
   PresentationDraftRecord,
   PresentationDraftRepositoryPort,
+  PresentationManualEditReceiptRecord,
   PresentationCommitOptions,
   PresentationCommitResult,
   PresentationCreateOptions,
+  PresentationDocumentIdentity,
+  PresentationDocumentQueryPort,
   PresentationDocumentRecord,
+  PresentationPreviewSourceRecord,
+  PresentationPptxArtifactSourceRecord,
+  PresentationCurrentPptxArtifact,
+  PresentationRenderSourceRecord,
   PresentationRepositoryPort,
   PresentationRevisionOrigin,
   PresentationRevisionRecord,

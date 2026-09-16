@@ -20,7 +20,7 @@ vi.mock('./createPptCoordinator', () => ({
   createPptCoordinator: coordinatorFactoryMock.createPptCoordinator,
 }));
 
-vi.mock('../features/presentationBuildExecution', () => ({
+vi.mock('../features/presentationBuildExecution/orchestration/sharedPresentationBuildExecution', () => ({
   activateSharedPresentationBuildExecution: buildExecutionMock.activate,
   deactivateSharedPresentationBuildExecution: buildExecutionMock.deactivate,
   getSharedPresentationBuildExecution: () => buildExecutionMock.executor,

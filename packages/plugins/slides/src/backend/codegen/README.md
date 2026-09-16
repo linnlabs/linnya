@@ -114,6 +114,21 @@ renderer source selection
 
 - `src/shared/flexComposeContract.ts` 是 deck.js 场景图的公开类型真值；其中
   `Layout*Config` 表示 Agent 可写输入，`Layout*Node` 还包含运行时只读结构。
+- generated deck 的前端编辑身份由 [`shared/authoringEditing`](../../shared/authoringEditing/README.md)
+  统一拥有。页面显式声明 `slideKey`，作者对象显式声明 `editKey`；Flex compiler 校验
+  文稿内页面唯一性与页内对象唯一性，再把完整 ref 投影到 DeckSpec 和 RenderModel。
+  旧源码没有 key 时继续编译，但不能从页码、数组下标、sourceSpan 或几何位置伪造稳定身份。
+- `compose({ manualEdits })` 先经过 shared 严格 codec。文本完整值在 Yoga 前投影，保证
+  固有尺寸和换行继续走正式 owner；位移在 Yoga 后按 Frame／子对象层级累加，再进入
+  DeckSpec、RenderModel 与 PPTX。dangling ref、重复 key、未知字段和目标类型不符都属于
+  compose contract 错误，不选择相似文字或第一个同名对象作为 fallback。
+- 人工 `translate_by` 对唯一顶层原子作者对象属于 post-layout 纯位移。manualEditing feature 可从精确
+  current DeckSpec 投影同一 delta，再通过 `commitManualEditFromProjectedDeckSpec` 做语义 revision 的
+  CAS 提交，从而跳过 sandbox、整稿 Yoga 与 PPTX 物化。Frame、嵌套 group、文本内容和无法证明等价的目标继续走
+  完整作者编译；投影入口不能扩张为通用 DeckSpec patch API。
+- 人工文本编辑在 sandbox/Flex/文本排版验证后同样只提交 `deckSource + DeckSpec`。PPTX 是由 revision
+  派生的 artifact，原生导出与 OOXML 检查按需物化；普通 Agent codegen 和历史恢复仍在提交前完整物化，
+  因为这些写入可能改变资产绑定与更广泛的 package 语义。
 - `scripts/codegen/layoutDts/` 从 shared contract、shape geometry 与 sandbox
   globals 生成两份同内容 d.ts：sandbox typecheck 使用一份，Slides
   skill 分发一份。禁止手改生成文件。
@@ -149,7 +164,7 @@ renderer source selection
   shape 不改写，公开类型、生成 d.ts 与 skill 仍只描述 `{ width, height }`。
 - typed path 的 `close` 表示闭合轮廓，不是所有路径的必填终止符。engine 必须保留不含 `close`
   的开放折线/曲线；不能为了通过物化而自动补闭合命令。
-- `_type/children/_sourceSpan/_layoutConstraintEvidence`
+- `_type/children/_sourceSpan/_authoringRef/_layoutConstraintEvidence`
   是内部结构，`chartOptions/tableOptions`
   是 DirectCompose/PptxGenJS 内部入口；它们不属于工厂 config，也不能被描述为 deck.js 高级能力。
 - Flex compiler 在 `LayoutResult.node + box` 同时可用时派生

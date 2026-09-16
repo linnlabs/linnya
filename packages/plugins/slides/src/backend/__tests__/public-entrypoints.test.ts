@@ -66,12 +66,14 @@ describe('slides backend public entrypoints', () => {
 
   it('keeps the retired generated edit runtime out of public wiring', () => {
     const coordinator = readPackageFile('src/backend/coordinator/PptCoordinator.ts');
+    const engineTypes = readPackageFile('src/backend/engine/types.ts');
     const toolsIndex = readPackageFile('src/backend/tools/index.ts');
 
     expect(toolsIndex).not.toContain('editRuntime');
     expect(toolsIndex).not.toContain('editInput');
     expect(coordinator).not.toContain('this.engine.resolvePatchImageSource(');
     expect(coordinator).not.toContain('this.engine.compilePatch(');
+    expect(engineTypes).not.toContain('compilePatch(request:');
     expect(coordinator).not.toContain('patchEditRuntime');
   });
 

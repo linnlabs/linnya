@@ -15,6 +15,7 @@ export const SLIDES_OWNED_TABLES = [
   'presentation_revision_contexts',
   'presentation_revision_assets',
   'presentation_asset_releases',
+  'presentation_manual_edit_receipts',
 ] as const;
 
 const manifest = parsePluginManifest(manifestJson);

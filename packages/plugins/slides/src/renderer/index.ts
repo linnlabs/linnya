@@ -33,6 +33,10 @@ import presentationInspectCardStylesheet from './tool-cards/styles/PresentationI
 import pptPlanApprovalCardStylesheet from './tool-cards/styles/PptPlanApprovalCard.css?url';
 import slidesShellStylesheet from './styles/index.css?url';
 import slidesHistoryStylesheet from './features/presentationHistory/ui/SlidesHistoryPreview.css?url';
+import elementPropertyStylesheet from './features/elementProperties/ui/ElementPropertyPanel.css?url';
+import manualResizeStylesheet from './features/manualEditing/ui/ManualResizeHandles.css?url';
+import manualSelectionBreadcrumbStylesheet from './features/manualEditing/ui/ManualSelectionBreadcrumb.css?url';
+import inlineTextEditorStylesheet from './features/textEditing/ui/InlineTextEditor.css?url';
 
 export { presentationToolConfigs } from './tool-cards/presentation';
 export {
@@ -54,6 +58,10 @@ const SlidesPage = defineAsyncComponent(async () => {
 });
 
 const slidesStylesheets = [
+  manualSelectionBreadcrumbStylesheet,
+  inlineTextEditorStylesheet,
+  manualResizeStylesheet,
+  elementPropertyStylesheet,
   slidesHistoryStylesheet,
   slidesShellStylesheet,
   slidesDraftFailureLogStylesheet,

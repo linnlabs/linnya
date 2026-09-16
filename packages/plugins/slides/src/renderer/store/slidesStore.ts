@@ -12,6 +12,7 @@ import type { DeckPreviewViewModel, SlidePreviewViewModel } from '../types/previ
 import { slidesApi } from '../services/slidesApi';
 import { slidesMapper } from '../services/slidesMapper';
 import { notifyWorkspaceDocumentOpened } from '@plugin/renderer/workspaceRuntime';
+import { createActiveDeckRefreshCoordinator } from '../features/documentRuntime/orchestration/createActiveDeckRefreshCoordinator';
 
 export const useSlidesStore = defineStore('slides', () => {
   // ─── State ───
@@ -36,6 +37,22 @@ export const useSlidesStore = defineStore('slides', () => {
 
   /** 递增请求号，避免 deck 切换时旧请求覆盖新 deck */
   const deckRequestId = ref(0);
+
+  const refreshCoordinator = createActiveDeckRefreshCoordinator({
+    isActiveDocument: nodeId => currentDeckId.value === nodeId,
+    hasLoadedRevision: (nodeId, expectedVersion) => (
+      currentDeckId.value === nodeId
+      && documentBuildState.value?.state === 'ready'
+      && documentBuildState.value.versionNumber >= expectedVersion
+      && (deckPreview.value?.versionNumber ?? 0) >= expectedVersion
+    ),
+    readDocument: nodeId => fetchDeckPreview(nodeId, {
+      preserveSlideIndex: true,
+      clearExistingPreview: false,
+      notifyOpened: false,
+      silent: true,
+    }),
+  });
 
   // ─── Computed ───
 
@@ -82,8 +99,11 @@ export const useSlidesStore = defineStore('slides', () => {
   }
 
   /** 在保持当前 slide 选择的前提下刷新当前 deck（静默，不闪烁）。 */
-  async function refreshDeck(nodeId: string) {
-    await fetchDeckPreview(nodeId, { preserveSlideIndex: true, clearExistingPreview: false, notifyOpened: false, silent: true });
+  async function refreshDeck(nodeId: string, expectedVersion?: number): Promise<void> {
+    await refreshCoordinator.refresh({
+      documentId: nodeId,
+      ...(expectedVersion !== undefined ? { expectedVersion } : {}),
+    });
   }
 
   /** 切换当前 slide */
@@ -133,10 +153,11 @@ export const useSlidesStore = defineStore('slides', () => {
       silent?: boolean;
     },
   ) {
+    // refresh 只服务当前文稿；过期异步流程没有权限重新激活旧文稿。
+    if (currentDeckId.value !== nodeId) return;
     const requestId = ++deckRequestId.value;
     const previousSlideIndex = currentDeckId.value === nodeId ? currentSlideIndex.value : 0;
 
-    currentDeckId.value = nodeId;
     if (!options.preserveSlideIndex) {
       currentSlideIndex.value = 0;
     }
@@ -150,7 +171,7 @@ export const useSlidesStore = defineStore('slides', () => {
 
     try {
       const buildState = await slidesApi.getDocumentBuildState(nodeId);
-      if (requestId !== deckRequestId.value) {
+      if (!isCurrentRequest(nodeId, requestId)) {
         return;
       }
       documentBuildState.value = buildState;
@@ -164,7 +185,7 @@ export const useSlidesStore = defineStore('slides', () => {
       }
 
       const raw: DeckPreview = await slidesApi.getDeckPreview(nodeId);
-      if (requestId !== deckRequestId.value) {
+      if (!isCurrentRequest(nodeId, requestId)) {
         return;
       }
 
@@ -182,7 +203,7 @@ export const useSlidesStore = defineStore('slides', () => {
 
     } catch (e) {
       console.error('[SlidesStore] loadDeck 失败:', e);
-      if (requestId !== deckRequestId.value) {
+      if (!isCurrentRequest(nodeId, requestId)) {
         return;
       }
 
@@ -191,10 +212,14 @@ export const useSlidesStore = defineStore('slides', () => {
         deckPreview.value = null;
       }
     } finally {
-      if (requestId === deckRequestId.value) {
+      if (isCurrentRequest(nodeId, requestId)) {
         deckLoading.value = false;
       }
     }
+  }
+
+  function isCurrentRequest(nodeId: string, requestId: number): boolean {
+    return currentDeckId.value === nodeId && requestId === deckRequestId.value;
   }
 
   async function notifyDocumentOpened(nodeId: string): Promise<void> {

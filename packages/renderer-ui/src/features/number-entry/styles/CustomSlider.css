@@ -1,0 +1,119 @@
+/* default 保留设置页密度，compact 保留画布工具条密度；业务只拥有外围布局。 */
+.linnya-ui-slider {
+  --linnya-ui-slider-progress: 0%;
+  --linnya-ui-slider-track-height: 4px;
+  --linnya-ui-slider-thumb-size: 18px;
+  --linnya-ui-slider-thumb-offset: -7px;
+  --linnya-ui-slider-thumb-shadow: 0 2px 4px color-mix(in srgb, var(--color-black) 15%, transparent);
+  --linnya-ui-slider-thumb-shadow-hover: 0 2px 6px color-mix(in srgb, var(--color-black) 25%, transparent);
+
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: var(--linnya-ui-slider-track-height);
+  margin: 10px 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-xs);
+  outline: none;
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+  background: transparent;
+}
+
+.linnya-ui-slider--compact {
+  --linnya-ui-slider-track-height: 3px;
+  --linnya-ui-slider-thumb-size: 12px;
+  --linnya-ui-slider-thumb-offset: -4px;
+  --linnya-ui-slider-thumb-shadow: 0 1px 3px var(--shadow-color-md);
+  --linnya-ui-slider-thumb-shadow-hover: 0 2px 6px color-mix(in srgb, var(--color-text-primary) 25%, transparent);
+
+  margin: 8px 0;
+}
+
+.linnya-ui-slider::-webkit-slider-thumb {
+  width: var(--linnya-ui-slider-thumb-size);
+  height: var(--linnya-ui-slider-thumb-size);
+  margin-top: var(--linnya-ui-slider-thumb-offset);
+  border: none;
+  border-radius: var(--radius-full);
+  appearance: none;
+  background: var(--color-accent);
+  box-shadow: var(--linnya-ui-slider-thumb-shadow);
+  transition: box-shadow 0.2s, transform 0.1s;
+}
+
+.linnya-ui-slider::-moz-range-thumb {
+  width: var(--linnya-ui-slider-thumb-size);
+  height: var(--linnya-ui-slider-thumb-size);
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  box-shadow: var(--linnya-ui-slider-thumb-shadow);
+  transition: box-shadow 0.2s, transform 0.1s;
+}
+
+.linnya-ui-slider:hover:not(:disabled)::-webkit-slider-thumb {
+  box-shadow: var(--linnya-ui-slider-thumb-shadow-hover);
+}
+
+.linnya-ui-slider:hover:not(:disabled)::-moz-range-thumb {
+  box-shadow: var(--linnya-ui-slider-thumb-shadow-hover);
+}
+
+.linnya-ui-slider:active:not(:disabled)::-webkit-slider-thumb {
+  transform: scale(1.1);
+}
+
+.linnya-ui-slider:active:not(:disabled)::-moz-range-thumb {
+  transform: scale(1.1);
+}
+
+.linnya-ui-slider::-webkit-slider-runnable-track {
+  height: var(--linnya-ui-slider-track-height);
+  border-radius: var(--radius-xs);
+  background: linear-gradient(to right,
+    var(--color-accent) 0%,
+    var(--color-accent) var(--linnya-ui-slider-progress),
+    var(--color-border-default) var(--linnya-ui-slider-progress),
+    var(--color-border-default) 100%);
+}
+
+.linnya-ui-slider::-moz-range-track {
+  height: var(--linnya-ui-slider-track-height);
+  border-radius: var(--radius-xs);
+  background: var(--color-border-default);
+}
+
+.linnya-ui-slider::-moz-range-progress {
+  height: var(--linnya-ui-slider-track-height);
+  border-radius: var(--radius-xs);
+  background: var(--color-accent);
+}
+
+.linnya-ui-slider:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+
+.linnya-ui-slider:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.linnya-ui-slider:disabled::-webkit-slider-thumb {
+  background: var(--color-border-default);
+  box-shadow: none;
+}
+
+.linnya-ui-slider:disabled::-moz-range-thumb {
+  background: var(--color-border-default);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linnya-ui-slider::-webkit-slider-thumb { transition: none; }
+  .linnya-ui-slider::-moz-range-thumb { transition: none; }
+}

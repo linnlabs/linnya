@@ -7,7 +7,6 @@ import { PptCoordinator } from '@plugin/slides/backend-coordinator';
 import { pptComposeProfile } from '@plugin/slides/backend-sandbox';
 import { DeckAssembler } from '../engine/DeckAssembler.js';
 import { FreeformCompiler } from '../engine/FreeformCompiler.js';
-import { PatchCompiler } from '../engine/patch/PatchCompiler.js';
 import { PptxReader } from '../engine/parser/PptxReader.js';
 import { StructuredCompiler } from '../engine/StructuredCompiler.js';
 import { TemplateManager } from '../engine/template/TemplateManager.js';
@@ -62,7 +61,6 @@ function createStack(db: Database.Database) {
   const templateManager = new TemplateManager(pptxReader, repository);
   const coordinator = new PptCoordinator(
     deckAssembler,
-    new PatchCompiler(structuredCompiler),
     pptxReader,
     templateManager,
     repository,
@@ -134,8 +132,9 @@ describe('Phase 2 integration', () => {
     expect(texts).toContain('Phase 2 Test');
     expect(texts).toContain('Testing inspect flow');
     expect(assembleSpy).toHaveBeenCalledTimes(1);
-    expect((await repository.getPresentation(created.presentationId))?.pptxBuffer.length)
-      .toBeGreaterThan(0);
+    const document = await repository.getPresentation(created.presentationId);
+    expect(document?.pptxArtifact.state === 'ready'
+      && document.pptxArtifact.buffer.length > 0).toBe(true);
   });
 
   it('throws for a missing current presentation', async () => {

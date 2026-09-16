@@ -173,6 +173,7 @@
     "test:shell-tool:production-command-approval-dom": "node scripts/e2e/shell-tool/production-command-approval-dom.e2e.mjs",
     "test:shell-tool:app-single-instance": "node scripts/e2e/shell-tool/app-single-instance.e2e.mjs",
     "test:shell-tool:plugin-cli-client-bridge": "node scripts/e2e/shell-tool/plugin-cli-client-bridge.e2e.mjs",
+    "test:slides-cli:command-mode": "pnpm run build:main && pnpm run build:slides-cli && node scripts/e2e/commands/slides-standalone-command-mode.e2e.mjs",
     "guard:shell-tool-boundary": "node --import tsx scripts/guards/shell-tool-boundary-guard.ts",
     "guard:markdown-domain-boundary": "node --import tsx scripts/guards/markdown-domain-boundary-guard.ts",
     "guard:tool-directory-boundary": "vitest run scripts/__tests__/tool-directory-boundary-guard.test.ts && node --import tsx scripts/guards/tool-directory-boundary-guard.ts",

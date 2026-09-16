@@ -61,7 +61,7 @@
   "dependsOn": ["platform"],
   "compat": {
     "minApp": "0.0.38",
-    "rendererUi": "^2.0.0"
+    "rendererUi": "^2.3.0"
   },
   "ownedTables": [
     "presentation_documents",
@@ -72,7 +72,8 @@
     "presentation_svg_graphic_bindings",
     "presentation_revision_contexts",
     "presentation_revision_assets",
-    "presentation_asset_releases"
+    "presentation_asset_releases",
+    "presentation_manual_edit_receipts"
   ],
   "migrations": [
     {
@@ -102,6 +103,18 @@
     {
       "version": 7,
       "description": "Preserve restored version identity and original timestamp"
+    },
+    {
+      "version": 8,
+      "description": "Persist idempotent presentation manual edit command receipts"
+    },
+    {
+      "version": 9,
+      "description": "Track the revision represented by the current PPTX artifact"
+    },
+    {
+      "version": 10,
+      "description": "Preserve flattened Frame authoring ancestry in current DeckSpec"
     }
   ],
   "ownedFileTypes": [

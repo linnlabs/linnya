@@ -213,6 +213,7 @@ interface FlexComposeInput {
   title: string;
   layout?: SlideLayout;
   theme?: LayoutThemeInput;
+  manualEdits?: SlidesManualEditsInput;
   slides: LayoutSlideNode[];
 }
 
@@ -245,6 +246,11 @@ interface FlexProps {
   y?: number;
 }
 
+/** deck.js 显式声明的稳定作者对象身份；不从 sourceSpan 或执行顺序推导。 */
+interface LayoutAuthoringTargetConfig {
+  editKey?: string;
+}
+
 interface LayoutBorderInput {
   color: string;
   width: number;
@@ -262,7 +268,7 @@ interface LayoutChartCategoryAxis {
   labelRotation?: number;
 }
 
-interface LayoutChartConfig extends FlexProps, LayoutChartControls {
+interface LayoutChartConfig extends FlexProps, LayoutChartControls, LayoutAuthoringTargetConfig {
   preset?: LayoutChartPresetName;
   chartType?: LayoutChartType;
   categories?: LayoutDisplayValue[];
@@ -393,7 +399,7 @@ type LayoutContainerNode = LayoutSlideNode | LayoutViewNode;
 
 type LayoutDisplayValue = string | number | boolean;
 
-interface LayoutFormulaConfig extends FlexProps {
+interface LayoutFormulaConfig extends FlexProps, LayoutAuthoringTargetConfig {
   /** 受控 LaTeX profile；不支持的命令会直接报错。 */
   latex: string;
   /** PowerPoint 原生公式字号，单位 pt。 */
@@ -432,7 +438,7 @@ interface LayoutGradientStop {
 /** @deprecated 使用 LayoutViewNode + flexDirection: 'row'。 */
 type LayoutHStackNode = LayoutViewNode;
 
-interface LayoutImageConfig extends FlexProps {
+interface LayoutImageConfig extends FlexProps, LayoutAuthoringTargetConfig {
   role?: 'background' | 'decoration';
   /** 允许超出画布的英寸数，默认零。 */
   bleed?: number;
@@ -512,7 +518,7 @@ interface LayoutRadialGradient {
   rotateWithShape?: boolean;
 }
 
-interface LayoutShapeConfig extends FlexProps {
+interface LayoutShapeConfig extends FlexProps, LayoutAuthoringTargetConfig {
   /** 声明背景或装饰意图，参与空间诊断；不改变无障碍语义。 */
   role?: 'background' | 'decoration';
   /** 允许超出画布的英寸数，默认零。 */
@@ -560,6 +566,8 @@ type LayoutSlideBackground =
   | { gradient: LayoutGradient; color?: never; image?: never };
 
 interface LayoutSlideConfig extends FlexProps, ContainerDecoration {
+  /** 文稿内稳定且唯一的页面身份。 */
+  slideKey?: string;
   background?: LayoutSlideBackground;
   notes?: string;
 }
@@ -582,7 +590,7 @@ interface LayoutSpacerNode extends LayoutSpacerConfig, LayoutSourceMetadata {
   readonly _type: 'Spacer';
 }
 
-interface LayoutSvgGraphicConfig extends FlexProps {
+interface LayoutSvgGraphicConfig extends FlexProps, LayoutAuthoringTargetConfig {
   source?: LayoutSvgGraphicSourceInput;
   fit?: SvgGraphicFit;
   opacity?: number;
@@ -614,7 +622,7 @@ interface LayoutTableCellInput {
 
 type LayoutTableCellValue = LayoutDisplayValue | LayoutTableCellInput;
 
-interface LayoutTableConfig extends FlexProps {
+interface LayoutTableConfig extends FlexProps, LayoutAuthoringTargetConfig {
   headers?: LayoutTableCellValue[];
   rows?: LayoutTableCellValue[][];
   /** 整张表四边及内部网格线的统一描边。 */
@@ -641,7 +649,7 @@ type LayoutTextAlign = 'left' | 'center' | 'right';
  * Text 的横向约束决定换行语义：Flex 流中的 Text 或显式 width/maxWidth/左右边界
  * 使用固定盒宽并自动换行；绝对定位且没有横向约束时，盒宽跟随内容，只响应显式换行符。
  */
-interface LayoutTextConfig extends FlexProps {
+interface LayoutTextConfig extends FlexProps, LayoutAuthoringTargetConfig {
   /** 页边辅助信息，不计入正文的字体层级与字体族数量。 */
   role?: 'footnote' | 'source' | 'page-number';
   content?: string | LayoutTextRun[];
@@ -713,7 +721,7 @@ type LayoutVStackNode = LayoutViewNode;
 
 type LayoutVerticalAlign = 'top' | 'middle' | 'bottom';
 
-interface LayoutViewConfig extends FlexProps, ContainerDecoration {
+interface LayoutViewConfig extends FlexProps, ContainerDecoration, LayoutAuthoringTargetConfig {
   flexDirection?: 'column' | 'row';
   padding?: number | EdgeInsets;
   gap?: number;
@@ -870,6 +878,111 @@ interface SlideSizeEmu {
 }
 
 interface SlideSizeInches {
+  readonly width: number;
+  readonly height: number;
+}
+
+type SlidesManualAtomicEdit =
+  | SlidesManualShapeEdit
+  | SlidesManualImageEdit
+  | SlidesManualTranslationOnlyEdit;
+
+type SlidesManualAtomicEditKind =
+  | 'shape'
+  | 'image'
+  | SlidesManualTranslationOnlyEditKind;
+
+/** 删除值与其他人工值互斥；Frame 的删除自然覆盖完整作者子树。 */
+type SlidesManualDeletedTargetEdit = {
+  readonly [Kind in SlidesManualTargetKind]: {
+    readonly kind: Kind;
+    readonly editKey: string;
+    readonly deleted: true;
+  };
+}[SlidesManualTargetKind];
+
+interface SlidesManualEditBase {
+  readonly editKey: string;
+  readonly translation?: SlidesManualTranslation;
+  readonly deleted?: never;
+}
+
+/** deck.js 中唯一的人工值块；字段表示当前有效值，不是操作日志。 */
+interface SlidesManualEdits {
+  readonly version: 2;
+  readonly slides: readonly SlidesManualSlideEdits[];
+}
+
+/** 仅供 compose 输入兼容既有 v1；codec 读取后统一产出当前 v2。 */
+type SlidesManualEditsInput = SlidesManualEdits | {
+  readonly version: 1;
+  readonly slides: readonly SlidesManualV1SlideEdits[];
+};
+
+interface SlidesManualFrameEdit extends SlidesManualEditBase {
+  readonly kind: 'frame';
+  readonly backgroundColor?: string;
+}
+
+interface SlidesManualImageEdit extends SlidesManualEditBase {
+  readonly kind: 'image';
+  readonly visualSize?: SlidesManualVisualSize;
+}
+
+interface SlidesManualShapeEdit extends SlidesManualEditBase {
+  readonly kind: 'shape';
+  readonly fillColor?: string;
+  readonly visualSize?: SlidesManualVisualSize;
+}
+
+interface SlidesManualSlideEdits {
+  readonly slideKey: string;
+  readonly targets: readonly SlidesManualTargetEdit[];
+}
+
+type SlidesManualTargetEdit =
+  | SlidesManualTextEdit
+  | SlidesManualFrameEdit
+  | SlidesManualAtomicEdit
+  | SlidesManualDeletedTargetEdit;
+
+type SlidesManualTargetKind =
+  | 'text'
+  | 'frame'
+  | 'shape'
+  | 'image'
+  | 'table'
+  | 'chart'
+  | 'svgGraphic'
+  | 'formula';
+
+interface SlidesManualTextEdit extends SlidesManualEditBase {
+  readonly kind: 'text';
+  /** 当前只开放纯文本内容；rich/formula runs 保持只读。 */
+  readonly content?: string;
+  readonly fontSizePt?: number;
+  readonly color?: string;
+}
+
+interface SlidesManualTranslation {
+  /** 相对未应用人工位移的布局结果，单位 inches。 */
+  readonly dx: number;
+  readonly dy: number;
+}
+
+interface SlidesManualTranslationOnlyEdit extends SlidesManualEditBase {
+  readonly kind: SlidesManualTranslationOnlyEditKind;
+  readonly translation: SlidesManualTranslation;
+}
+
+type SlidesManualTranslationOnlyEditKind =
+  | 'table'
+  | 'chart'
+  | 'svgGraphic'
+  | 'formula';
+
+interface SlidesManualVisualSize {
+  /** 覆盖 Yoga 结果的最终可见宽高，单位 inches；不改变 Flex 占位。 */
   readonly width: number;
   readonly height: number;
 }

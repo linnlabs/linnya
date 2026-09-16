@@ -31,6 +31,10 @@ backend/
 └── tools/                   # ppt_plan / ppt_inspect、inspect feedback，以及未向 Agent 暴露的 legacy export 实现
 ```
 
+Persistence migration v10 upgrades existing current generated DeckSpecs from the former Flex
+`layoutNodeId` hierarchy to the formal `_authoringAncestorRefs` contract. This is a one-time data
+upgrade for Frame editing; runtime RenderModel mapping consumes only the new authoring contract.
+
 `__tests__/`、各子目录测试和 fixtures 是 backend 回归与验收测试，不属于生产装配路径。
 
 ## 架构与数据流
@@ -225,6 +229,10 @@ mark 与复杂度预算；Renderer adapter 逐 layer 重置状态并解释局部
   只保存源码 checkpoint/patch；重放按显式父身份连接，允许版本号稀疏，规则见
   [源码历史](features/presentationSourceHistory/README.md)。模板原始 PPTX 属于
   `presentation_templates`，不能与文稿当前 PPTX 混为一谈。
+- current materialization 的查询必须按 use case 读取窄投影：状态和 source kind 只读 revision
+  identity，generated preview 只读 `deck_spec_json + title`，Renderer RenderModel 只读
+  `deck_source + deck_spec_json + title`；只有 inspect、原生导出、截图等确实需要 package bytes 的流程
+  才读 `pptx_buffer`。禁止为了复用 full record 让 UI 查询复制整份 PPTX。
 - `presentation_revision_contexts`、`presentation_revision_assets` 和 `presentation_asset_releases`
   由 `presentationSourceHistory` 拥有，分别保存历史主题、成功引用和持久释放计划；不保存历史 PPTX 或预览图。
   成功保存后异步压缩，失败不回滚保存。预览和恢复读取版本自身上下文，不从当前文稿补全。

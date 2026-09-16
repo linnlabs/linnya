@@ -56,7 +56,16 @@
           v-else
           :source-edit-busy="sourceEditBusy"
           @source-edit-submit="emit('sourceEditSubmit', $event)"
+          @manual-edit-submit="emit('manualEditSubmit', $event)"
         />
+
+        <div
+          v-if="manualEditError"
+          class="stage-manual-edit-error"
+          role="status"
+        >
+          {{ manualEditError }}
+        </div>
 
         <!-- 右下角缩放控件只更新自身数值，不参与文稿内容切换。 -->
         <div v-if="deckPreview" class="stage-zoom-slider">
@@ -68,16 +77,16 @@
           >
             <MinusIcon class="stage-zoom-slider__icon" />
           </button>
-          <input
-            ref="sliderInput"
+          <CustomSlider
             class="stage-zoom-slider__input"
-            type="range"
+            variant="compact"
             :min="ZOOM_PERCENT_MIN"
             :max="ZOOM_PERCENT_MAX"
             :step="ZOOM_PERCENT_SLIDER_STEP"
-            :value="zoomPercent"
-            @input="onSliderInput"
-          >
+            :model-value="zoomPercent"
+            aria-label="缩放比例"
+            @update:model-value="setZoomPercent"
+          />
           <button
             class="stage-zoom-slider__btn"
             :disabled="zoomPercent >= ZOOM_PERCENT_MAX"
@@ -95,6 +104,17 @@
             @click="zoomToFit"
           >
             <HomeIcon class="stage-zoom-slider__icon" />
+          </button>
+          <button
+            class="stage-zoom-slider__btn stage-zoom-slider__edit-btn"
+            :class="{ 'stage-zoom-slider__edit-btn--active': manualEditingEnabled }"
+            :disabled="!canUseManualEditing || manualEditingSubmitting"
+            :aria-pressed="manualEditingEnabled"
+            :aria-label="manualEditingMessage('slides.manualEditing.toggle.label')"
+            :title="manualEditingButtonTitle"
+            @click="toggleManualEditing"
+          >
+            <EditIcon class="stage-zoom-slider__icon" />
           </button>
           <button
             class="stage-zoom-slider__btn stage-zoom-slider__select-btn"
@@ -125,13 +145,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
+import { CustomSlider } from '@linnya/renderer-ui';
 import { useSlidesStore } from '../../store/slidesStore';
 import { useSlidesUiStore } from '../../store/slidesUiStore';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import {
   AddIcon,
+  EditIcon,
   HomeIcon,
   MinusIcon,
   SelectObjectIcon,
@@ -155,6 +177,12 @@ import {
 } from '../../features/sourceSelection';
 import { isKonvaNodeSupported } from '../../features/konvaPreview';
 import { useSlidesPreviewLocalization } from '../../features/previewRenderState';
+import {
+  resolveManualEditingAvailability,
+  useManualEditingLocalization,
+  useSlidesManualEditingStore,
+} from '../../features/manualEditing';
+import type { ManualEditIntent } from '../../features/manualEditing';
 
 defineProps<{
   sourceEditBusy?: boolean;
@@ -162,6 +190,7 @@ defineProps<{
 
 const emit = defineEmits<{
   sourceEditSubmit: [payload: SourceSelectionEditSubmitPayload];
+  manualEditSubmit: [intent: ManualEditIntent];
 }>();
 
 const ZOOM_PERCENT_MIN = Math.round(ZOOM_MIN * 100);
@@ -172,6 +201,8 @@ const ZOOM_PERCENT_SLIDER_STEP = Math.round(ZOOM_SLIDER_STEP * 100);
 const slidesStore = useSlidesStore();
 const slidesUiStore = useSlidesUiStore();
 const slidesRenderStore = useSlidesRenderStore();
+const manualEditingStore = useSlidesManualEditingStore();
+const { manualEditingMessage } = useManualEditingLocalization();
 const { slidesPreviewMessage } = useSlidesPreviewLocalization();
 
 const {
@@ -189,6 +220,11 @@ const {
   fitZoomLevel,
   sourceSelectionModeEnabled,
 } = storeToRefs(slidesUiStore);
+const {
+  enabled: manualEditingEnabled,
+  submitting: manualEditingSubmitting,
+  errorMessage: manualEditError,
+} = storeToRefs(manualEditingStore);
 const {
   renderLoading,
   renderModel,
@@ -214,7 +250,6 @@ const draftFailureLog = computed(() => {
 const stageHostRef = ref<globalThis.HTMLElement | null>(null);
 const stageViewportWidth = ref(0);
 const stageViewportHeight = ref(0);
-const sliderInput = ref<HTMLInputElement | null>(null);
 
 function clampZoomLevel(level: number): number {
   return Math.max(ZOOM_MIN, Math.min(level, ZOOM_MAX));
@@ -285,6 +320,19 @@ const sourceSelectionAvailability = computed(() =>
 
 const canUseSourceSelectionMode = computed(() => sourceSelectionAvailability.value.canEnableMode);
 
+const manualEditingAvailability = computed(() => resolveManualEditingAvailability({
+  buildState: documentBuildState.value,
+  renderModel: renderModel.value,
+  currentSlide: currentSlideRender.value,
+}));
+const canUseManualEditing = computed(() => manualEditingAvailability.value.available);
+const manualEditingButtonTitle = computed(() => {
+  if (manualEditingSubmitting.value) return manualEditingMessage('slides.manualEditing.toggle.saving');
+  if (manualEditingEnabled.value) return manualEditingMessage('slides.manualEditing.toggle.disable');
+  if (canUseManualEditing.value) return manualEditingMessage('slides.manualEditing.toggle.enable');
+  return manualEditingMessage('slides.manualEditing.toggle.unavailable');
+});
+
 const sourceSelectionButtonTitle = computed(() =>
   canUseSourceSelectionMode.value
     ? (sourceSelectionModeEnabled.value ? '关闭元素选择模式' : '打开元素选择模式')
@@ -300,17 +348,10 @@ function reload() {
 function setZoomPercent(value: number) {
   const clamped = Math.max(ZOOM_PERCENT_MIN, Math.min(ZOOM_PERCENT_MAX, value));
   slidesUiStore.setZoom(clamped / 100, 'manual');
-  updateSliderProgress();
 }
 
 function adjustZoom(delta: number) {
   setZoomPercent(zoomPercent.value + delta);
-}
-
-function onSliderInput(event: Event) {
-  const value = Number((event.target as HTMLInputElement).value);
-  if (!Number.isFinite(value)) return;
-  setZoomPercent(value);
 }
 
 function zoomToFit() {
@@ -321,20 +362,30 @@ function toggleSourceSelectionMode() {
   if (!canUseSourceSelectionMode.value) {
     return;
   }
+  manualEditingStore.setEnabled(false);
   slidesUiStore.toggleSourceSelectionMode();
 }
 
-function updateSliderProgress() {
-  const input = sliderInput.value;
-  if (!input) return;
-  const pct = ((zoomPercent.value - ZOOM_PERCENT_MIN) / (ZOOM_PERCENT_MAX - ZOOM_PERCENT_MIN)) * 100;
-  input.style.setProperty('--range-progress', `${Math.max(0, Math.min(100, pct))}%`);
+function toggleManualEditing() {
+  if (!canUseManualEditing.value || manualEditingSubmitting.value) return;
+  slidesUiStore.setSourceSelectionModeEnabled(false);
+  manualEditingStore.setEnabled(!manualEditingEnabled.value);
 }
 
-watch(zoomPercent, () => nextTick(updateSliderProgress));
 watch(canUseSourceSelectionMode, (enabled) => {
   if (!enabled && sourceSelectionModeEnabled.value) {
     slidesUiStore.setSourceSelectionModeEnabled(false);
+  }
+});
+watch(canUseManualEditing, (available) => {
+  const availability = manualEditingAvailability.value;
+  if (
+    !available
+    && manualEditingEnabled.value
+    && !availability.available
+    && availability.reason !== 'version_not_ready'
+  ) {
+    manualEditingStore.setEnabled(false);
   }
 });
 </script>

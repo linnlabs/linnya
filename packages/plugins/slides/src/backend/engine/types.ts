@@ -174,12 +174,11 @@ export interface SlidesPresentationQueryPort {
   ): Promise<ExportedPresentationFile>;
   getPreview(
     nodeId: string,
-    version: SlidesEngineVersionSnapshot,
-    assembleOptions?: DeckAssembleOptions
+    version: SlidesEnginePreviewSnapshot
   ): Promise<DeckPreview>;
   getRenderModel(
     nodeId: string,
-    version: SlidesEngineVersionSnapshot,
+    version: SlidesEngineRenderModelSnapshot,
     assembleOptions?: DeckAssembleOptions,
     options?: SlidesEngineRenderModelOptions
   ): Promise<PresentationRenderModel>;
@@ -196,7 +195,6 @@ export interface SlidesEngineRenderModelOptions {
 export type SlidesEngineOperationName =
   | 'assembleDeck'
   | 'parsePptx'
-  | 'compilePatch'
   | 'analyzeSpatial'
   | 'resolvePatchImageSource'
   | 'inspectPresentation'
@@ -239,12 +237,6 @@ export interface SlidesEngineResolvePatchImageSourceRequest {
   readonly context: SlidesEngineExecutionContext;
 }
 
-export interface SlidesEngineCompilePatchRequest {
-  readonly sourcePptxBuffer: Buffer;
-  readonly patchSpec: PatchSpec;
-  readonly context: SlidesEngineExecutionContext;
-}
-
 export interface SlidesEngineAnalyzeSpatialRequest {
   readonly slideNodes: readonly SpatialNode[];
   readonly context: SlidesEngineExecutionContext;
@@ -267,24 +259,72 @@ export interface SlidesEngineVersionSnapshot {
   readonly title: string;
 }
 
-export interface SlidesEngineVersionRequest {
+export type SlidesEngineGeneratedVersionSnapshot = SlidesEngineVersionSnapshot & {
+  readonly sourceKind: 'generated';
+};
+
+interface SlidesEnginePreviewSnapshotBase {
+  readonly id: string;
   readonly nodeId: string;
-  readonly version: SlidesEngineVersionSnapshot;
+  readonly versionNumber: number;
+  readonly deckSpec: DeckSpec;
+  readonly title: string;
+}
+
+/** generated preview 不携带 PPTX；package-backed preview 才拥有可解析的 package bytes。 */
+export type SlidesEnginePreviewSnapshot =
+  | (SlidesEnginePreviewSnapshotBase & {
+      readonly sourceKind: 'generated';
+    })
+  | (SlidesEnginePreviewSnapshotBase & {
+      readonly sourceKind: Exclude<SlidesEnginePresentationSourceKind, 'generated'>;
+      readonly pptxBuffer: Buffer;
+    });
+
+export interface SlidesEnginePreviewRequest {
+  readonly nodeId: string;
+  readonly version: SlidesEnginePreviewSnapshot;
+  readonly context: SlidesEngineExecutionContext;
+}
+
+export interface SlidesEngineGeneratedRenderModelSnapshot extends SlidesEnginePreviewSnapshotBase {
+  readonly sourceKind: 'generated';
+  readonly deckSource?: string;
+}
+
+/** generated RenderModel 不携带 package；imported / patched 映射仍由 PPTX canonical 事实驱动。 */
+export type SlidesEngineRenderModelSnapshot =
+  | SlidesEngineGeneratedRenderModelSnapshot
+  | (SlidesEnginePreviewSnapshotBase & {
+      readonly sourceKind: Exclude<SlidesEnginePresentationSourceKind, 'generated'>;
+      readonly pptxBuffer: Buffer;
+      readonly deckSource?: string;
+    });
+
+export interface SlidesEngineRenderModelRequest {
+  readonly nodeId: string;
+  readonly version: SlidesEngineRenderModelSnapshot;
   readonly assembleOptions?: DeckAssembleOptions;
   readonly context: SlidesEngineExecutionContext;
   readonly renderModelOptions?: SlidesEngineRenderModelOptions;
 }
 
+export interface SlidesEngineVersionRequest {
+  readonly nodeId: string;
+  readonly version: SlidesEngineVersionSnapshot;
+  readonly assembleOptions?: DeckAssembleOptions;
+  readonly context: SlidesEngineExecutionContext;
+}
+
 export interface SlidesEngineExecutionAdapter {
   assembleDeck(request: SlidesEngineAssembleDeckRequest): Promise<Buffer>;
   parsePptx(request: SlidesEngineParsePptxRequest): Promise<PresentationInfo>;
-  compilePatch(request: SlidesEngineCompilePatchRequest): Promise<Buffer>;
   analyzeSpatial(request: SlidesEngineAnalyzeSpatialRequest): Promise<SpatialAnalysisSummary>;
   resolvePatchImageSource(request: SlidesEngineResolvePatchImageSourceRequest): Promise<string>;
   inspectPresentation(request: SlidesEngineVersionRequest): Promise<PresentationInfo>;
   exportPresentation(request: SlidesEngineVersionRequest): Promise<ExportedPresentationFile>;
-  buildPreview(request: SlidesEngineVersionRequest): Promise<DeckPreview>;
-  buildRenderModel(request: SlidesEngineVersionRequest): Promise<PresentationRenderModel>;
+  buildPreview(request: SlidesEnginePreviewRequest): Promise<DeckPreview>;
+  buildRenderModel(request: SlidesEngineRenderModelRequest): Promise<PresentationRenderModel>;
 }
 
 export function createSlidesEngineExecutionContext(

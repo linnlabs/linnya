@@ -54,7 +54,9 @@ deck.js 按 JavaScript 检查。在 JavaScript 中，对象字面量**赋值给�
 
 ## 3. 页面、容器与父子关系
 
-`createSlide()` 创建页面，`createFrame()` 创建容器。两者都是 Flex 容器；子节点只有经过父级 `.add(...)` 才属于文稿。
+`createSlide()` 创建页面，`createFrame()` 创建容器。两者都是 Flex 容器；子节点只有经过父级 `.add(...)` 才属于文稿。新文稿使用 `createSlide({ slideKey: "overview" })` 声明稳定页面身份，并在可编辑对象上使用 `editKey`，例如 `createText({ editKey: "headline", content: "标题" })`。`slideKey` 在整份文稿唯一，`editKey` 在所属页面唯一；两者不能从页码、数组下标、源码行或显示文字临时生成。
+
+`compose({ manualEdits })` 保存已经提交的前端人工值。version 2 支持 Text 完整纯文本与字号／颜色、Frame／Shape 纯色、Shape／Image 视觉尺寸、各作者目标累计位移，以及删除任意具备 `editKey` 的作者目标；普通目标删除自身，Frame 删除完整作者子树。位移和尺寸单位是 inches。一个目标的删除值与内容、样式、尺寸和位移互斥；记录是当前值，不是不断追加的操作日志，同一页不能重复写同一个 `editKey`。不要手写 arbitrary property path、JSON Patch 或引擎 option。完整、参与 typecheck 的写法见 [`manual-edits.js`](./examples/manual-edits.js)。
 
 Slide 的 `background` 支持纯色、图片或 gradient 三选一，`notes` 用于演讲者备注。Frame/Slide 的 `backgroundColor`、`border`、`borderRadius` 会生成容器装饰 Shape，`opacity` 只作用于这层装饰的 fill；它们不影响页面 background、子节点或 `.add(...)` 关系。
 
@@ -97,10 +99,11 @@ Flex 子项可以使用 `flex`、`width`、`height`、margin 与父容器的 gap
 |---|---|---|
 | 正式 | 本文与 `.d.ts` 中的 `Layout*Config`、`compose()`、`create*()` | 新代码使用；会被 typecheck 与 compiler 验证 |
 | 兼容 | `chartData`、`tableData`、`datasets`、`xLabels`、Text 的 `bold/italic/underline/align/valign/lineSpacing` 旧别名 | 只用于理解和维护旧 source；不要主动生成 |
-| 内部/不支持 | `_type`、`children`、`_sourceSpan`、`styleDecision`、`chartOptions`、`tableOptions`、`editPresentation` | 不要写；工厂 config 不接受，部分字段也不可赋值 |
+| 稳定编辑身份 | Slide 使用 `slideKey`；作者对象使用 `editKey` | 新文稿必须显式、稳定、唯一；不要使用随机值或执行序号 |
+| 内部/不支持 | `_type`、`children`、`_sourceSpan`、`_authoringRef`、`styleDecision`、`chartOptions`、`tableOptions`、`editPresentation` | 不要写；工厂 config 不接受，部分字段也不可赋值 |
 | 猜测式语法 | `style`、`style.gradient`、`shapeType`、`zIndex`、Text 的 `padding/opacity/transparency`、任意 CSS/PptxGenJS 字段 | 不支持；改用本文对应的正式字段 |
 
-工厂返回节点上的 `_type` 与 `children` 由运行时创建，`_sourceSpan` 由源码定位链维护。它们出现在 node 类型中是为了让编译器理解运行时对象，不是 authoring 输入。`Layout*Config` 才是可传给工厂的字段全集。
+工厂返回节点上的 `_type` 与 `children` 由运行时创建，`_sourceSpan` 与 `_authoringRef` 由源码定位及编译链维护。它们出现在 node 类型中是为了让编译器理解运行时对象，不是 authoring 输入。`Layout*Config` 才是可传给工厂的字段全集。
 
 ## 6. Text
 
@@ -352,4 +355,4 @@ Shape/Image 可声明 `role: "background" | "decoration"` 表达构图意图，�
 
 ### 页面身份规则
 
-每页必须由顶层 `createSlide()` 创建。不能放进函数、循环或条件分支中，也不能用 helper 动态产页。页身份由源码行区间定义，按页读取、搜索和诊断定位都依赖这个合同。检测到嵌套调用时会直接报告“非顶层 createSlide()”；请把页面创建移到顶层，helper 只负责创建页内元素。
+每页必须由顶层 `createSlide()` 创建。不能放进函数、循环或条件分支中，也不能用 helper 动态产页。页级源码切片仍由源码行区间定位；前端编辑身份则来自显式 `slideKey`，两者不能混用。检测到嵌套调用时会直接报告“非顶层 createSlide()”；请把页面创建移到顶层，helper 只负责创建页内元素。

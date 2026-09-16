@@ -19,6 +19,11 @@
         :config="line.config"
       />
       <v-line
+        v-if="manualSelectionLineConfig"
+        :__use-strict-mode="true"
+        :config="manualSelectionLineConfig"
+      />
+      <v-line
         v-if="marqueeLineConfig"
         :__use-strict-mode="true"
         :config="marqueeLineConfig"
@@ -35,6 +40,9 @@ import type {
   SourceSelectionRect,
 } from '../../../../features/sourceSelection';
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../../shared/constants';
+import type {
+  ManualEditableTarget,
+} from '../../../../features/manualEditing';
 
 interface OverlayLineEntry {
   key: string;
@@ -54,6 +62,7 @@ const props = defineProps<{
   selectedTargets: readonly SourceSelectableElement[];
   hoveredTarget: SourceSelectableElement | null;
   marqueeRect: SourceSelectionRect | null;
+  manualSelectedTarget?: ManualEditableTarget | null;
 }>();
 
 /** overlay 层默认不监听事件，按需在子组件内开启 */
@@ -104,6 +113,19 @@ const marqueeLineConfig = computed(() => {
     strokeWidth: strokeWidth.value,
     dash: [6, 4],
     fill: SLIDES_RENDER_COLORS.sourceSelectionMarqueeFill,
+    listening: false,
+  };
+});
+
+const manualSelectionLineConfig = computed(() => {
+  const target = props.manualSelectedTarget;
+  if (!target) return null;
+  return {
+    points: toPxPoints(target.polygon),
+    closed: true,
+    stroke: SLIDES_RENDER_COLORS.manualEditingStroke,
+    strokeWidth: strokeWidth.value,
+    fill: SLIDES_RENDER_COLORS.manualEditingFill,
     listening: false,
   };
 });

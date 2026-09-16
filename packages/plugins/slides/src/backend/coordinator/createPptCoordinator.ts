@@ -13,7 +13,7 @@
 import type { Database } from 'better-sqlite3';
 import { executeSandboxProfile } from '@plugin/backend/sandboxRuntime';
 import { releaseDocumentAssetOwnership } from '@plugin/backend/documentAssetOwnership';
-import { CodegenDeckBuilder } from '../codegen';
+import { CodegenDeckBuilder } from '../codegen/CodegenDeckBuilder';
 import { PresentationHistoryRepository, PresentationHistoryRuntime, PresentationRevisionScope, observeRevisionImageBindings, observeRevisionSvgBindings } from '../features/presentationSourceHistory';
 import {
   createDocumentImageAssetRuntime,
@@ -28,14 +28,10 @@ import {
   createWorkspaceService,
   publishWorkspaceDocumentUpdated,
 } from '@plugin/backend/workspaceRuntime';
-import {
-  PatchCompiler,
-  PptxReader,
-  StructuredCompiler,
-  TemplateManager,
-  PptPresentationQueryService,
-  type SvgGraphicFallbackRasterizerPort,
-} from '@plugin/slides/backend-engine-core';
+import { PptPresentationQueryService } from '../engine/coordinator/PptPresentationQueryService';
+import { PptxReader } from '../engine/parser/PptxReader';
+import { TemplateManager } from '../engine/template/TemplateManager';
+import type { SvgGraphicFallbackRasterizerPort } from '../engine/types';
 import type { BrushArtworkGeneratorPort } from '../engine/brushArtwork';
 import { PresentationDraftRepository, PresentationRepository } from '../persistence';
 import {
@@ -53,7 +49,8 @@ import { createPresentationSvgGraphicFallbackRasterizer } from '../features/pres
 import { PptCoordinator } from './PptCoordinator';
 import type { PluginConversationFilePathResolverPort } from '@linnya/plugin-host-contract/backend/workspaceRuntime';
 import type { PresentationBuildExecutionPort } from '../features/presentationBuildExecution';
-import { createPresentationBuildDeckAssembler } from '../features/presentationBuildExecution';
+import { createPresentationBuildDeckAssembler } from '../features/presentationBuildExecution/orchestration/createPresentationBuildDeckAssembler';
+import { createPresentationManualEditTraceLogger } from '../features/presentationManualEditing';
 
 export function createPptCoordinator(
   db: Database,
@@ -68,6 +65,9 @@ export function createPptCoordinator(
 ): PptCoordinator {
   const deckAssemblerLogger = new Logger('DeckAssembler');
   const codegenFailureLogger = new Logger('SlidesCodegen');
+  const manualEditTraceLogger = createPresentationManualEditTraceLogger(
+    new Logger('SlidesManualEditTrace'),
+  );
   const workspaceService = createWorkspaceService(db);
   const revisionScope = new PresentationRevisionScope();
   const historyRepository = new PresentationHistoryRepository(db);
@@ -75,10 +75,10 @@ export function createPptCoordinator(
   const presentationRepo = new PresentationRepository(db, {
     publishDocumentUpdated: publishWorkspaceDocumentUpdated,
     recordRevisionContext: (nodeId, revisionId) => historyRepository.recordContext(revisionId, revisionScope.readSourceTheme(), revisionScope.read(nodeId)),
+    inheritRevisionContext: (baseRevisionId, revisionId) => historyRepository.inheritContext(baseRevisionId, revisionId),
     requestHistoryMaintenance: nodeId => history.requestMaintenance(nodeId),
   });
   const presentationDraftRepo = new PresentationDraftRepository(db);
-  const structuredCompiler = new StructuredCompiler();
   const imageBindings = observeRevisionImageBindings(new PresentationImageBindingRepository(db), revisionScope);
   const svgBindings = observeRevisionSvgBindings(new PresentationSvgGraphicBindingRepository(db), revisionScope);
   const imageAssets = options.documentImageAssetRuntime ?? createDocumentImageAssetRuntime(db);
@@ -110,7 +110,6 @@ export function createPptCoordinator(
   });
   const pptxReader = new PptxReader();
   const templateManager = new TemplateManager(pptxReader, presentationRepo);
-  const patchCompiler = new PatchCompiler(structuredCompiler, templateManager, pptxReader);
 
   const historicalImages = createReadOnlyPresentationImageSourceResolver({ bindingReader: imageBindings, documentImageAssets: imageAssets });
   const historicalSvgOwner = createReadOnlyPresentationSvgGraphicOwner({ bindingRepository: svgBindings, documentSvgAssets: svgAssets });
@@ -130,7 +129,7 @@ export function createPptCoordinator(
     compile: input => historicalBuilder.buildHistoricalDeckSpec(input),
     render: (documentId, version, deckSpec) => historicalQueries.getRenderModel(documentId, {
       id: version.versionId, nodeId: documentId, versionNumber: version.order, deckSpec,
-      title: deckSpec.title, sourceKind: 'generated', pptxBuffer: Buffer.alloc(0),
+      title: deckSpec.title, sourceKind: 'generated',
     }, { assetContext: { documentId } }),
     assemble: (documentId, deck) => historicalAssembler.assemble(deck, { assetContext: { documentId } }),
     release: (documentId, assetIds) => releaseDocumentAssetOwnership({ database: db, documentId, assetIds }),
@@ -139,7 +138,6 @@ export function createPptCoordinator(
 
   return new PptCoordinator(
     deckAssembler,
-    patchCompiler,
     pptxReader,
     templateManager,
     presentationRepo,
@@ -168,6 +166,7 @@ export function createPptCoordinator(
       history,
       svgGraphicRuntime,
       buildExecution: options.buildExecution,
+      manualEditTrace: manualEditTraceLogger,
     }
   );
 }

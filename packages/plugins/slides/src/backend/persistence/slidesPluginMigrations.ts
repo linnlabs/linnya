@@ -8,6 +8,8 @@ import { PRESENTATION_DOCUMENT_SCHEMAS } from './schemas/presentation.schema.js'
 import { PRESENTATION_IMAGE_BINDING_SCHEMAS } from './schemas/presentationImageBinding.schema.js';
 import { PRESENTATION_SVG_GRAPHIC_BINDING_SCHEMAS } from './schemas/presentationSvgGraphicBinding.schema.js';
 import { PRESENTATION_HISTORY_SCHEMAS } from '../features/presentationSourceHistory/definitions/presentationHistorySchema';
+import { PRESENTATION_MANUAL_EDIT_SCHEMAS } from '../features/presentationManualEditing/definitions/presentationManualEditSchema';
+import { backfillFrameAuthoringAncestors } from './migrations/backfillFrameAuthoringAncestors';
 
 const PRESENTATION_NODE_TYPE = 'presentation';
 
@@ -66,6 +68,11 @@ interface SqliteNameRow {
   readonly name: string;
 }
 
+interface CurrentDeckSpecRow {
+  readonly node_id: string;
+  readonly deck_spec_json: string;
+}
+
 interface LegacyVersionRow {
   readonly id: string;
   readonly node_id: string;
@@ -121,6 +128,12 @@ function isBufferOrNull(value: unknown): value is Buffer | null {
 
 function isSqliteNameRow(value: unknown): value is SqliteNameRow {
   return isRecord(value) && typeof value.name === 'string';
+}
+
+function isCurrentDeckSpecRow(value: unknown): value is CurrentDeckSpecRow {
+  return isRecord(value)
+    && typeof value.node_id === 'string'
+    && typeof value.deck_spec_json === 'string';
 }
 
 function isLegacyVersionRow(value: unknown): value is LegacyVersionRow {
@@ -511,6 +524,65 @@ export const slidesPluginMigrations: readonly PluginMigrationDefinition[] = [
         if (!columns.some(row => isSqliteNameRow(row) && row.name === name)) {
           db.exec(`ALTER TABLE presentation_revisions ADD COLUMN ${name} ${type}`);
         }
+      }
+    },
+  },
+  {
+    version: 8,
+    description: 'Persist idempotent presentation manual edit command receipts',
+    up: db => {
+      for (const statement of PRESENTATION_MANUAL_EDIT_SCHEMAS) db.exec(statement);
+    },
+  },
+  {
+    version: 9,
+    description: 'Track the revision represented by the current PPTX artifact',
+    up: db => {
+      const columns = readAll(db, 'PRAGMA table_info(presentation_documents)');
+      if (!columns.some(row => isSqliteNameRow(row) && row.name === 'pptx_revision_id')) {
+        db.exec('ALTER TABLE presentation_documents ADD COLUMN pptx_revision_id TEXT');
+      }
+      // v9 之前每次 revision 提交都同步写入 PPTX，因此现存 bytes 与 current 精确对应。
+      db.exec(`
+        UPDATE presentation_documents
+        SET pptx_revision_id = current_revision_id
+        WHERE pptx_revision_id IS NULL
+      `);
+      // v6 以前的 current revision 可能尚未被历史维护回放；升级时先建立可继承的保守可达性。
+      db.exec(`
+        INSERT OR IGNORE INTO presentation_revision_contexts(revision_id, theme_json)
+        SELECT current_revision_id,
+               COALESCE(json_extract(deck_spec_json, '$.theme'), 'null')
+        FROM presentation_documents;
+        INSERT OR IGNORE INTO presentation_revision_assets(revision_id, asset_id, asset_kind)
+        SELECT d.current_revision_id, b.asset_id, 'image'
+        FROM presentation_documents d
+        JOIN presentation_image_bindings b ON b.presentation_id = d.node_id;
+        INSERT OR IGNORE INTO presentation_revision_assets(revision_id, asset_id, asset_kind)
+        SELECT d.current_revision_id, b.asset_id, 'svg'
+        FROM presentation_documents d
+        JOIN presentation_svg_graphic_bindings b ON b.presentation_id = d.node_id;
+      `);
+    },
+  },
+  {
+    version: 10,
+    description: 'Preserve flattened Frame authoring ancestry in current DeckSpec',
+    up: db => {
+      const rows = readAll(db, 'SELECT node_id, deck_spec_json FROM presentation_documents');
+      const update = db.prepare(
+        'UPDATE presentation_documents SET deck_spec_json = ? WHERE node_id = ?',
+      );
+      if (!update.run) {
+        throw new Error('Slides v10 migration 需要 SQLite statement.run 能力。');
+      }
+      for (const row of rows) {
+        if (!isCurrentDeckSpecRow(row)) {
+          throw new Error('presentation_documents 返回了无效的 DeckSpec migration row。');
+        }
+        const deckSpec: unknown = JSON.parse(row.deck_spec_json);
+        if (!backfillFrameAuthoringAncestors(deckSpec)) continue;
+        update.run(JSON.stringify(deckSpec), row.node_id);
       }
     },
   },

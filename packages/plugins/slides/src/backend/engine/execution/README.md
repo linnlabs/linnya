@@ -7,6 +7,9 @@ Slides engine 业务执行 adapter 归属在这里。compile / parse / patch / i
 - `InProcessSlidesEngineExecutionAdapter` 只依赖 `backend/engine/types.ts` 里的窄 port。
 - adapter 不 import host `src/`、DB、workspace、IPC、coordinator 具体类或 renderer 代码。
 - 查询派生通过 `SlidesPresentationQueryPort` 注入；当前包内 `PptPresentationQueryService` 是 in-process 查询实现。generated 查询直接消费持久化层已经校验和迁移完成的 DeckSpec，禁止在查询阶段再次经过工具输入 normalizer。
+- preview/render-model request 使用判别 snapshot：generated 分支不携带 PPTX Buffer，imported /
+  patched 分支必须携带 package bytes。需要截图或原生导出的上层流程继续使用完整 version snapshot，
+  不能向 generated UI 查询注入空 Buffer 伪装完整版本。
 - 版本保存、workspace 更新和插件启停门禁仍属于上层 orchestration / hook / IPC，不下沉到 adapter。
 
 当前不把整个 engine adapter 粗暴搬进通用 Worker：查询、持久化和资产授权仍由业务 orchestration 拥有，只有可信同步 CPU 进入 Slides 自有 build Worker。未来若 Worker Thread 需要升级为 headless compute child，替换 build execution port 的物理实现即可，不改变本 adapter 或 UI 合同。

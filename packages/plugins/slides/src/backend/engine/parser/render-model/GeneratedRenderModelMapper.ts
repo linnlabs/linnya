@@ -1,11 +1,15 @@
 import type {
   FreeformElement,
+  SlidesAuthoringEditCapability,
+  SlidesAuthoringEditProjection,
+  SlidesAuthoringFillEditProjection,
   SlideEntry,
   StructuredElement,
   SvgGraphicResolvedAsset,
   TextStyle,
 } from '@plugin/slides/shared';
 import { resolveShapeGeometry } from '@plugin/slides/shared';
+import { buildSlidesAuthoringRenderNodeId } from '@plugin/slides/shared';
 import type {
   GroupRenderNode,
   RenderNode,
@@ -93,7 +97,9 @@ function mapStructuredElement(
   defaults: RenderDefaultsContext,
   svgAssets: ReadonlyMap<string, SvgGraphicResolvedAsset>,
 ): RenderNode {
-  const elementId = `s${slideNumber}-generated-${zIndex}`;
+  const elementId = element._authoringRef
+    ? buildSlidesAuthoringRenderNodeId(element._authoringRef)
+    : `s${slideNumber}-generated-${zIndex}`;
   const base = makeBaseNode(
     elementId,
     toRenderBox(element.position),
@@ -101,6 +107,9 @@ function mapStructuredElement(
     buildGeneratedEditableTarget(slideNumber, elementId, element),
     element._sourceSpan,
     element._layoutConstraintEvidence,
+    element._authoringRef,
+    buildAuthoringEditProjection(element),
+    element._authoringAncestorRefs,
   );
 
   switch (element.type) {
@@ -223,7 +232,9 @@ function mapFreeformElement(
     return [mapFreeformGroup(slideNumber, element, zIndex, transform, defaults, svgAssets)];
   }
 
-  const elementId = `s${slideNumber}-freeform-${zIndex}`;
+  const elementId = element._authoringRef
+    ? buildSlidesAuthoringRenderNodeId(element._authoringRef)
+    : `s${slideNumber}-freeform-${zIndex}`;
   const base = makeBaseNode(
     elementId,
     toRenderBox(applyFreeformTransform(element.position, transform)),
@@ -231,6 +242,9 @@ function mapFreeformElement(
     buildGeneratedEditableTarget(slideNumber, elementId, element),
     element._sourceSpan,
     element._layoutConstraintEvidence,
+    element._authoringRef,
+    buildAuthoringEditProjection(element),
+    element._authoringAncestorRefs,
   );
 
   switch (element.type) {
@@ -288,7 +302,9 @@ function mapFreeformGroup(
   defaults: RenderDefaultsContext,
   svgAssets: ReadonlyMap<string, SvgGraphicResolvedAsset>,
 ): GroupRenderNode {
-  const groupId = `s${slideNumber}-freeform-${zIndex}`;
+  const groupId = element._authoringRef
+    ? buildSlidesAuthoringRenderNodeId(element._authoringRef)
+    : `s${slideNumber}-freeform-${zIndex}`;
   const groupBox = toRenderBox(applyFreeformTransform(element.position, parentTransform));
   const base = makeBaseNode(
     groupId,
@@ -297,6 +313,9 @@ function mapFreeformGroup(
     buildGeneratedEditableTarget(slideNumber, groupId, element),
     element._sourceSpan,
     element._layoutConstraintEvidence,
+    element._authoringRef,
+    buildAuthoringEditProjection(element),
+    element._authoringAncestorRefs,
   );
   if (!element.children?.length) {
     return {
@@ -325,6 +344,61 @@ function mapFreeformGroup(
     ),
   };
   return relativizeGroupChildren(node);
+}
+
+function buildAuthoringEditProjection(
+  element: StructuredElement | FreeformElement,
+): SlidesAuthoringEditProjection | undefined {
+  const authoringRef = element._authoringRef;
+  if (!authoringRef) return undefined;
+  const capabilities: SlidesAuthoringEditCapability[] = ['translate', 'delete'];
+  switch (authoringRef.targetKind) {
+    case 'frame':
+      capabilities.push('set_fill_color');
+      return { capabilities, fill: projectAuthoringFill(element) };
+    case 'shape':
+      capabilities.push('set_fill_color', 'set_visual_size');
+      return { capabilities, fill: projectAuthoringFill(element) };
+    case 'image':
+      capabilities.push('set_visual_size');
+      return { capabilities };
+    case 'text':
+      if (
+        (element.type === 'text' || element.type === 'title')
+        && typeof element.content === 'string'
+      ) {
+        capabilities.push('set_text_content', 'set_text_style');
+        return {
+          capabilities,
+          text: {
+            kind: 'plain_text',
+            content: element.content,
+            ...(element.style?.fontSize !== undefined
+              ? { fontSizePt: element.style.fontSize }
+              : {}),
+            ...(element.style?.color !== undefined ? { color: element.style.color } : {}),
+          },
+        };
+      }
+      return { capabilities, text: { kind: 'rich_text' } };
+    case 'table':
+    case 'chart':
+    case 'svgGraphic':
+    case 'formula':
+      return { capabilities };
+  }
+}
+
+function projectAuthoringFill(
+  element: StructuredElement | FreeformElement,
+): SlidesAuthoringFillEditProjection {
+  if (element.type !== 'shape') return { kind: 'non_solid' };
+  const paint = element.style?.paint;
+  if (paint?.type === 'solid') return { kind: 'solid', color: paint.color };
+  if (typeof element.style?.fill === 'string') {
+    return { kind: 'solid', color: element.style.fill };
+  }
+  return { kind: 'non_solid' };
 }
 
 function requireSvgGraphicAsset(

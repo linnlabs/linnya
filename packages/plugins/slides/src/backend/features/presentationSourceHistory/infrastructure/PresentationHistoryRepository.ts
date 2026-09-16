@@ -63,6 +63,25 @@ export class PresentationHistoryRepository {
     for (const asset of assets) insert.run(versionId, asset.assetId, asset.kind);
   }
 
+  /** 人工文本与位移编辑不会改变资产身份，直接继承 base 可避免为了发现引用而组装 PPTX。 */
+  inheritContext(baseVersionId: string, versionId: string): void {
+    const inserted = this.db.prepare(`
+      INSERT INTO presentation_revision_contexts(revision_id, theme_json)
+      SELECT ?, theme_json
+      FROM presentation_revision_contexts
+      WHERE revision_id = ?
+    `).run(versionId, baseVersionId);
+    if (inserted.changes !== 1) {
+      throw new Error(`Slides base revision context 不存在：${baseVersionId}`);
+    }
+    this.db.prepare(`
+      INSERT INTO presentation_revision_assets(revision_id, asset_id, asset_kind)
+      SELECT ?, asset_id, asset_kind
+      FROM presentation_revision_assets
+      WHERE revision_id = ?
+    `).run(versionId, baseVersionId);
+  }
+
   compact(nodeId: string, snapshot: PresentationHistorySnapshot, plan: PresentationSourceCompactionPlan, backfill: ReadonlyMap<string, { sourceTheme: DeckSpec['theme']; assets: readonly PresentationRevisionAsset[] }>): void {
     this.db.transaction(() => {
       const current = this.snapshot(nodeId);

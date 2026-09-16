@@ -41,6 +41,8 @@ import {
   normalizeStrokePaint,
   resolveSlideSizeInches,
   normalizeMathFormulaSource,
+  isSlidesAuthoringKey,
+  parseSlidesManualEdits,
 } from '@plugin/slides/shared';
 import type {
   Box,
@@ -49,12 +51,19 @@ import type {
   LayoutTextRun,
   Paint,
   ShapeStrokeStyle,
+  SlidesAuthoringObjectRef,
+  SlidesManualSlideEdits,
   SourceSpan,
 } from '@plugin/slides/shared';
 import { resolveLayoutTextWrapPolicy } from './TextBoxSizing.js';
 import { buildGeneratedLayoutConstraintEvidence } from './LayoutConstraintFacts.js';
 import { FlexComposeContractError } from './FlexComposeContractError.js';
 import { readLayoutTableData } from './TableLayoutInput.js';
+import {
+  prepareSlideManualEditProjection,
+  resolveManualTargetKind,
+  translateManualLayoutResult,
+} from './ManualEditProjection.js';
 
 // ─── 公共 API ──────────────────────────────────────────────────────────────────
 
@@ -100,6 +109,30 @@ export function compileFlexInput(raw: FlexComposeInput): FlexCompileResult {
     return { error: 'slides 必须是非空数组。' };
   }
 
+  const slideKeys = new Set<string>();
+  for (const [index, slideNode] of raw.slides.entries()) {
+    if (!slideNode || slideNode._type !== 'Slide' || slideNode.slideKey == null) continue;
+    if (!isSlidesAuthoringKey(slideNode.slideKey)) {
+      return { error: `第 ${index + 1} 页 slideKey 必须匹配 ^[A-Za-z][A-Za-z0-9_-]{0,63}$。` };
+    }
+    if (slideKeys.has(slideNode.slideKey)) {
+      return { error: `slideKey \"${slideNode.slideKey}\" 在文稿内重复。` };
+    }
+    slideKeys.add(slideNode.slideKey);
+  }
+
+  let manualSlides: readonly SlidesManualSlideEdits[] = [];
+  if (raw.manualEdits != null) {
+    const manualResult = parseSlidesManualEdits(raw.manualEdits);
+    if ('error' in manualResult) return manualResult;
+    manualSlides = manualResult.value.slides;
+  }
+  const manualBySlide = new Map(manualSlides.map(slide => [slide.slideKey, slide]));
+  const danglingSlide = manualSlides.find(slide => !slideKeys.has(slide.slideKey));
+  if (danglingSlide) {
+    return { error: `人工编辑页面 \"${danglingSlide.slideKey}\" 在作者树中不存在。` };
+  }
+
   const slides: DirectSlideInput[] = [];
   const rejectedSlides: RejectedSlide[] = [];
 
@@ -111,7 +144,13 @@ export function compileFlexInput(raw: FlexComposeInput): FlexCompileResult {
     }
 
     try {
-      const compiled = compileSlide(slideNode, canvas.width, canvas.height, i + 1);
+      const compiled = compileSlide(
+        slideNode,
+        canvas.width,
+        canvas.height,
+        i + 1,
+        slideNode.slideKey ? manualBySlide.get(slideNode.slideKey) : undefined,
+      );
       slides.push(compiled);
     } catch (err) {
       if (!(err instanceof FlexComposeContractError)) throw err;
@@ -145,12 +184,20 @@ export function compileSlide(
   slideWidth: number,
   slideHeight: number,
   slideNumber = 1,
+  manualEdits?: SlidesManualSlideEdits,
 ): DirectSlideInput {
-  const layoutResult = computeSlideLayout(slideNode, slideWidth, slideHeight);
+  validateSlideAuthoringIdentity(slideNode, slideNumber);
+  const projection = prepareSlideManualEditProjection(slideNode, manualEdits);
+  const layoutResult = translateManualLayoutResult(
+    computeSlideLayout(projection.slideNode, slideWidth, slideHeight),
+    projection.editsByKey,
+  );
   const elements: DirectElementInput[] = [];
   collectElements(layoutResult, elements, {
     slideNumber,
+    slideKey: slideNode.slideKey,
     nodePath: 'root',
+    authoringAncestorRefs: [],
   });
 
   return {
@@ -168,11 +215,14 @@ export function compileSlide(
  */
 interface LayoutTraversalContext {
   readonly slideNumber: number;
+  readonly slideKey?: string;
   readonly nodePath: string;
   readonly parent?: LayoutResult;
   readonly parentPath?: string;
   readonly grandparent?: LayoutResult;
   readonly grandparentPath?: string;
+  /** 摊平前的正式作者对象祖先；只在编译边界生成，不由下游猜测。 */
+  readonly authoringAncestorRefs: readonly SlidesAuthoringObjectRef[];
 }
 
 function collectElements(
@@ -182,26 +232,39 @@ function collectElements(
 ): void {
   const { node, box, children } = result;
   const constraintEvidence = buildConstraintEvidence(result, context);
+  const editKey = readLayoutEditKey(node);
+  const authoringRef = editKey
+    ? buildAuthoringRef(context.slideKey, editKey, resolveManualTargetKind(node))
+    : undefined;
 
   if (isContainerNode(node)) {
     // 容器装饰 → 背景 shape 元素（在子元素之前，确保 z-order 底层）
     const container = node as LayoutContainerNode;
     if (container.backgroundColor || container.border) {
-      elements.push(attachLayoutConstraintEvidence(
+      const background = attachAuthoringRef(
         buildContainerBackground(container, box),
+        authoringRef,
+      );
+      elements.push(attachLayoutConstraintEvidence(
+        attachAuthoringAncestors(background, context.authoringAncestorRefs),
         constraintEvidence,
       ));
     }
 
     // 递归处理子节点
+    const childAuthoringAncestors = authoringRef
+      ? [...context.authoringAncestorRefs, authoringRef]
+      : context.authoringAncestorRefs;
     for (const [index, child] of children.entries()) {
       collectElements(child, elements, {
         slideNumber: context.slideNumber,
+        slideKey: context.slideKey,
         nodePath: `${context.nodePath}.${index}`,
         parent: result,
         parentPath: context.nodePath,
         grandparent: context.parent,
         grandparentPath: context.parentPath,
+        authoringAncestorRefs: childAuthoringAncestors,
       });
     }
     return;
@@ -216,7 +279,13 @@ function collectElements(
       if (!roles.includes(node.role)) throw new FlexComposeContractError(`节点 role 必须使用当前节点允许的语义角色。`);
       element._semanticRole = node.role;
     }
-    elements.push(attachLayoutConstraintEvidence(element, constraintEvidence));
+    elements.push(attachLayoutConstraintEvidence(
+      attachAuthoringAncestors(
+        attachAuthoringRef(element, authoringRef),
+        context.authoringAncestorRefs,
+      ),
+      constraintEvidence,
+    ));
   }
 }
 
@@ -482,6 +551,73 @@ function attachSourceSpan<T extends DirectElementInput>(
   sourceSpan: SourceSpan | undefined,
 ): T {
   return sourceSpan ? { ...element, _sourceSpan: sourceSpan } : element;
+}
+
+function attachAuthoringRef<T extends DirectElementInput>(
+  element: T,
+  authoringRef: SlidesAuthoringObjectRef | undefined,
+): T {
+  return authoringRef ? { ...element, _authoringRef: authoringRef } : element;
+}
+
+function attachAuthoringAncestors<T extends DirectElementInput>(
+  element: T,
+  authoringAncestorRefs: readonly SlidesAuthoringObjectRef[],
+): T {
+  return authoringAncestorRefs.length > 0
+    ? { ...element, _authoringAncestorRefs: authoringAncestorRefs }
+    : element;
+}
+
+function buildAuthoringRef(
+  slideKey: string | undefined,
+  editKey: string | undefined,
+  targetKind: SlidesAuthoringObjectRef['targetKind'],
+): SlidesAuthoringObjectRef | undefined {
+  return slideKey && editKey ? { slideKey, editKey, targetKind } : undefined;
+}
+
+function readLayoutEditKey(node: LayoutNode): string | undefined {
+  return 'editKey' in node && typeof node.editKey === 'string' ? node.editKey : undefined;
+}
+
+function validateSlideAuthoringIdentity(
+  slideNode: LayoutSlideNode,
+  slideNumber: number,
+): void {
+  if (slideNode.slideKey != null && !isSlidesAuthoringKey(slideNode.slideKey)) {
+    throw new FlexComposeContractError(
+      `第 ${slideNumber} 页 slideKey 必须匹配 ^[A-Za-z][A-Za-z0-9_-]{0,63}$。`,
+    );
+  }
+
+  const editKeys = new Set<string>();
+  visitLayoutNode(slideNode, (node) => {
+    const editKey = readLayoutEditKey(node);
+    if (editKey == null) return;
+    if (!slideNode.slideKey) {
+      throw new FlexComposeContractError(
+        `第 ${slideNumber} 页的 editKey \"${editKey}\" 需要所属 Slide 声明 slideKey。`,
+      );
+    }
+    if (!isSlidesAuthoringKey(editKey)) {
+      throw new FlexComposeContractError(
+        `第 ${slideNumber} 页 editKey 必须匹配 ^[A-Za-z][A-Za-z0-9_-]{0,63}$。`,
+      );
+    }
+    if (editKeys.has(editKey)) {
+      throw new FlexComposeContractError(
+        `第 ${slideNumber} 页 editKey \"${editKey}\" 在作者树内重复。`,
+      );
+    }
+    editKeys.add(editKey);
+  });
+}
+
+function visitLayoutNode(node: LayoutNode, visit: (node: LayoutNode) => void): void {
+  visit(node);
+  if (!isContainerNode(node)) return;
+  for (const child of node.children) visitLayoutNode(child, visit);
 }
 
 function attachLayoutConstraintEvidence<T extends DirectElementInput>(

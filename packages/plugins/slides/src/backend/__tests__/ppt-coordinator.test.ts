@@ -11,7 +11,6 @@ import type {
 import type { DeckSpec } from '@plugin/slides/shared';
 import type {
   DeckAssemblerPort,
-  PatchCompilerPort,
   PptxReaderPort,
 } from '../engine/types.js';
 import { createInProcessPresentationBuildExecution } from '../features/presentationBuildExecution';
@@ -48,7 +47,11 @@ function makeDocument(overrides: Partial<PresentationDocumentRecord> = {}): Pres
     ].join('\n'),
     sourceHash: 'source-hash-7',
     deckSpec,
-    pptxBuffer: Buffer.from('stored-pptx'),
+    pptxArtifact: {
+      state: 'ready',
+      revisionId: overrides.currentRevisionId ?? 'revision-7',
+      buffer: Buffer.from('stored-pptx'),
+    },
     title: deckSpec.title,
     slideCount: 1,
     layout: '16x9',
@@ -69,9 +72,6 @@ describe('PptCoordinator', () => {
     deckAssembler = {
       assemble: vi.fn(async () => Buffer.from('compiled-pptx')),
     };
-    const patchCompiler: PatchCompilerPort = {
-      compile: vi.fn(async () => Buffer.from('patched-pptx')),
-    };
     pptxReader = {
       parse: vi.fn(async () => ({
         slideCount: 1,
@@ -85,6 +85,37 @@ describe('PptCoordinator', () => {
       createPresentation: vi.fn(async () => ({ revisionId: 'revision-1', revision: 1 })),
       commitPresentation: vi.fn(async () => ({ revisionId: 'revision-8', revision: 8 })),
       getPresentation: vi.fn(async () => makeDocument()),
+      getPresentationIdentity: vi.fn(async () => ({
+        nodeId: 'node-1',
+        currentRevisionId: 'revision-7',
+        currentRevision: 7,
+        sourceHash: 'source-hash-7',
+      })),
+      getPresentationPreviewSource: vi.fn(async () => ({
+        nodeId: 'node-1',
+        currentRevisionId: 'revision-7',
+        currentRevision: 7,
+        deckSpec,
+        title: deckSpec.title,
+      })),
+      getPresentationRenderSource: vi.fn(async () => ({
+        nodeId: 'node-1',
+        currentRevisionId: 'revision-7',
+        currentRevision: 7,
+        deckSource: makeDocument().deckSource,
+        deckSpec,
+        title: deckSpec.title,
+      })),
+      getPresentationPptxArtifactSource: vi.fn(async () => ({
+        nodeId: 'node-1',
+        currentRevisionId: 'revision-7',
+        currentRevision: 7,
+        deckSource: makeDocument().deckSource,
+        deckSpec,
+        title: deckSpec.title,
+        artifact: { state: 'ready', revisionId: 'revision-7', buffer: Buffer.from('stored-pptx') },
+      })),
+      savePresentationPptxArtifact: vi.fn(async () => true),
       getRevisionSource: vi.fn(async () => null),
       listRevisions: vi.fn(async () => []),
       saveTemplate: vi.fn(async () => 'template-1'),
@@ -113,7 +144,6 @@ describe('PptCoordinator', () => {
 
     coordinator = new PptCoordinator(
       deckAssembler,
-      patchCompiler,
       pptxReader,
       templateManager,
       presentationRepo,
@@ -151,6 +181,7 @@ describe('PptCoordinator', () => {
       presentationId: 'node-1',
       versionId: 'revision-7',
       versionNumber: 7,
+      sourceHash: 'source-hash-7',
       draftStatus: {
         baseVersionId: 'revision-7',
         baseVersionNumber: 7,
@@ -192,6 +223,22 @@ describe('PptCoordinator', () => {
     expect(exported.buffer).toEqual(Buffer.from('stored-pptx'));
   });
 
+  it('uses narrow current projections for renderer document queries', async () => {
+    const buildState = await coordinator.getDocumentBuildState('node-1');
+    const sourceKind = await coordinator.getSourceKind('node-1');
+    const preview = await coordinator.getPreview('node-1');
+    const renderModel = await coordinator.getRenderModel('node-1');
+
+    expect(buildState).toMatchObject({ versionId: 'revision-7', versionNumber: 7 });
+    expect(sourceKind).toBe('generated');
+    expect(preview).toMatchObject({ nodeId: 'node-1', versionNumber: 7 });
+    expect(renderModel).toMatchObject({ presentationId: 'node-1', version: 7 });
+    expect(presentationRepo.getPresentationIdentity).toHaveBeenCalledTimes(2);
+    expect(presentationRepo.getPresentationPreviewSource).toHaveBeenCalledOnce();
+    expect(presentationRepo.getPresentationRenderSource).toHaveBeenCalledOnce();
+    expect(presentationRepo.getPresentation).not.toHaveBeenCalled();
+  });
+
   it('recovers missing source spans through the shared codegen builder', async () => {
     const specWithoutSourceSpan: DeckSpec = {
       ...deckSpec,
@@ -201,16 +248,23 @@ describe('PptCoordinator', () => {
           ? {
             ...slide.spec,
             elements: slide.spec.elements.map((element) => {
-              const { _sourceSpan, ...withoutSourceSpan } = element;
+              const withoutSourceSpan = { ...element };
+              delete withoutSourceSpan._sourceSpan;
               return withoutSourceSpan;
             }),
           }
           : slide.spec,
       })),
     };
-    vi.mocked(presentationRepo.getPresentation).mockResolvedValue(
-      makeDocument({ deckSpec: specWithoutSourceSpan }),
-    );
+    const renderSourceDocument = makeDocument({ deckSpec: specWithoutSourceSpan });
+    vi.mocked(presentationRepo.getPresentationRenderSource).mockResolvedValue({
+      nodeId: renderSourceDocument.nodeId,
+      currentRevisionId: renderSourceDocument.currentRevisionId,
+      currentRevision: renderSourceDocument.currentRevision,
+      deckSource: renderSourceDocument.deckSource,
+      deckSpec: renderSourceDocument.deckSpec,
+      title: renderSourceDocument.title,
+    });
     const recoveredDeckSpec = deckSpec;
     const codegenBuilder = {
       buildNewPresentation: vi.fn(async () => ({
@@ -230,12 +284,17 @@ describe('PptCoordinator', () => {
         diagnostics: [],
         parseWarnings: [],
       })),
+      buildFromProjectedDeckSpec: vi.fn(async input => ({
+        versionId: 'revision-8',
+        versionNumber: 8,
+        deckSpec: input.deckSpec,
+        pptxBuffer: Buffer.from('pptx'),
+      })),
       buildDeckSpecFromSource: vi.fn(async () => recoveredDeckSpec),
     };
     const codegenBuilderFactory = vi.fn(() => codegenBuilder);
     coordinator = new PptCoordinator(
       deckAssembler,
-      { compile: vi.fn(async () => Buffer.from('patched-pptx')) },
       pptxReader,
       {
         importFromPptx: vi.fn(async () => {
@@ -264,7 +323,7 @@ describe('PptCoordinator', () => {
   });
 
   it('reports missing current documents directly', async () => {
-    vi.mocked(presentationRepo.getPresentation).mockResolvedValue(null);
+    vi.mocked(presentationRepo.getPresentationPreviewSource).mockResolvedValue(null);
 
     await expect(coordinator.getPreview('missing-node')).rejects.toThrow(
       'Presentation not found: missing-node',

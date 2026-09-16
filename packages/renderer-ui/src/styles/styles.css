@@ -15,6 +15,7 @@
 @import '../features/text-entry/styles/CustomTextField.css';
 @import '../features/text-entry/styles/SecretInput.css';
 @import '../features/number-entry/styles/CustomNumberInput.css';
+@import '../features/number-entry/styles/CustomSlider.css';
 @import '../features/number-entry/styles/NumberSpinButtons.css';
 @import '../features/select-menu/styles/index.css';
 @import '../features/overlays/styles/index.css';

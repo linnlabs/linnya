@@ -1,11 +1,12 @@
 import { defineConfig } from 'tsup';
-import { cp, mkdir, copyFile, rm } from 'node:fs/promises';
+import { mkdir, copyFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'esbuild';
 import { createTsupBundleTrace } from '../../../scripts/build/bundle-trace/adapters/tsupBundleTracePlugin.mjs';
 import { copySlidesTypeScriptRuntime } from './scripts/build/copyTypeScriptRuntime.mjs';
+import { copySlidesYogaRuntime } from './scripts/build/copyYogaRuntime.mjs';
 import {
   buildSlidesMathFormulaRuntime,
   SLIDES_MATHJAX_RUNTIME_PACKAGE,
@@ -71,12 +72,8 @@ async function copyBackendResources(): Promise<void> {
     'src/backend/codegen/compose/flex-layout/yogaRuntimeLoader.cjs',
     'dist/backend/codegen/compose/flex-layout/yogaRuntimeLoader.cjs'
   );
-  const yogaTarget = 'dist/backend/node_modules/yoga-layout';
-  await rm(yogaTarget, { recursive: true, force: true });
-  await cp('../../../node_modules/yoga-layout', yogaTarget, {
-    recursive: true,
-    force: true,
-    dereference: true,
+  await copySlidesYogaRuntime({
+    targetDir: join(backendDir, 'node_modules/yoga-layout'),
   });
 }
 
@@ -111,6 +108,8 @@ export default defineConfig({
   clean: true,
   splitting: false,
   treeshake: true,
+  // 保留标识符和行结构供运行时诊断，只约简可证明等价的表达式。
+  minifySyntax: true,
   metafile: true,
   esbuildPlugins: [
     externalMathFormulaRuntimePlugin(),

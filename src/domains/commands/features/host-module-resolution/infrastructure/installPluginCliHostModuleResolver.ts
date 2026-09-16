@@ -19,6 +19,7 @@ type CommonJsResolveFilename = (
 const pluginCliHostModuleSpecifiers = new Set([
   '@node-rs/jieba',
   'better-sqlite3',
+  'fontkit',
   'harfbuzzjs',
   'pdfjs-dist',
   'sharp',

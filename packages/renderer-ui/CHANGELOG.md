@@ -2,6 +2,13 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 2.3.0 - 2026-09-15
+
+- 新增受控数值组件 `CustomSlider` 及公开 props/variant 类型，统一进度、原生键盘输入、禁用态与 default/compact 两档密度；
+- Editor AI 设置和 Slides 缩放迁移后保留各自密度、范围与保存行为，删除重复样式和手动 DOM 进度同步；Slides 自定义颜色使用共享紧凑滑块；
+- 新滑块统一提供 focus-visible 和 reduced-motion；原生字号/颜色业务合同不变；
+- runtime catalog 与真实 tarball consumer 同步加入新导出；新 Slides artifact 要求 Renderer UI `^2.3.0`，旧兼容插件继续使用 Host 的同一 runtime，无需仅因此重建。
+
 ## 2.2.0 - 2026-09-05
 
 - `TagChip`、`CustomCheckbox` 与 `CustomRadio` 新增明确节点的 `classNames` 合同，业务样式不再依赖组件私有 DOM selector；

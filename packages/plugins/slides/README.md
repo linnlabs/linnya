@@ -6,7 +6,7 @@ Slides 是 Linnya 的官方演示文稿 runtime 插件包，负责演示文稿�
 runner、字体/文本测量平台能力由 host 平台提供，Slides 通过窄门面消费这些能力。
 
 Renderer 基础 UI 直接依赖 `@linnya/renderer-ui`：`peerDependencies` 与
-`plugin.json.compat.rendererUi` 使用同一 range，开发依赖使用 `workspace:*`。Slides 不装载 package CSS；renderer
+`plugin.json.compat.rendererUi` 使用同一 range `^2.3.0`，开发依赖使用 `workspace:*`。缩放与自定义颜色复用公开 `CustomSlider` 的 compact 变体，数值换算、草稿和提交仍由各业务 owner 负责。Slides 不装载 package CSS；renderer
 artifact 把公开入口映射为 Host external，兼容的 package patch/minor 不要求重建 Slides。
 
 ## Slides 的实现原理
@@ -29,7 +29,9 @@ Linnya Slides 先把 PPT 抽象成一门专用的场景图 DSL，再用 JavaScri
 - Agent 结构检查与诊断投影：[backend/features/presentationInspection](./src/backend/features/presentationInspection/README.md)
 - CLI 机器报告与真实截图：[backend/features/presentationCli](./src/backend/features/presentationCli/README.md)
 - 版本历史、源码压缩与图片生命周期：[backend/features/presentationSourceHistory](./src/backend/features/presentationSourceHistory/README.md)
+- generated deck 人工编辑源码与原子提交：[backend/features/presentationManualEditing](./src/backend/features/presentationManualEditing/README.md)
 - 前端预览与栅格渲染：[renderer](./src/renderer/docs/README.md)
+- 前端有限人工编辑：[renderer/features/manualEditing](./src/renderer/features/manualEditing/README.md)
 - PPTX 编译、解析与质量检查：[backend/engine](./src/backend/engine/README.md)
 
 ## Agent 工作流
@@ -151,7 +153,11 @@ plugin 或已打包 App 副本。
   是唯一编辑事实。所有正式创建、编辑与恢复入口都必须先得到可编译源码，再通过同一 codegen
   commit 编排落库。
 - `presentation_documents` 每个文稿只保存当前
-  `deck_source + DeckSpec + PPTX`，PPTX 只保存一份；preview、inspect、screenshot 以及未向 Agent/CLI 暴露的内部 PPTX 读取都使用这行 current materialization。
+  `deck_source + DeckSpec + PPTX`，PPTX 只保存一份。读路径按用途选择窄投影：build state/source kind
+  只读 revision identity，generated preview 只读 `DeckSpec + title`，Renderer 画布只读
+  `deck_source + DeckSpec + title`；inspect、原生导出、截图及需要 package bytes 的内部能力才读取
+  PPTX。generated preview 与 RenderModel 都从同一 revision 的 DeckSpec 派生，不把刚保存的 PPTX
+  再 parse 一次。
 - `presentation_revisions` 只保存 source
   checkpoint/patch、hash 和审计 metadata。每 25 个 revision、累计 patch 达到完整源码大小或单 patch 不小于完整源码时写 checkpoint。
 - 恢复历史 revision 时先重建源码并校验 hash，再重新编译，并把恢复结果作为新的
@@ -264,4 +270,4 @@ host 不复制 presentation 字段。
 - **图表无法跨渲染器完全保真。** Linnya 前端使用 ECharts，PowerPoint 使用自己的图表渲染器，两者的字体、间距和标签布局无法保证完全一致。因此，[Slides 导出 UI 合同](./src/renderer/features/presentationExport/README.md)提供“将图表转换为图片”设置。该设置默认关闭：需要视觉一致时主动开启，需要继续编辑图表时保留默认的 PowerPoint 原生图表。
 - **Brush 视觉资产暂不支持透明底。** 当前 pinned p5.brush standalone 合成器会把最终画布写成不透明。首版只支持显式纯色背景的整区资产；需要透出下层内容时改用 Shape 或受控 SVG。后续若上游提供稳定 alpha 合同，可在不改写现有不透明 intent 的前提下扩展。
 - **PDF 导出暂不开放。** 已实现的栅格 PDF 不含可选择、搜索和复制的文字对象，因此不再挂载产品入口。真正的语义/矢量 PDF 仍需完成独立的可行性与 ROI 验证。
-- **前端暂不支持人工编辑。** 当前只能通过 Agent 修改文稿源码，不能直接在预览画布中拖动元素或编辑内容；前端人工编辑能力已经加入后续排期。
+- **前端人工编辑是有限能力。** 带稳定作者身份的新 generated deck 可移动或删除已有作者对象；Flex Frame 可按正式作者层级整体选择、移动和删除。作者值仍为字符串的文本支持原位完整替换、字号和颜色，多行及字体拆分的多个渲染 run 不改变这一能力；Frame／Shape 支持纯色，Shape／Image 支持有限视觉尺寸。富文本、内联公式文本、图片源、表格内容、图表数据、新建、复制、编组和 reparent 仍保持只读；旧文稿需先由 Agent 补齐 `slideKey/editKey` 才能出现编辑入口。

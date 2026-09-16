@@ -7,12 +7,20 @@ import type {
 import type { Paint } from '../visual/paint';
 import { isPresetShapeName } from '../shapeGeometry';
 import { isGeneratedLayoutConstraintEvidence } from '../generatedLayoutConstraints';
+import {
+  isSlidesAuthoringAncestorRefs,
+  isSlidesAuthoringEditProjection,
+  isSlidesAuthoringObjectRef,
+} from '../authoringEditing';
 
 const NODE_BASE_KEYS = [
   'id',
   'kind',
   'box',
   'editableTarget',
+  'authoringRef',
+  'authoringAncestorRefs',
+  'authoringEdit',
   'rotation',
   'opacity',
   'visible',
@@ -170,6 +178,15 @@ function hasRenderNodeBase(value: unknown): value is Record<string, unknown> {
     && isRenderBox(value.box)
     && isFiniteNumber(value.zIndex)
     && isOptional(value.editableTarget, isEditableTarget)
+    && isOptional(value.authoringRef, isSlidesAuthoringObjectRef)
+    && isOptional(value.authoringAncestorRefs, refs => (
+      isSlidesAuthoringAncestorRefs(
+        refs,
+        isSlidesAuthoringObjectRef(value.authoringRef) ? value.authoringRef : undefined,
+      )
+    ))
+    && isOptional(value.authoringEdit, isSlidesAuthoringEditProjection)
+    && isAuthoringEditBinding(value.authoringRef, value.authoringEdit)
     && isOptional(value.rotation, isFiniteNumber)
     && isOptional(value.opacity, isFiniteNumber)
     && isOptional(value.visible, isBoolean)
@@ -178,6 +195,50 @@ function hasRenderNodeBase(value: unknown): value is Record<string, unknown> {
     && isOptional(value.sourceSpan, isSourceSpan)
     && isOptional(value.layoutConstraintEvidence, isGeneratedLayoutConstraintEvidence)
     && isOptional(value.diagnosticsRefIds, value => isArrayOf(value, isString));
+}
+
+function isAuthoringEditBinding(authoringRef: unknown, authoringEdit: unknown): boolean {
+  if (authoringEdit === undefined) return true;
+  if (
+    !isSlidesAuthoringObjectRef(authoringRef)
+    || !isSlidesAuthoringEditProjection(authoringEdit)
+  ) {
+    return false;
+  }
+  const capabilities = new Set(authoringEdit.capabilities);
+  switch (authoringRef.targetKind) {
+    case 'text':
+      return authoringEdit.text !== undefined
+        && authoringEdit.fill === undefined
+        && !capabilities.has('set_fill_color')
+        && !capabilities.has('set_visual_size')
+        && !capabilities.has('delete');
+    case 'frame':
+      return authoringEdit.text === undefined
+        && authoringEdit.fill !== undefined
+        && capabilities.has('set_fill_color')
+        && capabilities.has('delete')
+        && !capabilities.has('set_visual_size');
+    case 'shape':
+      return authoringEdit.text === undefined
+        && authoringEdit.fill !== undefined
+        && capabilities.has('set_fill_color')
+        && capabilities.has('set_visual_size')
+        && !capabilities.has('delete');
+    case 'image':
+      return authoringEdit.text === undefined
+        && authoringEdit.fill === undefined
+        && capabilities.has('set_visual_size')
+        && !capabilities.has('set_fill_color')
+        && !capabilities.has('delete');
+    case 'table':
+    case 'chart':
+    case 'svgGraphic':
+    case 'formula':
+      return authoringEdit.text === undefined
+        && authoringEdit.fill === undefined
+        && authoringEdit.capabilities.length === 1;
+  }
 }
 
 function hasNodeKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {

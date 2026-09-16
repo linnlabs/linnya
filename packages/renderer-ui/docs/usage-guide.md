@@ -39,6 +39,7 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 | 自定义下拉容器 | `@linnya/renderer-ui` 的 `BaseDropdown` | 需要统一点击外部关闭行为、但内容不是标准选项列表时使用；标准浮层外观使用 `DROPDOWN_SURFACE_CLASSES`。 |
 | 文本浮层 | `@linnya/renderer-ui` 的 `TextPopover` | click/hover 触发的轻量文本或可信 HTML 内容；用户输入必须走插槽按普通文本渲染。 |
 | 数字输入 | `@linnya/renderer-ui` 的 `CustomNumberInput` | 带步进按钮的数字输入；业务需要调整原生 input 时传入自己的 `inputClass`。 |
+| 有界数值滑块 | `@linnya/renderer-ui` 的 `CustomSlider` | 受控 number；默认/紧凑密度，原生键盘和拖动；业务只提供范围、标签和值。 |
 | 复选/单选 | `@linnya/renderer-ui` 的 `CustomCheckbox`、`CustomRadio` | 表单布尔、多选、单选控件；内部节点定制使用公开 `classNames`。 |
 | 开关 | `@linnya/renderer-ui` 的 `Switch` | 二元状态开关，业务层负责是否允许切换。 |
 | 分段标签页 | `@linnya/renderer-ui` 的 `SegmentedTabs` | 轻量模式切换、筛选 tab。 |
@@ -105,6 +106,16 @@ domain/feature 命名空间；`.tt-tag-chip*`、`.checkbox-*` 与 `.radio-*` 都
 ## 输入框
 
 输入控件的焦点反馈统一只改变边框颜色，不新增外扩 `box-shadow`。如果输入区本身属于悬浮表面，可以保留各状态一致的基础阴影，但焦点态不能再改变阴影。
+
+### `CustomSlider`
+
+用于设置等级、缩放比例和颜色通道等有界数值。公开类型为 `CustomSliderProps`、`CustomSliderVariant`；从包根导入，不存在独立 slider subpath。唯一必填值 `modelValue` 是 number；min/max/step 默认为 0/100/1，调用方提供有限数值、max > min、step > 0。控件保留原生 range 的值钳制和步进，业务校验仍属于消费者。
+
+使用 v-model 或 `model-value` + `update:model-value` 接收连续数值；每个原生 input 事件只通知一次。程序更新 props 不会产生编辑事件，blur、卸载也不会额外提交。需要“应用/取消”的场景先绑定业务草稿，随后由业务按钮提交。
+
+`variant="default"` 用于设置表单，`variant="compact"` 用于画布工具条或紧凑面板。通过外层 label、aria-label 或 aria-labelledby 提供可访问名称；原生 Arrow/Home/End 步进与禁用语义保留。标准焦点框由组件提供，reduced-motion 关闭滑钮过渡。class/style/id/aria/data 直接透传唯一 input，业务 class 只设置布局宽度或 flex，不复制 track/thumb CSS、不写私有进度变量，也不自行 watch/nextTick 更新 DOM。
+
+当前只覆盖横向单值滑块；精确数字输入使用 `CustomNumberInput`。颜色 HEX/HSV 换算、缩放 fit/manual 模式、设置持久化均留在原业务 owner。
 
 ### `SecretInput`
 

@@ -3,6 +3,8 @@ import {
   type ExportedPresentationFile,
   type PptxReaderPort,
   type SlidesEngineRenderModelOptions,
+  type SlidesEngineRenderModelSnapshot,
+  type SlidesEnginePreviewSnapshot,
   type SlidesEngineVersionSnapshot,
   type ImageSourceResolverPort,
   type SvgGraphicAssetResolverPort,
@@ -16,6 +18,7 @@ import type {
 import { resolveSlideSizeInches } from '@plugin/slides/shared';
 import { CanonicalBuilder } from '../parser/CanonicalBuilder';
 import { PreviewMapper } from '../parser/PreviewMapper';
+import { GeneratedPreviewMapper } from '../parser/GeneratedPreviewMapper.js';
 import { RenderModelMapper } from '../parser/RenderModelMapper';
 import {
   applyTextLayoutToRenderModel,
@@ -26,6 +29,7 @@ import { GeneratedPresentationRenderModelBuilder } from './GeneratedPresentation
 export class PptPresentationQueryService {
   private readonly canonicalBuilder = new CanonicalBuilder();
   private readonly previewMapper = new PreviewMapper();
+  private readonly generatedPreviewMapper = new GeneratedPreviewMapper();
   private readonly renderModelMapper = new RenderModelMapper();
   private readonly generatedRenderModelBuilder: GeneratedPresentationRenderModelBuilder;
 
@@ -59,8 +63,17 @@ export class PptPresentationQueryService {
 
   async getPreview(
     nodeId: string,
-    version: SlidesEngineVersionSnapshot,
+    version: SlidesEnginePreviewSnapshot,
   ): Promise<DeckPreview> {
+    if (version.sourceKind === 'generated') {
+      return this.generatedPreviewMapper.toPreview({
+        nodeId,
+        versionNumber: version.versionNumber,
+        title: version.title,
+        deckSpec: version.deckSpec,
+      });
+    }
+
     const buffer = await this.resolvePresentationBuffer(version);
 
     try {
@@ -90,7 +103,7 @@ export class PptPresentationQueryService {
 
   async getRenderModel(
     nodeId: string,
-    version: SlidesEngineVersionSnapshot,
+    version: SlidesEngineRenderModelSnapshot,
     assembleOptions?: DeckAssembleOptions,
     options: SlidesEngineRenderModelOptions = {},
   ): Promise<PresentationRenderModel> {
@@ -122,7 +135,7 @@ export class PptPresentationQueryService {
   }
 
   private resolvePresentationBuffer(
-    version: SlidesEngineVersionSnapshot,
+    version: { readonly pptxBuffer: Buffer },
   ): Buffer {
     return version.pptxBuffer;
   }

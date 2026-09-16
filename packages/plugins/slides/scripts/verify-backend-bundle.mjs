@@ -7,20 +7,36 @@ import path from 'node:path';
 
 import {
   collectTypeScriptStandardLibClosure,
+  SLIDES_TYPESCRIPT_COMPILER_TRANSFORM,
   SLIDES_TYPESCRIPT_STANDARD_LIB_ROOTS,
 } from './build/copyTypeScriptRuntime.mjs';
+import {
+  collectYogaRuntimeModuleClosure,
+  SLIDES_YOGA_RUNTIME_ROOT,
+} from './build/copyYogaRuntime.mjs';
 
-const MAX_BACKEND_ENTRY_BYTES = 4 * 1024 * 1024;
+// App Server 入口只负责编排、查询与持久化；PPTX 生成依赖属于 build Worker。
+// 2.1 MiB 为当前 1.83 MiB 入口保留约 15% 漂移空间，同时阻止整套物化栈回流。
+const MAX_BACKEND_ENTRY_BYTES = 2.1 * 1024 * 1024;
 // TypeScript/Yoga、PptxGenJS/JSZip 与原生公式装配均归同一 build Worker；1.6 MiB
 // 只保留小幅依赖漂移空间，防止 parser、Host SDK 或完整 backend 被意外卷入。
 const MAX_PRESENTATION_BUILD_WORKER_BYTES = 1.6 * 1024 * 1024;
-// TypeScript compiler约 9.7 MiB；MathJax/STIX2 作为 backend、build Worker 与 CLI
-// 共用的单一自包含 runtime 约 1.8 MiB。16 MiB 是当前两类明确运行时加入口制品后的总门禁，
+// TypeScript compiler artifact约 6.3 MiB；MathJax/STIX2 作为 backend、build Worker 与 CLI
+// 共用的单一自包含 runtime 约 1.8 MiB。13.5 MiB 为当前完整制品保留约 10% 漂移空间，
 // 不能通过再次内联 MathJax、复制 runtime 或顺带打入新依赖来消耗。
-const MAX_BACKEND_DIRECTORY_BYTES = 16 * 1024 * 1024;
+const MAX_BACKEND_DIRECTORY_BYTES = 13.5 * 1024 * 1024;
+const MAX_TYPESCRIPT_COMPILER_RUNTIME_BYTES = 6.5 * 1024 * 1024;
 const TYPESCRIPT_INPUT_PATTERN =
   /node_modules\/(?:\.pnpm\/typescript@[^/]+\/node_modules\/)?typescript\//u;
+const PRESENTATION_BUILD_WORKER_ONLY_INPUT_PATTERNS = Object.freeze([
+  /node_modules\/(?:\.pnpm\/pptxgenjs@[^/]+\/node_modules\/)?pptxgenjs\//u,
+  /node_modules\/(?:\.pnpm\/pptx-automizer@[^/]+\/node_modules\/)?pptx-automizer\//u,
+  /packages\/plugins\/slides\/src\/backend\/engine\/(?:DeckAssembler|FreeformCompiler|StructuredCompiler)\.ts$/u,
+  /packages\/plugins\/slides\/src\/backend\/engine\/patch\/PatchCompiler\.ts$/u,
+  /packages\/plugins\/slides\/src\/backend\/features\/presentationBuildExecution\/functions\/materializePresentationPptx\.ts$/u,
+]);
 const TYPESCRIPT_RUNTIME_RELATIVE_DIR = 'node_modules/typescript';
+const YOGA_RUNTIME_RELATIVE_DIR = 'node_modules/yoga-layout';
 
 /** Backend 门禁同时约束启动入口依赖图和完整自包含 runtime，而不是只看 zip。 */
 export async function verifySlidesBackendBundle({ backendDir, bundlePath, metafilePath }) {
@@ -48,9 +64,20 @@ export async function verifySlidesBackendBundle({ backendDir, bundlePath, metafi
   if (inputPaths.some(inputPath => TYPESCRIPT_INPUT_PATTERN.test(inputPath))) {
     throw new Error('Slides backend entry eagerly bundles the TypeScript compiler.');
   }
+  const misplacedBuildInputs = inputPaths.filter(inputPath =>
+    PRESENTATION_BUILD_WORKER_ONLY_INPUT_PATTERNS.some(pattern => pattern.test(inputPath))
+  );
+  if (misplacedBuildInputs.length > 0) {
+    throw new Error(
+      `Slides backend entry bundles presentation build Worker inputs: ${misplacedBuildInputs.join(', ')}`
+    );
+  }
 
   const runtimeDir = path.join(backendDir, TYPESCRIPT_RUNTIME_RELATIVE_DIR);
   const runtimeSummary = await verifyPackagedTypeScriptRuntime(runtimeDir);
+  const yogaSummary = await verifyPackagedYogaRuntime(
+    path.join(backendDir, YOGA_RUNTIME_RELATIVE_DIR)
+  );
   verifyNoVmIncompatibleNodeImports(bundleSource);
   verifyPptxGenVmRuntime();
   verifyLazyBackendRuntime(bundlePath);
@@ -68,7 +95,8 @@ export async function verifySlidesBackendBundle({ backendDir, bundlePath, metafi
   process.stdout.write(
     `[slides-backend] bundle guard passed: entry=${formatMiB(bundleStats.size)} / ${formatMiB(MAX_BACKEND_ENTRY_BYTES)}, ` +
       `backend=${formatMiB(backendBytes)} / ${formatMiB(MAX_BACKEND_DIRECTORY_BYTES)}, ` +
-      `typescript=${runtimeSummary.packageVersion}, libs=${runtimeSummary.standardLibFiles.length}\n`
+      `typescript=${runtimeSummary.packageVersion}/${formatMiB(runtimeSummary.compilerBytes)}, libs=${runtimeSummary.standardLibFiles.length}, ` +
+      `yoga=${yogaSummary.packageVersion}, modules=${yogaSummary.moduleFiles.length}\n`
   );
 }
 
@@ -142,8 +170,9 @@ async function verifyPackagedTypeScriptRuntime(runtimeDir) {
     await readFile(path.join(runtimeDir, 'runtime-manifest.json'), 'utf8')
   );
   if (
-    manifest.schemaVersion !== 1 ||
+    manifest.schemaVersion !== 2 ||
     typeof manifest.packageVersion !== 'string' ||
+    !sameJson(manifest.compilerTransform, SLIDES_TYPESCRIPT_COMPILER_TRANSFORM) ||
     !Array.isArray(manifest.standardLibRoots) ||
     !Array.isArray(manifest.standardLibFiles)
   ) {
@@ -171,6 +200,12 @@ async function verifyPackagedTypeScriptRuntime(runtimeDir) {
   }
 
   const packageRequire = createRequire(path.resolve(runtimeDir, 'package.json'));
+  const compilerStats = await stat(path.join(libDir, 'typescript.js'));
+  if (compilerStats.size > MAX_TYPESCRIPT_COMPILER_RUNTIME_BYTES) {
+    throw new Error(
+      `Slides packaged TypeScript compiler is ${formatMiB(compilerStats.size)}, exceeding the ${formatMiB(MAX_TYPESCRIPT_COMPILER_RUNTIME_BYTES)} budget.`
+    );
+  }
   const typescript = packageRequire('./lib/typescript.js');
   assertTypeScriptCompilerApi(typescript);
   verifyCompilerProgram(typescript, expectedLibFiles, true);
@@ -179,7 +214,47 @@ async function verifyPackagedTypeScriptRuntime(runtimeDir) {
   return {
     packageVersion: manifest.packageVersion,
     standardLibFiles: expectedLibFiles,
+    compilerBytes: compilerStats.size,
   };
+}
+
+async function verifyPackagedYogaRuntime(runtimeDir) {
+  const [manifest, packageJson] = await Promise.all([
+    readFile(path.join(runtimeDir, 'runtime-manifest.json'), 'utf8').then(JSON.parse),
+    readFile(path.join(runtimeDir, 'package.json'), 'utf8').then(JSON.parse),
+  ]);
+  if (
+    manifest.schemaVersion !== 1
+    || typeof manifest.packageVersion !== 'string'
+    || manifest.root !== SLIDES_YOGA_RUNTIME_ROOT
+    || !Array.isArray(manifest.moduleFiles)
+  ) {
+    throw new Error('Slides packaged Yoga runtime manifest is invalid.');
+  }
+  if (
+    packageJson.name !== 'yoga-layout'
+    || packageJson.version !== manifest.packageVersion
+    || packageJson.type !== 'module'
+    || packageJson.exports?.['./load'] !== `./${SLIDES_YOGA_RUNTIME_ROOT}`
+  ) {
+    throw new Error('Slides packaged Yoga runtime package contract is invalid.');
+  }
+
+  const expectedModuleFiles = await collectYogaRuntimeModuleClosure({
+    packageDir: runtimeDir,
+    root: SLIDES_YOGA_RUNTIME_ROOT,
+  });
+  const actualModuleFiles = (await listRelativeFiles(runtimeDir))
+    .filter(fileName => fileName !== 'package.json' && fileName !== 'runtime-manifest.json');
+  if (
+    !sameStrings(expectedModuleFiles, actualModuleFiles)
+    || !sameStrings(expectedModuleFiles, manifest.moduleFiles)
+  ) {
+    throw new Error(
+      `Slides packaged Yoga runtime is not the exact ESM module closure: expected=${expectedModuleFiles.length}, actual=${actualModuleFiles.length}.`
+    );
+  }
+  return { packageVersion: manifest.packageVersion, moduleFiles: expectedModuleFiles };
 }
 
 function verifyCompilerProgram(typescript, expectedLibFiles, legal) {
@@ -280,8 +355,29 @@ async function measureDirectoryBytes(directory, excludedPaths) {
   return total;
 }
 
+async function listRelativeFiles(directory, relativeDirectory = '') {
+  const files = [];
+  const currentDirectory = path.join(directory, relativeDirectory);
+  for (const entry of await readdir(currentDirectory, { withFileTypes: true })) {
+    const relativePath = path.posix.join(
+      relativeDirectory.replaceAll('\\', '/'),
+      entry.name
+    );
+    if (entry.isDirectory()) {
+      files.push(...await listRelativeFiles(directory, relativePath));
+    } else if (entry.isFile()) {
+      files.push(relativePath);
+    }
+  }
+  return files.sort((left, right) => left.localeCompare(right));
+}
+
 function sameStrings(left, right) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function normalizePath(value) {

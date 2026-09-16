@@ -13,6 +13,8 @@ import type {
 import type { ThemeChartPalette } from '@plugin/slides/shared';
 import type {
   EditableTarget,
+  SlidesAuthoringEditProjection,
+  SlidesAuthoringObjectRef,
   GeneratedLayoutConstraintEvidence,
   GroupRenderNode,
   RenderAssetRef,
@@ -52,6 +54,9 @@ export interface RenderBaseNode {
   box: RenderBox;
   zIndex: number;
   editableTarget?: EditableTarget;
+  authoringRef?: SlidesAuthoringObjectRef;
+  authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
+  authoringEdit?: SlidesAuthoringEditProjection;
   sourceSpan?: RenderSourceSpan;
   layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence;
   rotation?: number;
@@ -255,12 +260,18 @@ export function makeBaseNode(
   editableTarget?: EditableTarget,
   sourceSpan?: RenderSourceSpan,
   layoutConstraintEvidence?: GeneratedLayoutConstraintEvidence,
+  authoringRef?: SlidesAuthoringObjectRef,
+  authoringEdit?: SlidesAuthoringEditProjection,
+  authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[],
 ): RenderBaseNode {
   return {
     id,
     box,
     zIndex,
     editableTarget,
+    authoringRef,
+    authoringAncestorRefs,
+    authoringEdit,
     sourceSpan,
     layoutConstraintEvidence,
     rotation: undefined,

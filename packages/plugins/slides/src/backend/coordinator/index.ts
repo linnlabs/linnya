@@ -9,7 +9,11 @@ export {
 export type {
   GeneratePresentationOptions,
   GeneratePresentationResult,
+  PresentationDocumentIdentity,
+  PresentationDocumentQueryPort,
   PresentationDocumentRecord,
+  PresentationPreviewSourceRecord,
+  PresentationRenderSourceRecord,
   PresentationRepositoryPort,
   TemplateManagerPort,
   WorkspacePresentationPort,

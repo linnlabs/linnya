@@ -45,11 +45,13 @@ export {
   SecretInput,
 } from './features/text-entry';
 export type { TextareaAutoResizeOptions } from './features/text-entry';
-export { CustomNumberInput } from './features/number-entry';
+export { CustomNumberInput, CustomSlider } from './features/number-entry';
 export type {
   CustomNumberInputAlignment,
   CustomNumberInputProps,
   CustomNumberInputVariant,
+  CustomSliderProps,
+  CustomSliderVariant,
   NumberInputConstraint,
   NumberInputValue,
 } from './features/number-entry';

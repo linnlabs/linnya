@@ -43,7 +43,8 @@ vi.mock('../../features/konvaPreview', () => ({
   isKonvaNodeSupported: () => true,
 }));
 
-vi.mock('../../features/sourceSelection', () => ({
+vi.mock('../../features/sourceSelection', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../features/sourceSelection')>()),
   resolveSourceSelectionAvailability: () => ({
     canEnableMode: false,
     label: '',
@@ -52,6 +53,7 @@ vi.mock('../../features/sourceSelection', () => ({
 
 vi.mock('@linnya/renderer-ui/icons', () => ({
   AddIcon: { template: '<span />' },
+  EditIcon: { template: '<span />' },
   HomeIcon: { template: '<span />' },
   MinusIcon: { template: '<span />' },
   SelectObjectIcon: { template: '<span />' },
@@ -60,6 +62,8 @@ vi.mock('@linnya/renderer-ui/icons', () => ({
 import DeckViewer from './DeckViewer.vue';
 import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import { useSlidesStore } from '../../store/slidesStore';
+import { useSlidesManualEditingStore } from '../../features/manualEditing';
+import { useSlidesUiStore } from '../../store/slidesUiStore';
 
 describe('DeckViewer document transition', () => {
   beforeEach(() => {
@@ -101,6 +105,17 @@ describe('DeckViewer document transition', () => {
     expect(host.querySelector('.slides-status-state-stub')).not.toBeNull();
     expect(host.querySelector('.deck-outline-stub')).not.toBeNull();
 
+    const zoom = host.querySelector<HTMLInputElement>('input[type="range"]');
+    if (!zoom) throw new Error('Zoom slider missing');
+    zoom.value = '150';
+    zoom.dispatchEvent(new Event('input', { bubbles: true }));
+    await nextTick();
+    expect(useSlidesUiStore().zoomLevel).toBe(1.5);
+    expect(useSlidesUiStore().zoomMode).toBe('manual');
+    useSlidesUiStore().setZoom(2, 'manual');
+    await nextTick();
+    expect(zoom.valueAsNumber).toBe(200);
+
     slidesStore.deckPreview = null;
     slidesStore.deckLoading = true;
     renderStore.clearRenderModel();
@@ -110,6 +125,72 @@ describe('DeckViewer document transition', () => {
     expect(host.querySelector('.deck-outline-stub')).toBeNull();
     expect(host.querySelector('.stage-loading-spacer')).not.toBeNull();
     expect(host.querySelector('.outline-loading-spacer')).not.toBeNull();
+
+    app.unmount();
+  });
+
+  it('只在 ready revision 与作者对象就绪时开启有限编辑模式', async () => {
+    const slidesStore = useSlidesStore();
+    const renderStore = useSlidesRenderStore();
+    const manualStore = useSlidesManualEditingStore();
+    slidesStore.currentDeckId = 'deck-1';
+    slidesStore.documentBuildState = {
+      state: 'ready',
+      presentationId: 'deck-1',
+      versionId: 'revision-2',
+      versionNumber: 2,
+      sourceHash: 'a'.repeat(64),
+    };
+    slidesStore.deckPreview = {
+      nodeId: 'deck-1', versionNumber: 2, title: 'Deck',
+      slideSize: { width: 10, height: 5.625 },
+      slides: [{ slideId: 'slide-1', number: 1, elements: [] }],
+      theme: { colors: {}, fonts: { major: 'Arial', minor: 'Arial' } },
+      warnings: [],
+    };
+    renderStore.renderModel = {
+      presentationId: 'deck-1', title: 'Deck', version: 2, sourceKind: 'generated',
+      slideSize: { width: 10, height: 5.625, unit: 'in' },
+      slides: [{
+        slideId: 'slide-1', index: 0, layoutKey: 'freeform',
+        background: { paint: { type: 'none' } },
+        elements: [{
+          id: 'authoring-overview-card', kind: 'shape', zIndex: 1,
+          box: { x: 1, y: 1, w: 2, h: 1, unit: 'in' },
+          geometry: { type: 'preset', name: 'rect' },
+          sourceSpan: { startLine: 3, endLine: 3 },
+          authoringRef: { slideKey: 'overview', editKey: 'card', targetKind: 'shape' },
+          authoringEdit: { capabilities: ['translate'] },
+        }],
+      }],
+      capabilities: {
+        hasSemanticRender: true, hasReferencePreview: false,
+        hasHitTest: true, hasSelection: true,
+      },
+    };
+
+    const host = document.createElement('div');
+    document.body.append(host);
+    const app = createApp(DeckViewer);
+    app.mount(host);
+    await nextTick();
+
+    const button = host.querySelector<HTMLButtonElement>('.stage-zoom-slider__edit-btn');
+    expect(button?.disabled).toBe(false);
+    button?.click();
+    await nextTick();
+    expect(manualStore.enabled).toBe(true);
+    expect(button?.getAttribute('aria-pressed')).toBe('true');
+
+    slidesStore.documentBuildState = {
+      ...slidesStore.documentBuildState,
+      state: 'ready',
+      versionId: 'revision-3',
+      versionNumber: 3,
+    };
+    await nextTick();
+    expect(manualStore.enabled).toBe(true);
+    expect(button?.disabled).toBe(true);
 
     app.unmount();
   });

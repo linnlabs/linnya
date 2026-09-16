@@ -125,6 +125,44 @@ compose({ title: "text tracking", slides: [slide] });
     expect(r.records).toEqual([]);
   });
 
+  it('accepts explicit stable authoring keys on slides, frames and elements', () => {
+    const r = typecheckCodegenSource(`
+const slide = createSlide({ slideKey: "overview" });
+const frame = createFrame({ editKey: "hero_group" });
+frame.add(createText({ editKey: "headline", content: "Q4 review" }));
+frame.add(createImage({ editKey: "hero_image", src: "https://example.com/hero.png" }));
+slide.add(frame);
+compose({ title: "editable", slides: [slide] });
+`);
+    expect(r.records).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
+  it('accepts the versioned manual edit value block', () => {
+    const r = typecheckCodegenSource(`
+const slide = createSlide({ slideKey: "overview" });
+slide.add(createText({ editKey: "headline", content: "Original" }));
+slide.add(createChart({ editKey: "revenue_chart", preset: "clean-column", categories: ["Q1"], series: [{ name: "Revenue", values: [10] }] }));
+compose({
+  title: "editable",
+  slides: [slide],
+  manualEdits: {
+    version: 2,
+    slides: [{
+      slideKey: "overview",
+      targets: [
+        { kind: "text", editKey: "headline", content: "Updated" },
+        { kind: "chart", editKey: "revenue_chart", translation: { dx: 0.2, dy: 0 } },
+        { kind: "shape", editKey: "obsolete_badge", deleted: true },
+      ],
+    }],
+  },
+});
+`);
+    expect(r.records).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
   it('accepts the complete advanced authoring contract with exact nested types', () => {
     const r = typecheckCodegenSource(`
 const slide = createSlide({

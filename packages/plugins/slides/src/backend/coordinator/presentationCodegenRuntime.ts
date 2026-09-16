@@ -1,22 +1,26 @@
 import type {
   DeckSpec,
+  SlidesManualEditCommand,
+  SlidesManualEditCommandResult,
   SlidesSourceSliceTargetInput,
   SlidesSourceSlicesOutput,
 } from '@plugin/slides/shared';
 import type { SlidesEngineExecutionAdapter } from '@plugin/slides/backend-engine-core';
 import { executeSandboxProfile } from '@plugin/backend/sandboxRuntime';
-import {
-  CodegenDeckBuilder,
-  type CodegenDeckBuilderFailureLogger,
-  type CodegenDeckBuildInput,
-  type CodegenDeckBuildResult,
-  type CodegenDeckCreateInput,
-  type CodegenDeckCreateResult,
-  CodegenPresentationService,
-  createBlankPresentationSource,
-  DeckReadStateRegistry,
-  InitialPresentationDraftCreator,
-} from '../codegen';
+import { CodegenDeckBuilder } from '../codegen/CodegenDeckBuilder';
+import { CodegenPresentationService } from '../codegen/CodegenPresentationService';
+import { createBlankPresentationSource } from '../codegen/createBlankPresentationSource';
+import { DeckReadStateRegistry } from '../codegen/DeckReadStateRegistry';
+import { InitialPresentationDraftCreator } from '../codegen/InitialPresentationDraftCreator';
+import type {
+  CodegenDeckBuilderFailureLogger,
+  CodegenDeckBuildInput,
+  CodegenDeckBuildResult,
+  CodegenDeckCreateInput,
+  CodegenDeckCreateResult,
+  CodegenManualEditCommitResult,
+  CodegenProjectedDeckBuildInput,
+} from '../codegen/definitions/codegenDeckBuilder';
 import type { PresentationRevisionScope } from '../features/presentationSourceHistory';
 import type {
   GeneratePresentationOptions,
@@ -27,10 +31,20 @@ import type {
 } from './types.js';
 import type { PresentationSvgGraphicOwnerPort } from '../features/presentationSvgGraphicOwnership';
 import type { PresentationBuildExecutionPort } from '../features/presentationBuildExecution';
+import {
+  PresentationManualEditingRuntime,
+  type PresentationManualEditTracePort,
+} from '../features/presentationManualEditing';
 
 export interface CodegenDeckBuilderPort {
   buildNewPresentation(input: CodegenDeckCreateInput): Promise<CodegenDeckCreateResult>;
   buildFromSource(input: CodegenDeckBuildInput): Promise<CodegenDeckBuildResult>;
+  commitManualEditFromSource(
+    input: CodegenDeckBuildInput,
+  ): Promise<CodegenManualEditCommitResult>;
+  commitManualEditFromProjectedDeckSpec(
+    input: CodegenProjectedDeckBuildInput,
+  ): Promise<CodegenManualEditCommitResult>;
   buildDeckSpecFromSource(input: CodegenDeckBuildInput): Promise<DeckSpec>;
 }
 
@@ -46,6 +60,7 @@ export interface PresentationCodegenRuntimeDeps {
   readonly failureLogger?: CodegenDeckBuilderFailureLogger;
   readonly svgGraphicOwner?: PresentationSvgGraphicOwnerPort;
   readonly buildExecution: PresentationBuildExecutionPort;
+  readonly manualEditTrace?: PresentationManualEditTracePort;
 }
 
 /**
@@ -59,6 +74,8 @@ export class PresentationCodegenRuntime {
   private readonly deckReadStateRegistry = new DeckReadStateRegistry();
   private codegenPresentationService?: CodegenPresentationService;
   private codegenDeckBuilder?: CodegenDeckBuilderPort;
+  private rawCodegenDeckBuilder?: CodegenDeckBuilderPort;
+  private manualEditingRuntime?: PresentationManualEditingRuntime;
 
   constructor(private readonly deps: PresentationCodegenRuntimeDeps) {}
 
@@ -80,15 +97,38 @@ export class PresentationCodegenRuntime {
 
   getDeckBuilder(): CodegenDeckBuilderPort {
     if (!this.codegenDeckBuilder) {
-      const builder = this.deps.codegenDeckBuilderFactory?.() ?? this.createCodegenDeckBuilder();
+      const builder = this.getRawDeckBuilder();
       const scope = this.deps.revisionScope;
       this.codegenDeckBuilder = scope ? {
         buildNewPresentation: input => scope.run(`create:${crypto.randomUUID()}`, () => builder.buildNewPresentation(input)),
         buildFromSource: input => scope.run(input.nodeId, () => builder.buildFromSource(input)),
+        commitManualEditFromSource: input => scope.run(
+          input.nodeId,
+          () => builder.commitManualEditFromSource(input),
+        ),
+        commitManualEditFromProjectedDeckSpec: input => scope.run(
+          input.nodeId,
+          () => builder.commitManualEditFromProjectedDeckSpec(input),
+        ),
         buildDeckSpecFromSource: input => scope.run(input.nodeId, () => builder.buildDeckSpecFromSource(input)),
       } : builder;
     }
     return this.codegenDeckBuilder;
+  }
+
+  async submitManualEdit(
+    command: SlidesManualEditCommand,
+  ): Promise<SlidesManualEditCommandResult> {
+    if (!this.manualEditingRuntime) {
+      this.manualEditingRuntime = new PresentationManualEditingRuntime({
+        presentationRepo: this.deps.presentationRepo,
+        ...(this.deps.draftRepo ? { draftRepo: this.deps.draftRepo } : {}),
+        builder: this.getRawDeckBuilder(),
+        ...(this.deps.manualEditTrace ? { trace: this.deps.manualEditTrace } : {}),
+        ...(this.deps.revisionScope ? { revisionScope: this.deps.revisionScope } : {}),
+      });
+    }
+    return this.manualEditingRuntime.submit(command);
   }
 
   async readSourceSlicesForAiEdit(input: {
@@ -133,6 +173,14 @@ export class PresentationCodegenRuntime {
       ...(this.deps.failureLogger ? { failureLogger: this.deps.failureLogger } : {}),
       ...(this.deps.svgGraphicOwner ? { svgGraphicOwner: this.deps.svgGraphicOwner } : {}),
     });
+  }
+
+  private getRawDeckBuilder(): CodegenDeckBuilderPort {
+    if (!this.rawCodegenDeckBuilder) {
+      this.rawCodegenDeckBuilder = this.deps.codegenDeckBuilderFactory?.()
+        ?? this.createCodegenDeckBuilder();
+    }
+    return this.rawCodegenDeckBuilder;
   }
 
   private createInitialDraftCreator(): InitialPresentationDraftCreator | undefined {

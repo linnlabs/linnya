@@ -56,6 +56,7 @@ try {
       '--alias:@plugin/mindmap/shared=../mindmap/src/shared/index.ts',
       '--external:electron',
       '--external:better-sqlite3',
+      '--external:fontkit',
       '--external:sharp',
       '--external:yoga-layout',
       '--external:harfbuzzjs',

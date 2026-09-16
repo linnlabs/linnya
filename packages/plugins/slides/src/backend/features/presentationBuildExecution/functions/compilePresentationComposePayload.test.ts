@@ -53,6 +53,48 @@ describe('compilePresentationComposePayload', () => {
     }
   });
 
+  it('通过可信 Worker admission 应用文本与位移人工值', async () => {
+    const result = await compilePresentationComposePayload({
+      title: 'Manual edit projection',
+      slides: [{
+        _type: 'Slide',
+        slideKey: 'overview',
+        children: [{
+          _type: 'Text',
+          editKey: 'headline',
+          content: 'Original',
+          position: { x: 1, y: 1, w: 4, h: 1 },
+        }],
+      }],
+      manualEdits: {
+        version: 1,
+        slides: [{
+          slideKey: 'overview',
+          targets: [{
+            kind: 'text',
+            editKey: 'headline',
+            content: 'Updated',
+            translation: { dx: 0.25, dy: -0.1 },
+          }],
+        }],
+      },
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      input: {
+        slides: [{
+          elements: [{
+            type: 'text',
+            content: 'Updated',
+            position: { x: 1.25, y: 0.9, w: 4, h: 1 },
+            _authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'text' },
+          }],
+        }],
+      },
+    });
+  });
+
   it('normalizes valid direct compose input and returns source failures as data', async () => {
     await expect(compilePresentationComposePayload({
       title: 'Direct deck',

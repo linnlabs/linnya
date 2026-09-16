@@ -8,7 +8,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 
 ## 公开入口
 
-- 包根：ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -140,6 +140,14 @@ feature 拥有。
 提交评审前，作者必须能用大白话回答：谁在复用、共同语义是什么、业务边界在哪里、状态由谁拥有、键盘和焦点如何
 工作、样式如何扩展、哪些是公共合同、哪些是私有实现、怎样验证 Host 与插件没有回归。任一问题没有明确答案时，
 先把能力留在原 owner 或补设计，不通过增加开关和 fallback 推迟决定。
+
+## 范围滑块
+
+`CustomSlider`（自 2.3.0）属于 `number-entry`，与精确数字输入共享能力边界。它只消费受控数值、min/max/step、disabled 和 `default|compact` 密度，在原生 input 事件时发出一次数值型 `update:modelValue`。轨道进度由 props 派生，外部更新不反向提交；键盘步进、Home/End 和指针行为由原生 range 承担。业务拥有单位、标签、取值规则与保存流程。
+
+`default` 保留设置表单的较大滑钮，`compact` 保留画布工具条密度，也适用于内嵌颜色编辑。组件统一拥有三个主题、hover/active、focus-visible、disabled 和 reduced-motion；调用方以 label 或 aria-label 命名。`class`、布局 `style`、id、aria/data 属性均落在唯一原生 input。只允许通过业务 class 定制外围尺寸，不覆盖内部滑钮/轨道 selector 或 `--linnya-ui-slider-*` 私有变量。
+
+目前消费者为 Editor AI 设置、Slides 缩放和 Slides 自定义颜色；没有新增全局 store、Host 依赖或手写 pointer capture。它不支持双端区间、垂直轴或业务提交/取消。完整合同见[使用指南](./docs/usage-guide.md#customslider)。
 
 ## 版本与发布
 

@@ -11,7 +11,7 @@ import type {
   DeckAssembleOptions,
   ImageSourceResolverPort,
   SlidesEngineRenderModelOptions,
-  SlidesEngineVersionSnapshot,
+  SlidesEngineGeneratedRenderModelSnapshot,
   SvgGraphicAssetResolverPort,
 } from '../types';
 
@@ -31,7 +31,7 @@ export class GeneratedPresentationRenderModelBuilder {
 
   async build(
     nodeId: string,
-    version: SlidesEngineVersionSnapshot,
+    version: SlidesEngineGeneratedRenderModelSnapshot,
     assembleOptions?: DeckAssembleOptions,
     options: SlidesEngineRenderModelOptions = {}
   ): Promise<PresentationRenderModel> {

@@ -48,7 +48,7 @@ write_file / edit_file
 ```text
 PptCoordinator.inspect / export / getPreview / getRenderModel
   -> presentationQueryRuntime
-  -> repository / draft repository
+  -> repository / draft repository / presentationPptxArtifact
   -> engine parser / query service
 ```
 
@@ -96,6 +96,8 @@ PptCoordinator.history.restore（versionId + expectedCurrentVersionId）
 - production shared coordinator 必须注入共享 `presentationBuildExecution`；直接测试和 standalone CLI 才可使用 in-process adapter。coordinator 不拥有 Worker 队列或协议。
 - coordinator 不直接 import renderer，也不暴露 renderer-only 类型。
 - screenshot 只能消费 query runtime 返回的同一 current revision snapshot，不能分两次查询 render model 和 revision 元数据。
+- generated RenderModel、截图和 raster export 只读 DeckSpec；native PPTX export 与 OOXML inspect 通过
+  `presentationPptxArtifact` 读取与 current revision 精确匹配的 package，缺失时按需组装并 CAS 缓存。
 - inspection 的 artifact version ID 同样只能来自该 snapshot，不能用数字 revision 代替；工具和 CLI 共用这一编排。
 - coordinator 不写具体 layout、OOXML、lint、source parser 规则；这些规则归 engine、codegen、tools 对应模块。
 - repository 和 workspace 操作必须通过 `types.ts` 中的 port 或生产工厂注入，不在 runtime 内直接创建 host service。

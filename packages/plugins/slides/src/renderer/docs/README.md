@@ -21,6 +21,8 @@ src/renderer/
 │   ├── documentReference/           # 文档引用与展示用纯规则
 │   ├── documentRuntime/             # surface 挂载后的 deck 加载、定位和生命周期编排
 │   ├── elementAiEdit/               # source-backed 元素 AI 编辑编排
+│   ├── manualEditing/                # 稳定作者对象的移动、纯文本编辑与 CAS 提交流程
+│   ├── renderNodeSelection/           # RenderNode 世界坐标遍历、命中与选择几何
 │   ├── presentationExport/          # PPTX/图片菜单、独立弹窗与导出交互编排；见 feature README
 │   ├── konvaPreview/                # Konva 配置与 ECharts option 纯映射
 │   ├── renderImageResources/        # 图片解析、解码去重与 LRU
@@ -59,6 +61,10 @@ deck。首次打开或 `draft → ready` 才允许清空并首次加载 RenderMo
 当前页和旧 RenderModel，待新版本的页面视觉资源准备完成后原子替换，不能让正常 AI 修改表现成
 整块画布重新加载。`ready → draft` 仍应清除旧 preview/RenderModel 并展示真实编译失败，禁止用旧
 物化掩盖当前源码状态。
+
+版本事件与写命令响应都把目标 `versionNumber` 交给同一 `refreshDeck`。同一目标 revision 的并发读取会
+合并，已经加载的 revision 不重复读取；加入较早请求但尚未取得目标版本时允许再补一次读取。refresh
+只服务仍处于 active 的 documentId，任何迟到的旧文稿异步流程都不能重设 `currentDeckId` 或覆盖当前状态。
 
 离屏栅格链路：
 
@@ -108,6 +114,20 @@ SlideStage sourceSelection
   -> conversation 使用 read_file / edit_file / write_file 修改 deck.js source
 ```
 
+有限人工编辑链路：
+
+```text
+SlideStage authoring-capability target click / drag / text double-click
+  -> manualEditing gesture preview / pending local visual（不修改 RenderModel）
+  -> SlidesView submitManualEdit orchestration
+  -> slides:manual-edit(revisionId + revision + sourceHash + operation)
+  -> backend 改写 compose.manualEdits 并完整编译/物化
+  -> revision 原子提交后 refreshDeck / RenderModel 原子替换
+  -> matching RenderModel + 当前页完整视觉资源原子呈现后撤下 pending visual
+```
+
+当前开放作者对象移动与删除、作者字符串文本完整替换及字号／颜色、Frame／Shape 纯色和 Shape／Image 有限视觉尺寸。是否可改字由 backend 投影的 `authoringEdit` 决定，不能从 RenderModel 的段落或字体 run 数量反推；所以多行字符串和因字体解析拆分的中英混排仍可编辑，富文本与内联公式 run 保持文本只读。图片源、表格内容和图表数据需要各自的完整值编辑器后再开放。Flex Frame 虽在 RenderModel 中摊平，Renderer 只消费 compiler 投影的正式作者祖先：父级选择、移动、删除和选框都使用同一成员关系；父选框包含移出背景范围的可见后代，但实际命中仍只认对象几何，不把成员之间的空白变成热区。页面背景不进入作者目标集合，空白处保持默认光标并在点击时清空选择；只有真实可移动对象显示移动光标。详细边界见 [`../features/manualEditing/README.md`](../features/manualEditing/README.md)。
+
 导出链路只有 Host 文档“更多”菜单一个真实入口，当前开放两个选项并分别打开独立弹窗：
 
 ```text
@@ -144,7 +164,8 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 | 通道 | 用途 |
 |---|---|
 | `slides:preview` | 获取 `DeckPreview` |
-| `slides:build-state` | 查询源码是 `ready` 还是 unresolved `draft` |
+| `slides:build-state` | 查询源码是 `ready` 还是 unresolved `draft`，并返回当前 revision ID、序号和 source hash 快照 |
+| `slides:manual-edit` | 基于精确 revision/source 快照提交有限人工编辑 |
 | `slides:render-model` | 获取 `PresentationRenderModel` |
 | `slides:inspect` | 获取 `PresentationInfo` |
 | `slides:source-slices` | 获取源码切片 |
@@ -152,7 +173,7 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 | `slides:templates-list` | 列出模板 |
 | `slides:template-import` | 上传 PPTX 作为模板来源 |
 
-文稿创建与编辑统一走 deck.js 的 `write_file / edit_file` 工具链，不提供 renderer 私有的 generate/patch IPC。当前也没有直接 PPTX 文档导入到 editable deck 的 renderer 通道；接入前必须补 imported deck 到 Konva render-model 的保真验收。
+文稿创建和 AI 编辑统一走 deck.js 的 `write_file / edit_file` 工具链；有限人工编辑走严格的 `slides:manual-edit` 命令，并仍然写回 deck.js 的 `compose.manualEdits`。当前没有直接 PPTX 文档导入到 editable deck 的 renderer 通道；接入前必须补 imported deck 到 Konva render-model 的保真验收。
 
 ## 开发规范
 
@@ -191,4 +212,4 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 
 保真回归使用 `smoke:raster-worker`：真实 Electron 像素覆盖 8 个线性渐变角度与 2:1 椭圆径向渐变。主预览和离屏渲染共用形状 scene renderer；命中画布单独写 Konva identity 色，不能复用视觉渐变。图表图例色、绘图区色和线宽从 RenderModel 读取。
 
-切页保真需同时验证资源原子提交与持久 Konva 节点属性同步。主预览所有绑定使用严格 config；`smoke:preview-transitions` 覆盖真实 Vue 更新后的像素，不可只用新建 stage 的离屏截图代替。详见 [Konva Preview](../features/konvaPreview/README.md#持久画布的属性同步)。
+切页保真需同时验证资源原子提交与持久 Konva 节点属性同步。主预览所有绑定使用严格 config；`smoke:preview-transitions` 覆盖真实 Vue 更新后的像素，并挂载生产 `KonvaSlideStage` 验证人工位移进入内容层，不可只用新建 stage 的离屏截图代替。详见 [Konva Preview](../features/konvaPreview/README.md#持久画布的属性同步)。

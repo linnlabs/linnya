@@ -3,24 +3,23 @@ import { randomUUID } from 'node:crypto';
 import { MathFormulaError, SlideMarkerIndex, type DeckSpec } from '@plugin/slides/shared';
 import {
   createSlidesEngineExecutionContext,
-  SvgGraphicMaterializationError,
   type DeckAssembleOptions,
-  type SlidesEngineExecutionAdapter,
   type SlidesEngineExecutionScope,
-} from '@plugin/slides/backend-engine-core';
-import type {
-  SandboxExecutionRequest,
-  SandboxExecutionResult,
-  SandboxJsonObject,
-} from '@plugin/backend/sandboxRuntime';
+} from '../engine/types';
+import { SvgGraphicMaterializationError } from '../engine/svgGraphic/definitions/svgGraphicMaterializationError';
+import type { SandboxExecutionResult, SandboxJsonObject } from '@plugin/backend/sandboxRuntime';
 import type { PresentationRepositoryPort } from '../persistence';
-import type { PresentationSvgGraphicOwnerPort } from '../features/presentationSvgGraphicOwnership';
 import {
   PresentationBuildExecutionError,
   PresentationFormulaBuildExecutionError,
   type PresentationComposeExecutionPort,
-} from '../features/presentationBuildExecution';
-import { PresentationStaleBaseError, PresentationStaleSourceError } from '../persistence';
+} from '../features/presentationBuildExecution/definitions/presentationBuildExecution';
+import {
+  PresentationDraftConflictError,
+  PresentationManualEditCommandConflictError,
+  PresentationStaleBaseError,
+  PresentationStaleSourceError,
+} from '../persistence';
 import {
   createPresentationBuildFailure,
   PresentationBuildFailureError,
@@ -48,72 +47,17 @@ import {
   validateLayoutTrace,
   type CodegenDiagnostic,
 } from './writeDiagnostics';
-
-export interface CodegenDeckCreateOptions {
-  projectId: string;
-  parentId?: string;
-  authorId?: string;
-  conversationId?: string;
-}
-
-export interface CodegenWorkspacePresentationPort {
-  createPresentationNode?(options: CodegenDeckCreateOptions & { title: string }): Promise<string>;
-  deletePresentationNode?(nodeId: string): Promise<void>;
-  getPresentationProjectId?(nodeId: string): Promise<string | null>;
-}
-
-export interface CodegenDeckBuilderDeps {
-  /** 记录实际注入源码的主题；输出 DeckSpec.theme 可能被这次源码修改，不能用来重放输入。 */
-  recordSourceTheme?: (theme: DeckSpec['theme']) => void;
-  presentationRepo: Pick<
-    PresentationRepositoryPort,
-    'createPresentation' | 'commitPresentation' | 'getPresentation'
-  >;
-  engine: Pick<SlidesEngineExecutionAdapter, 'assembleDeck'>;
-  sandbox: CodegenSandboxExecutor;
-  workspaceService?: CodegenWorkspacePresentationPort;
-  failureLogger?: CodegenDeckBuilderFailureLogger;
-  svgGraphicOwner?: PresentationSvgGraphicOwnerPort;
-  buildExecution: PresentationComposeExecutionPort;
-}
-
-export interface CodegenDeckBuilderFailureLogger {
-  error(message: string, details?: Readonly<Record<string, unknown>>): void;
-}
-
-export interface CodegenSandboxExecutor {
-  execute(request: SandboxExecutionRequest): Promise<SandboxExecutionResult>;
-}
-
-export interface CodegenDeckBuildInput {
-  nodeId: string;
-  source: string;
-  conversationId?: string;
-  expectedBase?: CodegenDeckExpectedBase;
-}
-
-export interface CodegenDeckExpectedBase {
-  readonly revisionId: string;
-  readonly revision: number;
-  readonly sourceHash: string;
-}
-
-export interface CodegenDeckCreateInput extends CodegenDeckCreateOptions {
-  source: string;
-}
-
-export interface CodegenDeckBuildResult {
-  versionId: string;
-  versionNumber: number;
-  deckSpec: DeckSpec;
-  pptxBuffer: Buffer;
-  diagnostics: readonly CodegenDiagnostic[];
-  parseWarnings: string[];
-}
-
-export interface CodegenDeckCreateResult extends CodegenDeckBuildResult {
-  nodeId: string;
-}
+import type {
+  CodegenDeckBuildInput,
+  CodegenDeckBuildResult,
+  CodegenDeckBuilderDeps,
+  CodegenDeckCreateInput,
+  CodegenDeckCreateResult,
+  CodegenDeckExpectedBase,
+  CodegenManualEditCommitResult,
+  CodegenProjectedDeckBuildInput,
+  CodegenProjectedDeckBuildResult,
+} from './definitions/codegenDeckBuilder.js';
 
 interface CompiledDeckSource {
   readonly input: DirectComposeInput;
@@ -193,25 +137,7 @@ export class CodegenDeckBuilder {
   }
 
   async buildFromSource(input: CodegenDeckBuildInput): Promise<CodegenDeckBuildResult> {
-    const source = this.readNonEmptySource(input.source);
-    let current: Awaited<ReturnType<PresentationRepositoryPort['getPresentation']>>;
-    try {
-      current = await this.deps.presentationRepo.getPresentation(input.nodeId);
-    } catch {
-      failBuild(
-        'slides.persistence.commit_failed',
-        'The current presentation revision could not be read.'
-      );
-    }
-    if (!current) {
-      failBuild('slides.persistence.commit_failed', 'The presentation document no longer exists.');
-    }
-    const expectedBase = input.expectedBase ?? {
-      revisionId: current.currentRevisionId,
-      revision: current.currentRevision,
-      sourceHash: current.sourceHash,
-    };
-    this.assertExpectedBase(input.nodeId, expectedBase, current);
+    const { source, current, expectedBase } = await this.readExistingBuildBase(input);
     const compiled = await this.compileAuthoringInputFromSource(
       source,
       current.deckSpec.theme
@@ -220,45 +146,40 @@ export class CodegenDeckBuilder {
       documentId: input.nodeId,
       ...(input.conversationId ? { conversationId: input.conversationId } : {}),
     });
-    const pptxBuffer = await this.assembleDeckSpec(
+    const committed = await this.materializeAndCommitDeckSpec(
+      input,
+      source,
+      expectedBase,
       deckSpec,
-      this.buildDeckAssembleOptions(
-        input.nodeId,
-        await this.resolvePresentationProjectId(input.nodeId),
-        input.conversationId
-      ),
-      { nodeId: input.nodeId }
     );
-    let version: Awaited<ReturnType<PresentationRepositoryPort['commitPresentation']>>;
-    try {
-      version = await this.deps.presentationRepo.commitPresentation(input.nodeId, deckSpec, {
-        pptxBuffer,
-        deckSource: source,
-        baseRevisionId: expectedBase.revisionId,
-        baseRevision: expectedBase.revision,
-        origin: 'codegen',
-      });
-    } catch (error) {
-      if (
-        error instanceof PresentationStaleBaseError ||
-        error instanceof PresentationStaleSourceError
-      ) {
-        throw error;
-      }
-      failBuild(
-        'slides.persistence.commit_failed',
-        'The presentation revision could not be committed.'
-      );
-    }
 
     return {
-      versionId: version.revisionId,
-      versionNumber: version.revision,
-      deckSpec,
-      pptxBuffer,
+      ...committed,
       diagnostics: compiled.diagnostics,
       parseWarnings: compiled.parseWarnings,
     };
+  }
+
+  /** 人工文本编辑完成源码验证与 DeckSpec 编译后，只提交语义 revision。 */
+  async commitManualEditFromSource(
+    input: CodegenDeckBuildInput,
+  ): Promise<CodegenManualEditCommitResult> {
+    const { source, current, expectedBase } = await this.readExistingBuildBase(input);
+    const compiled = await this.compileAuthoringInputFromSource(source, current.deckSpec.theme);
+    const deckSpec = await this.buildOwnedDeckSpec(compiled, { documentId: input.nodeId });
+    return this.commitDeferredDeckSpec(input, source, expectedBase, deckSpec);
+  }
+
+  /**
+   * 只接受上层已经证明与当前作者源码等价的 DeckSpec 投影。
+   * 当前用途是顶层原子元素的 post-layout translate_by；仍走正式 PPTX 与 CAS 提交。
+   */
+  async commitManualEditFromProjectedDeckSpec(
+    input: CodegenProjectedDeckBuildInput,
+  ): Promise<CodegenManualEditCommitResult> {
+    const { source, current, expectedBase } = await this.readExistingBuildBase(input);
+    this.deps.recordSourceTheme?.(current.deckSpec.theme);
+    return this.commitDeferredDeckSpec(input, source, expectedBase, input.deckSpec);
   }
 
   async buildDeckSpecFromSource(input: CodegenDeckBuildInput): Promise<DeckSpec> {
@@ -354,6 +275,119 @@ export class CodegenDeckBuilder {
       deckSpec.slides.length,
     );
     return deckSpec;
+  }
+
+  private async readExistingBuildBase(input: CodegenDeckBuildInput): Promise<{
+    readonly source: string;
+    readonly current: NonNullable<Awaited<ReturnType<PresentationRepositoryPort['getPresentation']>>>;
+    readonly expectedBase: CodegenDeckExpectedBase;
+  }> {
+    const source = this.readNonEmptySource(input.source);
+    let current: Awaited<ReturnType<PresentationRepositoryPort['getPresentation']>>;
+    try {
+      current = await this.deps.presentationRepo.getPresentation(input.nodeId);
+    } catch {
+      failBuild(
+        'slides.persistence.commit_failed',
+        'The current presentation revision could not be read.'
+      );
+    }
+    if (!current) {
+      failBuild('slides.persistence.commit_failed', 'The presentation document no longer exists.');
+    }
+    const expectedBase = input.expectedBase ?? {
+      revisionId: current.currentRevisionId,
+      revision: current.currentRevision,
+      sourceHash: current.sourceHash,
+    };
+    this.assertExpectedBase(input.nodeId, expectedBase, current);
+    return { source, current, expectedBase };
+  }
+
+  private async materializeAndCommitDeckSpec(
+    input: CodegenDeckBuildInput,
+    source: string,
+    expectedBase: CodegenDeckExpectedBase,
+    deckSpec: DeckSpec,
+  ): Promise<CodegenProjectedDeckBuildResult> {
+    const pptxBuffer = await this.assembleDeckSpec(
+      deckSpec,
+      this.buildDeckAssembleOptions(
+        input.nodeId,
+        await this.resolvePresentationProjectId(input.nodeId),
+        input.conversationId
+      ),
+      { nodeId: input.nodeId }
+    );
+    let version: Awaited<ReturnType<PresentationRepositoryPort['commitPresentation']>>;
+    try {
+      version = await this.deps.presentationRepo.commitPresentation(input.nodeId, deckSpec, {
+        pptxBuffer,
+        deckSource: source,
+        baseRevisionId: expectedBase.revisionId,
+        baseRevision: expectedBase.revision,
+        origin: input.origin ?? 'codegen',
+        ...(input.expectedDraftState ? { expectedDraftState: input.expectedDraftState } : {}),
+        ...(input.manualEditReceipt ? { manualEditReceipt: input.manualEditReceipt } : {}),
+      });
+    } catch (error) {
+      if (
+        error instanceof PresentationDraftConflictError
+        || error instanceof PresentationManualEditCommandConflictError
+        || error instanceof PresentationStaleBaseError
+        || error instanceof PresentationStaleSourceError
+      ) {
+        throw error;
+      }
+      failBuild(
+        'slides.persistence.commit_failed',
+        'The presentation revision could not be committed.'
+      );
+    }
+    return {
+      versionId: version.revisionId,
+      versionNumber: version.revision,
+      deckSpec,
+      pptxBuffer,
+    };
+  }
+
+  private async commitDeferredDeckSpec(
+    input: CodegenDeckBuildInput,
+    source: string,
+    expectedBase: CodegenDeckExpectedBase,
+    deckSpec: DeckSpec,
+  ): Promise<CodegenManualEditCommitResult> {
+    try {
+      const version = await this.deps.presentationRepo.commitPresentation(input.nodeId, deckSpec, {
+        deferPptx: true,
+        deckSource: source,
+        baseRevisionId: expectedBase.revisionId,
+        baseRevision: expectedBase.revision,
+        origin: 'edit',
+        revisionContext: 'inherit_base',
+        ...(input.expectedDraftState ? { expectedDraftState: input.expectedDraftState } : {}),
+        ...(input.manualEditReceipt ? { manualEditReceipt: input.manualEditReceipt } : {}),
+      });
+      return {
+        versionId: version.revisionId,
+        versionNumber: version.revision,
+        deckSpec,
+      };
+    } catch (error) {
+      if (
+        error instanceof PresentationDraftConflictError
+        || error instanceof PresentationManualEditCommandConflictError
+        || error instanceof PresentationStaleBaseError
+        || error instanceof PresentationStaleSourceError
+      ) {
+        throw error;
+      }
+      failBuild(
+        'slides.persistence.commit_failed',
+        'The presentation revision could not be committed.'
+      );
+    }
   }
 
   private buildDeckAssembleOptions(

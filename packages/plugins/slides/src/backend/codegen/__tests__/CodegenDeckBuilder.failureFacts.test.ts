@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SandboxExecutionResult } from '@plugin/backend/sandboxRuntime';
 import { MathFormulaError } from '@plugin/slides/shared';
-import type { PresentationRepositoryPort } from '../../persistence';
+import {
+  PresentationDraftConflictError,
+  PresentationManualEditCommandConflictError,
+  type PresentationRepositoryPort,
+} from '../../persistence';
 import { CodegenDeckBuilder } from '../CodegenDeckBuilder';
 import {
   createInProcessPresentationBuildExecution,
@@ -118,6 +122,16 @@ describe('CodegenDeckBuilder structured failure facts', () => {
         summary: expect.not.stringContaining('private sqlite path'),
       },
     });
+  });
+
+  it.each([
+    new PresentationDraftConflictError('deck-1'),
+    new PresentationManualEditCommandConflictError('command-1'),
+  ])('保留 repository 的 %s，让调用用例映射为业务冲突', async (conflict) => {
+    const builder = createBuilder({ commitError: conflict });
+    await expect(
+      builder.buildFromSource({ nodeId: 'deck-1', source: SOURCE }),
+    ).rejects.toBe(conflict);
   });
 
   it('物化 admission 的确定性合同失败不会伪装成 runtime unavailable', async () => {

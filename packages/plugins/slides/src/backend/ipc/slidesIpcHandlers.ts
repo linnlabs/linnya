@@ -9,10 +9,13 @@ import type {
   TemplateSummary,
   PresentationExportRequest,
   PresentationExportResult,
+  SlidesManualEditCommand,
+  SlidesManualEditCommandResult,
 } from '@plugin/slides/shared';
 import { z } from 'zod';
 import {
   parseSlidesNodePayload,
+  parseSlidesManualEditPayload,
   parsePresentationExportRequest,
   parseSlidesSourceSlicesPayload,
   parseSlidesTemplateImportPayload,
@@ -39,6 +42,7 @@ export interface SlidesIpcCoordinatorPort {
   listTemplates(): Promise<TemplateSummary[]>;
   importTemplate(buffer: Buffer, name: string, description?: string): Promise<TemplateSpec>;
   exportPresentation(request: PresentationExportRequest): Promise<PresentationExportResult>;
+  submitManualEdit(command: SlidesManualEditCommand): Promise<SlidesManualEditCommandResult>;
 }
 
 export type SlidesIpcDataHandler<T> = (payload: unknown) => Promise<T> | T;
@@ -125,6 +129,10 @@ export function registerSlidesIpcHandlersForCoordinatorProvider(
   registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:render-model', async (payload) => {
     const { nodeId } = parseSlidesNodePayload(payload, 'slides:render-model');
     return readCoordinator().getRenderModel(nodeId);
+  });
+
+  registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:manual-edit', async (payload) => {
+    return readCoordinator().submitManualEdit(parseSlidesManualEditPayload(payload));
   });
 
   registerSlidesResultHandler(registerBackendPluginIpcHandler, 'slides:templates-list', async () => {

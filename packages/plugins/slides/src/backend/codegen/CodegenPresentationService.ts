@@ -12,7 +12,7 @@ import { CodegenPresentationError } from './CodegenPresentationError.js';
 import {
   PresentationBuildExecutionError,
   type PresentationTypecheckExecutionPort,
-} from '../features/presentationBuildExecution';
+} from '../features/presentationBuildExecution/definitions/presentationBuildExecution';
 import type {
   CodegenPresentationServiceDeps,
   CodegenPresentationBuilderPort,

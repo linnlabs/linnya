@@ -20,6 +20,9 @@
         :chart-resources="props.chartResources"
         :logical-size="logicalSize"
         :transform="contentTransform"
+        :preview-translations="props.previewTranslations"
+        :hidden-text-element-id="props.hiddenTextElementId"
+        :manual-visual-previews="props.manualVisualPreviews"
       />
 
       <!-- Overlay 层：选中 / 诊断高亮（FE-K4 填充） -->
@@ -28,6 +31,7 @@
         :selected-targets="props.selectedTargets"
         :hovered-target="props.hoveredTarget"
         :marquee-rect="props.marqueeRect"
+        :manual-selected-target="props.manualSelectedTarget"
       />
     </v-stage>
   </div>
@@ -51,6 +55,11 @@ import type {
 import SlideBackgroundLayer from './layers/SlideBackgroundLayer.vue';
 import SlideContentLayer from './layers/SlideContentLayer.vue';
 import SlideOverlayLayer from './layers/SlideOverlayLayer.vue';
+import type {
+  ManualEditableTarget,
+  ManualEditingTranslationPreview,
+  ManualEditingVisualPreview,
+} from '../../../features/manualEditing';
 
 const props = defineProps<{
   slideRender: SlideRenderModel;
@@ -61,6 +70,10 @@ const props = defineProps<{
   selectedTargets: readonly SourceSelectableElement[];
   hoveredTarget: SourceSelectableElement | null;
   marqueeRect: SourceSelectionRect | null;
+  previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
+  manualSelectedTarget?: ManualEditableTarget | null;
+  hiddenTextElementId?: string;
+  manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();
 
 const backgroundImageResource = computed(() => (

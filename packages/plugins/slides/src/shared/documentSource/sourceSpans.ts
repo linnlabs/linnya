@@ -36,12 +36,14 @@ export type SlidesDocumentBuildState =
       readonly presentationId: string;
       readonly versionId: string;
       readonly versionNumber: number;
+      readonly sourceHash: string;
     }
   | {
       readonly state: 'draft';
       readonly presentationId: string;
       readonly versionId: string;
       readonly versionNumber: number;
+      readonly sourceHash: string;
       readonly draftStatus: SlidesDraftStatus;
     };
 

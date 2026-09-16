@@ -1,7 +1,8 @@
 /**
  * DeckPreview — 前端消费的预览模型
  *
- * 从 CanonicalDeck 映射而来，前端只消费此模型，不直接消费 DeckSpec。
+ * generated 文稿从当前 revision 的 DeckSpec 直接映射；imported / patched 文稿从
+ * CanonicalDeck 映射。前端只消费此模型，不直接解释任一后端事实模型。
  */
 
 import type {
