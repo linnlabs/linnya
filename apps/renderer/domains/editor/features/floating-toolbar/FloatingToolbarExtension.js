@@ -76,7 +76,7 @@ class FloatingToolbarView {
     this.update(editorView, null);
   }
 
-  update(editorView, prevState) {
+  update(editorView) {
     // 拖拽选择过程中不显示工具栏，只在鼠标松开并确认选区后再决定是否展示
     if (this.isMouseDown && this.mouseDownInsideEditor) {
       floatingToolbarService.close();
@@ -122,7 +122,7 @@ class FloatingToolbarView {
     floatingToolbarService.close();
   }
 
-  handleMouseUp(event) {
+  handleMouseUp() {
     // 鼠标抬起后再重新评估是否需要显示工具栏
     this.isMouseDown = false;
 

@@ -23,3 +23,7 @@ provider，service 持有短生命周期展示状态，`ui/` 执行格式命令�
 - 点击工具栏内部不关闭；点击编辑器外部关闭；拖动选择期间不抢占选区。
 - DOM、class、按钮顺序、文案、快捷交互、颜色值和 overlay 层级是现有 UX 合同。
 - 基础按钮、选择器和平台图标继续从 `@linnya/renderer-ui` 消费；Editor 业务规则不得反向进入该包。
+
+## 验证
+
+`ui/FloatingToolbarContainer.test.ts` 使用真实 Tiptap Editor、extension、registry、容器和共享外壳，验证点击格式按钮保留选区并实际加粗；点击另一个业务的共享工具条关闭 Editor 浮条，不影响另一实例。jsdom 只替代没有布局能力的选区坐标读取。修订条接受／拒绝和选区追踪继续由 `Revision/ui/useDocumentRevisionToolbar.test.ts` 验证；共享包测试负责普通输入可聚焦和实例隔离。
