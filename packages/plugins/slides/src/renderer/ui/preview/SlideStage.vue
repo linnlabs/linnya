@@ -426,6 +426,7 @@ const {
   wrapperRef: konvaWrapperRef,
 });
 
+const manualResizePreview = shallowRef<ManualEditingVisualPreview | null>(null);
 const {
   selectedTarget: manualSelectedTarget,
   selectionPath: manualSelectionPath,
@@ -461,6 +462,7 @@ const {
   renderScale,
   slideSize: actualSlideSize,
   wrapperRef: konvaWrapperRef,
+  visualPreview: manualResizePreview,
   submitIntent: useManualEditSubmission().enqueue,
   focusCanvas: () => scrollHostRef.value?.focus({ preventScroll: true }),
 });
@@ -473,11 +475,11 @@ const manualTranslationPreviews = computed(() => collectManualTranslationPreview
 const manualPreviewTranslations = computed(() => {
   return mergeManualTranslationPreviews(manualTranslationPreviews.value);
 });
-const manualResizePreview = shallowRef<ManualEditingVisualPreview | null>(null);
-const manualVisualPreviews = computed(() => [...collectManualVisualPreviews(
+const manualVisualPreviews = computed(() => collectManualVisualPreviews(
   manualPendingVisual.value,
   manualQueuedIntents.value,
-), ...(manualResizePreview.value ? [manualResizePreview.value] : [])]);
+  manualResizePreview.value,
+));
 const manualPresentedSelectedTarget = computed(() => {
   const target = manualSelectedTarget.value;
   return target

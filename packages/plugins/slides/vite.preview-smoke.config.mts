@@ -11,6 +11,7 @@ export default defineConfig({
   resolve: {
     alias: [
       ...(rasterConfig.resolve?.alias ?? []),
+      { find: /^@plugin\/renderer\/(pluginIpcClient|pluginPushClient|workspaceRuntime)$/, replacement: path.resolve(import.meta.dirname, 'dev/tools/previewHostBoundary.ts') },
       { find: '@app/localization', replacement: path.resolve(import.meta.dirname, 'dev/tools/previewLocalization.ts') },
     ],
     dedupe: ['vue', 'konva'],

@@ -13,7 +13,7 @@ export function projectTextDraftPresentations(
   activeElementId?: string,
 ): readonly TextDraftPresentation[] {
   const targets = collectManualEditableTargets(nodes);
-  const visuals = collectManualVisualPreviews(projection.pendingVisual, projection.queuedIntents);
+  const visuals = collectManualVisualPreviews(projection.pendingVisual, projection.queuedIntents, projection.transientVisual);
   return drafts.flatMap(draft => {
     if (draft.target.elementId === activeElementId) return [];
     const target = targets.find(candidate => candidate.elementId === draft.target.elementId);

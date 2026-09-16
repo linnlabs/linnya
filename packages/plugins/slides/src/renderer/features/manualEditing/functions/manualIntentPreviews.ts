@@ -7,10 +7,12 @@ import type {
 export function collectManualVisualPreviews(
   pending: ManualEditingVisualPreview | null,
   queuedIntents: readonly ManualEditIntent[],
+  transient?: ManualEditingVisualPreview | null,
 ): readonly ManualEditingVisualPreview[] {
   return [
     ...(pending ? [pending] : []),
     ...queuedIntents.flatMap(intent => intent.visualPreview ? [intent.visualPreview] : []),
+    ...(transient ? [transient] : []),
   ];
 }
 

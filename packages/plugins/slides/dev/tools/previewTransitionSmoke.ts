@@ -4,6 +4,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 async function run(): Promise<void> {
   const window = new BrowserWindow({ width: 820, height: 820, show: false, webPreferences: { contextIsolation: true, nodeIntegration: false } });
+  window.webContents.on('console-message', event => {
+    if (event.level === 'error') console.error('[preview browser]', event.message);
+  });
   try {
     await window.loadFile(path.resolve(__dirname, 'preview-transitions/previewTransitionSmoke.html'));
     const result: unknown = await window.webContents.executeJavaScript('window.previewTransitionSmoke');
@@ -28,7 +31,9 @@ async function run(): Promise<void> {
 
 /** 用 Chromium 的真实指针输入验证 pointer capture、连续拖拽和 Escape，避免模拟掉手势生命周期。 */
 async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
-  const evaluate = (script: string): Promise<unknown> => window.webContents.executeJavaScript(script);
+  const evaluate = (script: string): Promise<unknown> => window.webContents.executeJavaScript(script).catch((error: unknown) => {
+    throw new Error(`Browser step failed: ${script}\n${String(error)}`);
+  });
   await evaluate('window.manualPropertySmoke = window.mountManualPropertySmoke(); void 0');
   const colorResult = await evaluate('window.manualPropertySmoke.verifyColorsAndNumbers()');
   async function point(handle: string): Promise<{ x: number; y: number }> {
@@ -100,28 +105,93 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
 }
 
 async function verifyShapeTextEditing(window: BrowserWindow): Promise<void> {
-  const evaluate = (script: string): Promise<unknown> => window.webContents.executeJavaScript(script);
-  await evaluate('window.shapeTextEditingSmoke = window.mountShapeTextEditingSmoke(); void 0');
-  const point = await evaluate('window.shapeTextEditingSmoke.point()');
-  if (typeof point !== 'object' || point === null || !('x' in point) || !('y' in point)
-    || typeof point.x !== 'number' || typeof point.y !== 'number') throw new Error('Missing shape point');
-  const position = { x: point.x, y: point.y };
-  window.webContents.sendInputEvent({ type: 'mouseMove', ...position });
-  for (const clickCount of [1, 2]) {
-    window.webContents.sendInputEvent({ type: 'mouseDown', ...position, button: 'left', clickCount });
-    window.webContents.sendInputEvent({ type: 'mouseUp', ...position, button: 'left', clickCount });
+  const evaluate = (script: string): Promise<unknown> => window.webContents.executeJavaScript(script).catch((error: unknown) => {
+    throw new Error(`Browser step failed: ${script}\n${String(error)}`);
+  });
+  const settle = () => evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+  await evaluate('window.shapeTextEditingSmoke = window.mountShapeTextEditingSmoke(); window.shapeTextEditingSmoke.ready()');
+  async function click(which: string, double = false) {
+    const point = await evaluate(`window.shapeTextEditingSmoke.point(${JSON.stringify(which)})`);
+    if (typeof point !== 'object' || point === null || !('x' in point) || !('y' in point)
+      || typeof point.x !== 'number' || typeof point.y !== 'number') throw new Error('Missing shape point');
+    const position = { x: point.x, y: point.y };
+    window.webContents.sendInputEvent({ type: 'mouseMove', ...position });
+    for (const clickCount of double ? [1, 2] : [1]) {
+      window.webContents.sendInputEvent({ type: 'mouseDown', ...position, button: 'left', clickCount });
+      window.webContents.sendInputEvent({ type: 'mouseUp', ...position, button: 'left', clickCount });
+    }
+    await settle();
   }
-  await evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+  async function enter(commit = false) {
+    const modifiers: ('control')[] = commit ? ['control'] : [];
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers });
+    if (!commit) window.webContents.sendInputEvent({ type: 'char', keyCode: '\r' });
+    window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers });
+    await settle();
+  }
+  await click('badge', true);
   await evaluate('window.shapeTextEditingSmoke.assertEditing()');
+  await enter();
+  await evaluate('window.shapeTextEditingSmoke.assertInput("Shape text\\n")');
   await evaluate('window.shapeTextEditingSmoke.verifyIme()');
+  await settle();
   const screenshot = await window.webContents.capturePage();
   await writeFile(path.resolve(__dirname, 'shape-text-editing.png'), screenshot.toPNG());
-  window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['control'] });
-  window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers: ['control'] });
-  await evaluate('new Promise(resolve => requestAnimationFrame(resolve))');
-  await evaluate('window.shapeTextEditingSmoke.assertSubmitted()');
-  await evaluate('window.shapeTextEditingSmoke.dispose()');
-  console.log('Slides native shape double click, single outline, IME and text submission passed');
+  // 普通点击必须在 IPC 完成前结束文字输入并选中 B。
+  await click('second');
+  await evaluate('window.shapeTextEditingSmoke.assertSelected("second"); window.shapeTextEditingSmoke.assertSubmitted()');
+  await writeFile(path.resolve(__dirname, 'shape-text-pending.png'), (await window.webContents.capturePage()).toPNG());
+  await click('second', true);
+  await enter();
+  await evaluate('window.shapeTextEditingSmoke.assertInput("Second shape\\n"); window.shapeTextEditingSmoke.setInput("B pending")');
+  await enter(true);
+  await click('badge', true);
+  await evaluate('window.shapeTextEditingSmoke.assertInput("修改形状"); window.shapeTextEditingSmoke.setInput("新会话草稿")');
+  await evaluate('window.shapeTextEditingSmoke.resolve(0, true)');
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertInput("新会话草稿"); window.shapeTextEditingSmoke.present()');
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertInput("新会话草稿"); window.shapeTextEditingSmoke.assertSubmitted(2); window.shapeTextEditingSmoke.resolve(1, false)');
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertInput("新会话草稿"); window.shapeTextEditingSmoke.assertFailedDraft("B pending")');
+  window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+  window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+  await settle();
+  await click('second', true);
+  await evaluate('window.shapeTextEditingSmoke.assertInput("B pending")');
+  await enter(true);
+  await evaluate('window.shapeTextEditingSmoke.assertSubmitted(3); window.shapeTextEditingSmoke.resolve(2, true)');
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.present()');
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertSettled()');
+  // 同一 Stage 的普通 Text 也保留原生换行及 targetKind。
+  await click('standalone', true);
+  await enter();
+  await evaluate('window.shapeTextEditingSmoke.assertInput("Plain text\\n")');
+  await enter(true);
+  await evaluate('window.shapeTextEditingSmoke.assertTextCommand(3, "Plain text\\n"); window.shapeTextEditingSmoke.resolve(3, true)');
+  await settle(); await evaluate('window.shapeTextEditingSmoke.present()'); await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertSettled()');
+  // 输入交接后立刻拉伸：无焦点文字也必须实时跟随，并在取消时回到原位置。
+  await click('badge', true);
+  await evaluate('window.shapeTextEditingSmoke.setInput("Pending resize")');
+  await enter(true);
+  const resize = await evaluate('window.shapeTextEditingSmoke.resizePoint()');
+  if (typeof resize !== 'object' || resize === null || !('x' in resize) || !('y' in resize)
+    || typeof resize.x !== 'number' || typeof resize.y !== 'number') throw new Error('Invalid resize position');
+  const start = { x: resize.x, y: resize.y };
+  const end = { x: start.x + 48, y: start.y + 48 };
+  window.webContents.sendInputEvent({ type: 'mouseDown', ...start, button: 'left', clickCount: 1 });
+  window.webContents.sendInputEvent({ type: 'mouseMove', ...end, modifiers: ['leftbuttondown'] });
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertPendingSize(3, 1.5)');
+  window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+  window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+  window.webContents.sendInputEvent({ type: 'mouseUp', ...end, button: 'left', clickCount: 1 });
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertPendingSize(2.5, 1); window.shapeTextEditingSmoke.dispose()');
+  console.log('Slides production Stage + queue: native Enter, outside selection, pending re-entry, late receipts, failure recovery and frame settlement passed');
 }
 
 function assertFrameCount(result: unknown, expected: number): void {

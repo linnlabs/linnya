@@ -1,6 +1,6 @@
 import type { Ref } from 'vue';
 import type { SlideRenderModel } from '../../../types/render';
-import type { ManualEditSubmissionPort } from '../../manualEditing';
+import type { ManualEditSubmissionPort, ManualEditingVisualPreview } from '../../manualEditing';
 import type { TextEditingTarget } from '../../textEditing';
 
 export type TextInputSession =
@@ -32,6 +32,7 @@ export interface SlideEditingInteractionOptions {
   readonly renderScale: Ref<number>;
   readonly slideSize: Ref<{ readonly width: number; readonly height: number }>;
   readonly wrapperRef: Ref<HTMLElement | null>;
+  readonly visualPreview?: Readonly<Ref<ManualEditingVisualPreview | null>>;
   readonly submitIntent: ManualEditSubmissionPort['enqueue'];
   readonly focusCanvas?: () => void;
 }

@@ -26,6 +26,7 @@ export interface ManualEditingHitProjection {
   readonly transientTranslation: ManualEditingTranslationPreview | null;
   readonly pendingTranslation: ManualEditingTranslationPreview | null;
   readonly pendingVisual: ManualEditingVisualPreview | null;
+  readonly transientVisual?: ManualEditingVisualPreview | null;
   readonly queuedIntents: readonly ManualEditIntent[];
 }
 
@@ -43,7 +44,7 @@ export function createPresentedTextEditingTarget(
   const geometry = collectRenderNodeSelectionGeometries(nodes, isManualEditableNode)
     .find(candidate => candidate.elementId === target.elementId);
   if (!geometry) return null;
-  const visuals = collectManualVisualPreviews(projection.pendingVisual, projection.queuedIntents);
+  const visuals = collectManualVisualPreviews(projection.pendingVisual, projection.queuedIntents, projection.transientVisual);
   const translations = mergeManualTranslationPreviews(collectManualTranslationPreviews(
     projection.transientTranslation, projection.pendingTranslation, projection.queuedIntents,
   ));
@@ -93,6 +94,7 @@ function findProjectedTargetPathAtPoint(
   const visuals = collectManualVisualPreviews(
     projection.pendingVisual,
     projection.queuedIntents,
+    projection.transientVisual,
   );
   for (let index = targets.length - 1; index >= 0; index -= 1) {
     const target = targets[index];

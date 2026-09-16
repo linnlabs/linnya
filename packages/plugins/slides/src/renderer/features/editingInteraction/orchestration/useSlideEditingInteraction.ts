@@ -239,6 +239,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
       transientTranslation: translationPreview.value,
       pendingTranslation: pendingTranslation.value,
       pendingVisual: pendingVisual.value,
+      transientVisual: options.visualPreview?.value,
       queuedIntents: queuedIntents.value,
     };
   }
