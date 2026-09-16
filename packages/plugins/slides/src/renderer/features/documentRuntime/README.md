@@ -11,3 +11,5 @@ The coordinator enforces three rules:
 - a version-aware request skips an already loaded revision and may perform one follow-up read when it joined work that began before its target revision existed.
 
 The deck store remains the owner of current document and preview state. The coordinator neither imports Pinia nor changes state directly, so document identity and async deduplication can be tested without mounting the renderer.
+
+`SlidesView` renders from the ready build-state revision identity. It does not wait for a second DeckPreview event or consume an “initial preview” flag: the document may already be loaded before the surface mounts. Every new ready revision schedules a RenderModel read while keeping the previous complete frame visible.

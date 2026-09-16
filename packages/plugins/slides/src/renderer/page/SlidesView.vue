@@ -46,7 +46,6 @@ const slidesRenderStore = useSlidesRenderStore();
 const {
   currentDeckId,
   hasOpenDeck,
-  deckPreview,
   documentBuildState,
 } = storeToRefs(slidesStore);
 const slidesUiStore = useSlidesUiStore();
@@ -65,69 +64,30 @@ provideManualEditSubmission(useManualEditQueue({
   trace: manualEditPresentationTrace,
 }));
 
-/** 上一次加载 renderModel 时对应的 deckId，用于区分"首次加载"和"刷新" */
-let lastRenderDeckId: string | null = null;
-
-/**
- * 标记当前 deck 的 deckPreview 首次到达是否还未被消费。
- * 用于避免 deckPreview 首次到达时重复触发 loadRenderModel
- * （因为 currentDeckId watch 已经提前启动了）。
- */
-let pendingInitialPreview = false;
-
-/** deck 切换只重置会话/UI；是否允许请求 renderModel 由 build-state 决定。 */
+/** 文档身份重置交互；渲染刷新只由正式 revision 驱动，与页面挂载先后无关。 */
 watch(currentDeckId, () => {
   slidesUiStore.$reset();
   slidesSessionStore.$reset();
   presentationExportStore.$reset();
   editingInteractionStore.$reset();
   manualEditPresentationTrace.clear();
-  lastRenderDeckId = null;
-  pendingInitialPreview = false;
   slidesRenderStore.clearRenderModel();
 }, { immediate: true });
 
-/** draft 是不可渲染的正式状态，禁止偷偷回退到空白基线或旧物化。 */
-watch(documentBuildState, (buildState) => {
-  const nodeId = currentDeckId.value;
-  if (
-    !nodeId ||
-    buildState?.state !== 'ready' ||
-    buildState.presentationId !== nodeId
-  ) {
-    lastRenderDeckId = null;
-    pendingInitialPreview = false;
+let requestedRevision: string | null = null;
+watch([currentDeckId, documentBuildState], ([nodeId, buildState]) => {
+  if (!nodeId || buildState?.state !== 'ready' || buildState.presentationId !== nodeId) {
+    requestedRevision = null;
     slidesRenderStore.clearRenderModel();
     return;
   }
-
-  // 同一 deck 已有可见物化时，新的 ready 只是版本刷新。
-  // 等 deckPreview 到达后走 keepExisting 分支，避免把热更新误判成首次加载而清空画布。
-  if (lastRenderDeckId === nodeId && slidesRenderStore.renderModel !== null) {
-    return;
-  }
-
-  lastRenderDeckId = nodeId;
-  pendingInitialPreview = true;
-  slidesRenderStore.loadRenderModel(nodeId, { keepExisting: false });
+  const revision = `${nodeId}:${buildState.versionId}`;
+  if (requestedRevision === revision) return;
+  requestedRevision = revision;
+  // ready 说明对应 DeckSpec 已落盘，不必再等待另一个 preview 事件。
+  // 首次 preview 若在挂载前到达，也不能吞掉后续第一次保存的刷新。
+  void slidesRenderStore.loadRenderModel(nodeId, {
+    keepExisting: slidesRenderStore.renderModel?.presentationId === nodeId,
+  });
 }, { immediate: true });
-
-/*
- * deckPreview 变化 → 仅在「同 deck 刷新」时静默重加载 renderModel。
- * 首次到达（pendingInitialPreview=true）直接消费标记，不重复请求。
- */
-watch(deckPreview, () => {
-  const nodeId = currentDeckId.value;
-  if (!nodeId || !deckPreview.value) return;
-
-  if (pendingInitialPreview) {
-    pendingInitialPreview = false;
-    return;
-  }
-
-  // 同一 deck 的后续 deckPreview 更新（如工具刷新）→ 保留旧渲染，静默重加载
-  if (nodeId === lastRenderDeckId) {
-    slidesRenderStore.loadRenderModel(nodeId, { keepExisting: true });
-  }
-});
 </script>

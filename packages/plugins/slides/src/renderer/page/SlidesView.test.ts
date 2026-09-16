@@ -2,7 +2,7 @@
 
 import { createApp, nextTick, type App } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPinia, setActivePinia } from 'pinia';
+import { createPinia, setActivePinia, getActivePinia } from 'pinia';
 import type { DeckPreviewViewModel } from '../types/preview';
 import type { PresentationRenderModel } from '../types/render';
 
@@ -131,7 +131,7 @@ describe('SlidesView render-model lifecycle', () => {
   beforeEach(() => {
     const pinia = createPinia();
     setActivePinia(pinia);
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
     const host = document.createElement('div');
     document.body.append(host);
@@ -175,6 +175,39 @@ describe('SlidesView render-model lifecycle', () => {
     refreshedModel.resolve(makeRenderModel(2));
     await flushUpdates();
     expect(renderStore.renderModel?.version).toBe(2);
+  });
+
+  it('文稿先加载再挂载页面时，首条保存仍刷新并继续提交队列', async () => {
+    app?.unmount();
+    const slidesStore = useSlidesStore();
+    const renderStore = useSlidesRenderStore();
+    slidesStore.currentDeckId = 'deck-1';
+    slidesStore.documentBuildState = readyBuildState(3);
+    slidesStore.deckPreview = makeDeckPreview(3);
+    getRenderModelMock.mockResolvedValueOnce(makeRenderModel(3)).mockResolvedValueOnce(makeRenderModel(4));
+    const host = document.createElement('div');
+    document.body.replaceChildren(host);
+    app = createApp(SlidesView);
+    const pinia = getActivePinia();
+    if (!pinia) throw new Error('Missing fixture Pinia');
+    app.use(pinia);
+    app.mount(host);
+    await flushUpdates();
+    submitManualEditMock.mockImplementation(async command => ({
+      status: 'committed', commandId: command.commandId, documentId: command.documentId,
+      revisionId: 'version-4', revision: 4,
+    }));
+    vi.spyOn(slidesStore, 'refreshDeck').mockImplementation(async () => {
+      slidesStore.documentBuildState = readyBuildState(4);
+      slidesStore.deckPreview = makeDeckPreview(4);
+    });
+    document.querySelector<HTMLButtonElement>('.deck-viewer-stub')?.click();
+    document.querySelector<HTMLButtonElement>('.deck-viewer-stub')?.click();
+    await flushUpdates(); await flushUpdates();
+    expect(renderStore.renderModel?.version).toBe(4);
+    useSlidesManualEditingStore().recordPresentedRevision(4);
+    await flushUpdates();
+    expect(submitManualEditMock).toHaveBeenCalledTimes(2);
   });
 
   it('ready deck 进入 draft 时不保留旧 RenderModel', async () => {
@@ -246,7 +279,8 @@ describe('SlidesView render-model lifecycle', () => {
   });
 
   it('queues a second edit and submits it after the first revision is presented', async () => {
-    getRenderModelMock.mockResolvedValueOnce(makeRenderModel(3));
+    getRenderModelMock.mockResolvedValueOnce(makeRenderModel(3))
+      .mockImplementation(async () => makeRenderModel(useSlidesStore().documentBuildState?.versionNumber ?? 3));
     const firstResult = createDeferred<{
       status: 'committed';
       commandId: string;
