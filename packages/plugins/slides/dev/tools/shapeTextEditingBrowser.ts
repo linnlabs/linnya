@@ -173,8 +173,33 @@ export function mountShapeTextEditingSmoke() {
       const panel = host.querySelector('.slides-element-property-popover');
       if (panel) panel.scrollTop = panel.scrollHeight;
     },
+    assertPanelMotion() {
+      const panel = host.querySelector('.slides-element-property-popover');
+      if (!(panel instanceof HTMLElement) || panel.inert || !panel.getAnimations().some(animation => animation.playState === 'running')) {
+        throw new Error('Property panel opened without the shared dropdown animation');
+      }
+    },
+    async settlePanelMotion() {
+      const panel = host.querySelector('.slides-element-property-popover');
+      if (!panel) throw new Error('Missing animated property panel');
+      // Vue 清理 CSS transition class 时可能取消 Animation 对象；验收真实终态，不把清理当作交互失败。
+      await Promise.allSettled(panel.getAnimations().map(animation => animation.finished));
+      if (!(panel instanceof HTMLElement) || panel.inert || getComputedStyle(panel).opacity !== '1') {
+        throw new Error('Dropdown did not settle into a visible interactive panel');
+      }
+    },
+    async settleDismissal() {
+      const panel = host.querySelector('.slides-element-property-popover');
+      if (!panel) return;
+      if (!(panel instanceof HTMLElement) || !panel.inert) throw new Error('Closing panel still interactive');
+      await Promise.allSettled(panel.getAnimations().map(animation => animation.finished));
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      if (panel.isConnected) throw new Error('Closed dropdown survived its exit animation');
+    },
     assertPopupClosed() {
-      if (host.querySelector('.slides-element-property-popover')) throw new Error('Outside pointer did not dismiss the property popup');
+      const panel = host.querySelector('.slides-element-property-popover');
+      if (panel instanceof HTMLElement && !panel.inert) throw new Error('Closed property popup still accepts interaction');
+      if (host.querySelector('.slides-element-property-toolbar [aria-expanded="true"]')) throw new Error('Property trigger still expanded');
     },
     assertGeometryUnchanged() {
       if (ui.zoomLevel !== 1 || host.querySelector('.slide-stage')?.getBoundingClientRect().height !== 420) throw new Error('Toolbar changed the viewport/zoom');

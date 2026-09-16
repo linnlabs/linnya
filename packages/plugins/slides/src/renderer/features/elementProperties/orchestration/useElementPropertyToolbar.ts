@@ -1,3 +1,4 @@
+import type { DropdownActions } from '@linnya/renderer-ui';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch, type Ref } from 'vue';
 import type { ElementPropertyAnchor, ElementPropertyPopover, ElementPropertySize } from '../definitions/elementPropertyToolbar';
 import { resolveElementPropertyPopoverPosition, resolveElementPropertyToolbarPosition } from '../functions/elementPropertyToolbarGeometry';
@@ -6,6 +7,7 @@ import { resolveElementPropertyPopoverPosition, resolveElementPropertyToolbarPos
 export function useElementPropertyToolbar(options: {
   readonly anchor: Readonly<Ref<ElementPropertyAnchor>>;
   readonly deleteSelected: () => void;
+  readonly dropdown: Readonly<Ref<DropdownActions | null>>;
   readonly hasHierarchy: Readonly<Ref<boolean>>;
   readonly toolbarElement: Readonly<Ref<HTMLElement | null>>;
   readonly popoverElement: Readonly<Ref<HTMLElement | null>>;
@@ -13,7 +15,6 @@ export function useElementPropertyToolbar(options: {
   const openPopover = ref<ElementPropertyPopover | null>(null);
   const toolbarSize = shallowRef<ElementPropertySize | null>(null);
   const popoverSize = shallowRef<ElementPropertySize | null>(null);
-  let trigger: HTMLElement | null = null;
   const position = computed(() => toolbarSize.value
     ? resolveElementPropertyToolbarPosition(options.anchor.value, toolbarSize.value, options.hasHierarchy.value)
     : null);
@@ -23,16 +24,16 @@ export function useElementPropertyToolbar(options: {
 
   function close(returnFocus = false): void {
     openPopover.value = null;
-    if (returnFocus && trigger?.isConnected) trigger.focus({ preventScroll: true });
+    if (returnFocus) options.dropdown.value?.closeAndFocus();
   }
   async function toggle(kind: ElementPropertyPopover, event: MouseEvent): Promise<void> {
     if (openPopover.value === kind) { close(); return; }
-    trigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    options.dropdown.value?.open(event);
     openPopover.value = kind;
     await nextTick();
     options.popoverElement.value?.focus({ preventScroll: true });
   }
-  function handleOutsidePointerDown(event: PointerEvent): void {
+  function handoffNumberInput(event: PointerEvent): void {
     const target = event.target;
     if (!(target instanceof Node)) return;
     const surfaces = [options.toolbarElement.value, options.popoverElement.value];
@@ -40,7 +41,6 @@ export function useElementPropertyToolbar(options: {
     // 先交接数字 change，再让这一次指针事件继续选择 B；不能在切换后把 A 的草稿写给 B。
     const active = document.activeElement;
     if (active instanceof HTMLElement && surfaces.some(surface => surface?.contains(active))) active.blur();
-    close();
   }
   function handleToolbarKeydown(event: KeyboardEvent): void {
     event.stopPropagation();
@@ -69,10 +69,10 @@ export function useElementPropertyToolbar(options: {
     measure(popover, popoverSize);
   }, { flush: 'post' });
   watch(position, value => { if (!value) close(); });
-  onMounted(() => document.addEventListener('pointerdown', handleOutsidePointerDown, true));
+  onMounted(() => document.addEventListener('pointerdown', handoffNumberInput, true));
   onBeforeUnmount(() => {
     observer.disconnect();
-    document.removeEventListener('pointerdown', handleOutsidePointerDown, true);
+    document.removeEventListener('pointerdown', handoffNumberInput, true);
   });
   return { openPopover, position, popoverPosition, toggle, close, handleToolbarKeydown };
 }

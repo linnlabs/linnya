@@ -85,7 +85,8 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
   for (const theme of ['light', 'dark', 'moon-blue']) {
     await evaluate(`window.manualPropertySmoke.showCustom(${JSON.stringify(theme)})`);
     await settle();
-    await evaluate('Promise.all(document.getAnimations().map(animation => animation.finished))');
+    // Animation 实例不可跨 Electron structured clone；只等待清理，不把它们作为返回值。
+    await evaluate('Promise.allSettled(document.getAnimations().map(animation => animation.finished)).then(() => undefined)');
     const screenshot = await window.webContents.capturePage();
     await writeFile(path.resolve(__dirname, `manual-properties-${theme}.png`), screenshot.toPNG());
   }
@@ -230,6 +231,7 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
   await click('window.shapeTextEditingSmoke.point("badge")');
   await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge"); window.shapeTextEditingSmoke.assertGeometryUnchanged()');
   await click(control('[data-property="fill"]'));
+  await evaluate('window.shapeTextEditingSmoke.assertPanelMotion(); window.shapeTextEditingSmoke.settlePanelMotion()');
   await click(control('[title="#16A34A"]'));
   await click(control('[data-property="size"]'));
   await number('.slides-element-property-popover input', '3');
@@ -269,12 +271,14 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
   await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge")');
   await click(control('[data-property="fill"]'));
   await click(control('.slides-element-color__custom'));
+  await evaluate('window.shapeTextEditingSmoke.settlePanelMotion()');
   await evaluate('window.shapeTextEditingSmoke.assertPopupPlacement(); window.shapeTextEditingSmoke.scrollPropertyPopup()');
   await settle();
   await writeFile(path.resolve(__dirname, 'selection-property-toolbar-narrow.png'), (await window.webContents.capturePage()).toPNG());
   await key('Escape');
   await key('Escape');
   await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge"); window.shapeTextEditingSmoke.assertPopupClosed()');
+  await evaluate('window.shapeTextEditingSmoke.settleDismissal()');
   await writeFile(path.resolve(__dirname, 'selection-property-toolbar.png'), (await window.webContents.capturePage()).toPNG());
   await key('Delete');
   await evaluate('window.shapeTextEditingSmoke.assertDeleted("badge"); window.shapeTextEditingSmoke.dispose()');
