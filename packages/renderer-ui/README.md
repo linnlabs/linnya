@@ -18,6 +18,8 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 - `/tokens.css`：只包含公开/内部 token 与内置主题映射。
 - `/styles.css`：Host 唯一加载的完整 package 样式。
 
+`FloatingToolbar` 与 `ToolbarGroup` 由 Editor 选区／修订条和 Slides 对象属性共同消费。共享包只拥有表面、分组和显式位置展示；Editor 的选区保护与 Slides 的锚点、属性草稿和浮层交接仍由各自 owner 负责。
+
 `package.json` 显式列举全部入口。未列出的 `src/**`、组件文件和内部 CSS 都不是 API。
 
 ## 新增通用组件设计规范

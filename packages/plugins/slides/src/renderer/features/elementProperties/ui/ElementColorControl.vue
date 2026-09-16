@@ -103,6 +103,7 @@
           :style="{ '--slides-custom-color': draftColor }"
         />
         <CustomTextInput
+          ref="hexInput"
           :model-value="hexDraft"
           size="compact"
           :disabled="disabled"
@@ -129,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { ActionButtons, ColorPickerPanel, CustomSlider, CustomTextInput } from '@linnya/renderer-ui';
 import { ChevronRightIcon } from '@linnya/renderer-ui/icons';
 import { ELEMENT_PROPERTY_COLOR_OPTIONS } from '../definitions/elementPropertyPalette';
@@ -147,6 +148,7 @@ const emit = defineEmits<{ select: [color: string] }>();
 const { elementPropertyMessage: message } = useElementPropertyLocalization();
 const trigger = ref<HTMLButtonElement | null>(null);
 const open = ref(false);
+const hexInput = ref<InstanceType<typeof CustomTextInput> | null>(null);
 const hsv = ref<CustomColorHsv>(colorToHsv('#000000'));
 const hexDraft = ref('#000000');
 const validHex = computed(() => normalizeCustomColor(hexDraft.value));
@@ -166,11 +168,13 @@ function close(): void {
   planePointer = null;
   trigger.value?.focus();
 }
-function toggle(): void {
+async function toggle(): Promise<void> {
   if (open.value) return close();
   hexDraft.value = props.color ?? '#000000';
   hsv.value = colorToHsv(hexDraft.value);
   open.value = true;
+  await nextTick();
+  hexInput.value?.focus();
 }
 function selectPreset(color: string): void {
   open.value = false;
@@ -178,8 +182,9 @@ function selectPreset(color: string): void {
 }
 function apply(): void {
   if (props.disabled || !validHex.value) return;
-  emit('select', validHex.value);
+  // 先结束内部草稿，再让父浮层关闭并归还自己的触发点焦点。
   close();
+  emit('select', validHex.value);
 }
 function setHex(value: string): void {
   hexDraft.value = value;

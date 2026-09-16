@@ -117,17 +117,18 @@
           :label="manualEditingMessage('slides.manualEditing.hierarchy.ariaLabel')"
           @select="selectManualHierarchyTarget"
         />
-        <ElementPropertyPanel
-          v-if="manualPropertyTarget && showElementPropertyControls && !textEditorTarget"
-          :target="manualPropertyTarget"
-          :slide-left="currentLayout.slideLeft"
-          :slide-top="currentLayout.slideTop"
-          :scaled-slide-width="currentLayout.scaledSlideWidth"
-          :busy="!canManualSelect"
-          @submit="submitManualVisualOperation"
-        />
       </div>
     </div>
+    <ElementPropertyToolbar
+      v-if="manualPropertyTarget && manualPropertyAnchor && showElementPropertyControls && !textEditorTarget && !manualTranslationPreview && !manualResizePreview"
+      :key="`${manualPropertyTarget.authoringRef.slideKey}/${manualPropertyTarget.authoringRef.editKey}`"
+      :target="manualPropertyTarget"
+      :anchor="manualPropertyAnchor"
+      :has-hierarchy="manualSelectionPath.length > 1"
+      :busy="!canManualSelect"
+      @submit="submitManualVisualOperation"
+      @delete-selected="deleteManualSelectedTarget"
+    />
   </div>
 </template>
 
@@ -192,7 +193,8 @@ import {
 import { useSlideEditingInteraction } from '../../features/editingInteraction';
 import { InlineTextEditor, TextDraftPreview } from '../../features/textEditing';
 import {
-  ElementPropertyPanel,
+  ElementPropertyToolbar,
+  useElementPropertyAnchor,
   hasElementPropertyControls,
   projectElementPropertyTarget,
 } from '../../features/elementProperties';
@@ -279,15 +281,15 @@ const konvaWrapperRef = ref<globalThis.HTMLElement | null>(null);
 const viewportWidth = ref(800);
 const viewportHeight = ref(600);
 const fitScale = ref(1);
-const sourcePromptGeometryRevision = ref(0);
+const stageOverlayGeometryRevision = ref(0);
 
 /** 首次 viewport 测量完成后置 true，在此之前隐藏内容防止 fitScale=1 的首帧闪烁 */
 const viewportMeasured = ref(false);
 let pendingZoomAnchor: { x: number; y: number } | null = null;
 let zoomCommitRafId: number | null = null;
 let latestZoomCommitId = 0;
-let sourcePromptGeometryRafId: number | null = null;
-let sourcePromptScrollViewport: HTMLElement | null = null;
+let stageOverlayGeometryRafId: number | null = null;
+let stageOverlayScrollViewport: HTMLElement | null = null;
 
 const KONVA_WRAPPER_CURSOR = 'default';
 const KONVA_WRAPPER_TOUCH_ACTION = 'none';
@@ -349,7 +351,7 @@ function updateViewport(force = false) {
 
   viewportWidth.value = rect.width;
   viewportHeight.value = rect.height;
-  scheduleSourcePromptGeometryUpdate();
+  scheduleStageOverlayGeometryUpdate();
   const nextFitScale = computeFitScale(rect.width, rect.height, actualSlideSize.value);
   fitScale.value = nextFitScale;
   if (isFitZoom.value) {
@@ -366,7 +368,7 @@ const resizeObserver = new globalThis.ResizeObserver(() => {
 });
 
 onMounted(() => {
-  window.addEventListener('resize', scheduleSourcePromptGeometryUpdate);
+  window.addEventListener('resize', scheduleStageOverlayGeometryUpdate);
   if (scrollHostRef.value) {
     resizeObserver.observe(scrollHostRef.value);
   }
@@ -384,12 +386,12 @@ onBeforeUnmount(() => {
     window.cancelAnimationFrame(zoomCommitRafId);
     zoomCommitRafId = null;
   }
-  if (sourcePromptGeometryRafId !== null) {
-    window.cancelAnimationFrame(sourcePromptGeometryRafId);
-    sourcePromptGeometryRafId = null;
+  if (stageOverlayGeometryRafId !== null) {
+    window.cancelAnimationFrame(stageOverlayGeometryRafId);
+    stageOverlayGeometryRafId = null;
   }
-  bindSourcePromptScrollViewport(null);
-  window.removeEventListener('resize', scheduleSourcePromptGeometryUpdate);
+  bindStageOverlayScrollViewport(null);
+  window.removeEventListener('resize', scheduleStageOverlayGeometryUpdate);
   disposeKonvaRasterScale();
   latestZoomCommitId = 0;
   destroyOverlayScroll();
@@ -504,6 +506,14 @@ const manualPropertyTarget = computed(() => manualSelectedTarget.value
   ? projectElementPropertyTarget(manualSelectedTarget.value, manualVisualPreviews.value)
   : null);
 
+const manualPropertyAnchor = useElementPropertyAnchor({
+  target: manualPresentedSelectedTarget,
+  slideElement: canvasShellRef,
+  viewportElement: scrollHostRef,
+  renderScale,
+  geometryRevision: stageOverlayGeometryRevision,
+});
+
 function handleStagePointerDown(event: PointerEvent): void {
   if (manualEditingEnabled.value) handleManualPointerDown(event);
   else handleSourcePointerDown(event);
@@ -535,7 +545,7 @@ function handleStageDoubleClick(event: MouseEvent): void {
 }
 
 const sourcePromptPosition = computed(() => {
-  sourcePromptGeometryRevision.value;
+  stageOverlayGeometryRevision.value;
   const slideRect = canvasShellRef.value?.getBoundingClientRect();
 
   return resolveSourceSelectionPromptPosition({
@@ -640,34 +650,34 @@ async function ensureStageOverlay(): Promise<HTMLElement | null> {
   await nextTick();
   if (getOverlayScrollInstance()) {
     const viewport = getViewport();
-    bindSourcePromptScrollViewport(viewport);
+    bindStageOverlayScrollViewport(viewport);
     return viewport;
   }
   const viewport = initOverlayScroll();
-  bindSourcePromptScrollViewport(viewport);
+  bindStageOverlayScrollViewport(viewport);
   return viewport;
 }
 
-function bindSourcePromptScrollViewport(viewport: HTMLElement | null): void {
-  if (sourcePromptScrollViewport === viewport) {
+function bindStageOverlayScrollViewport(viewport: HTMLElement | null): void {
+  if (stageOverlayScrollViewport === viewport) {
     return;
   }
-  sourcePromptScrollViewport?.removeEventListener('scroll', scheduleSourcePromptGeometryUpdate);
-  sourcePromptScrollViewport = viewport;
-  sourcePromptScrollViewport?.addEventListener(
+  stageOverlayScrollViewport?.removeEventListener('scroll', scheduleStageOverlayGeometryUpdate);
+  stageOverlayScrollViewport = viewport;
+  stageOverlayScrollViewport?.addEventListener(
     'scroll',
-    scheduleSourcePromptGeometryUpdate,
+    scheduleStageOverlayGeometryUpdate,
     { passive: true },
   );
 }
 
-function scheduleSourcePromptGeometryUpdate(): void {
-  if (sourcePromptGeometryRafId !== null) {
+function scheduleStageOverlayGeometryUpdate(): void {
+  if (stageOverlayGeometryRafId !== null) {
     return;
   }
-  sourcePromptGeometryRafId = window.requestAnimationFrame(() => {
-    sourcePromptGeometryRafId = null;
-    sourcePromptGeometryRevision.value += 1;
+  stageOverlayGeometryRafId = window.requestAnimationFrame(() => {
+    stageOverlayGeometryRafId = null;
+    stageOverlayGeometryRevision.value += 1;
   });
 }
 

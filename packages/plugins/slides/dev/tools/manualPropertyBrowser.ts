@@ -1,7 +1,7 @@
 import { computed, createApp, h, nextTick, shallowRef } from 'vue';
 import VueKonva from 'vue-konva';
 import Konva from 'konva';
-import ElementPropertyPanel from '../../src/renderer/features/elementProperties/ui/ElementPropertyPanel.vue';
+import ElementPropertyToolbar from '../../src/renderer/features/elementProperties/ui/ElementPropertyToolbar.vue';
 import ManualResizeHandles from '../../src/renderer/features/manualEditing/ui/ManualResizeHandles.vue';
 import KonvaSlideStage from '../../src/renderer/ui/preview/konva/KonvaSlideStage.vue';
 import { projectElementPropertyTarget } from '../../src/renderer/features/elementProperties/functions/projectElementPropertyTarget';
@@ -10,7 +10,7 @@ import type { ManualEditableTarget, ManualEditingVisualOperation, ManualEditingV
 import type { SlideRenderModel } from '../../src/renderer/types/render';
 import '@linnya/renderer-ui/tokens.css';
 import '@linnya/renderer-ui/styles.css';
-import '../../src/renderer/features/elementProperties/ui/ElementPropertyPanel.css';
+import '../../src/renderer/features/elementProperties/ui/ElementPropertyToolbar.css';
 import '../../src/renderer/features/manualEditing/ui/ManualResizeHandles.css';
 
 export function mountManualPropertySmoke() {
@@ -68,7 +68,12 @@ export function mountManualPropertySmoke() {
     h(ManualResizeHandles, { target: presented.value, slideLeft: 48, slideTop: 48, renderScale: 1,
       onPreview: (value: ManualEditingVisualPreview | null) => { transient.value = value; }, onSubmit: submit,
       onFinish: () => host.focus({ preventScroll: true }) }),
-    h(ElementPropertyPanel, { target: properties.value, slideLeft: 48, slideTop: 48, scaledSlideWidth: 640, busy: disabled.value, onSubmit: submit }),
+    !transient.value ? h(ElementPropertyToolbar, {
+      target: properties.value,
+      anchor: { selection: { left: 48 + presented.value.bounds.x * 96, top: 48 + presented.value.bounds.y * 96,
+        width: presented.value.bounds.w * 96, height: presented.value.bounds.h * 96 }, viewport: { width: 760, height: 760 } },
+      hasHierarchy: false, busy: disabled.value, onSubmit: submit,
+    }) : null,
   ] });
   app.use(VueKonva);
   app.mount(host);
@@ -80,6 +85,10 @@ export function mountManualPropertySmoke() {
     return element;
   }
   async function click(selector: string): Promise<void> { button(selector).click(); await nextTick(); }
+  async function open(kind: 'fill' | 'size'): Promise<void> {
+    const selector = `[data-property="${kind}"]`;
+    if (button(selector).getAttribute('aria-expanded') !== 'true') await click(selector);
+  }
   async function input(selector: string, value: string, commit = false): Promise<void> {
     const element = host.querySelector(selector);
     if (!(element instanceof HTMLInputElement)) throw new Error(`Missing input ${selector}`);
@@ -92,8 +101,10 @@ export function mountManualPropertySmoke() {
   return {
     async verifyColorsAndNumbers() {
       await nextTick();
+      await open('fill');
       assert(button('[title="#2563EB"]').classList.contains('is-current'), 'Initial preset is not selected');
       await click('[title="#DC2626"]');
+      await open('fill');
       assert(button('[title="#DC2626"]').classList.contains('is-current'), 'Pending preset is not selected');
       assert(getComputedStyle(button('[title="#DC2626"]')).backgroundColor === 'rgb(220, 38, 38)', 'Panel styles replaced the actual preset color');
       assert(button('.slides-element-color__custom').getAttribute('aria-pressed') === 'false', 'Preset also selected custom');
@@ -103,22 +114,28 @@ export function mountManualPropertySmoke() {
       await input('.slides-element-color__hex input', '123456');
       assert(operations.length === 1, 'Draft color submitted before Apply');
       await click('.action-btn.primary');
+      await open('fill');
       assert(button('.slides-element-color__custom').getAttribute('aria-pressed') === 'true', 'Custom color is not selected');
       assert(!host.querySelector('.shared-color-picker-panel__cell.is-current'), 'Custom color retained a preset selection');
       await click('.slides-element-color__custom');
       await input('.slides-element-color__hex input', '#ABCDEF');
       await click('.action-btn.secondary');
       assert(operations.length === 2, 'Cancel submitted a color');
+      await open('size');
       await input('input[type="number"]', '3');
+      await open('fill');
       await click('[title="#16A34A"]');
+      await open('size');
       const widthInput = host.querySelector('input[type="number"]');
       assert(widthInput instanceof HTMLInputElement && widthInput.value === '3', 'Color update reset the in-progress size');
       await input('input[type="number"]', '3', true);
       assert(properties.value.visualSize?.width === 3 && operations.length === 4, 'Number change did not submit directly');
+      await open('fill');
       assert(button('[title="#16A34A"]').classList.contains('is-current'), 'Size edit lost color selection');
       queued.value = []; operations.length = 0;
       await nextTick();
       assert(button('[title="#2563EB"]').classList.contains('is-current'), 'Rollback did not restore preset');
+      await click('[data-property="fill"]');
       return { colorAndNumberChecks: 13 };
     },
     point(handle: string) {
@@ -144,6 +161,7 @@ export function mountManualPropertySmoke() {
       document.documentElement.setAttribute('data-linnya-ui-theme', theme);
       submit({ op: 'set_fill_color', target: target.authoringRef, targetKind: 'shape', color: '#426A91' });
       await nextTick();
+      await open('fill');
       if (!host.querySelector('.slides-element-color__editor')) await click('.slides-element-color__custom');
     },
     async prepareSliderKeyboard() {

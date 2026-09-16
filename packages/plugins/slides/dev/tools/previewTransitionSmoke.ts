@@ -16,6 +16,7 @@ async function run(): Promise<void> {
     console.log('Slides live Vue/Konva transition pixels passed:', JSON.stringify(result));
     await verifyPropertyInteraction(window);
     await verifyShapeTextEditing(window);
+    await verifySelectionToolbar(window);
     const fixtureFile = process.argv[2];
     if (fixtureFile) {
       const sequence: unknown = JSON.parse(await readFile(fixtureFile, 'utf8'));
@@ -192,6 +193,92 @@ async function verifyShapeTextEditing(window: BrowserWindow): Promise<void> {
   await settle();
   await evaluate('window.shapeTextEditingSmoke.assertPendingSize(2.5, 1); window.shapeTextEditingSmoke.dispose()');
   console.log('Slides production Stage + queue: native Enter, outside selection, pending re-entry, late receipts, failure recovery and frame settlement passed');
+}
+
+/** 生产 Stage 中用原生指针／键盘覆盖属性草稿交接与异步队列，不调用属性组件内部方法。 */
+async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
+  const evaluate = (script: string): Promise<unknown> => window.webContents.executeJavaScript(script).catch((error: unknown) => {
+    throw new Error(`Toolbar browser step failed: ${script}\n${String(error)}`);
+  });
+  const settle = () => evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+  await evaluate('window.shapeTextEditingSmoke = window.mountShapeTextEditingSmoke(); window.shapeTextEditingSmoke.ready()');
+  async function point(expression: string) {
+    const value = await evaluate(expression);
+    if (typeof value !== 'object' || value === null || !('x' in value) || !('y' in value)
+      || typeof value.x !== 'number' || typeof value.y !== 'number') throw new Error('Missing toolbar control position');
+    return { x: value.x, y: value.y };
+  }
+  async function click(expression: string) {
+    const position = await point(expression);
+    window.webContents.sendInputEvent({ type: 'mouseMove', ...position });
+    window.webContents.sendInputEvent({ type: 'mouseDown', ...position, button: 'left', clickCount: 1 });
+    window.webContents.sendInputEvent({ type: 'mouseUp', ...position, button: 'left', clickCount: 1 });
+    await settle();
+  }
+  const control = (selector: string) => `window.shapeTextEditingSmoke.controlPoint(${JSON.stringify(selector)})`;
+  async function number(selector: string, value: string) {
+    await click(control(selector));
+    await evaluate(`window.shapeTextEditingSmoke.prepareNumberInput(${JSON.stringify(selector)})`);
+    await window.webContents.insertText(value);
+    await settle();
+  }
+  async function key(keyCode: string) {
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode });
+    window.webContents.sendInputEvent({ type: 'keyUp', keyCode });
+    await settle();
+  }
+  await click('window.shapeTextEditingSmoke.point("badge")');
+  await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge"); window.shapeTextEditingSmoke.assertGeometryUnchanged()');
+  await click(control('[data-property="fill"]'));
+  await click(control('[title="#16A34A"]'));
+  await click(control('[data-property="size"]'));
+  await number('.slides-element-property-popover input', '3');
+  // 这个点击必须先提交 A 的尺寸再选中 B，并让 B 的工具条立即可用。
+  await click('window.shapeTextEditingSmoke.point("second")');
+  await evaluate('window.shapeTextEditingSmoke.assertToolbar("second"); window.shapeTextEditingSmoke.assertPopupClosed()');
+  await click(control('[data-property="fill"]'));
+  await click(control('[title="#DC2626"]'));
+  await click('window.shapeTextEditingSmoke.point("standalone")');
+  await number('.slides-element-property-toolbar input', '24');
+  await key('Enter');
+  await click(control('[data-property="text"]'));
+  await click(control('[title="#9333EA"]'));
+  await evaluate('window.shapeTextEditingSmoke.assertPropertyIntents(); window.shapeTextEditingSmoke.assertGeometryUnchanged()');
+  await click('window.shapeTextEditingSmoke.point("second")');
+  await click(control('[data-property="size"]'));
+  await number('.slides-element-property-popover input', '4');
+  await key('Escape');
+  await evaluate('window.shapeTextEditingSmoke.assertPropertyIntents(); window.shapeTextEditingSmoke.assertPopupClosed()');
+  const before = await evaluate('window.shapeTextEditingSmoke.toolbarRect()');
+  const start = await point('window.shapeTextEditingSmoke.point("second")');
+  const end = { x: start.x + 48, y: start.y + 48 };
+  window.webContents.sendInputEvent({ type: 'mouseDown', ...start, button: 'left', clickCount: 1 });
+  window.webContents.sendInputEvent({ type: 'mouseMove', ...end, modifiers: ['leftbuttondown'] });
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertToolbar("second", false)');
+  window.webContents.sendInputEvent({ type: 'mouseUp', ...end, button: 'left', clickCount: 1 });
+  await settle();
+  await evaluate('window.shapeTextEditingSmoke.assertToolbar("second")');
+  const after = await evaluate('window.shapeTextEditingSmoke.toolbarRect()');
+  if (typeof before !== 'object' || before === null || !('left' in before) || typeof before.left !== 'number'
+    || typeof after !== 'object' || after === null || !('left' in after) || typeof after.left !== 'number'
+    || Math.abs(after.left - before.left - 48) > 1) throw new Error('Toolbar did not follow pending translation');
+  await evaluate('window.shapeTextEditingSmoke.setZoom(0.5); window.shapeTextEditingSmoke.resizeHost(360); window.shapeTextEditingSmoke.ready()');
+  await settle();
+  await click('window.shapeTextEditingSmoke.point("badge")');
+  await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge")');
+  await click(control('[data-property="fill"]'));
+  await click(control('.slides-element-color__custom'));
+  await evaluate('window.shapeTextEditingSmoke.assertPopupPlacement(); window.shapeTextEditingSmoke.scrollPropertyPopup()');
+  await settle();
+  await writeFile(path.resolve(__dirname, 'selection-property-toolbar-narrow.png'), (await window.webContents.capturePage()).toPNG());
+  await key('Escape');
+  await key('Escape');
+  await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge"); window.shapeTextEditingSmoke.assertPopupClosed()');
+  await writeFile(path.resolve(__dirname, 'selection-property-toolbar.png'), (await window.webContents.capturePage()).toPNG());
+  await key('Delete');
+  await evaluate('window.shapeTextEditingSmoke.assertDeleted("badge"); window.shapeTextEditingSmoke.dispose()');
+  console.log('Slides selection toolbar: native numeric focus, A-to-B blur ownership, queued styles, Escape, drag and narrow viewport passed');
 }
 
 function assertFrameCount(result: unknown, expected: number): void {

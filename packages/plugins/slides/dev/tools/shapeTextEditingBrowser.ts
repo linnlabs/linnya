@@ -27,7 +27,7 @@ export function mountShapeTextEditingSmoke() {
       box: { x: 0.5, y: 0.5, w: 2.5, h: 1, unit: 'in' },
       geometry: { type: 'preset', name: 'rect' }, fill: { type: 'solid', color: '#2563EB' },
       authoringRef: { slideKey: 'overview', editKey: 'badge', targetKind: 'shape' },
-      authoringEdit: { capabilities: ['translate', 'set_text_content', 'set_visual_size'], text: { kind: 'plain_text', content: 'Shape text' } },
+      authoringEdit: { capabilities: ['delete', 'translate', 'set_text_content', 'set_visual_size', 'set_fill_color'], fill: { kind: 'solid', color: '#2563EB' }, text: { kind: 'plain_text', content: 'Shape text' } },
       innerText: {
         id: 'badge-inner', kind: 'text', zIndex: 0,
         box: { x: 0.5, y: 0.5, w: 2.5, h: 1, unit: 'in' }, verticalAlign: 'middle',
@@ -46,14 +46,14 @@ export function mountShapeTextEditingSmoke() {
   const second: ShapeRenderNode = {
     ...first, id: 'second', box: { ...first.box, x: 3.5, w: 2 },
     authoringRef: { slideKey: 'overview', editKey: 'second', targetKind: 'shape' },
-    authoringEdit: { capabilities: ['translate', 'set_text_content', 'set_visual_size'], text: { kind: 'plain_text', content: 'Second shape' } },
+    authoringEdit: { capabilities: ['delete', 'translate', 'set_text_content', 'set_visual_size', 'set_fill_color'], fill: { kind: 'solid', color: '#2563EB' }, text: { kind: 'plain_text', content: 'Second shape' } },
     innerText: first.innerText ? { ...first.innerText, id: 'second-inner', box: { ...first.innerText.box, x: 3.5, w: 2 } } : undefined,
   };
   if (!first.innerText) throw new Error('Missing fixture text');
   const standalone: TextRenderNode = {
     ...first.innerText, id: 'standalone', box: { ...first.innerText.box, x: 0.5, y: 2, w: 2.5, h: 1 },
     authoringRef: { slideKey: 'overview', editKey: 'standalone', targetKind: 'text' },
-    authoringEdit: { capabilities: ['translate', 'set_text_content'], text: { kind: 'plain_text', content: 'Plain text' } },
+    authoringEdit: { capabilities: ['delete', 'translate', 'set_text_content', 'set_text_style'], text: { kind: 'plain_text', content: 'Plain text', fontSizePt: 14, color: '#111827' } },
   };
   const slide = { ...initialSlide, elements: [first, second, standalone] };
   const pinia = createPinia();
@@ -85,7 +85,7 @@ export function mountShapeTextEditingSmoke() {
               slices: line.slices.map(slice => ({ ...slice, text: content.get(node.id) ?? '' })) })),
           } : undefined,
         };
-        const authoringEdit = { ...node.authoringEdit, text: { kind: 'plain_text' as const, content: content.get(node.id) ?? '' } };
+        const authoringEdit = { ...node.authoringEdit, text: { ...node.authoringEdit.text, kind: 'plain_text' as const, content: content.get(node.id) ?? '' } };
         return node.kind === 'shape' ? { ...node, authoringEdit, innerText: projectedText }
           : { ...node, ...projectedText, authoringEdit };
       }) }],
@@ -121,12 +121,72 @@ export function mountShapeTextEditingSmoke() {
   return {
     async ready() { await nextTick(); await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); },
     point(which = 'badge') {
-      // 属性面板固定在画布右上；点击真实露出的对象区域，不向被面板遮挡的坐标发事件。
+      // 使用真实画布坐标点击对象，工具条不参与画布 fit 或命中。
       const wrapper = host.querySelector('.stage-canvas-wrapper');
       if (!wrapper) throw new Error('Stage canvas missing');
       const box = wrapper.getBoundingClientRect();
       return { x: Math.round(box.x + box.width * (which === 'second' ? 3.8 : 1.5) / 6.5), y: Math.round(box.y + box.height * (which === 'standalone' ? 2.5 : 1) / 3.5) };
     },
+    controlPoint(selector: string) {
+      const element = host.querySelector<HTMLElement>(selector);
+      if (!element || getComputedStyle(element).visibility === 'hidden') throw new Error(`Missing visible control: ${selector}`);
+      const box = element.getBoundingClientRect();
+      return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) };
+    },
+    assertToolbar(id: string, visible = true) {
+      const toolbar = host.querySelector<HTMLElement>('.slides-element-property-toolbar');
+      const showing = toolbar !== null && getComputedStyle(toolbar).visibility === 'visible';
+      if (manual.selectedTarget?.elementId !== id || showing !== visible) throw new Error(`Toolbar owner/visibility mismatch: ${manual.selectedTarget?.elementId}/${showing}`);
+      if (toolbar && showing) {
+        const box = toolbar.getBoundingClientRect();
+        const bounds = host.getBoundingClientRect();
+        if (box.left < bounds.left || box.right > bounds.right || box.top < bounds.top || box.bottom > bounds.bottom) throw new Error('Toolbar escaped its pane');
+      }
+    },
+    prepareNumberInput(selector: string) {
+      const input = host.querySelector(selector);
+      if (!(input instanceof HTMLInputElement) || document.activeElement !== input) throw new Error('Number input did not receive native pointer focus');
+      input.select();
+    },
+    assertPropertyIntents() {
+      const first = commands[0]?.command.operation;
+      if (commands.length !== 1 || first?.op !== 'set_fill_color' || first.target.editKey !== 'badge' || first.color !== '#16A34A') throw new Error('Unexpected initial fill command');
+      const intents = manual.queuedIntents.map(intent => intent.operation);
+      if (!intents.some(op => op.op === 'set_visual_size' && op.target.editKey === 'badge' && op.visualSize.width === 3)) throw new Error('Blur lost A size or sent it to B');
+      if (intents.some(op => op.op === 'set_visual_size' && op.target.editKey === 'second')) throw new Error('A size was written to B');
+      if (!intents.some(op => op.op === 'set_fill_color' && op.target.editKey === 'second' && op.color === '#DC2626')) throw new Error('B fill was blocked while saving A');
+      if (!intents.some(op => op.op === 'set_text_style' && op.target.editKey === 'standalone' && op.fontSizePt === 24 && op.color === '#9333EA')) throw new Error('Text style edits were lost or duplicated');
+    },
+    assertDeleted(id: string) {
+      if (manual.selectedTarget || host.querySelector('.slides-element-property-toolbar')) throw new Error('Delete did not clear the selection toolbar');
+      if (!manual.queuedIntents.some(intent => intent.operation.op === 'delete_target' && intent.operation.target.editKey === id)) throw new Error('Toolbar button focus blocked canvas delete');
+    },
+    assertPopupPlacement() {
+      const toolbar = host.querySelector('.slides-element-property-toolbar')?.getBoundingClientRect();
+      const panel = host.querySelector('.slides-element-property-popover')?.getBoundingClientRect();
+      const bounds = host.getBoundingClientRect();
+      if (!toolbar || !panel || panel.left < bounds.left || panel.right > bounds.right
+        || panel.top < bounds.top || panel.bottom > bounds.bottom
+        || (panel.top < toolbar.bottom && panel.bottom > toolbar.top)) throw new Error('Property popup obscures its toolbar or escapes the pane');
+    },
+    scrollPropertyPopup() {
+      const panel = host.querySelector('.slides-element-property-popover');
+      if (panel) panel.scrollTop = panel.scrollHeight;
+    },
+    assertPopupClosed() {
+      if (host.querySelector('.slides-element-property-popover')) throw new Error('Outside pointer did not dismiss the property popup');
+    },
+    assertGeometryUnchanged() {
+      if (ui.zoomLevel !== 1 || host.querySelector('.slide-stage')?.getBoundingClientRect().height !== 420) throw new Error('Toolbar changed the viewport/zoom');
+    },
+    toolbarRect() {
+      const toolbar = host.querySelector('.slides-element-property-toolbar');
+      if (!toolbar) throw new Error('Missing toolbar');
+      const rect = toolbar.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+    },
+    resizeHost(width: number) { host.style.width = `${width}px`; },
+    setZoom(value: number) { ui.setZoom(value); },
     async assertEditing() {
       await nextTick(); assertInput('Shape text');
       const style = getComputedStyle(input());

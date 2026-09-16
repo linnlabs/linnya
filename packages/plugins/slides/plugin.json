@@ -61,7 +61,7 @@
   "dependsOn": ["platform"],
   "compat": {
     "minApp": "0.0.38",
-    "rendererUi": "^2.3.0"
+    "rendererUi": "^2.4.0"
   },
   "ownedTables": [
     "presentation_documents",
