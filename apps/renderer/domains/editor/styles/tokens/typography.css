@@ -1,0 +1,27 @@
+/* Markdown 内容的排版合同；界面控件继续使用各自的 UI token。 */
+:root {
+  --editor-content-max-width: 704px;
+  --editor-content-gutter: 16px;
+  --editor-body-font-size: var(--font-size-md);
+  --editor-body-line-height: 1.7;
+  --editor-heading-font-weight: 600;
+  --editor-subheading-font-weight: 500;
+  --editor-h1-font-size: var(--font-size-3xl);
+  --editor-h2-font-size: var(--font-size-2xl);
+  --editor-h3-font-size: var(--font-size-xl);
+  --editor-h4-font-size: var(--font-size-lg);
+  --editor-h5-font-size: var(--font-size-md);
+  --editor-h6-font-size: var(--font-size-md);
+  --editor-h1-line-height: 1.3;
+  --editor-h2-line-height: 1.35;
+  --editor-subheading-line-height: 1.4;
+  --editor-paragraph-gap: 12px;
+  --editor-list-item-gap: 4px;
+  --editor-heading-after: 10px;
+  --editor-heading-stack-gap: 16px;
+  --editor-h1-before: 36px;
+  --editor-h2-before: 30px;
+  --editor-h3-before: 24px;
+  --editor-h4-before: 20px;
+  --editor-subheading-before: 16px;
+}

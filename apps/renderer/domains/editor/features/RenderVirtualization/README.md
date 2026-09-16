@@ -91,12 +91,15 @@ Revision、Annotation、toolbar 不能自己监听滚动、全量扫 DOM 或用 
 
 高度缓存有两个概念：
 
-- placeholder 自身高度：写给占位 DOM 的 `minHeight`。
+- placeholder 自身高度：写给占位 DOM 的 `minHeight`，包含块前排版 padding。
 - layout 高度：元素高度 + marginTop + marginBottom，用于滚动窗口坐标系。
 - 未测量块不会永远使用固定 `120px`，高度缓存会在样本数足够后用已测量块的保守平均值作为未知块默认高度，减少中段/底部停止纠偏时的跳动。
 - 自适应未知高度的下限不能高于短文本块的真实高度量级；当前压到 `32px`，是为了避免 5000+ 纯文本文档在首屏采样后仍以 `48px` 估算所有未知块，导致总高度持续偏大、滚动条回弹。
 
-不要把 `getBoundingClientRect().height` 直接当作 layout 高度。长文档里 rootBlock margin 会累计成巨大误差，表现为中段或底部长时间白屏。
+当前正式 RootBlock 间距使用内部 padding，margin 为零，因此测量高度已经包含排版留白。
+高度缓存仍区分元素与 layout 高度以接纳显式 margin 测量；不得在测量结果外再次加一份块间距。
+所有 NodeView（包括无 contentDOM 的 placeholder）通过共享 DOM contract 投影内容类型、标题级别和列表类型，
+CSS 只根据这些外壳属性决定相邻块间隔，不依赖入屏后才存在的标题/列表内容。
 
 ## 提交协议
 

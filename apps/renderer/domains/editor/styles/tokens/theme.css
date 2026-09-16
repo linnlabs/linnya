@@ -1,11 +1,6 @@
 /* Editor 业务 UI 与用户内容专属主题 token。 */
 
 :root {
-  --content-max-width: 800px;
-  --h1-font-size: 2rem;
-  --h2-font-size: 1.75rem;
-  --h3-font-size: 1.5rem;
-  --h4-h5-h6-font-size: 1.25rem;
   --root-marker-color: rgba(50, 150, 255, 0.8);
   --heading-marker-color: rgba(255, 150, 50, 0.8);
   --base-marker-color: rgba(50, 200, 50, 0.8);

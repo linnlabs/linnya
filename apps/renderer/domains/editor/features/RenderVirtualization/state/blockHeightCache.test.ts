@@ -6,7 +6,7 @@ describe('BlockHeightCache', () => {
     const cache = new BlockHeightCache()
 
     expect(cache.get('block-a')).toBe(120)
-    expect(cache.getLayoutHeight('block-a')).toBe(125)
+    expect(cache.getLayoutHeight('block-a')).toBe(cache.get('block-a'))
     expect(cache.has('block-a')).toBe(false)
   })
 
@@ -22,7 +22,7 @@ describe('BlockHeightCache', () => {
     cache.set('block-c', 10000)
 
     expect(cache.get('block-a')).toBe(96)
-    expect(cache.getLayoutHeight('block-a')).toBe(101)
+    expect(cache.getLayoutHeight('block-a')).toBe(cache.get('block-a'))
     expect(cache.get('block-b')).toBe(32)
     expect(cache.get('block-c')).toBe(128)
   })
@@ -65,7 +65,7 @@ describe('BlockHeightCache', () => {
         marginAfter: 6,
       })
     }
-    expect(cache.getLayoutHeight('unknown-before-threshold')).toBe(125)
+    expect(cache.getLayoutHeight('unknown-before-threshold')).toBe(cache.get('unknown-before-threshold'))
 
     cache.set('block-7', {
       elementHeight: 88,
@@ -96,7 +96,7 @@ describe('BlockHeightCache', () => {
   it('estimates total layout height without requiring every block id', () => {
     const cache = new BlockHeightCache()
 
-    expect(cache.estimateTotalLayoutHeight(3)).toBe(375)
+    expect(cache.estimateTotalLayoutHeight(3)).toBe(3 * cache.get('unknown'))
 
     for (let index = 0; index < 8; index += 1) {
       cache.set(`short-block-${index}`, {

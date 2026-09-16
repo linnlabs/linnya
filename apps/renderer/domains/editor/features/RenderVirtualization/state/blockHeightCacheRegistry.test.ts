@@ -41,7 +41,9 @@ describe('blockHeightCacheRegistry', () => {
     resetLegacyRenderVirtualizationBlockHeightCacheForTest()
 
     expect(getLegacyRenderVirtualizationBlockHeightForTest('block-a')).toBe(120)
-    expect(getLegacyRenderVirtualizationBlockLayoutHeightForTest('block-a')).toBe(125)
+    expect(getLegacyRenderVirtualizationBlockLayoutHeightForTest('block-a')).toBe(
+      getLegacyRenderVirtualizationBlockHeightForTest('block-a')
+    )
     expect(getLegacyRenderVirtualizationBlockHeightCacheSnapshotForTest().size).toBe(0)
   })
 

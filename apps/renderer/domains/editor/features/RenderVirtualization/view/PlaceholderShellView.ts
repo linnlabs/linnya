@@ -18,6 +18,7 @@ import {
   ROOT_BLOCK_DOM_NODE_TYPES,
   ROOT_BLOCK_DOM_RENDER_MODES,
   createRootBlockBodyElement,
+  applyRootBlockContentAttributes,
 } from '../../../shared/rootBlockDomContract'
 
 /**
@@ -46,6 +47,7 @@ function getRootBlockId(node: ProseMirrorNode): string {
 }
 
 function syncPlaceholderDom(dom: HTMLElement, node: ProseMirrorNode, height: number): void {
+  applyRootBlockContentAttributes(dom, node.firstChild)
   const attrs = readRootBlockAttrs(node)
   const id = getRootBlockId(node)
 

@@ -1,3 +1,5 @@
+import type { Node as ProseMirrorNode } from 'prosemirror-model'
+
 // RootBlock DOM 是虚拟化、旧 Vue NodeView、schema 序列化和 Host chrome 的共同契约。
 // 这些字符串必须集中维护，避免某条渲染路径悄悄漂移后只在大文档或小文档里回归。
 export const ROOT_BLOCK_DOM_CLASSES = {
@@ -24,6 +26,9 @@ export const ROOT_BLOCK_DOM_ATTRS = {
   chromeAnchor: 'data-root-block-chrome-anchor',
   revisionHeaderMount: 'data-root-block-revision-header-mount',
   historyMount: 'data-root-block-history-mount',
+  contentType: 'data-content-type',
+  headingLevel: 'data-heading-level',
+  listType: 'data-list-type',
 } as const
 
 export const ROOT_BLOCK_DOM_NODE_TYPES = {
@@ -98,6 +103,41 @@ export function applyRootBlockColorStyle(
 
 export function getRootBlockContentClass(firstChildTypeName: string | null | undefined): string {
   return firstChildTypeName ? `contains-${firstChildTypeName}` : ''
+}
+
+/**
+ * 排版只投影内容节点的语义，不新增持久化属性。
+ * 离屏块没有 contentDOM，因此标题与列表间距不能依赖 :has(内部内容)。
+ */
+export function resolveRootBlockContentAttributes(
+  content: ProseMirrorNode | null | undefined
+): Record<string, string> {
+  if (!content) return {}
+  const attributes: Record<string, string> = {
+    [ROOT_BLOCK_DOM_ATTRS.contentType]: content.type.name,
+  }
+  if (content.type.name === 'headingBlock') {
+    const level: unknown = content.attrs.level
+    if (typeof level === 'number') attributes[ROOT_BLOCK_DOM_ATTRS.headingLevel] = String(level)
+  }
+  if (content.type.name === 'listItemBlock') {
+    const listType: unknown = content.attrs.listType
+    if (typeof listType === 'string') attributes[ROOT_BLOCK_DOM_ATTRS.listType] = listType
+  }
+  return attributes
+}
+
+export function applyRootBlockContentAttributes(
+  dom: HTMLElement,
+  content: ProseMirrorNode | null | undefined
+): void {
+  const attributes = resolveRootBlockContentAttributes(content)
+  for (const name of [ROOT_BLOCK_DOM_ATTRS.contentType, ROOT_BLOCK_DOM_ATTRS.headingLevel, ROOT_BLOCK_DOM_ATTRS.listType]) {
+    const value = attributes[name]
+    // 块转换时移除旧标题/列表语义，避免沿用转换前的章节留白。
+    if (value === undefined) dom.removeAttribute(name)
+    else dom.setAttribute(name, value)
+  }
 }
 
 export function clearRootBlockContentClasses(el: HTMLElement): void {

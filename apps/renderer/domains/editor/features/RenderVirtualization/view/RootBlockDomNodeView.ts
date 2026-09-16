@@ -25,6 +25,7 @@ import {
   ROOT_BLOCK_DOM_NODE_TYPES,
   ROOT_BLOCK_DOM_RENDER_MODES,
   applyRootBlockColorStyle,
+  applyRootBlockContentAttributes,
   clearRootBlockContentClasses,
   createHydratedRootBlockDomShellElements,
   getRootBlockContentClass,
@@ -67,6 +68,7 @@ function isMutationInsideContentDom(
 }
 
 function syncRootBlockDom(shell: RootBlockDomShellElements, node: ProseMirrorNode): void {
+  applyRootBlockContentAttributes(shell.dom, node.firstChild)
   const attrs = readRootBlockAttrs(node)
   const id = readRootBlockId(node) ?? ''
 

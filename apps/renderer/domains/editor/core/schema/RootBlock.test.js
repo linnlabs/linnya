@@ -98,6 +98,7 @@ afterEach(() => {
 describe('RootBlock parseHTML', () => {
   it('renders the canonical rootBlock DOM shell for HTML serialization', () => {
     const spec = RootBlock.config.renderHTML({
+      node: createRootBlockNode(),
       HTMLAttributes: {
         [ROOT_BLOCK_DOM_ATTRS.id]: 'root-a',
       },

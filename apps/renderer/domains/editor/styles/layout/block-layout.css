@@ -11,14 +11,14 @@
  */
 .root-block-outer {
   position: relative; /* 相对定位，作为子元素的定位参考 */
-  margin-left: 0; /* 不使用负边距 */
-  margin-right: 0; /* 不使用负边距 */
+  margin: 0;
+  padding-block-start: 0;
   border-radius: var(--radius-sm); /* 圆角边框 */
   transition: background-color var(--transition-normal), transform var(--transition-fast); /* 平滑过渡效果 */
   width: 100%; /* 宽度为100%，不添加额外宽度 */
   box-sizing: border-box; /* 确保padding不会导致宽度溢出 */
-  margin-top: 0;
-  margin-bottom: 5px; /* 减小块之间的间距，从spacing-md(16px)改为spacing-xs(5px) */
+  font-size: var(--editor-body-font-size);
+  line-height: var(--editor-body-line-height);
   display: flex; /* 使用flex布局 */
   flex-direction: column; /* 垂直方向排列 */
 }
@@ -34,8 +34,8 @@
  * 中文说明：它和正文同属真实布局，避免 overlay 先量坐标、再给正文补 padding 的双轨错位。
  */
 .root-block-revision-header {
-  max-width: 740px;
-  width: calc(100% - 32px);
+  max-width: var(--editor-content-max-width);
+  width: calc(100% - 2 * var(--editor-content-gutter));
   box-sizing: border-box;
   margin: 2px auto 2px;
   display: flex;
@@ -57,7 +57,7 @@
 
 /*
  * 裸 DOM RootBlock NodeView 的 revision header 已经位于 .root-block 内部。
- * .root-block 本身负责 740px / calc(100% - 32px) 的正文宽度约束；
+ * .root-block 本身负责正文宽度与操作留白；
  * 这里不能再次套用同一套宽度和 auto margin，否则 pending header 会比正文窄一圈。
  */
 .root-block > .root-block-revision-header {
@@ -125,26 +125,43 @@
   min-width: 0; /* 允许 Flexbox 子项收缩 */
 }
 
-/* 增加紧跟在其他块后面的 HeadingBlock 块的上边距 */
-.root-block-outer + .root-block-outer:has(.heading-block.heading-level-1) {
-  margin-top: 20px; /* H1 的上边距 */
+/*
+ * 留白只归后一个 RootBlock，计入自身测量高度，避免相邻 margin 折叠。
+ * data-* 来自内容节点，Vue、原生与离屏占位都具备，不查询会被虚拟化移除的子 DOM。
+ */
+.root-block-outer + .root-block-outer {
+  padding-block-start: var(--editor-paragraph-gap);
 }
 
-/* H2 的上边距 */
-.root-block-outer + .root-block-outer:has(.heading-block.heading-level-2) {
-  margin-top: 16px; /* 比 H1 稍小 */
+.root-block-outer[data-list-type="bullet"] + .root-block-outer[data-list-type="bullet"],
+.root-block-outer[data-list-type="ordered"] + .root-block-outer[data-list-type="ordered"] {
+  padding-block-start: var(--editor-list-item-gap);
 }
 
-/* H3 的上边距 */
-.root-block-outer + .root-block-outer:has(.heading-block.heading-level-3) {
-  margin-top: 12px; /* 比 H2 稍小 */
+.root-block-outer[data-content-type="headingBlock"] + .root-block-outer {
+  padding-block-start: var(--editor-heading-after);
 }
 
-/* H4, H5, H6 的上边距 (可以设置相同的值) */
-.root-block-outer + .root-block-outer:has(.heading-block.heading-level-4),
-.root-block-outer + .root-block-outer:has(.heading-block.heading-level-5),
-.root-block-outer + .root-block-outer:has(.heading-block.heading-level-6) {
-  margin-top: 8px; /* 比 H3 稍小 */
+.root-block-outer + .root-block-outer[data-heading-level="1"] {
+  padding-block-start: var(--editor-h1-before);
+}
+.root-block-outer + .root-block-outer[data-heading-level="2"] {
+  padding-block-start: var(--editor-h2-before);
+}
+.root-block-outer + .root-block-outer[data-heading-level="3"] {
+  padding-block-start: var(--editor-h3-before);
+}
+.root-block-outer + .root-block-outer[data-heading-level="4"] {
+  padding-block-start: var(--editor-h4-before);
+}
+.root-block-outer + .root-block-outer[data-heading-level="5"],
+.root-block-outer + .root-block-outer[data-heading-level="6"] {
+  padding-block-start: var(--editor-subheading-before);
+}
+
+/* 连续标题属于同一章节入口，不重复叠加节前留白。 */
+.root-block-outer[data-content-type="headingBlock"] + .root-block-outer[data-content-type="headingBlock"] {
+  padding-block-start: var(--editor-heading-stack-gap);
 }
 
 /* 
@@ -160,8 +177,8 @@
   margin: 0 auto; /* 上右下左边距，居中显示 */
   padding: 0px; /* 内边距为0，与contentblock完全重合 */
   border-radius: 4px; /* 与旧样式保持一致 */
-  max-width: 740px; /* 最大宽度限制，与旧样式保持一致 */
-  width: calc(100% - 32px); /* 宽度为父容器宽度减去左右padding，与旧样式保持一致 */
+  max-width: var(--editor-content-max-width);
+  width: calc(100% - 2 * var(--editor-content-gutter));
   box-sizing: border-box; /* 确保padding不会导致宽度溢出 */
   display: flex; /* 使用Flexbox布局 */
   flex-direction: column; /* 垂直方向排列 */
@@ -271,11 +288,9 @@
  */
 .heading-block {
   display: block;
-  padding: 8px; /* 与旧样式保持一致 */
-  padding-left: 2px; /* 与旧样式保持一致 */
-  margin: 0; /* 外边距决定了块与块之间的间距 */
+  padding: 0 2px;
+  margin: 0; /* 章节留白归 RootBlock，内容节点不重复添加间距。 */
   box-sizing: border-box;
-  line-height: 1.5; /* 1.5倍行距 */
 }
 
 /* 
@@ -288,10 +303,10 @@
  */
 .base-block {
   display: block;
-  padding: 1.5px; /* 与旧样式保持一致 */
-  margin: 0; /* 与标题块相同的外边距 */
+  padding: 0 2px;
+  margin: 0; /* 段落留白归 RootBlock，与标题共享同一套测量边界。 */
   box-sizing: border-box;
-  line-height: 1.5; /* 1.5倍行距 */
+  line-height: var(--editor-body-line-height);
 }
 
 /* 
@@ -385,8 +400,8 @@
 .list-item-block {
   display: block;
   position: relative; /* 用于 ::before 定位 */
-  padding-top: 1.5px;    /* 匹配 BaseBlock 垂直 padding */
-  padding-bottom: 1.5px; /* 匹配 BaseBlock 垂直 padding */
+  padding-top: 0;
+  padding-bottom: 0;
   padding-right: 0;     /* 默认无右侧 padding */
   /* 默认 Level 0 的 padding-left
    * 说明：无序/有序列表都使用同一套正文起始位置，保证对齐。

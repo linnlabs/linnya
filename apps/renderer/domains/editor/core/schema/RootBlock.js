@@ -1,7 +1,7 @@
 // src/renderer/extensions/RootBlock.js
 
 import { Node, mergeAttributes } from '@tiptap/core'
-import { NODE_GROUPS, applySchemaToNode } from '../../extensions/core/schema'
+import { NODE_GROUPS } from '../../extensions/core/schema'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
 import BlockView from '../../ui/BlockView.vue'
 import { generateRootBlockId } from '../../../../shared/utils/idUtils'
@@ -21,6 +21,7 @@ import {
   ROOT_BLOCK_DOM_CLASSES,
   ROOT_BLOCK_DOM_NODE_TYPES,
   ROOT_BLOCK_DOM_RENDER_MODES,
+  resolveRootBlockContentAttributes,
 } from '../../shared/rootBlockDomContract'
 import { resolveCurrentEditorMessage } from '../../functions/resolveCurrentEditorMessage'
 
@@ -205,7 +206,7 @@ export const RootBlock = Node.create({
       }
 
       const vueNodeView = VueNodeViewRenderer(BlockView, {
-        update({ oldNode, oldDecorations, newNode, newDecorations, updateProps }) {
+        update({ oldNode, newNode, newDecorations, updateProps }) {
           if (newNode.type !== oldNode.type) return false;
           // 中文说明：NodeView 类型是在创建时决定的。小文档全量 Vue NodeView 切到
           // 大文档虚拟化时，如果这里继续返回 true，旧 Vue NodeView 会被复用为离屏块，
@@ -222,10 +223,11 @@ export const RootBlock = Node.create({
   },
   
   // 提供一个简化的renderHTML方法，用于初始化和序列化
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ HTMLAttributes, node }) {
     return ['div', mergeAttributes({
       class: ROOT_BLOCK_DOM_CLASSES.outer,
       [ROOT_BLOCK_DOM_ATTRS.nodeType]: ROOT_BLOCK_DOM_NODE_TYPES.outer,
+      ...resolveRootBlockContentAttributes(node.firstChild),
     }, HTMLAttributes),
       ['div', {
         class: ROOT_BLOCK_DOM_CLASSES.body,

@@ -20,7 +20,7 @@
 }
 
 .root-block-outer.root-block-virtual-placeholder .root-block {
-  min-height: inherit;
+  /* 高度由外壳独占；子层再次继承会把块前 padding 重复计入占位高度。 */
   transition: none;
 }
 
@@ -91,14 +91,6 @@
 
 
 /* 
- * 标题块视觉样式
- * 作用：为标题块提供特定的视觉风格
- */
-.heading-block {
-  padding-right: 0; /* 如果有需要，保留右侧 padding */
-}
-
-/* 
  * 基础块视觉样式
  * 作用：为基础块提供特定的视觉风格
  */
@@ -109,95 +101,35 @@
   color: inherit; /* 确保继承父级的颜色 */
 }
 
-/* 
- * 标题级别视觉样式
- * 作用：为不同级别的标题提供不同的字体大小和样式
- */
-/* 一级标题样式 */
-.heading-block.heading-level-1,
-.ProseMirror h1.heading-level-1 {
-  font-size: var(--h1-font-size); /* 使用变量并添加!important */
-  font-weight: bold;
-  line-height: 1.2;
-  /* ++ 颜色继承策略：使用 CSS 变量而非 inherit，避免影响主文本 ++ */
-  /* 标题本身不需要继承块颜色（由 Mark 控制），这里仅设置默认回退颜色 */
-  /* 当块未设置颜色时，通过 .heading-block-outer 的 :not([data-text-color]) 回退到默认色 */
+/* 标题只拥有文字层级；章节留白统一由 RootBlock 布局管理。 */
+.heading-block {
+  font-weight: var(--editor-heading-font-weight);
+  line-height: var(--editor-subheading-line-height);
   color: inherit;
 }
-/* 当块没有设置文字色时，使用默认标题颜色 */
-.heading-block-outer:not([data-text-color]) .heading-block.heading-level-1,
-.heading-block-outer:not([data-text-color]) .ProseMirror h1.heading-level-1 {
+.heading-block-outer:not([data-text-color]) .heading-block {
   color: var(--color-text-primary);
 }
-
-/* 二级标题样式 */
-.heading-block.heading-level-2,
-.ProseMirror h2.heading-level-2 {
-  font-size: var(--h2-font-size); /* 使用变量并添加!important */
-  font-weight: bold;
-  line-height: 1.25;
-  color: inherit;
+.heading-block.heading-level-1 {
+  font-size: var(--editor-h1-font-size);
+  line-height: var(--editor-h1-line-height);
 }
-/* 当块没有设置文字色时，使用默认标题颜色 */
-.heading-block-outer:not([data-text-color]) .heading-block.heading-level-2,
-.heading-block-outer:not([data-text-color]) .ProseMirror h2.heading-level-2 {
-  color: var(--color-text-primary);
+.heading-block.heading-level-2 {
+  font-size: var(--editor-h2-font-size);
+  line-height: var(--editor-h2-line-height);
 }
-
-/* 三级标题样式 */
-.heading-block.heading-level-3,
-.ProseMirror h3.heading-level-3 {
-  font-size: var(--h3-font-size); /* 使用变量并添加!important */
-  font-weight: bold;
-  line-height: 1.3;
-  color: inherit;
+.heading-block.heading-level-3 {
+  font-size: var(--editor-h3-font-size);
 }
-/* 当块没有设置文字色时，使用默认标题颜色 */
-.heading-block-outer:not([data-text-color]) .heading-block.heading-level-3,
-.heading-block-outer:not([data-text-color]) .ProseMirror h3.heading-level-3 {
-  color: var(--color-text-primary);
+.heading-block.heading-level-4 {
+  font-size: var(--editor-h4-font-size);
 }
-
-/* 四级标题样式 */
-.heading-block.heading-level-4,
-.ProseMirror h4.heading-level-4 {
-  font-size: var(--h4-h5-h6-font-size); /* 使用变量并添加!important */
-  font-weight: bold;
-  line-height: 1.3;
-  color: inherit;
+.heading-block.heading-level-5 {
+  font-size: var(--editor-h5-font-size);
 }
-/* 当块没有设置文字色时，使用默认标题颜色 */
-.heading-block-outer:not([data-text-color]) .heading-block.heading-level-4,
-.heading-block-outer:not([data-text-color]) .ProseMirror h4.heading-level-4 {
-  color: var(--color-text-primary);
-}
-
-/* 五级标题样式 */
-.heading-block.heading-level-5,
-.ProseMirror h5.heading-level-5 {
-  font-size: var(--h4-h5-h6-font-size); /* 使用变量并添加!important */
-  font-weight: bold;
-  line-height: 1.3;
-  color: inherit;
-}
-/* 当块没有设置文字色时，使用默认标题颜色 */
-.heading-block-outer:not([data-text-color]) .heading-block.heading-level-5,
-.heading-block-outer:not([data-text-color]) .ProseMirror h5.heading-level-5 {
-  color: var(--color-text-primary);
-}
-
-/* 六级标题样式 */
-.heading-block.heading-level-6,
-.ProseMirror h6.heading-level-6 {
-  font-size: var(--h4-h5-h6-font-size); /* 使用变量并添加!important */
-  font-weight: bold;
-  line-height: 1.3;
-  color: inherit;
-}
-/* 当块没有设置文字色时，使用默认标题颜色 */
-.heading-block-outer:not([data-text-color]) .heading-block.heading-level-6,
-.heading-block-outer:not([data-text-color]) .ProseMirror h6.heading-level-6 {
-  color: var(--color-text-primary);
+.heading-block.heading-level-6 {
+  font-size: var(--editor-h6-font-size);
+  font-weight: var(--editor-subheading-font-weight);
 }
 
 /* 
@@ -319,9 +251,7 @@
 .list-item-block {
   --local-block-text-color: inherit;
 
-  /* 内层容器，与基础块保持一致的样式 */
-  /* display: flex; 不再需要 flex 布局 */
-  line-height: 1.5; /* 1.5倍行距 */
+  line-height: var(--editor-body-line-height);
 }
 
 /* ==================== 列表项前缀（无序/有序） ==================== */
@@ -331,15 +261,16 @@
   content: '•'; /* Level 0 默认圆点 */
   position: absolute; /* 绝对定位 */
   left: 6px; /* 控制前缀的位置 */
-  top: -0.24em; /* 定位到第一行视觉中心 (用户调试结果) */
+  top: 0;
   /* 与有序编号列宽保持一致，避免“圆点看起来更小/更靠左”的视觉差 */
   width: 22px; /* 前缀区域宽度（与 .ordered-list-number 一致） */
   /* ++ 颜色继承策略：使用 CSS 变量而非 inherit，避免影响主文本 ++ */
   /* 当块设置了 textColor 时，列表符号会自动使用该颜色 */
   color: var(--local-block-text-color, inherit);
   text-align: center; /* 居中显示 */
-  /* 圆点的视觉重量比数字更轻，略微放大一点，让无序/有序更协调 */
-  font-size: 1.5em;
+  /* 与正文共享首行盒子；不再依赖特定字号下的负偏移。 */
+  font-size: 1em;
+  line-height: inherit;
   user-select: none; /* 不可选中 */
   pointer-events: none; /* 避免干扰点击 */
 }
@@ -353,13 +284,13 @@
 .ordered-list-number {
   position: absolute;
   left: -4px; /* 6px - 10px (增加宽度导致的偏移) */
-  top: 0.09em;
+  top: 0;
   width: 32px; /* 22px + 10px (增加宽度以容纳两位数) */
   padding-right: 6px; /* “.” 后间距 */
   box-sizing: border-box;
   text-align: right;
   font-size: 1em;
-  line-height: 1.5;
+  line-height: inherit;
   user-select: none;
   pointer-events: none;
   color: var(--local-block-text-color, inherit);
@@ -396,8 +327,8 @@
   /* 定位调整 */
   /* 水平：(22px - 6px) / 2 = 8px */
   margin-left: 8px;
-  /* 垂直：(1.5em / 2) - (6px / 2) = 0.75em - 3px */
-  top: calc(0.75em - 1px);
+  /* 使用正文首行高度，空心圆不因行高变化偏离中心。 */
+  top: calc(0.5 * var(--editor-body-line-height) * 1em - 3px);
 }
 
 /* Level 2: 实心方形 */
@@ -478,7 +409,7 @@
   color: var(--local-block-text-color, inherit);
   border-radius: 2px; /* 增加圆角效果 */
   overflow: visible; /* 确保内容不被裁剪 */
-  line-height: 1.5; /* 1.5倍行距 */
+  line-height: var(--editor-body-line-height);
 }
 /* 当块没有设置文字色时，使用默认的第三级文本颜色 */
 .quote-block-outer:not([data-text-color]) .quote-block {

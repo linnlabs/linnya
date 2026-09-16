@@ -18,6 +18,7 @@
     :class="[ROOT_BLOCK_DOM_CLASSES.outer, contentBlockClass]"
     :data-node-type="ROOT_BLOCK_DOM_NODE_TYPES.outer"
     :data-id="currentBlockId || undefined"
+    v-bind="contentBlockAttributes"
   >
     <div
       ref="rootBlockRef"
@@ -49,7 +50,7 @@
         ref="historyMountRef"
         contenteditable="false"
         v-bind="{ [ROOT_BLOCK_DOM_ATTRS.historyMount]: 'true' }"
-      ></div>
+      />
     </div>
   </node-view-wrapper>
 </template>
@@ -81,6 +82,7 @@ import {
   ROOT_BLOCK_DOM_CLASSES,
   ROOT_BLOCK_DOM_NODE_TYPES,
   getRootBlockContentClass,
+  resolveRootBlockContentAttributes,
   resolveRootBlockColorStyle,
 } from '../shared/rootBlockDomContract';
 import {
@@ -128,6 +130,8 @@ const isBlockHistoryVisible = computed<boolean>(() => visibilityState.value.isIn
 const contentBlockClass = computed(() => {
   return getRootBlockContentClass(props.node.firstChild?.type.name);
 });
+
+const contentBlockAttributes = computed(() => resolveRootBlockContentAttributes(props.node.firstChild));
 
 const blockColorStyle = computed(() => {
   return resolveRootBlockColorStyle({

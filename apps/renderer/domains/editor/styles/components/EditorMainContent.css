@@ -7,11 +7,13 @@
  * ProseMirror 编辑器样式
  * 作用：提供编辑器的基础视觉样式
  */
-.ProseMirror {
+.editor-main-content .ProseMirror {
   outline: none;                 /* 固定: 移除默认焦点轮廓 */
   color: var(--color-text-primary);      /* 主题相关: 编辑器文字颜色 */
-  font-family: var(--font-family, sans-serif); /* 主题/基础: 字体 (回退到 sans-serif) */
-  line-height: 1.6;              /* 固定: 行高 */
+  font-family: var(--font-family-default);
+  font-size: var(--editor-body-font-size);
+  line-height: var(--editor-body-line-height);
+  letter-spacing: normal;
   /**
    * 有序列表编号的“计数”由 ProseMirror 插件计算并写到 DOM：
    * - 对应属性：data-ordered-index

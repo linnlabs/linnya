@@ -315,7 +315,7 @@ Shell pending 投影调度必须以 `RenderVirtualizationEngine` 的 hydrated wi
 
 - 它是 editor 级单例状态机，负责 rAF 合批、scrollTop 窗口计算、hydrate/dehydrate、交互保活和真实高度回写；
 - 主窗口输入来自 ProseMirror doc 的 rootBlock 顺序、`BlockHeightCache`、editor-shell scrollTop / clientHeight；普通滚动走 height cache 便宜路径。只有拖动滚动条远跳、外部 `editor-scroll` 或已知窗口漂移时，才额外采样当前屏幕真实命中的 `.root-block-outer`，再按文档顺序向前后扩成渲染窗口。这个 DOM 命中只允许留在 RenderVirtualizationEngine 内部，业务模块不能重复采样。
-- `BlockHeightCache` 同时维护两种高度：placeholder 使用的元素自身高度，以及滚动窗口计算使用的布局高度（元素高度 + marginTop + marginBottom）。不要直接把 `getBoundingClientRect().height` 当作虚拟滚动坐标系高度；`root-block-outer` 的 margin 不在 rect 内，10000 块会累计成数万像素误差，表现为越往下滚屏幕里 hydrated 内容越少，最后白屏。
+- `BlockHeightCache` 同时维护元素自身高度与布局高度（元素高度 + marginTop + marginBottom）。当前 RootBlock 留白归内部 padding、margin 为零，测量结果已含排版留白；placeholder 直接复用该高度，不能再次追加间距。缓存仍保留显式 margin 测量能力，避免外部布局扩展时漏算。
 - 滚动窗口 hydrate/dehydrate 是 engine 的原子事务：当前窗口需要 hydrate 的 blockId 和旧窗口需要 dehydrate 的 blockId 必须在同一次 ProseMirror transaction 里写入 `renderVirtualizationPlugin`。pointer/focus/IME/toolbar 这类局部保活也已经收口到 `KeepAliveRegistry -> renderWindowCommitter` 的同步 pin/unpin 提交链路，不再经过第二套 rAF 队列；否则旧队列会覆盖当前窗口，表现为 `requestedHydrate>0` 但当前屏仍是 placeholder。
 - 普通滚动走 rAF 合批和 height cache 便宜路径；拖动滚动条这类远距离跳转走 `scroll-jump` 同步刷新，并启用当前屏幕 DOM 采样。浏览器有时会把拖动到中段拆成多次小 scroll，单次 delta 不够触发 `scroll-jump`，但累计误差已经足够让窗口错位；engine 因此还有一个低频 `scroll-correction`，当累计滚过几屏后同步采样当前屏幕。远跳 / 累计纠偏时 engine 会先采样浏览器当前屏幕真实命中的 `.root-block-outer`，再围绕这些真实屏幕块扩窗；只有采样不到 DOM 时才退回单 anchor / 高度缓存估算。这样可以避免“engine hydrate 的窗口”和“用户实际看到的窗口”分叉，同时不把 `elementsFromPoint` 变成每帧滚动税。这个纠偏路径只属于 RenderVirtualizationEngine，业务模块不要各自监听滚动或重复采样 DOM。
 - DOM 采样纠偏会触发 placeholder → hydrated NodeView 切换，真实块高度通常会比 placeholder 高，pending header / diff 出现后更明显。engine 在这条路径上必须保持视觉锚点：水合前记录采样窗口中位块的屏幕 top，水合后按同一块 top 的差值补偿 `scrollTop`。否则用户拖到中段或底部时，当前屏幕会被上方新增高度推走，表现为“往下滚显示变多、往上滚显示变少”或中段长白屏。
@@ -580,6 +580,26 @@ AppLayout
 - NodeView（`ui/BlockView.vue`）对块级交互入口的挂载
 
 ---
+
+## Markdown 内容排版
+
+内容排版由 `styles/tokens/typography.css` 统一定义，控件继续使用自己的 UI token。
+默认正文采用 16px、1.7 行高与 704px 最大版心；标题采用 32/24/20/18/16/16px，
+通过字重与章节留白区分层级。字体沿用 Renderer UI 的系统字体栈，字距保持自然。
+代码与表格继续拥有独立的内容密度，不随正文行高一起放大。
+
+块间距只有 `styles/layout/block-layout.css` 一个 owner：段落之间留出停顿，连续同类列表项更紧凑，
+标题靠近后续正文，连续标题不重复累计节前留白。文本内容块不再用上下 padding 模拟段落间距。
+正文、状态栏与 Shell 修订 header 共用版心宽度，块操作空间独立保留。
+
+`shared/rootBlockDomContract.ts` 从首个内容节点投影块类型、标题级别和列表类型。
+Vue NodeView、原生 NodeView、Shell、placeholder 与 HTML 序列化必须消费同一投影；
+这些 DOM 属性不是新的持久化字段。块转换时同步移除过期的标题/列表属性。
+禁止通过查询内部标题 DOM 决定 RootBlock 间距，因为离屏块没有内容子树。
+
+块前留白使用 RootBlock 的 border-box 内 padding，因此测量高度已经包含留白，外边距为零。
+placeholder 的 `min-height` 直接消费测量结果，内部 body 不得再次继承该高度，否则会重复计算留白。
+验收需覆盖中文长段落、多行标题、嵌套列表、表格/代码、窄 pane，以及 hydrate/dehydrate 前后的几何一致性。
 
 ## ProseMirror 的位置（pos）心智模型（调试/写命令时很关键）
 

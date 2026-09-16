@@ -12,7 +12,7 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-sm) 0;
-  max-width: var(--content-max-width);
+  max-width: var(--editor-content-max-width);
   width: 100%;
   margin: 0 auto;
   font-size: 0.8rem;

@@ -3,6 +3,7 @@
 @import './tokens/block-colors.css';
 @import './tokens/syntax-highlight.css';
 @import './tokens/theme.css';
+@import './tokens/typography.css';
 @import './layout/index.css';
 @import './components/index.css';
 @import './features/index.css';

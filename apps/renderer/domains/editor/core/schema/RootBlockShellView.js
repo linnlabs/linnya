@@ -20,6 +20,7 @@ import {
   publishRootBlockNodeViewMounted,
   publishRootBlockNodeViewUnmounted,
 } from '../../features/RenderVirtualization/state/nodeViewLifecycle';
+import { applyRootBlockContentAttributes } from '../../shared/rootBlockDomContract';
 
 function setOptionalAttribute(el, name, value) {
   if (value === null || value === undefined || value === false || value === '') {
@@ -68,6 +69,7 @@ function isMutationInsideContentDom(mutation, contentDOM) {
 }
 
 function syncShellDom(shell, node) {
+  applyRootBlockContentAttributes(shell.dom, node.firstChild);
   const attrs = node.attrs || {};
   const id = typeof attrs.id === 'string' ? attrs.id : '';
 

@@ -8,10 +8,9 @@
 // 真实高度会在块 hydrated 后写入 BlockHeightCache，后续 placeholder 复用真实测量值。
 export const DEFAULT_PLACEHOLDER_ROOT_BLOCK_HEIGHT = 120
 
-// 中文说明：`.root-block-outer` 默认有 5px 块间距。
-// 这个间距不包含在 getBoundingClientRect().height 中，但会参与真实滚动高度；
-// 虚拟滚动窗口计算必须把它纳入 layout span，否则越往下滚累计误差越大。
-export const DEFAULT_ROOT_BLOCK_LAYOUT_MARGIN_AFTER = 5
+// 中文说明：块间留白属于 border-box 内的 padding，placeholder 高度已包含它；
+// 默认外边距为零，避免窗口坐标系在测量结果之外重复累计块间距。
+export const DEFAULT_ROOT_BLOCK_LAYOUT_MARGIN_AFTER = 0
 
 // 中文说明：阶段 1 先把入屏 hydrated 数量压下来。默认只预取约 0.75 屏；
 // 小屏幕仍保留 900px 下限，避免滚动稍快就露出 placeholder。
