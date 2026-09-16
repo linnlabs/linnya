@@ -981,6 +981,26 @@ type SlidesManualTranslationOnlyEditKind =
   | 'svgGraphic'
   | 'formula';
 
+/** 仅供生成的 compose 输入合同闭合 v1 依赖，不属于当前编辑输出。 */
+interface SlidesManualV1SlideEdits {
+  readonly slideKey: string;
+  readonly targets: readonly SlidesManualV1TargetEdit[];
+}
+
+/** 仅供生成的 compose 输入合同描述 v1 兼容形状；新源码必须写 v2。 */
+type SlidesManualV1TargetEdit =
+  | {
+      readonly kind: 'text';
+      readonly editKey: string;
+      readonly content?: string;
+      readonly translation?: SlidesManualTranslation;
+    }
+  | {
+      readonly kind: Exclude<SlidesManualTargetKind, 'text'>;
+      readonly editKey: string;
+      readonly translation: SlidesManualTranslation;
+    };
+
 interface SlidesManualVisualSize {
   /** 覆盖 Yoga 结果的最终可见宽高，单位 inches；不改变 Flex 占位。 */
   readonly width: number;

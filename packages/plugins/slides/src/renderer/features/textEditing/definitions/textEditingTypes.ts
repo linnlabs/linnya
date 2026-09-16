@@ -37,4 +37,3 @@ export interface TextEditingTarget {
 }
 
 export type TextEditingCommitResult = 'submitted' | 'closed' | 'blocked';
-

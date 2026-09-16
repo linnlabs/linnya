@@ -14,7 +14,7 @@ describe('Editor AI settings shared sliders', () => {
     const app = createApp(EditorAiInteractionSettingsSection);
     app.mount(host);
     try {
-      const inputs = [...host.querySelectorAll<HTMLInputElement>('input[type="range"]')];
+      const inputs = [...host.querySelectorAll('input[type="range"]')];
       expect(inputs).toHaveLength(3);
       expect(inputs.every(input => input.disabled)).toBe(true);
       store.updateAutocompleteEnabled(true);

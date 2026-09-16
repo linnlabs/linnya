@@ -40,4 +40,3 @@ export function createInlineTextEditorStyle(
     opacity: target.opacity,
   };
 }
-

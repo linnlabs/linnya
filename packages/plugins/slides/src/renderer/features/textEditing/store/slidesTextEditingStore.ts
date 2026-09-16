@@ -48,4 +48,3 @@ export const useSlidesTextEditingStore = defineStore('slides-text-editing', () =
     $reset: close,
   };
 });
-

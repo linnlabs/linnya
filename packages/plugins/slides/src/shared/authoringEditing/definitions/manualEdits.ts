@@ -97,7 +97,8 @@ export interface SlidesManualEdits {
   readonly slides: readonly SlidesManualSlideEdits[];
 }
 
-type SlidesManualV1TargetEdit =
+/** 仅供生成的 compose 输入合同描述 v1 兼容形状；新源码必须写 v2。 */
+export type SlidesManualV1TargetEdit =
   | {
       readonly kind: 'text';
       readonly editKey: string;
@@ -110,7 +111,8 @@ type SlidesManualV1TargetEdit =
       readonly translation: SlidesManualTranslation;
     };
 
-interface SlidesManualV1SlideEdits {
+/** 仅供生成的 compose 输入合同闭合 v1 依赖，不属于当前编辑输出。 */
+export interface SlidesManualV1SlideEdits {
   readonly slideKey: string;
   readonly targets: readonly SlidesManualV1TargetEdit[];
 }

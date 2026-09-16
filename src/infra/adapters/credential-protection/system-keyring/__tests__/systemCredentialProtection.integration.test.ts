@@ -73,7 +73,10 @@ describe('system credential protection', () => {
       code: 'malformed_ciphertext',
     });
     const valid = await port.encrypt('secret');
-    const tampered = `${valid.slice(0, -1)}${valid.endsWith('A') ? 'B' : 'A'}`;
+    const prefix = 'linnya-keyring:v1:';
+    const payload = valid.slice(prefix.length);
+    // 修改首个 Base64URL 字符会稳定改变 nonce 字节；修改末字符可能只触及未使用的填充位。
+    const tampered = `${prefix}${payload.startsWith('A') ? 'B' : 'A'}${payload.slice(1)}`;
     await expect(port.decrypt(tampered)).rejects.toMatchObject({ code: 'invalidated' });
   });
 });

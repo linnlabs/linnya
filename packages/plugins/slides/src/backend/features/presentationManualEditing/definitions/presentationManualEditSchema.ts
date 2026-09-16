@@ -14,4 +14,3 @@ export const PRESENTATION_MANUAL_EDIT_SCHEMAS = [
   `CREATE INDEX IF NOT EXISTS idx_presentation_manual_edit_receipts_node_created
     ON presentation_manual_edit_receipts(node_id, created_at DESC)`,
 ] as const;
-
