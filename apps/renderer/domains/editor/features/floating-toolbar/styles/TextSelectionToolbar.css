@@ -102,7 +102,7 @@
   height: 28px;
   padding: 4px 6px;
   font-size: 12px;
-  color: var(--floating-toolbar-text-color);
+  color: var(--color-text-primary);
   cursor: pointer;
   background: none;
   border: none;
@@ -111,7 +111,7 @@
 }
 
 .text-selection-toolbar .format-button:hover {
-  background-color: var(--floating-toolbar-item-hover-bg);
+  background-color: var(--color-bg-hover-light);
 }
 
 .text-selection-toolbar .format-icon {
@@ -179,7 +179,7 @@
   align-items: center;
   padding: 4px 8px;
   font-size: 12px;
-  color: var(--floating-toolbar-text-color);
+  color: var(--color-text-primary);
   cursor: pointer;
   background: none;
   border: none;
@@ -188,7 +188,7 @@
 }
 
 .text-selection-toolbar .ai-quote-button:hover {
-  background-color: var(--floating-toolbar-item-hover-bg);
+  background-color: var(--color-bg-hover-light);
 }
 
 .text-selection-toolbar .ai-icon {

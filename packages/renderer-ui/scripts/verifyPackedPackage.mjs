@@ -94,7 +94,7 @@ try {
     path.join(consumerRoot, 'main.ts'),
     [
       "import { createApp, h } from 'vue';",
-      "import { ActionButtons, ColorPickerPanel, CustomNumberInput, CustomSlider, CustomTextInput, DraggablePanel, HoverTooltip, NotificationBar, SimpleDatePicker, TimePicker, createColorPickerOptions, resolveDraggablePanelPosition, resolveHoverTooltipPosition } from '@linnya/renderer-ui';",
+      "import { ActionButtons, ColorPickerPanel, CustomNumberInput, CustomSlider, CustomTextInput, DraggablePanel, FloatingToolbar, ToolbarGroup, HoverTooltip, NotificationBar, SimpleDatePicker, TimePicker, createColorPickerOptions, resolveDraggablePanelPosition, resolveHoverTooltipPosition } from '@linnya/renderer-ui';",
       "import { ChevronIcon } from '@linnya/renderer-ui/icons';",
       "import { resolveBrowserFontStack } from '@linnya/renderer-ui/font-stack';",
       "import { FALLBACK_SHARED_COMPONENT_LOCALIZATION_PORT } from '@linnya/renderer-ui/localization';",
@@ -112,6 +112,7 @@ try {
       "    h(CustomTextInput, { modelValue: 'Packed consumer' }),",
       "    h(CustomNumberInput, { modelValue: 4, min: 1, max: 8 }),",
       "    h(CustomSlider, { modelValue: 25, min: 0, max: 100, variant: 'compact', 'aria-label': 'Scale' }),",
+      "    h(FloatingToolbar, { show: true, position: { top: 24, left: 24 }, 'aria-label': 'Properties' }, { default: () => h(ToolbarGroup, {}, { default: () => h(CustomNumberInput, { modelValue: 24 }) }) }),",
       "    h(SimpleDatePicker, { modelValue: new Date(2026, 7, 31) }),",
       "    h(TimePicker, { modelValue: new Date(2026, 7, 31, 9, 30) }),",
       "    h(ColorPickerPanel, { showBackground: false, textColors: colorOptions }),",

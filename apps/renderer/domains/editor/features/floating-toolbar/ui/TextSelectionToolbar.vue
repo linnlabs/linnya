@@ -1,5 +1,5 @@
 <template>
-  <div class="text-selection-toolbar toolbar-group">
+  <ToolbarGroup class="text-selection-toolbar">
     <!-- AI 引用按钮 -->
     <button class="ai-quote-button" @click="handleAiQuote">
       <AiIcon class="ai-icon" />
@@ -181,10 +181,11 @@
         </transition>
       </div>
     </div>
-  </div>
+  </ToolbarGroup>
 </template>
 
 <script setup>
+import { ToolbarGroup } from '@linnya/renderer-ui';
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { AiIcon } from '@linnya/renderer-ui/icons';
 import { BoldIcon } from '@linnya/renderer-ui/icons';

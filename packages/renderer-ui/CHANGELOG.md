@@ -2,6 +2,12 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 2.4.0 - 2026-09-16
+
+- 新增 `FloatingToolbar`、`ToolbarGroup` 及严格 props/position 合同，共享浮动表面、分组和样式；表单输入保持原生聚焦。
+- Editor 文本选区及修订条迁移到共享外壳，选择、命令、内容颜色与鼠标选区保留策略仍归 Editor；其他浮条不再因共享 CSS 类名被误认成 Editor 表面。
+- Host runtime catalog 和真实 tarball consumer 同步新导出；新增控件不改变旧组件合同。
+
 ## 2.3.0 - 2026-09-15
 
 - 新增受控数值组件 `CustomSlider` 及公开 props/variant 类型，统一进度、原生键盘输入、禁用态与 default/compact 两档密度；

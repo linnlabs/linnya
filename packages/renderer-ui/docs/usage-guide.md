@@ -425,3 +425,9 @@ import type { ModalProps, ModalScrollMode, ModalSlots } from '@linnya/renderer-u
 新增、抽取或公开 Renderer UI 能力时，必须遵循 package README 的
 [新增通用组件设计规范](../README.md#新增通用组件设计规范)。本指南只提供消费方式和示例，不另行维护一套较短、
 容易漂移的准入规则。
+
+## FloatingToolbar 与 ToolbarGroup
+
+从 package 根导入。传入必需的 show 与 position，通过默认 slot 放置按钮、输入和 ToolbarGroup。position 的 top／left 使用所在定位容器的 CSS 像素；组件本身不做选区定位或自动切换方向。需要测量时从组件实例 element 获取真实根元素。
+
+事件、class、style、aria/data 属性透传到根元素；原生输入保留默认聚焦和键盘行为。文本编辑器若需防止按钮按下破坏选区，在自己的消费端设置 mousedown 策略，不要让所有业务共用一次 preventDefault。位置更新、outside click 和业务状态由调用方拥有。

@@ -181,7 +181,7 @@ class FloatingToolbarView {
 
     // 若点击发生在浮动工具栏内部，则忽略（允许点击按钮）
     if (target && typeof target.closest === 'function') {
-      const toolbarEl = target.closest('.floating-toolbar');
+      const toolbarEl = target.closest('[data-editor-floating-toolbar]');
       if (toolbarEl) {
         return;
       }

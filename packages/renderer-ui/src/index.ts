@@ -144,3 +144,6 @@ export type {
   DraggablePanelSize,
   DraggablePanelVariant,
 } from './features/floating-panels';
+
+export { FloatingToolbar, ToolbarGroup } from './features/toolbars';
+export type { FloatingToolbarPosition, FloatingToolbarProps } from './features/toolbars';

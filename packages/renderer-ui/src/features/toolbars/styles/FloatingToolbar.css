@@ -1,0 +1,33 @@
+.linnya-floating-toolbar {
+  position: absolute;
+  z-index: var(--linnya-ui-layer-popover);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 4px;
+  border: 0.6px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-default);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  line-height: normal;
+  box-shadow: 0 4px 12px var(--shadow-color-md);
+}
+
+.linnya-toolbar-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.linnya-toolbar-group:not(:last-child)::after {
+  display: block;
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background-color: var(--color-border-light);
+  content: '';
+}
