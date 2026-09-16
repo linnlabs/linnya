@@ -26,6 +26,8 @@
 6. 任一步失败时，loader 只回滚本次新登记的 contribution（document type / tool card / workflow）与 CSS；它**不**自动扫 port registry。port 必须由插件在 `activate()` 内用 try/finally/disposer 自清，或在 `deactivate()` 对称注销——不要依赖 loader 保证「无 port 残影」。
 7. 下一次同步发现插件不再 enabled 时，调用 `deactivate()`，随后移除该插件 CSS。
 
+开发源码加载成功不能替代上述磁盘态装配：插件新增 Vue named import（如 watchPostEffect、toRef、useId）时，必须同步 `pluginProtocol.ts` 的校验名单与命名导出，继续指向 Host 单例。`rendererHostExternalBoundary.test.ts` 对照实际插件源码检查导出覆盖；应在最终消费者代码完成后运行，不能只在共享组件抽取前验证一次。Renderer UI 自身的新导出则统一进入 runtime entry catalog，不手写第二套映射。
+
 ## 入口纪律
 
 - **入口模块不要有注册副作用**：port 注册、store 初始化应放在显式 `activate()` 流程，不要在模块顶层 import 时执行（import 副作用导致禁用后无法回收，参见审计 F-02）。

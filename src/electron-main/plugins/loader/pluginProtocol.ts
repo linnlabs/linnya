@@ -31,6 +31,9 @@ const missingExports = [
   'triggerRef',
   'computed',
   'watch',
+  'watchPostEffect',
+  'toRef',
+  'useId',
   'defineComponent',
   'onMounted',
   'onBeforeUnmount',
@@ -86,6 +89,9 @@ export const ref = host.ref;
 export const triggerRef = host.triggerRef;
 export const computed = host.computed;
 export const watch = host.watch;
+export const watchPostEffect = host.watchPostEffect;
+export const toRef = host.toRef;
+export const useId = host.useId;
 export const defineComponent = host.defineComponent;
 export const onMounted = host.onMounted;
 export const onBeforeUnmount = host.onBeforeUnmount;
