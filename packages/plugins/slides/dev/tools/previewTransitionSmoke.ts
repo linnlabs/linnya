@@ -12,6 +12,7 @@ async function run(): Promise<void> {
     assertManualVisualFrames(result, 5);
     console.log('Slides live Vue/Konva transition pixels passed:', JSON.stringify(result));
     await verifyPropertyInteraction(window);
+    await verifyShapeTextEditing(window);
     const fixtureFile = process.argv[2];
     if (fixtureFile) {
       const sequence: unknown = JSON.parse(await readFile(fixtureFile, 'utf8'));
@@ -96,6 +97,31 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
   await evaluate('window.manualPropertySmoke.assertSliderKeyboard(0)');
   await evaluate('window.manualPropertySmoke.dispose()');
   console.log('Slides property UI and native resize input passed:', JSON.stringify(colorResult));
+}
+
+async function verifyShapeTextEditing(window: BrowserWindow): Promise<void> {
+  const evaluate = (script: string): Promise<unknown> => window.webContents.executeJavaScript(script);
+  await evaluate('window.shapeTextEditingSmoke = window.mountShapeTextEditingSmoke(); void 0');
+  const point = await evaluate('window.shapeTextEditingSmoke.point()');
+  if (typeof point !== 'object' || point === null || !('x' in point) || !('y' in point)
+    || typeof point.x !== 'number' || typeof point.y !== 'number') throw new Error('Missing shape point');
+  const position = { x: point.x, y: point.y };
+  window.webContents.sendInputEvent({ type: 'mouseMove', ...position });
+  for (const clickCount of [1, 2]) {
+    window.webContents.sendInputEvent({ type: 'mouseDown', ...position, button: 'left', clickCount });
+    window.webContents.sendInputEvent({ type: 'mouseUp', ...position, button: 'left', clickCount });
+  }
+  await evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+  await evaluate('window.shapeTextEditingSmoke.assertEditing()');
+  await evaluate('window.shapeTextEditingSmoke.verifyIme()');
+  const screenshot = await window.webContents.capturePage();
+  await writeFile(path.resolve(__dirname, 'shape-text-editing.png'), screenshot.toPNG());
+  window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['control'] });
+  window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers: ['control'] });
+  await evaluate('new Promise(resolve => requestAnimationFrame(resolve))');
+  await evaluate('window.shapeTextEditingSmoke.assertSubmitted()');
+  await evaluate('window.shapeTextEditingSmoke.dispose()');
+  console.log('Slides native shape double click, single outline, IME and text submission passed');
 }
 
 function assertFrameCount(result: unknown, expected: number): void {

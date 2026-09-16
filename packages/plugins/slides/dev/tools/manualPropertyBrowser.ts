@@ -27,7 +27,18 @@ export function mountManualPropertySmoke() {
     slideId: 'slide', index: 0, layoutKey: 'LAYOUT_WIDE', background: { paint: { type: 'solid', color: '#FFFFFF' } },
     elements: [{ id: target.elementId, kind: 'shape', zIndex: 0,
       box: { x: 0.5, y: 0.5, w: 2, h: 1, unit: 'in' },
-      geometry: { type: 'preset', name: 'rect' }, fill: { type: 'solid', color: '#2563EB' } }],
+      geometry: { type: 'preset', name: 'rect' }, fill: { type: 'solid', color: '#2563EB' },
+      innerText: {
+        id: 'editable-shape-inner', kind: 'text', zIndex: 0,
+        box: { x: 0.5, y: 0.5, w: 2, h: 1, unit: 'in' }, verticalAlign: 'middle',
+        paragraphs: [{ align: 'center', runs: [{ text: 'Shape text', fontSize: 14, color: '#FFFFFF' }] }],
+        layout: { contentHeightInches: 0.2, appliedFontScale: 1, appliedLineSpacingReduction: 0,
+          advanceSource: 'harfbuzz', overflow: { horizontal: false, vertical: false, hiddenLineCount: 0 },
+          lines: [{ paragraphIndex: 0, align: 'center', y: 0.4, height: 0.2, baseline: 0.15, width: 1,
+            slices: [{ paragraphIndex: 0, runIndex: 0, text: 'Shape text', x: 0.5, textY: 0.4, width: 1 }] }],
+        },
+      },
+    }],
   };
   const queued = shallowRef<readonly ManualEditingVisualPreview[]>([]);
   const disabled = shallowRef(false);
@@ -121,6 +132,9 @@ export function mountManualPropertySmoke() {
       await nextTick();
       const node = stage.getLayers()[1]?.findOne<Konva.Rect>('Rect');
       assert(!!node && node.width() === width * 96 && node.height() === height * 96, 'Canvas resize differs from interaction');
+      const text = stage.getLayers()[1]?.findOne<Konva.Text>('Text');
+      assert(!!text && Math.abs(text.x() - (width - 1) * 48) < 0.01
+        && Math.abs(text.y() - (height - 0.2) * 48) < 0.01, 'Shape text did not follow live resize alignment');
       assert(properties.value.visualSize?.width === width && properties.value.visualSize.height === height, 'Property resize differs from canvas');
       assert(operations.length === commits, 'Resize submitted an unexpected number of commands');
       assert(Boolean(transient.value) === dragging, 'Resize gesture preview did not settle');
