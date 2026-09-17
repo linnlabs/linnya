@@ -144,7 +144,7 @@ export class StandaloneSlidesCliExecutionRuntime implements SlidesCliExecutionPo
           ...(snapshot.projectId ? { projectId: snapshot.projectId } : {}),
         },
       },
-      { canEditSourceSelection: deckSpecHasSourceSpan(snapshot.document.deckSpec) }
+      { canEditSourceSelection: deckSpecHasSourceSpan(snapshot.document.deckSpec), prepareResizeMeasurements: false }
     );
   }
 

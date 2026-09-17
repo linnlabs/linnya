@@ -1,3 +1,4 @@
+import type { PreparedTextLayout } from '../textLayout/definitions/preparedTextLayout';
 /**
  * PresentationRenderModel — Slides 插件前后端共享的渲染协议
  *
@@ -244,6 +245,10 @@ export interface TextRenderNode extends RenderNodeBase {
    * 存在时前端必须逐行绘制，禁止再让 Konva 自行软换行。
    */
   layout?: TextLayoutResult;
+  /** 形状尺寸预览复用的正式字体测量事实，随当前文本和修订失效。 */
+  preparedResizeLayout?: PreparedTextLayout;
+  /** generated Shape 的声明字号；缺省时保留原尺寸驱动的默认值语义。 */
+  shapeTextSizing?: { readonly fontSize?: number; readonly rotated: boolean };
 }
 
 export interface RenderParagraph {

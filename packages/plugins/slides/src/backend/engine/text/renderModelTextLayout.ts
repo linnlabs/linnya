@@ -15,6 +15,8 @@ import {
 } from '@plugin/slides/shared/renderModel';
 import {
   layoutTextNode,
+  prepareTextLayout,
+  shapeTextMeasurementVariants,
   resolveTextLayoutContract,
   resolveTextLayoutFontScaleCandidates,
   resolveTextLayoutContractFromNode,
@@ -42,9 +44,10 @@ export function applyTextLayoutToRenderModel(
   renderModel: PresentationRenderModel,
   provider: RunAdvanceProvider = createTextMeasureRunAdvanceProvider(renderModel),
   fontMetricsProvider: FontMetricsProvider = createFontResolutionMetricsProvider(),
+  options: { readonly prepareResizeMeasurements?: boolean } = {},
 ): PresentationRenderModel {
   const sourceKind = resolveLayoutSourceKind(renderModel);
-  forEachTextNode(renderModel, (node, profile) => {
+  forEachTextNode(renderModel, (node, profile, prepareResize) => {
     const contract = resolveTextLayoutContractFromNode(node, {
       sourceKind,
       profile,
@@ -65,6 +68,9 @@ export function applyTextLayoutToRenderModel(
       );
     }
     node.layout = layout;
+    if (prepareResize && options.prepareResizeMeasurements !== false) {
+      node.preparedResizeLayout = prepareTextLayout(node, sourceKind, resolveDefaultFontFamily(node), provider, fontMetricsProvider);
+    }
   });
   for (const slide of renderModel.slides) {
     visitRenderNodes(slide.elements, ({ node }) => {
@@ -99,29 +105,30 @@ export function applyTextLayoutToRenderModel(
 export async function prewarmTextLayoutForRenderModel(
   renderModel: PresentationRenderModel,
   service: PluginTextMeasureServicePort = defaultTextMeasureService,
+  options: { readonly prepareResizeMeasurements?: boolean } = {},
 ): Promise<void> {
-  const requests = collectClusterAdvanceRequestsForRenderModel(renderModel);
+  const requests = collectClusterAdvanceRequestsForRenderModel(renderModel, options);
   await service.prewarmClusterAdvances(requests);
 }
 
 export function collectClusterAdvanceRequestsForRenderModel(
   renderModel: PresentationRenderModel,
+  options: { readonly prepareResizeMeasurements?: boolean } = {},
 ): ClusterAdvanceRequest[] {
   const sourceKind = resolveLayoutSourceKind(renderModel);
   const requests: ClusterAdvanceRequest[] = [];
-  forEachTextNode(renderModel, (node, profile) => {
+  forEachTextNode(renderModel, (node, profile, prepareResize) => {
     const contract = resolveTextLayoutContractFromNode(node, {
       sourceKind,
       profile,
     });
-    collectParagraphRequests(
-      requests,
-      node.paragraphs,
-      resolveDefaultFontFamily(node),
-      resolveTextLayoutFontScaleCandidates(contract.autoFitPolicy, contract.profile),
-      sourceKind,
-      contract.overflow === 'ellipsis',
-    );
+    for (const variant of prepareResize && options.prepareResizeMeasurements !== false ? shapeTextMeasurementVariants(node) : [node]) {
+      collectParagraphRequests(
+        requests, variant.paragraphs, resolveDefaultFontFamily(variant),
+        resolveTextLayoutFontScaleCandidates(contract.autoFitPolicy, contract.profile),
+        sourceKind, contract.overflow === 'ellipsis',
+      );
+    }
   });
   for (const slide of renderModel.slides) {
     visitRenderNodes(slide.elements, ({ node }) => {
@@ -205,7 +212,7 @@ export function createTextMeasureRunAdvanceProviderForSourceKind(
 
 function forEachTextNode(
   renderModel: PresentationRenderModel,
-  visitor: (node: TextRenderNode, profile: 'plain-textbox' | 'shape-inner-text') => void,
+  visitor: (node: TextRenderNode, profile: 'plain-textbox' | 'shape-inner-text', prepareResize?: boolean) => void,
 ): void {
   for (const slide of renderModel.slides) {
     visitRenderNodes(slide.elements, ({ node }) => {
@@ -213,7 +220,7 @@ function forEachTextNode(
         visitor(node, 'plain-textbox');
       }
       if (node.kind === 'shape' && node.innerText) {
-        visitor(node.innerText, 'shape-inner-text');
+        visitor(node.innerText, 'shape-inner-text', node.authoringEdit?.capabilities.includes('set_visual_size'));
       }
     });
   }
@@ -221,7 +228,7 @@ function forEachTextNode(
 
 function resolveLayoutSourceKind(
   renderModel: PresentationRenderModel,
-): ClusterAdvanceRequest['sourceKind'] {
+): 'generated' | 'imported' {
   return renderModel.sourceKind === 'generated' ? 'generated' : 'imported';
 }
 

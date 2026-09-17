@@ -227,3 +227,77 @@ describe('renderModelTextLayout', () => {
     expect(table.cells[0]?.textLayout?.appliedFontScale).toBeLessThanOrEqual(1);
   });
 });
+
+it('carries exact resize measurements through the codec and matches the committed shape text layout', async () => {
+  const { resizeShapeTextPreview } = await import('../../../../renderer/features/manualEditing/functions/resizeShapeTextPreview');
+  const { isSlideRenderModel, findSlideRenderModelFailurePath } = await import('../../../../shared/renderModel/renderModelCodec');
+  const model = makeRenderModel(makeTextNode());
+  model.slides[0].background = { paint: { type: 'solid', color: '#FFFFFF' } };
+  const shape = model.slides[0].elements.find(node => node.kind === 'shape');
+  if (!shape || shape.kind !== 'shape' || !shape.innerText) throw new Error('Missing shape');
+  shape.authoringRef = { slideKey: 'slide', editKey: 'shape', targetKind: 'shape' };
+  shape.authoringEdit = { capabilities: ['translate', 'set_fill_color', 'set_visual_size', 'set_text_content', 'delete'],
+    text: { kind: 'plain_text', content: 'Shape text' }, fill: { kind: 'non_solid' } };
+  shape.innerText.paragraphs = [{ align: 'center', runs: [{ text: 'Repeated AV ffi 文本内容在不同宽度下自动换行', fontSize: 24 }] }];
+  shape.innerText.autoFitPolicy = 'shrink-text';
+  const provider = { getClusterAdvances: (clusters: readonly string[], style: { fontSizePt: number }) => ({
+    advances: clusters.map((_, index) => style.fontSizePt / 72 * (index % 2 ? 0.4 : 0.65)), source: 'harfbuzz' as const,
+  }) };
+  const metrics = { getMetrics: (style: { fontSizePt: number }) => ({ ascent: style.fontSizePt / 90, descent: style.fontSizePt / 360, lineGap: 0 }) };
+  applyTextLayoutToRenderModel(model, provider, metrics);
+  const wire: unknown = JSON.parse(JSON.stringify(model.slides[0]));
+  expect(isSlideRenderModel(wire), findSlideRenderModelFailurePath(wire)).toBe(true);
+  if (!isSlideRenderModel(wire)) throw new Error('Invalid wire model');
+  const wireShape = wire.elements.find(node => node.kind === 'shape');
+  if (!wireShape || wireShape.kind !== 'shape' || !wireShape.innerText?.preparedResizeLayout) throw new Error('Measurements lost in transport');
+  for (const [w, h] of [[0.5, 0.25], [2, 0.7], [4, 2]]) {
+    const preview = resizeShapeTextPreview(wireShape.innerText, w - wireShape.innerText.box.w, h - wireShape.innerText.box.h);
+    const finalModel = structuredClone(model);
+    const finalShape = finalModel.slides[0].elements.find(node => node.kind === 'shape');
+    if (!finalShape || finalShape.kind !== 'shape' || !finalShape.innerText) throw new Error('Missing final shape');
+    finalShape.innerText.box = { ...finalShape.innerText.box, w, h };
+    applyTextLayoutToRenderModel(finalModel, provider, metrics);
+    expect(preview.layout).toEqual(finalShape.innerText.layout);
+  }
+});
+
+it('matches a freshly mapped generated shape across default font and compact padding thresholds', async () => {
+  const { buildGeneratedShapeTextNode } = await import('../../parser/render-model/RenderModelText');
+  const { resizeShapeTextPreview } = await import('../../../../renderer/features/manualEditing/functions/resizeShapeTextPreview');
+  const content = 'AVAV Shape';
+  const create = (w: number, h: number) => buildGeneratedShapeTextNode({ id: 'shape-inner', zIndex: 0,
+    box: { x: 0, y: 0, w, h, unit: 'in' } }, content, {}, 'Arial', undefined);
+  const model = makeRenderModel(makeTextNode());
+  const shape = model.slides[0].elements.find(node => node.kind === 'shape');
+  if (!shape || shape.kind !== 'shape') throw new Error('Missing shape');
+  shape.authoringEdit = { capabilities: ['set_visual_size'] };
+  shape.innerText = create(2, 1);
+  const provider = { getClusterAdvances: (clusters: readonly string[], style: { fontSizePt: number }) => ({
+    advances: clusters.map((_, i) => style.fontSizePt / 72 * (i % 2 ? 0.4 : 0.65)), source: 'harfbuzz' as const,
+  }) };
+  const metrics = { getMetrics: (style: { fontSizePt: number }) => ({ ascent: style.fontSizePt / 90, descent: style.fontSizePt / 360, lineGap: 0 }) };
+  applyTextLayoutToRenderModel(model, provider, metrics);
+  const original = structuredClone(shape.innerText);
+  for (const [w, h] of [[1, 0.4], [1.5, 0.55], [2, 1.8], [3, 2.5], [0.5, 0.2]]) {
+    const preview = resizeShapeTextPreview(original, w - original.box.w, h - original.box.h);
+    shape.innerText = create(w, h);
+    applyTextLayoutToRenderModel(model, provider, metrics);
+    expect(preview.paragraphs).toEqual(shape.innerText.paragraphs);
+    expect(preview.padding).toEqual(shape.innerText.padding);
+    expect(preview.layout).toEqual(shape.innerText.layout);
+  }
+});
+
+it('omits editing measurements and extra font variants for read-only rendering', () => {
+  const model = makeRenderModel(makeTextNode());
+  const shape = model.slides[0].elements.find(node => node.kind === 'shape');
+  if (!shape || shape.kind !== 'shape' || !shape.innerText) throw new Error('Missing shape');
+  shape.authoringEdit = { capabilities: ['translate', 'set_fill_color', 'set_visual_size'], fill: { kind: 'non_solid' } };
+  shape.innerText.shapeTextSizing = { rotated: false };
+  const readonlyOptions = { prepareResizeMeasurements: false };
+  expect(collectClusterAdvanceRequestsForRenderModel(model, readonlyOptions).length)
+    .toBeLessThan(collectClusterAdvanceRequestsForRenderModel(model).length);
+  applyTextLayoutToRenderModel(model, createFakeRunAdvanceProviderForTests(0.08), undefined, readonlyOptions);
+  expect(shape.innerText.layout?.lines.length).toBeGreaterThan(0);
+  expect(shape.innerText.preparedResizeLayout).toBeUndefined();
+});

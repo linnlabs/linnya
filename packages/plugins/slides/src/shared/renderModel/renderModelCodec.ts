@@ -211,8 +211,7 @@ function isAuthoringEditBinding(authoringRef: unknown, authoringEdit: unknown): 
       return authoringEdit.text !== undefined
         && authoringEdit.fill === undefined
         && !capabilities.has('set_fill_color')
-        && !capabilities.has('set_visual_size')
-        && !capabilities.has('delete');
+        && !capabilities.has('set_visual_size');
     case 'frame':
       return authoringEdit.text === undefined
         && authoringEdit.fill !== undefined
@@ -220,24 +219,22 @@ function isAuthoringEditBinding(authoringRef: unknown, authoringEdit: unknown): 
         && capabilities.has('delete')
         && !capabilities.has('set_visual_size');
     case 'shape':
-      return authoringEdit.text === undefined
-        && authoringEdit.fill !== undefined
+      return authoringEdit.fill !== undefined
         && capabilities.has('set_fill_color')
         && capabilities.has('set_visual_size')
-        && !capabilities.has('delete');
+        && !capabilities.has('set_text_style');
     case 'image':
       return authoringEdit.text === undefined
         && authoringEdit.fill === undefined
         && capabilities.has('set_visual_size')
-        && !capabilities.has('set_fill_color')
-        && !capabilities.has('delete');
+        && !capabilities.has('set_fill_color');
     case 'table':
     case 'chart':
     case 'svgGraphic':
     case 'formula':
       return authoringEdit.text === undefined
         && authoringEdit.fill === undefined
-        && authoringEdit.capabilities.length === 1;
+        && authoringEdit.capabilities.every(capability => capability === 'translate' || capability === 'delete');
   }
 }
 
@@ -310,6 +307,8 @@ function isTextRenderNode(value: Record<string, unknown>): boolean {
       'wrap',
       'overflow',
       'autoFitPolicy',
+      'preparedResizeLayout',
+      'shapeTextSizing',
       'padding',
       'layout',
     ])
@@ -319,7 +318,11 @@ function isTextRenderNode(value: Record<string, unknown>): boolean {
     && isOptional(value.overflow, overflow => isOneOf(overflow, ['clip', 'ellipsis', 'visible']))
     && isOptional(value.autoFitPolicy, policy => isOneOf(policy, ['none', 'shrink-text', 'resize-shape']))
     && isOptional(value.padding, isRenderPadding)
-    && isOptional(value.layout, isTextLayoutResult);
+    && isOptional(value.layout, isTextLayoutResult)
+    && isOptional(value.preparedResizeLayout, isPreparedResizeLayout)
+    && isOptional(value.shapeTextSizing, sizing => isRecord(sizing)
+      && hasOnlyKeys(sizing, ['fontSize', 'rotated'])
+      && isOptional(sizing.fontSize, isFiniteNumber) && isBoolean(sizing.rotated));
 }
 
 function isRenderParagraph(value: unknown): boolean {
@@ -1018,4 +1021,27 @@ function isFiniteNumber(value: unknown): value is number {
 
 function isBoolean(value: unknown): value is boolean {
   return typeof value === 'boolean';
+}
+
+function isPreparedResizeLayout(value: unknown): boolean {
+  if (!isRecord(value) || !hasOnlyKeys(value, ['sourceKind', 'defaultFontFamily', 'keys', 'widths', 'advances', 'metrics'])
+    || !Array.isArray(value.keys) || !Array.isArray(value.widths)
+    || !isArrayOf(value.keys, isString) || !isArrayOf(value.widths, isFiniteNumber)) return false;
+  const keyCount = value.keys.length;
+  const widthCount = value.widths.length;
+  const isIndex = (index: unknown, length: number): boolean =>
+    isFiniteNumber(index) && Number.isInteger(index) && index >= 0 && index < length;
+  return isOneOf(value.sourceKind, ['generated', 'imported'])
+    && isString(value.defaultFontFamily)
+    && isArrayOf(value.advances, entry => isRecord(entry)
+      && hasOnlyKeys(entry, ['key', 'fontSizePt', 'widthIndexes', 'source'])
+      && isIndex(entry.key, keyCount) && isFiniteNumber(entry.fontSizePt) && entry.fontSizePt > 0
+      && isArrayOf(entry.widthIndexes, index => isIndex(index, widthCount))
+      && isOneOf(entry.source, ['harfbuzz', 'heuristic', 'pretext']))
+    && isArrayOf(value.metrics, entry => isRecord(entry)
+      && hasOnlyKeys(entry, ['key', 'fontSizePt', 'value']) && isIndex(entry.key, keyCount)
+      && isFiniteNumber(entry.fontSizePt) && entry.fontSizePt > 0
+      && (entry.value === null || (isRecord(entry.value)
+        && hasOnlyKeys(entry.value, ['ascent', 'descent', 'lineGap'])
+        && isFiniteNumber(entry.value.ascent) && isFiniteNumber(entry.value.descent) && isFiniteNumber(entry.value.lineGap))));
 }

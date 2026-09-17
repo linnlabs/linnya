@@ -12,8 +12,13 @@ shared/textLayout/
 │   ├── contract.ts                  # 文本框布局合同与默认 padding/wrap/autofit
 │   ├── lineSpacing.ts               # 可辨识行距合同、默认值与 legacy admission
 │   ├── provenance.ts                # advance/font/字距/overflow 的安全摘要合同
+│   ├── preparedTextLayout.ts        # 编辑预览的无损测量快照
+│   ├── shapeTextLayout.ts           # Shape 默认布局结果
 │   └── types.ts                     # provider、行级 IR 与布局结果
 ├── functions/
+│   ├── preparedTextLayout.ts        # 测量事实准备与同源实时排版
+│   ├── resolveShapeTextLayout.ts    # Shape 默认字号和 padding 唯一规则
+│   ├── shapeTextResizeInput.ts      # 缩放输入与测量字号档位
 │   ├── segmentClusters.ts           # grapheme、强制换行、CJK break/kinsoku
 │   ├── breakLines.ts                # cluster -> BrokenLine[] 的唯一断行规则
 │   ├── layoutParagraph.ts           # 段落缩进、对齐、bullet 与 spacing
@@ -50,7 +55,15 @@ TextRenderNode / table cell
 - `overflow.horizontal/vertical/hiddenLineCount`：布局阶段已经判定的溢出事实；
 - `appliedFontScale`、`requiredHeightInches` 与 advance 来源。
 
-renderer 不得再次测量、换行、autofit 或追加省略号。普通文本、shape inner text 和 table cell 都必须在 backend finalization 阶段得到同一种 `TextLayoutResult`。
+普通展示直接消费最终布局，不再次测量或追加省略号。普通文本、shape inner text 和 table cell 都必须在 backend finalization 阶段得到同一种 `TextLayoutResult`。
+
+### Shape 实时缩放
+
+可编辑 generated Shape 的拖拽预览通过 `prepareTextLayout` / `layoutPreparedText` 复用本模块的同一排版器。Backend 只为具有 `set_visual_size` 能力的 Shape 准备完整 run shaping 序列和字体 metrics，覆盖 shrink 档位及自动字号真实可达值。Renderer 仅用这些事实同步执行换行和 autofit，不访问字体服务、不使用 Canvas 近似测量、不触发每次指针移动的 IPC 或编译。
+
+`resolveShapeTextLayout` 是 generated Shape 默认字号与内边距的唯一规则；`shapeTextResizeInput` 以同一规则生成预览输入，显式字号保持不变，未声明字号按新尺寸计算。`shapeTextSizing` 保存这一输入语义，`preparedResizeLayout` 是随 RenderModel 修订替换的只读测量事实，不是用户源码或持久化编辑格式。当前适用生成 Shape 的 clip/shrink-text 合同，不是通用 ellipsis 编辑器。
+
+测量快照用 key／字宽字典无损编码，保留每个 run 的完整位置序列，不能按单字符缓存破坏 kerning；`null` metrics 表示正式 provider 未返回字体指标。解码由严格 codec 验证索引范围，临时查询索引通过 WeakMap 随快照回收。缺失测量事实直接暴露合同错误，不在前端替换测量算法。只读 standalone CLI 通过 `prepareResizeMeasurements: false` 关闭额外预热与快照。
 
 ## 行距合同
 
@@ -103,6 +116,7 @@ shared 算法是同步的。异步初始化、预热、缓存、字体解析和�
 - cluster 与断行：`src/shared/textLayout/__tests__/{segmentClusters,breakLines,lineBreakRegression}.test.ts`
 - 布局、autofit、overflow：`src/shared/textLayout/__tests__/{layoutTextNode,resizeTextBoxForAutoFit}.test.ts`
 - 观察合同：`src/shared/textLayout/__tests__/summarizeTextLayoutProvenance.test.ts`
+- Shape 缩放同源布局：`src/shared/textLayout/__tests__/preparedTextLayout.test.ts`，包含多语言、位置相关 shaping、空行与过期文本拒绝。
 - backend finalization：`src/backend/engine/text/__tests__/renderModelTextLayout.test.ts`
 - 多行表格的真实预热、布局、Inspect 场景图、前端绘制投影与 PPTX 导出：`src/backend/__tests__/table-forced-break.integration.test.ts`
 - renderer fail-closed：`src/renderer/features/konvaPreview/functions/builders/__tests__/{textBuilder,tableBuilder}.test.ts`

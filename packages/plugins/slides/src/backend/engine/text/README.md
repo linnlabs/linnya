@@ -35,7 +35,9 @@ DeckSpec / CanonicalDeck
   -> Konva / raster / lint 共同消费
 ```
 
-`applyTextLayoutToRenderModel()` 是 backend 唯一文本 finalizer。mapper 禁止提前调用另一套 normalize/layout；renderer、lint 和 table builder 禁止补算。
+`applyTextLayoutToRenderModel()` 是 backend 唯一文本 finalizer。mapper 禁止提前调用另一套 normalize/layout；lint 和 table builder 禁止补算。Renderer 普通展示直接消费最终 IR；可编辑 Shape 的缩放预览使用同源 shared 排版器和本层准备的测量事实。
+
+具有 `set_visual_size` 能力的 Shape 在预热阶段覆盖默认字号与 shrink 档位，finalization 同时生成 `innerText.preparedResizeLayout`。generated mapper 通过 `shapeTextSizing` 区分显式字号与按尺寸计算的默认字号；规则统一在 shared/textLayout，不在 Backend 和 Renderer 各自实现。预览与提交后都按相同新尺寸重新断行、缩放和计算 padding。只读 standalone CLI 显式传入 `prepareResizeMeasurements: false`，不承担交互预热或快照成本。
 
 ## Compiler 边界
 

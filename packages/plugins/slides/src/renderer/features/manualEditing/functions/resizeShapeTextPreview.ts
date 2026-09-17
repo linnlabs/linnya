@@ -1,8 +1,9 @@
+import { layoutPreparedText, resizeShapeTextInput } from '@plugin/slides/shared/textLayout';
 import type { TextRenderNode } from '../../../types/render';
 
 /**
- * 拖拽只重新锚定已编译的行，不测字、不重新断行或缩放字形。
- * 正式换行/autofit 仍由提交后的 compiler 决定，避免两套字体测量事实。
+ * 已终结的形状文字使用正式测量事实与共享排版器同步换行/autofit。
+ * 未终结节点没有测量事实，只能重定位既有行，不能发起平台测量。
  */
 export function resizeShapeTextPreview(
   node: TextRenderNode,
@@ -10,6 +11,10 @@ export function resizeShapeTextPreview(
   heightDelta: number,
 ): TextRenderNode {
   const box = { ...node.box, w: node.box.w + widthDelta, h: node.box.h + heightDelta };
+  if (node.preparedResizeLayout) {
+    const resized = resizeShapeTextInput(node, box);
+    return { ...resized, layout: layoutPreparedText(resized, node.preparedResizeLayout) };
+  }
   const layout = node.layout;
   if (!layout) return { ...node, box };
   const paddingHeight = (node.padding?.top ?? 0) + (node.padding?.bottom ?? 0);

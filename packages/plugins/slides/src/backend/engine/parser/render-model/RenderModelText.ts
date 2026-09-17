@@ -145,7 +145,7 @@ export function buildGeneratedShapeTextNode(
     lineSpacing: resolveTextStyleLineSpacing(textStyle.lineSpacing),
   }));
 
-  return buildGeneratedTextRenderNode(
+  const node = buildGeneratedTextRenderNode(
     {
       ...base,
       kind: 'text',
@@ -158,6 +158,7 @@ export function buildGeneratedShapeTextNode(
       autoFitPolicy: 'shrink-text',
     },
   );
+  return { ...node, shapeTextSizing: { ...(style.fontSize !== undefined ? { fontSize: style.fontSize } : {}), rotated: rotation != null } };
 }
 
 export function resolveTextVerticalAlign(

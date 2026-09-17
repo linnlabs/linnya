@@ -172,6 +172,7 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
     await up(end); commits += 1;
     await evaluate(`window.manualPropertySmoke.assertResize(${width}, ${height}, ${commits}, false); window.manualPropertySmoke.assertResizePosition(${x}, ${y})`);
   }
+  await evaluate('window.manualPropertySmoke.verifyPreparedTextReflow()');
   await writeFile(path.resolve(__dirname, 'eight-resize-handles.png'), (await window.webContents.capturePage()).toPNG());
   for (const theme of ['light', 'dark', 'moon-blue']) {
     await evaluate(`window.manualPropertySmoke.showCustom(${JSON.stringify(theme)})`);

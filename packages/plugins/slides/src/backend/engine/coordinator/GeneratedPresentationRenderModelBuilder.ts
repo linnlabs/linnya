@@ -63,7 +63,7 @@ export class GeneratedPresentationRenderModelBuilder {
       { canEditSourceSelection: options.canEditSourceSelection === true },
       svgAssets,
     );
-    await prewarmTextLayoutForRenderModel(renderModel);
-    return applyTextLayoutToRenderModel(renderModel);
+    await prewarmTextLayoutForRenderModel(renderModel, undefined, options);
+    return applyTextLayoutToRenderModel(renderModel, undefined, undefined, options);
   }
 }

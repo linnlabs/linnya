@@ -1,3 +1,5 @@
+import { prepareTextLayout, layoutPreparedText } from '../../src/shared/textLayout';
+import { resizeShapeTextPreview } from '../../src/renderer/features/manualEditing/functions/resizeShapeTextPreview';
 import { computed, createApp, h, nextTick, shallowRef } from 'vue';
 import VueKonva from 'vue-konva';
 import Konva from 'konva';
@@ -235,6 +237,40 @@ export function mountManualPropertySmoke() {
       assert(Math.abs(presented.value.bounds.x - x) < 0.01 && Math.abs(presented.value.bounds.y - y) < 0.01,
         'Selection position differs from resized canvas');
       assert(host.querySelectorAll('[data-resize-handle]').length === 8, 'Expected all eight resize handles');
+    },
+    async verifyPreparedTextReflow() {
+      const shape = slide.elements[0];
+      if (shape.kind !== 'shape' || !shape.innerText) throw new Error('Missing shape text');
+      const original = shape.innerText;
+      const originalQueue = queued.value;
+      const text = { ...original, autoFitPolicy: 'shrink-text' as const, wrap: 'word' as const,
+        paragraphs: [{ align: 'center' as const, runs: [{ text: 'AVAV text wraps during resizing', fontSize: 24 }] }] };
+      const prepared = prepareTextLayout(text, 'generated', 'Arial', {
+        getClusterAdvances: (clusters, style) => ({ advances: clusters.map(() => style.fontSizePt / 144), source: 'harfbuzz' }),
+      }, { getMetrics: style => ({ ascent: style.fontSizePt / 90, descent: style.fontSizePt / 360, lineGap: 0 }) });
+      shape.innerText = { ...text, preparedResizeLayout: prepared, layout: layoutPreparedText(text, prepared) };
+      const scales = new Set<number>();
+      try {
+        for (const [width, height] of [[0.6, 0.3], [3, 2]]) {
+          const operation: ManualEditingVisualOperation = { op: 'set_visual_size', target: target.authoringRef,
+            targetKind: 'shape', visualSize: { width, height } };
+          const preview = createManualVisualPreview(target, operation);
+          if (!preview) throw new Error('Missing text resize preview');
+          queued.value = [preview];
+          await nextTick();
+          const expected = resizeShapeTextPreview(shape.innerText, width - 2, height - 1).layout;
+          if (!expected) throw new Error('Missing text resize layout');
+          const painted = stage.getLayers()[1]?.find<Konva.Text>('Text') ?? [];
+          assert(painted.length > 0 && painted.every(slice => Math.abs(slice.fontSize() - 24 * expected.appliedFontScale * 96 / 72) < 0.01),
+            'Canvas text font did not update with the resized shape');
+          scales.add(expected.appliedFontScale);
+        }
+        assert(scales.size === 2, 'Resize did not exercise a font scale change');
+      } finally {
+        shape.innerText = original;
+        queued.value = originalQueue;
+        await nextTick();
+      }
     },
     async showCustom(theme: string) {
       document.documentElement.setAttribute('data-linnya-ui-theme', theme);
