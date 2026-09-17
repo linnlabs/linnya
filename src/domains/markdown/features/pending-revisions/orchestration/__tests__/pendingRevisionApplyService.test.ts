@@ -9,6 +9,7 @@ import { IMAGE_BLOCK_SCHEMAS } from 'src/domains/markdown/features/document-stor
 import {
   MarkdownDocumentService,
   PendingRevisionApplyService,
+  writeMarkdownDocumentFromText,
   type MarkdownImporter,
 } from 'src/domains/markdown';
 import type { MarkdownDocJson, ProseMirrorJsonNode } from 'src/domains/markdown';
@@ -106,6 +107,44 @@ function readDoc(service: MarkdownDocumentService, documentId: string): Markdown
 }
 
 describe('PendingRevisionApplyService', () => {
+  it('真实 WASM 导入的嵌套样式可写入修订并接受或拒绝，保留块身份和存储格式', async () => {
+    const { db, markdownService, documentId } = setup(doc([rootBlock('b1', 'old')]));
+    // 使用默认的真实导入器，覆盖全文块规划、pending 再导入与 SQLite 提交之间的合同。
+    const applyService = new PendingRevisionApplyService(markdownService);
+    const write = (targetText: string) => writeMarkdownDocumentFromText({
+      documentStore: markdownService,
+      documentId,
+      targetText,
+      toolName: 'write_file',
+      annotationAdmission: { author: 'AI', meta: { source: 'agent' } },
+      touchDocumentUpdatedAt: () => {},
+    });
+
+    try {
+      await write('**a **b** c**');
+      expect(firstText(markdownService.getDocument(documentId).content[0])).toBe('old');
+      expect(markdownService.getPendingRevisions(documentId)).toHaveLength(1);
+
+      const accepted = await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+      expect(accepted.status).toBe('ok');
+      const saved = markdownService.getDocument(documentId);
+      expect(saved.content[0]?.attrs?.id).toBe('b1');
+      expect(saved.content[0]?.content?.[0]?.content).toEqual([
+        { type: 'text', text: 'a b c', marks: [{ type: 'bold' }] },
+      ]);
+      expect(markdownService.getPendingRevisions(documentId)).toEqual([]);
+
+      await write('*x *y* z*');
+      expect(markdownService.getPendingRevisions(documentId)).toHaveLength(1);
+      const rejected = await applyService.applyAllPendingForDocument({ documentId, mode: 'reject' });
+      expect(rejected.status).toBe('ok');
+      expect(markdownService.getDocument(documentId)).toEqual(saved);
+      expect(markdownService.getPendingRevisions(documentId)).toEqual([]);
+    } finally {
+      db.close();
+    }
+  });
+
   it('accept update 会替换内容并保留 rootBlock id 与既有 attrs', async () => {
     const { markdownService, applyService, documentId } = setup(
       doc([rootBlock('b1', 'old', { backgroundColor: 'blue_bg' })])

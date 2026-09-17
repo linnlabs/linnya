@@ -202,9 +202,9 @@ describe('importMarkdownToDocJson', () => {
     ]);
 
     const headingContent = result.docJson?.content[0]?.content?.[0]?.content;
+    // Schema 规范化会合并相邻同样式文本；这里验证编号仍被保留，不锁定解析片段边界。
     expect(headingContent).toEqual([
-      { type: 'text', text: '1. ' },
-      { type: 'text', text: '基本段落' }
+      { type: 'text', text: '1. 基本段落' }
     ]);
     expect(result.docJson?.content[1]?.content?.[0]).toMatchObject({
       type: 'codeBlock',

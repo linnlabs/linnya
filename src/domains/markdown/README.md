@@ -34,6 +34,9 @@ Markdown 专属 Agent 工具位于 [`tools/`](./tools/README.md)。专属工具�
 
 Markdown 导入结果必须经过这份校验。pending 单块和文档级 Accept/Reject 在事务内合并完成后，也必须先校验最终完整 `docJson`，再保存版本并清理 pending；校验失败时正文和 pending 均保持不变。新增可持久化语义时，必须同时更新 schema、序列化/物化能力和生产 Editor conformance fixture，禁止让调用方自行猜测或静默降级。
 
+Markdown 行内样式的嵌套栈到片段集合投影由 [parser-wasm](../../../packages/parser-wasm/README.md#行内样式合同)
+拥有。合法的同型嵌套样式在导入源头合并，normalization、Workspace 工具和存储校验不另设去重或容错旁路。
+
 ## 数据模型
 
 Markdown schema 当前包括：

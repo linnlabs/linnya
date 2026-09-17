@@ -31,7 +31,8 @@ pub struct Mark {
     pub attrs: Option<JsonValue>,
 }
 
-/// 行内内容片段，包含文本、本身的 marks 以及可选属性。
+/// 行内内容片段，包含文本、按完整语义去重的生效 marks 以及可选属性。
+/// marks 不承载嵌套深度；同型但属性不同的 Mark 仍是不同语义。
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ContentFragment {
     pub r#type: String,
@@ -70,4 +71,3 @@ pub struct BlockEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attrs: Option<JsonValue>,
 }
-
