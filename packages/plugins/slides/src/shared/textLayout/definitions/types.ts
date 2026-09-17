@@ -1,3 +1,4 @@
+import type { FontUnitAdvances } from '@linnya/text-measurement-core';
 import type {
   RenderInlineRun,
   RenderParagraph,
@@ -73,6 +74,7 @@ export interface TextLayoutResult {
 export interface RunAdvanceMeasureResult {
   advances: readonly number[];
   source: TextLayoutResult['advanceSource'];
+  fontUnits?: FontUnitAdvances;
 }
 
 export interface RunMeasureStyle {
@@ -107,6 +109,8 @@ export interface FontLineMetrics {
 /** 字体度量 provider 只暴露行布局需要的窄口，不泄漏 FontCatalog。 */
 export interface FontMetricsProvider {
   getMetrics(style: RunMeasureStyle): FontLineMetrics | undefined;
+  /** 可线性投影的字体指标；undefined 是正式 provider 无字体指标的事实。 */
+  getMetricsInEm?(style: RunMeasureStyle): FontLineMetrics | undefined;
 }
 
 export interface TextLayoutInput {

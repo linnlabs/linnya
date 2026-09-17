@@ -1,35 +1,4 @@
-/* Editor floating-toolbar 的业务样式；选择器与迁移前保持一致。 */
-.floating-toolbar {
-  --floating-toolbar-text-color: var(--color-text-primary);
-  --floating-toolbar-item-hover-bg: var(--color-bg-hover-light);
-
-  position: absolute;
-  z-index: 1000;
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  padding: 4px;
-  border: 0.6px solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background-color: var(--color-bg-default);
-  box-shadow: 0 4px 12px var(--shadow-color-md);
-}
-
-.floating-toolbar .toolbar-group {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.floating-toolbar .toolbar-group:not(:last-child)::after {
-  display: block;
-  width: 1px;
-  height: 16px;
-  margin: 0 4px;
-  background-color: var(--color-border-light);
-  content: "";
-}
-
+/* Editor 私有颜色面板；浮动表面和分组由 Renderer UI 拥有。 */
 .inline-color-picker,
 .inline-highlight-picker {
   position: relative;

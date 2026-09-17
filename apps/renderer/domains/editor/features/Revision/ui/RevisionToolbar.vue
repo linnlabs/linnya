@@ -13,6 +13,8 @@
     :show="visible"
     :position="position"
     class="revision-toolbar"
+    data-editor-floating-toolbar
+    @mousedown.prevent
     :class="{
       'is-block-placement': placement === 'block',
       'is-block-top-right-placement': placement === 'block-top-right',
@@ -42,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import FloatingToolbar from '@/domains/editor/features/floating-toolbar/ui/FloatingToolbar.vue'
+import { FloatingToolbar } from '@linnya/renderer-ui';
 import { OkIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'

@@ -21,7 +21,7 @@
         :logical-size="logicalSize"
         :transform="contentTransform"
         :preview-translations="props.previewTranslations"
-        :hidden-text-element-id="props.hiddenTextElementId"
+        :hidden-text-element-ids="props.hiddenTextElementIds"
         :manual-visual-previews="props.manualVisualPreviews"
       />
 
@@ -72,7 +72,7 @@ const props = defineProps<{
   marqueeRect: SourceSelectionRect | null;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
   manualSelectedTarget?: ManualEditableTarget | null;
-  hiddenTextElementId?: string;
+  hiddenTextElementIds?: ReadonlySet<string>;
   manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();
 

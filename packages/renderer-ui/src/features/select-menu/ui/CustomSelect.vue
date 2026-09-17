@@ -40,10 +40,7 @@
       to="body"
       :disabled="!isPortalMode"
     >
-      <transition
-        name="select-fade"
-        appear
-      >
+      <DropdownTransition :direction="optionsMotionDirection">
         <div 
           v-if="computedIsOpen" 
           ref="optionsRef"
@@ -54,7 +51,6 @@
               'select-options--minimal': variant === 'minimal',
               'select-options--panel': hasPanelSlot,
               'select-options--portal': isPortalMode,
-              'custom-select__options--motion-up': optionsMotionDirection === 'up',
             },
             classNames.options,
           ]"
@@ -104,7 +100,7 @@
             />
           </template>
         </div>
-      </transition>
+      </DropdownTransition>
     </Teleport>
     
     <!-- 子菜单面板
@@ -243,6 +239,7 @@ import type {
   DropdownElementReference,
 } from '../definitions/selectMenu';
 import { adjustInlineNumberValue, findSelectedOption, normalizeInlineNumberValue } from '../functions/selectOptionValue';
+import DropdownTransition from './DropdownTransition.vue';
 import { useDropdown } from '../composables/useDropdown';
 import { useDropdownPanelPosition } from '../composables/useDropdownPanelPosition';
 import { useSubmenu } from '../composables/useSubmenu';

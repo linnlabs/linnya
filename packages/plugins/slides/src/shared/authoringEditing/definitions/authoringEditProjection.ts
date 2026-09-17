@@ -1,3 +1,4 @@
+import type { FreeformTextRun, TextStyle } from '../../deckSpec';
 /** 作者对象允许执行的有限人工操作。 */
 export type SlidesAuthoringEditCapability =
   | 'translate'
@@ -14,8 +15,9 @@ export type SlidesAuthoringTextEditProjection =
       readonly content: string;
       readonly fontSizePt?: number;
       readonly color?: string;
+      readonly baseStyle?: TextStyle;
     }
-  | { readonly kind: 'rich_text' };
+  | { readonly kind: 'rich_text'; readonly content?: FreeformTextRun[]; readonly baseStyle?: TextStyle };
 
 export type SlidesAuthoringFillEditProjection =
   | { readonly kind: 'solid'; readonly color: string }

@@ -164,6 +164,22 @@
   box-shadow: 0 4px 18px var(--shadow-color-sm);
 }
 
+.deck-viewer .manual-edit-error__retry {
+  margin-left: 8px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.deck-viewer .manual-edit-error__retry:hover {
+  background: var(--color-bg-hover);
+}
+
 .deck-viewer .stage-zoom-slider__label {
   width: 38px;
   text-align: left;

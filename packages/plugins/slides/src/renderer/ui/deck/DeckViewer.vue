@@ -56,7 +56,6 @@
           v-else
           :source-edit-busy="sourceEditBusy"
           @source-edit-submit="emit('sourceEditSubmit', $event)"
-          @manual-edit-submit="emit('manualEditSubmit', $event)"
         />
 
         <div
@@ -65,6 +64,11 @@
           role="status"
         >
           {{ manualEditError }}
+          <button
+            v-if="manualEditingStore.pendingPresentationRevision !== null"
+            class="manual-edit-error__retry"
+            @click="manualEditSubmission.refreshPresentation"
+          >{{ manualEditingMessage('slides.manualEditing.refreshPresentation') }}</button>
         </div>
 
         <!-- 右下角缩放控件只更新自身数值，不参与文稿内容切换。 -->
@@ -181,8 +185,8 @@ import {
   resolveManualEditingAvailability,
   useManualEditingLocalization,
   useSlidesManualEditingStore,
+  useManualEditSubmission,
 } from '../../features/manualEditing';
-import type { ManualEditIntent } from '../../features/manualEditing';
 
 defineProps<{
   sourceEditBusy?: boolean;
@@ -190,7 +194,6 @@ defineProps<{
 
 const emit = defineEmits<{
   sourceEditSubmit: [payload: SourceSelectionEditSubmitPayload];
-  manualEditSubmit: [intent: ManualEditIntent];
 }>();
 
 const ZOOM_PERCENT_MIN = Math.round(ZOOM_MIN * 100);
@@ -202,6 +205,7 @@ const slidesStore = useSlidesStore();
 const slidesUiStore = useSlidesUiStore();
 const slidesRenderStore = useSlidesRenderStore();
 const manualEditingStore = useSlidesManualEditingStore();
+const manualEditSubmission = useManualEditSubmission();
 const { manualEditingMessage } = useManualEditingLocalization();
 const { slidesPreviewMessage } = useSlidesPreviewLocalization();
 

@@ -1,22 +1,11 @@
 import type {
-  SlidesManualEditCommand,
   SlidesManualEditCommandResult,
   SlidesManualEditOperation,
 } from '@plugin/slides/shared/authoringEditing';
 import type { SlidesDocumentBuildState } from '@plugin/slides/shared/documentSource';
 import { createManualEditCommand } from '../functions/createManualEditCommand';
-import type { ManualEditPresentationTracePort } from '../definitions/manualEditPresentationTrace.js';
 
-export interface SubmitManualEditPorts {
-  readonly createCommandId: () => string;
-  readonly submit: (command: SlidesManualEditCommand) => Promise<SlidesManualEditCommandResult>;
-  readonly refreshDocument: (documentId: string, expectedVersion?: number) => Promise<void>;
-  readonly trace?: ManualEditPresentationTracePort;
-}
-
-export type SubmitManualEditOutcome =
-  | SlidesManualEditCommandResult
-  | { readonly status: 'snapshot_unavailable' };
+import type { SubmitManualEditPorts, SubmitManualEditOutcome } from '../definitions/manualEditSubmission';
 
 export async function submitManualEdit(input: {
   readonly documentId: string;
@@ -51,11 +40,5 @@ export async function submitManualEdit(input: {
     }
   }
   ports.trace?.recordResponse(result);
-  if (result.status === 'committed') {
-    await ports.refreshDocument(input.documentId, result.revision);
-    ports.trace?.recordRefreshCompleted(command.commandId);
-  } else if (result.status === 'conflict') {
-    await ports.refreshDocument(input.documentId);
-  }
   return result;
 }

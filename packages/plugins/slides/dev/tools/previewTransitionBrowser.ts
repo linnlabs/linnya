@@ -1,3 +1,5 @@
+import { verifyFontPreviewFrames } from './fontPreviewBrowser';
+import { mountShapeTextEditingSmoke } from './shapeTextEditingBrowser';
 import { normalizePaint } from '../../src/shared/visual/paint';
 import { mountManualPropertySmoke } from './manualPropertyBrowser';
 import { createApp, h, nextTick, shallowRef } from 'vue';
@@ -36,6 +38,8 @@ declare global {
       manualVisualFrames: number;
     }>;
     verifyPreviewPaintSequence(input: unknown): Promise<{ frames: number }>;
+    mountShapeTextEditingSmoke: typeof mountShapeTextEditingSmoke;
+    shapeTextEditingSmoke: ReturnType<typeof mountShapeTextEditingSmoke>;
     mountManualPropertySmoke: typeof mountManualPropertySmoke;
     manualPropertySmoke: ReturnType<typeof mountManualPropertySmoke>;
   }
@@ -304,5 +308,8 @@ window.previewTransitionSmoke = (async () => ({
   ...await run(sequence),
   ...await verifyManualTranslation(),
   ...await verifyManualVisual(),
+  ...await verifyFontPreviewFrames(),
 }))();
 window.mountManualPropertySmoke = mountManualPropertySmoke;
+
+window.mountShapeTextEditingSmoke = mountShapeTextEditingSmoke;

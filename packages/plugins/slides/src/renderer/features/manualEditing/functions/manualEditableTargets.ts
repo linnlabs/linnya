@@ -1,3 +1,4 @@
+import { projectTextEditingValues } from './projectTextEditingValues';
 import type { RenderNode } from '../../../types/render';
 import {
   collectRenderNodeSelectionGeometries,
@@ -21,17 +22,43 @@ import {
   mergeManualTranslationPreviews,
 } from './manualIntentPreviews';
 import { projectManualEditableTargetSelection } from './manualVisualPreview';
+import { collectEditingPreviewGeometries } from '../../editingPreview';
 
 export interface ManualEditingHitProjection {
   readonly transientTranslation: ManualEditingTranslationPreview | null;
   readonly pendingTranslation: ManualEditingTranslationPreview | null;
   readonly pendingVisual: ManualEditingVisualPreview | null;
+  readonly transientVisual?: ManualEditingVisualPreview | null;
   readonly queuedIntents: readonly ManualEditIntent[];
 }
 
 export function collectManualEditableTargets(nodes: readonly RenderNode[]): ManualEditableTarget[] {
   return collectRenderNodeSelectionGeometries(nodes, isManualEditableNode)
     .map(geometry => buildManualEditableTarget(nodes, geometry));
+}
+
+/** 原位输入也消费当前可见几何，避免刚拉伸/移动后双击时输入框回到旧位置。 */
+export function createPresentedTextEditingTarget(
+  nodes: readonly RenderNode[],
+  target: ManualEditableTarget,
+  projection: ManualEditingHitProjection,
+) {
+  const visuals = collectManualVisualPreviews(projection.pendingVisual, projection.queuedIntents, projection.transientVisual);
+  const translations = mergeManualTranslationPreviews(collectManualTranslationPreviews(
+    projection.transientTranslation, projection.pendingTranslation, projection.queuedIntents,
+  ));
+  const geometries = collectEditingPreviewGeometries(nodes, visuals);
+  const geometry = geometries.get(target.elementId);
+  if (!geometry) return null;
+  const presented = projectManualEditableTargetSelection(target, translations, geometries);
+  const editor = createTextEditingTarget({
+    ...geometry,
+    polygon: presented.polygon,
+    bounds: presented.bounds,
+  });
+  if (!editor || !target.textEditing) return editor;
+  const values = projectTextEditingValues(target.textEditing, visuals);
+  return { ...editor, content: values.content, baseStyle: values.baseStyle, fontSizePt: values.fontSizePt, color: values.color };
 }
 
 export function findManualEditableTargetAtPoint(
@@ -71,11 +98,13 @@ function findProjectedTargetPathAtPoint(
   const visuals = collectManualVisualPreviews(
     projection.pendingVisual,
     projection.queuedIntents,
+    projection.transientVisual,
   );
+  const geometries = collectEditingPreviewGeometries(nodes, visuals);
   for (let index = targets.length - 1; index >= 0; index -= 1) {
     const target = targets[index];
-    if (!target || isHiddenByPreview(target, visuals)) continue;
-    const hitPolygon = projectManualTargetHitPolygon(target, translations, visuals);
+    if (!target || !geometries.has(target.elementId)) continue;
+    const hitPolygon = projectManualTargetHitPolygon(target, translations, geometries);
     if (isPointInsideConvexPolygon(point, hitPolygon)) {
       return buildTargetPath(targets, target);
     }
@@ -87,29 +116,19 @@ function findProjectedTargetPathAtPoint(
 function projectManualTargetHitPolygon(
   target: ManualEditableTarget,
   translations: ReadonlyMap<string, ManualEditingTranslationPreview>,
-  visuals: readonly ManualEditingVisualPreview[],
+  geometries: ReadonlyMap<string, RenderNodeSelectionGeometry>,
 ): readonly RenderNodeSelectionPoint[] {
   const ownFragment = target.frameSelectionFragments
     ?.find(fragment => fragment.elementId === target.elementId);
   if (!ownFragment) {
-    return projectManualEditableTargetSelection(target, translations, visuals).polygon;
+    return projectManualEditableTargetSelection(target, translations, geometries).polygon;
   }
   return projectManualEditableTargetSelection({
     ...target,
     bounds: polygonBounds(ownFragment.polygon),
     polygon: ownFragment.polygon,
     frameSelectionFragments: undefined,
-  }, translations, visuals).polygon;
-}
-
-function isHiddenByPreview(
-  target: ManualEditableTarget,
-  previews: readonly ManualEditingVisualPreview[],
-): boolean {
-  return previews.some(preview => (
-    preview.operation.op === 'delete_target'
-    && preview.affectedElementIds.includes(target.elementId)
-  ));
+  }, translations, geometries).polygon;
 }
 
 function isPointInsideConvexPolygon(

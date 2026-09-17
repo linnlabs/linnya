@@ -1,3 +1,4 @@
+export { projectTextEditingValues } from './functions/projectTextEditingValues';
 export type {
   ManualEditableTarget,
   ManualEditableTargetPath,
@@ -9,6 +10,8 @@ export type {
 } from './definitions/manualEditingTypes';
 export {
   collectManualEditableTargets,
+  createPresentedTextEditingTarget,
+  type ManualEditingHitProjection,
   findManualEditableTargetAtPoint,
   findManualEditableTargetPathAtPoint,
   findManualEditableTargetPathByElementId,
@@ -18,8 +21,6 @@ export { appendManualEditIntent } from './functions/appendManualEditIntent';
 export {
   createManualVisualPreview,
   projectManualEditableTargetSelection,
-  projectManualVisualPreviewsToRenderNode,
-  projectManualVisualPreviewsToSelectionPolygon,
 } from './functions/manualVisualPreview';
 export {
   collectManualTranslationPreviews,
@@ -43,15 +44,14 @@ export {
   type ManualEditingCursor,
 } from './functions/manualEditingCursor';
 export { readManualEditErrorMessage } from './functions/manualEditOutcomeMessage';
-export {
-  submitManualEdit,
-  type SubmitManualEditOutcome,
-  type SubmitManualEditPorts,
-} from './orchestration/submitManualEdit';
+export { submitManualEdit } from './orchestration/submitManualEdit';
+export type { SubmitManualEditOutcome, SubmitManualEditPorts } from './definitions/manualEditSubmission';
 export { useSlidesManualEditingStore } from './store/slidesManualEditingStore';
-export { useSlideManualEditingInteraction } from './orchestration/useSlideManualEditingInteraction';
+export { useManualEditQueue } from './orchestration/useManualEditQueue';
+export { provideManualEditSubmission, useManualEditSubmission } from './ports/manualEditSubmission';
+export type { ManualEditQueueEntry, ManualEditSubmissionState, ManualEditSettlement, ManualEditTicket, ManualEditSubmissionPort } from './definitions/manualEditQueue';
+export type { ManualEditQueuePorts } from './definitions/manualEditQueuePorts';
 export { useManualEditingLocalization } from './ui/useManualEditingLocalization';
-export { default as ManualSelectionBreadcrumb } from './ui/ManualSelectionBreadcrumb.vue';
 export { default as ManualResizeHandles } from './ui/ManualResizeHandles.vue';
 export { canResizeManualTarget } from './functions/manualResize';
 export {

@@ -26,6 +26,7 @@ export const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
  * gave the AI no discoverable evidence that anything beyond `"rect"` existed.
  */
 export const LAYOUT_TYPES_SOURCES = [
+  path.join(REPO_ROOT, 'packages', 'plugins', 'slides', 'src', 'shared', 'authoringEditing', 'definitions', 'editableText.ts'),
   path.join(
     REPO_ROOT,
     'packages',

@@ -97,6 +97,24 @@ describe('HarfBuzzClusterAdvanceProvider', () => {
     expect((spaced.advances[1] ?? 0) - (base.advances[1] ?? 0)).toBeCloseTo(pointsToInches(2), 6);
   });
 
+  it('reuses unrounded shaping across large and fractional font sizes and spacing changes', () => {
+    const provider = createProvider(resolvedFont);
+    const original = provider.measureClusterAdvancesWithSource(createRequest(['A', 'B', 'C']));
+    expect(original.fontUnits).toBeDefined();
+    for (const fontSizePt of [1, 1.25, 14, 18.5, 48, 96, 400]) {
+      for (const letterSpacingPt of [0, 0.75, 2]) {
+        const request = createRequest(['A', 'B', 'C'], letterSpacingPt);
+        request.style.fontSizePt = fontSizePt;
+        const result = provider.measureClusterAdvancesWithSource(request);
+        expect(result.fontUnits).toBe(original.fontUnits);
+        expect(result.advances).toEqual(createProvider(resolvedFont).measureClusterAdvances(request));
+        expect(result.advances[0]).toBe(measureSingleGlyphAdvance('A', tempFontPath, fontSizePt));
+      }
+    }
+    const changed = provider.measureClusterAdvancesWithSource(createRequest(['A', 'B', 'D']));
+    expect(changed.fontUnits).not.toBe(original.fontUnits);
+  });
+
   it('falls back truthfully when the font locator misses', () => {
     const provider = new HarfBuzzClusterAdvanceProvider({
       fontFileLocator: {
@@ -107,6 +125,7 @@ describe('HarfBuzzClusterAdvanceProvider', () => {
     const result = provider.measureClusterAdvancesWithSource(createRequest(['A', 'B']));
 
     expect(result.source).toBe('heuristic');
+    expect(result.fontUnits).toBeUndefined();
     expect(result.advances).toHaveLength(2);
     expect(result.advances.every((advance) => advance > 0)).toBe(true);
   });

@@ -1,13 +1,21 @@
 import type { MessageCatalogContribution, MessageParams } from '@app/localization';
 
 export type ElementPropertyMessageKey =
+  | 'slides.elementProperties.mixed'
   | 'slides.elementProperties.label'
+  | 'slides.elementProperties.size'
+  | 'slides.elementProperties.deleteElement'
   | 'slides.elementProperties.sizeHint'
   | 'slides.elementProperties.mixedColor'
   | 'slides.elementProperties.colorPlane'
   | 'slides.elementProperties.hue'
   | 'slides.elementProperties.saturation'
   | 'slides.elementProperties.brightness'
+  | 'slides.elementProperties.colorMode'
+  | 'slides.elementProperties.red'
+  | 'slides.elementProperties.green'
+  | 'slides.elementProperties.blue'
+  | 'slides.elementProperties.invalidRgb'
   | 'slides.elementProperties.hex'
   | 'slides.elementProperties.invalidHex'
   | 'slides.elementProperties.applyColor'
@@ -26,13 +34,21 @@ export type ElementPropertyMessageResolver = (
 ) => string;
 
 export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
+  'slides.elementProperties.mixed': '混合',
   'slides.elementProperties.label': '元素属性',
+  'slides.elementProperties.size': '尺寸',
+  'slides.elementProperties.deleteElement': '删除元素',
   'slides.elementProperties.sizeHint': '拖动右侧、底部或右下角手柄调整尺寸 · 英寸',
   'slides.elementProperties.mixedColor': '非纯色',
   'slides.elementProperties.colorPlane': '选择饱和度与明度',
   'slides.elementProperties.hue': '色相',
   'slides.elementProperties.saturation': '饱和度',
   'slides.elementProperties.brightness': '明度',
+  'slides.elementProperties.colorMode': '颜色模式',
+  'slides.elementProperties.red': '红',
+  'slides.elementProperties.green': '绿',
+  'slides.elementProperties.blue': '蓝',
+  'slides.elementProperties.invalidRgb': 'RGB 各通道请输入 0–255 的整数',
   'slides.elementProperties.hex': 'HEX 颜色',
   'slides.elementProperties.invalidHex': '请输入六位 HEX 颜色，例如 #2563EB',
   'slides.elementProperties.applyColor': '应用颜色',
@@ -47,13 +63,21 @@ export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
 } as const satisfies Readonly<Record<ElementPropertyMessageKey, string>>;
 
 const ELEMENT_PROPERTY_EN_US_MESSAGES = {
+  'slides.elementProperties.mixed': 'Mixed',
   'slides.elementProperties.label': 'Element properties',
+  'slides.elementProperties.size': 'Size',
+  'slides.elementProperties.deleteElement': 'Delete element',
   'slides.elementProperties.sizeHint': 'Drag the right, bottom or bottom-right handle · inches',
   'slides.elementProperties.mixedColor': 'Non-solid',
   'slides.elementProperties.colorPlane': 'Choose saturation and brightness',
   'slides.elementProperties.hue': 'Hue',
   'slides.elementProperties.saturation': 'Saturation',
   'slides.elementProperties.brightness': 'Brightness',
+  'slides.elementProperties.colorMode': 'Color mode',
+  'slides.elementProperties.red': 'R',
+  'slides.elementProperties.green': 'G',
+  'slides.elementProperties.blue': 'B',
+  'slides.elementProperties.invalidRgb': 'Enter whole numbers from 0 to 255 for each RGB channel',
   'slides.elementProperties.hex': 'HEX color',
   'slides.elementProperties.invalidHex': 'Enter six HEX digits, for example #2563EB',
   'slides.elementProperties.applyColor': 'Apply color',

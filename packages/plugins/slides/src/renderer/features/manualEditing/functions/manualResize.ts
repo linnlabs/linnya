@@ -1,6 +1,6 @@
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../shared/constants';
 import type { ManualEditableTarget, ManualEditingVisualOperation } from '../definitions/manualEditingTypes';
-import type { ManualResizeHandle, ManualResizeStart } from '../definitions/manualResize';
+import { MANUAL_RESIZE_DIRECTIONS, type ManualResizeHandle, type ManualResizeStart } from '../definitions/manualResize';
 
 export function canResizeManualTarget(
   target: ManualEditableTarget,
@@ -9,7 +9,7 @@ export function canResizeManualTarget(
     && target.capabilities.includes('set_visual_size');
 }
 
-/** 固定局部左上角，只改变视觉宽高。旋转对象将屏幕位移投影到自己的坐标轴。 */
+/** 固定对侧锚点，尺寸与锚点补偿一起提交。旋转对象先将屏幕位移投影到局部坐标轴。 */
 export function resolveManualResize(
   start: ManualResizeStart,
   clientX: number,
@@ -26,21 +26,29 @@ export function resolveManualResize(
   const dy = (clientY - start.clientY) / (INCHES_TO_PX * start.renderScale);
   const localX = (dx * (right.x - origin.x) + dy * (right.y - origin.y)) / width;
   const localY = (dx * (bottom.x - origin.x) + dy * (bottom.y - origin.y)) / height;
-  let nextWidth = start.handle === 'bottom' ? width : Math.max(0.05, width + localX);
-  let nextHeight = start.handle === 'right' ? height : Math.max(0.05, height + localY);
+  const [horizontal, vertical] = MANUAL_RESIZE_DIRECTIONS[start.handle];
+  let nextWidth = horizontal === 0 ? width : Math.max(0.05, width + horizontal * localX);
+  let nextHeight = vertical === 0 ? height : Math.max(0.05, height + vertical * localY);
   if (target.targetKind === 'image') {
-    // 角点拖拽投影到原对角线；不会因为选择横向还是纵向变化而忽然跳尺寸。
-    const scale = start.handle === 'right' ? nextWidth / width
-      : start.handle === 'bottom' ? nextHeight / height
-        : 1 + (localX * width + localY * height) / (width * width + height * height);
+    // 角点沿原对角线连续缩放；边中点以对边中点为锚，另一轴对称变化。
+    const scale = vertical === 0 ? nextWidth / width
+      : horizontal === 0 ? nextHeight / height
+        : 1 + (horizontal * localX * width + vertical * localY * height) / (width * width + height * height);
     const bounded = Math.max(scale, 0.05 / Math.min(width, height));
     nextWidth = width * bounded;
     nextHeight = height * bounded;
   }
+  const shiftX = (width - nextWidth) * (1 - horizontal) / 2;
+  const shiftY = (height - nextHeight) * (1 - vertical) / 2;
+  const translationDelta = {
+    dx: shiftX * (right.x - origin.x) / width + shiftY * (bottom.x - origin.x) / height,
+    dy: shiftX * (right.y - origin.y) / width + shiftY * (bottom.y - origin.y) / height,
+  };
   if (Math.abs(nextWidth - width) < 1e-9 && Math.abs(nextHeight - height) < 1e-9) return null;
   return {
     op: 'set_visual_size', target: target.authoringRef, targetKind: target.targetKind,
     visualSize: { width: nextWidth, height: nextHeight },
+    ...(Math.abs(translationDelta.dx) > 1e-9 || Math.abs(translationDelta.dy) > 1e-9 ? { translationDelta } : {}),
   };
 }
 
@@ -51,11 +59,13 @@ export function manualResizeHandleStyle(
 ): Readonly<Record<string, string>> {
   const [origin, right, corner, bottom] = target.polygon;
   if (!origin || !right || !corner || !bottom) return {};
-  const point = handle === 'corner' ? corner : handle === 'right'
-    ? { x: (right.x + corner.x) / 2, y: (right.y + corner.y) / 2 }
-    : { x: (bottom.x + corner.x) / 2, y: (bottom.y + corner.y) / 2 };
+  const [horizontal, vertical] = MANUAL_RESIZE_DIRECTIONS[handle];
+  const point = {
+    x: origin.x + (right.x - origin.x) * (horizontal + 1) / 2 + (bottom.x - origin.x) * (vertical + 1) / 2,
+    y: origin.y + (right.y - origin.y) * (horizontal + 1) / 2 + (bottom.y - origin.y) * (vertical + 1) / 2,
+  };
   const rotation = Math.atan2(right.y - origin.y, right.x - origin.x) * 180 / Math.PI;
-  const angle = rotation + (handle === 'right' ? 0 : handle === 'bottom' ? 90 : 45);
+  const angle = rotation + Math.atan2(vertical, horizontal) * 180 / Math.PI;
   const cursors = ['ew-resize', 'nwse-resize', 'ns-resize', 'nesw-resize'];
   return {
     // DOM 手柄沿用 Canvas 选框的颜色合同，避免一组选框出现两种强调色。

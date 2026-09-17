@@ -10,7 +10,7 @@ import {
 } from '@plugin/slides/shared/pluginMeta';
 import { SLIDES_AGENT_ID } from '@plugin/slides/shared/agentIdentity';
 import SlidesIcon from './icon/SlidesIcon.vue';
-import { slidesDocumentRuntimeLoader } from './features/documentRuntime';
+import { slidesFileHandler } from './features/documentRuntime';
 import { slidesDocumentActionMenu } from './features/presentationExport';
 import {
   registerSlidesRendererPorts,
@@ -33,9 +33,8 @@ import presentationInspectCardStylesheet from './tool-cards/styles/PresentationI
 import pptPlanApprovalCardStylesheet from './tool-cards/styles/PptPlanApprovalCard.css?url';
 import slidesShellStylesheet from './styles/index.css?url';
 import slidesHistoryStylesheet from './features/presentationHistory/ui/SlidesHistoryPreview.css?url';
-import elementPropertyStylesheet from './features/elementProperties/ui/ElementPropertyPanel.css?url';
+import elementPropertyStylesheet from './features/elementProperties/ui/ElementPropertyToolbar.css?url';
 import manualResizeStylesheet from './features/manualEditing/ui/ManualResizeHandles.css?url';
-import manualSelectionBreadcrumbStylesheet from './features/manualEditing/ui/ManualSelectionBreadcrumb.css?url';
 import inlineTextEditorStylesheet from './features/textEditing/ui/InlineTextEditor.css?url';
 
 export { presentationToolConfigs } from './tool-cards/presentation';
@@ -58,7 +57,6 @@ const SlidesPage = defineAsyncComponent(async () => {
 });
 
 const slidesStylesheets = [
-  manualSelectionBreadcrumbStylesheet,
   inlineTextEditorStylesheet,
   manualResizeStylesheet,
   elementPropertyStylesheet,
@@ -90,6 +88,8 @@ export const slidesRendererPlugin: RendererPluginContribution = {
       pluginId: SLIDES_PLUGIN_ID,
       nodeType: SLIDES_DOCUMENT_TYPE,
       activeDocumentType: SLIDES_ACTIVE_DOCUMENT_TYPE,
+      fileSessionType: SLIDES_ACTIVE_DOCUMENT_TYPE,
+      fileHandler: slidesFileHandler,
       createRequestType: SLIDES_DOCUMENT_TYPE,
       createBackend: 'plugin-document',
       createHandlerId: 'slides.document-create',
@@ -128,7 +128,6 @@ export const slidesRendererPlugin: RendererPluginContribution = {
   ],
   toolCards: presentationToolConfigs,
   documentActionMenus: [slidesDocumentActionMenu],
-  documentRuntimeLoaders: [slidesDocumentRuntimeLoader],
 };
 
 export const rendererPlugin = slidesRendererPlugin;

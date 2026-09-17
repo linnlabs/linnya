@@ -95,6 +95,14 @@ describe('slides backend IPC contracts', () => {
       },
     };
     expect(parseSlidesManualEditPayload(payload)).toEqual(payload);
+    const richOperation = { op: 'set_text_content', target: payload.operation.target, targetKind: 'text',
+      content: [{ text: 'A', style: { fontSize: 28, color: '#112233', bold: true } }, { text: '\nB' }] };
+    expect(parseSlidesManualEditPayload({ ...payload, operation: richOperation }).operation).toEqual(richOperation);
+    expect(() => parseSlidesManualEditPayload({ ...payload, operation: { ...richOperation, targetKind: 'shape' } })).toThrow();
+    for (const content of [[{ formula: 'x' }], [{ text: 'A', style: { fontSize: Infinity } }], [{ text: 'A', style: { unknown: true } }]]) {
+      expect(() => parseSlidesManualEditPayload({ ...payload, operation: { ...richOperation, content } })).toThrow();
+    }
+
 
     expect(parseSlidesManualEditPayload({
       ...payload,
@@ -133,6 +141,13 @@ describe('slides backend IPC contracts', () => {
         op: 'set_visual_size', targetKind: 'shape', visualSize: { width: 3, height: 1.5 },
       },
     });
+
+    const resizeOperation = { op: 'set_visual_size', target: payload.operation.target,
+      targetKind: 'shape', visualSize: { width: 3, height: 1.5 }, translationDelta: { dx: -1, dy: -0.5 } };
+    expect(parseSlidesManualEditPayload({ ...payload, operation: resizeOperation }).operation).toEqual(resizeOperation);
+    for (const translationDelta of [{ dx: Infinity, dy: 0 }, { dx: 0 }, { dx: 0, dy: 0, extra: true }, null]) {
+      expect(() => parseSlidesManualEditPayload({ ...payload, operation: { ...resizeOperation, translationDelta } })).toThrow();
+    }
 
     expect(parseSlidesManualEditPayload({
       ...payload,

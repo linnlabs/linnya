@@ -1,4 +1,4 @@
-import type { SlidesAuthoringEditRef } from '@plugin/slides/shared/authoringEditing';
+import type { SlidesEditableTextContent, SlidesAuthorTextStyle, SlidesAuthoringEditRef } from '@plugin/slides/shared/authoringEditing';
 
 export interface TextEditingPoint {
   readonly x: number;
@@ -15,8 +15,10 @@ export interface TextEditingPadding {
 /** 原位输入只消费当前正式视觉，不从 DOM 或 Canvas 实例反推作者值。 */
 export interface TextEditingTarget {
   readonly elementId: string;
+  readonly targetKind: 'text' | 'shape';
   readonly authoringRef: SlidesAuthoringEditRef;
-  readonly content: string;
+  readonly content: SlidesEditableTextContent;
+  readonly baseStyle?: SlidesAuthorTextStyle;
   readonly origin: TextEditingPoint;
   readonly width: number;
   readonly height: number;
@@ -35,5 +37,3 @@ export interface TextEditingTarget {
   readonly letterSpacingPt?: number;
   readonly opacity: number;
 }
-
-export type TextEditingCommitResult = 'submitted' | 'closed' | 'blocked';

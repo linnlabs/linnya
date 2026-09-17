@@ -1,7 +1,9 @@
+import { isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import {
   SLIDES_TEMPLATE_IMPORT_MAX_BYTES,
   type SlideSourceSpan,
   SLIDES_AUTHORING_KEY_PATTERN,
+  SLIDES_MANUAL_FONT_SIZE_PT,
   type SlidesManualEditCommand,
   type SlidesManualTargetKind,
   type SlidesIpcChannel,
@@ -212,13 +214,18 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
   };
 
   if (payload.operation.op === 'set_text_content') {
-    assertOnlyKeys(payload.operation, ['op', 'target', 'content'], 'operation');
-    if (typeof payload.operation.content !== 'string') {
-      throw new Error('operation.content must be a string.');
+    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'content'], 'operation');
+    if (payload.operation.targetKind !== 'text' && payload.operation.targetKind !== 'shape') {
+      throw new Error('operation.targetKind must be text or shape.');
+    }
+    if (!isEditableTextContent(payload.operation.content)) throw new Error('operation.content must be text or text runs.');
+    if (payload.operation.targetKind === 'shape') {
+      if (typeof payload.operation.content !== 'string') throw new Error('Shape content must be a string.');
+      return { ...base, operation: { op: 'set_text_content', target, targetKind: 'shape', content: payload.operation.content } };
     }
     return {
       ...base,
-      operation: { op: 'set_text_content', target, content: payload.operation.content },
+      operation: { op: 'set_text_content', target, targetKind: payload.operation.targetKind, content: payload.operation.content },
     };
   }
   if (payload.operation.op === 'set_translation') {
@@ -264,8 +271,8 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
     const fontSizePt = payload.operation.fontSizePt === undefined
       ? undefined
       : readFiniteNumber(payload.operation.fontSizePt, 'operation.fontSizePt');
-    if (fontSizePt !== undefined && (fontSizePt < 1 || fontSizePt > 400)) {
-      throw new Error('operation.fontSizePt must be between 1 and 400.');
+    if (fontSizePt !== undefined && (fontSizePt < SLIDES_MANUAL_FONT_SIZE_PT.min || fontSizePt > SLIDES_MANUAL_FONT_SIZE_PT.max)) {
+      throw new Error(`operation.fontSizePt must be between ${SLIDES_MANUAL_FONT_SIZE_PT.min} and ${SLIDES_MANUAL_FONT_SIZE_PT.max}.`);
     }
     const color = payload.operation.color === undefined
       ? undefined
@@ -300,7 +307,7 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
     };
   }
   if (payload.operation.op === 'set_visual_size') {
-    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'visualSize'], 'operation');
+    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'visualSize', 'translationDelta'], 'operation');
     const targetKind = readManualTargetKind(payload.operation.targetKind);
     if (targetKind !== 'shape' && targetKind !== 'image') {
       throw new Error('operation.targetKind must be shape or image.');
@@ -311,12 +318,22 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
     assertOnlyKeys(payload.operation.visualSize, ['width', 'height'], 'operation.visualSize');
     const width = readFiniteNumber(payload.operation.visualSize.width, 'operation.visualSize.width');
     const height = readFiniteNumber(payload.operation.visualSize.height, 'operation.visualSize.height');
+    let translationDelta: { dx: number; dy: number } | undefined;
+    if (payload.operation.translationDelta !== undefined) {
+      const delta = payload.operation.translationDelta;
+      if (!isRecord(delta)) throw new Error('operation.translationDelta must be an object.');
+      assertOnlyKeys(delta, ['dx', 'dy'], 'operation.translationDelta');
+      translationDelta = {
+        dx: readFiniteNumber(delta.dx, 'operation.translationDelta.dx'),
+        dy: readFiniteNumber(delta.dy, 'operation.translationDelta.dy'),
+      };
+    }
     if (width <= 0 || height <= 0) {
       throw new Error('operation.visualSize width and height must be positive.');
     }
     return {
       ...base,
-      operation: { op: 'set_visual_size', target, targetKind, visualSize: { width, height } },
+      operation: { op: 'set_visual_size', target, targetKind, visualSize: { width, height }, ...(translationDelta ? { translationDelta } : {}) },
     };
   }
   if (payload.operation.op === 'delete_target') {

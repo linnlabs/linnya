@@ -207,6 +207,8 @@ export const useSlidesStore = defineStore('slides', () => {
         return;
       }
 
+      // 静默刷新是可等待的端口：调用方需要区分已保存但读取失败，不能吞掉异常让队列永远等帧。
+      if (options.silent) throw e;
       deckError.value = e instanceof Error ? e.message : '加载演示文稿失败';
       if (options.clearExistingPreview) {
         deckPreview.value = null;

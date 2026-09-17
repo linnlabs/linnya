@@ -185,6 +185,8 @@ export interface SlidesPresentationQueryPort {
 }
 
 export interface SlidesEngineRenderModelOptions {
+  /** 只读 CLI 不需要随模型携带人工编辑的测量事实。 */
+  readonly prepareEditingMeasurements?: boolean;
   /**
    * 只有 coordinator 已确认 DeckSpec 中的 sourceSpan 可用时才开启。
    * deckSource 存在只代表历史源码仍在，不能直接代表前端可定位编辑。

@@ -1,28 +1,27 @@
 import { defineStore } from 'pinia';
-import { ref, shallowRef } from 'vue';
-import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
+import { computed, ref, shallowRef } from 'vue';
 import type {
-  ManualEditIntent,
   ManualEditableTarget,
   ManualEditingTranslationPreview,
-  ManualEditingVisualPreview,
 } from '../definitions/manualEditingTypes';
-import { appendManualEditIntent } from '../functions/appendManualEditIntent';
+import type { ManualEditQueueEntry, ManualEditSubmissionState } from '../definitions/manualEditQueue';
 
 export const useSlidesManualEditingStore = defineStore('slides-manual-editing', () => {
   const enabled = ref(false);
   const selectedTarget = shallowRef<ManualEditableTarget | null>(null);
   const selectionPath = shallowRef<readonly ManualEditableTarget[]>([]);
   const translationPreview = shallowRef<ManualEditingTranslationPreview | null>(null);
-  const pendingTranslation = shallowRef<ManualEditingTranslationPreview | null>(null);
-  const pendingVisual = shallowRef<ManualEditingVisualPreview | null>(null);
-  const queuedIntents = shallowRef<readonly ManualEditIntent[]>([]);
-  const textSubmissionPending = ref(false);
-  const activeOperation = shallowRef<SlidesManualEditOperation | null>(null);
-  const pendingPresentationRevision = ref<number | null>(null);
+  const queue = shallowRef<readonly ManualEditQueueEntry[]>([]);
+  const submission = shallowRef<ManualEditSubmissionState>({ phase: 'idle' });
   const presentedRevision = ref<number | null>(null);
-  const submitting = ref(false);
   const errorMessage = ref<string | null>(null);
+  const queuedIntents = computed(() => queue.value.map(entry => entry.intent));
+  const activeIntent = computed(() => submission.value.phase === 'idle' ? null : submission.value.entry.intent);
+  const pendingTranslation = computed(() => activeIntent.value?.translationPreview ?? null);
+  const pendingVisual = computed(() => activeIntent.value?.visualPreview ?? null);
+  const submitting = computed(() => submission.value.phase === 'submitting');
+  const pendingPresentationRevision = computed(() => submission.value.phase === 'awaiting_frame'
+    ? submission.value.revision : null);
 
   function setEnabled(value: boolean): void {
     enabled.value = value;
@@ -38,7 +37,6 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     selectedTarget.value = target;
     selectionPath.value = target ? path : [];
     translationPreview.value = null;
-    errorMessage.value = null;
   }
 
   function reconcileSelectedTarget(
@@ -53,87 +51,21 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     translationPreview.value = preview;
   }
 
-  function beginSubmit(
-    operation: SlidesManualEditOperation,
-    optimisticTranslation?: ManualEditingTranslationPreview,
-    optimisticVisual?: ManualEditingVisualPreview,
-  ): void {
-    submitting.value = true;
-    activeOperation.value = operation;
-    pendingPresentationRevision.value = null;
-    pendingTranslation.value = optimisticTranslation ?? null;
-    pendingVisual.value = optimisticVisual ?? null;
-    textSubmissionPending.value = operation.op === 'set_text_content';
-    translationPreview.value = null;
-    errorMessage.value = null;
+  function setQueue(entries: readonly ManualEditQueueEntry[]): void {
+    queue.value = entries;
   }
 
-  function enqueueIntent(intent: ManualEditIntent): void {
-    queuedIntents.value = appendManualEditIntent(queuedIntents.value, intent);
-    if (intent.operation.op === 'set_text_content') textSubmissionPending.value = true;
-    errorMessage.value = null;
+  function setSubmission(value: ManualEditSubmissionState): void {
+    submission.value = value;
   }
 
-  function startNextSubmit(): ManualEditIntent | null {
-    if (
-      submitting.value
-      || pendingPresentationRevision.value !== null
-      || queuedIntents.value.length === 0
-    ) {
-      return null;
-    }
-    const [intent, ...remaining] = queuedIntents.value;
-    if (!intent) return null;
-    queuedIntents.value = remaining;
-    beginSubmit(intent.operation, intent.translationPreview, intent.visualPreview);
-    if (
-      intent.operation.op !== 'set_text_content'
-      && queuedIntents.value.some(candidate => candidate.operation.op === 'set_text_content')
-    ) {
-      textSubmissionPending.value = true;
-    }
-    return intent;
+  function setError(message: string | null): void {
+    errorMessage.value = message;
   }
 
-  function commitSubmit(revision: number): void {
-    submitting.value = false;
-    activeOperation.value = null;
-    pendingPresentationRevision.value = revision;
-    reconcilePresentedRevision();
-  }
-
-  function failSubmit(error: string): void {
-    submitting.value = false;
-    activeOperation.value = null;
-    pendingTranslation.value = null;
-    pendingVisual.value = null;
-    pendingPresentationRevision.value = null;
-    textSubmissionPending.value = false;
-    queuedIntents.value = [];
-    errorMessage.value = error;
-  }
-
-  /** 只有新 RenderModel 已呈现 committed revision，才能撤下乐观视觉。 */
+  /** 只记录画面事实；回执结算与后续提交由 queue orchestration 负责。 */
   function recordPresentedRevision(revision: number): void {
     presentedRevision.value = revision;
-    reconcilePresentedRevision();
-  }
-
-  function reconcilePresentedRevision(): void {
-    if (
-      pendingPresentationRevision.value === null
-      || presentedRevision.value === null
-      || presentedRevision.value < pendingPresentationRevision.value
-    ) {
-      return;
-    }
-    pendingTranslation.value = null;
-    pendingVisual.value = null;
-    pendingPresentationRevision.value = null;
-    presentedRevision.value = null;
-    textSubmissionPending.value = queuedIntents.value.some(
-      intent => intent.operation.op === 'set_text_content',
-    );
   }
 
   function clearSelection(): void {
@@ -144,15 +76,10 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
 
   function $reset(): void {
     enabled.value = false;
-    submitting.value = false;
-    errorMessage.value = null;
-    pendingTranslation.value = null;
-    pendingVisual.value = null;
-    activeOperation.value = null;
-    pendingPresentationRevision.value = null;
+    submission.value = { phase: 'idle' };
+    queue.value = [];
     presentedRevision.value = null;
-    textSubmissionPending.value = false;
-    queuedIntents.value = [];
+    errorMessage.value = null;
     clearSelection();
   }
 
@@ -164,8 +91,8 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     pendingTranslation,
     pendingVisual,
     queuedIntents,
-    textSubmissionPending,
-    activeOperation,
+    queue,
+    submission,
     pendingPresentationRevision,
     presentedRevision,
     submitting,
@@ -174,11 +101,9 @@ export const useSlidesManualEditingStore = defineStore('slides-manual-editing', 
     selectTarget,
     reconcileSelectedTarget,
     setTranslationPreview,
-    beginSubmit,
-    enqueueIntent,
-    startNextSubmit,
-    commitSubmit,
-    failSubmit,
+    setQueue,
+    setSubmission,
+    setError,
     recordPresentedRevision,
     clearSelection,
     $reset,

@@ -12,8 +12,13 @@ shared/textLayout/
 │   ├── contract.ts                  # 文本框布局合同与默认 padding/wrap/autofit
 │   ├── lineSpacing.ts               # 可辨识行距合同、默认值与 legacy admission
 │   ├── provenance.ts                # advance/font/字距/overflow 的安全摘要合同
+│   ├── preparedTextLayout.ts        # 编辑预览的无损测量快照
+│   ├── shapeTextLayout.ts           # Shape 默认布局结果
 │   └── types.ts                     # provider、行级 IR 与布局结果
 ├── functions/
+│   ├── preparedTextLayout.ts        # 测量事实准备与同源实时排版
+│   ├── resolveShapeTextLayout.ts    # Shape 默认字号和 padding 唯一规则
+│   ├── shapeTextResizeInput.ts      # 缩放输入与测量字号档位
 │   ├── segmentClusters.ts           # grapheme、强制换行、CJK break/kinsoku
 │   ├── breakLines.ts                # cluster -> BrokenLine[] 的唯一断行规则
 │   ├── layoutParagraph.ts           # 段落缩进、对齐、bullet 与 spacing
@@ -50,7 +55,17 @@ TextRenderNode / table cell
 - `overflow.horizontal/vertical/hiddenLineCount`：布局阶段已经判定的溢出事实；
 - `appliedFontScale`、`requiredHeightInches` 与 advance 来源。
 
-renderer 不得再次测量、换行、autofit 或追加省略号。普通文本、shape inner text 和 table cell 都必须在 backend finalization 阶段得到同一种 `TextLayoutResult`。
+普通展示直接消费最终布局，不再次测量或追加省略号。普通文本、shape inner text 和 table cell 都必须在 backend finalization 阶段得到同一种 `TextLayoutResult`。
+
+### 编辑即时排版
+
+Text 字号与 Shape 缩放通过 `prepareTextLayout` / `layoutPreparedText` 复用同一排版器。Backend 为可编辑文字及形状文字提供明确 profile、autofit 前的 inputBox 和正式字体事实；Renderer 的 editingPreview feature 负责完整派生与发布，不在 Vue 组件内分别更新文字样式和旧行坐标。
+
+HarfBuzz 完整 run 的原始 fontUnits 与 metricsInEm 可在任意字号下同源投影，避免枚举工具栏字号和重复 shaping。未提供可缩放事实的 provider 只保存其实际测量过的字号，保留真实 provenance；不能从已舍入宽度反推原始单位。`null` metrics 表示正式 provider 没有字体指标。完整序列保留位置相关 kerning，不能按单字去重。严格 codec 验证 profile、inputBox、数字与索引，WeakMap 查询索引随快照回收。
+
+`resolveShapeTextLayout` 是 generated Shape 默认字号与内边距的唯一规则，`shapeTextResizeInput` 派生缩放输入。`shapeTextSizing` 保存显式字号或按尺寸估算的语义。非线性 provider 的 Shape 快照仅覆盖默认字号与 shrink 的真实可达档位；线性字体事实一次记录即可覆盖这些档位。
+
+缺失测量事实抛出明确的 PreparedTextMeasurementUnavailable，editingPreview 保留整个旧节点等待正式修订；不允许近似移动旧行或换测量算法。任意新正文、作者布局树重排和通用 ellipsis 编辑不在本地精确快照范围。只读 standalone CLI 使用 prepareEditingMeasurements=false 关闭额外预热和快照。
 
 ## 行距合同
 
@@ -103,6 +118,7 @@ shared 算法是同步的。异步初始化、预热、缓存、字体解析和�
 - cluster 与断行：`src/shared/textLayout/__tests__/{segmentClusters,breakLines,lineBreakRegression}.test.ts`
 - 布局、autofit、overflow：`src/shared/textLayout/__tests__/{layoutTextNode,resizeTextBoxForAutoFit}.test.ts`
 - 观察合同：`src/shared/textLayout/__tests__/summarizeTextLayoutProvenance.test.ts`
+- Shape 缩放同源布局：`src/shared/textLayout/__tests__/preparedTextLayout.test.ts`，包含多语言、位置相关 shaping、空行与过期文本拒绝。
 - backend finalization：`src/backend/engine/text/__tests__/renderModelTextLayout.test.ts`
 - 多行表格的真实预热、布局、Inspect 场景图、前端绘制投影与 PPTX 导出：`src/backend/__tests__/table-forced-break.integration.test.ts`
 - renderer fail-closed：`src/renderer/features/konvaPreview/functions/builders/__tests__/{textBuilder,tableBuilder}.test.ts`

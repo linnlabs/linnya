@@ -68,3 +68,15 @@ describe('appendManualEditIntent', () => {
     expect(result[0]?.translationPreview).toMatchObject({ dx: 0.5, dy: 0.2 });
   });
 });
+
+it('coalesces resize dimensions while accumulating anchor motion, including a later numeric size edit', () => {
+  const first: ManualEditIntent = { operation: { op: 'set_visual_size', target, targetKind: 'shape',
+    visualSize: { width: 3, height: 2 }, translationDelta: { dx: -1, dy: -1 } } };
+  const second: ManualEditIntent = { operation: { op: 'set_visual_size', target, targetKind: 'shape',
+    visualSize: { width: 4, height: 3 }, translationDelta: { dx: -1, dy: -1 } } };
+  const numeric: ManualEditIntent = { operation: { op: 'set_visual_size', target, targetKind: 'shape',
+    visualSize: { width: 5, height: 4 } } };
+  const merged = appendManualEditIntent(appendManualEditIntent([first], second), numeric);
+  expect(merged).toHaveLength(1);
+  expect(merged[0]?.operation).toMatchObject({ visualSize: { width: 5, height: 4 }, translationDelta: { dx: -2, dy: -2 } });
+});

@@ -397,3 +397,5 @@ npm test -- apps/renderer/app/layout/functions/headerPaneGeometry.test.ts apps/r
 ```
 
 完整前端构建仍以 `npm run build:frontend` 为准。
+
+文档内目标跳转 `openDocumentTarget` 同样支持有 `fileSessionType` 的可编辑插件：旧 surface 仍挂载时先保存并 deactivate，再挂载目标 surface、等待 ready、激活文件会话。定位参数通过 `payload.navigationParameters` 交给 handler；没有 file session 的只读 runtime 文档继续调用 runtime loader。保存失败不得先卸载旧 surface。

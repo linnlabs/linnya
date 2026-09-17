@@ -1,3 +1,4 @@
+import { isEditableTextContent } from './editableText';
 import type {
   SlidesManualEdits,
   SlidesManualSlideEdits,
@@ -7,6 +8,7 @@ import type {
   SlidesManualVisualSize,
 } from '../definitions/manualEdits';
 import { isSlidesAuthoringKey } from './authoringIdentity';
+import { SLIDES_MANUAL_FONT_SIZE_PT } from '../definitions/textStyleLimits';
 
 export type SlidesManualEditsParseResult =
   | { readonly value: SlidesManualEdits }
@@ -101,11 +103,11 @@ function parseTargetEdit(
     if (!hasOnlyKeys(value, ['kind', 'editKey', 'content', 'fontSizePt', 'color', 'translation'])) {
       return { error: `${path} 含有 text 人工编辑不支持的字段。` };
     }
-    if (value.content !== undefined && typeof value.content !== 'string') {
-      return { error: `${path}.content 必须是字符串。` };
+    if (value.content !== undefined && !isEditableTextContent(value.content)) {
+      return { error: `${path}.content 必须是字符串或文字 run 数组。` };
     }
     if (value.fontSizePt !== undefined && !isFontSize(value.fontSizePt)) {
-      return { error: `${path}.fontSizePt 必须是 1–400 pt 内的有限数字。` };
+      return { error: `${path}.fontSizePt 必须是 ${SLIDES_MANUAL_FONT_SIZE_PT.min}–${SLIDES_MANUAL_FONT_SIZE_PT.max} pt 内的有限数字。` };
     }
     if (value.color !== undefined && !isHexColor(value.color)) {
       return { error: `${path}.color 必须是 #RRGGBB。` };
@@ -155,17 +157,20 @@ function parseTargetEdit(
   }
 
   if (value.kind === 'shape') {
-    if (!hasOnlyKeys(value, ['kind', 'editKey', 'translation', 'fillColor', 'visualSize'])) {
+    if (!hasOnlyKeys(value, ['kind', 'editKey', 'translation', 'fillColor', 'visualSize', 'content'])) {
       return { error: `${path} 含有 shape 人工编辑不支持的字段。` };
     }
     const translation = parseOptionalTranslation(value.translation, `${path}.translation`);
     if ('error' in translation) return translation;
+    if (value.content !== undefined && typeof value.content !== 'string') {
+      return { error: `${path}.content 必须是字符串。` };
+    }
     if (value.fillColor !== undefined && !isHexColor(value.fillColor)) {
       return { error: `${path}.fillColor 必须是 #RRGGBB。` };
     }
     const visualSize = parseOptionalVisualSize(value.visualSize, `${path}.visualSize`);
     if ('error' in visualSize) return visualSize;
-    if (translation.value === undefined && value.fillColor === undefined && visualSize.value === undefined) {
+    if (translation.value === undefined && value.fillColor === undefined && visualSize.value === undefined && value.content === undefined) {
       return { error: `${path} 至少需要一个 shape 人工值。` };
     }
     return {
@@ -173,6 +178,7 @@ function parseTargetEdit(
         kind: 'shape',
         editKey: value.editKey,
         translation: translation.value,
+        content: value.content,
         fillColor: value.fillColor,
         visualSize: visualSize.value,
       },
@@ -285,7 +291,8 @@ function parseOptionalVisualSize(
 }
 
 function isFontSize(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 1 && value <= 400;
+  return typeof value === 'number' && Number.isFinite(value)
+    && value >= SLIDES_MANUAL_FONT_SIZE_PT.min && value <= SLIDES_MANUAL_FONT_SIZE_PT.max;
 }
 
 function isPositiveFiniteNumber(value: unknown): value is number {

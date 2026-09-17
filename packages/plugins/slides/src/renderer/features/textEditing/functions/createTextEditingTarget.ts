@@ -8,11 +8,13 @@ const DEFAULT_TEXT_COLOR = '#000000';
 export function createTextEditingTarget(
   geometry: RenderNodeSelectionGeometry<RenderNode>,
 ): TextEditingTarget | null {
-  const { node, polygon } = geometry;
-  if (node.kind !== 'text') return null;
-  const authoringRef = node.authoringRef;
-  const text = node.authoringEdit?.text;
-  if (!authoringRef || text?.kind !== 'plain_text') return null;
+  const { node: owner, polygon } = geometry;
+  const node = owner.kind === 'text' ? owner : owner.kind === 'shape' ? owner.innerText : undefined;
+  const authoringRef = owner.authoringRef;
+  const text = owner.authoringEdit?.text;
+  if (!node || !authoringRef || !text || text.content === undefined
+    || !owner.authoringEdit?.capabilities.includes('set_text_content')) return null;
+  if (authoringRef.targetKind !== 'text' && authoringRef.targetKind !== 'shape') return null;
 
   const origin = polygon[0];
   const horizontalEnd = polygon[1];
@@ -20,7 +22,8 @@ export function createTextEditingTarget(
   if (!origin || !horizontalEnd || !verticalEnd) return null;
 
   const firstRun = findFirstTextRun(node);
-  const fontSizePt = firstRun?.fontSize ?? DEFAULT_FONT_SIZE_PT;
+  const rich = text.kind === 'rich_text';
+  const fontSizePt = rich ? text.baseStyle?.fontSize ?? DEFAULT_FONT_SIZE_PT : firstRun?.fontSize ?? DEFAULT_FONT_SIZE_PT;
   const appliedFontScale = node.layout?.appliedFontScale ?? 1;
   const padding = {
     top: node.padding?.top ?? 0,
@@ -39,40 +42,43 @@ export function createTextEditingTarget(
   const firstLineHeight = node.layout?.lines[0]?.height;
   const scaledFontHeight = fontSizePt / 72 * appliedFontScale;
 
-  const textDecoration = buildTextDecoration(firstRun);
+  const textDecoration = rich ? (text.baseStyle?.underline ? 'underline' : undefined) : buildTextDecoration(firstRun);
 
   return {
     elementId: geometry.elementId,
+    targetKind: authoringRef.targetKind,
     authoringRef: {
       slideKey: authoringRef.slideKey,
       editKey: authoringRef.editKey,
     },
     content: text.content,
+    baseStyle: text.baseStyle,
     origin,
     width: Math.hypot(horizontalEnd.x - origin.x, horizontalEnd.y - origin.y),
     height: Math.hypot(verticalEnd.x - origin.x, verticalEnd.y - origin.y),
     rotation: Math.atan2(horizontalEnd.y - origin.y, horizontalEnd.x - origin.x) * 180 / Math.PI,
     padding,
     verticalOffset,
-    fontFamily: firstRun?.resolvedFontFamily ?? firstRun?.fontFamily ?? 'sans-serif',
+    fontFamily: rich ? text.baseStyle?.fontFamily ?? 'sans-serif' : firstRun?.resolvedFontFamily ?? firstRun?.fontFamily ?? 'sans-serif',
     fontSizePt,
     appliedFontScale,
-    fontWeight: (firstRun?.resolvedFontWeight ?? firstRun?.fontWeight) === 'bold'
+    fontWeight: (rich ? text.baseStyle?.bold === true : (firstRun?.resolvedFontWeight ?? firstRun?.fontWeight) === 'bold')
       ? 'bold'
       : 'normal',
-    fontStyle: (firstRun?.resolvedFontStyle ?? firstRun?.fontStyle) === 'italic'
+    fontStyle: (rich ? text.baseStyle?.italic === true : (firstRun?.resolvedFontStyle ?? firstRun?.fontStyle) === 'italic')
       ? 'italic'
       : 'normal',
     ...(textDecoration ? { textDecoration } : {}),
-    color: firstRun?.color ?? DEFAULT_TEXT_COLOR,
+    color: rich ? text.baseStyle?.color ?? DEFAULT_TEXT_COLOR : firstRun?.color ?? DEFAULT_TEXT_COLOR,
     textAlign: node.paragraphs[0]?.align ?? 'left',
-    lineHeight: firstLineHeight && scaledFontHeight > 0
+    lineHeight: rich ? (text.baseStyle?.lineSpacing?.kind === 'exactPt'
+      ? text.baseStyle.lineSpacing.value / fontSizePt : text.baseStyle?.lineSpacing?.value ?? 1) : firstLineHeight && scaledFontHeight > 0
       ? firstLineHeight / scaledFontHeight
       : 1.2,
     ...(firstRun?.letterSpacing === undefined
       ? {}
       : { letterSpacingPt: firstRun.letterSpacing * appliedFontScale }),
-    opacity: node.opacity ?? 1,
+    opacity: owner.opacity ?? 1,
   };
 }
 

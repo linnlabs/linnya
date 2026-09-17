@@ -1,3 +1,4 @@
+import type { SlidesEditableTextContent } from './editableText';
 import type { SlidesAuthoringEditRef } from './authoringIdentity';
 import type {
   SlidesManualTargetKind,
@@ -14,6 +15,13 @@ export interface SlidesManualEditExpectedBase {
 export type SlidesManualEditOperation =
   | {
       readonly op: 'set_text_content';
+      readonly targetKind: 'text';
+      readonly target: SlidesAuthoringEditRef;
+      readonly content: SlidesEditableTextContent;
+    }
+  | {
+      readonly op: 'set_text_content';
+      readonly targetKind: 'shape';
       readonly target: SlidesAuthoringEditRef;
       readonly content: string;
     }
@@ -46,6 +54,8 @@ export type SlidesManualEditOperation =
       readonly target: SlidesAuthoringEditRef;
       readonly targetKind: 'shape' | 'image';
       readonly visualSize: SlidesManualVisualSize;
+      /** 缩放锚点产生的位置增量，与尺寸在同一修订中提交。 */
+      readonly translationDelta?: SlidesManualTranslation;
     }
   | {
       readonly op: 'delete_target';

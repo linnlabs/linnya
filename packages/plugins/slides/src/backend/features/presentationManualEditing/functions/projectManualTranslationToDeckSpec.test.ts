@@ -120,7 +120,7 @@ describe('projectManualTranslationToDeckSpec', () => {
 
   it('把内容修改、Frame 和嵌套目标交给完整编译器', () => {
     expect(projectManualTranslationToDeckSpec(makeDeck(), {
-      op: 'set_text_content',
+      op: 'set_text_content', targetKind: 'text',
       target: TARGET,
       content: 'Updated',
     })).toEqual({ kind: 'requires_full_compile' });

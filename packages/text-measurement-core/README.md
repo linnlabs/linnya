@@ -6,3 +6,5 @@
 
 这里允许：测量 DTO、单位换算、输入规范化、heuristic adapter 与同步 service。
 浏览器 Pretext、系统字体发现、HarfBuzz 装配、Worker 生命周期和 Slides 业务规则都不属于本 package。
+
+HarfBuzz 可以在 `ClusterAdvanceMeasureResult.fontUnits` 提供未缩放的完整 shaping 序列与 unitsPerEm。`projectFontUnitAdvances` 是后端与只读预览共用的字号/字距投影规则：先按目标字号换算，再叠加字距，最后按六位小数取整。不能从已取整的英寸宽度反推字体单位；不提供原始事实的 provider 保留原有 source，不承诺可跨字号复用。

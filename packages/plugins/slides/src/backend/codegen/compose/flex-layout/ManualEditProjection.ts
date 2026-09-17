@@ -1,3 +1,4 @@
+import { isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import type {
   SlidesManualSlideEdits,
   SlidesManualTargetEdit,
@@ -116,9 +117,9 @@ function applyPreLayoutManualEdits(
     }
     case 'Text': {
       if (edit?.kind !== 'text') return node;
-      if (edit.content !== undefined && typeof node.content !== 'string') {
+      if (edit.content !== undefined && !isEditableTextContent(node.content)) {
         throw new FlexComposeContractError(
-          `人工编辑目标 "${node.editKey}" 不是可直接改字的纯文本作者对象。`,
+          `人工编辑目标 "${node.editKey}" 包含不能手动覆盖的公式或未知正文。`,
         );
       }
       return {
@@ -129,9 +130,17 @@ function applyPreLayoutManualEdits(
       };
     }
     case 'Shape': {
-      return edit?.kind === 'shape' && edit.fillColor
-        ? { ...node, fill: edit.fillColor }
-        : node;
+      if (edit?.kind !== 'shape') return node;
+      if (edit.content !== undefined && typeof node.content !== 'string') {
+        throw new FlexComposeContractError(
+          `人工编辑目标 "${node.editKey}" 不是带有纯文本的形状。`,
+        );
+      }
+      return {
+        ...node,
+        ...(edit.fillColor !== undefined ? { fill: edit.fillColor } : {}),
+        ...(edit.content !== undefined ? { content: edit.content } : {}),
+      };
     }
     case 'Chart':
     case 'Table':

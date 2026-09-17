@@ -2,6 +2,29 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 2.5.2 - 2026-09-17
+
+- ToolbarGroup 分隔线自身的左右 margin 收紧为 2px，与 4px flex gap 合计单侧 6px，修正 Slides 工具条组间多余留白。
+- Editor 文本／表格工具条统一复用 ToolbarGroup，删除本地 divider、重复分组组件和分隔线 CSS；公开组件合同与插件兼容范围不变。
+
+## 2.5.1 - 2026-09-17
+
+- ToolbarColorButton 去掉额外 36px 最小宽度，沿用 ToolbarButton 的紧凑图标按钮宽度；Editor 与 Slides 同步修正文字色／填充色两侧多余留白。
+- 不改变组件合同或插件兼容范围；已有 Host external 消费者直接使用 Host 的修正样式。
+
+## 2.5.0 - 2026-09-16
+
+- 新增 ToolbarButton、ToolbarColorButton、DropdownPanel 及公开严格类型；Editor 与 Slides 统一按钮、A/笔形颜色标识及标准下拉表面。
+- DropdownPanel 与 CustomSelect 共用 150ms 上/下展开动效，支持 reduced-motion；退出表面 inert，快速重开恢复交互。
+- BaseDropdown 新增公开 closeAndFocus 动作，普通关闭与外部点击继续不抢焦点，受控 BaseDropdown 挂载后立即接受外部点击；Editor 色板移除吞掉 Escape 的局部处理器。
+- 删除两边重复的图标/按钮/面板样式和 Editor 虚构的 panel 选项；Slides peer/compat 升为 ^2.5.0，runtime catalog 与 tarball consumer 同步新入口。
+
+## 2.4.0 - 2026-09-16
+
+- 新增 `FloatingToolbar`、`ToolbarGroup` 及严格 props/position 合同，共享浮动表面、分组和样式；表单输入保持原生聚焦。
+- Editor 文本选区及修订条迁移到共享外壳，选择、命令、内容颜色与鼠标选区保留策略仍归 Editor；其他浮条不再因共享 CSS 类名被误认成 Editor 表面。
+- Host runtime catalog 和真实 tarball consumer 同步新导出；新增控件不改变旧组件合同。
+
 ## 2.3.0 - 2026-09-15
 
 - 新增受控数值组件 `CustomSlider` 及公开 props/variant 类型，统一进度、原生键盘输入、禁用态与 default/compact 两档密度；

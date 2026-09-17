@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ManualEditableTarget } from '../../manualEditing';
 import {
-  createDeleteFrameOperation,
   createFillColorOperation,
   createTextStyleOperation,
   createVisualSizeOperation,
@@ -68,16 +67,6 @@ describe('element property operations', () => {
       width: Number.NaN,
       height: 2,
     })).toBeNull();
-  });
-
-  it('exposes destructive deletion only for a projected Frame', () => {
-    expect(createDeleteFrameOperation(target('frame', ['delete']))).toEqual({
-      op: 'delete_target',
-      target: { slideKey: 'overview', editKey: 'frame' },
-      targetKind: 'frame',
-    });
-    expect(createDeleteFrameOperation(target('shape', ['delete']))).toBeNull();
-    expect(createDeleteFrameOperation(target('frame', ['translate']))).toBeNull();
   });
 
   it('preserves the committed image aspect ratio when either dimension changes', () => {

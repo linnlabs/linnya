@@ -20,7 +20,7 @@ function serializeOperation(operation: SlidesManualEditCommand['operation']): ob
   };
   switch (operation.op) {
     case 'set_text_content':
-      return { op: operation.op, ...target, content: operation.content };
+      return { op: operation.op, ...target, targetKind: operation.targetKind, content: serializeTextContent(operation.content) };
     case 'set_text_style':
       return {
         op: operation.op,
@@ -53,8 +53,22 @@ function serializeOperation(operation: SlidesManualEditCommand['operation']): ob
         targetKind: operation.targetKind,
         width: operation.visualSize.width,
         height: operation.visualSize.height,
+        translationDelta: operation.translationDelta ? {
+          dx: operation.translationDelta.dx, dy: operation.translationDelta.dy,
+        } : undefined,
       };
     case 'delete_target':
       return { op: operation.op, ...target, targetKind: operation.targetKind };
   }
+}
+
+/** run 对象属性顺序不属于作者语义；重试时 JSON 重排不能变成另一个命令。 */
+function serializeTextContent(content: Extract<SlidesManualEditCommand['operation'], { op: 'set_text_content' }>['content']) {
+  if (typeof content === 'string') return content;
+  return content.map(run => ({ text: run.text, ...(run.style ? { style: {
+    fontSize: run.style.fontSize, fontFamily: run.style.fontFamily, bold: run.style.bold,
+    italic: run.style.italic, underline: run.style.underline, color: run.style.color,
+    align: run.style.align, valign: run.style.valign, letterSpacing: run.style.letterSpacing,
+    lineSpacing: run.style.lineSpacing ? { kind: run.style.lineSpacing.kind, value: run.style.lineSpacing.value } : undefined,
+  } } : {}) }));
 }

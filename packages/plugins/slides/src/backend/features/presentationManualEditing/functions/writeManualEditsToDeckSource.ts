@@ -1,8 +1,9 @@
+import type { SlidesManualEditSourceOperation } from '../definitions/manualEditSourceOperation.js';
+import { patchWholeTextContent, isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import type ts from 'typescript';
 import {
   isSlidesAuthoringKey,
   parseSlidesManualEdits,
-  type SlidesManualEditOperation,
   type SlidesManualEdits,
   type SlidesManualSlideEdits,
   type SlidesManualTargetEdit,
@@ -39,7 +40,7 @@ export interface WriteManualEditsToDeckSourceResult {
 
 export function writeManualEditsToDeckSource(
   source: string,
-  operation: SlidesManualEditOperation,
+  operation: SlidesManualEditSourceOperation,
   options: { readonly maxSourceBytes?: number } = {},
 ): WriteManualEditsToDeckSourceResult {
   validateOperation(operation);
@@ -121,7 +122,7 @@ function findComposeObjects(
 
 function applyOperation(
   current: SlidesManualEdits,
-  operation: SlidesManualEditOperation,
+  operation: SlidesManualEditSourceOperation,
 ): SlidesManualEdits {
   const slideIndex = current.slides.findIndex(slide => slide.slideKey === operation.target.slideKey);
   const slide = slideIndex === -1
@@ -142,9 +143,9 @@ function applyOperation(
 
 function applyTargetOperation(
   existing: SlidesManualTargetEdit | undefined,
-  operation: SlidesManualEditOperation,
+  operation: SlidesManualEditSourceOperation,
 ): SlidesManualTargetEdit {
-  const targetKind = operation.op === 'set_text_content' || operation.op === 'set_text_style'
+  const targetKind = operation.op === 'set_text_style'
     ? 'text'
     : operation.targetKind;
   assertExistingKind(existing, targetKind, operation);
@@ -152,6 +153,11 @@ function applyTargetOperation(
     return { kind: targetKind, editKey: operation.target.editKey, deleted: true };
   }
   if (existing?.deleted === true) throw deletedTargetError(operation);
+
+  if (operation.op === 'set_text_content' && operation.targetKind === 'shape') {
+    const shape = existing?.kind === 'shape' ? existing : undefined;
+    return { ...shape, kind: 'shape', editKey: operation.target.editKey, content: operation.content };
+  }
 
   if (operation.op === 'set_text_content' || operation.op === 'set_text_style') {
     const text = existing?.kind === 'text' ? existing : undefined;
@@ -166,6 +172,7 @@ function applyTargetOperation(
           ...text,
           kind: 'text',
           editKey: operation.target.editKey,
+          ...(Array.isArray(operation.content) ? { content: patchWholeTextContent(operation.content, operation) } : {}),
           ...(operation.fontSizePt !== undefined ? { fontSizePt: operation.fontSizePt } : {}),
           ...(operation.color !== undefined ? { color: operation.color } : {}),
         };
@@ -191,6 +198,11 @@ function applyTargetOperation(
   }
 
   if (operation.op === 'set_visual_size') {
+    const translation = operation.translationDelta ? {
+      dx: (existing && 'translation' in existing ? existing.translation?.dx ?? 0 : 0) + operation.translationDelta.dx,
+      dy: (existing && 'translation' in existing ? existing.translation?.dy ?? 0 : 0) + operation.translationDelta.dy,
+    } : undefined;
+
     if (operation.targetKind === 'shape') {
       const shape = existing?.kind === 'shape' ? existing : undefined;
       return {
@@ -198,6 +210,7 @@ function applyTargetOperation(
         kind: 'shape',
         editKey: operation.target.editKey,
         visualSize: operation.visualSize,
+        ...(translation ? { translation } : {}),
       };
     }
     const image = existing?.kind === 'image' ? existing : undefined;
@@ -206,6 +219,7 @@ function applyTargetOperation(
       kind: 'image',
       editKey: operation.target.editKey,
       visualSize: operation.visualSize,
+      ...(translation ? { translation } : {}),
     };
   }
 
@@ -256,7 +270,7 @@ function applyTargetOperation(
 function assertExistingKind(
   existing: SlidesManualTargetEdit | undefined,
   expectedKind: SlidesManualTargetEdit['kind'],
-  operation: SlidesManualEditOperation,
+  operation: SlidesManualEditSourceOperation,
 ): void {
   if (!existing || existing.kind === expectedKind) return;
   throw new SlidesManualEditSourceError(
@@ -265,14 +279,14 @@ function assertExistingKind(
   );
 }
 
-function deletedTargetError(operation: SlidesManualEditOperation): SlidesManualEditSourceError {
+function deletedTargetError(operation: SlidesManualEditSourceOperation): SlidesManualEditSourceError {
   return new SlidesManualEditSourceError(
     'operation_invalid',
     `目标 ${operation.target.slideKey}/${operation.target.editKey} 已删除。`,
   );
 }
 
-function validateOperation(operation: SlidesManualEditOperation): void {
+function validateOperation(operation: SlidesManualEditSourceOperation): void {
   if (
     !isSlidesAuthoringKey(operation.target.slideKey)
     || !isSlidesAuthoringKey(operation.target.editKey)
@@ -281,8 +295,8 @@ function validateOperation(operation: SlidesManualEditOperation): void {
   }
   switch (operation.op) {
     case 'set_text_content':
-      if (typeof operation.content !== 'string') {
-        throw new SlidesManualEditSourceError('operation_invalid', '文本人工值必须是字符串。');
+      if (!isEditableTextContent(operation.content) || (operation.targetKind === 'shape' && typeof operation.content !== 'string')) {
+        throw new SlidesManualEditSourceError('operation_invalid', '文本人工值必须符合作者正文合同。');
       }
       return;
     case 'set_text_style':
@@ -302,6 +316,9 @@ function validateOperation(operation: SlidesManualEditOperation): void {
       }
       return;
     case 'set_visual_size':
+      if (operation.translationDelta && (!Number.isFinite(operation.translationDelta.dx) || !Number.isFinite(operation.translationDelta.dy))) {
+        throw new SlidesManualEditSourceError('operation_invalid', '缩放位移必须是有限数字。');
+      }
       if (
         !isPositiveFiniteNumber(operation.visualSize.width)
         || !isPositiveFiniteNumber(operation.visualSize.height)

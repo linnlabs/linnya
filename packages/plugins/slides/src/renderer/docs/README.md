@@ -21,7 +21,9 @@ src/renderer/
 │   ├── documentReference/           # 文档引用与展示用纯规则
 │   ├── documentRuntime/             # surface 挂载后的 deck 加载、定位和生命周期编排
 │   ├── elementAiEdit/               # source-backed 元素 AI 编辑编排
-│   ├── manualEditing/                # 稳定作者对象的移动、纯文本编辑与 CAS 提交流程
+│   ├── editingInteraction/           # 选择／输入会话、IME、焦点交接与失败文字恢复
+│   ├── textEditing/                  # 原位 textarea 和无焦点文字预览
+│   ├── manualEditing/                # 作者目标、视觉投影、CAS 队列与独立回执
 │   ├── renderNodeSelection/           # RenderNode 世界坐标遍历、命中与选择几何
 │   ├── presentationExport/          # PPTX/图片菜单、独立弹窗与导出交互编排；见 feature README
 │   ├── konvaPreview/                # Konva 配置与 ECharts option 纯映射
@@ -118,12 +120,13 @@ SlideStage sourceSelection
 
 ```text
 SlideStage authoring-capability target click / drag / text double-click
-  -> manualEditing gesture preview / pending local visual（不修改 RenderModel）
-  -> SlidesView submitManualEdit orchestration
+  -> editingInteraction 同步结束当前输入／切换选择，保留无焦点文字预览
+  -> manualEditing 提交队列（SlidesView 只装配端口），按操作身份返回 ticket
   -> slides:manual-edit(revisionId + revision + sourceHash + operation)
   -> backend 改写 compose.manualEdits 并完整编译/物化
   -> revision 原子提交后 refreshDeck / RenderModel 原子替换
-  -> matching RenderModel + 当前页完整视觉资源原子呈现后撤下 pending visual
+  -> matching RenderModel + 当前页完整视觉资源原子呈现后结算 ticket／撤下 pending visual
+     （回执不改变当前输入和焦点）
 ```
 
 当前开放作者对象移动与删除、作者字符串文本完整替换及字号／颜色、Frame／Shape 纯色和 Shape／Image 有限视觉尺寸。是否可改字由 backend 投影的 `authoringEdit` 决定，不能从 RenderModel 的段落或字体 run 数量反推；所以多行字符串和因字体解析拆分的中英混排仍可编辑，富文本与内联公式 run 保持文本只读。图片源、表格内容和图表数据需要各自的完整值编辑器后再开放。Flex Frame 虽在 RenderModel 中摊平，Renderer 只消费 compiler 投影的正式作者祖先：父级选择、移动、删除和选框都使用同一成员关系；父选框包含移出背景范围的可见后代，但实际命中仍只认对象几何，不把成员之间的空白变成热区。页面背景不进入作者目标集合，空白处保持默认光标并在点击时清空选择；只有真实可移动对象显示移动光标。详细边界见 [`../features/manualEditing/README.md`](../features/manualEditing/README.md)。

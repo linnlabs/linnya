@@ -1,69 +1,43 @@
 <template>
-  <textarea
-    ref="inputRef"
-    class="slides-inline-text-editor"
-    :style="editorStyle"
-    :value="props.modelValue"
-    :aria-label="props.label"
-    :aria-busy="props.disabled"
-    :disabled="props.disabled"
-    @input="handleInput"
-    @blur="emit('commit')"
-    @pointerdown.stop
-    @compositionstart="emit('composition-start')"
-    @compositionend="emit('composition-end')"
-    @keydown.esc="emit('escape', $event)"
-    @keydown.ctrl.enter="emit('commit-shortcut', $event)"
-    @keydown.meta.enter="emit('commit-shortcut', $event)"
+  <RichInlineTextEditor
+    v-if="target.targetKind === 'text'"
+    ref="richEditor"
+    v-bind="props"
+    @update:model-value="emit('update:modelValue', $event)"
+    @commit="emit('commit')"
+    @composition-start="emit('composition-start')"
+    @composition-end="emit('composition-end')"
+    @escape="emit('escape', $event)"
+    @commit-shortcut="emit('commit-shortcut', $event)"
+    @selection="emit('selection', $event)"
+  />
+  <PlainInlineTextEditor
+    v-else
+    :target="target"
+    :slide-left="slideLeft"
+    :slide-top="slideTop"
+    :render-scale="renderScale"
+    :label="label"
+    :model-value="editableTextString(modelValue)"
+    @update:model-value="emit('update:modelValue', $event)"
+    @commit="emit('commit')"
+    @composition-start="emit('composition-start')"
+    @composition-end="emit('composition-end')"
+    @escape="emit('escape', $event)"
+    @commit-shortcut="emit('commit-shortcut', $event)"
   />
 </template>
-
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { ref, defineAsyncComponent } from 'vue';
+import { editableTextString, type SlidesEditableTextContent, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
 import type { TextEditingTarget } from '../definitions/textEditingTypes';
-import { createInlineTextEditorStyle } from '../functions/createInlineTextEditorStyle';
-
-const props = defineProps<{
-  target: TextEditingTarget;
-  modelValue: string;
-  slideLeft: number;
-  slideTop: number;
-  renderScale: number;
-  label: string;
-  disabled?: boolean;
-}>();
-
-const emit = defineEmits<{
-  'update:modelValue': [value: string];
-  commit: [];
-  escape: [event: KeyboardEvent];
-  'commit-shortcut': [event: KeyboardEvent];
-  'composition-start': [];
-  'composition-end': [];
-}>();
-
-const inputRef = ref<HTMLTextAreaElement | null>(null);
-const editorStyle = computed(() => createInlineTextEditorStyle(props.target, {
-  slideLeft: props.slideLeft,
-  slideTop: props.slideTop,
-  renderScale: props.renderScale,
-}));
-
-watch(
-  () => props.target.elementId,
-  async () => {
-    await nextTick();
-    const input = inputRef.value;
-    if (!input) return;
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
-  },
-  { immediate: true },
-);
-
-function handleInput(event: Event): void {
-  if (event.target instanceof HTMLTextAreaElement) {
-    emit('update:modelValue', event.target.value);
-  }
-}
+import type { InlineTextSelection } from '../definitions/richTextEditor';
+import PlainInlineTextEditor from './PlainInlineTextEditor.vue';
+const RichInlineTextEditor = defineAsyncComponent(() => import('./RichInlineTextEditor.vue'));
+const props = defineProps<{ target: TextEditingTarget; modelValue: SlidesEditableTextContent; slideLeft: number; slideTop: number;
+  renderScale: number; label: string; toolbarElement?: HTMLElement | null }>();
+const emit = defineEmits<{ 'update:modelValue': [value: SlidesEditableTextContent]; commit: []; 'composition-start': []; 'composition-end': [];
+  escape: [event: KeyboardEvent]; 'commit-shortcut': [event: KeyboardEvent]; selection: [selection: InlineTextSelection | null] }>();
+const richEditor = ref<InstanceType<typeof RichInlineTextEditor> | null>(null);
+defineExpose({ applyStyle: (patch: SlidesTextStylePatch) => richEditor.value?.applyStyle(patch) });
 </script>

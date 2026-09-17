@@ -1,3 +1,5 @@
+export { default as DropdownPanel } from './ui/DropdownPanel.vue';
+export type { DropdownMotionDirection, DropdownActions, DropdownPanelProps } from './definitions/dropdownPanel';
 export { default as BaseDropdown } from './ui/BaseDropdown.vue';
 export { default as CustomSelect } from './ui/CustomSelect.vue';
 export { default as TextPopover } from './ui/TextPopover.vue';

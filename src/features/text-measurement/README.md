@@ -24,3 +24,5 @@
 - 系统字体文件、HarfBuzz shaping 与格式桥属于本 feature 的 headless 基础设施。
 
 Slides 自动宽度 materialization 在 Backend 完成：预热与最终排版使用相同 cluster provider，Worker 的同步启发式只提供临时布局值。最终编译证据记录实际 advance source；不可用系统测量时保留 heuristic 标记。
+
+HarfBuzz 的有界 LRU 缓存保存字体单位下的 shaping 结果，按解析后的字体 face、完整 cluster 序列和 shaping 输入区分，不按字号和字距重复缓存。字号/字距通过 portable core 的 `projectFontUnitAdvances` 同源投影；字体路径只留在宿主缓存，公开结果只携带数值事实。当前字体实例未启用随字号变化的 optical sizing/variation；将来引入这类 shaping 输入时必须加入缓存身份，不能继续当作普通字号缩放。

@@ -19,6 +19,7 @@
 document menu
   -> presentationExport store 打开对应弹窗
   -> workflow 请求 Host 一次性保存 target
+  -> documentRuntime.saveSlidesDocument 提交输入并等待人工修改落盘
   -> slidesApi.exportPresentation(format + options + target)
   -> backend 生成 artifact
   -> Host 原子发布
@@ -29,7 +30,7 @@ document menu
 - 用户取消保存框时不调用 backend。
 - renderer 不读取真实保存路径，也不接收完整 PPTX/ZIP bytes。
 - PPTX 与图片消费同一次 current-version snapshot；unresolved draft 不得静默导出旧 compiled revision。
-- 导出不修改 `deck.js`、DeckSpec、presentation revision 或数据库。
+- 导出 artifact 不修改 `deck.js`、DeckSpec 或 revision；导出前的保存屏障会提交用户已经做出的修改。保存失败不能继续导出旧版本。
 
 ## 验收方式
 

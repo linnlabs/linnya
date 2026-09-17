@@ -92,3 +92,9 @@ export type {
 export {
   summarizeSlideTextLayoutProvenance,
 } from './functions/summarizeTextLayoutProvenance';
+
+export type { PreparedTextLayout } from './definitions/preparedTextLayout';
+export { prepareTextLayout, layoutPreparedText, PreparedTextMeasurementUnavailable } from './functions/preparedTextLayout';
+export { resolveShapeTextLayout, estimateShapeTextFontSize } from './functions/resolveShapeTextLayout';
+export type { ShapeTextLayout } from './definitions/shapeTextLayout';
+export { shapeTextMeasurementVariants, resizeShapeTextInput } from './functions/shapeTextResizeInput';

@@ -18,6 +18,8 @@ host UI（工具卡、header、pageContext 等）显示文档类型信息时必�
 
 这里的 surface 是通用 **Document Surface** contribution。平台 Markdown 文档的具体实现名为 `MarkdownDocumentSurface`，其 Tiptap/ProseMirror 实例通过独立的 `markdownDocumentEditorRuntimePort` 交给 Markdown file handler；这个 port 不是插件合同。插件应拥有自己的 renderer runtime，并在通用 surface ready 后由本类型 file handler 完成进一步准入。
 
+有本地可编辑状态的文档应贡献 `fileSessionType` 与 `fileHandler`，复用 Host 的保存→关闭→切换／窗口关闭流程。`documentRuntimeLoaders` 只加载运行时，不能代替离开前保存。工具卡的 `openDocumentTarget` 对 file session 同样走保存生命周期，并把定位参数放入 `payload.navigationParameters`。插件的 `save` 只有在修改持久化后才返回成功；自动保存若需要保留输入所有权，可以返回 false 延后，不能先清掉 dirty。
+
 ## 后端 DocumentTypeBackendHook
 
 类型契约真源在契约包 `packages/plugin-host-contract/backend/documentTypeBackendHook.ts`（插件经 `@plugin/backend/documentTypeBackendHook` 消费）；宿主注册表在 `src/plugin-sdk/backend/documentTypeBackendHook.ts`。hook 负责：

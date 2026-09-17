@@ -80,7 +80,7 @@ import { alignCellLeft, alignCellCenter, alignCellRight } from '../commands/tabl
 import { useTableAiInteraction } from '../ui/composables/useTableAiInteraction';
 import { floatingToolbarService } from '../../../features/floating-toolbar/service';
 import AiToolbarSection from '../ui/FloatingToolbar/AiToolbarSection.vue';
-import ToolbarGroup from '../ui/FloatingToolbar/ToolbarGroup.vue';
+import { ToolbarGroup } from '@linnya/renderer-ui';
 import ToolbarButton from '../ui/FloatingToolbar/ToolbarButton.vue';
 import ToolbarDropdown from '../ui/FloatingToolbar/ToolbarDropdown.vue';
 import { useTableAiModeStore } from '../../../features/table-ai-mode';

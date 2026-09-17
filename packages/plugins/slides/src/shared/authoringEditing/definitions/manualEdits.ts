@@ -1,3 +1,4 @@
+import type { SlidesEditableTextContent } from './editableText';
 export interface SlidesManualTranslation {
   /** 相对未应用人工位移的布局结果，单位 inches。 */
   readonly dx: number;
@@ -28,8 +29,8 @@ export interface SlidesManualEditBase {
 
 export interface SlidesManualTextEdit extends SlidesManualEditBase {
   readonly kind: 'text';
-  /** 当前只开放纯文本内容；rich/formula runs 保持只读。 */
-  readonly content?: string;
+  /** 与作者 Text.content 同源的完整值；不接受公式。 */
+  readonly content?: SlidesEditableTextContent;
   readonly fontSizePt?: number;
   readonly color?: string;
 }
@@ -41,6 +42,8 @@ export interface SlidesManualFrameEdit extends SlidesManualEditBase {
 
 export interface SlidesManualShapeEdit extends SlidesManualEditBase {
   readonly kind: 'shape';
+  /** 内嵌纯文本属于形状自身，不创建虚构的子 Text 作者身份。 */
+  readonly content?: string;
   readonly fillColor?: string;
   readonly visualSize?: SlidesManualVisualSize;
 }

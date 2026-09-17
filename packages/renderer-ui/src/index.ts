@@ -57,6 +57,7 @@ export type {
 } from './features/number-entry';
 export {
   BaseDropdown,
+  DropdownPanel,
   CustomSelect,
   DROPDOWN_SURFACE_CLASSES,
   TextPopover,
@@ -96,6 +97,8 @@ export type {
   CustomSelectValue,
   CustomSelectVariant,
   DropdownElementReference,
+  DropdownMotionDirection, DropdownActions,
+  DropdownPanelProps,
   TextPopoverPlacement,
   TextPopoverTriggerMode,
 } from './features/select-menu';
@@ -144,3 +147,6 @@ export type {
   DraggablePanelSize,
   DraggablePanelVariant,
 } from './features/floating-panels';
+
+export { FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from './features/toolbars';
+export type { FloatingToolbarPosition, FloatingToolbarProps, ToolbarButtonProps, ToolbarColorButtonProps } from './features/toolbars';

@@ -23,6 +23,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef } from 'vue';
+import type { DropdownActions } from '../definitions/dropdownPanel';
 import type { DropdownElementReference } from '../definitions/selectMenu';
 import { useDropdown } from '../composables/useDropdown';
 
@@ -71,6 +72,8 @@ const {
   close: closeInternal,
 } = useDropdown({
   manualMode: props.manualMode,
+  // BaseDropdown 从一开始就拥有触发器和容器；无需沿用临时挂载的手动菜单延迟。
+  deferOutsideListener: false,
   containerRef,
   externalTriggerRef,
   dropdownRef: externalContentRef,
@@ -129,23 +132,27 @@ const toggle = (event?: Event) => {
  * Escape 关闭后必须把焦点还给本次打开菜单的触发器。
  * 点击外部关闭不主动搬移焦点，保留用户刚刚点击的真实目标。
  */
+const closeAndFocus = () => {
+  close();
+  const target = focusReturnTarget.value;
+  if (target?.isConnected) void nextTick(() => target.focus({ preventScroll: true }));
+};
+
 const handleEscape = (event: KeyboardEvent) => {
   if (event.key !== 'Escape' || !computedIsOpen.value) return;
   event.preventDefault();
   event.stopPropagation();
-  close();
-  const target = focusReturnTarget.value;
-  if (target) void nextTick(() => target.focus());
+  closeAndFocus();
 };
 
 onMounted(() => document.addEventListener('keydown', handleEscape));
 onBeforeUnmount(() => document.removeEventListener('keydown', handleEscape));
 
 // 暴露方法给父组件
+const actions: DropdownActions = { open, close, closeAndFocus };
 defineExpose({
+  ...actions,
   toggle,
-  open,
-  close,
   isOpen: computedIsOpen,
 });
 </script>

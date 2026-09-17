@@ -84,6 +84,18 @@ describe('slidesStore', () => {
     expect(notifyDocumentOpenedMock).toHaveBeenCalledTimes(1);
   });
 
+  it('静默刷新失败向保存队列传播，保留可见文稿并允许重试', async () => {
+    getDeckPreviewMock.mockResolvedValue(makeDeckPreview('deck-1', 1, 2));
+    const { useSlidesStore } = await import('./slidesStore');
+    const store = useSlidesStore();
+    await store.loadDeck('deck-1');
+    getDocumentBuildStateMock.mockRejectedValueOnce(new Error('Read failed'));
+    await expect(store.refreshDeck('deck-1', 2)).rejects.toThrow('Read failed');
+    expect(store.deckPreview?.nodeId).toBe('deck-1');
+    expect(store.deckError).toBeNull();
+    await expect(store.refreshDeck('deck-1')).resolves.toBeUndefined();
+  });
+
   it('openDeckAtSlide loads the deck and lands on the requested slide', async () => {
     getDeckPreviewMock.mockResolvedValueOnce(makeDeckPreview('deck-2', 1, 4));
 

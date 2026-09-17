@@ -10,7 +10,7 @@
       :image-resources="props.imageResources"
       :chart-resources="props.chartResources"
       :preview-translations="props.previewTranslations"
-      :hidden-text-element-id="props.hiddenTextElementId"
+      :hidden-text-element-ids="props.hiddenTextElementIds"
       :manual-visual-previews="props.manualVisualPreviews"
     />
   </v-group>
@@ -33,7 +33,7 @@ const props = defineProps<{
   imageResources: SlideImageResourceMap;
   chartResources: SlideChartResourceMap;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
-  hiddenTextElementId?: string;
+  hiddenTextElementIds?: ReadonlySet<string>;
   manualVisualPreviews?: readonly ManualEditingVisualPreview[];
 }>();
 

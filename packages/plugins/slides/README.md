@@ -6,7 +6,7 @@ Slides 是 Linnya 的官方演示文稿 runtime 插件包，负责演示文稿�
 runner、字体/文本测量平台能力由 host 平台提供，Slides 通过窄门面消费这些能力。
 
 Renderer 基础 UI 直接依赖 `@linnya/renderer-ui`：`peerDependencies` 与
-`plugin.json.compat.rendererUi` 使用同一 range `^2.3.0`，开发依赖使用 `workspace:*`。缩放与自定义颜色复用公开 `CustomSlider` 的 compact 变体，数值换算、草稿和提交仍由各业务 owner 负责。Slides 不装载 package CSS；renderer
+`plugin.json.compat.rendererUi` 使用同一 range `^2.5.0`，开发依赖使用 `workspace:*`。缩放与自定义 HSV／RGB 颜色复用公开 `CustomSlider` 的 compact 变体，数值换算、草稿和提交仍由各业务 owner 负责。Slides 不装载 package CSS；renderer
 artifact 把公开入口映射为 Host external，兼容的 package patch/minor 不要求重建 Slides。
 
 ## Slides 的实现原理
@@ -31,6 +31,9 @@ Linnya Slides 先把 PPT 抽象成一门专用的场景图 DSL，再用 JavaScri
 - 版本历史、源码压缩与图片生命周期：[backend/features/presentationSourceHistory](./src/backend/features/presentationSourceHistory/README.md)
 - generated deck 人工编辑源码与原子提交：[backend/features/presentationManualEditing](./src/backend/features/presentationManualEditing/README.md)
 - 前端预览与栅格渲染：[renderer](./src/renderer/docs/README.md)
+- 编辑交互会话与失败草稿恢复：[renderer/features/editingInteraction](./src/renderer/features/editingInteraction/README.md)
+- 选区属性工具条与颜色草稿：[renderer/features/elementProperties](./src/renderer/features/elementProperties/README.md)
+- 完整编辑预览与排版交接：[renderer/features/editingPreview](./src/renderer/features/editingPreview/README.md)
 - 前端有限人工编辑：[renderer/features/manualEditing](./src/renderer/features/manualEditing/README.md)
 - PPTX 编译、解析与质量检查：[backend/engine](./src/backend/engine/README.md)
 
@@ -271,3 +274,5 @@ host 不复制 presentation 字段。
 - **Brush 视觉资产暂不支持透明底。** 当前 pinned p5.brush standalone 合成器会把最终画布写成不透明。首版只支持显式纯色背景的整区资产；需要透出下层内容时改用 Shape 或受控 SVG。后续若上游提供稳定 alpha 合同，可在不改写现有不透明 intent 的前提下扩展。
 - **PDF 导出暂不开放。** 已实现的栅格 PDF 不含可选择、搜索和复制的文字对象，因此不再挂载产品入口。真正的语义/矢量 PDF 仍需完成独立的可行性与 ROI 验证。
 - **前端人工编辑是有限能力。** 带稳定作者身份的新 generated deck 可移动或删除已有作者对象；Flex Frame 可按正式作者层级整体选择、移动和删除。作者值仍为字符串的文本支持原位完整替换、字号和颜色，多行及字体拆分的多个渲染 run 不改变这一能力；Frame／Shape 支持纯色，Shape／Image 支持有限视觉尺寸。富文本、内联公式文本、图片源、表格内容、图表数据、新建、复制、编组和 reparent 仍保持只读；旧文稿需先由 Agent 补齐 `slideKey/editKey` 才能出现编辑入口。
+
+有限编辑的正常切换／关闭和导出共用 [documentRuntime 保存屏障](src/renderer/features/documentRuntime/README.md)：原位输入先交给串行写队列，所有修改落盘后才允许离开或读取导出 snapshot。画布即时预览不代表已保存；正式 revision 驱动渲染刷新，不依赖页面和预览的挂载先后。

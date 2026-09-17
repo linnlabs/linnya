@@ -11,7 +11,7 @@
 </template>
 
 <script setup>
-import ToolbarGroup from './ToolbarGroup.vue';
+import { ToolbarGroup } from '@linnya/renderer-ui';
 import ToolbarButton from './ToolbarButton.vue';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';
 

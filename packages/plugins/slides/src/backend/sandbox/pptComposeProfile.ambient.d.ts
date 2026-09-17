@@ -882,6 +882,11 @@ interface SlideSizeInches {
   readonly height: number;
 }
 
+type SlidesAuthorTextStyle = LayoutTextStyleInput;
+
+/** 与 Text.content 相同的作者值；公式不属于本期手动编辑合同。 */
+type SlidesEditableTextContent = string | LayoutPlainTextRun[];
+
 type SlidesManualAtomicEdit =
   | SlidesManualShapeEdit
   | SlidesManualImageEdit
@@ -931,6 +936,8 @@ interface SlidesManualImageEdit extends SlidesManualEditBase {
 
 interface SlidesManualShapeEdit extends SlidesManualEditBase {
   readonly kind: 'shape';
+  /** 内嵌纯文本属于形状自身，不创建虚构的子 Text 作者身份。 */
+  readonly content?: string;
   readonly fillColor?: string;
   readonly visualSize?: SlidesManualVisualSize;
 }
@@ -958,8 +965,8 @@ type SlidesManualTargetKind =
 
 interface SlidesManualTextEdit extends SlidesManualEditBase {
   readonly kind: 'text';
-  /** 当前只开放纯文本内容；rich/formula runs 保持只读。 */
-  readonly content?: string;
+  /** 与作者 Text.content 同源的完整值；不接受公式。 */
+  readonly content?: SlidesEditableTextContent;
   readonly fontSizePt?: number;
   readonly color?: string;
 }
@@ -1005,6 +1012,17 @@ interface SlidesManualVisualSize {
   /** 覆盖 Yoga 结果的最终可见宽高，单位 inches；不改变 Flex 占位。 */
   readonly width: number;
   readonly height: number;
+}
+
+interface SlidesTextSelectionStyle {
+  /** null 表示选区内混合样式，不能用首字冒充整个选区。 */
+  readonly fontSizePt: number | null;
+  readonly color: string | null;
+}
+
+interface SlidesTextStylePatch {
+  readonly fontSizePt?: number;
+  readonly color?: string;
 }
 
 type SvgGraphicAccessibility =

@@ -316,12 +316,8 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
     async openDocumentTarget(request) {
       const projectId = resolveDocumentProjectId(request);
       const documentType = resolveDocumentType(request.type);
-      if (documentType.fileSessionType) {
-        throw new Error(
-          `[workspaceNavigation] openDocumentTarget requires runtime loader document type: ${documentType.activeDocumentType}`,
-        );
-      }
-      const documentRuntimeLoader = getRequiredDocumentRuntimeLoader(documentType);
+      const documentRuntimeLoader = documentType.fileSessionType
+        ? null : getRequiredDocumentRuntimeLoader(documentType);
       const fileStore = useFileStore();
       const layoutStore = useLayoutStore();
       const intent = beginDocumentOpenIntent();
@@ -349,7 +345,17 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
         parentId: request.parentId ?? null,
         ...(request.parameters ? { parameters: request.parameters } : {}),
       };
-      await documentRuntimeLoader.load(runtimeLoadRequest);
+      if (documentRuntimeLoader) {
+        await documentRuntimeLoader.load(runtimeLoadRequest);
+      } else {
+        await activateFileSession({
+          documentId: request.documentId,
+          displayName: request.displayName ?? null,
+          type: getRequiredFileSessionType(documentType),
+          openSignal: intent.controller.signal,
+          payload: { projectId, parentId: request.parentId ?? null, navigationParameters: request.parameters },
+        });
+      }
     },
 
     async openConversation(request) {
@@ -517,6 +523,7 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
             projectId,
             parentId: request.parentId ?? null,
             surfacePlacement: plan.placement,
+            navigationParameters: request.parameters,
           },
         });
         if (!isCurrentDocumentOpenIntent(intent)) return;
@@ -538,6 +545,7 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
           projectId,
           parentId: request.parentId ?? null,
           surfacePlacement: plan.placement,
+          navigationParameters: request.parameters,
         },
       });
     },

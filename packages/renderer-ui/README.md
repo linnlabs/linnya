@@ -8,7 +8,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 
 ## 公开入口
 
-- 包根：ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -17,6 +17,8 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 - `/version`：运行时兼容性版本事实。
 - `/tokens.css`：只包含公开/内部 token 与内置主题映射。
 - `/styles.css`：Host 唯一加载的完整 package 样式。
+
+`FloatingToolbar` 与 `ToolbarGroup` 由 Editor 选区／修订条和 Slides 对象属性共同消费。共享包拥有表面、分组、按钮、颜色标识与下拉动效；Editor 的选区保护与 Slides 的锚点、属性草稿和提交仍由各自 owner 负责。
 
 `package.json` 显式列举全部入口。未列出的 `src/**`、组件文件和内部 CSS 都不是 API。
 
@@ -149,6 +151,18 @@ feature 拥有。
 
 目前消费者为 Editor AI 设置、Slides 缩放和 Slides 自定义颜色；没有新增全局 store、Host 依赖或手写 pointer capture。它不支持双端区间、垂直轴或业务提交/取消。完整合同见[使用指南](./docs/usage-guide.md#customslider)。
 
+## 浮动工具条
+
+`FloatingToolbar` 是受控的纯 UI 表面，`ToolbarGroup` 拥有紧凑分组及分隔线。业务组件通过 slot 提供控件；`show` 与 `position: { top, left }` 均由调用方提供，坐标属于调用方的定位容器。组件不自动 Teleport、不读取选区、不修改焦点、不默认阻止鼠标或键盘。class/style/aria/data 与事件监听落在唯一根元素；公开实例的 `element` 可用于实际尺寸测量。
+
+工具条与分组的默认 gap 均为 4px；非末尾组的分隔线宽 1px、高 16px，自身左右 margin 各 2px，因此线到相邻控件边缘各为 6px。分组可通过 slot 嵌套，以复用同一分隔线；最后一组不产生尾线。Editor 文本／表格工具条与 Slides 共用此规则，业务不再手写 divider 或覆盖分隔线间距，也不开放任意间距参数。
+
+Editor 在自己的容器上保留 mousedown 选区策略，并使用业务标记识别自己的表面。含原生输入的消费者不继承这一策略。显示条件、选区几何、越界定位和业务命令属于各自 owner；不要把 Editor extension、registry 或 Slides 作者合同送入共享包。Editor 内容色板、修订动作以及 Slides 的作者能力仍留在对应业务 owner。
+
+工具条默认使用普通容器语义，业务可提供 aria-label／role；若使用 toolbar role，必须同时提供符合该语义的键盘交互。基础外观只有一个 CSS owner，业务只定制公开根元素的外围布局及 slot 内容。
+
+`ToolbarButton` 提供 Editor 既有的紧凑按钮密度、hover/active、focus-visible 和 disabled；业务提供 label、active、disabled 与 slot。`ToolbarColorButton` 复用该按钮的紧凑图标宽度，不为颜色入口额外增加左右留白；`text` 使用 A＋色条，`background` 使用同款 EditIcon＋色条，Editor 的文字／高亮和 Slides 的文字／填充共享实现。调用方传入已解析 CSS color 和 expanded，不把业务颜色枚举、色板或编辑命令送入包内。原生属性、aria/data 和事件均落在按钮根节点；不阻止鼠标聚焦，不自建图标副本。
+
 ## 版本与发布
 
 `1.0.0` 是 JS、CSS、token、主题、overlay 与 scroll 的首个稳定共同基线；`package.json.version` 与
@@ -220,7 +234,11 @@ CustomSelect 统一拥有普通选择器、动作菜单、手动触发、Portal 
 
 普通 `class` / `style` 只控制组件根节点。业务 owner 若需要保持组件行为不变并调整指定节点，只能通过 `classNames` 映射注入自己的命名空间 class；支持 trigger、selectedValue、arrowIcon、options、optionsHeader、submenu、nestedSubmenu、option、optionLabel、optionIcon、optionShortcut 和 optionArrow。`.select-*`、`.option-*`、`.custom-select__*` 都是包内实现，不是 CSS API。单个选项确有独立业务语义时，可使用 option 的 `className`、`labelClassName`、`iconClassName` 或 `shortcutClassName`。
 
-`BaseDropdown` 只管理开关、点击外部关闭、Escape 和焦点归还，不接管业务面板内容。Teleport 内容必须通过 `externalContentRef` 告知组件。独立业务面板需要复用标准浮层外观时，使用 `DROPDOWN_SURFACE_CLASSES` 提供的公开 surface 类，禁止借用 CustomSelect 内部面板类。
+`BaseDropdown` 只管理开关、点击外部关闭、Escape 和焦点归还，不接管业务面板内容。其触发器和面板同属已挂载容器，受控模式也立即监听外部点击，不继承临时手动菜单的延迟。公开 `DropdownActions` 提供 open、close 和 closeAndFocus；Apply 或局部 Escape 需要显式归还焦点时调用 closeAndFocus，外部点击关闭不抢焦点。Teleport 内容必须通过 `externalContentRef` 告知组件。独立业务面板需要复用标准浮层外观时，使用 `DROPDOWN_SURFACE_CLASSES` 提供的公开 surface 类，禁止借用 CustomSelect 内部面板类。
+
+`DropdownPanel`（自 2.5.0）为自定义表单面板提供受控 show、up/down 动效和标准下拉表面，Editor 与 Slides 共同消费。它不伪装成选项列表，不管理业务草稿，也不决定位置：class/style/aria/data 与事件映射到真实面板，公开 element 供实际测量。业务只定制根节点外围位置、宽高与内容内边距，不覆盖内部 selector。需要开关／外部点击／Escape 时组合 BaseDropdown；内容只需普通文本时使用 TextPopover。
+
+DropdownPanel 与 CustomSelect 主菜单复用包内唯一的 DropdownTransition，保持既有 150ms opacity/translate 动效，上方展开时反转位移方向。退出面板立即 inert，动画结束移除；快速重开取消旧退出并恢复交互。prefers-reduced-motion 下取消过渡。局部表单的 Escape 可先停止冒泡取消草稿，再由外层关闭面板；这是非模态面板，不添加 focus trap 或菜单方向键规则。
 
 `TextPopover` 提供 click/hover 两种触发方式与 auto/top/bottom/left/right 定位。`content` 保留现有 HTML 渲染合同，只允许传入应用自身生成的可信内容；外部或用户输入应通过 content 插槽按普通文本渲染。
 

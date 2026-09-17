@@ -20,7 +20,7 @@ const input = {
 };
 
 describe('submitManualEdit', () => {
-  it('submits an exact snapshot command and refreshes after commit', async () => {
+  it('submits an exact snapshot command and reports commit independently of presentation', async () => {
     const submit = vi.fn(async command => ({
       status: 'committed' as const,
       commandId: command.commandId,
@@ -28,7 +28,6 @@ describe('submitManualEdit', () => {
       revisionId: 'revision-4',
       revision: 4,
     }));
-    const refreshDocument = vi.fn(async () => undefined);
     const trace = {
       begin: vi.fn(),
       recordTransportRetry: vi.fn(),
@@ -42,7 +41,6 @@ describe('submitManualEdit', () => {
     await expect(submitManualEdit(input, {
       createCommandId: () => 'c8356051-a487-4cd3-863f-47db0079f991',
       submit,
-      refreshDocument,
       trace,
     })).resolves.toMatchObject({ status: 'committed', revision: 4 });
     expect(submit).toHaveBeenCalledWith({
@@ -55,12 +53,9 @@ describe('submitManualEdit', () => {
       },
       operation: input.operation,
     });
-    expect(refreshDocument).toHaveBeenCalledWith('deck-1', 4);
     expect(trace.begin).toHaveBeenCalledWith(submit.mock.calls[0]?.[0]);
     expect(trace.recordResponse).toHaveBeenCalledWith(expect.objectContaining({ revision: 4 }));
-    expect(trace.recordRefreshCompleted).toHaveBeenCalledWith(
-      'c8356051-a487-4cd3-863f-47db0079f991',
-    );
+
   });
 
   it('does not submit when the displayed model is behind the build snapshot', async () => {
@@ -68,33 +63,26 @@ describe('submitManualEdit', () => {
     await expect(submitManualEdit({ ...input, renderVersion: 2 }, {
       createCommandId: () => 'unused',
       submit,
-      refreshDocument: vi.fn(),
     })).resolves.toEqual({ status: 'snapshot_unavailable' });
     expect(submit).not.toHaveBeenCalled();
   });
 
-  it('refreshes conflicts but leaves validation failures visible for correction', async () => {
-    const refreshDocument = vi.fn(async () => undefined);
+  it('reports conflicts and validation failures for queue orchestration', async () => {
     const conflict = await submitManualEdit(input, {
       createCommandId: () => 'c8356051-a487-4cd3-863f-47db0079f991',
       submit: vi.fn(async () => ({
         status: 'conflict', commandId: 'id', documentId: 'deck-1', reason: 'stale_base',
       })),
-      refreshDocument,
     });
     expect(conflict.status).toBe('conflict');
-    expect(refreshDocument).toHaveBeenCalledWith('deck-1');
 
-    refreshDocument.mockClear();
     await submitManualEdit(input, {
       createCommandId: () => 'c8356051-a487-4cd3-863f-47db0079f991',
       submit: vi.fn(async () => ({
         status: 'validation_failed', commandId: 'id', documentId: 'deck-1',
         code: 'operation_invalid', message: 'Invalid operation',
       })),
-      refreshDocument,
     });
-    expect(refreshDocument).not.toHaveBeenCalled();
   });
 
   it('retries an ambiguous transport failure with the same idempotent command', async () => {
@@ -107,12 +95,10 @@ describe('submitManualEdit', () => {
         revisionId: 'revision-4',
         revision: 4,
       }));
-    const refreshDocument = vi.fn(async () => undefined);
 
     await expect(submitManualEdit(input, {
       createCommandId: () => 'c8356051-a487-4cd3-863f-47db0079f991',
       submit,
-      refreshDocument,
     })).resolves.toMatchObject({ status: 'committed', revision: 4 });
     expect(submit).toHaveBeenCalledTimes(2);
     expect(submit.mock.calls[0]?.[0]).toEqual(submit.mock.calls[1]?.[0]);

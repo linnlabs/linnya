@@ -1,5 +1,8 @@
 <template>
-  <v-group :__use-strict-mode="true" :config="previewTranslationConfig">
+  <v-group
+    :__use-strict-mode="true"
+    :config="previewTranslationConfig"
+  >
     <KonvaTextNode
       v-if="renderNode.kind === 'text'"
       :node="renderNode"
@@ -8,6 +11,7 @@
     <KonvaShapeNode
       v-else-if="renderNode.kind === 'shape'"
       :node="renderNode"
+      :hide-text="props.hiddenTextElementIds?.has(props.node.id)"
     />
     <KonvaImageNode
       v-else-if="renderNode.kind === 'image'"
@@ -39,7 +43,7 @@
       :image-resources="props.imageResources"
       :chart-resources="props.chartResources"
       :preview-translations="props.previewTranslations"
-      :hidden-text-element-id="props.hiddenTextElementId"
+      :hidden-text-element-ids="props.hiddenTextElementIds"
       :manual-visual-previews="props.manualVisualPreviews"
     />
   </v-group>
@@ -60,9 +64,9 @@ import KonvaTableNode from './KonvaTableNode.vue';
 import KonvaTextNode from './KonvaTextNode.vue';
 import { INCHES_TO_PX } from '../../../../shared/constants';
 import {
-  projectManualVisualPreviewsToRenderNode,
-  type ManualEditingVisualPreview,
-} from '../../../../features/manualEditing/manualVisualProjection';
+  projectEditingPreviewNode,
+  type EditingVisualPreview,
+} from '../../../../features/editingPreview';
 import type { ManualEditingTranslationPreview } from '../../../../features/manualEditing';
 
 const props = defineProps<{
@@ -70,11 +74,11 @@ const props = defineProps<{
   imageResources: SlideImageResourceMap;
   chartResources: SlideChartResourceMap;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
-  hiddenTextElementId?: string;
-  manualVisualPreviews?: readonly ManualEditingVisualPreview[];
+  hiddenTextElementIds?: ReadonlySet<string>;
+  manualVisualPreviews?: readonly EditingVisualPreview[];
 }>();
 
-const renderNode = computed(() => projectManualVisualPreviewsToRenderNode(
+const renderNode = computed(() => projectEditingPreviewNode(
   props.node,
   props.manualVisualPreviews ?? [],
 ));
@@ -85,7 +89,7 @@ const previewTranslationConfig = computed(() => {
     x: (translation?.dx ?? 0) * INCHES_TO_PX,
     y: (translation?.dy ?? 0) * INCHES_TO_PX,
     listening: false,
-    visible: props.node.id !== props.hiddenTextElementId,
+    visible: props.node.kind !== 'text' || !props.hiddenTextElementIds?.has(props.node.id),
   };
 });
 </script>

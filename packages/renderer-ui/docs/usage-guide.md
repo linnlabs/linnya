@@ -1,7 +1,7 @@
 # Renderer UI 使用指南
 
 本文记录 `@linnya/renderer-ui` 的消费约定和常见用法。基础组件、平台图标、本地化合同、
-theme/token/scroll 均由 package 唯一拥有；Editor FloatingToolbar 和 Citation 表单等
+theme/token/scroll 均由 package 唯一拥有；Editor 选区业务和 Citation 表单等
 业务 UI 已归还各自 app/domain/feature，不属于本包。
 
 ## 使用原则
@@ -64,7 +64,7 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 
 业务确需保持交互不变并调整某个菜单节点时，使用 `classNames` 或 option 自身的 class 字段注入业务命名空间 class；`.select-*`、`.option-*` 和 `.custom-select__*` 属于 package 内部实现。独立业务面板只可通过 `DROPDOWN_SURFACE_CLASSES` 复用标准 surface，不借用内部 options class。
 
-选择面板需要向上展开时，传入 `options-motion-direction="up"`；不要覆盖 `select-fade-*` 私有 transition class。
+选择面板需要向上展开时，传入 `options-motion-direction="up"`；不要覆盖包内私有 transition class。
 
 菜单宽度受限且选项名称可能很长时，传入 `option-label-overflow="ellipsis"`；若还需要在鼠标停留时阅读完整名称，使用 `option-label-overflow="marquee-on-hover"`。后者只滚动真实溢出的标签，并在 reduced-motion 环境保持静态省略号。默认值是 `visible`，不会改变既有菜单布局。
 
@@ -425,3 +425,22 @@ import type { ModalProps, ModalScrollMode, ModalSlots } from '@linnya/renderer-u
 新增、抽取或公开 Renderer UI 能力时，必须遵循 package README 的
 [新增通用组件设计规范](../README.md#新增通用组件设计规范)。本指南只提供消费方式和示例，不另行维护一套较短、
 容易漂移的准入规则。
+
+## FloatingToolbar 与 ToolbarGroup
+
+从 package 根导入。传入必需的 show 与 position，通过默认 slot 放置按钮、输入和 ToolbarGroup。position 的 top／left 使用所在定位容器的 CSS 像素；组件本身不做选区定位或自动切换方向。需要测量时从组件实例 element 获取真实根元素。
+
+用 ToolbarGroup 表达需要分隔的控件组，也可在组内嵌套子组。非末尾组自动生成 1×16px 分隔线；默认 4px flex gap 加上分隔线自身 2px margin，使线两侧到控件边缘各留 6px。不要额外插入 divider、为分隔线补 margin 或穿透私有伪元素。组件没有独立 spacing prop；普通按钮间距与组间分隔由共享样式统一负责。
+
+事件、class、style、aria/data 属性透传到根元素；原生输入保留默认聚焦和键盘行为。文本编辑器若需防止按钮按下破坏选区，在自己的消费端设置 mousedown 策略，不要让所有业务共用一次 preventDefault。位置更新、outside click 和业务状态由调用方拥有。
+
+
+## ToolbarButton、ToolbarColorButton 与 DropdownPanel
+
+紧凑工具条按钮使用 ToolbarButton，label 同时提供提示与可访问名称；active 表达展开或格式状态，disabled 使用原生禁用语义。颜色入口使用 ToolbarColorButton 的 kind（text/background）、color 和 expanded。color 是调用方解析后的 CSS 值，文字色固定复用 A 标识、背景/填充复用 EditIcon 标识；无需再在业务中拼 SVG、字母和色条。
+
+非列表内容组合 BaseDropdown 和 DropdownPanel。BaseDropdown 持有原有开关、外部点击和 Escape 规则；受控消费者使用 manualMode/isOpen 和 open/close 事件。通过公开 DropdownActions 调用 open(event) 记录真正的触发器，closeAndFocus() 用于 Apply 或内层 Escape，close() 用于不搬移焦点的关闭。面板打开时是否保持编辑器选区或聚焦输入由消费端决定。
+
+DropdownPanel 接收 show 和 direction（down/up），默认 slot 放业务表单，class/style/aria/data/事件落到面板本身，element 暴露实际 DOM 用于测量。位置、宽高和内容 padding 从根元素扩展；背景、圆角、阴影、展开/收起动画由共享包唯一拥有。show 变为 false 后退出动画仍可能保留 DOM，但元素已 inert；不要用“DOM 仍存在”判断面板仍可操作。
+
+真实消费者参考 Editor 的 TextSelectionToolbar 与 Slides 的 ElementPropertyToolbar。前者保留 mousedown 选区保护和内容颜色，后者保留 pane 内定位、数字 pointer-down 交接、嵌套颜色草稿 Escape 与 typed intent；两者不 deep import 对方。CustomSelect 仍服务标准选项列表，与 DropdownPanel 复用主面板动效。

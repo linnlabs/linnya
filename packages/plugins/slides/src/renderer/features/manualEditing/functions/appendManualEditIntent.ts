@@ -55,8 +55,17 @@ function mergeOperations(
     case 'set_text_content':
     case 'set_translation':
     case 'set_fill_color':
-    case 'set_visual_size':
       return incoming;
+    case 'set_visual_size':
+      if (previous.op !== 'set_visual_size') return null;
+      // 尺寸是最终绝对值，锚点补偿却是每次手势的增量；后续数字改尺寸也不能丢掉先前位移。
+      return {
+        ...incoming,
+        ...(previous.translationDelta || incoming.translationDelta ? { translationDelta: {
+          dx: (previous.translationDelta?.dx ?? 0) + (incoming.translationDelta?.dx ?? 0),
+          dy: (previous.translationDelta?.dy ?? 0) + (incoming.translationDelta?.dy ?? 0),
+        } } : {}),
+      };
     case 'set_text_style':
       if (previous.op !== 'set_text_style') return null;
       return {

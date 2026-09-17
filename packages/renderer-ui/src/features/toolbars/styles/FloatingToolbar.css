@@ -1,0 +1,34 @@
+.linnya-floating-toolbar {
+  position: absolute;
+  z-index: var(--linnya-ui-layer-popover);
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+  box-sizing: border-box;
+  padding: var(--spacing-xs);
+  border: 0.6px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-default);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  line-height: normal;
+  box-shadow: 0 4px 12px var(--shadow-color-md);
+}
+
+.linnya-toolbar-group {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.linnya-toolbar-group:not(:last-child)::after {
+  display: block;
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  /* 与组内／组间的 4px gap 合计为单侧 6px，避免重复留白。 */
+  margin: 0 var(--spacing-xxs);
+  background-color: var(--color-border-light);
+  content: '';
+}

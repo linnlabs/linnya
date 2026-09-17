@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { DeckSpec, SlidesManualEditCommand } from '@plugin/slides/shared';
+import type { DeckSpec, FreeformElement, SlidesManualEditCommand } from '@plugin/slides/shared';
 import type { PresentationDocumentRecord } from '../../../persistence/index.js';
 import {
   PresentationDraftConflictError,
@@ -43,7 +43,7 @@ const COMMAND: SlidesManualEditCommand = {
     sourceHash: 'a'.repeat(64),
   },
   operation: {
-    op: 'set_text_content',
+    op: 'set_text_content', targetKind: 'text',
     target: { slideKey: 'overview', editKey: 'headline' },
     content: 'Updated',
   },
@@ -206,6 +206,23 @@ describe('PresentationManualEditingRuntime', () => {
         stage: 'semantic_build_started',
         path: 'full_compile',
       }));
+    }
+  });
+
+  it('整框格式拒绝缺失、重复或错误类型的快照身份，不进入源码提交', async () => {
+    const text: FreeformElement = { type: 'text', content: 'A', position: { x: 0, y: 0, w: 2, h: 1 },
+      _authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'text' } };
+    const cases: FreeformElement[][] = [[], [text, text], [{ ...text, type: 'shape',
+      _authoringRef: { slideKey: 'overview', editKey: 'headline', targetKind: 'shape' } }]];
+    for (const elements of cases) {
+      const document = { ...makeDocument(), deckSpec: { ...DECK_SPEC,
+        slides: [{ slideNumber: 1, spec: { type: 'freeform' as const, elements } }] } };
+      const { runtime, buildFromSource, buildFromProjectedDeckSpec } = makeRuntime({ document });
+      expect(await runtime.submit({ ...COMMAND, operation: { op: 'set_text_style',
+        target: { slideKey: 'overview', editKey: 'headline' }, fontSizePt: 32 } }))
+        .toMatchObject({ status: 'validation_failed', code: 'operation_invalid' });
+      expect(buildFromSource).not.toHaveBeenCalled();
+      expect(buildFromProjectedDeckSpec).not.toHaveBeenCalled();
     }
   });
 

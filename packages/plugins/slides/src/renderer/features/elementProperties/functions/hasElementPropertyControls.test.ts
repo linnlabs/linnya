@@ -33,8 +33,9 @@ describe('hasElementPropertyControls', () => {
     expect(hasElementPropertyControls(createTarget(['translate', 'set_text_style']))).toBe(true);
   });
 
-  it('keeps keyboard-only deletion out of ordinary property panels', () => {
-    expect(hasElementPropertyControls(createTarget(['translate', 'delete']))).toBe(false);
+  it('exposes the same delete action for atomic objects and Frames', () => {
+    expect(hasElementPropertyControls(createTarget(['translate', 'delete']))).toBe(true);
+    expect(hasElementPropertyControls(createTarget(['translate', 'delete'], 'chart'))).toBe(true);
     expect(hasElementPropertyControls(createTarget(['translate', 'delete'], 'frame'))).toBe(true);
   });
 });

@@ -15,6 +15,8 @@ import {
 } from '@plugin/slides/shared/renderModel';
 import {
   layoutTextNode,
+  prepareTextLayout,
+  shapeTextMeasurementVariants,
   resolveTextLayoutContract,
   resolveTextLayoutFontScaleCandidates,
   resolveTextLayoutContractFromNode,
@@ -42,13 +44,15 @@ export function applyTextLayoutToRenderModel(
   renderModel: PresentationRenderModel,
   provider: RunAdvanceProvider = createTextMeasureRunAdvanceProvider(renderModel),
   fontMetricsProvider: FontMetricsProvider = createFontResolutionMetricsProvider(),
+  options: { readonly prepareEditingMeasurements?: boolean } = {},
 ): PresentationRenderModel {
   const sourceKind = resolveLayoutSourceKind(renderModel);
-  forEachTextNode(renderModel, (node, profile) => {
+  forEachTextNode(renderModel, (node, profile, prepareEditing) => {
     const contract = resolveTextLayoutContractFromNode(node, {
       sourceKind,
       profile,
     });
+    const inputBox = { ...node.box };
     const layout = layoutTextNode({
       paragraphs: node.paragraphs,
       contract,
@@ -65,6 +69,9 @@ export function applyTextLayoutToRenderModel(
       );
     }
     node.layout = layout;
+    if (prepareEditing && options.prepareEditingMeasurements !== false) {
+      node.preparedTextLayout = prepareTextLayout({ ...node, box: inputBox }, sourceKind, resolveDefaultFontFamily(node), provider, fontMetricsProvider, profile);
+    }
   });
   for (const slide of renderModel.slides) {
     visitRenderNodes(slide.elements, ({ node }) => {
@@ -99,29 +106,30 @@ export function applyTextLayoutToRenderModel(
 export async function prewarmTextLayoutForRenderModel(
   renderModel: PresentationRenderModel,
   service: PluginTextMeasureServicePort = defaultTextMeasureService,
+  options: { readonly prepareEditingMeasurements?: boolean } = {},
 ): Promise<void> {
-  const requests = collectClusterAdvanceRequestsForRenderModel(renderModel);
+  const requests = collectClusterAdvanceRequestsForRenderModel(renderModel, options);
   await service.prewarmClusterAdvances(requests);
 }
 
 export function collectClusterAdvanceRequestsForRenderModel(
   renderModel: PresentationRenderModel,
+  options: { readonly prepareEditingMeasurements?: boolean } = {},
 ): ClusterAdvanceRequest[] {
   const sourceKind = resolveLayoutSourceKind(renderModel);
   const requests: ClusterAdvanceRequest[] = [];
-  forEachTextNode(renderModel, (node, profile) => {
+  forEachTextNode(renderModel, (node, profile, prepareEditing) => {
     const contract = resolveTextLayoutContractFromNode(node, {
       sourceKind,
       profile,
     });
-    collectParagraphRequests(
-      requests,
-      node.paragraphs,
-      resolveDefaultFontFamily(node),
-      resolveTextLayoutFontScaleCandidates(contract.autoFitPolicy, contract.profile),
-      sourceKind,
-      contract.overflow === 'ellipsis',
-    );
+    for (const variant of prepareEditing && options.prepareEditingMeasurements !== false ? shapeTextMeasurementVariants(node) : [node]) {
+      collectParagraphRequests(
+        requests, variant.paragraphs, resolveDefaultFontFamily(variant),
+        resolveTextLayoutFontScaleCandidates(contract.autoFitPolicy, contract.profile),
+        sourceKind, contract.overflow === 'ellipsis',
+      );
+    }
   });
   for (const slide of renderModel.slides) {
     visitRenderNodes(slide.elements, ({ node }) => {
@@ -205,15 +213,15 @@ export function createTextMeasureRunAdvanceProviderForSourceKind(
 
 function forEachTextNode(
   renderModel: PresentationRenderModel,
-  visitor: (node: TextRenderNode, profile: 'plain-textbox' | 'shape-inner-text') => void,
+  visitor: (node: TextRenderNode, profile: 'plain-textbox' | 'shape-inner-text', prepareEditing?: boolean) => void,
 ): void {
   for (const slide of renderModel.slides) {
     visitRenderNodes(slide.elements, ({ node }) => {
       if (node.kind === 'text') {
-        visitor(node, 'plain-textbox');
+        visitor(node, 'plain-textbox', node.authoringEdit?.capabilities.includes('set_text_style'));
       }
       if (node.kind === 'shape' && node.innerText) {
-        visitor(node.innerText, 'shape-inner-text');
+        visitor(node.innerText, 'shape-inner-text', node.authoringEdit?.capabilities.includes('set_visual_size'));
       }
     });
   }
@@ -221,7 +229,7 @@ function forEachTextNode(
 
 function resolveLayoutSourceKind(
   renderModel: PresentationRenderModel,
-): ClusterAdvanceRequest['sourceKind'] {
+): 'generated' | 'imported' {
   return renderModel.sourceKind === 'generated' ? 'generated' : 'imported';
 }
 
@@ -251,21 +259,27 @@ function toTextMeasureStyle(
 }
 
 function createFontResolutionMetricsProvider(): FontMetricsProvider {
+  const getMetricsInEm = (style: RunMeasureStyle): FontLineMetrics | undefined => {
+    const resolved = resolveFont({
+      family: style.fontFamily,
+      bold: style.bold,
+      italic: style.italic,
+      script: style.script ?? 'latin',
+      requiredCodePoints: style.text == null
+        ? undefined
+        : collectRequiredGlyphCodePoints(style.text),
+    });
+    if (!isResolvedCatalogFont(resolved)) {
+      return undefined;
+    }
+    return fontMetadataToLineMetrics(resolved.resolved, { ...style, fontSizePt: 72 });
+  };
   return {
+    getMetricsInEm,
     getMetrics(style) {
-      const resolved = resolveFont({
-        family: style.fontFamily,
-        bold: style.bold,
-        italic: style.italic,
-        script: style.script ?? 'latin',
-        requiredCodePoints: style.text == null
-          ? undefined
-          : collectRequiredGlyphCodePoints(style.text),
-      });
-      if (!isResolvedCatalogFont(resolved)) {
-        return undefined;
-      }
-      return fontMetadataToLineMetrics(resolved.resolved, style);
+      const metrics = getMetricsInEm(style);
+      const scale = style.fontSizePt / 72;
+      return metrics && { ascent: metrics.ascent * scale, descent: metrics.descent * scale, lineGap: metrics.lineGap * scale };
     },
   };
 }
