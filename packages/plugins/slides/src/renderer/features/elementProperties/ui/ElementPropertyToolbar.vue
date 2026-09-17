@@ -23,7 +23,8 @@
             <CustomNumberInput
               v-model="fontSize"
               variant="panel"
-              :input-width="44"
+              :input-width="64"
+              input-class="slides-element-property-toolbar__font-input"
               :aria-label="message('slides.elementProperties.fontSize')"
               :title="`${message('slides.elementProperties.fontSize')} (${SLIDES_MANUAL_FONT_SIZE_PT.min}–${SLIDES_MANUAL_FONT_SIZE_PT.max} pt)`"
               :min="SLIDES_MANUAL_FONT_SIZE_PT.min"
@@ -36,6 +37,7 @@
               @keydown.esc.stop.prevent="cancelNumber('fontSize', $event); close()"
             />
             <ToolbarButton
+              class="slides-element-property-toolbar__font-trigger"
               data-property="fontSize"
               :label="message('slides.elementProperties.fontSize')"
               :active="openPopover === 'fontSize'"

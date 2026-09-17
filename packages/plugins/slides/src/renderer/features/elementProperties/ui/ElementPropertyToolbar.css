@@ -13,11 +13,27 @@
 }
 
 .slides-element-property-toolbar__font {
+  position: relative;
   display: flex;
   align-items: center;
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
   white-space: nowrap;
+}
+/* 箭头位于同一个输入框内；通过公开 inputClass 预留命中区，避免遮住数字。 */
+.slides-element-property-toolbar .slides-element-property-toolbar__font .slides-element-property-toolbar__font-input {
+  height: 28px;
+  padding: 4px 22px 4px 6px;
+  font-size: var(--font-size-xs);
+}
+.slides-element-property-toolbar__font .slides-element-property-toolbar__font-trigger {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 20px;
+  min-width: 20px;
+  height: 26px;
+  padding: 2px;
 }
 .slides-element-font-menu {
   position: absolute;
