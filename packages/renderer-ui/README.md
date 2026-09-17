@@ -155,6 +155,8 @@ feature 拥有。
 
 `FloatingToolbar` 是受控的纯 UI 表面，`ToolbarGroup` 拥有紧凑分组及分隔线。业务组件通过 slot 提供控件；`show` 与 `position: { top, left }` 均由调用方提供，坐标属于调用方的定位容器。组件不自动 Teleport、不读取选区、不修改焦点、不默认阻止鼠标或键盘。class/style/aria/data 与事件监听落在唯一根元素；公开实例的 `element` 可用于实际尺寸测量。
 
+工具条与分组的默认 gap 均为 4px；非末尾组的分隔线宽 1px、高 16px，自身左右 margin 各 2px，因此线到相邻控件边缘各为 6px。分组可通过 slot 嵌套，以复用同一分隔线；最后一组不产生尾线。Editor 文本／表格工具条与 Slides 共用此规则，业务不再手写 divider 或覆盖分隔线间距，也不开放任意间距参数。
+
 Editor 在自己的容器上保留 mousedown 选区策略，并使用业务标记识别自己的表面。含原生输入的消费者不继承这一策略。显示条件、选区几何、越界定位和业务命令属于各自 owner；不要把 Editor extension、registry 或 Slides 作者合同送入共享包。Editor 内容色板、修订动作以及 Slides 的作者能力仍留在对应业务 owner。
 
 工具条默认使用普通容器语义，业务可提供 aria-label／role；若使用 toolbar role，必须同时提供符合该语义的键盘交互。基础外观只有一个 CSS owner，业务只定制公开根元素的外围布局及 slot 内容。

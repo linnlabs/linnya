@@ -2,6 +2,11 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 2.5.2 - 2026-09-17
+
+- ToolbarGroup 分隔线自身的左右 margin 收紧为 2px，与 4px flex gap 合计单侧 6px，修正 Slides 工具条组间多余留白。
+- Editor 文本／表格工具条统一复用 ToolbarGroup，删除本地 divider、重复分组组件和分隔线 CSS；公开组件合同与插件兼容范围不变。
+
 ## 2.5.1 - 2026-09-17
 
 - ToolbarColorButton 去掉额外 36px 最小宽度，沿用 ToolbarButton 的紧凑图标按钮宽度；Editor 与 Slides 同步修正文字色／填充色两侧多余留白。

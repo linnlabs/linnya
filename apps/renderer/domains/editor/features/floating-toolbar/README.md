@@ -6,7 +6,9 @@ provider，service 持有短生命周期展示状态，`ui/` 执行格式命令�
 
 整个 feature 不是 Renderer 通用 toolbar。选区、命令、本地化、内容色板和 Conversation composer 引用 port 仍在本域；其他 domain 和插件不得 deep import 本 feature。
 
-纯展示外壳 `FloatingToolbar` 与分组 `ToolbarGroup` 已由 `@linnya/renderer-ui` 统一拥有，文本选区容器和修订条从公开入口消费。Editor 在消费端保留 `mousedown.prevent`，避免破坏文本选区；共享外壳默认不吞原生表单事件。外部点击只识别 `data-editor-floating-toolbar`，不能用共享 CSS 类名把其他业务表面当作自己的。颜色面板与按钮 CSS 继续留在 Editor，不覆盖共享组件内部 selector。
+纯展示外壳 `FloatingToolbar` 与分组 `ToolbarGroup` 已由 `@linnya/renderer-ui` 统一拥有，文本选区容器和修订条从公开入口消费。Editor 在消费端保留 `mousedown.prevent`，避免破坏文本选区；共享外壳默认不吞原生表单事件。外部点击只识别 `data-editor-floating-toolbar`，不能用共享 CSS 类名把其他业务表面当作自己的。按钮、颜色标识与面板表面也消费共享组件；Editor 只拥有内容色板及业务布局，不覆盖共享组件内部 selector。
+
+AI 引用区使用嵌套 ToolbarGroup 与后方格式控件分隔，不再手写 divider。分隔线统一由共享包提供，左右有效间距各 6px（4px gap＋2px margin），与 Slides、表格工具条一致；文字格式按钮自身既有的 2px 紧凑排列不变。
 
 ## 目录职责
 

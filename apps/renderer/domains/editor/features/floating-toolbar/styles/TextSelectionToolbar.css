@@ -1,10 +1,4 @@
 /* Editor 只拥有动作排列、标题列表与业务入口；按钮和颜色浮层由 Renderer UI 拥有。 */
-.text-selection-toolbar {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
 .text-selection-toolbar .text-selection-color-panel {
   top: calc(100% + 8px);
   right: 0;
@@ -71,13 +65,6 @@
 
 .text-selection-toolbar .text-selection-heading-option-label {
   white-space: pre-wrap;
-}
-
-.text-selection-toolbar .divider {
-  width: 1px;
-  height: 16px;
-  margin: 0 2px;
-  background-color: var(--color-border-light);
 }
 
 .text-selection-toolbar .ai-quote-button {

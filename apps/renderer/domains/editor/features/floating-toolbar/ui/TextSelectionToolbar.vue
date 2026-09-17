@@ -1,16 +1,15 @@
 <template>
   <ToolbarGroup class="text-selection-toolbar">
-    <!-- AI 引用按钮 -->
-    <button
-      class="ai-quote-button"
-      @click="handleAiQuote"
-    >
-      <AiIcon class="ai-icon" />
-      <span>{{ editorMessage('editor.floatingToolbar.aiReference') }}</span>
-    </button>
-
-    <!-- 分隔线 -->
-    <div class="divider" />
+    <!-- 子组的分隔线由共享组件生成，避免 Editor 与插件维护两套间距。 -->
+    <ToolbarGroup>
+      <button
+        class="ai-quote-button"
+        @click="handleAiQuote"
+      >
+        <AiIcon class="ai-icon" />
+        <span>{{ editorMessage('editor.floatingToolbar.aiReference') }}</span>
+      </button>
+    </ToolbarGroup>
 
     <!-- 文本格式化按钮组 -->
     <div class="format-buttons">

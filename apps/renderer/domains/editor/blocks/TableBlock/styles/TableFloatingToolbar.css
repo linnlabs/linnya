@@ -1,23 +1,7 @@
 .table-toolbar-root {
   display: flex;
-  gap: 4px;
+  gap: var(--spacing-xs);
   align-items: center;
-}
-
-.table-toolbar-root .toolbar-group {
-  /* 中文说明：该组样式只服务表格浮动工具条，不能裸写 `.toolbar-group` 影响其它工具条。 */
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.table-toolbar-root .toolbar-group:not(:last-child)::after {
-  content: "";
-  display: block;
-  width: 1px;
-  height: 16px;
-  margin: 0 4px;
-  background-color: var(--color-border-light);
 }
 
 .table-toolbar-root .toolbar-button {

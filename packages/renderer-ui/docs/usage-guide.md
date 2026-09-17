@@ -430,6 +430,8 @@ import type { ModalProps, ModalScrollMode, ModalSlots } from '@linnya/renderer-u
 
 从 package 根导入。传入必需的 show 与 position，通过默认 slot 放置按钮、输入和 ToolbarGroup。position 的 top／left 使用所在定位容器的 CSS 像素；组件本身不做选区定位或自动切换方向。需要测量时从组件实例 element 获取真实根元素。
 
+用 ToolbarGroup 表达需要分隔的控件组，也可在组内嵌套子组。非末尾组自动生成 1×16px 分隔线；默认 4px flex gap 加上分隔线自身 2px margin，使线两侧到控件边缘各留 6px。不要额外插入 divider、为分隔线补 margin 或穿透私有伪元素。组件没有独立 spacing prop；普通按钮间距与组间分隔由共享样式统一负责。
+
 事件、class、style、aria/data 属性透传到根元素；原生输入保留默认聚焦和键盘行为。文本编辑器若需防止按钮按下破坏选区，在自己的消费端设置 mousedown 策略，不要让所有业务共用一次 preventDefault。位置更新、outside click 和业务状态由调用方拥有。
 
 

@@ -5,6 +5,8 @@
 TableBlock 是基于 Tiptap 实现的表格编辑功能，为编辑器提供轻量级、高性能的表格编辑和Ai体验。
 任何对tableblock模块的更新，最终都需要更新本文档。
 
+`TableSimpleToolbar` 与 `AiToolbarSection` 从 `@linnya/renderer-ui` 消费 `ToolbarGroup`，不再保留本地分组组件和分隔线 CSS。分隔线两侧到控件的有效间距各为 6px，与 Editor 文本工具条和 Slides 一致。表格菜单、命令、选区与 AI 模式仍归 TableBlock；分组没有新增状态或事件处理。已删除没有任何消费者的旧 `useToolbarState`，避免继续保留依赖旧分组类名的全局点击监听；当前菜单开关由 `TableSimpleToolbar` 和 `ToolbarDropdown` 拥有。
+
 ## 单元格选中柄定位
 
 单元格左上角选中柄使用视口坐标定位，必须保持以下约定：
@@ -311,7 +313,6 @@ apps/renderer/domains/editor/blocks/TableBlock/
 │   ├── FloatingToolbar/         - 浮动工具栏子组件
 │   │   ├── AiToolbarSection.vue  - AI功能区块
 │   │   ├── ToolbarButton.vue     - 工具栏按钮
-│   │   ├── ToolbarGroup.vue      - 工具栏分组
 │   │   ├── ToolbarDropdown.vue   - 工具栏下拉菜单
 │   │   └── DebugToolbarSection.vue   - 调试工具栏组件
 │   ├── config/                  - 配置文件
@@ -325,8 +326,7 @@ apps/renderer/domains/editor/blocks/TableBlock/
 │       ├── useTableCellHandlePosition.ts # 单元格选中柄视口定位与布局变化同步
 │       ├── useTableOutputRect.ts    # 输出区域UI工具：验证、描述、等（创建逻辑已合并到 shared）
 │       ├── useTableRenderVirtualizationKeepAlive.ts # 表格浮层/坐标轴渲染虚拟化保活桥
-│       ├── useToolbarPositioning.js # 工具栏定位：监听选区、计算工具栏位置
-│       └── useToolbarState.js       # 工具栏状态：菜单开关、按钮可用性（合并/拆分/新增/删除等）
+│       └── useToolbarPositioning.js # 工具栏定位：监听选区、计算工具栏位置
 
 /apps/renderer/
 ├── domains/editor/features/
