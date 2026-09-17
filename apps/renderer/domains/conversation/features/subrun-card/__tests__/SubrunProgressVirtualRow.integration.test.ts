@@ -14,6 +14,7 @@ import {
 import { useEnabledPluginsStore } from '@/app/plugins/enabledPluginsStore';
 import { createToolPresentationProjectionPort } from '@/app/plugins/orchestration/createToolPresentationProjectionPort';
 import { createToolCompactStepProjectionPort } from '@/app/plugins/orchestration/createToolCompactStepProjectionPort';
+import { useInteractiveRunStore } from '../../interactive-run';
 import { commonToolConfigs } from '../../../ui/tools/configs/common';
 import { workspaceReadToolConfigs } from '../../../ui/tools/configs/workspace';
 import { createInitialProjectionState, reduceEvent } from '../../../services/messageProjection';
@@ -184,6 +185,9 @@ describe('Subrun progress virtual row integration', () => {
     const toolMessage = projection.conversation.messages[0];
     if (toolMessage?.type !== 'tool_calls') throw new Error('Expected subagent tool message');
 
+    const control = useInteractiveRunStore();
+    const running = { conversationId: CONVERSATION_ID, runId: PROJECTION_TEST_SCOPE.run_id, executionId: PROJECTION_TEST_SCOPE.execution_id, status: 'running' as const };
+    control.synchronizeSnapshot(CONVERSATION_ID, running);
     const visualTurnId = conversationVisualTurnIdFromUserMessageId('user-subrun-progress-row');
     const row: ConversationVisualRow = {
       key: `msg_${toolMessage.id}`,
@@ -254,7 +258,7 @@ describe('Subrun progress virtual row integration', () => {
     expect(mountPoint.querySelector('.tool-group-mode')).toBeNull();
     expect(mountPoint.querySelector('.tool-card__header')).not.toBeNull();
     expect(mountPoint.querySelector('.tool-card__name-text')?.textContent).toContain('读取项目文件');
-    expect(mountPoint.querySelector('.tool-card__name-text--active')).not.toBeNull();
+    expect(mountPoint.querySelector('.tool-card__name-text.execution-progress-text--shimmer')).not.toBeNull();
     expect(mountPoint.querySelector('.loading-spinner')).toBeNull();
     expect(mountPoint.querySelector('.subrun-progress-card')).not.toBeNull();
     expect(mountPoint.querySelector('.subrun-progress')).toBeNull();
@@ -280,6 +284,26 @@ describe('Subrun progress virtual row integration', () => {
       subrunId: 'subrun-progress-row',
       description: '执行检查',
     }]);
+    expect(errors).toEqual([]);
+    for (const status of ['pausing', 'paused', 'awaiting_user', 'reconnecting', 'cancelling'] as const) {
+      control.synchronizeSnapshot(CONVERSATION_ID, { ...running, status, pause: { settled: true, updatedAt: 3 } });
+      await flushAsyncComponent();
+      expect(mountPoint.querySelector('.tool-card__name-text.execution-progress-text--shimmer'), status).toBeNull();
+      expect(mountPoint.querySelector('.deep-trace__row.is-active'), status).toBeNull();
+      expect(mountPoint.querySelector('.tool-activity__spinner'), status).toBeNull();
+      expect(mountPoint.querySelector('.tool-card__loading'), status).toBeNull();
+      expect(mountPoint.querySelector('.deep-trace__title')?.textContent).toBe(status === 'reconnecting' ? 'conversation.execution.running' : 'conversation.execution.paused');
+      expect(mountPoint.querySelectorAll('.deep-trace__row')).toHaveLength(1);
+      expect(toolMessage.metadata.status).toBe('loading');
+    }
+    // 其它会话的运行不能恢复当前卡片；只有所属 run 真正继续后才恢复动画。
+    control.synchronizeSnapshot('other-conversation', { ...running, conversationId: 'other-conversation' });
+    await flushAsyncComponent();
+    expect(mountPoint.querySelector('.tool-card__name-text.execution-progress-text--shimmer')).toBeNull();
+    control.synchronizeSnapshot(CONVERSATION_ID, running);
+    await flushAsyncComponent();
+    expect(mountPoint.querySelector('.tool-card__name-text.execution-progress-text--shimmer')).not.toBeNull();
+    expect(mountPoint.querySelector('.deep-trace__row.is-active')).not.toBeNull();
     expect(errors).toEqual([]);
   });
 });

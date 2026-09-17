@@ -33,20 +33,6 @@
   font-size: 13px;
 }
 
-.ppt-plan-card .loading-state {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-  color: var(--color-text-secondary);
-  font-style: italic;
-  animation: ppt-plan-card-pulse 1.5s infinite;
-}
-
-.ppt-plan-card .loading-text {
-  font-size: 12px;
-}
-
 .ppt-plan-card__content {
   display: flex;
   flex-direction: column;
@@ -459,8 +445,8 @@
   margin-left: 64px;
 }
 
-@keyframes ppt-plan-card-pulse {
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
+.ppt-plan-card .ppt-plan-pending {
+  padding: 8px 0;
+  font-size: 12px;
+  font-style: italic;
 }

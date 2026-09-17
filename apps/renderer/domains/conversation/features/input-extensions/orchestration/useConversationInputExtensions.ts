@@ -26,6 +26,7 @@ export function useConversationInputExecution(chat: ConversationInputChatExecuti
 
   return {
     activeExtension,
+    isBusy: computed(() => resolvedExecution.value.isBusy),
     isLoading: computed(() => resolvedExecution.value.isLoading),
     isStreaming: computed(() => resolvedExecution.value.isStreaming),
     cancel: (): void => resolvedExecution.value.cancel(),

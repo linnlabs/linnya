@@ -16,7 +16,6 @@ export interface ToolMessageCoreModel {
   toolArgs: ComputedRef<Record<string, unknown>>;
   toolResult: ComputedRef<unknown>;
   status: ComputedRef<ConversationToolMessageStatus>;
-  isLoading: ComputedRef<boolean>;
   hasContent: ComputedRef<boolean>;
   subrunTrace: ComputedRef<unknown | null>;
   /**
@@ -41,7 +40,6 @@ export function useToolMessageCore(message: Ref<ToolCallMessage>): ToolMessageCo
   });
 
   const status = computed(() => metadata.value.status);
-  const isLoading = computed(() => status.value === 'loading');
   const hasContent = computed(() => {
     const content = message.value.content;
     // 严格返回 boolean：避免 `a && b` 产生 `string | boolean` 的类型漂移
@@ -66,7 +64,6 @@ export function useToolMessageCore(message: Ref<ToolCallMessage>): ToolMessageCo
     toolArgs,
     toolResult,
     status,
-    isLoading,
     hasContent,
     subrunTrace,
     subrunTraceVersion,

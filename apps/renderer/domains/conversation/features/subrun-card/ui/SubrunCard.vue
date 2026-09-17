@@ -23,6 +23,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useToolExecutionActivity, provideSubrunExecutionActivity } from '../../../shared/execution-presentation';
 import type { ConversationMessageId } from '@app/schemas';
 
 import UiCardGroup from '../../../ui/components/UiCardGroup.vue';
@@ -51,7 +52,12 @@ const emit = defineEmits<{
   'expanded-change': [expanded: boolean];
 }>();
 const { conversationMessage } = useConversationLocalization();
-const isRunning = computed(() => props.presentation.data.status === 'loading');
+const activity = useToolExecutionActivity(() => props.presentation.status);
+const isRunning = computed(() => activity.value.isExecuting);
+provideSubrunExecutionActivity(
+  () => props.subrunId ?? props.presentation.data.subrunId,
+  activity,
+);
 const trace = useSubrunCardTrace({
   subrunTrace: () => props.subrunTrace,
   subrunTraceVersion: () => props.subrunTraceVersion,

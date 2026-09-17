@@ -28,6 +28,7 @@ import * as refId from '@plugin/renderer/refId';
 import * as referenceLinkUi from '@plugin/renderer/referenceLinkUi';
 import * as referenceRuntime from '@plugin/renderer/referenceRuntime';
 import * as settingsContribution from '@plugin/renderer/settingsContribution';
+import * as executionPresentation from '@plugin/renderer/executionPresentation';
 import * as subrunToolUi from '@plugin/renderer/subrunToolUi';
 import * as textMeasurement from '@plugin/renderer/textMeasurement';
 import * as structuredContextRequirementPort from '@plugin/renderer/structuredContextRequirementPort';
@@ -89,6 +90,7 @@ export function installRendererPluginHostModules(): void {
       '@plugin/renderer/referenceLinkUi': referenceLinkUi,
       '@plugin/renderer/referenceRuntime': referenceRuntime,
       '@plugin/renderer/settingsContribution': settingsContribution,
+      '@plugin/renderer/executionPresentation': executionPresentation,
       '@plugin/renderer/subrunToolUi': subrunToolUi,
       '@plugin/renderer/textMeasurement': textMeasurement,
       '@plugin/renderer/structuredContextRequirementPort': structuredContextRequirementPort,

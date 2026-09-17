@@ -35,6 +35,8 @@ child 工具消息 ID 必须由 `conversationSubrunMessageIdFromToolIdentity(sub
 - Host detail 在已接纳 child messages 前投影父 `subagent.args.prompt`，复用 `UserMessage` 视觉但保持 activity 只读语义：不写入父消息窗口，不提供编辑或重新发送。
 - 跨父列表/detail 的 durable ready 快照归 `features/subrun-trace/store/subrunTraceHistoryCacheStore.ts`；本 feature 只消费 cache port，不持有第二份历史状态。
 
+标题、步骤和完整 child 消息的运行展示统一消费 [执行活动展示](../../shared/execution-presentation/README.md)。父工具 loading 仅表示未结算；暂停后保留内容、停止动画，继续后只恢复未完成步骤。SubrunCard 显式绑定 child scope，不自行查询全局 active conversation。
+
 ## 业务门禁
 
 - decision batch 不生成可见步骤，process/output 按 tool identity 稳定收敛。

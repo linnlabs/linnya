@@ -21,6 +21,8 @@ Conversation 域是 Linnya 的前端对话投影与渲染边界。它消费 Linn
 
 引用的跨 owner 合同由 [Citation domain](../../../../../src/domains/citation/README.md#conversation-展示链路) 维护；活动与 Subrun 的完整规范见 [Conversation Subruns](../../../../../docs/conversation-platform/10-subruns.md)。
 
+执行活动的展示 owner 见 [`shared/execution-presentation`](../shared/execution-presentation/README.md)。
+
 更贴代码的说明：`../history/README.md`、`../ui/messageCanvas/README.md`、`../ui/conversationView/README.md`、`../ui/components/timeline/README.md`。
 
 ---
@@ -64,6 +66,7 @@ apps/renderer/domains/conversation/
 ├── ports/                       # 对外窄 contract
 ├── registrations/               # 域内注册装配
 ├── shared/                      # 域内共享（含 observability 与 virtualization 桥接）
+│   └── execution-presentation/   # run 归属、工具活动态、统一动画与状态文案
 ├── store/                       # live 投影状态、执行状态与公开 selectors
 ├── styles/                      # 域内样式
 ├── testing/                     # 测试消息构造等测试专用工具

@@ -196,6 +196,7 @@ const rendererHostShims = new Map<string, string>([
     'getActiveFileSession',
     'markActiveFileDirty',
   ])],
+  ['/plugin-renderer/executionPresentation.js', buildNamedHostShim('@plugin/renderer/executionPresentation', ['ToolActivityIndicator'])],
   ['/plugin-renderer/subrunToolUi.js', buildNamedHostShim('@plugin/renderer/subrunToolUi', ['SubrunCard'])],
   ['/plugin-renderer/pageContextProvider.js', buildNamedHostShim('@plugin/renderer/pageContextProvider', [
     'registerRendererPageContextProvider',

@@ -1,10 +1,7 @@
 <template>
   <div class="mindmap-create-node-card">
     <!-- 状态：执行中 -->
-    <div v-if="isExecuting" class="loading-state">
-      <div class="loading-spinner"></div>
-      <span>正在创建 MindMap 节点...</span>
-    </div>
+    <ToolActivityIndicator v-if="presentation.status === 'loading'" running-label="正在创建 MindMap 节点..." />
 
     <!-- 状态：成功 -->
     <div v-else-if="presentation.status === 'success'" class="content-container">
@@ -71,6 +68,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '@plugin/renderer/executionPresentation';
 import { computed } from 'vue';
 import { WorkspaceRefLink } from '@plugin/renderer/referenceLinkUi';
 import { isValidRef, normalizeRef } from '@plugin/renderer/refId';
@@ -92,7 +90,6 @@ const props = defineProps<{
   messageId?: string;
 }>();
 
-const isExecuting = computed(() => props.presentation.status === 'loading');
 const documentId = computed(() => props.presentation.data.documentId);
 const createdNodes = computed(() => (
   props.presentation.data.kind === 'create-node' ? props.presentation.data.items : []

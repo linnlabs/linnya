@@ -5,28 +5,12 @@
   padding: 10px 12px 12px;
 }
 
-.presentation-action-card .loading-state,
 .presentation-action-card .error-state {
   display: flex;
   align-items: center;
   gap: 8px;
   color: var(--color-text-secondary);
   font-size: 13px;
-}
-
-.presentation-action-card .loading-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-light);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: presentation-action-card-spin 1s linear infinite;
-}
-
-@keyframes presentation-action-card-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .presentation-action-card .content-container {

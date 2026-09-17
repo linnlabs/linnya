@@ -1,10 +1,7 @@
 <template>
   <div class="sharedmemory-doc-write-card">
     <!-- 状态：加载中 -->
-    <div v-if="status === 'loading'" class="loading-state">
-      <div class="loading-spinner"></div>
-      <span>{{ conversationMessage('conversation.tool.sharedMemory.writeLoading') }}</span>
-    </div>
+    <ToolActivityIndicator v-if="status === 'loading'" :running-label="conversationMessage('conversation.tool.sharedMemory.writeLoading')" />
 
     <!-- 状态：成功 -->
     <div v-else-if="status === 'success'" class="success-state">
@@ -29,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed } from 'vue';
 import { useConversationLocalization } from '../../useConversationLocalization';
 import type { ToolCardPresentation } from '../types';

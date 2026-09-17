@@ -1,10 +1,7 @@
 <template>
   <div class="document-content-card">
     <!-- 状态：加载中 -->
-    <div v-if="status === 'loading'" class="loading-state">
-      <div class="loading-spinner"></div>
-      <span>{{ conversationMessage('conversation.tool.documentContent.loading') }}</span>
-    </div>
+    <ToolActivityIndicator v-if="status === 'loading'" :running-label="conversationMessage('conversation.tool.documentContent.loading')" />
 
     <!-- 状态：成功 -->
     <div v-else-if="status === 'success' && content" class="content-container">
@@ -42,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed } from 'vue';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
 import { useConversationLocalization } from '../../useConversationLocalization';

@@ -1,10 +1,7 @@
 <template>
   <div class="agent-todo-card">
     <!-- 状态：加载中 -->
-    <div v-if="status === 'loading'" class="loading-state">
-      <div class="loading-spinner"></div>
-      <span>{{ loadingText }}</span>
-    </div>
+    <ToolActivityIndicator v-if="status === 'loading'" :running-label="loadingText" />
 
     <!-- 状态：错误 -->
     <div v-else-if="status === 'error'" class="error-state">
@@ -108,6 +105,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed } from 'vue';
 import { CustomCheckbox, TagChip } from '@linnya/renderer-ui';
 import { useConversationLocalization } from '../../useConversationLocalization';

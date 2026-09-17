@@ -8,10 +8,7 @@
 <template>
   <div class="web-search-card">
     <!-- 加载中 -->
-    <div v-if="status === 'loading'" class="ws-state">
-      <div class="ws-spinner"></div>
-      <span>{{ conversationMessage('conversation.tool.webSearch.loading') }}</span>
-    </div>
+    <ToolActivityIndicator v-if="status === 'loading'" :running-label="conversationMessage('conversation.tool.webSearch.loading')" />
 
     <!-- 错误 -->
     <div v-else-if="status === 'error'" class="ws-state ws-state--error">
@@ -52,6 +49,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed } from 'vue';
 import { openExternalUrl } from '../../../../../shared/utils/openExternalUrl';
 import { useConversationLocalization } from '../../useConversationLocalization';

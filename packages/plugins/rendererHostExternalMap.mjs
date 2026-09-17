@@ -15,6 +15,7 @@ export const hostRendererExternalUrls = Object.freeze({
   '@plugin/renderer/conversationSubrunInvocationPort': 'plugin://host/plugin-renderer/conversationSubrunInvocationPort.js',
   '@plugin/renderer/documentMutationPort': 'plugin://host/plugin-renderer/documentMutationPort.js',
   '@plugin/renderer/documentReferenceRuntimePort': 'plugin://host/plugin-renderer/documentReferenceRuntimePort.js',
+  '@plugin/renderer/executionPresentation': 'plugin://host/plugin-renderer/executionPresentation.js',
   '@plugin/renderer/exportArtifact': 'plugin://host/plugin-renderer/exportArtifact.js',
   '@plugin/renderer/imageAssetSource': 'plugin://host/plugin-renderer/imageAssetSource.js',
   '@plugin/renderer/interactiveTool': 'plugin://host/plugin-renderer/interactiveTool.js',

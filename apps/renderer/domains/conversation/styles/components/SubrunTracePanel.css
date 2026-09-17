@@ -167,25 +167,3 @@
   color: var(--color-text-tertiary);
   white-space: nowrap;
 }
-
-.subrun-trace-panel .deep-trace__row.is-active .deep-trace__tool {
-  background: linear-gradient(
-    90deg,
-    var(--color-text-placeholder) 0%,
-    var(--color-text-placeholder) 47%,
-    var(--color-text-primary) 50%,
-    var(--color-text-placeholder) 53%,
-    var(--color-text-placeholder) 100%
-  );
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: conversation-progress-text-shimmer 2.6s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .subrun-trace-panel .deep-trace__row.is-active .deep-trace__tool {
-    animation: none;
-  }
-}

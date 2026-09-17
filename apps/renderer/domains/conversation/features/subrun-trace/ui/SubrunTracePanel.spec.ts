@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
-import { createApp, defineComponent, h, nextTick, ref } from 'vue';
+import { computed, createApp, defineComponent, h, nextTick, ref } from 'vue';
 import { createPinia } from 'pinia';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ConversationToolMessageStatus } from '@app/schemas';
+import { provideToolExecutionActivity, executionActivity } from '../../../shared/execution-presentation';
 import SubrunTracePanel from './SubrunTracePanel.vue';
 
 vi.mock('../../../ui/useConversationLocalization', () => ({
@@ -18,11 +20,12 @@ describe('SubrunTracePanel manual expansion', () => {
   });
 
   it('stays folded across status changes until the user expands it', async () => {
-    const status = ref('loading');
+    const status = ref<ConversationToolMessageStatus>('loading');
     const container = document.createElement('div');
     document.body.appendChild(container);
     const app = createApp(defineComponent({
       setup() {
+        provideToolExecutionActivity(() => 'loading', computed(() => executionActivity('running')), () => false);
         return () => h(SubrunTracePanel, {
           status: status.value,
           enabled: true,
@@ -76,11 +79,12 @@ describe('SubrunTracePanel manual expansion', () => {
     app.unmount();
   });
 
-  it.each(['loading', 'success'])('只有 thought 的 bucket 在 %s 时不伪造过程或占位内容', async (status) => {
+  it.each(['loading', 'success'] as const)('只有 thought 的 bucket 在 %s 时不伪造过程或占位内容', async (status) => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const app = createApp(defineComponent({
       setup() {
+        provideToolExecutionActivity(() => 'loading', computed(() => executionActivity('running')), () => false);
         return () => h(SubrunTracePanel, {
           status,
           enabled: true,
@@ -124,6 +128,7 @@ describe('SubrunTracePanel manual expansion', () => {
     document.body.appendChild(container);
     const app = createApp(defineComponent({
       setup() {
+        provideToolExecutionActivity(() => 'loading', computed(() => executionActivity('running')), () => false);
         return () => h(SubrunTracePanel, {
           status: 'error',
           enabled: true,

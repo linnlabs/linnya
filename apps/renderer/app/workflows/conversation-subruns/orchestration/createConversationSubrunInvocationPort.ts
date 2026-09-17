@@ -110,7 +110,7 @@ export function createConversationSubrunInvocationPort(): RendererConversationSu
   return {
     start(request) {
       const assistantStore = useAssistantStore();
-      if (assistantStore.isLoading || assistantStore.isStreaming) {
+      if (assistantStore.isLoading || assistantStore.isBusy) {
         throw new Error('[conversationSubrunInvocation] 当前已有 conversation run 正在执行');
       }
 

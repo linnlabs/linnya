@@ -1,6 +1,8 @@
 export type {
   InteractiveRunSnapshot,
   InteractiveRunStatus,
+  ComposerRunAction,
+  ComposerRunControl,
   PendingRunInteraction,
 } from './definitions/interactiveRun';
 export {
@@ -16,3 +18,4 @@ export { restoreInteractiveRun } from './orchestration/restoreInteractiveRun';
 export { reconcileInteractiveRunCommandFailure } from './orchestration/reconcileInteractiveRunCommandFailure';
 export { reconcileInteractiveRunTransportOutcome } from './orchestration/reconcileInteractiveRunTransportOutcome';
 export { useDetachedInteractiveRunObservation } from './composables/useDetachedInteractiveRunObservation';
+export { resolveComposerRunControl } from './functions/resolveComposerRunControl';

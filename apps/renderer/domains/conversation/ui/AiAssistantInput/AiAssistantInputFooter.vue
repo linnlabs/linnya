@@ -139,30 +139,13 @@
       >
         <span
           v-if="
-            primaryAction === 'pause' || primaryAction === 'continue' || primaryAction === 'cancel'
+            primaryAction === 'pause' || primaryAction === 'resume'
           "
-          class="stop-icon"
+          class="run-control-icon"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-            <path v-if="primaryAction === 'continue'" d="M7 4v16l13-8z" />
-            <path v-else-if="primaryAction === 'pause'" d="M6 4h4v16H6zm8 0h4v16h-4z" />
-            <rect v-else x="6" y="6" width="12" height="12" rx="1" />
-          </svg>
-        </span>
-        <!-- 加载时显示转圈圈 -->
-        <span v-else-if="primaryAction === 'waiting' || isLoading" class="loading-spinner">
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="animate-spin"
-          >
-            <path d="M21 12a9 9 0 11-6.219-8.56" />
+            <path v-if="primaryAction === 'resume'" d="M7 4v16l13-8z" />
+            <path v-else d="M6 4h4v16H6zm8 0h4v16h-4z" />
           </svg>
         </span>
         <!-- 默认发送图标 -->
@@ -195,7 +178,7 @@ import type {
   ConversationInformationPresentation,
 } from '../../features/context-window-usage';
 import { useConversationLocalization } from '../useConversationLocalization';
-import type { ComposerRunAction } from '../../features/interactive-run/functions/resolveComposerRunAction';
+import type { ComposerRunAction } from '../../features/interactive-run';
 import {
   CONVERSATION_IMAGE_ATTACHMENT_MENU_VALUE,
   buildConversationInputActionMenuOptions,
@@ -224,18 +207,6 @@ const props = defineProps({
   },
   modelSelectOptions: {
     type: Array as PropType<ModelSelectOption[]>,
-    required: true,
-  },
-  isLoading: {
-    type: Boolean,
-    required: true,
-  },
-  isStreaming: {
-    type: Boolean,
-    required: true,
-  },
-  canSend: {
-    type: Boolean,
     required: true,
   },
   disabled: {
@@ -280,9 +251,7 @@ const emit = defineEmits<{
 const conversationAgentChoices = useConversationAgentChoices();
 const { conversationMessage } = useConversationLocalization();
 const { t } = useLocalization();
-const isInputControlsDisabled = computed(
-  () => props.disabled || props.isLoading || props.isStreaming
-);
+const isInputControlsDisabled = computed(() => props.disabled);
 
 const inputActionMenuOptions = computed<ConversationInputActionMenuOption[]>(() => {
   const agents = conversationAgentChoices.value.map(agentChoice => {

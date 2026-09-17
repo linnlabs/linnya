@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
-import { createApp, defineComponent, h, nextTick, ref, type App } from 'vue';
+import { computed, createApp, defineComponent, h, nextTick, ref, type App } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ConversationToolMessageStatus } from '@app/schemas';
 
+import { provideToolExecutionActivity, executionActivity } from '../../../shared/execution-presentation';
 import SubrunCompactStepTitle from '../ui/SubrunCompactStepTitle.vue';
 
 vi.mock('@app/localization', () => ({
@@ -28,19 +29,22 @@ describe('SubrunCompactStepTitle', () => {
     const mountPoint = document.createElement('div');
     document.body.appendChild(mountPoint);
     app = createApp(defineComponent({
-      setup: () => () => h(SubrunCompactStepTitle, {
+      setup: () => {
+        provideToolExecutionActivity(() => status.value, computed(() => executionActivity('running')), () => false);
+        return () => h(SubrunCompactStepTitle, {
         fallbackTitle: '分析行业竞争格局',
         status: status.value,
-      }),
+      });
+      },
     }));
     app.mount(mountPoint);
 
     expect(mountPoint.textContent).toContain('分析行业竞争格局');
-    expect(mountPoint.querySelector('.tool-card__name-text--active')).not.toBeNull();
+    expect(mountPoint.querySelector('.tool-card__name-text.execution-progress-text--shimmer')).not.toBeNull();
 
     status.value = 'success';
     await nextTick();
     expect(mountPoint.textContent).toContain('分析行业竞争格局');
-    expect(mountPoint.querySelector('.tool-card__name-text--active')).toBeNull();
+    expect(mountPoint.querySelector('.tool-card__name-text.execution-progress-text--shimmer')).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { createPinia, setActivePinia } from 'pinia';
+import { useInteractiveRunStore } from '../../interactive-run';
 import { createApp, defineComponent, h, nextTick, provide, type App } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SSESubRunTraceEvent, SSEToolCallDecisionEvent } from '@linnlabs/linnkit/contracts';
@@ -199,6 +200,9 @@ describe('SubrunDetailSurface integration', () => {
 
     const parentMessage = projection.conversation.messages[0];
     if (parentMessage?.type !== 'tool_calls') throw new Error('Expected parent tool message');
+    const control = useInteractiveRunStore();
+    const running = { conversationId: CONVERSATION_ID, runId: parentMessage.metadata.run_id, status: 'running' as const };
+    control.synchronizeSnapshot(CONVERSATION_ID, running);
     const state = useConversationState();
     state.createConversation({ id: CONVERSATION_ID, title: 'Subrun detail', autoActivate: true });
     state.getActiveConversation()?.messages.push(parentMessage);
@@ -267,5 +271,14 @@ describe('SubrunDetailSurface integration', () => {
     expect(mountPoint.querySelector('.subrun-detail__back')).toBeNull();
     expect(mountPoint.querySelector('h2')).toBeNull();
     expect(mountPoint.querySelector('.subrun-detail')?.getAttribute('aria-label')).toBe('读取报告');
+    expect(mountPoint.querySelector('.execution-progress-text--shimmer')).not.toBeNull();
+    control.synchronizeSnapshot(CONVERSATION_ID, { ...running, status: 'paused', pause: { settled: true, updatedAt: 3 } });
+    await nextTick();
+    expect(mountPoint.querySelector('.execution-progress-text--shimmer')).toBeNull();
+    expect(mountPoint.querySelector('.tool-card__loading')).toBeNull();
+    expect(mountPoint.textContent).toContain('报告读取完成。');
+    control.synchronizeSnapshot(CONVERSATION_ID, running);
+    await nextTick();
+    expect(mountPoint.querySelector('.execution-progress-text--shimmer')).not.toBeNull();
   });
 });

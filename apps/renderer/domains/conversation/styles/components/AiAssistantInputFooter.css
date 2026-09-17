@@ -424,17 +424,16 @@
   cursor: not-allowed;
 }
 
-.ai-assistant-input-footer .send-button:has(.stop-icon) {
+.ai-assistant-input-footer .send-button:has(.run-control-icon) {
   background-color: color-mix(in srgb, var(--color-gray-700) 88%, var(--color-blue-900));
 }
 
-.ai-assistant-input-footer .send-button:has(.stop-icon):hover {
+.ai-assistant-input-footer .send-button:has(.run-control-icon):hover {
   background-color: color-mix(in srgb, var(--color-gray-700) 88%, var(--color-blue-900));
 }
 
 .ai-assistant-input-footer .send-icon,
-.ai-assistant-input-footer .loading-spinner,
-.ai-assistant-input-footer .stop-icon {
+.ai-assistant-input-footer .run-control-icon {
   font-size: 12px;
   line-height: 1;
 }
@@ -444,17 +443,4 @@
   width: 13px;
   height: 13px;
   display: block;
-}
-
-.ai-assistant-input-footer .animate-spin {
-  animation: ai-assistant-input-footer-spin 1s linear infinite;
-}
-
-@keyframes ai-assistant-input-footer-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
 }

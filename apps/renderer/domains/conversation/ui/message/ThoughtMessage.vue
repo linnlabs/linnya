@@ -14,7 +14,7 @@
         <!-- 说明：思考内容也统一走 markstream 的解析+自研渲染层，避免 v-html/二次后处理带来的不确定性 -->
         <ConversationMarkdownRenderer
           :content="message.content"
-          :isStreaming="!isThoughtCompleted"
+          :isStreaming="isThinking"
           :turnId="turnId"
           :citation-dependencies="message.citationDependencies"
         />
@@ -24,10 +24,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
+import { computed, ref, onUnmounted, watch } from 'vue';
 import type { ThoughtMessage as ThoughtMessageModel } from '../../types';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import ConversationMarkdownRenderer from './components/stream/ConversationMarkdownRenderer'
+import { useMessageExecutionActivity } from '../../shared/execution-presentation';
 import { useConversationLocalization } from '../useConversationLocalization';
 
 interface Props {
@@ -36,6 +37,8 @@ interface Props {
 
 const props = defineProps<Props>();
 const { conversationMessage } = useConversationLocalization();
+const activity = useMessageExecutionActivity(() => props.message.metadata.run_id);
+const isThinking = computed(() => !props.message.metadata.is_complete && activity.value.isExecuting);
 
 /**
  * 中文备注：
@@ -94,18 +97,14 @@ const thoughtTitle = computed(() => {
       duration: formatDuration(thinkingDuration.value),
     });
   }
-  return conversationMessage('conversation.thought.running');
+  return conversationMessage(isThinking.value ? 'conversation.thought.running' : activity.value.labelKey);
 });
 
-// 生命周期管理
-onMounted(() => {
-  // 如果思考未完成，启动定时器更新时间
-  if (!isThoughtCompleted.value) {
-    timerInterval.value = setInterval(() => {
-      currentTime.value = Date.now();
-    }, 1000); // 每秒更新一次
-  }
-});
+// 暂停停止本地计时，继续后恢复；正式完成时间仍只读取消息事实。
+watch(isThinking, running => {
+  if (timerInterval.value) clearInterval(timerInterval.value);
+  timerInterval.value = running ? setInterval(() => { currentTime.value = Date.now(); }, 1000) : null;
+}, { immediate: true });
 
 onUnmounted(() => {
   if (timerInterval.value) {
@@ -113,15 +112,11 @@ onUnmounted(() => {
   }
 });
 
-// 监听思考完成状态，完成后停止计时器并自动折叠
+// 完成事实只负责折叠；计时器统一由活动态控制。
 watch(
   isThoughtCompleted,
   (completed) => {
     if (completed) {
-      if (timerInterval.value) {
-        clearInterval(timerInterval.value);
-        timerInterval.value = null;
-      }
       isThoughtExpanded.value = false;
     }
   },

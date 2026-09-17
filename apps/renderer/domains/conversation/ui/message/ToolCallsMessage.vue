@@ -95,13 +95,17 @@
             v-if="registryTitleDocumentLink"
             class="tool-card__name-text tool-card__name-text--document-link"
           >
-            <span class="tool-card__title-prefix">{{ registryTitleDocumentLink.prefixText }}</span>
+            <ExecutionProgressText class="tool-card__title-prefix" :active="activity.isExecuting">
+              {{ registryTitleDocumentLink.prefixText }}
+            </ExecutionProgressText>
             <button
               type="button"
               class="tool-card__title-link"
               @click.stop="handleRegistryTitleDocumentClick(registryTitleDocumentLink)"
             >
-              {{ registryTitleDocumentLink.text }}
+              <ExecutionProgressText :active="activity.isExecuting">
+                {{ registryTitleDocumentLink.text }}
+              </ExecutionProgressText>
             </button>
           </span>
           <component
@@ -112,9 +116,9 @@
             :status="status"
             v-bind="presentationRuntimeBindings"
           />
-          <span v-else class="tool-card__name-text">
+          <ExecutionProgressText v-else class="tool-card__name-text" :active="activity.isExecuting">
             {{ registryTitleMainText || registryTitleText }}
-          </span>
+          </ExecutionProgressText>
           <span
             v-if="registryTitleRightMeta"
             class="tool-card__header-meta"
@@ -125,12 +129,6 @@
       </div>
       
       <div class="header-controls">
-        <div
-          v-if="isLoading && !hasContent && !isKnowledgeSearchTool && !registryConfig.titleComponent"
-          class="tool-card__loading"
-        >
-          <div class="loading-spinner"></div>
-        </div>
         <ChevronIcon 
           v-if="canToggleRegistryCollapse"
           :direction="isCollapsed ? 'down' : 'up'"
@@ -176,18 +174,12 @@
   <div v-else class="tool-calls-message tool-card" :class="{ 'is-collapsed': isCollapsed }">
     <div class="tool-card__header" @click="hasContent && toggleCollapse()">
       <div class="tool-card__title">
-        <span class="tool-card__name">
+        <ExecutionProgressText class="tool-card__name" :active="activity.isExecuting">
           {{ toolName }}
-        </span>
+        </ExecutionProgressText>
       </div>
 
       <div class="header-controls">
-        <div
-          v-if="isLoading && !hasContent && !isKnowledgeSearchTool"
-          class="tool-card__loading"
-        >
-          <div class="loading-spinner"></div>
-        </div>
         <ChevronIcon
           v-if="hasContent"
           :direction="isCollapsed ? 'down' : 'up'"
@@ -224,6 +216,7 @@ import { useLocalization } from '@app/localization';
 import { buildToolPresentationRuntimeBindings } from './toolCallsMessage/buildToolPresentationRuntimeBindings';
 import { CONVERSATION_RENDER_SCOPE_KEY } from '../../definitions/conversationRenderScope';
 import { projectToolErrorAction } from '../../features/tool-error-actions/functions/projectToolErrorAction';
+import { ExecutionProgressText, useMessageExecutionActivity, provideToolExecutionActivity } from '../../shared/execution-presentation';
 import { useUIStore } from '@/shared/stores/ui';
 
 const props = defineProps<{
@@ -254,8 +247,16 @@ const toggleErrorCollapse = () => {
   isErrorCollapsed.value = !isErrorCollapsed.value;
 };
 // 1) 核心数据：解析 message.metadata
-const { toolCallId, toolName, toolArgs, toolResult, status, isLoading, hasContent, subrunTrace, subrunTraceVersion } =
+const { toolCallId, toolName, toolArgs, toolResult, status, hasContent, subrunTrace, subrunTraceVersion } =
   useToolMessageCore(messageRef);
+const runActivity = useMessageExecutionActivity(() => props.message.metadata.run_id);
+const activity = provideToolExecutionActivity(
+  () => status.value,
+  runActivity,
+  // computed 由子组件读取时求值；归属随 registry 布局变化，不保存第二份 UI 状态。
+  () => !registryConfig.value || (!isRegistryRenderAsGroup.value && Boolean(registryTitleText.value)),
+);
+const isExecuting = computed(() => activity.value.isExecuting);
 const toolPresentation = computed(() => props.message.toolPresentation);
 
 // 1.5) 插件工具刷新触发器
@@ -275,7 +276,6 @@ useRegisteredRendererToolRefreshTriggers({
  * - `search_in_knowledgebase` 是后端为了“不给子 Agent 暴露 deep_search 参数”而提供的等价浅搜索工具名；
  * - 但前端如果只识别 canonical `knowledge_search`，会导致：
  *   - registry 标题/执行中固定文案不生效；
- *   - header loading spinner 的特殊策略不生效；
  *   - 深度搜索完成后自动收起等策略无法复用（即使当前是浅搜索，也会影响一致性）。
  *
  * 约束：这里只做明确的工具名集合，不做任何推测。
@@ -300,7 +300,7 @@ const registryUi = useRegistryToolUi({
   toolArgs,
   toolResult,
   toolPresentation,
-  isLoading,
+  isExecuting,
   isKnowledgeSearchTool,
   isCollapsed,
   conversationMessage,

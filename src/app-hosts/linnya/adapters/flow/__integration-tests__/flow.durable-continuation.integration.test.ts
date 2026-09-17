@@ -1,3 +1,4 @@
+import { readTail } from '../../persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -116,6 +117,12 @@ describe('durable root Flow continuation, production Audit off', () => {
     await executing;
     const root = await paused(fixture);
     expect(root.pause.reason).toBe('user_pause');
+    // 暂停仍可继续：read model 保留未结算工具，Renderer 必须结合控制态显示静止状态。
+    const window = readTail(fixture.db, conversationId, 100);
+    if (window.status !== 'ready') throw new Error('Expected ready paused window');
+    expect(window.messages.find(message => message.message_type === 'tool_calls')).toMatchObject({
+      payload: { tool_call_id: 'read-pause', status: 'loading' },
+    });
     expect(await new SQLiteRunRegistryStore(fixture.db).load(RunIdSchema.parse(root.run_id)))
       .toMatchObject({ status: 'paused', pauseReason: 'user_pause' });
     const used =

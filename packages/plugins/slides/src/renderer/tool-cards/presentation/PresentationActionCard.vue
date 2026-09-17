@@ -1,9 +1,6 @@
 <template>
   <div class="presentation-card presentation-action-card">
-    <div v-if="presentation.status === 'loading'" class="loading-state">
-      <div class="loading-spinner" />
-      <span>{{ loadingText }}</span>
-    </div>
+    <ToolActivityIndicator v-if="presentation.status === 'loading'" :running-label="loadingText" />
 
     <div v-else-if="presentation.status === 'success'" class="content-container">
       <div v-if="resultAction" class="result-action">
@@ -38,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '@plugin/renderer/executionPresentation';
 import { computed } from 'vue';
 import { getWorkspaceNavigationPort } from '@plugin/renderer/workspaceNavigation';
 import type { ToolCardPresentation } from '@linnya/plugin-host-contract/renderer/toolUi';

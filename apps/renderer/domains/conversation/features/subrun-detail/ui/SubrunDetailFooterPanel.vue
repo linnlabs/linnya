@@ -24,6 +24,7 @@
 
 <script setup lang="ts">
 import { computed, inject } from 'vue';
+import { useRunExecutionActivity, executionActivity } from '../../../shared/execution-presentation';
 
 import { useModelCatalogReadModel } from '@/domains/model-configuration';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
@@ -37,14 +38,17 @@ import { projectSubrunDetailFooterPresentation } from '../functions/projectSubru
 const props = defineProps<{
   readonly parentMessage: ToolCallMessage;
   readonly subrunId: string;
+  readonly conversationId: string;
 }>();
 
 const navigation = requireSubrunDetailNavigation(inject(SUBRUN_DETAIL_NAVIGATION_PORT_KEY));
 const modelCatalog = useModelCatalogReadModel();
 const { conversationMessage } = useConversationLocalization();
+const activity = useRunExecutionActivity(() => props.conversationId, () => props.parentMessage.metadata.run_id);
 const presentation = computed(() => projectSubrunDetailFooterPresentation({
   parentMessage: props.parentMessage,
   subrunId: props.subrunId,
+  activity: activity.value,
 }));
 const modelDisplayName = computed(() => {
   const modelId = presentation.value.modelId;
@@ -52,14 +56,8 @@ const modelDisplayName = computed(() => {
   const model = modelCatalog.models.value.find(candidate => candidate.id === modelId);
   return model?.display_name || model?.name || modelId;
 });
-const statusMessageKey = computed<ConversationMessageKey>(() => {
-  switch (presentation.value.status) {
-    case 'running': return 'conversation.tool.subrunDetail.status.running';
-    case 'completed': return 'conversation.tool.subrunDetail.status.completed';
-    case 'partial': return 'conversation.tool.subrunDetail.status.partial';
-    case 'cancelled': return 'conversation.tool.subrunDetail.status.cancelled';
-    case 'failed': return 'conversation.tool.subrunDetail.status.failed';
-  }
-});
+const statusMessageKey = computed<ConversationMessageKey>(() => presentation.value.status === 'partial'
+  ? 'conversation.execution.finished'
+  : executionActivity(presentation.value.status).labelKey);
 const statusLabel = computed(() => conversationMessage(statusMessageKey.value));
 </script>

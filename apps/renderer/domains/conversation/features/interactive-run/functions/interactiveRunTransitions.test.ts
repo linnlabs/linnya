@@ -179,4 +179,25 @@ describe('interactive run transitions', () => {
 
     expect(reduceInteractiveRunEvent(current, staleEnd)).toBe(current);
   });
+  it.each(['pausing', 'cancelling'] as const)('排队进度不能撤销 %s，但正式结算仍生效', status => {
+    const current: InteractiveRunSnapshot = {
+      conversationId: 'conversation-a', runId: 'run-a',
+      turnId: 'turn-a', executionId: 'execution-a', status,
+    };
+    const progress: SSEEvent = {
+      type: 'thought', id: 'queued-progress', timestamp: 2,
+      conversation_id: 'conversation-a', turn_id: 'turn-a',
+      run_id: RunIdSchema.parse('run-a'), execution_id: 'execution-a',
+      lane: 'foreground', visibility: 'conversation',
+      content: 'queued before control request', is_complete: true,
+    };
+    expect(reduceInteractiveRunEvent(current, progress)).toBe(current);
+    const running: SSEEvent = { ...progress, type: 'run_status', status: 'running' };
+    expect(reduceInteractiveRunEvent(current, running)).toBe(current);
+    const settled = reduceInteractiveRunEvent(current, {
+      ...running, status: status === 'pausing' ? 'paused' : 'cancelled',
+    });
+    expect(settled?.status).toBe(status === 'pausing' ? 'paused' : 'cancelled');
+  });
+
 });

@@ -28,6 +28,7 @@
 - `@linnya/plugin-host-contract/renderer`：renderer contribution 与 UI-side port。
 - `@linnya/plugin-host-contract/renderer/localization`：插件可见的本地化类型门面；真实 registry、store 与解析运行时由
   [Renderer 本地化](../../apps/renderer/app/localization/README.md)拥有。
+- `@linnya/plugin-host-contract/renderer/executionPresentation`：Host 工具活动指示器的组件合同；插件通过 `@plugin/renderer/executionPresentation` 使用运行实现，可选择扫光、呼吸或静态文字。执行态、动画实现与标题/正文的动画归属均由 Host 持有，插件不复制判断或 keyframes。
 - 包根：仅用于确实同时适用于两端的类型聚合；业务代码优先使用明确子入口。
 
 插件不得 deep import 其它插件、Host 内部实现或本包未导出的文件。`src/plugin-sdk/` 是带行为的 Host facade，不是第二份合同 owner；它必须从本包导入类型。
@@ -63,7 +64,9 @@ Host 只传递已经由 durable `tool_output.attachments` 映射出的 `ToolUiIm
 的 `modelInput` selection，也不包含本地路径、claim URI 或 provider payload。工具卡只能展示该事实，不能
 重新调用工具读取图片。
 
-动态工具标题只允许通过可选 `ToolUiConfig.titleComponent` 替换标准外壳中的标题正文；图标、标签、折叠和点击仍归 Host。标题组件只接收已解析的 fallback 标题、工具 lifecycle，以及该卡在 `runtime` 显式声明的能力，不能读取 Conversation store 或重新解释工具 raw payload。注册后运行态标题视觉也由该组件负责，Host 不再叠加通用 loading spinner。普通静态标题继续由 presentation projector 提供，不应为样式差异注册组件。
+动态工具标题只允许通过可选 `ToolUiConfig.titleComponent` 替换标准外壳中的标题正文；图标、标签、折叠和点击仍归 Host。标题组件只接收已解析的 fallback 标题、工具 lifecycle，以及该卡在 `runtime` 显式声明的能力，不能读取 Conversation store 或重新解释工具 raw payload。注册后运行态标题视觉由该组件负责，但执行判定必须消费 Host 的统一活动态，不能从工具 loading 推断；Host 在暂停等非执行阶段不显示 header 状态。普通静态标题继续由 presentation projector 提供，不应为样式差异注册组件。
+
+工具正文的执行占位统一使用 `ToolActivityIndicator`；插件只传运行中的业务文案与文字效果选择，三类用户状态（暂停、进行中、AI 输出结束）及动画开关由 Host 的 Conversation owner 维护，禁止插件复制动效实现或读取 Conversation store。
 
 插件向用户输入附加持久化数据时只能使用 `messageExtension`，其类型直接别名到 `@app/schemas` 的 `ConversationMessageExtension`：稳定 `namespace` 加纯 JSON `data`。普通 AI invocation 与 subrun invocation 使用同一合同。本包严禁重列该接口，严禁恢复 `messageMetadata/userInputMetadata`，插件也不能把函数、Date、undefined 或 UI 控制状态塞进扩展槽。
 

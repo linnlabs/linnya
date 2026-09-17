@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { executionActivity } from '../../../shared/execution-presentation';
 import type { ToolCallMessage } from '../../../types';
 import { projectSubrunDetailFooterPresentation } from './projectSubrunDetailFooterPresentation';
 
@@ -42,6 +43,7 @@ function parentMessage(
 describe('projectSubrunDetailFooterPresentation', () => {
   it('从 owner-admitted terminal result 投影真实模型与完成状态', () => {
     expect(projectSubrunDetailFooterPresentation({
+      activity: executionActivity('running'),
       parentMessage: parentMessage('success'),
       subrunId: 'subrun-child',
     })).toEqual({
@@ -52,17 +54,25 @@ describe('projectSubrunDetailFooterPresentation', () => {
 
   it('运行中与工具失败只消费父工具生命周期，不猜当前模型', () => {
     expect(projectSubrunDetailFooterPresentation({
+      activity: executionActivity('running'),
       parentMessage: parentMessage('loading'),
       subrunId: 'subrun-child',
     })).toEqual({ status: 'running' });
     expect(projectSubrunDetailFooterPresentation({
+      activity: executionActivity('running'),
       parentMessage: parentMessage('error'),
       subrunId: 'subrun-child',
     })).toEqual({ status: 'failed' });
   });
 
+  it('已暂停的未结算子任务显示暂停，已完成结果不被父暂停覆盖', () => {
+    expect(projectSubrunDetailFooterPresentation({ parentMessage: parentMessage('loading'), subrunId: 'subrun-child', activity: executionActivity('paused') })).toEqual({ status: 'paused' });
+    expect(projectSubrunDetailFooterPresentation({ parentMessage: parentMessage('success'), subrunId: 'subrun-child', activity: executionActivity('paused') }).status).toBe('completed');
+  });
+
   it('拒绝把另一条 child 的终态展示到当前详情', () => {
     expect(() => projectSubrunDetailFooterPresentation({
+      activity: executionActivity('running'),
       parentMessage: parentMessage('success'),
       subrunId: 'subrun-other',
     })).toThrow('[SUBRUN_DETAIL_RESULT_IDENTITY_CONFLICT]');

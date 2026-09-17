@@ -36,7 +36,7 @@
           class="deep-trace__row"
           :class="{
             'has-next': idx < subrunSteps.length - 1,
-            'is-active': status === 'loading' && idx === subrunSteps.length - 1
+            'is-active': activity.isExecuting && s.status === 'loading'
           }"
         >
           <div class="deep-trace__marker">
@@ -45,9 +45,13 @@
               <span class="deep-trace__dot" :class="`is-${s.status}`"></span>
             </div>
           </div>
-          <span class="deep-trace__tool" :title="resolveCompactStepTitle(s.title)">
+          <ExecutionProgressText
+            class="deep-trace__tool"
+            :active="activity.isExecuting && s.status === 'loading'"
+            :title="resolveCompactStepTitle(s.title)"
+          >
             {{ resolveCompactStepTitle(s.title) }}
-          </span>
+          </ExecutionProgressText>
           <span v-if="s.durationMs !== undefined" class="deep-trace__duration">{{ s.durationMs }}ms</span>
         </div>
       </template>
@@ -66,6 +70,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef } from 'vue';
+import type { ConversationToolMessageStatus } from '@app/schemas';
+import { ExecutionProgressText, useToolExecutionActivity } from '../../../shared/execution-presentation';
 import { useLocalization } from '@app/localization';
 import type { ToolLocalizedTextDescriptor } from '@linnya/plugin-host-contract/renderer/toolUi';
 import { useConversationLocalization } from '../../../ui/useConversationLocalization';
@@ -87,7 +93,7 @@ function readNonEmptyString(v: unknown): string | undefined {
 
 const props = withDefaults(
   defineProps<{
-    status: string;
+    status: ConversationToolMessageStatus;
     enabled: boolean;
     subrunTrace?: unknown;
     subrunTraceVersion?: number;
@@ -183,6 +189,7 @@ const { bucket: subrunBucket } = useAppendOnlySubrunTrace({
   },
 });
 
+const activity = useToolExecutionActivity(() => props.status);
 const lazyStatus = computed(() => lazyTrace.status.value);
 
 const stepCount = computed<number | undefined>(() => {
@@ -193,7 +200,11 @@ const stepCount = computed<number | undefined>(() => {
 const panelTitle = computed(() => {
   const tExecuting = readNonEmptyString(props.titleExecuting);
   const tCompleted = readNonEmptyString(props.titleCompleted);
-  if (props.status === 'loading') return tExecuting ?? conversationMessage('conversation.tool.subrunTrace.defaultExecuting');
+  if (props.status === 'loading') {
+    return activity.value.isExecuting
+      ? tExecuting ?? conversationMessage('conversation.tool.subrunTrace.defaultExecuting')
+      : conversationMessage(activity.value.labelKey);
+  }
   return tCompleted ?? conversationMessage('conversation.tool.subrunTrace.defaultCompleted');
 });
 

@@ -1,0 +1,53 @@
+/* 普通工具标题、Subrun 标题与步骤共用同一条扫光，尺寸与布局留给业务表面。 */
+.execution-progress-text--shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-text-placeholder) 0%,
+    var(--color-text-placeholder) 47%,
+    var(--color-text-primary) 50%,
+    var(--color-text-placeholder) 53%,
+    var(--color-text-placeholder) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: conversation-execution-shimmer 2.6s ease-in-out infinite;
+}
+
+.execution-progress-text--pulse {
+  animation: conversation-execution-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes conversation-execution-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes conversation-execution-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .execution-progress-text--shimmer {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: currentcolor;
+  }
+
+  .execution-progress-text--pulse {
+    animation: none;
+  }
+}

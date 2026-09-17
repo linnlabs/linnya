@@ -30,6 +30,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, provide } from 'vue';
+import { useRunExecutionActivity, resolveToolExecutionActivity, executionActivity, SUBRUN_EXECUTION_SCOPE_KEY } from '../../../shared/execution-presentation';
 
 import { ConversationMessageCanvas } from '../../../ui/messageCanvas';
 import { useAppendOnlyConversationVisualRows } from '../../../ui/conversationView/composables/useAppendOnlyConversationVisualRows';
@@ -55,6 +56,18 @@ const parentMessage = computed(() => resolveSubrunDetailParentMessage({
   parentToolCallId: props.scope.parentToolCallId,
 }));
 
+const parentRunActivity = useRunExecutionActivity(
+  () => props.scope.conversationId,
+  () => parentMessage.value?.metadata.run_id,
+);
+const activity = computed(() => parentMessage.value
+  ? resolveToolExecutionActivity(parentMessage.value.metadata.status, parentRunActivity.value)
+  : executionActivity('inactive'));
+provide(SUBRUN_EXECUTION_SCOPE_KEY, {
+  conversationId: props.scope.conversationId,
+  runId: () => props.scope.subrunId,
+  activity,
+});
 provide(CONVERSATION_RENDER_SCOPE_KEY, Object.freeze({ conversationId: props.scope.conversationId }));
 provide(MESSAGE_ENTRY_ANIMATION_PORT_KEY, Object.freeze({
   isPending: () => false,
@@ -99,7 +112,7 @@ const { visualRows } = useAppendOnlyConversationVisualRows({
 // 因此在这个非虚拟化边界发布新快照，避免 Vue 因数组引用未变而跳过 Canvas 更新。
 const canvasVisualRows = computed(() => [...visualRows.value]);
 const activeSubrunRunIds = computed<readonly string[]>(() => (
-  parentMessage.value?.metadata.status === 'loading' ? [props.scope.subrunId] : []
+  activity.value.isExecuting ? [props.scope.subrunId] : []
 ));
 
 async function loadTrace(): Promise<void> {

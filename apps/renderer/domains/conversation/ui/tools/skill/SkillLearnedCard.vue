@@ -8,11 +8,13 @@
       因此这里需要自行提供灰底、圆角与上下间距。
   -->
   <div class="skill-learned-card">
-    <span class="skill-learned-card__text">{{ text }}</span>
+    <ToolActivityIndicator effect="none" v-if="presentation.status === 'loading'" :running-label="text" compact />
+    <span v-else class="skill-learned-card__text">{{ text }}</span>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed } from 'vue';
 import { useConversationLocalization } from '../../useConversationLocalization';
 import type { ToolCardPresentation } from '../types';

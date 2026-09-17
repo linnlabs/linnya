@@ -10,6 +10,9 @@ export async function runProjectionSettlementReplay({
       '/apps/renderer/domains/conversation/store/assistantStore.ts'
     );
     const assistantStore = useAssistantStore();
+    const { useInteractiveRunStore } = await import(
+      '/apps/renderer/domains/conversation/features/interactive-run/index.ts'
+    );
     const conversationId = 'e2e-conversation-a';
     const runId = 'e2e-sanitized-projection-run';
     const executionId = 'e2e-sanitized-projection-execution';
@@ -18,12 +21,15 @@ export async function runProjectionSettlementReplay({
     const parentToolCallId = 'e2e-sanitized-subagent-call';
     const subrunId = 'e2e-sanitized-subrun';
     const childToolCallId = 'e2e-sanitized-knowledge-call';
+    const ordinaryToolCallId = 'e2e-sanitized-read-file-call';
     const now = Date.now();
     const scope = {
       conversation_id: conversationId,
       run_id: runId,
       execution_id: executionId,
     };
+    // 回放扮演 realtime reader：注册正式 transport 所有权，避免 detached observer 查询并不存在的 fixture run。
+    useInteractiveRunStore().beginStart(conversationId, new AbortController());
     const events = [
       {
         ...scope,
@@ -57,6 +63,19 @@ export async function runProjectionSettlementReplay({
         content: '第二段脱敏思考完成。',
         is_complete: true,
         metadata: { thought_started_at: now + 1, thought_completed_at: now + 2 },
+      },
+      {
+        ...scope,
+        type: 'tool_call_decision',
+        id: 'e2e-sanitized-read-file-decision',
+        timestamp: now + 2,
+        turn_id: rootTurnId,
+        tool_name: 'read_file',
+        tool_call_id: ordinaryToolCallId,
+        phase: 'start',
+        status: 'loading',
+        args: { path: 'workspace:/report.md' },
+        payload: { args: { path: 'workspace:/report.md' } },
       },
       {
         ...scope,
@@ -135,9 +154,14 @@ export async function runProjectionSettlementReplay({
     const trace = parent?.type === 'tool_calls'
       ? parent.metadata.subrunTrace?.[subrunId]
       : undefined;
+    const ordinary = messages.find(message => (
+      message.type === 'tool_calls'
+      && message.metadata.tool_call_id === ordinaryToolCallId
+    ));
     return {
       results,
       thoughts,
+      progressMessageIds: [ordinary?.id, parent?.id],
       parentStatus: parent?.type === 'tool_calls' ? parent.metadata.status : null,
       traceVersion: parent?.type === 'tool_calls' ? parent.metadata.subrunTraceVersion : null,
       traceKinds: trace?.events?.map(event => event.kind) ?? [],
@@ -146,6 +170,7 @@ export async function runProjectionSettlementReplay({
 
   if (
     !Array.isArray(replay?.results)
+    || replay.progressMessageIds.some(id => typeof id !== 'string')
     || replay.results.some(result => result?.success !== true)
     || JSON.stringify(replay.thoughts) !== JSON.stringify([
       {
@@ -202,6 +227,64 @@ export async function runProjectionSettlementReplay({
     );
   }
   await assertRendererHealthy(cdp, rendererErrors, '脱敏投影回放完成后');
+
+  // 工具结果仍未结算时，真实 Renderer 必须按同一 run 的控制态停掉标题与步骤动画。
+  for (const state of ['running', 'pausing', 'paused', 'awaiting_user', 'reconnecting', 'cancelling', 'running']) {
+    await evaluate(cdp, `(async () => {
+      const { useInteractiveRunStore } = await import(
+        '/apps/renderer/domains/conversation/features/interactive-run/index.ts'
+      );
+      useInteractiveRunStore().synchronizeSnapshot('e2e-conversation-a', {
+        conversationId: 'e2e-conversation-a', runId: 'e2e-sanitized-projection-run',
+        executionId: 'e2e-sanitized-projection-execution', turnId: 'e2e-sanitized-root-turn',
+        status: ${JSON.stringify(state)},
+        pause: ${state === 'paused' ? '{ settled: true, updatedAt: 1 }' : 'undefined'},
+      });
+    })()`);
+    await waitFor(() => evaluate(cdp, `(() => {
+      const titles = ${JSON.stringify(replay.progressMessageIds)}.map(id => document.querySelector(
+        '[data-conversation-message-id="' + id + '"] .tool-card__name-text'
+      ));
+      const expectedAnimation = ${JSON.stringify(state === 'running' ? 'conversation-execution-shimmer' : 'none')};
+      const titlesMatch = titles.every(title => title && getComputedStyle(title).animationName === expectedAnimation);
+      const headerLoading = document.querySelector('.tool-card__loading');
+      const control = document.querySelector('.ai-assistant-input .send-button');
+      const expectedAction = ${JSON.stringify(state === 'paused' || state === 'pausing' || state === 'awaiting_user' ? '恢复' : '暂停')};
+      const activeStep = document.querySelector('.deep-trace__row.is-active');
+      const spinner = document.querySelector('.tool-activity__spinner');
+      const waiting = document.querySelector('.conversation-visual-row__waiting-indicator');
+      return control?.getAttribute('aria-label') === expectedAction
+        && titlesMatch
+        && !document.querySelector('.ai-assistant-input .animate-spin')
+        && !headerLoading && !spinner && !activeStep
+        && ${state === 'running' ? 'true' : '!waiting'};
+    })()`), `未结算普通工具与 Subagent 的 ${state} 展示与控制态一致`);
+  }
+
+  // 系统减少动态效果时仍保留进行中的事实，但不能继续播放扫光。
+  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  try {
+    await waitFor(() => evaluate(cdp, `(() => {
+      const titles = document.querySelectorAll('.tool-card__name-text.execution-progress-text--shimmer');
+      return titles.length === 2 && Array.from(titles).every(title => getComputedStyle(title).animationName === 'none');
+    })()`), '减少动态效果设置停掉工具文字动画');
+  } finally {
+    await cdp.send('Emulation.setEmulatedMedia', { features: [] });
+  }
+
+  const ordinaryFailure = await evaluate(cdp, `(async () => {
+    const { useAssistantStore } = await import('/apps/renderer/domains/conversation/store/assistantStore.ts');
+    return useAssistantStore().handleSseEvent('e2e-conversation-a', {
+      type: 'tool_output', id: 'e2e-sanitized-read-file-output', timestamp: Date.now(),
+      conversation_id: 'e2e-conversation-a', turn_id: 'e2e-sanitized-root-turn',
+      run_id: 'e2e-sanitized-projection-run', execution_id: 'e2e-sanitized-projection-execution',
+      tool_name: 'read_file', tool_call_id: 'e2e-sanitized-read-file-call',
+      status: 'error', observation: '脱敏文件读取结束。', error: 'fixture file not found',
+    });
+  })()`);
+  if (ordinaryFailure?.success !== true) {
+    throw new Error(`普通工具终态未被接纳: ${JSON.stringify(ordinaryFailure)}`);
+  }
 
   const parentFailure = await evaluate(cdp, `(async () => {
     const { useAssistantStore } = await import(

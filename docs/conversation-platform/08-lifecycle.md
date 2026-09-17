@@ -132,7 +132,12 @@ run_status      → 更新权威业务状态
 transport_end   → 只释放同 executionId 的 controller
 ```
 
-`awaiting_user` **仍为 busy**：输入区保持"终止"，切换会话也不取消它。
+`awaiting_user` **仍为 busy**：输入区显示禁用的“恢复”，通过原表单提交；切换会话也不取消它。
+
+busy 只表达占用，不再作为执行动画依据。统一 [execution-presentation](../../apps/renderer/domains/conversation/shared/execution-presentation/README.md)
+从精确 conversation/run 的控制快照和消息事实派生展示，只有 running 允许执行动画。内部细分控制态只映射为“已暂停、进行中、AI 输出结束”三类用户状态，不显示暂停或重连的过渡文案；工具 loading 可以在可继续暂停后合法保留。普通工具、Subrun、思考、摘要与主画布活动归属遵守同一规则，禁止每个卡片单独解释 loading。工具 header 只在实际执行时显示 loading，其余状态留空。输入框只提供暂停、恢复、发送，收口期间禁用相应按钮。真实资源读取仍展示自己的局部请求状态。
+
+暂停/停止请求发出后，尚未消费的进度事件不能把控制态改回 running；正式结算事件与命令失败对账继续由 interactive-run 收敛。
 
 ### 3.3 resume 的判定窗口
 

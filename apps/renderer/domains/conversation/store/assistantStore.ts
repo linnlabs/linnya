@@ -9,6 +9,7 @@
 import { defineStore, storeToRefs } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import { useWorkspaceScopeStore } from '../../../shared/stores/workspaceScopeStore';
+import { resolveRunExecutionActivity } from '../shared/execution-presentation/functions/resolveExecutionActivity';
 import { useExecutionState } from './executionState';
 import { useConversationState } from './conversationState';
 import { useConversationSelectors } from './selectors';
@@ -62,15 +63,19 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
   const activeConversationInteractiveRun = computed(() =>
     interactiveRunStore.snapshotFor(conversationState.activeConversationId)
   );
-  const activeConversationIsStreaming = computed(
+  const activeConversationIsBusy = computed(
     () =>
       isInteractiveRunBusy(activeConversationInteractiveRun.value) ||
       annotationRunExecutionStore.isStreamingFor(conversationState.activeConversationId)
   );
+  const activeConversationIsStreaming = computed(() =>
+    resolveRunExecutionActivity(activeConversationInteractiveRun.value).isExecuting ||
+    annotationRunExecutionStore.isStreamingFor(conversationState.activeConversationId)
+  );
   const activeConversationRunIds = computed(() => {
     const runIds: string[] = [];
     const interactiveRun = activeConversationInteractiveRun.value;
-    if (isInteractiveRunBusy(interactiveRun) && interactiveRun?.runId) {
+    if (resolveRunExecutionActivity(interactiveRun).isExecuting && interactiveRun?.runId) {
       runIds.push(interactiveRun.runId);
     }
     if (
@@ -81,6 +86,7 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
     }
     return runIds;
   });
+  const globalIsBusy = computed(() => activeConversationIsBusy.value || executionState.isStreaming);
   const globalIsStreaming = computed(
     () => activeConversationIsStreaming.value || executionState.isStreaming
   );
@@ -322,6 +328,7 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
     // 聚合执行状态
     isLoading: globalIsLoading,
     isStreaming: globalIsStreaming,
+    isBusy: globalIsBusy,
     activeConversationIsStreaming,
     activeConversationRunIds,
     error: globalError,

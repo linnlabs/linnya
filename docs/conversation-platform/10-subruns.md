@@ -280,7 +280,7 @@ conversationId + parentMessageId + parentToolCallId + subrunId + description
 | `ready` | 已就绪 | 内容 |
 | `error` | 读取失败 | 明确错误，历史请求可重试 |
 
-只有真实 `loading/preparing` 或父工具事实仍为 loading 才显示加载。child thought 是否完成只看同 identity 的 trace 完成事实，不从 lazy 状态推断。
+只有真实 `loading/preparing` 请求显示资源加载。执行动画与状态文案统一消费 [execution-presentation](../../apps/renderer/domains/conversation/shared/execution-presentation/README.md)：父工具 loading 仅表示未结算，必须同时匹配所属 run 正在执行。标题、步骤、完整 child 消息与详情底栏共享该规则；每个已结算步骤保留自己的终态。child thought 是否完成只看同 identity 的 trace 完成事实，不从 lazy 或暂停状态推断。
 
 历史 API 必须同时按 `conversation_id + parent_tool_call_id + subrun_id` 查询，禁止先读取全部兄弟再由 Renderer 丢弃。取消收尾只自动重读曾请求过的 trace；刷新期保留旧快照，新 bucket 通过 admission 后才原子替换。
 

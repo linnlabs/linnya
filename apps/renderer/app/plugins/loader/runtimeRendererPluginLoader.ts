@@ -35,6 +35,7 @@ const requiredPluginSdkHostModuleIds = [
   '@plugin/renderer/referenceRuntime',
   '@plugin/renderer/settingsContribution',
   '@plugin/renderer/structuredContextRequirementPort',
+  '@plugin/renderer/executionPresentation',
   '@plugin/renderer/subrunToolUi',
   '@plugin/renderer/textMeasurement',
   '@plugin/renderer/toolRefreshPort',

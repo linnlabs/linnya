@@ -878,8 +878,9 @@ async function runSubrunDetailNavigation(
         }),
         hasInput: Boolean(document.querySelector('.ai-assistant-input')),
         hasReadOnlyFooter: Boolean(document.querySelector('.subrun-detail-footer .conversation-footer-surface')),
-        hasTerminalStatus: document.querySelector('.subrun-detail-footer')?.textContent
-          ?.includes('子任务已完成') === true,
+        hasTerminalStatus: document.querySelector('.subrun-detail-footer__surface')
+          ?.getAttribute('data-status') === 'completed'
+          && document.querySelector('.subrun-detail-footer__status')?.textContent?.trim() === 'AI 输出结束',
         hasModel: document.querySelector('.subrun-detail-footer')?.textContent
           ?.includes('scripted-subagent-model') === true,
         hasFooterReturn: document.querySelector('.subrun-detail-footer__back') instanceof HTMLButtonElement,
@@ -1739,6 +1740,10 @@ async function run() {
 
     cdp.close();
     console.log('[conversation-navigation-e2e] A/B 切换、新草稿与返回历史会话通过，renderer 无异常。');
+  } catch (error) {
+    // 清理阶段也有独立门禁；先保留场景失败的原始上下文，避免进程退出异常遮住 UI 回归。
+    console.error('[conversation-navigation-e2e] 场景执行失败:', error);
+    throw error;
   } finally {
     await cleanup();
     try {

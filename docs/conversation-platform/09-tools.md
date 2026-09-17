@@ -64,6 +64,8 @@ schema 强制两者一致，非法组合直接 parse 失败：
 
 状态**只在 tool metadata**，不存在顶层 message status（[INV-15](./00-invariants.md#inv-15--消息状态只能表达一次)）。
 
+工具 `loading` 仅描述未结算事实。普通卡片和插件卡片的执行提示统一使用 Conversation [execution-presentation](../../apps/renderer/domains/conversation/shared/execution-presentation/README.md)，插件通过 `@plugin/renderer/executionPresentation` 引用公共 indicator。业务 projector 不接收控制态、不改写 durable status；暂停只改变派生展示。
+
 ---
 
 ## 4. 完整结算（[INV-25](./00-invariants.md#inv-25--工具-batch-必须完整结算)）

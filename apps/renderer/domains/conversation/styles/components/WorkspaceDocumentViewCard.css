@@ -6,30 +6,6 @@
   padding: 0 10.5px 10.5px 10.5px;
 }
 
-.workspace-document-card .loading-state {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  padding: 12px;
-}
-
-.workspace-document-card .loading-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-light);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: workspace-document-card-spin 1s linear infinite;
-}
-
-@keyframes workspace-document-card-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .workspace-document-card .content-container {
   display: flex;
   flex-direction: column;

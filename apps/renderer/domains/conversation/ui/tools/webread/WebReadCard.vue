@@ -8,10 +8,7 @@
 <template>
   <div class="web-read-card">
     <!-- 加载中 -->
-    <div v-if="status === 'loading'" class="wr-state">
-      <div class="wr-spinner"></div>
-      <span>{{ conversationMessage('conversation.tool.webRead.loading') }}</span>
-    </div>
+    <ToolActivityIndicator v-if="status === 'loading'" :running-label="conversationMessage('conversation.tool.webRead.loading')" />
 
     <!-- 错误 -->
     <div v-else-if="status === 'error'" class="wr-state wr-state--error">
@@ -53,6 +50,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed } from 'vue';
 import { openExternalUrl } from '../../../../../shared/utils/openExternalUrl';
 import { useConversationLocalization } from '../../useConversationLocalization';

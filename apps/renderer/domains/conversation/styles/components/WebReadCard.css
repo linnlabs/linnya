@@ -15,21 +15,6 @@
   color: inherit;
 }
 
-.web-read-card .wr-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-light);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: web-read-card-spin 1s linear infinite;
-}
-
-@keyframes web-read-card-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .web-read-card .wr-content {
   display: flex;
   flex-direction: column;

@@ -6,7 +6,7 @@
       <div class="summary-icon">
         <!-- 加载状态：显示涟漪加载动画 -->
         <RippleLoadingIcon
-          v-if="summaryStatus === 'summarizing'"
+          v-if="isSummarizing"
           :color="'var(--color-info)'"
           :title="conversationMessage('conversation.summary.title.summarizing')"
         />
@@ -50,6 +50,7 @@
 import { computed } from 'vue';
 import { RippleLoadingIcon } from '@linnya/renderer-ui/icons';
 import { OkIcon } from '@linnya/renderer-ui/icons';
+import { useMessageExecutionActivity } from '../../shared/execution-presentation';
 import { useConversationLocalization } from '../useConversationLocalization';
 import type { BaseMessage } from '../../types';
 
@@ -59,6 +60,8 @@ interface Props {
 
 const props = defineProps<Props>();
 const { currentLocale, conversationMessage } = useConversationLocalization();
+const activity = useMessageExecutionActivity(() => props.message.metadata.run_id);
+const isSummarizing = computed(() => summaryStatus.value === 'summarizing' && activity.value.isExecuting);
 const summaryStatus = computed(() => {
   return props.message.type === 'history_summary'
     ? 'completed' as const
@@ -67,21 +70,18 @@ const summaryStatus = computed(() => {
 
 // 🔥 根据状态显示固定文本，从设计上杜绝自定义文本
 const displayText = computed(() => {
-  switch (summaryStatus.value) {
-    case 'summarizing':
-      return conversationMessage('conversation.summary.text.summarizing');
-    case 'completed':
-      return conversationMessage('conversation.summary.text.completed');
-    case 'error':
-      return conversationMessage('conversation.summary.text.error');
-  }
+  return conversationMessage(
+    summaryStatus.value === 'summarizing' && !isSummarizing.value
+      ? activity.value.labelKey
+      : `conversation.summary.text.${summaryStatus.value}`
+  );
 });
 
 // CSS类计算
 const summaryClasses = computed(() => [
   `summary-status-${summaryStatus.value}`,
   {
-    'is-loading': summaryStatus.value === 'summarizing',
+    'is-loading': isSummarizing.value,
     'is-completed': summaryStatus.value === 'completed',
     'is-error': summaryStatus.value === 'error'
   }

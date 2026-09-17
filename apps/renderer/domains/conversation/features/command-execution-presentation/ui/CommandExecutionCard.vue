@@ -15,9 +15,6 @@
       <pre v-else-if="data.observation" class="command-execution-card__output">{{
         data.observation
       }}</pre>
-      <div v-else-if="data.state === 'starting'" class="command-execution-card__empty">
-        {{ conversationMessage('conversation.tool.command.starting') }}
-      </div>
 
       <div
         v-if="
@@ -48,7 +45,8 @@
 
       <div class="command-execution-card__footer">
         <div class="command-execution-card__footer-left">
-          <span class="command-execution-card__status" :class="`is-${data.state}`">
+          <ToolActivityIndicator v-if="presentation.status === 'loading'" compact />
+          <span v-else class="command-execution-card__status" :class="`is-${data.state}`">
             {{ footerStatusText }}
           </span>
           <button
@@ -129,6 +127,7 @@ import {
   submitProtectedInputFromCurrentCard,
 } from '../orchestration/useCommandCardControl';
 import { applyCommandCardSettlement } from '../functions/applyCommandCardSettlement';
+import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import './CommandExecutionCard.css';
 
 const props = defineProps<{

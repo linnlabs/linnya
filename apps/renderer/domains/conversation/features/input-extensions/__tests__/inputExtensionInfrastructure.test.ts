@@ -64,8 +64,10 @@ describe('conversation input extension infrastructure', () => {
   it('空注册表保持普通 chat 执行态和取消语义不变', () => {
     const chatLoading = ref(false);
     const chatStreaming = ref(false);
+    const chatBusy = ref(false);
     const cancelChat = vi.fn();
     const execution = useConversationInputExecution({
+      isBusy: () => chatBusy.value,
       isLoading: () => chatLoading.value,
       isStreaming: () => chatStreaming.value,
       cancel: cancelChat,
@@ -73,6 +75,11 @@ describe('conversation input extension infrastructure', () => {
 
     expect(execution.activeExtension.value).toBeNull();
     expect(execution.isLoading.value).toBe(false);
+    expect(execution.isStreaming.value).toBe(false);
+
+    // 等待用户等控制状态仍阻止重复发起，但不触发执行动画。
+    chatBusy.value = true;
+    expect(execution.isBusy.value).toBe(true);
     expect(execution.isStreaming.value).toBe(false);
 
     chatLoading.value = true;
@@ -92,6 +99,7 @@ describe('conversation input extension infrastructure', () => {
 
     const cancelChat = vi.fn();
     const execution = useConversationInputExecution({
+      isBusy: () => false,
       isLoading: () => false,
       isStreaming: () => false,
       cancel: cancelChat,

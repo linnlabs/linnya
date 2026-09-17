@@ -20,7 +20,7 @@ export interface UseRegistryToolUiParams {
   toolArgs: ComputedRef<Record<string, unknown>>;
   toolResult: ComputedRef<unknown>;
   toolPresentation: ComputedRef<ToolCardPresentation | undefined>;
-  isLoading: ComputedRef<boolean>;
+  isExecuting: ComputedRef<boolean>;
   isKnowledgeSearchTool: ComputedRef<boolean>;
   isCollapsed: Ref<boolean>;
   conversationMessage: ConversationMessageResolver;
@@ -55,7 +55,7 @@ export function useRegistryToolUi(params: UseRegistryToolUiParams): RegistryTool
     toolArgs,
     toolResult,
     toolPresentation,
-    isLoading,
+    isExecuting,
     isKnowledgeSearchTool,
     isCollapsed,
     conversationMessage,
@@ -76,7 +76,7 @@ export function useRegistryToolUi(params: UseRegistryToolUiParams): RegistryTool
 
   const rawRegistryTitle = computed<unknown | null>(() => {
     // UX：知识库搜索执行中，header 固定文案，避免与内容区 trace 重复
-    if (isKnowledgeSearchTool.value && isLoading.value) {
+    if (isKnowledgeSearchTool.value && isExecuting.value) {
       return conversationMessage('conversation.tool.registry.knowledgeSearching');
     }
 

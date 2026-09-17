@@ -5,30 +5,6 @@
   padding: 4px 7px 7px;
 }
 
-.sharedmemory-doc-list-card .loading-state {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  padding: 8px 0;
-}
-
-.sharedmemory-doc-list-card .loading-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-light);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: sharedmemory-doc-list-card-spin 1s linear infinite;
-}
-
-@keyframes sharedmemory-doc-list-card-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .sharedmemory-doc-list-card .content-container {
   display: flex;
   flex-direction: column;

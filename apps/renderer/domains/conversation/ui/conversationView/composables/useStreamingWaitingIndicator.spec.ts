@@ -23,6 +23,7 @@ type WaitingIndicator = ReturnType<typeof useStreamingWaitingIndicator>;
 function mountWaitingIndicatorHarness(options?: {
   readonly messages?: BaseMessage[];
   readonly isStreaming?: boolean;
+  readonly activeRunIds?: readonly string[];
 }) {
   const messages = shallowRef<BaseMessage[]>(
     options?.messages ?? [createTestUserMessage()],
@@ -35,6 +36,7 @@ function mountWaitingIndicatorHarness(options?: {
       indicatorHolder.current = useStreamingWaitingIndicator({
         messages: computed(() => messages.value),
         isStreaming: computed(() => isStreaming.value),
+        activeRunIds: computed(() => options?.activeRunIds ?? ['run-current']),
       });
       return () => h('div');
     },
@@ -92,7 +94,7 @@ describe('useStreamingWaitingIndicator', () => {
   it('消息自带 loading 结束后重新计时，不会立即闪出通用等待图标', async () => {
     const loadingTool = createTestToolMessage({
       id: 'tool-waiting',
-      metadata: { status: 'loading' },
+      metadata: { status: 'loading', run_id: 'run-current' },
     });
     const harness = mountWaitingIndicatorHarness({
       messages: [loadingTool],
@@ -110,6 +112,7 @@ describe('useStreamingWaitingIndicator', () => {
       timestamp: loadingTool.timestamp,
       metadata: {
         status: 'success',
+        run_id: 'run-current',
         data: {},
       },
     })];
@@ -121,4 +124,16 @@ describe('useStreamingWaitingIndicator', () => {
     await vi.advanceTimersByTimeAsync(1_000);
     expect(harness.indicator.isWaitingIndicatorVisible.value).toBe(true);
   });
+  it('旧 run 未结算的工具不会压住新 run 的通用等待提示', async () => {
+    const harness = mountWaitingIndicatorHarness({
+      isStreaming: true,
+      messages: [createTestToolMessage({
+        metadata: { status: 'loading', run_id: 'run-paused', tool_name: 'generate_image' },
+      })],
+    });
+    mountedApps.push(harness.app);
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(harness.indicator.isWaitingIndicatorVisible.value).toBe(true);
+  });
+
 });

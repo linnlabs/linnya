@@ -35,3 +35,11 @@ export interface InteractiveRunSnapshot {
   pause?: { settled: boolean; updatedAt: number; reason?: string };
   error?: string;
 }
+
+/** 输入区只暴露这三种动作，控制收口通过禁用表达，不创建 waiting/cancel 按钮。 */
+export type ComposerRunAction = 'send' | 'pause' | 'resume';
+
+export interface ComposerRunControl {
+  readonly action: ComposerRunAction;
+  readonly disabled: boolean;
+}

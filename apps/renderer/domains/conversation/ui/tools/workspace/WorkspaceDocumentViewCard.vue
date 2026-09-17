@@ -1,10 +1,7 @@
 <template>
   <div class="workspace-document-card">
     <!-- 状态：加载中 -->
-    <div v-if="status === 'loading'" class="loading-state">
-      <div class="loading-spinner"></div>
-      <span>{{ conversationMessage('conversation.tool.workspace.document.readLoading') }}</span>
-    </div>
+    <ToolActivityIndicator v-if="status === 'loading'" :running-label="conversationMessage('conversation.tool.workspace.document.readLoading')" />
 
     <!-- 状态：成功 -->
     <div v-else-if="status === 'success' && snapshot && documentPresentation" class="content-container">
@@ -66,6 +63,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed } from 'vue';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
 import { useDocumentTypeByNodeType } from '@/app/plugins/composables';

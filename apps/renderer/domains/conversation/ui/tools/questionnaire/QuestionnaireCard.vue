@@ -7,9 +7,7 @@
   -->
   <div class="ask-questions-card questionnaire-renderer">
     <!-- 加载占位 -->
-    <div v-if="isLoading" class="loading-state">
-      <span class="loading-text">{{ conversationMessage('conversation.tool.askQuestions.loading') }}</span>
-    </div>
+    <ToolActivityIndicator v-if="hasPendingPlaceholder" class="questionnaire-pending" effect="pulse" :running-label="conversationMessage('conversation.tool.askQuestions.loading')" />
 
     <!-- 真实内容区域 -->
     <template v-else>
@@ -68,6 +66,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed, onMounted, onUnmounted } from 'vue';
 import QuestionActions from './components/QuestionActions.vue';
 import QuestionItem from './components/QuestionItem.vue';
@@ -116,8 +115,8 @@ const hasContent = computed(() => {
   );
 });
 
-const isLoading = computed(() => {
-  // 仅在执行中且完全无内容时显示加载态
+const hasPendingPlaceholder = computed(() => {
+  // 未结算且没有内容时保留占位；执行/暂停文案统一由活动展示决定。
   return props.presentation.status === 'loading' && !hasContent.value;
 });
 

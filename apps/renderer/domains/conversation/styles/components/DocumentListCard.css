@@ -5,30 +5,6 @@
   padding: 4px 7px 7px;
 }
 
-.document-list-card .loading-state {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  padding: 8px 0;
-}
-
-.document-list-card .loading-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-light);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: document-list-card-spin 1s linear infinite;
-}
-
-@keyframes document-list-card-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .document-list-card .content-container {
   display: flex;
   flex-direction: column;

@@ -3,6 +3,7 @@ import {
   SubagentResultSchema,
 } from '@app/schemas';
 
+import { resolveToolExecutionActivity, type ExecutionActivity } from '../../../shared/execution-presentation';
 import type { ToolCallMessage } from '../../../types';
 import type { SubrunDetailFooterPresentation } from '../definitions/subrunDetail';
 
@@ -13,12 +14,13 @@ import type { SubrunDetailFooterPresentation } from '../definitions/subrunDetail
 export function projectSubrunDetailFooterPresentation(params: {
   readonly parentMessage: ToolCallMessage;
   readonly subrunId: string;
+  readonly activity: ExecutionActivity;
 }): SubrunDetailFooterPresentation {
   const { parentMessage } = params;
   SubagentArgsSchema.parse(parentMessage.metadata.args);
 
   if (parentMessage.metadata.status === 'loading') {
-    return { status: 'running' };
+    return { status: resolveToolExecutionActivity('loading', params.activity).state };
   }
   if (parentMessage.metadata.status === 'error') {
     return { status: 'failed' };

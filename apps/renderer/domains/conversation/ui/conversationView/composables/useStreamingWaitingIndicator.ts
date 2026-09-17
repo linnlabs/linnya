@@ -1,5 +1,6 @@
 import { computed, onUnmounted, ref, watch } from 'vue';
 import type { ComputedRef } from 'vue';
+import { isVisualTurnOwnedByActiveRun } from '../../messageCanvas/functions/conversationRunRendering';
 import type { BaseMessage } from '../../../types';
 
 /**
@@ -16,6 +17,7 @@ import type { BaseMessage } from '../../../types';
 export function useStreamingWaitingIndicator(params: {
   messages: ComputedRef<BaseMessage[]>;
   isStreaming: ComputedRef<boolean>;
+  activeRunIds: ComputedRef<readonly string[]>;
 }) {
   const { messages, isStreaming } = params;
 
@@ -30,7 +32,10 @@ export function useStreamingWaitingIndicator(params: {
   };
 
   const hasOwnLoadingState = computed(() => {
-    const list = messages.value;
+    // 暂停的历史工具仍可能未结算；它不能占用另一轮 run 的等待提示。
+    const list = messages.value.filter(message =>
+      isVisualTurnOwnedByActiveRun([message], params.activeRunIds.value)
+    );
     if (list.length === 0) return false;
 
     // ✅ 简化且更符合直觉的规则：

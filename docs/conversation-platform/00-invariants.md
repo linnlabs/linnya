@@ -207,7 +207,7 @@ SQLite `runs` / RunRegistryStore 保存 `parentRunId + status + currentNode + it
 
 ### INV-28 · Subrun lazy 状态不是运行状态
 
-`idle` 只表示历史 trace 尚未按需读取，不能展示为"正在加载"或"后台仍运行"。只有真实请求进入 `loading/preparing`，或父工具事实仍为 loading，才显示加载态。child thought 是否完成只看 trace 中同身份的完成事实。
+`idle` 只表示历史 trace 尚未按需读取，不能展示为"正在加载"或"后台仍运行"。只有真实请求进入 `loading/preparing` 才显示资源加载态。执行动画统一由 Conversation execution-presentation 派生：工具未结算且所属 run 正在执行才允许动画；暂停、等待用户、重连与停止收尾均静态展示。child thought 是否完成只看 trace 中同身份的完成事实，停止动画不伪造完成。
 
 <a id="inv-55-workflow-product"></a>
 

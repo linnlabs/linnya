@@ -1,9 +1,6 @@
 <template>
   <div class="tooloutput-read-card">
-    <div v-if="status === 'loading'" class="loading-state">
-      <div class="loading-spinner" />
-      <span>{{ conversationMessage('conversation.tool.toolOutput.loading') }}</span>
-    </div>
+    <ToolActivityIndicator v-if="status === 'loading'" :running-label="conversationMessage('conversation.tool.toolOutput.loading')" />
 
     <div v-else-if="status === 'success' && snapshot" class="content-container">
       <div class="header-meta">
@@ -28,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed } from 'vue';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
 import { useConversationLocalization } from '../../useConversationLocalization';

@@ -2,14 +2,14 @@
 
 该 feature 拥有 conversation 前台 Agent run 的控制状态，以及 `wait_user` 的一次性恢复身份。
 
-暂停与审批是不同控制操作。空草稿运行中显示暂停，已收口的暂停显示继续；有可发送内容时沿用
+暂停与审批是不同控制操作。空草稿运行中显示暂停，已收口的暂停显示恢复；有可发送内容时沿用
 正常发送，新消息接纳失败仍保留原暂停运行。继续只传 run / execution / updated-at 身份，不写
 用户消息。SSE 断开只释放订阅；状态查询必须能立即返回仍在执行的 run，不能等待它最终完成。
 暂停 SSE 是提示，正式继续凭证由精确 settlement 查询读取。异步查询只允许收敛发起它的 reader
 代次；旧 reader 收尾或迟到查询不得覆盖新的发送、继续或取消状态。
 
 - 状态按 `conversationId` 分区，切换对话只改变读取对象，不销毁后台 run。
-- `awaiting_user` 是非终态，输入区仍显示“终止”；SSE transport 结束不会把它改成 completed。
+- `awaiting_user` 是非终态，输入区显示禁用的“恢复”，用户须在原表单提交；SSE transport 结束不会把它改成 completed。
 - 只有同 conversation/run/execution 的 `run_status` 可以更新业务状态；`context_usage_snapshot` 与
   `run_execution_metrics` 只修订消息 read model，`transport_end` 只释放同 execution controller。
 - 恢复必须提交同一组 `runId + interactionId + toolCallId + checkpointRevision + resumeToken`。
@@ -18,6 +18,8 @@
 - `auxiliary/visibility=none` 事件不进入该状态机，标题等辅助 run 不拥有正文控制面。
 - transport 投影因 auxiliary/none 被拒绝时，请求调用方仍必须收到收尾通知；“是否投影消息”与“当前 reader 是否结束”是两个独立职责。
 - transport failure 必须先完成 reader teardown 和 controller 释放，再按捕获的 `conversationId + runId` 请求 Host settlement；仍 running/pending 时立即返回，已进入结算才等待 exact execution completion barrier。active/paused/awaiting-user/new execution/terminal/null 分支只收敛本 feature 的 control snapshot，不补造 RuntimeEvent。
+- 暂停/停止命令在途时，排队的 thought/tool 进度和 running 提示不能撤销控制意图；正式结算或请求失败对账才释放该状态。
+- busy 只负责占用与重复启动约束。动画和状态文案统一由 [执行活动展示](../../shared/execution-presentation/README.md) 派生，awaiting_user、pausing、paused、reconnecting、cancelling 均不代表正在生成。内部细分状态不直接展示，用户只看到暂停、进行中、AI 输出结束；输入框只保留暂停、恢复、发送。
 - store 只同步持有快照；网络请求和多步骤恢复流程放在 orchestration。
 - 错误提示属于产生它的 conversation snapshot。用户关闭横幅时只清除该会话的 `error`，保留 terminal run 身份；不得通过组件本地隐藏状态掩盖 store 中的错误，也不得清除后台会话的错误。横幅锚定 ConversationHost 表面，不参与历史滚动。
 - Renderer 持有当前 execution 的 realtime reader 时，Runtime `error` 先由消息投影器归一化为用户文案，再写入同一 conversation snapshot；interactive run 不重复解释错误码。CLI 等外部进程发起的 execution 没有当前 Renderer reader，其 durable error 仍供历史与审计读取，但不会凭数据库投影主动触发实时横幅。

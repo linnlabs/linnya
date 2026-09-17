@@ -25,31 +25,6 @@
   gap: 12px;
 }
 
-.image-renderer .loading-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid color-mix(in srgb, var(--color-white) 30%, transparent);
-  border-top-color: var(--image-renderer-accent);
-  border-radius: 50%;
-  animation: image-renderer-spin 1s linear infinite;
-}
-
-@keyframes image-renderer-spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.image-renderer .loading-title {
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  font-weight: normal;
-}
-
 .image-renderer .image-container {
   position: relative;
   display: inline-block;

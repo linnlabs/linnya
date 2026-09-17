@@ -6,30 +6,6 @@
   padding: 0 10.5px 10.5px 10.5px;
 }
 
-.tooloutput-read-card .loading-state {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  padding: 12px;
-}
-
-.tooloutput-read-card .loading-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-light);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: tooloutput-read-card-spin 1s linear infinite;
-}
-
-@keyframes tooloutput-read-card-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .tooloutput-read-card .content-container {
   display: flex;
   flex-direction: column;

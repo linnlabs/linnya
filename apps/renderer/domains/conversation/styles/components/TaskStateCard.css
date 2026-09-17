@@ -18,21 +18,6 @@
   color: inherit;
 }
 
-.taskstate-card .ts-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-light);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: taskstate-card-spin 1s linear infinite;
-}
-
-@keyframes taskstate-card-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .taskstate-card .ts-content {
   display: flex;
   flex-direction: column;

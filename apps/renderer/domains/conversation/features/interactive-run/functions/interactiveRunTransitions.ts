@@ -56,10 +56,13 @@ export function reduceInteractiveRunEvent(
     executionId: event.execution_id ?? current?.executionId,
   };
 
+  // 暂停/停止请求发出后，队列中的进度事件不能撤销控制意图；由正式结算或请求失败恢复。
+  const isSettlingControl = current?.status === 'pausing' || current?.status === 'cancelling';
+
   if (event.type === 'requires_user_interaction') {
     return {
       ...identity,
-      status: 'awaiting_user',
+      status: isSettlingControl ? current.status : 'awaiting_user',
       pendingInteraction: readPendingRunInteraction(event),
     };
   }
@@ -73,8 +76,11 @@ export function reduceInteractiveRunEvent(
   if (event.type === 'run_status') {
     if (event.status === 'awaiting_user') {
       return current?.pendingInteraction
-        ? { ...current, ...identity, status: 'awaiting_user' }
+        ? { ...current, ...identity, status: isSettlingControl ? current.status : 'awaiting_user' }
         : current;
+    }
+    if (isSettlingControl && (event.status === 'pending' || event.status === 'running')) {
+      return current;
     }
     if (event.status === 'pending' || event.status === 'running' || event.status === 'paused') {
       return {
@@ -95,7 +101,7 @@ export function reduceInteractiveRunEvent(
       error: event.status === 'failed' ? (event.reason_message ?? current?.error) : current?.error,
     };
   }
-  if (event.type === 'run_execution_metrics' || event.type === 'transport_end') return current;
+  if (isSettlingControl || event.type === 'run_execution_metrics' || event.type === 'transport_end') return current;
   return {
     ...identity,
     status: 'running',

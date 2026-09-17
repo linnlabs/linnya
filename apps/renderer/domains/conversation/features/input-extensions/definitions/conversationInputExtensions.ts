@@ -77,12 +77,14 @@ export interface HostConversationInputExtension {
 }
 
 export interface ConversationInputChatExecutionSource {
+  readonly isBusy: () => boolean;
   readonly isLoading: () => boolean;
   readonly isStreaming: () => boolean;
   readonly cancel: () => void;
 }
 
 export interface ResolvedConversationInputExecution {
+  readonly isBusy: boolean;
   readonly isLoading: boolean;
   readonly isStreaming: boolean;
   readonly cancel: () => void;

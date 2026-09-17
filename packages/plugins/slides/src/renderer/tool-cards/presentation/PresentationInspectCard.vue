@@ -1,9 +1,6 @@
 <template>
   <div class="presentation-card presentation-inspect-card">
-    <div v-if="presentation.status === 'loading'" class="loading-state">
-      <div class="loading-spinner" />
-      <span>正在检查演示文稿...</span>
-    </div>
+    <ToolActivityIndicator v-if="presentation.status === 'loading'" running-label="正在检查演示文稿..." />
 
     <div v-else-if="presentation.status === 'success'" class="content-container">
       <div class="meta-line">
@@ -40,6 +37,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '@plugin/renderer/executionPresentation';
 import { computed } from 'vue';
 import { getWorkspaceNavigationPort } from '@plugin/renderer/workspaceNavigation';
 import type { ToolCardPresentation } from '@linnya/plugin-host-contract/renderer/toolUi';

@@ -6,30 +6,6 @@
   color: var(--color-text-primary);
 }
 
-.ask-questions-card .loading-state {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 0;
-  font-style: italic;
-  color: var(--color-text-secondary);
-  animation: ask-questions-card-pulse 1.5s infinite;
-}
-
-@keyframes ask-questions-card-pulse {
-  0% {
-    opacity: 0.6;
-  }
-
-  50% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0.6;
-  }
-}
-
 .ask-questions-card .questions-container {
   display: flex;
   flex-direction: column;
@@ -70,4 +46,9 @@
   margin: 0;
   font-size: 12px;
   color: var(--color-text-secondary);
+}
+
+.ask-questions-card .questionnaire-pending {
+  padding: 8px 0;
+  font-style: italic;
 }

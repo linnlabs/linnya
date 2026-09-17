@@ -426,6 +426,7 @@ defineExpose({
 const { isWaitingSlotActive, isWaitingIndicatorVisible } = useStreamingWaitingIndicator({
   messages,
   isStreaming: conversationIsStreaming,
+  activeRunIds: computed(() => assistantStore.activeConversationRunIds),
 });
 const trailingStatus = computed(() => ({
   active: isWaitingSlotActive.value,

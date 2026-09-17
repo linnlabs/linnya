@@ -11,24 +11,6 @@
   padding: 6px 12px 10px 14px;
 }
 
-.agent-todo-card .loading-state {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  padding: 8px 0;
-}
-
-.agent-todo-card .loading-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-light);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: agent-todo-card-spin 1s linear infinite;
-}
-
 .agent-todo-card .error-state {
   display: flex;
   align-items: center;
@@ -239,8 +221,4 @@
   font-size: 11px;
   color: var(--color-text-tertiary);
   flex-shrink: 0;
-}
-
-@keyframes agent-todo-card-spin {
-  to { transform: rotate(360deg); }
 }

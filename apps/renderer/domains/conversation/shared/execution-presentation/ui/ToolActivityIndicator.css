@@ -1,0 +1,12 @@
+.tool-activity {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.tool-activity--compact {
+  padding: 0;
+  font-size: 12px;
+}

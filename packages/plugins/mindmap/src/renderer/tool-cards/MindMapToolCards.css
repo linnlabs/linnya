@@ -5,28 +5,6 @@
   padding: 4px 10px 10.5px 10.5px;
 }
 
-.mindmap-create-node-card .loading-state {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 10px 0;
-  font-size: 13px;
-  color: var(--color-text-secondary);
-}
-
-.mindmap-create-node-card .loading-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-light);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: mindmap-tool-card-spin 1s linear infinite;
-}
-
-@keyframes mindmap-tool-card-spin {
-  to { transform: rotate(360deg); }
-}
-
 .mindmap-create-node-card .content-container {
   display: flex;
   flex-direction: column;

@@ -79,6 +79,7 @@
           v-else-if="subrunDetailParentMessage && subrunDetailScope"
           :parent-message="subrunDetailParentMessage"
           :subrun-id="subrunDetailScope.subrunId"
+          :conversation-id="subrunDetailScope.conversationId"
         />
       </div>
 
@@ -237,6 +238,7 @@ provide(SUBRUN_DETAIL_NAVIGATION_PORT_KEY, subrunDetailNavigation.port);
 const contentPhase = useConversationContentPhaseSelector();
 const isHistoryReplayLoading = computed(() => isConversationHistoryPendingPhase(contentPhase.value));
 const inputExecution = useConversationInputExecution({
+  isBusy: () => assistantStore.isBusy,
   isLoading: () => assistantStore.isLoading,
   isStreaming: () => assistantStore.isStreaming,
   cancel: () => assistantStore.cancelCurrentStream(),

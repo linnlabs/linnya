@@ -1,4 +1,5 @@
 import type { ConversationMessageId } from '@app/schemas';
+import type { ExecutionActivityState } from '../../../shared/execution-presentation';
 import type { SubagentStatus } from '@app/schemas';
 import type { InjectionKey } from 'vue';
 
@@ -16,7 +17,7 @@ export interface SubrunDetailNavigationPort {
   close(): void;
 }
 
-export type SubrunDetailExecutionStatus = 'running' | SubagentStatus;
+export type SubrunDetailExecutionStatus = ExecutionActivityState | SubagentStatus;
 
 export interface SubrunDetailFooterPresentation {
   readonly status: SubrunDetailExecutionStatus;

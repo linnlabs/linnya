@@ -15,21 +15,6 @@
   color: inherit;
 }
 
-.web-search-card .ws-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-light);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: web-search-card-spin 1s linear infinite;
-}
-
-@keyframes web-search-card-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .web-search-card .ws-list {
   display: flex;
   flex-direction: column;

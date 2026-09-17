@@ -1,10 +1,10 @@
 <template>
-  <span
+  <ExecutionProgressText
     class="tool-card__name-text"
-    :class="{ 'tool-card__name-text--active': status === 'loading' }"
+    :active="activity.isExecuting"
   >
     {{ title }}
-  </span>
+  </ExecutionProgressText>
 </template>
 
 <script setup lang="ts">
@@ -12,6 +12,7 @@ import { computed } from 'vue';
 import type { ConversationToolMessageStatus } from '@app/schemas';
 import { useLocalization } from '@app/localization';
 
+import { ExecutionProgressText, useToolExecutionActivity } from '../../../shared/execution-presentation';
 import { useSubrunCompactStepTitle } from '../../subrun-trace';
 
 defineOptions({ inheritAttrs: false });
@@ -22,8 +23,9 @@ const props = defineProps<{
   readonly subrunTraceVersion?: number;
 }>();
 const { t: resolveLocalizedText } = useLocalization();
+const activity = useToolExecutionActivity(() => props.status);
 const projected = useSubrunCompactStepTitle({
-  enabled: () => true,
+  enabled: () => activity.value.isExecuting,
   status: () => props.status,
   subrunTrace: () => props.subrunTrace,
   subrunTraceVersion: () => props.subrunTraceVersion ?? 0,

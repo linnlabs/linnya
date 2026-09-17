@@ -278,9 +278,7 @@
       </div>
     </template>
 
-    <div v-else-if="props.presentation.status === 'loading'" class="loading-state">
-      <span class="loading-text">{{ slidesToolCardMessage('slides.plan.loading') }}</span>
-    </div>
+    <ToolActivityIndicator v-else-if="props.presentation.status === 'loading'" class="ppt-plan-pending" effect="pulse" :running-label="slidesToolCardMessage('slides.plan.loading')" />
 
     <div v-else-if="errorText" class="ppt-plan-card__error">{{ errorText }}</div>
 
@@ -291,6 +289,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '@plugin/renderer/executionPresentation';
 import { computed, nextTick, onBeforeUnmount, ref, type Component, type ComponentPublicInstance, type CSSProperties } from 'vue';
 import {
   ActionButtons,

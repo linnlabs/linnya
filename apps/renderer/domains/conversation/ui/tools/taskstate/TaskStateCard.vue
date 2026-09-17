@@ -1,10 +1,7 @@
 <template>
   <div class="taskstate-card">
     <!-- 加载中 -->
-    <div v-if="status === 'loading'" class="ts-state">
-      <div class="ts-spinner"></div>
-      <span>{{ loadingText }}</span>
-    </div>
+    <ToolActivityIndicator v-if="status === 'loading'" :running-label="loadingText" />
 
     <!-- 成功 -->
     <div v-else-if="status === 'success'" class="ts-content">
@@ -45,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed } from 'vue';
 import { useConversationLocalization } from '../../useConversationLocalization';
 import type { ToolCardPresentation } from '../types';

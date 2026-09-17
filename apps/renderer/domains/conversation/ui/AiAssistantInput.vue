@@ -66,9 +66,6 @@
           :active-agent-choice-aria-label="activeAgentChoiceAriaLabel"
           :primary-model-value="primaryModelValue"
           :model-select-options="modelSelectOptions"
-          :is-loading="isLoading"
-          :is-streaming="isStreaming"
-          :can-send="canSend"
           :primary-action="primaryAction"
           :is-primary-action-disabled="isPrimaryActionDisabled"
           :is-models-loading="isModelsLoading"
@@ -187,8 +184,8 @@ import {
   pauseInteractiveRun,
   continueInteractiveRun,
   useDetachedInteractiveRunObservation,
+  resolveComposerRunControl,
 } from '../features/interactive-run';
-import { resolveComposerRunAction } from '../features/interactive-run/functions/resolveComposerRunAction';
 
 const props = defineProps<{
   placeholder?: string;
@@ -243,6 +240,7 @@ const chatFlowOrchestrator = useChatFlowOrchestrator({
   },
 });
 const inputExecution = useConversationInputExecution({
+  isBusy: () => assistantStore.isBusy,
   isLoading: () => assistantStore.isLoading,
   isStreaming: () => assistantStore.isStreaming,
   cancel: () => assistantStore.cancelCurrentStream(),
@@ -388,7 +386,7 @@ const isInputDisabled = computed(
   () =>
     props.disabled === true ||
     isLoading.value ||
-    isStreaming.value ||
+    inputExecution.isBusy.value ||
     isSubmissionStarting.value ||
     isAgentChoiceUpdating.value
 );
@@ -437,8 +435,8 @@ const imageSubmitMessage = computed(() => {
 const canSend = computed(() => {
   return imageSubmitPreflight.value.ok && !isInputDisabled.value;
 });
-const primaryAction = computed(() =>
-  resolveComposerRunAction({
+const primaryControl = computed(() =>
+  resolveComposerRunControl({
     // 非空但尚未就绪的附件仍表示发送意图；禁用发送，不能误点成继续旧运行。
     hasDraft: imageSubmitPreflight.value.ok || imageSubmitPreflight.value.reason !== 'empty_input',
     run: activeInputExtension.value
@@ -447,10 +445,11 @@ const primaryAction = computed(() =>
     extensionStreaming: Boolean(activeInputExtension.value && isStreaming.value),
   })
 );
+const primaryAction = computed(() => primaryControl.value.action);
 const isPrimaryActionDisabled = computed(
   () =>
     props.disabled === true ||
-    primaryAction.value === 'waiting' ||
+    primaryControl.value.disabled ||
     (primaryAction.value === 'send' && !canSend.value)
 );
 
@@ -592,7 +591,7 @@ const handleSelectorInteractionChange = (value: boolean) => {
 const handleSubmit = async () => {
   if (isPrimaryActionDisabled.value) return;
   const conversationId = assistantStore.activeConversationId;
-  if (primaryAction.value === 'pause' || primaryAction.value === 'continue') {
+  if (primaryAction.value === 'pause' || primaryAction.value === 'resume') {
     if (!conversationId) return;
     try {
       if (primaryAction.value === 'pause') await pauseInteractiveRun(conversationId);
@@ -600,10 +599,6 @@ const handleSubmit = async () => {
     } catch (error) {
       console.error('[AiAssistantInput] 运行控制失败:', error);
     }
-    return;
-  }
-  if (primaryAction.value === 'cancel') {
-    inputExecution.cancel();
     return;
   }
 

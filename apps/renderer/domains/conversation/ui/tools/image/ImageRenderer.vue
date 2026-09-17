@@ -6,8 +6,7 @@
     -->
     <div v-if="status === 'loading'" class="image-placeholder">
       <div class="placeholder-content">
-        <div class="loading-spinner"></div>
-        <div class="loading-title">{{ conversationMessage('conversation.tool.image.loading') }}</div>
+        <ToolActivityIndicator :running-label="conversationMessage('conversation.tool.image.loading')" />
       </div>
     </div>
 
@@ -117,6 +116,7 @@
 </template>
 
 <script setup lang="ts">
+import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed, ref, onBeforeUnmount } from 'vue';
 import { ImagePreviewModal } from '@linnya/renderer-ui';
 import type { ImageGenerationPresentationImage } from './definitions/imageGenerationPresentation';
