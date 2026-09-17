@@ -1,4 +1,5 @@
 import type { ManualEditableTarget } from '../../manualEditing';
+import { SLIDES_MANUAL_FONT_SIZE_PT } from '@plugin/slides/shared/authoringEditing';
 import type { ElementPropertyOperation } from '../definitions/elementPropertyTypes';
 
 export function resolveVisualSizeAfterDimensionChange(
@@ -33,7 +34,7 @@ export function createTextStyleOperation(
   if (value.fontSizePt === undefined && value.color === undefined) return null;
   if (
     value.fontSizePt !== undefined
-    && (!Number.isFinite(value.fontSizePt) || value.fontSizePt < 1 || value.fontSizePt > 400)
+    && (!Number.isFinite(value.fontSizePt) || value.fontSizePt < SLIDES_MANUAL_FONT_SIZE_PT.min || value.fontSizePt > SLIDES_MANUAL_FONT_SIZE_PT.max)
   ) {
     return null;
   }

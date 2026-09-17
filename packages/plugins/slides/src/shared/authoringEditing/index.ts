@@ -20,6 +20,7 @@ export type {
   SlidesManualEditValidationFailureResult,
 } from './definitions/manualEditCommand';
 export { SLIDES_AUTHORING_KEY_PATTERN } from './definitions/authoringIdentity';
+export { SLIDES_MANUAL_FONT_SIZE_PT } from './definitions/textStyleLimits';
 export type {
   SlidesManualAtomicEdit,
   SlidesManualAtomicEditKind,

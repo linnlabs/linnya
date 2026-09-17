@@ -2,6 +2,7 @@ import {
   SLIDES_TEMPLATE_IMPORT_MAX_BYTES,
   type SlideSourceSpan,
   SLIDES_AUTHORING_KEY_PATTERN,
+  SLIDES_MANUAL_FONT_SIZE_PT,
   type SlidesManualEditCommand,
   type SlidesManualTargetKind,
   type SlidesIpcChannel,
@@ -267,8 +268,8 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
     const fontSizePt = payload.operation.fontSizePt === undefined
       ? undefined
       : readFiniteNumber(payload.operation.fontSizePt, 'operation.fontSizePt');
-    if (fontSizePt !== undefined && (fontSizePt < 1 || fontSizePt > 400)) {
-      throw new Error('operation.fontSizePt must be between 1 and 400.');
+    if (fontSizePt !== undefined && (fontSizePt < SLIDES_MANUAL_FONT_SIZE_PT.min || fontSizePt > SLIDES_MANUAL_FONT_SIZE_PT.max)) {
+      throw new Error(`operation.fontSizePt must be between ${SLIDES_MANUAL_FONT_SIZE_PT.min} and ${SLIDES_MANUAL_FONT_SIZE_PT.max}.`);
     }
     const color = payload.operation.color === undefined
       ? undefined

@@ -14,12 +14,17 @@
 
 .slides-element-property-toolbar__font {
   display: flex;
-  gap: var(--spacing-xs);
   align-items: center;
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
   white-space: nowrap;
 }
+.slides-element-font-menu {
+  position: absolute;
+  z-index: var(--linnya-ui-layer-floating-panel);
+  width: 88px;
+}
+.slides-element-font-menu__options { box-sizing: border-box; }
 .slides-element-property-controls { display: contents; }
 .slides-element-color-overlay {
   position: absolute;

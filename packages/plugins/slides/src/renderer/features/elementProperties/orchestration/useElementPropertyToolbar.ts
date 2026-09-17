@@ -27,12 +27,13 @@ export function useElementPropertyToolbar(options: {
     openPopover.value = null;
     if (returnFocus) options.dropdown.value?.closeAndFocus();
   }
-  async function toggle(kind: ElementPropertyPopover, event: MouseEvent): Promise<void> {
+  async function toggle(kind: ElementPropertyPopover, event: Event): Promise<void> {
     if (openPopover.value === kind) { close(); return; }
     options.dropdown.value?.open(event);
     openPopover.value = kind;
     await nextTick();
-    options.popoverElement.value?.focus({ preventScroll: true });
+    // 字号列表由共享 CustomSelect 将焦点交给当前选项；表单面板才聚焦容器。
+    if (kind !== 'fontSize') options.popoverElement.value?.focus({ preventScroll: true });
   }
   function handoffNumberInput(event: PointerEvent): void {
     const target = event.target;

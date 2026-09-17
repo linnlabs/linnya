@@ -23,7 +23,7 @@ Rules:
 - flattened descendants carry their editable Frame ancestors separately from their own `authoringRef`; a child remains independently editable while also participating in each ancestor Frame translation;
 - a RenderNode with `authoringEdit` must also carry `authoringRef`; the strict RenderModel codec rejects malformed or contradictory capability projections;
 - text replacement is accepted only when the author node still owns a string value; a rich run array cannot be overwritten through a crafted manual edit record;
-- text style accepts a finite `fontSizePt` from 1 through 400 and canonical `#RRGGBB` color values; omitted style fields retain their previous manual value;
+- text style accepts a finite `fontSizePt` from 1 through 400, including decimals, and canonical `#RRGGBB` color values; omitted style fields retain their previous manual value. `SLIDES_MANUAL_FONT_SIZE_PT` is the shared min/max definition consumed by Renderer inputs/presets, operation validation, IPC admission and manual-edit parsing; consumers must not maintain separate range literals;
 - visual size is a positive width/height pair in inches. Shape/Image size is applied after Yoga layout, so nearby Flex siblings keep their authored occupancy and do not reflow during this deliberately limited edit;
 - deletion is evaluated before Yoga. An atomic target removes only itself, while a Frame removes its complete author subtree. Every deletion record is exclusive and cannot retain translation, style, fill or size values;
 - Shape and Frame color operations replace the author fill/background with one solid color; the limited contract does not expose gradient-stop editing;

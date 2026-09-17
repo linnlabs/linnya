@@ -7,6 +7,7 @@ import type {
   SlidesManualVisualSize,
 } from '../definitions/manualEdits';
 import { isSlidesAuthoringKey } from './authoringIdentity';
+import { SLIDES_MANUAL_FONT_SIZE_PT } from '../definitions/textStyleLimits';
 
 export type SlidesManualEditsParseResult =
   | { readonly value: SlidesManualEdits }
@@ -105,7 +106,7 @@ function parseTargetEdit(
       return { error: `${path}.content 必须是字符串。` };
     }
     if (value.fontSizePt !== undefined && !isFontSize(value.fontSizePt)) {
-      return { error: `${path}.fontSizePt 必须是 1–400 pt 内的有限数字。` };
+      return { error: `${path}.fontSizePt 必须是 ${SLIDES_MANUAL_FONT_SIZE_PT.min}–${SLIDES_MANUAL_FONT_SIZE_PT.max} pt 内的有限数字。` };
     }
     if (value.color !== undefined && !isHexColor(value.color)) {
       return { error: `${path}.color 必须是 #RRGGBB。` };
@@ -289,7 +290,8 @@ function parseOptionalVisualSize(
 }
 
 function isFontSize(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 1 && value <= 400;
+  return typeof value === 'number' && Number.isFinite(value)
+    && value >= SLIDES_MANUAL_FONT_SIZE_PT.min && value <= SLIDES_MANUAL_FONT_SIZE_PT.max;
 }
 
 function isPositiveFiniteNumber(value: unknown): value is number {

@@ -19,21 +19,38 @@
         @keydown="handleToolbarKeydown"
       >
         <ToolbarGroup v-if="canEditTextStyle">
-          <label class="slides-element-property-toolbar__font">
-            <span>{{ message('slides.elementProperties.fontSize') }}</span>
+          <div class="slides-element-property-toolbar__font">
             <CustomNumberInput
               v-model="fontSize"
               variant="panel"
-              :input-width="52"
-              min="1"
-              max="400"
-              step="1"
+              :input-width="44"
+              :aria-label="message('slides.elementProperties.fontSize')"
+              :title="`${message('slides.elementProperties.fontSize')} (${SLIDES_MANUAL_FONT_SIZE_PT.min}–${SLIDES_MANUAL_FONT_SIZE_PT.max} pt)`"
+              :min="SLIDES_MANUAL_FONT_SIZE_PT.min"
+              :max="SLIDES_MANUAL_FONT_SIZE_PT.max"
+              step="any"
               :disabled="busy"
               @change="commitNumber('fontSize')"
               @keydown.enter.prevent="commitNumber('fontSize')"
-              @keydown.esc.stop.prevent="cancelNumber('fontSize', $event)"
+              @keydown.alt.down.stop.prevent="toggle('fontSize', $event)"
+              @keydown.esc.stop.prevent="cancelNumber('fontSize', $event); close()"
             />
-          </label>
+            <ToolbarButton
+              data-property="fontSize"
+              :label="message('slides.elementProperties.fontSize')"
+              :active="openPopover === 'fontSize'"
+              :aria-expanded="openPopover === 'fontSize'"
+              aria-haspopup="listbox"
+              :disabled="busy"
+              @click="toggle('fontSize', $event)"
+              @keydown.down.stop.prevent="toggle('fontSize', $event)"
+            >
+              <ChevronIcon
+                direction="down"
+                class="slides-element-property-toolbar__icon"
+              />
+            </ToolbarButton>
+          </div>
           <ToolbarColorButton
             kind="text"
             data-property="text"
@@ -87,11 +104,34 @@
       </FloatingToolbar>
     </template>
     <template #content>
+      <div
+        v-if="openPopover === 'fontSize' && position !== null"
+        ref="fontMenu"
+        class="slides-element-font-menu"
+        :style="popoverStyle"
+        @pointerdown.stop
+        @keydown.stop
+        @keydown.esc.stop.prevent="close(true)"
+      >
+        <!-- 整个工具条都属于内部点击，避免旧列表关闭刚打开的相邻属性；焦点归还由外层 BaseDropdown 负责。 -->
+        <CustomSelect
+          :model-value="target.textEditing?.fontSizePt"
+          :options="ELEMENT_FONT_SIZE_OPTIONS"
+          manual-mode
+          :external-trigger-ref="toolbar?.element ?? null"
+          :trigger-aria-label="message('slides.elementProperties.fontSize')"
+          :options-motion-direction="popoverDirection"
+          :options-max-height="`${Math.min(240, popoverPosition?.maxHeight ?? anchor.viewport.height - 16)}px`"
+          :class-names="{ options: 'slides-element-font-menu__options' }"
+          @update:model-value="selectFontSize"
+          @close="close()"
+        />
+      </div>
       <DropdownPanel
         :id="popoverId"
         ref="popover"
-        :show="openPopover !== null && position !== null"
-        :direction="popoverPosition && position && popoverPosition.top < position.top ? 'up' : 'down'"
+        :show="openPopover !== null && openPopover !== 'fontSize' && position !== null"
+        :direction="popoverDirection"
         class="slides-element-property-popover"
         :style="popoverStyle"
         role="group"
@@ -156,11 +196,13 @@
 
 <script setup lang="ts">
 import { computed, ref, toRef, useId, type CSSProperties } from 'vue';
-import { BaseDropdown, DropdownPanel, type DropdownActions, CustomNumberInput, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from '@linnya/renderer-ui';
-import { DeleteIcon, ResizeIcon } from '@linnya/renderer-ui/icons';
+import { BaseDropdown, CustomSelect, DropdownPanel, type DropdownActions, CustomNumberInput, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from '@linnya/renderer-ui';
+import { ChevronIcon, DeleteIcon, ResizeIcon } from '@linnya/renderer-ui/icons';
+import { SLIDES_MANUAL_FONT_SIZE_PT } from '@plugin/slides/shared/authoringEditing';
 import type { ManualEditableTarget } from '../../manualEditing';
 import type { ElementPropertyAnchor } from '../definitions/elementPropertyToolbar';
 import type { ElementPropertyOperation } from '../definitions/elementPropertyTypes';
+import { ELEMENT_FONT_SIZE_OPTIONS } from '../definitions/fontSizeOptions';
 import { useElementPropertyFields } from '../orchestration/useElementPropertyFields';
 import { useElementPropertyToolbar } from '../orchestration/useElementPropertyToolbar';
 import { useElementPropertyLocalization } from './useElementPropertyLocalization';
@@ -177,6 +219,7 @@ const { elementPropertyMessage: message } = useElementPropertyLocalization();
 const toolbar = ref<InstanceType<typeof FloatingToolbar> | null>(null);
 const dropdown = ref<DropdownActions | null>(null);
 const popover = ref<InstanceType<typeof DropdownPanel> | null>(null);
+const fontMenu = ref<HTMLDivElement | null>(null);
 const colorOverlay = ref<HTMLDivElement | null>(null);
 const colorControl = ref<InstanceType<typeof ElementColorControl> | null>(null);
 const popoverId = useId();
@@ -184,7 +227,7 @@ const { position, popoverPosition, openPopover, toggle, close, handleToolbarKeyd
   deleteSelected: () => emit('delete-selected'),
   dropdown,
   anchor: toRef(props, 'anchor'), hasHierarchy: toRef(props, 'hasHierarchy'),
-  toolbarElement: computed(() => toolbar.value?.element ?? null), popoverElement: computed(() => popover.value?.element ?? null),
+  toolbarElement: computed(() => toolbar.value?.element ?? null), popoverElement: computed(() => fontMenu.value ?? popover.value?.element ?? null),
   auxiliaryElement: colorOverlay,
 });
 const { fontSize, width, height, commitNumber, cancelNumber, submitTextColor, submitFillColor } = useElementPropertyFields({
@@ -196,6 +239,7 @@ const canEditSize = computed(() => props.target.capabilities.includes('set_visua
 const canDelete = computed(() => props.target.capabilities.includes('delete'));
 const currentTextColor = computed(() => props.target.textEditing?.color ?? '#000000');
 const currentFillColor = computed(() => props.target.fill?.kind === 'solid' ? props.target.fill.color : null);
+const popoverDirection = computed(() => popoverPosition.value && position.value && popoverPosition.value.top < position.value.top ? 'up' : 'down');
 const popoverStyle = computed<CSSProperties>(() => ({
   left: `${popoverPosition.value?.left ?? 0}px`, top: `${popoverPosition.value?.top ?? 0}px`,
   visibility: popoverPosition.value ? 'visible' : 'hidden',
@@ -204,6 +248,11 @@ const popoverStyle = computed<CSSProperties>(() => ({
 function selectColor(color: string): void {
   if (openPopover.value === 'text') submitTextColor(color);
   else if (openPopover.value === 'fill') submitFillColor(color);
+  close(true);
+}
+function selectFontSize(value: number): void {
+  fontSize.value = value;
+  commitNumber('fontSize');
   close(true);
 }
 function dismissPopover(): void {

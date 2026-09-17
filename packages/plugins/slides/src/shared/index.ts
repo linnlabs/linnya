@@ -251,6 +251,7 @@ export {
   isSlidesAuthoringKey,
   parseSlidesManualEdits,
   SLIDES_AUTHORING_KEY_PATTERN,
+  SLIDES_MANUAL_FONT_SIZE_PT,
 } from './authoringEditing';
 export type {
   SlidesAuthoringEditRef,

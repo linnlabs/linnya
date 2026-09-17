@@ -16,5 +16,5 @@ export interface ElementPropertyAnchor {
   readonly viewport: ElementPropertySize;
 }
 
-export type ElementPropertyPopover = 'text' | 'fill' | 'size';
+export type ElementPropertyPopover = 'fontSize' | 'text' | 'fill' | 'size';
 export type ElementPropertyNumberField = 'fontSize' | 'width' | 'height';
