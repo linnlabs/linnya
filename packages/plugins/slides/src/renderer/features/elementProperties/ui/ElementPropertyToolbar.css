@@ -25,6 +25,12 @@
   height: 28px;
   padding: 4px 22px 4px 6px;
   font-size: var(--font-size-xs);
+  border-color: transparent;
+  background-color: transparent;
+}
+/* 悬停箭头也激活整个字号框，键盘聚焦时保留清晰的输入边界。 */
+.slides-element-property-toolbar .slides-element-property-toolbar__font:is(:hover, :focus-within) .slides-element-property-toolbar__font-input:not(:disabled) {
+  border-color: var(--color-accent);
 }
 .slides-element-property-toolbar__font .slides-element-property-toolbar__font-trigger {
   position: absolute;
@@ -34,6 +40,18 @@
   min-width: 20px;
   height: 26px;
   padding: 2px;
+}
+.slides-element-property-toolbar__font-chevron {
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  transition: transform var(--transition-normal) ease-in-out;
+}
+.slides-element-property-toolbar__font-trigger[aria-expanded="true"] .slides-element-property-toolbar__font-chevron {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .slides-element-property-toolbar__font-chevron { transition: none; }
 }
 .slides-element-font-menu {
   position: absolute;

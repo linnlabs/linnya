@@ -49,7 +49,7 @@
             >
               <ChevronIcon
                 direction="down"
-                class="slides-element-property-toolbar__icon"
+                class="slides-element-property-toolbar__font-chevron"
               />
             </ToolbarButton>
           </div>
