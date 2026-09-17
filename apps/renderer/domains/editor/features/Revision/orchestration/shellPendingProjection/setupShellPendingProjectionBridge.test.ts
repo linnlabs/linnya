@@ -10,10 +10,10 @@ import type {
 } from '../../../RenderVirtualization';
 import { setupShellPendingProjectionBridge } from './setupShellPendingProjectionBridge';
 import { setFlag } from '../../../../ui/services/editorFeatureFlags';
-import { useRevisionStore } from '../../store/useRevisionStore';
-import type { PendingProjectionResult, RevisionStore } from '../../store/types';
+import { useRevisionStore } from '../../useRevisionStore';
+import type { PendingProjectionResult, RevisionStore } from '../../definitions/revision';
 
-vi.mock('../../store/useRevisionStore', () => ({
+vi.mock('../../useRevisionStore', () => ({
   useRevisionStore: vi.fn(),
 }));
 

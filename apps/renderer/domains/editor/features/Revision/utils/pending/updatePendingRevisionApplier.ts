@@ -18,7 +18,7 @@ import {
   resolvePendingMarkdownForSingleBlock,
 } from './pendingRevisionHelpers'
 import { linearizeRootBlock } from '../linearizeBlock'
-import { useRevisionStore } from '../../store/useRevisionStore'
+import { useRevisionStore } from '../../useRevisionStore'
 import { processCitationHydration } from './citationHydrationHelper'
 import {
   executePendingPlanToDocument,
@@ -61,26 +61,13 @@ export async function applyUpdatePendingRevision(
   // 1. 根据 blockId 找到块位置
   const blockPos = findRootBlockPosById(editor, blockId)
   if (blockPos === null) {
-    // 这里命中的通常是"幽灵 Pending Revision"
-    try {
-      const revisionStore = useRevisionStore(editor)
-      await revisionStore.clearBackendPendingForBlock(blockId)
-      console.warn(
-        `[applyUpdatePendingRevision] 检测到指向已删除块的 Pending Revision，已在后端清理: blockId=${blockId}`
-      )
-    } catch (e) {
-      console.warn(
-        '[applyUpdatePendingRevision] 清理后端幽灵 Pending Revision 失败:',
-        e
-      )
-    }
-
+    // 显示投影没有删除数据库事实的权限；缺块由装载/保存事务处理。
     return {
       id: parsed.id,
       success: false,
       operation: 'update',
       blockId,
-      reason: `未找到 blockId=${blockId} 对应的 rootBlock，可能已被删除；已尝试自动清理对应 Pending Revision 记录`,
+      reason: `未找到 blockId=${blockId} 对应的 rootBlock，可能已被删除`,
     }
   }
 

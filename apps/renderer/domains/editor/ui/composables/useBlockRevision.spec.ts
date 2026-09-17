@@ -2,11 +2,11 @@ import { computed, nextTick, ref } from 'vue'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import type { Editor } from '@tiptap/vue-3'
 import { useBlockRevision, type BlockRevisionProps } from './useBlockRevision'
-import type { BlockRevisionState, PendingProjectionResult, RevisionStore } from '../../features/Revision/store/useRevisionStore'
+import type { BlockRevisionState, PendingProjectionResult, RevisionStore } from '../../features/Revision/useRevisionStore'
 
 const useRevisionStoreMock = vi.fn()
 
-vi.mock('../../features/Revision/store/useRevisionStore', () => ({
+vi.mock('../../features/Revision/useRevisionStore', () => ({
   useRevisionStore: (editor: Editor) => useRevisionStoreMock(editor),
 }))
 
@@ -45,18 +45,15 @@ function createRevisionStoreMock(): RevisionStore {
     hasPendingRevision: vi.fn((blockId: string) => blockId === 'block-b'),
     acceptAllRevisions: vi.fn(async () => {}),
     rejectAllRevisions: vi.fn(async () => {}),
-    acceptAllRevisionsInDocument: vi.fn(async () => 'applied' as const),
-    rejectAllRevisionsInDocument: vi.fn(async () => 'applied' as const),
+    acceptAllRevisionsInDocument: vi.fn(async () => {}),
+    rejectAllRevisionsInDocument: vi.fn(async () => {}),
     acceptSingleRevision: vi.fn(async () => {}),
     rejectSingleRevision: vi.fn(async () => {}),
-    clearRevision: vi.fn(),
     clearAllRevisions: vi.fn(),
-    updateDiffStats: vi.fn(),
-    clearBackendPendingForBlock: vi.fn(async () => {}),
-    setWorkspacePendingRevisions: vi.fn(),
+    bindCommit: vi.fn(),
+    installPendingSnapshot: vi.fn(async () => {}),
+    readBaseline: () => { throw new Error('Not used in UI fixture'); },
     projectPendingRevisionsForBlocks: vi.fn(async () => emptyProjectionResult),
-    findRootBlockPos: vi.fn(() => null),
-    reconcileCanonicalWithDocument: vi.fn(),
   }
 }
 

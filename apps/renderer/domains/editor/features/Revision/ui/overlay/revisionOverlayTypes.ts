@@ -1,4 +1,4 @@
-import type { CanonicalPendingSession } from '../../store/types'
+import type { CanonicalPendingSession } from '../../definitions/revision'
 
 export interface RevisionOverlayRootBlockSnapshot {
   blockId: string

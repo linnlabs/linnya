@@ -20,6 +20,7 @@ describe('readMarkdownVfsContent', () => {
       );
       CREATE TABLE markdown_block_pending_revisions (
         id TEXT PRIMARY KEY,
+        revision INTEGER NOT NULL DEFAULT 1,
         document_node_id TEXT NOT NULL,
         target_block_id TEXT NOT NULL,
         new_markdown TEXT NOT NULL,

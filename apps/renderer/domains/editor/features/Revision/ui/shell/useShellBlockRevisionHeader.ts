@@ -8,7 +8,7 @@ import {
 import { findRootBlockOuterById } from '../../../../ui/composables/rootBlockViewportSnapshot'
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization'
 import type { RenderVirtualizationEngine } from '../../../RenderVirtualization'
-import { useRevisionStore, type RevisionStore } from '../../store/useRevisionStore'
+import { useRevisionStore, type RevisionStore } from '../../useRevisionStore'
 import {
   clearShellRevisionHeader,
   findShellRevisionHeader,

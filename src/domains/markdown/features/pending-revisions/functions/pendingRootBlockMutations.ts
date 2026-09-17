@@ -3,64 +3,31 @@ import type {
   ProseMirrorJsonNode,
 } from '../../normalization/runtime';
 
-interface PendingRootBlockPlacement {
-  readonly targetBlockId: string;
-  readonly metadataJson: string | null;
-}
-
 function readRootBlockId(node: ProseMirrorJsonNode): string | null {
   return node.type === 'rootBlock' && typeof node.attrs?.id === 'string'
     ? node.attrs.id
     : null;
 }
 
-function isInsertAfterAnchor(metadataJson: string | null, anchorBlockId: string): boolean {
-  if (!metadataJson) return false;
-  try {
-    const metadata: unknown = JSON.parse(metadataJson);
-    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false;
-    const record = metadata as Record<string, unknown>;
-    return record.operation === 'insert' && record.anchorBlockId === anchorBlockId;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * 为工具 insert 创建空 rootBlock，并追加到同一锚点既有 insert 占位块之后。
- * 该顺序是 pending 模型的一部分，不能由数组 splice 的偶然行为决定。
- */
+/** 按写入计划的前驱创建占位块；null 表示文首。块顺序由计划唯一决定。 */
 export function insertPendingRootBlock(input: {
   readonly documentId: string;
   readonly document: MarkdownDocJson;
-  readonly anchorBlockId: string;
+  readonly anchorBlockId: string | null;
   readonly newBlockId: string;
-  readonly existingPendings: readonly PendingRootBlockPlacement[];
 }): MarkdownDocJson {
   const content = [...input.document.content];
-  const anchorIndex = content.findIndex(
+  const anchorIndex = input.anchorBlockId === null ? -1 : content.findIndex(
     (node) => readRootBlockId(node) === input.anchorBlockId
   );
-  if (anchorIndex === -1) {
+  if (input.anchorBlockId !== null && anchorIndex === -1) {
     throw new Error(
       `[insertEmptyBlockAfter] 找不到锚点块: anchorBlockId=${input.anchorBlockId}, documentId=${input.documentId}`
     );
   }
 
-  const siblingInsertIds = new Set(
-    input.existingPendings
-      .filter((pending) => isInsertAfterAnchor(pending.metadataJson, input.anchorBlockId))
-      .map((pending) => pending.targetBlockId)
-  );
-
-  let insertIndex = anchorIndex + 1;
-  while (insertIndex < content.length) {
-    const blockId = readRootBlockId(content[insertIndex]!);
-    if (!blockId || !siblingInsertIds.has(blockId)) break;
-    insertIndex += 1;
-  }
-
-  content.splice(insertIndex, 0, {
+  // 写入计划已按目标顺序传入前驱；null 明确表示文首，不能再越过旧的 insert 占位块。
+  content.splice(anchorIndex + 1, 0, {
     type: 'rootBlock',
     attrs: { id: input.newBlockId },
     content: [

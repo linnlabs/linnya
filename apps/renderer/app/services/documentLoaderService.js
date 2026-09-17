@@ -9,7 +9,6 @@
  */
 
 import { ref } from 'vue';
-import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import { loadDocumentFromDatabase } from '@/domains/editor/services/editorService';
 import { resolveCurrentEditorMessage } from '@/domains/editor/functions/resolveCurrentEditorMessage';
 
@@ -35,19 +34,6 @@ class MarkdownDocumentLoader {
 
     try {
       throwIfCancelled?.();
-      const documentResult = await workspaceGateway['read-document']({ documentId });
-      throwIfCancelled?.();
-
-      if (!documentResult?.success) {
-        throw new Error(documentResult?.error || 'read-document failed');
-      }
-      // Annotation 已内嵌在 content_json 的 rootBlock attrs 中。
-      const documentData = {
-        documentInfo: { id: documentId, name: documentName },
-        content: documentResult.data?.content,
-        pendingRevisions: documentResult.data?.pendingRevisions || [],
-      };
-
       // 构造 stores 对象
       const storesWithAnnotation = {
         ...stores,
@@ -55,7 +41,7 @@ class MarkdownDocumentLoader {
       };
 
       // 调用编辑器服务加载文档
-      loadDocumentFromDatabase({ editor, stores: storesWithAnnotation, documentData });
+      await loadDocumentFromDatabase({ editor, stores: storesWithAnnotation, documentId, documentName, throwIfCancelled });
 
       console.log(`[MarkdownDocumentLoader] Document ${documentId} loaded successfully`);
     } catch (error) {
@@ -130,6 +116,7 @@ export class DocumentLoaderService {
    * @param {string} params.documentName - 文档名称
    * @param {Object} params.editor - Tiptap 编辑器实例
    * @param {Object} params.stores - Pinia stores 集合 { fileStore, uiStore, notificationStore }
+   * @param {Function} [params.throwIfCancelled] - 检查本次打开是否取消
    * @param {string} [params.documentType='markdown'] - 文档类型
    * @returns {Promise<void>}
    */

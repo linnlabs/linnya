@@ -49,7 +49,7 @@ vi.mock('../citationHydrationHelper', () => ({
   attachCitationHydrationToSpans,
 }))
 
-vi.mock('../../../store/useRevisionStore', () => ({
+vi.mock('../../../useRevisionStore', () => ({
   useRevisionStore,
 }))
 
@@ -144,7 +144,6 @@ describe('batchApplyUpdatePendingRevisions', () => {
     })
     vi.mocked(useRevisionStore).mockReturnValue({
       startRevision: vi.fn(),
-      clearBackendPendingForBlock: vi.fn(),
     } as any)
   })
 
@@ -153,7 +152,6 @@ describe('batchApplyUpdatePendingRevisions', () => {
     const startRevision = vi.fn()
     vi.mocked(useRevisionStore).mockReturnValue({
       startRevision,
-      clearBackendPendingForBlock: vi.fn(),
     } as unknown as ReturnType<typeof useRevisionStore>)
 
     vi.mocked(resolvePendingMarkdownForSingleBlock)
@@ -226,7 +224,6 @@ describe('batchApplyUpdatePendingRevisions', () => {
     const startRevision = vi.fn()
     vi.mocked(useRevisionStore).mockReturnValue({
       startRevision,
-      clearBackendPendingForBlock: vi.fn(),
     } as any)
 
     const pendingResolutions: Array<(value: PendingMarkdownResolutionResult) => void> = []
@@ -296,7 +293,6 @@ describe('batchApplyUpdatePendingRevisions', () => {
     const startRevision = vi.fn()
     vi.mocked(useRevisionStore).mockReturnValue({
       startRevision,
-      clearBackendPendingForBlock: vi.fn(),
     } as any)
 
     vi.mocked(resolvePendingMarkdownForSingleBlock).mockResolvedValueOnce({
@@ -339,7 +335,6 @@ describe('batchApplyUpdatePendingRevisions', () => {
     const startRevision = vi.fn()
     vi.mocked(useRevisionStore).mockReturnValue({
       startRevision,
-      clearBackendPendingForBlock: vi.fn(),
     } as any)
 
     vi.mocked(resolvePendingMarkdownForSingleBlock)
@@ -397,7 +392,6 @@ describe('batchApplyUpdatePendingRevisions', () => {
     const startRevision = vi.fn()
     vi.mocked(useRevisionStore).mockReturnValue({
       startRevision,
-      clearBackendPendingForBlock: vi.fn(),
     } as any)
 
     vi.mocked(resolvePendingMarkdownForSingleBlock).mockResolvedValueOnce({

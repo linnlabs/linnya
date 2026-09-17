@@ -13,6 +13,7 @@ export type PendingRevisionOperation = 'insert' | 'update' | 'delete';
 
 export interface PendingRevision {
   readonly id: string;
+  readonly revision: number;
   readonly document_node_id: string;
   readonly target_block_id: string;
   readonly new_markdown: string;

@@ -32,10 +32,6 @@ import { resolveAnnotationRootBlockId } from '../features/Annotation/functions/r
 
 // --- 核心应用模块导入 ---
 import { createEditor } from '../core/editorFactory'
-import { 
-  loadContentIntoEditor, 
-  gatherSaveData
-} from '../services/editorService'
 import { NODE_GROUPS } from '../extensions/core/schema'
 
 // --- 共享模块导入 ---

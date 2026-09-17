@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PendingRevisionDTO as WorkspacePendingRevisionDTO } from '../../../../../shared/ipc/workspaceGateway'
 import { setFlag } from '../../../ui/services/editorFeatureFlags'
 import { setupShellPendingProjectionBridge } from '../../Revision'
-import { useRevisionStore } from '../../Revision/store/useRevisionStore'
+import { useRevisionStore } from '../../Revision/useRevisionStore'
 import { applyPendingRevisionsToEditor } from '../../Revision/utils/pending/applyPendingRevisions'
 import { createVirtualizationIntegrationHarness, type VirtualizationIntegrationHarness } from './virtualizationIntegrationHarness'
 
@@ -18,11 +18,6 @@ const mocks = vi.hoisted(() => {
   return {
     fileStore,
     requestSave: vi.fn(),
-    applyAllPendingRevisions: vi.fn(),
-    clearPendingRevision: vi.fn(),
-    clearAllPendingRevisions: vi.fn(),
-    applyPendingRevision: vi.fn(),
-    setPendingRevisionsBatch: vi.fn(),
     readDocument: vi.fn(),
   }
 })
@@ -33,11 +28,6 @@ vi.mock('../../../../../shared/stores/file', () => ({
 
 vi.mock('../../../../../shared/ipc/workspaceGateway', () => ({
   workspaceGateway: {
-    'apply-all-pending-revisions': mocks.applyAllPendingRevisions,
-    'clear-pending-revision': mocks.clearPendingRevision,
-    'clear-all-pending-revisions': mocks.clearAllPendingRevisions,
-    'apply-pending-revision': mocks.applyPendingRevision,
-    'set-pending-revisions-batch': mocks.setPendingRevisionsBatch,
     'read-document': mocks.readDocument,
   },
 }))
@@ -102,6 +92,7 @@ function createPendingDtos(count: number, blockIdPrefix: string): WorkspacePendi
     const blockId = `${blockIdPrefix}-${index}`
     return {
       id: `pending-${index}`,
+      revision: 1,
       blockId,
       operation: 'update',
       newMarkdown: `AI pending content ${index}`,
@@ -118,6 +109,9 @@ function attachRevisionEditorRuntime(
   eventBus: IntegrationEventBus
 ): RevisionIntegrationEditor {
   const editor = harness.editor as unknown as RevisionIntegrationEditor
+  let editable = true
+  Object.defineProperty(editor, 'isEditable', { get: () => editable })
+  editor.setEditable = value => { editable = value }
   editor.eventBus = eventBus
   editor.on = (eventName: string, listener: () => void) => {
     eventBus.on(eventName, listener)
@@ -132,9 +126,6 @@ function attachRevisionEditorRuntime(
     value: {
       ...editor.commands,
       setContent: vi.fn(() => true),
-      acceptAllRevisionsInBlock: vi.fn(() => true),
-      rejectAllRevisionsInBlock: vi.fn(() => true),
-      clearBlockRevisionMarks: vi.fn(() => true),
     },
   })
   return editor
@@ -208,7 +199,7 @@ describe('RenderVirtualization pending projection integration', () => {
     await flushMicrotasks()
     expect(applyPendingRevisionsToEditor).not.toHaveBeenCalled()
 
-    store.setWorkspacePendingRevisions(createPendingDtos(120, blockIdPrefix))
+    await store.installPendingSnapshot(createPendingDtos(120, blockIdPrefix))
     expect(store.canonicalPendingBlockCount.value).toBe(120)
     expect(store.activeRevisionCount.value).toBe(0)
     expect(store.pendingProjectionDeferred.value).toBe(true)

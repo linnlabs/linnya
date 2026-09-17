@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core'
 import type { ApplyDetail, ParsedPendingRevision, PendingRevisionOperation } from './pendingRevisionTypes'
 import type { PendingExecutionPlan } from './pendingExecutionPlan'
-import { useRevisionStore } from '../../store/useRevisionStore'
+import { useRevisionStore } from '../../useRevisionStore'
 
 export interface RegisterablePreparedRevision {
   parsed: ParsedPendingRevision

@@ -68,7 +68,6 @@ function buildTitle(
   editorMessage: EditorMessageResolver
 ): string {
   return formatRevisionIndicatorTitle({
-    status: 'pending',
     insertCount: viewModel.insertCount,
     deleteCount: viewModel.deleteCount,
     hasDetailedStats: viewModel.hasDetailedStats,

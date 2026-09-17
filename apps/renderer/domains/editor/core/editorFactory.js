@@ -9,6 +9,7 @@
 
 // --- Tiptap 和 ProseMirror 相关导入 ---
 import { Editor } from '@tiptap/vue-3'
+import { isPendingProjectionBatch } from '../features/Revision/runtime'
 import { nextTick } from 'vue'
 import { createMarkdownSerializer } from '../../../shared/utils/markdownSerializer'
 import { countTextUnitsZhEn } from '../../../shared/utils/textUnits'
@@ -26,7 +27,6 @@ import {
   ANNOTATION_LAYOUT_RECALC_REASON,
   requestAnnotationLayoutRecalculation,
 } from '../features/Annotation/position/layoutRecalculationPolicy'
-import { setupRevisionBlockEventHandler } from '../features/Revision'
 
 // --- 核心模块导入 ---
 import { getAllExtensions } from './extensionRegistry'
@@ -34,13 +34,13 @@ import { dragMoveBlock } from '../extensions/core/commands/MoveCommands'
 import { scheduleInitialEditorFocus } from './initialFocusPolicy'
 
 // --- 首开性能采集 ---
-import { markPerf, measurePerf, setTimingValue } from '../ui/services/editorOpenPerf'
+import { markPerf, measurePerf } from '../ui/services/editorOpenPerf'
 // 内存采样工具：副作用导入，挂载 window.__EDITOR_MEMORY_PERF__
 import '../ui/services/editorMemoryPerf'
 // 压测工具：副作用导入，仅挂载 window.__EDITOR_PERF_BENCH__
 import '../ui/services/editorPerfBenchmark'
 // Revision 调试工具：副作用导入，挂载 window.__REVISION_TEST__
-import '../features/Revision/store/__devRevisionTest'
+import '../features/Revision/orchestration/devRevisionTest'
 // 虚拟化诊断工具：副作用导入，挂载 window.__EDITOR_VIRTUALIZATION_DIAG__
 import '../features/RenderVirtualization/debug/renderVirtualizationDiagnostics'
 
@@ -123,7 +123,7 @@ export function createEditor({
     onUpdate: ({ editor: updatedEditor }) => {
       // pending 注入批处理期间跳过所有 onUpdate 副作用
       // 标志由 workspacePending.ts 在注入前/后设置
-      if (updatedEditor._isPendingRevisionBatch) return;
+      if (isPendingProjectionBatch(updatedEditor)) return;
 
       // 字符统计：防抖处理，避免连续输入时频繁执行 getText() + countTextUnitsZhEn()
       if (charCountTimer) clearTimeout(charCountTimer);
@@ -148,7 +148,7 @@ export function createEditor({
     
     onTransaction({ editor: txEditor, transaction }) {
       // pending 注入批处理期间跳过 dirty 标记和通知
-      if (txEditor._isPendingRevisionBatch) return;
+      if (isPendingProjectionBatch(txEditor)) return;
 
       if (transaction.docChanged && !transaction.getMeta('internal')) {
         fileStore.setDirty(true);
@@ -242,9 +242,7 @@ export function createEditor({
       // 现在可以安全地设置块事件处理器了
       cleanupBlockEventHandler.value = setupBlockEventHandler(createdEditor, realStore, manager);
 
-      // 为 Revision 模块挂载块级生命周期监听器（基于统一的 block-operation 事件）
-      // 注意：这里不需要额外的 cleanup ref，因为监听器与 editor 生命周期一致
-      setupRevisionBlockEventHandler(createdEditor);
+      // 本地块删除与 Pending 清理由文档会话同事务保存；不在 UI 事件中提前写数据库。
 
       // 性能说明：
       // rootBlock 的实时位置由 ProseMirror doc position 按需计算，MoveCommands 等运行时逻辑

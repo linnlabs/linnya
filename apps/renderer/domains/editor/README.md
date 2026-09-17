@@ -13,6 +13,7 @@
 - 大文档性能基线与回归记录：[`docs/perf-baseline-2026-Q2.md`](docs/perf-baseline-2026-Q2.md)
 - renderer 侧 Markdown 语义运行时：[markdownRuntime](./services/markdownRuntime/README.md)
 - 后端 Markdown 文档领域：[Markdown domain](../../../../src/domains/markdown/README.md)
+- 文档打开、刷新、保存与并发：[document-session](./features/document-session/README.md)
 - Revision / Pending 性能链路：[Revision](./features/Revision/README.md)
 - Provider outbound 开发调试面：[ProviderOutboundDebug](./features/ProviderOutboundDebug/README.md)
 
@@ -107,7 +108,6 @@ apps/renderer/domains/editor/
 │   │       ├── InsertCommands.js
 │   │       ├── RemoveCommands.js
 │   │       ├── ReplaceCommands.js
-│   │       ├── RevisionCommands.js
 │   │       ├── SplitCommands.js
 │   │       ├── MergeCommands.js
 │   │       ├── MoveCommands.js
@@ -145,7 +145,7 @@ apps/renderer/domains/editor/
 │   ├── markdownConversion/     # Markdown ⇄ Tiptap 双向转换统一门面（更高层 facade）
 │   │   ├── index.ts            # 对外入口（导入+导出+低层原语）
 │   │   └── markdownImporter.ts # Markdown → doc JSON 纯函数
-│   ├── editorService.js        # 文档加载/保存/首开迁移
+│   ├── editorService.js        # 文档会话与首开 UI 装配
 │   └── ...                     # 其他 Composable（streaming / AI / mouse / panel 等）
 ├── shared/                     # Editor 领域内部共享工具
 ├── styles/                     # Editor 领域样式
@@ -272,17 +272,7 @@ const lowlight = getLowlight()
 
 **1. 数据层：文档级 Accept/Reject All 后端合并**
 
-Revision 的文档级 Accept/Reject All 已改为后端一次性合并：
-
-```text
-RevisionToolbar
-  → useRevisionStore.acceptAllRevisionsInDocument / rejectAllRevisionsInDocument
-  → workspace:apply-all-pending-revisions
-  → PendingRevisionApplyService 合并并校验最终 docJson 后保存/清 pending
-  → loadDocumentJsonAtomically(docJson)
-```
-
-这条链路的目标是避免 `N pending = N 次 ProseMirror transaction + DOM 协调`。块级 Accept/Reject 仍使用编辑器命令保证本地即时反馈，但后端同步优先走 `workspace:apply-pending-revision` 做单块原子合并；只有单块 IPC 失败时才回退到旧的全量保存 + 清 pending。调试开关：`enableBackendPendingApply`。
+Revision 的保存与接受/拒绝由 [文档会话](./features/document-session/README.md) 统一提交。块级、文档级和行内部分决策都携带正文版本、Pending revision 和本地基线；后端同事务处理，返回完整快照后严格安装。失败保留视图与草稿，不回退到无条件全文保存或清 Pending。
 
 **2. 投影层：大文档首开暂缓 revisionMark 全量投影**
 

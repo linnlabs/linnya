@@ -40,26 +40,6 @@ export function findRevisionMarkOnNode(
   })
 }
 
-export function hasUnmarkedMeaningfulInlineContent(
-  node: ProseMirrorNode,
-  revisionMarkType: MarkType,
-  revisionId: string
-): boolean {
-  if (!isTrackableInlineRevisionNode(node)) {
-    return false
-  }
-
-  if (findRevisionMarkOnNode(node, revisionMarkType, revisionId)) {
-    return false
-  }
-
-  if (node.isText) {
-    return (node.text?.trim().length ?? 0) > 0
-  }
-
-  return true
-}
-
 export function cloneNodeWithRevisionMark(
   node: ProseMirrorNode,
   revisionMark: Mark

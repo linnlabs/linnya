@@ -19,9 +19,9 @@ import {
   resolvePendingMarkdownForSingleBlock,
 } from './pendingRevisionHelpers'
 import { linearizeRootBlock } from '../linearizeBlock'
-import { useRevisionStore } from '../../store/useRevisionStore'
+import { useRevisionStore } from '../../useRevisionStore'
 import { processCitationHydration } from './citationHydrationHelper'
-import { hasRevisionMarksInBlock, scanBlockForRevisions } from '../../store/revisionMarkScan'
+import { hasRevisionMarksInBlock, scanBlockForRevisions } from '../../functions/revisionMarkScan'
 import {
   executePendingPlanToDocument,
   executePendingPlanToTr,

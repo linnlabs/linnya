@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/core'
-import { useRevisionStore } from '../store/useRevisionStore'
+import { useRevisionStore } from '../useRevisionStore'
 
 export type BlockRevisionToolbarAction = 'accept' | 'reject'
 

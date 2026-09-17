@@ -41,6 +41,7 @@ function pending(params: {
 }): PendingRevision {
   return {
     id: `pending-${params.blockId}`,
+    revision: 1,
     document_node_id: 'document-1',
     target_block_id: params.blockId,
     new_markdown: params.markdown,

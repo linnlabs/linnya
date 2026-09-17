@@ -11,7 +11,7 @@
  * 3. 让各文档类型通过 register 的方式接入（开放-封闭原则）
  */
 
-import { useFileStore, type SaveType } from '@/shared/stores/file';
+import { useFileStore } from '@/shared/stores/file';
 import { storeToRefs } from 'pinia';
 import { watch } from 'vue';
 import { FileManagerOrchestrator } from './orchestrator';
@@ -91,7 +91,7 @@ export interface FileTypeLifecycleHandler {
    */
   open(session: FileSessionDescriptor): Promise<void>;
   /**
-   * 保存文件（在自动保存 / 关闭前保存等情况下被调用）
+   * 保存快照并由文档 owner 更新 dirty；true 不代表请求期间产生的新输入也已保存。
    */
   save?(context: FileSaveContext): Promise<boolean>;
   /**
@@ -318,11 +318,9 @@ async function runActiveSaveInternal(reason: SaveReason): Promise<boolean> {
       reason,
       session: activeSession,
     });
-    if (ok && reason !== 'manual') {
-      // 自动保存成功后，统一清空 dirty 状态
-      markActiveFileDirty(false);
-    }
-    return ok;
+    // dirty 由文档 owner 根据实际提交的快照更新；请求期间的新输入不能被外层清掉。
+    // 离开文档要求全部本地输入落库，普通自动保存则允许用户继续编辑。
+    return ok && (!(reason === 'view-switch' || reason === 'before-unload') || !fileStore.isDirty);
   } catch (error) {
     console.error('[file-manager] 保存失败:', error);
     return false;

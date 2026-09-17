@@ -48,6 +48,8 @@ Host 在插件 Backend 初始化前完成数据库准入；插件文档操作直
 - Host 与 Renderer 不解析 observation 来恢复 presentation。
 - 插件 renderer 不再注册第二套 Workspace read presentation mapper。
 
+Renderer 文档保存 handler 拥有本类型的 dirty 状态：只在确认当前草稿全部落库后清除。Host 不根据 handler 返回成功无条件清除 dirty；保存期间的新输入必须继续保持 dirty，导航离开前再次确认已落库。合同见 [`renderer/workspaceRuntime.ts`](./renderer/workspaceRuntime.ts)。
+
 ## 4. Conversation 扩展
 
 插件可以通过窄 contribution 扩展输入附件、引用 provider、workflow、subrun worker 和 tool card，但不能：

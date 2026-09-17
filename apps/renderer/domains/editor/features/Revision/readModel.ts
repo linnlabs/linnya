@@ -4,7 +4,7 @@ import {
   getRevisionToolbarRuntimeSnapshot,
   subscribeRevisionToolbarRuntimeState,
 } from './runtime/revisionToolbarRuntimeState'
-import { useRevisionStore } from './store/useRevisionStore'
+import { useRevisionStore } from './useRevisionStore'
 import {
   readRevisionIndicatorSummary,
   type RevisionIndicatorSummary,

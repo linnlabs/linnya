@@ -130,4 +130,17 @@ describe('file-manager deactivateIfActiveDocument', () => {
         expect(fileStore.currentFilePath).toBeNull();
         expect(fileStore.isDirty).toBe(false);
     });
+    it('保存成功但仍有新输入时保留 dirty，并阻止离开文档', async () => {
+        const fm = await import('../index');
+        fm.registerFileTypeHandler({
+            type: 'markdown', open: async () => {},
+            save: async () => { fileStore.setDirty(true); return true; },
+        });
+        await fm.activateFileSession({ documentId: 'doc-1', type: 'markdown' });
+        expect(await fm.requestSave('auto')).toBe(true);
+        expect(fileStore.isDirty).toBe(true);
+        expect(await fm.requestSave('view-switch')).toBe(false);
+        expect(fm.getActiveFileSession()?.documentId).toBe('doc-1');
+    });
+
 });

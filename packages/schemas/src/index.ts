@@ -133,6 +133,7 @@ export * from './conversation/message-metadata';
 
 // ============ Conversation CLI / App Host 控制面合同 ============
 export * from './conversation-control';
+export * from './markdown-revisions';
 
 // ============ 系统 batch 工具契约 ============
 export * from './tools/subrun-batch';

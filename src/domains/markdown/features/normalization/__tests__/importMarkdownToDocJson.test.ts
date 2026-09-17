@@ -202,10 +202,8 @@ describe('importMarkdownToDocJson', () => {
     ]);
 
     const headingContent = result.docJson?.content[0]?.content?.[0]?.content;
-    expect(headingContent).toEqual([
-      { type: 'text', text: '1. ' },
-      { type: 'text', text: '基本段落' }
-    ]);
+    // PM 正文会合并相邻且同标记的文本节点；解析事件保留分段，持久化结果验证完整编号。
+    expect(headingContent).toEqual([{ type: 'text', text: '1. 基本段落' }]);
     expect(result.docJson?.content[1]?.content?.[0]).toMatchObject({
       type: 'codeBlock',
       attrs: { language: 'python' },

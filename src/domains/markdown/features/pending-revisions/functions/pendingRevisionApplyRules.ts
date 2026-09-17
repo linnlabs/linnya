@@ -8,10 +8,7 @@ import type {
   PendingRevisionOperation,
 } from '../persistence';
 import type {
-  ApplyMode,
   MarkdownRootBlockJson,
-  PendingDocumentApplyResult,
-  PendingSnapshotItem,
   PreparedPendingReplacement,
 } from '../definitions/pendingRevisionApply';
 
@@ -56,17 +53,10 @@ export function resolvePendingOperation(
     : 'update';
 }
 
-export function snapshotPendings(pendings: readonly PendingRevision[]): PendingSnapshotItem[] {
-  return pendings.map((revision) => ({
-    id: revision.id,
-    target_block_id: revision.target_block_id,
-    new_markdown: revision.new_markdown,
-    source: revision.source,
-    operation: revision.operation,
-    meta_json: revision.meta_json,
-    created_at: revision.created_at,
-    updated_at: revision.updated_at,
-  }));
+/** 只有空文本占位块属于尚未落入正文的 insert；表格、图片等结构本身也是正文。 */
+export function isEmptyPendingPlaceholder(root: ProseMirrorJsonNode | undefined): boolean {
+  const inner = root?.content?.[0];
+  return inner?.type === 'baseBlock' && (inner.content?.length ?? 0) === 0;
 }
 
 export function mergeRootBlockAttrs(
@@ -103,25 +93,20 @@ export function applyAcceptedPendingsToDocument(input: {
   readonly docJson: MarkdownDocJson;
   readonly pendings: readonly PendingRevision[];
   readonly prepared: ReadonlyMap<string, PreparedPendingReplacement>;
-}): PendingDocumentApplyResult {
+}): MarkdownDocJson {
   const slots: RootBlockSlot[] = [...input.docJson.content];
   const rootIndex = buildRootBlockIndex(input.docJson.content);
-  const errors: PendingDocumentApplyResult['errors'] = [];
-  let appliedCount = 0;
-  let skippedCount = 0;
 
   for (const pending of input.pendings) {
     const operation = resolvePendingOperation(pending, parsePendingMetadata(pending.meta_json));
     const position = rootIndex.get(pending.target_block_id);
-    if (position === undefined || slots[position] === null) {
-      skippedCount += 1;
-      errors.push({ blockId: pending.target_block_id, reason: '目标 rootBlock 不存在，已跳过' });
-      continue;
+    const root = position === undefined ? undefined : slots[position];
+    if (position === undefined || !root) {
+      throw new Error(`[PendingRevisionApplyService] 接受修订的目标 rootBlock 不存在: blockId=${pending.target_block_id}`);
     }
 
     if (operation === 'delete') {
       slots[position] = null;
-      appliedCount += 1;
       continue;
     }
 
@@ -130,122 +115,36 @@ export function applyAcceptedPendingsToDocument(input: {
       throw new Error(`[PendingRevisionApplyService] 缺少预解析结果: blockId=${pending.target_block_id}`);
     }
     slots[position] = mergeRootBlockAttrs(
-      slots[position]!,
+      root,
       replacement.rootBlock,
       pending.target_block_id
     );
-    appliedCount += 1;
   }
 
-  return {
-    changed: appliedCount > 0,
-    docJson: withoutRemovedSlots(input.docJson, slots),
-    appliedCount,
-    skippedCount,
-    errors,
-  };
+  return withoutRemovedSlots(input.docJson, slots);
 }
 
 export function applyRejectedPendingsToDocument(input: {
   readonly docJson: MarkdownDocJson;
   readonly pendings: readonly PendingRevision[];
-}): PendingDocumentApplyResult {
+}): MarkdownDocJson {
   const slots: RootBlockSlot[] = [...input.docJson.content];
   const rootIndex = buildRootBlockIndex(input.docJson.content);
-  const errors: PendingDocumentApplyResult['errors'] = [];
-  let appliedCount = 0;
-  let skippedCount = 0;
-  let changed = false;
 
   for (const pending of input.pendings) {
     const operation = resolvePendingOperation(pending, parsePendingMetadata(pending.meta_json));
     if (operation !== 'insert') {
-      appliedCount += 1;
       continue;
     }
 
     const position = rootIndex.get(pending.target_block_id);
-    if (position === undefined || slots[position] === null) {
-      skippedCount += 1;
-      errors.push({ blockId: pending.target_block_id, reason: 'insert 占位 rootBlock 不存在，已跳过' });
-      continue;
+    // 用户草稿已删除插入占位块时，拒绝只需让提交事务清理对应 Pending。
+    if (position === undefined) continue;
+
+    if (isEmptyPendingPlaceholder(slots[position] ?? undefined)) {
+      slots[position] = null;
     }
-
-    slots[position] = null;
-    appliedCount += 1;
-    changed = true;
   }
 
-  return {
-    changed,
-    docJson: withoutRemovedSlots(input.docJson, slots),
-    appliedCount,
-    skippedCount,
-    errors,
-  };
-}
-
-export function applySinglePendingToDocument(input: {
-  readonly docJson: MarkdownDocJson;
-  readonly pending: PendingRevision;
-  readonly mode: ApplyMode;
-  readonly prepared: MarkdownRootBlockJson | null;
-}): PendingDocumentApplyResult {
-  const operation = resolvePendingOperation(
-    input.pending,
-    parsePendingMetadata(input.pending.meta_json)
-  );
-  const position = buildRootBlockIndex(input.docJson.content).get(input.pending.target_block_id);
-  if (position === undefined) {
-    return {
-      changed: false,
-      docJson: input.docJson,
-      appliedCount: 0,
-      skippedCount: 1,
-      errors: [{ blockId: input.pending.target_block_id, reason: '目标 rootBlock 不存在，已跳过' }],
-    };
-  }
-
-  const slots: RootBlockSlot[] = [...input.docJson.content];
-  if (input.mode === 'reject' && operation !== 'insert') {
-    return {
-      changed: false,
-      docJson: input.docJson,
-      appliedCount: 1,
-      skippedCount: 0,
-      errors: [],
-    };
-  }
-
-  if ((input.mode === 'reject' && operation === 'insert')
-    || (input.mode === 'accept' && operation === 'delete')) {
-    slots[position] = null;
-    return {
-      changed: true,
-      docJson: withoutRemovedSlots(input.docJson, slots),
-      appliedCount: 1,
-      skippedCount: 0,
-      errors: [],
-    };
-  }
-
-  if (!input.prepared) {
-    throw new Error(
-      `[PendingRevisionApplyService] 缺少单块预解析结果: blockId=${input.pending.target_block_id}`
-    );
-  }
-  const existingRoot = slots[position];
-  if (!existingRoot) {
-    throw new Error(
-      `[PendingRevisionApplyService] root block index is inconsistent: blockId=${input.pending.target_block_id}`
-    );
-  }
-  slots[position] = mergeRootBlockAttrs(existingRoot, input.prepared, input.pending.target_block_id);
-  return {
-    changed: true,
-    docJson: withoutRemovedSlots(input.docJson, slots),
-    appliedCount: 1,
-    skippedCount: 0,
-    errors: [],
-  };
+  return withoutRemovedSlots(input.docJson, slots);
 }

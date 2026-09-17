@@ -34,6 +34,18 @@ Markdown 专属 Agent 工具位于 [`tools/`](./tools/README.md)。专属工具�
 
 Markdown 导入结果必须经过这份校验。pending 单块和文档级 Accept/Reject 在事务内合并完成后，也必须先校验最终完整 `docJson`，再保存版本并清理 pending；校验失败时正文和 pending 均保持不变。新增可持久化语义时，必须同时更新 schema、序列化/物化能力和生产 Editor conformance fixture，禁止让调用方自行猜测或静默降级。
 
+## Pending 与 Editor 提交
+
+每个 `(documentId, rootBlockId)` 最多一条 Pending。已有提议继续编辑时保持 ID 并递增 `revision`；工具把内容改回基线时撤销该提议，新增后删除会同时移除占位块。File-style 写入先对齐未变段落再规划差异，文首插入不改变后面旧块的身份；批注也跟随对齐后的身份。
+
+`pending-revisions` 拥有共享 DTO 的投影及统一 Editor 提交用例。Renderer 提交正文基线、正文版本与整份 Pending ID/revision 清单；后台在 Markdown 解析之前和事务内分别校验，随后原子保存正文、更新或清除 Pending，返回新快照。通用 PM schema 支持修订显示，但提交基线额外禁止 revisionMark，避免投影视图回流为数据库正文。保存、块决策、全部决策和行内部分决策共享这条入口；旧的无版本 apply IPC 已删除。
+
+部分接受新增或在新增占位块保存本地输入后，该块已拥有正文，剩余意图转为 update；拒绝 insert 只删除空占位，保留用户已写入的正文。部分拒绝删除后，非空剩余提议也不能继续解释成整块 delete。提议更新不生成第二条 Pending。单块提议必须解析为恰好一个 rootBlock，不能截断多块内容后继续提交。
+
+CLI Agent 与内置 Agent 的已有 Markdown 文档写入均走同一 file-write provider。工具输出的待确认块数来自提交后的数据库清单，不使用本次操作条数。仅撤销提议也发布 Workspace mutation，Renderer 通过文档会话重读完整快照。
+
+对应 Renderer 生命周期与草稿规则见 [文档会话](../../../apps/renderer/domains/editor/features/document-session/README.md)。Schema v64 为既有 Pending 补充初始 revision，保留其身份和内容；迁移不清理或重建用户文档。
+
 ## 数据模型
 
 Markdown schema 当前包括：

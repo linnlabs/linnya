@@ -4,6 +4,7 @@ import type { PendingRevisionDTO } from '../../../../../../shared/ipc/workspaceG
 
 function pending(overrides: Partial<PendingRevisionDTO>): PendingRevisionDTO {
   return {
+    revision: 1,
     id: 'p1',
     blockId: 'b1',
     newMarkdown: 'plain text',

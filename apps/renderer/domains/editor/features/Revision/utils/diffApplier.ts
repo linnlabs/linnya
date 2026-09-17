@@ -25,9 +25,7 @@ import type {
   CitationInlineMeta,
   InlineAtom,
   MarkName,
-  TextSpan,
 } from '../protocol/revisionTextSpanTypes'
-import { findRevisionMarkOnNode } from './revisionInlineNodes'
 import { infoRevisionDebug, logRevisionDebug, shouldLogRevisionDebug } from './revisionDebugLogging'
 import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage'
 
@@ -844,65 +842,10 @@ export function extractBlockText(editor: Editor, blockPos: number): string | nul
   return blockTextInfo?.text ?? null
 }
 
-/**
- * 清除块内所有 revisionMark
- * 用于取消修订或重新开始修订
- *
- * @param editor - 编辑器实例
- * @param blockPos - 块位置
- * @param revisionId - 可选，只清除指定 revisionId 的标记
- */
-export function clearBlockRevisionMarks(
-  editor: Editor,
-  blockPos: number,
-  revisionId?: string
-): boolean {
-  try {
-    const rootBlockNode = editor.state.doc.nodeAt(blockPos)
-    if (!rootBlockNode || rootBlockNode.type.name !== 'rootBlock') {
-      return false
-    }
-
-    const revisionMarkType = editor.state.schema.marks.revisionMark
-    if (!revisionMarkType) {
-      return false
-    }
-
-    const blockStart = blockPos + 1
-    const blockEnd = blockPos + rootBlockNode.nodeSize - 1
-    const { tr } = editor.state
-
-    if (revisionId) {
-      // 只清除指定 revisionId 的标记
-      editor.state.doc.nodesBetween(blockStart, blockEnd, (node, pos) => {
-        const revisionMark = findRevisionMarkOnNode(node, revisionMarkType, revisionId)
-        if (revisionMark) {
-          tr.removeMark(pos, pos + node.nodeSize, revisionMarkType)
-        }
-      })
-    } else {
-      editor.state.doc.nodesBetween(blockStart, blockEnd, (node, pos) => {
-        const revisionMark = findRevisionMarkOnNode(node, revisionMarkType)
-        if (revisionMark) {
-          tr.removeMark(pos, pos + node.nodeSize, revisionMarkType)
-        }
-      })
-    }
-
-    editor.view.dispatch(tr)
-
-    return true
-  } catch (error) {
-    console.error('[diffApplier] 清除 revisionMark 失败:', error)
-    return false
-  }
-}
-
 // ==================== 导出 ====================
 
 export default {
   applyDiffToDocument,
   applyRichDiffToDocument,
   extractBlockText,
-  clearBlockRevisionMarks,
 }

@@ -4,9 +4,7 @@ export { normalizeToolPendingIntent, type NormalizedToolPendingIntent } from './
 export { insertPendingRootBlock, removePendingRootBlock } from './functions/pendingRootBlockMutations';
 export { PendingRevisionApplyService } from './orchestration/pendingRevisionApplyService';
 export type {
-  ApplyPendingError as ApplyAllPendingError,
-  ApplyAllPendingResult,
-  ApplyMode,
-  ApplySinglePendingResult,
   MarkdownImporter,
 } from './definitions/pendingRevisionApply';
+
+export { projectMarkdownEditorPendingRevisions } from './functions/projectMarkdownEditorPendingRevisions';

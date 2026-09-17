@@ -2,7 +2,7 @@
   RevisionGlobalToolbar.vue
   
   文档级修订工具栏：
-  - 当整篇文档存在多个待处理修订时，悬浮显示在编辑区域底部
+  - 当文档存在待处理修订时，悬浮显示在编辑区域底部
   - 提供「拒绝全部」和「接受全部」操作
   - 展示当前待处理的块数量与插入 / 删除统计（聚合自各个块）
 -->
@@ -18,10 +18,16 @@
         <div class="revision-global-toolbar__summary">
           <span class="summary-title">{{ editorMessage('editor.revision.global.pendingTitle') }}</span>
           <span class="summary-counts">
-            <span v-if="pendingCount > 0" class="summary-blocks">
+            <span
+              v-if="pendingCount > 0"
+              class="summary-blocks"
+            >
               {{ formatRevisionBlockCount(pendingCount, editorMessage) }}
             </span>
-            <span v-if="insertCount > 0" class="summary-insert">
+            <span
+              v-if="insertCount > 0"
+              class="summary-insert"
+            >
               +{{ insertCount }}
             </span>
             <span
@@ -30,7 +36,10 @@
             >
               /
             </span>
-            <span v-if="deleteCount > 0" class="summary-delete">
+            <span
+              v-if="deleteCount > 0"
+              class="summary-delete"
+            >
               -{{ deleteCount }}
             </span>
           </span>
@@ -40,6 +49,12 @@
           >
             {{ editorMessage('editor.revision.global.projectionDeferred') }}
           </span>
+          <span
+            v-if="projectionFailed"
+            class="summary-warning"
+          >
+            {{ editorMessage('editor.revision.global.projectionFailed') }}
+          </span>
         </div>
 
         <!-- 操作按钮 -->
@@ -47,6 +62,7 @@
           <button
             class="toolbar-btn reject-btn"
             type="button"
+            :disabled="busy"
             @click="handleRejectAll"
           >
             {{ editorMessage('editor.revision.action.rejectAll') }}
@@ -54,6 +70,7 @@
           <button
             class="toolbar-btn accept-btn"
             type="button"
+            :disabled="busy"
             @click="handleAcceptAll"
           >
             {{ editorMessage('editor.revision.action.acceptAll') }}
@@ -84,6 +101,8 @@ defineProps<{
   deleteCount: number
   /** 大文档首开暂缓了行内 revisionMark 投影 */
   projectionDeferred?: boolean
+  projectionFailed?: boolean
+  busy?: boolean
 }>()
 
 /**

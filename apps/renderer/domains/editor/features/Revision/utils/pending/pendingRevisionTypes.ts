@@ -11,7 +11,7 @@ import type { Editor } from '@tiptap/core'
 export type PendingRevisionOperation = 'update' | 'insert' | 'delete'
 
 /**
- * 数据库中的 pending revision DTO
+ * 显示引擎的规范化输入；数据库合同由 @app/schemas 独立拥有
  */
 export interface PendingRevisionDTO {
   id: string

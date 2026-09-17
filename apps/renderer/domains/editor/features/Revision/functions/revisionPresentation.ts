@@ -1,5 +1,4 @@
 import type { EditorMessageResolver } from '../../../definitions/editorMessages'
-import type { RevisionStatus } from '../store/types'
 
 export interface RevisionStats {
   insertCount: number
@@ -7,7 +6,6 @@ export interface RevisionStats {
 }
 
 export interface RevisionIndicatorTitleParams extends RevisionStats {
-  status: RevisionStatus
   hasDetailedStats: boolean
 }
 
@@ -45,17 +43,9 @@ export function formatRevisionIndicatorTitle(
   const statsText = formatRevisionStatsParts(params, editorMessage)
     .join(editorMessage('editor.revision.indicator.statsSeparator'))
 
-  if (params.status === 'pending') {
-    return statsText
-      ? editorMessage('editor.revision.indicator.pendingTitleWithStats', { stats: statsText })
-      : editorMessage('editor.revision.indicator.pendingTitle')
-  }
-
-  if (params.status === 'applied') {
-    return editorMessage('editor.revision.indicator.appliedTitle', { stats: statsText })
-  }
-
-  return editorMessage('editor.revision.indicator.discardedTitle', { stats: statsText })
+  return statsText
+    ? editorMessage('editor.revision.indicator.pendingTitleWithStats', { stats: statsText })
+    : editorMessage('editor.revision.indicator.pendingTitle')
 }
 
 export function resolveRevisionMarkAcceptTitle(

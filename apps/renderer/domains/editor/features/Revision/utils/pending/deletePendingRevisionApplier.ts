@@ -17,7 +17,7 @@ import {
   executePendingPlanToTr,
 } from './pendingExecutionPlan'
 import { buildDeleteExecutionPlan } from './pendingPlanBuilder'
-import { useRevisionStore } from '../../store/useRevisionStore'
+import { useRevisionStore } from '../../useRevisionStore'
 import { logRevisionDebug } from '../revisionDebugLogging'
 import { markPendingRevisionProjectionTransaction } from '../../../../core/transactions/editorTransactionMeta'
 

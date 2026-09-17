@@ -266,19 +266,14 @@ export class MarkdownDocumentService {
    */
   insertEmptyBlockAfter(
     documentNodeId: string,
-    anchorBlockId: string,
+    anchorBlockId: string | null,
     newBlockId: string
   ): void {
-    const pendings = this.getPendingRevisions(documentNodeId);
     const newDoc = insertPendingRootBlock({
       documentId: documentNodeId,
       document: this.getDocument(documentNodeId),
       anchorBlockId,
       newBlockId,
-      existingPendings: pendings.map((pending) => ({
-        targetBlockId: pending.target_block_id,
-        metadataJson: pending.meta_json,
-      })),
     });
     this.updateDocument(documentNodeId, newDoc);
 

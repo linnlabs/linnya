@@ -44,9 +44,6 @@ vi.mock('./shared/markdownPendingRevisionRefresh', () => ({
   applyPendingRevisionsToOpenMarkdownDocument: mocks.applyMarkdownPending,
 }));
 
-vi.mock('./shared/markdownAnnotationRefresh', () => ({
-  synchronizeAnnotationsToOpenMarkdownDocument: mocks.synchronizeMarkdownAnnotations,
-}));
 
 vi.mock('./resolveCurrentOpenDocument', () => ({
   resolveCurrentOpenDocument: mocks.resolveCurrentOpenDocument,
@@ -157,7 +154,7 @@ describe('workspaceMutationEffects document mutations', () => {
       mutationKind: 'incremental',
     }));
 
-    expect(mocks.synchronizeMarkdownAnnotations).toHaveBeenCalledWith('doc-1');
+    expect(mocks.applyMarkdownPending).toHaveBeenCalledTimes(1);
     expect(mocks.applyMarkdownPending).toHaveBeenCalledWith('doc-1');
     expect(mocks.notifyDocumentMutationHandlers).not.toHaveBeenCalled();
   });

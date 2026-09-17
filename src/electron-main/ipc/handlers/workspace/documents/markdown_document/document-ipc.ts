@@ -1,3 +1,4 @@
+import { MarkdownRevisionCommitSchema } from '@app/schemas';
 /**
  * @file src/electron-main/ipc/handlers/documents/markdown_document/document-ipc.ts
  * @description 文档读写 IPC 通道处理器（按 node.type 路由）与 MarkdownDocument 专属操作。
@@ -92,207 +93,31 @@ export function registerMarkdownDocumentHandlers(
     }
   });
 
+  ipcMain.handle('workspace:commit-markdown-revision', async (_event, input: unknown) => {
+    try {
+      const request = MarkdownRevisionCommitSchema.parse(input);
+      const db = databaseService.getDb();
+      const node = new WorkspaceService(db).getNode(request.documentId);
+      if (node?.type !== 'document') throw new Error('Markdown document not found');
+      const result = await new PendingRevisionApplyService(new MarkdownDocumentService(db)).commitEditorRevision(request);
+      workspaceMutationPublisher.publish(createWorkspaceDocumentUpdatedEvent({
+        node, mutationKind: 'version', versionNumber: result.versionNumber, source: 'user',
+      }));
+      return { success: true, data: result };
+    } catch (error: unknown) {
+      logger.error('[workspace:commit-markdown-revision] Commit failed:', error);
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
   // ============================================================================
   // Pending Revisions（AI 修订意图）操作
   // ============================================================================
 
   /**
-   * 清理指定块的 pending revision
-   */
-  ipcMain.handle(
-    'workspace:clear-pending-revision',
-    async (event, { documentId, blockId }: { documentId: string; blockId: string }) => {
-      try {
-        const db = databaseService.getDb();
-        const documentService = new MarkdownDocumentService(db);
-        const deletedCount = documentService.clearPendingRevision(documentId, blockId);
-        return { success: true, data: { deletedCount } };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        logger.error('[workspace:clear-pending-revision] Error:', error);
-        return { success: false, error: message };
-      }
-    }
-  );
-
-  /**
-   * 清理文档下所有 pending revisions
-   *
-   * 场景：用户接受/拒绝全部修订后调用
-   */
-  ipcMain.handle(
-    'workspace:clear-all-pending-revisions',
-    async (event, { documentId }: { documentId: string }) => {
-      try {
-        const db = databaseService.getDb();
-        const documentService = new MarkdownDocumentService(db);
-        const deletedCount = documentService.clearAllPendingRevisions(documentId);
-        return { success: true, data: { deletedCount } };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        logger.error('[workspace:clear-all-pending-revisions] Error:', error);
-        return { success: false, error: message };
-      }
-    }
-  );
-
-  /**
-   * 文档级一次性接受/拒绝所有 pending revisions。
-   *
-   * 中文说明：
-   * - 旧路径由前端逐块 dispatch ProseMirror transaction，超大 pending 文档会出现明显卡顿；
-   * - 新路径在主进程 docJson 层完成合并，前端只需要一次 setContent；
-   * - 仅允许 platform Markdown document 使用，避免把任意插件文档当成 Tiptap JSON 改写。
-   */
-  ipcMain.handle(
-    'workspace:apply-all-pending-revisions',
-    async (
-      event,
-      { documentId, mode }: { documentId: string; mode: 'accept' | 'reject' }
-    ) => {
-      try {
-        if (mode !== 'accept' && mode !== 'reject') {
-          return { success: false, error: `Invalid apply mode: ${mode}` };
-        }
-
-        const db = databaseService.getDb();
-        const workspaceService = new WorkspaceService(db);
-        const node = workspaceService.getNode(documentId);
-        if (!node) {
-          return { success: false, error: `Document not found: ${documentId}` };
-        }
-        if (node.type !== 'document') {
-          return { success: false, error: `Apply pending revisions only supports document nodes: ${documentId}` };
-        }
-
-        const documentService = new MarkdownDocumentService(db);
-        const applyService = new PendingRevisionApplyService(documentService);
-        const result = await applyService.applyAllPendingForDocument({ documentId, mode });
-        if (result.status === 'ok') {
-          const latestVersion = documentService.getLatestVersion(documentId);
-          workspaceMutationPublisher.publish(createWorkspaceDocumentUpdatedEvent({
-            node,
-            mutationKind: mode === 'accept' && result.appliedCount > 0 ? 'version' : 'pending',
-            ...(mode === 'accept' && result.appliedCount > 0 && latestVersion
-              ? { versionNumber: latestVersion.version_number }
-              : {}),
-            source: 'user',
-          }));
-        }
-        return { success: true, data: result };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        logger.error('[workspace:apply-all-pending-revisions] Error:', error);
-        return { success: false, error: message };
-      }
-    }
-  );
-
-  /**
-   * 块级接受/拒绝单条 pending revision。
-   *
-   * 中文说明：
-   * - 前端块级 Accept/Reject 已经在当前编辑器中完成局部 PM 事务；
-   * - 这里在后端 docJson 层同步应用同一个 pending，并在同一个 SQLite 事务里清理 pending；
-   * - 成功后前端无需再保存整篇 10000 块文档，点击延迟主要剩一次 IPC。
-   */
-  ipcMain.handle(
-    'workspace:apply-pending-revision',
-    async (
-      event,
-      { documentId, blockId, mode }: { documentId: string; blockId: string; mode: 'accept' | 'reject' }
-    ) => {
-      try {
-        if (mode !== 'accept' && mode !== 'reject') {
-          return { success: false, error: `Invalid apply mode: ${mode}` };
-        }
-
-        const db = databaseService.getDb();
-        const workspaceService = new WorkspaceService(db);
-        const node = workspaceService.getNode(documentId);
-        if (!node) {
-          return { success: false, error: `Document not found: ${documentId}` };
-        }
-        if (node.type !== 'document') {
-          return { success: false, error: `Apply pending revision only supports document nodes: ${documentId}` };
-        }
-
-        const documentService = new MarkdownDocumentService(db);
-        const applyService = new PendingRevisionApplyService(documentService);
-        const result = await applyService.applyPendingForBlock({ documentId, blockId, mode });
-        if (result.status === 'ok') {
-          const latestVersion = documentService.getLatestVersion(documentId);
-          workspaceMutationPublisher.publish(createWorkspaceDocumentUpdatedEvent({
-            node,
-            mutationKind: mode === 'accept' && result.appliedCount > 0 ? 'version' : 'pending',
-            ...(mode === 'accept' && result.appliedCount > 0 && latestVersion
-              ? { versionNumber: latestVersion.version_number }
-              : {}),
-            source: 'user',
-          }));
-        }
-        return { success: true, data: result };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        logger.error('[workspace:apply-pending-revision] Error:', error);
-        return { success: false, error: message };
-      }
-    }
-  );
-
-  /**
-   * 写入/覆盖指定块的 pending revision（前端通用写入通道）
-   *
-   * 后端语义：同一 (documentId, blockId) 只保留一条最新记录（upsert）。
-   * assertBlockExists 会校验 blockId 在 content_json 中存在。
-   */
-  ipcMain.handle(
-    'workspace:set-pending-revision',
-    async (
-      event,
-      { documentId, blockId, newMarkdown, source, meta }: {
-        documentId: string;
-        blockId: string;
-        newMarkdown: string;
-        source?: 'ai' | 'user' | 'tool';
-        meta?: Record<string, unknown>;
-      }
-    ) => {
-      try {
-        const db = databaseService.getDb();
-        const documentService = new MarkdownDocumentService(db);
-        const revision = documentService.setPendingRevision(
-          documentId,
-          blockId,
-          newMarkdown,
-          source ?? 'user',
-          meta
-        );
-        return {
-          success: true,
-          data: {
-            id: revision.id,
-            blockId: revision.target_block_id,
-            newMarkdown: revision.new_markdown,
-            source: revision.source,
-            operation: revision.operation ?? null,
-            metaJson: revision.meta_json,
-            createdAt: revision.created_at,
-            updatedAt: revision.updated_at,
-          },
-        };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        logger.error('[workspace:set-pending-revision] Error:', error);
-        return { success: false, error: message };
-      }
-    }
-  );
-
-  /**
    * 批量写入 pending revisions（同一文档下多个块）
    *
-   * 场景：测试工具批量注入、undo/redo 批量恢复等。
+   * 仅供开发期种子批量注入。生产修订由 Agent 写入或文档会话提交，不能通过此通道恢复撤销标记。
    * 返回成功写入的条数。
    */
   ipcMain.handle(

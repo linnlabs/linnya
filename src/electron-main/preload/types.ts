@@ -57,13 +57,6 @@ export type InspectNodeTransferArgs = WorkspaceNodeTransferRequest;
 export type TransferNodeArgs = WorkspaceNodeTransferRequest;
 export type ReadDocumentArgs = { documentId: string };
 export type SaveDocumentArgs = { documentId: string; content: unknown };
-export type SetPendingRevisionArgs = {
-  documentId: string;
-  blockId: string;
-  newMarkdown: string;
-  source?: 'ai' | 'user' | 'tool';
-  meta?: Record<string, unknown>;
-};
 export type SetPendingRevisionsBatchArgs = {
   documentId: string;
   revisions: Array<{
@@ -73,10 +66,6 @@ export type SetPendingRevisionsBatchArgs = {
     meta?: Record<string, unknown>;
   }>;
 };
-export type ClearPendingRevisionArgs = { documentId: string; blockId: string };
-export type ClearAllPendingRevisionsArgs = { documentId: string };
-export type ApplyAllPendingRevisionsArgs = { documentId: string; mode: 'accept' | 'reject' };
-export type ApplyPendingRevisionArgs = { documentId: string; blockId: string; mode: 'accept' | 'reject' };
 export type NotifyDocumentOpenedArgs = { documentId: string };
 export type GetRecentDocumentsArgs = {
   limit?: number;

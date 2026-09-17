@@ -1,7 +1,7 @@
 # Host 数据库基线与迁移
 
 本目录只管理 Linnya Host 在 `workspace.sqlite` 中拥有的 Schema。当前不兼容开发基线是
-v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v63。
+v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v64。
 
 ## 为什么基线仍是 v61
 
@@ -51,6 +51,10 @@ pnpm run dev:data:reset
 
 `LINNYA_WORKSPACE_DIR` 指向的外部 Workspace 不属于默认重置范围；其旧 SQLite 会被 v61 基线检查
 拒绝，需要使用者显式重建或走未来单独设计的数据导入流程。
+
+## v64 Pending revision
+
+v63→v64 为既有 Markdown Pending 增加 `revision`，已有记录从 1 开始。更新提议保留 ID 并递增 revision；正文和 Pending 的版本共同防止旧 Editor 决策覆盖新提议。这是保留数据的增量迁移，不提升开发数据 epoch，也不要求重置数据库。旧结构迁移与回滚由相邻真实 SQLite 测试覆盖。
 
 ## v61 之后如何变更
 

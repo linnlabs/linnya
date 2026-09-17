@@ -18,6 +18,7 @@
 - Citation 引用合同。
 - 插件 manifest 与插件商店共享合同。
 - Workspace mutation 事件合同。
+- [Markdown 修订](./src/markdown-revisions.ts)的 Pending DTO、完整快照及带版本校验的 Editor 原子提交合同；提议 ID 与内容 revision 分别表达身份和更新。
 - 文档历史的最小版本身份、时间快照及恢复请求合同；保留规则归 [document-history](../../src/domains/document-history/README.md)，不放进 schema 包。
 - Shell command owner 与 process control 的跨进程合同。
 - Conversation 的轻量 subrun 索引合同。

@@ -29,12 +29,6 @@ export type { EditorStores, BootstrapOptions } from './services/bootstrapEditorS
 
 export { useEditorDocumentSettingsStore } from './features/DocumentSettings'
 
-// @ts-ignore - JS 文件导入
-export {
-  loadContentIntoEditor,
-  gatherSaveData,
-} from './services/editorService.js'
-
 // --- Markdown 双向转换 ---
 export {
   importMarkdownToDocJson,

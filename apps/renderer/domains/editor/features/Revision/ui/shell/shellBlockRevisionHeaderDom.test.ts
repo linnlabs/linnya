@@ -9,7 +9,7 @@ import {
   renderShellRevisionHeader,
   type ShellRevisionHeaderSession,
 } from './shellBlockRevisionHeaderDom'
-import type { CanonicalPendingSession } from '../../store/types'
+import type { CanonicalPendingSession } from '../../definitions/revision'
 
 const testMessage: EditorMessageResolver = (key) => {
   const messages: Partial<Record<Parameters<EditorMessageResolver>[0], string>> = {
@@ -19,8 +19,6 @@ const testMessage: EditorMessageResolver = (key) => {
     'editor.revision.indicator.pendingTitle': 'Pending revisions',
     'editor.revision.indicator.pendingTitleWithStats': 'Pending revisions: {stats}',
     'editor.revision.indicator.pendingTitleDeferred': 'Pending revisions: detailed diff not projected yet',
-    'editor.revision.indicator.appliedTitle': 'Accepted revisions: {stats}',
-    'editor.revision.indicator.discardedTitle': 'Rejected revisions: {stats}',
     'editor.revision.indicator.insertStat': '{count} additions',
     'editor.revision.indicator.deleteStat': '{count} deletions',
     'editor.revision.time.yesterday': 'Yesterday',
@@ -52,6 +50,8 @@ function createSession(
   diffStats?: CanonicalPendingSession['diffStats']
 ): CanonicalPendingSession {
   return {
+    revision: 1,
+    projection: 'deferred',
     pendingId: `pending-${blockId}`,
     blockId,
     operation: 'update',

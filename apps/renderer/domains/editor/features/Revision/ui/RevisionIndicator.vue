@@ -33,7 +33,7 @@ const { editorMessage } = useEditorLocalization()
 
 const props = defineProps<{
   /** 修订状态 */
-  status: 'pending' | 'applied' | 'discarded'
+  status: 'pending'
   /** 插入数量 */
   insertCount?: number
   /** 删除数量 */
@@ -61,7 +61,6 @@ const formattedTime = computed(() => {
 // 指示器提示文字
 const indicatorTitle = computed(() => {
   return formatRevisionIndicatorTitle({
-    status: props.status,
     insertCount: props.insertCount ?? 0,
     deleteCount: props.deleteCount ?? 0,
     hasDetailedStats: !props.pendingOnly,

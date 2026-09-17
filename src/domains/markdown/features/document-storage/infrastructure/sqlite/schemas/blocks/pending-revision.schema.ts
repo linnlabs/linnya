@@ -17,6 +17,7 @@ export const PENDING_REVISION_SCHEMAS = [
   // 块级 Pending Revision 表
   `CREATE TABLE IF NOT EXISTS markdown_block_pending_revisions (
     id TEXT PRIMARY KEY,                    -- 记录 ID（UUID）
+    revision INTEGER NOT NULL DEFAULT 1,     -- 同一提议的内容版本，每次更新递增
     document_node_id TEXT NOT NULL,         -- 对应 workspace_nodes.id（所属文档）
     target_block_id TEXT NOT NULL,          -- 对应 rootBlock.attrs.id（目标块）
     new_markdown TEXT NOT NULL,             -- 建议的完整块 Markdown（受控子集）

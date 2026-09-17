@@ -67,7 +67,8 @@ function createMarkdownFileWriteProvider(params: {
           operation: request.operation,
           path: request.identity.path,
           replacedCount: request.replacedCount,
-          pendingCount: write.edits.length,
+          pendingCount: write.pendingCount,
+          cancelledCount: write.cancelledCount,
           createdAnnotationCount: write.createdAnnotationIds.length,
           updatedAnnotationCount: write.updatedAnnotationIds.length,
           deletedAnnotationCount: write.deletedAnnotationIds.length,
@@ -99,7 +100,7 @@ function createMarkdownFileWriteProvider(params: {
         commitResult: write => params.resultCommit?.commit(formatResult(write)),
       });
       if (
-        write.edits.length > 0 ||
+        write.edits.length > 0 || write.cancelledCount > 0 ||
         write.createdAnnotationIds.length > 0 ||
         write.updatedAnnotationIds.length > 0 ||
         write.deletedAnnotationIds.length > 0
@@ -131,11 +132,13 @@ function buildMarkdownFileWriteObservation(params: {
   readonly path: string;
   readonly replacedCount?: number;
   readonly pendingCount: number;
+  readonly cancelledCount: number;
   readonly createdAnnotationCount: number;
   readonly updatedAnnotationCount: number;
   readonly deletedAnnotationCount: number;
 }): string {
   const facts: string[] = [];
+  if (params.cancelledCount > 0) facts.push(`已撤回 ${params.cancelledCount} 块正文修订`);
   if (params.pendingCount > 0) facts.push(`正文修订 ${params.pendingCount} 块待确认`);
   if (params.createdAnnotationCount > 0) {
     facts.push(`批注 ${params.createdAnnotationCount} 条已创建`);

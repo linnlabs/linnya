@@ -58,9 +58,10 @@ export class PendingRevisionsService extends MarkdownPendingRevisionReader {
     const existing = existingStmt.get(documentId, blockId) as { id: string } | undefined;
 
     if (existing) {
+      // 同一块仍只有一条 Pending；内容版本让旧投影及旧审阅决策明确失效。
       const updateStmt = this.db.prepare(`
         UPDATE markdown_block_pending_revisions
-        SET new_markdown = ?, source = ?, operation = ?, meta_json = ?, updated_at = ?
+        SET revision = revision + 1, new_markdown = ?, source = ?, operation = ?, meta_json = ?, updated_at = ?
         WHERE id = ?
       `);
       updateStmt.run(newMarkdown, source, operation, metaJson, now, existing.id);

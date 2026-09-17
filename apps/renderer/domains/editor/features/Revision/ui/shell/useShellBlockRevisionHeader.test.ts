@@ -31,15 +31,15 @@ import type {
   CanonicalPendingSession,
   PendingProjectionResult,
   RevisionStore,
-} from '../../store/types'
-import { useRevisionStore } from '../../store/useRevisionStore'
+} from '../../definitions/revision'
+import { useRevisionStore } from '../../useRevisionStore'
 import {
   ROOT_BLOCK_SHELL_REVISION_HEADER_ACTIVE_ATTR,
   ROOT_BLOCK_SHELL_REVISION_HEADER_ATTR,
 } from './shellBlockRevisionHeaderDom'
 import { useShellBlockRevisionHeader } from './useShellBlockRevisionHeader'
 
-vi.mock('../../store/useRevisionStore', () => ({
+vi.mock('../../useRevisionStore', () => ({
   useRevisionStore: vi.fn(),
 }))
 
@@ -159,6 +159,8 @@ function createEditor(dom: HTMLElement): ShellHeaderTestEditor {
 
 function createCanonicalSession(blockId: string): CanonicalPendingSession {
   return {
+    revision: 1,
+    projection: 'deferred',
     pendingId: `pending-${blockId}`,
     blockId,
     operation: 'update',
@@ -207,18 +209,15 @@ function createRevisionStoreMock(params: {
     ),
     acceptAllRevisions: vi.fn(async () => {}),
     rejectAllRevisions: vi.fn(async () => {}),
-    acceptAllRevisionsInDocument: vi.fn(async () => 'applied' as const),
-    rejectAllRevisionsInDocument: vi.fn(async () => 'applied' as const),
+    acceptAllRevisionsInDocument: vi.fn(async () => {}),
+    rejectAllRevisionsInDocument: vi.fn(async () => {}),
     acceptSingleRevision: vi.fn(async () => {}),
     rejectSingleRevision: vi.fn(async () => {}),
-    clearRevision: vi.fn(),
     clearAllRevisions: vi.fn(),
-    updateDiffStats: vi.fn(),
-    clearBackendPendingForBlock: vi.fn(async () => {}),
-    setWorkspacePendingRevisions: vi.fn(),
+    bindCommit: vi.fn(),
+    installPendingSnapshot: vi.fn(async () => {}),
+    readBaseline: () => { throw new Error('Not used in UI fixture'); },
     projectPendingRevisionsForBlocks: vi.fn(async () => emptyProjectionResult),
-    findRootBlockPos: vi.fn(() => null),
-    reconcileCanonicalWithDocument: vi.fn(),
   }
 }
 

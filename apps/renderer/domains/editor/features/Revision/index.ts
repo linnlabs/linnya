@@ -4,14 +4,14 @@
  */
 
 // Store
-export { useRevisionStore } from './store/useRevisionStore'
+export { useRevisionStore } from './useRevisionStore'
 export type {
   RevisionStore,
   BlockRevisionState,
   RevisionStatus,
   StartRevisionParams,
   CanonicalPendingSession,
-} from './store/types'
+} from './definitions/revision'
 
 // Utils - Diff 计算
 export {
@@ -27,7 +27,6 @@ export {
   applyDiffToDocument,
   applyRichDiffToDocument,
   extractBlockText,
-  clearBlockRevisionMarks,
 } from './utils/diffApplier'
 export type { ApplyDiffParams, ApplyRichDiffParams, ApplyDiffResult } from './utils/diffApplier'
 
@@ -71,6 +70,3 @@ export {
   setupShellPendingProjectionBridge,
   type ShellPendingProjectionBridgeOptions,
 } from './orchestration/shellPendingProjection/setupShellPendingProjectionBridge'
-
-// Block lifecycle 集成
-export { setupRevisionBlockEventHandler } from './blockLifecycle/RevisionBlockEventHandler'

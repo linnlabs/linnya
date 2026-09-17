@@ -1,4 +1,4 @@
-import type { CanonicalPendingSession, RevisionStatus } from '../store/types'
+import type { CanonicalPendingSession, RevisionStatus } from '../definitions/revision'
 
 export interface RevisionIndicatorSummary {
   hasPendingRevision: boolean

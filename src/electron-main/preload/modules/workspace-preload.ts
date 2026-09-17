@@ -10,6 +10,7 @@ import type { IpcRenderer, IpcRendererEvent } from 'electron';
 import {
   WORKSPACE_MUTATION_CHANNEL,
   type WorkspaceMutationEvent,
+  type MarkdownRevisionCommit,
 } from '@app/schemas';
 import type {
   CreateProjectArgs,
@@ -29,12 +30,7 @@ import type {
   TransferNodeArgs,
   ReadDocumentArgs,
   SaveDocumentArgs,
-  SetPendingRevisionArgs,
   SetPendingRevisionsBatchArgs,
-  ClearPendingRevisionArgs,
-  ClearAllPendingRevisionsArgs,
-  ApplyAllPendingRevisionsArgs,
-  ApplyPendingRevisionArgs,
   NotifyDocumentOpenedArgs,
   GetRecentDocumentsArgs,
   AudioBlockGetAllContentArgs,
@@ -67,19 +63,10 @@ export function buildWorkspacePreloadApi(ipcRenderer: IpcRenderer) {
       ipcRenderer.invoke('workspace:inspect-node-transfer', args),
     'workspace:transfer-node': (args: TransferNodeArgs) => ipcRenderer.invoke('workspace:transfer-node', args),
     'workspace:read-document': (args: ReadDocumentArgs) => ipcRenderer.invoke('workspace:read-document', args),
+    'workspace:commit-markdown-revision': (args: MarkdownRevisionCommit) => ipcRenderer.invoke('workspace:commit-markdown-revision', args),
     'workspace:save-document': (args: SaveDocumentArgs) => ipcRenderer.invoke('workspace:save-document', args),
-    'workspace:set-pending-revision': (args: SetPendingRevisionArgs) =>
-      ipcRenderer.invoke('workspace:set-pending-revision', args),
     'workspace:set-pending-revisions-batch': (args: SetPendingRevisionsBatchArgs) =>
       ipcRenderer.invoke('workspace:set-pending-revisions-batch', args),
-    'workspace:clear-pending-revision': (args: ClearPendingRevisionArgs) =>
-      ipcRenderer.invoke('workspace:clear-pending-revision', args),
-    'workspace:clear-all-pending-revisions': (args: ClearAllPendingRevisionsArgs) =>
-      ipcRenderer.invoke('workspace:clear-all-pending-revisions', args),
-    'workspace:apply-all-pending-revisions': (args: ApplyAllPendingRevisionsArgs) =>
-      ipcRenderer.invoke('workspace:apply-all-pending-revisions', args),
-    'workspace:apply-pending-revision': (args: ApplyPendingRevisionArgs) =>
-      ipcRenderer.invoke('workspace:apply-pending-revision', args),
     'workspace:notify-document-opened': (args: NotifyDocumentOpenedArgs) =>
       ipcRenderer.invoke('workspace:notify-document-opened', args),
     'workspace:get-recent-documents': (args: GetRecentDocumentsArgs) =>

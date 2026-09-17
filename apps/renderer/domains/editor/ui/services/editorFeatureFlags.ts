@@ -42,16 +42,6 @@ export interface EditorShellFlags {
   revisionOverlayEnabled: boolean
 
   /**
-   * 性能整治：Accept/Reject All 走后端 docJson 一次性合并。
-   *
-   * 中文说明：
-   * - 开启后文档级接受/拒绝不会逐块 dispatch ProseMirror transaction；
-   * - 若主进程通道不可用，RevisionStore 会回退旧路径；
-   * - 可在 DevTools 中临时关闭，用于对比性能或排查回归。
-   */
-  enableBackendPendingApply: boolean
-
-  /**
    * 大文档打开时只建立 pending canonical 索引，暂缓全文档 revisionMark 投影。
    * 中文说明：10000 块/10000 pending 不应在首开阶段同步改写整棵 ProseMirror doc。
    */
@@ -104,7 +94,6 @@ const _flags: EditorShellFlags = {
   autoRootBlockShellForLargeDocuments: true,
   blockChromeLayerEnabled: true,
   revisionOverlayEnabled: true,
-  enableBackendPendingApply: true,
   deferPendingProjectionForLargeDocuments: true,
   useDirectStateDocumentLoadForLargeDocuments: true,
   stabilizeDirectStatePluginsForLargeDocuments: true,

@@ -1,8 +1,8 @@
 <!-- src/renderer/app/core/EditorContent.vue -->
 <template>
   <div
-    class="editor-main-content"
     ref="editorMainContentRef"
+    class="editor-main-content"
   >
     <!-- 主内容区域 -->
     <editor-content :editor="editorForContent" />
@@ -12,19 +12,25 @@
 
     <!-- AI 写作输入框 -->
     <AiWriting
-      :isVisible="uiStore.aiPromptVisible"
+      :is-visible="uiStore.aiPromptVisible"
       :position="uiStore.aiPromptPosition"
-      :targetBlockId="uiStore.aiPromptTargetBlockId"
+      :target-block-id="uiStore.aiPromptTargetBlockId"
       @submit="handleAiPromptSubmit"
       @cancel="uiStore.hideAiPrompt"
     />
 
     <!-- 移除旧的本地AI指示器，改用全局指示器 -->
 
-    <div v-if="uiStore.debugPanelVisible && isDevelopment" class="debug-panel">
+    <div
+      v-if="uiStore.debugPanelVisible && isDevelopment"
+      class="debug-panel"
+    >
       <div class="debug-panel-header">
         <h3>{{ editorMessage('editor.debugPanel.title') }}</h3>
-        <button @click="uiStore.toggleDebugPanel()" class="close-button">
+        <button
+          class="close-button"
+          @click="uiStore.toggleDebugPanel()"
+        >
           ×
         </button>
       </div>
@@ -57,6 +63,8 @@
       :insert-count="globalRevisionStats.insertCount"
       :delete-count="globalRevisionStats.deleteCount"
       :projection-deferred="isPendingProjectionDeferred"
+      :projection-failed="hasPendingProjectionFailure"
+      :busy="isApplyingRevisions"
       @accept-all="handleAcceptAllRevisionsInDocument"
       @reject-all="handleRejectAllRevisionsInDocument"
     />
@@ -72,8 +80,10 @@
       阶段 3：BlockChrome 中央化宿主。
       中文说明：块级轻 UI 和批注面板挂载层由 Host 承载，具体业务规则仍回到各 feature。
     -->
-    <BlockChromeHost v-if="editorForContent" :editor="editorForContent" />
-
+    <BlockChromeHost
+      v-if="editorForContent"
+      :editor="editorForContent"
+    />
   </div>
 </template>
 
@@ -200,6 +210,8 @@ const {
   showRevisionGlobalToolbar,
   pendingRevisionBlockCount,
   globalRevisionStats,
+  hasPendingProjectionFailure,
+  isApplyingRevisions,
   isPendingProjectionDeferred,
   handleAcceptAllRevisionsInDocument,
   handleRejectAllRevisionsInDocument,
@@ -268,7 +280,7 @@ const logSelectionInfo = () => {
   if (!editor.value) return;
   const posUtils = new PositionUtils(editor.value);
   const selectionInfo = posUtils.getSelectionInfo();
-  // eslint-disable-next-line no-console
+
   console.log("[EditorContent] 当前选区信息:", selectionInfo);
 };
 

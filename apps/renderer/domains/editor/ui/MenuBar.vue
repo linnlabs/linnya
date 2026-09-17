@@ -280,29 +280,6 @@ const toggleQuoteBlock = () => {
   }
 };
 
-// 辅助函数：收集需要保存的数据
-const gatherSaveData = () => {
-  console.log('[MenuBar] Attempting to gather save data...');
-  if (!editor.value) {
-    console.error('[MenuBar] Cannot gather save data: Editor not available.');
-    return null;
-  }
-  console.log('[MenuBar] Editor instance is available.');
-
-  try {
-    const editorContent = editor.value.getJSON();
-    console.log('[MenuBar] Got editor content (JSON).');
-    const result = { version: 1, editorContent };
-    console.log('[MenuBar] Successfully gathered save data:', result);
-    return result;
-  } catch (error) {
-    console.error('[MenuBar] Error gathering save data:', error);
-    return null;
-  }
-};
-
-// 数据库架构下，文档自动保存到数据库，不需要旧的文件操作逻辑
-
 const toggleHeadingDropdown = () => {
   // 如果文件菜单是打开的，先关闭它
   if (uiStore.isFileDropdownOpen) {

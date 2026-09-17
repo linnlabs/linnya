@@ -14,6 +14,7 @@ function parsePendingRevision(value: unknown): PendingRevision {
   const source = value.source;
   if (
     typeof value.id !== 'string'
+    || typeof value.revision !== 'number' || !Number.isInteger(value.revision) || value.revision < 1
     || typeof value.document_node_id !== 'string'
     || typeof value.target_block_id !== 'string'
     || typeof value.new_markdown !== 'string'
@@ -27,6 +28,7 @@ function parsePendingRevision(value: unknown): PendingRevision {
   }
   return {
     id: value.id,
+    revision: value.revision,
     document_node_id: value.document_node_id,
     target_block_id: value.target_block_id,
     new_markdown: value.new_markdown,

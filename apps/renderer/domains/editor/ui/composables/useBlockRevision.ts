@@ -13,7 +13,7 @@
 
 import { computed, unref, watch, type ComputedRef, type Ref } from 'vue';
 import type { Editor } from '@tiptap/vue-3';
-import { useRevisionStore, type RevisionStore, type BlockRevisionState } from '../../features/Revision/store/useRevisionStore';
+import { useRevisionStore, type RevisionStore, type BlockRevisionState } from '../../features/Revision/useRevisionStore';
 import { getFlag } from '../services/editorFeatureFlags';
 
 // ==================== 类型定义 ====================

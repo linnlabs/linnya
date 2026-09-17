@@ -1,4 +1,3 @@
-import type { JSONContent } from '@tiptap/core'
 import type { Node as ProseMirrorNode, Schema } from '@tiptap/pm/model'
 
 type SchemaTypeWithAttributes = {
@@ -105,7 +104,7 @@ function assertNodeJson(value: unknown, schema: Schema, path: string): void {
  * node/mark/attrs，再调用 `Node.check()`。任一阶段失败都发生在 Editor state 改变之前。
  */
 export function parseEditorDocumentJson(
-  content: JSONContent,
+  content: unknown,
   schema: Schema
 ): ProseMirrorNode {
   assertNodeJson(content, schema, 'doc')

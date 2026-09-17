@@ -1,7 +1,7 @@
 import type { MarkdownDocumentService } from '../../document-storage';
 import type { MarkdownNormalizationService } from '../../normalization';
 import type { MarkdownEditorDocumentReadResult } from '../definitions/markdownEditorDocument';
-import { projectMarkdownEditorPendingRevisions } from '../functions/projectMarkdownEditorPendingRevisions';
+import { projectMarkdownEditorPendingRevisions } from '../../pending-revisions';
 
 export async function readMarkdownEditorDocument(params: {
   readonly documentId: string;

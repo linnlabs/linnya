@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { BlockRevisionState } from '../../store/types'
+import type { BlockRevisionState } from '../../definitions/revision'
 import { selectShellPendingProjectionCandidates } from './selectShellPendingProjectionCandidates'
 
 function createStore(params: {

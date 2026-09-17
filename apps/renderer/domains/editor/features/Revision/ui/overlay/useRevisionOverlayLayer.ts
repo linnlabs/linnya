@@ -2,7 +2,7 @@ import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
 import type { Editor } from '@tiptap/core'
 import { shouldUseRootBlockShellForOwner, getFlag } from '../../../../ui/services/editorFeatureFlags'
 import { findSelectionRootBlockId } from '../../../RenderVirtualization/state/renderVirtualizationPlugin'
-import { useRevisionStore, type RevisionStore } from '../../store/useRevisionStore'
+import { useRevisionStore, type RevisionStore } from '../../useRevisionStore'
 import {
   collectRevisionOverlayRootBlocks,
   readRootBlockIdFromEventTarget,

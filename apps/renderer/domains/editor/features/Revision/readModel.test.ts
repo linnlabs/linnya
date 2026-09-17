@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { readRevisionIndicatorSummary } from './functions/readRevisionIndicatorSummary'
-import type { CanonicalPendingSession } from './store/types'
+import type { CanonicalPendingSession } from './definitions/revision'
 
 function createCanonicalSession(
   overrides: Partial<CanonicalPendingSession> = {}
 ): CanonicalPendingSession {
   return {
+    revision: 1,
+    projection: 'deferred',
     pendingId: 'pending-a',
     blockId: 'root-a',
     operation: 'update',

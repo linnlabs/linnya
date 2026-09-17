@@ -293,8 +293,7 @@ export const RootBlock = Node.create({
         return true
       },
       
-      // 注意：修订相关命令已迁移到 extensions/core/commands/RevisionCommands.js
-      // 包括：acceptAllRevisionsInBlock, rejectAllRevisionsInBlock, restoreBlockContent, clearBlockRevisionMarks
+      // 修订决策由 document-session 提交数据库，RootBlock 不提供本地接受/拒绝命令。
       // 通过 CoreCommandsExtension 统一注册
       
       // ==================== 块颜色命令 ====================

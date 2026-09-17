@@ -13,7 +13,6 @@ import * as InsertCommands from './InsertCommands';
 import * as RemoveCommands from './RemoveCommands';
 import * as HorizontalRuleCommands from './HorizontalRuleCommands';
 import * as ReplaceCommands from './ReplaceCommands';
-import * as RevisionCommands from './RevisionCommands';
 import BlockQueryCommands from './BlockQueryCommands';
 
 
@@ -28,7 +27,6 @@ export {
   BlockQueryCommands,
   HorizontalRuleCommands,
   ReplaceCommands,
-  RevisionCommands,
 };
 
 // 默认导出所有命令的集合
@@ -42,5 +40,4 @@ export default {
   ...BlockQueryCommands,
   ...HorizontalRuleCommands,
   ...ReplaceCommands,
-  ...RevisionCommands,
 }; 

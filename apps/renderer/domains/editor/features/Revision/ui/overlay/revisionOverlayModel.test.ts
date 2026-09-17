@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CanonicalPendingSession } from '../../store/types'
+import type { CanonicalPendingSession } from '../../definitions/revision'
 import { buildRevisionOverlayItems } from './revisionOverlayModel'
 import type { RevisionOverlayCanonicalReader, RevisionOverlayRootBlockSnapshot } from './revisionOverlayTypes'
 
@@ -32,6 +32,8 @@ describe('revisionOverlayModel', () => {
       blocks: [block('b1'), block('b2')],
       reader: createReader({
         b1: {
+          revision: 1,
+          projection: 'deferred',
           pendingId: 'p1',
           blockId: 'b1',
           operation: 'update',
@@ -60,6 +62,8 @@ describe('revisionOverlayModel', () => {
       blocks: [block('b1')],
       reader: createReader({
         b1: {
+          revision: 1,
+          projection: 'deferred',
           pendingId: 'p1',
           blockId: 'b1',
           operation: 'update',

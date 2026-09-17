@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core';
-import { useRevisionStore } from '../../store/useRevisionStore';
-import type { PendingProjectionResult, RevisionStore } from '../../store/types';
+import { useRevisionStore } from '../../useRevisionStore';
+import type { PendingProjectionResult, RevisionStore } from '../../definitions/revision';
 import { getFlag, shouldUseRootBlockShellForOwner } from '../../../../ui/services/editorFeatureFlags';
 import type {
   RenderVirtualizationEngine,

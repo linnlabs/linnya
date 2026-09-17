@@ -1,3 +1,4 @@
+import { alignMarkdownAnnotationComments } from '../functions/alignMarkdownAnnotationComments';
 /**
  * @file writeMarkdownDocumentFromText.ts
  * @description 将 file-style 的 Markdown 全文写入转换为块级 pending revisions。
@@ -10,52 +11,15 @@ import { buildMarkdownCitationReadProjection } from '../../document-read';
 import { planMarkdownBlocks } from '../../normalization';
 import { serializeMarkdownBlocks, type FlattenedMarkdownBlock } from '../../../shared';
 import { normalizeMarkdownCitationTokenSpelling } from '../../../../citation';
+import { planMarkdownBlockWrites } from '../functions/planMarkdownBlockWrites';
 import type { MarkdownAnnotationMeta } from '@app/schemas';
 import {
   applyMarkdownAnnotationChanges,
   planMarkdownFileAnnotationChanges,
 } from '../../annotations';
-import type { DocumentVersion } from '../../document-storage';
-import type { MarkdownDocJson } from '../../normalization/runtime';
 
-export type MarkdownFileWriteOperation = 'update' | 'insert' | 'delete';
-
-export interface MarkdownFileWriteEdit {
-  readonly operation: MarkdownFileWriteOperation;
-  readonly blockId: string;
-  readonly ref: string;
-}
-
-export interface MarkdownFileWriteResult {
-  readonly documentId: string;
-  readonly edits: MarkdownFileWriteEdit[];
-  readonly currentText: string;
-  readonly targetText: string;
-  readonly createdAnnotationIds: readonly string[];
-  readonly updatedAnnotationIds: readonly string[];
-  readonly deletedAnnotationIds: readonly string[];
-}
-
-export interface MarkdownDocumentWriteStore {
-  getDocument(documentId: string): MarkdownDocJson;
-  getLatestVersion(documentId: string): DocumentVersion | null;
-  updateDocument(documentId: string, content: MarkdownDocJson): DocumentVersion;
-  getPendingRevisions(documentId: string): Array<{
-    readonly target_block_id: string;
-    readonly new_markdown: string | null;
-    readonly operation?: 'insert' | 'update' | 'delete' | null;
-    readonly meta_json: string | null;
-  }>;
-  runInTransaction<T>(fn: () => T): T;
-  insertEmptyBlockAfter(documentId: string, anchorBlockId: string, newBlockId: string): void;
-  setPendingRevisionForToolIntent(params: {
-    readonly documentId: string;
-    readonly blockId: string;
-    readonly newMarkdown: string;
-    readonly source?: 'ai' | 'user' | 'tool';
-    readonly meta?: PendingRevisionMetadata;
-  }): unknown;
-}
+import type { MarkdownDocumentWriteStore, MarkdownFileWriteEdit, MarkdownFileWriteOperation, MarkdownFileWriteResult } from '../definitions/markdownDocumentWrite';
+export type { MarkdownDocumentWriteStore, MarkdownFileWriteEdit, MarkdownFileWriteOperation, MarkdownFileWriteResult } from '../definitions/markdownDocumentWrite';
 
 function buildMeta(params: {
   readonly operation: MarkdownFileWriteOperation;
@@ -79,8 +43,8 @@ function setPending(params: {
   readonly operation: 'update' | 'delete';
   readonly toolName: 'edit_file' | 'write_file';
   readonly extraMeta?: PendingRevisionMetadata;
-}): MarkdownFileWriteEdit {
-  params.markdownService.setPendingRevisionForToolIntent({
+}): MarkdownFileWriteEdit | null {
+  const result = params.markdownService.setPendingRevisionForToolIntent({
     documentId: params.documentId,
     blockId: params.block.blockId,
     newMarkdown: params.operation === 'delete' ? '' : params.markdown,
@@ -92,6 +56,7 @@ function setPending(params: {
     }),
   });
 
+  if (result.cancelled) return null;
   return {
     operation: params.operation,
     blockId: params.block.blockId,
@@ -102,7 +67,7 @@ function setPending(params: {
 function insertPending(params: {
   readonly markdownService: MarkdownDocumentWriteStore;
   readonly documentId: string;
-  readonly anchorBlockId: string;
+  readonly anchorBlockId: string | null;
   readonly markdown: string;
   readonly toolName: 'edit_file' | 'write_file';
   readonly extraMeta?: PendingRevisionMetadata;
@@ -117,7 +82,7 @@ function insertPending(params: {
     meta: buildMeta({
       operation: 'insert',
       toolName: params.toolName,
-      anchorBlockId: params.anchorBlockId,
+      ...(params.anchorBlockId ? { anchorBlockId: params.anchorBlockId } : {}),
       extra: params.extraMeta,
     }),
   });
@@ -146,16 +111,17 @@ export async function writeMarkdownDocumentFromText(params: {
   // 编译可能等待 worker；读取当前正文必须在等待之后，避免按旧块快照提交修订。
   const planned = await planMarkdownBlocks(params.targetText);
   const content = params.documentStore.getDocument(params.documentId);
+  const pendings = params.documentStore.getPendingRevisions(params.documentId);
   // edit_file 的 old_string 来自 citation-aware VFS 文本。写入规划必须复用同一当前视图，
   // 否则持久层里的 UI label（如 `[1]`）会和 Agent 看到的 `[@ref]` 不同，导致未修改的引用块被误写。
   const currentProjection = buildMarkdownCitationReadProjection({
     content,
-    pendings: params.documentStore.getPendingRevisions(params.documentId),
+    pendings,
     viewMode: 'preview',
   });
   const currentBodyProjection = buildMarkdownCitationReadProjection({
     content,
-    pendings: params.documentStore.getPendingRevisions(params.documentId),
+    pendings,
     viewMode: 'preview',
     includeAnnotations: false,
   });
@@ -163,15 +129,27 @@ export async function writeMarkdownDocumentFromText(params: {
   const targetBlocks = planned.bodyBlocks;
   const targetComparisonBlocks = targetBlocks.map(normalizeMarkdownCitationTokenSpelling);
   const currentText = serializeMarkdownBlocks(currentProjection.viewBlocks);
-  const annotationChanges = planMarkdownFileAnnotationChanges({
-    currentDocument: content,
-    currentBlocks,
-    annotationComments: planned.annotationComments,
+
+  const baseline = buildMarkdownCitationReadProjection({
+    content, pendings: [], viewMode: 'original', includeAnnotations: false,
+  });
+  const pendingByBlock = new Map(pendings.map(pending => [pending.target_block_id, pending]));
+  const currentByBlock = new Map(currentBlocks.map(block => [block.blockId, block.text]));
+  const steps = planMarkdownBlockWrites({
+    candidates: baseline.baseBlocks.map(block => ({
+      block,
+      currentText: currentByBlock.get(block.blockId) ?? block.text,
+      pending: pendingByBlock.get(block.blockId),
+    })),
+    markdown: targetBlocks,
+    comparison: targetComparisonBlocks,
   });
 
-  if (currentBlocks.length === 0 && targetBlocks.length > 0) {
-    throw new Error('当前 Markdown 文档没有可锚定的块，无法通过 pending revision 写入全文。');
-  }
+  const annotationChanges = planMarkdownFileAnnotationChanges({
+    currentDocument: content,
+    currentBlocks: baseline.baseBlocks,
+    annotationComments: alignMarkdownAnnotationComments(steps, baseline.baseBlocks, planned.annotationComments),
+  });
 
   const writeResult = params.documentStore.runInTransaction(() => {
     const annotationMutation = applyMarkdownAnnotationChanges({
@@ -184,64 +162,42 @@ export async function writeMarkdownDocumentFromText(params: {
       meta: params.annotationAdmission.meta,
     });
     const executed: MarkdownFileWriteEdit[] = [];
-    const sharedLength = Math.min(currentBlocks.length, targetBlocks.length);
-
-    for (let index = 0; index < sharedLength; index += 1) {
-      const block = currentBlocks[index];
-      const target = targetBlocks[index];
-      const targetComparison = targetComparisonBlocks[index];
-      if (
-        !block ||
-        typeof target !== 'string' ||
-        typeof targetComparison !== 'string' ||
-        block.text === targetComparison
-      )
+    let cancelledCount = 0;
+    let anchorBlockId: string | null = null;
+    for (const step of steps) {
+      if (step.kind === 'insert') {
+        const inserted = insertPending({
+          markdownService: params.documentStore,
+          documentId: params.documentId,
+          anchorBlockId,
+          markdown: step.markdown,
+          toolName: params.toolName,
+          extraMeta: params.pendingMetaByMarkdown?.get(step.markdown),
+        });
+        executed.push(inserted);
+        anchorBlockId = inserted.blockId;
         continue;
-      executed.push(
-        setPending({
+      }
+      const block = step.candidate.block;
+      if (step.kind === 'cancel') {
+        cancelledCount += params.documentStore.clearPendingRevision(params.documentId, block.blockId);
+      } else if (step.kind !== 'retain') {
+        const edit = setPending({
           markdownService: params.documentStore,
           documentId: params.documentId,
           block,
-          markdown: target,
-          operation: 'update',
+          markdown: step.kind === 'delete' ? '' : step.markdown,
+          operation: step.kind,
           toolName: params.toolName,
-          extraMeta: params.pendingMetaByMarkdown?.get(target),
-        })
-      );
+          extraMeta: step.kind === 'update' ? params.pendingMetaByMarkdown?.get(step.markdown) : undefined,
+        });
+        if (edit) executed.push(edit);
+        else cancelledCount += 1;
+      }
+      if (step.kind !== 'delete') anchorBlockId = block.blockId;
     }
 
-    for (let index = targetBlocks.length; index < currentBlocks.length; index += 1) {
-      const block = currentBlocks[index];
-      if (!block) continue;
-      executed.push(
-        setPending({
-          markdownService: params.documentStore,
-          documentId: params.documentId,
-          block,
-          markdown: '',
-          operation: 'delete',
-          toolName: params.toolName,
-        })
-      );
-    }
-
-    let anchorBlockId = currentBlocks[currentBlocks.length - 1]?.blockId;
-    for (let index = currentBlocks.length; index < targetBlocks.length; index += 1) {
-      const markdown = targetBlocks[index];
-      if (!anchorBlockId || typeof markdown !== 'string') continue;
-      const inserted = insertPending({
-        markdownService: params.documentStore,
-        documentId: params.documentId,
-        anchorBlockId,
-        markdown,
-        toolName: params.toolName,
-        extraMeta: params.pendingMetaByMarkdown?.get(markdown),
-      });
-      executed.push(inserted);
-      anchorBlockId = inserted.blockId;
-    }
-
-    if (executed.length > 0) {
+    if (executed.length > 0 || cancelledCount > 0) {
       params.touchDocumentUpdatedAt(params.documentId, Date.now());
     }
 
@@ -250,6 +206,8 @@ export async function writeMarkdownDocumentFromText(params: {
       currentText,
       targetText: planned.blocks.join('\n\n'),
       edits: executed,
+      cancelledCount,
+      pendingCount: params.documentStore.getPendingRevisions(params.documentId).length,
       createdAnnotationIds: annotationMutation.created.map(item => item.annotation.id),
       updatedAnnotationIds: annotationMutation.updated.map(item => item.annotation.id),
       deletedAnnotationIds: annotationMutation.deleted.map(item => item.annotationId),

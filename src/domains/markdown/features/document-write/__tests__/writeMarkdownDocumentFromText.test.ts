@@ -71,10 +71,10 @@ class FakeMarkdownService implements MarkdownDocumentWriteStore {
     return fn();
   }
 
-  insertEmptyBlockAfter(_documentId: string, anchorBlockId: string, newBlockId: string): void {
+  insertEmptyBlockAfter(_documentId: string, anchorBlockId: string | null, newBlockId: string): void {
     const content = this.doc.content;
-    const anchorIndex = content.findIndex(node => readNodeId(node) === anchorBlockId);
-    if (anchorIndex === -1) {
+    const anchorIndex = anchorBlockId === null ? -1 : content.findIndex(node => readNodeId(node) === anchorBlockId);
+    if (anchorBlockId !== null && anchorIndex === -1) {
       throw new Error('fake anchor missing');
     }
     const nextContent = [...content];
@@ -86,13 +86,17 @@ class FakeMarkdownService implements MarkdownDocumentWriteStore {
     this.doc = { type: 'doc', content: nextContent };
   }
 
+  clearPendingRevision(_documentId: string, blockId: string): number {
+    return this.pending.delete(blockId) ? 1 : 0;
+  }
+
   setPendingRevisionForToolIntent(params: {
     readonly documentId: string;
     readonly blockId: string;
     readonly newMarkdown: string;
     readonly source?: 'ai' | 'user' | 'tool';
     readonly meta?: { readonly operation?: unknown };
-  }): unknown {
+  }): { cancelled: boolean } {
     const operation = params.meta?.operation;
     this.pending.set(params.blockId, {
       target_block_id: params.blockId,

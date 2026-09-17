@@ -51,6 +51,7 @@ export type FileTypeLifecycleHandler = {
    */
   deferSetFilePathUntilOpen?: boolean;
   open(session: FileSessionDescriptor): Promise<void>;
+  /** owner 根据已提交快照更新 dirty；成功返回不授权 Host 清除请求期间的新输入。 */
   save?(context: FileSaveContext): Promise<boolean>;
   close?(session: FileSessionDescriptor): Promise<void>;
 };

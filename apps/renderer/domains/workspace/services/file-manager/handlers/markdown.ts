@@ -29,7 +29,7 @@ import { useNotificationStore } from '@/app/notification';
 import { getMarkdownDocumentEditorRuntimePort } from '../../../../../shared/ports/markdownDocumentEditorRuntimePort';
 import { workspaceGateway } from '../../../../../shared/ipc/workspaceGateway';
 import { documentLoaderService } from '@app/services/documentLoaderService';
-import { serializeRevisionBaselineForSave } from '../../../../editor/features/Revision/functions/serializeRevisionBaselineForSave';
+import { saveMarkdownDocumentSession, closeMarkdownDocumentSession } from '../../../../editor/features/document-session';
 import { resolveCurrentWorkspaceMessage } from '../../../functions/resolveCurrentWorkspaceMessage';
 
 /**
@@ -74,7 +74,6 @@ export const markdownHandler: FileTypeLifecycleHandler = {
 
       await workspaceGateway['notify-document-opened']({ documentId: session.documentId });
       throwIfFileSessionOpenCancelled(session);
-      fileStore.setDirty(false);
     } catch (error) {
       if (isFileSessionOpenCancelledError(error)) {
         throw error;
@@ -135,43 +134,15 @@ export const markdownHandler: FileTypeLifecycleHandler = {
 
     fileStore.setSaving(true);
     try {
-      const serializedContent = serializeRevisionBaselineForSave(editor);
-
-      console.log(`[MarkdownHandler] Saving markdown document: ${session.documentId} (reason: ${reason})`);
-
-      const result = await workspaceGateway['save-document']({
-        documentId: session.documentId,
-        content: serializedContent,
-      });
-
-      if (result.success) {
-        fileStore.setDirty(false);
-
-        // 根据保存原因决定是否显示通知
-        if (reason === 'manual') {
-          notificationStore.show(
-            resolveCurrentWorkspaceMessage('workspace.fileManager.markdown.saved'),
-            'success',
-            1500,
-          );
-        }
-        return true;
-      } else {
-        const errorMsg = ('error' in result && result.error)
-          ? result.error
-          : resolveCurrentWorkspaceMessage('workspace.fileManager.save.unknownError');
-        console.error(`[MarkdownHandler] Save failed (${reason}):`, errorMsg);
-        notificationStore.show(
-          resolveCurrentWorkspaceMessage('workspace.fileManager.save.failed'),
-          'error',
-          3500,
-        );
-        return false;
+      await saveMarkdownDocumentSession(editor, session.documentId);
+      if (reason === 'manual') {
+        notificationStore.show(resolveCurrentWorkspaceMessage('workspace.fileManager.markdown.saved'), 'success', 1500);
       }
+      return true;
     } catch (error) {
       console.error(`[MarkdownHandler] IPC save failed (${reason}):`, error);
       notificationStore.show(
-        resolveCurrentWorkspaceMessage('workspace.fileManager.save.exception'),
+        error instanceof Error ? error.message : resolveCurrentWorkspaceMessage('workspace.fileManager.save.exception'),
         'error',
         3500,
       );
@@ -186,6 +157,7 @@ export const markdownHandler: FileTypeLifecycleHandler = {
    */
   async close(session: FileSessionDescriptor): Promise<void> {
     console.log(`[MarkdownHandler] Closing markdown document: ${session.documentId}`);
-    // 如果需要做清理，可以在这里添加
+    const editor = useUIStore().getEditor();
+    if (editor && session.documentId) await closeMarkdownDocumentSession(editor, session.documentId);
   },
 };

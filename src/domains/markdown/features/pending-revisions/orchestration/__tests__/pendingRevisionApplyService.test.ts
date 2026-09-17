@@ -112,14 +112,12 @@ describe('PendingRevisionApplyService', () => {
     );
     pending(markdownService, documentId, 'b1', 'new', 'update');
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+    const result = await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } });
 
-    expect(result.status).toBe('ok');
-    expect(result.appliedCount).toBe(1);
-    expect(result.docJson.content).toHaveLength(1);
-    expect(result.docJson.content[0]?.attrs?.id).toBe('b1');
-    expect(result.docJson.content[0]?.attrs?.backgroundColor).toBe('blue_bg');
-    expect(firstText(result.docJson.content[0])).toBe('new');
+    expect(result.content.content).toHaveLength(1);
+    expect(result.content.content[0]?.attrs?.id).toBe('b1');
+    expect(result.content.content[0]?.attrs?.backgroundColor).toBe('blue_bg');
+    expect(firstText(result.content.content[0])).toBe('new');
     expect(markdownService.getPendingRevisions(documentId)).toHaveLength(0);
   });
 
@@ -129,14 +127,13 @@ describe('PendingRevisionApplyService', () => {
     );
     pending(markdownService, documentId, 'inserted-block', 'inserted text', 'insert');
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+    const result = await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } });
 
-    expect(result.status).toBe('ok');
-    expect(result.docJson.content.map(block => block.attrs?.id)).toEqual([
+    expect(result.content.content.map(block => block.attrs?.id)).toEqual([
       'anchor',
       'inserted-block',
     ]);
-    expect(firstText(result.docJson.content[1])).toBe('inserted text');
+    expect(firstText(result.content.content[1])).toBe('inserted text');
   });
 
   it('accept delete 会删除目标 rootBlock', async () => {
@@ -145,10 +142,9 @@ describe('PendingRevisionApplyService', () => {
     );
     pending(markdownService, documentId, 'remove', '', 'delete');
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+    const result = await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } });
 
-    expect(result.status).toBe('ok');
-    expect(result.docJson.content.map(block => block.attrs?.id)).toEqual(['keep']);
+    expect(result.content.content.map(block => block.attrs?.id)).toEqual(['keep']);
     expect(markdownService.getPendingRevisions(documentId)).toHaveLength(0);
   });
 
@@ -167,11 +163,10 @@ describe('PendingRevisionApplyService', () => {
     pending(markdownService, documentId, 'd1', '', 'delete');
     pending(markdownService, documentId, 'u2', 'new u2', 'update');
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+    const result = await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } });
 
-    expect(result.status).toBe('ok');
-    expect(result.docJson.content.map(block => block.attrs?.id)).toEqual(['b0', 'u1', 'i1', 'u2']);
-    expect(result.docJson.content.map(block => firstText(block))).toEqual([
+    expect(result.content.content.map(block => block.attrs?.id)).toEqual(['b0', 'u1', 'i1', 'u2']);
+    expect(result.content.content.map(block => firstText(block))).toEqual([
       'b0',
       'new u1',
       'new insert',
@@ -192,10 +187,9 @@ describe('PendingRevisionApplyService', () => {
     pending(markdownService, documentId, 'i2', 'second', 'insert', { anchorBlockId: 'anchor' });
     pending(markdownService, documentId, 'i3', 'third', 'insert', { anchorBlockId: 'anchor' });
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+    const result = await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } });
 
-    expect(result.status).toBe('ok');
-    expect(result.docJson.content.map(block => firstText(block))).toEqual([
+    expect(result.content.content.map(block => firstText(block))).toEqual([
       'anchor',
       'first',
       'second',
@@ -223,12 +217,11 @@ describe('PendingRevisionApplyService', () => {
       },
     });
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+    const result = await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } });
     db.close();
 
-    const inlineNodes = result.docJson.content[0]?.content?.[0]?.content ?? [];
+    const inlineNodes = result.content.content[0]?.content?.[0]?.content ?? [];
     const citationNode = inlineNodes.find(node => node.type === 'citationNode');
-    expect(result.status).toBe('ok');
     expect(citationNode?.attrs).toMatchObject({
       ref: 'Abc234',
       sourceId: 'kb-doc',
@@ -273,11 +266,10 @@ describe('PendingRevisionApplyService', () => {
     const applyService = new PendingRevisionApplyService(markdownService, importer);
     pending(markdownService, documentId, 'b1', '[链接](https://example.com)', 'update');
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+    await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } });
     const persistedMarks = readDoc(markdownService, documentId).content[0]?.content?.[0]
       ?.content?.[0]?.marks;
 
-    expect(result.status).toBe('ok');
     expect(persistedMarks).toEqual([
       {
         type: 'link',
@@ -296,11 +288,9 @@ describe('PendingRevisionApplyService', () => {
       pending(markdownService, documentId, `b${index}`, `new ${index}`, 'update');
     }
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+    const result = await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } });
 
-    expect(result.status).toBe('ok');
-    expect(result.appliedCount).toBe(1000);
-    expect(firstText(result.docJson.content[999])).toBe('new 999');
+    expect(firstText(result.content.content[999])).toBe('new 999');
     expect(markdownService.getPendingRevisions(documentId)).toHaveLength(0);
   });
 
@@ -310,10 +300,9 @@ describe('PendingRevisionApplyService', () => {
     );
     pending(markdownService, documentId, 'inserted-block', 'inserted text', 'insert');
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'reject' });
+    const result = await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'reject' } });
 
-    expect(result.status).toBe('ok');
-    expect(result.docJson.content.map(block => block.attrs?.id)).toEqual(['anchor']);
+    expect(result.content.content.map(block => block.attrs?.id)).toEqual(['anchor']);
     expect(markdownService.getPendingRevisions(documentId)).toHaveLength(0);
   });
 
@@ -324,17 +313,16 @@ describe('PendingRevisionApplyService', () => {
     pending(markdownService, documentId, 'u1', 'new update', 'update');
     pending(markdownService, documentId, 'd1', '', 'delete');
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'reject' });
+    const result = await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'reject' } });
 
-    expect(result.status).toBe('ok');
-    expect(result.docJson.content.map(block => firstText(block))).toEqual([
+    expect(result.content.content.map(block => firstText(block))).toEqual([
       'old update',
       'old delete',
     ]);
     expect(markdownService.getPendingRevisions(documentId)).toHaveLength(0);
   });
 
-  it('blockId 不存在时标记 skipped，其他 pending 继续应用', async () => {
+  it('损坏的 Pending 指向不存在的块时拒绝整次提交', async () => {
     const { markdownService, applyService, documentId, db } = setup(doc([rootBlock('b1', 'old')]));
     pending(markdownService, documentId, 'b1', 'new', 'update');
     db.prepare(
@@ -352,13 +340,10 @@ describe('PendingRevisionApplyService', () => {
       Date.now()
     );
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+    await expect(applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } })).rejects.toThrow();
 
-    expect(result.status).toBe('ok');
-    expect(result.appliedCount).toBe(1);
-    expect(result.skippedCount).toBe(1);
-    expect(firstText(result.docJson.content[0])).toBe('new');
-    expect(markdownService.getPendingRevisions(documentId)).toHaveLength(0);
+    expect(firstText(readDoc(markdownService, documentId).content[0])).toBe('old');
+    expect(markdownService.getPendingRevisions(documentId)).toHaveLength(2);
   });
 
   it('预解析失败时不更新正文也不清 pending', async () => {
@@ -369,10 +354,9 @@ describe('PendingRevisionApplyService', () => {
     const applyService = new PendingRevisionApplyService(markdownService, failingImporter);
     pending(markdownService, documentId, 'b1', 'new', 'update');
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+    await expect(applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } })).rejects.toThrow();
     const afterDoc = readDoc(markdownService, documentId);
 
-    expect(result.status).toBe('failed');
     expect(firstText(afterDoc.content[0])).toBe('old');
     expect(markdownService.getPendingRevisions(documentId)).toHaveLength(1);
   });
@@ -407,10 +391,8 @@ describe('PendingRevisionApplyService', () => {
     const applyService = new PendingRevisionApplyService(markdownService, invalidImporter);
     pending(markdownService, documentId, 'b1', 'new', 'update');
 
-    const result = await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+    await expect(applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } })).rejects.toThrow();
 
-    expect(result.status).toBe('failed');
-    expect(result.errors?.[0]?.reason).toContain('unknownMark');
     expect(firstText(readDoc(markdownService, documentId).content[0])).toBe('old');
     expect(markdownService.getPendingRevisions(documentId)).toHaveLength(1);
   });
@@ -419,7 +401,7 @@ describe('PendingRevisionApplyService', () => {
     const { markdownService, applyService, documentId } = setup(doc([rootBlock('b1', 'old')]));
     pending(markdownService, documentId, 'b1', 'new', 'update');
 
-    await applyService.applyAllPendingForDocument({ documentId, mode: 'accept' });
+    await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } });
     const persistedDoc = readDoc(markdownService, documentId);
 
     expect(firstText(persistedDoc.content[0])).toBe('new');
@@ -433,16 +415,9 @@ describe('PendingRevisionApplyService', () => {
     pending(markdownService, documentId, 'b1', 'new 1', 'update');
     pending(markdownService, documentId, 'b2', 'new 2', 'update');
 
-    const result = await applyService.applyPendingForBlock({
-      documentId,
-      blockId: 'b1',
-      mode: 'accept',
-    });
+    await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { blockId: 'b1', mode: 'accept' } });
     const persistedDoc = readDoc(markdownService, documentId);
 
-    expect(result.status).toBe('ok');
-    expect(result.appliedCount).toBe(1);
-    expect(result.skippedCount).toBe(0);
     expect(firstText(persistedDoc.content[0])).toBe('new 1');
     expect(persistedDoc.content[0]?.attrs?.id).toBe('b1');
     expect(persistedDoc.content[0]?.attrs?.backgroundColor).toBe('blue_bg');
@@ -459,15 +434,9 @@ describe('PendingRevisionApplyService', () => {
     pending(markdownService, documentId, 'b1', 'new 1', 'update');
     pending(markdownService, documentId, 'b2', 'new 2', 'update');
 
-    const result = await applyService.applyPendingForBlock({
-      documentId,
-      blockId: 'b1',
-      mode: 'reject',
-    });
+    await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { blockId: 'b1', mode: 'reject' } });
     const persistedDoc = readDoc(markdownService, documentId);
 
-    expect(result.status).toBe('ok');
-    expect(result.appliedCount).toBe(1);
     expect(firstText(persistedDoc.content[0])).toBe('old 1');
     expect(firstText(persistedDoc.content[1])).toBe('old 2');
     expect(
@@ -482,15 +451,9 @@ describe('PendingRevisionApplyService', () => {
     pending(markdownService, documentId, 'i1', 'inserted', 'insert');
     pending(markdownService, documentId, 'b2', 'new 2', 'update');
 
-    const result = await applyService.applyPendingForBlock({
-      documentId,
-      blockId: 'i1',
-      mode: 'reject',
-    });
+    await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { blockId: 'i1', mode: 'reject' } });
     const persistedDoc = readDoc(markdownService, documentId);
 
-    expect(result.status).toBe('ok');
-    expect(result.appliedCount).toBe(1);
     expect(persistedDoc.content.map(block => block.attrs?.id)).toEqual(['anchor', 'b2']);
     expect(
       markdownService.getPendingRevisions(documentId).map(item => item.target_block_id)
@@ -504,18 +467,141 @@ describe('PendingRevisionApplyService', () => {
     pending(markdownService, documentId, 'remove', '', 'delete');
     pending(markdownService, documentId, 'b2', 'new 2', 'update');
 
-    const result = await applyService.applyPendingForBlock({
-      documentId,
-      blockId: 'remove',
-      mode: 'accept',
-    });
+    await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { blockId: 'remove', mode: 'accept' } });
     const persistedDoc = readDoc(markdownService, documentId);
 
-    expect(result.status).toBe('ok');
-    expect(result.appliedCount).toBe(1);
     expect(persistedDoc.content.map(block => block.attrs?.id)).toEqual(['keep', 'b2']);
     expect(
       markdownService.getPendingRevisions(documentId).map(item => item.target_block_id)
     ).toEqual(['b2']);
   });
+});
+
+function editorRequest(service: MarkdownDocumentService, documentId: string) {
+  const version = service.getLatestVersion(documentId);
+  if (!version) throw new Error('Missing test document');
+  return { documentId, expectedVersionNumber: version.version_number,
+    expectedPending: service.getPendingRevisions(documentId).map(({ id, revision }) => ({ id, revision })),
+    baseline: service.getDocument(documentId) };
+}
+
+it('Editor 提交保留其他块的本地编辑，并原子接受指定 Pending', async () => {
+  const { markdownService: store, applyService, documentId } = setup(doc([rootBlock('b1', 'old'), rootBlock('b2', 'second')]));
+  pending(store, documentId, 'b1', 'accepted', 'update');
+  const request = editorRequest(store, documentId);
+  const snapshot = await applyService.commitEditorRevision({ ...request,
+    baseline: doc([rootBlock('b1', 'old'), rootBlock('b2', 'local draft')]), decision: { mode: 'accept', blockId: 'b1' } });
+  expect(snapshot.pendingRevisions).toEqual([]);
+  expect(readDoc(store, documentId).content.map(firstText)).toEqual(['accepted', 'local draft']);
+});
+
+it('相同 Pending ID 的旧 revision 不可提交，失败保留全部数据', async () => {
+  const { markdownService: store, applyService, documentId } = setup(doc([rootBlock('b1', 'old')]));
+  pending(store, documentId, 'b1', 'first', 'update');
+  const request = editorRequest(store, documentId);
+  pending(store, documentId, 'b1', 'second', 'update');
+  await expect(applyService.commitEditorRevision({ ...request, decision: { mode: 'accept' } })).rejects.toThrow('已更新');
+  expect(readDoc(store, documentId).content.map(firstText)).toEqual(['old']);
+  expect(store.getPendingRevisions(documentId)[0]?.new_markdown).toBe('second');
+});
+
+it('准备 Markdown 时发生并发更新，事务再次校验 revision', async () => {
+  const { markdownService: store, documentId } = setup(doc([rootBlock('b1', 'old')]));
+  pending(store, documentId, 'b1', 'first', 'update');
+  const apply = new PendingRevisionApplyService(store, async markdown => {
+    pending(store, documentId, 'b1', 'second', 'update');
+    return { docJson: doc([rootBlock('new', markdown)]), blockEvents: [] };
+  });
+  await expect(apply.commitEditorRevision({ ...editorRequest(store, documentId), decision: { mode: 'accept' } })).rejects.toThrow('已更新');
+  expect(readDoc(store, documentId).content.map(firstText)).toEqual(['old']);
+});
+
+it('部分接受将已接受基线和剩余 Pending 同时落库，ID 不变', async () => {
+  const { markdownService: store, applyService, documentId } = setup(doc([rootBlock('b1', 'old')]));
+  pending(store, documentId, 'b1', 'old first second', 'update');
+  const request = editorRequest(store, documentId);
+  const result = await applyService.commitEditorRevision({ ...request,
+    baseline: doc([rootBlock('b1', 'old first')]), decision: { mode: 'resolve', blockId: 'b1', remainingMarkdown: 'old first second' } });
+  expect(result.pendingRevisions[0]).toMatchObject({ id: request.expectedPending[0]?.id, revision: 2 });
+  expect(readDoc(store, documentId).content.map(firstText)).toEqual(['old first']);
+});
+
+it('非法基线以及同块未保存编辑都不能被 Accept 覆盖', async () => {
+  const { markdownService: store, applyService, documentId } = setup(doc([rootBlock('b1', 'old')]));
+  pending(store, documentId, 'b1', 'suggestion', 'update');
+  const request = editorRequest(store, documentId);
+  await expect(applyService.commitEditorRevision({ ...request, baseline: { type: 'unknown' } })).rejects.toThrow();
+  await expect(applyService.commitEditorRevision({ ...request, baseline: doc([rootBlock('b1', 'local')]), decision: { mode: 'accept' } })).rejects.toThrow('同一块');
+  expect(store.getPendingRevisions(documentId)).toHaveLength(1);
+  expect(readDoc(store, documentId).content.map(firstText)).toEqual(['old']);
+});
+
+it('部分拒绝 delete 后剩余提议变成 update，接受剩余不会删除已保留文字', async () => {
+  const { markdownService: store, applyService, documentId } = setup(doc([rootBlock('b1', 'first second')]));
+  pending(store, documentId, 'b1', '', 'delete');
+  await applyService.commitEditorRevision({ ...editorRequest(store, documentId),
+    decision: { mode: 'resolve', blockId: 'b1', remainingMarkdown: 'first' } });
+  expect(store.getPendingRevisions(documentId)[0]?.operation).toBe('update');
+  await applyService.commitEditorRevision({ ...editorRequest(store, documentId), decision: { mode: 'accept' } });
+  expect(readDoc(store, documentId).content.map(firstText)).toEqual(['first']);
+});
+
+it('部分接受 insert 后剩余提议变成 update，拒绝剩余保留已接受的内容', async () => {
+  const { markdownService: store, applyService, documentId } = setup(doc([rootBlock('b1', '')]));
+  pending(store, documentId, 'b1', 'first second', 'insert');
+  await applyService.commitEditorRevision({ ...editorRequest(store, documentId), baseline: doc([rootBlock('b1', 'first')]),
+    decision: { mode: 'resolve', blockId: 'b1', remainingMarkdown: 'first second' } });
+  expect(store.getPendingRevisions(documentId)[0]?.operation).toBe('update');
+  await applyService.commitEditorRevision({ ...editorRequest(store, documentId), decision: { mode: 'reject' } });
+  expect(readDoc(store, documentId).content.map(firstText)).toEqual(['first']);
+});
+
+it('全部删除最后一个块和行内拒绝最后一个 insert 都保留新的可编辑空文档', async () => {
+  for (const operation of ['delete', 'insert'] as const) {
+    const { markdownService: store, applyService, documentId } = setup(doc([rootBlock('b1', operation === 'delete' ? 'old' : '')]));
+    pending(store, documentId, 'b1', operation === 'delete' ? '' : 'new', operation);
+    const result = await applyService.commitEditorRevision({ ...editorRequest(store, documentId),
+      decision: operation === 'delete' ? { mode: 'accept' } : { mode: 'resolve', blockId: 'b1', remainingMarkdown: null } });
+    expect(result.content.content).toHaveLength(1);
+    expect(result.content.content[0]?.attrs?.id).not.toBe('b1');
+    expect(firstText(result.content.content[0])).toBe('');
+    expect(result.pendingRevisions).toEqual([]);
+  }
+});
+
+it('用户在 insert 占位块输入后，直接拒绝或先保存再拒绝都保留用户正文', async () => {
+  for (const saveFirst of [false, true]) {
+    const { markdownService: store, applyService, documentId } = setup(doc([rootBlock('b1', '')]));
+    pending(store, documentId, 'b1', 'suggestion', 'insert');
+    const original = store.getPendingRevisions(documentId)[0];
+    const baseline = doc([rootBlock('b1', 'local draft')]);
+    if (saveFirst) {
+      await applyService.commitEditorRevision({ ...editorRequest(store, documentId), baseline });
+      expect(store.getPendingRevisions(documentId)[0]).toMatchObject({ id: original?.id, revision: 2, operation: 'update' });
+    }
+    await applyService.commitEditorRevision({ ...editorRequest(store, documentId), baseline, decision: { mode: 'reject' } });
+    expect(readDoc(store, documentId).content.map(firstText)).toEqual(['local draft']);
+    expect(store.getPendingRevisions(documentId)).toEqual([]);
+  }
+});
+
+it('单块 Pending 解析成多块时拒绝提交，不截断内容或清空 Pending', async () => {
+  const { markdownService: store, documentId } = setup(doc([rootBlock('b1', 'old')]));
+  pending(store, documentId, 'b1', 'one\n\ntwo', 'update');
+  const apply = new PendingRevisionApplyService(store, async () => ({ docJson: doc([rootBlock('one', 'one'), rootBlock('two', 'two')]), blockEvents: [] }));
+  await expect(apply.commitEditorRevision({ ...editorRequest(store, documentId), decision: { mode: 'accept' } })).rejects.toThrow('一个 rootBlock');
+  expect(readDoc(store, documentId).content.map(firstText)).toEqual(['old']);
+  expect(store.getPendingRevisions(documentId)).toHaveLength(1);
+});
+
+it('显示用 revisionMark 不可被当作正文基线提交', async () => {
+  const { markdownService: store, applyService, documentId } = setup(doc([rootBlock('b1', 'old')]));
+  pending(store, documentId, 'b1', 'suggestion', 'update');
+  const baseline = doc([rootBlock('b1', 'projected')]);
+  const text = baseline.content[0]?.content?.[0]?.content?.[0];
+  if (!text) throw new Error('Missing fixture text');
+  text.marks = [{ type: 'revisionMark', attrs: { revisionId: 'view-only', changeType: 'insert', source: 'ai' } }];
+  await expect(applyService.commitEditorRevision({ ...editorRequest(store, documentId), baseline })).rejects.toThrow('显示标记');
+  expect(readDoc(store, documentId).content.map(firstText)).toEqual(['old']);
+  expect(store.getPendingRevisions(documentId)).toHaveLength(1);
 });

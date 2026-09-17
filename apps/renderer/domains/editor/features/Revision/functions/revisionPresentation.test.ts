@@ -18,8 +18,6 @@ const testMessage: EditorMessageResolver = (key, params) => {
     'editor.revision.indicator.pendingTitle': 'Pending revisions',
     'editor.revision.indicator.pendingTitleWithStats': 'Pending revisions: {stats}',
     'editor.revision.indicator.pendingTitleDeferred': 'Pending revisions: detailed diff not projected yet',
-    'editor.revision.indicator.appliedTitle': 'Accepted revisions: {stats}',
-    'editor.revision.indicator.discardedTitle': 'Rejected revisions: {stats}',
     'editor.revision.mark.acceptInsert': 'Accept inserted content',
     'editor.revision.mark.acceptDelete': 'Accept deletion',
     'editor.revision.mark.rejectInsert': 'Reject inserted content',
@@ -44,27 +42,18 @@ describe('revisionPresentation', () => {
     ])
   })
 
-  it('根据状态生成指示器标题', () => {
+  it('根据投影完成情况生成待处理指示器标题', () => {
     expect(formatRevisionIndicatorTitle({
-      status: 'pending',
       insertCount: 2,
       deleteCount: 1,
       hasDetailedStats: true,
     }, testMessage)).toBe('Pending revisions: 2 additions, 1 deletions')
 
     expect(formatRevisionIndicatorTitle({
-      status: 'pending',
       insertCount: 0,
       deleteCount: 0,
       hasDetailedStats: false,
     }, testMessage)).toBe('Pending revisions: detailed diff not projected yet')
-
-    expect(formatRevisionIndicatorTitle({
-      status: 'applied',
-      insertCount: 2,
-      deleteCount: 0,
-      hasDetailedStats: true,
-    }, testMessage)).toBe('Accepted revisions: 2 additions')
   })
 
   it('解析单条 mark 操作标题', () => {

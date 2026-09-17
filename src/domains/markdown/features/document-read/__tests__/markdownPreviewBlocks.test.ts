@@ -18,6 +18,7 @@ function pending(params: {
 }): PendingRevision {
   return {
     id: 'pending-1',
+    revision: 1,
     document_node_id: 'document-1',
     target_block_id: baseBlock.blockId,
     new_markdown: params.markdown,
@@ -32,6 +33,7 @@ function pending(params: {
 function missingInsertPending(): PendingRevision {
   return {
     id: 'pending-missing-insert',
+    revision: 1,
     document_node_id: 'document-1',
     target_block_id: 'workspace-block-missing',
     new_markdown: '不应被读取层补造',

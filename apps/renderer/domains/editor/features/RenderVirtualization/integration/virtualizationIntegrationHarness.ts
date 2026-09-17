@@ -52,8 +52,6 @@ interface IntegrationEditorView {
   dispatch: (tr: Transaction) => void
   updateState: (nextState: EditorState) => void
   nodeDOM: (pos: number) => Node | null
-  _state: EditorState
-  _props: { state: EditorState }
 }
 
 function createRuntimeDom(blockId: string): {
@@ -184,16 +182,16 @@ export function createVirtualizationIntegrationHarness(params: {
     get state() {
       return state
     },
+    set state(nextState: EditorState) {
+      state = nextState
+      updateEditorState(nextState)
+    },
     dispatch(tr: Transaction) {
       state = state.apply(tr)
-      editorView._state = state
-      editorView._props.state = state
       updateEditorState(state)
     },
     updateState(nextState: EditorState) {
       state = nextState
-      editorView._state = nextState
-      editorView._props.state = nextState
       updateEditorState(nextState)
     },
     nodeDOM(pos: number) {
@@ -203,8 +201,6 @@ export function createVirtualizationIntegrationHarness(params: {
         !isRootBlockHydratedByVirtualizationState(state, blockId)
       )
     },
-    _state: state,
-    _props: { state },
   }
   const editor: RenderVirtualizationEngineEditor & ScrollHandshakeEditor = {
     isDestroyed: false,

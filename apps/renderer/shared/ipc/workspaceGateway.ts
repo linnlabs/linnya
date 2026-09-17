@@ -1,3 +1,4 @@
+import type { MarkdownPendingRevisionDTO, MarkdownRevisionCommit, MarkdownRevisionSnapshot } from '@app/schemas';
 /**
  * @file apps/renderer/shared/ipc/workspaceGateway.ts
  *
@@ -21,17 +22,7 @@ import type {
  * Pending Revision 记录（前端友好格式）
  * 对应后端 PendingRevision 但字段名使用 camelCase
  */
-export interface PendingRevisionDTO {
-  id: string;
-  blockId: string;
-  newMarkdown: string;
-  source: 'ai' | 'user' | 'tool';
-  /** 显式操作类型（v20 新增），优先于 metaJson 中的 operation */
-  operation: 'insert' | 'update' | 'delete' | null;
-  metaJson: string | null;
-  createdAt: number;
-  updatedAt: number | null;
-}
+export type PendingRevisionDTO = MarkdownPendingRevisionDTO;
 
 /**
  * 最近访问文档摘要（工作区数据库原始字段）
@@ -135,28 +126,6 @@ export interface MarkdownDocJsonDTO extends ProseMirrorJsonNodeDTO {
   content: ProseMirrorJsonNodeDTO[];
 }
 
-export type ApplyAllPendingMode = 'accept' | 'reject';
-
-export interface ApplyAllPendingResultDTO {
-  status: 'ok' | 'failed';
-  documentId: string;
-  appliedCount: number;
-  skippedCount: number;
-  failedCount: number;
-  docJson: MarkdownDocJsonDTO;
-  errors?: Array<{ blockId: string; reason: string }>;
-}
-
-export interface ApplySinglePendingResultDTO {
-  status: 'ok' | 'failed';
-  documentId: string;
-  blockId: string;
-  appliedCount: number;
-  skippedCount: number;
-  failedCount: number;
-  errors?: Array<{ blockId: string; reason: string }>;
-}
-
 export type { OperationResult } from '@app/schemas';
 
 /**
@@ -214,16 +183,10 @@ export interface IWorkspaceGateway {
 
   // 文档操作
   'read-document'(args: { documentId: string }): Promise<OperationResult<{ content: any; pendingRevisions: PendingRevisionDTO[]; versionNumber?: number }>>;
+  'commit-markdown-revision'(args: MarkdownRevisionCommit): Promise<OperationResult<MarkdownRevisionSnapshot>>;
   'save-document'(args: { documentId: string; content: any }): Promise<OperationResult<void>>;
   
   // Pending Revisions（AI 修订意图）操作
-  'set-pending-revision'(args: {
-    documentId: string;
-    blockId: string;
-    newMarkdown: string;
-    source?: 'ai' | 'user' | 'tool';
-    meta?: Record<string, unknown>;
-  }): Promise<OperationResult<PendingRevisionDTO>>;
   'set-pending-revisions-batch'(args: {
     documentId: string;
     revisions: Array<{
@@ -233,17 +196,6 @@ export interface IWorkspaceGateway {
       meta?: Record<string, unknown>;
     }>;
   }): Promise<OperationResult<{ writtenCount: number; totalRequested: number; errors: string[] }>>;
-  'clear-pending-revision'(args: { documentId: string; blockId: string }): Promise<OperationResult<{ deletedCount: number }>>;
-  'clear-all-pending-revisions'(args: { documentId: string }): Promise<OperationResult<{ deletedCount: number }>>;
-  'apply-all-pending-revisions'(args: {
-    documentId: string;
-    mode: ApplyAllPendingMode;
-  }): Promise<OperationResult<ApplyAllPendingResultDTO>>;
-  'apply-pending-revision'(args: {
-    documentId: string;
-    blockId: string;
-    mode: ApplyAllPendingMode;
-  }): Promise<OperationResult<ApplySinglePendingResultDTO>>;
 }
 
 
@@ -366,20 +318,14 @@ class WorkspaceGatewayImpl implements IWorkspaceGateway {
   'read-document'(args: { documentId: string }): Promise<OperationResult<{ content: any; pendingRevisions: PendingRevisionDTO[]; versionNumber?: number }>> {
     return this.invoke('read-document', args);
   }
+  'commit-markdown-revision'(args: MarkdownRevisionCommit): Promise<OperationResult<MarkdownRevisionSnapshot>> {
+    return this.invoke('commit-markdown-revision', args);
+  }
   'save-document'(args: { documentId: string; content: any }): Promise<OperationResult<void>> {
     return this.invoke('save-document', args);
   }
 
   // Pending Revisions（AI 修订意图）操作
-  'set-pending-revision'(args: {
-    documentId: string;
-    blockId: string;
-    newMarkdown: string;
-    source?: 'ai' | 'user' | 'tool';
-    meta?: Record<string, unknown>;
-  }): Promise<OperationResult<PendingRevisionDTO>> {
-    return this.invoke('set-pending-revision', args);
-  }
   'set-pending-revisions-batch'(args: {
     documentId: string;
     revisions: Array<{
@@ -391,25 +337,7 @@ class WorkspaceGatewayImpl implements IWorkspaceGateway {
   }): Promise<OperationResult<{ writtenCount: number; totalRequested: number; errors: string[] }>> {
     return this.invoke('set-pending-revisions-batch', args);
   }
-  'clear-pending-revision'(args: { documentId: string; blockId: string }): Promise<OperationResult<{ deletedCount: number }>> {
-    return this.invoke('clear-pending-revision', args);
-  }
-  'clear-all-pending-revisions'(args: { documentId: string }): Promise<OperationResult<{ deletedCount: number }>> {
-    return this.invoke('clear-all-pending-revisions', args);
-  }
-  'apply-all-pending-revisions'(args: {
-    documentId: string;
-    mode: ApplyAllPendingMode;
-  }): Promise<OperationResult<ApplyAllPendingResultDTO>> {
-    return this.invoke('apply-all-pending-revisions', args);
-  }
-  'apply-pending-revision'(args: {
-    documentId: string;
-    blockId: string;
-    mode: ApplyAllPendingMode;
-  }): Promise<OperationResult<ApplySinglePendingResultDTO>> {
-    return this.invoke('apply-pending-revision', args);
-  }
+
 }
 
 /**

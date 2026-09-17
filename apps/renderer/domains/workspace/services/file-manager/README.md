@@ -102,7 +102,7 @@ File Manager 需要同时面对多个“并发入口”：
 
 4. **标记脏状态**  
    - 在文档类型内（如 MindMap Engine）发生用户修改时，调用 `markActiveFileDirty(true)`
-   - 自动保存成功后，模块会统一 `markActiveFileDirty(false)`
+   - dirty 由文档类型 owner 根据实际提交快照更新；file-manager 不覆盖保存期间的新输入
 
 5. **离开文档 runtime**
 
@@ -122,43 +122,11 @@ await getWorkspaceNavigationPort().openKnowledgeBase();
   - 当用户修改 `autoSaveInterval` 时自动重启定时器
 - 其他组件（AppLayout、EditorContext、Sidebar 等）只需在需要保存的场景调用 `requestSave(reason)`，不再手动序列化或直接访问 handler
 
-## 多类型接入示例
+## 文档类型接入
 
-```ts
-// markdown handler
-registerFileTypeHandler({
-  type: 'markdown',
-  async open({ documentId }) {
-    const { data } = await workspaceGateway['read-document']({ documentId });
-    loadDocumentIntoEditor(data.content);
-  },
-  async save() {
-    const editor = getEditorInstance();
-    const content = editor.getJSON();
-    const serialized = serializeDocumentContent(content);
-    await workspaceGateway['save-document']({ documentId: fileStore.currentFilePath!, content: serialized });
-    return true;
-  },
-});
+文档类型贡献 `FileTypeLifecycleHandler`，由 file-manager 注册并串行调用。Markdown 的 handler 通过 Editor [文档会话](../../../editor/features/document-session/README.md) 打开、保存和关闭；不能直接把 Editor JSON 写入 `save-document`，也不能在打开或保存完成后额外清空 dirty。
 
-// mindmap handler（示意）
-registerFileTypeHandler({
-  type: 'mindmap',
-  async open({ documentId }) {
-    const { data } = await mindMapGateway['read']({ documentId });
-    mountMindMapEngine(data.content, data.metadata);
-  },
-  async save({ reason }) {
-    const payload = exportMindMapState();
-    await mindMapGateway['update']({
-      documentId: fileStore.currentFilePath!,
-      content: payload.content,
-      metadata: payload.metadata,
-    });
-    return true;
-  },
-});
-```
+handler 保存成功代表其快照已持久化，dirty 是否清除由 owner 决定。切换视图或关闭窗口前，如果保存期间仍产生未保存输入，file-manager 不继续卸载文档。插件使用同一生命周期合同，自行维护其内容和保存状态。
 
 通过该模块，任何新文档类型仅需：
 1. 实现 `FileTypeLifecycleHandler`
