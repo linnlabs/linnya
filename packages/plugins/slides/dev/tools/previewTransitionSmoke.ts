@@ -36,6 +36,7 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
     throw new Error(`Browser step failed: ${script}\n${String(error)}`);
   });
   await evaluate('window.manualPropertySmoke = window.mountManualPropertySmoke(); void 0');
+  await evaluate('window.manualPropertySmoke.verifyDeletionControls()');
   const colorResult = await evaluate('window.manualPropertySmoke.verifyColorsAndNumbers()');
   async function point(handle: string): Promise<{ x: number; y: number }> {
     const result = await evaluate(`window.manualPropertySmoke.point(${JSON.stringify(handle)})`);
@@ -358,8 +359,17 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
   await evaluate('window.shapeTextEditingSmoke.settleDismissal()');
   await writeFile(path.resolve(__dirname, 'selection-property-toolbar.png'), (await window.webContents.capturePage()).toPNG());
   await key('Delete');
-  await evaluate('window.shapeTextEditingSmoke.assertDeleted("badge"); window.shapeTextEditingSmoke.dispose()');
-  console.log('Slides selection toolbar: native numeric focus, A-to-B blur ownership, queued styles, Escape, drag and narrow viewport passed');
+  await evaluate('window.shapeTextEditingSmoke.assertDeleted("badge")');
+  // 按钮与键盘必须进入同一生产删除入口；保存等待期间仍能连续删除其他作者对象。
+  for (const id of ['second', 'standalone']) {
+    // second 在上面的拖动中已移动 0.5 英寸，点击当前预览位置而非旧编译坐标。
+    await click(`window.shapeTextEditingSmoke.point(${JSON.stringify(id)}, ${id === 'second' ? '0.5, 0.5' : '0, 0'})`);
+    await evaluate(`window.shapeTextEditingSmoke.assertToolbar(${JSON.stringify(id)})`);
+    await click(control('[data-property="delete"]'));
+    await evaluate(`window.shapeTextEditingSmoke.assertDeleted(${JSON.stringify(id)})`);
+  }
+  await evaluate('window.shapeTextEditingSmoke.dispose()');
+  console.log('Slides selection toolbar: native numeric focus, A-to-B blur ownership, queued styles, Escape, drag, narrow viewport and icon deletion passed');
 }
 
 function assertFrameCount(result: unknown, expected: number): void {

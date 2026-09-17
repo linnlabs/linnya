@@ -120,12 +120,12 @@ export function mountShapeTextEditingSmoke() {
   }
   return {
     async ready() { await nextTick(); await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); },
-    point(which = 'badge') {
+    point(which = 'badge', offsetX = 0, offsetY = 0) {
       // 使用真实画布坐标点击对象，工具条不参与画布 fit 或命中。
       const wrapper = host.querySelector('.stage-canvas-wrapper');
       if (!wrapper) throw new Error('Stage canvas missing');
       const box = wrapper.getBoundingClientRect();
-      return { x: Math.round(box.x + box.width * (which === 'second' ? 3.8 : 1.5) / 6.5), y: Math.round(box.y + box.height * (which === 'standalone' ? 2.5 : 1) / 3.5) };
+      return { x: Math.round(box.x + box.width * ((which === 'second' ? 3.8 : 1.5) + offsetX) / 6.5), y: Math.round(box.y + box.height * ((which === 'standalone' ? 2.5 : 1) + offsetY) / 3.5) };
     },
     controlPoint(selector: string) {
       const element = host.querySelector<HTMLElement>(selector);
@@ -159,7 +159,7 @@ export function mountShapeTextEditingSmoke() {
     },
     assertDeleted(id: string) {
       if (manual.selectedTarget || host.querySelector('.slides-element-property-toolbar')) throw new Error('Delete did not clear the selection toolbar');
-      if (!manual.queuedIntents.some(intent => intent.operation.op === 'delete_target' && intent.operation.target.editKey === id)) throw new Error('Toolbar button focus blocked canvas delete');
+      if (manual.queuedIntents.filter(intent => intent.operation.op === 'delete_target' && intent.operation.target.editKey === id).length !== 1) throw new Error('Delete action was blocked or duplicated');
     },
     assertPopupPlacement() {
       const toolbar = host.querySelector('.slides-element-property-toolbar')?.getBoundingClientRect();

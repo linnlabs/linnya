@@ -3,7 +3,7 @@ import type { MessageCatalogContribution, MessageParams } from '@app/localizatio
 export type ElementPropertyMessageKey =
   | 'slides.elementProperties.label'
   | 'slides.elementProperties.size'
-  | 'slides.elementProperties.deleteGroup'
+  | 'slides.elementProperties.deleteElement'
   | 'slides.elementProperties.sizeHint'
   | 'slides.elementProperties.mixedColor'
   | 'slides.elementProperties.colorPlane'
@@ -35,7 +35,7 @@ export type ElementPropertyMessageResolver = (
 export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
   'slides.elementProperties.label': '元素属性',
   'slides.elementProperties.size': '尺寸',
-  'slides.elementProperties.deleteGroup': '删除整组',
+  'slides.elementProperties.deleteElement': '删除元素',
   'slides.elementProperties.sizeHint': '拖动右侧、底部或右下角手柄调整尺寸 · 英寸',
   'slides.elementProperties.mixedColor': '非纯色',
   'slides.elementProperties.colorPlane': '选择饱和度与明度',
@@ -63,7 +63,7 @@ export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
 const ELEMENT_PROPERTY_EN_US_MESSAGES = {
   'slides.elementProperties.label': 'Element properties',
   'slides.elementProperties.size': 'Size',
-  'slides.elementProperties.deleteGroup': 'Delete group',
+  'slides.elementProperties.deleteElement': 'Delete element',
   'slides.elementProperties.sizeHint': 'Drag the right, bottom or bottom-right handle · inches',
   'slides.elementProperties.mixedColor': 'Non-solid',
   'slides.elementProperties.colorPlane': 'Choose saturation and brightness',

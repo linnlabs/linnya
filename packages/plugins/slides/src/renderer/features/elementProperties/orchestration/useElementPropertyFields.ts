@@ -3,7 +3,7 @@ import type { NumberInputValue } from '@linnya/renderer-ui';
 import type { ManualEditableTarget } from '../../manualEditing';
 import type { ElementPropertyOperation } from '../definitions/elementPropertyTypes';
 import type { ElementPropertyNumberField } from '../definitions/elementPropertyToolbar';
-import { createDeleteFrameOperation, createFillColorOperation, createTextStyleOperation, createVisualSizeOperation, resolveVisualSizeAfterDimensionChange } from '../functions/elementPropertyOperations';
+import { createFillColorOperation, createTextStyleOperation, createVisualSizeOperation, resolveVisualSizeAfterDimensionChange } from '../functions/elementPropertyOperations';
 
 export function useElementPropertyFields(options: {
   readonly target: Readonly<Ref<ManualEditableTarget>>;
@@ -48,6 +48,5 @@ export function useElementPropertyFields(options: {
     fontSize, width, height, commitNumber, cancelNumber,
     submitTextColor: (color: string) => submit(createTextStyleOperation(options.target.value, { color })),
     submitFillColor: (color: string) => submit(createFillColorOperation(options.target.value, color)),
-    submitDelete: () => submit(createDeleteFrameOperation(options.target.value)),
   };
 }

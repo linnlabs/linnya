@@ -99,6 +99,37 @@ export function mountManualPropertySmoke() {
   }
   function assert(value: boolean, message: string): void { if (!value) throw new Error(message); }
   return {
+    async verifyDeletionControls() {
+      const kinds: readonly ManualEditableTarget['targetKind'][] = ['text', 'frame', 'shape', 'image', 'table', 'chart', 'svgGraphic', 'formula'];
+      const selected = shallowRef<ManualEditableTarget>(target);
+      const busy = shallowRef(false);
+      const deleted: string[] = [];
+      const surface = document.createElement('div');
+      host.append(surface);
+      const controls = createApp({ render: () => h(ElementPropertyToolbar, {
+        target: selected.value, busy: busy.value, hasHierarchy: false,
+        anchor: { selection: { left: 300, top: 300, width: 100, height: 100 }, viewport: { width: 760, height: 760 } },
+        onDeleteSelected: () => deleted.push(selected.value.authoringRef.editKey),
+      }) });
+      controls.mount(surface);
+      try {
+        for (const kind of kinds) {
+          selected.value = { ...target, targetKind: kind, capabilities: ['translate', 'delete'], authoringRef: { slideKey: 'slide', editKey: kind } };
+          await nextTick();
+          const remove = surface.querySelector<HTMLButtonElement>('[data-property="delete"]');
+          assert(!!remove && remove.textContent?.trim() === '' && !!remove.getAttribute('aria-label'), 'Missing accessible icon-only delete action');
+          remove?.click();
+        }
+        assert(deleted.join(',') === kinds.join(','), 'Delete control duplicated or lost an author target');
+        busy.value = true;
+        await nextTick();
+        surface.querySelector<HTMLButtonElement>('[data-property="delete"]')?.click();
+        assert(deleted.length === kinds.length, 'Disabled delete action was submitted');
+        selected.value = { ...target, capabilities: ['translate'] };
+        await nextTick();
+        assert(!surface.querySelector('[data-property="delete"]'), 'Delete action ignored compiler capability');
+      } finally { controls.unmount(); surface.remove(); }
+    },
     async openPalette() { await open('fill'); },
     controlPoint(selector: string) {
       const element = host.querySelector<HTMLElement>(selector);

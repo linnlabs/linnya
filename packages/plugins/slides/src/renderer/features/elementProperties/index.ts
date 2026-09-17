@@ -4,7 +4,6 @@ export { projectElementPropertyTarget } from './functions/projectElementProperty
 export { ELEMENT_PROPERTY_MESSAGE_CATALOG } from './definitions/elementPropertyMessageCatalog';
 export type { ElementPropertyOperation } from './definitions/elementPropertyTypes';
 export {
-  createDeleteFrameOperation,
   createFillColorOperation,
   createTextStyleOperation,
   createVisualSizeOperation,

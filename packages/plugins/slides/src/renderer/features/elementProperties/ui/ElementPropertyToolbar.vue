@@ -72,17 +72,16 @@
             <ResizeIcon class="slides-element-property-toolbar__icon" />
           </ToolbarButton>
         </ToolbarGroup>
-        <ToolbarGroup v-if="canDeleteFrame">
+        <ToolbarGroup v-if="canDelete">
           <ToolbarButton
             type="button"
+            data-property="delete"
             class="slides-element-property-toolbar__delete"
-            :aria-label="message('slides.elementProperties.deleteFrame')"
-            :label="message('slides.elementProperties.deleteFrame')"
+            :label="message(target.targetKind === 'frame' ? 'slides.elementProperties.deleteFrame' : 'slides.elementProperties.deleteElement')"
             :disabled="busy"
-            @click="submitDelete"
+            @click="emit('delete-selected')"
           >
             <DeleteIcon class="slides-element-property-toolbar__icon" />
-            {{ message('slides.elementProperties.deleteGroup') }}
           </ToolbarButton>
         </ToolbarGroup>
       </FloatingToolbar>
@@ -188,13 +187,13 @@ const { position, popoverPosition, openPopover, toggle, close, handleToolbarKeyd
   toolbarElement: computed(() => toolbar.value?.element ?? null), popoverElement: computed(() => popover.value?.element ?? null),
   auxiliaryElement: colorOverlay,
 });
-const { fontSize, width, height, commitNumber, cancelNumber, submitTextColor, submitFillColor, submitDelete } = useElementPropertyFields({
+const { fontSize, width, height, commitNumber, cancelNumber, submitTextColor, submitFillColor } = useElementPropertyFields({
   target: toRef(props, 'target'), busy: computed(() => props.busy === true), submit: operation => emit('submit', operation),
 });
 const canEditTextStyle = computed(() => props.target.capabilities.includes('set_text_style'));
 const canEditFill = computed(() => props.target.capabilities.includes('set_fill_color'));
 const canEditSize = computed(() => props.target.capabilities.includes('set_visual_size'));
-const canDeleteFrame = computed(() => props.target.targetKind === 'frame' && props.target.capabilities.includes('delete'));
+const canDelete = computed(() => props.target.capabilities.includes('delete'));
 const currentTextColor = computed(() => props.target.textEditing?.color ?? '#000000');
 const currentFillColor = computed(() => props.target.fill?.kind === 'solid' ? props.target.fill.color : null);
 const popoverStyle = computed<CSSProperties>(() => ({
