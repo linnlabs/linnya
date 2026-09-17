@@ -20,6 +20,8 @@ export function projectTextDraftPresentations(
     if (!target || visuals.some(preview => preview.operation.op === 'delete_target'
       && preview.affectedElementIds.includes(target.elementId))) return [];
     const presented = createPresentedTextEditingTarget(nodes, target, projection);
-    return presented ? [{ ...draft, target: presented }] : [];
+    if (!presented) return [];
+    const content = draft.status === 'pending' ? presented.content : draft.content;
+    return [{ ...draft, content, target: { ...presented, content } }];
   });
 }

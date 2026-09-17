@@ -3,6 +3,7 @@ import { logSlidesVerbose } from '../../../shared/diagnosticLogging';
 import { computed } from 'vue';
 import type { ManualEditSubmissionPort } from '../../manualEditing';
 import type { TextEditingTarget } from '../../textEditing';
+import type { TextDraftPresentation } from '../definitions/editingInteractionTypes';
 import { openTextInputSession, settleTextDraft } from '../functions/textInputTransitions';
 import { useSlidesEditingInteractionStore } from '../store/slidesEditingInteractionStore';
 
@@ -20,9 +21,9 @@ export function useTextInputSession(submission: Pick<ManualEditSubmissionPort, '
     },
   });
 
-  function open(next: TextEditingTarget): void {
+  function open(next: TextEditingTarget, presentedDraft?: TextDraftPresentation): void {
     if (requestCommit() === 'blocked') return;
-    const previous = store.textDrafts.find(entry => entry.target.elementId === next.elementId);
+    const previous = presentedDraft ?? store.textDrafts.find(entry => entry.target.elementId === next.elementId);
     const session = openTextInputSession(next, previous, crypto.randomUUID());
     store.setTextSession(session);
     if (session.phase === 'editing') logSlidesVerbose('EditingInteraction', 'text_open', { sessionId: session.sessionId, elementId: next.elementId });
@@ -39,10 +40,11 @@ export function useTextInputSession(submission: Pick<ManualEditSubmissionPort, '
     store.setTextSession({ phase: 'idle' });
     const failed = store.textDrafts.some(entry => entry.target.elementId === session.target.elementId && entry.status === 'failed');
     if (editableTextEqual(session.draft, session.baseline) && !failed) return 'closed';
-    const operation: SlidesManualEditOperation = session.target.targetKind === 'shape'
+    const operation: Extract<SlidesManualEditOperation, { op: 'set_text_content' }> = session.target.targetKind === 'shape'
       ? shapeTextOperation(session.target, session.draft)
       : { op: 'set_text_content', targetKind: 'text', target: session.target.authoringRef, content: session.draft };
-    const ticket = submission.enqueue({ operation });
+    const ticket = submission.enqueue({ operation, visualPreview: { elementId: session.target.elementId,
+      affectedElementIds: [session.target.elementId], operation } });
     store.setTextDrafts([
       ...store.textDrafts.filter(entry => entry.target.elementId !== session.target.elementId),
       { sessionId: session.sessionId, clientOperationId: ticket.clientOperationId,
@@ -89,7 +91,7 @@ export function useTextInputSession(submission: Pick<ManualEditSubmissionPort, '
     handleEscape, handleCommitShortcut, reconcileTarget };
 }
 
-function shapeTextOperation(target: TextEditingTarget, content: SlidesEditableTextContent): SlidesManualEditOperation {
+function shapeTextOperation(target: TextEditingTarget, content: SlidesEditableTextContent): Extract<SlidesManualEditOperation, { op: 'set_text_content'; targetKind: 'shape' }> {
   if (typeof content !== 'string') throw new Error('Shape input must remain plain text.');
   return { op: 'set_text_content', targetKind: 'shape', target: target.authoringRef, content };
 }

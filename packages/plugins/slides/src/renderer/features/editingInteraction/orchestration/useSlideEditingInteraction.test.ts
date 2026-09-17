@@ -119,7 +119,6 @@ describe('useSlideEditingInteraction', () => {
         zIndex: 0, paragraphs: [{ align: 'center', runs: [{ text: 'Old' }] }], verticalAlign: 'middle' },
     }] };
     const { interaction, wrapper } = createInteraction(submit, shapeSlide);
-    const store = useSlidesManualEditingStore();
     enqueuePreview({ operation: {
       op: 'set_visual_size', targetKind: 'shape', target: { slideKey: 'overview', editKey: 'badge' },
       visualSize: { width: 4, height: 2 },
@@ -133,9 +132,9 @@ describe('useSlideEditingInteraction', () => {
     expect(interaction.textEditorTarget.value).toMatchObject({ elementId: 'badge', targetKind: 'shape', content: 'Old', width: 4, height: 2, verticalOffset: 1 });
     interaction.textDraft.value = 'New';
     interaction.submitTextEdit();
-    expect(submit).toHaveBeenCalledExactlyOnceWith({ operation: {
+    expect(submit).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ operation: {
       op: 'set_text_content', targetKind: 'shape', target: { slideKey: 'overview', editKey: 'badge' }, content: 'New',
-    } });
+    } }));
   });
 
   it('hovers only real author targets and leaves the slide background inactive', () => {
@@ -219,14 +218,13 @@ describe('useSlideEditingInteraction', () => {
 
     interaction.handleTextCompositionEnd();
     interaction.submitTextEdit();
-    expect(submitOperation).toHaveBeenCalledWith({
+    expect(submitOperation).toHaveBeenCalledWith(expect.objectContaining({
       operation: {
         op: 'set_text_content', targetKind: 'text',
         target: { slideKey: 'overview', editKey: 'headline' },
         content: '新的标题',
       },
-    });
-    const store = useSlidesManualEditingStore();
+    }));
     expect(interaction.textEditorTarget.value).toBeNull();
     expect(interaction.textPresentations.value[0]?.content).toBe('新的标题');
   });

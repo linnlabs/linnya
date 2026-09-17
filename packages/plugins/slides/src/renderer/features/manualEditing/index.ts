@@ -1,3 +1,4 @@
+export { projectTextEditingValues } from './functions/projectTextEditingValues';
 export type {
   ManualEditableTarget,
   ManualEditableTargetPath,

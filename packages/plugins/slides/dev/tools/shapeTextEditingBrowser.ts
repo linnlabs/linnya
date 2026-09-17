@@ -3,7 +3,7 @@ import { createApp, h, nextTick } from 'vue';
 import { createPinia } from 'pinia';
 import VueKonva from 'vue-konva';
 import Konva from 'konva';
-import { editableTextString, type SlidesEditableTextContent, type SlidesAuthoringEditProjection, type SlidesManualEditCommand, type SlidesManualEditCommandResult } from '../../src/shared/authoringEditing';
+import { patchWholeTextContent, editableTextString, type SlidesEditableTextContent, type SlidesAuthoringEditProjection, type SlidesManualEditCommand, type SlidesManualEditCommandResult } from '../../src/shared/authoringEditing';
 import { useManualEditQueue, provideManualEditSubmission, useSlidesManualEditingStore } from '../../src/renderer/features/manualEditing';
 import { useSlidesEditingInteractionStore } from '../../src/renderer/features/editingInteraction';
 import { useSlidesStore } from '../../src/renderer/store/slidesStore';
@@ -89,7 +89,7 @@ export function mountShapeTextEditingSmoke() {
         };
         const authoringEdit: SlidesAuthoringEditProjection = typeof value === 'string'
           ? { ...node.authoringEdit, text: { ...node.authoringEdit.text, kind: 'plain_text', content: value } }
-          : { capabilities: ['translate', 'delete', 'set_text_content'], text: { kind: 'rich_text', content: value, baseStyle: { fontSize: 14, color: '#111827' } } };
+          : { capabilities: ['translate', 'delete', 'set_text_content', 'set_text_style'], text: { kind: 'rich_text', content: value, baseStyle: { fontSize: 14, color: '#111827' } } };
         if (Array.isArray(value)) {
           projectedText.paragraphs = [{ align: 'center', runs: value.map(run => ({ text: run.text,
             fontSize: run.style?.fontSize ?? 14, color: run.style?.color ?? '#111827' })) }];
@@ -305,6 +305,8 @@ export function mountShapeTextEditingSmoke() {
       if (success) {
         const operation = item.command.operation;
         if (operation.op === 'set_text_content') content.set(operation.target.editKey, operation.content);
+        if (operation.op === 'set_text_style') content.set(operation.target.editKey,
+          patchWholeTextContent(content.get(operation.target.editKey) ?? '', operation));
         savedRevision += 1;
         item.resolve({ status: 'committed', commandId: item.command.commandId, documentId: item.command.documentId, revisionId: `v${savedRevision}`, revision: savedRevision });
       } else item.resolve({ status: 'validation_failed', commandId: item.command.commandId, documentId: item.command.documentId, code: 'operation_invalid', message: 'Fixture compile failure' });

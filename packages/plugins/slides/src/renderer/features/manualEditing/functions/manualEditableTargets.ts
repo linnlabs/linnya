@@ -1,3 +1,4 @@
+import { projectTextEditingValues } from './projectTextEditingValues';
 import type { RenderNode } from '../../../types/render';
 import {
   collectRenderNodeSelectionGeometries,
@@ -49,12 +50,15 @@ export function createPresentedTextEditingTarget(
     projection.transientTranslation, projection.pendingTranslation, projection.queuedIntents,
   ));
   const presented = projectManualEditableTargetSelection(target, translations, visuals);
-  return createTextEditingTarget({
+  const editor = createTextEditingTarget({
     ...geometry,
     node: projectManualVisualPreviewsToRenderNode(geometry.node, visuals),
     polygon: presented.polygon,
     bounds: presented.bounds,
   });
+  if (!editor || !target.textEditing) return editor;
+  const values = projectTextEditingValues(target.textEditing, visuals);
+  return { ...editor, content: values.content, baseStyle: values.baseStyle, fontSizePt: values.fontSizePt, color: values.color };
 }
 
 export function findManualEditableTargetAtPoint(

@@ -1,6 +1,6 @@
 import { Schema, type Node as ProseMirrorNode, type Mark } from '@tiptap/pm/model';
 import type { TextStyle } from '@plugin/slides/shared/deckSpec';
-import { isAuthorTextStyle, type SlidesEditableTextContent, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
+import { authorTextStylePatch, isAuthorTextStyle, type SlidesEditableTextContent, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 
 /** 单段 + 显式换行与 Text.content 一一对应；不引入标题、列表或 HTML 持久化模型。 */
@@ -63,8 +63,7 @@ export function patchSelectedTextStyle(state: EditorState, patch: SlidesTextStyl
   state.doc.nodesBetween(from, to, (node, pos) => {
     if (!node.isInline) return;
     const style = readAuthorStyle(node.marks.find(mark => mark.type.name === 'authorStyle'));
-    const next = { ...style, ...(patch.color !== undefined ? { color: patch.color } : {}),
-      ...(patch.fontSizePt !== undefined ? { fontSize: patch.fontSizePt } : {}) };
+    const next = { ...style, ...authorTextStylePatch(patch) };
     tr.addMark(Math.max(from, pos), Math.min(to, pos + node.nodeSize), slideTextSchema.marks.authorStyle.create({ value: next }));
   });
   return tr;

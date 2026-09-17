@@ -51,7 +51,7 @@ export interface ManualEditingTranslationPreview {
 
 export type ManualEditingVisualOperation = Extract<
   SlidesManualEditOperation,
-  { readonly op: 'set_text_style' | 'set_fill_color' | 'set_visual_size' | 'delete_target' }
+  { readonly op: 'set_text_content' | 'set_text_style' | 'set_fill_color' | 'set_visual_size' | 'delete_target' }
 >;
 
 export interface ManualEditingVisualPreview {

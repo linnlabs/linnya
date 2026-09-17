@@ -30,7 +30,7 @@
               :min="SLIDES_MANUAL_FONT_SIZE_PT.min"
               :max="SLIDES_MANUAL_FONT_SIZE_PT.max"
               step="any"
-              :placeholder="textSelection?.fontSizePt === null ? message('slides.elementProperties.mixed') : undefined"
+              :placeholder="textStyle?.fontSizePt === null ? message('slides.elementProperties.mixed') : undefined"
               :disabled="busy"
               @change="commitNumber('fontSize')"
               @keydown.enter.prevent="commitNumber('fontSize')"
@@ -118,7 +118,7 @@
       >
         <!-- 整个工具条都属于内部点击，避免旧列表关闭刚打开的相邻属性；焦点归还由外层 BaseDropdown 负责。 -->
         <CustomSelect
-          :model-value="textSelection ? textSelection.fontSizePt ?? undefined : target.textEditing?.fontSizePt"
+          :model-value="textStyle?.fontSizePt ?? undefined"
           :options="ELEMENT_FONT_SIZE_OPTIONS"
           manual-mode
           :external-trigger-ref="toolbar?.element ?? null"
@@ -233,7 +233,7 @@ const { position, popoverPosition, openPopover, toggle, close, handleToolbarKeyd
   toolbarElement: computed(() => toolbar.value?.element ?? null), popoverElement: computed(() => fontMenu.value ?? popover.value?.element ?? null),
   auxiliaryElement: colorOverlay,
 });
-const { fontSize, width, height, commitNumber, cancelNumber, submitTextColor, submitFillColor } = useElementPropertyFields({
+const { textStyle, fontSize, width, height, commitNumber, cancelNumber, submitTextColor, submitFillColor } = useElementPropertyFields({
   textSelection: toRef(props, 'textSelection'), submitTextSelection: patch => emit('text-style', patch),
   target: toRef(props, 'target'), busy: computed(() => props.busy === true), submit: operation => emit('submit', operation),
 });
@@ -241,7 +241,7 @@ const canEditTextStyle = computed(() => props.textSelection !== undefined || pro
 const canEditFill = computed(() => props.textSelection === undefined && props.target.capabilities.includes('set_fill_color'));
 const canEditSize = computed(() => props.textSelection === undefined && props.target.capabilities.includes('set_visual_size'));
 const canDelete = computed(() => props.textSelection === undefined && props.target.capabilities.includes('delete'));
-const currentTextColor = computed(() => props.textSelection ? props.textSelection.color : props.target.textEditing?.color ?? '#000000');
+const currentTextColor = computed(() => textStyle.value?.color ?? null);
 const currentFillColor = computed(() => props.target.fill?.kind === 'solid' ? props.target.fill.color : null);
 const popoverDirection = computed(() => popoverPosition.value && position.value && popoverPosition.value.top < position.value.top ? 'up' : 'down');
 const popoverStyle = computed<CSSProperties>(() => ({

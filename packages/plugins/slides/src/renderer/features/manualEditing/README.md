@@ -78,3 +78,7 @@ input-to-frame timings. Backend `slides_manual_edit.backend_trace` events use th
 identify `projected_translation` versus `full_compile` without logging source or edited content.
 
 - `backend/__tests__/manual-edit-save-reopen.integration.test.ts` joins the production Renderer queue, sandbox profile/evaluator, compiler, manual runtime, disk SQLite repository and lazy PPTX artifact runtime. It edits Shape text, position and color in sequence, reopens the database, and verifies the resulting source, revision, DeckSpec and exported XML. Host IPC transport and native UI are covered separately; the test does not touch user documents.
+
+## Ordered text author-value previews
+
+Text-content intents carry a typed visual preview alongside style operations, retaining their exact queue order through coalescing and frame settlement. `projectTextEditingValues` projects full content, whole-run fields and inherited baseline together; `createPresentedTextEditingTarget` combines those values with the existing geometry projection. Property controls and input/draft presentation consume this narrow public function rather than implementing different rich-text precedence. Canvas still draws pending content through `TextDraftPreview`; adding content to the ordered preview does not introduce another text layout engine or persistent document.

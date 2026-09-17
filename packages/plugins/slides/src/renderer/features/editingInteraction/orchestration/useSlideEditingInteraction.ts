@@ -179,7 +179,7 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     if (!editorTarget) return;
     event.preventDefault();
     store.selectTarget(target, path);
-    textEditing.open(editorTarget);
+    textEditing.open(editorTarget, textPresentations.value.find(draft => draft.target.elementId === target.elementId));
   }
 
   function submitVisualOperation(operation: ManualEditingVisualOperation): boolean {

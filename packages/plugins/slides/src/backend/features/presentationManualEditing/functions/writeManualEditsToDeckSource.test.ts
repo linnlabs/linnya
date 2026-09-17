@@ -60,6 +60,18 @@ describe('writeManualEditsToDeckSource', () => {
       .toBe(BASE_SOURCE.replace('  slides: [slide],', '  slides: [slide],\n  manualEdits: <value>'));
   });
 
+  it('已有 v2 整框继承值与新局部正文共存，保持旧文稿源码语义和位移', () => {
+    const target = { slideKey: 'overview', editKey: 'headline' };
+    const moved = writeManualEditsToDeckSource(BASE_SOURCE, { op: 'translate_by', target, targetKind: 'text', delta: { dx: 1, dy: 2 } });
+    const styled = writeManualEditsToDeckSource(moved.source, { op: 'set_text_style', content: 'Original', target, fontSizePt: 32, color: '#2563EB' });
+    const local = writeManualEditsToDeckSource(styled.source, { op: 'set_text_content', targetKind: 'text', target,
+      content: [{ text: 'Keep ', style: { bold: true } }, { text: 'local', style: { color: '#DC2626' } }] });
+    expect(local.manualEdits.slides[0].targets[0]).toEqual({ kind: 'text', editKey: 'headline', translation: { dx: 1, dy: 2 }, fontSizePt: 32, color: '#2563EB',
+      content: [{ text: 'Keep ', style: { bold: true } },
+        { text: 'local', style: { color: '#DC2626' } }] });
+    expect(typecheckCodegenSource(local.source).ok).toBe(true);
+  });
+
   it('形状内嵌改字与尺寸/颜色/位移合并，空字符串仍是有效内容', () => {
     const source = BASE_SOURCE.replace('createText', 'createShape');
     const target = { slideKey: 'overview', editKey: 'headline' };
@@ -155,7 +167,7 @@ describe('writeManualEditsToDeckSource', () => {
       translation: { dx: 0.2, dy: -0.1 },
     });
     const sized = writeManualEditsToDeckSource(moved.source, {
-      op: 'set_text_style',
+      op: 'set_text_style', content: 'Original',
       target: { slideKey: 'overview', editKey: 'headline' },
       fontSizePt: 28,
       color: '#123456',
@@ -207,7 +219,7 @@ describe('writeManualEditsToDeckSource', () => {
       kind: 'text', editKey: 'headline', deleted: true,
     });
     expect(() => writeManualEditsToDeckSource(removedText.source, {
-      op: 'set_text_style',
+      op: 'set_text_style', content: 'Original',
       target: { slideKey: 'overview', editKey: 'headline' },
       color: '#123456',
     })).toThrow('已删除');

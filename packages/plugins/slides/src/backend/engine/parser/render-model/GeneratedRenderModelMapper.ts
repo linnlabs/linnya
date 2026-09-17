@@ -395,7 +395,7 @@ function buildAuthoringEditProjection(
         };
       }
       if ((element.type === 'text' || element.type === 'title') && Array.isArray(element.content) && isEditableTextContent(element.content)) {
-        capabilities.push('set_text_content');
+        capabilities.push('set_text_content', 'set_text_style');
         return {
           capabilities,
           text: {

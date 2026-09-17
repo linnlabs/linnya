@@ -23,7 +23,7 @@ describe('authoring edit projection', () => {
   });
 
   it('accepts original text runs and rejects formula or unknown style fields', () => {
-    const projection = { capabilities: ['translate', 'set_text_content'], text: { kind: 'rich_text',
+    const projection = { capabilities: ['translate', 'set_text_content', 'set_text_style'], text: { kind: 'rich_text',
       content: [{ text: 'A', style: { color: '#112233', bold: true } }, { text: 'B' }] } };
     expect(isSlidesAuthoringEditProjection(projection)).toBe(true);
     expect(isSlidesAuthoringEditProjection({ ...projection, text: { kind: 'rich_text', content: [{ formula: 'x' }] } })).toBe(false);

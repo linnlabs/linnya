@@ -101,6 +101,14 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
       translationDelta: { dx: -0.75, dy: -0.25 },
     } })).toMatchObject({ status: 'conflict', reason: 'command_reused' });
 
+    // 原始源码富文本尚无人工 content 时，整框操作也必须覆盖其显式局部样式。
+    queue.enqueue({ operation: { op: 'set_text_style', target: { slideKey: 'overview', editKey: 'caption' }, fontSizePt: 22, color: '#116644' } });
+    await queue.flush();
+    const initialStyleSaved = await repository.getPresentation('deck');
+    const initialText = initialStyleSaved?.deckSpec.slides[0].spec.elements.find(element => element._authoringRef?.editKey === 'caption');
+    expect(initialText).toMatchObject({ content: [{ text: 'Revenue ', style: { bold: true, fontSize: 22, color: '#116644' } },
+      { text: '30%', style: { fontSize: 22, color: '#116644' } }] });
+
     // 同一正式队列接收前端选区事务产出的作者 runs，验证没有只改 DOM 而漏保存。
     const captionDoc = textContentToDocument([{ text: 'Revenue ', style: { bold: true } },
       { text: '30%', style: { color: '#335577', fontSize: 18 } }]);
@@ -109,36 +117,67 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
     queue.enqueue({ operation: { op: 'set_text_content', targetKind: 'text', target: { slideKey: 'overview', editKey: 'caption' }, content: captionContent } });
     await queue.flush();
     const richSaved = await repository.getPresentation('deck');
-    expect(richSaved?.currentRevision).toBe(6);
-    const richCommand = commands[4];
+    expect(richSaved?.currentRevision).toBe(7);
+    // 旧 v2 组合：manual 字号/颜色提供继承值，显式 run 样式仍然优先，重编译不得改色。
+    if (!richSaved) throw new Error('Missing mixed revision');
+    const legacyModel = new RenderModelMapper().fromGeneratedDeck('deck', richSaved.currentRevision, richSaved.title,
+      richSaved.deckSpec, { width: 13.333, height: 7.5 });
+    const legacyText = legacyModel.slides[0].elements.find(node => node.authoringRef?.editKey === 'caption');
+    if (legacyText?.kind !== 'text') throw new Error('Missing mixed text');
+    expect(legacyText.paragraphs.flatMap(paragraph => paragraph.runs)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ text: 'Revenue ', fontSize: 22, color: '#116644' }),
+      expect.objectContaining({ text: '30%', fontSize: 28, color: '#E11D48' }),
+    ]));
+    const richCommand = commands[5];
     if (!richCommand || richCommand.operation.op !== 'set_text_content') throw new Error('Missing rich command');
     expect(await backend.submit({ ...richCommand, operation: { ...richCommand.operation, targetKind: 'text', content: [
       { text: 'Revenue ', style: { bold: true } }, { text: '30%', style: { fontSize: 28, color: '#E11D48' } },
-    ] } })).toMatchObject({ status: 'committed', revision: 6 });
+    ] } })).toMatchObject({ status: 'committed', revision: 7 });
+    // 局部 → 整框 → 再局部：真实编译结果作为下一次原位输入的唯一作者值。
+    const captionTarget = { slideKey: 'overview', editKey: 'caption' };
+    queue.enqueue({ operation: { op: 'set_text_style', target: captionTarget, fontSizePt: 32, color: '#2563EB' } });
+    await queue.flush();
+    const wholeSaved = await repository.getPresentation('deck');
+    if (!wholeSaved) throw new Error('Missing whole-text revision');
+    const wholeModel = new RenderModelMapper().fromGeneratedDeck('deck', wholeSaved.currentRevision, wholeSaved.title,
+      wholeSaved.deckSpec, { width: 13.333, height: 7.5 });
+    const wholeText = wholeModel.slides[0].elements.find(node => node.authoringRef?.editKey === 'caption')?.authoringEdit?.text;
+    if (wholeText?.kind !== 'rich_text' || !wholeText.content) throw new Error('Missing editable whole text');
+    expect(wholeText.content).toEqual([{ text: 'Revenue ', style: { bold: true, fontSize: 32, color: '#2563EB' } },
+      { text: '30%', style: { fontSize: 32, color: '#2563EB' } }]);
+    const nextDoc = textContentToDocument(wholeText.content);
+    const nextState = EditorState.create({ doc: nextDoc, selection: TextSelection.create(nextDoc, 9, 12) });
+    const finalContent = documentToTextContent(nextState.apply(patchSelectedTextStyle(nextState, { fontSizePt: 20 })).doc);
+    queue.enqueue({ operation: { op: 'set_text_content', targetKind: 'text', target: captionTarget, content: finalContent } });
+    await queue.flush();
+    const finalSaved = await repository.getPresentation('deck');
+    expect(finalSaved?.currentRevision).toBe(9);
     scope.stop();
     db.close(); db = new Database(path);
     const reopened = new PresentationRepository(db);
     const read = await reopened.getPresentation('deck');
-    expect(read?.deckSpec).toEqual(richSaved?.deckSpec);
+    expect(read?.deckSpec).toEqual(finalSaved?.deckSpec);
     if (!read) throw new Error('Missing reopened document');
     const reopenedModel = new RenderModelMapper().fromGeneratedDeck('deck', read.currentRevision, read.title, read.deckSpec, { width: 13.333, height: 7.5 });
     const caption = reopenedModel.slides[0].elements.find(node => node.authoringRef?.editKey === 'caption');
-    expect(caption?.authoringEdit).toMatchObject({ capabilities: expect.arrayContaining(['set_text_content']), text: { kind: 'rich_text', content: captionContent } });
+    expect(caption?.authoringEdit).toMatchObject({ capabilities: expect.arrayContaining(['set_text_content', 'set_text_style']), text: { kind: 'rich_text', content: finalContent } });
     expect(read?.deckSource).toContain('Saved\\nsecond line');
     const artifact = new PresentationPptxArtifactRuntime({ repository: reopened,
       materialize: record => materialize(record.deckSpec) });
     const exported = await artifact.loadCurrent('deck');
-    expect(exported.revision).toBe(6);
+    expect(exported.revision).toBe(9);
     const zip = await JSZip.loadAsync(exported.pptxBuffer);
     const xml = await zip.file('ppt/slides/slide1.xml')?.async('string');
     expect(xml).toContain('Saved'); expect(xml).toContain('second line');
     const document = new DOMParser().parseFromString(xml ?? '', 'application/xml');
     const textRuns = Array.from(document.getElementsByTagName('a:r'));
     const selectedRun = textRuns.find(run => run.getElementsByTagName('a:t')[0]?.textContent === '30%');
-    expect(selectedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('sz')).toBe('2800');
-    expect(selectedRun?.getElementsByTagName('a:srgbClr')[0]?.getAttribute('val')).toBe('E11D48');
+    expect(selectedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('sz')).toBe('2000');
+    expect(selectedRun?.getElementsByTagName('a:srgbClr')[0]?.getAttribute('val')).toBe('2563EB');
     const retainedRun = textRuns.find(run => run.getElementsByTagName('a:t')[0]?.textContent === 'Revenue ');
     expect(retainedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('b')).toBe('1');
+    expect(retainedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('sz')).toBe('3200');
+    expect(retainedRun?.getElementsByTagName('a:srgbClr')[0]?.getAttribute('val')).toBe('2563EB');
     expect(xml).not.toContain('Original'); expect(xml).toContain('CC5500');
     expect(xml).toContain('x="914400"'); // 从左上角拉伸，右下角固定，位置和尺寸一起写入。
     expect(xml).toContain('cx="3200400"');

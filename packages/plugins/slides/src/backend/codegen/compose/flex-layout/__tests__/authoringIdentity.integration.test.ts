@@ -179,7 +179,7 @@ describe('authoring identity projection', () => {
       expect.objectContaining({
         authoringRef: expect.objectContaining({ editKey: 'rich_copy' }),
         authoringEdit: {
-          capabilities: ['translate', 'delete', 'set_text_content'],
+          capabilities: ['translate', 'delete', 'set_text_content', 'set_text_style'],
           text: { kind: 'rich_text', content: [{ text: 'Rich ', style: { bold: true } }, { text: 'copy' }], baseStyle: expect.objectContaining({ fontFamily: 'Calibri' }) },
         },
       }),

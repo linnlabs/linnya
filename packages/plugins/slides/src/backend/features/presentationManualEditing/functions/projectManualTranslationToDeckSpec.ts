@@ -1,3 +1,4 @@
+import { collectManualAuthoringTargets } from './collectManualAuthoringTargets.js';
 import type {
   DeckSpec,
   FreeformElement,
@@ -20,11 +21,6 @@ export class SlidesManualEditDeckProjectionError extends Error {
   }
 }
 
-interface AuthoringMatch {
-  readonly ref: SlidesAuthoringObjectRef;
-  readonly isTopLevel: boolean;
-}
-
 /**
  * translate_by 是 Flex 编译完成后的平移。只有目标是唯一的顶层原子元素时，
  * 当前 DeckSpec 加同一 delta 才能严格等价；Frame 与嵌套 group 交回完整编译器。
@@ -37,7 +33,7 @@ export function projectManualTranslationToDeckSpec(
     return { kind: 'requires_full_compile' };
   }
 
-  const matches = collectAuthoringMatches(deckSpec, operation.target);
+  const matches = collectManualAuthoringTargets(deckSpec, operation.target);
   if (matches.length !== 1) {
     throw new SlidesManualEditDeckProjectionError(
       matches.length === 0
@@ -82,31 +78,6 @@ export function projectManualTranslationToDeckSpec(
     );
   }
   return { kind: 'projected', deckSpec: { ...deckSpec, slides } };
-}
-
-function collectAuthoringMatches(
-  deckSpec: DeckSpec,
-  target: SlidesAuthoringEditRef,
-): AuthoringMatch[] {
-  const matches: AuthoringMatch[] = [];
-  for (const slide of deckSpec.slides) {
-    for (const element of slide.spec.elements) {
-      visitElement(element, true, (ref, isTopLevel) => {
-        if (matchesTarget(ref, target)) matches.push({ ref, isTopLevel });
-      });
-    }
-  }
-  return matches;
-}
-
-function visitElement(
-  element: StructuredElement | FreeformElement,
-  isTopLevel: boolean,
-  visit: (ref: SlidesAuthoringObjectRef, isTopLevel: boolean) => void,
-): void {
-  if (element._authoringRef) visit(element._authoringRef, isTopLevel);
-  if (element.type !== 'group') return;
-  for (const child of element.children ?? []) visitElement(child, false, visit);
 }
 
 function matchesTarget(

@@ -29,3 +29,5 @@
 ## 验证
 
 `richTextDocument.test.ts` 覆盖混合格式、局部修改、Unicode／换行、源码值转换及撤销重做；输入交接／失败恢复由 editingInteraction 组合测试覆盖。`smoke:preview-transitions` 用真实 Electron 指针和键盘覆盖范围选择、字号／颜色、混合值、工具条焦点、pending 重入及修订后重入，并保留 Shape 和八向缩放回归。真实队列、源码编译、SQLite 重开及 PPTX run 样式见 `backend/__tests__/manual-edit-save-reopen.integration.test.ts`。
+
+整框字号／颜色与局部样式遵循同一 shared/authoringEditing 字段规则。整框属性工具条的混合状态由有效 runs 派生，不能拿混合值替代 DOM 的具体继承基准。待保存期间重新进入输入时，editingInteraction 传入按完整正文／整框样式命令顺序投影后的作者值；原生测试覆盖局部 → 整框 → 再局部，以及中间回执不覆盖最后一次修改。

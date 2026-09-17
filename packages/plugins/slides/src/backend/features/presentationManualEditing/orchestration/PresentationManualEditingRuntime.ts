@@ -1,3 +1,4 @@
+import { prepareManualEditSourceOperation } from '../functions/prepareManualEditSourceOperation.js';
 import type {
   SlidesManualEditCommand,
   SlidesManualEditCommandResult,
@@ -107,7 +108,8 @@ export class PresentationManualEditingRuntime {
     let source: string;
     let projection: ManualTranslationDeckProjection;
     try {
-      source = writeManualEditsToDeckSource(current.deckSource, command.operation).source;
+      const sourceOperation = prepareManualEditSourceOperation(current.deckSpec, command.operation);
+      source = writeManualEditsToDeckSource(current.deckSource, sourceOperation).source;
       projection = projectManualTranslationToDeckSpec(current.deckSpec, command.operation);
     } catch (error) {
       if (

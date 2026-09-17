@@ -56,7 +56,7 @@ deck.js 按 JavaScript 检查。在 JavaScript 中，对象字面量**赋值给�
 
 `createSlide()` 创建页面，`createFrame()` 创建容器。两者都是 Flex 容器；子节点只有经过父级 `.add(...)` 才属于文稿。新文稿使用 `createSlide({ slideKey: "overview" })` 声明稳定页面身份，并在可编辑对象上使用 `editKey`，例如 `createText({ editKey: "headline", content: "标题" })`。`slideKey` 在整份文稿唯一，`editKey` 在所属页面唯一；两者不能从页码、数组下标、源码行或显示文字临时生成。
 
-`compose({ manualEdits })` 保存已经提交的前端人工值。version 2 支持 Text 完整正文（字符串或带局部 style 的文字 run 数组）与字号／颜色、带字 Shape 的完整纯文本（同一 shape 记录的 content）、Frame／Shape 纯色、Shape／Image 视觉尺寸、各作者目标累计位移，以及删除任意具备 `editKey` 的作者目标；普通目标删除自身，Frame 删除完整作者子树。位移和尺寸单位是 inches。一个目标的删除值与内容、样式、尺寸和位移互斥；记录是当前值，不是不断追加的操作日志，同一页不能重复写同一个 `editKey`。Agent 修改已有对象时须同时查看对应人工值；正文已有 content 覆盖时，应更新该完整值，避免只修改初始节点而被已有人工值覆盖。不要手写 arbitrary property path、JSON Patch 或引擎 option。完整、参与 typecheck 的写法见 [`manual-edits.js`](./examples/manual-edits.js)。
+`compose({ manualEdits })` 保存已经提交的前端人工值。version 2 支持 Text 完整正文（字符串或带局部 style 的文字 run 数组）与字号／颜色、带字 Shape 的完整纯文本（同一 shape 记录的 content）、Frame／Shape 纯色、Shape／Image 视觉尺寸、各作者目标累计位移，以及删除任意具备 `editKey` 的作者目标；普通目标删除自身，Frame 删除完整作者子树。位移和尺寸单位是 inches。一个目标的删除值与内容、样式、尺寸和位移互斥；记录是当前值，不是不断追加的操作日志，同一页不能重复写同一个 `editKey`。Agent 修改已有对象时须同时查看对应人工值；正文已有 content 覆盖时，应更新该完整值，避免只修改初始节点而被已有人工值覆盖。Text 中显式 `run.style` 优先于节点或人工记录中继承的字号／颜色；统一整框格式时须同步修改全部 run 的对应字段，保留其他字段。前端整框操作会基于当前修订自动写入这一完整作者值，不改变旧文稿的继承规则。不要手写 arbitrary property path、JSON Patch 或引擎 option。完整、参与 typecheck 的写法见 [`manual-edits.js`](./examples/manual-edits.js)。
 
 Slide 的 `background` 支持纯色、图片或 gradient 三选一，`notes` 用于演讲者备注。Frame/Slide 的 `backgroundColor`、`border`、`borderRadius` 会生成容器装饰 Shape，`opacity` 只作用于这层装饰的 fill；它们不影响页面 background、子节点或 `.add(...)` 关系。
 

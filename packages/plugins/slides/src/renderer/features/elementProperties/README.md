@@ -4,7 +4,7 @@
 
 Supported controls:
 
-- plain Text: font size from 1 through 400 points and `#RRGGBB` text color;
+- editable Text (plain or text-only rich runs): font size from 1 through 400 points and `#RRGGBB` text color;
 - Frame/Shape: replace the existing background/fill with one solid color;
 - Shape: set visual width and height independently in inches; Image: changing either dimension preserves the current effective display ratio. Number changes submit on Enter/blur without a separate Apply-size step;
 - every target with a projected `delete` capability: an icon-only delete button; atomic objects remove themselves, and a Frame removes every descendant.
@@ -72,4 +72,6 @@ The same `ElementPropertyToolbar` accepts an optional `textSelection` style proj
 
 Stage anchors this scope to the native text selection in pane coordinates. `textEditing` owns the retained range, focus region, IME and local undo; the toolbar continues to own only its field drafts and existing dropdown/color interactions. Ordinary object-property behavior remains unchanged. Native smoke covers moving focus to the number field or palette without ending text input, applying several styles to the same range, and outside-click handoff before saving.
 
-If a pending text draft has become rich content while the installed revision still advertises plain-text styling, the property projection removes the obsolete object-style action using that visible author value. It does not invent new compiler capabilities. Rich text is formatted as a range (select all for the whole text); failure recovery and pending re-entry retain that same content.
+Selecting the whole Text keeps font size, text color and deletion available after a local edit makes it rich. `wholeTextStyle` derives effective values from the visible original runs plus their inherited baseline: a mixed size shows the same localized Mixed hint, and mixed colors select no palette cell. This derived summary does not change toolbar scope or replace the concrete input baseline. Whole-text controls still emit `set_text_style`; range controls still edit the active full-value draft.
+
+Content and style previews are replayed in queue order by `manualEditing/projectTextEditingValues`, shared with input re-entry and passive draft presentation. A later full rich value therefore supersedes earlier whole styles while preserving unrelated marks. Native smoke covers local → whole → local with the first save held pending, each intervening revision installation and re-entry; save/reopen/export coverage verifies the same order against real compilation and SQLite.

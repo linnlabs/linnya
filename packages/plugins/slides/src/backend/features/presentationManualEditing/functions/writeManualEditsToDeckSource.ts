@@ -1,9 +1,9 @@
-import { isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
+import type { SlidesManualEditSourceOperation } from '../definitions/manualEditSourceOperation.js';
+import { patchWholeTextContent, isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import type ts from 'typescript';
 import {
   isSlidesAuthoringKey,
   parseSlidesManualEdits,
-  type SlidesManualEditOperation,
   type SlidesManualEdits,
   type SlidesManualSlideEdits,
   type SlidesManualTargetEdit,
@@ -40,7 +40,7 @@ export interface WriteManualEditsToDeckSourceResult {
 
 export function writeManualEditsToDeckSource(
   source: string,
-  operation: SlidesManualEditOperation,
+  operation: SlidesManualEditSourceOperation,
   options: { readonly maxSourceBytes?: number } = {},
 ): WriteManualEditsToDeckSourceResult {
   validateOperation(operation);
@@ -122,7 +122,7 @@ function findComposeObjects(
 
 function applyOperation(
   current: SlidesManualEdits,
-  operation: SlidesManualEditOperation,
+  operation: SlidesManualEditSourceOperation,
 ): SlidesManualEdits {
   const slideIndex = current.slides.findIndex(slide => slide.slideKey === operation.target.slideKey);
   const slide = slideIndex === -1
@@ -143,7 +143,7 @@ function applyOperation(
 
 function applyTargetOperation(
   existing: SlidesManualTargetEdit | undefined,
-  operation: SlidesManualEditOperation,
+  operation: SlidesManualEditSourceOperation,
 ): SlidesManualTargetEdit {
   const targetKind = operation.op === 'set_text_style'
     ? 'text'
@@ -172,6 +172,7 @@ function applyTargetOperation(
           ...text,
           kind: 'text',
           editKey: operation.target.editKey,
+          ...(Array.isArray(operation.content) ? { content: patchWholeTextContent(operation.content, operation) } : {}),
           ...(operation.fontSizePt !== undefined ? { fontSizePt: operation.fontSizePt } : {}),
           ...(operation.color !== undefined ? { color: operation.color } : {}),
         };
@@ -269,7 +270,7 @@ function applyTargetOperation(
 function assertExistingKind(
   existing: SlidesManualTargetEdit | undefined,
   expectedKind: SlidesManualTargetEdit['kind'],
-  operation: SlidesManualEditOperation,
+  operation: SlidesManualEditSourceOperation,
 ): void {
   if (!existing || existing.kind === expectedKind) return;
   throw new SlidesManualEditSourceError(
@@ -278,14 +279,14 @@ function assertExistingKind(
   );
 }
 
-function deletedTargetError(operation: SlidesManualEditOperation): SlidesManualEditSourceError {
+function deletedTargetError(operation: SlidesManualEditSourceOperation): SlidesManualEditSourceError {
   return new SlidesManualEditSourceError(
     'operation_invalid',
     `目标 ${operation.target.slideKey}/${operation.target.editKey} 已删除。`,
   );
 }
 
-function validateOperation(operation: SlidesManualEditOperation): void {
+function validateOperation(operation: SlidesManualEditSourceOperation): void {
   if (
     !isSlidesAuthoringKey(operation.target.slideKey)
     || !isSlidesAuthoringKey(operation.target.editKey)
