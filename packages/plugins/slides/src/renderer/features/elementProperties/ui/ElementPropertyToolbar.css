@@ -56,7 +56,7 @@
 .slides-element-font-menu {
   position: absolute;
   z-index: var(--linnya-ui-layer-floating-panel);
-  width: 88px;
+  width: 84px;
 }
 .slides-element-font-menu__options { box-sizing: border-box; }
 .slides-element-property-controls { display: contents; }
