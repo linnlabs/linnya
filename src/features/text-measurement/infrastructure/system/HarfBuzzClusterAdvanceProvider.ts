@@ -6,7 +6,7 @@ import type {
   NormalizedClusterAdvanceRequest,
   ResolvedFontFile,
 } from '../../definitions/types.js';
-import { pointsToInches } from '../../functions/UnitConverter.js';
+import { projectFontUnitAdvances, type FontUnitAdvances } from '@linnya/text-measurement-core';
 import { getReadyHarfBuzzModule, isHarfBuzzReady, type HarfBuzzModule } from './harfbuzzModule.js';
 
 const DEFAULT_CLUSTER_ADVANCE_CACHE_MAX_ENTRIES = 5000;
@@ -29,7 +29,7 @@ export class HarfBuzzClusterAdvanceProvider {
   private readonly fallback: HeuristicMeasureAdapter;
   private readonly maxCacheEntries: number;
   private readonly faceFontCache = new Map<string, CachedFaceFont>();
-  private readonly clusterAdvanceCache = new Map<string, readonly number[]>();
+  private readonly clusterAdvanceCache = new Map<string, FontUnitAdvances>();
 
   constructor(options: HarfBuzzClusterAdvanceProviderOptions) {
     this.fontFileLocator = options.fontFileLocator;
@@ -55,7 +55,8 @@ export class HarfBuzzClusterAdvanceProvider {
     const cached = this.getClusterAdvanceCache(cacheKey);
     if (cached != null) {
       return {
-        advances: [...cached],
+        advances: projectFontUnitAdvances(cached, request.style.fontSizePt, request.style.letterSpacingPt),
+        fontUnits: cached,
         source: 'harfbuzz',
       };
     }
@@ -64,7 +65,8 @@ export class HarfBuzzClusterAdvanceProvider {
       const advances = this.shapeClusterAdvances(request, resolvedFont);
       this.setClusterAdvanceCache(cacheKey, advances);
       return {
-        advances,
+        advances: projectFontUnitAdvances(advances, request.style.fontSizePt, request.style.letterSpacingPt),
+        fontUnits: advances,
         source: 'harfbuzz',
       };
     } catch {
@@ -100,11 +102,7 @@ export class HarfBuzzClusterAdvanceProvider {
   private shapeClusterAdvances(
     request: NormalizedClusterAdvanceRequest,
     resolvedFont: ResolvedFontFile,
-  ): number[] {
-    if (request.clusters.length === 0) {
-      return [];
-    }
-
+  ): FontUnitAdvances {
     const harfbuzz = getReadyHarfBuzzModule();
     const faceFont = this.getFaceFont(harfbuzz, resolvedFont);
     const joinedText = request.clusters.join('');
@@ -123,12 +121,7 @@ export class HarfBuzzClusterAdvanceProvider {
       rawAdvances[clusterIndex] += glyph.xAdvance ?? 0;
     }
 
-    const letterSpacingInches = pointsToInches(request.style.letterSpacingPt ?? 0);
-    return rawAdvances.map((advance, index) => {
-      const advanceInches = (advance / faceFont.face.upem) * pointsToInches(request.style.fontSizePt)
-        + (index > 0 ? letterSpacingInches : 0);
-      return Number(advanceInches.toFixed(6));
-    });
+    return { unitsPerEm: faceFont.face.upem, advances: rawAdvances };
   }
 
   private getFaceFont(harfbuzz: HarfBuzzModule, resolvedFont: ResolvedFontFile): CachedFaceFont {
@@ -155,7 +148,7 @@ export class HarfBuzzClusterAdvanceProvider {
     return this.fallback.measureClusterAdvancesWithSource(request);
   }
 
-  private getClusterAdvanceCache(cacheKey: string): readonly number[] | undefined {
+  private getClusterAdvanceCache(cacheKey: string): FontUnitAdvances | undefined {
     const cached = this.clusterAdvanceCache.get(cacheKey);
     if (cached == null) {
       return undefined;
@@ -165,11 +158,11 @@ export class HarfBuzzClusterAdvanceProvider {
     return cached;
   }
 
-  private setClusterAdvanceCache(cacheKey: string, advances: readonly number[]): void {
+  private setClusterAdvanceCache(cacheKey: string, advances: FontUnitAdvances): void {
     if (this.clusterAdvanceCache.has(cacheKey)) {
       this.clusterAdvanceCache.delete(cacheKey);
     }
-    this.clusterAdvanceCache.set(cacheKey, [...advances]);
+    this.clusterAdvanceCache.set(cacheKey, advances);
     while (this.clusterAdvanceCache.size > this.maxCacheEntries) {
       const oldestKey = this.clusterAdvanceCache.keys().next().value;
       if (oldestKey == null) {
@@ -191,10 +184,8 @@ function createClusterAdvanceCacheKey(
       postscriptName: resolvedFont.postscriptName,
     },
     clusters: request.clusters,
-    fontSizePt: request.style.fontSizePt,
     bold: request.style.bold,
     italic: request.style.italic,
-    letterSpacingPt: request.style.letterSpacingPt ?? 0,
     sourceKind: request.sourceKind,
   });
 }

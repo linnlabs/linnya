@@ -109,3 +109,5 @@ Renderer 插件通过 `@plugin/renderer/exportArtifact` 请求系统保存框，
 5. 运行 `pnpm --filter @linnya/plugin-host-contract typecheck`，并验证受影响插件的 typecheck。
 
 禁止 `any`、不安全断言、shape guessing、随机身份、index key 和无业务含义的 fallback。
+
+文本测量端口的 `fontUnits` 是可选的只读字体单位事实，供客户端在相同 shaping 输入下准确投影字号；不携带字体路径、宿主对象或可写文档状态。没有该事实的 provider 不承诺跨字号复用，调用方不能自行从最终宽度推算。

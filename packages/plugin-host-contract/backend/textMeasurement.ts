@@ -49,6 +49,8 @@ export type TextMeasureAdvanceSource = 'pretext' | 'heuristic' | 'harfbuzz';
 export interface ClusterAdvanceMeasureResult {
   readonly advances: readonly number[];
   readonly source: TextMeasureAdvanceSource;
+  /** 未缩放的 shaping 事实；仅由可保证字号无关 shaping 的 provider 提供。 */
+  readonly fontUnits?: FontUnitAdvances;
 }
 
 export interface TextMeasureLine {
@@ -105,3 +107,9 @@ export interface PluginSystemTextMeasurementRuntime {
 }
 
 export declare function createSystemTextMeasurementRuntime(): PluginSystemTextMeasurementRuntime;
+
+/** 已解析字体的原始 advance，不包含宿主字体路径。 */
+export interface FontUnitAdvances {
+  readonly unitsPerEm: number;
+  readonly advances: readonly number[];
+}

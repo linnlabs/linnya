@@ -18,3 +18,4 @@ export {
   normalizeTextMeasureInput,
 } from './orchestration/TextMeasureService.js';
 export { defaultTextMeasureService } from './orchestration/defaultTextMeasureService.js';
+export { projectFontUnitAdvances } from './functions/projectFontUnitAdvances.js';
