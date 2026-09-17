@@ -1,3 +1,4 @@
+import { isEditableTextContent, isAuthorTextStyle } from './editableText';
 import type {
   SlidesAuthoringEditCapability,
   SlidesAuthoringEditProjection,
@@ -23,7 +24,7 @@ export function isSlidesAuthoringEditProjection(
   const canSetText = value.capabilities.includes('set_text_content');
   const canSetTextStyle = value.capabilities.includes('set_text_style');
   const canSetFill = value.capabilities.includes('set_fill_color');
-  if (canSetText !== (text?.kind === 'plain_text')) return false;
+  if (canSetText !== (text?.kind === 'plain_text' || (text?.kind === 'rich_text' && text.content !== undefined))) return false;
   // 改字和改样式是独立能力；Shape 字符串可改字，但尚未开放文字样式。
   if (canSetTextStyle && text?.kind !== 'plain_text') return false;
   if (canSetFill !== (fill !== undefined)) return false;
@@ -42,12 +43,15 @@ function isCapability(value: unknown): value is SlidesAuthoringEditCapability {
 function isTextProjection(value: unknown): value is SlidesAuthoringTextEditProjection {
   if (!isRecord(value) || typeof value.kind !== 'string') return false;
   if (value.kind === 'plain_text') {
-    return hasOnlyKeys(value, ['kind', 'content', 'fontSizePt', 'color'])
+    return hasOnlyKeys(value, ['kind', 'content', 'fontSizePt', 'color', 'baseStyle'])
       && typeof value.content === 'string'
+      && (value.baseStyle === undefined || isAuthorTextStyle(value.baseStyle))
       && (value.fontSizePt === undefined || isFontSize(value.fontSizePt))
       && (value.color === undefined || isHexColor(value.color));
   }
-  return value.kind === 'rich_text' && hasOnlyKeys(value, ['kind']);
+  return value.kind === 'rich_text' && hasOnlyKeys(value, ['kind', 'content', 'baseStyle'])
+    && (value.content === undefined || (Array.isArray(value.content) && isEditableTextContent(value.content)))
+    && (value.baseStyle === undefined || isAuthorTextStyle(value.baseStyle));
 }
 
 function isFillProjection(value: unknown): value is SlidesAuthoringFillEditProjection {

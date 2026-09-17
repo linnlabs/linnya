@@ -1,3 +1,4 @@
+import { isEditableTextContent } from './editableText';
 import type {
   SlidesManualEdits,
   SlidesManualSlideEdits,
@@ -102,8 +103,8 @@ function parseTargetEdit(
     if (!hasOnlyKeys(value, ['kind', 'editKey', 'content', 'fontSizePt', 'color', 'translation'])) {
       return { error: `${path} 含有 text 人工编辑不支持的字段。` };
     }
-    if (value.content !== undefined && typeof value.content !== 'string') {
-      return { error: `${path}.content 必须是字符串。` };
+    if (value.content !== undefined && !isEditableTextContent(value.content)) {
+      return { error: `${path}.content 必须是字符串或文字 run 数组。` };
     }
     if (value.fontSizePt !== undefined && !isFontSize(value.fontSizePt)) {
       return { error: `${path}.fontSizePt 必须是 ${SLIDES_MANUAL_FONT_SIZE_PT.min}–${SLIDES_MANUAL_FONT_SIZE_PT.max} pt 内的有限数字。` };

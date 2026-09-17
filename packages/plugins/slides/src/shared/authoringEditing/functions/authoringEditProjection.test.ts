@@ -11,7 +11,7 @@ describe('authoring edit projection', () => {
     })).toBe(true);
   });
 
-  it('keeps rich text read-only and rejects inconsistent capabilities', () => {
+  it('keeps text without an editable author value read-only and rejects inconsistent capabilities', () => {
     expect(isSlidesAuthoringEditProjection({
       capabilities: ['translate'],
       text: { kind: 'rich_text' },
@@ -20,6 +20,14 @@ describe('authoring edit projection', () => {
       capabilities: ['translate', 'set_text_content', 'set_text_style'],
       text: { kind: 'rich_text' },
     })).toBe(false);
+  });
+
+  it('accepts original text runs and rejects formula or unknown style fields', () => {
+    const projection = { capabilities: ['translate', 'set_text_content'], text: { kind: 'rich_text',
+      content: [{ text: 'A', style: { color: '#112233', bold: true } }, { text: 'B' }] } };
+    expect(isSlidesAuthoringEditProjection(projection)).toBe(true);
+    expect(isSlidesAuthoringEditProjection({ ...projection, text: { kind: 'rich_text', content: [{ formula: 'x' }] } })).toBe(false);
+    expect(isSlidesAuthoringEditProjection({ ...projection, text: { kind: 'rich_text', content: [{ text: 'A', style: { paint: 'red' } }] } })).toBe(false);
   });
 
   it('accepts frame translation as an explicit authoring capability', () => {

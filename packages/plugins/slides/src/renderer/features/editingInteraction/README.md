@@ -11,8 +11,8 @@
 
 ## 边界和不变量
 
-- 交互入口集中在 `useSlideEditingInteraction`；指针会话锁定按下时的作者层级，低层 resize gesture 继续由 manualEditing 负责。输入期间不显示 resize/property controls，DOM pointer 事件不冒泡为画布拖动。
-- 普通 Enter 交给原生 textarea 换行；Ctrl/Cmd+Enter 结束输入；Escape 取消当前尚未交接的草稿。快捷键或显式画布点击可以把焦点交回画布，后台结果绝不执行 focus。
+- 交互入口集中在 `useSlideEditingInteraction`；指针会话锁定按下时的作者层级，低层 resize gesture 继续由 manualEditing 负责。输入期间不显示 resize/对象属性 controls；独立 Text 的非空文字选区可以显示局部文字工具条，DOM pointer 事件不冒泡为画布拖动。
+- 普通 Enter 交给对应输入视图换行（Text 使用 ProseMirror hard_break，Shape 使用原生 textarea）；Ctrl/Cmd+Enter 结束输入；Escape 取消当前尚未交接的草稿。快捷键或显式画布点击可以把焦点交回画布，后台结果绝不执行 focus。
 - IME 确认键不提交。组合输入期间的 blur 记录 finishRequested；compositionend 先接纳 DOM 最终值，再完成交接，避免丢最后一个字。
 - 文本预览使用 `pointer-events: none`，不形成输入框或命中目标。它随统一作者几何的移动、尺寸和样式投影更新，包括尚未松手的 resize 临时值；删除预览会隐藏相关文字。正式帧到达后撤下，只保留一份可见文字。
 - 预览是会话内草稿，不修改 RenderModel，不是第二份可写文档模型，也不参与 compiler。DOM 的换行外观不是最终 HarfBuzz 排版；重排和 autofit 仍由正式编译负责。正常文档关闭先走 documentRuntime 保存屏障；失败或未完成 IME 确认时阻止关闭。进程异常退出／开发热重载不保证草稿持久化。
@@ -40,3 +40,6 @@
 - 这些合成文稿测试不替代默认用户文稿的保存、重新打开、历史或导出验收。
 
 启用 `localStorage['linnya.slides.debug'] = 'verbose'` 后，`EditingInteraction` 记录 text_open、text_handoff、text_settled；`ManualEditQueue` 记录 clientOperationIds 到 commandId 的绑定及结算。与既有 ManualEditTrace 串联，不记录用户文字或源码。
+
+
+独立 Text 的 draft／baseline／无焦点 presentation 持有源码同型的字符串或文字 run 数组；Shape 仍保持字符串。范围格式修改只更新这一会话草稿，不单独入队、不用字符串覆盖带样式正文。结束会话经既有 set_text_content 命令一次写入完整值；基线比较覆盖正文与局部样式，失败草稿、同目标重入和旧回执结算沿用原有身份规则。工具条失焦与数字 change 的先后由 textEditing 的焦点区域协调，不引入第二套保存状态。

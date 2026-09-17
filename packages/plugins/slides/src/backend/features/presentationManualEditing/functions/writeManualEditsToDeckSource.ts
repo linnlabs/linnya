@@ -1,3 +1,4 @@
+import { isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import type ts from 'typescript';
 import {
   isSlidesAuthoringKey,
@@ -293,8 +294,8 @@ function validateOperation(operation: SlidesManualEditOperation): void {
   }
   switch (operation.op) {
     case 'set_text_content':
-      if (typeof operation.content !== 'string') {
-        throw new SlidesManualEditSourceError('operation_invalid', '文本人工值必须是字符串。');
+      if (!isEditableTextContent(operation.content) || (operation.targetKind === 'shape' && typeof operation.content !== 'string')) {
+        throw new SlidesManualEditSourceError('operation_invalid', '文本人工值必须符合作者正文合同。');
       }
       return;
     case 'set_text_style':

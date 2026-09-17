@@ -1,4 +1,4 @@
-import type { SlidesAuthoringEditRef } from '@plugin/slides/shared/authoringEditing';
+import type { SlidesEditableTextContent, SlidesAuthorTextStyle, SlidesAuthoringEditRef } from '@plugin/slides/shared/authoringEditing';
 
 export interface TextEditingPoint {
   readonly x: number;
@@ -17,7 +17,8 @@ export interface TextEditingTarget {
   readonly elementId: string;
   readonly targetKind: 'text' | 'shape';
   readonly authoringRef: SlidesAuthoringEditRef;
-  readonly content: string;
+  readonly content: SlidesEditableTextContent;
+  readonly baseStyle?: SlidesAuthorTextStyle;
   readonly origin: TextEditingPoint;
   readonly width: number;
   readonly height: number;

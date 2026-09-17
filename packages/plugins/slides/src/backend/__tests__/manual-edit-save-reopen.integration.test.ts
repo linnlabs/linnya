@@ -1,3 +1,6 @@
+import { EditorState, TextSelection } from '@tiptap/pm/state';
+import { textContentToDocument, documentToTextContent, patchSelectedTextStyle } from '../../renderer/features/textEditing/functions/richTextDocument';
+import { DOMParser } from '@xmldom/xmldom';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -25,12 +28,17 @@ const source = `const slide = createSlide({ slideKey: 'overview' });
 const badge = createShape({ editKey: 'badge', geometry: 'rect', content: 'Original', fill: '#224466' });
 badge.position = 'absolute'; badge.x = 1; badge.y = 1; badge.w = 3; badge.h = 1;
 slide.add(badge);
+const caption = createText({ editKey: 'caption', content: [{ text: 'Revenue ', style: { bold: true } }, { text: '30%', style: { color: '#335577', fontSize: 18 } }] });
+caption.position = 'absolute'; caption.x = 1; caption.y = 3; caption.w = 5; caption.h = 1;
+slide.add(caption);
 compose({ title: 'Save lifecycle', slides: [slide] });`;
 
 const initialDeck: DeckSpec = { title: 'Save lifecycle', layout: '16x9', slides: [{ slideNumber: 1,
   spec: { type: 'freeform', elements: [{ type: 'shape', geometry: 'rect', content: 'Original',
     position: { x: 1, y: 1, w: 3, h: 1 }, style: { paint: { type: 'solid', color: '#224466' } },
     _authoringRef: { slideKey: 'overview', editKey: 'badge', targetKind: 'shape' },
+  }, { type: 'text', content: [{ text: 'Revenue ', style: { bold: true } }, { text: '30%', style: { color: '#335577', fontSize: 18 } }],
+    position: { x: 1, y: 3, w: 5, h: 1 }, _authoringRef: { slideKey: 'overview', editKey: 'caption', targetKind: 'text' },
   }] },
 }] };
 const materialize = async (deckSpec: DeckSpec) => Buffer.from(await materializePresentationPptx({ deckSpec, svgAssets: [], svgFallbacks: [] }));
@@ -93,19 +101,44 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
       translationDelta: { dx: -0.75, dy: -0.25 },
     } })).toMatchObject({ status: 'conflict', reason: 'command_reused' });
 
+    // 同一正式队列接收前端选区事务产出的作者 runs，验证没有只改 DOM 而漏保存。
+    const captionDoc = textContentToDocument([{ text: 'Revenue ', style: { bold: true } },
+      { text: '30%', style: { color: '#335577', fontSize: 18 } }]);
+    const captionState = EditorState.create({ doc: captionDoc, selection: TextSelection.create(captionDoc, 9, 12) });
+    const captionContent = documentToTextContent(captionState.apply(patchSelectedTextStyle(captionState, { color: '#E11D48', fontSizePt: 28 })).doc);
+    queue.enqueue({ operation: { op: 'set_text_content', targetKind: 'text', target: { slideKey: 'overview', editKey: 'caption' }, content: captionContent } });
+    await queue.flush();
+    const richSaved = await repository.getPresentation('deck');
+    expect(richSaved?.currentRevision).toBe(6);
+    const richCommand = commands[4];
+    if (!richCommand || richCommand.operation.op !== 'set_text_content') throw new Error('Missing rich command');
+    expect(await backend.submit({ ...richCommand, operation: { ...richCommand.operation, targetKind: 'text', content: [
+      { text: 'Revenue ', style: { bold: true } }, { text: '30%', style: { fontSize: 28, color: '#E11D48' } },
+    ] } })).toMatchObject({ status: 'committed', revision: 6 });
     scope.stop();
     db.close(); db = new Database(path);
     const reopened = new PresentationRepository(db);
     const read = await reopened.getPresentation('deck');
-    expect(read?.deckSpec).toEqual(saved?.deckSpec);
+    expect(read?.deckSpec).toEqual(richSaved?.deckSpec);
+    if (!read) throw new Error('Missing reopened document');
+    const reopenedModel = new RenderModelMapper().fromGeneratedDeck('deck', read.currentRevision, read.title, read.deckSpec, { width: 13.333, height: 7.5 });
+    const caption = reopenedModel.slides[0].elements.find(node => node.authoringRef?.editKey === 'caption');
+    expect(caption?.authoringEdit).toMatchObject({ capabilities: expect.arrayContaining(['set_text_content']), text: { kind: 'rich_text', content: captionContent } });
     expect(read?.deckSource).toContain('Saved\\nsecond line');
     const artifact = new PresentationPptxArtifactRuntime({ repository: reopened,
       materialize: record => materialize(record.deckSpec) });
     const exported = await artifact.loadCurrent('deck');
-    expect(exported.revision).toBe(5);
+    expect(exported.revision).toBe(6);
     const zip = await JSZip.loadAsync(exported.pptxBuffer);
     const xml = await zip.file('ppt/slides/slide1.xml')?.async('string');
     expect(xml).toContain('Saved'); expect(xml).toContain('second line');
+    const document = new DOMParser().parseFromString(xml ?? '', 'application/xml');
+    const textRuns = Array.from(document.getElementsByTagName('a:r'));
+    const selectedRun = textRuns.find(run => run.getElementsByTagName('a:t')[0]?.textContent === '30%');
+    expect(selectedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('sz')).toBe('2800');
+    expect(selectedRun?.getElementsByTagName('a:srgbClr')[0]?.getAttribute('val')).toBe('E11D48');
+    const retainedRun = textRuns.find(run => run.getElementsByTagName('a:t')[0]?.textContent === 'Revenue ');
+    expect(retainedRun?.getElementsByTagName('a:rPr')[0]?.getAttribute('b')).toBe('1');
     expect(xml).not.toContain('Original'); expect(xml).toContain('CC5500');
     expect(xml).toContain('x="914400"'); // 从左上角拉伸，右下角固定，位置和尺寸一起写入。
     expect(xml).toContain('cx="3200400"');

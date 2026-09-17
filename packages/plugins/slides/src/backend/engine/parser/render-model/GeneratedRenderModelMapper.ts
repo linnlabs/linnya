@@ -1,3 +1,4 @@
+import { isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import type {
   FreeformElement,
   SlidesAuthoringEditCapability,
@@ -108,7 +109,7 @@ function mapStructuredElement(
     element._sourceSpan,
     element._layoutConstraintEvidence,
     element._authoringRef,
-    buildAuthoringEditProjection(element),
+    buildAuthoringEditProjection(element, defaults),
     element._authoringAncestorRefs,
   );
 
@@ -243,7 +244,7 @@ function mapFreeformElement(
     element._sourceSpan,
     element._layoutConstraintEvidence,
     element._authoringRef,
-    buildAuthoringEditProjection(element),
+    buildAuthoringEditProjection(element, defaults),
     element._authoringAncestorRefs,
   );
 
@@ -314,7 +315,7 @@ function mapFreeformGroup(
     element._sourceSpan,
     element._layoutConstraintEvidence,
     element._authoringRef,
-    buildAuthoringEditProjection(element),
+    buildAuthoringEditProjection(element, defaults),
     element._authoringAncestorRefs,
   );
   if (!element.children?.length) {
@@ -348,6 +349,7 @@ function mapFreeformGroup(
 
 function buildAuthoringEditProjection(
   element: StructuredElement | FreeformElement,
+  defaults: RenderDefaultsContext,
 ): SlidesAuthoringEditProjection | undefined {
   const authoringRef = element._authoringRef;
   if (!authoringRef) return undefined;
@@ -389,6 +391,21 @@ function buildAuthoringEditProjection(
               ? { fontSizePt: element.style.fontSize }
               : {}),
             ...(element.style?.color !== undefined ? { color: element.style.color } : {}),
+          },
+        };
+      }
+      if ((element.type === 'text' || element.type === 'title') && Array.isArray(element.content) && isEditableTextContent(element.content)) {
+        capabilities.push('set_text_content');
+        return {
+          capabilities,
+          text: {
+            kind: 'rich_text',
+            content: element.content,
+            // 通用视觉 style 可能还包含 paint；文字合同只投影文字字段和继承字体。
+            baseStyle: {
+              ...resolveFreeformTextStyle(element.style),
+              fontFamily: element.style?.fontFamily ?? (element.type === 'title' ? defaults.majorFontFamily : defaults.minorFontFamily),
+            },
           },
         };
       }

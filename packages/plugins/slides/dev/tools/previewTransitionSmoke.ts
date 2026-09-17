@@ -1,3 +1,4 @@
+import { verifyRichTextEditing } from './richTextEditingSmoke';
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -17,6 +18,7 @@ async function run(): Promise<void> {
     await verifyPropertyInteraction(window);
     await verifyShapeTextEditing(window);
     await verifySelectionToolbar(window);
+    await verifyRichTextEditing(window);
     const fixtureFile = process.argv[2];
     if (fixtureFile) {
       const sequence: unknown = JSON.parse(await readFile(fixtureFile, 'utf8'));

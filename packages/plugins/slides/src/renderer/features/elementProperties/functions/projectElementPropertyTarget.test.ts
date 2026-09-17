@@ -23,5 +23,10 @@ describe('effective element property values', () => {
     ];
     expect(projectElementPropertyTarget(target, previews).textEditing).toMatchObject({ fontSizePt: 36, color: '#123456', content: 'Hello' });
     expect(projectElementPropertyTarget(target, []).textEditing).toMatchObject({ fontSizePt: 24, color: '#2563EB' });
+    const pendingContent = [{ text: 'Hello', style: { color: '#DC2626' } }];
+    const pending = projectElementPropertyTarget(target, [], pendingContent);
+    expect(pending.capabilities).not.toContain('set_text_style');
+    expect(pending.textEditing?.content).toEqual(pendingContent);
+    expect(projectElementPropertyTarget(target, []).capabilities).toContain('set_text_style');
   });
 });

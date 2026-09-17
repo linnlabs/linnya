@@ -1,3 +1,4 @@
+import { isEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import {
   SLIDES_TEMPLATE_IMPORT_MAX_BYTES,
   type SlideSourceSpan,
@@ -217,8 +218,10 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
     if (payload.operation.targetKind !== 'text' && payload.operation.targetKind !== 'shape') {
       throw new Error('operation.targetKind must be text or shape.');
     }
-    if (typeof payload.operation.content !== 'string') {
-      throw new Error('operation.content must be a string.');
+    if (!isEditableTextContent(payload.operation.content)) throw new Error('operation.content must be text or text runs.');
+    if (payload.operation.targetKind === 'shape') {
+      if (typeof payload.operation.content !== 'string') throw new Error('Shape content must be a string.');
+      return { ...base, operation: { op: 'set_text_content', target, targetKind: 'shape', content: payload.operation.content } };
     }
     return {
       ...base,

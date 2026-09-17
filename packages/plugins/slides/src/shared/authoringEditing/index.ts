@@ -49,3 +49,6 @@ export {
 export { isSlidesAuthoringEditProjection } from './functions/authoringEditProjection';
 export { parseSlidesManualEdits } from './functions/manualEditsCodec';
 export type { SlidesManualEditsParseResult } from './functions/manualEditsCodec';
+
+export type { SlidesEditableTextContent, SlidesAuthorTextStyle, SlidesTextStylePatch, SlidesTextSelectionStyle } from './definitions/editableText';
+export { isEditableTextContent, isEditableTextRun, isAuthorTextStyle, editableTextString, editableTextEqual } from './functions/editableText';

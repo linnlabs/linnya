@@ -30,6 +30,7 @@
               :min="SLIDES_MANUAL_FONT_SIZE_PT.min"
               :max="SLIDES_MANUAL_FONT_SIZE_PT.max"
               step="any"
+              :placeholder="textSelection?.fontSizePt === null ? message('slides.elementProperties.mixed') : undefined"
               :disabled="busy"
               @change="commitNumber('fontSize')"
               @keydown.enter.prevent="commitNumber('fontSize')"
@@ -57,7 +58,7 @@
             kind="text"
             data-property="text"
             :label="message('slides.elementProperties.textColor')"
-            :color="currentTextColor"
+            :color="currentTextColor ?? 'transparent'"
             :expanded="openPopover === 'text'"
             :aria-controls="popoverId"
             :disabled="busy"
@@ -117,7 +118,7 @@
       >
         <!-- 整个工具条都属于内部点击，避免旧列表关闭刚打开的相邻属性；焦点归还由外层 BaseDropdown 负责。 -->
         <CustomSelect
-          :model-value="target.textEditing?.fontSizePt"
+          :model-value="textSelection ? textSelection.fontSizePt ?? undefined : target.textEditing?.fontSizePt"
           :options="ELEMENT_FONT_SIZE_OPTIONS"
           manual-mode
           :external-trigger-ref="toolbar?.element ?? null"
@@ -200,7 +201,7 @@
 import { computed, ref, toRef, useId, type CSSProperties } from 'vue';
 import { BaseDropdown, CustomSelect, DropdownPanel, type DropdownActions, CustomNumberInput, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from '@linnya/renderer-ui';
 import { ChevronIcon, DeleteIcon, ResizeIcon } from '@linnya/renderer-ui/icons';
-import { SLIDES_MANUAL_FONT_SIZE_PT } from '@plugin/slides/shared/authoringEditing';
+import { SLIDES_MANUAL_FONT_SIZE_PT, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
 import type { ManualEditableTarget } from '../../manualEditing';
 import type { ElementPropertyAnchor } from '../definitions/elementPropertyToolbar';
 import type { ElementPropertyOperation } from '../definitions/elementPropertyTypes';
@@ -214,8 +215,9 @@ const props = defineProps<{
   target: ManualEditableTarget;
   anchor: ElementPropertyAnchor;
   busy?: boolean;
+  textSelection?: SlidesTextSelectionStyle;
 }>();
-const emit = defineEmits<{ submit: [operation: ElementPropertyOperation]; 'delete-selected': [] }>();
+const emit = defineEmits<{ submit: [operation: ElementPropertyOperation]; 'delete-selected': []; 'text-style': [patch: SlidesTextStylePatch] }>();
 const { elementPropertyMessage: message } = useElementPropertyLocalization();
 const toolbar = ref<InstanceType<typeof FloatingToolbar> | null>(null);
 const dropdown = ref<DropdownActions | null>(null);
@@ -232,13 +234,14 @@ const { position, popoverPosition, openPopover, toggle, close, handleToolbarKeyd
   auxiliaryElement: colorOverlay,
 });
 const { fontSize, width, height, commitNumber, cancelNumber, submitTextColor, submitFillColor } = useElementPropertyFields({
+  textSelection: toRef(props, 'textSelection'), submitTextSelection: patch => emit('text-style', patch),
   target: toRef(props, 'target'), busy: computed(() => props.busy === true), submit: operation => emit('submit', operation),
 });
-const canEditTextStyle = computed(() => props.target.capabilities.includes('set_text_style'));
-const canEditFill = computed(() => props.target.capabilities.includes('set_fill_color'));
-const canEditSize = computed(() => props.target.capabilities.includes('set_visual_size'));
-const canDelete = computed(() => props.target.capabilities.includes('delete'));
-const currentTextColor = computed(() => props.target.textEditing?.color ?? '#000000');
+const canEditTextStyle = computed(() => props.textSelection !== undefined || props.target.capabilities.includes('set_text_style'));
+const canEditFill = computed(() => props.textSelection === undefined && props.target.capabilities.includes('set_fill_color'));
+const canEditSize = computed(() => props.textSelection === undefined && props.target.capabilities.includes('set_visual_size'));
+const canDelete = computed(() => props.textSelection === undefined && props.target.capabilities.includes('delete'));
+const currentTextColor = computed(() => props.textSelection ? props.textSelection.color : props.target.textEditing?.color ?? '#000000');
 const currentFillColor = computed(() => props.target.fill?.kind === 'solid' ? props.target.fill.color : null);
 const popoverDirection = computed(() => popoverPosition.value && position.value && popoverPosition.value.top < position.value.top ? 'up' : 'down');
 const popoverStyle = computed<CSSProperties>(() => ({

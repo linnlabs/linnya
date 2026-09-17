@@ -1,8 +1,9 @@
+import { layoutTextNode, resolveTextLayoutContractFromNode } from '../../src/shared/textLayout';
 import { createApp, h, nextTick } from 'vue';
 import { createPinia } from 'pinia';
 import VueKonva from 'vue-konva';
 import Konva from 'konva';
-import type { SlidesManualEditCommand, SlidesManualEditCommandResult } from '../../src/shared/authoringEditing';
+import { editableTextString, type SlidesEditableTextContent, type SlidesAuthoringEditProjection, type SlidesManualEditCommand, type SlidesManualEditCommandResult } from '../../src/shared/authoringEditing';
 import { useManualEditQueue, provideManualEditSubmission, useSlidesManualEditingStore } from '../../src/renderer/features/manualEditing';
 import { useSlidesEditingInteractionStore } from '../../src/renderer/features/editingInteraction';
 import { useSlidesStore } from '../../src/renderer/store/slidesStore';
@@ -61,7 +62,7 @@ export function mountShapeTextEditingSmoke() {
   const manual = useSlidesManualEditingStore(pinia);
   const interaction = useSlidesEditingInteractionStore(pinia);
   const ui = useSlidesUiStore(pinia);
-  const content = new Map([['badge', 'Shape text'], ['second', 'Second shape'], ['standalone', 'Plain text']]);
+  const content = new Map<string, SlidesEditableTextContent>([['badge', 'Shape text'], ['second', 'Second shape'], ['standalone', 'Plain text']]);
   let savedRevision = 1;
   const before = new Set(Konva.stages);
 
@@ -77,14 +78,25 @@ export function mountShapeTextEditingSmoke() {
       slides: [{ ...slide, elements: slide.elements.map(node => {
         const text = node.kind === 'shape' ? node.innerText : node;
         if (!text || !node.authoringEdit) throw new Error('Invalid text fixture');
-        const projectedText = { ...text,
-          paragraphs: [{ align: 'center' as const, runs: [{ text: content.get(node.id) ?? '', fontSize: 14, color: node.kind === 'text' ? '#111827' : '#FFFFFF' }] }],
+        const value = content.get(node.id) ?? '';
+        const plain = editableTextString(value);
+        const projectedText: TextRenderNode = { ...text,
+          paragraphs: [{ align: 'center' as const, runs: [{ text: plain, fontSize: 14, color: node.kind === 'text' ? '#111827' : '#FFFFFF' }] }],
           layout: text.layout ? { ...text.layout,
             lines: text.layout.lines.map(line => ({ ...line,
-              slices: line.slices.map(slice => ({ ...slice, text: content.get(node.id) ?? '' })) })),
+              slices: line.slices.map(slice => ({ ...slice, text: plain })) })),
           } : undefined,
         };
-        const authoringEdit = { ...node.authoringEdit, text: { ...node.authoringEdit.text, kind: 'plain_text' as const, content: content.get(node.id) ?? '' } };
+        const authoringEdit: SlidesAuthoringEditProjection = typeof value === 'string'
+          ? { ...node.authoringEdit, text: { ...node.authoringEdit.text, kind: 'plain_text', content: value } }
+          : { capabilities: ['translate', 'delete', 'set_text_content'], text: { kind: 'rich_text', content: value, baseStyle: { fontSize: 14, color: '#111827' } } };
+        if (Array.isArray(value)) {
+          projectedText.paragraphs = [{ align: 'center', runs: value.map(run => ({ text: run.text,
+            fontSize: run.style?.fontSize ?? 14, color: run.style?.color ?? '#111827' })) }];
+          projectedText.layout = layoutTextNode({ paragraphs: projectedText.paragraphs, defaultFontFamily: 'Arial',
+            contract: resolveTextLayoutContractFromNode(projectedText, { sourceKind: 'generated', profile: 'plain-textbox' }) },
+          { getClusterAdvances: clusters => ({ advances: clusters.map(() => 0.08), source: 'heuristic' }) });
+        }
         return node.kind === 'shape' ? { ...node, authoringEdit, innerText: projectedText }
           : { ...node, ...projectedText, authoringEdit };
       }) }],
@@ -112,6 +124,12 @@ export function mountShapeTextEditingSmoke() {
     return editor;
   }
   function assertInput(value: string) {
+    const rich = host.querySelector<HTMLElement>('.slides-rich-text-surface');
+    if (rich) {
+      const session = interaction.textSession;
+      if (session.phase !== 'editing' || editableTextString(session.draft) !== value || document.activeElement !== rich) throw new Error('Rich input ownership/value mismatch');
+      return;
+    }
     const editor = input();
     if (editor.value !== value || editor.disabled || document.activeElement !== editor) {
       throw new Error(`Input ownership mismatch: ${JSON.stringify({ value: editor.value, expected: value, disabled: editor.disabled, focused: document.activeElement === editor })}`);
@@ -310,6 +328,19 @@ export function mountShapeTextEditingSmoke() {
       if (!preview || Math.abs(parseFloat(preview.style.width) - width * 96) > 1
         || Math.abs(parseFloat(preview.style.height) - height * 96) > 1
         || Math.abs(parseFloat(preview.style.paddingTop) - (height - 0.2) / 2 * 96) > 1) throw new Error('Pending text did not follow the live resize geometry and vertical alignment');
+    },
+    richComposition(type: 'compositionstart' | 'compositionend') {
+      const surface = host.querySelector<HTMLElement>('.slides-rich-text-surface');
+      if (!surface) throw new Error('Missing rich text editor');
+      surface.dispatchEvent(new CompositionEvent(type, { bubbles: true }));
+    },
+    richSnapshot() {
+      const session = interaction.textSession;
+      return { phase: session.phase, draft: session.phase === 'editing' ? session.draft : null,
+        commands: commands.map(item => item.command.operation), selected: manual.selectedTarget?.elementId,
+        font: host.querySelector<HTMLInputElement>('.slides-element-property-toolbar__font input')?.value,
+        hasDelete: !!host.querySelector('[data-property="delete"]'),
+        focusedRich: document.activeElement?.classList.contains('slides-rich-text-surface') === true };
     },
     assertSettled() {
       if (interaction.textDrafts.length || manual.submission.phase !== 'idle') throw new Error('Formal Stage frame did not settle receipts');

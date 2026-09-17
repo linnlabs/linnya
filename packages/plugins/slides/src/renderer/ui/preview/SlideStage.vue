@@ -28,7 +28,11 @@
         class="slide-stage-empty"
         :title="slidesPreviewMessage('slides.preview.empty.noSlides')"
       />
-      <div v-else class="slide-stage-scroll-content" :style="scrollContentStyle">
+      <div
+        v-else
+        class="slide-stage-scroll-content"
+        :style="scrollContentStyle"
+      >
         <div
           ref="canvasShellRef"
           class="slide-stage-canvas-shell"
@@ -82,14 +86,17 @@
           :render-scale="renderScale"
         />
         <InlineTextEditor
-          :key="textSessionId ?? undefined"
           v-if="textEditorTarget"
+          ref="inlineTextEditor"
+          :key="textSessionId ?? undefined"
           v-model="textDraft"
+          :toolbar-element="textToolbarHost"
           :target="textEditorTarget"
           :slide-left="currentLayout.slideLeft"
           :slide-top="currentLayout.slideTop"
           :render-scale="renderScale"
           :label="manualEditingMessage('slides.manualEditing.text.ariaLabel')"
+          @selection="inlineTextSelection = $event"
           @commit="submitTextEdit"
           @composition-start="handleTextCompositionStart"
           @composition-end="handleTextCompositionEnd"
@@ -108,6 +115,19 @@
           @finish="scrollHostRef?.focus({ preventScroll: true })"
         />
       </div>
+    </div>
+    <div
+      v-if="textEditorTarget && manualSelectedTarget && inlineTextSelection && inlineTextAnchor"
+      ref="textToolbarHost"
+      @pointerdown.stop
+    >
+      <ElementPropertyToolbar
+        :key="textSessionId ?? undefined"
+        :target="manualSelectedTarget"
+        :anchor="inlineTextAnchor"
+        :text-selection="inlineTextSelection.style"
+        @text-style="inlineTextEditor?.applyStyle($event)"
+      />
     </div>
     <ElementPropertyToolbar
       v-if="manualPropertyTarget && manualPropertyAnchor && showElementPropertyControls && !textEditorTarget && !manualTranslationPreview && !manualResizePreview"
@@ -179,7 +199,7 @@ import {
   useManualEditingLocalization,
 } from '../../features/manualEditing';
 import { useSlideEditingInteraction } from '../../features/editingInteraction';
-import { InlineTextEditor, TextDraftPreview } from '../../features/textEditing';
+import { InlineTextEditor, TextDraftPreview, type InlineTextSelection } from '../../features/textEditing';
 import {
   ElementPropertyToolbar,
   useElementPropertyAnchor,
@@ -455,6 +475,18 @@ const {
   focusCanvas: () => scrollHostRef.value?.focus({ preventScroll: true }),
 });
 
+const inlineTextEditor = ref<InstanceType<typeof InlineTextEditor> | null>(null);
+const textToolbarHost = ref<HTMLElement | null>(null);
+const inlineTextSelection = shallowRef<InlineTextSelection | null>(null);
+const inlineTextAnchor = computed(() => {
+  const selection = inlineTextSelection.value;
+  const host = scrollHostRef.value;
+  if (!selection || !host) return null;
+  const bounds = host.getBoundingClientRect();
+  return { selection: { ...selection.rect, left: selection.rect.left - bounds.left, top: selection.rect.top - bounds.top },
+    viewport: { width: bounds.width, height: bounds.height } };
+});
+
 const manualTranslationPreviews = computed(() => collectManualTranslationPreviews(
   manualTranslationPreview.value,
   manualPendingTranslation.value,
@@ -484,7 +516,8 @@ const showElementPropertyControls = computed(() => (
     : false
 ));
 const manualPropertyTarget = computed(() => manualSelectedTarget.value
-  ? projectElementPropertyTarget(manualSelectedTarget.value, manualVisualPreviews.value)
+  ? projectElementPropertyTarget(manualSelectedTarget.value, manualVisualPreviews.value,
+      textPresentations.value.find(draft => draft.target.elementId === manualSelectedTarget.value?.elementId)?.content)
   : null);
 
 const manualPropertyAnchor = useElementPropertyAnchor({

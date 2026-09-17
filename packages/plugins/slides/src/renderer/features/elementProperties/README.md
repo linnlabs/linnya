@@ -15,7 +15,7 @@ The arrow (or Alt+ArrowDown from the input) opens a bounded, scrollable list of 
 
 The delete icon uses the same `delete-selected` intent as Backspace/Delete through the Stage and `editingInteraction` owner; property fields do not construct a parallel delete command. A deletion-only target still receives a compact toolbar. Accessible names and hover text distinguish ordinary deletion from Frame subtree deletion without printing “Delete group” beside the icon.
 
-The toolbar intentionally has no create, group, reparent, gradient editor, image crop/source editor, rich-text run editor or free-form property path. `elementPropertyOperations.ts` validates the same user-value ranges as the shared command codec and checks both target kind and projected capability before creating an operation. `SlideStage` connects the toolbar to `editingInteraction`, which passes accepted operations to `manualEditing`, which owns optimistic presentation and submission lifecycle.
+The toolbar intentionally has no create, group, reparent, gradient editor, image crop/source editor, general rich-text editor or free-form property path. `elementPropertyOperations.ts` validates the same user-value ranges as the shared command codec and checks both target kind and projected capability before creating an operation. `SlideStage` connects the toolbar to `editingInteraction`, which passes accepted operations to `manualEditing`, which owns optimistic presentation and submission lifecycle.
 
 Shape text remains editable in place, but the current compiler does not project `set_text_style` for Shape: its toolbar offers fill and size, not font size/text color. Controls must follow projected capabilities rather than infer extra authoring support from the presence of text.
 
@@ -64,3 +64,12 @@ Native custom-color checks use real hover across the menu gap and its close dela
 The production toolbar fixture verifies icon-only deletion for all eight author target kinds, disabled behavior and capability admission. Production Stage native smoke deletes via both the keyboard and button, including consecutive Shape/Text deletion during pending submission, and checks one intent per target plus immediate selection cleanup.
 
 The Stage smoke also exercises font-size preset selection by pointer and keyboard, focus return, min/max, fractional custom input, invalid/empty input, Escape cancellation and direct handoff to the neighboring color control while edits are queued. Font-size screenshots for all three themes are written to `dist/dev/font-size-toolbar-{theme}.png`. The range is read from the same `SLIDES_MANUAL_FONT_SIZE_PT` contract as operation validation, IPC admission and manual-edit persistence parsing.
+
+
+## Text-selection scope
+
+The same `ElementPropertyToolbar` accepts an optional `textSelection` style projection. In this scope it shows only font size and text color, represents mixed sizes as an empty input with a localized Mixed hint, and shows no selected color for mixed colors. Numeric and color controls emit `text-style` patches into the active text-input session; they never construct an object-wide operation or submit a revision. Fill, dimensions and object deletion remain hidden. The current target identity is still real; no fabricated editable target or capability is introduced.
+
+Stage anchors this scope to the native text selection in pane coordinates. `textEditing` owns the retained range, focus region, IME and local undo; the toolbar continues to own only its field drafts and existing dropdown/color interactions. Ordinary object-property behavior remains unchanged. Native smoke covers moving focus to the number field or palette without ending text input, applying several styles to the same range, and outside-click handoff before saving.
+
+If a pending text draft has become rich content while the installed revision still advertises plain-text styling, the property projection removes the obsolete object-style action using that visible author value. It does not invent new compiler capabilities. Rich text is formatted as a range (select all for the whole text); failure recovery and pending re-entry retain that same content.

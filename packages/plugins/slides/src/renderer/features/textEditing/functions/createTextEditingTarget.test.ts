@@ -79,7 +79,7 @@ describe('createTextEditingTarget', () => {
     }));
   });
 
-  it('rejects rich text because plain-text replacement cannot preserve its run semantics', () => {
+  it('rejects text without an editable original author value', () => {
     const node: TextRenderNode = {
       id: 'rich-text',
       kind: 'text',

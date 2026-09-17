@@ -22,3 +22,18 @@
   user-select: none;
   overflow: hidden;
 }
+
+.slides-rich-text-surface {
+  min-height: 100%;
+  outline: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.slides-rich-text-surface > div {
+  margin: 0;
+}
+
+.slides-rich-text-surface:not(:focus-within) .slides-rich-text-selection {
+  background-color: var(--color-text-selection);
+}

@@ -1,3 +1,4 @@
+import type { SlidesEditableTextContent } from '@plugin/slides/shared/authoringEditing';
 import type { Ref } from 'vue';
 import type { SlideRenderModel } from '../../../types/render';
 import type { ManualEditSubmissionPort, ManualEditingVisualPreview } from '../../manualEditing';
@@ -9,8 +10,8 @@ export type TextInputSession =
       readonly phase: 'editing';
       readonly sessionId: string;
       readonly target: TextEditingTarget;
-      readonly draft: string;
-      readonly baseline: string;
+      readonly draft: SlidesEditableTextContent;
+      readonly baseline: SlidesEditableTextContent;
       readonly composing: boolean;
       readonly finishRequested: boolean;
     };
@@ -20,7 +21,7 @@ export interface TextDraftPresentation {
   readonly sessionId: string;
   readonly clientOperationId: string;
   readonly target: TextEditingTarget;
-  readonly content: string;
+  readonly content: SlidesEditableTextContent;
   readonly status: 'pending' | 'failed';
   readonly message?: string;
 }

@@ -179,8 +179,8 @@ describe('authoring identity projection', () => {
       expect.objectContaining({
         authoringRef: expect.objectContaining({ editKey: 'rich_copy' }),
         authoringEdit: {
-          capabilities: ['translate', 'delete'],
-          text: { kind: 'rich_text' },
+          capabilities: ['translate', 'delete', 'set_text_content'],
+          text: { kind: 'rich_text', content: [{ text: 'Rich ', style: { bold: true } }, { text: 'copy' }], baseStyle: expect.objectContaining({ fontFamily: 'Calibri' }) },
         },
       }),
     ]));
@@ -429,12 +429,12 @@ describe('authoring identity projection', () => {
     expect(mismatch.error).toContain('类型为 chart，实际作者对象为 shape');
   });
 
-  it('拒绝用纯文本人工记录覆盖富文本作者对象', () => {
+  it('拒绝用文本人工记录覆盖含公式的作者对象', () => {
     const result = compileFlexInput({
       ...deck([slide('overview', [{
         _type: 'Text',
         editKey: 'rich_copy',
-        content: [{ text: 'Rich', style: { bold: true } }],
+        content: [{ formula: 'x^2' }],
         position: { x: 1, y: 1, w: 3, h: 1 },
       }])]),
       manualEdits: {
@@ -445,7 +445,7 @@ describe('authoring identity projection', () => {
         }],
       },
     });
-    expect(result.error).toContain('不是可直接改字的纯文本作者对象');
+    expect(result.error).toContain('包含不能手动覆盖的公式或未知正文');
   });
 
   it('拒绝页面内重复 editKey 与文稿内重复 slideKey', () => {

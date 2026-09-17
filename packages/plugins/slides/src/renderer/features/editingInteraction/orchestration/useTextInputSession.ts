@@ -1,3 +1,4 @@
+import { editableTextEqual, type SlidesEditableTextContent, type SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
 import { logSlidesVerbose } from '../../../shared/diagnosticLogging';
 import { computed } from 'vue';
 import type { ManualEditSubmissionPort } from '../../manualEditing';
@@ -13,7 +14,7 @@ export function useTextInputSession(submission: Pick<ManualEditSubmissionPort, '
   const composing = computed(() => store.textSession.phase === 'editing' && store.textSession.composing);
   const draft = computed({
     get: () => store.textSession.phase === 'editing' ? store.textSession.draft : '',
-    set: (value: string) => {
+    set: (value: SlidesEditableTextContent) => {
       const session = store.textSession;
       if (session.phase === 'editing') store.setTextSession({ ...session, draft: value });
     },
@@ -37,11 +38,11 @@ export function useTextInputSession(submission: Pick<ManualEditSubmissionPort, '
     // 必须先交还交互所有权；blur 重入、同步拒绝都不能重新锁住输入会话。
     store.setTextSession({ phase: 'idle' });
     const failed = store.textDrafts.some(entry => entry.target.elementId === session.target.elementId && entry.status === 'failed');
-    if (session.draft === session.baseline && !failed) return 'closed';
-    const ticket = submission.enqueue({ operation: {
-      op: 'set_text_content', targetKind: session.target.targetKind,
-      target: session.target.authoringRef, content: session.draft,
-    } });
+    if (editableTextEqual(session.draft, session.baseline) && !failed) return 'closed';
+    const operation: SlidesManualEditOperation = session.target.targetKind === 'shape'
+      ? shapeTextOperation(session.target, session.draft)
+      : { op: 'set_text_content', targetKind: 'text', target: session.target.authoringRef, content: session.draft };
+    const ticket = submission.enqueue({ operation });
     store.setTextDrafts([
       ...store.textDrafts.filter(entry => entry.target.elementId !== session.target.elementId),
       { sessionId: session.sessionId, clientOperationId: ticket.clientOperationId,
@@ -86,4 +87,9 @@ export function useTextInputSession(submission: Pick<ManualEditSubmissionPort, '
   }
   return { target, sessionId, draft, composing, open, requestCommit, cancel, beginComposition, endComposition,
     handleEscape, handleCommitShortcut, reconcileTarget };
+}
+
+function shapeTextOperation(target: TextEditingTarget, content: SlidesEditableTextContent): SlidesManualEditOperation {
+  if (typeof content !== 'string') throw new Error('Shape input must remain plain text.');
+  return { op: 'set_text_content', targetKind: 'shape', target: target.authoringRef, content };
 }

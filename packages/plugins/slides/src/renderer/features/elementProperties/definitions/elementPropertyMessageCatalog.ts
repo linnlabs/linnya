@@ -1,6 +1,7 @@
 import type { MessageCatalogContribution, MessageParams } from '@app/localization';
 
 export type ElementPropertyMessageKey =
+  | 'slides.elementProperties.mixed'
   | 'slides.elementProperties.label'
   | 'slides.elementProperties.size'
   | 'slides.elementProperties.deleteElement'
@@ -33,6 +34,7 @@ export type ElementPropertyMessageResolver = (
 ) => string;
 
 export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
+  'slides.elementProperties.mixed': '混合',
   'slides.elementProperties.label': '元素属性',
   'slides.elementProperties.size': '尺寸',
   'slides.elementProperties.deleteElement': '删除元素',
@@ -61,6 +63,7 @@ export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
 } as const satisfies Readonly<Record<ElementPropertyMessageKey, string>>;
 
 const ELEMENT_PROPERTY_EN_US_MESSAGES = {
+  'slides.elementProperties.mixed': 'Mixed',
   'slides.elementProperties.label': 'Element properties',
   'slides.elementProperties.size': 'Size',
   'slides.elementProperties.deleteElement': 'Delete element',

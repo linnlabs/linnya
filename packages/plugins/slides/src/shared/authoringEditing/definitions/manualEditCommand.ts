@@ -1,3 +1,4 @@
+import type { SlidesEditableTextContent } from './editableText';
 import type { SlidesAuthoringEditRef } from './authoringIdentity';
 import type {
   SlidesManualTargetKind,
@@ -14,7 +15,13 @@ export interface SlidesManualEditExpectedBase {
 export type SlidesManualEditOperation =
   | {
       readonly op: 'set_text_content';
-      readonly targetKind: 'text' | 'shape';
+      readonly targetKind: 'text';
+      readonly target: SlidesAuthoringEditRef;
+      readonly content: SlidesEditableTextContent;
+    }
+  | {
+      readonly op: 'set_text_content';
+      readonly targetKind: 'shape';
       readonly target: SlidesAuthoringEditRef;
       readonly content: string;
     }

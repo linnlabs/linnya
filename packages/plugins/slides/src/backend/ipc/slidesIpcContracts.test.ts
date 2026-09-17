@@ -95,6 +95,14 @@ describe('slides backend IPC contracts', () => {
       },
     };
     expect(parseSlidesManualEditPayload(payload)).toEqual(payload);
+    const richOperation = { op: 'set_text_content', target: payload.operation.target, targetKind: 'text',
+      content: [{ text: 'A', style: { fontSize: 28, color: '#112233', bold: true } }, { text: '\nB' }] };
+    expect(parseSlidesManualEditPayload({ ...payload, operation: richOperation }).operation).toEqual(richOperation);
+    expect(() => parseSlidesManualEditPayload({ ...payload, operation: { ...richOperation, targetKind: 'shape' } })).toThrow();
+    for (const content of [[{ formula: 'x' }], [{ text: 'A', style: { fontSize: Infinity } }], [{ text: 'A', style: { unknown: true } }]]) {
+      expect(() => parseSlidesManualEditPayload({ ...payload, operation: { ...richOperation, content } })).toThrow();
+    }
+
 
     expect(parseSlidesManualEditPayload({
       ...payload,

@@ -1,3 +1,4 @@
+import { SLIDES_MANUAL_FONT_SIZE_PT, type SlidesTextSelectionStyle, type SlidesTextStylePatch } from '@plugin/slides/shared/authoringEditing';
 import { computed, ref, watch, type Ref } from 'vue';
 import type { NumberInputValue } from '@linnya/renderer-ui';
 import type { ManualEditableTarget } from '../../manualEditing';
@@ -9,16 +10,19 @@ export function useElementPropertyFields(options: {
   readonly target: Readonly<Ref<ManualEditableTarget>>;
   readonly busy: Readonly<Ref<boolean>>;
   readonly submit: (operation: ElementPropertyOperation) => void;
+  readonly textSelection?: Readonly<Ref<SlidesTextSelectionStyle | undefined>>;
+  readonly submitTextSelection?: (patch: SlidesTextStylePatch) => void;
 }) {
   const fontSize = ref<NumberInputValue>(14);
   const width = ref<NumberInputValue>(1);
   const height = ref<NumberInputValue>(1);
   const identity = computed(() => `${options.target.value.authoringRef.slideKey}/${options.target.value.authoringRef.editKey}`);
   // 其他属性／旧回执更新不能重置正在输入的独立字段。
-  watch([identity, () => options.target.value.textEditing?.fontSizePt], () => { fontSize.value = baseline('fontSize'); }, { immediate: true });
+  watch([identity, () => options.textSelection?.value?.fontSizePt, () => options.target.value.textEditing?.fontSizePt], () => { fontSize.value = baseline('fontSize'); }, { immediate: true });
   watch([identity, () => options.target.value.visualSize?.width], () => { width.value = baseline('width'); }, { immediate: true });
   watch([identity, () => options.target.value.visualSize?.height], () => { height.value = baseline('height'); }, { immediate: true });
-  function baseline(field: ElementPropertyNumberField): number {
+  function baseline(field: ElementPropertyNumberField): NumberInputValue {
+    if (field === 'fontSize' && options.textSelection?.value) return options.textSelection.value.fontSizePt ?? '';
     return field === 'fontSize' ? options.target.value.textEditing?.fontSizePt ?? 14 : options.target.value.visualSize?.[field] ?? 1;
   }
   function draft(field: ElementPropertyNumberField) { return field === 'fontSize' ? fontSize : field === 'width' ? width : height; }
@@ -29,6 +33,13 @@ export function useElementPropertyFields(options: {
     const value = draft(field).value;
     if (value === baseline(field)) return;
     const numeric = value === '' ? Number.NaN : Number(value);
+    if (field === 'fontSize' && options.textSelection?.value) {
+      if (!Number.isFinite(numeric) || numeric < SLIDES_MANUAL_FONT_SIZE_PT.min || numeric > SLIDES_MANUAL_FONT_SIZE_PT.max) {
+        fontSize.value = baseline(field); return;
+      }
+      if (!options.busy.value) options.submitTextSelection?.({ fontSizePt: numeric });
+      return;
+    }
     const target = options.target.value;
     const nextSize = target.visualSize && field !== 'fontSize'
       ? resolveVisualSizeAfterDimensionChange(target.targetKind, target.visualSize, field, numeric)
@@ -46,7 +57,10 @@ export function useElementPropertyFields(options: {
   }
   return {
     fontSize, width, height, commitNumber, cancelNumber,
-    submitTextColor: (color: string) => submit(createTextStyleOperation(options.target.value, { color })),
+    submitTextColor: (color: string) => {
+      if (options.textSelection?.value) { if (!options.busy.value) options.submitTextSelection?.({ color }); }
+      else submit(createTextStyleOperation(options.target.value, { color }));
+    },
     submitFillColor: (color: string) => submit(createFillColorOperation(options.target.value, color)),
   };
 }
