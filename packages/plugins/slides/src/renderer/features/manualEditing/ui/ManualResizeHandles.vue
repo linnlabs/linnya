@@ -2,6 +2,7 @@
   <button
     v-for="handle in handles"
     :key="handle"
+    :data-resize-handle="handle"
     type="button"
     tabindex="-1"
     class="slides-manual-resize-handle"
@@ -17,6 +18,7 @@
   />
 </template>
 <script setup lang="ts">
+import { MANUAL_RESIZE_HANDLES } from '../definitions/manualResize';
 import type { ManualEditableTarget, ManualEditingVisualOperation, ManualEditingVisualPreview } from '../definitions/manualEditingTypes';
 import { manualResizeHandleStyle } from '../functions/manualResize';
 import { useManualResizeGesture } from '../orchestration/useManualResizeGesture';
@@ -32,7 +34,7 @@ const emit = defineEmits<{
   submit: [operation: ManualEditingVisualOperation];
   finish: [];
 }>();
-const handles = ['right', 'bottom', 'corner'] as const;
+const handles = MANUAL_RESIZE_HANDLES;
 const { manualEditingMessage: message } = useManualEditingLocalization();
 const gesture = useManualResizeGesture({
   readTarget: () => props.target,

@@ -134,6 +134,13 @@ describe('slides backend IPC contracts', () => {
       },
     });
 
+    const resizeOperation = { op: 'set_visual_size', target: payload.operation.target,
+      targetKind: 'shape', visualSize: { width: 3, height: 1.5 }, translationDelta: { dx: -1, dy: -0.5 } };
+    expect(parseSlidesManualEditPayload({ ...payload, operation: resizeOperation }).operation).toEqual(resizeOperation);
+    for (const translationDelta of [{ dx: Infinity, dy: 0 }, { dx: 0 }, { dx: 0, dy: 0, extra: true }, null]) {
+      expect(() => parseSlidesManualEditPayload({ ...payload, operation: { ...resizeOperation, translationDelta } })).toThrow();
+    }
+
     expect(parseSlidesManualEditPayload({
       ...payload,
       operation: {

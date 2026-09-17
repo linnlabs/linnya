@@ -210,8 +210,7 @@ export function mountManualPropertySmoke() {
       return { colorAndNumberChecks: 13 };
     },
     point(handle: string) {
-      const handles = host.querySelectorAll('.slides-manual-resize-handle');
-      const element = handles[handle === 'right' ? 0 : handle === 'bottom' ? 1 : 2];
+      const element = host.querySelector(`[data-resize-handle="${handle}"]`);
       if (!element) throw new Error('Resize handle missing');
       const rect = element.getBoundingClientRect();
       return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) };
@@ -227,6 +226,15 @@ export function mountManualPropertySmoke() {
       assert(operations.length === commits, 'Resize submitted an unexpected number of commands');
       assert(Boolean(transient.value) === dragging, 'Resize gesture preview did not settle');
       if (!dragging) assert(document.activeElement === host, 'Resize did not return keyboard focus to canvas');
+    },
+    assertResizePosition(x: number, y: number) {
+      const node = stage.getLayers()[1]?.findOne<Konva.Rect>('Rect');
+      const group = node?.getParent();
+      assert(!!group && Math.abs(group.x() - x * 96) < 0.01 && Math.abs(group.y() - y * 96) < 0.01,
+        'Canvas resize position differs from anchor');
+      assert(Math.abs(presented.value.bounds.x - x) < 0.01 && Math.abs(presented.value.bounds.y - y) < 0.01,
+        'Selection position differs from resized canvas');
+      assert(host.querySelectorAll('[data-resize-handle]').length === 8, 'Expected all eight resize handles');
     },
     async showCustom(theme: string) {
       document.documentElement.setAttribute('data-linnya-ui-theme', theme);

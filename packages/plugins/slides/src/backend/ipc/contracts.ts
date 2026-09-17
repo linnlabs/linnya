@@ -304,7 +304,7 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
     };
   }
   if (payload.operation.op === 'set_visual_size') {
-    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'visualSize'], 'operation');
+    assertOnlyKeys(payload.operation, ['op', 'target', 'targetKind', 'visualSize', 'translationDelta'], 'operation');
     const targetKind = readManualTargetKind(payload.operation.targetKind);
     if (targetKind !== 'shape' && targetKind !== 'image') {
       throw new Error('operation.targetKind must be shape or image.');
@@ -315,12 +315,22 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
     assertOnlyKeys(payload.operation.visualSize, ['width', 'height'], 'operation.visualSize');
     const width = readFiniteNumber(payload.operation.visualSize.width, 'operation.visualSize.width');
     const height = readFiniteNumber(payload.operation.visualSize.height, 'operation.visualSize.height');
+    let translationDelta: { dx: number; dy: number } | undefined;
+    if (payload.operation.translationDelta !== undefined) {
+      const delta = payload.operation.translationDelta;
+      if (!isRecord(delta)) throw new Error('operation.translationDelta must be an object.');
+      assertOnlyKeys(delta, ['dx', 'dy'], 'operation.translationDelta');
+      translationDelta = {
+        dx: readFiniteNumber(delta.dx, 'operation.translationDelta.dx'),
+        dy: readFiniteNumber(delta.dy, 'operation.translationDelta.dy'),
+      };
+    }
     if (width <= 0 || height <= 0) {
       throw new Error('operation.visualSize width and height must be positive.');
     }
     return {
       ...base,
-      operation: { op: 'set_visual_size', target, targetKind, visualSize: { width, height } },
+      operation: { op: 'set_visual_size', target, targetKind, visualSize: { width, height }, ...(translationDelta ? { translationDelta } : {}) },
     };
   }
   if (payload.operation.op === 'delete_target') {

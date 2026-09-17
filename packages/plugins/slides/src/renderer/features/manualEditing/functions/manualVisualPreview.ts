@@ -63,6 +63,8 @@ function projectManualVisualPreviewToRenderNode(
       } : {}),
       box: {
         ...node.box,
+        x: node.box.x + (preview.operation.translationDelta?.dx ?? 0),
+        y: node.box.y + (preview.operation.translationDelta?.dy ?? 0),
         w: preview.operation.visualSize.width,
         h: preview.operation.visualSize.height,
       },
@@ -146,13 +148,17 @@ function projectVisualSizeToPolygon(
   polygon: readonly RenderNodeSelectionPoint[],
   previews: readonly ManualEditingVisualPreview[],
 ): readonly RenderNodeSelectionPoint[] {
-  const preview = findLastVisualSizePreview(elementId, previews);
-  if (
-    !preview
-    || preview.operation.op !== 'set_visual_size'
-  ) {
-    return polygon;
-  }
+  // 按队列顺序应用锚点位移，不能像纯尺寸预览一样只取最后一个值。
+  return previews.reduce((current, preview) => {
+    if (preview.elementId !== elementId || preview.operation.op !== 'set_visual_size') return current;
+    return resizeSelectionPolygon(current, preview.operation);
+  }, polygon);
+}
+
+function resizeSelectionPolygon(
+  polygon: readonly RenderNodeSelectionPoint[],
+  operation: Extract<ManualEditingVisualOperation, { op: 'set_visual_size' }>,
+): readonly RenderNodeSelectionPoint[] {
   const origin = polygon[0];
   const horizontalEnd = polygon[1];
   const verticalEnd = polygon[3];
@@ -161,33 +167,20 @@ function projectVisualSizeToPolygon(
   const verticalLength = Math.hypot(verticalEnd.x - origin.x, verticalEnd.y - origin.y);
   if (horizontalLength === 0 || verticalLength === 0) return polygon;
   const horizontal = {
-    x: (horizontalEnd.x - origin.x) / horizontalLength * preview.operation.visualSize.width,
-    y: (horizontalEnd.y - origin.y) / horizontalLength * preview.operation.visualSize.width,
+    x: (horizontalEnd.x - origin.x) / horizontalLength * operation.visualSize.width,
+    y: (horizontalEnd.y - origin.y) / horizontalLength * operation.visualSize.width,
   };
   const vertical = {
-    x: (verticalEnd.x - origin.x) / verticalLength * preview.operation.visualSize.height,
-    y: (verticalEnd.y - origin.y) / verticalLength * preview.operation.visualSize.height,
+    x: (verticalEnd.x - origin.x) / verticalLength * operation.visualSize.height,
+    y: (verticalEnd.y - origin.y) / verticalLength * operation.visualSize.height,
   };
+  const shiftedOrigin = { x: origin.x + (operation.translationDelta?.dx ?? 0), y: origin.y + (operation.translationDelta?.dy ?? 0) };
   return [
-    origin,
-    { x: origin.x + horizontal.x, y: origin.y + horizontal.y },
-    { x: origin.x + horizontal.x + vertical.x, y: origin.y + horizontal.y + vertical.y },
-    { x: origin.x + vertical.x, y: origin.y + vertical.y },
+    shiftedOrigin,
+    { x: shiftedOrigin.x + horizontal.x, y: shiftedOrigin.y + horizontal.y },
+    { x: shiftedOrigin.x + horizontal.x + vertical.x, y: shiftedOrigin.y + horizontal.y + vertical.y },
+    { x: shiftedOrigin.x + vertical.x, y: shiftedOrigin.y + vertical.y },
   ];
-}
-
-function findLastVisualSizePreview(
-  elementId: string,
-  previews: readonly ManualEditingVisualPreview[],
-): ManualEditingVisualPreview | undefined {
-  for (let index = previews.length - 1; index >= 0; index -= 1) {
-    const preview = previews[index];
-    if (
-      preview?.elementId === elementId
-      && preview.operation.op === 'set_visual_size'
-    ) return preview;
-  }
-  return undefined;
 }
 
 function isElementHiddenByPreview(

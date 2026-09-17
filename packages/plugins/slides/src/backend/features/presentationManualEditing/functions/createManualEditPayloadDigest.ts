@@ -53,6 +53,9 @@ function serializeOperation(operation: SlidesManualEditCommand['operation']): ob
         targetKind: operation.targetKind,
         width: operation.visualSize.width,
         height: operation.visualSize.height,
+        translationDelta: operation.translationDelta ? {
+          dx: operation.translationDelta.dx, dy: operation.translationDelta.dy,
+        } : undefined,
       };
     case 'delete_target':
       return { op: operation.op, ...target, targetKind: operation.targetKind };

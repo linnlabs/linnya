@@ -78,11 +78,21 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
     queue.enqueue({ operation: { op: 'set_text_content', target, targetKind: 'shape', content: 'Saved\nsecond line' } });
     queue.enqueue({ operation: { op: 'translate_by', target, targetKind: 'shape', delta: { dx: 0.5, dy: 0.25 } } });
     queue.enqueue({ operation: { op: 'set_fill_color', target, targetKind: 'shape', color: '#CC5500' } });
+    queue.enqueue({ operation: { op: 'set_visual_size', target, targetKind: 'shape',
+      visualSize: { width: 3.5, height: 1.25 }, translationDelta: { dx: -0.5, dy: -0.25 } } });
     await queue.flush();
-    expect(commands.map(command => command.expectedBase.revision)).toEqual([1, 2, 3]);
+    expect(commands.map(command => command.expectedBase.revision)).toEqual([1, 2, 3, 4]);
     const saved = await repository.getPresentation('deck');
-    expect(saved?.currentRevision).toBe(4);
+    expect(saved?.currentRevision).toBe(5);
     expect(saved?.pptxArtifact.state).toBe('deferred');
+    const resizeCommand = commands[3];
+    if (!resizeCommand || resizeCommand.operation.op !== 'set_visual_size') throw new Error('Missing resize command');
+    // 同一缩放回执重放不能重复累计位移；换锚点位移必须判为不同载荷。
+    expect(await backend.submit(resizeCommand)).toMatchObject({ status: 'committed', revision: 5 });
+    expect(await backend.submit({ ...resizeCommand, operation: { ...resizeCommand.operation,
+      translationDelta: { dx: -0.75, dy: -0.25 },
+    } })).toMatchObject({ status: 'conflict', reason: 'command_reused' });
+
     scope.stop();
     db.close(); db = new Database(path);
     const reopened = new PresentationRepository(db);
@@ -92,13 +102,15 @@ it('连续编辑经真实编译与 SQLite 保存后，重开及延迟 PPTX 导�
     const artifact = new PresentationPptxArtifactRuntime({ repository: reopened,
       materialize: record => materialize(record.deckSpec) });
     const exported = await artifact.loadCurrent('deck');
-    expect(exported.revision).toBe(4);
+    expect(exported.revision).toBe(5);
     const zip = await JSZip.loadAsync(exported.pptxBuffer);
     const xml = await zip.file('ppt/slides/slide1.xml')?.async('string');
     expect(xml).toContain('Saved'); expect(xml).toContain('second line');
     expect(xml).not.toContain('Original'); expect(xml).toContain('CC5500');
-    expect(xml).toContain('x="1371600"'); // 1.5 in，确保位移也进入正式导出。
-    expect(xml).toContain('y="1143000"'); // 1.25 in。
+    expect(xml).toContain('x="914400"'); // 从左上角拉伸，右下角固定，位置和尺寸一起写入。
+    expect(xml).toContain('cx="3200400"');
+    expect(xml).toContain('cy="1143000"');
+    expect(xml).toContain('y="914400"');
     expect((await reopened.getPresentation('deck'))?.pptxArtifact.state).toBe('ready');
   } finally {
     scope.stop(); db.close(); rmSync(directory, { recursive: true, force: true });

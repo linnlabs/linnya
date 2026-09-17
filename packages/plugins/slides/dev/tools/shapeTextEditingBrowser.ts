@@ -300,7 +300,7 @@ export function mountShapeTextEditingSmoke() {
       if (operation?.op !== 'set_text_content' || operation.targetKind !== 'text' || operation.content !== text) throw new Error('Wrong standalone text command');
     },
     resizePoint() {
-      const handle = host.querySelector<HTMLButtonElement>('[aria-label="调整宽度和高度"]');
+      const handle = host.querySelector<HTMLButtonElement>('[data-resize-handle="bottom-right"]');
       if (!handle) throw new Error('Stage resize handle missing');
       const box = handle.getBoundingClientRect();
       return { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) };

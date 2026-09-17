@@ -2,20 +2,36 @@
   position: absolute;
   left: var(--slides-resize-x);
   top: var(--slides-resize-y);
-  width: 12px;
-  height: 12px;
+  width: 18px;
+  height: 18px;
   box-sizing: border-box;
   padding: 0;
-  border: 2px solid var(--slides-resize-color);
-  border-radius: var(--radius-xs);
-  background: var(--color-bg-elevated);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
   transform: translate(-50%, -50%);
   cursor: var(--slides-resize-cursor);
   touch-action: none;
 }
-.slides-manual-resize-handle:hover,
-.slides-manual-resize-handle:active { background: var(--slides-resize-color); }
+/* 视觉圆点与命中区分离，缩小装饰而不牺牲拖拽可达性。 */
+.slides-manual-resize-handle::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1.5px solid var(--slides-resize-color);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-elevated);
+  transition: transform var(--transition-fast) ease, background-color var(--transition-fast) ease;
+}
+.slides-manual-resize-handle:hover::after,
+.slides-manual-resize-handle:active::after {
+  background: var(--slides-resize-color);
+  transform: scale(1.2);
+}
 .slides-manual-resize-handle:focus-visible {
   outline: 2px solid var(--slides-resize-color);
-  outline-offset: 2px;
+  outline-offset: 1px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .slides-manual-resize-handle::after { transition: none; }
 }

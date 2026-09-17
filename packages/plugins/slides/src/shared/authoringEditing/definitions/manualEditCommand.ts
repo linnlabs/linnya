@@ -47,6 +47,8 @@ export type SlidesManualEditOperation =
       readonly target: SlidesAuthoringEditRef;
       readonly targetKind: 'shape' | 'image';
       readonly visualSize: SlidesManualVisualSize;
+      /** 缩放锚点产生的位置增量，与尺寸在同一修订中提交。 */
+      readonly translationDelta?: SlidesManualTranslation;
     }
   | {
       readonly op: 'delete_target';

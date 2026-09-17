@@ -196,6 +196,11 @@ function applyTargetOperation(
   }
 
   if (operation.op === 'set_visual_size') {
+    const translation = operation.translationDelta ? {
+      dx: (existing && 'translation' in existing ? existing.translation?.dx ?? 0 : 0) + operation.translationDelta.dx,
+      dy: (existing && 'translation' in existing ? existing.translation?.dy ?? 0 : 0) + operation.translationDelta.dy,
+    } : undefined;
+
     if (operation.targetKind === 'shape') {
       const shape = existing?.kind === 'shape' ? existing : undefined;
       return {
@@ -203,6 +208,7 @@ function applyTargetOperation(
         kind: 'shape',
         editKey: operation.target.editKey,
         visualSize: operation.visualSize,
+        ...(translation ? { translation } : {}),
       };
     }
     const image = existing?.kind === 'image' ? existing : undefined;
@@ -211,6 +217,7 @@ function applyTargetOperation(
       kind: 'image',
       editKey: operation.target.editKey,
       visualSize: operation.visualSize,
+      ...(translation ? { translation } : {}),
     };
   }
 
@@ -307,6 +314,9 @@ function validateOperation(operation: SlidesManualEditOperation): void {
       }
       return;
     case 'set_visual_size':
+      if (operation.translationDelta && (!Number.isFinite(operation.translationDelta.dx) || !Number.isFinite(operation.translationDelta.dy))) {
+        throw new SlidesManualEditSourceError('operation_invalid', '缩放位移必须是有限数字。');
+      }
       if (
         !isPositiveFiniteNumber(operation.visualSize.width)
         || !isPositiveFiniteNumber(operation.visualSize.height)

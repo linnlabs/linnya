@@ -133,7 +133,7 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
     window.webContents.sendInputEvent({ type: 'mouseUp', ...position, button: 'left', clickCount: 1 });
     await settle();
   }
-  const corner = await down('corner');
+  const corner = await down('bottom-right');
   const grown = { x: corner.x + 96, y: corner.y + 48 };
   await move(grown);
   await evaluate('window.manualPropertySmoke.assertResize(3, 1.5, 0, true)');
@@ -153,9 +153,26 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
   await settle();
   await up(taller);
   await evaluate('window.manualPropertySmoke.assertResize(3.5, 1.5, 2, false)');
-  const click = await down('corner');
+  const click = await down('bottom-right');
   await up(click);
   await evaluate('window.manualPropertySmoke.assertResize(3.5, 1.5, 2, false)');
+  // 五个新增入口连续操作，不等待编译；内容、选框与对侧锚点必须一起更新。
+  let width = 3.5; let height = 1.5; let x = 0.5; let y = 0.5; let commits = 2;
+  for (const [handle, dx, dy] of [
+    ['top-left', -12, -12], ['top', 0, -12], ['top-right', 12, -12],
+    ['left', -12, 0], ['bottom-left', -12, 12],
+  ] as const) {
+    const start = await down(handle);
+    const end = { x: start.x + dx, y: start.y + dy };
+    width += Math.abs(dx) / 96; height += Math.abs(dy) / 96;
+    if (dx < 0) x += dx / 96;
+    if (dy < 0) y += dy / 96;
+    await move(end);
+    await evaluate(`window.manualPropertySmoke.assertResize(${width}, ${height}, ${commits}, true); window.manualPropertySmoke.assertResizePosition(${x}, ${y})`);
+    await up(end); commits += 1;
+    await evaluate(`window.manualPropertySmoke.assertResize(${width}, ${height}, ${commits}, false); window.manualPropertySmoke.assertResizePosition(${x}, ${y})`);
+  }
+  await writeFile(path.resolve(__dirname, 'eight-resize-handles.png'), (await window.webContents.capturePage()).toPNG());
   for (const theme of ['light', 'dark', 'moon-blue']) {
     await evaluate(`window.manualPropertySmoke.showCustom(${JSON.stringify(theme)})`);
     await settle();
