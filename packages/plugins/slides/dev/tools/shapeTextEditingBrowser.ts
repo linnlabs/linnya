@@ -169,9 +169,15 @@ export function mountShapeTextEditingSmoke() {
         || panel.top < bounds.top || panel.bottom > bounds.bottom
         || (panel.top < toolbar.bottom && panel.bottom > toolbar.top)) throw new Error('Property popup obscures its toolbar or escapes the pane');
     },
-    scrollPropertyPopup() {
-      const panel = host.querySelector('.slides-element-property-popover');
-      if (panel) panel.scrollTop = panel.scrollHeight;
+    async assertCustomPlacement() {
+      const panel = host.querySelector<HTMLElement>('.slides-element-color__submenu');
+      if (!panel) throw new Error('Missing custom submenu');
+      await Promise.allSettled(panel.getAnimations().map(animation => animation.finished));
+      const rect = panel.getBoundingClientRect();
+      const bounds = host.getBoundingClientRect();
+      if (panel.inert || rect.left < bounds.left || rect.right > bounds.right || rect.top < bounds.top || rect.bottom > bounds.bottom) {
+        throw new Error('Custom submenu escaped the narrow pane');
+      }
     },
     assertPanelMotion() {
       const panel = host.querySelector('.slides-element-property-popover');

@@ -99,6 +99,46 @@ export function mountManualPropertySmoke() {
   }
   function assert(value: boolean, message: string): void { if (!value) throw new Error(message); }
   return {
+    async openPalette() { await open('fill'); },
+    controlPoint(selector: string) {
+      const element = host.querySelector<HTMLElement>(selector);
+      if (!element || getComputedStyle(element).visibility === 'hidden') throw new Error(`Missing visible color control ${selector}`);
+      const rect = element.getBoundingClientRect();
+      return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
+    },
+    prepareInput(selector: string) {
+      const element = host.querySelector(selector);
+      assert(element instanceof HTMLInputElement && document.activeElement === element, 'Color input did not receive native focus');
+      if (element instanceof HTMLInputElement) element.select();
+    },
+    assertSubmenu(open: boolean, focus?: 'palette' | 'submenu' | 'row') {
+      const panel = host.querySelector<HTMLElement>('.slides-element-color__submenu');
+      assert(Boolean(panel && !panel.inert) === open, 'Unexpected custom submenu visibility');
+      assert(button('.slides-element-color__custom').getAttribute('aria-expanded') === String(open), 'Custom row expansion differs');
+      if (focus === 'palette') assert(document.activeElement === host.querySelector('.slides-element-property-popover'), 'Hover stole palette focus');
+      if (focus === 'submenu') assert(document.activeElement === panel, 'Keyboard opening did not focus the form');
+      if (focus === 'row') assert(document.activeElement === button('.slides-element-color__custom'), 'Custom dismissal did not restore row focus');
+      if (open && panel) {
+        const bounds = host.getBoundingClientRect();
+        const rect = panel.getBoundingClientRect();
+        assert(rect.left >= bounds.left && rect.right <= bounds.right && rect.top >= bounds.top && rect.bottom <= bounds.bottom, 'Custom submenu escaped pane');
+      }
+    },
+    assertColorDraft(color: string, valid: boolean) {
+      const input = host.querySelector('.slides-element-color__hex input');
+      assert(input instanceof HTMLInputElement && input.value.toUpperCase() === color, 'RGB/HSV/HEX drafts diverged');
+      assert(button('.action-btn.primary').disabled === !valid, 'Invalid RGB draft can be applied');
+      assert(operations.length === 0, 'Color draft was applied without confirmation');
+    },
+    assertCustomApplied(color: string) {
+      const operation = operations[0];
+      assert(operations.length === 1 && operation?.op === 'set_fill_color' && operation.color === color, 'Custom RGB did not submit exactly one color');
+      assert(document.activeElement === button('[data-property="fill"]'), 'Apply did not restore toolbar focus');
+    },
+    async resetColorChecks() {
+      queued.value = []; operations.length = 0;
+      await nextTick();
+    },
     async verifyColorsAndNumbers() {
       await nextTick();
       await open('fill');
@@ -163,6 +203,12 @@ export function mountManualPropertySmoke() {
       await nextTick();
       await open('fill');
       if (!host.querySelector('.slides-element-color__editor')) await click('.slides-element-color__custom');
+    },
+    async showMode(mode: 'hsv' | 'rgb') {
+      const tab = Array.from(host.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(item => item.textContent?.trim() === mode.toUpperCase());
+      if (!tab) throw new Error('Missing color mode');
+      tab.click();
+      await nextTick();
     },
     async prepareSliderKeyboard() {
       await input('.slides-element-color__hex input', '#FF0000');

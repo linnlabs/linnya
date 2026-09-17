@@ -44,6 +44,79 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
     return { x: result.x, y: result.y };
   }
   const settle = () => evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+  const settleColorMotion = () => evaluate('Promise.allSettled(document.getAnimations().map(animation => animation.finished)).then(() => undefined)');
+  async function colorPoint(selector: string) {
+    const value = await evaluate(`window.manualPropertySmoke.controlPoint(${JSON.stringify(selector)})`);
+    if (typeof value !== 'object' || value === null || !('x' in value) || !('y' in value)
+      || typeof value.x !== 'number' || typeof value.y !== 'number') throw new Error('Missing color control point');
+    return { x: value.x, y: value.y };
+  }
+  async function colorClick(selector: string) {
+    const position = await colorPoint(selector);
+    window.webContents.sendInputEvent({ type: 'mouseMove', ...position });
+    window.webContents.sendInputEvent({ type: 'mouseDown', ...position, button: 'left', clickCount: 1 });
+    window.webContents.sendInputEvent({ type: 'mouseUp', ...position, button: 'left', clickCount: 1 });
+    await settle();
+  }
+  async function colorKey(keyCode: string) {
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode });
+    window.webContents.sendInputEvent({ type: 'keyUp', keyCode });
+    await settle();
+  }
+  async function colorInput(channel: string, value: string) {
+    const selector = `[data-channel="${channel}"]`;
+    await colorClick(selector);
+    await evaluate(`window.manualPropertySmoke.prepareInput(${JSON.stringify(selector)})`);
+    await window.webContents.insertText(value);
+    await settle();
+  }
+  await evaluate('window.manualPropertySmoke.openPalette()');
+  await settleColorMotion();
+  const customRow = await colorPoint('.slides-element-color__custom');
+  window.webContents.sendInputEvent({ type: 'mouseMove', ...customRow });
+  await settle(); await settleColorMotion();
+  await evaluate('window.manualPropertySmoke.assertSubmenu(true, "palette")');
+  window.webContents.sendInputEvent({ type: 'mouseMove', ...await colorPoint('[role="tab"]:last-child') });
+  // 必须跨过实际 200ms 悬停关闭周期，才能证明进入子菜单确实取消了关闭计时。
+  await evaluate('new Promise(resolve => setTimeout(resolve, 240))');
+  await evaluate('window.manualPropertySmoke.assertSubmenu(true, "palette")');
+  window.webContents.sendInputEvent({ type: 'mouseMove', x: 750, y: 730 });
+  await evaluate('new Promise(resolve => setTimeout(resolve, 240))');
+  await evaluate('window.manualPropertySmoke.assertSubmenu(false, "palette")');
+  window.webContents.sendInputEvent({ type: 'mouseMove', ...customRow });
+  await settle(); await settleColorMotion();
+  await colorKey('Escape');
+  await evaluate('window.manualPropertySmoke.assertSubmenu(false, "row")');
+  await colorKey('Right');
+  await settleColorMotion();
+  await evaluate('window.manualPropertySmoke.assertSubmenu(true, "submenu")');
+  // 真实指针穿过菜单间隙进入表单，点击模式/输入框不能被外部点击处理器关闭。
+  await colorClick('[role="tab"]:last-child');
+  await colorInput('red', '256');
+  await evaluate('window.manualPropertySmoke.assertColorDraft("#2563EB", false)');
+  await colorInput('red', '64');
+  await colorInput('green', '128');
+  await colorInput('blue', '192');
+  await evaluate('window.manualPropertySmoke.assertColorDraft("#4080C0", true)');
+  await colorClick('[role="tab"]:first-child');
+  await colorClick('[role="tab"]:last-child');
+  await evaluate('window.manualPropertySmoke.assertColorDraft("#4080C0", true)');
+  await colorClick('.action-btn.secondary');
+  await evaluate('window.manualPropertySmoke.assertSubmenu(false, "row")');
+  await colorClick('.slides-element-color__custom');
+  await settleColorMotion();
+  await evaluate('window.manualPropertySmoke.assertColorDraft("#2563EB", true)');
+  await colorInput('red', '64');
+  await colorInput('green', '128');
+  await colorInput('blue', '192');
+  await colorClick('.slides-element-color__rgb input[type="range"]');
+  await colorKey('End');
+  await evaluate('window.manualPropertySmoke.assertColorDraft("#FF80C0", true)');
+  await colorInput('red', '64');
+  await colorKey('Enter');
+  await evaluate('window.manualPropertySmoke.assertCustomApplied("#4080C0"); window.manualPropertySmoke.resetColorChecks()');
+  await settleColorMotion();
+  console.log('Slides custom color: native hover, keyboard submenu, RGB/HSV/HEX, invalid ranges and single Apply passed');
   async function down(handle: string) {
     const position = await point(handle);
     window.webContents.sendInputEvent({ type: 'mouseMove', ...position });
@@ -89,6 +162,10 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
     await evaluate('Promise.allSettled(document.getAnimations().map(animation => animation.finished)).then(() => undefined)');
     const screenshot = await window.webContents.capturePage();
     await writeFile(path.resolve(__dirname, `manual-properties-${theme}.png`), screenshot.toPNG());
+    await evaluate('window.manualPropertySmoke.showMode("rgb")');
+    await settle(); await settleColorMotion();
+    await writeFile(path.resolve(__dirname, `manual-properties-rgb-${theme}.png`), (await window.webContents.capturePage()).toPNG());
+    await evaluate('window.manualPropertySmoke.showMode("hsv")');
   }
   await evaluate('window.manualPropertySmoke.prepareSliderKeyboard()');
   for (const [keyCode, expected] of [['Right', 1], ['End', 359], ['Home', 0]] as const) {
@@ -272,7 +349,7 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
   await click(control('[data-property="fill"]'));
   await click(control('.slides-element-color__custom'));
   await evaluate('window.shapeTextEditingSmoke.settlePanelMotion()');
-  await evaluate('window.shapeTextEditingSmoke.assertPopupPlacement(); window.shapeTextEditingSmoke.scrollPropertyPopup()');
+  await evaluate('window.shapeTextEditingSmoke.assertPopupPlacement(); window.shapeTextEditingSmoke.assertCustomPlacement()');
   await settle();
   await writeFile(path.resolve(__dirname, 'selection-property-toolbar-narrow.png'), (await window.webContents.capturePage()).toPNG());
   await key('Escape');
