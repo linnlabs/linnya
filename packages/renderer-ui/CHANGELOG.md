@@ -2,6 +2,11 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 2.5.1 - 2026-09-17
+
+- ToolbarColorButton 去掉额外 36px 最小宽度，沿用 ToolbarButton 的紧凑图标按钮宽度；Editor 与 Slides 同步修正文字色／填充色两侧多余留白。
+- 不改变组件合同或插件兼容范围；已有 Host external 消费者直接使用 Host 的修正样式。
+
 ## 2.5.0 - 2026-09-16
 
 - 新增 ToolbarButton、ToolbarColorButton、DropdownPanel 及公开严格类型；Editor 与 Slides 统一按钮、A/笔形颜色标识及标准下拉表面。

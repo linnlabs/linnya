@@ -159,7 +159,7 @@ Editor 在自己的容器上保留 mousedown 选区策略，并使用业务标�
 
 工具条默认使用普通容器语义，业务可提供 aria-label／role；若使用 toolbar role，必须同时提供符合该语义的键盘交互。基础外观只有一个 CSS owner，业务只定制公开根元素的外围布局及 slot 内容。
 
-`ToolbarButton` 提供 Editor 既有的紧凑按钮密度、hover/active、focus-visible 和 disabled；业务提供 label、active、disabled 与 slot。`ToolbarColorButton` 复用该按钮，`text` 使用 A＋色条，`background` 使用同款 EditIcon＋色条，Editor 的文字／高亮和 Slides 的文字／填充共享实现。调用方传入已解析 CSS color 和 expanded，不把业务颜色枚举、色板或编辑命令送入包内。原生属性、aria/data 和事件均落在按钮根节点；不阻止鼠标聚焦，不自建图标副本。
+`ToolbarButton` 提供 Editor 既有的紧凑按钮密度、hover/active、focus-visible 和 disabled；业务提供 label、active、disabled 与 slot。`ToolbarColorButton` 复用该按钮的紧凑图标宽度，不为颜色入口额外增加左右留白；`text` 使用 A＋色条，`background` 使用同款 EditIcon＋色条，Editor 的文字／高亮和 Slides 的文字／填充共享实现。调用方传入已解析 CSS color 和 expanded，不把业务颜色枚举、色板或编辑命令送入包内。原生属性、aria/data 和事件均落在按钮根节点；不阻止鼠标聚焦，不自建图标副本。
 
 ## 版本与发布
 

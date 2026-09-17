@@ -25,7 +25,6 @@
 }
 .linnya-toolbar-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 .linnya-toolbar-button:disabled { opacity: 0.55; cursor: default; }
-.linnya-toolbar-color-button { min-width: 36px; }
 .linnya-toolbar-color-button__symbol {
   position: relative;
   display: inline-flex;
