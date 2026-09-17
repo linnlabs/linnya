@@ -10,6 +10,11 @@ export type ElementPropertyMessageKey =
   | 'slides.elementProperties.hue'
   | 'slides.elementProperties.saturation'
   | 'slides.elementProperties.brightness'
+  | 'slides.elementProperties.colorMode'
+  | 'slides.elementProperties.red'
+  | 'slides.elementProperties.green'
+  | 'slides.elementProperties.blue'
+  | 'slides.elementProperties.invalidRgb'
   | 'slides.elementProperties.hex'
   | 'slides.elementProperties.invalidHex'
   | 'slides.elementProperties.applyColor'
@@ -37,6 +42,11 @@ export const ELEMENT_PROPERTY_MESSAGE_FALLBACKS = {
   'slides.elementProperties.hue': '色相',
   'slides.elementProperties.saturation': '饱和度',
   'slides.elementProperties.brightness': '明度',
+  'slides.elementProperties.colorMode': '颜色模式',
+  'slides.elementProperties.red': '红',
+  'slides.elementProperties.green': '绿',
+  'slides.elementProperties.blue': '蓝',
+  'slides.elementProperties.invalidRgb': 'RGB 各通道请输入 0–255 的整数',
   'slides.elementProperties.hex': 'HEX 颜色',
   'slides.elementProperties.invalidHex': '请输入六位 HEX 颜色，例如 #2563EB',
   'slides.elementProperties.applyColor': '应用颜色',
@@ -60,6 +70,11 @@ const ELEMENT_PROPERTY_EN_US_MESSAGES = {
   'slides.elementProperties.hue': 'Hue',
   'slides.elementProperties.saturation': 'Saturation',
   'slides.elementProperties.brightness': 'Brightness',
+  'slides.elementProperties.colorMode': 'Color mode',
+  'slides.elementProperties.red': 'R',
+  'slides.elementProperties.green': 'G',
+  'slides.elementProperties.blue': 'B',
+  'slides.elementProperties.invalidRgb': 'Enter whole numbers from 0 to 255 for each RGB channel',
   'slides.elementProperties.hex': 'HEX color',
   'slides.elementProperties.invalidHex': 'Enter six HEX digits, for example #2563EB',
   'slides.elementProperties.applyColor': 'Apply color',

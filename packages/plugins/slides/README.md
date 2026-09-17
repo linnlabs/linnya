@@ -6,7 +6,7 @@ Slides 是 Linnya 的官方演示文稿 runtime 插件包，负责演示文稿�
 runner、字体/文本测量平台能力由 host 平台提供，Slides 通过窄门面消费这些能力。
 
 Renderer 基础 UI 直接依赖 `@linnya/renderer-ui`：`peerDependencies` 与
-`plugin.json.compat.rendererUi` 使用同一 range `^2.3.0`，开发依赖使用 `workspace:*`。缩放与自定义颜色复用公开 `CustomSlider` 的 compact 变体，数值换算、草稿和提交仍由各业务 owner 负责。Slides 不装载 package CSS；renderer
+`plugin.json.compat.rendererUi` 使用同一 range `^2.5.0`，开发依赖使用 `workspace:*`。缩放与自定义 HSV／RGB 颜色复用公开 `CustomSlider` 的 compact 变体，数值换算、草稿和提交仍由各业务 owner 负责。Slides 不装载 package CSS；renderer
 artifact 把公开入口映射为 Host external，兼容的 package patch/minor 不要求重建 Slides。
 
 ## Slides 的实现原理
@@ -32,6 +32,7 @@ Linnya Slides 先把 PPT 抽象成一门专用的场景图 DSL，再用 JavaScri
 - generated deck 人工编辑源码与原子提交：[backend/features/presentationManualEditing](./src/backend/features/presentationManualEditing/README.md)
 - 前端预览与栅格渲染：[renderer](./src/renderer/docs/README.md)
 - 编辑交互会话与失败草稿恢复：[renderer/features/editingInteraction](./src/renderer/features/editingInteraction/README.md)
+- 选区属性工具条与颜色草稿：[renderer/features/elementProperties](./src/renderer/features/elementProperties/README.md)
 - 前端有限人工编辑：[renderer/features/manualEditing](./src/renderer/features/manualEditing/README.md)
 - PPTX 编译、解析与质量检查：[backend/engine](./src/backend/engine/README.md)
 

@@ -100,15 +100,19 @@
         :aria-label="message(openPopover === 'size' ? 'slides.elementProperties.size' : openPopover === 'text' ? 'slides.elementProperties.textColor' : 'slides.elementProperties.fillColor')"
         @pointerdown.stop
         @keydown.stop
-        @keydown.esc.stop.prevent="close(true)"
+        @keydown.esc.stop.prevent="dismissPopover"
       >
         <ElementColorControl
           v-if="openPopover === 'text' || openPopover === 'fill'"
+          ref="colorControl"
           :key="openPopover"
           :color="openPopover === 'text' ? currentTextColor : currentFillColor"
           :kind="openPopover"
           :label="message(openPopover === 'text' ? 'slides.elementProperties.textColor' : 'slides.elementProperties.fillColor')"
           :disabled="busy"
+          :overlay-host="colorOverlay"
+          :menu-element="popover?.element ?? null"
+          :menu-position="popoverPosition"
           @select="selectColor"
         />
         <template v-else>
@@ -143,6 +147,10 @@
           <span class="slides-element-property-popover__hint">{{ message('slides.elementProperties.sizeHint') }}</span>
         </template>
       </DropdownPanel>
+      <div
+        ref="colorOverlay"
+        class="slides-element-color-overlay"
+      />
     </template>
   </BaseDropdown>
 </template>
@@ -170,12 +178,15 @@ const { elementPropertyMessage: message } = useElementPropertyLocalization();
 const toolbar = ref<InstanceType<typeof FloatingToolbar> | null>(null);
 const dropdown = ref<DropdownActions | null>(null);
 const popover = ref<InstanceType<typeof DropdownPanel> | null>(null);
+const colorOverlay = ref<HTMLDivElement | null>(null);
+const colorControl = ref<InstanceType<typeof ElementColorControl> | null>(null);
 const popoverId = useId();
 const { position, popoverPosition, openPopover, toggle, close, handleToolbarKeydown } = useElementPropertyToolbar({
   deleteSelected: () => emit('delete-selected'),
   dropdown,
   anchor: toRef(props, 'anchor'), hasHierarchy: toRef(props, 'hasHierarchy'),
   toolbarElement: computed(() => toolbar.value?.element ?? null), popoverElement: computed(() => popover.value?.element ?? null),
+  auxiliaryElement: colorOverlay,
 });
 const { fontSize, width, height, commitNumber, cancelNumber, submitTextColor, submitFillColor, submitDelete } = useElementPropertyFields({
   target: toRef(props, 'target'), busy: computed(() => props.busy === true), submit: operation => emit('submit', operation),
@@ -195,5 +206,9 @@ function selectColor(color: string): void {
   if (openPopover.value === 'text') submitTextColor(color);
   else if (openPopover.value === 'fill') submitFillColor(color);
   close(true);
+}
+function dismissPopover(): void {
+  // 悬停展开不搬走主面板焦点，但 Escape 仍须先关闭最内层草稿。
+  if (!colorControl.value?.dismissCustom()) close(true);
 }
 </script>

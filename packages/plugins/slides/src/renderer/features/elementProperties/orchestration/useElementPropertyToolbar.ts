@@ -11,6 +11,7 @@ export function useElementPropertyToolbar(options: {
   readonly hasHierarchy: Readonly<Ref<boolean>>;
   readonly toolbarElement: Readonly<Ref<HTMLElement | null>>;
   readonly popoverElement: Readonly<Ref<HTMLElement | null>>;
+  readonly auxiliaryElement: Readonly<Ref<HTMLElement | null>>;
 }) {
   const openPopover = ref<ElementPropertyPopover | null>(null);
   const toolbarSize = shallowRef<ElementPropertySize | null>(null);
@@ -36,7 +37,7 @@ export function useElementPropertyToolbar(options: {
   function handoffNumberInput(event: PointerEvent): void {
     const target = event.target;
     if (!(target instanceof Node)) return;
-    const surfaces = [options.toolbarElement.value, options.popoverElement.value];
+    const surfaces = [options.toolbarElement.value, options.popoverElement.value, options.auxiliaryElement.value];
     if (surfaces.some(surface => surface?.contains(target))) return;
     // 先交接数字 change，再让这一次指针事件继续选择 B；不能在切换后把 A 的草稿写给 B。
     const active = document.activeElement;

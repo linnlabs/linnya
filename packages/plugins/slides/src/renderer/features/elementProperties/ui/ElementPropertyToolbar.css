@@ -21,9 +21,20 @@
   white-space: nowrap;
 }
 .slides-element-property-controls { display: contents; }
+.slides-element-color-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
 .slides-element-property-toolbar__delete { color: var(--color-error); }
-.slides-element-property-toolbar__icon { width: 16px; height: 16px; }
-.slides-element-property-popover { width: 224px; padding: var(--spacing-sm); }
+.slides-element-property-toolbar__icon {
+  width: 16px;
+  height: 16px;
+}
+.slides-element-property-popover {
+  width: 224px;
+  padding: var(--spacing-sm);
+}
 .slides-element-property-popover__field {
   display: flex;
   align-items: center;
@@ -50,20 +61,21 @@
   gap: var(--spacing-sm);
   width: 100%;
   box-sizing: border-box;
-  padding: var(--spacing-sm);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated);
+  height: 28px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--color-text-primary);
   font: inherit;
   font-size: var(--font-size-xs);
   text-align: left;
   cursor: pointer;
 }
-.slides-element-color__custom:hover { background: var(--color-bg-hover); }
+.slides-element-color__custom:hover:not(:disabled, .slides-element-color__custom--current) { background: var(--color-bg-hover); }
 .slides-element-color__custom--current {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 1px var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-bg);
 }
 .slides-element-color__custom:focus-visible {
   outline: 2px solid var(--color-accent);
@@ -74,11 +86,8 @@
   cursor: default;
 }
 .slides-element-color__caption {
-  display: grid;
-  gap: var(--spacing-xxs);
   flex: 1;
 }
-.slides-element-color__value { color: var(--color-text-secondary); }
 .slides-element-color__chevron {
   width: 14px;
   height: 14px;
@@ -91,10 +100,32 @@
   border-radius: var(--radius-sm);
   background: var(--slides-custom-color);
 }
+.slides-element-color__swatch--small {
+  width: 16px;
+  height: 16px;
+}
+.slides-element-color__submenu {
+  width: 248px;
+  padding: var(--spacing-sm);
+}
+.slides-element-color__submenu:not([inert]) { pointer-events: auto; }
 .slides-element-color__editor {
   display: grid;
   gap: var(--spacing-sm);
-  margin-top: var(--spacing-sm);
+}
+.slides-element-color__actions { justify-content: flex-end; }
+.slides-element-color__rgb {
+  display: grid;
+  gap: var(--spacing-md);
+  padding-block: var(--spacing-sm);
+}
+.slides-element-color__rgb-channel {
+  display: grid;
+  grid-template-columns: 1.5em minmax(0, 1fr) auto;
+  gap: var(--spacing-sm);
+  align-items: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
 }
 /* 黑白与色相属于取色内容坐标，不随 UI 主题变化。 */
 .slides-element-color__plane {
