@@ -9,7 +9,7 @@ import { registerCommonToolbarProvider } from '../registry';
 import { floatingToolbarService } from '../service';
 import FloatingToolbarContainer from './FloatingToolbarContainer.vue';
 
-let dispose: (() => void) | undefined;
+let dispose;
 afterEach(() => { dispose?.(); floatingToolbarService.close(); vi.restoreAllMocks(); });
 
 it('共享外壳保留真实 Editor 选区和格式命令，其他业务工具条仍属于外部点击', async () => {

@@ -10,4 +10,3 @@ export interface ShapeTextLayout {
     left: number;
   };
 }
-

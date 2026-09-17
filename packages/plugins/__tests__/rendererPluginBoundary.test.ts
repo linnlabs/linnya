@@ -69,7 +69,8 @@ describe('renderer plugin boundary', () => {
     expect(pluginRendererSource).toContain('SLIDES_PLUGIN_META');
     expect(pluginRendererSource).toContain("@plugin/slides/shared");
     expect(pluginRendererSource).toContain('documentActionMenus');
-    expect(pluginRendererSource).toContain('documentRuntimeLoaders');
+    expect(pluginRendererSource).toContain('fileSessionType: SLIDES_ACTIVE_DOCUMENT_TYPE');
+    expect(pluginRendererSource).toContain('fileHandler: slidesFileHandler');
     expect(pluginRendererSource).toContain('registerSlidesRendererPorts');
 
     expect(builtinIndexSource).not.toContain('slidesRendererPlugin');

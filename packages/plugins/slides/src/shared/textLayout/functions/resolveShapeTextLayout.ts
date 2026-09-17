@@ -49,4 +49,3 @@ export function resolveShapeTextLayout(
       : { top: 6 / 72, right: 8 / 72, bottom: 6 / 72, left: 8 / 72 },
   };
 }
-

@@ -17,6 +17,19 @@ vi.mock('@plugin/renderer/interactiveTool', () => ({
   concludeInteractiveToolInteraction: vi.fn(),
 }));
 
+// 卡片测试只验证 Slides 业务投影；执行动画的 scope 由消息宿主集成测试负责。
+vi.mock('@plugin/renderer/executionPresentation', async () => {
+  const { defineComponent, h } = await import('vue');
+  return {
+    ToolActivityIndicator: defineComponent({
+      props: { runningLabel: { type: String, default: '' } },
+      setup(props) {
+        return () => h('span', props.runningLabel);
+      },
+    }),
+  };
+});
+
 function mountPptPlanApprovalCard(props: InstanceType<typeof PptPlanApprovalCard>['$props']) {
   const host = document.createElement('div');
   document.body.appendChild(host);

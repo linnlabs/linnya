@@ -192,7 +192,12 @@ describe('interactive run transitions', () => {
       content: 'queued before control request', is_complete: true,
     };
     expect(reduceInteractiveRunEvent(current, progress)).toBe(current);
-    const running: SSEEvent = { ...progress, type: 'run_status', status: 'running' };
+    const running: SSEEvent = {
+      type: 'run_status', id: 'queued-running', timestamp: 3,
+      conversation_id: 'conversation-a', turn_id: 'turn-a',
+      run_id: RunIdSchema.parse('run-a'), execution_id: 'execution-a',
+      lane: 'foreground', visibility: 'conversation', status: 'running',
+    };
     expect(reduceInteractiveRunEvent(current, running)).toBe(current);
     const settled = reduceInteractiveRunEvent(current, {
       ...running, status: status === 'pausing' ? 'paused' : 'cancelled',

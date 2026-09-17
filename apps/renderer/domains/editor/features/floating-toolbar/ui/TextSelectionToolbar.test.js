@@ -9,7 +9,7 @@ import TextColorMark from '../../../marks/TextColor';
 import TextHighlightMark from '../../../marks/TextHighlight';
 import TextSelectionToolbar from './TextSelectionToolbar.vue';
 
-let dispose: (() => void) | undefined;
+let dispose;
 afterEach(() => dispose?.());
 
 it('生产颜色工具条保存真实文字选区，应用颜色与高亮，Escape 从色板返回触发器', async () => {
@@ -24,9 +24,9 @@ it('生产颜色工具条保存真实文字选区，应用颜色与高亮，Esca
   });
   editor.commands.setTextSelection({ from: 1, to: 6 });
   const currentEditor = shallowRef(editor);
-  let nextEditor: Editor | undefined;
+  let nextEditor;
   const app = createApp({ render: () => h(FloatingToolbar, {
-    show: true, position: { top: 0, left: 0 }, onMousedown: (event: MouseEvent) => event.preventDefault(),
+    show: true, position: { top: 0, left: 0 }, onMousedown: (event) => event.preventDefault(),
   }, { default: () => h(TextSelectionToolbar, { editor: currentEditor.value }) }) });
   app.use(createPinia()); app.mount(host);
   dispose = () => { app.unmount(); editor.destroy(); nextEditor?.destroy(); host.remove(); editorHost.remove(); };
