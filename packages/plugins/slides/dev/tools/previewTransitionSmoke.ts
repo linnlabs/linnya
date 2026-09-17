@@ -303,9 +303,19 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
   }
   async function key(keyCode: string) {
     window.webContents.sendInputEvent({ type: 'keyDown', keyCode });
+    // Enter 激活原生 button 依赖 keypress；Electron 原始 keyDown 不会自动补 char 事件。
+    if (keyCode === 'Enter') window.webContents.sendInputEvent({ type: 'char', keyCode: '\r' });
     window.webContents.sendInputEvent({ type: 'keyUp', keyCode });
     await settle();
   }
+  await click('window.shapeTextEditingSmoke.point("standalone")');
+  await click(control('[data-property="fontSize"]'));
+  await evaluate('window.shapeTextEditingSmoke.assertFontMenu(14)');
+  await key('Escape');
+  await evaluate('window.shapeTextEditingSmoke.assertFontFocus()');
+  await key('Down');
+  await evaluate('window.shapeTextEditingSmoke.assertFontMenu(14)');
+  await key('Escape');
   await click('window.shapeTextEditingSmoke.point("badge")');
   await evaluate('window.shapeTextEditingSmoke.assertToolbar("badge"); window.shapeTextEditingSmoke.assertGeometryUnchanged()');
   await click(control('[data-property="fill"]'));
@@ -321,7 +331,45 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
   await click('window.shapeTextEditingSmoke.point("standalone")');
   await number('.slides-element-property-toolbar input', '24');
   await key('Enter');
+  await evaluate('window.shapeTextEditingSmoke.assertFontSize(24)');
+  await click(control('[data-property="fontSize"]'));
+  await evaluate('window.shapeTextEditingSmoke.assertFontMenu(24)');
+  await key('Down');
+  await key('Enter');
+  await evaluate('window.shapeTextEditingSmoke.assertFontSize(28); window.shapeTextEditingSmoke.assertFontFocus()');
+  await click(control('[data-property="fontSize"]'));
+  await evaluate('window.shapeTextEditingSmoke.assertFontMenu(28)');
+  await key('Escape');
+  await evaluate('window.shapeTextEditingSmoke.assertFontSize(28); window.shapeTextEditingSmoke.assertFontFocus()');
+  // 两端、非预设小数、无效值与 Escape 均经过原生输入，不能只测试 option 数据。
+  for (const value of ['1', '400', '27.5']) {
+    await number('.slides-element-property-toolbar input', value);
+    await key('Enter');
+    await evaluate(`window.shapeTextEditingSmoke.assertFontSize(${value})`);
+  }
+  for (const value of ['0', '401', '']) {
+    await number('.slides-element-property-toolbar input', value);
+    await key('Enter');
+    await evaluate('window.shapeTextEditingSmoke.assertFontSize(27.5)');
+  }
+  await number('.slides-element-property-toolbar input', '55');
+  await key('Escape');
+  await click(control('[data-property="fontSize"]'));
+  await evaluate('window.shapeTextEditingSmoke.assertFontSize(27.5); window.shapeTextEditingSmoke.assertFontMenu(null)');
+  await click('window.shapeTextEditingSmoke.fontOptionPoint(24)');
+  await evaluate('window.shapeTextEditingSmoke.assertFontSize(24); window.shapeTextEditingSmoke.assertFontFocus()');
+  await click(control('[data-property="fontSize"]'));
+  await evaluate('window.shapeTextEditingSmoke.assertFontMenu(24)');
+  for (const theme of ['light', 'dark', 'moon-blue']) {
+    await evaluate(`document.documentElement.setAttribute('data-linnya-ui-theme', ${JSON.stringify(theme)})`);
+    await settle();
+    // 只等待字号表面的主题过渡；Stage 的保存中旋转动画会持续到队列完成。
+    await evaluate('Promise.allSettled(Array.from(document.querySelectorAll(".slides-element-property-toolbar, .slides-element-font-menu")).flatMap(element => element.getAnimations({ subtree: true })).map(animation => animation.finished)).then(() => undefined)');
+    await writeFile(path.resolve(__dirname, `font-size-toolbar-${theme}.png`), (await window.webContents.capturePage()).toPNG());
+  }
+  // 直接切换相邻颜色入口，旧字号列表的外部点击监听不能关闭新面板。
   await click(control('[data-property="text"]'));
+  await evaluate('window.shapeTextEditingSmoke.settlePanelMotion()');
   await click(control('[title="#9333EA"]'));
   await evaluate('window.shapeTextEditingSmoke.assertPropertyIntents(); window.shapeTextEditingSmoke.assertGeometryUnchanged()');
   await click('window.shapeTextEditingSmoke.point("second")');
@@ -365,6 +413,11 @@ async function verifySelectionToolbar(window: BrowserWindow): Promise<void> {
     // second 在上面的拖动中已移动 0.5 英寸，点击当前预览位置而非旧编译坐标。
     await click(`window.shapeTextEditingSmoke.point(${JSON.stringify(id)}, ${id === 'second' ? '0.5, 0.5' : '0, 0'})`);
     await evaluate(`window.shapeTextEditingSmoke.assertToolbar(${JSON.stringify(id)})`);
+    if (id === 'standalone') {
+      await click(control('[data-property="fontSize"]'));
+      await evaluate('window.shapeTextEditingSmoke.assertFontMenu(24)');
+      await key('Escape');
+    }
     await click(control('[data-property="delete"]'));
     await evaluate(`window.shapeTextEditingSmoke.assertDeleted(${JSON.stringify(id)})`);
   }

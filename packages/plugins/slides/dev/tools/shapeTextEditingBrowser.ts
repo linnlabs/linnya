@@ -148,6 +148,38 @@ export function mountShapeTextEditingSmoke() {
       if (!(input instanceof HTMLInputElement) || document.activeElement !== input) throw new Error('Number input did not receive native pointer focus');
       input.select();
     },
+    assertFontSize(value: number) {
+      const input = host.querySelector<HTMLInputElement>('.slides-element-property-toolbar__font input');
+      const fontIntents = manual.queuedIntents.filter(intent => intent.operation.op === 'set_text_style' && intent.operation.target.editKey === 'standalone');
+      const operation = fontIntents[0]?.operation;
+      if (!input || Number(input.value) !== value || !input.checkValidity()
+        || fontIntents.length !== 1 || operation?.op !== 'set_text_style' || operation.fontSizePt !== value) {
+        throw new Error(`Font size input/queue mismatch: expected ${value}, got ${input?.value}/${JSON.stringify(fontIntents)}; focus=${document.activeElement?.outerHTML}`);
+      }
+    },
+    async assertFontMenu(selected: number | null) {
+      const menu = host.querySelector('.slides-element-font-menu');
+      const list = menu?.querySelector<HTMLElement>('[role="listbox"]');
+      if (!menu || !list) throw new Error('Font size list did not open');
+      await Promise.allSettled(list.getAnimations().map(animation => animation.finished));
+      const selectedOption = list.querySelector('[aria-selected="true"]');
+      if ((selectedOption?.textContent?.trim() ?? null) !== (selected === null ? null : String(selected))) throw new Error('Font size list has stale selection');
+      if (!list.contains(document.activeElement)) throw new Error('Font list did not receive keyboard focus');
+      const bounds = host.getBoundingClientRect();
+      const rect = list.getBoundingClientRect();
+      if (rect.left < bounds.left || rect.right > bounds.right || rect.top < bounds.top || rect.bottom > bounds.bottom) throw new Error('Font list escaped the pane');
+    },
+    fontOptionPoint(value: number) {
+      const option = Array.from(host.querySelectorAll<HTMLElement>('.slides-element-font-menu [role="option"]'))
+        .find(element => element.textContent?.trim() === String(value));
+      if (!option) throw new Error(`Missing font size option ${value}`);
+      option.scrollIntoView({ block: 'nearest' });
+      const rect = option.getBoundingClientRect();
+      return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) };
+    },
+    assertFontFocus() {
+      if (document.activeElement !== host.querySelector('[data-property="fontSize"]')) throw new Error('Font list did not return focus to its trigger');
+    },
     assertPropertyIntents() {
       const first = commands[0]?.command.operation;
       if (commands.length !== 1 || first?.op !== 'set_fill_color' || first.target.editKey !== 'badge' || first.color !== '#16A34A') throw new Error('Unexpected initial fill command');
