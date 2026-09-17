@@ -12,7 +12,6 @@ import SlideStage from '../../src/renderer/ui/preview/SlideStage.vue';
 import type { SlideRenderModel, ShapeRenderNode, TextRenderNode } from '../../src/renderer/types/render';
 import '../../src/renderer/features/textEditing/ui/InlineTextEditor.css';
 import '../../src/renderer/ui/preview/SlideStage.css';
-import '../../src/renderer/features/manualEditing/ui/ManualSelectionBreadcrumb.css';
 
 /** 完整生产 Stage + 输入/选择/提交队列。只替换 IPC 与文稿读取，不模拟交互或结算。 */
 export function mountShapeTextEditingSmoke() {

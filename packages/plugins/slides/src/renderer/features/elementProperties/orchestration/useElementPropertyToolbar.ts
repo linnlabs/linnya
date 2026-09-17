@@ -8,7 +8,6 @@ export function useElementPropertyToolbar(options: {
   readonly anchor: Readonly<Ref<ElementPropertyAnchor>>;
   readonly deleteSelected: () => void;
   readonly dropdown: Readonly<Ref<DropdownActions | null>>;
-  readonly hasHierarchy: Readonly<Ref<boolean>>;
   readonly toolbarElement: Readonly<Ref<HTMLElement | null>>;
   readonly popoverElement: Readonly<Ref<HTMLElement | null>>;
   readonly auxiliaryElement: Readonly<Ref<HTMLElement | null>>;
@@ -17,7 +16,7 @@ export function useElementPropertyToolbar(options: {
   const toolbarSize = shallowRef<ElementPropertySize | null>(null);
   const popoverSize = shallowRef<ElementPropertySize | null>(null);
   const position = computed(() => toolbarSize.value
-    ? resolveElementPropertyToolbarPosition(options.anchor.value, toolbarSize.value, options.hasHierarchy.value)
+    ? resolveElementPropertyToolbarPosition(options.anchor.value, toolbarSize.value)
     : null);
   const popoverPosition = computed(() => position.value && toolbarSize.value && popoverSize.value
     ? resolveElementPropertyPopoverPosition({ ...position.value, ...toolbarSize.value }, popoverSize.value, options.anchor.value.viewport)

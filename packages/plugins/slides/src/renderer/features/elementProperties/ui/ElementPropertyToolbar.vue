@@ -213,7 +213,6 @@ import ElementColorControl from './ElementColorControl.vue';
 const props = defineProps<{
   target: ManualEditableTarget;
   anchor: ElementPropertyAnchor;
-  hasHierarchy: boolean;
   busy?: boolean;
 }>();
 const emit = defineEmits<{ submit: [operation: ElementPropertyOperation]; 'delete-selected': [] }>();
@@ -228,7 +227,7 @@ const popoverId = useId();
 const { position, popoverPosition, openPopover, toggle, close, handleToolbarKeydown } = useElementPropertyToolbar({
   deleteSelected: () => emit('delete-selected'),
   dropdown,
-  anchor: toRef(props, 'anchor'), hasHierarchy: toRef(props, 'hasHierarchy'),
+  anchor: toRef(props, 'anchor'),
   toolbarElement: computed(() => toolbar.value?.element ?? null), popoverElement: computed(() => fontMenu.value ?? popover.value?.element ?? null),
   auxiliaryElement: colorOverlay,
 });

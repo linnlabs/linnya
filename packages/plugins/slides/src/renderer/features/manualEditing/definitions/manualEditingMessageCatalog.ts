@@ -10,7 +10,6 @@ export type ManualEditingMessageKey =
   | 'slides.manualEditing.text.cancel'
   | 'slides.manualEditing.text.save'
   | 'slides.manualEditing.text.saving'
-  | 'slides.manualEditing.hierarchy.ariaLabel'
   | 'slides.manualEditing.resize.right'
   | 'slides.manualEditing.resize.bottom'
   | 'slides.manualEditing.resize.corner'
@@ -41,7 +40,6 @@ export const MANUAL_EDITING_MESSAGE_FALLBACKS = {
   'slides.manualEditing.text.cancel': '取消',
   'slides.manualEditing.text.save': '保存',
   'slides.manualEditing.text.saving': '保存中…',
-  'slides.manualEditing.hierarchy.ariaLabel': '元素层级',
   'slides.manualEditing.resize.right': '调整宽度',
   'slides.manualEditing.resize.bottom': '调整高度',
   'slides.manualEditing.resize.corner': '调整宽度和高度',
@@ -67,7 +65,6 @@ const MANUAL_EDITING_EN_US_MESSAGES = {
   'slides.manualEditing.text.cancel': 'Cancel',
   'slides.manualEditing.text.save': 'Save',
   'slides.manualEditing.text.saving': 'Saving…',
-  'slides.manualEditing.hierarchy.ariaLabel': 'Element hierarchy',
   'slides.manualEditing.resize.right': 'Resize width',
   'slides.manualEditing.resize.bottom': 'Resize height',
   'slides.manualEditing.resize.corner': 'Resize width and height',

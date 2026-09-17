@@ -72,7 +72,7 @@ export function mountManualPropertySmoke() {
       target: properties.value,
       anchor: { selection: { left: 48 + presented.value.bounds.x * 96, top: 48 + presented.value.bounds.y * 96,
         width: presented.value.bounds.w * 96, height: presented.value.bounds.h * 96 }, viewport: { width: 760, height: 760 } },
-      hasHierarchy: false, busy: disabled.value, onSubmit: submit,
+      busy: disabled.value, onSubmit: submit,
     }) : null,
   ] });
   app.use(VueKonva);
@@ -107,7 +107,7 @@ export function mountManualPropertySmoke() {
       const surface = document.createElement('div');
       host.append(surface);
       const controls = createApp({ render: () => h(ElementPropertyToolbar, {
-        target: selected.value, busy: busy.value, hasHierarchy: false,
+        target: selected.value, busy: busy.value,
         anchor: { selection: { left: 300, top: 300, width: 100, height: 100 }, viewport: { width: 760, height: 760 } },
         onDeleteSelected: () => deleted.push(selected.value.authoringRef.editKey),
       }) });

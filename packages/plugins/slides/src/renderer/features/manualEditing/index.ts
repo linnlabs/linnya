@@ -53,7 +53,6 @@ export { provideManualEditSubmission, useManualEditSubmission } from './ports/ma
 export type { ManualEditQueueEntry, ManualEditSubmissionState, ManualEditSettlement, ManualEditTicket, ManualEditSubmissionPort } from './definitions/manualEditQueue';
 export type { ManualEditQueuePorts } from './definitions/manualEditQueuePorts';
 export { useManualEditingLocalization } from './ui/useManualEditingLocalization';
-export { default as ManualSelectionBreadcrumb } from './ui/ManualSelectionBreadcrumb.vue';
 export { default as ManualResizeHandles } from './ui/ManualResizeHandles.vue';
 export { canResizeManualTarget } from './functions/manualResize';
 export {

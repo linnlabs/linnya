@@ -6,7 +6,6 @@ const EDGE_GAP = 8;
 export function resolveElementPropertyToolbarPosition(
   anchor: ElementPropertyAnchor,
   surface: ElementPropertySize,
-  hasHierarchy: boolean,
 ): FloatingToolbarPosition | null {
   const { selection, viewport } = anchor;
   const right = selection.left + selection.width;
@@ -14,11 +13,11 @@ export function resolveElementPropertyToolbarPosition(
   if (right <= 0 || bottom <= 0 || selection.left >= viewport.width || selection.top >= viewport.height) return null;
   // 以可见部分居中；超大 Frame 或移出画布的子元素不会把工具条带出当前 pane。
   const center = (Math.max(0, selection.left) + Math.min(viewport.width, right)) / 2;
-  const above = selection.top - surface.height - (hasHierarchy ? 24 : 12);
+  const above = selection.top - surface.height - 12;
   const below = bottom + 12;
   const top = above >= EDGE_GAP ? above
     : below + surface.height <= viewport.height - EDGE_GAP ? below
-      : hasHierarchy ? Math.max(EDGE_GAP, selection.top + 24) : EDGE_GAP;
+      : EDGE_GAP;
   return {
     left: constrain(center - surface.width / 2, surface.width, viewport.width),
     top: constrain(top, surface.height, viewport.height),

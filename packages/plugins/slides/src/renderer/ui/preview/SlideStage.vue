@@ -107,16 +107,6 @@
           @submit="submitManualVisualOperation"
           @finish="scrollHostRef?.focus({ preventScroll: true })"
         />
-        <ManualSelectionBreadcrumb
-          v-if="manualSelectionPath.length > 1 && manualSelectedTarget && !textEditorTarget"
-          :path="manualPresentedSelectionPath"
-          :selected-element-id="manualSelectedTarget.elementId"
-          :slide-left="currentLayout.slideLeft"
-          :slide-top="currentLayout.slideTop"
-          :render-scale="renderScale"
-          :label="manualEditingMessage('slides.manualEditing.hierarchy.ariaLabel')"
-          @select="selectManualHierarchyTarget"
-        />
       </div>
     </div>
     <ElementPropertyToolbar
@@ -124,7 +114,6 @@
       :key="`${manualPropertyTarget.authoringRef.slideKey}/${manualPropertyTarget.authoringRef.editKey}`"
       :target="manualPropertyTarget"
       :anchor="manualPropertyAnchor"
-      :has-hierarchy="manualSelectionPath.length > 1"
       :busy="!canManualSelect"
       @submit="submitManualVisualOperation"
       @delete-selected="deleteManualSelectedTarget"
@@ -182,7 +171,6 @@ import {
   projectManualEditableTargetSelection,
   resolveManualEditingCursor,
   manualEditPresentationTrace,
-  ManualSelectionBreadcrumb,
   ManualResizeHandles,
   canResizeManualTarget,
   shouldHandleManualDeleteShortcut,
@@ -431,7 +419,6 @@ const {
 const manualResizePreview = shallowRef<ManualEditingVisualPreview | null>(null);
 const {
   selectedTarget: manualSelectedTarget,
-  selectionPath: manualSelectionPath,
   translationPreview: manualTranslationPreview,
   pendingTranslation: manualPendingTranslation,
   pendingVisual: manualPendingVisual,
@@ -448,7 +435,6 @@ const {
   handlePointerCancel: handleManualPointerCancel,
   handlePointerLeave: handleManualPointerLeave,
   handleDoubleClick: handleManualDoubleClick,
-  selectHierarchyTarget: selectManualHierarchyTarget,
   submitVisualOperation: submitManualVisualOperation,
   submitTextEdit,
   handleTextCompositionStart,
@@ -492,11 +478,6 @@ const manualPresentedSelectedTarget = computed(() => {
       )
     : null;
 });
-const manualPresentedSelectionPath = computed(() => manualSelectionPath.value.map(target => (
-  target.elementId === manualPresentedSelectedTarget.value?.elementId
-    ? manualPresentedSelectedTarget.value
-    : target
-)));
 const showElementPropertyControls = computed(() => (
   manualSelectedTarget.value
     ? hasElementPropertyControls(manualSelectedTarget.value)

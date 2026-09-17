@@ -182,11 +182,6 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     textEditing.open(editorTarget);
   }
 
-  function selectHierarchyTarget(target: ManualEditableTarget): void {
-    if (!selectionPath.value.some(candidate => candidate.elementId === target.elementId)) return;
-    store.selectTarget(target, selectionPath.value);
-  }
-
   function submitVisualOperation(operation: ManualEditingVisualOperation): boolean {
     const target = selectedTarget.value;
     if (!target || !options.canSelect.value) return false;
@@ -290,7 +285,6 @@ export function useSlideEditingInteraction(options: SlideEditingInteractionOptio
     handlePointerCancel,
     handlePointerLeave,
     handleDoubleClick,
-    selectHierarchyTarget,
     submitVisualOperation,
     deleteSelectedTarget,
     submitTextEdit: textEditing.requestCommit,
