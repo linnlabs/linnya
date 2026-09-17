@@ -1,5 +1,8 @@
 <template>
-  <v-group :__use-strict-mode="true" :config="previewTranslationConfig">
+  <v-group
+    :__use-strict-mode="true"
+    :config="previewTranslationConfig"
+  >
     <KonvaTextNode
       v-if="renderNode.kind === 'text'"
       :node="renderNode"
@@ -61,9 +64,9 @@ import KonvaTableNode from './KonvaTableNode.vue';
 import KonvaTextNode from './KonvaTextNode.vue';
 import { INCHES_TO_PX } from '../../../../shared/constants';
 import {
-  projectManualVisualPreviewsToRenderNode,
-  type ManualEditingVisualPreview,
-} from '../../../../features/manualEditing/manualVisualProjection';
+  projectEditingPreviewNode,
+  type EditingVisualPreview,
+} from '../../../../features/editingPreview';
 import type { ManualEditingTranslationPreview } from '../../../../features/manualEditing';
 
 const props = defineProps<{
@@ -72,10 +75,10 @@ const props = defineProps<{
   chartResources: SlideChartResourceMap;
   previewTranslations?: ReadonlyMap<string, ManualEditingTranslationPreview>;
   hiddenTextElementIds?: ReadonlySet<string>;
-  manualVisualPreviews?: readonly ManualEditingVisualPreview[];
+  manualVisualPreviews?: readonly EditingVisualPreview[];
 }>();
 
-const renderNode = computed(() => projectManualVisualPreviewsToRenderNode(
+const renderNode = computed(() => projectEditingPreviewNode(
   props.node,
   props.manualVisualPreviews ?? [],
 ));

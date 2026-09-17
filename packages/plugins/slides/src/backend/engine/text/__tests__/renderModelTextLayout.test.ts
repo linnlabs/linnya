@@ -1,3 +1,4 @@
+import { projectEditingPreviewNode } from '../../../../renderer/features/editingPreview';
 import { describe, expect, it } from 'vitest';
 import type {
   PresentationRenderModel,
@@ -229,7 +230,6 @@ describe('renderModelTextLayout', () => {
 });
 
 it('carries exact resize measurements through the codec and matches the committed shape text layout', async () => {
-  const { resizeShapeTextPreview } = await import('../../../../renderer/features/manualEditing/functions/resizeShapeTextPreview');
   const { isSlideRenderModel, findSlideRenderModelFailurePath } = await import('../../../../shared/renderModel/renderModelCodec');
   const model = makeRenderModel(makeTextNode());
   model.slides[0].background = { paint: { type: 'solid', color: '#FFFFFF' } };
@@ -249,9 +249,9 @@ it('carries exact resize measurements through the codec and matches the committe
   expect(isSlideRenderModel(wire), findSlideRenderModelFailurePath(wire)).toBe(true);
   if (!isSlideRenderModel(wire)) throw new Error('Invalid wire model');
   const wireShape = wire.elements.find(node => node.kind === 'shape');
-  if (!wireShape || wireShape.kind !== 'shape' || !wireShape.innerText?.preparedResizeLayout) throw new Error('Measurements lost in transport');
+  if (!wireShape || wireShape.kind !== 'shape' || !wireShape.innerText?.preparedTextLayout) throw new Error('Measurements lost in transport');
   for (const [w, h] of [[0.5, 0.25], [2, 0.7], [4, 2]]) {
-    const preview = resizeShapeTextPreview(wireShape.innerText, w - wireShape.innerText.box.w, h - wireShape.innerText.box.h);
+    const preview = previewShapeText(wireShape.innerText, w, h);
     const finalModel = structuredClone(model);
     const finalShape = finalModel.slides[0].elements.find(node => node.kind === 'shape');
     if (!finalShape || finalShape.kind !== 'shape' || !finalShape.innerText) throw new Error('Missing final shape');
@@ -263,7 +263,6 @@ it('carries exact resize measurements through the codec and matches the committe
 
 it('matches a freshly mapped generated shape across default font and compact padding thresholds', async () => {
   const { buildGeneratedShapeTextNode } = await import('../../parser/render-model/RenderModelText');
-  const { resizeShapeTextPreview } = await import('../../../../renderer/features/manualEditing/functions/resizeShapeTextPreview');
   const content = 'AVAV Shape';
   const create = (w: number, h: number) => buildGeneratedShapeTextNode({ id: 'shape-inner', zIndex: 0,
     box: { x: 0, y: 0, w, h, unit: 'in' } }, content, {}, 'Arial', undefined);
@@ -279,7 +278,7 @@ it('matches a freshly mapped generated shape across default font and compact pad
   applyTextLayoutToRenderModel(model, provider, metrics);
   const original = structuredClone(shape.innerText);
   for (const [w, h] of [[1, 0.4], [1.5, 0.55], [2, 1.8], [3, 2.5], [0.5, 0.2]]) {
-    const preview = resizeShapeTextPreview(original, w - original.box.w, h - original.box.h);
+    const preview = previewShapeText(original, w, h);
     shape.innerText = create(w, h);
     applyTextLayoutToRenderModel(model, provider, metrics);
     expect(preview.paragraphs).toEqual(shape.innerText.paragraphs);
@@ -294,10 +293,20 @@ it('omits editing measurements and extra font variants for read-only rendering',
   if (!shape || shape.kind !== 'shape' || !shape.innerText) throw new Error('Missing shape');
   shape.authoringEdit = { capabilities: ['translate', 'set_fill_color', 'set_visual_size'], fill: { kind: 'non_solid' } };
   shape.innerText.shapeTextSizing = { rotated: false };
-  const readonlyOptions = { prepareResizeMeasurements: false };
+  const readonlyOptions = { prepareEditingMeasurements: false };
   expect(collectClusterAdvanceRequestsForRenderModel(model, readonlyOptions).length)
     .toBeLessThan(collectClusterAdvanceRequestsForRenderModel(model).length);
   applyTextLayoutToRenderModel(model, createFakeRunAdvanceProviderForTests(0.08), undefined, readonlyOptions);
   expect(shape.innerText.layout?.lines.length).toBeGreaterThan(0);
-  expect(shape.innerText.preparedResizeLayout).toBeUndefined();
+  expect(shape.innerText.preparedTextLayout).toBeUndefined();
 });
+
+function previewShapeText(innerText: TextRenderNode, width: number, height: number): TextRenderNode {
+  const node = projectEditingPreviewNode({ id: 'shape', kind: 'shape', zIndex: 0,
+    box: innerText.box, innerText, geometry: { type: 'preset', name: 'rect' } }, [{
+    elementId: 'shape', affectedElementIds: ['shape'], operation: { op: 'set_visual_size',
+      target: { slideKey: 'slide', editKey: 'shape' }, targetKind: 'shape', visualSize: { width, height } },
+  }]);
+  if (node.kind !== 'shape' || !node.innerText) throw new Error('Missing shape preview');
+  return node.innerText;
+}

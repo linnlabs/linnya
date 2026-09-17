@@ -1,11 +1,10 @@
+import { projectEditingPreviewNode, collectEditingPreviewGeometries } from '../../editingPreview';
 import { describe, expect, it } from 'vitest';
 import type { RenderNode } from '../../../types/render';
 import type { ManualEditableTarget } from '../definitions/manualEditingTypes';
 import {
   createManualVisualPreview,
   projectManualEditableTargetSelection,
-  projectManualVisualPreviewsToRenderNode,
-  projectManualVisualPreviewsToSelectionPolygon,
 } from './manualVisualPreview';
 
 function target(targetKind: ManualEditableTarget['targetKind']): ManualEditableTarget {
@@ -39,7 +38,7 @@ function target(targetKind: ManualEditableTarget['targetKind']): ManualEditableT
 }
 
 describe('manual visual preview', () => {
-  it('projects text style into every text run without changing authoring text layout', () => {
+  it('keeps a complete prior frame when measurement facts are unavailable', () => {
     const selected = target('text');
     const preview = createManualVisualPreview(selected, {
       op: 'set_text_style',
@@ -55,13 +54,7 @@ describe('manual visual preview', () => {
       paragraphs: [{ runs: [{ text: 'A', fontSize: 14 }, { text: 'B', color: '#000000' }] }],
     };
 
-    expect(projectManualVisualPreviewsToRenderNode(node, preview ? [preview] : [])).toMatchObject({
-      box: node.box,
-      paragraphs: [{ runs: [
-        { text: 'A', fontSize: 30, color: '#2563EB' },
-        { text: 'B', fontSize: 30, color: '#2563EB' },
-      ] }],
-    });
+    expect(projectEditingPreviewNode(node, preview ? [preview] : [])).toBe(node);
   });
 
   it('projects shape fill and image size locally while waiting for compilation', () => {
@@ -80,7 +73,7 @@ describe('manual visual preview', () => {
       targetKind: 'shape',
       color: '#16A34A',
     });
-    expect(projectManualVisualPreviewsToRenderNode(
+    expect(projectEditingPreviewNode(
       shapeNode,
       fillPreview ? [fillPreview] : [],
     )).toMatchObject({
@@ -101,16 +94,16 @@ describe('manual visual preview', () => {
       targetKind: 'image',
       visualSize: { width: 4, height: 2.5 },
     });
-    expect(projectManualVisualPreviewsToRenderNode(
+    expect(projectEditingPreviewNode(
       imageNode,
       sizePreview ? [sizePreview] : [],
     )).toMatchObject({
       box: { x: 1, y: 1, w: 4, h: 2.5, unit: 'in' },
     });
-    expect(projectManualVisualPreviewsToSelectionPolygon(
-      image,
-      sizePreview ? [sizePreview] : [],
-    )).toEqual([
+    expect(projectManualEditableTargetSelection(
+      image, new Map(),
+      collectEditingPreviewGeometries([imageNode], sizePreview ? [sizePreview] : []),
+    ).polygon).toEqual([
       { x: 1, y: 1 }, { x: 5, y: 1 }, { x: 5, y: 3.5 }, { x: 1, y: 3.5 },
     ]);
   });
@@ -132,8 +125,8 @@ describe('manual visual preview', () => {
     const unrelated: RenderNode = { ...child, id: 'authoring-overview-unrelated' };
 
     const previews = preview ? [preview] : [];
-    expect(projectManualVisualPreviewsToRenderNode(child, previews).visible).toBe(false);
-    expect(projectManualVisualPreviewsToRenderNode(unrelated, previews)).toBe(unrelated);
+    expect(projectEditingPreviewNode(child, previews).visible).toBe(false);
+    expect(projectEditingPreviewNode(unrelated, previews)).toBe(unrelated);
   });
 
   it('expands a Frame selection around a child moved beyond its background', () => {
@@ -144,7 +137,10 @@ describe('manual visual preview', () => {
         'authoring-overview-child',
         { dx: 4, dy: 0 },
       ]]),
-      [],
+      new Map(frame.frameSelectionFragments?.map(fragment => [fragment.elementId, {
+        ...fragment, nodeKind: 'shape', zPath: [], bounds: frame.bounds,
+        node: { id: fragment.elementId, kind: 'shape', box: { ...frame.bounds, unit: 'in' }, zIndex: 0, geometry: { type: 'preset', name: 'rect' } },
+      }])),
     );
 
     expect(projected).toMatchObject({

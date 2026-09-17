@@ -1,3 +1,4 @@
+import { preparePreviewFixture } from './preparedPreviewFixture';
 import { layoutTextNode, resolveTextLayoutContractFromNode } from '../../src/shared/textLayout';
 import { createApp, h, nextTick } from 'vue';
 import { createPinia } from 'pinia';
@@ -97,8 +98,9 @@ export function mountShapeTextEditingSmoke() {
             contract: resolveTextLayoutContractFromNode(projectedText, { sourceKind: 'generated', profile: 'plain-textbox' }) },
           { getClusterAdvances: clusters => ({ advances: clusters.map(() => 0.08), source: 'heuristic' }) });
         }
-        return node.kind === 'shape' ? { ...node, authoringEdit, innerText: projectedText }
-          : { ...node, ...projectedText, authoringEdit };
+        const finalized = preparePreviewFixture(projectedText, node.kind === 'shape' ? 'shape-inner-text' : 'plain-textbox');
+        return node.kind === 'shape' ? { ...node, authoringEdit, innerText: finalized }
+          : { ...node, ...finalized, authoringEdit };
       }) }],
     };
   }

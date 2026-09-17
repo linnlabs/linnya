@@ -21,7 +21,8 @@ import {
   collectManualVisualPreviews,
   mergeManualTranslationPreviews,
 } from './manualIntentPreviews';
-import { projectManualEditableTargetSelection, projectManualVisualPreviewsToRenderNode } from './manualVisualPreview';
+import { projectManualEditableTargetSelection } from './manualVisualPreview';
+import { collectEditingPreviewGeometries } from '../../editingPreview';
 
 export interface ManualEditingHitProjection {
   readonly transientTranslation: ManualEditingTranslationPreview | null;
@@ -42,17 +43,16 @@ export function createPresentedTextEditingTarget(
   target: ManualEditableTarget,
   projection: ManualEditingHitProjection,
 ) {
-  const geometry = collectRenderNodeSelectionGeometries(nodes, isManualEditableNode)
-    .find(candidate => candidate.elementId === target.elementId);
-  if (!geometry) return null;
   const visuals = collectManualVisualPreviews(projection.pendingVisual, projection.queuedIntents, projection.transientVisual);
   const translations = mergeManualTranslationPreviews(collectManualTranslationPreviews(
     projection.transientTranslation, projection.pendingTranslation, projection.queuedIntents,
   ));
-  const presented = projectManualEditableTargetSelection(target, translations, visuals);
+  const geometries = collectEditingPreviewGeometries(nodes, visuals);
+  const geometry = geometries.get(target.elementId);
+  if (!geometry) return null;
+  const presented = projectManualEditableTargetSelection(target, translations, geometries);
   const editor = createTextEditingTarget({
     ...geometry,
-    node: projectManualVisualPreviewsToRenderNode(geometry.node, visuals),
     polygon: presented.polygon,
     bounds: presented.bounds,
   });
@@ -100,10 +100,11 @@ function findProjectedTargetPathAtPoint(
     projection.queuedIntents,
     projection.transientVisual,
   );
+  const geometries = collectEditingPreviewGeometries(nodes, visuals);
   for (let index = targets.length - 1; index >= 0; index -= 1) {
     const target = targets[index];
-    if (!target || isHiddenByPreview(target, visuals)) continue;
-    const hitPolygon = projectManualTargetHitPolygon(target, translations, visuals);
+    if (!target || !geometries.has(target.elementId)) continue;
+    const hitPolygon = projectManualTargetHitPolygon(target, translations, geometries);
     if (isPointInsideConvexPolygon(point, hitPolygon)) {
       return buildTargetPath(targets, target);
     }
@@ -115,29 +116,19 @@ function findProjectedTargetPathAtPoint(
 function projectManualTargetHitPolygon(
   target: ManualEditableTarget,
   translations: ReadonlyMap<string, ManualEditingTranslationPreview>,
-  visuals: readonly ManualEditingVisualPreview[],
+  geometries: ReadonlyMap<string, RenderNodeSelectionGeometry>,
 ): readonly RenderNodeSelectionPoint[] {
   const ownFragment = target.frameSelectionFragments
     ?.find(fragment => fragment.elementId === target.elementId);
   if (!ownFragment) {
-    return projectManualEditableTargetSelection(target, translations, visuals).polygon;
+    return projectManualEditableTargetSelection(target, translations, geometries).polygon;
   }
   return projectManualEditableTargetSelection({
     ...target,
     bounds: polygonBounds(ownFragment.polygon),
     polygon: ownFragment.polygon,
     frameSelectionFragments: undefined,
-  }, translations, visuals).polygon;
-}
-
-function isHiddenByPreview(
-  target: ManualEditableTarget,
-  previews: readonly ManualEditingVisualPreview[],
-): boolean {
-  return previews.some(preview => (
-    preview.operation.op === 'delete_target'
-    && preview.affectedElementIds.includes(target.elementId)
-  ));
+  }, translations, geometries).polygon;
 }
 
 function isPointInsideConvexPolygon(

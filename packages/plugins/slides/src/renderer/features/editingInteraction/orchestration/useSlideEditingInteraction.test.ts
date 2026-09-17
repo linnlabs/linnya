@@ -1,3 +1,4 @@
+import { prepareTextLayout, layoutPreparedText } from '@plugin/slides/shared/textLayout';
 // @vitest-environment jsdom
 
 import { createPinia, setActivePinia } from 'pinia';
@@ -118,6 +119,14 @@ describe('useSlideEditingInteraction', () => {
       innerText: { id: 'badge-inner', kind: 'text', box: { x: 1, y: 1, w: 3, h: 1, unit: 'in' },
         zIndex: 0, paragraphs: [{ align: 'center', runs: [{ text: 'Old' }] }], verticalAlign: 'middle' },
     }] };
+    const shape = shapeSlide.elements[0];
+    if (shape.kind !== 'shape' || !shape.innerText) throw new Error('Missing fixture text');
+    const text = shape.innerText;
+    text.padding = { top: 0, right: 0, bottom: 0, left: 0 };
+    text.preparedTextLayout = prepareTextLayout(text, 'generated', 'Arial', {
+      getClusterAdvances: clusters => ({ advances: clusters.map(() => 0.1), source: 'heuristic' }),
+    }, { getMetrics: () => undefined });
+    text.layout = layoutPreparedText(text, text.preparedTextLayout);
     const { interaction, wrapper } = createInteraction(submit, shapeSlide);
     enqueuePreview({ operation: {
       op: 'set_visual_size', targetKind: 'shape', target: { slideKey: 'overview', editKey: 'badge' },
@@ -129,7 +138,8 @@ describe('useSlideEditingInteraction', () => {
       },
     } });
     wrapper.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: 144, clientY: 144 }));
-    expect(interaction.textEditorTarget.value).toMatchObject({ elementId: 'badge', targetKind: 'shape', content: 'Old', width: 4, height: 2, verticalOffset: 1 });
+    expect(interaction.textEditorTarget.value).toMatchObject({ elementId: 'badge', targetKind: 'shape', content: 'Old', width: 4, height: 2 });
+    expect(interaction.textEditorTarget.value?.verticalOffset).toBeCloseTo((2 - text.layout!.contentHeightInches) / 2);
     interaction.textDraft.value = 'New';
     interaction.submitTextEdit();
     expect(submit).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ operation: {

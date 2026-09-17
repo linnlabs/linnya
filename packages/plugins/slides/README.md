@@ -33,6 +33,7 @@ Linnya Slides 先把 PPT 抽象成一门专用的场景图 DSL，再用 JavaScri
 - 前端预览与栅格渲染：[renderer](./src/renderer/docs/README.md)
 - 编辑交互会话与失败草稿恢复：[renderer/features/editingInteraction](./src/renderer/features/editingInteraction/README.md)
 - 选区属性工具条与颜色草稿：[renderer/features/elementProperties](./src/renderer/features/elementProperties/README.md)
+- 完整编辑预览与排版交接：[renderer/features/editingPreview](./src/renderer/features/editingPreview/README.md)
 - 前端有限人工编辑：[renderer/features/manualEditing](./src/renderer/features/manualEditing/README.md)
 - PPTX 编译、解析与质量检查：[backend/engine](./src/backend/engine/README.md)
 

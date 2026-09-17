@@ -14,7 +14,8 @@ async function run(): Promise<void> {
     assertFrameCount(result, 16);
     assertManualTranslationFrames(result, 2);
     assertManualVisualFrames(result, 5);
-    console.log('Slides live Vue/Konva transition pixels passed:', JSON.stringify(result));
+    await writeFile(path.resolve(__dirname, 'editing-preview-trace.json'), JSON.stringify(result, null, 2));
+    console.log('Slides live Vue/Konva transition pixels and atomic font frames passed; trace saved.');
     await verifyPropertyInteraction(window);
     await verifyShapeTextEditing(window);
     await verifySelectionToolbar(window);

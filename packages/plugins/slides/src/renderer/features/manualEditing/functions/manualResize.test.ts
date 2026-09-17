@@ -1,3 +1,5 @@
+import { collectEditingPreviewGeometries, type EditingVisualPreview } from '../../editingPreview';
+import type { RenderNode } from '../../../types/render';
 import { describe, expect, it } from 'vitest';
 import type { ManualEditableTarget } from '../definitions/manualEditingTypes';
 import { projectManualEditableTargetSelection, createManualVisualPreview } from './manualVisualPreview';
@@ -19,7 +21,7 @@ describe('manual resize gestures', () => {
     if (!operation) throw new Error('Missing resize operation');
     const preview = createManualVisualPreview(target, operation);
     if (!preview) throw new Error('Missing preview');
-    const presented = projectManualEditableTargetSelection(target, new Map(), [preview]);
+    const presented = projectManualEditableTargetSelection(target, new Map(), geometry(target, [preview]));
     expect(resolveManualResize({ target: presented, handle: 'right', clientX: 0, clientY: 0, renderScale: 1 }, 96, 0)?.visualSize)
       .toEqual({ width: 4, height: 1.5 });
   });
@@ -65,7 +67,7 @@ it('eight handles keep their opposite anchor fixed for rotated shapes and propor
         if (!operation) throw new Error(`Missing ${kind} ${handle}`);
         const preview = createManualVisualPreview(subject, operation);
         if (!preview) throw new Error('Missing preview');
-        const projected = projectManualEditableTargetSelection(subject, new Map(), [preview]);
+        const projected = projectManualEditableTargetSelection(subject, new Map(), geometry(subject, [preview]));
         const anchor = (value: ManualEditableTarget) => {
           const [origin, right, , bottom] = value.polygon;
           return { x: origin.x + (right.x - origin.x) * anchorX + (bottom.x - origin.x) * anchorY,
@@ -78,3 +80,15 @@ it('eight handles keep their opposite anchor fixed for rotated shapes and propor
     }
   }
 });
+
+function geometry(subject: ManualEditableTarget, previews: readonly EditingVisualPreview[]) {
+  const [origin, right, , bottom] = subject.polygon;
+  const base = { id: subject.elementId, zIndex: 0,
+    box: { x: origin.x, y: origin.y, w: Math.hypot(right.x - origin.x, right.y - origin.y),
+      h: Math.hypot(bottom.x - origin.x, bottom.y - origin.y), unit: 'in' as const },
+    rotation: Math.atan2(right.y - origin.y, right.x - origin.x) * 180 / Math.PI };
+  const node: RenderNode = subject.nodeKind === 'image'
+    ? { ...base, kind: 'image', asset: { type: 'url', value: 'fixture' } }
+    : { ...base, kind: 'shape', geometry: { type: 'preset', name: 'rect' } };
+  return collectEditingPreviewGeometries([node], previews);
+}

@@ -1,3 +1,4 @@
+import type { EditingVisualPreview as ManualEditingVisualPreview } from '../../editingPreview';
 import type {
   SlidesAuthoringEditCapability,
   SlidesAuthoringFillEditProjection,
@@ -49,16 +50,7 @@ export interface ManualEditingTranslationPreview {
   readonly dy: number;
 }
 
-export type ManualEditingVisualOperation = Extract<
-  SlidesManualEditOperation,
-  { readonly op: 'set_text_content' | 'set_text_style' | 'set_fill_color' | 'set_visual_size' | 'delete_target' }
->;
-
-export interface ManualEditingVisualPreview {
-  readonly elementId: string;
-  readonly affectedElementIds: readonly string[];
-  readonly operation: ManualEditingVisualOperation;
-}
+export type { EditingVisualOperation as ManualEditingVisualOperation, EditingVisualPreview as ManualEditingVisualPreview } from '../../editingPreview';
 
 /** Renderer 内部 intent；operation 是正式写入，preview 只服务提交队列的即时画面。 */
 export interface ManualEditIntent {

@@ -57,13 +57,15 @@ TextRenderNode / table cell
 
 普通展示直接消费最终布局，不再次测量或追加省略号。普通文本、shape inner text 和 table cell 都必须在 backend finalization 阶段得到同一种 `TextLayoutResult`。
 
-### Shape 实时缩放
+### 编辑即时排版
 
-可编辑 generated Shape 的拖拽预览通过 `prepareTextLayout` / `layoutPreparedText` 复用本模块的同一排版器。Backend 只为具有 `set_visual_size` 能力的 Shape 准备完整 run shaping 序列和字体 metrics，覆盖 shrink 档位及自动字号真实可达值。Renderer 仅用这些事实同步执行换行和 autofit，不访问字体服务、不使用 Canvas 近似测量、不触发每次指针移动的 IPC 或编译。
+Text 字号与 Shape 缩放通过 `prepareTextLayout` / `layoutPreparedText` 复用同一排版器。Backend 为可编辑文字及形状文字提供明确 profile、autofit 前的 inputBox 和正式字体事实；Renderer 的 editingPreview feature 负责完整派生与发布，不在 Vue 组件内分别更新文字样式和旧行坐标。
 
-`resolveShapeTextLayout` 是 generated Shape 默认字号与内边距的唯一规则；`shapeTextResizeInput` 以同一规则生成预览输入，显式字号保持不变，未声明字号按新尺寸计算。`shapeTextSizing` 保存这一输入语义，`preparedResizeLayout` 是随 RenderModel 修订替换的只读测量事实，不是用户源码或持久化编辑格式。当前适用生成 Shape 的 clip/shrink-text 合同，不是通用 ellipsis 编辑器。
+HarfBuzz 完整 run 的原始 fontUnits 与 metricsInEm 可在任意字号下同源投影，避免枚举工具栏字号和重复 shaping。未提供可缩放事实的 provider 只保存其实际测量过的字号，保留真实 provenance；不能从已舍入宽度反推原始单位。`null` metrics 表示正式 provider 没有字体指标。完整序列保留位置相关 kerning，不能按单字去重。严格 codec 验证 profile、inputBox、数字与索引，WeakMap 查询索引随快照回收。
 
-测量快照用 key／字宽字典无损编码，保留每个 run 的完整位置序列，不能按单字符缓存破坏 kerning；`null` metrics 表示正式 provider 未返回字体指标。解码由严格 codec 验证索引范围，临时查询索引通过 WeakMap 随快照回收。缺失测量事实直接暴露合同错误，不在前端替换测量算法。只读 standalone CLI 通过 `prepareResizeMeasurements: false` 关闭额外预热与快照。
+`resolveShapeTextLayout` 是 generated Shape 默认字号与内边距的唯一规则，`shapeTextResizeInput` 派生缩放输入。`shapeTextSizing` 保存显式字号或按尺寸估算的语义。非线性 provider 的 Shape 快照仅覆盖默认字号与 shrink 的真实可达档位；线性字体事实一次记录即可覆盖这些档位。
+
+缺失测量事实抛出明确的 PreparedTextMeasurementUnavailable，editingPreview 保留整个旧节点等待正式修订；不允许近似移动旧行或换测量算法。任意新正文、作者布局树重排和通用 ellipsis 编辑不在本地精确快照范围。只读 standalone CLI 使用 prepareEditingMeasurements=false 关闭额外预热和快照。
 
 ## 行距合同
 

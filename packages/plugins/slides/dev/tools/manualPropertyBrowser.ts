@@ -1,5 +1,7 @@
+import { preparePreviewFixture } from './preparedPreviewFixture';
+import { collectEditingPreviewGeometries } from '../../src/renderer/features/editingPreview';
 import { prepareTextLayout, layoutPreparedText } from '../../src/shared/textLayout';
-import { resizeShapeTextPreview } from '../../src/renderer/features/manualEditing/functions/resizeShapeTextPreview';
+import { resizeShapeTextInput } from '../../src/shared/textLayout';
 import { computed, createApp, h, nextTick, shallowRef } from 'vue';
 import VueKonva from 'vue-konva';
 import Konva from 'konva';
@@ -42,11 +44,14 @@ export function mountManualPropertySmoke() {
       },
     }],
   };
+  const initialShape = slide.elements[0];
+  if (initialShape.kind !== 'shape' || !initialShape.innerText) throw new Error('Missing fixture shape');
+  initialShape.innerText = preparePreviewFixture(initialShape.innerText, 'shape-inner-text');
   const queued = shallowRef<readonly ManualEditingVisualPreview[]>([]);
   const disabled = shallowRef(false);
   const transient = shallowRef<ManualEditingVisualPreview | null>(null);
   const previews = computed(() => [...queued.value, ...(transient.value ? [transient.value] : [])]);
-  const presented = computed(() => projectManualEditableTargetSelection(target, new Map(), previews.value));
+  const presented = computed(() => projectManualEditableTargetSelection(target, new Map(), collectEditingPreviewGeometries(slide.elements, previews.value)));
   const properties = computed(() => projectElementPropertyTarget(target, previews.value));
   const operations: ManualEditingVisualOperation[] = [];
   function submit(operation: ManualEditingVisualOperation): void {
@@ -222,8 +227,10 @@ export function mountManualPropertySmoke() {
       const node = stage.getLayers()[1]?.findOne<Konva.Rect>('Rect');
       assert(!!node && node.width() === width * 96 && node.height() === height * 96, 'Canvas resize differs from interaction');
       const text = stage.getLayers()[1]?.findOne<Konva.Text>('Text');
-      assert(!!text && Math.abs(text.x() - (width - 1) * 48) < 0.01
-        && Math.abs(text.y() - (height - 0.2) * 48) < 0.01, 'Shape text did not follow live resize alignment');
+      const expected = preparePreviewFixture(resizeShapeTextInput(initialShape.innerText!, { ...initialShape.innerText!.box, w: width, h: height }), 'shape-inner-text');
+      const line = expected.layout?.lines[0]?.slices[0];
+      assert(!!text && !!line && line.kind !== 'inlineBox' && Math.abs(text.x() - (line.x + 0.1) * 96) < 0.01
+        && Math.abs(text.y() - (line.textY + 0.05) * 96) < 0.01, 'Shape text did not follow live resize layout');
       assert(properties.value.visualSize?.width === width && properties.value.visualSize.height === height, 'Property resize differs from canvas');
       assert(operations.length === commits, 'Resize submitted an unexpected number of commands');
       assert(Boolean(transient.value) === dragging, 'Resize gesture preview did not settle');
@@ -248,7 +255,7 @@ export function mountManualPropertySmoke() {
       const prepared = prepareTextLayout(text, 'generated', 'Arial', {
         getClusterAdvances: (clusters, style) => ({ advances: clusters.map(() => style.fontSizePt / 144), source: 'harfbuzz' }),
       }, { getMetrics: style => ({ ascent: style.fontSizePt / 90, descent: style.fontSizePt / 360, lineGap: 0 }) });
-      shape.innerText = { ...text, preparedResizeLayout: prepared, layout: layoutPreparedText(text, prepared) };
+      shape.innerText = { ...text, preparedTextLayout: prepared, layout: layoutPreparedText(text, prepared) };
       const scales = new Set<number>();
       try {
         for (const [width, height] of [[0.6, 0.3], [3, 2]]) {
@@ -258,7 +265,7 @@ export function mountManualPropertySmoke() {
           if (!preview) throw new Error('Missing text resize preview');
           queued.value = [preview];
           await nextTick();
-          const expected = resizeShapeTextPreview(shape.innerText, width - 2, height - 1).layout;
+          const expected = layoutPreparedText(resizeShapeTextInput(shape.innerText, { ...shape.innerText.box, w: width, h: height }), prepared);
           if (!expected) throw new Error('Missing text resize layout');
           const painted = stage.getLayers()[1]?.find<Konva.Text>('Text') ?? [];
           assert(painted.length > 0 && painted.every(slice => Math.abs(slice.fontSize() - 24 * expected.appliedFontScale * 96 / 72) < 0.01),

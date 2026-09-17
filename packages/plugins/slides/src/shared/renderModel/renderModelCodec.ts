@@ -307,7 +307,7 @@ function isTextRenderNode(value: Record<string, unknown>): boolean {
       'wrap',
       'overflow',
       'autoFitPolicy',
-      'preparedResizeLayout',
+      'preparedTextLayout',
       'shapeTextSizing',
       'padding',
       'layout',
@@ -319,7 +319,7 @@ function isTextRenderNode(value: Record<string, unknown>): boolean {
     && isOptional(value.autoFitPolicy, policy => isOneOf(policy, ['none', 'shrink-text', 'resize-shape']))
     && isOptional(value.padding, isRenderPadding)
     && isOptional(value.layout, isTextLayoutResult)
-    && isOptional(value.preparedResizeLayout, isPreparedResizeLayout)
+    && isOptional(value.preparedTextLayout, isPreparedTextLayout)
     && isOptional(value.shapeTextSizing, sizing => isRecord(sizing)
       && hasOnlyKeys(sizing, ['fontSize', 'rotated'])
       && isOptional(sizing.fontSize, isFiniteNumber) && isBoolean(sizing.rotated));
@@ -1023,8 +1023,8 @@ function isBoolean(value: unknown): value is boolean {
   return typeof value === 'boolean';
 }
 
-function isPreparedResizeLayout(value: unknown): boolean {
-  if (!isRecord(value) || !hasOnlyKeys(value, ['sourceKind', 'defaultFontFamily', 'keys', 'widths', 'advances', 'metrics'])
+function isPreparedTextLayout(value: unknown): boolean {
+  if (!isRecord(value) || !hasOnlyKeys(value, ['sourceKind', 'defaultFontFamily', 'profile', 'inputBox', 'keys', 'widths', 'advances', 'metrics', 'fontUnits', 'metricsInEm'])
     || !Array.isArray(value.keys) || !Array.isArray(value.widths)
     || !isArrayOf(value.keys, isString) || !isArrayOf(value.widths, isFiniteNumber)) return false;
   const keyCount = value.keys.length;
@@ -1033,6 +1033,17 @@ function isPreparedResizeLayout(value: unknown): boolean {
     isFiniteNumber(index) && Number.isInteger(index) && index >= 0 && index < length;
   return isOneOf(value.sourceKind, ['generated', 'imported'])
     && isString(value.defaultFontFamily)
+    && isOneOf(value.profile, ['plain-textbox', 'shape-inner-text'])
+    && isRenderBox(value.inputBox)
+    && isArrayOf(value.fontUnits, entry => isRecord(entry)
+      && hasOnlyKeys(entry, ['key', 'value', 'source']) && isIndex(entry.key, keyCount)
+      && isOneOf(entry.source, ['harfbuzz', 'heuristic', 'pretext'])
+      && isRecord(entry.value) && hasOnlyKeys(entry.value, ['unitsPerEm', 'advances'])
+      && isFiniteNumber(entry.value.unitsPerEm) && entry.value.unitsPerEm > 0
+      && isArrayOf(entry.value.advances, isFiniteNumber))
+    && isArrayOf(value.metricsInEm, entry => isRecord(entry)
+      && hasOnlyKeys(entry, ['key', 'value']) && isIndex(entry.key, keyCount)
+      && isPreparedFontMetrics(entry.value))
     && isArrayOf(value.advances, entry => isRecord(entry)
       && hasOnlyKeys(entry, ['key', 'fontSizePt', 'widthIndexes', 'source'])
       && isIndex(entry.key, keyCount) && isFiniteNumber(entry.fontSizePt) && entry.fontSizePt > 0
@@ -1041,7 +1052,11 @@ function isPreparedResizeLayout(value: unknown): boolean {
     && isArrayOf(value.metrics, entry => isRecord(entry)
       && hasOnlyKeys(entry, ['key', 'fontSizePt', 'value']) && isIndex(entry.key, keyCount)
       && isFiniteNumber(entry.fontSizePt) && entry.fontSizePt > 0
-      && (entry.value === null || (isRecord(entry.value)
-        && hasOnlyKeys(entry.value, ['ascent', 'descent', 'lineGap'])
-        && isFiniteNumber(entry.value.ascent) && isFiniteNumber(entry.value.descent) && isFiniteNumber(entry.value.lineGap))));
+      && isPreparedFontMetrics(entry.value));
+}
+
+function isPreparedFontMetrics(value: unknown): boolean {
+  return value === null || (isRecord(value)
+    && hasOnlyKeys(value, ['ascent', 'descent', 'lineGap'])
+    && isFiniteNumber(value.ascent) && isFiniteNumber(value.descent) && isFiniteNumber(value.lineGap));
 }

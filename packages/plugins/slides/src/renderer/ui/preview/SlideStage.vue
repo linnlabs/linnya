@@ -142,6 +142,7 @@
 </template>
 
 <script setup lang="ts">
+import { collectEditingPreviewGeometries } from '../../features/editingPreview';
 import { ref, shallowRef, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useSlidesUiStore } from '../../store/slidesUiStore';
@@ -506,7 +507,7 @@ const manualPresentedSelectedTarget = computed(() => {
     ? projectManualEditableTargetSelection(
         target,
         manualPreviewTranslations.value,
-        manualVisualPreviews.value,
+        collectEditingPreviewGeometries(displayedSlide.value?.elements ?? [], manualVisualPreviews.value),
       )
     : null;
 });

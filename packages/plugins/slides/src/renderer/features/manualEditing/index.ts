@@ -21,8 +21,6 @@ export { appendManualEditIntent } from './functions/appendManualEditIntent';
 export {
   createManualVisualPreview,
   projectManualEditableTargetSelection,
-  projectManualVisualPreviewsToRenderNode,
-  projectManualVisualPreviewsToSelectionPolygon,
 } from './functions/manualVisualPreview';
 export {
   collectManualTranslationPreviews,
