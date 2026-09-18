@@ -4,6 +4,8 @@ Markdown 是 Linnya 永久启用的平台默认文档领域，而不是可安装
 
 同时，Markdown 也是一种可被其他领域复用的文本格式。Web 页面、Knowledge 内容、会话文件或插件输出可以使用 `text/markdown` 供界面预览，却不因此成为 Markdown 文档实体。通用语法导入/序列化能力可以复用；依赖 `document_versions`、rootBlock identity、pending revisions、Block 卫星表和批注的能力才属于本领域的文档实例。
 
+Markdown document-write 接受标准 `[标题](https://...)` 作为 Web 来源指针：只有 URL 匹配 Host 已接纳的来源快照时才物化为 CitationNode；未匹配的链接继续保持普通 Markdown 链接。CitationNode 仍是持久化真相，正文 `[1]` 编号和文末 bibliography 由现有 Citation 派生统一生成。
+
 ## 稳定边界
 
 - Workspace domain 拥有 `projects`、`workspace_nodes`、路径解析和 VFS 调度。

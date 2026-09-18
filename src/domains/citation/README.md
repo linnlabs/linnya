@@ -53,6 +53,11 @@ Citation domain 管理跨 producer 的公共引用规则：Conversation 内的 6
 - `features/snapshot-history/`：严格读取已退出 live 生产链的 Knowledge CitationSnapshot，只服务历史卡片恢复与下载；
 - `src/domains/markdown/features/document-write/`：Markdown 将本 domain 已接纳的来源投影成 CitationNode；Citation 不反向依赖 Markdown。
 
+Markdown 文档写入同时支持两种作者输入：canonical `[@ref]` 和标准 Markdown 链接
+`[标题](https://...)`。后者只有在 URL 命中当前 working history 中已由 Web producer 接纳的来源时，
+才会由 Markdown document-write 转换为 CitationNode；未命中的链接保留为普通链接，不代表来源已读取或已验证。
+通用 `write_file/edit_file` 不承担这项领域判断。
+
 文档读取投影已经进入 live `read_file` 的普通 VFS text 与结构化 DocumentView。只有这两个正文入口
 可以把 canonical `[@ref]` 连同同窗口来源事实交给 Agent；`grep` 与 pending diff 会遮罩 ref，不能成为
 旁路 citation producer。禁止把 Evidence 文本拼进 Workspace reader，或让 Deep Research 建立私有
@@ -62,6 +67,9 @@ citation read 分支。
 `docId + blockId`，Web 引用必须接纳 HTTP(S) canonical URL；同一 ref 指向不同锚点时必须
 fail-fast。同锚点有多个快照时，Host resolver 按“当前 owner 输出优先、Evidence fallback 在后”的
 顺序提供候选，Citation domain 统一接纳并保留第一条。
+
+按 URL 的 Markdown 链接接纳只查询当前 working history，不通过 URL 反向创建 Evidence 或伪造来源；
+未命中的 URL 不阻断通用 Markdown 写入。
 
 当前 `write_file/edit_file` 已通过 platform ToolContext decorator 取得 Host resolver；Markdown
 document-write 只负责把接纳结果投影为 CitationNode。完整但非法的 citation-like token（包括合法/非法 ref
