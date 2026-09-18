@@ -86,9 +86,13 @@ export async function admitMarkdownCitationLinkHydration(
   if (normalizedUrls.length === 0) return {};
 
   const sources = await resolveSourcesByUrl(normalizedUrls);
+  const requested = new Set(normalizedUrls);
   const result: Record<string, CitationLinkHydrationData> = {};
   for (const source of sources) {
     const key = normalizeCitationWebUrl(source.url);
+    if (!requested.has(key)) {
+      throw new Error(`Citation URL resolver 返回了未请求的来源 ${key}。`);
+    }
     const existing = result[key];
     if (existing && existing.ref !== source.ref) {
       throw new Error(`Web citation URL ${key} 对应了不同的 ref。`);
