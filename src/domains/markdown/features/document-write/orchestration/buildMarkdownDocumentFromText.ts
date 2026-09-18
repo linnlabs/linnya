@@ -1,12 +1,15 @@
 import { extractCanonicalCitationRefs } from '../../../../citation';
 import {
   attachCitationNodesToDocJson,
+  collectMarkdownLinkHrefs,
   getDefaultContent,
   type MarkdownDocJson,
 } from '../../normalization';
 import {
+  admitMarkdownCitationLinkHydration,
   admitMarkdownCitationHydration,
   type ResolveMarkdownCitationSources,
+  type ResolveMarkdownCitationSourcesByUrl,
 } from '../functions/admitMarkdownCitationHydration';
 
 export interface MarkdownTextDocumentBuilder {
@@ -18,6 +21,7 @@ export async function buildMarkdownDocumentFromText(params: {
   readonly markdown: string;
   readonly normalizer: MarkdownTextDocumentBuilder;
   readonly resolveCitationSources: ResolveMarkdownCitationSources;
+  readonly resolveCitationSourcesByUrl?: ResolveMarkdownCitationSourcesByUrl;
 }): Promise<{ readonly content: unknown }> {
   const text = params.markdown;
   if (text.trim().length === 0) {
@@ -34,7 +38,21 @@ export async function buildMarkdownDocumentFromText(params: {
     throw new Error('Markdown 结构化导入失败，write_file 未创建文件。');
   }
 
-  return citationRefs.length > 0
-    ? { content: attachCitationNodesToDocJson(normalizedContent, citationHydration) }
+  const linkHrefs = collectMarkdownLinkHrefs(normalizedContent);
+  const linkHydration = params.resolveCitationSourcesByUrl && linkHrefs.length > 0
+    ? await admitMarkdownCitationLinkHydration(
+        linkHrefs,
+        params.resolveCitationSourcesByUrl,
+      )
+    : {};
+
+  return citationRefs.length > 0 || Object.keys(linkHydration).length > 0
+    ? {
+        content: attachCitationNodesToDocJson(
+          normalizedContent,
+          citationHydration,
+          linkHydration,
+        ),
+      }
     : { content: normalizedContent };
 }

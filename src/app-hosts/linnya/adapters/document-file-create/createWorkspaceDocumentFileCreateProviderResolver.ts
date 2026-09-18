@@ -93,6 +93,8 @@ function createMarkdownFileCreateProvider(params: {
         normalizer,
         resolveCitationSources: refs =>
           requireCitationSourceResolver(params.context).resolveSources(refs),
+        resolveCitationSourcesByUrl: urls =>
+          requireCitationSourceResolver(params.context).resolveSourcesByUrl(urls),
       });
       return params.db
         .transaction(() => {

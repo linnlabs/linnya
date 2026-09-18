@@ -37,7 +37,12 @@ export {
   attachCitationNodesToDocJson,
   buildCitationNodeAttrs,
   type CitationNodeHydrationData,
+  type CitationLinkHydrationData,
 } from './citationNodeHydration';
+export {
+  collectMarkdownLinkHrefs,
+  collectMarkdownLinkHrefsByRootBlock,
+} from './markdownLinkHydration';
 export type {
   MarkdownDocJson,
   ProseMirrorJsonNode,

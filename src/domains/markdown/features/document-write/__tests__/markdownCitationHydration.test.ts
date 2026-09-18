@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   admitMarkdownCitationHydration,
   buildMarkdownPendingCitationMetadata,
+  buildMarkdownDocumentFromText,
 } from '..';
 import type { CitationSource } from '../../../../citation';
+import type { MarkdownDocJson } from '../../normalization';
 
 describe('Markdown document write citation hydration', () => {
   it('把 Citation 公开来源投影为 Markdown Mark hydration', async () => {
@@ -92,6 +94,50 @@ describe('Markdown document write citation hydration', () => {
     expect([...metaByMarkdown.values()]).toEqual([
       { citation_hydration: { Abc234: expect.objectContaining({ docId: 'doc-1' }) } },
       { citation_hydration: { Def567: expect.objectContaining({ url: 'https://example.com/article' }) } },
+    ]);
+  });
+
+  it('创建文档时按标准 Markdown 链接接纳已读 Web 来源', async () => {
+    const source: CitationSource = {
+      sourceType: 'web',
+      ref: 'Abc234',
+      url: 'https://example.com/report',
+      title: 'Official report',
+      snippet: 'Report snapshot',
+    };
+    const document: MarkdownDocJson = {
+      type: 'doc',
+      content: [{
+        type: 'rootBlock',
+        attrs: { id: 'root-1' },
+        content: [{
+          type: 'baseBlock',
+          attrs: { id: 'block-1' },
+          content: [{
+            type: 'text',
+            text: 'Official report',
+            marks: [{ type: 'link', attrs: { href: 'https://example.com/report/?utm_source=agent' } }],
+          }],
+        }],
+      }],
+    };
+
+    const result = await buildMarkdownDocumentFromText({
+      markdown: '[Official report](https://example.com/report/?utm_source=agent)',
+      normalizer: { buildStructuredDocFromMarkdown: async () => document },
+      resolveCitationSources: async () => [],
+      resolveCitationSourcesByUrl: async urls => {
+        expect(urls).toEqual(['https://example.com/report']);
+        return [source];
+      },
+    });
+
+    const inline = (result.content as MarkdownDocJson).content[0]?.content?.[0]?.content;
+    expect(inline).toEqual([
+      expect.objectContaining({
+        type: 'citationNode',
+        attrs: expect.objectContaining({ ref: 'Abc234', url: source.url }),
+      }),
     ]);
   });
 });

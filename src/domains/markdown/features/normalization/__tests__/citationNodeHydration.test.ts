@@ -212,4 +212,61 @@ describe('attachCitationNodesToDocJson', () => {
       { type: 'text', text: '[@Def567]' },
     ]);
   });
+
+  it('把匹配已接纳来源的标准 Markdown 链接转换为 CitationNode，并保留普通链接', () => {
+    const result = attachCitationNodesToDocJson(
+      buildDoc([
+        { type: 'text', text: '官方报告', marks: [{ type: 'link', attrs: { href: 'https://example.com/report/?utm_source=agent#summary' } }] },
+        { type: 'text', text: '普通链接', marks: [{ type: 'link', attrs: { href: 'https://example.com/unresolved' } }] },
+      ]),
+      {},
+      {
+        'https://example.com/report': {
+          ref: 'Abc234',
+          data: {
+            sourceType: 'web',
+            url: 'https://example.com/report',
+            title: '官方报告',
+            snippet: '报告快照',
+          },
+        },
+      },
+    );
+
+    expect(inlineContent(result)).toEqual([
+      expect.objectContaining({
+        type: 'citationNode',
+        attrs: expect.objectContaining({ ref: 'Abc234', sourceType: 'web' }),
+      }),
+      {
+        type: 'text',
+        text: '普通链接',
+        marks: [{ type: 'link', attrs: { href: 'https://example.com/unresolved', title: null } }],
+      },
+    ]);
+  });
+
+  it('不把代码中的 URL 转换为 CitationNode', () => {
+    const result = attachCitationNodesToDocJson(
+      buildDoc([
+        { type: 'text', text: 'code', marks: [{ type: 'code' }, { type: 'link', attrs: { href: 'https://example.com/report' } }] },
+      ]),
+      {},
+      {
+        'https://example.com/report': {
+          ref: 'Abc234',
+          data: {
+            sourceType: 'web',
+            url: 'https://example.com/report',
+            title: 'Report',
+            snippet: 'Snapshot',
+          },
+        },
+      },
+    );
+
+    expect(inlineContent(result)).toEqual([
+      { type: 'text', text: 'code', marks: [{ type: 'code' }, { type: 'link', attrs: { href: 'https://example.com/report', title: null } }] },
+    ]);
+  });
 });

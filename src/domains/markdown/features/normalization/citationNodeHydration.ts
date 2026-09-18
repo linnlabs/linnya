@@ -3,7 +3,7 @@
  * token 识别严格复用 Citation domain 的 canonical parser，避免 Markdown domain 自建正则协议。
  */
 import type { CitationSourceType } from '@app/schemas';
-import { parseMarkdownCitationTokens } from '../../../citation';
+import { normalizeCitationWebUrl, parseMarkdownCitationTokens } from '../../../citation';
 import { validateMarkdownDocJson } from './schemaLite';
 import type { MarkdownDocJson, ProseMirrorJsonNode } from './types';
 
@@ -18,6 +18,11 @@ export interface CitationNodeHydrationData {
   date?: string;
   authors?: string[];
   containerTitle?: string;
+}
+
+export interface CitationLinkHydrationData {
+  readonly ref: string;
+  readonly data: CitationNodeHydrationData;
 }
 
 function generateCitationId(): string {
@@ -61,12 +66,13 @@ function createTextSegment(source: ProseMirrorJsonNode, text: string): ProseMirr
 function createCitationNode(
   source: ProseMirrorJsonNode,
   ref: string,
-  data: CitationNodeHydrationData
+  data: CitationNodeHydrationData,
+  marks: ProseMirrorJsonNode['marks'] = source.marks,
 ): ProseMirrorJsonNode {
   return {
     type: 'citationNode',
     attrs: buildCitationNodeAttrs({ data, ref, citationId: generateCitationId() }),
-    ...(Array.isArray(source.marks) && source.marks.length > 0 ? { marks: source.marks } : {}),
+    ...(Array.isArray(marks) && marks.length > 0 ? { marks } : {}),
   };
 }
 
@@ -103,7 +109,7 @@ function mergeAdjacentTextNodes(content: ProseMirrorJsonNode[]): ProseMirrorJson
 
 function hydrateTextNode(
   node: ProseMirrorJsonNode,
-  hydration: Readonly<Record<string, CitationNodeHydrationData>>
+  hydration: Readonly<Record<string, CitationNodeHydrationData>>,
 ): ProseMirrorJsonNode[] {
   const text = typeof node.text === 'string' ? node.text : '';
   if (!text || node.marks?.some(mark => mark.type === 'code')) return [node];
@@ -133,24 +139,51 @@ function hydrateTextNode(
   return result;
 }
 
+function hydrateStandardMarkdownLink(
+  node: ProseMirrorJsonNode,
+  linkHydration: Readonly<Record<string, CitationLinkHydrationData>>,
+): ProseMirrorJsonNode | null {
+  if (node.marks?.some(mark => mark.type === 'code')) return null;
+  const link = node.marks?.find(mark => mark.type === 'link');
+  const href = link?.attrs?.href;
+  if (typeof href !== 'string' || href.trim().length === 0) return null;
+  const match = linkHydration[normalizeCitationWebUrl(href)];
+  if (!match) return null;
+  const marks = node.marks?.filter(mark => mark.type !== 'link');
+  return createCitationNode(node, match.ref, match.data, marks);
+}
+
 function hydrateNode(
   node: ProseMirrorJsonNode,
-  hydration: Readonly<Record<string, CitationNodeHydrationData>>
+  hydration: Readonly<Record<string, CitationNodeHydrationData>>,
+  linkHydration: Readonly<Record<string, CitationLinkHydrationData>>,
 ): ProseMirrorJsonNode[] {
-  if (node.type === 'text') return hydrateTextNode(node, hydration);
+  if (node.type === 'text') {
+    const canonical = hydrateTextNode(node, hydration);
+    if (canonical.length !== 1 || canonical[0] !== node) return canonical;
+    const linked = hydrateStandardMarkdownLink(node, linkHydration);
+    return linked ? [linked] : canonical;
+  }
   if (node.type === 'codeBlock') return [node];
   if (!Array.isArray(node.content) || node.content.length === 0) return [node];
   const continuousContent = mergeAdjacentTextNodes(node.content);
-  return [{ ...node, content: continuousContent.flatMap(child => hydrateNode(child, hydration)) }];
+  return [{
+    ...node,
+    content: continuousContent.flatMap(child => hydrateNode(child, hydration, linkHydration)),
+  }];
 }
 
 export function attachCitationNodesToDocJson(
   docJson: MarkdownDocJson,
-  hydration: Readonly<Record<string, CitationNodeHydrationData>>
+  hydration: Readonly<Record<string, CitationNodeHydrationData>>,
+  linkHydration: Readonly<Record<string, CitationLinkHydrationData>> = {},
 ): MarkdownDocJson {
-  if (!Array.isArray(docJson.content) || Object.keys(hydration).length === 0) return docJson;
+  if (
+    !Array.isArray(docJson.content) ||
+    (Object.keys(hydration).length === 0 && Object.keys(linkHydration).length === 0)
+  ) return docJson;
   return validateMarkdownDocJson({
     ...docJson,
-    content: docJson.content.flatMap(node => hydrateNode(node, hydration)),
+    content: docJson.content.flatMap(node => hydrateNode(node, hydration, linkHydration)),
   });
 }

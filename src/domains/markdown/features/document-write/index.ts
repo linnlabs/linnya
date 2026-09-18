@@ -7,7 +7,10 @@ export {
 } from './orchestration/writeMarkdownDocumentFromText';
 export {
   admitMarkdownCitationHydration,
+  admitMarkdownCitationLinkHydration,
+  toCitationNodeHydrationData,
   type ResolveMarkdownCitationSources,
+  type ResolveMarkdownCitationSourcesByUrl,
 } from './functions/admitMarkdownCitationHydration';
 export { buildMarkdownPendingCitationMetadata } from './orchestration/buildMarkdownPendingCitationMetadata';
 export {

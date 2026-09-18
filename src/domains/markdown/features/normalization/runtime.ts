@@ -10,5 +10,10 @@ export { validateMarkdownDocJson } from './schemaLite';
 export {
   attachCitationNodesToDocJson,
   type CitationNodeHydrationData,
+  type CitationLinkHydrationData,
 } from './citationNodeHydration';
+export {
+  collectMarkdownLinkHrefs,
+  collectMarkdownLinkHrefsByRootBlock,
+} from './markdownLinkHydration';
 export type { MarkdownDocJson, ProseMirrorJsonNode } from './types';
