@@ -140,4 +140,38 @@ describe('Markdown document write citation hydration', () => {
       }),
     ]);
   });
+
+  it('为 pending revision 按 root block 保存标准链接的 citation hydration', async () => {
+    const metaByMarkdown = await buildMarkdownPendingCitationMetadata(
+      '结论见 [官方报告](https://example.com/report/?utm_source=agent).',
+      async () => [],
+      {
+        collectLinkHrefs: async () => ['https://example.com/report/?utm_source=agent'],
+        resolveSourcesByUrl: async urls => {
+          expect(urls).toEqual(['https://example.com/report']);
+          return [{
+            sourceType: 'web',
+            ref: 'Abc234',
+            url: 'https://example.com/report',
+            title: '官方报告',
+            snippet: '报告快照',
+          }];
+        },
+      },
+    );
+
+    expect([...metaByMarkdown.values()]).toEqual([
+      {
+        citation_link_hydration: {
+          'https://example.com/report': {
+            ref: 'Abc234',
+            data: expect.objectContaining({
+              sourceType: 'web',
+              url: 'https://example.com/report',
+            }),
+          },
+        },
+      },
+    ]);
+  });
 });

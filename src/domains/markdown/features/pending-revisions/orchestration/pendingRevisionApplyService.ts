@@ -16,6 +16,7 @@ import { assertMarkdownRevisionExpectation } from '../functions/assertMarkdownRe
 import {
   attachCitationNodesToDocJson,
   importMarkdownToDocJson,
+  type CitationLinkHydrationData,
   type CitationNodeHydrationData,
   type MarkdownDocJson,
   type ProseMirrorJsonNode,
@@ -68,6 +69,28 @@ function extractCitationHydration(
   return Object.keys(hydration).length > 0 ? hydration : null;
 }
 
+function extractCitationLinkHydration(
+  metadata: PendingRevisionMetadata | null,
+  blockId: string
+): Record<string, CitationLinkHydrationData> | null {
+  const raw = metadata?.citation_link_hydration;
+  if (!isRecord(raw)) return null;
+
+  const hydration: Record<string, CitationLinkHydrationData> = {};
+  const invalidUrls: string[] = [];
+  for (const [url, value] of Object.entries(raw)) {
+    if (isCitationLinkHydrationData(value)) hydration[url] = value;
+    else invalidUrls.push(url);
+  }
+
+  if (invalidUrls.length > 0) {
+    throw new Error(
+      `[PendingRevisionApplyService] citation_link_hydration 存在非法条目: blockId=${blockId}, urls=${invalidUrls.join(',')}`
+    );
+  }
+  return Object.keys(hydration).length > 0 ? hydration : null;
+}
+
 function isCitationHydrationData(value: unknown): value is CitationNodeHydrationData {
   if (!isRecord(value)) return false;
   if (typeof value.title !== 'string') return false;
@@ -93,6 +116,13 @@ function isCitationHydrationData(value: unknown): value is CitationNodeHydration
     return false;
   }
   return true;
+}
+
+function isCitationLinkHydrationData(value: unknown): value is CitationLinkHydrationData {
+  if (!isRecord(value) || typeof value.ref !== 'string' || value.ref.trim().length === 0) {
+    return false;
+  }
+  return isCitationHydrationData(value.data);
 }
 
 function createEmptyRootBlock(
@@ -204,6 +234,7 @@ export class PendingRevisionApplyService {
         preserveId: pending.target_block_id,
         oldRoot,
         citationHydration: extractCitationHydration(metadata, pending.target_block_id),
+        citationLinkHydration: extractCitationLinkHydration(metadata, pending.target_block_id),
       });
 
       prepared.set(pending.id, {
@@ -219,6 +250,7 @@ export class PendingRevisionApplyService {
     preserveId: string;
     oldRoot?: ProseMirrorJsonNode;
     citationHydration?: Record<string, CitationNodeHydrationData> | null;
+    citationLinkHydration?: Record<string, CitationLinkHydrationData> | null;
   }): Promise<MarkdownRootBlockJson> {
     if (!params.markdown.trim()) {
       return createEmptyRootBlock(params.preserveId, params.oldRoot);
@@ -228,8 +260,12 @@ export class PendingRevisionApplyService {
     let docJson = imported.docJson;
     if (!docJson) throw new Error(`Pending Markdown 解析未返回正文: blockId=${params.preserveId}`);
 
-    if (params.citationHydration) {
-      docJson = attachCitationNodesToDocJson(docJson, params.citationHydration);
+    if (params.citationHydration || params.citationLinkHydration) {
+      docJson = attachCitationNodesToDocJson(
+        docJson,
+        params.citationHydration ?? {},
+        params.citationLinkHydration ?? {},
+      );
     }
 
     const blocks = docJson.content.filter((node): node is MarkdownRootBlockJson =>

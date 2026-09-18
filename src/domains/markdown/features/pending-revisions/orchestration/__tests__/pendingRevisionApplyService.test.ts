@@ -231,6 +231,57 @@ describe('PendingRevisionApplyService', () => {
     });
   });
 
+  it('accept 标准 Markdown 链接 pending 时按 URL hydration 注入 CitationNode', async () => {
+    const { markdownService, documentId, db } = setup(doc([rootBlock('b1', 'old')]));
+    const importer: MarkdownImporter = async () => ({
+      docJson: {
+        type: 'doc',
+        content: [{
+          type: 'rootBlock',
+          attrs: { id: 'imported' },
+          content: [{
+            type: 'baseBlock',
+            attrs: { id: 'imported-inner' },
+            content: [{
+              type: 'text',
+              text: '官方报告',
+              marks: [{ type: 'link', attrs: { href: 'https://example.com/report', title: null } }],
+            }],
+          }],
+        }],
+      },
+      blockEvents: [],
+    });
+    const applyService = new PendingRevisionApplyService(markdownService, importer);
+
+    pending(markdownService, documentId, 'b1', '[官方报告](https://example.com/report)', 'update', {
+      citation_link_hydration: {
+        'https://example.com/report': {
+          ref: 'Abc234',
+          data: {
+            sourceType: 'web',
+            url: 'https://example.com/report',
+            title: '官方报告',
+            snippet: '报告快照',
+          },
+        },
+      },
+    });
+
+    const result = await applyService.commitEditorRevision({ ...editorRequest(markdownService, documentId), decision: { mode: 'accept' } });
+    db.close();
+
+    const citationNode = result.content.content[0]?.content?.[0]?.content?.[0];
+    expect(citationNode).toMatchObject({
+      type: 'citationNode',
+      attrs: {
+        ref: 'Abc234',
+        sourceType: 'web',
+        url: 'https://example.com/report',
+      },
+    });
+  });
+
   it('accept Link pending 后持久化 href/title，重新读取仍可通过正式 schema', async () => {
     const { markdownService, documentId } = setup(doc([rootBlock('b1', 'old')]));
     const importer: MarkdownImporter = async () => ({

@@ -6,6 +6,7 @@ import {
 } from '@plugin/backend/documentTypeBackendHook';
 import {
   buildMarkdownPendingCitationMetadata,
+  collectMarkdownLinkHrefs,
   MarkdownDocumentService,
   MarkdownNormalizationService,
   writeMarkdownDocumentFromText,
@@ -87,7 +88,14 @@ function createMarkdownFileWriteProvider(params: {
         targetText: request.content,
         toolName: request.operation === 'edit' ? 'edit_file' : 'write_file',
         pendingMetaByMarkdown: await buildMarkdownPendingCitationMetadata(request.content, refs =>
-          requireCitationSourceResolver(params.context).resolveSources(refs)
+          requireCitationSourceResolver(params.context).resolveSources(refs), {
+            collectLinkHrefs: async markdown => {
+              const parsed = await normalizer.buildStructuredDocFromMarkdown(markdown);
+              return parsed ? collectMarkdownLinkHrefs(parsed) : [];
+            },
+            resolveSourcesByUrl: urls =>
+              requireCitationSourceResolver(params.context).resolveSourcesByUrl(urls),
+          }
         ),
         annotationAdmission: {
           author: 'AI',
