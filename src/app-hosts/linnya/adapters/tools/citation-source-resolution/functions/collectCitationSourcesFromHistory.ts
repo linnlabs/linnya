@@ -1,6 +1,10 @@
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { admitCitationsFromConversationToolOutput } from 'src/domains/citation/conversation-presentation';
-import { projectSearchResultCitationSource, type CitationSource } from 'src/domains/citation';
+import {
+  normalizeCitationWebUrl,
+  projectSearchResultCitationSource,
+  type CitationSource,
+} from 'src/domains/citation';
 
 function toResult(event: Extract<RuntimeEvent, { type: 'tool_output' }>): {
   readonly data: unknown;
@@ -26,9 +30,16 @@ function readOwnerSources(
  */
 export function collectCitationSourcesFromHistory(params: {
   readonly events: readonly RuntimeEvent[];
-  readonly requestedRefs: readonly string[];
+  readonly requestedRefs?: readonly string[];
+  readonly requestedUrls?: readonly string[];
 }): readonly CitationSource[] {
-  const requested = new Set(params.requestedRefs);
+  const requestedRefs = params.requestedRefs ? new Set(params.requestedRefs) : null;
+  const requestedUrls = params.requestedUrls
+    ? new Set(params.requestedUrls.map(normalizeCitationWebUrl))
+    : null;
+  if (!requestedRefs && !requestedUrls) {
+    throw new Error('Citation history collection requires refs or URLs.');
+  }
   const result: CitationSource[] = [];
 
   for (let index = params.events.length - 1; index >= 0; index -= 1) {
@@ -36,7 +47,12 @@ export function collectCitationSourcesFromHistory(params: {
     if (!event || event.type !== 'tool_output' || event.status !== 'success') continue;
     const sources = readOwnerSources(event);
     for (const source of sources) {
-      if (requested.has(source.ref)) result.push(source);
+      const matchesRef = requestedRefs?.has(source.ref) ?? false;
+      const matchesUrl =
+        requestedUrls !== null &&
+        source.sourceType === 'web' &&
+        requestedUrls.has(normalizeCitationWebUrl(source.url));
+      if (matchesRef || matchesUrl) result.push(source);
     }
   }
 

@@ -37,4 +37,8 @@ export interface CitationSourceResolverPort {
   resolveSources(
     refs: readonly string[]
   ): Promise<readonly CitationSource[]>;
+  /** 只返回当前 working history 中已经被 producer 接纳的 Web 来源。 */
+  resolveSourcesByUrl(
+    urls: readonly string[]
+  ): Promise<readonly WebCitationSource[]>;
 }

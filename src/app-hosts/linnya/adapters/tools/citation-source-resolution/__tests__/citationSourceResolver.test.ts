@@ -91,6 +91,44 @@ describe('citation source resolver', () => {
     expect(resolveEvidence).not.toHaveBeenCalled();
   });
 
+  it('按规范化 URL 找回当前 history 已接纳的 Web 来源，而不是把普通链接伪造成引用', async () => {
+    const web = WebSearchResultSchema.parse({
+      data: {
+        query: 'query',
+        resultCount: 1,
+        citations: {
+          query: 'query',
+          searchMode: 'web',
+          citations: [{
+            ref: 'Def567',
+            index: 1,
+            sourceType: 'web',
+            url: 'https://example.com/article',
+            docTitle: 'Web title',
+            snippet: 'Web snapshot',
+          }],
+        },
+        evidence_store: { bundle_id: '0123456789abcdef' },
+        cacheStatus: 'miss',
+      },
+      observation: 'web result',
+    });
+    const resolver = createCitationSourceResolver({
+      events: [successEvent('web_search', web, 'web-url')],
+      resolveEvidence: vi.fn(async () => EMPTY_EVIDENCE),
+    });
+
+    await expect(resolver.resolveSourcesByUrl([
+      'https://example.com/article/?utm_source=agent#overview',
+      'https://example.com/not-read',
+    ])).resolves.toEqual([
+      expect.objectContaining({
+        ref: 'Def567',
+        url: 'https://example.com/article',
+      }),
+    ]);
+  });
+
   it('只对当前历史未命中的 ref 使用 conversation Evidence fallback', async () => {
     const resolveEvidence = vi.fn(
       async (refs: readonly string[]): Promise<ResolveEvidenceResult> => ({

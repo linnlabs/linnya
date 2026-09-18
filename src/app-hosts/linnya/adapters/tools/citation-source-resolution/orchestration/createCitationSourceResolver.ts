@@ -1,8 +1,10 @@
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import {
   admitCitationSources,
+  normalizeCitationWebUrl,
   type CitationSource,
   type CitationSourceResolverPort,
+  type WebCitationSource,
 } from 'src/domains/citation';
 import type { ResolveEvidenceResult } from 'src/domains/evidence';
 import { collectCitationSourcesFromHistory } from '../functions/collectCitationSourcesFromHistory';
@@ -55,6 +57,37 @@ function selectResolvedSources(
   });
 }
 
+function selectResolvedWebSourcesByUrl(
+  urls: readonly string[],
+  candidates: readonly CitationSource[],
+): readonly WebCitationSource[] {
+  const requestedUrls = Array.from(new Set(urls.map(normalizeCitationWebUrl)));
+  const byUrl = new Map<string, WebCitationSource>();
+
+  for (const candidate of candidates) {
+    if (candidate.sourceType !== 'web') continue;
+    const key = normalizeCitationWebUrl(candidate.url);
+    const existing = byUrl.get(key);
+    if (existing && existing.ref !== candidate.ref) {
+      throw new Error(`Web citation URL ${key} 对应了不同的 ref。`);
+    }
+    if (!existing) byUrl.set(key, candidate);
+  }
+
+  const uniqueCandidates = Array.from(byUrl.values());
+  if (uniqueCandidates.length > 0) {
+    admitCitationSources({
+      requestedRefs: uniqueCandidates.map(source => source.ref),
+      candidates: uniqueCandidates,
+    });
+  }
+
+  return requestedUrls.flatMap(url => {
+    const source = byUrl.get(url);
+    return source ? [source] : [];
+  });
+}
+
 export function createCitationSourceResolver(
   dependencies: CitationSourceResolverDependencies
 ): CitationSourceResolverPort {
@@ -98,6 +131,15 @@ export function createCitationSourceResolver(
         candidates: [...historySources, ...evidenceSources],
       });
       return selectResolvedSources(refs, admitted);
+    },
+    async resolveSourcesByUrl(urls) {
+      const normalizedUrls = Array.from(new Set(urls.map(normalizeCitationWebUrl)));
+      if (normalizedUrls.length === 0) return [];
+      const historySources = collectCitationSourcesFromHistory({
+        events: dependencies.events,
+        requestedUrls: normalizedUrls,
+      });
+      return selectResolvedWebSourcesByUrl(normalizedUrls, historySources);
     },
   };
 }
