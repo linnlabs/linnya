@@ -22,6 +22,22 @@ export interface ExtractArticleResult {
   textToHtmlRatio: number;
   rawHtmlLength: number;
   accessBarrier?: WebPageAccessBarrier;
+  diagnostics: ArticleExtractionDiagnostics;
+}
+
+export interface ArticleExtractionDiagnostics {
+  /** 当前 baseline 的两个候选结果长度；不代表内容正确性。 */
+  readonly readabilityTextLength: number;
+  readonly semanticTextLength: number;
+  readonly selected: ExtractArticleResult['extractor'];
+  readonly semanticCandidateCount: number;
+  readonly readabilitySucceeded: boolean;
+}
+
+export interface ArticleExtractor {
+  /** 稳定的内部身份，不能成为模型可见的可信度分数。 */
+  readonly name: string;
+  extract(html: string, options?: ExtractArticleOptions): ExtractArticleResult;
 }
 
 interface StructuredMetadata {
@@ -162,7 +178,7 @@ function detectAccessBarrier(document: Document, bodyTextLength: number): WebPag
   return document.querySelector('input[type="password"]') ? 'login_required' : undefined;
 }
 
-export function extractArticle(
+function extractArticleBaseline(
   html: string,
   options: ExtractArticleOptions = {},
 ): ExtractArticleResult {
@@ -181,6 +197,7 @@ export function extractArticle(
   // Readability.parse() 会原地清理 DOM；语义备选必须先读取原始主区域，
   // 否则它只能看到 Readability 已经删减过的节点，无法补回遗漏正文。
   prepareReadableDocument(document, options.url);
+  const semanticCandidateCount = document.querySelectorAll('article, main, [role="main"]').length;
   const semantic = extractSemanticDom(document);
   let article: ReadabilityResult;
   try {
@@ -268,6 +285,13 @@ export function extractArticle(
     warnings: [...warnings],
     textToHtmlRatio,
     rawHtmlLength: html.length,
+    diagnostics: {
+      readabilityTextLength: readabilityLength,
+      semanticTextLength: semantic.textLength,
+      selected: extractor,
+      semanticCandidateCount,
+      readabilitySucceeded: article !== null,
+    },
     ...(accessBarrier ? { accessBarrier } : {}),
     ...(byline ? { byline } : {}),
     ...(publishedAt ? { publishedAt } : {}),
@@ -275,4 +299,17 @@ export function extractArticle(
     ...(language ? { language } : {}),
     ...(excerpt ? { excerpt } : {}),
   };
+}
+
+/** 当前生产 baseline；未来候选抽取器必须实现同一内部合同后再进入差分测试。 */
+export const currentArticleExtractor: ArticleExtractor = {
+  name: 'linnya_readability_semantic',
+  extract: extractArticleBaseline,
+};
+
+export function extractArticle(
+  html: string,
+  options: ExtractArticleOptions = {},
+): ExtractArticleResult {
+  return currentArticleExtractor.extract(html, options);
 }

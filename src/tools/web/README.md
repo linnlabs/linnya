@@ -318,6 +318,12 @@ Firecrawl `/scrape` 可在未来作为新的 BYOK 第三方网页解析 Provider
 
 Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例外：隐藏窗无 preload，启用 sandbox/contextIsolation/webSecurity、禁用 Node 集成；独立 session 拒绝权限、弹窗、下载、跨 hostname 导航和内网/回环子请求。每次任务拿到 HTML 后立即销毁远程页面，manager 只复用隔离 session，并限制并发与 idle 生命周期。DOM 提取不再固定等待一个不可解释的时长，而是在最小等待后按 `document.readyState` 与正文长度稳定性轮询，并受渲染阶段上限约束；该能力只返回 HTML/finalUrl，不暴露浏览器动作或 IPC 桥。
 
+#### 5.5.1 正文抽取器合同与差分验证
+
+当前生产 baseline 是 `linnya_readability_semantic`：同一份 canonical HTML 先经过隐藏内容和安全链接准备，再分别生成 Readability 与 semantic DOM 候选，最后按可解释规则选择一个结果。`extractArticle` 同时返回内部 diagnostics（候选长度、候选数量、最终选择和 Readability 是否成功）；diagnostics 只供测试、审计和候选抽取器比较，不进入 WebRead 的模型可见可信字段，也不能被解释成来源可靠性分数。
+
+未来引入新的正文抽取器时，必须实现同一内部 adapter 合同，并在同一份已取得 HTML 上与 baseline 做差分。候选抽取器不得自行联网、执行浏览器动作或写入 Evidence；读取、缓存、引用和证据仍由 Web Read orchestration 统一拥有。只有固定断言显示关键正文、表格、脚注、代码和来源链接的保留率稳定改善，才可考虑改变生产默认路径。
+
 ### 5.6 缓存与并发边界
 
 - 查询缓存 key = 规范化 query + provider + topK + recency；正文缓存 key = canonical URL + 阶梯版本 + provider 序列，`contentHash` 保存在值中，不参与首次查找
