@@ -83,7 +83,7 @@ export class LocalHttpProvider implements WebReadProvider {
           { status: fetched.status },
         );
       }
-      if (!extracted.text) {
+      if (!extracted.text && extracted.resources.length === 0) {
         throw new WebFailureError('empty_content', '本地网页正文抽取结果为空。', { status: fetched.status });
       }
       return createWebReadResult({

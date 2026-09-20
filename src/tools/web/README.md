@@ -118,6 +118,7 @@ src/tools/web/webread/
 │   └── resolveWebReadConfigUpdate.ts
 ├── extraction/
 │   ├── extractArticle.ts
+│   ├── extractPageResources.ts
 │   ├── extractSemanticDom.ts
 │   ├── parseCanonicalHtmlDocument.ts
 │   ├── prepareReadableDocument.ts
@@ -246,9 +247,9 @@ src/tools/web/webread/
 - 工厂只在阶梯真正需要托管时创建；本地正文合格时，缺 Key 或选择 `none` 都不影响成功返回
 - `none` 下本机无法提取完整正文时统一返回 `managed_disabled`，并保留首跳失败类型、升级原因和是否尝试渲染；不静默发送网页地址，也不尝试第三家
 - Jina 根端点由 Web Read 服务定义直接声明，模型目录的 URL 归一化与 adapter 逻辑不参与网页读取
-- R2 已启用三层生产阶梯：本地 HTTP 合格即返回；JS 壳、空正文、质量信号、`network_error`、单跳 `timeout` 与 DOM 规范化失败按需调用一次本地 Chromium；渲染仍不合格或渲染能力失败才调用一次托管兜底。canonical DOM 上的 Readability 异常会跳过机械渲染，直接进入已配置的托管 Reader。整条阶梯 90 秒总预算触发的 `timeout` 仍是终态
+- R2 已启用三层生产阶梯：本地 HTTP 合格即返回；JS 壳、没有可用正式资源的空正文、质量信号、`network_error`、单跳 `timeout` 与 DOM 规范化失败按需调用一次本地 Chromium；正文为空但已捕获正式资源的 `metadata_only` 是终态，不重复升级；渲染仍不合格或渲染能力失败才调用一次托管兜底。canonical DOM 上的 Readability 异常会跳过机械渲染，直接进入已配置的托管 Reader。整条阶梯 90 秒总预算触发的 `timeout` 仍是终态
 - `text/html` 先由 Cheerio 默认的 WHATWG `parse5` tree builder 规范化成唯一 `html/head/body`，再创建轻量 linkedom DOM；禁止用正则、站点白名单或手工移动第二个 body 修复 tag soup
-- HTML 抽取先用 Readability；失败或明显遗漏时，从 `article/main/[role=main]` 的可访问主区域补取正文，并过滤导航、侧栏、页脚和隐藏节点。Readability 抛错但语义正文已存在时保留正文并记录 warning，完全无正文时才产生 `extraction_error`
+- HTML 抽取先用 Readability；失败或明显遗漏时，从 `article/main/[role=main]` 的可访问主区域补取正文，并过滤导航、侧栏、页脚和隐藏节点。Readability 抛错但语义正文已存在时保留正文并记录 warning；完全无正文且没有可用正式资源时才产生 `empty_content` 失败
 - 主区域选择与内容表达分离：Readability 选中的 HTML 与语义主区域共用 Turndown 转换为 Markdown，保留来源链接、代码缩进、有序列表、删除线、图注与图片 alt。质量判定使用可见文字长度，避免链接地址和标记抬高质量信号
 - 两条路径在选区前共用隐藏节点/内联隐藏样式清理。先移除导航、脚本与 inert 区域，再识别同一主区域内可见、可用按钮声明的折叠正文：`aria-expanded=false` 配合 `aria-controls` 的明确目标，或 read/show-more 命名的按钮与相邻同类命名正文（允许仅包裹按钮的一层容器）。只移除该目标层的隐藏状态，其内部独立隐藏的旧值仍排除；不按域名匹配，不点击控件、不执行额外脚本，也不凭单个类名恢复任意隐藏内容。未识别的折叠方式仍可能遗漏，`truncated=false` 只表示未触及字符上限，不承诺正文完整
 - HTML 相对链接依据最终 URL 与有效 base URL 还原，只保留符合既有同步 URL 策略的地址；链接出现不代表目标已读取，后续请求仍须完整校验 DNS 和连接
@@ -328,11 +329,12 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 
 网页不都属于文章。报告、论文和技术资料经常使用 landing page：摘要在页面上，完整内容、DOI 或正式来源通过页面链接提供。正文抽取与页面资源提取必须分开：
 
-- `extractArticle` 先在 DOM 清理前提取少量、有语义信号的 `document`、`doi`、`source` 资源；普通导航链接不进入资源集合，也不会访问这些链接；
+- `extractArticle` 从原始 DOM 读取 JSON-LD 与 citation meta，再从清理后的可见主体读取少量、有语义信号的 `document`、`doi`、`source` 资源；导航、侧栏、页脚和隐藏链接不进入资源集合，也不会访问这些链接；`schema.org/sameAs` 只表示实体同一性，不直接视为来源资源；页面 `<base href>` 同时用于正文链接和资源地址解析；
 - Readability/semantic DOM 只决定模型看到的正文；资源不会因为正文清理删除而丢失；
 - `WebDocument.resources` 由 Web Read provider 传递，经 `@app/schemas` 严格校验、文件缓存持久化，并在 observation 的动态不可信边界内展示；
 - 资源 URL 是页面外部内容，不是用户授权或可信操作指令。Renderer 或 Agent 若要读取它，必须重新经过 `web_read` 的 URL 策略和 Evidence 流程；
 - 当前只识别显式 DOI、全文/下载语义、常见文献仓库/正式来源链接。不要把页面所有链接暴露为“相关资源”，也不要在没有固定断言的情况下引入站点专用规则。
+- 如果正文抽取为空但页面仍提供标题、摘要或正式资源，Provider 返回成功结果并带 `metadata_only` flag；这表示“已取得页面元数据/资源，未取得正文”，不会伪装成正文成功，也不会反复升级同一 URL。没有资源的空页面仍按 `empty_content` 进入读取阶梯。
 
 这一层吸收了成熟正文抽取器“正文与 metadata 独立”的经验，但不把候选库的正文选择逻辑整体移入生产。landing page 的后续扩展应先以标题、摘要、作者、日期、DOI、全文链接和正式来源链接的冻结断言验证，再决定是否新增页面角色。
 

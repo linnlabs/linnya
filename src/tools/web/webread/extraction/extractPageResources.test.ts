@@ -47,7 +47,31 @@ describe('landing page 资源提取', () => {
     expect(result.resources).toEqual([
       { kind: 'doi', url: 'https://doi.org/10.1234/schema-report', label: '10.1234/schema-report' },
       { kind: 'document', url: 'https://example.com/report.pdf', label: 'https://example.com/report.pdf' },
-      { kind: 'source', url: 'https://repository.example/report', label: 'https://repository.example/report' },
+    ]);
+  });
+
+  it('只从清理后的可见主体提取资源，并按 base href 解析地址', () => {
+    const result = extractArticle(`<html><head><base href="https://files.example.org/reports/"></head><body>
+      <nav><a href="/old.pdf">Withdrawn PDF</a></nav>
+      <div hidden><a href="/hidden.pdf">Hidden PDF</a></div>
+      <main><h1>Report</h1><a href="data.pdf">Download report PDF</a></main>
+    </body></html>`, { url: 'https://example.org/landing' });
+
+    expect(result.resources).toEqual([
+      { kind: 'document', url: 'https://files.example.org/reports/data.pdf', label: 'Download report PDF' },
+    ]);
+  });
+
+  it('正文为空但存在正式资源时明确标记 metadata_only', () => {
+    const result = extractArticle(`<html><head>
+      <meta name="citation_pdf_url" content="https://example.org/report.pdf">
+      <title>Report landing page</title>
+    </head><body></body></html>`, { url: 'https://example.org/report' });
+
+    expect(result.text).toBe('');
+    expect(result.warnings).toContain('metadata_only');
+    expect(result.resources).toEqual([
+      { kind: 'document', url: 'https://example.org/report.pdf', label: 'https://example.org/report.pdf' },
     ]);
   });
 });

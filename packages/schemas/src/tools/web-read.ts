@@ -56,7 +56,7 @@ const WebReadDataObjectSchema = z.object({
   initialFailureKind: WebFailureKindSchema.optional(),
   initialFailureStage: WebExtractionFailureStageSchema.optional(),
   /** 提取器启发式信号，不代表来源可信度或全文完整性。 */
-  warnings: z.array(WebDocumentWarningSchema).max(7).optional(),
+  warnings: z.array(WebDocumentWarningSchema).max(8).optional(),
   resources: z.array(WebPageResourceSchema).max(16).optional(),
   citations: z.object({
     query: HttpCitationUrlSchema,

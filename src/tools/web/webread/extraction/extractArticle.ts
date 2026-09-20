@@ -197,10 +197,16 @@ function extractArticleBaseline(
   const listItemCount = document.querySelectorAll('li').length;
   const scriptCount = document.querySelectorAll('script').length;
   const accessBarrier = detectAccessBarrier(document, bodyTextLength);
-  const resources = extractPageResources(document, options.url);
+  const resourcesByUrl = new Map(
+    extractPageResources(document, options.url, { anchors: false })
+      .map(resource => [resource.url, resource] as const),
+  );
   // Readability.parse() 会原地清理 DOM；语义备选必须先读取原始主区域，
   // 否则它只能看到 Readability 已经删减过的节点，无法补回遗漏正文。
   prepareReadableDocument(document, options.url);
+  for (const resource of extractPageResources(document, options.url, { metadata: false })) {
+    if (!resourcesByUrl.has(resource.url)) resourcesByUrl.set(resource.url, resource);
+  }
   const semanticCandidateCount = document.querySelectorAll('article, main, [role="main"]').length;
   const semantic = extractSemanticDom(document);
   let article: ReadabilityResult;
@@ -243,6 +249,7 @@ function extractArticleBaseline(
 
   if (!article) warnings.add('readability_failed');
   if (!textLength) warnings.add('empty_content');
+  if (!textLength && resourcesByUrl.size > 0) warnings.add('metadata_only');
   else if (textLength < 200) warnings.add('content_too_short');
   if (html.length >= 1_000 && textToHtmlRatio < 0.02) warnings.add('low_text_ratio');
   if (textLength < 200 && bodyTextLength < 300 && scriptCount >= 3) warnings.add('js_shell');
@@ -296,7 +303,7 @@ function extractArticleBaseline(
       semanticCandidateCount,
       readabilitySucceeded: article !== null,
     },
-    resources,
+    resources: [...resourcesByUrl.values()].slice(0, 16),
     ...(accessBarrier ? { accessBarrier } : {}),
     ...(byline ? { byline } : {}),
     ...(publishedAt ? { publishedAt } : {}),

@@ -7,6 +7,11 @@ import type { WebReadResult } from '../providers/types';
 const SUBSTANTIAL_CONTENT_CHARS = 800;
 
 function findReadabilityEscalationReason(result: WebReadResult): WebReadEscalationReason | undefined {
+  // metadata_only 是有意返回的终态：正文未取得，但页面元数据/正式资源已经
+  // 通过本地抽取器捕获。继续升级只会重复请求同一页，不能把资源变成正文。
+  if (result.warnings.includes('metadata_only') && !result.warnings.includes('js_shell')) {
+    return undefined;
+  }
   if (result.warnings.includes('empty_content')) return 'empty_content';
   if (result.warnings.includes('js_shell')) return 'js_required';
   if (result.warnings.includes('content_too_short')) return 'content_too_short';

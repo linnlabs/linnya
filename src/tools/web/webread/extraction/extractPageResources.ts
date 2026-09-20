@@ -74,7 +74,6 @@ function addJsonLdResources(
         }
         for (const [field, kind] of [
           ['contentUrl', 'document'],
-          ['sameAs', 'source'],
         ] as const) {
           const directValues = Array.isArray(record[field]) ? record[field] : [record[field]];
           const encoding = record['encoding'];
@@ -94,34 +93,50 @@ function addJsonLdResources(
   }
 }
 
+export interface ExtractPageResourcesOptions {
+  /** 首次扫描原始 DOM 时保留 JSON-LD 与 citation meta；正文清理后扫描链接时关闭。 */
+  readonly metadata?: boolean;
+  /** 只在清理后的可见 DOM 中扫描带明确语义的锚点。 */
+  readonly anchors?: boolean;
+}
+
 /**
  * Landing page 的摘要和正式资源经常位于 Readability 选中的正文之外。
  * 在正文清理前保存少量、有语义信号的 DOI、全文和来源链接；不把所有导航链接
  * 暴露给 Agent，也不访问这些链接。
  */
-export function extractPageResources(document: Document, finalUrl?: string): WebPageResource[] {
+export function extractPageResources(
+  document: Document,
+  finalUrl?: string,
+  options: ExtractPageResourcesOptions = {},
+): WebPageResource[] {
   const resources = new Map<string, WebPageResource>();
-  const base = finalUrl ?? document.baseURI;
+  const declaredBase = document.querySelector('base[href]')?.getAttribute('href');
+  const base = resolveUrl(declaredBase, finalUrl ?? document.baseURI) ?? finalUrl ?? document.baseURI;
 
-  addJsonLdResources(document, base, resources);
+  if (options.metadata !== false) {
+    addJsonLdResources(document, base, resources);
 
-  for (const meta of document.querySelectorAll('meta[name], meta[property]')) {
-    const name = (meta.getAttribute('name') ?? meta.getAttribute('property') ?? '').toLowerCase();
-    if (!/(?:citation_pdf_url|citation_doi)/.test(name)) continue;
-    const url = name.includes('doi')
-      ? resolveDoi(meta.getAttribute('content'))
-      : resolveUrl(meta.getAttribute('content'), base);
-    const kind: WebPageResourceKind = name.includes('doi') ? 'doi' : 'document';
-    addResource(resources, url, kind, normalizeLabel(meta.getAttribute('content')));
+    for (const meta of document.querySelectorAll('meta[name], meta[property]')) {
+      const name = (meta.getAttribute('name') ?? meta.getAttribute('property') ?? '').toLowerCase();
+      if (!/(?:citation_pdf_url|citation_doi)/.test(name)) continue;
+      const url = name.includes('doi')
+        ? resolveDoi(meta.getAttribute('content'))
+        : resolveUrl(meta.getAttribute('content'), base);
+      const kind: WebPageResourceKind = name.includes('doi') ? 'doi' : 'document';
+      addResource(resources, url, kind, normalizeLabel(meta.getAttribute('content')));
+    }
   }
 
-  for (const anchor of document.querySelectorAll('a[href]')) {
-    const url = resolveUrl(anchor.getAttribute('href'), base);
-    const label = normalizeLabel(anchor.textContent) ?? normalizeLabel(anchor.getAttribute('title')) ?? '';
-    const hint = [anchor.getAttribute('class'), anchor.getAttribute('id'), anchor.getAttribute('rel')]
-      .filter(Boolean).join(' ');
-    addResource(resources, url, inferResourceKind(url ?? '', label, hint), label);
-    if (resources.size >= MAX_PAGE_RESOURCES) break;
+  if (options.anchors !== false) {
+    for (const anchor of document.querySelectorAll('a[href]')) {
+      const url = resolveUrl(anchor.getAttribute('href'), base);
+      const label = normalizeLabel(anchor.textContent) ?? normalizeLabel(anchor.getAttribute('title')) ?? '';
+      const hint = [anchor.getAttribute('class'), anchor.getAttribute('id'), anchor.getAttribute('rel')]
+        .filter(Boolean).join(' ');
+      addResource(resources, url, inferResourceKind(url ?? '', label, hint), label);
+      if (resources.size >= MAX_PAGE_RESOURCES) break;
+    }
   }
 
   return [...resources.values()].slice(0, MAX_PAGE_RESOURCES);

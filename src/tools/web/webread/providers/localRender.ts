@@ -62,7 +62,7 @@ export class LocalRenderProvider implements WebReadProvider {
           : '本地渲染后仍要求登录才能读取。',
       );
     }
-    if (!extracted.text) {
+    if (!extracted.text && extracted.resources.length === 0) {
       throw new WebFailureError('empty_content', '本地渲染后的网页正文抽取结果为空。');
     }
 

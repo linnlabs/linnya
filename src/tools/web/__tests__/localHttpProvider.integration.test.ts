@@ -89,6 +89,15 @@ describe('LocalHttpProvider 本地真实 HTTP 集成', () => {
         );
         return;
       }
+      if (request.url === '/metadata-only') {
+        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        response.end(`<!doctype html><html><head>
+          <title>Report landing page</title>
+          <meta name="description" content="Report abstract metadata">
+          <meta name="citation_pdf_url" content="/reports/report.pdf">
+        </head><body></body></html>`);
+        return;
+      }
       if (request.url === '/malformed-government-template') {
         response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         response.end(malformedGovernmentHtml);
@@ -173,6 +182,60 @@ describe('LocalHttpProvider 本地真实 HTTP 集成', () => {
       title: 'Semantic App Content',
     });
     expect(result.content).toContain('语义主区域正文');
+  });
+
+  it('正文为空但存在正式资源时返回 metadata_only，供 Agent 规划下一次读取', async () => {
+    const provider = new LocalHttpProvider({ resolveHost: resolveFixtureHost });
+    const result = await provider.read({ url: `http://provider.test:${port}/metadata-only` });
+
+    expect(result).toMatchObject({
+      title: 'Report landing page',
+      content: '',
+      charCount: 0,
+      warnings: expect.arrayContaining(['empty_content', 'metadata_only']),
+      resources: [{ kind: 'document', url: `http://provider.test:${port}/reports/report.pdf` }],
+    });
+  });
+
+  it('metadata_only 贯通 web_read、Evidence 和 observation，而不伪称取得正文', async () => {
+    const provider = new LocalHttpProvider({ resolveHost: resolveFixtureHost });
+    const evidenceWriter = {
+      save: vi.fn().mockResolvedValue({ bundleId: 'metadata-only-bundle' }),
+    };
+    const context = {
+      conversationId: 'metadata-only-conversation',
+      turnId: 'metadata-only-turn',
+      research: { instanceId: 'metadata-only-instance' },
+    };
+    attachCitationSequence(context, { offset: 0 });
+    attachCitationRefAllocator(context, createCitationRefAllocatorFixture());
+
+    const raw = await runReadWebPage(
+      { url: `http://provider.test:${port}/metadata-only` },
+      context,
+      {
+        provider,
+        evidenceWriter,
+        cacheRuntime: createWebCacheRuntime(new MemoryWebCache()),
+        config: { renderEnabled: true, managedReader: 'none' },
+      },
+    );
+    const parsed: unknown = JSON.parse(raw);
+    const data = readData(parsed);
+    const observation = isRecord(parsed) && typeof parsed['observation'] === 'string'
+      ? parsed['observation']
+      : '';
+
+    expect(data['warnings']).toEqual(expect.arrayContaining(['metadata_only']));
+    expect(data['resources']).toEqual([
+      { kind: 'document', url: `http://provider.test:${port}/reports/report.pdf`, label: '/reports/report.pdf' },
+    ]);
+    expect(data['charCount']).toBe(0);
+    expect(observation).toContain('Related page resources:');
+    expect(observation).toContain('Extraction flags: readability_failed, empty_content, metadata_only');
+    expect(evidenceWriter.save).toHaveBeenCalledWith(expect.objectContaining({
+      items: [expect.objectContaining({ contentText: '' })],
+    }));
   });
 
   it('真实 HTTP 链路可读取浏览器容错但根结构不规范的政策页面', async () => {

@@ -77,6 +77,7 @@ export type WebReadQualitySignal = z.infer<typeof WebReadQualitySignalSchema>;
 export const WEB_DOCUMENT_WARNING_VALUES = [
   'readability_failed',
   'empty_content',
+  'metadata_only',
   'content_too_short',
   'low_text_ratio',
   'js_shell',
