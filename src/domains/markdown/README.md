@@ -46,6 +46,11 @@ Markdown 导入结果必须经过这份校验。pending 单块和文档级 Accep
 
 CLI Agent 与内置 Agent 的已有 Markdown 文档写入均走同一 file-write provider。工具输出的待确认块数来自提交后的数据库清单，不使用本次操作条数。仅撤销提议也发布 Workspace mutation，Renderer 通过文档会话重读完整快照。
 
+`edit_file` 的读取快照通过 `expectedCurrentText` 进入 document-write；解析完成后按与 VFS 相同的
+Citation-aware current 投影比较（包括正文、pending 和批注），不一致时返回
+`MARKDOWN_FILE_WRITE_CONFLICT` 并要求重读。比较与事务之间不得增加异步等待。
+失败不提交本次修订或成功回执；`write_file` 的主动全文覆盖不使用此 edit 前提。
+
 对应 Renderer 生命周期与草稿规则见 [文档会话](../../../apps/renderer/domains/editor/features/document-session/README.md)。Schema v64 为既有 Pending 补充初始 revision，保留其身份和内容；迁移不清理或重建用户文档。
 
 ## 数据模型

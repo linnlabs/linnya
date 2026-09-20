@@ -3,6 +3,7 @@ import { promises as fsp } from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import {
+  WebDocumentWarningSchema,
   WebExtractionFailureStageSchema,
   WebFailureKindSchema,
   WebReadEscalationReasonSchema,
@@ -59,15 +60,7 @@ const webReadResultSchema = z.object({
   cacheAgeSeconds: z.number().optional(),
   contentHash: z.string(),
   qualityScore: z.number().optional(),
-  warnings: z.array(z.enum([
-    'readability_failed',
-    'empty_content',
-    'content_too_short',
-    'low_text_ratio',
-    'js_shell',
-    'table_dominant',
-    'list_dominant',
-  ])),
+  warnings: z.array(WebDocumentWarningSchema),
   blockedReason: z.string().optional(),
   latencyMs: z.number(),
   estimatedCost: z.number().optional(),

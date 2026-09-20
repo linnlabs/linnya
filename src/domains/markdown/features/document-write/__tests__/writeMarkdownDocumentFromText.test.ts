@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   writeMarkdownDocumentFromText,
   type MarkdownDocumentWriteStore,
@@ -119,7 +119,7 @@ function markdownDoc(blocks: readonly { readonly id: string; readonly text: stri
       attrs: { id: block.id },
       content: [
         {
-          type: 'paragraphBlock',
+          type: 'baseBlock',
           content: block.text.length > 0 ? [{ type: 'text', text: block.text }] : [],
         },
       ],
@@ -145,7 +145,7 @@ function markdownDocWithWebCitation(): MarkdownDocJson {
         attrs: { id: 'b1' },
         content: [
           {
-            type: 'paragraphBlock',
+            type: 'baseBlock',
             content: [
               { type: 'text', text: 'Alpha ' },
               {
@@ -169,7 +169,7 @@ function markdownDocWithWebCitation(): MarkdownDocJson {
         attrs: { id: 'b2' },
         content: [
           {
-            type: 'paragraphBlock',
+            type: 'baseBlock',
             content: [{ type: 'text', text: 'Beta' }],
           },
         ],
@@ -183,6 +183,40 @@ describe('writeMarkdownDocumentFromText', () => {
     author: 'AI',
     meta: { source: 'agent' as const, runId: 'run-1' },
   };
+
+  it('解析等待期间正文发生改变时拒绝旧快照，不写 pending 或成功回执', async () => {
+    const service = new FakeMarkdownService(markdownDoc([{ id: 'b1', text: 'Alpha' }]));
+    const touch = createTouchRecorder();
+    const commitResult = vi.fn();
+    const writing = writeMarkdownDocumentFromText({
+      documentStore: service, documentId: 'doc-1', targetText: 'Alpha edited',
+      expectedCurrentText: 'Alpha', toolName: 'edit_file', annotationAdmission,
+      touchDocumentUpdatedAt: touch.touchDocumentUpdatedAt, commitResult,
+    });
+    service.updateDocument('doc-1', markdownDoc([{ id: 'b1', text: 'User update' }]));
+    await expect(writing).rejects.toMatchObject({ code: 'MARKDOWN_FILE_WRITE_CONFLICT' });
+    expect(service.pending.size).toBe(0);
+    expect(touch.calls).toEqual([]);
+    expect(commitResult).not.toHaveBeenCalled();
+    expect(service.getDocument()).toEqual(markdownDoc([{ id: 'b1', text: 'User update' }]));
+  });
+
+  it('正文版本未变但已有 pending 改变时同样拒绝，重新读取后可成功编辑', async () => {
+    const service = new FakeMarkdownService(markdownDoc([{ id: 'b1', text: 'Alpha' }]));
+    service.setPendingRevisionForToolIntent({
+      documentId: 'doc-1', blockId: 'b1', newMarkdown: 'New pending', meta: { operation: 'update' },
+    });
+    const request = {
+      documentStore: service, documentId: 'doc-1', targetText: 'New pending edited',
+      toolName: 'edit_file' as const, annotationAdmission,
+      touchDocumentUpdatedAt: createTouchRecorder().touchDocumentUpdatedAt,
+    };
+    await expect(writeMarkdownDocumentFromText({ ...request, expectedCurrentText: 'Alpha' }))
+      .rejects.toMatchObject({ code: 'MARKDOWN_FILE_WRITE_CONFLICT' });
+    expect(service.pending.get('b1')?.new_markdown).toBe('New pending');
+    await writeMarkdownDocumentFromText({ ...request, expectedCurrentText: 'New pending' });
+    expect(service.pending.get('b1')?.new_markdown).toBe('New pending edited');
+  });
 
   it('将全文目标转换为 update/delete pending，并 touch workspace node', async () => {
     const touch = createTouchRecorder();
@@ -362,7 +396,7 @@ describe('writeMarkdownDocumentFromText', () => {
         {
           type: 'rootBlock',
           attrs: {},
-          content: [{ type: 'paragraphBlock', content: [{ type: 'text', text: 'Alpha' }] }],
+          content: [{ type: 'baseBlock', content: [{ type: 'text', text: 'Alpha' }] }],
         },
       ],
     });

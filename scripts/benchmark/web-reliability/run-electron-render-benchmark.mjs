@@ -77,8 +77,8 @@ try {
   const renderAttempts = contentAttempts.filter((attempt) => attempt.renderAttempted).length;
   const expectedCodeCases = contentAttempts.filter((attempt) => attempt.expectsCodeBlock);
   const expectedTableCases = contentAttempts.filter((attempt) => attempt.expectsTable);
-  const codePreserved = expectedCodeCases.filter((attempt) => attempt.codeBlockPreserved).length;
-  const tablePreserved = expectedTableCases.filter((attempt) => attempt.tablePreserved).length;
+  const codeMarkup = expectedCodeCases.filter((attempt) => attempt.codeBlockMarkupPresent).length;
+  const tableMarkup = expectedTableCases.filter((attempt) => attempt.tableMarkupPresent).length;
   const coverage = contentAttempts.length > 0 ? covered / contentAttempts.length : 0;
   const minSuccessRate = readMinimumRate(process.argv.slice(2));
   const latencies = attempts.map((attempt) => attempt.tookMs);
@@ -88,15 +88,16 @@ try {
   console.log(`- threshold: ${(minSuccessRate * 100).toFixed(2)}% (${coverage >= minSuccessRate ? 'PASS' : 'FAIL'})`);
   console.log(`- render attempts / recovered by render: ${renderAttempts}/${rendered}`);
   console.log(`- expected terminal contracts: ${terminalPassed}/${terminalAttempts.length}`);
-  console.log(`- code structure fidelity: ${codePreserved}/${expectedCodeCases.length}`);
-  console.log(`- table structure fidelity: ${tablePreserved}/${expectedTableCases.length}`);
+  console.log(`- code markup present: ${codeMarkup}/${expectedCodeCases.length}`);
+  console.log(`- table markup present: ${tableMarkup}/${expectedTableCases.length}`);
   console.log(`- latency p50/p95: ${percentile(latencies, 0.5)}ms / ${percentile(latencies, 0.95)}ms`);
+  console.log(`- content assertions checked / failed: ${attempts.reduce((sum, attempt) => sum + attempt.contentChecks.checked, 0)}/${attempts.reduce((sum, attempt) => sum + attempt.contentChecks.failed.length, 0)} (zero checked means unverified)`);
   console.log('- managed Reader: disabled; failures measure the uncovered portion of the local two-layer route');
   console.log('');
   for (const attempt of attempts) {
     console.log(`- ${attempt.caseId}: provider=${attempt.selectedProvider}, render=${attempt.renderAttempted}, success=${attempt.contractSuccess}, failure=${attempt.failureKind ?? 'none'}, renderFailure=${attempt.renderFailureKind ?? 'none'}, renderedChars=${attempt.renderedCharCount ?? 0}, renderScore=${attempt.renderQualityScore ?? 'n/a'}, renderWarnings=${(attempt.renderWarnings ?? []).join(',') || 'none'}, detail=${attempt.renderFailureMessage ?? attempt.failureMessage ?? 'none'}, took=${attempt.tookMs}ms`);
   }
-  if (coverage < minSuccessRate || terminalPassed !== terminalAttempts.length) process.exitCode = 1;
+  if (coverage < minSuccessRate || terminalPassed !== terminalAttempts.length || attempts.some(attempt => attempt.contentChecks.failed.length > 0)) process.exitCode = 1;
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
 }

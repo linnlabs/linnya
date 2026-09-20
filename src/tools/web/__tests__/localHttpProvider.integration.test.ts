@@ -16,6 +16,8 @@ describe('LocalHttpProvider 本地真实 HTTP 集成', () => {
   let requestCount = 0;
   let etagRequestCount = 0;
   let latestIfNoneMatch: string | undefined;
+  let negotiatedIfNoneMatch: string | undefined;
+  let negotiatedRequests = 0;
   let malformedGovernmentHtml = '';
 
   beforeAll(async () => {
@@ -25,6 +27,32 @@ describe('LocalHttpProvider 本地真实 HTTP 集成', () => {
     );
     server = createServer((request, response) => {
       requestCount += 1;
+      if (request.url === '/negotiated') {
+        negotiatedRequests += 1;
+        negotiatedIfNoneMatch = request.headers['if-none-match'];
+        const markdown = request.headers.accept?.includes('text/markdown') === true;
+        const etag = markdown ? '"md-v1"' : '"html-v1"';
+        if (negotiatedIfNoneMatch === etag) {
+          response.writeHead(304, { ETag: etag, Vary: 'Accept' });
+          response.end();
+          return;
+        }
+        response.writeHead(200, { 'Content-Type': markdown ? 'text/markdown' : 'text/html', ETag: etag, Vary: 'Accept' });
+        response.end(markdown ? '# Source data\n\n[Original](https://example.com/data)\n\n~~113 GW~~ → 83 GW' : '<p>HTML variant</p>');
+        return;
+      }
+      if (request.url === '/redirect-content') {
+        response.writeHead(302, { Location: '/reports/current' });
+        response.end();
+        return;
+      }
+      if (request.url === '/reports/current') {
+        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        response.end(`<article><h1>Revised calculation</h1><p>${'Published calculation. '.repeat(30)}</p>
+          <p><a href="data.csv">Original data</a>: <del>113 GW</del> 83 GW</p>
+          <pre><code>if ready:\n    output = 83</code></pre></article>`);
+        return;
+      }
       if (request.url === '/etag') {
         etagRequestCount += 1;
         const header = request.headers['if-none-match'];
@@ -111,6 +139,29 @@ describe('LocalHttpProvider 本地真实 HTTP 集成', () => {
       kind: 'unsupported_mime',
       message: 'WebRead 暂不支持 PDF，请改用对应的 HTML 页面或其他文本来源。',
     });
+  });
+
+  it('协商 Markdown 后按实际 MIME 返回，条件请求只复用同一表示的正文', async () => {
+    const provider = new LocalHttpProvider({ resolveHost: resolveFixtureHost });
+    const url = `http://provider.test:${port}/negotiated`;
+    const first = await provider.read({ url });
+    expect(first).toMatchObject({ contentType: 'text/markdown', etag: '"md-v1"', extractor: 'raw_text' });
+    expect(first.markdown).toBe(first.content);
+    expect(first.content).toContain('~~113 GW~~');
+    const second = await provider.read({ url, revalidation: { etag: first.etag, cachedResult: first } });
+    expect(second.content).toBe(first.content);
+    expect(negotiatedIfNoneMatch).toBe('"md-v1"');
+    expect(negotiatedRequests).toBe(2);
+  });
+
+  it('不支持协商的 HTML 在重定向后仍保留正文语义，并用最终地址解析来源链接', async () => {
+    const provider = new LocalHttpProvider({ resolveHost: resolveFixtureHost });
+    const result = await provider.read({ url: `http://provider.test:${port}/redirect-content` });
+    expect(result.finalUrl).toBe(`http://provider.test:${port}/reports/current`);
+    expect(result.markdown).toBe(result.content);
+    expect(result.content).toContain(`[Original data](http://provider.test:${port}/reports/data.csv)`);
+    expect(result.content).toContain('~~113 GW~~');
+    expect(result.content).toContain('if ready:\n    output = 83');
   });
 
   it('Readability 遗漏应用正文时，通过同一 HTTP 链路返回语义 DOM 结果', async () => {

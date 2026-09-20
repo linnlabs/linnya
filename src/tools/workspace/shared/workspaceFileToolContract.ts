@@ -18,6 +18,7 @@ export function validateWorkspaceFileToolArguments(input: {
   readonly schema: WorkspaceFileArgumentSchema;
   readonly errorCode: string;
   readonly toolName: string;
+  readonly example: Readonly<Record<string, unknown>>;
 }): { success: boolean; error?: string } {
   const parsed = input.schema.safeParse(input.args);
   if (parsed.success) {
@@ -28,6 +29,6 @@ export function validateWorkspaceFileToolArguments(input: {
     .join('; ');
   return {
     success: false,
-    error: `[${input.errorCode}] ${input.toolName} 参数不符合正式合同: ${details}`,
+    error: `[${input.errorCode}] ${input.toolName} 参数不符合正式合同: ${details}\n修正所列字段后再调用；不要原样重试。最小结构示例：${JSON.stringify(input.example)}`,
   };
 }

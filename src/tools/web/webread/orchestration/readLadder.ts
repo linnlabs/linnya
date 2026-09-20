@@ -77,7 +77,7 @@ async function readManagedFallback(args: {
     const stageSuffix = extractionStage ? `，stage=${extractionStage}` : '';
     throw new WebFailureError<WebReadEscalationReason>(
       'managed_disabled',
-      `[WEB_READ_MANAGED_DISABLED] 本机网页读取未完成（${failureReason}${stageSuffix}），且未启用第三方增强解析。`,
+      `[WEB_READ_MANAGED_DISABLED] 本机网页读取未完成（${failureReason}${stageSuffix}），且未启用第三方增强解析。当前配置下不要原样重试此 URL；搜索同一来源的可读 HTML 页面或替代来源，并明确说明尚未取得此页正文。`,
       {
         details: {
           escalationReason: args.reason,

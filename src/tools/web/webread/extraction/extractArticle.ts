@@ -3,6 +3,8 @@ import type { WebDocumentWarning, WebPageAccessBarrier } from '../../definitions
 import { WebFailureError } from '../../shared/webFailure';
 import { extractSemanticDom, normalizeExtractedText } from './extractSemanticDom';
 import { parseCanonicalHtmlDocument } from './parseCanonicalHtmlDocument';
+import { prepareReadableDocument } from './prepareReadableDocument';
+import { renderReadableMarkdown } from './renderReadableMarkdown';
 
 export type ArticleExtractionWarning = WebDocumentWarning;
 
@@ -40,7 +42,9 @@ interface PageMetadataSnapshot {
 
 type ReadabilityResult = ReturnType<Readability['parse']>;
 
-export interface ExtractArticleDependencies {
+export interface ExtractArticleOptions {
+  /** 最终页面 URL，用于还原正文中的相对来源地址。 */
+  readonly url?: string;
   /** 测试可替换第三方抽取器；生产默认仍只调用 Mozilla Readability 一次。 */
   readonly parseReadability?: (document: Document) => ReadabilityResult;
 }
@@ -160,7 +164,7 @@ function detectAccessBarrier(document: Document, bodyTextLength: number): WebPag
 
 export function extractArticle(
   html: string,
-  dependencies: ExtractArticleDependencies = {},
+  options: ExtractArticleOptions = {},
 ): ExtractArticleResult {
   // parse5 只负责按浏览器语义规范化 tag soup；随后仍使用轻量 linkedom DOM，
   // 不执行页面脚本，也不引入 jsdom 的网络/XHR 运行时。
@@ -176,11 +180,12 @@ export function extractArticle(
   const accessBarrier = detectAccessBarrier(document, bodyTextLength);
   // Readability.parse() 会原地清理 DOM；语义备选必须先读取原始主区域，
   // 否则它只能看到 Readability 已经删减过的节点，无法补回遗漏正文。
+  prepareReadableDocument(document, options.url);
   const semantic = extractSemanticDom(document);
   let article: ReadabilityResult;
   try {
-    article = dependencies.parseReadability
-      ? dependencies.parseReadability(document)
+    article = options.parseReadability
+      ? options.parseReadability(document)
       : new Readability(document, {
           charThreshold: 100,
           disableJSONLD: true,
@@ -200,21 +205,26 @@ export function extractArticle(
     }
     article = null;
   }
-  const readabilityText = normalizeExtractedText(article?.textContent);
-  const useSemanticDom = semantic.text.length > readabilityText.length
-    && (readabilityText.length < 200
-      || (semantic.text.length - readabilityText.length >= 300
-        && semantic.text.length >= readabilityText.length * 1.35));
+  // 使用 Readability 选中的 HTML，不能读取 textContent 丢失段落/单元格边界。
+  const readableBody = article?.content ? parseCanonicalHtmlDocument(article.content).body : undefined;
+  const readabilityText = readableBody ? renderReadableMarkdown(readableBody) : '';
+  const readabilityLength = normalizeExtractedText(readableBody?.textContent).length;
+  // 链接地址和保留的表格标记不是正文文字，不能让它们抬高质量信号或改变主区域选择。
+  const useSemanticDom = semantic.textLength > readabilityLength
+    && (readabilityLength < 200
+      || (semantic.textLength - readabilityLength >= 300
+        && semantic.textLength >= readabilityLength * 1.35));
   const extractor = useSemanticDom ? 'semantic_dom' : 'readability';
   const text = useSemanticDom ? semantic.text : readabilityText;
-  const textToHtmlRatio = text.length / Math.max(1, html.length);
+  const textLength = useSemanticDom ? semantic.textLength : readabilityLength;
+  const textToHtmlRatio = textLength / Math.max(1, html.length);
   const warnings = new Set<ArticleExtractionWarning>();
 
   if (!article) warnings.add('readability_failed');
-  if (!text) warnings.add('empty_content');
-  else if (text.length < 200) warnings.add('content_too_short');
+  if (!textLength) warnings.add('empty_content');
+  else if (textLength < 200) warnings.add('content_too_short');
   if (html.length >= 1_000 && textToHtmlRatio < 0.02) warnings.add('low_text_ratio');
-  if (text.length < 200 && bodyTextLength < 300 && scriptCount >= 3) warnings.add('js_shell');
+  if (textLength < 200 && bodyTextLength < 300 && scriptCount >= 3) warnings.add('js_shell');
   if (tableRowCount >= 3 && tableTextLength / Math.max(1, bodyTextLength) >= 0.5) {
     warnings.add('table_dominant');
   }

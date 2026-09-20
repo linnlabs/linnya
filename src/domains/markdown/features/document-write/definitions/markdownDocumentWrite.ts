@@ -4,6 +4,15 @@ import type { MarkdownDocJson } from '../../normalization/runtime';
 
 export type MarkdownFileWriteOperation = 'update' | 'insert' | 'delete';
 
+export class MarkdownFileWriteConflictError extends Error {
+  readonly code = 'MARKDOWN_FILE_WRITE_CONFLICT';
+
+  constructor() {
+    super('Markdown current content changed after edit_file read it. No edit was committed. Use read_file to reload the current content, then retry the exact replacement.');
+    this.name = 'MarkdownFileWriteConflictError';
+  }
+}
+
 export interface MarkdownFileWriteEdit {
   readonly operation: MarkdownFileWriteOperation;
   readonly blockId: string;

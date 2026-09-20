@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { WebReadServiceRequest } from '../../../src/tools/web/webread/definitions/webReadService';
 import { setWorkspaceRoot, resetWorkspaceRootToDefault } from '../../../src/shared/utils/pathManager';
-import { resolveEvidenceFromBundles } from '../../../src/shared/artifacts/evidence/resolveEvidenceFromBundles';
+import { resolveEvidenceFromBundles } from '../../../src/domains/evidence';
 import { createWebCacheRuntime } from '../../../src/tools/web/shared/cache/webCacheFactory';
 import { MemoryWebCache } from '../../../src/tools/web/shared/cache/adapters/memoryWebCache';
 import { getWebFailureKind } from '../../../src/tools/web/shared/webFailure';
@@ -13,6 +13,7 @@ import { JinaReaderProvider } from '../../../src/tools/web/webread/providers/jin
 import type { WebReadProvider } from '../../../src/tools/web/webread/providers/types';
 import { WEB_READ_RELIABILITY_CASES, type WebReadReliabilityCase } from './read-cases';
 import { evaluateReadQuality } from './read-evaluation';
+import { createWebBenchmarkContext } from './createWebBenchmarkContext';
 
 type ManagedRoute = 'metaso' | 'jina_direct' | 'jina_browser';
 
@@ -37,8 +38,9 @@ interface ReadAttemptReport {
   tookMs: number;
   charCount: number;
   hasTitle: boolean;
-  codeBlockPreserved: boolean;
-  tablePreserved: boolean;
+  codeBlockMarkupPresent: boolean;
+  tableMarkupPresent: boolean;
+  contentChecks: { checked: number; failed: string[] };
   evidenceResolved: boolean;
 }
 
@@ -168,11 +170,11 @@ async function runRoute(params: {
   try {
     const output = await runReadWebPage(
       { url: params.caseDefinition.url, maxChars: 50_000 },
-      {
+      createWebBenchmarkContext({
         conversationId,
         turnId: `round_${params.round}`,
-        research: { instanceId },
-      },
+        instanceId,
+      }),
       {
         // 普通 Node runner 没有 Electron 渲染 port；本脚本只比较 HTTP → 托管路线。
         renderProvider: null,
@@ -195,8 +197,9 @@ async function runRoute(params: {
         tookMs: Date.now() - startedAt,
         charCount: 0,
         hasTitle: false,
-        codeBlockPreserved: false,
-        tablePreserved: false,
+        codeBlockMarkupPresent: false,
+        tableMarkupPresent: false,
+        contentChecks: { checked: 0, failed: [] },
         evidenceResolved: false,
       };
     }
@@ -218,8 +221,9 @@ async function runRoute(params: {
       tookMs: Date.now() - startedAt,
       charCount: quality.charCount,
       hasTitle: quality.hasTitle,
-      codeBlockPreserved: quality.codeBlockPreserved,
-      tablePreserved: quality.tablePreserved,
+      codeBlockMarkupPresent: quality.codeBlockMarkupPresent,
+      tableMarkupPresent: quality.tableMarkupPresent,
+      contentChecks: quality.contentChecks,
       evidenceResolved: true,
     };
   } catch (error: unknown) {
@@ -239,8 +243,9 @@ async function runRoute(params: {
       tookMs: Date.now() - startedAt,
       charCount: 0,
       hasTitle: false,
-      codeBlockPreserved: false,
-      tablePreserved: false,
+      codeBlockMarkupPresent: false,
+      tableMarkupPresent: false,
+      contentChecks: { checked: 0, failed: [] },
       evidenceResolved: false,
     };
   }
@@ -269,6 +274,7 @@ function renderReport(attempts: ReadAttemptReport[], minSuccessRate: number): st
     lines.push('- statistical SLO: not claimed; this is a real-site compatibility sample');
     lines.push(`- managed escalations: ${escalations}/${routeAttempts.length}`);
     lines.push(`- Evidence replay: ${evidenceResolved}/${contentAttempts.length} content responses`);
+    lines.push(`- content assertions checked / failed: ${routeAttempts.reduce((sum, attempt) => sum + attempt.contentChecks.checked, 0)}/${routeAttempts.reduce((sum, attempt) => sum + attempt.contentChecks.failed.length, 0)} (zero checked means unverified)`);
     lines.push(`- latency p50/p95: ${percentile(latencies, 0.5)}ms / ${percentile(latencies, 0.95)}ms`);
     for (const category of [...new Set(routeAttempts.map((attempt) => attempt.category))].sort()) {
       const categoryAttempts = routeAttempts.filter((attempt) => attempt.category === category);
@@ -317,7 +323,7 @@ async function main(): Promise<void> {
     const observedRate = routeAttempts.filter((attempt) => attempt.success).length / routeAttempts.length;
     return observedRate >= options.minSuccessRate;
   });
-  if (!routePassed) process.exitCode = 1;
+  if (!routePassed || attempts.some(attempt => attempt.contentChecks.failed.length > 0)) process.exitCode = 1;
 }
 
 void main().catch((error: unknown) => {

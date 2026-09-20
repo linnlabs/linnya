@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { CitationRefSchema, HttpCitationUrlSchema } from '../citation';
 import {
   WebCacheStatusSchema,
+  WebDocumentWarningSchema,
   WebExtractionFailureStageSchema,
   WebFailureKindSchema,
   WebReadEscalationReasonSchema,
@@ -49,6 +50,8 @@ const WebReadDataObjectSchema = z.object({
   escalationReason: WebReadEscalationReasonSchema.optional(),
   initialFailureKind: WebFailureKindSchema.optional(),
   initialFailureStage: WebExtractionFailureStageSchema.optional(),
+  /** 提取器启发式信号，不代表来源可信度或全文完整性。 */
+  warnings: z.array(WebDocumentWarningSchema).max(7).optional(),
   citations: z.object({
     query: HttpCitationUrlSchema,
     searchMode: z.literal('web'),

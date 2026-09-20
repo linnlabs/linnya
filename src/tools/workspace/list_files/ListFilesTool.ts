@@ -40,6 +40,7 @@ function paginate<T>(
 
 export class ListFilesTool extends BaseTool {
   readonly name = 'list_files';
+  readonly argumentValidationErrorCode = 'LIST_FILES_ARGUMENTS_INVALID';
 
   get description() {
     return [
@@ -158,20 +159,18 @@ export class ListFilesTool extends BaseTool {
     return validateWorkspaceFileToolArguments({
       args,
       schema: WorkspaceListFilesArgsSchema,
-      errorCode: 'LIST_FILES_ARGUMENTS_INVALID',
+      errorCode: this.argumentValidationErrorCode,
       toolName: this.name,
+      example: { locator: 'workspace:/' },
     });
   }
 
   getExecutionSummary(output: string): string {
     try {
-      const parsed = JSON.parse(output) as { data?: { locator?: unknown; total_count?: unknown } };
-      const locator =
-        typeof parsed.data?.locator === 'string' ? parsed.data.locator : 'workspace:/';
-      const total = typeof parsed.data?.total_count === 'number' ? parsed.data.total_count : 0;
-      return `list_files：${locator}，${total} 项`;
+      const parsed = WorkspaceListFilesResultSchema.parse(JSON.parse(output));
+      return `list_files：${parsed.data.locator}，${parsed.data.total_count} 项`;
     } catch {
-      return 'list_files：完成。';
+      return 'list_files：结果格式异常，无法确认目录内容。';
     }
   }
 

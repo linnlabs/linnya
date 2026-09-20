@@ -1,5 +1,15 @@
 export type WorkspaceDocumentFileWriteOperation = 'write' | 'edit';
 
+/** 只标记已知的 provider admission 失败；正文错误由对应文档 owner 分类。 */
+export class WorkspaceDocumentFileWriteError extends Error {
+  readonly code = 'WORKSPACE_DOCUMENT_WRITE_PROVIDER_UNAVAILABLE';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'WorkspaceDocumentFileWriteError';
+  }
+}
+
 export interface WorkspaceDocumentFileIdentity {
   readonly documentId: string;
   readonly documentName: string;
@@ -23,6 +33,8 @@ export interface WorkspaceDocumentFileWriteRequest {
   readonly replacedCount?: number;
   /** edit_file 执行时从 VFS current view 读到的稳定内容版本身份。 */
   readonly expectedSourceKey?: string;
+  /** exact replacement 的完整读取快照；由文档 owner 在异步解析后、提交前核对。 */
+  readonly expectedCurrentText?: string;
 }
 
 export interface WorkspaceDocumentFileWriteResult {

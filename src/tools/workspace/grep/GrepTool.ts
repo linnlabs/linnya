@@ -20,6 +20,7 @@ import { validateWorkspaceFileToolArguments } from '../shared/workspaceFileToolC
 
 export class GrepTool extends BaseTool {
   readonly name = 'grep';
+  readonly argumentValidationErrorCode = 'GREP_ARGUMENTS_INVALID';
 
   get description() {
     return [
@@ -152,19 +153,18 @@ export class GrepTool extends BaseTool {
     return validateWorkspaceFileToolArguments({
       args,
       schema: WorkspaceGrepArgsSchema,
-      errorCode: 'GREP_ARGUMENTS_INVALID',
+      errorCode: this.argumentValidationErrorCode,
       toolName: this.name,
+      example: { locator: 'workspace:/', pattern: 'search text' },
     });
   }
 
   getExecutionSummary(output: string): string {
     try {
-      const parsed = JSON.parse(output) as { data?: { pattern?: unknown; total_count?: unknown } };
-      const pattern = typeof parsed.data?.pattern === 'string' ? parsed.data.pattern : '';
-      const count = typeof parsed.data?.total_count === 'number' ? parsed.data.total_count : 0;
-      return pattern ? `grep："${pattern}"，${count} 条匹配` : 'grep：完成。';
+      const parsed = WorkspaceGrepResultSchema.parse(JSON.parse(output));
+      return `grep："${parsed.data.pattern}"，${parsed.data.total_count} 条匹配`;
     } catch {
-      return 'grep：完成。';
+      return 'grep：结果格式异常，无法确认匹配结果。';
     }
   }
 

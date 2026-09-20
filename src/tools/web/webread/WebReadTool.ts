@@ -12,6 +12,7 @@ import { MAX_WEB_PAGE_CONTENT_CHARS, runReadWebPage } from './orchestration/read
 
 export class WebReadTool extends BaseTool {
   readonly name = 'web_read';
+  readonly argumentValidationErrorCode = 'WEB_READ_ARGUMENTS_INVALID';
 
   readonly description = `Read and extract the main content (as readable text or provider markdown) from a web page URL.
 
@@ -21,12 +22,16 @@ Returns the page content with a stable short reference [@XXXXXX] that can be cit
 # Important
 - You MUST only cite references ([@ref]) that appear in the tool output. Do NOT invent references.
 - PDF documents are not supported. Do not call web_read for PDF URLs; find an HTML page or another text source instead.
+- A successful capture is not proof of completeness or claim support. Inspect truncation, extraction flags, and the cited passage.
 - For best results, pass the canonical URL and a title_hint from web_search when available.`;
 
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     properties: {
-      url: { type: 'string', description: 'The URL of the web page to read.' },
+      url: {
+        type: 'string',
+        description: 'The canonical HTTP(S) page or text URL to read. PDF URLs are unsupported; find an HTML or text source instead.',
+      },
       max_chars: {
         type: 'number',
         description: `Optional. Maximum characters of content to return. Default: ${MAX_WEB_PAGE_CONTENT_CHARS}.`,
@@ -39,6 +44,21 @@ Returns the page content with a stable short reference [@XXXXXX] that can be cit
     required: ['url'],
     additionalProperties: false,
   };
+
+  protected override validateArguments(args: Record<string, unknown>): {
+    success: boolean;
+    error?: string;
+  } {
+    const parsed = WebReadArgsSchema.safeParse(args);
+    if (parsed.success) return { success: true };
+    const details = parsed.error.issues
+      .map(issue => `${issue.path.length > 0 ? issue.path.join('.') : 'arguments'}: ${issue.message}`)
+      .join('; ');
+    return {
+      success: false,
+      error: `[WEB_READ_ARGUMENTS_INVALID] web_read 参数不符合正式合同: ${details}\n修正所列字段后再调用。最小结构示例：{"url":"https://example.com/article"}`,
+    };
+  }
 
   async run(rawArgs: Record<string, unknown>, context: ToolContext): Promise<string> {
     const args = WebReadArgsSchema.parse(rawArgs);
@@ -55,7 +75,7 @@ Returns the page content with a stable short reference [@XXXXXX] that can be cit
       const result = WebReadResultSchema.parse(JSON.parse(output));
       return `读取网页「${result.data.title || result.data.url}」，共 ${result.data.charCount} 字符。`;
     } catch {
-      return '读取网页完成。';
+      return 'web_read：结果格式异常，未能确认网页证据已保存。';
     }
   }
 }

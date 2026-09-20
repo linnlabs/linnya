@@ -12,6 +12,7 @@ import { planMarkdownBlocks } from '../../normalization';
 import { serializeMarkdownBlocks, type FlattenedMarkdownBlock } from '../../../shared';
 import { normalizeMarkdownCitationTokenSpelling } from '../../../../citation';
 import { planMarkdownBlockWrites } from '../functions/planMarkdownBlockWrites';
+import { assertMarkdownWriteSourceCurrent } from '../functions/assertMarkdownWriteSourceCurrent';
 import type { MarkdownAnnotationMeta } from '@app/schemas';
 import {
   applyMarkdownAnnotationChanges,
@@ -98,6 +99,8 @@ export async function writeMarkdownDocumentFromText(params: {
   readonly documentStore: MarkdownDocumentWriteStore;
   readonly documentId: string;
   readonly targetText: string;
+  /** file edit 的完整 current 投影快照；全文覆盖写入不传。 */
+  readonly expectedCurrentText?: string;
   readonly toolName: 'edit_file' | 'write_file';
   readonly pendingMetaByMarkdown?: ReadonlyMap<string, PendingRevisionMetadata>;
   readonly annotationAdmission: {
@@ -129,6 +132,8 @@ export async function writeMarkdownDocumentFromText(params: {
   const targetBlocks = planned.bodyBlocks;
   const targetComparisonBlocks = targetBlocks.map(normalizeMarkdownCitationTokenSpelling);
   const currentText = serializeMarkdownBlocks(currentProjection.viewBlocks);
+  // 解析等待期间可能发生 Editor 保存或其他工具修订；此后到同步事务之间不得再 await。
+  assertMarkdownWriteSourceCurrent(params.expectedCurrentText, currentText);
 
   const baseline = buildMarkdownCitationReadProjection({
     content, pendings: [], viewMode: 'original', includeAnnotations: false,

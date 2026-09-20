@@ -73,7 +73,7 @@ export class LocalHttpProvider implements WebReadProvider {
     }
 
     if (HTML_MIME_TYPES.has(fetched.mimeType)) {
-      const extracted = extractArticle(fetched.bodyText);
+      const extracted = extractArticle(fetched.bodyText, { url: fetched.finalUrl });
       if (extracted.accessBarrier) {
         throw new WebFailureError(
           extracted.accessBarrier,
@@ -93,7 +93,7 @@ export class LocalHttpProvider implements WebReadProvider {
         contentType: fetched.contentType,
         title: extracted.title,
         content: extracted.text,
-        contentFormat: 'text',
+        contentFormat: 'markdown',
         byline: extracted.byline,
         siteName: extracted.siteName,
         publishedAt: extracted.publishedAt,
@@ -124,7 +124,8 @@ export class LocalHttpProvider implements WebReadProvider {
         contentType: fetched.contentType,
         title: titleFromUrl(fetched.finalUrl),
         content,
-        contentFormat: 'text',
+        contentFormat: fetched.mimeType === 'text/markdown' || fetched.mimeType === 'text/x-markdown'
+          ? 'markdown' : 'text',
         extractor: 'raw_text',
         renderMode: 'http',
         provider: this.name,

@@ -71,6 +71,7 @@ function buildEnabledPluginEditHint(): string {
 
 export class EditFileTool extends BaseTool {
   readonly name = 'edit_file';
+  readonly argumentValidationErrorCode = 'EDIT_FILE_ARGUMENTS_INVALID';
   // 文件可被后续编辑或恢复改变；同参调用必须针对当前内容执行，不能复用对话里的旧成功结果。
   /**
    * 工具名确定后立即建立 loading 卡片；精确替换正文不参与前端增量展示。
@@ -96,11 +97,12 @@ export class EditFileTool extends BaseTool {
       'Markdown edits are written as pending revisions so the user can accept or reject them in the editor.',
       'The edit will fail if old_string is not unique unless replace_all=true.',
       'Success returns changed line ranges and a compact unified diff; stale or ambiguous input returns reread hints.',
+      'Only workspace:/... locators are valid here. conversation:/... and file:///... belong to read_file and will be rejected.',
     ].join('\n');
   }
 
   private buildLocatorParameterDescription(): string {
-    return `要编辑的已有 Workspace locator。与 inode 二选一。Markdown 文件可以是无后缀、.md 或 .markdown${buildEnabledPluginEditHint()}。`;
+    return `要编辑的已有 Workspace locator，只能使用 workspace:/...。与 inode 二选一。Markdown 文件可以是无后缀、.md 或 .markdown${buildEnabledPluginEditHint()}。`;
   }
 
   readonly parameters: ToolParameterSchema = {
@@ -111,7 +113,7 @@ export class EditFileTool extends BaseTool {
         type: 'string',
         minLength: 1,
         description:
-          '要编辑的已有 Workspace locator。与 inode 二选一。Markdown 文件可以是无后缀、.md 或 .markdown；插件文档格式由已启用插件贡献。',
+          '要编辑的已有 Workspace locator。只能使用 workspace:/...；与 inode 二选一。Markdown 文件可以是无后缀、.md 或 .markdown；插件文档格式由已启用插件贡献。',
       },
       inode: {
         type: 'string',
@@ -185,8 +187,9 @@ export class EditFileTool extends BaseTool {
     return validateWorkspaceFileToolArguments({
       args,
       schema: WorkspaceEditFileArgsSchema,
-      errorCode: 'EDIT_FILE_ARGUMENTS_INVALID',
+      errorCode: this.argumentValidationErrorCode,
       toolName: this.name,
+      example: { locator: 'workspace:/report.md', old_string: 'exact current text', new_string: 'replacement' },
     });
   }
 
@@ -195,7 +198,7 @@ export class EditFileTool extends BaseTool {
       const parsed = WorkspaceEditFileResultSchema.parse(JSON.parse(output));
       return `edit_file：${parsed.data.locator}，替换 ${parsed.data.replaced} 处`;
     } catch {
-      return 'edit_file：完成。';
+      return 'edit_file：结果格式异常，未能确认提交回执。';
     }
   }
 
@@ -284,6 +287,7 @@ export class EditFileTool extends BaseTool {
         content: replacement.text,
         operation: 'edit',
         replacedCount: replacement.count,
+        expectedCurrentText: read.text,
         ...(expectedSourceKey ? { expectedSourceKey } : {}),
       },
       resolveProvider: createWorkspaceDocumentFileWriteProviderResolver({

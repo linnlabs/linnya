@@ -709,7 +709,7 @@ describe('R2 本地渲染 Provider', () => {
     const renderer: WebPageRenderer = {
       render: vi.fn().mockResolvedValue({
         finalUrl: 'https://example.com/rendered',
-        html: `<!doctype html><html><head><title>Rendered Article</title></head><body><article><h1>Rendered Article</h1><p>${'渲染后出现的正文。'.repeat(80)}</p></article></body></html>`,
+        html: `<!doctype html><html><head><title>Rendered Article</title></head><body><article><h1>Rendered Article</h1><p>${'渲染后出现的正文。'.repeat(80)}</p><a href="/data">原始数据</a><pre><code>if ready:\n    value = 83</code></pre></article></body></html>`,
       }),
     };
     const result = await new LocalRenderProvider({ renderer }).read({
@@ -725,6 +725,9 @@ describe('R2 本地渲染 Provider', () => {
       warnings: [],
     });
     expect(result.content).toContain('渲染后出现的正文');
+    expect(result.markdown).toBe(result.content);
+    expect(result.content).toContain('[原始数据](https://example.com/data)');
+    expect(result.content).toContain('if ready:\n    value = 83');
   });
 
   it('渲染后的应用正文由语义 DOM 抽取器接管', async () => {

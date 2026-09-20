@@ -86,6 +86,7 @@ function createMarkdownFileWriteProvider(params: {
         documentStore,
         documentId: request.identity.documentId,
         targetText: request.content,
+        expectedCurrentText: request.expectedCurrentText,
         toolName: request.operation === 'edit' ? 'edit_file' : 'write_file',
         pendingMetaByMarkdown: await buildMarkdownPendingCitationMetadata(request.content, refs =>
           requireCitationSourceResolver(params.context).resolveSources(refs), {

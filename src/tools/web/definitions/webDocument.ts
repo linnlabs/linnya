@@ -1,16 +1,10 @@
+import type { WebDocumentWarning } from '@app/schemas';
+export type { WebDocumentWarning } from '@app/schemas';
+
 /** Web 页面读取在 Provider 与编排之间传递的稳定业务文档。 */
 export type WebRenderMode = 'http' | 'js' | 'managed';
 
 export type WebPageAccessBarrier = 'captcha' | 'login_required';
-
-export type WebDocumentWarning =
-  | 'readability_failed'
-  | 'empty_content'
-  | 'content_too_short'
-  | 'low_text_ratio'
-  | 'js_shell'
-  | 'table_dominant'
-  | 'list_dominant';
 
 export interface WebDocument {
   /** 用户请求的原始 URL。 */

@@ -18,6 +18,7 @@ import { validateWorkspaceFileToolArguments } from '../shared/workspaceFileToolC
 
 export class ReadFileTool extends BaseTool {
   readonly name = 'read_file';
+  readonly argumentValidationErrorCode = 'READ_FILE_ARGUMENTS_INVALID';
 
   get description() {
     return [
@@ -152,14 +153,15 @@ export class ReadFileTool extends BaseTool {
       return {
         success: false,
         error:
-          '[READ_FILE_LOCATOR_INVALID] locator 必须使用 workspace:、conversation: 或 canonical file: 地址。',
+          '[READ_FILE_LOCATOR_INVALID] locator 必须使用 workspace:、conversation: 或 canonical file: 地址。\n修正地址后再调用。最小结构示例：{"locator":"workspace:/report.md"}',
       };
     }
     return validateWorkspaceFileToolArguments({
       args,
       schema: WorkspaceReadFileArgsSchema,
-      errorCode: 'READ_FILE_ARGUMENTS_INVALID',
+      errorCode: this.argumentValidationErrorCode,
       toolName: this.name,
+      example: { locator: 'workspace:/report.md' },
     });
   }
 
@@ -168,7 +170,7 @@ export class ReadFileTool extends BaseTool {
       const parsed = WorkspaceReadFileResultSchema.parse(JSON.parse(output));
       return `read_file：${parsed.data.locator} (${parsed.data.content_type})`;
     } catch {
-      return 'read_file：完成。';
+      return 'read_file：结果格式异常，无法确认读取内容。';
     }
   }
 

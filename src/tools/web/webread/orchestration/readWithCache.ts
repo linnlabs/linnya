@@ -17,7 +17,7 @@ import { readWebPageWithLadder } from './readLadder';
 const logger = new Logger('WebReadCache');
 // 正文抽取器或 DOM 规范化语义变化时必须升级，避免 24 小时稳定页面缓存
 // 继续返回旧算法结果。
-const WEB_READ_CACHE_ROUTE_VERSION = 4;
+const WEB_READ_CACHE_ROUTE_VERSION = 7;
 const DEFAULT_LOCAL_PROVIDER_IDENTITY = 'local_http';
 const DEFAULT_RENDER_PROVIDER_IDENTITY = 'local_render';
 

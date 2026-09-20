@@ -7,6 +7,7 @@ import type { WebSearchProvider } from '../websearch/providers/types';
 import type { ToolContext } from '../../types';
 import { attachCitationRefAllocator, attachCitationSequence } from '../../../domains/citation';
 import { createCitationRefAllocatorFixture } from '../../../domains/citation/testkit/citationRefAllocatorFixture';
+import { WebReadResultSchema } from '@app/schemas';
 
 function createWriter(): WebEvidenceWriter & { save: ReturnType<typeof vi.fn> } {
   return {
@@ -80,7 +81,7 @@ describe('WebEvidenceWriterPort', () => {
         rawLength: 18,
         fetchedAt: '2026-07-18T00:00:00.000Z',
         contentHash: 'port-content-hash',
-        warnings: [],
+        warnings: ['content_too_short'],
         latencyMs: 1,
       }),
     };
@@ -104,5 +105,9 @@ describe('WebEvidenceWriterPort', () => {
       })
     );
     expect(output).toContain('0123456789abcdef');
+    const result = WebReadResultSchema.parse(JSON.parse(output));
+    expect(result.data.warnings).toEqual(['content_too_short']);
+    expect(result.observation).toContain('Extraction flags: content_too_short');
+    expect(result.observation).toContain('not a source reliability or completeness verdict');
   });
 });

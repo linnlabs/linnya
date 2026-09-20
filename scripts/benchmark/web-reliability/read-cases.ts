@@ -8,6 +8,20 @@ export type WebReadCaseCategory =
   | 'long_page'
   | 'redirect';
 
+export interface ExpectedTableCell {
+  text: string;
+  rowSpan?: number;
+  colSpan?: number;
+}
+
+/** 冻结来源中的关键内容；只评价声明过的检查项，不代表整页已验证。 */
+export type WebContentAssertion = { id: string } & (
+  | { kind: 'link'; url: string }
+  | { kind: 'code'; text: string }
+  | { kind: 'strikethrough'; text: string }
+  | { kind: 'table'; rows: ExpectedTableCell[][] }
+);
+
 export interface WebReadReliabilityCase {
   id: string;
   language: 'zh' | 'en';
@@ -17,6 +31,7 @@ export interface WebReadReliabilityCase {
   expectedAnyKeywords: string[];
   expectCodeBlock?: boolean;
   expectTable?: boolean;
+  contentAssertions?: WebContentAssertion[];
   /** 当前产品明确不支持的内容类型，用于验证稳定终态而非正文质量。 */
   expectedFailureKind?: 'unsupported_mime';
 }

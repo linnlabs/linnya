@@ -1,3 +1,4 @@
+import type { WebDocumentWarning } from '@app/schemas';
 import {
   createBoundaryToken,
   wrapUntrustedWebContent,
@@ -12,6 +13,7 @@ export interface BuildWebReadObservationParams {
   contentHash: string;
   capturedCharCount: number;
   captureTruncated: boolean;
+  warnings?: readonly WebDocumentWarning[];
 }
 
 export function buildWebReadObservation(params: BuildWebReadObservationParams): string {
@@ -26,6 +28,11 @@ export function buildWebReadObservation(params: BuildWebReadObservationParams): 
     `Web page evidence [@${params.ref}] source_type=web`,
     `URL: ${params.url}`,
     `Captured characters: ${params.capturedCharCount}${params.captureTruncated ? ' (capture truncated)' : ''}`,
+    ...(params.warnings && params.warnings.length > 0
+      ? [
+          `Extraction flags: ${params.warnings.join(', ')}. These are extraction heuristics, not a source reliability or completeness verdict. Check the captured passage and table context before citing a key claim.`,
+        ]
+      : []),
     '',
     ...wrapUntrustedWebContent({ token: boundaryToken, body: untrustedBody }),
   ];

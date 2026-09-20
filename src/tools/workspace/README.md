@@ -71,6 +71,18 @@ locator 表达节点当前地址，inode 表达跨重命名/移动仍稳定的�
 
 五个 concrete tool 必须用正式 owner schema 覆盖 `validateArguments`。ToolNode 在 `tool_process(start)` 前调用该 admission；双身份、未知字段和非法 locator 只能产生 protocol error，不得进入 provider/VFS mutation。`run()` 内再次 parse 只用于类型收窄，不能成为第一道业务合同。尤其禁止在 inode 解析失败后改按 locator 执行，否则创建看似成功，更新目标却无法证明。
 
+五件套 admission 使用各自的 `*_ARGUMENTS_INVALID` 码、字段路径和最小合法示例；
+`read_file` 的非法地址保留 `READ_FILE_LOCATOR_INVALID` 文案码。示例只表达参数结构，不代表文件存在。
+`write_file/edit_file` 明确只接收 `workspace:/`，会话或宿主物理文件由 Shell 写入。
+ToolRegistry 可转交 admission 码，但当前 Linnkit 的 ToolNode 前置校验只接收 success/error，
+因此不能宣称所有前置错误都已有结构化 `error_code`；不得通过解析错误文案补造。
+
+Markdown 编辑把 exact replacement 前读到的完整 current text 交给 provider，
+在解析结束后、同步事务前核对正文、pending 与批注的共同投影；变化时以
+`MARKDOWN_FILE_WRITE_CONFLICT` 拒绝并要求重读，不提交该次编辑和成功回执。
+全文 `write_file` 仍表示主动覆盖。成功意味着 owner 已提交（Markdown 更新仍可能待用户确认），
+不意味着文章、数字或引用支持程度已经通过研究质量检验。
+
 五个 Tool 的完整模型 `parameters` 必须直接保留在各自 concrete tool 文件中，方便同时审查描述、字段、
 `required` 与封闭 `oneOf`。Workspace shared 只复用“正式 parser 的错误如何转换为 admission 结果”这一窄逻辑，
 不生成 locator/inode 分支，也不把 Workspace 身份语义下沉到 Linnkit。通用协议与测试时序见

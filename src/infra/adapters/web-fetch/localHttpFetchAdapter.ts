@@ -245,7 +245,8 @@ export async function localHttpFetch(
     attemptCount += 1;
     try {
       const headers: Record<string, string> = {
-        Accept: 'text/html,application/xhtml+xml,text/plain,application/json,application/xml;q=0.9,*/*;q=0.1',
+        // 由来源站点协商正文表示；返回 HTML 时仍走同一抽取链，不额外请求或切换供应商。
+        Accept: 'text/markdown,text/html;q=0.9,application/xhtml+xml;q=0.9,text/plain;q=0.8,application/json;q=0.7,application/xml;q=0.7,*/*;q=0.1',
         'User-Agent': 'Linnya-WebReader/1.0',
       };
       if (options.validators?.etag) headers['If-None-Match'] = options.validators.etag;

@@ -53,7 +53,7 @@ export class LocalRenderProvider implements WebReadProvider {
       throw error;
     }
 
-    const extracted = extractArticle(rendered.html);
+    const extracted = extractArticle(rendered.html, { url: rendered.finalUrl });
     if (extracted.accessBarrier) {
       throw new WebFailureError(
         extracted.accessBarrier,
@@ -74,7 +74,7 @@ export class LocalRenderProvider implements WebReadProvider {
       contentType: 'text/html; charset=utf-8',
       title: extracted.title,
       content: extracted.text,
-      contentFormat: 'text',
+      contentFormat: 'markdown',
       byline: extracted.byline,
       siteName: extracted.siteName,
       publishedAt: extracted.publishedAt,

@@ -70,6 +70,22 @@ export const WEB_READ_QUALITY_SIGNAL_VALUES = [
 export const WebReadQualitySignalSchema = z.enum(WEB_READ_QUALITY_SIGNAL_VALUES);
 export type WebReadQualitySignal = z.infer<typeof WebReadQualitySignalSchema>;
 
+/**
+ * WebRead 返回给模型的提取质量诊断。
+ * 这些值来自实际 extractor 运行结果，不能由 Agent 在正文中自报。
+ */
+export const WEB_DOCUMENT_WARNING_VALUES = [
+  'readability_failed',
+  'empty_content',
+  'content_too_short',
+  'low_text_ratio',
+  'js_shell',
+  'table_dominant',
+  'list_dominant',
+] as const;
+export const WebDocumentWarningSchema = z.enum(WEB_DOCUMENT_WARNING_VALUES);
+export type WebDocumentWarning = z.infer<typeof WebDocumentWarningSchema>;
+
 export const WEB_READ_ESCALATION_REASON_VALUES = [
   ...WEB_READ_QUALITY_SIGNAL_VALUES,
   ...WEB_ESCALATABLE_FAILURE_KIND_VALUES,

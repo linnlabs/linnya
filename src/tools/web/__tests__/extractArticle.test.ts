@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { load } from 'cheerio';
 import { describe, expect, it } from 'vitest';
 import { extractArticle } from '../webread/extraction/extractArticle';
 
@@ -7,6 +8,21 @@ async function readFixture(name: string): Promise<string> {
 }
 
 describe('extractArticle 确定性正文抽取', () => {
+  it('压缩 HTML 的段落与表格数值保留边界，空单元格不与相邻数字粘连', () => {
+    const result = extractArticle('<html><head><title>Capacity report</title></head><body><main>' +
+      '<p>' + 'Official capacity data and scenario assumptions. '.repeat(30) + '</p>' +
+      '<p>Base case</p><p>Updated case</p>' +
+      '<table><tr><th>Year</th><th>Input GW</th><th>Output GW</th></tr>' +
+      '<tr><td>2026</td><td>83</td><td>113</td></tr>' +
+      '<tr><td>2027</td><td></td><td>120</td></tr></table></main></body></html>');
+    expect(result.text).toContain('Base case\n');
+    expect(result.text).toContain('Updated case');
+    const table = load(result.text);
+    expect(table('tr').map((_, row) => [table(row).children().map((_, cell) => table(cell).text()).get()]).get())
+      .toEqual([['Year', 'Input GW', 'Output GW'], ['2026', '83', '113'], ['2027', '', '120']]);
+    expect(result.text).not.toContain('202683113');
+  });
+
   it('从真实文章 HTML 提取正文与页面元数据', async () => {
     const result = extractArticle(await readFixture('static-article.html'));
     expect(result.title).toBe('本地网页抓取的安全边界');

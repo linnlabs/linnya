@@ -3,13 +3,14 @@ import os from 'node:os';
 import path from 'node:path';
 import type { WebSearchServiceRequest } from '../../../src/tools/web/websearch/definitions/webSearchService';
 import { setWorkspaceRoot, resetWorkspaceRootToDefault } from '../../../src/shared/utils/pathManager';
-import { resolveEvidenceFromBundles } from '../../../src/shared/artifacts/evidence/resolveEvidenceFromBundles';
+import { resolveEvidenceFromBundles } from '../../../src/domains/evidence';
 import { WebSearchTool } from '../../../src/tools/web/websearch/WebSearchTool';
 import { BaiduQianfanProvider } from '../../../src/tools/web/websearch/providers/baiduQianfan';
 import { SerperProvider } from '../../../src/tools/web/websearch/providers/serper';
 import type { WebSearchProvider } from '../../../src/tools/web/websearch/providers/types';
 import { getWebFailureKind } from '../../../src/tools/web/shared/webFailure';
 import { WEB_RELIABILITY_CASES, type WebReliabilityCase } from './cases';
+import { createWebBenchmarkContext } from './createWebBenchmarkContext';
 import {
   renderReliabilityReport,
   summarizeLiveSmoke,
@@ -123,11 +124,11 @@ async function executeAttempt(params: {
       query: params.caseDefinition.query,
       top_k: 10,
       recency_days: params.caseDefinition.recencyDays,
-    }, {
+    }, createWebBenchmarkContext({
       conversationId,
       turnId: `round_${params.round}`,
-      research: { instanceId },
-    });
+      instanceId,
+    }));
     const citations = readCitations(output);
     resultCount = citations.length;
     const refs = citations.flatMap((citation) => typeof citation['ref'] === 'string' ? [citation['ref']] : []);

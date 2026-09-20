@@ -275,6 +275,7 @@ export async function runReadWebPage(
     contentHash: readResult.contentHash,
     capturedCharCount: content.length,
     captureTruncated: truncated,
+    warnings: readResult.warnings,
   });
 
   logger.info('[runReadWebPage] 读取完成', {
@@ -314,6 +315,7 @@ export async function runReadWebPage(
       ...(ladderResult.initialFailureStage
         ? { initialFailureStage: ladderResult.initialFailureStage }
         : {}),
+      ...(readResult.warnings.length > 0 ? { warnings: readResult.warnings } : {}),
       citations,
       evidence_store: { bundle_id: bundleId },
       cacheStatus,

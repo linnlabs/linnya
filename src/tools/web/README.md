@@ -117,7 +117,11 @@ src/tools/web/webread/
 │   ├── projectActiveWebReadConfig.ts
 │   └── resolveWebReadConfigUpdate.ts
 ├── extraction/
-│   └── extractArticle.ts
+│   ├── extractArticle.ts
+│   ├── extractSemanticDom.ts
+│   ├── parseCanonicalHtmlDocument.ts
+│   ├── prepareReadableDocument.ts
+│   └── renderReadableMarkdown.ts
 ├── orchestration/
 │   ├── readLadder.ts
 │   ├── readWithCache.ts
@@ -245,12 +249,17 @@ src/tools/web/webread/
 - R2 已启用三层生产阶梯：本地 HTTP 合格即返回；JS 壳、空正文、质量信号、`network_error`、单跳 `timeout` 与 DOM 规范化失败按需调用一次本地 Chromium；渲染仍不合格或渲染能力失败才调用一次托管兜底。canonical DOM 上的 Readability 异常会跳过机械渲染，直接进入已配置的托管 Reader。整条阶梯 90 秒总预算触发的 `timeout` 仍是终态
 - `text/html` 先由 Cheerio 默认的 WHATWG `parse5` tree builder 规范化成唯一 `html/head/body`，再创建轻量 linkedom DOM；禁止用正则、站点白名单或手工移动第二个 body 修复 tag soup
 - HTML 抽取先用 Readability；失败或明显遗漏时，从 `article/main/[role=main]` 的可访问主区域补取正文，并过滤导航、侧栏、页脚和隐藏节点。Readability 抛错但语义正文已存在时保留正文并记录 warning，完全无正文时才产生 `extraction_error`
+- 主区域选择与内容表达分离：Readability 选中的 HTML 与语义主区域共用 Turndown 转换为 Markdown，保留来源链接、代码缩进、有序列表、删除线、图注与图片 alt。质量判定使用可见文字长度，避免链接地址和标记抬高质量信号
+- 两条路径在选区前共用隐藏节点/内联隐藏样式清理。先移除导航、脚本与 inert 区域，再识别同一主区域内可见、可用按钮声明的折叠正文：`aria-expanded=false` 配合 `aria-controls` 的明确目标，或 read/show-more 命名的按钮与相邻同类命名正文（允许仅包裹按钮的一层容器）。只移除该目标层的隐藏状态，其内部独立隐藏的旧值仍排除；不按域名匹配，不点击控件、不执行额外脚本，也不凭单个类名恢复任意隐藏内容。未识别的折叠方式仍可能遗漏，`truncated=false` 只表示未触及字符上限，不承诺正文完整
+- HTML 相对链接依据最终 URL 与有效 base URL 还原，只保留符合既有同步 URL 策略的地址；链接出现不代表目标已读取，后续请求仍须完整校验 DNS 和连接
+- 表格保留精简 HTML 中的空单元格、caption、rowspan/colspan 和表头关联属性；不展开跨度、不猜测会计口径。保留的 HTML 删除事件、样式等非内容属性。静态抽取不承诺解析外部样式表的完整可见性或理解图片里的数字
+- 同一安全 GET 通过 Accept 优先请求来源站点的 Markdown；按实际 Content-Type 分流，不额外请求或自动换 Provider。原生 Markdown 保留来源表示（包括相对链接），不伪造未取得的标题/日期元数据；HTML 不支持协商时继续走原抽取链
 - GitHub `blob` 地址在本地 HTTP 首跳自动转换为 `raw.githubusercontent.com`，转换后的域名仍完整执行 URL/DNS 校验与 IP 钉扎；`web_read` 只读取 HTML/文本，不支持 PDF，实际响应为 `application/pdf` 时返回明确的 `unsupported_mime` 错误
 - 本地抓取每一跳都做 URL/DNS 校验，并用已校验 IP 建立连接；禁止改回 fetch 自动重定向
 - 当前读取路由可观察边界是 `failureKind`、`initialFailureKind`、`initialFailureStage`、`escalationReason` 和 `renderAttempted`；失败日志还会记录状态码、响应 MIME、最终 URL、重定向数、请求尝试次数和重试次数（不记录响应正文）。`initialFailureStage` 仅用于 `dom_canonicalization/readability` 抽取阶段。尚未记录每一跳 DNS 解析地址、代理 fake-IP 判定或 DNS/连接分段耗时，不得从现有日志推断这些事实
 - 兼容 TUN 代理 fake-IP：仅域名 DNS 结果允许 `198.18/15`，字面 fake-IP、内网地址及混入内网地址的解析结果仍拒绝
 - `WebPageRenderer` port 由 Electron main 显式注入 backend bundle；渲染 worker/runtime 禁止进入 backend bundle。默认渲染 provider 只在质量信号命中后惰性创建
-- 缓存路由身份 version 4 包含渲染开关和选中 Reader，并使旧 DOM 抽取算法缓存自然 miss；开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss
+- 缓存路由身份 version 7 包含渲染开关和选中 Reader，并使旧纯文本抽取、旧 Accept 策略及误删折叠正文的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss
 
 ### 5.3 与 citations 的关系（V1：页级引用先行）
 
@@ -274,6 +283,8 @@ src/tools/web/webread/
 - 搜索 Provider 统一返回 `SearchResult`：在 Provider 边界完成排名、canonical URL 与调用观测映射，工具层只做去重、引用与 Evidence 物化
 - 失败分类统一由 `shared/webFailure.ts` 维护；质量不足不是终态失败，M2 只能依据该文件导出的升级子集和独立质量原因决定是否升级。HTTP 403/419/429 只有同时出现有限的人机验证页面特征时才归类为 `captcha`，不能仅凭状态码猜测挑战。`dns_error` 仍保持终态；本地 GET 对 timeout/network/429/5xx 共享一次、有总预算约束的瞬态重试，挑战页、权限、MIME、策略和 404 不重试，也不自动换托管 Provider
 - `data` 额外返回 `provider/renderMode/extractor/renderAttempted/escalated/escalationReason/initialFailureKind/initialFailureStage`，用于判断本次读取实际走了哪条路径并回放首跳失败；`renderMode` 可为 `http/js/managed`
+- 有提取器 flags 时同时返回 strict `data.warnings` 和 observation 提示，schema、内部文档与缓存共用枚举。flags 是启发式诊断，表格/列表信号不能直接判为缺失；无 flags 也不证明完整、可信或支持某条结论。内部 qualityScore 不作为给模型的“可信度分数”
+- `web_read` 使用正式 schema 做前置 admission，失败提供 `WEB_READ_ARGUMENTS_INVALID` 与合法 URL 示例；本机阶梯耗尽且 managed 未开启时，明确要求换来源并披露未取得正文，不建议原样循环重试
 - 搜索与读取的 `data.cacheStatus` 返回 `miss/hit/revalidated/coalesced/bypass`，用于区分真实网络、缓存命中、条件请求和并发合并
 - `data`：标题/URL/正文统计 + owner schema 约束的 `citations` + `evidence_store.bundle_id`；不携带页面全文
 - `observation`：包含本次实际捕获的网页正文（含 `[@ref]`）并保持完整动态不可信边界；超过通用阈值后由 ToolOutputStore 保存完整副本，模型通过 `tool_output_read` 续读
@@ -450,6 +461,10 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 ## 10. 关键代码参考路径（速查）
 
 日常验证优先运行 `pnpm run test:web:e2e`：它只使用 localhost 真实 HTTP 夹具，覆盖搜索、读取阶梯、缓存、Evidence 与 canonical `web_read`，不需要 Electron 或供应商凭证。`pnpm run test:web` 额外覆盖全部 Web 规则/adapter 测试。真实网络只通过 `benchmark:web:live`（搜索 smoke）和 `benchmark:web:read-live`（生产读取阶梯兼容）按需运行。
+
+读取基准中的 `codeBlockMarkupPresent/tableMarkupPresent` 只表示格式标记存在，不是内容正确率。冻结来源的 `contentAssertions` 可以核对来源链接、代码缩进、作废文字以及表格行/列顺序和跨度；Node 与 Electron runner 均记录 `contentChecks`。`checked=0` 是未验证，任何已声明断言失败都不能记内容核验通过；断言通过也只覆盖这些局部事实。普通表格与合并表格、默认 Readability 与 semantic_dom 两条路径必须分别有确定性回归。
+
+独立 Node 基准通过 `scripts/benchmark/web-reliability/createWebBenchmarkContext.ts` 装配单次 producer 的 Citation sequence、正式分配规则的内存测试 store 与 Host Evidence writer；Evidence 写入临时 workspace 后从 domain 公开接口回放。它不模拟用户对话数据库的持久分配，也不能省略必需的 Host admission 后把装配失败统计成站点失败。
 
 - **Citation 顺序与 host admission**：`src/domains/citation/README.md`
 - **StructuredToolResult**：`src/tools/types.ts`

@@ -19,8 +19,9 @@ interface RenderCoverageAttempt {
   readonly renderAttempted: boolean;
   readonly expectsCodeBlock: boolean;
   readonly expectsTable: boolean;
-  readonly codeBlockPreserved: boolean;
-  readonly tablePreserved: boolean;
+  readonly codeBlockMarkupPresent: boolean;
+  readonly tableMarkupPresent: boolean;
+  readonly contentChecks: { checked: number; failed: string[] };
   readonly failureKind?: string;
   readonly failureMessage?: string;
   readonly renderFailureKind?: string;
@@ -90,8 +91,9 @@ async function evaluateCase(params: {
       renderAttempted: renderCalled,
       expectsCodeBlock: params.caseDefinition.expectCodeBlock === true,
       expectsTable: params.caseDefinition.expectTable === true,
-      codeBlockPreserved: false,
-      tablePreserved: false,
+      codeBlockMarkupPresent: false,
+      tableMarkupPresent: false,
+      contentChecks: { checked: 0, failed: [] },
       failureKind,
       ...(error instanceof Error ? { failureMessage: error.message } : {}),
       ...(renderFailureKind ? { renderFailureKind } : {}),
@@ -111,18 +113,19 @@ async function evaluateCase(params: {
     caseId: params.caseDefinition.id,
     category: params.caseDefinition.category,
     expectedTerminal: params.caseDefinition.expectedFailureKind !== undefined,
-    contractSuccess: quality.contentAvailable,
+    contractSuccess: quality.success,
     contentCovered: quality.contentAvailable && params.caseDefinition.expectedFailureKind === undefined,
     selectedProvider: ladderResult.selectedProvider,
     renderAttempted: ladderResult.renderAttempted,
     expectsCodeBlock: params.caseDefinition.expectCodeBlock === true,
     expectsTable: params.caseDefinition.expectTable === true,
-    codeBlockPreserved: quality.codeBlockPreserved,
-    tablePreserved: quality.tablePreserved,
+    codeBlockMarkupPresent: quality.codeBlockMarkupPresent,
+    tableMarkupPresent: quality.tableMarkupPresent,
+    contentChecks: quality.contentChecks,
     ...(renderedCharCount !== undefined ? { renderedCharCount } : {}),
     ...(renderQualityScore !== undefined ? { renderQualityScore } : {}),
     ...(renderWarnings ? { renderWarnings } : {}),
-    ...(!quality.contentAvailable && quality.failureKind ? { failureKind: quality.failureKind } : {}),
+    ...(quality.failureKind ? { failureKind: quality.failureKind } : {}),
     tookMs: Date.now() - startedAt,
   };
 }

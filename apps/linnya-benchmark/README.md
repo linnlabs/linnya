@@ -28,6 +28,23 @@ pnpm benchmark:agent run slides_consulting_reference_v1 \
 图片不作为 CLI attachment 发送。Runner 只校验它是可读的绝对文件路径，再将路径插入
 case prompt；文件读取、权限和失败语义都由真实 Agent/Host 链路负责。
 
+### Harness 审计的运行门槛
+
+做 token、工具失败和耗时比较时，先在开发 Host 启动环境设置
+`LINNYA_AUDIT_LEVEL=response` 并重启；默认是 `off`。先完成一个小型校准运行，
+确认 facts 的 audit 可用、工具 decision/output 配对和 usage 完整度符合本批实验口径，
+再开始正式批次。只有排查流式协议时才用有容量上限的 `stream`。
+审计开关与既有出口见 [Audit owner](../../src/domains/audit/README.md)；
+Runner 消费已有 audit，不能新建另一套 recorder。
+
+`capability_unavailable` 不足以区分开关关闭与运行版本缺少入口，需结合 Host 版本和启动配置核实；
+不能据此宣称产品没有审计能力。事后开启不会补回当时未采集的数据。
+缺失、估算和实际 usage 必须分栏；缺失运行保留为资产，但不进入 token 成本比较。
+
+合并历史批次时，facts 按 `run_id` 去重，消息先限定对应 run，再按稳定 `message_id`
+去重；会话全量导出、同一运行的归档副本和 retry 不能重复当成独立样本。
+发现同一 identity 的事实版本不同，应保留差异并选定明确时点，不能静默覆盖。
+
 ### 复杂图表与数据完整性
 
 `slides_arg_frontier_complex_v1` 要求 20 页学术综述、可核验的近期文献与七类数据任务；

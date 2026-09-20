@@ -479,7 +479,7 @@ function markdownDoc(text: string): string {
         attrs: { id: 'block-1' },
         content: [
           {
-            type: 'paragraphBlock',
+            type: 'baseBlock',
             content: [{ type: 'text', text }],
           },
         ],
@@ -1174,7 +1174,7 @@ describe('list_files / read_file', () => {
             attrs: { id: 'citation-root-1' },
             content: [
               {
-                type: 'paragraphBlock',
+                type: 'baseBlock',
                 content: [
                   { type: 'text', text: '引用正文 ' },
                   {
@@ -1259,7 +1259,7 @@ describe('list_files / read_file', () => {
             attrs: { id: 'citation-document-root' },
             content: [
               {
-                type: 'paragraphBlock',
+                type: 'baseBlock',
                 content: [
                   {
                     type: 'citationNode',

@@ -97,6 +97,7 @@ function buildEnabledPluginCreateHint(): string {
 
 export class WriteFileTool extends BaseTool {
   readonly name = 'write_file';
+  readonly argumentValidationErrorCode = 'WRITE_FILE_ARGUMENTS_INVALID';
   // 覆盖写入依赖文件当前状态；A → B → A 必须真正写回 A，不能命中历史 A 的结果。
   /**
    * 只要模型已经确定要写文件，就先让 Renderer 建立 loading 卡片。
@@ -122,12 +123,13 @@ export class WriteFileTool extends BaseTool {
       `For new files, a missing extensionless path, .md, or .markdown creates Markdown${pluginHint ? `; ${pluginHint.slice(1)}` : ''}.`,
       'Markdown writes are stored as pending revisions rather than directly replacing accepted document content.',
       'Prefer edit_file for targeted changes. Use write_file when rewriting the whole file is intentional.',
+      'Only workspace:/... locators are valid here. conversation:/... and file:///... belong to read_file and will be rejected.',
     ].join('\n');
   }
 
   private buildLocatorParameterDescription(): string {
     const pluginHint = buildEnabledPluginCreateHint();
-    return `要写入的 Workspace locator。与 inode 二选一；新建文件只能传 locator。新建 Markdown 可用无后缀、.md 或 .markdown${pluginHint}。`;
+    return `要写入的 Workspace locator，只能使用 workspace:/...。与 inode 二选一；新建文件只能传 locator。新建 Markdown 可用无后缀、.md 或 .markdown${pluginHint}。`;
   }
 
   readonly parameters: ToolParameterSchema = {
@@ -138,7 +140,7 @@ export class WriteFileTool extends BaseTool {
         type: 'string',
         minLength: 1,
         description:
-          '要写入的 Workspace locator。与 inode 二选一；新建文件只能传 locator。新建 Markdown 可用无后缀、.md 或 .markdown；插件文档格式由已启用插件贡献。',
+          '要写入的 Workspace locator。只能使用 workspace:/...；与 inode 二选一。新建文件只能传 locator。新建 Markdown 可用无后缀、.md 或 .markdown；插件文档格式由已启用插件贡献。',
       },
       inode: {
         type: 'string',
@@ -195,8 +197,9 @@ export class WriteFileTool extends BaseTool {
     return validateWorkspaceFileToolArguments({
       args,
       schema: WorkspaceWriteFileArgsSchema,
-      errorCode: 'WRITE_FILE_ARGUMENTS_INVALID',
+      errorCode: this.argumentValidationErrorCode,
       toolName: this.name,
+      example: { locator: 'workspace:/report.md', content: '# Report\n\nFull content' },
     });
   }
 
@@ -205,7 +208,7 @@ export class WriteFileTool extends BaseTool {
       const parsed = WorkspaceWriteFileResultSchema.parse(JSON.parse(output));
       return `write_file：${parsed.data.locator}`;
     } catch {
-      return 'write_file：完成。';
+      return 'write_file：结果格式异常，未能确认提交回执。';
     }
   }
 
