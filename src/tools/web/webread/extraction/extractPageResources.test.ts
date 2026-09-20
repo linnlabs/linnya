@@ -28,6 +28,7 @@ describe('landing page 资源提取', () => {
     const result = extractArticle(`<html><body><article><h1>Article</h1>
       <p>${'Long article text. '.repeat(30)}</p>
       <a href="/about">About this site</a><a href="/search?q=report">Search</a>
+      <a href="/data-sets">Data sets available for download</a>
     </article></body></html>`, { url: 'https://example.com/article' });
 
     expect(result.resources).toEqual([]);

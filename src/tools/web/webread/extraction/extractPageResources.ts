@@ -32,7 +32,8 @@ function inferResourceKind(url: string, label: string, hint: string): WebPageRes
   const haystack = `${label} ${hint}`.toLowerCase();
   if (/(?:^|[/:])doi\.org\//.test(url.toLowerCase()) || /\bdoi\b/.test(haystack)) return 'doi';
   if (/\.(?:pdf|docx?|xlsx?|pptx?)(?:$|[?#])/.test(url.toLowerCase())
-    || /\b(?:download|full\s*text|view\s+(?:the\s+)?(?:report|document)|technical\s+report)\b/.test(haystack)) {
+    || /\/(?:download|servlets\/purl)(?:\/|$)/.test(url.toLowerCase())
+    || /\b(?:full\s*text|download\s+(?:the\s+)?(?:report|document|paper|pdf)|view\s+(?:the\s+)?(?:report|document)|technical\s+report)\b/.test(haystack)) {
     return 'document';
   }
   if (/\b(?:source|original|official|repository|preprint)\b/.test(haystack)
