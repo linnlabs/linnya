@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { WebDocumentWarning, WebRenderMode } from '../../definitions/webDocument';
+import type { WebDocumentWarning, WebPageResource, WebRenderMode } from '../../definitions/webDocument';
 import type { WebReadResult } from '../providers/types';
 
 export interface CreateWebReadResultInput {
@@ -27,6 +27,7 @@ export interface CreateWebReadResultInput {
   cacheAgeSeconds?: number;
   qualityScore?: number;
   warnings?: WebDocumentWarning[];
+  resources?: WebPageResource[];
   blockedReason?: string;
   latencyMs: number;
   estimatedCost?: number;
@@ -64,6 +65,7 @@ export function createWebReadResult(input: CreateWebReadResultInput): WebReadRes
     ...(input.lastModified ? { lastModified: input.lastModified } : {}),
     contentHash,
     warnings: input.warnings ?? [],
+    ...(input.resources && input.resources.length > 0 ? { resources: input.resources } : {}),
     latencyMs: input.latencyMs,
     ...(input.byline ? { byline: input.byline } : {}),
     ...(input.siteName ? { siteName: input.siteName } : {}),

@@ -86,6 +86,7 @@ export class LocalRenderProvider implements WebReadProvider {
       rawLength: rendered.html.length,
       qualityScore: extracted.qualityScore,
       warnings: extracted.warnings,
+      resources: extracted.resources,
       latencyMs: Date.now() - startedAt,
     });
   }

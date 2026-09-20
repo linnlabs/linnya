@@ -324,6 +324,18 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 
 未来引入新的正文抽取器时，必须实现同一内部 adapter 合同，并在同一份已取得 HTML 上与 baseline 做差分。候选抽取器不得自行联网、执行浏览器动作或写入 Evidence；读取、缓存、引用和证据仍由 Web Read orchestration 统一拥有。只有固定断言显示关键正文、表格、脚注、代码和来源链接的保留率稳定改善，才可考虑改变生产默认路径。
 
+#### 5.5.2 Landing page 与页面资源
+
+网页不都属于文章。报告、论文和技术资料经常使用 landing page：摘要在页面上，完整内容、DOI 或正式来源通过页面链接提供。正文抽取与页面资源提取必须分开：
+
+- `extractArticle` 先在 DOM 清理前提取少量、有语义信号的 `document`、`doi`、`source` 资源；普通导航链接不进入资源集合，也不会访问这些链接；
+- Readability/semantic DOM 只决定模型看到的正文；资源不会因为正文清理删除而丢失；
+- `WebDocument.resources` 由 Web Read provider 传递，经 `@app/schemas` 严格校验、文件缓存持久化，并在 observation 的动态不可信边界内展示；
+- 资源 URL 是页面外部内容，不是用户授权或可信操作指令。Renderer 或 Agent 若要读取它，必须重新经过 `web_read` 的 URL 策略和 Evidence 流程；
+- 当前只识别显式 DOI、全文/下载语义、常见文献仓库/正式来源链接。不要把页面所有链接暴露为“相关资源”，也不要在没有固定断言的情况下引入站点专用规则。
+
+这一层吸收了成熟正文抽取器“正文与 metadata 独立”的经验，但不把候选库的正文选择逻辑整体移入生产。landing page 的后续扩展应先以标题、摘要、作者、日期、DOI、全文链接和正式来源链接的冻结断言验证，再决定是否新增页面角色。
+
 ### 5.6 缓存与并发边界
 
 - 查询缓存 key = 规范化 query + provider + topK + recency；正文缓存 key = canonical URL + 阶梯版本 + provider 序列，`contentHash` 保存在值中，不参与首次查找

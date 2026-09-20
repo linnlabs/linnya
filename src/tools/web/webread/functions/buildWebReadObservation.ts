@@ -3,6 +3,7 @@ import {
   createBoundaryToken,
   wrapUntrustedWebContent,
 } from '../../shared/observation/untrustedWebContent';
+import type { WebPageResource } from '../../definitions/webDocument';
 
 export interface BuildWebReadObservationParams {
   ref: string;
@@ -14,6 +15,7 @@ export interface BuildWebReadObservationParams {
   capturedCharCount: number;
   captureTruncated: boolean;
   warnings?: readonly WebDocumentWarning[];
+  resources?: readonly WebPageResource[];
 }
 
 export function buildWebReadObservation(params: BuildWebReadObservationParams): string {
@@ -21,6 +23,13 @@ export function buildWebReadObservation(params: BuildWebReadObservationParams): 
   const untrustedBody = [
     `Title: ${params.title}`,
     ...(params.siteName ? [`Site: ${params.siteName}`] : []),
+    ...(params.resources && params.resources.length > 0
+      ? [
+          'Related page resources:',
+          ...params.resources.map(resource =>
+            `- ${resource.kind}: ${resource.label ? `${resource.label} ` : ''}${resource.url}`),
+        ]
+      : []),
     'Content:',
     params.content,
   ].join('\n');

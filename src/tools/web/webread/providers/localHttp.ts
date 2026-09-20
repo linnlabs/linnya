@@ -105,6 +105,7 @@ export class LocalHttpProvider implements WebReadProvider {
         rawLength: fetched.rawLength,
         qualityScore: extracted.qualityScore,
         warnings: extracted.warnings,
+        resources: extracted.resources,
         latencyMs: fetched.tookMs,
         etag: fetched.etag,
         lastModified: fetched.lastModified,

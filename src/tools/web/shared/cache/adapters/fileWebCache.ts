@@ -61,6 +61,11 @@ const webReadResultSchema = z.object({
   contentHash: z.string(),
   qualityScore: z.number().optional(),
   warnings: z.array(WebDocumentWarningSchema),
+  resources: z.array(z.object({
+    kind: z.enum(['document', 'doi', 'source']),
+    url: z.string(),
+    label: z.string().optional(),
+  }).strict()).max(16).optional(),
   blockedReason: z.string().optional(),
   latencyMs: z.number(),
   estimatedCost: z.number().optional(),

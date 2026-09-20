@@ -11,6 +11,11 @@ import { HistoricalResourceReadArgsSchema } from './resource-read';
 
 const NonEmptyStringSchema = z.string()
   .refine(value => value.trim().length > 0, 'String must contain non-whitespace content');
+const WebPageResourceSchema = z.object({
+  kind: z.enum(['document', 'doi', 'source']),
+  url: HttpCitationUrlSchema,
+  label: NonEmptyStringSchema.optional(),
+}).strict();
 export const WEB_READ_MAX_CONTENT_CHARS = 50_000;
 
 export const WebReadArgsSchema = z.object({
@@ -52,6 +57,7 @@ const WebReadDataObjectSchema = z.object({
   initialFailureStage: WebExtractionFailureStageSchema.optional(),
   /** 提取器启发式信号，不代表来源可信度或全文完整性。 */
   warnings: z.array(WebDocumentWarningSchema).max(7).optional(),
+  resources: z.array(WebPageResourceSchema).max(16).optional(),
   citations: z.object({
     query: HttpCitationUrlSchema,
     searchMode: z.literal('web'),

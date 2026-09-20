@@ -29,6 +29,7 @@ describe('Web M3 数据契约映射', () => {
       cacheAgeSeconds: 30,
       qualityScore: 0.9,
       warnings: ['content_too_short'],
+      resources: [{ kind: 'document', url: 'https://example.com/report.pdf', label: 'Download report' }],
       blockedReason: 'partial_login_wall',
       latencyMs: 321,
       estimatedCost: 0.001,
@@ -54,6 +55,7 @@ describe('Web M3 数据契约映射', () => {
       blockedReason: 'partial_login_wall',
       latencyMs: 321,
       estimatedCost: 0.001,
+      resources: [{ kind: 'document', url: 'https://example.com/report.pdf', label: 'Download report' }],
     });
   });
 

@@ -6,6 +6,15 @@ export type WebRenderMode = 'http' | 'js' | 'managed';
 
 export type WebPageAccessBarrier = 'captcha' | 'login_required';
 
+/** 页面正文之外、但对研究有直接价值的正式资源。 */
+export type WebPageResourceKind = 'document' | 'doi' | 'source';
+
+export interface WebPageResource {
+  kind: WebPageResourceKind;
+  url: string;
+  label?: string;
+}
+
 export interface WebDocument {
   /** 用户请求的原始 URL。 */
   url: string;
@@ -18,6 +27,7 @@ export interface WebDocument {
   siteName?: string;
   publishedAt?: string;
   language?: string;
+  resources?: WebPageResource[];
   text: string;
   markdown?: string;
   rawHtmlRef?: string;

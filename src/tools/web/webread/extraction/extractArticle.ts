@@ -5,6 +5,8 @@ import { extractSemanticDom, normalizeExtractedText } from './extractSemanticDom
 import { parseCanonicalHtmlDocument } from './parseCanonicalHtmlDocument';
 import { prepareReadableDocument } from './prepareReadableDocument';
 import { renderReadableMarkdown } from './renderReadableMarkdown';
+import { extractPageResources } from './extractPageResources';
+import type { WebPageResource } from '../../definitions/webDocument';
 
 export type ArticleExtractionWarning = WebDocumentWarning;
 
@@ -23,6 +25,7 @@ export interface ExtractArticleResult {
   rawHtmlLength: number;
   accessBarrier?: WebPageAccessBarrier;
   diagnostics: ArticleExtractionDiagnostics;
+  resources: WebPageResource[];
 }
 
 export interface ArticleExtractionDiagnostics {
@@ -194,6 +197,7 @@ function extractArticleBaseline(
   const listItemCount = document.querySelectorAll('li').length;
   const scriptCount = document.querySelectorAll('script').length;
   const accessBarrier = detectAccessBarrier(document, bodyTextLength);
+  const resources = extractPageResources(document, options.url);
   // Readability.parse() 会原地清理 DOM；语义备选必须先读取原始主区域，
   // 否则它只能看到 Readability 已经删减过的节点，无法补回遗漏正文。
   prepareReadableDocument(document, options.url);
@@ -292,6 +296,7 @@ function extractArticleBaseline(
       semanticCandidateCount,
       readabilitySucceeded: article !== null,
     },
+    resources,
     ...(accessBarrier ? { accessBarrier } : {}),
     ...(byline ? { byline } : {}),
     ...(publishedAt ? { publishedAt } : {}),

@@ -57,4 +57,21 @@ describe('buildWebReadObservation 来源边界', () => {
     expect(observation).toContain('FINAL_WEB_TAIL');
     expect(observation).not.toContain('evidence_resolve');
   });
+
+  it('把页面资源放在网页不可信边界内', () => {
+    const observation = buildWebReadObservation({
+      ref: 'Res123',
+      title: 'Report landing page',
+      url: 'https://example.com/report',
+      content: 'Abstract',
+      contentHash: 'resource-hash',
+      capturedCharCount: 8,
+      captureTruncated: false,
+      resources: [{ kind: 'document', url: 'https://example.com/report.pdf', label: 'Download report' }],
+    });
+
+    const begin = observation.indexOf('<<<BEGIN_UNTRUSTED_WEB_CONTENT_');
+    expect(observation.indexOf('Related page resources:', begin)).toBeGreaterThan(begin);
+    expect(observation).toContain('Download report https://example.com/report.pdf');
+  });
 });
