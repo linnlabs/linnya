@@ -61,10 +61,10 @@
  */
 .ai-assistant-input__model-setup-border-flow-track {
   position: absolute;
-  inset: -1px;
+  inset: -1.25px;
   z-index: 1;
   box-sizing: border-box;
-  padding: 1px;
+  padding: 1.25px;
   border-radius: inherit;
   pointer-events: none;
   mask:
@@ -78,8 +78,8 @@
   top: 0;
   left: 0;
   z-index: 1;
-  /* track 覆盖原边框，路径落在 1px 蒙版环的中心。 */
-  offset-path: inset(0.5px round calc(var(--conversation-footer-surface-radius) - 0.5px)) border-box;
+  /* track 覆盖原边框，路径落在 1.25px 蒙版环的中心。 */
+  offset-path: inset(0.625px round calc(var(--conversation-footer-surface-radius) - 0.625px)) border-box;
   offset-distance: 0%;
   offset-anchor: center;
   offset-rotate: auto;
@@ -87,7 +87,7 @@
   width: 160px;
   height: 160px;
   /* 连续径向渐变让中心亮、两侧收淡，经过转角时也不会露出方形光场的硬边。 */
-  background: radial-gradient(closest-side, var(--color-accent-strong-light), transparent);
+  background: radial-gradient(closest-side, var(--color-accent-light), transparent);
   opacity: 0.92;
   animation: ai-assistant-input-model-setup-glint-flow 24s linear infinite;
 }
