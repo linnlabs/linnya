@@ -11,6 +11,11 @@
   flex-direction: column;
 }
 
+/*
+ * 未配置模型时的引导层：磨砂玻璃压住 composer，文字和状态点直接浮在玻璃上。
+ * 不再用一个独立的药丸容器，避免它自带的描边/背景和外层输入框的边框叠成两层边框。
+ * 流光沿 composer 自己的圆角矩形边框匀速绕行，替代静态描边的“活着”的信号。
+ */
 .ai-assistant-input__model-setup-overlay {
   position: absolute;
   inset: 0;
@@ -18,66 +23,133 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  padding: 0;
   cursor: pointer;
-  overflow: hidden;
-  isolation: isolate;
-  background-color: color-mix(in srgb, var(--color-black) 4%, transparent);
   border: 0;
   border-radius: inherit;
+  background-color: transparent;
+  backdrop-filter: blur(7px) saturate(0.72);
+  -webkit-backdrop-filter: blur(7px) saturate(0.72);
+  animation: ai-assistant-input-model-setup-veil-in var(--transition-slow) cubic-bezier(0.22, 0.7, 0.3, 1) both;
   transition:
-    background-color var(--transition-fast) ease,
-    color var(--transition-fast) ease;
+    backdrop-filter var(--transition-slow) ease,
+    -webkit-backdrop-filter var(--transition-slow) ease;
 }
 
+/* 玻璃自身不上色，底色交给这一层，避免 backdrop-filter 与背景色互相叠加变脏。 */
 .ai-assistant-input__model-setup-overlay::before {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  content: '';
-  pointer-events: none;
-  opacity: 0.98;
-  background: linear-gradient(
-    115deg,
-    transparent 39%,
-    color-mix(in srgb, var(--color-bg-surface) 90%, transparent) 50%,
-    transparent 61%
-  );
-  background-size: 240% 100%;
-  animation: ai-assistant-input-model-setup-flow 7s linear infinite;
-}
-
-.ai-assistant-input__model-setup-overlay::after {
   position: absolute;
   inset: 0;
   z-index: 0;
   content: '';
   pointer-events: none;
-  background: linear-gradient(
-    to top,
-    color-mix(in srgb, var(--color-bg-disabled) 96%, transparent) 0%,
-    color-mix(in srgb, var(--color-bg-disabled) 72%, transparent) 24%,
-    transparent 56%
-  );
-  transition: opacity var(--transition-fast) ease;
+  border-radius: inherit;
+  background-color: color-mix(in srgb, var(--conversation-footer-surface-bg) 64%, transparent);
 }
 
-.ai-assistant-input__model-setup-label {
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ai-assistant-input__model-setup-overlay::before {
+    background-color: color-mix(in srgb, var(--conversation-footer-surface-bg) 92%, transparent);
+  }
+}
+
+/*
+ * 流光：一颗小小的光点沿 composer 自身的圆角矩形边框匀速绕行，贴着边框走，不再画在药丸上。
+ * 用 offset-path: border-box（CSS Motion Path）而不是 SVG 描边或 conic-gradient 旋转：
+ * - 路径的圆角直接取自“建立包含块的元素”的 border-radius（这里就是 .overlay 自己，
+ *   已经是 border-radius: inherit），不用另外传一个 rx 数值，天然和 composer 实际圆角一致；
+ * - offset-distance 按路径弧长百分比推进，是规范保证的等弧长速度，直边和圆角都是匀速；
+ * - offset-rotate: auto 让光点跟着路径切线方向自转，过圆角时会跟着弧线偏转角度，
+ *   这是 conic-gradient/固定朝向的光点做不到的，也是“流光贴着边走”观感的关键。
+ * halo 是一团模糊的外晕，core 是一段带尾迹的细长核心，两者同路径同节奏叠成一颗彗星。
+ */
+.ai-assistant-input__model-setup-border-flow-halo,
+.ai-assistant-input__model-setup-border-flow-core {
+  position: absolute;
+  top: 0;
+  left: 0;
+  offset-path: border-box;
+  offset-distance: 0%;
+  offset-rotate: auto;
+  pointer-events: none;
+  animation: ai-assistant-input-model-setup-glint-flow 11s linear infinite;
+  transition: opacity var(--transition-normal) ease;
+}
+
+.ai-assistant-input__model-setup-border-flow-halo {
+  width: 28px;
+  height: 28px;
+  background: radial-gradient(circle, var(--color-accent) 0%, transparent 68%);
+  opacity: 0.26;
+  filter: blur(3px);
+}
+
+.ai-assistant-input__model-setup-border-flow-core {
+  width: 18px;
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(to right, transparent, var(--color-accent) 60%, var(--color-accent));
+  opacity: 0.88;
+}
+
+.ai-assistant-input__model-setup-content {
   position: relative;
-  z-index: 2;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  animation: ai-assistant-input-model-setup-content-in 0.4s cubic-bezier(0.2, 0.8, 0.24, 1) 60ms both;
+}
+
+.ai-assistant-input__model-setup-dot {
+  position: relative;
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+}
+
+.ai-assistant-input__model-setup-dot::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  pointer-events: none;
+  border-radius: inherit;
+  animation: ai-assistant-input-model-setup-ping 2.6s cubic-bezier(0.24, 0.7, 0.3, 1) infinite;
+}
+
+.ai-assistant-input__model-setup-arrow {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: var(--color-text-placeholder);
+  transition:
+    transform var(--transition-normal) cubic-bezier(0.2, 0.8, 0.24, 1),
+    color var(--transition-normal) ease;
 }
 
 .ai-assistant-input__model-setup-overlay:hover {
-  color: var(--color-text-primary);
-  background-color: color-mix(in srgb, var(--color-black) 6%, transparent);
+  backdrop-filter: blur(4px) saturate(0.85);
+  -webkit-backdrop-filter: blur(4px) saturate(0.85);
 }
 
-.ai-assistant-input__model-setup-overlay:hover::after {
+.ai-assistant-input__model-setup-overlay:hover .ai-assistant-input__model-setup-border-flow-core {
+  opacity: 1;
+}
+
+.ai-assistant-input__model-setup-overlay:hover .ai-assistant-input__model-setup-border-flow-halo {
   opacity: 0.32;
+}
+
+.ai-assistant-input__model-setup-overlay:hover .ai-assistant-input__model-setup-arrow {
+  color: var(--color-accent);
+  transform: translateX(2px);
 }
 
 .ai-assistant-input__model-setup-overlay:focus-visible {
@@ -85,19 +157,64 @@
   outline-offset: -3px;
 }
 
-@keyframes ai-assistant-input-model-setup-flow {
+@keyframes ai-assistant-input-model-setup-veil-in {
   from {
-    background-position: 150% 0;
+    opacity: 0;
   }
 
   to {
-    background-position: -50% 0;
+    opacity: 1;
+  }
+}
+
+@keyframes ai-assistant-input-model-setup-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ai-assistant-input-model-setup-ping {
+  0% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 50%, transparent);
+  }
+
+  70% {
+    opacity: 0;
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--color-accent) 0%, transparent);
+  }
+
+  100% {
+    opacity: 0;
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--color-accent) 0%, transparent);
+  }
+}
+
+@keyframes ai-assistant-input-model-setup-glint-flow {
+  to {
+    offset-distance: 100%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ai-assistant-input__model-setup-overlay::before {
+  .ai-assistant-input__model-setup-overlay,
+  .ai-assistant-input__model-setup-content,
+  .ai-assistant-input__model-setup-dot::after,
+  .ai-assistant-input__model-setup-border-flow-halo,
+  .ai-assistant-input__model-setup-border-flow-core {
     animation: none;
+  }
+
+  /* 流光整体撤掉，只留 composer 自身的静态描边，避免出现一段固定不动的高光。 */
+  .ai-assistant-input__model-setup-border-flow-halo,
+  .ai-assistant-input__model-setup-border-flow-core {
+    display: none;
   }
 }
 

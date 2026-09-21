@@ -91,8 +91,34 @@
           :aria-label="conversationMessage('conversation.input.model.configure')"
           @click="openModelSetup"
         >
-          <span class="ai-assistant-input__model-setup-label">
-            {{ conversationMessage('conversation.input.model.configure') }}
+          <!--
+            流光是一颗沿 composer 自身圆角矩形边框绕行的小光点（CSS Motion Path），
+            不再单独起一个药丸容器，避免和外层输入框的描边叠成两层边框。
+            offset-path: border-box 直接取 .ai-assistant-input__model-setup-overlay
+            自己的 border-radius（已经是 inherit），不用另传圆角数值；
+            offset-rotate: auto 让光点跟着路径切线方向自转，过圆角会跟着偏转角度。
+            样式与关键帧见 AiAssistantInput.css。
+          -->
+          <span
+            class="ai-assistant-input__model-setup-border-flow-halo"
+            aria-hidden="true"
+          />
+          <span
+            class="ai-assistant-input__model-setup-border-flow-core"
+            aria-hidden="true"
+          />
+          <span class="ai-assistant-input__model-setup-content">
+            <span
+              class="ai-assistant-input__model-setup-dot"
+              aria-hidden="true"
+            />
+            <span class="ai-assistant-input__model-setup-label">
+              {{ conversationMessage('conversation.input.model.configure') }}
+            </span>
+            <ChevronRightIcon
+              class="ai-assistant-input__model-setup-arrow"
+              aria-hidden="true"
+            />
           </span>
         </button>
 
@@ -143,6 +169,7 @@ import {
   resolveConversationAgentChoice,
   type ConversationAgentChoiceId,
 } from '../features/agent-choice';
+import { ChevronRightIcon } from '@linnya/renderer-ui/icons';
 import AiAssistantQuotePreview from './AiAssistantInput/AiAssistantQuotePreview.vue';
 import AiAssistantInputFooter from './AiAssistantInput/AiAssistantInputFooter.vue';
 import type { ConversationSurfaceVariant } from '../definitions/conversationPresentation';
