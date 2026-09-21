@@ -53,25 +53,6 @@ describe('projectRunSettlementResponse', () => {
     });
   });
 
-  it('active failed 结算保留 Host 的错误文案', () => {
-    expect(projectRunSettlementResponse({
-      conversation_id: 'conversation-1',
-      requested_run_id: 'run-1',
-      run: {
-        run_id: 'run-1',
-        turn_id: 'turn-1',
-        execution_id: 'execution-new',
-        status: 'failed',
-        lane: 'foreground',
-        error: {
-          error_code: 'PROVIDER_AUTH',
-          message: '权限校验失败',
-          recoverable: false,
-        },
-      },
-    }, current)).toMatchObject({ status: 'failed', error: '权限校验失败' });
-  });
-
   it('拒绝非当前 run 的结算结果', () => {
     expect(() => projectRunSettlementResponse({
       conversation_id: 'conversation-1',

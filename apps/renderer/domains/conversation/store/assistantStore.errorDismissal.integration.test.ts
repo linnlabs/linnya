@@ -81,9 +81,17 @@ describe('assistantStore error dismissal', () => {
 
     assistantStore.clearError();
 
-    expect(assistantStore.error).toBeNull();
+    // 关闭只清理当前横幅的 interactive owner；其它来源继续保留并按优先级显现。
+    expect(assistantStore.error).toBe('旧执行链错误');
     expect(interactiveRunStore.snapshotFor('conversation-active')?.error).toBeUndefined();
+    expect(executionState.error).toBe('旧执行链错误');
+    expect(annotationRunStore.errorFor('conversation-active')).toBe('当前会话批注错误');
+
+    assistantStore.clearError();
+    expect(assistantStore.error).toBe('当前会话批注错误');
     expect(executionState.error).toBeNull();
+    assistantStore.clearError();
+    expect(assistantStore.error).toBeNull();
     expect(annotationRunStore.errorFor('conversation-active')).toBeNull();
 
     conversationState.setActiveConversation('conversation-background');

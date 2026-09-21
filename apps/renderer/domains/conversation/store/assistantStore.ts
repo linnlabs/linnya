@@ -29,6 +29,10 @@ import { useProjectionStore } from './assistant';
 import type { AnnotationRunParams } from '../definitions/annotationRun';
 import type { SSEEventInput } from '@linnlabs/linnkit/contracts';
 import { useAnnotationRunExecutionStore } from '../features/annotation-run/store/annotationRunExecutionStore';
+import {
+  selectConversationSurfaceError,
+  type ConversationSurfaceErrorSource,
+} from '../features/error-surface';
 import { useAnnotationRunOrchestrator } from '../services/orchestration/annotationRunOrchestrator';
 import { cancelContributedAssistantRuns } from '../ports/contributedAssistantRunCancellationPort';
 
@@ -101,26 +105,24 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
    * 结论：
    * - 一律用 computed(() => executionState.xxx) 包一层再导出。
    */
-  const globalError = computed(
-    () =>
-      interactiveRunStore.snapshotFor(conversationState.activeConversationId)?.error ??
-      executionState.error ??
-      annotationRunExecutionStore.errorFor(conversationState.activeConversationId)
-  );
+  const activeSurfaceError = computed(() => selectConversationSurfaceError({
+    interactiveRun: interactiveRunStore.snapshotFor(conversationState.activeConversationId)?.error,
+    legacyExecution: executionState.error,
+    annotationRun: annotationRunExecutionStore.errorFor(conversationState.activeConversationId),
+  }));
+  const globalError = computed(() => activeSurfaceError.value?.message ?? null);
 
-  /**
-   * 关闭当前横幅时清理全部可能贡献该横幅的 owner。
-   *
-   * interactive run 的错误按会话持有，不能再只清旧 executionState；否则聚合选择器
-   * 会立即读回同一个错误，让 Close 按钮看起来失效。其它会话的错误必须继续保留。
-   */
+  /** 只关闭当前横幅真正的 owner；其它执行域的错误继续留在自己的生命周期中。 */
   const clearActiveError = (): void => {
+    const source: ConversationSurfaceErrorSource | undefined = activeSurfaceError.value?.source;
     const conversationId = conversationState.activeConversationId;
-    if (conversationId) {
+    if (source === 'interactive-run' && conversationId) {
       interactiveRunStore.clearError(conversationId);
+    } else if (source === 'legacy-execution') {
+      executionState.clearError();
+    } else if (source === 'annotation-run' && conversationId) {
       annotationRunExecutionStore.clearErrorFor(conversationId);
     }
-    executionState.clearError();
   };
 
   // ===============================
