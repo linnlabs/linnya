@@ -129,7 +129,7 @@ chunk/thought/subrun 的 50 ms 高频合并名单。投影器只按 Host 提供�
 
 `error` 是 durable 运行事实，但不是时间线消息。持有当前 execution realtime reader 的 Renderer 收到它后，必须由唯一消息投影入口归一化用户文案，再写入对应 conversation 的 interactive-run snapshot，驱动 ErrorBanner；控制状态层不得重新解释错误码或保留另一套文案映射。
 
-ErrorBanner 属于会话表面层，必须锚定 `ConversationHost`，不能挂在可滚动的历史内容中。无论当前历史有多长、用户位于哪个滚动位置，当前会话的新错误都应保持可见；横幅关闭仍只修改对应 conversation snapshot。
+ErrorBanner 属于会话表面层，必须锚定 `ConversationHost`，不能挂在可滚动的历史内容中。无论当前历史有多长、用户位于哪个滚动位置，当前会话的新错误都应保持可见；横幅关闭仍只修改对应 conversation snapshot。后续的 run 状态、暂停或结算刷新不能用无错误快照覆盖同一 `run_id + execution_id` 的错误；只有用户关闭横幅或新 execution 开始才能清除它，旧 execution 的迟到错误不得写入新的运行。
 
 历史 window 只重放消息 read model，不模拟 realtime reader。CLI 等外部进程发起的 execution 即使写入同一数据库，也不会让已打开的 Renderer 主动收到实时事件，因此不会仅凭数据库投影弹出 ErrorBanner。若未来需要跨进程即时提示，应新增正式的 Host 事件订阅能力，不能轮询历史或把 `error` 伪造成时间线消息。
 

@@ -22,7 +22,7 @@
 - busy 只负责占用与重复启动约束。动画和状态文案统一由 [执行活动展示](../../shared/execution-presentation/README.md) 派生，awaiting_user、pausing、paused、reconnecting、cancelling 均不代表正在生成。内部细分状态不直接展示，用户只看到暂停、进行中、AI 输出结束；输入框只保留暂停、恢复、发送。
 - store 只同步持有快照；网络请求和多步骤恢复流程放在 orchestration。
 - 错误提示属于产生它的 conversation snapshot。用户关闭横幅时只清除该会话的 `error`，保留 terminal run 身份；不得通过组件本地隐藏状态掩盖 store 中的错误，也不得清除后台会话的错误。横幅锚定 ConversationHost 表面，不参与历史滚动。
-- Renderer 持有当前 execution 的 realtime reader 时，Runtime `error` 先由消息投影器归一化为用户文案，再写入同一 conversation snapshot；interactive run 不重复解释错误码。CLI 等外部进程发起的 execution 没有当前 Renderer reader，其 durable error 仍供历史与审计读取，但不会凭数据库投影主动触发实时横幅。
+- Renderer 持有当前 execution 的 realtime reader 时，Runtime `error` 先由消息投影器归一化为用户文案，再写入同一 conversation snapshot；interactive run 不重复解释错误码。后续的 `run_status`、暂停和结算刷新只能更新控制字段，不能清除同一 `run_id + execution_id` 的错误；用户关闭横幅或新 execution 开始时才清除。旧 execution 的迟到错误不得污染新的发送/继续。CLI 等外部进程发起的 execution 没有当前 Renderer reader，其 durable error 仍供历史与审计读取，但不会凭数据库投影主动触发实时横幅。
 
 消息投影与 run 控制状态是两类事实：问卷卡属于消息 read model，是否仍可提交以这里的 pending interaction 为准。
 

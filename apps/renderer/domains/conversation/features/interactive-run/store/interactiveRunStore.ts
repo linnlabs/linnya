@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import type { SSEEvent } from '@linnlabs/linnkit/contracts';
+import { preserveInteractiveRunError } from '../functions/preserveInteractiveRunError';
+import type { SSEErrorEvent, SSEEvent } from '@linnlabs/linnkit/contracts';
 import type {
   InteractiveRunSnapshot,
   InteractiveRunTerminalStatus,
@@ -129,6 +130,13 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
     runsByConversation.value.set(conversationId, { ...current, error });
   };
 
+  const recordRuntimeError = (event: SSEErrorEvent, error: string): void => {
+    const current = runsByConversation.value.get(event.conversation_id);
+    // 与控制事件共用接纳规则，尤其不能让旧 reader 的错误污染重试中的新 execution。
+    if (!current || reduceInteractiveRunEvent(current, event) === current) return;
+    runsByConversation.value.set(event.conversation_id, { ...current, error });
+  };
+
   const failRun = (conversationId: string, error: string): void => {
     const current = runsByConversation.value.get(conversationId);
     controllersByConversation.delete(conversationId);
@@ -161,7 +169,10 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
     if (snapshot.conversationId !== conversationId) {
       throw new Error('Interactive run snapshot belongs to another conversation');
     }
-    runsByConversation.value.set(conversationId, snapshot);
+    runsByConversation.value.set(
+      conversationId,
+      preserveInteractiveRunError(runsByConversation.value.get(conversationId), snapshot),
+    );
   };
 
   return {
@@ -178,6 +189,7 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
     beginCancelling,
     completeTerminalSettlement,
     recordCommandError,
+    recordRuntimeError,
     failRun,
     clearError,
     synchronizeSnapshot,

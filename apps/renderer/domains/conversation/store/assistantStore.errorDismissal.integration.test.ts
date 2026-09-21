@@ -5,6 +5,14 @@ import { useInteractiveRunStore } from '../features/interactive-run';
 import { useAssistantStore } from './assistantStore';
 import { useConversationState } from './conversationState';
 import { useExecutionState } from './executionState';
+import { reconcileInteractiveRunTransportOutcome } from '../features/interactive-run/orchestration/reconcileInteractiveRunTransportOutcome';
+import { fetchForegroundRunSettlement, fetchActiveForegroundRun } from '../features/interactive-run/orchestration/interactiveRunApi';
+import { restoreInteractiveRun } from '../features/interactive-run/orchestration/restoreInteractiveRun';
+
+vi.mock('../features/interactive-run/orchestration/interactiveRunApi', () => ({
+  fetchForegroundRunSettlement: vi.fn(),
+  fetchActiveForegroundRun: vi.fn(),
+}));
 
 vi.mock('../../../shared/stores/workspaceScopeStore', () => ({
   useWorkspaceScopeStore: () => ({
@@ -107,4 +115,73 @@ describe('assistantStore error dismissal', () => {
       '模型服务返回 429，可能是额度已用尽或请求过于频繁。请稍后重试，或切换模型。',
     );
   });
+
+  it('401 错误经历暂停、transport 收尾和切回会话后仍可见，关闭后不复活，重试独立报错', async () => {
+    const conversationState = useConversationState();
+    conversationState.createConversation({ id: 'conversation-401', autoActivate: true });
+    conversationState.createConversation({ id: 'conversation-other' });
+    const assistant = useAssistantStore();
+    const store = useInteractiveRunStore();
+    const controller = new AbortController();
+    store.beginStart('conversation-401', controller);
+    const scope = {
+      conversation_id: 'conversation-401', turn_id: 'turn-401',
+      run_id: 'run-401', execution_id: 'execution-401',
+      lane: 'foreground', visibility: 'conversation', timestamp: 1,
+    } as const;
+    const sendError = () => assistant.handleSseEvent('conversation-401', {
+      ...scope, type: 'error', id: 'event-401',
+      error: 'Canonical inference failed: provider_http_401',
+      error_code: 'llm.provider_http_401', retryable: false,
+    });
+    await assistant.handleSseEvent('conversation-401', {
+      ...scope, type: 'run_status', id: 'running-401', status: 'running',
+    });
+    await sendError();
+    const visibleError = assistant.error;
+    expect(visibleError).toBeTruthy();
+    expect(visibleError).not.toContain('Canonical inference');
+    // 错误不代表逻辑 run 已失败；Host 随后会在可恢复边界暂停。
+    expect(store.snapshotFor('conversation-401')?.status).toBe('running');
+    await assistant.handleSseEvent('conversation-401', {
+      ...scope, type: 'run_status', id: 'paused-401', status: 'paused',
+    });
+    expect(assistant.error).toBe(visibleError);
+    await assistant.handleSseEvent('conversation-401', {
+      ...scope, type: 'transport_end', id: 'end-401', reason: 'complete',
+    });
+    const run = {
+      run_id: scope.run_id, turn_id: scope.turn_id, execution_id: scope.execution_id,
+      lane: 'foreground', status: 'paused',
+      pause: { settled: true, updated_at: 4, reason: 'execution_interrupted' },
+    } as const;
+    vi.mocked(fetchForegroundRunSettlement).mockResolvedValue({
+      conversation_id: scope.conversation_id, requested_run_id: scope.run_id, run,
+    });
+    await reconcileInteractiveRunTransportOutcome(scope.conversation_id, controller, { kind: 'interrupted' });
+    expect(assistant.error).toBe(visibleError);
+    expect(store.snapshotFor(scope.conversation_id)?.pause?.settled).toBe(true);
+    conversationState.setActiveConversation('conversation-other');
+    expect(assistant.error).toBeNull();
+    conversationState.setActiveConversation(scope.conversation_id);
+    vi.mocked(fetchActiveForegroundRun).mockResolvedValue({ conversation_id: scope.conversation_id, run });
+    await restoreInteractiveRun(scope.conversation_id);
+    expect(assistant.error).toBe(visibleError);
+    assistant.clearError();
+    await restoreInteractiveRun(scope.conversation_id);
+    expect(assistant.error).toBeNull();
+    const paused = store.snapshotFor(scope.conversation_id);
+    if (!paused) throw new Error('Missing paused run');
+    store.beginContinuation(paused, new AbortController());
+    // 旧 reader 的迟到错误不得污染新一次恢复。
+    await sendError();
+    expect(assistant.error).toBeNull();
+    await assistant.handleSseEvent(scope.conversation_id, {
+      ...scope, execution_id: 'execution-retry', type: 'error', id: 'retry-401',
+      error: 'Canonical inference failed: provider_http_401',
+      error_code: 'llm.provider_http_401', retryable: false,
+    });
+    expect(assistant.error).toBe(visibleError);
+  });
+
 });

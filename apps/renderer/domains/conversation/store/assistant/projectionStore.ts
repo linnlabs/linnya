@@ -243,7 +243,7 @@ export const useProjectionStore = defineStore('projection', () => {
       }
       if (event.type === 'error' && projectionResult.error) {
         // Runtime error 的用户文案由唯一投影器归一化；interactive run 只持有会话级展示状态。
-        interactiveRunStore.recordCommandError(targetConversationId, projectionResult.error);
+        interactiveRunStore.recordRuntimeError(event, projectionResult.error);
       }
     }
     return {

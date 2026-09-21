@@ -1,3 +1,4 @@
+import { preserveInteractiveRunError } from './preserveInteractiveRunError';
 import type { SSEEvent } from '@linnlabs/linnkit/contracts';
 import type { InteractiveRunSnapshot, PendingRunInteraction } from '../definitions/interactiveRun';
 
@@ -14,6 +15,14 @@ export function readPendingRunInteraction(
 }
 
 export function reduceInteractiveRunEvent(
+  current: InteractiveRunSnapshot | undefined,
+  event: SSEEvent
+): InteractiveRunSnapshot | undefined {
+  const next = projectInteractiveRunEvent(current, event);
+  return next && next !== current ? preserveInteractiveRunError(current, next) : next;
+}
+
+function projectInteractiveRunEvent(
   current: InteractiveRunSnapshot | undefined,
   event: SSEEvent
 ): InteractiveRunSnapshot | undefined {
@@ -69,8 +78,11 @@ export function reduceInteractiveRunEvent(
   if (event.type === 'error') {
     return {
       ...identity,
-      status: 'failed',
-      error: event.error,
+      // error 是失败事实，不是 run 终态；生命周期只由 run_status/Host 结算决定。
+      // 用户文案由消息投影器归一化后写入，不能临时展示 Provider 原始错误。
+      status: current?.status === 'continuing' || current?.status === 'submitting'
+        ? 'running'
+        : current?.status ?? 'running',
     };
   }
   if (event.type === 'run_status') {
@@ -98,7 +110,7 @@ export function reduceInteractiveRunEvent(
             ? 'failed'
             : 'completed',
       pendingInteraction: undefined,
-      error: event.status === 'failed' ? (event.reason_message ?? current?.error) : current?.error,
+      error: event.status === 'failed' ? (current?.error ?? event.reason_message) : current?.error,
     };
   }
   if (isSettlingControl || event.type === 'run_execution_metrics' || event.type === 'transport_end') return current;

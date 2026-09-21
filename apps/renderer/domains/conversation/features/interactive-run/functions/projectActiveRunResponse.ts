@@ -26,6 +26,9 @@ export function projectActiveRunResponse(
     executionId: run.execution_id,
     status: run.status === 'pending' ? 'starting' : run.status,
     pendingInteraction,
+    ...(run.status === 'failed' && run.error?.message
+      ? { error: run.error.message }
+      : {}),
     ...(run.pause
       ? {
           pause: {
