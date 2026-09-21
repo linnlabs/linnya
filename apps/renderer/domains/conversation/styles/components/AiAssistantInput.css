@@ -27,6 +27,7 @@
   cursor: pointer;
   border: 0;
   border-radius: inherit;
+  overflow: visible;
   background-color: transparent;
   backdrop-filter: blur(7px) saturate(0.72);
   -webkit-backdrop-filter: blur(7px) saturate(0.72);
@@ -54,47 +55,50 @@
 }
 
 /*
- * 流光：一颗小小的光点沿 composer 自身的圆角矩形边框匀速绕行，贴着边框走，不再画在药丸上。
- * 用 offset-path: border-box（CSS Motion Path）而不是 SVG 描边或 conic-gradient 旋转：
- * - 路径的圆角直接取自“建立包含块的元素”的 border-radius（这里就是 .overlay 自己，
- *   已经是 border-radius: inherit），不用另外传一个 rx 数值，天然和 composer 实际圆角一致；
- * - offset-distance 按路径弧长百分比推进，是规范保证的等弧长速度，直边和圆角都是匀速；
- * - offset-rotate: auto 让光点跟着路径切线方向自转，过圆角时会跟着弧线偏转角度，
- *   这是 conic-gradient/固定朝向的光点做不到的，也是“流光贴着边走”观感的关键。
- * halo 是一团模糊的外晕，core 是一段带尾迹的细长核心，两者同路径同节奏叠成一颗彗星。
+ * Motion Path 只移动光场中心，并不会把长条本身弯曲。
+ * 因此用圆角边框蒙版裁切连续渐变光场，实际可见的光始终贴着描边，包括四个圆角。
+ * 用 content-box 与 border-box 的差集挖空内部；不要给光场设置 overflow 裁切。
  */
-.ai-assistant-input__model-setup-border-flow-halo,
-.ai-assistant-input__model-setup-border-flow-core {
+.ai-assistant-input__model-setup-border-flow-track {
+  position: absolute;
+  inset: -1px;
+  z-index: 1;
+  box-sizing: border-box;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  mask:
+    linear-gradient(var(--color-black), var(--color-black)) content-box,
+    linear-gradient(var(--color-black), var(--color-black));
+  mask-composite: exclude;
+}
+
+.ai-assistant-input__model-setup-border-flow-beam {
   position: absolute;
   top: 0;
   left: 0;
-  offset-path: border-box;
+  z-index: 1;
+  /* track 覆盖原边框，路径落在 1px 蒙版环的中心。 */
+  offset-path: inset(0.5px round calc(var(--conversation-footer-surface-radius) - 0.5px)) border-box;
   offset-distance: 0%;
+  offset-anchor: center;
   offset-rotate: auto;
   pointer-events: none;
-  animation: ai-assistant-input-model-setup-glint-flow 11s linear infinite;
-  transition: opacity var(--transition-normal) ease;
+  width: 160px;
+  height: 160px;
+  /* 连续径向渐变让中心亮、两侧收淡，经过转角时也不会露出方形光场的硬边。 */
+  background: radial-gradient(closest-side, var(--color-accent-strong-light), transparent);
+  opacity: 0.92;
+  animation: ai-assistant-input-model-setup-glint-flow 24s linear infinite;
 }
 
-.ai-assistant-input__model-setup-border-flow-halo {
-  width: 28px;
-  height: 28px;
-  background: radial-gradient(circle, var(--color-accent) 0%, transparent 68%);
-  opacity: 0.26;
-  filter: blur(3px);
-}
-
-.ai-assistant-input__model-setup-border-flow-core {
-  width: 18px;
-  height: 3px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(to right, transparent, var(--color-accent) 60%, var(--color-accent));
-  opacity: 0.88;
+.ai-assistant-input__model-setup-border-flow-beam + .ai-assistant-input__model-setup-border-flow-beam {
+  animation-delay: -12s;
 }
 
 .ai-assistant-input__model-setup-content {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -137,14 +141,6 @@
 .ai-assistant-input__model-setup-overlay:hover {
   backdrop-filter: blur(4px) saturate(0.85);
   -webkit-backdrop-filter: blur(4px) saturate(0.85);
-}
-
-.ai-assistant-input__model-setup-overlay:hover .ai-assistant-input__model-setup-border-flow-core {
-  opacity: 1;
-}
-
-.ai-assistant-input__model-setup-overlay:hover .ai-assistant-input__model-setup-border-flow-halo {
-  opacity: 0.32;
 }
 
 .ai-assistant-input__model-setup-overlay:hover .ai-assistant-input__model-setup-arrow {
@@ -206,14 +202,12 @@
   .ai-assistant-input__model-setup-overlay,
   .ai-assistant-input__model-setup-content,
   .ai-assistant-input__model-setup-dot::after,
-  .ai-assistant-input__model-setup-border-flow-halo,
-  .ai-assistant-input__model-setup-border-flow-core {
+  .ai-assistant-input__model-setup-border-flow-beam {
     animation: none;
   }
 
   /* 流光整体撤掉，只留 composer 自身的静态描边，避免出现一段固定不动的高光。 */
-  .ai-assistant-input__model-setup-border-flow-halo,
-  .ai-assistant-input__model-setup-border-flow-core {
+  .ai-assistant-input__model-setup-border-flow-beam {
     display: none;
   }
 }

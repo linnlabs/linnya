@@ -92,21 +92,16 @@
           @click="openModelSetup"
         >
           <!--
-            流光是一颗沿 composer 自身圆角矩形边框绕行的小光点（CSS Motion Path），
-            不再单独起一个药丸容器，避免和外层输入框的描边叠成两层边框。
-            offset-path: border-box 直接取 .ai-assistant-input__model-setup-overlay
-            自己的 border-radius（已经是 inherit），不用另传圆角数值；
-            offset-rotate: auto 让光点跟着路径切线方向自转，过圆角会跟着偏转角度。
-            样式与关键帧见 AiAssistantInput.css。
+            外层蒙版约束光的轮廓，内部两块连续渐变沿 Motion Path 移动。
+            不能省掉蒙版：沿路径旋转一根长条仍然会在圆角处露出直线。
           -->
           <span
-            class="ai-assistant-input__model-setup-border-flow-halo"
+            class="ai-assistant-input__model-setup-border-flow-track"
             aria-hidden="true"
-          />
-          <span
-            class="ai-assistant-input__model-setup-border-flow-core"
-            aria-hidden="true"
-          />
+          >
+            <span class="ai-assistant-input__model-setup-border-flow-beam" />
+            <span class="ai-assistant-input__model-setup-border-flow-beam" />
+          </span>
           <span class="ai-assistant-input__model-setup-content">
             <span
               class="ai-assistant-input__model-setup-dot"
