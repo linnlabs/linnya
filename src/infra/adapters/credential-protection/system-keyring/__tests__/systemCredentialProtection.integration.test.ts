@@ -114,6 +114,27 @@ describe('system credential protection', () => {
     await expect(cli.decrypt(ciphertext)).resolves.toBe('legacy-compatible');
   });
 
+  it('把原生 keyring 对缺失条目的 null 结果视为缺失，而不是密钥内容', async () => {
+    let password: string | null = null;
+    const factory: SystemKeyringEntryFactory = {
+      create() {
+        return {
+          async getSecret() { return null; },
+          async getPassword() { return password; },
+          async setPassword(next) { password = next; },
+        };
+      },
+    };
+    const port = createSystemCredentialProtectionPort({
+      vaultId: '/app-data/native-null',
+      allowMasterKeyCreation: true,
+      entryFactory: factory,
+    });
+
+    const ciphertext = await port.encrypt('native-null-compatible');
+    await expect(port.decrypt(ciphertext)).resolves.toBe('native-null-compatible');
+  });
+
   it('区分旧密文、损坏 envelope 与认证失败', async () => {
     const keyring = createMemoryKeyring();
     const port = createSystemCredentialProtectionPort({

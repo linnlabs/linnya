@@ -24,8 +24,11 @@ const defaultEntryFactory: SystemKeyringEntryFactory = {
   create(service, account) {
     const entry = new AsyncEntry(service, account);
     return {
-      getSecret: () => entry.getSecret(),
-      getPassword: () => entry.getPassword(),
+      // @napi-rs/keyring 的 macOS 原生实现对不存在的条目实际返回 null，
+      // 虽然 2.x 声明文件写的是 undefined。先在 adapter 边界归一化，避免
+      // 下游把“缺失”当成密钥内容交给 Buffer.from 或密文解码器。
+      getSecret: async () => (await entry.getSecret()) ?? undefined,
+      getPassword: async () => (await entry.getPassword()) ?? undefined,
       setPassword: password => entry.setPassword(password),
     };
   },
@@ -98,9 +101,9 @@ async function readStoredMasterKey(
   } catch {
     throw new CredentialProtectionError('temporarily_unavailable');
   }
-  if (secret !== undefined) return Buffer.from(secret).toString('utf8');
+  if (secret !== undefined && secret !== null) return Buffer.from(secret).toString('utf8');
   try {
-    return await entry.getPassword();
+    return (await entry.getPassword()) ?? undefined;
   } catch {
     throw new CredentialProtectionError('temporarily_unavailable');
   }
