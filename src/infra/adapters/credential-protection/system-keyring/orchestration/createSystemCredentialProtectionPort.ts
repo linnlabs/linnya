@@ -6,7 +6,10 @@ import {
   CredentialProtectionError,
   type CredentialProtectionPort,
 } from '../../../../../shared/credential-protection';
-import type { SystemKeyringEntryFactory } from '../definitions/systemKeyring';
+import type {
+  SystemKeyringEntry,
+  SystemKeyringEntryFactory,
+} from '../definitions/systemKeyring';
 import {
   createSystemCredentialMasterKey,
   decodeSystemCredentialMasterKey,
@@ -21,6 +24,7 @@ const defaultEntryFactory: SystemKeyringEntryFactory = {
   create(service, account) {
     const entry = new AsyncEntry(service, account);
     return {
+      getSecret: () => entry.getSecret(),
       getPassword: () => entry.getPassword(),
       setPassword: password => entry.setPassword(password),
     };
@@ -45,21 +49,16 @@ export function createSystemCredentialProtectionPort(input: {
   const resolveMasterKey = (): Promise<Buffer> => {
     if (masterKeySettlement) return masterKeySettlement;
     masterKeySettlement = (async () => {
-      let stored: string | undefined;
-      try {
-        stored = await entry.getPassword();
-      } catch {
-        throw new CredentialProtectionError('temporarily_unavailable');
-      }
-      if (stored) return decodeSystemCredentialMasterKey(stored);
+      const stored = await readStoredMasterKey(entry);
+      if (stored !== undefined) return decodeSystemCredentialMasterKey(stored);
       if (!input.allowMasterKeyCreation) {
         throw new CredentialProtectionError('temporarily_unavailable');
       }
       const created = createSystemCredentialMasterKey();
       try {
         await entry.setPassword(encodeSystemCredentialMasterKey(created));
-        const persisted = await entry.getPassword();
-        if (!persisted) throw new CredentialProtectionError('temporarily_unavailable');
+        const persisted = await readStoredMasterKey(entry);
+        if (persisted === undefined) throw new CredentialProtectionError('temporarily_unavailable');
         return decodeSystemCredentialMasterKey(persisted);
       } catch (error: unknown) {
         if (error instanceof CredentialProtectionError) throw error;
@@ -83,4 +82,26 @@ export function createSystemCredentialProtectionPort(input: {
       return undefined;
     },
   });
+}
+
+/**
+ * 新版 keyring 用 getSecret 保留存储错误；旧版本写的是 password 记录，
+ * 因此只有在 secret 明确不存在时才走兼容读取。两种读取都失败时不能
+ * 被解释成“缺失”，否则 Desktop 可能覆盖原 master key。
+ */
+async function readStoredMasterKey(
+  entry: SystemKeyringEntry,
+): Promise<string | undefined> {
+  let secret: Uint8Array | undefined;
+  try {
+    secret = await entry.getSecret();
+  } catch {
+    throw new CredentialProtectionError('temporarily_unavailable');
+  }
+  if (secret !== undefined) return Buffer.from(secret).toString('utf8');
+  try {
+    return await entry.getPassword();
+  } catch {
+    throw new CredentialProtectionError('temporarily_unavailable');
+  }
 }

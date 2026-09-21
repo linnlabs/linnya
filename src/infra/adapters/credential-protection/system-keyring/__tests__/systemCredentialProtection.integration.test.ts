@@ -6,17 +6,24 @@ import { createSystemCredentialProtectionPort } from '../orchestration/createSys
 
 function createMemoryKeyring(): {
   readonly factory: SystemKeyringEntryFactory;
-  readonly passwords: Map<string, string>;
+  readonly passwords: Map<string, Uint8Array>;
 } {
-  const passwords = new Map<string, string>();
+  const passwords = new Map<string, Uint8Array>();
   return {
     passwords,
     factory: {
       create(service, account) {
         const key = `${service}\u0000${account}`;
         return {
-          async getPassword() { return passwords.get(key); },
-          async setPassword(password) { passwords.set(key, password); },
+          async getSecret() {
+            const secret = passwords.get(key);
+            return secret ? new Uint8Array(secret) : undefined;
+          },
+          async getPassword() {
+            const secret = passwords.get(key);
+            return secret ? Buffer.from(secret).toString('utf8') : undefined;
+          },
+          async setPassword(password) { passwords.set(key, Buffer.from(password, 'utf8')); },
         };
       },
     },
@@ -57,6 +64,54 @@ describe('system credential protection', () => {
     expect(keyring.passwords.size).toBe(1);
     await expect(desktop.decrypt(first)).resolves.toBe('first');
     await expect(desktop.decrypt(second)).resolves.toBe('second');
+  });
+
+  it('读取被系统拒绝时不把错误误判成缺失，也不覆盖已有 master key', async () => {
+    let writes = 0;
+    const port = createSystemCredentialProtectionPort({
+      vaultId: '/app-data/denied',
+      allowMasterKeyCreation: true,
+      entryFactory: {
+        create() {
+          return {
+            async getSecret() {
+              throw new Error('keychain access denied');
+            },
+            async getPassword() {
+              throw new Error('keychain access denied');
+            },
+            async setPassword() {
+              writes += 1;
+            },
+          };
+        },
+      },
+    });
+
+    await expect(port.encrypt('secret')).rejects.toMatchObject({ code: 'temporarily_unavailable' });
+    expect(writes).toBe(0);
+  });
+
+  it('兼容升级前以 password 形态保存的 master key', async () => {
+    let password: string | undefined;
+    const factory: SystemKeyringEntryFactory = {
+      create() {
+        return {
+          async getSecret() { return undefined; },
+          async getPassword() { return password; },
+          async setPassword(next) { password = next; },
+        };
+      },
+    };
+    const desktop = createSystemCredentialProtectionPort({
+      vaultId: '/app-data/legacy-password', allowMasterKeyCreation: true, entryFactory: factory,
+    });
+    const cli = createSystemCredentialProtectionPort({
+      vaultId: '/app-data/legacy-password', allowMasterKeyCreation: false, entryFactory: factory,
+    });
+
+    const ciphertext = await desktop.encrypt('legacy-compatible');
+    await expect(cli.decrypt(ciphertext)).resolves.toBe('legacy-compatible');
   });
 
   it('区分旧密文、损坏 envelope 与认证失败', async () => {
