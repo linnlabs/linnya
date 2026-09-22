@@ -1,3 +1,4 @@
+import { webSearchMaterialsCase } from './webSearchMaterials';
 import { slidesConsultingHighDensityCase } from './slidesConsultingHighDensity';
 import { slidesConsultingEmbodiedIntelligenceCase } from './slidesConsultingEmbodiedIntelligence';
 import { slidesConsultingCommercialSpaceCase } from './slidesConsultingCommercialSpace';
@@ -12,6 +13,7 @@ import { slidesDataIntegrityStressCase } from './slidesDataIntegrityStress';
 import { deepResearchArticleCase } from './deepResearchArticle';
 
 export const builtinBenchmarkCases = [
+  webSearchMaterialsCase,
   deepResearchArticleCase,
   slidesArgFrontierComplexCase,
   slidesDataIntegrityStressCase,

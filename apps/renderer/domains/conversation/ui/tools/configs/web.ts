@@ -13,14 +13,30 @@ import { projectWebReadPresentation } from '../webread/functions/projectWebReadP
 import { createStaticToolCompactStepProjector } from '../compact-step/functions/createStaticToolCompactStepProjector';
 
 const readWebPageCompactStep = createStaticToolCompactStepProjector(
-  'conversation.tool.webRead.configTitle',
+  'conversation.tool.webRead.configTitle'
 );
 
 const WebSearchCard = defineAsyncComponent(() => import('../websearch/WebSearchCard.vue'));
 const WebReadCard = defineAsyncComponent(() => import('../webread/WebReadCard.vue'));
 
 export const webToolConfigs: Record<string, ToolUiConfig> = {
-  'web_search': {
+  web_search: {
+    component: WebSearchCard,
+    icon: SearchIcon,
+    presentation: projectWebSearchPresentation,
+    compactStep: projectWebSearchCompactStep,
+    runtime: { subrunTrace: true, conversationId: true },
+    layout: { fullWidth: true, defaultCollapsed: true },
+  },
+
+  search_web: {
+    component: WebSearchCard,
+    icon: SearchIcon,
+    presentation: projectWebSearchPresentation,
+    compactStep: projectWebSearchCompactStep,
+    layout: { fullWidth: true, defaultCollapsed: true },
+  },
+  assemble_web_sources: {
     component: WebSearchCard,
     icon: SearchIcon,
     presentation: projectWebSearchPresentation,
@@ -28,7 +44,7 @@ export const webToolConfigs: Record<string, ToolUiConfig> = {
     layout: { fullWidth: true, defaultCollapsed: true },
   },
 
-  'web_read': {
+  web_read: {
     component: WebReadCard,
     icon: ReadIcon,
     presentation: projectWebReadPresentation,

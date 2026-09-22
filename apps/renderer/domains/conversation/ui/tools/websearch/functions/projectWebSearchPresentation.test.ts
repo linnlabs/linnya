@@ -55,15 +55,17 @@ function successResult() {
 
 describe('projectWebSearchPresentation', () => {
   it('紧凑步骤由 web owner 投影查询标题', () => {
-    expect(projectWebSearchCompactStep({
-      sourceToolName: 'web_search',
-      uiKey: 'web_search',
-      toolCallId: 'web-call-1',
-      args: { query: 'subagent 功能测试' },
-      result: undefined,
-      status: 'loading',
-      phase: 'start',
-    })).toEqual({
+    expect(
+      projectWebSearchCompactStep({
+        sourceToolName: 'web_search',
+        uiKey: 'web_search',
+        toolCallId: 'web-call-1',
+        args: { query: 'subagent 功能测试' },
+        result: undefined,
+        status: 'loading',
+        phase: 'start',
+      })
+    ).toEqual({
       title: {
         key: 'conversation.tool.webSearch.compactQuery',
         fallback: '联网搜索“{query}”',
@@ -73,15 +75,17 @@ describe('projectWebSearchPresentation', () => {
   });
 
   it('紧凑 error lifecycle 使用 owner 失败标题且不解析成功参数', () => {
-    expect(projectWebSearchCompactStep({
-      sourceToolName: 'web_search',
-      uiKey: 'web_search',
-      toolCallId: 'web-call-error',
-      args: { query: '' },
-      result: { error: 'query rejected' },
-      status: 'error',
-      phase: 'error',
-    })).toEqual({
+    expect(
+      projectWebSearchCompactStep({
+        sourceToolName: 'web_search',
+        uiKey: 'web_search',
+        toolCallId: 'web-call-error',
+        args: { query: '' },
+        result: { error: 'query rejected' },
+        status: 'error',
+        phase: 'error',
+      })
+    ).toEqual({
       title: {
         key: 'conversation.tool.webSearch.failed',
         fallback: '搜索失败',
@@ -89,16 +93,24 @@ describe('projectWebSearchPresentation', () => {
     });
   });
 
-  it('紧凑 success lifecycle 严格接纳请求与结果', () => {
-    expect(() => projectWebSearchCompactStep({
-      sourceToolName: 'web_search',
-      uiKey: 'web_search',
-      toolCallId: 'web-call-success',
-      args: { query: 'Linnya' },
-      result: { data: { query: 'Linnya' } },
-      status: 'success',
-      phase: 'complete',
-    })).toThrow();
+  it('紧凑 success 不读取完整结果，只根据请求生成短标题', () => {
+    expect(
+      projectWebSearchCompactStep({
+        sourceToolName: 'web_search',
+        uiKey: 'web_search',
+        toolCallId: 'web-call-success',
+        args: { query: 'Linnya' },
+        result: { data: { query: 'Linnya' } },
+        status: 'success',
+        phase: 'complete',
+      })
+    ).toEqual({
+      title: {
+        key: 'conversation.tool.webSearch.compactQuery',
+        fallback: '联网搜索“{query}”',
+        params: { query: 'Linnya' },
+      },
+    });
   });
 
   it('生命周期阶段只接纳参数，不读取 success result', () => {
@@ -113,12 +125,67 @@ describe('projectWebSearchPresentation', () => {
     });
   });
 
-  it('将正式 web citations 投影为稳定展示列表', () => {
-    expect(project({
+  it('深搜部分资料包实时与重载保持相同模式、限制和子轨迹身份；第五次显示实际浅搜', () => {
+    const result = {
+      data: {
+        query: 'Linnya',
+        search_strategy: 'deep',
+        resultCount: 0,
+        subrun_ids: ['child-1'],
+        citations: { query: 'Linnya', searchMode: 'web', citations: [] },
+        evidence_store: { bundle_id: 'bundle' },
+        research: {
+          source_notes: [],
+          summary: '',
+          gaps: ['Sources blocked'],
+          conflicts: [],
+          failures: [{ tool: 'web_read', call_id: 'read-1', error: 'HTTP 403' }],
+          search_count: 1,
+          read_attempt_count: 1,
+        },
+      },
+      observation: 'No readable sources',
+    };
+    const live = project({
+      args: { query: 'Linnya', deep_search: true },
       status: 'success',
-      phase: 'complete',
-      result: successResult(),
-    })).toMatchObject({
+      result,
+    });
+    expect(live).toEqual(
+      project({
+        args: { query: 'Linnya', deep_search: true },
+        status: 'success',
+        result: JSON.parse(JSON.stringify(result)),
+      })
+    );
+    expect(live.data).toMatchObject({
+      strategy: 'deep',
+      subrunIds: ['child-1'],
+      materials: { gaps: ['Sources blocked'] },
+    });
+    expect(
+      project({ args: { query: 'Linnya', deep_search: true }, status: 'error', result: undefined })
+        .data
+    ).toMatchObject({ kind: 'lifecycle', requestedDeepSearch: true });
+    const shallow = successResult();
+    const fallback = {
+      ...shallow,
+      data: { ...shallow.data, search_strategy: 'shallow', downgrade_reason: 'deep_search_limit' },
+    };
+    expect(
+      project({ args: { query: 'Linnya', deep_search: true }, status: 'success', result: fallback })
+        .data
+    ).toMatchObject({ strategy: 'shallow', limited: true });
+  });
+
+  it('将正式 web citations 投影为稳定展示列表', () => {
+    expect(
+      project({
+        status: 'success',
+        phase: 'complete',
+        result: successResult(),
+      })
+    ).toMatchObject({
       data: {
         kind: 'results',
         query: 'Linnya',
@@ -144,15 +211,17 @@ describe('projectWebSearchPresentation', () => {
     mismatched.data.query = 'Other query';
     mismatched.data.citations.query = 'Other query';
     expect(() => project({ status: 'success', result: mismatched })).toThrow(
-      'Web search result query does not match its tool arguments.',
+      'Web search result query does not match its tool arguments.'
     );
 
-    expect(() => project({
-      status: 'success',
-      result: {
-        ...successResult(),
-        metadata: { arbitrary: true },
-      },
-    })).toThrow();
+    expect(() =>
+      project({
+        status: 'success',
+        result: {
+          ...successResult(),
+          metadata: { arbitrary: true },
+        },
+      })
+    ).toThrow();
   });
 });

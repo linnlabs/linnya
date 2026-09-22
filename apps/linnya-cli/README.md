@@ -136,19 +136,20 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 `list` 不带 `--project` 时只查询无项目会话，不是全局列表。项目内会话必须先用
 `projects` 取得项目 ID，再显式传入 `--project`；空结果不能证明其他项目没有会话。
 
-### 内部文档评审
+### 独立文档评审
 
-`send --agent internal_judge --project <project-id> --model <model-config-id>` 可在同项目的新会话中
-评价指定 Markdown。消息应明确目标、允许材料（或无）、标准和新的评审输出路径，例如：
+使用 `send --agent default --project <project-id> --model <model-config-id>` 在同项目的新会话中
+评价指定 Markdown。消息应明确目标、允许材料（或无）、读者、标准和新的评审输出路径，例如：
 
 ```bash
-pnpm linnya:cli send "评价 workspace:/article.md。无外部材料；目标读者为普通财经读者，检查因果解释、限制条件与可读性，无法验证的事实标未验证。写入新的 workspace:/review-01.md。" --project <project-id> --agent internal_judge --model <model-config-id>
+pnpm linnya:cli send "评价 workspace:/article.md。仅使用该正文，不联网或读取其他评审；目标读者为普通财经读者。逐项检查因果解释、限制条件与可读性，意见附正文原句，无法验证的事实标未验证。写入新的 workspace:/review-01.md，若已存在则换新文件名。写完回读确认。" --project <project-id> --agent default --model <model-config-id>
 ```
 
-前端选择菜单不列该 Agent；会话、`judge_record` 工具卡和 Markdown 评审正常显示。
-工具回执只记录模型评价，不证明事实通过或文档已保存；最终以正式文件写入/回读为准。
-新会话不自动匿名，也不隔离同项目文件访问。完整边界见
-[内部评委](../../src/app-hosts/linnya/agent-registry/agents/internal_judge/README.md)。
+评价直接保存为 Markdown，使用普通文件工具显示和回读，不额外提交一份工具回执。
+新会话隔离生成对话的上下文，但不自动匿名，也不限制 Default Agent 的联网或同项目文件访问权限；
+固定材料评审需在任务中声明范围，并用实际工具记录核查是否遵守。模型评价不等于事实核验。
+Benchmark 的运行采集与质量评价是两层：可用 Default Agent 执行评审任务并保留会话，
+但普通评审文档不会自动进入 Benchmark，也不会自动变成质量分数；需显式关联被评正文版本和生成/评审运行。
 
 ### 3.1 调用 Workspace 工具
 

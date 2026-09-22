@@ -167,6 +167,7 @@ export class LinnyaRegisteredChildRunLifecycle implements RegisteredChildRunLife
                     return admission.start({
                       record,
                       descriptor: params.descriptor,
+                      maxCallsPerParentRun: params.agentDefinition.config?.maxCallsPerParentRun,
                       incoming: { events: [], assetCommitsByEventId: new Map() },
                     });
                   },

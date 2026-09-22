@@ -42,6 +42,7 @@ export function toChildRunAgentConfig(agentDefinition: AgentDefinition): childRu
     id: agentDefinition.id,
     promptKey: agentDefinition.promptKey,
     availableTools: agentDefinition.config?.availableTools,
+    ...(agentDefinition.config?.resultToolName ? { judgeToolName: agentDefinition.config.resultToolName } : {}),
     modelPolicy:
       agentDefinition.config?.modelPolicy?.kind === 'fixed'
         ? { kind: 'fixed', modelId: agentDefinition.config.modelPolicy.modelId }

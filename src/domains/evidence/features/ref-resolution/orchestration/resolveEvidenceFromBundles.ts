@@ -47,6 +47,8 @@ import { selectEvidenceCandidate } from '../functions/selectEvidenceCandidate';
  *   - 工具组装：只要指针（不需要 text）
  */
 export interface ResolveEvidenceFromBundlesParams {
+  /** 内部取得快照定位；只匹配指定 bundle，不向其它版本降级。 */
+  bundle_id?: string;
   conversationId: string;
   instanceId: string;
   /** 默认只读当前 instance；跨 agent 协作必须显式选择 conversation。 */
@@ -119,6 +121,7 @@ export async function resolveEvidenceFromBundlesWithRepository(
   for (const location of bundleFiles) {
     if (location.storageIdentity.kind !== 'canonical_bundle') continue;
     const bundleId = location.storageIdentity.bundleId;
+    if (params.bundle_id !== undefined && bundleId !== params.bundle_id) continue;
     scannedBundleFiles.push(location.displayName);
     if (location.status === 'unreadable') {
       logger.warn('[EvidenceResolver] bundle 文件读取/解析失败（跳过）', {

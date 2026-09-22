@@ -1,3 +1,11 @@
+import { DeepWebSearchResultSchema } from '@app/schemas';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
+import { createChildRunHarness } from 'src/app-hosts/linnya/testkit/agent-harness/childRunHarness';
+import { DEEP_WEB_SEARCH_DEFINITION } from 'src/app-hosts/linnya/agent-registry/agents/deep_web_search';
+import { SearchWebTool } from '../websearch/SearchWebTool';
+import { AssembleWebSourcesTool } from '../websearch/deep/AssembleWebSourcesTool';
+import { decorateDeepWebSnapshotToolContext } from 'src/app-hosts/linnya/adapters/tools/deepWebSnapshotToolContextDecorator';
+import { allocateCitationRefFixture } from 'src/domains/citation/testkit/citationRefAllocatorFixture';
 import { promises as fsp } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,17 +29,26 @@ import { MetasoReaderProvider } from '../webread/providers/metaso';
 import { installWebReadConfigReader } from '../webread/ports/webReadConfigReader';
 import { WebSearchTool } from '../websearch/WebSearchTool';
 import { WebReadTool } from '../webread/WebReadTool';
-import { UNTRUSTED_FAILURE_TEXT, WebUpstreamFixtureServer } from './fixtures/webUpstreamFixtureServer';
+import {
+  UNTRUSTED_FAILURE_TEXT,
+  WebUpstreamFixtureServer,
+} from './fixtures/webUpstreamFixtureServer';
 import { WebFailureError } from '../shared/webFailure';
 import { attachCitationRefAllocator, attachCitationSequence } from '../../../domains/citation';
 import { createCitationRefAllocatorFixture } from '../../../domains/citation/testkit/citationRefAllocatorFixture';
 import { decorateWebEvidenceWriterToolContext } from '../../../app-hosts/linnya/adapters/tools/webEvidenceWriterToolContextDecorator';
 import { ToolRegistry } from '../../../app-hosts/linnya/adapters/tools/toolRegistry';
 import * as builtinPluginRegistry from '../../../app-hosts/linnya/plugin-registry/builtin';
-import { clearPluginRuntimeStateForTests, setPluginRuntimeStateForTests } from '../../../app-hosts/linnya/plugin-registry/pluginRuntimeState';
+import {
+  clearPluginRuntimeStateForTests,
+  setPluginRuntimeStateForTests,
+} from '../../../app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import { defaultObservationPreviewPort } from '../../../app-hosts/linnya/adapters/tools/defaultPorts';
 import { createDefaultLlmNode } from '../../../app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
-import { createScriptedChatModelCatalog, SCRIPTED_MODEL_ID } from '../../../app-hosts/linnya/testkit/agent-harness/modelCatalogHarness';
+import {
+  createScriptedChatModelCatalog,
+  SCRIPTED_MODEL_ID,
+} from '../../../app-hosts/linnya/testkit/agent-harness/modelCatalogHarness';
 import { Logger } from '../../../shared/logger';
 
 const createSearchProviderMock = vi.hoisted(() => vi.fn());
@@ -141,6 +158,137 @@ describe('Web Phase 1 本地优先读取业务 E2E', () => {
     decorateWebEvidenceWriterToolContext(context);
     return context;
   }
+
+  it('网页 child 多查询 → 实际 HTTP 读取 → Evidence 摘录组装，并继承父模型', async () => {
+    await prepareBusinessContext();
+    const allocator = createCitationRefAllocatorFixture();
+    const decorate = (context: ToolContext) => {
+      attachCitationSequence(context, { offset: 0 });
+      attachCitationRefAllocator(context, allocator);
+      decorateWebEvidenceWriterToolContext(context);
+    };
+    class Search extends SearchWebTool {
+      override async run(args: Record<string, unknown>, context: ToolContext) {
+        decorate(context);
+        return super.run(args, context);
+      }
+    }
+    class Read extends WebReadTool {
+      override async run(args: Record<string, unknown>, context: ToolContext) {
+        decorate(context);
+        return super.run(args, context);
+      }
+    }
+    class Assemble extends AssembleWebSourcesTool {
+      override async run(args: Record<string, unknown>, context: ToolContext) {
+        decorateWebEvidenceWriterToolContext(context);
+        decorateDeepWebSnapshotToolContext(context);
+        return super.run(args, context);
+      }
+    }
+    const ref = allocateCitationRefFixture({
+      sourceType: 'web',
+      url: 'https://example.com/article',
+    });
+    // 本夹具只测真实 Graph / 工具 / HTTP / Evidence；持久限额由 SQLite admission 集成测试覆盖。
+    if (!DEEP_WEB_SEARCH_DEFINITION.config) throw new Error('Missing child config');
+    const config = { ...DEEP_WEB_SEARCH_DEFINITION.config, maxCallsPerParentRun: undefined };
+    const harness = createChildRunHarness({
+      agentDefinitions: [{ ...DEEP_WEB_SEARCH_DEFINITION, config }],
+      tools: [new Search(), new Read(), new Assemble()],
+      turns: [
+        {
+          toolCalls: [
+            {
+              id: 'forbidden-recursion',
+              name: 'web_search',
+              argumentsJson: JSON.stringify({ query: 'recursive attempt', deep_search: true }),
+            },
+          ],
+        },
+        {
+          toolCalls: [
+            {
+              id: 'search-1',
+              name: 'search_web',
+              argumentsJson: JSON.stringify({ query: 'mechanism evidence' }),
+            },
+          ],
+        },
+        {
+          toolCalls: [
+            {
+              id: 'search-2',
+              name: 'search_web',
+              argumentsJson: JSON.stringify({ query: 'opposing mechanism' }),
+            },
+          ],
+        },
+        {
+          toolCalls: [
+            {
+              id: 'read-1',
+              name: 'web_read',
+              argumentsJson: JSON.stringify({ url: 'https://example.com/article' }),
+            },
+          ],
+        },
+        {
+          toolCalls: [
+            {
+              id: 'assemble-1',
+              name: 'assemble_web_sources',
+              argumentsJson: JSON.stringify({
+                selected: [{ ref, purpose: 'A test source' }],
+                summary: 'Fixture sources',
+                gaps: ['Only a fixture'],
+                conflicts: [],
+              }),
+            },
+          ],
+        },
+      ],
+    });
+    try {
+      const context = createToolContextFixture({
+        conversationId: 'deep-web-conversation',
+        turnId: 'parent-turn',
+        patch: {
+          modelId: SCRIPTED_MODEL_ID,
+          runId: RunIdSchema.parse('parent-web-run'),
+          parentToolCallId: 'parent-search-call',
+          createSubRunTracePublisher: () => ({ publish: vi.fn() }),
+          registeredChildRunInvoker: harness.invoker,
+        },
+      });
+      attachCitationSequence(context, { offset: 4 });
+      const result = DeepWebSearchResultSchema.parse(
+        JSON.parse(
+          await new WebSearchTool().run({ query: 'Research materials', deep_search: true }, context)
+        )
+      );
+      expect(result.data.research).toMatchObject({ search_count: 2, read_attempt_count: 1 });
+      expect(result.data.research?.source_notes[0]).toMatchObject({
+        capture_kind: 'page_content',
+        source_call_id: 'read-1',
+        ref,
+      });
+      expect(result.data.citations.citations[0]).toMatchObject({ ref, index: 5 });
+      expect(result.data.subrun_ids).toHaveLength(1);
+      expect(harness.getToolExecutions().map(x => x.toolName)).toEqual([
+        'search_web',
+        'search_web',
+        'web_read',
+        'assemble_web_sources',
+      ]);
+      expect(harness.getToolExecutions().every(x => x.context.modelId === SCRIPTED_MODEL_ID)).toBe(
+        true
+      );
+      harness.assertAllTurnsConsumed();
+    } finally {
+      harness.restore();
+    }
+  });
 
   it('搜索 → 去重引用 → 读取正文 → 两类 Evidence 均可回放', async () => {
     const context = await prepareBusinessContext();

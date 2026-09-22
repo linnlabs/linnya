@@ -18,6 +18,18 @@ describe('Evidence ref 解析规则', () => {
     workspace = undefined;
   });
 
+  it('指定取得版本时不被同 ref 的更完整快照覆盖，也不从其他版本补缺', async () => {
+    const scope = {conversationId: 'web-versions', instanceId: 'default'};
+    const common = {ref_id: 'Abc234', source_type: 'web' as const, title: 'Page', captured_at_ms: 1, url: 'https://example.com/page', normalized_url: 'https://example.com/page'};
+    const first = await saveEvidenceBundle({scope, kind: 'web_evidence', query: 'search', items: [{...common, capture_kind: 'web_search_result', snippet: 'Summary', content_text: 'Summary'}]});
+    await saveEvidenceBundle({scope, kind: 'web_evidence', query: 'read', items: [{...common, capture_kind: 'web_page', snippet: 'Full', content_text: 'Full updated body'}]});
+    const selected = await resolveEvidenceFromBundles({...scope, refs: ['Abc234'], bundle_id: first.bundleId, max_units: 100, max_chars: 1000});
+    expect(selected.resolved.Abc234).toMatchObject({text: 'Summary', capture_kind: 'web_search_result'});
+    const missing = await resolveEvidenceFromBundles({...scope, refs: ['Abc234'], bundle_id: '0000000000000000', max_units: 100, max_chars: 1000});
+    expect(missing.missing_refs).toContain('Abc234');
+    expect(missing.resolved).toEqual({});
+  });
+
   it('同一 canonical ref 和 block 应稳定选择 full chunk，不受 bundle 文件顺序影响', async () => {
     const scope = {
       conversationId: 'conversation-knowledge-quality',

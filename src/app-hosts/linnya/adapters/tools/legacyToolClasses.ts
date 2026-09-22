@@ -1,4 +1,3 @@
-import { JudgeRecordTool } from '../../../../tools/evaluation/judge_record/JudgeRecordTool';
 import { searchToolClasses } from '../../../../tools/knowledgebase/search';
 import { readerToolClasses } from '../../../../tools/knowledgebase/reader';
 import { assembleToolClasses } from '../../../../tools/knowledgebase/assemble';
@@ -43,7 +42,6 @@ export const legacyBuiltinToolClasses = [
   ...webSearchToolClasses,
   ...webReadToolClasses,
   ...skillToolClasses,
-  JudgeRecordTool,
   ShellTool,
   ProcessTool,
 ] as const;

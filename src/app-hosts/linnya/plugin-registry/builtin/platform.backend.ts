@@ -1,3 +1,4 @@
+import { decorateDeepWebSnapshotToolContext } from '../../adapters/tools/deepWebSnapshotToolContextDecorator';
 import type { PluginBackendContribution } from '../types';
 import { PLATFORM_PLUGIN_META } from './platform-meta';
 import { legacyBuiltinToolClasses } from '../../adapters/tools/legacyToolClasses';
@@ -33,6 +34,7 @@ export const platformBackendPlugin: PluginBackendContribution = {
   meta: PLATFORM_PLUGIN_META,
   toolClasses: legacyBuiltinToolClasses,
   toolContextDecorators: [
+    { toolNames: ['assemble_web_sources'], decorate: decorateDeepWebSnapshotToolContext },
     {
       toolNames: CITATION_PRODUCER_TOOL_NAMES,
       decorate: decorateCitationSequenceToolContext,

@@ -179,7 +179,7 @@ stepPolicy: {
 - `control.terminateRun=true`：该工具结果已经闭环，ToolNode 写完 `tool_output` 后结束本轮 run。
 - `control.finalAnswer='...'`：该工具产物需要投影为 `final_answer` 事件。
 
-典型组合是 deep search / deep research 的收口工具：`deep_search` 的 `assemble_documents` 用 `terminateRun` 结束子 run；deep research 的 `write_report` 会同时给 `finalAnswer` 和 `terminateRun`。普通检索、读取、编辑工具不要结束循环。
+当前内部检索的收口工具是知识库 `deep_search` 的 `assemble_documents` 和网页 `deep_web_search` 的 `assemble_web_sources`，两者通过 `terminateRun` 结束子 run。旧 deep research 的 `write_report` 属于历史实现，不是新能力的接入范例。普通检索、读取、编辑工具不要结束循环。
 
 长任务预算也应由 definition 声明。当前 Default Agent 与 Slides Agent 使用 `maxSteps: 800`；未声明的
 Agent 继续继承 Linnkit 的 80 步框架默认值。Host 的 root 与 registered child-run 装配都消费同一个
@@ -230,9 +230,6 @@ definition 字段，Renderer 和 wire DTO 不维护另一份默认值。root run
 同一原则适用于 Workspace Markdown：任何会用 `edit_file` 修改、或用 `write_file` 覆盖已有正式 Markdown 的 AgentDefinition，都必须暴露 `skill` tool 与 Catalog，使模型可以按需激活 `linnya-markdown`。具体兼容规则只写在 Skill 中，不能复制到每个 Agent prompt；`requiredSkills` 只表示配置依赖，不代表自动激活。
 
 ---
-
-内部文档评委见 [`internal_judge`](./agents/internal_judge/README.md)：CLI 发起、普通会话显示，
-不贡献前端菜单；评价记录与 Markdown 交付复用正式工具链，不自动保证盲评。
 
 ## 目录树
 
@@ -493,3 +490,10 @@ src/app-hosts/linnya/agent-registry/
 一句话总结：
 
 `agent-registry` 的价值不在“帮 runtime 执行”，而在“把产品定义收成一个稳定、可检查、可迁移的注册式声明层”。
+
+### 内部网页资料搜集
+
+`deep_web_search` 仅由 web_search 的深搜模式调用，继承父模型、30 Graph 步，工具白名单
+限定浅检索、网页读取、续读及资料组装。`resultToolName` 指定正式产物工具，映射至框架
+judgeToolName（不是评分角色）；`maxCallsPerParentRun` 交给 Host 持久 admission 事务执行。
+网页四次，知识库旧行为保持不变。业务来源合同见 Web owner，不在注册中心复制。

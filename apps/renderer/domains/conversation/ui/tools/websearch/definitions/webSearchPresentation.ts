@@ -1,4 +1,4 @@
-import type { WebSearchCitation } from '@app/schemas';
+import type { WebSearchCitation, DeepWebResearchNotes } from '@app/schemas';
 
 export interface WebSearchDisplayItem {
   readonly id: string;
@@ -11,10 +11,16 @@ export interface WebSearchDisplayItem {
 export type WebSearchPresentationData =
   | {
       readonly kind: 'lifecycle';
+      readonly requestedDeepSearch?: boolean;
     }
   | {
       readonly kind: 'results';
       readonly query: string;
+      readonly requestedDeepSearch?: boolean;
+      readonly strategy?: 'deep' | 'shallow';
+      readonly limited?: boolean;
+      readonly subrunIds?: readonly string[];
+      readonly materials?: DeepWebResearchNotes;
       readonly items: readonly WebSearchDisplayItem[];
     };
 

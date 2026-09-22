@@ -10,6 +10,8 @@ const replayableTools = new Set([
   'knowledge_search',
   'knowledge_read',
   'web_search',
+  'search_web',
+  'assemble_web_sources',
   'web_read',
   'task_read',
   'skill',

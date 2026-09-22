@@ -9,6 +9,40 @@ import { createToolPresentationProjectionPort } from './createToolPresentationPr
 const TestComponent = defineComponent({});
 
 describe('createToolPresentationProjectionPort', () => {
+  it('工具退役后仍接纳历史消息，保留正文和原始结果供通用展示与审计', () => {
+    const unregister = registerToolPresentationProjectionPort(
+      createToolPresentationProjectionPort(() => null),
+    );
+    try {
+      const dto = ConversationUiMessageSchema.parse({
+        message_id: 'tool:run-history:call-retired',
+        conversation_id: 'conv-history', turn_id: 'turn-history', run_id: 'run-history',
+        role: 'assistant', message_type: 'tool_calls', sort_seq: 1, timestamp: 1,
+        content: '历史评价已记录；尚未核验事实。',
+        payload: {
+          tool_call_id: 'call-retired', tool_name: 'retired_review_tool',
+          status: 'success', phase: 'complete',
+          args: { target: 'workspace:/article.md' },
+          data: { assessment_origin: 'model_reported' },
+          started_at: 1, completed_at: 2,
+        },
+        merge_key: null, presentation: null,
+      });
+      const message = mapUiMessageDtoToConversationMessage(dto);
+      expect(message.type).toBe('tool_calls');
+      if (message.type !== 'tool_calls') throw new Error('Expected tool_calls message');
+      expect(message.toolPresentation).toBeUndefined();
+      expect(message.content).toBe(dto.content);
+      expect(message.metadata).toMatchObject({
+        tool_name: 'retired_review_tool',
+        args: { target: 'workspace:/article.md' },
+        data: { assessment_origin: 'model_reported' },
+      });
+    } finally {
+      unregister();
+    }
+  });
+
   it('固定 alias 最终 key，并把 wrapper 原始身份交给同一个 projector', () => {
     const presentation: ToolPresentationProjector = vi.fn((input) => ({
       data: {

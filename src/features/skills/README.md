@@ -38,11 +38,13 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 
 该 Skill 复用 Default Agent 的 Web、Knowledge、Workspace 与 Shell 工具，不恢复旧 Deep Research beta，不要求固定多 Agent 编排。入口保留共同研究纪律；文体差异与建模选择按需读取 resources。它不强制统一章节、假设数量、概率分数或资料数量，也不宣称系统已经机械验证推论。
 
+`references/modeling.md` 将材料立场、参与者利益、竞争解释与间接线索连接到具体查找任务：先说明候选机制会留下什么可观察记录，再查相关主体、时间线、资金/实物流和制度条件，并保留反证、基准解释与未解环节。立场不等于真假，相关不等于因果；这是一套行为指引，不是已验证的自动发现能力。
+
 深度研究默认交付当前项目的 Markdown 文档，聊天只给摘要与 canonical Workspace 链接；用户明确只要聊天回答时例外。正文与必要的研究记录分开，独立评价在同项目新会话读取指定版本、允许材料和评价标准，另写评审文档，不修改原稿。新会话只隔离对话历史，不自动隐藏同项目文件或实现盲评；正式比较仍需冻结输入、匿名化与 Judge 校准。
 
 `references/business-analysis.md` 吸收旧咨询流程中仍适用的双路径估算、驱动量建模、可比性与综合方法；只在商业任务需要时加载。正文、研究记录和评审之间使用实际 locator 关联，不引入第二套持久化或报告发布通道。
 
-取材状态、正文支持程度与计算执行分开记录。引用接纳由 [Citation](../../domains/citation/README.md) 拥有，网页取得状态由 [Web](../../tools/web/README.md) 拥有，写入结果由 [Workspace 工具](../../tools/workspace/README.md) 拥有；Skill 不复制校验器或将自述变成通过状态。
+资料取得状态、正文支持程度与计算执行分开记录。引用接纳由 [Citation](../../domains/citation/README.md) 拥有，网页取得状态由 [Web](../../tools/web/README.md) 拥有，写入结果由 [Workspace 工具](../../tools/workspace/README.md) 拥有；Skill 不复制校验器或将自述变成通过状态。
 
 ## 编写与维护
 

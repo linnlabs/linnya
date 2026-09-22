@@ -9,7 +9,6 @@ import {
   ResearchRunWriterReplayResultSchema,
   SearchResultCitationSchema,
   WebReadResultSchema,
-  WebSearchCitationSchema,
   WebSearchResultSchema,
   WorkspaceReadFileEventResultSchema,
   type SearchResultCitation,
@@ -113,6 +112,7 @@ function admitToolResult(
       return toAdmission(
         ResearchRunWriterReplayResultSchema.parse(result).data.citations?.citations ?? [],
       );
+    case 'search_web':
     case 'web_search':
       return toAdmission(WebSearchResultSchema.parse(result).data.citations.citations);
     case 'web_read':

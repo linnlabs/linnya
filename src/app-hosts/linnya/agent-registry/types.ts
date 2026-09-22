@@ -40,6 +40,10 @@ export interface AgentRegistryDependencies {
  * 对应历史上的 agent-config.ts（已迁移到后端 AgentRegistry）中的 AgentConfig 概念
  */
 export interface AgentConfiguration {
+  /** 子运行仅从该工具取得正式产物；映射到框架的 judgeToolName，不代表评分 Agent。 */
+  resultToolName?: string;
+  /** Host 持久 child admission 限额；同一父 run、同一 Agent，恢复不重复消耗。 */
+  maxCallsPerParentRun?: number;
   /**
    * 可用工具白名单
    * undefined 表示无限制（使用默认全集），空数组表示禁用所有工具

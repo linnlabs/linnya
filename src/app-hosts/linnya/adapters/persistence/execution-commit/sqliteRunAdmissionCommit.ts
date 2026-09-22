@@ -1,3 +1,4 @@
+import { assertChildRunAdmissionLimit } from '../../../application/run-resumption';
 import type Database from 'better-sqlite3';
 import type {
   RunAdmissionCommitPort,
@@ -20,6 +21,17 @@ export class SqliteRunAdmissionCommit implements RunAdmissionCommitPort {
 
   async start(input: Parameters<RunAdmissionCommitPort['start']>[0]): Promise<void> {
     this.db.transaction(() => {
+      if (input.maxCallsPerParentRun !== undefined) {
+        const child = input.descriptor.child;
+        if (!child) throw new Error('Child admission limit requires parent identity');
+        assertChildRunAdmissionLimit(
+          this.descriptors.countChildrenInTransaction(
+            child.parentRunId,
+            input.descriptor.request.promptKey
+          ),
+          input.maxCallsPerParentRun
+        );
+      }
       if (
         input.replacement &&
         !this.runs.compareAndSwapInTransaction(input.replacement.previous, input.replacement.next)

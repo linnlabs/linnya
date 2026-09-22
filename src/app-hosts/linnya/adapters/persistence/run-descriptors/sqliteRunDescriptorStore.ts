@@ -21,6 +21,14 @@ export class SqliteRunDescriptorStore implements RunDescriptorStore {
       .run(descriptor.runId, serialized);
   }
 
+  countChildrenInTransaction(parentRunId: string, promptKey: string): number {
+    return this.db.prepare<[string, string], { count: number }>(`
+      SELECT count(*) AS count FROM agent_run_descriptors
+      WHERE json_extract(descriptor_json, '$.child.parentRunId') = ?
+        AND json_extract(descriptor_json, '$.request.promptKey') = ?
+    `).get(parentRunId, promptKey)?.count ?? 0;
+  }
+
   markCheckpointCommittedInTransaction(runId: string): void {
     this.db
       .prepare('UPDATE agent_run_descriptors SET checkpoint_committed = 1 WHERE run_id = ?')

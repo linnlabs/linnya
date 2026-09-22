@@ -23,3 +23,8 @@
 
 该 adapter 本身不启用恢复；只有 Host 同时装配描述、恢复控制、checkpoint writer 与 Graph
 提交端口之后，才可以对用户提供暂停 / 继续。没有 Audit 依赖，也不复制工具执行记录。
+
+`SqliteRunAdmissionCommit.start` 对声明 maxCallsPerParentRun 的 child，在同一事务查询
+原 parent run / promptKey 的 descriptor 数量、检查额度并保存 RunRegistry 与 descriptor。
+失败 child 仍计数；暂停恢复使用 resume，不能重新扣额。恢复同 tool call 的稳定 child 身份
+由 child-runs owner 负责。没有持久 admission 的调用不能承诺此限额，也不能启动限额型 child。

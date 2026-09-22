@@ -57,6 +57,7 @@ describe('linnya-benchmark real CLI process', () => {
       'slides_data_integrity_stress_v1',
       'slides_design_contract_baseline_v1',
       'slides_design_contract_intent_v1',
+      'web_search_materials_v1',
     ]);
     for (const benchmarkCase of response.cases) {
       const definition = builtinBenchmarkCases.find(item => item.id === benchmarkCase.id);

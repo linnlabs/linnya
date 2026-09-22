@@ -15,6 +15,7 @@ export interface RunAdmissionCommitPort {
     record: runSupervisor.RunRecord;
     replacement?: { previous: runSupervisor.RunRecord; next: runSupervisor.RunRecord };
     descriptor: RunDescriptor;
+    maxCallsPerParentRun?: number;
     incoming: RunAdmissionFacts;
   }): Promise<void>;
   resume(input: {

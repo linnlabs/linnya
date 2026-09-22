@@ -1,3 +1,4 @@
+import { ChildRunLimitExceededError } from '../../application/run-resumption';
 import type { PromptKey } from 'src/app-hosts/linnya/agent-registry/prompt.types';
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
 import { generateSubrunId, runIdFromSubrunId, type RunId } from '@linnlabs/linnkit/contracts';
@@ -256,6 +257,9 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
             );
           })
         : undefined;
+    if (agentDefinition.config?.maxCallsPerParentRun !== undefined && !durable) {
+      throw new Error('Bounded child run requires durable admission');
+    }
     if (durable?.record?.status === 'completed') {
       const result = await this.childRunInvoker.invoke({
         agentConfig,
@@ -304,6 +308,7 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
         resumeFrom: durable?.record,
       })
       .catch(error => {
+        if (error instanceof ChildRunLimitExceededError) throw error;
         if (durable)
           throw new graph.RunRecoveryBlockedError(
             `Child lifecycle admission failed: ${error instanceof Error ? error.message : String(error)}`

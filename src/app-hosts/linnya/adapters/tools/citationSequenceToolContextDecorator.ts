@@ -10,7 +10,7 @@ export const CITATION_PRODUCER_TOOL_NAMES = [
   'knowledge_search',
   'search_in_knowledgebase',
   'knowledge_read',
-  'web_search',
+  'web_search', 'search_web',
   'web_read',
   'read_file',
 ] as const;

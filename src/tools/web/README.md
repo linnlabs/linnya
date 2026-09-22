@@ -21,8 +21,8 @@
 
 ### 1.2 本阶段不做什么（与深度 KB 检索解耦）
 
-- **不把 Web 混入 deep_search**：deep_search 强依赖 KB SoT（`docId/blockId`），Web URL 语义不兼容。
-- **不默认让 deep_research 联网**：深度研究是否允许联网属于产品/交互决策（见第 9 节“未来方向”）。
+- **不把 Web 混入知识库 `deep_search` Agent**：知识库组装强依赖 KB SoT（`docId/blockId`），Web 使用独立的网页组装合同。
+- **不恢复旧 Deep Research**：网页深搜由独立内部 `deep_web_search` 提供；知识库 `deep_search` 的两次限额和块语义保持不变。
 - **不做浏览器自动化与反爬伪装**：不引入 Playwright/Puppeteer，不开放点击、表单、登录态或多标签动作。唯一例外是复用 Electron 自带 Chromium 的隐藏渲染窗，只执行页面自身 JS 并读取最终 DOM，用于正文抽取。
 - **不新增 `web_crawl`**：agent 默认用 `web_read` 逐页读取、观察链接后再决定是否继续。专用站点爬取工具延后至 Shell 落地且出现真实批量需求后评估。
 
@@ -79,14 +79,58 @@ citation 的 ref、canonical URL 必须唯一，index 必须从当前 execution 
 这些是正式搜索事实，不由 Renderer 补造或纠正。presentation projector 只映射已接纳 citation 的标题、
 链接、摘要与发布时间，并保存延迟本地化标题。
 
+### 网页 Deep Search
+
+`web_search` 的 `deep_search` 默认为 false。true 时内部 `deep_web_search` 继承父模型，
+保持可选，不强制研究任务调用；简单检索仍使用默认浅搜。内部运行使用 30 个 Graph 步预算，在搜索候选、读取、补查与筛选之间迭代；不新增用户可选 Agent。
+内部白名单仅含 `search_web`（无深搜参数）、`web_read`、`tool_output_read` 和
+`assemble_web_sources`，不能递归深搜。两种搜索入口复用 `runShallowWebSearch`，不会引入第二套抓取器。
+
+深浅搜索返回同一套 `data.query / resultCount / citations / evidence_store`，父 Agent 可继续
+按 URL 调用 `web_read`。深搜仅追加 `search_strategy / subrun_ids / research`，后者保存简短总结、
+每个 ref 的用途与取得限制、冲突线索及缺口。浅搜独有的 cacheStatus 在深搜不伪造；历史浅搜结果
+无需补字段。用途、总结、冲突与缺口属于模型判断，不是系统验证。
+
+组装参数只有选中的 ref、短用途、总结、冲突和缺口，不接受模型提供的 URL、标题或原文摘录。
+工具从当前 child 正式取得结果回填网页列表与最多 800 字符的原文短摘要；完整快照留在 Evidence，
+不再次消耗生成 token。每个 ref 绑定最后一次成功取得的 call / bundle，校验精确快照，不能调用
+默认的“最完整版本”解析来掩盖版本差异。摘要、空正文、失败与截断分别保留；后续失败不会抹掉
+先前取得事实，也不会被先前成功掩盖。来源数量只受 top_k 上限约束，不要求凑满。
+
+资料注释的输出预算为用途 300、总结 1200、单条冲突/缺口 500 字符。工具说明要求模型写得
+更短；超过展示预算时只缩短模型注释，并返回 `notes_truncated`。这不是来源核验降级：
+ref、取得版本、URL 和自动回填的原文摘要仍严格校验。因说明超长反复拒绝整包会浪费生成
+预算，因此展示预算不承担来源 admission 的职责。模型输入仍有单字段 10000 字符上限。
+
+正常组装必须发生搜索；有候选须至少尝试读取。没有候选或都不可读时可返回带限制的空结果。
+只有成功组装工具是业务产物，不解析自由文本终答。`resultToolName` 映射到框架的结果提取入口，
+结束 control 只用于执行，历史事件仅保存业务结果。
+
+每个父 run 最多启动四次；Host admission 事务按 parent run 与 Agent 身份计数，与 descriptor
+写入同事务。进入 child 后失败也占额度；同 tool call 恢复读取原 child，不再启动或扣额。
+第五次明确返回 shallow + deep_search_limit 并执行普通搜索；已启动的深搜失败不得静默降级，
+取消向上传播。知识库的两次限制没有变更。
+
+测试涵盖真实子 Graph 与 localhost 上游、实际 Evidence 回填、伪造身份拒绝、空正文/失败、
+截断、SQLite 并发限额与恢复、父工具失败/取消以及同一投影器实时与历史接纳。
+真实能力对照使用 Benchmark 的 `web_search_materials_v1`；完成、成本和材料质量分别报告，
+不得从数量或耗时推断深搜优势。
+
 ### 4.1 目录结构
 
 ```
 src/tools/web/websearch/
 ├── index.ts
 ├── WebSearchTool.ts
+├── SearchWebTool.ts                 # deep child 的浅搜索入口
 ├── orchestration/
+│   ├── runShallowWebSearch.ts
 │   └── searchWithCache.ts
+├── deep/
+│   ├── AssembleWebSourcesTool.ts
+│   ├── orchestration/
+│   ├── functions/
+│   └── ports/                       # Web 域只接收 Host 投影的采集事实
 ├── functions/
 │   ├── buildWebSearchObservation.ts
 │   └── createSearchResults.ts
@@ -359,8 +403,8 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 
 ### 5.8 与 deep_research 的关系（边界）
 
-- 本阶段：普通对话/普通 agent 通过 `web_read` 读取 Web，deep_research 默认仍 KB-only。
-- 若后续让 deep_research 使用 Web，应复用现有 Web citation、Evidence 自动捕获与 Workspace CitationMark，不恢复 Writer 私有链。
+- 当前研究使用 Default Agent 与按需 Skill；网页深搜只承担资料搜集，不替父 Agent 作综合判断。
+- 旧 `deep_research` 不属于本次调用链，不恢复 Scout/Challenger/Writer 或其私有证据链。知识库深搜仍独立维护。
 
 ### 5.9 逐步探索与 bash 边界
 
@@ -422,7 +466,7 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 
 ---
 
-## 8. 验收与回归（结项口径：不含 Phase 3）
+## 8. 验收与回归
 
 当以下条件成立时，可将“联网能力（web_search + web_read）”判定为本阶段已完成：
 
@@ -453,28 +497,17 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 - `apps/renderer/domains/conversation/services/messageProjection/helpers/knowledgeCitations.spec.ts`
 - `apps/renderer/domains/conversation/ui/tools/knowledge/clipboard/hydrateKnowledgeCitationsToEditorCitationMarks.spec.ts`
 
-不纳入本阶段结项范围（Phase 3 单独立项）：
-
-- deep_research 的 Web 证据能力（证据 SoT/解析/物化/回放一致性）
-- `deep_web_search` 并行链路
-- 用户侧“深度联网研究”独立入口/勾选项（产品交互层决策）
+不纳入本次验收：浏览器交互式检索、用户侧独立“深度研究”入口、旧 Deep Research 的恢复。
 
 ---
 
-## 9. 未来方向：交互与产品边界（仅记录，不在本阶段实现）
+## 9. 产品与扩展边界
 
-建议方向（用于 Phase 3 评审）：
+网页深搜由现有 `web_search` 参数进入；内部工具白名单是递归和能力范围的实际边界。
+父 Agent 可继续读取资料、补充普通搜索和完成研究文章。未来若增加联网权限开关，应在
+请求作用域收缩已注册工具集合，不在 Web owner 恢复多角色研究编排。
 
-- **请求作用域工具视图（availableTools）**：
-  - **权威来源**：`AgentDefinition.config.availableTools`
-  - **调用方可收缩**：发起调用时可在 `options.availableTools` 传入更小的工具子集（禁止扩权）
-  - 用途：为“深度研究是否联网”等交互开关提供安全边界（开关只影响本次请求暴露给模型的工具集合）
-  - 参考：`src/features/agent-registry/README.md`（工具策略章节）
-- **深度研究（Deep Research）不默认联网**：启动面板增加“允许联网（Web）”开关，默认关闭。
-- 开关开启后：
-  - Scout/Challenger 可用 `web_search/web_read` 补证据；
-  - Writer 是否允许引用 Web，取决于是否引入 Web 证据 SoT 与物化策略（保证可回放/可追溯）。
-- 深度联网若要“更像 deep_search”，建议新增 **`deep_web_search` 并行链路**，不要污染 deep_search（KB-only）语义。
+浏览器自动化与新的用户入口仍需独立设计；没有承诺启动面板、默认联网状态或新的研究 Agent。
 
 ---
 

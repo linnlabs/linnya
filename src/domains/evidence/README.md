@@ -216,3 +216,9 @@ pnpm vitest run src/app-hosts/linnya/adapters/tools/citation-source-resolution/_
 - Deep Research 角色与引用规范：`src/app-hosts/linnya/agent-registry/agents/deep_research/README.md`
 - Agent facade 的剩余退出条件：见本文“`evidence_resolve` 退出条件”
 - 历史设计与推进记录：请通过 git history 追溯
+
+网页深搜筛选通过 `resolveEvidenceFromBundles` 的可选 `bundle_id` 读取精确取得版本，
+不使用默认的“同 ref 优先完整正文”选择来代替某一次读取事实。找不到指定版本时显式缺失，
+不能回退其他 bundle。空正文网页仍是元信息取得，不提升为完整正文；Web owner 可从正式
+读取结果交付 URL 与限制。筛选后的 Evidence bundle 由同一 WebEvidenceWriter 生成，
+原始 call / bundle 身份继续保留在附加来源说明中。

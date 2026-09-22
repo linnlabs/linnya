@@ -249,3 +249,7 @@ Host 端到端测试必须按事实 owner 取数：run 注册前提交的 `user_
 - 独立 Linnkit 仓的 `src/runtime-kernel/graph-engine/README.md`
 - `src/app-hosts/linnya/adapters/flow/README.md`
 - `src/app-hosts/linnya/agent-registry/README.md`
+
+内部 Agent 可声明 resultToolName，只提取指定成功工具的 data / observation 为正式产物；
+不从终答解析业务 JSON。maxCallsPerParentRun 由持久 admission 事务执行，要求存在 durable
+parent descriptor。额度拒绝在启动前抛出明确类型，由调用 owner 决定是否有公开的降级行为。

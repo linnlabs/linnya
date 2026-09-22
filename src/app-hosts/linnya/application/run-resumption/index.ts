@@ -1,3 +1,4 @@
+export { ChildRunLimitExceededError, assertChildRunAdmissionLimit } from './functions/childRunAdmissionLimit';
 export { RunDescriptorSchema } from './definitions/runDescriptor';
 export { CommittedResumeInputsSchema } from './definitions/committedResumeInputs';
 export { restoreCheckpointInteraction } from './functions/restoreCheckpointInteraction';

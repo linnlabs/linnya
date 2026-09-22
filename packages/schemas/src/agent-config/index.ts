@@ -55,8 +55,6 @@ export const PromptKeys = {
   // ---- Review ----
   /** 审阅（Review）：通过工具创建批注 */
   REVIEW: 'review',
-  /** CLI 内部文档评委；不贡献前端选择项。 */
-  INTERNAL_JUDGE: 'internal_judge',
 
   // ---- 子 Agent ----
   /** 通用子 Agent（内部：subagent 工具使用），不依赖 default agent 的通用提示词 */
@@ -66,6 +64,7 @@ export const PromptKeys = {
   // ---- Deep Search ----
   /** Deep Search Agent：知识库深度搜索 */
   DEEP_SEARCH: 'deep_search',
+  DEEP_WEB_SEARCH: 'deep_web_search',
 
   // ---- Internal（后端内部任务） ----
   /** PDF 视觉识别 */

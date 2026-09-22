@@ -4,7 +4,7 @@ import { saveEvidenceBundleFromToolContext } from '../../../../tools/evidence/ev
 import { assertToolConversationScopeContext } from './conversation-scope';
 
 /** 只有会产生 Web capture 的工具需要 Evidence writer。 */
-export const WEB_EVIDENCE_PRODUCER_TOOL_NAMES = ['web_search', 'web_read'] as const;
+export const WEB_EVIDENCE_PRODUCER_TOOL_NAMES = ['web_search', 'search_web', 'assemble_web_sources', 'web_read'] as const;
 
 function isToolExecutionContext(value: unknown): value is ToolExecutionContext {
   return typeof value === 'object' && value !== null;

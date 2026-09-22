@@ -1,5 +1,5 @@
-import internalJudgeAgent from './internal_judge';
 import defaultAgent from './default';
+import deepWebSearchAgent from './deep_web_search';
 import deepSearchAgent from './deep_search';
 import deepResearchLeaderAgent from './deep_research/leader';
 import deepResearchReasoner1Agent from './deep_research/reasoner_1';
@@ -23,8 +23,8 @@ import { singleTurnAgentDefinitions } from './single_turn';
  */
 export const legacyBuiltinAgentDefinitions = [
   defaultAgent,
-  internalJudgeAgent,
   deepSearchAgent,
+  deepWebSearchAgent,
   deepResearchLeaderAgent,
   deepResearchReasoner1Agent,
   deepResearchReasoner2Agent,
