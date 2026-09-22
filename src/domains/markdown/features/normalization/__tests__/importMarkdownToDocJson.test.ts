@@ -119,6 +119,26 @@ describe('importMarkdownToDocJson', () => {
     expect(result.docJson?.content[3]?.content?.[0]?.type).toBe('table');
   });
 
+  it('collapses repeated emphasis marks emitted around a link', async () => {
+    const result = await importMarkdownToDocJson(
+      '*[*研究记录*](sea-datacenters-ordinary-notes-20260922)*'
+    );
+
+    expect(result.docJson?.content[0]?.content?.[0]?.content).toEqual([
+      {
+        type: 'text',
+        text: '研究记录',
+        marks: [
+          { type: 'italic' },
+          {
+            type: 'link',
+            attrs: { href: 'sea-datacenters-ordinary-notes-20260922', title: null },
+          },
+        ],
+      },
+    ]);
+  });
+
   it('returns null doc for empty markdown', async () => {
     const result = await importMarkdownToDocJson('   ');
     expect(result.docJson).toBeNull();

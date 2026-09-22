@@ -61,9 +61,18 @@ function toSupportedMarks(marks: WasmMarkLike[] | null | undefined): Array<{
   }
 
   const result: Array<{ type: string; attrs?: Record<string, unknown> }> = [];
+  const seenTypes = new Set<string>();
   for (const mark of marks) {
     if (!mark || typeof mark.type !== 'string') continue;
     if (!SUPPORTED_MARK_TYPES.has(mark.type)) continue;
+    // parser-wasm can emit the same emphasis mark more than once when a link
+    // is wrapped by the same emphasis delimiter (for example
+    // `*[*label*](url)*`). ProseMirror's schema admits at most one mark of a
+    // given type on a text node; preserve the first parser order and collapse
+    // the duplicate before schema validation instead of rejecting otherwise
+    // valid CommonMark with an opaque mark-collection error.
+    if (seenTypes.has(mark.type)) continue;
+    seenTypes.add(mark.type);
     result.push(
       isRecord(mark.attrs)
         ? { type: mark.type, attrs: mark.attrs }
