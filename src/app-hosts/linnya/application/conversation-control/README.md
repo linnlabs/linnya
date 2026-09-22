@@ -24,7 +24,7 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 - `send` 先用与 `models` 相同的规则校验显式 Chat/图片模型，再拒绝已有 active foreground root run、保存显式 Agent 选择并进入正式 Flow admission；不存在、用途错误、缺 route 或缺凭据必须在任何持久化或 Flow side effect 前失败。
 - `image_generation_model_id` 是单次请求覆盖项，只映射到现有 Flow request，不拥有或修改 Renderer 的全局图片模型偏好。
 - `send` 的 success receipt 必须包含 durable committed user message identity 和 Host 接纳的 `turn_id / run_id / execution_id`。回执不代表运行完成。
-- `send / respond / workspace_tools call` 共用历史项目解析：已有会话省略项目时继承持久化绑定，显式项目必须与绑定一致，不存在的会话拒绝。无项目会话可继续聊天/审批，但不能调用 Workspace 工具；CLI 不负责迁移会话项目。解析出的项目同时进入 Flow 的 project identity 与 project metadata。
+- `send / respond / workspace_tools call` 共用历史项目解析：已有会话省略项目时继承持久化绑定，显式项目必须与绑定一致，不存在的会话拒绝。无项目会话可继续聊天/审批，但不能调用 Workspace 工具；CLI 不负责迁移会话项目。CLI 的 `send` 入口另行要求显式非空项目，因而不会创建或续写无项目会话；这不改变 Host 对其他客户端的继承合同。解析出的项目同时进入 Flow 的 project identity 与 project metadata。
 - `respond` 只接纳当前 `awaiting_user` 的 exact `interaction_id`，继续同一个 `run_id`，并产生新的 `execution_id`；恢复时必须从 run 的 `agentSpecId` 还原原 Agent 路由，不能回退到 default。
 - `resume` 只接纳 exact foreground root 的 settled `paused` 快照，并要求 `expected_run_id / expected_execution_id / expected_updated_at` 全部匹配。它调用 Flow 唯一的 `continueRun` 主链，复用原 descriptor、checkpoint、`run_id` 和 `turn_id`，只轮换 `execution_id`；不创建 `user_input`、不消费 interaction，也不重新解析项目、Agent 或模型。
 - use case 的 fence 预检查只提供清楚错误；RunSupervisor 控制锁下的持久 transition 才是最终并发裁决。Graph 的 tool receipt/reconcile 仍是副作用恢复 owner，`tool_reconciliation_required` 不能被 CLI 或 bridge 绕过。

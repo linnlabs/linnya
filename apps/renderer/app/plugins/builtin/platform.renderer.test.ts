@@ -19,6 +19,10 @@ vi.mock('./surfaces/MarkdownDocumentSurface.vue', () => ({
 }));
 
 describe('platformRendererPlugin table-fill contribution', () => {
+  it('internal judge has a real tool card but no composer agent choice', () => {
+    expect(platformRendererPlugin.conversationAgentChoices?.some(choice => choice.agentId === 'internal_judge')).toBe(false);
+    expect(platformRendererPlugin.toolCards?.['judge_record']).toBeDefined();
+  });
   it('由 always-enabled platform 注册工具卡，conversation common config 不持有业务工具名', () => {
     expect(platformRendererPlugin.toolCards?.['write_to_table'])
       .toBe(tableFillToolCards['write_to_table']);

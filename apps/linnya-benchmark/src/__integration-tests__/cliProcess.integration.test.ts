@@ -45,6 +45,7 @@ describe('linnya-benchmark real CLI process', () => {
       schema_version: 1,
     });
     expect(response.cases.map(item => item.id)).toEqual([
+      'deep_research_article_v1',
       'slides_arg_frontier_complex_v1',
       'slides_consulting_commercial_space_v1',
       'slides_consulting_embodied_intelligence_v1',
@@ -62,7 +63,7 @@ describe('linnya-benchmark real CLI process', () => {
       expect(definition).toBeDefined();
       expect(benchmarkCase).toMatchObject({
         revision: expect.any(Number),
-        agent_id: 'slides_agent',
+        agent_id: definition?.agentId,
       });
       expect(benchmarkCase.inputs).toEqual(definition?.inputs);
     }

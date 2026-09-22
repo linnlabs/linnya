@@ -168,12 +168,17 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
         'conversation', 'project', 'agent', 'model', 'image-model', 'reasoning',
       ]);
       const message = tokens.positionals.join(' ').trim();
+      const projectId = readString(tokens, 'project');
+      // CLI 不跟随前端当前项目；要求显式身份，避免创建用户无法定位的无项目研究会话。
+      if (!projectId) {
+        usageError('send requires --project <id>; run linnya projects to select a project. Existing conversations must use their bound project.');
+      }
       const request = ConversationControlSendRequestSchema.parse({
         schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
         command: 'send',
         message,
         conversation_id: readString(tokens, 'conversation'),
-        project_id: readString(tokens, 'project'),
+        project_id: projectId,
         selected_agent_id: readString(tokens, 'agent'),
         model_id: readString(tokens, 'model'),
         image_generation_model_id: readString(tokens, 'image-model'),

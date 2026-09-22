@@ -2,6 +2,15 @@ import type { ComputedRef } from 'vue';
 import type { LinnyaLocale, MessageParams } from '@app/localization';
 
 export type ConversationMessageKey =
+  | 'conversation.tool.judgeRecord.title'
+  | 'conversation.tool.judgeRecord.loading'
+  | 'conversation.tool.judgeRecord.failed'
+  | 'conversation.tool.judgeRecord.disclaimer'
+  | 'conversation.tool.judgeRecord.supported'
+  | 'conversation.tool.judgeRecord.revisionNeeded'
+  | 'conversation.tool.judgeRecord.unverified'
+  | 'conversation.tool.judgeRecord.output'
+
   | 'conversation.execution.running'
   | 'conversation.execution.paused'
   | 'conversation.execution.finished'

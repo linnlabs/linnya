@@ -231,6 +231,9 @@ definition 字段，Renderer 和 wire DTO 不维护另一份默认值。root run
 
 ---
 
+内部文档评委见 [`internal_judge`](./agents/internal_judge/README.md)：CLI 发起、普通会话显示，
+不贡献前端菜单；评价记录与 Markdown 交付复用正式工具链，不自动保证盲评。
+
 ## 目录树
 
 ```text

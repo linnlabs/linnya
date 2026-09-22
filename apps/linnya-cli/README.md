@@ -53,7 +53,7 @@ Runtime 在 stdout 输出一次 ready JSON 后保持前台运行；另一个终�
 
 ## 2. 一个最小的 PPT 真实请求
 
-Slides Agent 通过 Workspace 工具读写 `.slides` 文件，因此新会话必须显式绑定目标 Workspace 项目。请先取得真实项目 ID，并用它替换下方的 `<project-id>`；CLI 不会根据当前前端页面猜测项目，避免把文件写入错误项目。
+所有 CLI `send`（包括已有会话的续写）必须显式提供非空 `--project`，缺失时在连接 Host 前以 `invalid_request` 拒绝。前端目前没有无项目会话入口，CLI 不应创建用户无法定位的会话。Slides Agent 同样遵守此规则。请先取得真实项目 ID，并用它替换下方的 `<project-id>`；CLI 不会根据当前前端页面猜测项目，避免把文件写入错误项目。若 `projects` 返回空列表，先通过 Desktop 创建项目；当前 CLI 没有项目创建命令，全新空 Workspace 的 Runtime 不能直接 `send`。
 
 先查询当前 App 已经物化的模型。Chat 列表中的 `model_config_id` 可传给 `--model`，图片生成列表中的同名字段可传给 `--image-model`；`model_name` 只是供应商侧识别信息，不能替代本地选择身份：
 
@@ -107,7 +107,7 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 | 命令 | 作用 | 主要选项 |
 | --- | --- | --- |
 | `runtime start` | 不启动 Electron，前台监督当前 Workspace 的唯一 App Server Backend | `--workspace`、`--api-port`、`--qdrant-port` |
-| `send <message>` | 新建会话并发送消息；或向空闲的已有会话发送下一条消息 | `--conversation`、`--project`、`--agent`、`--model`、`--image-model`、`--reasoning` |
+| `send <message>` | 新建会话并发送消息；或向空闲的已有会话发送下一条消息 | `--project`（必填）、`--conversation`、`--agent`、`--model`、`--image-model`、`--reasoning` |
 | `models` | 查询可用于 `--model` 与 `--image-model` 的本地模型配置 | 无 |
 | `projects` | 查询 Workspace 项目 ID 与名称 | 无 |
 | `doctor` | 只读核验 CLI 与运行中 App 的连接、身份和能力 | `--pretty` |
@@ -135,6 +135,20 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 
 `list` 不带 `--project` 时只查询无项目会话，不是全局列表。项目内会话必须先用
 `projects` 取得项目 ID，再显式传入 `--project`；空结果不能证明其他项目没有会话。
+
+### 内部文档评审
+
+`send --agent internal_judge --project <project-id> --model <model-config-id>` 可在同项目的新会话中
+评价指定 Markdown。消息应明确目标、允许材料（或无）、标准和新的评审输出路径，例如：
+
+```bash
+pnpm linnya:cli send "评价 workspace:/article.md。无外部材料；目标读者为普通财经读者，检查因果解释、限制条件与可读性，无法验证的事实标未验证。写入新的 workspace:/review-01.md。" --project <project-id> --agent internal_judge --model <model-config-id>
+```
+
+前端选择菜单不列该 Agent；会话、`judge_record` 工具卡和 Markdown 评审正常显示。
+工具回执只记录模型评价，不证明事实通过或文档已保存；最终以正式文件写入/回读为准。
+新会话不自动匿名，也不隔离同项目文件访问。完整边界见
+[内部评委](../../src/app-hosts/linnya/agent-registry/agents/internal_judge/README.md)。
 
 ### 3.1 调用 Workspace 工具
 
@@ -217,7 +231,7 @@ pending -> running -> awaiting_user -> running -> completed | failed | cancelled
 
 对已有会话执行 `send --conversation <id>` 时，如果该会话已有 active foreground run，会得到 `conversation_busy`，不会并发写入第二条 foreground 主链。
 
-后续新消息 `send --conversation <id>` 和审批 `respond <id>` 均自动继承该会话保存的项目，不必重复 `--project`。显式传入时必须与原项目一致，否则在启动/恢复前拒绝；不能借此迁移会话。`resume` 不重新解析项目、Agent 或模型，而是使用原 run 的 durable descriptor 与 checkpoint。无项目聊天仍可发送后续消息，但 Workspace 工具要求项目。
+后续新消息 `send --conversation <id> --project <project-id>` 必须再次指定项目，由 Host 校验与持久化绑定一致；不能借此迁移会话。审批 `respond <id>` 仍可继承项目；`resume` 使用原 run 的 durable descriptor 与 checkpoint。历史无项目会话保留查询、结果导出和停止能力，但不能通过 CLI `send` 继续发送。此限制属于 CLI 入口政策，不改变其他客户端的 Host wire contract，也不借此调整全局工具权限。
 
 ## 5. 输出与退出码
 

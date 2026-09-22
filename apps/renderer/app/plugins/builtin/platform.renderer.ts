@@ -1,3 +1,4 @@
+import { judgeToolCards } from '@/domains/conversation/ui/tools/judge';
 import type { RendererPluginContribution } from '../types';
 import { ConversationAgentIds } from '@app/schemas';
 import MarkdownDocumentSurface from './surfaces/MarkdownDocumentSurface.vue';
@@ -90,6 +91,7 @@ export const platformRendererPlugin: RendererPluginContribution = {
     },
   ],
   toolCards: {
+    ...judgeToolCards,
     ...commonToolConfigs,
     ...workspaceReadToolConfigs,
     ...tableFillToolCards,

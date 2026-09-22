@@ -138,6 +138,22 @@ function runCliProcess(
 }
 
 describe('linnya CLI real process -> scripted bridge', () => {
+  it.each([
+    ['send', 'research'],
+    ['send', 'research', '--project', '   '],
+    ['send', 'research', '--conversation', 'conversation-1'],
+  ])('缺少项目时真实子进程在接纳前拒绝：%j', async (...args) => {
+    const bridge = await createScriptedBridge(() => {
+      throw new Error('Missing-project requests must never reach admission');
+    });
+    const result = await runCliProcess(args, bridge.connectionFile);
+    expect(result.exitCode).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(JSON.parse(result.stderr)).toMatchObject({
+      error: { code: 'invalid_request', message: expect.stringContaining('send requires --project') },
+    });
+    expect(bridge.receivedCommands).toEqual([]);
+  });
   it('旧协议连接在命令执行前明确拒绝，不把新审计字段误当传输损坏', async () => {
     const bridge = await createScriptedBridge(() => { throw new Error('must not execute'); });
     const descriptor = ConversationControlConnectionDescriptorSchema.parse(
@@ -307,6 +323,7 @@ describe('linnya CLI real process -> scripted bridge', () => {
     });
     const result = await runCliProcess([
       'send', '生成一份三页产品介绍 PPT', '--agent', 'plugin_agent_fixture',
+      '--project', 'project-1',
       '--image-model', 'chatgpt-subscription-gpt-image-2',
     ], bridge.connectionFile);
 
@@ -322,6 +339,7 @@ describe('linnya CLI real process -> scripted bridge', () => {
       message: '生成一份三页产品介绍 PPT',
       selected_agent_id: 'plugin_agent_fixture',
       image_generation_model_id: 'chatgpt-subscription-gpt-image-2',
+      project_id: 'project-1',
     }]);
   });
 
@@ -464,6 +482,7 @@ describe('linnya CLI real process -> scripted bridge', () => {
     }));
     const result = await runCliProcess([
       'send', '继续生成', '--conversation', 'conversation-1',
+      '--project', 'project-1',
     ], bridge.connectionFile);
 
     expect(result.exitCode).toBe(6);

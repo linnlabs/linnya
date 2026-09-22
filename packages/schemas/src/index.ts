@@ -7,6 +7,8 @@
  */
 
 // ============ API DTO 相关 ============
+export * from './judge';
+
 export * from './api-dtos';
 export * from './json-value';
 export * from './model-inference';

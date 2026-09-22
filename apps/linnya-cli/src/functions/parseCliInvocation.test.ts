@@ -88,6 +88,8 @@ describe('parseCliInvocation', () => {
     expect(parseCliInvocation([
       'send',
       '把封面改成深色',
+      '--project',
+      'project-1',
       '--conversation',
       'conversation-1',
     ])).toMatchObject({

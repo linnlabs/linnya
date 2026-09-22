@@ -45,6 +45,9 @@ execution-scoped bridge。bridge 只做 enabled registry 寻址、access plan �
 Linnya 本体增加 Agent 工具分支。`plugin.json.entry.command` 继续表示供人、开发脚本与 CI 使用的 standalone
 入口，不是 Agent PATH 中的 facade 文件。
 
+内部评委专用的评价回执见 [Judge Record](./evaluation/judge_record/README.md)。它记录模型判断，
+不执行语义核验、不写文档，禁止把记录成功显示成事实通过。
+
 ## Shell 与 Process 工具
 
 当前正式注册的命令工具是 `shell` 和 `process`，分别负责启动一次性 Shell和控制已经返回 handle 的进程。

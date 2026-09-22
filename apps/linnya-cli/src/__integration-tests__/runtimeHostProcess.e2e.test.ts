@@ -4,6 +4,7 @@ import { createServer } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 
+import { ConversationControlProjectsResponseSchema } from '@app/schemas';
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -46,9 +47,25 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
       app: { version: '0.0.38' },
     });
 
+    // 临时 Workspace 没有 Renderer 初始化项目；显式准备夹具，不改生产默认项目策略。
+    const projectId = 'cli-runtime-e2e';
+    const database = new Database(path.join(workspace, 'workspace', 'workspace.sqlite'), { fileMustExist: true });
+    try {
+      database.prepare(
+        'INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)',
+      ).run(projectId, 'CLI Runtime E2E', Date.now(), Date.now());
+    } finally {
+      database.close();
+    }
+    const projects = await runCli(['projects'], environment);
+    expect(projects.code).toBe(0);
+    expect(ConversationControlProjectsResponseSchema.parse(
+      parseJson(projects.stdout),
+    ).projects).toContainEqual({ project_id: projectId, name: 'CLI Runtime E2E' });
+
     const [sendA, sendB] = await Promise.all([
-      runCli(['send', 'parallel-a', '--agent', 'default', '--model', 'mock-debug-chat'], environment),
-      runCli(['send', 'parallel-b', '--agent', 'writing', '--model', 'mock-debug-chat'], environment),
+      runCli(['send', 'parallel-a', '--project', projectId, '--agent', 'default', '--model', 'mock-debug-chat'], environment),
+      runCli(['send', 'parallel-b', '--project', projectId, '--agent', 'writing', '--model', 'mock-debug-chat'], environment),
     ]);
     const receiptA = readReceipt(sendA);
     const receiptB = readReceipt(sendB);
@@ -85,7 +102,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     expect(isProcessAlive(first.ready.runtime.pid)).toBe(false);
 
     const restarted = await startRuntime({ workspace, environment });
-    const history = await runCli(['list', '--limit', '10'], environment);
+    const history = await runCli(['list', '--project', projectId, '--limit', '10'], environment);
     expect(history.code).toBe(0);
     const conversationIds = readConversationIds(history.stdout);
     expect(conversationIds).toEqual(expect.arrayContaining([

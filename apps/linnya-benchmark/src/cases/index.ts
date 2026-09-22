@@ -9,8 +9,10 @@ import { slidesDesignContractBaselineCase } from './slidesDesignContractBaseline
 import { slidesDesignContractIntentCase } from './slidesDesignContractIntent';
 import { slidesArgFrontierComplexCase } from './slidesArgFrontierComplex';
 import { slidesDataIntegrityStressCase } from './slidesDataIntegrityStress';
+import { deepResearchArticleCase } from './deepResearchArticle';
 
 export const builtinBenchmarkCases = [
+  deepResearchArticleCase,
   slidesArgFrontierComplexCase,
   slidesDataIntegrityStressCase,
   slidesConsultingEmbodiedIntelligenceCase,

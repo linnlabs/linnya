@@ -2,6 +2,15 @@ import type { MessageCatalogContribution } from '@app/localization';
 import type { ConversationMessageKey } from './conversationMessages';
 
 export const CONVERSATION_MESSAGE_FALLBACKS = {
+  'conversation.tool.judgeRecord.title': '记录评审意见',
+  'conversation.tool.judgeRecord.loading': '正在记录评审意见',
+  'conversation.tool.judgeRecord.failed': '评审记录失败',
+  'conversation.tool.judgeRecord.disclaimer': '以下是模型报告的评价，不代表工具已核验事实。',
+  'conversation.tool.judgeRecord.supported': '评委认为有依据',
+  'conversation.tool.judgeRecord.revisionNeeded': '建议修改',
+  'conversation.tool.judgeRecord.unverified': '未验证',
+  'conversation.tool.judgeRecord.output': '计划评审文档（写入状态未检查）：',
+
   'conversation.execution.running': '进行中',
   'conversation.execution.paused': '已暂停',
   'conversation.execution.finished': 'AI 输出结束',
@@ -622,6 +631,14 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.view.empty.description': 'Ask a question, or give Linnya a task',
       'conversation.input.placeholder': 'Ask anything...',
       'conversation.input.action.send': 'Send',
+      'conversation.tool.judgeRecord.title': 'Record review assessments',
+      'conversation.tool.judgeRecord.loading': 'Recording review assessments',
+      'conversation.tool.judgeRecord.failed': 'Review record failed',
+      'conversation.tool.judgeRecord.disclaimer': 'These are model-reported assessments, not tool-verified facts.',
+      'conversation.tool.judgeRecord.supported': 'Reported supported',
+      'conversation.tool.judgeRecord.revisionNeeded': 'Revision needed',
+      'conversation.tool.judgeRecord.unverified': 'Unverified',
+      'conversation.tool.judgeRecord.output': 'Planned review document (delivery not checked):',
       'conversation.execution.running': 'Running',
       'conversation.execution.paused': 'Paused',
       'conversation.execution.finished': 'AI output ended',
