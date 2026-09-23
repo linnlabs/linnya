@@ -109,7 +109,7 @@ const preparedLogFile = prepareActiveLogFileForStartupSync({
   maxBytes: STARTUP_ACTIVE_LOG_MAX_BYTES
 });
 if (preparedLogFile.truncated) {
-  console.info(
+  logger.info(
     `[Logger] Active backend log truncated on startup: path=${logFilePath}, ` +
       `originalBytes=${preparedLogFile.originalBytes}, keptBytes=${preparedLogFile.keptBytes}`
   );
@@ -174,7 +174,7 @@ export function initialize() {
     async drainDiagnosticLog() {
       const logShutdown = await shutdownDiagnosticLogging();
       if (logShutdown && !logShutdown.complete) {
-        console.warn('[Logger] 退出预算到期，未写入记录将由本次生命周期丢弃。');
+        logger.warn('[Logger] 退出预算到期，未写入记录将由本次生命周期丢弃。');
       }
     },
     exitElectron(exitCode) {

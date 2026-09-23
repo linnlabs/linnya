@@ -46,7 +46,13 @@ function getOrCreateFileWriter(): DiagnosticLogWriter | undefined {
     sink: createDiagnosticLogFileSink({ baseFilePath: runtime.config.logFilePath }),
     onSinkDisabled(error) {
       // 磁盘满、权限变化等持续错误只报告一次并熔断，不能形成递归日志风暴。
-      console.error('[Logger] File sink disabled after write failure:', error);
+      runtime.writeConsoleRecord(projectDiagnosticLogEntry({
+        receivedAt: new Date(),
+        level: 'ERROR',
+        module: 'Logger',
+        message: 'File sink disabled after write failure',
+        data: error,
+      }, DEFAULT_DIAGNOSTIC_LOG_PROJECTION_LIMITS));
     },
   });
   return runtime.fileWriter;
@@ -100,12 +106,7 @@ export async function shutdownDiagnosticLogging(timeoutMs?: number): Promise<Dia
 
 function writeRecordToOutputs(record: DiagnosticLogRecord, allowForwarding: boolean): void {
   if (runtime.config.enableConsole) {
-    switch (record.level) {
-      case 'DEBUG': console.debug(record.line); break;
-      case 'INFO': console.info(record.line); break;
-      case 'WARN': console.warn(record.line); break;
-      case 'ERROR': console.error(record.line); break;
-    }
+    runtime.writeConsoleRecord(record);
   }
   if (allowForwarding && runtime.recordForwarder) {
     try {

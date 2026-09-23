@@ -1,5 +1,6 @@
 import type {
   DiagnosticLogEnvelope,
+  DiagnosticLogRecord,
   DiagnosticLogWriter,
 } from './diagnosticLogContract';
 
@@ -12,6 +13,7 @@ export interface ProcessDiagnosticLogConfig {
 
 export interface ProcessDiagnosticLogRuntime {
   readonly config: ProcessDiagnosticLogConfig;
+  readonly writeConsoleRecord: (record: DiagnosticLogRecord) => void;
   fileWriter?: DiagnosticLogWriter;
   recordForwarder?: (envelope: DiagnosticLogEnvelope) => void;
   fileLoggingClosed: boolean;

@@ -22,6 +22,8 @@
 
 诊断日志也属于 App owner 生命周期。`app-lifecycle.js` 在任何业务日志写入前确定正式日志路径并启用唯一文件 writer，退出时负责 drain。App Server 和 Worker 都只生产严格日志 envelope：App Server 通过非阻塞 reverse RPC、Worker 通过所属 owner 转发，不能自行打开第二个日志文件或让日志反压阻塞业务事件循环。
 
+控制台只是独立的诊断输出端，不决定业务或文件日志是否成功。共享 Logger 的所有等级统一写 stderr，避免转发器安装前的初始化日志污染 App Server 的 stdout control protocol。进程级输出端同时处理同步写入异常、write 回调和 stream error，失败后停止继续写入，文件 writer 仍独立工作。这个策略覆盖启动终端退出后的重复 `EPIPE`，不依赖 Electron 全局 console 的错误策略，也不安装全局异常吞噬器。文件 sink 失败的单次告警同样使用这个输出端，避免双重失败再次触发未捕获异常。自动化启动 App 时应把长期进程的 stdout/stderr 接到有生命周期管理的终端或文件，不能遗留无人读取的临时管道。
+
 Main 的 event-loop 响应性 monitor 同样由 App owner 创建和停止。它每 5 秒读取一次 delay histogram 与 event-loop utilization；p99 超过 25ms 或单窗 max 超过 100ms 时写结构化告警。健康 sample 默认不写日志，只有显式设置 `LINNYA_RESPONSIVENESS_DIAGNOSTICS=true` 的基线运行才记录，避免观测本身制造周期日志压力。sample 不能成为业务事实或 UI 状态。
 
 生产 Main 只加载由精确 Electron Main Process 生成的 `main.jsc`；App Server 以固定随包 Node 直接执行 `app-server-entry.cjs`/`app-server-backend.cjs`。构建会主动删除旧 `ts-backend.js/.cjs/.jsc`，启动链没有同进程 fallback。Main 在创建业务窗口前等待 App Server 的真实 ready 事实；关闭 App、启动失败和 updater handoff 都通过同一 owner 收口 App Server 及其全部后代。

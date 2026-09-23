@@ -1,4 +1,5 @@
 import type { ProcessDiagnosticLogRuntime } from '../definitions/processDiagnosticLogRuntime';
+import { createDiagnosticLogConsoleOutput } from './createDiagnosticLogConsoleOutput';
 
 const PROCESS_DIAGNOSTIC_LOG_RUNTIME_KEY = '__linnyaProcessDiagnosticLogRuntimeV1__' as const;
 
@@ -8,6 +9,9 @@ interface DiagnosticLogGlobal {
 
 function createProcessDiagnosticLogRuntime(): ProcessDiagnosticLogRuntime {
   return {
+    // stdout 在 App Server 中承载 lifecycle protocol；诊断日志任何等级都只能写 stderr，
+    // 包括 enableDiagnosticLogForwarding 安装前的模块初始化日志。
+    writeConsoleRecord: createDiagnosticLogConsoleOutput(process.stderr),
     config: {
       minLevel: 0,
       enableConsole: true,
