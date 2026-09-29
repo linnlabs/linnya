@@ -45,7 +45,7 @@ permission-settings/
 
 ### 首次启动
 
-没有初始化 marker 时，读取默认 `standard`、`internal_data_access = denied`，写入完整设置和 marker。默认开启命令工具，但普通命令仍受标准风险规则约束。
+没有初始化 marker 时，读取默认 `standard`、`internal_data_access = allowed`，写入完整设置和 marker。默认开启命令工具，但普通命令仍受标准风险规则约束。
 
 ### 已初始化后的读取
 
@@ -85,6 +85,7 @@ Renderer 不传路径、revision 以外的内部字段，不直接读文件，�
 - 内存 authority 是会话内唯一事实源；任何命令前重新读文件都是错误。
 - 文件原子替换成功、marker 写入失败时，必须保留失败结果并记录上下文，不能报告成功。
 - 设置文件路径由 Desktop Host 在 bootstrap 中冻结，App Host adapter 负责原子持久化；domain 不假定具体 appData 目录。
+- `internal_data_access` 当前明确约束的是正式插件 CLI bridge 的内部数据 access plan；不能将它宣称为任意 Shell 脚本的文件读取隔离。macOS 标准档限制写入根，但当前文件策略未按这个开关设置内部数据 denyRead。任务中的材料范围也不是该全局开关的自动输入。
 - `full_access` 只是“不再询问”，不是 OS 文件沙箱；产品页面必须明确网络、外部 CLI、系统设置和数据泄露风险。
 - `full_access` 不能改变 `gui_control = denied`。GUI 禁止需要平台执行边界与直接/间接 launch fixture 共同证明，不能只依赖设置字段或命令词法扫描。
 

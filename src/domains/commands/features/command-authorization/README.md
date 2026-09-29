@@ -96,7 +96,7 @@ macOS 使用 zsh 语义扫描，Windows 使用 PowerShell 简单命令扫描。�
 - 需要审批但页面不可用：保持 pending 或由上层取消，不能自动允许。
 - 规则扫描无法可靠完成：按需要审批处理，不得按低风险放行。
 - 记忆上下文不匹配：只允许本次，不能复用旧批准。
-- `internal_data_access = denied` 时，访问 Linnya 内部数据的命令由 host 拒绝，并给出设置入口提示；这个开关独立于三档权限。
+- `internal_data_access = denied` 时，正式插件 CLI bridge 在执行需要内部数据的 access plan 前拒绝；这个开关独立于三档权限。当前普通 Shell 授权规则不解析脚本中的数据库读取，macOS 文件策略也未据此拒绝内部路径读取。因此不能把 bridge 的拒绝合同外推为任意解释器/外部 CLI 的文件隔离保证。
 - `gui_control = denied` 不是一条可审批风险规则。直接或经解释器、自定义二进制启动 GUI 都必须由平台执行边界拒绝；当前跨解释器 enforcement 与正式 fixture 是 Command 上线门禁。
 
 审计中只记录稳定摘要、规则 id、决定和来源，不记录完整环境、PID、保护输入正文或完整输出。
