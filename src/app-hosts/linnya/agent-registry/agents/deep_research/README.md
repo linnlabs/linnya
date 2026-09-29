@@ -12,6 +12,24 @@
 > 当前 beta 内部角色已从公开 `subagent_type` 隔离。Research 私有编排完成前，下面记录的
 > Leader 旧编排链路不作为可用产品能力；Default、Slides 等普通 Agent 不得直接调用这些角色。
 
+### 当前可用性与历史设计的区别
+
+下文保留旧设计及代码分工，不能作为已可运行的产品说明。Leader prompt 仍要求调用
+`deep_research_scout/reasoner_1/challenger/reasoner_2`，但
+[公开子类型注册](../../../plugin-registry/subagentTypeRegistry.ts) 不暴露这些类型，
+`subagent` 会在启动前拒绝；角色 definition 留存不代表该编排链路可达。
+
+旧角色的工具白名单主要面向 Knowledge，没有当前 Default 的 Web 和 Shell 研究环境。
+Scout prompt 中的“30 steps”也不是其 definition 已声明的硬预算。最终
+[write_report](../../../../../tools/deep_research/writeReport.ts) 只投影聊天终答并结束 run，
+不创建 Workspace 报告文档。当前开放研究交付使用 Default +
+[Deep Research Skill](../../../../../features/skills/builtin/skills/deep-research/SKILL.md)；
+不应为使用该 Skill 恢复旧角色或旧发布通道。
+
+进一步重构须同时检查角色接纳、同项目文档身份、实际工具能力及最终交付，不能只改 prompt
+中的角色名。`evidence_resolve` 是否退役仍由 Evidence owner 的真实任务退出条件决定，
+历史事件与文档不得随 live 角色清理而删除。
+
 ### 目标
 
 Deep Research 是由 Leader 编排四种注册研究 subagent 的多阶段流程（Reasoner 分两阶段），目标是：
@@ -147,9 +165,9 @@ src/app-hosts/linnya/agent-registry/agents/deep_research/
   - `stepPolicy: { kind: 'force_tools', forcedTools: ['write_file'], lastStepsHintThreshold: 12 }`
   - Knowledge 搜索/阅读在返回前自动捕获 Agent 实际看到的 Evidence，收尾阶段不再和额外物化工具竞争。
 
-### Deep Research 多阶段流程（当前实现）
+### Deep Research 多阶段流程（旧实现意图）
 
-中文备注：下面描述的是**当前代码事实**，不是未来规划。
+下面记录各角色代码所描述的交接顺序；因上述公开调用断点，不能据此认定整条流程已运行通过。
 
 1. **Leader**
    - 澄清问题、拆解子问题、定义 stop criteria
