@@ -345,6 +345,7 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
           {
             ...(conversationId ? { conversationId } : {}),
             runId: childRunId,
+            parentRunId,
             traceId: childRunId,
             subrunId,
             ...(parentToolCallId ? { parentToolCallId } : {}),

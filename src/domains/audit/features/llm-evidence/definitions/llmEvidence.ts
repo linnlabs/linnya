@@ -3,6 +3,8 @@ import type { SerializableJsonRecord } from '@linnlabs/linnkit/contracts';
 export interface LlmAuditContext {
   conversationId: string;
   runId: string;
+  /** 正式运行的直接父身份；subrunId 和 traceId 不能替代它。 */
+  parentRunId?: string;
   traceId?: string;
   subrunId?: string;
   parentToolCallId?: string;

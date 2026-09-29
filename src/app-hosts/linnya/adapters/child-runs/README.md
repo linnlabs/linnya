@@ -15,6 +15,9 @@ Layer: `host-adapter/child-runs`
 
 ---
 
+child response 审计使用同一个正式 `childRunId / parentRunId`；独立审计作用域在本次
+执行退出时排空，不依赖父作用域代为收尾，也不和兄弟运行共享容量。
+
 ## 1. 模块定位
 
 本目录负责：

@@ -1,6 +1,6 @@
 # Command Execution Audit Persistence Adapter
 
-该 adapter 把 Audit domain 的 `CommandExecutionAuditEvent` 投影成 Linnkit `AuditEnvelope`，再交给宿主已经组合好的 `AuditPort`。
+该 adapter 使用注入的 supervisor `peek` 从持久 run identity 回填直接父运行，并验证 conversation；它不要求内存中的 run handle 仍然存活。随后把 Audit domain 的 `CommandExecutionAuditEvent` 投影成 Linnkit `AuditEnvelope`，再交给宿主已经组合好的 `AuditPort`。
 
 它不会直接访问 SQLite、不会新建表、不会重试或吞掉错误。实际生产组合使用 `EventStoreAuditPort` 时，命令审计会成为不可见的 `audit_envelope` RuntimeEvent，因此不会进入界面或 Agent 上下文。
 

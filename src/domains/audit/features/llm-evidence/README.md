@@ -18,8 +18,11 @@ response/stream evidence。它不拥有文件目录、数据库连接、配置�
   transient 字段和其他不可长期保存的值。
 - canonical stream 写入前显式移除 provider continuation 和 raw usage；它会包含模型生成的文本与
   工具参数 delta，因此只能在短期开发排障时使用。
-- AsyncLocalStorage 只保存当前异步链的运行身份，不把 audit
-  context 发送给模型供应商。
+- AsyncLocalStorage 保存当前异步链的运行身份；child 由 Host 显式传入正式 `parentRunId`，
+  不从 subrun/trace 标签推测，也不把 audit context 发送给模型供应商。
+- 独立 run 的当前执行拥有独立容量与 pending/flush 状态。同 run 的标签补充共用队列；
+  切换 run 不继承前一个 run 的父身份或 subrun 标签。子作用域成功、失败、取消或暂停时均
+  排空自己的写入，不关闭父队列；恢复进入新的执行作用域。
 - root run 保存 context-manager 前后和 system reminder evidence；child
   run 只保留 transcript、输入物化和工具协议错误，避免重复保存大快照。
 
@@ -30,15 +33,15 @@ response/stream evidence。它不拥有文件目录、数据库连接、配置�
 `LINNYA_AUDIT_LEVEL`。
 
 `flushLinnyaAudit` 的职责是排空当前 run 已经提交给统一 `AuditPort`
-的异步写入队列。它不是“写文件”操作，调用方只负责在 run 结束时调用一次。
+的异步写入队列。它不是“写文件”操作，独立 `runWithLlmAuditContext` 作用域退出时自动排空；既有显式调用仍然幂等。
 
 ## 记录边界
 
 允许记录为排查 context manager、输入物化和工具协议问题所必需的 response/stream
 evidence。禁止记录凭据、完整环境变量、图片二进制、provider raw
 request、无界 stdout/stderr 和与当前 run 无关的对象。单片段、单次 run、工具协议错误和 system
-reminder 的容量限制由统一 orchestration 实现，不能通过新的环境变量覆盖；response 单 run 最多
-64 个 attempt 摘要、总大小上限 1 MiB，stream 单 run 最多 256 个片段、总大小上限 16 MiB。
+reminder 的容量限制由统一 orchestration 实现，不能通过新的环境变量覆盖；response 每个 run 的单次执行最多
+64 个 attempt 摘要、总大小上限 1 MiB，stream 每个 run 的单次执行最多 256 个片段、总大小上限 16 MiB。
 
 本 feature 不负责 run lifecycle、Telemetry、checkpoint、内容历史、CLI 导出或数据库 retention；
 容量和脱敏在 evidence 投影阶段完成，持久化由统一 Audit/EventStore owner 负责，过期

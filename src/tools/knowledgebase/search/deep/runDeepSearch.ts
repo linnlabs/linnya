@@ -84,11 +84,11 @@ export async function runDeepSearch(params: {
   });
 
   /**
-   * 🔥 LLM 请求审计（开发模式落盘）
+   * LLM 审计的调用标签
    *
    * 说明：
-   * - 子 Agent 的 LLM 请求也必须写入“父 run 文件”中（同 runId），但需要带上 subrunId 标识；
-   * - 这里通过 AsyncLocalStorage 在子链路上追加上下文，由 lifecycle audit 记录子运行观测。
+   * - 此处只补充调用标签；registered child invoker 会建立独立 runId / parentRunId 审计作用域；
+   * - 实际证据经统一 AuditPort 进入 EventStore，不写父 run 文件。
    */
   const result = await runWithLlmAuditContext(
     {

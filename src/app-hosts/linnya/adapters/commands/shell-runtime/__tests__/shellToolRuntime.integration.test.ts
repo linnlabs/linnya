@@ -661,7 +661,10 @@ describe('ShellToolRuntime production orchestration', () => {
     });
     const f = fixture({
       immediate: true,
-      audit: createEventStoreCommandExecutionAuditPort({ auditPort: auditRuntime.auditPort }),
+      audit: createEventStoreCommandExecutionAuditPort({
+        auditPort: auditRuntime.auditPort,
+        runs: { async peek(runId) { return { runId, conversationId: CONVERSATION_ID, status: 'running', startedAt: NOW, updatedAt: NOW }; } },
+      }),
     });
     await expect(f.runtime.executeShell(shellRequest({ command: 'printf completed' })))
       .resolves.toMatchObject({ status: 'completed', terminal: { outcome: 'exited', exitCode: 0 } });

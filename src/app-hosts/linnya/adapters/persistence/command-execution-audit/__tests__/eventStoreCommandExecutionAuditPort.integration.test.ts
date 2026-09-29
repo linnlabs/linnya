@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import type { AuditPort } from '@linnlabs/linnkit/ports';
 
 import {
@@ -36,11 +38,25 @@ const proposal = ShellCommandProposalV1Schema.parse({
   permission,
 });
 
+async function registeredRuns() {
+  const registryStore = new runSupervisor.MemoryRunRegistryStore();
+  await registryStore.save({
+    runId: RunIdSchema.parse(identity.agent_run_id),
+    conversationId: identity.conversation_id,
+    agentSpecId: 'test',
+    status: 'running',
+    startedAt: 1,
+    updatedAt: 1,
+  });
+  return new runSupervisor.DefaultRunSupervisor({ registryStore });
+}
+
 describe('event store command execution audit adapter', () => {
   it('把一个领域事实交给既有 AuditPort', async () => {
     const emit = vi.fn<AuditPort['emit']>();
     const port = createEventStoreCommandExecutionAuditPort({
       auditPort: { emit },
+      runs: await registeredRuns(),
     });
 
     await port.record({
@@ -50,11 +66,13 @@ describe('event store command execution audit adapter', () => {
     });
 
     expect(emit).toHaveBeenCalledTimes(1);
-    expect(emit).toHaveBeenCalledWith(expect.objectContaining({
-      envelopeId: `audit-command:${identity.command_execution_id}:proposal_created`,
-      action: 'command.proposal.created',
-      ts: 2_010,
-    }));
+    expect(emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        envelopeId: `audit-command:${identity.command_execution_id}:proposal_created`,
+        action: 'command.proposal.created',
+        ts: 2_010,
+      })
+    );
   });
 
   it('原样向调用方暴露 sink 失败，不伪造已持久化', async () => {
@@ -64,12 +82,15 @@ describe('event store command execution audit adapter', () => {
     };
     const port = createEventStoreCommandExecutionAuditPort({
       auditPort,
+      runs: await registeredRuns(),
     });
 
-    await expect(port.record({
-      kind: 'proposal_created',
-      occurred_at_ms: 2_010,
-      proposal,
-    })).rejects.toBe(persistenceFailure);
+    await expect(
+      port.record({
+        kind: 'proposal_created',
+        occurred_at_ms: 2_010,
+        proposal,
+      })
+    ).rejects.toBe(persistenceFailure);
   });
 });

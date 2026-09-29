@@ -75,9 +75,9 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
     '访问互联网、下载文件、发送数据等',
   'settings.commandPermission.confirmExpansion.fullAccess.risk':
     '这会带来敏感数据丢失、泄露、提示词注入等风险。',
-  'settings.commandPermission.confirmExpansion.internalData.title': '允许访问 Linnya 内部数据',
+  'settings.commandPermission.confirmExpansion.internalData.title': '允许插件命令访问 Linnya 内部数据',
   'settings.commandPermission.confirmExpansion.internalData.message':
-    '开启后，命令可以读取 Linnya 的本地数据库和其他内部数据。请仅在您信任当前任务时开启。',
+    '开启后，Linnya 插件命令可按其声明访问内部数据。此开关不限制其他 Shell 程序读取本机文件。',
   'settings.commandPermission.confirmExpansion.confirm': '接受风险，确认开启',
   'settings.commandPermission.confirmExpansion.cancel': '取消',
   'settings.commandPermission.level.title': '权限级别',
@@ -89,7 +89,8 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.commandPermission.level.fullAccess': '完全访问',
   'settings.commandPermission.level.fullAccessDescription': '自动允许所有命令，但会极大增加风险。',
   'settings.commandPermission.internalData.title': 'Linnya 内部数据',
-  'settings.commandPermission.internalData.label': '允许命令访问 Linnya 内部数据',
+  'settings.commandPermission.internalData.label': '允许插件命令访问 Linnya 内部数据',
+  'settings.commandPermission.internalData.description': '仅控制 Linnya 插件命令的数据访问，不限制其他 Shell 程序读取本机文件。',
   'settings.storageSpace.title': '存储空间',
   'settings.storageSpace.loading': '正在读取存储空间...',
   'settings.storageSpace.unavailable': '暂时无法读取存储空间，请稍后重试。',
@@ -510,9 +511,9 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.commandPermission.confirmExpansion.fullAccess.risk':
         'This can cause sensitive data loss, disclosure, prompt injection, or other risks.',
       'settings.commandPermission.confirmExpansion.internalData.title':
-        'Allow access to Linnya internal data',
+        'Allow plugin commands to access Linnya internal data',
       'settings.commandPermission.confirmExpansion.internalData.message':
-        "Commands will be able to read Linnya's local database and other internal data. Enable this only when you trust the current task.",
+        'Linnya plugin commands may access internal data as declared. This switch does not restrict other Shell programs from reading local files.',
       'settings.commandPermission.confirmExpansion.confirm': 'Accept risk and enable',
       'settings.commandPermission.confirmExpansion.cancel': 'Cancel',
       'settings.commandPermission.level.title': 'Permission level',
@@ -527,7 +528,8 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
         'Automatically allow all commands, with substantially greater risk.',
       'settings.commandPermission.internalData.title': 'Linnya internal data',
       'settings.commandPermission.internalData.label':
-        'Allow commands to access Linnya internal data',
+        'Allow plugin commands to access Linnya internal data',
+      'settings.commandPermission.internalData.description': 'Controls data access by Linnya plugin commands only; it does not restrict other Shell programs from reading local files.',
       'settings.storageSpace.title': 'Storage',
       'settings.storageSpace.loading': 'Reading storage usage...',
       'settings.storageSpace.unavailable':

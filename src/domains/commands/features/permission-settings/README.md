@@ -78,6 +78,8 @@ process_lifecycle = terminate_with_run
 
 权限档位在全局设置页选择后立即生效，不需要保存按钮。切换到 `standard` 或 `full_access` 时由 UI 展示风险说明和确认动作，但风险文案不是授权事实；App Server authority 仍按 schema 校验。
 
+内部数据开关与开启确认文案明确指向 Linnya 插件命令；常驻说明标明它不限制其他 Shell 程序读取本机文件。此文案不改变设置值或权限执行策略。
+
 Renderer 不传路径、revision 以外的内部字段，不直接读文件，不决定“是否已写入”。页面刷新后以 Main 返回的 settings 为准。
 
 ## 7. 安全和维护风险

@@ -35,7 +35,7 @@ ${buildSubagentTypeLines()}
 Important:
 - The subagent runs in an isolated executor (no persistence into the parent timeline).
 - Subagents cannot call subagent recursively.
-- Subagents automatically receive the admitted project/current-view environment, but not the parent conversation history or TaskState. The prompt is the sole task-semantic handoff; include the goal, task-specific inputs, constraints, and expected output.
+- Subagents automatically receive the admitted project/current-view environment, but not the parent conversation history or TaskState. The prompt is the sole task-semantic handoff; include the goal, task-specific inputs, allowed and forbidden sources/actions, and expected output. Pass on all applicable user restrictions; inherited command permissions do not replace task-specific restrictions.
 - Prefer having the subagent return findings in its final answer, then compose the final output yourself.
 - If durable output is needed, ask the subagent to create or edit Workspace files with write_file/edit_file.
 - The tool returns \`status\` plus reusable \`artifacts\`: Workspace VFS inodes (\`workspace:<nodeId>\`) and durable ToolOutput references (\`tool_output://blobs/<id>\`). Read Workspace artifacts with \`read_file(inode=..., view="document")\`; continue ToolOutput artifacts with \`tool_output_read(blob_id=...)\`.
@@ -55,7 +55,7 @@ function buildSubagentParameters(): ToolParameterSchema {
       prompt: {
         type: 'string',
         minLength: 1,
-        description: '子任务唯一语义交接：写明目标、任务专属输入或 Workspace 路径/inode、约束和预期输出；项目、当前文档与文件清单由系统自动注入，不要依赖父会话历史或 TaskState。',
+        description: '子任务唯一语义交接：写明目标、任务专属输入或 Workspace 路径/inode、允许及禁止的来源/操作和预期输出，逐项传递适用的用户限制；项目、当前文档与文件清单由系统自动注入，不要依赖父会话历史或 TaskState。',
       },
       subagent_type: {
         type: 'string',

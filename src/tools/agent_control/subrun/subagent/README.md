@@ -22,6 +22,7 @@ subagent Tool
 - 通用 child 自动继承父 run admission 时冻结的 `project-context`、当前文档和插件 `current-view` Fence，包括项目文件清单；不自动继承 selection、user quote、附件或泛化 `additional-context`。
 - child ToolContext 同时继承父运行已接纳的项目操作能力与 Workspace 身份，因此可以使用同一组文件工具；初始文件清单只是当前轮快照，运行中需要最新状态时调用 `list_files`。
 - child 不注册 `task_write/task_read`，Subagent runner 也不读取或注入父 TaskState；`prompt` 仍是父子之间唯一的任务语义交接合同，必须写明子任务目标、约束和预期输出，不需要重复抄写已经自动注入的项目背景。
+- 工具说明要求父 Agent 逐项传递适用的用户限制，包括允许/禁止的来源与操作。继承的全局 command permission 不等于本任务材料白名单；这项提示不宣称新增了运行时权限拦截。
 - `SubagentTypeContribution.inheritTurns` 可以为确实依赖父上下文的角色声明固定继承量；默认仍为 `0`，该值不暴露成模型可修改参数。
 - `maxSteps` 由 child Agent Definition 持有；通用 subagent 工具不复制或覆盖该产品策略。
 - Deep Research beta 的内部阶段不注册为公开 `subagent_type`，Default、Slides 等普通父 Agent 无法看到或调用。

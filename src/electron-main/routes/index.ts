@@ -646,7 +646,10 @@ export async function configureRoutes(
     const executionRuntime = await dependencies.conversationExecutionRuntimeFactory.create({
       db,
       conversationAdmission: conversationLifecycle.workDirectoryAdmission,
-      commandExecutionAudit: createEventStoreCommandExecutionAuditPort({ auditPort }),
+      commandExecutionAudit: createEventStoreCommandExecutionAuditPort({
+        auditPort,
+        runs: agentRuntime.supervisor,
+      }),
       appDataRoot,
       commandArtifactStorageRoot: getConversationArtifactsV1Path(),
       resolveToolOutputBlobsDirectory: ({ conversationId, instanceId }) =>

@@ -70,6 +70,7 @@ export type SettingsMessageKey =
   | 'settings.commandPermission.level.fullAccessDescription'
   | 'settings.commandPermission.internalData.title'
   | 'settings.commandPermission.internalData.label'
+  | 'settings.commandPermission.internalData.description'
   | 'settings.storageSpace.title'
   | 'settings.storageSpace.loading'
   | 'settings.storageSpace.unavailable'

@@ -26,6 +26,7 @@
         <SettingsSwitchRow
           :model-value="store.draft?.internalDataAccess === 'allowed'"
           :label="settingsMessage('settings.commandPermission.internalData.label')"
+          :description="settingsMessage('settings.commandPermission.internalData.description')"
           :disabled="isBusy"
           @update:model-value="setInternalDataAccess"
         />

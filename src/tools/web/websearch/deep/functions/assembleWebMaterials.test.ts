@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createToolOutputEvent, type RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { AssembleWebSourcesArgsSchema } from '@app/schemas';
+import { buildDeepWebObservation } from './buildDeepWebObservation';
 import { assembleWebMaterials } from './assembleWebMaterials';
 import type { WebSearchAcquisition } from '../ports/webSearchSnapshotReader';
 
@@ -141,9 +142,15 @@ describe('网页资料组装：工具自动回填，不让模型重抄原文', (
     ).toThrow();
   });
   it('正文不回传给模型重复生成，短摘要有上限，完整快照交付 Evidence', async () => {
-    const body = 'Original '.repeat(1000);
+    const body = 'Original '.repeat(1000) + 'Critical qualification at the end.';
     const result = await assemble([search(), read(body)], body).result;
     expect(result.sources[0].citation.snippet).toHaveLength(800);
+    expect(result.sources[0].truncated).toBe(false);
+    const observation = buildDeepWebObservation('question', result);
+    expect(observation).not.toContain('Critical qualification at the end.');
+    expect(observation).toContain('source_read_truncated=false');
+    expect(observation).toContain('not the full body');
+    expect(observation).toContain('Use web_read');
     expect(JSON.stringify(result).length).toBeLessThan(2000);
     expect(writer.save).toHaveBeenLastCalledWith(
       expect.objectContaining({

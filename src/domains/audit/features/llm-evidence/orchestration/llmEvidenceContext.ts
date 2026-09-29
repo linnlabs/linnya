@@ -300,20 +300,35 @@ export async function runWithLlmAuditContext<T>(
     return await run();
   }
 
-  const merged = mergeLlmAuditContext(getCurrentLlmAuditContext(), contextPatch);
+  const parentContext = getCurrentLlmAuditContext();
+  const merged = mergeLlmAuditContext(parentContext, contextPatch);
   if (!merged) return await run();
 
   const parentStore = als.getStore();
-  const store: LlmEvidenceStore = parentStore ?? {
-    stack: [],
-    evidence: createLlmEvidenceState(),
-  };
+  // 同 run 的标签补充共用队列；独立 child 不能耗尽父预算或将父队列标记为已结束。
+  const sameRun = parentContext?.runId === merged.runId &&
+    parentContext.conversationId === merged.conversationId;
+  const evidence = sameRun && parentStore ? parentStore.evidence : createLlmEvidenceState();
   return await als.run(
     {
-      stack: [...store.stack, merged],
-      evidence: store.evidence,
+      stack: [...(parentStore?.stack ?? []), merged],
+      evidence,
     },
-    run
+    async () => {
+      try {
+        return await run();
+      } finally {
+        // 包含失败、取消和暂停恢复的本次执行；关闭 child 前排空其自身队列。
+        if (!sameRun) {
+          try {
+            await flushLinnyaAudit();
+          } catch {
+            // 诊断收尾失败不能覆盖取消、暂停或原始执行异常。
+            logger.warn('[UnifiedAudit] 运行审计收尾失败', { runId: merged.runId });
+          }
+        }
+      }
+    }
   );
 }
 
@@ -442,6 +457,9 @@ function createLlmEvidenceEnvelope(params: {
     return AuditEnvelope.parse({
       envelopeId: generateAuditEnvelopeId(),
       runId,
+      ...(params.context.parentRunId
+        ? { parentRunId: RunIdSchema.parse(params.context.parentRunId) }
+        : {}),
       ts: Date.now(),
       actor: { kind: 'host', name: 'linnya-audit' },
       action: params.action,
@@ -505,7 +523,10 @@ function mergeLlmAuditContext(
   parent: LlmAuditContext | undefined,
   patch: Partial<LlmAuditContext>
 ): LlmAuditContext | undefined {
-  if (parent) return { ...parent, ...patch };
+  if (parent && (!patch.runId || patch.runId === parent.runId) &&
+      (!patch.conversationId || patch.conversationId === parent.conversationId)) {
+    return { ...parent, ...patch };
+  }
   if (typeof patch.conversationId !== 'string' || patch.conversationId.trim().length === 0) {
     return undefined;
   }
@@ -513,6 +534,7 @@ function mergeLlmAuditContext(
   return {
     conversationId: patch.conversationId,
     runId: patch.runId,
+    ...(patch.parentRunId ? { parentRunId: patch.parentRunId } : {}),
     ...(patch.traceId ? { traceId: patch.traceId } : {}),
     ...(patch.subrunId ? { subrunId: patch.subrunId } : {}),
     ...(patch.parentToolCallId ? { parentToolCallId: patch.parentToolCallId } : {}),

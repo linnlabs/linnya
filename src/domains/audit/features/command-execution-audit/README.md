@@ -43,13 +43,13 @@ terminal 事件必须在四类事实分别可判断后投影：child exit 不等
 
 覆盖七类事件、禁止敏感字段、重复投影、非法合同的启动前拒绝、统一入口 sink 失败不改变业务、App end drain、raw artifact 与 audit 的关联以及跨重启读取。测试应验证字段白名单，而不是只断言“写了一条日志”。
 
-## 7. 当前子运行路由限制
+## 7. 子运行身份与验收
 
-命令审计 producer 当前只投影 `runId`，没有投影 `parentRunId`。对已注册的 child，
-EventStore 严格父子身份校验会拒绝此信封；统一开发审计入口记录告警后继续业务，因此可能出现
-工具已执行而 CLI 的 command executions 为零。LLM response evidence 的上下文/信封也存在
-同类父身份缺口。Telemetry usage 可用不能证明这些 audit envelope 已落盘。
+领域投影只消费 command execution 自身身份；Host adapter 通过注入的 supervisor `peek`
+读取该 run 的持久注册事实，验证 conversation 并填入直接 `parentRunId`。root 不带父身份。
+取消后迟到的 terminal、恢复后新建的 adapter 和并发 child 都按 execution owner 查询，
+不从 AsyncLocalStorage、root permission ID 或工具名推测。
 
-修复应在 Host 的权威运行身份接入及 producer 合同完成，覆盖 root、child、并发和恢复，
-不能放宽 EventStore 校验、按工具名猜父运行、把缺失计为成功或增加另一套 recorder。
-现有只用 MemoryEventStore / mock sink 的 producer 测试不能代替真实 SQLite 父子写入验收。
+EventStore 保留严格父子身份校验；未知或跨 conversation 的 run 不得投影成可持久化事实。
+真实 SQLite 集成覆盖 root、并发 child、取消后 terminal、重建 adapter 和 LLM response，
+只有 mock sink 的测试不能代替父子身份验收。Telemetry usage 可用不证明 response 已落盘。

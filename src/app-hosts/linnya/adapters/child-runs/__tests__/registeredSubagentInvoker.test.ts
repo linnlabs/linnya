@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createLinnyaAuditRuntime, recordLlmResponseSummary } from 'src/domains/audit';
 import { PromptKeys } from '@app/schemas';
 import {
   audit,
@@ -234,6 +235,7 @@ function readPersistedRuntimeEvents(db: Database.Database, runId: string): Route
 describe('RegisteredChildRunInvoker', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    createLinnyaAuditRuntime({ level: 'off', sink: { emit() {} } });
   });
 
   it('应只把可见消息注入 seed history，并显式下发 trace/execution policy', async () => {
@@ -687,6 +689,7 @@ describe('RegisteredChildRunInvoker', () => {
     );
     await host.ensureConversation(conversationId, [seed], undefined, 'agent');
 
+    createLinnyaAuditRuntime({ level: 'response', sink: audit.createEventStoreAudit({ eventStore: adapter }) });
     const registryStore = new SQLiteRunRegistryStore(db);
     const rootSupervisor = new runSupervisor.DefaultRunSupervisor<AgentInvocationRequest>({
       registryStore,
@@ -710,7 +713,10 @@ describe('RegisteredChildRunInvoker', () => {
       })),
     };
     const llmCaller = {
-      callWithRetries: vi.fn(async () => ({ content: 'child ok' })),
+      callWithRetries: vi.fn(async () => {
+        recordLlmResponseSummary({ attemptId: 'attempt-child', traceId: 'trace-child', modelId: 'test-model', endpointId: 'test', endpointModelId: 'test', capabilityId: 'text', apiSurface: 'chat', outcome: 'succeeded', usage: { provenance: 'not_reported' } });
+        return { content: 'child ok' };
+      }),
     };
     const toolRuntime = {
       getToolSchemas: vi.fn(() => []),
@@ -831,6 +837,7 @@ describe('RegisteredChildRunInvoker', () => {
     ));
     expect(auditActions.some(envelope => envelope.action === 'model.select')).toBe(true);
     expect(auditActions.some(envelope => envelope.action === 'run.transcript')).toBe(false);
+    expect(auditActions.find(envelope => envelope.action === 'llm.response.succeeded')).toMatchObject({ runId: childRunId, parentRunId });
 
     await parentPersistence.drain();
     const childFinalAnswer = childEvents.find(event => event.type === 'final_answer');
