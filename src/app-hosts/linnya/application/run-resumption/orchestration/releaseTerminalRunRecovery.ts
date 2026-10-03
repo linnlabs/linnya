@@ -1,5 +1,5 @@
 import { RunIdSchema } from '@linnlabs/linnkit/contracts';
-import type { graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
+import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import type { RunDescriptorStore } from '../definitions/runDescriptor';
 import { isTerminalRun, selectRunTree } from '../functions/runRecoveryRetention';
 
@@ -7,7 +7,8 @@ import { isTerminalRun, selectRunTree } from '../functions/runRecoveryRetention'
 export async function releaseTerminalRunRecovery(input: {
   runId: string;
   supervisor: Pick<runSupervisor.RunSupervisor, 'peek' | 'findByConversation' | 'cancel'>;
-  checkpointer: graph.Checkpointer;
+  /** 活跃 Host 必须经 Graph 释放进程内 local；启动回收才可只清持久断点。 */
+  clearCheckpoint: (runId: string) => Promise<void>;
   descriptors: RunDescriptorStore;
 }): Promise<void> {
   const root = await input.supervisor.peek(RunIdSchema.parse(input.runId));
@@ -32,9 +33,9 @@ export async function releaseTerminalRunRecovery(input: {
   }
   // 最后删除根描述，使“根终态后、释放中途崩溃”的下次启动仍能发现这棵树。
   for (const run of tree.filter(run => run.runId !== root.runId)) {
-    await input.checkpointer.clear(run.runId);
+    await input.clearCheckpoint(run.runId);
     await input.descriptors.remove(run.runId);
   }
-  await input.checkpointer.clear(root.runId);
+  await input.clearCheckpoint(root.runId);
   await input.descriptors.remove(root.runId);
 }

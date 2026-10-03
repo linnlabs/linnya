@@ -151,7 +151,7 @@ export async function createDurableFlowHarness(
         releaseTerminalRunRecovery({
           runId,
           supervisor: runtime.supervisor,
-          checkpointer,
+          clearCheckpoint: id => engine.clearCheckpoint(id),
           descriptors,
         }),
     },
@@ -166,6 +166,7 @@ export async function createDurableFlowHarness(
   return {
     flow,
     runner,
+    engine,
     runtime,
     checkpointer,
     ai,

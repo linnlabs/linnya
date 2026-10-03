@@ -248,15 +248,17 @@ export async function bootstrapAgentRuntimeSingletons(
     run => !run.parentRunId && run.errorIfAny?.errorCode !== 'RUN_RECOVERY_INPUT_INVALID'
   );
   for (const root of terminalRoots) {
+    const checkpointer = runtime.recoveryCheckpointer;
     if (
       runtime.runDescriptors &&
-      runtime.recoveryCheckpointer &&
+      checkpointer &&
       (await runtime.runDescriptors.exists(root.runId))
     ) {
       await releaseTerminalRunRecovery({
         runId: root.runId,
         supervisor: runtime.supervisor,
-        checkpointer: runtime.recoveryCheckpointer,
+        // 启动时尚无上一进程的 Graph local；只需补完崩溃前未释放的持久状态。
+        clearCheckpoint: runId => checkpointer.clear(runId),
         descriptors: runtime.runDescriptors,
       });
     }

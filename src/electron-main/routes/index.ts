@@ -693,7 +693,8 @@ export async function configureRoutes(
           releaseTerminalRunRecovery({
             runId,
             supervisor: agentRuntime.supervisor,
-            checkpointer,
+            // Graph 同时持有 local/闭包与持久断点，直接删 SQLite 会留下整段历史。
+            clearCheckpoint: id => executor.clearCheckpoint(id),
             descriptors: runDescriptors,
           }),
       },

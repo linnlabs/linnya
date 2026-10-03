@@ -77,6 +77,11 @@ artifact 按会话保护，因为原上下文可能引用更早结果。已提�
 event links 保留，不把未消费的进程内 claim 当成可恢复引用。
 
 根终态先落盘，随后收口暂停 child、释放 child 断点/描述，最后释放根；中途崩溃可重试。
+释放用例接收执行器的窄 `clearCheckpoint` 能力：运行中的 Host 必须调用 Graph 的公开清理入口，
+同时释放进程内 local、历史引用与工具上下文，不能只删除 SQLite 断点。普通回答与手动工具
+批次的 yielded 结果都遵循这条终态合同；暂停和等待用户时仍保留恢复状态。启动回收尚无上一
+进程的 Graph 对象，才只注入持久断点清理。当前 child Graph 为单次调用对象，根执行器清理
+对应 child key 是释放共享持久断点，不表示跨实例访问 child 内存。
 Events、用户文档和最小累计 run cost 不随断点释放而删除；随其正式 owner 生命周期管理。
 用户明确删除对话仍先阻断 ingress、停止执行，再删除事实与资源。
 
@@ -86,6 +91,8 @@ Flow 的 `flow.durable-continuation.integration.test.ts` 和 `flow.process-crash
 使用真实 SQLite、生产 Audit off、正式 npm Graph 与脚本模型，覆盖 SIGKILL、提交失败、审批两个
 崩溃窗口、原 child、预算、未知效果、重复激活与新消息替代。Renderer interactive-run
 测试覆盖主按钮、断线观察和迟到响应隔离；Workspace owner lock 有真实跨进程竞争验收。
+`flow.terminal-resource-release.integration.test.ts` 连续运行普通回答和手动工具批次，验证终态
+经执行器公开入口释放资源，同时保留可回放事实；不能仅以数据库断点已删除判定清理完成。
 
 工作区互斥只针对本机文件系统，不支持共享网络盘多机写入。Backend 仍由 Desktop 启动并
 提供部分能力；这里不实现独立常驻 daemon、开机调度或新的审阅 UI。工具注册目前仍有
