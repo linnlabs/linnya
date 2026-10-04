@@ -95,6 +95,8 @@ export class EditFileTool extends BaseTool {
       'Use read_file first, then pass an exact old_string from the current file content.',
       `Supports existing Markdown documents and enabled plugin-owned document files. Use write_file to create new files: Markdown accepts no suffix, .md, or .markdown${pluginHint}.`,
       'Markdown edits are written as pending revisions so the user can accept or reject them in the editor.',
+      'Pending revisions are reflected in current content before user acceptance.',
+      'The diff shows the requested text change before document normalization; read_file returns the current text for further exact edits.',
       'The edit will fail if old_string is not unique unless replace_all=true.',
       'Success returns changed line ranges and a compact unified diff; stale or ambiguous input returns reread hints.',
       'Only workspace:/... locators are valid here. conversation:/... and file:///... belong to read_file and will be rejected.',
@@ -189,7 +191,11 @@ export class EditFileTool extends BaseTool {
       schema: WorkspaceEditFileArgsSchema,
       errorCode: this.argumentValidationErrorCode,
       toolName: this.name,
-      example: { locator: 'workspace:/report.md', old_string: 'exact current text', new_string: 'replacement' },
+      example: {
+        locator: 'workspace:/report.md',
+        old_string: 'exact current text',
+        new_string: 'replacement',
+      },
     });
   }
 
@@ -271,7 +277,11 @@ export class EditFileTool extends BaseTool {
           diff: replacement.diff,
           ...(replacement.diffTruncated ? { diffTruncated: true } : {}),
         },
-        appendDocumentDiagnosticsObservation(write.observation, diagnostics)
+        // data.diff 不会自动进入模型上下文；复用有界替换差异，不冒充规范化后的全文。
+        appendDocumentDiagnosticsObservation(
+          `${write.observation}\nRequested exact replacement (before document normalization):\n${replacement.diff}`,
+          diagnostics
+        )
       );
     };
     const write = await writeWorkspaceDocumentFile({

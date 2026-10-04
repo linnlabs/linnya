@@ -83,6 +83,11 @@ Markdown 编辑把 exact replacement 前读到的完整 current text 交给 prov
 全文 `write_file` 仍表示主动覆盖。成功意味着 owner 已提交（Markdown 更新仍可能待用户确认），
 不意味着文章、数字或引用支持程度已经通过研究质量检验。
 
+`edit_file` 的紧凑 diff 必须同时出现在成功 `observation` 中；`data.diff` 不会自动进入模型上下文。
+差异复用 exact replacement 的同一有界结果，不另行拼接完整文件；它显示规范化前的替换，
+不能当作最终 VFS current 的逐字快照。输出仍服从通用预览/续读上限。Markdown pending 尚待用户确认，
+但 VFS current 已包含该次修改；后续编辑以 `read_file` 的当前文本为准，旧块未命中时须重读。
+
 五个 Tool 的完整模型 `parameters` 必须直接保留在各自 concrete tool 文件中，方便同时审查描述、字段、
 `required` 与封闭 `oneOf`。Workspace shared 只复用“正式 parser 的错误如何转换为 admission 结果”这一窄逻辑，
 不生成 locator/inode 分支，也不把 Workspace 身份语义下沉到 Linnkit。通用协议与测试时序见
@@ -188,7 +193,8 @@ Workspace 工具不要只测单工具参数校验，至少应覆盖这些真实�
 
 当前回归测试入口：
 
-- `src/tools/workspace/__tests__/fileTools.test.ts`：包含真实 ToolNode owner admission、locator-only Slides 创建、provider 调用和 VFS 双身份结果验证。直接调用 `Tool.run()` 的用例只验证工具内部业务，不能代替这条 runtime 链。
+- `packages/plugins/__tests__/workspaceFileToolsIntegration.test.ts`：包含真实 ToolNode owner admission、locator-only Slides 创建、provider 调用和 VFS 双身份结果验证。
+- `src/app-hosts/linnya/adapters/flow/__integration-tests__/flow.file-edit-feedback.integration.test.ts`：真实 SQLite、正式 Registry 和 Markdown 写读，验证编辑成功差异、失效错误与重读进入下一轮模型输入，并保留 A→B→A 后再次编辑的合法语义。直接调用 `Tool.run()` 的用例不能代替这条运行链。
 
 > 说明：preview 的“真相来源”仍然是块结构 JSON + pending revisions 的组合，而不是某段 markdown 字符串。
 
@@ -213,7 +219,7 @@ Workspace 工具不要只测单工具参数校验，至少应覆盖这些真实�
   - `src/app-hosts/linnya/adapters/file-read/createNodePhysicalFileReader.ts`（Node 文件系统 adapter）
   - `src/tools/workspace/write_file/WriteFileTool.ts`
   - `src/tools/workspace/README.md`（本文）
-  - `src/tools/workspace/AGENT_EDIT_TOOL_BASE_DIFF.md`
+  - `src/features/workspace/document-file-write/README.md`（精确替换与 provider 写入边界）
 
 - **结构化文档读取调度：**
   - `src/features/workspace/document-read/definitions/workspaceDocumentRead.ts`（请求、结果别名与窗口常量）
