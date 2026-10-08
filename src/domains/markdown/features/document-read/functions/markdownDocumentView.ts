@@ -12,15 +12,34 @@ import {
   flattenMarkdownDocumentBlocks,
   type FlattenedMarkdownBlock,
 } from '../../../shared/markdownBlockProjection';
+import type {
+  MarkdownDocumentViewBlockRange,
+  MarkdownDocumentViewWindow,
+} from '../definitions/markdownDocumentViewWindow';
 
-function buildBodyFromBlocksRef(blocks: readonly FlattenedMarkdownBlock[]): string {
-  return blocks
-    .map((block) => {
-      // Markdown 前导空格可能表达列表嵌套；这里只去掉行尾空白。
-      const text = block.text.trimEnd();
-      return `[${block.ref}] ${text}`;
-    })
-    .join('\n\n');
+function buildBodyFromBlocksRef(blocks: readonly FlattenedMarkdownBlock[]): {
+  readonly text: string;
+  readonly blockRanges: readonly MarkdownDocumentViewBlockRange[];
+} {
+  const parts: string[] = [];
+  const blockRanges: MarkdownDocumentViewBlockRange[] = [];
+  let offset = 0;
+  for (const block of blocks) {
+    if (parts.length > 0) offset += 2;
+    // Markdown 前导空格可能表达列表嵌套；这里只去掉行尾空白。
+    const prefix = `[${block.ref}]`;
+    const part = `${prefix} ${block.text.trimEnd()}`;
+    blockRanges.push({
+      block,
+      startOffset: offset,
+      refEndOffset: offset + prefix.length,
+      contentOffset: offset + prefix.length + 1,
+      endOffset: offset + part.length,
+    });
+    parts.push(part);
+    offset += part.length;
+  }
+  return { text: parts.join('\n\n'), blockRanges };
 }
 
 export interface BuildMarkdownDocumentViewOptions {
@@ -35,6 +54,7 @@ export interface MarkdownDocumentViewResult {
   readonly documentViewText: string;
   /** 当前字符窗口的纯正文；Citation 窗口匹配不得扫描 XML 包装或截断提示。 */
   readonly bodyWindowText: string;
+  readonly presentationWindow: MarkdownDocumentViewWindow;
   readonly totalTextLength: number;
   readonly truncatedByChars: boolean;
   readonly nextOffset: number | null;
@@ -53,12 +73,19 @@ export function buildMarkdownDocumentView(
   } = options;
   const blocks = preFlattenedBlocks
     ?? flattenMarkdownDocumentBlocks(content);
+  const body = buildBodyFromBlocksRef(blocks);
   const windowResult = sliceTextWindow(
-    buildBodyFromBlocksRef(blocks),
+    body.text,
     offsetChars,
     maxChars,
-    addTruncatedSuffix,
+    false,
   );
+  const windowStart = Math.max(0, Math.min(offsetChars, body.text.length));
+  const windowEnd = windowStart + windowResult.text.length;
+  // 截断提示只属于 observation；它的右括号不能补全被切断的块 ref。
+  const displayText = windowResult.truncated && addTruncatedSuffix
+    ? `${windowResult.text}... [truncated]`
+    : windowResult.text;
   const meta: DocumentViewMeta = {
     documentId,
     docType: 'markdown',
@@ -69,8 +96,16 @@ export function buildMarkdownDocumentView(
   };
 
   return {
-    documentViewText: buildDocumentView(meta, windowResult.text),
+    documentViewText: buildDocumentView(meta, displayText),
     bodyWindowText: windowResult.text,
+    presentationWindow: {
+      text: windowResult.text,
+      startOffset: windowStart,
+      endOffset: windowEnd,
+      blockRanges: body.blockRanges.filter((range) => (
+        range.startOffset < windowEnd && range.endOffset > windowStart
+      )),
+    },
     totalTextLength: windowResult.totalLength,
     truncatedByChars: windowResult.truncated,
     nextOffset: windowResult.nextOffset,

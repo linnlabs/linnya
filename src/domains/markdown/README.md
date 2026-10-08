@@ -24,6 +24,10 @@ Schema contribution、正文版本持久化、Block 卫星数据、pending revis
 
 Markdown 专属 Agent 工具位于 [`tools/`](./tools/README.md)。专属工具可以调用本领域公开 feature，但不会加入 Workspace 五件套；App Host 负责汇集其工具贡献。
 
+DocumentView 的正文、块字符范围与分页游标由同一次投影生成。UI presentation 只使用这些范围和真实块身份，
+不重新解析带 XML 与截断提示的 observation；窗口切入块正文或只取得半个 ref 时，以原始文本片段展示。
+Citation 窗口只接收实际取得的正文，不包含截断提示。正文中的 ref 样式示例或 XML 标签不能变成新的块边界。
+
 旧路径不会保留 executable 或 import alias。每个阶段必须先切换全部生产调用方和测试，再删除对应实现。
 
 ## 持久化 Markdown schema 合同

@@ -83,8 +83,7 @@ export async function readMarkdownDocumentView(params: {
     totalTextLength: view.totalTextLength,
     nextOffset: view.nextOffset,
     presentation: buildMarkdownReadPresentation({
-      documentViewText: view.documentViewText,
-      blocks: viewBlocks,
+      window: view.presentationWindow,
       viewMode: params.request.viewMode,
       viewLabel: params.request.viewMode === 'preview' ? '修订稿' : '原文',
     }),
