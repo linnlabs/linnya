@@ -25,7 +25,7 @@ export function benchmarkCliUsage(): string {
     'Usage:',
     '  pnpm benchmark:agent list [--pretty]',
     '  pnpm benchmark:agent run <case-id> --project <workspace-project-id> --input key=value [--input key=value] [--output DIR] [--model ID] [--reasoning LEVEL] [--pretty]',
-    '  pnpm benchmark:agent research-workflow --manifest FILE --output DIR [--resume-stage STAGE_ID]',
+    '  pnpm benchmark:agent research-workflow --manifest FILE --output DIR [--resume-stage STAGE_ID] [--stop-after STAGE_ID]',
     '',
     'Benchmark runs always use the real Linnya conversation CLI and a running Linnya App.',
     '',
@@ -77,6 +77,7 @@ export async function runBenchmarkCli(
         manifestFile: path.resolve(invocation.manifestFile),
         output: path.resolve(invocation.output),
         resumeStage: invocation.resumeStage,
+        stopAfterStage: invocation.stopAfterStage,
         cli: options.researchCli,
       });
       const completed =

@@ -37,7 +37,7 @@ export function parseBenchmarkCliInvocation(argv: readonly string[]): BenchmarkC
       const value = argv[index + 1];
       if (
         !key ||
-        !['--manifest', '--output', '--resume-stage'].includes(key) ||
+        !['--manifest', '--output', '--resume-stage', '--stop-after'].includes(key) ||
         !value ||
         value.startsWith('--') ||
         values.has(key)
@@ -49,6 +49,9 @@ export function parseBenchmarkCliInvocation(argv: readonly string[]): BenchmarkC
     const manifestFile = values.get('--manifest');
     const output = values.get('--output');
     const resume = values.get('--resume-stage');
+    const stopAfter = values.get('--stop-after');
+    const parsedStop = stopAfter === undefined ? undefined : StageIdSchema.safeParse(stopAfter);
+    if (parsedStop && !parsedStop.success) throw new BenchmarkUsageError('Invalid --stop-after');
     if (!manifestFile || !output)
       throw new BenchmarkUsageError('research-workflow requires --manifest and --output');
     const parsedResume = resume === undefined ? undefined : StageIdSchema.safeParse(resume);
@@ -59,6 +62,7 @@ export function parseBenchmarkCliInvocation(argv: readonly string[]): BenchmarkC
       manifestFile,
       output,
       resumeStage: parsedResume?.success ? parsedResume.data : undefined,
+      stopAfterStage: parsedStop?.success ? parsedStop.data : undefined,
     };
   }
   if (command === 'list') {

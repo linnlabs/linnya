@@ -7,6 +7,7 @@ export type BenchmarkCliInvocation =
       readonly manifestFile: string;
       readonly output: string;
       readonly resumeStage?: StageId;
+      readonly stopAfterStage?: StageId;
     }
   | {
       readonly kind: 'run';

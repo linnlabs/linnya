@@ -135,6 +135,19 @@ describe('fixed specialist research workflow', () => {
     expect(cli.send).toHaveBeenCalledTimes(6);
   });
 
+  it('stops only at wave boundaries and continues the frozen manifest without duplicate runs', async () => {
+    const { options, cli } = await specialistFixture();
+    const investigation = await runResearchWorkflow({ ...options, cli, stopAfterStage: 'W0' });
+    expect(investigation.stages).toHaveLength(3);
+    expect(cli.send).toHaveBeenCalledTimes(3);
+    const reviewed = await runResearchWorkflow({ ...options, cli, stopAfterStage: 'Q0A' });
+    expect(reviewed.stages).toHaveLength(5);
+    expect(reviewed.stages.every(stage => stage.status === 'completed')).toBe(true);
+    expect(cli.send).toHaveBeenCalledTimes(5);
+    await runResearchWorkflow({ ...options, cli });
+    expect(cli.send).toHaveBeenCalledTimes(6);
+  });
+
   it('keeps the peer completed while a review is paused; resumes exact identity before revision', async () => {
     const { options, cli } = await specialistFixture(true);
     const first = await runResearchWorkflow({ ...options, cli });

@@ -29,6 +29,8 @@ export interface RunResearchWorkflowOptions {
   output: string;
   cli: ResearchWorkflowCliPort;
   resumeStage?: StageId;
+  /** 只在该阶段所属波次完成后退出；不修改冻结manifest或取消run。 */
+  stopAfterStage?: StageId;
   /** 一次CLI观察窗口，不是后端执行预算。超时不会stop。 */
   observationMs?: number;
 }
@@ -37,6 +39,8 @@ export async function runResearchWorkflow(
   options: RunResearchWorkflowOptions
 ): Promise<WorkflowState> {
   const loaded = await loadManifest(options.manifestFile);
+  if (options.stopAfterStage && !loaded.stages.some(stage => stage.id === options.stopAfterStage))
+    throw new Error('Stop stage is not present in the frozen manifest');
   const unlock = await lockWorkflow(options.output);
   try {
     const existing = await loadWorkflowState(options.output);
@@ -291,6 +295,7 @@ export async function runResearchWorkflow(
       if (rejected?.status === 'rejected') throw rejected.reason;
       if (wave.some(id => state.stages.find(stage => stage.id === id)?.status !== 'completed'))
         return state;
+      if (options.stopAfterStage && wave.includes(options.stopAfterStage)) return state;
     }
     return state;
   } finally {
