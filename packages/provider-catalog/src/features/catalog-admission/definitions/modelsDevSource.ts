@@ -14,6 +14,14 @@ const ModelsDevModelSchema = z
     attachment: z.boolean().optional(),
     reasoning: z.boolean().optional(),
     tool_call: z.boolean().optional(),
+    provider: z
+      .object({
+        npm: z.string().trim().min(1).optional(),
+        api: z.string().trim().min(1).optional(),
+        shape: z.string().trim().min(1).optional(),
+      })
+      .passthrough()
+      .optional(),
     modalities: z
       .object({
         input: z.array(z.string().trim().min(1)).optional(),
@@ -41,10 +49,7 @@ const ModelsDevProviderSchema = z
   })
   .passthrough();
 
-export const ModelsDevSourceSchema = z.record(
-  z.string().trim().min(1),
-  ModelsDevProviderSchema
-);
+export const ModelsDevSourceSchema = z.record(z.string().trim().min(1), ModelsDevProviderSchema);
 
 export type ModelsDevSource = z.infer<typeof ModelsDevSourceSchema>;
 export type ModelsDevProvider = z.infer<typeof ModelsDevProviderSchema>;

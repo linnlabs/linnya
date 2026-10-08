@@ -104,6 +104,14 @@ codec；OpenCode
 Go 可按模型混用 Chat、Responses 和 Anthropic，私有 binding 必须显式记录模型 route。ChatGPT 公开目录只声明产品身份与 OAuth
 setup，授权后的模型来自当前账号的 Codex `/models`。
 
+OpenCode Go 的模型级 `provider` 覆盖只作为待审查信号：缺少显式 model
+route 时同步失败，不能根据上游 `npm`、`api` 或 `shape`
+自动选择协议或静默套用默认 Chat。映射依据
+[Go 官方 Endpoints](https://opencode.ai/docs/go/#endpoints)
+审查；Go 与 Zen 即使模型 ID 相同也可能使用不同协议。上游弃用的模型先由模型准入排除；如果仍有 policy
+binding 指向它，同步继续报错，维护者必须核对弃用事实、显式移除 binding 并提升 policy
+version。
+
 公开资产禁止出现 package、capability ID、API surface 和 auth
 profile。Renderer 不能从模型名、URL 或上游 package 建议推断协议。
 

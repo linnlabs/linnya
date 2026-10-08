@@ -138,7 +138,7 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
     release_status: 'preview',
     setup_fields: [API_KEY_FIELD],
     model_discovery: 'bundled',
-    model_admission: { requires_tool_call: true },
+    model_admission: { requires_tool_call: true, requires_provider_override_review: true },
     runtime_binding: {
       endpoint_id: 'opencode-go',
       default_base_url: 'https://opencode.ai/zen/go/v1',
@@ -150,28 +150,27 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
         'anthropic_messages',
       ],
       model_route_bindings: [
-        {
-          model_id: 'grok-4.6',
-          base_url: 'https://opencode.ai/zen/go/v1',
-          route_profile_id: 'openai_responses',
-        },
-        {
-          model_id: 'gpt-5.6-luna',
-          base_url: 'https://opencode.ai/zen/go/v1',
-          route_profile_id: 'openai_responses',
-        },
-        {
-          model_id: 'muse-spark-1.2-contributor',
-          base_url: 'https://opencode.ai/zen/go/v1',
-          route_profile_id: 'openai_responses',
-        },
+        // 2026-10-08 按官方 Go endpoints 审查；Go 与 Zen 同名模型可能使用不同协议。
+        // https://opencode.ai/docs/go/#endpoints；弃用模型必须显式移除，不能自动忽略失效绑定。
         ...[
+          'grok-4.7',
+          'grok-4.6',
+          'gpt-6-luna',
+          'gpt-5.6-luna',
+          'muse-spark-1.3-contributor',
+          'muse-spark-1.2-contributor',
+        ].map(modelId => ({
+          model_id: modelId,
+          base_url: 'https://opencode.ai/zen/go/v1',
+          route_profile_id: 'openai_responses' as const,
+        })),
+        ...[
+          'claude-haiku-5-5',
           'minimax-m3',
           'minimax-m2.7',
           'qwen3.8-max',
-          'qwen3.7-max',
+          'qwen3.8-flash',
           'qwen3.7-plus',
-          'qwen3.6-plus',
         ].map(modelId => ({
           model_id: modelId,
           // @ai-sdk/anthropic 将 /messages 追加到 baseURL；Go 的 baseURL 必须保留 /v1。

@@ -34,6 +34,8 @@ export interface ProviderAdmissionPolicy {
   readonly model_admission?: {
     /** Agent Provider 首批目录可要求上游明确声明工具调用，避免混入 embedding/TTS 等模型。 */
     readonly requires_tool_call?: true;
+    /** 混合协议目录的模型级 provider 覆盖必须经过显式 route 审查，不能继承默认协议。 */
+    readonly requires_provider_override_review?: true;
   };
   readonly runtime_binding?: {
     readonly endpoint_id: string;

@@ -39,15 +39,18 @@ function makeSource() {
       'opencode-go',
       Object.fromEntries(
         [
+          'grok-4.7',
           'grok-4.6',
+          'gpt-6-luna',
           'gpt-5.6-luna',
+          'muse-spark-1.3-contributor',
           'muse-spark-1.2-contributor',
+          'claude-haiku-5-5',
           'minimax-m3',
           'minimax-m2.7',
           'qwen3.8-max',
-          'qwen3.7-max',
+          'qwen3.8-flash',
           'qwen3.7-plus',
-          'qwen3.6-plus',
           'glm-5.3',
         ].map(modelId => [modelId, sourceModel(modelId, { reasoning: true })])
       )
@@ -453,6 +456,68 @@ describe('generateProviderCatalog', () => {
       deepseek: { ...source.deepseek, id: 'not-deepseek' },
     });
     expect(() => generateProviderCatalog(invalid, generation)).toThrow(/key\/id 不一致/);
+  });
+
+  it('混合协议目录拒绝未经审查的模型 provider 覆盖，不静默使用默认 route', () => {
+    const source = makeSource();
+    source['opencode-go'].models['new-messages-model'] = {
+      ...source['opencode-go'].models['glm-5.3'],
+      id: 'new-messages-model',
+      provider: { npm: '@ai-sdk/anthropic' },
+    };
+
+    expect(() => generateProviderCatalog(source, generation)).toThrow(
+      /provider 覆盖缺少已审查 route: new-messages-model/
+    );
+
+    // 已弃用模型不再进入公开目录，不应要求重新准入其历史协议。
+    source['opencode-go'].models['new-messages-model'].status = 'deprecated';
+    expect(() => generateProviderCatalog(source, generation)).not.toThrow();
+  });
+
+  it('审查后的新模型使用显式协议，已撤下的历史模型不重新进入双投影', () => {
+    const source = makeSource();
+    source['opencode-go'].models['grok-4.7'].provider = { npm: '@ai-sdk/openai' };
+    source['opencode-go'].models['qwen3.8-flash'].provider = { npm: '@ai-sdk/anthropic' };
+    for (const modelId of ['qwen3.7-max', 'qwen3.6-plus']) {
+      source['opencode-go'].models[modelId] = {
+        ...source['opencode-go'].models['qwen3.7-plus'],
+        id: modelId,
+        status: 'deprecated',
+      };
+    }
+
+    const projections = generateProviderCatalog(source, generation);
+    const connection = projections.publicCatalog.providers
+      .find(provider => provider.id === 'opencode-go')
+      ?.connections.find(candidate => candidate.id === 'opencode-go');
+    const binding = projections.runtimeBindings.bindings.find(
+      candidate => candidate.provider_connection_definition_id === 'opencode-go'
+    );
+
+    expect(connection).toBeDefined();
+    for (const modelId of ['qwen3.7-max', 'qwen3.6-plus']) {
+      expect(connection?.models.map(model => model.id)).not.toContain(modelId);
+      expect(binding?.model_route_bindings?.map(model => model.model_id)).not.toContain(modelId);
+    }
+    expect(binding?.model_route_bindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ model_id: 'grok-4.7', route_profile_id: 'openai_responses' }),
+        expect.objectContaining({
+          model_id: 'qwen3.8-flash',
+          route_profile_id: 'anthropic_messages',
+        }),
+      ])
+    );
+  });
+
+  it('绑定模型被上游弃用时仍要求人工移除过期 policy', () => {
+    const source = makeSource();
+    source['opencode-go'].models['qwen3.8-max'].status = 'deprecated';
+
+    expect(() => generateProviderCatalog(source, generation)).toThrow(
+      /模型 route 未进入公开目录: qwen3.8-max/
+    );
   });
 
   it('严格拒绝被消费的容量关键字段缺失', () => {

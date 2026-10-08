@@ -16,7 +16,7 @@ import type {
 import type { ProviderAdmissionPolicy } from '../catalog-admission/definitions/providerAdmissionPolicy';
 import { PROVIDER_ADMISSION_POLICIES } from '../catalog-admission/registry/providerAdmissionPolicies';
 
-export const PROVIDER_CATALOG_POLICY_VERSION = 16;
+export const PROVIDER_CATALOG_POLICY_VERSION = 17;
 export const MODELS_DEV_SOURCE_URL = 'https://models.dev/api.json';
 
 export interface GeneratedProviderCatalogProjections {
@@ -106,7 +106,21 @@ function projectBundledModels(source: ModelsDevSource, policy: ProviderAdmission
       if (policy.model_admission?.requires_tool_call && model.tool_call !== true) {
         return undefined;
       }
-      return projectModel(model);
+      const projectedModel = projectModel(model);
+      if (!projectedModel) return undefined;
+      // 上游覆盖只触发人工审查；不能根据 npm/api/shape 自动选择 Linnya 的运行协议。
+      if (
+        policy.model_admission?.requires_provider_override_review &&
+        model.provider &&
+        !policy.runtime_binding?.model_route_bindings?.some(
+          binding => binding.model_id === model.id
+        )
+      ) {
+        throw new Error(
+          `Provider ${sourceProviderId} 的模型 provider 覆盖缺少已审查 route: ${model.id}`
+        );
+      }
+      return projectedModel;
     })
     .filter((model): model is ProviderModelDefinition => model !== undefined)
     .sort(

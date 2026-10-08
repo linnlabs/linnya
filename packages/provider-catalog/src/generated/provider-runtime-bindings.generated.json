@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "generation_id": "models-dev-2026-09-04-ba1c9bf0b3d2-p16",
-  "source_sha256": "ba1c9bf0b3d2f88736ee69980adba655d352dd5afb6fbf0d7f8ecacbc73c6ada",
+  "generation_id": "models-dev-2026-10-08-c77a954783de-p17",
+  "source_sha256": "c77a954783de366deee7a34e0f140392d7d3163cd4378af74588341e9f87df41",
   "bindings": [
     {
       "provider_definition_id": "openai",
@@ -47,7 +47,17 @@
       ],
       "model_route_bindings": [
         {
+          "model_id": "grok-4.7",
+          "base_url": "https://opencode.ai/zen/go/v1",
+          "route_profile_id": "openai_responses"
+        },
+        {
           "model_id": "grok-4.6",
+          "base_url": "https://opencode.ai/zen/go/v1",
+          "route_profile_id": "openai_responses"
+        },
+        {
+          "model_id": "gpt-6-luna",
           "base_url": "https://opencode.ai/zen/go/v1",
           "route_profile_id": "openai_responses"
         },
@@ -57,9 +67,19 @@
           "route_profile_id": "openai_responses"
         },
         {
+          "model_id": "muse-spark-1.3-contributor",
+          "base_url": "https://opencode.ai/zen/go/v1",
+          "route_profile_id": "openai_responses"
+        },
+        {
           "model_id": "muse-spark-1.2-contributor",
           "base_url": "https://opencode.ai/zen/go/v1",
           "route_profile_id": "openai_responses"
+        },
+        {
+          "model_id": "claude-haiku-5-5",
+          "base_url": "https://opencode.ai/zen/go/v1",
+          "route_profile_id": "anthropic_messages"
         },
         {
           "model_id": "minimax-m3",
@@ -77,17 +97,12 @@
           "route_profile_id": "anthropic_messages"
         },
         {
-          "model_id": "qwen3.7-max",
+          "model_id": "qwen3.8-flash",
           "base_url": "https://opencode.ai/zen/go/v1",
           "route_profile_id": "anthropic_messages"
         },
         {
           "model_id": "qwen3.7-plus",
-          "base_url": "https://opencode.ai/zen/go/v1",
-          "route_profile_id": "anthropic_messages"
-        },
-        {
-          "model_id": "qwen3.6-plus",
           "base_url": "https://opencode.ai/zen/go/v1",
           "route_profile_id": "anthropic_messages"
         }
