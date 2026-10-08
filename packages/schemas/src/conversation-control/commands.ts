@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ConversationControlCommandApprovalsRequestSchema } from './commandApprovals';
 import { JsonValueSchema } from '../json-value';
 import { ConversationSelectedAgentIdSchema } from '../conversation/selected-agent';
 import { CONVERSATION_CONTROL_SCHEMA_VERSION } from './protocol';
@@ -213,6 +214,7 @@ export const ConversationControlCommandRequestSchema = z.union([
   ConversationControlResultRequestSchema,
   ConversationControlAuditRequestSchema,
   ConversationControlWorkspaceToolsRequestSchema,
+  ConversationControlCommandApprovalsRequestSchema,
 ]);
 
 export type ConversationControlSendRequest = z.infer<

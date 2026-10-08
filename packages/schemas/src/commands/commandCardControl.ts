@@ -33,6 +33,7 @@ export const CommandCardExecutionSettlementV1Schema = z.object({
   protocol_version: z.literal(COMMAND_CARD_CONTROL_PROTOCOL_VERSION),
   kind: z.literal('command_card_execution_settlement'),
   conversation_id: z.string().trim().min(1),
+  agent_run_id: z.string().trim().min(1),
   process_handle: CommandProcessHandleSchema,
   /**
    * 用于历史 tool_call_decision 未收到 tool_output 时的 settlement 关联。

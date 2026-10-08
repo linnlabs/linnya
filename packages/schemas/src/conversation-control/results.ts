@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { CommandApprovalPendingProjectionV1Schema } from '../commands';
+import { ConversationControlCommandApprovalsResponseSchema } from './commandApprovals';
 import { JsonValueSchema } from '../json-value';
 import { ConversationHistoryListItemSchema } from '../conversation/history';
 import { ConversationUiMessageSchema } from '../conversation/ui-message';
@@ -164,6 +166,7 @@ export const ConversationControlRunStatusSnapshotSchema = z
     pause: z.object({ settled: z.boolean(), reason: z.string().optional() }).strict().optional(),
     terminal_at: z.number().finite().nonnegative().optional(),
     pending_interaction: ConversationControlPendingInteractionSchema.optional(),
+    command_approvals: z.array(CommandApprovalPendingProjectionV1Schema),
     result_available: z.boolean(),
     error: z
       .object({
@@ -638,6 +641,7 @@ export const ConversationControlErrorResponseSchema = z
         'result',
         'audit',
         'workspace_tools',
+        'command_approvals',
       ])
       .optional(),
     error: z
@@ -663,6 +667,7 @@ export const ConversationControlCommandResponseSchema = z.union([
   ConversationControlResultResponseSchema,
   ConversationControlAuditResponseSchema,
   ConversationControlWorkspaceToolsResponseSchema,
+  ConversationControlCommandApprovalsResponseSchema,
   ConversationControlErrorResponseSchema,
 ]);
 

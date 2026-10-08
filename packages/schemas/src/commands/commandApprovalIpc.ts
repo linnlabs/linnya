@@ -7,6 +7,9 @@ import {
 } from './commandApproval';
 import {
   CommandApprovalRequestIdSchema,
+  CommandAgentRunIdSchema,
+  CommandOriginToolCallIdSchema,
+  CommandExecutionIdSchema,
   CommandConversationIdSchema,
 } from './commandIdentity';
 
@@ -25,6 +28,9 @@ export const CommandApprovalPendingProjectionV1Schema = z.object({
   kind: z.literal('command_approval_pending_projection'),
   approval_request_id: CommandApprovalRequestIdSchema,
   conversation_id: CommandConversationIdSchema,
+  agent_run_id: CommandAgentRunIdSchema,
+  origin_tool_call_id: CommandOriginToolCallIdSchema,
+  command_execution_id: CommandExecutionIdSchema,
   command: z.string(),
   cwd: z.string().min(1),
   reasons: z.array(CommandApprovalReasonSchema).min(1),
