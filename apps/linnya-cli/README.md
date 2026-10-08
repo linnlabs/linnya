@@ -123,7 +123,9 @@ pnpm linnya:cli approval-reply <conversation-id> \
 
 `awaiting_reply` 会让 `status --watch` 返回控制权；`processing` 表示已有客户端作答，继续观察。
 回复回执 `accepted` 只表示接纳，授权持久化和命令最终结果仍需观察原 run；不需要 `resume`
-或再 `send`。Renderer 与 CLI 竞争回复时只有一次接纳，旧请求返回 `stale` 回执及退出码 6。
+或再 `send`。后续 `status --watch` 使用最初发送回执里的 foreground root `run_id`；
+`approval-reply --run` 使用的 child 身份不等于 `status` 支持的查询目标。
+Renderer 与 CLI 竞争回复时只有一次接纳，旧请求返回 `stale` 回执及退出码 6。
 回复传输失败不自动重试：先查询 exact 请求和原 run，避免把未确认回执当成未执行。
 
 Shell 审批与 `respond --approve` 无关。控制协议 3 要求明确返回 `command_approvals`
