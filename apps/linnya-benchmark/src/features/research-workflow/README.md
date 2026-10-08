@@ -50,6 +50,12 @@ Conversation，避免引用别名跨会话漂移；Citation 快照排除展示 i
 / web_read / tool_output_read 和 Shell/Process execution
 observation：搜索摘要、metadata-only、正文、续读范围、失败与未知合同分别保存。深搜子运行的「已读」说明不会变成父运行全文；Shell/Process实际返回单列为命令观察，不能自动认证为外部来源；未返回的下载文件或 child 正文不被自动认定为已取得来源。
 
+**取得记录不等于可交接资料。** `tool_output_read` 也可能续读评审、笔记或 Skill，不能因工具名就收入来源包。目前 CLI 消息不携带通用 blob producer metadata；只有先前同一会话、同一 run 的 Shell/Process 正式结构化 blob 身份能绑定续读。其余续读（包括无法证明归属的网页续读）保留原始 observation、范围与 `packetDisposition`，不发布正文；资料索引明确报告排除次数。不从正文里的调用示例、URL、引用或 blob 字符串猜测来源，也不改 Host 合同补充旁路。
+
+已绑定的命令续读仍是命令观察，不是经过认证的网页，也不保证命令未读越界文件；固定材料实验仍需审计命令行为。未知/不匹配的续读结果同样不进入资料包。完成交接不代表完整转交所有取得内容，缺少 producer 信息是当前原型的明确限制。
+
+完成发布的阶段记录 `sourcePacketPolicyVersion`。恢复旧 completed 状态时，缺少本版本来源准入证明的资料包及后继阶段标 stale，不自动继续发送；保留旧包，在独立输出中重新核查并显式发布新前缀，不能原地改写旧实验。
+
 原始 messages 与 source-records 保留取得版本、实际 observation 原件和 hash。owner 截断与外层截断信号分开；续读 data 中的 window 只有完整出现在实际 observation 才能声明取得范围，不把结构化载荷中的未见尾部转交后续模型。供下一会话读的 packet 使用短片段、明确 Workspace
 locator 与文本围栏；原会话 blob 调用片段被隔离，转换区间有记录、同行资料仍保留，原始审计不修改。分片不是新来源，原取得失败不会被另一次成功覆盖。
 

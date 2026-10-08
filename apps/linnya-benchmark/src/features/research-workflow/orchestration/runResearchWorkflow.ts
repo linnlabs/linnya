@@ -2,6 +2,7 @@ import path from 'node:path';
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import {
   stageIds,
+  sourcePacketPolicyVersion,
   type ResearchToolMessage,
   type ResearchWorkflowCliPort,
   type StageId,
@@ -85,6 +86,19 @@ export async function runResearchWorkflow(
       let saved = state.stages.find(candidate => candidate.id === stage.id);
       if (saved && ['stale', 'admission_unknown', 'failed', 'cancelled'].includes(saved.status))
         return state;
+      if (
+        saved?.status === 'completed' &&
+        stage.sourcePacket &&
+        saved.sourcePacketPolicyVersion !== sourcePacketPolicyVersion
+      ) {
+        invalidateStages(
+          state,
+          stage.id,
+          'Source packet admission policy changed; preserve old records and revalidate in a separate output'
+        );
+        await save();
+        return state;
+      }
       const inputs: Projection[] = [];
       for (const locator of allowed) inputs.push(await read(locator));
       if (saved) {
@@ -217,6 +231,7 @@ export async function runResearchWorkflow(
         );
         saved.outputs = collected.outputs;
         saved.packetDocuments = collected.packetDocuments;
+        if (stage.sourcePacket) saved.sourcePacketPolicyVersion = sourcePacketPolicyVersion;
         for (const frozen of saved.inputs) {
           const current = await read(frozen.locator);
           if (current.versionHash !== frozen.versionHash) {

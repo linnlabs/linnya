@@ -12,6 +12,7 @@ import type {
 import type { BenchmarkConversationCliPort } from '../../../definitions/conversationCliPort';
 
 export const stageIds = ['D0', 'R0', 'D1', 'R1'] as const;
+export const sourcePacketPolicyVersion = 1;
 export const StageIdSchema = z.enum(stageIds);
 const locator = z.string().regex(/^workspace:\/[^\n]+$/);
 export const ResearchStageSchema = z
@@ -130,6 +131,8 @@ export const StageStateSchema = z
     inputs: z.array(ProjectionSchema),
     outputs: z.array(ProjectionSchema).default([]),
     packetDocuments: z.array(ProjectionSchema).default([]),
+    // 旧资料包没有来源准入证明；读旧状态不等于授权继续传递旧材料。
+    sourcePacketPolicyVersion: z.literal(sourcePacketPolicyVersion).optional(),
     startedAt: z.number(),
     finishedAt: z.number().optional(),
     resumePending: z.boolean().default(false),

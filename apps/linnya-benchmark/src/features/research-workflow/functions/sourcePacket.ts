@@ -30,6 +30,8 @@ export interface SourceRecord {
   bundleId?: string;
   observation: string;
   observationHash: string;
+  packetDisposition: 'include' | 'exclude_unbound_continuation';
+  continuationOrigin?: { messageId: string; callId: string; tool: string; blobId: string };
   returnedRange?: { start: number; end: number; total: number };
   ownerTruncated?: boolean;
   outerTruncationObserved: boolean;
@@ -44,6 +46,7 @@ export interface SourceRecord {
 /** 来源范围只认本次根运行实际返回的正文，不把子运行「读过」升级成父上下文全文。 */
 export function collectSourceRecords(messages: readonly ConversationUiMessage[]): SourceRecord[] {
   const records: SourceRecord[] = [];
+  const commandBlobs = new Map<string, NonNullable<SourceRecord['continuationOrigin']>>();
   for (const message of messages) {
     if (message.message_type !== 'tool_calls') continue;
     const payload = message.payload;
@@ -54,6 +57,13 @@ export function collectSourceRecords(messages: readonly ConversationUiMessage[])
     )
       continue;
     const observation = message.content ?? '';
+    // 续读只是运输通道，不能把评审、Skill 或其他 Workspace 内容自动变成外部资料。
+    // 当前 message 合同没有通用 producer metadata；只接受命令 owner 的结构化 blob 身份。
+    const requestedBlob = payload.args?.blob_id;
+    const continuationOrigin =
+      payload.tool_name === 'tool_output_read' && typeof requestedBlob === 'string'
+        ? commandBlobs.get(JSON.stringify([message.conversation_id, message.run_id, requestedBlob]))
+        : undefined;
     const common = {
       id: `source-${String(records.length + 1).padStart(3, '0')}`,
       messageId: message.message_id,
@@ -61,6 +71,11 @@ export function collectSourceRecords(messages: readonly ConversationUiMessage[])
       tool: payload.tool_name,
       observation,
       observationHash: hashText(observation),
+      packetDisposition:
+        payload.tool_name === 'tool_output_read' && !continuationOrigin
+          ? ('exclude_unbound_continuation' as const)
+          : ('include' as const),
+      ...(continuationOrigin ? { continuationOrigin } : {}),
       outerTruncationObserved: /内容已截断：原始行数=\d+，原始字符数=\d+/.test(observation),
     };
     if (payload.status !== 'success') {
@@ -111,9 +126,11 @@ export function collectSourceRecords(messages: readonly ConversationUiMessage[])
       });
     } else if (continuation?.success) {
       const data = continuation.data;
+      const bound = continuationOrigin !== undefined && requestedBlob === data.blob_id;
       const visible = observation.includes(data.window_text);
       records.push({
         ...common,
+        packetDisposition: bound ? 'include' : 'exclude_unbound_continuation',
         kind: visible ? 'continuation' : 'unverified',
         ...(visible
           ? {
@@ -124,10 +141,28 @@ export function collectSourceRecords(messages: readonly ConversationUiMessage[])
               },
             }
           : {}),
-        limitation: `历史blob=${data.blob_id}; 完整window是否实际出现在observation=${visible}; 不把data中未返回正文交给下一阶段，不自动拼完整来源`,
+        limitation: `历史blob=${data.blob_id}; 完整window是否实际出现在observation=${visible}; 结构化命令来源绑定=${bound}; 未绑定续读仅留原始审计，不交给下一阶段；命令观察不等于外部来源`,
       });
     } else if (execution?.success) {
       const data = execution.data;
+      const store = data.status === 'completed' ? data.command_output_store : undefined;
+      const streams = store
+        ? store.mode === 'pipe'
+          ? [store.stdout, store.stderr]
+          : [store.terminal]
+        : [];
+      const blobs = [
+        ...(data.tool_output_store ? [data.tool_output_store.blob_id] : []),
+        ...streams.flatMap(stream => (stream.status === 'published' ? [stream.blob_id] : [])),
+      ];
+      for (const blobId of blobs) {
+        commandBlobs.set(JSON.stringify([message.conversation_id, message.run_id, blobId]), {
+          messageId: message.message_id,
+          callId: payload.tool_call_id,
+          tool: payload.tool_name,
+          blobId,
+        });
+      }
       records.push({
         ...common,
         kind: 'execution_observation',
@@ -142,6 +177,9 @@ export function collectSourceRecords(messages: readonly ConversationUiMessage[])
     } else
       records.push({
         ...common,
+        ...(payload.tool_name === 'tool_output_read'
+          ? { packetDisposition: 'exclude_unbound_continuation' as const }
+          : {}),
         kind: 'unverified',
         limitation: '未知取得合同；只保存原始返回，不升级为正文',
       });
@@ -175,7 +213,12 @@ export function renderSourcePacket(
 ) {
   const documents: Array<{ locator: string; content: string }> = [];
   const rows: string[] = [];
+  let excluded = 0;
   for (const record of records) {
+    if (record.packetDisposition === 'exclude_unbound_continuation') {
+      excluded += 1;
+      continue;
+    }
     const { visible, transformations } = isolateContinuationInstructions(record.observation);
     // 短片段避免一份来源包再次落入外层 observation 截断；分片不是新来源。
     for (let offset = 0; ; ) {
@@ -223,9 +266,14 @@ export function renderSourcePacket(
       '# 本次实际取得资料',
       '仅记录根运行返回；摘要、截断、失败和未核查不能等同于正文已读或结论成立。完整原始返回另存于本地审计。',
       ...rows,
-      records.length === 0
+      records.length === excluded
         ? '没有可导出的网页取得记录。'
         : '同一source编号的片段属于一次取得版本，不能按链接数计算独立来源。',
+      ...(excluded > 0
+        ? [
+            `有 ${excluded} 次续读缺少可验证的来源归属，仅保留在原始审计，未纳入本资料包。不能据此声称完整交接。`,
+          ]
+        : []),
     ].join('\n\n'),
   });
   return documents;
