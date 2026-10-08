@@ -315,6 +315,7 @@ describe('renderer command card control page generation', () => {
       protocol_version: 1 as const,
       kind: 'command_card_execution_settlement' as const,
       conversation_id: 'A',
+      agent_run_id: 'run-A',
       process_handle: OTHER_HANDLE,
       started_at_ms: 10,
       settled_at_ms: 20,

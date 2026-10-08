@@ -14,6 +14,7 @@ describe('buildToolPresentationRuntimeBindings', () => {
       capabilities: { subrunTrace: true },
       conversationId: 'conversation-1',
       parentToolCallId: 'tool-1',
+      runId: 'run-1',
       subrunTrace: trace,
       subrunTraceVersion: 3,
       historicalSubrunTraceSource: lazySource,
@@ -25,11 +26,24 @@ describe('buildToolPresentationRuntimeBindings', () => {
     });
   });
 
+  it('命令交互按显式 capability 获得完整 run/tool 身份，不泄露其它运行事实', () => {
+    expect(buildToolPresentationRuntimeBindings({
+      capabilities: { toolIdentity: true },
+      conversationId: 'conversation-1',
+      runId: 'run-1',
+      parentToolCallId: 'tool-1',
+      subrunTrace: {},
+      subrunTraceVersion: 0,
+      historicalSubrunTraceSource: lazySource,
+    })).toEqual({ toolIdentity: { runId: 'run-1', toolCallId: 'tool-1' } });
+  });
+
   it('未声明 capability 时不旁路暴露 Host 运行态', () => {
     expect(buildToolPresentationRuntimeBindings({
       capabilities: undefined,
       conversationId: 'conversation-1',
       parentToolCallId: 'tool-1',
+      runId: 'run-1',
       subrunTrace: {},
       subrunTraceVersion: 0,
       historicalSubrunTraceSource: lazySource,
@@ -41,6 +55,7 @@ describe('buildToolPresentationRuntimeBindings', () => {
       capabilities: { conversationId: true },
       conversationId: 'conversation-1',
       parentToolCallId: 'tool-1',
+      runId: 'run-1',
       subrunTrace: {},
       subrunTraceVersion: 0,
       historicalSubrunTraceSource: lazySource,
@@ -63,6 +78,7 @@ describe('buildToolPresentationRuntimeBindings', () => {
       capabilities: { attachments: true },
       conversationId: 'conversation-1',
       parentToolCallId: 'tool-1',
+      runId: 'run-1',
       subrunTrace: undefined,
       subrunTraceVersion: 0,
       historicalSubrunTraceSource: undefined,
@@ -73,6 +89,7 @@ describe('buildToolPresentationRuntimeBindings', () => {
       capabilities: undefined,
       conversationId: 'conversation-1',
       parentToolCallId: 'tool-1',
+      runId: 'run-1',
       subrunTrace: undefined,
       subrunTraceVersion: 0,
       historicalSubrunTraceSource: undefined,

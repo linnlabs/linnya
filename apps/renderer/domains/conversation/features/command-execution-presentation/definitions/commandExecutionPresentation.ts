@@ -1,4 +1,5 @@
 import type {
+  CommandApprovalPendingProjectionV1,
   CommandExecutionPresentationFactsV1,
   CommandOutputIncompleteReason,
   CommandProcessHandle,
@@ -7,6 +8,7 @@ import type {
   ShellToolPublicRejectionCode,
   ShellToolTerminalSummary,
 } from '@app/schemas/commands';
+import type { ToolTitleDescriptor } from '@linnya/plugin-host-contract/renderer/toolUi';
 
 export type CommandExecutionDisplayState =
   | 'starting'
@@ -66,3 +68,10 @@ export type CommandExecutionPresentationData =
   | CommandExecutionLifecyclePresentationData
   | ShellCommandExecutionPresentationData
   | ProcessCommandExecutionPresentationData;
+
+/** 命令卡片的动态展示；审批和终态只覆盖视觉，不改写工具 lifecycle。 */
+export interface CommandExecutionDisplay {
+  readonly data: CommandExecutionPresentationData;
+  readonly approvalStatus?: CommandApprovalPendingProjectionV1['status'];
+  readonly title: ToolTitleDescriptor;
+}

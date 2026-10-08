@@ -13,6 +13,7 @@ const CommandExecutionCard = defineAsyncComponent(
 
 const commandExecutionConfig: ToolUiConfig = {
   component: CommandExecutionCard,
+  titleComponent: defineAsyncComponent(() => import('./ui/CommandExecutionTitle.vue')),
   icon: TerminalIcon,
   presentation: projectCommandExecutionPresentation,
   compactStep: projectCommandExecutionCompactStep,
@@ -20,7 +21,7 @@ const commandExecutionConfig: ToolUiConfig = {
     fullWidth: true,
     defaultCollapsed: true,
   },
-  runtime: { conversationId: true },
+  runtime: { conversationId: true, toolIdentity: true },
 };
 
 export const commandExecutionToolConfigs: Readonly<Record<string, ToolUiConfig>> = {

@@ -113,6 +113,7 @@
             :is="registryConfig.titleComponent"
             class="tool-card__name-text"
             :fallback-title="registryTitleMainText || registryTitleText"
+            :presentation="toolPresentation"
             :status="status"
             v-bind="presentationRuntimeBindings"
           />
@@ -388,6 +389,7 @@ const presentationRuntimeBindings = computed(() => ({
     capabilities: registryConfig.value?.runtime,
     conversationId: conversationRenderScope.conversationId,
     parentToolCallId: canonicalToolCallId.value,
+    runId: props.message.metadata.run_id,
     subrunTrace: subrunTrace.value,
     subrunTraceVersion: subrunTraceVersion.value,
     historicalSubrunTraceSource: historicalSubrunTraceSource.value,

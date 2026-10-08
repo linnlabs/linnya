@@ -1,9 +1,10 @@
 import type { ToolUiConfig } from '../../tools/types';
-import type { ToolUiImageAttachmentRef } from '@linnya/plugin-host-contract/renderer/toolUi';
+import type { ToolUiImageAttachmentRef, ToolUiExecutionIdentity } from '@linnya/plugin-host-contract/renderer/toolUi';
 import type { HistoricalSubrunTraceLazySource } from '../../../features/subrun-trace';
 
 export interface ToolPresentationRuntimeBindings {
   readonly conversationId?: string;
+  readonly toolIdentity?: ToolUiExecutionIdentity;
   readonly parentToolCallId?: string;
   readonly subrunTrace?: unknown;
   readonly subrunTraceVersion?: number;
@@ -15,6 +16,7 @@ export interface ToolPresentationRuntimeBindings {
 export function buildToolPresentationRuntimeBindings(input: {
   readonly capabilities: ToolUiConfig['runtime'] | undefined;
   readonly conversationId: string;
+  readonly runId: string;
   readonly parentToolCallId: string;
   readonly subrunTrace: unknown;
   readonly subrunTraceVersion: number;
@@ -22,6 +24,9 @@ export function buildToolPresentationRuntimeBindings(input: {
   readonly attachments?: readonly ToolUiImageAttachmentRef[];
 }): ToolPresentationRuntimeBindings {
   return {
+    ...(input.capabilities?.toolIdentity === true
+      ? { toolIdentity: { runId: input.runId, toolCallId: input.parentToolCallId } }
+      : {}),
     ...(input.capabilities?.subrunTrace === true
       ? {
         parentToolCallId: input.parentToolCallId,

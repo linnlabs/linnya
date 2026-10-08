@@ -219,7 +219,10 @@ compact port 返回未命中并显示通用诊断标题；已注册 projector �
 
 卡片需要 subrun trace 或按 conversation scope 读取历史资源时，必须在 `ToolUiConfig.runtime` 逐项声明
 capability。Host 只透传被声明的 live/durable trace、历史 lazy source 或 active conversation identity；这些
-运行期事实不能进入 presentation，也不能借 capability 扩张为整份 message/store context。Knowledge Search
+运行期事实不能进入 presentation，也不能借 capability 扩张为整份 message/store context。
+需要按具体执行关联外部 owner 状态时，显式声明 `toolIdentity`，仅取得 `{ runId, toolCallId }`；
+命令审批和进程终态依此与 conversation scope 精确匹配。动态标题与正文可以接收同一份
+已 admission 的 presentation 及声明能力，但不得重新解析 raw args/result。Knowledge Search
 是当前参考实现：三种工具名共用一个 projector，trace 与历史 Citation Snapshot reader 分别经显式
 capability 和 Conversation 窄 port 进入卡片。
 

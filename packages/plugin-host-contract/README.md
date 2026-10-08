@@ -66,7 +66,11 @@ Host 只传递已经由 durable `tool_output.attachments` 映射出的 `ToolUiIm
 的 `modelInput` selection，也不包含本地路径、claim URI 或 provider payload。工具卡只能展示该事实，不能
 重新调用工具读取图片。
 
-动态工具标题只允许通过可选 `ToolUiConfig.titleComponent` 替换标准外壳中的标题正文；图标、标签、折叠和点击仍归 Host。标题组件只接收已解析的 fallback 标题、工具 lifecycle，以及该卡在 `runtime` 显式声明的能力，不能读取 Conversation store 或重新解释工具 raw payload。注册后运行态标题视觉由该组件负责，但执行判定必须消费 Host 的统一活动态，不能从工具 loading 推断；Host 在暂停等非执行阶段不显示 header 状态。普通静态标题继续由 presentation projector 提供，不应为样式差异注册组件。
+动态工具标题只允许通过可选 `ToolUiConfig.titleComponent` 替换标准外壳中的标题正文；图标、标签、折叠和点击仍归 Host。标题组件只接收已解析的 fallback 标题、已 admission 的 presentation、工具 lifecycle，以及该卡在 `runtime` 显式声明的能力，不能读取 Conversation store 或重新解释工具 raw payload。注册后运行态标题视觉由该组件负责，但执行判定必须消费 Host 的统一活动态，不能从工具 loading 推断；Host 在暂停等非执行阶段不显示 header 状态。普通静态标题继续由 presentation projector 提供，不应为样式差异注册组件。
+
+需要把外部 owner 的审批/终态事实与具体工具关联时，卡片声明 `runtime.toolIdentity: true`。
+Host 仅提供 `{ runId, toolCallId }`，与 `conversationId` 分别声明；不提供整个 message/store，
+也不允许工具从命令文本或 message ID 拆解身份。标题与正文接收同一能力；该通用合同不认识 Commands。
 
 工具正文的执行占位统一使用 `ToolActivityIndicator`；插件只传运行中的业务文案与文字效果选择，三类用户状态（暂停、进行中、AI 输出结束）及动画开关由 Host 的 Conversation owner 维护，禁止插件复制动效实现或读取 Conversation store。
 

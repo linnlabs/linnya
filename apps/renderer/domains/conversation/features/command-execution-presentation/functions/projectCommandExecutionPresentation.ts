@@ -364,35 +364,41 @@ function projectFailedProcessResult(
   };
 }
 
-function title(data: CommandExecutionPresentationData) {
+export function projectCommandExecutionTitle(data: CommandExecutionPresentationData) {
   const state = data.state;
   const fallback =
-    state === 'running' || state === 'starting'
-      ? 'Running command'
-      : state === 'completed'
-        ? 'Command completed'
-        : state === 'rejected'
-          ? 'Command rejected'
-          : 'Command failed';
+    state === 'starting'
+      ? 'Preparing command'
+      : state === 'running'
+        ? 'Running command'
+        : state === 'completed'
+          ? 'Command completed'
+          : state === 'rejected'
+            ? 'Command rejected'
+            : 'Command failed';
   if (data.source !== 'shell' || data.kind === 'command_execution_lifecycle') {
     const key =
-      state === 'running' || state === 'starting'
-        ? 'conversation.tool.command.running'
-        : state === 'completed'
-          ? 'conversation.tool.command.completed'
-          : state === 'rejected'
-            ? 'conversation.tool.command.rejected'
-            : 'conversation.tool.command.failed';
+      state === 'starting'
+        ? 'conversation.tool.command.starting'
+        : state === 'running'
+          ? 'conversation.tool.command.running'
+          : state === 'completed'
+            ? 'conversation.tool.command.completed'
+            : state === 'rejected'
+              ? 'conversation.tool.command.rejected'
+              : 'conversation.tool.command.failed';
     return { text: { key, fallback } } as const;
   }
   const key =
-    state === 'running' || state === 'starting'
-      ? 'conversation.tool.command.shellRunning'
-      : state === 'completed'
-        ? 'conversation.tool.command.shellCompleted'
-        : state === 'rejected'
-          ? 'conversation.tool.command.shellRejected'
-          : 'conversation.tool.command.shellFailed';
+    state === 'starting'
+      ? 'conversation.tool.command.shellStarting'
+      : state === 'running'
+        ? 'conversation.tool.command.shellRunning'
+        : state === 'completed'
+          ? 'conversation.tool.command.shellCompleted'
+          : state === 'rejected'
+            ? 'conversation.tool.command.shellRejected'
+            : 'conversation.tool.command.shellFailed';
   return {
     text: {
       key,
@@ -424,7 +430,7 @@ export function projectCommandExecutionPresentation(
               incompleteReasons: [],
             }
           : projectFailedShellResult(args, input.toolCallId);
-      return { data, title: title(data) };
+      return { data, title: projectCommandExecutionTitle(data) };
     }
     const args = readShellArguments(input.args);
     const data = projectShellResult(
@@ -432,7 +438,7 @@ export function projectCommandExecutionPresentation(
       ShellToolStructuredResultSchema.parse(input.result),
       input.toolCallId
     );
-    return { data, title: title(data) };
+    return { data, title: projectCommandExecutionTitle(data) };
   }
   if (input.sourceToolName !== 'process') {
     throw new Error(`命令展示不能处理工具: ${input.sourceToolName}`);
@@ -454,9 +460,9 @@ export function projectCommandExecutionPresentation(
             incompleteReasons: [],
           }
         : projectFailedProcessResult(args);
-    return { data, title: title(data) };
+    return { data, title: projectCommandExecutionTitle(data) };
   }
   const args = readProcessArguments(input.args);
   const data = projectProcessResult(args, ProcessToolStructuredResultSchema.parse(input.result));
-  return { data, title: title(data) };
+  return { data, title: projectCommandExecutionTitle(data) };
 }

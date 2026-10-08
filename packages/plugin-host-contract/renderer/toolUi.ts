@@ -77,6 +77,12 @@ export interface ToolPresentationProjectorInput {
  */
 export type ToolUiImageAttachmentRef = ConversationAttachmentRef;
 
+/** 一次工具调用的正式身份；toolCallId 只在 run 内唯一。 */
+export interface ToolUiExecutionIdentity {
+  readonly runId: string;
+  readonly toolCallId: string;
+}
+
 export interface ToolPresentationProjection<TData = unknown> {
   /**
    * Renderer-only 展示数据。生命周期态只能消费 projector 自己的 lifecycle admission；
@@ -181,6 +187,8 @@ export interface ToolUiConfig {
     readonly subrunTrace?: true;
     /** 只用于确实需要按消息所属 conversation scope 读取历史资源的卡片。 */
     readonly conversationId?: true;
+    /** 审批与执行 sidecar 只能按完整工具身份绑定，不能按命令文本猜测。 */
+    readonly toolIdentity?: true;
     /** 只用于展示已由 Host durable event 携带的图片附件。 */
     readonly attachments?: true;
   };

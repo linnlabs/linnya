@@ -37,6 +37,7 @@ describe('command card durable settlement overlay', () => {
       protocol_version: 1,
       kind: 'command_card_execution_settlement',
       conversation_id: 'conversation-overlay',
+      agent_run_id: 'run-overlay',
       process_handle: source.processHandle,
       origin_tool_call_id: 'call-overlay',
       started_at_ms: 100,
@@ -49,7 +50,10 @@ describe('command card durable settlement overlay', () => {
         signal: 'SIGTERM',
       },
     });
-    expect(applyCommandCardSettlement(source, settlement)).toMatchObject({
+    expect(applyCommandCardSettlement(source, settlement, {
+      conversationId: 'conversation-overlay', runId: 'run-overlay',
+      toolCallId: source.toolCallId ?? 'call-overlay',
+    })).toMatchObject({
       state: 'completed',
       command: 'sleep 60',
       observation: 'original output',
@@ -73,7 +77,9 @@ describe('command card durable settlement overlay', () => {
         ...executionFacts,
         audit_status: 'complete',
       },
-    }, durableAuditFailure).executionFacts?.audit_status).toBe('incomplete');
+    }, durableAuditFailure, {
+      conversationId: 'conversation-overlay', runId: 'run-overlay', toolCallId: 'call-overlay',
+    }).executionFacts?.audit_status).toBe('incomplete');
   });
 
   it('可用 origin_tool_call_id 为历史 loading 卡片关联已有 settlement', () => {
@@ -92,6 +98,7 @@ describe('command card durable settlement overlay', () => {
       protocol_version: 1,
       kind: 'command_card_execution_settlement',
       conversation_id: 'conversation-overlay',
+      agent_run_id: 'run-overlay',
       process_handle: 'command_process_00000000-0000-4000-8000-000000000004',
       origin_tool_call_id: 'call-history-loading',
       started_at_ms: 100,
@@ -105,7 +112,10 @@ describe('command card durable settlement overlay', () => {
       },
     });
 
-    expect(applyCommandCardSettlement(source, settlement)).toMatchObject({
+    expect(applyCommandCardSettlement(source, settlement, {
+      conversationId: 'conversation-overlay', runId: 'run-overlay',
+      toolCallId: source.toolCallId ?? 'call-overlay',
+    })).toMatchObject({
       state: 'completed',
       terminal: { outcome: 'terminated', reason: 'owner_ended' },
     });

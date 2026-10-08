@@ -15,7 +15,8 @@ command-execution-presentation/
 │   ├── projectCommandExecutionDetails.ts
 │   └── applyCommandCardSettlement.ts
 ├── store/ (由对话 presentation 管理)
-├── ui/CommandExecutionCard.vue
+├── orchestration/useCommandExecutionDisplay.ts
+├── ui/{CommandExecutionCard,CommandExecutionTitle}.vue
 └── CommandExecutionCard.css
 ```
 
@@ -23,7 +24,7 @@ command-execution-presentation/
 
 ## 3. 卡片产品合同
 
-- 运行中标题使用“正在运行 …”，完成后使用“已运行 …”；命令过长由后端提供安全摘要，UI 不自行截断 shell 语义。
+- 尚无进程启动事实时标题使用“准备运行 …”；审批 pending 使用“等待审批 …”或“正在处理审批 …”，关闭执行动画。运行中使用“正在运行 …”，完成后使用“已运行 …”；命令过长由后端提供安全摘要，UI 不自行截断 shell 语义。
 - 终端小窗口只显示 text projection 或 PTY screen projection；不把 ANSI、HTML、SVG 或 artifact 路径直接插入 DOM。
 - 完成状态、耗时、复制按钮位于卡片底部；退出码是内部事实，不作为主视觉字段，但可在需要诊断的详情中展示。
 - 复制动作组合命令和当前可读取的输出正文，失败时显示普通错误，不改变执行终态。
@@ -33,7 +34,19 @@ command-execution-presentation/
   `ShellToolStructuredResult` / `ProcessToolStructuredResult`；具体错误继续由通用 ToolErrorCard 展示。
 - 失败的 `process` 控制调用必须保留为独立错误消息，不能聚合进原 Shell 卡片后被吞掉。
 
-## 4. 四层输出不能混合
+## 4. 审批与终态叠加
+
+`resolveCommandExecutionDisplay` 是标题与正文共用的纯派生；`useCommandExecutionDisplay`
+只连接审批投影和 command control 快照。原始 tool lifecycle/presentation 不改写。
+
+- registry 显式声明 `conversationId + toolIdentity`，通过正式 run/tool 身份关联 owner 快照。
+  相同 conversation 的同名命令或另一 run 的相同 tool ID 不能串线。
+- `processing` 表示审批处理，pending 移除只表示审批结束；没有进程事实不能显示执行成功。
+- Commands terminal settlement 优先于旧 tool loading 和迟到 pending。底栏与折叠标题共同显示
+  真实终态，不因 Runtime 工具回执尚未到达而继续显示运行中；持续时间只取执行事实。
+- reload 的 snapshot 与实时 changed 事件使用同一规则；不根据墙钟、命令文本或父 run 结束猜测完成。
+
+## 5. 四层输出不能混合
 
 1. raw byte artifact 是证据和恢复源。
 2. Agent text 是模型观察，可能只有 head/tail 和 `tool_output://` 引用。
@@ -42,10 +55,12 @@ command-execution-presentation/
 
 组件只能消费第 3、4 层。不能为了复制按钮或“看起来完整”而读取第 1 层并在 Renderer 拼接。
 
-## 5. PTY 和控制
+## 6. PTY 和控制
 
 卡片中的 cancel、write、submit、eof、resize 都通过 control host 使用 opaque ticket。Renderer 不传 PID、Job、PGID 或 runner generation。resize 失败不能污染后续 projection 链；收到 tree-empty 后不再向 native PTY 发送输入。
 
-## 6. 测试门禁
+## 7. 测试门禁
 
 重点覆盖 presentation facts 的进行中/完成/拒绝/运行时失败投影、外层工具失败的 live/reload 同源、消息合并、复制内容、PTY 屏幕 allowlist、durable card 恢复和控制动作错误。不要把字体、颜色、间距、折叠动画写成脆弱的视觉快照测试。
+
+`CommandExecutionApproval.integration.test.ts` 同时挂载真实标题与正文，覆盖审批→处理中→准备执行→终态、拒绝与取消、旧 loading/迟到 pending、跨 run 隔离及 reload 快照恢复。

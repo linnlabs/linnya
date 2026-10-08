@@ -1,14 +1,23 @@
 import type { CommandCardExecutionSettlementV1 } from '@app/schemas/commands';
+import type { ToolUiExecutionIdentity } from '@linnya/plugin-host-contract/renderer/toolUi';
 import type { CommandExecutionPresentationData } from '../definitions/commandExecutionPresentation';
 
 /** sidecar 只覆盖终态和时间，不得改写原 Shell 命令、权限、输出或 PTY 屏幕。 */
 export function applyCommandCardSettlement(
   data: CommandExecutionPresentationData,
-  settlement: CommandCardExecutionSettlementV1 | undefined
+  settlement: CommandCardExecutionSettlementV1 | undefined,
+  scope: ToolUiExecutionIdentity & { readonly conversationId: string }
 ): CommandExecutionPresentationData {
   if (!settlement || data.kind === 'command_execution_lifecycle' || data.source !== 'shell') {
     return data;
   }
+  if (
+    settlement.conversation_id !== scope.conversationId ||
+    settlement.agent_run_id !== scope.runId ||
+    (settlement.origin_tool_call_id !== undefined &&
+      settlement.origin_tool_call_id !== scope.toolCallId)
+  )
+    return data;
   const matchesProcessHandle =
     data.processHandle !== undefined && data.processHandle === settlement.process_handle;
   const matchesToolCall =

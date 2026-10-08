@@ -45,7 +45,17 @@
 
       <div class="command-execution-card__footer">
         <div class="command-execution-card__footer-left">
-          <ToolActivityIndicator v-if="presentation.status === 'loading'" compact />
+          <span
+            v-if="display.approvalStatus"
+            class="command-execution-card__status"
+          >
+            {{ approvalStatusText }}
+          </span>
+          <ToolActivityIndicator
+            v-else-if="presentation.status === 'loading' && (data.state === 'starting' || data.state === 'running')"
+            :running-label="stateText"
+            compact
+          />
           <span v-else class="command-execution-card__status" :class="`is-${data.state}`">
             {{ footerStatusText }}
           </span>
@@ -104,7 +114,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import type { ToolCardPresentation } from '@linnya/plugin-host-contract/renderer/toolUi';
+import type { ToolCardPresentation, ToolUiExecutionIdentity } from '@linnya/plugin-host-contract/renderer/toolUi';
 
 import { useConversationLocalization } from '../../../ui/useConversationLocalization';
 import type {
@@ -126,7 +136,7 @@ import {
   cancelCommandFromCurrentCard,
   submitProtectedInputFromCurrentCard,
 } from '../orchestration/useCommandCardControl';
-import { applyCommandCardSettlement } from '../functions/applyCommandCardSettlement';
+import { useCommandExecutionDisplay } from '../orchestration/useCommandExecutionDisplay';
 import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import './CommandExecutionCard.css';
 
@@ -134,6 +144,7 @@ const props = defineProps<{
   readonly presentation: ToolCardPresentation<CommandExecutionPresentationData>;
   readonly messageId?: string;
   readonly conversationId?: string;
+  readonly toolIdentity?: ToolUiExecutionIdentity;
 }>();
 const { conversationMessage, currentLocale } = useConversationLocalization();
 const controlStore = useCommandCardControlStore();
@@ -142,26 +153,17 @@ const protectedInputSubmitting = ref(false);
 const protectedInputFailureCode = ref<string>();
 const copyFeedback = ref<'idle' | 'copied' | 'failed'>('idle');
 let copyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
-const sourceData = computed(() => props.presentation.data);
-const settlement = computed(() => {
-  const source = sourceData.value;
-  if (
-    source.kind === 'command_execution_lifecycle' ||
-    source.source !== 'shell' ||
-    (!source.processHandle && !source.toolCallId)
-  )
-    return undefined;
-  const snapshot = controlStore.snapshot;
-  if (!snapshot || snapshot.conversation_id !== props.conversationId) return undefined;
-  return snapshot.settlements.find(
-    value =>
-      (source.processHandle !== undefined && value.process_handle === source.processHandle) ||
-      (source.toolCallId !== undefined &&
-        value.origin_tool_call_id !== undefined &&
-        value.origin_tool_call_id === source.toolCallId)
-  );
+const display = useCommandExecutionDisplay({
+  presentation: () => props.presentation,
+  conversationId: () => props.conversationId,
+  toolIdentity: () => props.toolIdentity,
 });
-const data = computed(() => applyCommandCardSettlement(sourceData.value, settlement.value));
+const data = computed(() => display.value.data);
+const approvalStatusText = computed(() => conversationMessage(
+  display.value.approvalStatus === 'awaiting_reply'
+    ? 'conversation.tool.command.awaitingApproval'
+    : 'conversation.tool.command.approvalProcessing',
+));
 const shellData = computed<ShellCommandExecutionPresentationData | null>(() =>
   data.value.kind === 'command_execution' && data.value.source === 'shell' ? data.value : null
 );
