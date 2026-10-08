@@ -19,7 +19,7 @@ import {
   textRead,
   tool,
   writeResult,
-} from './researchWorkflowFixture';
+} from './__test-helpers__/researchWorkflowFixture';
 
 afterEach(cleanupFixtures);
 
@@ -135,6 +135,25 @@ describe('research workflow through formal CLI port', () => {
     expect(cli.send).toHaveBeenCalledTimes(1);
     expect(cli.stop).not.toHaveBeenCalled();
   });
+  it('does not accept completed status with a conflicting terminal result as a complete delivery', async () => {
+    const options = await fixture();
+    const cli = fakeCli(new Map([['workspace:/input.md', '输入']]), {
+      result: vi.fn<ResearchWorkflowCliPort['result']>(async () => ({
+        outcome: 'cancelled',
+        completedAt: 3,
+        resultStatus: 'unavailable',
+        reason: 'run_not_completed',
+      })),
+    });
+    const state = await runResearchWorkflow({ ...options, cli });
+    expect(state.stages[0]).toMatchObject({
+      status: 'collection_failed',
+      error: 'Terminal status/result mismatch: completed/cancelled',
+    });
+    await runResearchWorkflow({ ...options, cli });
+    expect(cli.send).toHaveBeenCalledTimes(1);
+  });
+
   it('cancelled remains cancelled and evidence is collected without reading missing outputs', async () => {
     const options = await fixture();
     const cli = fakeCli(new Map([['workspace:/input.md', '依据']]), {
@@ -178,6 +197,33 @@ describe('research workflow through formal CLI port', () => {
     expect(cli.resume).toHaveBeenCalledTimes(1);
     expect(cli.send).toHaveBeenCalledTimes(1);
   });
+  it('reconciles a lost resume without auto-resuming a second pause, then fences the new execution', async () => {
+    const options = await fixture();
+    let execution = 'execution';
+    let resumeCount = 0;
+    const cli = fakeCli(new Map([['workspace:/input.md', '输入']]), {
+      status: vi.fn<ResearchWorkflowCliPort['status']>(async () => status('paused', execution)),
+      resume: vi.fn<ResearchWorkflowCliPort['resume']>(async () => {
+        resumeCount += 1;
+        if (resumeCount === 1) execution = 'execution-2';
+        throw new Error('lost response');
+      }),
+    });
+    await runResearchWorkflow({ ...options, cli });
+    await runResearchWorkflow({ ...options, cli, resumeStage: 'D1' });
+    const reconciled = await runResearchWorkflow({ ...options, cli, resumeStage: 'D1' });
+    expect(reconciled.stages[0]).toMatchObject({ status: 'paused', resumePending: false });
+    expect(cli.resume).toHaveBeenCalledTimes(1);
+    const second = await runResearchWorkflow({ ...options, cli, resumeStage: 'D1' });
+    expect(second.stages[0]).toMatchObject({
+      resumePending: true,
+      resumeFromExecutionId: 'execution-2',
+    });
+    await runResearchWorkflow({ ...options, cli, resumeStage: 'D1' });
+    expect(cli.resume).toHaveBeenCalledTimes(2);
+    expect(cli.send).toHaveBeenCalledTimes(1);
+  });
+
   it('collects all message pages, deduplicates by identity and excludes other runs', async () => {
     const one = tool('web_read', {}, 'first', {}, 1);
     const two = tool('web_read', {}, 'second', {}, 2);

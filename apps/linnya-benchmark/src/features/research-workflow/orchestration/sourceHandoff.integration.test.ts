@@ -8,7 +8,13 @@ import {
 } from '../definitions/researchWorkflow';
 import { collectSourceRecords, renderSourcePacket } from '../functions/sourcePacket';
 import { runResearchWorkflow } from './runResearchWorkflow';
-import { cleanupFixtures, fakeCli, fixture, tool, writeResult } from './researchWorkflowFixture';
+import {
+  cleanupFixtures,
+  fakeCli,
+  fixture,
+  tool,
+  writeResult,
+} from './__test-helpers__/researchWorkflowFixture';
 
 const reviewBlob = '1111111111111111';
 const commandBlob = '2222222222222222';

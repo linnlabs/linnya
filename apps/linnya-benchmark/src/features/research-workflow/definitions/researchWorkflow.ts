@@ -11,7 +11,9 @@ import type {
 } from '@app/schemas';
 import type { BenchmarkConversationCliPort } from '../../../definitions/conversationCliPort';
 
-export const stageIds = ['D0', 'R0', 'D1', 'R1'] as const;
+export const legacyStageIds = ['D0', 'R0', 'D1', 'R1'] as const;
+export const specialistStageIds = ['I0', 'P0', 'W0', 'Q0A', 'Q0B', 'W1'] as const;
+export const stageIds = [...legacyStageIds, ...specialistStageIds] as const;
 export const sourcePacketPolicyVersion = 1;
 export const StageIdSchema = z.enum(stageIds);
 const locator = z.string().regex(/^workspace:\/[^\n]+$/);
@@ -31,19 +33,62 @@ export const ResearchStageSchema = z
   .strict();
 export const ResearchManifestSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.union([z.literal(1), z.literal(2)]),
     projectId: z.string().min(1),
-    stages: z.array(ResearchStageSchema).min(1).max(4),
+    stages: z.array(ResearchStageSchema).min(1).max(6),
   })
   .strict()
   .superRefine((manifest, context) => {
-    const order = manifest.stages.map(stage => stageIds.indexOf(stage.id));
+    const permitted: readonly string[] =
+      manifest.schemaVersion === 1 ? legacyStageIds : specialistStageIds;
+    const order = manifest.stages.map(stage => permitted.indexOf(stage.id));
+    if (order.some(value => value < 0)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['stages'],
+        message: 'Stage identity does not belong to this workflow version',
+      });
+    }
     if (order.some((value, index) => index > 0 && value <= (order[index - 1] ?? -1))) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['stages'],
-        message: 'Stages must be unique and ordered D0/R0/D1/R1',
+        message: `Stages must be unique and ordered ${permitted.join('/')}`,
       });
+    }
+    if (manifest.schemaVersion === 2) {
+      // 两个后审并行读取同一冻结稿，不能相互读取或改写对方产物。
+      const owners = new Map<string, string>();
+      for (const stage of manifest.stages) {
+        for (const target of stage.expectedDocuments) {
+          if (owners.has(target))
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['stages'],
+              message: 'Specialist stages require distinct output versions',
+            });
+          owners.set(target, stage.id);
+        }
+      }
+      const ranks: Readonly<Record<string, number>> = {
+        I0: 0,
+        P0: 1,
+        W0: 2,
+        Q0A: 3,
+        Q0B: 3,
+        W1: 4,
+      };
+      for (const stage of manifest.stages) {
+        for (const material of stage.allowedMaterials) {
+          const owner = owners.get(material);
+          if (owner && ranks[owner] >= ranks[stage.id])
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['stages'],
+              message: 'A stage cannot consume its own, a parallel, or a later output',
+            });
+        }
+      }
     }
     const protectedPaths = manifest.stages.flatMap(stage => [
       ...stage.allowedMaterials,
@@ -137,6 +182,7 @@ export const StageStateSchema = z
     startedAt: z.number(),
     finishedAt: z.number().optional(),
     resumePending: z.boolean().default(false),
+    resumeFromExecutionId: z.string().optional(),
     error: z.string().optional(),
     semanticQuality: z.literal('not_evaluated').default('not_evaluated'),
   })
@@ -148,6 +194,7 @@ export const WorkflowStateSchema = z
     manifestHash: z.string(),
     stages: z.array(StageStateSchema),
     inspectionConversationId: z.string().optional(),
+    stageInspectionConversations: z.record(z.string(), z.string()).optional(),
   })
   .strict();
 export type WorkflowState = z.infer<typeof WorkflowStateSchema>;

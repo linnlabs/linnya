@@ -1,7 +1,6 @@
 import path from 'node:path';
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import {
-  stageIds,
   sourcePacketPolicyVersion,
   type ResearchToolMessage,
   type ResearchWorkflowCliPort,
@@ -15,7 +14,13 @@ import {
   lockWorkflow,
   writeJson,
 } from '../adapters/workflowFiles';
-import { hashText, stagePrompt, invalidateStages } from '../functions/workflowFacts';
+import {
+  hashText,
+  stagePrompt,
+  invalidateStages,
+  stageRank,
+  workflowWaves,
+} from '../functions/workflowFacts';
 import { readProjection } from './readProjection';
 import { collectStage } from './collectStage';
 
@@ -40,7 +45,15 @@ export async function runResearchWorkflow(
       manifestHash: loaded.hash,
       stages: [],
     };
-    const save = () => writeJson(path.join(options.output, 'state.json'), state);
+    // 并行后审共享状态文件，按快照顺序原子落盘，避免 .pending 重命名竞争。
+    let pendingSave = Promise.resolve();
+    const save = () => {
+      const snapshot = structuredClone(state);
+      pendingSave = pendingSave.then(() =>
+        writeJson(path.join(options.output, 'state.json'), snapshot)
+      );
+      return pendingSave;
+    };
     if (state.manifestHash !== loaded.hash) {
       for (const stage of state.stages) {
         stage.status = 'stale';
@@ -51,11 +64,20 @@ export async function runResearchWorkflow(
     }
     if (!existing) await writeJson(path.join(options.output, 'manifest.freeze.json'), loaded);
     await save();
-    for (const stage of loaded.stages) {
+    const runStage = async (stage: (typeof loaded.stages)[number]): Promise<void> => {
       const projectId = loaded.manifest.projectId;
+      const inspectionId = () =>
+        loaded.manifest.schemaVersion === 1
+          ? state.inspectionConversationId
+          : state.stageInspectionConversations?.[stage.id];
       // 独立项目只改变文档归属，不被宣称为文件系统隔离。
       const record = async (message: ResearchToolMessage) => {
-        state.inspectionConversationId = message.conversation_id;
+        if (loaded.manifest.schemaVersion === 1)
+          state.inspectionConversationId = message.conversation_id;
+        else {
+          state.stageInspectionConversations ??= {};
+          state.stageInspectionConversations[stage.id] = message.conversation_id;
+        }
         await appendFile(
           path.join(options.output, 'workspace-calls.jsonl'),
           `${JSON.stringify(message)}\n`,
@@ -65,13 +87,12 @@ export async function runResearchWorkflow(
       };
       const read = (locator: string) =>
         readProjection(
-          { cli: options.cli, projectId, conversationId: state.inspectionConversationId, record },
+          { cli: options.cli, projectId, conversationId: inspectionId(), record },
           locator
         );
       const prior = state.stages.filter(
         candidate =>
-          stageIds.indexOf(candidate.id) < stageIds.indexOf(stage.id) &&
-          candidate.projectId === projectId
+          stageRank(candidate.id) < stageRank(stage.id) && candidate.projectId === projectId
       );
       const allowed = [
         ...new Set([
@@ -84,7 +105,7 @@ export async function runResearchWorkflow(
       const prompt = stagePrompt(stage, stage.prompt, allowed);
       let saved = state.stages.find(candidate => candidate.id === stage.id);
       if (saved && ['stale', 'admission_unknown', 'failed', 'cancelled'].includes(saved.status))
-        return state;
+        return;
       if (
         saved?.status === 'completed' &&
         stage.sourcePacket &&
@@ -96,7 +117,7 @@ export async function runResearchWorkflow(
           'Source packet admission policy changed; preserve old records and revalidate in a separate output'
         );
         await save();
-        return state;
+        return;
       }
       const inputs: Projection[] = [];
       for (const locator of allowed) inputs.push(await read(locator));
@@ -108,7 +129,7 @@ export async function runResearchWorkflow(
         if (!allInputsMatch) {
           invalidateStages(state, stage.id, 'A bound input version changed');
           await save();
-          return state;
+          return;
         }
         if (saved.status === 'completed') {
           for (const frozen of [...saved.outputs, ...saved.packetDocuments]) {
@@ -116,10 +137,10 @@ export async function runResearchWorkflow(
             if (current.versionHash !== frozen.versionHash) {
               invalidateStages(state, stage.id, `Output changed: ${frozen.locator}`);
               await save();
-              return state;
+              return;
             }
           }
-          continue;
+          return;
         }
       } else {
         saved = {
@@ -152,7 +173,7 @@ export async function runResearchWorkflow(
         } catch (error: unknown) {
           saved.error = error instanceof Error ? error.message : String(error);
           await save();
-          return state;
+          return;
         }
       }
       const receipt = saved.receipt;
@@ -160,21 +181,25 @@ export async function runResearchWorkflow(
       try {
         let status = await options.cli.status(receipt.conversation_id, receipt.run_id);
         if (!status) throw new Error('Exact run status unavailable');
+        let reconciledResume = false;
         if (saved.resumePending) {
           // 只核对原run；未知resume不自动重试，防止覆盖第一次 continuation。
-          if (status.execution_id === receipt.execution_id) {
+          if (status.execution_id === (saved.resumeFromExecutionId ?? receipt.execution_id)) {
             saved.error = 'Resume outcome unknown; reconcile exact execution before another resume';
             await save();
-            return state;
+            return;
           }
           saved.resumePending = false;
+          reconciledResume = true;
         }
         if (
+          !reconciledResume &&
           status.status === 'paused' &&
           status.pause?.settled &&
           options.resumeStage === stage.id
         ) {
           saved.resumePending = true;
+          saved.resumeFromExecutionId = status.execution_id;
           await save();
           const resumed = await options.cli.resume(receipt.conversation_id, receipt.run_id);
           saved.receipt = { ...receipt, ...resumed.receipt };
@@ -207,7 +232,7 @@ export async function runResearchWorkflow(
         await writeJson(path.join(options.output, stage.id, 'terminal-observation.json'), status);
         if (saved.status === 'paused' || saved.status === 'awaiting_user') {
           await save();
-          return state;
+          return;
         }
         saved.finishedAt = Date.now();
         const collected = await collectStage(
@@ -222,7 +247,7 @@ export async function runResearchWorkflow(
               ]),
               ...prior.flatMap(item => item.packetDocuments.map(document => document.locator)),
             ],
-            inspectionConversationId: state.inspectionConversationId,
+            inspectionConversationId: inspectionId(),
           },
           stage,
           saved,
@@ -236,13 +261,13 @@ export async function runResearchWorkflow(
           if (current.versionHash !== frozen.versionHash) {
             invalidateStages(state, stage.id, `Input changed during stage: ${frozen.locator}`);
             await save();
-            return state;
+            return;
           }
         }
         if (saved.status === 'collecting') saved.status = 'completed';
         delete saved.error;
         await save();
-        if (saved.status !== 'completed') return state;
+        if (saved.status !== 'completed') return;
       } catch (error: unknown) {
         saved.error = error instanceof Error ? error.message : String(error);
         await appendFile(
@@ -254,8 +279,18 @@ export async function runResearchWorkflow(
         if (['collecting', 'completed', 'failed', 'cancelled'].includes(saved.status))
           saved.status = 'collection_failed';
         await save();
-        return state;
+        return;
       }
+    };
+    for (const wave of workflowWaves(loaded.manifest)) {
+      const results = await Promise.allSettled(
+        loaded.stages.filter(stage => wave.includes(stage.id)).map(runStage)
+      );
+      // 即使一个检查发生异常，也先等待另一条原运行落盘，不留下脱离锁的后台写入。
+      const rejected = results.find(result => result.status === 'rejected');
+      if (rejected?.status === 'rejected') throw rejected.reason;
+      if (wave.some(id => state.stages.find(stage => stage.id === id)?.status !== 'completed'))
+        return state;
     }
     return state;
   } finally {

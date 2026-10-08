@@ -7,7 +7,8 @@ import {
   type ConversationUiMessage,
 } from '@app/schemas';
 import {
-  stageIds,
+  legacyStageIds,
+  type ResearchManifest,
   type ResearchStage,
   type StageId,
   type WorkflowState,
@@ -19,9 +20,33 @@ export function hashText(text: string): string {
 export function hanCharacters(text: string): number {
   return [...text.matchAll(/\p{Script=Han}/gu)].length;
 }
+/** 固定两种流程，不接受任意依赖图；并行审核互不消费结果。 */
+export function stageRank(id: StageId): number {
+  switch (id) {
+    case 'I0':
+      return 0;
+    case 'P0':
+      return 1;
+    case 'W0':
+      return 2;
+    case 'Q0A':
+    case 'Q0B':
+      return 3;
+    case 'W1':
+      return 4;
+    default:
+      return legacyStageIds.indexOf(id);
+  }
+}
+export function workflowWaves(manifest: ResearchManifest): StageId[][] {
+  if (manifest.schemaVersion === 1) return manifest.stages.map(stage => [stage.id]);
+  return [['I0'], ['P0'], ['W0'], ['Q0A', 'Q0B'], ['W1']]
+    .map(ids => manifest.stages.filter(stage => ids.includes(stage.id)).map(stage => stage.id))
+    .filter(ids => ids.length > 0);
+}
 export function invalidateStages(state: WorkflowState, from: StageId, reason: string) {
   for (const stage of state.stages) {
-    if (stageIds.indexOf(stage.id) < stageIds.indexOf(from)) continue;
+    if (stage.id !== from && stageRank(stage.id) <= stageRank(from)) continue;
     stage.status = 'stale';
     stage.error = reason;
   }

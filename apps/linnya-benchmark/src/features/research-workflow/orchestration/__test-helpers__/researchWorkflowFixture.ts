@@ -7,7 +7,10 @@ import {
   ConversationUiMessageSchema,
   type ConversationControlRunStatusSnapshot,
 } from '@app/schemas';
-import type { ResearchWorkflowCliPort, ResearchToolMessage } from '../definitions/researchWorkflow';
+import type {
+  ResearchWorkflowCliPort,
+  ResearchToolMessage,
+} from '../../definitions/researchWorkflow';
 
 const temporary: string[] = [];
 export async function cleanupFixtures() {

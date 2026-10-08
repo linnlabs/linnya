@@ -1,5 +1,7 @@
 import { BenchmarkUsageError, type BenchmarkCliInvocation } from '../definitions/benchmarkCli';
 
+import { StageIdSchema } from '../features/research-workflow/definitions/researchWorkflow';
+
 const REASONING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'] as const;
 type ReasoningEffort = (typeof REASONING_LEVELS)[number];
 
@@ -49,15 +51,15 @@ export function parseBenchmarkCliInvocation(argv: readonly string[]): BenchmarkC
     const resume = values.get('--resume-stage');
     if (!manifestFile || !output)
       throw new BenchmarkUsageError('research-workflow requires --manifest and --output');
-    if (
-      resume !== undefined &&
-      resume !== 'D0' &&
-      resume !== 'R0' &&
-      resume !== 'D1' &&
-      resume !== 'R1'
-    )
+    const parsedResume = resume === undefined ? undefined : StageIdSchema.safeParse(resume);
+    if (parsedResume && !parsedResume.success)
       throw new BenchmarkUsageError('Invalid --resume-stage');
-    return { kind: 'research-workflow', manifestFile, output, resumeStage: resume };
+    return {
+      kind: 'research-workflow',
+      manifestFile,
+      output,
+      resumeStage: parsedResume?.success ? parsedResume.data : undefined,
+    };
   }
   if (command === 'list') {
     const extras = argv.slice(1).filter(value => value !== '--pretty');

@@ -97,6 +97,9 @@ export async function collectStage(
   }
   const sources = collectSourceRecords(messages);
   await writeJson(path.join(directory, 'source-records.json'), sources);
+  const observedOutcome = state.status === 'collecting' ? 'completed' : state.status;
+  if (result.outcome !== observedOutcome)
+    throw new Error(`Terminal status/result mismatch: ${observedOutcome}/${result.outcome}`);
   if (result.outcome !== 'completed') return { outputs: [], packetDocuments: [] };
   const readContext = {
     cli: context.cli,

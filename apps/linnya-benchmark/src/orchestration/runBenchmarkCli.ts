@@ -25,7 +25,7 @@ export function benchmarkCliUsage(): string {
     'Usage:',
     '  pnpm benchmark:agent list [--pretty]',
     '  pnpm benchmark:agent run <case-id> --project <workspace-project-id> --input key=value [--input key=value] [--output DIR] [--model ID] [--reasoning LEVEL] [--pretty]',
-    '  pnpm benchmark:agent research-workflow --manifest FILE --output DIR [--resume-stage D0|R0|D1|R1]',
+    '  pnpm benchmark:agent research-workflow --manifest FILE --output DIR [--resume-stage STAGE_ID]',
     '',
     'Benchmark runs always use the real Linnya conversation CLI and a running Linnya App.',
     '',

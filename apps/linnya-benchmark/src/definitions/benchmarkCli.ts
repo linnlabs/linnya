@@ -1,3 +1,4 @@
+import type { StageId } from '../features/research-workflow/definitions/researchWorkflow';
 export type BenchmarkCliInvocation =
   | { readonly kind: 'help' }
   | { readonly kind: 'list'; readonly pretty: boolean }
@@ -5,7 +6,7 @@ export type BenchmarkCliInvocation =
       readonly kind: 'research-workflow';
       readonly manifestFile: string;
       readonly output: string;
-      readonly resumeStage?: 'D0' | 'R0' | 'D1' | 'R1';
+      readonly resumeStage?: StageId;
     }
   | {
       readonly kind: 'run';
