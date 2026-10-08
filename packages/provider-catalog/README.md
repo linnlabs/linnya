@@ -160,7 +160,10 @@ Host 在用户刷新模型时可以调用公开的 `projectLiveProviderModelMeta
 
 ChatGPT `/models`、Linnya Cloud catalog 与 Ollama 本地发现是运行时动态来源，不进入
 bundled models，也不由同步器联网刷新。Ollama Cloud 是同一 Ollama 品牌下的独立 API
-Key connection，模型事实来自 models.dev，随正式 Catalog 同步；它不复用本地运行时发现。
+Key connection；其 bundled 模型资料来自 models.dev，随正式 Catalog 审查发布。
+用户刷新时，由 Host 查询 Ollama 官方 `/api/tags`、`/api/show` 决定当前候选与实时能力，
+必要时使用上述窄元数据投影按精确 ID 补充缺失的输出上限。本 package 不拥有这些官方联网请求，
+不把 bundled 清单或 models.dev 元数据当作实时可用模型列表；Cloud 仍使用自己的连接与凭据边界。
 
 Catalog 运行时只暴露非 `hidden`
 connection；同一品牌全部 connection 都隐藏时，品牌也不会进入公开 API。`hidden`
