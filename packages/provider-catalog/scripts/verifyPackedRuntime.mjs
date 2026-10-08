@@ -1,13 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import {
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  symlinkSync,
-} from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -32,11 +26,27 @@ function verifyRuntime(label, catalogRuntime, bindingRuntime) {
   const openAiConnection = catalogRuntime.providerCatalog.getConnection('openai-api');
   assert.equal(openAiConnection?.provider.id, 'openai', `${label} 无法查询公开 connection`);
   assert.equal(
-    bindingRuntime.formalProviderRuntimeManifestRegistry.get('openai-api')
-      ?.provider_definition_id,
+    bindingRuntime.formalProviderRuntimeManifestRegistry.get('openai-api')?.provider_definition_id,
     'openai',
     `${label} 无法查询正式 runtime binding`
   );
+  const liveMetadata = catalogRuntime.projectLiveProviderModelMetadata('deepseek', {
+    deepseek: {
+      id: 'deepseek',
+      name: 'DeepSeek',
+      npm: '@ai-sdk/deepseek',
+      models: {
+        'live-smoke': {
+          id: 'live-smoke',
+          name: 'Live smoke',
+          tool_call: true,
+          limit: { context: 128_000, output: 8_192 },
+        },
+      },
+    },
+  });
+  assert.equal(liveMetadata[0]?.id, 'live-smoke', `${label} 无法投影实时模型元数据`);
+  assert.equal(liveMetadata[0]?.max_output_tokens, 8_192, `${label} 实时模型容量投影错误`);
 }
 
 try {
@@ -47,9 +57,13 @@ try {
   const archives = readdirSync(temporaryDirectory).filter(file => file.endsWith('.tgz'));
   assert.equal(archives.length, 1, `预期生成一个 tarball，实际为 ${archives.length} 个`);
 
-  execFileSync('tar', ['-xzf', path.join(temporaryDirectory, archives[0]), '-C', temporaryDirectory], {
-    stdio: 'inherit',
-  });
+  execFileSync(
+    'tar',
+    ['-xzf', path.join(temporaryDirectory, archives[0]), '-C', temporaryDirectory],
+    {
+      stdio: 'inherit',
+    }
+  );
   const packedPackageRoot = path.join(temporaryDirectory, 'package');
   const packedManifest = JSON.parse(
     readFileSync(path.join(packedPackageRoot, 'package.json'), 'utf8')

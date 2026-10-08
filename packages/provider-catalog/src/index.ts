@@ -17,3 +17,4 @@ export type {
   ProviderSetupField,
 } from './definitions/providerCatalog';
 export { providerCatalog } from './registry/providerCatalogRegistry';
+export { projectLiveProviderModelMetadata } from './features/catalog-admission';

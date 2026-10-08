@@ -39,7 +39,7 @@ const ModelsDevModelSchema = z
   })
   .passthrough();
 
-const ModelsDevProviderSchema = z
+export const ModelsDevProviderSchema = z
   .object({
     id: z.string().trim().min(1),
     name: z.string().trim().min(1),

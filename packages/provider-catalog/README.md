@@ -14,6 +14,7 @@ exports 消费目录；旧 `src/domains/provider-catalog`
   stable/preview/hidden 产品政策；
 - models.dev 输入严格解析、source digest、admission policy 与双投影生成；
 - `@linnya/provider-catalog` 的公开只读查询；
+- Host 按 connection 查询实时模型元数据时共用的单 Provider 解析与准入投影；
 - `@linnya/provider-catalog/runtime-bindings`
   的 Host-only 严格解析与只读 registry；
 - package-local sync/check/diff 和生成资产一致性。
@@ -62,6 +63,7 @@ binding，但 Catalog package 不反向调用 Host。
 | models.dev 输入合同              | `src/features/catalog-admission/definitions/modelsDevSource.ts`          |
 | 产品身份、模型准入与已验收 route | `src/features/catalog-admission/registry/providerAdmissionPolicies.ts`   |
 | 外部事实到两个生成投影的规则     | `src/features/catalog-generation/generateProviderCatalog.ts`             |
+| 单 Provider 资料解析与模型准入  | `src/features/catalog-admission/index.ts`                                |
 | list/get/search                  | `src/features/catalog-query/`、`src/registry/providerCatalogRegistry.ts` |
 | 同步、digest 和人工 diff         | `src/features/upstream-sync/`、`bin/provider-catalog-sync.ts`            |
 | public catalog 资产              | `src/generated/provider-catalog.generated.json`                          |
@@ -144,6 +146,17 @@ digest 与 policy version 都未变化时不会重写资产。
 
 Provider 删除、API 地址、package 建议和容量变化都必须人工评审。一个上游 Provider 可能同时包含 chat、embedding、TTS 等模型；Agent 目录必须依靠明确能力 admission，不能按名称猜测或整组接纳。新增 policy 前还要证明对应 factory、许可/NOTICE、single-step/zero-retry、tool/图片/usage/Abort/error 和 durable
 continuation conformance。
+
+Host 在用户刷新模型时可以调用公开的 `projectLiveProviderModelMetadata(connectionId, source)`
+补充实时模型的容量与能力。`source` 是 models.dev API 原始解析结果；函数只根据现有 policy 的
+`source_provider_id` 解析选中的 Provider，无关供应商的非法资料不会阻断本次查询。未知 connection、
+没有 models.dev 来源、目标 Provider 缺失或非法都会明确报错，不回退到旧 bundled 资料。
+
+该投影返回符合既有 Agent 准入规则的模型资料：弃用、非文本输出、零容量及 policy 要求工具能力但未满足的模型会被排除。
+实际可用模型 ID 必须由供应商的实时 API 决定；Host 只能按精确 ID 合并资料，不能把 models.dev 列表当作供应商当前可用模型。
+函数不联网、不刷新目录 registry，也不生成或修改 bundled 资产、generation 或 runtime binding；这些仍由发布同步与人工审查拥有。
+未审核的模型级 provider override 仍然报错，历史 route binding 在本次资料源中缺失则不阻断元数据查询；
+完整发布同步继续校验双投影与失效绑定。Renderer 只接收 Host 投影后的 HTTP DTO。
 
 ChatGPT `/models`、Linnya Cloud catalog 与 Ollama 本地发现是运行时动态来源，不进入
 bundled models，也不由同步器联网刷新。Ollama Cloud 是同一 Ollama 品牌下的独立 API
