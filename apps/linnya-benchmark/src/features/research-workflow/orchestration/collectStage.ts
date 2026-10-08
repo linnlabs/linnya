@@ -182,6 +182,8 @@ export async function collectStage(
       await writeJson(journalFile, journal);
       await writeJson(path.join(directory, 'source-publications.json'), packetDocuments);
     }
+    // 恢复可全部经过 journal 对账分支；最终导出必须包含这些已核对项，而非停在旧 checkpoint。
+    await writeJson(path.join(directory, 'source-publications.json'), packetDocuments);
   }
   return { outputs, packetDocuments };
 }

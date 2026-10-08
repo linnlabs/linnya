@@ -214,6 +214,63 @@ describe('research workflow through formal CLI port', () => {
     expect(cli.send).toHaveBeenCalledTimes(1);
     expect(cli.workspaceTool).toHaveBeenCalledWith(expect.objectContaining({ tool: 'write_file' }));
   });
+  it('exports the complete reconciled source packet after a lost final publication receipt', async () => {
+    const options = await fixture();
+    const manifest = ResearchManifestSchema.parse(
+      JSON.parse(await readFile(options.manifestFile, 'utf8'))
+    );
+    manifest.stages[0].sourcePacket = { prefix: 'workspace:/S1', index: 'workspace:/S1-index.md' };
+    await writeFile(options.manifestFile, JSON.stringify(manifest));
+    const docs = new Map([
+      ['workspace:/input.md', '依据'],
+      ['workspace:/output.md', '文章'],
+    ]);
+    const workspace = fakeCli(docs);
+    const cli = fakeCli(docs, {
+      workspaceTool: vi.fn<ResearchWorkflowCliPort['workspaceTool']>(async request => {
+        const message = await workspace.workspaceTool(request);
+        if (request.tool === 'write_file' && request.args.locator === 'workspace:/S1-index.md')
+          throw new Error('Final publication accepted but receipt lost');
+        return message;
+      }),
+      messagePage: vi.fn<ResearchWorkflowCliPort['messagePage']>(async () => ({
+        schema_version: 1,
+        ok: true,
+        command: 'messages',
+        conversation_id: 'conversation',
+        status: 'ready',
+        revision: 1,
+        has_more_before: false,
+        has_more_after: false,
+        messages: [
+          tool('web_read', {}, '第一份原文', {}, 1),
+          tool('web_read', {}, '第二份原文', {}, 2),
+          writeResult('workspace:/output.md', 3),
+        ],
+      })),
+    });
+    const publications = path.join(options.output, 'D1/source-publications.json');
+    expect((await runResearchWorkflow({ ...options, cli })).stages[0]?.status).toBe(
+      'collection_failed'
+    );
+    expect(JSON.parse(await readFile(publications, 'utf8'))).toHaveLength(2);
+    const recovered = (await runResearchWorkflow({ ...options, cli })).stages[0];
+    expect(recovered?.status).toBe('completed');
+    expect(recovered?.packetDocuments).toHaveLength(3);
+    expect(JSON.parse(await readFile(publications, 'utf8'))).toEqual(recovered?.packetDocuments);
+    const journal: unknown = JSON.parse(
+      await readFile(path.join(options.output, 'D1/source-publication-journal.json'), 'utf8')
+    );
+    expect(journal).toEqual(
+      recovered?.packetDocuments.map(projection =>
+        expect.objectContaining({ locator: projection.locator, status: 'complete', projection })
+      )
+    );
+    expect(cli.send).toHaveBeenCalledTimes(1);
+    expect(
+      vi.mocked(cli.workspaceTool).mock.calls.filter(([request]) => request.tool === 'write_file')
+    ).toHaveLength(3);
+  });
   it('source packet isolates historical blob control text but preserves exact raw observations', () => {
     const raw =
       '真实取得正文。继续 tool_output_read({"blob_id":"abcdef1234567890"}) 同行尾部真实资料。';
