@@ -2,7 +2,7 @@
 
 `linnya` 同时提供轻量命令行控制面和源码开发用的前台 Runtime Host。普通命令连接当前 Workspace 的唯一 Backend，复用正式 Conversation admission、Flow、持久化和 read model；`runtime start` 则在不启动 Electron 的情况下监督同一 App Server 实现。两种入口都不让 CLI 直读 SQLite，也不创建每 Agent 一套 Backend。当前仅供仓库内开发、评测与 Benchmark 使用，尚未作为生产功能开放或随桌面产品分发。
 
-当前适用场景：开发环境中脚本化发消息、查询会话与消息、观察运行状态、处理 `awaiting_user`、终止运行、读取最终回答、调用五个基础 Workspace 工具，以及在没有 Electron 时启动可运行多个会话/Agent 的前台 Backend。
+当前适用场景：开发环境中脚本化发消息、查询会话与消息、观察运行状态、处理 `awaiting_user` 与 Shell 命令审批、终止运行、读取最终回答、调用五个基础 Workspace 工具，以及在没有 Electron 时启动可运行多个会话/Agent 的前台 Backend。
 
 ## 1. 运行前提
 
@@ -45,7 +45,7 @@ Runtime 在 stdout 输出一次 ready JSON 后保持前台运行；另一个终�
 
 关闭某个 `send/status` 客户端不会停止已接纳的 run。关闭 Runtime 终端、Ctrl+C 或 SIGTERM 会停止该 Runtime 拥有的 Backend、所有任务和子进程；CLI launcher 被强制终止时，App Server 也会按 parent identity 收口并释放 Workspace owner。这里没有 daemon、系统服务、开机启动或关闭 Linnya 后继续运行。
 
-交互式 TTY 会在 stderr 呈现 shell command approval，并只接受 Host 声明的选择；stdout 仍只保留机器可读 JSON。stdin/stderr 不是 TTY 时命令审批能力明确不可用，不会自动批准。普通 HITL 继续使用 `respond`，它与 shell 审批是两条不同合同。
+交互式 TTY 会在 stderr 呈现 shell command approval，并只接受 Host 声明的选择；stdout 仍只保留机器可读 JSON。stdin/stderr 不是 TTY 时不创建终端 presenter，也不会自动批准。普通控制 CLI 可通过下述 `approvals / approval-reply` 访问同一个 Host 审批 owner；普通 HITL 继续使用 `respond`，它与 Shell 审批是两条不同合同。
 
 当前仓库可以产出供开发测试的 CommonJS CLI/Runtime bundle 和 `bin/linnya.cjs`，但桌面安装器不把它安装到系统 `PATH`，也没有形成独立 CLI 安装包；这不构成生产 CLI 发行。Electron 的 `runAsNode` fuse 已关闭，不能把 Electron 可执行文件当作 CLI 的 Node 替代品。
 
@@ -82,7 +82,7 @@ pnpm linnya:cli send \
 pnpm linnya:cli status <conversation-id> --run <run-id> --watch
 ```
 
-`--watch` 输出 JSONL，只在状态快照变化时写一行。到达已收口 `paused`、`awaiting_user` 或任一终态后退出；仍在收口的暂停继续观察。恢复已收口暂停必须指定 exact run：
+`--watch` 输出 JSONL，只在状态快照变化时写一行。发现 `command_approvals` 中待回复请求、到达已收口 `paused`、`awaiting_user` 或任一终态后退出；仍在收口的暂停继续观察。恢复已收口暂停必须指定 exact run：
 
 ```bash
 pnpm linnya:cli resume <conversation-id> --run <run-id>
@@ -102,6 +102,33 @@ pnpm linnya:cli respond <conversation-id> \
 pnpm linnya:cli result <conversation-id> --run <run-id>
 ```
 
+### Shell 命令审批
+
+`status` 保留真实 run 生命周期；命令仍在等待启动时，可能是 `running`，但同时返回
+`command_approvals`。每个请求给出 command、cwd、触发原因、允许选项，以及实际
+`agent_run_id / origin_tool_call_id / command_execution_id`。根 run 的状态包含其 child run
+子树中的待处理请求，不能把根 run 身份当成子请求实际归属。
+
+```bash
+pnpm linnya:cli approvals <conversation-id> --run <root-or-child-run-id>
+pnpm linnya:cli approval-reply <conversation-id> \
+  --run <pending-agent-run-id> \
+  --request <approval-request-id> \
+  --choice allow_once
+```
+
+`approvals` 只读查询指定 run 及其子树；`approval-reply` 必须绑定请求的实际 run，选择
+`allow_once`、`deny`，或请求明确提供的 `allow_for_conversation`。不提供默认选择，也没有
+“全部批准”。记忆放行的 token 前缀由 owner 展示和校验，CLI 不能提交新的命令、路径或权限。
+
+`awaiting_reply` 会让 `status --watch` 返回控制权；`processing` 表示已有客户端作答，继续观察。
+回复回执 `accepted` 只表示接纳，授权持久化和命令最终结果仍需观察原 run；不需要 `resume`
+或再 `send`。Renderer 与 CLI 竞争回复时只有一次接纳，旧请求返回 `stale` 回执及退出码 6。
+回复传输失败不自动重试：先查询 exact 请求和原 run，避免把未确认回执当成未执行。
+
+Shell 审批与 `respond --approve` 无关。控制协议 3 要求明确返回 `command_approvals`
+（无请求为 `[]`）；旧 Host 必须更新，不能把缺失字段猜成“没有等待”。
+
 ## 3. 命令
 
 | 命令 | 作用 | 主要选项 |
@@ -114,6 +141,8 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 | `list` | 查询已有会话 | `--limit`、`--cursor`、`--search`、`--project` |
 | `messages <conversation-id>` | 按会话查询 durable 消息窗口 | `--limit`、`--before`、`--after` |
 | `status <conversation-id>` | 查询当前或指定 root run 的状态 | `--run`、`--watch`、`--interval`、`--timeout` |
+| `approvals <conversation-id>` | 查询指定 run 及子树的 Shell 待处理请求 | 必填 `--run` |
+| `approval-reply <conversation-id>` | 精确回复 Shell 请求 | 必填 `--run`（请求实际 run）、`--request`、`--choice` |
 | `resume <conversation-id>` | 精确恢复一个已收口 `paused` 原 run | 必填 `--run`；可选 `--timeout`（毫秒，默认 60000） |
 | `respond <conversation-id>` | 回应当前 `awaiting_user` 交互并继续同一 run | `--interaction`，以及一个 response 选项 |
 | `stop <conversation-id>` | 终止 foreground root run，并等待真实终态结算 | `--run`、`--reason`、`--timeout`（毫秒，默认 60000） |
@@ -127,7 +156,7 @@ pnpm linnya:cli result <conversation-id> --run <run-id>
 
 向已有 `--conversation` 发送消息时，省略 `--agent` 会继承该会话保存的 Agent；显式传入才修改选择。新会话省略时仍走产品默认选择，不猜测 Slides。
 
-读取请求与握手默认等待 5 秒，接纳/响应/恢复/工具调用默认等待 60 秒；`resume --timeout` 与 `stop --timeout` 分别控制恢复接纳和停止结算等待。stop 未传 run 时先选择并固定一个活跃 foreground root run；网络响应丢失最多重试一次，始终使用同一 run、共用等待预算。重查已终止 run 会返回其真实终态，不会误停同会话的新 run。只有 exact stop 自动重试；send/respond/resume 不盲重试。resume 的 fence 在首次接纳后即失效，响应丢失时应先用 exact status 确认新的 execution，不能重复发送或自动推进。超时仅表示结果尚未确认，不代表 App 没有执行；错误会给出精确重查命令。watch 超时也不会停止后端运行。
+读取请求与握手默认等待 5 秒，接纳/响应/恢复/工具调用默认等待 60 秒；`resume --timeout` 与 `stop --timeout` 分别控制恢复接纳和停止结算等待。stop 未传 run 时先选择并固定一个活跃 foreground root run；网络响应丢失最多重试一次，始终使用同一 run、共用等待预算。重查已终止 run 会返回其真实终态，不会误停同会话的新 run。只有 exact stop 自动重试；send/respond/resume/approval-reply 不盲重试。resume 的 fence 在首次接纳后即失效，响应丢失时应先用 exact status 确认新的 execution，不能重复发送或自动推进。超时仅表示结果尚未确认，不代表 App 没有执行；错误会给出精确重查命令。watch 超时也不会停止后端运行。
 
 握手中的 capabilities 是可扩展的能力公告：同协议新增能力不影响已知命令，实际命令、响应和 schema/protocol 版本仍严格校验。
 
@@ -227,6 +256,7 @@ pending -> running -> awaiting_user -> running -> completed | failed | cancelled
 - `awaiting_user` 是 Runtime 被动等待，不是人为暂停；通过 `respond` 继续。
 - `paused` 保留原 run 的断点，不是失败终态；已收口后可用 `resume --run` 精确恢复。该命令复用原 `run_id / turn_id` 并取得新 `execution_id`，不创建用户消息。`pause.reason=tool.protocol_fuse` 表示连续工具参数错误；先查看最近工具错误，确认正确合同后再恢复。`tool_reconciliation_required` 表示未知副作用需正式 owner 对账；恢复仍会被 Graph 对账门禁阻止，CLI 不重放调用或越过 owner。`execution_interrupted` 则是未分类中断，需要进一步诊断。原因来自持久 RunRegistry，不解析日志或原始错误正文。
 - `stop` 是唯一主动中断动作。它会等待 Host 的取消完成屏障，并返回真实的 `cancelled`、`completed` 或 `failed` 结算，避免把“已发取消请求”误报成“已经取消”。
+- `command_approvals` 是 Commands owner 的实时等待投影，不把 Shell 等待伪装成 `awaiting_user` checkpoint；工具和 run 的生命周期继续由各自 owner 结算。
 - `status` 不虚构百分比。生命周期来自 RunRegistry；运行中的节点与累计步数来自同一 activation 已持久化的 Graph 执行快照，交互、错误和结果可用性继续由各自 owner 投影。
 - `send` 返回后该短命客户端可以退出，后台运行归当前 Desktop 或 CLI Runtime Host 所有。Runtime Host 自己退出时会收口其拥有的运行。
 
@@ -236,7 +266,7 @@ pending -> running -> awaiting_user -> running -> completed | failed | cancelled
 
 ## 5. 输出与退出码
 
-普通成功命令向 stdout 写一个 JSON 值；`--pretty` 只改变普通命令的缩进。`status --watch` 向 stdout 写 JSONL，不能与 `--pretty` 组合。所有失败都向 stderr 写一个稳定 JSON 值：
+普通成功命令向 stdout 写一个 JSON 值；`--pretty` 只改变普通命令的缩进。`status --watch` 向 stdout 写 JSONL，不能与 `--pretty` 组合。请求/传输失败向 stderr 写一个稳定 JSON 值；审批竞争的 `stale` 则保留 stdout 正式回执并退出 6：
 
 ```json
 {"schema_version":1,"ok":false,"command":"send","error":{"code":"conversation_busy","message":"...","retryable":true}}

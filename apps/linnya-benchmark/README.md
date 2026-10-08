@@ -120,6 +120,8 @@ case 禁止启动进程、访问数据库、实现评分器或复制执行流程
 3. 用 `status --watch` 等待状态变化；只按 case 声明处理 `awaiting_user`。
    遇到 `paused` 且 `pause.settled=true` 时，以 `requires_recovery` 结束本轮观察；
    尚未收口的暂停继续等待，不自行批准、恢复或取消。
+   `command_approvals` 中出现 `awaiting_reply` 时保存 `requires_command_approval` 并结束观察；
+   即使 case 允许普通 HITL 自动批准，也绝不自动批准 Shell。
 4. 达到 case 超时时终止 exact root run，并等待真实 terminal settlement。
 5. 仅对 completed/failed/cancelled 收集 final result；所有已接纳运行均收集消息数量摘要
    和 `audit` 安全执行摘要。
@@ -128,6 +130,12 @@ case 禁止启动进程、访问数据库、实现评分器或复制执行流程
 Runner 被手动关闭不会杀掉 App 所拥有的 run；可用报告/终端中的 ID 执行
 `pnpm linnya:cli stop <conversation-id> --run <run-id>`。Runner 自己判定超时时则会自动
 调用 stop，避免遗留后台任务。
+
+`requires_command_approval` 同样不是终态。报告保留实际 child/root run、工具调用和请求身份；
+通过 `linnya approvals <conversation-id> --run <root-run-id>` 核查命令，再用
+`approval-reply --run <pending-agent-run-id> --request <id> --choice <choice>` 显式回复。
+不要调用 `respond --approve`、重新执行 case 或把等待时间当成命令执行时间。手工继续观察
+原 run 时独立记录干预、原预算与最终结算。研究 workflow 的同目录重启则自动复查原身份，见其 owner。
 
 `requires_recovery` 不是成功、失败或取消终态，也不是 `requires_user` 大纲确认。
 Runner 保存暂停事实后退出（CLI exit code 3），不会重新启动立即返回的 watch 形成观察风暴。

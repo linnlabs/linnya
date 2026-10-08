@@ -16,7 +16,7 @@ import { runBenchmarkCli } from '../orchestration/runBenchmarkCli';
 import { createBenchmarkRegistry } from '../registry/createBenchmarkRegistry';
 
 describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
-  it('真实 watch 等待暂停收口后退出，CLI 报告 requires_recovery 且没有观察风暴', async () => {
+  it.each(['pause', 'command_approval'] as const)('真实 watch 在 %s 可操作等待时退出，保留报告且没有观察风暴', async waiting => {
     const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'linnya-benchmark-pause-'));
     const commands: string[] = [];
     const token = 'e'.repeat(64);
@@ -32,7 +32,7 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
         let result: unknown;
         if (request.url?.endsWith('/handshake')) {
           result = {
-            schema_version: 1, protocol_version: 2,
+            schema_version: 1, protocol_version: 3,
             app_instance_id: 'app-benchmark-pause', app_version: '0.0.38',
             capabilities: ['send', 'status', 'messages'],
             limits: { max_request_bytes: 1_048_576, max_message_chars: 200_000,
@@ -51,10 +51,23 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
             case 'status':
               result = { ...base, conversation_id: 'conversation-pause', run: {
                 conversation_id: 'conversation-pause', run_id: 'run-pause', turn_id: 'turn-1',
-                execution_id: 'execution-1', agent_id: 'slides_agent', status: 'paused',
+                execution_id: 'execution-1', agent_id: 'slides_agent',
+                status: waiting === 'pause' ? 'paused' : 'running',
                 started_at: 100, updated_at: 110, result_available: false,
-                pause: { settled: commands.filter(value => value === 'status').length > 1,
-                  reason: 'execution_interrupted' },
+                command_approvals: waiting === 'pause' ? [] : [{
+                  protocol_version: 1, kind: 'command_approval_pending_projection',
+                  approval_request_id: 'command_approval_11111111-1111-4111-8111-111111111111',
+                  command_execution_id: 'command_execution_22222222-2222-4222-8222-222222222222',
+                  conversation_id: 'conversation-pause', agent_run_id: 'child-1', origin_tool_call_id: 'tool-1',
+                  command: 'rm scratch.txt', cwd: '/workspace',
+                  reasons: [{ type: 'fixed_risk_rule', rule_id: 'macos.delete.rm', category: 'delete' }],
+                  available_choices: ['allow_once', 'deny'], requested_at_ms: 10,
+                  status: commands.filter(value => value === 'status').length > 1 ? 'awaiting_reply' : 'processing',
+                }],
+                ...(waiting === 'pause' ? { pause: {
+                  settled: commands.filter(value => value === 'status').length > 1,
+                  reason: 'execution_interrupted',
+                } } : {}),
               } };
               break;
             case 'messages':
@@ -77,7 +90,7 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
       if (!address || typeof address === 'string') throw new Error('Missing bridge address');
       const connectionFile = path.join(temporaryRoot, 'connection.json');
       await writeFile(connectionFile, JSON.stringify(ConversationControlConnectionDescriptorSchema.parse({
-        protocol_version: 2, app_instance_id: 'app-benchmark-pause', pid: process.pid,
+        protocol_version: 3, app_instance_id: 'app-benchmark-pause', pid: process.pid,
         host: '127.0.0.1', port: address.port, session_token: token,
         created_at: Date.now(), updated_at: Date.now(),
       })), { mode: 0o600 });
@@ -97,16 +110,23 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
       expect(errors).toEqual([]);
       expect(commands).toEqual(['send', 'status', 'status', 'messages']);
       const result: unknown = JSON.parse(output.join(''));
-      expect(result).toMatchObject({ ok: false, outcome: 'requires_recovery' });
+      const outcome = waiting === 'pause' ? 'requires_recovery' : 'requires_command_approval';
+      expect(result).toMatchObject({ ok: false, outcome });
       if (typeof result !== 'object' || result === null || !('report_file' in result)
         || typeof result.report_file !== 'string' || !('facts_file' in result)
         || typeof result.facts_file !== 'string') throw new Error('Missing report location');
       const savedFacts: unknown = JSON.parse(await readFile(result.facts_file, 'utf8'));
-      expect(savedFacts).toMatchObject({ outcome: 'requires_recovery', errors: [],
+      expect(savedFacts).toMatchObject({ outcome, errors: [],
         audit: { status: 'unavailable', code: 'capability_unavailable' } });
       const report = await readFile(result.report_file, 'utf8');
-      expect(report).toContain('本轮未自动恢复或取消');
-      expect(report).not.toContain('终态 requires_recovery');
+      if (waiting === 'pause') expect(report).toContain('本轮未自动恢复或取消');
+      else {
+        expect(report).toContain('未批准、恢复或取消原运行');
+        expect(report).toContain('command_approval_11111111-1111-4111-8111-111111111111');
+        expect(report).toContain('child-1');
+        expect(report).toContain('Shell 审批（尚未启动命令）');
+      }
+      expect(report).not.toContain(`终态 ${outcome}`);
     } finally {
       await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
       await rm(temporaryRoot, { recursive: true, force: true });

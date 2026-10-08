@@ -103,7 +103,7 @@ describe('file Benchmark report writer', () => {
           current_node: status === 'running' ? 'llm' : 'wait_user',
           started_at: 100,
           updated_at: observedAt,
-          result_available: false,
+          command_approvals: [], result_available: false,
         },
       });
     const timeoutFacts: BenchmarkRunFacts = {

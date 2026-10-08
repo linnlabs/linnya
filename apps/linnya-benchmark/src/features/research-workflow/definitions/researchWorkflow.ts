@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   ConversationControlAcceptedReceiptSchema,
+  CommandApprovalPendingProjectionV1Schema,
   ConversationUiMessageSchema,
   WorkspaceDocumentCitationSourceSchema,
 } from '@app/schemas';
@@ -166,6 +167,7 @@ export const StageStateSchema = z
       'observing',
       'paused',
       'awaiting_user',
+      'waiting_command_approval',
       'collecting',
       'completed',
       'failed',
@@ -174,6 +176,7 @@ export const StageStateSchema = z
       'collection_failed',
     ]),
     receipt: ConversationControlAcceptedReceiptSchema.optional(),
+    commandApprovals: z.array(CommandApprovalPendingProjectionV1Schema).default([]),
     inputs: z.array(ProjectionSchema),
     outputs: z.array(ProjectionSchema).default([]),
     packetDocuments: z.array(ProjectionSchema).default([]),

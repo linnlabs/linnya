@@ -1,5 +1,6 @@
 import {
   ConversationControlAuditResponseSchema,
+  CommandApprovalPendingProjectionV1Schema,
   ConversationControlMessagesResponseSchema,
   ConversationControlProgressFrameSchema,
   ConversationControlRespondResponseSchema,
@@ -43,7 +44,7 @@ function frame(sequence: number, status: 'running' | 'awaiting_user' | 'complete
         interaction_id: 'interaction-1',
         tool_name: 'ppt_plan',
       } : undefined,
-      result_available: status === 'completed',
+      command_approvals: [], result_available: status === 'completed',
     },
   });
 }
@@ -175,6 +176,37 @@ function commonCli(overrides: Partial<BenchmarkConversationCliPort>): BenchmarkC
 }
 
 describe('run Benchmark case', () => {
+  it('Shell 等待即使普通 HITL 允许自动批准也必须退出观察，保留子 run 身份', async () => {
+    const snapshot = frame(0, 'running');
+    if (!snapshot.snapshot) throw new Error('Expected run snapshot');
+    snapshot.snapshot.command_approvals = [CommandApprovalPendingProjectionV1Schema.parse({
+      protocol_version: 1, kind: 'command_approval_pending_projection',
+      approval_request_id: 'command_approval_11111111-1111-4111-8111-111111111111',
+      command_execution_id: 'command_execution_22222222-2222-4222-8222-222222222222',
+      conversation_id: 'conversation', agent_run_id: 'child-1', origin_tool_call_id: 'tool-1',
+      command: 'rm scratch.txt', cwd: '/workspace',
+      reasons: [{ type: 'fixed_risk_rule', rule_id: 'macos.delete.rm', category: 'delete' }],
+      available_choices: ['allow_once', 'deny'], requested_at_ms: 10, status: 'awaiting_reply',
+    })];
+    const watchStatus = vi.fn(commonCli({}).watchStatus)
+      .mockResolvedValueOnce({ frames: [snapshot], timedOut: false })
+      .mockRejectedValue(new Error('Must not rewatch an actionable approval'));
+    const stop = vi.fn(commonCli({}).stop);
+    const approve = vi.fn(commonCli({}).approve);
+    const result = vi.fn(commonCli({}).result);
+    const facts = await runBenchmarkCase({ benchmark: benchmark(), projectId: 'project-1' }, {
+      cli: commonCli({ watchStatus, stop, approve, result }), now: () => 100,
+    });
+    expect(facts.outcome).toBe('requires_command_approval');
+    expect(watchStatus).toHaveBeenCalledOnce();
+    expect(stop).not.toHaveBeenCalled();
+    expect(approve).not.toHaveBeenCalled();
+    expect(result).not.toHaveBeenCalled();
+    expect(facts.statusFrames[0]?.snapshot).toMatchObject({ status: 'running',
+      command_approvals: [{ agent_run_id: 'child-1', origin_tool_call_id: 'tool-1' }] });
+    expect(facts.audit.status).toBe('available');
+  });
+
   it('settled paused 只结束一次观察，不请求完成结果、批准或取消，保留审计事实', async () => {
     const watchStatus = vi.fn(commonCli({}).watchStatus)
       .mockResolvedValueOnce({ frames: [frame(0, 'paused', false), frame(1, 'paused')], timedOut: false })

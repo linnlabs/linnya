@@ -152,6 +152,7 @@ export async function runResearchWorkflow(
           projectId,
           promptHash: hashText(prompt),
           status: 'admission_unknown',
+          commandApprovals: [],
           inputs,
           outputs: [],
           packetDocuments: [],
@@ -212,11 +213,24 @@ export async function runResearchWorkflow(
           await save();
           status = await options.cli.status(receipt.conversation_id, receipt.run_id);
         }
-        while (
-          status?.status === 'running' ||
-          status?.status === 'pending' ||
-          (status?.status === 'paused' && !status.pause?.settled)
-        ) {
+        while (true) {
+          if (!status) throw new Error('Exact run status unavailable');
+          saved.commandApprovals = status.command_approvals;
+          if (status.command_approvals.some(approval => approval.status === 'awaiting_reply')) {
+            // 审批只挂起本轮观察：既不创建新的 run，也不把仍运行的工具伪装成 HITL 断点。
+            saved.status = 'waiting_command_approval';
+            await appendFile(
+              path.join(options.output, stage.id, 'command-approval-observations.jsonl'),
+              `${JSON.stringify({ observedAt: Date.now(), snapshot: status })}\n`,
+              { mode: 0o600 }
+            );
+            await save();
+            return;
+          }
+          if (status.status !== 'running' && status.status !== 'pending'
+            && !(status.status === 'paused' && !status.pause?.settled)) break;
+          saved.status = 'observing';
+          await save();
           const observation = await options.cli.watchStatus({
             conversationId: receipt.conversation_id,
             runId: receipt.run_id,
@@ -228,9 +242,7 @@ export async function runResearchWorkflow(
             { mode: 0o600 }
           );
           status = await options.cli.status(receipt.conversation_id, receipt.run_id);
-          if (!status) throw new Error('Exact run status unavailable after watch');
         }
-        if (!status) throw new Error('Exact run status unavailable');
         saved.status = status.status === 'completed' ? 'collecting' : status.status;
         await save();
         await writeJson(path.join(options.output, stage.id, 'terminal-observation.json'), status);

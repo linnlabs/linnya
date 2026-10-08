@@ -2,6 +2,7 @@ import {
   CONVERSATION_CONTROL_SCHEMA_VERSION,
   ConversationControlAuditRequestSchema,
   ConversationControlCommandRequestSchema,
+  ConversationControlCommandApprovalsRequestSchema,
   ConversationControlListRequestSchema,
   ConversationControlModelsRequestSchema,
   ConversationControlProjectsRequestSchema,
@@ -272,6 +273,29 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
         timeoutMs: readPositiveInteger(tokens, 'timeout', 60_000),
         pretty,
       };
+    }
+    case 'approvals':
+    case 'approval-reply': {
+      assertAllowedOptions(tokens, command === 'approvals' ? ['run'] : ['run', 'request', 'choice']);
+      const runId = readString(tokens, 'run');
+      if (!runId) usageError(`${command} requires --run <id> to identify the exact approval scope`);
+      const identity = {
+        schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+        command: 'command_approvals',
+        conversation_id: requireConversationId(tokens, command),
+        run_id: runId,
+      } as const;
+      const request = ConversationControlCommandApprovalsRequestSchema.parse(
+        command === 'approvals'
+          ? { ...identity, action: 'list' }
+          : {
+              ...identity,
+              action: 'reply',
+              approval_request_id: readString(tokens, 'request'),
+              choice: readString(tokens, 'choice'),
+            }
+      );
+      return { kind: 'command', request, pretty };
     }
     case 'respond': {
       assertAllowedOptions(tokens, [

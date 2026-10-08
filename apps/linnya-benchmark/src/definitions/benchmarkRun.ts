@@ -13,6 +13,7 @@ export type BenchmarkRunOutcome =
   | 'failed'
   | 'cancelled'
   | 'requires_user'
+  | 'requires_command_approval'
   | 'requires_recovery'
   | 'runner_failed';
 

@@ -92,6 +92,7 @@ export async function runBenchmarkCli(
               id: stage.id,
               status: stage.status,
               receipt: stage.receipt,
+              command_approvals: stage.commandApprovals,
               error: stage.error,
               outputCount: stage.outputs.length,
             })),

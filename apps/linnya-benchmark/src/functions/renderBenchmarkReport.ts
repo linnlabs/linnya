@@ -57,6 +57,16 @@ function resolveProviderTokenTotals(tokens: AuditTokenTotals): {
 }
 
 function renderManagementSummary(facts: BenchmarkRunFacts): string[] {
+  const pendingApprovals = facts.statusFrames.at(-1)?.snapshot?.command_approvals
+    .filter(approval => approval.status === 'awaiting_reply') ?? [];
+  const approvalNotice = facts.outcome === 'requires_command_approval'
+    ? [
+        '- Run 正在等待 Shell 命令审批；本轮观察已结束，未批准、恢复或取消原运行。请检查下列 exact 请求再显式回复。',
+        ...pendingApprovals.map(approval =>
+          `- 审批请求：\`${approval.approval_request_id}\`；实际 run：\`${approval.agent_run_id}\`；工具调用：\`${approval.origin_tool_call_id}\`；允许选择：${approval.available_choices.join(' / ')}。`
+        ),
+      ]
+    : [];
   const recoveryNotice = facts.outcome === 'requires_recovery'
     ? ['- Run 已暂停并完成收口；本轮观察已结束，尚未完成任务。恢复必须显式发起并另行记录，本轮未自动恢复或取消。']
     : [];
@@ -64,6 +74,7 @@ function renderManagementSummary(facts: BenchmarkRunFacts): string[] {
     return [
       `- 控制面结果：\`${facts.outcome}\`；执行审计${facts.audit.status === 'unavailable' ? `不可用（${escapeCell(facts.audit.code)}）` : '未请求'}。`,
       ...recoveryNotice,
+      ...approvalNotice,
       '- 视觉、内容和导出质量仍须人工验收，不能从运行终态推断。',
     ];
   }
@@ -73,6 +84,7 @@ function renderManagementSummary(facts: BenchmarkRunFacts): string[] {
   return [
     `- 控制面结果：\`${facts.outcome}\`；总墙钟 ${formatDuration(facts.durationMs)}。`,
     ...recoveryNotice,
+    ...approvalNotice,
     `- 执行拓扑：${audit.runs.length} 个 Run，其中 ${childRuns.length} 个 child Run；LLM ${audit.llm.calls} 次，工具 ${audit.tools.calls} 次。`,
     `- Provider actual：总输入 ${formatInteger(tokenTotals.providerInput)}（非缓存 ${formatInteger(tokenTotals.uncachedInput)}），输出 ${formatInteger(audit.llm.actual_tokens.output_tokens)}；usage 覆盖率 ${formatPercent(audit.llm.provider_actual_calls, audit.llm.calls)}。`,
     `- 上下文压缩：完成 ${audit.context_compaction.completed} 次 / Provider attempt ${audit.context_compaction.attempts} 次，覆盖 ${audit.context_compaction.by_run.length} 个 Run。`,
@@ -86,7 +98,8 @@ function renderManagementSummary(facts: BenchmarkRunFacts): string[] {
 function resolveObservationEnd(facts: BenchmarkRunFacts): number {
   if (facts.stop) return facts.stop.completed_at;
   if (facts.result) return facts.result.completedAt;
-  if (facts.outcome === 'requires_user' || facts.outcome === 'requires_recovery') {
+  if (facts.outcome === 'requires_user' || facts.outcome === 'requires_recovery'
+    || facts.outcome === 'requires_command_approval') {
     return facts.statusFrames.at(-1)?.observed_at ?? facts.finishedAt;
   }
   if (facts.audit.status === 'available' && facts.receipt) {
@@ -159,7 +172,10 @@ function renderStatusTimeline(facts: BenchmarkRunFacts): string[] {
     '| ---: | --- | --- | --- | ---: | ---: | --- |',
     ...facts.statusFrames.map((frame, index) => {
       const snapshot = frame.snapshot;
-      return `| ${index} | ${new Date(frame.observed_at).toISOString()} | ${snapshot?.status ?? 'not_found'} | ${escapeCell(snapshot?.current_node ?? '')} | ${snapshot?.execution_steps_used ?? '—'} | ${snapshot?.run_iterations_used ?? snapshot?.iterations_used ?? '—'} | ${escapeCell(snapshot?.pending_interaction?.tool_name ?? '')} |`;
+      const waitingTool = snapshot?.command_approvals.some(approval => approval.status === 'awaiting_reply')
+        ? 'Shell 审批（尚未启动命令）'
+        : snapshot?.pending_interaction?.tool_name ?? '';
+      return `| ${index} | ${new Date(frame.observed_at).toISOString()} | ${snapshot?.status ?? 'not_found'} | ${escapeCell(snapshot?.current_node ?? '')} | ${snapshot?.execution_steps_used ?? '—'} | ${snapshot?.run_iterations_used ?? snapshot?.iterations_used ?? '—'} | ${escapeCell(waitingTool)} |`;
     }),
   ];
 }

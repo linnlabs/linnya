@@ -20,6 +20,7 @@ interface WatchConversationStatusOptions {
 function hasWatchSettled(snapshot: ConversationControlRunStatusSnapshot): boolean {
   const status = snapshot.status;
   return (
+    snapshot.command_approvals.some(approval => approval.status === 'awaiting_reply') ||
     status === 'awaiting_user' ||
     (status === 'paused' && snapshot.pause?.settled === true) ||
     status === 'completed' ||

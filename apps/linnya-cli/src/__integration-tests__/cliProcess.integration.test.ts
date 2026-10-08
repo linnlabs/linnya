@@ -1,141 +1,13 @@
-import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import os from 'node:os';
 import path from 'node:path';
+import os from 'node:os';
 import {
-  CONVERSATION_CONTROL_CONNECTION_FILE_ENV,
-  CONVERSATION_CONTROL_TOKEN_HEADER,
-  ConversationControlCommandRequestSchema,
   ConversationControlConnectionDescriptorSchema,
-  type ConversationControlCommandRequest,
 } from '@app/schemas';
 import { afterEach, describe, expect, it } from 'vitest';
+import { cleanupCliBridges, createScriptedBridge, runCliProcess } from './__test-helpers__/scriptedCliBridge';
 
-const repoRoot = path.resolve(import.meta.dirname, '../../../..');
-const bundleMode = process.env.LINNYA_CLI_TEST_ENTRY === 'bundle';
-const cliEntry = path.join(repoRoot, bundleMode ? 'apps/linnya-cli/bin/linnya.cjs' : 'apps/linnya-cli/src/main.ts');
-const servers: Server[] = [];
-const temporaryRoots: string[] = [];
-
-afterEach(async () => {
-  await Promise.all(servers.splice(0).map(server => new Promise<void>((resolve, reject) => {
-    server.close(error => error ? reject(error) : resolve());
-  })));
-  await Promise.all(
-    temporaryRoots.splice(0).map(root => fs.rm(root, { recursive: true, force: true })),
-  );
-});
-
-async function readJsonRequest(request: IncomingMessage): Promise<unknown> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  const decoded: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-  return decoded;
-}
-
-function sendJson(response: ServerResponse, status: number, body: unknown): void {
-  response.writeHead(status, { 'content-type': 'application/json' });
-  response.end(JSON.stringify(body));
-}
-
-async function createScriptedBridge(
-  execute: (request: ConversationControlCommandRequest, response: ServerResponse) => unknown,
-  capabilities: readonly unknown[] = ['send', 'models', 'projects', 'list', 'messages', 'status', 'resume', 'respond', 'stop', 'result', 'audit', 'workspace_tools', 'future_additive_capability'],
-): Promise<{
-  readonly connectionFile: string;
-  readonly receivedCommands: ConversationControlCommandRequest[];
-}> {
-  const sessionToken = 'd'.repeat(64);
-  const receivedCommands: ConversationControlCommandRequest[] = [];
-  const server = createServer((request, response) => {
-    void (async () => {
-      if (request.headers[CONVERSATION_CONTROL_TOKEN_HEADER] !== sessionToken) {
-        sendJson(response, 401, { error: 'unauthorized' });
-        return;
-      }
-      if (request.url?.endsWith('/handshake')) {
-        await readJsonRequest(request);
-        sendJson(response, 200, {
-          schema_version: 1,
-          protocol_version: 2,
-          app_instance_id: 'app-process-test',
-          app_version: '0.0.38',
-          capabilities,
-          limits: {
-            max_request_bytes: 1024 * 1024,
-            max_message_chars: 200_000,
-            max_page_size: 200,
-            min_watch_interval_ms: 1,
-            max_watch_timeout_ms: 10_000,
-          },
-        });
-        return;
-      }
-      if (request.url?.endsWith('/commands')) {
-        const command = ConversationControlCommandRequestSchema.parse(await readJsonRequest(request));
-        receivedCommands.push(command);
-        const result = await execute(command, response);
-        if (!response.destroyed) sendJson(response, 200, result);
-        return;
-      }
-      sendJson(response, 404, { error: 'not_found' });
-    })().catch(error => {
-      sendJson(response, 500, {
-        error: error instanceof Error ? error.message : 'scripted_bridge_failure',
-      });
-    });
-  });
-  await new Promise<void>((resolve, reject) => {
-    server.listen(0, '127.0.0.1', resolve);
-    server.once('error', reject);
-  });
-  servers.push(server);
-  const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('Scripted bridge address unavailable');
-
-  const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-cli-process-'));
-  temporaryRoots.push(temporaryRoot);
-  const connectionFile = path.join(temporaryRoot, 'connection.json');
-  const descriptor = ConversationControlConnectionDescriptorSchema.parse({
-    protocol_version: 2,
-    app_instance_id: 'app-process-test',
-    pid: process.pid,
-    host: '127.0.0.1',
-    port: address.port,
-    session_token: sessionToken,
-    created_at: Date.now(),
-    updated_at: Date.now(),
-  });
-  await fs.writeFile(connectionFile, JSON.stringify(descriptor), { mode: 0o600 });
-  return { connectionFile, receivedCommands };
-}
-
-function runCliProcess(
-  args: readonly string[],
-  connectionFile: string,
-): Promise<{ readonly exitCode: number | null; readonly stdout: string; readonly stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [...(bundleMode ? [] : ['--import', 'tsx']), cliEntry, ...args], {
-      cwd: repoRoot,
-      env: {
-        ...process.env,
-        [CONVERSATION_CONTROL_CONNECTION_FILE_ENV]: connectionFile,
-      },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.setEncoding('utf8');
-    child.stderr.setEncoding('utf8');
-    child.stdout.on('data', chunk => { stdout += chunk; });
-    child.stderr.on('data', chunk => { stderr += chunk; });
-    child.once('error', reject);
-    child.once('close', exitCode => resolve({ exitCode, stdout, stderr }));
-  });
-}
+afterEach(cleanupCliBridges);
 
 describe('linnya CLI real process -> scripted bridge', () => {
   it.each([
@@ -192,7 +64,7 @@ describe('linnya CLI real process -> scripted bridge', () => {
         return { schema_version: 1, ok: true, command: 'status', conversation_id: 'conversation-1',
           run: { conversation_id: 'conversation-1', run_id: attempts === 0 ? 'run-original' : 'run-new',
             turn_id: 'turn-1', execution_id: 'execution-1', agent_id: 'slides_agent', status: 'running',
-            started_at: 1, updated_at: 1, result_available: false } };
+            started_at: 1, updated_at: 1, command_approvals: [], result_available: false } };
       }
       if (request.command !== 'stop') throw new Error('expected exact stop');
       attempts += 1;
@@ -361,7 +233,7 @@ describe('linnya CLI real process -> scripted bridge', () => {
             started_at: 10,
             updated_at: 42,
             pause: { settled: true, reason: 'user_pause' },
-            result_available: false,
+            command_approvals: [], result_available: false,
           },
         };
       }
@@ -454,7 +326,7 @@ describe('linnya CLI real process -> scripted bridge', () => {
           started_at: 1,
           updated_at: statusCalls,
           terminal_at: statusCalls === 1 ? undefined : 2,
-          result_available: statusCalls > 1,
+          command_approvals: [], result_available: statusCalls > 1,
         },
       };
     });
@@ -641,13 +513,15 @@ describe('linnya CLI real process -> scripted bridge', () => {
 
   it('App 未运行时不打印诊断噪声，只返回 app_not_running 合同', async () => {
     const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-cli-missing-app-'));
-    temporaryRoots.push(temporaryRoot);
-    const result = await runCliProcess(['list'], path.join(temporaryRoot, 'missing.json'));
-
-    expect(result.exitCode).toBe(3);
-    expect(result.stdout).toBe('');
-    expect(JSON.parse(result.stderr)).toMatchObject({
-      error: { code: 'app_not_running', retryable: true },
-    });
+    try {
+      const result = await runCliProcess(['list'], path.join(temporaryRoot, 'missing.json'));
+      expect(result.exitCode).toBe(3);
+      expect(result.stdout).toBe('');
+      expect(JSON.parse(result.stderr)).toMatchObject({
+        error: { code: 'app_not_running', retryable: true },
+      });
+    } finally {
+      await fs.rm(temporaryRoot, { recursive: true, force: true });
+    }
   });
 });

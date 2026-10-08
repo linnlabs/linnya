@@ -96,6 +96,7 @@ export function status(
     status: value,
     started_at: 1,
     updated_at: 2,
+    command_approvals: [],
     result_available: value === 'completed',
     ...(value === 'paused' ? { pause: { settled: true, reason: 'execution_interrupted' } } : {}),
   };

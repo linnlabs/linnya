@@ -5,6 +5,9 @@ import type { BenchmarkRunOutcome } from '../definitions/benchmarkRun';
 export function resolveBenchmarkObservationOutcome(
   snapshot: ConversationControlRunStatusSnapshot,
 ): BenchmarkRunOutcome | undefined {
+  // Shell 审批不复用普通 HITL 的 auto-approve；返回控制权，保留真实 running 状态。
+  if (snapshot.command_approvals.some(approval => approval.status === 'awaiting_reply'))
+    return 'requires_command_approval';
   switch (snapshot.status) {
     case 'completed': return 'completed';
     case 'failed': return 'failed';

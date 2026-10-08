@@ -43,6 +43,12 @@ Conversation，避免引用别名跨会话漂移；Citation 快照排除展示 i
 
 - send 前先持久化 admission_unknown，取得 receipt 后才 observing。响应未知时保留原状并退出，不自动 send。操作者须通过正式 CLI 查明原请求结果，不能删除 state 后补跑冒充恢复。
 - watch 的 30 秒只限制一次观察，绝不取消后端 run。自然完成仍受 Host/模型真实预算约束。
+- Shell 的 `command_approvals` 出现 `awaiting_reply` 时保存 `waiting_command_approval`，
+  state 和 CLI 摘要保留实际 run/tool/request 及允许选择，追加原始等待快照。
+  主 run 仍可真实处于 running，不伪装成 HITL 或 settled pause。操作者通过正式
+  `linnya approvals / approval-reply` 核查和回复；Runner 不自动批准，也不停止原运行。
+  同目录再次启动只检查同一 receipt；等待仍在就再次退出，已作答的 processing 则继续观察，
+  不 send、不 resume。当前等待清空不删除原始等待快照。
 - paused / awaiting_user 退出观察。paused 需显式
   `--resume-stage D0`（或相应阶段）；只恢复 exact run。HITL 仍通过正式
   `linnya respond` 处理后重跑同一命令。

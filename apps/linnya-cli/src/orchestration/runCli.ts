@@ -44,6 +44,8 @@ export function linnyaCliUsage(): string {
     '  linnya messages <conversation-id> [--before N | --after N] [--limit N]',
     '  linnya status <conversation-id> [--run ID] [--watch] [--interval MS] [--timeout MS]',
     '  linnya resume <conversation-id> --run ID [--timeout MS]',
+    '  linnya approvals <conversation-id> --run ID',
+    '  linnya approval-reply <conversation-id> --run ACTUAL_RUN_ID --request ID --choice allow_once|allow_for_conversation|deny',
     '  linnya respond <conversation-id> --interaction ID (--approve | --skip | --submit-json JSON | --modify-json JSON) [--project ID]',
     '  linnya stop <conversation-id> [--run ID] [--reason TEXT] [--timeout MS]',
     '  linnya result <conversation-id> [--run ID]',
@@ -63,6 +65,8 @@ export function linnyaCliUsage(): string {
     '  send always requires --project; with --conversation it must match the saved project. The saved Agent is inherited unless --agent is supplied.',
     '  stop --run is safe to repeat and waits for tool/persistence settlement (default 60000ms).',
     '  resume requires an exact settled paused run; awaiting_user must use respond.',
+    '  Shell approval is separate from respond: use approvals to inspect exact run/subtree requests, then approval-reply with the pending agent_run_id.',
+    '  status --watch returns when command_approvals contains awaiting_reply; it never auto-approves commands.',
     '  A watch timeout only ends observation; it does not stop the App-owned run.',
     '',
   ].join('\n');
@@ -204,6 +208,9 @@ export async function runCli(
 
     const response = await client.execute(invocation.request);
     io.write(serialize(response, invocation.pretty));
+    // 传输成功不等于审批被接纳；竞争窗口里已结算的请求不能被脚本记成获准。
+    if (response.command === 'command_approvals' && response.action === 'reply'
+      && response.status === 'stale') return LINNYA_CLI_EXIT.conflict;
     return LINNYA_CLI_EXIT.success;
   } catch (error: unknown) {
     const projected = projectCliError(error);

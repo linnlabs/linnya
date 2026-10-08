@@ -2,6 +2,25 @@ import { describe, expect, it } from 'vitest';
 import { parseCliInvocation } from './parseCliInvocation';
 
 describe('parseCliInvocation', () => {
+  it('Shell 审批查询和回复必须显式绑定 run/request/choice，不使用普通 HITL', () => {
+    const requestId = 'command_approval_11111111-1111-4111-8111-111111111111';
+    expect(parseCliInvocation(['approvals', 'conversation-1', '--run', 'root-1'])).toMatchObject({
+      kind: 'command', request: { command: 'command_approvals', action: 'list', run_id: 'root-1' },
+    });
+    expect(parseCliInvocation(['approval-reply', 'conversation-1', '--run', 'child-1',
+      '--request', requestId, '--choice', 'allow_once'])).toMatchObject({
+      kind: 'command', request: { command: 'command_approvals', action: 'reply',
+        run_id: 'child-1', approval_request_id: requestId, choice: 'allow_once' },
+    });
+    for (const args of [
+      ['approvals', 'conversation-1'],
+      ['approval-reply', 'conversation-1', '--run', 'child-1', '--request', requestId],
+      ['approval-reply', 'conversation-1', '--run', 'child-1', '--choice', 'allow_once'],
+      ['approval-reply', 'conversation-1', '--run', 'child-1', '--request', requestId, '--approve'],
+      ['approval-reply', 'conversation-1', '--run', 'child-1', '--request', requestId, '--choice', 'allow_all'],
+    ]) expect(() => parseCliInvocation(args)).toThrow();
+  });
+
   it('把 runtime start 解析为前台宿主启动参数并允许 OS 分配 API port', () => {
     expect(parseCliInvocation(['runtime', 'start', '--workspace', '/tmp/workspace'])).toEqual({
       kind: 'runtime-start',

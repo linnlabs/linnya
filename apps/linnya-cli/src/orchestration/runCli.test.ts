@@ -28,7 +28,7 @@ function createIo() {
 function createClient(execute: ConversationControlClient['execute']): ConversationControlClient {
   return {
     descriptor: {
-      protocol_version: 2,
+      protocol_version: 3,
       app_instance_id: 'app-1',
       pid: 42,
       host: '127.0.0.1',
@@ -39,7 +39,7 @@ function createClient(execute: ConversationControlClient['execute']): Conversati
     },
     handshake: {
       schema_version: 1,
-      protocol_version: 2,
+      protocol_version: 3,
       app_instance_id: 'app-1',
       app_version: '0.0.38',
       capabilities: [
@@ -149,7 +149,7 @@ describe('runCli', () => {
               started_at: 1,
               updated_at: statusCalls === 1 ? 2 : 3,
               terminal_at: statusCalls === 1 ? undefined : 3,
-              result_available: false,
+              command_approvals: [], result_available: false,
             },
           };
         }
@@ -307,7 +307,7 @@ describe('runCli', () => {
             started_at: 10,
             updated_at: 42,
             pause: { settled: true, reason: 'user_pause' },
-            result_available: false,
+            command_approvals: [], result_available: false,
           },
         };
       }
@@ -379,7 +379,7 @@ describe('runCli', () => {
                   interaction_id: 'interaction-1',
                   tool_name: 'ask',
                 },
-          result_available: false,
+          command_approvals: [], result_available: false,
         },
       };
     };
@@ -423,7 +423,7 @@ describe('runCli', () => {
           pause: { settled: callCount > 1, reason: 'user_pause' },
           started_at: 1,
           updated_at: callCount,
-          result_available: false,
+          command_approvals: [], result_available: false,
         },
       };
     };
