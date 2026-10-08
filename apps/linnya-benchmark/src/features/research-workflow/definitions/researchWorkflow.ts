@@ -18,6 +18,7 @@ const locator = z.string().regex(/^workspace:\/[^\n]+$/);
 export const ResearchStageSchema = z
   .object({
     id: StageIdSchema,
+    agentId: z.string().min(1).optional(),
     modelId: z.string().min(1),
     reasoningEffort: z.enum(['off', 'minimal', 'low', 'medium', 'high', 'xhigh']).default('high'),
     skill: z.string().min(1),

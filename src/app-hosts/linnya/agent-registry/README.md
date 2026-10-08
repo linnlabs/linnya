@@ -356,7 +356,7 @@ src/app-hosts/linnya/agent-registry/
 1. 在 `agents/<name>/` 新建目录
 2. 放 `prompt.ts`
 3. 放 `index.ts`，导出 `AGENT_DEFINITION`
-4. 在 `agents/index.ts` 聚合
+4. platform 内置定义加入 `agents/legacyAgentDefinitions.ts`，由 `platform.backend.ts` 贡献；插件定义由对应 backend contribution 注册。`agents/index.ts` 仅为测试/诊断聚合，不是运行期注册入口。
 5. 需要特殊行为时，再引入专用 task / enricher / extender
 
 如果这个 agent 的最终答案必须来自某个工具，额外检查两件事：
@@ -497,3 +497,14 @@ src/app-hosts/linnya/agent-registry/
 限定浅检索、网页读取、续读及资料组装。`resultToolName` 指定正式产物工具，映射至框架
 judgeToolName（不是评分角色）；`maxCallsPerParentRun` 交给 Host 持久 admission 事务执行。
 网页四次，知识库旧行为保持不变。业务来源合同见 Web owner，不在注册中心复制。
+
+### CLI 研究行为实验入口
+
+`deep_research_experimental` 是已注册的独立场景定义，仅供 CLI 选择，未贡献 Renderer Agent
+菜单，也未增加通用子 Agent 类型。它复用 Default 的通用提示、工具、模型路由、800步预算与
+上下文策略，另加研究职责提示和每30步的短研究提醒；方法仍从正式 `deep-research` Skill
+加载。Default与正式Skill不因实验而改变，旧Deep Research Leader不参与这条流程。
+
+提醒使用现有Linnkit公开合同，瞬态追加到实际请求末条消息，继承其role，不是持久阶段状态
+或强制门禁。研究Agent没有自动创建独立评审；阶段调度由调用方显式安排，不能宣称已取得
+自主编排或稳定质量收益。定义由GenericAgentTask按正式接纳边界冻结系统提示，恢复沿用原版本。

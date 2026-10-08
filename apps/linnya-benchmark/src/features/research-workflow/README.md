@@ -12,8 +12,9 @@ manifest 的正式 parser 是 `definitions/researchWorkflow.ts`。它声明
 `schemaVersion: 1`、固定 `projectId` 与有序 `stages`。每个阶段包含：
 
 - `id`：D0 / R0 / D1 / R1 的有序子集，不得重复。
-- `modelId`、`reasoningEffort`（默认 high）、`skill`：始终使用 Default
-  Agent；显式要求加载指定 Skill。
+- `agentId`：可选的正式 backend Agent ID，省略时使用 `default`。不同阶段可选不同 Agent；
+  例如实验作者与 Default 评审。实际接纳身份保存在 receipt，恢复不得换 Agent。
+- `modelId`、`reasoningEffort`（默认 high）、`skill`：显式模型配置与需加载的 Skill。
 - `promptFile`：UTF-8 提示文件，相对 manifest 所在目录解析。
 - `allowedMaterials`：允许读取的 Workspace
   locator；`expectedDocuments`：本阶段必须成功写入并回读的文档。
@@ -21,6 +22,10 @@ manifest 的正式 parser 是 `definitions/researchWorkflow.ts`。它声明
   forbidden；不允许通用子 Agent，网页深搜只在联网允许阶段按需使用。
 - 可选 `sourcePacket: { prefix, index }`：例如 prefix 为 `workspace:/S0`，产生
   `workspace:/S0-001.md` 等根文件和指定 index，不隐式创建目录。
+
+真实开放研究优先普通网页、PDF或项目文档与紧凑来源目录，`sourcePacket`不是必需输入。
+原始审计与取得记录仍保存在后台，不要求作者/评委解码审计JSON。PDF须走当前正式可用读取
+路径，不能假设web_read支持全部附件。公开夹具只验证工程合同，不替代自然任务的质量评审。
 
 同一 manifest 的后继阶段自动允许先前资料包；**不会自动允许先前文章、笔记或评审**。这些文档必须显式放进 allowedMaterials。因此 R1 可只取得 D1 与来源，而不读取 R0。不同项目的对照使用独立 manifest，由操作者通过正式工具预置材料；source
 publication plan 可用于复制普通材料，不能作为 Citation/Evidence 导入接口。

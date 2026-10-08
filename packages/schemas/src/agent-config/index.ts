@@ -65,6 +65,8 @@ export const PromptKeys = {
   /** Deep Search Agent：知识库深度搜索 */
   DEEP_SEARCH: 'deep_search',
   DEEP_WEB_SEARCH: 'deep_web_search',
+  /** CLI 研究行为实验入口；不表示已验证的研究质量提升。 */
+  DEEP_RESEARCH_EXPERIMENTAL: 'deep_research_experimental',
 
   // ---- Internal（后端内部任务） ----
   /** PDF 视觉识别 */

@@ -6,7 +6,6 @@ import {
   type ResearchToolMessage,
   type ResearchWorkflowCliPort,
   type StageId,
-  type StageState,
   type WorkflowState,
   type Projection,
 } from '../definitions/researchWorkflow';
@@ -144,7 +143,7 @@ export async function runResearchWorkflow(
           saved.receipt = await options.cli.send({
             projectId,
             message: prompt,
-            agentId: 'default',
+            agentId: stage.agentId ?? 'default',
             modelId: stage.modelId,
             reasoningEffort: stage.reasoningEffort,
           });

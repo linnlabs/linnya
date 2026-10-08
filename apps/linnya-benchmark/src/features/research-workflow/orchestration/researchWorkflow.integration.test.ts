@@ -24,6 +24,34 @@ import {
 afterEach(cleanupFixtures);
 
 describe('research workflow through formal CLI port', () => {
+  it('selects the stage agent and refuses to resend if that frozen choice changes', async () => {
+    const options = await fixture();
+    const manifest = ResearchManifestSchema.parse(
+      JSON.parse(await readFile(options.manifestFile, 'utf8'))
+    );
+    manifest.stages[0].agentId = 'deep_research_experimental';
+    await writeFile(options.manifestFile, JSON.stringify(manifest));
+    const cli = fakeCli(
+      new Map([
+        ['workspace:/input.md', '依据'],
+        ['workspace:/output.md', '成稿'],
+      ])
+    );
+    await runResearchWorkflow({ ...options, cli });
+    expect(cli.send).toHaveBeenCalledWith(
+      expect.objectContaining({ agentId: 'deep_research_experimental' })
+    );
+    expect(cli.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.not.stringContaining('使用 Default Agent'),
+      })
+    );
+    manifest.stages[0].agentId = 'default';
+    await writeFile(options.manifestFile, JSON.stringify(manifest));
+    expect((await runResearchWorkflow({ ...options, cli })).stages[0]?.status).toBe('stale');
+    expect(cli.send).toHaveBeenCalledTimes(1);
+  });
+
   it('freezes current input/output, runs once, and invalidates changed input instead of resending', async () => {
     const options = await fixture();
     const docs = new Map([
@@ -39,6 +67,7 @@ describe('research workflow through formal CLI port', () => {
     });
     await runResearchWorkflow({ ...options, cli });
     expect(cli.send).toHaveBeenCalledTimes(1);
+    expect(cli.send).toHaveBeenCalledWith(expect.objectContaining({ agentId: 'default' }));
     docs.set('workspace:/input.md', '新依据');
     expect((await runResearchWorkflow({ ...options, cli })).stages[0]?.status).toBe('stale');
     expect(cli.send).toHaveBeenCalledTimes(1);

@@ -51,7 +51,7 @@ function buildSystemPrompt(): string {
   return buildDefaultAgentSystemPrompt();
 }
 
-export const AGENT_DEFINITION: AgentDefinition = {
+export const AGENT_DEFINITION = {
   id: PromptKeys.DEFAULT,
   promptKey: PromptKeys.DEFAULT,
   defaultMode: 'agent',
@@ -78,6 +78,6 @@ export const AGENT_DEFINITION: AgentDefinition = {
   task: {
     systemPromptBuilder: buildSystemPrompt,
   },
-};
+} satisfies AgentDefinition;
 
 export default AGENT_DEFINITION;
