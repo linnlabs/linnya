@@ -204,7 +204,8 @@ export function renderSourcePacket(
           fenced(visible.slice(offset, end)),
         ].join('\n\n'),
       });
-      rows.push(`* ${record.id} / ${record.kind} / 片段 ${offset}：${locator}`);
+      // 枚举与 locator 是字面值；普通正文中的下划线会被 Markdown current 正常转义。
+      rows.push(`* ${record.id} / \`${record.kind}\` / 片段 ${offset}：\`${locator}\``);
       if (end === visible.length) break;
       offset = end;
     }
