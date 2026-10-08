@@ -28,7 +28,7 @@ export function projectLiveProviderModelMetadata(
     throw new Error(`Provider connection 没有 models.dev 资料来源: ${connectionId}`);
   }
   const sourceProviderId = policy.source_provider_id;
-  if (!isSourceRecord(source) || !Object.hasOwn(source, sourceProviderId)) {
+  if (!isSourceRecord(source) || !Object.prototype.hasOwnProperty.call(source, sourceProviderId)) {
     throw new Error(`models.dev 缺少已准入 Provider: ${sourceProviderId}`);
   }
   // 只解析选中的原始对象；不能先 parse 整份 source，否则无关供应商会阻断用户刷新。
