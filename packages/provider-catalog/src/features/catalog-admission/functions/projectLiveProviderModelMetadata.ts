@@ -1,7 +1,7 @@
 import type { ProviderModelDefinition } from '../../../definitions/providerCatalog';
 import { ModelsDevProviderSchema } from '../definitions/modelsDevSource';
 import { PROVIDER_ADMISSION_POLICIES } from '../registry/providerAdmissionPolicies';
-import { projectModelsDevProviderModels } from './projectModelsDevProviderModels';
+import { projectModelsDevProviderMetadata } from './projectModelsDevProviderModels';
 import { readModelsDevProvider } from './readModelsDevProvider';
 
 function isSourceRecord(source: unknown): source is Record<string, unknown> {
@@ -36,5 +36,5 @@ export function projectLiveProviderModelMetadata(
     ModelsDevProviderSchema.parse(source[sourceProviderId]),
     sourceProviderId
   );
-  return projectModelsDevProviderModels(provider, policy);
+  return projectModelsDevProviderMetadata(provider, policy);
 }

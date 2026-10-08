@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { projectLiveProviderModelMetadata } from '../../../index';
+import { ModelsDevProviderSchema } from '../definitions/modelsDevSource';
+import { PROVIDER_ADMISSION_POLICIES } from '../registry/providerAdmissionPolicies';
+import { projectModelsDevProviderModels } from './projectModelsDevProviderModels';
 
 function model(id: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -45,19 +48,47 @@ describe('projectLiveProviderModelMetadata', () => {
     ]);
   });
 
-  it('延续 Agent 模型准入，过滤弃用、非文本、零容量与无工具模型', () => {
+  it('过滤弃用、非文本和零容量的语言模型资料', () => {
     const metadata = projectLiveProviderModelMetadata('ollama-cloud', {
       'ollama-cloud': provider('ollama-cloud', {
         current: model('current', { status: 'beta' }),
         retired: model('retired', { status: 'deprecated' }),
         image: model('image', { modalities: { output: ['image'] } }),
         zero: model('zero', { limit: { context: 0, output: 0 } }),
-        'no-tools': model('no-tools', { tool_call: false }),
       }),
     });
 
     expect(metadata.map(candidate => candidate.id)).toEqual(['current']);
     expect(metadata[0].release_status).toBe('preview');
+  });
+
+  it('上游未声明工具能力时仍提供补充容量，但静态目录继续拒绝这些模型', () => {
+    const sourceProvider = provider('ollama-cloud', {
+      'tools-unlisted': model('tools-unlisted', { tool_call: false }),
+      'tools-unspecified': model('tools-unspecified', { tool_call: undefined }),
+    });
+    const metadata = projectLiveProviderModelMetadata('ollama-cloud', {
+      'ollama-cloud': sourceProvider,
+    });
+
+    // 官方 /api/show 决定工具能力；metadata 保留来源值，只确保精确 ID 的容量可供补充。
+    expect(
+      metadata.map(candidate => ({
+        id: candidate.id,
+        output: candidate.max_output_tokens,
+        observedToolCall: candidate.capabilities.tool_call,
+      }))
+    ).toEqual([
+      { id: 'tools-unlisted', output: 16_384, observedToolCall: false },
+      { id: 'tools-unspecified', output: 16_384, observedToolCall: false },
+    ]);
+    const policy = PROVIDER_ADMISSION_POLICIES.find(
+      candidate => candidate.provider_connection_definition_id === 'ollama-cloud'
+    );
+    if (!policy) throw new Error('Ollama Cloud policy is required for this business scenario');
+    expect(
+      projectModelsDevProviderModels(ModelsDevProviderSchema.parse(sourceProvider), policy)
+    ).toEqual([]);
   });
 
   it('按 connection 的 source policy 取资料，不要求其他历史绑定模型仍存在', () => {
@@ -79,7 +110,10 @@ describe('projectLiveProviderModelMetadata', () => {
     expect(() =>
       projectLiveProviderModelMetadata('opencode-go', {
         'opencode-go': provider('opencode-go', {
-          'new-model': model('new-model', { provider: { npm: '@ai-sdk/anthropic' } }),
+          'new-model': model('new-model', {
+            tool_call: false,
+            provider: { npm: '@ai-sdk/anthropic' },
+          }),
         }),
       })
     ).toThrow(/provider 覆盖缺少已审查 route: new-model/);

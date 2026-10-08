@@ -152,7 +152,9 @@ Host 在用户刷新模型时可以调用公开的 `projectLiveProviderModelMeta
 `source_provider_id` 解析选中的 Provider，无关供应商的非法资料不会阻断本次查询。未知 connection、
 没有 models.dev 来源、目标 Provider 缺失或非法都会明确报错，不回退到旧 bundled 资料。
 
-该投影返回符合既有 Agent 准入规则的模型资料：弃用、非文本输出、零容量及 policy 要求工具能力但未满足的模型会被排除。
+该投影返回可用的语言模型资料：弃用、非文本输出、零容量模型会被排除。
+实时资料查询不按 models.dev 的 `tool_call` 标记过滤；官方发现已经确认的工具能力不能被第三方目录的缺失或否定标记覆盖。
+Host 只按精确 ID 补充缺失的容量等资料，官方响应决定实际能力。发布目录仍执行原来的 `requires_tool_call` 准入，二者共用资料校验与 route 审查。
 实际可用模型 ID 必须由供应商的实时 API 决定；Host 只能按精确 ID 合并资料，不能把 models.dev 列表当作供应商当前可用模型。
 函数不联网、不刷新目录 registry，也不生成或修改 bundled 资产、generation 或 runtime binding；这些仍由发布同步与人工审查拥有。
 未审核的模型级 provider override 仍然报错，历史 route binding 在本次资料源中缺失则不阻断元数据查询；

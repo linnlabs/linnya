@@ -25,27 +25,30 @@ function projectModel(model: ModelsDevModel): ProviderModelDefinition | undefine
   };
 }
 
-/** 生成资产与实时资料查询共用准入规则；模型资料不授予新的运行协议。 */
-export function projectModelsDevProviderModels(
-  sourceProvider: ModelsDevProvider,
-  policy: ProviderAdmissionPolicy
-): ProviderModelDefinition[] {
+function readSourceModels(sourceProvider: ModelsDevProvider): ModelsDevModel[] {
   const sourceProviderId = sourceProvider.id;
   const modelIds = new Set<string>();
-  return Object.entries(sourceProvider.models)
-    .map(([sourceModelId, model]) => {
-      if (model.id !== sourceModelId) {
-        throw new Error(
-          `models.dev Model key/id 不一致: provider=${sourceProviderId}, key=${sourceModelId}, id=${model.id}`
-        );
-      }
-      if (modelIds.has(model.id)) {
-        throw new Error(`models.dev Provider 存在重复模型 ID: ${sourceProviderId}/${model.id}`);
-      }
-      modelIds.add(model.id);
-      if (policy.model_admission?.requires_tool_call && model.tool_call !== true) {
-        return undefined;
-      }
+  return Object.entries(sourceProvider.models).map(([sourceModelId, model]) => {
+    if (model.id !== sourceModelId) {
+      throw new Error(
+        `models.dev Model key/id 不一致: provider=${sourceProviderId}, key=${sourceModelId}, id=${model.id}`
+      );
+    }
+    if (modelIds.has(model.id)) {
+      throw new Error(`models.dev Provider 存在重复模型 ID: ${sourceProviderId}/${model.id}`);
+    }
+    modelIds.add(model.id);
+    return model;
+  });
+}
+
+function projectModelMetadata(
+  models: readonly ModelsDevModel[],
+  sourceProviderId: string,
+  policy: ProviderAdmissionPolicy
+): ProviderModelDefinition[] {
+  return models
+    .map(model => {
       const projectedModel = projectModel(model);
       if (!projectedModel) return undefined;
       // 上游覆盖只触发人工审查；不能根据 npm/api/shape 自动选择 Linnya 的运行协议。
@@ -67,4 +70,26 @@ export function projectModelsDevProviderModels(
       (left, right) =>
         left.display_name.localeCompare(right.display_name) || left.id.localeCompare(right.id)
     );
+}
+
+/** 发布目录依据上游工具能力准入，不能把资料查询的宽度扩散到静态候选。 */
+export function projectModelsDevProviderModels(
+  sourceProvider: ModelsDevProvider,
+  policy: ProviderAdmissionPolicy
+): ProviderModelDefinition[] {
+  const admittedModels = readSourceModels(sourceProvider).filter(
+    model => !policy.model_admission?.requires_tool_call || model.tool_call === true
+  );
+  return projectModelMetadata(admittedModels, sourceProvider.id, policy);
+}
+
+/**
+ * 资料查询不以 models.dev 的工具标记否决官方已确认的能力；Host 只按精确 ID 补充缺失资料。
+ * 返回的能力仍是来源观察值，不能覆盖官方能力；模型级协议覆盖继续接受相同的 route 审查。
+ */
+export function projectModelsDevProviderMetadata(
+  sourceProvider: ModelsDevProvider,
+  policy: ProviderAdmissionPolicy
+): ProviderModelDefinition[] {
+  return projectModelMetadata(readSourceModels(sourceProvider), sourceProvider.id, policy);
 }
