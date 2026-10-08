@@ -254,6 +254,14 @@ describe('research workflow through formal CLI port', () => {
       'collection_failed'
     );
     expect(JSON.parse(await readFile(publications, 'utf8'))).toHaveLength(2);
+    const frozenIndex = docs.get('workspace:/S1-index.md');
+    if (frozenIndex === undefined) throw new Error('Fixture index was not published');
+    docs.set('workspace:/S1-index.md', `${frozenIndex}\n`);
+    expect((await runResearchWorkflow({ ...options, cli })).stages[0]?.status).toBe(
+      'collection_failed'
+    );
+    expect(JSON.parse(await readFile(publications, 'utf8'))).toHaveLength(2);
+    docs.set('workspace:/S1-index.md', frozenIndex);
     const recovered = (await runResearchWorkflow({ ...options, cli })).stages[0];
     expect(recovered?.status).toBe('completed');
     expect(recovered?.packetDocuments).toHaveLength(3);

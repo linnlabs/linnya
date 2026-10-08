@@ -144,7 +144,10 @@ export async function collectStage(
         const current = await readProjection(readContext, document.locator);
         if (prior.status === 'complete' && prior.projection?.sha256 !== current.sha256)
           throw new Error(`Published source changed: ${document.locator}`);
-        if (prior.status === 'writing' && current.text.trimEnd() !== document.content.trimEnd()) {
+        if (
+          prior.status === 'writing' &&
+          (current.representation !== 'text' || current.text !== document.content)
+        ) {
           throw new Error(
             `Source write outcome unknown; inspect without reissuing: ${document.locator}`
           );
