@@ -38,6 +38,10 @@ read-only 的升级请求必须显示“从只读提升到标准”的原因；�
 
 页面挂载时注册 page ticket 并读取当前 snapshot；reload 后旧 ticket 失效。按钮提交期间锁定当前请求，重复点击由 owner 再次拒绝。请求已被另一个页面处理、owner 已结束或 conversation 正在清理时，页面显示不可用并重新读取 snapshot，而不是假装成功。
 
+openPage 响应与 changed 推送存在交错：当前 open 代次暂存完整推送，取得正式 page ticket 后只接纳
+同 ticket 最新快照，避免旧 open 快照把已审批请求恢复成 pending。新页面取代旧页面、组件卸载或
+open 失败都会丢弃该代；组件通过 AbortSignal 在 open 未返回时结束本页。旧回复不能重新打开或清空新页。
+
 ## 5. 组件规范
 
 复用共享 Button、Dialog、ScrollArea 和 typography 组件。文案只表达用户需要做的决定，不在页面重复解释完整沙箱架构。不要为颜色、padding、弹窗宽度写测试；这些属于共享组件和人工验收。

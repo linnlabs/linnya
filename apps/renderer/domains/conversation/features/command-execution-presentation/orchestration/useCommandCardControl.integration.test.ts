@@ -404,3 +404,81 @@ describe('renderer command card control page generation', () => {
     });
   });
 });
+
+describe('command control opening event handoff', () => {
+  it('terminal 先于 open 响应到达时保留终态，同页后续推送仍可接纳', async () => {
+    setActivePinia(createPinia());
+    const opening = deferred<CommandCardControlPageOpenResultV1>();
+    let changed: Parameters<CommandCardControlGateway['subscribe']>[0] = () => {};
+    const gateway: CommandCardControlGateway = {
+      ...CONTROL_GATEWAY_DEFAULTS,
+      openPage: () => opening.promise,
+      cancel: async () => ({ status: 'stale' }),
+      subscribe(listener) { changed = listener; return () => {}; },
+    };
+    const mounting = ensureCommandCardControlPage('A', gateway);
+    const old = openResult('A', 98);
+    if (!old.success) throw new Error('missing opening fixture');
+    const terminal = { ...old.snapshot, capabilities: [], settlements: [{
+      protocol_version: 1 as const, kind: 'command_card_execution_settlement' as const,
+      conversation_id: 'A', agent_run_id: 'run-A', origin_tool_call_id: 'call-A',
+      process_handle: HANDLE, started_at_ms: 10, settled_at_ms: 20,
+      audit_status: 'complete' as const,
+      terminal: { outcome: 'exited' as const, exitCode: 0, signal: null },
+    }] };
+    changed({ protocol_version: 1, kind: 'command_card_control_changed', snapshot: terminal });
+    const irrelevant = openResult('B', 99);
+    if (!irrelevant.success) throw new Error('missing unrelated fixture');
+    changed({ protocol_version: 1, kind: 'command_card_control_changed', snapshot: irrelevant.snapshot });
+    opening.resolve(old);
+    await mounting;
+    expect(useCommandCardControlStore().snapshot).toEqual(terminal);
+    changed({ protocol_version: 1, kind: 'command_card_control_changed', snapshot: {
+      ...terminal, audit_failures: [HANDLE],
+    } });
+    expect(useCommandCardControlStore().snapshot?.audit_failures).toEqual([HANDLE]);
+  });
+
+  it('切页与卸载丢弃旧代缓存，旧页迟到事件不能把当前页标回运行', async () => {
+    setActivePinia(createPinia());
+    const first = deferred<CommandCardControlPageOpenResultV1>();
+    const second = deferred<CommandCardControlPageOpenResultV1>();
+    let count = 0;
+    const listeners: Parameters<CommandCardControlGateway['subscribe']>[0][] = [];
+    const gateway: CommandCardControlGateway = {
+      ...CONTROL_GATEWAY_DEFAULTS,
+      openPage: () => (++count === 1 ? first.promise : second.promise),
+      cancel: async () => ({ status: 'stale' }),
+      subscribe(listener) { listeners.push(listener); return () => {}; },
+    };
+    const oldOpen = ensureCommandCardControlPage('A', gateway);
+    const old = openResult('A', 96);
+    if (!old.success) throw new Error('missing old fixture');
+    requireItem(listeners, 0)({
+      protocol_version: 1, kind: 'command_card_control_changed', snapshot: old.snapshot,
+    });
+    const nextOpen = ensureCommandCardControlPage('B', gateway);
+    const next = openResult('B', 97);
+    if (!next.success) throw new Error('missing next fixture');
+    requireItem(listeners, 1)({
+      protocol_version: 1, kind: 'command_card_control_changed',
+      snapshot: { ...next.snapshot, capabilities: [] },
+    });
+    // 已释放订阅即使把新 ticket 的迟到事件排到当前 open 中，也不能盖掉当前代。
+    requireItem(listeners, 0)({
+      protocol_version: 1, kind: 'command_card_control_changed', snapshot: next.snapshot,
+    });
+    first.resolve(old);
+    await oldOpen;
+    second.resolve(next);
+    await nextOpen;
+    expect(useCommandCardControlStore().snapshot).toMatchObject({
+      conversation_id: 'B', capabilities: [],
+    });
+    unmountCommandCardControlPage();
+    requireItem(listeners, 1)({
+      protocol_version: 1, kind: 'command_card_control_changed', snapshot: next.snapshot,
+    });
+    expect(useCommandCardControlStore().snapshot).toBeUndefined();
+  });
+});

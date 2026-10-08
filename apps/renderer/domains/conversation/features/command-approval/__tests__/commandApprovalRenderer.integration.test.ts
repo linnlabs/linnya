@@ -187,3 +187,92 @@ describe('command approval renderer orchestration', () => {
     expect(gateway.replies).toEqual([]);
   });
 });
+
+function deferredOpen() {
+  let resolve = (_value: CommandApprovalPageOpenResultV1): void => {};
+  const promise = new Promise<CommandApprovalPageOpenResultV1>(done => { resolve = done; });
+  return { promise, resolve };
+}
+
+class DeferredApprovalGateway extends MemoryCommandApprovalGateway {
+  readonly opening = deferredOpen();
+  override openPage() { return this.opening.promise; }
+}
+
+describe('command approval opening event handoff', () => {
+  beforeEach(() => setActivePinia(createPinia()));
+
+  it('open 返回前同 ticket 的处理中与已结算推送优先于旧 pending，不接受其它页', async () => {
+    const current = snapshot({ ticket: 'page-race' });
+    const gateway = new DeferredApprovalGateway();
+    const mounting = mountCommandApprovalPage(gateway);
+    gateway.emit(snapshot({ ticket: 'page-race', status: 'processing' }));
+    gateway.emit({ ...current, pending: [] });
+    gateway.emit(snapshot({ ticket: 'another-page', requestIndex: 2 }));
+    gateway.opening.resolve(opened(current));
+    const release = await mounting;
+    expect(useCommandApprovalProjectionStore().snapshot).toMatchObject({
+      page_ticket: 'page-race', pending: [],
+    });
+    release();
+  });
+
+  it('新页面取代未完成的旧 open 后，旧 changed、open 和 cleanup 都不能覆盖新代', async () => {
+    const oldGateway = new DeferredApprovalGateway();
+    const oldMount = mountCommandApprovalPage(oldGateway);
+    const oldListener = oldGateway.listener;
+    const freshGateway = new DeferredApprovalGateway();
+    const freshMount = mountCommandApprovalPage(freshGateway);
+    const fresh = snapshot({ ticket: 'page-current' });
+    freshGateway.emit({ ...fresh, pending: [] });
+    oldListener?.(CommandApprovalChangedEventV1Schema.parse({
+      protocol_version: 1, kind: 'command_approval_changed', snapshot: fresh,
+    }));
+    freshGateway.opening.resolve(opened(fresh));
+    const freshRelease = await freshMount;
+    oldGateway.opening.resolve(opened(snapshot({ ticket: 'page-old' })));
+    const oldRelease = await oldMount;
+    oldRelease();
+    expect(useCommandApprovalProjectionStore().snapshot).toMatchObject({
+      page_ticket: 'page-current', pending: [],
+    });
+    freshRelease();
+  });
+
+  it('组件在 open 返回前卸载，缓存和迟到响应都不能恢复页面', async () => {
+    const gateway = new DeferredApprovalGateway();
+    const lifetime = new AbortController();
+    const mounting = mountCommandApprovalPage(gateway, lifetime.signal);
+    const current = snapshot({ ticket: 'page-unmounted' });
+    gateway.emit({ ...current, pending: [] });
+    lifetime.abort();
+    gateway.opening.resolve(opened(current));
+    const release = await mounting;
+    expect(useCommandApprovalProjectionStore().pageState).toBe('idle');
+    expect(useCommandApprovalProjectionStore().snapshot).toBeUndefined();
+    expect(gateway.unsubscribed).toBe(true);
+    release();
+  });
+});
+
+it('旧页面的迟到回复不能重开或清除新页的同一请求', async () => {
+  setActivePinia(createPinia());
+  const old = snapshot({ ticket: 'page-reply-old' });
+  const fresh = snapshot({ ticket: 'page-reply-current' });
+  let settle = (_value: CommandApprovalReplyResultV1): void => {};
+  const response = new Promise<CommandApprovalReplyResultV1>(done => { settle = done; });
+  const oldGateway = new MemoryCommandApprovalGateway(opened(old));
+  oldGateway.reply = async () => response;
+  await mountCommandApprovalPage(oldGateway);
+  const oldReply = replyToCurrentCommandApproval('allow_once', oldGateway);
+  const freshGateway = new MemoryCommandApprovalGateway(opened(fresh));
+  const release = await mountCommandApprovalPage(freshGateway);
+  const request = fresh.pending[0]?.approval_request_id;
+  if (!request) throw new Error('missing current request');
+  useCommandApprovalProjectionStore().replyStarted(request);
+  settle({ success: true, status: 'invalid_page' });
+  await oldReply;
+  expect(useCommandApprovalProjectionStore().snapshot?.page_ticket).toBe(fresh.page_ticket);
+  expect(useCommandApprovalProjectionStore().submittingRequestId).toBe(request);
+  release();
+});

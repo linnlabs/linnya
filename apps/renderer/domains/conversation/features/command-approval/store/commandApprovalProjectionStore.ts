@@ -17,6 +17,7 @@ export const useCommandApprovalProjectionStore = defineStore(
 
     function pageOpened(next: CommandApprovalPageSnapshotV1): void {
       snapshot.value = next;
+      submittingRequestId.value = undefined;
       pageState.value = 'ready';
     }
 

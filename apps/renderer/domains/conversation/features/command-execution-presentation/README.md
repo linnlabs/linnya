@@ -45,6 +45,8 @@ command-execution-presentation/
 - Commands terminal settlement 优先于旧 tool loading 和迟到 pending。底栏与折叠标题共同显示
   真实终态，不因 Runtime 工具回执尚未到达而继续显示运行中；持续时间只取执行事实。
 - reload 的 snapshot 与实时 changed 事件使用同一规则；不根据墙钟、命令文本或父 run 结束猜测完成。
+- openPage 返回前到达的 changed 暂存于本次 open 代次，ticket 确认后只接纳同页最新快照；
+  terminal 先到不能被旧 open 的运行能力覆盖。切会话/释放丢弃缓冲，旧订阅与旧 open 各自按代次隔离。
 
 ## 5. 四层输出不能混合
 

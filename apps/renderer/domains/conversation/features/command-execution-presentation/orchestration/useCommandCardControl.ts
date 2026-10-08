@@ -1,6 +1,7 @@
 import {
   CommandCardCancelSubmissionV1Schema,
   CommandProtectedInputSubmissionV1Schema,
+  type CommandCardControlPageSnapshotV1,
   type CommandProtectedInputResultV1,
   type CommandProcessHandle,
 } from '@app/schemas/commands';
@@ -14,6 +15,12 @@ let mountedConversationId: string | undefined;
 let opening: Promise<void> | undefined;
 let unsubscribe = () => {};
 let pageGeneration = 0;
+// 同页 stale 回复会重新 open，但继续使用同一订阅；订阅代次单独阻止切页旧 callback。
+let subscriptionGeneration = 0;
+let openingProjection: {
+  readonly generation: number;
+  readonly snapshots: Map<string, CommandCardControlPageSnapshotV1>;
+} | undefined;
 let mountedGateway: CommandCardControlGateway = commandCardControlGateway;
 let mountedOwner: symbol | undefined;
 
@@ -28,6 +35,8 @@ async function openAndReplace(
   generation: number,
 ): Promise<void> {
   const store = useCommandCardControlStore();
+  const snapshots = new Map<string, CommandCardControlPageSnapshotV1>();
+  openingProjection = { generation, snapshots };
   try {
     const result = await gateway.openPage(conversationId);
     if (mountedConversationId !== conversationId || pageGeneration !== generation) {
@@ -38,12 +47,16 @@ async function openAndReplace(
       }
       return;
     }
-    if (result.success) store.replaceSnapshot(result.snapshot);
-    else store.markPageUnavailable();
+    if (result.success) {
+      // open 响应可能落后于同页 changed；只有正式 ticket 确认后才能接纳缓存。
+      store.replaceSnapshot(snapshots.get(result.snapshot.page_ticket) ?? result.snapshot);
+    } else store.markPageUnavailable();
   } catch {
     if (mountedConversationId === conversationId && pageGeneration === generation) {
       store.markPageUnavailable();
     }
+  } finally {
+    if (openingProjection?.generation === generation) openingProjection = undefined;
   }
 }
 
@@ -65,11 +78,18 @@ async function ensureCommandCardControlPage(
   mountedGateway = gateway;
   const generation = ++pageGeneration;
   unsubscribe();
+  const subscribedGeneration = ++subscriptionGeneration;
   unsubscribe = gateway.subscribe((event) => {
-    if (
-      event.snapshot.conversation_id === mountedConversationId
-      && event.snapshot.page_ticket === store.snapshot?.page_ticket
-    ) store.replaceSnapshot(event.snapshot);
+    if (subscriptionGeneration !== subscribedGeneration) return;
+    if (event.snapshot.conversation_id !== mountedConversationId) return;
+    if (openingProjection?.generation === pageGeneration) {
+      // 缓冲属于本次 open，不属于 store；切会话/释放会丢弃这一代。
+      openingProjection.snapshots.set(event.snapshot.page_ticket, event.snapshot);
+      return;
+    }
+    if (event.snapshot.page_ticket === store.snapshot?.page_ticket) {
+      store.replaceSnapshot(event.snapshot);
+    }
   });
   const currentConversationId = conversationId;
   opening = openAndReplace(conversationId, gateway, generation).finally(() => {
@@ -171,6 +191,8 @@ function releaseCommandCardControlPage(owner: symbol): void {
   const pageTicket = useCommandCardControlStore().snapshot?.page_ticket;
   const gateway = mountedGateway;
   pageGeneration += 1;
+  subscriptionGeneration += 1;
+  openingProjection = undefined;
   mountedConversationId = undefined;
   opening = undefined;
   unsubscribe();
