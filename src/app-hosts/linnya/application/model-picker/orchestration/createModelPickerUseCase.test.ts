@@ -52,6 +52,8 @@ describe('createModelPickerUseCase', () => {
       };
     });
     const useCase = createModelPickerUseCase({
+      discoveredModels: { read: () => undefined, readAvailable: () => undefined },
+      providerModelRefresh: { supports: () => false, refresh: vi.fn() },
       providerCatalog: {
         list: () => [openai],
         getConnection: id =>
@@ -99,6 +101,8 @@ describe('createModelPickerUseCase', () => {
 
   it('拒绝用另一个 Provider 的裸模型 ID 绕过 configured provider 归属', async () => {
     const useCase = createModelPickerUseCase({
+      discoveredModels: { read: () => undefined, readAvailable: () => undefined },
+      providerModelRefresh: { supports: () => false, refresh: vi.fn() },
       providerCatalog: {
         list: () => [openai],
         getConnection: id =>

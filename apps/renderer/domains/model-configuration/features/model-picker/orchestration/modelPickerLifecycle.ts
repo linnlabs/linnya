@@ -1,4 +1,4 @@
-import { loadModelPicker } from './modelPickerOperations';
+import { loadModelPicker, synchronizeModelPickerSnapshot } from './modelPickerOperations';
 
 let unsubscribeFromBackendUpdates: (() => void) | null = null;
 
@@ -7,7 +7,7 @@ export async function startModelPickerLifecycle(): Promise<void> {
   if (!unsubscribeFromBackendUpdates) {
     unsubscribeFromBackendUpdates =
       window.electronAPI.on('models-updated', () => {
-        void loadModelPicker().catch(error => {
+        void synchronizeModelPickerSnapshot().catch(error => {
           console.warn('[ModelPicker] 主进程刷新信号处理失败', error);
         });
       }) ?? null;

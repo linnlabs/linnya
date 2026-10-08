@@ -14,6 +14,8 @@ export { buildPurposeModelSelectOptions } from './functions/buildConversationMod
 export {
   activateModelPickerProviderModel,
   loadModelPicker,
+  refreshModelPickerSource,
+  refreshModelPickerProvider,
   setModelPickerModelVisibility,
   setModelPickerProviderVisibility,
 } from './orchestration/modelPickerOperations';

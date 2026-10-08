@@ -1,3 +1,5 @@
+import { createProviderModelDiscovery } from 'src/app-hosts/linnya/adapters/provider-model-discovery';
+import { createProviderModelDiscoveryUseCase } from 'src/app-hosts/linnya/application/provider-model-discovery';
 /**
  * @file src/electron-main/routes/index.ts
  *
@@ -299,7 +301,15 @@ export async function configureRoutes(
     fetchImplementation: fetch,
     clientVersion: dependencies.backendBootstrap.applicationVersion,
   });
+  const discoveredProviderModels = createProviderModelDiscoveryUseCase({
+    catalog: providerCatalog,
+    configurations: providerConfigurationRegistry,
+    models: modelCatalog,
+    bindings: providerOnboardingRuntimeBindingRegistry,
+    discovery: createProviderModelDiscovery(),
+  });
   const providerOnboardingUseCase = createProviderOnboardingUseCase({
+    discoveredModels: discoveredProviderModels,
     providerCatalog,
     runtimeBindings: providerOnboardingRuntimeBindingRegistry,
     modelCatalog,
@@ -334,8 +344,11 @@ export async function configureRoutes(
       configuredProvider.provider_connection_definition_id
     );
     if (catalogEntry?.connection.model_discovery !== 'bundled') continue;
+    // 已联网刷新保存的模型事实不能在重启时被旧安装包目录覆盖。
+    if (discoveredProviderModels.supports(configuredProvider.provider_connection_definition_id))
+      continue;
     try {
-      await providerOnboardingUseCase.refreshRegisteredBundledProviderModels(
+      await providerOnboardingUseCase.refreshRegisteredProviderModels(
         configuredProvider.provider_connection_definition_id
       );
     } catch (error: unknown) {
@@ -360,8 +373,15 @@ export async function configureRoutes(
   const providerModelSynchronization = createProviderModelSynchronizationLifecycle({
     publishModelsChanged: () => dependencies.rendererIntegration.publishModelsChanged(),
     startupConnectionIds: connectedChatGpt ? [CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID] : [],
-    synchronize: (connectionId, signal) =>
-      providerOnboardingUseCase.synchronizeConnectedProviderModels(connectionId, signal),
+    synchronize: async (connectionId, signal) => {
+      if (discoveredProviderModels.supports(connectionId)) {
+        await discoveredProviderModels.refresh(connectionId, signal);
+        signal.throwIfAborted();
+        await providerOnboardingUseCase.refreshRegisteredProviderModels(connectionId, signal);
+      } else {
+        await providerOnboardingUseCase.synchronizeConnectedProviderModels(connectionId, signal);
+      }
+    },
   });
   dependencies.providerModelSynchronizationLifecycleRegistration.register(
     providerModelSynchronization
@@ -398,6 +418,15 @@ export async function configureRoutes(
   app.use('/api/v1/models', createModelRouter(configuredModelRemoval));
   logger.info('✅ 模型管理路由已挂载: /api/v1/models');
   const modelPickerUseCase = createModelPickerUseCase({
+    discoveredModels: discoveredProviderModels,
+    providerModelRefresh: {
+      supports: connectionId =>
+        discoveredProviderModels.supports(connectionId) ||
+        providerCatalog.getConnection(connectionId)?.connection.model_discovery ===
+          'account_catalog',
+      refresh: connectionId =>
+        providerModelSynchronization.synchronizeConnectedProviderModels(connectionId),
+    },
     providerCatalog,
     providerConfigurations: providerConfigurationRegistry,
     modelCatalog,

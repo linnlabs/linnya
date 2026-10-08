@@ -184,6 +184,14 @@ intent 恢复。
 
 ### Direct Provider onboarding
 
+模型管理中的“获取新模型”必须查询远端供应商，不能只重读 Host 快照。当前 DeepSeek、Ollama Cloud
+使用正式联网发现；ChatGPT 复用账号目录同步。Host 通过 `can_refresh_models` 声明能力，未接入发现
+的正式来源不显示虚假的刷新按钮。网络、鉴权和解析失败保留旧列表并展示来源明确的错误。
+
+在线候选由 Host 统一提供给列表与激活校验；资料不足的新 ID 仍展示原因并禁用启用操作，不能造默认容量。
+新 ID 由用户显式激活，刷新不自动启用或删除 API-Key Provider 模型，也不修改快捷选择偏好。
+既有配置不能因别名或展示名相似被自动迁移，否则会改变历史会话及暂停运行的模型身份。
+
 `features/direct-provider-onboarding` 首次接入只提交
 `provider_connection_definition_id` 与 API
 Key，并解析稳定的 onboarding 响应/错误 DTO。Host 自动启用公开目录中最多三个近期模型（稳定版优先）；其余目录模型只在“模型管理”中按需激活，不要求用户在接入时逐个选择。品牌 ID、容量、视觉能力、URL、auth、API

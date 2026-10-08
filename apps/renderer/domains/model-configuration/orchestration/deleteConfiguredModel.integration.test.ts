@@ -33,6 +33,7 @@ describe('deleteConfiguredModel', () => {
       delete: vi.fn().mockResolvedValue(undefined),
     };
     const modelPickerGateway: ModelPickerGateway = {
+      refreshProviderModels: vi.fn(),
       load: vi.fn().mockResolvedValue({ providers: [], custom_models: [] }),
       setProviderVisibility: vi.fn(),
       setModelVisibility: vi.fn(),

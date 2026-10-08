@@ -146,6 +146,11 @@ transport。桌面 `ModelConfig`、本地持久化、Provider runtime 与 Linnki
 contract 不因此合并。上游 endpoint、真实模型 ID、认证方式和 host
 credential 只属于 Cloud 私有记录，不得进入本 domain 的公共 Cloud DTO。
 
+### 模型名称与能力
+
+模型 API 名称与底层版本不是同一事实。`deepseek-flash` 与既有 V4 名称均接入当前思考档位合同；
+别名解析由供应商负责，目录准入不改写 endpoint model ID，也不能把本地展示名当成运行时版本证明。
+
 ### Account catalog
 
 账号型产品可通过 `replaceAccountModels(accountId, models)`

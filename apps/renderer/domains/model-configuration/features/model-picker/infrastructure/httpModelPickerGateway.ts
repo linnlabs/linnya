@@ -24,6 +24,15 @@ async function updateVisibility(path: string, visible: boolean) {
 }
 
 export const httpModelPickerGateway: ModelPickerGateway = {
+  async refreshProviderModels(configuredProviderId) {
+    const baseUrl = await getApiBaseUrl();
+    const response = await apiFetch(
+      `${baseUrl}/api/v1/model-picker/providers/${encodeURIComponent(configuredProviderId)}/refresh`,
+      { method: 'POST' }
+    );
+    if (!response.ok) throw await readHttpError(response, '查询供应商模型');
+    return ModelPickerSnapshotSchema.parse(await response.json());
+  },
   async load() {
     const baseUrl = await getApiBaseUrl();
     const response = await apiFetch(`${baseUrl}/api/v1/model-picker`);

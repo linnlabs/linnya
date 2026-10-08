@@ -11,8 +11,14 @@ import type {
   ModelPickerUseCase,
 } from '../definitions/modelPickerPorts';
 import { composeSelectableModelMenu } from '../functions/composeSelectableModelMenu';
+import type { ProviderModelDiscoveryReadPort } from '../../provider-model-discovery';
 
 export interface CreateModelPickerUseCaseDependencies {
+  readonly discoveredModels: Pick<ProviderModelDiscoveryReadPort, 'read' | 'readAvailable'>;
+  readonly providerModelRefresh: {
+    supports(connectionId: string): boolean;
+    refresh(connectionId: string): Promise<void>;
+  };
   readonly providerCatalog: ModelPickerProviderCatalogPort;
   readonly providerConfigurations: ModelPickerProviderConfigurationPort;
   readonly modelCatalog: ModelPickerModelCatalogPort;
@@ -26,6 +32,8 @@ export function createModelPickerUseCase(
 ): ModelPickerUseCase {
   function read(): ModelPickerSnapshot {
     return composeSelectableModelMenu({
+      discovered_models: dependencies.discoveredModels,
+      can_refresh_models: connectionId => dependencies.providerModelRefresh.supports(connectionId),
       provider_definitions: dependencies.providerCatalog.list(),
       configured_providers: dependencies.providerConfigurations.list(),
       models: dependencies.modelCatalog.getModels(),
@@ -44,6 +52,20 @@ export function createModelPickerUseCase(
 
   return Object.freeze({
     read,
+    async refreshProviderModels(configuredProviderId: string) {
+      const provider = dependencies.providerConfigurations
+        .list()
+        .find(candidate => candidate.id === configuredProviderId);
+      if (!provider) {
+        throw new ModelPickerError(
+          'model_picker.configured_provider_not_found',
+          '已配置 Provider 不存在',
+          404
+        );
+      }
+      await dependencies.providerModelRefresh.refresh(provider.provider_connection_definition_id);
+      return read();
+    },
     async setProviderVisibility(
       configuredProviderId: string,
       visible: boolean
@@ -97,7 +119,11 @@ export function createModelPickerUseCase(
       const catalogEntry = dependencies.providerCatalog.getConnection(
         configuredProvider.provider_connection_definition_id
       );
-      if (!catalogEntry?.connection.models.some(model => model.id === providerModelId)) {
+      const availableModels =
+        dependencies.discoveredModels.readAvailable(
+          configuredProvider.provider_connection_definition_id
+        ) ?? catalogEntry?.connection.models;
+      if (!availableModels?.some(model => model.id === providerModelId)) {
         throw new ModelPickerError(
           'model_picker.provider_model_not_found',
           'Provider 目录模型不存在',

@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ProviderConnectionDefinition, ProviderDefinition } from '@linnya/provider-catalog';
+import type {
+  ProviderConnectionDefinition,
+  ProviderDefinition,
+  ProviderModelDefinition,
+} from '@linnya/provider-catalog';
 import type { ModelConfig } from 'src/domains/model-catalog';
 import type { ProviderAccountModelDefinition } from 'src/domains/provider-account';
 
@@ -191,6 +195,7 @@ describe('createProviderOnboardingUseCase', () => {
     const storage = createStatefulProviderOnboardingStorage();
     let id = 0;
     const useCase = createProviderOnboardingUseCase({
+      discoveredModels: { readAvailable: () => undefined },
       providerCatalog: {
         generation: {
           id: 'generation-1',
@@ -225,6 +230,81 @@ describe('createProviderOnboardingUseCase', () => {
     expect(storage.readEndpoints()).toHaveLength(1);
   });
 
+  it('联网新模型复用正式注册链，刷新现有能力时保留身份且不自动删除旧模型', async () => {
+    const storage = createStatefulProviderOnboardingStorage();
+    let id = 0;
+    let liveModels: readonly ProviderModelDefinition[] | undefined;
+    const useCase = createProviderOnboardingUseCase({
+      discoveredModels: { readAvailable: () => liveModels },
+      providerCatalog: {
+        generation: {
+          id: 'generation-1',
+          source_url: 'https://models.dev/api.json',
+          source_sha256: SHA,
+          synced_at: '2026-08-20T00:00:00.000Z',
+          policy_version: 1,
+        },
+        getConnection: connectionId =>
+          connectionId === OPENAI_API_CONNECTION.id
+            ? { provider: OPENAI_PROVIDER, connection: OPENAI_API_CONNECTION }
+            : undefined,
+      },
+      runtimeBindings: runtimeBindings(),
+      modelCatalog: storage.catalog,
+      providerConfigurations: storage.configurations,
+      providerAccounts: providerAccounts(),
+      accountModels: accountModels(),
+      modelRemoval: modelRemoval(),
+      idFactory: { create: () => `live-${++id}` },
+    });
+    const oldDefinition = OPENAI_API_CONNECTION.models[0]!;
+    const original = await useCase.registerDirectProviderModel({
+      provider_connection_definition_id: OPENAI_API_CONNECTION.id,
+      provider_model_id: oldDefinition.id,
+      api_key: 'fixture-secret',
+    });
+    liveModels = [
+      { ...oldDefinition, context_window_tokens: 1_000_000, max_input_tokens: 900_000 },
+      { ...oldDefinition, id: 'fresh-model', display_name: 'Fresh model' },
+    ];
+    await useCase.refreshRegisteredProviderModels(OPENAI_API_CONNECTION.id);
+    expect(storage.readModels()).toHaveLength(1);
+    expect(storage.readModels()[0]).toMatchObject({
+      id: original.model_id,
+      inference_route: { context_window_tokens: 1_000_000 },
+    });
+    await useCase.registerDirectProviderModel({
+      provider_connection_definition_id: OPENAI_API_CONNECTION.id,
+      provider_model_id: 'fresh-model',
+    });
+    expect(storage.readModels()).toHaveLength(2);
+    expect(storage.readEndpoints()).toHaveLength(1);
+    liveModels = [];
+    await useCase.refreshRegisteredProviderModels(OPENAI_API_CONNECTION.id);
+    expect(storage.readModels()).toHaveLength(2);
+    await expect(
+      useCase.registerDirectProviderModel({
+        provider_connection_definition_id: OPENAI_API_CONNECTION.id,
+        provider_model_id: oldDefinition.id,
+      })
+    ).rejects.toMatchObject({ code: 'provider_onboarding.model_not_found' });
+    const controller = new AbortController();
+    const update = vi.mocked(storage.catalog.updateModel).getMockImplementation();
+    if (!update) throw new Error('fixture update implementation missing');
+    const updating = vi.spyOn(storage.catalog, 'updateModel').mockClear().mockImplementation(async model => {
+      await update(model);
+      controller.abort();
+    });
+    liveModels = [oldDefinition, { ...oldDefinition, id: 'fresh-model' }].map(model => ({
+      ...model,
+      context_window_tokens: 2_000_000,
+    }));
+    await expect(
+      useCase.refreshRegisteredProviderModels(OPENAI_API_CONNECTION.id, controller.signal)
+    ).rejects.toThrow();
+    expect(updating).toHaveBeenCalledOnce();
+  });
+
   it('由目录与私有 binding 创建完整 typed route，command 不承载协议字段', async () => {
     const catalog = modelCatalog();
     const configurations = providerConfigurations();
@@ -235,6 +315,7 @@ describe('createProviderOnboardingUseCase', () => {
       'registration-intent-1',
     ];
     const useCase = createProviderOnboardingUseCase({
+      discoveredModels: { readAvailable: () => undefined },
       providerCatalog: {
         generation: {
           id: 'generation-1',
@@ -307,6 +388,7 @@ describe('createProviderOnboardingUseCase', () => {
 
   it('拒绝 public catalog 与 private binding 代际不一致', async () => {
     const useCase = createProviderOnboardingUseCase({
+      discoveredModels: { readAvailable: () => undefined },
       providerCatalog: {
         generation: {
           id: 'generation-2',
@@ -379,6 +461,7 @@ describe('createProviderOnboardingUseCase', () => {
     });
     const ids = ['model-local-2', 'registration-intent-2'];
     const useCase = createProviderOnboardingUseCase({
+      discoveredModels: { readAvailable: () => undefined },
       providerCatalog: {
         generation: {
           id: 'generation-1',
@@ -435,6 +518,7 @@ describe('createProviderOnboardingUseCase', () => {
     });
     const createId = vi.fn(() => 'must-not-create');
     const useCase = createProviderOnboardingUseCase({
+      discoveredModels: { readAvailable: () => undefined },
       providerCatalog: {
         generation: {
           id: 'generation-1',
@@ -478,6 +562,7 @@ describe('createProviderOnboardingUseCase', () => {
     const configurations = providerConfigurations();
     const ids = ['model-local-3', 'endpoint-local-3', 'configured-provider-3', 'intent-3'];
     const useCase = createProviderOnboardingUseCase({
+      discoveredModels: { readAvailable: () => undefined },
       providerCatalog: {
         generation: {
           id: 'generation-1',
@@ -517,6 +602,7 @@ describe('createProviderOnboardingUseCase', () => {
     configurations.completeModelRegistration.mockRejectedValueOnce(new Error('disk unavailable'));
     const ids = ['model-local-4', 'endpoint-local-4', 'configured-provider-4', 'intent-4'];
     const useCase = createProviderOnboardingUseCase({
+      discoveredModels: { readAvailable: () => undefined },
       providerCatalog: {
         generation: {
           id: 'generation-1',
@@ -584,6 +670,7 @@ describe('createProviderOnboardingUseCase', () => {
       ]);
     const removal = modelRemoval();
     const useCase = createProviderOnboardingUseCase({
+      discoveredModels: { readAvailable: () => undefined },
       providerCatalog: {
         generation: {
           id: 'generation-1',

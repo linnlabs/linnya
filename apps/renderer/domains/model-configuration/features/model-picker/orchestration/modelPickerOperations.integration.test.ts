@@ -7,6 +7,7 @@ import { useModelPickerStore } from '../store/modelPickerStore';
 import {
   activateModelPickerProviderModel,
   loadModelPicker,
+  synchronizeModelPickerSnapshot,
   setModelPickerModelVisibility,
   setModelPickerProviderVisibility,
 } from './modelPickerOperations';
@@ -18,6 +19,7 @@ const snapshot: ModelPickerSnapshot = {
 
 function gateway(): ModelPickerGateway {
   return {
+    refreshProviderModels: vi.fn(),
     load: vi.fn().mockResolvedValue(snapshot),
     setProviderVisibility: vi.fn().mockResolvedValue(snapshot),
     setModelVisibility: vi.fn().mockResolvedValue(snapshot),
@@ -36,6 +38,16 @@ describe('modelPickerOperations', () => {
     expect(store.snapshot).toEqual(snapshot);
     expect(store.activeOperation).toBeNull();
     expect(store.error).toBeNull();
+  });
+
+  it('后台目录通知不清除用户刚收到的刷新错误，也不结束用户操作', async () => {
+    const store = useModelPickerStore();
+    store.failOperation({ operation: 'load', detail: '供应商鉴权失败' });
+    await synchronizeModelPickerSnapshot(gateway());
+    expect(store.error?.detail).toBe('供应商鉴权失败');
+    store.beginOperation('model-activation');
+    await synchronizeModelPickerSnapshot(gateway());
+    expect(store.activeOperation).toBe('model-activation');
   });
 
   it('Provider 开关和模型开关分别提交稳定 ID', async () => {

@@ -104,6 +104,11 @@ Conversation Agent run 的 application orchestration：请求接纳、Host sessi
 
 编排正式 Provider public catalog、Host 私有 runtime binding 与 Model Catalog 的原子注册流程。Renderer 只提交 Provider、目录模型与 Key；该用例投影 URL、auth、容量、视觉能力和 typed route。它不执行推理、不选择 package，也不把 Custom API 伪装成 ProviderDefinition。
 
+### `application/provider-model-discovery/`
+
+编排已连接供应商的在线模型查询，向 Model Picker 与 Onboarding 提供同一份候选。
+官方协议读取归 `adapters/provider-model-discovery/`；不把目录发现当作推理，也不让远端资料改写 runtime binding。
+
 ### `application/custom-api-onboarding/`
 
 编排自定义 API URL、Key、三选一格式和模型资料到 InferenceEndpoint 与 Model Catalog 的原子注册流程。格式到 route/auth/endpoint identity 的映射只存在于该用例；Renderer 不构造内部 route，本流程也不创建 ProviderDefinition 或模型 `provider` 字段。

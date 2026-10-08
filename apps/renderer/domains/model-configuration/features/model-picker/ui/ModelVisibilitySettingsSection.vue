@@ -82,18 +82,16 @@
           </div>
         </aside>
 
-        <div
-          v-if="selectedSource"
-          class="model-visibility-models"
-        >
+        <div v-if="selectedSource" class="model-visibility-models">
           <header class="model-visibility-models-header">
             <div class="model-visibility-models-header-left">
               <h4>{{ selectedSource.displayName }}</h4>
-              <HoverTooltip :text="settingsMessage('settings.modelPicker.refreshModels')">
+              <HoverTooltip v-if="canRefreshSelectedSource" :text="refreshLabel">
                 <button
                   type="button"
                   class="model-visibility-refresh-btn"
-                  :disabled="isRefreshingSourceId === selectedSource.id"
+                  :aria-label="refreshLabel"
+                  :disabled="isRefreshingSourceId !== null || isMutating"
                   @click.stop="refreshSourceModels(selectedSource)"
                 >
                   <RefreshIcon
@@ -150,10 +148,7 @@
                     :interactive="isCustomModelEditable(model)"
                     @select="openCustomModelDetails(model)"
                   >
-                    <template
-                      v-if="selectedSource.kind !== 'cloud'"
-                      #trailing
-                    >
+                    <template v-if="selectedSource.kind !== 'cloud'" #trailing>
                       <Switch
                         :model-value="model.materialized && model.picker_enabled"
                         :ariaLabel="model.display_name"
@@ -170,10 +165,7 @@
             v-if="selectedSource.kind === 'provider' && !selectedSource.credentialAvailable"
             class="model-visibility-credential-actions"
           >
-            <SettingsFeedback
-              kind="error"
-              :message="credentialUnavailableMessage"
-            />
+            <SettingsFeedback kind="error" :message="credentialUnavailableMessage" />
             <ActionButtons
               :primary-action-text="settingsMessage('settings.modelPicker.removeProvider')"
               primary-variant="danger"
@@ -181,11 +173,7 @@
               @primary-click="removeSelectedProvider"
             />
           </div>
-          <SettingsFeedback
-            v-if="removalError"
-            kind="error"
-            :message="removalError"
-          />
+          <SettingsFeedback v-if="removalError" kind="error" :message="removalError" />
         </div>
       </div>
       <ModelDetailsModal
@@ -217,6 +205,8 @@ import {
 } from '@/domains/settings/public';
 import {
   loadModelPicker,
+  refreshModelPickerSource,
+  refreshModelPickerProvider,
   setModelPickerModelVisibility,
   setModelPickerProviderVisibility,
   useModelPickerReadModel,
@@ -276,41 +266,46 @@ async function refreshSourceModels(source: ModelVisibilitySource): Promise<void>
   if (isRefreshingSourceId.value) return;
   isRefreshingSourceId.value = source.id;
   try {
-    if (source.kind === 'custom_provider' && source.baseUrl && source.apiFormat) {
-      const result = await httpCustomApiModelRegistrationGateway.discoverModels?.({
-        api_format: source.apiFormat,
-        base_url: source.baseUrl,
-      });
-      if (result && result.models.length > 0) {
-        // 同步已有模型，添加新模型
-        const existingModelMap = new Map(source.models.map(m => [m.provider_model_id, m]));
-        const newModelsToAdd = result.models.filter(m => !existingModelMap.has(m.id));
-        if (newModelsToAdd.length > 0) {
-          await registerApiCustomModel({
-            providerName: source.providerName,
-            endpointModelId: '',
-            displayName: '',
-            credentialSecret: '',
-            baseUrl: source.baseUrl,
-            customApiFormat: source.apiFormat,
-            contextWindowTokens: '256000',
-            maxOutputTokens: '16384',
-            supportsImageInput: false,
-            models: newModelsToAdd.map(m => ({
-              endpoint_model_id: m.id,
-              display_name: m.name,
-              context_window_tokens: m.context_window_tokens ?? 32768,
-              max_output_tokens: m.max_output_tokens ?? 4096,
-              supports_image_input: m.supports_image_input ?? false,
-              picker_enabled: true,
-            })),
-          });
+    if (source.kind === 'provider') {
+      await refreshModelPickerProvider(source.configuredProviderId, source.displayName);
+      return;
+    }
+    await refreshModelPickerSource(source.displayName, async () => {
+      if (source.kind === 'custom_provider' && source.baseUrl && source.apiFormat) {
+        const result = await httpCustomApiModelRegistrationGateway.discoverModels?.({
+          api_format: source.apiFormat,
+          base_url: source.baseUrl,
+        });
+        if (result && result.models.length > 0) {
+          // 同步已有模型，添加新模型
+          const existingModelMap = new Map(source.models.map(m => [m.provider_model_id, m]));
+          const newModelsToAdd = result.models.filter(m => !existingModelMap.has(m.id));
+          if (newModelsToAdd.length > 0) {
+            await registerApiCustomModel({
+              providerName: source.providerName,
+              endpointModelId: '',
+              displayName: '',
+              credentialSecret: '',
+              baseUrl: source.baseUrl,
+              customApiFormat: source.apiFormat,
+              contextWindowTokens: '256000',
+              maxOutputTokens: '16384',
+              supportsImageInput: false,
+              models: newModelsToAdd.map(m => ({
+                endpoint_model_id: m.id,
+                display_name: m.name,
+                context_window_tokens: m.context_window_tokens ?? 32768,
+                max_output_tokens: m.max_output_tokens ?? 4096,
+                supports_image_input: m.supports_image_input ?? false,
+                picker_enabled: true,
+              })),
+            });
+          }
         }
       }
-    }
-    await loadModelPicker();
-  } catch (error) {
-    console.error('[ModelVisibility] 刷新供应商模型列表失败', error);
+    });
+  } catch {
+    // 操作 owner 已把带来源名称的错误发布到页面；这里不再维护第二份错误状态。
   } finally {
     isRefreshingSourceId.value = null;
   }
@@ -318,11 +313,19 @@ async function refreshSourceModels(source: ModelVisibilitySource): Promise<void>
 const selectedSource = computed(
   () => sources.value.find(source => source.id === selectedSourceId.value) ?? null
 );
+const refreshLabel = computed(() => settingsMessage('settings.modelPicker.refreshModels'));
+const canRefreshSelectedSource = computed(() => {
+  const source = selectedSource.value;
+  return source?.kind === 'provider'
+    ? source.canRefreshModels
+    : source?.kind === 'custom_provider' && Boolean(source.baseUrl && source.apiFormat);
+});
 const filteredModels = computed(() =>
   selectedSource.value ? filterModelVisibilityModels(selectedSource.value, modelQuery.value) : []
 );
 const isMutating = computed(
   () =>
+    isRefreshingSourceId.value !== null ||
     (modelPicker.activeOperation.value !== null && modelPicker.activeOperation.value !== 'load') ||
     modelCatalog.activeOperation.value !== null ||
     isRemovingProvider.value
@@ -331,15 +334,17 @@ const isSelectedSourceDisabled = computed(
   () => selectedSource.value?.kind === 'provider' && !selectedSource.value.pickerEnabled
 );
 const credentialUnavailableMessage = computed(() => {
-  const reason = selectedSource.value?.kind === 'provider'
-    ? selectedSource.value.credentialUnavailableReason
-    : undefined;
+  const reason =
+    selectedSource.value?.kind === 'provider'
+      ? selectedSource.value.credentialUnavailableReason
+      : undefined;
   if (!reason) return settingsMessage('settings.modelPicker.credentialUnavailable');
   const messageKeys = {
     missing: 'settings.modelPicker.credentialReason.missing',
     temporarily_unavailable: 'settings.modelPicker.credentialReason.temporarilyUnavailable',
     invalidated: 'settings.modelPicker.credentialReason.invalidated',
     malformed_ciphertext: 'settings.modelPicker.credentialReason.malformedCiphertext',
+    migration_required: 'settings.modelPicker.credentialReason.migrationRequired',
     unknown: 'settings.modelPicker.credentialReason.unknown',
   } as const;
   return settingsMessage(messageKeys[reason]);
@@ -363,7 +368,7 @@ function modelKey(model: ModelPickerProviderModel): string {
 }
 
 function modelStateLabel(model: ModelPickerProviderModel): string {
-  if (!model.materialized) return '';
+  if (!model.materialized) return model.activation_unavailable_reason ?? model.provider_model_id;
   if (!model.runtime_available) return settingsMessage('settings.modelPicker.runtimeUnavailable');
   if (model.capabilities.includes('image_generation')) {
     return settingsMessage('settings.modelPicker.imageGeneration');
@@ -433,6 +438,7 @@ function isModelToggleDisabled(model: ModelPickerProviderModel): boolean {
   if (isMutating.value) return true;
   if (isSelectedSourceDisabled.value) return true;
   if (model.materialized) return false;
+  if (model.activation_unavailable_reason) return true;
   return selectedSource.value?.kind !== 'provider' || !selectedSource.value.credentialAvailable;
 }
 

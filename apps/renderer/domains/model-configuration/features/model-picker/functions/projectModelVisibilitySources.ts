@@ -1,5 +1,6 @@
 import type {
   ModelPickerCredentialUnavailableReason,
+  ModelPickerCustomProviderGroup,
   ModelPickerMaterializedModel,
   ModelPickerProviderModel,
   ModelPickerSnapshot,
@@ -17,6 +18,7 @@ export type ModelVisibilitySource =
       readonly kind: 'provider';
       readonly displayName: string;
       readonly configuredProviderId: string;
+      readonly canRefreshModels: boolean;
       readonly pickerEnabled: boolean;
       readonly credentialAvailable: boolean;
       readonly credentialUnavailableReason?: ModelPickerCredentialUnavailableReason;
@@ -27,7 +29,7 @@ export type ModelVisibilitySource =
       readonly kind: 'custom_provider';
       readonly displayName: string;
       readonly providerName: string;
-      readonly apiFormat?: string;
+      readonly apiFormat?: ModelPickerCustomProviderGroup['api_format'];
       readonly baseUrl?: string;
       readonly endpointId?: string;
       readonly models: readonly ModelPickerMaterializedModel[];
@@ -84,6 +86,7 @@ export function projectModelVisibilitySources(
           ? provider.display_name
           : `${provider.display_name} · ${provider.connection_display_name}`,
       configuredProviderId: provider.configured_provider_id,
+      canRefreshModels: provider.can_refresh_models,
       pickerEnabled: provider.picker_enabled,
       credentialAvailable: provider.credential_available,
       ...(provider.credential_unavailable_reason

@@ -81,6 +81,7 @@ describe('OpenCode Go Provider onboarding', () => {
       'go-anthropic-intent',
     ];
     const useCase = createProviderOnboardingUseCase({
+      discoveredModels: { readAvailable: () => undefined },
       providerCatalog: {
         generation: {
           id: 'generation-1',
@@ -180,7 +181,7 @@ describe('OpenCode Go Provider onboarding', () => {
       },
     });
 
-    await useCase.refreshRegisteredBundledProviderModels('opencode-go');
+    await useCase.refreshRegisteredProviderModels('opencode-go');
 
     const refreshedFlash = state.readModels().find(model => model.model_name === 'glm-5.3-flash');
     expect(refreshedFlash?.capabilities).toEqual(['chat', 'image_input']);

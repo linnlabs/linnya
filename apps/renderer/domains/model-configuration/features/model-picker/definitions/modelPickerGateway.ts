@@ -2,6 +2,7 @@ import type { ModelPickerSnapshot } from '@app/schemas/model-picker';
 
 export interface ModelPickerGateway {
   load(): Promise<ModelPickerSnapshot>;
+  refreshProviderModels(configuredProviderId: string): Promise<ModelPickerSnapshot>;
   setProviderVisibility(
     configuredProviderId: string,
     visible: boolean

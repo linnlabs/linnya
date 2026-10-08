@@ -1,3 +1,4 @@
+import type { ProviderModelDiscoveryReadPort } from '../../provider-model-discovery';
 import type {
   DirectProviderConnectionOnboardingCommand,
   DirectProviderConnectionOnboardingResponse,
@@ -56,6 +57,7 @@ function isSameCredentialReference(left: CredentialReference, right: CredentialR
 
 export interface CreateProviderOnboardingUseCaseDependencies {
   readonly providerCatalog: ProviderOnboardingCatalogPort;
+  readonly discoveredModels: Pick<ProviderModelDiscoveryReadPort, 'readAvailable'>;
   readonly runtimeBindings: ProviderOnboardingRuntimeBindingPort;
   readonly modelCatalog: ProviderOnboardingModelCatalogPort;
   readonly providerConfigurations: ProviderOnboardingConfigurationPort;
@@ -113,7 +115,9 @@ export function createProviderOnboardingUseCase(
 
     const providerModel =
       discoveredProviderModel ??
-      connection.models.find(model => model.id === command.provider_model_id);
+      (dependencies.discoveredModels.readAvailable(connection.id) ?? connection.models).find(
+        model => model.id === command.provider_model_id
+      );
     if (!providerModel) {
       throw new ProviderOnboardingError(
         'provider_onboarding.model_not_found',
@@ -233,8 +237,9 @@ export function createProviderOnboardingUseCase(
     );
     if (
       authMethod === 'api_key' &&
-      configuredEndpoints.some(endpoint =>
-        endpoint.credential_status === 'missing' || endpoint.credential_status === 'unavailable'
+      configuredEndpoints.some(
+        endpoint =>
+          endpoint.credential_status === 'missing' || endpoint.credential_status === 'unavailable'
       ) &&
       !command.api_key
     ) {
@@ -452,7 +457,11 @@ export function createProviderOnboardingUseCase(
     },
     registerDirectProviderModel,
 
-    async refreshRegisteredBundledProviderModels(providerConnectionDefinitionId: string) {
+    async refreshRegisteredProviderModels(
+      providerConnectionDefinitionId: string,
+      signal?: AbortSignal
+    ) {
+      signal?.throwIfAborted();
       assertCatalogGeneration();
       const catalogEntry = dependencies.providerCatalog.getConnection(
         providerConnectionDefinitionId
@@ -476,9 +485,13 @@ export function createProviderOnboardingUseCase(
         dependencies.providerConfigurations.getByProviderConnectionDefinitionId(connection.id);
       if (!configuredProvider) return;
 
+      const effectiveModels =
+        dependencies.discoveredModels.readAvailable(connection.id) ?? connection.models;
       let updatedModelCount = 0;
       for (const configuredModel of configuredProvider.models) {
-        const providerModel = connection.models.find(
+        // 与账号同步一致，只在完整 durable 更新之间取消，不丢弃进行中的提交。
+        signal?.throwIfAborted();
+        const providerModel = effectiveModels.find(
           model => model.id === configuredModel.provider_model_id
         );
         if (!providerModel) continue;
@@ -494,7 +507,7 @@ export function createProviderOnboardingUseCase(
           updatedModelCount += 1;
         }
       }
-      logger.info('provider_onboarding.bundled_models_refreshed', {
+      logger.info('provider_onboarding.registered_models_refreshed', {
         provider_definition_id: provider.id,
         provider_connection_definition_id: connection.id,
         registered_model_count: configuredProvider.models.length,
@@ -502,7 +515,10 @@ export function createProviderOnboardingUseCase(
       });
     },
 
-    async synchronizeConnectedProviderModels(providerConnectionDefinitionId: string, signal?: AbortSignal) {
+    async synchronizeConnectedProviderModels(
+      providerConnectionDefinitionId: string,
+      signal?: AbortSignal
+    ) {
       signal?.throwIfAborted();
       const catalogEntry = dependencies.providerCatalog.getConnection(
         providerConnectionDefinitionId

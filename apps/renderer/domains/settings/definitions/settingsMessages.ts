@@ -307,6 +307,7 @@ export type SettingsMessageKey =
   | 'settings.addModel.discoveredModels.title'
   | 'settings.addModel.discoveredModels.enableAll'
   | 'settings.modelPicker.refreshModels'
+  | 'settings.modelPicker.credentialReason.migrationRequired'
   | 'settings.modelPicker.customProviders'
   | 'settings.addModel.ollama.model.description'
   | 'settings.addModel.ollama.loading'

@@ -26,7 +26,9 @@ import type { ModelReasoningConfig } from '@linnlabs/linnkit/contracts';
  * @param modelName 模型名（如 `gpt-5`、`anthropic/claude-opus-4-20250514`、`google/gemini-2.5-pro`）
  * @returns 推断出的契约；若该模型不是已知 reasoning 模型，返回 undefined
  */
-export function inferReasoningConfigByModelName(modelName: string): ModelReasoningConfig | undefined {
+export function inferReasoningConfigByModelName(
+  modelName: string
+): ModelReasoningConfig | undefined {
   const name = modelName.toLowerCase();
 
   // GPT-6 Astra：Responses API 要求显式 reasoning effort，不支持关闭 reasoning。
@@ -99,11 +101,10 @@ export function inferReasoningConfigByModelName(modelName: string): ModelReasoni
     };
   }
 
-  // DeepSeek V4 系列（deepseek-v4-pro / deepseek-v4-flash）：走 OpenAI 兼容 Chat Completions
-  // DeepSeek V4 文档：reasoning_effort 只认 high/max；low/medium 被映射到 high，xhigh 映射到 max；
-  // thinking:{type:"disabled"} 关闭思考。暴露全档位让降级链有落点，adapter 做值映射。
-  // default high（DeepSeek V4 默认 thinking enabled + effort high）。
-  if (/deepseek-v4/.test(name)) {
+  // deepseek-flash 是 V4.1 的正式 API 名；不能因去掉版本号而丢失思考控件。
+  // 此处只声明 canonical 档位；实际 wire 值与 thinking toggle 仍由既有 adapter 映射。
+  // 历史 V4 名称保留同一契约，不在目录准入层改写用户选择的 endpoint model ID。
+  if (/deepseek-v4|(?:^|\/)deepseek-flash(?:$|:)/.test(name)) {
     return {
       supported_efforts: ['off', 'low', 'medium', 'high', 'xhigh'],
       default_effort: 'high',

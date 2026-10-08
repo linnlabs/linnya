@@ -21,6 +21,7 @@ const activatedPickerSnapshot: ModelPickerSnapshot = {
       provider_connection_definition_id: 'provider-direct',
       display_name: 'Provider',
       connection_display_name: 'API Key',
+      can_refresh_models: true,
       kind: 'direct',
       picker_enabled: true,
       credential_available: true,
@@ -62,6 +63,7 @@ describe('activateConfiguredProviderModel', () => {
   it('激活 Provider 模型后同步目录与选择器，并可立即设为主模型', async () => {
     let hostActivationCompleted = false;
     const modelPickerGateway: ModelPickerGateway = {
+      refreshProviderModels: vi.fn(),
       load: vi.fn(),
       setProviderVisibility: vi.fn(),
       setModelVisibility: vi.fn(),

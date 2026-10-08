@@ -12,9 +12,14 @@ ProviderAccount，注册 command 不携带 token。`synchronizeConnectedProvider
 不提交 URL、auth profile、API surface、package、route capability、容量或视觉能力；这些字段分别来自
 版本化 Provider Catalog 与 Host 私有 binding。
 
-API-Key 的 bundled Provider 不拥有动态账号目录，因此启动时使用
-`refreshRegisteredBundledProviderModels` 仅原位刷新已经激活的 ModelConfig。它复用注册 builder 更新名称、容量、模型能力和
-route placement，不自动激活新模型，也不删除已从公开目录退出的模型；新增和移除仍由模型管理的显式操作负责。
+API-Key Provider 的 `refreshRegisteredProviderModels` 只原位更新已经激活的 ModelConfig，
+复用注册 builder 更新名称、容量、能力与 route placement，不自动激活或删除模型。
+资料优先来自 `application/provider-model-discovery` 本次成功的候选，未发生在线发现时使用 bundled。
+DeepSeek 和 Ollama Cloud 在显式刷新时查询官方目录；启动不再用 bundled 覆盖这些供应商已保存的联网资料。
+其余 bundled connection 仍在启动时刷新已激活模型的发布元数据。
+
+在线新模型也经过相同 membership 校验、已验收 binding、endpoint/credential 复用和 durable intent。
+缺少能力资料的候选只显示在设置页，不能绕过注册准入。外部发现不能修改调用 URL、认证或协议。
 
 ## 固定流程
 
@@ -32,7 +37,7 @@ route placement，不自动激活新模型，也不删除已从公开目录退�
 
 ## 边界
 
-- 启动时的本地 intent 恢复与 bundled 元数据刷新在 ready 前完成；远端账号目录由本 owner 的
+- 启动时的本地 intent 恢复与 bundled 元数据刷新在 ready 前完成；远端模型查询由本 owner 的
   `ProviderModelSynchronizationLifecycle` 在路由完成后后台刷新。BackendRuntimeOwner 持有它的 start/stop，
   同一 connection 的并发同步共用一个执行，不建立第二条模型写入主链。
 - 登出或替换授权凭据前取消并等待旧同步；关闭 Backend 时先取消同步，再在释放服务前等待收口。

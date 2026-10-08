@@ -75,7 +75,8 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
     '访问互联网、下载文件、发送数据等',
   'settings.commandPermission.confirmExpansion.fullAccess.risk':
     '这会带来敏感数据丢失、泄露、提示词注入等风险。',
-  'settings.commandPermission.confirmExpansion.internalData.title': '允许插件命令访问 Linnya 内部数据',
+  'settings.commandPermission.confirmExpansion.internalData.title':
+    '允许插件命令访问 Linnya 内部数据',
   'settings.commandPermission.confirmExpansion.internalData.message':
     '开启后，Linnya 插件命令可按其声明访问内部数据。此开关不限制其他 Shell 程序读取本机文件。',
   'settings.commandPermission.confirmExpansion.confirm': '接受风险，确认开启',
@@ -90,7 +91,8 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.commandPermission.level.fullAccessDescription': '自动允许所有命令，但会极大增加风险。',
   'settings.commandPermission.internalData.title': 'Linnya 内部数据',
   'settings.commandPermission.internalData.label': '允许插件命令访问 Linnya 内部数据',
-  'settings.commandPermission.internalData.description': '仅控制 Linnya 插件命令的数据访问，不限制其他 Shell 程序读取本机文件。',
+  'settings.commandPermission.internalData.description':
+    '仅控制 Linnya 插件命令的数据访问，不限制其他 Shell 程序读取本机文件。',
   'settings.storageSpace.title': '存储空间',
   'settings.storageSpace.loading': '正在读取存储空间...',
   'settings.storageSpace.unavailable': '暂时无法读取存储空间，请稍后重试。',
@@ -349,10 +351,12 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.addModel.discover.success': '已获取 {count} 个模型',
   'settings.addModel.customProvider.label': '模型供应商',
   'settings.addModel.customProvider.placeholder': '例如：linnya.com',
-  'settings.addModel.customProvider.description': '该模型归属的供应商分组，默认自动根据 API 地址提取。',
+  'settings.addModel.customProvider.description':
+    '该模型归属的供应商分组，默认自动根据 API 地址提取。',
   'settings.addModel.discoveredModels.title': '已发现模型（共 {count} 个）',
   'settings.addModel.discoveredModels.enableAll': '全部启用',
-  'settings.modelPicker.refreshModels': '更新模型列表',
+  'settings.modelPicker.refreshModels': '获取新模型',
+  'settings.modelPicker.credentialReason.migrationRequired': '此凭据需要迁移，请重新连接该供应商。',
   'settings.modelPicker.customProviders': '自定义模型供应商',
   'settings.addModel.ollama.model.description': '获取已安装的 Ollama 模型，仅支持添加对话模型。',
   'settings.addModel.ollama.loading': '正在加载...',
@@ -529,7 +533,8 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.commandPermission.internalData.title': 'Linnya internal data',
       'settings.commandPermission.internalData.label':
         'Allow plugin commands to access Linnya internal data',
-      'settings.commandPermission.internalData.description': 'Controls data access by Linnya plugin commands only; it does not restrict other Shell programs from reading local files.',
+      'settings.commandPermission.internalData.description':
+        'Controls data access by Linnya plugin commands only; it does not restrict other Shell programs from reading local files.',
       'settings.storageSpace.title': 'Storage',
       'settings.storageSpace.loading': 'Reading storage usage...',
       'settings.storageSpace.unavailable':
@@ -803,10 +808,13 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.addModel.discover.success': 'Fetched {count} models',
       'settings.addModel.customProvider.label': 'Model Provider',
       'settings.addModel.customProvider.placeholder': 'e.g. linnya.com',
-      'settings.addModel.customProvider.description': 'Provider group for the models, extracted from URL by default.',
+      'settings.addModel.customProvider.description':
+        'Provider group for the models, extracted from URL by default.',
       'settings.addModel.discoveredModels.title': 'Discovered Models ({count})',
       'settings.addModel.discoveredModels.enableAll': 'Enable all',
-      'settings.modelPicker.refreshModels': 'Update model list',
+      'settings.modelPicker.refreshModels': 'Discover new models',
+      'settings.modelPicker.credentialReason.migrationRequired':
+        'This credential requires migration. Reconnect this provider.',
       'settings.modelPicker.customProviders': 'Custom Providers',
       'settings.addModel.ollama.model.description':
         'Fetch installed Ollama models. Only chat models can be added.',

@@ -15,6 +15,7 @@ import type {
   ProviderAccount,
   ProviderAccountCredentialStatus,
 } from 'src/domains/provider-account';
+import type { ProviderModelDiscoveryReadPort } from '../../provider-model-discovery';
 
 export interface ModelPickerModelCatalogPort {
   getModels(): ModelConfig[];
@@ -50,6 +51,8 @@ export interface ModelPickerProviderModelActivationPort {
 }
 
 export interface ComposeSelectableModelMenuInput {
+  readonly discovered_models: Pick<ProviderModelDiscoveryReadPort, 'read'>;
+  readonly can_refresh_models: (connectionId: string) => boolean;
   readonly provider_definitions: readonly ProviderDefinition[];
   readonly configured_providers: readonly ConfiguredProvider[];
   readonly models: readonly ModelConfig[];
@@ -66,6 +69,7 @@ export interface ComposeSelectableModelMenuInput {
 
 export interface ModelPickerUseCase {
   read(): ModelPickerSnapshot;
+  refreshProviderModels(configuredProviderId: string): Promise<ModelPickerSnapshot>;
   setProviderVisibility(
     configuredProviderId: string,
     visible: boolean

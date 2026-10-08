@@ -17,6 +17,7 @@ import type {
 import { isModelRuntimeAvailable } from '../../model-runtime-availability';
 
 import type { ComposeSelectableModelMenuInput } from '../definitions/modelPickerPorts';
+import type { ProviderDiscoveredModel } from 'src/app-hosts/linnya/adapters/provider-model-discovery';
 
 type CredentialUnavailableReason = NonNullable<
   ModelPickerConfiguredProvider['credential_unavailable_reason']
@@ -108,11 +109,12 @@ function providerCredentialStatus(
       : { available: false, reason: status === 'available' ? 'missing' : status };
   }
   const status = input.get_credential_status(firstModelConfigId);
-  const resolvedStatus = endpoint.credential_status === 'missing'
-    ? 'missing'
-    : endpoint.credential_status === 'unavailable' && status === 'available'
-      ? 'invalidated'
-      : status;
+  const resolvedStatus =
+    endpoint.credential_status === 'missing'
+      ? 'missing'
+      : endpoint.credential_status === 'unavailable' && status === 'available'
+        ? 'invalidated'
+        : status;
   return resolvedStatus === 'available'
     ? { available: true }
     : { available: false, reason: resolvedStatus };
@@ -152,32 +154,42 @@ function projectConfiguredProvider(
   const associationsByProviderModelId = new Map(
     provider.models.map(association => [association.provider_model_id, association])
   );
-  const catalogModels: ModelPickerProviderModel[] = connection.models.map(modelDefinition => {
-    const association = associationsByProviderModelId.get(modelDefinition.id);
-    if (!association) {
+  const candidates: readonly ProviderDiscoveredModel[] =
+    input.discovered_models.read(connection.id) ??
+    connection.models.map(definition => ({ status: 'available', definition }));
+  const catalogModels: ModelPickerProviderModel[] = candidates.map(candidate => {
+    const modelId = candidate.status === 'available' ? candidate.definition.id : candidate.id;
+    const existing = associationsByProviderModelId.get(modelId);
+    const materialized = existing ? projectAssociatedProviderModel(existing, input) : undefined;
+    if (materialized) return materialized;
+    if (candidate.status === 'unavailable') {
       return {
         materialized: false,
-        provider_model_id: modelDefinition.id,
-        display_name: modelDefinition.display_name,
+        provider_model_id: candidate.id,
+        display_name: candidate.display_name,
+        activation_unavailable_reason: candidate.reason,
         picker_enabled: false,
         runtime_available: false,
         capabilities: ['chat'],
-        image_input: modelDefinition.capabilities.image_input,
+        image_input: false,
       };
     }
-    return (
-      projectAssociatedProviderModel(association, input) ?? {
-        materialized: false,
-        provider_model_id: modelDefinition.id,
-        display_name: modelDefinition.display_name,
-        picker_enabled: false,
-        runtime_available: false,
-        capabilities: ['chat'],
-        image_input: modelDefinition.capabilities.image_input,
-      }
-    );
+    const modelDefinition = candidate.definition;
+    return {
+      materialized: false,
+      provider_model_id: modelDefinition.id,
+      display_name: modelDefinition.display_name,
+      picker_enabled: false,
+      runtime_available: false,
+      capabilities: ['chat'],
+      image_input: modelDefinition.capabilities.image_input,
+    };
   });
-  const knownProviderModelIds = new Set(connection.models.map(model => model.id));
+  const knownProviderModelIds = new Set(
+    candidates.map(candidate =>
+      candidate.status === 'available' ? candidate.definition.id : candidate.id
+    )
+  );
   const removedCatalogModels = provider.models
     .filter(association => !knownProviderModelIds.has(association.provider_model_id))
     .flatMap(association => projectAssociatedProviderModel(association, input) ?? []);
@@ -206,6 +218,7 @@ function projectConfiguredProvider(
     provider_connection_definition_id: provider.provider_connection_definition_id,
     display_name: definition.display_name,
     connection_display_name: connection.display_name,
+    can_refresh_models: input.can_refresh_models(connection.id),
     kind: connection.kind,
     picker_enabled: providerVisible(provider, input),
     credential_available: credential.available,
@@ -228,19 +241,22 @@ export function composeSelectableModelMenu(
   const cloudModels = input.models
     .filter(model => model.catalog_source === 'cloud')
     .map(model => projectMaterializedModel(model, input, model.ui_visibility.includes('chat')));
-  const customModelsRaw = input.models
-    .filter(model => model.catalog_source === 'user' && !configuredModelIds.has(model.id));
-  const customModels = customModelsRaw
-    .map(model => projectMaterializedModel(model, input, true));
+  const customModelsRaw = input.models.filter(
+    model => model.catalog_source === 'user' && !configuredModelIds.has(model.id)
+  );
+  const customModels = customModelsRaw.map(model => projectMaterializedModel(model, input, true));
 
   // 按 custom_provider_name 分组
-  const customProvidersMap = new Map<string, {
-    provider_name: string;
-    api_format?: CustomApiFormat;
-    base_url?: string;
-    endpoint_id?: string;
-    models: typeof customModels;
-  }>();
+  const customProvidersMap = new Map<
+    string,
+    {
+      provider_name: string;
+      api_format?: CustomApiFormat;
+      base_url?: string;
+      endpoint_id?: string;
+      models: typeof customModels;
+    }
+  >();
   for (const rawModel of customModelsRaw) {
     const providerName = rawModel.custom_provider_name?.trim() || '自定义模型';
     const groupKey = providerName;

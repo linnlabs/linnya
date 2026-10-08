@@ -60,7 +60,7 @@ export interface ProviderOnboardingAccountModelDiscoveryPort {
   discoverModels(
     providerConnectionDefinitionId: string,
     accountId: string,
-    signal?: AbortSignal,
+    signal?: AbortSignal
   ): Promise<readonly ProviderAccountModelDefinition[]>;
 }
 
@@ -80,9 +80,13 @@ export interface ProviderOnboardingUseCase {
   registerDirectProviderModel(
     command: DirectProviderModelRegistrationCommand
   ): Promise<DirectProviderModelRegistrationResponse>;
-  /** 用当前 bundled 目录原位刷新已经激活的模型，不新增或删除模型。 */
-  refreshRegisteredBundledProviderModels(
-    providerConnectionDefinitionId: string
+  /** 用当前已取得的模型资料原位刷新已经激活的模型，不新增或删除模型。 */
+  refreshRegisteredProviderModels(
+    providerConnectionDefinitionId: string,
+    signal?: AbortSignal
   ): Promise<void>;
-  synchronizeConnectedProviderModels(providerConnectionDefinitionId: string, signal?: AbortSignal): Promise<void>;
+  synchronizeConnectedProviderModels(
+    providerConnectionDefinitionId: string,
+    signal?: AbortSignal
+  ): Promise<void>;
 }

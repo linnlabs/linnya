@@ -23,9 +23,19 @@ describe('inferReasoningConfigByModelName', () => {
   describe('GPT-5 系列', () => {
     it('gpt-5 全系列统一 off/low/medium/high/xhigh（UI 一致，不区分版本）', () => {
       for (const name of [
-        'gpt-5', 'gpt5', 'gpt-5-mini', 'gpt-5-nano', 'openai/gpt-5', 'GPT-5-Mini',
-        'gpt-5.1', 'gpt-5.1-codex',
-        'gpt-5.2', 'gpt-5.3', 'gpt-5.4', 'gpt-5.5', 'gpt-5.2-codex',
+        'gpt-5',
+        'gpt5',
+        'gpt-5-mini',
+        'gpt-5-nano',
+        'openai/gpt-5',
+        'GPT-5-Mini',
+        'gpt-5.1',
+        'gpt-5.1-codex',
+        'gpt-5.2',
+        'gpt-5.3',
+        'gpt-5.4',
+        'gpt-5.5',
+        'gpt-5.2-codex',
       ]) {
         const cfg = inferReasoningConfigByModelName(name);
         expect(cfg?.supported_efforts).toEqual(['off', 'low', 'medium', 'high', 'xhigh']);
@@ -66,7 +76,12 @@ describe('inferReasoningConfigByModelName', () => {
 
   describe('Gemini 2.5+ / 3+ 系列（thinkingConfig）', () => {
     it('gemini-2.5-pro / gemini-3-flash 匹配，档位 off/low/medium/high', () => {
-      for (const name of ['gemini-2.5-pro', 'gemini-2-5-flash', 'google/gemini-3-pro', 'gemini-3-flash-preview']) {
+      for (const name of [
+        'gemini-2.5-pro',
+        'gemini-2-5-flash',
+        'google/gemini-3-pro',
+        'gemini-3-flash-preview',
+      ]) {
         const cfg = inferReasoningConfigByModelName(name);
         expect(cfg?.supported_efforts).toEqual(['off', 'low', 'medium', 'high']);
         expect(cfg?.default_effort).toBe('medium');
@@ -99,6 +114,9 @@ describe('inferReasoningConfigByModelName', () => {
       for (const name of [
         'deepseek-v4-pro',
         'deepseek-v4-flash',
+        'deepseek-flash',
+        'deepseek/deepseek-flash',
+        'deepseek-v4.1-flash',
         'deepseek-v4-pro-preview',
         // 用户自定义 endpoint 可声明尚未公开的内测模型名；不应因日期后缀丢失 V4 契约。
         'deepseek-v4.1-flash-expires-on-0910',

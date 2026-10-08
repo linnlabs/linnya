@@ -101,6 +101,8 @@ function input(
   overrides: Partial<ComposeSelectableModelMenuInput> = {}
 ): ComposeSelectableModelMenuInput {
   return {
+    discovered_models: { read: () => undefined },
+    can_refresh_models: () => false,
     provider_definitions: [],
     configured_providers: [],
     models: [],

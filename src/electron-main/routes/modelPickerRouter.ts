@@ -8,6 +8,8 @@ import {
   ModelPickerError,
   type ModelPickerUseCase,
 } from 'src/app-hosts/linnya/application/model-picker';
+import { ProviderModelDiscoveryError } from 'src/app-hosts/linnya/adapters/provider-model-discovery';
+import { ProviderOnboardingError } from 'src/app-hosts/linnya/application/provider-onboarding';
 
 function readPathId(value: string | string[] | undefined): string | undefined {
   if (value === undefined) return undefined;
@@ -15,11 +17,19 @@ function readPathId(value: string | string[] | undefined): string | undefined {
 }
 
 function handleModelPickerError(error: unknown, response: Response): void {
-  if (error instanceof ModelPickerError) {
+  if (error instanceof ProviderModelDiscoveryError) {
+    response
+      .status(error.statusCode)
+      .json({ code: 'model_picker.discovery_failed', message: error.message });
+    return;
+  }
+  if (error instanceof ModelPickerError || error instanceof ProviderOnboardingError) {
     response.status(error.statusCode).json({ code: error.code, message: error.message });
     return;
   }
-  console.error('[ModelPickerRouter] 模型选择器操作失败', error);
+  console.error('[ModelPickerRouter] 模型选择器操作失败', {
+    failureType: error instanceof Error ? error.name : 'unknown',
+  });
   response.status(500).json({
     code: 'model_picker.operation_failed',
     message: '模型选择器操作失败',
@@ -33,6 +43,19 @@ export function createModelPickerRouter(useCase: ModelPickerUseCase): Router {
   router.get('/', (_request: Request, response: Response) => {
     try {
       response.json(useCase.read());
+    } catch (error: unknown) {
+      handleModelPickerError(error, response);
+    }
+  });
+
+  router.post('/providers/:configuredProviderId/refresh', async (request, response) => {
+    const id = readPathId(request.params.configuredProviderId);
+    if (!id) {
+      response.status(400).json({ code: 'model_picker.invalid_command' });
+      return;
+    }
+    try {
+      response.json(await useCase.refreshProviderModels(id));
     } catch (error: unknown) {
       handleModelPickerError(error, response);
     }

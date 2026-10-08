@@ -38,6 +38,7 @@ export const ModelPickerMaterializedModelSchema = z
 export const ModelPickerUnmaterializedModelSchema = z
   .object({
     materialized: z.literal(false),
+    activation_unavailable_reason: NonEmptyStringSchema.optional(),
     provider_model_id: NonEmptyStringSchema,
     display_name: NonEmptyStringSchema,
     picker_enabled: z.literal(false),
@@ -59,6 +60,7 @@ export const ModelPickerConfiguredProviderSchema = z
     provider_connection_definition_id: NonEmptyStringSchema,
     display_name: NonEmptyStringSchema,
     connection_display_name: NonEmptyStringSchema,
+    can_refresh_models: z.boolean(),
     kind: z.enum(['direct', 'local_runtime']),
     picker_enabled: z.boolean(),
     credential_available: z.boolean(),
@@ -85,9 +87,7 @@ export const ModelPickerCustomProviderGroupSchema = z
   })
   .strict();
 
-export type ModelPickerCustomProviderGroup = z.infer<
-  typeof ModelPickerCustomProviderGroupSchema
->;
+export type ModelPickerCustomProviderGroup = z.infer<typeof ModelPickerCustomProviderGroupSchema>;
 
 /** Settings 和对话入口共同消费的 Host 投影；前端不自行猜 Provider 归属。 */
 export const ModelPickerSnapshotSchema = z
