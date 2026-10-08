@@ -35,7 +35,7 @@ command-authorization/
 | --- | --- | --- |
 | `read_only` | 明确判断为只读的命令 | 写入、创建、删除、移动、覆盖、上传等超出只读范围的命令 |
 | `standard` | 未命中固定风险规则的命令 | 固定规则识别出的删除、覆盖移动、外部上传、下载后执行、系统或磁盘影响 |
-| `full_access` | 不触发审批的命令 | 不弹审批；仍受固定 `gui_control = denied`、`local_ipc_control = denied` 和随 run 结束的生命周期边界约束 |
+| `full_access` | 不触发审批的命令 | 不弹审批；仍受固定 `gui_control = denied` 和随 run 结束的生命周期边界约束 |
 
 实际顺序固定为：
 
@@ -43,7 +43,7 @@ command-authorization/
 2. 根据当前 run 的 `CommandPermissionSnapshotV1` 确定基础档位；不能重新读取设置文件。
 3. `read_only` 先调用 `detectObviousShellWrite`。无法证明只读就走审批，不得因为“没匹配到写入词”而放行。
 4. `standard` 调用平台对应的固定风险规则。命中一条或多条都只生成一个审批请求，原因列表保留全部 rule id。
-5. `full_access` 不再请求命令审批，但不能提升固定 capability；GUI、local IPC 和脱离 run 生命周期的执行仍必须在进入平台启动前拒绝。
+5. `full_access` 不再请求命令审批，但不能提升固定 capability；GUI 和脱离 run 生命周期的执行仍必须在进入平台启动前拒绝。
 6. 只有简单命令能生成对话级记忆候选；复杂脚本、管道拼接、嵌入脚本和无法完整扫描的文本只能 `allow_once`。
 
 ## 4. 关键数据
@@ -97,6 +97,7 @@ macOS 使用 zsh 语义扫描，Windows 使用 PowerShell 简单命令扫描。�
 - 规则扫描无法可靠完成：按需要审批处理，不得按低风险放行。
 - 记忆上下文不匹配：只允许本次，不能复用旧批准。
 - `internal_data_access = denied` 时，正式插件 CLI bridge 在执行需要内部数据的 access plan 前拒绝；这个开关独立于三档权限。当前普通 Shell 授权规则不解析脚本中的数据库读取，macOS 文件策略也未据此拒绝内部路径读取。因此不能把 bridge 的拒绝合同外推为任意解释器/外部 CLI 的文件隔离保证。
+- `local_ipc_control = denied` 当前只是固定配置值，不构成对任意本机 HTTP/IPC 访问的执行隔离；Shell 仍可访问 localhost。本机 Conversation Control CLI 信任同一 OS 用户，连接文件的 `0700/0600` 不能区分该用户启动的 CLI 与受管 Agent 进程，不能据此承诺阻止 Agent 取得本机控制凭据。具体鉴权与限制见 [Conversation Control Bridge](../../../../app-hosts/linnya/adapters/conversation-control-bridge/README.md)。
 - `gui_control = denied` 不是一条可审批风险规则。直接或经解释器、自定义二进制启动 GUI 都必须由平台执行边界拒绝；当前跨解释器 enforcement 与正式 fixture 是 Command 上线门禁。
 
 审计中只记录稳定摘要、规则 id、决定和来源，不记录完整环境、PID、保护输入正文或完整输出。
