@@ -271,6 +271,70 @@ describe('research workflow through formal CLI port', () => {
       vi.mocked(cli.workspaceTool).mock.calls.filter(([request]) => request.tool === 'write_file')
     ).toHaveLength(3);
   });
+  it('preserves source segment boundary whitespace through Markdown code-block normalization', async () => {
+    const options = await fixture();
+    const manifest = ResearchManifestSchema.parse(
+      JSON.parse(await readFile(options.manifestFile, 'utf8'))
+    );
+    manifest.stages[0].sourcePacket = { prefix: 'workspace:/S1', index: 'workspace:/S1-index.md' };
+    await writeFile(options.manifestFile, JSON.stringify(manifest));
+    const observation = '内容' + 'x'.repeat(5997) + ' ' + ' 末尾保留\t\n\n';
+    const docs = new Map([
+      ['workspace:/input.md', '依据'],
+      ['workspace:/output.md', '文章'],
+    ]);
+    const workspace = fakeCli(docs);
+    const cli = fakeCli(docs, {
+      workspaceTool: vi.fn<ResearchWorkflowCliPort['workspaceTool']>(async request => {
+        const content = request.args.content;
+        if (request.tool !== 'write_file' || typeof content !== 'string')
+          return workspace.workspaceTool(request);
+        // 模拟 Markdown owner 的代码块首尾 trim；原型不能靠宽松读回比较绕过它。
+        return workspace.workspaceTool({
+          ...request,
+          args: {
+            ...request.args,
+            content: content.replace(/```text\n([\s\S]*?)\n```/g, (_match, body: string) =>
+              ['```text', body.trim(), '```'].join('\n')
+            ),
+          },
+        });
+      }),
+      messagePage: vi.fn<ResearchWorkflowCliPort['messagePage']>(async () => ({
+        schema_version: 1,
+        ok: true,
+        command: 'messages',
+        conversation_id: 'conversation',
+        status: 'ready',
+        revision: 1,
+        has_more_before: false,
+        has_more_after: false,
+        messages: [
+          tool('web_read', {}, observation, {}, 1),
+          writeResult('workspace:/output.md', 2),
+        ],
+      })),
+    });
+    const result = await runResearchWorkflow({ ...options, cli });
+    expect(result.stages[0]?.status).toBe('completed');
+    const segments = result.stages[0]?.packetDocuments.slice(0, 2);
+    expect(segments).toHaveLength(2);
+    expect(
+      segments
+        ?.map(
+          document =>
+            document.text.match(
+              /<<<BEGIN_SOURCE_SEGMENT>>>\n([\s\S]*?)\n<<<END_SOURCE_SEGMENT>>>/
+            )?.[1]
+        )
+        .join('')
+    ).toBe(observation);
+    expect(segments?.[0]?.text).toContain('"segmentEnd": 6000');
+    expect(segments?.[1]?.text).toContain('"segmentStart": 6000');
+    expect(
+      JSON.parse(await readFile(path.join(options.output, 'D1/source-records.json'), 'utf8'))
+    ).toEqual([expect.objectContaining({ observation })]);
+  });
   it('source packet isolates historical blob control text but preserves exact raw observations', () => {
     const raw =
       '真实取得正文。继续 tool_output_read({"blob_id":"abcdef1234567890"}) 同行尾部真实资料。';

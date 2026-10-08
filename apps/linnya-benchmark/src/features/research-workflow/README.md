@@ -53,6 +53,10 @@ observation：搜索摘要、metadata-only、正文、续读范围、失败与�
 原始 messages 与 source-records 保留取得版本、实际 observation 原件和 hash。owner 截断与外层截断信号分开；续读 data 中的 window 只有完整出现在实际 observation 才能声明取得范围，不把结构化载荷中的未见尾部转交后续模型。供下一会话读的 packet 使用短片段、明确 Workspace
 locator 与文本围栏；原会话 blob 调用片段被隔离，转换区间有记录、同行资料仍保留，原始审计不修改。分片不是新来源，原取得失败不会被另一次成功覆盖。
 
+Markdown
+current 会规范化代码块首尾空白。只有首尾确有空白的资料片段增加显式传输边界，`segmentFraming`
+记录前后缀；标记不属于来源，片段字符与 offset 不变。发布后仍逐字核对完整投影，不通过 trim 或模糊比较放过内容变化。
+
 正文来自正式 `read_file`
 的 current（包含 pending），按实际行号与返回行数校验；外层截断时缩小窗口。单行仍过长时使用正式 DocumentView 字符窗口，核对总长度、cursor 和完整 envelope，并将 representation 标为 document-view。该 hash 是相应当前投影的 hash，不是数据库 revision
 hash；DocumentView 的块 ref 不是普通 Markdown 字节。字数为当前投影中的 Han 字符数，不含主观可读性评价。
