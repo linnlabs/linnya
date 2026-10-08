@@ -67,7 +67,7 @@ describe('execution pause through real Flow, Graph, SQLite and CLI status projec
     const record = await new SQLiteRunRegistryStore(fixture.db).load(RunIdSchema.parse(active.run_id));
     expect(record).toMatchObject({ status: 'paused', pauseReason: 'llm.auth_failed' });
     if (!record) throw new Error('Expected durable run record');
-    const cliStatus = ConversationControlRunStatusSnapshotSchema.parse(projectRunStatus(record, undefined, false));
+    const cliStatus = ConversationControlRunStatusSnapshotSchema.parse(projectRunStatus(record, undefined, false, []));
     expect(cliStatus.pause).toEqual({ settled: true, reason: 'llm.auth_failed' });
     expect(cliStatus.error).toBeUndefined();
     expect(fixture.ai.getCalls()).toHaveLength(1);
@@ -91,7 +91,7 @@ describe('execution pause through real Flow, Graph, SQLite and CLI status projec
     const record = await new SQLiteRunRegistryStore(fixture.db).load(RunIdSchema.parse(active.run_id));
     expect(record).toMatchObject({ status: 'paused', pauseReason: 'execution_interrupted' });
     if (!record) throw new Error('Expected durable run record');
-    const cliStatus = ConversationControlRunStatusSnapshotSchema.parse(projectRunStatus(record, undefined, false));
+    const cliStatus = ConversationControlRunStatusSnapshotSchema.parse(projectRunStatus(record, undefined, false, []));
     expect(cliStatus.pause).toEqual({ settled: true, reason: 'execution_interrupted' });
     expect(cliStatus.error).toBeUndefined();
     expect(JSON.stringify(cliStatus)).not.toContain(privateCode);
@@ -133,7 +133,7 @@ describe('execution pause through real Flow, Graph, SQLite and CLI status projec
     const record = await registry.load(RunIdSchema.parse(active.run_id));
     if (!record) throw new Error('Expected durable run record');
     expect(record).toMatchObject({ status: 'paused', pauseReason: 'tool.protocol_fuse' });
-    const cliStatus = ConversationControlRunStatusSnapshotSchema.parse(projectRunStatus(record, undefined, false));
+    const cliStatus = ConversationControlRunStatusSnapshotSchema.parse(projectRunStatus(record, undefined, false, []));
     expect(cliStatus.pause).toEqual({ settled: true, reason: record.pauseReason });
     expect(cliStatus.error).toBeUndefined();
     expect(fixture.ai.getCalls()).toHaveLength(4);

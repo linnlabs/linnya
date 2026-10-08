@@ -17,15 +17,17 @@ POST /api/v1/conversation-control/commands
 
 能力公告允许未来新增合法标识符，消费者忽略不认识的能力；命令 union 和响应 schema 仍然封闭且严格。改变既有协议语义必须升级 protocol，不能借能力扩展绕过合同校验。
 
-当前wire protocol为3：status/watch增加必填`command_approvals`，CLI命令增加精确查询与回复。
-连接描述与handshake一致校验版本，旧CLI须明确升级；URL和连接文件名中的v1仍是稳定发现地址。
-审批使用同一Commands owner，API Server只在鉴权路由就绪后启用控制端点，并在连接发布失败或停止时撤销。
-关闭端点不自动批准/拒绝pending，run取消与App owner退出负责业务收口。
+当前 wire protocol 为 3：status/watch 增加必填 `command_approvals`，CLI 命令增加精确查询与回复。
+连接描述与 handshake 一致校验版本，旧 CLI 须明确升级；URL 和连接文件名中的 v1 仍是稳定发现地址。
+审批使用同一 Commands owner，API Server 只在鉴权路由就绪后启用控制端点，并在连接发布失败或停止时撤销。
+关闭端点不自动批准或拒绝 pending，run 取消与 App owner 退出负责业务收口。
 
 ## 安全边界
 
 - API Server 只绑定 `127.0.0.1`。
 - CLI 使用独立的随机 256-bit session token；它不能访问 Renderer API，Renderer token 也不能访问 CLI 命名空间。
+- 本机控制信任持有连接凭据的同一系统用户。`0700/0600` 隔离其他系统用户，不隔离同一用户的 Shell、文件工具或外部进程；持有 token 的调用方也可提交审批回复。
+- Commands 的固定风险匹配用于请求操作者决定，不是对任意脚本的强隔离。CLI 不默认选项或自动批准；若需要抵抗受管工具自行取得控制凭据，必须另行设计跨工具、跨平台的隔离边界，不能只增加命令字符串黑名单。
 - 鉴权位于 body parser 前，避免未授权大请求先占用解析资源。
 - 诊断日志只记录命令名与收敛后的错误类型，不记录 token 或请求正文。
 - bridge 只消费共享 command DTO，不能把 Flow 内部开关、HITL resume token 或数据库结构暴露为 wire。`resume` wire 只携带 exact run 与暂停 fence，并由 composition root 映射到 Flow 正式 continuation。

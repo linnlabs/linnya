@@ -16,7 +16,7 @@ sink 消费，因为权威业务事实已经持久化；隐藏 Chromium worker�
 浏览器、系统文件管理器显示、Web Chromium renderer 与 Desktop 导出目标会返回明确不可用错误。普通 HTTP
 Web Read 仍可工作，其动态页面升级路径不会伪装为成功。
 
-交互式 TTY 通过独立的 pipe-authenticated Host presenter 读取 command approval projection；它与 Desktop Renderer 竞争同一个 pending/settlement，先到的合法回复唯一生效。CLI 不生成 Renderer page ticket 或伪造 sender。非 TTY Host 不声明 presenter capability，审批请求 fail closed。普通 `awaiting_user` 仍由 Conversation Control 的 `respond` 处理。
+交互式 TTY 通过独立的 pipe-authenticated Host presenter 读取 command approval projection；它与 Desktop Renderer、Conversation Control CLI 竞争同一个 pending/settlement，先到的合法回复唯一生效。CLI 不生成 Renderer page ticket 或伪造 sender。非 TTY Host 不声明 presenter capability，但鉴权控制端点可用时仍可通过 `approvals` 和 `approval-reply` 查询及回复；所有展示和控制通道均不可用时才拒绝请求。普通 `awaiting_user` 仍由 Conversation Control 的 `respond` 处理。
 
 当前入口是独立 `linnya-cli-runtime.cjs` bundle，由 CLI 通过窄 launcher 动态加载。普通 CLI 命令仍只包含
 参数、控制面连接和输出，不把完整 Backend 打进控制客户端。bundle 导出显式 Host contract version；CLI 拒绝加载旧合同产物。

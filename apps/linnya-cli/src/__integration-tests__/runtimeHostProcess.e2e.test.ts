@@ -1,18 +1,24 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { promises as fs } from 'node:fs';
+import { createServer as createHttpServer, type Server } from 'node:http';
 import { createServer } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 
-import { ConversationControlProjectsResponseSchema } from '@app/schemas';
+import {
+  ConversationControlCommandApprovalsResponseSchema,
+  ConversationControlProjectsResponseSchema,
+} from '@app/schemas';
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 const repoRoot = path.resolve(import.meta.dirname, '../../../..');
 const cliEntry = path.join(repoRoot, 'apps/linnya-cli/bin/linnya.cjs');
 const runtimeSuite = process.env.LINNYA_CLI_RUNTIME_E2E === '1' ? describe : describe.skip;
 const temporaryRoots: string[] = [];
 const liveRuntimes: ChildProcessWithoutNullStreams[] = [];
+const modelServers: Server[] = [];
 
 afterEach(async () => {
   await Promise.all(liveRuntimes.splice(0).map(async child => {
@@ -22,9 +28,97 @@ afterEach(async () => {
   await Promise.all(temporaryRoots.splice(0).map(root => (
     fs.rm(root, { recursive: true, force: true })
   )));
+  await Promise.all(modelServers.splice(0).map(server => new Promise<void>((resolve, reject) => {
+    server.close(error => error ? reject(error) : resolve());
+  })));
 });
 
 runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
+  it('无 Renderer/TTY 的真实 Shell 等待 CLI 决定；接受、拒绝和取消均保留原 run', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-cli-approval-e2e-'));
+    temporaryRoots.push(root);
+    const workspace = path.join(root, 'workspace');
+    const connectionFile = path.join(root, 'connection.json');
+    const modelCatalog = path.join(root, 'default-models.json');
+    const fixture = await startApprovalModelFixture();
+    await fs.mkdir(workspace, { recursive: true });
+    await fs.writeFile(modelCatalog, JSON.stringify({ models: [{
+      id: 'approval-fixture', model_name: 'approval-fixture', catalog_source: 'default',
+      capabilities: ['chat'], ui_visibility: ['chat'], display_name: 'Approval fixture',
+      inference_route: {
+        api_surface: 'openai_chat_completions', capability_id: 'ai-sdk:openai-compatible',
+        endpoint_id: 'fixture', endpoint_model_id: 'approval-fixture', base_url: fixture.url,
+        auth_profile: 'none', context_window_tokens: 32768, max_output_tokens: 4096,
+        input_support: { user_image: false, tool_result_image: false },
+        usage: { response_usage: 'provider_reported_optional' },
+        // 夹具只发普通文本与 tool_calls，不宣称供应商专属 reasoning continuation。
+        continuation: { tool_replay: 'unavailable' },
+      },
+    }] }));
+    const environment = createRuntimeEnvironment({ connectionFile, modelCatalog });
+    const runtime = await startRuntime({ workspace, environment });
+    const projectId = 'approval-runtime-e2e';
+    const database = new Database(path.join(workspace, 'workspace', 'workspace.sqlite'), { fileMustExist: true });
+    try {
+      database.prepare('INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)')
+        .run(projectId, 'Approval Runtime E2E', Date.now(), Date.now());
+    } finally { database.close(); }
+
+    for (const choice of ['allow_once', 'deny', 'cancel'] as const) {
+      const receipt = readReceipt(await runCli(['send', 'approval-fixture', '--project', projectId,
+        '--agent', 'default', '--model', 'approval-fixture'], environment));
+      const watchArgs = ['status', receipt.conversation_id, '--run', receipt.run_id,
+        '--watch', '--interval', '250', '--timeout', '20000'];
+      const waiting = await runCli(watchArgs, environment);
+      expect(waiting.code, waiting.stderr).toBe(0);
+      expect(readLastJsonLine(waiting.stdout)).toMatchObject({ snapshot: {
+        run_id: receipt.run_id, status: 'running',
+        command_approvals: [{ status: 'awaiting_reply' }],
+      } });
+      const list = await runCli(['approvals', receipt.conversation_id, '--run', receipt.run_id], environment);
+      const response = ConversationControlCommandApprovalsResponseSchema.parse(parseJson(list.stdout));
+      if (response.action !== 'list') throw new Error('Expected approval list');
+      expect(response.pending).toHaveLength(1);
+      const pending = response.pending[0];
+      if (!pending) throw new Error('Missing pending approval');
+      expect(pending.agent_run_id).toBe(receipt.run_id);
+      expect(pending.command).toBe(fixture.command);
+      const previousResults = fixture.toolResults.length;
+      const replyArgs = ['approval-reply', receipt.conversation_id, '--run', pending.agent_run_id,
+        '--request', pending.approval_request_id, '--choice', choice === 'cancel' ? 'allow_once' : choice];
+      if (choice === 'cancel') {
+        const stopped = await runCli(['stop', receipt.conversation_id, '--run', receipt.run_id], environment);
+        expect(stopped.code, stopped.stderr).toBe(0);
+      } else {
+        // 两个真实 CLI 进程竞态回复，同一个 proposal 只能接纳一次。
+        const replies = await Promise.all([runCli(replyArgs, environment), runCli(replyArgs, environment)]);
+        expect(replies.map(reply => reply.code).sort()).toEqual([0, 6]);
+        expect(replies.map(reply => Reflect.get(parseObject(reply.stdout), 'status')).sort())
+          .toEqual(['accepted', 'stale']);
+      }
+      const done = await runCli(watchArgs, environment);
+      expect(done.code, done.stderr).toBe(0);
+      expect(readLastJsonLine(done.stdout), `${choice}: ${done.stdout}\n${runtime.stderr}`).toMatchObject({ snapshot: {
+        run_id: receipt.run_id, status: choice === 'cancel' ? 'cancelled' : 'completed', command_approvals: [],
+      } });
+      if (choice === 'cancel') {
+        expect((await runCli(replyArgs, environment)).code).toBe(6);
+        expect(fixture.toolResults).toHaveLength(previousResults);
+      } else {
+        expect(fixture.toolResults).toHaveLength(previousResults + 1);
+        const result = fixture.toolResults.at(-1);
+        if (choice === 'allow_once') expect(result).toContain('approval-e2e-executed');
+        else {
+          expect(result).not.toContain('approval-e2e-executed');
+          expect(result).toMatch(/denied|rejected|拒绝/);
+        }
+      }
+    }
+    runtime.child.kill('SIGTERM');
+    expect(await waitForClose(runtime.child)).toBe(0);
+    removeLiveRuntime(runtime.child);
+  }, 90_000);
+
   it('冷启动、并行运行、拒绝第二 owner，并在重启后保留历史', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-cli-runtime-e2e-'));
     temporaryRoots.push(root);
@@ -144,6 +238,50 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
   }, 45_000);
 });
 
+function parseObject(text: string): Record<string, unknown> {
+  return z.record(z.unknown()).parse(parseJson(text));
+}
+
+async function startApprovalModelFixture(): Promise<{
+  readonly url: string;
+  readonly command: string;
+  readonly toolResults: string[];
+}> {
+  // 只删除不存在的夹具路径，触发真实固定风险审批；不触及用户文件或真实供应商。
+  const command = 'rm -f approval-e2e-missing-file; printf approval-e2e-executed';
+  const toolResults: string[] = [];
+  const requestSchema = z.object({ messages: z.array(z.object({
+    role: z.string(), content: z.unknown().optional(),
+  }).passthrough()) }).passthrough();
+  const server = createHttpServer(async (request, response) => {
+    try {
+      let body = '';
+      for await (const chunk of request) body += String(chunk);
+      const parsed = requestSchema.parse(JSON.parse(body));
+      const result = parsed.messages.filter(message => message.role === 'tool').at(-1);
+      if (result) toolResults.push(JSON.stringify(result.content));
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      const delta = result ? { content: 'Fixture completed.' } : { tool_calls: [{
+        index: 0, id: 'fixture-shell-call', type: 'function',
+        function: { name: 'shell', arguments: JSON.stringify({ command }) },
+      }] };
+      const frame = (value: unknown): void => { response.write(`data: ${JSON.stringify(value)}\n\n`); };
+      frame({ id: 'fixture-completion', object: 'chat.completion.chunk', created: 1, model: 'approval-fixture',
+        choices: [{ index: 0, delta, finish_reason: null }] });
+      frame({ id: 'fixture-completion', object: 'chat.completion.chunk', created: 1, model: 'approval-fixture',
+        choices: [{ index: 0, delta: {}, finish_reason: result ? 'stop' : 'tool_calls' }] });
+      response.end('data: [DONE]\n\n');
+    } catch (error: unknown) {
+      response.writeHead(500).end(String(error));
+    }
+  });
+  modelServers.push(server);
+  await new Promise<void>(resolve => { server.listen(0, '127.0.0.1', resolve); });
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Model fixture is unavailable');
+  return { url: `http://127.0.0.1:${address.port}/v1`, command, toolResults };
+}
+
 async function startRuntime(input: {
   readonly workspace: string;
   readonly environment: NodeJS.ProcessEnv;
@@ -168,11 +306,14 @@ async function startRuntime(input: {
   child.stderr.setEncoding('utf8').on('data', chunk => {
     stderr = `${stderr}${String(chunk)}`.slice(-200_000);
   });
-  const ready = await readFirstJsonLine(child, 20_000);
+  const ready = await readFirstJsonLine(child, 20_000).catch((error: unknown) => {
+    // 此夹具只使用合成配置；保留启动诊断，区分接纳逻辑失败与本机缺少运行时资产。
+    throw new Error(`CLI Runtime ready 失败\n${stderr}`, { cause: error });
+  });
   if (!isRuntimeReady(ready)) {
     throw new Error(`CLI Runtime 返回无效 ready frame: ${JSON.stringify(ready)}\n${stderr}`);
   }
-  return { child, ready, stderr };
+  return { child, ready, get stderr() { return stderr; } };
 }
 
 function runCli(
