@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
+import os from 'node:os';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import {
   ConversationControlAuditResponseSchema,
   ConversationControlErrorResponseSchema,
@@ -9,12 +11,13 @@ import {
   ConversationControlResultResponseSchema,
   ConversationControlSendResponseSchema,
   ConversationControlStopResponseSchema,
+  ConversationControlStatusResponseSchema,
+  ConversationControlResumeResponseSchema,
+  ConversationUiMessageSchema,
 } from '@app/schemas';
-import type { ZodType } from 'zod';
-import {
-  BenchmarkConversationCliError,
-  type BenchmarkConversationCliPort,
-} from '../definitions/conversationCliPort';
+import { z, type ZodType } from 'zod';
+import type { ResearchWorkflowCliPort } from '../features/research-workflow/definitions/researchWorkflow';
+import { BenchmarkConversationCliError } from '../definitions/conversationCliPort';
 
 interface ProcessResult {
   readonly exitCode: number | null;
@@ -36,7 +39,7 @@ function parseJson<T>(text: string, schema: ZodType<T>): T {
     throw new BenchmarkConversationCliError(
       'protocol_incompatible',
       'Linnya CLI returned invalid JSON',
-      false,
+      false
     );
   }
   const parsed = schema.safeParse(decoded);
@@ -44,7 +47,7 @@ function parseJson<T>(text: string, schema: ZodType<T>): T {
     throw new BenchmarkConversationCliError(
       'protocol_incompatible',
       'Linnya CLI response does not match the conversation-control contract',
-      false,
+      false
     );
   }
   return parsed.data;
@@ -58,20 +61,20 @@ function throwProcessFailure(result: ProcessResult): never {
       } catch {
         return undefined;
       }
-    })(),
+    })()
   );
   if (parsed.success) {
     throw new BenchmarkConversationCliError(
       parsed.data.error.code,
       parsed.data.error.message,
       parsed.data.error.retryable,
-      parsed.data.command,
+      parsed.data.command
     );
   }
   throw new BenchmarkConversationCliError(
     'transport_failure',
     `Linnya CLI exited with code ${result.exitCode ?? 'signal'}`,
-    true,
+    true
   );
 }
 
@@ -84,8 +87,8 @@ function parseProgressFrames(stdout: string) {
 }
 
 export function createLinnyaCliProcessAdapter(
-  options: LinnyaCliProcessAdapterOptions,
-): BenchmarkConversationCliPort {
+  options: LinnyaCliProcessAdapterOptions
+): ResearchWorkflowCliPort {
   const entry = path.join(options.repoRoot, 'apps/linnya-cli/src/main.ts');
 
   function execute(args: readonly string[], timeoutMs?: number): Promise<ProcessResult> {
@@ -98,16 +101,21 @@ export function createLinnyaCliProcessAdapter(
       let stdout = '';
       let stderr = '';
       let timedOut = false;
-      const timer = timeoutMs === undefined
-        ? undefined
-        : setTimeout(() => {
-            timedOut = true;
-            child.kill('SIGTERM');
-          }, timeoutMs);
+      const timer =
+        timeoutMs === undefined
+          ? undefined
+          : setTimeout(() => {
+              timedOut = true;
+              child.kill('SIGTERM');
+            }, timeoutMs);
       child.stdout.setEncoding('utf8');
       child.stderr.setEncoding('utf8');
-      child.stdout.on('data', chunk => { stdout += chunk; });
-      child.stderr.on('data', chunk => { stderr += chunk; });
+      child.stdout.on('data', chunk => {
+        stdout += chunk;
+      });
+      child.stderr.on('data', chunk => {
+        stderr += chunk;
+      });
       child.once('error', reject);
       child.once('close', exitCode => {
         if (timer) clearTimeout(timer);
@@ -127,9 +135,12 @@ export function createLinnyaCliProcessAdapter(
       const args = [
         'send',
         request.message,
-        '--project', request.projectId,
-        '--agent', request.agentId,
-        '--reasoning', request.reasoningEffort,
+        '--project',
+        request.projectId,
+        '--agent',
+        request.agentId,
+        '--reasoning',
+        request.reasoningEffort,
       ];
       if (request.modelId) args.push('--model', request.modelId);
       const response = await executeSingle(args, ConversationControlSendResponseSchema);
@@ -139,13 +150,20 @@ export function createLinnyaCliProcessAdapter(
     async watchStatus(request) {
       const runnerTimeoutMs = Math.max(1, request.timeoutMs);
       const cliTimeoutMs = runnerTimeoutMs + 5_000;
-      const result = await execute([
-        'status', request.conversationId,
-        '--run', request.runId,
-        '--watch',
-        '--interval', '1000',
-        '--timeout', String(cliTimeoutMs),
-      ], runnerTimeoutMs);
+      const result = await execute(
+        [
+          'status',
+          request.conversationId,
+          '--run',
+          request.runId,
+          '--watch',
+          '--interval',
+          '1000',
+          '--timeout',
+          String(cliTimeoutMs),
+        ],
+        runnerTimeoutMs
+      );
       const frames = parseProgressFrames(result.stdout);
       if (result.timedOut) return { frames, timedOut: true };
       if (result.exitCode !== 0) throwProcessFailure(result);
@@ -153,33 +171,38 @@ export function createLinnyaCliProcessAdapter(
     },
 
     approve(request) {
-      return executeSingle([
-        'respond', request.conversationId,
-        '--interaction', request.interactionId,
-        '--approve',
-        '--project', request.projectId,
-      ], ConversationControlRespondResponseSchema);
+      return executeSingle(
+        [
+          'respond',
+          request.conversationId,
+          '--interaction',
+          request.interactionId,
+          '--approve',
+          '--project',
+          request.projectId,
+        ],
+        ConversationControlRespondResponseSchema
+      );
     },
 
     stop(request) {
-      return executeSingle([
-        'stop', request.conversationId,
-        '--run', request.runId,
-        '--reason', request.reason,
-      ], ConversationControlStopResponseSchema);
+      return executeSingle(
+        ['stop', request.conversationId, '--run', request.runId, '--reason', request.reason],
+        ConversationControlStopResponseSchema
+      );
     },
 
     result(conversationId, runId) {
-      return executeSingle([
-        'result', conversationId,
-        '--run', runId,
-      ], ConversationControlResultResponseSchema).then(response => {
+      return executeSingle(
+        ['result', conversationId, '--run', runId],
+        ConversationControlResultResponseSchema
+      ).then(response => {
         if (response.result_status === 'available') {
           if (response.message.message_type !== 'final_answer') {
             throw new BenchmarkConversationCliError(
               'protocol_incompatible',
               'Linnya CLI result did not contain a final answer',
-              false,
+              false
             );
           }
           return {
@@ -193,7 +216,7 @@ export function createLinnyaCliProcessAdapter(
           throw new BenchmarkConversationCliError(
             'protocol_incompatible',
             'Linnya CLI result command returned an invalid status',
-            false,
+            false
           );
         }
         return {
@@ -206,17 +229,76 @@ export function createLinnyaCliProcessAdapter(
     },
 
     messages(conversationId) {
-      return executeSingle([
-        'messages', conversationId,
-        '--limit', '200',
-      ], ConversationControlMessagesResponseSchema);
+      return executeSingle(
+        ['messages', conversationId, '--limit', '200'],
+        ConversationControlMessagesResponseSchema
+      );
+    },
+
+    messagePage(conversationId, before) {
+      const args = ['messages', conversationId, '--limit', '200'];
+      if (before !== undefined) args.push('--before', String(before));
+      return executeSingle(args, ConversationControlMessagesResponseSchema);
+    },
+
+    status(conversationId, runId) {
+      return executeSingle(
+        ['status', conversationId, '--run', runId],
+        ConversationControlStatusResponseSchema
+      ).then(response => response.run);
+    },
+
+    resume(conversationId, runId) {
+      return executeSingle(
+        ['resume', conversationId, '--run', runId],
+        ConversationControlResumeResponseSchema
+      );
+    },
+
+    async workspaceTool(request) {
+      // 正文不进入 argv：macOS 单参数长度限制比总 ARG_MAX 更小。
+      const directory = await mkdtemp(path.join(os.tmpdir(), 'linnya-benchmark-tool-'));
+      try {
+        const argsFile = path.join(directory, 'args.json');
+        await writeFile(argsFile, JSON.stringify(request.args), { mode: 0o600 });
+        const args = [
+          'tools',
+          'call',
+          request.tool,
+          '--project',
+          request.projectId,
+          '--args-file',
+          argsFile,
+        ];
+        if (request.conversationId) args.push('--conversation', request.conversationId);
+        const result = await execute(args);
+        // Workspace tool 业务失败也返回正式 tool 卡，不用 transport error 吞掉来源事实。
+        const parsed = z
+          .object({ tool: ConversationUiMessageSchema })
+          .passthrough()
+          .safeParse(
+            (() => {
+              try {
+                return JSON.parse((result.exitCode === 0 ? result.stdout : result.stderr).trim());
+              } catch {
+                return undefined;
+              }
+            })()
+          );
+        if (!parsed.success) throwProcessFailure(result);
+        if (parsed.data.tool.message_type !== 'tool_calls')
+          throw new Error('Workspace CLI returned a non-tool message');
+        return parsed.data.tool;
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
     },
 
     audit(conversationId, runId) {
-      return executeSingle([
-        'audit', conversationId,
-        '--run', runId,
-      ], ConversationControlAuditResponseSchema);
+      return executeSingle(
+        ['audit', conversationId, '--run', runId],
+        ConversationControlAuditResponseSchema
+      );
     },
   };
 }

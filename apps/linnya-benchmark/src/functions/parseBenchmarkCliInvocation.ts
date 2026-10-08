@@ -28,6 +28,37 @@ function parseInputs(values: readonly string[]): Readonly<Record<string, string>
 export function parseBenchmarkCliInvocation(argv: readonly string[]): BenchmarkCliInvocation {
   if (argv.length === 0 || argv[0] === 'help' || argv.includes('--help')) return { kind: 'help' };
   const command = argv[0];
+  if (command === 'research-workflow') {
+    const values = new Map<string, string>();
+    for (let index = 1; index < argv.length; index += 2) {
+      const key = argv[index];
+      const value = argv[index + 1];
+      if (
+        !key ||
+        !['--manifest', '--output', '--resume-stage'].includes(key) ||
+        !value ||
+        value.startsWith('--') ||
+        values.has(key)
+      ) {
+        throw new BenchmarkUsageError(`Invalid research-workflow argument: ${key ?? ''}`);
+      }
+      values.set(key, value);
+    }
+    const manifestFile = values.get('--manifest');
+    const output = values.get('--output');
+    const resume = values.get('--resume-stage');
+    if (!manifestFile || !output)
+      throw new BenchmarkUsageError('research-workflow requires --manifest and --output');
+    if (
+      resume !== undefined &&
+      resume !== 'D0' &&
+      resume !== 'R0' &&
+      resume !== 'D1' &&
+      resume !== 'R1'
+    )
+      throw new BenchmarkUsageError('Invalid --resume-stage');
+    return { kind: 'research-workflow', manifestFile, output, resumeStage: resume };
+  }
   if (command === 'list') {
     const extras = argv.slice(1).filter(value => value !== '--pretty');
     if (extras.length > 0) throw new BenchmarkUsageError(`Unknown list argument: ${extras[0]}`);
@@ -51,7 +82,10 @@ export function parseBenchmarkCliInvocation(argv: readonly string[]): BenchmarkC
       pretty = true;
       continue;
     }
-    if (!option || !['--project', '--input', '--output', '--model', '--reasoning'].includes(option)) {
+    if (
+      !option ||
+      !['--project', '--input', '--output', '--model', '--reasoning'].includes(option)
+    ) {
       throw new BenchmarkUsageError(`Unknown run argument: ${option ?? ''}`);
     }
     const value = argv[index + 1];
@@ -60,11 +94,21 @@ export function parseBenchmarkCliInvocation(argv: readonly string[]): BenchmarkC
     }
     index += 1;
     switch (option) {
-      case '--project': projectId = value; break;
-      case '--input': inputValues.push(value); break;
-      case '--output': outputRoot = value; break;
-      case '--model': modelId = value; break;
-      case '--reasoning': reasoningEffort = parseReasoning(value); break;
+      case '--project':
+        projectId = value;
+        break;
+      case '--input':
+        inputValues.push(value);
+        break;
+      case '--output':
+        outputRoot = value;
+        break;
+      case '--model':
+        modelId = value;
+        break;
+      case '--reasoning':
+        reasoningEffort = parseReasoning(value);
+        break;
     }
   }
   if (!projectId) throw new BenchmarkUsageError('run requires --project <workspace-project-id>');

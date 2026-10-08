@@ -71,6 +71,15 @@ Workspace 文章与独立研究记录；从真实工具调用核对激活、资�
 可以辅助定位，但其 pass 和缺陷仍需核对依据。输入不足、未核查、取消与实际 usage 缺失
 均显式保留。与无 Skill 基线比较时另冻同等材料、模型、预算和评审规则，不将一次冒烟称为有效性证明。
 
+### 自然完成的研究交接原型
+
+`research-workflow --manifest <文件> --output <目录>` 按冻结 manifest 执行
+D0 调查、R0 初评、D1 一次修订、R1 终评或其中有序子集。它重用真实 CLI，
+不复用 case 的取消预算；同一输出目录保留运行身份，不因观察超时重新发送。
+材料通过正式 Workspace 当前投影交接，取得失败、截断、版本变化和语义未评价分别记录。
+输入字段、显式恢复、scope 限制和输出布局见
+[Research Workflow owner](./src/features/research-workflow/README.md)。
+
 ### 复杂图表与数据完整性
 
 `slides_arg_frontier_complex_v1` 要求 20 页学术综述、可核验的近期文献与七类数据任务；

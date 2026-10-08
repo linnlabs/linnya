@@ -2,6 +2,12 @@ export type BenchmarkCliInvocation =
   | { readonly kind: 'help' }
   | { readonly kind: 'list'; readonly pretty: boolean }
   | {
+      readonly kind: 'research-workflow';
+      readonly manifestFile: string;
+      readonly output: string;
+      readonly resumeStage?: 'D0' | 'R0' | 'D1' | 'R1';
+    }
+  | {
       readonly kind: 'run';
       readonly caseId: string;
       readonly projectId: string;
