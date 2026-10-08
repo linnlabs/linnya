@@ -508,3 +508,16 @@ judgeToolName（不是评分角色）；`maxCallsPerParentRun` 交给 Host 持�
 提醒使用现有Linnkit公开合同，瞬态追加到实际请求末条消息，继承其role，不是持久阶段状态
 或强制门禁。研究Agent没有自动创建独立评审；阶段调度由调用方显式安排，不能宣称已取得
 自主编排或稳定质量收益。定义由GenericAgentTask按正式接纳边界冻结系统提示，恢复沿用原版本。
+
+### CLI 研究审核职责
+
+三个内部审核定义分别承担成文前调查复核（`deep_research_investigation_review`）、成稿论证
+审核（`deep_research_argument_review`）和数字/来源校对（`deep_research_source_review`）。它们
+直接复用 Default 的工具、主模型路由、800节点预算、Skill 暴露和上下文策略，只追加职责提示，
+不继承实验作者的额外研究提醒，也不贡献 Renderer 菜单或通用 `subagent_type`。
+
+具体方法继续通过正式 `deep-research` Skill 加载。调用方显式给出研究问题、稿件/材料版本、
+必读资源、网络范围和 Workspace 交付路径；注册不会自动触发独立审核，提示范围也不是权限
+沙箱。审核意见是可检查的判断，不是评分工具或正确性门禁；没有发现问题不能解释为全文通过。
+数字/来源职责可以要求检查图表，但只有当前模型实际取得页图时才属于视觉核查；取得失败、
+仅有文字提取和未核部分须如实保留，定义本身不增加视觉能力或新的 PDF 读取实现。

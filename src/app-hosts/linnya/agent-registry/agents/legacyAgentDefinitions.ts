@@ -1,6 +1,9 @@
 import defaultAgent from './default';
 import deepWebSearchAgent from './deep_web_search';
 import experimentalResearchAgent from './deep_research_experimental';
+import investigationReviewAgent from './deep_research_investigation_review';
+import argumentReviewAgent from './deep_research_argument_review';
+import sourceReviewAgent from './deep_research_source_review';
 import deepSearchAgent from './deep_search';
 import deepResearchLeaderAgent from './deep_research/leader';
 import deepResearchReasoner1Agent from './deep_research/reasoner_1';
@@ -27,6 +30,9 @@ export const legacyBuiltinAgentDefinitions = [
   deepSearchAgent,
   deepWebSearchAgent,
   experimentalResearchAgent,
+  investigationReviewAgent,
+  argumentReviewAgent,
+  sourceReviewAgent,
   deepResearchLeaderAgent,
   deepResearchReasoner1Agent,
   deepResearchReasoner2Agent,

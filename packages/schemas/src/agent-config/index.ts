@@ -67,6 +67,12 @@ export const PromptKeys = {
   DEEP_WEB_SEARCH: 'deep_web_search',
   /** CLI 研究行为实验入口；不表示已验证的研究质量提升。 */
   DEEP_RESEARCH_EXPERIMENTAL: 'deep_research_experimental',
+  /** CLI 内部调查复核：在成文前检查解释与缺失观察。 */
+  DEEP_RESEARCH_INVESTIGATION_REVIEW: 'deep_research_investigation_review',
+  /** CLI 内部论证审核：检查成稿推论与解释边界。 */
+  DEEP_RESEARCH_ARGUMENT_REVIEW: 'deep_research_argument_review',
+  /** CLI 内部数字/来源校对：检查成稿数量关系与原件。 */
+  DEEP_RESEARCH_SOURCE_REVIEW: 'deep_research_source_review',
 
   // ---- Internal（后端内部任务） ----
   /** PDF 视觉识别 */

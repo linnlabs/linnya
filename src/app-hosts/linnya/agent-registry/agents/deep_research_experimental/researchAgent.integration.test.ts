@@ -6,20 +6,26 @@ import type { AgentInvokeRequest } from '../../../context/agent/contracts';
 import { ALL_AGENT_DEFINITIONS_FOR_TESTS } from '../index';
 import { LINNYA_DEFAULT_AGENT_SYSTEM_REMINDER_POLICY } from '../systemReminder';
 import definition, { RESEARCH_SYSTEM_REMINDER_POLICY } from './index';
+import investigationReview from '../deep_research_investigation_review';
+import argumentReview from '../deep_research_argument_review';
+import sourceReview from '../deep_research_source_review';
 
-describe('experimental research definition through the standard task and reminder runtime', () => {
-  it('builds the registered task and retains the admitted prompt on continuation', () => {
-    const registered = ALL_AGENT_DEFINITIONS_FOR_TESTS.find(item => item.id === definition.id);
-    if (!registered) throw new Error('Experimental research definition was not registered');
-    const task = new GenericAgentTask(registered);
-    const request = { query: 'Investigate the supplied question', promptKey: registered.promptKey };
-    const original = task.buildMessages(request, []).find(message => message.role === 'system');
-    expect(typeof original?.content).toBe('string');
-    if (typeof original?.content !== 'string') throw new Error('Missing textual system prompt');
-    // 核对definition输入是否冻结；框架另加的通用安全尾注不属于场景prompt。
-    const resumedRequest: AgentInvokeRequest = { ...request, frozenSystemPrompt: original.content };
-    expect(task.getSystemPromptForRequest(resumedRequest)).toBe(original.content);
-  });
+describe('research definitions through the standard task and reminder runtime', () => {
+  it.each([definition, investigationReview, argumentReview, sourceReview])(
+    '$id: builds the registered task and retains the admitted prompt on continuation',
+    selected => {
+      const registered = ALL_AGENT_DEFINITIONS_FOR_TESTS.find(item => item.id === selected.id);
+      if (!registered) throw new Error(`Research definition was not registered: ${selected.id}`);
+      const task = new GenericAgentTask(registered);
+      const request = { query: 'Investigate the supplied question', promptKey: registered.promptKey };
+      const original = task.buildMessages(request, []).find(message => message.role === 'system');
+      expect(typeof original?.content).toBe('string');
+      if (typeof original?.content !== 'string') throw new Error('Missing textual system prompt');
+      // 核对definition输入是否冻结；框架另加的通用安全尾注不属于场景prompt。
+      const resumedRequest: AgentInvokeRequest = { ...request, frozenSystemPrompt: original.content };
+      expect(task.getSystemPromptForRequest(resumedRequest)).toBe(original.content);
+    },
+  );
 
   it('injects the research reminder only at its cadence without mutating history or Default policy', () => {
     const messages: LlmRequestMessage[] = [
