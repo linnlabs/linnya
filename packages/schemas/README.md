@@ -271,7 +271,7 @@ shape 回放存量卡片，但这些 schema 不得重新用于注册 Agent execu
 Conversation CLI 的 `audit.workspace_documents` 只交换诊断严重度计数、调用身份与截断数，
 独立合同位于 `src/conversation-control/workspaceDocumentAudit.ts`。诊断 code/message/target
 没有安全文本保证，均不进入导出；工具保存成功、诊断结果和内容质量不得合成一个成功布尔值。
-该必填响应变化使用 wire protocol 2，旧 CLI 必须通过明确版本拒绝后升级，不能宽松双读。
+该必填响应变化始于wire protocol 2；当前protocol 3同时要求status/watch的`command_approvals`。旧CLI通过明确版本拒绝后升级，不能宽松双读。
 
 ### Workspace document read
 
@@ -419,3 +419,7 @@ Renderer 或 ESM 消费者继续使用历史产物。独立 build/pack gate 仍�
 - Linnkit 集成说明：[`docs/integration/README.md`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/README.md)。
 - Conversation 活动 / subrun 系统规范：[`docs/conversation-platform/10-subruns.md`](../../docs/conversation-platform/10-subruns.md)。
 - 正式 subrun renderer：`apps/renderer/domains/conversation/features/subrun-collection/README.md`。
+
+### 命令审批控制与卡片身份
+
+`conversation-control/commandApprovals.ts`定义`command_approvals`查询与回复，复用Commands的choice、request ID和pending projection。status的审批数组是必填事实，不从tool loading或命令文本猜测。pending投影必须有实际Agent run、原工具调用和command execution身份；terminal卡片投影必须有Agent run。后者由持久化owner从已有terminal identity读取，不需要迁移或猜测历史数据。审批page snapshot属于同一App版本的临时IPC，不保存为历史消息。

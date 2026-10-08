@@ -81,6 +81,7 @@ function fixture(input: {
       const settlement = {
         protocol_version: 1 as const,
         kind: 'command_card_execution_settlement' as const,
+        agent_run_id: record.binding.identity.agent_run_id,
         conversation_id: record.binding.identity.conversation_id,
         process_handle: record.binding.process_handle,
         started_at_ms: record.startedAtMs,

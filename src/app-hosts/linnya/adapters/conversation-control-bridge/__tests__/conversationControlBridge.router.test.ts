@@ -63,6 +63,7 @@ function createUseCase(
     result: unused,
     audit: unused,
     workspaceTools: unused,
+    commandApprovals: unused,
   };
 }
 
@@ -88,7 +89,7 @@ describe('conversation-control bridge router', () => {
   it('握手声明 Host 已实现的 conversation control 能力', async () => {
     const baseUrl = await startBridge(createUseCase(vi.fn()));
     const response = await postJson(baseUrl, '/handshake', {
-      protocol_version: 2,
+      protocol_version: 3,
       client_name: 'linnya-cli',
       client_version: '0.1.0',
     });
@@ -105,7 +106,7 @@ describe('conversation-control bridge router', () => {
   it('生产 runtime 关闭审计时不声明 audit capability', async () => {
     const baseUrl = await startBridge(createUseCase(vi.fn()), { auditAvailable: false });
     const response = await postJson(baseUrl, '/handshake', {
-      protocol_version: 2,
+      protocol_version: 3,
       client_name: 'linnya-cli',
       client_version: '0.1.0',
     });

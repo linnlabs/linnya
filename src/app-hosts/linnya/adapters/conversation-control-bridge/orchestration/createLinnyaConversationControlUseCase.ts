@@ -1,3 +1,4 @@
+import type { CommandApprovalControlPort } from 'src/domains/commands';
 import { generateConversationId } from '@linnlabs/linnkit/contracts';
 import { JsonValueSchema } from '@app/schemas';
 import type { FlowOrchestrator } from 'src/app-hosts/linnya/adapters/flow/flow.orchestrator';
@@ -22,6 +23,7 @@ import {
 } from 'src/app-hosts/linnya/application/model-runtime-availability';
 
 interface LinnyaConversationControlUseCaseOwners {
+  readonly commandApprovals: CommandApprovalControlPort;
   readonly workspace: { getAllProjects(): readonly { id: string; name: string }[] };
   readonly flow: Pick<
     FlowOrchestrator,
@@ -101,7 +103,10 @@ export function createLinnyaConversationControlUseCase(
       stop: (runId, conversationId, reason) =>
         owners.flow.cancelRun(runId, conversationId, reason),
     },
-    runs: owners.runs,
+    runs: {
+      findByConversation: conversationId => owners.runs.findByConversation(conversationId, { includeChildren: true }),
+    },
+    commandApprovals: owners.commandApprovals,
     projects: {
       list: () => owners.workspace.getAllProjects().map(project => ({
         project_id: project.id, name: project.name,

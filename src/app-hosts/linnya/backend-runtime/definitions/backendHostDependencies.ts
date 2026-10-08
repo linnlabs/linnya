@@ -1,3 +1,4 @@
+import type { CommandApprovalControlEndpointPort } from '../../../../domains/commands';
 import type { ExternalAuthorizationBrowserPort } from '../../application/provider-account-authorization';
 import type { ConversationExecutionRuntimeFactoryPort } from '../../application/conversation-runtime';
 import type { QdrantProcessRuntime } from '../../../../infra/adapters/vector-store/qdrant';
@@ -22,6 +23,7 @@ export interface BackendProcessRuntimeDependencies {
 
 /** Backend 业务 owner 的完整宿主输入；具体实现可以来自 Electron Main 或反向 Desktop RPC。 */
 export interface BackendHostDependencies {
+  readonly commandApprovalControl: CommandApprovalControlEndpointPort;
   readonly bootstrap: BackendBootstrapFacts;
   readonly processRuntime: BackendProcessRuntimeDependencies;
   readonly conversationExecutionRuntimeFactory: ConversationExecutionRuntimeFactoryPort;

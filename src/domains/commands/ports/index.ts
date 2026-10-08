@@ -1,4 +1,5 @@
 export type { CommandDescriptorRegistryPort } from './commandDescriptorRegistryPort';
+export type { CommandApprovalControlPort, CommandApprovalControlEndpointPort } from './commandApprovalControlPort';
 export type {
   CommandApprovalPort,
   CommandApprovalResponse,

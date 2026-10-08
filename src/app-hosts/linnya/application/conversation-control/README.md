@@ -1,6 +1,6 @@
 # Conversation Control Use Case
 
-本 feature 是 Linnya Conversation 外部控制动作的产品级 use case。它把 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / workspace_tools` 编排到现有模型目录、Flow、run registry、durable history、工具目录和执行审计 ports，供 CLI 等入口复用。
+本 feature 是 Linnya Conversation 外部控制动作的产品级 use case。它把 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / workspace_tools / command_approvals` 编排到现有模型目录、Flow、run registry、durable history、工具目录和执行审计 ports，供 CLI 等入口复用。
 
 它不拥有 HTTP、鉴权、命令行解析、数据库 SQL 或 Agent runtime。共享 wire 合同位于 `packages/schemas/src/conversation-control/`；本地传输位于 `adapters/conversation-control-bridge/`。
 
@@ -14,6 +14,7 @@
 | `ConversationControlModelCatalogPort` | 查询安全模型投影，并按统一运行可用性规则校验显式 Chat/图片模型 |
 | `ConversationControlHistoryPort` | 会话列表、消息窗口、指定 run 最终回答、会话 Agent 选择 |
 | `ConversationControlWorkspaceToolCatalogPort` | 只读取五个获准 Workspace 工具的正式描述与参数 schema |
+| `CommandApprovalControlPort` | 从唯一Commands owner读取审批投影、按精确身份提交单次回复 |
 | `ExecutionAuditExportUseCase` | 关联 RunRegistry、EventStore、Command Audit 与 Telemetry 的安全只读执行摘要 |
 
 use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLite 实现。跨 domain 的具体组合在 `adapters/conversation-control-bridge/orchestration/createLinnyaConversationControlUseCase.ts` 完成。
@@ -45,6 +46,12 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 - `workspace_tools` 是固定五工具的窄入口：`list_files / read_file / grep / write_file / edit_file`。`list / describe` 读取真实 Tool registry schema；`call` 必须绑定项目或已有 Conversation，并复用正式 Flow admission 与 ToolNode 执行。
 - 只给项目时创建前端可见的新 Conversation；只给 Conversation 时从历史 owner 解析项目；同时提供时必须一致。Workspace locator 本身不携带项目身份，禁止按当前前端页面或文件存在性猜测作用域。
 - Host 工具请求使用 `yield_after_batch`：完整工具批次结算后结束 run，不调用 LLM。工具 decision/output、权限、审计、pending revision 与 UI projection 仍走普通工具链，不能在本 feature 复制 Workspace 执行逻辑。
+
+### 命令审批
+
+`command_approvals`的list要求明确conversation/run，返回该run及后代的真实pending；reply要求请求实际`agent_run_id`、request ID和明确choice。审批owner同步校验作用域和允许选项，并与Renderer/TTY竞争唯一接纳点。`accepted`只确认回复被接纳，授权持久化与进程终态须继续观察原运行；不创建新Flow、user message或execution。
+
+`status.run.command_approvals`为必填数组，来自同一owner并按root子树筛选；保留真实run生命周期，不能把等待命令审批伪装为已有HITL。无审批返回空数组，端点不可用明确报错；`processing`不是待回复。字段属于wire protocol 3，旧CLI必须升级，不用宽松解析吞掉新增字段。
 
 ## 并发与已知边界
 

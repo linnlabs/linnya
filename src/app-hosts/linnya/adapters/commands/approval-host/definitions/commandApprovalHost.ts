@@ -7,7 +7,7 @@ import type {
   CommandApprovalReplyResultV1,
   CommandApprovalReplySubmissionV1,
 } from '@app/schemas/commands';
-import type { CommandApprovalPort } from 'src/domains/commands';
+import type { CommandApprovalPort, CommandApprovalControlEndpointPort } from 'src/domains/commands';
 
 export type CommandApprovalRendererOwnerId = number;
 
@@ -71,6 +71,6 @@ export interface CommandApprovalHostPresenterGatewayPort {
 
 export interface CommandApprovalHost
   extends CommandApprovalPort, CommandApprovalRendererPagePort,
-    CommandApprovalHostPresenterPort {
+    CommandApprovalHostPresenterPort, CommandApprovalControlEndpointPort {
   endOwner(): void;
 }

@@ -13,14 +13,14 @@ POST /api/v1/conversation-control/commands
 
 `handshake` 返回协议版本、App 实例 ID、实际能力和请求/watch 上限；`commands` 使用共享 strict schema 接纳与返回命令。非法 JSON、超限 body、合同错误和 use-case 错误都投影为稳定 JSON，不落到 Express HTML 错误页。
 
-当前握手声明 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / workspace_tools`。
+当前握手声明 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / workspace_tools / command_approvals`。
 
 能力公告允许未来新增合法标识符，消费者忽略不认识的能力；命令 union 和响应 schema 仍然封闭且严格。改变既有协议语义必须升级 protocol，不能借能力扩展绕过合同校验。
 
-当前 wire protocol 为 2：audit 增加必填 `workspace_documents` 安全诊断栏，旧客户端必须
-重建升级后使用。协议号在连接描述与 handshake 中一致验证；URL 命名空间和连接文件名中的
-`v1` 是稳定发现地址，不参与 wire 版本协商。旧版本应明确 `protocol_incompatible`，
-不能通过 optional 字段、双读或宽松 response parser 静默兼容。
+当前wire protocol为3：status/watch增加必填`command_approvals`，CLI命令增加精确查询与回复。
+连接描述与handshake一致校验版本，旧CLI须明确升级；URL和连接文件名中的v1仍是稳定发现地址。
+审批使用同一Commands owner，API Server只在鉴权路由就绪后启用控制端点，并在连接发布失败或停止时撤销。
+关闭端点不自动批准/拒绝pending，run取消与App owner退出负责业务收口。
 
 ## 安全边界
 

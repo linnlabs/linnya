@@ -111,6 +111,7 @@ export function createHeadlessAppServerBackendComposition(input: {
 
   return Object.freeze({
     backendHostDependencies: Object.freeze({
+      commandApprovalControl: commandApprovalHost,
       bootstrap: input.bootstrap.backend_facts,
       processRuntime: Object.freeze({
         qdrant: resolveQdrantProcessRuntime({

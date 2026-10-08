@@ -123,10 +123,10 @@ mode: pipe | pty
 
 handle 是跨 tool call 的连接凭据，不是 PID。任何 `process` 动作都先按 conversation/run scope 找 owner，再按 handle 找 execution，顺序不能反过来。
 
-命令卡片的 durable settlement 同时保留 `process_handle` 和
+命令卡片的 durable settlement 同时保留 `agent_run_id`、`process_handle` 和
 `origin_tool_call_id`。Renderer 实时收到 tool output 时通常按 handle 关联；历史消息若只有
 `tool_call_decision`、没有对应 `tool_output`，则按原始 tool call ID 关联同一条 settlement。
-这两个身份都来自同一次 execution，不能用命令文本或消息时间猜测终态。
+这些身份都来自同一次 execution，不能用命令文本或消息时间猜测终态。
 
 ## 5. 权限和授权
 
@@ -227,7 +227,7 @@ AND platform resource released
 
 Port 只暴露业务需要的最小能力：
 
-- approval port：request、settle、revoke；
+- approval port：request、settle；外部控制port只读pending并按精确conversation/run/request回复，端点启停由Host组合根管理；
 - permission settings port：读取/写入版本化全局文档；
 - execution owner port：reserve、prepare、claim、observe、stop、forget；
 - output artifact port：open、append、complete、discard、maintenance；

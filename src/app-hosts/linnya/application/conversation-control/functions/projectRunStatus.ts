@@ -1,3 +1,4 @@
+import type { CommandApprovalPendingProjectionV1 } from '@app/schemas/commands';
 import type { ConversationControlRunStatusSnapshot } from '@app/schemas';
 import { ConversationControlError } from '../definitions/conversationControlError';
 import type { ConversationControlRunRecord } from '../definitions/conversationControlUseCase';
@@ -14,7 +15,8 @@ function readMetadataString(run: ConversationControlRunRecord, key: string): str
 export function projectRunStatus(
   run: ConversationControlRunRecord,
   interaction: PendingInteractionControl | undefined,
-  resultAvailable: boolean
+  resultAvailable: boolean,
+  commandApprovals: CommandApprovalPendingProjectionV1[],
 ): ConversationControlRunStatusSnapshot {
   const terminal =
     run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled';
@@ -29,6 +31,7 @@ export function projectRunStatus(
     execution_id: readMetadataString(run, 'executionId'),
     agent_id: run.agentSpecId,
     status: run.status,
+    command_approvals: commandApprovals,
     current_node: run.currentNode,
     execution_steps_used: run.executionStepsUsed,
     run_iterations_used: run.runIterationsUsed ?? run.iterationsUsed,

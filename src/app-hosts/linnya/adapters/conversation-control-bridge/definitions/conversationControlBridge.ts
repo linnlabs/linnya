@@ -23,6 +23,7 @@ export const LINNYA_CONVERSATION_CONTROL_CAPABILITIES = [
   'result',
   'audit',
   'workspace_tools',
+  'command_approvals',
 ] satisfies readonly ConversationControlCapability[];
 
 export interface ConversationControlBridgeDiagnosticPort {

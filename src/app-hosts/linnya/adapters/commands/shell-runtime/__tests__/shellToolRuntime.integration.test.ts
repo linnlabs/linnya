@@ -824,6 +824,29 @@ describe('ShellToolRuntime production orchestration', () => {
     expect(f.lifecycle).toEqual(['admission', 'prepare:pipe', 'start:pipe']);
   });
 
+  it.each(['allow_once', 'deny'] as const)('无Renderer/TTY时控制端%s只结算原Shell，审批前零启动', async choice => {
+    const approval = createCommandApprovalHost();
+    approval.setControlEndpointAvailable(true);
+    const f = fixture({ approval, immediate: true });
+    const execution = f.runtime.executeShell(shellRequest({ command: 'rm file.txt' }));
+    await expect.poll(() => approval.readControlPending(CONVERSATION_ID)?.length).toBe(1);
+    const pending = approval.readControlPending(CONVERSATION_ID)?.[0];
+    if (!pending) throw new Error('expected pending Shell approval');
+    expect(f.lifecycle).toEqual(['admission']);
+    const reply = { conversationId: pending.conversation_id, runId: pending.agent_run_id,
+      approvalRequestId: pending.approval_request_id, choice };
+    expect(approval.submitControlReply({ ...reply, runId: 'another-run' })).toEqual({ status: 'stale' });
+    expect(f.lifecycle).toEqual(['admission']);
+    expect(approval.submitControlReply(reply)).toEqual({ status: 'accepted' });
+    expect(approval.submitControlReply(reply)).toEqual({ status: 'stale' });
+    await expect(execution).resolves.toMatchObject(choice === 'allow_once'
+      ? { status: 'completed', presentation: { permission: { source: 'allow_once' } } }
+      : { status: 'rejected', code: 'approval_denied' });
+    expect(f.lifecycle.filter(value => value === 'start:pipe')).toHaveLength(choice === 'allow_once' ? 1 : 0);
+    expect(approval.readControlPending(CONVERSATION_ID)).toEqual([]);
+    approval.endOwner();
+  });
+
   it('批准记忆写入失败时明确失败且不启动，已取消请求甚至不进入 admission', async () => {
     const persistenceFailure = fixture({
       approvalChoice: 'allow_for_conversation',

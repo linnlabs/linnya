@@ -1,3 +1,4 @@
+import type { CommandApprovalControlEndpointPort } from 'src/domains/commands';
 import { createProviderModelDiscovery } from 'src/app-hosts/linnya/adapters/provider-model-discovery';
 import { createProviderModelDiscoveryUseCase } from 'src/app-hosts/linnya/application/provider-model-discovery';
 /**
@@ -200,6 +201,7 @@ const logger = getLogger('RouteConfig');
  * 路由配置依赖接口
  */
 export interface RouteDependencies {
+  readonly commandApprovalControl: CommandApprovalControlEndpointPort;
   knowledgeBaseService?: KnowledgeBaseService;
   transcriptionService?: TranscriptionService;
   documentOcr: DocumentOcrPort;
@@ -805,6 +807,7 @@ export async function configureRoutes(
     );
     historyService = initializedHistoryService;
     conversationControlUseCase = createLinnyaConversationControlUseCase({
+      commandApprovals: dependencies.commandApprovalControl,
       workspace: new WorkspaceService(db),
       flow: initializedFlowOrchestrator,
       runs: agentRuntime.supervisor,

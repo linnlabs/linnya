@@ -32,6 +32,7 @@ function projectPublicSettlement(row: SettlementRow): CommandCardExecutionSettle
     protocol_version: 1,
     kind: 'command_card_execution_settlement',
     conversation_id: row.conversation_id,
+    agent_run_id: terminal.identity.agent_run_id,
     process_handle: row.process_handle,
     origin_tool_call_id: terminal.identity.origin_tool_call_id,
     started_at_ms: row.started_at_ms,

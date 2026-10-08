@@ -1,4 +1,6 @@
 import type {
+  ConversationControlCommandApprovalsRequest,
+  ConversationControlCommandApprovalsResponse,
   ConversationControlAuditRequest,
   ConversationControlAuditResponse,
   ConversationControlCommandRequest,
@@ -35,6 +37,7 @@ import type {
   ConversationSelectedAgentId,
   ConversationUiMessage,
 } from '@app/schemas';
+import type { CommandApprovalControlPort } from 'src/domains/commands';
 import type { ExecutionAuditExportUseCase } from '../../execution-audit-export';
 import type {
   ModelRuntimeAvailability,
@@ -207,6 +210,7 @@ export interface ConversationControlUseCasePorts {
   readonly history: ConversationControlHistoryPort;
   readonly workspaceTools: ConversationControlWorkspaceToolCatalogPort;
   readonly audit: ExecutionAuditExportUseCase;
+  readonly commandApprovals: CommandApprovalControlPort;
   /** 生产 Host 关闭开发 Agent Run Audit 时，控制面必须显式返回 capability_unavailable。 */
   readonly auditAvailable?: boolean;
   readonly createConversationId: () => string;
@@ -217,6 +221,7 @@ export interface ConversationControlUseCase {
   execute(
     request: ConversationControlCommandRequest
   ): Promise<
+    | ConversationControlCommandApprovalsResponse
     | ConversationControlSendResponse
     | ConversationControlModelsResponse
     | ConversationControlProjectsResponse
@@ -230,6 +235,7 @@ export interface ConversationControlUseCase {
     | ConversationControlAuditResponse
     | ConversationControlWorkspaceToolsResponse
   >;
+  commandApprovals(request: ConversationControlCommandApprovalsRequest): Promise<ConversationControlCommandApprovalsResponse>;
   send(request: ConversationControlSendRequest): Promise<ConversationControlSendResponse>;
   projects(
     request: ConversationControlProjectsRequest

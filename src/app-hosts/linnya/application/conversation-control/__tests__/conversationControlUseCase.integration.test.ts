@@ -1,3 +1,5 @@
+import { createCommandApprovalHost } from 'src/app-hosts/linnya/adapters/commands/approval-host';
+import { parseCommandApprovalRequest, CommandApprovalReplySubmissionV1Schema } from '@app/schemas/commands';
 import { describe, expect, it } from 'vitest';
 import {
   ConversationSelectedAgentIdSchema,
@@ -14,6 +16,77 @@ import {
   type ConversationControlUseCasePorts,
 } from '..';
 import type { ExecutionAuditExport } from '../../execution-audit-export';
+
+function shellApproval(runId = 'run-child') {
+  const identity = {
+    conversation_id: 'conversation-1', agent_run_id: runId, origin_tool_call_id: 'shell-1',
+    command_execution_id: 'command_execution_018f47a8-7f3c-4cc7-8b8c-aea6ce8f4d21',
+    owner_generation_id: 'command_owner_018f47a8-7f3c-4cc7-8b8c-aea6ce8f4d21', created_at_ms: 100,
+  };
+  return parseCommandApprovalRequest({
+    protocol_version: 1, kind: 'command_approval_request',
+    approval_request_id: 'command_approval_018f47a8-7f3c-4cc7-8b8c-aea6ce8f4d21',
+    proposal: {
+      protocol_version: 1, kind: 'shell_command_proposal', identity, command: 'rm scratch.txt', cwd: '/tmp/example',
+      permission: { protocol_version: 1, kind: 'command_permission_snapshot', identity,
+        base_level: 'standard', effective_level: 'standard', grant_source: 'global_setting', internal_data_access: 'allowed' },
+    },
+    reasons: [{ type: 'fixed_risk_rule', rule_id: 'macos.delete.rm', category: 'delete' }],
+    available_choices: ['allow_once', 'deny'], requested_at_ms: 101,
+  });
+}
+
+describe('command approval control uses the original pending owner', () => {
+  it('status 保留 running，root 列出子孙审批；CLI只接纳实际run，Renderer竞争不重复结算', async () => {
+    const test = fixture([
+      run('running'),
+      run('running', { runId: 'run-child', parentRunId: 'run-1' }),
+      run('running', { runId: 'run-other', parentRunId: 'another-root' }),
+    ]);
+    const request = shellApproval();
+    const response = test.commandApprovals.request({ request });
+    const page = test.commandApprovals.openRendererPage(7);
+    if (!page) throw new Error('fixture renderer unavailable');
+    const status = await test.useCase.status({ schema_version: 1, command: 'status', conversation_id: 'conversation-1' });
+    expect(status.run).toMatchObject({ status: 'running', run_id: 'run-1', command_approvals: [{
+      approval_request_id: request.approval_request_id, agent_run_id: 'run-child', origin_tool_call_id: 'shell-1',
+    }] });
+    const list = { schema_version: 1 as const, command: 'command_approvals' as const, action: 'list' as const,
+      conversation_id: 'conversation-1', run_id: 'run-1' };
+    await expect(test.useCase.execute(list)).resolves.toMatchObject({ pending: [{ agent_run_id: 'run-child' }] });
+    await expect(test.useCase.execute({ ...list, run_id: 'run-other' })).resolves.toMatchObject({ pending: [] });
+    const reply = { ...list, action: 'reply' as const, approval_request_id: request.approval_request_id, choice: 'allow_once' as const };
+    await expect(test.useCase.execute(reply)).resolves.toMatchObject({ status: 'stale' });
+    await expect(test.useCase.execute({ ...reply, run_id: 'run-child', choice: 'allow_for_conversation' })).resolves.toMatchObject({ status: 'stale' });
+    await expect(test.useCase.execute({ ...reply, run_id: 'run-child' })).resolves.toMatchObject({ status: 'accepted' });
+    await expect(response).resolves.toMatchObject({ status: 'replied', reply: { choice: 'allow_once' } });
+    await expect(test.useCase.execute({ ...reply, run_id: 'run-child' })).resolves.toMatchObject({ status: 'stale' });
+    expect(test.commandApprovals.submitRendererReply({ ownerId: 7, submission: CommandApprovalReplySubmissionV1Schema.parse({
+      protocol_version: 1, kind: 'command_approval_reply_submission', page_ticket: page.page_ticket,
+      approval_request_id: request.approval_request_id, choice: 'deny',
+    }) })).toMatchObject({ status: 'stale' });
+    expect(test.startRequests).toEqual([]);
+    expect(test.responseRequests).toEqual([]);
+    expect(test.resumeRequests).toEqual([]);
+    test.commandApprovals.endOwner();
+  });
+
+  it('跨会话身份被拒；取消或入口关闭不会被迟到回复重新放行', async () => {
+    const test = fixture([run('running')]);
+    const request = shellApproval('run-1');
+    const abort = new AbortController();
+    const response = test.commandApprovals.request({ request, abortSignal: abort.signal });
+    const reply = { schema_version: 1 as const, command: 'command_approvals' as const, action: 'reply' as const,
+      conversation_id: 'conversation-1', run_id: 'run-1', approval_request_id: request.approval_request_id, choice: 'deny' as const };
+    await expect(test.useCase.execute({ ...reply, conversation_id: 'another-conversation' })).rejects.toMatchObject({ code: 'run_not_found' });
+    abort.abort();
+    await expect(response).resolves.toMatchObject({ status: 'invalidated', reason: 'run_cancelled' });
+    await expect(test.useCase.execute(reply)).resolves.toMatchObject({ status: 'stale' });
+    test.commandApprovals.setControlEndpointAvailable(false);
+    await expect(test.useCase.execute(reply)).rejects.toMatchObject({ code: 'capability_unavailable' });
+    test.commandApprovals.endOwner();
+  });
+});
 
 function accepted(
   conversationId: string,
@@ -212,6 +285,8 @@ function fixture(
   initialRuns: ConversationControlRunRecord[] = [],
   options: { auditAvailable?: boolean } = {}
 ) {
+  const commandApprovals = createCommandApprovalHost();
+  commandApprovals.setControlEndpointAvailable(true);
   let runs = [...initialRuns];
   let executionProgress: ConversationControlExecutionProgressSnapshot | null = null;
   let latestExecutionSteps: number | undefined;
@@ -229,6 +304,7 @@ function fixture(
   let conversationProjectId: string | null | undefined = 'project-1';
 
   const ports: ConversationControlUseCasePorts = {
+    commandApprovals,
     flow: {
       async start(request) {
         startRequests.push(request);
@@ -454,6 +530,7 @@ function fixture(
 
   return {
     useCase: createConversationControlUseCase(ports),
+    commandApprovals,
     startRequests,
     responseRequests,
     selectedAgentWrites,

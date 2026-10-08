@@ -2,11 +2,15 @@
 
 ## 1. 作用
 
-审批 host 位于 App Server，维护 pending approval 的真实状态，并允许当前有效 Renderer 页面或 CLI Runtime Host presenter 作为可替换的显示终端。它不解析风险规则、不读取权限文件，也不相信 Renderer 传来的 conversation 或 sender 字段；Electron Main 只验证真实 sender 并转发页面操作。
+审批 host 位于 App Server，维护 pending approval 的真实状态，并允许当前有效 Renderer 页面、CLI Runtime Host presenter或受鉴权的Conversation Control端点 作为可替换的显示终端。它不解析风险规则、不读取权限文件，也不相信 Renderer 传来的 conversation 或 sender 字段；Electron Main 只验证真实 sender 并转发页面操作。
 
 把 pending 放在 App Server owner 而不是 Main 或 Vue store 的原因是页面会 reload、切换对话、被销毁或暂时不可用；这些都不应该让一个已经需要用户确认的命令自动运行。
 
 CLI Runtime presenter 使用父子进程私有 RPC，只取得安全 pending projection 并提交 Host 声明的 choice。它不创建 Renderer owner/page ticket；Renderer 与 Host 回复复用同一个 `submitReply`，竞争时只有第一个合法回复结算，后续返回 `stale`。App owner 结束后 Host presenter 立即 unavailable。
+
+外部控制CLI通过`CommandApprovalControlPort`查询同一pending集合并按conversation/run/request提交回复，不复用Renderer票据或TTY私有RPC。安全投影包含`agent_run_id / origin_tool_call_id / command_execution_id`；来源全部是冻结proposal identity，不能从命令文本推断。三种入口共同调用唯一`submitReply`，重复、错作用域或不允许的choice不执行命令。
+
+API Server在鉴权bridge已装配、连接描述发布前声明控制端点可用；发布失败或Server关闭撤销该声明，App owner结束则清空全部等待。没有Renderer/TTY但有效CLI端点存在时，命令可保持待审批；此能力不等于自动允许。端点短暂关闭不替用户作决定，原run取消和owner结束仍负责结算。
 
 ## 2. 代码树和对象
 
@@ -52,7 +56,7 @@ runtime submits immutable request
 
 - page ticket 由 App Server host 为 Main 已验证的页面 owner 生成，Renderer 不能自带。
 - IPC handler 使用 `event.sender.id` 识别实际发送页面，不信任 payload 中的 window id。
-- reply 的 `approval_request_id`、`conversation_id`、`execution_id`、proposal hash/binding 必须与 pending 逐项一致。
+- Renderer按有效页面票据及request ID回复；Host TTY按私有pipe及request ID回复；外部CLI必须额外匹配conversation与实际agent run。完整proposal及command identity由owner持有，客户端不能重写。
 - reload 后旧 ticket 失效；新页面只能拉取仍 pending 的投影，不能代替旧页面提交已经结算的请求。
 - owner end、conversation cleanup、App end 都会拒绝并清空相关 pending。
 
@@ -69,3 +73,5 @@ Renderer 只拿到安全投影：不包含 PID、完整环境、内部路径和�
 ## 7. 测试门禁
 
 `commandApprovalHost.integration.test.ts` 至少覆盖：单次允许、对话记忆、拒绝、重复 reply、Renderer/Host 竞争、reload 旧 ticket、owner end、持久化失败和 App drain。`host-presenter-rpc` 另行覆盖真实双向 pipe、严格 response 与通知合并；Electron IPC 测试覆盖 `sender.id` 伪造。测试应验证 resolver 只结算一次，不测试颜色、布局和弹窗宽度。
+
+CLI list/status查询root时由Conversation Control按RunRegistry父子身份筛选子树；owner回复只认请求的实际run。审批是Commands等待，不伪造HITL checkpoint或`awaiting_user`。`processing`表示回复处理中，不能当作再次可操作的等待或命令已完成。

@@ -27,3 +27,5 @@ App Server 在启动维护前取得 [Workspace 排他运行锁](./features/works
 Backend 不安装旧数据路径 registry，也不从当前路径推导旧文件来源。数据库版本准入由 DatabaseService 负责。
 
 App Server 同样安装 event-loop 响应性 monitor。健康采样不刷日志，只有 p99/max 越过 Backend 阈值才记录结构化告警；CPU 密集型业务必须进入 feature-owned Worker，不能因为已经离开 Main 就在 App Server 事件循环同步执行。
+
+`commandApprovalControl`接入唯一Commands审批owner的窄控制端口。API Server在鉴权bridge就绪后注册可用性、关闭时撤销；不将Renderer票据、TTY或任意执行能力注入CLI。

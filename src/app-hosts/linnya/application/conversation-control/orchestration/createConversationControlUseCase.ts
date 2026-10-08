@@ -33,6 +33,7 @@ import { projectInteractionResponse } from '../functions/projectInteractionRespo
 import { projectExecutionAuditResponse } from '../functions/projectExecutionAudit';
 import { projectActiveExecutionProgress } from '../functions/projectActiveExecutionProgress';
 import { selectRunResumeTarget } from '../functions/selectRunResumeTarget';
+import { controlCommandApprovals, readCommandApprovals } from './controlCommandApprovals';
 
 function firstIncomingEventId(acceptance: ConversationControlFlowAcceptance): string {
   const eventId = acceptance.incomingEventIds[0];
@@ -237,7 +238,8 @@ async function projectStatusResponse(
     run: projectRunStatus(
       projectedRun,
       interaction,
-      finalAnswer?.status === 'ready' && finalAnswer.message !== null
+      finalAnswer?.status === 'ready' && finalAnswer.message !== null,
+      readCommandApprovals(ports, request.conversation_id, projectedRun.runId, runs),
     ),
   };
 }
@@ -248,6 +250,8 @@ export function createConversationControlUseCase(
   const useCase: ConversationControlUseCase = {
     async execute(request: ConversationControlCommandRequest) {
       switch (request.command) {
+        case 'command_approvals':
+          return useCase.commandApprovals(request);
         case 'send':
           return useCase.send(request);
         case 'models':
@@ -274,6 +278,8 @@ export function createConversationControlUseCase(
           return useCase.workspaceTools(request);
       }
     },
+
+    commandApprovals: request => controlCommandApprovals(ports, request),
 
     async send(request) {
       if (request.model_id) assertModelAvailable(ports, request.model_id, 'chat');

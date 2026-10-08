@@ -16,6 +16,7 @@ vi.mock('../routes', () => ({
 
 import { configureRoutes, type RouteDependencies } from '../routes';
 import { ApiServer } from './apiServer';
+import { createCommandApprovalHost } from 'src/app-hosts/linnya/adapters/commands/approval-host';
 
 const startedServers: ApiServer[] = [];
 const temporaryRoots: string[] = [];
@@ -30,6 +31,7 @@ afterEach(async () => {
 
 function createRouteDependencies(): RouteDependencies {
   return {
+    commandApprovalControl: createCommandApprovalHost(),
     documentOcr: {
       resolveModelProfile: async () => undefined,
       recognizeDocument: async () => ({ pages: [] }),
@@ -119,7 +121,10 @@ describe('ApiServer lifecycle', () => {
         conversationControlBridgeMounted: true,
       };
     });
-    await server.configureRoutes(createRouteDependencies());
+    const dependencies = createRouteDependencies();
+    expect(dependencies.commandApprovalControl.readControlPending('example')).toBeUndefined();
+    await server.configureRoutes(dependencies);
+    expect(dependencies.commandApprovalControl.readControlPending('example')).toEqual([]);
 
     const descriptor = ConversationControlConnectionDescriptorSchema.parse(
       JSON.parse(await fs.readFile(connectionFile, 'utf8')),
@@ -156,6 +161,7 @@ describe('ApiServer lifecycle', () => {
 
     await server.stop();
     await expect(fs.stat(connectionFile)).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(dependencies.commandApprovalControl.readControlPending('example')).toBeUndefined();
   });
 
   it('最高端口冲突时保留原始错误，不尝试越过 TCP 端口范围', async () => {

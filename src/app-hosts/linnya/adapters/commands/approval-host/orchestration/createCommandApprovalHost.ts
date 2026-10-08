@@ -46,6 +46,7 @@ export function createCommandApprovalHost(input: {
   const listeners = new Set<() => void>();
   let ownerActive = true;
   let hostPresenterActive = false;
+  let controlEndpointActive = false;
 
   const notify = (): void => {
     // UI projection 是审批事实的观察者。renderer 发送竞态或单个观察者故障不能回滚
@@ -125,7 +126,7 @@ export function createCommandApprovalHost(input: {
       }
       if (
         !ownerActive
-        || (rendererPages.size === 0 && !hostPresenterActive)
+        || (rendererPages.size === 0 && !hostPresenterActive && !controlEndpointActive)
         || pending.has(request.approval_request_id)
       ) {
         return { status: 'failed', reason: 'authorization_unavailable' };
@@ -206,10 +207,31 @@ export function createCommandApprovalHost(input: {
       return { status: submitReply(approvalRequestId, choice) };
     },
 
+    setControlEndpointAvailable(available) {
+      // API endpoint 的启停不结算用户尚未作出的决定；原 run 仍由 abort/endOwner 收口。
+      controlEndpointActive = ownerActive && available;
+    },
+
+    readControlPending(conversationId) {
+      if (!ownerActive || !controlEndpointActive) return undefined;
+      return projectPending().filter(value => value.conversation_id === conversationId);
+    },
+
+    submitControlReply({ conversationId, runId, approvalRequestId, choice }) {
+      if (!ownerActive || !controlEndpointActive) return { status: 'unavailable' };
+      const identity = pending.get(approvalRequestId)?.request.proposal.identity;
+      if (!identity || identity.conversation_id !== conversationId || identity.agent_run_id !== runId) {
+        return { status: 'stale' };
+      }
+      // scope 校验和单次接纳同步完成，Renderer/TTY/CLI 都竞争同一个线性化点。
+      return { status: submitReply(approvalRequestId, choice) };
+    },
+
     endOwner() {
       if (!ownerActive) return;
       ownerActive = false;
       hostPresenterActive = false;
+      controlEndpointActive = false;
       rendererPages.clear();
       for (const entry of pending.values()) {
         entry.removeAbortListener();

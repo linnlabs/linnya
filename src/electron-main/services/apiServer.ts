@@ -1,3 +1,4 @@
+import type { CommandApprovalControlEndpointPort } from 'src/domains/commands';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -69,6 +70,7 @@ export class ApiServerShutdownError extends Error {
 
 export class ApiServer {
   private app: express.Application;
+  private commandApprovalControl: CommandApprovalControlEndpointPort | undefined;
   private server: Server | null = null;
   private boundPort: number | null = null;
   private stoppingPromise: Promise<void> | null = null;
@@ -184,7 +186,15 @@ export class ApiServer {
       if (this.boundPort === null) {
         throw new Error('Conversation-control bridge cannot publish before API server start');
       }
-      await this.conversationControlDescriptor.publish(this.boundPort);
+      // 仅在鉴权 bridge 已装配并准备发布连接描述时接入审批；终端是否 TTY 与此无关。
+      this.commandApprovalControl = routeDependencies.commandApprovalControl;
+      this.commandApprovalControl.setControlEndpointAvailable(true);
+      try {
+        await this.conversationControlDescriptor.publish(this.boundPort);
+      } catch (error: unknown) {
+        this.commandApprovalControl.setControlEndpointAvailable(false);
+        throw error;
+      }
     }
     
     const routeSummary = getRouteSummary(routeDependencies, routeResult);
@@ -273,6 +283,7 @@ export class ApiServer {
   }
 
   private async stopOnce(server: Server | null): Promise<void> {
+    this.commandApprovalControl?.setControlEndpointAvailable(false);
     const failures: unknown[] = [];
     try {
       await this.conversationControlDescriptor.revoke();
