@@ -4,6 +4,7 @@ import {
   type ConversationSelectedAgentId,
 } from '@app/schemas';
 import type { Conversation } from '../../../types';
+import { resolveConversationAgentChoice } from '../definitions/conversationAgentChoice';
 import {
   applyConversationAgentChoice,
   type ConversationAgentChoiceAssistantStore,
@@ -123,6 +124,36 @@ describe('applyConversationAgentChoice', () => {
       conversationId: 'conversation-1',
       selectedAgentId: fixtureAgentId,
     }]);
+  });
+
+  it('不可用选择仍可展示原会话身份，但不能新选择或改写持久身份', async () => {
+    const existing = conversation('legacy-conversation');
+    existing.selectedAgentId = fixtureAgentId;
+    const harness = createHarness(existing);
+    const disabledChoices = choices.map(choice => ({ ...choice, disabled: true }));
+    expect(resolveConversationAgentChoice(existing.selectedAgentId, disabledChoices))
+      .toMatchObject({ id: 'fixture', disabled: true });
+    await expect(applyConversationAgentChoice({
+      assistantStore: harness.assistantStore,
+      scopeStore: projectScope,
+      agentChoiceId: 'fixture',
+      choices: disabledChoices,
+      persistence: harness.persisted,
+    })).rejects.toThrow('unavailable choice');
+    expect(harness.persisted.updateSelectedAgent).not.toHaveBeenCalled();
+    expect(harness.selectedWrites).toEqual([]);
+    expect(existing.selectedAgentId).toBe(fixtureAgentId);
+
+    const draft = createHarness(null);
+    await expect(applyConversationAgentChoice({
+      assistantStore: draft.assistantStore,
+      scopeStore: projectScope,
+      agentChoiceId: 'fixture',
+      choices: disabledChoices,
+      persistence: draft.persisted,
+    })).rejects.toThrow('unavailable choice');
+    expect(draft.assistantStore.createNewConversation).not.toHaveBeenCalled();
+    expect(projectScope.materializeCurrentDraft).not.toHaveBeenCalled();
   });
 
   it('持久化失败时不修改 Renderer selectedAgentId', async () => {

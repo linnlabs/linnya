@@ -57,9 +57,11 @@ export async function applyConversationAgentChoice(
     return null;
   }
 
-  const selectedAgentId = input.agentChoiceId === null
+  const choice = input.agentChoiceId === null
     ? null
-    : requireConversationAgentChoiceById(input.agentChoiceId, input.choices).agentId;
+    : requireConversationAgentChoiceById(input.agentChoiceId, input.choices);
+  if (choice?.disabled) throw new Error(`[conversation-agent-choice] unavailable choice: ${choice.id}`);
+  const selectedAgentId = choice?.agentId ?? null;
   const conversation = input.assistantStore.activeConversation
     ?? ensureMaterializedConversation(input.assistantStore, input.scopeStore);
   if (!conversation) {

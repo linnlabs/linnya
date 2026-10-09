@@ -238,6 +238,7 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.flow.subrun.missingProject': '无法发起子运行：当前未绑定项目。',
   'conversation.flow.subrun.noConversation': '无法发起子运行：当前没有可用对话。',
   'conversation.flow.subrun.executionFailed': '子运行执行失败，请稍后重试。',
+  'conversation.flow.deepResearch.unavailable': '旧版深度研究已停止接收新任务。已有历史和暂停运行仍保留；请选择其他 Agent 后再发送。',
   'conversation.flow.deepResearch.resetFallback': '下周一 00:00',
   'conversation.flow.deepResearch.weeklyLimitReached':
     '本周 Deep Research 已达上限（{usedCount}/{limit}）。\n恢复时间：{resetText}',
@@ -908,6 +909,7 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
         'Subruns cannot start because no conversation is available.',
       'conversation.flow.subrun.executionFailed':
         'Subrun execution failed. Please try again later.',
+      'conversation.flow.deepResearch.unavailable': 'Legacy deep research no longer accepts new tasks. History and paused runs remain available; choose another agent before sending.',
       'conversation.flow.deepResearch.resetFallback': 'Next Monday 00:00',
       'conversation.flow.deepResearch.weeklyLimitReached':
         "Deep Research has reached this week's limit ({usedCount}/{limit}).\nReset time: {resetText}",

@@ -22,6 +22,11 @@ catalog），交给 Host 的运行描述保存。Generic task 消费 `frozenSyst
 入口工具不因此进入模型可见清单，纯 Host 入口 Agent 应使用 `availableTools: []`；child 的职责
 和工具仍各自通过 registry 定义。声明不拥有 Graph、持久阶段或工具执行，不提供通用工作流引擎。
 
+定义可用 `newRunUnavailableReason` 停止接收新的根运行。Flow 在 start 准备时调用 registry
+的接纳规则并返回 `AGENT_NEW_RUN_UNAVAILABLE`，在运行注册和用户消息提交之前拒绝请求。
+此字段是入口可用性声明，不属于冻结执行配置；暂停继续、审批响应和历史解析仍保留原
+Agent definition、promptKey 与 descriptor，不改为其它 Agent，也不删除恢复资源。
+
 `agent-registry` 负责三件事：
 
 1. 声明产品可用的 `AgentDefinition / ChatDefinition / internal definition`

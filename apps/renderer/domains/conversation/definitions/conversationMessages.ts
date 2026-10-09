@@ -213,6 +213,7 @@ export type ConversationMessageKey =
   | 'conversation.flow.subrun.missingProject'
   | 'conversation.flow.subrun.noConversation'
   | 'conversation.flow.subrun.executionFailed'
+  | 'conversation.flow.deepResearch.unavailable'
   | 'conversation.flow.deepResearch.resetFallback'
   | 'conversation.flow.deepResearch.weeklyLimitReached'
   | 'conversation.flow.chatInvocationFailed'

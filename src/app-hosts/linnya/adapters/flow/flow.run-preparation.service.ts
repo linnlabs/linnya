@@ -10,6 +10,7 @@ import type { FlowExecutionResult } from 'src/app-hosts/linnya/adapters/flow/flo
 import type { FlowIncomingEventBatch } from './incoming-events/definitions/flowIncomingEventBatch';
 import { FlowIncomingEventPreparer } from './incoming-events/orchestration/prepareFlowIncomingEventBatch';
 import { resolveAgentHostEntry } from '../../agent-registry/resolveAgentHostEntry';
+import { assertAgentNewRunAvailable } from '../../agent-registry/assertAgentNewRunAvailable';
 
 const logger = new Logger('FlowRunPreparationService');
 
@@ -165,6 +166,8 @@ export class FlowRunPreparationService {
     if (!agentInvokeReq) {
       throw new Error('Failed to build Agent request from events or history');
     }
+
+    if (resolveHostEntry) assertAgentNewRunAvailable(agentInvokeReq.promptKey);
 
     const hostToolCall = resolveHostEntry
       ? resolveAgentHostEntry(agentInvokeReq, effectiveOptions?.host_tool_call)

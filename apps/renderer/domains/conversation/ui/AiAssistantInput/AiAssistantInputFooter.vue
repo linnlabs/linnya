@@ -70,6 +70,7 @@
             :class="{ 'is-disabled': isInputControlsDisabled }"
             role="button"
             :aria-label="activeAgentChoiceAriaLabel"
+            :title="activeAgentChoiceAriaLabel"
           >
             <button
               type="button"
@@ -259,7 +260,7 @@ const inputActionMenuOptions = computed<ConversationInputActionMenuOption[]>(() 
     return {
       id: agentChoice.id,
       label: agentChoiceText.menuText,
-      disabled: props.activeAgentChoiceId === agentChoice.id,
+      disabled: agentChoice.disabled === true || props.activeAgentChoiceId === agentChoice.id,
       iconComponent: agentChoice.iconComponent,
     };
   });

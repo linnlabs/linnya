@@ -70,21 +70,22 @@ export const platformRendererPlugin: RendererPluginContribution = {
   conversationAgentChoices: [
     {
       id: 'deep_research',
+      disabled: true,
       agentId: ConversationAgentIds.DEEP_RESEARCH,
-      menuText: 'Deep research',
-      pillText: 'Research',
-      ariaLabel: 'Enabled: Deep research',
+      menuText: 'Legacy deep research (unavailable)',
+      pillText: 'Legacy research unavailable',
+      ariaLabel: 'Legacy deep research no longer accepts new tasks. History and paused runs remain available.',
       menuLocalizedText: {
         key: 'plugins.contribution.agentChoice.deepResearch.menuText',
-        fallback: 'Deep research',
+        fallback: 'Legacy deep research (unavailable)',
       },
       pillLocalizedText: {
         key: 'plugins.contribution.agentChoice.deepResearch.pillText',
-        fallback: 'Research',
+        fallback: 'Legacy research unavailable',
       },
       ariaLocalizedText: {
         key: 'plugins.contribution.agentChoice.deepResearch.ariaLabel',
-        fallback: 'Enabled: Deep research',
+        fallback: 'Legacy deep research no longer accepts new tasks. History and paused runs remain available.',
       },
       iconComponent: ResearchIcon,
     },

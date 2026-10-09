@@ -42,6 +42,10 @@ Flow 不负责：
 12. Host 发布权威 `run_status`；
 13. Host 发布 `transport_end`，结束当前 transport 并关闭 EventBus。
 
+首次准备先执行 Agent Registry 的新运行可用性接纳。旧入口可保留 definition 和历史身份，
+同时通过 `newRunUnavailableReason` 拒绝 start；该检查必须先于运行注册、替换旧暂停运行
+和 incoming facts 提交。resume / continue / persist-only 不执行此检查，仍使用原身份。
+
 首次准备还会读取 AgentDefinition 的可选 `hostEntry`，在 run admission 前生成并校验固定工具
 入口。参数规则由声明的用例拥有，Flow 只要求工具名及 `yield_after_batch` 与声明一致；实际
 执行继续使用现有 host-forced ToolNode。descriptor 保存接纳后的工具请求，继续、审批响应和

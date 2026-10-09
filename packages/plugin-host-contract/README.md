@@ -52,6 +52,11 @@ Renderer 文档保存 handler 拥有本类型的 dirty 状态：只在确认当�
 
 ## 4. Conversation 扩展
 
+`ConversationAgentChoiceContribution.disabled` 只限制新的菜单选择；贡献仍保留在列表中，
+用于显示已有会话的产品 Agent 身份。不可用原因由贡献的本地化 menu / pill / aria 文案说明。
+该 UI 标记不授予或撤销运行权限；后端首次接纳由 Agent Registry 声明与 Flow 执行，已有运行
+恢复继续使用其原始身份。
+
 插件可以通过窄 contribution 扩展输入附件、引用 provider、workflow、subrun worker 和 tool card，但不能：
 
 - 创建或改写 Conversation timeline message identity。

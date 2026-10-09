@@ -14,6 +14,12 @@
 
 ### 当前可用性与历史设计的区别
 
+旧 Leader 已通过 `newRunUnavailableReason` 正式停止新请求；Renderer 菜单保留旧身份但禁用
+选择，并说明不可用原因。已保存旧选择的会话发送、编辑重发或重新生成会在请求和旧配额
+消费之前被拒绝，不先取消已有暂停运行。Host start 同样拒绝直接 promptKey 和产品 Agent ID
+入口，不自动切换到新版研究或 Default。旧事件与暂停 descriptor 保留，继续或审批响应仍按
+原运行身份恢复；这不承诺旧编排中已退役的子角色恢复可用。
+
 下文保留旧设计及代码分工，不能作为已可运行的产品说明。Leader prompt 仍要求调用
 `deep_research_scout/reasoner_1/challenger/reasoner_2`，但
 [公开子类型注册](../../../plugin-registry/subagentTypeRegistry.ts) 不暴露这些类型，

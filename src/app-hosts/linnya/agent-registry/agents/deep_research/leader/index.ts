@@ -58,6 +58,7 @@ export const AGENT_DEFINITION: AgentDefinition = {
   promptKey: PromptKeys.DEEP_RESEARCH_LEADER,
   defaultMode: 'agent',
   description: 'Deep Research Leader - 澄清问题、拆解子问题、制定检索计划与停止条件',
+  newRunUnavailableReason: '旧版深度研究已停止接收新任务。已有历史和暂停运行仍保留；此入口不会自动切换到新版研究或 Default。',
   config: {
     contextPolicy: {
       profileId: 'agent',

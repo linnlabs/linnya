@@ -64,7 +64,6 @@ import type {
   Conversation,
   UserMessage,
 } from '../../types';
-import { consumeQuotaOrNull } from '../../../../shared/quota/quotaClient';
 import { ensureHistoryWindowTailForBottom } from '../../history';
 import { generateMessageId } from '@shared/utils/idUtils';
 import {
@@ -164,8 +163,6 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
     return ensureMaterializedConversation(assistantStore, workspaceScopeStore);
   }
 
-  const WEEKLY_LIMIT_FALLBACK = 3;
-
   const sendChatMessage = async (
     userMessage: UserMessageContent,
     options: ChatFlowSendMessageOptions = {},
@@ -207,35 +204,15 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
       : { kind: 'linnya-assistant' };
     console.log(`[ChatFlowOrchestrator] sendChatMessage - Active conversation ID: ${conversationId}`);
 
-    // =========================================================================
-    // 阶段0：Deep Research 本地配额（每周3次）
-    // - “点击开始”即消耗一次
-    // - 超限时阻止发送，并给出明确 UI 文案
-    // =========================================================================
+    // 旧会话保留原 Agent 身份，但不能发起新任务，也不能因不可用入口消耗旧配额。
     const selectedAgentIdForSend = options.promptKey
       ? undefined
       : options.selectedAgentId ?? conversation.selectedAgentId ?? undefined;
-    const usesDeepResearch = selectedAgentIdForSend === ConversationAgentIds.DEEP_RESEARCH
+    const usesLegacyResearch = selectedAgentIdForSend === ConversationAgentIds.DEEP_RESEARCH
       || options.promptKey === PromptKeys.DEEP_RESEARCH_LEADER;
-    if (usesDeepResearch) {
-      const consumeRes = await consumeQuotaOrNull('deep_research');
-      if (consumeRes && consumeRes.success === true && 'allowed' in consumeRes && consumeRes.allowed === false) {
-        const usedCount = typeof consumeRes.usedCount === 'number' ? consumeRes.usedCount : WEEKLY_LIMIT_FALLBACK;
-        const limit = typeof consumeRes.limit === 'number' ? consumeRes.limit : WEEKLY_LIMIT_FALLBACK;
-        const resetAt = typeof consumeRes.resetAt === 'number' ? consumeRes.resetAt : null;
-        const resetText = resetAt
-          ? new Date(resetAt).toLocaleString()
-          : resolveCurrentConversationMessage('conversation.flow.deepResearch.resetFallback');
-
-        const uiMessage = resolveCurrentConversationMessage('conversation.flow.deepResearch.weeklyLimitReached', {
-          usedCount,
-          limit,
-          resetText,
-        });
-        assistantStore.setError(uiMessage);
-
-        return false;
-      }
+    if (usesLegacyResearch) {
+      assistantStore.setError(resolveCurrentConversationMessage('conversation.flow.deepResearch.unavailable'));
+      return false;
     }
 
     // 中文说明：草稿对话可能已有 hidden/context/tool_output 等底层消息；
@@ -307,6 +284,11 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
       } else {
         console.error('[ChatFlowOrchestrator] editAndResendMessage: No active conversation found.');
       }
+      return false;
+    }
+
+    if (conversation.selectedAgentId === ConversationAgentIds.DEEP_RESEARCH) {
+      assistantStore.setError(resolveCurrentConversationMessage('conversation.flow.deepResearch.unavailable'));
       return false;
     }
 

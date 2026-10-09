@@ -251,6 +251,9 @@ export interface AgentDefinition {
    */
   description: string;
 
+  /** 仅拒绝新 run；definition 仍供历史身份和原运行恢复解析，不改变冻结执行配置。 */
+  newRunUnavailableReason?: string;
+
   /**
    * 核心配置：工具、模型、知识库
    * 🔥 新增：收编历史 agent-config 的配置能力
