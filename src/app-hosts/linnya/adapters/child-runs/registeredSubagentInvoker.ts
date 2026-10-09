@@ -45,12 +45,6 @@ export type RegisteredChildRunInvokerPort = childRuns.ChildRunInvokerPort<
   RegisteredChildRunResult
 >;
 
-function toRegisteredChildRunParentContext(
-  context: RegisteredChildRunParentContext
-): RegisteredChildRunParentContext {
-  return context;
-}
-
 function resolveAbortSignal(params: RegisteredChildRunRequest): AbortSignal | undefined {
   return params.executionPolicy?.abortSignal ?? params.parentToolContext.abortSignal;
 }
@@ -260,11 +254,21 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
     if (agentDefinition.config?.maxCallsPerParentRun !== undefined && !durable) {
       throw new Error('Bounded child run requires durable admission');
     }
+    // 恢复沿用原 request；嵌套 child 必须覆盖父名单，不能把作者的能力当作网页 worker 的能力。
+    const allowedTools = durable
+      ? durable.descriptor.request.availableTools
+      : agentConfig.availableTools;
+    // 非持久调用也接受已提供 conversationView 的上下文；派生前由 framework 接纳其运行能力。
+    tools.ensureToolContextRuntimeCapability({ context: params.parentToolContext });
+    const childParentToolContext = derivePluginAwareToolContext(params.parentToolContext, {
+      registeredChildAllowedTools:
+        allowedTools === undefined ? undefined : Object.freeze([...allowedTools]),
+    });
     if (durable?.record?.status === 'completed') {
       const result = await this.childRunInvoker.invoke({
         agentConfig,
         userMessage: durable.descriptor.request.query,
-        parentToolContext: params.parentToolContext,
+        parentToolContext: childParentToolContext,
         conversationId,
         runId: childRunId,
         parentRunId,
@@ -356,13 +360,13 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
               agentConfig,
               userMessage: params.userMessage,
               parentToolContext: durable
-                ? derivePluginAwareToolContext(params.parentToolContext, {
+                ? derivePluginAwareToolContext(childParentToolContext, {
                     toolResultReceipts: this.recovery?.toolResults?.forExecution(
                       childRunId,
                       lifecycleRun.eventBus.executionId
                     ),
                   })
-                : toRegisteredChildRunParentContext(params.parentToolContext),
+                : childParentToolContext,
               conversationId,
               runId: childRunId,
               parentRunId,

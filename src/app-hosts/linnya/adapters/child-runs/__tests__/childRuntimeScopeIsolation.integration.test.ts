@@ -1,5 +1,9 @@
 import { PromptKeys } from '@app/schemas';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  clearPluginRuntimeStateForTests,
+  setPluginRuntimeStateForTests,
+} from '../../../plugin-registry/pluginRuntimeState';
 import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
 import { audit, graph, runSupervisor, telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import {
@@ -116,6 +120,13 @@ function createParentContext(label: string) {
 }
 
 describe('child runtime scope isolation', () => {
+  beforeEach(() =>
+    setPluginRuntimeStateForTests({
+      installedPluginIds: ['platform'],
+      enabledPluginIds: ['platform'],
+    })
+  );
+  afterEach(clearPluginRuntimeStateForTests);
   it('两套 runtime 并发执行时，child 事实和生命周期只进入各自作用域', async () => {
     const runtimeA = createIsolatedRuntime('a');
     const runtimeB = createIsolatedRuntime('b');

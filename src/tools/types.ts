@@ -50,6 +50,8 @@ export type {
  * 包含工具执行时需要的所有依赖和配置
  */
 export interface ToolContext extends ToolExecutionContext {
+  /** Host 为当前 registered child 冻结的执行名单；空数组禁止全部，undefined 不增加限制。 */
+  registeredChildAllowedTools?: readonly string[];
   /** 仅 Host forced research tool 使用；模型无权构造或替换。 */
   researchExecution?: (input: import('@app/schemas').ResearchRunArgs) => Promise<import('@app/schemas').ResearchRunData>;
   /** Research stage 的正式检索边界；不是 Shell/文件系统沙箱。 */

@@ -30,6 +30,14 @@ ToolRegistry / ToolNode 与 SQLite 验证单父工具的全链 receipt、不同�
 child response 审计使用同一个正式 `childRunId / parentRunId`；独立审计作用域在本次
 执行退出时排空，不依赖父作用域代为收尾，也不和兄弟运行共享容量。
 
+registered child 执行前还必须派生独立 ToolContext，把该 child 的 `availableTools` 复制并冻结为
+`registeredChildAllowedTools`。持久运行只读原 descriptor.request；非持久运行取本 child 的
+agentConfig。嵌套 child 覆盖父名单，兄弟运行不修改共享父上下文；因此网页 worker 可以执行
+自己的 `search_web / assemble_web_sources`，研究 reviewer 不能伪造正式写工具调用。
+`undefined` 清除继承限制，空数组则禁止全部工具，不能混为一谈。执行拒绝由
+[ToolRegistry](../tools/README.md) 负责，不能只凭给模型的 schema 声称已经阻止调用。
+这不是操作系统隔离，也不改变 root forced-tool 接纳合同。
+
 ## 1. 模块定位
 
 本目录负责：

@@ -1,5 +1,9 @@
 import Database from 'better-sqlite3';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearPluginRuntimeStateForTests,
+  setPluginRuntimeStateForTests,
+} from '../../../plugin-registry/pluginRuntimeState';
 import { createLinnyaAuditRuntime, recordLlmResponseSummary } from 'src/domains/audit';
 import { PromptKeys } from '@app/schemas';
 import {
@@ -233,7 +237,14 @@ function readPersistedRuntimeEvents(db: Database.Database, runId: string): Route
 }
 
 describe('RegisteredChildRunInvoker', () => {
+  beforeEach(() =>
+    setPluginRuntimeStateForTests({
+      installedPluginIds: ['platform'],
+      enabledPluginIds: ['platform'],
+    })
+  );
   afterEach(() => {
+    clearPluginRuntimeStateForTests();
     vi.restoreAllMocks();
     createLinnyaAuditRuntime({ level: 'off', sink: { emit() {} } });
   });

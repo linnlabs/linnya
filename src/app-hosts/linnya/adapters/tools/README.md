@@ -66,6 +66,13 @@ adapter 只负责原子事务和双唯一约束；Knowledge/Web/Workspace produc
 
 工具声明 `idempotency` 时，registry 只能调用 Linnkit 的 `computeToolIdempotencyKey()` 与正式 history helper，不能在 Host 复制 key 算法或恢复旧 16-hex 合同。这里的 history 命中服务 Host 直接执行入口；Graph ToolNode 仍拥有进程内 in-flight 合并。两者都不提供跨进程强幂等，后者必须由持久化锁或唯一索引另行保证。
 
+registered child 的模型工具 schema 不承担执行授权。Host 通过
+`ToolContext.registeredChildAllowedTools` 绑定当前 child 的冻结名单，registry 在 decorator、
+自身幂等缓存和 concrete tool owner 前检查它；未获准的工具返回
+`REGISTERED_CHILD_TOOL_NOT_ALLOWED`。空数组禁止所有正式工具，`undefined` 保持原有无限制入口。
+名单由 [registered child owner](../child-runs/README.md) 按每个 child 单独绑定，不能继承父角色
+的名单代替自己的能力。这仅约束正式工具调用，不是 Shell 的网络、数据库或文件系统沙箱。
+
 `RUN_RECOVERY_BLOCKED` 与 `RUN_PAUSE_REQUESTED` 是运行控制信号，必须向 Graph 传播，不能转成
 一条已完成的 tool error。未决调用恢复由应用层 run-resumption 协调：明确只读工具可重新读取；
 child 工具只在原 child identity / checkpoint 合同下重新进入；外部写入没有 owner 凭据时阻塞。

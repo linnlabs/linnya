@@ -255,6 +255,18 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
     const startTime = Date.now();
 
     try {
+      const hostContext: ToolContext = context;
+      const allowedTools = hostContext.registeredChildAllowedTools;
+      // 模型可见 schema 不是执行授权；未授予的调用不能进入 decorator、缓存或具体 owner。
+      if (allowedTools !== undefined && !allowedTools.includes(toolName)) {
+        return {
+          success: false,
+          error: `当前子运行未获准调用工具 '${toolName}'`,
+          errorCode: 'REGISTERED_CHILD_TOOL_NOT_ALLOWED',
+          errorKind: 'capability',
+          durationMs: Date.now() - startTime,
+        };
+      }
       const tool = this.getTool(toolName);
       if (!tool) {
         return {
@@ -313,7 +325,6 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
       }
 
       const result = await tool.run(normalizedArgs, context);
-      const hostContext: ToolContext = context;
       if (typeof result === 'string' && context.parentToolCallId) {
         hostContext.toolResultReceipts?.returned(context.parentToolCallId, toolName, result);
       }

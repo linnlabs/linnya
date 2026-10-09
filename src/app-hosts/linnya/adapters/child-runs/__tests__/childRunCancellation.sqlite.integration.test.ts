@@ -1,6 +1,10 @@
 import Database from 'better-sqlite3';
 import { PromptKeys } from '@app/schemas';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearPluginRuntimeStateForTests,
+  setPluginRuntimeStateForTests,
+} from '../../../plugin-registry/pluginRuntimeState';
 import type { AuditEnvelope } from '@linnlabs/linnkit/contracts';
 import type { AgentInvocationRequest, AuditPort } from '@linnlabs/linnkit/ports';
 import { childRuns, graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
@@ -72,6 +76,13 @@ function readLifecycleRow(db: Database.Database, runId: string): PersistedRunLif
 }
 
 describe('registered child cancellation SQLite lifecycle', () => {
+  beforeEach(() =>
+    setPluginRuntimeStateForTests({
+      installedPluginIds: ['platform'],
+      enabledPluginIds: ['platform'],
+    })
+  );
+  afterEach(clearPluginRuntimeStateForTests);
   it('外部取消后由 child settlement 补全真实进度，并保留第一次取消事实', async () => {
     const conversationId = 'conversation-child-cancellation';
     const parentRunId = RunIdSchema.parse('run-parent-cancellation');
