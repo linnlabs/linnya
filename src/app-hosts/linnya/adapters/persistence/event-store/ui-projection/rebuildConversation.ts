@@ -7,6 +7,7 @@ import type { UiMessagePayload, UiMessageRow } from './types';
 import { serializeUiMessageAttachments } from './attachments';
 import { parseStoredRuntimeEvent } from '../functions/runtimeEventStorageCodec';
 import { SqliteConversationCitationFactIndex } from './sqliteCitationFactIndex';
+import { SqliteUiProjectionApplier } from './sqliteApplier';
 
 interface RebuildEventRow {
   id: string;
@@ -163,6 +164,7 @@ export function rebuildConversationUiProjection(
       }
     }
     citationFactIndex.rebuildSubrunFacts(conversationId);
+    new SqliteUiProjectionApplier(db).rebuildSubrunSummaries(conversationId);
 
     db.prepare(
       `

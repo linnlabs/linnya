@@ -23,3 +23,10 @@ Tool row 的 `message_id` 与 `merge_key` 必须相等，并且只通过 `@app/s
 Subrun trace 历史端点直接消费 Linnkit `SubRunTraceKind` 与完整 `RuntimeEvent` schema。显式 kinds 只做业务筛选；未指定 kinds 时必须校验 parent 下的全部 trace，非法事实直接失败。禁止恢复手写 envelope guard、Host 私有 kind enum 或默认 SQL 白名单。
 
 工具 read model 的 `loading` 不是可在 reload 时修补的临时状态。`tool_call_decision` 可以为同批全部调用建立 pending UI row，但每个调用必须由 Runtime 主链的 `tool_output` 结算；普通串行 ToolNode 在取消时负责给未启动 calls 发布 error output。`run_execution_metrics` 只投影 run 性能与 outcome，不扫描或关闭工具行，避免 Host projector 成为第二个工具生命周期 owner。
+
+父工具的 `subrun_summary` 由两个正式输入合并：terminal tool data 的 `subrun_ids` 决定稳定顺序，
+紧凑 trace history 的绑定保留已开始但未交付结果的 child。history projector 与本 owner 的窄
+`projectSubrunSummary` 入口在同一 SQLite 事务内维护索引、语义项和 revision；不把 ephemeral
+trace 写成 Runtime fact，也不创建不存在的父工具 row。首帧只保存身份，此后的逐 chunk 不写表，
+计数表示持久化的语义项数量，因此可以小于 live 帧数。rebuild 从现有紧凑 history 恢复该索引。
+工具 error、cancel 或空结果不能清除已有 child；child 的终态始终由其正式 lifecycle 决定。

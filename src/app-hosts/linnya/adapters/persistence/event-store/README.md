@@ -30,7 +30,6 @@ event-store/
 ├── schema-providers.ts
 ├── sqlite.implementation.ts
 ├── functions/
-├── subrun-trace-history/      # ephemeral parent trace 的紧凑历史 projector/read model
 └── ui-projection/
 ```
 
@@ -61,7 +60,7 @@ event-store/
 6. `sqliteUiMessagesReader.ts` 将 SQL row 解析为 `ConversationUiMessageSchema` 后提供分页 API
 7. `HistoryRepository` 从 `IEventStore` 读取事实事件和元数据；Agent context 使用显式 routing scope
 8. `Flow` 通过最小 persistence port 调用 `ensureConversation / openRunSession / appendEventToRun`
-9. child EventBus 的 parent trace projector 串行写紧凑历史；历史 reader 按父工具与具体 subrun 查询并重建公开 trace DTO
+9. sibling `../subrun-trace-history/` 的 parent trace projector 串行写紧凑历史；首帧保存 child 绑定，语义项保存正文，同事务同步父工具的轻量索引与 UI revision。历史 reader 按父工具与具体 subrun 查询并重建公开 trace DTO
 
 Citation producer 的 ref 分配不经过上述 event projection：Host allocator adapter 在工具执行期对
 `conversation_citation_ref_claims` 做独立短事务。claim 在工具结果之前落盘可能留下未被正文消费的保留号，

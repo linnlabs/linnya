@@ -6,6 +6,7 @@ import {
   isDurableSubrunTraceEvent,
 } from './functions/subrunTraceHistoryPayload';
 import { SqliteConversationCitationFactIndex } from '../event-store/ui-projection/sqliteCitationFactIndex';
+import { SqliteUiProjectionApplier } from '../event-store/ui-projection/sqliteApplier';
 
 interface SubrunTraceBindingRow {
   readonly conversation_id: string;
@@ -21,16 +22,25 @@ interface SubrunTraceBindingRow {
  */
 export class SqliteSubrunTraceHistoryProjector implements SubrunTraceHistoryProjectorPort {
   private readonly citationFactIndex: SqliteConversationCitationFactIndex;
+  private readonly uiProjection: SqliteUiProjectionApplier;
 
   constructor(private readonly db: Database.Database) {
     this.citationFactIndex = new SqliteConversationCitationFactIndex(db);
+    this.uiProjection = new SqliteUiProjectionApplier(db);
   }
 
   project(event: SubRunTraceEvent): void {
-    if (!isDurableSubrunTraceEvent(event)) return;
+    const durable = isDurableSubrunTraceEvent(event);
+    const binding = this.readBinding(event.subrun_id);
+    if (binding) {
+      this.requireMatchingBinding(binding, event);
+      // chunk 不持久化；首帧只建立身份，此后逐帧不写表、不增加 UI revision。
+      if (!durable) return;
+    }
 
     const transaction = this.db.transaction(() => {
-      this.db
+      if (!binding) {
+        this.db
         .prepare(
           `
         INSERT INTO subrun_trace_runs (
@@ -42,7 +52,6 @@ export class SqliteSubrunTraceHistoryProjector implements SubrunTraceHistoryProj
           subrun_parent_id,
           created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(subrun_id) DO NOTHING
       `
         )
         .run(
@@ -54,66 +63,43 @@ export class SqliteSubrunTraceHistoryProjector implements SubrunTraceHistoryProj
           event.subrun_parent_id ?? null,
           event.timestamp
         );
-
-      const binding = this.db
-        .prepare<[string], SubrunTraceBindingRow>(
-          `
-        SELECT
-          conversation_id,
-          turn_id,
-          parent_run_id,
-          parent_tool_call_id,
-          subrun_parent_id
-        FROM subrun_trace_runs
-        WHERE subrun_id = ?
-      `
-        )
-        .get(event.subrun_id);
-      if (
-        !binding ||
-        binding.conversation_id !== event.conversation_id ||
-        binding.turn_id !== event.turn_id ||
-        binding.parent_run_id !== (event.run_id ?? null) ||
-        binding.parent_tool_call_id !== event.parent_tool_call_id ||
-        binding.subrun_parent_id !== (event.subrun_parent_id ?? null)
-      ) {
-        throw new Error(`[SubrunTraceHistory] subrun ${event.subrun_id} 与既有不可变归属绑定冲突`);
       }
 
-      this.db
-        .prepare(
-          `
-        INSERT INTO subrun_trace_items (
-          subrun_id,
-          source_event_id,
-          kind,
-          timestamp,
-          payload_json
-        ) VALUES (?, ?, ?, ?, ?)
-      `
-        )
-        .run(
-          event.subrun_id,
-          event.source_event_id,
-          event.kind,
-          event.timestamp,
-          JSON.stringify(encodeSubrunTraceHistoryPayload(event))
-        );
+      if (isDurableSubrunTraceEvent(event)) {
+        this.db.prepare(`
+          INSERT INTO subrun_trace_items (subrun_id, source_event_id, kind, timestamp, payload_json)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(event.subrun_id, event.source_event_id, event.kind, event.timestamp,
+          JSON.stringify(encodeSubrunTraceHistoryPayload(event)));
+      }
 
-      if (this.citationFactIndex.projectSubrunToolOutput(event)) {
-        // dependency sidecar 属于同一 UI projection revision；索引变化不能静默绕过版本。
-        this.db
-          .prepare(
-            `
-          UPDATE conversation_ui_projection_state
-          SET revision = revision + 1
-          WHERE conversation_id = ?
-        `
-          )
-          .run(event.conversation_id);
+      const parentChanged = event.run_id !== undefined && this.uiProjection.projectSubrunSummary(
+        event.conversation_id, event.run_id, event.parent_tool_call_id,
+      );
+      const citationsChanged = durable && this.citationFactIndex.projectSubrunToolOutput(event);
+      if (parentChanged || citationsChanged) {
+        // 父索引与 citation sidecar 同属一次紧凑历史提交，只发布一个新 revision。
+        this.uiProjection.bumpProjectionRevision(event.conversation_id);
       }
     });
 
     transaction();
+  }
+
+  private readBinding(subrunId: string): SubrunTraceBindingRow | undefined {
+    return this.db.prepare<[string], SubrunTraceBindingRow>(`
+      SELECT conversation_id, turn_id, parent_run_id, parent_tool_call_id, subrun_parent_id
+      FROM subrun_trace_runs WHERE subrun_id = ?
+    `).get(subrunId);
+  }
+
+  private requireMatchingBinding(binding: SubrunTraceBindingRow, event: SubRunTraceEvent): void {
+    if (binding.conversation_id !== event.conversation_id
+      || binding.turn_id !== event.turn_id
+      || binding.parent_run_id !== (event.run_id ?? null)
+      || binding.parent_tool_call_id !== event.parent_tool_call_id
+      || binding.subrun_parent_id !== (event.subrun_parent_id ?? null)) {
+      throw new Error(`[SubrunTraceHistory] subrun ${event.subrun_id} 与既有不可变归属绑定冲突`);
+    }
   }
 }

@@ -16,6 +16,7 @@ import type {
 } from './types';
 import { parseUiMessageAttachments, serializeUiMessageAttachments } from './attachments';
 import { SqliteConversationCitationFactIndex } from './sqliteCitationFactIndex';
+import { projectSubrunSummaryToUiRowOp } from './projectSubrunSummary';
 
 interface UiMessageSqlRow {
   message_id: string;
@@ -128,6 +129,39 @@ export class SqliteUiProjectionApplier {
       `
       )
       .run(conversationId);
+  }
+
+  /** 由 trace history 的同一事务调用；不改变工具 lifecycle，也不另存 RuntimeEvent。 */
+  projectSubrunSummary(conversationId: string, parentRunId: string, parentToolCallId: string): boolean {
+    const rows = this.db.prepare<[string, string, string], { subrun_id: string; event_count: number }>(`
+      SELECT r.subrun_id, COUNT(i.id) AS event_count
+      FROM subrun_trace_runs r
+      LEFT JOIN subrun_trace_items i ON i.subrun_id = r.subrun_id
+      WHERE r.conversation_id = ? AND r.parent_run_id = ? AND r.parent_tool_call_id = ?
+      GROUP BY r.subrun_id
+      ORDER BY r.rowid ASC
+    `).all(conversationId, parentRunId, parentToolCallId);
+    const op = projectSubrunSummaryToUiRowOp({
+      conversationId, parentRunId, parentToolCallId,
+      summary: {
+        subrun_ids: rows.map(row => row.subrun_id),
+        event_counts: Object.fromEntries(rows.map(row => [row.subrun_id, row.event_count])),
+      },
+    }, this.access);
+    if (!op) return false;
+    this.applyOps(conversationId, parentRunId, [op]);
+    return true;
+  }
+
+  /** UI rows 可重建，已保存的紧凑 child 索引也必须一起恢复。 */
+  rebuildSubrunSummaries(conversationId: string): void {
+    const parents = this.db.prepare<[string], { parent_run_id: string; parent_tool_call_id: string }>(`
+      SELECT DISTINCT parent_run_id, parent_tool_call_id FROM subrun_trace_runs
+      WHERE conversation_id = ? AND parent_run_id IS NOT NULL
+    `).all(conversationId);
+    for (const parent of parents) {
+      this.projectSubrunSummary(conversationId, parent.parent_run_id, parent.parent_tool_call_id);
+    }
   }
 
   deleteProjectionRowsForConversation(conversationId: string): void {

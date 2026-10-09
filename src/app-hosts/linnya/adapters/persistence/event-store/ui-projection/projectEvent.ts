@@ -11,7 +11,6 @@ import {
   toSerializableJsonRecord,
 } from '@linnlabs/linnkit/contracts';
 import {
-  appendSubrunTraceSummary,
   ConversationActivityBindingSchema,
   ConversationPartialAnswerPayloadSchema,
   ConversationTerminalAnswerPayloadSchema,
@@ -71,8 +70,6 @@ export function projectEventToUiRowOps(
       return projectToolLifecycle(event, access);
     case 'tool_output':
       return projectToolOutput(event, access);
-    case 'subrun_trace':
-      return projectSubrunTrace(event, access);
     case 'run_execution_metrics':
       return projectRunExecutionMetrics(event, access);
     case 'history_summary':
@@ -294,37 +291,6 @@ function projectRequiresUserInteraction(
         },
       }),
       content: formObservation,
-    },
-  }];
-}
-
-function projectSubrunTrace(
-  event: Extract<RuntimeEvent, { type: 'subrun_trace' }>,
-  access: UiProjectionReadAccess,
-): UiRowOp[] {
-  const parent = access.getRowByMergeKey(
-    event.conversation_id,
-    toolMergeKey(readRunId(event), event.parent_tool_call_id),
-  );
-  if (!parent) {
-    return [skip(event, `subrun-parent-tool-not-found:${event.parent_tool_call_id}`)];
-  }
-  if (parent.messageType !== 'tool_calls') {
-    throw new Error(`Tool merge key ${event.parent_tool_call_id} points to ${parent.messageType}`);
-  }
-
-  const payload = { ...parent.payload };
-  const summary = appendSubrunTraceSummary(payload.subrun_summary, event.subrun_id);
-  payload.subrun_summary = {
-    subrun_ids: [...summary.subrun_ids],
-    event_counts: { ...summary.event_counts },
-  };
-
-  return [{
-    op: 'replace',
-    row: {
-      ...parent,
-      payload: ConversationToolMessagePayloadSchema.parse(payload),
     },
   }];
 }
