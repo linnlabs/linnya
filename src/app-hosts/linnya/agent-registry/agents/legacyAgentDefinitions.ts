@@ -1,3 +1,4 @@
+import researchAgentV1 from './research_v1';
 import defaultAgent from './default';
 import deepWebSearchAgent from './deep_web_search';
 import experimentalResearchAgent from './deep_research_experimental';
@@ -30,6 +31,7 @@ import { singleTurnAgentDefinitions } from './single_turn';
  * 运行时解析 promptKey 时应走 AgentDefinitionResolver / BackendPluginRegistry。
  */
 export const legacyBuiltinAgentDefinitions = [
+  researchAgentV1,
   defaultAgent,
   deepSearchAgent,
   deepWebSearchAgent,

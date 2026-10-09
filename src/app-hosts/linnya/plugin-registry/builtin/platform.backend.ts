@@ -1,3 +1,4 @@
+import { decorateResearchToolContext, enforceResearchRetrievalScope } from '../../adapters/research-execution';
 import { decorateDeepWebSnapshotToolContext } from '../../adapters/tools/deepWebSnapshotToolContextDecorator';
 import type { PluginBackendContribution } from '../types';
 import { PLATFORM_PLUGIN_META } from './platform-meta';
@@ -34,6 +35,8 @@ export const platformBackendPlugin: PluginBackendContribution = {
   meta: PLATFORM_PLUGIN_META,
   toolClasses: legacyBuiltinToolClasses,
   toolContextDecorators: [
+    { toolNames: ['research_run'], decorate: decorateResearchToolContext },
+    { toolNames: ['web_search', 'web_read', 'search_web', 'knowledge_search', 'knowledge_read'], decorate: enforceResearchRetrievalScope },
     { toolNames: ['assemble_web_sources'], decorate: decorateDeepWebSnapshotToolContext },
     {
       toolNames: CITATION_PRODUCER_TOOL_NAMES,

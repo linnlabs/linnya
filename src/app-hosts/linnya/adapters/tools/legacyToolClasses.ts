@@ -1,3 +1,4 @@
+import { ResearchRunTool } from '../research-execution';
 import { searchToolClasses } from '../../../../tools/knowledgebase/search';
 import { readerToolClasses } from '../../../../tools/knowledgebase/reader';
 import { assembleToolClasses } from '../../../../tools/knowledgebase/assemble';
@@ -25,6 +26,7 @@ import { markdownToolClasses } from '../../../../domains/markdown/tools';
  * 不要从这里读取 enabled 状态；运行期消费必须走 BackendPluginRegistry。
  */
 export const legacyBuiltinToolClasses = [
+  ResearchRunTool,
   ...searchToolClasses,
   ...readerToolClasses,
   ...assembleToolClasses,
