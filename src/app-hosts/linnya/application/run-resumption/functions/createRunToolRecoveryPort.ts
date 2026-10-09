@@ -17,6 +17,8 @@ const replayableTools = new Set([
   'skill',
   'subagent',
   'subrun_batch',
+  // 固定阶段 slot 的 Host 用例；已完成 child 复取原结果，版本接纳仍由研究 owner 决定。
+  'research_run',
 ]);
 
 export function createRunToolRecoveryPort(receipts?: {

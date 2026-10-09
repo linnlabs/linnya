@@ -13,7 +13,19 @@ Layer: `host-adapter/child-runs`
 父调用恢复时只读取原结果，不再执行 child 或补发事实。未完成 child 异常向父图传播为可恢复中断，
 不是一份成功返回的“子任务失败”工具结果。同步审批仍应上提到 foreground。
 
+固定多阶段 Host 用例可以在同一父工具内顺序或并行调用不同注册职责。每个阶段必须显式给出
+全链唯一且恢复稳定的 subrun ID（例如父 tool call ID 加固定阶段 slot）、模型和步数；不能
+通过重复调用单 worker 的 batch 工具来隐含替换职责或预算。完整 child 请求必须保持不变，
+文档版本及后继接纳归调用方用例，不从 child final answer 推断文档已经成功提交。
+并行组应等待各成员完成本次执行收口后再传播恢复中断，已完成同伴的结果仍由原 child 保留。
+
 ---
+
+`flow.research-carrier.sqlite.integration.test.ts` 使用可分发合成材料、真实 Workspace 工具、
+ToolRegistry / ToolNode 与 SQLite 验证单父工具的全链 receipt、不同职责并行读取、取消、
+同伴中断及重载。子进程在产物 child 完成后、全部 child 完成但父工具尚未返回时 SIGKILL；
+恢复只能重取完成者，不能再次写文档或新增完成者事件。它验证承载协议，不认证研究内容质量，
+也不替代研究 owner 的文档版本、引用绑定和输入接纳门禁。
 
 child response 审计使用同一个正式 `childRunId / parentRunId`；独立审计作用域在本次
 执行退出时排空，不依赖父作用域代为收尾，也不和兄弟运行共享容量。

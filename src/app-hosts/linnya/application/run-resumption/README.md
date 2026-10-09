@@ -58,11 +58,16 @@ Conversation CLI 的 `resume <conversation-id> --run <run-id>` 先读取 exact s
 | Markdown create / write / edit | 原结果与文档、pending、批注同事务；结果保存失败整体回滚 |
 | 未完成 child | 按原 parent/call/批次位置重建同一 child，从自己的断点继续 |
 | 已完成 child、父级尚未结算 | 保留并读取 child 的原 yielded 结果，不重跑 |
+| `research_run` 的阶段交接中断 | 用固定阶段 slot 重入同一父工具；已完成 child 只读取原结果，后继接纳仍由研究用例的输入版本合同决定 |
 | 未知 Shell / 外部 / 插件效果 | 无可靠结果凭据即受阻，不凭 PID、stdout 或参数重放 |
 
 纯读取白名单允许重读当前数据，不承诺历史内容冻结。尚未返回的插件写入、结构化图片结果、
 失效进程内 asset claim 不具备通用恰好一次保证；明确受阻时可解决能力问题后再继续，或发送
 新消息/显式取消结束旧运行。不能为“继续”伪造成功、自动批准或覆盖用户后续编辑。
+`research_run` 是明确允许重入的 Host child 编排入口，不是任意工具的恢复能力。
+其 owner 必须保持原 parent/tool-call/阶段 slot、prompt key 和完整 child 请求；不能将文档重读
+当作原版本证明，也不能在重入时重新执行已完成阶段的写入。整链结果返回前不提交父工具结果，
+已接纳 child 的状态和结果仍归 RunSupervisor 与原 checkpoint，不增加第二份运行生命周期。
 没有恢复描述的旧历史不会复活。缺少或损坏的必要输入保留诊断证据，并隔离该 run；
 不阻塞其他对话。运行中模型的同一请求可重试，但无法恢复已销毁的网络 token 流。
 
