@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ResearchRunArgsSchema } from '@app/schemas';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { SQLiteEventStore } from '../event-store';
@@ -55,7 +56,7 @@ function inputBinding(): ResearchDocumentBinding {
 function prepared(): PreparedResearchStage {
   return {
     stage: 'investigation',
-    invocation: { question: 'Review the synthetic case', reader: 'General reader', task_type: 'fixed', materials: ['workspace:/input.md'] },
+    invocation: ResearchRunArgsSchema.parse({ question: 'Review the synthetic case', reader: 'General reader', task_type: 'fixed', materials: ['workspace:/input.md'] }),
     subrunId: 'research-author',
     request: {
       promptKey: 'deep_research_experimental', query: '  Frozen request\nRead workspace:/input.md.\n',

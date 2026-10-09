@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { ResearchRunArgsSchema, ResearchStageSchema, WorkspaceFileLocatorSchema } from '@app/schemas';
 import type { ResearchDocumentBinding } from '../../../../application/research/definitions/researchDocumentPort';
-import type { PreparedResearchStage } from '../../../../application/research/definitions/researchStageReceipt';
 
 const Text = z.string().min(1);
 const Hash = z.string().regex(/^[a-f0-9]{64}$/);
@@ -14,7 +13,8 @@ export const ResearchDocumentBindingStorageSchema: z.ZodType<ResearchDocumentBin
   citationSha256: Hash,
 }).strict();
 
-export const PreparedResearchStageStorageSchema: z.ZodType<PreparedResearchStage> = z.object({
+// 输入是持久 JSON；正式 locator 的品牌只由子 schema parse 后产生，不能要求输入已带品牌。
+export const PreparedResearchStageStorageSchema = z.object({
   stage: ResearchStageSchema,
   invocation: ResearchRunArgsSchema,
   subrunId: Text,
