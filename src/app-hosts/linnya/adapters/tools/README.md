@@ -59,6 +59,11 @@ registry 中的真实工具；未注册声明会使初始化失败，避免错�
 不扩展 Linnkit `BaseTool` 或公共插件合同。目录隐藏不授予或撤销执行权限，例如研究工具仍须核对
 匹配的持久化 Host 入口，不能只凭工具名启动研究。
 
+Concrete tool 可以使用 Host 窄 Schema 上下文提供动态参数、描述和可选
+`isAvailableForContext`。返回 `false` 时仅从本次模型目录省略该工具，不能撤销或替代执行校验。
+`subagent` 用它处理父侧白名单与角色调用者名单交集为空的情况，避免输出非法空枚举；有可选角色时，
+目录与执行共用同一过滤规则。Schema 上下文只投影明确需要的冻结字段，不包含整份请求或 metadata。
+
 Citation source resolution 位于 app-level adapter，因为它需要编排 Citation、正式 producer event 与
 conversation EvidenceStore。Citation domain 只拥有来源 DTO 和接纳规则；插件只经
 `@plugin/backend/citationSourceRuntime` 读取已接纳投影，不能穿透该目录。

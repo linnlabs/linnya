@@ -261,6 +261,12 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
     // 非持久调用也接受已提供 conversationView 的上下文；派生前由 framework 接纳其运行能力。
     tools.ensureToolContextRuntimeCapability({ context: params.parentToolContext });
     const childParentToolContext = derivePluginAwareToolContext(params.parentToolContext, {
+      // 每个 child 使用自己的冻结身份；父级任务准备能力不能被子级或嵌套 worker 借用。
+      callerAgentId: durable ? durable.descriptor.request.callerAgentId : agentDefinition.id,
+      availableSubagentTypes: durable
+        ? durable.descriptor.request.availableSubagentTypes
+        : agentDefinition.config?.availableSubagentTypes,
+      prepareSubagentTask: undefined,
       registeredChildAllowedTools:
         allowedTools === undefined ? undefined : Object.freeze([...allowedTools]),
     });

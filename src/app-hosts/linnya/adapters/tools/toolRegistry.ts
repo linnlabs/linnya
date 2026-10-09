@@ -22,6 +22,7 @@ type ToolExecutionResult = runtimeKernel.tools.ToolExecutionResult;
 type ToolRuntimeDefinition = runtimeKernel.tools.ToolRuntimeDefinition;
 
 interface DynamicToolMetadataProvider {
+  isAvailableForContext?(context: LinnyaToolSchemaContext): boolean;
   getParametersForContext?(context: LinnyaToolSchemaContext): ToolParameterSchema;
   getDescriptionForContext?(context: LinnyaToolSchemaContext): string;
 }
@@ -61,6 +62,7 @@ function isDynamicToolMetadataProvider(
   tool: BaseTool
 ): tool is BaseTool & DynamicToolMetadataProvider {
   return (
+    ('isAvailableForContext' in tool && typeof tool.isAvailableForContext === 'function') ||
     ('getParametersForContext' in tool && typeof tool.getParametersForContext === 'function') ||
     ('getDescriptionForContext' in tool && typeof tool.getDescriptionForContext === 'function')
   );
@@ -212,6 +214,12 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
     for (const tool of toolsToProcess) {
       // 显式 Agent 名单同样不能开放 Host 专用入口；执行定义仍供 forced-tool 使用。
       if (this.hostOnlyToolNames.has(tool.name)) continue;
+      // 动态目录为空时省略该工具；不能生成空 enum 导致整次模型请求失效。
+      if (
+        isDynamicToolMetadataProvider(tool) &&
+        tool.isAvailableForContext?.(schemaContext) === false
+      )
+        continue;
       const parameters = this.resolveToolParametersForSchema(tool, schemaContext);
       const description = this.resolveToolDescriptionForSchema(tool, schemaContext);
       schemas.push({

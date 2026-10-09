@@ -1,4 +1,5 @@
 import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
+import { AvailableSubagentTypesSchema } from '@app/schemas';
 import type { LinnyaToolSchemaContext } from 'src/tools/types';
 
 /**
@@ -6,16 +7,20 @@ import type { LinnyaToolSchemaContext } from 'src/tools/types';
  * 动态 Schema 真正需要的字段。完整 query/history 不得进入工具 Schema 上下文。
  */
 export function deriveLinnyaToolSchemaContext(
-  invocation: AgentInvocationRequest,
+  invocation: AgentInvocationRequest
 ): LinnyaToolSchemaContext {
-  if (!('imageGenerationModelId' in invocation)) {
-    return {};
-  }
-
-  const candidate = invocation.imageGenerationModelId;
-  if (typeof candidate !== 'string' || candidate.trim().length === 0) {
-    return {};
-  }
-
-  return { imageGenerationModelId: candidate.trim() };
+  const candidate =
+    'imageGenerationModelId' in invocation ? invocation.imageGenerationModelId : undefined;
+  const caller = 'callerAgentId' in invocation ? invocation.callerAgentId : undefined;
+  const availableTypes =
+    'availableSubagentTypes' in invocation ? invocation.availableSubagentTypes : undefined;
+  return {
+    ...(typeof candidate === 'string' && candidate.trim().length > 0
+      ? { imageGenerationModelId: candidate.trim() }
+      : {}),
+    ...(typeof caller === 'string' && caller.length > 0 ? { callerAgentId: caller } : {}),
+    ...(availableTypes === undefined
+      ? {}
+      : { availableSubagentTypes: AvailableSubagentTypesSchema.parse(availableTypes) }),
+  };
 }

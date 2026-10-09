@@ -100,14 +100,11 @@ describe('createToolContext', () => {
 
   it('应注入明确区分 working 与 persisted history 的 conversationView', () => {
     const history: RuntimeEvent[] = [
-      createToolOutputEvent(
-        'evt_1',
-        'conv_1',
-        'turn_1',
-        'knowledge_search',
-        'call_1',
-        { status: 'success', observation: 'search complete', data: {} }
-      ),
+      createToolOutputEvent('evt_1', 'conv_1', 'turn_1', 'knowledge_search', 'call_1', {
+        status: 'success',
+        observation: 'search complete',
+        data: {},
+      }),
     ];
     const { hostPorts } = createRuntimeHostPorts('conv_1', 'turn_1');
     const context = createToolContext({
@@ -161,7 +158,9 @@ describe('createToolContext', () => {
       request: {
         query: 'hello',
         promptKey: 'default',
-      } as never,
+        callerAgentId: 'frozen-caller',
+        availableSubagentTypes: ['admitted-role'],
+      },
       runContext: {
         runId: RunIdSchema.parse('run_runtime'),
         traceId: 'trace_runtime',
@@ -172,6 +171,8 @@ describe('createToolContext', () => {
         turnId: 'turn_patch',
         conversationView: patchedView,
         customFlag: 'kept',
+        callerAgentId: 'forged-caller',
+        availableSubagentTypes: ['general'],
       },
       history,
       conversationId: 'conv_runtime',
@@ -179,6 +180,8 @@ describe('createToolContext', () => {
     });
 
     expect(context.conversationId).toBe('conv_runtime');
+    expect(context.callerAgentId).toBe('frozen-caller');
+    expect(context.availableSubagentTypes).toEqual(['admitted-role']);
     expect(context.turnId).toBe('turn_runtime');
     expect(context.conversationView?.getWorkingHistoryEvents()).toBe(history);
     expect(context.conversationView).not.toBe(patchedView);

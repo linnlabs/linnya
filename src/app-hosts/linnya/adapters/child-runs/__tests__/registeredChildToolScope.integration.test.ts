@@ -21,6 +21,7 @@ import { ToolRegistry } from '../../tools/toolRegistry';
 import { RegisteredChildRunInvoker } from '../registeredSubagentInvoker';
 import { LinnyaRegisteredChildRunLifecycle } from '../childRunLifecycle';
 import type { ResolvedRegisteredAgent } from '../registeredAgentResolver';
+import * as agentDefinitions from '../../../agent-registry/agentDefinitionResolver';
 
 beforeEach(() =>
   setPluginRuntimeStateForTests({
@@ -43,6 +44,10 @@ function resolved(
       promptKey,
       defaultMode: 'agent',
       description: 'Execution scope fixture',
+      config: {
+        availableSubagentTypes:
+          promptKey === PromptKeys.RESEARCH_AUTHOR_V1 ? ['general'] : undefined,
+      },
     },
     agentConfig: { id: promptKey, promptKey, availableTools },
   };
@@ -54,6 +59,11 @@ function parentContext(): ToolContext {
     runId: RunIdSchema.parse('parent-child-scope'),
     parentToolCallId: ToolCallIdSchema.parse('parent-tool-scope'),
     modelId: 'scripted-test-model',
+    callerAgentId: 'parent-identity',
+    availableSubagentTypes: ['parent-only-role'],
+    prepareSubagentTask: async () => {
+      throw new Error('Parent preparation must not reach children');
+    },
     registeredChildAllowedTools: Object.freeze(['parent_only']),
     conversationView: { getWorkingHistoryEvents: () => [], getPersistedHistoryEvents: () => [] },
   };
@@ -144,10 +154,33 @@ describe('registered child tool scope ownership', () => {
       Object.isFrozen(observed.get(PromptKeys.RESEARCH_AUTHOR_V1)?.registeredChildAllowedTools)
     ).toBe(true);
     expect(observed.get(PromptKeys.RESEARCH_AUTHOR_V1)).not.toBe(parent);
+    for (const [promptKey, context] of observed) {
+      expect(context.callerAgentId).toBe(promptKey);
+      expect(context.prepareSubagentTask).toBeUndefined();
+    }
+    expect(parent.callerAgentId).toBe('parent-identity');
+    expect(parent.availableSubagentTypes).toEqual(['parent-only-role']);
+    expect(observed.get(PromptKeys.RESEARCH_AUTHOR_V1)?.availableSubagentTypes).toEqual([
+      'general',
+    ]);
+    expect(observed.get(PromptKeys.DEEP_WEB_SEARCH)?.availableSubagentTypes).toBeUndefined();
+    expect(parent.prepareSubagentTask).toBeDefined();
   });
 
   it('SQLite 中断恢复取原 child request 的名单，不因当前 resolver 扩权而授予写入', async () => {
     installRecoveryModelFixture();
+    const registeredDefinition = agentDefinitions.findRegisteredAgentDefinitionByPromptKey(
+      PromptKeys.DEFAULT
+    );
+    if (!registeredDefinition) throw new Error('Default fixture Agent is unavailable');
+    const registeredDefinitionSpy = vi.spyOn(
+      agentDefinitions,
+      'findRegisteredAgentDefinitionByPromptKey'
+    );
+    registeredDefinitionSpy.mockReturnValue({
+      ...registeredDefinition,
+      config: { ...registeredDefinition.config, availableSubagentTypes: ['admitted-role'] },
+    });
     const database = new DatabaseService(':memory:');
     database.initialize();
     try {
@@ -201,7 +234,16 @@ describe('registered child tool scope ownership', () => {
         runAdmissionCommit: new SqliteRunAdmissionCommit(db),
       });
       const invoker = new RegisteredChildRunInvoker({
-        agentResolver: { resolveByPromptKey: key => resolved(key, allowedTools) },
+        agentResolver: {
+          resolveByPromptKey: key => {
+            const definition = resolved(key, allowedTools);
+            if (calls.length > 0) {
+              definition.agentDefinition.id = 'changed-current-identity';
+              definition.agentDefinition.config = { availableSubagentTypes: ['general'] };
+            }
+            return definition;
+          },
+        },
         lifecycle,
         recovery: {
           supervisor,
@@ -238,11 +280,30 @@ describe('registered child tool scope ownership', () => {
       };
       await expect(invoker.invoke(request)).rejects.toMatchObject({ code: 'RUN_RECOVERY_BLOCKED' });
       allowedTools = ['read_file', 'write_file'];
+      registeredDefinitionSpy.mockReturnValue({
+        ...registeredDefinition,
+        id: 'changed-registered-identity',
+        config: { ...registeredDefinition.config, availableSubagentTypes: ['general'] },
+      });
+      // 真正 registry 能力漂移先由恢复兼容性门禁阻止；恢复原版本后仍只用 descriptor。
+      await expect(invoker.invoke(request)).rejects.toThrow('Original run capabilities changed');
+      expect(calls).toHaveLength(1);
+      registeredDefinitionSpy.mockReturnValue({
+        ...registeredDefinition,
+        config: { ...registeredDefinition.config, availableSubagentTypes: ['admitted-role'] },
+      });
       await expect(invoker.invoke(request)).resolves.toMatchObject({ success: true });
       expect(calls).toHaveLength(2);
       for (const call of calls) {
         const context: ToolContext = call.parentToolContext;
         expect(context.registeredChildAllowedTools).toEqual(['read_file']);
+        expect(context.callerAgentId).toBe(PromptKeys.DEFAULT);
+        expect(context.availableSubagentTypes).toEqual(['admitted-role']);
+        expect(context.prepareSubagentTask).toBeUndefined();
+        expect(call.initialInput?.request).toMatchObject({
+          callerAgentId: PromptKeys.DEFAULT,
+          availableSubagentTypes: ['admitted-role'],
+        });
         expect(call.initialInput?.request.availableTools).toEqual(['read_file']);
       }
     } finally {

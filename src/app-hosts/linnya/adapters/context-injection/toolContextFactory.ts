@@ -55,16 +55,18 @@ export interface ToolContextFactoryOptions {
 }
 
 export function createRuntimeEventToolContextHostPorts(
-  options: CreateRuntimeEventToolContextHostPortsOptions,
+  options: CreateRuntimeEventToolContextHostPortsOptions
 ): ToolContextHostPorts {
   return {
     registeredChildRunInvoker: options.registeredChildRunInvoker,
-    createSubRunTracePublisher: (publisherOptions) =>
+    createSubRunTracePublisher: publisherOptions =>
       new childRunTrace.RuntimeEventSubRunTracePublisher({
         runtimeEventSink: (event, source) => {
           const routed = options.runtimeEventSink(event, source);
           if (routed.type !== 'subrun_trace') {
-            throw new Error('[ToolContextFactory] subrun trace publisher returned a non-trace event');
+            throw new Error(
+              '[ToolContextFactory] subrun trace publisher returned a non-trace event'
+            );
           }
           options.subrunTraceHistoryProjector.project(routed);
           return routed;
@@ -99,6 +101,8 @@ export function createToolContext(options: ToolContextFactoryOptions): ToolConte
     knowledgeBaseService: options.hostServices.knowledgeBaseService,
     userQuery: options.request.query,
     modelId: options.request.model_id,
+    callerAgentId: options.request.callerAgentId,
+    availableSubagentTypes: options.request.availableSubagentTypes,
     imageGenerationModelId: options.request.imageGenerationModelId,
     databaseService: options.hostServices.databaseService,
     workspaceMutationPublisher: options.hostServices.workspaceMutationPublisher,

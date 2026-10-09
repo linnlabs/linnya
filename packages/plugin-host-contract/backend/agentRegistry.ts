@@ -49,6 +49,8 @@ export interface AgentSkillPolicy {
 
 export interface AgentConfiguration {
   readonly availableTools?: readonly string[];
+  /** 父 Agent 可委派的类型白名单；未声明时不额外限制，空数组禁用全部类型。 */
+  readonly availableSubagentTypes?: readonly string[];
   readonly enableTools?: boolean;
   readonly knowledgeBaseId?: string;
   readonly defaultModelId?: string;
@@ -80,6 +82,8 @@ export interface SubagentTypeContribution {
   readonly type: string;
   readonly promptKey: PromptKey;
   readonly description: string;
+  /** 未声明时对全部调用者开放；显式空数组禁用。身份来自 Host 冻结的 Agent，而非工具参数。 */
+  readonly allowedCallerAgentIds?: readonly string[];
   /**
    * 子 Agent 可继承的父会话末尾 turn 数。
    *
@@ -89,6 +93,9 @@ export interface SubagentTypeContribution {
   readonly inheritTurns?: number;
 }
 
-export declare function buildPrompt(template: PromptTemplate, variables?: TemplateVariables): string;
+export declare function buildPrompt(
+  template: PromptTemplate,
+  variables?: TemplateVariables
+): string;
 
 export declare function getCurrentTimeForPromptByDay(): string;

@@ -20,6 +20,11 @@ catalog），交给 Host 的运行描述保存。Generic task 消费 `frozenSyst
 结果随运行 descriptor 冻结，持久化后的历史刷新保留该结果；恢复不重新接纳、不重写原请求。
 系统提示构建器接收 Host 请求，可以消费已经接纳的产品字段，不能重新推断范围或执行工具。
 
+首次接纳同时从 definition 冻结 `callerAgentId` 和 `config.availableSubagentTypes`，覆盖请求中的
+同名值。后者约束父 Agent 的通用委派目录，并与角色贡献的 `allowedCallerAgentIds` 取交集；
+未声明不额外限制，空数组禁用全部类型。Host 将同一冻结范围用于工具 Schema 与实际执行，
+恢复不采用最新 registry 扩权；child 使用自己的范围，不继承父级身份或委派范围。
+
 定义可以通过 `hostEntry` 声明一个 Host 强制入口：固定 `toolName`，并由纯函数
 `resolveArgs(request, explicitArgs, history)` 生成或严格接纳业务参数。history 是经过会话隔离和替换处理的正式事件；定义按用途消费，不把工具轨迹直接当材料。Flow 在首次 run admission 前把
 它转换为正式 `host_tool_call`，固定 `yield_after_batch` 并随 descriptor 冻结；继续和审批响应

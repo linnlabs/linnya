@@ -109,6 +109,7 @@ src/app-hosts/linnya/adapters/child-runs/
 
 - registry 仍是产品定义真源
 - 但执行前要先被压成 runtime 可消费的最小配置
+- 当前 child 的 `callerAgentId` 与 `availableSubagentTypes` 使用自身冻结请求身份及类型白名单，不能继承父范围；未声明白名单的 child 清除父限制。派生 context 清除父 `prepareSubagentTask`；业务提交能力可继续传递，但须由实际 owner 校验 child 身份。恢复使用原 descriptor，不因最新 registry 身份或范围改变而扩权。
 
 ### 5.2 ChildRunInvoker 装配链
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { execution, ToolNode, type EngineState } from '@linnlabs/linnkit/runtime-kernel';
-import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
+import { RunIdSchema, ToolCallIdSchema, type RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { ToolContext } from 'src/tools/types';
 import * as builtin from '../../../plugin-registry/builtin';
 import {
@@ -22,6 +22,109 @@ afterEach(() => {
 });
 
 describe('registered child execution scope through ToolNode and ToolRegistry', () => {
+  it('subagent 目录与执行按 Host 调用者收窄，非法材料在 ToolNode start 前拒绝', async () => {
+    vi.spyOn(builtin, 'getRegisteredSubagentTypes').mockReturnValue([
+      { type: 'general', promptKey: 'subagent_general', description: 'Public worker' },
+      {
+        type: 'scoped',
+        promptKey: 'scoped_worker',
+        description: 'Scoped worker',
+        allowedCallerAgentIds: ['allowed-caller'],
+      },
+    ]);
+    const registry = new ToolRegistry({ strictInitialization: true });
+    const invocation = { query: 'Delegate', promptKey: 'default', callerAgentId: 'allowed-caller' };
+    const admitted = registry.getToolSchemas({ invocation, toolNames: ['subagent'] });
+    expect(admitted[0]?.function.parameters.properties.subagent_type.enum).toEqual([
+      'general',
+      'scoped',
+    ]);
+    const narrowedInvocation = { ...invocation, availableSubagentTypes: ['scoped'] };
+    const narrowed = registry.getToolSchemas({
+      invocation: narrowedInvocation,
+      toolNames: ['subagent'],
+    });
+    expect(narrowed[0]?.function.parameters.properties.subagent_type.enum).toEqual(['scoped']);
+    expect(narrowed[0]?.function.parameters.required).toContain('subagent_type');
+    for (const restricted of [
+      { ...narrowedInvocation, availableSubagentTypes: [] },
+      { ...narrowedInvocation, callerAgentId: 'other' },
+    ]) {
+      expect(registry.getToolSchemas({ invocation: restricted, toolNames: ['subagent'] })).toEqual(
+        []
+      );
+    }
+    const otherInvocation = { ...invocation, callerAgentId: 'other' };
+    expect(
+      registry.getToolSchemas({ invocation: otherInvocation, toolNames: ['subagent'] })[0]?.function
+        .parameters.properties.subagent_type.enum
+    ).toEqual(['general']);
+    const invoke = vi.fn();
+    const context: ToolContext = {
+      callerAgentId: 'other',
+      modelId: 'test-model',
+      registeredChildRunInvoker: { invoke },
+    };
+    expect(
+      await registry.executeTool(
+        'subagent',
+        { description: 'Delegate', prompt: 'Read', subagent_type: 'scoped' },
+        context
+      )
+    ).toMatchObject({ success: false });
+    expect(invoke).not.toHaveBeenCalled();
+
+    const events: RuntimeEvent[] = [];
+    const sequencer = new execution.EventSequencer('conversation-delegation-admission');
+    const publisher = new execution.RuntimeEventPublisher(
+      new execution.EventBus(sequencer.getExecutionId()),
+      sequencer,
+      {
+        run_id: RunIdSchema.parse('delegation-admission'),
+        lane: 'foreground',
+        visibility: 'conversation',
+      }
+    );
+    const state: EngineState = {
+      nodeId: 'tool',
+      local: {
+        request: { query: 'Delegate', promptKey: 'default', availableTools: ['subagent'] },
+        conversationId: 'conversation-delegation-admission',
+        turnId: 'turn-delegation',
+        toolContext: context,
+        runtimeEventSink: (event, source) => {
+          const routed = publisher.publish(event, source);
+          events.push(routed);
+          return routed;
+        },
+        pendingToolCalls: [
+          {
+            id: ToolCallIdSchema.parse('invalid-delegation'),
+            type: 'function',
+            function: {
+              name: 'subagent',
+              arguments: JSON.stringify({
+                description: 'Read',
+                prompt: 'Explain',
+                input_documents: ['workspace:/source.md', 'workspace:/source.md'],
+              }),
+            },
+          },
+        ],
+      },
+    };
+    await new ToolNode({
+      toolRuntime: registry,
+      observationPreview: defaultObservationPreviewPort,
+    }).run(state);
+    expect(events.filter(event => event.type === 'tool_process')).toHaveLength(0);
+    expect(events.find(event => event.type === 'tool_output')).toMatchObject({
+      status: 'error',
+      error: expect.stringContaining('input_documents.1'),
+    });
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
   it('伪造的正式写工具调用在 decorator 和 Workspace owner 前拒绝', async () => {
     const decorate = vi.fn();
     vi.spyOn(builtin, 'getRegisteredToolContextDecorators').mockReturnValue([

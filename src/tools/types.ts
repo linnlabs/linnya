@@ -50,6 +50,12 @@ export type {
  * 包含工具执行时需要的所有依赖和配置
  */
 export interface ToolContext extends ToolExecutionContext {
+  /** 当前运行实际 Agent 的冻结身份；只由 Host 注入，不从模型参数或 metadata 恢复。 */
+  callerAgentId?: string;
+  /** 与类型注册方限制取交集的父 Agent 冻结白名单。 */
+  availableSubagentTypes?: readonly string[];
+  /** Host 可绑定委派材料/产物；child 执行仍唯一经过通用 runner。此能力不继承给 child。 */
+  prepareSubagentTask?: import('./agent_control/subrun/subagent/definitions/subagentTask').PrepareSubagentTask<ToolContext>;
   /** Host 为当前 registered child 冻结的执行名单；空数组禁止全部，undefined 不增加限制。 */
   registeredChildAllowedTools?: readonly string[];
   /** 仅 Host forced research tool 使用；模型无权构造或替换。 */
@@ -145,4 +151,6 @@ export type ToolIdempotencyPolicy = { scope: ToolIdempotencyScope };
  * 该合同不进入 Linnkit，也不包含 query/history；新增字段必须有具体工具消费者，
  * 避免把完整 Agent 请求或任意 metadata 暴露给工具注册表中的所有工具。
  */
-export type LinnyaToolSchemaContext = Readonly<Pick<ToolContext, 'imageGenerationModelId'>>;
+export type LinnyaToolSchemaContext = Readonly<
+  Pick<ToolContext, 'imageGenerationModelId' | 'callerAgentId' | 'availableSubagentTypes'>
+>;

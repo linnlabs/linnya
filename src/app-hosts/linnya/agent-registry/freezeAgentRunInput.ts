@@ -16,5 +16,13 @@ export function freezeAgentRunInput(request: AgentInvokeRequest): AgentInvokeReq
   if (systemMessages.length !== 1 || typeof systemMessages[0]?.content !== 'string') {
     throw new Error(`Agent task must expose one textual system prompt: ${definition.id}`);
   }
-  return { ...request, frozenSystemPrompt: systemMessages[0].content };
+  return {
+    ...request,
+    callerAgentId: definition.id,
+    availableSubagentTypes:
+      definition.config?.availableSubagentTypes === undefined
+        ? undefined
+        : [...definition.config.availableSubagentTypes],
+    frozenSystemPrompt: systemMessages[0].content,
+  };
 }

@@ -15,6 +15,8 @@ import { backendPluginRegistry } from 'src/app-hosts/linnya/plugin-registry/regi
 import type { PluginBackendContribution } from 'src/app-hosts/linnya/plugin-registry/types';
 import type { ToolContext } from 'src/tools/types';
 import { SubagentTool } from '../subagentTool';
+import { derivePluginAwareToolContext } from 'src/app-hosts/linnya/plugin-registry/toolContextDerivation';
+import { deriveLinnyaToolSchemaContext } from 'src/app-hosts/linnya/adapters/tools/functions/deriveLinnyaToolSchemaContext';
 
 const { invokeMock } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
@@ -104,7 +106,7 @@ describe('SubagentTool contract', () => {
     expect(subagentType?.enum).not.toContain('slides_editor');
     expect(subagentType?.enum).not.toContain('researcher');
     expect(subagentType?.enum).not.toContain('sheet_editor');
-    expect(tool.description).toContain('prompt is the sole task-semantic handoff');
+    expect(tool.description).toContain("prompt is the parent's task instruction");
     expect(tool.getParametersForContext().properties.prompt?.description).toContain(
       '项目、当前文档与文件清单由系统自动注入'
     );
@@ -257,5 +259,202 @@ describe('SubagentTool contract', () => {
       )
     ).rejects.toThrow('subagent: unknown subagent_type "deep_research_scout"; available types:');
     expect(invokeMock).not.toHaveBeenCalled();
+  });
+
+  it('模型目录与执行共用调用者准入，未声明保持公开，空名单拒绝且参数不能伪造身份', async () => {
+    const pluginId = `subagent-scope-${crypto.randomUUID()}`;
+    backendPluginRegistry.register({
+      meta: {
+        id: pluginId,
+        name: 'Scope fixture',
+        version: '1.0.0',
+        description: 'Caller scope',
+        developer: 'Test',
+        builtin: false,
+      },
+      subagentTypes: [
+        {
+          type: 'scoped_reviewer',
+          promptKey: 'scoped_reviewer',
+          description: 'Scoped reviewer',
+          allowedCallerAgentIds: ['admitted_parent'],
+        },
+        {
+          type: 'disabled_reviewer',
+          promptKey: 'disabled_reviewer',
+          description: 'Disabled reviewer',
+          allowedCallerAgentIds: [],
+        },
+      ],
+    });
+    setPluginRuntimeStateForTests({
+      installedPluginIds: ['platform', pluginId],
+      enabledPluginIds: ['platform', pluginId],
+    });
+    const tool = new SubagentTool();
+    const scope = (callerAgentId?: string) => {
+      const invocation = { query: 'Delegate', promptKey: 'default', callerAgentId };
+      return deriveLinnyaToolSchemaContext(invocation);
+    };
+    const types = (callerAgentId?: string) =>
+      tool.getParametersForContext(scope(callerAgentId)).properties.subagent_type.enum;
+    expect(types()).not.toContain('scoped_reviewer');
+    expect(types('other_parent')).not.toContain('scoped_reviewer');
+    expect(types('admitted_parent')).toContain('scoped_reviewer');
+    expect(types('admitted_parent')).not.toContain('disabled_reviewer');
+    expect(tool.getDescriptionForContext(scope('admitted_parent'))).toContain('Scoped reviewer');
+    expect(tool.getDescriptionForContext(scope('other_parent'))).not.toContain('Scoped reviewer');
+    const args = {
+      description: 'Review',
+      prompt: 'Check evidence',
+      subagent_type: 'scoped_reviewer',
+    };
+    await expect(tool.run(args, makeContext())).rejects.toThrow('unknown subagent_type');
+    await expect(
+      tool.run({ ...args, callerAgentId: 'admitted_parent' }, makeContext())
+    ).rejects.toThrow('Unrecognized key');
+    const admitted = derivePluginAwareToolContext(makeContext(), {
+      callerAgentId: 'admitted_parent',
+      availableSubagentTypes: ['scoped_reviewer', 'disabled_reviewer'],
+    });
+    const admittedSchema = tool.getParametersForContext(admitted);
+    expect(admittedSchema.properties.subagent_type.enum).toEqual(['scoped_reviewer']);
+    expect(admittedSchema.required).toContain('subagent_type');
+    expect(tool.getDescriptionForContext(admitted)).not.toContain('**general**');
+    expect(tool.isAvailableForContext({ availableSubagentTypes: [] })).toBe(false);
+    await expect(tool.run({ ...args, subagent_type: 'general' }, admitted)).rejects.toThrow(
+      'unknown subagent_type'
+    );
+    await expect(
+      tool.run({ description: 'Missing type', prompt: 'Delegate' }, admitted)
+    ).rejects.toThrow('subagent_type is required for this caller');
+    await expect(
+      tool.run(args, derivePluginAwareToolContext(admitted, { availableSubagentTypes: [] }))
+    ).rejects.toThrow('unknown subagent_type');
+    await expect(
+      tool.run(args, derivePluginAwareToolContext(admitted, { callerAgentId: 'other_parent' }))
+    ).rejects.toThrow('unknown subagent_type');
+    await expect(
+      tool.run({ ...args, subagent_type: 'disabled_reviewer' }, admitted)
+    ).rejects.toThrow('unknown subagent_type');
+    expect(invokeMock).not.toHaveBeenCalled();
+    invokeMock.mockResolvedValue({
+      subrunId: 'scoped-child',
+      success: true,
+      finalAnswer: 'Reviewed',
+      events: [],
+      stepCount: 1,
+    });
+    await expect(tool.run(args, admitted)).resolves.toContain('Reviewed');
+  });
+
+  it('显式材料通过正式参数校验并交接给普通 child，旧参数仍保持原请求', async () => {
+    const tool = new SubagentTool();
+    const args = { description: 'Read', prompt: 'Explain' };
+    for (const input_documents of [
+      [],
+      ['file:///source.md'],
+      ['workspace:/source.md', 'workspace:/source.md'],
+    ]) {
+      await expect(tool.run({ ...args, input_documents }, makeContext())).rejects.toThrow();
+    }
+    expect(invokeMock).not.toHaveBeenCalled();
+    invokeMock.mockResolvedValue({
+      subrunId: 'material-child',
+      success: true,
+      finalAnswer: 'Read',
+      events: [],
+      stepCount: 1,
+    });
+    await tool.run({ ...args, input_documents: ['workspace:/source.md'] }, makeContext());
+    expect(invokeMock.mock.calls[0]?.[0].userMessage).toBe(
+      'Read\n\nExplain\n\nInput documents:\nworkspace:/source.md'
+    );
+  });
+
+  it('Host 只准备与接纳，真实 child 仍经统一 runner，正式产物合并去重', async () => {
+    const context = makeContext();
+    const acceptResult = vi.fn(async () => [
+      'workspace:owner-document',
+      'workspace:generic-document',
+    ]);
+    context.prepareSubagentTask = vi.fn(async request => {
+      expect(request).toMatchObject({
+        args: { input_documents: ['workspace:/source.md'] },
+        resolvedType: { type: 'general', promptKey: 'subagent_general', inheritTurns: 0 },
+        modelId: 'model-subagent-test',
+      });
+      return {
+        context: derivePluginAwareToolContext(context, { userQuery: 'Host-bound task' }),
+        userMessage: 'Frozen Host request',
+        subrunId: 'bound-child',
+        acceptResult,
+      };
+    });
+    invokeMock.mockResolvedValue({
+      subrunId: 'bound-child',
+      success: true,
+      finalAnswer: 'Saved',
+      stepCount: 1,
+      events: [
+        successfulToolOutput('generic', 'write_file', { inode: 'workspace:generic-document' }),
+      ],
+    });
+    const output = await new SubagentTool().run(
+      {
+        description: 'Task',
+        prompt: 'Parent instruction',
+        input_documents: ['workspace:/source.md'],
+      },
+      context
+    );
+    expect(SubagentResultSchema.parse(JSON.parse(output)).data.artifacts).toEqual([
+      'workspace:generic-document',
+      'workspace:owner-document',
+    ]);
+    expect(invokeMock).toHaveBeenCalledOnce();
+    expect(invokeMock.mock.calls[0]?.[0]).toMatchObject({
+      userMessage: 'Frozen Host request',
+      tracePolicy: { subrunId: 'bound-child' },
+    });
+    expect(acceptResult).toHaveBeenCalledOnce();
+  });
+
+  it('Host 准备和产物接纳失败均不伪报成功，失败或取消 child 不接纳产物', async () => {
+    const context = makeContext();
+    const tool = new SubagentTool();
+    const args = { description: 'Task', prompt: 'Parent instruction' };
+    context.prepareSubagentTask = async () => {
+      throw new Error('Input changed');
+    };
+    await expect(tool.run(args, context)).rejects.toThrow('Input changed');
+    expect(invokeMock).not.toHaveBeenCalled();
+    const acceptResult = vi.fn(async (): Promise<readonly string[]> => {
+      throw new Error('Output rejected');
+    });
+    context.prepareSubagentTask = async () => ({ context, userMessage: 'Bound', acceptResult });
+    invokeMock.mockResolvedValue({
+      subrunId: 'bound',
+      success: true,
+      finalAnswer: 'Claimed done',
+      events: [],
+      stepCount: 1,
+    });
+    await expect(tool.run(args, context)).rejects.toThrow('Output rejected');
+    expect(acceptResult).toHaveBeenCalledOnce();
+    for (const cancelled of [false, true]) {
+      invokeMock.mockResolvedValue({
+        subrunId: 'bound',
+        success: false,
+        cancelled,
+        error: 'Stopped',
+        finalAnswer: '',
+        events: [],
+        stepCount: 1,
+      });
+      const output = SubagentResultSchema.parse(JSON.parse(await tool.run(args, context)));
+      expect(output.data.status).toBe(cancelled ? 'cancelled' : 'failed');
+    }
+    expect(acceptResult).toHaveBeenCalledOnce();
   });
 });

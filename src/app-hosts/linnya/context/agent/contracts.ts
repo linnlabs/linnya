@@ -39,6 +39,10 @@ export interface AgentAutocompleteBehaviorSummary {
 }
 
 export interface AgentInvokeRequest extends AgentProfileRequest {
+  /** Host 首次接纳时从实际 AgentDefinition 冻结，供工具目录和执行授权使用。 */
+  callerAgentId?: string;
+  /** 从 AgentConfiguration 冻结的父侧类型白名单，恢复时沿用原请求。 */
+  availableSubagentTypes?: readonly string[];
   /** Host 首次接纳时物化的系统提示；续跑不得重新渲染动态时间或 Skill catalog。 */
   frozenSystemPrompt?: string;
   /** 首次接纳的研究范围；与原 query 分开保存，恢复沿用原 descriptor。 */

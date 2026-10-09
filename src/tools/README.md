@@ -63,7 +63,7 @@ host projection；不能直接把内部 runtime 对象塞进工具结果。
 
 ## Subagent 协作工具
 
-`subagent` 是 Agent 为节省上下文或并行拆解独立工作而使用的通用协作能力，不是子 Agent 的专属功能入口。facade、动态类型解析、正式 artifact 提取与可见 child runner 均收口在 [Subagent 工具规范](./agent_control/subrun/subagent/README.md)。旧 `delegate` 没有 executable alias；历史事件只由 Renderer 回放配置解释。
+`subagent` 是 Agent 为节省上下文、委派独立工作而使用的通用协作能力，不是子 Agent 的专属功能入口。普通 ToolNode 顺序执行多次委派；不因模型一次发出多个调用而并行。facade、动态类型解析、正式 artifact 提取与可见 child runner 均收口在 [Subagent 工具规范](./agent_control/subrun/subagent/README.md)。旧 `delegate` 没有 executable alias；历史事件只由 Renderer 回放配置解释。
 
 TaskState、Checkpoint、Ask 与 Subrun 的目录和依赖边界见 [Agent Control 工具族](./agent_control/README.md)。该目录只做能力归属，不把四种不同生命周期合并成统一状态机。
 
