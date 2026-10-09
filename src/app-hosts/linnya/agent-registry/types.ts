@@ -213,6 +213,19 @@ export interface AgentTaskConfiguration {
   streamChunkProcessor?: (chunk: string) => string;
 }
 
+/** 仅供持久恢复解析历史配置；不携带可重写的 descriptor 或执行能力。 */
+export interface AgentRecoveryIdentity {
+  readonly promptKey: string;
+  readonly isChild: boolean;
+  readonly hostToolCall?: Pick<HostToolCallRequestData, 'tool_name' | 'completion_mode'>;
+}
+
+export interface AgentRequestAdmissionContext {
+  /** 已按历史隔离和编辑重发裁剪的正式历史。 */
+  history: readonly RuntimeEvent[];
+  hostToolCall?: HostToolCallRequestData;
+}
+
 /**
  * 一个“可调用 agent”的统一定义
  *
@@ -220,12 +233,6 @@ export interface AgentTaskConfiguration {
  * - 高内聚：该 agent 的 promptKey、默认模式、工具策略、扩展点都在同一处声明
  * - 低耦合：Flow/HistoryBuilder/Enrichment 只依赖 Registry 接口，不依赖业务实现
  */
-export interface AgentRequestAdmissionContext {
-  /** 已按历史隔离和编辑重发裁剪的正式历史。 */
-  history: readonly RuntimeEvent[];
-  hostToolCall?: HostToolCallRequestData;
-}
-
 export interface AgentDefinition {
   /** 首次接纳时校验、物化业务请求；纯函数不执行工具，恢复不重跑。 */
   requestAdmission?: (

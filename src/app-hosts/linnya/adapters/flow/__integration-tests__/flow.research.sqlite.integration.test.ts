@@ -18,6 +18,7 @@ import {
   turns,
   seed,
   request,
+  runLegacyResearch,
   facts,
   identity,
   children,
@@ -25,24 +26,23 @@ import {
   assertDelivered,
 } from '../__test-helpers__/researchFlowFixture';
 
-describe('Production research entry through real Flow, ToolRegistry and registered children', () => {
-  it('普通项目研究无需显式 Host 参数，六阶段均收到用户约束和编辑器片段', async () => {
+describe('Admitted legacy research recovery through real Flow, ToolRegistry and registered children', () => {
+  it('旧 descriptor 已冻结的用户约束和片段在恢复后仍交给全部阶段', async () => {
     const fixture = await open(turns(6));
     const projectId = await seed(fixture);
-    const base = request(projectId, false);
-    await fixture.flow.next(
-      {
-        ...base,
-        options: { ...base.options, document_fragment: 'A selected excerpt, not the full source.' },
-      },
-      () => {}
-    );
+    const excerpt = 'A selected excerpt, not the full source.';
+    await runLegacyResearch(fixture, projectId, {
+      ...input,
+      task_type: 'open',
+      materials: [],
+      question: `${input.question}\n\n${excerpt}`,
+    });
     await assertDelivered(fixture, await identity(fixture, projectId));
     expect(fixture.ai.getCalls()).toHaveLength(6);
     for (const call of fixture.ai.getCalls()) {
       const messages = JSON.stringify(call.messages);
       expect(messages).toContain(input.question);
-      expect(messages).toContain('A selected excerpt, not the full source.');
+      expect(messages).toContain(excerpt);
     }
   });
 
@@ -166,7 +166,7 @@ describe('Production research entry through real Flow, ToolRegistry and register
         }
         return result;
       });
-    await fixture.flow.next(request(projectId), () => {});
+    await runLegacyResearch(fixture, projectId);
     const owner = await identity(fixture, projectId);
     await assertDelivered(fixture, owner);
     expect(search).not.toHaveBeenCalled();
@@ -311,7 +311,7 @@ describe('Production research entry through real Flow, ToolRegistry and register
       },
     ]);
     const projectId = await seed(fixture);
-    await fixture.flow.next(request(projectId), () => {});
+    await runLegacyResearch(fixture, projectId);
     const owner = await identity(fixture, projectId);
     const runs = await children(fixture, owner);
     expect(runs).toHaveLength(1);
@@ -389,7 +389,7 @@ describe('Production research entry through real Flow, ToolRegistry and register
       );
       return result;
     });
-    await fixture.flow.next(request(projectId), () => {});
+    await runLegacyResearch(fixture, projectId);
     const owner = await identity(fixture, projectId);
     expect(await children(fixture, owner)).toHaveLength(1);
     const output = (await facts(fixture)).find(
@@ -444,7 +444,7 @@ describe('Production research entry through real Flow, ToolRegistry and register
           }
           return result;
         });
-      await first.flow.next(request(projectId), () => {});
+      await runLegacyResearch(first, projectId);
       const owner = await identity(first, projectId);
       const originalChildren = await children(first, owner);
       expect(originalChildren).toHaveLength(completed);
@@ -498,8 +498,8 @@ describe('Production research entry through real Flow, ToolRegistry and register
       }
       return original.call(this, call);
     });
-    const pending = fixture.flow.next(request(projectId), () => {});
-    await atSuccessor;
+    const pending = runLegacyResearch(fixture, projectId);
+    await Promise.race([atSuccessor, pending]);
     const owner = await identity(fixture, projectId);
     expect(
       new SqliteResearchStageReceiptStore(fixture.db).list(owner).filter(item => item.artifact)

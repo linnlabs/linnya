@@ -6,8 +6,13 @@ import {
   ResearchRunStructuredResultSchema,
   ResearchRunArgsSchema,
   type ConversationNextRequest,
+  type ResearchRunArgs,
 } from '@app/schemas';
 import { RunIdSchema } from '@linnlabs/linnkit/contracts';
+import { graph } from '@linnlabs/linnkit/runtime-kernel';
+import * as agentDefinitions from '../../../agent-registry/agentDefinitionResolver';
+import { clearRegisteredAgentTaskCache } from '../../../agent-registry/agentTaskResolver';
+import { toolRegistry } from '../../tools/toolRegistry';
 import type { ScriptedLlmTurn } from '@linnlabs/linnkit/testkit';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
@@ -27,7 +32,7 @@ import {
 } from '../../persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import type { ResearchExecutionIdentity } from '../../../application/research';
 
-export const conversationId = 'research-production-conversation';
+export const conversationId = 'legacy-research-recovery-conversation';
 export const modelId = 'scripted-test-model';
 export const input = ResearchRunArgsSchema.parse({
   question: 'Explain the change and distinguish observation from an unverified cause.',
@@ -46,7 +51,7 @@ export const stages = [
 let directory: string;
 const closers: Array<() => void> = [];
 beforeEach(() => {
-  directory = mkdtempSync(join(tmpdir(), 'linnya-research-production-'));
+  directory = mkdtempSync(join(tmpdir(), 'linnya-legacy-research-recovery-'));
   setPluginRuntimeStateForTests({
     installedPluginIds: ['platform'],
     enabledPluginIds: ['platform'],
@@ -59,6 +64,7 @@ afterEach(async () => {
   resetAgentRuntimeSingletonsForTest();
   clearPluginRuntimeStateForTests();
   vi.restoreAllMocks();
+  clearRegisteredAgentTaskCache();
   rmSync(directory, { recursive: true, force: true });
 });
 
@@ -134,18 +140,74 @@ export function request(projectId: string, explicit = true): ConversationNextReq
       model_id: modelId,
       reasoning_effort: 'high',
       project_metadata: { id: projectId, name: 'Research acceptance' },
-      ...(explicit
-        ? {
-            host_tool_call: {
-              tool_name: 'research_run',
-              args: input,
-              completion_mode: 'yield_after_batch' as const,
-            },
-          }
-        : {}),
+      ...(explicit ? { research_scope: input } : {}),
     },
   };
 }
+/**
+ * 仅生成旧版本已接纳的恢复事实，在父工具执行前停下；业务测试从正式 continue 开始。
+ * 不能把旧 host_tool_call 当作当前研究入口，也不能让构造夹具时执行任何研究阶段。
+ */
+export async function runLegacyResearch(
+  fixture: Fixture,
+  projectId: string,
+  scope: ResearchRunArgs = input
+) {
+  const findDefinition = agentDefinitions.findRegisteredAgentDefinitionByPromptKey;
+  const legacyDefinition = vi
+    .spyOn(agentDefinitions, 'findRegisteredAgentDefinitionByPromptKey')
+    .mockImplementation(key => {
+      const definition = findDefinition(key);
+      return key === 'research_v1' && definition
+        ? {
+            ...definition,
+            requestAdmission: undefined,
+            config: {
+              availableTools: [],
+              enableTools: false,
+              modelPolicy: { kind: 'user_primary' },
+            },
+            hostEntry: { toolName: 'research_run', resolveArgs: () => scope },
+            task: {
+              systemPromptBuilder: () =>
+                'Legacy admitted Host research entry; resume its frozen tool request.',
+            },
+          }
+        : definition;
+    });
+  const tool = toolRegistry.getTool('research_run');
+  if (!tool) throw new Error('Missing legacy research tool');
+  const beforeExecution = vi
+    .spyOn(tool, 'run')
+    .mockRejectedValueOnce(
+      new graph.RunRecoveryBlockedError('Legacy fixture accepted before first research stage')
+    );
+  clearRegisteredAgentTaskCache();
+  try {
+    await fixture.flow.next(request(projectId, false), () => {});
+  } finally {
+    beforeExecution.mockRestore();
+    legacyDefinition.mockRestore();
+    clearRegisteredAgentTaskCache();
+  }
+  const root = (await fixture.flow.getActiveForegroundRun(conversationId)).run;
+  if (!root || root.status !== 'paused' || !root.pause?.settled)
+    throw new Error('Legacy descriptor was not admitted at a recoverable boundary');
+  const descriptor = await fixture.runtime.runDescriptors?.load(root.run_id);
+  expect(descriptor?.request.promptKey).toBe('research_v1');
+  expect(descriptor?.request.researchScope).toBeUndefined();
+  expect(descriptor?.options?.host_tool_call).toEqual({
+    tool_name: 'research_run',
+    args: scope,
+    completion_mode: 'yield_after_batch',
+  });
+  expect(
+    (await fixture.runtime.supervisor.list({ parentRunId: RunIdSchema.parse(root.run_id) })).runs
+  ).toEqual([]);
+  expect(fixture.ai.getConsumedTurnCount()).toBe(0);
+  await continueRoot(fixture);
+}
+
 export async function facts(fixture: Fixture) {
   return (await fixture.eventStore.readEvents(conversationId, { limit: 1000 })).events;
 }

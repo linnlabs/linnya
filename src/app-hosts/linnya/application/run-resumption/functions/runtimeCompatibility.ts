@@ -10,7 +10,10 @@ import {
   loadSkillContent,
   readSkillResource,
 } from 'src/features/skills/catalog';
-import { findRegisteredAgentDefinitionByPromptKey } from '../../../agent-registry/agentDefinitionResolver';
+import {
+  findRegisteredAgentDefinitionByPromptKey,
+  resolveRegisteredAgentRecoveryConfiguration,
+} from '../../../agent-registry/agentDefinitionResolver';
 import { getRegisteredBackendPluginVersions } from '../../../plugin-registry/builtin';
 import type { RunDescriptor } from '../definitions/runDescriptor';
 
@@ -82,10 +85,11 @@ function readSkillRevision(name: string): string {
 export function captureRuntimeCompatibility(
   promptKey: string,
   modelId: string,
-  original?: RuntimeCompatibility
+  descriptor?: RunDescriptor
 ): RuntimeCompatibility {
   const definition = findRegisteredAgentDefinitionByPromptKey(promptKey);
   if (!definition) throw new Error(`Run agent unavailable: ${promptKey}`);
+  const original = descriptor?.compatibility;
   const plugins = getRegisteredBackendPluginVersions();
   const modelIds = original
     ? Object.keys(original.models)
@@ -100,7 +104,15 @@ export function captureRuntimeCompatibility(
   return {
     hostVersion,
     frameworkVersion: dependencies['@linnlabs/linnkit'],
-    agentConfiguration: serializeConfiguration(definition.config ?? {}),
+    agentConfiguration: serializeConfiguration(
+      descriptor
+        ? resolveRegisteredAgentRecoveryConfiguration(definition, {
+            promptKey: descriptor.request.promptKey,
+            isChild: descriptor.child !== undefined,
+            hostToolCall: descriptor.options?.host_tool_call,
+          })
+        : (definition.config ?? {})
+    ),
     models: Object.fromEntries(modelIds.map(id => [id, readModelBinding(id)])),
     plugins: (original
       ? original.plugins.map(required => {
@@ -119,11 +131,7 @@ export function captureRuntimeCompatibility(
 export function requireRuntimeCompatibility(descriptor: RunDescriptor): void {
   const modelId = descriptor.request.modelId ?? descriptor.request.model_id;
   if (!modelId) throw new Error('Run descriptor has no original model');
-  const current = captureRuntimeCompatibility(
-    descriptor.request.promptKey,
-    modelId,
-    descriptor.compatibility
-  );
+  const current = captureRuntimeCompatibility(descriptor.request.promptKey, modelId, descriptor);
   if (!isDeepStrictEqual(current, descriptor.compatibility)) {
     throw new Error(
       'Original run capabilities changed; restore the original versions before continuing'

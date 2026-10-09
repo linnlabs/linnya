@@ -32,6 +32,11 @@ catalog），交给 Host 的运行描述保存。Generic task 消费 `frozenSyst
 入口工具不因此进入模型可见清单，纯 Host 入口 Agent 应使用 `availableTools: []`；child 的职责
 和工具仍各自通过 registry 定义。声明不拥有 Graph、持久阶段或工具执行，不提供通用工作流引擎。
 
+持久恢复通过 `resolveRegisteredAgentRecoveryConfiguration` 读取明确维护的历史配置。
+研究 owner 的 `research_v1/legacyCompatibility.ts` 只识别旧 `research_run / yield_after_batch`
+根描述，提供当时的禁用根工具配置；其它身份仍核对当前 definition。它不执行恢复、不读取或
+改写 descriptor，也不跳过完整配置、模型、插件、Skill 和版本比较。
+
 定义可用 `newRunUnavailableReason` 停止接收新的根运行。Flow 在 start 准备时调用 registry
 的接纳规则并返回 `AGENT_NEW_RUN_UNAVAILABLE`，在运行注册和用户消息提交之前拒绝请求。
 此字段是入口可用性声明，不属于冻结执行配置；暂停继续、审批响应和历史解析仍保留原

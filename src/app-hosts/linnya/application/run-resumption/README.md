@@ -14,6 +14,12 @@ Graph 位置或预算进度。凭据仅可保存正式 owner 引用，恢复时�
 的 custom task 使用相同快照；恢复不重新运行 enricher，不重新读取命令权限设置。Agent / 模型 /
 插件 / Skill 的必要能力发生不兼容变化时，保持原运行受阻，禁止悄悄换成最新默认值。
 
+`research_v1` 从 Host 入口改为主 Agent 后，已持久化的旧根描述仍核对明确的旧 Host 配置：
+仅限非 child、原 promptKey 为 `research_v1` 且原 `host_tool_call` 是
+`research_run / yield_after_batch` 的身份。旧配置必须严格等于当时禁用根工具、使用用户主模型
+的声明；未知配置不被追认，descriptor 不重写。模型、插件、Skill、Host 和框架版本检查继续
+完整执行；新研究运行及其它 Agent 始终核对当前定义。
+
 当前兼容校验包含接纳时已注册的插件、候选对话模型，以及启用 Skill 时的可调用目录；
 这些候选能力尚未被调用也可能阻止旧 run 继续。这是当前保守边界，不是逐调用依赖追踪，
 也不对同版本下的源码修改做环境指纹验证。

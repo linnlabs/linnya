@@ -26,7 +26,7 @@ import {
   close,
   turns,
   seed,
-  request,
+  runLegacyResearch,
   facts,
   identity,
   children,
@@ -46,7 +46,7 @@ const badSubmission: ScriptedLlmTurn = {
   ],
 };
 
-describe('Research submission in the producing child Graph and SQLite transaction', () => {
+describe('Recovered legacy research submission in the producing child Graph and SQLite transaction', () => {
   it('纯文档的块定位误写为 Citation 时反馈实际缺失 ref，同一 child 改用真实材料链接后提交', async () => {
     const wrongCall = {
       id: 'block-ref-submit',
@@ -110,7 +110,7 @@ describe('Research submission in the producing child Graph and SQLite transactio
       });
       return output;
     });
-    await fixture.flow.next(request(projectId), () => {});
+    await runLegacyResearch(fixture, projectId);
     const owner = await identity(fixture, projectId);
     await assertDelivered(fixture, owner);
     const events = await facts(fixture);
@@ -164,7 +164,7 @@ describe('Research submission in the producing child Graph and SQLite transactio
     ]);
     const projectId = await seed(fixture);
     const build = vi.spyOn(markdown, 'buildMarkdownDocumentFromText');
-    await fixture.flow.next(request(projectId), () => {});
+    await runLegacyResearch(fixture, projectId);
     const owner = await identity(fixture, projectId);
     expect(build.mock.calls[0]?.[0].markdown).toBe(content);
     expect(build).toHaveBeenCalledTimes(6);
@@ -278,7 +278,7 @@ describe('Research submission in the producing child Graph and SQLite transactio
       });
       return output;
     });
-    await fixture.flow.next(request(projectId), () => {});
+    await runLegacyResearch(fixture, projectId);
     const owner = await identity(fixture, projectId);
     const investigation = new SqliteResearchStageReceiptStore(fixture.db)
       .list(owner)
@@ -308,7 +308,7 @@ describe('Research submission in the producing child Graph and SQLite transactio
     };
     const fixture = await open([badSubmission, ...successful]);
     const projectId = await seed(fixture);
-    await fixture.flow.next(request(projectId), () => {});
+    await runLegacyResearch(fixture, projectId);
     const owner = await identity(fixture, projectId);
     await assertDelivered(fixture, owner);
     const events = await facts(fixture);
@@ -343,7 +343,7 @@ describe('Research submission in the producing child Graph and SQLite transactio
         'Simulated loss after atomic submission before ToolNode output'
       );
     });
-    await fixture.flow.next(request(projectId), () => {});
+    await runLegacyResearch(fixture, projectId);
     const owner = await identity(fixture, projectId);
     const started = await children(fixture, owner);
     expect(started).toHaveLength(1);
@@ -410,8 +410,8 @@ describe('Research submission in the producing child Graph and SQLite transactio
       await continueCompile;
       return original(args);
     });
-    const pending = fixture.flow.next(request(projectId), () => {});
-    await compiling;
+    const pending = runLegacyResearch(fixture, projectId);
+    await Promise.race([compiling, pending]);
     const owner = await identity(fixture, projectId);
     const started = await children(fixture, owner);
     expect(started).toHaveLength(1);
@@ -464,7 +464,7 @@ describe('Research submission in the producing child Graph and SQLite transactio
       if (typeof blockId !== 'string') throw new Error('Missing source block');
       store.setPendingRevision(id, blockId, 'User changed the input during correction.', 'user');
     };
-    await fixture.flow.next(request(projectId), () => {});
+    await runLegacyResearch(fixture, projectId);
     const owner = await identity(fixture, projectId);
     const output = (await facts(fixture)).find(
       event => event.type === 'tool_output' && event.tool_name === 'research_run'
@@ -516,7 +516,7 @@ describe('Research submission in the producing child Graph and SQLite transactio
       ).rejects.toThrow('already submitted');
       return result;
     });
-    await fixture.flow.next(request(projectId), () => {});
+    await runLegacyResearch(fixture, projectId);
     await assertDelivered(fixture, await identity(fixture, projectId));
     expect(checked).toBe(true);
   });

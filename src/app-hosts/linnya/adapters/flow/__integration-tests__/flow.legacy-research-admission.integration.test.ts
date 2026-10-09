@@ -10,8 +10,10 @@ import {
 } from '@app/schemas';
 import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import { BaseTool } from 'src/tools/types';
+import { modelCatalog } from 'src/domains/model-catalog';
 import { admitResearchRequest } from '../../../agent-registry/agents/research_v1/admission';
 import { clearRegisteredAgentTaskCache } from '../../../agent-registry/agentTaskResolver';
+import { requireRuntimeCompatibility } from '../../../application/run-resumption/functions/runtimeCompatibility';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import * as agentDefinitions from '../../../agent-registry/agentDefinitionResolver';
 import {
@@ -200,7 +202,11 @@ describe('legacy research new-run admission', () => {
           ? {
               ...definition,
               requestAdmission: undefined,
-              config: { ...definition.config, availableTools: [], enableTools: false },
+              config: {
+                availableTools: [],
+                enableTools: false,
+                modelPolicy: { kind: 'user_primary' },
+              },
               hostEntry: { toolName: 'research_run', resolveArgs: () => scope },
               task: { systemPromptBuilder: () => 'Original frozen research Host entry' },
             }
@@ -253,6 +259,65 @@ describe('legacy research new-run admission', () => {
       code: 'RESEARCH_HOST_ENTRY_NOT_SUPPORTED',
     });
     expect(await restarted.runtime.runDescriptors?.load(original.run_id)).toEqual(descriptor);
+    if (!descriptor) throw new Error('Missing legacy descriptor');
+    // 这份兼容配置只允许已声明的旧 Host 身份，不宽放任意旧配置或其它环境变化。
+    expect(() => requireRuntimeCompatibility(descriptor)).not.toThrow();
+    expect(() =>
+      requireRuntimeCompatibility({
+        ...descriptor,
+        compatibility: {
+          ...descriptor.compatibility,
+          agentConfiguration: { ...descriptor.compatibility.agentConfiguration, enableTools: true },
+        },
+      })
+    ).toThrow('Original run capabilities changed');
+    expect(() =>
+      requireRuntimeCompatibility({
+        ...descriptor,
+        request: { ...descriptor.request, promptKey: 'default' },
+      })
+    ).toThrow('Original run capabilities changed');
+    expect(() =>
+      requireRuntimeCompatibility({
+        ...descriptor,
+        options: { ...descriptor.options, host_tool_call: undefined },
+      })
+    ).toThrow('Original run capabilities changed');
+    expect(() =>
+      requireRuntimeCompatibility({
+        ...descriptor,
+        compatibility: {
+          ...descriptor.compatibility,
+          frameworkVersion: 'unavailable-original-version',
+        },
+      })
+    ).toThrow('Original run capabilities changed');
+
+    expect(() =>
+      requireRuntimeCompatibility({
+        ...descriptor,
+        child: {
+          parentRunId: descriptor.runId,
+          parentToolCallId: 'parent-call',
+          subrunId: 'child',
+        },
+      })
+    ).toThrow('Original run capabilities changed');
+    expect(() =>
+      requireRuntimeCompatibility({
+        ...descriptor,
+        options: {
+          ...descriptor.options,
+          host_tool_call: {
+            tool_name: 'research_run',
+            args: scope,
+            completion_mode: 'continue_to_llm',
+          },
+        },
+      })
+    ).toThrow('Original run capabilities changed');
+    vi.mocked(modelCatalog.getModel).mockReturnValueOnce(undefined);
+    expect(() => requireRuntimeCompatibility(descriptor)).toThrow('Run model unavailable');
     await restarted.flow.continueRun(
       restored.run_id,
       {

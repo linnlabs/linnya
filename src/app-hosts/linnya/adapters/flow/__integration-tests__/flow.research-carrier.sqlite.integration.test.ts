@@ -215,7 +215,8 @@ async function crashAt(boundary: CarrierBoundary, projectId: string) {
   });
 }
 
-describe('Host research carrier through SQLite and published Linnkit', () => {
+// 通用 Host entry 仍支持其它 consumer；这里使用 default 与合成工具，不是 research_v1 新入口。
+describe('Generic Host carrier through SQLite and published Linnkit', () => {
   it.each<HostToolCallRequestData>([
     { tool_name: 'subagent', args: {}, completion_mode: 'yield_after_batch' as const },
     { tool_name: RESEARCH_CARRIER_TOOL, args: {}, completion_mode: 'continue_to_llm' as const },
