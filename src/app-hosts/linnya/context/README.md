@@ -24,6 +24,13 @@ Layer: `app-host`
 - Linnya 默认 context policy：
   - `src/app-hosts/linnya/context-policies/*`
 
+## 已接纳研究范围
+
+`AgentInvokeRequest.researchScope` 保存研究 Agent 首次接纳的 `ResearchRunArgs`；原 query 与
+正式会话、编辑器上下文保持独立。CLI wire 字段为 `ConversationOptions.research_scope`，经
+HistoryBuilder 投影后由 registry admission 校验。Host request schema 必须保留该字段，使
+run descriptor、冻结系统提示与 root adapter 读取同一范围；恢复不能用新请求重算。
+
 ## 当前轮文档上下文
 
 Linnya host 会把当前轮的页面上下文、文档片段、引用内容等产品语义转换成 `fences[]`，再交给 linnkit 的 context manager 组装进最终 LLM messages。

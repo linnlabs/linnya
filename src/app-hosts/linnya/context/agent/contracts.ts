@@ -1,6 +1,6 @@
 import type * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { AiMessage, ReasoningEffort } from '@linnlabs/linnkit/contracts';
-import type { UserQuoteData } from '@app/schemas';
+import type { ResearchRunArgs, UserQuoteData } from '@app/schemas';
 
 type AgentProfileRequest = contextManager.agentContracts.AgentProfileRequest;
 
@@ -41,6 +41,8 @@ export interface AgentAutocompleteBehaviorSummary {
 export interface AgentInvokeRequest extends AgentProfileRequest {
   /** Host 首次接纳时物化的系统提示；续跑不得重新渲染动态时间或 Skill catalog。 */
   frozenSystemPrompt?: string;
+  /** 首次接纳的研究范围；与原 query 分开保存，恢复沿用原 descriptor。 */
+  researchScope?: ResearchRunArgs;
   model_id?: string;
   imageGenerationModelId?: string;
   context_before?: string;

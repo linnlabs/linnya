@@ -1,11 +1,18 @@
-import { ResearchRunArgsSchema, type HostToolCallRequestData } from '@app/schemas';
+import {
+  ResearchRunArgsSchema,
+  type HostToolCallRequestData,
+  type ResearchRunArgs,
+} from '@app/schemas';
 import type { AgentInvokeRequest } from '../../../context/agent/contracts';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
-import { researchConversationContext } from './admissionContext';
+import type { AgentRequestAdmissionContext } from '../../types';
 
 export class ResearchAdmissionError extends Error {
   constructor(
-    readonly code: 'RESEARCH_CONTEXT_NOT_SUPPORTED' | 'RESEARCH_PROJECT_REQUIRED',
+    readonly code:
+      | 'RESEARCH_CONTEXT_NOT_SUPPORTED'
+      | 'RESEARCH_PROJECT_REQUIRED'
+      | 'RESEARCH_HOST_ENTRY_NOT_SUPPORTED',
     message: string
   ) {
     super(message);
@@ -18,7 +25,7 @@ export function resolveResearchAdmission(
   request: AgentInvokeRequest,
   explicitArgs?: HostToolCallRequestData['args'],
   history: readonly RuntimeEvent[] = []
-): HostToolCallRequestData['args'] {
+): ResearchRunArgs {
   if (!request.project_metadata?.id) {
     throw new ResearchAdmissionError(
       'RESEARCH_PROJECT_REQUIRED',
@@ -33,14 +40,7 @@ export function resolveResearchAdmission(
   }
   if (!explicitArgs) {
     return ResearchRunArgsSchema.parse({
-      question: [
-        '当前用户请求（完整保留）：',
-        request.query,
-        '',
-        researchConversationContext(request, history),
-        '',
-        'Research entry permits source discovery, but any narrower source, time, audience or length constraints in the user request still apply. Do not infer missing facts from a title, prior answer or file list. Preserve explicit uncertainty when the request or sources do not support a conclusion.',
-      ].join('\n'),
+      question: request.query,
       reader:
         'Use the reader and language requested by the user; otherwise write an accessible article for a general reader in the user’s language.',
       task_type: 'open',
@@ -68,10 +68,22 @@ export function resolveResearchAdmission(
       '研究工程入口不能隐式交接附件、历史或编辑器上下文。请用独立会话，将所需材料保存为 Workspace 文档并显式声明范围。'
     );
   }
-  const args = ResearchRunArgsSchema.parse(explicitArgs);
-  // 保留原始交付约束与时间信息；显式的研究焦点不能覆盖用户原话。
+  return ResearchRunArgsSchema.parse(explicitArgs);
+}
+
+/** 原请求与 scope 是两个独立事实；主模型读取上下文，Host 不再把历史改写成工具问题。 */
+export function admitResearchRequest(
+  request: AgentInvokeRequest,
+  context: AgentRequestAdmissionContext
+): AgentInvokeRequest {
+  if (context.hostToolCall) {
+    throw new ResearchAdmissionError(
+      'RESEARCH_HOST_ENTRY_NOT_SUPPORTED',
+      '新研究任务须从研究 Agent 启动；显式范围请使用 research_scope。已接纳的研究运行仍可按原身份恢复。'
+    );
+  }
   return {
-    ...args,
-    question: `原始用户请求（完整保留）：\n${request.query}\n\n本次接纳的研究问题：\n${args.question}`,
+    ...request,
+    researchScope: resolveResearchAdmission(request, request.researchScope, context.history),
   };
 }

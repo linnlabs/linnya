@@ -1,13 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ResearchRunArgsSchema } from '@app/schemas';
-import {
-  createFinalAnswerEvent,
-  createHistorySummaryEvent,
-  createThoughtEvent,
-  createUserInputEvent,
-} from '@linnlabs/linnkit/contracts';
+import { createUserInputEvent } from '@linnlabs/linnkit/contracts';
 import type { AgentInvokeRequest } from '../../../context/agent/contracts';
-import { resolveResearchAdmission } from './admission';
+import { admitResearchRequest, resolveResearchAdmission } from './admission';
 
 const request: AgentInvokeRequest = {
   promptKey: 'research_v1',
@@ -22,42 +17,19 @@ const args = {
 };
 
 describe('research admission', () => {
-  it('普通研究冻结完整请求与引用片段，不把片段宣称为已绑定全文', () => {
-    const admitted = ResearchRunArgsSchema.parse(
-      resolveResearchAdmission({
-        ...request,
-        document_fragment: 'Selected source text',
-      })
-    );
-    expect(admitted).toMatchObject({ task_type: 'open', materials: [] });
-    expect(admitted.question).toContain(request.query);
-    expect(admitted.question).toContain('Selected source text');
-    expect(admitted.question).toContain('only that excerpt');
-  });
-
-  it('交接压缩后的可见历史，保留文章链接并排除旧正文与隐藏推理', () => {
-    const admitted = ResearchRunArgsSchema.parse(
-      resolveResearchAdmission(request, undefined, [
-        createUserInputEvent('old-user', 'conversation', 'turn', 'superseded long text'),
-        createHistorySummaryEvent(
-          'summary',
-          'conversation',
-          'turn',
-          'retained summary',
-          ['old-user'],
-          1,
-          1
-        ),
-        createFinalAnswerEvent('answer', 'conversation', 'turn', '[文章](workspace:/revision.md)', {
-          completion_reason: 'terminal',
-        }),
-        createThoughtEvent('thought', 'conversation', 'turn', 'hidden scratchpad'),
-      ])
-    );
-    expect(admitted.question).toContain('retained summary');
-    expect(admitted.question).toContain('workspace:/revision.md');
-    expect(admitted.question).not.toContain('superseded long text');
-    expect(admitted.question).not.toContain('hidden scratchpad');
+  it('普通研究保留请求和正式上下文，默认 scope 不改写为 Host 历史代理', () => {
+    const input = { ...request, document_fragment: 'Selected source text' };
+    const admitted = admitResearchRequest(input, {
+      history: [createUserInputEvent('previous', 'conversation', 'turn', 'Earlier constraints')],
+    });
+    expect(admitted.query).toBe(input.query);
+    expect(admitted.document_fragment).toBe(input.document_fragment);
+    expect(admitted.researchScope).toMatchObject({
+      question: input.query,
+      task_type: 'open',
+      materials: [],
+    });
+    expect(input).not.toHaveProperty('researchScope');
   });
 
   it('无项目在接纳前给出可操作错误', () => {
@@ -66,12 +38,30 @@ describe('research admission', () => {
     );
   });
 
-  it('preserves the complete user constraints alongside the admitted research focus', () => {
-    const admitted = ResearchRunArgsSchema.parse(resolveResearchAdmission(request, args));
-    expect(admitted.task_type).toBe('fixed');
-    expect(admitted.materials).toEqual(['workspace:/source.md']);
-    expect(admitted.question).toContain(request.query);
-    expect(admitted.question).toContain(args.question);
+  it('显式范围与用户原约束分别保存，问题和时间范围不被改写', () => {
+    const scope = ResearchRunArgsSchema.parse({ ...args, time_range: '2025–2026' });
+    const admitted = admitResearchRequest({ ...request, researchScope: scope }, { history: [] });
+    expect(admitted.query).toBe(request.query);
+    expect(admitted.researchScope).toEqual(scope);
+  });
+
+  it('显式范围拒绝正式会话历史；新 Host 工具请求不能绕过主模型入口', () => {
+    expect(() =>
+      admitResearchRequest(
+        { ...request, researchScope: ResearchRunArgsSchema.parse(args) },
+        {
+          history: [
+            createUserInputEvent('previous', 'conversation', 'turn', 'Earlier constraints'),
+          ],
+        }
+      )
+    ).toThrow(expect.objectContaining({ code: 'RESEARCH_CONTEXT_NOT_SUPPORTED' }));
+    expect(() =>
+      admitResearchRequest(request, {
+        history: [],
+        hostToolCall: { tool_name: 'research_run', args, completion_mode: 'yield_after_batch' },
+      })
+    ).toThrow(expect.objectContaining({ code: 'RESEARCH_HOST_ENTRY_NOT_SUPPORTED' }));
   });
 
   const unbound: readonly Partial<AgentInvokeRequest>[] = [

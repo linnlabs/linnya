@@ -702,8 +702,9 @@ describe('conversation-control use case', () => {
     expect(test.startRequests[0]).toMatchObject({
       project_id: 'project-1', new_events: [{ content: request.message }],
       options: { selected_agent_id: 'research_v1', model_id: 'chat-model',
-        host_tool_call: { tool_name: 'research_run', args: request.research_scope, completion_mode: 'yield_after_batch' } },
+        research_scope: request.research_scope },
     });
+    expect(test.startRequests[0]?.options?.host_tool_call).toBeUndefined();
   });
 
   it('新会话 send 持久化 Agent 选择并只返回 Host acceptance identity', async () => {

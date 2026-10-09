@@ -327,6 +327,7 @@ export class HistoryBuilder {
       documentTitle: options?.document_metadata?.title,
       documentList: options?.document_list,
       projectMetadata: options?.project_metadata,
+      researchScope: options?.research_scope,
       documentMetadata: options?.document_metadata,
       // 上游只从 user_input metadata 忠实传递本轮引用；寿命控制交给下游。
       userQuote,

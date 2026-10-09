@@ -15,6 +15,11 @@ catalog），交给 Host 的运行描述保存。Generic task 消费 `frozenSyst
 显式声明 `supportsFrozenSystemPrompt` 并消费同一字段，否则不能接纳为可恢复 run。恢复不能重新
 运行 request enricher 或重新渲染系统提示；这不承诺冻结外部模型输出或任意 Workspace 内容。
 
+定义可以通过 `requestAdmission(request, { history, hostToolCall })` 接纳业务请求。它是纯函数，
+只在新根运行开始时校验并物化 Host `AgentInvokeRequest`；history 已按隔离与编辑替换规则裁剪。
+结果随运行 descriptor 冻结，持久化后的历史刷新保留该结果；恢复不重新接纳、不重写原请求。
+系统提示构建器接收 Host 请求，可以消费已经接纳的产品字段，不能重新推断范围或执行工具。
+
 定义可以通过 `hostEntry` 声明一个 Host 强制入口：固定 `toolName`，并由纯函数
 `resolveArgs(request, explicitArgs, history)` 生成或严格接纳业务参数。history 是经过会话隔离和替换处理的正式事件；定义按用途消费，不把工具轨迹直接当材料。Flow 在首次 run admission 前把
 它转换为正式 `host_tool_call`，固定 `yield_after_batch` 并随 descriptor 冻结；继续和审批响应
@@ -536,9 +541,12 @@ judgeToolName（不是评分角色）；`maxCallsPerParentRun` 交给 Host 持�
 
 ### Host 受控研究职责 v1
 
-前端单一“研究”选择映射 `research_v1`。该 definition 声明 Host 强制入口，普通项目请求
-按开放调查接纳，完整请求与摘要替换后的可见文字交接给阶段；CLI 可显式冻结材料范围。
-无项目和本轮图片在接纳前给出操作提示。上下文、版本保障及旧身份边界见
+前端单一“研究”选择映射 `research_v1`。该 definition 通过 `requestAdmission` 接纳主 Agent
+请求，普通项目请求按开放调查生成 `researchScope`。原 query、正式历史及页面上下文仍走各自
+通道，Host 不再把历史拼成工具问题。CLI 的 `research_scope` 独立冻结问题、读者、材料和时间；
+显式 scope 不能混入历史、图片或编辑器上下文。无项目和本轮图片在接纳前给出操作提示。
+新研究拒绝强制 Host 工具入口；旧 `research_run` descriptor 仍按原运行身份恢复。
+上下文、版本保障及旧身份边界见
 [Research 用例](../application/research/README.md)，不要在 Renderer 或 Flow 重复实现研究规则。
 
 正式职责使用独立身份 `research_author_v1`、`research_investigation_review_v1`、

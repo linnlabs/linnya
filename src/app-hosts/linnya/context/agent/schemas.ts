@@ -13,7 +13,7 @@
  */
 
 import { z } from 'zod';
-import { PromptKeys, UserQuoteSchema } from '@app/schemas';
+import { PromptKeys, ResearchRunArgsSchema, UserQuoteSchema } from '@app/schemas';
 import { generateAiMessageId } from '@linnlabs/linnkit/contracts';
 import * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { graph } from '@linnlabs/linnkit/runtime-kernel';
@@ -63,6 +63,7 @@ export const AgentInvokeRequestSchema = z
   .object({
     query: z.string().describe('用户查询'),
     frozenSystemPrompt: z.string().optional(),
+    researchScope: ResearchRunArgsSchema.optional(),
     currentUserEventId: z
       .string()
       .refine(value => value.trim().length > 0 && value === value.trim(), {

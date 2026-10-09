@@ -11,6 +11,7 @@ import type { FlowIncomingEventBatch } from './incoming-events/definitions/flowI
 import { FlowIncomingEventPreparer } from './incoming-events/orchestration/prepareFlowIncomingEventBatch';
 import { resolveAgentHostEntry } from '../../agent-registry/resolveAgentHostEntry';
 import { assertAgentNewRunAvailable } from '../../agent-registry/assertAgentNewRunAvailable';
+import { resolveAgentRequestAdmission } from '../../agent-registry/resolveAgentRequestAdmission';
 
 const logger = new Logger('FlowRunPreparationService');
 
@@ -114,16 +115,19 @@ export class FlowRunPreparationService {
   }
 
   async prepareExecutionAfterPersistence(
-    req: ConversationNextRequest,
     conversationId: string,
-    incomingBatch: FlowIncomingEventBatch
+    admitted: PreparedFlowRunInput
   ): Promise<PreparedFlowRunInput> {
     const persistedHistory = await this.historyHandler.readHistory(conversationId);
-    const incomingIds = new Set(incomingBatch.events.map(event => event.id));
+    const incomingIds = new Set(admitted.incomingBatch.events.map(event => event.id));
     const contextHistory = persistedHistory.filter(event => !incomingIds.has(event.id));
     logger.info(`Processed events: ${persistedHistory.length} events in history after operation`);
-    // 首次准备时已接纳入口；持久化后的历史刷新不能重新生成或重新校验业务输入。
-    return this.buildPreparedRunInput(req, conversationId, incomingBatch, contextHistory, false);
+    // 接纳结果是原运行输入；持久化后的历史刷新不能重新构建请求而丢失业务接纳字段。
+    return {
+      ...admitted,
+      contextHistoryEvents:
+        admitted.effectiveOptions?.history_mode === 'isolated' ? [] : contextHistory,
+    };
   }
 
   private buildPreparedRunInput(
@@ -131,7 +135,7 @@ export class FlowRunPreparationService {
     conversationId: string,
     incomingBatch: FlowIncomingEventBatch,
     postOperationHistory: readonly RuntimeEvent[],
-    resolveHostEntry: boolean
+    admitNewRequest: boolean
   ): PreparedFlowRunInput {
     const contextOptions = req.options;
     const isHistoryIsolated = contextOptions?.history_mode === 'isolated';
@@ -156,20 +160,26 @@ export class FlowRunPreparationService {
       historyMode: contextOptions?.history_mode,
     });
 
-    const agentInvokeReq = HistoryBuilder.buildForAgent(
+    const builtRequest = HistoryBuilder.buildForAgent(
       conversationId,
       [...incomingBatch.events],
       contextHistoryEvents,
       effectiveOptions
     );
 
-    if (!agentInvokeReq) {
+    if (!builtRequest) {
       throw new Error('Failed to build Agent request from events or history');
     }
 
-    if (resolveHostEntry) assertAgentNewRunAvailable(agentInvokeReq.promptKey);
+    if (admitNewRequest) assertAgentNewRunAvailable(builtRequest.promptKey);
+    const agentInvokeReq = admitNewRequest
+      ? resolveAgentRequestAdmission(builtRequest, {
+          history: contextHistoryEvents,
+          hostToolCall: effectiveOptions?.host_tool_call,
+        })
+      : builtRequest;
 
-    const hostToolCall = resolveHostEntry
+    const hostToolCall = admitNewRequest
       ? resolveAgentHostEntry(
           agentInvokeReq,
           effectiveOptions?.host_tool_call,

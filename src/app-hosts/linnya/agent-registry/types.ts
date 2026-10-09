@@ -13,7 +13,6 @@
 
 import type { PromptKey } from './prompt.types';
 import type { HistoryBuilderOptionsExtender } from 'src/app-hosts/linnya/adapters/flow/history-builder/history-builder-options-extender.types';
-import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
 import type { AgentSpecContextPolicy, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { enrichment } from '@linnlabs/linnkit/runtime-kernel';
@@ -188,7 +187,7 @@ export interface AgentTaskConfiguration {
    * 如果提供，GenericAgentTask 将使用此函数构建 system prompt。
    * 如果未提供，可能需要提供 customTaskClass。
    */
-  systemPromptBuilder?: (request: AgentInvocationRequest) => string;
+  systemPromptBuilder?: (request: AgentInvokeRequest) => string;
 
   /**
    * 自定义 Task 类构造器
@@ -218,7 +217,19 @@ export interface AgentTaskConfiguration {
  * - 高内聚：该 agent 的 promptKey、默认模式、工具策略、扩展点都在同一处声明
  * - 低耦合：Flow/HistoryBuilder/Enrichment 只依赖 Registry 接口，不依赖业务实现
  */
+export interface AgentRequestAdmissionContext {
+  /** 已按历史隔离和编辑重发裁剪的正式历史。 */
+  history: readonly RuntimeEvent[];
+  hostToolCall?: HostToolCallRequestData;
+}
+
 export interface AgentDefinition {
+  /** 首次接纳时校验、物化业务请求；纯函数不执行工具，恢复不重跑。 */
+  requestAdmission?: (
+    request: AgentInvokeRequest,
+    context: AgentRequestAdmissionContext
+  ) => AgentInvokeRequest;
+
   /** 首次接纳的确定性 Host 入口；纯参数函数不执行工具，恢复消费原 descriptor。 */
   hostEntry?: {
     readonly toolName: string;

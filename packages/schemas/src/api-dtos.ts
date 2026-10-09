@@ -23,6 +23,7 @@ import {
 } from './conversation/message-metadata';
 import { ConversationInteractionResponseToolMetadataSchema } from './conversation/tool-message';
 import { ConversationSelectedAgentIdSchema } from './conversation/selected-agent';
+import { ResearchRunArgsSchema } from './tools/research-run';
 
 /**
  * 增量事件 - 前端可以发送给后端的事件子集
@@ -259,6 +260,8 @@ export const ConversationOptions = z.object({
   execution_start_node: z.enum(['user', 'llm']).optional(),
   /** host 指定工具后直接从 ToolNode 启动；批次完成后的去向由 completion_mode 声明。 */
   host_tool_call: HostToolCallRequest.optional(),
+  /** 显式研究范围由研究 Agent 首次接纳，并冻结到原运行请求。 */
+  research_scope: ResearchRunArgsSchema.optional(),
   /**
    * turn_id（Phase 2：Step-per-Turn 对齐字段）
    *

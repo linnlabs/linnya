@@ -46,6 +46,10 @@ Flow 不负责：
 同时通过 `newRunUnavailableReason` 拒绝 start；该检查必须先于运行注册、替换旧暂停运行
 和 incoming facts 提交。resume / continue / persist-only 不执行此检查，仍使用原身份。
 
+首次准备通过 Registry 调用可选 `requestAdmission`，接纳规则归具体 Agent；Flow 不判断研究
+或其它业务。接纳后的 Host 请求交给后续冻结，持久化后的准备只刷新 context history，保留原
+请求和 effective options。resume 跳过此扩展点，仍从原 descriptor 恢复。
+
 首次准备还会读取 AgentDefinition 的可选 `hostEntry`，在 run admission 前生成并校验固定工具
 入口。参数规则由声明的用例拥有，Flow 只要求工具名及 `yield_after_batch` 与声明一致；实际
 执行继续使用现有 host-forced ToolNode。descriptor 保存接纳后的工具请求，继续、审批响应和

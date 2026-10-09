@@ -603,9 +603,8 @@ export class FlowOrchestrator {
         const executionPrepared =
           shouldPersist && !recoveryInputs
             ? await this.runPreparationService.prepareExecutionAfterPersistence(
-                { ...request, options: registrationPrepared.effectiveOptions },
                 conversationId,
-                incomingBatch
+                { ...registrationPrepared, incomingBatch }
               )
             : registrationPrepared;
         const { agentInvokeReq, contextHistoryEvents, effectiveOptions } = executionPrepared;

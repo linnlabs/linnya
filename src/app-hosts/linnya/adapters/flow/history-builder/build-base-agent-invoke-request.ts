@@ -29,6 +29,7 @@ export interface BuildBaseAgentInvokeRequestInput {
   documentTitle?: string;
   documentList?: string;
   projectMetadata?: AgentInvokeRequest['project_metadata'];
+  researchScope?: AgentInvokeRequest['researchScope'];
   documentMetadata?: AgentInvokeRequest['document_metadata'];
   userQuote?: AgentUserQuote;
   reasoningEffort?: ReasoningEffort | null;
@@ -40,7 +41,7 @@ export interface BuildBaseAgentInvokeRequestInput {
  * - keeps the shape-mapping logic out of HistoryBuilder orchestration code
  */
 export function buildBaseAgentInvokeRequest(
-  input: BuildBaseAgentInvokeRequestInput,
+  input: BuildBaseAgentInvokeRequestInput
 ): AgentInvokeRequest {
   return {
     query: input.lastUserContent,
@@ -62,6 +63,7 @@ export function buildBaseAgentInvokeRequest(
     availableTools: input.availableTools,
     conversationHistory: input.conversationHistory,
     project_metadata: input.projectMetadata,
+    researchScope: input.researchScope,
     document_metadata: input.documentMetadata,
     document_list: input.documentList,
     user_quote: input.userQuote,
