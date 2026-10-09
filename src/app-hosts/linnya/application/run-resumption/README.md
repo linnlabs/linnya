@@ -61,6 +61,7 @@ Conversation CLI 的 `resume <conversation-id> --run <run-id>` 先读取 exact s
 | --- | --- |
 | 模型请求中断或未开始的工具 | 从最后提交位置发起新 attempt，保留累计预算 |
 | 已返回且保存了完整字符串结果 | 读取原 run/tool-call receipt，提交原结果，不再次执行 |
+| `complete_research` 已返回、根运行尚未提交交付终态 | 即使已有普通结果回执，也重新核对当前文稿及依赖版本；旧检查结果不能授权恢复后交付 |
 | Markdown create / write / edit | 原结果与文档、pending、批注同事务；结果保存失败整体回滚 |
 | 未完成 child | 按原 parent/call/批次位置重建同一 child，从自己的断点继续 |
 | 已完成 child、父级尚未结算 | 保留并读取 child 的原 yielded 结果，不重跑 |
@@ -70,6 +71,8 @@ Conversation CLI 的 `resume <conversation-id> --run <run-id>` 先读取 exact s
 纯读取白名单允许重读当前数据，不承诺历史内容冻结。尚未返回的插件写入、结构化图片结果、
 失效进程内 asset claim 不具备通用恰好一次保证；明确受阻时可解决能力问题后再继续，或发送
 新消息/显式取消结束旧运行。不能为“继续”伪造成功、自动批准或覆盖用户后续编辑。
+`complete_research` 的例外只重做无写入的交付检查；`submit_research_document` 的原子文稿和
+结果回执仍复取原结果，不因交付检查或输入失效重复写稿。
 `research_run` 是明确允许重入的 Host child 编排入口，不是任意工具的恢复能力。
 其 owner 必须保持原 parent/tool-call/阶段 slot、prompt key 和完整 child 请求；不能将文档重读
 当作原版本证明，也不能在重入时重新执行已完成阶段的写入。整链结果返回前不提交父工具结果，
