@@ -29,7 +29,7 @@ const result = CompleteResearchResultSchema.parse({
   data: {
     artifact: { stage: 'revision', subrun_id: 'revision-child', path: args.document,
       inode: 'revision-document', sha256: 'a'.repeat(64), citation_sha256: 'b'.repeat(64) },
-    review_artifacts: ['argument_review', 'source_review'].map(stage => ({
+    review_artifacts: ['source_review', 'argument_review'].map(stage => ({
       stage, subrun_id: `${stage}-child`, path: `workspace:/research/${stage}.md`,
       inode: `${stage}-document`, sha256: 'c'.repeat(64), citation_sha256: 'd'.repeat(64),
     })),
@@ -109,7 +109,14 @@ describe('research completion through live and durable admission', () => {
     expect(live[0].toolPresentation?.data).toEqual({ kind: 'lifecycle' });
     expect(live[1].toolPresentation?.data).toEqual({
       kind: 'delivered', articlePath: args.document,
-      reviewPaths: result.data.review_artifacts.map(artifact => artifact.path),
+      reviewLinks: [
+        { path: 'workspace:/research/source_review.md', label: {
+          key: 'conversation.tool.researchComplete.sourceReview', fallback: '来源与数字复核',
+        } },
+        { path: 'workspace:/research/argument_review.md', label: {
+          key: 'conversation.tool.researchComplete.argumentReview', fallback: '论证复核',
+        } },
+      ],
     });
     expect(projectResearchCompletionCompactStep({
       sourceToolName: toolName, uiKey: toolName, toolCallId: 'delivered', args, result, status: 'success', phase: 'complete',

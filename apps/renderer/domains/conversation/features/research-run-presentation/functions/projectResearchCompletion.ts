@@ -40,7 +40,13 @@ export function projectResearchCompletion(
     data: {
       kind: 'delivered',
       articlePath: result.data.artifact.path,
-      reviewPaths: result.data.review_artifacts.map(artifact => artifact.path),
+      // strict 交付合同保证两份产物分别是论证和来源复核；标签跟随 stage，不依赖返回顺序。
+      reviewLinks: result.data.review_artifacts.map(artifact => ({
+        path: artifact.path,
+        label: createConversationToolLocalizedTextDescriptor(artifact.stage === 'argument_review'
+          ? 'conversation.tool.researchComplete.argumentReview'
+          : 'conversation.tool.researchComplete.sourceReview'),
+      })),
     },
   };
 }

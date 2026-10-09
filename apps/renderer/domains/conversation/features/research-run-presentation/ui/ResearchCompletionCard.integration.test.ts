@@ -8,6 +8,7 @@ import { ConversationFileLinkResolutionSchema, WorkspaceFileLocatorSchema } from
 import { CONVERSATION_RENDER_SCOPE_KEY } from '../../../definitions/conversationRenderScope';
 import { registerConversationResourceLinkPort, type ConversationResourceLinkPort } from '../../resource-link';
 import ResearchCompletionCard from './ResearchCompletionCard.vue';
+import { createConversationToolLocalizedTextDescriptor } from '../../../ui/tools/functions/createConversationToolTitleDescriptor';
 
 let app: App | undefined;
 async function settle(): Promise<void> {
@@ -33,7 +34,7 @@ describe('ResearchCompletionCard', () => {
         ...ConversationFileLinkResolutionSchema.parse({
           state: 'ready', kind: 'workspace', locator,
           project_id: 'project-a', document_id: locator, node_type: 'document',
-          title: locator, parent_id: null,
+          title: 'Saved document', parent_id: null,
         }),
         activeDocumentType: 'markdown', iconComponent: DocumentIcon, iconClass: '',
       }),
@@ -46,7 +47,13 @@ describe('ResearchCompletionCard', () => {
         return () => h(ResearchCompletionCard, {
           presentation: {
             uiKey: 'complete_research', status: 'success', phase: 'complete',
-            data: { kind: 'delivered', articlePath: locators[0], reviewPaths: locators.slice(1) },
+            data: {
+              kind: 'delivered', articlePath: locators[0],
+              reviewLinks: [
+                { path: locators[1], label: createConversationToolLocalizedTextDescriptor('conversation.tool.researchComplete.argumentReview') },
+                { path: locators[2], label: createConversationToolLocalizedTextDescriptor('conversation.tool.researchComplete.sourceReview') },
+              ],
+            },
           },
         });
       },
@@ -58,6 +65,11 @@ describe('ResearchCompletionCard', () => {
 
     const links = host.querySelectorAll('a');
     expect(links).toHaveLength(3);
+    // Workspace ready 后会使用 owner 的真实标题；角色说明仍须保留，不依赖文件命名。
+    expect(links[1].textContent).toBe('Saved document');
+    expect(links[2].textContent).toBe('Saved document');
+    expect(links[1].parentElement?.textContent).toContain('论证复核');
+    expect(links[2].parentElement?.textContent).toContain('来源与数字复核');
     for (const [index, link] of links.entries()) {
       link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
       await settle();
