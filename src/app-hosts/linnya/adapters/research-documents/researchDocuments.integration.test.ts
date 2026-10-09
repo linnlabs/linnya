@@ -172,6 +172,19 @@ describe('Research document handoff with real Workspace, Markdown and SQLite', (
     expect(workspace.getChildNodes(null, projectId)).toEqual([]);
   });
 
+  it('混合来源提交只报告真正未绑定的 refs，不把已绑定来源列入修正提示', async () => {
+    await source();
+    const failure: unknown = await port().save(saveRequest(
+      'workspace:/mixed-refs.md', 'Bound [@Abc234], missing [@Def567] and [@Ghj789].',
+    )).catch((error: unknown) => error);
+    if (!(failure instanceof Error)) throw new Error('Expected citation rejection');
+    expect(failure).toMatchObject({ code: 'RESEARCH_DOCUMENT_CITATION_INVALID' });
+    expect(failure.message).toContain('[@Def567]、[@Ghj789]');
+    expect(failure.message).not.toContain('[@Abc234]');
+    expect(failure.message).toContain('不能改成 [@来源ref]');
+    expect(workspace.getChildNodes(null, projectId)).toEqual([]);
+  });
+
   it('正文未变但持久化引用快照变化时仍使旧评审版本过期', async () => {
     await source();
     const original = await port().save(saveRequest('workspace:/article.md', 'Fact [@Abc234]'));

@@ -15,6 +15,7 @@ import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import type { ScriptedLlmTurn } from '@linnlabs/linnkit/testkit';
 import * as markdown from 'src/domains/markdown';
 import type { ToolContext } from 'src/tools/types';
+import { generateRefMapWithCollisionCheck } from 'src/shared/utils/refIdGenerator';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { toolRegistry } from '../../tools/toolRegistry';
 import { SqliteResearchStageReceiptStore } from '../../persistence/research-stage-receipts';
@@ -46,6 +47,103 @@ const badSubmission: ScriptedLlmTurn = {
 };
 
 describe('Research submission in the producing child Graph and SQLite transaction', () => {
+  it('纯文档的块定位误写为 Citation 时反馈实际缺失 ref，同一 child 改用真实材料链接后提交', async () => {
+    const wrongCall = {
+      id: 'block-ref-submit',
+      name: 'submit_research_document',
+      argumentsJson: '{}',
+    };
+    const corrected = turns(6);
+    const first = corrected[0];
+    const firstCall = first?.toolCalls?.[0];
+    if (!first || !firstCall) throw new Error('Missing corrected submission');
+    firstCall.argumentsJson = JSON.stringify({
+      content:
+        '# Investigation\n\nBaseline is 100; current is 110. The change alone does not establish its cause. See [supplied material](workspace:/source.md), the paragraph following “Source”.',
+    });
+    let missingRefs: string[] = [];
+    const originalAssertion = first.assertCall;
+    first.assertCall = call => {
+      originalAssertion?.(call);
+      const visible = JSON.stringify(call.messages);
+      for (const ref of missingRefs) expect(visible).toContain(`[@${ref}]`);
+      expect(visible).toContain('[#块ref] 是段落定位符');
+      expect(visible).toContain('纯 Workspace 文档不会生成来源引用');
+      expect(visible).toContain('不要原样重交');
+    };
+    const fixture = await open([
+      {
+        toolCalls: [
+          {
+            id: 'read-plain-source',
+            name: 'read_file',
+            argumentsJson: JSON.stringify({ locator: 'workspace:/source.md', view: 'document' }),
+          },
+        ],
+      },
+      { toolCalls: [wrongCall] },
+      ...corrected,
+    ]);
+    const projectId = await seed(fixture);
+    const reader = toolRegistry.getTool('read_file');
+    if (!reader) throw new Error('Missing real reader');
+    const read = reader.run.bind(reader);
+    vi.spyOn(reader, 'run').mockImplementation(async (args, context) => {
+      const output = await read(args, context);
+      const parsed = WorkspaceReadFileResultSchema.parse(JSON.parse(output));
+      if (
+        parsed.data.source_kind !== 'workspace_document' ||
+        parsed.data.document.presentation.kind !== 'blocks'
+      )
+        throw new Error('Expected real DocumentView blocks');
+      expect(parsed.data.citations).toBeUndefined();
+      const blockRefs = [
+        ...generateRefMapWithCollisionCheck(
+          parsed.data.document.presentation.items.map(item => item.id)
+        ).values(),
+      ];
+      expect(blockRefs).toHaveLength(2);
+      for (const ref of blockRefs) expect(parsed.observation).toContain(`[${ref}]`);
+      missingRefs = blockRefs.map(ref => ref.slice(1));
+      wrongCall.argumentsJson = JSON.stringify({
+        content: `# Investigation\n\nSupplied facts ${missingRefs.map(ref => `[@${ref}]`).join(' ')}.`,
+      });
+      return output;
+    });
+    await fixture.flow.next(request(projectId), () => {});
+    const owner = await identity(fixture, projectId);
+    await assertDelivered(fixture, owner);
+    const events = await facts(fixture);
+    const failed = events.find(
+      event => event.type === 'tool_output' && event.tool_call_id === 'block-ref-submit'
+    );
+    expect(failed).toMatchObject({
+      status: 'error',
+      error_code: 'RESEARCH_DOCUMENT_CITATION_INVALID',
+    });
+    if (!failed || failed.type !== 'tool_output') throw new Error('Missing citation rejection');
+    expect(failed.observation).toContain(missingRefs.map(ref => `[@${ref}]`).join('、'));
+    expect(
+      events.find(
+        event =>
+          event.type === 'tool_output' &&
+          event.tool_name === 'submit_research_document' &&
+          event.status === 'success'
+      )?.run_id
+    ).toBe(failed.run_id);
+    const saved = new SqliteResearchStageReceiptStore(fixture.db)
+      .list(owner)
+      .find(item => item.stage === 'investigation')?.artifact;
+    if (!saved) throw new Error('Missing corrected investigation');
+    const document = await createWorkspaceResearchDocumentPort({
+      db: fixture.db,
+      eventStore: fixture.eventStore,
+    }).read({ projectId, inode: saved.inode });
+    expect(document.text).toContain('[supplied material](workspace:/source.md)');
+    expect(document.text).not.toContain('[@');
+    expect(fixture.ai.getCalls()).toHaveLength(8);
+  });
+
   it('拒绝空白稿，合法正文的首行缩进和尾部空白完整交给正式编译', async () => {
     const content = '    const baseline = 100;\n\nTrailing paragraph.  \n\n';
     const submissions = turns(6);

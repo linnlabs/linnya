@@ -20,7 +20,8 @@ export function serializeResearchDocumentSubmission(data: ResearchRunArtifact): 
 export class SubmitResearchDocumentTool extends BaseTool {
   readonly name = 'submit_research_document';
   readonly description =
-    '提交当前研究阶段的完整 Markdown 正文。Host 决定新文档路径；成功即结束本阶段。引用或格式错误会返回，请在本阶段修正后再提交；不要用普通回答代替提交。';
+    '提交当前研究阶段的完整 Markdown 正文。Host 决定新文档路径；成功即结束本阶段。引用或格式错误会返回，请修改正文后再提交；不要用普通回答代替提交。' +
+    '[@ref] 必须是当前 child 正式取得的来源引用；read_file 的 [#ref] 是块定位符，不能改成 [@ref]。仅有 Workspace 正文依据时，使用真实文件链接与章节、行号或摘录，不伪造来源引用。';
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     additionalProperties: false,

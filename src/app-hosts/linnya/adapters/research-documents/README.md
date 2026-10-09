@@ -20,6 +20,11 @@ invalid citation 均不进入交接。来源快照不代表来源已经联网复
 裸短 ref、旧 blob 调用或路径不能替代这个入口。Host 的完整读取仅用于版本核对，不能作为模型已经
 读完原文的证据。
 
+缺失来源错误列出实际未绑定的 refs。DocumentView 的 `[#ref]` 是块定位符，不能改写为 `[@ref]`；
+纯 Workspace 正文不会因为重读就获得自身 Citation。此类材料可保留真实 Workspace 普通链接与具体
+章节、行号或摘录，文件导航不表示来源认证，也不承诺裸块 ref 跨稿可定位。调用方必须修正文稿后
+重新提交；adapter 不替换 token、删除依据、放宽来源准入或跨 scope 补齐。
+
 创建复用 document-file-create provider 的 `resultCommit` 同步事务合同：调用方的 `receipt.prepare`
 在异步编译前核对已准备的阶段身份，不能作为输入版本锁；新稿正文、稳定 inode 与引用进入同一事务后，adapter 同步回读正式
 Markdown current 投影，并调用 `receipt.commit(binding)`。回调不得异步，失败与新稿一起回滚。

@@ -69,9 +69,15 @@ export function createWorkspaceResearchDocumentPort(params: {
       const context: PluginToolContext = { conversationId: request.conversationId };
       attachCitationSourceResolver(context, createCitationSourceResolver({
         events,
-        async resolveEvidence() {
+        async resolveEvidence(missingRefs) {
           // 阶段交接只能引用本 run 正式读到的材料；不能用同项目可访问性补齐错误 scope。
-          throw new ResearchDocumentError('RESEARCH_DOCUMENT_CITATION_INVALID', '阶段引用未在产出回答的 run 中绑定；请先用正式 read_file 重新读取来源文档。');
+          throw new ResearchDocumentError(
+            'RESEARCH_DOCUMENT_CITATION_INVALID',
+            `未在当前研究 child 的正式来源中绑定：${missingRefs.map(ref => `[@${ref}]`).join('、')}。\n` +
+            'DocumentView 的 [#块ref] 是段落定位符，不能改成 [@来源ref]；重读不含 Citation 的纯 Workspace 文档不会生成来源引用。\n' +
+            '若依据仅来自 Workspace 正文，请保留真实文件链接 [材料名](workspace:/实际路径) 及章节、行号或原文摘录；文件导航不等于 Citation 或来源认证，裸 [#ref] 不保证跨文档定位。\n' +
+            '若需使用 [@ref]，必须取得当前 child 正式工具返回的已绑定来源 ref，再修改正文重新提交；不要原样重交。',
+          );
         },
       }));
       let committedSnapshot: ResearchDocumentSnapshot | undefined;
