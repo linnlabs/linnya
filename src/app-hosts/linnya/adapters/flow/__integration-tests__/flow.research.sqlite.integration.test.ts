@@ -457,6 +457,69 @@ describe('Production research entry through real Flow, ToolRegistry and register
     fixture.ai.assertAllTurnsConsumed();
   });
 
+  it('正式引用拒绝留下工具错误，根按 yield 结算但不交付或接纳后继，重载保留错误', async () => {
+    const fixture = await open([
+      {
+        contentChunks: [
+          '# Investigation\n\nThe value is supported by an unbound citation [@Abc234].',
+        ],
+      },
+    ]);
+    const projectId = await seed(fixture);
+    await fixture.flow.next(request(projectId), () => {});
+    const owner = await identity(fixture, projectId);
+    const runs = await children(fixture, owner);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.status).toBe('completed');
+    expect(
+      (await fixture.runtime.supervisor.peek(RunIdSchema.parse(owner.parentRunId)))?.status
+    ).toBe('completed');
+    const events = await facts(fixture);
+    const outputs = events.filter(
+      event => event.type === 'tool_output' && event.tool_name === 'research_run'
+    );
+    expect(outputs).toHaveLength(1);
+    expect(outputs[0]).toMatchObject({
+      status: 'error',
+      error_code: 'RESEARCH_DOCUMENT_CITATION_INVALID',
+    });
+    const output = outputs[0];
+    if (!output || output.type !== 'tool_output') throw new Error('Missing research rejection');
+    expect(
+      ResearchRunStructuredResultSchema.safeParse({
+        data: output.data,
+        observation: output.observation,
+      }).success
+    ).toBe(false);
+    expect(
+      events.filter(event => event.type === 'final_answer' && event.run_id === owner.parentRunId)
+    ).toHaveLength(0);
+    const receipts = new SqliteResearchStageReceiptStore(fixture.db).list(owner);
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]?.stage).toBe('investigation');
+    expect(receipts[0]?.artifact).toBeUndefined();
+    expect(
+      new WorkspaceService(fixture.db).getChildNodes(null, projectId).map(node => node.name)
+    ).toEqual(['source.md']);
+    fixture.ai.assertAllTurnsConsumed();
+    await close(fixture);
+    const reloaded = await open([]);
+    const projection = readTail(reloaded.db, conversationId, 100);
+    if (projection.status !== 'ready') throw new Error('Missing reloaded research rejection');
+    const tools = projection.messages.filter(message => message.message_type === 'tool_calls');
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toMatchObject({
+      payload: {
+        tool_name: 'research_run',
+        status: 'error',
+        error_code: 'RESEARCH_DOCUMENT_CITATION_INVALID',
+      },
+    });
+    expect(await children(reloaded, owner)).toHaveLength(1);
+    expect((await reloaded.flow.getActiveForegroundRun(conversationId)).run).toBeNull();
+    reloaded.ai.assertAllTurnsConsumed();
+  });
+
   it('研究进行中编辑材料保留旧输入候选，正式结果标明输入变化且不接纳复核', async () => {
     const fixture = await open(turns(1));
     const projectId = await seed(fixture);
