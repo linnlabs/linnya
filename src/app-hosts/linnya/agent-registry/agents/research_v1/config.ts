@@ -1,5 +1,8 @@
 import type { AgentConfiguration } from '../../types';
 
+export const RESEARCH_ROLE_ROOT_UNAVAILABLE_REASON =
+  '这是研究流程的内部阶段，须由 research_v1 接纳任务并绑定材料与保存位置；不能单独发起根运行。';
+
 /**
  * 四职责仅能读取 Workspace，并提交 Host 已冻结的新产物；不能覆盖作者或同伴的文稿。
  * Shell 仍有宿主命令能力，此白名单不是操作系统或整个项目的权限沙箱。

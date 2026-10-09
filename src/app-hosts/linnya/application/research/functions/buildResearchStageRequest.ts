@@ -79,6 +79,7 @@ export function buildResearchStageRequest(input: ResearchStageRequestInput): Pre
     linesOrNone(input.fixedDocumentLocators),
     'Previous artifacts (read these formal locators; version labels are navigation supplied by the Host):',
     linesOrNone(input.previousArtifacts.map(item => `${item.locator} | version: ${item.version} | ${item.purpose}`)),
+    'All previous artifacts explicitly listed here are permitted earlier-stage context, including a completed investigation review. A parallel reviewer means the other reviewer examining this same draft now; their report is not listed here. Do not mistake permitted earlier-stage context for a forbidden parallel review.',
     'Use source-reading results from this run for canonical citations. Bare short refs from another run are not transferable; reread the formal document or original source to obtain the current binding.',
     '',
     '## Required method access',

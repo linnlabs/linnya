@@ -542,8 +542,9 @@ judgeToolName（不是评分角色）；`maxCallsPerParentRun` 交给 Host 持�
 不贡献四个 Renderer 菜单或通用 `subagent_type`。注册本身不运行研究流程；阶段接纳、输入
 版本与后继调度由 [Research application](../application/research/README.md) 拥有。
 
-四职责共享明确的 800 Graph 节点预算与 `inherit_parent` 模型策略。独立 root 调用须由 Host
-显式传入接纳时选定的模型；registry 不猜父模型。工具仅含 Workspace 读取/定位、Web 与
+四职责共享明确的 800 Graph 节点预算与 `inherit_parent` 模型策略，仅供已接纳研究的 child 使用，
+通过既有 `newRunUnavailableReason` 拒绝独立 root 调用，避免在缺少阶段提交权限时仍消耗模型。
+模型由父研究任务显式冻结，registry 不猜父模型。工具仅含 Workspace 读取/定位、Web 与
 Knowledge 检索读取、Skill、Shell/Process 计算、长输出续读及阶段专用提交；不提供通用委派、TaskState
 或通用 Workspace 写入，也不继承 Default 的周期任务提醒。Web 深搜仍是可选检索
 能力；具体材料范围与检索禁用由 Host 在每阶段接纳时实施，静态白名单不能表达固定材料范围。
