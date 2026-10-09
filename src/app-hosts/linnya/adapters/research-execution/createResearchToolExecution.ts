@@ -1,4 +1,5 @@
-import type { ResearchRunArgs, ResearchRunData } from '@app/schemas';
+import { ResearchRunArgsSchema, type ResearchRunArgs, type ResearchRunData } from '@app/schemas';
+import { isDeepStrictEqual } from 'node:util';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import type { ToolContext } from 'src/tools/types';
 import { runRegisteredSubagent } from 'src/tools/agent_control/subrun/shared';
@@ -6,6 +7,7 @@ import { derivePluginAwareToolContext } from '../../plugin-registry/toolContextD
 import { createResearchUseCase, type ResearchExecutionIdentity } from '../../application/research';
 import { createWorkspaceResearchDocumentPort } from '../research-documents';
 import { SQLiteEventStore } from '../persistence/event-store';
+import { SqliteRunDescriptorStore } from '../persistence/run-descriptors';
 import { SqliteResearchStageReceiptStore } from '../persistence/research-stage-receipts';
 
 export function createResearchToolExecution(
@@ -69,5 +71,29 @@ export function createResearchToolExecution(
       },
     },
   });
-  return input => useCase.execute(input, identity, context.abortSignal);
+  return async input => {
+    // Host-only 是接纳事实，而不只是隐藏 schema；普通模型伪造工具名不能启动研究。
+    const descriptor = await new SqliteRunDescriptorStore(db).load(runId);
+    const entry = descriptor?.options?.host_tool_call;
+    if (
+      !descriptor ||
+      descriptor.child ||
+      descriptor.conversationId !== conversationId ||
+      entry?.tool_name !== 'research_run' ||
+      entry.completion_mode !== 'yield_after_batch' ||
+      !isDeepStrictEqual(ResearchRunArgsSchema.parse(entry.args), input)
+    ) {
+      throw new ResearchHostEntryError();
+    }
+    return useCase.execute(input, identity, context.abortSignal);
+  };
+}
+
+class ResearchHostEntryError extends Error {
+  readonly code = 'RESEARCH_HOST_ENTRY_REQUIRED';
+  constructor() {
+    super(
+      'research_run requires a matching durable Host admission; select the research entry to start a research task.'
+    );
+  }
 }

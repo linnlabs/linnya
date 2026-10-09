@@ -1,4 +1,4 @@
-import { decorateResearchToolContext, enforceResearchRetrievalScope } from '../../adapters/research-execution';
+import { decorateResearchToolContext, enforceResearchRetrievalScope } from '../../adapters/research-execution/decorateResearchToolContext';
 import { decorateDeepWebSnapshotToolContext } from '../../adapters/tools/deepWebSnapshotToolContextDecorator';
 import type { PluginBackendContribution } from '../types';
 import { PLATFORM_PLUGIN_META } from './platform-meta';

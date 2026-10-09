@@ -1,4 +1,4 @@
-import { ResearchRunTool } from '../research-execution';
+import { ResearchRunTool } from '../research-execution/ResearchRunTool';
 import { searchToolClasses } from '../../../../tools/knowledgebase/search';
 import { readerToolClasses } from '../../../../tools/knowledgebase/reader';
 import { assembleToolClasses } from '../../../../tools/knowledgebase/assemble';
