@@ -10,32 +10,32 @@ import type {
 const STAGE_CONTRACTS = {
   investigation: {
     promptKey: PromptKeys.RESEARCH_AUTHOR_V1,
-    task: 'Investigate the question and return a compact research record with source locators, acquisition limits, current explanations, important premises, counterevidence and unresolved observations. Do not draft the final article yet. For an update, first read the prior article and its evidence. Seek observations that could change the explanation, including relevant actors, interests, anomalies and indirect mechanisms.',
+    task: 'Investigate the question and submit a compact research record with source locators, acquisition limits, current explanations, important premises, counterevidence and unresolved observations. Do not draft the final article yet. For an update, first read the prior article and its evidence. Seek observations that could change the explanation, including relevant actors, interests, anomalies and indirect mechanisms.',
     resources: ['references/modeling.md'],
   },
   investigation_review: {
     promptKey: PromptKeys.RESEARCH_INVESTIGATION_REVIEW_V1,
-    task: 'Independently review the investigation BEFORE drafting. Work from the question, research record and original materials; a finished article is not required. Identify omitted actors or interests, anomalies and plausible alternative mechanisms. Explain what observation could distinguish explanations, then investigate useful leads within scope. Return concrete findings, new source locations and remaining gaps, allowing that the available evidence may not distinguish explanations. Do not write the article.',
+    task: 'Independently review the investigation BEFORE drafting. Work from the question, research record and original materials; a finished article is not required. Identify omitted actors or interests, anomalies and plausible alternative mechanisms. Explain what observation could distinguish explanations, then investigate useful leads within scope. Submit concrete findings, new source locations and remaining gaps, allowing that the available evidence may not distinguish explanations. Do not write the article.',
     resources: ['references/modeling.md'],
   },
   draft: {
     promptKey: PromptKeys.RESEARCH_AUTHOR_V1,
-    task: 'Read the research record and independent investigation review. Check important suggestions against the materials, perform bounded follow-up where permitted, and write one coherent article for the specified reader. Develop useful mechanisms and competing explanations in an understandable order. Return only the article Markdown; do not append a process report or review disposition ledger.',
+    task: 'Read the research record and independent investigation review. Check important suggestions against the materials, perform bounded follow-up where permitted, and write one coherent article for the specified reader. Develop useful mechanisms and competing explanations in an understandable order. Submit only the article Markdown as the content; do not append a process report or review disposition ledger.',
     resources: ['references/modeling.md', 'references/article-craft.md'],
   },
   argument_review: {
     promptKey: PromptKeys.RESEARCH_ARGUMENT_REVIEW_V1,
-    task: 'Independently review the exact supplied article version. Trace consequential claims through evidence, causal bridges, necessary versus sufficient conditions, competing explanations and counterfactuals. Check whether the title, opening and conclusion widen the body, and whether the intended reader can follow definitions and mechanisms. Do not read the parallel reviewer\'s findings or rewrite the article. Return a review with passages, evidence, consequences, suggestions and unverified scope.',
+    task: 'Independently review the exact supplied article version. Trace consequential claims through evidence, causal bridges, necessary versus sufficient conditions, competing explanations and counterfactuals. Check whether the title, opening and conclusion widen the body, and whether the intended reader can follow definitions and mechanisms. Do not read the parallel reviewer\'s findings or rewrite the article. Submit a review with passages, evidence, consequences, suggestions and unverified scope.',
     resources: ['references/modeling.md', 'references/article-craft.md'],
   },
   source_review: {
     promptKey: PromptKeys.RESEARCH_SOURCE_REVIEW_V1,
-    task: 'Independently check the exact supplied article version. Derive key quantities and comparisons from its prose, including the title, opening and conclusion. Check source versions, population or sample, units, periods, denominator, footnotes and citations. Actually execute consequential calculations. Inspect actual tables or page images for chart-dependent claims; extracted text alone is not visual inspection. Do not read the parallel reviewer\'s findings or rewrite the article. Return source locations, computations, consequences, suggestions and material you could not verify.',
+    task: 'Independently check the exact supplied article version. Derive key quantities and comparisons from its prose, including the title, opening and conclusion. Check source versions, population or sample, units, periods, denominator, footnotes and citations. Actually execute consequential calculations. Inspect actual tables or page images for chart-dependent claims; extracted text alone is not visual inspection. Do not read the parallel reviewer\'s findings or rewrite the article. Submit source locations, computations, consequences, suggestions and material you could not verify.',
     resources: ['references/modeling.md'],
   },
   revision: {
     promptKey: PromptKeys.RESEARCH_AUTHOR_V1,
-    task: 'Read the supplied article and both original independent reviews. Make one evidence-based main revision within the frozen question and material scope. Verify review claims, including findings you reject or only partially address, rather than accepting votes. Preserve useful explanations, counterevidence and conditions. Return only the revised article Markdown; do not append a process report or review disposition ledger. If an unresolved issue affects the conclusion, express the corresponding limitation in the article.',
+    task: 'Read the supplied article and both original independent reviews. Make one evidence-based main revision within the frozen question and material scope. Verify review claims, including findings you reject or only partially address, rather than accepting votes. Preserve useful explanations, counterevidence and conditions. Submit only the revised article Markdown as the content; do not append a process report or review disposition ledger. If an unresolved issue affects the conclusion, express the corresponding limitation in the article.',
     resources: ['references/modeling.md', 'references/article-craft.md'],
   },
 } satisfies Record<ResearchStageRequestKind, {
@@ -97,7 +97,7 @@ export function buildResearchStageRequest(input: ResearchStageRequestInput): Pre
     '## Single stage deliverable',
     `Planned Workspace locator: ${input.output.locator}`,
     `Purpose: ${input.output.purpose}`,
-    'Return exactly one complete Markdown deliverable as the final answer, without a JSON wrapper or a surrounding code fence. The Host saves it create-only at the planned new Workspace path and validates the saved projection and citation bindings. This is how the Skill\'s save-and-readback requirement is fulfilled in this controlled stage; do not try to write Workspace documents yourself and do not claim that saving already succeeded.',
+    'Finish by calling submit_research_document with exactly one complete Markdown deliverable in content, without a surrounding code fence. The Host saves it create-only at the planned new Workspace path and validates the saved projection and citation bindings. This fulfills the Skill\'s save-and-readback requirement during the tool call; a free-text final answer is not a substitute. Correct a reported format or citation error against the actual source context and resubmit in this same stage, without claiming success or removing necessary evidence to avoid validation. Input-version changes or cancellation are stopping conditions, not instructions to rewrite the task.',
     'The Host alone schedules independent stages. Do not delegate extra reviewers or use application internals, databases or command-line control endpoints to launch runs or modify project documents. Shell/process are for permitted calculations and source processing, not a substitute Workspace write path. Review findings and successful tool calls are not correctness certificates.',
   ].join('\n');
 

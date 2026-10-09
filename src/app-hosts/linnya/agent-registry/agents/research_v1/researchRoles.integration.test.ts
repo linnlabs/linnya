@@ -87,11 +87,13 @@ describe('controlled research roles through formal preparation and Skill access'
     expect(prepared.query).toContain('investigation-1');
     expect(prepared.query).toContain('No external retrieval is allowed');
     expect(prepared.query).toContain('Host saves it create-only');
+    expect(prepared.query).toContain('Finish by calling submit_research_document');
+    expect(system?.content).toContain('A free-text final answer is not a saved deliverable');
     expect(prepared.requiredResources).not.toContain('references/business-analysis.md');
     for (const resource of prepared.requiredResources) expect(prepared.query).toContain(resource);
 
     const tools = resolved.agentConfig.availableTools ?? [];
-    expect(tools).toEqual(expect.arrayContaining(['read_file', 'web_search', 'skill', 'shell', 'process']));
+    expect(tools).toEqual(expect.arrayContaining(['read_file', 'web_search', 'skill', 'shell', 'process', 'submit_research_document']));
     for (const forbidden of ['write_file', 'edit_file', 'subagent', 'task_write', 'task_read', 'write_report']) {
       expect(tools).not.toContain(forbidden);
     }

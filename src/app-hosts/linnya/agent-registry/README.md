@@ -544,12 +544,14 @@ judgeToolName（不是评分角色）；`maxCallsPerParentRun` 交给 Host 持�
 
 四职责共享明确的 800 Graph 节点预算与 `inherit_parent` 模型策略。独立 root 调用须由 Host
 显式传入接纳时选定的模型；registry 不猜父模型。工具仅含 Workspace 读取/定位、Web 与
-Knowledge 检索读取、Skill、Shell/Process 计算以及长输出续读；不提供通用委派、TaskState
-或任何正式 Workspace mutation，也不继承 Default 的周期任务提醒。Web 深搜仍是可选检索
+Knowledge 检索读取、Skill、Shell/Process 计算、长输出续读及阶段专用提交；不提供通用委派、TaskState
+或通用 Workspace 写入，也不继承 Default 的周期任务提醒。Web 深搜仍是可选检索
 能力；具体材料范围与检索禁用由 Host 在每阶段接纳时实施，静态白名单不能表达固定材料范围。
 
-每阶段返回单份完整 Markdown，Host 使用该阶段的引用上下文保存新文档并检查正式投影，
-因此 reviewer 无法通过已暴露的正式写工具覆盖正文。Shell 仍有宿主命令能力，这不构成 OS
+每阶段通过 `submit_research_document` 提交单份完整 Markdown。Host 在该调用内使用实际 child 的
+引用上下文保存预定新文档并检查正式投影；格式或引用校验错误回到同一 child，在原预算内修正。
+`resultToolName` 与 `force_tools` 沿用现有产物及预算收尾合同，自由文本终答不作为交付。
+模型不能选择路径或覆盖正文，成功保存也不是内容质量认证。Shell 仍有宿主命令能力，这不构成 OS
 权限沙箱，也不等于同项目文件自动隔离；职责提示明确禁止绕过正式文档与派发边界。
 
 方法只保留一份正式 `deep-research` 1.4。`requiredSkills` 声明内置依赖并披露目录，不代表
