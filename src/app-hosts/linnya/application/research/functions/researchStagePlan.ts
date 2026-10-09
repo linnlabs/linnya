@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { ResearchRunArgs, ResearchRunArtifact, ResearchStage } from '@app/schemas';
+import { ResearchRunArtifactSchema } from '@app/schemas';
 import {
   ResearchDocumentError,
   type ResearchDocumentBinding,
@@ -118,14 +119,14 @@ export function researchArtifacts(
     const binding = receipt?.artifact;
     return receipt && binding
       ? [
-          {
+          ResearchRunArtifactSchema.parse({
             stage,
             subrun_id: receipt.subrunId,
             path: binding.locator,
             inode: binding.inode,
             sha256: binding.sha256,
             citation_sha256: binding.citationSha256,
-          },
+          }),
         ]
       : [];
   });

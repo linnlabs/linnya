@@ -263,7 +263,8 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
           success: false,
           error: `当前子运行未获准调用工具 '${toolName}'`,
           errorCode: 'REGISTERED_CHILD_TOOL_NOT_ALLOWED',
-          errorKind: 'capability',
+          // 已确定拒绝且没有执行副作用；不是恢复时缺失 capability 的未知结果。
+          errorKind: 'execution',
           durationMs: Date.now() - startTime,
         };
       }

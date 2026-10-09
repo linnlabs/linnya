@@ -114,7 +114,7 @@ describe('registered child execution scope through ToolNode and ToolRegistry', (
       )
     ).toMatchObject({
       success: false,
-      errorKind: 'capability',
+      errorKind: 'execution',
       errorCode: 'REGISTERED_CHILD_TOOL_NOT_ALLOWED',
     });
   });

@@ -11,18 +11,18 @@ import type {
   PreparedResearchStage,
   ResearchExecutionIdentity,
 } from './definitions/researchStageReceipt';
-import type { ResearchRunArgs } from '@app/schemas';
+import { ResearchRunArgsSchema } from '@app/schemas';
 
 let database: DatabaseService;
 let workspace: WorkspaceService;
 let events: SQLiteEventStore;
 let identity: ResearchExecutionIdentity;
-const input: ResearchRunArgs = {
+const input = ResearchRunArgsSchema.parse({
   question: 'Explain the change without inventing causes.',
   reader: 'General reader',
   task_type: 'fixed',
   materials: ['workspace:/source.md'],
-};
+});
 const calls: PreparedResearchStage[] = [];
 
 function documents() {
