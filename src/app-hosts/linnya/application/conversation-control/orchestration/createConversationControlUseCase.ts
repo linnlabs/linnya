@@ -87,6 +87,13 @@ function buildSendRequest(
       project_metadata: request.project_id ? { id: request.project_id } : undefined,
       run_lane: 'foreground',
       event_visibility: 'conversation',
+      ...(request.research_scope ? {
+        host_tool_call: {
+          tool_name: 'research_run',
+          args: request.research_scope,
+          completion_mode: 'yield_after_batch' as const,
+        },
+      } : {}),
     },
   };
 }

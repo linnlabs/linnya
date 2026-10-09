@@ -56,7 +56,7 @@ describe('research engineering admission', () => {
         ],
       },
     },
-    { conversationHistory: [{ role: 'user', content: 'Do not omit this earlier constraint.' }] },
+    { conversationHistory: [{ id: 'previous-user-input', type: 'user_input', timestamp: 1, role: 'user', content: 'Do not omit this earlier constraint.' }] },
     { document_fragment: 'Selected source text' },
     { fences: [{ kind: 'selected-source', content: 'Exact source' }] },
   ];

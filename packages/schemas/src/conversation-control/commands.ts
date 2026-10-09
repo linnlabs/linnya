@@ -3,6 +3,7 @@ import { ConversationControlCommandApprovalsRequestSchema } from './commandAppro
 import { JsonValueSchema } from '../json-value';
 import { ConversationSelectedAgentIdSchema } from '../conversation/selected-agent';
 import { CONVERSATION_CONTROL_SCHEMA_VERSION } from './protocol';
+import { RESEARCH_AGENT_ID, ResearchRunArgsSchema } from '../tools/research-run';
 
 const CommandBaseFields = {
   schema_version: z.literal(CONVERSATION_CONTROL_SCHEMA_VERSION),
@@ -21,8 +22,14 @@ export const ConversationControlSendRequestSchema = z
     model_id: OpaqueIdSchema.optional(),
     image_generation_model_id: OpaqueIdSchema.optional(),
     reasoning_effort: z.enum(['off', 'minimal', 'low', 'medium', 'high', 'xhigh']).optional(),
+    research_scope: ResearchRunArgsSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.research_scope && value.selected_agent_id !== RESEARCH_AGENT_ID) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['research_scope'], message: 'Research scope requires the explicit research_v1 Agent selection' });
+    }
+  });
 
 export const ConversationControlListRequestSchema = z
   .object({

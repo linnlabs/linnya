@@ -10,7 +10,7 @@ Host 通过唯一的 research_run 入口按固定顺序组织调查、调查复�
 
 ## 文档与接纳
 
-当前只开放显式 Host 工程入口：调用方在已有 `host_tool_call` 中声明问题、读者、open/fixed/update 模式及 Workspace 材料，原始用户请求也完整进入各阶段。普通 `send --agent research_v1` 尚不能推断范围，会在接纳前明确拒绝；附件、旧会话、编辑器引用等未绑定上下文也会拒绝，不能静默丢失后改为开放网页研究。普通产品入口的范围确认与这些材料的正式交接仍待实现，不将此工程入口宣称为已完成的前端研究功能。
+当前只开放显式 Host 工程入口：CLI `send --agent research_v1 --research-scope-json` 声明问题、读者、open/fixed/update 模式及 Workspace 材料，Conversation Control 映射到已有 `host_tool_call`，原始用户请求也完整进入各阶段。该参数不允许任意工具名或其他 Agent，普通 `send --agent research_v1` 尚不能推断范围，会在接纳前明确拒绝；附件、旧会话、编辑器引用等未绑定上下文也会拒绝，不能静默丢失后改为开放网页研究。普通产品入口的范围确认与这些材料的正式交接仍待实现，不将此工程入口宣称为已完成的前端研究功能。
 
 阶段以单份 Markdown final answer 返回，Host 通过 [正式文档适配器](../../adapters/research-documents/README.md) create-only 保存、回读全文并绑定 canonical 引用。研究记录、原始评审、初稿和修订稿分开保存，不把研究记录混入文章。角色不持有正式 Workspace 写入工具。
 

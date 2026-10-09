@@ -3,6 +3,7 @@ import { parseCommandApprovalRequest, CommandApprovalReplySubmissionV1Schema } f
 import { describe, expect, it } from 'vitest';
 import {
   ConversationSelectedAgentIdSchema,
+  ConversationControlSendRequestSchema,
   ConversationUiMessageSchema,
   type ConversationInteractionResponseRequest,
   type ConversationNextRequest,
@@ -686,6 +687,22 @@ describe('conversation-control use case', () => {
           available: true,
         },
       ],
+    });
+  });
+
+  it('显式研究 scope 沿正式 Flow 交接，保留原消息及指定模型，不另起运行器', async () => {
+    const test = fixture();
+    const request = ConversationControlSendRequestSchema.parse({
+      schema_version: 1, command: 'send', message: '只用所给材料，正文不超过一千字。',
+      project_id: 'project-1', selected_agent_id: 'research_v1', model_id: 'chat-model',
+      research_scope: { question: 'Explain the sample.', reader: 'General reader', task_type: 'fixed', materials: ['workspace:/source.md'] },
+    });
+    await test.useCase.send(request);
+    expect(test.startRequests).toHaveLength(1);
+    expect(test.startRequests[0]).toMatchObject({
+      project_id: 'project-1', new_events: [{ content: request.message }],
+      options: { selected_agent_id: 'research_v1', model_id: 'chat-model',
+        host_tool_call: { tool_name: 'research_run', args: request.research_scope, completion_mode: 'yield_after_batch' } },
     });
   });
 

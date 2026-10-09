@@ -166,7 +166,7 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
     }
     case 'send': {
       assertAllowedOptions(tokens, [
-        'conversation', 'project', 'agent', 'model', 'image-model', 'reasoning',
+        'conversation', 'project', 'agent', 'model', 'image-model', 'reasoning', 'research-scope-json',
       ]);
       const message = tokens.positionals.join(' ').trim();
       const projectId = readString(tokens, 'project');
@@ -184,6 +184,8 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
         model_id: readString(tokens, 'model'),
         image_generation_model_id: readString(tokens, 'image-model'),
         reasoning_effort: readString(tokens, 'reasoning'),
+        research_scope: tokens.options.has('research-scope-json')
+          ? parseJsonOption(tokens, 'research-scope-json') : undefined,
       });
       return { kind: 'command', request, pretty };
     }

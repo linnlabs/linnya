@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { WorkspaceFileLocatorSchema } from '../file-locator';
 
+export const RESEARCH_AGENT_ID = 'research_v1';
+
 const Text = z.string().trim().min(1);
 const WorkspaceLocator = WorkspaceFileLocatorSchema;
 export const ResearchStageSchema = z.enum([

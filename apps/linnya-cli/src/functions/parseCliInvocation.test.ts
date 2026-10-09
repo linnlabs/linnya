@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { parseCliInvocation } from './parseCliInvocation';
 
 describe('parseCliInvocation', () => {
+  it('显式研究范围只进入新版研究，不能变成任意 Host 工具请求', () => {
+    const scope = JSON.stringify({ question: 'Explain the sample.', reader: 'General reader', task_type: 'fixed', materials: ['workspace:/source.md'] });
+    const base = ['send', '只用原件，不超过一千字。', '--project', 'project-1'];
+    expect(parseCliInvocation([...base, '--agent', 'research_v1', '--research-scope-json', scope])).toMatchObject({
+      request: { command: 'send', message: '只用原件，不超过一千字。', research_scope: { task_type: 'fixed', materials: ['workspace:/source.md'] } },
+    });
+    expect(() => parseCliInvocation([...base, '--research-scope-json', scope])).toThrow();
+    expect(() => parseCliInvocation([...base, '--agent', 'default', '--research-scope-json', scope])).toThrow();
+    expect(() => parseCliInvocation([...base, '--agent', 'research_v1', '--research-scope-json', '{"task_type":"fixed","materials":[]}'])).toThrow();
+    expect(() => parseCliInvocation([...base, '--agent', 'research_v1', '--host-tool-call-json', '{}'])).toThrow();
+  });
   it('Shell 审批查询和回复必须显式绑定 run/request/choice，不使用普通 HITL', () => {
     const requestId = 'command_approval_11111111-1111-4111-8111-111111111111';
     expect(parseCliInvocation(['approvals', 'conversation-1', '--run', 'root-1'])).toMatchObject({
