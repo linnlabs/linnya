@@ -86,7 +86,10 @@ describe('main research and controlled document roles through formal preparation
     expect(system?.content).toContain(JSON.stringify(scope, null, 2));
     expect(system?.content).toContain('<skill name="deep-research">');
     const resumed: AgentInvokeRequest = {
-      ...frozen, researchScope: { ...scope, reader: 'a changed reader', materials: ['workspace:/other.md'] },
+      ...frozen,
+      researchScope: ResearchRunArgsSchema.parse({
+        ...scope, reader: 'a changed reader', materials: ['workspace:/other.md'],
+      }),
     };
     expect(task.getSystemPromptForRequest(resumed)).toBe(frozen.frozenSystemPrompt);
   });
