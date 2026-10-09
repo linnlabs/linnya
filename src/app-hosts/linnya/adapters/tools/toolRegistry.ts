@@ -1,5 +1,6 @@
 import { runtimeKernel } from '@linnlabs/linnkit';
 import {
+  getRegisteredHostOnlyToolNames,
   getRegisteredToolClasses,
   getRegisteredToolContextDecorators,
 } from 'src/app-hosts/linnya/plugin-registry/builtin';
@@ -42,7 +43,7 @@ export class ToolRegistryInitializationError extends Error {
   readonly errors: readonly string[];
 
   constructor(errors: readonly string[]) {
-    super(`[ToolRegistry] strict 初始化失败: ${errors.join('; ')}`);
+    super(`[ToolRegistry] 初始化失败: ${errors.join('; ')}`);
     this.name = 'ToolRegistryInitializationError';
     this.errors = errors;
   }
@@ -81,6 +82,7 @@ function readToolArgumentValidationErrorCode(tool: BaseTool): string | undefined
  */
 export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
   private tools: Map<string, BaseTool> = new Map();
+  private hostOnlyToolNames = new Set<string>();
   private toolContextDecorators: Map<string, BackendPluginToolContextDecorator[]> = new Map();
   private initialized = false;
   private readonly strictInitialization: boolean;
@@ -140,6 +142,16 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
       }
     }
 
+    const hostOnlyToolNames = getRegisteredHostOnlyToolNames();
+    const unregisteredNames = hostOnlyToolNames.filter(name => !this.tools.has(name));
+    // 声明拼错会让本应隐藏的工具进入模型目录，不能按单工具 best-effort 忽略。
+    if (unregisteredNames.length > 0) {
+      this.tools.clear();
+      throw new ToolRegistryInitializationError(
+        unregisteredNames.map(name => `Host-only 工具未注册: ${name}`)
+      );
+    }
+    this.hostOnlyToolNames = new Set(hostOnlyToolNames);
     this.indexToolContextDecorators();
 
     this.initialized = true;
@@ -183,11 +195,9 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
 
   getAvailableToolNames(toolNames?: string[]): string[] {
     this.ensureInitialized();
-    if (!toolNames || toolNames.length === 0) {
-      return Array.from(this.tools.keys());
-    }
-
-    return toolNames.filter(name => this.tools.has(name));
+    const requestedNames =
+      !toolNames || toolNames.length === 0 ? Array.from(this.tools.keys()) : toolNames;
+    return requestedNames.filter(name => this.tools.has(name) && !this.hostOnlyToolNames.has(name));
   }
 
   getToolSchemas(input: ToolSchemaBuildRequest): FunctionToolSchema[] {
@@ -200,6 +210,8 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
     const schemaContext = deriveLinnyaToolSchemaContext(input.invocation);
 
     for (const tool of toolsToProcess) {
+      // 显式 Agent 名单同样不能开放 Host 专用入口；执行定义仍供 forced-tool 使用。
+      if (this.hostOnlyToolNames.has(tool.name)) continue;
       const parameters = this.resolveToolParametersForSchema(tool, schemaContext);
       const description = this.resolveToolDescriptionForSchema(tool, schemaContext);
       schemas.push({
@@ -464,6 +476,7 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
 
   reinitialize(): void {
     this.tools.clear();
+    this.hostOnlyToolNames.clear();
     this.toolContextDecorators.clear();
     this.initialized = false;
     this.initializeTools();

@@ -33,6 +33,7 @@ describe('Todo 普通工具历史', () => {
 
   it('正式工具入口 A → B → A 时写出第三版，不复用第一版历史结果', async () => {
     vi.spyOn(builtin, 'getRegisteredToolClasses').mockReturnValue([TodoWriteTool, TodoReadTool]);
+    vi.spyOn(builtin, 'getRegisteredHostOnlyToolNames').mockReturnValue([]);
     vi.spyOn(builtin, 'getRegisteredToolContextDecorators').mockReturnValue([]);
     const registry = new ToolRegistry({ strictInitialization: true });
     const history: RuntimeEvent[] = [];

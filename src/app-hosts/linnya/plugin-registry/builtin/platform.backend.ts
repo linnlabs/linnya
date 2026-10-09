@@ -34,6 +34,7 @@ import {
 export const platformBackendPlugin: PluginBackendContribution = {
   meta: PLATFORM_PLUGIN_META,
   toolClasses: legacyBuiltinToolClasses,
+  hostOnlyToolNames: ['research_run'],
   toolContextDecorators: [
     { toolNames: ['research_run'], decorate: decorateResearchToolContext },
     { toolNames: ['web_search', 'web_read', 'search_web', 'knowledge_search', 'knowledge_read'], decorate: enforceResearchRetrievalScope },

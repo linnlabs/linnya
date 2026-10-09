@@ -393,6 +393,7 @@ describe('Web Phase 1 本地优先读取业务 E2E', () => {
     const context = await prepareBusinessContext();
     fixture.searchScenario = scenario;
     vi.spyOn(builtinPluginRegistry, 'getRegisteredToolClasses').mockReturnValue([WebSearchTool]);
+    vi.spyOn(builtinPluginRegistry, 'getRegisteredHostOnlyToolNames').mockReturnValue([]);
     setPluginRuntimeStateForTests({ enabledPluginIds: ['platform'] });
     vi.spyOn(builtinPluginRegistry, 'getRegisteredToolContextDecorators').mockReturnValue([]);
     const registry = new ToolRegistry({ strictInitialization: true });

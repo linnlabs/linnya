@@ -207,6 +207,10 @@ class BackendPluginRegistry {
     return this.effective(enabledIds).flatMap((contribution) => contribution.toolClasses ?? []);
   }
 
+  getHostOnlyToolNames(enabledIds: ReadonlySet<PluginId> | null): string[] {
+    return this.effective(enabledIds).flatMap((contribution) => contribution.hostOnlyToolNames ?? []);
+  }
+
   getPluginCliRegistrations(
     enabledIds: ReadonlySet<PluginId> | null,
   ): BackendPluginCliRegistration[] {

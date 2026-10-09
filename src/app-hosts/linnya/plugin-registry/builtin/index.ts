@@ -483,6 +483,11 @@ export function getRegisteredToolClasses(enabledIds?: ReadonlySet<PluginId> | nu
   return backendPluginRegistry.getToolClasses(resolveEnabledIds(enabledIds));
 }
 
+export function getRegisteredHostOnlyToolNames(enabledIds?: ReadonlySet<PluginId> | null) {
+  ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
+  return backendPluginRegistry.getHostOnlyToolNames(resolveEnabledIds(enabledIds));
+}
+
 export function getRegisteredToolContextDecorators(enabledIds?: ReadonlySet<PluginId> | null) {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
   return backendPluginRegistry.getToolContextDecorators(resolveEnabledIds(enabledIds));

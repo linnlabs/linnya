@@ -53,6 +53,8 @@ export type PluginAgentDefinitionContribution =
   | HostAgentDefinition;
 
 export type PluginBackendContribution = SdkPluginBackendContribution & {
+  /** Host 专用工具不进入模型目录；隐藏不替代该工具自身的执行接纳。 */
+  readonly hostOnlyToolNames?: readonly string[];
   agentDefinitions?: readonly PluginAgentDefinitionContribution[];
   documentTypeHooks?: readonly DocumentTypeBackendHook[];
   schemaProviders?: readonly ISchemaProvider[];

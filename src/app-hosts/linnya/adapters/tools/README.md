@@ -52,6 +52,13 @@ src/app-hosts/linnya/adapters/tools/
 3. `defaultPorts.ts` 把 registry 投影成 runtime 可消费的 ports
 4. `defaultToolManager.ts` 向上层暴露只依赖 registry 的默认 `ToolManager` 创建入口
 
+Host contribution 可用 `hostOnlyToolNames` 声明仅由 Host 接纳的工具。名称必须对应当前 enabled
+registry 中的真实工具；未注册声明会使初始化失败，避免错误配置暴露工具。`getToolSchemas` 与
+`getAvailableToolNames` 始终排除这些工具，显式 Agent 白名单也不能开放它们；
+`getTool`、`getToolDefinition` 与 `executeTool` 保留正式 Host 执行路径。该字段属于 Host 装配合同，
+不扩展 Linnkit `BaseTool` 或公共插件合同。目录隐藏不授予或撤销执行权限，例如研究工具仍须核对
+匹配的持久化 Host 入口，不能只凭工具名启动研究。
+
 Citation source resolution 位于 app-level adapter，因为它需要编排 Citation、正式 producer event 与
 conversation EvidenceStore。Citation domain 只拥有来源 DTO 和接纳规则；插件只经
 `@plugin/backend/citationSourceRuntime` 读取已接纳投影，不能穿透该目录。

@@ -314,6 +314,7 @@ describe('ToolRegistry.getToolSchemas', () => {
 
 describe('ToolRegistry 初始化策略', () => {
   it('默认初始化保持 best-effort：单个工具加载失败不阻断其它工具', () => {
+    vi.spyOn(builtinPluginRegistry, 'getRegisteredHostOnlyToolNames').mockReturnValue([]);
     vi.spyOn(builtinPluginRegistry, 'getRegisteredToolClasses').mockReturnValue([
       ConstructorFailureTool,
       IdempotentConversationViewTool,
@@ -325,6 +326,7 @@ describe('ToolRegistry 初始化策略', () => {
   });
 
   it('strict 初始化遇到工具加载失败应 fail-fast，防止 eval 在缺工具状态下继续跑', () => {
+    vi.spyOn(builtinPluginRegistry, 'getRegisteredHostOnlyToolNames').mockReturnValue([]);
     vi.spyOn(builtinPluginRegistry, 'getRegisteredToolClasses').mockReturnValue([
       ConstructorFailureTool,
       IdempotentConversationViewTool,

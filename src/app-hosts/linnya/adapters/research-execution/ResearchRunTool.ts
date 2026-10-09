@@ -44,10 +44,14 @@ export class ResearchRunTool extends BaseTool {
     if (!context.researchExecution) throw new Error('Research execution port is not installed');
     const data = ResearchRunDataSchema.parse(await context.researchExecution(input));
     const article = data.artifacts.find(item => item.stage === 'revision');
+    const retainedArtifacts =
+      data.artifacts.length > 0
+        ? `已保存的 ${data.artifacts.length} 份研究产物仍绑定原输入版本。`
+        : '尚未保存研究产物。';
     const observation =
       data.status === 'delivered' && article
         ? `研究阶段已完成，修订稿：[打开文章](${article.path})。调查、原始评审和初稿分别保存在项目中。阶段完成不代表所有结论已核实。`
-        : `输入文档已经变化，停止后继研究。已保留候选稿和旧版本绑定，请核对材料后重新发起研究。变化：${data.status === 'inputs_changed' ? data.changed_paths.join('、') : ''}`;
+        : `输入文档已经变化，停止后继研究。${retainedArtifacts}请核对材料后重新发起研究。变化：${data.status === 'inputs_changed' ? data.changed_paths.join('、') : ''}`;
     return JSON.stringify({
       data,
       observation,
