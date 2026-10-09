@@ -1,5 +1,5 @@
 import { ResearchRunArgsSchema, ResearchRunDataSchema } from '@app/schemas';
-import { BaseTool, type ToolContext, type ToolParameterSchema } from 'src/tools/types';
+import { BaseTool, type ToolContext, type ToolParameterSchema } from '../../../../tools/types';
 
 /** Host-only 薄入口；流程、版本接纳和文件写入分别由应用用例和 owner adapter 承担。 */
 export class ResearchRunTool extends BaseTool {
