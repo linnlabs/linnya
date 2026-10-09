@@ -485,8 +485,9 @@ src/app-hosts/linnya/agent-registry/
 改 registry 主链后，最小应跑：
 
 - [singleTurnAgents.test.ts](./agents/__tests__/singleTurnAgents.test.ts)
-- [slidesAgent.test.ts](./agents/__tests__/slidesAgent.test.ts)
+- [Slides Agent](../../../../packages/plugins/slides/src/backend/agents/slides_agent/index.test.ts)
 - [deepResearchAgents.test.ts](./agents/__tests__/deepResearchAgents.test.ts)
+- [researchRoles.integration.test.ts](./agents/research_v1/researchRoles.integration.test.ts)
 - [agentSkillExposure.test.ts](../../../features/skills/__tests__/agentSkillExposure.test.ts)
 
 如果改动影响 child-run / tool 调用主链，还应补跑：
@@ -539,21 +540,28 @@ judgeToolName（不是评分角色）；`maxCallsPerParentRun` 交给 Host 持�
 数字/来源职责可以要求检查图表，但只有当前模型实际取得页图时才属于视觉核查；取得失败、
 仅有文字提取和未核部分须如实保留，定义本身不增加视觉能力或新的 PDF 读取实现。
 
-### Host 受控研究职责 v1
+### 主研究 Agent 与受控文稿职责 v1
 
-前端单一“研究”选择映射 `research_v1`。该 definition 通过 `requestAdmission` 接纳主 Agent
-请求，普通项目请求按开放调查生成 `researchScope`。原 query、正式历史及页面上下文仍走各自
-通道，Host 不再把历史拼成工具问题。CLI 的 `research_scope` 独立冻结问题、读者、材料和时间；
-显式 scope 不能混入历史、图片或编辑器上下文。无项目和本轮图片在接纳前给出操作提示。
-新研究拒绝强制 Host 工具入口；旧 `research_run` descriptor 仍按原运行身份恢复。
-上下文、版本保障及旧身份边界见
+前端单一“研究”选择仍映射 `research_v1`。新 root 使用用户主模型和正常 Conversation 消息，
+负责调查判断、计划、用户进展、实际委派和最终文章判断。TaskState 是模型维护的工作记录，
+不调度阶段、不证明执行完成。definition 通过 `requestAdmission` 接纳主 Agent 请求，普通项目
+请求按开放调查生成 `researchScope`。原 query、正式历史及页面上下文仍走各自通道，Host 不再
+把历史拼成工具问题。CLI 的 `research_scope` 独立冻结问题、读者、材料和时间；显式 scope 不能
+混入历史、图片或编辑器上下文。无项目和本轮图片在接纳前给出操作提示。新研究拒绝强制 Host
+工具入口；旧 `research_run` descriptor 仍按原运行身份恢复。上下文、范围与版本保障见
 [Research 用例](../application/research/README.md)，不要在 Renderer 或 Flow 重复实现研究规则。
 
-正式职责使用独立身份 `research_author_v1`、`research_investigation_review_v1`、
-`research_argument_review_v1`、`research_source_review_v1`；分别负责主研究与成文、成文前
-调查复核、成稿论证复核、来源与数值复核。旧实验定义及历史 promptKey 保持原义，新职责
-不贡献四个 Renderer 菜单或通用 `subagent_type`。注册本身不运行研究流程；阶段接纳、输入
-版本与后继调度由 [Research application](../application/research/README.md) 拥有。
+主 Agent 使用统一 `subagent` 委派调查、调查复核、初稿、论证复核、来源复核和修订，
+通过 `input_documents` 明确阶段输入；当前调用串行执行。每个 child 都有既有 Subagent 详情，
+主会话保留主模型的正常消息和进度。Host 绑定阶段输入与新文稿提交能力、核对真实依赖和版本，
+不替模型选择下一阶段。两个成稿评审基于同一初稿、互不读取对方意见，主 Agent 阅读原稿和两份
+原始评审后委派一次主修订；独立输入与职责不代表并行执行或 OS 权限隔离。
+
+内部文稿职责仍使用 `research_author_v1`、`research_investigation_review_v1`、
+`research_argument_review_v1`、`research_source_review_v1`，分别承担研究与成文、成文前复核、
+论证复核、来源与数值复核。统一子委派将六种研究任务映射到这些职责；它们不增加 Renderer
+菜单。旧实验定义保持原义，已接纳的旧 `research_run` 沿冻结 descriptor 恢复；新 root
+不再通过整个研究外层工具调用启动。
 
 四职责共享明确的 800 Graph 节点预算与 `inherit_parent` 模型策略，仅供已接纳研究的 child 使用，
 通过既有 `newRunUnavailableReason` 拒绝独立 root 调用，避免在缺少阶段提交权限时仍消耗模型。
@@ -567,6 +575,11 @@ Knowledge 检索读取、Skill、Shell/Process 计算、长输出续读及阶段
 `resultToolName` 与 `force_tools` 沿用现有产物及预算收尾合同，自由文本终答不作为交付。
 模型不能选择路径或覆盖正文，成功保存也不是内容质量认证。Shell 仍有宿主命令能力，这不构成 OS
 权限沙箱，也不等于同项目文件自动隔离；职责提示明确禁止绕过正式文档与派发边界。
+
+主 Agent 同样没有通用 Workspace 写入能力。它读取并判断修订稿后调用 `complete_research`，
+由 Host 核对所选文稿及必要调查、评审的真实提交与版本，返回文章和原始评审导航。该工具不评分
+或认证内容正确，也不展示另一棵研究流程树。预算不足时允许普通终答如实报告未交付与现有材料，
+不能把 TaskState 完成、child 提交或自由文本终答称为最终研究交付。
 
 方法只保留一份正式 `deep-research` 1.4。`requiredSkills` 声明内置依赖并披露目录，不代表
 自动激活。自包含阶段请求列明原问题、读者、材料/时间范围、指定版本与文档、可补查范围、

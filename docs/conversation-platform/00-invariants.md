@@ -215,7 +215,7 @@ SQLite `runs` / RunRegistryStore 保存 `parentRunId + status + currentNode + it
 
 `workflow` 一词专指可注册、可配置、可执行的显式步骤编排产品（类似 Dify）。节点可以调用工具、Agent/subrun 或其它公开能力；具体节点实现不是 `workflow` 的定义本身。
 
-**agent 选择不是 workflow。** PPT、Deep Research 等是注册的 `AgentDefinition`，通过系统提示词与 skill 约束行为、保留自主权；机制上只是 agent registry 按 key 查找，没有步骤、没有 subrun 生命周期。两者不得共用类型名、字段名或 UI 概念名。
+**agent 选择不是 workflow。** PPT、研究等是注册的 `AgentDefinition`；选择器只决定产品 Agent 身份，不声明步骤图，也不拥有 subrun 生命周期。选中的 Agent 可以通过正式工具委派真实 child，主研究 Agent 负责判断与调度，子运行仍由既有 Runtime owner 管理。不能因为 Agent 使用多个阶段或子任务，就把入口类型、字段或 UI 概念改名为 workflow。
 
 持久化的是产品身份（选中的 agent），不是路由实现细节（`promptKey`）。plugin contribution 只通过 `agentId` 引用正式 `AgentDefinition.id`；Conversation read model 与请求分别使用 `selectedAgentId` / `selected_agent_id`。Host 完成 request admission 后才按 agent id 精确解析内部 `promptKey`，未知或停用的 agent 必须明确失败，不得 fallback（[INV-16](#inv-16--metadata-不是控制面)）。
 

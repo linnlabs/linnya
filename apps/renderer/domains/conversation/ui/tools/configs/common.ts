@@ -33,6 +33,7 @@ import { projectSingleSubrunPresentation } from '../../../features/subrun-card/f
 import { projectSubrunBatchPresentation } from '../../../features/subrun-collection/functions/projectSubrunBatchPresentation';
 import { projectResearchRunPresentation, projectResearchRunCompactStep } from '../../../features/research-run-presentation/functions/projectResearchRunPresentation';
 import { projectResearchDocumentSubmission, projectResearchDocumentSubmissionCompactStep } from '../../../features/research-run-presentation/functions/projectResearchDocumentSubmission';
+import { projectResearchCompletion, projectResearchCompletionCompactStep } from '../../../features/research-run-presentation/functions/projectResearchCompletion';
 import { createStaticToolCompactStepProjector } from '../compact-step/functions/createStaticToolCompactStepProjector';
 
 const compactStep = {
@@ -88,6 +89,9 @@ const SubrunBatchCollection = defineAsyncComponent(
 );
 const ResearchDocumentSubmissionCard = defineAsyncComponent(
   async () => (await import('../../../features/research-run-presentation')).ResearchDocumentSubmissionCard
+);
+const ResearchCompletionCard = defineAsyncComponent(
+  async () => (await import('../../../features/research-run-presentation')).ResearchCompletionCard
 );
 const ResearchRunCard = defineAsyncComponent(
   async () => (await import('../../../features/research-run-presentation')).ResearchRunCard
@@ -338,6 +342,13 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   // 通用子任务（subagent）
   // ---------------------------------------------------------------------------
   'subagent': subagentToolUiConfig,
+  'complete_research': {
+    component: ResearchCompletionCard,
+    icon: ReadIcon,
+    presentation: projectResearchCompletion,
+    compactStep: projectResearchCompletionCompactStep,
+    layout: { fullWidth: true, retainPresentationOnError: true },
+  },
   'submit_research_document': {
     component: ResearchDocumentSubmissionCard,
     icon: EditIcon,

@@ -312,7 +312,7 @@ Annotation 的 `persistToConversation=false` 必须显式发送 `persist=false`�
 
 ## 7. 会话入口与 agent 选择
 
-> **命名更正（[INV-55](./00-invariants.md#inv-55-workflow-product)）**：本节描述的机制是 **agent 选择**，不是 workflow。PPT / 深度研究是两个注册的 `AgentDefinition`（靠系统提示词与 skill 约束行为、保留自主权），`promptKey` 只是 agent registry 的查找键——没有步骤、没有 subrun。`workflow` 一词保留给未来可注册、可配置的显式工作流产品。
+> **命名更正（[INV-55](./00-invariants.md#inv-55-workflow-product)）**：本节描述的机制是 **agent 选择**，不是 workflow。PPT / 研究是注册的 `AgentDefinition`，`promptKey` 只是 Host 内部的 registry 查找键。选择器本身不定义步骤图；选中的 Agent 可以调用 `subagent`，其生命周期仍由正式 child-run owner 管理。`workflow` 一词保留给可注册、可配置的显式工作流产品。
 
 正式链路只有一条：
 
@@ -335,6 +335,12 @@ plugin contribution agentId
 - **会话 ID 一次性捕获**：编排在用户动作发起时捕获 `conversationId` 与 `projectId`，任何 `await` 之后只能按该身份提交结果，禁止重读 `activeConversation`（[INV-31](./00-invariants.md#inv-31--请求--流实例作用域并发模型)）。
 - **失败显式**：未知或停用的 agent 返回协议错误，不退回默认 agent。只有会话本来没有选择时，Host 才按默认 agent 规则执行。
 - **合法例外**：one-shot 调用和 subrun worker 可以使用内部 `promptKey`；它们不是会话级 agent 选择，不得写回 `selected_agent_id` 或 Conversation metadata。
+
+研究入口保留 `research_v1` 身份。新根运行由主模型在普通 Conversation 中报告进展、维护
+TaskState、委派独立 child 并判断交付；TaskState 是模型的工作记录，不是调度或通过事实。
+局部委派复用标准 `subagent` 过程与完整详情，`complete_research` 只核对正式产物依赖和版本并
+提供文件导航，不认证文章质量。旧 `research_run` 的历史与已接纳恢复继续使用原 descriptor；
+不能把旧暂停任务改造成新的主模型运行。
 
 ---
 

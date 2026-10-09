@@ -19,7 +19,7 @@ history-isolated run 会响应宿主的全局 conversation 取消操作；取消
 
 - 不要为了「拿到会话」直接 import conversation store；一切经 port。
 - 失败要让用户可感知：port 实现层应走统一错误上报，插件侧不要吞掉失败（host 侧静默 warn 的现状是审计 F-06，待修）。
-- workflow id 的解析应走 conversation 的 workflow 注册表；host glue 里按字符串硬编码映射是反例（审计 F-05）。
+- 会话级 Agent 选择通过 `conversationAgentChoices.agentId` 引用已注册产品身份；Host 接纳后再解析内部 `promptKey`。不要在 UI glue 中按菜单字符串映射执行身份。
 - Slides 点选编辑等结构化校验应检查对应 item 的 source；多引用场景不能假设业务引用永远排在第一项。
 
 ## 2. 插件发起可见 Subrun：conversationSubrunInvocationPort
@@ -45,7 +45,7 @@ history-isolated run 会响应宿主的全局 conversation 取消操作；取消
 - `workerId` 只能解析当前 active 插件在 contribution 中声明的 worker；插件停用后不能继续发起；
 - 当前官方插件共享可信 renderer runtime，声明 owner 是契约约束，不是不受信代码的权限令牌；后端仍会校验 promptKey 是否真实注册；
 - conversation 当前只允许一个活跃 run，新 subrun invocation 与正在流式的 chat/run 显式互斥；
-- workflow 将来使用独立 workflow 工具协议，本端口不把 workflow 伪装成 worker；
+- 本端口只启动已声明 worker，不提供任意步骤编排或通用 workflow 产品合同；
 - Reference 或 Accessory 若要与 subrun 联动，由插件自己的 orchestration 顺序组合两个公开动作，不能把执行命令藏进引用 payload。
 
 本节只负责**发起**。`SubrunCard` 如何展示实时 trace 和 reload 历史，见 [20 Subrun 过程展示](./20-subrun-process-ui.md)。
@@ -97,7 +97,7 @@ LLM fence 描述符由拥有语义的插件贡献。例如 Slides 的 `selected-
 
 - `RendererPluginContribution.conversationInput` 允许贡献 Reference kind/provider，以及 experimental 的运行期 Accessory；Accessory 只叠加操作区，不接管提交或 schema。
 - 插件页面上的节点/选区等外部动作若要程序化加入或撤销 chip，使用 experimental 的 `@plugin/renderer/composerCommandPort`；它只提供 add/remove-by-id，不负责 focus、提交或 subrun 发起。
-- `conversationWorkflows` 只提供 workflow 菜单/pill 与 `promptKey` 元数据，不是 Input Extension。
+- `conversationAgentChoices` 提供产品 Agent 的菜单/pill 与 `agentId`，不是 Input Extension，也不接管运行。该选择与 Agent 后续自主调用 subagent 是不同边界。
 - schema-bearing `editorExtensions` 和完整 Input Extension 当前不属于插件 SDK。
 - Reference 只表达输入上下文；同一用户动作是否同时发起 subrun/batch，由独立的 app/workflow orchestration 组合，不能写进 Reference payload。
 

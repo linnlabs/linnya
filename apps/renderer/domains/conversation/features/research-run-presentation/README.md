@@ -1,12 +1,22 @@
 # Research run presentation
 
-本 feature 将 Host `research_run` 的正式结果与已接纳 `subrun_summary` 投影为研究过程卡。
+新版“研究”由主 Agent 在普通 Conversation 中组织消息、TaskState、局部 `subagent` 委派与
+最终交付。子运行继续使用统一进度卡和完整详情，不增加包住整个研究的外层工具卡。
+TaskState 只显示模型的工作记录，不能作为已执行、已保存或内容通过的事实。
+
+`complete_research` 只展示正式交付的文章与两份原始评审链接。完整与 compact projector 都
+在 admission 校验共享 strict schema；展示数据不携带正文、hash 或质量自评。失败只说明
+本次交付检查未完成，原因由标准错误卡展示，不能显示文档已交付。该工具不展示阶段树或
+第二份运行状态；主 Agent 是否交付只由正式成功结果表达，内容质量仍由读者与研究判断评估。
+
+下列 `research_run` 合同仅用于旧事件展示和已接纳运行的恢复。本 feature 将旧 Host
+`research_run` 的正式结果与已接纳 `subrun_summary` 投影为研究过程卡。
 工具完整与紧凑展示分别在 registry admission 使用共享 strict schema；Vue 不读取原始 payload，
 不从 trace、阶段名字或文件路径推断研究是否正确。
 
 运行中仅按真实 child 到达顺序展示已有过程，不预造六个阶段或猜测尚未接纳的 child。正式结果
 用 artifact 的明确 stage 标识命名并链接已保存文档；未保存的真实 child 仍可查看 trace，但
-不补造阶段、产物或终态。`inputs_changed` 显示材料变化和停止提示，已有文档仍保留，不能
+不补造阶段、产物或终态。旧工具的 `inputs_changed` 显示材料变化和停止提示，已有文档仍保留，不能
 显示为研究交付成功。保存成功只表示文件交付，不认证全文质量。
 
 卡片复用标准 `ToolCallsMessage` 外壳、公开 `SubrunTracePanel` 与 `ConversationResourceLinkNode`。

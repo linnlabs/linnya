@@ -78,6 +78,7 @@ beforeEach(() => {
     toolCards: {
       research_run: commonToolConfigs.research_run,
       submit_research_document: commonToolConfigs.submit_research_document,
+      complete_research: commonToolConfigs.complete_research,
       ordinary_tool: {
         component: defineComponent({ setup() { genericCardMounted = true; return () => h('div', 'Generic custom card'); } }),
         presentation: () => ({ data: {} }),
@@ -123,6 +124,16 @@ describe('research tool errors through the real message shell', () => {
     await settle();
     expect(host.querySelector('.tool-error-card')?.textContent).toContain(reason);
     expect(host.textContent).not.toContain('阶段文稿已保存');
+    expect(host.querySelectorAll('a, .subrun-trace-panel')).toHaveLength(0);
+  });
+
+  it('shows a failed delivery check without success navigation or an aggregate process trace', async () => {
+    const host = await mount(failedMessage('complete_research'));
+    expect(host.querySelector('.tool-card__name')?.textContent).toContain('本次研究交付未完成');
+    host.querySelector<HTMLElement>('.tool-card__header')?.click();
+    await settle();
+    expect(host.querySelector('.tool-error-card')?.textContent).toContain(reason);
+    expect(host.textContent).not.toContain('研究文章已交付');
     expect(host.querySelectorAll('a, .subrun-trace-panel')).toHaveLength(0);
   });
 

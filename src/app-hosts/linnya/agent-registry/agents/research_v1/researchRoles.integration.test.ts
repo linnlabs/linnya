@@ -2,12 +2,15 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SkillActivateResultSchema, SkillReadResourceResultSchema } from '@app/schemas';
+import { ResearchRunArgsSchema, SkillActivateResultSchema, SkillReadResourceResultSchema } from '@app/schemas';
 import { systemReminder } from '@linnlabs/linnkit/runtime-kernel';
 import { freezeAgentRunInput } from '../../freezeAgentRunInput';
 import { GenericAgentTask } from '../../GenericAgentTask';
 import { clearRegisteredAgentTaskCache, getAgentTask } from '../../agentTaskResolver';
+import { resolveAgentHostEntry } from '../../resolveAgentHostEntry';
+import { resolveAgentRequestAdmission } from '../../resolveAgentRequestAdmission';
 import { createDefaultRegisteredAgentResolver } from '../../../adapters/child-runs/registeredAgentResolver';
+import type { AgentInvokeRequest } from '../../../context/agent/contracts';
 import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
@@ -48,7 +51,7 @@ const STAGES: readonly ResearchStageRequestKind[] = [
   'investigation', 'investigation_review', 'draft', 'argument_review', 'source_review', 'revision',
 ];
 
-describe('controlled research roles through formal preparation and Skill access', () => {
+describe('main research and controlled document roles through formal preparation and Skill access', () => {
   beforeEach(() => {
     setPluginRuntimeStateForTests({ enabledPluginIds: ['platform'] });
     invalidateSkillCache();
@@ -59,6 +62,33 @@ describe('controlled research roles through formal preparation and Skill access'
     clearRegisteredAgentTaskCache();
     clearPluginRuntimeStateForTests();
     invalidateSkillCache();
+  });
+
+  it('prepares a normal main conversation with the original request and freezes its admitted document scope', () => {
+    const query = '只使用提供的材料向项目负责人解释变化，保留不确定性；正文不超过一千字。';
+    const scope = ResearchRunArgsSchema.parse({
+      question: '样本运输成本的变化', reader: '项目负责人', task_type: 'fixed',
+      materials: ['workspace:/inputs/transport.md'], time_range: '2024—2025',
+    });
+    const admitted = resolveAgentRequestAdmission({
+      promptKey: 'research_v1', query, project_metadata: { id: 'research-project' }, researchScope: scope,
+    }, { history: [] });
+    // 新入口进入普通模型循环；接纳范围不能把整个请求改成隐藏的 Host 工具调用。
+    expect(resolveAgentHostEntry(admitted)).toBeUndefined();
+    expect(admitted.query).toBe(query);
+    expect(admitted.researchScope).toEqual(scope);
+    const frozen = freezeAgentRunInput(admitted);
+    const task = getAgentTask('research_v1');
+    if (!(task instanceof GenericAgentTask)) throw new Error('Main research must use the registered task');
+    const messages = task.buildMessages(frozen, []);
+    expect(messages.some(message => message.role === 'user' && message.content === query)).toBe(true);
+    const system = messages.find(message => message.role === 'system' && message.type === 'system_prompt');
+    expect(system?.content).toContain(JSON.stringify(scope, null, 2));
+    expect(system?.content).toContain('<skill name="deep-research">');
+    const resumed: AgentInvokeRequest = {
+      ...frozen, researchScope: { ...scope, reader: 'a changed reader', materials: ['workspace:/other.md'] },
+    };
+    expect(task.getSystemPromptForRequest(resumed)).toBe(frozen.frozenSystemPrompt);
   });
 
   it.each(STAGES)('%s: preserves the full stage request, frozen system and restricted child config', stage => {
