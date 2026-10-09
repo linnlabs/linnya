@@ -229,6 +229,12 @@ Flow 主体与 Host settlement 是显式的两个阶段：无论主体成功或�
 
 不要用组件样式、README snapshot 或旧内部类调用次数代替业务测试。
 
+`__integration-tests__/flow.file-edit-feedback.integration.test.ts` 使用正式 Workspace
+写入与编辑、SQLite 和 Flow，比较同批 10、11、12 次工具的执行结果与下一次 canonical
+模型请求，成功及失败正文必须按调用 ID 完整送达。实时 SSE 和重载工具消息同时对照
+持久化事实；不能只用“文件已改”或“历史里有回执”证明模型已收到执行反馈。
+工具批次配对由正式 npm Linnkit 负责，Host 不设置同参编辑成功缓存或第二套配对补丁。
+
 `__integration-tests__/flow.research.sqlite.integration.test.ts` 使用正式 `research_v1`
 入口、`research_run`、ToolRegistry 和 registered child invoker，验证六阶段文档交付、
 固定材料检索边界、写工具权限、输入变化停止、并行复核、持久恢复及取消。上游模型使用固定脚本，

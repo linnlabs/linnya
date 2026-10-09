@@ -6,6 +6,8 @@ import { WorkspaceEditFileResultSchema } from '@app/schemas';
 import type { ScriptedToolCall } from '@linnlabs/linnkit/testkit';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
+import { readTail } from '../../persistence/event-store/ui-projection/sqliteUiMessagesReader';
+import type { ConversationRealtimeEvent } from '../flow.schemas';
 import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
@@ -40,6 +42,128 @@ function call(id: string, name: string, args: Record<string, unknown>): Scripted
 }
 
 describe('file edit feedback through durable Flow and the next model request', () => {
+  it.each([10, 11, 12])('同批 %i 次真实写入及混合编辑结果完整进入下一模型请求', async count => {
+    // 每个调用操作独立文档，避免把文件写入互相依赖混入批次回执的验证。
+    const documents = Array.from({ length: count }, (_, index) => ({
+      locator: `workspace:/report-${index}.md`,
+      original: `条目${index}的值是10。`,
+      replacement: `条目${index}的值是12。`,
+    }));
+    const writes = documents.map((document, index) =>
+      call(`create-${index}`, 'write_file', {
+        locator: document.locator,
+        content: `# 报告${index}\n\n${document.original}\n`,
+      })
+    );
+    const edits = documents.map((document, index) =>
+      call(`edit-${index}`, 'edit_file', {
+        locator: document.locator,
+        old_string: index < count - 2 ? document.original : '不存在的旧段落。',
+        new_string: document.replacement,
+      })
+    );
+    fixture = await createDurableFlowHarness(join(directory, 'workspace.sqlite'), [
+      { toolCalls: writes },
+      { toolCalls: edits },
+      { contentChunks: ['编辑已执行，最后两项原文未命中。'] },
+    ]);
+    const conversationId = `file-edit-batch-${count}`;
+    const projectId = new WorkspaceService(fixture.db).createProject('Batch feedback');
+    await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
+    const live: ConversationRealtimeEvent[] = [];
+    await fixture.flow.next(
+      {
+        conversation_id: conversationId,
+        project_id: projectId,
+        new_events: [
+          { type: 'user_input', content: '批量保存并修改报告。', source: 'user', timestamp: 1 },
+        ],
+        options: {
+          promptKey: 'default',
+          model_id: 'scripted-test-model',
+          project_metadata: { id: projectId, name: 'Batch feedback' },
+        },
+      },
+      event => {
+        live.push(event);
+      }
+    );
+
+    const events = (await fixture.eventStore.readEvents(conversationId, { limit: 200 })).events;
+    const outputs = events.filter(event => event.type === 'tool_output');
+    expect(outputs).toHaveLength(count * 2);
+    expect(outputs.map(event => [event.tool_call_id, event.status])).toEqual([
+      ...writes.map(tool => [tool.id, 'success']),
+      ...edits.map((tool, index) => [tool.id, index < count - 2 ? 'success' : 'error']),
+    ]);
+    expect(
+      outputs.filter(event => event.status === 'error').map(event => event.error_code)
+    ).toEqual(['OLD_STRING_NOT_FOUND', 'OLD_STRING_NOT_FOUND']);
+    const expectedResults = outputs.map(event => ({
+      tool_call_id: event.tool_call_id,
+      status: event.status,
+      observation: event.observation,
+      error_code: event.error_code,
+    }));
+    expect(
+      live
+        .filter(event => event.type === 'tool_output')
+        .map(event => ({
+          tool_call_id: event.tool_call_id,
+          status: event.status,
+          observation: event.observation,
+          error_code: event.error_code,
+        }))
+    ).toEqual(expectedResults);
+    const reloaded = readTail(fixture.db, conversationId, 100);
+    if (reloaded.status !== 'ready') throw new Error('Expected durable UI window');
+    expect(
+      reloaded.messages
+        .filter(message => message.message_type === 'tool_calls')
+        .map(message => ({
+          tool_call_id: message.payload.tool_call_id,
+          status: message.payload.status,
+          observation: message.content,
+          error_code: message.payload.error_code,
+        }))
+    ).toEqual(expectedResults);
+
+    fixture.ai.assertAllTurnsConsumed();
+    const requests = fixture.ai.getCalls();
+    expect(requests).toHaveLength(3);
+    for (const [batchIndex, batch] of [writes, edits].entries()) {
+      const ids = new Set(batch.map(tool => tool.id));
+      const request = requests[batchIndex + 1];
+      if (!request) throw new Error('Missing next model request');
+      const delivered = request.messages.filter(
+        message => message.role === 'tool' && ids.has(message.tool_call_id)
+      );
+      // EventStore 有结果不等于模型看到结果：逐条核对真正送入 LlmCaller 的 ID、顺序和正文。
+      expect(delivered).toEqual(
+        outputs
+          .filter(event => ids.has(event.tool_call_id))
+          .map(event =>
+            expect.objectContaining({
+              role: 'tool',
+              tool_call_id: event.tool_call_id,
+              content: [{ type: 'text', text: event.observation }],
+            })
+          )
+      );
+      const declared = request.messages.flatMap(message =>
+        message.role === 'assistant'
+          ? message.parts.flatMap(part =>
+              part.type === 'tool_call' && ids.has(part.call.id) ? [part.call.id] : []
+            )
+          : []
+      );
+      expect(declared).toEqual(batch.map(tool => tool.id));
+    }
+    expect((await fixture.runtime.supervisor.findByConversation(conversationId))[0]?.status).toBe(
+      'completed'
+    );
+  });
+
   it('成功差异、失效错误与回读进入下一轮；恢复内容后相同编辑仍真实执行', async () => {
     const replacement = { old_string: '计算值是10。', new_string: '计算值是12。' };
     const calls = [
