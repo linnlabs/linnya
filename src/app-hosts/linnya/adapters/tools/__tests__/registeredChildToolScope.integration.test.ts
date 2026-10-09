@@ -9,6 +9,12 @@ import {
 } from '../../../plugin-registry/pluginRuntimeState';
 import { ToolRegistry } from '../toolRegistry';
 import { defaultObservationPreviewPort } from '../defaultPorts';
+import { RESEARCH_AGENT_ID } from '@app/schemas';
+import { SLIDES_PLUGIN_META } from '@plugin/slides/shared';
+import { SLIDES_AGENT_DEFINITION } from '../../../../../../packages/plugins/slides/src/backend/agents/slides_agent';
+import { backendPluginRegistry } from '../../../plugin-registry/registry';
+import { freezeAgentRunInput } from '../../../agent-registry/freezeAgentRunInput';
+import { resolveAgentRequestAdmission } from '../../../agent-registry/resolveAgentRequestAdmission';
 
 beforeEach(() => {
   setPluginRuntimeStateForTests({
@@ -22,6 +28,73 @@ afterEach(() => {
 });
 
 describe('registered child execution scope through ToolNode and ToolRegistry', () => {
+  it('真实平台研究角色仅进入研究父目录，Default 与 Slides 既不可见也无法执行', async () => {
+    if (!backendPluginRegistry.has(SLIDES_PLUGIN_META.id)) {
+      backendPluginRegistry.register({
+        meta: SLIDES_PLUGIN_META,
+        agentDefinitions: [SLIDES_AGENT_DEFINITION],
+      });
+    }
+    setPluginRuntimeStateForTests({ enabledPluginIds: ['platform', SLIDES_PLUGIN_META.id] });
+    const registry = new ToolRegistry({ strictInitialization: true });
+    const research = freezeAgentRunInput(
+      resolveAgentRequestAdmission(
+        {
+          query: 'Explain the evidence',
+          promptKey: RESEARCH_AGENT_ID,
+          project_metadata: { id: 'delegation-scope-project' },
+        },
+        { history: [] }
+      )
+    );
+    const roles = registry.getToolSchemas({ invocation: research, toolNames: ['subagent'] })[0]
+      ?.function.parameters.properties.subagent_type.enum;
+    expect(roles).toEqual(research.availableSubagentTypes);
+    expect(roles).toHaveLength(6);
+    expect(roles).not.toContain('general');
+    expect(roles).not.toContain('document_editor');
+    if (!roles) throw new Error('Research role catalog is unavailable');
+    const invoke = vi.fn();
+    for (const promptKey of ['default', SLIDES_AGENT_DEFINITION.promptKey]) {
+      const invocation = freezeAgentRunInput({
+        query: 'An ordinary task',
+        promptKey,
+        callerAgentId: RESEARCH_AGENT_ID,
+        availableSubagentTypes: roles,
+      });
+      expect(invocation.callerAgentId).not.toBe(RESEARCH_AGENT_ID);
+      expect(invocation.availableSubagentTypes).toBeUndefined();
+      const schema = registry.getToolSchemas({ invocation, toolNames: ['subagent'] })[0];
+      expect(schema?.function.parameters.properties.subagent_type.enum).toEqual([
+        'general',
+        'document_editor',
+      ]);
+      for (const type of roles) {
+        expect(schema?.function.description).not.toContain(`**${type}**`);
+        const context: ToolContext = {
+          callerAgentId: invocation.callerAgentId,
+          availableSubagentTypes: invocation.availableSubagentTypes,
+          modelId: 'scope-test-model',
+          registeredChildRunInvoker: { invoke },
+        };
+        const result = await registry.executeTool(
+          'subagent',
+          {
+            description: 'Unauthorized role',
+            prompt: 'Delegate',
+            subagent_type: type,
+          },
+          context
+        );
+        expect(result).toMatchObject({
+          success: false,
+          error: expect.stringContaining('unknown subagent_type'),
+        });
+      }
+    }
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
   it('subagent 目录与执行按 Host 调用者收窄，非法材料在 ToolNode start 前拒绝', async () => {
     vi.spyOn(builtin, 'getRegisteredSubagentTypes').mockReturnValue([
       { type: 'general', promptKey: 'subagent_general', description: 'Public worker' },
