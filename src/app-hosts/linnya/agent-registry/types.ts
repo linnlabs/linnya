@@ -18,6 +18,7 @@ import type { AgentSpecContextPolicy } from '@linnlabs/linnkit/contracts';
 import type * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { enrichment } from '@linnlabs/linnkit/runtime-kernel';
 import type { HostToolCallRequestData } from '@app/schemas';
+import type { AgentInvokeRequest } from '../context/agent/contracts';
 
 type RequestEnricher = enrichment.RequestEnricher;
 type IAgentTask = contextManager.agentTasks.IAgentTask;
@@ -222,7 +223,7 @@ export interface AgentDefinition {
   hostEntry?: {
     readonly toolName: string;
     resolveArgs(
-      request: AgentInvocationRequest,
+      request: AgentInvokeRequest,
       explicitArgs?: HostToolCallRequestData['args']
     ): HostToolCallRequestData['args'];
   };

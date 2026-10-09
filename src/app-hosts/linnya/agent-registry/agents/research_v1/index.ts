@@ -1,5 +1,5 @@
-import { ResearchRunArgsSchema } from '@app/schemas';
 import type { AgentDefinition } from '../../types';
+import { resolveResearchAdmission } from './admission';
 
 /** 工程入口只交给 Host 执行；不产生另一个会规划/扩张流程的 Leader。 */
 export default {
@@ -14,15 +14,6 @@ export default {
   },
   hostEntry: {
     toolName: 'research_run',
-    resolveArgs(request, explicitArgs) {
-      return ResearchRunArgsSchema.parse(
-        explicitArgs ?? {
-          question: request.query,
-          reader: '普通中文读者；先解释必要背景，再深入分析。',
-          task_type: 'open',
-          materials: [],
-        }
-      );
-    },
+    resolveArgs: resolveResearchAdmission,
   },
 } satisfies AgentDefinition;

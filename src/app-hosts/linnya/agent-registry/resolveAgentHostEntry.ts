@@ -1,10 +1,10 @@
 import { HostToolCallRequest, type HostToolCallRequestData } from '@app/schemas';
-import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
+import type { AgentInvokeRequest } from '../context/agent/contracts';
 import { findRegisteredAgentDefinitionByPromptKey } from './agentDefinitionResolver';
 
 /** Host 只接纳声明的入口；具体参数的默认值、校验和业务含义归 definition 的用例。 */
 export function resolveAgentHostEntry(
-  request: AgentInvocationRequest,
+  request: AgentInvokeRequest,
   explicit?: HostToolCallRequestData
 ): HostToolCallRequestData | undefined {
   const entry = findRegisteredAgentDefinitionByPromptKey(request.promptKey)?.hostEntry;
