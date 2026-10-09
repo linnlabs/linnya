@@ -30,3 +30,5 @@ Subrun trace 历史端点直接消费 Linnkit `SubRunTraceKind` 与完整 `Runti
 trace 写成 Runtime fact，也不创建不存在的父工具 row。首帧只保存身份，此后的逐 chunk 不写表，
 计数表示持久化的语义项数量，因此可以小于 live 帧数。rebuild 从现有紧凑 history 恢复该索引。
 工具 error、cancel 或空结果不能清除已有 child；child 的终态始终由其正式 lifecycle 决定。
+
+`readWindowRefresh` 在一个 SQLite 读取事务中比较正式 projection revision 并读取当前有界窗口、citation dependency closure 和分页元数据；版本未变不读消息行。保留首行锚点，只有调用方当前覆盖尾部才追加新行，不能用新 tail 取代历史阅读范围。

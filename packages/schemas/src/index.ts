@@ -72,6 +72,7 @@ export type { PromptKey } from './agent-config/index';
 // ============ Conversation agent 选择合同 ============
 export * from './conversation/selected-agent';
 export * from './conversation/history';
+export * from './conversation/ui-window-refresh';
 export * from './conversation/file-link';
 export * from './conversation/run-continuation';
 

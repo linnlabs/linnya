@@ -66,3 +66,9 @@ projection runtime 的常驻只发生在 store。它不要求 `ConversationHost`
 - `final_answer` 缺少 live chunk 的严格协议失败先挂载 ErrorBanner，再切换和新建。
 
 不得用 mock OverlayScrollbars、stub `ConversationView` 或只断言节点“存在”的组件测试替代这条门禁；这些测试无法发现半挂载 vnode 与第三方 DOM ownership 冲突。
+
+外部入口已启动的 run 在历史页恢复控制态后，由 interactive-run 的现有 detached observer 调用 `refreshDetachedConversationView`。该 app-level 编排通过 message-window 条件刷新当前范围，再按已接纳的正式 revision 失效 subrun trace cache；不把 durable rows 写入 live slot。后台读取保持 ready 状态，不触发初次加载或滚动到底；浏览较早窗口时只刷新该窗口，满 320 行后交回正式分页。
+
+已接纳的 detached 窗口以 transport 技术代次标记工具交接。只有仍处于同一代且无 reader 时，合成视图才对同身份 tool 使用 durable lifecycle/presentation，同时保留 live subrun trace。新 transport 永久使旧标记失效；其它 message variant 和 live-only 消息沿用原 streaming 合成。
+
+历史重新打开时，`historyWindowTailLoader` 在接纳新窗口 revision 后同步失效 trace cache；即使 run 已终止、不会再进入 detached observer，也不能恢复离开前的旧 trace 快照。

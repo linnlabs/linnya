@@ -23,7 +23,7 @@ export {
 } from './functions/windowLiveMessageAdmission';
 export { readUiMessagesWindowDto } from './functions/uiMessagesDtoGuards';
 export { useMessageWindowStore } from './store/messageWindowStore';
-export { loadAfter, loadAround, loadBefore, loadTail } from './orchestration/messageWindowLoader';
+export { loadAfter, loadAround, loadBefore, loadTail, refreshCurrentWindow } from './orchestration/messageWindowLoader';
 export { readConversationLiveMessages } from './orchestration/readConversationLiveMessages';
 export { reconcileTerminalConversationWindow } from './orchestration/reconcileTerminalConversationWindow';
 export type { LoadAroundResult } from './orchestration/messageWindowLoader';

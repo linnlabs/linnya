@@ -89,6 +89,7 @@ import {
   readAround,
   readBefore,
   readRunFinalAnswer,
+  readWindowRefresh,
   readSubrunTrace,
   readTail,
   readTurnIndex,
@@ -646,6 +647,7 @@ export async function configureRoutes(
     // 🔥 新架构：创建模块化服务
     // 1. 历史管理模块
     const historyRepository = new HistoryRepository(conversationEventStore, {
+      readWindowRefresh: (conversationId, query) => readWindowRefresh(db, conversationId, query),
       readTail: (conversationId, limit) => readTail(db, conversationId, limit),
       readBefore: (conversationId, cursor, limit) => readBefore(db, conversationId, cursor, limit),
       readAfter: (conversationId, cursor, limit) => readAfter(db, conversationId, cursor, limit),

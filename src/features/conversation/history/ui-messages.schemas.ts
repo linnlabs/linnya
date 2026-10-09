@@ -92,6 +92,12 @@ export type UiMessagesWindowResponse =
       readonly anchor_message_id: string;
     };
 
+export type UiMessagesRefreshResponse = UiMessagesWindowResponse | {
+  readonly status: 'unchanged';
+  readonly conversation_id: string;
+  readonly revision: number;
+};
+
 export interface ConversationTurnIndexItemResponse {
   readonly visual_turn_id: ConversationCompleteVisualTurnId;
   readonly ordinal: number;

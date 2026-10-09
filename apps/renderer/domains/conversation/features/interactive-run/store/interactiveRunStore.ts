@@ -15,6 +15,11 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
   const runsByConversation = ref(new Map<string, InteractiveRunSnapshot>());
   // reader 关闭后还要做状态对账；保留最近请求身份，阻止旧请求覆盖下一代状态。
   const latestTransportByConversation = new Map<string, AbortController>();
+  // 技术所有权代次在 reader 结束后保留；第二次断线不能重新激活第一次观察的窗口标记。
+  const transportGenerations = ref(new Map<string, number>());
+  const transportGenerationFor = (conversationId: string): number => (
+    transportGenerations.value.get(conversationId) ?? 0
+  );
   const controllersByConversation = new Map<
     string,
     {
@@ -27,6 +32,7 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
     assertInteractiveRunCanStart(conversationId, runsByConversation.value.get(conversationId));
     controllersByConversation.set(conversationId, { controller });
     latestTransportByConversation.set(conversationId, controller);
+    transportGenerations.value.set(conversationId, transportGenerationFor(conversationId) + 1);
     runsByConversation.value.set(conversationId, { conversationId, status: 'starting' });
   };
 
@@ -37,6 +43,7 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
     }
     controllersByConversation.set(conversationId, { controller });
     latestTransportByConversation.set(conversationId, controller);
+    transportGenerations.value.set(conversationId, transportGenerationFor(conversationId) + 1);
     runsByConversation.value.set(conversationId, {
       ...current,
       status: 'submitting',
@@ -50,6 +57,7 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
   ): void => {
     controllersByConversation.set(snapshot.conversationId, { controller });
     latestTransportByConversation.set(snapshot.conversationId, controller);
+    transportGenerations.value.set(snapshot.conversationId, transportGenerationFor(snapshot.conversationId) + 1);
     runsByConversation.value.set(snapshot.conversationId, {
       ...snapshot,
       status: 'continuing',
@@ -186,6 +194,7 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
     releaseTransport,
     isLatestTransport,
     hasTransport,
+    transportGenerationFor,
     beginCancelling,
     completeTerminalSettlement,
     recordCommandError,

@@ -27,6 +27,7 @@ import {
   mergeWindowAndLiveMessages,
   useMessageWindowStore,
 } from '../message-window';
+import { useInteractiveRunStore } from '../features/interactive-run';
 import { findLatestTodoToolMessageId } from '../functions/latestTodoToolMessage';
 import { aggregateCommandExecutionMessages } from '../features/command-execution-presentation/functions/aggregateCommandExecutionMessages';
 
@@ -43,6 +44,7 @@ import { aggregateCommandExecutionMessages } from '../features/command-execution
 export function useConversationSelectors(conversationState: ReturnType<typeof useConversationState>) {
   const { activeConversationId, conversations } = storeToRefs(conversationState);
   const messageWindowStore = useMessageWindowStore();
+  const interactiveRunStore = useInteractiveRunStore();
   
   /**
    * 活跃对话对象
@@ -85,6 +87,9 @@ export function useConversationSelectors(conversationState: ReturnType<typeof us
     ) {
       return aggregateCommandExecutionMessages(mergeWindowAndLiveMessages(messageWindowStore.rows, liveMessages, {
         hasMoreAfter: messageWindowStore.hasMoreAfter,
+        preferDurableTools: messageWindowStore.detachedRefreshGeneration
+          === interactiveRunStore.transportGenerationFor(activeConversationId.value)
+          && !interactiveRunStore.hasTransport(activeConversationId.value),
       }).messages);
     }
 

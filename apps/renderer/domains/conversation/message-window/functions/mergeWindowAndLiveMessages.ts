@@ -24,6 +24,8 @@ interface IndexedWindowRow {
 
 export interface MergeWindowAndLiveMessagesOptions {
   readonly hasMoreAfter?: boolean;
+  /** 当前窗口已在无 reader 的同一 transport 代次完成正式同步。 */
+  readonly preferDurableTools?: boolean;
 }
 
 export function mergeWindowAndLiveMessages(
@@ -67,7 +69,7 @@ export function mergeWindowAndLiveMessages(
       continue;
     }
 
-    mergedMessages[match.index] = mergeWindowMessageWithLivePatch(match.row.message, live);
+    mergedMessages[match.index] = mergeWindowMessageWithLivePatch(match.row.message, live, options);
   }
 
   /**
@@ -110,7 +112,11 @@ function isCompletedProgressResolvedBySummary(
     && committedSummaryIds.has(message.metadata.summary.historySummaryId);
 }
 
-function mergeWindowMessageWithLivePatch(windowMessage: BaseMessage, livePatch: BaseMessage): BaseMessage {
+function mergeWindowMessageWithLivePatch(
+  windowMessage: BaseMessage,
+  livePatch: BaseMessage,
+  options: MergeWindowAndLiveMessagesOptions,
+): BaseMessage {
   /**
    * 中文说明：
    * - window 持有完整历史实体，live 只持有当前 transport 到达的增量字段；
@@ -126,7 +132,7 @@ function mergeWindowMessageWithLivePatch(windowMessage: BaseMessage, livePatch: 
       return mergeThoughtMessage(windowMessage, livePatch);
     case 'tool_calls':
       if (livePatch.type !== 'tool_calls') return windowMessage;
-      return mergeToolMessage(windowMessage, livePatch);
+      return mergeToolMessage(windowMessage, livePatch, options.preferDurableTools === true);
     case 'final_answer':
     case 'tool_preamble':
     case 'partial_answer':
@@ -183,11 +189,15 @@ function mergeThoughtMessage(windowMessage: ThoughtMessage, livePatch: ThoughtMe
   };
 }
 
-function mergeToolMessage(windowMessage: ToolCallMessage, livePatch: ToolCallMessage): ToolCallMessage {
-  if (windowMessage.metadata.status !== 'loading' && livePatch.metadata.status === 'loading') {
+function mergeToolMessage(
+  windowMessage: ToolCallMessage,
+  livePatch: ToolCallMessage,
+  preferDurable: boolean,
+): ToolCallMessage {
+  if (preferDurable || (windowMessage.metadata.status !== 'loading' && livePatch.metadata.status === 'loading')) {
     /**
      * 取消或导航竞态下，SSE 可以在 tool_output 到达前中断，而 durable read model 已经
-     * 完成结算。此时 window 是工具生命周期的较新权威事实，不能被陈旧 live loading
+     * 完成结算；或同一无 reader 代次已完成正式窗口同步。此时不能被陈旧 live loading
      * 覆盖；但 subrun trace 只存在于 live projection，仍需保留给父工具卡展示。
      */
     return {

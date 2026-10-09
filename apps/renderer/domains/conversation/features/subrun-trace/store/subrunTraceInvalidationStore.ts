@@ -6,7 +6,7 @@ export const useSubrunTraceInvalidationStore = defineStore(
   () => {
     const revisionByConversation = ref(new Map<string, number>());
 
-    /** Host 已确认 durable settlement 后，通知已展开的 trace 重新读取正式事实。 */
+    /** Host 已确认 durable revision 变化或 settlement 后，通知已展开的 trace 重新读取正式事实。 */
     const invalidateConversation = (conversationId: string): void => {
       const current = revisionByConversation.value.get(conversationId) ?? 0;
       revisionByConversation.value.set(conversationId, current + 1);

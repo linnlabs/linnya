@@ -1,12 +1,18 @@
 import { apiFetch, getApiBaseUrl } from '@shared/services/aiService/common';
 import type { MessageWindowApiPort } from '../definitions/messageWindowApi';
 import type { UiMessagesWindowDto } from '../definitions/uiMessagesDto';
-import { readUiMessagesWindowDto } from '../functions/uiMessagesDtoGuards';
+import { readUiMessagesWindowDto, readUiMessagesRefreshDto } from '../functions/uiMessagesDtoGuards';
 import { isRecord } from '../../utils/typeGuards';
 
 const DEFAULT_LIMIT = 80;
 
 export const messageWindowApi: MessageWindowApiPort = {
+  readRefresh(conversationId, query) {
+    const params = new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]));
+    return requestWindowPayload(conversationId, `ui-messages/refresh?${params.toString()}`)
+      .then(readUiMessagesRefreshDto);
+  },
+
   readTail(conversationId, limit) {
     return requestWindow(conversationId, `ui-messages/tail?limit=${encodeURIComponent(String(limit))}`);
   },
@@ -41,6 +47,10 @@ export function readDefaultMessageWindowLimit(): number {
 }
 
 async function requestWindow(conversationId: string, path: string): Promise<UiMessagesWindowDto> {
+  return readUiMessagesWindowDto(await requestWindowPayload(conversationId, path));
+}
+
+async function requestWindowPayload(conversationId: string, path: string): Promise<unknown> {
   const baseUrl = await getApiBaseUrl();
   const url = `${baseUrl}/api/v1/conversation/${encodeURIComponent(conversationId)}/${path}`;
   const response = await apiFetch(url, {
@@ -61,7 +71,7 @@ async function requestWindow(conversationId: string, path: string): Promise<UiMe
     throw new Error(message);
   }
 
-  return readUiMessagesWindowDto(payload);
+  return payload;
 }
 
 function readErrorMessage(value: unknown): string | null {

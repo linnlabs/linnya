@@ -8,15 +8,15 @@ import {
 import { observeDetachedInteractiveRun } from './observeDetachedInteractiveRun';
 import { pauseInteractiveRun } from './pauseInteractiveRun';
 import { useInteractiveRunStore } from '../store/interactiveRunStore';
-import { reconcileTerminalConversationView } from '../../../services/orchestration/reconcileTerminalConversationView';
+import { refreshDetachedConversationView } from '../../../services/orchestration/refreshDetachedConversationView';
 
 vi.mock('./interactiveRunApi', () => ({
   fetchForegroundRunSettlement: vi.fn(),
   fetchActiveForegroundRun: vi.fn(),
   requestForegroundRunPause: vi.fn(),
 }));
-vi.mock('../../../services/orchestration/reconcileTerminalConversationView', () => ({
-  reconcileTerminalConversationView: vi.fn(),
+vi.mock('../../../services/orchestration/refreshDetachedConversationView', () => ({
+  refreshDetachedConversationView: vi.fn(),
 }));
 
 describe('脱离 SSE 的运行观察', () => {
@@ -65,7 +65,7 @@ describe('脱离 SSE 的运行观察', () => {
         status: 'paused',
         pause: { settled: true, updatedAt: 20 },
       });
-      expect(reconcileTerminalConversationView).toHaveBeenCalledOnce();
+      expect(refreshDetachedConversationView).toHaveBeenCalledOnce();
     }
   );
 
@@ -86,6 +86,6 @@ describe('脱离 SSE 的运行观察', () => {
     rejectQuery(new Error('old failure'));
     await observation;
     expect(store.snapshotFor('conversation-1')).toMatchObject({ status: 'continuing' });
-    expect(reconcileTerminalConversationView).not.toHaveBeenCalled();
+    expect(refreshDetachedConversationView).not.toHaveBeenCalled();
   });
 });

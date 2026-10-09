@@ -40,3 +40,9 @@ cancel 的成功响应不是固定 `cancelled`：Host 会返回 `cancelled` 或
 `already_terminal + completed/failed/cancelled`。Renderer 必须按 `terminal_status` 收敛控制态，
 中止旧 reader，再重读 durable window 与已展开 subrun trace。自然完成恰好赢过用户点击属于
 正常竞争，不得再发 active-run 查询，也不得伪造成 HTTP 409 或本地 cancelled。
+
+历史进入由 CLI 等其它入口启动的在途 run 时，本 surface 没有 SSE reader。现有 detached observer 每 2 秒先查询控制态，再条件刷新当前 durable window；不建立第二条执行流，不伪造 SSE。窗口接纳新正式 revision 后才失效 lazy trace cache，已展开的 trace 自动重读。
+
+运行终态经过 exact-run settlement 的持久化屏障；先完成可见窗口同步，再收敛控制状态，revision 未变也必须清除 busy。窗口读取失败保持 reconnecting，下次继续观察；projection preparing 保留原窗口并继续观察。导航、分页、编辑和新 transport 会使迟到刷新失效。
+
+无 reader 时接纳窗口会绑定本 feature 的技术 `transportGeneration`。每次发送、提交或继续取得新 transport 时递增代次，结束时不回退；selector 仅在同代次且无 reader 时让同身份 durable 工具行接管 lifecycle/presentation，并保留 live trace。新 reader 再次断线、尚未刷新前，旧交接标记不能压过新 live。该标记不改变 run status，也不清除 live thought/answer 或未落盘消息。

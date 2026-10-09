@@ -41,12 +41,13 @@ import type {
   SubrunTraceQuery,
   ConversationTurnIndexResponse,
   UiMessagesWindowResponse,
+  UiMessagesRefreshResponse,
 } from './ui-messages.schemas';
 import type { RunFinalAnswerResult } from '../../../app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import { Logger } from '../../../shared/logger';
 import { decodeConversationListCursor } from '../../../app-hosts/linnya/adapters/persistence/event-store/conversation-list-cursor';
 import { RUNTIME_EVENT_TYPES_NEVER_REPLAYED_TO_UI } from '@linnlabs/linnkit/runtime-kernel/events';
-import type { ConversationSelectedAgentId } from '@app/schemas';
+import type { ConversationSelectedAgentId, ConversationUiWindowRefreshQuery } from '@app/schemas';
 import type { ConversationDeletionPort } from './definitions/conversationDeletionPort';
 import type { ConversationCleanupStatusPort } from './definitions/conversationCleanupStatusPort';
 import type { ConversationCleanupRetryOutcome } from '@app/schemas';
@@ -204,6 +205,14 @@ export class HistoryService {
       logger.error('Failed to read conversation events', { conversationId, error });
       throw error;
     }
+  }
+
+  async readUiMessagesRefresh(
+    conversationId: string,
+    query: ConversationUiWindowRefreshQuery,
+  ): Promise<UiMessagesRefreshResponse> {
+    assertConversationId(conversationId);
+    return this.repository.readUiMessagesRefresh(conversationId, query);
   }
 
   async readUiMessagesTail(conversationId: string, limit: number): Promise<UiMessagesWindowResponse> {

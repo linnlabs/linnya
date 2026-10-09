@@ -6,6 +6,8 @@ import {
 } from '@linnlabs/linnkit/contracts';
 import {
   ConversationUiMessageSchema,
+  CONVERSATION_UI_WINDOW_MAX_ROWS,
+  type ConversationUiWindowRefreshQuery,
   conversationVisualTurnIdFromUserMessageId,
   type ConversationUiMessage,
   type ConversationCompleteVisualTurnId,
@@ -14,7 +16,6 @@ import {
 import { isRecord, toSerializableValue } from './json';
 import {
   parseUiMessageAttachments,
-  type UiMessageAttachments,
 } from './attachments';
 import type { DurableSubrunTraceKind } from '../../subrun-trace-history/definitions/subrunTraceHistory';
 import { decodeSubrunTraceHistoryEvent } from '../../subrun-trace-history/functions/subrunTraceHistoryPayload';
@@ -146,6 +147,39 @@ export type SubrunTraceResult =
       readonly revision: number;
     }
   | UiMessagesPreparing;
+
+export type UiMessagesRefreshResult = UiMessagesWindowResult | {
+  readonly status: 'unchanged';
+  readonly conversation_id: string;
+  readonly revision: number;
+};
+
+/** 先比较正式 revision；变化时只读取当前窗口，不以新 tail 替换用户正在浏览的历史。 */
+export function readWindowRefresh(
+  db: Database.Database,
+  conversationId: string,
+  query: ConversationUiWindowRefreshQuery,
+): UiMessagesRefreshResult {
+  // revision、行与分页/citation 元数据必须来自同一读取快照，不能混合并发 writer 的代次。
+  return db.transaction((): UiMessagesRefreshResult => {
+    const state = readReadyProjectionState(db, conversationId);
+    if (!state) return { status: 'preparing', conversation_id: conversationId };
+    if (state.revision === query.known_revision) {
+      return { status: 'unchanged', conversation_id: conversationId, revision: state.revision };
+    }
+    // 保留窗口首行；到达容量上限后交回正式分页，不能在后台裁掉用户的阅读锚点。
+    const rows = db.prepare<unknown[], UiMessageSqlRow>(`
+      SELECT * FROM conversation_ui_messages
+      WHERE conversation_id = ? AND ${VISIBLE_ROW_SQL}
+        AND sort_seq >= ? AND (? OR sort_seq <= ?)
+      ORDER BY sort_seq ASC LIMIT ?
+    `).all(
+      conversationId, query.first_sort_seq, query.follow_tail ? 1 : 0,
+      query.last_sort_seq, CONVERSATION_UI_WINDOW_MAX_ROWS,
+    );
+    return buildWindowResult(db, conversationId, state.revision, rows);
+  })();
+}
 
 export function readTail(
   db: Database.Database,

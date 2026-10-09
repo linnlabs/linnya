@@ -47,6 +47,7 @@ import type {
 } from './ui-messages.schemas';
 import {
   ConversationCleanupRetryResponseSchema,
+  ConversationUiWindowRefreshQuerySchema,
   UpdateConversationSelectedAgentRequestSchema,
 } from '@app/schemas';
 
@@ -113,6 +114,20 @@ export function createHistoryRouter(service: HistoryService): Router {
         error: 'Failed to list conversations',
         details: errorMessage,
       });
+    }
+  });
+
+  router.get('/:id/ui-messages/refresh', async (req: Request, res: Response) => {
+    try {
+      const conversationId = readConversationId(req);
+      if (!conversationId) return sendMissingConversationId(res);
+      const parsed = ConversationUiWindowRefreshQuerySchema.safeParse(req.query);
+      if (!parsed.success) return sendInvalidQuery(res, parsed.error.message);
+      const result = await service.readUiMessagesRefresh(conversationId, parsed.data);
+      if (result.status === 'unchanged') return res.json({ success: true, ...result });
+      return sendUiMessagesWindow(res, result);
+    } catch (error: unknown) {
+      return sendRouteError(res, 'Failed to refresh UI message window', error);
     }
   });
 

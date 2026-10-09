@@ -2,6 +2,7 @@ import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type {
   ConversationCitationDependencySnapshot,
   ConversationUiMessage,
+  ConversationUiWindowUnchanged,
 } from '@app/schemas';
 
 export type UiMessageDto = ConversationUiMessage;
@@ -35,6 +36,8 @@ export type UiMessagesWindowDto =
   | UiMessagesWindowReadyDto
   | UiMessagesPreparingDto
   | UiMessagesAnchorNotFoundDto;
+
+export type UiMessagesRefreshDto = UiMessagesWindowDto | ConversationUiWindowUnchanged;
 
 export interface ConversationSubrunTraceReadyDto {
   readonly success: true;

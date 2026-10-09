@@ -3,17 +3,24 @@ import type {
   UiMessagesAnchorNotFoundDto,
   UiMessagesPreparingDto,
   UiMessagesWindowDto,
+  UiMessagesRefreshDto,
   UiMessagesWindowReadyDto,
 } from '../definitions/uiMessagesDto';
 import { isRecord } from '../../utils/typeGuards';
 import {
   ConversationCitationDependencySnapshotSchema,
   ConversationUiMessageSchema,
+  ConversationUiWindowUnchangedSchema,
 } from '@app/schemas';
 import {
   extractCanonicalCitationRefs,
   isConversationCitationDependencyClosure,
 } from '@linnya/citation-domain/conversation-presentation';
+
+export function readUiMessagesRefreshDto(value: unknown): UiMessagesRefreshDto {
+  const unchanged = ConversationUiWindowUnchangedSchema.safeParse(value);
+  return unchanged.success ? unchanged.data : readUiMessagesWindowDto(value);
+}
 
 export function readUiMessagesWindowDto(value: unknown): UiMessagesWindowDto {
   if (isUiMessagesWindowReadyDto(value)) {

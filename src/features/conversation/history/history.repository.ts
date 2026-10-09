@@ -39,6 +39,7 @@ import type {
   SubrunTraceReadOptions,
   SubrunTraceResult,
   UiMessagesWindowResult,
+  UiMessagesRefreshResult,
   RunFinalAnswerResult,
 } from '../../../app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import type {
@@ -49,9 +50,10 @@ import type {
   ConversationMetadata,
 } from './history.schemas';
 import type { RoutedRuntimeEvent, RuntimeEvent } from '@linnlabs/linnkit/contracts';
-import type { ConversationSelectedAgentId } from '@app/schemas';
+import type { ConversationSelectedAgentId, ConversationUiWindowRefreshQuery } from '@app/schemas';
 
 export interface UiMessagesReadRepository {
+  readWindowRefresh(conversationId: string, query: ConversationUiWindowRefreshQuery): UiMessagesRefreshResult;
   readTail(conversationId: string, limit: number): UiMessagesWindowResult;
   readBefore(conversationId: string, cursor: number, limit: number): UiMessagesWindowResult;
   readAfter(conversationId: string, cursor: number, limit: number): UiMessagesWindowResult;
@@ -179,6 +181,13 @@ export class HistoryRepository {
       console.error(`[HistoryRepository] Error reading events for ${conversationId}:`, error);
       throw error;
     }
+  }
+
+  async readUiMessagesRefresh(
+    conversationId: string,
+    query: ConversationUiWindowRefreshQuery,
+  ): Promise<UiMessagesRefreshResult> {
+    return this.requireUiMessagesReader().readWindowRefresh(conversationId, query);
   }
 
   async readUiMessagesTail(conversationId: string, limit: number): Promise<UiMessagesWindowResult> {

@@ -121,6 +121,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
     nextCursor: undefined,
     revision: null,
     loadingMode: null,
+    detachedRefreshGeneration: null,
     error: null,
   }),
 
@@ -141,6 +142,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
 
   actions: {
     startLoading(conversationId: string, mode: MessageWindowLoadMode): void {
+      this.detachedRefreshGeneration = null;
       if (this.conversationId !== null && this.conversationId !== conversationId) {
         this.rows = [];
         this.hasMoreBefore = false;
@@ -160,6 +162,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.conversationId = conversationId;
       this.status = 'preparing';
       this.loadingMode = null;
+      this.detachedRefreshGeneration = null;
       this.error = null;
       this.rows = [];
       this.hasMoreBefore = false;
@@ -175,6 +178,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.conversationId = snapshot.conversationId;
       this.status = 'ready';
       this.loadingMode = null;
+      this.detachedRefreshGeneration = null;
       this.error = null;
       this.rows = rows;
       this.hasMoreBefore = snapshot.hasMoreBefore || snapshot.rows.length > WINDOW_MAX_ROWS;
@@ -195,6 +199,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.conversationId = snapshot.conversationId;
       this.status = 'ready';
       this.loadingMode = null;
+      this.detachedRefreshGeneration = null;
       this.error = null;
       this.rows = rows;
       this.hasMoreBefore = snapshot.hasMoreBefore;
@@ -221,6 +226,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.conversationId = snapshot.conversationId;
       this.status = 'ready';
       this.loadingMode = null;
+      this.detachedRefreshGeneration = null;
       this.error = null;
       this.rows = rows;
       this.hasMoreBefore = this.hasMoreBefore || snapshot.hasMoreBefore || trimmedCount > 0;
@@ -236,6 +242,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
     ): void {
       const targetIndex = this.rows.findIndex(row => row.messageId === messageId);
       if (targetIndex < 0) return;
+      this.detachedRefreshGeneration = null;
 
       const targetRow = this.rows[targetIndex];
       const rows = [
@@ -255,11 +262,16 @@ export const useMessageWindowStore = defineStore('messageWindow', {
         : undefined;
     },
 
+    confirmDetachedRefresh(transportGeneration: number): void {
+      this.detachedRefreshGeneration = transportGeneration;
+    },
+
     setError(conversationId: string, error: string): void {
       assertWindowConversationOwnership(this.conversationId, conversationId, 'setError');
       this.conversationId = conversationId;
       this.status = 'error';
       this.loadingMode = null;
+      this.detachedRefreshGeneration = null;
       this.error = error;
     },
 
@@ -273,6 +285,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.nextCursor = undefined;
       this.revision = null;
       this.loadingMode = null;
+      this.detachedRefreshGeneration = null;
       this.error = null;
     },
   },

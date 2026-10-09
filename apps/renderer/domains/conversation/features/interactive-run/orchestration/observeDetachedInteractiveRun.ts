@@ -3,7 +3,7 @@ import { isInteractiveRunBusy } from '../functions/interactiveRunTransitions';
 import { projectRunSettlementResponse } from '../functions/projectRunSettlementResponse';
 import { projectActiveRunResponse } from '../functions/projectActiveRunResponse';
 import { fetchActiveForegroundRun, fetchForegroundRunSettlement } from './interactiveRunApi';
-import { reconcileTerminalConversationView } from '../../../services/orchestration/reconcileTerminalConversationView';
+import { refreshDetachedConversationView } from '../../../services/orchestration/refreshDetachedConversationView';
 
 /** 没有 reader 时只观察 Backend；不暂停、不重新发送、不生成任何执行事实。 */
 export async function observeDetachedInteractiveRun(conversationId: string): Promise<void> {
@@ -24,10 +24,12 @@ export async function observeDetachedInteractiveRun(conversationId: string): Pro
         )
       : projectActiveRunResponse(await fetchActiveForegroundRun(conversationId));
     if (store.snapshotFor(conversationId) !== current || store.hasTransport(conversationId)) return;
+    // exact-run settlement 已经过 Host 持久化屏障；终态也先同步当前窗口，失败时保留观察重试。
+    const refresh = await refreshDetachedConversationView(conversationId, () => (
+      store.snapshotFor(conversationId) === current && !store.hasTransport(conversationId)
+    ), store.transportGenerationFor(conversationId));
+    if (refresh === 'preparing' || store.snapshotFor(conversationId) !== current || store.hasTransport(conversationId)) return;
     store.synchronizeSnapshot(conversationId, next);
-    if (!next || !isInteractiveRunBusy(next) || next.status === 'awaiting_user') {
-      await reconcileTerminalConversationView(conversationId);
-    }
   } catch (error) {
     if (store.snapshotFor(conversationId) !== current || store.hasTransport(conversationId)) return;
     store.synchronizeSnapshot(conversationId, {

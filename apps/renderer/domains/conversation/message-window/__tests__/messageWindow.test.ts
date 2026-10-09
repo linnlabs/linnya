@@ -115,6 +115,7 @@ function createApi(responses: {
   around?: UiMessagesWindowDto | Promise<UiMessagesWindowDto>;
 }): MessageWindowApiPort {
   return {
+    async readRefresh() { throw new Error('refresh response not configured'); },
     async readTail() {
       if (!responses.tail) throw new Error('tail response not configured');
       return await responses.tail;

@@ -52,6 +52,37 @@ function isCurrentWindowRequest(token: MessageWindowRequestToken): boolean {
     && token.store.loadingMode === token.mode;
 }
 
+export async function refreshCurrentWindow(
+  conversationId: string,
+  deps: MessageWindowLoaderDeps,
+  isObservationCurrent: () => boolean = () => true,
+): Promise<'updated' | 'unchanged' | 'preparing' | 'superseded'> {
+  const store = deps.store ?? useMessageWindowStore();
+  if (store.conversationId !== conversationId || store.status !== 'ready' || store.revision === null) {
+    return 'superseded';
+  }
+  const rows = store.rows;
+  const revision = store.revision;
+  const generation = requestGenerations.get(store);
+  const dto = await (deps.api ?? messageWindowApi).readRefresh(conversationId, {
+    known_revision: revision,
+    first_sort_seq: rows[0]?.sortSeq ?? 0,
+    last_sort_seq: rows[rows.length - 1]?.sortSeq ?? 0,
+    follow_tail: !store.hasMoreAfter,
+  });
+  // 分页、导航、编辑或新的 transport 已接管窗口时，迟到的后台快照不能覆盖它。
+  if (!isObservationCurrent() || requestGenerations.get(store) !== generation
+    || store.conversationId !== conversationId || store.status !== 'ready'
+    || store.rows !== rows || store.revision !== revision) return 'superseded';
+  if ('status' in dto) {
+    if (dto.status === 'unchanged') return 'unchanged';
+    // 重建期间保留已读窗口，下一次观察继续读取，不制造 loading 闪烁或滚动跳转。
+    if (dto.status === 'preparing') return 'preparing';
+  }
+  applyWindowResponse(dto, store, 'replace', deps.readLiveMessages);
+  return 'updated';
+}
+
 export async function loadTail(
   conversationId: string,
   options: LoadMessageWindowOptions,

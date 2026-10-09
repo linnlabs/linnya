@@ -1,9 +1,9 @@
-import type { ConversationAnswerCompletionReason } from '@app/schemas';
+import { CONVERSATION_UI_WINDOW_MAX_ROWS, type ConversationAnswerCompletionReason } from '@app/schemas';
 import type { AnswerMessage, BaseMessage } from '../../types';
 import type { UiMessageDto } from './uiMessagesDto';
 import type { Raw } from 'vue';
 
-export const WINDOW_MAX_ROWS = 320;
+export const WINDOW_MAX_ROWS = CONVERSATION_UI_WINDOW_MAX_ROWS;
 
 export type MessageWindowLoadMode = 'tail' | 'before' | 'after' | 'around';
 
@@ -62,6 +62,8 @@ export interface MessageWindowState {
   nextCursor?: number;
   revision: number | null;
   loadingMode: MessageWindowLoadMode | null;
+  /** 仅成功 detached refresh 接纳时记录，用于同代次的工具读模型交接。 */
+  detachedRefreshGeneration: number | null;
   error: string | null;
 }
 

@@ -1,5 +1,8 @@
 import Database from 'better-sqlite3';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   createSubRunTraceEvent,
   createToolOutputEvent,
@@ -12,6 +15,7 @@ import {
 } from '@app/schemas';
 import { CONVERSATION_SCHEMAS } from '../../conversation.schema';
 import {
+  readWindowRefresh,
   readAfter,
   readAround,
   readBefore,
@@ -34,8 +38,8 @@ interface TestMessageSeed {
   readonly turnId?: string;
 }
 
-function createDb(): Database.Database {
-  const db = new Database(':memory:');
+function createDb(path = ':memory:'): Database.Database {
+  const db = new Database(path);
   db.exec(`
     CREATE TABLE projects (id TEXT PRIMARY KEY);
     CREATE TABLE assets (id TEXT PRIMARY KEY);
@@ -746,5 +750,63 @@ describe('sqlite UI messages reader', () => {
     ).toEqual(['sibling-child-output']);
 
     db.close();
+  });
+});
+
+
+describe('current window conditional refresh', () => {
+  it('keeps the first visible anchor when a following tail exceeds the window budget', () => {
+    const db = createDb();
+    try {
+      seedConversation(db, 'bounded');
+      seedProjectionState(db, 'bounded', 'ready', 2);
+      for (let index = 1; index <= 322; index++) {
+        seedMessage(db, 'bounded', { messageId: `message-${index}`, sortSeq: index });
+      }
+      const result = readWindowRefresh(db, 'bounded', {
+        known_revision: 1, first_sort_seq: 2, last_sort_seq: 81, follow_tail: true,
+      });
+      expect(result).toMatchObject({ status: 'ready', revision: 2, has_more_before: true, has_more_after: true, prev_cursor: 2, next_cursor: 321 });
+      if (result.status !== 'ready') throw new Error('Expected bounded window');
+      expect(result.messages).toHaveLength(320);
+      expect(result.messages[0].message_id).toBe('message-2');
+      expect(readWindowRefresh(db, 'bounded', {
+        known_revision: 2, first_sort_seq: 2, last_sort_seq: 321, follow_tail: false,
+      })).toEqual({ status: 'unchanged', conversation_id: 'bounded', revision: 2 });
+    } finally { db.close(); }
+  });
+
+  it('reads revision, rows and pagination from one SQLite snapshot while another connection commits', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'linnya-window-refresh-'));
+    const path = join(directory, 'history.sqlite');
+    const db = createDb(path);
+    db.pragma('journal_mode = WAL');
+    const writer = new Database(path);
+    seedConversation(db, 'snapshot');
+    seedProjectionState(db, 'snapshot', 'ready', 1);
+    seedMessage(db, 'snapshot', { messageId: 'message', sortSeq: 1, content: 'old' });
+    const prepare = db.prepare.bind(db);
+    let committed = false;
+    const hook = vi.spyOn(db, 'prepare').mockImplementation(sql => {
+      if (!committed && sql.includes('SELECT * FROM conversation_ui_messages')) {
+        committed = true;
+        writer.transaction(() => {
+          writer.prepare("UPDATE conversation_ui_projection_state SET revision = 2 WHERE conversation_id = 'snapshot'").run();
+          writer.prepare("UPDATE conversation_ui_messages SET content = 'new' WHERE message_id = 'message'").run();
+          seedMessage(writer, 'snapshot', { messageId: 'later', sortSeq: 2 });
+        })();
+      }
+      return prepare(sql);
+    });
+    try {
+      const query = { known_revision: 0, first_sort_seq: 1, last_sort_seq: 1, follow_tail: true };
+      const before = readWindowRefresh(db, 'snapshot', query);
+      expect(committed).toBe(true);
+      expect(before).toMatchObject({ status: 'ready', revision: 1, has_more_after: false, messages: [{ content: 'old' }] });
+      const after = readWindowRefresh(db, 'snapshot', { ...query, known_revision: 1 });
+      expect(after).toMatchObject({ status: 'ready', revision: 2, messages: [{ content: 'new' }, { message_id: 'later' }] });
+    } finally {
+      hook.mockRestore(); writer.close(); db.close(); rmSync(directory, { recursive: true });
+    }
   });
 });
