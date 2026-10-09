@@ -4,6 +4,7 @@ import { createPinia } from 'pinia';
 import { computed, createApp, defineComponent, h, nextTick, type App } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
+import { ConversationFileLinkResolutionSchema } from '@app/schemas';
 import { CONVERSATION_RENDER_SCOPE_KEY } from '../../../definitions/conversationRenderScope';
 import { executionActivity, provideToolExecutionActivity } from '../../../shared/execution-presentation';
 import { registerConversationResourceLinkPort, type ConversationResourceLinkPort } from '../../resource-link';
@@ -39,9 +40,11 @@ describe('ResearchRunCard', () => {
     const open = vi.fn<ConversationResourceLinkPort['open']>();
     registerConversationResourceLinkPort({
       resolve: async () => ({
-        state: 'ready', kind: 'workspace', locator: 'workspace:/research/investigation.md',
-        project_id: 'project-a', document_id: 'saved-document', node_type: 'document',
-        title: '已保存研究记录', parent_id: null,
+        ...ConversationFileLinkResolutionSchema.parse({
+          state: 'ready', kind: 'workspace', locator: 'workspace:/research/investigation.md',
+          project_id: 'project-a', document_id: 'saved-document', node_type: 'document',
+          title: '已保存研究记录', parent_id: null,
+        }),
         activeDocumentType: 'markdown', iconComponent: DocumentIcon, iconClass: '',
       }),
       open,
