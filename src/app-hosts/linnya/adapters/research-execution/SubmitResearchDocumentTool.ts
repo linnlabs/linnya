@@ -28,7 +28,8 @@ export class SubmitResearchDocumentTool extends BaseTool {
       content: {
         type: 'string',
         minLength: 1,
-        description: '完整 Markdown 正文，使用当前 child 正式取得的引用。',
+        description:
+          '完整 Markdown 正文，保留首尾空白但不能只含空白；使用当前 child 正式取得的引用。',
       },
     },
     required: ['content'],

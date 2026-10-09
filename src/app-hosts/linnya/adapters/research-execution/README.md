@@ -12,7 +12,8 @@ decorator 拒绝执行，恢复同一阶段保留限制。该限制不承诺 She
 `yield_after_batch` 的根运行 `completed` 只表示 Runtime 已结算本批工具；引用准入或保存失败会留下正式 `tool_output` error 并停止后继，只有研究工具的成功结果 `data.status=delivered` 表示文档交付完成。
 
 `submit_research_document` 是四种研究角色的唯一文档出口，参数只有 `content`。能力按准备好的
-stage 注入，校验实际 child run 与 conversation；同伴、嵌套 worker 和父模型不能借用。路径、
+stage 注入，正文仅判空、不裁剪首尾空白，Markdown 解析仍归正式编译 owner。能力校验实际
+child run 与 conversation；同伴、嵌套 worker 和父模型不能借用。路径、
 project、来源 run 与 receipt 均来自 Host，不接纳模型提供的身份。成功 `data` 直接使用
 `ResearchRunArtifactSchema`，`control.terminateRun` 结束 child，导航式 finalAnswer 只投影已保存文件。
 父级读取 `resultToolName` 对应的成功 tool output 并与正式阶段绑定核对，拒绝自由终答。

@@ -106,7 +106,15 @@ export type ResearchRunArtifact = z.infer<typeof ResearchRunArtifactSchema>;
 export type ResearchRunData = z.infer<typeof ResearchRunDataSchema>;
 
 /** 阶段只提交正文；路径、身份和版本由 Host 已准备的阶段绑定。 */
-export const SubmitResearchDocumentArgsSchema = z.object({ content: Text }).strict();
+export const SubmitResearchDocumentArgsSchema = z
+  .object({
+    // Markdown 首行缩进和首尾空白可能有语义；只判空，不改写提交正文。
+    content: z
+      .string()
+      .min(1)
+      .refine(content => content.trim().length > 0, '正文不能只包含空白。'),
+  })
+  .strict();
 export const SubmitResearchDocumentResultSchema = z
   .object({ data: ResearchRunArtifactSchema, observation: Text })
   .strict();

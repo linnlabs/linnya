@@ -46,6 +46,51 @@ const badSubmission: ScriptedLlmTurn = {
 };
 
 describe('Research submission in the producing child Graph and SQLite transaction', () => {
+  it('拒绝空白稿，合法正文的首行缩进和尾部空白完整交给正式编译', async () => {
+    const content = '    const baseline = 100;\n\nTrailing paragraph.  \n\n';
+    const submissions = turns(6);
+    const firstCall = submissions[0]?.toolCalls?.[0];
+    if (!firstCall) throw new Error('Missing submission fixture');
+    firstCall.argumentsJson = JSON.stringify({ content });
+    const fixture = await open([
+      {
+        toolCalls: [
+          {
+            id: 'blank-submit',
+            name: 'submit_research_document',
+            argumentsJson: JSON.stringify({ content: ' \t\n' }),
+          },
+        ],
+      },
+      ...submissions,
+    ]);
+    const projectId = await seed(fixture);
+    const build = vi.spyOn(markdown, 'buildMarkdownDocumentFromText');
+    await fixture.flow.next(request(projectId), () => {});
+    const owner = await identity(fixture, projectId);
+    expect(build.mock.calls[0]?.[0].markdown).toBe(content);
+    expect(build).toHaveBeenCalledTimes(6);
+    const saved = new SqliteResearchStageReceiptStore(fixture.db)
+      .list(owner)
+      .find(item => item.stage === 'investigation')?.artifact;
+    if (!saved) throw new Error('Missing investigation');
+    const document = await createWorkspaceResearchDocumentPort({
+      db: fixture.db,
+      eventStore: fixture.eventStore,
+    }).read({ projectId, inode: saved.inode });
+    expect(document.text).toContain('const baseline = 100;');
+    expect(document.text).toContain('Trailing paragraph.');
+    const events = await facts(fixture);
+    expect(
+      events.find(event => event.type === 'tool_output' && event.tool_call_id === 'blank-submit')
+    ).toMatchObject({ status: 'error' });
+    expect(
+      events.find(event => event.type === 'tool_output' && event.tool_name === 'research_run')
+    ).toMatchObject({ status: 'success', data: { status: 'delivered' } });
+    expect(new WorkspaceService(fixture.db).getChildNodes(null, projectId)).toHaveLength(7);
+    fixture.ai.assertAllTurnsConsumed();
+  });
+
   it('正式 read_file 在当前 child 绑定的引用可直接提交，工具批次 producer facts 先于保存可见', async () => {
     const submissions = turns(6);
     const firstCall = submissions[0]?.toolCalls?.[0];
