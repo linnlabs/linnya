@@ -43,7 +43,7 @@ async function prepare(stage: ResearchStage, documents: string[], call: string =
 }
 async function stage(name: ResearchStage, documents: string[], call: string = name) {
   const current = await prepare(name, documents, call);
-  const child = `run-${current.prepared.subrunId}`;
+  const child = current.prepared.subrunId;
   await events.beginRunSession(identity.conversationId, child, { kind: 'agent' });
   const artifact = await current.session.submit({
     sourceRunId: child,
@@ -130,7 +130,9 @@ describe('Lead-selected research handoff with real Workspace and receipts', () =
     const investigation = await stage('investigation', []);
     completed.clear();
     await expect(prepare('investigation_review', [investigation])).rejects.toThrow('not completed');
-    completed.add('investigation_investigation');
+    const original = store().list({ ...identity, toolCallId: 'investigation' })[0];
+    if (!original) throw new Error('Missing original investigation');
+    completed.add(original.subrunId);
     const review = await stage('investigation_review', [investigation]);
     const draft = await stage('draft', [investigation, review]);
     const argument = await stage('argument_review', [investigation, draft]);
@@ -221,6 +223,26 @@ describe('Lead-selected research handoff with real Workspace and receipts', () =
     expect(
       (await docs().read({ projectId: identity.projectId, inode: source.inode })).text
     ).toContain('User changed');
+  });
+  it('不同根运行使用相同provider工具ID时不共享child，原调用恢复仍稳定', async () => {
+    const first = await prepare('investigation', []);
+    const otherIdentity = {
+      ...identity,
+      parentRunId: 'another-parent',
+      toolCallId: 'investigation',
+    };
+    await events.beginRunSession(identity.conversationId, otherIdentity.parentRunId, {
+      kind: 'agent',
+    });
+    const second = await useCase().prepare({
+      identity: otherIdentity,
+      invocation,
+      stage: 'investigation',
+      instructions: 'Investigate and save investigation.',
+      documents: [],
+    });
+    expect(second.prepared.subrunId).not.toBe(first.prepared.subrunId);
+    expect((await prepare('investigation', [])).prepared.subrunId).toBe(first.prepared.subrunId);
   });
   it('取消不写稿，空稿拒绝后原阶段可以修正提交', async () => {
     const current = await prepare('investigation', []);

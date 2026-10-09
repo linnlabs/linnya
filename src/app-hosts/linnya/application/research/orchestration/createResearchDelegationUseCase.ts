@@ -162,6 +162,8 @@ export function createResearchDelegationUseCase(ports: DelegationPorts) {
       });
       const prepared = ports.receipts.prepare(identity, {
         ...planned,
+        // Provider 工具 ID 只在一次运行内唯一；不能让另一个根运行复用同名 child。
+        subrunId: `${identity.parentRunId}:${planned.subrunId}`,
         delegation: { instructions: input.instructions, documents: input.documents },
         request: {
           ...planned.request,
