@@ -104,3 +104,13 @@ export type ResearchRunArgs = z.infer<typeof ResearchRunArgsSchema>;
 export type ResearchStage = z.infer<typeof ResearchStageSchema>;
 export type ResearchRunArtifact = z.infer<typeof ResearchRunArtifactSchema>;
 export type ResearchRunData = z.infer<typeof ResearchRunDataSchema>;
+
+/** 阶段只提交正文；路径、身份和版本由 Host 已准备的阶段绑定。 */
+export const SubmitResearchDocumentArgsSchema = z.object({ content: Text }).strict();
+export const SubmitResearchDocumentResultSchema = z
+  .object({ data: ResearchRunArtifactSchema, observation: Text })
+  .strict();
+export const SubmitResearchDocumentToolOutputSchema = SubmitResearchDocumentResultSchema.extend({
+  control: z.object({ terminateRun: z.literal(true), finalAnswer: Text }).strict(),
+}).strict();
+export type SubmitResearchDocumentArgs = z.infer<typeof SubmitResearchDocumentArgsSchema>;

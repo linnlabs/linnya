@@ -81,6 +81,38 @@ async function source(session = author) {
 }
 
 describe('Research document handoff with real Workspace, Markdown and SQLite', () => {
+  it('保存返回同事务成功快照；提交后用户改稿由独立 current 读取识别', async () => {
+    const request = saveRequest('workspace:/commit-window.md', '# Original submitted body');
+    let committed: ResearchDocumentBinding | undefined;
+    const saved = await port().save({
+      ...request,
+      receipt: {
+        prepare: request.receipt.prepare,
+        commit(binding) {
+          committed = binding;
+          // 模拟提交完成后、save 的 await continuation 前到达的用户编辑。
+          queueMicrotask(() => {
+            const id = binding.inode.slice('workspace:'.length);
+            const documents = new MarkdownDocumentService(database.getDb());
+            const blockId = documents.getDocument(id).content?.[0]?.attrs?.id;
+            if (typeof blockId !== 'string') throw new Error('Missing created block');
+            documents.setPendingRevision(
+              id,
+              blockId,
+              'User changed the committed document.',
+              'user'
+            );
+          });
+        },
+      },
+    });
+    expect(saved.sha256).toBe(committed?.sha256);
+    expect(saved.text).toContain('Original submitted body');
+    const current = await port().read({ projectId, inode: saved.inode });
+    expect(current.text).toContain('User changed');
+    expect(current.sha256).not.toBe(saved.sha256);
+  });
+
   it('完整读取长稿与pending，用户改稿改变版本而重命名保持稳定inode/version', async () => {
     const text = `# Article\n\n${'Long research paragraph. '.repeat(6000)}\n\nOriginal ending.`;
     const created = await port().save(saveRequest('workspace:/article.md', text));

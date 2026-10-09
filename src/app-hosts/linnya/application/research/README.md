@@ -12,11 +12,11 @@ Host 通过唯一的 research_run 入口按固定顺序组织调查、调查复�
 
 当前只开放显式 Host 工程入口：CLI `send --agent research_v1 --research-scope-json` 声明问题、读者、open/fixed/update 模式及 Workspace 材料，Conversation Control 映射到已有 `host_tool_call`，原始用户请求也完整进入各阶段。该参数不允许任意工具名或其他 Agent，普通 `send --agent research_v1` 尚不能推断范围，会在接纳前明确拒绝；附件、旧会话、编辑器引用等未绑定上下文也会拒绝，不能静默丢失后改为开放网页研究。普通产品入口的范围确认与这些材料的正式交接仍待实现，不将此工程入口宣称为已完成的前端研究功能。
 
-阶段以单份 Markdown final answer 返回，Host 通过 [正式文档适配器](../../adapters/research-documents/README.md) create-only 保存、回读全文并绑定 canonical 引用。研究记录、原始评审、初稿和修订稿分开保存，不把研究记录混入文章。角色不持有正式 Workspace 写入工具。
+阶段必须调用 `submit_research_document({content})` 提交完整 Markdown；Host 通过 [正式文档适配器](../../adapters/research-documents/README.md) create-only 保存、回读全文并绑定 canonical 引用。引用与正文校验错误回到同一 child 的工具结果，模型可修正后重新提交；成功工具结果结束 child，普通 final answer 不构成阶段交付。研究记录、原始评审、初稿和修订稿分开保存，不把研究记录混入文章。角色只持有这个绑定当前阶段的新稿出口，不持有通用 Workspace 写入工具。
 
-阶段回执只绑定实际父 run、工具调用、冻结请求、输入 inode/正文与引用 hash、child identity 和输出。文档创建与输出回执同事务；run 状态、取消、恢复和成本仍由 RunSupervisor/EventStore/Audit 负责，不建立第二个运行状态机。
+阶段回执只绑定实际父 run、工具调用、冻结请求、输入 inode/正文与引用 hash、child identity 和输出。文档创建、阶段产物绑定和当前 child 的完整 submit 工具成功回执同事务；run 状态、取消、恢复和成本仍由 RunSupervisor/EventStore/Audit 负责，不建立第二个运行状态机。
 
-后继开始前和产出后都比较输入与正式 current 投影。用户编辑或移除输入时保留已有候选与旧绑定，返回 inputs_changed，停止后继；必须重新接纳研究任务，不能静默复用旧评审、覆盖用户稿或改名假装恢复。同一调用恢复重用冻结身份与产物，不重新发送已完成 child。
+后继开始前和产出后都比较输入与正式 current 投影。用户编辑或移除输入时保留已有候选与旧绑定，返回 inputs_changed，停止后继；必须重新接纳研究任务，不能静默复用旧评审、覆盖用户稿或改名假装恢复。同一调用恢复重用冻结身份与产物，不重新发送已完成 child。即使产物已保存，父流程仍通过 registered child invoker 结算原 child 后才接纳阶段；暂停在提交成功与 ToolNode 终态之间时，从原工具回执恢复，不重复写入。另一 tool call 不得替换已提交阶段。提交前发现输入变化会停止当前 child；编译期间取消会回滚文档与两个回执。
 
 ## 边界与限制
 

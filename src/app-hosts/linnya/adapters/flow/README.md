@@ -234,5 +234,7 @@ Flow 主体与 Host settlement 是显式的两个阶段：无论主体成功或�
 固定材料检索边界、写工具权限、输入变化停止、并行复核、持久恢复及取消。上游模型使用固定脚本，
 恢复测试在实际 child 执行边界注入中断；
 Workspace Markdown 创建、回读、阶段回执、SQLite run/trace 均经过生产实现。
+相邻 `flow.research-submission.sqlite.integration.test.ts` 验证当前 child 的引用错误反馈与修正、
+read_file 来源事实交接、提交事务后中断恢复、编译中取消、修正期间输入变化和专用能力归属。
 运行前需要按开发文档独立安装依赖并构建 parser WASM。这项测试验证工程执行合同，
 不证明模型遵守研究方法或文章结论正确。

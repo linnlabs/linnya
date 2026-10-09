@@ -5,7 +5,11 @@ import {
   type ResearchStage,
 } from '@app/schemas';
 import type { ResearchDocumentBinding } from '../definitions/researchDocumentPort';
-import type { ResearchUseCase, ResearchUseCasePorts } from '../definitions/researchUseCase';
+import {
+  ResearchInputsChangedError,
+  type ResearchUseCase,
+  type ResearchUseCasePorts,
+} from '../definitions/researchUseCase';
 import type { ResearchStageReceipt } from '../definitions/researchStageReceipt';
 import {
   assertResearchInvocation,
@@ -15,12 +19,6 @@ import {
   sameDocumentVersion,
   isResearchInputInvalidation,
 } from '../functions/researchStagePlan';
-
-class ChangedResearchInputs extends Error {
-  constructor(readonly paths: readonly string[]) {
-    super('Research inputs changed');
-  }
-}
 
 /** 固定研究流程；run/child 的暂停、取消、恢复仍由既有运行 owner 承担。 */
 export function createResearchUseCase(ports: ResearchUseCasePorts): ResearchUseCase {
@@ -54,7 +52,7 @@ export function createResearchUseCase(ports: ResearchUseCasePorts): ResearchUseC
             else throw error;
           }
         }
-        if (changes.length) throw new ChangedResearchInputs([...new Set(changes)]);
+        if (changes.length) throw new ResearchInputsChangedError([...new Set(changes)]);
       }
 
       async function stage(
@@ -76,35 +74,58 @@ export function createResearchUseCase(ports: ResearchUseCasePorts): ResearchUseC
             })
           );
         await checkCurrent(prepared.inputs);
-        if (prepared.artifact) {
-          await checkCurrent([prepared.artifact]);
-          return prepared;
-        }
-        const result = await ports.children.execute(prepared, identity, signal);
+        if (prepared.artifact) await checkCurrent([prepared.artifact]);
+        // 即使正文已提交，也必须结算原 child；receipt 不能替代 Runtime 终态。
+        const result = await ports.children.execute(
+          prepared,
+          identity,
+          async submission => {
+            signal?.throwIfAborted();
+            submission.signal?.throwIfAborted();
+            await checkCurrent(prepared.inputs);
+            if (ports.receipts.list(identity).find(item => item.stage === name)?.artifact)
+              throw new Error(
+                'Research stage already submitted; a new tool call cannot overwrite it'
+              );
+            const saved = await ports.documents.save({
+              projectId: identity.projectId,
+              conversationId: identity.conversationId,
+              sourceRunId: submission.sourceRunId,
+              path: prepared.outputPath,
+              text: submission.content,
+              receipt: {
+                prepare() {
+                  signal?.throwIfAborted();
+                  submission.signal?.throwIfAborted();
+                  ports.receipts.assertPrepared(identity, prepared);
+                  submission.resultCommit.prepare();
+                },
+                commit(binding) {
+                  // 编译是异步的；取消不得在编译返回后再落盘、提交 receipt。
+                  signal?.throwIfAborted();
+                  submission.signal?.throwIfAborted();
+                  ports.receipts.commitArtifact(identity, prepared, binding);
+                  const artifact = researchArtifacts([{ ...prepared, artifact: binding }])[0];
+                  if (!artifact) throw new Error('Missing submitted artifact');
+                  submission.resultCommit.commit(artifact);
+                },
+              },
+            });
+            const artifact = researchArtifacts([
+              { ...prepared, artifact: documentBinding(saved) },
+            ])[0];
+            if (!artifact) throw new Error('Missing submitted artifact');
+            return artifact;
+          },
+          signal
+        );
         signal?.throwIfAborted();
-        if (!result.text.trim()) throw new Error(`Research stage ${name} produced no document`);
-        // 保存独立候选稿；如果调查期间输入变化，旧输入绑定和候选仍可追溯，但不能接纳后继。
-        try {
-          await ports.documents.save({
-            projectId: identity.projectId,
-            conversationId: identity.conversationId,
-            sourceRunId: result.sourceRunId,
-            path: prepared.outputPath,
-            text: result.text,
-            receipt: {
-              prepare: () => ports.receipts.assertPrepared(identity, prepared),
-              commit: binding => ports.receipts.commitArtifact(identity, prepared, binding),
-            },
-          });
-        } catch (error) {
-          const saved = ports.receipts.list(identity).find(item => item.stage === name)?.artifact;
-          if (saved && isResearchInputInvalidation(error))
-            throw new ChangedResearchInputs([saved.locator]);
-          throw error;
-        }
         const committed = ports.receipts.list(identity).find(item => item.stage === name);
         if (!committed?.artifact)
           throw new Error(`Research stage ${name} has no committed document receipt`);
+        const accepted = researchArtifacts([committed])[0];
+        if (JSON.stringify(result) !== JSON.stringify(accepted))
+          throw new Error('Research child result differs from its committed artifact');
         await checkCurrent([...prepared.inputs, committed.artifact]);
         return committed;
       }
@@ -131,7 +152,7 @@ export function createResearchUseCase(ports: ResearchUseCasePorts): ResearchUseC
         };
         return ResearchRunDataSchema.parse(result);
       } catch (error) {
-        if (!(error instanceof ChangedResearchInputs)) throw error;
+        if (!(error instanceof ResearchInputsChangedError)) throw error;
         const artifacts = researchArtifacts(ports.receipts.list(identity));
         return ResearchRunDataSchema.parse({
           status: 'inputs_changed',

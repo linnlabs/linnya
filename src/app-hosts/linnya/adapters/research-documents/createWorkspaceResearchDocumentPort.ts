@@ -9,6 +9,7 @@ import {
 import {
   ResearchDocumentError,
   type ResearchDocumentPort,
+  type ResearchDocumentSnapshot,
 } from '../../application/research/definitions/researchDocumentPort';
 import { createWorkspaceDocumentFileCreateProviderResolver } from '../document-file-create/createWorkspaceDocumentFileCreateProviderResolver';
 import type { IEventStore } from '../persistence/event-store';
@@ -73,6 +74,7 @@ export function createWorkspaceResearchDocumentPort(params: {
           throw new ResearchDocumentError('RESEARCH_DOCUMENT_CITATION_INVALID', '阶段引用未在产出回答的 run 中绑定；请先用正式 read_file 重新读取来源文档。');
         },
       }));
+      let committedSnapshot: ResearchDocumentSnapshot | undefined;
       const created = await createWorkspaceDocumentFile({
         request: { projectId: request.projectId, parentId, name, content: request.text },
         resolveProvider: createWorkspaceDocumentFileCreateProviderResolver({
@@ -88,6 +90,7 @@ export function createWorkspaceResearchDocumentPort(params: {
                 representation: snapshot.representation, sha256: snapshot.sha256,
                 citationSha256: snapshot.citationSha256,
               });
+              committedSnapshot = snapshot;
             },
           },
         }),
@@ -95,7 +98,10 @@ export function createWorkspaceResearchDocumentPort(params: {
       if (!created) {
         throw new ResearchDocumentError('RESEARCH_DOCUMENT_PATH_INVALID', '阶段产物没有正式 Markdown 创建 provider。');
       }
-      return port.read({ projectId: request.projectId, inode: `workspace:${created.documentId}` });
+      // 返回与成功回执同一事务的投影；提交后的异步重读不能把已提交成功改判为错误，
+      // 也不能悄悄把用户的新改动作为本次提交结果。后续版本检查归调用方接纳边界。
+      if (!committedSnapshot) throw new Error('Research document provider did not commit its snapshot.');
+      return committedSnapshot;
     },
   };
   return port;

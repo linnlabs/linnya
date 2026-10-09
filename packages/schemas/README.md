@@ -99,6 +99,7 @@
 | `src/tools/subrun-batch.ts` | 系统 batch 的输入、逐项结果和整体结果合同 |
 | `src/tools/subagent.ts` | 通用子 Agent 协作的参数、唯一终态与正式 artifact 结果合同 |
 | `src/tools/agent-todo.ts` | Linnya Todo 普通工具的参数与结构化结果合同；不是 Runtime 状态 |
+| `src/tools/research-run.ts` | Research Host 请求、六阶段文档结果及阶段 submit 正文/产物合同 |
 | `src/tools/taskstate.ts` | TaskState 读写参数与结构化结果 |
 | `src/tools/workspace-document-read.ts` | Workspace 文档读取结果与展示判别联合 |
 | `src/tools/tool-output-read.ts` | 长工具输出的续读窗口合同 |

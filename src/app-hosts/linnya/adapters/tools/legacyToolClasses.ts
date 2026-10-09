@@ -1,4 +1,5 @@
 import { ResearchRunTool } from '../research-execution/ResearchRunTool';
+import { SubmitResearchDocumentTool } from '../research-execution/SubmitResearchDocumentTool';
 import { searchToolClasses } from '../../../../tools/knowledgebase/search';
 import { readerToolClasses } from '../../../../tools/knowledgebase/reader';
 import { assembleToolClasses } from '../../../../tools/knowledgebase/assemble';
@@ -27,6 +28,7 @@ import { markdownToolClasses } from '../../../../domains/markdown/tools';
  */
 export const legacyBuiltinToolClasses = [
   ResearchRunTool,
+  SubmitResearchDocumentTool,
   ...searchToolClasses,
   ...readerToolClasses,
   ...assembleToolClasses,

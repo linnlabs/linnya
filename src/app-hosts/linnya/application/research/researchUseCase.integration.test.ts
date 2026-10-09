@@ -6,7 +6,7 @@ import { SQLiteEventStore } from '../../adapters/persistence/event-store';
 import { createWorkspaceResearchDocumentPort } from '../../adapters/research-documents';
 import { SqliteResearchStageReceiptStore } from '../../adapters/persistence/research-stage-receipts';
 import { createResearchUseCase } from './index';
-import type { ResearchChildPort } from './definitions/researchUseCase';
+import { researchArtifacts } from './functions/researchStagePlan';
 import type {
   PreparedResearchStage,
   ResearchExecutionIdentity,
@@ -40,11 +40,28 @@ async function output(stage: PreparedResearchStage) {
     text: `# ${stage.stage}\n\nA bounded research artifact, with limitations.`,
   };
 }
-function useCase(execute: ResearchChildPort['execute'] = output) {
+function useCase(execute: typeof output = output) {
   return createResearchUseCase({
     documents: documents(),
     receipts: receipts(),
-    children: { execute },
+    children: {
+      async execute(stage, _owner, submit) {
+        const committed = receipts()
+          .list(identity)
+          .find(item => item.stage === stage.stage);
+        if (committed?.artifact) {
+          const artifact = researchArtifacts([committed])[0];
+          if (!artifact) throw new Error('Missing completed child fixture artifact');
+          return artifact;
+        }
+        const result = await execute(stage);
+        return submit({
+          content: result.text,
+          sourceRunId: result.sourceRunId,
+          resultCommit: { prepare() {}, commit() {} },
+        });
+      },
+    },
   });
 }
 async function edit(locator: string) {
@@ -121,7 +138,7 @@ describe('Research stage acceptance with real Workspace and receipt transactions
     }
   });
 
-  it('调查时用户改材料仍保留旧绑定候选，但不接纳调查复核；恢复不能刷新旧输入', async () => {
+  it('提交前用户改材料拒绝旧稿，不接纳调查复核；恢复不能刷新旧输入', async () => {
     const result = await useCase(async stage => {
       const answer = await output(stage);
       await edit('workspace:/source.md');
@@ -131,7 +148,7 @@ describe('Research stage acceptance with real Workspace and receipt transactions
       status: 'inputs_changed',
       changed_paths: ['workspace:/source.md'],
     });
-    expect(result.artifacts).toHaveLength(1);
+    expect(result.artifacts).toHaveLength(0);
     expect(calls).toHaveLength(1);
     expect((await useCase().execute(input, identity)).status).toBe('inputs_changed');
     expect(calls).toHaveLength(1);
@@ -198,7 +215,7 @@ describe('Research stage acceptance with real Workspace and receipt transactions
       status: 'inputs_changed',
       changed_paths: ['workspace:/source.md'],
     });
-    expect(result.artifacts).toHaveLength(1);
+    expect(result.artifacts).toHaveLength(0);
     expect((await useCase().execute(input, identity)).status).toBe('inputs_changed');
     await expect(
       useCase().execute(input, { ...identity, toolCallId: 'new-admission' })
@@ -225,7 +242,7 @@ describe('Research stage acceptance with real Workspace and receipt transactions
   it('空稿与取消均停止后继，同调用改问题也不能借旧回执成功', async () => {
     await expect(
       useCase(async stage => ({ ...(await output(stage)), text: ' ' })).execute(input, identity)
-    ).rejects.toThrow('no document');
+    ).rejects.toThrow('不能保存空稿');
     expect(receipts().list(identity)).toHaveLength(1);
     expect(receipts().list(identity)[0]?.artifact).toBeUndefined();
     await expect(

@@ -9,8 +9,9 @@ Citation token 的完整 current 正文，以及同视图的完整 Citation sour
 也不能充当写入锁。读取范围与普通文件读取的 source admission 同为 20 Mi 字符；缺稿、空稿、截断和
 invalid citation 均不进入交接。来源快照不代表来源已经联网复核，摘录缺失等诊断仍保持原义。
 
-研究角色不持有正式 Workspace mutation 工具。每阶段的主要 Markdown 正文由 Host 从 finalAnswer
-送入正式 create-only provider，写入预定新路径；同名冲突失败，不覆盖、不自动重命名。
+研究角色不持有通用 Workspace mutation 工具。每阶段通过专用 submit 工具把完整 Markdown 正文
+交给 Host，再送入正式 create-only provider，写入预定新路径；同名冲突失败，不覆盖、不自动重命名。
+调用发生在产出正文的 child 内，引用校验失败作为普通工具错误回给该 child，不等 child 结束后才保存。
 保存只表示正文已存入 Workspace，不表示内容正确或评审通过。共享 Shell/Process 仍不是操作系统隔离。
 
 保存必须给出产出回答的 conversationId/sourceRunId。adapter 从正式 EventStore 分页读取该 run
@@ -22,6 +23,7 @@ invalid citation 均不进入交接。来源快照不代表来源已经联网复
 创建复用 document-file-create provider 的 `resultCommit` 同步事务合同：调用方的 `receipt.prepare`
 在异步编译前核对已准备的阶段身份，不能作为输入版本锁；新稿正文、稳定 inode 与引用进入同一事务后，adapter 同步回读正式
 Markdown current 投影，并调用 `receipt.commit(binding)`。回调不得异步，失败与新稿一起回滚。
+submit 的完整成功工具结果也通过该同步回调与正文、阶段绑定一起提交；编译期间取消在 commit 回调检查并回滚。
 研究 receipt 必须使用同一个 Workspace SQLite 连接，在 `commit` 内同步核对阶段与输入绑定；不能把
 异步写 receipt 当成原子交接。应用用例保存时发现 stale 可保留独立候选与旧绑定，但不得接纳后继。
 

@@ -53,9 +53,16 @@ export interface ToolContext extends ToolExecutionContext {
   /** Host 为当前 registered child 冻结的执行名单；空数组禁止全部，undefined 不增加限制。 */
   registeredChildAllowedTools?: readonly string[];
   /** 仅 Host forced research tool 使用；模型无权构造或替换。 */
-  researchExecution?: (input: import('@app/schemas').ResearchRunArgs) => Promise<import('@app/schemas').ResearchRunData>;
+  researchExecution?: (
+    input: import('@app/schemas').ResearchRunArgs
+  ) => Promise<import('@app/schemas').ResearchRunData>;
   /** Research stage 的正式检索边界；不是 Shell/文件系统沙箱。 */
   researchRetrievalAllowed?: boolean;
+  /** 仅绑定一个已准备的 research child；实际调用者身份仍由 Host 核对。 */
+  researchDocumentSubmission?: (
+    content: string,
+    caller: ToolContext
+  ) => Promise<import('@app/schemas').ResearchRunArtifact>;
   /** 当前 activation 的结果提交窄端口；不能从最新 run 状态反查并补猜身份。 */
   toolResultReceipts?: import('../app-hosts/linnya/application/run-resumption').ToolResultReceiptPort;
   /** 会话工作目录 admission；生成图片必须直接写入受管 conversation-scoped 目录。 */
