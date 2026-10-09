@@ -32,6 +32,11 @@ import {
 import type { ConversationRealtimeEvent } from '../flow.schemas';
 import { ReadFileTool } from 'src/tools/workspace/read_file/ReadFileTool';
 import type { ToolContext } from 'src/tools/types';
+import * as agentDefinitions from '../../../agent-registry/agentDefinitionResolver';
+import { clearRegisteredAgentTaskCache } from '../../../agent-registry/agentTaskResolver';
+import type { AgentDefinition } from '../../../agent-registry/types';
+import { z } from 'zod';
+import type { HostToolCallRequestData } from '@app/schemas';
 
 let directory: string;
 const closers: Array<() => void> = [];
@@ -49,6 +54,7 @@ afterEach(async () => {
   resetAgentRuntimeSingletonsForTest();
   clearPluginRuntimeStateForTests();
   vi.restoreAllMocks();
+  clearRegisteredAgentTaskCache();
   rmSync(directory, { recursive: true, force: true });
 });
 async function open(turns: Parameters<typeof createDurableFlowHarness>[1]) {
@@ -57,6 +63,23 @@ async function open(turns: Parameters<typeof createDurableFlowHarness>[1]) {
   return fixture;
 }
 type Fixture = Awaited<ReturnType<typeof open>>;
+function installDeclaredEntry(
+  resolveArgs: NonNullable<AgentDefinition['hostEntry']>['resolveArgs']
+) {
+  const findDefinition = agentDefinitions.findRegisteredAgentDefinitionByPromptKey;
+  vi.spyOn(agentDefinitions, 'findRegisteredAgentDefinitionByPromptKey').mockImplementation(
+    promptKey => {
+      const definition = findDefinition(promptKey);
+      if (promptKey !== 'default' || !definition) return definition;
+      return {
+        ...definition,
+        config: { ...definition.config, availableTools: [], skill: { enabled: false } },
+        hostEntry: { toolName: RESEARCH_CARRIER_TOOL, resolveArgs },
+      };
+    }
+  );
+  clearRegisteredAgentTaskCache();
+}
 async function close(fixture: Fixture) {
   await new Promise(resolve => setTimeout(resolve, 0));
   fixture.close();
@@ -193,6 +216,37 @@ async function crashAt(boundary: CarrierBoundary, projectId: string) {
 }
 
 describe('Host research carrier through SQLite and published Linnkit', () => {
+  it.each<HostToolCallRequestData>([
+    { tool_name: 'subagent', args: {}, completion_mode: 'yield_after_batch' as const },
+    { tool_name: RESEARCH_CARRIER_TOOL, args: {}, completion_mode: 'continue_to_llm' as const },
+    {
+      tool_name: RESEARCH_CARRIER_TOOL,
+      args: { unexpected: true },
+      completion_mode: 'yield_after_batch' as const,
+    },
+  ])('声明入口拒绝冲突或非法显式输入，接纳前不写运行事实：%j', async hostToolCall => {
+    const fixture = await open([]);
+    const projectId = await project(fixture);
+    installDeclaredEntry((_request, explicitArgs) =>
+      z
+        .object({})
+        .strict()
+        .parse(explicitArgs ?? {})
+    );
+    const request = researchCarrierRequest(projectId);
+    await expect(
+      fixture.flow.next(
+        { ...request, options: { ...request.options, host_tool_call: hostToolCall } },
+        () => {}
+      )
+    ).rejects.toThrow();
+    expect(await facts(fixture)).toEqual([]);
+    expect(
+      await fixture.runtime.supervisor.findByConversation(conversationId, { includeChildren: true })
+    ).toEqual([]);
+    fixture.ai.assertAllTurnsConsumed();
+  });
+
   it('未声明恢复 owner 的父工具保持受阻，不因含有 child 就推断可重入', async () => {
     class UnknownOwnerCarrier extends ResearchCarrierFixtureTool {
       override readonly name = 'unknown_owner_carrier';
@@ -248,6 +302,10 @@ describe('Host research carrier through SQLite and published Linnkit', () => {
       ...researchCarrierFollowingTurns,
     ]);
     const projectId = await project(fixture);
+    const resolveArgs = vi.fn(
+      (_request: Parameters<NonNullable<AgentDefinition['hostEntry']>['resolveArgs']>[0]) => ({})
+    );
+    installDeclaredEntry(resolveArgs);
     const live: ConversationRealtimeEvent[] = [];
     let releaseReaders!: () => void;
     const bothReading = new Promise<void>(resolve => {
@@ -274,6 +332,9 @@ describe('Host research carrier through SQLite and published Linnkit', () => {
           RESEARCH_CARRIER_TOOL
         )
       ).toBeUndefined();
+      expect(
+        (await fixture.runtime.runDescriptors?.load(context.runId))?.request.availableTools
+      ).toEqual([]);
       expect((await fixture.flow.getActiveForegroundRun(conversationId)).run?.status).toBe(
         'running'
       );
@@ -293,10 +354,16 @@ describe('Host research carrier through SQLite and published Linnkit', () => {
       }
     });
     installResearchCarrierFixture(tool, [new ConcurrentArtifactRead()]);
-    await fixture.flow.next(researchCarrierRequest(projectId), event => live.push(event));
+    const request = researchCarrierRequest(projectId);
+    await fixture.flow.next(
+      { ...request, options: { ...request.options, host_tool_call: undefined } },
+      event => live.push(event)
+    );
     const decision = await parentCall(fixture);
     await assertCompleteTree(fixture, decision.run_id);
     expect(tool.invocations).toBe(1);
+    expect(resolveArgs).toHaveBeenCalledTimes(1);
+    expect(resolveArgs.mock.calls[0]?.[0].query).toContain('Review the synthetic note.');
     expect(readerRuns.size).toBe(2);
     expect(
       new Set(
@@ -350,6 +417,13 @@ describe('Host research carrier through SQLite and published Linnkit', () => {
   it('父结果已返回但 terminal 未提交时恢复完整 receipt，不再进入工具或 child', async () => {
     const first = await open([...researchCarrierDraftTurns, ...researchCarrierFollowingTurns]);
     const projectId = await project(first);
+    const resolveArgs = vi.fn(
+      (
+        _request: Parameters<NonNullable<AgentDefinition['hostEntry']>['resolveArgs']>[0],
+        explicitArgs?: Record<string, unknown>
+      ) => z.object({}).strict().parse(explicitArgs)
+    );
+    installDeclaredEntry(resolveArgs);
     installResearchCarrierFixture(new ResearchCarrierFixtureTool());
     first.db.exec(`CREATE TRIGGER reject_carrier_terminal BEFORE INSERT ON events
       WHEN NEW.type = 'tool_output' AND NEW.run_id IN (SELECT id FROM runs WHERE parent_run_id IS NULL)
@@ -367,12 +441,16 @@ describe('Host research carrier through SQLite and published Linnkit', () => {
     expect(receipt?.result).toContain('All fixed stages completed');
     first.db.exec('DROP TRIGGER reject_carrier_terminal');
     await close(first);
+    resolveArgs.mockImplementation(() => {
+      throw new Error('Resume must consume the admitted entry, not rebuild it');
+    });
     const resumed = await open([]);
     const tool = new ResearchCarrierFixtureTool();
     installResearchCarrierFixture(tool);
     await continueRoot(resumed);
     await assertCompleteTree(resumed, root.run_id);
     expect(tool.invocations).toBe(0);
+    expect(resolveArgs).toHaveBeenCalledTimes(1);
   });
 
   it('一个并行 review 中断保留同伴结果，恢复只继续原中断者并执行后继', async () => {

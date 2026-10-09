@@ -15,6 +15,13 @@ catalog），交给 Host 的运行描述保存。Generic task 消费 `frozenSyst
 显式声明 `supportsFrozenSystemPrompt` 并消费同一字段，否则不能接纳为可恢复 run。恢复不能重新
 运行 request enricher 或重新渲染系统提示；这不承诺冻结外部模型输出或任意 Workspace 内容。
 
+定义可以通过 `hostEntry` 声明一个 Host 强制入口：固定 `toolName`，并由纯函数
+`resolveArgs(request, explicitArgs)` 生成或严格接纳业务参数。Flow 在首次 run admission 前把
+它转换为正式 `host_tool_call`，固定 `yield_after_batch` 并随 descriptor 冻结；继续和审批响应
+不重新调用该函数。显式调用只可传同名工具及相同完成模式，不能换工具或改为模型接管。
+入口工具不因此进入模型可见清单，纯 Host 入口 Agent 应使用 `availableTools: []`；child 的职责
+和工具仍各自通过 registry 定义。声明不拥有 Graph、持久阶段或工具执行，不提供通用工作流引擎。
+
 `agent-registry` 负责三件事：
 
 1. 声明产品可用的 `AgentDefinition / ChatDefinition / internal definition`

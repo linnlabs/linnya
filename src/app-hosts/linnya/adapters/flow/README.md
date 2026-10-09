@@ -42,6 +42,11 @@ Flow 不负责：
 12. Host 发布权威 `run_status`；
 13. Host 发布 `transport_end`，结束当前 transport 并关闭 EventBus。
 
+首次准备还会读取 AgentDefinition 的可选 `hostEntry`，在 run admission 前生成并校验固定工具
+入口。参数规则由声明的用例拥有，Flow 只要求工具名及 `yield_after_batch` 与声明一致；实际
+执行继续使用现有 host-forced ToolNode。descriptor 保存接纳后的工具请求，继续、审批响应和
+持久化后的 history 刷新均不重新求入口参数，不把阶段调度交给首次模型输出。
+
 Foreground cancel command 有额外完成屏障：`RunSupervisor.cancel()` 只表示 abort 已触发且 cancelled 控制态已写入，不表示正在执行的 ToolNode、execution settlement 与 Host persistence 已收口。`FlowOrchestrator` 按精确 runId 读取持久身份并等待原 Flow execution 完成 drain 与 Host finalize 后，取消 HTTP 才能返回成功；Renderer 只可在成功响应后读取 durable window / subrun trace。自然完成可能先于取消，成功响应因此明确区分 `cancelled` 与 `already_terminal`，并携带真实 `terminal_status`。纯 `awaiting_user` 没有在途 execution，可以直接取消；但 resume 从 claim 前就必须登记新的 completion，即使 RunRecord 在 incoming fact 持久化期间仍显示 `awaiting_user`，cancel 也必须等待该 resume transport 完整收尾。RunRecord 状态不能替代 Host execution registry，active-run 列表也不能作为 cancel admission。
 
 incoming facts 与 generated facts 的写入入口不同是有意设计：incoming facts 在执行前已经存在并需要先提交；generated facts 必须从 RuntimeEventPublisher 进入 EventBus。自动 compaction 的 `history_summary` 仍是 generated fact，但为保证 durable-before-fanout，会先由 `RuntimeEventCommitPort` 在同一队列完成提交，再由唯一 publisher fan-out；EventBus persistence consumer 按 fact ID 去重。两者不能互相 fallback，也不能写出第二份摘要事实。

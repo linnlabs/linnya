@@ -1,4 +1,7 @@
-import type { ConversationNextRequest, RuntimeEvent } from 'src/app-hosts/linnya/adapters/flow/flow.schemas';
+import type {
+  ConversationNextRequest,
+  RuntimeEvent,
+} from 'src/app-hosts/linnya/adapters/flow/flow.schemas';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import { Logger } from 'src/shared/logger';
 import { HistoryBuilder } from 'src/app-hosts/linnya/adapters/flow/flow.history-builder.service';
@@ -6,6 +9,7 @@ import { HistoryHandlerService } from 'src/app-hosts/linnya/adapters/flow/flow.h
 import type { FlowExecutionResult } from 'src/app-hosts/linnya/adapters/flow/flow.schemas';
 import type { FlowIncomingEventBatch } from './incoming-events/definitions/flowIncomingEventBatch';
 import { FlowIncomingEventPreparer } from './incoming-events/orchestration/prepareFlowIncomingEventBatch';
+import { resolveAgentHostEntry } from '../../agent-registry/resolveAgentHostEntry';
 
 const logger = new Logger('FlowRunPreparationService');
 
@@ -18,7 +22,7 @@ export interface PreparedFlowRunInput {
 
 function selectHistoryBeforeReplacement(
   request: ConversationNextRequest,
-  history: readonly RuntimeEvent[],
+  history: readonly RuntimeEvent[]
 ): RuntimeEvent[] {
   const targetId = request.options?.truncateFromMessageId;
   if (!targetId) return [...history];
@@ -26,7 +30,9 @@ function selectHistoryBeforeReplacement(
   const targetIndex = history.findIndex(event => event.id === targetId);
   const target = targetIndex >= 0 ? history[targetIndex] : undefined;
   if (!target || target.type !== 'user_input') {
-    throw new Error(`[FlowRunPreparationService] replacement target ${targetId} is not a user_input fact`);
+    throw new Error(
+      `[FlowRunPreparationService] replacement target ${targetId} is not a user_input fact`
+    );
   }
   return history.slice(0, targetIndex);
 }
@@ -53,7 +59,7 @@ export type FlowRunPreparationResult =
 export class FlowRunPreparationService {
   constructor(
     private readonly historyHandler: HistoryHandlerService,
-    private readonly incomingEventPreparer: FlowIncomingEventPreparer,
+    private readonly incomingEventPreparer: FlowIncomingEventPreparer
   ) {}
 
   async prepareForRun(
@@ -61,6 +67,7 @@ export class FlowRunPreparationService {
     conversationId: string,
     turnId: string,
     shouldPersist: boolean,
+    activationKind: 'start' | 'resume' = 'start'
   ): Promise<FlowRunPreparationResult> {
     // preparation 不修改 conversation/run/event 事实；replace 真正发生在 destination run
     // 注册后的 EventStore 事务中。图片 draft 可能在这里 materialize 为可回收的 managed file，
@@ -75,7 +82,9 @@ export class FlowRunPreparationService {
     });
 
     if (req.options?.persist_only === true) {
-      logger.info(`[FlowRunPreparationService] persist_only=true, skipping execution. conversationId=${conversationId}`);
+      logger.info(
+        `[FlowRunPreparationService] persist_only=true, skipping execution. conversationId=${conversationId}`
+      );
       return {
         kind: 'persist_only',
         result: {
@@ -87,23 +96,33 @@ export class FlowRunPreparationService {
       };
     }
 
-    const intendedPostOperationHistory = selectHistoryBeforeReplacement(req, historyBeforeOperation);
+    const intendedPostOperationHistory = selectHistoryBeforeReplacement(
+      req,
+      historyBeforeOperation
+    );
     return {
       kind: 'execute',
-      prepared: this.buildPreparedRunInput(req, conversationId, incomingBatch, intendedPostOperationHistory),
+      prepared: this.buildPreparedRunInput(
+        req,
+        conversationId,
+        incomingBatch,
+        intendedPostOperationHistory,
+        activationKind === 'start'
+      ),
     };
   }
 
   async prepareExecutionAfterPersistence(
     req: ConversationNextRequest,
     conversationId: string,
-    incomingBatch: FlowIncomingEventBatch,
+    incomingBatch: FlowIncomingEventBatch
   ): Promise<PreparedFlowRunInput> {
     const persistedHistory = await this.historyHandler.readHistory(conversationId);
     const incomingIds = new Set(incomingBatch.events.map(event => event.id));
     const contextHistory = persistedHistory.filter(event => !incomingIds.has(event.id));
     logger.info(`Processed events: ${persistedHistory.length} events in history after operation`);
-    return this.buildPreparedRunInput(req, conversationId, incomingBatch, contextHistory);
+    // 首次准备时已接纳入口；持久化后的历史刷新不能重新生成或重新校验业务输入。
+    return this.buildPreparedRunInput(req, conversationId, incomingBatch, contextHistory, false);
   }
 
   private buildPreparedRunInput(
@@ -111,8 +130,8 @@ export class FlowRunPreparationService {
     conversationId: string,
     incomingBatch: FlowIncomingEventBatch,
     postOperationHistory: readonly RuntimeEvent[],
+    resolveHostEntry: boolean
   ): PreparedFlowRunInput {
-
     const contextOptions = req.options;
     const isHistoryIsolated = contextOptions?.history_mode === 'isolated';
     const contextHistoryEvents = isHistoryIsolated ? [] : [...postOperationHistory];
@@ -125,7 +144,7 @@ export class FlowRunPreparationService {
 
     if (isHistoryIsolated) {
       logger.info(
-        `[FlowRunPreparationService] Isolated history mode, clearing context history (postOp=${postOperationHistory.length} -> contextHistory=0) and options.conversationHistory=[]`,
+        `[FlowRunPreparationService] Isolated history mode, clearing context history (postOp=${postOperationHistory.length} -> contextHistory=0) and options.conversationHistory=[]`
       );
     }
 
@@ -140,17 +159,23 @@ export class FlowRunPreparationService {
       conversationId,
       [...incomingBatch.events],
       contextHistoryEvents,
-      effectiveOptions,
+      effectiveOptions
     );
 
     if (!agentInvokeReq) {
       throw new Error('Failed to build Agent request from events or history');
     }
 
+    const hostToolCall = resolveHostEntry
+      ? resolveAgentHostEntry(agentInvokeReq, effectiveOptions?.host_tool_call)
+      : effectiveOptions?.host_tool_call;
+
     return {
       agentInvokeReq,
       contextHistoryEvents,
-      effectiveOptions,
+      effectiveOptions: hostToolCall
+        ? { ...effectiveOptions, host_tool_call: hostToolCall }
+        : effectiveOptions,
       incomingBatch,
     };
   }

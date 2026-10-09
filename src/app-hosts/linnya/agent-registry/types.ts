@@ -17,6 +17,7 @@ import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
 import type { AgentSpecContextPolicy } from '@linnlabs/linnkit/contracts';
 import type * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { enrichment } from '@linnlabs/linnkit/runtime-kernel';
+import type { HostToolCallRequestData } from '@app/schemas';
 
 type RequestEnricher = enrichment.RequestEnricher;
 type IAgentTask = contextManager.agentTasks.IAgentTask;
@@ -96,7 +97,7 @@ export interface AgentConfiguration {
     | { kind: 'kb_vision' }
     | { kind: 'kb_pdf_ocr'; defaultCapability?: string }
     | { kind: 'kb_image_vision' };
-  
+
   /**
    * 偏好的模型能力（如 'tool_calling', 'reasoning' 等）
    * 用于 GenericAgentTask.getPreferredModelCapability()
@@ -182,7 +183,7 @@ export interface AgentTaskConfiguration {
   /**
    * 系统提示词构建器
    * 替代 BaseAgentTask.getSystemPrompt()
-   * 
+   *
    * 如果提供，GenericAgentTask 将使用此函数构建 system prompt。
    * 如果未提供，可能需要提供 customTaskClass。
    */
@@ -191,17 +192,17 @@ export interface AgentTaskConfiguration {
   /**
    * 自定义 Task 类构造器
    * 用于复杂的、无法通过 GenericAgentTask 满足的场景（如需要重写 buildMessages 逻辑的 ReviewAgentTask）
-   * 
+   *
    * 如果提供，Registry.getTask() 将实例化此类。
    */
   customTaskClass?: new () => IAgentTask;
-  
+
   /**
    * 响应处理函数
    * 替代 BaseAgentTask.processResponse()
    */
   responseProcessor?: (rawResponse: string) => string;
-  
+
   /**
    * 流式块处理函数
    * 替代 BaseAgentTask.processStreamChunk()
@@ -217,6 +218,15 @@ export interface AgentTaskConfiguration {
  * - 低耦合：Flow/HistoryBuilder/Enrichment 只依赖 Registry 接口，不依赖业务实现
  */
 export interface AgentDefinition {
+  /** 首次接纳的确定性 Host 入口；纯参数函数不执行工具，恢复消费原 descriptor。 */
+  hostEntry?: {
+    readonly toolName: string;
+    resolveArgs(
+      request: AgentInvocationRequest,
+      explicitArgs?: HostToolCallRequestData['args']
+    ): HostToolCallRequestData['args'];
+  };
+
   /**
    * 唯一标识（通常与 promptKey 一致，但允许未来做 alias）
    */

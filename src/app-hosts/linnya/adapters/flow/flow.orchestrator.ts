@@ -408,7 +408,8 @@ export class FlowOrchestrator {
         request,
         conversationId,
         turnId,
-        shouldPersist
+        shouldPersist,
+        command.kind
       );
 
       if (preparation.kind === 'persist_only') {
@@ -602,7 +603,7 @@ export class FlowOrchestrator {
         const executionPrepared =
           shouldPersist && !recoveryInputs
             ? await this.runPreparationService.prepareExecutionAfterPersistence(
-                request,
+                { ...request, options: registrationPrepared.effectiveOptions },
                 conversationId,
                 incomingBatch
               )
