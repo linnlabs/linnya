@@ -1489,7 +1489,7 @@ async function run() {
     );
     // fixture 在应用首次读取空列表后才写入数据库；显式走正式 history list action
     // 建立 seed 后的响应式快照，避免把测试数据注入时序误判为侧栏产品行为。
-    const seededConversationSnapshot = await evaluate(cdp, `(async () => {
+    await evaluate(cdp, `(async () => {
       const { useHistoryListStore } = await import(
         '/apps/renderer/domains/conversation/history/store/historyListStore.ts'
       );
@@ -1500,11 +1500,20 @@ async function run() {
         loadAll: true,
         limit: 100,
       });
+    })()`);
+    // loadScopeList 在已有请求时会直接返回；必须等待正式 scope 结算，不能把 await 当作加载完成。
+    const seededConversationSnapshot = await waitFor(() => evaluate(cdp, `(async () => {
+      const { useHistoryListStore } = await import(
+        '/apps/renderer/domains/conversation/history/store/historyListStore.ts'
+      );
+      const scope = { kind: 'project', projectId: ${JSON.stringify(projectId)} };
+      const historyListStore = useHistoryListStore();
+      if (historyListStore.isLoadingByScope(scope)) return null;
       return {
         count: historyListStore.getConversationsByScope(scope).length,
         error: historyListStore.errorByScope(scope),
       };
-    })()`);
+    })()`), 'seed 后 history list 请求结算');
     if (seededConversationSnapshot.count < 2) {
       throw new Error(`seed 后 history list 快照不完整: ${JSON.stringify(seededConversationSnapshot)}`);
     }
