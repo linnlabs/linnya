@@ -12,5 +12,9 @@ export function enforceResearchRetrievalScope(context: ToolContext): void {
 }
 class ResearchRetrievalScopeError extends Error {
   readonly code = 'RESEARCH_RETRIEVAL_NOT_ALLOWED';
-  constructor() { super('This research stage uses fixed materials. Read the supplied Workspace documents; external retrieval is not allowed.'); }
+  constructor() {
+    super(
+      'This research stage uses fixed materials. Read the supplied Workspace documents; external retrieval is not allowed.'
+    );
+  }
 }

@@ -80,6 +80,17 @@ Workspace 文章与独立研究记录；从真实工具调用核对激活、资�
 输入字段、显式恢复、scope 限制和输出布局见
 [Research Workflow owner](./src/features/research-workflow/README.md)。
 
+### 受控研究 Agent 工程入口
+
+`research_v1` 是 Host 固定流程的 CLI 工程入口；Default 与正式 Skill 1.4 不变。
+它将调查、写前复核、初稿、两份独立后审和一次修订保存为六份 Workspace Markdown。
+接纳、产物绑定、取消和恢复合同见 [Research owner](../../src/app-hosts/linnya/application/research/README.md)。
+选中该 Agent 的根 run 直接启动 Host 工具，不再额外调用 LLM 规划；各 child 继承所选模型，成本按真实 run 树采集，不能把父汇总和子调用重复累加。
+
+工程夹具验证流程与版本，不计为质量样本。现有 `research-workflow` 仍用于独立比较与实验终评，不是第二个产品执行路径。
+真实研究验证先冻结输入、实际方法送达和允许机会，保留原评审/更正，分别报告相对改善、末稿问题与协调成本。
+前端研究入口尚未切换；旧会话/运行不得暗中换成新角色续跑。
+
 ### 复杂图表与数据完整性
 
 `slides_arg_frontier_complex_v1` 要求 20 页学术综述、可核验的近期文献与七类数据任务；

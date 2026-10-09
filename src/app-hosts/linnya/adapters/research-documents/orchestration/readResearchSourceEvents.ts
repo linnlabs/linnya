@@ -12,7 +12,7 @@ export async function readResearchSourceEvents(params: {
   let cursor: number | undefined;
   for (;;) {
     const page = await params.eventStore.readEvents(params.conversationId, {
-      direction: 'forward', limit: 1000, ...(cursor === undefined ? {} : { cursor }),
+      direction: 'forward', limit: 1000, excludeTypes: ['audit_envelope'], ...(cursor === undefined ? {} : { cursor }),
     });
     events.push(...page.events.filter(event => event.run_id === params.sourceRunId));
     if (!page.hasMore) return events;

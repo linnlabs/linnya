@@ -26,5 +26,9 @@ export interface ResearchStageReceiptPort {
   prepare(identity: ResearchExecutionIdentity, input: PreparedResearchStage): ResearchStageReceipt;
   assertPrepared(identity: ResearchExecutionIdentity, input: PreparedResearchStage): void;
   /** 必须在正式文档创建的同一事务内调用。 */
-  commitArtifact(identity: ResearchExecutionIdentity, input: PreparedResearchStage, artifact: ResearchDocumentBinding): void;
+  commitArtifact(
+    identity: ResearchExecutionIdentity,
+    input: PreparedResearchStage,
+    artifact: ResearchDocumentBinding
+  ): void;
 }

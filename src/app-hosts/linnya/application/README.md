@@ -15,3 +15,5 @@
 ## 跨 owner 生命周期
 
 - `conversation-runtime/`：在 Conversation routes 开放前，按固定顺序提交 Commands 与 Profiled Code Sandbox 两个生产 owner；它不依赖 Electron 或具体进程载体。
+
+- `research/`：固定职责的研究用例，跨文档、引用和 child run 完成交接；不承载通用工作流产品或第二套运行状态机。

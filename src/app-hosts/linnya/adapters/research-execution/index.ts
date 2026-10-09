@@ -1,2 +1,5 @@
 export { ResearchRunTool } from './ResearchRunTool';
-export { decorateResearchToolContext, enforceResearchRetrievalScope } from './decorateResearchToolContext';
+export {
+  decorateResearchToolContext,
+  enforceResearchRetrievalScope,
+} from './decorateResearchToolContext';
