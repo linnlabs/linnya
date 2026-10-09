@@ -63,6 +63,8 @@ export interface ToolContext extends ToolExecutionContext {
     content: string,
     caller: ToolContext
   ) => Promise<import('@app/schemas').ResearchRunArtifact>;
+  /** 主研究 Agent 的正式交付检查，不负责启动后继或模型质量评分。 */
+  researchCompletion?: (document: string) => Promise<import('@app/schemas').CompleteResearchData>;
   /** 当前 activation 的结果提交窄端口；不能从最新 run 状态反查并补猜身份。 */
   toolResultReceipts?: import('../app-hosts/linnya/application/run-resumption').ToolResultReceiptPort;
   /** 会话工作目录 admission；生成图片必须直接写入受管 conversation-scoped 目录。 */

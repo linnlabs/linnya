@@ -4,17 +4,11 @@ import {
   type ResearchRunArgs,
   type ResearchRunData,
 } from '@app/schemas';
-import { runIdFromSubrunId } from '@linnlabs/linnkit/contracts';
-import { ResearchInputsChangedError } from '../../application/research/definitions/researchUseCase';
-import {
-  ResearchSubmissionScopeError,
-  serializeResearchDocumentSubmission,
-} from './SubmitResearchDocumentTool';
+import { bindResearchStageSubmission } from './bindResearchStageSubmission';
 import { isDeepStrictEqual } from 'node:util';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import type { ToolContext } from 'src/tools/types';
 import { runRegisteredSubagent } from 'src/tools/agent_control/subrun/shared';
-import { derivePluginAwareToolContext } from '../../plugin-registry/toolContextDerivation';
 import { createResearchUseCase, type ResearchExecutionIdentity } from '../../application/research';
 import { createWorkspaceResearchDocumentPort } from '../research-documents';
 import { SQLiteEventStore } from '../persistence/event-store';
@@ -57,50 +51,9 @@ export function createResearchToolExecution(
     receipts: new SqliteResearchStageReceiptStore(db),
     children: {
       async execute(stage, owner, submit, signal) {
-        const invalidation = new AbortController();
-        const stageSignal = signal
-          ? AbortSignal.any([signal, invalidation.signal])
-          : invalidation.signal;
-        const expectedRunId = runIdFromSubrunId(stage.subrunId);
-        // 子运行恢复依然使用同一冻结 stage；该字段不是模型参数，不可由工具调用开放检索。
-        const childContext = derivePluginAwareToolContext(context, {
-          researchRetrievalAllowed: stage.invocation.task_type !== 'fixed',
-          abortSignal: stageSignal,
-          async researchDocumentSubmission(content, caller) {
-            const callId = caller.parentToolCallId;
-            const receipts = caller.toolResultReceipts;
-            // 能力随上下文传播，但不能被同伴、嵌套网页 worker 或父模型冒用。
-            if (
-              caller.runId !== expectedRunId ||
-              caller.conversationId !== owner.conversationId ||
-              !callId ||
-              !receipts
-            )
-              throw new ResearchSubmissionScopeError();
-            try {
-              return await submit({
-                sourceRunId: expectedRunId,
-                content,
-                signal: caller.abortSignal,
-                resultCommit: {
-                  prepare: () => receipts.prepare(callId, 'submit_research_document'),
-                  commit: artifact =>
-                    receipts.commit(
-                      callId,
-                      'submit_research_document',
-                      serializeResearchDocumentSubmission(artifact)
-                    ),
-                },
-              });
-            } catch (error) {
-              // 输入失效不是可修正的 Markdown 错误；结束这个 child 的同一次执行。
-              if (error instanceof ResearchInputsChangedError) invalidation.abort(error);
-              throw error;
-            }
-          },
-        });
+        const bound = bindResearchStageSubmission(context, stage, owner, submit, signal);
         const result = await runRegisteredSubagent({
-          context: childContext,
+          context: bound.context,
           promptKey: stage.request.promptKey,
           description: stage.stage,
           userMessage: stage.request.query,
@@ -111,10 +64,11 @@ export function createResearchToolExecution(
           subrunSource: 'research_run',
           subrunMetadata: { stage: stage.stage },
         }).catch(error => {
-          if (invalidation.signal.aborted) throw invalidation.signal.reason;
+          // 版本失效是业务终态，不能被子运行取消外壳掩盖。
+          bound.assertActive();
           throw error;
         });
-        if (invalidation.signal.aborted) throw invalidation.signal.reason;
+        bound.assertActive();
         signal?.throwIfAborted();
         if (result.cancelled) throw new DOMException('Research stage cancelled', 'AbortError');
         if (!result.success || !result.runId)

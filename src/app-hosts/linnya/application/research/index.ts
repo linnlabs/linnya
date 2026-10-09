@@ -1,4 +1,22 @@
 export { createResearchUseCase } from './orchestration/createResearchUseCase';
-export type { ResearchUseCase, ResearchUseCasePorts, ResearchChildPort } from './definitions/researchUseCase';
-export type { ResearchExecutionIdentity, ResearchStageReceiptPort, PreparedResearchStage, ResearchStageReceipt } from './definitions/researchStageReceipt';
-export type { ResearchDocumentPort, ResearchDocumentBinding, ResearchDocumentSnapshot } from './definitions/researchDocumentPort';
+export { createResearchDelegationUseCase } from './orchestration/createResearchDelegationUseCase';
+export {
+  RESEARCH_SUBAGENT_STAGES,
+  researchDelegationStage,
+} from './functions/researchDelegationPlan';
+export type {
+  ResearchUseCase,
+  ResearchUseCasePorts,
+  ResearchChildPort,
+} from './definitions/researchUseCase';
+export type {
+  ResearchExecutionIdentity,
+  ResearchStageReceiptPort,
+  PreparedResearchStage,
+  ResearchStageReceipt,
+} from './definitions/researchStageReceipt';
+export type {
+  ResearchDocumentPort,
+  ResearchDocumentBinding,
+  ResearchDocumentSnapshot,
+} from './definitions/researchDocumentPort';

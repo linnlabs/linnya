@@ -14,6 +14,8 @@ const replayableTools = new Set([
   'assemble_web_sources',
   'web_read',
   'task_read',
+  // 仅重新核对当前文档与已提交回执；不写文档、不启动 child。
+  'complete_research',
   'skill',
   'subagent',
   'subrun_batch',

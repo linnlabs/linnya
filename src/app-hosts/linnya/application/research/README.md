@@ -1,36 +1,62 @@
 # Research 应用用例
 
-目标是充分调查、准确解释、深入浅出的长文章。前端仍只有“研究”入口，选择身份为 `research_v1`，由新版 Host 编排驱动。Default Agent 与 deep-research Skill 1.4 保持原有行为；入口可用不表示已证明跨题稳定的质量优势。
+目标是充分调查、准确解释、深入浅出的长文章。前端入口仍为“研究”，选择身份仍为
+`research_v1`。新请求由主研究 Agent 在正常 Conversation 中理解任务、展示进度并调用统一
+`subagent`；Default Agent 与 deep-research Skill
+1.4 不变。工程闭环不代表已证明跨题稳定的质量优势。
 
-## 当前工程合同
+## 调度与职责
 
-Host 通过唯一的 research_run 入口按固定顺序组织调查、调查复核、初稿、两份并行独立评审、一次修订。四类角色继承用户模型，每个 child 显式 800 步；不使用通用委派、TaskState、旧 Leader 或自动增殖角色。网页深搜仍可选。
+主 Agent 选择调查、调查复核、写作、论证复核、来源与数字复核、一次修订的委派时机和具体问题。六个受限委派类型复用四种注册角色，继承用户模型，零轮历史继承，每个 child 最多 800 步。首版沿用通用 subagent 的串行执行；主 Agent 可补查，不由 Host 自动启动后继，也不新增通用 Workflow 状态机。网页深搜仍可选。
 
-角色与阶段提示见 [Agent Registry](../../agent-registry/README.md)。每阶段自包含问题、读者、材料范围、上一版文档和适用方法资源。Skill 是共同方法真源，不复制四份 Skill；反馈规则是版本化的小型增量，不改变 Default 的正式 Skill。
+TaskState 是主 Agent 展示的计划；实际执行状态由 RunSupervisor、child
+registry、EventStore 和 Audit 持有。Conversation 展示主 Agent 的消息和各次标准 subagent 委派，子运行详情展示真实轨迹。`complete_research`
+只核对并导航最终稿和评审，不承载整条研究过程。
 
-## 文档与接纳
+角色与提示见
+[Agent Registry](../../agent-registry/README.md)。共同方法来自正式 Skill，不复制四份 Skill；经过验证的反馈要求作为小型角色增量。调查资料、原始评审、初稿和修订稿分别保存，文章不混入研究日志。
 
-普通项目会话选择“研究”，或 CLI `send --agent research_v1`，按开放调查能力接纳。原始请求完整保留；用户更窄的来源、时间、读者和篇幅要求仍是阶段任务约束。Host 不用关键词猜测 fixed/update 模式，也不宣称普通入口具有固定材料的工具隔离。无项目或本轮图片附件在 run 接纳前明确拒绝，提示进入项目或提供可读取的资料。
+## 接纳与范围
 
-Host 根运行不调用模型，所以首次接纳时须把当前编辑器片段、引用、项目元数据及可见对话文字作为引用上下文冻结到问题中。历史先遵循隔离、替换与摘要替代规则；不交接工具轨迹和隐藏推理，也不重新展开压缩正文。历史附件只保留不可读身份提示。片段不是全文、文件清单不是读取证据，旧终答不是原始来源；child 须按需重新读取文章链接和来源。普通编辑器引用没有自动绑定 inode/hash，不具有材料变化检测保障。
+项目会话选择“研究”或 CLI
+`send --agent research_v1`，以开放调查接纳。根模型正常接收用户请求、编辑器引用和可见历史；不再把这些内容拼成供 Host 代读的长问题。无项目或本轮图片附件在接纳前明确拒绝。
 
-严格材料任务仍使用 CLI `--research-scope-json`，显式声明问题、读者、open/fixed/update 模式及 Workspace 材料；fixed/update 必须声明正式材料。Conversation Control 映射到已有 `host_tool_call`，仅允许本研究入口，不开放任意工具。显式范围使用独立会话，拒绝未绑定的历史、附件或编辑器上下文，以免混入冻结材料以外的内容。
+CLI `--research-scope-json` 通过正式 `research_scope`
+声明问题、读者、open/fixed/update 及 Workspace 材料；接纳后冻结为请求的
+`researchScope`。显式范围拒绝未绑定的历史、附件和编辑器上下文。fixed/update 必须有正式材料；fixed 在根与 child 的正式 Web/Knowledge 工具入口禁止新增取得。Shell 及同项目文件不因此成为权限沙箱，真实越界仍需审计。
 
-旧 `deep_research_leader` 的新请求保持拒绝；旧会话可重新选择“研究”开启新版任务，历史和已暂停运行仍按原身份读取/恢复。菜单名称不是运行身份，不迁移旧 descriptor，也不把旧暂停任务交给新版角色。
+新研究请求不接受 `host_tool_call`。旧已接纳的 research_run
+descriptor 按原身份和冻结配置恢复，保留其专属旧调度适配器；不让旧暂停任务进入新主 Agent。旧
+`deep_research_leader` 也不开放新请求。
 
-阶段必须调用 `submit_research_document({content})` 提交完整 Markdown；Host 通过 [正式文档适配器](../../adapters/research-documents/README.md) create-only 保存、回读全文并绑定 canonical 引用。引用与正文校验错误回到同一 child 的工具结果，模型可修正后重新提交；成功工具结果结束 child，普通 final answer 不构成阶段交付。研究记录、原始评审、初稿和修订稿分开保存，不把研究记录混入文章。角色只持有这个绑定当前阶段的新稿出口，不持有通用 Workspace 写入工具。
+## 单次委派与版本交接
 
-阶段回执只绑定实际父 run、工具调用、冻结请求、输入 inode/正文与引用 hash、child identity 和输出。文档创建、阶段产物绑定和当前 child 的完整 submit 工具成功回执同事务；run 状态、取消、恢复和成本仍由 RunSupervisor/EventStore/Audit 负责，不建立第二个运行状态机。
+`subagent` 的 `input_documents`
+显式选择允许材料及本轮已提交产物；研究 owner 通过通用准备/接纳端口补齐问题、来源范围、版本和输出位置。启动 child 始终由统一 registered
+child invoker 负责。公开通用委派不读取研究表，不解释研究阶段。
 
-后继开始前和产出后都比较输入与正式 current 投影。用户编辑或移除输入时保留已有候选与旧绑定，返回 inputs_changed，停止后继；必须重新接纳研究任务，不能静默复用旧评审、覆盖用户稿或改名假装恢复。同一调用恢复重用冻结身份与产物，不重新发送已完成 child。即使产物已保存，父流程仍通过 registered child invoker 结算原 child 后才接纳阶段；暂停在提交成功与 ToolNode 终态之间时，从原工具回执恢复，不重复写入。另一 tool call 不得替换已提交阶段。提交前发现输入变化会停止当前 child；编译期间取消会回滚文档与两个回执。
+每个委派绑定父 run、工具调用、冻结分配请求、输入 inode/正文与引用 hash、child 身份及输出。调查复核必须先于采用它的初稿；双评审绑定同一初稿且不接收彼此反馈；一次修订须带齐对应初稿与两份评审。这些是交接前提校验，不是 Host 调度下一步或语义评分。
 
-## 边界与限制
+子角色仅通过 `submit_research_document({content})`
+提交完整 Markdown。正式文档 owner
+create-only 保存并解析、回读和处理 canonical 引用。路径、项目和来源 run 由 Host 决定。文档、阶段产物绑定、完整 submit 工具结果在同一事务提交；格式/引用错误可在同一 child 内修正，成功提交结束 child。自由终答不构成产物。
 
-- delivered 仅表示六个阶段产物已保存并核对其输入版本，不表示观点正确、全部证据已核实或文章通过质量验收。
-- registered child 从冻结 descriptor 取得自身工具名单，执行入口在 decorator、缓存和 owner 前拒绝未授权工具；嵌套网页深搜使用自己的名单。明确拒绝是可结算的工具失败，不冒充恢复能力缺失。
-- fixed 模式禁止 Web/Knowledge 取得工具，角色请求还限制外部事实和无关文件。Shell 用于计算；它在完全访问下不是网络或文件系统沙箱，不能把这些约束称为操作系统隔离。
-- 双评审只收到相同初稿和原始调查，不收到对方评审。当前权限不是独立项目级沙箱；真实读取行为仍需审计。
-- 第一次修订后暂不自动复核或继续修改。窄复核与一次定点修正必须另经已知失效回归验证，不能演变成修到通过。
-- 本实现不恢复旧研究 Agent，也不增加 Judge 工具、证据数据库、图谱、通用工作流引擎或强制贝叶斯评分。
+同一次委派恢复复用原请求与 child，不重新发送；另一 call 不可替换已提交阶段。可以显式开展新的补查或初稿委派，但不能冒充旧调用恢复；本轮仅接纳一次主修订。即使文档已保存，也须等统一 child
+runtime 结算为 completed 才可被后继采用。
 
-工程验收需覆盖真实 SQLite/Markdown/Citation、工具生命周期、并行评审、中断恢复、取消、输入变更和历史重载。工程通过后才做已知失效回归与未调试选题对照，分别报告相对改善、全文质量和流程成本。
+每次接纳与交付都核对输入和正式 current 投影；祖先材料变化也使下游稿件失效。用户修改、移除材料时保留其修改和已有候选，停止沿旧版本交付；重新开展研究应接纳新任务。提交期间取消回滚文档与回执，不把失效当成可反复尝试的 Markdown 错误。
+
+## 完成与限制
+
+`complete_research`
+只接受本轮已完成的修订文档，回溯调查、初稿、双评审和版本；返回修订稿与两份评审导航并结束根运行。该检查不认证观点正确，也不表示所有反馈已解决。预算不足或失败时主 Agent 应明确未交付，不能用 TaskState 勾选代替真实产物。
+
+registered
+child 使用自己的冻结工具名单、调用身份和委派白名单。主 Agent 不持有阶段写入出口，子 Agent 不持有根交付能力。两份评审的输入隔离不等于操作系统级权限隔离。
+
+旧 `createResearchUseCase` 仅服务已接纳旧 descriptor 的恢复；新
+`createResearchDelegationUseCase` 服务一次显式委派与最后交付。二者共用
+`createResearchStageSession`
+的写入/版本接纳，不复制运行状态机。本模块没有新增 Judge、证据数据库、图谱或强制贝叶斯评分。
+
+验收覆盖正式 SQLite/Markdown/Citation、父子工具生命周期、取消恢复、版本变化、角色范围、实时/历史投影。文章质量仍须另做失效回归与真实选题对照，分别报告相对改善、全文质量和成本。

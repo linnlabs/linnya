@@ -16,6 +16,8 @@ export interface PreparedResearchStage {
   readonly request: PreparedResearchStageRequest;
   readonly inputs: readonly ResearchDocumentBinding[];
   readonly outputPath: string;
+  /** 主模型显式委派参数；旧 Host 已接纳阶段没有此字段，恢复仍消费原请求。 */
+  readonly delegation?: { readonly instructions: string; readonly documents: readonly string[] };
 }
 export interface ResearchStageReceipt extends PreparedResearchStage {
   readonly artifact?: ResearchDocumentBinding;
