@@ -1,7 +1,11 @@
 import { vi } from 'vitest';
 import { releaseTerminalRunRecovery } from '../../../application/run-resumption';
 import { graph, telemetry } from '@linnlabs/linnkit/runtime-kernel';
-import { createScriptedInferenceHarness, type ScriptedLlmTurn } from '@linnlabs/linnkit/testkit';
+import {
+  createScriptedInferenceHarness,
+  type ScriptedInferenceHarness,
+  type ScriptedLlmTurn,
+} from '@linnlabs/linnkit/testkit';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { bootstrapAgentRuntimeSingletons } from 'src/electron-main/services/agentRuntimeSingletons';
 import { modelCatalog, type ModelConfig } from 'src/domains/model-catalog';
@@ -95,7 +99,7 @@ export function installRecoveryModelFixture(): void {
 /** 真 SQLite、生产启动恢复、Graph 和 Flow；只替换上游模型及本测试工具。 */
 export async function createDurableFlowHarness(
   path: string,
-  turns: ScriptedLlmTurn[],
+  inference: ScriptedLlmTurn[] | ScriptedInferenceHarness,
   tools: BaseTool[] = []
 ) {
   const database = new DatabaseService(path);
@@ -106,7 +110,7 @@ export async function createDurableFlowHarness(
   if (!runtime.executionCheckpoints || !runtime.runDescriptors)
     throw new Error('Recovery composition missing');
   const descriptors = runtime.runDescriptors;
-  const ai = createScriptedInferenceHarness(turns);
+  const ai = Array.isArray(inference) ? createScriptedInferenceHarness(inference) : inference;
   const toolHarness = createToolRuntimeHarness(tools);
   const checkpointer = new SqliteCheckpointer(db);
   const engine = new graph.GraphExecutor(checkpointer, {

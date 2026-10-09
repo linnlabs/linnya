@@ -92,7 +92,7 @@ export class ResearchCarrierFixtureTool extends BaseTool {
     };
     const draft = await stage(
       'draft',
-      'deep_research_experimental',
+      'subagent_document_editor',
       'Write the supplied synthetic note to workspace:/synthetic-note.md.'
     );
     await this.boundary?.('draft_completed', context);
@@ -101,12 +101,12 @@ export class ResearchCarrierFixtureTool extends BaseTool {
     const reviewSettlements = await Promise.allSettled([
       stage(
         'argument_review',
-        'deep_research_argument_review',
+        'research_argument_review_v1',
         `Inspect only the argument. ${draft.finalAnswer}`
       ),
       stage(
         'source_review',
-        'deep_research_source_review',
+        'research_source_review_v1',
         `Inspect only the synthetic source. ${draft.finalAnswer}`
       ),
     ]);
@@ -119,7 +119,7 @@ export class ResearchCarrierFixtureTool extends BaseTool {
     signal.throwIfAborted();
     const final = await stage(
       'final',
-      'deep_research_experimental',
+      'subagent_document_editor',
       reviews.map(result => result.finalAnswer).join('\n')
     );
     await this.boundary?.('before_parent_return', context);

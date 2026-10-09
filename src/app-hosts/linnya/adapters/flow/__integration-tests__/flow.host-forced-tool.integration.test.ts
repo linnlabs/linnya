@@ -74,6 +74,8 @@ import { WriteToTableTool } from 'src/domains/markdown/tools';
 import * as subagentRunner from 'src/tools/agent_control/subrun/shared';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import type { CanonicalInferenceMessage } from '@linnlabs/linnkit/ports';
+import { createDurableFlowHarness, installRecoveryModelFixture } from '../__test-helpers__/createDurableFlowHarness';
+import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 
 class HostOnlyProbeTool extends BaseTool {
   readonly name = 'host_only_probe';
@@ -212,7 +214,7 @@ async function createHostToolFlow(tool: BaseTool, aiHarness: ScriptedInferenceHa
 }
 
 async function readPersistedRuntimeEvents(
-  runtimePersistence: ReturnType<typeof createFlowIntegrationRuntimePersistence>,
+  runtimePersistence: Pick<ReturnType<typeof createFlowIntegrationRuntimePersistence>, 'eventStore'>,
   conversationId: string,
 ): Promise<RuntimeEvent[]> {
   const persisted = await runtimePersistence.eventStore.range(conversationId);
@@ -222,9 +224,12 @@ async function readPersistedRuntimeEvents(
 describe('Flow host forced-tool integration', () => {
   let aiHarness: ScriptedInferenceHarness | undefined;
   let toolHarness: ToolRuntimeHarness | undefined;
+  let durableFlow: Awaited<ReturnType<typeof createDurableFlowHarness>> | undefined;
 
   afterEach(() => {
     toolHarness?.restore();
+    durableFlow?.close();
+    durableFlow = undefined;
     aiHarness = undefined;
     toolHarness = undefined;
     resetAgentRuntimeSingletonsForTest();
@@ -408,11 +413,19 @@ describe('Flow host forced-tool integration', () => {
         expect(exposesSubrunBatch).toBe(false);
       },
     }]);
-    const flow = await createHostToolFlow(new SubrunBatchTool(), aiHarness);
-    toolHarness = flow.toolHarness;
+    // trace 首帧也建立持久索引；不能再用 getDb() 返回 undefined 的旧夹具冒充正式存储。
+    installRecoveryModelFixture();
+    durableFlow = await createDurableFlowHarness(':memory:', aiHarness, [new SubrunBatchTool()]);
+    const flow = {
+      orchestrator: durableFlow.flow,
+      historyRepository: durableFlow.history,
+      runtimePersistence: durableFlow.runtime,
+    };
+    const projectId = new WorkspaceService(durableFlow.db).createProject('Host forced batch');
 
     await flow.orchestrator.next({
       conversation_id: conversationId,
+      project_id: projectId,
       new_events: [{
         type: 'user_input',
         content: '完成这次表格批量填充并总结结果。',
@@ -422,6 +435,7 @@ describe('Flow host forced-tool integration', () => {
       options: {
         promptKey: 'default',
         model_id: 'scripted-test-model',
+        project_metadata: { id: projectId, name: 'Host forced batch' },
         activity: { runId: 'table-fill-run-1', feature: 'table_fill' },
         history_mode: 'isolated',
         host_tool_call: {
