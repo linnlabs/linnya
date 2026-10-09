@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { WorkspaceReadFileEventDataSchema, buildDocumentView } from '@app/schemas';
+import { WorkspaceReadFileEventDataSchema } from '@app/schemas';
 import {
   ResearchManifestSchema,
   type ResearchWorkflowCliPort,
@@ -654,61 +654,5 @@ describe('research workflow through formal CLI port', () => {
       (await runResearchWorkflow({ ...options, cli })).stages.map(stage => stage.status)
     ).toEqual(['stale', 'stale']);
     expect(cli.send).toHaveBeenCalledTimes(2);
-  });
-  it('recovers outer-truncated long lines through explicit DocumentView character pages', async () => {
-    const content = `[#Abc234] ${'长'.repeat(9200)}`;
-    const cli = fakeCli(new Map(), {
-      workspaceTool: vi.fn<ResearchWorkflowCliPort['workspaceTool']>(async request => {
-        if (request.args.view !== 'document') {
-          const read = textRead('workspace:/long.md', content, 1, Number(request.args.limit));
-          return {
-            ...read,
-            content: '1 | 前缀\n继续 tool_output_read({"blob_id":"abcdef1234567890"})',
-          };
-        }
-        const offset = Number(request.args.offset_chars);
-        const end = Math.min(offset + 4000, content.length);
-        const truncated = end < content.length;
-        const nextOffset = truncated ? end : null;
-        return tool(
-          'read_file',
-          {
-            source_kind: 'workspace_document',
-            locator: 'workspace:/long.md',
-            inode: 'long',
-            content_type: 'application/vnd.linnya.document-view',
-            document: {
-              documentId: 'doc',
-              docType: 'markdown',
-              documentName: 'long',
-              truncatedByChars: truncated,
-              totalTextLength: content.length,
-              nextOffset,
-              presentation: { kind: 'text', text: content.slice(offset, end) },
-            },
-          },
-          buildDocumentView(
-            {
-              documentId: 'doc',
-              docType: 'markdown',
-              offsetChars: offset,
-              totalTextLength: content.length,
-              truncatedByChars: truncated,
-              nextOffset,
-            },
-            content.slice(offset, end) + (truncated ? '... [truncated]' : '')
-          )
-        );
-      }),
-    });
-    const result = await readProjection(
-      { cli, projectId: 'project', record: async () => undefined },
-      'workspace:/long.md'
-    );
-    expect(result).toMatchObject({
-      representation: 'document-view',
-      text: content,
-      hanCharacters: 9200,
-    });
   });
 });

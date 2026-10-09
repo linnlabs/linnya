@@ -8,6 +8,11 @@ import type {
   ResearchWorkflowCliPort,
 } from '../definitions/researchWorkflow';
 import { buildProjection, citationSnapshots } from '../functions/projectionFacts';
+import { textProjectionWindow } from '../functions/textProjectionWindow';
+import {
+  hasLegacyObservationTruncation,
+  verifiedCitationDataRanges,
+} from '../functions/observationDataRanges';
 
 interface ReadContext {
   cli: ResearchWorkflowCliPort;
@@ -54,22 +59,14 @@ export async function readProjection(context: ReadContext, locator: string): Pro
       throw new Error(`Document changed while reading: ${locator}`);
     total = data.total_line_count;
     if (total === 0) return buildProjection(locator, '', 'text', []);
-    const selected: string[] = [];
-    for (const line of result.observation.split('\n')) {
-      const match = /^\s*(\d+) \| (.*)$/.exec(line);
-      if (!match) {
-        if (selected.length > 0) break;
-        else continue;
-      }
-      if (Number(match[1]) !== offset + selected.length) break;
-      selected.push(match[2] ?? '');
-      if (selected.length === data.line_count) break;
-    }
-    const outerTruncated =
-      /tool_output:\/\/|tool_output_read\s*\(|observation truncated|\[truncated\]/i.test(
-        result.observation
-      );
-    if (selected.length !== data.line_count || outerTruncated) {
+    const window = textProjectionWindow({
+      observation: result.observation,
+      offset,
+      lineCount: data.line_count,
+      externallyTruncated: message.payload.observation_truncation !== undefined,
+      sources: data.citations?.citations ?? [],
+    });
+    if (!window.complete) {
       if (limit > 1) {
         limit = Math.max(1, Math.floor(limit / 2));
         continue;
@@ -87,7 +84,7 @@ export async function readProjection(context: ReadContext, locator: string): Pro
         throw new Error(`Document changed during DocumentView read: ${locator}`);
       return document;
     }
-    lines.push(...selected);
+    lines.push(...window.lines);
     sources.push(...citationSnapshots(data.citations?.citations ?? []));
     offset += data.line_count;
     if (lines.length === total) return buildProjection(locator, lines.join('\n'), 'text', sources);
@@ -114,22 +111,30 @@ async function readDocumentProjection(context: ReadContext, locator: string): Pr
     // 读取正式事件合同，不为历史工具消息捏造 live 工具的 preview metadata。
     const result = decode(message);
     if (result.data.source_kind !== 'workspace_document') throw new Error('Expected DocumentView');
+    if (message.payload.observation_truncation !== undefined)
+      throw new IncompleteWindow(`Truncated DocumentView envelope: ${locator}`);
     const document = result.data.document;
     if (total !== undefined && total !== document.totalTextLength)
       throw new Error(`Document changed while reading: ${locator}`);
     total = document.totalTextLength;
     const separator = result.observation.indexOf('\n---\n');
-    const closing = result.observation.lastIndexOf('</workspace_document>');
-    if (separator < 0 || closing < 0)
-      throw new IncompleteWindow(`Truncated DocumentView envelope: ${locator}`);
-    const window = result.observation.slice(separator + 5, closing);
+    if (separator < 0) throw new IncompleteWindow(`Truncated DocumentView envelope: ${locator}`);
     const end = document.nextOffset ?? total;
     const expected = end - offset;
-    // buildDocumentView 在正文后添加换行；sliceTextWindow 的后缀不属于内容。
-    const text = window.slice(0, expected);
-    const suffix = window.slice(expected);
-    if (text.length !== expected || !/^(?:\.\.\. \[truncated\])?\n*$/.test(suffix))
+    // 正文/引用都可能包含 XML 字面量。结束位置由实际字符窗口决定，不能搜索最后一个标签。
+    const start = separator + 5;
+    const text = result.observation.slice(start, start + expected);
+    const suffix = `${document.truncatedByChars ? '... [truncated]' : ''}\n</workspace_document>`;
+    if (text.length !== expected || !result.observation.startsWith(suffix, start + expected))
       throw new IncompleteWindow(`DocumentView range mismatch: ${locator}`);
+    const dataRanges = verifiedCitationDataRanges(
+      result.observation,
+      result.data.citations?.citations ?? []
+    );
+    if (
+      hasLegacyObservationTruncation(result.observation, [[start, start + expected], ...dataRanges])
+    )
+      throw new IncompleteWindow(`Truncated DocumentView envelope: ${locator}`);
     body += text;
     sources.push(...citationSnapshots(result.data.citations?.citations ?? []));
     if (end === total) return buildProjection(locator, body, 'document-view', sources);

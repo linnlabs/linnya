@@ -81,12 +81,13 @@ metadata；只有先前同一会话、同一 run 的 Shell/Process 正式结构�
 原始 messages 与 source-records 保留取得版本、实际 observation 原件和 hash。owner 截断与外层截断信号分开；续读 data 中的 window 只有完整出现在实际 observation 才能声明取得范围，不把结构化载荷中的未见尾部转交后续模型。供下一会话读的 packet 使用短片段、明确 Workspace
 locator 与文本围栏；原会话 blob 调用片段被隔离，转换区间有记录、同行资料仍保留，原始审计不修改。分片不是新来源，原取得失败不会被另一次成功覆盖。
 
-Markdown
-current 会规范化代码块首尾空白。只有首尾确有空白的资料片段增加显式传输边界，`segmentFraming`
-记录前后缀；标记不属于来源，片段字符与 offset 不变。发布后仍逐字核对完整投影，不通过 trim 或模糊比较放过内容变化。
+资料包既有 `segmentFraming` 对首尾含空白的片段保留显式传输边界并记录前后缀；标记不属于来源，片段字符与 offset 不变。
+当前 Markdown 保留代码正文空白，只规范化围栏、行尾与围栏前的一个结构性换行。解析器修复不追溯改写已冻结资料包的编码或 hash；发布后仍逐字核对完整投影，不通过 trim 或模糊比较放过内容变化。
 
 正文来自正式 `read_file`
-的 current（包含 pending），按实际行号与返回行数校验；外层截断时缩小窗口。单行仍过长时使用正式 DocumentView 字符窗口，核对总长度、cursor 和完整 envelope，并将 representation 标为 document-view。该 hash 是相应当前投影的 hash，不是数据库 revision
+的 current（包含 pending），按实际连续行号与返回行数校验，并消费工具消息的 `observation_truncation` 事实；外层截断时缩小窗口。历史消息缺少该事实不代表完整，仍核对行窗口及编号正文之外的正式截断包装。正文引用 blob、续读命令或截断标记只是材料内容，不能触发缩窗和全文重读。
+Citation appendix 也属于来源数据：仅与本次结构化快照逐字一致的正文区间可排除旧截断标记判断，不能忽略整个 appendix。引用中的标签或来源头示例不能改变真实窗口边界；不完整或无法核对的快照不作完整豁免。
+单行仍过长时使用正式 DocumentView 字符窗口，核对总长度、cursor 和完整 envelope，并将 representation 标为 document-view；DocumentView 自身被外层截断时明确失败，不能用 owner 的 `has_more=false` 或最终页 cursor 代替完整性检查。该 hash 是相应当前投影的 hash，不是数据库 revision
 hash；DocumentView 的块 ref 不是普通 Markdown 字节。字数为当前投影中的 Han 字符数，不含主观可读性评价。
 
 资料包目标不得覆盖任务输入、文章、评审或先前材料包，完整发布计划在写入前再次核对。发布资料时先记录写入意图，逐件读回并保存当前投影。中断留下的写入意图必须对账，不能自动重复写入。文章Skill 实际激活、作者输出回读只作为执行事实记录；inspection 的程序回读不替作者证明自检。文章语义、来源是否支持结论、整体反馈是否正确，依然由隔离评审与证据核对决定。
