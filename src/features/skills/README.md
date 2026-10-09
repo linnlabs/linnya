@@ -18,6 +18,8 @@ Skill 为已有 Agent 提供按需加载的研究方法、工作流程和文档�
 
 Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `skill` 工具。`agentSkillExposure.ts` 由 `GenericAgentTask` 调用，统一追加目录；不要手改每个 Agent 的系统提示词嵌入 Skill 正文。Agent prompt 点名必需 Skill 时，另声明 `requiredSkills` 并走现有配置校验。
 
+`requiredSkills` 可依赖随 Host 分发的内置 Skill 或当前插件随包资源；不能由用户目录或其他插件碰巧存在的同名 Skill 满足。此依赖校验不执行激活或资源读取。受控研究职责继续读取同一份 `deep-research` 1.4；Host 接管阶段产物保存与正式回读，职责自身不开放 Workspace 写工具。
+
 模型可见的三个层次：
 
 1. 目录只包含名称和描述，供模型判断是否使用。

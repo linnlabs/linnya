@@ -159,7 +159,7 @@ export interface AgentConfiguration {
      * 该 agent prompt 明确要求可调用的 Skill 名单。
      *
      * 中文说明：prompt 里点名“先学习某个 skill”时，不能只靠自然语言约定；
-     * 插件 agent 必须在这里声明，平台启动时会对照插件随包 skill 资源校验。
+     * 必须在这里声明，平台启动时会对照内置与当前插件随包 Skill 资源校验。
      */
     requiredSkills?: readonly string[];
   };

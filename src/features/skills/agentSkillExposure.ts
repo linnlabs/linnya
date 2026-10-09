@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseSkillFile } from './frontmatter';
 import { buildSkillCatalogXml } from './catalog';
+import { getBuiltinSkillsRoot } from './builtin';
 
 export function isSkillExposureEnabled(definition: AgentDefinition | undefined): boolean {
   return definition?.config?.skill?.enabled === true;
@@ -113,7 +114,9 @@ export function validatePluginAgentRequiredSkills(params: AgentRequiredSkillVali
     return;
   }
 
-  const availableSkills = new Set<string>();
+  // 内置 Skill 随 Host 分发且在 discovery 中优先，platform 与插件均可声明该稳定依赖。
+  // 不读取用户 Skill 或别的插件资源，避免依赖仅在某台机器或某种启用组合上成立。
+  const availableSkills = new Set(listSkillNamesInRoot(getBuiltinSkillsRoot()));
   for (const source of params.skillSourceRoots.filter((root) => root.pluginId === params.pluginId)) {
     for (const skillName of listSkillNamesInRoot(source.root)) {
       availableSkills.add(skillName);
@@ -126,7 +129,7 @@ export function validatePluginAgentRequiredSkills(params: AgentRequiredSkillVali
   }
 
   throw new Error(
-    `[AgentSkillExposure] 插件 "${params.pluginId}" 的 agent 声明了 requiredSkills，但随包 Skill 资源不存在: `
+    `[AgentSkillExposure] 插件 "${params.pluginId}" 的 agent 声明了 requiredSkills，但内置或随包 Skill 资源不存在: `
     + `${missing.join(', ')}`
   );
 }

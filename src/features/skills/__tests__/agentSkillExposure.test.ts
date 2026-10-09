@@ -283,4 +283,17 @@ describe('agent skill exposure', () => {
     })).toThrow(/missing-skill/);
   });
 
+  it('does not satisfy a declared dependency from another plugin\'s resources', () => {
+    const skillRoot = path.join(makeTempRoot(), 'resources', 'skills');
+    writeSkillEntry(skillRoot, 'foreign-skill');
+    const definition: AgentDefinition = {
+      id: 'isolated-agent', promptKey: 'isolated-agent', defaultMode: 'agent', description: 'dependency scope',
+      config: { availableTools: ['skill'], skill: { enabled: true, requiredSkills: ['foreign-skill'] } },
+    };
+    expect(() => validatePluginAgentRequiredSkills({
+      pluginId: 'current-plugin', definitions: [definition],
+      skillSourceRoots: [{ pluginId: 'other-plugin', root: skillRoot }],
+    })).toThrow(/foreign-skill/);
+  });
+
 });

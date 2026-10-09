@@ -521,3 +521,29 @@ judgeToolName（不是评分角色）；`maxCallsPerParentRun` 交给 Host 持�
 沙箱。审核意见是可检查的判断，不是评分工具或正确性门禁；没有发现问题不能解释为全文通过。
 数字/来源职责可以要求检查图表，但只有当前模型实际取得页图时才属于视觉核查；取得失败、
 仅有文字提取和未核部分须如实保留，定义本身不增加视觉能力或新的 PDF 读取实现。
+
+### Host 受控研究职责 v1
+
+正式职责使用独立身份 `research_author_v1`、`research_investigation_review_v1`、
+`research_argument_review_v1`、`research_source_review_v1`；分别负责主研究与成文、成文前
+调查复核、成稿论证复核、来源与数值复核。旧实验定义及历史 promptKey 保持原义，新职责
+不贡献四个 Renderer 菜单或通用 `subagent_type`。注册本身不运行研究流程；阶段接纳、输入
+版本与后继调度由 [Research application](../application/research/README.md) 拥有。
+
+四职责共享明确的 800 Graph 节点预算与 `inherit_parent` 模型策略。独立 root 调用须由 Host
+显式传入接纳时选定的模型；registry 不猜父模型。工具仅含 Workspace 读取/定位、Web 与
+Knowledge 检索读取、Skill、Shell/Process 计算以及长输出续读；不提供通用委派、TaskState
+或任何正式 Workspace mutation，也不继承 Default 的周期任务提醒。Web 深搜仍是可选检索
+能力；具体材料范围与检索禁用由 Host 在每阶段接纳时实施，静态白名单不能表达固定材料范围。
+
+每阶段返回单份完整 Markdown，Host 使用该阶段的引用上下文保存新文档并检查正式投影，
+因此 reviewer 无法通过已暴露的正式写工具覆盖正文。Shell 仍有宿主命令能力，这不构成 OS
+权限沙箱，也不等于同项目文件自动隔离；职责提示明确禁止绕过正式文档与派发边界。
+
+方法只保留一份正式 `deep-research` 1.4。`requiredSkills` 声明内置依赖并披露目录，不代表
+自动激活。自包含阶段请求列明原问题、读者、材料/时间范围、指定版本与文档、可补查范围、
+具体反馈、适用资源和单一产物；调查复核读取调查记录，不能被当作成稿审。作者写作和论证
+复核读取 modeling 与 article-craft，调查与来源复核读取 modeling；business-analysis 仅在
+题目需要时添加。可检验的反馈处理候选在 Research application 中独立版本化，不复制到四份
+system，也不改写正式 Skill。真实 prepared 消息及 Skill 工具返回需单独验证；资源送达、动作
+执行、论证有效与最终成稿质量仍是不同事实。

@@ -74,6 +74,12 @@ export const PromptKeys = {
   /** CLI 内部数字/来源校对：检查成稿数量关系与原件。 */
   DEEP_RESEARCH_SOURCE_REVIEW: 'deep_research_source_review',
 
+  // ---- Host 受控研究职责 v1（不复用实验及历史运行身份） ----
+  RESEARCH_AUTHOR_V1: 'research_author_v1',
+  RESEARCH_INVESTIGATION_REVIEW_V1: 'research_investigation_review_v1',
+  RESEARCH_ARGUMENT_REVIEW_V1: 'research_argument_review_v1',
+  RESEARCH_SOURCE_REVIEW_V1: 'research_source_review_v1',
+
   // ---- Internal（后端内部任务） ----
   /** PDF 视觉识别 */
   PDF_OCR: 'pdf_ocr',
