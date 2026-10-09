@@ -21,6 +21,7 @@ import {
   RunIdSchema,
   ToolCallIdSchema,
 } from '@linnlabs/linnkit/contracts';
+import { toolObservationTruncationFixture } from './toolObservationTruncationFixture';
 
 export interface UiProjectionFixture {
   readonly name: string;
@@ -607,7 +608,7 @@ const unroutedUiProjectionFixtures = [
 ] satisfies readonly UnroutedUiProjectionFixture[];
 
 export const uiProjectionFixtures: readonly UiProjectionFixture[] =
-  unroutedUiProjectionFixtures.map(({ runId, ...fixture }) => ({
+  [...unroutedUiProjectionFixtures.map(({ runId, ...fixture }) => ({
     ...fixture,
     events: fixture.events.map(event =>
       routeRuntimeEvent(event, {
@@ -616,4 +617,4 @@ export const uiProjectionFixtures: readonly UiProjectionFixture[] =
         visibility: 'conversation',
       })
     ),
-  }));
+  })), toolObservationTruncationFixture];

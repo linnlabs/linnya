@@ -11,6 +11,16 @@
 
 `projectEvent.ts` 与 `toolProjection.ts` 是生产入口，`types.ts` 的 row 联合只能从上述产品合同派生。`sqliteApplier.ts` 在落表前校验，`sqliteUiMessagesReader.ts` 在出表时再次校验。非法行必须失败并通过 disposable projection rebuild 处理，不允许读取期兼容、字段补造或 shape guessing。
 
+`tool_output.metadata.observationTruncation` 经 Linnkit 的正式 schema 接纳后，显式投影到工具
+payload 的 `observation_truncation`。blob 身份、字符与行计量从事实原样挑选；它描述外层 observation
+治理，不改写工具业务 `data` 的分页信息。字段缺省只表示未知，不能从正文标记补造或解释为未截断。
+旧 disposable row 若已丢失该字段，仍可读取且视作未知；普通 reload 不触发 rebuild，也不自动回补旧 row。
+现有显式 rebuild 从原 Runtime fact 恢复，原事实也缺省时保持缺省；本字段不要求全库强制重建。
+interaction 回复沿用原工具正文，因此同时保留原截断事实。
+
+`__tests__/toolObservationTruncation.integration.test.ts` 验证真实 SQLiteEventStore append、Runtime fact、
+SQL row、Host SSE、Renderer live/reload 与 rebuild；非法 metadata 必须拒绝本次写入且不结算原 loading 工具。
+
 Citation-bearing tool output 在增量 append、Subrun history projection 与全量 rebuild 时，经 Citation domain
 正式 admission 后写入 `conversation_ui_citation_facts`。`sqliteCitationFactIndex.ts` 只拥有 SQLite 规范化、
 按 ref/消息时点查询和派生生命周期；scope 冲突、来源身份与 dependency closure 仍归 Citation domain。

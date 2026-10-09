@@ -8,6 +8,7 @@ ToolOutputStore 保存 Agent 可续读的纯文本结果。它不是原始命令
 - stdout 和 stderr 分开保存，不能伪造跨流的绝对顺序。
 - 超长结果使用 `tool_output://` durable reference，通过 canonical `tool_output_read(blob_id=...)` 调用正式 reader 续读。
 - 新 blob 身份由执行层写入 `tool_output.metadata.observationTruncation.blobId`；不能注入具体工具的 owner `data`，否则会破坏各领域 strict schema。
+- Conversation 的正式投影把该治理事实保留为工具 `payload.observation_truncation`，live Renderer 使用同名 metadata 字段。缺省表示未记录事实，不证明正文完整；任何消费者都不能仅凭源文中的 blob 引用判断发生过截断。
 - writer 中途失败时保留共同提交前缀，并把结果标记为 `incomplete`；不把部分结果冒充完整成功。
 
 ## 与命令运行时的边界

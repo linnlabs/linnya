@@ -4,6 +4,7 @@
  */
 
 import { deriveToolCallStatus } from './toolEvent';
+import { ObservationTruncationMeta } from '@linnlabs/linnkit/contracts';
 import { isRecord } from '../../../utils/typeGuards';
 import {
   ConversationToolMessageMetadataSchema,
@@ -95,6 +96,18 @@ export function patchToolCallMetadata(
   }
   if (patch.presentation !== undefined && !isInteractionResponse) {
     metadata.presentation = JsonRecordSchema.parse(patch.presentation);
+  }
+  // 只接纳执行层的显式事实；正文出现 tool_output:// 或 blob_id 不证明发生过截断。
+  if (patch.type === 'tool_output' && !isInteractionResponse
+    && patch.eventMetadata?.observationTruncation !== undefined) {
+    const truncation = ObservationTruncationMeta.parse(patch.eventMetadata.observationTruncation);
+    metadata.observation_truncation = {
+      originalChars: truncation.originalChars,
+      previewChars: truncation.previewChars,
+      ...(truncation.blobId === undefined ? {} : { blobId: truncation.blobId }),
+      ...(truncation.originalLines === undefined ? {} : { originalLines: truncation.originalLines }),
+      ...(truncation.previewLines === undefined ? {} : { previewLines: truncation.previewLines }),
+    };
   }
 
   /**

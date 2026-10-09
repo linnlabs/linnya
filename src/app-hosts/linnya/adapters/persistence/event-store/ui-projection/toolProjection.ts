@@ -1,4 +1,5 @@
 import {
+  ObservationTruncationMeta,
   type SerializableJsonRecord,
   type SerializableJsonValue,
 } from '@linnlabs/linnkit/contracts';
@@ -144,6 +145,18 @@ export function patchToolPayload(
   }
   if (patch.presentation !== undefined && !hasInteraction) {
     payload.presentation = patch.presentation;
+  }
+  // 交互回复保留原 observation；截断事实必须与该正文一起保留，不能从文本标记猜测。
+  if (patch.type === 'tool_output' && !hasInteraction
+    && patch.eventMetadata?.observationTruncation !== undefined) {
+    const truncation = ObservationTruncationMeta.parse(patch.eventMetadata.observationTruncation);
+    payload.observation_truncation = {
+      originalChars: truncation.originalChars,
+      previewChars: truncation.previewChars,
+      ...(truncation.blobId === undefined ? {} : { blobId: truncation.blobId }),
+      ...(truncation.originalLines === undefined ? {} : { originalLines: truncation.originalLines }),
+      ...(truncation.previewLines === undefined ? {} : { previewLines: truncation.previewLines }),
+    };
   }
 
   payload.phase = patch.phase;

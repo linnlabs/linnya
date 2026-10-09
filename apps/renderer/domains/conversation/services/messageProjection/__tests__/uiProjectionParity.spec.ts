@@ -28,6 +28,7 @@ interface EssentialMessage {
   readonly data?: unknown;
   readonly error?: unknown;
   readonly resultPresentation?: unknown;
+  readonly observationTruncation?: unknown;
   readonly interaction?: unknown;
   readonly agentWork?: unknown;
   readonly contextUsage?: unknown;
@@ -116,6 +117,7 @@ function normalizeFrontendMessage(message: BaseMessage): EssentialMessage {
         data: message.metadata.data,
         error: message.metadata.error,
         resultPresentation: message.metadata.presentation,
+        observationTruncation: message.metadata.observation_truncation,
         interaction: message.metadata.interaction,
         activity: message.metadata.activity,
       };
@@ -167,6 +169,7 @@ function normalizeBackendRow(row: UiMessageRow): EssentialMessage {
         data: row.payload.data,
         error: row.payload.error,
         resultPresentation: row.payload.presentation,
+        observationTruncation: row.payload.observation_truncation,
         interaction: row.payload.interaction,
         activity: row.payload.activity,
       };

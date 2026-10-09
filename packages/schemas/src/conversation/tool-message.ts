@@ -52,6 +52,18 @@ const ConversationSubrunTraceSummarySchema = z.object({
 }).strict();
 
 /**
+ * Conversation 保存的外层正文截断事实；Runtime 治理策略仍由 Linnkit 拥有。
+ * Host/live adapter 显式投影已接纳的计量，不把具体工具的分页状态混入这里。
+ */
+export const ConversationToolObservationTruncationSchema = z.object({
+  blobId: z.string().trim().min(1).optional(),
+  originalChars: z.number().int().nonnegative(),
+  previewChars: z.number().int().nonnegative(),
+  originalLines: z.number().int().nonnegative().optional(),
+  previewLines: z.number().int().nonnegative().optional(),
+}).strict();
+
+/**
  * Host 持久化并传给 UI client 的工具消息 payload。
  *
  * `tool_calls` 是模型/provider 的批量调用事实，不是 UI 消息字段；`rawPayload`、
@@ -67,6 +79,8 @@ const ConversationToolMessagePayloadFields = {
   phase: ConversationToolMessagePhaseSchema,
   args: JsonRecordSchema.optional(),
   data: JsonValueSchema.optional(),
+  /** 缺省只表示未记录截断事实，不能推断正文完整；旧事实可能没有 blob 身份。 */
+  observation_truncation: ConversationToolObservationTruncationSchema.optional(),
   error: z.string().trim().min(1).optional(),
   /** 工具 owner 的稳定业务错误码，仅用于失败展示与可观察性。 */
   error_code: z.string().trim().min(1).optional(),

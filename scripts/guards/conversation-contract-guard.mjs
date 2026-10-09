@@ -35,6 +35,7 @@ const canonicalFiles = new Map([
       'ConversationActiveToolInteractionSchema',
       'ConversationTerminalToolInteractionSchema',
       'ConversationInteractionResponseToolMetadataSchema',
+      'ConversationToolObservationTruncationSchema',
       'loading tool message must not have completed_at',
     ],
   ],

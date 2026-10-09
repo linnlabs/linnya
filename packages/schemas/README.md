@@ -222,6 +222,14 @@ Runtime `turn_id` 与 Conversation visual turn 是两个实体：前者属于 Ag
 工具 observation 是给 Agent 的文字摘要。`data` 保存持久化、审计和后续业务流程需要的结构化事实，
 必须由共享 schema 校验；Renderer 只能从这些已接纳事实派生本地 presentation，不能让工具结果承担展示配置。
 
+工具消息的 `payload.observation_truncation`（Renderer 为同名 metadata 字段）保存执行层对
+observation 的外层截断事实。`ConversationToolObservationTruncationSchema` 是窄产品 DTO；Host 与 live
+adapter 先用已发布 Linnkit `ObservationTruncationMeta` 接纳，再显式投影 `originalChars/previewChars`、
+可选 `originalLines/previewLines` 与 `blobId`，不重新计算计量，也不把字段注入具体工具的 `data`。
+字段缺省表示没有记录这一事实，不能等同“未截断”或“正文完整”；旧事实没有 blob 身份时仍保留已有计量。
+源文中的 `tool_output://`、`blob_id` 或截断提示文字不是该事实的来源。这个 DTO 不改变工具自身的分页、
+`has_more` 或 DocumentView 截断语义，也不让 schemas 包依赖 Linnkit runtime。
+
 ### Todo
 
 `src/tools/agent-todo.ts` 只定义 Linnya `todo_read/todo_write` 的参数和正式 result。Todo 是可选的普通工具，不是 RuntimeEvent、Conversation metadata 或框架状态；当前值只允许从正式工具历史恢复，不提供旧快照或 observation 兼容。

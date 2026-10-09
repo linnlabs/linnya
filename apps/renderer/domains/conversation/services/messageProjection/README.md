@@ -88,6 +88,13 @@ Durable window 的依赖闭包由 Host 在选定 rows 后生成；MessageProject
 
 ### 开发约定（避免退化）
 
+工具外层截断事实来自 `tool_output.metadata.observationTruncation`。live 工具 adapter 在 detached
+candidate admission 中用 Linnkit schema 校验，并显式投影到产品 `metadata.observation_truncation`；
+reload mapper 从正式 DTO 的同名 payload 字段接纳。缺省表示未记录事实，不能从正文中的 blob 引用或
+截断提示推断有无截断，也不能用工具自身的分页状态替代它。交互回复未替换原正文时保留已有事实。
+当前 Linnkit parent Subrun trace 的 output 不携带该 metadata，child 详情不能从 trace 正文恢复；这需要
+独立的 trace 合同变更，不得在 Renderer 建立旁路。
+
 - **不要在 projector 里做猜测/兜底**：结构不符合 producer schema 时应暴露协议错误，不得扫描通用
   `data.citations` shape、静默跳过或注册部分字段。
 - **新增分流/新模式时**：如果该模式仍会产生 `tool_output`，必须接入 Citation domain admission，并确认
