@@ -377,7 +377,13 @@ function serializeBlockChild(
   if (type === 'codeBlock') {
     const language = getStringAttr(attrs, 'language') ?? '';
     const code = extractPlainText(node);
-    return `\`\`\`${language}\n${code}\n\`\`\``.trimEnd();
+    // code 正文可能包含完整围栏；导出必须选择更长的 delimiter 才能安全重入解析器。
+    // 反引号 info string 禁止反引号，所以这类语言值使用 tilde 围栏。
+    const marker = language.includes('`') ? '~' : '`';
+    const runs = code.match(marker === '`' ? /`+/g : /~+/g) ?? [];
+    const fenceLength = runs.reduce((length, run) => Math.max(length, run.length + 1), 3);
+    const fence = marker.repeat(fenceLength);
+    return `${fence}${language}\n${code}\n${fence}`;
   }
 
   if (type === 'latexBlock') {

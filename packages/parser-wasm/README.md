@@ -25,6 +25,20 @@ pnpm run build:wasm
 `wasm-pack`。`pnpm run dev:electron` 与正式打包入口会主动执行
 `build:wasm`，不存在读取旧产物的 fallback。
 
+## 围栏代码合同
+
+StreamingParser 与 blocks API 共用围栏规则：至少三个连续反引号或 tilde，
+最多三个前导空格；closing fence 必须同字符、长度不短于 opener，尾部只能是空格或 tab。
+反引号 opener 的 info string 不能含反引号；language 取 info string 的首个词，
+不会猜测或删除正文中的语言名称。规则依据 [CommonMark 4.5](https://spec.commonmark.org/0.31.2/#fenced-code-blocks)。
+
+解析状态保留 marker、长度与 opener 缩进，等完整行或 EOF 再判定围栏，分片位置不改变结果。
+正文按 opener 缩进去除最多相应列数，保留其余空格、tab、空行及空代码块；CRLF 规范化为 LF。
+块事件采用编辑器文本合同：结尾至多去掉一个行分隔 LF，导出时由 serializer 补回；
+不能使用 trim，也不能把代码中的 Markdown、HTML comment 或 citation 解释为文档结构。
+围栏拼写和附加 info 元数据不进入持久化 schema，承诺 canonical 内容等价，不承诺源码逐字复原。
+此规则不扩展现有列表/引用容器解析能力，也不代表整个解析器通过 CommonMark conformance。
+
 ## 发布状态
 
 该 package 当前服务 Linnya

@@ -167,7 +167,7 @@ describe('importMarkdownToDocJson', () => {
     ]);
   });
 
-  it('normalizes numbered headings and malformed fenced code sequences before doc conversion', async () => {
+  it('normalizes numbered headings without reinterpreting parser block boundaries', async () => {
     const fakeParser = async (): Promise<WasmBlockEventLike[]> => [
       {
         block_type: 'HeadingBlock',
@@ -175,71 +175,15 @@ describe('importMarkdownToDocJson', () => {
         raw_content_fallback: '1. 基本段落',
         structured_content: [{ type: 'text', text: '基本段落' }]
       },
-      {
-        block_type: 'BaseBlock',
-        raw_content_fallback: '```python\ndef hello_world():\n    print(\"hello\")',
-        structured_content: [
-          { type: 'text', text: 'def hello_world():\n    print("hello")' }
-        ]
-      },
-      {
-        block_type: 'HeadingBlock',
-        level: 1,
-        raw_content_fallback: '调用函数',
-        structured_content: [{ type: 'text', text: '调用函数' }]
-      },
-      {
-        block_type: 'BaseBlock',
-        raw_content_fallback: 'print(hello_world())\n```',
-        structured_content: [{ type: 'text', text: 'print(hello_world())' }]
-      }
+      { block_type: 'CodeBlock', language: 'text', raw_content_fallback: '```\n# literal' }
     ];
-
     const result = await importMarkdownToDocJson('ignored', fakeParser);
-
-    expect(result.blockEvents).toEqual([
-      {
-        block_type: 'HeadingBlock',
-        level: 2,
-        raw_content_fallback: '1. 基本段落',
-        structured_content: [
-          { type: 'text', text: '1. ' },
-          { type: 'text', text: '基本段落' }
-        ]
-      },
-      {
-        block_type: 'CodeBlock',
-        language: 'python',
-        raw_content_fallback: [
-          'def hello_world():',
-          '    print("hello")',
-          '',
-          '# 调用函数',
-          '',
-          'print(hello_world())'
-        ].join('\n')
-      }
+    expect(result.blockEvents).toHaveLength(2);
+    expect(result.docJson?.content[0]?.content?.[0]?.content).toEqual([
+      { type: 'text', text: '1. 基本段落' }
     ]);
-
-    const headingContent = result.docJson?.content[0]?.content?.[0]?.content;
-    // PM 正文会合并相邻且同标记的文本节点；解析事件保留分段，持久化结果验证完整编号。
-    expect(headingContent).toEqual([{ type: 'text', text: '1. 基本段落' }]);
-    expect(result.docJson?.content[1]?.content?.[0]).toMatchObject({
-      type: 'codeBlock',
-      attrs: { language: 'python' },
-      content: [
-        {
-          type: 'text',
-          text: [
-            'def hello_world():',
-            '    print("hello")',
-            '',
-            '# 调用函数',
-            '',
-            'print(hello_world())'
-          ].join('\n')
-        }
-      ]
-    });
+    expect(result.docJson?.content[1]?.content?.[0]?.content).toEqual([
+      { type: 'text', text: '```\n# literal' }
+    ]);
   });
 });

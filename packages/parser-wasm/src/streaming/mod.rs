@@ -5,13 +5,14 @@ use crate::table::{
     parse_table_markdown_to_model,
 };
 use crate::{
-    CODE_BLOCK_END_RE, CODE_BLOCK_START_RE, HEADING_RE, HR_RE, LATEX_START_BRACKET_RE,
+    HEADING_RE, HR_RE, LATEX_START_BRACKET_RE,
     LATEX_START_DOLLAR_RE, LATEX_START_EQUATION_RE, LIST_ITEM_RE, QUOTE_RE,
     HTML_COMMENT_START_RE,
-    parse_language_from_line,
 };
 
 mod state;
+
+use crate::fenced_code::{self, CodeFence};
 
 use state::{BlockState, DelimMatcher, LatexType};
 
@@ -55,51 +56,16 @@ impl StreamingParserCore {
     /// 处理一个文本 chunk，返回新增产生的 BlockEvent 列表。
     pub(crate) fn process_chunk(&mut self, chunk: &str) -> Vec<BlockEvent> {
         self.buffer.push_str(chunk);
-        self.extract_blocks_from_buffer()
+        self.extract_blocks_from_buffer(false)
     }
 
     /// 结束解析，处理缓冲区剩余内容，返回最终产生的 BlockEvent 列表。
     pub(crate) fn finalize_parsing(&mut self) -> Vec<BlockEvent> {
-        let mut events = Vec::new();
+        let mut events = self.extract_blocks_from_buffer(true);
 
         match &self.current_block_state {
-            BlockState::InCodeBlock(lang, accumulated_code) => {
-                if !self.buffer.is_empty() || !accumulated_code.is_empty() {
-                    let lang_from_fence = lang.clone();
-                    let code_block_internal_content = accumulated_code.trim_end().to_string();
-
-                    let mut event_language = lang_from_fence;
-                    let mut event_code_content = code_block_internal_content;
-
-                    if event_language.is_none() && !event_code_content.is_empty() {
-                        if let Some(newline_pos) = event_code_content.find('\n') {
-                            let first_line = &event_code_content[..newline_pos];
-                            if let Some(detected_lang) = parse_language_from_line(first_line) {
-                                event_language = Some(detected_lang);
-                                event_code_content =
-                                    event_code_content[newline_pos + 1..].trim_start().to_string();
-                            }
-                        } else if let Some(detected_lang) = parse_language_from_line(&event_code_content)
-                        {
-                            event_language = Some(detected_lang);
-                            event_code_content = String::new();
-                        }
-                    }
-
-                    let final_trimmed_code = event_code_content.trim();
-                    if !final_trimmed_code.is_empty() || event_language.is_some() {
-                        events.push(BlockEvent {
-                            block_type: BlockType::CodeBlock,
-                            raw_content_fallback: Some(final_trimmed_code.to_string()),
-                            structured_content: None,
-                            language: event_language,
-                            level: None,
-                            list_type: None,
-                            list_level: None,
-                            attrs: None,
-                        });
-                    }
-                }
+            BlockState::InCodeBlock(fence, accumulated_code) => {
+                events.push(fence.event(accumulated_code));
             }
             BlockState::InQuoteBlock(current_quote_content_raw) => {
                 let final_raw_content =
@@ -247,6 +213,7 @@ impl StreamingParserCore {
 
         events.retain(|event| {
             event.block_type == BlockType::HorizontalRuleBlock
+                || event.block_type == BlockType::CodeBlock
                 || event
                     .raw_content_fallback
                     .as_ref()
@@ -282,7 +249,7 @@ impl StreamingParserCore {
     }
 
     /// 从当前 buffer 中提取尽可能多的完整块。
-    fn extract_blocks_from_buffer(&mut self) -> Vec<BlockEvent> {
+    fn extract_blocks_from_buffer(&mut self, is_final: bool) -> Vec<BlockEvent> {
         let mut events = Vec::new();
         let mut consumed_offset = 0;
 
@@ -303,39 +270,25 @@ impl StreamingParserCore {
                         continue;
                     }
                     
-                    // 0. 首先检查代码块、LaTeX 等专用块
-                    // 代码块开始
-                    let first_line = current_slice.lines().next().unwrap_or("");
-                    if let Some(m) = CODE_BLOCK_START_RE.find(first_line) {
-                        if m.start() == 0 && m.end() == first_line.len() {
-                            let fence_content = &first_line[m.start()..m.end()];
-                            let lang_captures =
-                                CODE_BLOCK_START_RE.captures(fence_content).unwrap();
-                            let lang_from_fence_capture =
-                                lang_captures.name("lang").and_then(|m_lang| {
-                                    if m_lang.as_str().is_empty() {
-                                        None
-                                    } else {
-                                        Some(m_lang.as_str().to_string())
-                                    }
-                                });
-
-                            consumed_offset += first_line.len();
-                            if consumed_offset < self.buffer.len()
-                                && self.buffer.as_bytes()[consumed_offset] == b'\n'
-                            {
-                                consumed_offset += 1;
-                            }
-                            self.current_block_state = BlockState::InCodeBlock(
-                                lang_from_fence_capture,
-                                String::new(),
-                            );
+                    if let Some((line, consumed)) = fenced_code::first_line(current_slice, is_final) {
+                        if let Some(fence) = CodeFence::open(line) {
+                            consumed_offset += consumed;
+                            self.current_block_state = BlockState::InCodeBlock(fence, String::new());
                             continue;
                         }
                     }
+                    // 只搜索当前段落，不能越过空行提前消费后面的表格或 LaTeX 等块。
+                    let paragraph_limit = current_slice.find("\n\n").map_or(current_slice.len(), |end| end + 1);
+                    let fence_open = fenced_code::find_open(&current_slice[..paragraph_limit], is_final);
+                    // 也不能把尚未传完的 opener 按其它块规则提前消费。
+                    if !is_final && !current_slice.contains('\n') {
+                        break;
+                    }
 
                     // CommonMark type 2 HTML block 可以中断段落，且允许最多三个前导空格。
-                    if let Some(comment_start) = HTML_COMMENT_START_RE.find(current_slice) {
+                    if let Some(comment_start) = HTML_COMMENT_START_RE.find(&current_slice[..paragraph_limit]).filter(|comment| {
+                        fence_open.as_ref().map_or(true, |(offset, _, _)| comment.start() < *offset)
+                    }) {
                         if comment_start.start() > 0 {
                             let prefix = current_slice[..comment_start.start()].trim_end();
                             let (mut prefix_events, _) = self.parse_paragraph_content(prefix);
@@ -488,6 +441,14 @@ impl StreamingParserCore {
                         }
                     }
 
+                    // 围栏可直接中断普通段落；先交给已有段落规则处理前文，围栏由下一轮接纳。
+                    if let Some((offset, _, _)) = fence_open {
+                        let (mut prefix_events, _) = self.parse_paragraph_content(&current_slice[..offset]);
+                        events.append(&mut prefix_events);
+                        consumed_offset += offset;
+                        continue;
+                    }
+
                     // 2. 检查段落（\n\n 分隔）
                     if let Some(para_end_idx) = current_slice.find("\n\n") {
                         let paragraph_slice = &current_slice[..para_end_idx];
@@ -635,72 +596,17 @@ impl StreamingParserCore {
                     // 无更多可解析内容，等待更多数据或 finalize
                     break;
                 }
-                BlockState::InCodeBlock(ref lang, ref mut accumulated_code) => {
-                    let current_line = current_slice.lines().next().unwrap_or("");
-                    if let Some(m) = CODE_BLOCK_END_RE.find(current_line) {
-                        if m.start() != 0 || m.end() != current_line.len() {
-                            // 不是完整的 closing fence，按普通代码行继续处理
-                        } else {
-                            let lang_from_fence_state = lang.clone();
-                            let full_code_content_in_block =
-                                accumulated_code.trim_end().to_string();
-                            let mut event_language = lang_from_fence_state;
-                            let mut event_code_content = full_code_content_in_block;
-
-                            if event_language.is_none() && !event_code_content.is_empty() {
-                                if let Some(newline_pos) = event_code_content.find('\n') {
-                                    let first_line = &event_code_content[..newline_pos];
-                                    if let Some(detected_lang) =
-                                        parse_language_from_line(first_line)
-                                    {
-                                        event_language = Some(detected_lang);
-                                        event_code_content = event_code_content
-                                            [newline_pos + 1..]
-                                            .trim_start()
-                                            .to_string();
-                                    }
-                                } else if let Some(detected_lang) =
-                                    parse_language_from_line(&event_code_content)
-                                {
-                                    event_language = Some(detected_lang);
-                                    event_code_content = String::new();
-                                }
-                            }
-
-                            let final_trimmed_code = event_code_content.trim();
-                            if !final_trimmed_code.is_empty() || event_language.is_some() {
-                                events.push(BlockEvent {
-                                    block_type: BlockType::CodeBlock,
-                                    raw_content_fallback: Some(final_trimmed_code.to_string()),
-                                    structured_content: None,
-                                    language: event_language,
-                                    level: None,
-                                    list_type: None,
-                                    list_level: None,
-                                    attrs: None,
-                                });
-                            }
-
-                            consumed_offset += current_line.len();
-                            if consumed_offset < self.buffer.len()
-                                && self.buffer.as_bytes()[consumed_offset] == b'\n'
-                            {
-                                consumed_offset += 1;
-                            }
-                            self.current_block_state = BlockState::Idle;
-                            continue;
-                        }
-                    }
-
-                    if let Some(newline_pos) = current_slice.find('\n') {
-                        let code_line = &current_slice[..newline_pos];
-                        accumulated_code.push_str(code_line);
-                        accumulated_code.push('\n');
-                        consumed_offset += newline_pos + 1;
+                BlockState::InCodeBlock(ref fence, ref mut accumulated_code) => {
+                    let Some((line, consumed)) = fenced_code::first_line(current_slice, is_final) else {
+                        break;
+                    };
+                    if fence.closes(line) {
+                        events.push(fence.event(accumulated_code));
+                        self.current_block_state = BlockState::Idle;
                     } else {
-                        accumulated_code.push_str(current_slice);
-                        consumed_offset += current_slice.len();
+                        fence.append_line(accumulated_code, line, current_slice[..consumed].ends_with('\n'));
                     }
+                    consumed_offset += consumed;
                     continue;
                 }
                 BlockState::InQuoteBlock(ref mut current_quote_content) => {
@@ -889,6 +795,7 @@ impl StreamingParserCore {
 
         events.retain(|event| {
             event.block_type == BlockType::HorizontalRuleBlock
+                || event.block_type == BlockType::CodeBlock
                 || event
                     .raw_content_fallback
                     .as_ref()

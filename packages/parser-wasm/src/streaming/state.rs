@@ -4,8 +4,8 @@
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum BlockState {
     Idle,
-    /// 代码块内部状态：(语言, 累积的代码内容)
-    InCodeBlock(Option<String>, String),
+    /// 代码块内部状态：(开围栏事实, 累积的代码内容)
+    InCodeBlock(crate::fenced_code::CodeFence, String),
     /// 引用块内部状态：累积引用内容
     InQuoteBlock(String),
     /// 标题块内部状态：(级别, 累积内容)

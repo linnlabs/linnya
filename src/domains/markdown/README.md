@@ -40,6 +40,15 @@ Citation 窗口只接收实际取得的正文，不包含截断提示。正文�
 
 Markdown 导入结果必须经过这份校验。pending 单块和文档级 Accept/Reject 在事务内合并完成后，也必须先校验最终完整 `docJson`，再保存版本并清理 pending；校验失败时正文和 pending 均保持不变。新增可持久化语义时，必须同时更新 schema、序列化/物化能力和生产 Editor conformance fixture，禁止让调用方自行猜测或静默降级。
 
+## 围栏代码导入与导出
+
+normalization 直接接纳 parser-wasm 的 CodeBlock 事件，不在 TypeScript 重建或猜测围栏。
+创建、全文写入规划、pending 接受和 current 投影共用这条语法链。代码内容保留空白和空代码块，
+只按 parser 的编辑器文本合同移除一个结构性末尾换行；无语言围栏中的首行也是正文。
+导出根据正文选择足够长的反引号围栏；语言含反引号时使用 tilde，以免正文提前闭合。
+重新导入 canonical Markdown 必须保持代码正文、语言和相邻块边界，不能在 VFS/read_file 补字修复。
+原围栏字符、长度、info string 的附加元数据不持久化，不承诺源文本逐字 round-trip。
+
 ## Pending 与 Editor 提交
 
 每个 `(documentId, rootBlockId)` 最多一条 Pending。已有提议继续编辑时保持 ID 并递增 `revision`；工具把内容改回基线时撤销该提议，新增后删除会同时移除占位块。File-style 写入先对齐未变段落再规划差异，文首插入不改变后面旧块的身份；批注也跟随对齐后的身份。

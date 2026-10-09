@@ -7,9 +7,11 @@ use wasm_bindgen::prelude::*;
 use pulldown_cmark::{html as pulldown_html, Options as PulldownOptions, Parser as PulldownParser};
 use regex::Regex;
 use once_cell::sync::Lazy;
-use std::collections::HashSet; // For language list
 
 mod model;
+mod fenced_code;
+#[cfg(test)]
+mod fenced_code_tests;
 mod inline;
 mod streaming;
 mod table;
@@ -19,8 +21,6 @@ use crate::model::{BlockEvent, BlockType, ContentFragment, Mark};
 
 // --------- Regex 定义 ---------
 static HEADING_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*(?P<level>#{1,6})\s+(?P<content>.+)").unwrap());
-static CODE_BLOCK_START_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*```(?P<lang>\S*)\s*$").unwrap());
-static CODE_BLOCK_END_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*```\s*$").unwrap());
 static QUOTE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*>\s*(?P<content>.*)").unwrap());
 // Basic list item regex, does not handle indentation or complex nesting here.
 // That level of detail might be better handled by pulldown_cmark on the extracted block content if needed.
@@ -50,29 +50,6 @@ static LATEX_START_EQUATION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*\\be
 static LATEX_END_DOLLAR_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\$\$\s*").unwrap());
 static LATEX_END_BRACKET_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\\]\s*").unwrap());
 static LATEX_END_EQUATION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\end\{equation\}\s*").unwrap());
-
-// --------- Language Detection Helper ---------
-static COMMON_LANGUAGES: Lazy<HashSet<String>> = Lazy::new(|| {
-    [
-        "python", "py", "javascript", "js", "typescript", "ts", "html", "css", 
-        "java", "c", "cpp", "c++", "csharp", "c#", "go", "golang", "rust", "php", 
-        "ruby", "swift", "kotlin", "sql", "json", "xml", "yaml", "yml", "bash", 
-        "shell", "sh", "markdown", "md", "plaintext", "text",
-    ].iter().map(|s| s.to_string()).collect()
-});
-
-fn parse_language_from_line(line: &str) -> Option<String> {
-    let trimmed_line = line.trim();
-    // Basic checks: not too long, no internal whitespace, not empty
-    if trimmed_line.is_empty() || trimmed_line.len() > 20 || trimmed_line.contains(char::is_whitespace) {
-        return None;
-    }
-    let lang_candidate_lower = trimmed_line.to_lowercase();
-    if COMMON_LANGUAGES.contains(&lang_candidate_lower) {
-        return Some(lang_candidate_lower); // Return the standardized lowercase version
-    }
-    None
-}
 
 // BlockState / LatexType / DelimMatcher 已迁移到 streaming 模块，由 StreamingParserCore 内部使用。
 
@@ -126,12 +103,13 @@ pub fn parse_markdown(markdown_input: &str, mode: &str) -> Result<JsValue, JsVal
 
 fn legacy_parse_lines_to_block_events(markdown_input: &str) -> Vec<BlockEvent> {
     let mut block_events: Vec<BlockEvent> = Vec::new();
-    let mut in_code_block_mode = false;
-    let mut current_code_language_for_mode: Option<String> = None;
+    let mut current_code_fence: Option<fenced_code::CodeFence> = None;
     let mut current_code_content = String::new();
     let mut current_html_comment: Option<String> = None;
 
-    for line_content in markdown_input.lines() {
+    for source_line in markdown_input.split_inclusive('\n') {
+        let line_content = source_line.strip_suffix('\n').unwrap_or(source_line);
+        let line_content = line_content.strip_suffix('\r').unwrap_or(line_content);
         let mut event_generated_by_special_rule = false;
         if let Some(comment) = current_html_comment.as_mut() {
             if !comment.is_empty() {
@@ -151,31 +129,15 @@ fn legacy_parse_lines_to_block_events(markdown_input: &str) -> Vec<BlockEvent> {
                 });
             }
             event_generated_by_special_rule = true;
-        } else if in_code_block_mode {
-            if CODE_BLOCK_END_RE.is_match(line_content) {
-                if !current_code_content.trim().is_empty() {
-                    block_events.push(BlockEvent {
-                        block_type: BlockType::CodeBlock,
-                        raw_content_fallback: Some(current_code_content.trim_end().to_string()),
-                        structured_content: None,
-                        language: current_code_language_for_mode.clone(),
-                        level: None,
-                        list_type: None,
-                        list_level: None,
-                        attrs: None,
-                    });
-                }
-                current_code_content = String::new();
-                in_code_block_mode = false;
-                current_code_language_for_mode = None;
-                event_generated_by_special_rule = true;
+        } else if let Some(fence) = current_code_fence.as_ref() {
+            if fence.closes(line_content) {
+                block_events.push(fence.event(&current_code_content));
+                current_code_content.clear();
+                current_code_fence = None;
             } else {
-                if !current_code_content.is_empty() {
-                    current_code_content.push('\n');
-                }
-                current_code_content.push_str(line_content);
-                event_generated_by_special_rule = true;
+                fence.append_line(&mut current_code_content, line_content, source_line.ends_with('\n'));
             }
+            event_generated_by_special_rule = true;
         } else {
             if HTML_COMMENT_START_RE.is_match(line_content) {
                 if line_content.contains("-->") {
@@ -193,10 +155,8 @@ fn legacy_parse_lines_to_block_events(markdown_input: &str) -> Vec<BlockEvent> {
                     current_html_comment = Some(line_content.trim_start().to_string());
                 }
                 event_generated_by_special_rule = true;
-            } else if let Some(caps) = CODE_BLOCK_START_RE.captures(line_content) {
-                let lang_str = caps.name("lang").map_or("", |m| m.as_str());
-                current_code_language_for_mode = if lang_str.is_empty() { None } else { Some(lang_str.to_string()) };
-                in_code_block_mode = true;
+            } else if let Some(fence) = fenced_code::CodeFence::open(line_content) {
+                current_code_fence = Some(fence);
                 event_generated_by_special_rule = true;
             } else if let Some(caps) = HEADING_RE.captures(line_content) {
                 let level = caps.name("level").unwrap().as_str().len() as u8;
@@ -297,17 +257,8 @@ fn legacy_parse_lines_to_block_events(markdown_input: &str) -> Vec<BlockEvent> {
         }
     }
 
-    if in_code_block_mode && !current_code_content.trim().is_empty() {
-        block_events.push(BlockEvent {
-            block_type: BlockType::CodeBlock,
-            raw_content_fallback: Some(current_code_content.trim_end().to_string()),
-            structured_content: None,
-            language: current_code_language_for_mode,
-            level: None,
-            list_type: None,
-            list_level: None,
-            attrs: None,
-        });
+    if let Some(fence) = current_code_fence {
+        block_events.push(fence.event(&current_code_content));
     }
 
     if let Some(comment) = current_html_comment {
