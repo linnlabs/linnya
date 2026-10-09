@@ -14,7 +14,7 @@
 import type { PromptKey } from './prompt.types';
 import type { HistoryBuilderOptionsExtender } from 'src/app-hosts/linnya/adapters/flow/history-builder/history-builder-options-extender.types';
 import type { AgentInvocationRequest } from '@linnlabs/linnkit/ports';
-import type { AgentSpecContextPolicy } from '@linnlabs/linnkit/contracts';
+import type { AgentSpecContextPolicy, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { enrichment } from '@linnlabs/linnkit/runtime-kernel';
 import type { HostToolCallRequestData } from '@app/schemas';
@@ -224,7 +224,9 @@ export interface AgentDefinition {
     readonly toolName: string;
     resolveArgs(
       request: AgentInvokeRequest,
-      explicitArgs?: HostToolCallRequestData['args']
+      explicitArgs?: HostToolCallRequestData['args'],
+      /** 已按历史隔离和编辑重发裁剪的正式历史；只在首次接纳提供。 */
+      history?: readonly RuntimeEvent[]
     ): HostToolCallRequestData['args'];
   };
 

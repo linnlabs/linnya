@@ -62,7 +62,7 @@
         </div>
 
         <div
-          v-if="activeAgentChoiceId && activeAgentChoicePillText && activeAgentChoiceAriaLabel"
+          v-if="activeAgentChoicePillText && activeAgentChoiceAriaLabel"
           class="selector-group selector-group--agent-choice"
         >
           <div
@@ -82,6 +82,7 @@
             >
               <component
                 :is="activeAgentChoiceIconComponent"
+                v-if="activeAgentChoiceIconComponent"
                 class="agent-choice-trigger-icon agent-choice-trigger-icon--default"
               />
               <CloseIcon class="agent-choice-trigger-icon agent-choice-trigger-icon--hover" />
@@ -139,9 +140,7 @@
         @click="handleSubmit"
       >
         <span
-          v-if="
-            primaryAction === 'pause' || primaryAction === 'resume'
-          "
+          v-if="primaryAction === 'pause' || primaryAction === 'resume'"
           class="run-control-icon"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">

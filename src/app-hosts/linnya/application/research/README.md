@@ -1,6 +1,6 @@
-# Research 应用用例（工程预览）
+# Research 应用用例
 
-目标是充分调查、准确解释、深入浅出的长文章。Default Agent 与 deep-research Skill 1.4 保持原有行为；新版研究入口尚未切换前端，也未宣称稳定的质量优势。
+目标是充分调查、准确解释、深入浅出的长文章。前端仍只有“研究”入口，选择身份为 `research_v1`，由新版 Host 编排驱动。Default Agent 与 deep-research Skill 1.4 保持原有行为；入口可用不表示已证明跨题稳定的质量优势。
 
 ## 当前工程合同
 
@@ -10,7 +10,13 @@ Host 通过唯一的 research_run 入口按固定顺序组织调查、调查复�
 
 ## 文档与接纳
 
-当前只开放显式 Host 工程入口：CLI `send --agent research_v1 --research-scope-json` 声明问题、读者、open/fixed/update 模式及 Workspace 材料，Conversation Control 映射到已有 `host_tool_call`，原始用户请求也完整进入各阶段。该参数不允许任意工具名或其他 Agent，普通 `send --agent research_v1` 尚不能推断范围，会在接纳前明确拒绝；附件、旧会话、编辑器引用等未绑定上下文也会拒绝，不能静默丢失后改为开放网页研究。普通产品入口的范围确认与这些材料的正式交接仍待实现，不将此工程入口宣称为已完成的前端研究功能。
+普通项目会话选择“研究”，或 CLI `send --agent research_v1`，按开放调查能力接纳。原始请求完整保留；用户更窄的来源、时间、读者和篇幅要求仍是阶段任务约束。Host 不用关键词猜测 fixed/update 模式，也不宣称普通入口具有固定材料的工具隔离。无项目或本轮图片附件在 run 接纳前明确拒绝，提示进入项目或提供可读取的资料。
+
+Host 根运行不调用模型，所以首次接纳时须把当前编辑器片段、引用、项目元数据及可见对话文字作为引用上下文冻结到问题中。历史先遵循隔离、替换与摘要替代规则；不交接工具轨迹和隐藏推理，也不重新展开压缩正文。历史附件只保留不可读身份提示。片段不是全文、文件清单不是读取证据，旧终答不是原始来源；child 须按需重新读取文章链接和来源。普通编辑器引用没有自动绑定 inode/hash，不具有材料变化检测保障。
+
+严格材料任务仍使用 CLI `--research-scope-json`，显式声明问题、读者、open/fixed/update 模式及 Workspace 材料；fixed/update 必须声明正式材料。Conversation Control 映射到已有 `host_tool_call`，仅允许本研究入口，不开放任意工具。显式范围使用独立会话，拒绝未绑定的历史、附件或编辑器上下文，以免混入冻结材料以外的内容。
+
+旧 `deep_research_leader` 的新请求保持拒绝；旧会话可重新选择“研究”开启新版任务，历史和已暂停运行仍按原身份读取/恢复。菜单名称不是运行身份，不迁移旧 descriptor，也不把旧暂停任务交给新版角色。
 
 阶段必须调用 `submit_research_document({content})` 提交完整 Markdown；Host 通过 [正式文档适配器](../../adapters/research-documents/README.md) create-only 保存、回读全文并绑定 canonical 引用。引用与正文校验错误回到同一 child 的工具结果，模型可修正后重新提交；成功工具结果结束 child，普通 final answer 不构成阶段交付。研究记录、原始评审、初稿和修订稿分开保存，不把研究记录混入文章。角色只持有这个绑定当前阶段的新稿出口，不持有通用 Workspace 写入工具。
 

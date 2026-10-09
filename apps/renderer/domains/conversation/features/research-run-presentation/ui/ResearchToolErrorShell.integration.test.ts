@@ -44,7 +44,9 @@ function failedMessage(toolName: string, errorCode?: string): ToolCallMessage {
     metadata: {
       tool_name: toolName, status: 'error', error: reason,
       ...(errorCode ? { error_code: errorCode } : {}),
-      ...(subrunSummary ? { subrun_summary: subrunSummary } : {}),
+      ...(subrunSummary ? { subrun_summary: {
+        subrun_ids: [...subrunSummary.subrun_ids], event_counts: { ...subrunSummary.event_counts },
+      } } : {}),
     },
   });
   return {

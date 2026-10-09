@@ -4,7 +4,7 @@
 
 当前适用场景：开发环境中脚本化发消息、查询会话与消息、观察运行状态、处理 `awaiting_user` 与 Shell 命令审批、终止运行、读取最终回答、调用五个基础 Workspace 工具，以及在没有 Electron 时启动可运行多个会话/Agent 的前台 Backend。
 
-新版研究工程入口使用 `send --agent research_v1 --research-scope-json JSON`，仍需显式项目和可用模型。JSON 按 Research schema 声明 `question`、`reader`、`task_type`（open/fixed/update）、`materials` 和可选 `time_range`；fixed/update 必须有正式 Workspace 材料。原消息完整传给各阶段，不用这份范围替掉用户约束。该参数只映射已注册的研究 Host 入口，不开放任意工具调用。未声明范围，或请求含尚未绑定的历史/附件/编辑器上下文，会明确拒绝；工程期请使用新会话。流程与当前限制见 [Research 用例](../../src/app-hosts/linnya/application/research/README.md)。
+新版研究使用 `send --agent research_v1`，需显式项目和可用模型，与前端“研究”使用同一 Host 编排，普通请求允许开放查找资料。严格材料任务使用 `--research-scope-json JSON`：按 Research schema 声明 `question`、`reader`、`task_type`（open/fixed/update）、`materials` 和可选 `time_range`；fixed/update 必须有正式 Workspace 材料。原消息完整传给各阶段，不用范围替掉用户约束。该参数仅映射研究入口，不开放任意工具；显式范围使用新会话，拒绝未绑定的历史/附件/编辑器上下文。普通入口交接可见历史和片段，但不把它们视为版本绑定的全文。流程与限制见 [Research 用例](../../src/app-hosts/linnya/application/research/README.md)。
 
 ## 1. 运行前提
 

@@ -66,7 +66,10 @@ function projectLive(events: readonly RuntimeEvent[]) {
     const input = runtimeEventToFrontendProjectionEvent(event, { ...PROJECTION_TEST_SCOPE, run_id: runId });
     if (input) expect(reduceEvent(current, input).success).toBe(true);
   }
-  return current.conversation.messages;
+  return current.conversation.messages.map(message => {
+    if (message.type !== 'tool_calls') throw new Error('Expected a tool message');
+    return message;
+  });
 }
 function reload(events: readonly RuntimeEvent[]) {
   const db = new Database(':memory:');
@@ -78,7 +81,11 @@ function reload(events: readonly RuntimeEvent[]) {
     events.forEach((event, index) => projector.projectAppendedEvent(conversationId, runId, event, index));
     const window = readTail(db, conversationId, 10);
     if (window.status !== 'ready') throw new Error('Expected durable window');
-    return window.messages.map(message => mapUiMessageDtoToConversationMessage(message));
+    return window.messages.map(message => {
+      const projected = mapUiMessageDtoToConversationMessage(message);
+      if (projected.type !== 'tool_calls') throw new Error('Expected a tool message');
+      return projected;
+    });
   } finally { db.close(); }
 }
 function trace(callId: string, kind: SSESubRunTraceEvent['kind'], fields: Partial<SSESubRunTraceEvent>): SSESubRunTraceEvent {

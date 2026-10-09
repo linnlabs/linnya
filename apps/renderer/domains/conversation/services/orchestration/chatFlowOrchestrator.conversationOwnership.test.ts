@@ -241,6 +241,16 @@ describe('chatFlowOrchestrator edit and resend', () => {
     expect(harness.conversationA.selectedAgentId).toBe(ConversationAgentIds.DEEP_RESEARCH);
   });
 
+  it('新版研究选择通过普通发送链传给 Host，不触发旧入口拒绝或配额', async () => {
+    harness.conversationA.selectedAgentId = ConversationAgentIds.RESEARCH;
+    await useChatFlowOrchestrator().sendChatMessage({ text: '解释这项变化的竞争原因' });
+    expect(harness.invokeAssistantMock.mock.calls[0]?.[0]).toMatchObject({
+      options: { selectedAgentId: 'research_v1' },
+    });
+    expect(consumeQuotaOrNull).not.toHaveBeenCalled();
+    expect(harness.assistantStore.setError).not.toHaveBeenCalled();
+  });
+
   it('把模型配置域解析出的有效图片生成模型冻结到本次请求', async () => {
     await useChatFlowOrchestrator().sendChatMessage({ text: '生成一张图片' });
 

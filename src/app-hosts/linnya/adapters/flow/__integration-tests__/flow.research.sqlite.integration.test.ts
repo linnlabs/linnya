@@ -26,6 +26,26 @@ import {
 } from '../__test-helpers__/researchFlowFixture';
 
 describe('Production research entry through real Flow, ToolRegistry and registered children', () => {
+  it('普通项目研究无需显式 Host 参数，六阶段均收到用户约束和编辑器片段', async () => {
+    const fixture = await open(turns(6));
+    const projectId = await seed(fixture);
+    const base = request(projectId, false);
+    await fixture.flow.next(
+      {
+        ...base,
+        options: { ...base.options, document_fragment: 'A selected excerpt, not the full source.' },
+      },
+      () => {}
+    );
+    await assertDelivered(fixture, await identity(fixture, projectId));
+    expect(fixture.ai.getCalls()).toHaveLength(6);
+    for (const call of fixture.ai.getCalls()) {
+      const messages = JSON.stringify(call.messages);
+      expect(messages).toContain(input.question);
+      expect(messages).toContain('A selected excerpt, not the full source.');
+    }
+  });
+
   it('内部作者角色的直接根入口在接纳前拒绝，不消耗模型或创建 child', async () => {
     const fixture = await open([]);
     const projectId = await seed(fixture);
@@ -199,7 +219,7 @@ describe('Production research entry through real Flow, ToolRegistry and register
     );
   });
 
-  it.each(['missing_scope', 'unbound_context'] as const)(
+  it.each(['missing_project', 'unbound_context'] as const)(
     '接纳前拒绝 %s，不静默丢弃研究范围',
     async kind => {
       const fixture = await open([]);
@@ -208,10 +228,16 @@ describe('Production research entry through real Flow, ToolRegistry and register
       const submitted =
         kind === 'unbound_context'
           ? { ...base, options: { ...base.options, document_fragment: 'Unbound selected source' } }
-          : base;
+          : {
+              ...base,
+              project_id: undefined,
+              options: { ...base.options, project_metadata: undefined },
+            };
       await expect(fixture.flow.next(submitted, () => {})).rejects.toMatchObject({
         code:
-          kind === 'missing_scope' ? 'RESEARCH_SCOPE_REQUIRED' : 'RESEARCH_CONTEXT_NOT_SUPPORTED',
+          kind === 'missing_project'
+            ? 'RESEARCH_PROJECT_REQUIRED'
+            : 'RESEARCH_CONTEXT_NOT_SUPPORTED',
       });
       expect(await facts(fixture)).toEqual([]);
       expect(

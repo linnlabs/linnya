@@ -38,7 +38,7 @@ export function linnyaCliUsage(): string {
     '  linnya --version          Show version and source/bundle build identity',
     '  linnya --help             Show this help (also -h or <command> --help)',
     '  linnya send <message> --project ID [--conversation ID] [--agent ID] [--model ID] [--image-model ID] [--reasoning LEVEL]',
-    '    Research engineering entry: --agent research_v1 --research-scope-json JSON (question, reader, task_type, materials, optional time_range)',
+    '    Research: --agent research_v1; optional --research-scope-json JSON for explicit material scope (question, reader, task_type, materials, optional time_range)',
     '  linnya models',
     '  linnya projects',
     '  linnya list [--limit N] [--cursor CURSOR] [--search TEXT] [--project ID]',

@@ -2,7 +2,6 @@ import type { MessageCatalogContribution } from '@app/localization';
 import type { ConversationMessageKey } from './conversationMessages';
 
 export const CONVERSATION_MESSAGE_FALLBACKS = {
-
   'conversation.execution.running': '进行中',
   'conversation.execution.paused': '已暂停',
   'conversation.execution.finished': 'AI 输出结束',
@@ -48,6 +47,9 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.input.actionMenu.agentGroup': 'Agent',
   'conversation.input.agentChoice.closeCurrent': '关闭当前 Agent',
   'conversation.input.agentChoice.close': '关闭',
+  'conversation.input.agentChoice.unavailable': 'Agent 已不可用',
+  'conversation.input.agentChoice.unavailableDescription':
+    '此会话原先选择的 Agent 已不可用，请关闭或重新选择。历史和暂停运行仍保留。',
   'conversation.input.agentChoice.persistFailed': '无法更新会话 Agent，请重试。',
   'conversation.input.mention.empty': '没有匹配的引用',
   'conversation.input.image.add': '添加图片',
@@ -238,7 +240,8 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.flow.subrun.missingProject': '无法发起子运行：当前未绑定项目。',
   'conversation.flow.subrun.noConversation': '无法发起子运行：当前没有可用对话。',
   'conversation.flow.subrun.executionFailed': '子运行执行失败，请稍后重试。',
-  'conversation.flow.deepResearch.unavailable': '旧版深度研究已停止接收新任务。已有历史和暂停运行仍保留；请选择其他 Agent 后再发送。',
+  'conversation.flow.deepResearch.unavailable':
+    '旧版深度研究已停止接收新任务。已有历史和暂停运行仍保留；请从菜单重新选择“研究”使用新版。',
   'conversation.flow.deepResearch.resetFallback': '下周一 00:00',
   'conversation.flow.deepResearch.weeklyLimitReached':
     '本周 Deep Research 已达上限（{usedCount}/{limit}）。\n恢复时间：{resetText}',
@@ -405,7 +408,8 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.tool.researchRun.failed': '研究未完成',
   'conversation.tool.researchRun.delivered': '研究文档已保存',
   'conversation.tool.researchRun.inputsChanged': '资料已变更，研究已停止',
-  'conversation.tool.researchRun.changedNotice': '输入材料已变化，后续阶段已停止。已有文档保留为原版本的结果。',
+  'conversation.tool.researchRun.changedNotice':
+    '输入材料已变化，后续阶段已停止。已有文档保留为原版本的结果。',
   'conversation.tool.researchRun.savedNotice': '文章与独立评审已保存，可分别打开查看。',
   'conversation.tool.researchRun.process': '研究过程',
   'conversation.tool.researchRun.investigation': '调查记录',
@@ -424,7 +428,8 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.tool.webSearch.deepTitle': '网页深度搜索：{query}',
   'conversation.tool.webSearch.assemble': '组装网页资料',
   'conversation.tool.webSearch.limit': '已达四次深搜上限，本次为普通搜索。',
-  'conversation.tool.webSearch.materialNotice': '以下为取得资料；用途、冲突和缺口是模型判断，未验证结论。',
+  'conversation.tool.webSearch.materialNotice':
+    '以下为取得资料；用途、冲突和缺口是模型判断，未验证结论。',
   'conversation.tool.webSearch.truncated': '已截断',
   'conversation.tool.webSearch.extractionFlags': '页面抽取提示：{flags}',
   'conversation.tool.webSearch.summary': '资料概述：',
@@ -700,6 +705,9 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.input.actionMenu.agentGroup': 'Agent',
       'conversation.input.agentChoice.closeCurrent': 'Close current agent',
       'conversation.input.agentChoice.close': 'Close',
+      'conversation.input.agentChoice.unavailable': 'Agent unavailable',
+      'conversation.input.agentChoice.unavailableDescription':
+        'The agent previously selected for this conversation is unavailable. Clear or select it again. History and paused runs are preserved.',
       'conversation.input.agentChoice.persistFailed':
         'Unable to update the conversation agent. Please try again.',
       'conversation.input.mention.empty': 'No matching references',
@@ -913,7 +921,8 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
         'Subruns cannot start because no conversation is available.',
       'conversation.flow.subrun.executionFailed':
         'Subrun execution failed. Please try again later.',
-      'conversation.flow.deepResearch.unavailable': 'Legacy deep research no longer accepts new tasks. History and paused runs remain available; choose another agent before sending.',
+      'conversation.flow.deepResearch.unavailable':
+        'Legacy deep research no longer accepts new tasks. History and paused runs remain available; select Research again from the menu to use the new workflow.',
       'conversation.flow.deepResearch.resetFallback': 'Next Monday 00:00',
       'conversation.flow.deepResearch.weeklyLimitReached':
         "Deep Research has reached this week's limit ({usedCount}/{limit}).\nReset time: {resetText}",
@@ -1095,8 +1104,10 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.researchRun.failed': 'Research incomplete',
       'conversation.tool.researchRun.delivered': 'Research documents saved',
       'conversation.tool.researchRun.inputsChanged': 'Materials changed; research stopped',
-      'conversation.tool.researchRun.changedNotice': 'Input materials changed, so later stages have stopped. Existing documents remain results for the original version.',
-      'conversation.tool.researchRun.savedNotice': 'The article and independent reviews are saved and available below.',
+      'conversation.tool.researchRun.changedNotice':
+        'Input materials changed, so later stages have stopped. Existing documents remain results for the original version.',
+      'conversation.tool.researchRun.savedNotice':
+        'The article and independent reviews are saved and available below.',
       'conversation.tool.researchRun.process': 'Research activity',
       'conversation.tool.researchRun.investigation': 'Investigation record',
       'conversation.tool.researchRun.investigationReview': 'Pre-draft investigation review',
@@ -1114,14 +1125,17 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.webSearch.deepTitle': 'Deep web search: {query}',
       'conversation.tool.webSearch.assemble': 'Assemble web sources',
       'conversation.tool.webSearch.limit': 'Deep search limit reached; ordinary search executed.',
-      'conversation.tool.webSearch.materialNotice': 'Captured material; relevance, conflicts and gaps are model assessments, not verified conclusions.',
+      'conversation.tool.webSearch.materialNotice':
+        'Captured material; relevance, conflicts and gaps are model assessments, not verified conclusions.',
       'conversation.tool.webSearch.truncated': 'Truncated',
       'conversation.tool.webSearch.extractionFlags': 'Extraction signals: {flags}',
       'conversation.tool.webSearch.summary': 'Material summary:',
-      'conversation.tool.webSearch.notesTruncated': 'Some model annotations were shortened; read the original page for further detail.',
+      'conversation.tool.webSearch.notesTruncated':
+        'Some model annotations were shortened; read the original page for further detail.',
       'conversation.tool.webSearch.gap': 'Open gap:',
       'conversation.tool.webSearch.conflict': 'Conflicting clue:',
-      'conversation.tool.webSearch.pageContent': 'Body captured (not necessarily complete or verified)',
+      'conversation.tool.webSearch.pageContent':
+        'Body captured (not necessarily complete or verified)',
       'conversation.tool.webSearch.metadataOnly': 'Page metadata only',
       'conversation.tool.webSearch.searchSnippet': 'Search snippet only',
       'conversation.tool.webSearch.loading': 'Searching...',

@@ -170,7 +170,11 @@ export class FlowRunPreparationService {
     if (resolveHostEntry) assertAgentNewRunAvailable(agentInvokeReq.promptKey);
 
     const hostToolCall = resolveHostEntry
-      ? resolveAgentHostEntry(agentInvokeReq, effectiveOptions?.host_tool_call)
+      ? resolveAgentHostEntry(
+          agentInvokeReq,
+          effectiveOptions?.host_tool_call,
+          contextHistoryEvents
+        )
       : effectiveOptions?.host_tool_call;
 
     return {

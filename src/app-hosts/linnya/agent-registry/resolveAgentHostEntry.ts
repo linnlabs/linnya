@@ -1,11 +1,13 @@
 import { HostToolCallRequest, type HostToolCallRequestData } from '@app/schemas';
 import type { AgentInvokeRequest } from '../context/agent/contracts';
 import { findRegisteredAgentDefinitionByPromptKey } from './agentDefinitionResolver';
+import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 /** Host 只接纳声明的入口；具体参数的默认值、校验和业务含义归 definition 的用例。 */
 export function resolveAgentHostEntry(
   request: AgentInvokeRequest,
-  explicit?: HostToolCallRequestData
+  explicit?: HostToolCallRequestData,
+  history: readonly RuntimeEvent[] = []
 ): HostToolCallRequestData | undefined {
   const entry = findRegisteredAgentDefinitionByPromptKey(request.promptKey)?.hostEntry;
   if (!entry) return explicit;
@@ -19,7 +21,7 @@ export function resolveAgentHostEntry(
   }
   return HostToolCallRequest.parse({
     tool_name: entry.toolName,
-    args: entry.resolveArgs(request, explicit?.args),
+    args: entry.resolveArgs(request, explicit?.args, history),
     completion_mode: 'yield_after_batch',
   });
 }

@@ -2,7 +2,6 @@ import type { ComputedRef } from 'vue';
 import type { LinnyaLocale, MessageParams } from '@app/localization';
 
 export type ConversationMessageKey =
-
   | 'conversation.execution.running'
   | 'conversation.execution.paused'
   | 'conversation.execution.finished'
@@ -46,6 +45,8 @@ export type ConversationMessageKey =
   | 'conversation.input.actionMenu.agentGroup'
   | 'conversation.input.agentChoice.closeCurrent'
   | 'conversation.input.agentChoice.close'
+  | 'conversation.input.agentChoice.unavailable'
+  | 'conversation.input.agentChoice.unavailableDescription'
   | 'conversation.input.agentChoice.persistFailed'
   | 'conversation.input.mention.empty'
   | 'conversation.input.image.add'

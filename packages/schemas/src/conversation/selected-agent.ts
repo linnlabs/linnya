@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { RESEARCH_AGENT_ID } from '../tools/research-run';
 
 /**
  * 会话级选中 Agent 的产品身份。
@@ -20,6 +21,8 @@ export type ConversationSelectedAgentId = z.infer<typeof ConversationSelectedAge
  * 这里保存 AgentDefinition.id；即使当前值恰好与 promptKey 相同，两者也不是同一合同。
  */
 export const ConversationAgentIds = {
+  RESEARCH: ConversationSelectedAgentIdSchema.parse(RESEARCH_AGENT_ID),
+  /** 仅保留旧会话与暂停运行的身份，不能映射到新版执行。 */
   DEEP_RESEARCH: ConversationSelectedAgentIdSchema.parse('deep_research_leader'),
 } as const;
 

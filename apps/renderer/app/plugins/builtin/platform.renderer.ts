@@ -57,12 +57,14 @@ export const platformRendererPlugin: RendererPluginContribution = {
         {
           kind: 'document',
           uriPattern: 'linnya://document/{documentId}',
-          description: 'Markdown document entity, used as the root entity for cross-plugin references.',
+          description:
+            'Markdown document entity, used as the root entity for cross-plugin references.',
         },
         {
           kind: 'block',
           uriPattern: 'linnya://document/{documentId}#block/{blockId}',
-          description: 'Markdown document block entity for references, evidence, and future plugin content targeting.',
+          description:
+            'Markdown document block entity for references, evidence, and future plugin content targeting.',
         },
       ],
     },
@@ -70,22 +72,21 @@ export const platformRendererPlugin: RendererPluginContribution = {
   conversationAgentChoices: [
     {
       id: 'deep_research',
-      disabled: true,
-      agentId: ConversationAgentIds.DEEP_RESEARCH,
-      menuText: 'Legacy deep research (unavailable)',
-      pillText: 'Legacy research unavailable',
-      ariaLabel: 'Legacy deep research no longer accepts new tasks. History and paused runs remain available.',
+      agentId: ConversationAgentIds.RESEARCH,
+      menuText: 'Research',
+      pillText: 'Research',
+      ariaLabel: 'Investigate sources, independently review, and deliver an editable article.',
       menuLocalizedText: {
         key: 'plugins.contribution.agentChoice.deepResearch.menuText',
-        fallback: 'Legacy deep research (unavailable)',
+        fallback: 'Research',
       },
       pillLocalizedText: {
         key: 'plugins.contribution.agentChoice.deepResearch.pillText',
-        fallback: 'Legacy research unavailable',
+        fallback: 'Research',
       },
       ariaLocalizedText: {
         key: 'plugins.contribution.agentChoice.deepResearch.ariaLabel',
-        fallback: 'Legacy deep research no longer accepts new tasks. History and paused runs remain available.',
+        fallback: 'Investigate sources, independently review, and deliver an editable article.',
       },
       iconComponent: ResearchIcon,
     },

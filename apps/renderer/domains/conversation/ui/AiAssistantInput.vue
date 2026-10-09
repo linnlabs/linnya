@@ -95,25 +95,16 @@
             外层蒙版约束光的轮廓，内部两块连续渐变沿 Motion Path 移动。
             不能省掉蒙版：沿路径旋转一根长条仍然会在圆角处露出直线。
           -->
-          <span
-            class="ai-assistant-input__model-setup-border-flow-track"
-            aria-hidden="true"
-          >
+          <span class="ai-assistant-input__model-setup-border-flow-track" aria-hidden="true">
             <span class="ai-assistant-input__model-setup-border-flow-beam" />
             <span class="ai-assistant-input__model-setup-border-flow-beam" />
           </span>
           <span class="ai-assistant-input__model-setup-content">
-            <span
-              class="ai-assistant-input__model-setup-dot"
-              aria-hidden="true"
-            />
+            <span class="ai-assistant-input__model-setup-dot" aria-hidden="true" />
             <span class="ai-assistant-input__model-setup-label">
               {{ conversationMessage('conversation.input.model.configure') }}
             </span>
-            <ChevronRightIcon
-              class="ai-assistant-input__model-setup-arrow"
-              aria-hidden="true"
-            />
+            <ChevronRightIcon class="ai-assistant-input__model-setup-arrow" aria-hidden="true" />
           </span>
         </button>
 
@@ -393,13 +384,17 @@ const activeAgentChoicePillText = computed(() => {
   const agentChoice = activeConversationAgentChoice.value;
   return agentChoice
     ? resolveConversationAgentChoiceTextPresentation(agentChoice, t).pillText
-    : null;
+    : assistantStore.activeConversation?.selectedAgentId
+      ? conversationMessage('conversation.input.agentChoice.unavailable')
+      : null;
 });
 const activeAgentChoiceAriaLabel = computed(() => {
   const agentChoice = activeConversationAgentChoice.value;
   return agentChoice
     ? resolveConversationAgentChoiceTextPresentation(agentChoice, t).ariaLabel
-    : null;
+    : assistantStore.activeConversation?.selectedAgentId
+      ? conversationMessage('conversation.input.agentChoice.unavailableDescription')
+      : null;
 });
 
 const isLoading = inputExecution.isLoading;

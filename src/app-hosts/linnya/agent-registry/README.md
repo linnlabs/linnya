@@ -16,7 +16,7 @@ catalog），交给 Host 的运行描述保存。Generic task 消费 `frozenSyst
 运行 request enricher 或重新渲染系统提示；这不承诺冻结外部模型输出或任意 Workspace 内容。
 
 定义可以通过 `hostEntry` 声明一个 Host 强制入口：固定 `toolName`，并由纯函数
-`resolveArgs(request, explicitArgs)` 生成或严格接纳业务参数。Flow 在首次 run admission 前把
+`resolveArgs(request, explicitArgs, history)` 生成或严格接纳业务参数。history 是经过会话隔离和替换处理的正式事件；定义按用途消费，不把工具轨迹直接当材料。Flow 在首次 run admission 前把
 它转换为正式 `host_tool_call`，固定 `yield_after_batch` 并随 descriptor 冻结；继续和审批响应
 不重新调用该函数。显式调用只可传同名工具及相同完成模式，不能换工具或改为模型接管。
 入口工具不因此进入模型可见清单，纯 Host 入口 Agent 应使用 `availableTools: []`；child 的职责
@@ -535,6 +535,11 @@ judgeToolName（不是评分角色）；`maxCallsPerParentRun` 交给 Host 持�
 仅有文字提取和未核部分须如实保留，定义本身不增加视觉能力或新的 PDF 读取实现。
 
 ### Host 受控研究职责 v1
+
+前端单一“研究”选择映射 `research_v1`。该 definition 声明 Host 强制入口，普通项目请求
+按开放调查接纳，完整请求与摘要替换后的可见文字交接给阶段；CLI 可显式冻结材料范围。
+无项目和本轮图片在接纳前给出操作提示。上下文、版本保障及旧身份边界见
+[Research 用例](../application/research/README.md)，不要在 Renderer 或 Flow 重复实现研究规则。
 
 正式职责使用独立身份 `research_author_v1`、`research_investigation_review_v1`、
 `research_argument_review_v1`、`research_source_review_v1`；分别负责主研究与成文、成文前
