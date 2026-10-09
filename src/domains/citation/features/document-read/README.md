@@ -12,6 +12,10 @@ Knowledge、Web 或 EvidenceStore，也不负责分页和工具 wire schema。
 - 按 citationId 投影 canonical 正文 token 的窄查询；
 - 当前正文窗口来源筛选与受预算约束的 source appendix。
 
+Host 研究交接可以对同次完整 current 投影的 sources/diagnostics 建立版本 hash；必须使用未裁剪的
+canonical 快照，不能使用 read_file 的会话别名或预算后的 appendix。这个 hash 只判断输入是否变化，
+不认证来源真实性、模型已读完或评审已通过；模型跨会话使用引用仍须经正式 read_file 重绑。
+
 正文身份只来自结构化 CitationNode attrs：
 
 - Knowledge 使用持久化 `ref`，或在缺失时根据 `docId + blockId` 确定性生成；

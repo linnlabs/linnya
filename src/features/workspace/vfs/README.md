@@ -2,6 +2,9 @@
 
 Workspace VFS 是项目节点树的路径投影和文档类型能力调度层。它不拥有文档正文，也不把 path 当作稳定身份：用户/Agent 使用 `workspace:/...` 表达当前地址，内部 inode `workspace:<workspace_node_id>` 表达稳定节点身份。
 
+Host 的研究交接通过公开 index 读取同一次 Markdown current 正文和 Citation projection，包含 pending；
+必须拒绝 `truncated`，不能对窗口文本打完整版本戳。内容与引用版本绑定归 Host 应用用例，VFS 不持有研究阶段状态。
+
 主要入口：
 
 - `listWorkspaceVfsNodes`：列出项目路径节点；

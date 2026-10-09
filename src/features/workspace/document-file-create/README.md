@@ -12,3 +12,7 @@ Host resolver 的优先级为：
 4. 其他格式不支持，不做内容嗅探或 fallback。
 
 Markdown provider 先在事务外完成异步文本编译与 Citation admission，再在一个同步 SQLite 事务中提交节点和首个正文版本。插件 provider 继续由自身 `createDocument` hook 负责原子性。
+
+Host 研究阶段交付复用同一 create-only 用例，不进入 `write_file` 的已有文档覆盖分支。
+已有 `resultCommit` 回调让新文档与 Host 阶段产物绑定同事务提交；回调只消费正式文档身份，
+不能把研究生命周期或私有 SQL 写入 Workspace owner。创建成功不代表正文内容已通过评审。
