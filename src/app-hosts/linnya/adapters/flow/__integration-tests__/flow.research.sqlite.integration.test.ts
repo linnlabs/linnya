@@ -55,7 +55,7 @@ beforeEach(() => {
     installedPluginIds: ['platform'],
     enabledPluginIds: ['platform'],
   });
-  installRecoveryModelFixture();
+  installRecoveryModelFixture({ supported_efforts: ['low', 'high'], default_effort: 'low' });
 });
 afterEach(async () => {
   await new Promise(resolve => setTimeout(resolve, 0));
@@ -86,6 +86,7 @@ function turns(count: number): ScriptedLlmTurn[] {
     ],
     assertCall(call) {
       expect(call.modelId).toBe(modelId);
+      expect(call.options.reasoning_effort).toBe('high');
       expect(JSON.stringify(call.messages)).toContain('# Research stage:');
       const exposed = call.options.tools?.map(tool => tool.name) ?? [];
       expect(exposed).toContain('read_file');
@@ -128,6 +129,7 @@ function request(projectId: string, explicit = true): ConversationNextRequest {
     options: {
       promptKey: 'research_v1',
       model_id: modelId,
+      reasoning_effort: 'high',
       project_metadata: { id: projectId, name: 'Research acceptance' },
       ...(explicit
         ? {
@@ -312,6 +314,7 @@ describe('Production research entry through real Flow, ToolRegistry and register
         expect((await fixture.runtime.runDescriptors?.load(result.runId))?.request).toMatchObject({
           modelId,
           maxSteps: 800,
+          reasoning_effort: 'high',
         });
         const { runId, parentToolCallId } = call.parentToolContext;
         if (!runId || !parentToolCallId) throw new Error('Missing parent identity');
@@ -385,6 +388,9 @@ describe('Production research entry through real Flow, ToolRegistry and register
       expect(call.parentToolContext).toMatchObject({ researchRetrievalAllowed: false });
     }
     expect(fixture.ai.getCalls()).toHaveLength(7);
+    expect(fixture.ai.getCalls().every(call => call.options.reasoning_effort === 'high')).toBe(
+      true
+    );
   });
 
   it.each(['missing_scope', 'unbound_context'] as const)(

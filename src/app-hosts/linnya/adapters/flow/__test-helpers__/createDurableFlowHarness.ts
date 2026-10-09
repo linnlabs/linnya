@@ -65,7 +65,7 @@ const knowledge: KnowledgeBaseService = {
   getDocumentContent: unavailable,
 };
 
-export function installRecoveryModelFixture(): void {
+export function installRecoveryModelFixture(reasoning?: ModelConfig['reasoning']): void {
   const model: ModelConfig = {
     id: 'scripted-test-model',
     model_name: 'scripted-test-model',
@@ -74,6 +74,7 @@ export function installRecoveryModelFixture(): void {
     ui_visibility: ['user'],
     display_name: 'Recovery fixture',
     description: 'Scripted inference',
+    reasoning,
     inference_route: {
       api_surface: 'openai_chat_completions',
       capability_id: 'ai-sdk:openai-chat',

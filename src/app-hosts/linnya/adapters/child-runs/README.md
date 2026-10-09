@@ -13,6 +13,11 @@ Layer: `host-adapter/child-runs`
 父调用恢复时只读取原结果，不再执行 child 或补发事实。未完成 child 异常向父图传播为可恢复中断，
 不是一份成功返回的“子任务失败”工具结果。同步审批仍应上提到 foreground。
 
+新持久 child 在解析模型策略后，若实际模型与父 descriptor.request.model_id 相同，便把父请求的
+reasoning_effort 一起冻结到 child request；固定异模型使用自身默认，支持档位仍由 Linnkit 按
+该模型目录解析。恢复只读原 child descriptor，不因父偏好变化重算。非持久入口没有正式父请求
+来源，当前不承诺继承思考级别，也不从 ToolContext 或全局偏好另造来源。
+
 固定多阶段 Host 用例可以在同一父工具内顺序或并行调用不同注册职责。每个阶段必须显式给出
 全链唯一且恢复稳定的 subrun ID（例如父 tool call ID 加固定阶段 slot）、模型和步数；不能
 通过重复调用单 worker 的 batch 工具来隐含替换职责或预算。完整 child 请求必须保持不变，

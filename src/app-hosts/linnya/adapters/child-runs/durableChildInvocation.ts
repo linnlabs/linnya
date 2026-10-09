@@ -70,6 +70,10 @@ export async function prepareDurableChildInvocation(input: {
       promptKey: params.promptKey,
       modelId,
       model_id: modelId,
+      // 模型策略已解析为实际 child modelId；只有沿用父模型才继承其冻结偏好，
+      // 固定异模型保留自身默认。此处只在新接纳执行，恢复不重算旧 child 的 effort。
+      reasoning_effort:
+        modelId === parent.request.model_id ? parent.request.reasoning_effort : undefined,
       maxSteps: input.maxSteps ?? 8,
       enableTools: true,
       availableTools: input.agentConfig.availableTools
