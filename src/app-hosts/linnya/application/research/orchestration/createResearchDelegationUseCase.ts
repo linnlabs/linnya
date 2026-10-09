@@ -82,6 +82,18 @@ export function createResearchDelegationUseCase(ports: DelegationPorts) {
       const all = ports.receipts.listRun(identity).map(item => item.receipt);
       if (all.some(item => !isDeepStrictEqual(item.invocation, invocation)))
         throw new Error('Research scope differs from the admitted parent request.');
+      // 显式接纳材料在首次委派绑定后不可在同一根运行悄悄刷新版本。
+      // 回执已经持有这些事实，不增加第二个根级材料账本。
+      const admittedLocators = new Set<string>(invocation.materials);
+      const admittedBindings = all
+        .flatMap(item => item.inputs)
+        .filter(binding => admittedLocators.has(binding.locator));
+      await checkResearchDocumentVersions(
+        ports.documents,
+        identity.projectId,
+        [...new Map(admittedBindings.map(binding => [binding.inode, binding])).values()],
+        signal
+      );
       const existing = ports.receipts.list(identity)[0];
       if (existing) {
         if (existing.stage !== stage)
@@ -119,7 +131,6 @@ export function createResearchDelegationUseCase(ports: DelegationPorts) {
       const snapshots = await Promise.all(
         locators.map(locator => ports.documents.read({ projectId: identity.projectId, locator }))
       );
-      const admittedLocators = new Set<string>(invocation.materials);
       signal?.throwIfAborted();
       const selected = all.filter(
         item =>

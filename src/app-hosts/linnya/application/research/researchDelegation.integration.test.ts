@@ -161,6 +161,15 @@ describe('Lead-selected research handoff with real Workspace and receipts', () =
         'bad-revision'
       )
     ).rejects.toThrow('exact supplied draft');
+    const otherInvestigation = await stage('investigation', [], 'followup');
+    const mismatchedReview = await stage(
+      'source_review',
+      [otherInvestigation, draft],
+      'other-review'
+    );
+    await expect(
+      prepare('revision', [investigation, draft, argument, mismatchedReview], 'mismatched-context')
+    ).rejects.toThrow('identical draft and source context');
     await docs().save({
       projectId: identity.projectId,
       conversationId: identity.conversationId,
@@ -203,6 +212,10 @@ describe('Lead-selected research handoff with real Workspace and receipts', () =
       paths: ['workspace:/source.md'],
     });
     await expect(prepare('investigation', [])).rejects.toMatchObject({
+      paths: ['workspace:/source.md'],
+    });
+    await expect(prepare('investigation', [], 'new-call')).rejects.toMatchObject({
+      code: 'RESEARCH_INPUTS_CHANGED',
       paths: ['workspace:/source.md'],
     });
     expect(

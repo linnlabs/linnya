@@ -73,6 +73,13 @@ export function validateResearchDelegationInputs(
       if (!consumes(one(selected, kind), draft))
         throw new Error('Both independent reviews must cover the exact supplied draft version.');
     }
+    const argumentInputs = one(selected, 'argument_review').inputs;
+    const sourceInputs = one(selected, 'source_review').inputs;
+    if (
+      argumentInputs.length !== sourceInputs.length ||
+      argumentInputs.some(input => !sourceInputs.some(other => sameDocumentVersion(input, other)))
+    )
+      throw new Error('Both independent reviews must receive identical draft and source context.');
   }
 }
 

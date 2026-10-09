@@ -15,8 +15,11 @@ export type ResearchStageSubmission = (request: {
 }) => Promise<ResearchRunArtifact>;
 
 export class ResearchInputsChangedError extends Error {
+  readonly code = 'RESEARCH_INPUTS_CHANGED';
   constructor(readonly paths: readonly string[]) {
-    super('Research inputs changed');
+    super(
+      `Research inputs changed: ${paths.join(', ')}. Preserve the saved work and admit a new research task for the changed materials; the old reviews cannot be reused.`
+    );
   }
 }
 
