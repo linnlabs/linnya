@@ -6,3 +6,4 @@ export {
   getConversationResourceLinkPort,
   registerConversationResourceLinkPort,
 } from './registry/conversationResourceLinkPort';
+export { default as ConversationResourceLinkNode } from './ui/ConversationResourceLinkNode.vue';

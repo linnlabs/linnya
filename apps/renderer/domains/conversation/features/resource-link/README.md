@@ -14,3 +14,6 @@ Host 没有业务标题，展示 authored title 和 locator 后缀。组件不�
 
 业务测试覆盖 href 编码边界、标题投影、Workspace 显式导航身份和物理文件 reveal DTO。真实 preload、IPC、
 Electron shell 与 Workspace 打开链由 `pnpm run test:conversation-resource-link:electron` 验证。
+
+`ConversationResourceLinkNode` 通过公开 index 供工具卡复用已保存产物链接。它仍按消息所属
+conversation scope 解析和打开 locator；调用方不自行读取 Workspace store 或猜文档身份。

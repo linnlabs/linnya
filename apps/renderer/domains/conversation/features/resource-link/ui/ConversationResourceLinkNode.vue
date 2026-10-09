@@ -23,8 +23,8 @@ import { useConversationLocalization } from '../../../ui/useConversationLocaliza
 import { CONVERSATION_RENDER_SCOPE_KEY } from '../../../definitions/conversationRenderScope';
 import {
   getConversationResourceLinkPort,
-  type ConversationResourceLinkTarget,
-} from '../index';
+} from '../registry/conversationResourceLinkPort';
+import type { ConversationResourceLinkTarget } from '../definitions/conversationResourceLinkPort';
 import { normalizeMarkdownFileLocatorHref } from '../functions/normalizeMarkdownFileLocatorHref';
 import { projectPhysicalResourceLinkPresentation } from '../functions/projectConversationResourceLinkPresentation';
 

@@ -31,6 +31,7 @@ import { projectHistoricalAssembleEvidencePresentation } from '../evidence/funct
 import { projectImageReadPresentation } from '../image-read/functions/projectImageReadPresentation';
 import { projectSingleSubrunPresentation } from '../../../features/subrun-card/functions/projectSingleSubrunPresentation';
 import { projectSubrunBatchPresentation } from '../../../features/subrun-collection/functions/projectSubrunBatchPresentation';
+import { projectResearchRunPresentation, projectResearchRunCompactStep } from '../../../features/research-run-presentation/functions/projectResearchRunPresentation';
 import { createStaticToolCompactStepProjector } from '../compact-step/functions/createStaticToolCompactStepProjector';
 
 const compactStep = {
@@ -83,6 +84,9 @@ const SubrunCompactStepTitle = defineAsyncComponent(
 );
 const SubrunBatchCollection = defineAsyncComponent(
   async () => (await import('../../../features/subrun-collection')).SubrunBatchCollection
+);
+const ResearchRunCard = defineAsyncComponent(
+  async () => (await import('../../../features/research-run-presentation')).ResearchRunCard
 );
 const SkillLearnedCard = defineAsyncComponent(() => import('../skill/SkillLearnedCard.vue'));
 const ImageReadCard = defineAsyncComponent(
@@ -330,6 +334,13 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   // 通用子任务（subagent）
   // ---------------------------------------------------------------------------
   'subagent': subagentToolUiConfig,
+  'research_run': {
+    component: ResearchRunCard,
+    presentation: projectResearchRunPresentation,
+    compactStep: projectResearchRunCompactStep,
+    runtime: { subrunTrace: true },
+    layout: { fullWidth: true, defaultCollapsed: true },
+  },
   'subrun_batch': {
     component: SubrunBatchCollection,
     presentation: projectSubrunBatchPresentation,
