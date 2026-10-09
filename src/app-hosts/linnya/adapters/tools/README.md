@@ -78,12 +78,19 @@ adapter 只负责原子事务和双唯一约束；Knowledge/Web/Workspace produc
 
 工具声明 `idempotency` 时，registry 只能调用 Linnkit 的 `computeToolIdempotencyKey()` 与正式 history helper，不能在 Host 复制 key 算法或恢复旧 16-hex 合同。这里的 history 命中服务 Host 直接执行入口；Graph ToolNode 仍拥有进程内 in-flight 合并。两者都不提供跨进程强幂等，后者必须由持久化锁或唯一索引另行保证。
 
-registered child 的模型工具 schema 不承担执行授权。Host 通过
-`ToolContext.registeredChildAllowedTools` 绑定当前 child 的冻结名单，registry 在 decorator、
-自身幂等缓存和 concrete tool owner 前检查它；未获准的工具返回
-`REGISTERED_CHILD_TOOL_NOT_ALLOWED`。空数组禁止所有正式工具，`undefined` 保持原有无限制入口。
-名单由 [registered child owner](../child-runs/README.md) 按每个 child 单独绑定，不能继承父角色
-的名单代替自己的能力。这仅约束正式工具调用，不是 Shell 的网络、数据库或文件系统沙箱。
+Agent 的模型工具 schema 不承担执行授权。根运行从冻结 request 的 `availableTools` 绑定
+`ToolContext.registeredRootAllowedTools`，禁用工具时为空；registered child 则使用自己的
+`registeredChildAllowedTools`，并清除根范围。registry 在 decorator、自身幂等缓存和 concrete
+tool owner 前共用同一检查；拒绝分别返回 `REGISTERED_ROOT_TOOL_NOT_ALLOWED` 与既有
+`REGISTERED_CHILD_TOOL_NOT_ALLOWED`。空数组禁止所有正式工具，`undefined` 不增加限制。
+没有 Agent scope 的外部人工/API 调用继续遵循自己的接入合同，不会被冒充为根 Agent。
+
+Host 明确接纳的强制入口只授权原始 `{toolName, toolCallId}`，不把工具名加入模型名单。身份从
+冻结执行选项和当前 run 的首条正式工具决定绑定；开始使用 bootstrap，继续/交互恢复使用原
+checkpoint 的完整 history，不从新请求或模型 metadata 猜测。已产生结果的 call 不能被模型重用
+为新的权限。该授权不向 child 传递。名单由 [registered child owner](../child-runs/README.md)
+按每个 child 单独绑定，不能继承父角色的名单代替自己的能力。这仅约束正式工具调用，不是
+Shell 的网络、数据库或文件系统沙箱。
 
 `RUN_RECOVERY_BLOCKED` 与 `RUN_PAUSE_REQUESTED` 是运行控制信号，必须向 Graph 传播，不能转成
 一条已完成的 tool error。未决调用恢复由应用层 run-resumption 协调：明确只读工具可重新读取；

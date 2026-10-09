@@ -61,6 +61,11 @@ function parentContext(): ToolContext {
     modelId: 'scripted-test-model',
     callerAgentId: 'parent-identity',
     availableSubagentTypes: ['parent-only-role'],
+    registeredRootAllowedTools: ['root-only-tool'],
+    authorizedHostToolCall: {
+      toolName: 'root-only-tool',
+      toolCallId: ToolCallIdSchema.parse('parent-tool-scope'),
+    },
     prepareSubagentTask: async () => {
       throw new Error('Parent preparation must not reach children');
     },
@@ -157,6 +162,8 @@ describe('registered child tool scope ownership', () => {
     for (const [promptKey, context] of observed) {
       expect(context.callerAgentId).toBe(promptKey);
       expect(context.prepareSubagentTask).toBeUndefined();
+      expect(context.registeredRootAllowedTools).toBeUndefined();
+      expect(context.authorizedHostToolCall).toBeUndefined();
     }
     expect(parent.callerAgentId).toBe('parent-identity');
     expect(parent.availableSubagentTypes).toEqual(['parent-only-role']);

@@ -109,6 +109,11 @@ src/app-hosts/linnya/adapters/context-injection/
 - runtime capability 由 runtime-kernel 定义
 - 本目录只负责“把两边接上”
 
+根 Agent 工具执行范围从已接纳 request 的 `availableTools/enableTools` 复制冻结，覆盖 patch
+同名能力；调用者身份与可委派角色同样只取冻结 request。Host 单次工具例外由 Flow 从
+bootstrap 或原 checkpoint 的正式决定解析后显式注入，不能从模型参数恢复。具体执行拒绝归
+[ToolRegistry](../tools/README.md)；child 会清除父根范围和该单次例外，使用自身冻结名单。
+
 ### 5.3 EventBus ToolContext ports
 
 `createRuntimeEventToolContextHostPorts(...)` 负责把：

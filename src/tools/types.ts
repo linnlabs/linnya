@@ -58,6 +58,13 @@ export interface ToolContext extends ToolExecutionContext {
   prepareSubagentTask?: import('./agent_control/subrun/subagent/definitions/subagentTask').PrepareSubagentTask<ToolContext>;
   /** Host 为当前 registered child 冻结的执行名单；空数组禁止全部，undefined 不增加限制。 */
   registeredChildAllowedTools?: readonly string[];
+  /** 根 Agent 的冻结工具范围；与 child 独立，普通无 Agent 的 API 调用不注入。 */
+  registeredRootAllowedTools?: readonly string[];
+  /** 仅授权已接纳 Host 入口的原始单次调用，不能授予后继模型同名工具权限。 */
+  authorizedHostToolCall?: {
+    readonly toolName: string;
+    readonly toolCallId: import('@linnlabs/linnkit/contracts').ToolCallId;
+  };
   /** 仅 Host forced research tool 使用；模型无权构造或替换。 */
   researchExecution?: (
     input: import('@app/schemas').ResearchRunArgs

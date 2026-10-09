@@ -160,6 +160,7 @@ describe('createToolContext', () => {
         promptKey: 'default',
         callerAgentId: 'frozen-caller',
         availableSubagentTypes: ['admitted-role'],
+        availableTools: ['read_file'],
       },
       runContext: {
         runId: RunIdSchema.parse('run_runtime'),
@@ -173,6 +174,9 @@ describe('createToolContext', () => {
         customFlag: 'kept',
         callerAgentId: 'forged-caller',
         availableSubagentTypes: ['general'],
+        registeredRootAllowedTools: ['write_file'],
+        registeredChildAllowedTools: ['write_file'],
+        authorizedHostToolCall: { toolName: 'write_file', toolCallId: 'forged-call' },
       },
       history,
       conversationId: 'conv_runtime',
@@ -182,6 +186,9 @@ describe('createToolContext', () => {
     expect(context.conversationId).toBe('conv_runtime');
     expect(context.callerAgentId).toBe('frozen-caller');
     expect(context.availableSubagentTypes).toEqual(['admitted-role']);
+    expect(context.registeredRootAllowedTools).toEqual(['read_file']);
+    expect(context.registeredChildAllowedTools).toBeUndefined();
+    expect(context.authorizedHostToolCall).toBeUndefined();
     expect(context.turnId).toBe('turn_runtime');
     expect(context.conversationView?.getWorkingHistoryEvents()).toBe(history);
     expect(context.conversationView).not.toBe(patchedView);

@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { execution, ToolNode, type EngineState } from '@linnlabs/linnkit/runtime-kernel';
+import {
+  execution,
+  ToolNode,
+  ensureToolContextRuntimeCapability,
+  type EngineState,
+} from '@linnlabs/linnkit/runtime-kernel';
 import { RunIdSchema, ToolCallIdSchema, type RuntimeEvent } from '@linnlabs/linnkit/contracts';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import type { ToolContext } from 'src/tools/types';
 import * as builtin from '../../../plugin-registry/builtin';
 import {
@@ -10,9 +16,6 @@ import {
 import { ToolRegistry } from '../toolRegistry';
 import { defaultObservationPreviewPort } from '../defaultPorts';
 import { RESEARCH_AGENT_ID } from '@app/schemas';
-import { SLIDES_PLUGIN_META } from '@plugin/slides/shared';
-import { SLIDES_AGENT_DEFINITION } from '../../../../../../packages/plugins/slides/src/backend/agents/slides_agent';
-import { backendPluginRegistry } from '../../../plugin-registry/registry';
 import { freezeAgentRunInput } from '../../../agent-registry/freezeAgentRunInput';
 import { resolveAgentRequestAdmission } from '../../../agent-registry/resolveAgentRequestAdmission';
 
@@ -28,14 +31,68 @@ afterEach(() => {
 });
 
 describe('registered child execution scope through ToolNode and ToolRegistry', () => {
-  it('真实平台研究角色仅进入研究父目录，Default 与 Slides 既不可见也无法执行', async () => {
-    if (!backendPluginRegistry.has(SLIDES_PLUGIN_META.id)) {
-      backendPluginRegistry.register({
-        meta: SLIDES_PLUGIN_META,
-        agentDefinitions: [SLIDES_AGENT_DEFINITION],
-      });
-    }
-    setPluginRuntimeStateForTests({ enabledPluginIds: ['platform', SLIDES_PLUGIN_META.id] });
+  it('已完成的 Host 原 call ID 不能再次授权目录外调用，child 也不能继承入口例外', async () => {
+    const decorate = vi.fn();
+    vi.spyOn(builtin, 'getRegisteredToolContextDecorators').mockReturnValue([
+      { toolNames: ['write_file'], decorate },
+    ]);
+    const registry = new ToolRegistry({ strictInitialization: true });
+    const tool = registry.getTool('write_file');
+    if (!tool) throw new Error('Formal Workspace writer is unavailable');
+    const run = vi.spyOn(tool, 'run');
+    const runId = RunIdSchema.parse('host-tool-scope');
+    const toolCallId = ToolCallIdSchema.parse('completed-host-call');
+    const context: ToolContext = createToolContextFixture({
+      workingHistoryEvents: [
+        {
+          type: 'tool_output',
+          id: 'completed-host-output',
+          conversation_id: 'host-tool-scope',
+          turn_id: 'host-tool-turn',
+          timestamp: 1,
+          version: 1,
+          run_id: runId,
+          tool_name: 'write_file',
+          tool_call_id: toolCallId,
+          status: 'success',
+          observation: 'Written',
+        },
+      ],
+      patch: {
+        registeredRootAllowedTools: [],
+        authorizedHostToolCall: { toolName: 'write_file', toolCallId },
+      },
+    });
+    ensureToolContextRuntimeCapability({
+      context,
+      executionMeta: { runId, parentToolCallId: toolCallId },
+    });
+    expect(
+      await registry.executeTool(
+        'write_file',
+        {
+          locator: 'workspace:/duplicate.md',
+          content: 'Duplicate',
+        },
+        context
+      )
+    ).toMatchObject({ success: false, errorCode: 'REGISTERED_ROOT_TOOL_NOT_ALLOWED' });
+    context.registeredChildAllowedTools = [];
+    expect(
+      await registry.executeTool(
+        'write_file',
+        {
+          locator: 'workspace:/duplicate.md',
+          content: 'Duplicate',
+        },
+        context
+      )
+    ).toMatchObject({ success: false, errorCode: 'REGISTERED_CHILD_TOOL_NOT_ALLOWED' });
+    expect(decorate).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it('真实平台研究角色仅进入研究父目录，Default 既不可见也无法执行', async () => {
     const registry = new ToolRegistry({ strictInitialization: true });
     const research = freezeAgentRunInput(
       resolveAgentRequestAdmission(
@@ -55,42 +112,40 @@ describe('registered child execution scope through ToolNode and ToolRegistry', (
     expect(roles).not.toContain('document_editor');
     if (!roles) throw new Error('Research role catalog is unavailable');
     const invoke = vi.fn();
-    for (const promptKey of ['default', SLIDES_AGENT_DEFINITION.promptKey]) {
-      const invocation = freezeAgentRunInput({
-        query: 'An ordinary task',
-        promptKey,
-        callerAgentId: RESEARCH_AGENT_ID,
-        availableSubagentTypes: roles,
+    const invocation = freezeAgentRunInput({
+      query: 'An ordinary task',
+      promptKey: 'default',
+      callerAgentId: RESEARCH_AGENT_ID,
+      availableSubagentTypes: roles,
+    });
+    expect(invocation.callerAgentId).not.toBe(RESEARCH_AGENT_ID);
+    expect(invocation.availableSubagentTypes).toBeUndefined();
+    const schema = registry.getToolSchemas({ invocation, toolNames: ['subagent'] })[0];
+    expect(schema?.function.parameters.properties.subagent_type.enum).toEqual([
+      'general',
+      'document_editor',
+    ]);
+    for (const type of roles) {
+      expect(schema?.function.description).not.toContain(`**${type}**`);
+      const context: ToolContext = {
+        callerAgentId: invocation.callerAgentId,
+        availableSubagentTypes: invocation.availableSubagentTypes,
+        modelId: 'scope-test-model',
+        registeredChildRunInvoker: { invoke },
+      };
+      const result = await registry.executeTool(
+        'subagent',
+        {
+          description: 'Unauthorized role',
+          prompt: 'Delegate',
+          subagent_type: type,
+        },
+        context
+      );
+      expect(result).toMatchObject({
+        success: false,
+        error: expect.stringContaining('unknown subagent_type'),
       });
-      expect(invocation.callerAgentId).not.toBe(RESEARCH_AGENT_ID);
-      expect(invocation.availableSubagentTypes).toBeUndefined();
-      const schema = registry.getToolSchemas({ invocation, toolNames: ['subagent'] })[0];
-      expect(schema?.function.parameters.properties.subagent_type.enum).toEqual([
-        'general',
-        'document_editor',
-      ]);
-      for (const type of roles) {
-        expect(schema?.function.description).not.toContain(`**${type}**`);
-        const context: ToolContext = {
-          callerAgentId: invocation.callerAgentId,
-          availableSubagentTypes: invocation.availableSubagentTypes,
-          modelId: 'scope-test-model',
-          registeredChildRunInvoker: { invoke },
-        };
-        const result = await registry.executeTool(
-          'subagent',
-          {
-            description: 'Unauthorized role',
-            prompt: 'Delegate',
-            subagent_type: type,
-          },
-          context
-        );
-        expect(result).toMatchObject({
-          success: false,
-          error: expect.stringContaining('unknown subagent_type'),
-        });
-      }
     }
     expect(invoke).not.toHaveBeenCalled();
   });

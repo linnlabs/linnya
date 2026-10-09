@@ -47,6 +47,8 @@ export interface ToolContextFactoryOptions {
   hostServices: ToolContextHostServices;
   hostPorts: ToolContextHostPorts;
   request: AgentInvokeRequest;
+  /** Host 从原始 bootstrap/checkpoint 绑定；不能从 patch 或工具参数构造。 */
+  authorizedHostToolCall?: ToolContext['authorizedHostToolCall'];
   runContext: RunContext;
   toolContextPatch: ToolContextPatch;
   history: RuntimeEvent[];
@@ -103,6 +105,14 @@ export function createToolContext(options: ToolContextFactoryOptions): ToolConte
     modelId: options.request.model_id,
     callerAgentId: options.request.callerAgentId,
     availableSubagentTypes: options.request.availableSubagentTypes,
+    registeredChildAllowedTools: undefined,
+    registeredRootAllowedTools:
+      options.request.enableTools === false
+        ? Object.freeze([])
+        : options.request.availableTools === undefined
+          ? undefined
+          : Object.freeze([...options.request.availableTools]),
+    authorizedHostToolCall: options.authorizedHostToolCall,
     imageGenerationModelId: options.request.imageGenerationModelId,
     databaseService: options.hostServices.databaseService,
     workspaceMutationPublisher: options.hostServices.workspaceMutationPublisher,

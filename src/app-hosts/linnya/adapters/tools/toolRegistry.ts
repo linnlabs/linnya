@@ -9,6 +9,7 @@ import type { BackendPluginToolContextDecorator } from 'src/app-hosts/linnya/plu
 import type { LinnyaToolSchemaContext, ToolContext } from 'src/tools/types';
 import { deriveLinnyaToolSchemaContext } from './functions/deriveLinnyaToolSchemaContext';
 import { readToolExecutionErrorCode } from './functions/readToolExecutionErrorCode';
+import { checkRegisteredToolExecutionScope } from './functions/checkRegisteredToolExecutionScope';
 
 type BaseTool = runtimeKernel.tools.BaseTool;
 type FunctionToolSchema = runtimeKernel.tools.FunctionToolSchema;
@@ -276,13 +277,12 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
 
     try {
       const hostContext: ToolContext = context;
-      const allowedTools = hostContext.registeredChildAllowedTools;
+      const scopeRejection = checkRegisteredToolExecutionScope(toolName, hostContext);
       // 模型可见 schema 不是执行授权；未授予的调用不能进入 decorator、缓存或具体 owner。
-      if (allowedTools !== undefined && !allowedTools.includes(toolName)) {
+      if (scopeRejection) {
         return {
           success: false,
-          error: `当前子运行未获准调用工具 '${toolName}'`,
-          errorCode: 'REGISTERED_CHILD_TOOL_NOT_ALLOWED',
+          ...scopeRejection,
           // 已确定拒绝且没有执行副作用；不是恢复时缺失 capability 的未知结果。
           errorKind: 'execution',
           durationMs: Date.now() - startTime,

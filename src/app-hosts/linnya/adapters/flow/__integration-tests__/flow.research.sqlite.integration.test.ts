@@ -250,7 +250,7 @@ describe('Admitted legacy research recovery through real Flow, ToolRegistry and 
     }
   );
 
-  it('普通根模型伪造 research_run 缺少 Host 接纳凭据，不创建 child 或研究稿件', async () => {
+  it('普通根模型伪造目录外的研究入口或提交，在 owner 前拒绝，不创建 child 或研究稿件', async () => {
     const fixture = await open([
       {
         toolCalls: [
@@ -292,13 +292,13 @@ describe('Admitted legacy research recovery through real Flow, ToolRegistry and 
       )
     ).toMatchObject({
       status: 'error',
-      error_code: 'RESEARCH_HOST_ENTRY_REQUIRED',
+      error_code: 'REGISTERED_ROOT_TOOL_NOT_ALLOWED',
     });
     expect(
       (await facts(fixture)).find(
         event => event.type === 'tool_output' && event.tool_call_id === 'forged-stage-submit'
       )
-    ).toMatchObject({ status: 'error', error_code: 'RESEARCH_SUBMISSION_SCOPE_REQUIRED' });
+    ).toMatchObject({ status: 'error', error_code: 'REGISTERED_ROOT_TOOL_NOT_ALLOWED' });
     fixture.ai.assertAllTurnsConsumed();
   });
 

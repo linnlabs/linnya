@@ -76,6 +76,7 @@ import {
 import { captureRuntimeCompatibility } from '../../application/run-resumption/functions/runtimeCompatibility';
 import { createRunToolRecoveryPort } from '../../application/run-resumption/functions/createRunToolRecoveryPort';
 import { SqliteToolResultReceipts } from '../persistence/execution-commit';
+import { resolveAuthorizedHostToolCall } from '../context-injection/resolveAuthorizedHostToolCall';
 
 const logger = new Logger('AgentRunnerService');
 type GraphExecutor = graph.GraphExecutor;
@@ -380,6 +381,17 @@ export class AgentRunnerService {
             const executionHistory = publishedHostToolDecision
               ? [...initialHistory, publishedHostToolDecision]
               : initialHistory;
+            const originalCheckpoint =
+              execution.kind === 'start'
+                ? undefined
+                : await this.engine.peekCheckpoint(runHandle.runId);
+            // 继续运行的请求 history 不含工具过程；Host 权限必须绑定原 checkpoint 的正式决定。
+            const hostToolHistory =
+              execution.kind === 'start' ? executionHistory : originalCheckpoint?.local?.history;
+            if (hostToolCall && !hostToolHistory)
+              throw new graph.RunRecoveryBlockedError(
+                'Original Host tool-call history is unavailable'
+              );
             const toolContext = createToolContext({
               hostServices: {
                 knowledgeBaseService: this.knowledgeBaseService,
@@ -406,6 +418,9 @@ export class AgentRunnerService {
                 ),
               }),
               request: finalReq,
+              authorizedHostToolCall: hostToolHistory
+                ? resolveAuthorizedHostToolCall(hostToolCall, runHandle.runId, hostToolHistory)
+                : undefined,
               runContext: finalRunContext,
               toolContextPatch,
               history: executionHistory,
@@ -464,11 +479,10 @@ export class AgentRunnerService {
 
               logger.info('开始执行 GraphExecutor.runUntilYield');
               if (recoveryInputs && execution.kind === 'resume') {
-                const original = await this.engine.peekCheckpoint(checkpointKey);
-                if (!original?.local?.history)
+                if (!originalCheckpoint?.local?.history)
                   throw new Error('Original interaction checkpoint history is unavailable');
                 // 响应只追加到等待边界的原历史；不能用请求开始时的 history 丢掉中间工具结果。
-                sessionLocal.history = [...original.local.history, ...runtimeNewEvents];
+                sessionLocal.history = [...originalCheckpoint.local.history, ...runtimeNewEvents];
               }
               const {
                 events: graphEvents,
@@ -600,7 +614,11 @@ export class AgentRunnerService {
           await runHandle.markPaused({
             currentNode: saved?.nodeId,
             iterationsUsed: saved?.local?.executorLocal?.stepCount ?? record.iterationsUsed,
-            reason: resolveExecutionPauseReason({ signal, error, failureFact: publishedRuntimeFailureFact }),
+            reason: resolveExecutionPauseReason({
+              signal,
+              error,
+              failureFact: publishedRuntimeFailureFact,
+            }),
           });
           logger.warn('Run paused at durable execution boundary', {
             runId: runHandle.runId,

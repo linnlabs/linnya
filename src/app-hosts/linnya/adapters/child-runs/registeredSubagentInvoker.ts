@@ -267,6 +267,8 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
         ? durable.descriptor.request.availableSubagentTypes
         : agentDefinition.config?.availableSubagentTypes,
       prepareSubagentTask: undefined,
+      registeredRootAllowedTools: undefined,
+      authorizedHostToolCall: undefined,
       registeredChildAllowedTools:
         allowedTools === undefined ? undefined : Object.freeze([...allowedTools]),
     });
