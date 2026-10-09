@@ -32,7 +32,7 @@ function useCase() {
     childCompleted: async subrunId => completed.has(subrunId),
   });
 }
-async function prepare(stage: ResearchStage, documents: string[], call = stage) {
+async function prepare(stage: ResearchStage, documents: string[], call: string = stage) {
   return useCase().prepare({
     identity: { ...identity, toolCallId: call },
     invocation,
@@ -118,6 +118,13 @@ describe('Lead-selected research handoff with real Workspace and receipts', () =
       })
     ).rejects.toThrow('Cannot change');
     expect(store().listRun(identity)).toHaveLength(6);
+    await expect(
+      prepare(
+        'revision',
+        [result.investigation, result.draft, result.argument, result.source],
+        'again'
+      )
+    ).rejects.toThrow('one revision');
   });
   it('未完成child与未复核初稿不能伪装成交付；两评审不可互读', async () => {
     const investigation = await stage('investigation', []);
@@ -136,7 +143,12 @@ describe('Lead-selected research handoff with real Workspace and receipts', () =
     await expect(useCase().complete(identity, draft)).rejects.toThrow('Select a revision');
   });
   it('旧评审不能用于另一版初稿，固定范围不能引入旁路文件', async () => {
-    const current = await chain();
+    const investigation = await stage('investigation', []);
+    const review = await stage('investigation_review', [investigation]);
+    const draft = await stage('draft', [investigation, review]);
+    const argument = await stage('argument_review', [investigation, draft]);
+    const source = await stage('source_review', [investigation, draft]);
+    const current = { investigation, review, draft, argument, source };
     const anotherDraft = await stage(
       'draft',
       [current.investigation, current.review],

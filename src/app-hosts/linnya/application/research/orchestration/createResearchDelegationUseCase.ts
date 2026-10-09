@@ -119,6 +119,7 @@ export function createResearchDelegationUseCase(ports: DelegationPorts) {
       const snapshots = await Promise.all(
         locators.map(locator => ports.documents.read({ projectId: identity.projectId, locator }))
       );
+      const admittedLocators = new Set<string>(invocation.materials);
       signal?.throwIfAborted();
       const selected = all.filter(
         item =>
@@ -129,7 +130,7 @@ export function createResearchDelegationUseCase(ports: DelegationPorts) {
         invocation.task_type === 'fixed' &&
         snapshots.some(
           snapshot =>
-            !invocation.materials.includes(snapshot.locator) &&
+            !admittedLocators.has(snapshot.locator) &&
             !selected.some(item => item.artifact?.inode === snapshot.inode)
         )
       )
