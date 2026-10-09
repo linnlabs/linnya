@@ -73,6 +73,8 @@ Host 只传递已经由 durable `tool_output.attachments` 映射出的 `ToolUiIm
 
 动态工具标题只允许通过可选 `ToolUiConfig.titleComponent` 替换标准外壳中的标题正文；图标、标签、折叠和点击仍归 Host。标题组件只接收已解析的 fallback 标题、已 admission 的 presentation、工具 lifecycle，以及该卡在 `runtime` 显式声明的能力，不能读取 Conversation store 或重新解释工具 raw payload。注册后运行态标题视觉由该组件负责，但执行判定必须消费 Host 的统一活动态，不能从工具 loading 推断；Host 在暂停等非执行阶段不显示 header 状态。普通静态标题继续由 presentation projector 提供，不应为样式差异注册组件。
 
+工具默认沿用通用错误卡。`retainPresentationOnError` 是可选的 Renderer 布局能力，省略等同 `false`；不改变 wire、SQLite 或工具 API payload，旧插件无需修改。只有显式声明 `ToolUiConfig.layout.retainPresentationOnError` 的卡片，错误态才保留已 admission 的标题与专用内容；标准 `ToolErrorCard` 仍负责错误原因与修复动作。该开关不允许读取原始 payload，也不把错误结果解释为已保存产物。过程卡可继续展示正式子运行索引；单次提交卡可明确本次失败语义。未声明的工具错误展示不变。
+
 需要把外部 owner 的审批/终态事实与具体工具关联时，卡片声明 `runtime.toolIdentity: true`。
 Host 仅提供 `{ runId, toolCallId }`，与 `conversationId` 分别声明；不提供整个 message/store，
 也不允许工具从命令文本或 message ID 拆解身份。标题与正文接收同一能力；该通用合同不认识 Commands。

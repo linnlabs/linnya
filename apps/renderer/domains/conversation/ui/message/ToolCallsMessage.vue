@@ -1,7 +1,7 @@
 <template>
   <!-- 0. 有明确修复动作的错误：单层展示，避免再套一层无意义的展开。 -->
   <div
-    v-if="status === 'error' && toolErrorAction"
+    v-if="status === 'error' && toolErrorAction && !retainErrorPresentation"
     class="tool-calls-message tool-card tool-error-wrapper"
   >
     <ToolErrorCard
@@ -16,7 +16,7 @@
     <div class="tool-card__header" @click="toggleErrorCollapse">
       <div class="tool-card__title">
         <span class="tool-card__name">
-          {{ conversationMessage('conversation.tool.error.title', { toolName }) }}
+          {{ retainErrorPresentation ? registryTitleText : conversationMessage('conversation.tool.error.title', { toolName }) }}
         </span>
       </div>
       <div class="header-controls">
@@ -27,7 +27,18 @@
       </div>
     </div>
     <div class="tool-card__content" v-show="!isErrorCollapsed">
-      <ToolErrorCard :errorMessage="toolErrorMessage" />
+      <ToolErrorCard
+        :errorMessage="toolErrorMessage"
+        :actionLabel="toolErrorActionLabel"
+        @action="handleToolErrorAction"
+      />
+      <component
+        v-if="retainErrorPresentation && registryConfig && toolPresentation && shouldMountRegistryComponent"
+        :is="registryConfig.component"
+        :presentation="toolPresentation"
+        :messageId="message.id"
+        v-bind="presentationRuntimeBindings"
+      />
     </div>
   </div>
 
@@ -324,6 +335,11 @@ const {
   canToggleRegistryCollapse,
   registryDefaultCollapsed,
 } = registryUi;
+
+// 失败不会撤销已接纳的过程事实；只有 owner 显式声明时才保留其展示，错误原因仍归通用卡。
+const retainErrorPresentation = computed(() =>
+  registryConfig.value?.layout?.retainPresentationOnError === true && Boolean(toolPresentation.value),
+);
 
 function handleRegistryTitleDocumentClick(link: NonNullable<ToolTitleConfig['documentLink']>): void {
   void navigation.openDocument({

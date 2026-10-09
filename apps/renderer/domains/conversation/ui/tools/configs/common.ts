@@ -32,6 +32,7 @@ import { projectImageReadPresentation } from '../image-read/functions/projectIma
 import { projectSingleSubrunPresentation } from '../../../features/subrun-card/functions/projectSingleSubrunPresentation';
 import { projectSubrunBatchPresentation } from '../../../features/subrun-collection/functions/projectSubrunBatchPresentation';
 import { projectResearchRunPresentation, projectResearchRunCompactStep } from '../../../features/research-run-presentation/functions/projectResearchRunPresentation';
+import { projectResearchDocumentSubmission, projectResearchDocumentSubmissionCompactStep } from '../../../features/research-run-presentation/functions/projectResearchDocumentSubmission';
 import { createStaticToolCompactStepProjector } from '../compact-step/functions/createStaticToolCompactStepProjector';
 
 const compactStep = {
@@ -84,6 +85,9 @@ const SubrunCompactStepTitle = defineAsyncComponent(
 );
 const SubrunBatchCollection = defineAsyncComponent(
   async () => (await import('../../../features/subrun-collection')).SubrunBatchCollection
+);
+const ResearchDocumentSubmissionCard = defineAsyncComponent(
+  async () => (await import('../../../features/research-run-presentation')).ResearchDocumentSubmissionCard
 );
 const ResearchRunCard = defineAsyncComponent(
   async () => (await import('../../../features/research-run-presentation')).ResearchRunCard
@@ -334,12 +338,19 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   // 通用子任务（subagent）
   // ---------------------------------------------------------------------------
   'subagent': subagentToolUiConfig,
+  'submit_research_document': {
+    component: ResearchDocumentSubmissionCard,
+    icon: EditIcon,
+    presentation: projectResearchDocumentSubmission,
+    compactStep: projectResearchDocumentSubmissionCompactStep,
+    layout: { fullWidth: true, retainPresentationOnError: true },
+  },
   'research_run': {
     component: ResearchRunCard,
     presentation: projectResearchRunPresentation,
     compactStep: projectResearchRunCompactStep,
     runtime: { subrunTrace: true },
-    layout: { fullWidth: true, defaultCollapsed: true },
+    layout: { fullWidth: true, retainPresentationOnError: true, defaultCollapsed: true },
   },
   'subrun_batch': {
     component: SubrunBatchCollection,

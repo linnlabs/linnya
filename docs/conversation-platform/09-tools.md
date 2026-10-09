@@ -226,6 +226,8 @@ capability。Host 只透传被声明的 live/durable trace、历史 lazy source 
 是当前参考实现：三种工具名共用一个 projector，trace 与历史 Citation Snapshot reader 分别经显式
 capability 和 Conversation 窄 port 进入卡片。
 
+工具默认沿用通用错误卡。`retainPresentationOnError` 是可选的 Renderer 布局能力，省略等同 `false`；不改变 wire、SQLite 或工具 API payload，旧插件无需修改。只有显式声明 `ToolUiConfig.layout.retainPresentationOnError` 的卡片，错误态才保留已 admission 的标题与专用内容；标准 `ToolErrorCard` 仍负责错误原因与修复动作。该开关不允许读取原始 payload，也不把错误结果解释为已保存产物。过程卡可继续展示正式子运行索引；单次提交卡可明确本次失败语义。未声明的工具错误展示不变。
+
 统一图片读取卡是同一条 capability 规则的另一个例子。当前 `read_file` 在 loading / error 阶段固定 alias 到
 Renderer-only 的 `workspace_read_file`；success 后只有通过 `WorkspaceReadFileEventResultSchema`（或严格历史
 replay schema）接纳的 conversation / host JPEG、PNG、WebP 结果才 alias 到 `image_read`。分类不得读取扩展名、

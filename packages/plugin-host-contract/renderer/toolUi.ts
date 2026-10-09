@@ -195,6 +195,11 @@ export interface ToolUiConfig {
   readonly layout?: {
     /** 是否默认折叠；函数形式仅用于基于工具参数决定初始状态。 */
     readonly defaultCollapsed?: boolean | ((args: unknown) => boolean);
+    /**
+     * 错误时保留已 admission 的专用标题与内容；标准 ToolErrorCard 仍显示原因与修复动作。
+     * 只用于失败后仍有可查看过程的卡片或需要明确单次失败语义的卡片，不开放 raw payload。
+     */
+    readonly retainPresentationOnError?: boolean;
     readonly hideBorder?: boolean;
     readonly hideBackground?: boolean;
     readonly noPadding?: boolean;

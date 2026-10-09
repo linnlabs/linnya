@@ -24,6 +24,7 @@ const HEADER_ONLY_BASELINE_HEADER = [
 ];
 
 export const MIGRATED_TOOL_CARD_PATHS = [
+  'apps/renderer/domains/conversation/features/research-run-presentation/ui/ResearchDocumentSubmissionCard.vue',
   'apps/renderer/domains/conversation/ui/tools/questionnaire/QuestionnaireCard.vue',
   'apps/renderer/domains/conversation/ui/tools/taskstate/TaskStateCard.vue',
   'apps/renderer/domains/conversation/ui/tools/todo/AgentTodoCard.vue',

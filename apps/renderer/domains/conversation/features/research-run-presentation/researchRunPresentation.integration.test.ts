@@ -145,6 +145,21 @@ describe('research run live and reload presentation', () => {
     });
   });
 
+  it('preserves every started child after a parent failure in live and reloaded history', () => {
+    const failed = route(createToolOutputEvent('failed-research', conversationId, turnId, 'research_run', callId, {
+      status: 'error', error: 'Invalid citation token', observation: 'Correct the citation.',
+    }, { timestamp: 20 }));
+    const ids = stages.map(stage => `started-${stage}`);
+    const events = [decision(), ...ids.map((id, index) => trace(id, index)), failed];
+    const current = live(events);
+    expect(reloaded(events).toolPresentation).toEqual(current.toolPresentation);
+    expect(current.toolPresentation).toMatchObject({
+      status: 'error', title: { text: { key: 'conversation.tool.researchRun.failed' } },
+      data: { kind: 'lifecycle', items: ids.map(subrunId => ({ subrunId })) },
+    });
+    expect(JSON.stringify(current.toolPresentation)).not.toContain('artifactPath');
+  });
+
   it('adopts saved artifact identities, labels and order without claiming the article passed', () => {
     const result = output();
     const events = [decision(), trace('explicit-child-4', 1), trace('explicit-child-3', 2), terminal(result)];
