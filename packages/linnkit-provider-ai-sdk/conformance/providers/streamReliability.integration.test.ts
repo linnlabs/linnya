@@ -10,6 +10,7 @@ import {
   createAiSdkInferenceCapability,
   type AiSdkInferenceCapabilityInvocation,
   type AiSdkInferenceRoute,
+  type AiSdkLanguageDiagnostic,
   type AiSdkLanguageModelRegistry,
 } from '@linnlabs/linnkit-provider-ai-sdk';
 
@@ -155,6 +156,7 @@ describe('AI SDK stream reliability integration', () => {
   });
 
   it('Host 检测到的 stream 状态机违规保持不可重试', async () => {
+    const diagnostics: AiSdkLanguageDiagnostic[] = [];
     const model = modelWithStream(
       () =>
         new ReadableStream<LanguageModelV4StreamPart>({
@@ -168,6 +170,7 @@ describe('AI SDK stream reliability integration', () => {
     const capability = createAiSdkInferenceCapability(route.capability_id, route.surface, {
       language_models: registry(model),
       stream_idle_timeout_ms: 1_000,
+      diagnostic_sink: { publish: diagnostic => diagnostics.push(diagnostic) },
     });
 
     const events = await collect(capability.stream(invocation()));
@@ -178,6 +181,15 @@ describe('AI SDK stream reliability integration', () => {
       code: 'provider_stream_lifecycle_invalid',
       retryable: false,
     });
+    expect(diagnostics).toContainEqual(expect.objectContaining({
+      type: 'failure_projected',
+      error_shape: 'host_stream_invariant',
+      invariant_code: 'text_delta_without_start',
+      stream_part_type: 'text-delta',
+      failure_code: 'provider_stream_lifecycle_invalid',
+      retryable: false,
+    }));
+    expect(diagnostics).not.toContainEqual(expect.objectContaining({ type: 'stream_idle_timeout' }));
   });
 
   it('未知上游 stream rejection 形成可重试 transport failure 且不传播正文', async () => {

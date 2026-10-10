@@ -21,4 +21,11 @@
 
 Stream 失败必须先区分 owner：`AiSdkHostStreamInvariantError` 表示 Host 已经证明的 part 状态机违规，固定不可重试；普通上游 async stream rejection 没有这种证明，投影为可重试 transport failure。AI SDK timeout abort 的用户取消判别属于相邻 `stream-reliability` feature，不允许在这里通过错误 message 猜 timeout。
 
+`AiSdkToolCallError` 表示模型产出的工具调用无法进入 canonical 完成态，不是流生命周期违规。
+只按 SDK 正式 `InvalidToolInputError` / `NoSuchToolError` 类型及 canonical JSON object
+合同分类：坏参数为可重试 `provider_tool_arguments_invalid`，未知工具为不可重试
+`provider_tool_not_found`，其余 invalid call 为不可重试 `provider_tool_call_invalid`。
+不读取错误文案、不伪造参数或工具结果，不在 adapter 校验业务 schema。安全诊断只保留
+有限 `invariant_code` 与触发失败的 `stream_part_type`，不保留工具名、参数、错误正文或 reasoning。
+
 `APICallError` 已带 HTTP status 时，重试语义由本 feature 的稳定状态码规则决定；没有 status 时表示尚未取得 HTTP response，此时只接纳 AI SDK 明确给出的 `isRetryable`。可重试项投影为 `transport/provider_transport_error`，不得因缺少 status 降级成不可重试的通用 Provider 错误，也不得从 message 猜测网络故障。

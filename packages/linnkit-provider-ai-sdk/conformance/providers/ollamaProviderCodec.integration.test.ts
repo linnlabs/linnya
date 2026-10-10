@@ -1,8 +1,118 @@
 import { describe, expect, it } from 'vitest';
+import {
+  createAiSdkInferenceCapability,
+  createAiSdkLanguageModelRegistry,
+  type AiSdkLanguageDiagnostic,
+} from '@linnlabs/linnkit-provider-ai-sdk';
 
 import { route, runToolRoundTrip } from '../fixtures/dedicatedProviderCodecFixture';
+import {
+  collectProviderSurfaceEvents as collect,
+  providerSurfaceInvocation as invocation,
+  providerSurfaceRoute,
+} from '../fixtures/providerSurfaceCodecFixture';
+
+async function projectOllamaToolCall(toolName: string, toolArguments: unknown) {
+  const resolvedRoute = providerSurfaceRoute('ai-sdk:ollama', 'ollama_chat', 'bearer');
+  const diagnostics: AiSdkLanguageDiagnostic[] = [];
+  let requestCount = 0;
+  const fixtureFetch: typeof fetch = async () => {
+    requestCount++;
+    return new Response(`${JSON.stringify({
+      model: resolvedRoute.endpoint_model_id,
+      created_at: '2026-09-04T00:00:00.000Z',
+      message: {
+        role: 'assistant',
+        content: '',
+        tool_calls: [{ function: { name: toolName, arguments: toolArguments } }],
+      },
+      done: true,
+      done_reason: 'stop',
+      prompt_eval_count: 17,
+      eval_count: 6,
+    })}\n`, { headers: { 'content-type': 'application/x-ndjson' } });
+  };
+  const capability = createAiSdkInferenceCapability(
+    resolvedRoute.capability_id,
+    resolvedRoute.surface,
+    {
+      language_models: createAiSdkLanguageModelRegistry(fixtureFetch),
+      diagnostic_sink: { publish: diagnostic => diagnostics.push(diagnostic) },
+    },
+  );
+  const input = invocation(resolvedRoute);
+  const events = await collect(capability.stream({
+    ...input,
+    request: {
+      ...input.request,
+      tools: [{
+        name: 'read_file',
+        description: '读取文件',
+        parameters: {
+          type: 'object',
+          properties: { path: { type: 'string', description: '文件路径' } },
+          required: ['path'],
+          additionalProperties: false,
+        },
+      }],
+      tool_choice: 'auto',
+    },
+  }));
+  return { events, diagnostics, requestCount };
+}
 
 describe('Ollama Provider package codec conformance', () => {
+  it('未知工具名有独立协议分类，不误报流损坏或执行工具', async () => {
+    const result = await projectOllamaToolCall('sensitive-unknown-tool', { path: 'sensitive-path' });
+
+    expect(result.requestCount).toBe(1);
+    expect(result.events.at(-1)).toEqual({
+      type: 'failure', kind: 'protocol', code: 'provider_tool_not_found', retryable: false,
+    });
+    expect(result.events.filter(event => event.type === 'failure')).toHaveLength(1);
+    expect(result.events.some(event => event.type === 'tool_call_end')).toBe(false);
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      type: 'failure_projected', error_shape: 'tool_call_error', stream_part_type: 'tool-call',
+      failure_code: 'provider_tool_not_found',
+    }));
+    expect(JSON.stringify(result.diagnostics)).not.toMatch(/sensitive-unknown-tool|sensitive-path/u);
+    expect(result.diagnostics.find(diagnostic => diagnostic.type === 'failure_projected'))
+      .not.toHaveProperty('provider_signal');
+  });
+
+  it.each([
+    { input: 'sensitive-broken-arguments' },
+    { input: ['sensitive-array-input'] },
+  ])(
+    '原生 codec 接纳的非 object 参数只请求一次并形成可重试输入错误：%j',
+    async ({ input }) => {
+      const result = await projectOllamaToolCall('read_file', input);
+
+      expect(result.requestCount).toBe(1);
+      expect(result.events.at(-1)).toEqual({
+        type: 'failure', kind: 'protocol', code: 'provider_tool_arguments_invalid', retryable: true,
+      });
+      expect(result.events.filter(event => event.type === 'failure')).toHaveLength(1);
+      expect(result.events.some(event => event.type === 'tool_call_end')).toBe(false);
+      expect(result.diagnostics).toContainEqual(expect.objectContaining({
+        type: 'failure_projected', error_shape: 'tool_call_error', stream_part_type: 'tool-call',
+        failure_code: 'provider_tool_arguments_invalid',
+      }));
+      expect(JSON.stringify(result.diagnostics)).not.toMatch(/sensitive-broken|sensitive-array/u);
+    },
+  );
+
+  it('合法 object 的缺 required 字段仍交工具 owner admission，不在 adapter 重复校验', async () => {
+    const result = await projectOllamaToolCall('read_file', {});
+
+    expect(result.requestCount).toBe(1);
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: 'tool_call_end', call: expect.objectContaining({ name: 'read_file', arguments: {} }),
+    }));
+    expect(result.events.at(-1)).toEqual({ type: 'finish', reason: 'tool_use' });
+    expect(result.events.some(event => event.type === 'failure')).toBe(false);
+  });
+
   it('用原生 Chat codec 完成 reasoning、工具调用、usage 与第二轮回放', async () => {
     const resolvedRoute = route({
       capabilityId: 'ai-sdk:ollama',

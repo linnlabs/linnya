@@ -16,6 +16,7 @@ import type {
 } from '../definitions/aiSdkFailureProjection';
 import type { AiSdkProviderSignal } from '../definitions/aiSdkFailureObservation';
 import { AiSdkHostStreamInvariantError } from '../definitions/aiSdkHostStreamInvariantError';
+import { AiSdkToolCallError } from '../definitions/aiSdkToolCallError';
 
 function retryableStatus(statusCode: number | undefined): boolean {
   return (
@@ -431,6 +432,13 @@ export function classifyAiSdkFailure(
   }
   if (error instanceof AiSdkHostStreamInvariantError) {
     return { kind: 'protocol', code: 'provider_stream_lifecycle_invalid', retryable: false };
+  }
+  if (error instanceof AiSdkToolCallError) {
+    return {
+      kind: 'protocol',
+      code: error.failure_code,
+      retryable: error.failure_code === 'provider_tool_arguments_invalid',
+    };
   }
   if (APICallError.isInstance(error)) {
     const status = error.statusCode;

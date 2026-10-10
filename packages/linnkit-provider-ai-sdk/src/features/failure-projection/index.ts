@@ -4,6 +4,8 @@ export {
 } from './functions/classifyAiSdkFailure';
 export { projectAiSdkFailureObservation } from './functions/projectAiSdkFailureObservation';
 export { projectAiSdkFinishReason } from './functions/projectAiSdkFinishReason';
+export { projectAiSdkInvalidToolCall } from './functions/projectAiSdkInvalidToolCall';
+export { AiSdkToolCallError } from './definitions/aiSdkToolCallError';
 export {
   AI_SDK_HOST_STREAM_INVARIANT_CODES,
   AiSdkHostStreamInvariantError,

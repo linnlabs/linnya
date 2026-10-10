@@ -41,6 +41,12 @@ function logDiagnostic(logger: Logger, diagnostic: AiSdkLanguageDiagnostic): voi
           : { request_fingerprint: diagnostic.request_fingerprint }),
         phase: diagnostic.phase,
         error_shape: diagnostic.error_shape,
+        ...(diagnostic.invariant_code === undefined
+          ? {}
+          : { invariant_code: diagnostic.invariant_code }),
+        ...(diagnostic.stream_part_type === undefined
+          ? {}
+          : { stream_part_type: diagnostic.stream_part_type }),
         ...(diagnostic.provider_signal === undefined
           ? {}
           : { provider_signal: diagnostic.provider_signal }),

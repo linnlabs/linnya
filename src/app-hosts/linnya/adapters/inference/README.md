@@ -363,6 +363,12 @@ failure；用户取消仍是不可重试
 `stream_reset`；Host 不据此切换模型，也不把失败 attempt 写成 durable Assistant
 turn。
 
+AI SDK 标记的 invalid tool-call 需按正式错误类型分离：坏 JSON / 非 object 参数为
+`provider_tool_arguments_invalid`，可由 Linnkit 按原预算重试；未知工具为不可重试
+`provider_tool_not_found`。这两类均不执行工具，也不伪装成工具业务失败。
+诊断日志接纳 package 的有限 `invariant_code` 和 `stream_part_type`，用于区分真正的
+生命周期违规和工具输入错误；投影器主动取消后记录的最后一个 `abort` 不构成网络故障证据。
+
 ## 相邻模块边界
 
 - `adapters/model-routing-policy/` 只把 `llm.<canonical failure code>` 映射为

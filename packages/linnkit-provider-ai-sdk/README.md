@@ -147,6 +147,19 @@ Host 可以注入两类扩展，但不得借此污染通用 adapter：
 扩展点不能读取或返回 prompt、response body、API key、headers、base
 URL、路径、图片 bytes 或原始错误正文。
 
+工具调用的输入错误与流状态机违规分开分类。AI SDK 的 `dynamic/invalid`
+不证明流损坏：无法解析或不是 JSON object 的参数形成可重试
+`provider_tool_arguments_invalid`，未知工具形成不可重试 `provider_tool_not_found`；
+其他 SDK invalid call 保持不可重试 `provider_tool_call_invalid`。只有已证明的
+part 生命周期违规使用 `provider_stream_lifecycle_invalid`。Adapter 不修复参数、
+执行工具或产生工具错误结果；schema 字段校验仍由工具 owner 的正式 admission 执行，
+重试次数和退避仍由 Linnkit 决定。
+
+`failure_projected` 对本地投影失败保留有限枚举 `invariant_code` 和
+`stream_part_type`；后者记录触发失败的分片类型。Adapter 在投影失败后会主动 abort
+并排空上游流，因此 attempt 的 `last_provider_part_type=abort` 本身不能证明网络断流。
+没有这些细分诊断的历史失败不能倒推到某一种 invariant。
+
 ## Provider 变更流程
 
 升级一个已有 Provider package 时：

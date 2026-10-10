@@ -6,6 +6,7 @@ import {
   createAiSdkLanguageModelRegistry,
   type AiSdkInferenceCapabilityInvocation,
   type AiSdkInferenceRoute,
+  type AiSdkLanguageDiagnostic,
 } from '@linnlabs/linnkit-provider-ai-sdk';
 
 const route = {
@@ -61,6 +62,51 @@ function eventStream(lines: readonly string[]): Response {
 }
 
 describe('OpenAI Chat AI SDK capability integration', () => {
+  it('完整 tool-call 带坏 JSON 时形成可重试输入错误，不产生工具完成态或泄漏参数', async () => {
+    let requestCount = 0;
+    const diagnostics: AiSdkLanguageDiagnostic[] = [];
+    const fixtureFetch: typeof fetch = async () => {
+      requestCount++;
+      return eventStream([
+        JSON.stringify({
+          id: 'chatcmpl-invalid-tool', object: 'chat.completion.chunk', created: 1,
+          model: route.endpoint_model_id,
+          choices: [{
+            index: 0,
+            delta: { tool_calls: [{
+              index: 0, id: 'invalid-call', type: 'function',
+              function: { name: 'read_file', arguments: '{"path":"sensitive-broken-json"' },
+            }] },
+            finish_reason: null,
+          }],
+        }),
+        JSON.stringify({
+          id: 'chatcmpl-invalid-tool', object: 'chat.completion.chunk', created: 1,
+          model: route.endpoint_model_id,
+          choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }],
+        }),
+      ]);
+    };
+    const capability = createAiSdkInferenceCapability(route.capability_id, route.surface, {
+      language_models: createAiSdkLanguageModelRegistry(fixtureFetch),
+      diagnostic_sink: { publish: diagnostic => diagnostics.push(diagnostic) },
+    });
+
+    const events = await collect(capability.stream(invocation()));
+
+    expect(requestCount).toBe(1);
+    expect(events.at(-1)).toEqual({
+      type: 'failure', kind: 'protocol', code: 'provider_tool_arguments_invalid', retryable: true,
+    });
+    expect(events.filter(event => event.type === 'failure')).toHaveLength(1);
+    expect(events.some(event => event.type === 'tool_call_end' || event.type === 'finish')).toBe(false);
+    expect(diagnostics).toContainEqual(expect.objectContaining({
+      type: 'failure_projected', error_shape: 'tool_call_error', stream_part_type: 'tool-call',
+      failure_code: 'provider_tool_arguments_invalid', retryable: true,
+    }));
+    expect(JSON.stringify(diagnostics)).not.toContain('sensitive-broken-json');
+  });
+
   it('把已物化图片交给官方 codec，Provider body 不携带 Workspace 身份', async () => {
     let requestBody: unknown;
     const fixtureFetch: typeof fetch = async (_input, init) => {

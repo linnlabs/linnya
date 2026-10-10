@@ -2,6 +2,10 @@
 
 ## 0.1.0
 
+- 区分模型工具输入错误与真实流生命周期违规：坏 JSON / 非 object 参数按现有 Linnkit
+  预算重试，未知工具保持独立不可重试分类；补齐真实 Ollama/OpenAI codec 验收。
+  安全诊断保留有限 invariant 与触发分片类型，主动 abort 不再掩盖原始分类。
+
 - 将 `@ai-sdk/deepseek` 升级到 `3.0.44`，验证 `deepseek-flash` 历史 reasoning 与空 tool delta
   回放；通过精确 pnpm patch 复用上游图片编码，修复 native tool.content 图片被字符串化的问题。
   补齐用户/工具图片、非法格式拒绝、两轮 usage 与 CJS/ESM packed 验收；Host placement 和

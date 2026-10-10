@@ -18,6 +18,7 @@ import type {
   AiSdkProviderFailureClassifier,
 } from '../definitions/aiSdkFailureProjection';
 import { AiSdkHostStreamInvariantError } from '../definitions/aiSdkHostStreamInvariantError';
+import { AiSdkToolCallError } from '../definitions/aiSdkToolCallError';
 import {
   classifyAiSdkFailure,
   projectAiSdkProviderSignal,
@@ -25,6 +26,7 @@ import {
 
 function readSafeErrorShape(error: unknown): AiSdkFailureErrorShape {
   if (error instanceof AiSdkHostStreamInvariantError) return 'host_stream_invariant';
+  if (error instanceof AiSdkToolCallError) return 'tool_call_error';
   if (APICallError.isInstance(error)) return 'api_call_error';
   if (TypeValidationError.isInstance(error) || InvalidResponseDataError.isInstance(error)) {
     return 'response_schema_error';
@@ -56,6 +58,9 @@ export function projectAiSdkFailureObservation(
     diagnostic: {
       phase,
       error_shape: readSafeErrorShape(error),
+      ...(error instanceof AiSdkHostStreamInvariantError
+        ? { invariant_code: error.invariant_code }
+        : {}),
       ...(providerSignal === undefined ? {} : { provider_signal: providerSignal }),
     },
   };

@@ -1,7 +1,9 @@
 import type { AiSdkFailurePhase, AiSdkFailureProjection } from './aiSdkFailureProjection';
+import type { AiSdkHostStreamInvariantCode } from './aiSdkHostStreamInvariantError';
 
 export type AiSdkFailureErrorShape =
   | 'host_stream_invariant'
+  | 'tool_call_error'
   | 'api_call_error'
   | 'response_schema_error'
   | 'response_json_error'
@@ -28,6 +30,7 @@ export interface AiSdkFailureObservation {
   readonly diagnostic: {
     readonly phase: AiSdkFailurePhase;
     readonly error_shape: AiSdkFailureErrorShape;
+    readonly invariant_code?: AiSdkHostStreamInvariantCode;
     readonly provider_signal?: AiSdkProviderSignal;
   };
 }

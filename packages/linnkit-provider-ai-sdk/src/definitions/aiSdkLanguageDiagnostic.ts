@@ -1,9 +1,39 @@
 import type {
   AiSdkFailureErrorShape,
   AiSdkFailurePhase,
+  AiSdkHostStreamInvariantCode,
 } from '../features/failure-projection';
 import type { AiSdkInferenceCapabilityId } from './aiSdkCapabilityIds';
 import type { AiSdkInferenceSurface } from './aiSdkInferenceSurface';
+
+/** 仅记录事件类别，不能记录 part 的正文、参数、metadata 或错误对象。 */
+export type AiSdkLanguageStreamPartType =
+  | 'start'
+  | 'start-step'
+  | 'finish-step'
+  | 'finish'
+  | 'abort'
+  | 'error'
+  | 'text-start'
+  | 'text-delta'
+  | 'text-end'
+  | 'reasoning-start'
+  | 'reasoning-delta'
+  | 'reasoning-end'
+  | 'tool-input-start'
+  | 'tool-input-delta'
+  | 'tool-input-end'
+  | 'tool-call'
+  | 'tool-result'
+  | 'tool-error'
+  | 'tool-output-denied'
+  | 'tool-approval-request'
+  | 'tool-approval-response'
+  | 'source'
+  | 'file'
+  | 'reasoning-file'
+  | 'custom'
+  | 'raw';
 
 export type AiSdkLanguageDiagnostic =
   | {
@@ -44,6 +74,8 @@ export type AiSdkLanguageDiagnostic =
       readonly request_fingerprint?: string;
       readonly phase: AiSdkFailurePhase;
       readonly error_shape: AiSdkFailureErrorShape;
+      readonly invariant_code?: AiSdkHostStreamInvariantCode;
+      readonly stream_part_type?: AiSdkLanguageStreamPartType;
       readonly provider_signal?: Readonly<{
         readonly status_code?: number;
         readonly type?: string;

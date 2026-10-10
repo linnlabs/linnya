@@ -4,8 +4,6 @@ export const AI_SDK_HOST_STREAM_INVARIANT_CODES = [
   'reasoning_delta_without_start',
   'reasoning_end_without_start',
   'tool_delta_without_start',
-  'invalid_tool_call',
-  'tool_arguments_not_serializable',
   'stream_part_projection_failed',
 ] as const;
 

@@ -6,7 +6,9 @@ import type {
 } from '@linnlabs/linnkit/ports';
 import {
   AiSdkHostStreamInvariantError,
+  AiSdkToolCallError,
   projectAiSdkFailureObservation,
+  projectAiSdkInvalidToolCall,
   projectAiSdkFinishReason,
   type AiSdkFailurePhase,
   type AiSdkProviderFailureClassifier,
@@ -31,7 +33,10 @@ import type {
   AiSdkLanguageModelRegistry,
 } from '../definitions/aiSdkInferenceSurface';
 import type { AiSdkInferenceCapabilityId } from '../definitions/aiSdkCapabilityIds';
-import type { AiSdkLanguageDiagnosticSink } from '../definitions/aiSdkLanguageDiagnostic';
+import type {
+  AiSdkLanguageDiagnosticSink,
+  AiSdkLanguageStreamPartType,
+} from '../definitions/aiSdkLanguageDiagnostic';
 
 interface ActiveReasoningPart {
   readonly index: number;
@@ -68,6 +73,7 @@ function failureEvent(
     readonly attempt_id: string;
     readonly request_fingerprint: string;
   },
+  streamPartType?: AiSdkLanguageStreamPartType,
 ): CanonicalInferenceEvent {
   const observation = projectAiSdkFailureObservation(error, signal, phase, providerClassifier);
   if (observation.failure.kind !== 'aborted') {
@@ -76,6 +82,10 @@ function failureEvent(
       ...diagnosticContext,
       phase: observation.diagnostic.phase,
       error_shape: observation.diagnostic.error_shape,
+      ...(observation.diagnostic.invariant_code === undefined
+        ? {}
+        : { invariant_code: observation.diagnostic.invariant_code }),
+      ...(streamPartType === undefined ? {} : { stream_part_type: streamPartType }),
       ...(observation.diagnostic.provider_signal === undefined
         ? {}
         : { provider_signal: observation.diagnostic.provider_signal }),
@@ -319,7 +329,7 @@ export function createAiSdkInferenceCapability(
               }
               case 'tool-call': {
                 if (part.dynamic && part.invalid) {
-                  throw new AiSdkHostStreamInvariantError('invalid_tool_call');
+                  throw projectAiSdkInvalidToolCall(part.error);
                 }
                 let active = toolIndexes.get(part.toolCallId);
                 if (!active) {
@@ -335,7 +345,7 @@ export function createAiSdkInferenceCapability(
                 }
                 const argumentsRecord = toSerializableJsonRecord(part.input);
                 if (!argumentsRecord) {
-                  throw new AiSdkHostStreamInvariantError('tool_arguments_not_serializable');
+                  throw new AiSdkToolCallError('provider_tool_arguments_invalid');
                 }
                 const continuation = projectAiSdkContinuation(
                   surface,
@@ -442,9 +452,10 @@ export function createAiSdkInferenceCapability(
                 break;
             }
           } catch (error: unknown) {
-            const projectionError = error instanceof AiSdkHostStreamInvariantError
-              ? error
-              : new AiSdkHostStreamInvariantError('stream_part_projection_failed');
+            const projectionError =
+              error instanceof AiSdkHostStreamInvariantError || error instanceof AiSdkToolCallError
+                ? error
+                : new AiSdkHostStreamInvariantError('stream_part_projection_failed');
             deferredProjectionFailure = failureEvent(
               projectionError,
               request.signal,
@@ -452,8 +463,10 @@ export function createAiSdkInferenceCapability(
               dependencies.provider_failure_classifier,
               dependencies.diagnostic_sink,
               diagnosticContext,
+              part.type,
             );
-            // 发现 Host 级协议违规后先终止并排空底层流，避免异步迭代器以空 reason 取消时
+            // 无法投影到 canonical 完成态时先终止并排空底层流；SDK 对 invalid call
+            // 合成的 tool-error 也不能越过本边界伪装成工具执行结果。避免空 reason 取消时
             // 留下未处理 rejection；canonical 层只在 wire stream 收口后发布一次失败。
             providerAbortController.abort(projectionError);
             continue;
