@@ -505,7 +505,7 @@ src/app-hosts/linnya/agent-registry/
 
 - [subagentRunner.integration.test.ts](../../../tools/agent_control/subrun/shared/__tests__/subagentRunner.integration.test.ts)
 - [subagentTool.failure-recovery.integration.test.ts](../../../tools/agent_control/subrun/subagent/__tests__/subagentTool.failure-recovery.integration.test.ts)
-- [researchSubagentWorkspace.integration.test.ts](../../../tools/deep_research/__tests__/researchSubagentWorkspace.integration.test.ts)
+- [researchDelegation.integration.test.ts](../application/research/researchDelegation.integration.test.ts)
 
 ---
 
@@ -602,6 +602,30 @@ Knowledge 检索读取、Skill、Shell/Process 计算、长输出续读及阶段
 自动激活。自包含阶段请求列明原问题、读者、材料/时间范围、指定版本与文档、可补查范围、
 具体反馈、适用资源和单一产物；调查复核读取调查记录，不能被当作成稿审。作者写作和论证
 复核读取 modeling 与 article-craft，调查与来源复核读取 modeling；business-analysis 仅在
-题目需要时添加。可检验的反馈处理候选在 Research application 中独立版本化，不复制到四份
-system，也不改写正式 Skill。真实 prepared 消息及 Skill 工具返回需单独验证；资源送达、动作
-执行、论证有效与最终成稿质量仍是不同事实。
+题目需要时读取。当前生产阶段准备不会自动识别商业题并追加该资源；主 Agent 的具体委派
+与 Skill 的按需读取要求仍需由模型执行。不能由 requiredResources 列表推断实际加载。
+
+### 研究方法的维护位置
+
+共同方法见 [deep-research Skill](../../../features/skills/builtin/skills/deep-research/SKILL.md)
+及其资源；角色 system 确定谁负责，阶段请求交代本题需要解决什么。修改时沿实际执行入口核对：
+
+| 能力 | 当前执行位置 | 维护入口 |
+| --- | --- | --- |
+| 问题、立场利益、异常与间接线索、竞争解释 | 主 Agent 持续调查；按缺口委派专项调查或成文前调查复核 | Skill/modeling；[父角色](./agents/research_v1/leaderPrompt.ts)、[调查复核](./agents/research_investigation_review_v1/prompt.ts)及具体委派 |
+| 机制、约束、反事实与条件建模 | 主 Agent 综合；论证角色独立检验；情景、贝叶斯及商业估算按题选用 | Skill 的 modeling/business-analysis；[论证角色](./agents/research_argument_review_v1/prompt.ts) |
+| 原件、口径、计算与正文比较 | 主 Agent 使用证据；来源角色从正文反推检查对象并实际计算 | [来源角色](./agents/research_source_review_v1/prompt.ts)与现有读取、计算工具 |
+| 概念顺序、因果桥接、重点分配 | 父作者成文；论证角色核读者路径 | Skill/article-craft；父角色与论证角色 |
+| 反馈取舍、修订传播、最终回读 | 父 Agent 核两份原始评审，亲自修订和读取保存稿 | 父角色；子评审方法由[阶段请求](../application/research/functions/buildResearchStageRequest.ts)组合 |
+
+成文前调查复核可以不委派，但父 Agent 仍须按 Skill 检验重要解释及有力替代解释；可选的是
+协作方式，不是研究责任。提交工具的保存与投影检查也不能代替作者对保存稿内容的检查。
+
+[反馈方法资产](../application/research/definitions/researchFeedbackMethod.ts)由阶段请求选择
+author/reviewer 段。正常父作者路径不调用 draft/revision child 的请求构建，父作者要求由
+leaderPrompt 承载；只修改 author 段不会改变正常父作者行为。历史请求仍按其冻结配置恢复。
+这不是另设方法真源的理由：后续方法改动须先明确当前消费者，避免只覆盖旧入口或复制多套正文。
+
+当前父子角色只启用预算收尾提醒，没有按研究进度自动注入方法的提醒引擎。具体缺口应进入
+主 Agent 的下一次委派；Host 的版本、提交和完成检查不判定解释是否成立。真实 prepared 消息、
+Skill 工具返回及后续动作需分别验证；方法送达、动作执行、论证有效与结果进入终稿是不同事实。
