@@ -26,6 +26,7 @@ import {
 } from '../../persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import { RegisteredChildRunInvoker } from '../../child-runs/registeredSubagentInvoker';
 import { toolRegistry } from '../../tools/toolRegistry';
+import type { ToolContext } from 'src/tools/types';
 
 const conversationId = 'lead-research-conversation';
 const modelId = 'scripted-test-model';
@@ -84,17 +85,18 @@ async function seed(fixture: Fixture) {
   // 夹具也经通用 Workspace 写入，不再借用已撤回的研究提交/回执 owner。
   const writer = toolRegistry.getTool('write_file');
   if (!writer) throw new Error('Missing Workspace writer');
+  const context: ToolContext = {
+    databaseService: fixture.database,
+    workspaceService: new WorkspaceService(fixture.db),
+    workspaceProjectId: projectId,
+    conversationId,
+  };
   const written = await writer.run(
     {
       locator: paths.source,
       content: '# Source\n\nBaseline is 100; current is 110.',
     },
-    {
-      databaseService: fixture.database,
-      workspaceService: new WorkspaceService(fixture.db),
-      workspaceProjectId: projectId,
-      conversationId,
-    }
+    context
   );
   expect(WorkspaceWriteFileResultSchema.parse(JSON.parse(written)).data.locator).toBe(paths.source);
   return projectId;
@@ -317,15 +319,13 @@ async function assertDelivered(fixture: Fixture, projectId: string) {
   }
   const reader = toolRegistry.getTool('read_file');
   if (!reader) throw new Error('Missing Workspace reader');
-  const revision = await reader.run(
-    { locator: paths.revision },
-    {
-      databaseService: fixture.database,
-      workspaceService: new WorkspaceService(fixture.db),
-      workspaceProjectId: projectId,
-      conversationId,
-    }
-  );
+  const context: ToolContext = {
+    databaseService: fixture.database,
+    workspaceService: new WorkspaceService(fixture.db),
+    workspaceProjectId: projectId,
+    conversationId,
+  };
+  const revision = await reader.run({ locator: paths.revision }, context);
   expect(revision).toContain('The source does not distinguish competing causes.');
   expect(new WorkspaceService(fixture.db).getChildNodes(null, projectId)).toHaveLength(6);
   expect((await fixture.flow.getActiveForegroundRun(conversationId)).run).toBeNull();
