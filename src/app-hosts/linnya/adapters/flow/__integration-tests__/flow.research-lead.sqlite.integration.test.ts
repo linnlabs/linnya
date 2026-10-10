@@ -13,6 +13,7 @@ import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { ReadFileTool } from 'src/tools/workspace/read_file/ReadFileTool';
+import { WriteFileTool } from 'src/tools/workspace/write_file/WriteFileTool';
 import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
@@ -21,7 +22,6 @@ import {
   createDurableFlowHarness,
   installRecoveryModelFixture,
 } from '../__test-helpers__/createDurableFlowHarness';
-import { createWorkspaceResearchDocumentPort } from '../../research-documents';
 import {
   readSubrunTrace,
   readTail,
@@ -83,19 +83,19 @@ async function close(fixture: Fixture) {
 async function seed(fixture: Fixture) {
   const projectId = new WorkspaceService(fixture.db).createProject('Lead acceptance');
   await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
-  await fixture.eventStore.ensureConversation('seed', [], projectId, 'agent');
-  await fixture.eventStore.beginRunSession('seed', 'seed-run', { kind: 'agent' });
-  await createWorkspaceResearchDocumentPort({
-    db: fixture.db,
-    eventStore: fixture.eventStore,
-  }).save({
-    projectId,
-    conversationId: 'seed',
-    sourceRunId: 'seed-run',
-    path: paths.source,
-    text: '# Source\n\nBaseline is 100; current is 110.',
-    receipt: { prepare() {}, commit() {} },
-  });
+  // 夹具也经通用 Workspace 写入，不再借用已撤回的研究提交/回执 owner。
+  const written = await new WriteFileTool().run(
+    {
+      locator: paths.source,
+      content: '# Source\n\nBaseline is 100; current is 110.',
+    },
+    {
+      databaseService: fixture.database,
+      workspaceProjectId: projectId,
+      conversationId,
+    }
+  );
+  expect(WorkspaceWriteFileResultSchema.parse(JSON.parse(written)).data.locator).toBe(paths.source);
   return projectId;
 }
 async function start(fixture: Fixture, projectId: string) {

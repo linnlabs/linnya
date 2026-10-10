@@ -273,6 +273,7 @@ describe('registered child tool scope ownership', () => {
       registeredDefinitionSpy.mockReturnValue({
         ...registeredDefinition,
         id: 'changed-registered-identity',
+        config: { ...registeredDefinition.config, availableTools: [] },
       });
       // 真正 registry 能力漂移先由恢复兼容性门禁阻止；恢复原版本后仍只用 descriptor。
       await expect(invoker.invoke(request)).rejects.toThrow('Original run capabilities changed');
