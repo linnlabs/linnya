@@ -18,3 +18,6 @@ call；`listRun`
 
 Schema 由 DatabaseService 正式注册，是幂等 create-only 新表，不要求提升已有 Host
 schema 版本。后续重启从 SQLite 原回执恢复同一 subrunId/request，不重新生成调用或偷换模型。
+
+父级提交和子级委派共用表与原子文档事务。旧 child
+JSON 保留 subrunId/request/delegation；父稿使用 runId/submission，不制造子运行或模型请求。父身份必须等于持久根运行。父调查主记录、初稿和修订各只允许一份成功产物；未保存的失败准备记录可保留，新调用修正文稿不消耗成功名额。commitArtifact 在文档事务内再次检查同根同阶段的成功父稿，防止并发双写。

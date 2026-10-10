@@ -1,6 +1,9 @@
 import { runIdFromSubrunId } from '@linnlabs/linnkit/contracts';
 import type { ToolContext } from 'src/tools/types';
-import type { PreparedResearchStage, ResearchExecutionIdentity } from '../../application/research';
+import type {
+  PreparedResearchChildStage,
+  ResearchExecutionIdentity,
+} from '../../application/research';
 import {
   ResearchInputsChangedError,
   type ResearchStageSubmission,
@@ -14,7 +17,7 @@ import {
 /** 单阶段写入能力绑定真实 child，统一委派与旧运行恢复共用同一个出口。 */
 export function bindResearchStageSubmission(
   context: ToolContext,
-  stage: PreparedResearchStage,
+  stage: PreparedResearchChildStage,
   owner: ResearchExecutionIdentity,
   submit: ResearchStageSubmission,
   signal?: AbortSignal
@@ -27,10 +30,11 @@ export function bindResearchStageSubmission(
       researchCompletion: undefined,
       researchRetrievalAllowed: stage.invocation.task_type !== 'fixed',
       abortSignal: stageSignal,
-      async researchDocumentSubmission(content, caller) {
+      async researchDocumentSubmission(input, caller) {
         const callId = caller.parentToolCallId;
         const receipts = caller.toolResultReceipts;
         if (
+          'stage' in input ||
           caller.runId !== expectedRunId ||
           caller.conversationId !== owner.conversationId ||
           !callId ||
@@ -40,7 +44,7 @@ export function bindResearchStageSubmission(
         try {
           return await submit({
             sourceRunId: expectedRunId,
-            content,
+            content: input.content,
             signal: caller.abortSignal,
             resultCommit: {
               prepare: () => receipts.prepare(callId, 'submit_research_document'),

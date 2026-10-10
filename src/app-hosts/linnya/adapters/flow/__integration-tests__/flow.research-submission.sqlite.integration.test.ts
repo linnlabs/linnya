@@ -336,9 +336,9 @@ describe('Recovered legacy research submission in the producing child Graph and 
     const original = tool.run.bind(tool);
     const interception = vi.spyOn(tool, 'run').mockImplementation(async (args, context) => {
       const result = await original(args, context);
-      expect(
-        SubmitResearchDocumentToolOutputSchema.parse(JSON.parse(result)).control.terminateRun
-      ).toBe(true);
+      expect('control' in SubmitResearchDocumentToolOutputSchema.parse(JSON.parse(result))).toBe(
+        true
+      );
       throw new graph.RunRecoveryBlockedError(
         'Simulated loss after atomic submission before ToolNode output'
       );
@@ -504,15 +504,21 @@ describe('Recovered legacy research submission in the producing child Graph and 
       if (!submit) throw new Error('Missing stage capability');
       for (const forgedRun of ['sibling-research-child', 'nested-deep-web-child']) {
         await expect(
-          submit('Forged document', { ...context, runId: RunIdSchema.parse(forgedRun) })
+          submit(
+            { content: 'Forged document' },
+            { ...context, runId: RunIdSchema.parse(forgedRun) }
+          )
         ).rejects.toMatchObject({ code: 'RESEARCH_SUBMISSION_SCOPE_REQUIRED' });
       }
       const result = await original(args, context);
       await expect(
-        submit('Different body must not overwrite', {
-          ...context,
-          parentToolCallId: ToolCallIdSchema.parse('another-submit-call'),
-        })
+        submit(
+          { content: 'Different body must not overwrite' },
+          {
+            ...context,
+            parentToolCallId: ToolCallIdSchema.parse('another-submit-call'),
+          }
+        )
       ).rejects.toThrow('already submitted');
       return result;
     });

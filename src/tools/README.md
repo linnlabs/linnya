@@ -65,7 +65,7 @@ host projection；不能直接把内部 runtime 对象塞进工具结果。
 
 `subagent` 是 Agent 为节省上下文、委派独立工作而使用的通用协作能力，不是子 Agent 的专属功能入口。普通 ToolNode 顺序执行多次委派；不因模型一次发出多个调用而并行。facade、动态类型解析、正式 artifact 提取与可见 child runner 均收口在 [Subagent 工具规范](./agent_control/subrun/subagent/README.md)。旧 `delegate` 没有 executable alias；历史事件只由 Renderer 回放配置解释。
 
-研究专属交接工具位于 [Research 执行适配器](../app-hosts/linnya/adapters/research-execution/README.md)：`submit_research_document` 只负责子角色提交当前新稿，`complete_research` 只核对已保存文档与关联评审并结束主 Agent。新研究逐项使用统一 `subagent`，不能用一个工具隐藏整条流程；`research_run` 仅保留旧已接纳运行的恢复。
+研究专属交接工具位于 [Research 执行适配器](../app-hosts/linnya/adapters/research-execution/README.md)：`submit_research_document` 共用于父 Agent 保存调查主记录、初稿、修订和子角色提交专项产物；父保存继续研究，child 保存结束自身，`complete_research` 只核对已保存文档与关联评审并结束主 Agent。新研究逐项使用统一 `subagent`，不能用一个工具隐藏整条流程；`research_run` 仅保留旧已接纳运行的恢复。
 
 TaskState、Checkpoint、Ask 与 Subrun 的目录和依赖边界见 [Agent Control 工具族](./agent_control/README.md)。该目录只做能力归属，不把四种不同生命周期合并成统一状态机。
 

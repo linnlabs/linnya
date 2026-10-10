@@ -91,3 +91,29 @@ export function researchRevisionReviews(
   validateResearchDelegationInputs('revision', selected);
   return [one(selected, 'argument_review'), one(selected, 'source_review')];
 }
+
+/** 写作属于父 Agent；专项调查材料不能取代它自己保存的主调查记录。 */
+export function validateResearchParentInputs(
+  stage: 'investigation' | 'draft' | 'revision',
+  selected: readonly ResearchStageReceipt[]
+): void {
+  if (stage === 'investigation') return;
+  if (!selected.some(item => item.stage === 'investigation' && 'runId' in item && item.artifact))
+    throw new Error('Include the lead Agent’s saved investigation record in input_documents.');
+  if (
+    stage === 'draft' &&
+    selected.some(
+      item =>
+        item.stage === 'draft' ||
+        item.stage === 'argument_review' ||
+        item.stage === 'source_review' ||
+        item.stage === 'revision'
+    )
+  )
+    throw new Error('An initial draft cannot depend on article reviews or an existing article.');
+  if (stage === 'revision') {
+    validateResearchDelegationInputs(stage, selected);
+    if (!('runId' in one(selected, 'draft')))
+      throw new Error('Revise the lead Agent’s own submitted draft.');
+  }
+}

@@ -123,7 +123,8 @@ function assignment(stage: ResearchStage, inputs: ResearchStage[]): ScriptedLlmT
       const exposed = call.options.tools?.map(item => item.name) ?? [];
       expect(exposed).toContain('subagent');
       expect(exposed).toContain('complete_research');
-      for (const name of ['research_run', 'submit_research_document', 'write_file', 'edit_file'])
+      expect(exposed).toContain('submit_research_document');
+      for (const name of ['research_run', 'write_file', 'edit_file'])
         expect(exposed).not.toContain(name);
       tool.argumentsJson = JSON.stringify({
         description: stage,
@@ -173,17 +174,40 @@ function complete(): ScriptedLlmTurn {
     },
   };
 }
-const sequence: Array<{ stage: ResearchStage; inputs: ResearchStage[] }> = [
-  { stage: 'investigation', inputs: [] },
-  { stage: 'investigation_review', inputs: ['investigation'] },
-  { stage: 'draft', inputs: ['investigation', 'investigation_review'] },
-  { stage: 'argument_review', inputs: ['investigation', 'draft'] },
-  { stage: 'source_review', inputs: ['investigation', 'draft'] },
-  { stage: 'revision', inputs: ['investigation', 'draft', 'argument_review', 'source_review'] },
-];
+function parentSubmission(
+  stage: 'investigation' | 'draft' | 'revision',
+  inputs: ResearchStage[]
+): ScriptedLlmTurn {
+  const tool = {
+    id: `parent-submit-${stage}`,
+    name: 'submit_research_document',
+    argumentsJson: '',
+  };
+  return {
+    toolCalls: [tool],
+    assertCall(call) {
+      expect(call.modelId).toBe(modelId);
+      expect(call.options.tools?.map(item => item.name)).toContain('subagent');
+      tool.argumentsJson = JSON.stringify({
+        stage,
+        input_documents: [
+          'workspace:/source.md',
+          ...inputs.map(input => pathInMessages(call.messages, input)),
+        ],
+        content: `# ${stage}\n\nThe supplied value rose from 100 to 110, a 10% change. Its cause is not identified.`,
+      });
+    },
+  };
+}
 function chain(): ScriptedLlmTurn[] {
   return [
-    ...sequence.flatMap(({ stage, inputs }) => [assignment(stage, inputs), submission(stage)]),
+    parentSubmission('investigation', []),
+    parentSubmission('draft', ['investigation']),
+    assignment('argument_review', ['investigation', 'draft']),
+    submission('argument_review'),
+    assignment('source_review', ['investigation', 'draft']),
+    submission('source_review'),
+    parentSubmission('revision', ['investigation', 'draft', 'argument_review', 'source_review']),
     complete(),
   ];
 }
@@ -205,7 +229,7 @@ async function assertDelivered(fixture: Fixture, projectId: string) {
   const children = (
     await fixture.runtime.supervisor.list({ parentRunId: RunIdSchema.parse(delivery.run_id) })
   ).runs;
-  expect(children).toHaveLength(6);
+  expect(children).toHaveLength(2);
   expect(children.every(child => child.status === 'completed')).toBe(true);
   expect(
     events.filter(
@@ -220,10 +244,14 @@ async function assertDelivered(fixture: Fixture, projectId: string) {
     conversationId,
     modelId,
   });
-  expect(receipts).toHaveLength(6);
+  expect(receipts).toHaveLength(5);
   for (const { identity, receipt } of receipts) {
     expect(receipt.artifact).toBeDefined();
     expect(receipt.invocation).toEqual(scope);
+    if ('runId' in receipt) {
+      expect(receipt.runId).toBe(delivery.run_id);
+      continue;
+    }
     const trace = readSubrunTrace(
       fixture.db,
       conversationId,
@@ -236,34 +264,34 @@ async function assertDelivered(fixture: Fixture, projectId: string) {
   const projection = readTail(fixture.db, conversationId, 100);
   if (projection.status !== 'ready') throw new Error('Missing root projection');
   expect(projection.messages.filter(message => message.message_type === 'tool_calls')).toHaveLength(
-    7
+    6
   );
-  expect(new WorkspaceService(fixture.db).getChildNodes(null, projectId)).toHaveLength(7);
+  expect(new WorkspaceService(fixture.db).getChildNodes(null, projectId)).toHaveLength(6);
   expect((await fixture.flow.getActiveForegroundRun(conversationId)).run).toBeNull();
   fixture.ai.assertAllTurnsConsumed();
   return { parentRunId: delivery.run_id, result };
 }
 
 describe('Lead research through unified subagent and durable document handoff', () => {
-  it('正常根模型逐次委派六次、独立轨迹和正式文档交付；重载保留七个工具而非一张总卡', async () => {
+  it('父模型自己保存调查、初稿和修订，仅双复核使用child，重载保留独立提交与委派', async () => {
     const fixture = await open(chain());
     const projectId = await seed(fixture);
     await start(fixture, projectId);
     const delivered = await assertDelivered(fixture, projectId);
-    expect(fixture.ai.getCalls()).toHaveLength(13);
+    expect(fixture.ai.getCalls()).toHaveLength(8);
     await close(fixture);
     const reloaded = await open([]);
     const projection = readTail(reloaded.db, conversationId, 100);
     if (projection.status !== 'ready') throw new Error('Missing reload');
     expect(
       projection.messages.filter(message => message.message_type === 'tool_calls')
-    ).toHaveLength(7);
+    ).toHaveLength(6);
     expect(
       (await reloaded.runtime.supervisor.peek(RunIdSchema.parse(delivered.parentRunId)))?.status
     ).toBe('completed');
   });
   it('child已提交但父工具未接纳时恢复原委派，不重复文档或模型调用', async () => {
-    const first = await open(chain().slice(0, 2));
+    const first = await open(chain().slice(0, 4));
     const projectId = await seed(first);
     const original = RegisteredChildRunInvoker.prototype.invoke;
     const interception = vi
@@ -286,7 +314,7 @@ describe('Lead research through unified subagent and durable document handoff', 
     first.ai.assertAllTurnsConsumed();
     interception.mockRestore();
     await close(first);
-    const resumed = await open(chain().slice(2));
+    const resumed = await open(chain().slice(4));
     const current = (await resumed.flow.getActiveForegroundRun(conversationId)).run;
     if (!current || current.status !== 'paused' || !current.pause?.settled || !current.execution_id)
       throw new Error('Missing recovered pause');
@@ -300,12 +328,67 @@ describe('Lead research through unified subagent and durable document handoff', 
       () => {}
     );
     await assertDelivered(resumed, projectId);
-    expect(resumed.ai.getCalls()).toHaveLength(11);
+    expect(resumed.ai.getCalls()).toHaveLength(4);
     expect(
       (
         await resumed.runtime.supervisor.list({ parentRunId: RunIdSchema.parse(root.run_id) })
       ).runs.map(item => item.runId)
     ).toContain(originalChildren[0]?.runId);
+  });
+  it('父稿与结果已经提交但工具输出中断时，恢复原稿并继续研究，不重复写入或提前结束', async () => {
+    const first = await open(chain().slice(0, 1));
+    const projectId = await seed(first);
+    const tool = toolRegistry.getTool('submit_research_document');
+    if (!tool) throw new Error('Missing submission tool');
+    const original = tool.run.bind(tool);
+    const interruption = vi.spyOn(tool, 'run').mockImplementation(async (args, context) => {
+      const output = JSON.parse(await original(args, context));
+      expect(output).not.toHaveProperty('control');
+      throw new graph.RunRecoveryBlockedError('Interrupted after parent document commit');
+    });
+    await start(first, projectId);
+    const root = (await first.flow.getActiveForegroundRun(conversationId)).run;
+    if (!root || root.status !== 'paused' || !root.pause?.settled)
+      throw new Error('Expected paused parent');
+    const originalReceipt = new SqliteResearchStageReceiptStore(first.db).listRun({
+      parentRunId: root.run_id,
+      projectId,
+      conversationId,
+      modelId,
+    })[0];
+    if (!originalReceipt?.receipt.artifact) throw new Error('Missing committed parent document');
+    expect(
+      first.runtime.toolResults?.read(
+        root.run_id,
+        'parent-submit-investigation',
+        'submit_research_document'
+      )
+    ).toMatchObject({ atomic_owner: 1 });
+    expect(
+      (await first.runtime.supervisor.list({ parentRunId: RunIdSchema.parse(root.run_id) })).runs
+    ).toHaveLength(0);
+    first.ai.assertAllTurnsConsumed();
+    interruption.mockRestore();
+    await close(first);
+    const resumed = await open(chain().slice(1));
+    const current = (await resumed.flow.getActiveForegroundRun(conversationId)).run;
+    if (!current || !current.execution_id || !current.pause?.settled)
+      throw new Error('Missing restored parent');
+    await resumed.flow.continueRun(
+      root.run_id,
+      {
+        conversation_id: conversationId,
+        expected_execution_id: current.execution_id,
+        expected_updated_at: current.pause.updated_at,
+      },
+      () => {}
+    );
+    await assertDelivered(resumed, projectId);
+    const recovered = new SqliteResearchStageReceiptStore(resumed.db).list(
+      originalReceipt.identity
+    )[0];
+    expect(recovered?.artifact).toEqual(originalReceipt?.receipt.artifact);
+    expect(resumed.ai.getCalls()).toHaveLength(7);
   });
   it('fixed根检索和未提交child不能产生正式交付，主Agent仍能说明失败', async () => {
     const fixture = await open([

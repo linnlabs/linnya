@@ -107,7 +107,8 @@ describe('registered child execution scope through ToolNode and ToolRegistry', (
     const roles = registry.getToolSchemas({ invocation: research, toolNames: ['subagent'] })[0]
       ?.function.parameters.properties.subagent_type.enum;
     expect(roles).toEqual(research.availableSubagentTypes);
-    expect(roles).toHaveLength(6);
+    expect(roles).not.toContain('research_draft');
+    expect(roles).not.toContain('research_revision');
     expect(roles).not.toContain('general');
     expect(roles).not.toContain('document_editor');
     if (!roles) throw new Error('Research role catalog is unavailable');

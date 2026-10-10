@@ -36,6 +36,7 @@ function documents() {
 function useCase() {
   const registry = new SQLiteRunRegistryStore(database.getDb());
   return createResearchDelegationUseCase({
+    authoring: 'delegated',
     documents: documents(),
     receipts: new SqliteResearchStageReceiptStore(database.getDb()),
     async childCompleted(subrunId, parentRunId) {

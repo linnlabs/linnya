@@ -1,7 +1,7 @@
 import {
   ResearchRunArgsSchema,
   ResearchRunDataSchema,
-  type ResearchRunData,
+  ResearchChildArtifactSchema,
   type ResearchStage,
 } from '@app/schemas';
 import {
@@ -55,6 +55,8 @@ export function createResearchUseCase(ports: ResearchUseCasePorts): ResearchUseC
             })
           );
         const session = await createResearchStageSession(ports, identity, prepared, signal);
+        if ('runId' in prepared)
+          throw new Error('Legacy research requires its admitted child stages.');
         // 已提交文档仍须结算原 child；业务回执不替代运行终态。
         const result = await ports.children.execute(prepared, identity, session.submit, signal);
         return session.accept(result);
@@ -73,17 +75,20 @@ export function createResearchUseCase(ports: ResearchUseCasePorts): ResearchUseC
         if (rejected?.status === 'rejected') throw rejected.reason;
         const accepted = reviews.flatMap(item => (item.status === 'fulfilled' ? [item.value] : []));
         await stage('revision', [...beforeReview, ...accepted]);
-        const artifacts = researchArtifacts(ports.receipts.list(identity));
-        const result: ResearchRunData = {
+        const artifacts = researchArtifacts(ports.receipts.list(identity)).map(item =>
+          ResearchChildArtifactSchema.parse(item)
+        );
+        return ResearchRunDataSchema.parse({
           status: 'delivered',
           model_id: identity.modelId,
           subrun_ids: artifacts.map(item => item.subrun_id),
           artifacts,
-        };
-        return ResearchRunDataSchema.parse(result);
+        });
       } catch (error) {
         if (!(error instanceof ResearchInputsChangedError)) throw error;
-        const artifacts = researchArtifacts(ports.receipts.list(identity));
+        const artifacts = researchArtifacts(ports.receipts.list(identity)).map(item =>
+          ResearchChildArtifactSchema.parse(item)
+        );
         return ResearchRunDataSchema.parse({
           status: 'inputs_changed',
           model_id: identity.modelId,

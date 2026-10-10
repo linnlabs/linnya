@@ -9,7 +9,7 @@ import { BaseTool, type ToolContext, type ToolParameterSchema } from 'src/tools/
 export class CompleteResearchTool extends BaseTool {
   readonly name = 'complete_research';
   readonly description =
-    '交付本次研究已保存的修订稿。核对调查、独立论证/来源评审与修订的真实提交和材料版本；不认证全文质量。必须提供本次 research_revision 返回的文档路径，不能提供初稿或模型自述的完成状态。成功后结束研究。';
+    '交付本次研究已保存的修订稿。核对调查、独立论证/来源评审与修订的真实提交和材料版本；不认证全文质量。提供正式提交返回的修订稿路径，不能提供初稿或模型自述的完成状态。成功后结束研究。';
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     additionalProperties: false,

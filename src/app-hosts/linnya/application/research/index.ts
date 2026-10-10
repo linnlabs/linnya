@@ -13,6 +13,8 @@ export type {
   ResearchExecutionIdentity,
   ResearchStageReceiptPort,
   PreparedResearchStage,
+  PreparedResearchChildStage,
+  PreparedResearchParentStage,
   ResearchStageReceipt,
 } from './definitions/researchStageReceipt';
 export type {

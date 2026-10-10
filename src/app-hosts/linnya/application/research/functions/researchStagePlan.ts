@@ -7,7 +7,7 @@ import {
   type ResearchDocumentSnapshot,
 } from '../definitions/researchDocumentPort';
 import type {
-  PreparedResearchStage,
+  PreparedResearchChildStage,
   ResearchExecutionIdentity,
   ResearchStageReceipt,
 } from '../definitions/researchStageReceipt';
@@ -66,13 +66,10 @@ export function prepareResearchStage(input: {
   identity: ResearchExecutionIdentity;
   materials: readonly ResearchDocumentBinding[];
   predecessors: readonly ResearchStageReceipt[];
-}): PreparedResearchStage {
+  boundedAssignment?: string;
+}): PreparedResearchChildStage {
   const { stage, invocation, identity, materials, predecessors } = input;
-  const key = createHash('sha256')
-    .update(`${identity.parentRunId}:${identity.toolCallId}`)
-    .digest('hex')
-    .slice(0, 16);
-  const outputPath = `workspace:/research-${key}-${stage}.md`;
+  const outputPath = researchStageOutputPath(identity, stage);
   const artifacts = predecessors.map(item => {
     if (!item.artifact)
       throw new Error(`Research predecessor ${item.stage} has no committed artifact`);
@@ -105,6 +102,7 @@ export function prepareResearchStage(input: {
         purpose: RESEARCH_STAGE_PURPOSE[receipt.stage],
       })),
       unresolvedQuestions: [],
+      ...(input.boundedAssignment ? { boundedAssignment: input.boundedAssignment } : {}),
       feedback: [],
       businessAnalysisNeeded: false,
       output: { locator: outputPath, purpose: RESEARCH_STAGE_PURPOSE[stage] },
@@ -121,7 +119,7 @@ export function researchArtifacts(
       ? [
           ResearchRunArtifactSchema.parse({
             stage,
-            subrun_id: receipt.subrunId,
+            ...('runId' in receipt ? { run_id: receipt.runId } : { subrun_id: receipt.subrunId }),
             path: binding.locator,
             inode: binding.inode,
             sha256: binding.sha256,
@@ -130,6 +128,17 @@ export function researchArtifacts(
         ]
       : [];
   });
+}
+
+export function researchStageOutputPath(
+  identity: ResearchExecutionIdentity,
+  stage: ResearchStage
+): string {
+  const key = createHash('sha256')
+    .update(`${identity.parentRunId}:${identity.toolCallId}`)
+    .digest('hex')
+    .slice(0, 16);
+  return `workspace:/research-${key}-${stage}.md`;
 }
 
 /** 初次读取仍严格报错；只有已经绑定过的输入不再可用时，才属于版本失效。 */

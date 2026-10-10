@@ -18,6 +18,10 @@ import { SQLiteRunRegistryStore } from '../persistence/run-registry';
 import { SqliteRunDescriptorStore } from '../persistence/run-descriptors';
 import { SqliteResearchStageReceiptStore } from '../persistence/research-stage-receipts';
 import { bindResearchStageSubmission } from './bindResearchStageSubmission';
+import {
+  ResearchSubmissionScopeError,
+  serializeResearchDocumentSubmission,
+} from './SubmitResearchDocumentTool';
 
 /** 装配研究交接能力；子运行启动仍由通用 subagent 工具唯一负责。 */
 export async function decorateResearchDelegation(context: ToolContext): Promise<void> {
@@ -51,7 +55,14 @@ export async function decorateResearchDelegation(context: ToolContext): Promise<
     modelId,
   };
   const registry = new SQLiteRunRegistryStore(db);
+  // 依据接纳时冻结的工具能力区分两代主 Agent；恢复不能把旧委派悄悄改成父稿。
+  const admittedTools = descriptor.compatibility.agentConfiguration.availableTools;
+  const authoring =
+    Array.isArray(admittedTools) && admittedTools.includes('submit_research_document')
+      ? 'parent'
+      : 'delegated';
   const useCase = createResearchDelegationUseCase({
+    authoring,
     documents: createWorkspaceResearchDocumentPort({
       db,
       eventStore: new SQLiteEventStore(db),
@@ -66,6 +77,39 @@ export async function decorateResearchDelegation(context: ToolContext): Promise<
     },
   });
   context.researchRetrievalAllowed = invocation.task_type !== 'fixed';
+  if (authoring === 'parent')
+    context.researchDocumentSubmission = async (input, caller) => {
+      const receipts = caller.toolResultReceipts;
+      if (
+        !('stage' in input) ||
+        caller.runId !== identity.parentRunId ||
+        caller.conversationId !== identity.conversationId ||
+        caller.parentToolCallId !== identity.toolCallId ||
+        !receipts
+      )
+        throw new ResearchSubmissionScopeError();
+      const { session } = await useCase.prepareParent({
+        identity,
+        invocation,
+        stage: input.stage,
+        documents: input.input_documents,
+        signal: caller.abortSignal,
+      });
+      return session.submit({
+        sourceRunId: identity.parentRunId,
+        content: input.content,
+        signal: caller.abortSignal,
+        resultCommit: {
+          prepare: () => receipts.prepare(identity.toolCallId, 'submit_research_document'),
+          commit: artifact =>
+            receipts.commit(
+              identity.toolCallId,
+              'submit_research_document',
+              serializeResearchDocumentSubmission(artifact)
+            ),
+        },
+      });
+    };
   context.prepareSubagentTask = async request => {
     if (request.modelId !== identity.modelId)
       throw new Error('Research children must inherit the selected lead model.');

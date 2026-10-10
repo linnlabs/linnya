@@ -20,7 +20,7 @@ export const ResearchDocumentBindingStorageSchema: z.ZodType<ResearchDocumentBin
   .strict();
 
 // 输入是持久 JSON；正式 locator 的品牌只由子 schema parse 后产生，不能要求输入已带品牌。
-export const PreparedResearchStageStorageSchema = z
+const PreparedResearchChildStorageSchema = z
   .object({
     stage: ResearchStageSchema,
     invocation: ResearchRunArgsSchema,
@@ -48,6 +48,23 @@ export const PreparedResearchStageStorageSchema = z
       .optional(),
   })
   .strict();
+
+const PreparedResearchParentStorageSchema = z
+  .object({
+    stage: z.enum(['investigation', 'draft', 'revision']),
+    invocation: ResearchRunArgsSchema,
+    runId: Text,
+    inputs: z.array(ResearchDocumentBindingStorageSchema),
+    outputPath: WorkspaceFileLocatorSchema,
+    submission: z.object({ documents: z.array(WorkspaceFileLocatorSchema) }).strict(),
+  })
+  .strict();
+
+/** 旧 child JSON 保持原形；父稿只保存真实父身份与依赖声明。 */
+export const PreparedResearchStageStorageSchema = z.union([
+  PreparedResearchChildStorageSchema,
+  PreparedResearchParentStorageSchema,
+]);
 
 export const ResearchStageReceiptRowSchema = z
   .object({

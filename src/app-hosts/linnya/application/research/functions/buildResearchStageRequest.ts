@@ -102,7 +102,12 @@ export function buildResearchStageRequest(
     'Use modeling, sensitivity, scenarios or Bayesian reasoning only when the question benefits from them. Define objects, driver relations, constraint sources and unknown parameters; execute relevant calculations. Unsupported priors or likelihoods do not justify precise probabilities. A consistent conditional counterexample is not evidence that it occurred. Do not force three scenarios or numeric modeling into every task.',
     '',
     '## This stage',
-    contract.task,
+    input.boundedAssignment && input.stage === 'investigation'
+      ? 'Investigate only the bounded assignment below. The overall question is context, not a request to repeat the entire investigation. Return a compact evidence record with useful observations, exact source locators, acquisition limits and unresolved points. Do not draft an article or complete the parent’s investigation.'
+      : contract.task,
+    ...(input.boundedAssignment
+      ? ['Lead Agent assignment (within the frozen scope):', input.boundedAssignment]
+      : []),
     'Concrete unresolved questions:',
     linesOrNone(input.unresolvedQuestions),
     'Specific feedback to investigate (also read the full supplied original reviews):',

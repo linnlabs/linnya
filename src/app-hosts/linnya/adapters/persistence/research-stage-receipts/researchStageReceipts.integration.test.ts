@@ -9,7 +9,9 @@ import { SQLiteEventStore } from '../event-store';
 import { createWorkspaceResearchDocumentPort } from '../../research-documents';
 import type { ResearchDocumentBinding } from '../../../application/research/definitions/researchDocumentPort';
 import type {
-  PreparedResearchStage, ResearchExecutionIdentity,
+  PreparedResearchStage,
+  PreparedResearchChildStage,
+  ResearchExecutionIdentity,
 } from '../../../application/research/definitions/researchStageReceipt';
 import { SqliteResearchStageReceiptStore } from './index';
 
@@ -36,8 +38,11 @@ beforeEach(async () => {
   await eventStore.beginRunSession('research-conversation', 'research-parent', { kind: 'agent' });
   await eventStore.beginRunSession('research-conversation', 'research-author', { kind: 'agent' });
   identity = {
-    parentRunId: 'research-parent', toolCallId: 'research-call', projectId,
-    conversationId: 'research-conversation', modelId: 'frozen-model',
+    parentRunId: 'research-parent',
+    toolCallId: 'research-call',
+    projectId,
+    conversationId: 'research-conversation',
+    modelId: 'frozen-model',
   };
 });
 
@@ -48,29 +53,47 @@ afterEach(() => {
 
 function inputBinding(): ResearchDocumentBinding {
   return {
-    inode: 'workspace:input-document', locator: 'workspace:/input.md',
-    representation: 'workspace-markdown-current-v1', sha256: 'a'.repeat(64), citationSha256: 'b'.repeat(64),
+    inode: 'workspace:input-document',
+    locator: 'workspace:/input.md',
+    representation: 'workspace-markdown-current-v1',
+    sha256: 'a'.repeat(64),
+    citationSha256: 'b'.repeat(64),
   };
 }
 
-function prepared(): PreparedResearchStage {
+function prepared(): PreparedResearchChildStage {
   return {
     stage: 'investigation',
-    invocation: ResearchRunArgsSchema.parse({ question: 'Review the synthetic case', reader: 'General reader', task_type: 'fixed', materials: ['workspace:/input.md'] }),
+    invocation: ResearchRunArgsSchema.parse({
+      question: 'Review the synthetic case',
+      reader: 'General reader',
+      task_type: 'fixed',
+      materials: ['workspace:/input.md'],
+    }),
     subrunId: 'research-author',
     request: {
-      promptKey: 'deep_research_experimental', query: '  Frozen request\nRead workspace:/input.md.\n',
-      methodVersion: 'research-feedback-v1', requiredResources: ['references/modeling.md', 'references/article-craft.md'],
+      promptKey: 'deep_research_experimental',
+      query: '  Frozen request\nRead workspace:/input.md.\n',
+      methodVersion: 'research-feedback-v1',
+      requiredResources: ['references/modeling.md', 'references/article-craft.md'],
     },
-    inputs: [inputBinding()], outputPath: 'workspace:/investigation.md',
+    inputs: [inputBinding()],
+    outputPath: 'workspace:/investigation.md',
   };
 }
 
-function saveStage(input: PreparedResearchStage, afterCommit?: () => void) {
-  const documents = createWorkspaceResearchDocumentPort({ db: database.getDb(), workspaceService: workspace, eventStore });
+function saveStage(input: PreparedResearchChildStage, afterCommit?: () => void) {
+  const documents = createWorkspaceResearchDocumentPort({
+    db: database.getDb(),
+    workspaceService: workspace,
+    eventStore,
+  });
   return documents.save({
-    projectId: identity.projectId, conversationId: identity.conversationId,
-    sourceRunId: input.subrunId, path: input.outputPath, text: '# Investigation\n\nSynthetic findings.',
+    projectId: identity.projectId,
+    conversationId: identity.conversationId,
+    sourceRunId: input.subrunId,
+    path: input.outputPath,
+    text: '# Investigation\n\nSynthetic findings.',
     receipt: {
       prepare: () => receipts.assertPrepared(identity, input),
       commit: artifact => {
@@ -90,6 +113,7 @@ describe('Research stage receipt persistence', () => {
     database.close();
     openDatabase();
     const recovered = receipts.prepare(identity, input);
+    if ('runId' in recovered) throw new Error('Expected child receipt');
     expect(recovered.request.query).toBe(input.request.query);
     expect(recovered.subrunId).toBe(input.subrunId);
     expect(recovered.artifact).toMatchObject({ inode: output.inode, sha256: output.sha256 });
@@ -111,7 +135,10 @@ describe('Research stage receipt persistence', () => {
     const changedInputs: PreparedResearchStage[] = [
       { ...input, subrunId: 'replacement-child' },
       { ...input, request: { ...input.request, query: 'Rebuilt prompt' } },
-      { ...input, request: { ...input.request, requiredResources: ['references/business-analysis.md'] } },
+      {
+        ...input,
+        request: { ...input.request, requiredResources: ['references/business-analysis.md'] },
+      },
       { ...input, inputs: [{ ...inputBinding(), sha256: 'c'.repeat(64) }] },
       { ...input, outputPath: 'workspace:/replacement.md' },
       { ...input, invocation: { ...input.invocation, reader: 'Different reader' } },
@@ -126,8 +153,11 @@ describe('Research stage receipt persistence', () => {
   it('正文和receipt同事务回滚；恢复后只创建一个新稿并拒绝替换既有产物绑定', async () => {
     const input = prepared();
     receipts.prepare(identity, input);
-    await expect(saveStage(input, () => { throw new Error('simulated receipt transaction failure'); }))
-      .rejects.toThrow('simulated receipt transaction failure');
+    await expect(
+      saveStage(input, () => {
+        throw new Error('simulated receipt transaction failure');
+      })
+    ).rejects.toThrow('simulated receipt transaction failure');
     expect(workspace.getChildNodes(null, identity.projectId)).toEqual([]);
     expect(receipts.list(identity)).toEqual([input]);
     const output = await saveStage(input);
@@ -135,11 +165,24 @@ describe('Research stage receipt persistence', () => {
     if (!recovered?.artifact) throw new Error('Expected committed artifact');
     const artifact = recovered.artifact;
     expect(artifact.inode).toBe(output.inode);
-    expect(() => receipts.commitArtifact(identity, input, artifact)).toThrow('requires the document creation transaction');
-    database.getDb().transaction(() => receipts.commitArtifact(identity, input, artifact)).immediate();
-    expect(() => database.getDb().transaction(() => receipts.commitArtifact(identity, input, {
-      ...artifact, sha256: 'c'.repeat(64),
-    })).immediate()).toThrow('different artifact binding');
+    expect(() => receipts.commitArtifact(identity, input, artifact)).toThrow(
+      'requires the document creation transaction'
+    );
+    database
+      .getDb()
+      .transaction(() => receipts.commitArtifact(identity, input, artifact))
+      .immediate();
+    expect(() =>
+      database
+        .getDb()
+        .transaction(() =>
+          receipts.commitArtifact(identity, input, {
+            ...artifact,
+            sha256: 'c'.repeat(64),
+          })
+        )
+        .immediate()
+    ).toThrow('different artifact binding');
     expect(receipts.list(identity)).toEqual([recovered]);
     expect(workspace.getChildNodes(null, identity.projectId)).toHaveLength(1);
   });
@@ -148,11 +191,19 @@ describe('Research stage receipt persistence', () => {
     const input = prepared();
     expect(() => receipts.assertPrepared(identity, input)).toThrow('no prepared receipt');
     const artifact = { ...inputBinding(), locator: input.outputPath };
-    expect(() => database.getDb().transaction(() => receipts.commitArtifact(identity, input, artifact)).immediate())
-      .toThrow('no prepared receipt');
+    expect(() =>
+      database
+        .getDb()
+        .transaction(() => receipts.commitArtifact(identity, input, artifact))
+        .immediate()
+    ).toThrow('no prepared receipt');
     receipts.prepare(identity, input);
-    expect(() => database.getDb().transaction(() => receipts.commitArtifact(identity, input, inputBinding())).immediate())
-      .toThrow('path differs');
+    expect(() =>
+      database
+        .getDb()
+        .transaction(() => receipts.commitArtifact(identity, input, inputBinding()))
+        .immediate()
+    ).toThrow('path differs');
     expect(receipts.list(identity)).toEqual([input]);
   });
 

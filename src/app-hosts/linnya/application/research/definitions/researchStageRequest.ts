@@ -32,15 +32,17 @@ export interface ResearchStageRequestContext {
   readonly output: ResearchStageOutput;
   readonly businessAnalysisNeeded: boolean;
   readonly deliverableRequirements?: string;
+  /** 新主 Agent 的局部任务；没有此字段的历史请求保留原阶段合同。 */
+  readonly boundedAssignment?: string;
 }
 
 /** 固定材料编辑在类型上不允许启用外部检索。 */
 export type ResearchStageRequestInput = ResearchStageRequestContext & {
   readonly stage: ResearchStageRequestKind;
 } & (
-  | { readonly taskType: 'fixed'; readonly allowRetrieval: false }
-  | { readonly taskType: 'open' | 'update'; readonly allowRetrieval: boolean }
-);
+    | { readonly taskType: 'fixed'; readonly allowRetrieval: false }
+    | { readonly taskType: 'open' | 'update'; readonly allowRetrieval: boolean }
+  );
 
 export type ResearchMethodResource =
   | 'references/modeling.md'

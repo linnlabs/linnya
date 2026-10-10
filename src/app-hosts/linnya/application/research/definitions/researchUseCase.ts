@@ -1,7 +1,7 @@
 import type { ResearchRunArgs, ResearchRunArtifact, ResearchRunData } from '@app/schemas';
 import type { ToolOwnerResultCommit } from '../../run-resumption';
 import type {
-  PreparedResearchStage,
+  PreparedResearchChildStage,
   ResearchExecutionIdentity,
   ResearchStageReceiptPort,
 } from './researchStageReceipt';
@@ -25,7 +25,7 @@ export class ResearchInputsChangedError extends Error {
 
 export interface ResearchChildPort {
   execute(
-    stage: PreparedResearchStage,
+    stage: PreparedResearchChildStage,
     identity: ResearchExecutionIdentity,
     submit: ResearchStageSubmission,
     signal?: AbortSignal

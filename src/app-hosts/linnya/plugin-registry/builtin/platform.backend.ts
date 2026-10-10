@@ -44,6 +44,7 @@ export const platformBackendPlugin: PluginBackendContribution = {
       toolNames: [
         'subagent',
         'complete_research',
+        'submit_research_document',
         'web_search',
         'web_read',
         'knowledge_search',

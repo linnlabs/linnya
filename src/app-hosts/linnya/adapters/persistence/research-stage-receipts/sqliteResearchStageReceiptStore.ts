@@ -43,6 +43,8 @@ export class SqliteResearchStageReceiptStore implements ResearchStageReceiptPort
 
   prepare(identity: ResearchExecutionIdentity, input: PreparedResearchStage): ResearchStageReceipt {
     const prepared = PreparedResearchStageStorageSchema.parse(input);
+    if ('runId' in prepared && prepared.runId !== identity.parentRunId)
+      throw new Error('Research parent document must belong to its admitted parent run.');
     return this.db
       .transaction(() => {
         // 同一研究执行的 model/project/conversation 也被冻结，不能换参数复用其它阶段的身份。
@@ -93,6 +95,17 @@ export class SqliteResearchStageReceiptStore implements ResearchStageReceiptPort
         throw new Error('Research stage already has a different artifact binding.');
       return;
     }
+    // 格式或引用失败可以在新工具调用中修正；同阶段只能有一份真正提交的父稿。
+    // 检查放在文档事务内，避免并发提交绕过 prepare 时的观察结果。
+    if (
+      'runId' in existing &&
+      this.listRun(identity).some(
+        ({ receipt }) => 'runId' in receipt && receipt.stage === input.stage && receipt.artifact
+      )
+    )
+      throw new Error(
+        `The lead Agent has already submitted ${input.stage}; preserve that version.`
+      );
     this.db
       .prepare(
         `UPDATE research_stage_receipts SET artifact_json = ?
@@ -119,11 +132,15 @@ export class SqliteResearchStageReceiptStore implements ResearchStageReceiptPort
     const frozen = PreparedResearchStageStorageSchema.parse({
       stage: receipt.stage,
       invocation: receipt.invocation,
-      subrunId: receipt.subrunId,
-      request: receipt.request,
       inputs: receipt.inputs,
       outputPath: receipt.outputPath,
-      ...(receipt.delegation ? { delegation: receipt.delegation } : {}),
+      ...('runId' in receipt
+        ? { runId: receipt.runId, submission: receipt.submission }
+        : {
+            subrunId: receipt.subrunId,
+            request: receipt.request,
+            ...(receipt.delegation ? { delegation: receipt.delegation } : {}),
+          }),
     });
     if (
       JSON.stringify(frozen) !== JSON.stringify(PreparedResearchStageStorageSchema.parse(input))

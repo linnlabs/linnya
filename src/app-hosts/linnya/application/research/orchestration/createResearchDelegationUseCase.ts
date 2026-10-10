@@ -9,16 +9,19 @@ import type {
   ResearchExecutionIdentity,
   ResearchStageReceipt,
   ResearchStageReceiptPort,
+  PreparedResearchParentStage,
 } from '../definitions/researchStageReceipt';
 import type { ResearchDocumentPort } from '../definitions/researchDocumentPort';
 import {
   documentBinding,
   prepareResearchStage,
   researchArtifacts,
+  researchStageOutputPath,
 } from '../functions/researchStagePlan';
 import {
   researchRevisionReviews,
   validateResearchDelegationInputs,
+  validateResearchParentInputs,
 } from '../functions/researchDelegationPlan';
 import {
   checkResearchDocumentVersions,
@@ -26,6 +29,7 @@ import {
 } from './createResearchStageSession';
 
 interface DelegationPorts {
+  authoring: 'parent' | 'delegated';
   documents: ResearchDocumentPort;
   receipts: ResearchStageReceiptPort & {
     listRun(identity: Omit<ResearchExecutionIdentity, 'toolCallId'>): readonly {
@@ -46,13 +50,17 @@ export function createResearchDelegationUseCase(ports: DelegationPorts) {
   ) {
     const visited = new Set<string>();
     async function visit(receipt: ResearchStageReceipt): Promise<void> {
-      if (visited.has(receipt.subrunId)) return;
-      visited.add(receipt.subrunId);
-      if (
-        !receipt.artifact ||
-        !(await ports.childCompleted(receipt.subrunId, identity.parentRunId))
-      )
+      if (!receipt.artifact)
+        throw new Error(`Research input ${receipt.stage} has no submitted document.`);
+      // 同一父 run 可以提交多份稿件，不能按作者身份去重而漏查初稿或修订稿。
+      if (visited.has(receipt.artifact.inode)) return;
+      visited.add(receipt.artifact.inode);
+      if ('runId' in receipt) {
+        if (receipt.runId !== identity.parentRunId)
+          throw new Error('Research document belongs to another parent run.');
+      } else if (!(await ports.childCompleted(receipt.subrunId, identity.parentRunId))) {
         throw new Error(`Research input ${receipt.stage} has not completed its child run.`);
+      }
       await checkResearchDocumentVersions(
         ports.documents,
         identity.projectId,
@@ -68,6 +76,64 @@ export function createResearchDelegationUseCase(ports: DelegationPorts) {
     }
     for (const target of targets) await visit(target);
   }
+  async function currentReceipts(
+    identity: ResearchExecutionIdentity,
+    invocation: ResearchRunArgs,
+    signal?: AbortSignal
+  ) {
+    const all = ports.receipts.listRun(identity).map(item => item.receipt);
+    if (all.some(item => !isDeepStrictEqual(item.invocation, invocation)))
+      throw new Error('Research scope differs from the admitted parent request.');
+    // 显式接纳材料在首次委派绑定后不可在同一根运行悄悄刷新版本。
+    // 回执已经持有这些事实，不增加第二个根级材料账本。
+    const admittedLocators = new Set<string>(invocation.materials);
+    const admittedBindings = all
+      .flatMap(item => item.inputs)
+      .filter(binding => admittedLocators.has(binding.locator));
+    await checkResearchDocumentVersions(
+      ports.documents,
+      identity.projectId,
+      [...new Map(admittedBindings.map(binding => [binding.inode, binding])).values()],
+      signal
+    );
+    return all;
+  }
+
+  async function inputsFor(
+    identity: ResearchExecutionIdentity,
+    invocation: ResearchRunArgs,
+    documents: readonly string[],
+    all: readonly ResearchStageReceipt[],
+    signal?: AbortSignal
+  ) {
+    const locators = [...new Set([...invocation.materials, ...documents])];
+    const snapshots = await Promise.all(
+      locators.map(locator => ports.documents.read({ projectId: identity.projectId, locator }))
+    );
+    signal?.throwIfAborted();
+    const selected = all.filter(
+      item => item.artifact && snapshots.some(value => value.inode === item.artifact?.inode)
+    );
+    if (
+      invocation.task_type === 'fixed' &&
+      snapshots.some(
+        snapshot =>
+          !invocation.materials.some(locator => locator === snapshot.locator) &&
+          !selected.some(item => item.artifact?.inode === snapshot.inode)
+      )
+    )
+      throw new Error(
+        'Fixed research only accepts admitted source documents and this run’s submitted artifacts.'
+      );
+    await checkLineage(identity, selected, all, signal);
+    return {
+      selected,
+      materials: snapshots
+        .filter(snapshot => !selected.some(item => item.artifact?.inode === snapshot.inode))
+        .map(documentBinding),
+    };
+  }
+
   return {
     async prepare(input: {
       identity: ResearchExecutionIdentity;
@@ -79,23 +145,15 @@ export function createResearchDelegationUseCase(ports: DelegationPorts) {
     }) {
       const { identity, invocation, stage, signal } = input;
       signal?.throwIfAborted();
-      const all = ports.receipts.listRun(identity).map(item => item.receipt);
-      if (all.some(item => !isDeepStrictEqual(item.invocation, invocation)))
-        throw new Error('Research scope differs from the admitted parent request.');
-      // 显式接纳材料在首次委派绑定后不可在同一根运行悄悄刷新版本。
-      // 回执已经持有这些事实，不增加第二个根级材料账本。
-      const admittedLocators = new Set<string>(invocation.materials);
-      const admittedBindings = all
-        .flatMap(item => item.inputs)
-        .filter(binding => admittedLocators.has(binding.locator));
-      await checkResearchDocumentVersions(
-        ports.documents,
-        identity.projectId,
-        [...new Map(admittedBindings.map(binding => [binding.inode, binding])).values()],
-        signal
-      );
+      if (ports.authoring === 'parent' && (stage === 'draft' || stage === 'revision'))
+        throw new Error(
+          'The lead Agent writes its own draft and revision with submit_research_document.'
+        );
+      const all = await currentReceipts(identity, invocation, signal);
       const existing = ports.receipts.list(identity)[0];
       if (existing) {
+        if ('runId' in existing)
+          throw new Error('A parent submission cannot become a child delegation.');
         if (existing.stage !== stage)
           throw new Error('Cannot change the role of an admitted delegation.');
         // 同一次工具恢复只消费原请求；不用新读到的文档悄悄刷新版本。
@@ -127,38 +185,21 @@ export function createResearchDelegationUseCase(ports: DelegationPorts) {
         throw new Error(
           'This research run admits one revision; resume its original delegation instead of starting another.'
         );
-      const locators = [...new Set([...invocation.materials, ...input.documents])];
-      const snapshots = await Promise.all(
-        locators.map(locator => ports.documents.read({ projectId: identity.projectId, locator }))
+      const { selected, materials } = await inputsFor(
+        identity,
+        invocation,
+        input.documents,
+        all,
+        signal
       );
-      signal?.throwIfAborted();
-      const selected = all.filter(
-        item =>
-          item.artifact &&
-          snapshots.some(value => item.artifact && value.inode === item.artifact.inode)
-      );
-      if (
-        invocation.task_type === 'fixed' &&
-        snapshots.some(
-          snapshot =>
-            !admittedLocators.has(snapshot.locator) &&
-            !selected.some(item => item.artifact?.inode === snapshot.inode)
-        )
-      )
-        throw new Error(
-          'Fixed research only accepts admitted source documents and this run’s submitted artifacts.'
-        );
       validateResearchDelegationInputs(stage, selected);
-      await checkLineage(identity, selected, all, signal);
-      const materials = snapshots
-        .filter(snapshot => !selected.some(item => item.artifact?.inode === snapshot.inode))
-        .map(documentBinding);
       const planned = prepareResearchStage({
         stage,
         invocation,
         identity,
         materials,
         predecessors: selected,
+        ...(ports.authoring === 'parent' ? { boundedAssignment: input.instructions } : {}),
       });
       const prepared = ports.receipts.prepare(identity, {
         ...planned,
@@ -167,8 +208,72 @@ export function createResearchDelegationUseCase(ports: DelegationPorts) {
         delegation: { instructions: input.instructions, documents: input.documents },
         request: {
           ...planned.request,
-          query: `${planned.request.query}\n\n## Lead Agent assignment\n${input.instructions}`,
+          query:
+            ports.authoring === 'parent'
+              ? planned.request.query
+              : `${planned.request.query}\n\n## Lead Agent assignment\n${input.instructions}`,
         },
+      });
+      if ('runId' in prepared) throw new Error('Expected the admitted child delegation.');
+      return {
+        prepared,
+        session: await createResearchStageSession(ports, identity, prepared, signal),
+      };
+    },
+    async prepareParent(input: {
+      identity: ResearchExecutionIdentity;
+      invocation: ResearchRunArgs;
+      stage: PreparedResearchParentStage['stage'];
+      documents: readonly string[];
+      signal?: AbortSignal;
+    }) {
+      if (ports.authoring !== 'parent')
+        throw new Error(
+          'This admitted research run delegates authorship; resume its original contract.'
+        );
+      const { identity, invocation, stage, signal } = input;
+      signal?.throwIfAborted();
+      const all = await currentReceipts(identity, invocation, signal);
+      const existing = ports.receipts.list(identity)[0];
+      if (existing) {
+        if (
+          !('runId' in existing) ||
+          existing.stage !== stage ||
+          !isDeepStrictEqual(existing.submission.documents, input.documents)
+        )
+          throw new Error('Cannot change an admitted parent submission.');
+        await checkLineage(
+          identity,
+          all.filter(
+            item =>
+              item.artifact &&
+              existing.inputs.some(binding => binding.inode === item.artifact?.inode)
+          ),
+          all,
+          signal
+        );
+        return {
+          prepared: existing,
+          session: await createResearchStageSession(ports, identity, existing, signal),
+        };
+      }
+      if (all.some(item => 'runId' in item && item.stage === stage && item.artifact))
+        throw new Error(`The lead Agent has already submitted ${stage}; preserve that version.`);
+      const { selected, materials } = await inputsFor(
+        identity,
+        invocation,
+        input.documents,
+        all,
+        signal
+      );
+      validateResearchParentInputs(stage, selected);
+      const prepared = ports.receipts.prepare(identity, {
+        stage,
+        invocation,
+        runId: identity.parentRunId,
+        submission: { documents: input.documents },
+        inputs: [...materials, ...selected.flatMap(item => (item.artifact ? [item.artifact] : []))],
+        outputPath: researchStageOutputPath(identity, stage),
       });
       return {
         prepared,
