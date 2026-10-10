@@ -221,7 +221,6 @@ export class EditFileTool extends BaseTool {
       projectId: runtime.projectId,
       conversationId: runtime.conversationId,
       instanceId: runtime.instanceId,
-      nodeAccessScope: runtime.nodeAccessScope,
       nodeTypeAccessPolicy: pluginWorkspaceVfsNodeTypeAccessPolicy,
       ...(inode ? { inode } : { path }),
     });
@@ -234,7 +233,6 @@ export class EditFileTool extends BaseTool {
       projectId: runtime.projectId,
       conversationId: runtime.conversationId,
       instanceId: runtime.instanceId,
-      nodeAccessScope: runtime.nodeAccessScope,
       inode: node.inode,
       maxChars: MAX_EDIT_SOURCE_CHARS + 1,
       nodeTypeAccessPolicy: pluginWorkspaceVfsNodeTypeAccessPolicy,

@@ -59,10 +59,8 @@ export function buildResearchStageRequest(
   const requiredResources: ResearchMethodResource[] = [...contract.resources];
   if (input.businessAnalysisNeeded) requiredResources.push('references/business-analysis.md');
   const authorReceivesFeedback = input.stage === 'draft' || input.stage === 'revision';
-  const reviewer =
-    input.stage === 'investigation_review' ||
-    input.stage === 'argument_review' ||
-    input.stage === 'source_review';
+  const articleReviewer = input.stage === 'argument_review' || input.stage === 'source_review';
+  const reviewer = input.stage === 'investigation_review' || articleReviewer;
   const retrieval = input.allowRetrieval
     ? 'Retrieval is allowed only within the material boundary below. Optional web_search(deep_search=true) can investigate a concrete gap; shallow search is sufficient when it answers the gap. Do not use a search quota as a target.'
     : 'No external retrieval is allowed: do not call Web or Knowledge search/read, use network commands, or introduce outside facts from memory. Read only the supplied documents and their supplied content; report missing originals or evidence instead of filling them in.';
@@ -93,7 +91,17 @@ export function buildResearchStageRequest(
         item => `${item.locator} | version: ${item.version} | ${item.purpose}`
       )
     ),
-    'All previous artifacts explicitly listed here are permitted earlier-stage context, including a completed investigation review. A parallel reviewer means the other reviewer examining this same draft now; their report is not listed here. Do not mistake permitted earlier-stage context for a forbidden parallel review.',
+    ...(articleReviewer
+      ? [
+          'Review only the document marked Review target above, using its formal locator. Other supplied documents are supporting evidence or background, not alternative drafts to review.',
+        ]
+      : []),
+    'All previous artifacts explicitly listed here are permitted earlier-stage context, including a completed investigation review. Other article reviews and revisions not listed in this assignment are not evidence for an independent review, whether already completed or still running. Do not mistake the permitted investigation review for another review of this article.',
+    ...(reviewer
+      ? [
+          'Scope Workspace reads and grep to the supplied document locators and original sources obtained through permitted follow-up retrieval; do not search the project root or open unlisted review reports. Follow a source gap only within the permitted retrieval scope, otherwise report the missing material to the lead. If a tool incidentally returns another review, disclose that exposure and do not use its findings.',
+        ]
+      : []),
     'Use source-reading results from this run for canonical citations. Bare short refs from another run are not transferable; reread the formal document or original source to obtain the current binding.',
     '',
     '## Required method access',

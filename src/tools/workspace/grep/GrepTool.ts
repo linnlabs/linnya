@@ -181,7 +181,6 @@ export class GrepTool extends BaseTool {
       projectId: runtime.projectId,
       conversationId: runtime.conversationId,
       instanceId: runtime.instanceId,
-      nodeAccessScope: runtime.nodeAccessScope,
       pattern,
       caseSensitive: parsedArgs.case_sensitive,
       maxResults: parsedArgs.max_results,

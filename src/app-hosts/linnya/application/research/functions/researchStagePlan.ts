@@ -99,7 +99,11 @@ export function prepareResearchStage(input: {
       previousArtifacts: artifacts.map(({ receipt, binding }) => ({
         locator: binding.locator,
         version: `${binding.sha256}/${binding.citationSha256}`,
-        purpose: RESEARCH_STAGE_PURPOSE[receipt.stage],
+        // 旧稿也可能在原始材料中；明确本次对象，不让模型按文件名自行选稿。
+        purpose:
+          (stage === 'argument_review' || stage === 'source_review') && receipt.stage === 'draft'
+            ? 'Review target: 初稿（仅评审此稿；其他文档为核查依据）'
+            : RESEARCH_STAGE_PURPOSE[receipt.stage],
       })),
       unresolvedQuestions: [],
       ...(input.boundedAssignment ? { boundedAssignment: input.boundedAssignment } : {}),

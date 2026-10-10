@@ -35,7 +35,3 @@ ref 唯一性。正文改写复用 Citation domain 的 Markdown parser，fenced/
 
 该 use case 不依赖 Commands domain，也不读取命令权限档位。三档命令权限不会在这里制造三套
 相同的只读授权判断。
-
-Workspace 文本和 DocumentView 先通过同一 VFS 身份解析，应用本次工具调用物化的节点访问范围。
-DocumentView 即使随后直接调度 document-read owner，也不能绕过此检查。该范围只属于 Workspace，
-不改变 conversation/file 物理读取合同。

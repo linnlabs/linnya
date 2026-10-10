@@ -222,7 +222,6 @@ export class WriteFileTool extends BaseTool {
       projectId: runtime.projectId,
       conversationId: runtime.conversationId,
       instanceId: runtime.instanceId,
-      nodeAccessScope: runtime.nodeAccessScope,
       nodeTypeAccessPolicy: pluginWorkspaceVfsNodeTypeAccessPolicy,
       ...(inode ? { inode } : { path }),
     });
@@ -318,7 +317,6 @@ export class WriteFileTool extends BaseTool {
       projectId: params.runtime.projectId,
       conversationId: params.runtime.conversationId,
       instanceId: params.runtime.instanceId,
-      nodeAccessScope: params.runtime.nodeAccessScope,
       path: parentPath,
       nodeTypeAccessPolicy: pluginWorkspaceVfsNodeTypeAccessPolicy,
     });
@@ -389,7 +387,6 @@ export class WriteFileTool extends BaseTool {
       projectId: params.runtime.projectId,
       conversationId: params.runtime.conversationId,
       instanceId: params.runtime.instanceId,
-      nodeAccessScope: params.runtime.nodeAccessScope,
       inode: `workspace:${createResult.documentId}`,
       nodeTypeAccessPolicy: pluginWorkspaceVfsNodeTypeAccessPolicy,
     });

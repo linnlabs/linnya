@@ -119,8 +119,6 @@ export interface ToolContext extends ToolExecutionContext {
   imageGenerationModelId?: string;
   /** 当前 Workspace 项目 ID（由前端 / 编排器注入，AI 无需手动传参） */
   workspaceProjectId?: string;
-  /** Host 每次工具执行解析节点范围；模型不能构造，嵌套 child 必须继承已有约束。 */
-  resolveWorkspaceNodeAccessScope?: () => import('../features/workspace/vfs').WorkspaceVfsNodeAccessScope;
   /** 当前 Workspace 项目的人类可读元信息 */
   workspaceProjectMetadata?: {
     id?: string;

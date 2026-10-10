@@ -40,7 +40,6 @@ export function createResearchToolExecution(
     modelId,
   };
   const db = databaseService.getDb();
-  const stageReceipts = new SqliteResearchStageReceiptStore(db);
   const useCase = createResearchUseCase({
     documents: createWorkspaceResearchDocumentPort({
       db,
@@ -49,17 +48,10 @@ export function createResearchToolExecution(
         context.workspaceService ??
         new WorkspaceService(db, { mutationPublisher: context.workspaceMutationPublisher }),
     }),
-    receipts: stageReceipts,
+    receipts: new SqliteResearchStageReceiptStore(db),
     children: {
       async execute(stage, owner, submit, signal) {
-        const bound = bindResearchStageSubmission(
-          context,
-          stage,
-          owner,
-          submit,
-          () => stageReceipts.list(owner),
-          signal
-        );
+        const bound = bindResearchStageSubmission(context, stage, owner, submit, signal);
         const result = await runRegisteredSubagent({
           context: bound.context,
           promptKey: stage.request.promptKey,

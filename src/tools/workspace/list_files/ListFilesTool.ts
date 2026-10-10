@@ -194,7 +194,6 @@ export class ListFilesTool extends BaseTool {
         projectId: runtime.projectId,
         conversationId: runtime.conversationId,
         instanceId: runtime.instanceId,
-        nodeAccessScope: runtime.nodeAccessScope,
         includeSystemNodes,
         nodeTypeAccessPolicy: pluginWorkspaceVfsNodeTypeAccessPolicy,
         ...(inode ? { inode } : { path: normalizedPath }),
@@ -218,7 +217,6 @@ export class ListFilesTool extends BaseTool {
             parentId: target?.id ?? null,
             conversationId: runtime.conversationId,
             instanceId: runtime.instanceId,
-            nodeAccessScope: runtime.nodeAccessScope,
             includeSystemNodes,
             nodeTypeAccessPolicy: pluginWorkspaceVfsNodeTypeAccessPolicy,
           });
