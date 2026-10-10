@@ -13,7 +13,11 @@
 
 import type { PromptKey } from './prompt.types';
 import type { HistoryBuilderOptionsExtender } from 'src/app-hosts/linnya/adapters/flow/history-builder/history-builder-options-extender.types';
-import type { AgentSpecContextPolicy, RuntimeEvent } from '@linnlabs/linnkit/contracts';
+import type {
+  AgentSpecContextPolicy,
+  RuntimeEvent,
+  SerializableJsonRecord,
+} from '@linnlabs/linnkit/contracts';
 import type * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { enrichment } from '@linnlabs/linnkit/runtime-kernel';
 import type { HostToolCallRequestData } from '@app/schemas';
@@ -217,6 +221,8 @@ export interface AgentTaskConfiguration {
 export interface AgentRecoveryIdentity {
   readonly promptKey: string;
   readonly isChild: boolean;
+  /** 描述中已冻结的配置，只用于匹配 owner 明确保留的历史能力。 */
+  readonly frozenConfiguration: SerializableJsonRecord;
   readonly hostToolCall?: Pick<HostToolCallRequestData, 'tool_name' | 'completion_mode'>;
 }
 

@@ -33,9 +33,10 @@ catalog），交给 Host 的运行描述保存。Generic task 消费 `frozenSyst
 和工具仍各自通过 registry 定义。声明不拥有 Graph、持久阶段或工具执行，不提供通用工作流引擎。
 
 持久恢复通过 `resolveRegisteredAgentRecoveryConfiguration` 读取明确维护的历史配置。
-研究 owner 的 `research_v1/legacyCompatibility.ts` 只识别旧 `research_run / yield_after_batch`
-根描述，提供当时的禁用根工具配置；其它身份仍核对当前 definition。它不执行恢复、不读取或
-改写 descriptor，也不跳过完整配置、模型、插件、Skill 和版本比较。
+研究 owner 的 `research_v1/legacyCompatibility.ts` 保留旧 `research_run / yield_after_batch`
+根配置，以及直接成文以前、仍委派作者的主 Agent 完整配置。后者必须逐项匹配描述中冻结的
+历史配置，不能仅凭同名 Agent 追认任意旧能力。其它身份仍核对当前 definition。解析器只接收
+身份与冻结配置事实，不执行恢复、不改写 descriptor，也不跳过模型、插件、Skill 和版本比较。
 
 定义可用 `newRunUnavailableReason` 停止接收新的根运行。Flow 在 start 准备时调用 registry
 的接纳规则并返回 `AGENT_NEW_RUN_UNAVAILABLE`，在运行注册和用户消息提交之前拒绝请求。
@@ -561,17 +562,19 @@ judgeToolName（不是评分角色）；`maxCallsPerParentRun` 交给 Host 持�
 工具入口；旧 `research_run` descriptor 仍按原运行身份恢复。上下文、范围与版本保障见
 [Research 用例](../application/research/README.md)，不要在 Renderer 或 Flow 重复实现研究规则。
 
-主 Agent 使用统一 `subagent` 委派调查、调查复核、初稿、论证复核、来源复核和修订，
-通过 `input_documents` 明确阶段输入；当前调用串行执行。每个 child 都有既有 Subagent 详情，
-主会话保留主模型的正常消息和进度。Host 绑定阶段输入与新文稿提交能力、核对真实依赖和版本，
-不替模型选择下一阶段。两个成稿评审基于同一初稿、互不读取对方意见，主 Agent 阅读原稿和两份
-原始评审后委派一次主修订；独立输入与职责不代表并行执行或 OS 权限隔离。
+主 Agent 持续承担调查主线、自己的调查记录、文章初稿和一次修订；统一 `subagent` 只委派有边界的
+调查补查、可选的成文前调查复核，以及必需的论证复核和来源/数字复核。子任务说明只传足以执行的
+背景与缺口，并用 `input_documents` 引用资料，不能把整题或近完整文章交给另一个作者重做。
+当前调用串行执行，每个 child 都有既有 Subagent 详情，主会话保留主模型的正常消息和进度。
+Host 绑定输入与新文稿提交能力、核对真实依赖和版本，不替模型选择下一步。两个成稿评审基于
+同一初稿和同一来源上下文，互不读取对方意见；父 Agent 完整读取原稿和两份原始评审，依据来源
+与计算接受、缩小或拒绝意见，再亲自修订。独立输入与职责不代表并行执行或 OS 权限隔离。
 
-内部文稿职责仍使用 `research_author_v1`、`research_investigation_review_v1`、
-`research_argument_review_v1`、`research_source_review_v1`，分别承担研究与成文、成文前复核、
-论证复核、来源与数值复核。统一子委派将六种研究任务映射到这些职责；它们不增加 Renderer
-菜单。旧实验定义保持原义，已接纳的旧 `research_run` 沿冻结 descriptor 恢复；新 root
-不再通过整个研究外层工具调用启动。
+内部子职责仍使用 `research_author_v1`、`research_investigation_review_v1`、
+`research_argument_review_v1`、`research_source_review_v1`。新根只开放四种调查/复核委派类型；
+`research_author_v1` 在新请求中只承担限定问题的调查资料提交，不负责初稿和终稿。旧初稿/修订
+类型保留供已接纳描述恢复，新根冻结白名单不暴露也不允许执行。它们不增加 Renderer 菜单。
+旧实验定义保持原义；旧 Host 与旧委派作者根分别沿冻结 descriptor 恢复，不接受新提示替换。
 
 四职责共享明确的 800 Graph 节点预算与 `inherit_parent` 模型策略，仅供已接纳研究的 child 使用，
 通过既有 `newRunUnavailableReason` 拒绝独立 root 调用，避免在缺少阶段提交权限时仍消耗模型。
@@ -580,14 +583,18 @@ Knowledge 检索读取、Skill、Shell/Process 计算、长输出续读及阶段
 或通用 Workspace 写入，也不继承 Default 的周期任务提醒。Web 深搜仍是可选检索
 能力；具体材料范围与检索禁用由 Host 在每阶段接纳时实施，静态白名单不能表达固定材料范围。
 
-每阶段通过 `submit_research_document` 提交单份完整 Markdown。Host 在该调用内使用实际 child 的
-引用上下文保存预定新文档并检查正式投影；格式或引用校验错误回到同一 child，在原预算内修正。
+子角色通过 `submit_research_document({content})` 提交单份完整 Markdown。Host 在该调用内使用
+实际 child 的引用上下文保存预定新文档并检查正式投影；格式或引用校验错误回到同一 child，
+在原预算内修正。
 `resultToolName` 与 `force_tools` 沿用现有产物及预算收尾合同，自由文本终答不作为交付。
 模型不能选择路径或覆盖正文，成功保存也不是内容质量认证。Shell 仍有宿主命令能力，这不构成 OS
 权限沙箱，也不等于同项目文件自动隔离；职责提示明确禁止绕过正式文档与派发边界。
 
-主 Agent 同样没有通用 Workspace 写入能力。它读取并判断修订稿后调用 `complete_research`，
-由 Host 核对所选文稿及必要调查、评审的真实提交与版本，返回文章和原始评审导航。该工具不评分
+主 Agent 没有通用 Workspace 写入能力，但可用同一 `submit_research_document` 的父级合同提交
+自己的调查记录、初稿与修订稿，显式给出阶段、输入文档和完整正文。路径和版本由 Host 绑定，
+引用使用实际父 run 的取得上下文。父级提交只保存文档，不结束研究；子级提交成功仍结束 child。
+父 Agent 读取并判断已保存修订稿后调用 `complete_research`，由 Host 核对所选文稿及必要调查、
+评审的真实提交与版本，返回文章和原始评审导航。该工具不评分
 或认证内容正确，也不展示另一棵研究流程树。预算不足时允许普通终答如实报告未交付与现有材料，
 不能把 TaskState 完成、child 提交或自由文本终答称为最终研究交付。
 

@@ -12,6 +12,7 @@ import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import { BaseTool } from 'src/tools/types';
 import { modelCatalog } from 'src/domains/model-catalog';
 import { admitResearchRequest } from '../../../agent-registry/agents/research_v1/admission';
+import { LEGACY_RESEARCH_DELEGATED_AUTHOR_CONFIGURATION } from '../../../agent-registry/agents/research_v1/legacyCompatibility';
 import { clearRegisteredAgentTaskCache } from '../../../agent-registry/agentTaskResolver';
 import { requireRuntimeCompatibility } from '../../../application/run-resumption/functions/runtimeCompatibility';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
@@ -161,6 +162,115 @@ describe('legacy research new-run admission', () => {
     expect(await restarted.flow.getActiveForegroundRun(conversationId)).toMatchObject({
       run: null,
     });
+    restarted.ai.assertAllTurnsConsumed();
+  });
+
+  it('父 Agent 改为直接成文后，旧委派作者根保留冻结角色和提示重启继续，未知配置仍拒绝', async () => {
+    const findDefinition = agentDefinitions.findRegisteredAgentDefinitionByPromptKey;
+    const definitions = vi
+      .spyOn(agentDefinitions, 'findRegisteredAgentDefinitionByPromptKey')
+      .mockImplementation(key => {
+        const definition = findDefinition(key);
+        return key === 'research_v1' && definition
+          ? {
+              ...definition,
+              config: LEGACY_RESEARCH_DELEGATED_AUTHOR_CONFIGURATION,
+              task: { systemPromptBuilder: () => 'Original delegated-author research prompt' },
+            }
+          : definition;
+      });
+    clearRegisteredAgentTaskCache();
+    const first = await open([
+      { contentChunks: ['Investigating'], throwAfterEvents: new Error('network interrupted') },
+    ]);
+    await first.flow.next(
+      {
+        ...request,
+        options: {
+          promptKey: 'research_v1',
+          model_id: 'scripted-test-model',
+          project_metadata: { id: 'project' },
+        },
+      },
+      () => {}
+    );
+    const original = await paused(first);
+    const descriptor = await first.runtime.runDescriptors?.load(original.run_id);
+    if (!descriptor) throw new Error('Missing delegated-author descriptor');
+    expect(descriptor.request.availableSubagentTypes).toContain('research_draft');
+    expect(descriptor.request.availableSubagentTypes).toContain('research_revision');
+    expect(descriptor.request.frozenSystemPrompt).toContain(
+      'Original delegated-author research prompt'
+    );
+    first.close();
+    closers.pop();
+    resetAgentRuntimeSingletonsForTest();
+    definitions.mockImplementation(key => {
+      const definition = findDefinition(key);
+      return key === 'research_v1' && definition
+        ? {
+            ...definition,
+            task: {
+              systemPromptBuilder: () => {
+                throw new Error('Must keep the old frozen prompt');
+              },
+            },
+          }
+        : definition;
+    });
+    clearRegisteredAgentTaskCache();
+    const restarted = await open([{ contentChunks: ['Original research remains unfinished'] }]);
+    const restored = await paused(restarted);
+    expect(restored.run_id).toBe(original.run_id);
+    expect(() => requireRuntimeCompatibility(descriptor)).not.toThrow();
+    expect(() =>
+      requireRuntimeCompatibility({
+        ...descriptor,
+        compatibility: {
+          ...descriptor.compatibility,
+          agentConfiguration: {
+            ...descriptor.compatibility.agentConfiguration,
+            availableTools: [
+              ...(LEGACY_RESEARCH_DELEGATED_AUTHOR_CONFIGURATION.availableTools ?? []),
+              'write_file',
+            ],
+          },
+        },
+      })
+    ).toThrow('Original run capabilities changed');
+    expect(() =>
+      requireRuntimeCompatibility({
+        ...descriptor,
+        child: {
+          parentRunId: descriptor.runId,
+          parentToolCallId: 'other-call',
+          subrunId: 'other-child',
+        },
+      })
+    ).toThrow('Original run capabilities changed');
+    const run = vi.spyOn(restarted.runner, 'run');
+    await restarted.flow.continueRun(
+      restored.run_id,
+      {
+        conversation_id: conversationId,
+        expected_updated_at: restored.pause.updated_at,
+        expected_execution_id: restored.execution_id,
+      },
+      () => {}
+    );
+    expect(run).toHaveBeenCalledOnce();
+    expect(run.mock.calls[0]?.[0].request.availableSubagentTypes).toEqual(
+      descriptor.request.availableSubagentTypes
+    );
+    expect(run.mock.calls[0]?.[0].request.frozenSystemPrompt).toEqual(
+      descriptor.request.frozenSystemPrompt
+    );
+    const facts = (await restarted.eventStore.readEvents(conversationId, { limit: 100 })).events;
+    expect(facts.filter(event => event.type === 'user_input')).toHaveLength(1);
+    expect(
+      facts.filter(event => event.type === 'final_answer').map(event => event.content)
+    ).toEqual(['Original research remains unfinished']);
+    expect(facts.every(event => event.run_id === original.run_id)).toBe(true);
     restarted.ai.assertAllTurnsConsumed();
   });
 

@@ -109,6 +109,7 @@ export function captureRuntimeCompatibility(
         ? resolveRegisteredAgentRecoveryConfiguration(definition, {
             promptKey: descriptor.request.promptKey,
             isChild: descriptor.child !== undefined,
+            frozenConfiguration: descriptor.compatibility.agentConfiguration,
             hostToolCall: descriptor.options?.host_tool_call,
           })
         : (definition.config ?? {})

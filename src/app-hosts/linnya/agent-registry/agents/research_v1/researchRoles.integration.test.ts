@@ -28,6 +28,7 @@ import {
   validateSkillExposureConfig,
 } from 'src/features/skills/agentSkillExposure';
 import { SkillTool } from 'src/tools/skill/SkillTool';
+import { SubagentTool } from 'src/tools/agent_control/subrun/subagent/subagentTool';
 
 function request(stage: ResearchStageRequestKind): ResearchStageRequestInput {
   return {
@@ -64,7 +65,7 @@ describe('main research and controlled document roles through formal preparation
     invalidateSkillCache();
   });
 
-  it('prepares a normal main conversation with the original request and freezes its admitted document scope', () => {
+  it('prepares a normal main conversation with the original request and freezes its admitted document scope', async () => {
     const query = '只使用提供的材料向项目负责人解释变化，保留不确定性；正文不超过一千字。';
     const scope = ResearchRunArgsSchema.parse({
       question: '样本运输成本的变化', reader: '项目负责人', task_type: 'fixed',
@@ -78,6 +79,31 @@ describe('main research and controlled document roles through formal preparation
     expect(admitted.query).toBe(query);
     expect(admitted.researchScope).toEqual(scope);
     const frozen = freezeAgentRunInput(admitted);
+    // 同一冻结范围进入模型工具目录和执行入口；新根不能再委派初稿或修订作者。
+    const subagent = new SubagentTool();
+    const context = {
+      callerAgentId: frozen.callerAgentId,
+      availableSubagentTypes: frozen.availableSubagentTypes,
+    };
+    const choices = subagent.getParametersForContext(context).properties.subagent_type.enum;
+    expect(choices).toEqual([
+      'research_investigation',
+      'research_investigation_review',
+      'research_argument_review',
+      'research_source_review',
+    ]);
+    for (const type of ['research_draft', 'research_revision']) {
+      await expect(
+        subagent.run(
+          {
+            description: '委派成文',
+            prompt: '请替父 Agent 完成文章',
+            subagent_type: type,
+          },
+          context
+        )
+      ).rejects.toThrow(`unknown subagent_type "${type}"`);
+    }
     const task = getAgentTask('research_v1');
     if (!(task instanceof GenericAgentTask)) throw new Error('Main research must use the registered task');
     const messages = task.buildMessages(frozen, []);

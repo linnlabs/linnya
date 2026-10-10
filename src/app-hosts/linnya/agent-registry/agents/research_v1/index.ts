@@ -12,13 +12,28 @@ export default {
   requestAdmission: admitResearchRequest,
   config: {
     availableSubagentTypes: [
-      'research_investigation', 'research_investigation_review', 'research_draft',
-      'research_argument_review', 'research_source_review', 'research_revision',
+      'research_investigation',
+      'research_investigation_review',
+      'research_argument_review',
+      'research_source_review',
     ],
     availableTools: [
-      'list_files', 'read_file', 'grep', 'tool_output_read',
-      'knowledge_search', 'knowledge_read', 'web_search', 'web_read',
-      'skill', 'shell', 'process', 'task_write', 'task_read', 'subagent', 'complete_research',
+      'list_files',
+      'read_file',
+      'grep',
+      'tool_output_read',
+      'knowledge_search',
+      'knowledge_read',
+      'web_search',
+      'web_read',
+      'skill',
+      'shell',
+      'process',
+      'task_write',
+      'task_read',
+      'subagent',
+      'submit_research_document',
+      'complete_research',
     ],
     enableTools: true,
     maxSteps: 800,
@@ -35,7 +50,8 @@ export default {
   },
   task: {
     systemPromptBuilder: request => {
-      if (!request.researchScope) throw new Error('Research scope must be admitted before preparing the main Agent');
+      if (!request.researchScope)
+        throw new Error('Research scope must be admitted before preparing the main Agent');
       return buildResearchLeaderPrompt(request.researchScope);
     },
   },
