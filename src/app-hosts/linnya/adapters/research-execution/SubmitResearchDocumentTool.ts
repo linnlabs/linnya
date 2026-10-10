@@ -44,9 +44,9 @@ export class SubmitResearchDocumentTool extends BaseTool {
       },
       input_documents: {
         type: 'array',
-        items: { type: 'string', description: '正式 Workspace 文档 locator。' },
+        items: { type: 'string', minLength: 1, description: '正式 Workspace 文档 locator。' },
         description:
-          '仅父 Agent：本稿依赖的 Workspace 文档。初稿包含自己的调查记录；修订包含同版初稿、相同上下文的两份原始评审及调查记录。',
+          '仅父 Agent：本稿依赖的 Workspace 文档，不得重复。初稿包含自己的调查记录；修订包含同版初稿、相同上下文的两份原始评审及调查记录。',
       },
     },
     required: ['content'],
