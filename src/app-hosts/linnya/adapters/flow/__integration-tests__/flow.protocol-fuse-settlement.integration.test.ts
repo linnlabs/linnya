@@ -39,6 +39,56 @@ afterEach(() => {
 });
 
 describe('execution pause through real Flow, Graph, SQLite and CLI status projection', () => {
+  it('未知工具通过正式拒绝结果回到模型，不暂停或留下运行中的历史卡片', async () => {
+    const toolName = 'nonexistent_research_lookup';
+    const callId = 'unknown-research-tool-call';
+    fixture = await createDurableFlowHarness(join(directory, 'workspace.sqlite'), [
+      {
+        assertCall(call) {
+          expect(call.options.tools?.some(tool => tool.name === toolName)).toBe(false);
+        },
+        toolCalls: [{ id: callId, name: toolName, argumentsJson: '{"query":"source"}' }],
+      },
+      {
+        assertCall(call) {
+          const returned = call.messages.filter(message => message.role === 'tool');
+          expect(returned).toHaveLength(1);
+          expect(returned[0]).toMatchObject({ role: 'tool', tool_call_id: callId });
+          expect(JSON.stringify(returned[0])).toContain(toolName);
+          expect(JSON.stringify(returned[0])).toContain('未获准');
+        },
+        contentChunks: ['The requested tool is unavailable; no source lookup was performed.'],
+      },
+    ]);
+    const conversationId = 'unknown-tool-feedback-conversation';
+    await fixture.flow.next(
+      {
+        conversation_id: conversationId,
+        new_events: [
+          { type: 'user_input', content: 'Inspect the source', source: 'user', timestamp: 1 },
+        ],
+        options: { promptKey: 'default', model_id: 'scripted-test-model' },
+      },
+      () => {}
+    );
+    expect(fixture.ai.getCalls()).toHaveLength(2);
+    fixture.ai.assertAllTurnsConsumed();
+    expect((await fixture.flow.getActiveForegroundRun(conversationId)).run).toBeNull();
+    const events = (await fixture.eventStore.readEvents(conversationId, { limit: 100 })).events;
+    expect(events.filter(event => event.type === 'tool_output')).toMatchObject([
+      { tool_name: toolName, tool_call_id: callId, status: 'error' },
+    ]);
+    expect(events.filter(event => event.type === 'tool_call_decision')).toHaveLength(1);
+    expect(events.find(event => event.type === 'final_answer')).toMatchObject({ is_complete: true });
+    // 实时 start 只代表处理一次请求；重载必须看到已拒绝终态，不能冒充执行成功。
+    const window = readTail(fixture.db, conversationId, 100);
+    if (window.status !== 'ready') throw new Error('Expected durable tool feedback');
+    const cards = window.messages.filter(message => message.message_type === 'tool_calls');
+    expect(cards).toHaveLength(1);
+    expect(cards[0]?.payload).toMatchObject({ tool_name: toolName, status: 'error' });
+    expect(fixture.getToolExecutions()).toEqual([]);
+  });
+
   it('坏工具参数只重试模型请求，不制造工具调用；流生命周期违规仍暂停', async () => {
     fixture = await createDurableFlowHarness(join(directory, 'workspace.sqlite'), [
       { failure: { kind: 'protocol', code: 'provider_tool_arguments_invalid', retryable: true } },
