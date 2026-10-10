@@ -5,6 +5,7 @@ import { WorkspaceService } from 'src/electron-main/services/workspace/workspace
 import { WORKSPACE_VFS_SEARCH_INDEX_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/search-index.schema';
 import { saveWorkspaceNodeTextSnapshot } from 'src/features/workspace/infrastructure/sqlite/node-text-snapshot/nodeTextSnapshot.service';
 import { searchWorkspaceVfsNodes } from 'src/features/workspace/vfs/orchestration/searchWorkspaceVfsNodes';
+import { grepWorkspaceVfsSearchIndex } from 'src/features/workspace/vfs/orchestration/workspaceVfsSearchIndex';
 import { invalidateWorkspaceVfsSearchIndexNodes } from 'src/features/workspace/vfs';
 import { GrepTool } from './GrepTool';
 import { WriteFileTool } from '../write_file/WriteFileTool';
@@ -198,6 +199,65 @@ describe('Workspace grep current text and honest coverage', () => {
     expect(current.data).toMatchObject({ total_count: 1, truncated: false });
     expect((await run({ pattern: 'Initial finding' })).data).toMatchObject({ total_count: 0, truncated: false });
     expect((await run({ pattern: 'Revised finding' })).data).toMatchObject({ total_count: 1, truncated: false });
+  });
+
+  it.each([
+    { existing: false, nested: false },
+    { existing: true, nested: false },
+    { existing: true, nested: true },
+  ])('索引中途写入失败只回滚该文件（已有索引=$existing，外层事务=$nested）', async ({ existing, nested }) => {
+    insertText('atomic', 'atomic.txt', 'Old complete index.');
+    if (existing) await run({ pattern: 'Old' });
+    const db = database.getDb();
+    const readIndex = () => ({
+      files: db.prepare('SELECT * FROM workspace_vfs_search_files ORDER BY inode').all(),
+      lines: db.prepare('SELECT * FROM workspace_vfs_search_lines ORDER BY id').all(),
+      grams: db.prepare('SELECT * FROM workspace_vfs_search_grams ORDER BY line_id, gram').all(),
+    });
+    const previous = readIndex();
+    saveWorkspaceNodeTextSnapshot({ db, nodeId: 'atomic', contentType: 'text/plain',
+      text: 'First line is inserted successfully.\nSecond line has err and must fail.', updatedAt: 2 });
+    db.prepare('UPDATE workspace_nodes SET updated_at = 2 WHERE id = ?').run('atomic');
+    db.exec(`CREATE TEMP TRIGGER fail_index_gram BEFORE INSERT ON workspace_vfs_search_grams
+      WHEN NEW.gram = 'err' BEGIN SELECT RAISE(ABORT, 'synthetic-index-gram-write-failed'); END`);
+    if (nested) {
+      db.exec('CREATE TEMP TABLE caller_changes (value TEXT NOT NULL)');
+      db.prepare('SAVEPOINT caller_owned').run();
+      db.prepare('INSERT INTO caller_changes VALUES (?)').run('unrelated caller write');
+    }
+    await expect(grepWorkspaceVfsSearchIndex({ db, projectId, pattern: 'Second' }))
+      .rejects.toMatchObject({ code: 'SQLITE_CONSTRAINT_TRIGGER', message: 'synthetic-index-gram-write-failed' });
+    // 写入事务不包含正文读取/更新；只恢复先前完整索引，不能提交新行的部分结果。
+    expect(readIndex()).toEqual(previous);
+    expect(db.inTransaction).toBe(nested);
+    if (nested) {
+      expect(db.prepare('SELECT value FROM caller_changes').all()).toEqual([{ value: 'unrelated caller write' }]);
+      db.prepare('ROLLBACK TO SAVEPOINT caller_owned').run();
+      db.prepare('RELEASE SAVEPOINT caller_owned').run();
+      expect(db.prepare('SELECT value FROM caller_changes').all()).toEqual([]);
+      expect(readIndex()).toEqual(previous);
+      expect(db.inTransaction).toBe(false);
+    }
+    db.exec('DROP TRIGGER fail_index_gram');
+    expect((await run({ pattern: 'Second' })).data).toMatchObject({ total_count: 1, truncated: false });
+    expect((await run({ pattern: 'Old' })).data).toMatchObject({ total_count: 0, truncated: false });
+  });
+
+  it('文件索引 savepoint 不提交调用方已有事务，外层回滚仍能撤销整个重建', async () => {
+    insertText('nested', 'nested.txt', 'Nested result.');
+    const db = database.getDb();
+    db.prepare('SAVEPOINT caller_owned').run();
+    try {
+      expect((await run({ pattern: 'Nested' })).data).toMatchObject({ total_count: 1, truncated: false });
+      expect(db.inTransaction).toBe(true);
+      expect(db.prepare('SELECT COUNT(*) AS n FROM workspace_vfs_search_files').get()).toEqual({ n: 1 });
+      db.prepare('ROLLBACK TO SAVEPOINT caller_owned').run();
+      expect(db.prepare('SELECT COUNT(*) AS n FROM workspace_vfs_search_files').get()).toEqual({ n: 0 });
+      expect(db.prepare('SELECT COUNT(*) AS n FROM workspace_vfs_search_lines').get()).toEqual({ n: 0 });
+      expect(db.prepare('SELECT COUNT(*) AS n FROM workspace_vfs_search_grams').get()).toEqual({ n: 0 });
+    } finally {
+      db.prepare('RELEASE SAVEPOINT caller_owned').run();
+    }
   });
 
   it('内部目录预算变化使旧索引重建，不把较短索引缓存伪装成新覆盖范围', async () => {

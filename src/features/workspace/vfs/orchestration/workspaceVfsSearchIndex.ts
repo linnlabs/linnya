@@ -8,6 +8,7 @@ import { SEARCH_INDEX_VERSION, SearchIndexFreshnessSchema, type SearchIndexFresh
 import type { WorkspaceVfsNode } from '../definitions/workspaceVfsNode';
 import {
   WORKSPACE_VFS_DIRECTORY_SEARCH_MAX_FILE_CHARS,
+  type WorkspaceVfsReadSuccess,
   type WorkspaceVfsSearchIndexMetadata,
   type WorkspaceVfsSearchMatch,
 } from '../definitions/workspaceVfsRead';
@@ -265,6 +266,39 @@ function insertIndexedLines(params: {
   }
 }
 
+/** 异步正文投影完成后才进入同步批写；每个文件的行、grams 和覆盖记录一起提交。 */
+function replaceIndexedNode(params: {
+  readonly db: WorkspaceVfsDatabase;
+  readonly projectId: string;
+  readonly read: WorkspaceVfsReadSuccess;
+  readonly maxFileChars: number;
+}): void {
+  const { db, projectId, read } = params;
+  const contentHash = hashText(read.text);
+  // VFS 的窄读接口只有 prepare。SQLite savepoint 可复用当前连接，也不会提交调用方外层事务。
+  db.prepare('SAVEPOINT workspace_vfs_search_rebuild').run();
+  try {
+    deleteIndexedNode(db, projectId, read.node.inode);
+    insertIndexedLines({ db, node: read.node, text: read.text, contentHash, indexedAt: Date.now() });
+    db.prepare(`
+      INSERT INTO workspace_vfs_search_files (
+        project_id, inode, path, node_updated_at, index_version, max_file_chars, truncated
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(projectId, read.node.inode, read.node.path, read.node.updated_at,
+      SEARCH_INDEX_VERSION, params.maxFileChars, read.truncated ? 1 : 0);
+    db.prepare('RELEASE SAVEPOINT workspace_vfs_search_rebuild').run();
+  } catch (error) {
+    try {
+      db.prepare('ROLLBACK TO SAVEPOINT workspace_vfs_search_rebuild').run();
+      db.prepare('RELEASE SAVEPOINT workspace_vfs_search_rebuild').run();
+    } catch (rollbackError) {
+      // 数据库 I/O 等异常可能同时破坏事务；保留两项原始错误，不能用清理异常覆盖写入原因。
+      throw Object.assign(new Error('Workspace search index rollback failed.'), { cause: error, rollbackError });
+    }
+    throw error;
+  }
+}
+
 async function ensureNodeIndexed(params: {
   readonly base: ListWorkspaceVfsNodesParams;
   readonly node: WorkspaceVfsNode;
@@ -296,21 +330,7 @@ async function ensureNodeIndexed(params: {
     return { indexed: false, skippedFresh: false, truncatedFile: false, incomplete: true };
   }
 
-  deleteIndexedNode(params.base.db, projectId, params.node.inode);
-  insertIndexedLines({
-    db: params.base.db,
-    node: read.node,
-    text: read.text,
-    contentHash: hashText(read.text),
-    indexedAt: Date.now(),
-  });
-
-  params.base.db.prepare(`
-    INSERT INTO workspace_vfs_search_files (
-      project_id, inode, path, node_updated_at, index_version, max_file_chars, truncated
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(projectId, read.node.inode, read.node.path, read.node.updated_at,
-    SEARCH_INDEX_VERSION, params.maxFileChars, read.truncated ? 1 : 0);
+  replaceIndexedNode({ db: params.base.db, projectId, read, maxFileChars: params.maxFileChars });
 
   return { indexed: true, skippedFresh: false, truncatedFile: read.truncated, incomplete: read.truncated };
 }
