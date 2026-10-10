@@ -263,10 +263,6 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
     const childParentToolContext = derivePluginAwareToolContext(params.parentToolContext, {
       // 每个 child 使用自己的冻结身份；父级任务准备能力不能被子级或嵌套 worker 借用。
       callerAgentId: durable ? durable.descriptor.request.callerAgentId : agentDefinition.id,
-      availableSubagentTypes: durable
-        ? durable.descriptor.request.availableSubagentTypes
-        : agentDefinition.config?.availableSubagentTypes,
-      prepareSubagentTask: undefined,
       registeredRootAllowedTools: undefined,
       authorizedHostToolCall: undefined,
       registeredChildAllowedTools:

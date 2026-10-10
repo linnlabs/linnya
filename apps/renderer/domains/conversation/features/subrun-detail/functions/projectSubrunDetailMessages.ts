@@ -1,7 +1,7 @@
 import {
   conversationSubrunMessageIdFromInvocation,
   ConversationUserMessageMetadataSchema,
-  SubagentArgsSchema,
+  SubagentPresentationArgsSchema,
 } from '@app/schemas';
 
 import type {
@@ -18,7 +18,7 @@ export function projectSubrunInvocationMessage(params: {
   readonly parentMessage: ToolCallMessage;
   readonly subrunId: string;
 }): UserMessage {
-  const args = SubagentArgsSchema.parse(params.parentMessage.metadata.args);
+  const args = SubagentPresentationArgsSchema.parse(params.parentMessage.metadata.args);
   return {
     id: conversationSubrunMessageIdFromInvocation(params.subrunId),
     role: 'user',

@@ -1,5 +1,5 @@
 import {
-  SubagentArgsSchema,
+  SubagentPresentationArgsSchema,
   SubagentResultSchema,
 } from '@app/schemas';
 
@@ -17,7 +17,7 @@ export function projectSubrunDetailFooterPresentation(params: {
   readonly activity: ExecutionActivity;
 }): SubrunDetailFooterPresentation {
   const { parentMessage } = params;
-  SubagentArgsSchema.parse(parentMessage.metadata.args);
+  SubagentPresentationArgsSchema.parse(parentMessage.metadata.args);
 
   if (parentMessage.metadata.status === 'loading') {
     return { status: resolveToolExecutionActivity('loading', params.activity).state };

@@ -13,7 +13,7 @@
  */
 
 import { z } from 'zod';
-import { AvailableSubagentTypesSchema, PromptKeys, ResearchRunArgsSchema, UserQuoteSchema } from '@app/schemas';
+import { PromptKeys, ResearchRunArgsSchema, UserQuoteSchema } from '@app/schemas';
 import { generateAiMessageId } from '@linnlabs/linnkit/contracts';
 import * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { graph } from '@linnlabs/linnkit/runtime-kernel';
@@ -65,7 +65,6 @@ export const AgentInvokeRequestSchema = z
     frozenSystemPrompt: z.string().optional(),
     researchScope: ResearchRunArgsSchema.optional(),
     callerAgentId: z.string().min(1).optional(),
-    availableSubagentTypes: AvailableSubagentTypesSchema.optional(),
     currentUserEventId: z
       .string()
       .refine(value => value.trim().length > 0 && value === value.trim(), {

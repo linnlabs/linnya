@@ -23,6 +23,7 @@
 - `tool_process` 已通过 owner admission，携带单个调用的正式 args，创建 loading 步骤。
 - `tool_output` 收敛 terminal presentation；reload 时可从同 tool identity 的 decision 恢复 args。
 - 开发环境不接纳 decision 标量旧字段。
+- 父 subagent 参数由只读 `SubagentPresentationArgsSchema` 接纳，兼容曾带 input_documents 的历史调用；live 工具使用更窄的 SubagentArgsSchema，历史展示不能重新启用已移除的执行字段。
 
 child 工具消息 ID 必须由 `conversationSubrunMessageIdFromToolIdentity(subrunId, toolCallId)` 派生，不得用事件 ID、工具名或下标。
 

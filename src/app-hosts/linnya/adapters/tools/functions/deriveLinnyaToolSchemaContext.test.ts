@@ -8,21 +8,12 @@ describe('deriveLinnyaToolSchemaContext', () => {
       promptKey: 'default',
       imageGenerationModelId: '  configured-image-model  ',
       callerAgentId: 'frozen-agent',
-      availableSubagentTypes: ['scoped_reviewer'],
-      metadata: { callerAgentId: 'forged-agent', availableSubagentTypes: ['general'] },
+      metadata: { callerAgentId: 'forged-agent' },
     };
 
     expect(deriveLinnyaToolSchemaContext(productInvocation)).toEqual({
       imageGenerationModelId: 'configured-image-model',
       callerAgentId: 'frozen-agent',
-      availableSubagentTypes: ['scoped_reviewer'],
     });
-  });
-
-  it('保留空白名单的禁用语义，无效范围不能降级成无限制', () => {
-    const invocation = { query: 'Delegate', promptKey: 'default', availableSubagentTypes: [] };
-    expect(deriveLinnyaToolSchemaContext(invocation).availableSubagentTypes).toEqual([]);
-    const invalid = { ...invocation, availableSubagentTypes: 'general' };
-    expect(() => deriveLinnyaToolSchemaContext(invalid)).toThrow();
   });
 });

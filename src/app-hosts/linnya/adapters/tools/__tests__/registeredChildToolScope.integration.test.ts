@@ -15,9 +15,6 @@ import {
 } from '../../../plugin-registry/pluginRuntimeState';
 import { ToolRegistry } from '../toolRegistry';
 import { defaultObservationPreviewPort } from '../defaultPorts';
-import { RESEARCH_AGENT_ID } from '@app/schemas';
-import { freezeAgentRunInput } from '../../../agent-registry/freezeAgentRunInput';
-import { resolveAgentRequestAdmission } from '../../../agent-registry/resolveAgentRequestAdmission';
 
 beforeEach(() => {
   setPluginRuntimeStateForTests({
@@ -92,117 +89,13 @@ describe('registered child execution scope through ToolNode and ToolRegistry', (
     expect(run).not.toHaveBeenCalled();
   });
 
-  it('真实平台研究角色仅进入研究父目录，Default 既不可见也无法执行', async () => {
+  it('通用委派拒绝退役材料参数，且在 ToolNode start 前返回协议错误', async () => {
     const registry = new ToolRegistry({ strictInitialization: true });
-    const research = freezeAgentRunInput(
-      resolveAgentRequestAdmission(
-        {
-          query: 'Explain the evidence',
-          promptKey: RESEARCH_AGENT_ID,
-          project_metadata: { id: 'delegation-scope-project' },
-        },
-        { history: [] }
-      )
-    );
-    const roles = registry.getToolSchemas({ invocation: research, toolNames: ['subagent'] })[0]
-      ?.function.parameters.properties.subagent_type.enum;
-    expect(roles).toEqual(research.availableSubagentTypes);
-    expect(roles).not.toContain('research_draft');
-    expect(roles).not.toContain('research_revision');
-    expect(roles).not.toContain('general');
-    expect(roles).not.toContain('document_editor');
-    if (!roles) throw new Error('Research role catalog is unavailable');
-    const invoke = vi.fn();
-    const invocation = freezeAgentRunInput({
-      query: 'An ordinary task',
-      promptKey: 'default',
-      callerAgentId: RESEARCH_AGENT_ID,
-      availableSubagentTypes: roles,
-    });
-    expect(invocation.callerAgentId).not.toBe(RESEARCH_AGENT_ID);
-    expect(invocation.availableSubagentTypes).toBeUndefined();
-    const schema = registry.getToolSchemas({ invocation, toolNames: ['subagent'] })[0];
-    expect(schema?.function.parameters.properties.subagent_type.enum).toEqual([
-      'general',
-      'document_editor',
-    ]);
-    for (const type of roles) {
-      expect(schema?.function.description).not.toContain(`**${type}**`);
-      const context: ToolContext = {
-        callerAgentId: invocation.callerAgentId,
-        availableSubagentTypes: invocation.availableSubagentTypes,
-        modelId: 'scope-test-model',
-        registeredChildRunInvoker: { invoke },
-      };
-      const result = await registry.executeTool(
-        'subagent',
-        {
-          description: 'Unauthorized role',
-          prompt: 'Delegate',
-          subagent_type: type,
-        },
-        context
-      );
-      expect(result).toMatchObject({
-        success: false,
-        error: expect.stringContaining('unknown subagent_type'),
-      });
-    }
-    expect(invoke).not.toHaveBeenCalled();
-  });
-
-  it('subagent 目录与执行按 Host 调用者收窄，非法材料在 ToolNode start 前拒绝', async () => {
-    vi.spyOn(builtin, 'getRegisteredSubagentTypes').mockReturnValue([
-      { type: 'general', promptKey: 'subagent_general', description: 'Public worker' },
-      {
-        type: 'scoped',
-        promptKey: 'scoped_worker',
-        description: 'Scoped worker',
-        allowedCallerAgentIds: ['allowed-caller'],
-      },
-    ]);
-    const registry = new ToolRegistry({ strictInitialization: true });
-    const invocation = { query: 'Delegate', promptKey: 'default', callerAgentId: 'allowed-caller' };
-    const admitted = registry.getToolSchemas({ invocation, toolNames: ['subagent'] });
-    expect(admitted[0]?.function.parameters.properties.subagent_type.enum).toEqual([
-      'general',
-      'scoped',
-    ]);
-    const narrowedInvocation = { ...invocation, availableSubagentTypes: ['scoped'] };
-    const narrowed = registry.getToolSchemas({
-      invocation: narrowedInvocation,
-      toolNames: ['subagent'],
-    });
-    expect(narrowed[0]?.function.parameters.properties.subagent_type.enum).toEqual(['scoped']);
-    expect(narrowed[0]?.function.parameters.required).toContain('subagent_type');
-    for (const restricted of [
-      { ...narrowedInvocation, availableSubagentTypes: [] },
-      { ...narrowedInvocation, callerAgentId: 'other' },
-    ]) {
-      expect(registry.getToolSchemas({ invocation: restricted, toolNames: ['subagent'] })).toEqual(
-        []
-      );
-    }
-    const otherInvocation = { ...invocation, callerAgentId: 'other' };
-    expect(
-      registry.getToolSchemas({ invocation: otherInvocation, toolNames: ['subagent'] })[0]?.function
-        .parameters.properties.subagent_type.enum
-    ).toEqual(['general']);
     const invoke = vi.fn();
     const context: ToolContext = {
-      callerAgentId: 'other',
       modelId: 'test-model',
       registeredChildRunInvoker: { invoke },
     };
-    expect(
-      await registry.executeTool(
-        'subagent',
-        { description: 'Delegate', prompt: 'Read', subagent_type: 'scoped' },
-        context
-      )
-    ).toMatchObject({ success: false });
-    expect(invoke).not.toHaveBeenCalled();
-
     const events: RuntimeEvent[] = [];
     const sequencer = new execution.EventSequencer('conversation-delegation-admission');
     const publisher = new execution.RuntimeEventPublisher(
@@ -249,7 +142,7 @@ describe('registered child execution scope through ToolNode and ToolRegistry', (
     expect(events.filter(event => event.type === 'tool_process')).toHaveLength(0);
     expect(events.find(event => event.type === 'tool_output')).toMatchObject({
       status: 'error',
-      error: expect.stringContaining('input_documents.1'),
+      error: expect.stringContaining('Unrecognized key'),
     });
     expect(invoke).not.toHaveBeenCalled();
   });

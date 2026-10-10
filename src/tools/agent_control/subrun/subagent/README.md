@@ -17,15 +17,14 @@ subagent Tool
 
 - live ToolRegistry 只注册 `subagent`，不注册 `delegate` alias。
 - 旧 `delegate` 只允许由 Renderer 历史配置展示，不进入 backend executable registry。
-- `subagent_type` 的可选值来自当前启用插件，并按类型的 `allowedCallerAgentIds` 与父 Agent 的 `config.availableSubagentTypes` 交集过滤描述、JSON Schema 与实际执行；共享 schema 只校验稳定字段，不能复制动态 registry。两份名单均以未声明表示不额外限制、空数组表示禁用。空交集会省略本次模型目录中的 `subagent`，直接执行仍拒绝。可选目录不含 `general` 时模型必须显式选类型，不能默认另选一个角色。调用者身份与父侧范围来自 Host 首次接纳时冻结的请求，不接受模型参数、metadata 或父 child 的身份。
+- `subagent_type` 的可选值来自当前启用插件；共享 schema 只校验 description、prompt 和可选 subagent_type，不复制动态 registry。省略类型时使用 general，显式未知类型拒绝，不能静默改成另一种任务。
 - child 默认不继承父会话历史；`inheritTurns` 只控制历史消息，不控制环境上下文。
 - 通用 child 自动继承父 run admission 时冻结的 `project-context`、当前文档和插件 `current-view` Fence，包括项目文件清单；不自动继承 selection、user quote、附件或泛化 `additional-context`。
 - child ToolContext 同时继承父运行已接纳的项目操作能力与 Workspace 身份，因此可以使用同一组文件工具；初始文件清单只是当前轮快照，运行中需要最新状态时调用 `list_files`。
-- child 不注册 `task_write/task_read`，Subagent runner 也不读取或注入父 TaskState；`prompt` 是父 Agent 的委派指令，必须写明子任务目标、约束和预期输出，不需要重复抄写已经自动注入的项目背景。可选 `input_documents` 以非空、去重的正式 Workspace locator 列表显式绑定材料；省略时旧调用与历史参数继续有效。绑定不等于 child 已读取材料。
+- child 不注册 `task_write/task_read`，Subagent runner 也不读取或注入父 TaskState；`prompt` 是父 Agent 的委派指令，必须写明子任务目标、约束和预期输出，不需要重复抄写已经自动注入的项目背景。需要材料时在 prompt 中写明正式 Workspace 路径、材料用途和产物路径；通用工具不要求填写额外材料清单，也不替业务绑定版本或改写请求。
 - 工具说明要求父 Agent 逐项传递适用的用户限制，包括允许/禁止的来源与操作。继承的全局 command permission 不等于本任务材料白名单；这项提示不宣称新增了运行时权限拦截。
 - `SubagentTypeContribution.inheritTurns` 可以为确实依赖父上下文的角色声明固定继承量；默认仍为 `0`，该值不暴露成模型可修改参数。
 - `maxSteps` 由 child Agent Definition 持有；通用 subagent 工具不复制或覆盖该产品策略。
-- 只供特定父 Agent 使用的内部角色必须声明调用者名单，不能因为未出现在菜单就假定执行已隔离。
 - 通用子 Agent 不拥有 `subagent` 工具，禁止递归扩权。
 
 ## 结果合同
@@ -39,13 +38,13 @@ subagent Tool
 
 不能从 observation 扫描路径，也不能把 SharedMemory、Evidence 或任意 Resource URI 当作协作产物。父 Agent 用 `read_file(inode=...)` 读取 Workspace 文档，用 `tool_output_read(blob_id=...)` 继续读取 ToolOutput blob。
 
-## Host 任务交接扩展
+## 任务交接
 
-Host 可向当前运行的 ToolContext 注入 `prepareSubagentTask`，接收已校验参数、已授权的类型（含 `promptKey` 与 `inheritTurns`）和已锁定模型，返回派生 context、实际 child 请求、可选稳定 subrun 身份与 `acceptResult`。公开类型见 `definitions/subagentTask.ts`。准备端口不能启动模型或另建 runtime；工具仍唯一调用通用 runner。无端口时沿用默认请求，并把显式材料列表附到 child 请求。
+`prompt` 是父 Agent 明确交给 child 的任务指令，工具仅在前面附上 description，不额外注入业务材料、阶段规则或产物接纳回调。研究、写作等领域的分工由对应 Agent 系统提示与本次任务请求负责。
 
-`acceptResult` 只在 child 成功且未取消后接纳业务产物；返回值与通用提取器结果合并去重，再经原有 `SubagentResultSchema` 校验，不扩张结果 shape，也不在通用提取器添加领域工具名。准备或接纳失败直接传播，不能把拒绝的产物伪报成功。运行恢复时 Host 必须重新安装端口，并复用原调用的冻结请求/身份；业务效果的原子性仍由实际文档 owner 负责。
+普通 Workspace 写入产生的文档继续由正式事件提取为 artifacts；业务不能通过通用工具伪造已校验产物。子任务成功仅表示本次运行完成，不表示研究结论已经核验。
 
-Host 可能按角色补充材料版本与交付要求。因此父工具卡中的 `prompt` 是“父委派指令”，不是完整实际 child 请求；真实 child incoming fact 与 RunDescriptor 保存实际请求。不能声称卡片中的原始参数等于全部模型输入。当前 registered child 会清除父 `prepareSubagentTask` 并覆盖调用者身份，防止同伴或嵌套 worker 借用准备能力；其它已绑定业务能力仍由其 owner 校验实际 run 身份。
+Renderer 通过独立的 `SubagentPresentationArgsSchema` 回放曾带有 input_documents 的历史参数；此只读兼容不恢复 live 参数，不启动旧交接流程。历史实际 child 输入仍以其持久运行事实为准。
 
 本工具每次执行一个 child。普通 ToolNode 顺序执行同一 decision 的多个 `subagent` 调用，不能据模型一次请求多个调用声称并行。现有 `subrun_batch` 是 Host 同 worker 批量协议，不代替异构角色委派；未来并行扩展须复用 shared runner 并定义统一批量合同。
 

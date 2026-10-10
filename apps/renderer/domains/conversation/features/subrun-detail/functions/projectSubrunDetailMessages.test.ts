@@ -32,8 +32,10 @@ function parentMessage(): ToolCallMessage {
 
 describe('projectSubrunDetailMessages', () => {
   it('把正式 subagent prompt 投影为稳定身份的只读 user message', () => {
+    const parent = parentMessage();
+    parent.metadata.args = { ...parent.metadata.args, input_documents: ['workspace:/report.md'] };
     expect(projectSubrunInvocationMessage({
-      parentMessage: parentMessage(),
+      parentMessage: parent,
       subrunId: 'subrun-child',
     })).toEqual({
       id: 'subrun-user:subrun-child',

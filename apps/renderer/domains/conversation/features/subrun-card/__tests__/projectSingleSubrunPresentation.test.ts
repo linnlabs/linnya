@@ -39,6 +39,36 @@ describe('projectSingleSubrunPresentation', () => {
     });
   });
 
+  it('带退役材料参数的历史卡仍可展示，不把材料声明当作新的交接执行', () => {
+    const projection = projectSingleSubrunPresentation(input({
+      args: {
+        description: '核查原稿',
+        prompt: '仅核查 workspace:/draft.md',
+        input_documents: ['workspace:/draft.md'],
+      },
+      status: 'success',
+      phase: 'complete',
+      result: {
+        data: {
+          description: '核查原稿',
+          subagent_type: 'general',
+          model_id: 'historical-model',
+          subrun_ids: ['historical-child'],
+          status: 'completed',
+          final_answer: '已保存核查',
+          artifacts: ['workspace:review-document'],
+        },
+        observation: '已完成',
+      },
+    }));
+    expect(projection.data).toMatchObject({
+      description: '核查原稿',
+      modelId: 'historical-model',
+      subrunId: 'historical-child',
+      outcome: 'completed',
+    });
+  });
+
   it('terminal result 与 summary 必须声明同一个 child', () => {
     expect(() => projectSingleSubrunPresentation(input({
       status: 'success',

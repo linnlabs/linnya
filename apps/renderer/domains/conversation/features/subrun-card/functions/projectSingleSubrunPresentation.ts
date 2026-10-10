@@ -1,5 +1,5 @@
 import {
-  SubagentArgsSchema,
+  SubagentPresentationArgsSchema,
   SubagentResultSchema,
 } from '@app/schemas';
 import type {
@@ -31,7 +31,7 @@ function requireMatchingDescription(argsDescription: string, resultDescription: 
 function projectCanonicalSubagent(
   input: ToolPresentationProjectorInput,
 ): ToolPresentationProjection<SubrunCardPresentationData> {
-  const args = SubagentArgsSchema.parse(input.args);
+  const args = SubagentPresentationArgsSchema.parse(input.args);
   const title = createConversationToolTitleDescriptor('conversation.tool.subrun.title', {
     description: args.description,
   });

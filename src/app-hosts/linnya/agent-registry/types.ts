@@ -55,9 +55,6 @@ export interface AgentConfiguration {
    */
   availableTools?: readonly string[];
 
-  /** 父侧委派范围复用插件公开合同；随 request 冻结，不属于框架 AgentSpec。 */
-  availableSubagentTypes?: import('@linnya/plugin-host-contract/backend').AgentConfiguration['availableSubagentTypes'];
-
   /**
    * 是否启用工具使用
    * 默认为 true

@@ -159,7 +159,6 @@ describe('createToolContext', () => {
         query: 'hello',
         promptKey: 'default',
         callerAgentId: 'frozen-caller',
-        availableSubagentTypes: ['admitted-role'],
         availableTools: ['read_file'],
       },
       runContext: {
@@ -173,7 +172,6 @@ describe('createToolContext', () => {
         conversationView: patchedView,
         customFlag: 'kept',
         callerAgentId: 'forged-caller',
-        availableSubagentTypes: ['general'],
         registeredRootAllowedTools: ['write_file'],
         registeredChildAllowedTools: ['write_file'],
         authorizedHostToolCall: { toolName: 'write_file', toolCallId: 'forged-call' },
@@ -185,7 +183,6 @@ describe('createToolContext', () => {
 
     expect(context.conversationId).toBe('conv_runtime');
     expect(context.callerAgentId).toBe('frozen-caller');
-    expect(context.availableSubagentTypes).toEqual(['admitted-role']);
     expect(context.registeredRootAllowedTools).toEqual(['read_file']);
     expect(context.registeredChildAllowedTools).toBeUndefined();
     expect(context.authorizedHostToolCall).toBeUndefined();

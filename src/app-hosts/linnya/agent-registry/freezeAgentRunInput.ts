@@ -19,10 +19,6 @@ export function freezeAgentRunInput(request: AgentInvokeRequest): AgentInvokeReq
   return {
     ...request,
     callerAgentId: definition.id,
-    availableSubagentTypes:
-      definition.config?.availableSubagentTypes === undefined
-        ? undefined
-        : [...definition.config.availableSubagentTypes],
     frozenSystemPrompt: systemMessages[0].content,
   };
 }

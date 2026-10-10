@@ -5,9 +5,6 @@ import { WorkspaceFileLocatorSchema } from '../file-locator';
 
 const NonEmptyStringSchema = z.string().trim().min(1);
 
-/** Host 冻结的父侧委派范围；空列表有禁用语义，不能等同于未声明。 */
-export const AvailableSubagentTypesSchema = z.array(NonEmptyStringSchema);
-
 function requireUniqueStrings(items: readonly string[], context: z.RefinementCtx): void {
   const seen = new Set<string>();
   items.forEach((item, index) => {
@@ -29,14 +26,18 @@ export const SubagentArgsSchema = z
     prompt: NonEmptyStringSchema,
     /** 具体 enum 由启用插件的 subagent registry 在 Tool JSON Schema 中动态收窄。 */
     subagent_type: NonEmptyStringSchema.optional(),
-    /** 显式材料绑定；省略保持原委派合同，Host 可据此接纳业务文档版本。 */
-    input_documents: z
-      .array(WorkspaceFileLocatorSchema)
-      .min(1)
-      .superRefine(requireUniqueStrings)
-      .optional(),
+
   })
   .strict();
+
+/** 仅供 Renderer 回放旧调用；live 工具参数不接受退役材料字段。 */
+export const SubagentPresentationArgsSchema = SubagentArgsSchema.extend({
+  input_documents: z
+    .array(WorkspaceFileLocatorSchema)
+    .min(1)
+    .superRefine(requireUniqueStrings)
+    .optional(),
+});
 
 export const SubagentStatusSchema = z.enum(['completed', 'partial', 'failed', 'cancelled']);
 

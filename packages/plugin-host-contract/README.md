@@ -66,7 +66,7 @@ Renderer 文档保存 handler 拥有本类型的 dirty 状态：只在确认当�
 
 Conversation 的产品消息合同由 `@app/schemas` 拥有；具体渲染、虚拟化和滚动规则由 Conversation domain 拥有。
 
-`SubagentTypeContribution.allowedCallerAgentIds` 可把角色限制给指定父 Agent；`AgentConfiguration.availableSubagentTypes` 则限定父 Agent 可选的角色。两者取交集，未声明不额外限制，空数组禁用。Host 使用冻结的实际 Agent 身份与配置同时过滤模型目录与执行，插件不能通过工具参数或 metadata 传入调用者身份或扩大范围。材料与产物交接端口属于 Host `subagent` feature，不在本纯类型包中建立另一套执行器。
+`SubagentTypeContribution` 只声明类型、promptKey、说明和固定的父历史继承量。材料路径、评审对象和角色任务通过父 Agent 的委派 prompt 交接，不扩张通用工具参数或在本纯类型包中建立业务执行器。
 
 工具卡如需展示工具结果中的图片，必须在 `ToolUiConfig.runtime` 显式声明 `attachments: true`。
 Host 只传递已经由 durable `tool_output.attachments` 映射出的 `ToolUiImageAttachmentRef[]`；这不是 Agent

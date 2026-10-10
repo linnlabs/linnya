@@ -1,5 +1,11 @@
+import type { PromptKey } from 'src/app-hosts/linnya/agent-registry/prompt.types';
 import type { SubagentTypeContribution } from 'src/app-hosts/linnya/plugin-registry/types';
-import type { ResolvedSubagentType } from '../definitions/subagentTask';
+
+export interface ResolvedSubagentType {
+  readonly type: string;
+  readonly promptKey: PromptKey;
+  readonly inheritTurns: number;
+}
 
 function toResolvedSubagentType(contribution: SubagentTypeContribution): ResolvedSubagentType {
   return {
@@ -15,21 +21,21 @@ function toResolvedSubagentType(contribution: SubagentTypeContribution): Resolve
  */
 export function resolveSubagentType(
   rawType: string | undefined,
-  registeredTypes: readonly SubagentTypeContribution[]
+  registeredTypes: readonly SubagentTypeContribution[],
 ): ResolvedSubagentType {
   if (rawType === undefined) {
-    const general = registeredTypes.find(item => item.type === 'general');
+    const general = registeredTypes.find((item) => item.type === 'general');
     if (!general) {
-      throw new Error('subagent: subagent_type is required for this caller');
+      throw new Error('subagent: registry missing required general type');
     }
     return toResolvedSubagentType(general);
   }
 
-  const match = registeredTypes.find(item => item.type === rawType);
+  const match = registeredTypes.find((item) => item.type === rawType);
   if (!match) {
-    const availableTypes = registeredTypes.map(item => item.type).join(', ');
+    const availableTypes = registeredTypes.map((item) => item.type).join(', ');
     throw new Error(
-      `subagent: unknown subagent_type "${rawType}"; available types: ${availableTypes}`
+      `subagent: unknown subagent_type "${rawType}"; available types: ${availableTypes}`,
     );
   }
 
