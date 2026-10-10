@@ -1,8 +1,3 @@
-import { decorateResearchDelegation } from '../../adapters/research-execution/decorateResearchDelegation';
-import {
-  decorateResearchToolContext,
-  enforceResearchRetrievalScope,
-} from '../../adapters/research-execution/decorateResearchToolContext';
 import { decorateDeepWebSnapshotToolContext } from '../../adapters/tools/deepWebSnapshotToolContextDecorator';
 import type { PluginBackendContribution } from '../types';
 import { PLATFORM_PLUGIN_META } from './platform-meta';
@@ -38,25 +33,7 @@ import {
 export const platformBackendPlugin: PluginBackendContribution = {
   meta: PLATFORM_PLUGIN_META,
   toolClasses: legacyBuiltinToolClasses,
-  hostOnlyToolNames: ['research_run'],
   toolContextDecorators: [
-    {
-      toolNames: [
-        'subagent',
-        'complete_research',
-        'submit_research_document',
-        'web_search',
-        'web_read',
-        'knowledge_search',
-        'knowledge_read',
-      ],
-      decorate: decorateResearchDelegation,
-    },
-    { toolNames: ['research_run'], decorate: decorateResearchToolContext },
-    {
-      toolNames: ['web_search', 'web_read', 'search_web', 'knowledge_search', 'knowledge_read'],
-      decorate: enforceResearchRetrievalScope,
-    },
     { toolNames: ['assemble_web_sources'], decorate: decorateDeepWebSnapshotToolContext },
     {
       toolNames: CITATION_PRODUCER_TOOL_NAMES,

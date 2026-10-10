@@ -12,8 +12,6 @@ import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
-import { ReadFileTool } from 'src/tools/workspace/read_file/ReadFileTool';
-import { WriteFileTool } from 'src/tools/workspace/write_file/WriteFileTool';
 import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
@@ -84,13 +82,16 @@ async function seed(fixture: Fixture) {
   const projectId = new WorkspaceService(fixture.db).createProject('Lead acceptance');
   await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
   // 夹具也经通用 Workspace 写入，不再借用已撤回的研究提交/回执 owner。
-  const written = await new WriteFileTool().run(
+  const writer = toolRegistry.getTool('write_file');
+  if (!writer) throw new Error('Missing Workspace writer');
+  const written = await writer.run(
     {
       locator: paths.source,
       content: '# Source\n\nBaseline is 100; current is 110.',
     },
     {
       databaseService: fixture.database,
+      workspaceService: new WorkspaceService(fixture.db),
       workspaceProjectId: projectId,
       conversationId,
     }
@@ -314,10 +315,13 @@ async function assertDelivered(fixture: Fixture, projectId: string) {
     ]);
     expect(childOutputs.every(event => event.status === 'success')).toBe(true);
   }
-  const revision = await new ReadFileTool().run(
+  const reader = toolRegistry.getTool('read_file');
+  if (!reader) throw new Error('Missing Workspace reader');
+  const revision = await reader.run(
     { locator: paths.revision },
     {
       databaseService: fixture.database,
+      workspaceService: new WorkspaceService(fixture.db),
       workspaceProjectId: projectId,
       conversationId,
     }

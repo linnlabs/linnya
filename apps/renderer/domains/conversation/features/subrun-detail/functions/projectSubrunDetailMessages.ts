@@ -4,11 +4,7 @@ import {
   SubagentPresentationArgsSchema,
 } from '@app/schemas';
 
-import type {
-  BaseMessage,
-  ToolCallMessage,
-  UserMessage,
-} from '../../../types';
+import type { BaseMessage, ToolCallMessage, UserMessage } from '../../../types';
 
 /**
  * 父 Agent 交给 child 的 prompt 是 subagent 调用的正式输入事实。
@@ -39,8 +35,5 @@ export function projectSubrunDetailMessages(params: {
   readonly subrunId: string;
   readonly childMessages: readonly BaseMessage[];
 }): readonly BaseMessage[] {
-  return [
-    projectSubrunInvocationMessage(params),
-    ...params.childMessages,
-  ];
+  return [projectSubrunInvocationMessage(params), ...params.childMessages];
 }

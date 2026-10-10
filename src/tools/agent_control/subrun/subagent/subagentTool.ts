@@ -3,11 +3,7 @@
  * @description Linnya 通用子 Agent 协作工具 facade。
  */
 
-import {
-  SubagentArgsSchema,
-  SubagentResultSchema,
-  type SubagentResult,
-} from '@app/schemas';
+import { SubagentArgsSchema, SubagentResultSchema, type SubagentResult } from '@app/schemas';
 import { getRegisteredSubagentTypes } from 'src/app-hosts/linnya/plugin-registry/builtin';
 import type { SubagentTypeContribution } from 'src/app-hosts/linnya/plugin-registry/types';
 
@@ -23,7 +19,10 @@ function listSubagentTypes(): SubagentTypeContribution[] {
 
 function buildSubagentTypeLines(): string {
   return listSubagentTypes()
-    .map((item) => `- **${item.type}**${item.type === 'general' ? ' (default)' : ''}: ${item.description}`)
+    .map(
+      item =>
+        `- **${item.type}**${item.type === 'general' ? ' (default)' : ''}: ${item.description}`
+    )
     .join('\n');
 }
 
@@ -43,7 +42,7 @@ Important:
 }
 
 function buildSubagentParameters(): ToolParameterSchema {
-  const validSubagentTypes = listSubagentTypes().map((item) => item.type);
+  const validSubagentTypes = listSubagentTypes().map(item => item.type);
   return {
     type: 'object',
     additionalProperties: false,
@@ -56,7 +55,8 @@ function buildSubagentParameters(): ToolParameterSchema {
       prompt: {
         type: 'string',
         minLength: 1,
-        description: '子任务唯一语义交接：写明目标、任务专属输入或 Workspace 路径/inode、允许及禁止的来源/操作和预期输出，逐项传递适用的用户限制；项目、当前文档与文件清单由系统自动注入，不要依赖父会话历史或 TaskState。',
+        description:
+          '子任务唯一语义交接：写明目标、任务专属输入或 Workspace 路径/inode、允许及禁止的来源/操作和预期输出，逐项传递适用的用户限制；项目、当前文档与文件清单由系统自动注入，不要依赖父会话历史或 TaskState。',
       },
       subagent_type: {
         type: 'string',
@@ -69,7 +69,10 @@ function buildSubagentParameters(): ToolParameterSchema {
   };
 }
 
-function formatSubagentOutcome(status: SubagentResult['data']['status'], description: string): string {
+function formatSubagentOutcome(
+  status: SubagentResult['data']['status'],
+  description: string
+): string {
   if (status === 'completed') return `subagent 子任务已完成：${description}`;
   if (status === 'partial') return `subagent 子任务部分完成：${description}`;
   if (status === 'cancelled') return `subagent 子任务已取消：${description}`;

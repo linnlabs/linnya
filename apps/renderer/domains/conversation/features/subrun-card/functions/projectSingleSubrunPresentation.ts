@@ -1,21 +1,16 @@
-import {
-  SubagentPresentationArgsSchema,
-  SubagentResultSchema,
-} from '@app/schemas';
+import { SubagentPresentationArgsSchema, SubagentResultSchema } from '@app/schemas';
 import type {
   ToolPresentationProjection,
   ToolPresentationProjectorInput,
 } from '../../../ui/tools/types';
-import type {
-  SubrunCardPresentationData,
-  SubrunCardStatus,
-} from '../definitions/subrunCard';
-import {
-  createConversationToolTitleDescriptor,
-} from '../../../ui/tools/functions/createConversationToolTitleDescriptor';
+import type { SubrunCardPresentationData, SubrunCardStatus } from '../definitions/subrunCard';
+import { createConversationToolTitleDescriptor } from '../../../ui/tools/functions/createConversationToolTitleDescriptor';
 import { resolveSingleSubrunIdentity } from './resolveSingleSubrunIdentity';
 
-function resolveStatus(input: ToolPresentationProjectorInput, childFailed: boolean): SubrunCardStatus {
+function resolveStatus(
+  input: ToolPresentationProjectorInput,
+  childFailed: boolean
+): SubrunCardStatus {
   if (input.status === 'loading') return 'loading';
   if (input.status === 'error' || childFailed) return 'error';
   return 'success';
@@ -24,12 +19,12 @@ function resolveStatus(input: ToolPresentationProjectorInput, childFailed: boole
 function requireMatchingDescription(argsDescription: string, resultDescription: string): void {
   if (argsDescription === resultDescription) return;
   throw new Error(
-    `[SUBRUN_SINGLE_DESCRIPTION_CONFLICT] args=${argsDescription}, result=${resultDescription}`,
+    `[SUBRUN_SINGLE_DESCRIPTION_CONFLICT] args=${argsDescription}, result=${resultDescription}`
   );
 }
 
 function projectCanonicalSubagent(
-  input: ToolPresentationProjectorInput,
+  input: ToolPresentationProjectorInput
 ): ToolPresentationProjection<SubrunCardPresentationData> {
   const args = SubagentPresentationArgsSchema.parse(input.args);
   const title = createConversationToolTitleDescriptor('conversation.tool.subrun.title', {
@@ -69,11 +64,11 @@ function projectCanonicalSubagent(
 
 /** 只接纳当前 canonical subagent；开发环境不为退役工具名保留 replay 分支。 */
 export function projectSingleSubrunPresentation(
-  input: ToolPresentationProjectorInput,
+  input: ToolPresentationProjectorInput
 ): ToolPresentationProjection<SubrunCardPresentationData> {
   if (input.sourceToolName !== 'subagent' || input.uiKey !== 'subagent') {
     throw new Error(
-      `Unsupported single subrun presentation: source=${input.sourceToolName}, uiKey=${input.uiKey}`,
+      `Unsupported single subrun presentation: source=${input.sourceToolName}, uiKey=${input.uiKey}`
     );
   }
   return projectCanonicalSubagent(input);

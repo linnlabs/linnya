@@ -1,9 +1,9 @@
-import {
-  SubagentPresentationArgsSchema,
-  SubagentResultSchema,
-} from '@app/schemas';
+import { SubagentPresentationArgsSchema, SubagentResultSchema } from '@app/schemas';
 
-import { resolveToolExecutionActivity, type ExecutionActivity } from '../../../shared/execution-presentation';
+import {
+  resolveToolExecutionActivity,
+  type ExecutionActivity,
+} from '../../../shared/execution-presentation';
 import type { ToolCallMessage } from '../../../types';
 import type { SubrunDetailFooterPresentation } from '../definitions/subrunDetail';
 
@@ -32,7 +32,7 @@ export function projectSubrunDetailFooterPresentation(params: {
   });
   if (result.data.subrun_ids[0] !== params.subrunId) {
     throw new Error(
-      `[SUBRUN_DETAIL_RESULT_IDENTITY_CONFLICT] scope=${params.subrunId}, result=${result.data.subrun_ids[0]}`,
+      `[SUBRUN_DETAIL_RESULT_IDENTITY_CONFLICT] scope=${params.subrunId}, result=${result.data.subrun_ids[0]}`
     );
   }
   return {

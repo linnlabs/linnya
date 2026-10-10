@@ -79,7 +79,7 @@ export function admitResearchRequest(
   if (context.hostToolCall) {
     throw new ResearchAdmissionError(
       'RESEARCH_HOST_ENTRY_NOT_SUPPORTED',
-      '新研究任务须从研究 Agent 启动；显式范围请使用 research_scope。已接纳的研究运行仍可按原身份恢复。'
+      '新研究任务须从研究 Agent 启动；显式范围请使用 research_scope。旧交接协议的暂停任务请保留已有文档，在新会话重新开始研究。'
     );
   }
   return {

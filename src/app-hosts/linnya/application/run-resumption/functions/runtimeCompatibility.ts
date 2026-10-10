@@ -10,10 +10,7 @@ import {
   loadSkillContent,
   readSkillResource,
 } from 'src/features/skills/catalog';
-import {
-  findRegisteredAgentDefinitionByPromptKey,
-  resolveRegisteredAgentRecoveryConfiguration,
-} from '../../../agent-registry/agentDefinitionResolver';
+import { findRegisteredAgentDefinitionByPromptKey } from '../../../agent-registry/agentDefinitionResolver';
 import { getRegisteredBackendPluginVersions } from '../../../plugin-registry/builtin';
 import type { RunDescriptor } from '../definitions/runDescriptor';
 
@@ -104,16 +101,8 @@ export function captureRuntimeCompatibility(
   return {
     hostVersion,
     frameworkVersion: dependencies['@linnlabs/linnkit'],
-    agentConfiguration: serializeConfiguration(
-      descriptor
-        ? resolveRegisteredAgentRecoveryConfiguration(definition, {
-            promptKey: descriptor.request.promptKey,
-            isChild: descriptor.child !== undefined,
-            frozenConfiguration: descriptor.compatibility.agentConfiguration,
-            hostToolCall: descriptor.options?.host_tool_call,
-          })
-        : (definition.config ?? {})
-    ),
+    // 撤回的研究交接协议不再伪装成可执行的历史配置；差异按通用恢复合同报告。
+    agentConfiguration: serializeConfiguration(definition.config ?? {}),
     models: Object.fromEntries(modelIds.map(id => [id, readModelBinding(id)])),
     plugins: (original
       ? original.plugins.map(required => {

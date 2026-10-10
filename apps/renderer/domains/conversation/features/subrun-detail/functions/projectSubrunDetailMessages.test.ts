@@ -34,10 +34,12 @@ describe('projectSubrunDetailMessages', () => {
   it('把正式 subagent prompt 投影为稳定身份的只读 user message', () => {
     const parent = parentMessage();
     parent.metadata.args = { ...parent.metadata.args, input_documents: ['workspace:/report.md'] };
-    expect(projectSubrunInvocationMessage({
-      parentMessage: parent,
-      subrunId: 'subrun-child',
-    })).toEqual({
+    expect(
+      projectSubrunInvocationMessage({
+        parentMessage: parent,
+        subrunId: 'subrun-child',
+      })
+    ).toEqual({
       id: 'subrun-user:subrun-child',
       role: 'user',
       type: 'user_input',
@@ -54,13 +56,12 @@ describe('projectSubrunDetailMessages', () => {
 
   it('调用 prompt 是 child 视觉轮次的第一条消息', () => {
     const answer = createTestAnswerMessage({ id: 'child-answer' });
-    expect(projectSubrunDetailMessages({
-      parentMessage: parentMessage(),
-      subrunId: 'subrun-child',
-      childMessages: [answer],
-    }).map(message => message.id)).toEqual([
-      'subrun-user:subrun-child',
-      'child-answer',
-    ]);
+    expect(
+      projectSubrunDetailMessages({
+        parentMessage: parentMessage(),
+        subrunId: 'subrun-child',
+        childMessages: [answer],
+      }).map(message => message.id)
+    ).toEqual(['subrun-user:subrun-child', 'child-answer']);
   });
 });

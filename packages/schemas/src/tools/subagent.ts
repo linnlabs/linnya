@@ -26,7 +26,6 @@ export const SubagentArgsSchema = z
     prompt: NonEmptyStringSchema,
     /** 具体 enum 由启用插件的 subagent registry 在 Tool JSON Schema 中动态收窄。 */
     subagent_type: NonEmptyStringSchema.optional(),
-
   })
   .strict();
 

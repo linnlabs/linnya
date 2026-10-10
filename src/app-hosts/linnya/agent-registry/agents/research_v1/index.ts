@@ -3,7 +3,7 @@ import { RESEARCH_AGENT_ID } from '@app/schemas';
 import { admitResearchRequest } from './admission';
 import { buildResearchLeaderPrompt } from './leaderPrompt';
 
-/** 主模型拥有研究判断与委派；Host 只接纳真实阶段、保存产物并核对交付证据。 */
+/** 研究职责由父子提示承担；运行、委派与文件保存复用通用合同。 */
 export default {
   id: RESEARCH_AGENT_ID,
   promptKey: RESEARCH_AGENT_ID,
@@ -11,15 +11,11 @@ export default {
   description: '研究：主 Agent 调查、委派独立复核并交付文章',
   requestAdmission: admitResearchRequest,
   config: {
-    availableSubagentTypes: [
-      'research_investigation',
-      'research_investigation_review',
-      'research_argument_review',
-      'research_source_review',
-    ],
     availableTools: [
       'list_files',
       'read_file',
+      'write_file',
+      'edit_file',
       'grep',
       'tool_output_read',
       'knowledge_search',
@@ -32,8 +28,6 @@ export default {
       'task_write',
       'task_read',
       'subagent',
-      'submit_research_document',
-      'complete_research',
     ],
     enableTools: true,
     maxSteps: 800,
