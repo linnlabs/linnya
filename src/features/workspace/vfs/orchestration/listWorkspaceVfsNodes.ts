@@ -9,6 +9,8 @@
 import { findFormatOwnershipByNodeType } from '../../../../app-hosts/linnya/plugin-registry/formatOwnershipCatalog';
 import type { WorkspaceNodeRow, WorkspaceVfsNode } from '../definitions/workspaceVfsNode';
 import { hasResourceLibraryRole } from '../functions/resourceLibraryRole';
+import type { WorkspaceVfsNodeAccessScope } from '../definitions/workspaceVfsNodeAccessScope';
+import { assertWorkspaceNodeIdAccess, canAccessWorkspaceVfsNode } from '../functions/workspaceVfsNodeAccess';
 import {
   isSystemByInodeFolderId,
   isSystemRootFolderId,
@@ -44,6 +46,7 @@ export interface ListWorkspaceVfsNodesParams {
   readonly generatedImagesDir?: string;
   readonly includeSystemNodes?: boolean;
   readonly nodeTypeAccessPolicy?: WorkspaceVfsNodeTypeAccessPolicy;
+  readonly nodeAccessScope?: WorkspaceVfsNodeAccessScope;
 }
 
 export interface WorkspaceVfsStatement {
@@ -161,7 +164,7 @@ export function readPersistedWorkspaceVfsNode(
     : null;
 }
 
-export async function listWorkspaceVfsNodes(
+async function listProjectNodes(
   params: ListWorkspaceVfsNodesParams
 ): Promise<WorkspaceVfsNode[]> {
   const projectId = normalizeProjectId(params.projectId);
@@ -199,4 +202,16 @@ export async function listWorkspaceVfsNodes(
   return getChildRows(params.db, projectId, parentId)
     .filter(isVisibleWorkspaceNode)
     .map(row => toVfsWorkspaceNode(row, buildWorkspaceNodePath(params.db, row)));
+}
+
+export async function listWorkspaceVfsNodes(
+  params: ListWorkspaceVfsNodesParams
+): Promise<WorkspaceVfsNode[]> {
+  if (params.parentId) {
+    const workspaceNodeId = tryParseSystemInodeEntryFolderId(params.projectId, params.parentId)
+      ?? params.parentId;
+    assertWorkspaceNodeIdAccess(workspaceNodeId, params.nodeAccessScope);
+  }
+  const nodes = await listProjectNodes(params);
+  return nodes.filter(node => canAccessWorkspaceVfsNode(node, params.nodeAccessScope));
 }

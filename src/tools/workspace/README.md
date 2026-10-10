@@ -70,6 +70,14 @@ link：Workspace 文件使用 `workspace:/...`，对话过程文件使用 `conve
 
 所有工具统一通过 `ToolContext.databaseService` 访问 Workspace DB，不走 renderer IPC。
 
+Host 可通过 `ToolContext.resolveWorkspaceNodeAccessScope` 注入节点身份限制；五件套在每次调用时
+物化一次范围并传给 VFS，不接收模型提供的范围。列表和搜索隐藏受限节点，显式读取（包括
+DocumentView 和系统别名）、编辑、覆盖均在进入正文 owner 前拒绝；访问拒绝不能进入缺失路径新建。
+普通上下文省略该 resolver 保持原行为。范围不约束 `conversation:` / `file:` 物理读取、Shell、
+插件 CLI 或已保存的工具输出，也不能撤回已进入历史的内容。稳定身份和索引边界见
+[Workspace VFS](../../features/workspace/vfs/README.md)。
+
+
 除了 Agent 正常调用，Conversation CLI 也可以通过 `tools call` 发起这五个工具。CLI 只负责声明工具名、参数和 Conversation/项目作用域；Host 仍把请求送入同一个 Flow、ToolNode 与 ToolContext，完整复用本文件定义的 admission、locator、权限、pending revision、审计和 UI 投影。它不是第二套 Workspace API，也不允许绕过 registry 直接调用 `run()`。CLI 合同与作用域规则见 [`apps/linnya-cli/README.md`](../../../apps/linnya-cli/README.md)。
 
 ### 1.1 单一命令身份与执行 admission
@@ -208,6 +216,8 @@ Workspace 工具不要只测单工具参数校验，至少应覆盖这些真实�
 - Sheet：当前停用；未来恢复时仍应使用 `list_files -> read_file(view="document")`，精细操作走插件 CLI/Skill。
 
 当前回归测试入口：
+
+- `src/tools/workspace/shared/__tests__/workspaceNodeAccessScope.integration.test.ts`：正式 Registry + 真实 SQLite 覆盖同项目节点限制、预热索引与无索引搜索、系统别名、稳定身份、动态范围和拒绝写入零副作用。
 
 - `packages/plugins/__tests__/workspaceFileToolsIntegration.test.ts`：包含真实 ToolNode owner admission、locator-only Slides 创建、provider 调用和 VFS 双身份结果验证。
 - `src/app-hosts/linnya/adapters/flow/__integration-tests__/flow.file-edit-feedback.integration.test.ts`：真实 SQLite、正式 Registry 和 Markdown 写读，验证编辑成功差异、失效错误与重读进入下一轮模型输入，并保留 A→B→A 后再次编辑的合法语义。直接调用 `Tool.run()` 的用例不能代替这条运行链。

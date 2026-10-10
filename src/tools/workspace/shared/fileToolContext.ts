@@ -4,6 +4,7 @@
  */
 
 import type { ToolContext } from '../../types';
+import type { WorkspaceVfsNodeAccessScope } from '../../../features/workspace/vfs';
 import type { WorkspaceVfsDatabase } from '../../../features/workspace/vfs/orchestration/listWorkspaceVfsNodes';
 import {
   resolveToolConversationId,
@@ -15,6 +16,7 @@ export interface WorkspaceFileToolRuntime {
   readonly projectId: string;
   readonly conversationId?: string;
   readonly instanceId: string;
+  readonly nodeAccessScope?: WorkspaceVfsNodeAccessScope;
 }
 
 function readRequiredProjectId(context: ToolContext): string {
@@ -50,5 +52,6 @@ export function resolveWorkspaceFileToolRuntime(context: ToolContext): Workspace
     projectId: readRequiredProjectId(context),
     conversationId: resolveToolConversationId(context),
     instanceId: resolveToolConversationInstanceId(context),
+    nodeAccessScope: context.resolveWorkspaceNodeAccessScope?.(),
   };
 }

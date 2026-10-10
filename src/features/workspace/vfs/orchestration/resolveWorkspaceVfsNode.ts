@@ -4,6 +4,7 @@
  */
 
 import type { WorkspaceVfsNode } from '../definitions/workspaceVfsNode';
+import { assertWorkspaceVfsNodeAccess } from '../functions/workspaceVfsNodeAccess';
 import { normalizeVfsPath, splitNormalizedVfsPath } from '../functions/pathSegments';
 import { listWorkspaceVfsNodes, type ListWorkspaceVfsNodesParams } from './listWorkspaceVfsNodes';
 
@@ -43,7 +44,7 @@ async function resolveByPath(params: ResolveWorkspaceVfsNodeParams, pathValue: s
   let parentId: string | null = null;
   let current: WorkspaceVfsNode | null = null;
   for (const segment of segments) {
-    const children = await listWorkspaceVfsNodes({ ...params, parentId });
+    const children = await listWorkspaceVfsNodes({ ...params, parentId, nodeAccessScope: undefined });
     const match = children.find((node) => node.name === segment);
     if (!match) {
       return {
@@ -52,6 +53,8 @@ async function resolveByPath(params: ResolveWorkspaceVfsNodeParams, pathValue: s
         hint: parentId ? `Missing segment: ${segment}` : `Missing root item: ${segment}`,
       };
     }
+    // 必须区分访问拒绝与缺失；write_file 只允许缺失路径进入创建流程。
+    assertWorkspaceVfsNodeAccess(match, params.nodeAccessScope);
     current = match;
     parentId = match.id;
   }
@@ -78,7 +81,7 @@ async function resolveByInode(params: ResolveWorkspaceVfsNodeParams, inode: stri
 
   while (queue.length > 0) {
     const parentId = queue.shift() ?? null;
-    const children = await listWorkspaceVfsNodes({ ...params, parentId });
+    const children = await listWorkspaceVfsNodes({ ...params, parentId, nodeAccessScope: undefined });
     for (const child of children) {
       visited += 1;
       if (visited > maxVisitedNodes) {
@@ -89,6 +92,7 @@ async function resolveByInode(params: ResolveWorkspaceVfsNodeParams, inode: stri
         };
       }
       if (matchesInode(child, normalizedInode)) {
+        assertWorkspaceVfsNodeAccess(child, params.nodeAccessScope);
         return { ok: true, node: child };
       }
       if (child.type === 'folder') {

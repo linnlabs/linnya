@@ -4,3 +4,5 @@ export { readWorkspaceVfsNode } from './orchestration/readWorkspaceVfsNode';
 export { resolveWorkspaceVfsNode } from './orchestration/resolveWorkspaceVfsNode';
 export { splitNormalizedVfsPath } from './functions/pathSegments';
 export type { WorkspaceVfsReadResult } from './definitions/workspaceVfsRead';
+export { WorkspaceVfsNodeAccessDeniedError } from './definitions/workspaceVfsNodeAccessScope';
+export type { WorkspaceVfsNodeAccessScope } from './definitions/workspaceVfsNodeAccessScope';

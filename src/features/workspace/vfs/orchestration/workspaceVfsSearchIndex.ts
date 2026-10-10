@@ -5,6 +5,8 @@
 
 import { createHash } from 'crypto';
 import type { WorkspaceVfsNode } from '../definitions/workspaceVfsNode';
+import type { WorkspaceVfsNodeAccessScope } from '../definitions/workspaceVfsNodeAccessScope';
+import { buildSystemInodeEntryFolderId } from '../functions/virtualNodeIds';
 import type { WorkspaceVfsSearchIndexMetadata, WorkspaceVfsSearchMatch } from '../definitions/workspaceVfsRead';
 import {
   buildUniqueTrigrams,
@@ -354,8 +356,10 @@ function queryCandidateRows(params: {
   readonly patternComparable: string;
   readonly grams: readonly string[];
   readonly candidateLimit: number;
+  readonly nodeAccessScope?: WorkspaceVfsNodeAccessScope;
 }): SearchIndexLineRow[] {
   const pathPredicate = buildPathPredicate(params.startNode);
+  const nodeAccessPredicate = buildNodeAccessPredicate(params.projectId, params.nodeAccessScope);
   if (params.grams.length > 0) {
     const selectedGrams = params.grams.slice(0, MAX_QUERY_GRAMS);
     const placeholders = selectedGrams.map(() => '?').join(', ');
@@ -371,7 +375,7 @@ function queryCandidateRows(params: {
         GROUP BY line_id
         HAVING COUNT(DISTINCT gram) = ?
       ) c ON c.line_id = l.id
-      WHERE l.project_id = ?${pathPredicate.sql}
+      WHERE l.project_id = ?${pathPredicate.sql}${nodeAccessPredicate.sql}
       ORDER BY l.path ASC, l.line_no ASC
       LIMIT ?
     `).all(
@@ -380,6 +384,7 @@ function queryCandidateRows(params: {
       selectedGrams.length,
       params.projectId,
       ...pathPredicate.params,
+      ...nodeAccessPredicate.params,
       params.candidateLimit,
     ) as SearchIndexLineRow[];
   }
@@ -389,16 +394,34 @@ function queryCandidateRows(params: {
       l.id, l.project_id, l.inode, l.path, l.name, l.node_type, l.source, l.content_kind,
       l.line_no, l.text, l.text_lc, l.content_hash, l.node_updated_at, l.indexed_at
     FROM workspace_vfs_search_lines l
-    WHERE l.project_id = ?${pathPredicate.sql}
+    WHERE l.project_id = ?${pathPredicate.sql}${nodeAccessPredicate.sql}
       AND l.text_lc LIKE ? ESCAPE '\\'
     ORDER BY l.path ASC, l.line_no ASC
     LIMIT ?
   `).all(
     params.projectId,
     ...pathPredicate.params,
+    ...nodeAccessPredicate.params,
     `%${escapeLike(params.patternComparable.toLowerCase())}%`,
     params.candidateLimit,
   ) as SearchIndexLineRow[];
+}
+
+function buildNodeAccessPredicate(
+  projectId: string,
+  scope: WorkspaceVfsNodeAccessScope | undefined,
+): { readonly sql: string; readonly params: readonly string[] } {
+  const excludedNodeIds = scope?.excludedNodeIds ?? [];
+  if (excludedNodeIds.length === 0) return { sql: '', params: [] };
+  // 必须在 SQL LIMIT 前过滤；否则不可见命中会挤掉合法候选。
+  // 系统视图索引没有 payload，按 VFS 正式虚拟身份构造其精确前缀。
+  return {
+    sql: excludedNodeIds.map(() => ' AND l.inode != ? AND l.inode NOT LIKE ? ESCAPE \'\\\'').join(''),
+    params: excludedNodeIds.flatMap(workspaceNodeId => [
+      `workspace:${workspaceNodeId}`,
+      `${escapeLike(buildSystemInodeEntryFolderId({ projectId, workspaceNodeId }))}:file:%`,
+    ]),
+  };
 }
 
 export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGrepParams): Promise<WorkspaceVfsIndexedGrepResult> {
@@ -421,7 +444,9 @@ export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGre
     }
   }
 
-  const collected = await collectIndexableFiles(params, startNode, maxIndexedNodes);
+  // 索引属于项目事实，不能把调用方不可见节点当成已删除，也不能让读取拒绝清掉共享索引。
+  const indexMaintenanceParams = { ...params, nodeAccessScope: undefined };
+  const collected = await collectIndexableFiles(indexMaintenanceParams, startNode, maxIndexedNodes);
   const liveInodes = new Set(collected.files.map((node) => node.inode));
   let indexedNodes = 0;
   let skippedFreshNodes = 0;
@@ -429,7 +454,7 @@ export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGre
 
   for (const node of collected.files) {
     const result = await ensureNodeIndexed({
-      base: params,
+      base: indexMaintenanceParams,
       node,
       maxFileChars,
     });
@@ -455,6 +480,7 @@ export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGre
     patternComparable: compiled.comparable,
     grams: compiled.grams,
     candidateLimit: Math.min(MAX_CANDIDATE_ROWS, Math.max(maxResults * 50, maxResults)),
+    nodeAccessScope: params.nodeAccessScope,
   });
 
   const matches: WorkspaceVfsSearchMatch[] = [];

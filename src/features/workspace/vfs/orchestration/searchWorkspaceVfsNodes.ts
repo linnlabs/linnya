@@ -4,6 +4,7 @@
  */
 
 import type { WorkspaceVfsNode } from '../definitions/workspaceVfsNode';
+import { WorkspaceVfsNodeAccessDeniedError } from '../definitions/workspaceVfsNodeAccessScope';
 import type { WorkspaceVfsSearchMatch, WorkspaceVfsSearchResult } from '../definitions/workspaceVfsRead';
 import { normalizeVfsPath } from '../functions/pathSegments';
 import { compileWorkspaceSearchPattern, findLiteralMatchesInText } from '../functions/searchPattern';
@@ -79,6 +80,7 @@ export async function searchWorkspaceVfsNodes(params: SearchWorkspaceVfsNodesPar
         maxFileChars: params.maxFileChars,
       });
     } catch (searchError) {
+      if (searchError instanceof WorkspaceVfsNodeAccessDeniedError) throw searchError;
       return {
         ok: false,
         error_code: 'ENOENT',
