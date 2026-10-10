@@ -9,6 +9,9 @@ import type { DocumentCitationProjection } from '../../../../domains/citation';
 /** 具体插件可以贡献自己的媒体类型；Core 不维护插件 MIME 白名单。 */
 export type WorkspaceVfsContentType = string;
 
+/** 目录检索限制每个文件的索引体积；指定单文件时搜索其完整文本投影。 */
+export const WORKSPACE_VFS_DIRECTORY_SEARCH_MAX_FILE_CHARS = 120000;
+
 export type WorkspaceVfsErrorCode =
   | 'ENOENT'
   | 'EPERM'

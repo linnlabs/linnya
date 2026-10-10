@@ -18,6 +18,8 @@
   - Slides：读写 `.slides` source，并通过 `ppt_inspect` 做布局诊断。
   - Sheet：`read_file` / `grep` 读取 checkpoint + `sheet_ops` 回放后的可见展示值预览；写入仍使用 `sheet_*` 专用工具，避免绕过 Sheet oplog。
 
+`grep` 指定单文件 locator/inode 时搜索该文件的完整当前 VFS 投影；目录搜索使用有界前缀索引（每文件 120,000 字符，另有节点与候选预算）。返回的 `truncated` 同时涵盖未搜索的范围和未返回的匹配，零命中时也必须在 observation 披露。目录未搜全时，应指定具体文件再 grep；增加 `max_results` 只扩大匹配输出，不能补齐未索引的正文。索引覆盖状态在缓存复用后仍保留。历史结果保持可回放，不追溯把旧错误声明改成正确结果。持久化与失效规则见 [VFS owner](../../features/workspace/vfs/README.md)。
+
 `read_file` 的默认结果是 VFS 的普通文本投影，使用业界主流的 1-based 行窗口：`offset` 是起始行，`limit` 是最多读取的行数，默认/上限均为 2,000 行。observation 以 `行号 | 原文` 展示，行号和分隔符只是定位信息，不属于文件内容；传给 `edit_file.old_string` 时必须去掉它们。这样 `grep`、Slides inspect 与读取定位使用同一行号语义，`read_file -> edit_file` 仍基于精确原文。
 
 结构化 DocumentView（例如 MindMap 的 `[#ref]`、outline 和插件 presentation）属于同一工具的显式读取模式，字符窗口只能使用语义明确的 `offset_chars/max_chars`，不复用普通文本的 `offset/limit`。超长普通文本 observation 继续由既有 ToolOutputStore 接管；即使一行很长，也不为 `read_file` 增加第二套字符分页语义。

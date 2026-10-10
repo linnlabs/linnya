@@ -21,6 +21,11 @@ export function invalidateWorkspaceVfsSearchIndexNodes(params: {
     const placeholders = inodes.map(() => '?').join(', ');
 
     params.db.prepare(`
+      DELETE FROM workspace_vfs_search_files
+      WHERE project_id = ? AND inode IN (${placeholders})
+    `).run(params.projectId, ...inodes);
+
+    params.db.prepare(`
       DELETE FROM workspace_vfs_search_grams
       WHERE line_id IN (
         SELECT id

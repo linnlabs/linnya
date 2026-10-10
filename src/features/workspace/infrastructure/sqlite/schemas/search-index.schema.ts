@@ -4,6 +4,18 @@
  */
 
 export const WORKSPACE_VFS_SEARCH_INDEX_SCHEMAS = [
+  // 覆盖度属于整个文件，不能从任意一行或命中数量反推。旧索引没有这条记录，必须重建。
+  `CREATE TABLE IF NOT EXISTS workspace_vfs_search_files (
+    project_id TEXT NOT NULL,
+    inode TEXT NOT NULL,
+    path TEXT NOT NULL,
+    node_updated_at INTEGER NOT NULL,
+    index_version INTEGER NOT NULL,
+    max_file_chars INTEGER NOT NULL,
+    truncated INTEGER NOT NULL CHECK(truncated IN (0, 1)),
+    PRIMARY KEY(project_id, inode)
+  )`,
+
   `CREATE TABLE IF NOT EXISTS workspace_vfs_search_lines (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL,

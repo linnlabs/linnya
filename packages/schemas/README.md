@@ -295,6 +295,8 @@ Conversation CLI 的 `audit.workspace_documents` 只交换诊断严重度计数�
 没有安全文本保证，均不进入导出；工具保存成功、诊断结果和内容质量不得合成一个成功布尔值。
 该必填响应变化始于wire protocol 2；当前protocol 3同时要求status/watch的`command_approvals`。旧CLI通过明确版本拒绝后升级，不能宽松双读。
 
+`grep` 新 producer 的 `truncated` 表示搜索范围或匹配输出不完整，不只是命中条数达到上限。索引的 `truncated_files` 必须包含缓存复用后的前缀覆盖事实；零命中仍有可能未搜全。字段形状不变，历史响应 reader 不追溯拒绝旧的矛盾结果。完整性由 Workspace VFS producer 与真实 SQLite 业务测试保证，不由 schema 猜测未保存的历史覆盖范围。
+
 ### Workspace document read
 
 `src/tools/workspace-document-read.ts` 使用 `presentation.kind` 判别联合：

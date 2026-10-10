@@ -4,22 +4,27 @@
  */
 
 import { createHash } from 'crypto';
+import { SEARCH_INDEX_VERSION, SearchIndexFreshnessSchema, type SearchIndexFreshnessRow } from '../definitions/workspaceVfsSearchIndex';
 import type { WorkspaceVfsNode } from '../definitions/workspaceVfsNode';
-import type { WorkspaceVfsSearchIndexMetadata, WorkspaceVfsSearchMatch } from '../definitions/workspaceVfsRead';
+import {
+  WORKSPACE_VFS_DIRECTORY_SEARCH_MAX_FILE_CHARS,
+  type WorkspaceVfsSearchIndexMetadata,
+  type WorkspaceVfsSearchMatch,
+} from '../definitions/workspaceVfsRead';
 import {
   buildUniqueTrigrams,
   compileWorkspaceSearchPattern,
   findLiteralMatchInLine,
 } from '../functions/searchPattern';
 import { normalizeVfsPath } from '../functions/pathSegments';
-import { listWorkspaceVfsNodes, type ListWorkspaceVfsNodesParams, type WorkspaceVfsDatabase } from './listWorkspaceVfsNodes';
+import type { ListWorkspaceVfsNodesParams, WorkspaceVfsDatabase } from './listWorkspaceVfsNodes';
+import { collectWorkspaceVfsSearchFiles } from './collectWorkspaceVfsSearchFiles';
 import { readWorkspaceVfsNode } from './readWorkspaceVfsNode';
 import { resolveWorkspaceVfsNode } from './resolveWorkspaceVfsNode';
 import { hasWorkspaceNodeTextSnapshot } from '../../infrastructure/sqlite/node-text-snapshot/nodeTextSnapshot.service';
 
 const DEFAULT_MAX_RESULTS = 50;
 const DEFAULT_MAX_INDEXED_NODES = 5000;
-const DEFAULT_MAX_FILE_CHARS = 120000;
 const MAX_QUERY_GRAMS = 16;
 const MAX_CANDIDATE_ROWS = 5000;
 
@@ -40,11 +45,6 @@ interface SearchIndexLineRow {
   readonly indexed_at: number;
 }
 
-interface SearchIndexFreshnessRow {
-  readonly content_hash: string;
-  readonly node_updated_at: number;
-  readonly path: string;
-}
 
 interface SearchIndexInodeRow {
   readonly inode: string;
@@ -68,17 +68,13 @@ export interface WorkspaceVfsIndexedGrepResult {
 }
 
 export function hasWorkspaceVfsSearchIndex(db: WorkspaceVfsDatabase): boolean {
-  try {
-    const row = db.prepare(`
-      SELECT name
-      FROM sqlite_master
-      WHERE type = 'table' AND name = 'workspace_vfs_search_lines'
-      LIMIT 1
-    `).get() as { name?: string } | undefined;
-    return row?.name === 'workspace_vfs_search_lines';
-  } catch {
-    return false;
-  }
+  const tables = db.prepare(`
+    SELECT name FROM sqlite_master
+    WHERE type = 'table' AND name IN (
+      'workspace_vfs_search_lines', 'workspace_vfs_search_grams', 'workspace_vfs_search_files'
+    )
+  `).all();
+  return tables.length === 3;
 }
 
 function hashText(text: string): string {
@@ -144,49 +140,20 @@ function hasIndexedRowSnapshot(db: WorkspaceVfsDatabase, row: SearchIndexLineRow
   return nodeId ? hasWorkspaceNodeTextSnapshot(db, nodeId) : false;
 }
 
-async function collectIndexableFiles(
-  params: ListWorkspaceVfsNodesParams,
-  startNode: WorkspaceVfsNode | null,
-  maxVisitedNodes: number,
-): Promise<{ readonly files: WorkspaceVfsNode[]; readonly visitedNodes: number; readonly truncated: boolean }> {
-  if (startNode && startNode.type !== 'folder') {
-    return { files: [startNode], visitedNodes: 1, truncated: false };
-  }
-
-  const files: WorkspaceVfsNode[] = [];
-  const queue: Array<string | null> = [startNode ? startNode.id : null];
-  let visitedNodes = 0;
-
-  while (queue.length > 0) {
-    const parentId = queue.shift() ?? null;
-    const children = await listWorkspaceVfsNodes({ ...params, parentId });
-    for (const child of children) {
-      visitedNodes += 1;
-      if (visitedNodes > maxVisitedNodes) {
-        return { files, visitedNodes, truncated: true };
-      }
-      if (child.type === 'folder') {
-        queue.push(child.id);
-      } else {
-        files.push(child);
-      }
-    }
-  }
-
-  return { files, visitedNodes, truncated: false };
-}
-
 function readFreshness(db: WorkspaceVfsDatabase, projectId: string, inode: string): SearchIndexFreshnessRow | null {
   const row = db.prepare(`
-    SELECT content_hash, node_updated_at, path
-    FROM workspace_vfs_search_lines
+    SELECT node_updated_at, path, index_version, max_file_chars, truncated
+    FROM workspace_vfs_search_files
     WHERE project_id = ? AND inode = ?
-    LIMIT 1
-  `).get(projectId, inode) as SearchIndexFreshnessRow | undefined;
-  return row ?? null;
+  `).get(projectId, inode);
+  return row === undefined ? null : SearchIndexFreshnessSchema.parse(row);
 }
 
 function updateIndexedNodeSnapshot(db: WorkspaceVfsDatabase, node: WorkspaceVfsNode): void {
+  db.prepare(`
+    UPDATE workspace_vfs_search_files SET path = ?
+    WHERE project_id = ? AND inode = ?
+  `).run(node.path, node.project_id, node.inode);
   db.prepare(`
     UPDATE workspace_vfs_search_lines
     SET path = ?, name = ?, node_type = ?, source = ?, node_updated_at = ?
@@ -195,6 +162,10 @@ function updateIndexedNodeSnapshot(db: WorkspaceVfsDatabase, node: WorkspaceVfsN
 }
 
 function deleteIndexedNode(db: WorkspaceVfsDatabase, projectId: string, inode: string): void {
+  // 先撤回覆盖记录，最后重新发布；中途失败的行绝不能被当作有效索引使用。
+  db.prepare(`
+    DELETE FROM workspace_vfs_search_files WHERE project_id = ? AND inode = ?
+  `).run(projectId, inode);
   db.prepare(`
     DELETE FROM workspace_vfs_search_grams
     WHERE line_id IN (
@@ -215,7 +186,10 @@ function readIndexedInodesInScope(params: {
   const pathPredicate = buildPathPredicate(params.startNode);
   const rows = params.db.prepare(`
     SELECT DISTINCT l.inode
-    FROM workspace_vfs_search_lines l
+    FROM (
+      SELECT project_id, inode, path FROM workspace_vfs_search_lines
+      UNION SELECT project_id, inode, path FROM workspace_vfs_search_files
+    ) l
     WHERE l.project_id = ?${pathPredicate.sql}
   `).all(
     params.projectId,
@@ -295,16 +269,21 @@ async function ensureNodeIndexed(params: {
   readonly base: ListWorkspaceVfsNodesParams;
   readonly node: WorkspaceVfsNode;
   readonly maxFileChars: number;
-}): Promise<{ readonly indexed: boolean; readonly skippedFresh: boolean; readonly truncatedFile: boolean }> {
+}): Promise<{ readonly indexed: boolean; readonly skippedFresh: boolean; readonly truncatedFile: boolean; readonly incomplete: boolean }> {
   const projectId = params.node.project_id;
-  if (!projectId) return { indexed: false, skippedFresh: true, truncatedFile: false };
+  if (!projectId) return { indexed: false, skippedFresh: false, truncatedFile: false, incomplete: true };
 
   const existing = readFreshness(params.base.db, projectId, params.node.inode);
-  if (existing && existing.node_updated_at === params.node.updated_at) {
+  if (existing && existing.index_version === SEARCH_INDEX_VERSION &&
+    existing.max_file_chars === params.maxFileChars &&
+    existing.node_updated_at === params.node.updated_at) {
     if (existing.path !== params.node.path) {
       updateIndexedNodeSnapshot(params.base.db, params.node);
     }
-    return { indexed: false, skippedFresh: true, truncatedFile: false };
+    return {
+      indexed: false, skippedFresh: true,
+      truncatedFile: existing.truncated === 1, incomplete: existing.truncated === 1,
+    };
   }
 
   const read = await readWorkspaceVfsNode({
@@ -314,7 +293,7 @@ async function ensureNodeIndexed(params: {
   });
   if (!read.ok) {
     deleteIndexedNode(params.base.db, projectId, params.node.inode);
-    return { indexed: false, skippedFresh: false, truncatedFile: false };
+    return { indexed: false, skippedFresh: false, truncatedFile: false, incomplete: true };
   }
 
   deleteIndexedNode(params.base.db, projectId, params.node.inode);
@@ -326,7 +305,14 @@ async function ensureNodeIndexed(params: {
     indexedAt: Date.now(),
   });
 
-  return { indexed: true, skippedFresh: false, truncatedFile: read.truncated };
+  params.base.db.prepare(`
+    INSERT INTO workspace_vfs_search_files (
+      project_id, inode, path, node_updated_at, index_version, max_file_chars, truncated
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(projectId, read.node.inode, read.node.path, read.node.updated_at,
+    SEARCH_INDEX_VERSION, params.maxFileChars, read.truncated ? 1 : 0);
+
+  return { indexed: true, skippedFresh: false, truncatedFile: read.truncated, incomplete: read.truncated };
 }
 
 function buildPathPredicate(startNode: WorkspaceVfsNode | null): {
@@ -364,6 +350,8 @@ function queryCandidateRows(params: {
         l.id, l.project_id, l.inode, l.path, l.name, l.node_type, l.source, l.content_kind,
         l.line_no, l.text, l.text_lc, l.content_hash, l.node_updated_at, l.indexed_at
       FROM workspace_vfs_search_lines l
+      JOIN workspace_vfs_search_files f
+        ON f.project_id = l.project_id AND f.inode = l.inode AND f.index_version = ${SEARCH_INDEX_VERSION}
       JOIN (
         SELECT line_id
         FROM workspace_vfs_search_grams
@@ -389,6 +377,8 @@ function queryCandidateRows(params: {
       l.id, l.project_id, l.inode, l.path, l.name, l.node_type, l.source, l.content_kind,
       l.line_no, l.text, l.text_lc, l.content_hash, l.node_updated_at, l.indexed_at
     FROM workspace_vfs_search_lines l
+      JOIN workspace_vfs_search_files f
+        ON f.project_id = l.project_id AND f.inode = l.inode AND f.index_version = ${SEARCH_INDEX_VERSION}
     WHERE l.project_id = ?${pathPredicate.sql}
       AND l.text_lc LIKE ? ESCAPE '\\'
     ORDER BY l.path ASC, l.line_no ASC
@@ -404,7 +394,7 @@ function queryCandidateRows(params: {
 export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGrepParams): Promise<WorkspaceVfsIndexedGrepResult> {
   const maxResults = clampPositiveInteger(params.maxResults, DEFAULT_MAX_RESULTS);
   const maxIndexedNodes = clampPositiveInteger(params.maxIndexedNodes, DEFAULT_MAX_INDEXED_NODES);
-  const maxFileChars = clampPositiveInteger(params.maxFileChars, DEFAULT_MAX_FILE_CHARS);
+  const maxFileChars = clampPositiveInteger(params.maxFileChars, WORKSPACE_VFS_DIRECTORY_SEARCH_MAX_FILE_CHARS);
   const compiled = compileWorkspaceSearchPattern({
     pattern: params.pattern,
     caseSensitive: params.caseSensitive,
@@ -421,11 +411,12 @@ export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGre
     }
   }
 
-  const collected = await collectIndexableFiles(params, startNode, maxIndexedNodes);
+  const collected = await collectWorkspaceVfsSearchFiles(params, startNode, maxIndexedNodes);
   const liveInodes = new Set(collected.files.map((node) => node.inode));
   let indexedNodes = 0;
   let skippedFreshNodes = 0;
   let truncatedFiles = 0;
+  let incompleteFiles = false;
 
   for (const node of collected.files) {
     const result = await ensureNodeIndexed({
@@ -436,6 +427,7 @@ export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGre
     if (result.indexed) indexedNodes += 1;
     if (result.skippedFresh) skippedFreshNodes += 1;
     if (result.truncatedFile) truncatedFiles += 1;
+    if (result.incomplete) incompleteFiles = true;
   }
 
   // 只有完整遍历了范围时才清理 stale index，避免在预算截断时误删尚未访问到的文件索引。
@@ -448,18 +440,21 @@ export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGre
     });
   }
 
+  const candidateLimit = Math.min(MAX_CANDIDATE_ROWS, Math.max(maxResults * 50, maxResults));
   const candidateRows = queryCandidateRows({
     db: params.db,
     projectId: params.projectId,
     startNode,
     patternComparable: compiled.comparable,
     grams: compiled.grams,
-    candidateLimit: Math.min(MAX_CANDIDATE_ROWS, Math.max(maxResults * 50, maxResults)),
+    candidateLimit: candidateLimit + 1,
   });
 
   const matches: WorkspaceVfsSearchMatch[] = [];
   const nodeTypeAccessPolicy = params.nodeTypeAccessPolicy;
-  for (const row of candidateRows) {
+  for (const row of candidateRows.slice(0, candidateLimit)) {
+    // 未遍历的旧记录没有经过本次 freshness 检查，不把它们作为当前文件的命中。
+    if (!liveInodes.has(row.inode)) continue;
     if (
       nodeTypeAccessPolicy &&
       !nodeTypeAccessPolicy.canReadContent(row.node_type) &&
@@ -478,13 +473,13 @@ export async function grepWorkspaceVfsSearchIndex(params: WorkspaceVfsIndexedGre
       column: match.column,
       preview: match.preview,
     });
-    if (matches.length >= maxResults) break;
+    if (matches.length > maxResults) break;
   }
 
   return {
     ok: true,
-    matches,
-    truncated: matches.length >= maxResults || collected.truncated,
+    matches: matches.slice(0, maxResults),
+    truncated: matches.length > maxResults || collected.truncated || incompleteFiles || candidateRows.length > candidateLimit,
     index: {
       available: true,
       indexedNodes,

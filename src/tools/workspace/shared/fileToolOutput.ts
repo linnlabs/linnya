@@ -67,15 +67,13 @@ export function formatGrepObservation(params: {
   readonly matches: readonly FileToolGrepMatch[];
   readonly truncated: boolean;
 }): string {
-  if (params.matches.length === 0) {
-    return `grep: 未找到 "${params.pattern}"。`;
-  }
-
-  const lines = params.matches.map((match) =>
-    `${match.locator}:${match.line}:${match.column}: ${match.preview}`
-  );
+  const lines = params.matches.length === 0
+    ? [`grep: ${params.truncated ? '在已搜索范围内未找到' : '未找到'} "${params.pattern}"。`]
+    : params.matches.map((match) =>
+      `${match.locator}:${match.line}:${match.column}: ${match.preview}`
+    );
   if (params.truncated) {
-    lines.push('[结果已截断，请缩小 locator 范围或提高 max_results。]');
+    lines.push('[搜索或结果不完整，不能据此认定其余内容没有匹配。目录搜索受文件前缀、节点和候选预算限制，读取失败也会留下缺口。请指定具体文件 locator/inode 搜索全文；命中过多时提高 max_results。]');
   }
   return lines.join('\n');
 }

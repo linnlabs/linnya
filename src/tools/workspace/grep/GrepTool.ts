@@ -28,7 +28,7 @@ export class GrepTool extends BaseTool {
       'Use it like grep over Linnya Workspace locators: grep(pattern="...", locator="workspace:/").',
       'It searches the same VFS text projections used by read_file, including enabled plugin document projections. KnowledgeBase and conversation files are intentionally not included.',
       'Grep results are locators, not citation producers. Citation refs in previews are masked; call read_file on the matched locator before citing a source.',
-      'First version is literal substring search, not full regex. It uses a persisted line index when available to avoid scanning every file at query time.',
+      'Literal substring search, not regex. A file locator/inode searches the complete current text projection. Directory searches use a bounded persisted prefix index when available; truncated=true also means some file content or scope was not searched, even with zero matches.',
     ].join('\n');
   }
 
@@ -66,7 +66,7 @@ export class GrepTool extends BaseTool {
         minimum: 1,
         maximum: 20000,
         default: 5000,
-        description: '本次最多补索引的节点数，默认 5000，最大 20000。',
+        description: '目录搜索本次最多遍历的节点数，默认 5000，最大 20000；包含文件与目录。',
       },
     },
     required: ['pattern'],
@@ -89,7 +89,7 @@ export class GrepTool extends BaseTool {
             minimum: 1,
             maximum: 20000,
             default: 5000,
-            description: '最多补索引的节点数。',
+            description: '目录搜索最多遍历的节点数。',
           },
         },
         required: ['pattern'],
@@ -113,7 +113,7 @@ export class GrepTool extends BaseTool {
             minimum: 1,
             maximum: 20000,
             default: 5000,
-            description: '最多补索引的节点数。',
+            description: '目录搜索最多遍历的节点数。',
           },
         },
         required: ['pattern', 'locator'],
@@ -137,7 +137,7 @@ export class GrepTool extends BaseTool {
             minimum: 1,
             maximum: 20000,
             default: 5000,
-            description: '最多补索引的节点数。',
+            description: '目录搜索最多遍历的节点数。',
           },
         },
         required: ['pattern', 'inode'],
@@ -162,7 +162,7 @@ export class GrepTool extends BaseTool {
   getExecutionSummary(output: string): string {
     try {
       const parsed = WorkspaceGrepResultSchema.parse(JSON.parse(output));
-      return `grep："${parsed.data.pattern}"，${parsed.data.total_count} 条匹配`;
+      return `grep："${parsed.data.pattern}"，${parsed.data.total_count} 条匹配${parsed.data.truncated ? "，搜索或结果不完整" : ""}`;
     } catch {
       return 'grep：结果格式异常，无法确认匹配结果。';
     }

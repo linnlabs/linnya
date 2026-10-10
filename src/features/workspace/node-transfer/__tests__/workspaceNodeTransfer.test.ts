@@ -4,6 +4,7 @@ import type { WorkspaceMutationEvent } from '@app/schemas';
 import type { WorkspaceMutationPublisher } from '../../definitions/workspaceMutationPublisher';
 import { inspectWorkspaceNodeTransfer } from '../orchestration/inspectWorkspaceNodeTransfer';
 import { transferWorkspaceNode } from '../orchestration/transferWorkspaceNode';
+import { WORKSPACE_VFS_SEARCH_INDEX_SCHEMAS } from '../../infrastructure/sqlite/schemas/search-index.schema';
 
 let db: Database.Database | null = null;
 
@@ -35,30 +36,8 @@ function createDatabase(): Database.Database {
         name
       )
       WHERE deleted_at IS NULL;
-    CREATE TABLE workspace_vfs_search_lines (
-      id TEXT PRIMARY KEY,
-      project_id TEXT NOT NULL,
-      inode TEXT NOT NULL,
-      path TEXT NOT NULL,
-      name TEXT NOT NULL,
-      node_type TEXT NOT NULL,
-      source TEXT NOT NULL,
-      content_kind TEXT NOT NULL,
-      line_no INTEGER NOT NULL,
-      text TEXT NOT NULL,
-      text_lc TEXT NOT NULL,
-      content_hash TEXT NOT NULL,
-      node_updated_at INTEGER NOT NULL,
-      indexed_at INTEGER NOT NULL
-    );
-    CREATE TABLE workspace_vfs_search_grams (
-      project_id TEXT NOT NULL,
-      gram TEXT NOT NULL,
-      line_id TEXT NOT NULL,
-      PRIMARY KEY(project_id, gram, line_id),
-      FOREIGN KEY(line_id) REFERENCES workspace_vfs_search_lines(id) ON DELETE CASCADE
-    );
   `);
+  for (const statement of WORKSPACE_VFS_SEARCH_INDEX_SCHEMAS) database.exec(statement);
   database.prepare('INSERT INTO projects (id, name) VALUES (?, ?)').run('project-1', '来源');
   database.prepare('INSERT INTO projects (id, name) VALUES (?, ?)').run('project-2', '目标');
   return database;
@@ -121,6 +100,11 @@ describe('workspace node cross-project transfer', () => {
       VALUES ('project-1', '正文', 'line-1')
     `).run();
 
+    db.prepare(`
+      INSERT INTO workspace_vfs_search_files (project_id, inode, path, node_updated_at, index_version, max_file_chars, truncated)
+      VALUES ('project-1', 'workspace:doc-1', '/资料/二级/报告.md', 1, 1, 120000, 0)
+    `).run();
+
     const events: WorkspaceMutationEvent[] = [];
     const mutationPublisher: WorkspaceMutationPublisher = {
       publish(event) {
@@ -147,6 +131,8 @@ describe('workspace node cross-project transfer', () => {
     expect(db.prepare('SELECT COUNT(*) AS count FROM workspace_vfs_search_lines').get())
       .toEqual({ count: 0 });
     expect(db.prepare('SELECT COUNT(*) AS count FROM workspace_vfs_search_grams').get())
+      .toEqual({ count: 0 });
+    expect(db.prepare('SELECT COUNT(*) AS count FROM workspace_vfs_search_files').get())
       .toEqual({ count: 0 });
 
     await flushMutationQueue();

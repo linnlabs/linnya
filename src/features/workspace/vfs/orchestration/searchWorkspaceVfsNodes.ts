@@ -4,10 +4,15 @@
  */
 
 import type { WorkspaceVfsNode } from '../definitions/workspaceVfsNode';
-import type { WorkspaceVfsSearchMatch, WorkspaceVfsSearchResult } from '../definitions/workspaceVfsRead';
+import {
+  WORKSPACE_VFS_DIRECTORY_SEARCH_MAX_FILE_CHARS,
+  type WorkspaceVfsSearchMatch,
+  type WorkspaceVfsSearchResult,
+} from '../definitions/workspaceVfsRead';
 import { normalizeVfsPath } from '../functions/pathSegments';
 import { compileWorkspaceSearchPattern, findLiteralMatchesInText } from '../functions/searchPattern';
-import { listWorkspaceVfsNodes, type ListWorkspaceVfsNodesParams } from './listWorkspaceVfsNodes';
+import type { ListWorkspaceVfsNodesParams } from './listWorkspaceVfsNodes';
+import { collectWorkspaceVfsSearchFiles } from './collectWorkspaceVfsSearchFiles';
 import { readWorkspaceVfsNode } from './readWorkspaceVfsNode';
 import { resolveWorkspaceVfsNode } from './resolveWorkspaceVfsNode';
 import { grepWorkspaceVfsSearchIndex, hasWorkspaceVfsSearchIndex } from './workspaceVfsSearchIndex';
@@ -20,30 +25,6 @@ interface SearchWorkspaceVfsNodesParams extends ListWorkspaceVfsNodesParams {
   readonly maxResults?: number;
   readonly maxVisitedNodes?: number;
   readonly maxFileChars?: number;
-}
-
-async function collectFiles(params: ListWorkspaceVfsNodesParams, startNode: WorkspaceVfsNode | null, maxVisitedNodes: number): Promise<WorkspaceVfsNode[]> {
-  const files: WorkspaceVfsNode[] = [];
-  const queue: Array<string | null> = [startNode ? startNode.id : null];
-  let visited = 0;
-
-  while (queue.length > 0) {
-    const parentId = queue.shift() ?? null;
-    const children = await listWorkspaceVfsNodes({ ...params, parentId });
-    for (const child of children) {
-      visited += 1;
-      if (visited > maxVisitedNodes) {
-        return files;
-      }
-      if (child.type === 'folder') {
-        queue.push(child.id);
-      } else {
-        files.push(child);
-      }
-    }
-  }
-
-  return files;
 }
 
 export async function searchWorkspaceVfsNodes(params: SearchWorkspaceVfsNodesParams): Promise<WorkspaceVfsSearchResult> {
@@ -70,7 +51,24 @@ export async function searchWorkspaceVfsNodes(params: SearchWorkspaceVfsNodesPar
       };
     }
   }
-  if (hasWorkspaceVfsSearchIndex(params.db)) {
+  let startNode: WorkspaceVfsNode | null = null;
+
+  if (params.inode || (params.path && !isRootPath)) {
+    const resolved = await resolveWorkspaceVfsNode({ ...params, includeSystemNodes: true });
+    if (!resolved.ok) {
+      return {
+        ok: false,
+        error_code: 'ENOENT',
+        message: resolved.message,
+        ...(resolved.hint ? { hint: resolved.hint } : {}),
+      };
+    }
+    startNode = resolved.node;
+  }
+
+  const isSingleFile = startNode !== null && startNode.type !== 'folder';
+  // 指定单文件是在已定位的材料中查找。目录的有界前缀索引不能决定该文件没有匹配。
+  if (!isSingleFile && hasWorkspaceVfsSearchIndex(params.db)) {
     try {
       return await grepWorkspaceVfsSearchIndex({
         ...params,
@@ -87,44 +85,33 @@ export async function searchWorkspaceVfsNodes(params: SearchWorkspaceVfsNodesPar
     }
   }
 
-  let startNode: WorkspaceVfsNode | null = null;
-
-  if (params.inode || (params.path && !isRootPath)) {
-    const resolved = await resolveWorkspaceVfsNode({ ...params, includeSystemNodes: true });
-    if (!resolved.ok) {
-      return {
-        ok: false,
-        error_code: 'ENOENT',
-        message: resolved.message,
-        ...(resolved.hint ? { hint: resolved.hint } : {}),
-      };
-    }
-    startNode = resolved.node;
-  }
-
-  const files =
-    startNode && startNode.type !== 'folder'
-      ? [startNode]
-      : await collectFiles(params, startNode, maxVisitedNodes);
-
+  const collected = await collectWorkspaceVfsSearchFiles(params, startNode, maxVisitedNodes);
+  let incomplete = collected.truncated;
   const matches: WorkspaceVfsSearchMatch[] = [];
   const compiled = compileWorkspaceSearchPattern({
     pattern,
     caseSensitive: params.caseSensitive,
   });
-  for (const file of files) {
-    if (matches.length >= maxResults) break;
+  for (const file of collected.files) {
+    if (matches.length > maxResults) break;
     const read = await readWorkspaceVfsNode({
       ...params,
       inode: file.inode,
       path: undefined,
-      maxChars: params.maxFileChars ?? 300000,
+      // VFS provider 本就产生完整投影；这里只避免目录索引截断，不增加读取工具参数。
+      maxChars: isSingleFile ? Number.MAX_SAFE_INTEGER :
+        params.maxFileChars ?? WORKSPACE_VFS_DIRECTORY_SEARCH_MAX_FILE_CHARS,
     });
-    if (!read.ok) continue;
+    if (!read.ok) {
+      if (isSingleFile) return read;
+      incomplete = true;
+      continue;
+    }
+    incomplete ||= read.truncated;
     const lineMatches = findLiteralMatchesInText({
       text: read.text,
       compiled,
-      maxMatches: maxResults - matches.length,
+      maxMatches: maxResults + 1 - matches.length,
     });
     matches.push(...lineMatches.map((match): WorkspaceVfsSearchMatch => ({
       node: file,
@@ -136,7 +123,7 @@ export async function searchWorkspaceVfsNodes(params: SearchWorkspaceVfsNodesPar
 
   return {
     ok: true,
-    matches,
-    truncated: matches.length >= maxResults,
+    matches: matches.slice(0, maxResults),
+    truncated: incomplete || matches.length > maxResults,
   };
 }
