@@ -3,15 +3,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  CompleteResearchResultSchema,
   ResearchRunArgsSchema,
-  type ResearchStage,
+  SubagentResultSchema,
+  WorkspaceWriteFileResultSchema,
 } from '@app/schemas';
 import type { ScriptedLlmTurn } from '@linnlabs/linnkit/testkit';
 import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
+import { ReadFileTool } from 'src/tools/workspace/read_file/ReadFileTool';
 import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
@@ -21,7 +22,6 @@ import {
   installRecoveryModelFixture,
 } from '../__test-helpers__/createDurableFlowHarness';
 import { createWorkspaceResearchDocumentPort } from '../../research-documents';
-import { SqliteResearchStageReceiptStore } from '../../persistence/research-stage-receipts';
 import {
   readSubrunTrace,
   readTail,
@@ -31,12 +31,25 @@ import { toolRegistry } from '../../tools/toolRegistry';
 
 const conversationId = 'lead-research-conversation';
 const modelId = 'scripted-test-model';
+const paths = {
+  source: 'workspace:/source.md',
+  investigation: 'workspace:/investigation.md',
+  draft: 'workspace:/draft.md',
+  argument_review: 'workspace:/argument-review.md',
+  source_review: 'workspace:/source-review.md',
+  revision: 'workspace:/revision.md',
+};
 const scope = ResearchRunArgsSchema.parse({
   question: 'Explain the observed change without inventing its cause.',
   reader: 'General reader',
   task_type: 'fixed',
-  materials: ['workspace:/source.md'],
+  materials: [paths.source],
 });
+const report =
+  'The supplied value rose from 100 to 110, a 10% change. Its cause is not identified.';
+const finalAnswer = `Revised article: [Article](${paths.revision}). The cause remains unresolved.`;
+type Reviewer = 'argument_review' | 'source_review';
+type ModelCall = Parameters<NonNullable<ScriptedLlmTurn['assertCall']>>[0];
 let directory: string;
 const closers: Array<() => void> = [];
 beforeEach(() => {
@@ -79,7 +92,7 @@ async function seed(fixture: Fixture) {
     projectId,
     conversationId: 'seed',
     sourceRunId: 'seed-run',
-    path: 'workspace:/source.md',
+    path: paths.source,
     text: '# Source\n\nBaseline is 100; current is 110.',
     receipt: { prepare() {}, commit() {} },
   });
@@ -103,212 +116,237 @@ async function start(fixture: Fixture, projectId: string) {
   );
 }
 async function facts(fixture: Fixture) {
-  return (await fixture.eventStore.readEvents(conversationId, { limit: 1000 })).events;
+  return (
+    await fixture.eventStore.readEvents(conversationId, {
+      limit: 1000,
+      routingScope: 'foreground-conversation',
+    })
+  ).events;
 }
-function pathInMessages(messages: unknown, stage: ResearchStage): string {
-  const path = JSON.stringify(messages).match(
-    new RegExp(`workspace:/research-[a-f0-9]{16}-${stage}\\.md`)
-  )?.[0];
-  if (!path) throw new Error(`Lead has no returned ${stage} path`);
-  return path;
+function userText(call: ModelCall): string {
+  return call.messages
+    .filter(message => message.role === 'user')
+    .flatMap(message => message.content)
+    .filter(block => block.type === 'text')
+    .map(block => block.text)
+    .join('\n');
 }
-function assignment(stage: ResearchStage, inputs: ResearchStage[]): ScriptedLlmTurn {
-  const tool = { id: `delegate-${stage}`, name: 'subagent', argumentsJson: '' };
-  return {
-    contentChunks: [`I am delegating ${stage}.`],
-    toolCalls: [tool],
-    assertCall(call) {
-      expect(call.modelId).toBe(modelId);
-      expect(call.options.reasoning_effort).toBe('high');
-      const exposed = call.options.tools?.map(item => item.name) ?? [];
-      expect(exposed).toContain('subagent');
-      expect(exposed).toContain('complete_research');
-      expect(exposed).toContain('submit_research_document');
-      for (const name of ['research_run', 'write_file', 'edit_file'])
-        expect(exposed).not.toContain(name);
-      tool.argumentsJson = JSON.stringify({
-        description: stage,
-        prompt: 'Use the admitted source and distinguish observation from cause.',
-        subagent_type: `research_${stage}`,
-        input_documents: [
-          'workspace:/source.md',
-          ...inputs.map(input => pathInMessages(call.messages, input)),
-        ],
-      });
-    },
-  };
+function assertTools(call: ModelCall, child: boolean) {
+  expect(call.modelId).toBe(modelId);
+  expect(call.options.reasoning_effort).toBe('high');
+  const exposed = call.options.tools?.map(item => item.name) ?? [];
+  for (const name of ['read_file', 'write_file', 'edit_file']) expect(exposed).toContain(name);
+  for (const name of ['research_run', 'complete_research', 'submit_research_document'])
+    expect(exposed).not.toContain(name);
+  expect(exposed.includes('subagent')).toBe(!child);
 }
-function submission(stage: ResearchStage): ScriptedLlmTurn {
+function tool(id: string, name: string, args: Record<string, unknown>) {
+  return { id, name, argumentsJson: JSON.stringify(args) };
+}
+function assignment(role: Reviewer | 'investigation'): ScriptedLlmTurn {
+  const prompt =
+    role === 'investigation'
+      ? `Investigate only ${paths.source}. Do not browse the web. Save findings to ${paths.investigation}; disclose missing material.`
+      : [
+          `Review target: ${paths.draft}. Review this document only.`,
+          `Supporting evidence: ${paths.source} and ${paths.investigation}. These are not alternative drafts.`,
+          'Use the fixed materials only; do not browse the web or read other review reports. Report missing evidence to the lead.',
+          `Save your independent ${role} to ${paths[role]}. Do not edit the draft.`,
+        ].join('\n');
   return {
     toolCalls: [
-      {
-        id: `submit-${stage}`,
-        name: 'submit_research_document',
-        argumentsJson: JSON.stringify({
-          content: `# ${stage}\n\nThe supplied value rose from 100 to 110. This establishes a 10% change, not its cause.`,
-        }),
-      },
+      tool(`delegate-${role}`, 'subagent', {
+        description: role,
+        prompt,
+        subagent_type: `research_${role}`,
+      }),
     ],
     assertCall(call) {
-      expect(call.modelId).toBe(modelId);
-      expect(JSON.stringify(call.messages)).toContain(`# Research stage: ${stage}`);
-      if (stage === 'argument_review' || stage === 'source_review') {
-        // 验证实际送达 child 的目标与材料角色，不能拿 Host 保存绑定替代任务交接。
-        const query = call.messages
-          .filter(message => message.role === 'user')
-          .flatMap(message => message.content)
-          .filter(block => block.type === 'text')
-          .map(block => block.text)
-          .join('\n');
-        const draft = pathInMessages(call.messages, 'draft');
-        const targets = query.split('\n').filter(line => line.includes('| Review target:'));
-        expect(targets).toHaveLength(1);
-        expect(targets[0]).toContain(`${draft} | version:`);
-        expect(targets[0]).not.toContain('workspace:/source.md');
-        expect(query).not.toMatch(
-          /workspace:\/research-[a-f0-9]{16}-(?:argument_review|source_review)\.md \| version:/
+      assertTools(call, false);
+    },
+  };
+}
+function reviewerTurns(role: Reviewer): ScriptedLlmTurn[] {
+  return [
+    {
+      toolCalls: [
+        tool(`${role}-read-draft`, 'read_file', { locator: paths.draft }),
+        tool(`${role}-read-source`, 'read_file', { locator: paths.source }),
+      ],
+      assertCall(call) {
+        assertTools(call, true);
+        // 只验证实际送达的父任务与实际读取，不把任务约束宣称为文件权限。
+        const prompt = userText(call);
+        expect(prompt).toContain(`Review target: ${paths.draft}.`);
+        expect(prompt).toContain(`Supporting evidence: ${paths.source}`);
+        expect(prompt).toContain('do not browse the web or read other review reports');
+        const other = role === 'argument_review' ? paths.source_review : paths.argument_review;
+        expect(prompt).not.toContain(other);
+      },
+    },
+    {
+      toolCalls: [
+        tool(`${role}-save`, 'write_file', {
+          locator: paths[role],
+          content: `# ${role}\n\n${report}`,
+        }),
+      ],
+      assertCall(call) {
+        const readResults = call.messages.filter(message => message.role === 'tool');
+        expect(readResults.some(message => message.tool_call_id === `${role}-read-draft`)).toBe(
+          true
         );
-      }
-      const exposed = call.options.tools?.map(item => item.name) ?? [];
-      expect(exposed).toContain('submit_research_document');
-      for (const name of [
-        'subagent',
-        'research_run',
-        'complete_research',
-        'write_file',
-        'edit_file',
-      ])
-        expect(exposed).not.toContain(name);
+        expect(readResults.some(message => message.tool_call_id === `${role}-read-source`)).toBe(
+          true
+        );
+      },
     },
-  };
+    { contentChunks: [`Saved [review](${paths[role]}). The evidence does not identify a cause.`] },
+  ];
 }
-function complete(): ScriptedLlmTurn {
-  const tool = { id: 'delivery', name: 'complete_research', argumentsJson: '' };
-  return {
-    toolCalls: [tool],
-    assertCall(call) {
-      tool.argumentsJson = JSON.stringify({ document: pathInMessages(call.messages, 'revision') });
+function beforeFirstReview(): ScriptedLlmTurn[] {
+  return [
+    { toolCalls: [tool('lead-read-source', 'read_file', { locator: paths.source })] },
+    {
+      toolCalls: [
+        tool('lead-save-investigation', 'write_file', {
+          locator: paths.investigation,
+          content: `# Investigation\n\n${report}`,
+        }),
+        tool('lead-save-draft', 'write_file', {
+          locator: paths.draft,
+          content: `# Draft\n\n${report}`,
+        }),
+      ],
+      assertCall(call) {
+        assertTools(call, false);
+      },
     },
-  };
+    assignment('argument_review'),
+    ...reviewerTurns('argument_review'),
+  ];
 }
-function parentSubmission(
-  stage: 'investigation' | 'draft' | 'revision',
-  inputs: ResearchStage[]
-): ScriptedLlmTurn {
-  const tool = {
-    id: `parent-submit-${stage}`,
-    name: 'submit_research_document',
-    argumentsJson: '',
-  };
-  return {
-    toolCalls: [tool],
-    assertCall(call) {
-      expect(call.modelId).toBe(modelId);
-      expect(call.options.tools?.map(item => item.name)).toContain('subagent');
-      tool.argumentsJson = JSON.stringify({
-        stage,
-        input_documents: [
-          'workspace:/source.md',
-          ...inputs.map(input => pathInMessages(call.messages, input)),
-        ],
-        content: `# ${stage}\n\nThe supplied value rose from 100 to 110, a 10% change. Its cause is not identified.`,
-      });
+function afterFirstReview(): ScriptedLlmTurn[] {
+  return [
+    assignment('source_review'),
+    ...reviewerTurns('source_review'),
+    {
+      toolCalls: [
+        tool('lead-read-argument-review', 'read_file', { locator: paths.argument_review }),
+        tool('lead-read-source-review', 'read_file', { locator: paths.source_review }),
+      ],
     },
-  };
+    {
+      toolCalls: [
+        tool('lead-save-revision', 'write_file', {
+          locator: paths.revision,
+          content: `# Revised article\n\n${report}`,
+        }),
+      ],
+    },
+    {
+      toolCalls: [
+        tool('lead-refine-revision', 'edit_file', {
+          locator: paths.revision,
+          old_string: 'Its cause is not identified.',
+          new_string: 'The source does not distinguish competing causes.',
+        }),
+      ],
+    },
+    { contentChunks: [finalAnswer] },
+  ];
 }
 function chain(): ScriptedLlmTurn[] {
-  return [
-    parentSubmission('investigation', []),
-    parentSubmission('draft', ['investigation']),
-    assignment('argument_review', ['investigation', 'draft']),
-    submission('argument_review'),
-    assignment('source_review', ['investigation', 'draft']),
-    submission('source_review'),
-    parentSubmission('revision', ['investigation', 'draft', 'argument_review', 'source_review']),
-    complete(),
-  ];
+  return [...beforeFirstReview(), ...afterFirstReview()];
 }
 async function assertDelivered(fixture: Fixture, projectId: string) {
   const events = await facts(fixture);
-  const delivery = events.find(
-    event => event.type === 'tool_output' && event.tool_name === 'complete_research'
-  );
-  if (!delivery || delivery.type !== 'tool_output') throw new Error('No final receipt');
-  expect(delivery.status).toBe('success');
-  const result = CompleteResearchResultSchema.parse({
-    data: delivery.data,
-    observation: delivery.observation,
-  });
-  expect(result.data.review_artifacts.map(item => item.stage)).toEqual([
-    'argument_review',
-    'source_review',
-  ]);
+  const outputs = events.filter(event => event.type === 'tool_output');
+  expect(outputs.every(event => event.status === 'success')).toBe(true);
+  const parentWrites = outputs.filter(event => event.tool_name === 'write_file');
+  expect(
+    parentWrites.map(
+      event =>
+        WorkspaceWriteFileResultSchema.parse({
+          data: event.data,
+          observation: event.observation,
+        }).data.locator
+    )
+  ).toEqual([paths.investigation, paths.draft, paths.revision]);
+  const final = events.find(event => event.type === 'final_answer');
+  if (!final || final.type !== 'final_answer') throw new Error('Missing parent final answer');
+  expect(final.content).toBe(finalAnswer);
   const children = (
-    await fixture.runtime.supervisor.list({ parentRunId: RunIdSchema.parse(delivery.run_id) })
+    await fixture.runtime.supervisor.list({ parentRunId: RunIdSchema.parse(final.run_id) })
   ).runs;
   expect(children).toHaveLength(2);
   expect(children.every(child => child.status === 'completed')).toBe(true);
-  expect(
-    events.filter(
-      event => event.type === 'tool_call_decision' && event.tool_name === 'research_run'
-    )
-  ).toHaveLength(0);
-  // 终态释放 descriptor；冻结范围保存在实际阶段回执，不能依赖已清理的运行资源。
-  expect(await fixture.runtime.runDescriptors?.load(delivery.run_id)).toBeNull();
-  const receipts = new SqliteResearchStageReceiptStore(fixture.db).listRun({
-    parentRunId: delivery.run_id,
-    projectId,
-    conversationId,
-    modelId,
-  });
-  expect(receipts).toHaveLength(5);
-  for (const { identity, receipt } of receipts) {
-    expect(receipt.artifact).toBeDefined();
-    expect(receipt.invocation).toEqual(scope);
-    if ('runId' in receipt) {
-      expect(receipt.runId).toBe(delivery.run_id);
-      continue;
-    }
+  const delegations = outputs.filter(event => event.tool_name === 'subagent');
+  expect(delegations).toHaveLength(2);
+  for (const [index, delegation] of delegations.entries()) {
+    const result = SubagentResultSchema.parse({
+      data: delegation.data,
+      observation: delegation.observation,
+    });
+    expect(result.data.status).toBe('completed');
+    expect(result.data.artifacts).toHaveLength(1);
+    const role: Reviewer = index === 0 ? 'argument_review' : 'source_review';
+    expect(result.data.final_answer).toContain(paths[role]);
     const trace = readSubrunTrace(
       fixture.db,
       conversationId,
-      identity.toolCallId,
-      receipt.subrunId
+      delegation.tool_call_id,
+      result.data.subrun_ids[0]
     );
-    if (trace.status !== 'ready') throw new Error('Missing individual delegation trace');
+    if (trace.status !== 'ready') throw new Error('Missing delegation trace');
     expect(trace.events.some(event => event.kind === 'final_answer')).toBe(true);
+    // 子运行自己的完整事实证明来源读取和产物写入；父 tool result 不是读过原文的证据。
+    const child = children.find(item => item.runId === result.data.subrun_ids[0]);
+    if (!child) throw new Error('Missing child registration');
+    const childEvents = (
+      await fixture.eventStore.readEvents(conversationId, { limit: 1000 })
+    ).events.filter(event => event.run_id === child.runId);
+    const childOutputs = childEvents.filter(event => event.type === 'tool_output');
+    expect(childOutputs.map(event => event.tool_name)).toEqual([
+      'read_file',
+      'read_file',
+      'write_file',
+    ]);
+    expect(childOutputs.every(event => event.status === 'success')).toBe(true);
   }
-  const projection = readTail(fixture.db, conversationId, 100);
-  if (projection.status !== 'ready') throw new Error('Missing root projection');
-  expect(projection.messages.filter(message => message.message_type === 'tool_calls')).toHaveLength(
-    6
+  const revision = await new ReadFileTool().run(
+    { locator: paths.revision },
+    {
+      databaseService: fixture.database,
+      workspaceProjectId: projectId,
+      conversationId,
+    }
   );
+  expect(revision).toContain('The source does not distinguish competing causes.');
   expect(new WorkspaceService(fixture.db).getChildNodes(null, projectId)).toHaveLength(6);
   expect((await fixture.flow.getActiveForegroundRun(conversationId)).run).toBeNull();
   fixture.ai.assertAllTurnsConsumed();
-  return { parentRunId: delivery.run_id, result };
+  return final.run_id;
 }
 
-describe('Lead research through unified subagent and durable document handoff', () => {
-  it('父模型自己保存调查、初稿和修订，仅双复核使用child，重载保留独立提交与委派', async () => {
+describe('Lead research through ordinary Workspace tools and prompt delegation', () => {
+  it('父写初稿与修订，双复核各自读稿并写报告，重载保留独立轨迹和最终链接', async () => {
     const fixture = await open(chain());
     const projectId = await seed(fixture);
     await start(fixture, projectId);
-    const delivered = await assertDelivered(fixture, projectId);
-    expect(fixture.ai.getCalls()).toHaveLength(8);
+    const parentRunId = await assertDelivered(fixture, projectId);
+    expect(fixture.ai.getCalls()).toHaveLength(chain().length);
+    const before = readTail(fixture.db, conversationId, 100);
     await close(fixture);
     const reloaded = await open([]);
-    const projection = readTail(reloaded.db, conversationId, 100);
-    if (projection.status !== 'ready') throw new Error('Missing reload');
-    expect(
-      projection.messages.filter(message => message.message_type === 'tool_calls')
-    ).toHaveLength(6);
-    expect(
-      (await reloaded.runtime.supervisor.peek(RunIdSchema.parse(delivered.parentRunId)))?.status
-    ).toBe('completed');
+    const after = readTail(reloaded.db, conversationId, 100);
+    expect(after).toEqual(before);
+    expect((await reloaded.runtime.supervisor.peek(RunIdSchema.parse(parentRunId)))?.status).toBe(
+      'completed'
+    );
   });
-  it('child已提交但父工具未接纳时恢复原委派，不重复文档或模型调用', async () => {
-    const first = await open(chain().slice(0, 4));
+  it('child完成但父工具尚未接纳时恢复原委派，不重复模型调用或文档', async () => {
+    const first = await open(beforeFirstReview());
     const projectId = await seed(first);
     const original = RegisteredChildRunInvoker.prototype.invoke;
     const interception = vi
@@ -328,10 +366,11 @@ describe('Lead research through unified subagent and durable document handoff', 
     ).runs;
     expect(originalChildren).toHaveLength(1);
     expect(originalChildren[0]?.status).toBe('completed');
+    expect(new WorkspaceService(first.db).getChildNodes(null, projectId)).toHaveLength(4);
     first.ai.assertAllTurnsConsumed();
     interception.mockRestore();
     await close(first);
-    const resumed = await open(chain().slice(4));
+    const resumed = await open(afterFirstReview());
     const current = (await resumed.flow.getActiveForegroundRun(conversationId)).run;
     if (!current || current.status !== 'paused' || !current.pause?.settled || !current.execution_id)
       throw new Error('Missing recovered pause');
@@ -345,118 +384,64 @@ describe('Lead research through unified subagent and durable document handoff', 
       () => {}
     );
     await assertDelivered(resumed, projectId);
-    expect(resumed.ai.getCalls()).toHaveLength(4);
+    expect(resumed.ai.getCalls()).toHaveLength(afterFirstReview().length);
     expect(
       (
         await resumed.runtime.supervisor.list({ parentRunId: RunIdSchema.parse(root.run_id) })
       ).runs.map(item => item.runId)
     ).toContain(originalChildren[0]?.runId);
   });
-  it('父稿与结果已经提交但工具输出中断时，恢复原稿并继续研究，不重复写入或提前结束', async () => {
-    const first = await open(chain().slice(0, 1));
-    const projectId = await seed(first);
-    const tool = toolRegistry.getTool('submit_research_document');
-    if (!tool) throw new Error('Missing submission tool');
-    const original = tool.run.bind(tool);
-    const interruption = vi.spyOn(tool, 'run').mockImplementation(async (args, context) => {
-      const output = JSON.parse(await original(args, context));
-      expect(output).not.toHaveProperty('control');
-      throw new graph.RunRecoveryBlockedError('Interrupted after parent document commit');
-    });
-    await start(first, projectId);
-    const root = (await first.flow.getActiveForegroundRun(conversationId)).run;
-    if (!root || root.status !== 'paused' || !root.pause?.settled)
-      throw new Error('Expected paused parent');
-    const originalReceipt = new SqliteResearchStageReceiptStore(first.db).listRun({
-      parentRunId: root.run_id,
-      projectId,
-      conversationId,
-      modelId,
-    })[0];
-    if (!originalReceipt?.receipt.artifact) throw new Error('Missing committed parent document');
-    expect(
-      first.runtime.toolResults?.read(
-        root.run_id,
-        'parent-submit-investigation',
-        'submit_research_document'
-      )
-    ).toMatchObject({ atomic_owner: 1 });
-    expect(
-      (await first.runtime.supervisor.list({ parentRunId: RunIdSchema.parse(root.run_id) })).runs
-    ).toHaveLength(0);
-    first.ai.assertAllTurnsConsumed();
-    interruption.mockRestore();
-    await close(first);
-    const resumed = await open(chain().slice(1));
-    const current = (await resumed.flow.getActiveForegroundRun(conversationId)).run;
-    if (!current || !current.execution_id || !current.pause?.settled)
-      throw new Error('Missing restored parent');
-    await resumed.flow.continueRun(
-      root.run_id,
-      {
-        conversation_id: conversationId,
-        expected_execution_id: current.execution_id,
-        expected_updated_at: current.pause.updated_at,
-      },
-      () => {}
-    );
-    await assertDelivered(resumed, projectId);
-    const recovered = new SqliteResearchStageReceiptStore(resumed.db).list(
-      originalReceipt.identity
-    )[0];
-    expect(recovered?.artifact).toEqual(originalReceipt?.receipt.artifact);
-    expect(resumed.ai.getCalls()).toHaveLength(7);
-  });
-  it('fixed根检索和未提交child不能产生正式交付，主Agent仍能说明失败', async () => {
+  it('固定材料是任务要求，普通完成不认证产物；无文件的child可由父如实说明不足', async () => {
     const fixture = await open([
+      assignment('investigation'),
       {
-        toolCalls: [
-          {
-            id: 'forbidden-search',
-            name: 'web_search',
-            argumentsJson: JSON.stringify({ query: 'new source' }),
-          },
-        ],
+        contentChunks: ['No findings document was saved; the material does not identify a cause.'],
+        assertCall(call) {
+          assertTools(call, true);
+          expect(userText(call)).toContain('Do not browse the web.');
+          // 不以研究任务改写公共工具权限：是否遵守固定材料范围必须从实际调用审计。
+          expect(call.options.tools?.map(item => item.name)).toContain('web_search');
+        },
       },
-      assignment('investigation', []),
-      { contentChunks: ['I claim investigation is complete.'] },
-      { contentChunks: ['No document was submitted; research has not been delivered.'] },
+      { contentChunks: ['No document was saved; the research article has not been delivered.'] },
     ]);
     const projectId = await seed(fixture);
-    const searchTool = toolRegistry.getTool('web_search');
-    if (!searchTool) throw new Error('Missing search');
-    const search = vi.spyOn(searchTool, 'run');
     await start(fixture, projectId);
     const events = await facts(fixture);
-    expect(search).not.toHaveBeenCalled();
+    const delegation = events.find(
+      event => event.type === 'tool_output' && event.tool_name === 'subagent'
+    );
+    if (!delegation || delegation.type !== 'tool_output') throw new Error('Missing child result');
     expect(
-      events.find(
-        event => event.type === 'tool_output' && event.tool_call_id === 'forbidden-search'
-      )
-    ).toMatchObject({ status: 'error' });
+      SubagentResultSchema.parse({ data: delegation.data, observation: delegation.observation })
+        .data
+    ).toMatchObject({ status: 'completed', artifacts: [] });
     expect(
-      events.find(
-        event => event.type === 'tool_output' && event.tool_call_id === 'delegate-investigation'
-      )
-    ).toMatchObject({ status: 'error' });
-    expect(
-      events.filter(
-        event => event.type === 'tool_output' && event.tool_name === 'complete_research'
-      )
-    ).toHaveLength(0);
+      events.filter(event => event.type === 'final_answer').map(event => event.content)
+    ).toEqual(['No document was saved; the research article has not been delivered.']);
     expect(new WorkspaceService(fixture.db).getChildNodes(null, projectId)).toHaveLength(1);
     fixture.ai.assertAllTurnsConsumed();
   });
-  it('用户取消实际child会向上传播，未提交稿不落盘，重启不重新委派', async () => {
-    const fixture = await open([assignment('investigation', []), submission('investigation')]);
+  it('取消传播到实际child，未执行的写入不落盘，重启不自动重新委派', async () => {
+    const fixture = await open([
+      assignment('investigation'),
+      {
+        toolCalls: [
+          tool('child-pending-save', 'write_file', {
+            locator: paths.investigation,
+            content: '# Pending',
+          }),
+        ],
+      },
+    ]);
     const projectId = await seed(fixture);
-    const tool = toolRegistry.getTool('submit_research_document');
-    if (!tool) throw new Error('Missing submission tool');
+    const writer = toolRegistry.getTool('write_file');
+    if (!writer) throw new Error('Missing Workspace writer');
     let reached!: () => void;
     const ready = new Promise<void>(resolve => {
       reached = resolve;
     });
-    vi.spyOn(tool, 'run').mockImplementation(async (_args, context) => {
+    vi.spyOn(writer, 'run').mockImplementation(async (_args, context) => {
       const signal = context.abortSignal;
       if (!signal) throw new Error('Missing child cancellation signal');
       reached();
