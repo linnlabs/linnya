@@ -1,7 +1,0 @@
-/** 独立版本的方法候选只存一份；不修改或复制正式 deep-research 1.4。 */
-export const RESEARCH_FEEDBACK_METHOD_V1 = {
-  version: 'research-feedback-v1',
-  author: `Treat review findings as claims to check, not answers to accept. Read the original important feedback, the actual passage and the relevant source or calculation. Accept, narrow or reject each material suggestion on its evidence; an unsupported review can be rejected without losing a useful explanation. Return to bounded investigation when a consequential gap can change the judgment and the material scope permits it.
-After correcting a claim, follow its consequences through affected explanations, comparisons, title, opening and conclusion. Check newly introduced or widened claims and comparisons against their sources and executed calculations. Preserve necessary conditions, counterevidence and useful mechanisms; deleting the explanation is not a substitute for a justified correction. Read the complete resulting article before returning it, and state material unresolved limits where they affect the article.`,
-  reviewer: `Derive the checking set from the supplied material itself, not only the author's list of completed checks. For each material finding give the actual passage or investigation statement, source location or calculation, consequence and proportionate suggestion. Separate confirmed issues, reasonable disagreement and unavailable evidence. Preserve explanations and conditions that remain supported; do not force opposition or certify the whole article from an absence of findings.`,
-} as const;

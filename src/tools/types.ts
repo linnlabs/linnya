@@ -61,19 +61,6 @@ export interface ToolContext extends ToolExecutionContext {
     readonly toolName: string;
     readonly toolCallId: import('@linnlabs/linnkit/contracts').ToolCallId;
   };
-  /** 仅 Host forced research tool 使用；模型无权构造或替换。 */
-  researchExecution?: (
-    input: import('@app/schemas').ResearchRunArgs
-  ) => Promise<import('@app/schemas').ResearchRunData>;
-  /** Research stage 的正式检索边界；不是 Shell/文件系统沙箱。 */
-  researchRetrievalAllowed?: boolean;
-  /** 父稿或单个已准备 child 的正式提交能力；Host 核对实际作者与允许的参数分支。 */
-  researchDocumentSubmission?: (
-    input: import('@app/schemas').SubmitResearchDocumentArgs,
-    caller: ToolContext
-  ) => Promise<import('@app/schemas').ResearchRunArtifact>;
-  /** 主研究 Agent 的正式交付检查，不负责启动后继或模型质量评分。 */
-  researchCompletion?: (document: string) => Promise<import('@app/schemas').CompleteResearchData>;
   /** 当前 activation 的结果提交窄端口；不能从最新 run 状态反查并补猜身份。 */
   toolResultReceipts?: import('../app-hosts/linnya/application/run-resumption').ToolResultReceiptPort;
   /** 会话工作目录 admission；生成图片必须直接写入受管 conversation-scoped 目录。 */

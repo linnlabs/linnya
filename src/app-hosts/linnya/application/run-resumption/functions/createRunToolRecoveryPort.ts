@@ -17,8 +17,6 @@ const replayableTools = new Set([
   'skill',
   'subagent',
   'subrun_batch',
-  // 固定阶段 slot 的 Host 用例；已完成 child 复取原结果，版本接纳仍由研究 owner 决定。
-  'research_run',
 ]);
 
 export function createRunToolRecoveryPort(receipts?: {
@@ -30,9 +28,6 @@ export function createRunToolRecoveryPort(receipts?: {
   return {
     async reconcile(call) {
       const receipt = receipts?.read(call.id, call.function.name);
-      // 交付是对当前依赖版本的检查。普通 returned 回执证明旧检查完成，不能证明暂停期间
-      // 文稿仍未变化；必须重查后才能发出终止控制。submit 的原子写入回执仍沿下面复取。
-      if (call.function.name === 'complete_research') return { kind: 'retry' };
       if (receipt?.result !== null && receipt?.result !== undefined) {
         return {
           kind: 'settled',

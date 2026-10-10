@@ -7,7 +7,8 @@ import { runRegisteredSubagent } from 'src/tools/agent_control/subrun/shared';
 import { ToolRegistry, toolRegistry } from '../../tools/toolRegistry';
 
 export const RESEARCH_CARRIER_CONVERSATION = 'research-carrier-conversation';
-export const RESEARCH_CARRIER_TOOL = 'research_run';
+// 沿用普通 child 批次入口的恢复合同，不依赖已退役的研究工具例外。
+export const RESEARCH_CARRIER_TOOL = 'subrun_batch';
 export type CarrierBoundary = 'draft_completed' | 'reviews_completed' | 'before_parent_return';
 
 export function researchCarrierRequest(projectId: string): ConversationNextRequest {
@@ -101,12 +102,12 @@ export class ResearchCarrierFixtureTool extends BaseTool {
     const reviewSettlements = await Promise.allSettled([
       stage(
         'argument_review',
-        'research_argument_review_v1',
+        'subagent_general',
         `Inspect only the argument. ${draft.finalAnswer}`
       ),
       stage(
         'source_review',
-        'research_source_review_v1',
+        'subagent_general',
         `Inspect only the synthetic source. ${draft.finalAnswer}`
       ),
     ]);

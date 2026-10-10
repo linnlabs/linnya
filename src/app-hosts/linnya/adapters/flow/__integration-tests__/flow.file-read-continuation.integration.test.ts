@@ -14,12 +14,16 @@ import {
   routeRuntimeEvent,
 } from '@linnlabs/linnkit/contracts';
 import type { ScriptedLlmTurn, ScriptedToolCall } from '@linnlabs/linnkit/testkit';
+import type { PluginToolContext } from '@linnya/plugin-host-contract/backend/toolRuntime';
+import { attachCitationSourceResolver } from 'src/domains/citation';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
+import { createWorkspaceDocumentFile } from 'src/features/workspace/document-file-create';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import { setWorkspaceRoot, resetWorkspaceRootToDefault } from 'src/shared/utils/pathManager';
 import { ToolOutputReadArgsSchema } from 'src/tools/tool_output/definitions/toolOutputRead';
 import { toolRegistry } from '../../tools/toolRegistry';
-import { createWorkspaceResearchDocumentPort } from '../../research-documents';
+import { createWorkspaceDocumentFileCreateProviderResolver } from '../../document-file-create/createWorkspaceDocumentFileCreateProviderResolver';
+import { createCitationSourceResolver } from '../../tools/citation-source-resolution';
 import { readTail } from '../../persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import type { ConversationRealtimeEvent } from '../flow.schemas';
 import {
@@ -99,41 +103,52 @@ async function seedCitedDocument(
     },
     observation: 'Synthetic acquisition for a saved source document.',
   });
-  await current.eventStore.appendEventToRun(
-    session,
-    routeRuntimeEvent(
-      createToolOutputEvent(
-        'source-seed-event',
-        'source-seed',
-        'source-seed-turn',
-        'web_search',
-        'source-seed-call',
-        { status: 'success', data: source.data, observation: source.observation }
-      ),
-      {
-        run_id: RunIdSchema.parse('source-seed-run'),
-        lane: 'foreground',
-        visibility: 'conversation',
-      }
-    )
+  const sourceEvent = routeRuntimeEvent(
+    createToolOutputEvent(
+      'source-seed-event',
+      'source-seed',
+      'source-seed-turn',
+      'web_search',
+      'source-seed-call',
+      { status: 'success', data: source.data, observation: source.observation }
+    ),
+    {
+      run_id: RunIdSchema.parse('source-seed-run'),
+      lane: 'foreground',
+      visibility: 'conversation',
+    }
   );
-  await createWorkspaceResearchDocumentPort({
-    db: current.db,
-    eventStore: current.eventStore,
-  }).save({
-    projectId,
-    conversationId: 'source-seed',
-    sourceRunId: 'source-seed-run',
-    path: 'workspace:/report.md',
-    text: [
-      '# Synthetic report',
-      citations.map(citation => `[@${citation.ref}]`).join(' '),
-      'Historical example only: tool_output://0123456789abcdef is mentioned in the source.',
-      ...Array.from({ length: 20 }, (_, index) => `Paragraph${index}${'z'.repeat(1_400)}`),
-      'Final-source-marker',
-    ].join('\n\n'),
-    receipt: { prepare() {}, commit() {} },
+  await current.eventStore.appendEventToRun(session, sourceEvent);
+  const context: PluginToolContext = { conversationId: 'source-seed' };
+  attachCitationSourceResolver(
+    context,
+    createCitationSourceResolver({
+      events: [sourceEvent],
+      async resolveEvidence() {
+        throw new Error('The source fixture must bind every citation through its producer event.');
+      },
+    })
+  );
+  const created = await createWorkspaceDocumentFile({
+    request: {
+      projectId,
+      parentId: null,
+      name: 'report.md',
+      content: [
+        '# Synthetic report',
+        citations.map(citation => `[@${citation.ref}]`).join(' '),
+        'Historical example only: tool_output://0123456789abcdef is mentioned in the source.',
+        ...Array.from({ length: 20 }, (_, index) => `Paragraph${index}${'z'.repeat(1_400)}`),
+        'Final-source-marker',
+      ].join('\n\n'),
+    },
+    resolveProvider: createWorkspaceDocumentFileCreateProviderResolver({
+      db: current.db,
+      context,
+      workspaceService: new WorkspaceService(current.db),
+    }),
   });
+  expect(created).toBeDefined();
 }
 
 describe('file pagination and archived continuation through the actual next model request', () => {

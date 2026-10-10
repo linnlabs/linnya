@@ -288,7 +288,7 @@ describe('Generic Host carrier through SQLite and published Linnkit', () => {
     resumed.ai.assertAllTurnsConsumed();
   });
 
-  it('一个父 receipt 覆盖顺序和不同职责并行阶段，完成前保持 loading', async () => {
+  it('一个父 receipt 覆盖顺序和独立子任务并行阶段，完成前保持 loading', async () => {
     const fixture = await open([
       ...researchCarrierDraftTurns,
       ...['argument-read', 'source-read'].map(id => ({
@@ -375,7 +375,7 @@ describe('Generic Host carrier through SQLite and published Linnkit', () => {
             .join('\n')
         )
       ).size
-    ).toBeGreaterThanOrEqual(3);
+    ).toBeGreaterThanOrEqual(2);
     expect(live.some(event => event.type === 'subrun_trace')).toBe(true);
   });
 
