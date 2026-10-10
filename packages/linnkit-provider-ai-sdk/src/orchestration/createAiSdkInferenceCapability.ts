@@ -147,6 +147,7 @@ export function createAiSdkInferenceCapability(
       };
 
       const toolIndexes = new Map<string, { readonly index: number; readonly partIndex: number }>();
+      const hostAdmissionToolCalls = new Map<string, string>();
       const reasoningParts = new Map<string, ActiveReasoningPart>();
       const textParts = new Map<string, ActiveTextPart>();
       let nextToolIndex = 0;
@@ -328,8 +329,11 @@ export function createAiSdkInferenceCapability(
                 break;
               }
               case 'tool-call': {
+                let requiresHostAdmission = false;
                 if (part.dynamic && part.invalid) {
-                  throw projectAiSdkInvalidToolCall(part.error);
+                  const failure = projectAiSdkInvalidToolCall(part.error, part.providerExecuted);
+                  if (failure) throw failure;
+                  requiresHostAdmission = true;
                 }
                 let active = toolIndexes.get(part.toolCallId);
                 if (!active) {
@@ -360,6 +364,9 @@ export function createAiSdkInferenceCapability(
                   ...(continuation ? { continuation: [continuation] } : {}),
                 };
                 events.push({ type: 'tool_call_end', index: active.index, call });
+                if (requiresHostAdmission) {
+                  hostAdmissionToolCalls.set(part.toolCallId, part.toolName);
+                }
                 toolIndexes.delete(part.toolCallId);
                 break;
               }
@@ -434,6 +441,15 @@ export function createAiSdkInferenceCapability(
               case 'tool-output-denied':
               case 'tool-approval-request':
               case 'tool-approval-response':
+                // AI SDK 会为 NoSuchToolError 自动再发一个 tool-error。正式结果由 Host
+                // admission 产生；这里只消费同 ID/名称的一次 SDK 副本，不接纳 Provider 执行。
+                if (
+                  part.type === 'tool-error' && part.dynamic && !part.providerExecuted &&
+                  hostAdmissionToolCalls.get(part.toolCallId) === part.toolName
+                ) {
+                  hostAdmissionToolCalls.delete(part.toolCallId);
+                  break;
+                }
                 events.push({
                   type: 'failure',
                   kind: 'protocol',
@@ -465,8 +481,7 @@ export function createAiSdkInferenceCapability(
               diagnosticContext,
               part.type,
             );
-            // 无法投影到 canonical 完成态时先终止并排空底层流；SDK 对 invalid call
-            // 合成的 tool-error 也不能越过本边界伪装成工具执行结果。避免空 reason 取消时
+            // 无法投影到 canonical 完成态时先终止并排空底层流，避免空 reason 取消时
             // 留下未处理 rejection；canonical 层只在 wire stream 收口后发布一次失败。
             providerAbortController.abort(projectionError);
             continue;

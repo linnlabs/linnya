@@ -149,8 +149,12 @@ URL、路径、图片 bytes 或原始错误正文。
 
 工具调用的输入错误与流状态机违规分开分类。AI SDK 的 `dynamic/invalid`
 不证明流损坏：无法解析或不是 JSON object 的参数形成可重试
-`provider_tool_arguments_invalid`，未知工具形成不可重试 `provider_tool_not_found`；
-其他 SDK invalid call 保持不可重试 `provider_tool_call_invalid`。只有已证明的
+`provider_tool_arguments_invalid`。仅由 Host 执行且参数为合法 object 的 `NoSuchToolError`
+保留原始调用身份、工具名和参数，交 Host 工具 admission 产生配对拒绝结果供模型修正。
+本次模型目录不是授权；Host 必须在任何具体执行、decorator 或缓存前检查调用范围和注册表。
+Adapter 不猜工具别名、不补工具定义、不执行调用、不增加重试；只消费与该调用身份匹配的
+SDK 自动 `tool-error` 副本，其他工具结果仍拒绝。其他 SDK invalid call 保持不可重试
+`provider_tool_call_invalid`。只有已证明的
 part 生命周期违规使用 `provider_stream_lifecycle_invalid`。Adapter 不修复参数、
 执行工具或产生工具错误结果；schema 字段校验仍由工具 owner 的正式 admission 执行，
 重试次数和退避仍由 Linnkit 决定。

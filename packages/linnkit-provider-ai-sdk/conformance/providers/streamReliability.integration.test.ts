@@ -90,6 +90,66 @@ function openTextStream(
 }
 
 describe('AI SDK stream reliability integration', () => {
+  it.each([
+    { toolCallId: 'unknown-call', toolName: 'unknown_tool' },
+    { toolCallId: 'unpaired-call', toolName: 'unknown_tool' },
+    { toolCallId: 'unknown-call', toolName: 'different_tool' },
+  ])('接纳未知 Host 调用后仍拒绝真正的 Provider 工具错误：%j', async extraResult => {
+    const model = modelWithStream(() => new ReadableStream<LanguageModelV4StreamPart>({
+      start(controller) {
+        controller.enqueue({ type: 'stream-start', warnings: [] });
+        controller.enqueue({
+          type: 'tool-call', toolCallId: 'unknown-call', toolName: 'unknown_tool', input: '{}',
+        });
+        // SDK 已为上一个 NoSuchToolError 自动发出配对错误；重复/无配对/异名结果都不是它。
+        controller.enqueue({
+          type: 'tool-result', ...extraResult,
+          isError: true, dynamic: true, result: 'sensitive-provider-tool-error',
+        });
+        controller.close();
+      },
+    }));
+    const capability = createAiSdkInferenceCapability(route.capability_id, route.surface, {
+      language_models: registry(model),
+    });
+
+    const events = await collect(capability.stream(invocation()));
+
+    expect(events.filter(event => event.type === 'tool_call_end')).toEqual([
+      { type: 'tool_call_end', index: 0, call: {
+        id: 'unknown-call', name: 'unknown_tool', arguments: {},
+      } },
+    ]);
+    expect(events.at(-1)).toEqual({
+      type: 'failure', kind: 'protocol', code: 'unexpected_ai_sdk_tool_execution', retryable: false,
+    });
+    expect(events.filter(event => event.type === 'failure')).toHaveLength(1);
+    expect(JSON.stringify(events)).not.toContain('sensitive-provider-tool-error');
+  });
+
+  it('Provider 执行的未知工具不能借用 Host admission 豁免', async () => {
+    const model = modelWithStream(() => new ReadableStream<LanguageModelV4StreamPart>({
+      start(controller) {
+        controller.enqueue({ type: 'stream-start', warnings: [] });
+        controller.enqueue({
+          type: 'tool-call', toolCallId: 'provider-call', toolName: 'unknown_tool',
+          input: '{}', providerExecuted: true,
+        });
+        controller.close();
+      },
+    }));
+    const capability = createAiSdkInferenceCapability(route.capability_id, route.surface, {
+      language_models: registry(model),
+    });
+
+    const events = await collect(capability.stream(invocation()));
+
+    expect(events.at(-1)).toEqual({
+      type: 'failure', kind: 'protocol', code: 'provider_tool_call_invalid', retryable: false,
+    });
+    expect(events.some(event => event.type === 'tool_call_end')).toBe(false);
+  });
+
   it('首个内容分片长时间未到达时触发可重试 idle timeout', async () => {
     const capability = createAiSdkInferenceCapability(route.capability_id, route.surface, {
       language_models: registry(

@@ -364,8 +364,10 @@ failure；用户取消仍是不可重试
 turn。
 
 AI SDK 标记的 invalid tool-call 需按正式错误类型分离：坏 JSON / 非 object 参数为
-`provider_tool_arguments_invalid`，可由 Linnkit 按原预算重试；未知工具为不可重试
-`provider_tool_not_found`。这两类均不执行工具，也不伪装成工具业务失败。
+`provider_tool_arguments_invalid`，可由 Linnkit 按原预算重试；未知工具且参数为合法 object 时，
+保留原始 canonical 调用，交 Host ToolRegistry 的执行范围和注册表检查产生配对拒绝结果。
+模型目录不是授权，目录外名称不能绕过 Host admission；Adapter 不改名、不扩权、不执行工具，
+只吸收对应 SDK 自动 validation error，不把它当作正式工具结果。
 诊断日志接纳 package 的有限 `invariant_code` 和 `stream_part_type`，用于区分真正的
 生命周期违规和工具输入错误；投影器主动取消后记录的最后一个 `abort` 不构成网络故障证据。
 

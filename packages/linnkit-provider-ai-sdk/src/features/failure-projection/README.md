@@ -23,8 +23,10 @@ Stream 失败必须先区分 owner：`AiSdkHostStreamInvariantError` 表示 Host
 
 `AiSdkToolCallError` 表示模型产出的工具调用无法进入 canonical 完成态，不是流生命周期违规。
 只按 SDK 正式 `InvalidToolInputError` / `NoSuchToolError` 类型及 canonical JSON object
-合同分类：坏参数为可重试 `provider_tool_arguments_invalid`，未知工具为不可重试
-`provider_tool_not_found`，其余 invalid call 为不可重试 `provider_tool_call_invalid`。
+合同分类：坏参数为可重试 `provider_tool_arguments_invalid`，其余 invalid call 为不可重试
+`provider_tool_call_invalid`。Host 执行的 `NoSuchToolError` 不证明 Provider 失败；仅当参数
+满足 canonical object 合同时，保留原始调用交 Host 检查范围和注册表。Adapter 按 call ID +
+工具名消费一次 SDK 自动 validation error，不消费 Provider 执行结果或无对应调用的错误。
 不读取错误文案、不伪造参数或工具结果，不在 adapter 校验业务 schema。安全诊断只保留
 有限 `invariant_code` 与触发失败的 `stream_part_type`，不保留工具名、参数、错误正文或 reasoning。
 
