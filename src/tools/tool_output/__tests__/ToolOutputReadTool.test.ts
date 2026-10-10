@@ -4,6 +4,7 @@ import os from 'os';
 import path from 'path';
 
 import { ToolOutputReadTool } from '../ToolOutputReadTool';
+import { ToolOutputReadArgsSchema } from '../definitions/toolOutputRead';
 import {
   openToolOutputTextBlobWriter,
   saveToolOutputTextBlob,
@@ -98,7 +99,7 @@ describe('tool_output_read (ToolOutputReadTool)', () => {
     setWorkspaceRoot(tmpRoot);
 
     try {
-      const text = Array.from({ length: 20 }, (_, i) => `line_${i + 1}_${'x'.repeat(20)}`).join(
+      const text = Array.from({ length: 20 }, (_, i) => `line_${i + 1}_${'x'.repeat(200)}`).join(
         '\n'
       );
       const result = await truncateObservationToPreview({
@@ -109,8 +110,8 @@ describe('tool_output_read (ToolOutputReadTool)', () => {
         },
         toolName: 'search_knowledge_base',
         text,
-        maxChars: 120,
-        maxLines: 6,
+        maxChars: 1_200,
+        maxLines: 12,
       });
 
       expect(result.truncated).toBe(true);
@@ -119,6 +120,8 @@ describe('tool_output_read (ToolOutputReadTool)', () => {
         expect(result.previewChars).toBe(result.preview.length);
         expect(result.originalLines).toBe(20);
         expect(result.previewLines).toBe(result.preview.split('\n').length);
+        expect(result.previewChars).toBeLessThanOrEqual(1_200);
+        expect(result.previewLines).toBeLessThanOrEqual(12);
       }
     } finally {
       resetWorkspaceRootToDefault();
@@ -130,55 +133,49 @@ describe('tool_output_read (ToolOutputReadTool)', () => {
     }
   });
 
-  it('按真实逻辑行保留预览尾部，并在字符裁剪时保持 Unicode 边界', async () => {
+  it.each([
+    ['行数预算', Array.from({ length: 80 }, (_, i) => `line_${i}  \n\n`).join(''), 2_000, 20],
+    ['字符预算及 emoji', `  \n${'🙂'.repeat(1_500)}\n  tail  \n`, 1_400, 100],
+  ])('连续前缀加 cursor 续读完整还原原文：%s', async (_name, text, maxChars, maxLines) => {
     const tmpRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'temp_tool_output_store_preview_'));
     setWorkspaceRoot(tmpRoot);
-
     try {
-      const context = {
-        conversationId: 'conv_preview_lines',
-        turnId: 'turn_preview_lines',
-        parentToolCallId: ToolCallIdSchema.parse('call_preview_lines'),
-      };
-      const truncate = async (text: string, maxLines = 4, maxChars = 2_000) => {
-        const result = await truncateObservationToPreview({
-          context,
-          toolName: 'preview_lines_tool',
-          text,
-          maxChars,
-          maxLines,
-        });
-        expect(result.truncated).toBe(true);
-        if (!result.truncated) throw new Error('expected truncated preview');
-        return result.preview;
-      };
-
-      const eightLines = Array.from({ length: 8 }, (_, index) => `line_${index + 1}`).join('\n');
-      const regular = await truncate(eightLines);
-      expect(regular).toContain('line_1\nline_2');
-      expect(regular).toContain('line_7\nline_8');
-      expect(regular).not.toContain('line_3');
-      expect(regular).not.toContain('line_6');
-
-      const trailingNewline = await truncate(`${eightLines}\n`);
-      expect(trailingNewline).toContain('line_8\n');
-      expect(trailingNewline).not.toContain('line_7');
-
-      const consecutiveEmptyLines = await truncate(
-        ['line_1', 'line_2', 'line_3', 'line_4', 'line_5', 'line_6', '', 'line_8'].join('\n'),
-        6,
-      );
-      expect(consecutiveEmptyLines).toContain('line_6\n\nline_8');
-      expect(consecutiveEmptyLines).not.toContain('line_5');
-
-      const unicodeTail = await truncate(
-        [...Array.from({ length: 7 }, (_, index) => `line_${index + 1}`), `middle🙂${'z'.repeat(17)}`].join('\n'),
-        4,
-        60,
-      );
-      const unicodePreviewLines = unicodeTail.split('\n');
-      const lastLine = unicodePreviewLines[unicodePreviewLines.length - 1];
-      expect(lastLine).toBe('z'.repeat(17));
+      const context = { conversationId: 'conv_preview', turnId: 'turn_preview' };
+      const result = await truncateObservationToPreview({
+        context, toolName: 'read_file', text, maxChars, maxLines,
+      });
+      if (!result.truncated) throw new Error('Expected truncated preview');
+      expect(result.preview.length).toBeLessThanOrEqual(maxChars);
+      expect(result.preview.split('\n').length).toBeLessThanOrEqual(maxLines);
+      const boundary = result.preview.match(/<<<BEGIN_UNTRUSTED_TOOL_OUTPUT_PREVIEW_([0-9a-f]{16})>>>\n/);
+      if (!boundary) throw new Error('Missing preview boundary');
+      const prefix = result.preview.split(boundary[0])[1]?.split(`\n<<<END_UNTRUSTED_TOOL_OUTPUT_PREVIEW_${boundary[1]}>>>`)[0];
+      if (prefix === undefined) throw new Error('Missing exact prefix');
+      const hint = result.preview.match(/补齐本次返回：tool_output_read\(([^\n]+)\)$/)?.[1];
+      if (!hint) throw new Error('Missing continuation call');
+      const args = ToolOutputReadArgsSchema.parse(JSON.parse(hint));
+      expect(args.offset).toBe(prefix.length);
+      expect(prefix).toBe(text.slice(0, args.offset));
+      expect(prefix.length).toBeGreaterThan(0);
+      expect(Buffer.from(prefix, 'utf8').toString('utf8')).toBe(prefix);
+      expect(hint).not.toContain('limit');
+      let joined = prefix;
+      let offset = args.offset;
+      const reader = new ToolOutputReadTool();
+      for (;;) {
+        const read = ToolOutputReadResultSchema.parse(JSON.parse(await reader.run({ blob_id: args.blob_id, offset }, context)));
+        expect(read.data.start_offset).toBe(offset);
+        expect(Buffer.from(read.data.window_text, 'utf8').toString('utf8')).toBe(read.data.window_text);
+        expect(read.observation.length).toBeLessThan(20_000);
+        joined += read.data.window_text;
+        if (read.data.next_offset === null) {
+          expect(read.observation).toContain('不代表源文件已读完或进程已结束');
+          break;
+        }
+        expect(read.data.next_offset).toBeGreaterThan(offset);
+        offset = read.data.next_offset;
+      }
+      expect(joined).toBe(text);
     } finally {
       resetWorkspaceRootToDefault();
       await fsp.rm(tmpRoot, { recursive: true, force: true });
@@ -224,7 +221,7 @@ describe('tool_output_read (ToolOutputReadTool)', () => {
 
       // observation 应包含窗口内容与 cursor 提示
       expect(parsed.observation).toContain(`blob_id=${blobId}`);
-      expect(parsed.observation).toContain(`Cursor: to continue, set offset=${firstWindow.length}`);
+      expect(parsed.observation).toContain(`tool_output_read(${JSON.stringify({ blob_id: blobId, offset: firstWindow.length })})`);
       expect(parsed.observation).toContain('line_01');
       expect(parsed.observation).toContain('line_05');
       expect(parsed.observation).not.toContain('line_06');

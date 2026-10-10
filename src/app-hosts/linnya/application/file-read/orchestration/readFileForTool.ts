@@ -253,6 +253,19 @@ async function readWorkspaceLocator(input: {
               : 0,
         })
       : undefined;
+    const observation = citationProjection
+      ? citationProjection.remapText(document.observation)
+      : document.observation;
+    // DocumentView 的 nextOffset 属于源文档；工具 facade 才负责说明下一次工具调用。
+    const nextPage =
+      document.data.nextOffset === null
+        ? ''
+        : `\n\n[read_file: 读完本次返回后，文档下一页：read_file(${JSON.stringify({
+            locator,
+            view: 'document',
+            offset_chars: document.data.nextOffset,
+            max_chars: input.args.max_chars,
+          })})]`;
     return JSON.stringify(
       WorkspaceReadFileResultSchema.parse({
         data: {
@@ -265,9 +278,7 @@ async function readWorkspaceLocator(input: {
             : document.data,
           ...(citationFields ?? {}),
         },
-        observation: citationProjection
-          ? citationProjection.remapText(document.observation)
-          : document.observation,
+        observation: observation + nextPage,
         observationPreviewMeta: document.observationPreviewMeta,
       }),
       null,

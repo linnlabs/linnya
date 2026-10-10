@@ -14,6 +14,8 @@ import {
 } from '@app/schemas/commands';
 
 import { resetWorkspaceRootToDefault, setWorkspaceRoot } from 'src/shared/utils/pathManager';
+import { ToolOutputReadTool } from 'src/tools/tool_output/ToolOutputReadTool';
+import { ToolOutputReadResultSchema } from '@app/schemas';
 import { truncateObservationToPreview } from 'src/tools/tool_output/toolOutputStore';
 import {
   formatProcessToolModelObservation,
@@ -221,7 +223,7 @@ describe('command tool model observation', () => {
     }
   });
 
-  it('超长正文经过正式 head/tail 治理后仍保留完整可解析的控制首行', async () => {
+  it('超长命令返回归档后保留原始控制行，续读不会把存档当作新控制记录', async () => {
     const workspaceRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'command-model-control-'));
     setWorkspaceRoot(workspaceRoot);
     try {
@@ -246,7 +248,25 @@ describe('command tool model observation', () => {
       });
 
       expect(truncated.truncated).toBe(true);
-      expect(parseCommandToolModelControlLine(truncated.preview)).toEqual({
+      if (!truncated.truncated) throw new Error('Expected truncated command observation');
+      const originalControlLine = observation.split('\n')[0];
+      expect(truncated.preview).toContain(originalControlLine);
+      // 存档窗口是数据；控制 parser 仅接受原始 owner observation，不穿透不可信边界。
+      expect(() => parseCommandToolModelControlLine(truncated.preview)).toThrow('缺少控制首行');
+      let restored = '';
+      let offset = 0;
+      const reader = new ToolOutputReadTool();
+      for (;;) {
+        const result = ToolOutputReadResultSchema.parse(JSON.parse(await reader.run(
+          { blob_id: truncated.blob_id, offset },
+          { conversationId: 'conversation_command_model_control' },
+        )));
+        restored += result.data.window_text;
+        if (result.data.next_offset === null) break;
+        offset = result.data.next_offset;
+      }
+      expect(restored).toBe(observation);
+      expect(parseCommandToolModelControlLine(restored)).toEqual({
         protocol_version: 1,
         kind: 'shell_model_control',
         status: 'running',

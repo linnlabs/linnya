@@ -214,7 +214,10 @@ import type { StructuredToolResult } from 'src/tools/types';
     - 必须是**纯文本**、可读、信息密度高且自包含；同一业务事实可以分别以结构化字段和自然语言出现，但不要复制 `data` 的 JSON 或大段正文。
     - 禁止在 observation 里拼大段 JSON；也不要加 emoji 等噪音（除非产品明确要求）。
     - **不要在工具内部实现“超长截断/落盘”**：统一由执行层（ToolNode）治理超长 observation。
-      - 机制：当 `observation` 超过 20,000 字符或 1,200 行时，ToolNode 会自动把全文写入 conversation-root 的 ToolOutputStore（生成 `blob_id`），并把 observation 替换为“短预览 + `tool_output_read({"blob_id":"<blob_id>"})` 继续读取指引”；durable 身份发布在 `tool_output.metadata.observationTruncation.blobId`，不得注入具体工具 `data`。
+      - 机制：当 `observation` 超过 20,000 字符或 1,200 行时，ToolNode 会自动把全文写入 conversation-root 的 ToolOutputStore（生成 `blob_id`），并把 observation 替换为连续原文前缀及 `tool_output_read` 续读指引。指引使用第一个未见字符的 0-based UTF-16 offset，通常省略 `limit` 使用默认有界窗口；不要求从 0 重读已展示前缀，也不拼接尾部跳过中间内容。
+      - durable 身份发布在 `tool_output.metadata.observationTruncation.blobId`，不得注入具体工具 `data`。该正式事实及 Conversation 投影是截断状态的来源，不能扫描正文提示或历史 URI 推断。
+      - 预览正文整体进入独立的动态不可信数据边界，blob 身份、计量与续读指引位于边界外。原工具的控制记录和来源标记只作为存档数据保留，程序化事实仍读取 owner 的严格 `data`，不从预览恢复控制骨架。
+      - 工具自身的源分页与 blob 续读是两个范围：需要读全本次结果时，先完成 blob 续读，再请求源下一页。blob EOF 不证明源文件 EOF、命令输出完整或进程终态。
       - 好处：全仓一致、避免重复落盘、避免每个工具各自发明一套截断协议。
       - Host 存储、身份和字符 cursor 续读合同见 [`tool_output/README.md`](./tool_output/README.md)；禁止在其他工具里复制 blob schema、路径或行 cursor。
   - **返回字符串必须是 JSON**：

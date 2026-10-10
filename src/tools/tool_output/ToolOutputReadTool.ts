@@ -12,10 +12,7 @@
 
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '../types';
 import { readToolOutputTextWindowByContext } from './toolOutputStore';
-import {
-  ToolOutputReadResultSchema,
-  type ToolOutputReadResult,
-} from '@app/schemas';
+import { ToolOutputReadResultSchema, type ToolOutputReadResult } from '@app/schemas';
 import {
   TOOL_OUTPUT_READ_DEFAULT_CHARS,
   TOOL_OUTPUT_READ_MAX_CHARS,
@@ -25,6 +22,7 @@ import { buildToolOutputReadObservation } from './functions/buildToolOutputReadO
 
 export class ToolOutputReadTool extends BaseTool {
   readonly name = 'tool_output_read';
+  readonly argumentValidationErrorCode = 'TOOL_OUTPUT_READ_ARGUMENTS_INVALID';
 
   /**
    * 硬上限（根因级约束）：
@@ -34,25 +32,20 @@ export class ToolOutputReadTool extends BaseTool {
    * 注意：
    * - 这里的上限应显著小于 ToolNode 的执行期 observation 预览阈值（maxChars=20_000, maxLines=1_200）。
    */
-  readonly description = `Reads a large tool output saved in ToolOutputStore (by blob_id) with pagination.
-
-# Canonical entry
-- Pass the 16-hex blob_id from a truncation hint or a tool_output:// durable reference.
-- Cursor is a 0-based UTF-16 character offset. Copy next_offset unchanged to continue.
-
-# When to Use
-- When a tool output was truncated and you need to inspect the full content.
-- Use offset to paginate and limit to bound the requested character window.
-
-# Notes
-- blob_id is a 16-hex id printed in the truncation hint.
-- This tool returns a bounded text window plus cursor info for continuing.`;
+  readonly description = `Read saved tool-output text by blob_id. This does not read a live file, fetch another source page, or poll a process.
+- Copy the blob_id and offset from the current truncation/continuation hint. With no offset, reading starts at 0.
+- offset and limit use UTF-16 characters, not read_file line numbers or source-document offsets.
+- Usually omit limit. The returned window may be smaller than requested; copy the returned next_offset rather than adding limit.
+- To read a truncated result completely, finish its saved text before advancing the original tool's source page.
+- has_more=false means the end of this saved text only. The source document or running process may still have more content.`;
 
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     properties: {
       blob_id: {
         type: 'string',
+        minLength: 16,
+        maxLength: 16,
         description: 'ToolOutputStore blob id (16 hex).',
       },
       offset: {
@@ -73,10 +66,27 @@ export class ToolOutputReadTool extends BaseTool {
     additionalProperties: false,
   };
 
+  protected override validateArguments(args: Record<string, unknown>): {
+    success: boolean;
+    error?: string;
+  } {
+    const parsed = ToolOutputReadArgsSchema.safeParse(args);
+    if (parsed.success) return { success: true };
+    const details = parsed.error.issues
+      .map(
+        issue => `${issue.path.length > 0 ? issue.path.join('.') : 'arguments'}: ${issue.message}`
+      )
+      .join('; ');
+    return {
+      success: false,
+      error: `[TOOL_OUTPUT_READ_ARGUMENTS_INVALID] ${details}\n从当前截断提示复制 blob_id 和 offset（字符，不是行）；通常省略 limit。不要原样重试。`,
+    };
+  }
+
   getExecutionSummary(output: string): string {
     const parsed: unknown = JSON.parse(output);
     const result = ToolOutputReadResultSchema.parse(parsed);
-    return `读取 ToolOutputStore(${result.data.blob_id})：行 ${result.data.start_line}-${result.data.end_line} / ${result.data.total_lines}`;
+    return `读取 ToolOutputStore(${result.data.blob_id})：字符 [${result.data.start_offset}, ${result.data.end_offset_exclusive}) / ${result.data.total_chars}`;
   }
 
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {

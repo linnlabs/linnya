@@ -22,6 +22,22 @@
 
 结构化 DocumentView（例如 MindMap 的 `[#ref]`、outline 和插件 presentation）属于同一工具的显式读取模式，字符窗口只能使用语义明确的 `offset_chars/max_chars`，不复用普通文本的 `offset/limit`。超长普通文本 observation 继续由既有 ToolOutputStore 接管；即使一行很长，也不为 `read_file` 增加第二套字符分页语义。
 
+源文件窗口与调用输出存档分别续读，不能混用 cursor：
+
+- `read_file` 的源分页提示携带当前 locator 和下一窗口参数。普通文本继续使用 1-based 行 `offset`；
+  DocumentView 继续使用 `view="document"` 与 `offset_chars`。这次调用选中的源窗口仍可能附带 Citation
+  Sources、diagnostics 或其他展示内容，因此其完整 observation 仍可能触发外层治理。
+- 外层治理展示连续原文前缀，不拼接源窗口的尾部；提示中的 `tool_output_read` 使用第一个未见字符的
+  0-based UTF-16 offset，读取本次调用已经保存的 observation。通常省略 `limit` 使用默认有界窗口，
+  并原样复制后续 `next_offset`。它不会继续读取源文件，也不会把存档行号转换成文件行号。
+- 需要完整读取本次结果时，先完成该 blob 的续读，再按 `read_file` 的源分页提示请求下一窗口。
+  blob EOF 仅说明本次存档已读完，不说明文件 EOF。DocumentView 的头部也可能出现源 cursor；
+  该 cursor 不代表预览省略的内容已经展示。
+
+预览与存档窗口都作为动态边界内的数据读取；引用来源仍由同一次 `read_file` 的正式 `data` 提供，
+不从 `tool_output_read` 正文重新接纳来源。完整存储、字符预算及截断事实合同见
+[Tool Output Store](../tool_output/README.md)。
+
 `read_file` 是工具族里唯一跨地址空间的动作：`workspace:/...` 进入当前项目 VFS，
 `conversation:/...` 进入当前对话工作目录，`file:///...` 进入宿主绝对路径。裸相对/绝对路径均拒绝，
 也不会通过“哪个文件存在”猜来源。物理 reader 按 magic bytes 识别 JPEG、PNG、WebP 并附加模型输入；

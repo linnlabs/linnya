@@ -27,6 +27,7 @@ import type { ToolOutputReadArgs } from './definitions/toolOutputRead';
 import type { ToolOutputTextWindow } from './functions/sliceToolOutputWindow';
 import { createToolOutputTextBlobWriter } from './orchestration/createToolOutputTextBlobWriter';
 import { readToolOutputTextWindow } from './orchestration/readToolOutputTextWindow';
+import { buildToolOutputPreview } from './functions/buildToolOutputPreview';
 
 type ToolOutputContext = ToolExecutionContext & ToolConversationScopeContext;
 
@@ -143,56 +144,6 @@ function countLines(text: string): number {
   return lines;
 }
 
-function takeHeadLines(text: string, maxLines: number): string {
-  let newlines = 0;
-  for (let index = 0; index < text.length; index += 1) {
-    if (text.charCodeAt(index) !== 0x0a) continue;
-    newlines += 1;
-    if (newlines === maxLines) return text.slice(0, index);
-  }
-  return text;
-}
-
-function takeTailLines(text: string, maxLines: number): string {
-  let newlines = 0;
-  for (let index = text.length - 1; index >= 0; index -= 1) {
-    if (text.charCodeAt(index) !== 0x0a) continue;
-    newlines += 1;
-    if (newlines === maxLines) return text.slice(index + 1);
-  }
-  return text;
-}
-
-function clipHeadUtf16(text: string, maxChars: number): string {
-  if (text.length <= maxChars) return text;
-  let end = maxChars;
-  if (
-    end > 0
-    && text.charCodeAt(end - 1) >= 0xd800
-    && text.charCodeAt(end - 1) <= 0xdbff
-    && text.charCodeAt(end) >= 0xdc00
-    && text.charCodeAt(end) <= 0xdfff
-  ) {
-    end -= 1;
-  }
-  return text.slice(0, end);
-}
-
-function clipTailUtf16(text: string, maxChars: number): string {
-  if (text.length <= maxChars) return text;
-  let start = text.length - maxChars;
-  if (
-    start > 0
-    && text.charCodeAt(start - 1) >= 0xd800
-    && text.charCodeAt(start - 1) <= 0xdbff
-    && text.charCodeAt(start) >= 0xdc00
-    && text.charCodeAt(start) <= 0xdfff
-  ) {
-    start += 1;
-  }
-  return text.slice(start);
-}
-
 export async function truncateObservationToPreview(params: {
   context: ToolOutputContext;
   toolName: string;
@@ -218,26 +169,12 @@ export async function truncateObservationToPreview(params: {
     meta: params.meta,
   });
 
-  const halfLines = Math.max(1, Math.floor(params.maxLines / 2));
-  const head = takeHeadLines(raw, halfLines);
-  const tail = takeTailLines(raw, halfLines);
-  const headBudget = Math.floor(params.maxChars * 0.6);
-  const tailBudget = Math.floor(params.maxChars * 0.3);
-  const clippedHead = clipHeadUtf16(head, headBudget);
-  const clippedTail = clipTailUtf16(tail, tailBudget);
-
-  const preview = [
-    clippedHead.trimEnd(),
-    '',
-    `...（内容已截断：原始行数=${originalLines}，原始字符数=${raw.length}）...`,
-    '',
-    `（工具输出过长，已写入 ToolOutputStore：blob_id=${blobId}）`,
-    `你可以调用 tool_output_read 继续读取：tool_output_read({"blob_id":"${blobId}","offset":0,"limit":200})`,
-    '',
-    clippedTail.trimStart(),
-  ]
-    .filter((value) => value !== '')
-    .join('\n');
+  const preview = buildToolOutputPreview({
+    blobId,
+    text: raw,
+    maxChars: params.maxChars,
+    maxLines: params.maxLines,
+  });
 
   return {
     truncated: true,

@@ -14,7 +14,7 @@ export function formatCommandToolModelObservation(input: {
   return `${COMMAND_MODEL_CONTROL_LINE_PREFIX}${JSON.stringify(control)}\n\n${input.bodyLabel}:\n${input.body}`;
 }
 
-/** 只解析永不换行的第一条控制记录；后续正文可被通用 head/tail 治理截断。 */
+/** 只解析 owner 原始 observation 的控制首行；通用存档预览/续读均为数据，不能穿透其不可信边界恢复控制。 */
 export function parseCommandToolModelControlLine(
   observation: string,
 ): CommandAgentModelControlV1 {

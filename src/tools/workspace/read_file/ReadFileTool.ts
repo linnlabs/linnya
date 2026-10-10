@@ -26,6 +26,7 @@ export class ReadFileTool extends BaseTool {
       'Use workspace:/..., conversation:/..., or file:///...; bare paths are invalid and never trigger source guessing.',
       'Text uses the mainstream 1-based line window: offset is the starting line and limit is the maximum number of lines. Returned source lines are numbered for precise grep/edit/inspect follow-up.',
       'Structured DocumentView alone uses offset_chars/max_chars. JPEG, PNG, and WebP are verified and attached automatically; identical pixels already attached in the current run are not injected again.',
+      'If a tool-output truncation hint appears, use its tool_output_read call to finish this returned window before following the file next-page hint. Blob character offsets are not file line numbers or DocumentView offsets.',
       'PDF, Office, archives, other binary formats, and unsupported encodings must first be converted with Shell/CLI.',
       'Use inode only for Workspace identity. view="document" is also Workspace-only.',
       'Markdown citations appear as canonical [@XXXXXX] tokens with same-window source metadata.',

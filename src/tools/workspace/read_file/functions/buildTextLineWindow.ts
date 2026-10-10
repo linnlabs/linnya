@@ -28,7 +28,7 @@ export function buildTextLineWindow(input: {
   const lines = splitTextLines(input.text);
   if (input.offset > Math.max(lines.length, 1)) {
     throw new Error(
-      `[READ_FILE_LINE_OUT_OF_RANGE] offset=${input.offset} 超出文件总行数 ${lines.length}。`,
+      `[READ_FILE_LINE_OUT_OF_RANGE] offset=${input.offset} 超出文件总行数 ${lines.length}。`
     );
   }
 
@@ -68,5 +68,10 @@ export function formatTextLineWindow(input: {
   })();
   const withSupplement = input.supplement ? `${content}\n\n${input.supplement}` : content;
   if (input.window.nextOffset === undefined) return withSupplement;
-  return `${withSupplement}\n\n[read_file: 显示第 ${input.window.offset}-${input.window.offset + input.window.lineCount - 1} 行，共 ${input.window.totalLineCount} 行；继续使用 offset=${input.window.nextOffset}]`;
+  const nextCall = JSON.stringify({
+    locator: input.locator,
+    offset: input.window.nextOffset,
+    limit: input.window.limit,
+  });
+  return `${withSupplement}\n\n[read_file: 本次源窗口为第 ${input.window.offset}-${input.window.offset + input.window.lineCount - 1} 行，共 ${input.window.totalLineCount} 行。读完本次返回后，文件下一页：read_file(${nextCall})]`;
 }

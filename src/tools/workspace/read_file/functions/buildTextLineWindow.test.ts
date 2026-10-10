@@ -15,7 +15,7 @@ describe('read_file 文本行窗口', () => {
       nextOffset: 3,
     });
     expect(formatTextLineWindow({ locator: 'workspace:/notes.md', window })).toBe(
-      '2 | beta\n\n[read_file: 显示第 2-2 行，共 3 行；继续使用 offset=3]',
+      '2 | beta\n\n[read_file: 本次源窗口为第 2-2 行，共 3 行。读完本次返回后，文件下一页：read_file({"locator":"workspace:/notes.md","offset":3,"limit":1})]',
     );
   });
 
