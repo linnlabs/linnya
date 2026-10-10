@@ -17,6 +17,8 @@ decorator 执行，恢复保留限制。该限制不是 Shell 网络或整个项
 `bindResearchStageSubmission` 校验实际 child
 run、conversation 和工具调用身份；同伴、嵌套 worker 和父模型不能借用子阶段能力。父作者另由真实根 descriptor 的冻结工具范围授权，提交声明阶段与正式依赖，Host 冻结它们并分配路径。两分支均只使用实际产出者的来源 run。Markdown 编译与 Citation 仍归正式文档 owner。
 
+同一绑定还把研究 owner 的阶段可见性规则接入 Workspace 节点范围。节点范围在每次工具执行时读取当前正式回执，与继承范围取交集；它不是固定材料允许列表，不阻止开放调查的新来源。新委派从父 run 的回执读取，旧调度从原调用的阶段回执读取；不在 VFS 查询研究表，不把同伴文档“不可访问”伪装成“文件不存在”后创建同名稿。
+
 文档、阶段产物绑定与完整成功工具结果同事务提交；父级结果不携带终止指令，child 结果仍终止自身。中断通过已有 atomic-owner
 receipt 恢复，不依赖 ToolRegistry.returned 兜底。来源版本变化使 child 停止、父提交明确失败且不得旧版交付；父运行可以报告限制，不伪装成可重试格式问题；编译期间取消回滚整个事务。
 

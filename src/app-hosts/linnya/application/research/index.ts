@@ -3,6 +3,7 @@ export { createResearchDelegationUseCase } from './orchestration/createResearchD
 export {
   RESEARCH_SUBAGENT_STAGES,
   researchDelegationStage,
+  researchReviewExcludedInodes,
 } from './functions/researchDelegationPlan';
 export type {
   ResearchUseCase,

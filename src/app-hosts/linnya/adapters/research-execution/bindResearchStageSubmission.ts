@@ -3,7 +3,9 @@ import type { ToolContext } from 'src/tools/types';
 import type {
   PreparedResearchChildStage,
   ResearchExecutionIdentity,
+  ResearchStageReceipt,
 } from '../../application/research';
+import { researchReviewExcludedInodes } from '../../application/research';
 import {
   ResearchInputsChangedError,
   type ResearchStageSubmission,
@@ -20,16 +22,30 @@ export function bindResearchStageSubmission(
   stage: PreparedResearchChildStage,
   owner: ResearchExecutionIdentity,
   submit: ResearchStageSubmission,
+  currentReceipts: () => readonly ResearchStageReceipt[],
   signal?: AbortSignal
 ) {
   const invalidation = new AbortController();
   const stageSignal = signal ? AbortSignal.any([signal, invalidation.signal]) : invalidation.signal;
   const expectedRunId = runIdFromSubrunId(stage.subrunId);
+  const inheritedScope = context.resolveWorkspaceNodeAccessScope;
   return {
     context: derivePluginAwareToolContext(context, {
       researchCompletion: undefined,
       researchRetrievalAllowed: stage.invocation.task_type !== 'fixed',
       abortSignal: stageSignal,
+      resolveWorkspaceNodeAccessScope() {
+        // 旧并行评审可能在本 child 启动后才提交；不能冻结启动时的空拒绝集。
+        const excluded = researchReviewExcludedInodes(stage, currentReceipts());
+        return {
+          excludedNodeIds: [
+            ...new Set([
+              ...(inheritedScope?.().excludedNodeIds ?? []),
+              ...excluded.map(inode => inode.slice('workspace:'.length)),
+            ]),
+          ],
+        };
+      },
       async researchDocumentSubmission(input, caller) {
         const callId = caller.parentToolCallId;
         const receipts = caller.toolResultReceipts;

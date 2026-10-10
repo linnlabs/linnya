@@ -1,12 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ResearchRunArgsSchema, WebSearchResultSchema, type ResearchStage } from '@app/schemas';
 import { createToolOutputEvent, routeRuntimeEvent, RunIdSchema } from '@linnlabs/linnkit/contracts';
+import { createToolContextFixture } from '@linnlabs/linnkit/testkit';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { MarkdownDocumentService } from 'src/domains/markdown';
 import { SQLiteEventStore, type RunSession } from '../../adapters/persistence/event-store';
 import { createWorkspaceResearchDocumentPort } from '../../adapters/research-documents';
 import { SqliteResearchStageReceiptStore } from '../../adapters/persistence/research-stage-receipts';
+import { bindResearchStageSubmission } from '../../adapters/research-execution/bindResearchStageSubmission';
+import { GrepTool } from 'src/tools/workspace/grep/GrepTool';
+import {
+  clearPluginRuntimeStateForTests,
+  setPluginRuntimeStateForTests,
+} from '../../plugin-registry/pluginRuntimeState';
 import { createResearchDelegationUseCase } from './index';
 import type { ResearchExecutionIdentity } from './definitions/researchStageReceipt';
 
@@ -67,13 +74,19 @@ async function chain() {
   return { investigation, review, draft, argument, source, revision };
 }
 beforeEach(async () => {
+  setPluginRuntimeStateForTests({
+    installedPluginIds: ['platform'],
+    enabledPluginIds: ['platform'],
+  });
   completed.clear();
   database = new DatabaseService(':memory:');
   database.initialize();
   const projectId = new WorkspaceService(database.getDb()).createProject('Delegated research');
   events = new SQLiteEventStore(database.getDb());
   await events.ensureConversation('delegation-conversation', [], projectId, 'agent');
-  parentSession = await events.beginRunSession('delegation-conversation', 'delegation-parent', { kind: 'agent' });
+  parentSession = await events.beginRunSession('delegation-conversation', 'delegation-parent', {
+    kind: 'agent',
+  });
   identity = {
     projectId,
     conversationId: 'delegation-conversation',
@@ -90,9 +103,62 @@ beforeEach(async () => {
     receipt: { prepare() {}, commit() {} },
   });
 });
-afterEach(() => database.close());
+afterEach(() => {
+  database.close();
+  clearPluginRuntimeStateForTests();
+});
 
 describe('Lead-selected research handoff with real Workspace and receipts', () => {
+  it('已启动或恢复的评审从当前回执隐藏稍后提交的同伴；自身及普通来源仍可读', async () => {
+    const investigation = await stage('investigation', []);
+    const review = await stage('investigation_review', [investigation]);
+    const draft = await stage('draft', [investigation, review]);
+    const source = await prepare('source_review', [investigation, draft]);
+    const owner = { ...identity, toolCallId: 'source_review' };
+    const bind = () =>
+      bindResearchStageSubmission(
+        createToolContextFixture({
+          patch: {
+            databaseService: database,
+            workspaceProjectId: identity.projectId,
+            conversationId: identity.conversationId,
+            resolveWorkspaceNodeAccessScope: () => ({ excludedNodeIds: ['inherited-hidden'] }),
+          },
+        }),
+        source.prepared,
+        owner,
+        source.session.submit,
+        () =>
+          store()
+            .listRun(identity)
+            .map(item => item.receipt)
+      );
+    const current = bind();
+    expect(current.context.resolveWorkspaceNodeAccessScope?.().excludedNodeIds).toEqual([
+      'inherited-hidden',
+    ]);
+    const argumentPath = await stage('argument_review', [investigation, draft]);
+    const argument = await docs().read({ projectId: identity.projectId, locator: argumentPath });
+    expect(current.context.resolveWorkspaceNodeAccessScope?.().excludedNodeIds).toContain(
+      argument.inode.slice('workspace:'.length)
+    );
+    const own = await source.session.submit({
+      sourceRunId: identity.parentRunId,
+      content:
+        '# source_review\n\nThe source reports 100 becoming 110; the cause remains uncertain.',
+      resultCommit: { prepare() {}, commit() {} },
+    });
+    expect(current.context.resolveWorkspaceNodeAccessScope?.().excludedNodeIds).not.toContain(
+      own.inode.slice('workspace:'.length)
+    );
+    const grep = new GrepTool();
+    for (const context of [current.context, bind().context]) {
+      const result = await grep.run({ pattern: 'argument_review' }, context);
+      expect(result).not.toContain(argumentPath);
+      expect(await grep.run({ pattern: '100' }, context)).toContain('workspace:/source.md');
+    }
+  });
+
   it('每次只准备主Agent选择的一项任务，完整链交付后可以从原回执复取', async () => {
     const result = await chain();
     expect(store().listRun(identity)).toHaveLength(6);
@@ -421,7 +487,10 @@ describe('Parent-owned authorship with independent reviews', () => {
       observation: 'Synthetic evidence',
     });
     async function produce(runId: string) {
-      const session = runId === identity.parentRunId ? parentSession : await events.beginRunSession(identity.conversationId, runId, { kind: 'agent' });
+      const session =
+        runId === identity.parentRunId
+          ? parentSession
+          : await events.beginRunSession(identity.conversationId, runId, { kind: 'agent' });
       await events.appendEventToRun(
         session,
         routeRuntimeEvent(

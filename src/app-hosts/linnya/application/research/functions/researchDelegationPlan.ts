@@ -1,5 +1,8 @@
 import type { ResearchStage } from '@app/schemas';
-import type { ResearchStageReceipt } from '../definitions/researchStageReceipt';
+import type {
+  PreparedResearchChildStage,
+  ResearchStageReceipt,
+} from '../definitions/researchStageReceipt';
 import { sameDocumentVersion } from './researchStagePlan';
 
 export const RESEARCH_SUBAGENT_STAGES = {
@@ -35,6 +38,31 @@ function consumes(consumer: ResearchStageReceipt, source: ResearchStageReceipt):
   );
 }
 
+/** 显式交接和后续文件访问共用资格规则，避免“没传给它”却仍能搜索到。 */
+function isExcludedReviewInput(stage: ResearchStage, inputStage: ResearchStage): boolean {
+  if (stage === 'investigation_review') return inputStage.endsWith('_review');
+  if (stage === 'argument_review' || stage === 'source_review')
+    return (
+      inputStage === 'argument_review' ||
+      inputStage === 'source_review' ||
+      inputStage === 'revision'
+    );
+  return false;
+}
+
+export function researchReviewExcludedInodes(
+  reviewer: PreparedResearchChildStage,
+  receipts: readonly ResearchStageReceipt[]
+): readonly string[] {
+  return receipts.flatMap(receipt => {
+    // 原子提交后的自身稿件可回读；其他同角色复核仍不是独立输入。
+    if ('subrunId' in receipt && receipt.subrunId === reviewer.subrunId) return [];
+    return receipt.artifact && isExcludedReviewInput(reviewer.stage, receipt.stage)
+      ? [receipt.artifact.inode]
+      : [];
+  });
+}
+
 /** 校验交接前提，不选下一阶段，不替模型评价内容。补查可以产生多次独立调查。 */
 export function validateResearchDelegationInputs(
   stage: ResearchStage,
@@ -46,7 +74,10 @@ export function validateResearchDelegationInputs(
     !selected.some(item => item.stage === 'investigation' && item.artifact)
   )
     throw new Error('Include the investigation document in input_documents.');
-  if (stage === 'investigation_review' && selected.some(item => item.stage.endsWith('_review')))
+  if (
+    stage === 'investigation_review' &&
+    selected.some(item => isExcludedReviewInput(stage, item.stage))
+  )
     throw new Error('An independent investigation review must not receive other reviews.');
   if (stage === 'draft') {
     const review = one(selected, 'investigation_review');
@@ -55,14 +86,7 @@ export function validateResearchDelegationInputs(
   }
   if (stage === 'argument_review' || stage === 'source_review') {
     one(selected, 'draft');
-    if (
-      selected.some(
-        item =>
-          item.stage === 'argument_review' ||
-          item.stage === 'source_review' ||
-          item.stage === 'revision'
-      )
-    )
+    if (selected.some(item => isExcludedReviewInput(stage, item.stage)))
       throw new Error(
         'Independent article reviewers must not receive each other’s findings or a revision.'
       );

@@ -55,6 +55,7 @@ export async function decorateResearchDelegation(context: ToolContext): Promise<
     modelId,
   };
   const registry = new SQLiteRunRegistryStore(db);
+  const stageReceipts = new SqliteResearchStageReceiptStore(db);
   // 依据接纳时冻结的工具能力区分两代主 Agent；恢复不能把旧委派悄悄改成父稿。
   const admittedTools = descriptor.compatibility.agentConfiguration.availableTools;
   const authoring =
@@ -70,7 +71,7 @@ export async function decorateResearchDelegation(context: ToolContext): Promise<
         context.workspaceService ??
         new WorkspaceService(db, { mutationPublisher: context.workspaceMutationPublisher }),
     }),
-    receipts: new SqliteResearchStageReceiptStore(db),
+    receipts: stageReceipts,
     async childCompleted(subrunId, parentRunId) {
       const child = await registry.load(runIdFromSubrunId(subrunId));
       return child?.parentRunId === parentRunId && child.status === 'completed';
@@ -129,6 +130,7 @@ export async function decorateResearchDelegation(context: ToolContext): Promise<
       prepared,
       identity,
       session.submit,
+      () => stageReceipts.listRun(identity).map(item => item.receipt),
       context.abortSignal
     );
     return {

@@ -273,6 +273,83 @@ async function assertDelivered(fixture: Fixture, projectId: string) {
 }
 
 describe('Lead research through unified subagent and durable document handoff', () => {
+  it('同项目评审根搜索不能串读同伴稿，显式路径也拒绝；父级仍可汇总两份评审', async () => {
+    const marker = 'Only the argument reviewer knows this synthetic criticism.';
+    const argument = submission('argument_review');
+    const argumentCall = argument.toolCalls?.[0];
+    if (!argumentCall) throw new Error('Missing argument submission');
+    argumentCall.argumentsJson = JSON.stringify({ content: `# Argument review\n\n${marker}` });
+    let peerPath = '';
+    const parentSearch: ScriptedLlmTurn = {
+      toolCalls: [
+        { id: 'parent-search', name: 'grep', argumentsJson: JSON.stringify({ pattern: marker }) },
+      ],
+      assertCall(call) {
+        peerPath = pathInMessages(call.messages, 'argument_review');
+      },
+    };
+    const explicitRead = { id: 'reviewer-read-peer', name: 'read_file', argumentsJson: '' };
+    const reviewerRead: ScriptedLlmTurn = {
+      toolCalls: [explicitRead],
+      assertCall() {
+        explicitRead.argumentsJson = JSON.stringify({ locator: peerPath });
+      },
+    };
+    const fixture = await open([
+      parentSubmission('investigation', []),
+      parentSubmission('draft', ['investigation']),
+      assignment('argument_review', ['investigation', 'draft']),
+      argument,
+      parentSearch,
+      assignment('source_review', ['investigation', 'draft']),
+      {
+        toolCalls: [
+          {
+            id: 'reviewer-search',
+            name: 'grep',
+            argumentsJson: JSON.stringify({ pattern: marker, locator: 'workspace:/' }),
+          },
+        ],
+      },
+      reviewerRead,
+      {
+        toolCalls: [
+          {
+            id: 'reviewer-read-source',
+            name: 'read_file',
+            argumentsJson: JSON.stringify({ locator: 'workspace:/source.md' }),
+          },
+        ],
+      },
+      submission('source_review'),
+      parentSubmission('revision', ['investigation', 'draft', 'argument_review', 'source_review']),
+      complete(),
+    ]);
+    const projectId = await seed(fixture);
+    await start(fixture, projectId);
+    const events = await facts(fixture);
+    const output = (id: string) => {
+      const event = events.find(item => item.type === 'tool_output' && item.tool_call_id === id);
+      if (!event || event.type !== 'tool_output') throw new Error(`Missing ${id}`);
+      return event;
+    };
+    expect(output('parent-search')).toMatchObject({ status: 'success' });
+    expect(output('parent-search').observation).toContain(marker);
+    expect(output('reviewer-search')).toMatchObject({
+      status: 'success',
+      data: { total_count: 0 },
+    });
+    expect(output('reviewer-search').observation).not.toContain(peerPath);
+    expect(output('reviewer-read-peer')).toMatchObject({ status: 'error' });
+    expect(output('reviewer-read-peer').observation).not.toContain(marker);
+    expect(output('reviewer-read-source')).toMatchObject({ status: 'success' });
+    expect(output('reviewer-read-source').observation).toContain('Baseline is 100');
+    expect(
+      events.find(event => event.type === 'tool_output' && event.tool_name === 'complete_research')
+    ).toMatchObject({ status: 'success' });
+    fixture.ai.assertAllTurnsConsumed();
+  });
+
   it('父模型自己保存调查、初稿和修订，仅双复核使用child，重载保留独立提交与委派', async () => {
     const fixture = await open(chain());
     const projectId = await seed(fixture);
