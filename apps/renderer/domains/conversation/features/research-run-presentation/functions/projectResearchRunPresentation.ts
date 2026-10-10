@@ -1,7 +1,7 @@
 import {
   ResearchRunArgsSchema,
   ResearchRunStructuredResultSchema,
-  type ResearchRunArtifact,
+  type ResearchChildArtifact,
   type ResearchStage,
 } from '@app/schemas';
 import type { ConversationMessageKey } from '../../../definitions/conversationMessages';
@@ -37,7 +37,7 @@ function requireResearchIdentity(input: { sourceToolName: string; uiKey: string 
 
 function buildProgressItems(
   knownIds: readonly string[],
-  artifacts: readonly ResearchRunArtifact[],
+  artifacts: readonly ResearchChildArtifact[],
 ): ResearchRunProgressItem[] {
   const artifactsById = new Map(artifacts.map(artifact => [artifact.subrun_id, artifact]));
   // 保存结果给出正式阶段顺序；没有保存结果的真实 child 仍保留 trace，但不猜阶段或终态。

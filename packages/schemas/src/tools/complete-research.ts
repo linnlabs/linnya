@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { WorkspaceFileLocatorSchema } from '../file-locator';
-import { ResearchRunArtifactSchema } from './research-run';
+import { ResearchChildArtifactSchema, ResearchRunArtifactSchema } from './research-run';
 
 /** 交付只引用已经保存的稿件，不重复传正文，也不接纳模型填写的检查状态。 */
 export const CompleteResearchArgsSchema = z
@@ -13,7 +13,7 @@ export const CompleteResearchResultSchema = z
     data: z
       .object({
         artifact: ResearchRunArtifactSchema,
-        review_artifacts: z.array(ResearchRunArtifactSchema).length(2),
+        review_artifacts: z.array(ResearchChildArtifactSchema).length(2),
       })
       .strict()
       .superRefine((data, ctx) => {
@@ -28,12 +28,13 @@ export const CompleteResearchResultSchema = z
             message: 'Delivery requires a revision and one argument/source review each.',
           });
         }
-        if (
-          new Set([data.artifact, ...data.review_artifacts].map(item => item.subrun_id)).size !== 3
-        ) {
+        // 独立复核必须来自两个不同 child；历史 child 作者也不能兼任自己的复核。
+        const childIds = data.review_artifacts.map(item => item.subrun_id);
+        if ('subrun_id' in data.artifact) childIds.push(data.artifact.subrun_id);
+        if (new Set(childIds).size !== childIds.length) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'Delivery artifacts must come from distinct child runs.',
+            message: 'Reviewers must be distinct child runs, separate from any child author.',
           });
         }
       }),

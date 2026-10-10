@@ -1,4 +1,7 @@
-import { SubmitResearchDocumentArgsSchema, SubmitResearchDocumentResultSchema } from '@app/schemas';
+import {
+  SubmitResearchDocumentArgsSchema, SubmitResearchDocumentResultSchema,
+  type ParentResearchStage, type ResearchRunArtifact,
+} from '@app/schemas';
 import type { ConversationMessageKey } from '../../../definitions/conversationMessages';
 import {
   createConversationToolLocalizedTextDescriptor,
@@ -18,6 +21,16 @@ function requireSubmissionIdentity(input: { sourceToolName: string; uiKey: strin
   }
 }
 
+const PARENT_SAVED_LABELS: Record<ParentResearchStage, ConversationMessageKey> = {
+  investigation: 'conversation.tool.researchSubmit.investigationSaved',
+  draft: 'conversation.tool.researchSubmit.draftSaved',
+  revision: 'conversation.tool.researchSubmit.revisionSaved',
+};
+
+function savedTitleKey(artifact: ResearchRunArtifact): ConversationMessageKey {
+  return 'run_id' in artifact ? PARENT_SAVED_LABELS[artifact.stage] : 'conversation.tool.researchSubmit.saved';
+}
+
 function titleKey(status: ToolPresentationProjectorInput['status']): ConversationMessageKey {
   switch (status) {
     case 'loading': return 'conversation.tool.researchSubmit.pending';
@@ -31,11 +44,14 @@ export function projectResearchDocumentSubmission(
 ): ToolPresentationProjection<ResearchDocumentSubmissionPresentationData> {
   requireSubmissionIdentity(input);
   const title = createConversationToolTitleDescriptor(titleKey(input.status));
-  // 校验失败只属于本次提交；模型仍可在同一 child 内修正，不能据此给整个研究判终态。
+  // 保存或校验失败只属于本次提交，不能据此给主 Agent 或整个研究判终态。
   if (input.status !== 'success') return { title, data: { kind: 'lifecycle' }, hideContent: true };
   SubmitResearchDocumentArgsSchema.parse(input.args);
   const result = SubmitResearchDocumentResultSchema.parse(input.result);
-  return { title, data: { kind: 'saved', artifactPath: result.data.path } };
+  return {
+    title: createConversationToolTitleDescriptor(savedTitleKey(result.data)),
+    data: { kind: 'saved', artifactPath: result.data.path },
+  };
 }
 
 export function projectResearchDocumentSubmissionCompactStep(
@@ -44,7 +60,8 @@ export function projectResearchDocumentSubmissionCompactStep(
   requireSubmissionIdentity(input);
   if (input.status === 'success') {
     SubmitResearchDocumentArgsSchema.parse(input.args);
-    SubmitResearchDocumentResultSchema.parse(input.result);
+    const result = SubmitResearchDocumentResultSchema.parse(input.result);
+    return { title: createConversationToolLocalizedTextDescriptor(savedTitleKey(result.data)) };
   }
   return { title: createConversationToolLocalizedTextDescriptor(titleKey(input.status)) };
 }

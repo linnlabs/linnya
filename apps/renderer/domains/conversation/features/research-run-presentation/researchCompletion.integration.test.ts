@@ -123,6 +123,24 @@ describe('research completion through live and durable admission', () => {
     }).title).toEqual(live[1].toolPresentation?.title?.text);
   });
 
+  it('delivers a parent-authored revision with the same independent review links in live and reload', () => {
+    const revision = {
+      stage: 'revision', path: args.document, inode: result.data.artifact.inode,
+      sha256: result.data.artifact.sha256, citation_sha256: result.data.artifact.citation_sha256,
+    };
+    const parentResult = CompleteResearchResultSchema.parse({
+      ...result, data: { ...result.data, artifact: { ...revision, run_id: runId } },
+    });
+    const events = [decision('parent-delivery'), success('parent-delivery', parentResult)];
+    const live = projectLive(events);
+    expect(reload(events).map(message => message.toolPresentation)).toEqual(live.map(message => message.toolPresentation));
+    expect(live[0].toolPresentation?.data).toEqual(projectLive([decision('child-delivery'), success('child-delivery')])[0].toolPresentation?.data);
+    expect(projectResearchCompletionCompactStep({
+      sourceToolName: toolName, uiKey: toolName, toolCallId: 'parent-delivery',
+      args, result: parentResult, status: 'success', phase: 'complete',
+    }).title).toEqual(live[0].toolPresentation?.title?.text);
+  });
+
   it('rejects malformed delivery facts atomically in live, replay and compact presentation', () => {
     const malformed = { ...result, data: { ...result.data, quality_passed: true } };
     expect(() => reload([decision('invalid'), success('invalid', malformed)])).toThrow();

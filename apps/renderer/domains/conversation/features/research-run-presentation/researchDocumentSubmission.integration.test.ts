@@ -22,7 +22,7 @@ import { createAppendOnlySubrunStepProjector } from '../subrun-trace/functions/c
 import { readTail } from 'src/app-hosts/linnya/adapters/persistence/event-store/ui-projection';
 import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 import { SqliteUiProjectionApplier } from 'src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteApplier';
-import { projectResearchDocumentSubmission } from './functions/projectResearchDocumentSubmission';
+import { projectResearchDocumentSubmission, projectResearchDocumentSubmissionCompactStep } from './functions/projectResearchDocumentSubmission';
 
 const toolName = 'submit_research_document';
 const conversationId = 'research-submission';
@@ -38,9 +38,9 @@ const result = SubmitResearchDocumentResultSchema.parse({
 function route(event: RuntimeEvent): RuntimeEvent {
   return routeRuntimeEvent(event, { run_id: runId, lane: 'foreground', visibility: 'conversation' });
 }
-function decision(callId: string): RuntimeEvent {
+function decision(callId: string, input: SerializableJsonRecord = args): RuntimeEvent {
   return route(createToolCallDecisionEvent(`decision-${callId}`, conversationId, turnId, toolName, callId, {
-    timestamp: 1, payload: { args },
+    timestamp: 1, payload: { args: input },
   }));
 }
 function success(callId: string, output: { data: SerializableJsonRecord; observation: string } = result): RuntimeEvent {
@@ -124,6 +124,31 @@ describe('research stage submission presentation', () => {
     expect(live[0].toolPresentation?.data).toEqual({ kind: 'lifecycle' });
     expect(live[1].toolPresentation?.data).toEqual({ kind: 'saved', artifactPath: result.data.path });
     expect(JSON.stringify(live.map(message => message.toolPresentation))).not.toContain(args.content);
+  });
+
+  it('replays parent investigation, draft and revision saves without manufacturing child or delivery state', () => {
+    for (const [stage, title] of [
+      ['investigation', 'conversation.tool.researchSubmit.investigationSaved'],
+      ['draft', 'conversation.tool.researchSubmit.draftSaved'],
+      ['revision', 'conversation.tool.researchSubmit.revisionSaved'],
+    ] as const) {
+      const parentArgs = { stage, input_documents: [], content: args.content };
+      const parentResult = SubmitResearchDocumentResultSchema.parse({
+        data: { stage, run_id: 'research-parent', path: `workspace:/research/${stage}.md`,
+          inode: `${stage}-document`, sha256: 'a'.repeat(64), citation_sha256: 'b'.repeat(64) },
+        observation: 'The parent saved a document and continues its research.',
+      });
+      const events = [decision(stage, parentArgs), success(stage, parentResult)];
+      const live = projectLive(events);
+      expect(reload(events).map(message => message.toolPresentation)).toEqual(live.map(message => message.toolPresentation));
+      expect(live[0].toolPresentation?.data).toEqual({ kind: 'saved', artifactPath: parentResult.data.path });
+      expect(live[0].toolPresentation?.title?.text.key).toBe(title);
+      expect(projectResearchDocumentSubmissionCompactStep({
+        sourceToolName: toolName, uiKey: toolName, toolCallId: stage,
+        args: parentArgs, result: parentResult, status: 'success', phase: 'complete',
+      }).title).toEqual(live[0].toolPresentation?.title?.text);
+      expect(JSON.stringify(live[0].toolPresentation)).not.toContain(args.content);
+    }
   });
 
   it('keeps loading/error readable without assuming successful args or a saved artifact', () => {

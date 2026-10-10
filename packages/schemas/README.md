@@ -99,7 +99,7 @@
 | `src/tools/subrun-batch.ts` | 系统 batch 的输入、逐项结果和整体结果合同 |
 | `src/tools/subagent.ts` | 通用子 Agent 协作的参数、唯一终态与正式 artifact 结果合同 |
 | `src/tools/agent-todo.ts` | Linnya Todo 普通工具的参数与结构化结果合同；不是 Runtime 状态 |
-| `src/tools/research-run.ts` | Research Host 请求、六阶段文档结果及阶段 submit 正文/产物合同 |
+| `src/tools/research-run.ts` | Research 请求、父作者/子角色文稿提交与版本身份，以及历史六子阶段 Host 结果 |
 | `src/tools/taskstate.ts` | TaskState 读写参数与结构化结果 |
 | `src/tools/workspace-document-read.ts` | Workspace 文档读取结果与展示判别联合 |
 | `src/tools/tool-output-read.ts` | 长工具输出的续读窗口合同 |
@@ -245,6 +245,19 @@ adapter 先用已发布 Linnkit `ObservationTruncationMeta` 接纳，再显式�
 提供 Conversation 父工具行的权威 child 顺序。`artifacts` 只允许 Workspace VFS inode 与
 ToolOutputStore durable blob ref，不接纳 SharedMemory、Evidence 或任意 Resource URI。旧
 `delegate` 不存在 executable schema；Renderer 只按历史工具名展示既有事件。
+
+### Research document submission
+
+`src/tools/research-run.ts` 区分两类真实 producer：父 Agent 的调查记录、初稿和修订稿使用
+`run_id`，独立子角色产物使用 `subrun_id`。严格联合拒绝缺失身份、同时携带两种身份或由父
+Agent 伪造独立复核。历史 `research_run` 六阶段结果继续只接受 child 产物。
+
+`submit_research_document` 的子角色参数仅有正文，父作者参数显式包含 `stage`、
+`input_documents` 与正文；实际来源版本和输出路径由 Host 绑定，不由模型自报。
+父作者保存后继续运行，执行输出禁止携带终止 control；子角色成功提交必须结束自己的 run。
+展示和持久化结果只保存 `data/observation`，不保存执行 control 或“全文正确”状态。
+`complete_research` 单独交付修订稿及两个身份不同的独立 child 复核，保留历史 child 作者的
+正式事件回放；它不把保存成功解释成内容通过。
 
 ### Web Search
 
