@@ -151,7 +151,8 @@ URL、路径、图片 bytes 或原始错误正文。
 不证明流损坏：无法解析或不是 JSON object 的参数形成可重试
 `provider_tool_arguments_invalid`。仅由 Host 执行且参数为合法 object 的 `NoSuchToolError`
 保留原始调用身份、工具名和参数，交 Host 工具 admission 产生配对拒绝结果供模型修正。
-本次模型目录不是授权；Host 必须在任何具体执行、decorator 或缓存前检查调用范围和注册表。
+本次模型目录不是授权；Host Registry 在具体执行、decorator 和自身缓存前检查调用范围及注册表。
+Linnkit ToolNode 的历史幂等复用属于另一边界；本合同不据此认证未来声明幂等策略的工具已获跨范围复用验证。
 Adapter 不猜工具别名、不补工具定义、不执行调用、不增加重试；只消费与该调用身份匹配的
 SDK 自动 `tool-error` 副本，其他工具结果仍拒绝。其他 SDK invalid call 保持不可重试
 `provider_tool_call_invalid`。只有已证明的
