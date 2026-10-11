@@ -59,6 +59,10 @@ normalization 直接接纳 parser-wasm 的 CodeBlock 事件，不在 TypeScript 
 
 CLI Agent 与内置 Agent 的已有 Markdown 文档写入均走同一 file-write provider。工具输出的待确认块数来自提交后的数据库清单，不使用本次操作条数。仅撤销提议也发布 Workspace mutation，Renderer 通过文档会话重读完整快照。
 
+写入回执分别表达本次实际变化与当前待确认总数。请求文本不同但规范化后等价时，
+根据本次正文 edits、撤销和批注变更共同报告“本次规范化后正文和批注无变化”；
+已有 pending 不得遮住该事实，撤销提议或仅修改批注也不得误报无变化。
+
 `edit_file` 的读取快照通过 `expectedCurrentText` 进入 document-write；解析完成后按与 VFS 相同的
 Citation-aware current 投影比较（包括正文、pending 和批注），不一致时返回
 `MARKDOWN_FILE_WRITE_CONFLICT` 并要求重读。比较与事务之间不得增加异步等待。

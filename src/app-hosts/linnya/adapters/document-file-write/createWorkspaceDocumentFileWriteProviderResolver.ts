@@ -68,6 +68,7 @@ function createMarkdownFileWriteProvider(params: {
           operation: request.operation,
           path: request.identity.path,
           replacedCount: request.replacedCount,
+          editedCount: write.edits.length,
           pendingCount: write.pendingCount,
           cancelledCount: write.cancelledCount,
           createdAnnotationCount: write.createdAnnotationIds.length,
@@ -140,6 +141,7 @@ function buildMarkdownFileWriteObservation(params: {
   readonly operation: 'edit' | 'write';
   readonly path: string;
   readonly replacedCount?: number;
+  readonly editedCount: number;
   readonly pendingCount: number;
   readonly cancelledCount: number;
   readonly createdAnnotationCount: number;
@@ -147,8 +149,16 @@ function buildMarkdownFileWriteObservation(params: {
   readonly deletedAnnotationCount: number;
 }): string {
   const facts: string[] = [];
+  // pendingCount 是文档当前总数，不能用它证明这次请求改变了正文或批注。
+  if (
+    params.editedCount === 0 && params.cancelledCount === 0 &&
+    params.createdAnnotationCount === 0 && params.updatedAnnotationCount === 0 &&
+    params.deletedAnnotationCount === 0
+  ) {
+    facts.push('本次规范化后正文和批注无变化');
+  }
   if (params.cancelledCount > 0) facts.push(`已撤回 ${params.cancelledCount} 块正文修订`);
-  if (params.pendingCount > 0) facts.push(`正文修订 ${params.pendingCount} 块待确认`);
+  if (params.pendingCount > 0) facts.push(`当前正文修订 ${params.pendingCount} 块待确认`);
   if (params.createdAnnotationCount > 0) {
     facts.push(`批注 ${params.createdAnnotationCount} 条已创建`);
   }
@@ -158,8 +168,7 @@ function buildMarkdownFileWriteObservation(params: {
   if (params.deletedAnnotationCount > 0) {
     facts.push(`批注 ${params.deletedAnnotationCount} 条已删除`);
   }
-  if (facts.length === 0) facts.push('内容无变化');
-  const replacement = params.operation === 'edit' ? `，替换 ${params.replacedCount ?? 0} 处` : '';
+  const replacement = params.operation === 'edit' ? `，请求替换 ${params.replacedCount ?? 0} 处` : '';
   return `已处理 Markdown 文件：${params.path}${replacement}；${facts.join('，')}。`;
 }
 

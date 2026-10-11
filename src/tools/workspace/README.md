@@ -106,6 +106,9 @@ Markdown 编辑把 exact replacement 前读到的完整 current text 交给 prov
 不能当作最终 VFS current 的逐字快照。输出仍服从通用预览/续读上限。Markdown pending 尚待用户确认，
 但 VFS current 已包含该次修改；后续编辑以 `read_file` 的当前文本为准，旧块未命中时须重读。
 
+Markdown provider 会区分本次规范化后无变化与文档当前待确认总数；`replaced` 仍表示请求匹配的
+替换次数。等价请求可以成功但不改变 current，不能据 requested diff 或既有 pending 推断已产生新修订。
+
 五个 Tool 的完整模型 `parameters` 必须直接保留在各自 concrete tool 文件中，方便同时审查描述、字段、
 `required` 与封闭 `oneOf`。Workspace shared 只复用“正式 parser 的错误如何转换为 admission 结果”这一窄逻辑，
 不生成 locator/inode 分支，也不把 Workspace 身份语义下沉到 Linnkit。通用协议与测试时序见

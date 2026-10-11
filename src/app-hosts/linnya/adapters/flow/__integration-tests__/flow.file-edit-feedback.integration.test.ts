@@ -2,7 +2,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WorkspaceEditFileResultSchema } from '@app/schemas';
+import { WorkspaceEditFileResultSchema, WorkspaceWriteFileResultSchema } from '@app/schemas';
+import { MarkdownDocumentService } from 'src/domains/markdown';
 import type { ScriptedToolCall } from '@linnlabs/linnkit/testkit';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
@@ -42,6 +43,99 @@ function call(id: string, name: string, args: Record<string, unknown>): Scripted
 }
 
 describe('file edit feedback through durable Flow and the next model request', () => {
+  it('规范化等价编辑说明本次无变化，不把已有 pending 当作新修改', async () => {
+    const calls = [
+      call('create', 'write_file', { content: '原值 (口径)\n' }),
+      call('first-edit', 'edit_file', { old_string: '原值', new_string: '修订值' }),
+      call('before-equivalent', 'read_file', {}),
+      call('equivalent', 'edit_file', {
+        old_string: '\\(口径\\)', new_string: '(口径)',
+      }),
+      call('after-equivalent', 'read_file', {}),
+      call('real-edit', 'edit_file', { old_string: '修订值', new_string: '最终值' }),
+      call('after-real-edit', 'read_file', {}),
+      call('restore', 'edit_file', { old_string: '最终值', new_string: '原值' }),
+      call('annotate', 'write_file', { content: '原值 (口径)\n\n<!-- 核对依据 -->' }),
+    ];
+    fixture = await createDurableFlowHarness(join(directory, 'workspace.sqlite'), [
+      ...calls.map(tool => ({ toolCalls: [tool] })),
+      { contentChunks: ['已核对真实修订与规范化等价请求。'] },
+    ]);
+    const store = new MarkdownDocumentService(fixture.db);
+    const pending = new Map<string, ReturnType<MarkdownDocumentService['getPendingRevisions']>>();
+    let documentId: string | undefined;
+    const live: ConversationRealtimeEvent[] = [];
+    const conversationId = 'normalized-edit-feedback';
+    const projectId = new WorkspaceService(fixture.db).createProject('Normalized edit feedback');
+    await fixture.eventStore.ensureConversation(conversationId, [], projectId, 'agent');
+    await fixture.flow.next({
+      conversation_id: conversationId,
+      project_id: projectId,
+      new_events: [{ type: 'user_input', content: '编辑并核对报告。', source: 'user', timestamp: 1 }],
+      options: {
+        promptKey: 'default', model_id: 'scripted-test-model',
+        project_metadata: { id: projectId, name: 'Normalized edit feedback' },
+      },
+    }, event => {
+      live.push(event);
+      if (event.type !== 'tool_output') return;
+      if (event.tool_call_id === 'create') {
+        documentId = WorkspaceWriteFileResultSchema.parse({
+          data: event.data, observation: event.observation,
+        }).data.documentId;
+      }
+      if (documentId) pending.set(event.tool_call_id, store.getPendingRevisions(documentId));
+    });
+
+    const events = (await fixture.eventStore.readEvents(conversationId, { limit: 100 })).events;
+    const outputs = events.filter(event => event.type === 'tool_output');
+    expect(outputs.map(event => [event.tool_call_id, event.status])).toEqual(
+      calls.map(tool => [tool.id, 'success'])
+    );
+    const output = (id: string) => {
+      const event = outputs.find(item => item.tool_call_id === id);
+      if (!event) throw new Error(`Missing tool result: ${id}`);
+      return event;
+    };
+    // 同一 canonical current 和完整 pending 身份均保持不变，而非只比较 pending 数量。
+    expect(output('before-equivalent').observation).toContain('修订值 \\(口径\\)');
+    expect(output('after-equivalent').observation).toEqual(output('before-equivalent').observation);
+    expect(pending.get('first-edit')).toHaveLength(1);
+    expect(pending.get('equivalent')).toEqual(pending.get('first-edit'));
+    const equivalent = WorkspaceEditFileResultSchema.parse({
+      data: output('equivalent').data, observation: output('equivalent').observation,
+    });
+    expect(equivalent.data.replaced).toBe(1);
+    expect(equivalent.observation).toContain('本次规范化后正文和批注无变化');
+    expect(equivalent.observation).toContain('正文修订 1 块待确认');
+
+    expect(pending.get('real-edit')).toHaveLength(1);
+    expect(pending.get('real-edit')?.[0]?.revision).toBe(
+      (pending.get('first-edit')?.[0]?.revision ?? 0) + 1
+    );
+    expect(output('after-real-edit').observation).toContain('最终值 \\(口径\\)');
+    expect(pending.get('restore')).toEqual([]);
+    expect(output('restore').observation).toContain('已撤回 1 块正文修订');
+    expect(pending.get('annotate')).toEqual([]);
+    expect(output('annotate').observation).toContain('批注 1 条已创建');
+    for (const id of ['first-edit', 'real-edit', 'restore', 'annotate']) {
+      expect(output(id).observation).not.toContain('无变化');
+    }
+
+    fixture.ai.assertAllTurnsConsumed();
+    const nextRequest = fixture.ai.getCalls()[4];
+    expect(nextRequest?.messages.find(message =>
+      message.role === 'tool' && message.tool_call_id === 'equivalent'
+    )).toMatchObject({ content: [{ type: 'text', text: equivalent.observation }] });
+    expect(live.find(event => event.type === 'tool_output' && event.tool_call_id === 'equivalent'))
+      .toMatchObject({ observation: equivalent.observation });
+    const reloaded = readTail(fixture.db, conversationId, 100);
+    if (reloaded.status !== 'ready') throw new Error('Expected durable UI window');
+    expect(reloaded.messages.find(message =>
+      message.message_type === 'tool_calls' && message.payload.tool_call_id === 'equivalent'
+    )).toMatchObject({ content: equivalent.observation });
+  });
+
   it.each([10, 11, 12])('同批 %i 次真实写入及混合编辑结果完整进入下一模型请求', async count => {
     // 每个调用操作独立文档，避免把文件写入互相依赖混入批次回执的验证。
     const documents = Array.from({ length: count }, (_, index) => ({
