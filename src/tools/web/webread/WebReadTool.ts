@@ -8,9 +8,27 @@
 import { BaseTool } from '../../types';
 import type { ToolContext, ToolParameterSchema } from '../../types';
 import { WebReadArgsSchema, WebReadResultSchema } from '@app/schemas';
-import { MAX_WEB_PAGE_CONTENT_CHARS, runReadWebPage } from './orchestration/readWebPage';
+import { createWebCacheRuntime } from '../shared/cache/webCacheFactory';
+import { MemoryWebCache } from '../shared/cache/adapters/memoryWebCache';
+import {
+  MAX_WEB_PAGE_CONTENT_CHARS,
+  runReadWebPage,
+  type ReadWebPageDependencies,
+} from './orchestration/readWebPage';
 
 export class WebReadTool extends BaseTool {
+  private readonly dependencies: ReadWebPageDependencies;
+
+  constructor(dependencies: ReadWebPageDependencies = {}) {
+    super();
+    this.dependencies = {
+      ...dependencies,
+      cacheRuntime:
+        dependencies.cacheRuntime ??
+        (dependencies.provider ? createWebCacheRuntime(new MemoryWebCache()) : undefined),
+    };
+  }
+
   readonly name = 'web_read';
   readonly argumentValidationErrorCode = 'WEB_READ_ARGUMENTS_INVALID';
 
@@ -63,11 +81,15 @@ Returns the page content with a stable short reference [@XXXXXX] that can be cit
   async run(rawArgs: Record<string, unknown>, context: ToolContext): Promise<string> {
     const args = WebReadArgsSchema.parse(rawArgs);
 
-    return runReadWebPage({
-      url: args.url,
-      maxChars: args.max_chars,
-      titleHint: args.title_hint,
-    }, context);
+    return runReadWebPage(
+      {
+        url: args.url,
+        maxChars: args.max_chars,
+        titleHint: args.title_hint,
+      },
+      context,
+      this.dependencies
+    );
   }
 
   getExecutionSummary(output: string): string {

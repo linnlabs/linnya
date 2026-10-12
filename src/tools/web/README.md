@@ -398,6 +398,13 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 - Evidence 并发合并必须同时满足 conversation、instance、turn 和 parent tool-call 相同，禁止跨 artifact scope 共享
 - 调用方取消互相隔离；失败工作不留在 in-flight map 中，后续请求可以正常重试
 
+`WebSearchTool`、`SearchWebTool` 和 `WebReadTool` 构造器接受各自 orchestration 的依赖合同，
+供 Host composition 装配 Provider、Evidence writer 与缓存。无参构造保留现有默认路径；
+注入首跳 Provider 且未传缓存时，每个工具实例保留自己的内存缓存。需要跨实例共享缓存的
+composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读取配置及
+`renderProvider` / `managedProvider`：`undefined` 延续默认选路，`null` 明确关闭对应阶梯。
+仅替换首跳 Provider 不代表关闭其他读取路径，也不构成运行隔离。
+
 ### 5.7 与统一证据系统的关系
 
 - Web 层只拥有 `WebEvidenceCaptureItem` 和 `WebEvidenceWriter`，不依赖 Evidence DTO、bundle 存储或 concrete writer

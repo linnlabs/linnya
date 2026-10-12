@@ -5,7 +5,10 @@ import {
   getRegisteredToolContextDecorators,
 } from 'src/app-hosts/linnya/plugin-registry/builtin';
 import { pluginDiagnostics } from 'src/app-hosts/linnya/plugin-registry/diagnostics';
-import type { BackendPluginToolContextDecorator } from 'src/app-hosts/linnya/plugin-registry/types';
+import type {
+  BackendPluginToolContextDecorator,
+  ToolClassCtor,
+} from 'src/app-hosts/linnya/plugin-registry/types';
 import type { LinnyaToolSchemaContext, ToolContext } from 'src/tools/types';
 import { deriveLinnyaToolSchemaContext } from './functions/deriveLinnyaToolSchemaContext';
 import { readToolExecutionErrorCode } from './functions/readToolExecutionErrorCode';
@@ -57,6 +60,8 @@ export interface ToolRegistryOptions {
    * 产品默认仍保持 best-effort，单个工具坏了不阻断其他工具。
    */
   strictInitialization?: boolean;
+  /** composition 可替换已注册工具的依赖；未定制时返回 defaultTool，工具名必须保持一致。 */
+  createTool?: (ToolClass: ToolClassCtor, defaultTool: BaseTool) => BaseTool;
 }
 
 function isDynamicToolMetadataProvider(
@@ -89,9 +94,11 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
   private toolContextDecorators: Map<string, BackendPluginToolContextDecorator[]> = new Map();
   private initialized = false;
   private readonly strictInitialization: boolean;
+  private readonly createTool: ToolRegistryOptions['createTool'];
 
   constructor(options: ToolRegistryOptions = {}) {
     this.strictInitialization = options.strictInitialization === true;
+    this.createTool = options.createTool;
   }
 
   private ensureInitialized(): void {
@@ -112,7 +119,13 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
 
     for (const ToolClass of toolClasses) {
       try {
-        const tool = new ToolClass();
+        const defaultTool = new ToolClass();
+        // 注册身份来自 contribution；装配只替换依赖，不能改变目录与执行授权使用的名称。
+        const registeredName = defaultTool.name;
+        const tool = this.createTool ? this.createTool(ToolClass, defaultTool) : defaultTool;
+        if (tool.name !== registeredName) {
+          throw new Error(`工具工厂不得改写注册名称: ${registeredName} -> ${tool.name}`);
+        }
         if (!tool.name || !tool.description || !tool.parameters) {
           throw new Error(`工具 ${ToolClass.name} 缺少必要的属性`);
         }

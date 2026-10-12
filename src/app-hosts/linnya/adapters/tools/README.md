@@ -52,6 +52,13 @@ src/app-hosts/linnya/adapters/tools/
 3. `defaultPorts.ts` 把 registry 投影成 runtime 可消费的 ports
 4. `defaultToolManager.ts` 向上层暴露只依赖 registry 的默认 `ToolManager` 创建入口
 
+独立 composition 可在 `ToolRegistryOptions.createTool(ToolClass, defaultTool)` 中为已注册类
+装配依赖，未定制时直接返回 `defaultTool`。registry 先按原构造合同创建默认实例并记录工具名，
+工厂返回值必须同名，不能增添或重命名注册能力。构造器不应执行 I/O；实际 Provider 调用仍在
+工具执行中发生。返回实例继续经过正式 schema 接纳、目录/执行范围、decorator、幂等与结果回执。
+未传工厂时行为不变；工厂失败与普通构造失败遵循同一初始化策略，需要完整目录的 composition
+必须启用 `strictInitialization`，失败不会自动替换成默认工具。该接缝不提供进程、网络或文件隔离。
+
 Host contribution 可用 `hostOnlyToolNames` 声明仅由 Host 接纳的工具。名称必须对应当前 enabled
 registry 中的真实工具；未注册声明会使初始化失败，避免错误配置暴露工具。`getToolSchemas` 与
 `getAvailableToolNames` 始终排除这些工具，显式 Agent 白名单也不能开放它们；

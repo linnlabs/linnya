@@ -5,10 +5,27 @@ import {
   WEB_SEARCH_MIN_TOP_K,
   WEB_SEARCH_MAX_TOP_K,
 } from '@app/schemas';
-import { runShallowWebSearch } from './orchestration/runShallowWebSearch';
+import { createWebCacheRuntime } from '../shared/cache/webCacheFactory';
+import { MemoryWebCache } from '../shared/cache/adapters/memoryWebCache';
+import {
+  runShallowWebSearch,
+  type ShallowWebSearchDependencies,
+} from './orchestration/runShallowWebSearch';
 
 /** 深搜 child 的浅检索入口，不暴露递归参数。 */
 export class SearchWebTool extends BaseTool {
+  private readonly dependencies: ShallowWebSearchDependencies;
+
+  constructor(dependencies: ShallowWebSearchDependencies = {}) {
+    super();
+    this.dependencies = {
+      ...dependencies,
+      cacheRuntime:
+        dependencies.cacheRuntime ??
+        (dependencies.provider ? createWebCacheRuntime(new MemoryWebCache()) : undefined),
+    };
+  }
+
   readonly name = 'search_web';
   readonly argumentValidationErrorCode = 'SEARCH_WEB_ARGUMENTS_INVALID';
   readonly description =
@@ -48,6 +65,6 @@ export class SearchWebTool extends BaseTool {
     };
   }
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
-    return runShallowWebSearch(ShallowWebSearchArgsSchema.parse(args), context);
+    return runShallowWebSearch(ShallowWebSearchArgsSchema.parse(args), context, this.dependencies);
   }
 }
