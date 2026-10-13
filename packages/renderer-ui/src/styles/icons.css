@@ -14,6 +14,11 @@
   height: 100%;
 }
 
+/* Linnya 图标默认使用品牌色；调用方在图标自身的 class 上设置 color 即可覆盖。 */
+:where(.linnya-icon) {
+  color: var(--color-brand-500);
+}
+
 .text-color-icon {
   position: relative;
   display: inline-flex;

@@ -8,7 +8,7 @@
   >
     <template #empty-mark>
       <div class="linnya-assistant-empty-logo empty-logo">
-        <LinnyaIcon class="linnya-assistant-empty-logo-icon empty-logo-icon" />
+        <LinnyaIcon variant="display" class="linnya-assistant-empty-logo-icon empty-logo-icon" />
       </div>
     </template>
   </ConversationChatSurface>
