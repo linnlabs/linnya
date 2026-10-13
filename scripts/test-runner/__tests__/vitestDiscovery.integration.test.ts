@@ -13,6 +13,9 @@ it('discovers source tests and filters them without collecting frozen or generat
     'packages/example/tests/contract.test.mjs',
     'packages/plugins/example/src/feature.test.ts',
     'scripts/e2e/example/fixtures/contract.test.ts',
+    'src/domains/storage/features/files/read.test.ts',
+    'src/domains/observability/features/logs/query.test.ts',
+    'src/domains/workspace/features/temp/cleanup.test.ts',
   ];
   const generatedTests = [
     '_dev_data/frozen-source/src/domains/example/flow.test.ts',
@@ -25,9 +28,13 @@ it('discovers source tests and filters them without collecting frozen or generat
     ...[
       'dist', 'dist-ssr', 'dist_build', 'dist_electron', 'dist_release',
       'coverage', '.coverage', '.nyc_output', '_dev_data',
-      '.linnya-development-data-retired', 'storage', 'logs', '.turbo',
-      'temp', 'temp_tsup', 'temp_ts_build', '.tmp_discovery',
+      '.linnya-development-data-retired', '.turbo', '.tmp_discovery',
     ].map(directory => `packages/example/${directory}/src/feature.test.ts`),
+    ...['storage', 'logs', 'temp', 'temp_tsup', 'temp_ts_build']
+      .map(directory => `${directory}/src/feature.test.ts`),
+    '_dev_data/logs/generated.test.ts',
+    '_dev_data/temp/generated.test.ts',
+    '_dev_data/KnowledgeBase/qdrant/storage/generated.test.ts',
     'packages/parser-wasm/pkg/generated.test.ts',
     'packages/parser-wasm/pkg-node/generated.test.ts',
     'packages/parser-wasm/target/generated.test.ts',

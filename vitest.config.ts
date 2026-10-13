@@ -27,8 +27,10 @@ export default defineConfig({
       // Vitest 不读取 .gitignore；源码根内也会出现构建产物、运行数据和临时副本。
       '**/{dist,dist-ssr,dist_build,dist_electron,dist_release}/**',
       '**/{coverage,.coverage,.nyc_output}/**',
-      '**/{_dev_data,.linnya-development-data-retired,storage,logs}/**',
-      '**/{.turbo,temp,temp_tsup,temp_ts_build,.tmp_*}/**',
+      // storage/logs/temp 也可能是业务目录名；运行数据由 _dev_data owner 边界排除。
+      // 仓库根的历史临时构建目录已在 include 范围外，不按同名源码目录一并排除。
+      '**/{_dev_data,.linnya-development-data-retired}/**',
+      '**/{.turbo,.tmp_*}/**',
       'packages/parser-wasm/{pkg,pkg-node,target}/**',
       'src/infra/adapters/command-runtime/{windows,plugin-cli-client}/native/target/**',
     ],
