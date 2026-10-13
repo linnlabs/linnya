@@ -10,7 +10,7 @@
   >
     <template #empty-mark>
       <div class="project-chat-empty-logo">
-        <LinnyaIcon class="project-chat-empty-logo-icon" />
+        <LinnyaIcon variant="display" class="project-chat-empty-logo-icon" />
       </div>
     </template>
 
