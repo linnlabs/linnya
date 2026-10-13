@@ -1,4 +1,21 @@
 import type { WorkspaceDocumentDiagnostic } from '@app/schemas';
+import type { LlmResponseAuditObservation } from 'src/domains/audit';
+
+export type ExecutionAuditLlmResponseFact = LlmResponseAuditObservation & {
+  readonly kind: 'llm_response';
+  readonly eventId: string;
+  readonly runId: string;
+  readonly parentRunId?: string;
+};
+
+export interface ExecutionAuditLlmResponseRun {
+  readonly runId: string;
+  readonly parentRunId?: string;
+  readonly evidence: 'observed' | 'unavailable';
+  readonly observedAttempts: number;
+  readonly observedFailures: number;
+  readonly attempts: readonly ExecutionAuditLlmResponseFact[];
+}
 
 /** code 尚无安全标识符合同；与 message、target 一起排除，只携带严重度。 */
 export interface ExecutionAuditWorkspaceDocumentFacts {
@@ -117,6 +134,7 @@ export interface ExecutionAuditTelemetryPort {
 }
 
 export type ExecutionAuditEventFact =
+  | ExecutionAuditLlmResponseFact
   | {
       readonly kind: 'tool_decision';
       readonly runId: string;
@@ -287,6 +305,9 @@ export interface ExecutionAuditWorkspaceDocumentObservation {
 }
 
 export interface ExecutionAuditExport {
+  readonly llmResponses: {
+    readonly byRun: readonly ExecutionAuditLlmResponseRun[];
+  };
   readonly generatedAt: number;
   readonly runs: readonly ExecutionAuditRunRecord[];
   readonly sourceWindow: {

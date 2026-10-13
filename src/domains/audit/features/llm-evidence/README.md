@@ -46,3 +46,9 @@ reminder 的容量限制由统一 orchestration 实现，不能通过新的环�
 本 feature 不负责 run lifecycle、Telemetry、checkpoint、内容历史、CLI 导出或数据库 retention；
 容量和脱敏在 evidence 投影阶段完成，持久化由统一 Audit/EventStore owner 负责，过期
 `audit_envelope` 由启动维护按 7 天窗口清理。需要其他能力时，调用相应 owner 的公开 port/query。
+
+只读查询通过 Audit 公共入口 `readLlmResponseAuditObservation`，严格解析既有 response 摘要，
+只投影审计/attempt/trace/model 身份、时间、结果和安全 failure 分类；不返回 route、usage、
+finish 原文或任意 metadata。缺少摘要或身份不一致属于损坏事实，显式失败；没有 response
+事件是合法的审计缺失，不补造成功或失败。现有格式没有 execution ID 和丢弃计数，读取端
+不得推断补齐。容量值由 `LLM_RESPONSE_AUDIT_LIMITS` 与记录端共用，读取不改变记录策略。

@@ -17,7 +17,8 @@ POST /api/v1/conversation-control/commands
 
 能力公告允许未来新增合法标识符，消费者忽略不认识的能力；命令 union 和响应 schema 仍然封闭且严格。改变既有协议语义必须升级 protocol，不能借能力扩展绕过合同校验。
 
-当前 wire protocol 为 3：status/watch 增加必填 `command_approvals`，CLI 命令增加精确查询与回复。
+当前 wire protocol 为 4：audit 增加必填 `llm_responses` 安全观测与覆盖说明。
+protocol 3 的 status/watch `command_approvals` 和精确查询/回复合同保持不变。
 连接描述与 handshake 一致校验版本，旧 CLI 须明确升级；URL 和连接文件名中的 v1 仍是稳定发现地址。
 审批使用同一 Commands owner，API Server 只在鉴权路由就绪后启用控制端点，并在连接发布失败或停止时撤销。
 关闭端点不自动批准或拒绝 pending，run 取消与 App owner 退出负责业务收口。

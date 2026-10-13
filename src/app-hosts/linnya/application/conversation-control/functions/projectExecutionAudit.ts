@@ -2,6 +2,7 @@ import {
   CONVERSATION_CONTROL_SCHEMA_VERSION,
   type ConversationControlAuditResponse,
 } from '@app/schemas';
+import { AGENT_RUN_AUDIT_RETENTION_DAYS, LLM_RESPONSE_AUDIT_LIMITS } from 'src/domains/audit';
 import type {
   ExecutionAuditExport,
   ExecutionAuditUsage,
@@ -173,6 +174,34 @@ export function projectExecutionAuditResponse(input: {
         emitted_at: observation.emittedAt,
         visible: observation.visible,
         truncated_count: observation.truncatedCount,
+      })),
+    },
+    llm_responses: {
+      coverage: 'best_effort',
+      retention_days: AGENT_RUN_AUDIT_RETENTION_DAYS,
+      capture_limits: {
+        attempts_per_run_execution: LLM_RESPONSE_AUDIT_LIMITS.attemptsPerRunExecution,
+        bytes_per_run_execution: LLM_RESPONSE_AUDIT_LIMITS.bytesPerRunExecution,
+      },
+      missing_or_dropped_attempts: 'unknown',
+      execution_attribution: 'unavailable',
+      by_run: input.audit.llmResponses.byRun.map(run => ({
+        run_id: run.runId,
+        parent_run_id: run.parentRunId,
+        evidence: run.evidence,
+        observed_attempts: run.observedAttempts,
+        observed_failures: run.observedFailures,
+        attempts: run.attempts.map(attempt => ({
+          event_id: attempt.eventId,
+          envelope_id: attempt.envelopeId,
+          emitted_at: attempt.emittedAt,
+          attempt_id: attempt.attemptId,
+          trace_id: attempt.traceId,
+          model_id: attempt.modelId,
+          ...(attempt.outcome === 'failed'
+            ? { outcome: attempt.outcome, failure: attempt.failure }
+            : { outcome: attempt.outcome }),
+        })),
       })),
     },
     context_compaction: {

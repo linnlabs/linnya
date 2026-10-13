@@ -1,6 +1,7 @@
 import { ToolCallWire, type RoutedRuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 import { CommandExecutionTerminalV1Schema } from '@app/schemas/commands';
+import { readLlmResponseAuditObservation } from 'src/domains/audit';
 import type { ExecutionAuditEventFact } from 'src/app-hosts/linnya/application/execution-audit-export';
 import { projectWorkspaceDocumentDiagnosticFacts } from './projectWorkspaceDocumentDiagnosticFacts';
 
@@ -82,6 +83,22 @@ export function projectExecutionAuditEventFacts(
         workspaceDocument: projectWorkspaceDocumentDiagnosticFacts(event),
       }];
     case 'audit_envelope': {
+      const response = readLlmResponseAuditObservation(event.envelope);
+      if (response) {
+        if (event.envelope.runId !== event.run_id
+          || event.envelope.parentRunId !== event.parent_run_id
+          || event.envelope.scope?.conversationId !== event.conversation_id
+          || event.envelope.scope?.runId !== event.run_id) {
+          throw new Error('[ExecutionAudit] LLM response 身份与 EventStore 事实不一致。');
+        }
+        return [{
+          ...response,
+          kind: 'llm_response',
+          eventId: event.id,
+          runId: event.run_id,
+          ...(event.parent_run_id ? { parentRunId: event.parent_run_id } : {}),
+        }];
+      }
       const fact = projectCommandTerminal(event);
       return fact ? [fact] : [];
     }

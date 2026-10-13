@@ -28,7 +28,7 @@ function createIo() {
 function createClient(execute: ConversationControlClient['execute']): ConversationControlClient {
   return {
     descriptor: {
-      protocol_version: 3,
+      protocol_version: 4,
       app_instance_id: 'app-1',
       pid: 42,
       host: '127.0.0.1',
@@ -39,7 +39,7 @@ function createClient(execute: ConversationControlClient['execute']): Conversati
     },
     handshake: {
       schema_version: 1,
-      protocol_version: 3,
+      protocol_version: 4,
       app_instance_id: 'app-1',
       app_version: '0.0.38',
       capabilities: [

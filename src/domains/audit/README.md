@@ -181,3 +181,8 @@ conversation startup maintenance 会按固定 7 天窗口清理过期的 `audit_
 
 审计模块的坏味道包括：出现新的 `audit*.json` 目录、新的审计环境变量、直接调用
 `createFileAudit`、在 store 内拼接信封、把日志叫成审计，或让一个 feature 自己决定 retention。发现这些情况应先修正边界，再继续扩展功能。
+
+CLI 的 response attempt 安全查询通过公共 `readLlmResponseAuditObservation` 复用本域合同；
+Host 按 EventStore 的正式身份和 RunRegistry 子树编排。它只读既有事实，不开启审计、
+新增 recorder、恢复 execution 身份或推断暂停终因。覆盖限制见
+[执行审计导出](../../app-hosts/linnya/application/execution-audit-export/README.md)。

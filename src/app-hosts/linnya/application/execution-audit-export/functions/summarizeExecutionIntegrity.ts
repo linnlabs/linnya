@@ -27,7 +27,7 @@ function summarizeToolPairing(
 ): ExecutionAuditExport['toolPairing'] {
   const byIdentity = new Map<string, MutableToolPairing>();
   for (const fact of facts) {
-    if (fact.kind === 'command_terminal') continue;
+    if (fact.kind !== 'tool_decision' && fact.kind !== 'tool_terminal') continue;
     const identity = `${fact.runId}\u0000${fact.toolCallId}`;
     const pairing = byIdentity.get(identity) ?? {
       runId: fact.runId,

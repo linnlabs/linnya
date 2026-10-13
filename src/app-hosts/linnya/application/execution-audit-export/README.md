@@ -14,6 +14,16 @@ recorder。
 - Shell 子进程退出来自既有 `command.execution.terminal` 审计信封，与 Tool success/error
   分栏展示，因此非零 exit 不会被误报为工具基础设施错误。
 - 模型耗时、canonical token usage、工具完成、context compaction 和 run terminal 观测来自 Telemetry。
+- `llmResponses` 通过 Audit owner 的只读白名单投影导出已持久化的
+  `llm.response.succeeded|failed`：保留 event/envelope、attempt/trace/model 身份、时间、
+  outcome 与安全 failure kind/code/retryable。父子范围只由 RunRegistry 的真实子树决定。
+  它不重写 RunRegistry pause/error，不把最后一次历史失败当作当前暂停原因，
+  attempt 观测数也不是重试次数、重试耗尽或可自动恢复的证明。
+- response evidence 是 `best_effort`：仅 response/stream 等级生成，保留 7 天，
+  每个 run 的单次 execution 最多 64 条/1 MiB，写入也可能失败。
+  现有事实没有 execution identity、历史开关或丢弃计数，因此明确返回执行归属
+  `unavailable`、缺失/丢弃数量 `unknown`；空 run 标记 evidence unavailable，不能解释成零失败。
+  即使查询完整 EventStore，也不能声称 attempt 历史完整；64 条本身也不能证明已封顶。
 - `workspaceDocuments` 单列成功 `write_file/edit_file` 的 durable 文档诊断观测，按正式
   Workspace data 合同提取严重度计数。保存成功与文档编译/质量成功是不同事实，不能把
   error 诊断改记为工具执行失败，也不能把零 error 当作验收通过。

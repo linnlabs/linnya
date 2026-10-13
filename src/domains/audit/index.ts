@@ -17,6 +17,8 @@ export {
 } from './orchestration/createLinnyaAuditRuntime';
 
 export {
+  LLM_RESPONSE_AUDIT_LIMITS,
+  readLlmResponseAuditObservation,
   flushLinnyaAudit,
   getCurrentLlmAuditContext,
   recordAfterContextManager,
@@ -31,6 +33,7 @@ export {
 } from './features/llm-evidence';
 export { resetLlmAuditForTest } from './features/llm-evidence';
 export type {
+  LlmResponseAuditObservation,
   LlmAuditContext,
   LlmInputMaterializationAuditInput,
   LlmResponseAuditSummaryInput,

@@ -4,6 +4,7 @@ import { AuditEnvelope, ConversationIdSchema, RunIdSchema } from '@linnlabs/linn
 import type { AuditPort } from '@linnlabs/linnkit/ports';
 import { Logger } from 'src/shared/logger';
 import type { AuditLevel } from '../../../definitions/auditLevel';
+import { LLM_RESPONSE_AUDIT_LIMITS } from '../definitions/llmResponseAudit';
 import type {
   LlmAuditContext,
   LlmInputMaterializationAuditInput,
@@ -15,8 +16,8 @@ import type {
 const logger = new Logger('UnifiedAudit');
 const MAX_PROTOCOL_ERRORS_PER_RUN = 16;
 const MAX_SYSTEM_REMINDERS_PER_RUN = 16;
-const MAX_RESPONSE_EVENTS_PER_RUN = 64;
-const MAX_RESPONSE_EVIDENCE_BYTES_PER_RUN = 1024 * 1024;
+const MAX_RESPONSE_EVENTS_PER_RUN = LLM_RESPONSE_AUDIT_LIMITS.attemptsPerRunExecution;
+const MAX_RESPONSE_EVIDENCE_BYTES_PER_RUN = LLM_RESPONSE_AUDIT_LIMITS.bytesPerRunExecution;
 const MAX_STREAM_EVENTS_PER_RUN = 256;
 const MAX_STREAM_EVIDENCE_BYTES = 512 * 1024;
 const MAX_STREAM_EVIDENCE_BYTES_PER_RUN = 16 * 1024 * 1024;

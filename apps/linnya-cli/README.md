@@ -185,7 +185,7 @@ pnpm linnya:cli approval-reply <conversation-id> \
 支持的查询目标。Renderer 与 CLI 竞争回复时只有一次接纳，旧请求返回 `stale`
 回执及退出码 6。回复传输失败不自动重试：先查询 exact 请求和原 run，避免把未确认回执当成未执行。
 
-Shell 审批与 `respond --approve` 无关。控制协议 3 要求明确返回
+Shell 审批与 `respond --approve` 无关。控制协议自 3 起要求明确返回
 `command_approvals` （无请求为
 `[]`）；旧 Host 必须更新，不能把缺失字段猜成“没有等待”。
 
@@ -329,6 +329,20 @@ usage 覆盖，并展示护栏、触发水位、前后 token、请求耗时与 c
 `attempts` 或 `missing_usage_calls`。run terminal 部分返回
 `steps_used / max_steps / terminal_reason`。输出不包含 prompt、回答或摘要正文、工具参数、工具输出或原始错误正文。Telemetry 默认保留 7 天且写入失败不阻断任务，因此 Telemetry 部分明确标记为
 `best_effort`；真实调用缺少 usage 时，`missing_usage_calls` 也不会被补成 0。
+
+`llm_responses` 按 RunRegistry 的真实 root/child 范围返回已保存的 Provider attempt
+结果：审计 event/envelope ID、attempt/trace/model ID、时间、outcome，以及失败的
+`kind/code/retryable`。它不读取日志、模型正文或 Provider diagnostics。
+`retryable` 只描述当次错误分类，不表示现在可重试；观测条数不是重试次数，历史最后一次
+失败也不是当前暂停原因的证明。当前 response 事实没有 execution ID，输出明确标记
+`execution_attribution=unavailable`，不能把恢复前后的 attempt 猜分到 execution。
+
+这部分始终标记 `best_effort`：只有 response/stream 等级产生，保留 7 天，每 run 每次
+execution 最多 64 条/1 MiB，且可能写入失败。没有记录的 run 标记 `evidence=unavailable`；
+历史未开启、过期和容量丢弃无法从现有事实区分，`missing_or_dropped_attempts=unknown`，
+不能把空列表解释成没有失败，也不能仅凭 64 条断言已触发上限。
+新增的严格 audit 响应属于控制协议 4；CLI 与 Host 必须同版本，旧版本在握手前后明确拒绝，
+不对已有 audit DTO 做宽松解析。
 
 CLI 不负责开启或切换 Agent Run Audit 等级。开发环境的等级由 App 启动时的
 `LINNYA_AUDIT_LEVEL=off|behavior|response|stream`

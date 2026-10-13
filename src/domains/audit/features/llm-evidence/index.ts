@@ -13,6 +13,9 @@ import {
   recordToolProtocolError,
 } from './orchestration/llmEvidenceContext';
 
+export { LLM_RESPONSE_AUDIT_LIMITS } from './definitions/llmResponseAudit';
+export type { LlmResponseAuditObservation } from './definitions/llmResponseAudit';
+export { readLlmResponseAuditObservation } from './functions/readLlmResponseAuditObservation';
 export type {
   LlmAuditContext,
   LlmInputMaterializationAuditInput,

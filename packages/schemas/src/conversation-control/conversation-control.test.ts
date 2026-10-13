@@ -225,7 +225,7 @@ describe('conversation-control wire contract', () => {
 
   it('连接描述只允许 loopback 和固定长度 session token', () => {
     const base = {
-      protocol_version: 3,
+      protocol_version: 4,
       app_instance_id: 'app-1',
       pid: 123,
       host: '127.0.0.1',
@@ -335,6 +335,9 @@ describe('conversation-control wire contract', () => {
         by_model: [],
       },
       tools: { calls: 0, failed_calls: 0, duration_ms: 0, by_tool: [] },
+      llm_responses: { coverage: 'best_effort', retention_days: 7,
+        capture_limits: { attempts_per_run_execution: 64, bytes_per_run_execution: 1048576 },
+        missing_or_dropped_attempts: 'unknown', execution_attribution: 'unavailable', by_run: [] },
       workspace_documents: { observations: 0, observations_with_errors: 0,
         observations_with_warnings: 0, visible: { error: 0, warning: 0, info: 0 },
         truncated_count: 0, by_observation: [] },

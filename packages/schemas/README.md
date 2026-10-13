@@ -52,6 +52,11 @@
 
 `src/commands/` 只拥有 Electron host、短命 runner 和 Renderer 必须共同校验的 wire DTO。它不拥有进程 registry、授权规则或生命周期编排，也不依赖 Linnkit。进入 host 后，conversation、Agent run 和 tool call 仍须通过显式 mapper 校验成各自的 Runtime 名义类型；现有 Linnkit `ExecutionId` 表示前端执行流，不能复用为一条 Shell 命令的 `CommandExecutionId`。
 
+Conversation Control 协议 4 的 `audit.llm_responses` 是既有审计的安全只读观测 DTO，
+包含真实 run/child 的 attempt 结果与安全 failure 分类，以及覆盖、保留期和容量限制。
+缺失、丢弃数量与 execution 归属不从历史补造；它不是新的运行状态或 pause cause 合同。
+严格响应字段与握手版本一起升级，旧版本客户端不得用宽松解析绕过兼容性检查。
+
 ## 3. Runtime 合同迁移说明
 
 2026-04-24 的 schemas-detach 已将 Agent/runtime 协议物理迁移到 `linnkit/contracts`，包括：

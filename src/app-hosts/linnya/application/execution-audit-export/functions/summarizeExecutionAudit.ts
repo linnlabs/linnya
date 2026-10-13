@@ -13,6 +13,7 @@ import type {
 } from '../definitions/executionAuditExport';
 import { summarizeExecutionIntegrity } from './summarizeExecutionIntegrity';
 import { summarizeWorkspaceDocumentDiagnostics } from './summarizeWorkspaceDocumentDiagnostics';
+import { summarizeLlmResponseObservations } from './summarizeLlmResponseObservations';
 
 interface MutableTokenTotals {
   inputTokens: number;
@@ -328,6 +329,7 @@ export function summarizeExecutionAudit(input: {
 
   return {
     generatedAt: input.generatedAt,
+    llmResponses: summarizeLlmResponseObservations(runs, input.eventFacts),
     runs,
     sourceWindow: {
       telemetryEvents: input.telemetry.length,

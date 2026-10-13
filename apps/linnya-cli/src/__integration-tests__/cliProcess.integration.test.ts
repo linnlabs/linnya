@@ -393,6 +393,15 @@ describe('linnya CLI real process -> scripted bridge', () => {
           by_model: [],
         },
         tools: { calls: 0, failed_calls: 0, duration_ms: 0, by_tool: [] },
+        llm_responses: { coverage: 'best_effort', retention_days: 7,
+          capture_limits: { attempts_per_run_execution: 64, bytes_per_run_execution: 1048576 },
+          missing_or_dropped_attempts: 'unknown', execution_attribution: 'unavailable',
+          by_run: [{ run_id: 'child-1', parent_run_id: 'run-1', evidence: 'observed',
+            observed_attempts: 1, observed_failures: 1, attempts: [{
+              event_id: 'event-failure', envelope_id: 'audit-failure', emitted_at: 200,
+              attempt_id: 'attempt-child', trace_id: 'trace-child', model_id: 'model-a',
+              outcome: 'failed', failure: { kind: 'transport', code: 'provider_transport_error', retryable: true },
+            }] }] },
         workspace_documents: { observations: 0, observations_with_errors: 0,
           observations_with_warnings: 0, visible: { error: 0, warning: 0, info: 0 },
           truncated_count: 0, by_observation: [] },
@@ -492,6 +501,14 @@ describe('linnya CLI real process -> scripted bridge', () => {
       command: 'audit',
       requested_run_id: 'run-1',
       completeness: { telemetry: 'best_effort' },
+      llm_responses: {
+        coverage: 'best_effort', missing_or_dropped_attempts: 'unknown',
+        execution_attribution: 'unavailable',
+        by_run: [{ run_id: 'child-1', parent_run_id: 'run-1', attempts: [{
+          attempt_id: 'attempt-child', outcome: 'failed',
+          failure: { kind: 'transport', code: 'provider_transport_error', retryable: true },
+        }] }],
+      },
       context_compaction: {
         observations: 2,
         attempts: 1,

@@ -42,6 +42,8 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
   提供完整 durable tool decision/output，Command Audit 提供 Shell 进程终态，Telemetry
   仅按 `best_effort` 聚合 LLM、tool、context compaction 与 run terminal 观测。输出不含
   prompt、摘要正文、工具参数、工具输出或原始错误正文。
+  `llm_responses` 只读展示 root/child 已留存的 Provider attempt 结果与安全失败分类，
+  同时标注缺失和容量限制；不把历史观测冒认为当前 pause cause 或新的恢复许可。
   `workspace_documents` 另行报告成功保存中的文档诊断严重度计数与截断数；不把它混入
   tool failure，不输出诊断 code/message/target，也不从零 error 推断编译通过。
 - `workspace_tools` 是固定五工具的窄入口：`list_files / read_file / grep / write_file / edit_file`。`list / describe` 读取真实 Tool registry schema；`call` 必须绑定项目或已有 Conversation，并复用正式 Flow admission 与 ToolNode 执行。
@@ -52,7 +54,7 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 
 `command_approvals`的list要求明确conversation/run，返回该run及后代的真实pending；reply要求请求实际`agent_run_id`、request ID和明确choice。审批owner同步校验作用域和允许选项，并与Renderer/TTY竞争唯一接纳点。`accepted`只确认回复被接纳，授权持久化与进程终态须继续观察原运行；不创建新Flow、user message或execution。
 
-`status.run.command_approvals`为必填数组，来自同一owner并按root子树筛选；保留真实run生命周期，不能把等待命令审批伪装为已有HITL。无审批返回空数组，端点不可用明确报错；`processing`不是待回复。字段属于wire protocol 3，旧CLI必须升级，不用宽松解析吞掉新增字段。
+`status.run.command_approvals`为必填数组，来自同一owner并按root子树筛选；保留真实run生命周期，不能把等待命令审批伪装为已有HITL。无审批返回空数组，端点不可用明确报错；`processing`不是待回复。当前字段属于wire protocol 4，旧CLI必须升级，不用宽松解析吞掉新增字段。
 
 ## 并发与已知边界
 

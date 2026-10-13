@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ConversationControlAuditLlmResponsesSchema } from './llmResponseAudit';
 import { CommandApprovalPendingProjectionV1Schema } from '../commands';
 import { ConversationControlCommandApprovalsResponseSchema } from './commandApprovals';
 import { JsonValueSchema } from '../json-value';
@@ -575,6 +576,7 @@ export const ConversationControlAuditResponseSchema = z
       })
       .strict(),
     workspace_documents: ConversationControlAuditWorkspaceDocumentsSchema,
+    llm_responses: ConversationControlAuditLlmResponsesSchema,
     context_compaction: z
       .object({
         observations: z.number().int().nonnegative(),
