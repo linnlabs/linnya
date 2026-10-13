@@ -22,6 +22,10 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 
 `package.json` 显式列举全部入口。未列出的 `src/**`、组件文件和内部 CSS 都不是 API。
 
+既有 `LinnyaIcon` 品牌标识也从 `/icons` 提供；`variant="compact"`（默认）用于小尺寸，
+`variant="display"` 用于 32px 及以上的展示尺寸。图形使用 `currentColor`，默认品牌色由包样式提供；
+调用方可在图标根节点通过自己的 class 设置颜色。组件不绘制背景，首页空态由页面 owner 布局。
+
 ## 新增通用组件设计规范
 
 本节是 Renderer UI 新增、抽取和公开组件的权威准入规范。它解决三个问题：能力是否应该进入本包、进入后由谁

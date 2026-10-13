@@ -12,6 +12,12 @@ theme/token/scroll 均由 package 唯一拥有；Editor 选区业务和 Citation
 - 平台通用图标从 `@linnya/renderer-ui/icons` 引入；插件语义图标留在插件 owner，不在按钮里手写零散 SVG。
 - 插件 renderer 直接依赖 `@linnya/renderer-ui`；仍需要 Host 业务能力时使用按能力命名的窄 facade（例如 `subrunToolUi`），禁止通过通用 UI barrel 或 deep import Host 内部路径。
 
+### Linnya 品牌图标
+
+既有 `LinnyaIcon` 从 `/icons` 入口消费。默认 `compact` 稿适用于小尺寸；32px 及以上使用
+`variant="display"`。颜色跟随 `currentColor`，包样式提供默认品牌色，调用方可在图标根节点的 class
+上设置颜色。图标自身没有背景或交互；初始对话页只显示图形，外围布局由页面 owner 负责。
+
 ## 字体栈纯规则
 
 主 Renderer、插件预览和 hidden renderer worker 需要生成一致的 CSS 字体候选栈时，直接使用纯叶子入口：

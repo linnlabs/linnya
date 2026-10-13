@@ -5,9 +5,6 @@
   width: 48px;
   height: 48px;
   margin-bottom: 16px;
-  border-radius: 14px;
-  background-color: var(--color-accent-bg);
-  overflow: hidden;
 }
 
 .linnya-assistant-empty-logo-icon {

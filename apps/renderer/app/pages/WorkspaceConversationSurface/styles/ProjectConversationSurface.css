@@ -5,13 +5,10 @@
 .project-chat-empty-logo {
   width: 48px;
   height: 48px;
-  border-radius: 14px;
-  background-color: var(--color-accent-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 16px;
-  overflow: hidden;
 }
 
 .project-chat-empty-logo-icon {

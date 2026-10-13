@@ -2,6 +2,11 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## Unreleased
+
+- LinnyaIcon 更新为叶片与茎分离的品牌图形，新增可选的 compact/display 尺寸稿；默认 compact，颜色跟随 currentColor，并由包样式提供默认品牌色。
+- Linnya 助手及项目对话的空态使用 display 尺寸稿，由各自页面样式展示无背景的图标。
+
 ## 2.5.2 - 2026-09-17
 
 - ToolbarGroup 分隔线自身的左右 margin 收紧为 2px，与 4px flex gap 合计单侧 6px，修正 Slides 工具条组间多余留白。
