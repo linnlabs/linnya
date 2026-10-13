@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import path from 'path';
 import vue from '@vitejs/plugin-vue';
 
@@ -20,11 +20,17 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    // 注意：vitest 默认 exclude 包含 node_modules / dist，自定义 exclude 会覆盖默认值，所以必须补回来。
+    // 测试只从正式源码根发现；开发数据与冻结 checkout 不是当前源码的测试 owner。
+    include: ['{src,apps,packages,scripts}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     exclude: [
-      '**/node_modules/**',
-      '**/dist/**',
+      ...configDefaults.exclude,
+      // Vitest 不读取 .gitignore；源码根内也会出现构建产物、运行数据和临时副本。
+      '**/{dist,dist-ssr,dist_build,dist_electron,dist_release}/**',
+      '**/{coverage,.coverage,.nyc_output}/**',
+      '**/{_dev_data,.linnya-development-data-retired,storage,logs}/**',
+      '**/{.turbo,temp,temp_tsup,temp_ts_build,.tmp_*}/**',
+      'packages/parser-wasm/{pkg,pkg-node,target}/**',
+      'src/infra/adapters/command-runtime/{windows,plugin-cli-client}/native/target/**',
     ],
     coverage: {
       provider: 'v8',

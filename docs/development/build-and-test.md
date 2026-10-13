@@ -65,13 +65,23 @@ App Server ready 仍要求本地数据库、目录恢复和正式路由可用；
 | Renderer TypeScript | `pnpm run typecheck:renderer` |
 | Linnya CLI TypeScript | `pnpm run typecheck:linnya-cli` |
 | 无 Electron CLI Runtime | `pnpm run test:linnya-runtime:e2e` |
-| 单个测试或业务链路 | `pnpm test -- <test-file>` |
+| 单个测试或业务链路 | `pnpm exec vitest run <test-file> [<test-file>...]` |
 | Renderer UI package | `pnpm --dir packages/renderer-ui run gate` |
 | Schemas package | `pnpm run test:schemas-package-gate` |
 | Provider catalog | `pnpm run test:provider-catalog-package-gate` |
 | Slides plugin | `pnpm --filter @plugin/slides typecheck` 与 `pnpm --filter @plugin/slides test` |
 | 全仓 TypeScript 存量债务 | `pnpm run guard:tsc-baseline` |
 | 代码边界与格式 | 对修改文件运行 ESLint，并执行 `pnpm run lint:style`、`git diff --check` |
+
+定向运行时直接把测试文件或目录交给 Vitest，也可以使用 `pnpm test <test-file>`。不要在
+`pnpm test` 后添加 `--`：pnpm 会把它原样传给 `vitest run`，后面的路径不再成为文件过滤条件，
+从而运行整个测试发现范围。需要预览命中文件时使用 `pnpm exec vitest list <test-file> --filesOnly`，
+该命令只列出文件，不执行测试。
+
+根 Vitest 配置只从 `src/`、`apps/`、`packages/` 和 `scripts/` 发现测试，并排除依赖、
+构建输出、运行数据和临时目录；`_dev_data/` 中的冻结源码与 benchmark 产物不属于当前测试集。
+Vitest 不自动沿用 `.gitignore`，新增源码根或生成目录时必须同时检查发现边界。正式源码内的
+`fixtures/`、`testkit/` 等测试支持目录仍可被发现，不能通过统一排除夹具目录来消除失败。
 
 公共源码净化门禁使用 `pnpm run guard:public-source-sanitization`。它扫描 Git 已跟踪和未忽略的候选文本文件，拒绝开发者用户目录、机器卷、盘符根开发 checkout、父级个人工作区路径、macOS 用户临时目录、绝对符号链接和已退役产品身份；文档与测试只能使用 `name`、`example`、`${变量}` 或 `<用户名>` 一类明确占位符，门禁本身不得记录真实用户名、本机路径或旧名称字面量。
 

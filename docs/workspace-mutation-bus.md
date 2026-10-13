@@ -257,9 +257,9 @@ npm run test -- src/plugin-sdk/renderer/rendererPorts.test.ts
 插件 persistence / renderer 相关测试：
 
 ```bash
-pnpm test -- packages/plugins/slides/src/backend/persistence/presentation-repository.test.ts
-pnpm test -- packages/plugins/mindmap/src/backend/persistence/mindmap_document/services/mindmap_document.service.test.ts
-pnpm test -- packages/plugins/__tests__/rendererPluginBoundary.test.ts apps/renderer/app/plugins/loader/rendererHostExternalBoundary.test.ts
+pnpm exec vitest run packages/plugins/slides/src/backend/persistence/presentation-repository.test.ts
+pnpm exec vitest run packages/plugins/mindmap/src/backend/persistence/mindmap_document/services/mindmap_document.service.test.ts
+pnpm exec vitest run packages/plugins/__tests__/rendererPluginBoundary.test.ts apps/renderer/app/plugins/loader/rendererHostExternalBoundary.test.ts
 ```
 
 构建验证：

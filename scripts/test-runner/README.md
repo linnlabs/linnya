@@ -8,4 +8,8 @@
 
 插件自有 package alias 必须写在插件目录内的 `vitest.config.ts`，不能回填根 `vitest.config.ts`。生成器会把插件 alias 放在 Host 的 `@plugin/*` facade 通配规则之前，避免 package scope 被 Host SDK 路径劫持。
 
+根配置的测试发现边界与定向运行命令见[构建与测试指南](../../docs/development/build-and-test.md#3-按改动范围验证)。
+插件复用 Host 配置时，发现路径相对插件自己的 root 解释，`src/` 中的测试仍由插件 owner 承接。
+`__tests__/vitestDiscovery.integration.test.ts` 使用真实 Vitest 文件发现流程，验证源码、夹具、文件过滤与生成副本的边界。
+
 这个入口服务当前 monorepo 联调，不代表插件已经能脱离 Linnya checkout 独立测试。物理拆仓前，Host facade 的可分发 testkit、版本兼容范围和独立消费者 smoke 仍需按开源 proposal 完成。
