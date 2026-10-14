@@ -65,7 +65,7 @@ export interface SerializeRootBlockToMarkdownOptions {
    * 时继续走既有转义与 mark wrapper。调用方负责 projector 自身的跨 text-node 状态隔离。
    */
   readonly projectInlineText?: MarkdownInlineTextProjector;
-  /** 结构化 inline atom 的领域投影；CitationNode 等节点不应降级读取 textContent。 */
+  /** 结构化 inline atom 的正文投影；serializer 负责与相邻文本一起保留 marks。 */
   readonly projectInlineNode?: MarkdownInlineNodeProjector;
   /** 文件写入规划比较正文时关闭；默认导出仍完整包含 canonical Annotation。 */
   readonly includeAnnotations?: boolean;
@@ -155,7 +155,7 @@ function escapeLinkHref(href: string): string {
   return href.replace(/([()])/g, '\\$1');
 }
 
-type MarkWrapper = { open: string; close: string; priority: number };
+type MarkWrapper = { open: string; close: string; priority: number; expelWhitespace?: boolean };
 
 function getMarkWrapper(mark: JsonMark): MarkWrapper | null {
   const type = typeof mark.type === 'string' ? mark.type : null;
@@ -171,31 +171,14 @@ function getMarkWrapper(mark: JsonMark): MarkWrapper | null {
   }
 
   if (type === 'code') return { open: '`', close: '`', priority: 10 };
-  if (type === 'bold') return { open: '**', close: '**', priority: 20 };
-  if (type === 'italic') return { open: '*', close: '*', priority: 30 };
-  if (type === 'strike') return { open: '~~', close: '~~', priority: 40 };
+  if (type === 'bold') return { open: '**', close: '**', priority: 20, expelWhitespace: true };
+  if (type === 'italic') return { open: '*', close: '*', priority: 30, expelWhitespace: true };
+  if (type === 'strike') return { open: '~~', close: '~~', priority: 40, expelWhitespace: true };
 
   // 其他 marks（例如 textColor/highlight/underline）暂不导出为 Markdown 语法：
   // - 这是导出能力的缺失，而不是“猜测性修复”；
   // - 仍会通过纯文本输出保留可读性。
   return null;
-}
-
-function applyMarks(rawText: string, marks: JsonMark[], mode: 'text' | 'inline_code'): string {
-  const wrappers = marks
-    .map(getMarkWrapper)
-    .filter((w): w is MarkWrapper => !!w)
-    .sort((a, b) => a.priority - b.priority);
-
-  const text = mode === 'inline_code' ? escapeInlineCodeText(rawText) : escapeText(rawText);
-
-  if (wrappers.length === 0) return text;
-  const open = wrappers.map(w => w.open).join('');
-  const close = [...wrappers]
-    .reverse()
-    .map(w => w.close)
-    .join('');
-  return `${open}${text}${close}`;
 }
 
 function extractPlainText(node: unknown): string {
@@ -229,19 +212,66 @@ function toPublicMarks(marks: readonly JsonMark[]): readonly MarkdownInlineMark[
   });
 }
 
-function serializeInline(node: unknown, ctx: InlineSerializeContext): string {
+interface InlineSegment {
+  readonly text: string;
+  readonly wrappers: readonly MarkWrapper[];
+}
+
+function segment(text: string, marks: readonly JsonMark[]): InlineSegment {
+  return {
+    text,
+    wrappers: marks.map(getMarkWrapper).filter((wrapper): wrapper is MarkWrapper => wrapper !== null)
+      .sort((left, right) => left.priority - right.priority),
+  };
+}
+
+/** 同一强调范围可能被 Citation atom 或其他 marks 切开，不能逐 node 关开 **。 */
+function renderInlineSegments(segments: readonly InlineSegment[], depth = 0): string {
+  let result = '';
+  for (let index = 0; index < segments.length;) {
+    const current = segments[index];
+    const wrapper = current.wrappers[depth];
+    if (!wrapper) {
+      result += current.text;
+      index += 1;
+      continue;
+    }
+    let end = index + 1;
+    while (end < segments.length) {
+      const next = segments[end].wrappers[depth];
+      if (!next || next.open !== wrapper.open || next.close !== wrapper.close) break;
+      end += 1;
+    }
+    const content = renderInlineSegments(segments.slice(index, end), depth + 1);
+    if (!wrapper.expelWhitespace) {
+      result += `${wrapper.open}${content}${wrapper.close}`;
+      index = end;
+      continue;
+    }
+    // CommonMark 强调 delimiter 不能紧贴范围内的首尾空白；把空白留在范围外。
+    // 连续加粗正文 + Citation 的内部空白仍留在同一个范围内。
+    const leading = content.match(/^\s*/)?.[0] ?? '';
+    const trailing = content.slice(leading.length).match(/\s*$/)?.[0] ?? '';
+    const body = content.slice(leading.length, content.length - trailing.length);
+    result += body ? `${leading}${wrapper.open}${body}${wrapper.close}${trailing}` : content;
+    index = end;
+  }
+  return result;
+}
+
+function projectInlineSegments(node: unknown, ctx: InlineSerializeContext): InlineSegment[] {
   const n = asNode(node);
-  if (!n) return '';
+  if (!n) return [];
 
   const type = getType(n);
 
-  if (!ctx.inCodeBlock && type) {
+  if (!ctx.inCodeBlock && type && getContent(n).length === 0) {
     const projectedNode = ctx.projectInlineNode?.({
       type,
       attrs: getAttrs(n),
       marks: toPublicMarks(getMarks(n)),
     });
-    if (typeof projectedNode === 'string') return projectedNode;
+    if (typeof projectedNode === 'string') return [segment(projectedNode, getMarks(n))];
   }
 
   // 文本节点：套 marks
@@ -252,19 +282,19 @@ function serializeInline(node: unknown, ctx: InlineSerializeContext): string {
 
     // codeBlock 内：不转义（只处理行内 code 的反引号转义）
     if (ctx.inCodeBlock) {
-      return hasInlineCodeMark ? applyMarks(t, marks, 'inline_code') : t;
+      return [segment(t, [])];
     }
 
     const projected = ctx.projectInlineText?.({ rawText: t, marks: toPublicMarks(marks) });
-    if (typeof projected === 'string') return projected;
+    if (typeof projected === 'string') return [segment(projected, [])];
 
-    return hasInlineCodeMark ? applyMarks(t, marks, 'inline_code') : applyMarks(t, marks, 'text');
+    return [segment(hasInlineCodeMark ? escapeInlineCodeText(t) : escapeText(t), marks)];
   }
 
   // 硬换行
   if (type === 'hardBreak') {
     // 标准 Markdown：两个空格 + 换行
-    return '  \n';
+    return [segment('  \n', getMarks(n))];
   }
 
   // 行内 LaTeX：$...$
@@ -272,13 +302,15 @@ function serializeInline(node: unknown, ctx: InlineSerializeContext): string {
     const attrs = getAttrs(n);
     const source = getStringAttr(attrs, 'latexSource') ?? extractPlainText(n);
     const escaped = source.replace(/\$/g, '\\$');
-    return `$${escaped}$`;
+    return [segment(`$${escaped}$`, getMarks(n))];
   }
 
   // 默认：递归渲染子内容
-  return getContent(n)
-    .map(child => serializeInline(child, ctx))
-    .join('');
+  return getContent(n).flatMap(child => projectInlineSegments(child, ctx));
+}
+
+function serializeInline(node: unknown, ctx: InlineSerializeContext): string {
+  return renderInlineSegments(projectInlineSegments(node, ctx));
 }
 
 function prefixEveryLine(text: string, prefix: string): string {
@@ -351,25 +383,19 @@ function serializeBlockChild(
   const attrs = getAttrs(node);
 
   if (type === 'baseBlock') {
-    const inline = getContent(node)
-      .map(c => serializeInline(c, { inCodeBlock: false, projectInlineText, projectInlineNode }))
-      .join('');
+    const inline = serializeInline(node, { inCodeBlock: false, projectInlineText, projectInlineNode });
     return inline.trimEnd();
   }
 
   if (type === 'headingBlock') {
     const level = getNumberAttr(attrs, 'level') ?? 1;
     const hashes = repeat('#', Math.max(1, Math.min(6, Math.floor(level))));
-    const inline = getContent(node)
-      .map(c => serializeInline(c, { inCodeBlock: false, projectInlineText, projectInlineNode }))
-      .join('');
+    const inline = serializeInline(node, { inCodeBlock: false, projectInlineText, projectInlineNode });
     return `${hashes} ${inline}`.trimEnd();
   }
 
   if (type === 'quoteBlock') {
-    const inline = getContent(node)
-      .map(c => serializeInline(c, { inCodeBlock: false, projectInlineText, projectInlineNode }))
-      .join('');
+    const inline = serializeInline(node, { inCodeBlock: false, projectInlineText, projectInlineNode });
     const body = inline.length > 0 ? inline : '';
     return prefixEveryLine(body, '> ').trimEnd();
   }
@@ -400,9 +426,7 @@ function serializeBlockChild(
     const listType = getStringAttr(attrs, 'listType');
     const marker = listType === 'ordered' ? '1. ' : '* ';
     const indent = repeat('  ', Math.max(0, Math.floor(level)));
-    const inline = getContent(node)
-      .map(c => serializeInline(c, { inCodeBlock: false, projectInlineText, projectInlineNode }))
-      .join('');
+    const inline = serializeInline(node, { inCodeBlock: false, projectInlineText, projectInlineNode });
 
     // 处理多行：后续行按“缩进 + 两个空格”对齐到文本起始位置（简化的 hanging indent）
     const lines = inline.split(/\r?\n/);
@@ -440,9 +464,7 @@ function serializeBlockChild(
 
   // 未识别块：递归提取可见文本，保证可读
   // 注意：不做“猜测性 Markdown 结构化”，避免产生虚假语义。
-  const fallback = getContent(node)
-    .map(c => serializeInline(c, { inCodeBlock: false, projectInlineText, projectInlineNode }))
-    .join('');
+  const fallback = serializeInline(node, { inCodeBlock: false, projectInlineText, projectInlineNode });
   return fallback.trimEnd();
 }
 

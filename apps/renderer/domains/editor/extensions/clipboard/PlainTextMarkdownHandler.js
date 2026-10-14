@@ -64,7 +64,7 @@ function isRichHtml(html) {
   if (richTagRe.test(trimmed)) return true;
 
   // Notion/Office 常见的结构化片段标记（出现即视为富文本）
-  const richAttrRe = /(data-notion|notion-clipboard|class="notion|MsoNormal|mso-)/i;
+  const richAttrRe = /(data-linnya-copy-scope|data-citation-id|data-notion|notion-clipboard|class="notion|MsoNormal|mso-)/i;
   if (richAttrRe.test(trimmed)) return true;
 
   return false;

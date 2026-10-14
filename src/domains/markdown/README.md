@@ -49,9 +49,19 @@ normalization 直接接纳 parser-wasm 的 CodeBlock 事件，不在 TypeScript 
 重新导入 canonical Markdown 必须保持代码正文、语言和相邻块边界，不能在 VFS/read_file 补字修复。
 原围栏字符、长度、info string 的附加元数据不持久化，不承诺源文本逐字 round-trip。
 
+## 行内强调与引用投影
+
+current Markdown 投影按连续 mark 范围输出强调，Citation atom 与相邻文本共同参与范围计算。
+来源 projector 只返回 atom 的 canonical 正文 token，不吞掉其 marks；范围内的空白与范围外空白分别保留，
+避免 `**正文 [@ref]**` 在接受 pending 后退化成 `**正文 **[@ref]`。
+验收覆盖创建、待接受预览、接受、正式读回与再导入后的语义一致性；不以 Markdown 字符串不同直接认定
+数据库正文损坏，也不能把不同字符串但相同结构的写入算作一次有效修订。
+
 ## Pending 与 Editor 提交
 
 每个 `(documentId, rootBlockId)` 最多一条 Pending。已有提议继续编辑时保持 ID 并递增 `revision`；工具把内容改回基线时撤销该提议，新增后删除会同时移除占位块。File-style 写入先对齐未变段落再规划差异，文首插入不改变后面旧块的身份；批注也跟随对齐后的身份。
+
+新增 Pending 的占位 rootBlock 与内部内容块都必须使用 Editor 接受的身份。存储服务为内部块调用既有 `generateEditorBlockId`，纯结构变换接收已分配 ID；不能用 root ID 拼接 `-inner`。否则 Citation 在冷加载时补全参考文献会触发 Editor 身份规范化，使未被用户编辑的占位块也与已存基线不同。Accept 保持严格的同块冲突检查，不忽略 ID 差异。本规则只约束新建占位块，不静默迁移既有异常 ID；旧文档应经正式保存入口同步基线后再处理修订。
 
 `pending-revisions` 拥有共享 DTO 的投影及统一 Editor 提交用例。Renderer 提交正文基线、正文版本与整份 Pending ID/revision 清单；后台在 Markdown 解析之前和事务内分别校验，随后原子保存正文、更新或清除 Pending，返回新快照。通用 PM schema 支持修订显示，但提交基线额外禁止 revisionMark，避免投影视图回流为数据库正文。保存、块决策、全部决策和行内部分决策共享这条入口；旧的无版本 apply IPC 已删除。
 

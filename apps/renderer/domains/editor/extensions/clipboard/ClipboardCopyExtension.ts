@@ -27,6 +27,7 @@ import { createMarkdownSerializer } from '../../../../shared/utils/markdownSeria
 import { resolveCurrentEditorMessage } from '../../functions/resolveCurrentEditorMessage'
 import { buildEditorMarkdownSerializerLabels } from '../../functions/markdownSerializerLabels'
 import { deriveCitations, getBibliographyStyleId } from '../../features/citation/render/citationDerivation'
+import { renderClipboardCitationHtml } from './functions/renderClipboardCitationHtml'
 
 // markdown-it 插件（项目已依赖）
 import markdownItFootnote from 'markdown-it-footnote'
@@ -116,7 +117,7 @@ function sliceContainsNodeType(slice: Slice, nodeTypeName: string): boolean {
   return found
 }
 
-function trySerializeMarkdownFromSlice(view: EditorView, slice: Slice): string | null {
+function trySerializeClipboardFromSlice(view: EditorView, slice: Slice): { markdown: string; html: string } | null {
   try {
     // 将 slice.content 装进一个临时 doc，交给 markdownSerializer
     const doc = view.state.schema.topNodeType.create(null, slice.content)
@@ -125,7 +126,9 @@ function trySerializeMarkdownFromSlice(view: EditorView, slice: Slice): string |
       escapeSpecialChars: false,
       labels: buildEditorMarkdownSerializerLabels(resolveCurrentEditorMessage),
     })
-    return serializer.serialize(doc)
+    const markdown = serializer.serialize(doc)
+    const html = renderClipboardCitationHtml(doc, serializer, value => md.render(value), view.dom.ownerDocument)
+    return { markdown, html }
   } catch (e) {
     // 这里不做“防御性修复”，只是明确地回退到默认 copy 行为
     console.warn('[ClipboardCopyExtension] Markdown 序列化失败，回退到默认复制行为', e)
@@ -233,11 +236,9 @@ function handleCopyLikeEvent(view: EditorView, event: Event, isCut: boolean): bo
     return false
   }
 
-  const markdown = trySerializeMarkdownFromSlice(view, slice)
-  if (!markdown) return false
-
-  // 语义化 HTML：更容易被 Notion/外部应用识别为富文本
-  const semanticHtml = md.render(markdown)
+  const serialized = trySerializeClipboardFromSlice(view, slice)
+  if (!serialized?.markdown) return false
+  const { markdown, html: semanticHtml } = serialized
 
   // bibliograhyBlock 是 atom NodeView，内容来自 plugin state，不在 doc 内；
   // 因此这里需要在 copy 时主动生成一份“可粘贴到外部”的参考文献 HTML。
