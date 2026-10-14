@@ -9,6 +9,7 @@ import { resolveBenchmarkCase } from '../functions/resolveBenchmarkCase';
 import { runBenchmarkCase } from './runBenchmarkCase';
 import { runResearchWorkflow } from '../features/research-workflow/orchestration/runResearchWorkflow';
 import type { ResearchWorkflowCliPort } from '../features/research-workflow/definitions/researchWorkflow';
+import { preflightHistoricalCorpus } from '../features/historical-corpus/orchestration/preflightHistoricalCorpus';
 
 interface RunBenchmarkCliOptions {
   readonly registry: BenchmarkRegistry;
@@ -26,6 +27,7 @@ export function benchmarkCliUsage(): string {
     '  pnpm benchmark:agent list [--pretty]',
     '  pnpm benchmark:agent run <case-id> --project <workspace-project-id> --input key=value [--input key=value] [--output DIR] [--model ID] [--reasoning LEVEL] [--pretty]',
     '  pnpm benchmark:agent research-workflow --manifest FILE --output DIR [--resume-stage STAGE_ID] [--stop-after STAGE_ID]',
+    '  pnpm benchmark:agent forecast-preflight --manifest FILE --output DIR',
     '',
     'Benchmark runs always use the real Linnya conversation CLI and a running Linnya App.',
     '',
@@ -70,6 +72,14 @@ export async function runBenchmarkCli(
         )
       );
       return 0;
+    }
+    if (invocation.kind === 'forecast-preflight') {
+      const report = await preflightHistoricalCorpus({
+        manifestFile: path.resolve(invocation.manifestFile),
+        output: path.resolve(invocation.output),
+      });
+      io.write(serialize(report, true));
+      return report.status === 'corpus_ready' ? 0 : 3;
     }
     if (invocation.kind === 'research-workflow') {
       if (!options.researchCli) throw new Error('Research CLI adapter is not configured');

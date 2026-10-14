@@ -2,6 +2,7 @@ import type { StageId } from '../features/research-workflow/definitions/research
 export type BenchmarkCliInvocation =
   | { readonly kind: 'help' }
   | { readonly kind: 'list'; readonly pretty: boolean }
+  | { readonly kind: 'forecast-preflight'; readonly manifestFile: string; readonly output: string }
   | {
       readonly kind: 'research-workflow';
       readonly manifestFile: string;

@@ -30,6 +30,27 @@ function parseInputs(values: readonly string[]): Readonly<Record<string, string>
 export function parseBenchmarkCliInvocation(argv: readonly string[]): BenchmarkCliInvocation {
   if (argv.length === 0 || argv[0] === 'help' || argv.includes('--help')) return { kind: 'help' };
   const command = argv[0];
+  if (command === 'forecast-preflight') {
+    const values = new Map<string, string>();
+    for (let index = 1; index < argv.length; index += 2) {
+      const key = argv[index];
+      const value = argv[index + 1];
+      if (
+        !key ||
+        !['--manifest', '--output'].includes(key) ||
+        !value ||
+        value.startsWith('--') ||
+        values.has(key)
+      )
+        throw new BenchmarkUsageError(`Invalid forecast-preflight argument: ${key ?? ''}`);
+      values.set(key, value);
+    }
+    const manifestFile = values.get('--manifest');
+    const output = values.get('--output');
+    if (!manifestFile || !output)
+      throw new BenchmarkUsageError('forecast-preflight requires --manifest and --output');
+    return { kind: 'forecast-preflight', manifestFile, output };
+  }
   if (command === 'research-workflow') {
     const values = new Map<string, string>();
     for (let index = 1; index < argv.length; index += 2) {

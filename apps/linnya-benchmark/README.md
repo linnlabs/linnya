@@ -32,6 +32,13 @@ prompt；文件读取、权限和失败语义都由真实 Agent/Host 链路负�
 
 ### Harness 审计的运行门槛
 
+历史回测准备可先运行 `forecast-preflight --manifest <文件> --output <新目录>`。
+该命令离线检查历史版本声明、独占截止时间、原件/投影/证明 hash、材料类别与路径，
+不要求 App 运行，也不调用模型。合同与限制见
+[Historical corpus owner](./src/features/historical-corpus/README.md)。
+`corpus_ready` 只表示材料预检通过，不表示根/子 Agent 已与现网或本机答案隔离；正式模型运行
+仍需另外验收工具执行环境、恢复和计算输入。未知版本、取得失败和未验证资料不能记为预测错误。
+
 做 token、工具失败和耗时比较时，先在开发 Host 启动环境设置
 `LINNYA_AUDIT_LEVEL=response` 并重启；默认是
 `off`。先完成一个小型校准运行，确认 facts 的 audit 可用、工具 decision/output 配对和 usage 完整度符合本批实验口径，再开始正式批次。只有排查流式协议时才用有容量上限的
@@ -197,6 +204,8 @@ pnpm benchmark:agent list
 
 当前架构、运行语义与后续 baseline 约束以本文和相邻实现测试为准；新的重大设计通过公开 issue
 / PR 讨论后写回本文。
+
+历史语料预检与执行环境是两个门槛。`forecast-preflight` 只生成经清单校验的作者投影；需要限制真实运行时，使用 Host testkit 的 [独立 historical-runtime](../../src/app-hosts/linnya/testkit/historical-runtime/README.md)。它复用正式 CLI 和 Agent 执行，不改变普通 benchmark case 的超时或生产工具合同。真实样本另存 ready 身份、模型路由、题面/语料/产物哈希、运行回执与审计；无模型工程失败不算预测样本，模型运行失败保留在批次中。有限语料检索不能冒充开放网页搜索，模型参数污染也不能由日期过滤排除。
 
 ### 网页深搜资料对照
 
