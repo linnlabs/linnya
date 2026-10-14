@@ -4,7 +4,7 @@ description: Plan, create, edit, inspect, and visually verify Linnya Slides thro
 metadata:
   author: linnya
   pluginId: slides
-  version: "7.15"
+  version: "7.16"
 ---
 
 # Slides Design
@@ -84,11 +84,12 @@ presentation-owned 资产。
 [`cover-variants.js`](./references/examples/cover-variants.js)、[`card-grid.js`](./references/examples/card-grid.js)、
 [`complete-deck.js`](./references/examples/complete-deck.js)；图表和表格看
 [`chart-analysis.js`](./references/examples/chart-analysis.js)、[`chart-controls.js`](./references/examples/chart-controls.js)、
-[`table.js`](./references/examples/table.js)；媒体、公式、手绘和绝对布局分别看
-[`media-and-paint.js`](./references/examples/media-and-paint.js)、[`native-formula.js`](./references/examples/native-formula.js)、
+[`table.js`](./references/examples/table.js)；媒体、SVG 标签覆盖、公式、手绘和绝对布局分别看
+[`media-and-paint.js`](./references/examples/media-and-paint.js)、[`svg-graphic.js`](./references/examples/svg-graphic.js)、
+[`native-formula.js`](./references/examples/native-formula.js)、
 [`brush-artwork.js`](./references/examples/brush-artwork.js)、[`timeline.js`](./references/examples/timeline.js)。
 
-示例中的颜色、字体和版式是各自的一次性选择，不是 Linnya 的默认风格，也不构成推荐版式。读示例是为了确认某个能力的写法，视觉决策应当在读示例之前就由内容和受众定下来。
+示例仅示范语法与能力；颜色、字体和版式不是默认或推荐风格。视觉决策由内容和受众决定。
 
 发生冲突时，运行时代码和生成文件高于散文；CLI 实际输出高于手写推断；设计建议不能覆盖类型、诊断或用户要求。
 

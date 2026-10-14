@@ -42,3 +42,30 @@ PNG 时保留 raster Image 并记录 fidelity warning；两种媒体都不可用
 
 兼容回读若未来需要把更宽的 SVG 提升为 SvgGraphic，必须作为单独 read admission 明确建模，
 不能反向扩大这里的 Agent canonical write 子集。
+
+## 当前几何与诊断边界
+
+根元素的 `width`、`height` 和 `preserveAspectRatio` 会保留在 canonical bytes 中。
+当根宽高比不同于 viewBox 时，浏览器解码还会产生根视口内部的缩放、留白或裁剪；
+consumer 的外层 fit 仍以 viewBox 比例计算。因此，viewBox 与外层 fit 不是任意合法 SVG
+内部坐标到页面坐标的完整映射，原生 Text 覆盖示例只使用根 viewBox。
+
+推荐 Frame 与 SVG 外框同尺寸、viewBox 宽高等于英寸尺寸 × 100，标签位置除以 100 后
+相对 Frame 定位，带标签的组合保持不旋转。Frame 继续拥有整体移动与删除，Text 独立编辑；
+SVG 没有标签所有权或自动缩放标签能力。quality 依据现有 Frame 身份，将同 Frame 内较低层、
+完整承载未旋转 Text 的未旋转 SVG 识别为承载关系；具体边界见 [quality](../quality/README.md)。
+
+不通过这一创作约定改变已有 root 属性的 admission/canonicalization。历史 inline source
+恢复时会重新准入并按 canonical hash 查找已接管绑定，read-only owner 不允许创建新绑定。
+因此删除 root 属性不仅改变新构建的 hash，还可能让历史恢复找不到旧绑定；收紧前必须设计
+版本与迁移策略，并核查既存 source 和 PPTX 回读影响。
+
+## 验证入口
+
+- `admission/admitSvgGraphic.test.ts`：唯一准入与资源预算。
+- `pptx/svgGraphicPptxRoundtrip.test.ts`：双媒体、原生回读，以及旋转后的 Konva／选区／PPTX 几何。
+- `backend/codegen/__tests__/SvgGraphicExample.integration.test.ts`：Skill 示例从 sandbox 到 PPTX，
+  原生标签对位、独立文本修改、Frame 整体移动与删除，以及两条诊断链路的承载/碰撞边界。
+- 从仓库根运行 `pnpm --dir packages/plugins/slides run smoke:raster-worker`：真实 hidden worker 的透明
+  fallback 和 contain/stretch 正负旋转像素验证；分别由 `dev/tools/rasterSvgGraphicFidelity.ts`
+  与 `dev/tools/rasterRotationFidelity.ts` 拥有，后者同时覆盖 Shape 与 Image 的旋转/翻转。

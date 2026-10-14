@@ -41,6 +41,7 @@ export type {
 } from './definitions/manualEdits';
 export {
   buildSlidesAuthoringRenderNodeId,
+  resolveSlidesAuthoringFrameNodeId,
   isSlidesAuthoringAncestorRefs,
   isSlidesAuthoringEditRef,
   isSlidesAuthoringObjectRef,

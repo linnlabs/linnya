@@ -3,6 +3,8 @@ import type { OverlapClassification, SpatialBox } from '@plugin/slides/shared';
 export interface SpatialComparable {
   nodeId?: string;
   parentNodeId?: string;
+  authoringFrameId?: string;
+  rotation?: number;
   kind: string;
   box: SpatialBox;
   zIndex?: number;
@@ -73,8 +75,8 @@ const PRIMARY_VISUAL_ROLES = new Set(['primary-visual']);
 const MAX_LINE_NODE_SIZE = 0.4;
 
 function isDirectParentChild(left: SpatialComparable, right: SpatialComparable): boolean {
-  return (left.nodeId != null && left.nodeId === right.parentNodeId)
-    || (right.nodeId != null && right.nodeId === left.parentNodeId);
+  return (left.nodeId != null && (left.nodeId === right.parentNodeId || left.nodeId === right.authoringFrameId))
+    || (right.nodeId != null && (right.nodeId === left.parentNodeId || right.nodeId === left.authoringFrameId));
 }
 
 function isSameExplicitComponent(left: SpatialComparable, right: SpatialComparable): boolean {
@@ -161,6 +163,14 @@ function isChartPanelCarrier(lower: SpatialComparable, upper: SpatialComparable)
     && containsWithPadding(lower.box, upper.box, -0.04);
 }
 
+function isFrameSvgTextCarrier(lower: SpatialComparable, upper: SpatialComparable): boolean {
+  // 只解释显式同 Frame、未旋转且完整覆盖的标签；同页、不同 Frame、反向层叠都不是依据。
+  return lower.kind === 'svgGraphic' && upper.kind === 'text'
+    && lower.authoringFrameId != null && lower.authoringFrameId === upper.authoringFrameId
+    && (lower.rotation ?? 0) % 360 === 0 && (upper.rotation ?? 0) % 360 === 0
+    && containsWithPadding(lower.box, upper.box, 0);
+}
+
 export function classifyOverlap(
   left: SpatialComparable,
   right: SpatialComparable,
@@ -190,7 +200,8 @@ export function classifyOverlap(
 
   const layerOrder = orderByZIndex(left, right);
   if (layerOrder) {
-    if (isChartPanelCarrier(layerOrder.lower, layerOrder.upper)) {
+    if (isChartPanelCarrier(layerOrder.lower, layerOrder.upper)
+      || isFrameSvgTextCarrier(layerOrder.lower, layerOrder.upper)) {
       return 'container';
     }
     if (

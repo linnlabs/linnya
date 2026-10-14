@@ -2,8 +2,9 @@ import { assertChartPlotBackgrounds, assertGeneratedChartRenders, GENERATED_CHAR
 import { assertIntrinsicTextFidelity } from './intrinsicTextFidelity';
 import { materializeIntrinsicTextBoxes } from '../../src/backend/engine/text/materializeIntrinsicTextBoxes';
 import { assertGradientFidelityRenders } from './rasterGradientFidelity';
+import { assertSvgGraphicFallbackRenders } from './rasterSvgGraphicFidelity';
+import { assertCenterRotationRenders } from './rasterRotationFidelity';
 import { promises as fs } from 'node:fs';
-import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { app } from 'electron';
@@ -13,7 +14,6 @@ import { SandboxService } from '../../../../../src/features/sandbox/SandboxServi
 import { createSandboxEvaluatorTestRunner } from '../../../../../src/features/sandbox/testing/createSandboxEvaluatorTestRunner';
 import { createSlidesRasterWorkerDefinition } from '../../src/backend/features/slideRasterWorker/infrastructure/createSlidesRasterWorkerDefinition';
 import { PresentationScreenshotRuntime } from '../../src/backend/features/presentationScreenshot/orchestration/PresentationScreenshotRuntime';
-import { createPresentationSvgGraphicFallbackRasterizer } from '../../src/backend/features/presentationSvgGraphicFallback';
 import { RenderModelMapper } from '../../src/backend/engine/parser/RenderModelMapper';
 import {
   applyTextLayoutToRenderModel,
@@ -170,6 +170,7 @@ async function run(): Promise<void> {
 
     await assertGradientFidelityRenders(request);
     await assertSvgGraphicFallbackRenders();
+    await assertCenterRotationRenders();
     await assertTransparentChartRenders();
     await assertGeneratedChartRenders(await compileDeckSourceToRenderModel(
       GENERATED_CHART_RASTER_SOURCE,
@@ -287,29 +288,6 @@ async function assertTransparentChartRenders(): Promise<void> {
   }
   console.log(`transparent ECharts export passed: ${raster.widthPx}x${raster.heightPx}`);
   await assertChartPlotBackgrounds(chartRequest);
-}
-
-async function assertSvgGraphicFallbackRenders(): Promise<void> {
-  const canonicalSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><circle cx="50" cy="25" r="18" fill="#2563EB"/></svg>';
-  const raster = await createPresentationSvgGraphicFallbackRasterizer().rasterizeSvgGraphic({
-    canonicalSvg,
-    contentHash: createHash('sha256').update(canonicalSvg).digest('hex'),
-    viewBox: { width: 100, height: 50 },
-  });
-  if (raster.widthPx !== 1920 || raster.heightPx !== 960 || !hasPngSignature(raster.pngBytes)) {
-    throw new Error('SVG Graphic fallback returned invalid dimensions or PNG bytes');
-  }
-  const decoded = await sharp(raster.pngBytes).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const cornerAlpha = decoded.data[3];
-  const centerIndex = (
-    Math.floor(decoded.info.height / 2) * decoded.info.width
-    + Math.floor(decoded.info.width / 2)
-  ) * decoded.info.channels;
-  const centerAlpha = decoded.data[centerIndex + 3];
-  if (cornerAlpha !== 0 || centerAlpha !== 255) {
-    throw new Error(`SVG Graphic fallback lost transparency: corner=${cornerAlpha}, center=${centerAlpha}`);
-  }
-  console.log(`SVG Graphic transparent fallback passed: ${raster.widthPx}x${raster.heightPx}`);
 }
 
 const SHAPE_GEOMETRY_DECK_SOURCE = `

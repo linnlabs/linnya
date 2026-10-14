@@ -38,11 +38,14 @@ export function resolveManualResize(
     nextWidth = width * bounded;
     nextHeight = height * bounded;
   }
-  const shiftX = (width - nextWidth) * (1 - horizontal) / 2;
-  const shiftY = (height - nextHeight) * (1 - vertical) / 2;
+  // 旋转围绕中心：先求固定对侧锚点时中心应移动多少，再换回未旋转 box 的左上角。
+  const halfWidthDelta = (nextWidth - width) / 2;
+  const halfHeightDelta = (nextHeight - height) / 2;
+  const shiftX = halfWidthDelta * horizontal;
+  const shiftY = halfHeightDelta * vertical;
   const translationDelta = {
-    dx: shiftX * (right.x - origin.x) / width + shiftY * (bottom.x - origin.x) / height,
-    dy: shiftX * (right.y - origin.y) / width + shiftY * (bottom.y - origin.y) / height,
+    dx: shiftX * (right.x - origin.x) / width + shiftY * (bottom.x - origin.x) / height - halfWidthDelta,
+    dy: shiftX * (right.y - origin.y) / width + shiftY * (bottom.y - origin.y) / height - halfHeightDelta,
   };
   if (Math.abs(nextWidth - width) < 1e-9 && Math.abs(nextHeight - height) < 1e-9) return null;
   return {

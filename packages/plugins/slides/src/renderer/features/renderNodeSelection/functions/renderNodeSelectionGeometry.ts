@@ -1,4 +1,5 @@
 import type { RenderNode } from '../../../types/render';
+import { resolveBoxRotation } from '@plugin/slides/shared/render-geometry';
 import type {
   RenderNodeSelectionGeometry,
   RenderNodeSelectionPoint,
@@ -103,9 +104,13 @@ function buildNodeMatrix(
   parentMatrix: RenderNodeSelectionMatrix,
   node: RenderNode,
 ): RenderNodeSelectionMatrix {
+  const transform = resolveBoxRotation(node.box, node.rotation);
   return multiplyMatrix(
-    multiplyMatrix(parentMatrix, translateMatrix(node.box.x, node.box.y)),
-    rotateMatrix(node.rotation ?? 0),
+    multiplyMatrix(
+      multiplyMatrix(parentMatrix, translateMatrix(transform.x, transform.y)),
+      rotateMatrix(transform.rotation),
+    ),
+    translateMatrix(-transform.offsetX, -transform.offsetY),
   );
 }
 

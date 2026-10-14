@@ -1,3 +1,4 @@
+import { resolveBoxRotation } from '@plugin/slides/shared/render-geometry';
 import type { MathFormulaRenderNode } from '../../../types/render';
 import type { TextRenderNode } from '../../../types/render';
 import type { LoadedRenderImage } from '../../renderImageResources';
@@ -9,9 +10,7 @@ export function formulaDataUri(node: MathFormulaRenderNode): string {
 
 export function buildFormulaGroupConfig(node: MathFormulaRenderNode) {
   return {
-    x: node.box.x * INCHES_TO_PX,
-    y: node.box.y * INCHES_TO_PX,
-    rotation: node.rotation ?? 0,
+    ...resolveBoxRotation(node.box, node.rotation, INCHES_TO_PX),
     opacity: node.opacity ?? 1,
     visible: node.visible !== false,
   };

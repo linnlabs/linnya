@@ -36,6 +36,10 @@ konva-builders/
 | `rotation` | **度** | 直接使用 | 全部 |
 | `opacity` / `shadow.opacity` | **0–1** | 直接使用 | 全部 |
 
+全部节点绕未旋转外框的中心旋转，统一消费 `shared/render-geometry/boxRotation`。
+外层配置以中心定位并设置半宽高 offset，内部原语和 clip 仍使用局部左上角坐标；
+选区消费同一规则，避免预览、命中、离屏 PNG 与 PPTX 分别选择旋转原点。
+
 **禁止**：
 
 - ❌ 把 `cornerRadius` 当 px 用（PptxGenJS `rectRadius` 是 inches，与 DSL 同源）
@@ -131,5 +135,6 @@ konva-builders/
 - `packages/plugins/slides/src/renderer/features/konvaPreview/functions/konvaVisualMapping.test.ts`
 - `packages/plugins/slides/src/renderer/features/konvaPreview/functions/shapePathPresets.test.ts`
 - 跨端对齐：`packages/plugins/slides/src/backend/__tests__/render-pptx-alignment.test.ts`
+- 旋转往返：`packages/plugins/slides/src/backend/__tests__/rotation-pptx-fidelity.test.ts`，覆盖 Shape/Image 的实际 Konva 变换、选区、PPTX 导出和回读。
 
 径向填充使用共享 sceneFunc，在目标 Canvas 上变换渐变坐标并反向归一原始路径，保持轮廓与阴影，不产生位图或异步资源。Ellipse 的局部坐标以中心为原点，填充与描边渐变都必须减去半边长；其余原语以左上角为原点。

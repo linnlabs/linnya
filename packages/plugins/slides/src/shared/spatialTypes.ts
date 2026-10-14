@@ -1,6 +1,6 @@
 import type { PresentationSourceKind } from './documentSource';
 
-export type SpatialNodeKind = 'text' | 'shape' | 'image' | 'chart' | 'table' | 'group' | 'slide' | 'other';
+export type SpatialNodeKind = 'text' | 'shape' | 'image' | 'svgGraphic' | 'chart' | 'table' | 'group' | 'slide' | 'other';
 
 export interface SpatialBox {
   x: number;
@@ -16,6 +16,9 @@ export interface SpatialNode {
   box: SpatialBox;
   localBox?: SpatialBox;
   parentNodeId?: string;
+  /** 最近的显式作者 Frame；渲染树扁平化不会改变这项派生事实。 */
+  authoringFrameId?: string;
+  rotation?: number;
   zIndex: number;
   opacity?: number;
   sourceKind: PresentationSourceKind;

@@ -1,11 +1,10 @@
+import { resolveBoxRotation } from '@plugin/slides/shared/render-geometry';
 import type { GroupRenderNode, RenderNode } from '../../../../types/render';
 import { INCHES_TO_PX } from '../../../../shared/constants';
 
 export function buildGroupConfig(node: GroupRenderNode) {
   return {
-    x: node.box.x * INCHES_TO_PX,
-    y: node.box.y * INCHES_TO_PX,
-    rotation: node.rotation ?? 0,
+    ...resolveBoxRotation(node.box, node.rotation, INCHES_TO_PX),
     opacity: node.opacity ?? 1,
     visible: node.visible !== false,
   };

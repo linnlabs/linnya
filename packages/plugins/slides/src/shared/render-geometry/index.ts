@@ -43,3 +43,4 @@ export type {
   NormalizedImageRect,
 } from './imageGeometry';
 export { resolveImageFitGeometry } from './imageGeometry';
+export { resolveBoxRotation } from './boxRotation';

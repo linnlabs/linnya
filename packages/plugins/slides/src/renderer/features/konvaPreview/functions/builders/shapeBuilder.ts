@@ -1,3 +1,4 @@
+import { resolveBoxRotation } from '@plugin/slides/shared/render-geometry';
 import { createRadialGradientScene } from '../radialGradientScene';
 import type { ShapeConfig } from 'konva/lib/Shape';
 import type { EllipseConfig } from 'konva/lib/shapes/Ellipse';
@@ -52,9 +53,7 @@ const POINTS_TO_PX = INCHES_TO_PX / 72;
 
 export function buildShapeGroupConfig(node: ShapeRenderNode) {
   return {
-    x: node.box.x * INCHES_TO_PX,
-    y: node.box.y * INCHES_TO_PX,
-    rotation: node.rotation ?? 0,
+    ...resolveBoxRotation(node.box, node.rotation, INCHES_TO_PX),
     // ShapeStyle.opacity 是填充透明度，不应连带淡化描边和形状内文本。
     opacity: 1,
     visible: node.visible !== false,

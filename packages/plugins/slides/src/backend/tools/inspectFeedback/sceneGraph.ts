@@ -13,6 +13,7 @@ import {
   buildNodeToolCapabilities,
   buildSlideTools,
   summarizeSlideTextLayoutProvenance,
+  resolveSlidesAuthoringFrameNodeId,
 } from '@plugin/slides/shared';
 import { visitRenderNodes } from '@plugin/slides/shared';
 import type {
@@ -190,6 +191,7 @@ function buildSceneGraphNodeSummary(
     style: summarizeNodeStyle(node),
     content: summarizeNodeContent(node),
     parentNodeId,
+    authoringFrameId: resolveSlidesAuthoringFrameNodeId(node.authoringAncestorRefs),
     children: groupChildren,
     elementId: node.editableTarget?.elementId ?? node.id,
     creationId: node.editableTarget?.creationId,
@@ -212,6 +214,8 @@ function flattenSpatialNodes(rootNode: SceneGraphNodeSummary): SpatialNode[] {
       box: roundSpatialBox(node.box),
       localBox: roundSpatialBox(node.localBox),
       parentNodeId: node.parentNodeId,
+      authoringFrameId: node.authoringFrameId,
+      rotation: typeof node.style?.rotation === 'number' ? node.style.rotation : undefined,
       zIndex: node.zIndex,
       opacity: readNodeOpacity(node),
       sourceKind: node.sourceKind,
@@ -229,6 +233,7 @@ function toSpatialKind(kind: string): SpatialNode['kind'] {
     case 'text':
     case 'shape':
     case 'image':
+    case 'svgGraphic':
     case 'chart':
     case 'table':
     case 'group':

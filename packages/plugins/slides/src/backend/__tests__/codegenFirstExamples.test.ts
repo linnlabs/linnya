@@ -84,6 +84,7 @@ const EXPECTED_EXAMPLES = [
   'table',
   'timeline',
   'native-formula',
+  'svg-graphic',
   'complete-deck',
 ] as const;
 
