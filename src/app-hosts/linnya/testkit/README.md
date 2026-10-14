@@ -12,6 +12,7 @@ Layer: `app-host verification`
 - host-bound in-memory event store
 - host-bound agent scenario runner
 - temporary workspace fixtures that override global workspace root
+- 独立构建的 [historical-runtime](./historical-runtime/README.md) 语料实验 Host；生产入口不识别实验政策
 
 这里不负责：
 

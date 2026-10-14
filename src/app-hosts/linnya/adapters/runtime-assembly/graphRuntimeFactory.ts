@@ -1,4 +1,5 @@
 import { graph, llm, telemetry } from '@linnlabs/linnkit/runtime-kernel';
+import type { agentTools } from '@linnlabs/linnkit/context-manager';
 import type {
   AuditPort,
   CanonicalInferencePort,
@@ -31,6 +32,8 @@ export type DefaultGraphRuntimeLlmCaller =
 export interface DefaultGraphRuntimeOverrides {
   llmCaller?: DefaultGraphRuntimeLlmCaller;
   toolRuntime?: graph.GraphAgentExecutorDependencies['toolRuntime'];
+  /** 自定义工具目录时配套注入名称、校验和摘要能力，避免使用全局 registry。 */
+  toolManager?: agentTools.ToolManager;
   contextBuilder?: graph.GraphExecutorContextBuilder;
   cloudQuotaFallbackModelId?: string;
   modelCatalog?: llm.ModelCatalogLike;
@@ -108,6 +111,7 @@ export function createDefaultGraphRuntimeDependencies(
   const contextBuilder: graph.GraphExecutorContextBuilder =
     overrides.contextBuilder ??
     createDefaultGraphExecutorContextBuilder({
+      toolManager: overrides.toolManager,
       tokenizer,
       tokenCounter,
       imageInputEstimator:

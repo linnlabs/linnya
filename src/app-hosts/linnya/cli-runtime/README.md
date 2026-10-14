@@ -20,3 +20,5 @@ Web Read 仍可工作，其动态页面升级路径不会伪装为成功。
 
 当前入口是独立 `linnya-cli-runtime.cjs` bundle，由 CLI 通过窄 launcher 动态加载。普通 CLI 命令仍只包含
 参数、控制面连接和输出，不把完整 Backend 打进控制客户端。bundle 导出显式 Host contract version；CLI 拒绝加载旧合同产物。
+
+开发装配可通过进程内 `CliRuntimeHostInput` 显式传入 main bundle 目录和现有 CredentialProtectionPort，复用相同 supervisor。普通 CLI 不暴露这些 override 参数；实验数据与生产参数不混用。

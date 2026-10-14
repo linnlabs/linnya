@@ -33,7 +33,9 @@ import { createParentProcessLivenessMonitor } from '../functions/createParentPro
  * fd 3/4/5 分别是 bootstrap、child→Main RPC 与 Main→child RPC。完整 Backend 只在本进程创建；
  * stdout 已由外层 tiny launcher 保证为 control protocol 专用。
  */
-export async function runLinnyaAppServerProcess(): Promise<void> {
+export async function runLinnyaAppServerProcess(
+  createComposition: typeof createHeadlessAppServerBackendComposition = createHeadlessAppServerBackendComposition,
+): Promise<void> {
   const bootstrapInput = new Socket({ fd: 3, readable: true, writable: false });
   const bootstrap = await readAppServerBootstrap(bootstrapInput);
   bootstrapInput.destroy();
@@ -83,7 +85,7 @@ export async function runLinnyaAppServerProcess(): Promise<void> {
       bootstrap.backend_facts.runtimePathRoots.workspaceRoot
     );
     process.once('exit', () => workspaceOwnership?.release());
-    composition = createHeadlessAppServerBackendComposition({
+    composition = createComposition({
       bootstrap,
       rpc,
       mailboxRoot,

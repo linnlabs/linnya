@@ -6,6 +6,8 @@ Backend 只存在一套业务启动链：Desktop Electron Main 或源码 CLI Run
 
 `processRuntime` 只包含 Backend 自己拥有的 Qdrant、owned pipe launcher 与队列 Worker 运行依赖。它与对话 `conversationExecutionRuntimeFactory` 都由最外层 composition 注入；这样 App Server 可以选择纯 Node adapter，而无需在 Backend 入口里按宿主类型分支或读取 `process.env`。
 
+可选 `agentToolEnvironment` 是 composition 的窄进程内端口，包含配套 ToolRuntime、ToolManager 和 physical file reader。路由将同一组合传给根模型、工具执行、child 和 CLI 工具用例；未提供时保持默认装配。它不进入 bootstrap，不承载具体实验政策，也不按 Agent 身份改变通用工具行为。
+
 App Server bootstrap 使用独立 fd 3 一次性 pipe，不进入 argv 或 lifecycle stdout。帧包含严格 Backend 配置、
 `BackendBootstrapFacts`（含 `source / community / official` 发行身份）、Host 在内部环境写入前捕获的 Command host environment 与测量开关；child 完整校验后才可
 启动 owner。lifecycle `ready` 必须在 Conversation routes 已挂载后返回真实 API port、renderer token、应用版本与数据库 ready 事实，不能用空 sidecar、部分路由或“进程仍存活”替代业务就绪。

@@ -7,6 +7,8 @@ AppData 私有 mailbox 根；不导入 Electron，也不读取 PATH、`process.e
 production runtime 和 typed Renderer RPC handlers。Command runner 与 Profiled Code Sandbox evaluator 使用 Main 已验证并
 通过 bootstrap 传入的固定 Node executable；Qdrant、Queue Worker 与普通进程树 owner 也只消费冻结事实。
 
+`runLinnyaAppServerProcess` 可在独立开发产物中显式注入 typed composition factory；正式 entry 使用默认 factory。该接缝只替换依赖组合，不增加第二条启动、协议或 Agent 执行链。
+
 credential、Renderer projection、hidden worker、Browser Pretext、raster PDF、OAuth browser 与 Chromium Web Read 都通过
 各自的窄 reverse RPC client 注入 Backend。插件和业务代码看不到 RPC peer、Electron 对象或任意 Desktop method table。
 

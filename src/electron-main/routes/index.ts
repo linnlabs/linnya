@@ -37,6 +37,8 @@ import { SqliteCheckpointer } from '../../app-hosts/linnya/adapters/persistence/
 import { SqliteTelemetryAdapter } from '../../app-hosts/linnya/adapters/telemetry/sqlite.implementation';
 import { bootstrapAgentRuntimeSingletons } from '../services/agentRuntimeSingletons';
 import { createRegisteredChildRunInvoker } from 'src/app-hosts/linnya/adapters/child-runs/registeredSubagentInvoker';
+import { createLinnyaChildRunInvoker } from 'src/app-hosts/linnya/adapters/child-runs/childRunInvokerFactory';
+import type { AgentToolEnvironment } from 'src/app-hosts/linnya/backend-runtime/definitions/agentToolEnvironment';
 import { providerCatalog } from '@linnya/provider-catalog';
 import { modelCatalog } from 'src/domains/model-catalog';
 import { providerConfigurationRegistry } from 'src/domains/provider-configuration';
@@ -202,6 +204,7 @@ const logger = getLogger('RouteConfig');
  * 路由配置依赖接口
  */
 export interface RouteDependencies {
+  readonly agentToolEnvironment?: AgentToolEnvironment;
   readonly commandApprovalControl: CommandApprovalControlEndpointPort;
   knowledgeBaseService?: KnowledgeBaseService;
   transcriptionService?: TranscriptionService;
@@ -626,6 +629,8 @@ export async function configureRoutes(
     executor.registerNode(new UserNode());
     executor.registerNode(
       createDefaultLlmNode({
+        toolRuntime: dependencies.agentToolEnvironment?.toolRuntime,
+        toolManager: dependencies.agentToolEnvironment?.toolManager,
         telemetryPort,
         auditPort,
         tokenCalibrationCollector,
@@ -634,7 +639,7 @@ export async function configureRoutes(
     );
     executor.registerNode(
       new ToolNode({
-        toolRuntime: defaultToolRuntimePort,
+        toolRuntime: dependencies.agentToolEnvironment?.toolRuntime ?? defaultToolRuntimePort,
         observationPreview: defaultObservationPreviewPort,
         telemetryPort,
         auditPort,
@@ -675,7 +680,8 @@ export async function configureRoutes(
         conversationWorkDirectoryAdmission: conversationLifecycle.workDirectoryAdmission,
       })
     );
-    const physicalFileReader = createNodePhysicalFileReader();
+    const physicalFileReader = dependencies.agentToolEnvironment?.physicalFileReader
+      ?? createNodePhysicalFileReader();
     const executionRuntime = await dependencies.conversationExecutionRuntimeFactory.create({
       db,
       conversationAdmission: conversationLifecycle.workDirectoryAdmission,
@@ -716,6 +722,16 @@ export async function configureRoutes(
       runtime: agentRuntime,
       telemetryPort,
       commandRuntime: commandAgentRuntimes.child,
+      childRunInvoker: dependencies.agentToolEnvironment
+        ? createLinnyaChildRunInvoker({
+            telemetryPort,
+            auditPort,
+            llmInputMaterializer,
+            modelInputResolver: toolModelInputResolver,
+            toolRuntime: dependencies.agentToolEnvironment.toolRuntime,
+            toolManager: dependencies.agentToolEnvironment.toolManager,
+          })
+        : undefined,
     });
     const agentRunner = new AgentRunnerService(executor, knowledgeBaseService, dbService, {
       recovery: {
@@ -819,7 +835,7 @@ export async function configureRoutes(
       history: initializedHistoryService,
       telemetry: telemetryPort,
       events: createEventStoreExecutionAuditEventPort(conversationEventStore),
-      tools: defaultToolRuntimePort,
+      tools: dependencies.agentToolEnvironment?.toolRuntime ?? defaultToolRuntimePort,
       auditAvailable: agentRuntime.auditEnabled,
     });
     logger.info('✅ 历史管理服务已初始化');

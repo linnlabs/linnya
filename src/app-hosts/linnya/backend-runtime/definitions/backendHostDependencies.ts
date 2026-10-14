@@ -13,6 +13,7 @@ import type {
 } from '../../desktop-capabilities';
 import type { BackendBootstrapFacts } from './backendBootstrapFacts';
 import type { WebPageRenderer } from '../../../../tools/web/webread/definitions/webPageRenderer';
+import type { AgentToolEnvironment } from './agentToolEnvironment';
 
 /** Backend 内部长期进程的物理运行依赖；Electron Main 与 App Server 只负责选择 adapter。 */
 export interface BackendProcessRuntimeDependencies {
@@ -23,6 +24,7 @@ export interface BackendProcessRuntimeDependencies {
 
 /** Backend 业务 owner 的完整宿主输入；具体实现可以来自 Electron Main 或反向 Desktop RPC。 */
 export interface BackendHostDependencies {
+  readonly agentToolEnvironment?: AgentToolEnvironment;
   readonly commandApprovalControl: CommandApprovalControlEndpointPort;
   readonly bootstrap: BackendBootstrapFacts;
   readonly processRuntime: BackendProcessRuntimeDependencies;

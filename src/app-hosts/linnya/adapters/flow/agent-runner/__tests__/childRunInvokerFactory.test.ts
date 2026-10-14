@@ -1,4 +1,5 @@
 import { PromptKeys } from '@app/schemas';
+import { agentTools } from '@linnlabs/linnkit/context-manager';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
 import { audit, execution, graph, llm, telemetry, tools } from '@linnlabs/linnkit/runtime-kernel';
@@ -201,6 +202,75 @@ describe('childRunInvokerFactory', () => {
 
     expect(resolveModelIdSpy).toHaveBeenCalledTimes(1);
     expect(llmNode.run).toHaveBeenCalledTimes(1);
+  });
+
+  it('child 的模型目录、上下文与执行共用宿主注入的工具环境', async () => {
+    const modelId = 'child-injected-tools-model';
+    const modelCatalog = createToolImageModelCatalog(modelId);
+    const parameters: tools.ToolParameterSchema = {
+      type: 'object',
+      properties: { url: { type: 'string', description: 'Fixture URL' } },
+      required: ['url'],
+      additionalProperties: false,
+    };
+    const schema: tools.FunctionToolSchema = {
+      type: 'function',
+      function: { name: 'web_read', description: 'Injected fixture reader', parameters },
+    };
+    const toolResult: tools.StructuredToolResult = {
+      data: { body: 'fixture-only-body' }, observation: 'fixture-only-body',
+    };
+    const executeTool = vi.fn<tools.ToolRuntimePort['executeTool']>(async () => ({
+      success: true,
+      result: JSON.stringify(toolResult),
+      durationMs: 0,
+    }));
+    const toolRuntime: tools.ToolRuntimePort = {
+      getToolSchemas: () => [schema],
+      getToolDefinition: name => name === 'web_read' ? { parameters } : undefined,
+      executeTool,
+    };
+    const getAvailableToolNames = vi.fn(() => ['web_read']);
+    const toolManager = new agentTools.ToolManager({
+      getAvailableToolNames,
+      validateToolCall: () => ({ success: true }),
+      getTool: () => undefined,
+    });
+    const getSummaryProvider = vi.spyOn(toolManager, 'getSummaryProvider');
+    const ai = createScriptedInferenceHarness([
+      { toolCalls: [{ id: 'fixture-read', name: 'web_read', argumentsJson: '{"url":"https://fixture.example/old"}' }] },
+      { contentChunks: ['Fixture received.'] },
+    ], { modelCatalog });
+    const invoker = createLinnyaChildRunInvoker({
+      telemetryPort: telemetry.noopTelemetry,
+      auditPort: audit.noopAudit,
+      modelCatalog,
+      modelResolver: new llm.ModelResolver({ modelCatalog }),
+      llmCaller: ai.getLlmCaller(),
+      toolRuntime,
+      toolManager,
+      observationPreview: noopObservationPreview,
+    });
+    const result = await invoker.invoke({
+      agentConfig: {
+        id: 'injected-tools-child', promptKey: PromptKeys.DEFAULT,
+        availableTools: ['web_read'], modelPolicy: { kind: 'fixed', modelId },
+      },
+      userMessage: 'Read the supplied fixture.',
+      conversationId: 'child-injected-tools',
+      parentToolContext: createToolContextFixture({ conversationId: 'child-injected-tools' }),
+      runtimeEventSink: createChildRuntimeEventSink(),
+    });
+    expect(result).toMatchObject({ success: true, finalAnswer: 'Fixture received.' });
+    expect(getSummaryProvider).toHaveBeenCalled();
+    expect(executeTool).toHaveBeenCalledTimes(1);
+    expect(ai.getCalls()[0]?.options.tools).toEqual([schema.function]);
+    expect(ai.getCalls()[1]?.messages).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: 'tool', content: expect.arrayContaining([
+        expect.objectContaining({ type: 'text', text: expect.stringContaining('fixture-only-body') }),
+      ]) }),
+    ]));
+    ai.assertAllTurnsConsumed();
   });
 
   it('显式传入图片历史时，child 默认 LlmNode 使用同一 estimator、materializer 与 route gate', async () => {

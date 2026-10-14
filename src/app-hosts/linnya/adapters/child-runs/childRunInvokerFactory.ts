@@ -1,5 +1,5 @@
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
-import { agentUtils } from '@linnlabs/linnkit/context-manager';
+import { agentUtils, type agentTools } from '@linnlabs/linnkit/context-manager';
 import { childRuns, graph, llm, telemetry, tools } from '@linnlabs/linnkit/runtime-kernel';
 import type {
   AuditPort,
@@ -27,7 +27,8 @@ export interface LinnyaChildRunInvokerDependencies {
   modelCatalog?: llm.ModelCatalogLike;
   llmCaller?: DefaultGraphRuntimeLlmCaller;
   createLlmNode?: () => graph.GraphNode;
-  toolRuntime?: Pick<tools.ToolRuntimePort, 'getToolDefinition' | 'executeTool'>;
+  toolRuntime?: tools.ToolRuntimePort;
+  toolManager?: agentTools.ToolManager;
   observationPreview?: tools.ObservationPreviewPort;
   modelInputCapabilityValidator?: tools.ToolModelInputCapabilityValidatorPort;
   llmImageInputEstimator?: LlmImageInputEstimatorPort;
@@ -74,6 +75,7 @@ export function createLinnyaChildRunInvoker(
   const modelResolver = dependencies.modelResolver ?? createDefaultModelResolver();
   const telemetryPort = dependencies.telemetryPort;
   const auditPort = dependencies.auditPort;
+  const toolRuntime = dependencies.toolRuntime ?? defaultToolRuntimePort;
 
   return new childRuns.ChildRunInvoker({
     modelResolver,
@@ -81,12 +83,15 @@ export function createLinnyaChildRunInvoker(
       modelResolver,
       modelCatalog: dependencies.modelCatalog,
       llmCaller: dependencies.llmCaller,
+      // 模型目录和执行端必须共享装配，不能让 child 看到默认工具却执行另一套工具。
+      toolRuntime,
+      toolManager: dependencies.toolManager,
       telemetryPort,
       auditPort,
       llmInputMaterializer: dependencies.llmInputMaterializer,
       llmImageInputEstimator: dependencies.llmImageInputEstimator,
     })),
-    toolRuntime: dependencies.toolRuntime ?? defaultToolRuntimePort,
+    toolRuntime,
     observationPreview: dependencies.observationPreview ?? defaultObservationPreviewPort,
     modelInputCapabilityValidator: dependencies.modelInputCapabilityValidator
       ?? createToolModelInputCapabilityValidator(dependencies.modelCatalog),

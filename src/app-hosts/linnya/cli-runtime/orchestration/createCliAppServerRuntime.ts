@@ -54,7 +54,8 @@ export async function createCliAppServerRuntime(
   const mainBundleDirectory = resolveAppServerBundleDirectory({
     packaged: false,
     resourcesPath: path.join(input.developmentRoot, 'extraResources'),
-    developmentMainBundleDirectory: path.join(input.developmentRoot, 'dist', 'main'),
+    developmentMainBundleDirectory: input.mainBundleDirectory
+      ?? path.join(input.developmentRoot, 'dist', 'main'),
   });
   const defaultModels = resolveAppDefaultModelsPath({
     configuredPath: input.processEnvironment.MODEL_REGISTRY_DEFAULTS_PATH,
@@ -84,7 +85,7 @@ export async function createCliAppServerRuntime(
   });
   const unavailable = createCliRuntimeUnavailableCapabilities();
   const mailboxRoot = resolveBackendRendererRequestMailboxRoot(runtimePathRoots.appDataRoot);
-  const credentialProtection = createSystemCredentialProtectionPort({
+  const credentialProtection = input.credentialProtection ?? createSystemCredentialProtectionPort({
     vaultId: runtimePathRoots.appDataRoot,
     allowMasterKeyCreation: false,
   });

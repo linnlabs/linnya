@@ -30,7 +30,8 @@ reasoning_effort 一起冻结到 child request；固定异模型使用自身默�
 ToolRegistry / ToolNode 与 SQLite 验证单父工具的全链 receipt、不同职责并行读取、取消、
 同伴中断及重载。子进程在产物 child 完成后、全部 child 完成但父工具尚未返回时 SIGKILL；
 恢复只能重取完成者，不能再次写文档或新增完成者事件。它验证承载协议，不认证研究内容质量，
-也不替代研究 owner 的文档版本、引用绑定和输入接纳门禁。
+其中单父工具与产物接纳是合成测试夹具，不是当前研究入口的固定工作流。
+当前研究使用父 Agent 的普通委派，材料与版本职责见 [Research owner](../../application/research/README.md)。
 
 child response 审计使用同一个正式 `childRunId / parentRunId`；独立审计作用域在本次
 执行退出时排空，不依赖父作用域代为收尾，也不和兄弟运行共享容量。
@@ -38,7 +39,9 @@ child response 审计使用同一个正式 `childRunId / parentRunId`；独立�
 registered child 执行前还必须派生独立 ToolContext，把该 child 的 `availableTools` 复制并冻结为
 `registeredChildAllowedTools`。持久运行只读原 descriptor.request；非持久运行取本 child 的
 agentConfig。嵌套 child 覆盖父名单，兄弟运行不修改共享父上下文；因此网页 worker 可以执行
-自己的 `search_web / assemble_web_sources`，研究 reviewer 不能伪造正式写工具调用。
+自己的 `search_web / assemble_web_sources`，显式名单之外的正式工具调用会被拒绝。
+当前研究 v1 子角色的[共享配置](../../agent-registry/agents/research_v1/config.ts)包含
+`write_file / edit_file`，不能从 reviewer 角色名推断只读权限。
 `undefined` 清除继承限制，空数组则禁止全部工具，不能混为一谈。执行拒绝由
 [ToolRegistry](../tools/README.md) 负责，不能只凭给模型的 schema 声称已经阻止调用。
 这不是操作系统隔离，也不改变 root forced-tool 接纳合同。
@@ -260,7 +263,7 @@ parent `subrun_trace` 始终是 `ephemeral` 实时展示协议，不进入通用
 - `src/tools/agent_control/subrun/shared/__tests__/subagentRunner.parallel.test.ts`
 - `src/tools/agent_control/subrun/shared/__tests__/subagentRunner.integration.test.ts`
 - `src/tools/agent_control/subrun/subagent/__tests__/subagentTool.failure-recovery.integration.test.ts`
-- `src/tools/deep_research/__tests__/researchSubagentWorkspace.integration.test.ts`
+- `src/tools/agent_control/subrun/subagent/__tests__/subagentWorkspace.integration.test.ts`
 
 Host 端到端测试必须按事实 owner 取数：run 注册前提交的 `user_input` 从会话输入事务读取；EventBus 接纳的工具、答案与 `subrun_trace` 从 Linnkit EventStore 读取。不得再从旧 collector 或 Graph 返回数组断言运行事实，否则测试会绕开生产持久化主链。
 

@@ -42,6 +42,17 @@ Host 重建后恢复旧 run 仍须通过正式 runtime compatibility 校验，�
 
 中文备注：可观察性是显式依赖注入，不是全局 recorder。需要扩展落点时，优先包一层 Port adapter。
 
+## 自定义工具装配
+
+Host 提供自定义工具环境时，应一起传入 `toolRuntime` 与从同一 registry 创建的
+`toolManager`：前者供模型 schema 和执行定义使用，后者供上下文的可用名称、参数校验与
+历史摘要使用。默认环境不传时保持现有全局装配。Child invoker 的默认 LLM node 与
+ToolNode 共用传入的完整 `ToolRuntimePort`，不能只替换执行端。若显式覆写 `createLlmNode`
+或 `contextBuilder`，调用者负责在该自定义构建器内保持一致。
+
+这些是通用依赖注入口，不是权限沙箱或历史资料过滤。历史实验仍须在自己的 adapter
+约束每次执行、资料版本和恢复身份，不能仅凭自定义 schema 声称已隔离。
+
 ## 文件树
 
 ```text
