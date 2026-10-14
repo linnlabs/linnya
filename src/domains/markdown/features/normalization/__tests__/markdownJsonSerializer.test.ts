@@ -51,9 +51,22 @@ describe('serializeRootBlockToMarkdown inline projection', () => {
       }
     );
 
-    expect(result).toBe('正文 [@ABC234]');
-    expect(result).not.toContain('**[@ABC234]**');
+    expect(result).toBe('正文 **[@ABC234]**');
     expect(seenTypes).toEqual(['text', 'citationNode']);
+  });
+
+  it('强调跨过引用和嵌套 mark 时仅闭合真正结束的范围，并将边缘空白留在外部', () => {
+    const bold = { type: 'bold' };
+    const italic = { type: 'italic' };
+    const result = serializeRootBlockToMarkdown(rootBlock([
+      { type: 'text', text: '前文 ' },
+      { type: 'text', text: '重要 ', marks: [bold] },
+      { type: 'citationNode', attrs: { ref: 'ABC234' }, marks: [bold] },
+      { type: 'text', text: ' 值', marks: [bold, italic] },
+      { type: 'text', text: ' 结论 ', marks: [bold] },
+      { type: 'text', text: '后文' },
+    ]), { projectInlineNode: input => input.type === 'citationNode' ? '[@ABC234]' : null });
+    expect(result).toBe('前文 **重要 [@ABC234] *值* 结论** 后文');
   });
 
   it('codeBlock 不调用领域 projector，避免把代码示例误投影成业务引用', () => {

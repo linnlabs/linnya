@@ -49,6 +49,14 @@ normalization 直接接纳 parser-wasm 的 CodeBlock 事件，不在 TypeScript 
 重新导入 canonical Markdown 必须保持代码正文、语言和相邻块边界，不能在 VFS/read_file 补字修复。
 原围栏字符、长度、info string 的附加元数据不持久化，不承诺源文本逐字 round-trip。
 
+## 行内强调与引用投影
+
+current Markdown 投影按连续 mark 范围输出强调，Citation atom 与相邻文本共同参与范围计算。
+来源 projector 只返回 atom 的 canonical 正文 token，不吞掉其 marks；范围内的空白与范围外空白分别保留，
+避免 `**正文 [@ref]**` 在接受 pending 后退化成 `**正文 **[@ref]`。
+验收覆盖创建、待接受预览、接受、正式读回与再导入后的语义一致性；不以 Markdown 字符串不同直接认定
+数据库正文损坏，也不能把不同字符串但相同结构的写入算作一次有效修订。
+
 ## Pending 与 Editor 提交
 
 每个 `(documentId, rootBlockId)` 最多一条 Pending。已有提议继续编辑时保持 ID 并递增 `revision`；工具把内容改回基线时撤销该提议，新增后删除会同时移除占位块。File-style 写入先对齐未变段落再规划差异，文首插入不改变后面旧块的身份；批注也跟随对齐后的身份。
