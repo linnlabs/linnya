@@ -239,12 +239,12 @@ Flow 主体与 Host settlement 是显式的两个阶段：无论主体成功或�
 持久化事实；不能只用“文件已改”或“历史里有回执”证明模型已收到执行反馈。
 工具批次配对由正式 npm Linnkit 负责，Host 不设置同参编辑成功缓存或第二套配对补丁。
 
-`__integration-tests__/flow.research.sqlite.integration.test.ts` 使用正式 `research_v1`
-入口、`research_run`、ToolRegistry 和 registered child invoker，验证六阶段文档交付、
-固定材料检索边界、写工具权限、输入变化停止、并行复核、持久恢复及取消。上游模型使用固定脚本，
-恢复测试在实际 child 执行边界注入中断；
-Workspace Markdown 创建、回读、阶段回执、SQLite run/trace 均经过生产实现。
-相邻 `flow.research-submission.sqlite.integration.test.ts` 验证当前 child 的引用错误反馈与修正、
-read_file 来源事实交接、提交事务后中断恢复、编译中取消、修正期间输入变化和专用能力归属。
-运行前需要按开发文档独立安装依赖并构建 parser WASM。这项测试验证工程执行合同，
-不证明模型遵守研究方法或文章结论正确。
+`__integration-tests__/flow.research-lead.sqlite.integration.test.ts` 使用正式 `research_v1`、
+通用 `subagent`、Workspace 文件工具与 SQLite，验证父写初稿和修订、子读取稿件与来源并各自
+保存评审、模型与思考级别继承、产物引用及独立轨迹的重载。测试还覆盖 child 完成后父工具
+尚未接纳时恢复原委派而不重复调用或写入，以及取消传播到实际 child。
+固定材料边界通过任务提示传递，不改写普通工具权限；child 普通完成也不认证产物齐备。
+当前研究职责及已撤回的阶段提交、输入版本锁和双评审认证见
+[Research owner](../../application/research/README.md)。上游模型使用固定脚本；运行前需要按
+开发文档独立安装依赖并构建 parser WASM。这些测试验证工程执行合同，不证明模型遵守研究
+方法或文章结论正确。
