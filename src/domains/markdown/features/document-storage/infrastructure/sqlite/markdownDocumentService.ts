@@ -11,6 +11,7 @@
  */
 
 import Database from 'better-sqlite3';
+import { generateEditorBlockId } from 'src/shared/utils/idUtils';
 import {
   AudioBlockService,
   CodeBlockService,
@@ -274,6 +275,9 @@ export class MarkdownDocumentService {
       document: this.getDocument(documentNodeId),
       anchorBlockId,
       newBlockId,
+      // 占位内容块同样进入 Editor 的身份校验；拼接 "-inner" 会在冷加载时被重写，
+      // 让未编辑的正文在 Accept 的严格基线比较中被误判为本地修改。
+      newInnerBlockId: generateEditorBlockId(),
     });
     this.updateDocument(documentNodeId, newDoc);
 

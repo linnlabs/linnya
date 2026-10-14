@@ -61,6 +61,8 @@ current Markdown 投影按连续 mark 范围输出强调，Citation atom 与相�
 
 每个 `(documentId, rootBlockId)` 最多一条 Pending。已有提议继续编辑时保持 ID 并递增 `revision`；工具把内容改回基线时撤销该提议，新增后删除会同时移除占位块。File-style 写入先对齐未变段落再规划差异，文首插入不改变后面旧块的身份；批注也跟随对齐后的身份。
 
+新增 Pending 的占位 rootBlock 与内部内容块都必须使用 Editor 接受的身份。存储服务为内部块调用既有 `generateEditorBlockId`，纯结构变换接收已分配 ID；不能用 root ID 拼接 `-inner`。否则 Citation 在冷加载时补全参考文献会触发 Editor 身份规范化，使未被用户编辑的占位块也与已存基线不同。Accept 保持严格的同块冲突检查，不忽略 ID 差异。本规则只约束新建占位块，不静默迁移既有异常 ID；旧文档应经正式保存入口同步基线后再处理修订。
+
 `pending-revisions` 拥有共享 DTO 的投影及统一 Editor 提交用例。Renderer 提交正文基线、正文版本与整份 Pending ID/revision 清单；后台在 Markdown 解析之前和事务内分别校验，随后原子保存正文、更新或清除 Pending，返回新快照。通用 PM schema 支持修订显示，但提交基线额外禁止 revisionMark，避免投影视图回流为数据库正文。保存、块决策、全部决策和行内部分决策共享这条入口；旧的无版本 apply IPC 已删除。
 
 部分接受新增或在新增占位块保存本地输入后，该块已拥有正文，剩余意图转为 update；拒绝 insert 只删除空占位，保留用户已写入的正文。部分拒绝删除后，非空剩余提议也不能继续解释成整块 delete。提议更新不生成第二条 Pending。单块提议必须解析为恰好一个 rootBlock，不能截断多块内容后继续提交。

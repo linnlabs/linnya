@@ -15,6 +15,7 @@ export function insertPendingRootBlock(input: {
   readonly document: MarkdownDocJson;
   readonly anchorBlockId: string | null;
   readonly newBlockId: string;
+  readonly newInnerBlockId: string;
 }): MarkdownDocJson {
   const content = [...input.document.content];
   const anchorIndex = input.anchorBlockId === null ? -1 : content.findIndex(
@@ -33,7 +34,7 @@ export function insertPendingRootBlock(input: {
     content: [
       {
         type: 'baseBlock',
-        attrs: { id: `${input.newBlockId}-inner` },
+        attrs: { id: input.newInnerBlockId },
         content: [],
       },
     ],
