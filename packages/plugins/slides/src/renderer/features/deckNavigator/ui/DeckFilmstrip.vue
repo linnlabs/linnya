@@ -108,6 +108,8 @@ const {
     viewportMountRef,
     viewportRef,
   },
+  // 共享默认只滚纵向；页面条只沿横向溢出，滚动条落在缩略图下方的留白里。
+  options: { overflow: { x: 'scroll', y: 'hidden' } },
 });
 
 /** 首次挂载时缩略图从左到右依次淡入，之后关闭，避免滚动时重放。 */
@@ -132,7 +134,7 @@ function handleViewportScroll(): void {
   containerProps.onScroll();
 }
 
-/** 鼠标滚轮只有纵向增量；在横向页面条里把它转成横向滚动。触控板横滑保持原生行为。 */
+/** 鼠标滚轮只有纵向增量；在横向页面条里把它转成横向滚动。触控板横滑与滚动条拖拽保持原生行为。 */
 function handleWheel(event: WheelEvent): void {
   const viewport = viewportMountRef.value;
   if (!viewport || event.ctrlKey || event.metaKey) return;

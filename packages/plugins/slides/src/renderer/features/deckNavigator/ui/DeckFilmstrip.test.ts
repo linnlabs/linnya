@@ -113,6 +113,8 @@ describe('DeckFilmstrip', () => {
     expect(overlayCall?.controller.init).toHaveBeenCalled();
     expect(overlayCall?.params.bindings.hostRef.value).toBe(host);
     expect(overlayCall?.params.bindings.viewportMountRef.value).toBe(viewport);
+    // 长列表需要可见的横向滚动条，而不是沿用共享默认的纵向滚动。
+    expect(overlayCall?.params.options?.overflow).toEqual({ x: 'scroll', y: 'hidden' });
     // 4:3 文稿保持 72px 页面条高度，宽度随比例变化。
     expect(container.querySelector('.slide-thumbnail-stub')?.getAttribute('data-width')).toBe('96');
     expect(container.querySelector('.slide-thumbnail-stub')?.getAttribute('data-height')).toBe('72');
