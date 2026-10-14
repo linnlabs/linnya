@@ -37,6 +37,13 @@ export function conversationMessageIdFromToolIdentity(
   );
 }
 
+/** 同一次 LLM 重试过程保持一条消息；新调用/恢复使用新的 retry_id。 */
+export function conversationMessageIdFromRetryIdentity(runId: string, retryId: string): ConversationMessageId {
+  return ConversationMessageIdSchema.parse(
+    `retry:${encodeURIComponent(ConversationRuntimeIdentityPartSchema.parse(runId))}:${encodeURIComponent(ConversationRuntimeIdentityPartSchema.parse(retryId))}`,
+  );
+}
+
 /**
  * Subrun 详情消息属于 parent trace 派生的独立 read model，不进入 Conversation window。
  * trace 的稳定 owner 是 subrun_id，因此不能伪造 child execution_id，也不能复用父 run 身份。

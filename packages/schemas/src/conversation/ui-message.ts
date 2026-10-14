@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ConversationExecutionNoticePayloadSchema } from './execution-notice';
 
 import { ConversationAttachmentRefSchema } from './attachment-ref';
 import { ConversationMessageIdSchema } from './message-identity';
@@ -30,6 +31,7 @@ export const ConversationTimelineMessageTypeSchema = z.enum([
   'tool_preamble',
   'partial_answer',
   'history_summary',
+  'execution_notice',
 ]);
 export type ConversationTimelineMessageType = z.infer<typeof ConversationTimelineMessageTypeSchema>;
 
@@ -47,6 +49,7 @@ export const ConversationUiMessageIdentitySchema = z.discriminatedUnion('message
   z.object({ role: z.literal('assistant'), message_type: z.literal('tool_preamble') }),
   z.object({ role: z.literal('assistant'), message_type: z.literal('partial_answer') }),
   z.object({ role: z.literal('system'), message_type: z.literal('history_summary') }),
+  z.object({ role: z.literal('system'), message_type: z.literal('execution_notice') }),
 ]);
 export type ConversationUiMessageIdentity = z.infer<typeof ConversationUiMessageIdentitySchema>;
 
@@ -95,6 +98,7 @@ export function parseConversationUiMessageVariant(input: {
       return { role: identity.role, type: identity.message_type };
     case 'partial_answer':
       return { role: identity.role, type: identity.message_type };
+    case 'execution_notice':
     case 'history_summary':
       return { role: identity.role, type: identity.message_type };
   }
@@ -122,6 +126,7 @@ export function parseConversationUiMessageKind(input: {
       return { role: identity.role, messageType: identity.message_type };
     case 'partial_answer':
       return { role: identity.role, messageType: identity.message_type };
+    case 'execution_notice':
     case 'history_summary':
       return { role: identity.role, messageType: identity.message_type };
   }
@@ -188,6 +193,12 @@ export const ConversationUiMessageSchema = z.discriminatedUnion('message_type', 
     role: z.literal('system'),
     message_type: z.literal('history_summary'),
     payload: ConversationHistorySummaryPayloadSchema,
+  }).strict(),
+  z.object({
+    ...ConversationUiMessageCommonFields,
+    role: z.literal('system'),
+    message_type: z.literal('execution_notice'),
+    payload: ConversationExecutionNoticePayloadSchema,
   }).strict(),
 ]);
 export type ConversationUiMessage = z.infer<typeof ConversationUiMessageSchema>;
