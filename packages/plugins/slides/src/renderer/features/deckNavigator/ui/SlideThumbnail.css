@@ -1,10 +1,21 @@
 .slide-thumbnail {
+  /*
+   * 阴影固定为“选中环 + 单层投影”两层，消费方只改这三个变量。
+   * 环的几何始终不变，状态切换时只插值环的颜色；若让模糊投影与强调色环互相过渡，
+   * 中间帧会出现向外扩散的强调色光晕。键盘焦点用 outline 表达，不参与阴影过渡。
+   */
+  --slide-thumbnail-ring-width: 1px;
+  --slide-thumbnail-ring-color: transparent;
+  --slide-thumbnail-shadow: 0 1px 2px var(--shadow-color-xs);
+
   box-sizing: border-box;
   overflow: hidden;
   border: 1px solid var(--color-border-light);
   border-radius: 6px;
   background: var(--color-bg-surface);
-  box-shadow: 0 1px 2px var(--shadow-color-xs);
+  box-shadow:
+    0 0 0 var(--slide-thumbnail-ring-width) var(--slide-thumbnail-ring-color),
+    var(--slide-thumbnail-shadow);
   pointer-events: none;
   contain: layout paint;
   transition:

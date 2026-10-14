@@ -39,21 +39,21 @@
 }
 
 .deck-filmstrip .deck-filmstrip__item:hover:not(.deck-filmstrip__item--current) .slide-thumbnail {
+  --slide-thumbnail-shadow: 0 4px 12px var(--shadow-color-sm);
+
   border-color: var(--color-border-hover);
-  box-shadow: 0 4px 12px var(--shadow-color-sm);
 }
 
 .deck-filmstrip .deck-filmstrip__item--current .slide-thumbnail {
+  --slide-thumbnail-ring-color: var(--color-accent);
+  --slide-thumbnail-shadow: 0 3px 10px var(--shadow-color-sm);
+
   border-color: var(--color-accent);
-  box-shadow:
-    0 0 0 1px var(--color-accent),
-    0 3px 10px var(--shadow-color-sm);
 }
 
 .deck-filmstrip .deck-filmstrip__item:focus-visible .slide-thumbnail {
-  box-shadow:
-    0 0 0 2px var(--color-bg-surface),
-    0 0 0 4px var(--color-border-focus);
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
 }
 
 .deck-filmstrip .deck-filmstrip__number {

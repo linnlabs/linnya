@@ -41,34 +41,33 @@
 }
 
 .slide-grid .slide-grid__cell .slide-thumbnail {
+  --slide-thumbnail-ring-width: 2px;
+  --slide-thumbnail-shadow: 0 2px 8px var(--shadow-color-xs);
+
   border-radius: 8px;
-  box-shadow:
-    0 1px 2px var(--shadow-color-xs),
-    0 2px 8px var(--shadow-color-xs);
 }
 
-.slide-grid .slide-grid__cell:hover:not(.slide-grid__cell--current) {
+/* 悬停抬起对当前页同样生效，点击选中时卡片不会先落回原位。 */
+.slide-grid .slide-grid__cell:hover {
   transform: translateY(-2px);
 }
 
 .slide-grid .slide-grid__cell:hover:not(.slide-grid__cell--current) .slide-thumbnail {
+  --slide-thumbnail-shadow: 0 10px 24px -6px var(--shadow-color-md);
+
   border-color: var(--color-border-hover);
-  box-shadow:
-    0 2px 4px var(--shadow-color-xs),
-    0 10px 24px -6px var(--shadow-color-md);
 }
 
 .slide-grid .slide-grid__cell--current .slide-thumbnail {
+  --slide-thumbnail-ring-color: var(--color-accent);
+  --slide-thumbnail-shadow: 0 8px 22px -8px var(--shadow-color-md);
+
   border-color: var(--color-accent);
-  box-shadow:
-    0 0 0 2px var(--color-accent),
-    0 8px 22px -8px var(--shadow-color-md);
 }
 
 .slide-grid .slide-grid__cell:focus-visible .slide-thumbnail {
-  box-shadow:
-    0 0 0 2px var(--color-bg-subtle),
-    0 0 0 4px var(--color-border-focus);
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 3px;
 }
 
 .slide-grid .slide-grid__caption {
@@ -110,7 +109,7 @@
   }
 
   .slide-grid .slide-grid__cell,
-  .slide-grid .slide-grid__cell:hover:not(.slide-grid__cell--current) {
+  .slide-grid .slide-grid__cell:hover {
     transform: none;
     transition: none;
   }

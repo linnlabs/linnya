@@ -21,6 +21,8 @@
 
 列表与平铺共用 `slidesThumbnailStore` 的同一份 `ImageBitmap`。平铺视图按卡片宽度（64px 档位、最多 384px）调用 `requestRasterWidth`，宽度增大时整组重绘，旧位图在替换前继续显示；离开平铺时撤销请求但不立即重绘，下次 RenderModel 变化时收敛回列表尺寸。`SlideThumbnail` 按显示尺寸与设备像素比分配 canvas，并以高质量缩放绘制位图。
 
+缩略图阴影固定为“选中环 + 单层投影”两层，列表与平铺只通过 `--slide-thumbnail-ring-width`、`--slide-thumbnail-ring-color`、`--slide-thumbnail-shadow` 表达默认、悬停与选中态；切换选中时环的几何不变、只过渡颜色，避免模糊投影与强调色环互相插值造成外扩闪烁。键盘焦点使用 outline。平铺卡片的悬停抬起对当前页同样生效，点击选中时不会先落回原位。
+
 ## 模块布局
 
 | 位置 | 职责 |
