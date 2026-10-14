@@ -164,6 +164,8 @@
 
 .custom-select__options .select-option,
 .custom-select__submenu .select-option {
+  box-sizing: border-box;
+  flex-shrink: 0;
   width: 100%;
   display: flex;
   align-items: center;
@@ -346,6 +348,7 @@
 
 .custom-select__options .select-group-title,
 .custom-select__submenu .select-group-title {
+  flex-shrink: 0;
   padding: 8px 6px 2px;
   font-size: 12px;
   font-weight: 400;
@@ -387,6 +390,9 @@
 }
 
 .custom-select__submenu {
+  --linnya-ui-select-menu-available-width: 0px;
+  --linnya-ui-select-menu-available-height: 0px;
+
   position: fixed;
   display: flex;
   flex-direction: column;
@@ -399,11 +405,26 @@
   box-shadow: var(--shadow-floating-panel);
 }
 
+/* 面板／颜色控件拥有自己的内容布局；只有普通选项列表建立滚动视口。 */
+.custom-select__submenu:not(.is-panel, .is-custom-component) {
+  box-sizing: border-box;
+  min-width: min(180px, var(--linnya-ui-select-menu-available-width));
+  max-width: min(320px, var(--linnya-ui-select-menu-available-width));
+  max-height: var(--linnya-ui-select-menu-available-height);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
 .custom-select__submenu.select-submenu--minimal {
   min-width: 0;
   max-width: 180px;
   padding: 4px;
   font-size: 13px;
+}
+
+.custom-select__submenu.select-submenu--minimal:not(.is-panel, .is-custom-component) {
+  min-width: 0;
+  max-width: min(180px, var(--linnya-ui-select-menu-available-width));
 }
 
 .custom-select__submenu.select-submenu--minimal .select-option {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, h, markRaw, nextTick } from 'vue';
 import { CustomSelect } from '../src';
 import type { CustomSelectValue } from '../src';
@@ -230,12 +230,47 @@ function mountOverflowingLabelSelectWithoutTooltip(): MountedCustomSelect {
 
 const mountedSelects: MountedCustomSelect[] = [];
 
-afterEach(() => {
+let frameId = 0;
+const animationFrames = new Map<number, FrameRequestCallback>();
+
+beforeEach(() => {
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    animationFrames.set(++frameId, callback);
+    return frameId;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => animationFrames.delete(id));
+});
+
+// 显式推进帧；不能同步执行 rAF，否则会掩盖 hidden 面板的焦点竞态。
+async function flushRendering() {
+  await nextTick();
+  const frames = [...animationFrames.values()];
+  animationFrames.clear();
+  for (const frame of frames) frame(0);
+  await nextTick();
+  await nextTick();
+}
+
+
+afterEach(async () => {
   while (mountedSelects.length > 0) mountedSelects.pop()?.unmount();
+  await flushRendering();
+  await flushRendering();
+  animationFrames.clear();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
 describe('CustomSelect 子菜单交互与定位', () => {
+  beforeEach(() => {
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('custom-select__submenu')) return new DOMRect(0, 0, 200, 200);
+      if (this.classList.contains('custom-select__options')) return new DOMRect(100, 100, 200, 240);
+      if (this.classList.contains('select-option')) return new DOMRect(100, 100, 200, 28);
+      return original.call(this);
+    });
+  });
   it('由公开属性控制主菜单向上展开的动效方向', async () => {
     const mounted = mountCustomSelect('up');
     mountedSelects.push(mounted);
@@ -243,30 +278,26 @@ describe('CustomSelect 子菜单交互与定位', () => {
     const trigger = mounted.host.querySelector('.select-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     trigger.click();
-    await nextTick();
+    await flushRendering();
 
     expect(mounted.host.querySelector('.custom-select__options')?.classList)
       .toContain('linnya-dropdown-up-enter-active');
   });
 
   it('长选项默认省略，并仅在真实溢出时于 hover 中滚动到末尾', async () => {
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      callback(0);
-      return 1;
-    });
     const mounted = mountOverflowingLabelSelect();
     mountedSelects.push(mounted);
 
     const trigger = mounted.host.querySelector('.select-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     trigger.click();
-    await nextTick();
+    await flushRendering();
 
     const provider = mounted.host.querySelector('.custom-select__options .select-option');
     if (!(provider instanceof HTMLButtonElement)) throw new Error('Provider option not found');
     provider.dispatchEvent(new MouseEvent('mouseenter'));
-    await nextTick();
-    await nextTick();
+    await flushRendering();
+    await flushRendering();
 
     const modelOption = document.body.querySelector('.custom-select__submenu .select-option');
     const label = modelOption?.querySelector('.option-label');
@@ -301,12 +332,12 @@ describe('CustomSelect 子菜单交互与定位', () => {
     const trigger = mounted.host.querySelector('.select-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     trigger.click();
-    await nextTick();
+    await flushRendering();
 
     const provider = mounted.host.querySelector('.custom-select__options .select-option');
     if (!(provider instanceof HTMLButtonElement)) throw new Error('Provider option not found');
     provider.dispatchEvent(new MouseEvent('mouseenter'));
-    await nextTick();
+    await flushRendering();
 
     const label = document.body.querySelector('.custom-select__submenu .option-label');
     if (!(label instanceof HTMLElement)) throw new Error('Model option label not found');
@@ -314,10 +345,6 @@ describe('CustomSelect 子菜单交互与定位', () => {
   });
 
   it('主菜单与子菜单共用标准菜单项合同并提交子项动作', async () => {
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      callback(0);
-      return 1;
-    });
     const onSelect = vi.fn();
     const mounted = mountUnifiedActionMenu(onSelect);
     mountedSelects.push(mounted);
@@ -325,7 +352,7 @@ describe('CustomSelect 子菜单交互与定位', () => {
     const trigger = mounted.host.querySelector('.select-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     trigger.click();
-    await nextTick();
+    await flushRendering();
 
     const parentOption = mounted.host.querySelector('.custom-select__options .select-option');
     if (!(parentOption instanceof HTMLButtonElement)) throw new Error('Parent option not found');
@@ -333,8 +360,8 @@ describe('CustomSelect 子菜单交互与定位', () => {
     expect(parentOption.querySelector('.contract-icon')).not.toBeNull();
 
     parentOption.dispatchEvent(new MouseEvent('mouseenter'));
-    await nextTick();
-    await nextTick();
+    await flushRendering();
+    await flushRendering();
 
     const childOption = document.body.querySelector('.custom-select__submenu .select-option');
     if (!(childOption instanceof HTMLButtonElement)) throw new Error('Child option not found');
@@ -354,7 +381,7 @@ describe('CustomSelect 子菜单交互与定位', () => {
     const trigger = mounted.host.querySelector('.select-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     trigger.click();
-    await nextTick();
+    await flushRendering();
 
     expect(mounted.host.querySelector('.select-options-header .model-search')).not.toBeNull();
     expect(mounted.host.querySelector('.custom-select__options .select-option')?.classList)
@@ -362,18 +389,14 @@ describe('CustomSelect 子菜单交互与定位', () => {
   });
 
   it('打开时只聚焦当前父项，右方向键才展开并聚焦已选子项', async () => {
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      callback(0);
-      return 1;
-    });
     const mounted = mountCustomSelect();
     mountedSelects.push(mounted);
 
     const trigger = mounted.host.querySelector('.select-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     trigger.click();
-    await nextTick();
-    await nextTick();
+    await flushRendering();
+    await flushRendering();
 
     const parentOption = mounted.host.querySelector('.custom-select__options .select-option');
     if (!(parentOption instanceof HTMLButtonElement)) throw new Error('Parent option not found');
@@ -381,7 +404,7 @@ describe('CustomSelect 子菜单交互与定位', () => {
     expect(document.body.querySelector('.custom-select__submenu')).toBeNull();
 
     parentOption.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-    await nextTick();
+    await flushRendering();
 
     const selectedChild = document.body.querySelector(
       '.custom-select__submenu .select-option.is-selected',
@@ -392,33 +415,25 @@ describe('CustomSelect 子菜单交互与定位', () => {
   });
 
   it('Enter 打开父项子菜单，不把 Provider 父项当成选择值', async () => {
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      callback(0);
-      return 1;
-    });
     const mounted = mountSearchableNestedSelect();
     mountedSelects.push(mounted);
 
     const trigger = mounted.host.querySelector('.select-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     trigger.click();
-    await nextTick();
+    await flushRendering();
 
     const provider = mounted.host.querySelector('.custom-select__options .select-option');
     if (!(provider instanceof HTMLButtonElement)) throw new Error('Provider option not found');
     provider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     provider.click();
-    await nextTick();
+    await flushRendering();
 
     expect(document.body.querySelector('.custom-select__submenu')).not.toBeNull();
     expect(document.activeElement?.textContent).toContain('GPT-5.6');
   });
 
   it('支持 Provider → 模型 → 思考强度两级子菜单并提交叶子值', async () => {
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      callback(0);
-      return 1;
-    });
     const onSelect = vi.fn();
     const mounted = mountDeeplyNestedSelect(onSelect);
     mountedSelects.push(mounted);
@@ -427,20 +442,20 @@ describe('CustomSelect 子菜单交互与定位', () => {
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     expect(trigger.textContent).toContain('GPT-5.6 · 高');
     trigger.click();
-    await nextTick();
+    await flushRendering();
 
     const provider = mounted.host.querySelector('.custom-select__options .select-option');
     if (!(provider instanceof HTMLButtonElement)) throw new Error('Provider option not found');
     provider.dispatchEvent(new MouseEvent('mouseenter'));
-    await nextTick();
-    await nextTick();
+    await flushRendering();
+    await flushRendering();
 
     const modelOption = document.body.querySelector('.custom-select__submenu .select-option');
     if (!(modelOption instanceof HTMLButtonElement)) throw new Error('Model option not found');
     expect(modelOption.classList).toContain('has-children');
     modelOption.dispatchEvent(new MouseEvent('mouseenter'));
-    await nextTick();
-    await nextTick();
+    await flushRendering();
+    await flushRendering();
 
     const effortOption = document.body.querySelector(
       '.custom-select__submenu--nested .select-option.is-selected',
@@ -453,28 +468,24 @@ describe('CustomSelect 子菜单交互与定位', () => {
   });
 
   it('右方向键逐级进入思考强度，左方向键返回模型', async () => {
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      callback(0);
-      return 1;
-    });
     const mounted = mountDeeplyNestedSelect(vi.fn());
     mountedSelects.push(mounted);
 
     const trigger = mounted.host.querySelector('.select-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     trigger.click();
-    await nextTick();
+    await flushRendering();
 
     const provider = mounted.host.querySelector('.custom-select__options .select-option');
     if (!(provider instanceof HTMLButtonElement)) throw new Error('Provider option not found');
     provider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-    await nextTick();
+    await flushRendering();
 
     const modelOption = document.body.querySelector('.custom-select__submenu .select-option');
     if (!(modelOption instanceof HTMLButtonElement)) throw new Error('Model option not found');
     expect(document.activeElement).toBe(modelOption);
     modelOption.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-    await nextTick();
+    await flushRendering();
 
     const selectedEffort = document.body.querySelector(
       '.custom-select__submenu--nested .select-option.is-selected',
@@ -483,16 +494,13 @@ describe('CustomSelect 子菜单交互与定位', () => {
     expect(document.activeElement).toBe(selectedEffort);
 
     selectedEffort.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-    await nextTick();
+    await flushRendering();
     expect(document.activeElement).toBe(modelOption);
+    await flushRendering();
     expect(document.body.querySelector('.custom-select__submenu--nested')).toBeNull();
   });
 
   it('Teleport 子菜单层级高于 Settings 等外层浮层，而不是停在内部菜单层级', async () => {
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      callback(0);
-      return 1;
-    });
     const mounted = mountCustomSelect();
     mounted.host.style.position = 'fixed';
     mounted.host.style.zIndex = '2000';
@@ -501,7 +509,7 @@ describe('CustomSelect 子菜单交互与定位', () => {
     const trigger = mounted.host.querySelector('.select-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     trigger.click();
-    await nextTick();
+    await flushRendering();
 
     const optionsPanel = mounted.host.querySelector('.custom-select__options');
     const parentOption = optionsPanel?.querySelector('.select-option');
@@ -511,8 +519,8 @@ describe('CustomSelect 子菜单交互与定位', () => {
     optionsPanel.style.position = 'absolute';
     optionsPanel.style.zIndex = '100';
     parentOption.dispatchEvent(new MouseEvent('mouseenter'));
-    await nextTick();
-    await nextTick();
+    await flushRendering();
+    await flushRendering();
 
     const submenu = document.body.querySelector('.custom-select__submenu');
     if (!(submenu instanceof HTMLElement)) throw new Error('Submenu not found');
@@ -520,17 +528,13 @@ describe('CustomSelect 子菜单交互与定位', () => {
   });
 
   it('主菜单滚动后，子菜单顶部仍与当前父项对齐', async () => {
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      callback(0);
-      return 1;
-    });
     const mounted = mountCustomSelect();
     mountedSelects.push(mounted);
 
     const trigger = mounted.host.querySelector('.select-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     trigger.click();
-    await nextTick();
+    await flushRendering();
 
     const optionsPanel = mounted.host.querySelector('.custom-select__options');
     const parentOption = optionsPanel?.querySelector('.select-option');
@@ -564,8 +568,8 @@ describe('CustomSelect 子菜单交互与定位', () => {
     });
 
     parentOption.dispatchEvent(new MouseEvent('mouseenter'));
-    await nextTick();
-    await nextTick();
+    await flushRendering();
+    await flushRendering();
 
     const submenu = document.body.querySelector('.custom-select__submenu');
     if (!(submenu instanceof HTMLElement)) throw new Error('Submenu not found');
@@ -574,17 +578,13 @@ describe('CustomSelect 子菜单交互与定位', () => {
 
   it('底部父项下方空间不足时，子菜单底部与父项底部对齐', async () => {
     vi.stubGlobal('innerHeight', 500);
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      callback(0);
-      return 1;
-    });
     const mounted = mountCustomSelect();
     mountedSelects.push(mounted);
 
     const trigger = mounted.host.querySelector('.select-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     trigger.click();
-    await nextTick();
+    await flushRendering();
 
     const optionsPanel = mounted.host.querySelector('.custom-select__options');
     const parentOption = optionsPanel?.querySelector('.select-option');
@@ -616,28 +616,24 @@ describe('CustomSelect 子菜单交互与定位', () => {
     });
 
     parentOption.dispatchEvent(new MouseEvent('mouseenter'));
-    await nextTick();
-    await nextTick();
+    await flushRendering();
+    await flushRendering();
 
     const submenu = document.body.querySelector('.custom-select__submenu');
     if (!(submenu instanceof HTMLElement)) throw new Error('Submenu not found');
-    // jsdom 无 CSS 布局，组件使用 200px 的默认测量高度：472 - 200 = 272。
+    // jsdom 显式提供 200px 的受限面板测量高度：472 - 200 = 272。
     expect(submenu.style.top).toBe('272px');
   });
 
   it('顶部和底部对齐都会越界时，子菜单才围绕父项居中', async () => {
     vi.stubGlobal('innerHeight', 240);
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      callback(0);
-      return 1;
-    });
     const mounted = mountCustomSelect();
     mountedSelects.push(mounted);
 
     const trigger = mounted.host.querySelector('.select-trigger');
     if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
     trigger.click();
-    await nextTick();
+    await flushRendering();
 
     const optionsPanel = mounted.host.querySelector('.custom-select__options');
     const parentOption = optionsPanel?.querySelector('.select-option');
@@ -669,12 +665,12 @@ describe('CustomSelect 子菜单交互与定位', () => {
     });
 
     parentOption.dispatchEvent(new MouseEvent('mouseenter'));
-    await nextTick();
-    await nextTick();
+    await flushRendering();
+    await flushRendering();
 
     const submenu = document.body.querySelector('.custom-select__submenu');
     if (!(submenu instanceof HTMLElement)) throw new Error('Submenu not found');
-    // 父项中心 120px，默认子菜单半高 100px，因此 top 为 20px。
+    // 父项中心 120px，受限子菜单半高 100px，因此 top 为 20px。
     expect(submenu.style.top).toBe('20px');
   });
 });

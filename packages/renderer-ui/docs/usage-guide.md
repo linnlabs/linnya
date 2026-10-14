@@ -68,6 +68,10 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 
 二级动作通过 option 的 `children` 表达，主菜单和普通子菜单由组件内部的同一份标准选项渲染合同负责。业务组件不得复制子菜单按钮、选中态、禁用态或图标模板；内容不是标准选项列表时，才使用 `BaseDropdown` 或 `CustomSelect` 的明确面板能力。
 
+普通子菜单的两级列表按窗口可用尺寸限制面板，内容通过原生滚动完整访问，不限制选项数量。方向键或 Enter/Space 展开后，组件在面板可见时才进入首个或已选子项；hover 不移走当前焦点。父菜单滚动或窗口 resize 时子层更新位置，父项完全离开可见区域后关闭该子层及其后代。关闭、切换父项或卸载会取消尚未完成的焦点交接。
+
+`isPanel`、`isColorPicker` 和 `panel` slot 保留各自内容布局，普通列表的滚动限制不裁剪这些控件；自定义面板的内容滚动仍由其 owner 管理。manual 模式保留原位子菜单，调用方仍负责根菜单位置及外层 containing block；本合同不修正业务根菜单本身的边缘定位。
+
 业务确需保持交互不变并调整某个菜单节点时，使用 `classNames` 或 option 自身的 class 字段注入业务命名空间 class；`.select-*`、`.option-*` 和 `.custom-select__*` 属于 package 内部实现。独立业务面板只可通过 `DROPDOWN_SURFACE_CLASSES` 复用标准 surface，不借用内部 options class。
 
 选择面板需要向上展开时，传入 `options-motion-direction="up"`；不要覆盖包内私有 transition class。

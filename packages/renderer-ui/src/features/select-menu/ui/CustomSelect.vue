@@ -328,6 +328,7 @@ const { isOpen, toggle, close } = useDropdown({
   containerRef: selectRef,
   externalTriggerRef: externalTriggerRefProp,
   dropdownRef: optionsRef,
+  additionalContentRefs: [submenuRef, nestedSubmenuRef],
   onClose: () => emit('close'),
 });
 
@@ -354,6 +355,7 @@ const {
   submenuPosition: nestedSubmenuPosition,
   handleOptionHover: nestedSubmenuHandleOptionHover,
   openSubmenu: openNestedSubmenu,
+  repositionSubmenu: repositionNestedSubmenu,
   handleMainMenuLeave: handleNestedMenuLeave,
   keepSubmenuOpen: keepNestedSubmenuOpen,
   forceCloseSubmenu: forceCloseNestedSubmenu,
@@ -488,8 +490,7 @@ function selectOption(option: CustomSelectOption<Value>) {
 /** 带 children 的父项由 hover、右方向键和 Enter/Space 共同打开，不产生伪选择值。 */
 function activateOption(option: CustomSelectOption<Value>, event: MouseEvent) {
   if (option.children?.length && !option.allowDirectSelect && !option.disabled) {
-    openSubmenu(option, event.currentTarget);
-    void nextTick(focusCurrentSubmenuOption);
+    void openSubmenu(option, event.currentTarget, focusCurrentSubmenuOption);
     return;
   }
   selectOption(option);
@@ -497,8 +498,7 @@ function activateOption(option: CustomSelectOption<Value>, event: MouseEvent) {
 
 function activateSubmenuOption(option: CustomSelectOption<Value>, event: MouseEvent) {
   if (option.children?.length && !option.allowDirectSelect && !option.disabled) {
-    openNestedSubmenu(option, event.currentTarget);
-    void nextTick(focusCurrentNestedSubmenuOption);
+    void openNestedSubmenu(option, event.currentTarget, focusCurrentNestedSubmenuOption);
     return;
   }
   selectOption(option);
@@ -522,8 +522,7 @@ const handleOptionHover = (option: CustomSelectOption<Value>, event: MouseEvent,
 const handleOptionSubmenuOpen = (option: CustomSelectOption<Value>, event: KeyboardEvent) => {
   if (option.disabled || !option.children?.length) return;
   event.preventDefault();
-  openSubmenu(option, event.currentTarget);
-  void nextTick(focusCurrentSubmenuOption);
+  void openSubmenu(option, event.currentTarget, focusCurrentSubmenuOption);
 };
 
 const handleNestedOptionHover = (option: CustomSelectOption<Value>, event: MouseEvent) => {
@@ -537,8 +536,7 @@ const handleNestedOptionHover = (option: CustomSelectOption<Value>, event: Mouse
 const handleNestedOptionSubmenuOpen = (option: CustomSelectOption<Value>, event: KeyboardEvent) => {
   if (option.disabled || !option.children?.length) return;
   event.preventDefault();
-  openNestedSubmenu(option, event.currentTarget);
-  void nextTick(focusCurrentNestedSubmenuOption);
+  void openNestedSubmenu(option, event.currentTarget, focusCurrentNestedSubmenuOption);
 };
 
 const handleNestedSubmenuEnter = () => {
@@ -607,6 +605,9 @@ watch(computedIsOpen, (newValue, oldValue) => {
 watch(hoveredOptionWithChildren, () => {
   forceCloseNestedSubmenu();
 }, { flush: 'sync' });
+
+// 一级位置提交后，再更新二级锚点，避免读取仍在旧位置的父列表。
+watch(submenuPosition, repositionNestedSubmenu, { flush: 'post' });
 
 // 监听父组件的打开状态，在 manualMode 下同步关闭子菜单
 watch(() => props.parentIsOpen, (newValue) => {

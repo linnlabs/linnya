@@ -8,6 +8,7 @@ interface UseDropdownOptions {
   containerRef?: Ref<HTMLElement | null> | null;
   externalTriggerRef?: Ref<DropdownElementReference> | DropdownElementReference;
   dropdownRef?: Ref<DropdownElementReference> | DropdownElementReference;
+  additionalContentRefs?: readonly Ref<HTMLElement | null>[];
   onClose?: (() => void) | null;
 }
 
@@ -26,6 +27,7 @@ export function useDropdown({
   containerRef = null,
   externalTriggerRef = null,
   dropdownRef = null,
+  additionalContentRefs = [],
   onClose = null,
 }: UseDropdownOptions = {}) {
   const isOpen = ref(false);
@@ -54,6 +56,8 @@ export function useDropdown({
     const container = unref(containerRef);
     const dropdown = resolveElement(dropdownRef);
     if (container?.contains(target) || dropdown?.contains(target)) return;
+    // Teleport 只改变 DOM 位置；子菜单和自定义控件仍属于同一次菜单交互。
+    if (additionalContentRefs.some(reference => reference.value?.contains(target))) return;
 
     const trigger = resolveElement(externalTriggerRef);
     if (trigger?.contains(target)) return;

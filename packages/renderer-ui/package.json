@@ -47,6 +47,7 @@
     "pack-smoke": "node scripts/verifyPackedPackage.mjs",
     "style-audit": "node scripts/verifyStyleContract.mjs",
     "test": "vitest run --config vitest.config.ts",
+    "test:browser": "vue-tsc --noEmit -p tests/browser/tsconfig.json && node scripts/verifyMenuBrowser.mjs",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "verify": "pnpm run gate"
   }

@@ -236,6 +236,8 @@ CustomNumberInput 同样把普通 `class` / `style` 留给根节点，原生 num
 
 CustomSelect 统一拥有普通选择器、动作菜单、手动触发、Portal 定位、最多两级标准子菜单、行内数字输入和两种键盘所有权。`CustomSelectOption<Value>` 是唯一选项合同：组标题与分隔符不可选择；有 children 的父项默认只展开；确实需要父项同时可选时才使用 `allowDirectSelect`。动作菜单必须显式声明 `semanticRole="menu"`，编辑器持有焦点的场景通过组件公开的 `onKeyDown` 委托按键。
 
+两级普通子菜单由组件限制在可用视口内并原生滚动；键盘展开在显示完成后进入子项，hover 不转移焦点。父菜单滚动或窗口 resize 时同步锚点，父项离开可见区域后关闭该子层。面板和颜色控件保持自己的内容尺寸与滚动所有权；manual 根菜单的定位仍归调用方。此实现修复不新增公开 API，也不改变 option 值或选择事件。
+
 普通 `class` / `style` 只控制组件根节点。业务 owner 若需要保持组件行为不变并调整指定节点，只能通过 `classNames` 映射注入自己的命名空间 class；支持 trigger、selectedValue、arrowIcon、options、optionsHeader、submenu、nestedSubmenu、option、optionLabel、optionIcon、optionShortcut 和 optionArrow。`.select-*`、`.option-*`、`.custom-select__*` 都是包内实现，不是 CSS API。单个选项确有独立业务语义时，可使用 option 的 `className`、`labelClassName`、`iconClassName` 或 `shortcutClassName`。
 
 `BaseDropdown` 只管理开关、点击外部关闭、Escape 和焦点归还，不接管业务面板内容。其触发器和面板同属已挂载容器，受控模式也立即监听外部点击，不继承临时手动菜单的延迟。公开 `DropdownActions` 提供 open、close 和 closeAndFocus；Apply 或局部 Escape 需要显式归还焦点时调用 closeAndFocus，外部点击关闭不抢焦点。Teleport 内容必须通过 `externalContentRef` 告知组件。独立业务面板需要复用标准浮层外观时，使用 `DROPDOWN_SURFACE_CLASSES` 提供的公开 surface 类，禁止借用 CustomSelect 内部面板类。
@@ -273,3 +275,5 @@ Host 只加载一次 `/styles.css`，顺序固定为：Host reset/document basel
 ## 独立门禁
 
 运行 `pnpm --dir packages/renderer-ui run gate`。该命令独立执行 Vue/TypeScript 检查、ActionButtons/font-stack/selection/theme/scroll/localization/Tooltip/Notification 行为测试、CSS token/theme/资产闭包审计，并把真实 tarball 解包后交给一个最小 Vite/Vue consumer 构建。consumer 会真实导入并渲染 ActionButtons、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar 与 `/icons` 图标，并调用 `/font-stack`、颜色/面板/Tooltip 定位纯函数和 `/localization` fallback；发布内容、显式 exports、runtime dependency、Vue SFC、CSS side-effect 与固定 `tokens.css`/`styles.css` 身份因此不依赖 Host 源码碰巧存在。
+
+菜单尺寸、滚动或焦点时序改动另运行 `pnpm --dir packages/renderer-ui run test:browser`：使用本仓 Electron/Chromium 与独立临时 profile、Vite 页面和端口验证原生按键／滚轮、170/171 项、两级、manual/Teleport、三主题及自定义内容，不连接 Desktop Backend。完整 Workspace 转移、Editor 与插件页面仍按消费者验收，不能以此 harness 代替。
