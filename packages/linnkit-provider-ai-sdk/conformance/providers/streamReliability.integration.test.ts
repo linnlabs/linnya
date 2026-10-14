@@ -145,7 +145,7 @@ describe('AI SDK stream reliability integration', () => {
     const events = await collect(capability.stream(invocation()));
 
     expect(events.at(-1)).toEqual({
-      type: 'failure', kind: 'protocol', code: 'provider_tool_call_invalid', retryable: false,
+      type: 'failure', kind: 'protocol', code: 'provider_tool_call_invalid', retryable: false, retry_category: 'output',
     });
     expect(events.some(event => event.type === 'tool_call_end')).toBe(false);
   });
@@ -252,12 +252,13 @@ describe('AI SDK stream reliability integration', () => {
     expect(diagnostics).not.toContainEqual(expect.objectContaining({ type: 'stream_idle_timeout' }));
   });
 
-  it('未知上游 stream rejection 形成可重试 transport failure 且不传播正文', async () => {
+  it.each([undefined, 'ECONNRESET'])('上游 stream rejection 保留传输分类且不传播正文：%s', async code => {
     const model = modelWithStream(
       () =>
         new ReadableStream<LanguageModelV4StreamPart>({
           start(controller) {
-            controller.error(new Error('sensitive gateway disconnect detail'));
+            const error = new Error('sensitive gateway disconnect detail');
+            controller.error(code === undefined ? error : Object.assign(error, { code }));
           },
         })
     );

@@ -25,7 +25,13 @@ describe('projectAiSdkFinishReason', () => {
     ['rate_limit_error', 'provider_stream_rate_limited'],
   ] as const)('把非标准临时结束 %s 投影为可重试 Provider 故障', (rawReason, code) => {
     expect(projectAiSdkFinishReason('other', rawReason)).toEqual({
-      event: { type: 'failure', kind: 'provider', code, retryable: true },
+      event: {
+        type: 'failure',
+        kind: 'provider',
+        code,
+        retryable: true,
+        ...(rawReason === 'rate_limit_error' ? { retry_category: 'rate_limit' } : {}),
+      },
       raw_reason_category: rawReason,
     });
   });

@@ -1,10 +1,110 @@
-import { APICallError, JSONParseError, StreamProviderError, TypeValidationError } from 'ai';
+import {
+  APICallError,
+  EmptyResponseBodyError,
+  JSONParseError,
+  StreamProviderError,
+  TypeValidationError,
+} from 'ai';
 import { describe, expect, it } from 'vitest';
 import { AiSdkHostStreamInvariantError } from '../definitions/aiSdkHostStreamInvariantError';
+import { AiSdkToolCallError } from '../definitions/aiSdkToolCallError';
 import { classifyAiSdkFailure } from '../functions/classifyAiSdkFailure';
 import { projectAiSdkFailureObservation } from '../functions/projectAiSdkFailureObservation';
 
 describe('classifyAiSdkFailure', () => {
+  it('把HTTP与流内429投影为限流类别，不让框架猜供应商code', () => {
+    const httpError = new APICallError({
+      message: 'sensitive rate-limit message',
+      url: 'https://fixture.invalid/v1/chat/completions',
+      requestBodyValues: { messages: ['secret prompt'] },
+      statusCode: 429,
+      isRetryable: true,
+    });
+    for (const failure of [
+      classifyAiSdkFailure(httpError, undefined),
+      classifyAiSdkFailure({ status: 429 }, undefined, 'provider_stream'),
+    ]) {
+      expect(failure).toEqual({
+        kind: 'provider',
+        code: 'provider_http_429',
+        retryable: true,
+        retry_category: 'rate_limit',
+      });
+      expect(JSON.stringify(failure)).not.toContain('sensitive');
+    }
+  });
+
+  it('损坏工具参数明确属于输出重试，而非法工具调用仍不可重试', () => {
+    expect(
+      classifyAiSdkFailure(new AiSdkToolCallError('provider_tool_arguments_invalid'), undefined)
+    ).toEqual({
+      kind: 'protocol',
+      code: 'provider_tool_arguments_invalid',
+      retryable: true,
+      retry_category: 'output',
+    });
+    expect(
+      classifyAiSdkFailure(new AiSdkToolCallError('provider_tool_call_invalid'), undefined)
+    ).toEqual({
+      kind: 'protocol',
+      code: 'provider_tool_call_invalid',
+      retryable: false,
+      retry_category: 'output',
+    });
+  });
+
+  it('已取得的空响应 body 使用输出预算，真实断连仍使用传输预算', () => {
+    expect(classifyAiSdkFailure(new EmptyResponseBodyError(), undefined)).toEqual({
+      kind: 'transport',
+      code: 'provider_empty_response',
+      retryable: true,
+      retry_category: 'output',
+    });
+    expect(classifyAiSdkFailure(new TypeError('connection reset'), undefined)).toEqual({
+      kind: 'transport',
+      code: 'provider_transport_error',
+      retryable: true,
+    });
+  });
+
+  it('已有ECONNRESET信号保持传输语义，HTTP拒绝和不可重试声明优先', () => {
+    const socketError = Object.assign(new Error('sensitive socket detail'), { code: 'ECONNRESET' });
+    const wrapped = new Error('sensitive wrapper', { cause: socketError });
+    wrapped.name = 'OllamaError';
+    for (const error of [socketError, wrapped]) {
+      expect(classifyAiSdkFailure(error, undefined, 'provider_stream')).toEqual({
+        kind: 'transport',
+        code: 'provider_stream_error',
+        retryable: true,
+      });
+    }
+    expect(
+      classifyAiSdkFailure({ code: 'ECONNRESET', retryable: false }, undefined, 'provider_stream')
+    ).toEqual({
+      kind: 'transport',
+      code: 'provider_stream_error',
+      retryable: false,
+    });
+    expect(
+      classifyAiSdkFailure({ code: 'ECONNRESET', status: 401 }, undefined, 'provider_stream')
+    ).toEqual({
+      kind: 'provider',
+      code: 'provider_http_401',
+      retryable: false,
+    });
+    expect(
+      classifyAiSdkFailure(
+        { code: 'maybe_econnreset', retryable: true },
+        undefined,
+        'provider_stream'
+      )
+    ).toEqual({
+      kind: 'provider',
+      code: 'provider_stream_error',
+      retryable: true,
+    });
+  });
+
   it('把 Provider HTTP 错误投影为稳定安全分类', () => {
     const error = new APICallError({
       message: 'sensitive upstream body',
@@ -170,6 +270,7 @@ describe('classifyAiSdkFailure', () => {
       kind: 'provider',
       code: 'provider_stream_rate_limited',
       retryable: true,
+      retry_category: 'rate_limit',
     });
   });
 

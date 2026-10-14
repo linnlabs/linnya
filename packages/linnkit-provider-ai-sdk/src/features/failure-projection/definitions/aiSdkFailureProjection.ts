@@ -1,9 +1,12 @@
 import type { CanonicalInferenceFailureKind } from '@linnlabs/linnkit/ports';
+import type { LlmRetryCategory } from '@linnlabs/linnkit/contracts';
 
 export interface AiSdkFailureProjection {
   readonly kind: CanonicalInferenceFailureKind;
   readonly code: string;
   readonly retryable: boolean;
+  /** Adapter 解释已取得的供应商信号；框架只按通用类别治理预算，不猜供应商 code。 */
+  readonly retry_category?: LlmRetryCategory;
 }
 
 export type AiSdkFailurePhase = 'provider_call' | 'request_projection' | 'provider_stream';

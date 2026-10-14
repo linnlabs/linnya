@@ -5,7 +5,7 @@
 ## 职责
 
 - 读取 AI SDK `APICallError`、SDK error class、decoded stream error 与 finish reason；
-- 输出稳定的 `{ kind, code, retryable }` 或 canonical terminal event；
+- 输出稳定的 `{ kind, code, retryable, retry_category? }` 或 canonical terminal event；
 - 只保留无敏感信息的判别字段，不把 Provider message、response body、prompt、URL 或凭据带入 canonical 合同与日志；
 - 用 fixture matrix 固化 HTTP、stream、finish、schema/JSON、empty/transport 与 Abort 语义。
 - 通过安全 observation 只记录 phase、error shape 与 canonical failure，不记录原始 error message/stack/body。
@@ -31,3 +31,7 @@ Stream 失败必须先区分 owner：`AiSdkHostStreamInvariantError` 表示 Host
 有限 `invariant_code` 与触发失败的 `stream_part_type`，不保留工具名、参数、错误正文或 reasoning。
 
 `APICallError` 已带 HTTP status 时，重试语义由本 feature 的稳定状态码规则决定；没有 status 时表示尚未取得 HTTP response，此时只接纳 AI SDK 明确给出的 `isRetryable`。可重试项投影为 `transport/provider_transport_error`，不得因缺少 status 降级成不可重试的通用 Provider 错误，也不得从 message 猜测网络故障。
+
+Linnkit 0.38 起，已知 HTTP/decoded 429 与限流 finish reason 额外投影 `retry_category: rate_limit`，模型坏工具参数与 SDK 已取得但正文为空的响应投影 `output`。类别来自本 feature 已解码的事实，不靠框架猜 Provider code；原有安全错误码、是否可重试保持不变，次数和等待策略仍由 Host 与 Linnkit 决定。
+
+已解码、无冲突 HTTP 状态的 `ECONNRESET` 显式归为 transport，保留原安全 `provider_stream_error` 与不可重试声明；不能因它带有结构化 code 就落入未知 Provider 类。原始错误文本不参与这条规则。

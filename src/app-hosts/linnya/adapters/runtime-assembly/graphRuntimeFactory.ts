@@ -81,8 +81,10 @@ export function createDefaultLlmCaller(options: DefaultLlmCallerOptions = {}): l
     modelCatalog,
   });
   return new llm.LlmCaller({
-    // Host 只声明预算与等待下限，重试、较长建议间隔和总 attempt 上限仍由 Linnkit 管理。
+    // 传输抖动可多等几次；损坏输出会重新生成长上下文，不能一并翻倍其付费机会。
+    // 分类计数、退避、取消与混合错误的总 attempt 上限仍由 Linnkit 唯一拥有。
     maxRetries: 6,
+    maxRetriesByCategory: { output: 3, rate_limit: 3, other: 3 },
     retryDelayMs: 1_500,
     modelResolver,
     modelCatalog,

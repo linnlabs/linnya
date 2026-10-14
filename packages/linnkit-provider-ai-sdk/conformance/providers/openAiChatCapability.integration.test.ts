@@ -96,7 +96,7 @@ describe('OpenAI Chat AI SDK capability integration', () => {
 
     expect(requestCount).toBe(1);
     expect(events.at(-1)).toEqual({
-      type: 'failure', kind: 'protocol', code: 'provider_tool_arguments_invalid', retryable: true,
+      type: 'failure', kind: 'protocol', code: 'provider_tool_arguments_invalid', retryable: true, retry_category: 'output',
     });
     expect(events.filter(event => event.type === 'failure')).toHaveLength(1);
     expect(events.some(event => event.type === 'tool_call_end' || event.type === 'finish')).toBe(false);

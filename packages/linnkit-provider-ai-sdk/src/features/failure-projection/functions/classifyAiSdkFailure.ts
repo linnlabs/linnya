@@ -356,6 +356,7 @@ function classifyStructuredProviderError(error: StructuredProviderError): AiSdkF
       kind: 'provider',
       code: `provider_http_${error.status}`,
       retryable: retryableStatus(error.status),
+      ...(error.status === 429 ? { retry_category: 'rate_limit' as const } : {}),
     };
   }
   // Ollama 原生 `{ error }` 在没有可识别类别时只留下“这是流错误且可重试”的信号，
@@ -373,7 +374,12 @@ function classifyStructuredProviderError(error: StructuredProviderError): AiSdkF
     case 'quota':
       return { kind: 'provider', code: 'provider_quota_exhausted', retryable: false };
     case 'rate_limit':
-      return { kind: 'provider', code: 'provider_stream_rate_limited', retryable: true };
+      return {
+        kind: 'provider',
+        code: 'provider_stream_rate_limited',
+        retryable: true,
+        retry_category: 'rate_limit',
+      };
     case 'overload':
       return { kind: 'provider', code: 'provider_stream_unavailable', retryable: true };
     case 'timeout':
@@ -396,7 +402,12 @@ function classifyStructuredProviderError(error: StructuredProviderError): AiSdkF
     return { kind: 'provider', code: 'provider_quota_exhausted', retryable: false };
   }
   if (/(rate[_ -]?limit|too[_ -]?many[_ -]?requests)/u.test(discriminator)) {
-    return { kind: 'provider', code: 'provider_stream_rate_limited', retryable: true };
+    return {
+      kind: 'provider',
+      code: 'provider_stream_rate_limited',
+      retryable: true,
+      retry_category: 'rate_limit',
+    };
   }
   if (
     /(overload|server[_ -]?error|service[_ -]?unavailable|upstream[_ -]?error)/u.test(discriminator)
@@ -418,6 +429,11 @@ function classifyStructuredProviderError(error: StructuredProviderError): AiSdkF
   if (/(invalid|bad[_ -]?request|context[_ -]?length)/u.test(discriminator)) {
     return { kind: 'provider', code: 'provider_http_400', retryable: false };
   }
+  // 已取得的 Node 连接重置信号属于传输故障；有 code 不能反而落入未知 Provider 类别。
+  // HTTP 状态优先，且显式不可重试仍保留；不根据异常 message 猜网络错误。
+  if (error.code === 'econnreset') {
+    return { kind: 'transport', code: 'provider_stream_error', retryable: error.retryable ?? true };
+  }
   return { kind: 'provider', code: 'provider_stream_error', retryable: error.retryable ?? false };
 }
 
@@ -438,6 +454,7 @@ export function classifyAiSdkFailure(
       kind: 'protocol',
       code: error.failure_code,
       retryable: error.failure_code === 'provider_tool_arguments_invalid',
+      retry_category: 'output',
     };
   }
   if (APICallError.isInstance(error)) {
@@ -461,7 +478,7 @@ export function classifyAiSdkFailure(
     }
     // AI SDK 把尚未取得 HTTP response 的 fetch 失败包装为无 status 的 APICallError，
     // 并用 isRetryable 保留 transport 语义。这里只接纳这一个显式信号；已有 HTTP
-    // status 的请求仍由 Linnkit 的稳定状态码规则拥有重试决策。
+    // status 的请求由 adapter 投影安全失败与通用重试类别，Linnkit 不解释供应商状态码。
     if (status === undefined && error.isRetryable) {
       return { kind: 'transport', code: 'provider_transport_error', retryable: true };
     }
@@ -469,6 +486,7 @@ export function classifyAiSdkFailure(
       kind: 'provider',
       code: status === undefined ? 'provider_api_error' : `provider_http_${status}`,
       retryable: retryableStatus(status),
+      ...(status === 429 ? { retry_category: 'rate_limit' as const } : {}),
     };
   }
   if (TypeValidationError.isInstance(error) || InvalidResponseDataError.isInstance(error)) {
@@ -478,7 +496,13 @@ export function classifyAiSdkFailure(
     return { kind: 'protocol', code: 'provider_response_json_invalid', retryable: false };
   }
   if (EmptyResponseBodyError.isInstance(error)) {
-    return { kind: 'transport', code: 'provider_empty_response', retryable: true };
+    // SDK 已取得响应但没有正文；不能把一次空交付当成可多付费尝试的连接抖动。
+    return {
+      kind: 'transport',
+      code: 'provider_empty_response',
+      retryable: true,
+      retry_category: 'output',
+    };
   }
   if (UnsupportedFunctionalityError.isInstance(error)) {
     return { kind: 'protocol', code: 'provider_feature_unsupported', retryable: false };

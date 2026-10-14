@@ -94,7 +94,7 @@ describe('Ollama Provider package codec conformance', () => {
 
       expect(result.requestCount).toBe(1);
       expect(result.events.at(-1)).toEqual({
-        type: 'failure', kind: 'protocol', code: 'provider_tool_arguments_invalid', retryable: true,
+        type: 'failure', kind: 'protocol', code: 'provider_tool_arguments_invalid', retryable: true, retry_category: 'output',
       });
       expect(result.events.filter(event => event.type === 'failure')).toHaveLength(1);
       expect(result.events.some(event => event.type === 'tool_call_end')).toBe(false);

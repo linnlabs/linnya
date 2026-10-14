@@ -52,8 +52,14 @@ function finish(reason: 'stop' | 'length' | 'tool_use' | 'content_filter'): Cano
   return { type: 'finish', reason };
 }
 
-function providerFailure(code: string): CanonicalTerminalEvent {
-  return { type: 'failure', kind: 'provider', code, retryable: true };
+function providerFailure(code: string, retryCategory?: 'rate_limit'): CanonicalTerminalEvent {
+  return {
+    type: 'failure',
+    kind: 'provider',
+    code,
+    retryable: true,
+    ...(retryCategory ? { retry_category: retryCategory } : {}),
+  };
 }
 
 /**
@@ -85,7 +91,7 @@ export function projectAiSdkFinishReason(
       }
       if (rawReasonCategory === 'rate_limit_error') {
         return {
-          event: providerFailure('provider_stream_rate_limited'),
+          event: providerFailure('provider_stream_rate_limited', 'rate_limit'),
           raw_reason_category: rawReasonCategory,
         };
       }
@@ -96,10 +102,10 @@ export function projectAiSdkFinishReason(
         };
       }
       if (
-        rawReasonCategory === 'overloaded'
-        || rawReasonCategory === 'server_error'
-        || rawReasonCategory === 'service_unavailable'
-        || rawReasonCategory === 'upstream_error'
+        rawReasonCategory === 'overloaded' ||
+        rawReasonCategory === 'server_error' ||
+        rawReasonCategory === 'service_unavailable' ||
+        rawReasonCategory === 'upstream_error'
       ) {
         return {
           event: providerFailure('provider_stream_unavailable'),

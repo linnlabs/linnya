@@ -116,7 +116,7 @@ Core 和具体 Provider packages。
 - production → `@linnlabs/linnkit-provider-ai-sdk/conformance`。
 
 `@linnlabs/linnkit` 是显式 peer dependency，本 package 只使用公开 `/ports` 和
-`/contracts`。当前 peer 为 `^0.37.0`，开发与 Host 装配使用同一精确版本，以消费已修复的正式声明产物。
+`/contracts`。当前 peer 为 `^0.38.0`，开发与 Host 装配使用同一精确版本，以消费已修复的正式声明产物。
 `ai`、`@ai-sdk/provider`、全部 language Provider
 package、OpenRouter 官方 package 和经过审核的 `ai-sdk-ollama` community package 是本
 package 的精确直接依赖；根应用不再替它拥有这些版本。Embedding、Image
@@ -134,6 +134,10 @@ adapter 中直接拥有所需依赖，这不属于 language adapter 的所有权
    registry 的 capability、surface 和 auth parity；
 5. 本 package 完成一次 Provider 调用并返回 canonical events；
 6. Linnkit 独立决定 retry/fallback、工具循环、上下文和持久化；Host 独立记录安全 audit。
+
+失败投影可提供通用 `retry_category`：HTTP 429、已解码限流和限流结束原因标为
+`rate_limit`，工具参数损坏标为`output`。原始安全code和retryable保留；该字段只解释失败性质，
+不决定次数、等待或切模。Linnkit不猜供应商code；未提供类别的旧适配器仍沿既有通用分类。
 
 Host 产品目录与 adapter 不能互相依赖。产品目录只描述 Host 允许什么 route；adapter 只描述某个技术 capability 如何通过第三方 package 执行；它们只能在 Host
 composition seam 相遇。
