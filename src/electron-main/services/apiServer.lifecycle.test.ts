@@ -82,6 +82,31 @@ function createRouteDependencies(): RouteDependencies {
 }
 
 describe('ApiServer lifecycle', () => {
+  it('并行实例独立绑定端口、页面来源和 token，关闭一个不影响另一个', async () => {
+    const first = new ApiServer();
+    const second = new ApiServer();
+    startedServers.push(first, second);
+    first.setupMiddleware();
+    second.setupMiddleware();
+    const firstOrigin = 'http://127.0.0.1:49201';
+    const secondOrigin = 'http://127.0.0.1:49202';
+    const [firstPort, secondPort] = await Promise.all([
+      first.start(0, firstOrigin), second.start(0, secondOrigin),
+    ]);
+    expect(firstPort).not.toBe(secondPort);
+    const probe = (port: number, origin: string, token: string) => fetch(
+      `http://127.0.0.1:${port}/probe`, { headers: { origin, 'x-api-token': token } },
+    );
+    // 404 表明通过正式鉴权中间件，到达路由层；跨实例 origin/token 必须被前置拒绝。
+    const admitted = await probe(firstPort, firstOrigin, first.getToken());
+    expect(admitted.status).toBe(404);
+    expect(admitted.headers.get('access-control-allow-origin')).toBe(firstOrigin);
+    expect((await probe(firstPort, secondOrigin, first.getToken())).status).toBe(403);
+    expect((await probe(firstPort, firstOrigin, second.getToken())).status).toBe(401);
+    await first.stop();
+    expect((await probe(secondPort, secondOrigin, second.getToken())).status).toBe(404);
+  });
+
   it('并发停止共享同一个收口任务，完成后重复停止保持幂等', async () => {
     const server = new ApiServer();
     startedServers.push(server);

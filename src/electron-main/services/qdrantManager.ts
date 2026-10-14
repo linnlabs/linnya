@@ -41,6 +41,7 @@ export class QdrantManager {
   private process: OwnedQdrantProcess | null = null;
   private host: string = '127.0.0.1';
   private port: number = 6333;
+  private readonly requestedPort: number;
   private startTimeoutMs: number = 30_000;
   private dataDir: string = '';
   private isInitialized = false;
@@ -55,7 +56,8 @@ export class QdrantManager {
     }
     // 强制使用127.0.0.1，避免localhost在代理环境下的解析问题
     this.host = '127.0.0.1';
-    this.port = config.port || 6333;
+    this.requestedPort = config.port ?? 6333;
+    this.port = this.requestedPort;
     this.startTimeoutMs = config.timeout ?? 30_000;
     if (!Number.isSafeInteger(this.startTimeoutMs) || this.startTimeoutMs <= 0) {
       throw new Error('Qdrant start timeout 必须是正整数');
@@ -123,8 +125,8 @@ export class QdrantManager {
     const configContent = `
 service:
   host: ${this.host}
-  http_port: ${this.port}
-  grpc_port: ${this.port + 1}
+  http_port: ${this.requestedPort}
+  grpc_port: ${this.requestedPort === 0 ? 'null' : this.requestedPort + 1}
 
 storage_path: ./storage
 
@@ -159,7 +161,15 @@ log_level: INFO # 将日志级别恢复为INFO，避免过多的TRACE日志
         executablePath: qdrantBinary,
         argv: ['--config-path', configPath],
         cwd: this.dataDir,
-        environment: this.processRuntime.environment,
+        environment: {
+          ...this.processRuntime.environment,
+          // listener 事实来自锁定制品的 INFO 输出，不能被开发 shell 的日志过滤器隐藏。
+          RUST_LOG: 'info',
+          QDRANT__LOG_LEVEL: 'INFO',
+          QDRANT__LOGGER__FORMAT: 'text',
+          QDRANT__SERVICE__HOST: this.host,
+          QDRANT__SERVICE__HTTP_PORT: String(this.requestedPort),
+        },
       },
       output: logStream,
     });
@@ -198,22 +208,38 @@ log_level: INFO # 将日志级别恢复为INFO，避免过多的TRACE日志
    * 等待Qdrant服务就绪
    */
   private async waitForReady(process: OwnedQdrantProcess): Promise<void> {
-    await Promise.race([
-      this.pollUntilReady(),
-      process.terminal.then(exit => {
-        throw new Error(
-          `Qdrant process exited during startup: code=${String(exit.exitCode)} `
-            + `signal=${String(exit.signal)}`,
-        );
-      }),
-    ]);
+    const deadline = AbortSignal.timeout(this.startTimeoutMs);
+    const abort = new AbortController();
+    const signal = AbortSignal.any([deadline, abort.signal]);
+    const timeout = new Promise<never>((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+    });
+    try {
+      await Promise.race([
+        (async () => {
+          this.port = await process.httpPort;
+          await this.pollUntilReady(signal);
+        })(),
+        timeout,
+        process.terminal.then(exit => {
+          throw new Error(
+            `Qdrant process exited during startup: code=${String(exit.exitCode)} `
+              + `signal=${String(exit.signal)}`,
+          );
+        }),
+      ]);
+    } finally {
+      // 启动超时或 child 提前退出后停止 readiness poll，不能继续探测其他实例。
+      abort.abort();
+    }
   }
 
-  private async pollUntilReady(): Promise<void> {
+  private async pollUntilReady(signal: AbortSignal): Promise<void> {
     const checkInterval = 200; // 每200ms检查一次
     const startTime = Date.now();
 
     while (Date.now() - startTime < this.startTimeoutMs) {
+      signal.throwIfAborted();
       try {
         // 使用fetch检查健康状态，带超时控制
         const controller = new AbortController();
@@ -221,7 +247,7 @@ log_level: INFO # 将日志级别恢复为INFO，避免过多的TRACE日志
         try {
           const response = await fetch(`http://${this.host}:${this.port}/readyz`, {
             method: 'GET',
-            signal: controller.signal,
+            signal: AbortSignal.any([signal, controller.signal]),
           });
           if (response.ok) {
             console.log(`[QdrantManager] Health check passed after ${Date.now() - startTime}ms`);

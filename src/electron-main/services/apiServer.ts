@@ -73,6 +73,7 @@ export class ApiServer {
   private commandApprovalControl: CommandApprovalControlEndpointPort | undefined;
   private server: Server | null = null;
   private boundPort: number | null = null;
+  private rendererOrigin: string | undefined;
   private stoppingPromise: Promise<void> | null = null;
   private readonly rendererSessionToken: string;
   private readonly conversationControlSessionToken: string;
@@ -101,14 +102,14 @@ export class ApiServer {
     }));
 
     this.app.use(cors({
-      origin: resolveApiCorsOrigin,
+      origin: (origin, callback) => resolveApiCorsOrigin(origin, callback, this.rendererOrigin),
       credentials: true
     }));
 
     // CORS 只能控制浏览器是否暴露响应；这里在路由前直接拒绝非桌面端来源的网页请求。
     this.app.use((req: Request, res: Response, next: NextFunction) => {
       const origin = req.get('origin');
-      if (!isAllowedApiCorsOrigin(origin)) {
+      if (!isAllowedApiCorsOrigin(origin, this.rendererOrigin)) {
         res.status(403).json({ error: 'origin_not_allowed' });
         return;
       }
@@ -215,13 +216,14 @@ export class ApiServer {
     return this.rendererSessionToken;
   }
 
-  public async start(port: number): Promise<number> {
+  public async start(port: number, rendererOrigin?: string): Promise<number> {
     if (this.stoppingPromise) {
       throw new Error('API server is still stopping');
     }
     if (this.server) {
       throw new Error('API server already owns a server instance');
     }
+    this.rendererOrigin = rendererOrigin;
     try {
       return await this.listen(port);
     } catch (error: unknown) {

@@ -1,3 +1,4 @@
+import { resolveWorkerQdrantUrl } from '../functions/resolveWorkerQdrantUrl';
 /**
  * @file src/task-queue/workers/ingestion.worker.ts
  *
@@ -109,26 +110,6 @@ function installWorkerDistributionIdentity(): DistributionIdentity {
 let isCancelled = false;
 let isPaused = false;
 
-function getWorkerEnvVars(): Record<string, string> {
-  return (
-    (
-      workerData as
-        | (Partial<IngestionJobPayload> & { envVars?: Record<string, string> })
-        | undefined
-    )?.envVars ?? {}
-  );
-}
-
-function resolveWorkerQdrantUrl(): string {
-  const qdrantUrl = getWorkerEnvVars().QDRANT_URL || process.env.QDRANT_URL;
-  if (!qdrantUrl || qdrantUrl.trim().length === 0) {
-    throw new Error(
-      '[IngestionWorker] 缺少 QDRANT_URL：主进程必须通过 workerData.envVars 透传向量库地址'
-    );
-  }
-  return qdrantUrl;
-}
-
 function createIngestionRepositories(
   databaseService = getDatabaseService()
 ): IngestionStateMachineRepositories {
@@ -139,7 +120,7 @@ function createIngestionRepositories(
   const originalDocumentRepository = new FileOriginalDocumentRepository(
     pathManager.getKnowledgeBaseOriginalsPath()
   );
-  const qdrantAdapter = QdrantAdapter.getInstance({ url: resolveWorkerQdrantUrl() });
+  const qdrantAdapter = QdrantAdapter.getInstance({ url: resolveWorkerQdrantUrl(workerData) });
   const qdrantRepository = new QdrantRepositoryImpl(qdrantAdapter);
 
   return {

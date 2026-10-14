@@ -159,7 +159,7 @@ function collectTestEnvironment(): Readonly<Record<string, string>> {
 
 function createBootstrap(): AppServerBootstrap {
   return {
-    schema_version: 5,
+    schema_version: 6,
     host_kind: 'desktop',
     host_process: { pid: process.pid },
     backend_configuration: {

@@ -10,6 +10,22 @@ import {
 } from '..';
 
 describe('App Server bootstrap', () => {
+  it('传递动态监听请求和精确 Renderer origin，拒绝网站或带路径的来源', () => {
+    const bootstrap = createBootstrap();
+    const configuration = {
+      qdrant: { host: '127.0.0.1', port: 0 },
+      server: { port: 0, rendererOrigin: 'http://127.0.0.1:49201' },
+    };
+    expect(parseAppServerBootstrap({ ...bootstrap, backend_configuration: configuration })
+      .backend_configuration).toEqual(configuration);
+    for (const origin of ['https://example.com', 'http://127.0.0.1:49201/page', 'null']) {
+      expect(() => parseAppServerBootstrap({
+        ...bootstrap,
+        backend_configuration: { ...configuration, server: { port: 0, rendererOrigin: origin } },
+      })).toThrow();
+    }
+  });
+
   it('通过 dedicated pipe 传递并冻结唯一 data-only 启动帧', async () => {
     const input = new PassThrough();
     const settlement = readAppServerBootstrap(input);
@@ -70,7 +86,7 @@ describe('App Server bootstrap', () => {
 
 function createBootstrap(): AppServerBootstrap {
   return {
-    schema_version: 5,
+    schema_version: 6,
     host_kind: 'desktop',
     host_process: { pid: process.pid },
     backend_configuration: {

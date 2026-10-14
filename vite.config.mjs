@@ -168,7 +168,7 @@ export default defineConfig(() => {
   },
   server: {
     // 数据写入和隐藏窗口制品不属于主 Renderer 的 HMR 输入。
-    watch: { ignored: ['**/_dev_data/**', '**/dist/main/**', '**/dist/*-worker/**'] },
+    watch: { ignored: ['**/_dev_data/**', '**/_dev_electron/**', '**/dist/main/**', '**/dist/*-worker/**'] },
     // 利用 Backend 准备时间转换入口，避免首次开窗才从零遍历模块依赖。
     warmup: { clientFiles: ['./apps/renderer/app/main.js', './apps/renderer/app/App.vue'] },
     host: true,

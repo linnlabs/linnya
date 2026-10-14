@@ -43,7 +43,7 @@ pnpm run dev:electron
 开发入口按依赖图并行准备 runtime、WASM、资源和 workspace package。每个长期 watcher 只执行一次首次构建；
 收到本轮成功事件、完成资源复制和 Backend/原生依赖门禁后才启动 Electron。Vite 在自己的依赖就绪后提前启动并预热入口。
 开发会话退出或首次构建失败时，统一关闭本次创建的进程和 Vite。只验证准备阶段、不打开应用可运行
-`pnpm run dev:electron --build-only`；具体职责见 [build-session](../../scripts/development/features/build-session/README.md)。
+`pnpm run dev:electron --build-only`；多 worktree 可同时运行相同命令，隔离规则见[开发配置](./env-local.md)。具体职责见 [build-session](../../scripts/development/features/build-session/README.md)。
 
 Qdrant 与 Headless Node 按各自锁定目录准备。已安装 Node 的 manifest、目标平台、归档身份与可执行文件 hash
 通过正式 runtime resolver 校验后直接复用；宿主目标还验证实际 Node 版本。损坏或版本变化才重新准备，不能仅凭文件存在跳过校验。
@@ -139,3 +139,10 @@ pnpm run build:main
 - 已运行与风险相称的 owner gate 和必要集成测试。
 - 没有提交 secret、绝对本机路径、生成物、临时调试输出或私有源码依赖。
 - 文档和稳定合同与实现保持一致。
+
+## 并行 Desktop 回归
+
+完成 `pnpm run dev:electron --build-only` 后，macOS 可运行 `pnpm run test:development:parallel-desktop`。
+该 gate 用当前正式构建产物启动三个临时开发实例，覆盖 Renderer/API/Qdrant 端口、profile、CLI 描述、
+向量数据隔离、同目录单实例和独立退出；不读取开发者数据库或调用模型，结束后清理临时进程与文件。
+Windows 的 profile 与动态端口逻辑共用同一实现，仍需 Windows 真机验收；该 gate 不代替平台发布验收。

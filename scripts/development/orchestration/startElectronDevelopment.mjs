@@ -10,8 +10,6 @@ import { createDevelopmentProcessScope } from '../features/build-session/orchest
 import { runDevelopmentBuildGraph } from '../features/build-session/orchestration/runDevelopmentBuildGraph.mjs';
 import { createElectronDevelopmentBuilds } from '../features/build-session/definitions/electronDevelopmentBuilds.mjs';
 
-const SUPPORTED_RENDERER_PORTS = new Set([5173, 5174]);
-
 function readListeningPort(viteServer) {
   const address = viteServer.httpServer?.address();
   if (address === null || address === undefined || typeof address === 'string') {
@@ -33,14 +31,6 @@ export async function startRendererDevelopmentServer() {
 
   await viteServer.listen();
   const port = readListeningPort(viteServer);
-  if (!SUPPORTED_RENDERER_PORTS.has(port)) {
-    await viteServer.close();
-    throw new Error(
-      `Vite 自动选择了 ${port}，但 Linnya 开发后端只允许 5173/5174。`
-      + '请释放其中一个端口后重试。',
-    );
-  }
-
   const url = `http://127.0.0.1:${port}`;
   viteServer.printUrls();
   console.info(`[dev:electron] Electron renderer URL: ${url}`);
@@ -84,7 +74,7 @@ export async function runElectronDevelopment({ buildOnly = false } = {}) {
     // 已收到本轮全部成功事件；此处不再运行 wait-on 或第二轮编译。
     const electron = scope.start({
       id: 'electron', cwd: repositoryRoot, file: process.execPath,
-      args: [require.resolve('electron/cli.js'), 'dist/main/main.cjs'], watch: false,
+      args: [require.resolve('electron/cli.js'), 'dist/main/main.cjs'], watch: false, runtime: true,
       env: {
         NODE_ENV: 'development', LINNYA_DEV_MODE: 'true', APP_VERSION: packageJson.version,
         VITE_DEV_SERVER_URL: url,

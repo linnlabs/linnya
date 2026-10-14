@@ -11,5 +11,5 @@ Browser Pretext worker 的启动时 availability 也作为冻结事实进入 chi
 官方身份；child 校验完成后才允许初始化 Backend owner，
 因此缺帧、多帧、相对路径、未知字段或超限都会在监听 HTTP 前失败。
 
-当前启动帧版本为 5，不再携带旧 Workspace 导入所用的 Desktop userData 路径。版本 4 增加 Host 类型和命令审批 presenter capability；版本 5 增加直接 parent identity，用于强制终止后的 owner 收口。
+当前启动帧版本为 6，不再携带旧 Workspace 导入所用的 Desktop userData 路径。版本 4 增加 Host 类型和命令审批 presenter capability；版本 5 增加直接 parent identity，用于强制终止后的 owner 收口；版本 6 支持 Qdrant 动态 HTTP 端口（0）和 Host 的精确开发 Renderer origin。
 Desktop Main/CLI Runtime 与 App Server 必须一起构建、交付；不接纳旧版本启动帧，也不探测或补齐退役字段。

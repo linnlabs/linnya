@@ -36,6 +36,8 @@ protocol 3 的 status/watch `command_approvals` 和精确查询/回复合同保�
 ## 连接描述生命周期
 
 默认文件为 `~/.linnya/runtime/conversation-control-v1.json`，可用 `LINNYA_CLI_CONNECTION_FILE` 为测试或多实例场景覆盖。
+源码开发 Desktop 会在未显式覆盖时选择当前 profile 下的 `runtime/conversation-control-v1.json`，
+防止多个 worktree 覆盖全局连接。外部 CLI 使用同一环境变量选择目标实例，详见[开发配置](../../../../../docs/development/env-local.md)。
 
 descriptor owner 在 API Server 已绑定真实端口且 Conversation 路由装配成功后才原子发布文件。目录和文件权限分别为 `0700`、`0600`。撤销时只删除仍属于当前 `app_instance_id` 的文件，避免旧进程删除新实例刚发布的连接信息；Server 关闭时先撤销描述，再关闭 listener。异常退出遗留的文件不代表 owner 存活；新 Host 仍必须先取得 Workspace 排他锁，再用新实例 identity 原子替换。
 

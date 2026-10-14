@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDevelopmentProcessScope } from './createDevelopmentProcessScope.mjs';
 import { runDevelopmentBuildGraph } from './runDevelopmentBuildGraph.mjs';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
@@ -6,6 +6,23 @@ import os from 'node:os';
 import path from 'node:path';
 
 describe('开发构建会话', () => {
+  it('Desktop 正常退出不会被标记为 ready', async () => {
+    const output = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const scope = createDevelopmentProcessScope();
+    try {
+      const runtime = scope.start({
+        id: 'electron', cwd: process.cwd(), file: process.execPath,
+        args: ['-e', 'process.exit(0)'], watch: false, runtime: true,
+      });
+      await runtime.done;
+      await expect(runtime.ready).rejects.toThrow('运行进程已退出');
+      expect(output.mock.calls.flat().join('\n')).not.toContain('ready');
+    } finally {
+      await scope.stop();
+      output.mockRestore();
+    }
+  });
+
   it('独立任务并行，共享依赖只构建一次，后继严格等待本轮成功', async () => {
     const schema = Promise.withResolvers();
     const started = [];

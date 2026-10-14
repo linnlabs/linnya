@@ -2,7 +2,7 @@ import type { BackendBootstrapFacts } from '../../backend-runtime';
 import type { HostProcessEnvironment } from '../../../../infra/adapters/command-runtime/environment';
 import type { LocalProcessPlatformRuntime } from '../../../../infra/adapters/local-process-runtime/platform-runtime';
 
-export const APP_SERVER_BOOTSTRAP_SCHEMA_VERSION = 5 as const;
+export const APP_SERVER_BOOTSTRAP_SCHEMA_VERSION = 6 as const;
 export const APP_SERVER_BOOTSTRAP_MAX_FRAME_BYTES = 1024 * 1024;
 
 export interface AppServerBackendConfiguration {
@@ -12,6 +12,8 @@ export interface AppServerBackendConfiguration {
   };
   readonly server: {
     readonly port: number;
+    /** Host 当前 Renderer 的精确开发 origin；CLI/生产文件页面不传此字段。 */
+    readonly rendererOrigin?: string;
   };
 }
 

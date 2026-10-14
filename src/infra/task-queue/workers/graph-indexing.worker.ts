@@ -1,3 +1,4 @@
+import { resolveWorkerQdrantUrl } from '../functions/resolveWorkerQdrantUrl';
 /**
  * @file src/task-queue/workers/graph-indexing.worker.ts
  *
@@ -267,7 +268,7 @@ async function processGraphIndexingJob(): Promise<void> {
   const resolvedDocTitle =
     typeof docRow?.filename === 'string' && docRow.filename.trim().length > 0 ? docRow.filename.trim() : docId;
 
-  const qdrantAdapter = QdrantAdapter.getInstance({ url: 'http://localhost:6333' });
+  const qdrantAdapter = QdrantAdapter.getInstance({ url: resolveWorkerQdrantUrl(workerData) });
   const qdrantRepository = new QdrantRepositoryImpl(qdrantAdapter);
 
   try {

@@ -1,4 +1,5 @@
 import type { Writable } from 'node:stream';
+import { createInterface } from 'node:readline';
 
 import type {
   LaunchOwnedPipeProcess,
@@ -34,6 +35,26 @@ export async function createOwnedQdrantProcess(input: {
     throw error;
   }
 
+  // Qdrant 的“HTTP listening on 0”打印的是配置值；Actix 的 listening on 才是
+  // 已绑定 socket 的实际地址。协议由锁定的 runtime 制品与真实并行 E2E 共同约束。
+  const lines = [owner.stdout, owner.stderr].map(stream => createInterface({ input: stream }));
+  const listening = new Promise<number>(resolve => {
+    for (const reader of lines) {
+      reader.on('line', line => {
+        const match = /actix_server::server: starting service: .*listening on: 127\.0\.0\.1:(\d+)/u.exec(line);
+        if (match) resolve(Number(match[1]));
+      });
+    }
+  });
+  const httpPort = Promise.race([
+    listening,
+    owner.rootExit.then(exit => {
+      throw new Error(`Qdrant 在报告 HTTP listener 前退出: ${exit.exitCode ?? exit.signal}`);
+    }),
+  ]);
+  // consumer 在取得 owner 后才等待端口；提前退出仍由该 promise 正式传播。
+  void httpPort.catch(() => {});
+
   const stopAfterOutputFailure = (error: Error): void => {
     recordOutputFailure(error);
     void owner.stopAndWaitForTreeEmpty();
@@ -59,6 +80,7 @@ export async function createOwnedQdrantProcess(input: {
       : await owner.treeEmpty;
     const resourceRelease = await owner.release();
     await endOutput(input.output);
+    for (const reader of lines) reader.close();
     assertCleanupSucceeded(treeCleanup, resourceRelease);
     if (rootFailure) throw rootFailure;
     if (outputFailure) throw outputFailure;
@@ -68,6 +90,7 @@ export async function createOwnedQdrantProcess(input: {
 
   let stopSettlement: Promise<void> | undefined;
   return Object.freeze({
+    httpPort,
     terminal,
     stopAndWait(): Promise<void> {
       stopSettlement ??= (async () => {

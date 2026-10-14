@@ -3,11 +3,10 @@
  * @description 管理 Electron 应用的生命周期事件，作为应用的启动协调器。
  */
 
-import { app, BrowserWindow, globalShortcut, session, systemPreferences } from 'electron';
+import { app, BrowserWindow, session, systemPreferences } from 'electron';
 import {
   configureMainWindowCloseLifecycle,
   createWindow,
-  getMainWindow,
   permitMainWindowCloseForAppShutdown,
   prepareMainWindowForAppShutdown,
 } from './window-manager.js';
@@ -46,6 +45,7 @@ import { installRuntimePathRoots } from '../shared/runtime-paths/index.ts';
 import { installDistributionIdentity } from '../shared/distribution-identity/index.ts';
 import { resolveElectronDistributionIdentity } from './distribution/index.ts';
 import { resolveAppVersion } from './app-lifecycle/functions/resolveAppVersion.ts';
+import { resolveDesktopBackendConfiguration } from './app-lifecycle/functions/resolveDesktopBackendConfiguration.ts';
 import {
   createElectronAppServerRuntime,
   registerBackendRendererRequestIpcHandlers,
@@ -90,16 +90,6 @@ const runtimePathRoots = installRuntimePathRoots(resolveBackendRuntimePathRoots(
   developmentMode: process.env.LINNYA_DEV_MODE === 'true',
   workspaceRootOverride: process.env.LINNYA_WORKSPACE_DIR,
 }));
-function resolveBackendApiPort() {
-  const configuredPort = process.env.LINNYA_API_PORT;
-  if (configuredPort === undefined) return 3000;
-
-  const port = Number(configuredPort);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error(`LINNYA_API_PORT 必须是 1-65535 的整数，实际值: ${configuredPort}`);
-  }
-  return port;
-}
 
 // 设置日志文件路径
 const logDirectory = getLogDirectory();
@@ -341,10 +331,12 @@ export function initialize() {
         runtimePathRoots,
         exposeProviderOutboundDebugRoutes: process.env.NODE_ENV !== 'production',
       });
-      const backendConfiguration = {
-        qdrant: { host: '127.0.0.1', port: 6333 },
-        server: { port: resolveBackendApiPort() }
-      };
+      const backendConfiguration = resolveDesktopBackendConfiguration({
+        packaged: app.isPackaged,
+        developmentMode: process.env.LINNYA_DEV_MODE === 'true',
+        configuredApiPort: process.env.LINNYA_API_PORT,
+        rendererUrl: process.env.VITE_DEV_SERVER_URL,
+      });
       appServerRuntime = await createElectronAppServerRuntime({
         backendConfiguration,
         backendFacts: backendBootstrap,
@@ -404,6 +396,11 @@ export function initialize() {
         if (!mainWindow.isDestroyed()) {
           logger.info(`📤 发送 API 端口号: ${port}`);
           mainWindow.webContents.send('set-api-port', port);
+          logger.info('[Desktop] ready', {
+            profile: app.getPath('userData'),
+            rendererUrl: mainWindow.webContents.getURL(),
+            apiPort: port,
+          });
         }
       };
       if (mainWindow.webContents.getURL() && !mainWindow.webContents.isLoading()) {
@@ -422,16 +419,6 @@ export function initialize() {
       }
     });
 
-    // 注册全局快捷键以切换开发者工具（仅开发环境）
-    // 生产环境禁止用户通过快捷键打开 DevTools，防止源码泄露和误操作
-    if (process.env.NODE_ENV === 'development') {
-      globalShortcut.register('CommandOrControl+Shift+I', () => {
-        const mainWindow = getMainWindow();
-        if (mainWindow && mainWindow.webContents) {
-          mainWindow.webContents.toggleDevTools();
-        }
-      });
-    }
   }).catch((error) => {
     logger.error('[APP-LIFECYCLE] 启动失败，开始收口已创建资源:', error);
     appShutdownLifecycle.requestStartupFailure();

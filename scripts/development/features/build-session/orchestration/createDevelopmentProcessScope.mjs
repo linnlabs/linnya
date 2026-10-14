@@ -50,7 +50,11 @@ export function createDevelopmentProcessScope({ env = process.env } = {}) {
         ready.reject(new Error(`${task.id} 已停止`));
         done.resolve();
       } else if (code === 0 && !task.watch) {
-        completeInitialBuild();
+        // Desktop 是运行进程；正常退出（包括第二实例退出）不能冒充构建或应用就绪。
+        if (task.runtime) {
+          console.info(`[dev:${task.id}] exited (code=0)`);
+          ready.reject(new Error(`${task.id} 运行进程已退出`));
+        } else completeInitialBuild();
         done.resolve();
       } else {
         const error = new Error(`${task.id} 提前退出: ${signal ?? code}`);

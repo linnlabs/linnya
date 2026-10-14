@@ -3,8 +3,6 @@
  * @description 负责创建和管理浏览器窗口。
  */
 
-/* global process, __dirname */
-
 import { app, BrowserWindow, dialog, Menu, ipcMain } from 'electron';
 import { randomUUID } from 'node:crypto';
 import path from 'path';
@@ -229,6 +227,24 @@ function createWindow() {
   mainWindow = new BrowserWindow(windowConfig);
   const targetWindow = mainWindow;
   const targetContents = mainWindow.webContents;
+  if (process.env.NODE_ENV === 'development') {
+    // 开发快捷键属于当前窗口，不能注册全局热键抢走另一个 worktree 的按键。
+    targetContents.on('before-input-event', (event, input) => {
+      const modifier = process.platform === 'darwin' ? input.meta : input.control;
+      if (input.type === 'keyDown' && modifier && input.shift && input.key.toLowerCase() === 'i') {
+        event.preventDefault();
+        targetContents.toggleDevTools();
+      }
+    });
+  }
+  if (!app.isPackaged && process.env.LINNYA_DEV_MODE === 'true') {
+    const developmentTitle = `Linnya · ${path.basename(process.cwd())}`;
+    targetWindow.setTitle(developmentTitle);
+    targetWindow.on('page-title-updated', event => {
+      event.preventDefault();
+      targetWindow.setTitle(developmentTitle);
+    });
+  }
   const publishWindowFocusState = (focused) => {
     if (targetContents.isDestroyed()) return;
     const message = WindowFocusStateMessageSchema.parse({

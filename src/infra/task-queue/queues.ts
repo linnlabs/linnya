@@ -235,7 +235,13 @@ export class QueueManager extends EventEmitter {
     if (!this.graphIndexingQueue) {
       throw new Error('图谱索引队列未初始化');
     }
-    return await this.graphIndexingQueue.addTask(taskData);
+    return await this.graphIndexingQueue.addTask({
+      ...taskData,
+      envVars: {
+        ...taskData.envVars,
+        ...(this.qdrantUrl ? { QDRANT_URL: this.qdrantUrl } : {}),
+      },
+    });
   }
 
   /**

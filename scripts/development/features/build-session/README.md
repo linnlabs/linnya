@@ -18,3 +18,7 @@ Vite 在自身依赖完成后启动并预热；Electron 等待所有本轮构建
 
 行为验证覆盖独立任务并行、依赖只执行一次、旧产物不能掩盖失败、watcher 保持与退出收口；真实配置验证使用
 `pnpm run dev:electron --build-only`。涉及应用交互时再运行隔离的 Electron E2E。
+
+并行 worktree 使用各自的 Vite 实际监听 URL，端口不设两个实例的上限。Desktop 退出只报告 exited，
+不能像单次构建那样把 code=0 写成 ready；真正的 `[Desktop] ready` 由 Main 在 Backend 就绪且
+主页面加载完成后报告。profile、服务与数据隔离见[开发配置](../../../../../docs/development/env-local.md)。

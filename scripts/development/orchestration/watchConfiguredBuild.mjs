@@ -26,7 +26,7 @@ try {
       config: false,
       // tsup 按真实 buildDependencies 决定是否重编译；额外目录只排除运行数据/产物。
       watch: true,
-      ignoreWatch: ['**/_dev_data/**', '**/target/**', 'dist/**', 'packages/plugins/*/dist/**'],
+      ignoreWatch: ['**/_dev_data/**', '**/_dev_electron/**', '**/target/**', 'dist/**', 'packages/plugins/*/dist/**'],
       async onSuccess() {
         await configuration.onSuccess?.();
         await runAfterBuildScripts();

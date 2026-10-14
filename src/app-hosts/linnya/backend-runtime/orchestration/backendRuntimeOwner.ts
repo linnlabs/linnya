@@ -158,7 +158,7 @@ export class BackendRuntimeOwner {
       // 启动API服务器
       console.log('[Backend Service] 🌐 Step 4: 启动API服务器...');
       console.log('[Backend Service] 尝试在端口启动API服务器:', config.server.port);
-      this.port = await this.apiServer.start(config.server.port);
+      this.port = await this.apiServer.start(config.server.port, config.server.rendererOrigin);
 
       this.isRunning = true;
       console.log(`[Backend Service] 🎉 服务启动成功！端口: ${this.port}`);

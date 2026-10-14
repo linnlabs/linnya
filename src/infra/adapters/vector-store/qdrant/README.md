@@ -82,3 +82,10 @@ qdrant/
 `process-runtime/` 把 Backend bootstrap facts 投影成固定 Qdrant 二进制和 child 环境。开发环境只读取 `extraResources`，正式环境只读取发布 `resources`；代理变量在冻结阶段移除并关闭 Qdrant telemetry。进程 owner 不得读取 Electron、`process.resourcesPath` 或运行期 `process.env` 来猜路径和环境。
 
 Qdrant 与 Commands、Profiled Code Sandbox 只复用公共 OS 进程归属，不复用业务授权：macOS 使用 PGID + owner pipe，Windows 使用 Job Object。`createOwnedQdrantProcess()` 只有在 root terminal、tree-empty、平台资源 release 和日志流关闭都完成后才结算；`kill()` 返回或 `ChildProcess.killed` 不属于退出事实。启动失败会先执行同一条有界收口路径，收口失败必须同时保留启动和 cleanup 两类根因。
+
+开发 Desktop 使用 `http_port: 0`，由 Qdrant 自己绑定 OS 分配的端口，并关闭未使用的 gRPC listener。
+process adapter 从锁定 Qdrant 制品的 Actix `starting service ... listening on` 输出取得真实 HTTP 端口；
+不能使用打印配置值的 `Qdrant HTTP listening on 0`。所有启动都先等待所属 child 的绑定事实，再执行 readyz，
+不把其他实例的健康响应当成本实例就绪。端口报告缺失、child 退出或超时都走原有 owner 收口。
+升级 Qdrant 时必须运行真实并行端口测试验证该输出合同。队列将实际 URL 传给摄入与图谱索引 Worker，
+Worker 不读进程环境或固定 6333。固定端口 Host 保持原有 HTTP/gRPC 配置。

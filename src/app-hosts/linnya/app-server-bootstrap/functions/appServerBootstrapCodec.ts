@@ -15,8 +15,13 @@ const NonEmptyStringSchema = z.string().min(1);
 const AbsolutePathSchema = NonEmptyStringSchema.refine(value => path.isAbsolute(value), {
   message: '必须是绝对路径',
 });
-const PortSchema = z.number().int().min(1).max(65_535);
+const PortSchema = z.number().int().min(0).max(65_534);
 const ApiPortSchema = z.number().int().min(0).max(65_535);
+const RendererOriginSchema = z.string().url().refine(value => {
+  const url = new URL(value);
+  return url.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(url.hostname)
+    && url.origin === value;
+}, { message: 'Renderer origin 必须是精确的 HTTP loopback origin' });
 const PlatformSchema = z.enum([
   'aix',
   'android',
@@ -69,8 +74,9 @@ const AppServerBootstrapSchema = z.object({
       port: PortSchema,
     }).strict(),
     server: z.object({
-      // 0 由 CLI Runtime 用于请求 OS 分配空闲 loopback port；ready 帧仍返回实际端口。
+      // Desktop 开发与 CLI Runtime 均可请求 OS 分配端口；ready 只返回真实端口。
       port: ApiPortSchema,
+      rendererOrigin: RendererOriginSchema.optional(),
     }).strict(),
   }).strict(),
   backend_facts: z.object({

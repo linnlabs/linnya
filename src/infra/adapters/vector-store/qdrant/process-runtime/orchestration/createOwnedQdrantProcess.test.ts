@@ -14,6 +14,39 @@ import { createOwnedQdrantProcess } from './createOwnedQdrantProcess';
 const describeMacOs = process.platform === 'darwin' ? describe : describe.skip;
 
 describe('createOwnedQdrantProcess', () => {
+  it('只接纳当前 child 的真实绑定端口，支持输出分块且不把配置值 0 当成端口', async () => {
+    const rootExit = deferred<OwnedProcessRootExit>();
+    const owner = createOwner({
+      rootExit: rootExit.promise,
+      treeEmpty: Promise.resolve({ status: 'succeeded' }),
+      release: async () => ({ status: 'succeeded' }),
+    });
+    const output = new PassThrough();
+    output.resume();
+    const process = await createOwnedQdrantProcess({
+      launchOwnedPipeProcess: async () => owner, launch: launchFacts(), output,
+    });
+    owner.stdout.push('INFO qdrant::actix: Qdrant HTTP listening on 0\n');
+    owner.stdout.push('INFO actix_server::server: starting service: "actix-web-service-127.0.0.1:');
+    owner.stdout.push('49321", workers: 2, listening on: 127.0.0.1:49321\n');
+    await expect(process.httpPort).resolves.toBe(49321);
+    rootExit.resolve({ exitCode: 0, signal: null });
+    await process.terminal;
+  });
+
+  it('绑定前退出不能通过别的实例 readyz 伪装成功', async () => {
+    const owner = createOwner({
+      rootExit: Promise.resolve({ exitCode: 1, signal: null }),
+      treeEmpty: Promise.resolve({ status: 'succeeded' }),
+      release: async () => ({ status: 'succeeded' }),
+    });
+    const process = await createOwnedQdrantProcess({
+      launchOwnedPipeProcess: async () => owner, launch: launchFacts(), output: new PassThrough(),
+    });
+    await expect(process.httpPort).rejects.toThrow('报告 HTTP listener 前退出');
+    await process.terminal;
+  });
+
   it('平台 owner 启动失败时关闭已经取得的日志资源', async () => {
     const output = new PassThrough();
     const startupFailure = new Error('owner unavailable');

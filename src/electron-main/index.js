@@ -25,9 +25,21 @@ async function startNormalAppMode() {
     registerAppProtocolSchemesAsPrivileged,
   } = require('./protocols/registerAppProtocolSchemes.ts');
   registerAppProtocolSchemesAsPrivileged();
-  const { claimPrimaryAppInstance } = require('./app-instance');
+  const { claimPrimaryAppInstance, configureDevelopmentAppProfile } = require('./app-instance');
   const { tryStartPluginCliMode } = require('./command-mode.js');
   if (tryStartPluginCliMode()) return;
+
+  const developmentProfile = configureDevelopmentAppProfile({
+    app,
+    developmentMode: process.env.LINNYA_DEV_MODE === 'true',
+    developmentRoot: process.cwd(),
+  });
+  if (developmentProfile && !process.env.LINNYA_CLI_CONNECTION_FILE) {
+    const { CONVERSATION_CONTROL_CONNECTION_FILE_NAME } = require('@app/schemas');
+    process.env.LINNYA_CLI_CONNECTION_FILE = require('node:path').join(
+      developmentProfile, 'runtime', CONVERSATION_CONTROL_CONNECTION_FILE_NAME,
+    );
+  }
 
   const ownership = claimPrimaryAppInstance({
     app,
@@ -37,6 +49,9 @@ async function startNormalAppMode() {
         .catch(handleMainWindowRevealFailure);
     },
   });
+  if (ownership.status === 'secondary') {
+    console.info('[AppInstance] 当前 profile 已有运行实例，已请求唤醒窗口，本次启动退出。');
+  }
   if (ownership.status === 'primary') {
     if (!app.isPackaged && process.env.LINNYA_DEV_MODE === 'true') {
       const {

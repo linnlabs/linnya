@@ -19,11 +19,13 @@ describe('api server security boundary', () => {
     expect(isAllowedApiCorsOrigin('vscode-webview://workspace')).toBe(true);
   });
 
-  it('allows Vite development origins', () => {
-    expect(isAllowedApiCorsOrigin('http://localhost:5173')).toBe(true);
-    expect(isAllowedApiCorsOrigin('http://127.0.0.1:5173')).toBe(true);
-    expect(isAllowedApiCorsOrigin('http://localhost:5174')).toBe(true);
-    expect(isAllowedApiCorsOrigin('http://127.0.0.1:5174')).toBe(true);
+  it('只允许当前 Host 明确提供的 Vite origin', () => {
+    const origin = 'http://127.0.0.1:49123';
+    expect(isAllowedApiCorsOrigin(origin, origin)).toBe(true);
+    expect(isAllowedApiCorsOrigin('http://127.0.0.1:49124', origin)).toBe(false);
+    expect(isAllowedApiCorsOrigin('http://localhost:49123', origin)).toBe(false);
+    expect(isAllowedApiCorsOrigin('http://localhost:5173')).toBe(false);
+    expect(isAllowedApiCorsOrigin('http://127.0.0.1:5174')).toBe(false);
   });
 
   it('rejects arbitrary website origins instead of reflecting them', () => {
