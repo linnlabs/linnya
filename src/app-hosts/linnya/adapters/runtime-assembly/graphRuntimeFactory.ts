@@ -78,6 +78,9 @@ export function createDefaultLlmCaller(options: DefaultLlmCallerOptions = {}): l
     modelCatalog,
   });
   return new llm.LlmCaller({
+    // Host 只声明预算与等待下限，重试、较长建议间隔和总 attempt 上限仍由 Linnkit 管理。
+    maxRetries: 6,
+    retryDelayMs: 1_500,
     modelResolver,
     modelCatalog,
     policyEngine: defaultModelRoutingPolicy,
