@@ -57,6 +57,8 @@ import { SLIDES_PREVIEW_MESSAGE_CATALOG } from '../features/previewRenderState/d
 import { SLIDES_HISTORY_MESSAGES } from '../features/presentationHistory/definitions/historyMessages';
 import { MANUAL_EDITING_MESSAGE_CATALOG } from '../features/manualEditing/definitions/manualEditingMessageCatalog';
 import { ELEMENT_PROPERTY_MESSAGE_CATALOG } from '../features/elementProperties';
+import { DECK_NAVIGATOR_MESSAGE_CATALOG } from '../features/deckNavigator/definitions/deckNavigatorMessageCatalog';
+import { STAGE_ZOOM_MESSAGE_CATALOG } from '../features/stageZoom/definitions/stageZoomMessageCatalog';
 
 function readSlidesDeckPageContextInput(): SlidesDeckPageContextInput {
   const slidesStore = useSlidesStore();
@@ -94,6 +96,8 @@ export function registerSlidesRendererPorts(): void {
   registerMessageCatalogs(SLIDES_HISTORY_MESSAGES);
   registerMessageCatalogs(MANUAL_EDITING_MESSAGE_CATALOG);
   registerMessageCatalogs(ELEMENT_PROPERTY_MESSAGE_CATALOG);
+  registerMessageCatalogs(DECK_NAVIGATOR_MESSAGE_CATALOG);
+  registerMessageCatalogs(STAGE_ZOOM_MESSAGE_CATALOG);
   registerPluginDocumentCreationHandler({
     id: 'slides.document-create',
     async createDocument({ projectId, parentId, name }) {

@@ -1,4 +1,7 @@
-import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
+import type {
+  SlidesManualEditCommandOperation,
+  SlidesManualEditOperation,
+} from '@plugin/slides/shared/authoringEditing';
 import type {
   ManualEditIntent,
   ManualEditingTranslationPreview,
@@ -23,8 +26,11 @@ function mergeAdjacentIntents(
   previous: ManualEditIntent,
   incoming: ManualEditIntent,
 ): ManualEditIntent | null {
-  if (!targetsMatch(previous.operation, incoming.operation)) return null;
-  const operation = mergeOperations(previous.operation, incoming.operation);
+  const previousOperation = readObjectOperation(previous.operation);
+  const incomingOperation = readObjectOperation(incoming.operation);
+  if (!previousOperation || !incomingOperation) return null;
+  if (!targetsMatch(previousOperation, incomingOperation)) return null;
+  const operation = mergeOperations(previousOperation, incomingOperation);
   if (!operation) return null;
   const translationPreview = mergeTranslationPreviews(
     previous.translationPreview,
@@ -36,6 +42,11 @@ function mergeAdjacentIntents(
     ...(translationPreview ? { translationPreview } : {}),
     ...(visualPreview ? { visualPreview } : {}),
   };
+}
+
+/** 页面结构写入各自是独立用户动作，不与对象值合并。 */
+function readObjectOperation(operation: SlidesManualEditCommandOperation): SlidesManualEditOperation | null {
+  return operation.op === 'insert_blank_slide' ? null : operation;
 }
 
 function targetsMatch(

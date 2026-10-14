@@ -1,0 +1,112 @@
+.deck-filmstrip {
+  position: relative;
+  min-width: 0;
+}
+
+.deck-filmstrip .deck-filmstrip__viewport {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  outline: none;
+}
+
+.deck-filmstrip .deck-filmstrip__content {
+  box-sizing: content-box;
+  width: max-content;
+  min-width: calc(100% - 32px);
+  /* 上下留白容纳选中环与悬浮阴影；左右与滚动定位共用 16px。 */
+  padding: 4px 16px 14px;
+}
+
+.deck-filmstrip .deck-filmstrip__track {
+  align-items: flex-start;
+}
+
+.deck-filmstrip .deck-filmstrip__slot {
+  box-sizing: border-box;
+  flex: none;
+}
+
+.deck-filmstrip .deck-filmstrip__item {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+.deck-filmstrip .deck-filmstrip__item:hover:not(.deck-filmstrip__item--current) .slide-thumbnail {
+  border-color: var(--color-border-hover);
+  box-shadow: 0 4px 12px var(--shadow-color-sm);
+}
+
+.deck-filmstrip .deck-filmstrip__item--current .slide-thumbnail {
+  border-color: var(--color-accent);
+  box-shadow:
+    0 0 0 1px var(--color-accent),
+    0 3px 10px var(--shadow-color-sm);
+}
+
+.deck-filmstrip .deck-filmstrip__item:focus-visible .slide-thumbnail {
+  box-shadow:
+    0 0 0 2px var(--color-bg-surface),
+    0 0 0 4px var(--color-border-focus);
+}
+
+.deck-filmstrip .deck-filmstrip__number {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  box-sizing: border-box;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-bg-default) 86%, transparent);
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: center;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.deck-filmstrip .deck-filmstrip__item--current .deck-filmstrip__number {
+  background: var(--color-accent);
+  box-shadow: none;
+  color: var(--color-text-on-accent);
+}
+
+@keyframes deck-filmstrip-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.deck-filmstrip .deck-filmstrip__viewport--entering .deck-filmstrip__slot {
+  opacity: 0;
+  animation: deck-filmstrip-enter 0.32s ease forwards;
+  animation-delay: var(--deck-filmstrip-delay, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-filmstrip .deck-filmstrip__viewport--entering .deck-filmstrip__slot {
+    opacity: 1;
+    animation: none;
+  }
+}

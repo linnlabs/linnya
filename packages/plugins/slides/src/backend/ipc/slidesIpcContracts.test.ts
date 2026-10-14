@@ -167,6 +167,17 @@ describe('slides backend IPC contracts', () => {
       },
     })).toMatchObject({ operation: { op: 'delete_target', targetKind: 'image' } });
 
+    const insertOperation = { op: 'insert_blank_slide', index: 2 };
+    expect(parseSlidesManualEditPayload({ ...payload, operation: insertOperation }).operation).toEqual(insertOperation);
+    for (const operation of [
+      { op: 'insert_blank_slide', index: -1 },
+      { op: 'insert_blank_slide', index: 1.5 },
+      { op: 'insert_blank_slide' },
+      { op: 'insert_blank_slide', index: 1, target: payload.operation.target },
+    ]) {
+      expect(() => parseSlidesManualEditPayload({ ...payload, operation })).toThrow();
+    }
+
     expect(() => parseSlidesManualEditPayload({
       ...payload,
       expectedBase: { ...payload.expectedBase, sourceHash: 'not-a-hash' },

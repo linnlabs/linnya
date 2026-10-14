@@ -31,12 +31,6 @@ export const ZOOM_WHEEL_SENSITIVITY = 0.0015;
 export const KONVA_RASTER_SETTLE_DELAY_MS = 72;
 export const ZOOM_DEFAULT = 1;
 
-/** Outline 面板默认宽度 */
-export const OUTLINE_DEFAULT_WIDTH = 200;
-
-/** 侧边栏缩略图可用宽度（Outline 宽度 - 序号列 - padding - gap） */
-export const THUMBNAIL_WIDTH = 158;
-
 /** 缩略图位图使用的设备像素倍率，避免高 DPI 下模糊 */
 export const THUMBNAIL_PIXEL_RATIO = typeof window !== 'undefined'
   ? Math.min(window.devicePixelRatio ?? 2, 2)

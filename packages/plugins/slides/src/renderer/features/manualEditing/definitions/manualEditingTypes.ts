@@ -6,7 +6,7 @@ import type {
   SlidesAuthoringObjectRef,
   SlidesManualTargetKind,
 } from '@plugin/slides/shared/authoringEditing';
-import type { SlidesManualEditOperation } from '@plugin/slides/shared/authoringEditing';
+import type { SlidesManualEditCommandOperation } from '@plugin/slides/shared/authoringEditing';
 import type { RenderNodeKind } from '../../../types/render';
 import type {
   RenderNodeSelectionPoint,
@@ -52,9 +52,12 @@ export interface ManualEditingTranslationPreview {
 
 export type { EditingVisualOperation as ManualEditingVisualOperation, EditingVisualPreview as ManualEditingVisualPreview } from '../../editingPreview';
 
-/** Renderer 内部 intent；operation 是正式写入，preview 只服务提交队列的即时画面。 */
+/**
+ * Renderer 内部 intent；operation 是正式写入，preview 只服务提交队列的即时画面。
+ * 页面插入没有对象预览，只借用同一串行队列、精确修订与回执生命周期。
+ */
 export interface ManualEditIntent {
-  readonly operation: SlidesManualEditOperation;
+  readonly operation: SlidesManualEditCommandOperation;
   readonly translationPreview?: ManualEditingTranslationPreview;
   readonly visualPreview?: ManualEditingVisualPreview;
 }

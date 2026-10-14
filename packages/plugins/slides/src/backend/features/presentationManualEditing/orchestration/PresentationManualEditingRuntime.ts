@@ -29,6 +29,11 @@ import {
   SlidesManualEditSourceError,
   writeManualEditsToDeckSource,
 } from '../functions/writeManualEditsToDeckSource.js';
+import {
+  insertBlankSlideIntoDeckSource,
+  SlidesSlideInsertionSourceError,
+} from '../functions/insertBlankSlideIntoDeckSource.js';
+import { resolveInsertedSlideBackgroundColor } from '../functions/resolveInsertedSlideBackgroundColor.js';
 
 export interface PresentationManualEditingRuntimeDeps {
   readonly presentationRepo: Pick<
@@ -48,7 +53,7 @@ export interface PresentationManualEditingRuntimeDeps {
   readonly trace?: PresentationManualEditTracePort;
 }
 
-/** 人工编辑的唯一写入口：验证快照，选择可证明等价的计算路径，再由 repository 原子提交。 */
+/** 人工编辑（对象值与页面插入）的唯一写入口：验证快照，选择可证明等价的计算路径，再由 repository 原子提交。 */
 export class PresentationManualEditingRuntime {
   constructor(private readonly deps: PresentationManualEditingRuntimeDeps) {}
 
@@ -108,13 +113,24 @@ export class PresentationManualEditingRuntime {
     let source: string;
     let projection: ManualTranslationDeckProjection;
     try {
-      const sourceOperation = prepareManualEditSourceOperation(current.deckSpec, command.operation);
-      source = writeManualEditsToDeckSource(current.deckSource, sourceOperation).source;
-      projection = projectManualTranslationToDeckSpec(current.deckSpec, command.operation);
+      if (command.operation.op === 'insert_blank_slide') {
+        // 页面结构改写作者源码而非 manualEdits，只能交给完整编译器验证。
+        source = insertBlankSlideIntoDeckSource(current.deckSource, {
+          index: command.operation.index,
+          slideCount: current.deckSpec.slides.length,
+          backgroundColor: resolveInsertedSlideBackgroundColor(current.deckSpec.theme),
+        }).source;
+        projection = { kind: 'requires_full_compile' };
+      } else {
+        const sourceOperation = prepareManualEditSourceOperation(current.deckSpec, command.operation);
+        source = writeManualEditsToDeckSource(current.deckSource, sourceOperation).source;
+        projection = projectManualTranslationToDeckSpec(current.deckSpec, command.operation);
+      }
     } catch (error) {
       if (
         error instanceof SlidesManualEditSourceError
         || error instanceof SlidesManualEditDeckProjectionError
+        || error instanceof SlidesSlideInsertionSourceError
       ) {
         return this.validationFailure(command, error.code, error.message);
       }

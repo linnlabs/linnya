@@ -14,7 +14,6 @@
   overflow: hidden;
 }
 
-.deck-viewer .deck-viewer-outline,
 .deck-viewer .deck-viewer-stage,
 .deck-viewer .deck-viewer-inspector {
   /*
@@ -23,14 +22,6 @@
    */
   box-sizing: border-box;
   border-top: var(--deck-viewer-pane-divider);
-}
-
-.deck-viewer .deck-viewer-outline {
-  position: relative;
-  flex-shrink: 0;
-  border-right: var(--deck-viewer-pane-divider);
-  background: var(--color-bg-surface);
-  overflow: hidden;
 }
 
 .deck-viewer .deck-viewer-stage {
@@ -135,14 +126,12 @@
   pointer-events: none;
 }
 
-.deck-viewer .stage-zoom-slider__fit-btn--active,
 .deck-viewer .stage-zoom-slider__edit-btn--active,
 .deck-viewer .stage-zoom-slider__select-btn--active {
   background-color: var(--color-accent-bg);
   color: var(--color-accent);
 }
 
-.deck-viewer .stage-zoom-slider__fit-btn--active:hover,
 .deck-viewer .stage-zoom-slider__edit-btn--active:hover,
 .deck-viewer .stage-zoom-slider__select-btn--active:hover {
   background-color: var(--color-accent-bg-hover);
@@ -180,21 +169,20 @@
   background: var(--color-bg-hover);
 }
 
-.deck-viewer .stage-zoom-slider__label {
-  width: 38px;
-  text-align: left;
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
 .deck-viewer .stage-zoom-slider__input {
   width: 100px;
   flex-shrink: 0;
 }
 
-.deck-viewer .outline-loading-spacer,
 .deck-viewer .stage-loading-spacer {
   width: 100%;
   height: 100%;
+}
+
+/* 与底部导航（工具行 36px + 页面条）同高，加载结束后舞台不跳动。 */
+.deck-viewer .navigator-loading-spacer {
+  flex-shrink: 0;
+  height: 126px;
+  border-top: var(--deck-viewer-pane-divider);
+  background: var(--color-bg-surface);
 }

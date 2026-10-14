@@ -14,10 +14,8 @@ import {
   createThumbnailRasterRequest,
   renderSlideRasterToImageBitmap,
 } from '../features/slideRasterization';
-import {
-  THUMBNAIL_PIXEL_RATIO,
-  THUMBNAIL_WIDTH,
-} from '../shared/constants';
+import { THUMBNAIL_PIXEL_RATIO } from '../shared/constants';
+import { resolveFilmstripThumbnailSize } from '../shared/thumbnailGeometry';
 
 /** 每批渲染的页数 */
 const BATCH_SIZE = 4;
@@ -37,6 +35,12 @@ export const useSlidesThumbnailStore = defineStore('slides-thumbnail', () => {
 
   /** 是否有正在运行的生成任务 */
   const generating = ref(false);
+
+  /**
+   * 平铺视图请求的最小位图宽度（CSS px）。位图按页面条与该请求中的较大者生成，
+   * 同一份缓存服务两种显示尺寸；请求变小不立即重绘，下次 RenderModel 变化时自然收敛。
+   */
+  const requestedRasterWidth = ref(0);
 
   // ─── Computed ───
 
@@ -96,6 +100,15 @@ export const useSlidesThumbnailStore = defineStore('slides-thumbnail', () => {
     } catch (e) {
       console.error('[ThumbnailStore] refreshSlide 失败:', slideId, e);
     }
+  }
+
+  /** 显示尺寸超过现有位图时按新宽度重建，旧位图在替换前继续显示。 */
+  function requestRasterWidth(widthPx: number): void {
+    const next = Math.max(0, Math.round(widthPx));
+    if (next === requestedRasterWidth.value) return;
+    const grows = next > requestedRasterWidth.value;
+    requestedRasterWidth.value = next;
+    if (grows) regenerateAll();
   }
 
   /** 释放所有 ImageBitmap 的 GPU 内存 */
@@ -223,7 +236,7 @@ export const useSlidesThumbnailStore = defineStore('slides-thumbnail', () => {
     const request = createThumbnailRasterRequest(
       slide,
       slideSize,
-      THUMBNAIL_WIDTH,
+      Math.max(resolveFilmstripThumbnailSize(slideSize).width, requestedRasterWidth.value),
       THUMBNAIL_PIXEL_RATIO,
     );
     if (typeof window !== 'undefined'
@@ -284,6 +297,7 @@ export const useSlidesThumbnailStore = defineStore('slides-thumbnail', () => {
     getThumbnail,
     regenerateAll,
     refreshSlide,
+    requestRasterWidth,
     clearCache,
     $reset,
   };

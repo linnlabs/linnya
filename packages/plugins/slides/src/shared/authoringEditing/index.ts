@@ -10,6 +10,7 @@ export type {
 } from './definitions/authoringEditProjection';
 export type {
   SlidesManualEditCommand,
+  SlidesManualEditCommandOperation,
   SlidesManualEditCommandResult,
   SlidesManualEditBuildFailureResult,
   SlidesManualEditCommitResult,
@@ -18,6 +19,7 @@ export type {
   SlidesManualEditExpectedBase,
   SlidesManualEditOperation,
   SlidesManualEditValidationFailureResult,
+  SlidesManualSlideInsertOperation,
 } from './definitions/manualEditCommand';
 export { SLIDES_AUTHORING_KEY_PATTERN } from './definitions/authoringIdentity';
 export { SLIDES_MANUAL_FONT_SIZE_PT } from './definitions/textStyleLimits';

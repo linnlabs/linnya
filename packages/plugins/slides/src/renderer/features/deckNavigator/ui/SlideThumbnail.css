@@ -4,12 +4,12 @@
   border: 1px solid var(--color-border-light);
   border-radius: 6px;
   background: var(--color-bg-surface);
-  box-shadow:
-    0 0 0 0 transparent,
-    0 1px 3px var(--shadow-color-xs);
+  box-shadow: 0 1px 2px var(--shadow-color-xs);
   pointer-events: none;
   contain: layout paint;
-  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .slide-thumbnail .slide-thumbnail-canvas {

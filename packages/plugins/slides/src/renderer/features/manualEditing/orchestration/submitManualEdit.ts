@@ -1,6 +1,6 @@
 import type {
   SlidesManualEditCommandResult,
-  SlidesManualEditOperation,
+  SlidesManualEditCommandOperation,
 } from '@plugin/slides/shared/authoringEditing';
 import type { SlidesDocumentBuildState } from '@plugin/slides/shared/documentSource';
 import { createManualEditCommand } from '../functions/createManualEditCommand';
@@ -11,7 +11,7 @@ export async function submitManualEdit(input: {
   readonly documentId: string;
   readonly buildState: SlidesDocumentBuildState | null;
   readonly renderVersion: number | null;
-  readonly operation: SlidesManualEditOperation;
+  readonly operation: SlidesManualEditCommandOperation;
 }, ports: SubmitManualEditPorts): Promise<SubmitManualEditOutcome> {
   if (!input.buildState || input.renderVersion === null) {
     return { status: 'snapshot_unavailable' };

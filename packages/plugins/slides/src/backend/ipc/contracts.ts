@@ -197,12 +197,6 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
     throw new Error('expectedBase.sourceHash must be a lowercase SHA-256 digest.');
   }
   if (!isRecord(payload.operation)) throw new Error('operation must be an object.');
-  if (!isRecord(payload.operation.target)) throw new Error('operation.target must be an object.');
-  assertOnlyKeys(payload.operation.target, ['slideKey', 'editKey'], 'operation.target');
-  const target = {
-    slideKey: readAuthoringKey(payload.operation.target.slideKey, 'operation.target.slideKey'),
-    editKey: readAuthoringKey(payload.operation.target.editKey, 'operation.target.editKey'),
-  };
   const base = {
     commandId,
     documentId: readNonEmptyString(payload.documentId, 'documentId'),
@@ -211,6 +205,20 @@ export function parseSlidesManualEditPayload(payload: unknown): SlidesManualEdit
       revision,
       sourceHash,
     },
+  };
+  if (payload.operation.op === 'insert_blank_slide') {
+    assertOnlyKeys(payload.operation, ['op', 'index'], 'operation');
+    const index = payload.operation.index;
+    if (typeof index !== 'number' || !Number.isSafeInteger(index) || index < 0) {
+      throw new Error('operation.index must be a non-negative safe integer.');
+    }
+    return { ...base, operation: { op: 'insert_blank_slide', index } };
+  }
+  if (!isRecord(payload.operation.target)) throw new Error('operation.target must be an object.');
+  assertOnlyKeys(payload.operation.target, ['slideKey', 'editKey'], 'operation.target');
+  const target = {
+    slideKey: readAuthoringKey(payload.operation.target.slideKey, 'operation.target.slideKey'),
+    editKey: readAuthoringKey(payload.operation.target.editKey, 'operation.target.editKey'),
   };
 
   if (payload.operation.op === 'set_text_content') {

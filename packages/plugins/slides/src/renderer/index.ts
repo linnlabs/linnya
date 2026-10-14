@@ -22,8 +22,11 @@ import slidesDraftFailureLogStylesheet from './features/documentBuildFailure/ui/
 import slidesPageStylesheet from './page/SlidesPage.css?url';
 import slidesViewStylesheet from './page/SlidesView.css?url';
 import deckViewerStylesheet from './ui/deck/DeckViewer.css?url';
-import deckOutlineStylesheet from './ui/deck/DeckOutline.css?url';
-import slideThumbnailStylesheet from './ui/deck/SlideThumbnail.css?url';
+import deckNavigatorBarStylesheet from './features/deckNavigator/ui/DeckNavigatorBar.css?url';
+import deckFilmstripStylesheet from './features/deckNavigator/ui/DeckFilmstrip.css?url';
+import slideGridViewStylesheet from './features/deckNavigator/ui/SlideGridView.css?url';
+import slideThumbnailStylesheet from './features/deckNavigator/ui/SlideThumbnail.css?url';
+import stageZoomMenuStylesheet from './features/stageZoom/ui/StageZoomMenu.css?url';
 import slideStageStylesheet from './ui/preview/SlideStage.css?url';
 import slidesStatusStateStylesheet from './ui/shared/SlidesStatusState.css?url';
 import presentationExportModalStylesheet from './features/presentationExport/ui/PresentationExportModal.css?url';
@@ -67,8 +70,11 @@ const slidesStylesheets = [
   slidesPageStylesheet,
   slidesViewStylesheet,
   deckViewerStylesheet,
-  deckOutlineStylesheet,
+  deckNavigatorBarStylesheet,
+  deckFilmstripStylesheet,
+  slideGridViewStylesheet,
   slideThumbnailStylesheet,
+  stageZoomMenuStylesheet,
   slideStageStylesheet,
   slidesStatusStateStylesheet,
   presentationExportModalStylesheet,

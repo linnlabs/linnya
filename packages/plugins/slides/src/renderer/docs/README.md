@@ -2,6 +2,8 @@
 
 Slides renderer 是演示文稿前端 contribution，负责文档 surface、预览舞台、缩略图、工具卡片、导出入口、模板 UI、前端状态和 renderer 侧 IPC 调用。
 
+文档 surface 自上而下是主区域与底部导航：主区域显示单页舞台或全稿平铺，右下角浮动工具条提供缩放、百分比菜单与编辑模式开关；底部导航由 [deckNavigator](../features/deckNavigator/README.md) 拥有，包含新建空白幻灯片、视图切换与横向幻灯片列表。百分比菜单见 [stageZoom](../features/stageZoom/README.md)。
+
 renderer 是后端 `PresentationRenderModel`、`DeckPreview` 和 shared 合同的消费层，不是第二套 PPT 布局求解器。视觉或布局不一致时，优先回查 shared 合同、后端 render-model mapper、compiler 或 engine solver，再修改 renderer 映射。
 
 历史版本通过 document type 的 `historyPreviewComponent` 接入 Core 统一面板，详见
@@ -20,6 +22,7 @@ src/renderer/
 ├── features/
 │   ├── documentReference/           # 文档引用与展示用纯规则
 │   ├── documentRuntime/             # surface 挂载后的 deck 加载、定位和生命周期编排
+│   ├── deckNavigator/               # 底部横向列表、平铺视图、视图切换与新建空白幻灯片
 │   ├── elementAiEdit/               # source-backed 元素 AI 编辑编排
 │   ├── editingInteraction/           # 选择／输入会话、IME、焦点交接与失败文字恢复
 │   ├── textEditing/                  # 原位 textarea 和无焦点文字预览
@@ -35,6 +38,7 @@ src/renderer/
 │   ├── previewRenderState/          # SlideStage 渲染分支规则
 │   ├── slideRasterization/          # 同源离屏 canvas、ImageBitmap 与 PNG bytes
 │   ├── sourceSelection/             # 源码元素点选、框选和 fence 数据准备
+│   ├── stageZoom/                   # 舞台百分比菜单：适应窗口与常用缩放档位
 ├── services/                        # slidesApi 与 mapper 等 renderer 技术入口
 ├── shared/                          # renderer 内稳定复用的纯规则
 ├── store/                           # deck、render model、thumbnail、session、UI 状态
@@ -55,7 +59,7 @@ SlidesPage / SlidesView
   -> slidesApi.getDocumentBuildState(documentId)
        -> ready：并行进入 DeckPreview / RenderModel 主链
        -> draft：展示“PPT 编译失败”，不请求 preview/render-model
-  -> SlideStage / DeckOutline / build status 消费 store selector
+  -> SlideStage / SlideGridView / DeckNavigatorBar / build status 消费 store selector
 ```
 
 当前打开的 Slides 收到 `workspace.document.updated(version)` 后，复用同一条读取链路刷新当前
@@ -81,7 +85,8 @@ SlideRasterRequest
 ```
 
 缩略图 store 只选择 thumbnail profile 和管理 `ImageBitmap` 生命周期。页面比例、物理像素尺寸、节点分发和 PNG 编码不属于 store。
-缩略图本体与虚拟列表行高必须共同从当前文稿 `slideSize` 派生；固定 16:9 高度只能作为尚未取得
+底部列表固定缩略图高度、宽度与虚拟列表条目宽度共同从当前文稿 `slideSize` 派生；平铺视图的卡片高度同样按
+`slideSize` 计算，并通过 `requestRasterWidth` 请求更宽的同一份位图。固定 16:9 比例只能作为尚未取得
 RenderModel 时的默认值，不能成为 preset 或自定义画布的第二套几何事实。
 
 主舞台切页链路：
@@ -168,7 +173,7 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 |---|---|
 | `slides:preview` | 获取 `DeckPreview` |
 | `slides:build-state` | 查询源码是 `ready` 还是 unresolved `draft`，并返回当前 revision ID、序号和 source hash 快照 |
-| `slides:manual-edit` | 基于精确 revision/source 快照提交有限人工编辑 |
+| `slides:manual-edit` | 基于精确 revision/source 快照提交有限人工编辑与新建空白幻灯片 |
 | `slides:render-model` | 获取 `PresentationRenderModel` |
 | `slides:inspect` | 获取 `PresentationInfo` |
 | `slides:source-slices` | 获取源码切片 |
@@ -176,7 +181,7 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 | `slides:templates-list` | 列出模板 |
 | `slides:template-import` | 上传 PPTX 作为模板来源 |
 
-文稿创建和 AI 编辑统一走 deck.js 的 `write_file / edit_file` 工具链；有限人工编辑走严格的 `slides:manual-edit` 命令，并仍然写回 deck.js 的 `compose.manualEdits`。当前没有直接 PPTX 文档导入到 editable deck 的 renderer 通道；接入前必须补 imported deck 到 Konva render-model 的保真验收。
+文稿创建和 AI 编辑统一走 deck.js 的 `write_file / edit_file` 工具链；有限人工编辑走严格的 `slides:manual-edit` 命令，并仍然写回 deck.js 的 `compose.manualEdits`；新建空白幻灯片走同一命令，在 deck.js 中新增顶层 `createSlide` 声明并写入 `compose.slides`。当前没有直接 PPTX 文档导入到 editable deck 的 renderer 通道；接入前必须补 imported deck 到 Konva render-model 的保真验收。
 
 ## 开发规范
 

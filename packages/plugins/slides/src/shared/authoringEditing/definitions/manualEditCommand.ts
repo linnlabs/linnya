@@ -63,11 +63,24 @@ export type SlidesManualEditOperation =
       readonly targetKind: SlidesManualTargetKind;
     };
 
+/**
+ * 页面列表结构写入。index 是新页在 expectedBase 精确修订中的 0-based 位置，
+ * 只在该源码快照内解释；它不是页面身份，也不会持久化。
+ */
+export interface SlidesManualSlideInsertOperation {
+  readonly op: 'insert_blank_slide';
+  readonly index: number;
+}
+
+export type SlidesManualEditCommandOperation =
+  | SlidesManualEditOperation
+  | SlidesManualSlideInsertOperation;
+
 export interface SlidesManualEditCommand {
   readonly commandId: string;
   readonly documentId: string;
   readonly expectedBase: SlidesManualEditExpectedBase;
-  readonly operation: SlidesManualEditOperation;
+  readonly operation: SlidesManualEditCommandOperation;
 }
 
 export interface SlidesManualEditCommitResult {
