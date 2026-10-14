@@ -6,4 +6,4 @@
 
 错误文案继续由 `services/errorNormalizer.ts` 统一解释，保留认证、额度与模型兼容等既有指引。`interactive-run` 持有暂停/继续状态，通知不建立第二套控制状态。Runtime error 的 notice identity 只用来避免同一运行错误同时出现在本地诊断与已投影的消息中。
 
-未取得 Runtime fact 的错误仍归各自 owner：interactive-run、contributed workflow、annotation execution。选择器按原优先级返回来源身份；关闭本地提示只清理对应 owner，不删除历史事实、不批量清除其它运行错误。尚未持久的提示必须明确标为本地状态。
+未取得 Runtime fact 的错误由 interactive-run、annotation execution 等原 owner 分类后交给 [client-notices](../client-notices/README.md) 保存安全的产品事实，并通过同一历史窗口呈现。没有 Conversation 或 Host 离线时先持久保留本地条目、明确尚未同步；不伪造运行身份、不进入模型上下文。运行控制仍由原 owner 负责。

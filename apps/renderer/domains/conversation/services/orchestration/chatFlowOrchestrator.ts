@@ -1,3 +1,4 @@
+import { captureConversationClientNotice } from '../../features/client-notices';
 /**
  * @file apps/renderer/domains/conversation/services/orchestration/chatFlowOrchestrator.ts
  * @description 聊天流程编排器 (Chat Flow Orchestrator)
@@ -61,7 +62,6 @@ import type {
 import type {
   SendMessageOptions,
   ProjectFileSummary,
-  Conversation,
   UserMessage,
 } from '../../types';
 import { ensureHistoryWindowTailForBottom } from '../../history';
@@ -159,9 +159,6 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
     return activeSession?.type === 'markdown' ? uiStore.getEditor() : null;
   }
 
-  function ensureConversationForSend(): Conversation | null {
-    return ensureMaterializedConversation(assistantStore, workspaceScopeStore);
-  }
 
   const sendChatMessage = async (
     userMessage: UserMessageContent,
@@ -177,12 +174,13 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
     });
     const structuredContextCheck = validateStructuredContextRequirements({ userMessage, options });
     if (!structuredContextCheck.ok) {
+      captureConversationClientNotice(assistantStore.activeConversationId, { error_kind: 'validation', operation: 'validate', reason_code: 'missing_context' });
       assistantStore.setError(structuredContextCheck.message);
       return false;
     }
 
     // 1. 首次发送时才把当前空白草稿正式创建为会话，避免空历史污染。
-    const conversation = ensureConversationForSend();
+    const conversation = ensureMaterializedConversation(assistantStore, workspaceScopeStore);
     if (!conversation) {
       console.error('[ChatFlowOrchestrator] sendChatMessage: No active conversation found.');
       return false;
@@ -191,6 +189,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
     if (workspaceScopeStore.currentScope.kind === 'project' && !projectId) {
       const message = resolveCurrentConversationMessage('conversation.flow.missingProjectForSend');
       console.error(`[ChatFlowOrchestrator] ${message}`);
+      captureConversationClientNotice(assistantStore.activeConversationId, { error_kind: 'validation', operation: 'validate', reason_code: 'missing_project' });
       assistantStore.setError(message);
       return false;
     }
@@ -211,6 +210,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
     const usesLegacyResearch = selectedAgentIdForSend === ConversationAgentIds.DEEP_RESEARCH
       || options.promptKey === PromptKeys.DEEP_RESEARCH_LEADER;
     if (usesLegacyResearch) {
+      captureConversationClientNotice(assistantStore.activeConversationId, { error_kind: 'validation', operation: 'validate', reason_code: 'legacy_research_unavailable' });
       assistantStore.setError(resolveCurrentConversationMessage('conversation.flow.deepResearch.unavailable'));
       return false;
     }
@@ -280,6 +280,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
     const conversation = assistantStore.activeConversation;
     if (!conversation) {
       if (request.action === 'regenerate') {
+        captureConversationClientNotice(assistantStore.activeConversationId, { error_kind: 'validation', operation: 'validate', reason_code: 'missing_conversation' });
         assistantStore.setError(resolveCurrentConversationMessage('conversation.error.regenerateNoConversation'));
       } else {
         console.error('[ChatFlowOrchestrator] editAndResendMessage: No active conversation found.');
@@ -288,6 +289,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
     }
 
     if (conversation.selectedAgentId === ConversationAgentIds.DEEP_RESEARCH) {
+      captureConversationClientNotice(assistantStore.activeConversationId, { error_kind: 'validation', operation: 'validate', reason_code: 'legacy_research_unavailable' });
       assistantStore.setError(resolveCurrentConversationMessage('conversation.flow.deepResearch.unavailable'));
       return false;
     }
@@ -300,6 +302,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
     );
     if (!targetMessage) {
       if (request.action === 'regenerate') {
+        captureConversationClientNotice(assistantStore.activeConversationId, { error_kind: 'validation', operation: 'validate', reason_code: 'missing_message' });
         assistantStore.setError(resolveCurrentConversationMessage('conversation.error.regenerateMessageNotFound'));
       } else {
         console.error(`[ChatFlowOrchestrator] editAndResendMessage: Message with id ${messageId} not found.`);
@@ -467,6 +470,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
     // foreground 正文 run 只写 conversation-scoped interactive-run 状态。
     const abortController = new AbortController();
     assistantStore.startInteractiveRun(abortController);
+    let transportOutcomeObserved = false;
 
     try {
       // 1. 构建当前页面上下文（kind/document/selection）
@@ -570,11 +574,10 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
               );
             }
           },
-          onTransportOutcome: outcome => reconcileInteractiveRunTransportOutcome(
-            conversationId,
-            abortController,
-            outcome,
-          ),
+          onTransportOutcome: outcome => {
+            transportOutcomeObserved = true;
+            return reconcileInteractiveRunTransportOutcome(conversationId, abortController, outcome);
+          },
         },
         abortController.signal
       );
@@ -583,6 +586,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
       // 忽略用户中止的错误
       if (errorMessage !== 'The user aborted a request.') {
         console.error(`[ChatFlowOrchestrator] Invocation failed for message ${messageId}:`, error);
+        if (!transportOutcomeObserved) captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'send' });
         interactiveRunStore.recordCommandError(
           conversationId,
           resolveCurrentConversationMessage('conversation.flow.chatInvocationFailed'),

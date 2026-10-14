@@ -10,6 +10,7 @@ function readMessageRunId(message: BaseMessage): string | null {
     case 'tool_preamble':
     case 'partial_answer':
       return message.metadata.run_id;
+    case 'client_notice':
     case 'execution_notice':
     case 'history_summary':
     case 'summarization_progress':

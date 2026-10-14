@@ -112,7 +112,7 @@ const turnDurationMs = computed(() => {
   const userMessage = props.turnMessages.find(
     message => message.id === props.item.turnContext.userMessageId,
   );
-  const agentWork = userMessage?.metadata?.['agent_work'];
+  const agentWork = userMessage?.type === 'user_input' ? userMessage.metadata?.agent_work : undefined;
   if (!isRecord(agentWork)) return undefined;
   const duration = agentWork['duration_ms'];
   return typeof duration === 'number' && Number.isFinite(duration) && duration >= 0

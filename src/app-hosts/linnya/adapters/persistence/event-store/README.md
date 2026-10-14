@@ -114,3 +114,11 @@ ready 缓存也不能证明全部原始事件已重新校验；遇到当前版�
 - 独立 Linnkit 仓的 `src/runtime-kernel/README.md`
 - `src/app-hosts/linnya/adapters/flow/README.md`
 - `src/features/conversation/history/history.repository.ts`
+
+### 无 Runtime 身份的客户端提示
+
+发送未被接纳、HTTP/连接、Renderer 投影、控制请求及本地校验失败，不能伪装成 RuntimeEvent，也不能补造 run/turn。`conversation_client_notices` 保存严格白名单的客户端报告，`client_notice` 是唯一允许 `run_id/turn_id=null` 的 timeline variant。它不改变运行状态、重试预算、模型上下文或 `total_events`；与具有真实身份的 `execution_notice` 分开。
+
+接纳以 notice UUID 幂等，在同一事务写事实和 UI 投影。排序锚定接纳时最后一个真实 event rowid，而不是相信客户端时钟。重建通过该锚点合并产品提示和 Runtime 投影；原始 Runtime events 仍是运行和上下文的唯一事实源。截断移除相应 UI 行并保留不可见的幂等 tombstone，避免离线客户端补送让已删除历史复活；删除整个 Conversation 同步清理所有 notice（包括 tombstone）。
+
+HTTP 窄入口由 `features/conversation/client-notices` 拥有，只接纳错误类别、操作、可选 HTTP 状态及客户端观察时刻；不接受自由文本、供应商响应、stack、模型配置或客户端声明的运行身份。迁移 v66 仅重建可再生 UI 表以支持此独立 variant，不改写 Runtime facts。

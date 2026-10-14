@@ -1,3 +1,4 @@
+import { captureConversationClientNotice } from '../../client-notices';
 import { useInteractiveRunStore } from '../store/interactiveRunStore';
 import { reconcileInteractiveRunCommandFailure } from './reconcileInteractiveRunCommandFailure';
 import { reconcileTerminalConversationView } from '../../../services/orchestration/reconcileTerminalConversationView';
@@ -30,7 +31,7 @@ export async function cancelInteractiveRun(
         reason: deps.reason ?? 'user_cancelled',
       });
     } catch (error) {
-      await reconcileInteractiveRunCommandFailure(conversationId, error);
+      await reconcileInteractiveRunCommandFailure(conversationId, error, 'cancel');
       throw error;
     }
   })();
@@ -45,6 +46,7 @@ export async function cancelInteractiveRun(
     const reconciliationError = new Error(
       `Run ${runId} settled as ${settlement.terminal_status}, but durable conversation reconciliation failed: ${reason}`,
     );
+    captureConversationClientNotice(conversationId, { error_kind: 'projection', operation: 'load' });
     store.recordCommandError(conversationId, reconciliationError.message);
     throw reconciliationError;
   }

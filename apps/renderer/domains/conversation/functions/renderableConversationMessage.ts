@@ -11,6 +11,7 @@ function readUiPresentation(message: BaseMessage): 'message' | 'hidden' | undefi
     case 'partial_answer':
     case 'history_summary':
       return message.metadata.ui?.presentation;
+    case 'client_notice':
     case 'tool_calls':
     case 'execution_notice':
     case 'summarization_progress':
@@ -36,6 +37,7 @@ export function isRenderableConversationMessage(message: BaseMessage): boolean {
   if (isHiddenConversationMessage(message)) return false;
   if (isBlankFinalAnswerMessage(message)) return false;
 
+  if (message.type === 'client_notice') return true;
   if (message.type === 'execution_notice') return true;
   if (message.role === 'user' || message.role === 'assistant') return true;
   return false;

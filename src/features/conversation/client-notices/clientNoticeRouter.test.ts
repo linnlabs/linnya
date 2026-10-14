@@ -1,0 +1,41 @@
+import { afterEach, expect, it } from 'vitest';
+import express from 'express';
+import { createServer, type Server } from 'node:http';
+import { randomUUID } from 'node:crypto';
+import Database from 'better-sqlite3';
+import { createConversationClientNoticeRouter } from './clientNoticeRouter';
+import { CONVERSATION_SCHEMAS } from '../../../app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
+import { createSqliteClientNoticeAdmission } from '../../../app-hosts/linnya/adapters/persistence/conversation-client-notices/sqliteClientNoticeAdmission';
+import { SqliteUiProjectionApplier } from '../../../app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteApplier';
+import { readTail } from '../../../app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteUiMessagesReader';
+
+const servers: Server[] = [];
+afterEach(async () => { for (const server of servers.splice(0)) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); });
+
+it('HTTP admits only safe client facts and history reads the same notice without any runtime run', async () => {
+  const db = new Database(':memory:');
+  db.exec('CREATE TABLE projects(id TEXT PRIMARY KEY);');
+  for (const sql of CONVERSATION_SCHEMAS) db.exec(sql);
+  db.prepare('INSERT INTO conversations(conversation_id,created_at,last_event_at) VALUES (?,1,1)').run('conv');
+  const app = express();
+  app.use(express.json());
+  app.use('/conversation', createConversationClientNoticeRouter(createSqliteClientNoticeAdmission({ db, project: fact => new SqliteUiProjectionApplier(db).projectClientNotice(fact) })));
+  const server = createServer(app); servers.push(server);
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('No HTTP address');
+  const command = { notice_id: randomUUID(), observed_at: 12, error_kind: 'http', operation: 'send', http_status: 503 };
+  const url = `http://127.0.0.1:${address.port}/conversation/conv/client-notices/${command.notice_id}`;
+  const put = (body: unknown) => fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  expect((await put({ ...command, raw_body: 'secret', run_id: 'made-up' })).status).toBe(400);
+  expect((await put(command)).status).toBe(200);
+  expect((await put(command)).status).toBe(200);
+  expect((await put({ ...command, http_status: 500 })).status).toBe(409);
+  const history = readTail(db, 'conv', 100);
+  expect(history.status).toBe('ready');
+  if (history.status !== 'ready') throw new Error('History not ready');
+  expect(history.messages).toHaveLength(1);
+  expect(history.messages[0]).toMatchObject({ message_type: 'client_notice', run_id: null, payload: command });
+  expect(db.prepare('SELECT * FROM events').all()).toEqual([]);
+  db.close();
+});

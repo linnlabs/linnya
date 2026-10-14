@@ -1060,6 +1060,7 @@ export class SQLiteEventStore implements IEventStore {
    * 会话删除必须显式覆盖全部本地事实，不能让连接级 FK pragma 改变业务语义。
    */
   private deleteConversationFacts(conversationId: string): number {
+    this.db.prepare('DELETE FROM conversation_client_notices WHERE conversation_id = ?').run(conversationId);
     this.eventAssetLinks.deleteForConversation(conversationId);
     this.uiProjection.deleteProjectionRowsForConversation(conversationId);
     new SqliteSubrunTraceHistoryCleanup(this.db).deleteForConversation(conversationId);

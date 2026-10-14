@@ -1,8 +1,11 @@
+import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AssistantServiceCallbacks, Conversation } from '../../types';
 import type { InvokeAssistantParams } from '../assistantService';
 import { ConversationAgentIds, PromptKeys, type ConversationUserInputCommittedEvent } from '@app/schemas';
 import { consumeQuotaOrNull } from '../../../../shared/quota/quotaClient';
+
+vi.mock('../../features/client-notices/orchestration/clientNoticeApi', () => ({ sendClientNotice: vi.fn(async () => { throw new Error('notice offline'); }) }));
 
 const harness = vi.hoisted(() => {
   const conversationA: Conversation = {
@@ -32,6 +35,7 @@ const harness = vi.hoisted(() => {
   };
   const assistantStore = {
     activeConversation: conversationA,
+    get activeConversationId() { return this.activeConversation.id; },
     activeMessages: conversationA.messages,
     hasActiveConversation: true,
     isStreaming: false,
@@ -190,6 +194,7 @@ import { useChatFlowOrchestrator } from './chatFlowOrchestrator';
 
 describe('chatFlowOrchestrator edit and resend', () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     harness.conversationA.messages.splice(1);
     harness.conversationA.selectedAgentId = null;
     harness.assistantStore.setError.mockClear();

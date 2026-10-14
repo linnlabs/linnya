@@ -136,6 +136,7 @@ function normalizeFrontendMessage(message: BaseMessage): EssentialMessage {
           summary: message.metadata.summary,
         }).summary.replacedMessageIds,
       };
+    case 'client_notice':
     case 'execution_notice':
     case 'summarization_progress':
       return common;
@@ -178,6 +179,7 @@ function normalizeBackendRow(row: UiMessageRow): EssentialMessage {
     case 'tool_preamble':
     case 'partial_answer':
       return { ...common, answerId: row.payload.answer_id, activity: row.payload.activity };
+    case 'client_notice':
     case 'execution_notice': return common;
     case 'history_summary':
       return {

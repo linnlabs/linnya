@@ -1,3 +1,4 @@
+import { getConversationClientNotices } from '../../features/client-notices';
 import type { WorkspaceScope } from '../../../../shared/stores/workspaceScopeStore';
 import { historyApiService } from '../services/historyApiService';
 import { useConversationDeletionStore } from '../store/conversationDeletionStore';
@@ -19,6 +20,7 @@ async function performConversationDeletion(input: DeleteConversationFromHistoryI
   deletionStore.beginDeletion(conversationId);
   try {
     await historyApiService.deleteConversation(conversationId);
+    getConversationClientNotices().forgetConversation(conversationId);
     commitDeletion();
   } finally {
     deletionStore.finishDeletion(conversationId);
@@ -33,7 +35,8 @@ async function performPendingCleanupRetry(input: DeleteConversationFromHistoryIn
   try {
     const outcome = await historyApiService.retryPendingCleanup(conversationId);
     if (outcome === 'conversation_deleted') {
-      commitDeletion();
+      getConversationClientNotices().forgetConversation(conversationId);
+    commitDeletion();
       return;
     }
     if (outcome === 'still_pending') {

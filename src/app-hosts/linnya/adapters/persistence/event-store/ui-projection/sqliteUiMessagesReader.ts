@@ -34,7 +34,7 @@ interface ProjectionStateSqlRow {
 interface UiMessageSqlRow {
   message_id: string;
   conversation_id: string;
-  turn_id: string;
+  turn_id: string | null;
   role: string;
   message_type: string;
   sort_seq: number;
@@ -44,7 +44,7 @@ interface UiMessageSqlRow {
   payload_json: string | null;
   merge_key: string | null;
   presentation: string | null;
-  run_id: string;
+  run_id: string | null;
 }
 
 interface SortSeqRow {

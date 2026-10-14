@@ -138,6 +138,8 @@ function mergeWindowMessageWithLivePatch(
     case 'partial_answer':
       if (!isAnswerMessage(livePatch)) return windowMessage;
       return mergeAnswerMessage(windowMessage, livePatch);
+    case 'client_notice':
+      return windowMessage;
     case 'execution_notice':
       if (livePatch.type !== 'execution_notice') return windowMessage;
       // 同一事实合并仅保留 live 的执行归属；恢复后的旧 waiting 不能覆盖 durable 终态。

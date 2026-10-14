@@ -4,6 +4,12 @@ import { ensureMaterializedConversation } from './ensureMaterializedConversation
 
 const titleFeature = vi.hoisted(() => ({
   registerAutomaticCandidate: vi.fn(),
+  bindDraft: vi.fn(),
+}));
+
+vi.mock('../../features/client-notices', () => ({
+  currentClientNoticeDraftKey: () => 'project-A:1',
+  getConversationClientNotices: () => ({ bindDraft: titleFeature.bindDraft }),
 }));
 
 vi.mock('../../features/conversation-title', () => ({
@@ -40,6 +46,7 @@ describe('ensureMaterializedConversation', () => {
     expect(result?.id).toBe('conversation-1');
     expect(scopeStore.materializeCurrentDraft).toHaveBeenCalledWith('conversation-1');
     expect(titleFeature.registerAutomaticCandidate).toHaveBeenCalledWith('conversation-1');
+    expect(titleFeature.bindDraft).toHaveBeenCalledWith('project-A:1', 'conversation-1');
   });
 
   it('已有会话和历史会话不会重新登记资格', () => {
@@ -61,8 +68,10 @@ describe('ensureMaterializedConversation', () => {
       materializeCurrentDraft: vi.fn(),
     };
     titleFeature.registerAutomaticCandidate.mockClear();
+    titleFeature.bindDraft.mockClear();
 
     expect(ensureMaterializedConversation(assistantStore, scopeStore)).toBe(conversation);
     expect(titleFeature.registerAutomaticCandidate).not.toHaveBeenCalled();
+    expect(titleFeature.bindDraft).not.toHaveBeenCalled();
   });
 });

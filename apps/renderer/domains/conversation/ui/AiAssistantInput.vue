@@ -127,6 +127,7 @@
 </template>
 
 <script setup lang="ts">
+import { captureConversationClientNotice } from '../features/client-notices';
 import { computed, ref, shallowRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { Editor as TiptapEditor, EditorContent } from '@tiptap/vue-3';
 import type { Content, Editor as TiptapCoreEditor } from '@tiptap/core';
@@ -582,6 +583,7 @@ const handleAgentChoiceChange = async (agentChoiceId: ConversationAgentChoiceId 
     });
   } catch (error) {
     console.error('[AiAssistantInput] 更新会话 Agent 失败:', error);
+    captureConversationClientNotice(assistantStore.activeConversationId, { error_kind: 'control', operation: 'select_agent', reason_code: 'agent_choice_not_saved' });
     assistantStore.setError(conversationMessage('conversation.input.agentChoice.persistFailed'));
   } finally {
     isAgentChoiceUpdating.value = false;

@@ -20,21 +20,21 @@ export type UiMessagePayload = Exclude<ConversationUiMessage['payload'], null>;
 export type UiMessageRole = ConversationUiMessageRole;
 export type UiMessageType = ConversationTimelineMessageType;
 
-interface UiMessageRowFields<Payload extends ConversationUiMessage['payload']> {
+interface UiMessageRowFields<Message extends ConversationUiMessage> {
   readonly messageId: string;
   readonly conversationId: string;
-  readonly turnId: string;
+  readonly turnId: Message['turn_id'];
   readonly timestamp: number;
   readonly content: string | null;
   readonly attachments: UiMessageAttachments | null;
-  readonly payload: Payload;
+  readonly payload: Message['payload'];
   readonly mergeKey: string | null;
   readonly presentation: ConversationUiPresentation | null;
-  readonly runId: string;
+  readonly runId: Message['run_id'];
 }
 
 type UiMessageRowVariant<Message extends ConversationUiMessage> =
-  UiMessageRowFields<Message['payload']> & {
+  UiMessageRowFields<Message> & {
     readonly role: Message['role'];
     readonly messageType: Message['message_type'];
   };
@@ -46,7 +46,7 @@ export type NewUiMessageRow = ConversationUiMessage extends infer Message
     : never
   : never;
 
-type StripRuntimeRowFields<Row> = Row extends NewUiMessageRow
+type StripRuntimeRowFields<Row> = Row extends Exclude<NewUiMessageRow, { messageType: 'client_notice' }>
   ? Omit<Row, 'conversationId' | 'turnId' | 'timestamp' | 'runId' | 'attachments'> & {
     readonly attachments?: UiMessageAttachments | null;
   }

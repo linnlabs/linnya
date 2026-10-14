@@ -1,3 +1,4 @@
+import { currentClientNoticeDraftKey, getConversationClientNotices } from '../../features/client-notices';
 import type { BaseMessage, Conversation } from '../../types';
 import {
   type WorkspaceScope,
@@ -35,7 +36,10 @@ export function ensureMaterializedConversation(
     return assistantStore.activeConversation;
   }
 
+  const noticeDraftKey = currentClientNoticeDraftKey();
   const conversationId = assistantStore.createNewConversation(resolveProjectIdFromScope(scopeStore.currentScope));
+  // 所有正式化入口共用此交接，避免选 Agent/批注先创建会话时丢下草稿错误。
+  getConversationClientNotices().bindDraft(noticeDraftKey, conversationId);
   scopeStore.materializeCurrentDraft(conversationId);
   useConversationTitleFeature().registerAutomaticCandidate(conversationId);
 

@@ -1,4 +1,7 @@
 import type Database from 'better-sqlite3';
+import { readConversationClientNotices } from '../../conversation-client-notices/sqliteClientNoticeAdmission';
+import type { PersistedConversationClientNotice } from '../../conversation-client-notices/sqliteClientNoticeAdmission';
+import { projectClientNoticeToUiRow } from '../../conversation-client-notices/projectClientNotice';
 import { parseRuntimeEventRoutingIdentity, type RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { RUNTIME_EVENT_TYPES_NEVER_REPLAYED_TO_UI } from '@linnlabs/linnkit/runtime-kernel/events';
 import { InMemoryUiProjectionAccess } from './memoryApplier';
@@ -10,6 +13,7 @@ import { SqliteConversationCitationFactIndex } from './sqliteCitationFactIndex';
 import { SqliteUiProjectionApplier } from './sqliteApplier';
 
 interface RebuildEventRow {
+  event_rowid: number;
   id: string;
   type: string;
   payload: string;
@@ -142,7 +146,7 @@ export function rebuildConversationUiProjection(
 
   const events = readRenderableEventRowsForRebuild(db, conversationId);
   const sqlExcludedEventCount = readTotalEventCount(db, conversationId) - events.length;
-  const projection = projectRowsInMemory(events, conversationId);
+  const projection = projectRowsInMemory(events, conversationId, readConversationClientNotices(db, conversationId));
   const previousRevision = state?.revision ?? 0;
   const nextRevision = previousRevision + 1;
   const lastEventRowId = readLastEventRowId(db, conversationId);
@@ -237,7 +241,7 @@ function readRenderableEventRowsForRebuild(
   return db
     .prepare<unknown[], RebuildEventRow>(
       `
-      SELECT e.id, e.type, e.payload, e.ts, e.run_id, r.parent_run_id
+      SELECT e.rowid AS event_rowid, e.id, e.type, e.payload, e.ts, e.run_id, r.parent_run_id
       FROM events e
       JOIN runs r ON r.id = e.run_id
       WHERE r.conversation_id = ?
@@ -267,7 +271,7 @@ function readTotalEventCount(db: Database.Database, conversationId: string): num
   return row?.count ?? 0;
 }
 
-function projectRowsInMemory(rows: readonly RebuildEventRow[], conversationId: string) {
+function projectRowsInMemory(rows: readonly RebuildEventRow[], conversationId: string, notices: readonly PersistedConversationClientNotice[]) {
   const access = new InMemoryUiProjectionAccess();
   const resolved = rows.map(row =>
     parseStoredRuntimeEvent(row.payload, {
@@ -279,8 +283,20 @@ function projectRowsInMemory(rows: readonly RebuildEventRow[], conversationId: s
       timestamp: row.ts,
     })
   );
-  for (const event of resolved) {
+  let noticeIndex = 0;
+  for (const [index, event] of resolved.entries()) {
+    const row = rows[index];
+    if (!row) throw new Error('UI rebuild event ordering mismatch');
+    while (noticeIndex < notices.length) {
+      const notice = notices[noticeIndex];
+      if (!notice || notice.anchorEventRowId >= row.event_rowid) break;
+      access.applyOps([{ op: 'insert', row: projectClientNoticeToUiRow(notice) }]);
+      noticeIndex += 1;
+    }
     access.applyOps(projectEventToUiRowOps(event, access));
+  }
+  for (const notice of notices.slice(noticeIndex)) {
+    access.applyOps([{ op: 'insert', row: projectClientNoticeToUiRow(notice) }]);
   }
   return { ...access.snapshot(), events: resolved };
 }

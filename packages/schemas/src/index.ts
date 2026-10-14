@@ -127,6 +127,7 @@ export * from './conversation/subrun-trace-summary';
 export * from './conversation/message-identity';
 export * from './conversation/visual-turn-identity';
 export * from './conversation/ui-message';
+export * from './conversation/client-notice';
 export * from './conversation/execution-notice';
 export * from './conversation/presentation';
 export * from './conversation/tool-message';

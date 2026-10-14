@@ -49,6 +49,7 @@ function cloneRetainedTargetRow(
   row: WindowMessageRow,
   options: { readonly content?: string; readonly replacement?: BaseMessage },
 ): StoredWindowMessageRow {
+  if (row.dto.message_type === 'client_notice') return markRaw({ ...row, dto: row.dto, message: cloneConversationMessage(row.message) });
   const replacement = options.replacement;
   const content = replacement?.content ?? options.content;
   return markRaw({

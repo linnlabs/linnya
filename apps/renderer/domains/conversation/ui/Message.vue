@@ -16,6 +16,7 @@
       @regenerate-response="handleRegenerateResponse"
     />
 
+    <ClientNoticeMessageComponent v-else-if="message.type === 'client_notice'" :message="message" />
     <ExecutionNoticeMessageComponent v-else-if="message.type === 'execution_notice'" :message="message" />
 
     <!-- 历史摘要消息 -->
@@ -65,6 +66,7 @@ import UserMessage from './message/UserMessage.vue';
 import ThoughtMessage from './message/ThoughtMessage.vue';
 import AnswerMessage from './message/AnswerMessage.vue';
 import ToolCallsMessage from './message/ToolCallsMessage.vue';
+import ClientNoticeMessageComponent from '../features/client-notices/ui/ClientNoticeMessage.vue';
 import ExecutionNoticeMessageComponent from './message/ExecutionNoticeMessage.vue';
 import SummaryMessageComponent from './message/SummaryMessage.vue';
 

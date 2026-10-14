@@ -1,4 +1,6 @@
 import type Database from 'better-sqlite3';
+import { projectClientNoticeToUiRow } from '../../conversation-client-notices/projectClientNotice';
+import type { PersistedConversationClientNotice } from '../../conversation-client-notices/sqliteClientNoticeAdmission';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import {
   ConversationUiMessageSchema,
@@ -21,7 +23,7 @@ import { projectSubrunSummaryToUiRowOp } from './projectSubrunSummary';
 interface UiMessageSqlRow {
   message_id: string;
   conversation_id: string;
-  turn_id: string;
+  turn_id: string | null;
   role: string;
   message_type: string;
   sort_seq: number;
@@ -31,7 +33,7 @@ interface UiMessageSqlRow {
   payload_json: string | null;
   merge_key: string | null;
   presentation: string | null;
-  run_id: string;
+  run_id: string | null;
 }
 
 interface ConversationEventCountRow {
@@ -83,6 +85,12 @@ export class SqliteUiProjectionApplier {
   constructor(private readonly db: Database.Database) {
     this.access = new SqliteUiProjectionAccess(db);
     this.citationFactIndex = new SqliteConversationCitationFactIndex(db);
+  }
+
+  /** 接纳事务内投影产品事实，不产生 RuntimeEvent 或模型上下文。 */
+  projectClientNotice(fact: PersistedConversationClientNotice): void {
+    this.insertRow(projectClientNoticeToUiRow(fact));
+    this.touchProjectionStateAfterAppend(fact.conversationId, readConversationTotalEvents(this.db, fact.conversationId));
   }
 
   projectAppendedEvent(
@@ -178,14 +186,14 @@ export class SqliteUiProjectionApplier {
       .run(conversationId);
   }
 
-  private applyOps(conversationId: string, runId: string, ops: readonly UiRowOp[]): void {
+  private applyOps(conversationId: string, _runId: string, ops: readonly UiRowOp[]): void {
     for (const op of ops) {
       switch (op.op) {
         case 'insert':
-          this.insertRow({ ...op.row, runId });
+          this.insertRow(op.row);
           break;
         case 'replace':
-          this.replaceRow({ ...op.row, runId });
+          this.replaceRow(op.row);
           break;
         case 'hide':
           this.hideRows(conversationId, op.messageIds);
@@ -374,7 +382,7 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage): UiMessageRow
   const common = {
     messageId: message.message_id,
     conversationId: message.conversation_id,
-    turnId: message.turn_id,
+
     sortSeq: message.sort_seq,
     timestamp: message.timestamp,
     content: message.content,
@@ -382,13 +390,15 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage): UiMessageRow
     payload: message.payload,
     mergeKey: message.merge_key,
     presentation: message.presentation,
-    runId: message.run_id,
+
   };
   // 公共 DTO 与 Host row 仅字段命名不同；逐 variant 映射以保留 payload 判别关系。
   switch (message.message_type) {
     case 'user_input':
       return {
         ...common,
+        turnId: message.turn_id,
+        runId: message.run_id,
         role: message.role,
         messageType: message.message_type,
         payload: message.payload,
@@ -396,6 +406,8 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage): UiMessageRow
     case 'thought':
       return {
         ...common,
+        turnId: message.turn_id,
+        runId: message.run_id,
         role: message.role,
         messageType: message.message_type,
         payload: message.payload,
@@ -403,6 +415,8 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage): UiMessageRow
     case 'tool_calls':
       return {
         ...common,
+        turnId: message.turn_id,
+        runId: message.run_id,
         role: message.role,
         messageType: message.message_type,
         payload: message.payload,
@@ -410,6 +424,8 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage): UiMessageRow
     case 'final_answer':
       return {
         ...common,
+        turnId: message.turn_id,
+        runId: message.run_id,
         role: message.role,
         messageType: message.message_type,
         payload: message.payload,
@@ -417,6 +433,8 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage): UiMessageRow
     case 'tool_preamble':
       return {
         ...common,
+        turnId: message.turn_id,
+        runId: message.run_id,
         role: message.role,
         messageType: message.message_type,
         payload: message.payload,
@@ -424,15 +442,21 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage): UiMessageRow
     case 'partial_answer':
       return {
         ...common,
+        turnId: message.turn_id,
+        runId: message.run_id,
         role: message.role,
         messageType: message.message_type,
         payload: message.payload,
       };
+    case 'client_notice':
+      return { ...common, turnId: message.turn_id, runId: message.run_id, role: message.role, messageType: message.message_type, payload: message.payload };
     case 'execution_notice':
-      return { ...common, role: message.role, messageType: message.message_type, payload: message.payload };
+      return { ...common, turnId: message.turn_id, runId: message.run_id, role: message.role, messageType: message.message_type, payload: message.payload };
     case 'history_summary':
       return {
         ...common,
+        turnId: message.turn_id,
+        runId: message.run_id,
         role: message.role,
         messageType: message.message_type,
         payload: message.payload,

@@ -1,11 +1,14 @@
+import { captureConversationClientNotice } from '../../client-notices';
 import { useInteractiveRunStore } from '../store/interactiveRunStore';
 import { fetchActiveForegroundRun } from './interactiveRunApi';
 import { projectActiveRunResponse } from '../functions/projectActiveRunResponse';
 
 export async function reconcileInteractiveRunCommandFailure(
   conversationId: string,
-  error: unknown
+  error: unknown,
+  operation: 'pause' | 'cancel' | 'continue' | 'send',
 ): Promise<void> {
+  captureConversationClientNotice(conversationId, { error_kind: 'control', operation });
   const message = error instanceof Error ? error.message : String(error);
   const store = useInteractiveRunStore();
   const before = store.snapshotFor(conversationId);

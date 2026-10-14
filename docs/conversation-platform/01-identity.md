@@ -246,3 +246,5 @@ Linnkit adapter 的 `PersistedEvent` 只有 `eventStoreId + event`：
 - **`tool_call_id`**：run 内工具调用身份；Tool UI message 必须与 `run_id` 共同派生。
 - **`message_id`**：Linnya 产品 UI read-model 身份。
 - **command `messageId`**：请求前预分配的关联身份；durable commit 成功后才成为正式 `message_id`。
+
+客户端在运行接纳前发生的错误没有 Runtime 的 run/turn 身份。禁止为展示这些错误生成伪身份；`client_notice` 使用独立 notice UUID，在已有 Conversation 下由窄 API 接纳为产品事实，其 UI DTO 的 run/turn 为 null。此例外不适用于 RuntimeEvent 或其他 timeline variant。无 Conversation 的草稿错误仅在本地保留，绑定真实 Conversation 后才能提交。

@@ -28,7 +28,7 @@ export async function pauseInteractiveRun(conversationId: string): Promise<void>
     await reconcileTerminalConversationView(conversationId);
   } catch (error) {
     if (store.snapshotFor(conversationId)?.executionId === current.executionId) {
-      await reconcileInteractiveRunCommandFailure(conversationId, error);
+      await reconcileInteractiveRunCommandFailure(conversationId, error, 'pause');
     }
     throw error;
   }

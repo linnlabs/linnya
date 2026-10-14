@@ -15,6 +15,7 @@ import type {
   ConversationUnsealedAnswerMessageMetadata,
   ConversationMessageId,
   ConversationHistorySummaryPayload,
+  ConversationClientNoticePayload,
   ConversationReferenceId,
   ConversationSummarizationPresentationId,
   ConversationSummarizationProgressMetadata,
@@ -156,6 +157,14 @@ export type SummarizationProgressMessage = ConversationMessageFields & {
   metadata: ConversationSummarizationProgressMetadata;
 };
 
+type ClientNoticeMessage = ConversationMessageFields & {
+  role: 'system';
+  type: 'client_notice';
+  metadata: ConversationClientNoticePayload & { turn_id: null; run_id: null };
+  /** 仅本地 outbox 的呈现，不进入持久 UI DTO。 */
+  localDelivery?: 'pending' | 'saved';
+};
+
 type ExecutionNoticeMessage = ConversationMessageFields & {
   role: 'system';
   type: 'execution_notice';
@@ -163,6 +172,7 @@ type ExecutionNoticeMessage = ConversationMessageFields & {
 };
 
 export type BaseMessage =
+  | ClientNoticeMessage
   | ExecutionNoticeMessage
   | UserMessage
   | ThoughtMessage

@@ -1,3 +1,4 @@
+import { captureConversationClientNotice, clientTransportNotice } from '../../features/client-notices';
 /**
  * @file apps/renderer/domains/conversation/services/orchestration/annotationRunOrchestrator.ts
  * @description 编辑器批注 AI run 编排器
@@ -102,6 +103,7 @@ export function useAnnotationRunOrchestrator() {
     if (!projectId) {
       const message = resolveCurrentConversationMessage('conversation.flow.missingProjectForRun');
       console.error(`[AnnotationRunOrchestrator] ${message}`);
+      captureConversationClientNotice(assistantStore.activeConversationId, { error_kind: 'validation', operation: 'annotation', reason_code: 'missing_project' });
       annotationExecutionState.setError(message);
       return;
     }
@@ -117,6 +119,7 @@ export function useAnnotationRunOrchestrator() {
     } catch (error) {
       console.error('[AnnotationRunOrchestrator] 创建批注请求失败:', error);
       const uiMessage = resolveCurrentConversationMessage('conversation.flow.taskInvocationFailed');
+      captureConversationClientNotice(assistantStore.activeConversationId, { error_kind: 'annotation', operation: 'annotation' });
       annotationExecutionState.setError(uiMessage);
       streamHandlers.onError(uiMessage, 'api_error');
       return;
@@ -222,6 +225,13 @@ export function useAnnotationRunOrchestrator() {
             annotationExecutionState.settle({ controller: abortController, errorMessage: null });
             streamHandlers.onTransportEnd(true, 'normal_completion');
           },
+          onTransportOutcome: outcome => {
+            if (outcome.kind === 'failed') {
+              captureConversationClientNotice(persistToConversation ? conversationId : null, {
+                operation: 'annotation', ...clientTransportNotice(outcome.failure),
+              });
+            }
+          },
           onError: (error) => {
             console.error('[AnnotationRunOrchestrator] AI执行出错:', error);
             const uiMessage = resolveCurrentConversationMessage('conversation.flow.streamFailed');
@@ -235,6 +245,7 @@ export function useAnnotationRunOrchestrator() {
       const isAbortError = error instanceof Error && error.name === 'AbortError';
       if (!isAbortError) {
         const uiMessage = resolveCurrentConversationMessage('conversation.flow.taskInvocationFailed');
+        captureConversationClientNotice(persistToConversation ? conversationId : null, { error_kind: 'annotation', operation: 'annotation' });
         console.error('[AnnotationRunOrchestrator] 调用失败:', error);
         annotationExecutionState.settle({ controller: abortController, errorMessage: uiMessage });
         streamHandlers.onError(uiMessage, 'api_error');

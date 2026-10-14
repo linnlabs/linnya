@@ -1,3 +1,4 @@
+import { captureConversationClientNotice, getConversationClientNotices } from '../../features/client-notices';
 import type { MessageWindowApiPort } from '../definitions/messageWindowApi';
 import type { MessageWindowSnapshot } from '../definitions/messageWindow';
 import type { UiMessagesWindowDto, UiMessagesWindowReadyDto } from '../definitions/uiMessagesDto';
@@ -99,6 +100,7 @@ export async function loadTail(
     applyWindowResponse(dto, store, 'replace', deps.readLiveMessages);
   } catch (error) {
     if (isCurrentWindowRequest(request)) {
+      captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'load' });
       store.setError(conversationId, readErrorMessage(error));
     }
     throw error;
@@ -134,6 +136,7 @@ export async function loadBefore(
     return 'prepended';
   } catch (error) {
     if (isCurrentWindowRequest(request)) {
+      captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'load' });
       store.setError(conversationId, readErrorMessage(error));
     }
     throw error;
@@ -169,6 +172,7 @@ export async function loadAfter(
     return 'appended';
   } catch (error) {
     if (isCurrentWindowRequest(request)) {
+      captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'load' });
       store.setError(conversationId, readErrorMessage(error));
     }
     throw error;
@@ -197,6 +201,7 @@ export async function loadAround(
     return 'replaced';
   } catch (error) {
     if (isCurrentWindowRequest(request)) {
+      captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'load' });
       store.setError(conversationId, readErrorMessage(error));
     }
     throw error;
@@ -217,6 +222,7 @@ function applyWindowResponse(
     throw new Error(dto.error);
   }
 
+  getConversationClientNotices().acknowledgeVisible(dto.messages.flatMap(message => message.message_type === 'client_notice' ? [message.payload.notice_id] : []));
   const snapshot = buildSnapshot(dto);
   const liveMessages = readLiveMessages(snapshot.conversationId);
   admitWindowAndLiveMessages(snapshot.rows, liveMessages);

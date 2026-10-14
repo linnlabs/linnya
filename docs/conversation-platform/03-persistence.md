@@ -198,3 +198,7 @@ committed Runtime fact → SQLite UI row → live SSE → reload DTO
 ```
 
 只使用 `MemoryEventStore`、mock persistence port 或字段快照**不能**证明主链正确（[02 §8.10](./02-event-pipeline.md)）。完整测试分层见 [11 测试](./11-testing-gates.md)。
+
+## 客户端提示的持久边界
+
+运行/模型上下文的事实源仍是 `events`。没有 run identity 的客户端失败另以 Conversation 产品事实 `conversation_client_notices` 接纳；它不是 RuntimeEvent，不改变运行生命周期，也不进入模型上下文。只有公共 DTO 的 `client_notice` variant 使用空 run/turn，其他消息身份约束保持不变。正式接纳、幂等、锚点排序、截断 tombstone 和窗口重建见 EventStore owner README；Host 离线前的本地 outbox 明确标为尚未同步。

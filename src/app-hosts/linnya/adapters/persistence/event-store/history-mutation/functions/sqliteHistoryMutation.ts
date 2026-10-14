@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { deleteClientNoticesFromRuns } from '../../../conversation-client-notices/cleanupClientNotices';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 import type { SqliteEventAssetLinks } from '../../event-asset-links/sqliteEventAssetLinks';
@@ -106,6 +107,7 @@ export function deleteHistoryFromRun(
     return { deletedEventCount: 0, deletedRunCount: 0 };
   }
 
+  deleteClientNoticesFromRuns(params.db, params.conversationId, runIds);
   params.uiProjection.deleteRowsForRuns(params.conversationId, runIds);
   params.eventAssetLinks.deleteForRuns(runIds);
   new SqliteSubrunTraceHistoryCleanup(params.db).deleteForParentRunIds(runIds);

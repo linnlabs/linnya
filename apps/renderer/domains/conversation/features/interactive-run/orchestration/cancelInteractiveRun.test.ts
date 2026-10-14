@@ -10,6 +10,9 @@ vi.mock('@/shared/services/aiService/common', () => ({
   getApiBaseUrl: async () => 'http://conversation.test',
 }));
 
+vi.mock('../../client-notices/orchestration/clientNoticeApi', () => ({ sendClientNotice: vi.fn(async () => { throw new Error('notice offline'); }) }));
+
+import { useClientNoticeStore } from '../../client-notices';
 import { useInteractiveRunStore } from '../store/interactiveRunStore';
 import { cancelInteractiveRun } from './cancelInteractiveRun';
 
@@ -189,6 +192,7 @@ describe('cancelInteractiveRun', () => {
       status: 'cancelled',
       error: expect.stringContaining('durable conversation reconciliation failed'),
     });
+    expect(useClientNoticeStore().entries.some(entry => entry.command.error_kind === 'projection' && entry.command.operation === 'load')).toBe(true);
   });
 
   it('调用方传入的替换原因不会被伪装成用户点击取消', async () => {

@@ -54,7 +54,7 @@ export async function continueInteractiveRun(
   } catch (error) {
     if (!store.isLatestTransport(conversationId, controller)) throw error;
     store.releaseTransport(conversationId, controller);
-    await reconcileInteractiveRunCommandFailure(conversationId, error);
+    await reconcileInteractiveRunCommandFailure(conversationId, error, 'continue');
     throw error;
   }
 }

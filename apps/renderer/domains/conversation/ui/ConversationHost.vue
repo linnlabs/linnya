@@ -46,8 +46,9 @@
           class="conversation-view-container"
         />
 
-        <!-- 尚未获得运行事实的客户端故障留在消息列表末尾，不伪造 durable Runtime error。 -->
-        <ConversationLocalErrorNotice v-if="localSurfaceError" :error="localSurfaceError" @dismiss="clearError" />
+        <template v-if="!conversationRenderScopeId">
+          <ClientNoticeMessageComponent v-for="notice in localNotices" :key="notice.id" :message="notice" />
+        </template>
 
         <!-- 🆕 时间轴导航 - 绝对定位在右侧，固定不滚动 -->
         <TimelineNav
@@ -102,8 +103,8 @@ import { loadHistoryWindowAfter } from '../history/orchestration/historyWindowAf
 import { ensureHistoryWindowTailForBottom } from '../history';
 import ConversationView from './ConversationView.vue';
 import AiAssistantInput from './AiAssistantInput.vue';
-import ConversationLocalErrorNotice from './components/ConversationLocalErrorNotice.vue';
-import { useInteractiveRunStore } from '../features/interactive-run';
+import { useClientNoticePresentation } from '../features/client-notices';
+import ClientNoticeMessageComponent from '../features/client-notices/ui/ClientNoticeMessage.vue';
 import TimelineNav from './components/timeline/TimelineNav.vue';
 import { ScrollToBottomButton } from '@linnya/renderer-ui';
 import CommandApprovalPanel from '../features/command-approval/ui/CommandApprovalPanel.vue';
@@ -178,7 +179,12 @@ const {
 });
 
 // 计算属性
-const activeMessages = computed(() => assistantStore.activeMessages);
+const { localNotices } = useClientNoticePresentation({
+  conversationId: () => assistantStore.activeConversationId,
+  messages: () => assistantStore.activeMessages,
+  isActive: () => props.isActive,
+});
+const activeMessages = computed(() => [...assistantStore.activeMessages, ...localNotices.value]);
 /**
  * ConversationHost 是导航身份的 owner。key 与显式 prop 保证旧 View 不会在会话切换后
  * 继续拿新 active id 发起异步读取；叶子工具卡只消费 View 提供的 render scope。
@@ -247,17 +253,6 @@ const inputExecution = useConversationInputExecution({
 });
 const isLoading = inputExecution.isLoading;
 const isStreaming = inputExecution.isStreaming;
-const interactiveRunStore = useInteractiveRunStore();
-const localSurfaceError = computed(() => {
-  const error = assistantStore.error;
-  if (!error) return null;
-  const run = interactiveRunStore.snapshotFor(assistantStore.activeConversationId);
-  const alreadyProjected = activeMessages.value.some(message =>
-    message.type === 'execution_notice'
-    && message.id === run?.errorNoticeId,
-  );
-  return alreadyProjected ? null : error;
-});
 const isConversationViewActive = computed(() => props.isActive);
 const messageWindowHasMoreBefore = computed(() => (
   messageWindowStore.conversationId === assistantStore.activeConversationId && messageWindowStore.hasMoreBefore
@@ -361,9 +356,6 @@ const handleLoadAfterRequested = async () => {
   await loadHistoryWindowAfter(conversationId);
 };
 
-const clearError = () => {
-  assistantStore.clearError();
-};
 
 const syncConversationScrollContainer = async () => {
   await nextTick();

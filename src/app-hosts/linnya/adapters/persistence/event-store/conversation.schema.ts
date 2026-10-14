@@ -9,7 +9,10 @@
  * 4. conversation_ui_messages / conversation_ui_citation_facts: 可重建的前端历史窗口 read model
  */
 
+import { CONVERSATION_CLIENT_NOTICE_SCHEMA } from '../conversation-client-notices/schema';
+
 export const CONVERSATION_SCHEMAS = [
+  CONVERSATION_CLIENT_NOTICE_SCHEMA,
   // 对话表
   // 注意：保留所有原有字段，只新增 project_id（可选）以支持项目关联
   `CREATE TABLE IF NOT EXISTS conversations (
@@ -89,7 +92,7 @@ export const CONVERSATION_SCHEMAS = [
   `CREATE TABLE IF NOT EXISTS conversation_ui_messages (
     message_id TEXT PRIMARY KEY,
     conversation_id TEXT NOT NULL,
-    turn_id TEXT NOT NULL,
+    turn_id TEXT,
     role TEXT NOT NULL,
     message_type TEXT NOT NULL,
     sort_seq INTEGER NOT NULL,
@@ -99,7 +102,9 @@ export const CONVERSATION_SCHEMAS = [
     payload_json TEXT,
     merge_key TEXT,
     presentation TEXT,
-    run_id TEXT NOT NULL,
+    run_id TEXT,
+    CHECK ((message_type = 'client_notice' AND run_id IS NULL AND turn_id IS NULL)
+      OR (message_type != 'client_notice' AND run_id IS NOT NULL AND turn_id IS NOT NULL)),
     FOREIGN KEY(conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE
   )`,
 

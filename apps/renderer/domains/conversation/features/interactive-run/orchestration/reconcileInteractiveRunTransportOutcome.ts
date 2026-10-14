@@ -1,3 +1,4 @@
+import { captureConversationClientNotice, clientTransportNotice } from '../../client-notices';
 import type { ConversationTransportOutcome } from '../../../definitions/conversationTransport';
 import { projectRunSettlementResponse } from '../functions/projectRunSettlementResponse';
 import { projectActiveRunResponse } from '../functions/projectActiveRunResponse';
@@ -24,6 +25,12 @@ export async function reconcileInteractiveRunTransportOutcome(
   const store = useInteractiveRunStore();
   if (!store.isLatestTransport(conversationId, controller)) return;
   store.releaseTransport(conversationId, controller);
+  if (outcome.kind === 'failed') {
+    captureConversationClientNotice(conversationId, {
+      operation: currentOperation(store.snapshotFor(conversationId)?.status),
+      ...clientTransportNotice(outcome.failure),
+    });
+  }
   const current = store.snapshotFor(conversationId);
   if (outcome.kind !== 'failed' && current?.status !== 'paused') return;
   const failureMessage = outcome.kind === 'failed' ? describeTransportFailure(outcome) : undefined;
@@ -62,4 +69,8 @@ export async function reconcileInteractiveRunTransportOutcome(
       error: `${failureMessage ?? 'Unable to refresh paused run'}; run settlement query failed: ${settlementMessage}`,
     });
   }
+}
+
+function currentOperation(status: string | undefined): 'send' | 'continue' {
+  return status === 'continuing' ? 'continue' : 'send';
 }

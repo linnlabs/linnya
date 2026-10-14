@@ -48,6 +48,9 @@ export function mapUiMessageDtoToConversationMessage(
     timestamp: dto.timestamp,
     ...(citationDependencies ? { citationDependencies } : {}),
   };
+  if (dto.message_type === 'client_notice') {
+    return { ...common, role: dto.role, type: dto.message_type, metadata: { ...dto.payload, turn_id: null, run_id: null } };
+  }
   const identityScope = {
     turn_id: dto.turn_id,
     run_id: dto.run_id,

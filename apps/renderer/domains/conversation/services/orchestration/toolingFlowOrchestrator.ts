@@ -147,7 +147,7 @@ export function useToolingFlowOrchestrator() {
           },
           onError: async (error: Error) => {
             console.error('[ToolingFlowOrchestrator] AI执行错误:', error);
-            await reconcileInteractiveRunCommandFailure(conversation.id, error);
+            await reconcileInteractiveRunCommandFailure(conversation.id, error, 'send');
           },
           onTransportOutcome: outcome => reconcileInteractiveRunTransportOutcome(
             conversation.id,
@@ -168,7 +168,7 @@ export function useToolingFlowOrchestrator() {
       );
     } catch (error) {
       console.error('[ToolingFlowOrchestrator] 继续执行失败:', error);
-      await reconcileInteractiveRunCommandFailure(conversation.id, error);
+      await reconcileInteractiveRunCommandFailure(conversation.id, error, 'send');
     }
   };
 

@@ -68,7 +68,7 @@ const terminalFinalAnswer = computed(() => resolveTerminalFinalAnswer(sourceMess
 const isTerminalAnswerRow = computed(() => terminalFinalAnswer.value?.id === props.row.payload.id);
 const turnDurationMs = computed(() => {
   const userMessage = sourceMessages.value.find(message => message.id === props.row.turnContext.userMessageId);
-  const agentWork = userMessage?.metadata?.['agent_work'];
+  const agentWork = userMessage?.type === 'user_input' ? userMessage.metadata?.agent_work : undefined;
   if (!agentWork || typeof agentWork !== 'object' || Array.isArray(agentWork)) return undefined;
   const duration = Reflect.get(agentWork, 'duration_ms');
   return typeof duration === 'number' && Number.isFinite(duration) ? duration : undefined;

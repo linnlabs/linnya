@@ -98,6 +98,9 @@ import {
 } from '../../app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import { HistoryRepository } from '../../features/conversation/history/history.repository';
 import { HistoryService } from '../../features/conversation/history/history.service';
+import { createConversationClientNoticeRouter } from '../../features/conversation/client-notices/clientNoticeRouter';
+import { createSqliteClientNoticeAdmission } from '../../app-hosts/linnya/adapters/persistence/conversation-client-notices/sqliteClientNoticeAdmission';
+import { SqliteUiProjectionApplier } from '../../app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteApplier';
 import { createHistoryRouter } from '../../features/conversation/history/history.router';
 import {
   createFlowHistoryAccessPort,
@@ -894,6 +897,7 @@ export async function configureRoutes(
     storageSpaceUseCase &&
     conversationControlUseCase
   ) {
+    const db = getDatabaseService().getDb();
     const preparedRoutes = await completeConversationRuntimeInitialization({
       commandScope: commandProductionScope,
       sandboxScope: sandboxProductionScope,
@@ -904,6 +908,10 @@ export async function configureRoutes(
         }),
         conversationImagePreview: createWorkspaceImagePreviewRouter({ imagePreview }),
         workspaceImagePreview: createWorkspaceImagePreviewRouter({ imagePreview }),
+        clientNotices: createConversationClientNoticeRouter(createSqliteClientNoticeAdmission({
+          db,
+          project: fact => new SqliteUiProjectionApplier(db).projectClientNotice(fact),
+        })),
         history: createHistoryRouter(historyService),
         flow: createConversationFlowRouter(flowOrchestrator),
         storageSpace: createStorageSpaceRouter(storageSpaceUseCase),
@@ -920,6 +928,7 @@ export async function configureRoutes(
     app.use('/api/v1/conversation', preparedRoutes.attachments);
     app.use('/api/v1/conversation', preparedRoutes.conversationImagePreview);
     app.use('/api/v1/workspace', preparedRoutes.workspaceImagePreview);
+    app.use('/api/v1/conversation', preparedRoutes.clientNotices);
     app.use('/api/v1/conversation', preparedRoutes.history);
     app.use('/api/v1/conversation', preparedRoutes.flow);
     app.use('/api/v1/storage-space', preparedRoutes.storageSpace);

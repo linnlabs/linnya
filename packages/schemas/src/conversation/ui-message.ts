@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ConversationClientNoticePayloadSchema } from './client-notice';
 import { ConversationExecutionNoticePayloadSchema } from './execution-notice';
 
 import { ConversationAttachmentRefSchema } from './attachment-ref';
@@ -31,6 +32,7 @@ export const ConversationTimelineMessageTypeSchema = z.enum([
   'tool_preamble',
   'partial_answer',
   'history_summary',
+  'client_notice',
   'execution_notice',
 ]);
 export type ConversationTimelineMessageType = z.infer<typeof ConversationTimelineMessageTypeSchema>;
@@ -49,6 +51,7 @@ export const ConversationUiMessageIdentitySchema = z.discriminatedUnion('message
   z.object({ role: z.literal('assistant'), message_type: z.literal('tool_preamble') }),
   z.object({ role: z.literal('assistant'), message_type: z.literal('partial_answer') }),
   z.object({ role: z.literal('system'), message_type: z.literal('history_summary') }),
+  z.object({ role: z.literal('system'), message_type: z.literal('client_notice') }),
   z.object({ role: z.literal('system'), message_type: z.literal('execution_notice') }),
 ]);
 export type ConversationUiMessageIdentity = z.infer<typeof ConversationUiMessageIdentitySchema>;
@@ -98,6 +101,7 @@ export function parseConversationUiMessageVariant(input: {
       return { role: identity.role, type: identity.message_type };
     case 'partial_answer':
       return { role: identity.role, type: identity.message_type };
+    case 'client_notice':
     case 'execution_notice':
     case 'history_summary':
       return { role: identity.role, type: identity.message_type };
@@ -126,6 +130,7 @@ export function parseConversationUiMessageKind(input: {
       return { role: identity.role, messageType: identity.message_type };
     case 'partial_answer':
       return { role: identity.role, messageType: identity.message_type };
+    case 'client_notice':
     case 'execution_notice':
     case 'history_summary':
       return { role: identity.role, messageType: identity.message_type };
@@ -150,6 +155,19 @@ const ConversationUiMessageCommonFields = {
  * 所有读取边界必须 parse 这份 schema；不支持旧字段、旧 payload 形状或读取期兼容。
  */
 export const ConversationUiMessageSchema = z.discriminatedUnion('message_type', [
+  z.object({
+    ...ConversationUiMessageCommonFields,
+    role: z.literal('system'),
+    message_type: z.literal('client_notice'),
+    // 客户端事实没有 Runtime 身份；不能用假 run/turn 填满公共合同。
+    turn_id: z.null(),
+    run_id: z.null(),
+    content: z.null(),
+    attachments: z.never().optional(),
+    merge_key: z.null(),
+    presentation: z.null(),
+    payload: ConversationClientNoticePayloadSchema,
+  }).strict(),
   z.object({
     ...ConversationUiMessageCommonFields,
     role: z.literal('user'),
