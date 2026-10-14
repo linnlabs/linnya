@@ -76,13 +76,19 @@ afterEach(() => {
 });
 
 describe('默认 Host LlmCaller 的重试业务行为', () => {
-  it('断流六次后第七次成功并撤回失败片段', async () => {
+  it('断流六次后第七次成功，每次至少等待 1500 ms 并撤回失败片段', async () => {
     const fixture = createFixture({ failures: 6 });
     const call = fixture.call();
-    // 0.37.4 的建议值仍覆盖基础等待；此处只验真实次数，不把 1500 配置冒认成已生效。
-    await vi.runAllTimersAsync();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fixture.requests).toHaveLength(1);
+    for (let retry = 1; retry <= 6; retry += 1) {
+      await vi.advanceTimersByTimeAsync(1_499);
+      expect(fixture.requests).toHaveLength(retry);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(fixture.requests).toHaveLength(retry + 1);
+    }
     await expect(call).resolves.toMatchObject({ content: 'complete answer' });
-    expect(fixture.requests).toHaveLength(7);
+    expect(fixture.requestTimes).toEqual([0, 1_500, 3_000, 4_500, 6_000, 7_500, 9_000]);
     expect(new Set(fixture.requests.map(request => request.invocation.attempt_id)).size).toBe(7);
     expect(new Set(fixture.requests.map(request => request.invocation.trace_id)).size).toBe(1);
     expect(fixture.requests.every(request => request.model_id === MODEL_ID)).toBe(true);
