@@ -8,6 +8,8 @@ export type ExecutionActivityState = 'inactive' | InteractiveRunStatus;
 export interface ExecutionActivity {
   readonly state: ExecutionActivityState;
   readonly isExecuting: boolean;
+  /** 当前执行身份只用于展示归属，防止恢复时旧的未结算重试重新扫光。 */
+  readonly executionId?: string;
   readonly labelKey: ConversationMessageKey;
 }
 

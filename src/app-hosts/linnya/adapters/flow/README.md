@@ -35,7 +35,7 @@ Flow 不负责：
 5. incoming user input / interaction tool output 先 durable commit；
 6. resume claim 在 incoming commit 后 activate；
 7. Host 绑定正式 `run_id / lane / visibility` 并创建 RuntimeEventPublisher；
-8. AgentRunner 只在 publisher 前补充 execution-scoped 非路由 metadata，并将该 runtimeEventSink 与基于同一 persistence 队列的 durable commit port 注入 Graph；
+8. AgentRunner 只在 publisher 前补充 execution-scoped 非路由 metadata（运行错误/重试及对应 child trace 的 `notice_execution_id` 绑定当前 sequencer，供冷重载辨别展示归属，不参与控制或模型上下文），并将该 runtimeEventSink 与基于同一 persistence 队列的 durable commit port 注入 Graph；
 9. Graph 发布的每个 RuntimeEvent 进入 EventBus；
 10. SsePort 与 RunEventPersistence 独立消费同一 envelope；
 11. 生产 Graph 将步骤事实与 checkpoint 同事务提交；drain 成功后先写 completed，再释放恢复输入；awaiting_user 保留原等待断点，Host 此时才写等待态；

@@ -96,6 +96,7 @@ Conversation Control 协议 4 的 `audit.llm_responses` 是既有审计的安全
 | `src/conversation/attachment-ref.ts` | 会话图片附件引用、单项与整批准入预算；独立 runtime 使用公开窄入口 |
 | `src/conversation/tool-message.ts` | Conversation 工具消息 lifecycle、payload 与 Renderer metadata 合同 |
 | `src/conversation/presentation.ts` | durable message presentation 与请求 UI spec |
+| `src/conversation/execution-notice.ts` | 运行通知安全 payload、严格 metadata、允许显示的错误信息提取；不是重试调度器 |
 | `src/conversation/summary-message.ts` | durable history summary payload、Renderer 摘要进度 metadata 与 presentation identity |
 | `src/conversation/message-identity.ts` | Conversation 产品 read model 的消息身份 |
 | `src/conversation/visual-turn-identity.ts` | Conversation 视觉分组、timeline 与虚拟化导航身份 |

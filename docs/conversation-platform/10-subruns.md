@@ -90,6 +90,7 @@ child 工具链的三类事实语义与主 ToolNode 一致；已提交的上下�
 |---|---|---|
 | `tool_call_decision` | 本次模型提交的 canonical `tool_calls[]` 完整批次 | 否 |
 | `tool_process` | 已经 owner admission 的单个 `tool_name + tool_call_id + args + phase + status` | 是，`start` 后进入 loading |
+| `llm_retry` / `error` | 子运行重试进展与安全失败事实；按真实 child 与 retry 身份合并 | 是，仅子运行详情 |
 | `tool_output` | 单个调用的 terminal status 与结构化 output；成功结果可带有序 durable attachment refs | 是，收敛为 success/error |
 | `history_summary` | 已提交摘要的统计、替换来源 ID 与压缩比；不复制摘要正文 | 是，仅在完整 child message 详情中复用现有 Summary 行 |
 

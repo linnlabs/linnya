@@ -28,7 +28,7 @@ export function resolveRunExecutionActivity(
 ): ExecutionActivity {
   if (!run) return executionActivity('inactive');
   if (run.status === 'paused' && !run.pause?.settled) return executionActivity('pausing');
-  return executionActivity(run.status);
+  return { ...executionActivity(run.status), executionId: run.executionId };
 }
 
 /** 完成的工具始终保留自己的结果；父 run 完成也不能把未结算工具伪装成成功。 */

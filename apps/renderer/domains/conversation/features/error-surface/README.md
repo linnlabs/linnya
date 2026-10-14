@@ -1,11 +1,9 @@
 # Conversation Error Surface
 
-该 feature 只负责 ConversationHost 横幅的来源选择，不拥有任何执行域的错误生命周期。
+该 feature 负责错误来源选择与时间线通知的安全展示，不拥有执行状态或重试调度。
 
-错误来源仍由各自 owner 持有：前台 Agent run 在 `interactive-run`，旧 contributed workflow 在
-`executionState`，批注流程在 `annotationRunExecutionStore`。本 feature 按稳定优先级选择当前可见
-错误，并返回来源身份；关闭动作必须根据这个身份只清理对应 owner，不能批量清除其它执行域的错误。
+运行内 `error / llm_retry` 经实时 reducer 与 Host durable projector 汇合为 `execution_notice`；UI 只按通知事实计算文案、当前次数和等待时间。计时不增加重试、不改变生命周期。终态保留在消息列表与历史，raw Provider 响应和堆栈不进入展示。
 
-Runtime error 的文案归一化由 `services/errorNormalizer.ts` 和消息投影器负责；本 feature 不重新解释
-错误码，也不读取网络或数据库。新增错误来源时，先补充候选定义、选择器测试和关闭 owner，再接入
-`assistantStore` 聚合入口。
+错误文案继续由 `services/errorNormalizer.ts` 统一解释，保留认证、额度与模型兼容等既有指引。`interactive-run` 持有暂停/继续状态，通知不建立第二套控制状态。Runtime error 的 notice identity 只用来避免同一运行错误同时出现在本地诊断与已投影的消息中。
+
+未取得 Runtime fact 的错误仍归各自 owner：interactive-run、contributed workflow、annotation execution。选择器按原优先级返回来源身份；关闭本地提示只清理对应 owner，不删除历史事实、不批量清除其它运行错误。尚未持久的提示必须明确标为本地状态。

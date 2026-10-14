@@ -57,6 +57,8 @@ export function cloneConversationMessage(message: BaseMessage): BaseMessage {
         ...(citationDependencies ? { citationDependencies } : {}),
         metadata: { ...message.metadata },
       };
+    case 'execution_notice':
+      return { ...message, metadata: { ...message.metadata } };
     case 'history_summary':
       return {
         ...message,

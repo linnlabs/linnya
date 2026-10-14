@@ -121,12 +121,12 @@ vi.mock('@/domains/conversation/ui/AiAssistantInput.vue', () => {
   };
 });
 
-vi.mock('@/domains/conversation/ui/components/ErrorBanner.vue', () => {
+vi.mock('@/domains/conversation/ui/components/ConversationLocalErrorNotice.vue', () => {
   return {
     default: defineComponent({
-      name: 'ErrorBannerStub',
+      name: 'ConversationLocalErrorNoticeStub',
       setup() {
-        return () => h('div', { class: 'error-banner-stub' });
+        return () => h('div', { class: 'conversation-local-error-stub' });
       },
     }),
   };

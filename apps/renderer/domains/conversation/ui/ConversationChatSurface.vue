@@ -7,7 +7,7 @@
     <slot name="overlay" />
 
     <main ref="mainRef" class="conversation-chat-main">
-      <ErrorBanner v-if="!shouldMountHost" :error="error" @dismiss="clearError" />
+      <ConversationLocalErrorNotice v-if="!shouldMountHost && error" :error="error" @dismiss="clearError" />
 
       <div
         v-if="!shouldMountHost && emptyComposerPlacement === 'footer'"
@@ -77,7 +77,7 @@ import type {
 import AiAssistantInput from './AiAssistantInput.vue';
 import ConversationHost from './ConversationHost.vue';
 import ConversationEmptyState from './components/ConversationEmptyState.vue';
-import ErrorBanner from './components/ErrorBanner.vue';
+import ConversationLocalErrorNotice from './components/ConversationLocalErrorNotice.vue';
 
 withDefaults(defineProps<{
   emptyHeading: string;

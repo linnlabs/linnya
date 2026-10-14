@@ -32,6 +32,7 @@ function serializeRunContextTags(
 export interface RunLifecycleCoordinatorOptions {
   conversationId: string;
   turnId: string;
+  executionId: string;
   options: ConversationNextRequest['options'];
   /** 当前 execution 对应的正式用户消息；只用于绑定产品 read model，不参与 routing。 */
   userMessageId?: RuntimeEventId;
@@ -59,7 +60,13 @@ export class RunLifecycleCoordinator {
   }
 
   enrichRuntimeEvent(event: RuntimeEvent): RuntimeEvent {
-    const enriched = withRuntimeEventMetadata(event, this.mappingContext.metadata);
+    const isNotice = event.type === 'llm_retry' || event.type === 'error'
+      || (event.type === 'subrun_trace' && (event.kind === 'llm_retry' || event.kind === 'error'));
+    // 只为通知保存本次 Host execution 的展示归属。不能在重载时用当前 run 覆盖旧事实。
+    const enriched = withRuntimeEventMetadata(event, {
+      ...this.mappingContext.metadata,
+      ...(isNotice ? { notice_execution_id: this.options.executionId } : {}),
+    });
     if (enriched.type !== 'context_usage_snapshot' || !this.options.userMessageId) {
       return enriched;
     }

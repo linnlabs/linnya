@@ -1,3 +1,4 @@
+import { projectSubrunExecutionNotice } from './projectSubrunExecutionNotice';
 import type { SSESubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 
 import {
@@ -435,6 +436,11 @@ export function projectSubrunTraceEvent(
 ): SubrunTraceProjectionResult {
   const subrunId = event.subrun_id;
   if (state.subrunId !== subrunId) resetSubrunMessageProjection(state, messages, subrunId);
+
+  if (event.kind === 'llm_retry' || event.kind === 'error') {
+    projectSubrunExecutionNotice(messages, event);
+    return { success: true };
+  }
 
   if (event.kind === 'history_summary') {
     if (

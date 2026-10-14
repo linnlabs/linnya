@@ -9,3 +9,16 @@ if (conversationFixtureId === 'conversation-image-attachments') {
   );
   installConversationImageAttachmentFixtureHost();
 }
+
+// 此页面只消费真实通知组件与内存控制快照，不接入 Electron 或真实模型。
+if (conversationFixtureId === 'conversation-execution-notice') {
+  Object.defineProperty(window, 'electronAPI', {
+    configurable: true,
+    value: {
+      onApiPortSet: () => () => undefined,
+      invoke: async (channel: string) => {
+        throw new Error(`Execution notice fixture has no backend channel: ${channel}`);
+      },
+    },
+  });
+}

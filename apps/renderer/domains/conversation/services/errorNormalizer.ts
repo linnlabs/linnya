@@ -256,13 +256,13 @@ export function normalizeConversationError(
   const compatibleModelIds = readCompatibleModelIds(event);
   const requiredImagePlacements = readRequiredImagePlacements(event);
 
-  const imageAttachmentErrorCode = ConversationImageAttachmentErrorCodeSchema.safeParse(
-    normalizedErrorCode,
+  const imageAttachmentErrorCode = ConversationImageAttachmentErrorCodeSchema.options.find(
+    code => code === normalizedErrorCode,
   );
-  if (imageAttachmentErrorCode.success) {
+  if (imageAttachmentErrorCode) {
     return {
       userMessage: resolveErrorMessage(
-        resolveImageAttachmentErrorMessage(imageAttachmentErrorCode.data),
+        resolveImageAttachmentErrorMessage(imageAttachmentErrorCode),
         options,
       ),
       errorCode,

@@ -428,6 +428,8 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage): UiMessageRow
         messageType: message.message_type,
         payload: message.payload,
       };
+    case 'execution_notice':
+      return { ...common, role: message.role, messageType: message.message_type, payload: message.payload };
     case 'history_summary':
       return {
         ...common,

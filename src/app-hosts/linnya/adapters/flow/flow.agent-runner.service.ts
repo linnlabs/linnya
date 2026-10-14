@@ -230,6 +230,7 @@ export class AgentRunnerService {
     const executionStartedAtMs = Date.now();
     const userMessageId = resolveExecutionUserMessageId(history, newEvents);
     const lifecycleCoordinator = new RunLifecycleCoordinator({
+      executionId: sequencer.getExecutionId(),
       conversationId,
       turnId,
       options,

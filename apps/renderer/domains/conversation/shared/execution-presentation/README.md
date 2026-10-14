@@ -7,6 +7,7 @@
 - `InteractiveRunSnapshot` 表达运行控制事实；按渲染 surface 的 `conversationId` 与消息 `run_id` 精确匹配。批注 run 通过同样的归属匹配读取自己的 store。
 - `loading/success/error` 表达工具结果是否结算。`loading` 只表示尚无结果，不能单独触发动画。工具成功、失败保持自己的结果，父 run 结束不能把未结算工具变成成功。
 - `isBusy` 表达输入占用；等待用户、重连、暂停收尾仍可能 busy，但不等于正在生成。主画布 active run、思考、摘要、步骤和工具展示使用派生的 `isExecuting`。
+- 重试通知另核对同一 execution 身份。历史只留下 waiting 而无法确认当前执行时静态显示未结算；不自行制造成功、耗尽或取消事实。恢复的新 execution 不得复活旧通知。
 - 历史 trace、图片、文档等真实读取请求各自持有局部加载态；它们不属于 Agent 执行动画。
 
 | 内部控制状态 | 用户可见状态 | 执行动画 |

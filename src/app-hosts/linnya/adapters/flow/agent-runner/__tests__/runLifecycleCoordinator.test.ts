@@ -13,6 +13,7 @@ describe('RunLifecycleCoordinator execution-scoped 事件上下文', () => {
     const turnId = 'turn-title';
     const rootRunId = RunIdSchema.parse('run-root-title');
     const coordinator = new RunLifecycleCoordinator({
+      executionId: 'execution-test',
       conversationId,
       turnId,
       options: {
@@ -63,6 +64,7 @@ describe('RunLifecycleCoordinator execution-scoped 事件上下文', () => {
     const turnId = 'turn-context-usage';
     const userMessageId = 'user-context-usage';
     const coordinator = new RunLifecycleCoordinator({
+      executionId: 'execution-test',
       conversationId,
       turnId,
       userMessageId,

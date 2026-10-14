@@ -34,6 +34,8 @@ export interface InteractiveRunSnapshot {
   pendingInteraction?: PendingRunInteraction;
   pause?: { settled: boolean; updatedAt: number; reason?: string };
   error?: string;
+  /** 已投影的运行错误消息身份；控制错误没有该字段，避免重复显示或掩盖本地错误。 */
+  errorNoticeId?: string;
 }
 
 /** 输入区只暴露这三种动作，控制收口通过禁用表达，不创建 waiting/cancel 按钮。 */

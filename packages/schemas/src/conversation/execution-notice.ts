@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 /** 可回放的运行通知只保存安全诊断身份；供应商 body、stack 和凭据不进入 UI read model。 */
 export const ConversationExecutionNoticePayloadSchema = z.object({
+  execution_id: z.string().min(1).optional(),
   error_code: z.string().min(1).optional(),
   retryable: z.boolean().optional(),
   compatible_model_ids: z.array(z.string().min(1)).optional(),

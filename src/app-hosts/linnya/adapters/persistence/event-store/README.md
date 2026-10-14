@@ -73,6 +73,8 @@ Citation producer 的 ref 分配不经过上述 event projection：Host allocato
 - child/auxiliary facts 可以持久化，但不能成为 foreground message 或进入后续 foreground Agent context。
 - `RuntimeEvent.id`、`answer_id`、`tool_call_id` 与产品 `message_id` 按正式映射使用，不允许互相 fallback。
 - presentation 只允许 `message | hidden`；`ui_card` 不属于 durable timeline message。
+- `error / llm_retry` 投影为安全的 `execution_notice`，按 run 与 retry identity 合并一轮重试；不以错误文本作身份，也不保留任意 Provider details。已有 error facts 可正式重建为通知；不进入模型上下文。
+- child 重试与错误仍只走 compact trace，不混入父正文；终态与实时使用相同 payload。
 - 工具 row 必须携带严格 `ConversationToolMessagePayload`，不能从 observation 或旧 payload 恢复。
 
 合同升级不保留历史兼容。若存量不满足当前 schema，应清理或从规范 facts 重新构建；若 facts 本身不规范，则拒绝读取并显式报告数据问题。

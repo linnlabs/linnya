@@ -66,6 +66,7 @@ export function createConversationRequestEventRouter(
       && event.type !== 'run_status'
       && event.type !== 'transport_end'
       && event.type !== 'error'
+      && event.type !== 'llm_retry'
     ) return false;
     if (!input.dispatcher) return true;
     if (event.conversation_id !== input.conversationId) {

@@ -16,6 +16,7 @@ import { projectRunExecutionMetricsEvent } from './projectors/runExecutionMetric
 import { projectContextUsageSnapshotEvent } from './projectors/contextUsageSnapshot';
 import { projectTransportEndEvent } from './projectors/transportEnd';
 import { projectRequiresUserInteractionEvent } from './projectors/requiresUserInteraction';
+import { projectExecutionNoticeEvent } from './projectors/executionNotice';
 import { projectErrorEvent } from './projectors/error';
 import {
   projectHistorySummaryEvent,
@@ -179,6 +180,9 @@ export function reduceEvent(state: MessageProjectionState, event: ProjectionEven
       }
       case 'history_summary':
         result = projectHistorySummaryEvent(state, event);
+        break;
+      case 'llm_retry':
+        result = projectExecutionNoticeEvent(state, event);
         break;
       case 'error':
         result = projectErrorEvent(state, event);

@@ -2,13 +2,13 @@ import type { MessageProjectionState, ProjectionResult } from '../state';
 import { normalizeConversationError } from '../../errorNormalizer';
 import { resolveCurrentConversationMessage } from '../../../functions/resolveCurrentConversationMessage';
 import { isRecord } from '../../../utils/typeGuards';
+import { projectExecutionNoticeEvent } from './executionNotice';
 import type { SSEErrorEvent } from '@linnlabs/linnkit/contracts';
 
 /**
  * @description
  * 投影 error 事件：
- * 摘要进度只由正式 summarization_error 事件更新；Runtime error 继续作为错误表面状态，
- * 禁止一个 error 事实同时承担 presentation lifecycle。
+ * Runtime error 投影为持久时间线通知；现有 error result 仍供运行控制保留诊断，不能代替 run 状态。
  */
 export function projectErrorEvent(state: MessageProjectionState, event: SSEErrorEvent): ProjectionResult {
   const normalized = normalizeConversationError(event, {
@@ -28,8 +28,7 @@ export function projectErrorEvent(state: MessageProjectionState, event: SSEError
   });
 
   return {
-    success: true,
-    newState: state,
+    ...projectExecutionNoticeEvent(state, event),
     error: errorMessage,
     errorDetails: {
       details: errorDetails,

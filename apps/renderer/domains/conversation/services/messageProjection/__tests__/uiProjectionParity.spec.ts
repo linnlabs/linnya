@@ -136,6 +136,7 @@ function normalizeFrontendMessage(message: BaseMessage): EssentialMessage {
           summary: message.metadata.summary,
         }).summary.replacedMessageIds,
       };
+    case 'execution_notice':
     case 'summarization_progress':
       return common;
   }
@@ -177,6 +178,7 @@ function normalizeBackendRow(row: UiMessageRow): EssentialMessage {
     case 'tool_preamble':
     case 'partial_answer':
       return { ...common, answerId: row.payload.answer_id, activity: row.payload.activity };
+    case 'execution_notice': return common;
     case 'history_summary':
       return {
         ...common,
@@ -239,7 +241,7 @@ describe('frontend replay and backend UI read model projection parity', () => {
     });
   });
 
-  it('projects wait-user onto its tool entity and keeps run errors out of the timeline', () => {
+  it('projects wait-user onto its tool and preserves run errors as timeline notices', () => {
     const fixture = uiProjectionFixtures.find(
       item => item.name === 'interactive-tool-wait-and-run-error',
     );
@@ -250,17 +252,12 @@ describe('frontend replay and backend UI read model projection parity', () => {
     const frontend = replayOnFrontend(fixture.events);
     const backend = projectEventsWithMemoryApplier(fixture.events);
 
-    expect(frontend.messages.map(message => message.type)).toEqual(['tool_calls']);
-    expect(backend.rows.map(row => row.messageType)).toEqual(['tool_calls']);
+    expect(frontend.messages.map(message => message.type)).toEqual(['tool_calls', 'execution_notice']);
+    expect(backend.rows.map(row => row.messageType)).toEqual(['tool_calls', 'execution_notice']);
     expect(normalizeBackendRow(backend.rows[0]!)).toMatchObject({
       interaction: normalizeFrontendMessage(frontend.messages[0]!).interaction,
     });
-    expect(backend.skipped).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        eventId: 'evt_error_interactive',
-        reason: 'error-event-is-surface-state-not-timeline-row',
-      }),
-    ]));
+    expect(backend.skipped.some(item => item.eventId === 'evt_error_interactive')).toBe(false);
     expect(frontend.surfaceErrors).toEqual([
       expect.objectContaining({
         eventId: 'evt_error_interactive',

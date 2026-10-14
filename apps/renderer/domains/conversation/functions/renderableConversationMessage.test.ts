@@ -39,6 +39,8 @@ function message(overrides: {
     case 'tool_preamble':
     case 'partial_answer':
       return createTestAnswerMessage({ ...common, type, metadata: overrides.metadata });
+    case 'execution_notice':
+      return { ...common, role: 'system', type, metadata: { run_id: 'run', turn_id: 'turn', error_code: 'llm.network_error' } };
     case 'thought':
     case 'summarization_progress':
       throw new Error('This test fixture does not use thought/progress messages');

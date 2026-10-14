@@ -16,6 +16,8 @@
       @regenerate-response="handleRegenerateResponse"
     />
 
+    <ExecutionNoticeMessageComponent v-else-if="message.type === 'execution_notice'" :message="message" />
+
     <!-- 历史摘要消息 -->
     <SummaryMessageComponent
       v-else-if="message.type === 'history_summary' || message.type === 'summarization_progress'"
@@ -63,6 +65,7 @@ import UserMessage from './message/UserMessage.vue';
 import ThoughtMessage from './message/ThoughtMessage.vue';
 import AnswerMessage from './message/AnswerMessage.vue';
 import ToolCallsMessage from './message/ToolCallsMessage.vue';
+import ExecutionNoticeMessageComponent from './message/ExecutionNoticeMessage.vue';
 import SummaryMessageComponent from './message/SummaryMessage.vue';
 
 /**

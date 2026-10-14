@@ -6,6 +6,8 @@ export const DURABLE_SUBRUN_TRACE_KINDS = [
   'tool_output',
   'final_answer',
   'history_summary',
+  'llm_retry',
+  'error',
 ] as const satisfies readonly SubRunTraceEvent['kind'][];
 
 export type DurableSubrunTraceKind = (typeof DURABLE_SUBRUN_TRACE_KINDS)[number];

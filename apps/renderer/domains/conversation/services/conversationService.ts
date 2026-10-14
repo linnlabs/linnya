@@ -39,6 +39,7 @@ import {
 } from '@linnlabs/linnkit/contracts';
 import type {
   SSEErrorEvent,
+  SSEEvent,
   SSEContextUsageSnapshotEvent,
   SSEFinalAnswerChunkEvent,
   SSEFinalAnswerEvent,
@@ -98,6 +99,7 @@ export interface ConversationStreamCallbacks {
   /** 接收到需要用户交互的事件 (`requires_user_interaction`) */
   onRequiresUserInteraction?: (e: SSERequiresUserInteractionEvent) => StreamCallbackResult;
   /** 接收到错误事件 (`error`) */
+  onLlmRetry?: (e: Extract<SSEEvent, { type: 'llm_retry' }>) => StreamCallbackResult;
   onError?: (e: SSEErrorEvent) => StreamCallbackResult;
   /** run 接纳前或客户端网络层发生的 transport error。 */
   onTransportError?: (e: ConversationTransportError) => StreamCallbackResult;
@@ -340,6 +342,9 @@ export async function streamConversation(
           break;
         case 'requires_user_interaction':
           await callbacks.onRequiresUserInteraction?.(event);
+          break;
+        case 'llm_retry':
+          await callbacks.onLlmRetry?.(event);
           break;
         case 'error':
           await callbacks.onError?.(event);

@@ -31,6 +31,7 @@ const RUNTIME_EVENT_UI_CLASSIFICATION = {
   final_answer_reset: 'ui',
   history_summary: 'ui',
   error: 'ui',
+  llm_retry: 'ui',
   control: 'non-ui',
   context_usage_snapshot: 'ui',
   run_execution_metrics: 'ui',

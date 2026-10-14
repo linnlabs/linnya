@@ -10,6 +10,9 @@ import type {
 } from '../definitions/subrunTraceHistory';
 
 export interface StoredSubrunTraceHistoryPayload {
+  readonly metadata?: { readonly notice_execution_id: string };
+  readonly retry?: SubRunTraceEvent['retry'];
+  readonly failure?: SubRunTraceEvent['failure'];
   readonly content?: string;
   readonly answer_id?: string;
   readonly completion_reason?: SubRunTraceEvent['completion_reason'];
@@ -37,14 +40,20 @@ export function isDurableSubrunTraceEvent(
     event.kind === 'tool_call_decision' ||
     event.kind === 'tool_output' ||
     event.kind === 'final_answer' ||
-    event.kind === 'history_summary'
+    event.kind === 'history_summary' ||
+    event.kind === 'llm_retry' ||
+    event.kind === 'error'
   );
 }
 
 export function encodeSubrunTraceHistoryPayload(
   event: DurableSubrunTraceEvent
 ): StoredSubrunTraceHistoryPayload {
+  const metadata = typeof event.metadata?.notice_execution_id === 'string'
+    ? { notice_execution_id: event.metadata.notice_execution_id } : undefined;
   switch (event.kind) {
+    case 'llm_retry': return { retry: event.retry, ...(metadata ? { metadata } : {}) };
+    case 'error': return { failure: event.failure, ...(metadata ? { metadata } : {}) };
     case 'thought_complete':
       return event.content === undefined ? {} : { content: event.content };
     case 'tool_call_decision':

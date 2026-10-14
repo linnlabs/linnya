@@ -227,7 +227,6 @@ describe('conversation UI projection read model', () => {
       'final_answer_chunk:event-governance-replay-disabled',
       'final_answer_reset:event-governance-replay-disabled',
       'final_answer_chunk:event-governance-replay-disabled',
-      'error:error-event-is-surface-state-not-timeline-row',
     ]);
   });
 

@@ -9,9 +9,10 @@ export function preserveInteractiveRunError(
   next: InteractiveRunSnapshot,
 ): InteractiveRunSnapshot {
   if (
-    next.error !== undefined || !current?.error || !current.runId || !current.executionId ||
+    !current?.error || !current.runId || !current.executionId ||
+    (next.error !== undefined && next.error !== current.error) ||
     next.conversationId !== current.conversationId ||
     next.runId !== current.runId || next.executionId !== current.executionId
   ) return next;
-  return { ...next, error: current.error };
+  return { ...next, error: current.error, errorNoticeId: current.errorNoticeId };
 }

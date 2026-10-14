@@ -67,6 +67,7 @@ const isConversationFixture = conversationFixtureId === 'conversation-virtualize
   || conversationFixtureId === 'conversation-visual-row'
   || conversationFixtureId === 'conversation-image-attachments'
   || conversationFixtureId === 'command-approval-dom'
+  || conversationFixtureId === 'conversation-execution-notice'
 const conversationVirtualizerFixtures = conversationFixtureId === 'conversation-virtualizer-spike'
   || conversationFixtureId === 'conversation-visual-row'
   ? await import('../domains/conversation/features/virtualizer-spike')
@@ -77,6 +78,9 @@ const conversationImageAttachmentFixtures = conversationFixtureId === 'conversat
 const commandApprovalDomFixture = conversationFixtureId === 'command-approval-dom'
   ? await import('./fixtures/command-approval-dom')
   : null
+const executionNoticeFixture = conversationFixtureId === 'conversation-execution-notice'
+  ? await import('./fixtures/conversation-execution-notice')
+  : null
 const rootComponent = conversationFixtureId === 'conversation-virtualizer-spike'
   ? conversationVirtualizerFixtures.ConversationVirtualizerSpikePage
   : conversationFixtureId === 'conversation-visual-row'
@@ -85,7 +89,9 @@ const rootComponent = conversationFixtureId === 'conversation-virtualizer-spike'
       ? conversationImageAttachmentFixtures.ConversationImageAttachmentFixturePage
       : conversationFixtureId === 'command-approval-dom'
         ? commandApprovalDomFixture.CommandApprovalDomFixturePage
-        : App
+        : conversationFixtureId === 'conversation-execution-notice'
+          ? executionNoticeFixture.ConversationExecutionNoticeFixturePage
+          : App
 
 const app = createApp(rootComponent)
 const pinia = createPinia()

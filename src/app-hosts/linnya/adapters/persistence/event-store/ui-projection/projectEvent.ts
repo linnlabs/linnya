@@ -48,6 +48,7 @@ import type {
   UiRowOp,
 } from './types';
 import { mapRuntimeAttachmentsToUi } from './attachments';
+import { projectExecutionNotice } from './executionNoticeProjection';
 
 export function projectEventToUiRowOps(
   event: RuntimeEvent,
@@ -77,7 +78,8 @@ export function projectEventToUiRowOps(
     case 'requires_user_interaction':
       return projectRequiresUserInteraction(event, access);
     case 'error':
-      return [skip(event, 'error-event-is-surface-state-not-timeline-row')];
+    case 'llm_retry':
+      return projectExecutionNotice(event, access);
     default:
       return [skip(event, 'unsupported-runtime-event-type')];
   }
@@ -439,6 +441,7 @@ function buildRow(
       return { ...input, ...common };
     case 'partial_answer':
       return { ...input, ...common };
+    case 'execution_notice':
     case 'history_summary':
       return { ...input, ...common };
   }

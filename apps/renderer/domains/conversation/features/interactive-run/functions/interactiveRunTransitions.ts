@@ -27,6 +27,8 @@ function projectInteractiveRunEvent(
   event: SSEEvent
 ): InteractiveRunSnapshot | undefined {
   if (event.lane === 'auxiliary' || event.visibility === 'none') return current;
+  // 重试通知只展示事实，不能把已暂停/结算的运行重新变成 running。
+  if (event.type === 'llm_retry') return current;
   if (
     current?.executionId &&
     event.execution_id &&

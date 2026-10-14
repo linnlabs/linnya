@@ -30,7 +30,7 @@ describe('conversation image error projection', () => {
     setActivePinia(createPinia());
   });
 
-  it('live SSE 与 durable replay 使用同一友好文案，窗口 read model 不伪造错误消息行', () => {
+  it('live SSE 与 durable replay 使用同一友好文案，窗口 read model 持久化安全错误通知', () => {
     const runtimeEvent = createErrorEvent(
       'error-image-1',
       'conv-error-projection',
@@ -75,12 +75,13 @@ describe('conversation image error projection', () => {
     expect(liveResult.error).not.toContain('provider stack');
 
     const windowProjection = projectEventsWithMemoryApplier([runtimeEvent]);
-    expect(windowProjection.rows).toEqual([]);
-    expect(windowProjection.skipped).toEqual([
-      expect.objectContaining({
-        eventId: 'error-image-1',
-        reason: 'error-event-is-surface-state-not-timeline-row',
-      }),
-    ]);
+    expect(windowProjection.rows).toHaveLength(1);
+    expect(windowProjection.rows[0]).toMatchObject({
+      messageId: 'error-image-1', messageType: 'execution_notice', content: null,
+      payload: { error_code: 'llm.image_input.model_unsupported', compatible_model_ids: ['vision-model'] },
+    });
+    expect(JSON.stringify(windowProjection.rows)).not.toMatch(/raw-body|provider stack/);
+    expect(liveResult.newState?.conversation.messages[0]?.type).toBe('execution_notice');
+
   });
 });

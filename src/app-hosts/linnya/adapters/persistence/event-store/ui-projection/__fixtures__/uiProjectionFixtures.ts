@@ -15,7 +15,7 @@ import {
   createUserInputEvent,
   routeRuntimeEvent,
   type ContextUsageSnapshot,
-  type RuntimeEvent,
+  RuntimeEvent,
   type RuntimeResourceRef,
   type SerializableJsonRecord,
   RunIdSchema,
@@ -544,6 +544,17 @@ const unroutedUiProjectionFixtures = [
         { timestamp: 653, completion_reason: 'terminal' }
       ),
     ],
+  },
+  {
+    name: 'retry-recovery', runId: 'run_retry_recovery',
+    events: ['waiting', 'succeeded'].map((status, index) => RuntimeEvent.parse({
+      type: 'llm_retry', id: `retry-${status}`, conversation_id: conversationId, turn_id: 'turn_retry_recovery',
+      version: 1, timestamp: 680 + index * 10,
+      retry_id: 'retry-parity', status, category: 'transport', attempt: 1, max_retries: 6,
+      total_attempts: 2, started_at: 680, delay_ms: index === 0 ? 1500 : 0,
+      ...(index === 0 ? { next_retry_at: 2180 } : {}),
+      error: 'Connection unavailable', error_code: 'llm.network_error',
+    })),
   },
   {
     name: 'interactive-tool-wait-and-run-error',

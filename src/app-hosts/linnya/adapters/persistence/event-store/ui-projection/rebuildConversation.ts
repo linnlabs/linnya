@@ -49,6 +49,7 @@ const RUNTIME_EVENT_TYPES_READ_BY_UI_REBUILD: readonly RuntimeEvent['type'][] = 
   'final_answer',
   'history_summary',
   'error',
+  'llm_retry',
   'control',
   'run_execution_metrics',
 ];

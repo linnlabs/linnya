@@ -7,6 +7,7 @@
  * 当前版本明确支持的增量迁移。
  */
 
+import { migrateV64ToV65ConversationExecutionNotices } from './v64-to-v65-conversation-execution-notices';
 import type { HostSchemaMigration } from './types';
 import { migrateV61ToV62SubrunSummaryTrace } from './v61-to-v62-subrun-summary-trace';
 import { migrateV62ToV63CitationFactIndex } from './v62-to-v63-citation-fact-index';
@@ -18,7 +19,7 @@ export type { HostSchemaMigration, MigrationFunction } from './types';
 export const HOST_SCHEMA_BASELINE_VERSION = 61;
 
 /** 当前 Host Schema 版本。修改既有表或数据语义时必须递增。 */
-export const SCHEMA_VERSION = 64;
+export const SCHEMA_VERSION = 65;
 
 /**
  * v61 基线之后的受支持迁移。
@@ -39,4 +40,5 @@ export const migrations: readonly HostSchemaMigration[] = [
     fromVersion: 63,
     migrate: migrateV63ToV64MarkdownPendingRevision,
   },
+  { fromVersion: 64, migrate: migrateV64ToV65ConversationExecutionNotices },
 ];

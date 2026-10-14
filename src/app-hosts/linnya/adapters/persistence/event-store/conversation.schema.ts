@@ -79,7 +79,7 @@ export const CONVERSATION_SCHEMAS = [
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     subrun_id TEXT NOT NULL,
     source_event_id TEXT NOT NULL UNIQUE,
-    kind TEXT NOT NULL CHECK(kind IN ('thought_complete', 'tool_call_decision', 'tool_output', 'final_answer', 'history_summary')),
+    kind TEXT NOT NULL CHECK(kind IN ('thought_complete', 'tool_call_decision', 'tool_output', 'final_answer', 'history_summary', 'llm_retry', 'error')),
     timestamp INTEGER NOT NULL,
     payload_json TEXT NOT NULL,
     FOREIGN KEY(subrun_id) REFERENCES subrun_trace_runs(subrun_id) ON DELETE CASCADE

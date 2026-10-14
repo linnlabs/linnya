@@ -41,6 +41,7 @@
 | `conversation/tool-message.ts` | 工具消息 lifecycle、payload、interaction 联合 |
 | `conversation/message-identity.ts` | `message_id` 派生函数 |
 | `conversation/visual-turn-identity.ts` | 视觉轮次身份 |
+| `conversation/execution-notice.ts` | 安全运行错误与重试的时间线 payload；不持有生命周期 |
 | `conversation/summary-message.ts` | 摘要事实 payload、进度 metadata、presentation ID |
 | `conversation/presentation.ts` | presentation kind 判别 |
 | `conversation/attachment-ref.ts`、`reference-identity.ts`、`user-quote.ts` | 附件与引用 |
@@ -163,7 +164,7 @@ token，也不尝试恢复 ephemeral 中间值。
 admission 边界抛出   → 失败一次，终止该次操作
 computed 内抛出      → 中断当前 Vue flush
                      → computed 反复 dirty 反复抛
-                     → 整棵渲染树失效，且不走 ErrorBanner
+                     → 整棵渲染树失效，且没有已接纳的运行通知
 ```
 
 真实案例：`selectors.activeMessages` 内的身份冲突 `throw` 曾导致会话切换永久失败（详见 [06 §3.2](./06-read-model.md)）。

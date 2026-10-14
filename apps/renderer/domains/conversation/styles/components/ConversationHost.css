@@ -177,13 +177,7 @@
   z-index: 20;
 }
 
-.conversation-host[data-conversation-content-state='filled'] .error-banner {
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-  width: calc(100% - var(--conversation-content-side-gap) - var(--conversation-content-side-gap));
-  max-width: var(--conversation-content-column-max-width);
-}
+
 
 /* 项目初始化视图由 ProjectSetupView 自己渲染输入区，这里只保留宿主布局例外。 */
 .editor-shell.for-project-setup .conversation-host .panel-footer {

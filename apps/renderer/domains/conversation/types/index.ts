@@ -5,6 +5,7 @@
 
 import type {
   ConversationUserInputCommittedEvent,
+  ConversationExecutionNoticeMetadata,
   ConversationAttachmentRef,
   ConversationActivityBinding,
   ConversationCitationDependencySnapshot,
@@ -155,7 +156,14 @@ export type SummarizationProgressMessage = ConversationMessageFields & {
   metadata: ConversationSummarizationProgressMetadata;
 };
 
+type ExecutionNoticeMessage = ConversationMessageFields & {
+  role: 'system';
+  type: 'execution_notice';
+  metadata: ConversationExecutionNoticeMetadata;
+};
+
 export type BaseMessage =
+  | ExecutionNoticeMessage
   | UserMessage
   | ThoughtMessage
   | ToolCallMessage

@@ -67,6 +67,7 @@ export function createAssistantStreamCallbacks(
     onFinalAnswerReset: async (event) => {
       await routeEvent(event);
     },
+    onLlmRetry: async event => { await routeEvent(event); },
     onError: async (event) => {
       if (!await routeEvent(event)) return;
       if (projectsConversationEvents) return;

@@ -138,6 +138,17 @@ function mergeWindowMessageWithLivePatch(
     case 'partial_answer':
       if (!isAnswerMessage(livePatch)) return windowMessage;
       return mergeAnswerMessage(windowMessage, livePatch);
+    case 'execution_notice':
+      if (livePatch.type !== 'execution_notice') return windowMessage;
+      // 同一事实合并仅保留 live 的执行归属；恢复后的旧 waiting 不能覆盖 durable 终态。
+      if (windowMessage.metadata.retry?.updated_at === livePatch.metadata.retry?.updated_at
+        && windowMessage.metadata.retry?.status === livePatch.metadata.retry?.status) {
+        return { ...windowMessage, metadata: { ...windowMessage.metadata,
+          ...(livePatch.metadata.execution_id ? { execution_id: livePatch.metadata.execution_id } : {}) } };
+      }
+      return (windowMessage.metadata.retry?.updated_at ?? windowMessage.timestamp)
+        >= (livePatch.metadata.retry?.updated_at ?? livePatch.timestamp)
+        ? windowMessage : livePatch;
     case 'history_summary':
       if (livePatch.type !== 'history_summary') return windowMessage;
       return mergeHistorySummaryMessage(windowMessage, livePatch);

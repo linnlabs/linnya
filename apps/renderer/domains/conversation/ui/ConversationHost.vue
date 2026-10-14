@@ -7,8 +7,6 @@
     :data-overlay-scroll-theme="useOwnScrollViewport ? 'linnya' : undefined"
     :data-overlay-scroll-visibility="useOwnScrollViewport ? 'strict-hover' : undefined"
   >
-    <!-- 错误横幅属于会话表面，不属于历史内容；必须锚定宿主，避免长对话滚动后离开视口。 -->
-    <ErrorBanner :error="error" @dismiss="clearError" />
 
     <div
       ref="conversationViewportRef"
@@ -47,6 +45,9 @@
           :messages="activeMessages"
           class="conversation-view-container"
         />
+
+        <!-- 尚未获得运行事实的客户端故障留在消息列表末尾，不伪造 durable Runtime error。 -->
+        <ConversationLocalErrorNotice v-if="localSurfaceError" :error="localSurfaceError" @dismiss="clearError" />
 
         <!-- 🆕 时间轴导航 - 绝对定位在右侧，固定不滚动 -->
         <TimelineNav
@@ -101,7 +102,8 @@ import { loadHistoryWindowAfter } from '../history/orchestration/historyWindowAf
 import { ensureHistoryWindowTailForBottom } from '../history';
 import ConversationView from './ConversationView.vue';
 import AiAssistantInput from './AiAssistantInput.vue';
-import ErrorBanner from './components/ErrorBanner.vue';
+import ConversationLocalErrorNotice from './components/ConversationLocalErrorNotice.vue';
+import { useInteractiveRunStore } from '../features/interactive-run';
 import TimelineNav from './components/timeline/TimelineNav.vue';
 import { ScrollToBottomButton } from '@linnya/renderer-ui';
 import CommandApprovalPanel from '../features/command-approval/ui/CommandApprovalPanel.vue';
@@ -245,7 +247,17 @@ const inputExecution = useConversationInputExecution({
 });
 const isLoading = inputExecution.isLoading;
 const isStreaming = inputExecution.isStreaming;
-const error = computed(() => assistantStore.error);
+const interactiveRunStore = useInteractiveRunStore();
+const localSurfaceError = computed(() => {
+  const error = assistantStore.error;
+  if (!error) return null;
+  const run = interactiveRunStore.snapshotFor(assistantStore.activeConversationId);
+  const alreadyProjected = activeMessages.value.some(message =>
+    message.type === 'execution_notice'
+    && message.id === run?.errorNoticeId,
+  );
+  return alreadyProjected ? null : error;
+});
 const isConversationViewActive = computed(() => props.isActive);
 const messageWindowHasMoreBefore = computed(() => (
   messageWindowStore.conversationId === assistantStore.activeConversationId && messageWindowStore.hasMoreBefore

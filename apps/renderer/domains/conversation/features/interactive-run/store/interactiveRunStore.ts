@@ -1,3 +1,4 @@
+import { conversationMessageIdFromRetryIdentity } from '@app/schemas';
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { preserveInteractiveRunError } from '../functions/preserveInteractiveRunError';
@@ -48,6 +49,7 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
       ...current,
       status: 'submitting',
       error: undefined,
+      errorNoticeId: undefined,
     });
   };
 
@@ -62,6 +64,7 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
       ...snapshot,
       status: 'continuing',
       error: undefined,
+      errorNoticeId: undefined,
     });
   };
 
@@ -135,14 +138,18 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
   const recordCommandError = (conversationId: string, error: string): void => {
     const current = runsByConversation.value.get(conversationId);
     if (!current) return;
-    runsByConversation.value.set(conversationId, { ...current, error });
+    runsByConversation.value.set(conversationId, { ...current, error, errorNoticeId: undefined });
   };
 
   const recordRuntimeError = (event: SSEErrorEvent, error: string): void => {
     const current = runsByConversation.value.get(event.conversation_id);
     // 与控制事件共用接纳规则，尤其不能让旧 reader 的错误污染重试中的新 execution。
     if (!current || reduceInteractiveRunEvent(current, event) === current) return;
-    runsByConversation.value.set(event.conversation_id, { ...current, error });
+    runsByConversation.value.set(event.conversation_id, {
+      ...current, error,
+      errorNoticeId: event.retry_id && event.run_id
+        ? conversationMessageIdFromRetryIdentity(event.run_id, event.retry_id) : event.id,
+    });
   };
 
   const failRun = (conversationId: string, error: string): void => {
@@ -162,7 +169,7 @@ export const useInteractiveRunStore = defineStore('conversationInteractiveRun', 
   const clearError = (conversationId: string): void => {
     const current = runsByConversation.value.get(conversationId);
     if (!current?.error) return;
-    runsByConversation.value.set(conversationId, { ...current, error: undefined });
+    runsByConversation.value.set(conversationId, { ...current, error: undefined, errorNoticeId: undefined });
   };
 
   const synchronizeSnapshot = (

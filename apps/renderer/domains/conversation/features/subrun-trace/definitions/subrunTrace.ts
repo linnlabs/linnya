@@ -20,6 +20,8 @@ export const SUBRUN_TRACE_SUBRUN_CARD_KINDS = [
   'final_answer_chunk',
   'final_answer',
   'history_summary',
+  'llm_retry',
+  'error',
 ] as const;
 
 export type SubrunTraceKind = HistoricalSubrunTraceKind;

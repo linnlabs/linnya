@@ -125,13 +125,15 @@ chunk/thought/subrun 的 50 ms 高频合并名单。投影器只按 Host 提供�
 
 当前 `ToolUiConfig.presentation` 是可选迁移能力；未迁工具不产生 `toolPresentation`，仍走原卡片路径。已迁工具必须保证 live 与 reload 对相同正式 payload 产生同一展示模型。
 
-### 3.4 Runtime error 是会话表面状态
+### 3.4 运行错误与重试是持久时间线通知
 
-`error` 是 durable 运行事实，但不是时间线消息。持有当前 execution realtime reader 的 Renderer 收到它后，必须由唯一消息投影入口归一化用户文案，再写入对应 conversation 的 interactive-run snapshot，驱动 ErrorBanner；控制状态层不得重新解释错误码或保留另一套文案映射。
+`error` 和 `llm_retry` 是 durable 运行事实，投影成 `system / execution_notice`；两者均不进入模型上下文。实时与历史窗口复用同一共享 schema，禁止在消息列表外再维护一份错误横幅。
 
-ErrorBanner 属于会话表面层，必须锚定 `ConversationHost`，不能挂在可滚动的历史内容中。无论当前历史有多长、用户位于哪个滚动位置，当前会话的新错误都应保持可见；横幅关闭仍只修改对应 conversation snapshot。后续的 run 状态、暂停或结算刷新不能用无错误快照覆盖同一 `run_id + execution_id` 的错误；只有用户关闭横幅或新 execution 开始才能清除它，旧 execution 的迟到错误不得写入新的运行。
+同一次 LLM 调用的通知按 `run_id + retry_id` 合并，保留首次出现的位置。`waiting / retrying` 显示当前次数和计时，成功、失败、耗尽与取消停止动画并保留记录；终末 `error.retry_id` 关联同一条通知，不追加重复错误。恢复调用产生新的 retry identity，因此旧错误不会被清空。次数不能推断终态，必须读取 `status`。Host 在原通知 metadata 绑定 `notice_execution_id`，UI payload 只投影该安全身份；冷重载可恢复当前执行中的等待动画，旧 execution 或崩溃后 paused 的未结算记录保持静态，不能从当前 run 倒填旧事实。
 
-历史 window 只重放消息 read model，不模拟 realtime reader。CLI 等外部进程发起的 execution 即使写入同一数据库，也不会让已打开的 Renderer 主动收到实时事件，因此不会仅凭数据库投影弹出 ErrorBanner。若未来需要跨进程即时提示，应新增正式的 Host 事件订阅能力，不能轮询历史或把 `error` 伪造成时间线消息。
+显示内容只使用安全错误码、已有产品归一化文案及明确允许的模型兼容信息；Provider 原始响应、堆栈和任意 details 不进入 UI read model。运行控制仍由 `interactive-run` 的权威快照决定，通知的颜色或重试次数不能自行决定发送、暂停或继续按钮。
+
+历史 window 只重放 read model，不模拟 realtime reader。CLI 启动的运行可在刷新后通过正式历史看到错误；跨进程实时订阅仍属独立能力。接纳前和传输/投影等缺少 Runtime fact 的诊断必须显式区分来源，不能伪造 run 或宣称尚未成功持久的消息已经保存。
 
 ---
 

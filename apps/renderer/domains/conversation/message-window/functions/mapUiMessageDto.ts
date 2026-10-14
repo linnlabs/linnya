@@ -1,6 +1,7 @@
 import type { BaseMessage } from '../../types';
 import {
   ConversationHistorySummaryPayloadSchema,
+  ConversationExecutionNoticeMetadataSchema,
   ConversationThoughtMessageMetadataSchema,
   ConversationToolMessageMetadataSchema,
   ConversationUserMessageMetadataSchema,
@@ -135,6 +136,11 @@ export function mapUiMessageDtoToConversationMessage(
           ...dto.payload,
           ...scope,
         }),
+      };
+    case 'execution_notice':
+      return {
+        ...common, role: dto.role, type: dto.message_type,
+        metadata: ConversationExecutionNoticeMetadataSchema.parse({ ...dto.payload, ...identityScope }),
       };
     case 'history_summary':
       return {

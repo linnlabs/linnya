@@ -84,11 +84,11 @@ vi.mock('./components/ConversationEmptyState.vue', () => ({
   }),
 }));
 
-vi.mock('./components/ErrorBanner.vue', () => ({
+vi.mock('./components/ConversationLocalErrorNotice.vue', () => ({
   default: defineComponent({
-    name: 'ErrorBannerStub',
+    name: 'ConversationLocalErrorNoticeStub',
     setup() {
-      return () => h('div', { class: 'error-banner-stub' });
+      return () => h('div', { class: 'conversation-local-error-stub' });
     },
   }),
 }));
