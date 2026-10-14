@@ -27,6 +27,7 @@ Provider 和本地数据，不需要 Linnya 账号或私有仓库。普通贡献
 | 判断什么时候写 README、文档放哪里以及如何避免重复真源 | [文档编写规范](./documentation.md) |
 | 在 macOS 与 Windows 之间切换、重建平台依赖或重置开发数据 | [跨平台开发](./cross-platform.md) |
 | 配置开发模式、工作区目录、调试开关与本地 API Key | [`.env.local` 开发配置](./env-local.md) |
+| 在多个 clone/worktree 同时启动 Desktop，隔离 profile、端口与 CLI 连接 | [多工作目录并行开发](./env-local.md#多工作目录并行开发) |
 | 排查 Electron/Node ABI、`better-sqlite3`、`node-pty` 等原生模块 | [原生模块 ABI 与测试](./native-modules.md) |
 
 ## 开发方法

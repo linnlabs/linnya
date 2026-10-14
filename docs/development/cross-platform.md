@@ -45,7 +45,7 @@ Electron 版本只由根 `package.json` 精确声明。平台 E2E 从这里读�
 
 ## 开发数据断代与重置
 
-默认 Electron 开发运行态统一保存在仓库根目录 `_dev_data`。目录根部的 `.linnya-development-data.json` 是应用级开发数据合同：启动会在数据库、插件 lifecycle、Model Catalog 和任务队列之前校验其中的 epoch。
+默认 Electron 开发业务数据保存在仓库根目录 `_dev_data`；Electron profile 与 session 使用独立的 `_dev_electron`，详见[多工作目录并行开发](./env-local.md#多工作目录并行开发)。`_dev_data` 根部的 `.linnya-development-data.json` 是应用级开发数据合同：启动会在数据库、插件 lifecycle、Model Catalog 和任务队列之前校验其中的 epoch。
 
 持久化根目录由 Electron Desktop Host 在启动时解析并冻结，再以纯数据传给 Backend 与 Queue Worker。Worker 不根据自己的 `cwd` 推断仓库根，Backend 也不加载 Electron 或回退到用户 Home 下的另一套目录；正式运行态缺少路径事实会直接中止启动，避免 Main、App Server 和 Worker 写入不同数据根。
 
@@ -57,7 +57,9 @@ Electron 版本只由根 `package.json` 精确声明。平台 E2E 从这里读�
 pnpm run dev:data:reset
 ```
 
-执行前先停止所有开发进程。命令不接受自定义目标，只会把仓库根的 `_dev_data` 整体移入同盘 `.linnya-development-data-retired` 隔离目录，并输出原体积、顶层内容和可恢复位置。下次 `pnpm run dev:electron` 会先创建当前 epoch，再由各 domain 建立当前数据。
+执行前先停止当前工作目录的开发会话。命令不接受自定义目标，只会把仓库根的 `_dev_data` 整体移入同盘 `.linnya-development-data-retired` 隔离目录，并输出原体积、顶层内容和可恢复位置。下次 `pnpm run dev:electron` 会先创建当前 epoch，再由各 domain 建立当前数据。
+
+其他 worktree 使用独立数据时可以继续运行。该命令不重置 `_dev_electron` 中的浏览器偏好、用户安装插件或 session，也不处理其他 worktree 的运行数据。
 
 不要手工修改 `user_models.json` 版本、SQLite `user_version`、插件 migration 账本或单独删除插件表；这些操作会掩盖真实的持久化合同漂移。`LINNYA_WORKSPACE_DIR` 指向的外部 Workspace 不属于这个默认重置目标，做破坏式开发时应避免把它指向需要保留的数据。
 
