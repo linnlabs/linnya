@@ -119,4 +119,4 @@ TanStack Virtual 是位置与测量的唯一执行者：
 
 渲染项异常先核对：消息可见性、visual-row 投影边界和稳定 key。需要独立上下文的过程必须进入父工具的 subrun collection，禁止重新增加业务专用顶层 row 类型。
 
-若异常涉及切换会话、新草稿、ErrorBanner 或流式 terminal 时序，先运行 `pnpm run test:conversation-navigation:electron` 并查看捕获到的第一个 `Runtime.exceptionThrown`。`nextSibling`、`subTree`、`emitsOptions` 等错误常是前一轮 patch 中断后的级联结果，不应直接在报错行增加空值判断。
+若异常涉及切换会话、新草稿、错误通知或流式 terminal 时序，先运行 `pnpm run test:conversation-navigation:electron` 并查看捕获到的第一个 `Runtime.exceptionThrown`。`nextSibling`、`subTree`、`emitsOptions` 等错误常是前一轮 patch 中断后的级联结果，不应直接在报错行增加空值判断。

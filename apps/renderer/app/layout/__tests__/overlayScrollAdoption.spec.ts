@@ -121,17 +121,6 @@ vi.mock('@/domains/conversation/ui/AiAssistantInput.vue', () => {
   };
 });
 
-vi.mock('@/domains/conversation/ui/components/ConversationLocalErrorNotice.vue', () => {
-  return {
-    default: defineComponent({
-      name: 'ConversationLocalErrorNoticeStub',
-      setup() {
-        return () => h('div', { class: 'conversation-local-error-stub' });
-      },
-    }),
-  };
-});
-
 vi.mock('@/domains/conversation/features/command-execution-presentation/orchestration/useCommandCardControl', () => ({
   createCommandCardControlPageOwner: () => ({
     ensure: vi.fn(async () => undefined),

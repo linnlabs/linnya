@@ -472,7 +472,7 @@ export function normalizeConversationError(
     };
   }
 
-  // 默认：后端 raw error 只作为诊断保留，不直接进入 ErrorBanner。
+  // 默认：后端 raw error 只作为诊断保留，不直接进入消息列表通知。
   return {
     userMessage: resolveErrorMessage('conversation.error.generic', options),
     errorCode,

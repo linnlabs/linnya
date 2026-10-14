@@ -53,7 +53,7 @@ projection runtime 的常驻只发生在 store。它不要求 `ConversationHost`
 - 禁止从 durable `final_answer` 补造丢失的 live chunk；缺少 chunk 应继续作为协议错误暴露。
 - 禁止只删除 reducer Map 而保留 pending commit。确认 conversation 不会再收到事件后的销毁或全局 reset，必须原子释放两者；历史删除 API 本身不等于后台 run 已终止。
 - 禁止根据 `activeConversationId` 接收后台事件；请求捕获的 conversation 与事件正式身份才是路由依据。
-- 禁止把严格投影失败降级成跳过事件。失败可以驱动 conversation-scoped ErrorBanner，但不得因此停止 history loading 收敛或污染 Vue 组件树。
+- 禁止把严格投影失败降级成跳过事件。失败通过 conversation-scoped client notice 进入消息列表，但不得因此停止 history loading 收敛或污染 Vue 组件树。
 
 ## 回归门禁
 
@@ -63,7 +63,7 @@ projection runtime 的常驻只发生在 store。它不要求 `ConversationHost`
 
 - A/B 多轮切换以及 A → 新草稿 → B。
 - chunk 的 50ms commit 尚未执行时切换或新建，随后 A 在后台完成 terminal seal。
-- `final_answer` 缺少 live chunk 的严格协议失败先挂载 ErrorBanner，再切换和新建。
+- `final_answer` 缺少 live chunk 的严格协议失败先呈现 client notice，再切换和新建。
 
 不得用 mock OverlayScrollbars、stub `ConversationView` 或只断言节点“存在”的组件测试替代这条门禁；这些测试无法发现半挂载 vnode 与第三方 DOM ownership 冲突。
 

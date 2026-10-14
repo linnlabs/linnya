@@ -98,7 +98,7 @@ describe('assistantStore error dismissal', () => {
     expect(assistantStore.error).toBe('后台会话 Provider 失败');
   });
 
-  it('Runtime 429 通过统一投影写入当前会话 ErrorBanner 状态', async () => {
+  it('Runtime 429 通过统一投影写入当前会话错误诊断状态', async () => {
     const conversationState = useConversationState();
     conversationState.createConversation({ id: 'conversation-429', autoActivate: true });
     const assistantStore = useAssistantStore();

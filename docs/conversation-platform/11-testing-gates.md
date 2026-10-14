@@ -35,7 +35,7 @@ vi.mock('.../components/ErrorBanner.vue', ...)
 
 它断言的是 `container.querySelector('.conversation-chat-host') !== null`——**元素存在性**，而非"`v-show` 是否真的隐藏了它"、"虚拟列表是否安全卸载"。真实故障发生在被 stub 掉的那三个组件与真实 OverlayScrollbars 的交互中（详见 [08 §2.1](./08-lifecycle.md)）。
 
-**结论**：组件测试可以留作结构回归，但**不能**作为 DOM 生命周期的放行依据。
+**结论**：组件测试可以留作结构回归，但**不能**作为 DOM 生命周期的放行依据。错误通知接入的组件测试必须加载真实通知叶子；不得 mock 已删除的组件路径，否则删除遗漏会被测试掩盖。
 
 ---
 
@@ -57,7 +57,7 @@ pnpm run test:conversation-navigation:electron
 - 主区 / 右侧互换时，从 store 重建 Tiptap 并保留未发送草稿文字
 - 正常 chunk 在 **50 ms pending commit 期间**切换 / 新建
 - 后台 terminal seal
-- 严格协议失败挂载 ErrorBanner 后**继续导航**
+- 严格协议失败呈现消息列表错误通知后**继续导航**
 - 隔离 SQLite 的 Subrun durable decision/output/final answer 在无 ephemeral process/chunk 时恢复真实 child tool 与完整正文
 - 父进度卡进入 Host 就地详情后 Header 显示 `父对话标题 / Subrun 标题`、正文不重复标题、切会话销毁 detail scope 与子标题、再次进入后返回精确父消息锚点
 - 父列表重挂载复用 exact trace ready 快照，不因重复历史请求改变 virtual row 首帧高度

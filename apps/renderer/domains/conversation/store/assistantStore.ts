@@ -100,7 +100,7 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
    * 根因：
    * - executionState / annotationRunExecutionStore 是独立 Pinia store；
    * - 直接返回它们的 error 等字段，在聚合 store 中会退化为“创建时的快照”，
-   *   导致 UI（例如 ErrorBanner）无法随 setError() 更新。
+   *   导致 错误状态消费者无法随 setError() 更新。
    *
    * 结论：
    * - 一律用 computed(() => executionState.xxx) 包一层再导出。

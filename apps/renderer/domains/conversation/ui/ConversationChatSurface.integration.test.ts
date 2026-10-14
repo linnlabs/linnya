@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
 import { createApp, defineComponent, h, nextTick, type PropType } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
+import { captureConversationClientNotice, useClientNoticeStore } from '../features/client-notices';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConversationContentPhase } from '../functions/conversationContentPhase';
 import type {
@@ -24,6 +26,8 @@ vi.mock('../store/conversationContentPhaseSelector', () => ({
 vi.mock('../store/assistantStore', () => ({
   useAssistantStore: () => ({
     isTimelineCollapsed: false,
+    activeConversationId: null,
+    activeMessages: [],
     error: null,
     clearError: vi.fn(),
   }),
@@ -84,26 +88,23 @@ vi.mock('./components/ConversationEmptyState.vue', () => ({
   }),
 }));
 
-vi.mock('./components/ConversationLocalErrorNotice.vue', () => ({
-  default: defineComponent({
-    name: 'ConversationLocalErrorNoticeStub',
-    setup() {
-      return () => h('div', { class: 'conversation-local-error-stub' });
-    },
-  }),
-}));
+vi.mock('@app/localization', () => ({ useLocalization: () => ({ currentLocale: { value: 'zh-CN' }, message: (_key: string, fallback: string) => fallback }) }));
+vi.mock('../features/client-notices/orchestration/clientNoticeApi', () => ({ sendClientNotice: vi.fn(async () => { throw new Error('offline'); }) }));
 
 function mountSurface(props: {
   variant?: ConversationSurfaceVariant;
   emptyComposerPlacement?: ConversationEmptyComposerPlacement;
   isActive?: boolean;
 } = {}) {
+  const pinia = createPinia();
+  setActivePinia(pinia);
   const container = document.createElement('div');
   document.body.appendChild(container);
   const app = createApp(ConversationChatSurface, {
     emptyHeading: 'Linnya',
     ...props,
   });
+  app.use(pinia);
   app.mount(container);
   return { app, container };
 }
@@ -111,6 +112,7 @@ function mountSurface(props: {
 describe('ConversationChatSurface content assembly', () => {
   beforeEach(() => {
     surfaceState.phase = 'draft';
+    localStorage.clear();
     vi.stubGlobal('ResizeObserver', class {
       observe = vi.fn();
       disconnect = vi.fn();
@@ -120,6 +122,34 @@ describe('ConversationChatSurface content assembly', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     document.body.innerHTML = '';
+  });
+
+  it.each<ConversationContentPhase>(['draft', 'ready-empty'])(
+    '%s displays the persisted safe client notice once through the real leaf without creating a run',
+    async phase => {
+      surfaceState.phase = phase;
+      const { app, container } = mountSurface();
+      captureConversationClientNotice(null, { error_kind: 'http', operation: 'send', http_status: 401 });
+      await nextTick();
+      expect(container.querySelectorAll('.client-notice')).toHaveLength(1);
+      expect(container.textContent).toContain('HTTP 401');
+      expect(container.textContent).toContain('尚未同步');
+      expect(container.querySelector('.conversation-host-stub')).toBeNull();
+      expect(useClientNoticeStore().entries[0]?.conversationId).toBeNull();
+      expect(useClientNoticeStore().entries[0]?.command).not.toHaveProperty('run_id');
+      expect(localStorage.getItem('conversation-client-notices-v1')).toContain('401');
+      app.unmount();
+    },
+  );
+
+  it('does not create a second notice outlet when the Host owns the populated timeline', async () => {
+    surfaceState.phase = 'ready';
+    const { app, container } = mountSurface();
+    captureConversationClientNotice(null, { error_kind: 'connection', operation: 'send' });
+    await nextTick();
+    expect(container.querySelector('.conversation-host-stub')).not.toBeNull();
+    expect(container.querySelector('.client-notice')).toBeNull();
+    app.unmount();
   });
 
   it.each<ConversationContentPhase>(['draft', 'ready-empty'])(

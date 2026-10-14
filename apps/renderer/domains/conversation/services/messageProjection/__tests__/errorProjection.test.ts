@@ -43,7 +43,7 @@ describe('conversation image error projection', () => {
         error_code: 'llm.image_input.model_unsupported',
         retryable: false,
         details: {
-          stack: 'provider stack must not enter ErrorBanner',
+          stack: 'provider stack must not enter the visible error notice',
           metadata: { compatible_model_ids: ['vision-model'] },
         },
       }

@@ -7,7 +7,13 @@
     <slot name="overlay" />
 
     <main ref="mainRef" class="conversation-chat-main">
-      <ConversationLocalErrorNotice v-if="!shouldMountHost && error" :error="error" @dismiss="clearError" />
+      <template v-if="!shouldMountHost">
+        <ClientNoticeMessage
+          v-for="notice in localNotices"
+          :key="notice.id"
+          :message="notice"
+        />
+      </template>
 
       <div
         v-if="!shouldMountHost && emptyComposerPlacement === 'footer'"
@@ -77,9 +83,10 @@ import type {
 import AiAssistantInput from './AiAssistantInput.vue';
 import ConversationHost from './ConversationHost.vue';
 import ConversationEmptyState from './components/ConversationEmptyState.vue';
-import ConversationLocalErrorNotice from './components/ConversationLocalErrorNotice.vue';
+import { useClientNoticePresentation } from '../features/client-notices';
+import ClientNoticeMessage from '../features/client-notices/ui/ClientNoticeMessage.vue';
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   emptyHeading: string;
   emptyDescription?: string;
   emptyMark?: string;
@@ -101,7 +108,12 @@ const contentPhase = useConversationContentPhaseSelector();
 const isHistoryReplayLoading = computed(() => isConversationHistoryPendingPhase(contentPhase.value));
 const shouldMountHost = computed(() => shouldMountConversationHost(contentPhase.value));
 const isTimelineCollapsed = computed(() => assistantStore.isTimelineCollapsed);
-const error = computed(() => assistantStore.error);
+// 空态不挂载 Host；仅此时由 surface 呈现同一 outbox，避免丢错或重复显示。
+const { localNotices } = useClientNoticePresentation({
+  conversationId: () => assistantStore.activeConversationId,
+  messages: () => assistantStore.activeMessages,
+  isActive: () => props.isActive && !shouldMountHost.value,
+});
 
 const emptyStateVisualOffsetStyle = computed(() => {
   const aestheticLift = Math.min(28, Math.max(8, Math.round(mainHeight.value * 0.035)));
@@ -113,10 +125,6 @@ const emptyStateVisualOffsetStyle = computed(() => {
 
 const updateMainHeight = () => {
   mainHeight.value = mainRef.value?.offsetHeight ?? 0;
-};
-
-const clearError = () => {
-  assistantStore.clearError();
 };
 
 let mainResizeObserver: ResizeObserver | null = null;
