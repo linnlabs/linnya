@@ -140,8 +140,8 @@ describe('sourceSelection render-node functions', () => {
       shape('rotated', box({ x: 1, y: 1, w: 2, h: 1 }), 0, SPAN_1, { rotation: 90 }),
     ];
 
-    expect(findSourceElementAtPoint(nodes, { x: 0.5, y: 1.5 })?.elementId).toBe('rotated');
-    expect(findSourceElementAtPoint(nodes, { x: 1.5, y: 0.5 })).toBeNull();
+    expect(findSourceElementAtPoint(nodes, { x: 2, y: 1.5 })?.elementId).toBe('rotated');
+    expect(findSourceElementAtPoint(nodes, { x: 0.5, y: 1.5 })).toBeNull();
   });
 
   it('collects source-backed elements intersecting a marquee rectangle', () => {

@@ -11,6 +11,8 @@ render-model 的跨端几何契约，供后端几何快照测试和 renderer 预
 - `imageGeometry.ts`：图片和 SVG Graphic 的 `cover` / `contain` / `stretch` 的
   归一化 source 与 destination 几何。renderer 将它换算为像素裁剪，PPTX
   adapter 将它换算为图片盒和 OOXML `srcRect`；两端不得各自重新实现比例计算。
+- `boxRotation.ts`：所有 RenderNode 均绕未旋转外框的中心旋转，与 PPTX 保持一致。
+  builder 使用像素单位，选区使用英寸单位，共用同一中心与局部 offset；局部子节点和裁剪坐标仍从左上角起算。
 
 边界要求：
 

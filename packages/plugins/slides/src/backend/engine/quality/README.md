@@ -86,6 +86,7 @@ PresentationRenderModel
 - 新 layout 问题 code 放 `LayoutLint.ts` 对应类型和规则，并补最小业务 case。
 - 新 aesthetic 规则先在 `aesthetic/types.ts` 定义 code，再在 `thresholds.ts` 放阈值。单条通用规则放 `lintRules.ts`；图表可读性这类内部共享同一事实与边界的规则族放独立高内聚模块，并由 `AestheticLint` 薄编排接入。
 - 新空间关系语义优先放 `SpatialSemantics.ts`，避免多个 lint 规则各自判断 overlap 是否合理。当前分类会综合 containment、显式组件 parent、线—节点邻接、z-order、opacity、semanticRole 和面积比例；调用方必须传递已有事实，不能退化为只传 kind/box。只有非 slide 的共同 parent 且至少一方为 Shape 时才表示组件装饰关系；另一个明确例外是较低 z-order 的 Shape 完整承载 Chart，此时 Shape 是图表面板。反向层叠、部分覆盖、同页普通顶层元素和组件内的 text-text 重叠都不能因此互相豁免。
+- Frame 编译后会扁平化。lint 与 inspect 都从 `authoringAncestorRefs` 派生最近的 `authoringFrameId`，独立于 render parent，空间分析保留 `svgGraphic` kind。Frame 背景与直属作者子节点按显式父子关系处理；同一可识别 Frame 中，较低层的 SVG 完整承载 Text 且两者都未旋转时归为承载关系。旋转后的轴对齐盒不能证明承载，因此不豁免。无 Frame、不同 Frame、反向层叠、部分覆盖及 text-text 仍接受原有重叠检查，不能仅凭几何相交认定是标签。
 - `origin_stacking` 只聚合同锚点且无法由上述语义解释的独立内容；Group 与显式背景/装饰不参与。Shape path 的外盒可以是共用 viewBox，不能把已声明的装饰路径当成定位失败。细盒的装饰推断仅适用于 Shape，不能豁免小字号文字或窄表格。两个 Text 共用锚点不等于父子容器。
 - 普通 `element_overlap` 仍是 medium-confidence 盒相交复核事实；例如表格压住页脚可有真实交集，但仅凭盒与 z-order 不足以证明具体字形被不透明内容遮住。它不因人工在某张图上确认遮挡而统一升级 high-confidence；规则优先级与最终可读性不能互相替代。
 - 面积覆盖率等数学上有界的几何派生值必须在 `SpatialSemantics` 的生产端消除浮点越界，再进入 strict evidence schema；CLI 和 Agent 投影不得各自修正数值。
@@ -97,6 +98,7 @@ PresentationRenderModel
 - layout / aesthetic / heuristic：`packages/plugins/slides/src/backend/__tests__/{layout-lint,aesthetic-lint,heuristic-lint}.test.ts`
 - spatial / color：`packages/plugins/slides/src/backend/__tests__/{color-utils,render-model-to-lint-info}.test.ts`
 - inspect feedback：`packages/plugins/slides/src/backend/tools/inspectFeedback/**/*.test.ts`
+- SVG 标签约定：`backend/codegen/__tests__/SvgGraphicExample.integration.test.ts`，验证真实示例在 lint 与空间分析两条链路的承载关系，以及反向层叠、跨 Frame 和标签碰撞等边界。
 - 插件全量：`pnpm run test:plugin:slides`
 
 Shape/Image 的 `role: background | decoration` 经 compiled 元数据进入空间诊断：越界保留 info 证据，边距与装饰碰撞不再要求修正；`bleed` 是节点级非负英寸授权，仅超出授权才产生越界 finding。未声明角色的细线只有在低透明度、位于文字后方时才豁免碰撞，前景相交继续报告。Text 的 `footnote/source/page-number` 角色不参与正文字号档位和字体族数量统计。CLI finding 的 `action` 与 inspect observation 共用处置短语。

@@ -172,6 +172,8 @@ export interface SlideElementInfo {
   nodeId?: string;
   /** RenderModel 中的直接父节点身份，用于保留显式组件关系。 */
   parentNodeId?: string;
+  /** 从 authoringAncestorRefs 派生的最近 Frame 身份，与渲染树 parent 分开。 */
+  authoringFrameId?: string;
   creationId?: string;
   /** 稳定元素 ID，由 CanonicalBuilder 生成。优先 creationId，fallback position hash。 */
   elementId?: string;

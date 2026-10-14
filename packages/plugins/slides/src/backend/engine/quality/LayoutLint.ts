@@ -225,6 +225,8 @@ export class LayoutLint {
     const spatialElements = annotateLineNodeSemantics(elements.map((element) => ({
       nodeId: element.nodeId ?? element.elementId,
       parentNodeId: element.parentNodeId,
+      authoringFrameId: element.authoringFrameId,
+      rotation: element.rotation,
       kind: element.type,
       box: element.position,
       zIndex: element.zIndex,
@@ -452,6 +454,8 @@ export class LayoutLint {
       const comparable = annotateLineNodeSemantics(group.map((element) => ({
         nodeId: element.nodeId ?? element.elementId,
         parentNodeId: element.parentNodeId,
+        authoringFrameId: element.authoringFrameId,
+        rotation: element.rotation,
         kind: element.type,
         box: element.position,
         zIndex: element.zIndex,

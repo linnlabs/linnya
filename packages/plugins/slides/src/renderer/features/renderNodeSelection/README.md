@@ -13,4 +13,6 @@ functions/    matrix math, traversal, collection and topmost hit testing
 
 Coordinate values use the RenderModel logical inch space. Pixel conversion and DOM/Konva event adaptation remain with the consuming interaction feature.
 
+Every RenderNode rotates around its unrotated box center, matching Konva and PPTX. Selection and all builders consume `shared/render-geometry/boxRotation`; node kinds must not introduce separate rotation origins. SVG Graphic selection still covers the full authored box, including contain padding.
+
 Tests are exercised both through `sourceSelection/functions/sourceSelection.test.ts` for nested groups, rotation, visibility and z-order, and through `manualEditing/functions/manualEditableTargets.test.ts` for author targets without source spans.

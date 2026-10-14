@@ -83,12 +83,15 @@ it('eight handles keep their opposite anchor fixed for rotated shapes and propor
 
 function geometry(subject: ManualEditableTarget, previews: readonly EditingVisualPreview[]) {
   const [origin, right, , bottom] = subject.polygon;
+  const width = Math.hypot(right.x - origin.x, right.y - origin.y);
+  const height = Math.hypot(bottom.x - origin.x, bottom.y - origin.y);
+  // 选择多边形已旋转，RenderModel.box 则是同中心的未旋转矩形。
   const base = { id: subject.elementId, zIndex: 0,
-    box: { x: origin.x, y: origin.y, w: Math.hypot(right.x - origin.x, right.y - origin.y),
-      h: Math.hypot(bottom.x - origin.x, bottom.y - origin.y), unit: 'in' as const },
+    box: { x: (right.x + bottom.x - width) / 2, y: (right.y + bottom.y - height) / 2,
+      w: width, h: height, unit: 'in' as const },
     rotation: Math.atan2(right.y - origin.y, right.x - origin.x) * 180 / Math.PI };
   const node: RenderNode = subject.nodeKind === 'image'
-    ? { ...base, kind: 'image', asset: { type: 'url', value: 'fixture' } }
+    ? { ...base, kind: 'image', assetRef: { type: 'external', url: 'https://example.com/fixture.png' } }
     : { ...base, kind: 'shape', geometry: { type: 'preset', name: 'rect' } };
   return collectEditingPreviewGeometries([node], previews);
 }

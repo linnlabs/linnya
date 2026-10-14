@@ -26,6 +26,7 @@ const REQUIRED_RESOURCES = [
   'references/examples/cover-variants.js',
   'references/examples/media-and-paint.js',
   'references/examples/native-formula.js',
+  'references/examples/svg-graphic.js',
   'references/examples/table.js',
   'references/examples/timeline.js',
 ] as const;

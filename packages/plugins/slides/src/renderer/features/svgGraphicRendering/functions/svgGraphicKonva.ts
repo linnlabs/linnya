@@ -1,7 +1,7 @@
 import type { SvgGraphicRenderNode } from '../../../types/render';
 import type { LoadedRenderImage } from '../../renderImageResources';
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../shared/constants';
-import { resolveImageFitGeometry } from '@plugin/slides/shared/render-geometry';
+import { resolveBoxRotation, resolveImageFitGeometry } from '@plugin/slides/shared/render-geometry';
 
 export function svgGraphicDataUri(node: SvgGraphicRenderNode): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(node.canonicalSvg)}`;
@@ -9,9 +9,7 @@ export function svgGraphicDataUri(node: SvgGraphicRenderNode): string {
 
 export function buildSvgGraphicGroupConfig(node: SvgGraphicRenderNode) {
   return {
-    x: node.box.x * INCHES_TO_PX,
-    y: node.box.y * INCHES_TO_PX,
-    rotation: node.rotation ?? 0,
+    ...resolveBoxRotation(node.box, node.rotation, INCHES_TO_PX),
     opacity: node.opacity ?? 1,
     visible: node.visible !== false,
   };

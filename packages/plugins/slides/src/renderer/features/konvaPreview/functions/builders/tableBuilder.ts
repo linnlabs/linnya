@@ -1,3 +1,4 @@
+import { resolveBoxRotation } from '@plugin/slides/shared/render-geometry';
 import type { RenderStroke, TableRenderNode, TextRenderNode } from '../../../../types/render';
 import {
   TABLE_DEFAULT_BACKGROUND_FILL,
@@ -11,9 +12,7 @@ const POINTS_TO_PX = INCHES_TO_PX / 72;
 
 export function buildTableGroupConfig(node: TableRenderNode) {
   return {
-    x: node.box.x * INCHES_TO_PX,
-    y: node.box.y * INCHES_TO_PX,
-    rotation: node.rotation ?? 0,
+    ...resolveBoxRotation(node.box, node.rotation, INCHES_TO_PX),
     opacity: node.opacity ?? 1,
     visible: node.visible !== false,
   };

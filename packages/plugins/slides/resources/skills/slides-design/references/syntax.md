@@ -237,6 +237,18 @@ Text，并在添加 SVG 之后挂载以形成覆盖层。
 
 inline 的最小结构是：`createSvgGraphic({ source: '<svg viewBox="0 0 100 50">…</svg>', width: 6, height: 3, altText: '流程关系示意图' })`。精确 source 联合、工厂签名与字段以生成的 `.d.ts` 为准。
 
+完整可执行写法见 [`svg-graphic.js`](./examples/svg-graphic.js)：共享颜色常量同时生成 SVG 与 theme，
+用 JavaScript 展开重复图元，并把 SVG 与原生 Text 放进带 `editKey` 的 Frame，便于整体移动或删除。
+采用同一创作约定：Frame 与 SVG 外框同尺寸，viewBox 宽高取英寸尺寸 × 100，
+例如 9 × 3.6 英寸对应 900 × 360。这样没有 contain 留白，标签位置与尺寸用 SVG 坐标除以 100，
+并相对该 Frame 定位；字号仍为 pt。根 SVG 只声明 viewBox，避免 width/height/preserveAspectRatio
+引入第二层缩放或裁剪。这是推荐写法，不是新增准入限制。
+Frame 支持整体移动、删除，Text 仍独立编辑；单独缩放 SVG 不会带动同级 Text，改尺寸时需同步更新标签。
+带标签的组合保持不旋转；`rotate` 只让 SVG 绕外框中心旋转，Text 没有公开 rotate 字段。
+当前没有 `labels`、标签自动对位或 SVG 内文字抽取 API，不能把这些字段写进 source。
+inspect 将同一可识别 Frame 内、较低层且完整包住 Text 的未旋转 SVG 视为承载关系；
+标签互相遮挡、跨 Frame 覆盖、反向层叠和部分覆盖仍按现有重叠规则检查，需结合 render 复核。
+
 ### 8.2 Brush Artwork
 
 `createBrushArtwork()` 把受控声明式绘制生成为普通图片资产，适合手绘插画、笔触、纸面边框、水彩、

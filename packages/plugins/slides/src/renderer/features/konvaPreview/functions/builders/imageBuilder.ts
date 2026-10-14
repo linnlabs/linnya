@@ -1,3 +1,4 @@
+import { resolveBoxRotation } from '@plugin/slides/shared/render-geometry';
 import type { SceneContext } from 'konva/lib/Context';
 import type { ImageRenderNode } from '../../../../types/render';
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../../shared/constants';
@@ -10,9 +11,7 @@ export function buildImageGroupConfig(node: ImageRenderNode) {
   const width = node.box.w * INCHES_TO_PX;
   const height = node.box.h * INCHES_TO_PX;
   return {
-    x: node.box.x * INCHES_TO_PX,
-    y: node.box.y * INCHES_TO_PX,
-    rotation: node.rotation ?? 0,
+    ...resolveBoxRotation(node.box, node.rotation, INCHES_TO_PX),
     opacity: node.opacity ?? 1,
     visible: node.visible !== false,
     clipFunc: (context: SceneContext) => {

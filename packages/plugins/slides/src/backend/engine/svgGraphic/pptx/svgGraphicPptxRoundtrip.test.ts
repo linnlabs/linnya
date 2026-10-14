@@ -1,7 +1,16 @@
 import JSZip from 'jszip';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import { describe, expect, it } from 'vitest';
-import type { DeckSpec } from '@plugin/slides/shared';
+import { Group } from 'konva/lib/Group';
+import type { Box, DeckSpec, SvgGraphicFit, SvgGraphicRenderNode } from '@plugin/slides/shared';
+import {
+  buildSvgGraphicGroupConfig,
+  resolveSvgGraphicFitConfig,
+} from '../../../../renderer/features/svgGraphicRendering';
+import {
+  collectRenderNodeSelectionGeometries,
+  findRenderNodeSelectionGeometryAtPoint,
+} from '../../../../renderer/features/renderNodeSelection';
 import { DeckAssembler } from '../../DeckAssembler';
 import { FreeformCompiler } from '../../FreeformCompiler';
 import { StructuredCompiler } from '../../StructuredCompiler';
@@ -28,7 +37,13 @@ const alternateFallbackPng = Buffer.from(
   'base64',
 );
 
-async function assembleSvgDeck(): Promise<Buffer> {
+interface SvgPlacement {
+  position: Box;
+  fit: SvgGraphicFit;
+  rotate: number;
+}
+
+async function assembleSvgDeck(placement?: SvgPlacement): Promise<Buffer> {
   const assetRef = {
     kind: 'owned_svg' as const,
     assetId: 'svg-asset-1',
@@ -45,8 +60,9 @@ async function assembleSvgDeck(): Promise<Buffer> {
         elements: [{
           type: 'svgGraphic',
           asset: assetRef,
-          position: { x: 1, y: 1, w: 6, h: 3 },
-          fit: 'contain',
+          position: placement?.position ?? { x: 1, y: 1, w: 6, h: 3 },
+          fit: placement?.fit ?? 'contain',
+          rotate: placement?.rotate,
           altText: '蓝色流程线',
         }],
       },
@@ -73,6 +89,59 @@ async function assembleSvgDeck(): Promise<Buffer> {
 }
 
 describe('SVG Graphic PPTX compatibility roundtrip', () => {
+  const placements: SvgPlacement[] = [
+    { position: { x: 1, y: 1, w: 4, h: 4 }, fit: 'contain', rotate: 0 },
+    { position: { x: 1, y: 1, w: 4, h: 4 }, fit: 'contain', rotate: 90 },
+    { position: { x: 2, y: 1, w: 6, h: 2 }, fit: 'contain', rotate: 37 },
+    { position: { x: 2, y: 1, w: 4, h: 3 }, fit: 'stretch', rotate: -30 },
+  ];
+
+  it.each(placements)('keeps preview, selection and PPTX aligned for $fit / $rotate degrees', async placement => {
+    const info = await new PptxReader().parse(await assembleSvgDeck(placement));
+    const exported = info.slides[0]?.elements[0];
+    if (!exported?.position) throw new Error('SVG PPTX position missing');
+    const node: SvgGraphicRenderNode = {
+      id: 'svg-rotation', kind: 'svgGraphic', zIndex: 0,
+      box: { ...placement.position, unit: 'in' },
+      canonicalSvg, contentHash, viewBox: admittedSvg.viewBox,
+      fit: placement.fit, rotation: placement.rotate, decorative: true,
+    };
+    const group = new Group(buildSvgGraphicGroupConfig(node));
+    const fit = resolveSvgGraphicFitConfig(node);
+    const box = exported.position;
+    const angle = (exported.rotation ?? 0) * Math.PI / 180;
+    // 从真实 OOXML 回读尺寸/角度，独立按 Office 的中心旋转求四角；不能只比 rotate 字段。
+    for (const [u, v] of [[0, 0], [1, 0], [1, 1], [0, 1]]) {
+      const preview = group.getTransform().point({ x: fit.x + u * fit.width, y: fit.y + v * fit.height });
+      const dx = (u - 0.5) * box.w;
+      const dy = (v - 0.5) * box.h;
+      expect(preview.x / 96).toBeCloseTo(box.x + box.w / 2 + dx * Math.cos(angle) - dy * Math.sin(angle), 5);
+      expect(preview.y / 96).toBeCloseTo(box.y + box.h / 2 + dx * Math.sin(angle) + dy * Math.cos(angle), 5);
+    }
+
+    const [selection] = collectRenderNodeSelectionGeometries([node], candidate => candidate.kind === 'svgGraphic');
+    if (!selection) throw new Error('SVG selection missing');
+    for (const [index, corner] of [[0, 0], [1, 0], [1, 1], [0, 1]].entries()) {
+      const visible = group.getTransform().point({ x: corner[0] * node.box.w * 96, y: corner[1] * node.box.h * 96 });
+      expect(selection.polygon[index]?.x).toBeCloseTo(visible.x / 96, 5);
+      expect(selection.polygon[index]?.y).toBeCloseTo(visible.y / 96, 5);
+    }
+    expect(findRenderNodeSelectionGeometryAtPoint(
+      [node], { x: box.x + box.w / 2, y: box.y + box.h / 2 }, candidate => candidate.kind === 'svgGraphic',
+    )?.elementId).toBe(node.id);
+
+    const canonical = new CanonicalBuilder().build('rotated-svg', 1, 'SVG rotation', info);
+    const imported = new RenderModelMapper().fromCanonicalDeck(canonical, { title: 'SVG rotation', slides: [] }, 'imported')
+      .slides[0]?.elements[0];
+    if (imported?.kind !== 'svgGraphic') throw new Error('SVG did not survive PPTX roundtrip');
+    const importedGroup = new Group(buildSvgGraphicGroupConfig(imported));
+    const importedFit = resolveSvgGraphicFitConfig(imported);
+    const reimported = importedGroup.getTransform().point({ x: importedFit.x, y: importedFit.y });
+    const original = group.getTransform().point({ x: fit.x, y: fit.y });
+    expect(reimported.x).toBeCloseTo(original.x, 4);
+    expect(reimported.y).toBeCloseTo(original.y, 4);
+  });
+
   it('writes admitted SVG plus the real PNG fallback and restores canonical render semantics', async () => {
     const buffer = await assembleSvgDeck();
     const zip = await JSZip.loadAsync(buffer);

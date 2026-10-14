@@ -200,6 +200,7 @@ export interface RenderNodeBase {
   authoringAncestorRefs?: readonly SlidesAuthoringObjectRef[];
   /** 编译器根据作者输入产生的有限编辑能力和值；禁止从 paragraphs/layout 反推。 */
   authoringEdit?: SlidesAuthoringEditProjection;
+  /** 绕未旋转 box 中心旋转，单位度；局部子内容仍从 box 左上角开始。 */
   rotation?: number;
   opacity?: number;
   visible?: boolean;

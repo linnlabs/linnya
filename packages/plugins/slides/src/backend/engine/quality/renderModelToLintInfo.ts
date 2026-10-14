@@ -22,6 +22,7 @@ import type {
 import {
   CHART_DEFAULT_LABEL_FONT_SIZE_PT,
   resolveTableCellLayouts,
+  resolveSlidesAuthoringFrameNodeId,
   TABLE_DEFAULT_CELL_PADDING,
   visitRenderNodes,
 } from '@plugin/slides/shared';
@@ -57,6 +58,8 @@ function renderNodeToElementInfo(node: RenderNode, parentNodeId?: string): Slide
     name: et?.elementName ?? node.id,
     nodeId: node.id,
     parentNodeId,
+    authoringFrameId: resolveSlidesAuthoringFrameNodeId(node.authoringAncestorRefs),
+    rotation: node.rotation,
     elementId: et?.elementId ?? et?.creationId ?? node.id,
     type: renderKindToElementType(node.kind),
     zIndex: node.zIndex,

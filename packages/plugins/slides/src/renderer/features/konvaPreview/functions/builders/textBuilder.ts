@@ -1,3 +1,4 @@
+import { resolveBoxRotation } from '@plugin/slides/shared/render-geometry';
 import type { RenderTextRun, TextRenderNode } from '../../../../types/render';
 import type { RenderLineSlice } from '@plugin/slides/shared';
 import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../../shared/constants';
@@ -26,11 +27,9 @@ export interface TextLineConfig {
 
 export function buildTextGroupConfig(node: TextRenderNode) {
   const config = {
-    x: node.box.x * INCHES_TO_PX,
-    y: node.box.y * INCHES_TO_PX,
+    ...resolveBoxRotation(node.box, node.rotation, INCHES_TO_PX),
     width: node.box.w * INCHES_TO_PX,
     height: node.box.h * INCHES_TO_PX,
-    rotation: node.rotation ?? 0,
     opacity: node.opacity ?? 1,
     visible: node.visible !== false,
   };

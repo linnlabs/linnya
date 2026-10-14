@@ -31,6 +31,7 @@ describe('Slides Skill guard', () => {
       'manual-edits.js',
       'media-and-paint.js',
       'native-formula.js',
+      'svg-graphic.js',
       'table.js',
       'timeline.js',
     ]);

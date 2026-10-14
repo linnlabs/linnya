@@ -65,3 +65,11 @@ function isSlidesManualTargetKind(value: unknown): boolean {
 export function buildSlidesAuthoringRenderNodeId(ref: SlidesAuthoringEditRef): string {
   return `authoring-${ref.slideKey}-${ref.editKey}`;
 }
+
+/** 最近的显式 Frame 归属；不从渲染树位置、源码行号或几何重叠反推作者分组。 */
+export function resolveSlidesAuthoringFrameNodeId(
+  ancestors: readonly SlidesAuthoringObjectRef[] | undefined,
+): string | undefined {
+  const frame = ancestors?.[ancestors.length - 1];
+  return frame ? buildSlidesAuthoringRenderNodeId(frame) : undefined;
+}

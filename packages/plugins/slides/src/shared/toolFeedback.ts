@@ -2,7 +2,6 @@ import type {
   EditableTarget,
   PresentationRenderModel,
   RenderSourceSpan,
-  SlideBackgroundModel,
 } from './renderModel';
 import type { SlideTextLayoutProvenance } from './textLayout';
 import type { GradientPaint } from './visual/paint';
@@ -72,6 +71,8 @@ export interface SceneGraphNodeSummary {
   style?: Record<string, unknown>;
   content?: Record<string, unknown>;
   parentNodeId?: string;
+  /** 作者树中的最近 Frame，不改写渲染树 children / parentNodeId。 */
+  authoringFrameId?: string;
   children: SceneGraphNodeSummary[];
   elementId?: string;
   creationId?: string;
