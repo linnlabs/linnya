@@ -584,6 +584,8 @@ Skill 加载。调用方显式给出研究问题、稿件/材料版本、必读�
 四个子角色共享 800
 Graph 步、inherit_parent 模型策略，工具包括普通 Workspace 读写、Web/Knowledge、Skill、Shell/Process 与续读；没有 subagent 或 TaskState 工具，不继承 Default 周期提醒。父子通过 write_file/edit_file 保存独立版本，read_file 回读，以普通终答报告实际文档链接和限制。通用写入事件提供产物引用；不再有 resultToolName、强制 submit 收尾、研究 create-only 绑定或 complete_research 认证。保存成功不证明内容正确。
 
+论证和来源评审只交原句、具体问题、带位置的来源原文或实际执行的反例计算、影响及未核边界，不提供可直接粘贴的替换句。父作者核实后自行重推并成文，避免把审稿人的措辞误当作已核实的修正；评审仍须保留有用解释、独立读取与原件核对要求。这是角色提示的职责边界，不是工具校验或质量保证。
+
 正式 deep-research
 1.4 保持冻结。requiredSkills 声明依赖和目录，不代替 activate 与资源读取。父角色读取适用资源；子角色读取 modeling，论证复核加 article-craft，商业问题按需加 business-analysis。方法必须经真实 skill 返回与后续动作验证，不能由配置推断已遵循。
 
