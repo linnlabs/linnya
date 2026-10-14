@@ -80,7 +80,7 @@ describe('admitCitationSources', () => {
     expect(() => admitCitationSources({
       requestedRefs: ['Abc234'],
       candidates: [],
-    })).toThrow('无法验证引用');
+    })).toThrow('Citation sources not found');
 
     expect(() => admitCitationSources({
       requestedRefs: ['Abc234'],

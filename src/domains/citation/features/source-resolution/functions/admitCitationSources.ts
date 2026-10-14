@@ -97,7 +97,12 @@ export function admitCitationSources(params: {
 
   const missingRefs = requestedRefs.filter(ref => !admittedByRef.has(ref));
   if (missingRefs.length > 0) {
-    throw new Error(`无法验证引用：${missingRefs.map(ref => `[@${ref}]`).join(', ')}。`);
+    throw new Error(
+      `Citation sources not found: ${missingRefs.map(ref => `[@${ref}]`).join(', ')}. ` +
+      'These refs have valid syntax but no matching source in this conversation. ' +
+      'Read the original source or cited Workspace document in this conversation, then copy its returned [@ref] token. ' +
+      'Do not guess a ref or reuse an alias from another conversation.'
+    );
   }
 
   return Object.fromEntries(

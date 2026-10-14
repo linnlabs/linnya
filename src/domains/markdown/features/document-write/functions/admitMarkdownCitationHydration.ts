@@ -52,8 +52,14 @@ export async function admitMarkdownCitationHydration(
 ): Promise<Readonly<Record<string, CitationNodeHydrationData>>> {
   const invalidTokens = findInvalidMarkdownCitationTokens(markdown);
   if (invalidTokens.length > 0) {
+    // 结果序号、来源简称和 untrusted-content 边界 ID 都不是来源身份；仅列错字会诱发反复猜 ref。
+    // 不提供虚构的六位示例，也不把合法外观当成已取得来源，由原 resolver 继续验证绑定。
     throw new Error(
-      `引用格式不合法：${invalidTokens.map(token => JSON.stringify(token)).join(', ')}。`
+      `Invalid citation tokens: ${invalidTokens.map(token => JSON.stringify(token)).join(', ')}. ` +
+      'Copy the exact [@ref] token returned for that source by a tool or read_file Citation Sources; ' +
+      'ref is the six-character source ID, not a Result number, source name, or content-boundary ID. ' +
+      'Keep each source in its own [@ref] token. If the token is unavailable, read the source again; ' +
+      'do not invent, shorten, or pad a ref. This write was not applied.'
     );
   }
 

@@ -249,7 +249,7 @@ describe('citation source resolver', () => {
       resolveEvidence,
     });
 
-    await expect(resolver.resolveSources(['Abc234'])).rejects.toThrow('无法验证引用');
+    await expect(resolver.resolveSources(['Abc234'])).rejects.toThrow('Citation sources not found');
     expect(resolveEvidence).toHaveBeenCalledWith(['Abc234']);
   });
 

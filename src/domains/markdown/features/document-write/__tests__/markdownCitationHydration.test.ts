@@ -59,7 +59,7 @@ describe('Markdown document write citation hydration', () => {
     await expect(admitMarkdownCitationHydration(
       'Mixed [@Abc234; @bad].',
       resolveSources,
-    )).rejects.toThrow('引用格式不合法');
+    )).rejects.toThrow('Invalid citation tokens');
     expect(resolveSources).not.toHaveBeenCalled();
 
     await expect(admitMarkdownCitationHydration(

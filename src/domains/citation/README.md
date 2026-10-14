@@ -74,6 +74,10 @@ fail-fast。同锚点有多个快照时，Host resolver 按“当前 owner 输�
 当前 `write_file/edit_file` 已通过 platform ToolContext decorator 取得 Host resolver；Markdown
 document-write 只负责把接纳结果投影为 CitationNode。完整但非法的 citation-like token（包括合法/非法 ref
 混写）会整体失败；fenced/inline code 中的示例保持普通代码语义。
+拒绝反馈区分非法语法与合法外观但来源未命中：前者要求复制来源工具或 `read_file` Citation Sources
+返回的完整六位 `[@ref]`，明确 Result 序号、来源简称和内容安全边界 ID 不能代替 ref；
+后者要求在当前 Conversation 重读原来源或带引用的 Workspace 文档。错误不猜测或补齐 ref，
+也不提供可被误抄为真实来源的虚构别名。
 
 插件通过 `@plugin/backend/citationSourceRuntime` 获取同一 Host resolver 的窄投影。插件只能看到已接纳的
 Knowledge/Web 来源 DTO，不读取 Linnkit history、CitationSnapshot、Evidence bundle 或磁盘布局。
