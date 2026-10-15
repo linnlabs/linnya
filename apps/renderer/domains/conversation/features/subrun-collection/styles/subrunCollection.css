@@ -1,5 +1,5 @@
 .subrun-collection > .ui-card-group:not(:last-child) {
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
 }
 
 .subrun-collection > .subrun-collection__item--entering {

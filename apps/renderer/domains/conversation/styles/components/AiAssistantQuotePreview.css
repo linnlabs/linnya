@@ -1,5 +1,5 @@
 .ai-assistant-quote-preview {
-  padding: 10px 14px 8px;
+  padding: var(--space-2-5) 14px var(--space-2);
   /*
    * 引用区紧贴输入框顶部，只应跟随外壳的两个上圆角。
    * 不单独绘制背景，直接透出输入框 surface，避免覆盖 0.5px 圆角边框的抗锯齿区域。
@@ -12,11 +12,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .ai-assistant-quote-preview__label {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--color-text-secondary);
@@ -25,12 +25,12 @@
 .ai-assistant-quote-preview__clear-button {
   border: none;
   background: transparent;
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 999px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
 }
 
 .ai-assistant-quote-preview__clear-button:hover {
@@ -41,26 +41,26 @@
 .ai-assistant-quote-preview__body {
   display: flex;
   align-items: flex-start;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
 }
 
 .ai-assistant-quote-preview__list {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .ai-assistant-quote-preview__pill {
   display: inline-flex;
   align-items: center;
   max-width: 100%;
-  padding: 4px 10px;
-  border-radius: 999px; /* 两头半圆形 */
+  padding: var(--space-1) var(--space-2-5);
+  border-radius: var(--radius-full); /* 两头半圆形 */
   background-color: var(--color-bg-hover-light);
   color: var(--color-text-primary);
-  transition: background-color 0.15s ease;
+  transition: background-color var(--duration-short) var(--ease-standard);
   position: relative; /* 让关闭按钮和渐变遮罩悬浮在文字上方 */
   overflow: hidden; /* 确保右侧渐变和关闭按钮在 pill 内部裁剪 */
 }
@@ -86,7 +86,7 @@
   );
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard);
 }
 
 .ai-assistant-quote-preview__pill-text {
@@ -105,7 +105,7 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: none;
   background: transparent;
   color: var(--color-text-secondary);
@@ -113,7 +113,7 @@
   padding: 0;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard);
 }
 
 .ai-assistant-quote-preview__pill-close:hover {

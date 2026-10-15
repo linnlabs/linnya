@@ -14,7 +14,7 @@
 .editor-shell {
   flex-grow: 1;
   overflow: auto; /* 允许垂直和水平滚动 */
-  padding: var(--spacing-md) 0;
+  padding: var(--space-4) 0;
   padding-bottom: 50vh; /* 底部留白，仅编辑器视图生效 */
   position: relative;
   background-color: var(--color-bg-default);
@@ -80,7 +80,7 @@
 }
 
 .editor-shell.for-knowledge-base::-webkit-scrollbar-thumb {
-  border-radius: 999px;
+  border-radius: var(--radius-full);
 }
 
 /* 插件视图：由 editor-shell 统一滚动，滚动条贴主内容区域最右侧，避免页面内部滚动条落在内容列中间。 */
@@ -115,7 +115,7 @@
   display: grid;
   /* 三列对称 Grid：左空白 | 正文 | 右空白 */
   grid-template-columns: 1fr minmax(0, 1000px) 1fr;
-  column-gap: var(--spacing-lg);
+  column-gap: var(--space-6);
   max-width: 1600px;
   margin: 0 auto;
 }
@@ -160,7 +160,7 @@
 .editor-shell::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color);
   border-radius: 5px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }

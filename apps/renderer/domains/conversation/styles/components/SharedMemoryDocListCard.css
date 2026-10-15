@@ -2,38 +2,38 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 4px 7px 7px;
+  padding: var(--space-1) 7px 7px;
 }
 
 .sharedmemory-doc-list-card .content-container {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .sharedmemory-doc-list-card .header-meta {
-  padding: 0 10px;
+  padding: 0 var(--space-2-5);
 }
 
 .sharedmemory-doc-list-card .header-subtitle {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
 }
 
 .sharedmemory-doc-list-card .doc-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .sharedmemory-doc-list-card .doc-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 6px;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-2);
+  border-radius: var(--radius-md);
   background-color: transparent;
-  transition: all 0.15s ease;
+  transition: all var(--duration-short) var(--ease-standard);
   cursor: default;
   color: var(--color-text-primary);
 }
@@ -71,8 +71,8 @@
 }
 
 .sharedmemory-doc-list-card .doc-title {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -82,9 +82,9 @@
 .sharedmemory-doc-list-card .doc-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   margin-top: 1px;
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
   font-family: inherit;
   white-space: nowrap;
@@ -110,20 +110,20 @@
 }
 
 .sharedmemory-doc-list-card .empty-text {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .sharedmemory-doc-list-card .error-state {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px;
+  gap: var(--space-2);
+  padding: var(--space-2-5);
   background-color: var(--color-error-bg);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   color: var(--color-error);
-  font-size: 13px;
+  font-size: var(--font-size-body);
 }
 
 .sharedmemory-doc-list-card .error-icon {
-  font-size: 14px;
+  font-size: var(--font-size-prose);
 }

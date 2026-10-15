@@ -1,7 +1,7 @@
 .client-notice {
-  padding: 8px 0;
+  padding: var(--space-2) 0;
   color: var(--color-error);
-  font-size: 13px;
+  font-size: var(--font-size-body);
   line-height: 1.6;
 }
 

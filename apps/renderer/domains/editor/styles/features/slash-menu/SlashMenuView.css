@@ -4,14 +4,14 @@
 
 .slash-menu-empty {
   min-width: 200px;
-  padding: 12px;
-  border-radius: 8px;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
   background-color: var(--color-bg-surface);
   box-shadow:
     var(--shadow-lg),
     0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
   color: var(--color-text-tertiary);
-  font-size: 13px;
+  font-size: var(--font-size-body);
   text-align: center;
 }
 

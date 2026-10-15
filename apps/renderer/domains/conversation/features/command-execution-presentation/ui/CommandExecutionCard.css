@@ -15,9 +15,9 @@
   display: flex;
   gap: 9px;
   min-width: 0;
-  padding: 10px 12px 3px;
+  padding: var(--space-2-5) var(--space-3) 3px;
   color: var(--color-text-primary);
-  font-size: 13px;
+  font-size: var(--font-size-body);
   line-height: 1.45;
 }
 
@@ -34,16 +34,16 @@
 }
 
 .command-execution-card__empty {
-  padding: 8px 12px 12px 30px;
+  padding: var(--space-2) var(--space-3) var(--space-3) 30px;
   color: var(--color-text-tertiary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .command-execution-card__output {
   box-sizing: border-box;
   max-height: 320px;
   margin: 0;
-  padding: 0 12px 12px;
+  padding: 0 var(--space-3) var(--space-3);
   overflow-x: auto;
   overflow-y: scroll;
   overscroll-behavior: contain;
@@ -51,7 +51,7 @@
   scrollbar-gutter: stable both-edges;
   scrollbar-width: thin;
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -68,7 +68,7 @@
 
 .command-execution-card__output::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background-color: var(--color-border-default);
   background-clip: content-box;
 }
@@ -88,30 +88,30 @@
 
 .command-execution-card__notices {
   display: grid;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--color-border-light);
 }
 
 .command-execution-card__warning {
   color: var(--color-error);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .command-execution-card__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: 34px;
-  padding: 5px 5px 5px 12px;
+  padding: 5px 5px 5px var(--space-3);
   border-top: 1px solid var(--color-border-light);
 }
 
 .command-execution-card__footer-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -119,14 +119,14 @@
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   margin-left: auto;
 }
 
 .command-execution-card__status,
 .command-execution-card__duration {
   color: var(--color-text-tertiary);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   line-height: 1.4;
 }
 
@@ -155,10 +155,10 @@
   display: inline-grid;
   width: 22px;
   height: 22px;
-  padding: 4px;
+  padding: var(--space-1);
   place-items: center;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -168,7 +168,7 @@
   display: inline-flex;
   width: auto;
   gap: 5px;
-  padding-inline: 6px;
+  padding-inline: var(--space-1-5);
   white-space: nowrap;
 }
 

@@ -9,13 +9,13 @@
   height: 104px;
   padding: 0;
   border: none;
-  border-radius: 0 999px 999px 0;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
   background: transparent;
   color: var(--color-text-tertiary);
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.16s ease;
+  transition: opacity var(--duration-short) var(--ease-standard);
 }
 
 .outline-geometry-anchor {
@@ -30,13 +30,13 @@
   display: block;
   width: 3px;
   height: 58px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background-color: color-mix(in srgb, var(--color-text-secondary) 36%, transparent);
   transition:
-    width 0.16s ease,
-    height 0.16s ease,
-    background-color 0.18s ease,
-    box-shadow 0.18s ease;
+    width var(--duration-short) var(--ease-standard),
+    height var(--duration-short) var(--ease-standard),
+    background-color var(--duration-medium) var(--ease-standard),
+    box-shadow var(--duration-medium) var(--ease-standard);
 }
 
 .outline-toggle-button:hover .outline-rail-trigger__thumb,

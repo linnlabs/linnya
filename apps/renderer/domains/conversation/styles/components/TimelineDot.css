@@ -18,7 +18,7 @@
   cursor: pointer;
   pointer-events: auto;
   transform: translate(-50%, -50%);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--duration-medium) var(--ease-standard);
 }
 
 .timeline-dot::before {
@@ -47,11 +47,11 @@
   pointer-events: none;
   transform: translate(-50%, -50%);
   transition:
-    width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    width var(--duration-long) var(--ease-standard),
+    height var(--duration-long) var(--ease-standard),
+    background-color var(--duration-long) var(--ease-standard),
+    box-shadow var(--duration-long) var(--ease-standard),
+    transform var(--duration-long) var(--ease-standard);
 }
 
 .timeline-dot.active .dot-indicator {

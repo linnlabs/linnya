@@ -4,7 +4,7 @@
 /* --- Page --- */
 
 .settings-page-description {
-  margin: 0 0 24px;
+  margin: 0 0 var(--space-6);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
   color: var(--color-text-secondary);
@@ -25,10 +25,10 @@
 
 .settings-section-header {
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--space-4);
 }
 
 .settings-section-heading-area {
@@ -38,13 +38,13 @@
 .settings-section-heading {
   margin: 0;
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-tight);
   color: var(--color-text-primary);
 }
 
 .settings-section-description {
-  margin: 6px 0 0;
+  margin: var(--space-1-5) 0 0;
   font-size: var(--font-size-xs);
   line-height: var(--line-height-normal);
   color: var(--color-text-tertiary);
@@ -66,7 +66,7 @@
 }
 
 .settings-row + .settings-row {
-  margin-top: 20px;
+  margin-top: var(--space-5);
 }
 
 .settings-row-label-area {
@@ -79,7 +79,7 @@
 .settings-row:is(.is-control-field, .is-control-fill) > .settings-row-label-area {
   flex-shrink: 0;
   width: 200px;
-  padding-right: var(--spacing-md);
+  padding-right: var(--space-4);
 }
 
 .settings-row:is(.is-control-field, .is-control-fill).is-align-top > .settings-row-label-area {
@@ -89,7 +89,7 @@
 /* 控件贴右：开关这类固定宽度控件不该占掉一整列，把空间还给文案。 */
 .settings-row.is-control-end > .settings-row-label-area {
   flex: 1;
-  padding-right: var(--spacing-lg);
+  padding-right: var(--space-6);
 }
 
 .settings-row-label {
@@ -99,7 +99,7 @@
 }
 
 .settings-row-description {
-  margin: 6px 0 0;
+  margin: var(--space-1-5) 0 0;
   font-size: var(--font-size-xs);
   line-height: var(--line-height-normal);
   color: var(--color-text-tertiary);
@@ -152,19 +152,19 @@
 }
 
 .settings-choice-group .settings-choice-indicator {
-  margin-top: 2px;
+  margin-top: var(--space-0-5);
 }
 
 .settings-choice-copy {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
 .settings-choice-name-row {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   align-items: center;
 }
 
@@ -174,8 +174,8 @@
 }
 
 .settings-choice-badge {
-  padding: 1px 6px;
-  font-size: 11px;
+  padding: 1px var(--space-1-5);
+  font-size: var(--font-size-caption);
   line-height: 1.6;
   color: var(--color-warning);
   background-color: var(--color-warning-bg);
@@ -200,14 +200,14 @@
 .settings-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: var(--spacing-lg);
+  margin-top: var(--space-6);
 }
 
 /* --- 行内小按钮（分区右上角的刷新、列表条目的删除…） --- */
 
 .settings-inline-button {
   min-height: 28px;
-  padding: 0 10px;
+  padding: 0 var(--space-2-5);
   font-size: var(--font-size-xs);
   color: var(--color-text-primary);
   cursor: pointer;
@@ -215,9 +215,9 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-sm);
   transition:
-    color var(--transition-fast) ease,
-    background-color var(--transition-fast) ease,
-    border-color var(--transition-fast) ease;
+    color var(--duration-micro) var(--ease-standard),
+    background-color var(--duration-micro) var(--ease-standard),
+    border-color var(--duration-micro) var(--ease-standard);
 }
 
 .settings-inline-button:hover:not(:disabled) {
@@ -253,11 +253,11 @@
 
 .settings-external-link {
   display: inline-flex;
-  gap: 6px;
+  gap: var(--space-1-5);
   align-items: center;
   align-self: flex-start;
   padding: 0;
-  margin-top: 10px;
+  margin-top: var(--space-2-5);
   font-size: var(--font-size-xs);
   line-height: var(--line-height-normal);
   color: var(--color-accent);
@@ -286,8 +286,8 @@
 /* --- 提示条（政策说明、限制说明这类整段文字） --- */
 
 .settings-note {
-  padding: 10px 12px;
-  margin: 20px 0 0;
+  padding: var(--space-2-5) var(--space-3);
+  margin: var(--space-5) 0 0;
   font-size: var(--font-size-xs);
   line-height: var(--line-height-normal);
   color: var(--color-text-secondary);
@@ -299,7 +299,7 @@
 /* --- Feedback --- */
 
 .settings-feedback {
-  margin: var(--spacing-sm) 0 0;
+  margin: var(--space-2) 0 0;
   font-size: var(--font-size-xs);
   line-height: var(--line-height-normal);
   text-align: right;
@@ -322,10 +322,10 @@
 
 .settings-state {
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: var(--space-3) 14px;
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
   color: var(--color-text-secondary);
@@ -359,18 +359,18 @@
   display: flex;
   overflow: visible;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
   border: 0;
   border-radius: 0;
 }
 
 .settings-list-row {
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 10px 14px;
+  padding: var(--space-2-5) 14px;
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
   text-align: left;
@@ -386,7 +386,7 @@
 .settings-list.is-borderless .settings-list-row {
   border: 0;
   border-radius: var(--radius-md);
-  transition: background-color var(--transition-fast) ease;
+  transition: background-color var(--duration-micro) var(--ease-standard);
 }
 
 .settings-list.is-borderless .settings-list-row:hover {
@@ -395,7 +395,7 @@
 
 .settings-list-row.is-interactive {
   cursor: pointer;
-  transition: background-color var(--transition-fast) ease;
+  transition: background-color var(--duration-micro) var(--ease-standard);
 }
 
 .settings-list-row.is-interactive.has-trailing {
@@ -414,7 +414,7 @@
 .settings-list-row-main {
   display: flex;
   flex: 1;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   align-items: baseline;
   min-width: 0;
 }
@@ -450,7 +450,7 @@
 .settings-list-row-trailing {
   display: flex;
   flex-shrink: 0;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   align-items: center;
 }
 
@@ -459,5 +459,5 @@
 .kit-gallery-stack {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
 }

@@ -3,15 +3,15 @@
 /* Match highlights */
 .find-replace-match {
   background-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
-  border-radius: 2px;
-  transition: background-color 0.15s;
+  border-radius: var(--radius-xs);
+  transition: background-color var(--duration-short);
 }
 
 .find-replace-match-active {
   background-color: color-mix(in srgb, var(--color-warning) 50%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warning) 80%, transparent);
-  transition: background-color 0.15s, box-shadow 0.15s;
+  transition: background-color var(--duration-short), box-shadow var(--duration-short);
   animation: find-replace-pulse 0.3s ease-in-out;
 }
 

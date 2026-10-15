@@ -5,13 +5,13 @@
 
   display: flex;
   width: 100%;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
   position: relative;
 }
 
 .ui-card-group .ui-card-group-expand-enter-active,
 .ui-card-group .ui-card-group-expand-leave-active {
-  transition: all 0.2s ease-in-out;
+  transition: all var(--duration-medium) var(--ease-standard);
   overflow: hidden;
 }
 
@@ -21,14 +21,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-right: 8px;
+  margin-right: var(--space-2);
   cursor: pointer;
   position: relative;
   margin-top: 1px;
 }
 
 .ui-card-group .timeline-marker.is-expanded {
-  margin-right: 8px;
+  margin-right: var(--space-2);
 }
 
 .ui-card-group .timeline-line {
@@ -67,7 +67,7 @@
   position: absolute;
   opacity: 1;
   transform: scale(1);
-  transition: all 0.2s ease;
+  transition: all var(--duration-medium) var(--ease-standard);
 }
 
 .ui-card-group .node-chevron {
@@ -82,7 +82,7 @@
 
   opacity: var(--opacity);
   transform: scale(var(--scale)) rotate(var(--rotate));
-  transition: all 0.2s ease;
+  transition: all var(--duration-medium) var(--ease-standard);
 }
 
 .ui-card-group .node-chevron.is-expanded {
@@ -117,10 +117,10 @@
 .ui-card-group .ui-card-header-text {
   position: relative;
   display: inline-block;
-  font-size: 13px;
+  font-size: var(--font-size-body);
   color: var(--color-text-placeholder);
-  font-weight: 400;
-  transition: color 0.2s ease;
+  font-weight: var(--font-weight-regular);
+  transition: color var(--duration-medium) var(--ease-standard);
 }
 
 /* 流光必须独立覆盖在实色文字上；切换文字填充模式会在完成帧造成整组 header 闪烁。 */
@@ -141,7 +141,7 @@
   color: transparent;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.16s ease-out;
+  transition: opacity var(--duration-short) var(--ease-enter);
 }
 
 .ui-card-group .ui-card-header-text.is-streaming::after {
@@ -179,7 +179,7 @@
 }
 
 .ui-card-group .ui-card-body {
-  padding-top: 12px;
+  padding-top: var(--space-3);
   width: 100%;
 }
 
@@ -195,10 +195,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 6px 0 10px;
+  gap: var(--space-2);
+  padding: var(--space-1-5) 0 var(--space-2-5);
   color: var(--color-text-tertiary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .ui-card-group .ui-card-body__window-hint-text {
@@ -211,9 +211,9 @@
   border: 1px solid var(--ui-card-group-timeline-line-color);
   background: var(--color-bg-subtle);
   color: var(--ui-card-group-action-muted-color);
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-size: 12px;
+  border-radius: var(--radius-md);
+  padding: var(--space-0-5) var(--space-2);
+  font-size: var(--font-size-footnote);
   cursor: pointer;
 }
 

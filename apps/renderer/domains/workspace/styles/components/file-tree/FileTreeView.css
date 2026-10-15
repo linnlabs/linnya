@@ -9,16 +9,16 @@
 }
 
 .workspace-sidebar .file-tree-view .project-title-header {
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 30px;
   box-sizing: border-box;
-  border-radius: 4px;
-  margin: 4px var(--workspace-sidebar-row-margin-x) 0;
-  transition: background-color 0.15s ease;
+  border-radius: var(--radius-sm);
+  margin: var(--space-1) var(--workspace-sidebar-row-margin-x) 0;
+  transition: background-color var(--duration-short) var(--ease-standard);
 }
 
 .workspace-sidebar .file-tree-view .project-title-header.drag-over-root {
@@ -30,8 +30,8 @@
 }
 
 .workspace-sidebar .file-tree-view .project-title-text {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-semibold);
   color: var(--workspace-sidebar-heading-color);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -49,7 +49,7 @@
 .workspace-sidebar .file-tree-view .add-button {
   background: none;
   border: none;
-  padding: 2px;
+  padding: var(--space-0-5);
   border-radius: 3px;
   cursor: pointer;
   width: 24px;
@@ -82,9 +82,9 @@
 }
 
 .workspace-sidebar .file-tree-view .file-search-empty-state {
-  margin: 0 10px;
-  padding: 6px 8px;
-  font-size: 12px;
+  margin: 0 var(--space-2-5);
+  padding: var(--space-1-5) var(--space-2);
+  font-size: var(--font-size-footnote);
   color: var(--workspace-sidebar-muted-color);
 }
 
@@ -93,10 +93,10 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  padding: 16px 12px 24px;
+  padding: var(--space-4) var(--space-3) var(--space-6);
   color: var(--workspace-sidebar-label-color);
-  font-size: 13px;
-  gap: 8px;
+  font-size: var(--font-size-body);
+  gap: var(--space-2);
   height: 100%;
 }
 
@@ -104,8 +104,8 @@
   display: flex;
   align-items: flex-start;
   gap: 0;
-  padding: 12px 12px 14px;
-  border-radius: 4px;
+  padding: var(--space-3) var(--space-3) 14px;
+  border-radius: var(--radius-sm);
   background-color: var(--color-bg-subtle);
   border: 1px dashed var(--color-border-default);
 }
@@ -113,24 +113,24 @@
 .workspace-sidebar .file-tree-view .empty-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .workspace-sidebar .file-tree-view .empty-title-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .workspace-sidebar .file-tree-view .empty-title {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
 }
 
 .workspace-sidebar .file-tree-view .empty-badge {
-  padding: 0 6px;
-  border-radius: 999px;
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-full);
   font-size: 10px;
   line-height: 18px;
   background-color: var(--color-accent-bg-subtle);
@@ -139,19 +139,19 @@
 
 .workspace-sidebar .file-tree-view .empty-subtitle {
   margin: 0;
-  margin-top: 2px;
-  font-size: 12px;
+  margin-top: var(--space-0-5);
+  font-size: var(--font-size-footnote);
   color: var(--workspace-sidebar-muted-color);
 }
 
 .workspace-sidebar .file-tree-view .empty-actions {
   display: flex;
   flex-wrap: wrap;
-  margin-top: 10px;
+  margin-top: var(--space-2-5);
 }
 
 .workspace-sidebar .file-tree-view .empty-action {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .workspace-sidebar .file-tree-view .empty-action--full {
@@ -191,7 +191,7 @@
 
 .workspace-file-tree-menu-fade-enter-active,
 .workspace-file-tree-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .workspace-file-tree-menu-fade-enter-from {

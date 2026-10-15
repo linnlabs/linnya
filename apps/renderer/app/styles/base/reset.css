@@ -13,7 +13,7 @@ html, body {
   height: 100%;
   width: 100%;
   font-size: 16px;
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
   font-family: var(--font-family-default);
   background-color: var(--color-bg-default);
   border: none !important;

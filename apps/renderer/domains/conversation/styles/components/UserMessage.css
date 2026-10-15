@@ -21,12 +21,12 @@
   /* 气泡底取 subtle 与 hover-strong 的中间档：比 subtle 有轮廓，又不至于压过正文。 */
   background-color: color-mix(in srgb, var(--color-bg-subtle) 95%, var(--color-bg-hover-strong));
   color: var(--color-text-primary);
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
   max-width: 100%;
   overflow-wrap: break-word;
   line-height: 1.4;
-  font-size: 13px;
+  font-size: var(--font-size-body);
   white-space: pre-wrap;
 }
 
@@ -35,7 +35,7 @@
    * 用户消息只需要轻量附件提示；完整尺寸由点击后的预览层承接。
    * 宽度先按当前附件自然展开，再受消息气泡约束；flex-wrap 会在气泡内部自动换行。
    */
-  --conversation-image-gallery-size: calc(var(--spacing-2xl) + var(--spacing-lg));
+  --conversation-image-gallery-size: calc(var(--space-10) + var(--space-6));
 
   width: max-content;
   max-width: 100%;
@@ -50,24 +50,24 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 4px;
-  margin-top: 4px;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
   width: 100%;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0s ease 0.2s;
+  transition: opacity var(--duration-medium) var(--ease-standard), visibility 0s var(--ease-standard) 0.2s;
 }
 
 .user-message-container .display-mode:hover .user-message-actions {
   opacity: 1;
   visibility: visible;
-  transition: opacity 0.2s ease, visibility 0s ease;
+  transition: opacity var(--duration-medium) var(--ease-standard), visibility 0s var(--ease-standard);
 }
 
 .user-message-container .user-message-timestamp {
-  margin-right: 8px;
+  margin-right: var(--space-2);
   color: var(--user-message-action-muted-color);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   line-height: 24px;
   white-space: nowrap;
   user-select: none;
@@ -77,7 +77,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
+  gap: var(--space-1);
   margin-left: auto;
 }
 
@@ -87,13 +87,13 @@
   justify-content: center;
   min-width: 24px;
   height: 24px;
-  padding: 0 4px;
+  padding: 0 var(--space-1);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background-color: transparent;
   color: var(--user-message-action-muted-color);
   cursor: pointer;
-  transition: color 0.2s ease, background-color 0.2s ease;
+  transition: color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
 }
 
 .user-message-container .action-button svg {
@@ -108,8 +108,8 @@
 }
 
 .user-message-container .copied-text {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
   white-space: nowrap;
   color: var(--color-text-secondary);
 }
@@ -119,7 +119,7 @@
   flex-direction: column;
   width: 100%;
   align-items: flex-end;
-  padding: 4px 0;
+  padding: var(--space-1) 0;
 }
 
 .user-message-container .edit-input-wrapper {
@@ -127,10 +127,10 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--color-border-default);
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
   background-color: var(--color-bg-surface);
   box-shadow: 0 2px 12px var(--shadow-color-sm);
-  transition: border-color 0.2s ease;
+  transition: border-color var(--duration-medium) var(--ease-standard);
   overflow: visible;
 }
 
@@ -139,9 +139,9 @@
 }
 
 .user-message-container .edit-top-section {
-  padding: 12px 16px 0;
+  padding: var(--space-3) var(--space-4) 0;
   overflow: hidden;
-  border-radius: 12px 12px 0 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 
 .user-message-container .edit-textarea {
@@ -151,7 +151,7 @@
   background-color: transparent;
   color: var(--color-text-primary);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   line-height: 1.4;
   resize: none;
   min-height: 28px;
@@ -183,13 +183,13 @@
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   background-color: transparent;
 }
 
 .user-message-container .edit-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
@@ -200,9 +200,9 @@
   width: 20px;
   height: 20px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .user-message-container .edit-button.save {
@@ -224,8 +224,8 @@
 }
 
 .user-message-container .edit-quote-preview {
-  padding: 10px 14px 8px;
-  border-radius: 12px 12px 0 0;
+  padding: var(--space-2-5) 14px var(--space-2);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   background: var(--color-bg-default);
 }
 
@@ -233,11 +233,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .user-message-container .edit-quote-label {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--color-text-secondary);
@@ -246,26 +246,26 @@
 .user-message-container .edit-quote-preview-body {
   display: flex;
   align-items: flex-start;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
 }
 
 .user-message-container .edit-quote-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .user-message-container .edit-quote-pill {
   display: inline-flex;
   align-items: center;
   max-width: 100%;
-  padding: 4px 10px;
-  border-radius: 999px;
+  padding: var(--space-1) var(--space-2-5);
+  border-radius: var(--radius-full);
   background-color: var(--color-bg-hover-light);
   color: var(--color-text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .user-message-container .edit-quote-pill-text {
@@ -275,16 +275,16 @@
 }
 
 .user-message-container .quote-section {
-  margin-bottom: 6px;
+  margin-bottom: var(--space-1-5);
 }
 
 .user-message-container .quote-block {
   position: relative;
-  margin-bottom: 4px;
-  padding-left: 12px;
-  border-radius: 2px;
+  margin-bottom: var(--space-1);
+  padding-left: var(--space-3);
+  border-radius: var(--radius-xs);
   color: var(--color-text-tertiary);
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
   overflow: visible;
 }
 
@@ -304,7 +304,7 @@
 }
 
 .user-message-container .quote-content {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   line-height: inherit;
   color: inherit;
   display: -webkit-box;

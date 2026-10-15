@@ -7,16 +7,16 @@
   justify-content: center;
   width: 100%;
   pointer-events: none;
-  transition: left 0.3s ease;
+  transition: left var(--duration-long) var(--ease-standard);
 }
 
 /* 这里用全宽 flex 居中，避免 left: 50% + translateX(-50%) 在奇数宽度时造成 0.5px 模糊。 */
 .revision-global-toolbar__inner {
   display: flex;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: center;
-  padding: 4px 4px 4px 14px;
-  border-radius: 999px;
+  padding: var(--space-1) var(--space-1) var(--space-1) 14px;
+  border-radius: var(--radius-full);
   color: var(--color-text-primary);
   background-color: color-mix(in srgb, var(--color-bg-default) 92%, transparent);
   box-shadow:
@@ -29,18 +29,18 @@
 
 .revision-global-toolbar__summary {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .revision-global-toolbar .summary-title {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .revision-global-toolbar .summary-counts {
   display: inline-flex;
-  gap: 6px;
+  gap: var(--space-1-5);
   align-items: center;
   font-variant-numeric: tabular-nums;
 }
@@ -60,26 +60,26 @@
 
 .revision-global-toolbar .summary-warning {
   color: var(--color-warning);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .revision-global-toolbar__actions {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
 }
 
 .revision-global-toolbar .toolbar-btn {
   min-width: 80px;
-  padding: 6px 12px;
+  padding: var(--space-1-5) var(--space-3);
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
   text-align: center;
   white-space: nowrap;
-  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard), transform var(--duration-medium) var(--ease-standard);
 }
 
 .revision-global-toolbar .toolbar-btn:active {
@@ -114,7 +114,7 @@
 
 .revision-global-toolbar-fade-enter-active,
 .revision-global-toolbar-fade-leave-active {
-  transition: opacity 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: opacity var(--duration-long) var(--ease-enter), transform var(--duration-long) var(--ease-enter);
 }
 
 .revision-global-toolbar-fade-enter-from,

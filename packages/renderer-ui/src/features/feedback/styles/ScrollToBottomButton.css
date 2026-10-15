@@ -35,10 +35,10 @@
   -webkit-backdrop-filter: blur(4px) saturate(180%);
   overflow: hidden;
   transition:
-    background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color var(--duration-long) var(--ease-standard),
+    box-shadow var(--duration-long) var(--ease-standard),
+    color var(--duration-long) var(--ease-standard),
+    transform var(--duration-long) var(--ease-standard);
 }
 
 .scroll-to-bottom-btn .scroll-to-bottom-icon {
@@ -47,7 +47,7 @@
   width: 18px;
   height: 18px;
   overflow: visible;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--duration-long) var(--ease-standard);
 }
 
 .scroll-to-bottom-icon__shadow,
@@ -92,7 +92,7 @@
   box-shadow:
     0 1px 4px var(--scroll-to-bottom-active-shadow-near),
     0 6px 12px var(--scroll-to-bottom-active-shadow-far);
-  transition-duration: 0.1s;
+  transition-duration: var(--duration-micro);
   transform: translateY(0);
 }
 

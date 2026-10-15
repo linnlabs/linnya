@@ -9,21 +9,21 @@
 .workspace-document-card .content-container {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .workspace-document-card .header-meta {
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-2-5);
 }
 
 .workspace-document-card .subtitle {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
   display: flex;
   width: 100%;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .workspace-document-card .subtitle-icon {
@@ -48,12 +48,12 @@
 
 .workspace-document-card .content-card {
   background-color: var(--color-bg-sidebar);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   border: 0.5px solid transparent;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: border-color 0.2s ease;
+  transition: border-color var(--duration-medium) var(--ease-standard);
 }
 
 .workspace-document-card .content-card:hover {
@@ -61,7 +61,7 @@
 }
 
 .workspace-document-card .doc-content-wrapper {
-  padding: 4px 10px 4px 10px;
+  padding: var(--space-1) var(--space-2-5) var(--space-1) var(--space-2-5);
   max-height: 260px;
   overflow-y: auto;
 }
@@ -69,18 +69,18 @@
 .workspace-document-card .document-outline {
   display: flex;
   flex-direction: column;
-  padding: 6px 0;
-  gap: 2px;
+  padding: var(--space-1-5) 0;
+  gap: var(--space-0-5);
 }
 
 .workspace-document-card .document-outline-row {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   line-height: 1.65;
   color: var(--color-text-primary);
   white-space: pre-wrap;
   overflow-wrap: break-word;
-  padding-right: 12px;
-  border-radius: 4px;
+  padding-right: var(--space-3);
+  border-radius: var(--radius-sm);
 }
 
 .workspace-document-card .document-outline-row:hover {
@@ -99,7 +99,7 @@
 .workspace-document-card .doc-content-wrapper::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
   border-radius: 5px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }
@@ -111,7 +111,7 @@
 .workspace-document-card .blocks-list {
   display: flex;
   flex-direction: column;
-  padding: 4px 0;
+  padding: var(--space-1) 0;
 }
 
 .workspace-document-card .block-item {
@@ -127,9 +127,9 @@
 .workspace-document-card .block-gutter {
   width: 32px;
   text-align: right;
-  padding-right: 12px;
+  padding-right: var(--space-3);
   color: var(--color-text-tertiary);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
   user-select: none;
   flex-shrink: 0;
@@ -137,10 +137,10 @@
 
 .workspace-document-card .block-text {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-primary);
   overflow-wrap: break-word;
-  padding-right: 12px;
+  padding-right: var(--space-3);
   min-width: 0;
 }
 
@@ -153,7 +153,7 @@
 }
 
 .workspace-document-card .raw-content {
-  padding: 4px 0;
+  padding: var(--space-1) 0;
 }
 
 .workspace-document-card .content-text {
@@ -161,7 +161,7 @@
   white-space: pre-wrap;
   overflow-wrap: break-word;
   font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   line-height: 1.6;
   color: var(--color-text-primary);
 }
@@ -169,14 +169,14 @@
 .workspace-document-card .error-state {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
+  gap: var(--space-2);
+  padding: var(--space-3);
   background-color: var(--color-error-bg);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   color: var(--color-error);
-  font-size: 13px;
+  font-size: var(--font-size-body);
 }
 
 .workspace-document-card .error-icon {
-  font-size: 14px;
+  font-size: var(--font-size-prose);
 }

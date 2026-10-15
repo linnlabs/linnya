@@ -10,18 +10,18 @@
 .document-content-card .content-container {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .document-content-card .content-card {
   background-color: var(--color-bg-sidebar);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   border: 0.5px solid transparent;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  gap: 4px;
-  transition: border-color 0.2s ease;
+  gap: var(--space-1);
+  transition: border-color var(--duration-medium) var(--ease-standard);
 }
 
 .document-content-card .content-card:hover {
@@ -29,17 +29,17 @@
 }
 
 .document-content-card .header-meta {
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-2-5);
 }
 
 .document-content-card .subtitle {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
   display: flex;
   width: 100%;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .document-content-card .subtitle-icon {
@@ -64,7 +64,7 @@
 
 .document-content-card .doc-content-wrapper {
   /* 保持阅读卡片内部滚动，避免长文档撑高整条消息。 */
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-2-5);
   background-color: var(--color-bg-sidebar);
   max-height: 240px;
   overflow-y: auto;
@@ -82,7 +82,7 @@
 .document-content-card .doc-content-wrapper::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
   border-radius: 5px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }
@@ -94,7 +94,7 @@
 .document-content-card .chunks-list {
   display: flex;
   flex-direction: column;
-  padding: 4px 0;
+  padding: var(--space-1) 0;
 }
 
 .document-content-card .chunk-item {
@@ -110,9 +110,9 @@
 .document-content-card .chunk-gutter {
   width: 32px;
   text-align: right;
-  padding-right: 12px;
+  padding-right: var(--space-3);
   color: var(--color-text-tertiary);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   font-family: inherit;
   user-select: none;
   flex-shrink: 0;
@@ -120,24 +120,24 @@
 
 .document-content-card .chunk-text {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-primary);
   white-space: pre-wrap;
   overflow-wrap: break-word;
-  padding-right: 12px;
+  padding-right: var(--space-3);
   font-family: inherit;
 }
 
 .document-content-card .error-state {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
+  gap: var(--space-2);
+  padding: var(--space-3);
   background-color: var(--color-error-bg);
   color: var(--color-error);
-  font-size: 13px;
+  font-size: var(--font-size-body);
 }
 
 .document-content-card .error-icon {
-  font-size: 14px;
+  font-size: var(--font-size-prose);
 }

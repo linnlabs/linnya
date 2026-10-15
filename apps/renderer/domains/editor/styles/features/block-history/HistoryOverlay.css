@@ -6,7 +6,7 @@
   flex-direction: column;
   overflow: hidden;
   border: 2px solid var(--color-border-accent-light);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background-color: color-mix(
     in srgb,
     var(--color-bg-default) 95%,
@@ -19,7 +19,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: var(--space-2-5) 14px;
   border-bottom: 1px solid var(--color-border-default);
   background: linear-gradient(
     135deg,
@@ -31,43 +31,43 @@
 .history-overlay .header-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .history-overlay .version-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 12px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2-5);
+  border-radius: var(--radius-xl);
   background-color: var(--color-info);
   color: var(--color-text-on-accent);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
 }
 
 .history-overlay .version-time {
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .history-overlay .header-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .history-overlay .overlay-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
+  gap: var(--space-1);
+  padding: 5px var(--space-2-5);
   border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-short) var(--ease-standard);
 }
 
 .history-overlay .overlay-btn:disabled {
@@ -101,15 +101,15 @@
 
 .history-overlay .overlay-content {
   flex: 1;
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   overflow-y: auto;
   color: var(--color-text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   line-height: 1.6;
 }
 
 .history-overlay .overlay-line {
-  padding: 2px 0;
+  padding: var(--space-0-5) 0;
 }
 
 .history-overlay .overlay-empty {
@@ -125,19 +125,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
+  padding: var(--space-2) 14px;
   border-top: 1px solid var(--color-border-default);
   background-color: var(--color-bg-subtle);
 }
 
 .history-overlay .tip {
   color: var(--color-text-tertiary);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
 }
 
 .history-overlay .origin-type {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
 }
 
 .history-overlay .origin-ai {
@@ -154,7 +154,7 @@
 
 .overlay-fade-enter-active,
 .overlay-fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity var(--duration-medium) var(--ease-standard), transform var(--duration-medium) var(--ease-standard);
 }
 
 .overlay-fade-enter-from,

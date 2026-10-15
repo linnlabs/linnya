@@ -1,27 +1,27 @@
 .add-to-kb-body {
-  padding: 0 24px;
+  padding: 0 var(--space-6);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .add-to-kb-body .doc-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px;
+  gap: var(--space-1);
+  padding: var(--space-3);
   background-color: var(--color-bg-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
 }
 
 .add-to-kb-body .doc-info-label {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-tertiary);
 }
 
 .add-to-kb-body .doc-info-name {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--font-size-prose);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -31,12 +31,12 @@
 .add-to-kb-body .kb-select-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .add-to-kb-body .kb-select-label {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
 }
 
@@ -46,7 +46,7 @@
 
 .add-to-kb-body .kb-target-select-trigger {
   height: 36px;
-  padding: 8px 32px 8px 12px;
+  padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
 }
 
 .add-to-kb-body .select-chevron {
@@ -57,7 +57,7 @@
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  transition: transform 0.2s ease-in-out;
+  transition: transform var(--duration-medium) var(--ease-standard);
 }
 
 .add-to-kb-body .select-chevron.is-open {
@@ -65,13 +65,13 @@
 }
 
 .add-to-kb-body .hint-text {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-tertiary);
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
 }
 
 .add-to-kb-footer {
   display: flex;
   justify-content: flex-end;
-  padding: 24px 24px 20px;
+  padding: var(--space-6) var(--space-6) var(--space-5);
 }

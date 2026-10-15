@@ -12,30 +12,30 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  padding: 12px 32px 0;
+  padding: var(--space-3) var(--space-8) 0;
 }
 
 .workspace-batch-export-markdown-modal {
-  padding: 12px 32px 0;
+  padding: var(--space-3) var(--space-8) 0;
 }
 
 .export-settings-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 0 32px 24px;
+  gap: var(--space-2-5);
+  padding: 0 var(--space-8) var(--space-6);
 }
 
 .workspace-batch-export-markdown-footer {
   display: flex;
   justify-content: flex-end;
-  padding: 14px 32px 24px;
+  padding: 14px var(--space-8) var(--space-6);
 }
 
 .export-settings-content .form-row,
 .workspace-batch-export-markdown-modal .form-row {
   display: flex;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
   align-items: center;
 }
 
@@ -49,7 +49,7 @@
   width: 180px;
   flex-shrink: 0;
   padding-top: 0;
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   color: var(--color-text-primary);
 }
 
@@ -58,7 +58,7 @@
 }
 
 .export-settings-content .export-tab-content .form-row.align-top:has(.margin-inputs) .form-label {
-  padding-top: 4px;
+  padding-top: var(--space-1);
 }
 
 .export-settings-content .control-area,
@@ -90,60 +90,60 @@
 }
 
 .export-settings-content .placeholder-container {
-  padding: 20px;
-  border-radius: 8px;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
   background-color: var(--color-bg-subtle);
 }
 
 .export-settings-content .placeholder-container p {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--font-size-prose);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
 }
 
 .export-settings-content .checkbox-options,
 .workspace-batch-export-markdown-modal .checkbox-options {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .workspace-batch-export-markdown-modal .tip-text {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-tertiary);
-  line-height: 18px;
+  line-height: var(--line-height-footnote);
 }
 
 .workspace-batch-export-markdown-modal .tip-text-top {
-  margin-top: 12px;
-  margin-bottom: 10px;
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-2-5);
 }
 
 .workspace-batch-export-markdown-modal .tip-text-top-secondary {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .export-settings-content .radio-options,
 .workspace-batch-export-markdown-modal .radio-options {
   display: flex;
-  gap: 20px;
+  gap: var(--space-5);
   justify-content: flex-end;
 }
 
 .export-settings-content .export-tab-content:has(#export-txt-plain) .radio-options {
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .export-settings-content .workspace-export-radio-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .export-settings-content .export-tab-content:has(#export-txt-plain) .workspace-export-radio-item {
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .export-settings-content .radio-item-with-description {
@@ -153,14 +153,14 @@
 }
 
 .export-settings-content .setting-description {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-placeholder);
-  margin-top: 4px;
-  padding-left: 24px;
+  margin-top: var(--space-1);
+  padding-left: var(--space-6);
 }
 
 .export-settings-content .workspace-export-radio-item label {
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   color: var(--color-text-primary);
   cursor: pointer;
 }
@@ -181,7 +181,7 @@
   border: 1.5px solid var(--color-border-default);
   background-color: var(--color-bg-surface);
   position: relative;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color var(--duration-medium) var(--ease-standard), box-shadow var(--duration-medium) var(--ease-standard);
   display: grid;
   place-content: center;
   box-shadow: 0 1px 1px var(--shadow-color-xs);
@@ -194,7 +194,7 @@
   border-radius: 50%;
   background-color: var(--color-accent);
   transform: scale(0);
-  transition: 0.1s transform ease-in-out;
+  transition: var(--duration-micro) transform var(--ease-standard);
 }
 
 .export-settings-content .workspace-export-radio-input:checked::before {
@@ -229,15 +229,15 @@
 .export-settings-content .margin-inputs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--space-3);
   justify-items: end;
-  padding-right: 2px;
+  padding-right: var(--space-0-5);
 }
 
 .export-settings-content .margin-input-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .export-settings-content .margin-input-group:nth-child(even) {
@@ -253,8 +253,8 @@
 .export-settings-content .export-pdf-page-size-trigger,
 .export-settings-content .margin-inputs .export-pdf-margin-input {
   background-color: var(--color-bg-search-light);
-  padding-top: 4px;
-  padding-bottom: 4px;
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
 }
 
 .export-settings-content .margin-inputs .export-pdf-margin-input {
@@ -279,10 +279,10 @@
   .export-settings-content .radio-options,
   .workspace-batch-export-markdown-modal .radio-options {
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-3);
   }
 
   .export-settings-content .checkbox-options {
-    gap: 8px;
+    gap: var(--space-2);
   }
 }

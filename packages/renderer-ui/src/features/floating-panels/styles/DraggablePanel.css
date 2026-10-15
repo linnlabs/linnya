@@ -8,7 +8,7 @@
   overflow: hidden;
   background-color: var(--color-bg-surface);
   border: 0.5px solid var(--color-border-default);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   box-shadow:
     0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 7%, transparent),
     0 1px 3px color-mix(in srgb, var(--color-text-primary) 5%, transparent),
@@ -20,7 +20,7 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-5);
   color: var(--color-text-primary);
   cursor: move;
   user-select: none;
@@ -30,7 +30,7 @@
 .draggable-panel .panel-title {
   flex: 1;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   font-style: normal;
   font-weight: 350;
   color: var(--color-text-heading-meta);
@@ -49,17 +49,17 @@
   background: transparent;
   border: none;
   border-radius: 50%;
-  transition: all 0.2s ease;
+  transition: all var(--duration-medium) var(--ease-standard);
 }
 
 .draggable-panel .close-btn:hover {
   background-color: var(--color-bg-hover);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .draggable-panel .panel-body {
   flex: 1;
-  padding: 0 26px 20px;
+  padding: 0 26px var(--space-5);
   overflow-y: auto;
 }
 
@@ -158,12 +158,12 @@
 
 .draggable-panel--mini .panel-header {
   min-height: 32px;
-  padding: 6px 8px 4px 10px;
+  padding: var(--space-1-5) var(--space-2) var(--space-1) var(--space-2-5);
 }
 
 .draggable-panel--mini .panel-title {
   color: var(--color-text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   font-weight: 650;
 }
 
@@ -180,12 +180,12 @@
 }
 
 .draggable-panel--mini .panel-body {
-  padding: 4px 10px 10px;
+  padding: var(--space-1) var(--space-2-5) var(--space-2-5);
 }
 
 .draggable-panel.panel-fade-enter-active,
 .draggable-panel.panel-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .draggable-panel.panel-fade-enter-from {

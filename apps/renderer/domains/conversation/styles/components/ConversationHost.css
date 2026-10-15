@@ -86,7 +86,7 @@
   );
   --conversation-content-timeline-reserve-px: 0px;
 
-  padding: 10px 0 24px;
+  padding: var(--space-2-5) 0 var(--space-6);
 }
 
 .conversation-host[data-conversation-content-state='filled'] .conversation-content {
@@ -119,7 +119,7 @@
   justify-self: end;
   height: var(--conversation-timeline-visible-height, 100%);
   max-height: var(--conversation-timeline-visible-height, 100%);
-  margin-right: var(--timeline-offset-right, 6px);
+  margin-right: var(--timeline-offset-right, var(--space-1-5));
 }
 
 .conversation-host .panel-footer {

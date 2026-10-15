@@ -1,7 +1,7 @@
 .conversation-visual-row {
   display: flow-root;
   box-sizing: border-box;
-  padding-top: 12px;
+  padding-top: var(--space-3);
 }
 
 .conversation-visual-row > .ui-card-group,
@@ -14,7 +14,7 @@
 }
 
 .conversation-visual-row.follows-user-message {
-  padding-top: 4px;
+  padding-top: var(--space-1);
 }
 
 .conversation-visual-row.follows-user-thought {
@@ -26,7 +26,7 @@
 }
 
 .conversation-visual-row.is-turn-end {
-  padding-bottom: 16px;
+  padding-bottom: var(--space-4);
 }
 
 .conversation-visual-row__content {
@@ -108,8 +108,8 @@
 .conversation-visual-row.is-actions-visible .conversation-answer-actions {
   opacity: 1;
   transition:
-    opacity 0.2s ease,
-    visibility 0s ease;
+    opacity var(--duration-medium) var(--ease-standard),
+    visibility 0s var(--ease-standard);
   visibility: visible;
 }
 

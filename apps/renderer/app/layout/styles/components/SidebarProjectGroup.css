@@ -41,7 +41,7 @@
 
 .sidebar-project-menu-fade-enter-active,
 .sidebar-project-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .sidebar-project-menu-fade-enter-from {

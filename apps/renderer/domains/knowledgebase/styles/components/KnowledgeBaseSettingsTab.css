@@ -2,20 +2,20 @@
   --kb-settings-remove-hover-color: var(--color-error);
   --kb-settings-remove-hover-bg: color-mix(in srgb, var(--color-error) 10%, transparent);
 
-  padding: 0 0 0 12px;
+  padding: 0 0 0 var(--space-3);
 }
 
 .kb-settings-tab .form-row {
   display: flex;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
   align-items: flex-start;
 }
 
 .kb-settings-tab .form-label {
   width: 180px;
   flex-shrink: 0;
-  padding-top: 8px;
-  font-size: 14px;
+  padding-top: var(--space-2);
+  font-size: var(--font-size-prose);
   color: var(--color-text-primary);
 }
 
@@ -55,27 +55,27 @@
 .kb-settings-tab .settings-select,
 .kb-settings-tab .settings-textarea {
   height: 36px;
-  padding: 8px 12px;
-  border-radius: 4px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--color-border-default);
   background-color: var(--color-bg-surface);
   color: var(--color-text-primary);
-  font-size: 14px;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  font-size: var(--font-size-prose);
+  transition: border-color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
   box-sizing: border-box;
 }
 
 .kb-settings-tab .settings-textarea {
   min-height: 80px;
   resize: vertical;
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
 }
 
 .kb-settings-tab .settings-input::placeholder,
 .kb-settings-tab .settings-textarea::placeholder,
 .kb-settings-tab .settings-select::placeholder {
   color: var(--color-text-placeholder);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   opacity: 1;
 }
 
@@ -97,18 +97,18 @@
 .kb-settings-tab .control-area > .setting-description,
 .kb-settings-tab .setting-description {
   margin-left: auto;
-  margin-top: 10px;
+  margin-top: var(--space-2-5);
   max-width: 350px;
   text-align: right;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-placeholder);
   opacity: 1;
 }
 
 .kb-settings-tab .section-divider-bottom {
   border-bottom: 1px solid var(--color-border-default);
-  padding-bottom: 24px;
-  margin-bottom: 24px;
+  padding-bottom: var(--space-6);
+  margin-bottom: var(--space-6);
 }
 
 .kb-settings-tab .section-divider-bottom > .form-row:last-child {
@@ -123,43 +123,43 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
 }
 
 .kb-settings-tab .section-title-with-icon {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .kb-settings-tab .tags-input-row {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: flex-end;
 }
 
 .kb-settings-tab .tags-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   justify-content: flex-end;
 }
 
 .kb-settings-tab .kb-tag-form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .kb-settings-tab .tag-input-wrapper {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
 .kb-settings-tab .tag-empty-text {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-placeholder);
 }
 
@@ -173,12 +173,12 @@
   height: 32px;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background-color: var(--color-bg-subtle);
   border: none;
   color: var(--color-text-tertiary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-medium);
   flex-shrink: 0;
 }
 
@@ -200,20 +200,20 @@
 .kb-settings-tab .project-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-bottom: 2px;
+  gap: var(--space-0-5);
+  margin-bottom: var(--space-0-5);
 }
 
 .kb-settings-tab .project-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: var(--space-1-5) var(--space-2);
+  border-radius: var(--radius-md);
   border: 1px solid transparent;
   background-color: transparent;
   box-shadow: none;
-  transition: all 0.2s ease;
+  transition: all var(--duration-medium) var(--ease-standard);
   cursor: default;
 }
 
@@ -224,13 +224,13 @@
 .kb-settings-tab .project-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .kb-settings-tab .project-name {
-  font-size: 13px;
+  font-size: var(--font-size-body);
   color: var(--color-text-secondary);
-  transition: color 0.2s;
+  transition: color var(--duration-medium);
 }
 
 .kb-settings-tab .project-item:hover .project-name {
@@ -243,13 +243,13 @@
   justify-content: center;
   width: 22px;
   height: 22px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   border: none;
   background-color: transparent;
   color: var(--color-text-tertiary);
   cursor: pointer;
   opacity: 0;
-  transition: all 0.2s ease;
+  transition: all var(--duration-medium) var(--ease-standard);
 }
 
 .kb-settings-tab .project-item:hover .project-action-btn {
@@ -276,21 +276,21 @@
 }
 
 .kb-settings-tab .project-empty {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-placeholder);
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .kb-settings-tab .project-content-container {
   max-width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .kb-settings-tab .project-columns {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
 }
 
@@ -298,17 +298,17 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .kb-settings-tab .project-column {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   background-color: var(--color-bg-sidebar);
-  border-radius: 8px;
-  padding: 8px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
   border: none;
   min-height: 200px;
   max-height: 320px;
@@ -318,19 +318,19 @@
 .kb-settings-tab .project-column-header {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-bottom: 6px;
-  padding-left: 2px;
+  gap: var(--space-0-5);
+  padding-bottom: var(--space-1-5);
+  padding-left: var(--space-0-5);
 }
 
 .kb-settings-tab .project-column-title {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
 .kb-settings-tab .project-column .project-list {
-  gap: 2px;
+  gap: var(--space-0-5);
   flex: 1;
 }
 
@@ -346,7 +346,7 @@
 .kb-settings-tab .project-column::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color);
   border-radius: 5px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }
@@ -361,49 +361,49 @@
   justify-content: center;
   height: 100px;
   color: var(--color-text-tertiary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   text-align: center;
 }
 
 .kb-settings-tab .danger-section {
-  padding-top: 4px;
+  padding-top: var(--space-1);
 }
 
 .kb-settings-tab .danger-section-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px;
-  border-radius: 8px;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
   border: 0.5px solid var(--color-error);
   background: var(--color-error-bg);
 }
 
 .kb-settings-tab .danger-section-title {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-error);
-  padding-left: 4px;
+  padding-left: var(--space-1);
 }
 
 .kb-settings-tab .danger-section-desc {
   margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-normal);
   color: var(--color-text-secondary);
 }
 
 .kb-settings-tab .danger-delete-btn {
   flex-shrink: 0;
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: 4px;
+  padding: var(--space-1-5) var(--space-3);
+  font-size: var(--font-size-footnote);
+  border-radius: var(--radius-sm);
   background-color: var(--color-error-bg);
   color: var(--color-error);
   cursor: pointer;
-  transition: background-color 0.16s ease, border-color 0.16s ease,
-    color 0.16s ease, transform 0.12s ease;
+  transition: background-color var(--duration-short) var(--ease-standard), border-color var(--duration-short) var(--ease-standard),
+    color var(--duration-short) var(--ease-standard), transform var(--duration-micro) var(--ease-standard);
 }
 
 .kb-settings-tab .danger-delete-btn:hover:not(:disabled) {
@@ -421,7 +421,7 @@
 }
 
 .kb-settings-tab .project-section .label-area {
-  padding-top: 4px;
+  padding-top: var(--space-1);
 }
 
 .kb-settings-tab .project-control-area {

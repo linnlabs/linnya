@@ -1,10 +1,10 @@
 .review-message-card {
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-default);
-  border-radius: 4px;
-  padding: 12px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
   cursor: pointer;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition: border-color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
 }
 
 .review-message-card:hover {
@@ -15,35 +15,35 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .review-message-card .agent-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex: 1;
   min-width: 0;
 }
 
 .review-message-card .agent-name {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
 .review-message-card .header-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .review-message-card .card-content {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .review-message-card .message-text {
-  font-size: 13px;
+  font-size: var(--font-size-body);
   line-height: 1.6;
   color: var(--color-text-primary);
   margin: 0;
@@ -57,22 +57,22 @@
 }
 
 .review-message-card .timestamp {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
 }
 
 .review-message-card .delete-btn {
   background: none;
   border: none;
-  padding: 4px;
-  border-radius: 4px;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
   color: var(--color-text-tertiary);
   cursor: pointer;
   /* 常驻占位，用透明度控制显隐，避免 hover 时布局发生变化。 */
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: all var(--duration-short) var(--ease-standard);
   flex-shrink: 0;
   opacity: 0;
   pointer-events: none;

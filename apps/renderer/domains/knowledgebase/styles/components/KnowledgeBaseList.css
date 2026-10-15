@@ -10,11 +10,11 @@
 .kb-list-view .kb-list-inner {
   max-width: 960px;
   margin: 0 auto;
-  padding: 36px 24px 40px;
+  padding: 36px var(--space-6) var(--space-10);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-6);
 }
 
 .kb-list-view .create-btn,
@@ -28,20 +28,20 @@
    * 3. 稍微调整 padding-right 抵消图标宽度，让文字视觉上绝对居中（可选，这里先只做 flex:1）
    */
   justify-content: flex-start;
-  gap: 10px;
-  padding: 8px 16px;
-  border-radius: 999px;
+  gap: var(--space-2-5);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
   background-color: var(--color-bg-surface);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
   width: 100%;
   white-space: nowrap;
   transition:
-    background-color 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    color 0.18s ease;
+    background-color var(--duration-medium) var(--ease-standard),
+    border-color var(--duration-medium) var(--ease-standard),
+    box-shadow var(--duration-medium) var(--ease-standard),
+    color var(--duration-medium) var(--ease-standard);
   box-shadow:
     0 1px 2px var(--shadow-color-xs),
     0 2px 4px color-mix(in srgb, var(--shadow-color-xs) 40%, transparent);
@@ -145,7 +145,7 @@
   display: grid;
   /* 卡片宽度与间距沿用工作台信息卡密度 */
   grid-template-columns: repeat(auto-fill, 219px);
-  gap: 12px;
+  gap: var(--space-3);
   align-items: stretch;
 }
 
@@ -153,14 +153,14 @@
   position: relative;
   display: flex;
   align-items: stretch;
-  gap: 12px;
+  gap: var(--space-3);
   /* 与工作台信息卡 padding 对齐 */
-  padding: 12px 14px;
-  border-radius: 6px;
+  padding: var(--space-3) 14px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border-light);
   background-color: var(--color-bg-surface);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--duration-medium) var(--ease-standard);
   outline: none;
   /* 多层级柔和阴影 - 默认态 */
   box-shadow:
@@ -190,7 +190,7 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  margin-right: 4px;
+  margin-right: var(--space-1);
   flex-shrink: 0;
 }
 
@@ -204,19 +204,19 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .kb-list-view .card-title-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .kb-list-view .card-title {
   margin: 0;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -225,8 +225,8 @@
 
 .kb-list-view .card-subtitle {
   margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-normal);
   color: var(--color-text-secondary);
 }
 
@@ -236,12 +236,12 @@
   justify-content: center;
   font-size: 10px;
   height: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-full);
   border: 0.5px solid var(--color-border-accent-light);
   background-color: var(--color-accent-bg-subtle);
   color: var(--color-accent);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   line-height: 1;
   transform: translateY(-1px);
 }
@@ -250,9 +250,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 4px;
-  font-size: 11px;
+  gap: var(--space-2-5);
+  margin-top: var(--space-1);
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
 }
 
@@ -266,7 +266,7 @@
 }
 
 .kb-list-view .meta-dot {
-  margin: 0 2px;
+  margin: 0 var(--space-0-5);
 }
 
 /* 新建卡片（更扁平的占位卡） */
@@ -288,16 +288,16 @@
 }
 
 .kb-list-view .create-desc {
-  margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 1.5;
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-normal);
   color: var(--color-text-tertiary);
 }
 
 /* 空状态：更加 Notion / Linear 风格的空面板 */
 .kb-list-view .empty-state {
-  margin-top: 24px;
-  padding: 24px 0;
+  margin-top: var(--space-6);
+  padding: var(--space-6) 0;
   display: flex;
   justify-content: center;
 }
@@ -305,48 +305,48 @@
 .kb-list-view .empty-panel {
   max-width: 420px;
   text-align: center;
-  padding: 24px 20px;
-  border-radius: 12px;
+  padding: var(--space-6) var(--space-5);
+  border-radius: var(--radius-xl);
   border: 1px dashed var(--color-border-light);
   background-color: var(--color-bg-subtle);
 }
 
 .kb-list-view .empty-icon {
   font-size: 40px;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
   opacity: 0.7;
 }
 
 .kb-list-view .empty-title {
-  margin: 0 0 4px;
-  font-size: 18px;
-  font-weight: 500;
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
 }
 
 .kb-list-view .empty-desc {
-  margin: 0 0 16px;
-  font-size: 13px;
-  line-height: 1.5;
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-normal);
   color: var(--color-text-secondary);
 }
 
 .kb-list-view .empty-create-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 999px;
+  gap: var(--space-1-5);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
   border: 1px solid var(--color-border-default);
   background-color: var(--color-bg-surface);
   color: var(--color-text-primary);
-  font-size: 13px;
+  font-size: var(--font-size-body);
   cursor: pointer;
   transition:
-    background-color 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    color 0.18s ease;
+    background-color var(--duration-medium) var(--ease-standard),
+    border-color var(--duration-medium) var(--ease-standard),
+    box-shadow var(--duration-medium) var(--ease-standard),
+    color var(--duration-medium) var(--ease-standard);
   box-shadow:
     0 1px 2px var(--shadow-color-xs),
     0 2px 4px color-mix(in srgb, var(--shadow-color-xs) 40%, transparent);
@@ -378,7 +378,7 @@
 
 @media (max-width: 960px) {
   .kb-list-view .kb-list-inner {
-    padding: 24px 16px 32px;
+    padding: var(--space-6) var(--space-4) var(--space-8);
   }
 
   .kb-list-view .kb-grid {

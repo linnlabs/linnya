@@ -1,9 +1,9 @@
 .conversation-input-accessories {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
-  padding: 10px 12px 0;
+  padding: var(--space-2-5) var(--space-3) 0;
   border-radius: var(--ai-assistant-input-radius) var(--ai-assistant-input-radius) 0 0;
 }
 

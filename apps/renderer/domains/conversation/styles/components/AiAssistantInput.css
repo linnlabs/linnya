@@ -31,10 +31,10 @@
   background-color: transparent;
   backdrop-filter: blur(7px) saturate(0.72);
   -webkit-backdrop-filter: blur(7px) saturate(0.72);
-  animation: ai-assistant-input-model-setup-veil-in var(--transition-slow) cubic-bezier(0.22, 0.7, 0.3, 1) both;
+  animation: ai-assistant-input-model-setup-veil-in var(--duration-long) cubic-bezier(0.22, 0.7, 0.3, 1) both;
   transition:
-    backdrop-filter var(--transition-slow) ease,
-    -webkit-backdrop-filter var(--transition-slow) ease;
+    backdrop-filter var(--duration-long) var(--ease-standard),
+    -webkit-backdrop-filter var(--duration-long) var(--ease-standard);
 }
 
 /* 玻璃自身不上色，底色交给这一层，避免 backdrop-filter 与背景色互相叠加变脏。 */
@@ -101,10 +101,10 @@
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   color: var(--color-text-primary);
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   letter-spacing: 0.01em;
   white-space: nowrap;
   animation: ai-assistant-input-model-setup-content-in 0.4s cubic-bezier(0.2, 0.8, 0.24, 1) 60ms both;
@@ -134,8 +134,8 @@
   height: 12px;
   color: var(--color-text-placeholder);
   transition:
-    transform var(--transition-normal) cubic-bezier(0.2, 0.8, 0.24, 1),
-    color var(--transition-normal) ease;
+    transform var(--duration-medium) var(--ease-enter),
+    color var(--duration-medium) var(--ease-standard);
 }
 
 .ai-assistant-input__model-setup-overlay:hover {
@@ -227,7 +227,7 @@
 }
 
 .ai-assistant-input .input-top-section {
-  padding: 12px 16px 0;
+  padding: var(--space-3) var(--space-4) 0;
   overflow: hidden; /* 确保编辑器内容不溢出 */
   border-radius: var(--ai-assistant-input-radius) var(--ai-assistant-input-radius) 0 0;
 }
@@ -245,7 +245,7 @@
   background: transparent;
   color: var(--color-text-primary);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   line-height: 1.4; /* 改为相对行高，避免固定行高导致的计算问题 */
   min-height: 28px; /* 增加最小高度，提供缓冲空间避免高度跳跃 */
   max-height: 240px;
@@ -292,7 +292,7 @@
   top: 50%;
   transform: translateY(-50%);
   color: var(--color-text-placeholder);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   pointer-events: none;
   font-style: normal;
   z-index: 1;

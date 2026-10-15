@@ -2,25 +2,25 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 0 10px 10.5px 10.5px;
+  padding: 0 var(--space-2-5) 10.5px 10.5px;
 }
 
 .sharedmemory-doc-write-card .content-card {
   background-color: var(--color-accent-bg-subtle);
   border: 0.5px solid transparent;
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 4px;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
 }
 
 .sharedmemory-doc-write-card .info-wrapper {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
   overflow: hidden;
   min-width: 0;
 }
@@ -28,14 +28,14 @@
 .sharedmemory-doc-write-card .doc-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
   min-width: 0;
 }
 
 .sharedmemory-doc-write-card .doc-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -51,7 +51,7 @@
 }
 
 .sharedmemory-doc-write-card .doc-meta-text {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-secondary);
   font-family: inherit;
   white-space: nowrap;
@@ -63,14 +63,14 @@
 .sharedmemory-doc-write-card .error-state {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
+  gap: var(--space-2);
+  padding: var(--space-3);
   background-color: var(--color-error-bg);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   color: var(--color-error);
-  font-size: 13px;
+  font-size: var(--font-size-body);
 }
 
 .sharedmemory-doc-write-card .error-icon {
-  font-size: 14px;
+  font-size: var(--font-size-prose);
 }

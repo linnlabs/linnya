@@ -10,22 +10,22 @@ a.ai-ref-link,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 0 2px;
-  padding: 2px 6px;
+  margin: 0 var(--space-0-5);
+  padding: var(--space-0-5) var(--space-1-5);
   color: var(--conversation-reference-link-accent);
-  font-size: 11px;
-  font-weight: 400;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-regular);
   line-height: 1.4;
   text-decoration: none;
   vertical-align: baseline;
   cursor: pointer;
   background: var(--conversation-reference-link-bg);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   transform: translateY(-0.5px);
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--duration-short) var(--ease-standard),
+    color var(--duration-short) var(--ease-standard);
 }
 
 a.ai-ref-link:hover,

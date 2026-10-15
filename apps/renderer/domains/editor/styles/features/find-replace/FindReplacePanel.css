@@ -11,25 +11,25 @@
 .find-replace-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .find-replace-input-group {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
 .find-replace-input {
   width: 160px;
   height: 28px;
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--color-border-default);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--color-bg-surface);
   color: var(--color-text-primary);
-  font-size: 13px;
-  transition: border-color 0.15s, background-color 0.15s;
+  font-size: var(--font-size-body);
+  transition: border-color var(--duration-short), background-color var(--duration-short);
 }
 
 .find-replace-input:focus {
@@ -43,14 +43,14 @@
 
 .find-replace-input-actions {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
 }
 
 .find-replace-count {
   min-width: 48px;
   color: var(--color-text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   line-height: 28px;
   text-align: center;
 }
@@ -62,13 +62,13 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  padding: 4px;
+  padding: var(--space-1);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .find-replace-nav-btn .nav-icon {
@@ -85,14 +85,14 @@
   align-items: center;
   justify-content: center;
   height: 28px;
-  padding: 0 10px;
+  padding: 0 var(--space-2-5);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-primary);
   cursor: pointer;
-  font-size: 12px;
-  transition: background-color 0.2s ease;
+  font-size: var(--font-size-footnote);
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .find-replace-action-btn:hover:not(:disabled) {
@@ -107,8 +107,8 @@
 
 .find-replace-options {
   display: flex;
-  gap: 16px;
-  margin-top: 4px;
+  gap: var(--space-4);
+  margin-top: var(--space-1);
 }
 
 .find-replace-panel .option-wrapper {
@@ -117,8 +117,8 @@
 }
 
 .find-replace-options .find-replace-checkbox-item {
-  gap: 6px;
-  font-size: 12px;
+  gap: var(--space-1-5);
+  font-size: var(--font-size-footnote);
 }
 
 .find-replace-options .find-replace-checkbox-label {
@@ -126,10 +126,10 @@
 }
 
 .find-replace-no-matches {
-  padding: 8px;
-  border-radius: 4px;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
   background: var(--color-bg-subtle);
   color: var(--color-text-tertiary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   text-align: center;
 }

@@ -1,12 +1,12 @@
 .inline-latex-view {
   display: inline-block;
   padding: 1px 3px;
-  margin: 0 2px; /* Add slight horizontal spacing */
+  margin: 0 var(--space-0-5); /* Add slight horizontal spacing */
   line-height: 1; /* Prevent extra line height */
   vertical-align: middle; /* Align vertically with surrounding text */
   cursor: pointer;
   border-radius: 3px;
-  transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition: background-color var(--duration-medium) var(--ease-standard), box-shadow var(--duration-medium) var(--ease-standard);
 }
 
 .inline-latex-view:hover {

@@ -7,7 +7,7 @@
   --conversation-footer-surface-radius: 16px;
 
   border-top: none;
-  padding: 0 16px 16px;
+  padding: 0 var(--space-4) var(--space-4);
   background-color: transparent;
 }
 
@@ -18,5 +18,5 @@
   border-radius: var(--conversation-footer-surface-radius);
   background-color: var(--conversation-footer-surface-bg);
   box-shadow: var(--shadow-sm);
-  transition: border-color 0.2s ease;
+  transition: border-color var(--duration-medium) var(--ease-standard);
 }

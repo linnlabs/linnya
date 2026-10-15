@@ -1,5 +1,5 @@
 .manage-tab {
-  padding: 0 0 16px;
+  padding: 0 0 var(--space-4);
   flex-grow: 1;
   display: flex;
   flex-direction: column;
@@ -7,7 +7,7 @@
 
 .manage-tab .file-list-container {
   flex-grow: 1;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -16,9 +16,9 @@
 .manage-tab .file-list-header,
 .manage-tab .file-item {
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: center;
-  padding: 0 16px;
+  padding: 0 var(--space-4);
   flex-shrink: 0;
 }
 
@@ -30,7 +30,7 @@
 .manage-tab .file-list-header {
   height: 40px;
   background-color: var(--color-bg-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   flex-shrink: 0;
   overflow-y: hidden;
   scrollbar-gutter: stable;
@@ -50,7 +50,7 @@
 
 .manage-tab .file-list-header > div {
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   font-weight: 450;
 }
 
@@ -70,7 +70,7 @@
 
 .manage-tab .file-item {
   min-height: 52px;
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   position: relative;
 }
 
@@ -86,7 +86,7 @@
 
 .manage-tab .file-name {
   font-weight: 450;
-  font-size: 13px;
+  font-size: var(--font-size-body);
   color: var(--color-text-primary);
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -101,7 +101,7 @@
 .manage-tab .col-parse-status,
 .manage-tab .col-upload-time {
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   text-align: center;
 }
 
@@ -110,11 +110,11 @@
   align-items: center;
   justify-content: center;
   min-height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
   background: var(--color-bg-subtle);
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   line-height: 1;
   white-space: nowrap;
 }
@@ -128,7 +128,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-body);
   padding: 0;
 }
 
@@ -164,7 +164,7 @@
 
 .manage-tab .col-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   justify-content: center;
 }
 
@@ -173,31 +173,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .manage-tab .empty-content {
   max-width: 360px;
   width: 100%;
   text-align: center;
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 
 .manage-tab .empty-title {
-  margin: 0 0 4px;
-  font-size: 14px;
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-prose);
   color: var(--color-text-primary);
 }
 
 .manage-tab .empty-desc {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   line-height: 1.6;
   color: var(--color-text-placeholder);
 }
 
 .manage-tab .clear-all-btn {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .manage-tab .clear-all-btn:disabled,
@@ -221,7 +221,7 @@
 .manage-tab .file-list-header::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color);
   border-radius: 5px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }

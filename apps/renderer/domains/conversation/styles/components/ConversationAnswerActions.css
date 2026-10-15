@@ -1,11 +1,11 @@
 .conversation-answer-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   opacity: 0;
   transition:
-    opacity 0.2s ease,
-    visibility 0s ease 0.2s;
+    opacity var(--duration-medium) var(--ease-standard),
+    visibility 0s var(--ease-standard) 0.2s;
   visibility: hidden;
 }
 
@@ -16,15 +16,15 @@
 }
 
 .conversation-answer-actions--card {
-  margin-top: 10px;
+  margin-top: var(--space-2-5);
 }
 
 .turn-container:hover .conversation-answer-actions--turn,
 .ui-card-group:hover .conversation-answer-actions--card {
   opacity: 1;
   transition:
-    opacity 0.2s ease,
-    visibility 0s ease;
+    opacity var(--duration-medium) var(--ease-standard),
+    visibility 0s var(--ease-standard);
   visibility: visible;
 }
 
@@ -42,15 +42,15 @@
   justify-content: center;
   min-width: 24px;
   height: 24px;
-  padding: 0 4px;
+  padding: 0 var(--space-1);
   border: none;
   border-radius: var(--radius-sm);
   color: var(--color-text-tertiary);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
+    color var(--duration-medium) var(--ease-standard),
+    background-color var(--duration-medium) var(--ease-standard);
 }
 
 .conversation-answer-actions--card .card-action-button {
@@ -81,8 +81,8 @@
 
 .conversation-answer-actions .action-text {
   color: var(--color-text-secondary);
-  font-size: 11px;
-  font-weight: 500;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
   white-space: nowrap;
 }
 

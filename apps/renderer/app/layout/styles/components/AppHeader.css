@@ -18,7 +18,7 @@
 
 .app-header .sidebar-extension.sidebar-fade-enter-active,
 .app-header .sidebar-extension.sidebar-fade-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform var(--duration-long) var(--ease-standard), opacity var(--duration-long) var(--ease-standard);
   will-change: transform, opacity;
 }
 
@@ -34,11 +34,11 @@
   left: 0;
   z-index: 111;
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: center;
   height: 100%;
-  padding-left: 6px;
-  transition: padding-left 0.3s ease;
+  padding-left: var(--space-1-5);
+  transition: padding-left var(--duration-long) var(--ease-standard);
 }
 
 .app-header-left.mac-native {
@@ -48,7 +48,7 @@
 .app-header-left .function-buttons {
   display: flex;
   flex-shrink: 0;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
@@ -67,7 +67,7 @@
   cursor: pointer;
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   -webkit-app-region: no-drag;
 }
 
@@ -109,18 +109,18 @@
   bottom: 0;
   box-sizing: border-box;
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: center;
   min-width: 0;
-  padding: 0 var(--app-header-edge-inset) 0 12px;
+  padding: 0 var(--app-header-edge-inset) 0 var(--space-3);
   overflow: hidden;
   pointer-events: auto;
   transition:
-    left 0.3s ease,
-    right 0.3s ease,
-    width 0.3s ease,
-    padding-left 0.3s ease,
-    padding-right 0.3s ease;
+    left var(--duration-long) var(--ease-standard),
+    right var(--duration-long) var(--ease-standard),
+    width var(--duration-long) var(--ease-standard),
+    padding-left var(--duration-long) var(--ease-standard),
+    padding-right var(--duration-long) var(--ease-standard);
 }
 
 .app-header-right .header-pane--rightmost {
@@ -137,8 +137,8 @@
   align-items: center;
   min-width: 0;
   overflow: hidden;
-  font-size: 12px;
-  font-weight: 400;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-tertiary);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -178,7 +178,7 @@
 .app-header-right .breadcrumb-separator {
   display: inline-block;
   flex-shrink: 0;
-  margin: 0 8px;
+  margin: 0 var(--space-2);
   color: var(--color-border-default);
   user-select: none;
 }
@@ -186,7 +186,7 @@
 .app-header-right .header-pane__actions {
   display: inline-flex;
   flex-shrink: 0;
-  gap: 6px;
+  gap: var(--space-1-5);
   align-items: center;
   min-width: max-content;
   margin-left: auto;
@@ -198,7 +198,7 @@
 }
 
 .app-header-right .header-pane--right {
-  gap: 8px;
+  gap: var(--space-2);
   padding: 0;
 }
 
@@ -210,7 +210,7 @@
   box-sizing: border-box;
   display: flex;
   flex-shrink: 0;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   height: 100%;
   min-width: 0;
@@ -219,11 +219,11 @@
     + var(--app-header-trailing-chrome-width)
     + var(--app-header-icon-button-size)
     + var(--app-header-fixed-button-gap)
-  ) 0 12px;
+  ) 0 var(--space-3);
   opacity: 0;
   transition:
-    transform var(--transition-slow) ease,
-    opacity var(--transition-slow) ease;
+    transform var(--duration-long) var(--ease-standard),
+    opacity var(--duration-long) var(--ease-standard);
   transform: translateX(16px);
 }
 
@@ -234,14 +234,14 @@
 
 .app-header-right .project-workspace-actions {
   display: inline-flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
 .app-header-right .workspace-layout-actions,
 .app-header-right .global-tool-actions {
   display: inline-flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
 }
 
@@ -257,8 +257,8 @@
   cursor: pointer;
   background: transparent;
   border: none;
-  border-radius: 4px;
-  transition: background-color 0.15s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-short) var(--ease-standard);
   -webkit-app-region: no-drag;
 }
 
@@ -307,7 +307,7 @@
   overflow: hidden;
   background: var(--color-bg-surface);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-floating-panel);
   -webkit-app-region: no-drag;
 }
@@ -315,19 +315,19 @@
 .header-tool-panel__header {
   display: flex;
   flex-shrink: 0;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: center;
   justify-content: space-between;
   height: 40px;
-  padding: 0 8px 0 12px;
+  padding: 0 var(--space-2) 0 var(--space-3);
   border-bottom: 0.5px solid var(--color-border-light);
 }
 
 .header-tool-panel__title {
   min-width: 0;
   overflow: hidden;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -335,7 +335,7 @@
 
 .header-tool-panel__actions {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
 }
 
@@ -381,7 +381,7 @@
 
 .app-header-menu-fade-enter-active,
 .app-header-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .app-header-menu-fade-enter-from {
@@ -418,7 +418,7 @@
   cursor: default;
   background-color: transparent;
   border: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
   -webkit-app-region: no-drag;
 }
 

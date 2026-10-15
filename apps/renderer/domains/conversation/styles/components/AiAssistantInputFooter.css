@@ -5,7 +5,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 10px 8px 8px;
+  padding: var(--space-2) var(--space-2-5) var(--space-2) var(--space-2);
   background-color: transparent;
   position: relative;
   z-index: 1;
@@ -15,16 +15,16 @@
   --input-footer-control-height: 24px;
   --input-footer-control-line-height: 16px;
 
-  padding: 6px 10px 8px;
+  padding: var(--space-1-5) var(--space-2-5) var(--space-2);
   align-items: flex-end;
 }
 
 .ai-assistant-input-footer.input-bottom-section--compact .selectors-top-row {
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .ai-assistant-input-footer.input-bottom-section--compact .selectors-wrapper {
-  margin-right: 6px;
+  margin-right: var(--space-1-5);
 }
 
 .ai-assistant-input-footer.input-bottom-section--compact .input-action-menu-button {
@@ -34,8 +34,8 @@
 
 .ai-assistant-input-footer.input-bottom-section--compact .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger) {
   min-width: 0;
-  padding: 3px 20px 3px 7px;
-  font-size: 11px;
+  padding: 3px var(--space-5) 3px 7px;
+  font-size: var(--font-size-caption);
 }
 
 .ai-assistant-input-footer.input-bottom-section--compact .selector-group--model {
@@ -56,7 +56,7 @@
 .ai-assistant-input-footer .selectors-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
   flex: 1;
   align-items: flex-start;
   /**
@@ -66,12 +66,12 @@
    */
   min-width: 0;
   /* 保证与右侧发送按钮的最小间距（与内部 gap: 8px 保持视觉节奏一致） */
-  margin-right: 8px;
+  margin-right: var(--space-2);
 }
 
 .ai-assistant-input-footer .selectors-top-row {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   /* 允许内部的 CustomSelect 在窄宽度下收缩并触发省略号 */
   min-width: 0;
@@ -96,12 +96,12 @@
 .ai-assistant-input-footer .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger) {
   min-width: 60px;
   width: auto;
-  padding: 4px 24px 4px 8px;
-  font-size: 12px;
+  padding: var(--space-1) var(--space-6) var(--space-1) var(--space-2);
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   height: var(--input-footer-control-height);
   line-height: var(--input-footer-control-line-height);
 }
@@ -136,12 +136,12 @@
   width: var(--input-footer-control-height);
   height: var(--input-footer-control-height);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
   padding: 0;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--duration-short) var(--ease-standard);
 }
 
 .ai-assistant-input-footer .input-action-menu-button:hover:not(:disabled) {
@@ -160,7 +160,7 @@
 }
 
 .ai-assistant-input-footer__input-action-menu-wrapper {
-  --conversation-input-action-menu-width: calc(var(--spacing-2xl) * 5);
+  --conversation-input-action-menu-width: calc(var(--space-10) * 5);
 
   position: fixed;
   z-index: 1000;
@@ -170,7 +170,7 @@
 /* 菜单过渡动画：对齐 HEAD~2 */
 .ai-assistant-input-action-menu-fade-enter-active,
 .ai-assistant-input-action-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .ai-assistant-input-action-menu-fade-enter-from {
@@ -187,12 +187,12 @@
 .ai-assistant-input-footer__input-action-menu-wrapper .input-action-menu-options {
   width: var(--conversation-input-action-menu-width);
   min-width: var(--conversation-input-action-menu-width);
-  max-width: min(var(--conversation-input-action-menu-width), calc(100vw - var(--spacing-md)));
+  max-width: min(var(--conversation-input-action-menu-width), calc(100vw - var(--space-4)));
 }
 
 .ai-assistant-input-footer__input-action-menu-wrapper .input-action-menu-submenu {
-  min-width: calc(var(--spacing-2xl) * 7);
-  max-width: min(calc(var(--spacing-2xl) * 9), calc(100vw - var(--spacing-md)));
+  min-width: calc(var(--space-10) * 7);
+  max-width: min(calc(var(--space-10) * 9), calc(100vw - var(--space-4)));
 }
 
 .ai-assistant-input-footer__input-action-menu-wrapper .input-action-menu-submenu .input-action-menu-option-label {
@@ -206,14 +206,14 @@
  * - 这里仅对输入能力菜单做局部覆盖，避免影响其他下拉组件
  */
 .ai-assistant-input-footer__input-action-menu-wrapper .input-action-menu-option {
-  padding-left: 6px;
+  padding-left: var(--space-1-5);
 }
 
 /* agent-choice pill：与 mode/model 的触发器样式一致（对齐 HEAD~2） */
 .ai-assistant-input-footer .selector-group--agent-choice .agent-choice-trigger {
   position: relative;
   /* 左侧放 icon（默认 research，hover 变 close） */
-  padding: 4px 8px 4px 26px; /* 为左侧图标预留空间（收紧 icon 与“研究”的间距） */
+  padding: var(--space-1) var(--space-2) var(--space-1) 26px; /* 为左侧图标预留空间（收紧 icon 与“研究”的间距） */
   background-color: var(--color-accent-bg);
   color: var(--color-accent);
 }
@@ -259,7 +259,7 @@
   width: 18px;
   height: 18px;
   /* X 用圆角矩形 */
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   border: none;
   background: transparent;
   color: var(--color-accent);
@@ -271,7 +271,7 @@
   /* 默认可见（显示 ResearchIcon），但不可点击；hover 才允许点击关闭 */
   opacity: 1;
   pointer-events: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
 }
 
 .ai-assistant-input-footer .agent-choice-trigger:hover .agent-choice-trigger-close {
@@ -307,7 +307,7 @@
   height: 14px;
   transform: translate(-50%, -50%) scale(1);
   display: block;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity var(--duration-medium) var(--ease-standard), transform var(--duration-medium) var(--ease-standard);
   will-change: opacity, transform;
 }
 
@@ -396,7 +396,7 @@
   width: 14px;
   height: 14px;
   color: var(--color-gray-400);
-  transition: transform 0.2s ease-in-out;
+  transition: transform var(--duration-medium) var(--ease-standard);
   pointer-events: none;
 }
 
@@ -422,7 +422,7 @@
   width: 22px;
   height: 22px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background-color: var(--color-gray-700);
   color: var(--color-white);
   cursor: pointer;
@@ -436,7 +436,7 @@
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
 }
 
 .ai-assistant-input-footer .send-button:hover:not(.disabled) {
@@ -458,7 +458,7 @@
 
 .ai-assistant-input-footer .send-icon,
 .ai-assistant-input-footer .run-control-icon {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   line-height: 1;
 }
 

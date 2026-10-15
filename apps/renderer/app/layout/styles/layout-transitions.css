@@ -13,7 +13,7 @@
 /* sidebar-fade：滑动 + 淡入淡出 */
 .sidebar-fade-enter-active,
 .sidebar-fade-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform var(--duration-long) var(--ease-standard), opacity var(--duration-long) var(--ease-standard);
   will-change: transform, opacity; /* 提示浏览器优化渲染，防止白色闪烁 */
 }
 
@@ -27,7 +27,7 @@
 
 .modal-fade-enter-active,
 .modal-fade-leave-active {
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-medium);
 }
 
 .modal-fade-enter-from,
@@ -38,7 +38,7 @@
 /* === 内容区域过渡 === */
 
 .app-layout > .main-container > .content-area {
-  transition: margin-left 0.3s ease, margin-right 0.3s ease;
+  transition: margin-left var(--duration-long) var(--ease-standard), margin-right var(--duration-long) var(--ease-standard);
 }
 
 /* === 拖拽调整大小时禁用过渡 === */

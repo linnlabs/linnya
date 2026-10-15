@@ -2,7 +2,7 @@
 .radio-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   cursor: pointer;
 }
 
@@ -13,7 +13,7 @@
 .radio-item .radio-label {
   display: contents;
   color: var(--color-text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
 }
 
 .radio-item.is-disabled .radio-label {
@@ -37,7 +37,7 @@
   border-radius: 50%;
   background-color: var(--color-bg-surface);
   box-shadow: var(--shadow-xs);
-  transition: all var(--transition-fast);
+  transition: all var(--duration-micro);
 }
 
 .radio-item .radio-custom::before {
@@ -47,7 +47,7 @@
   background-color: var(--color-accent);
   content: '';
   transform: scale(0);
-  transition: transform 0.1s ease-in-out;
+  transition: transform var(--duration-micro) var(--ease-standard);
 }
 
 .radio-item:not(.is-disabled):hover .radio-custom {

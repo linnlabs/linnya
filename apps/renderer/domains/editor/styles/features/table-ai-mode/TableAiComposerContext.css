@@ -3,7 +3,7 @@
 }
 
 .ai-assistant-table-context .table-context-embedded {
-  padding: 12px 32px 8px 12px;
+  padding: var(--space-3) var(--space-8) var(--space-2) var(--space-3);
 }
 
 .ai-assistant-table-context .table-mode-close-button {
@@ -16,13 +16,13 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  padding: 4px;
+  padding: var(--space-1);
   color: var(--color-text-secondary);
   cursor: pointer;
   background: transparent;
   border: 0;
   border-radius: 50%;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard);
 }
 
 .ai-assistant-table-context .table-mode-close-button:hover {

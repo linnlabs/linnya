@@ -1,12 +1,12 @@
 .citation-edit-form {
-  padding: 4px 0;
+  padding: var(--space-1) 0;
 }
 
 /* 引用编辑面板沿用双列表单布局，便于长字段和日期选择器对齐。 */
 .citation-edit-form .form-row {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--space-3);
   margin-bottom: 14px;
 }
 
@@ -21,10 +21,10 @@
 .citation-edit-form .form-label {
   flex-shrink: 0;
   width: 90px;
-  padding-top: 8px;
+  padding-top: var(--space-2);
   color: var(--color-text-primary);
-  font-size: 13px;
-  font-weight: 400;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
   text-align: left;
 }
 
@@ -37,14 +37,14 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
   min-width: 0;
 }
 
 .citation-edit-form .date-control-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .citation-edit-form .date-control-row .form-input {
@@ -54,14 +54,14 @@
 
 .citation-edit-form .citation-edit-date-picker-trigger {
   height: 36px;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   color: var(--color-text-primary);
   background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border-default);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
+    border-color var(--duration-medium) var(--ease-standard),
+    background-color var(--duration-medium) var(--ease-standard);
 }
 
 /* hover 不强调边框；仅在 focus 激活时强调，避免面板内视觉噪音。 */
@@ -74,15 +74,15 @@
 .citation-edit-form .form-textarea {
   box-sizing: border-box;
   width: 100%;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   color: var(--color-text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border-default);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
+    border-color var(--duration-medium) var(--ease-standard),
+    background-color var(--duration-medium) var(--ease-standard);
 }
 
 .citation-edit-form .form-input:hover:not(:disabled),
@@ -107,25 +107,25 @@
 .citation-edit-form .form-hint {
   display: block;
   color: var(--color-text-tertiary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .citation-edit-form .form-error {
   display: block;
   color: var(--color-error);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .citation-edit-form .same-source-notice {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 10px 12px;
-  margin-bottom: 16px;
+  gap: var(--space-2);
+  padding: var(--space-2-5) var(--space-3);
+  margin-bottom: var(--space-4);
   color: var(--color-info);
-  font-size: 13px;
+  font-size: var(--font-size-body);
   background-color: var(--color-info-bg);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
 }
 
 .citation-edit-form .notice-icon {
@@ -156,7 +156,7 @@
   background-clip: content-box;
   border: 2px solid transparent;
   border-radius: 5px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .citation-edit-panel-body::-webkit-scrollbar-thumb:hover,

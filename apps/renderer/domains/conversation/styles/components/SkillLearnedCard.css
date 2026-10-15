@@ -1,13 +1,13 @@
 .skill-learned-card {
   /* 与普通 tool-card 的外层节奏叠加，保持 skill 提示轻量不抢主对话焦点。 */
-  margin: 2px 0;
+  margin: var(--space-0-5) 0;
   background: transparent;
 }
 
 .skill-learned-card__text {
   display: block;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-normal);
   color: var(--color-text-placeholder);
   white-space: nowrap;
   overflow: hidden;

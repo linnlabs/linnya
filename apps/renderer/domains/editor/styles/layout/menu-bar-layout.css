@@ -40,7 +40,7 @@
  */
 .table-selector-fade-enter-active,
 .table-selector-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .table-selector-fade-enter-from {

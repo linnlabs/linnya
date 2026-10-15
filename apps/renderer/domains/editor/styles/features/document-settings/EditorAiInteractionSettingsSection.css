@@ -24,7 +24,7 @@
 .editor-ai-range-labels {
   display: flex;
   justify-content: space-between;
-  margin-top: var(--spacing-sm);
-  font-size: 11px;
+  margin-top: var(--space-2);
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
 }

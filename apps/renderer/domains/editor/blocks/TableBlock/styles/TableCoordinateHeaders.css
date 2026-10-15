@@ -6,14 +6,14 @@
 .tt-table-row-headers,
 .tt-table-column-headers {
   overflow: hidden;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
   pointer-events: none;
   user-select: none;
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-light);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   /* 中文说明：使用 drop-shadow 避免被坐标头 clip-path 裁剪。 */
   filter: drop-shadow(0 2px 8px var(--shadow-color-sm));
 }
@@ -39,7 +39,7 @@
 }
 
 .tt-row-header-cell {
-  padding: 4px 0;
+  padding: var(--space-1) 0;
   border-bottom: 1px solid var(--color-border-light);
 }
 
@@ -49,7 +49,7 @@
 
 .tt-col-header-cell {
   height: 100%;
-  padding: 0 4px;
+  padding: 0 var(--space-1);
   border-right: 1px solid var(--color-border-light);
 }
 
@@ -58,7 +58,7 @@
 }
 
 .tt-headers-fade-enter-active {
-  transition: opacity 400ms ease;
+  transition: opacity 400ms var(--ease-standard);
 }
 
 .tt-headers-fade-enter-from {
@@ -70,7 +70,7 @@
 }
 
 .tt-headers-fade-leave-active {
-  transition: opacity 300ms ease;
+  transition: opacity var(--duration-long) var(--ease-standard);
 }
 
 .tt-headers-fade-leave-from {

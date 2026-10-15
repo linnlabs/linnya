@@ -12,7 +12,7 @@
   width: 100%;
   min-width: 0;
   height: var(--linnya-ui-slider-track-height);
-  margin: 10px 0;
+  margin: var(--space-2-5) 0;
   padding: 0;
   border: none;
   border-radius: var(--radius-xs);
@@ -30,7 +30,7 @@
   --linnya-ui-slider-thumb-shadow: 0 1px 3px var(--shadow-color-md);
   --linnya-ui-slider-thumb-shadow-hover: 0 2px 6px color-mix(in srgb, var(--color-text-primary) 25%, transparent);
 
-  margin: 8px 0;
+  margin: var(--space-2) 0;
 }
 
 .linnya-ui-slider::-webkit-slider-thumb {
@@ -42,7 +42,7 @@
   appearance: none;
   background: var(--color-accent);
   box-shadow: var(--linnya-ui-slider-thumb-shadow);
-  transition: box-shadow 0.2s, transform 0.1s;
+  transition: box-shadow var(--duration-medium), transform var(--duration-micro);
 }
 
 .linnya-ui-slider::-moz-range-thumb {
@@ -52,7 +52,7 @@
   border-radius: var(--radius-full);
   background: var(--color-accent);
   box-shadow: var(--linnya-ui-slider-thumb-shadow);
-  transition: box-shadow 0.2s, transform 0.1s;
+  transition: box-shadow var(--duration-medium), transform var(--duration-micro);
 }
 
 .linnya-ui-slider:hover:not(:disabled)::-webkit-slider-thumb {

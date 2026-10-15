@@ -12,7 +12,7 @@
 .kg-progress .kg-trigger {
   /* 图标触发器：去掉 TextPopover 默认 padding，避免看起来像按钮。 */
   padding: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
 }
 
 .kg-progress .kg-trigger:hover {
@@ -49,7 +49,7 @@
    * - 100%：完全显示
    */
   clip-path: inset(calc(100% - var(--kg-progress)) 0 0 0);
-  transition: clip-path 220ms ease;
+  transition: clip-path var(--duration-medium) var(--ease-standard);
 }
 
 .kg-progress .kg-icon-layer--fill.empty {
@@ -59,19 +59,19 @@
 .kg-progress .kg-popover {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding-right: 4px;
+  gap: var(--space-1);
+  padding-right: var(--space-1);
 }
 
 .kg-progress .kg-popover-title {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.2;
   color: var(--color-text-primary);
 }
 
 .kg-progress .kg-popover-sub {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }

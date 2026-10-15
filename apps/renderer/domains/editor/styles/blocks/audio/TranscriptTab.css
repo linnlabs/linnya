@@ -11,17 +11,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 28px;
-  padding: 4px 0;
-  margin-bottom: 8px;
+  padding: var(--space-1) 0;
+  margin-bottom: var(--space-2);
   background: var(--color-bg-default);
 }
 
 .transcript-tab .toolbar-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   height: 100%;
 }
 
@@ -29,16 +29,16 @@
   display: flex;
   box-sizing: border-box;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   height: 28px;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-short) var(--ease-standard);
 }
 
 .transcript-tab .toolbar-button svg {
@@ -60,16 +60,16 @@
 .transcript-tab .loading-icon {
   width: 14px;
   height: 14px;
-  margin-right: 4px;
+  margin-right: var(--space-1);
 }
 
 .transcript-tab .timestamp-info {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   color: var(--color-text-placeholder);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   line-height: 1.4;
   white-space: nowrap;
 }
@@ -86,7 +86,7 @@
 
 .transcript-tab .transcript-editor {
   flex: 1;
-  padding-right: 12px;
+  padding-right: var(--space-3);
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -94,19 +94,19 @@
 .transcript-tab .transcript-editor .ProseMirror {
   min-height: 100%;
   color: var(--color-text-primary);
-  font-size: 15px;
+  font-size: var(--font-size-subtitle);
   line-height: 1.6;
   outline: none;
 }
 
 .transcript-tab .translate-menu-container {
   position: relative;
-  margin-left: 8px;
+  margin-left: var(--space-2);
 }
 
 .transcript-menu-fade-enter-active,
 .transcript-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .transcript-menu-fade-enter-from {
@@ -131,5 +131,5 @@
   align-items: center;
   justify-content: center;
   color: var(--color-text-placeholder);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
 }

@@ -22,7 +22,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-anchor: none;
-  padding: 4px 16px 0 16px;
+  padding: var(--space-1) var(--space-4) 0 var(--space-4);
   height: 100%;
   position: relative;
 }
@@ -58,7 +58,7 @@
   min-height: 100%;
   display: grid;
   place-items: center;
-  padding: 24px 20px;
+  padding: var(--space-6) var(--space-5);
   text-align: center;
   color: var(--color-text-secondary);
 }
@@ -82,9 +82,9 @@
 
 .conversation-view-wrapper .history-loading-title {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.5;
-  font-weight: 400;
+  font-size: var(--font-size-subtitle);
+  line-height: var(--line-height-normal);
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-secondary);
 }
 
@@ -147,7 +147,7 @@
 .conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view::-webkit-scrollbar-thumb {
   background-color: transparent;
   border-radius: 5px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }

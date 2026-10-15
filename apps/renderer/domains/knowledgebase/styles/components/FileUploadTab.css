@@ -3,15 +3,15 @@
   /* 重要：该组件在不同容器（页面/弹窗）中使用，不能依赖父容器继承 display:flex。 */
   display: flex;
   flex-direction: column;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard), border-color var(--duration-medium) var(--ease-standard);
 }
 
 .upload-tab .scope-link {
   color: var(--color-accent);
   cursor: pointer;
-  padding: 0 2px;
-  border-radius: 4px;
-  transition: background-color 0.16s ease, color 0.16s ease;
+  padding: 0 var(--space-0-5);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
 }
 
 .upload-tab .scope-link:hover {
@@ -23,7 +23,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 0;
+  padding: var(--space-4) 0;
   flex-shrink: 0;
 }
 
@@ -31,7 +31,7 @@
 .upload-tab .right-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .upload-tab .file-input {
@@ -46,12 +46,12 @@
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
   text-align: left;
 }
 
 .upload-tab .control-hint-text {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   /* 两段提示文案颜色必须一致（除“这里”链接高亮）。 */
   color: var(--color-text-placeholder);
   margin: 0;
@@ -62,7 +62,7 @@
 }
 
 .upload-tab label {
-  font-size: 13px;
+  font-size: var(--font-size-body);
   color: var(--color-text-primary);
 }
 
@@ -70,13 +70,13 @@
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  padding: 0 0 16px;
+  padding: 0 0 var(--space-4);
   min-height: 0;
 }
 
 .upload-tab .upload-drop-zone {
-  padding: 16px;
-  border-radius: 8px;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
   border: 1px dashed var(--color-border-default);
   background-color: var(--color-bg-default);
   cursor: pointer;
@@ -85,7 +85,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard), border-color var(--duration-medium) var(--ease-standard);
 }
 
 .upload-tab .upload-drop-zone.is-dragging {
@@ -102,21 +102,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
   color: var(--color-accent);
 }
 
 .upload-tab .drop-zone-icon-circle {
   width: 44px;
   height: 44px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background-color: var(--color-accent-bg-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
   /* 把过渡写在默认状态，hover 进出都会有动画。 */
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .upload-tab .drop-zone-icon-circle:hover,
@@ -130,27 +130,27 @@
 }
 
 .upload-tab .drop-zone-title {
-  margin: 0 0 4px;
-  font-size: 13px;
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-body);
   color: var(--color-text-primary);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .upload-tab .drop-zone-subtitle {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
 }
 
 .upload-tab .drop-zone-filetypes {
-  margin: 6px 0 0;
-  font-size: 11px;
+  margin: var(--space-1-5) 0 0;
+  font-size: var(--font-size-caption);
   color: var(--color-text-placeholder);
 }
 
 .upload-tab .file-list-container {
   flex-grow: 1;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -159,10 +159,10 @@
 .upload-tab .file-list-header,
 .upload-tab .file-item {
   display: grid;
-  border-radius: 6px;
-  gap: 16px;
+  border-radius: var(--radius-md);
+  gap: var(--space-4);
   align-items: center;
-  padding: 0 16px;
+  padding: 0 var(--space-4);
   flex-shrink: 0;
 }
 
@@ -173,7 +173,7 @@
 
 .upload-tab .file-list-header {
   height: 40px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background-color: var(--color-bg-subtle);
   border-bottom: 0 solid var(--color-border-default);
   flex-shrink: 0;
@@ -183,7 +183,7 @@
 
 .upload-tab .file-list-header > div {
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   font-weight: 450;
 }
 
@@ -206,7 +206,7 @@
 
 .upload-tab .file-item {
   min-height: 52px;
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   position: relative;
 }
 
@@ -226,7 +226,7 @@
 
 .upload-tab .file-name {
   font-weight: 450;
-  font-size: 13px;
+  font-size: var(--font-size-body);
   color: var(--color-text-primary);
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -239,7 +239,7 @@
 .upload-tab .col-size,
 .upload-tab .col-category {
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   text-align: center;
 }
 
@@ -249,10 +249,10 @@
 }
 
 .upload-tab .status-text {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   font-weight: 450;
-  padding: 2px 8px;
-  border-radius: 12px;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-xl);
   text-align: center;
   white-space: nowrap;
 }
@@ -287,7 +287,7 @@
 .upload-tab .progress-details {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .upload-tab .progress-bar {
@@ -302,11 +302,11 @@
 .upload-tab .progress-fill {
   height: 100%;
   background-color: var(--color-accent);
-  transition: width 0.3s ease;
+  transition: width var(--duration-long) var(--ease-standard);
 }
 
 .upload-tab .progress-percent {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-secondary);
   flex-shrink: 0;
   white-space: nowrap;
@@ -315,7 +315,7 @@
 }
 
 .upload-tab .error-details {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-error);
   text-align: center;
 }
@@ -324,7 +324,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-body);
   padding: 0;
 }
 
@@ -342,7 +342,7 @@
 
 .upload-tab .col-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   justify-content: flex-end;
 }
 
@@ -351,25 +351,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .upload-tab .empty-content {
   max-width: 360px;
   width: 100%;
   text-align: center;
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 
 .upload-tab .empty-title {
-  margin: 0 0 4px;
-  font-size: 14px;
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-prose);
   color: var(--color-text-primary);
 }
 
 .upload-tab .empty-desc {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   line-height: 1.6;
   color: var(--color-text-placeholder);
 }
@@ -389,7 +389,7 @@
 .upload-tab .file-list-header::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color);
   border-radius: 5px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }

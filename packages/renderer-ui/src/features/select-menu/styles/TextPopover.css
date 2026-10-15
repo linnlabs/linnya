@@ -4,15 +4,15 @@
 }
 
 .text-popover .popover-trigger {
-  padding: 4px 8px;
-  font-size: 14px;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-prose);
   color: var(--color-text-tertiary);
   cursor: pointer;
   appearance: none;
   background: transparent;
   border: none;
-  border-radius: 4px;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard);
 }
 
 .text-popover .popover-trigger:hover {
@@ -23,14 +23,14 @@
 .text-popover .popover-panel {
   position: fixed;
   z-index: var(--linnya-ui-layer-popover);
-  padding: 12px;
+  padding: var(--space-3);
   background-color: var(--color-bg-surface);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-floating-panel);
 }
 
 .text-popover .popover-content {
-  font-size: 13px;
+  font-size: var(--font-size-body);
   line-height: 1.6;
   color: var(--color-text-primary);
 }
@@ -44,7 +44,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  padding: 4px;
+  padding: var(--space-1);
   font-size: 16px;
   line-height: 1;
   color: var(--color-text-tertiary);
@@ -52,8 +52,8 @@
   appearance: none;
   background: transparent;
   border: none;
-  border-radius: 4px;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard);
 }
 
 .text-popover .popover-close-btn:hover {
@@ -63,7 +63,7 @@
 
 .text-popover .popover-panel.popover-fade-enter-active,
 .text-popover .popover-panel.popover-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .text-popover .popover-panel.popover-fade-enter-from {

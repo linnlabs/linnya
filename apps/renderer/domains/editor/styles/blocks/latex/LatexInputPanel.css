@@ -1,12 +1,12 @@
 .latex-input-panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 450px;
   max-width: 600px;
-  padding: 12px;
+  padding: var(--space-3);
   border: 0.5px solid var(--color-border-default);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background-color: var(--color-bg-surface);
   box-shadow: var(--shadow-lg);
 }
@@ -14,7 +14,7 @@
 .latex-panel-main-content {
   display: flex;
   flex-direction: row;
-  gap: 10px;
+  gap: var(--space-2-5);
   align-items: flex-start;
 }
 
@@ -22,11 +22,11 @@
   flex-grow: 1;
   width: auto;
   min-height: 60px;
-  padding: 8px;
+  padding: var(--space-2);
   overflow-y: hidden;
   box-sizing: border-box;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   outline: none;
   color: var(--color-text-primary);
   font-family: inherit;
@@ -42,18 +42,18 @@
   display: flex;
   flex-shrink: 0;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .latex-panel-button {
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: none;
   cursor: pointer;
   font-size: 0.85em;
   text-align: center;
-  transition: background-color 0.2s, color 0.2s;
+  transition: background-color var(--duration-medium), color var(--duration-medium);
 }
 
 .latex-panel-button.submit {
@@ -78,7 +78,7 @@
 
 .latex-panel-fade-enter-active,
 .latex-panel-fade-leave-active {
-  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+  transition: opacity var(--duration-medium) var(--ease-enter), transform var(--duration-medium) var(--ease-enter);
 }
 
 .latex-panel-fade-enter-from,

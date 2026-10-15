@@ -3,7 +3,7 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  padding: 12px 16px 16px;
+  padding: var(--space-3) var(--space-4) var(--space-4);
 }
 
 .review-setup-view .section-title {
@@ -11,8 +11,8 @@
   flex-shrink: 0;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 6px 0;
-  margin-bottom: 12px;
+  padding: var(--space-1-5) 0;
+  margin-bottom: var(--space-3);
 }
 
 .review-setup-view .title-content {
@@ -21,30 +21,30 @@
 }
 
 .review-setup-view .section-title h3 {
-  margin: 0 0 4px;
-  font-size: 15px;
-  font-weight: 600;
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: 0.2px;
 }
 
 .review-setup-view .subtitle {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   line-height: 1.4;
   color: var(--color-text-secondary);
 }
 
 .review-setup-view .history-entry-btn {
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 500;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
   color: var(--color-accent);
   white-space: nowrap;
   cursor: pointer;
   background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   border: none;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-medium) var(--ease-standard);
 }
 
 .review-setup-view .history-entry-btn:hover {
@@ -55,15 +55,15 @@
   display: flex;
   flex-shrink: 0;
   flex-direction: column;
-  gap: 8px;
-  padding: 0 4px;
-  margin-bottom: 20px;
+  gap: var(--space-2);
+  padding: 0 var(--space-1);
+  margin-bottom: var(--space-5);
 }
 
 .review-setup-view .list-label {
-  margin-bottom: 4px;
-  font-size: 12px;
-  font-weight: 500;
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
 }
 
@@ -72,11 +72,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: var(--space-2-5) var(--space-3);
   background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border-default);
-  border-radius: 4px;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: border-color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
 }
 
 .review-setup-view .selected-agent-card:hover {
@@ -86,7 +86,7 @@
 .review-setup-view .agent-content {
   display: flex;
   flex: 1;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   min-width: 0;
   margin-right: 56px;
@@ -97,11 +97,11 @@
   top: 50%;
   right: 10px;
   display: flex;
-  gap: 6px;
+  gap: var(--space-1-5);
   align-items: center;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-medium) var(--ease-standard);
   transform: translateY(-50%);
 }
 
@@ -111,17 +111,17 @@
 }
 
 .review-setup-view .agent-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
 .review-setup-view .agent-badge-info {
-  padding: 2px 4px;
+  padding: var(--space-0-5) var(--space-1);
   font-size: 10px;
   color: var(--color-accent);
   background: var(--color-accent-bg);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .review-setup-view .icon-btn {
@@ -136,8 +136,8 @@
   cursor: pointer;
   background: none;
   border: none;
-  border-radius: 4px;
-  transition: all 0.2s;
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-medium);
 }
 
 .review-setup-view .icon-btn svg {
@@ -175,13 +175,13 @@
   justify-content: center;
   width: 22px;
   height: 22px;
-  padding: 2px;
+  padding: var(--space-0-5);
   color: var(--color-text-tertiary);
   cursor: pointer;
   background: none;
   border: none;
-  border-radius: 4px;
-  transition: background-color 0.15s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-short) var(--ease-standard);
 }
 
 .review-setup-view .role-edit-btn svg {
@@ -198,12 +198,12 @@
   justify-content: space-between;
   width: 100%;
   height: auto;
-  padding: 8px 12px 8px 34px;
-  font-weight: 500;
+  padding: var(--space-2) var(--space-3) var(--space-2) 34px;
+  font-weight: var(--font-weight-medium);
   color: var(--color-accent);
   background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
   border: 1px dashed var(--color-accent);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .review-setup-view .review-agent-select-trigger:hover {
@@ -224,7 +224,7 @@
   height: 16px;
   color: var(--color-accent);
   pointer-events: none;
-  transition: transform 0.2s ease-in-out;
+  transition: transform var(--duration-medium) var(--ease-standard);
   transform: translateY(-50%);
 }
 
@@ -236,23 +236,23 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 0;
-  padding-right: 2px;
-  padding-bottom: 10px;
+  padding-right: var(--space-0-5);
+  padding-bottom: var(--space-2-5);
   overflow-y: auto;
 }
 
 .review-setup-view .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .review-setup-view .field-label {
-  margin-left: 2px;
-  font-size: 12px;
-  font-weight: 500;
+  margin-left: var(--space-0-5);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
 }
 
@@ -260,18 +260,18 @@
   width: 100%;
   min-height: 80px;
   max-height: 200px;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   overflow-y: hidden;
   font-family: inherit;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: var(--font-size-prose);
+  line-height: var(--line-height-normal);
   color: var(--color-text-primary);
   resize: none;
   background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border-default);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: border-color var(--duration-medium) var(--ease-standard);
 }
 
 .review-setup-view .field-control::-webkit-scrollbar {
@@ -287,8 +287,8 @@
   background-color: transparent;
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .review-setup-view .field-control:hover::-webkit-scrollbar-thumb {
@@ -310,22 +310,22 @@
 
 .review-setup-view .action-area {
   flex-shrink: 0;
-  padding-top: 16px;
+  padding-top: var(--space-4);
   margin-top: auto;
   border-top: 1px solid var(--color-border-default);
 }
 
 .review-setup-view .start-btn {
   width: 100%;
-  padding: 10px;
-  font-size: 14px;
-  font-weight: 500;
+  padding: var(--space-2-5);
+  font-size: var(--font-size-prose);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-on-accent);
   cursor: pointer;
   background-color: var(--color-accent);
   border: none;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-medium) var(--ease-standard);
 }
 
 .review-setup-view .start-btn:hover:not(:disabled) {

@@ -4,9 +4,9 @@
  */
 .todo-sidebar .todo-item {
   position: relative;
-  border-radius: 8px;
-  padding: 8px;
-  transition: background-color 0.2s;
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  transition: background-color var(--duration-medium);
 }
 
 .todo-sidebar .todo-item:hover {
@@ -16,7 +16,7 @@
 .todo-sidebar .todo-item .main-content {
   display: flex;
   align-items: flex-start; /* align checkbox with top of content */
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 /* Checkbox */
@@ -31,7 +31,7 @@
 }
 
 .todo-sidebar .todo-item .title {
-  font-size: 13px;
+  font-size: var(--font-size-body);
   font-weight: 460;
   line-height: 1.2;
   overflow-wrap: anywhere;
@@ -52,27 +52,27 @@
 
 /* Info Row */
 .todo-sidebar .todo-item .info-row {
-  margin-top: 6px;
+  margin-top: var(--space-1-5);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .todo-sidebar .todo-item .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  border-radius: 9999px;
-  padding: 1px 6px;
-  font-size: 11px;
-  font-weight: 500;
+  gap: var(--space-1);
+  border-radius: var(--radius-full);
+  padding: 1px var(--space-1-5);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
 }
 
 .todo-sidebar .todo-item .badge-dot {
   height: 6px;
   width: 6px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: currentColor;
 }
 
@@ -135,7 +135,7 @@
 .todo-sidebar .todo-item .actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .todo-sidebar .todo-item .delete-button {
@@ -144,9 +144,9 @@
   width: 28px;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   color: var(--color-text-tertiary);
-  transition: background-color 0.2s;
+  transition: background-color var(--duration-medium);
 }
 
 .todo-sidebar .todo-item .delete-icon {

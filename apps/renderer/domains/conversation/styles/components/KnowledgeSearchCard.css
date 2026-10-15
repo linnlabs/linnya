@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   /* 横向 padding 保持整数像素，避免 SVG 图标和 2px 竖线落在半像素网格上。 */
-  padding: 4px 10px 10px 10px;
+  padding: var(--space-1) var(--space-2-5) var(--space-2-5) var(--space-2-5);
 }
 
 .knowledge-search-card--empty {
@@ -13,22 +13,22 @@
 .knowledge-search-card .content-container {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .knowledge-search-card .header-meta {
-  padding: 0 10px;
+  padding: 0 var(--space-2-5);
 }
 
 .knowledge-search-card .subtitle-row {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   justify-content: space-between;
 }
 
 .knowledge-search-card .subtitle {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
 }
 
@@ -36,18 +36,18 @@
   display: flex;
   flex-direction: column;
   gap: 10.5px;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .knowledge-search-card .file-card {
   background-color: var(--color-bg-sidebar);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   border: 0.5px solid transparent;
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-2-5);
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  transition: border-color 0.2s ease;
+  gap: var(--space-1);
+  transition: border-color var(--duration-medium) var(--ease-standard);
 }
 
 .knowledge-search-card .file-card:hover {
@@ -58,13 +58,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .knowledge-search-card .file-header-left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   min-width: 0;
 }
 
@@ -88,8 +88,8 @@
 }
 
 .knowledge-search-card .file-name {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -99,14 +99,14 @@
 .knowledge-search-card .file-body {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 2px;
+  gap: var(--space-1);
+  margin-top: var(--space-0-5);
 }
 
 .knowledge-search-card .match-row {
   display: flex;
-  gap: 6px;
-  padding-left: 4px;
+  gap: var(--space-1-5);
+  padding-left: var(--space-1);
 }
 
 .knowledge-search-card .match-bar-wrapper {
@@ -119,15 +119,15 @@
 .knowledge-search-card .match-bar {
   width: 2px;
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background-color: var(--color-accent);
   opacity: 0.8;
 }
 
 .knowledge-search-card .match-snippet {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-tertiary);
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
   max-height: 3em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -136,25 +136,25 @@
 .knowledge-search-card .error-state {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px;
+  gap: var(--space-2);
+  padding: var(--space-2-5);
   background-color: var(--color-error-bg);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   color: var(--color-error);
-  font-size: 13px;
+  font-size: var(--font-size-body);
 }
 
 .knowledge-search-card .error-icon {
-  font-size: 14px;
+  font-size: var(--font-size-prose);
 }
 
 .knowledge-search-card .kb-load-btn {
   border: 1px solid var(--color-border-light);
   background: var(--color-bg-surface);
   color: var(--color-text-secondary);
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 6px;
+  font-size: var(--font-size-footnote);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
   cursor: pointer;
 }
 
@@ -166,7 +166,7 @@
 .knowledge-search-card .kb-download-link {
   border: none;
   background: transparent;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-accent);
   text-decoration: none;
   padding: 0;
@@ -184,6 +184,6 @@
 }
 
 .knowledge-search-card .kb-load-error {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-error);
 }

@@ -12,8 +12,8 @@
   grid-column: 1 / 3;
   grid-row: 1;
   /* 顶部与右侧保持同样的内边距，让右侧的更多菜单图标不会贴到边缘 */
-  padding: 4px 4px 8px 0;
-  margin-bottom: 12px;
+  padding: var(--space-1) var(--space-1) var(--space-2) 0;
+  margin-bottom: var(--space-3);
   border-bottom: 1px dashed var(--color-border-default);
   user-select: none;
 }
@@ -25,9 +25,9 @@
    */
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: 12px;
+  column-gap: var(--space-3);
   align-items: center;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .block-history-side-by-side-header .header-left,
@@ -40,14 +40,14 @@
   /* 右半区域内部：左边是版本，右边是 More 菜单。 */
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .block-history-side-by-side-header .header-label {
   padding-left: 1.5px;
   color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 400;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-regular);
 }
 
 .block-history-side-by-side-header .header-more-menu {
@@ -68,7 +68,7 @@
   height: 24px;
   padding: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background-color: transparent;
 }
 
@@ -89,7 +89,7 @@
   height: 16px;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: color 0.12s ease;
+  transition: color var(--duration-micro) var(--ease-standard);
 }
 
 .block-history-side-by-side-header .more-icon:hover {
@@ -102,7 +102,7 @@
 .root-block.history-side-by-side-mode {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: 12px;
+  column-gap: var(--space-3);
 }
 
 /*
@@ -146,8 +146,8 @@
 .root-block.history-side-by-side-mode > [data-root-block-shell-history-mount] > .history-timeline {
   grid-column: 1 / 3;
   grid-row: 3;
-  padding: 4px 4px 0 0;
-  margin-top: 12px;
+  padding: var(--space-1) var(--space-1) 0 0;
+  margin-top: var(--space-3);
   border-top: 1px dashed var(--color-border-default);
 }
 

@@ -4,7 +4,7 @@
 .appearance-theme-selector {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
 }
 
 .appearance-theme-option {
@@ -28,8 +28,8 @@
   border: 1px solid color-mix(in srgb, var(--color-black) 10%, transparent);
   border-radius: 50%;
   transition:
-    transform var(--transition-normal) ease,
-    box-shadow var(--transition-normal) ease;
+    transform var(--duration-medium) var(--ease-standard),
+    box-shadow var(--duration-medium) var(--ease-standard);
 }
 
 .appearance-theme-option:hover .appearance-theme-circle {

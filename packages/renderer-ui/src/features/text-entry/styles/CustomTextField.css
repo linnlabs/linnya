@@ -19,8 +19,8 @@
   font: inherit;
   outline: none;
   transition:
-    border-color var(--transition-fast),
-    background-color var(--transition-fast);
+    border-color var(--duration-micro),
+    background-color var(--duration-micro);
 }
 
 .tt-text-field__control:hover:not(:disabled) {
@@ -97,18 +97,18 @@
 
 .tt-text-field--compact:not(.tt-text-field--textarea) .tt-text-field__control {
   height: 28px;
-  padding: 0 8px;
-  font-size: 11px;
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-caption);
 }
 
 .tt-text-field--compact.tt-text-field--textarea .tt-text-field__control {
   min-height: 58px;
-  padding: 6px 8px;
-  font-size: 11px;
+  padding: var(--space-1-5) var(--space-2);
+  font-size: var(--font-size-caption);
 }
 
 .tt-text-field--clearable:not(.tt-text-field--textarea) .tt-text-field__control {
-  padding-right: var(--spacing-xl);
+  padding-right: var(--space-8);
 }
 
 .tt-text-field--clearable .tt-text-field__control::-webkit-search-cancel-button {
@@ -118,12 +118,12 @@
 .tt-text-field__clear {
   position: absolute;
   top: 50%;
-  right: var(--spacing-xs);
+  right: var(--space-1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--spacing-lg);
-  height: var(--spacing-lg);
+  width: var(--space-6);
+  height: var(--space-6);
   padding: 0;
   color: var(--color-text-tertiary);
   cursor: pointer;
@@ -144,6 +144,6 @@
 }
 
 .tt-text-field__clear > .shared-icon {
-  width: var(--spacing-md);
-  height: var(--spacing-md);
+  width: var(--space-4);
+  height: var(--space-4);
 }

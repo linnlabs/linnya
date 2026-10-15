@@ -34,7 +34,7 @@
 
 .outline-sidebar .fade-enter-active,
 .outline-sidebar .fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity var(--duration-long) var(--ease-standard);
 }
 
 .outline-sidebar .fade-enter-from,
@@ -45,12 +45,12 @@
 .outline-sidebar .fade-leave-active {
   position: absolute;
   left: 8px;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--duration-long) var(--ease-standard);
   pointer-events: none;
 }
 
 .outline-sidebar .fade-move {
-  transition: transform 0.5s ease-out;
+  transition: transform 0.5s var(--ease-enter);
 }
 
 .outline-sidebar {
@@ -64,15 +64,15 @@
   overflow-x: hidden;
   overflow-y: auto;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background-color: var(--color-bg-surface);
   opacity: 0;
   transform: translateX(-8px);
   transition:
-    opacity 0.18s ease,
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    border-radius 0.18s ease;
+    opacity var(--duration-medium) var(--ease-standard),
+    transform var(--duration-medium) var(--ease-standard),
+    box-shadow var(--duration-medium) var(--ease-standard),
+    border-radius var(--duration-medium) var(--ease-standard);
   will-change: height;
 }
 
@@ -95,7 +95,7 @@
 }
 
 .outline-sidebar.overlay.is-visible {
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   box-shadow:
     var(--shadow-lg),
     0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
@@ -105,7 +105,7 @@
   .outline-sidebar.is-visible {
     height: auto;
     max-height: min(70vh, calc(100vh - 128px));
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     box-shadow:
       var(--shadow-lg),
       0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
@@ -113,15 +113,15 @@
 
   :root.theme-transition-active .outline-sidebar {
     transition:
-      opacity 0.18s ease,
-      transform 0.18s ease,
-      box-shadow 0s ease,
-      border-radius 0.18s ease;
+      opacity var(--duration-medium) var(--ease-standard),
+      transform var(--duration-medium) var(--ease-standard),
+      box-shadow 0s var(--ease-standard),
+      border-radius var(--duration-medium) var(--ease-standard);
   }
 }
 
 .outline-empty {
-  padding: 20px;
+  padding: var(--space-5);
   color: var(--color-text-muted);
   font-style: italic;
   text-align: center;
@@ -140,7 +140,7 @@
   border-radius: 5px;
   background-color: var(--scrollbar-thumb-color);
   background-clip: content-box;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .outline-sidebar::-webkit-scrollbar-thumb:hover {

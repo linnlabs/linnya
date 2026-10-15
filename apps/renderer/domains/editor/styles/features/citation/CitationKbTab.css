@@ -1,29 +1,29 @@
 .citation-kb-tab {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .citation-kb-tab .kb-scope-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .citation-kb-tab .section-label {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .citation-kb-tab .kb-checkboxes {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .citation-kb-tab .kb-name {
-  font-size: 13px;
+  font-size: var(--font-size-body);
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -31,25 +31,25 @@
 }
 
 .citation-kb-tab .no-kbs-hint {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-tertiary);
   font-style: italic;
 }
 
 .citation-kb-tab .search-section {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .citation-kb-tab .search-input {
   flex: 1;
   height: 32px;
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--color-border-default);
-  border-radius: 4px;
-  font-size: 13px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-body);
   color: var(--color-text-primary);
-  transition: border-color 0.15s;
+  transition: border-color var(--duration-short);
 }
 
 .citation-kb-tab .search-input:focus {
@@ -63,14 +63,14 @@
 
 .citation-kb-tab .search-btn {
   height: 32px;
-  padding: 0 16px;
+  padding: 0 var(--space-4);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--color-accent);
   color: var(--color-text-on-accent);
-  font-size: 13px;
+  font-size: var(--font-size-body);
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-short);
 }
 
 .citation-kb-tab .search-btn:hover:not(:disabled) {
@@ -85,23 +85,23 @@
 .citation-kb-tab .error-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px;
+  gap: var(--space-1);
+  padding: var(--space-2);
   background: var(--color-red-50);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .citation-kb-tab .error-item {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-error);
 }
 
 .citation-kb-tab .error-kb {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .citation-kb-tab .error-msg {
-  margin-left: 4px;
+  margin-left: var(--space-1);
 }
 
 .citation-kb-tab .results-section {
@@ -113,7 +113,7 @@
   border: none;
   border-radius: 0;
   /* 预留滚动条占位，避免内容区在滚动条出现/消失时抖动。 */
-  padding: 4px 8px 4px 0;
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
   scrollbar-gutter: stable;
 }
 
@@ -129,7 +129,7 @@
 .citation-kb-tab .results-section::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
   border-radius: 5px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }
@@ -140,18 +140,18 @@
   justify-content: center;
   height: 100%;
   min-height: 150px;
-  font-size: 13px;
+  font-size: var(--font-size-body);
   color: var(--color-text-tertiary);
 }
 
 .citation-kb-tab .result-item {
-  padding: 10px 12px;
-  margin-bottom: 8px;
+  padding: var(--space-2-5) var(--space-3);
+  margin-bottom: var(--space-2);
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-light);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background var(--duration-short), border-color var(--duration-short);
 }
 
 .citation-kb-tab .result-item:last-child {
@@ -170,13 +170,13 @@
 .citation-kb-tab .result-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .citation-kb-tab .result-title {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   flex: 1;
   overflow: hidden;
@@ -186,16 +186,16 @@
 
 .citation-kb-tab .result-kb-badge {
   font-size: 10px;
-  padding: 2px 6px;
+  padding: var(--space-0-5) var(--space-1-5);
   border-radius: 10px;
   color: var(--color-text-secondary);
   flex-shrink: 0;
 }
 
 .citation-kb-tab .result-snippet {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -205,9 +205,9 @@
 
 .citation-kb-tab .result-meta {
   display: flex;
-  gap: 12px;
-  margin-top: 6px;
-  font-size: 11px;
+  gap: var(--space-3);
+  margin-top: var(--space-1-5);
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
 }
 
@@ -220,20 +220,20 @@
 .citation-kb-tab .action-section {
   display: flex;
   justify-content: flex-end;
-  padding-top: 8px;
+  padding-top: var(--space-2);
 }
 
 .citation-kb-tab .insert-btn {
   height: 32px;
-  padding: 0 20px;
+  padding: 0 var(--space-5);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--color-accent);
   color: var(--color-text-on-accent);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-short);
 }
 
 .citation-kb-tab .insert-btn:hover:not(:disabled) {

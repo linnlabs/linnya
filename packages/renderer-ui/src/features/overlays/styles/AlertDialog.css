@@ -3,7 +3,7 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  padding: 12px 32px 0;
+  padding: var(--space-3) var(--space-8) 0;
 }
 
 .alert-dialog-content .alert-dialog-copy {
@@ -11,16 +11,16 @@
   max-height: min(360px, 50vh);
   min-height: 20px;
   display: grid;
-  gap: 16px;
-  padding-right: 4px;
+  gap: var(--space-4);
+  padding-right: var(--space-1);
   overflow-y: auto;
   scrollbar-gutter: stable;
 }
 
 .alert-dialog-content .alert-dialog-message {
   color: var(--color-text-primary);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: var(--font-size-prose);
+  line-height: var(--line-height-normal);
   white-space: pre-wrap;
 }
 
@@ -30,18 +30,18 @@
 }
 
 .alert-dialog-content .alert-dialog-section h4 {
-  margin: 0 0 6px;
+  margin: 0 0 var(--space-1-5);
   color: var(--color-text-primary);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.5;
+  font-size: var(--font-size-prose);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-normal);
 }
 
 .alert-dialog-content .alert-dialog-section ul {
   margin: 0;
-  padding-left: 20px;
+  padding-left: var(--space-5);
   color: var(--color-text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   line-height: 1.6;
   list-style: disc outside;
 }
@@ -49,8 +49,8 @@
 .alert-dialog-content .alert-dialog-risk-message {
   margin: 0;
   color: var(--color-error);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: var(--font-size-prose);
+  line-height: var(--line-height-normal);
 }
 
 .alert-dialog-content .alert-dialog-copy::-webkit-scrollbar {
@@ -80,8 +80,8 @@
 .alert-dialog-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 24px 32px;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-8);
 }
 
 @media (max-width: 768px) {

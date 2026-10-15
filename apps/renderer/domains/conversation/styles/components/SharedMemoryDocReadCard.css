@@ -9,21 +9,21 @@
 .sharedmemory-doc-read-card .content-container {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .sharedmemory-doc-read-card .header-meta {
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-2-5);
 }
 
 .sharedmemory-doc-read-card .subtitle {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
   display: flex;
   width: 100%;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .sharedmemory-doc-read-card .subtitle-icon {
@@ -48,12 +48,12 @@
 
 .sharedmemory-doc-read-card .content-card {
   background-color: var(--color-bg-sidebar);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   border: 0.5px solid transparent;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: border-color 0.2s ease;
+  transition: border-color var(--duration-medium) var(--ease-standard);
 }
 
 .sharedmemory-doc-read-card .content-card:hover {
@@ -62,7 +62,7 @@
 
 .sharedmemory-doc-read-card .doc-content-wrapper {
   /* 左右留白稍微加大一档，阅读更“透气”，同时保持左右对称 */
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   max-height: 260px;
   overflow-y: auto;
   /**
@@ -70,7 +70,7 @@
    * - markstream-conversation-message.css 在 `[data-scope="conversation-message"]` 下使用 `font-size: inherit`；
    * - 因此这里通过设置容器字号，安全地让正文整体更紧凑。
    */
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   line-height: 1.65;
 }
 
@@ -93,7 +93,7 @@
 .sharedmemory-doc-read-card .doc-content-wrapper::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
   border-radius: 5px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }
@@ -105,14 +105,14 @@
 .sharedmemory-doc-read-card .error-state {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
+  gap: var(--space-2);
+  padding: var(--space-3);
   background-color: var(--color-error-bg);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   color: var(--color-error);
-  font-size: 13px;
+  font-size: var(--font-size-body);
 }
 
 .sharedmemory-doc-read-card .error-icon {
-  font-size: 14px;
+  font-size: var(--font-size-prose);
 }

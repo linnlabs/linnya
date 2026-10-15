@@ -15,14 +15,14 @@
   padding: 2rem;
   text-align: center;
   background-color: var(--color-gray-50);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
 }
 
 .image-renderer .placeholder-content {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .image-renderer .image-container {
@@ -31,7 +31,7 @@
   max-width: 100%;
   overflow: hidden;
   background-color: var(--color-gray-100);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
 }
 
 .image-renderer .image-container.single-item {
@@ -52,7 +52,7 @@
   display: block;
   width: 100%;
   height: auto;
-  transition: transform 0.3s ease;
+  transition: transform var(--duration-long) var(--ease-standard);
 }
 
 .image-renderer .single-item:not(.has-aspect-ratio) .generated-image {
@@ -90,16 +90,16 @@
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-0-5);
   padding: 3px;
   background-color: color-mix(in srgb, var(--color-black) 50%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   opacity: 0;
   visibility: hidden;
   backdrop-filter: blur(2px);
   transition:
-    opacity 0.2s ease,
-    visibility 0s ease 0.2s;
+    opacity var(--duration-medium) var(--ease-standard),
+    visibility 0s var(--ease-standard) 0.2s;
 }
 
 .image-renderer .image-container:hover .image-controls {
@@ -114,16 +114,16 @@
   justify-content: center;
   min-width: 26px;
   height: 26px;
-  padding: 3px 6px;
+  padding: 3px var(--space-1-5);
   color: color-mix(in srgb, var(--color-white) 70%, transparent);
   cursor: pointer;
   background-color: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   transition:
-    background-color 0.2s,
-    color 0.2s,
-    min-width 0.2s;
+    background-color var(--duration-medium),
+    color var(--duration-medium),
+    min-width var(--duration-medium);
 }
 
 .image-renderer .control-button:hover {
@@ -149,9 +149,9 @@
 }
 
 .image-renderer .copied-text {
-  padding: 0 2px;
-  font-size: 12px;
-  font-weight: 400;
+  padding: 0 var(--space-0-5);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-regular);
   white-space: nowrap;
 }
 
@@ -172,7 +172,7 @@
 
 .image-renderer .error-content h4 {
   margin: 0 0 0.25rem;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .image-renderer .error-content p {

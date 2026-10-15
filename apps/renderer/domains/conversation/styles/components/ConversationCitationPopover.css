@@ -13,12 +13,12 @@
   display: flex;
   flex-direction: column;
   max-height: 300px;
-  padding: 12px;
+  padding: var(--space-3);
   /* 箭头会超出浮层边界，根容器不能裁剪；内容滚动交给内部 snippet。 */
   overflow: visible;
   background: var(--citation-popover-surface);
   border: 1px solid var(--color-border-light);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 4px 16px var(--citation-popover-shadow-color);
 }
 
@@ -45,12 +45,12 @@
 
 .citation-popover .citation-loading {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: var(--space-5);
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-body);
 }
 
 .citation-popover .loading-spinner {
@@ -70,21 +70,21 @@
 
 .citation-popover .citation-error {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
-  padding: 12px;
+  padding: var(--space-3);
   color: var(--citation-popover-error-color);
-  font-size: 13px;
+  font-size: var(--font-size-body);
 }
 
 .citation-popover .error-icon {
-  font-size: 14px;
+  font-size: var(--font-size-prose);
 }
 
 .citation-popover .citation-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   /* 允许内容区在浮层 max-height 内收缩，避免长摘录撑开 Teleport 浮层。 */
   min-height: 0;
   overflow: hidden;
@@ -92,7 +92,7 @@
 
 .citation-popover .citation-header {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   justify-content: space-between;
 }
@@ -100,7 +100,7 @@
 .citation-popover .doc-info {
   display: flex;
   flex: 1;
-  gap: 6px;
+  gap: var(--space-1-5);
   align-items: center;
   min-width: 0;
 }
@@ -119,25 +119,25 @@
 .citation-popover .doc-title {
   overflow: hidden;
   color: var(--color-text-primary);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .citation-popover .page-badge {
   flex-shrink: 0;
-  padding: 2px 6px;
+  padding: var(--space-0-5) var(--space-1-5);
   color: var(--color-text-tertiary);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   background: var(--citation-popover-subtle-bg);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .citation-popover .web-open-link {
   flex-shrink: 0;
   color: var(--citation-popover-accent);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
@@ -149,10 +149,10 @@
 
 .citation-popover .web-meta-line {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .citation-popover .web-meta-left {
@@ -163,12 +163,12 @@
 
 .citation-popover .web-meta-seg {
   color: var(--color-text-tertiary);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   white-space: nowrap;
 }
 
 .citation-popover .web-meta-seg + .web-meta-seg::before {
-  margin: 0 4px;
+  margin: 0 var(--space-1);
   color: var(--color-text-placeholder);
   content: '·';
 }
@@ -176,25 +176,25 @@
 .citation-popover .web-meta-date {
   flex-shrink: 0;
   color: var(--color-text-tertiary);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   white-space: nowrap;
 }
 
 .citation-popover .citation-body {
   flex: 1;
   min-height: 0;
-  padding: 8px;
+  padding: var(--space-2);
   overflow: hidden;
   background: var(--citation-popover-subtle-bg);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
 }
 
 .citation-popover .citation-snippet {
   max-height: 200px;
   overflow-y: auto;
   color: var(--color-text-secondary);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-normal);
   word-break: break-word;
   white-space: pre-wrap;
 }
@@ -213,7 +213,7 @@
   background-clip: content-box;
   border: 2px solid transparent;
   border-radius: 5px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .citation-popover .citation-snippet:hover::-webkit-scrollbar-thumb {
@@ -225,17 +225,17 @@
 }
 
 .citation-popover .citation-empty {
-  padding: 20px;
+  padding: var(--space-5);
   color: var(--color-text-tertiary);
-  font-size: 13px;
+  font-size: var(--font-size-body);
   text-align: center;
 }
 
 .citation-popover-fade-enter-active,
 .citation-popover-fade-leave-active {
   transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
+    opacity var(--duration-short) var(--ease-standard),
+    transform var(--duration-short) var(--ease-standard);
 }
 
 .citation-popover-fade-enter-from,

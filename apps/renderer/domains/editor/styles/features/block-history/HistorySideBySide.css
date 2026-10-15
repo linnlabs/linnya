@@ -13,7 +13,7 @@
  * 避免影响主编辑器里的 ProseMirror 实例。
  */
 .history-side-by-side-panel .ProseMirror {
-  padding: 2px;
+  padding: var(--space-0-5);
   outline: none;
 }
 

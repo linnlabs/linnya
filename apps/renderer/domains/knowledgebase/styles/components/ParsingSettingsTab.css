@@ -1,5 +1,5 @@
 .config-tab {
-  padding: 0 0 0 12px;
+  padding: 0 0 0 var(--space-3);
   flex-grow: 1;
 }
 
@@ -8,19 +8,19 @@
   flex-direction: column;
   width: 100%;
   margin: 0 auto;
-  padding-bottom: 24px;
+  padding-bottom: var(--space-6);
 }
 
 .config-tab .action-btn {
   display: flex;
   align-items: center;
-  padding: 5px 12px;
+  padding: 5px var(--space-3);
   height: 28px;
   box-sizing: border-box;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s ease;
+  font-size: var(--font-size-body);
+  transition: all var(--duration-medium) var(--ease-standard);
 }
 
 .config-tab .action-btn.secondary {
@@ -37,7 +37,7 @@
 .config-tab .model-settings-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .config-tab .model-settings-btn svg {
@@ -54,13 +54,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
 }
 
 .config-tab .field-label {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--font-size-prose);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
 }
 
@@ -68,14 +68,14 @@
   /* 与通用设置页的 form-row 间距对齐，但不依赖 settings 域内部 CSS。 */
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-6);
 }
 
 .config-tab .parsing-option-item {
   display: flex;
   justify-content: space-between;
-  gap: 32px;
-  padding: 4px 0;
+  gap: var(--space-8);
+  padding: var(--space-1) 0;
 }
 
 .config-tab .option-label {
@@ -84,24 +84,24 @@
 
 .config-tab .option-title {
   display: block;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--font-size-prose);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .config-tab .scope-hint {
-  margin-left: 8px;
-  font-size: 11px;
-  font-weight: 400;
+  margin-left: var(--space-2);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-tertiary);
 }
 
 .config-tab .option-description {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-placeholder);
   margin: 0;
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
   white-space: pre-line;
 }
 
@@ -109,7 +109,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 
@@ -123,7 +123,7 @@
 }
 
 .config-tab .setting-note {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
   margin: 0;
   white-space: nowrap;

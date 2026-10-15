@@ -11,7 +11,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-sm) 0;
+  padding: var(--space-2) 0;
   max-width: var(--editor-content-max-width);
   width: 100%;
   margin: 0 auto;
@@ -21,14 +21,14 @@
 
 /* 状态项样式 */
 .status-item {
-  margin-right: var(--spacing-sm);
+  margin-right: var(--space-2);
   display: flex;
   align-items: center;
 }
 
 /* 提示项样式 */
 .hint-item {
-  margin-right: var(--spacing-sm);
+  margin-right: var(--space-2);
   display: flex;
   align-items: center;
   color: var(--color-text-placeholder);
@@ -37,7 +37,7 @@
 /* 状态图标样式 */
 .status-item .status-icon,
 .hint-item .hint-icon {
-  margin-right: var(--spacing-xs);
+  margin-right: var(--space-1);
   font-size: 0.9rem;
 }
 
@@ -51,7 +51,7 @@
 .editor-status-bar-inner a {
   color: var(--color-text-link);
   text-decoration: none;
-  transition: color var(--transition-normal);
+  transition: color var(--duration-medium);
 }
 
 /* 状态栏链接悬停效果 */

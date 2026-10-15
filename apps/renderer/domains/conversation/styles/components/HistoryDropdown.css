@@ -13,7 +13,7 @@
   box-sizing: border-box;
   width: 100%;
   height: 28px;
-  padding: 6px 10px;
+  padding: var(--space-1-5) var(--space-2-5);
 }
 
 .history-dropdown-wrapper .history-dropdown-option-label {
@@ -23,9 +23,9 @@
 }
 
 .history-dropdown-wrapper .history-dropdown-option-shortcut {
-  margin-left: 8px;
+  margin-left: var(--space-2);
   color: var(--color-text-placeholder);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   opacity: 1;
 }
 
@@ -41,19 +41,19 @@
 
 .history-dropdown-wrapper .history-dropdown-view-all-option {
   color: var(--color-accent);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .history-dropdown-wrapper .history-dropdown-view-all-option .history-dropdown-option-icon {
   width: 18px;
   height: 18px;
-  margin-right: 6px;
+  margin-right: var(--space-1-5);
   transform: translateY(0.5px);
 }
 
 .history-dropdown-fade-enter-active,
 .history-dropdown-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .history-dropdown-fade-enter-from {

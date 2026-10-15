@@ -16,7 +16,7 @@
   cursor: pointer;
   text-decoration: none;
   border-radius: 3px;
-  padding: 0 2px;
+  padding: 0 var(--space-0-5);
   display: inline-block;
   /* 中文说明：
    * - 之前 line-height: 1 + vertical-align: middle 会在块内较大行高时看起来“不居中”
@@ -37,7 +37,7 @@
    * - 仅在 hover 激活时启用过渡，实现“柔和进入，瞬间退出”。
    * - transition-delay: 60ms 用于过滤极短暂的鼠标划过（防抖）。
    */
-  transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition: background-color var(--duration-medium) var(--ease-standard), box-shadow var(--duration-medium) var(--ease-standard);
   transition-delay: 60ms;
   color: color-mix(in srgb, var(--color-info) 85%, var(--color-text-primary));
   background-color: color-mix(in srgb, var(--color-info-bg) 84%, var(--color-info));
@@ -66,7 +66,7 @@
    * 确保“进入选中态”时 citation 与块遮罩同步渐变，而不是瞬间突变。
    * 注意：退出选中态时依然走基础样式（无 transition），保持瞬间消失以防残影。
    */
-  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  transition: background-color var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard);
   background-color: var(--color-accent-bg);
   color: var(--color-accent);
   /* 中文说明：避免 hover 的 underline 干扰“块选中”的一致性 */
@@ -141,10 +141,10 @@
    * - “参考文献”这四个字需要作为分节标题适度强调，因此仅标题加粗；
    * - 条目内容（作者/标题/编号）依然保持 400，避免整段参考文献比正文更重。
    */
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   line-height: inherit;
   color: var(--color-text-primary);
-  margin: 0 0 6px 0;
+  margin: 0 0 var(--space-1-5) 0;
   padding: 0;
   border: none;
 }
@@ -163,9 +163,9 @@
  */
 .bibliography-entry {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 0;
-  margin: 0 0 6px 0;
+  margin: 0 0 var(--space-1-5) 0;
   font-size: inherit;
   line-height: inherit;
   /* 主文本颜色跟随正文 */
@@ -184,7 +184,7 @@
   flex-shrink: 0;
   min-width: 28px;
   /* 中文说明：编号不做加粗，避免整段参考文献“比正文更重” */
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-secondary);
 }
 
@@ -200,7 +200,7 @@
  */
 .bibliography-entry-title {
   /* 中文说明：条目标题保持正文权重；强调交给颜色/布局，而不是字重 */
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-primary);
 }
 
@@ -264,7 +264,7 @@
   right: 0;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard);
 }
 
 .bibliography-block:hover .bibliography-actions {
@@ -275,12 +275,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px 6px;
-  font-size: 12px;
+  padding: var(--space-0-5) var(--space-1-5);
+  font-size: var(--font-size-footnote);
   color: var(--color-text-tertiary);
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
