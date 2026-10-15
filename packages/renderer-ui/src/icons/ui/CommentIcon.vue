@@ -4,19 +4,26 @@
  * “有评论”图标组件
 -->
 <template>
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-    <path d="M12.62,16.2h6.12c1.12,0,2-.88,2-2V5.83c0-1.12-.88-2-2-2H5.25c-1.12,0-2,.88-2,2v8.37c0,1.12.88,2,2,2h2v4h0l5.37-4h0ZM8,21.2c-.5.37-1.38.25-1.75-.25-.13-.25-.25-.5-.25-.75v-2.75h-.75c-1.75,0-3.25-1.38-3.25-3.25V5.83c0-1.75,1.5-3.25,3.25-3.25h13.5c1.75,0,3.25,1.37,3.25,3.25v8.37c0,1.75-1.5,3.25-3.25,3.25h-5.75l-5,3.75h0Z" fill="currentColor" stroke-width="0"/>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+  >
     <g>
-      <g>
-        <rect x="6.54" y="11.82" width="6.44" height=".8" fill="currentColor" stroke-width="0"/>
-        <circle cx="13.03" cy="12.22" r=".4" fill="currentColor" stroke-width="0"/>
-        <circle cx="6.54" cy="12.22" r=".4" fill="currentColor" stroke-width="0"/>
-      </g>
-      <g>
-        <rect x="6.54" y="7.43" width="10.91" height=".8" fill="currentColor" stroke-width="0"/>
-        <circle cx="17.46" cy="7.83" r=".4" fill="currentColor" stroke-width="0"/>
-        <circle cx="6.54" cy="7.83" r=".4" fill="currentColor" stroke-width="0"/>
-      </g>
+      <path
+        d="M12.72,11.69h-5.12c-.26,0-.47.21-.47.47s.21.47.47.47h5.12c.26,0,.47-.21.47-.47s-.21-.47-.47-.47Z"
+        fill="currentColor"
+        stroke-width="0"
+      />
+      <path
+        d="M16.32,8.17H7.6c-.26,0-.47.21-.47.47s.21.47.47.47h8.72c.26,0,.47-.21.47-.47s-.21-.47-.47-.47Z"
+        fill="currentColor"
+        stroke-width="0"
+      />
     </g>
+    <path
+      d="M12.48,15.34h4.92c.9,0,1.6-.71,1.6-1.57v-6.71c0-.85-.7-1.57-1.6-1.57H6.6c-.9,0-1.6.71-1.6,1.57v6.71c0,.85.7,1.57,1.6,1.57h1.6v3.16h0s4.28-3.16,4.28-3.16h0ZM8.8,19.3c-.44.33-1.07.24-1.4-.2-.13-.17-.2-.38-.2-.59v-2.17h-.6c-1.44,0-2.6-1.15-2.6-2.57v-6.71c0-1.42,1.16-2.57,2.6-2.57h10.8c1.44,0,2.6,1.15,2.6,2.57v6.71c0,1.42-1.16,2.57-2.6,2.57h-4.59l-4.01,2.96h0Z"
+      fill="currentColor"
+      stroke-width="0"
+    />
   </svg>
 </template> 
