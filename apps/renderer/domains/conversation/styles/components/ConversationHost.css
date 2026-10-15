@@ -6,8 +6,12 @@
   --conversation-timeline-visible-height: 100%;
   --conversation-content-column-max-width: 800px;
   --conversation-content-side-gap: 22px;
-  --conversation-footer-mask-bg: var(--color-bg-surface);
-  --conversation-footer-mask-entry-depth: 14px;
+  /*
+   * 宿主背景是消息画布、输入区背板与渐隐的唯一来源；所在页面只覆盖这个变量，
+   * 避免暗色下画布、背板和页面出现不同底色的接缝。
+   */
+  --conversation-host-bg: var(--color-bg-surface);
+  --conversation-footer-fade-height: var(--space-6);
 
   container-type: inline-size;
   display: flex;
@@ -16,7 +20,7 @@
   overflow: hidden;
   width: 100%;
   height: 100%;
-  background-color: var(--color-bg-surface);
+  background-color: var(--conversation-host-bg);
 }
 
 .conversation-host-viewport {
@@ -122,14 +126,16 @@
   position: relative;
   z-index: 1;
   flex-shrink: 0;
-  background-color: var(--color-bg-surface);
+  background-color: var(--conversation-host-bg);
 }
 
 .conversation-host[data-conversation-content-state='filled'] .panel-footer {
   /*
    * 非空对话里视觉仍保持“输入框浮在消息历史上”，但遮挡边界不能交给 scroll JS。
-   * 这里用 sticky 背板遮住 footer 下半区，保证快速滚动时合成器同帧裁掉消息。
+   * footer 顶部预留渐隐带，sticky 背板从透明过渡到宿主背景，消息在到达输入框前淡出；
+   * 合成器仍在同帧裁掉快速滚动的消息。
    */
+  padding-top: var(--conversation-footer-fade-height);
   background: transparent;
   isolation: isolate;
 }
@@ -137,10 +143,14 @@
 .conversation-host[data-conversation-content-state='filled'] .panel-footer::before {
   content: '';
   position: absolute;
-  inset: var(--conversation-footer-mask-entry-depth) 0 0;
+  inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: var(--conversation-footer-mask-bg);
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--conversation-host-bg) var(--conversation-footer-fade-height)
+  );
 }
 
 .conversation-host[data-conversation-content-state='filled'] .panel-footer > .conversation-footer-shell {
@@ -165,10 +175,14 @@
 }
 
 .conversation-host[data-conversation-content-state='filled'] .panel-footer > .conversation-scroll-to-bottom {
-  right: max(
-    var(--conversation-content-side-gap),
-    calc((100% - var(--conversation-content-column-max-width)) / 2 + var(--conversation-content-side-gap))
-  );
+  /*
+   * 有内容时按钮居中落在渐隐带上，只覆盖正在淡出的消息，不压住正文右侧的可读行。
+   * 用 left/right + auto margin 居中，按钮自身的 hover 与进出场 transform 保持不变。
+   */
+  right: 0;
+  bottom: calc(100% - var(--conversation-footer-fade-height) + var(--space-2));
+  left: 0;
+  margin-inline: auto;
 }
 
 .conversation-host-viewport[data-conversation-scroll-viewport='true'] .panel-footer {

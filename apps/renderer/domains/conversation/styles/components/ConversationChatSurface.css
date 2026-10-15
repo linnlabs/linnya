@@ -87,9 +87,10 @@
 }
 
 .conversation-chat-surface .conversation-chat-host {
+  --conversation-host-bg: var(--color-bg-default);
+
   flex: 1;
   min-height: 0;
-  background-color: var(--color-bg-default);
 }
 
 .conversation-chat-surface .conversation-footer-shell {

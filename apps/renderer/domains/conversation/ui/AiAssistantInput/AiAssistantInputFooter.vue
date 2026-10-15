@@ -67,7 +67,10 @@
         >
           <div
             class="select-trigger select-trigger--minimal agent-choice-trigger"
-            :class="{ 'is-disabled': isInputControlsDisabled }"
+            :class="{
+              'is-disabled': isInputControlsDisabled,
+              'is-unavailable': isActiveAgentChoiceUnavailable,
+            }"
             role="button"
             :aria-label="activeAgentChoiceAriaLabel"
             :title="activeAgentChoiceAriaLabel"
@@ -201,6 +204,7 @@ const props = defineProps({
     type: String as PropType<string | null>,
     default: null,
   },
+  isActiveAgentChoiceUnavailable: { type: Boolean, default: false },
   primaryModelValue: {
     type: String as PropType<string | null>,
     default: null,

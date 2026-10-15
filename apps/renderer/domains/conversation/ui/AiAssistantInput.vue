@@ -64,6 +64,7 @@
           :active-agent-choice-id="activeAgentChoiceId"
           :active-agent-choice-pill-text="activeAgentChoicePillText"
           :active-agent-choice-aria-label="activeAgentChoiceAriaLabel"
+          :is-active-agent-choice-unavailable="isActiveAgentChoiceUnavailable"
           :primary-model-value="primaryModelValue"
           :model-select-options="modelSelectOptions"
           :primary-action="primaryAction"
@@ -381,6 +382,11 @@ const activeConversationAgentChoice = computed(() =>
 const activeAgentChoiceId = computed<ConversationAgentChoiceId | null>(() => {
   return activeConversationAgentChoice.value?.id ?? null;
 });
+/** 会话记录的 Agent 已不在可用选项中：仍展示提示，但按警示状态而非选中状态呈现。 */
+const isActiveAgentChoiceUnavailable = computed(() =>
+  activeConversationAgentChoice.value === null
+  && Boolean(assistantStore.activeConversation?.selectedAgentId)
+);
 const activeAgentChoicePillText = computed(() => {
   const agentChoice = activeConversationAgentChoice.value;
   return agentChoice

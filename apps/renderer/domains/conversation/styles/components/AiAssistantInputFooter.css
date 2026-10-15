@@ -223,6 +223,30 @@
   cursor: not-allowed;
 }
 
+/*
+ * 已不可用的 Agent 是需要用户处理的警示，不能沿用“已选中”的强调色。
+ * 没有可展示的 Agent 图标，关闭入口常显，提示用户关闭或重新选择。
+ */
+.ai-assistant-input-footer .selector-group--agent-choice .agent-choice-trigger.is-unavailable {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.ai-assistant-input-footer .agent-choice-trigger.is-unavailable .agent-choice-trigger-close {
+  color: var(--color-warning-text);
+  pointer-events: auto;
+}
+
+.ai-assistant-input-footer .selector-group--agent-choice .agent-choice-trigger.is-unavailable .agent-choice-trigger-close:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-warning) 22%, transparent);
+  color: var(--color-warning-text);
+}
+
+.ai-assistant-input-footer .agent-choice-trigger.is-unavailable .agent-choice-trigger-icon--hover {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
 .ai-assistant-input-footer .agent-choice-trigger-text {
   white-space: nowrap;
 }
