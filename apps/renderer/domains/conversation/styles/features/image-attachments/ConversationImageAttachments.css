@@ -59,7 +59,7 @@
 }
 
 .conversation-image-draft-item__status.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background: color-mix(in srgb, var(--color-error-bg) 90%, var(--color-bg-surface));
 }
 
@@ -135,7 +135,7 @@
   margin: 0;
   font-size: var(--font-size-xs);
   line-height: var(--line-height-normal);
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .conversation-image-attachment-picker {
@@ -184,7 +184,7 @@
 }
 
 .ai-assistant-input__image-drop-overlay.is-blocked {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background: color-mix(in srgb, var(--color-error-bg) 92%, transparent);
   border-color: var(--color-error);
 }
@@ -271,7 +271,7 @@
 .conversation-image-gallery__status.is-error {
   flex-direction: column;
   gap: var(--space-1);
-  color: var(--color-error);
+  color: var(--color-error-text);
   cursor: pointer;
 }
 
@@ -363,7 +363,7 @@
   min-width: 0;
   overflow: hidden;
   font-size: var(--font-size-xs);
-  color: var(--color-error);
+  color: var(--color-error-text);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

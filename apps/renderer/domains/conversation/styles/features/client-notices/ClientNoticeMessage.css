@@ -1,6 +1,6 @@
 .client-notice {
   padding: var(--space-2) 0;
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: var(--font-size-body);
   line-height: 1.6;
 }

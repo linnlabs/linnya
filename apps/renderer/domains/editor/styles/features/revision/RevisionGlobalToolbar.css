@@ -51,15 +51,15 @@
 }
 
 .revision-global-toolbar .summary-insert {
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .revision-global-toolbar .summary-delete {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .revision-global-toolbar .summary-warning {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
   font-weight: var(--font-weight-medium);
 }
 
@@ -87,7 +87,7 @@
 }
 
 .revision-global-toolbar .accept-btn {
-  color: var(--color-success);
+  color: var(--color-success-text);
   background-color: var(--color-success-bg);
 }
 
@@ -100,7 +100,7 @@
 }
 
 .revision-global-toolbar .reject-btn {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background-color: var(--color-error-bg);
 }
 

@@ -93,7 +93,7 @@
 
 .citation-kb-tab .error-item {
   font-size: var(--font-size-footnote);
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .citation-kb-tab .error-kb {

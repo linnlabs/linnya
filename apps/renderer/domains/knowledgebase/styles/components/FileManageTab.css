@@ -120,7 +120,7 @@
 }
 
 .manage-tab .parse-status-badge.is-partial {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
   background: var(--color-warning-bg);
 }
 
@@ -141,11 +141,11 @@
 }
 
 .manage-tab .continue-btn {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .manage-tab .continue-btn:hover {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .manage-tab .continue-btn:disabled,
@@ -155,11 +155,11 @@
 }
 
 .manage-tab .warning-btn {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .manage-tab .warning-btn:hover {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .manage-tab .col-actions {

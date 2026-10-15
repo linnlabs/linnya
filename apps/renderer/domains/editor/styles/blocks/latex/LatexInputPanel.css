@@ -71,7 +71,7 @@
 
 .latex-panel-error {
   width: 100%;
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: 0.75em;
   text-align: left;
 }

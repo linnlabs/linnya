@@ -172,7 +172,7 @@
 
 .project-kb-section .remove-btn:hover {
   background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .project-kb-section .column-empty {

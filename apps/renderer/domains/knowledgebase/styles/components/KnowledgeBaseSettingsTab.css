@@ -383,7 +383,7 @@
 .kb-settings-tab .danger-section-title {
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-error);
+  color: var(--color-error-text);
   padding-left: var(--space-1);
 }
 
@@ -400,7 +400,7 @@
   font-size: var(--font-size-footnote);
   border-radius: var(--radius-sm);
   background-color: var(--color-error-bg);
-  color: var(--color-error);
+  color: var(--color-error-text);
   cursor: pointer;
   transition: background-color var(--duration-short) var(--ease-standard), border-color var(--duration-short) var(--ease-standard),
     color var(--duration-short) var(--ease-standard), transform var(--duration-micro) var(--ease-standard);
@@ -408,7 +408,7 @@
 
 .kb-settings-tab .danger-delete-btn:hover:not(:disabled) {
   background-color: color-mix(in srgb, var(--color-error-bg) 72%, var(--color-error));
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .kb-settings-tab .danger-delete-btn:disabled {

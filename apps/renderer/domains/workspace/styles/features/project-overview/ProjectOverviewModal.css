@@ -63,7 +63,7 @@
 .project-overview-error-text {
   margin: calc(var(--space-2) * -1) 0 var(--space-4);
   font-size: var(--font-size-footnote);
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .project-overview-divider {

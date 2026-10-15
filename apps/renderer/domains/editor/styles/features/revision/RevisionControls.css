@@ -69,7 +69,7 @@
 
 .revision-toolbar .accept-btn,
 .revision-mark-popup .popup-btn.accept {
-  color: var(--color-success);
+  color: var(--color-success-text);
   background-color: var(--color-success-bg);
 }
 
@@ -89,7 +89,7 @@
 
 .revision-toolbar .reject-btn,
 .revision-mark-popup .popup-btn.reject {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background-color: var(--color-error-bg);
 }
 
@@ -135,11 +135,11 @@
 }
 
 .revision-indicator .indicator-insert {
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .revision-indicator .indicator-delete {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .revision-indicator .indicator-separator,
@@ -148,7 +148,7 @@
 }
 
 .revision-indicator .indicator-pending {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .revision-indicator .indicator-time {

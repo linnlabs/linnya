@@ -69,5 +69,5 @@
 }
 
 .todo-sidebar .section-header .text-success {
-  color: var(--color-success);
+  color: var(--color-success-text);
 }

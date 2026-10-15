@@ -75,7 +75,7 @@
    */
   border: 0.5px solid var(--color-info);
   /* 默认态用低饱和的 info 文案色：避免使用高饱和的 info-color 抢过“新建知识库”的品牌绿 */
-  color: var(--color-info);
+  color: var(--color-info-text);
 }
 
 .kb-list-view .global-upload-btn:hover {

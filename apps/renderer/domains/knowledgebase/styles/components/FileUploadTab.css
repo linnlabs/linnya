@@ -58,7 +58,7 @@
 }
 
 .upload-tab .warning-text {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .upload-tab label {
@@ -259,23 +259,23 @@
 
 .upload-tab .status-text.status-processing,
 .upload-tab .status-text.status-uploading {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
   background-color: var(--color-warning-bg);
 }
 
 .upload-tab .status-text.status-failed,
 .upload-tab .status-text.status-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background-color: var(--color-error-bg);
 }
 
 .upload-tab .status-text.status-completed {
-  color: var(--color-success);
+  color: var(--color-success-text);
   background-color: var(--color-success-bg);
 }
 
 .upload-tab .status-text.status-duplicate {
-  color: var(--color-info);
+  color: var(--color-info-text);
   background-color: var(--color-info-bg);
 }
 
@@ -316,7 +316,7 @@
 
 .upload-tab .error-details {
   font-size: var(--font-size-footnote);
-  color: var(--color-error);
+  color: var(--color-error-text);
   text-align: center;
 }
 

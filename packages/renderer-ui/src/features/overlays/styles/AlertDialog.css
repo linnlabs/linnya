@@ -48,7 +48,7 @@
 
 .alert-dialog-content .alert-dialog-risk-message {
   margin: 0;
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: var(--font-size-prose);
   line-height: var(--line-height-normal);
 }

@@ -120,7 +120,7 @@
   padding: var(--space-2-5);
   background-color: var(--color-error-bg);
   border-radius: var(--radius-md);
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: var(--font-size-body);
 }
 

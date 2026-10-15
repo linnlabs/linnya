@@ -189,17 +189,17 @@
 
 .tool-calls-message .tool-card__tag--success {
   background-color: var(--color-success-bg);
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .tool-calls-message .tool-card__tag--warning {
   background-color: var(--color-warning-bg);
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .tool-calls-message .tool-card__tag--info {
   background-color: var(--color-info-bg);
-  color: var(--color-info);
+  color: var(--color-info-text);
 }
 
 .tool-calls-message .tool-card__header:not(.tool-card__header--no-hover):hover .tool-card__tag--success {

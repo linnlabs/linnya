@@ -109,7 +109,7 @@
   padding: var(--space-3);
   background-color: var(--color-error-bg);
   border-radius: var(--radius-lg);
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: var(--font-size-body);
 }
 

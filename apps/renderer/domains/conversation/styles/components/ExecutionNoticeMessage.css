@@ -5,7 +5,7 @@
   padding: var(--space-1) 0;
 }
 .execution-notice--failed {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 .execution-notice .execution-notice__time {
   margin-inline-start: var(--space-2);

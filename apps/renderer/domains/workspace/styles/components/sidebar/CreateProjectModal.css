@@ -28,7 +28,7 @@
 }
 
 .create-project-content .required {
-  color: var(--color-error);
+  color: var(--color-error-text);
   margin-left: var(--space-0-5);
 }
 
@@ -112,7 +112,7 @@
 }
 
 .create-project-content .error-message {
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: var(--font-size-footnote);
   margin-top: 15px;
   padding: var(--space-2) var(--space-3);

@@ -34,7 +34,7 @@
 .inline-latex-source-error {
   font-family: var(--font-family-mono); /* Use monospace for source */
   font-size: 0.9em;
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 /* Simple error indicator */
@@ -42,7 +42,7 @@
   display: inline-block;
   margin-left: 3px;
   font-size: 0.8em;
-  color: var(--color-error);
+  color: var(--color-error-text);
   cursor: help; /* Indicate more info on hover (via title) */
 }
 

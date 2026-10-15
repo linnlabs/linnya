@@ -27,7 +27,7 @@
 }
 
 .summary-message .success-icon {
-  color: var(--color-success);
+  color: var(--color-success-text);
   font-weight: bold;
   font-size: var(--font-size-footnote);
   width: 14px;
@@ -38,7 +38,7 @@
 }
 
 .summary-message .error-icon {
-  color: var(--color-error);
+  color: var(--color-error-text);
   width: 14px;
   height: 14px;
   display: inline-flex;
@@ -60,17 +60,17 @@
 
 .summary-message.summary-status-summarizing .summary-content {
   background-color: var(--color-info-bg);
-  color: var(--color-info);
+  color: var(--color-info-text);
 }
 
 .summary-message.summary-status-completed .summary-content {
   background-color: var(--color-success-bg);
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .summary-message.summary-status-error .summary-content {
   background-color: var(--color-error-bg);
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .summary-message.is-loading .summary-content {

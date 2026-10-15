@@ -92,7 +92,7 @@
 }
 
 .review-agent-creator-view .field-counter.is-over {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .review-agent-creator-view .field-control {

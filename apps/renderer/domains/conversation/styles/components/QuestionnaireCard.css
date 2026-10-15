@@ -22,7 +22,7 @@
 .ask-questions-card .global-error {
   margin: var(--space-2) 0 var(--space-3);
   font-size: var(--font-size-footnote);
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .ask-questions-card .empty-state {

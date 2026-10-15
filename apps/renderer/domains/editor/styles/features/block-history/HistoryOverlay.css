@@ -145,11 +145,11 @@
 }
 
 .history-overlay .origin-manual {
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .history-overlay .origin-restore {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .overlay-fade-enter-active,

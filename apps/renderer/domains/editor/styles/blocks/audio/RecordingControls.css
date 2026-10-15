@@ -20,16 +20,16 @@
   flex-shrink: 0;
   width: 24px;
   height: 24px;
-  color: var(--color-error);
+  color: var(--color-error-text);
   transition: color var(--duration-medium) var(--ease-standard);
 }
 
 .recording-controls.is-ready .icon {
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .recording-controls.is-recording .icon {
-  color: var(--color-info);
+  color: var(--color-info-text);
 }
 
 .recording-controls .status-text {
@@ -43,11 +43,11 @@
 
 .recording-controls .recording-indicator {
   margin-right: 5px;
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .recording-controls.is-paused .recording-indicator {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .recording-controls .recording-time {
@@ -60,7 +60,7 @@
 }
 
 .recording-controls .recording-time.near-limit {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -78,7 +78,7 @@
   justify-content: center;
   width: 22px;
   height: 22px;
-  color: var(--color-warning);
+  color: var(--color-warning-text);
   cursor: pointer;
   animation: recording-controls-limit-pulse 1.5s infinite;
 }
@@ -121,7 +121,7 @@
 
 .recording-controls .error-text {
   overflow: hidden;
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: var(--font-size-prose);
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -107,7 +107,7 @@
 .table-ai-context .table-ai-tag.output-column-display-tag {
   border-color: var(--table-ai-output-border);
   background-color: var(--color-warning-bg);
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .table-ai-context .table-ai-tag.output-column-display-tag:hover {

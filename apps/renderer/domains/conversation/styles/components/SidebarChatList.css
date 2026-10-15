@@ -19,7 +19,7 @@
 }
 
 .sidebar-chat-list .chat-list-state.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .sidebar-chat-list .chat-list-status-slot {

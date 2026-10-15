@@ -828,7 +828,7 @@
 }
 
 .asset-preview-state.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .sidebar-asset-image-preview .sidebar-asset-preview-state {
@@ -842,7 +842,7 @@
 }
 
 .sidebar-asset-image-preview .sidebar-asset-preview-state.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .asset-text-preview-panel {

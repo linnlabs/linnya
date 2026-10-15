@@ -132,17 +132,17 @@
 
 .editor-citation-popover .source-badge.knowledge_base {
   background-color: var(--color-info-bg);
-  color: var(--color-info);
+  color: var(--color-info-text);
 }
 
 .editor-citation-popover .source-badge.web {
   background-color: var(--color-success-bg);
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .editor-citation-popover .source-badge.manual {
   background-color: var(--color-warning-bg);
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .editor-citation-popover .popover-footer {
@@ -173,7 +173,7 @@
 
 .editor-citation-popover .popover-btn.primary {
   /* 引用相关的“蓝色语义”统一使用 info 色系。 */
-  color: var(--color-info);
+  color: var(--color-info-text);
 }
 
 .editor-citation-popover .popover-btn.primary:hover {

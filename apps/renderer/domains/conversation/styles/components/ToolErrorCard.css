@@ -15,7 +15,7 @@
 .tool-error-card__message {
   flex: 1;
   min-width: 0;
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: var(--font-size-footnote);
   line-height: 1.4;
   white-space: pre-wrap;

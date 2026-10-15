@@ -177,7 +177,7 @@
   padding: 1px var(--space-1-5);
   font-size: var(--font-size-caption);
   line-height: 1.6;
-  color: var(--color-warning);
+  color: var(--color-warning-text);
   background-color: var(--color-warning-bg);
   border-radius: var(--radius-sm);
 }
@@ -192,7 +192,7 @@
   .settings-choice-name,
   .settings-choice-description
 ) {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 /* --- Actions --- */
@@ -246,7 +246,7 @@
 }
 
 .settings-inline-button.is-danger:hover:not(:disabled) {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 /* --- 外链按钮（「去这里申请 API Key」） --- */
@@ -307,11 +307,11 @@
 }
 
 .settings-feedback.is-success {
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .settings-feedback.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .settings-feedback.is-info {
@@ -335,7 +335,7 @@
 
 .settings-state.is-error,
 .settings-state.is-unavailable {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
 }
 

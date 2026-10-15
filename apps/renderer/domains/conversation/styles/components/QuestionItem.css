@@ -26,7 +26,7 @@
 .ask-question-item .required-indicator {
   flex-shrink: 0;
   font-weight: var(--font-weight-semibold);
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .ask-question-item .question-content {
@@ -162,7 +162,7 @@
   align-items: center;
   margin-top: var(--space-1);
   font-size: var(--font-size-caption);
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .ask-question-item .validation-error::before {

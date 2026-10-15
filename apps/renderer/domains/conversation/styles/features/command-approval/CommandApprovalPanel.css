@@ -114,7 +114,7 @@
 }
 
 .command-approval-reason {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .command-approval-remembered-prefix {

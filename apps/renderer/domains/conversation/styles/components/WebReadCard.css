@@ -69,7 +69,7 @@
 }
 
 .web-read-card .wr-info-seg--warn {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .web-read-card .wr-snippet {

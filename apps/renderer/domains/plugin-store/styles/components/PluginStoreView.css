@@ -300,13 +300,13 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1-5);
-  color: var(--color-error);
+  color: var(--color-error-text);
   background-color: transparent;
 }
 
 .plugin-store-view
   .plugin-store-uninstall-button:disabled {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background-color: transparent;
   opacity: 0.45;
 }

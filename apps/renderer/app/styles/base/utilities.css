@@ -49,19 +49,19 @@
 }
 
 .text-success {
-  color: var(--color-success) !important;
+  color: var(--color-success-text) !important;
 }
 
 .text-info {
-  color: var(--color-info) !important;
+  color: var(--color-info-text) !important;
 }
 
 .text-warning {
-  color: var(--color-warning) !important;
+  color: var(--color-warning-text) !important;
 }
 
 .text-danger {
-  color: var(--color-error) !important;
+  color: var(--color-error-text) !important;
 }
 
 .text-muted {

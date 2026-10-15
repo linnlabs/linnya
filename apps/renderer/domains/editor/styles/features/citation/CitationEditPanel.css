@@ -29,7 +29,7 @@
 }
 
 .citation-edit-form .form-label.required::after {
-  color: var(--color-error);
+  color: var(--color-error-text);
   content: ' *';
 }
 
@@ -112,7 +112,7 @@
 
 .citation-edit-form .form-error {
   display: block;
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: var(--font-size-footnote);
 }
 
@@ -122,7 +122,7 @@
   gap: var(--space-2);
   padding: var(--space-2-5) var(--space-3);
   margin-bottom: var(--space-4);
-  color: var(--color-info);
+  color: var(--color-info-text);
   font-size: var(--font-size-body);
   background-color: var(--color-info-bg);
   border-radius: var(--radius-md);

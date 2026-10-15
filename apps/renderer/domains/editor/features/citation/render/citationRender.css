@@ -12,7 +12,7 @@
  */
 .citation-mark {
   /* 中文说明：引用的“蓝色语义”统一使用 functional.css 的 info 色系 */
-  color: var(--color-info);
+  color: var(--color-info-text);
   cursor: pointer;
   text-decoration: none;
   border-radius: 3px;
@@ -223,7 +223,7 @@
  */
 .bibliography-entry-url {
   /* 中文说明：参考文献里的 URL 也跟随 info 色系 */
-  color: var(--color-info);
+  color: var(--color-info-text);
   cursor: pointer;
   text-decoration: none;
   word-break: break-all;

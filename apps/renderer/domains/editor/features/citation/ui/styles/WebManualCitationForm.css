@@ -34,7 +34,7 @@
 }
 
 .web-manual-citation-form .form-label.required::after {
-  color: var(--color-error);
+  color: var(--color-error-text);
   content: ' *';
 }
 
@@ -82,7 +82,7 @@
 }
 
 .web-manual-citation-form .form-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: var(--font-size-caption);
 }
 

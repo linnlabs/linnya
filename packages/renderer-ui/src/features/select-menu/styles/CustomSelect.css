@@ -343,7 +343,7 @@
 
 .custom-select__options .select-option.is-danger .option-label,
 .custom-select__submenu .select-option.is-danger .option-label {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .custom-select__options .select-group-title,

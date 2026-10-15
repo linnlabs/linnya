@@ -94,7 +94,7 @@
 }
 
 .command-execution-card__warning {
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: var(--font-size-footnote);
 }
 
@@ -137,16 +137,16 @@
 
 .command-execution-card__status.is-running,
 .command-execution-card__status.is-starting {
-  color: var(--color-info);
+  color: var(--color-info-text);
 }
 
 .command-execution-card__status.is-completed {
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .command-execution-card__status.is-rejected,
 .command-execution-card__status.is-failed {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .command-execution-card__cancel,
@@ -194,9 +194,9 @@
 }
 
 .command-execution-card__copy.is-copied {
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .command-execution-card__copy.is-failed {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }

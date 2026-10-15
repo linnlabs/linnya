@@ -95,7 +95,7 @@
   min-width: 0;
 }
 .document-history-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
   margin-bottom: var(--space-2);
 }
 @media (max-width: 700px) {

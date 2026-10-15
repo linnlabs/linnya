@@ -11,5 +11,5 @@
 .latex-render-error,
 .katex-render-error {
   font-weight: 700;
-  color: var(--color-error);
+  color: var(--color-error-text);
 }

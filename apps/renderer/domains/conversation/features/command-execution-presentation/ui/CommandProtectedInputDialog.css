@@ -42,7 +42,7 @@
 }
 
 .command-protected-input__error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .command-protected-input__actions {

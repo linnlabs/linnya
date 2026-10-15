@@ -21,7 +21,7 @@
 
 .raw-text-renderer .error-state {
   gap: var(--space-2);
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .raw-text-renderer .empty-state {
