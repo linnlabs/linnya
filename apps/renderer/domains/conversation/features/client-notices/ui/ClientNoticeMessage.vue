@@ -23,7 +23,3 @@ const props = defineProps<{ message: ClientNoticeMessage }>();
 const { conversationMessage } = useConversationLocalization();
 const text = computed(() => clientNoticeText(props.message.metadata, conversationMessage));
 </script>
-<style scoped>
-.client-notice { padding: 8px 0; color: var(--color-error, #d14343); font-size: 13px; line-height: 1.6; }
-.client-notice-sync { color: var(--color-text-secondary, #777); font-size: 12px; }
-</style>

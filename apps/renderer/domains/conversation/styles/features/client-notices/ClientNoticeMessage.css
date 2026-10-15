@@ -1,0 +1,11 @@
+.client-notice {
+  padding: 8px 0;
+  color: var(--color-error);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.client-notice .client-notice-sync {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}

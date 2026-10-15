@@ -10,10 +10,19 @@
 .text-selection-toolbar .heading-menu-fade-leave-active {
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
-.text-selection-toolbar .heading-menu-fade-enter-from { opacity: 0; transform: translateY(-8px); }
-.text-selection-toolbar .heading-menu-fade-leave-to { opacity: 0; transform: translateY(-4px); }
+.text-selection-toolbar .heading-menu-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+.text-selection-toolbar .heading-menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
 .text-selection-toolbar .heading-menu-fade-enter-to,
-.text-selection-toolbar .heading-menu-fade-leave-from { opacity: 1; transform: translateY(0); }
+.text-selection-toolbar .heading-menu-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
 
 .text-selection-toolbar .format-buttons {
   display: flex;

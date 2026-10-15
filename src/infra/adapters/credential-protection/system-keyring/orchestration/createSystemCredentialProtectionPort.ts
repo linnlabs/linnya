@@ -95,7 +95,7 @@ export function createSystemCredentialProtectionPort(input: {
 async function readStoredMasterKey(
   entry: SystemKeyringEntry,
 ): Promise<string | undefined> {
-  let secret: Uint8Array | undefined;
+  let secret: Awaited<ReturnType<SystemKeyringEntry['getSecret']>>;
   try {
     secret = await entry.getSecret();
   } catch {

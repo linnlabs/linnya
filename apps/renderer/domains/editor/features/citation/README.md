@@ -65,6 +65,9 @@ Editor 块复制/剪切仍为外部应用输出语义 HTML，但其中的 Citati
 序列化，不能先降成 Markdown token 再猜回来源。纯文本剪贴板保留 canonical token；富 HTML 同时携带完整
 快照，粘贴处理器不得让纯文本 Markdown 抢占它。字面量 `[@ref]` 不会因此被升级成 CitationNode。
 
+剪贴板业务测试直接复用生产 `BaseBlock` 与 `plainTextMarkdownHandler`。这两个 JS 模块的相邻
+`.d.ts` 声明维护其公开类型；修改扩展选项或粘贴输入时须同步声明，不能用测试专用 schema 替代真实链路。
+
 ## 派生与状态边界
 
 - `citationDerivation.ts`：纯函数扫描 CitationNode，按 `sourceId` 生成编号和 bibliography entries。

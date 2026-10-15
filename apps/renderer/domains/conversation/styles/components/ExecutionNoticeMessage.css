@@ -1,0 +1,25 @@
+.execution-notice {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 4px 0;
+}
+.execution-notice--failed {
+  color: var(--color-error);
+}
+.execution-notice .execution-notice__time {
+  margin-inline-start: 8px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+.execution-notice .execution-notice__details {
+  font-size: 11px;
+}
+.execution-notice .execution-notice__details summary {
+  cursor: pointer;
+}
+.execution-notice .execution-notice__details code,
+.execution-notice .execution-notice__details span {
+  display: block;
+  overflow-wrap: anywhere;
+}

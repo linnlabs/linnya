@@ -25,6 +25,7 @@ import {
   requireCitationRefAllocator,
   requireCitationSequenceOffset,
   requireCitationSourceResolver,
+  type CitationSourceResolverPort,
 } from '../../../../domains/citation';
 
 function createRuntimeEvent(id: string): RuntimeEvent {
@@ -133,7 +134,10 @@ describe('derivePluginAwareToolContext', () => {
       conversationId: 'conversation-1',
       turnId: 'turn-1',
     }) as ToolContext;
-    const resolver = { resolveSources: async () => [] };
+    const resolver: CitationSourceResolverPort = {
+      resolveSources: async () => [],
+      resolveSourcesByUrl: async () => [],
+    };
     const allocator = { allocate: async () => [] };
     attachCitationSequence(source, { offset: 7 });
     attachCitationRefAllocator(source, allocator);

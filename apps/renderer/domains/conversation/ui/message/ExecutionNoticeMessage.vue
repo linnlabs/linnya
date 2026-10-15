@@ -5,10 +5,13 @@
     role="status"
     aria-live="polite"
   >
-    <ExecutionProgressText :active="presentation.active">{{
-      presentation.text
-    }}</ExecutionProgressText>
-    <span v-if="presentation.elapsedSeconds !== undefined" class="execution-notice__time">
+    <ExecutionProgressText :active="presentation.active">
+      {{ presentation.text }}
+    </ExecutionProgressText>
+    <span
+      v-if="presentation.elapsedSeconds !== undefined"
+      class="execution-notice__time"
+    >
       {{
         conversationMessage('conversation.retry.elapsed', { seconds: presentation.elapsedSeconds })
       }}
@@ -16,10 +19,13 @@
         ·
         {{
           conversationMessage('conversation.retry.next', { seconds: presentation.remainingSeconds })
-        }}</template
-      >
+        }}
+      </template>
     </span>
-    <details v-if="message.metadata.error_code" class="execution-notice__details">
+    <details
+      v-if="message.metadata.error_code"
+      class="execution-notice__details"
+    >
       <summary>{{ conversationMessage('conversation.retry.details') }}</summary>
       <code>{{ message.metadata.error_code }}</code>
       <span>{{ message.id }}</span>
@@ -70,30 +76,3 @@ watch(
 );
 onBeforeUnmount(stopTimer);
 </script>
-<style scoped>
-.execution-notice {
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.7;
-  padding: 4px 0;
-}
-.execution-notice--failed {
-  color: var(--color-error, #c74343);
-}
-.execution-notice__time {
-  margin-inline-start: 8px;
-  font-size: 12px;
-  opacity: 0.8;
-}
-.execution-notice__details {
-  font-size: 11px;
-}
-.execution-notice__details summary {
-  cursor: pointer;
-}
-.execution-notice__details code,
-.execution-notice__details span {
-  display: block;
-  overflow-wrap: anywhere;
-}
-</style>
