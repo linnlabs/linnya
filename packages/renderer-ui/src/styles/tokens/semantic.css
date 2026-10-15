@@ -37,6 +37,7 @@
   --color-border-focus: var(--color-gray-350);
   --color-border-sidebar: var(--color-gray-300);
   --color-border-accent-light: var(--color-brand-300);
+  --color-focus-ring: var(--color-accent);
 
   /* Accent */
   --color-accent: var(--color-brand-600);
@@ -59,10 +60,10 @@
 }
 
 [data-linnya-ui-theme='dark'] {
-  /* Background */
+  /* Background：页面最暗，卡片、浮层逐级提亮，不能让同一层表面在暗色下出现两种底色。 */
   --color-bg-default: var(--color-gray-900);
   --color-bg-surface: var(--color-gray-800);
-  --color-bg-elevated: var(--color-bg-surface);
+  --color-bg-elevated: var(--color-gray-775);
   --color-bg-sidebar: var(--color-gray-800);
   --color-bg-subtle: var(--color-gray-775);
   --color-bg-disabled: var(--color-gray-750);
@@ -71,30 +72,32 @@
   --color-bg-hover: color-mix(in srgb, var(--color-gray-750) 50%, var(--color-gray-725));
   --color-bg-hover-light: var(--color-gray-850);
   --color-bg-hover-strong: var(--color-gray-725);
-  --color-bg-active: color-mix(in srgb, var(--color-black) 10%, transparent);
-  --color-bg-active-subtle: color-mix(in srgb, var(--color-black) 7%, transparent);
+  /* 深底上压黑不可见，按下与选中改为提亮。 */
+  --color-bg-active: color-mix(in srgb, var(--color-white) 8%, transparent);
+  --color-bg-active-subtle: color-mix(in srgb, var(--color-white) 5%, transparent);
   --color-bg-active-control-hover: var(--color-gray-700);
   --color-bg-selection: color-mix(in srgb, var(--color-brand-400) 6%, transparent);
 
-  /* Text */
-  --color-text-primary: var(--color-gray-50);
-  --color-text-secondary: var(--color-gray-100);
-  --color-text-tertiary: var(--color-gray-150);
-  --color-text-placeholder: var(--color-gray-300);
-  --color-text-muted: var(--color-gray-750);
+  /* Text：与浅色同序递减；primary 不用纯白，减少深底光晕。 */
+  --color-text-primary: var(--color-gray-150);
+  --color-text-secondary: var(--color-gray-350);
+  --color-text-tertiary: var(--color-gray-400);
+  --color-text-placeholder: var(--color-gray-500);
+  --color-text-muted: var(--color-gray-450);
   --color-text-link: var(--color-blue-200);
   --color-text-link-hover: var(--color-blue-100);
   --color-text-selection: color-mix(in srgb, var(--color-brand-300) 30%, transparent);
   --color-text-heading-meta: var(--color-gray-421);
   --color-text-on-accent: var(--color-white);
 
-  /* Border */
-  --color-border-default: var(--color-gray-625);
-  --color-border-light: var(--color-gray-800);
-  --color-border-hover: var(--color-gray-600);
-  --color-border-focus: var(--color-gray-500);
-  --color-border-sidebar: var(--color-gray-775);
+  /* Border：用白色透明度叠加，任何一级表面上都保持同样的可见度。 */
+  --color-border-default: color-mix(in srgb, var(--color-white) 16%, transparent);
+  --color-border-light: color-mix(in srgb, var(--color-white) 10%, transparent);
+  --color-border-hover: color-mix(in srgb, var(--color-white) 24%, transparent);
+  --color-border-focus: color-mix(in srgb, var(--color-white) 32%, transparent);
+  --color-border-sidebar: color-mix(in srgb, var(--color-white) 10%, transparent);
   --color-border-accent-light: var(--color-brand-300);
+  --color-focus-ring: var(--color-accent);
 
   /* Accent */
   --color-accent: var(--color-brand-500);
@@ -103,17 +106,17 @@
   --color-accent-hover-light: var(--color-brand-550);
   --color-accent-light: var(--color-brand-450);
   --color-accent-strong-light: var(--color-brand-300);
-  --color-accent-disabled: var(--color-brand-200);
+  --color-accent-disabled: color-mix(in srgb, var(--color-brand-500) 35%, var(--color-gray-900));
   --color-accent-bg: var(--color-brand-850);
   --color-accent-bg-subtle: var(--color-brand-900);
   --color-accent-bg-hover: var(--color-brand-800);
 
-  /* Shadow */
-  --shadow-color-xs: rgba(0, 0, 0, 0.05);
-  --shadow-color-sm: rgba(0, 0, 0, 0.1);
-  --shadow-color-md: rgba(0, 0, 0, 0.15);
-  --shadow-color-lg: rgba(0, 0, 0, 0.3);
-  --shadow-color-xl: rgba(0, 0, 0, 0.5);
+  /* Shadow：深底需要更重的投影才能表达层级。 */
+  --shadow-color-xs: rgba(0, 0, 0, 0.2);
+  --shadow-color-sm: rgba(0, 0, 0, 0.28);
+  --shadow-color-md: rgba(0, 0, 0, 0.36);
+  --shadow-color-lg: rgba(0, 0, 0, 0.48);
+  --shadow-color-xl: rgba(0, 0, 0, 0.6);
 }
 
 [data-linnya-ui-theme='moon-blue'] {
@@ -153,6 +156,7 @@
   --color-border-focus: color-mix(in srgb, var(--color-blue-300) 58%, var(--color-gray-300));
   --color-border-sidebar: color-mix(in srgb, var(--color-blue-100) 54%, var(--color-gray-200));
   --color-border-accent-light: var(--color-blue-300);
+  --color-focus-ring: var(--color-accent);
 
   /* Accent */
   --color-accent: var(--color-blue-600);
