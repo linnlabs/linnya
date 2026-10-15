@@ -456,3 +456,7 @@ Renderer 或 ESM 消费者继续使用历史产物。独立 build/pack gate 仍�
 
 Custom API 的模型发现响应由 Host 补齐容量和图片能力，并携带 `confidence`；这些字段在共享合同中必填，
 Renderer 不再自行补另一套默认值。发现响应中的未知外部数据由 Model Discovery 准入解析，HTTP 网关只校验正式 DTO。
+
+自定义 API 分组刷新响应携带 `added_model_ids`、`removed_model_ids` 与偏好清理待恢复标记。
+空远端快照可以移除全部模型，但不等于删除供应商连接；空分组的编辑/删除响应允许零模型 ID。
+Renderer 以正式删除结果清理本地目录与用途绑定，再重读投影，不能把列表同步失败解释成 Host 未提交。

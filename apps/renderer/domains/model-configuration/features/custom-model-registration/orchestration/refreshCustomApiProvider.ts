@@ -1,3 +1,4 @@
+import type { CustomApiProviderRefreshResponse } from '@app/schemas/custom-api-onboarding';
 import type { CustomApiProviderRefreshGateway } from '../definitions/customApiProviderRefresh';
 import { httpCustomApiProviderRefreshGateway } from '../infrastructure/httpCustomApiProviderRefreshGateway';
 
@@ -5,6 +6,6 @@ import { httpCustomApiProviderRefreshGateway } from '../infrastructure/httpCusto
 export async function refreshCustomApiProvider(
   providerName: string,
   gateway: CustomApiProviderRefreshGateway = httpCustomApiProviderRefreshGateway
-): Promise<void> {
-  await gateway.refreshProvider({ provider_name: providerName });
+): Promise<CustomApiProviderRefreshResponse> {
+  return gateway.refreshProvider({ provider_name: providerName });
 }

@@ -15,6 +15,7 @@ import type {
   ModelDiff,
   ModelDiscoveryService,
   UserModelRegistration,
+  CustomApiGroup,
 } from 'src/domains/model-catalog';
 import type { ModelPickerModelPreference } from 'src/domains/model-picker-preferences';
 import type { ConfiguredProvider } from 'src/domains/provider-configuration';
@@ -22,14 +23,23 @@ import type { ConfiguredProvider } from 'src/domains/provider-configuration';
 export interface CustomApiOnboardingModelCatalogPort {
   getModels(): ModelConfig[];
   getInferenceEndpoints(): InferenceEndpointView[];
-  resolveCredential(modelId: string): string | undefined;
+  getCustomApiGroups(): readonly CustomApiGroup[];
+  resolveInferenceEndpointCredential(endpointId: string): string | undefined;
   getUserRevision(): number;
-  applyDiff(diff: ModelDiff, expectedRevision: number): Promise<void>;
-  registerUserModels(
+  applyCustomApiGroupModelDiff(
+    groupName: string,
+    diff: ModelDiff,
+    expectedRevision: number
+  ): Promise<void>;
+  removeCustomApiGroup(groupName: string, expectedRevision: number): Promise<void>;
+  registerCustomApiModels(
+    groupName: string,
     registrations: readonly UserModelRegistration[],
     expectedRevision: number
   ): Promise<void>;
-  rebindUserModels(
+  rebindCustomApiGroup(
+    currentName: string,
+    newName: string,
     models: readonly ModelConfig[],
     endpoint: InferenceEndpointSelection,
     expectedRevision: number

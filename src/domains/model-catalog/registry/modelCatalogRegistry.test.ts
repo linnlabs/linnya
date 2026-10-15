@@ -6,30 +6,43 @@ import {
   createSourceDistributionIdentity,
 } from '../../../shared/distribution-identity';
 
-const { credentialStoreMock, fetchCloudModelsMock, persisterMock } = vi.hoisted(() => {
-  return {
-    fetchCloudModelsMock: vi.fn(),
-    persisterMock: {
-      initialize: vi.fn(async () => {}),
-      loadState: vi.fn<
-        () => Promise<{
-          readonly inferenceEndpoints: readonly unknown[];
-          readonly models: readonly unknown[];
-        }>
-      >(async () => ({ inferenceEndpoints: [], models: [] })),
-      saveState: vi.fn(async () => {}),
-    },
-    credentialStoreMock: {
-      initialize: vi.fn(async () => {}),
-      installCodec: vi.fn(),
-      has: vi.fn((_credentialId: string) => true),
-      getStatus: vi.fn(() => 'available'),
-      resolve: vi.fn(() => 'stored-secret'),
-      put: vi.fn(async () => {}),
-      remove: vi.fn(async () => {}),
-    },
-  };
-});
+const { credentialStoreMock, credentialRollbackMock, fetchCloudModelsMock, persisterMock } =
+  vi.hoisted(() => {
+    const credentialRollbackMock = vi.fn(async (_credentialId: string) => {});
+    return {
+      credentialRollbackMock,
+      fetchCloudModelsMock: vi.fn(),
+      persisterMock: {
+        initialize: vi.fn(async () => {}),
+        loadState: vi.fn<
+          () => Promise<{
+            readonly customApiGroups: readonly import('../definitions/customApiGroup').CustomApiGroup[];
+            readonly requiresMigration: boolean;
+            readonly inferenceEndpoints: readonly unknown[];
+            readonly models: readonly unknown[];
+          }>
+        >(async () => ({
+          customApiGroups: [],
+          requiresMigration: false,
+          inferenceEndpoints: [],
+          models: [],
+        })),
+        saveState: vi.fn(async () => {}),
+      },
+      credentialStoreMock: {
+        initialize: vi.fn(async () => {}),
+        installCodec: vi.fn(),
+        captureRollback: vi.fn(
+          (credentialId: string) => () => credentialRollbackMock(credentialId)
+        ),
+        has: vi.fn((_credentialId: string) => true),
+        getStatus: vi.fn(() => 'available'),
+        resolve: vi.fn(() => 'stored-secret'),
+        put: vi.fn(async () => {}),
+        remove: vi.fn(async () => {}),
+      },
+    };
+  });
 
 vi.mock('../features/cloud-catalog/orchestration/fetchCloudModels', () => ({
   fetchCloudModels: fetchCloudModelsMock,
@@ -125,7 +138,12 @@ describe('Registry cloud retry', () => {
     fetchCloudModelsMock.mockReset();
     persisterMock.initialize.mockClear();
     persisterMock.loadState.mockReset();
-    persisterMock.loadState.mockResolvedValue({ inferenceEndpoints: [], models: [] });
+    persisterMock.loadState.mockResolvedValue({
+      customApiGroups: [],
+      requiresMigration: false,
+      inferenceEndpoints: [],
+      models: [],
+    });
     persisterMock.saveState.mockReset();
     persisterMock.saveState.mockResolvedValue(undefined);
     credentialStoreMock.initialize.mockClear();
@@ -133,6 +151,7 @@ describe('Registry cloud retry', () => {
     credentialStoreMock.getStatus.mockReturnValue('available');
     credentialStoreMock.put.mockClear();
     credentialStoreMock.remove.mockClear();
+    credentialRollbackMock.mockClear();
     process.env.MODEL_REGISTRY_DEFAULTS_PATH = path.resolve(
       process.cwd(),
       'src/domains/model-catalog/features/default-catalog/assets/default_models.json'
@@ -204,7 +223,12 @@ describe('Registry default model by capability', () => {
     fetchCloudModelsMock.mockReset();
     persisterMock.initialize.mockClear();
     persisterMock.loadState.mockReset();
-    persisterMock.loadState.mockResolvedValue({ inferenceEndpoints: [], models: [] });
+    persisterMock.loadState.mockResolvedValue({
+      customApiGroups: [],
+      requiresMigration: false,
+      inferenceEndpoints: [],
+      models: [],
+    });
     persisterMock.saveState.mockReset();
     persisterMock.saveState.mockResolvedValue(undefined);
     credentialStoreMock.initialize.mockClear();
@@ -212,6 +236,7 @@ describe('Registry default model by capability', () => {
     credentialStoreMock.getStatus.mockReturnValue('available');
     credentialStoreMock.put.mockClear();
     credentialStoreMock.remove.mockClear();
+    credentialRollbackMock.mockClear();
     process.env.MODEL_REGISTRY_DEFAULTS_PATH = path.resolve(
       process.cwd(),
       'src/domains/model-catalog/features/default-catalog/assets/default_models.json'
@@ -230,6 +255,8 @@ describe('Registry default model by capability', () => {
       purposeDefaults: {},
     });
     persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
       inferenceEndpoints: [buildUserEndpoint('endpoint-1')],
       models: [
         {
@@ -256,7 +283,12 @@ describe('Registry default model by capability', () => {
       models: [],
       purposeDefaults: {},
     });
-    persisterMock.loadState.mockResolvedValueOnce({ inferenceEndpoints: [], models: [] });
+    persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
+      inferenceEndpoints: [],
+      models: [],
+    });
 
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
@@ -311,7 +343,12 @@ describe('Registry default model by capability', () => {
         knowledge_graph_extraction: 'cloud-missing-model',
       },
     });
-    persisterMock.loadState.mockResolvedValueOnce({ inferenceEndpoints: [], models: [] });
+    persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
+      inferenceEndpoints: [],
+      models: [],
+    });
 
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
@@ -372,6 +409,8 @@ describe('Registry default model by capability', () => {
       purposeDefaults: {},
     });
     persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
       inferenceEndpoints: [buildUserEndpoint('shared-endpoint')],
       models: [buildUserModel('first-user-model', 'shared-endpoint')],
     });
@@ -457,6 +496,8 @@ describe('Registry default model by capability', () => {
       purposeDefaults: {},
     });
     persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
       inferenceEndpoints: [buildUserEndpoint('shared-endpoint')],
       models: [buildUserModel('first-user-model', 'shared-endpoint')],
     });
@@ -476,8 +517,8 @@ describe('Registry default model by capability', () => {
 
     expect(credentialStoreMock.put.mock.calls).toEqual([
       ['inference-endpoint:shared-endpoint', 'replacement-secret'],
-      ['inference-endpoint:shared-endpoint', 'stored-secret'],
     ]);
+    expect(credentialRollbackMock).toHaveBeenCalledWith('inference-endpoint:shared-endpoint');
     expect(registry.getModel('second-user-model')).toBeUndefined();
   });
 
@@ -515,7 +556,7 @@ describe('Registry default model by capability', () => {
     await registry.removeModel('second-user-model');
     expect(registry.getInferenceEndpoints()).toEqual([]);
     expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:shared-endpoint');
-    expect(persisterMock.saveState).toHaveBeenLastCalledWith([], []);
+    expect(persisterMock.saveState).toHaveBeenLastCalledWith([], [], []);
   });
 
   it('删除最后引用的目录写入失败时恢复 endpoint 与凭据', async () => {
@@ -550,15 +591,14 @@ describe('Registry default model by capability', () => {
       expect.objectContaining({ id: 'only-endpoint', credential_status: 'configured' }),
     ]);
     expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:only-endpoint');
-    expect(credentialStoreMock.put).toHaveBeenCalledWith(
-      'inference-endpoint:only-endpoint',
-      'stored-secret'
-    );
+    expect(credentialRollbackMock).toHaveBeenCalledWith('inference-endpoint:only-endpoint');
   });
 
   it('改绑一组用户模型到新 endpoint 时清理旧 endpoint 与独占密文', async () => {
     fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
       inferenceEndpoints: [buildUserEndpoint('old-endpoint')],
       models: [
         buildUserModel('first-user-model', 'old-endpoint'),
@@ -610,6 +650,8 @@ describe('Registry default model by capability', () => {
   it('改绑时复用仍被新 endpoint 引用的凭据，不删除密文', async () => {
     fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
       inferenceEndpoints: [buildUserEndpoint('old-endpoint')],
       models: [buildUserModel('only-user-model', 'old-endpoint')],
     });
@@ -655,6 +697,8 @@ describe('Registry default model by capability', () => {
   it('改绑写盘失败时保留旧目录并撤销新旧凭据变更', async () => {
     fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
       inferenceEndpoints: [buildUserEndpoint('old-endpoint')],
       models: [buildUserModel('only-user-model', 'old-endpoint')],
     });
@@ -691,16 +735,15 @@ describe('Registry default model by capability', () => {
       inference_endpoint_id: 'old-endpoint',
     });
     expect(registry.getInferenceEndpoints().map(endpoint => endpoint.id)).toEqual(['old-endpoint']);
-    expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:new-endpoint');
-    expect(credentialStoreMock.put).toHaveBeenCalledWith(
-      'inference-endpoint:old-endpoint',
-      'stored-secret'
-    );
+    expect(credentialRollbackMock).toHaveBeenCalledWith('inference-endpoint:new-endpoint');
+    expect(credentialRollbackMock).toHaveBeenCalledWith('inference-endpoint:old-endpoint');
   });
 
   it('改绑只接受已存在的用户模型，失败时不写凭据', async () => {
     fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
       inferenceEndpoints: [buildUserEndpoint('old-endpoint')],
       models: [buildUserModel('only-user-model', 'old-endpoint')],
     });
@@ -725,6 +768,8 @@ describe('Registry default model by capability', () => {
   it('在原 credential boundary 内替换 endpoint 密文且不改写目录文件', async () => {
     fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
       inferenceEndpoints: [buildUserEndpoint('only-endpoint')],
       models: [buildUserModel('only-user-model', 'only-endpoint')],
     });
@@ -753,6 +798,8 @@ describe('Registry default model by capability', () => {
     const first = buildUserModel('first', 'shared');
     const second = buildUserModel('second', 'shared');
     persisterMock.loadState.mockResolvedValue({
+      customApiGroups: [],
+      requiresMigration: false,
       models: [first, second],
       inferenceEndpoints: [buildUserEndpoint('shared')],
     });
@@ -782,6 +829,8 @@ describe('Registry default model by capability', () => {
   it('前一事务失败不吞掉后一事务，也不覆盖退出登录删除的投影', async () => {
     const model = buildUserModel('user', 'endpoint');
     persisterMock.loadState.mockResolvedValue({
+      customApiGroups: [],
+      requiresMigration: false,
       models: [model],
       inferenceEndpoints: [buildUserEndpoint('endpoint')],
     });
@@ -814,7 +863,12 @@ describe('Registry default model by capability', () => {
       models: [],
       purposeDefaults: {},
     });
-    persisterMock.loadState.mockResolvedValueOnce({ inferenceEndpoints: [], models: [] });
+    persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
+      inferenceEndpoints: [],
+      models: [],
+    });
 
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
@@ -841,10 +895,12 @@ describe('Registry default model by capability', () => {
       'inference-endpoint:new-endpoint',
       'secret-value'
     );
-    expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:new-endpoint');
+    expect(credentialRollbackMock).toHaveBeenCalledWith('inference-endpoint:new-endpoint');
   });
   it('整批注册只发布一次目录；删除或编辑后的旧版本不能继续注册', async () => {
     persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
       inferenceEndpoints: [buildUserEndpoint('shared')],
       models: [buildUserModel('existing', 'shared')],
     });
@@ -911,11 +967,13 @@ describe('Registry default model by capability', () => {
     expect(registry.getModel('first')).toBeUndefined();
     expect(registry.getModel('second')).toBeUndefined();
     expect(persisterMock.saveState).not.toHaveBeenCalled();
-    expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:new');
+    expect(credentialRollbackMock).toHaveBeenCalledWith('inference-endpoint:new');
   });
   it.each(['register', 'remove'] as const)('批量 %s 写盘失败时保留整个旧目录', async operation => {
     const original = buildUserModel('original', 'shared');
     persisterMock.loadState.mockResolvedValueOnce({
+      customApiGroups: [],
+      requiresMigration: false,
       inferenceEndpoints: [buildUserEndpoint('shared')],
       models: [original],
     });

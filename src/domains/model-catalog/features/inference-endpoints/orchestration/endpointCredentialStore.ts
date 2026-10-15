@@ -36,9 +36,7 @@ export class EndpointCredentialStore {
     await fs.mkdir(path.dirname(this.credentialFilePath), { recursive: true });
     try {
       const parsed: unknown = JSON.parse(await fs.readFile(this.credentialFilePath, 'utf8'));
-      const credentials = new Map(
-        readEndpointCredentialFile(parsed).map(item => [item.id, item])
-      );
+      const credentials = new Map(readEndpointCredentialFile(parsed).map(item => [item.id, item]));
       const decrypted = await this.decryptCredentials(credentials);
       this.plaintextCredentials = decrypted.plaintext;
       this.credentialStatuses = decrypted.statuses;
@@ -97,6 +95,27 @@ export class EndpointCredentialStore {
     this.credentialStatuses.delete(credentialId);
   }
 
+  /**
+   * 目录事务只持有撤回能力，原密文和缓存状态始终封装在 store 内。
+   * 不可解密不等于不存在；撤回必须恢复原记录，不能依赖再次解密或重新加密。
+   */
+  captureRollback(credentialId: string): () => Promise<void> {
+    const credential = this.credentials.get(credentialId);
+    const plaintext = this.plaintextCredentials.get(credentialId);
+    const status = this.credentialStatuses.get(credentialId);
+    return async () => {
+      const next = new Map(this.credentials);
+      if (credential) next.set(credentialId, credential);
+      else next.delete(credentialId);
+      await this.write(next);
+      this.credentials = next;
+      if (plaintext === undefined) this.plaintextCredentials.delete(credentialId);
+      else this.plaintextCredentials.set(credentialId, plaintext);
+      if (status === undefined) this.credentialStatuses.delete(credentialId);
+      else this.credentialStatuses.set(credentialId, status);
+    };
+  }
+
   private async write(credentials: Map<string, StoredEndpointCredential>): Promise<void> {
     const filePath = this.credentialFilePath ?? pathManager.getEndpointCredentialsConfigPath();
     this.credentialFilePath = filePath;
@@ -126,24 +145,27 @@ export class EndpointCredentialStore {
     }
     const codec = this.credentialCodec;
     if (!codec) throw new Error('endpoint credential codec 尚未安装');
-    const decrypted = await Promise.all(Array.from(credentials.values(), async credential => {
-      try {
-        const migratedCiphertext = await codec.rewrap?.(credential.encrypted_secret);
-        const effectiveCredential = migratedCiphertext !== undefined
-          ? { ...credential, encrypted_secret: migratedCiphertext }
-          : credential;
-        return {
-          id: credential.id,
-          credential: effectiveCredential,
-          plaintext: await codec.decrypt(effectiveCredential.encrypted_secret),
-          status: 'available' as const,
-          migrated: migratedCiphertext !== undefined,
-        };
-      } catch (error: unknown) {
-        const code: CredentialProtectionErrorCode = readCredentialProtectionErrorCode(error);
-        return { id: credential.id, status: code };
-      }
-    }));
+    const decrypted = await Promise.all(
+      Array.from(credentials.values(), async credential => {
+        try {
+          const migratedCiphertext = await codec.rewrap?.(credential.encrypted_secret);
+          const effectiveCredential =
+            migratedCiphertext !== undefined
+              ? { ...credential, encrypted_secret: migratedCiphertext }
+              : credential;
+          return {
+            id: credential.id,
+            credential: effectiveCredential,
+            plaintext: await codec.decrypt(effectiveCredential.encrypted_secret),
+            status: 'available' as const,
+            migrated: migratedCiphertext !== undefined,
+          };
+        } catch (error: unknown) {
+          const code: CredentialProtectionErrorCode = readCredentialProtectionErrorCode(error);
+          return { id: credential.id, status: code };
+        }
+      })
+    );
     const effectiveCredentials = new Map(credentials);
     for (const item of decrypted) {
       if (item.status === 'available') effectiveCredentials.set(item.id, item.credential);
@@ -151,9 +173,9 @@ export class EndpointCredentialStore {
     return {
       credentials: effectiveCredentials,
       plaintext: new Map(
-        decrypted.flatMap(item => item.status === 'available'
-          ? [[item.id, item.plaintext] as const]
-          : []),
+        decrypted.flatMap(item =>
+          item.status === 'available' ? [[item.id, item.plaintext] as const] : []
+        )
       ),
       statuses: new Map(decrypted.map(item => [item.id, item.status])),
       migrated: decrypted.some(item => item.status === 'available' && item.migrated),

@@ -307,6 +307,8 @@ export type SettingsMessageKey =
   | 'settings.addModel.discoveredModels.title'
   | 'settings.addModel.discoveredModels.enableAll'
   | 'settings.modelPicker.refreshModels'
+  | 'settings.modelPicker.synchronizeModels'
+  | 'settings.modelPicker.refreshedSyncFailed'
   | 'settings.modelPicker.credentialReason.migrationRequired'
   | 'settings.modelPicker.customProviders'
   | 'settings.modelPicker.editProvider'

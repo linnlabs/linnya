@@ -1,11 +1,12 @@
 import {
   ModelDiscoveryRequestSchema,
+  type DiscoveredModel,
   type ModelDiscoveryRequest,
   type ModelDiscoveryResponse,
 } from '@app/schemas';
 import { ModelDiscoveryError } from '../definitions/modelDiscoveryError';
 import { buildDiscoveryUrl } from '../functions/buildDiscoveryUrl';
-import { parseModelListingResponse } from '../functions/parseModelListingResponse';
+import { parseModelListingPage } from '../functions/parseModelListingPage';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 export interface ModelDiscoveryServiceOptions {
@@ -23,7 +24,6 @@ export class ModelDiscoveryService {
     if (!parsed.success)
       throw new ModelDiscoveryError('model_discovery.invalid_request', '模型发现参数无效', 400);
     const request = parsed.data;
-    const url = buildDiscoveryUrl(request.base_url, request.api_format);
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (request.api_format === 'anthropic_compatible') {
       headers['anthropic-version'] = '2023-06-01';
@@ -34,29 +34,44 @@ export class ModelDiscoveryService {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
     try {
-      // 不跟随重定向，避免兼容网关把 x-api-key 转发到另一个地址。
-      const response = await this.fetchFn(url, {
-        method: 'GET',
-        headers,
-        signal: controller.signal,
-        redirect: 'error',
-      });
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
+      const models = new Map<string, DiscoveredModel>();
+      const visitedAfterIds = new Set<string>();
+      let afterId: string | undefined;
+      while (true) {
+        const url = buildDiscoveryUrl(request.base_url, request.api_format, afterId);
+        // 所有页使用同一认证和期限，不跟随重定向或远端提供的 URL，避免凭据跨地址泄漏。
+        const response = await this.fetchFn(url, {
+          method: 'GET',
+          headers,
+          signal: controller.signal,
+          redirect: 'error',
+        });
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            throw new ModelDiscoveryError(
+              'model_discovery.auth_failed',
+              `端点鉴权失败 (${response.status})，请检查 API Key`,
+              response.status
+            );
+          }
           throw new ModelDiscoveryError(
-            'model_discovery.auth_failed',
-            `端点鉴权失败 (${response.status})，请检查 API Key`,
+            'model_discovery.failed',
+            `获取模型列表失败 (${response.status})`,
             response.status
           );
         }
-        throw new ModelDiscoveryError(
-          'model_discovery.failed',
-          `获取模型列表失败 (${response.status})`,
-          response.status
-        );
+        const body: unknown = await response.json();
+        const page = parseModelListingPage({
+          body,
+          apiFormat: request.api_format,
+          visitedAfterIds,
+        });
+        for (const model of page.models) models.set(model.id, model);
+        // 调用方会用返回值删除缺失模型；只有全部分页成功才发布完整快照。
+        if (page.nextAfterId === undefined) return { models: [...models.values()] };
+        afterId = page.nextAfterId;
+        visitedAfterIds.add(afterId);
       }
-      const data: unknown = await response.json();
-      return { models: parseModelListingResponse(data) };
     } catch (error: unknown) {
       if (error instanceof ModelDiscoveryError) throw error;
       if (controller.signal.aborted)

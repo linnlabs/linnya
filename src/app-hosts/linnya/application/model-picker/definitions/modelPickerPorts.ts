@@ -7,6 +7,7 @@ import type {
   EndpointCredentialStatus,
   InferenceEndpointView,
   ModelConfig,
+  CustomApiGroup,
 } from 'src/domains/model-catalog';
 import type { ProviderCatalog, ProviderDefinition } from '@linnya/provider-catalog';
 import type { ConfiguredProvider } from 'src/domains/provider-configuration';
@@ -21,6 +22,7 @@ export interface ModelPickerModelCatalogPort {
   getModels(): ModelConfig[];
   getModel(modelConfigId: string): ModelConfig | undefined;
   getInferenceEndpoints(): InferenceEndpointView[];
+  getCustomApiGroups(): readonly CustomApiGroup[];
   hasCredential(modelConfigId: string): boolean;
   getCredentialStatus(modelConfigId: string): EndpointCredentialStatus | 'missing';
 }
@@ -57,6 +59,7 @@ export interface ComposeSelectableModelMenuInput {
   readonly configured_providers: readonly ConfiguredProvider[];
   readonly models: readonly ModelConfig[];
   readonly inference_endpoints: readonly InferenceEndpointView[];
+  readonly custom_api_groups: readonly CustomApiGroup[];
   readonly provider_accounts: readonly ProviderAccount[];
   readonly preferences: ModelPickerPreferencesSnapshot;
   readonly has_credential: (modelConfigId: string) => boolean;

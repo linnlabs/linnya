@@ -7,6 +7,7 @@ import { useModelPickerStore } from '../store/modelPickerStore';
 import {
   activateModelPickerProviderModel,
   loadModelPicker,
+  removeCommittedModelsFromPicker,
   synchronizeModelPickerSnapshot,
   setModelPickerModelVisibility,
   setModelPickerProviderVisibility,
@@ -118,5 +119,41 @@ describe('modelPickerOperations', () => {
     await assertion;
     await changing;
     expect(firstStore.error).toBeNull();
+  });
+
+  it('正式删除投影排在旧 Picker 读取之后，移除最后一个模型仍保留空分组', async () => {
+    const target = gateway();
+    const oldSnapshot: ModelPickerSnapshot = {
+      ...snapshot,
+      custom_models: [{
+        materialized: true,
+        model_config_id: 'removed',
+        display_name: 'Removed',
+        picker_enabled: true,
+        runtime_available: true,
+        capabilities: ['chat'],
+        image_input: false,
+      }],
+    };
+    oldSnapshot.custom_providers = [{
+      provider_id: 'custom:Relay',
+      provider_name: 'Relay',
+      models: oldSnapshot.custom_models,
+    }];
+    let complete!: (value: ModelPickerSnapshot) => void;
+    vi.mocked(target.load).mockImplementationOnce(
+      () => new Promise(resolve => { complete = resolve; })
+    );
+    const loading = synchronizeModelPickerSnapshot(target);
+    const removing = removeCommittedModelsFromPicker(['removed']);
+    await vi.waitFor(() => expect(complete).toBeTypeOf('function'));
+    complete(oldSnapshot);
+    await Promise.all([loading, removing]);
+    expect(useModelPickerStore().snapshot?.custom_models).toEqual([]);
+    expect(useModelPickerStore().snapshot?.custom_providers).toEqual([{
+      provider_id: 'custom:Relay',
+      provider_name: 'Relay',
+      models: [],
+    }]);
   });
 });

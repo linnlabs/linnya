@@ -59,6 +59,11 @@ export function createAiSdkLanguageModelRegistry(
 ): AiSdkLanguageModelRegistry {
   return {
     entries: FACTORY_ENTRIES,
+    resolveModelReasoning(input) {
+      return FACTORIES_BY_CAPABILITY.get(input.capability_id)?.resolveModelReasoning?.(
+        input.endpoint_model_id
+      );
+    },
     languageModel(input) {
       const attemptInput = { ...input, ...(fetch ? { fetch } : {}) };
       const entry = FACTORIES_BY_CAPABILITY.get(attemptInput.capability_id);

@@ -38,6 +38,7 @@ export function createModelPickerUseCase(
       configured_providers: dependencies.providerConfigurations.list(),
       models: dependencies.modelCatalog.getModels(),
       inference_endpoints: dependencies.modelCatalog.getInferenceEndpoints(),
+      custom_api_groups: dependencies.modelCatalog.getCustomApiGroups(),
       provider_accounts: dependencies.providerAccounts.list(),
       preferences: dependencies.preferences.read(),
       has_credential: modelConfigId => dependencies.modelCatalog.hasCredential(modelConfigId),

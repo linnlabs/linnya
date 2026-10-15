@@ -360,6 +360,9 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.addModel.discoveredModels.title': '已发现模型（共 {count} 个）',
   'settings.addModel.discoveredModels.enableAll': '全部启用',
   'settings.modelPicker.refreshModels': '获取新模型',
+  'settings.modelPicker.synchronizeModels': '同步模型列表',
+  'settings.modelPicker.refreshedSyncFailed':
+    '“{source}”的模型已刷新，但列表同步失败，请重新打开模型管理。',
   'settings.modelPicker.credentialReason.migrationRequired': '此凭据需要迁移，请重新连接该供应商。',
   'settings.modelPicker.customProviders': '自定义模型供应商',
   'settings.modelPicker.editProvider': '编辑供应商',
@@ -844,6 +847,9 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.addModel.discoveredModels.title': 'Discovered Models ({count})',
       'settings.addModel.discoveredModels.enableAll': 'Enable all',
       'settings.modelPicker.refreshModels': 'Discover new models',
+      'settings.modelPicker.synchronizeModels': 'Sync model list',
+      'settings.modelPicker.refreshedSyncFailed':
+        'Models for {source} were refreshed, but the lists could not be synchronized. Reopen model management.',
       'settings.modelPicker.credentialReason.migrationRequired':
         'This credential requires migration. Reconnect this provider.',
       'settings.modelPicker.customProviders': 'Custom Providers',

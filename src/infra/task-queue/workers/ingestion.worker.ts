@@ -46,6 +46,7 @@ import type { IngestionStateMachineRepositories } from '../../../features/knowle
 import {
   createDefaultHostInferencePort,
   createEmbeddingPort,
+  createLinnyaModelReasoningResolver,
   createTextGenerationPort,
 } from '../../../app-hosts/linnya/adapters/inference';
 import type { EmbeddingPort } from '../../../domains/model-inference';
@@ -147,6 +148,7 @@ async function initializeWorkerServices(): Promise<EmbeddingPort> {
 
   try {
     // 路径合法性由 Model Catalog 唯一入口校验，worker 不重复探测或选择目录。
+    modelCatalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
     await modelCatalog.initialize(distributionIdentity);
 
     const embeddingModels = modelCatalog.getModelsByCapability('embedding');

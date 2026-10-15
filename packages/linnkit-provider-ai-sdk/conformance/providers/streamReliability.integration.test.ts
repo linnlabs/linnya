@@ -59,6 +59,7 @@ function modelWithStream(
 function registry(model: LanguageModelV4): AiSdkLanguageModelRegistry {
   return {
     entries: [],
+    resolveModelReasoning: () => undefined,
     languageModel: () => model,
   };
 }

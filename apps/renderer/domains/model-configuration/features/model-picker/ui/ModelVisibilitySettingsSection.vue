@@ -1,26 +1,21 @@
 <template>
   <SettingsSection :description="settingsMessage('settings.modelPicker.description')">
+    <SettingsFeedback
+      v-if="removalError || modelPicker.error.value"
+      kind="error"
+      :message="removalError ?? modelPickerErrorMessage"
+    />
     <SettingsState
       v-if="modelPicker.activeOperation.value === 'load' && !modelPicker.snapshot.value"
       kind="loading"
       :message="settingsMessage('settings.modelPicker.loading')"
     />
-    <SettingsFeedback
-      v-else-if="modelPicker.error.value && !modelPicker.snapshot.value"
-      kind="error"
-      :message="modelPicker.error.value.detail ?? settingsMessage('settings.modelPicker.failure')"
-    />
     <SettingsState
-      v-else-if="sources.length === 0"
+      v-else-if="sources.length === 0 && modelPicker.snapshot.value"
       kind="empty"
       :message="settingsMessage('settings.modelPicker.empty')"
     />
-    <template v-else>
-      <SettingsFeedback
-        v-if="modelPicker.error.value"
-        kind="error"
-        :message="modelPicker.error.value.detail ?? settingsMessage('settings.modelPicker.failure')"
-      />
+    <template v-else-if="sources.length > 0">
       <div class="model-visibility-layout">
         <aside class="model-visibility-sources">
           <header class="model-visibility-sources-header">
@@ -231,11 +226,6 @@
               @primary-click="removeSelectedProvider"
             />
           </div>
-          <SettingsFeedback
-            v-if="removalError"
-            kind="error"
-            :message="removalError"
-          />
         </div>
       </div>
       <ModelDetailsModal
@@ -302,6 +292,7 @@ import {
   projectModelVisibilitySources,
   type ModelVisibilitySource,
 } from '../functions/projectModelVisibilitySources';
+import { resolveModelPickerErrorPresentation } from '../functions/modelPickerErrorPresentation';
 import './ModelVisibilitySettingsSection.css';
 
 const props = defineProps<{
@@ -314,6 +305,11 @@ const props = defineProps<{
 const modelPicker = useModelPickerReadModel();
 const modelCatalog = useModelCatalogReadModel();
 const { settingsMessage } = useSettingsLocalization();
+const modelPickerErrorMessage = computed(() =>
+  modelPicker.error.value
+    ? resolveModelPickerErrorPresentation(modelPicker.error.value, settingsMessage)
+    : ''
+);
 const sourceQuery = ref('');
 const modelQuery = ref('');
 const selectedSourceId = ref<string | null>(null);
@@ -369,7 +365,13 @@ async function refreshSourceModels(source: ModelVisibilitySource): Promise<void>
 const selectedSource = computed(
   () => sources.value.find(source => source.id === selectedSourceId.value) ?? null
 );
-const refreshLabel = computed(() => settingsMessage('settings.modelPicker.refreshModels'));
+const refreshLabel = computed(() =>
+  settingsMessage(
+    selectedSource.value?.kind === 'custom_provider'
+      ? 'settings.modelPicker.synchronizeModels'
+      : 'settings.modelPicker.refreshModels'
+  )
+);
 const canRefreshSelectedSource = computed(() => {
   const source = selectedSource.value;
   return source?.kind === 'provider'

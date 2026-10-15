@@ -29,7 +29,11 @@ export async function registerCustomApiModels(
     // 再一次发布整批目录。目录失败只留下孤儿偏好，启动 reconcile 会清理它们。
     if (preferences.length > 0)
       await dependencies.modelPickerPreferences.setModelVisibilities(preferences);
-    await dependencies.modelCatalog.registerUserModels(registrations, revision);
+    await dependencies.modelCatalog.registerCustomApiModels(
+      command.provider_name,
+      registrations,
+      revision
+    );
   } catch (error: unknown) {
     if (error instanceof ModelCatalogConflictError) {
       throw new CustomApiOnboardingError(

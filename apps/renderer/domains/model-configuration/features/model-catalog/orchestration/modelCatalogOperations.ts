@@ -1,6 +1,7 @@
 import type { ModelCatalogItem, UpdateModelCommand } from '../definitions/modelCatalog';
 import type { ModelCatalogGateway } from '../definitions/modelCatalogGateway';
 import { createModelCatalogError } from '../functions/modelCatalogError';
+import { removeCommittedCatalogModels } from '../functions/removeCommittedCatalogModels';
 import { httpModelCatalogGateway } from '../infrastructure/httpModelCatalogGateway';
 import { useModelCatalogStore } from '../store/modelCatalogStore';
 
@@ -19,6 +20,14 @@ function enqueue<T>(
     )
   );
   return result;
+}
+
+/** 与读取共用队列，提交前发出的旧快照必须先收口，不能在本地接纳删除后复活模型。 */
+export function removeCommittedModelsFromCatalog(removedModelIds: readonly string[]): Promise<void> {
+  const store = useModelCatalogStore();
+  return enqueue(store, async () => {
+    store.replaceModels(removeCommittedCatalogModels(store.models, removedModelIds));
+  });
 }
 
 /** 后台读取参与同一顺序，但不覆盖用户操作的错误状态。 */

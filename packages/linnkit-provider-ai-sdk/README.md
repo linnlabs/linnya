@@ -71,7 +71,7 @@ SDK、厂商 package 和成熟开源实现都不能满足需求，以及由谁�
 | failure taxonomy 与安全 observation           | `src/features/failure-projection/`                  | 不保存 Provider message/body；产品特例由 Host 注入窄 classifier                            |
 | stream 空闲策略                               | `src/features/stream-reliability/`                  | 只配置 Core first/chunk timeout，不拥有 Linnkit retry 预算                                 |
 | 单次 language stream 编排                     | `src/orchestration/`                                | 固定单 step、零 SDK retry，不执行工具                                                      |
-| 具体第三方 package factory                    | `src/providers/<provider>/`                         | 一个正式 Provider/capability 一个局部模块；只声明 factory、package identity 和必要 options |
+| 具体第三方 package factory                    | `src/providers/<provider>/`                         | 一个正式 Provider/capability 一个局部模块；声明 factory、package identity、必要 options 与可选的 SDK 能力投影 |
 | 全 capability 汇总与 admission                | `src/registry/`                                     | 只组合模块并校验 capability/surface/auth；不读取 Catalog                                   |
 | 共享 codec harness                            | `conformance/fixtures/`                             | 组织两轮 canonical round-trip，不放厂商条件分支                                            |
 | Provider/surface 业务验收                     | `conformance/providers/`                            | 每个 Provider 或共享 compatible cohort 独立证明真实 wire 行为                              |
@@ -94,6 +94,18 @@ projector 禁止复制到厂商模块。
 - package-owned route、credential、diagnostic、failure
   extension 和 registry 类型；
 - 稳定 capability ID 与可切模 failure code。
+
+Registry 的 `resolveModelReasoning({ capability_id, endpoint_model_id })` 只查询本地 SDK
+明确支持的 canonical 思考档位，不创建 Provider client、不读取凭据、不发网络请求。Host
+可将结果接入自己的能力投影，但模型产品目录和持久化仍由 Host 拥有。
+
+当前只有 Anthropic factory 提供该查询：`@ai-sdk/anthropic/internal` 的
+`getModelCapabilities` 是精确锁定 SDK 版本的内部出口，依赖隔离在 Anthropic owner，升级时必须跑真实 codec
+conformance。只接纳 `isKnownModel` 且支持 adaptive thinking 的结果，不复制模型版本清单；未识别、
+非 adaptive 或其他 capability 返回 `undefined`，不能把缺少声明解释为明确不支持。
+SDK 拒绝关闭思考时不公开 `off`，`between_tools` 也不等于关闭；`xhigh` 只在上游声明支持时公开，
+不扩大 Linnkit 合同增加 `max`。SDK 没有提供默认档位事实，查询只返回支持档位，产品默认选择由 Host 决定。
+旧版 extended thinking 没有可复用的正向能力标记，因此本查询不根据输出容量或 SDK 的未知模型默认值猜测。
 
 测试入口 `@linnlabs/linnkit-provider-ai-sdk/conformance` 只公开受控 HTTP/SSE
 harness 与 canonical projector 测试 seam。生产代码禁止导入该入口。具体 Provider

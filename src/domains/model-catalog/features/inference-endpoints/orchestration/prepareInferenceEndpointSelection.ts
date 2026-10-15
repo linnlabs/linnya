@@ -16,8 +16,7 @@ export async function prepareInferenceEndpointSelection(
   nextEndpoints: Map<string, InferenceEndpoint>
 ): Promise<{ readonly endpoint: InferenceEndpoint; rollback(): Promise<void> }> {
   let endpoint: InferenceEndpoint;
-  let createdCredentialId: string | undefined;
-  let replacedCredential: { readonly id: string; readonly previousPlaintext?: string } | undefined;
+  let rollbackCredential: (() => Promise<void>) | undefined;
 
   if (selection.kind === 'existing') {
     const selected = nextEndpoints.get(selection.inference_endpoint_id);
@@ -29,12 +28,7 @@ export async function prepareInferenceEndpointSelection(
         throw new Error(`InferenceEndpoint ${endpoint.id} 不接受本地凭据替换`);
       }
       const credentialId = endpoint.credential_reference.credential_id;
-      replacedCredential = {
-        id: credentialId,
-        previousPlaintext: endpointCredentialStore.has(credentialId)
-          ? endpointCredentialStore.resolve(credentialId)
-          : undefined,
-      };
+      rollbackCredential = endpointCredentialStore.captureRollback(credentialId);
       await endpointCredentialStore.put(credentialId, replacementSecret);
     } else if (
       endpoint.credential_reference.kind === 'stored_secret' &&
@@ -57,19 +51,12 @@ export async function prepareInferenceEndpointSelection(
     if (credentialReference.kind === 'stored_secret') {
       const credentialId = credentialReference.credential_id;
       const credentialSecret = input.credential_secret?.trim();
-      const credentialExists = endpointCredentialStore.has(credentialId);
-      if (!credentialSecret && !credentialExists) {
+      const credentialAvailable = endpointCredentialStore.has(credentialId);
+      if (!credentialSecret && !credentialAvailable) {
         throw new Error('需要认证的 InferenceEndpoint 缺少 credential secret');
       }
       if (credentialSecret) {
-        if (credentialExists) {
-          replacedCredential = {
-            id: credentialId,
-            previousPlaintext: endpointCredentialStore.resolve(credentialId),
-          };
-        } else {
-          createdCredentialId = credentialId;
-        }
+        rollbackCredential = endpointCredentialStore.captureRollback(credentialId);
         await endpointCredentialStore.put(credentialId, credentialSecret);
       }
     }
@@ -79,16 +66,7 @@ export async function prepareInferenceEndpointSelection(
   return {
     endpoint,
     async rollback() {
-      if (createdCredentialId) await endpointCredentialStore.remove(createdCredentialId);
-      if (!replacedCredential) return;
-      if (replacedCredential.previousPlaintext === undefined) {
-        await endpointCredentialStore.remove(replacedCredential.id);
-      } else {
-        await endpointCredentialStore.put(
-          replacedCredential.id,
-          replacedCredential.previousPlaintext
-        );
-      }
+      await rollbackCredential?.();
     },
   };
 }

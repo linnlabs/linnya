@@ -3,7 +3,7 @@ import { buildModelInferenceRoute } from '@app/schemas/model-inference';
 import {
   ModelDiscoveryService,
   ModelCatalogConflictError,
-  type UserModelRegistration,
+  type ModelDiff,
   type InferenceEndpointView,
   type ModelConfig,
 } from 'src/domains/model-catalog';
@@ -68,27 +68,36 @@ async function setup(fetchFn: typeof fetch, endpoints = [connection]) {
     model_config_ids: models.map(model => model.id),
   });
   let revision = 0;
-  const registerUserModels = vi.fn(
-    async (registrations: readonly UserModelRegistration[], expectedRevision: number) => {
+  const applyCustomApiGroupModelDiff = vi.fn(
+    async (_groupName: string, diff: ModelDiff, expectedRevision: number) => {
       if (expectedRevision !== revision) throw new ModelCatalogConflictError();
-      for (const { model, endpoint: selection } of registrations) {
-        if (selection.kind !== 'existing') throw new Error('刷新必须复用当前连接');
-        models.push({ ...model, inference_endpoint_id: selection.inference_endpoint_id });
+      for (const id of diff.removed) {
+        const index = models.findIndex(model => model.id === id);
+        if (index < 0) throw new Error('Missing existing model');
+        models.splice(index, 1);
       }
-      revision += 1;
+      models.push(...diff.added);
+      if (diff.added.length + diff.updated.length + diff.removed.length > 0) revision += 1;
     }
   );
-  const resolveCredential = vi.fn((modelId: string) => `stored-key:${modelId}`);
+  const resolveInferenceEndpointCredential = vi.fn(
+    (endpointId: string) => `stored-key:${endpointId}`
+  );
+  const groups = [
+    { name: 'Relay', inference_endpoint_ids: endpoints.map(endpoint => endpoint.id) },
+  ];
   let nextId = 0;
   const useCase = createCustomApiOnboardingUseCase({
     modelCatalog: {
       getUserRevision: () => revision,
-      applyDiff: vi.fn(),
+      applyCustomApiGroupModelDiff,
+      removeCustomApiGroup: vi.fn(),
+      getCustomApiGroups: () => groups,
       getModels: () => models,
       getInferenceEndpoints: () => endpoints,
-      resolveCredential,
-      registerUserModels,
-      rebindUserModels: vi.fn(),
+      resolveInferenceEndpointCredential,
+      registerCustomApiModels: vi.fn(),
+      rebindCustomApiGroup: vi.fn(),
     },
     providerMembership: { getByModelConfigId: () => undefined },
     modelPickerPreferences: preferences,
@@ -99,8 +108,9 @@ async function setup(fetchFn: typeof fetch, endpoints = [connection]) {
     useCase,
     models,
     preferences,
-    registerUserModels,
-    resolveCredential,
+    applyCustomApiGroupModelDiff,
+    resolveInferenceEndpointCredential,
+    groups,
     changeConfiguration: () => {
       revision += 1;
     },
@@ -123,7 +133,8 @@ describe('自定义模型分组刷新', () => {
     const target = await setup(async (url, init) => {
       const authorization = new Headers(init?.headers).get('authorization');
       requests.push({ url: String(url), authorization });
-      if (authorization !== 'Bearer stored-key:local-0') return new Response('', { status: 401 });
+      if (authorization !== 'Bearer stored-key:relay-endpoint')
+        return new Response('', { status: 401 });
       return listing(['remote-local-0', 'remote-local-1', 'remote-new', 'remote-new']);
     });
     target.models.push(configuredModel('local-1'));
@@ -134,23 +145,26 @@ describe('自定义模型分组刷新', () => {
     await expect(target.useCase.refreshProvider({ provider_name: 'Relay' })).resolves.toEqual({
       provider_name: 'Relay',
       added_model_ids: ['new-1'],
+      removed_model_ids: [],
+      model_picker_preference_recovery_pending: false,
     });
     await expect(target.useCase.refreshProvider({ provider_name: 'Relay' })).resolves.toEqual({
       provider_name: 'Relay',
       added_model_ids: [],
+      removed_model_ids: [],
+      model_picker_preference_recovery_pending: false,
     });
 
     expect(requests).toEqual(
       Array.from({ length: 2 }, () => ({
         url: 'https://relay.example.com/v1/models',
-        authorization: 'Bearer stored-key:local-0',
+        authorization: 'Bearer stored-key:relay-endpoint',
       }))
     );
-    expect(target.registerUserModels).toHaveBeenCalledOnce();
-    expect(target.registerUserModels.mock.calls[0]?.[0][0].endpoint).toEqual({
-      kind: 'existing',
-      inference_endpoint_id: 'relay-endpoint',
-    });
+    expect(target.applyCustomApiGroupModelDiff).toHaveBeenCalledTimes(2);
+    expect(
+      target.applyCustomApiGroupModelDiff.mock.calls[0]?.[1].added[0]?.inference_endpoint_id
+    ).toBe('relay-endpoint');
     expect(target.models.slice(0, 2)).toEqual(original);
     expect(target.models[2]?.inference_route?.endpoint_model_id).toBe('remote-new');
     expect(target.preferences.read().model_preferences).toEqual([
@@ -188,30 +202,30 @@ describe('自定义模型分组刷新', () => {
     expect(requests).toEqual([
       {
         url: 'https://relay.example.com/v1/models',
-        bearer: 'Bearer stored-key:local-0',
+        bearer: 'Bearer stored-key:relay-endpoint',
         apiKey: null,
       },
       {
         url: 'https://other.example.com/v1/models?limit=1000',
         bearer: null,
-        apiKey: 'stored-key:local-1',
+        apiKey: 'stored-key:other',
       },
     ]);
-    expect(target.models.slice(2).map(model => model.inference_endpoint_id)).toEqual([
+    expect(target.models.map(model => model.inference_endpoint_id)).toEqual([
       'relay-endpoint',
       'other',
     ]);
   });
 
   it.each([401, 503])('查询返回 %i 时不写目录或偏好，也不回显远端正文', async status => {
-    const target = await setup(async () => new Response('stored-key:local-0', { status }));
+    const target = await setup(async () => new Response('stored-key:relay-endpoint', { status }));
     const before = target.preferences.read();
     await expect(target.useCase.refreshProvider({ provider_name: 'Relay' })).rejects.toMatchObject({
       code: 'custom_api_onboarding.refresh_failed',
       statusCode: status,
       message: expect.not.stringContaining('stored-key:'),
     });
-    expect(target.registerUserModels).not.toHaveBeenCalled();
+    expect(target.applyCustomApiGroupModelDiff).not.toHaveBeenCalled();
     expect(target.preferences.read()).toEqual(before);
   });
 
@@ -226,31 +240,108 @@ describe('自定义模型分组刷新', () => {
     await expect(target.useCase.refreshProvider({ provider_name: 'Relay' })).rejects.toMatchObject({
       code: 'custom_api_onboarding.refresh_failed',
     });
-    expect(target.registerUserModels).not.toHaveBeenCalled();
+    expect(target.applyCustomApiGroupModelDiff).not.toHaveBeenCalled();
     expect(target.preferences.read().model_preferences).toHaveLength(2);
   });
 
   it('缺少已保存凭据时不发送匿名请求', async () => {
     const fetchFn = vi.fn<typeof fetch>();
     const target = await setup(fetchFn);
-    target.resolveCredential.mockReturnValue('');
+    target.resolveInferenceEndpointCredential.mockReturnValue('');
     await expect(target.useCase.refreshProvider({ provider_name: 'Relay' })).rejects.toMatchObject({
       code: 'custom_api_onboarding.credential_required',
     });
     expect(fetchFn).not.toHaveBeenCalled();
-    expect(target.registerUserModels).not.toHaveBeenCalled();
+    expect(target.applyCustomApiGroupModelDiff).not.toHaveBeenCalled();
   });
 
-  it('远端暂时返回空列表时，不删除本地模型或改变偏好', async () => {
-    const target = await setup(async () => listing([]));
-    const original = structuredClone(target.models);
-    const preferences = target.preferences.read();
+  it('完整空列表清空模型与偏好，连接保持且下一次刷新可恢复', async () => {
+    let remoteIds: string[] = [];
+    const target = await setup(async () => listing(remoteIds));
     await expect(target.useCase.refreshProvider({ provider_name: 'Relay' })).resolves.toEqual({
       provider_name: 'Relay',
       added_model_ids: [],
+      removed_model_ids: ['local-0'],
+      model_picker_preference_recovery_pending: false,
     });
-    expect(target.models).toEqual(original);
-    expect(target.preferences.read()).toEqual(preferences);
+    expect(target.models).toEqual([]);
+    expect(target.preferences.read().model_preferences).toEqual([]);
+    expect(target.groups).toEqual([{ name: 'Relay', inference_endpoint_ids: ['relay-endpoint'] }]);
+    remoteIds = ['remote-returned'];
+    await expect(target.useCase.refreshProvider({ provider_name: 'Relay' })).resolves.toMatchObject(
+      {
+        added_model_ids: ['new-1'],
+        removed_model_ids: [],
+      }
+    );
+    expect(target.models[0]?.inference_route?.endpoint_model_id).toBe('remote-returned');
+    expect(target.resolveInferenceEndpointCredential).toHaveBeenNthCalledWith(2, 'relay-endpoint');
+  });
+
+  it('同一次刷新新增和删除，存续模型配置及偏好不变', async () => {
+    const target = await setup(async () => listing(['remote-keep', 'remote-new']));
+    const keep = configuredModel('keep');
+    target.models.push(keep);
+    await target.preferences.setModelVisibility('keep', true);
+    await expect(target.useCase.refreshProvider({ provider_name: 'Relay' })).resolves.toMatchObject(
+      {
+        added_model_ids: ['new-1'],
+        removed_model_ids: ['local-0'],
+      }
+    );
+    expect(target.models).toHaveLength(2);
+    expect(target.models[0]).toBe(keep);
+    expect(target.applyCustomApiGroupModelDiff).toHaveBeenCalledOnce();
+    expect(target.preferences.read().model_preferences).toEqual([
+      { model_config_id: 'keep', visible: true },
+      { model_config_id: 'new-1', visible: false },
+    ]);
+  });
+
+  it('完整快照提交失败时不删除旧模型或已有偏好', async () => {
+    const target = await setup(async () => listing(['remote-new']));
+    target.applyCustomApiGroupModelDiff.mockRejectedValueOnce(new Error('disk full'));
+    await expect(target.useCase.refreshProvider({ provider_name: 'Relay' })).rejects.toMatchObject({
+      code: 'custom_api_onboarding.refresh_failed',
+    });
+    expect(target.models.map(model => model.id)).toEqual(['local-0']);
+    expect(target.preferences.read().model_preferences).toContainEqual({
+      model_config_id: 'local-0',
+      visible: false,
+    });
+  });
+
+  it('目录已同步后的偏好清理失败只报告待恢复，不反转成功结果', async () => {
+    const target = await setup(async () => listing([]));
+    vi.spyOn(target.preferences, 'removeModelPreferences').mockRejectedValueOnce(
+      new Error('disk full')
+    );
+    await expect(target.useCase.refreshProvider({ provider_name: 'Relay' })).resolves.toMatchObject(
+      {
+        removed_model_ids: ['local-0'],
+        model_picker_preference_recovery_pending: true,
+      }
+    );
+    expect(target.models).toEqual([]);
+  });
+
+  it('分页的后页失败时，已取到的部分列表不能删除旧模型', async () => {
+    const target = await setup(
+      async url =>
+        String(url).includes('after_id=')
+          ? new Response('', { status: 503 })
+          : Response.json({
+              data: [{ id: 'new-page-one' }],
+              has_more: true,
+              last_id: 'new-page-one',
+            }),
+      [{ ...connection, route_profile_id: 'anthropic_messages', auth_profile: 'api_key' }]
+    );
+    await expect(target.useCase.refreshProvider({ provider_name: 'Relay' })).rejects.toMatchObject({
+      code: 'custom_api_onboarding.refresh_failed',
+    });
+    expect(target.models.map(model => model.id)).toEqual(['local-0']);
+    expect(target.applyCustomApiGroupModelDiff).not.toHaveBeenCalled();
   });
   it('发现期间连接编辑或删除后，拒绝旧响应写回', async () => {
     let complete!: (response: Response) => void;
@@ -278,7 +369,7 @@ describe('自定义模型分组刷新', () => {
     ]);
     expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter(result => result.status === 'rejected')).toHaveLength(1);
-    expect(target.models).toHaveLength(2);
+    expect(target.models).toHaveLength(1);
   });
   it('多连接发现开始前固定凭据，编辑期间的新 Key 不会发往旧地址', async () => {
     const other: InferenceEndpointView = {
@@ -296,7 +387,7 @@ describe('自定义模型分组刷新', () => {
           authorization: new Headers(init?.headers).get('authorization'),
         });
         if (requests.length === 1) {
-          target.resolveCredential.mockReturnValue('new-host-secret');
+          target.resolveInferenceEndpointCredential.mockReturnValue('new-host-secret');
           target.changeConfiguration();
         }
         return listing(['remote-new']);
@@ -308,7 +399,7 @@ describe('自定义模型分组刷新', () => {
     });
     expect(requests[1]).toEqual({
       url: 'https://old-other.example/v1/models',
-      authorization: 'Bearer stored-key:local-1',
+      authorization: 'Bearer stored-key:other',
     });
     expect(JSON.stringify(requests)).not.toContain('new-host-secret');
     expect(target.models).toHaveLength(2);

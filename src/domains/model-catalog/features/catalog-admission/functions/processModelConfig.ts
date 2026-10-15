@@ -11,9 +11,9 @@ import type {
   ModelTokenRoute,
   TokenRouteCapabilities,
 } from '../../../definitions/modelCatalog';
-import type { ModelReasoningConfig } from '@linnlabs/linnkit/contracts';
-import { isValidReasoningEffort, REASONING_EFFORTS } from '@linnlabs/linnkit/contracts';
-import { inferReasoningConfigByModelName } from './inferReasoningConfigByModelName';
+import type { ModelReasoningResolver } from '../../../definitions/modelReasoningResolver';
+import { resolveModelReasoningConfig } from './resolveModelReasoningConfig';
+import { readModelReasoningDeclaration } from './readModelReasoningDeclaration';
 import { readModelInferenceRoute } from './readModelInferenceRoute';
 import { readModelEmbeddingRoute } from './readModelEmbeddingRoute';
 import { readModelRerankingRoute } from './readModelRerankingRoute';
@@ -120,41 +120,11 @@ function readTokenPricing(value: unknown): ModelTokenPricing | undefined {
   return pricing;
 }
 
-/**
- * 解析并校验 `reasoning` 能力契约。
- *
- * 校验规则：
- * - `supported_efforts`：过滤非法枚举值、去重，并按 `REASONING_EFFORTS` 顺序（从弱到强）归一化排序，
- *   保证降级兜底取首项（最弱档）的行为可预测；空数组视为不支持，返回 undefined（不保留字段）。
- * - `default_effort`：必须为合法枚举且在 supported 中，否则忽略。
- */
-function readReasoningConfig(value: unknown): ModelReasoningConfig | undefined {
-  const raw = asRecord(value);
-  if (!raw) return undefined;
-
-  const rawEfforts = Array.isArray(raw.supported_efforts) ? raw.supported_efforts : [];
-  const deduped = Array.from(new Set(rawEfforts.filter(isValidReasoningEffort)));
-  if (deduped.length === 0) return undefined;
-  // 按 REASONING_EFFORTS 顺序（从弱到强）归一化排序
-  const supportedEfforts = deduped.sort(
-    (a, b) => REASONING_EFFORTS.indexOf(a) - REASONING_EFFORTS.indexOf(b)
-  );
-
-  const rawDefaultEffort = raw.default_effort;
-  const defaultEffort =
-    isValidReasoningEffort(rawDefaultEffort) && supportedEfforts.includes(rawDefaultEffort)
-      ? rawDefaultEffort
-      : undefined;
-
-  return {
-    supported_efforts: supportedEfforts,
-    default_effort: defaultEffort,
-  };
-}
-
 export function processModelConfig(args: {
   modelData: unknown;
   envVars: Record<string, string>;
+  reasoningResolver?: ModelReasoningResolver;
+  previousModel?: ModelConfig;
 }): ModelConfig {
   const modelData = asRecord(args.modelData);
   if (!modelData) {
@@ -232,7 +202,8 @@ export function processModelConfig(args: {
     catalog_source: readCatalogSource(modelData.catalog_source),
     credential_reference: credentialReference,
     inference_endpoint_id: inferenceEndpointId,
-    ...(typeof modelData.custom_provider_name === 'string' && modelData.custom_provider_name.trim().length > 0
+    ...(typeof modelData.custom_provider_name === 'string' &&
+    modelData.custom_provider_name.trim().length > 0
       ? { custom_provider_name: modelData.custom_provider_name.trim() }
       : {}),
     capabilities,
@@ -253,10 +224,16 @@ export function processModelConfig(args: {
     enable_client_retry: enableClientRetry,
     image_generation: imageGeneration,
     tags: asStringArray(modelData.tags),
-    // 显式 reasoning 契约优先；未显式声明时按 model_name 推断常见 reasoning 模型能力（兜底）
-    reasoning:
-      readReasoningConfig(modelData.reasoning) ??
-      inferReasoningConfigByModelName(readString(modelData.model_name)),
+    reasoning: resolveModelReasoningConfig({
+      modelName: readString(modelData.model_name),
+      route: inferenceRoute,
+      declared: readModelReasoningDeclaration(
+        modelData.reasoning,
+        args.previousModel,
+        args.reasoningResolver
+      ),
+      resolver: args.reasoningResolver,
+    }),
   };
 
   return model;

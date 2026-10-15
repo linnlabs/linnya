@@ -4,7 +4,11 @@ import {
   type CustomApiModelRegistrationCommand,
   type CustomApiModelRegistrationRequest,
 } from '@app/schemas/custom-api-onboarding';
-import type { ModelConfig, UserModelRegistration } from 'src/domains/model-catalog';
+import type {
+  InferenceEndpointView,
+  ModelConfig,
+  UserModelRegistration,
+} from 'src/domains/model-catalog';
 import {
   ModelPickerPreferencesRegistry,
   type ModelPickerPreferencesRepository,
@@ -15,20 +19,20 @@ import { composeSelectableModelMenu } from '../../model-picker';
 import type { CustomApiOnboardingModelCatalogPort } from '../definitions/customApiOnboardingPorts';
 import { createCustomApiOnboardingUseCase } from './createCustomApiOnboardingUseCase';
 
-function modelCatalog(): CustomApiOnboardingModelCatalogPort & {
-  registerUserModels: ReturnType<typeof vi.fn>;
-} {
+function modelCatalog() {
   return {
     getUserRevision: () => 0,
-    applyDiff: vi.fn(),
+    applyCustomApiGroupModelDiff: vi.fn(),
+    removeCustomApiGroup: vi.fn(),
+    getCustomApiGroups: () => [],
     getModels: () => [],
-    getInferenceEndpoints: () => [],
-    resolveCredential: vi.fn(),
-    registerUserModels: vi.fn(
-      async (_registrations: readonly UserModelRegistration[]) => undefined
+    getInferenceEndpoints: (): InferenceEndpointView[] => [],
+    resolveInferenceEndpointCredential: vi.fn(),
+    registerCustomApiModels: vi.fn(
+      async (_groupName: string, _registrations: readonly UserModelRegistration[]) => undefined
     ),
-    rebindUserModels: vi.fn(async () => undefined),
-  };
+    rebindCustomApiGroup: vi.fn(async () => undefined),
+  } satisfies CustomApiOnboardingModelCatalogPort;
 }
 
 const noProviderMembership = { getByModelConfigId: () => undefined };
@@ -81,7 +85,7 @@ describe('createCustomApiOnboardingUseCase', () => {
       )
     ).resolves.toEqual({ model_id: 'model-local-1' });
 
-    const { model, endpoint } = catalog.registerUserModels.mock.calls[0][0][0];
+    const { model, endpoint } = catalog.registerCustomApiModels.mock.calls[0][1][0];
     expect(model).toMatchObject({
       id: 'model-local-1',
       model_name: 'company-gpt',
@@ -137,7 +141,7 @@ describe('createCustomApiOnboardingUseCase', () => {
       })
     );
 
-    expect(catalog.registerUserModels.mock.calls[0]?.[0][0].endpoint).toEqual({
+    expect(catalog.registerCustomApiModels.mock.calls[0]?.[1][0].endpoint).toEqual({
       kind: 'existing',
       inference_endpoint_id: 'existing-endpoint',
     });
@@ -166,7 +170,7 @@ describe('createCustomApiOnboardingUseCase', () => {
         })
       )
     ).resolves.toEqual({ model_id: 'openai-compatible-model' });
-    expect(catalog.registerUserModels.mock.calls[0]?.[0][0].model).toMatchObject({
+    expect(catalog.registerCustomApiModels.mock.calls[0]?.[1][0].model).toMatchObject({
       capabilities: ['chat', 'image_input'],
       inference_route: {
         input_support: { user_image: true, tool_result_image: false },
@@ -212,16 +216,16 @@ describe('createCustomApiOnboardingUseCase', () => {
       model_ids: ['batch-model-1', 'batch-model-2'],
     });
 
-    expect(catalog.registerUserModels).toHaveBeenCalledOnce();
-    expect(catalog.registerUserModels.mock.calls[0]?.[0][0].endpoint).toMatchObject({
+    expect(catalog.registerCustomApiModels).toHaveBeenCalledOnce();
+    expect(catalog.registerCustomApiModels.mock.calls[0]?.[1][0].endpoint).toMatchObject({
       kind: 'create',
       endpoint: { id: 'batch-endpoint' },
     });
-    expect(catalog.registerUserModels.mock.calls[0]?.[0][1].endpoint).toEqual({
+    expect(catalog.registerCustomApiModels.mock.calls[0]?.[1][1].endpoint).toEqual({
       kind: 'existing',
       inference_endpoint_id: 'batch-endpoint',
     });
-    expect(catalog.registerUserModels.mock.calls[0]?.[0][1].model).toMatchObject({
+    expect(catalog.registerCustomApiModels.mock.calls[0]?.[1][1].model).toMatchObject({
       id: 'batch-model-2',
       model_name: 'batch-b',
       capabilities: ['chat', 'image_input'],
@@ -243,20 +247,26 @@ describe('createCustomApiOnboardingUseCase', () => {
       modelDiscovery: { discover: vi.fn() },
       modelCatalog: {
         getUserRevision: () => 0,
-        applyDiff: vi.fn(),
+        applyCustomApiGroupModelDiff: vi.fn(),
+        removeCustomApiGroup: vi.fn(),
+        getCustomApiGroups: () => [],
         getModels: () => models,
         getInferenceEndpoints: () => [],
-        resolveCredential: vi.fn(),
-        rebindUserModels: vi.fn(),
-        async registerUserModels(registrations) {
-          for (const { model } of registrations) {
+        resolveInferenceEndpointCredential: vi.fn(),
+        rebindCustomApiGroup: vi.fn(),
+        async registerCustomApiModels(_groupName, registrations) {
+          for (const { model, endpoint } of registrations) {
             // Catalog 一旦暴露模型，关闭偏好就应已提交，不能短暂变为默认开启。
             const index = models.length;
             const preference = preferences
               .read()
               .model_preferences.find(item => item.model_config_id === model.id);
             expect(preference?.visible).toBe(selections[index]);
-            models.push(model);
+            models.push({
+              ...model,
+              inference_endpoint_id:
+                endpoint.kind === 'create' ? endpoint.endpoint.id : endpoint.inference_endpoint_id,
+            });
           }
         },
       },
@@ -288,6 +298,7 @@ describe('createCustomApiOnboardingUseCase', () => {
 
     for (const registry of [preferences, reloaded]) {
       const menu = composeSelectableModelMenu({
+        custom_api_groups: [{ name: 'models.example.com', inference_endpoint_ids: ['custom-2'] }],
         discovered_models: { read: () => undefined },
         can_refresh_models: () => false,
         provider_definitions: [],
@@ -320,7 +331,7 @@ describe('createCustomApiOnboardingUseCase', () => {
     if (stage === '偏好') {
       vi.spyOn(repository, 'save').mockRejectedValueOnce(new Error('偏好文件无法写入'));
     } else {
-      catalog.registerUserModels.mockRejectedValueOnce(new Error('模型目录无法写入'));
+      catalog.registerCustomApiModels.mockRejectedValueOnce(new Error('模型目录无法写入'));
     }
     const useCase = createCustomApiOnboardingUseCase({
       providerMembership: noProviderMembership,
@@ -348,7 +359,7 @@ describe('createCustomApiOnboardingUseCase', () => {
         })
       )
     ).rejects.toMatchObject({ code: 'custom_api_onboarding.registration_failed' });
-    expect(catalog.registerUserModels).toHaveBeenCalledTimes(stage === '偏好' ? 0 : 1);
+    expect(catalog.registerCustomApiModels).toHaveBeenCalledTimes(stage === '偏好' ? 0 : 1);
     const reloaded = new ModelPickerPreferencesRegistry(repository);
     await reloaded.initialize({ configured_provider_ids: [], model_config_ids: [] });
     expect(reloaded.read().model_preferences).toEqual([]);

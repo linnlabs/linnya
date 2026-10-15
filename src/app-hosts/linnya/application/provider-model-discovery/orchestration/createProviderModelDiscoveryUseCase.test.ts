@@ -74,6 +74,7 @@ describe('正式 Provider 在线发现交接', () => {
         getModels: () => [],
         getModel: () => undefined,
         getInferenceEndpoints: () => [],
+        getCustomApiGroups: () => [],
         hasCredential: () => true,
         getCredentialStatus: () => 'available',
       },

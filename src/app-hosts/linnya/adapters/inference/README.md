@@ -28,7 +28,7 @@ body。
   reliability、failure/usage/continuation 和 conformance 的唯一 owner。
 - `features/ai-sdk-language-composition/`：把 Linnya resolved
   route/credential 投影到 package 窄合同，并在 Host seam 核对 Catalog
-  binding 与 factory coverage。
+  binding 与 factory coverage；把 SDK 已识别的思考能力投影到 Catalog 的窄查询端口。
 - `features/provider-failure-policy/`：只注入 Linnya
   Cloud 等产品级错误语义；通用 AI SDK taxonomy 留在 package。
 - `features/ai-sdk-diagnostic-logging/`：把 package 已脱敏的诊断事件写入 Linnya
@@ -53,6 +53,14 @@ port 完成 admission 后再按 `capability_id` 进入
 inference 不读取 ModelConfig 的通用 header 字段。`LlmCaller` 只消费
 `CanonicalInferencePort`；旧 `AgentAiEngine` port、callback stream、Host
 language projector/factory 和生产 bridge 已删除。
+
+主 App Server 和独立 Worker 必须在目录初始化前安装
+`createLinnyaModelReasoningResolver()`。查询只使用 route 的 `capability_id` 与
+`endpoint_model_id`，不需要 Key、网络或全局可变缓存。Model Catalog 负责把 SDK
+能力与显式配置相交，并应用产品默认档位；Renderer 继续消费正式目录 DTO。
+已保存模型在启动时重新准入即可获得新 SDK 能力，无需删除或重新添加 Provider。
+未知模型和未提供能力查询的 codec 不产生 SDK 能力声明，不能仅凭 Claude 名称把
+Anthropic 的档位套到 OpenAI-compatible 等其它协议上。
 
 账号身份头与语言协议头分属两个 owner：model-request-auth 只提供
 `chatgpt-account-id`、`originator` 等 credential-scoped identity；Host 根据

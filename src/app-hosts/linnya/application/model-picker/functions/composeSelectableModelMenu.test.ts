@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ModelConfig } from 'src/domains/model-catalog';
+import type { InferenceEndpointView, ModelConfig } from 'src/domains/model-catalog';
+import { ModelPickerSnapshotSchema } from '@app/schemas/model-picker';
 import { providerCatalog, type ProviderDefinition } from '@linnya/provider-catalog';
 import type { ConfiguredProvider } from 'src/domains/provider-configuration';
 
@@ -97,6 +98,21 @@ function configuredProvider(
   };
 }
 
+function customEndpoint(
+  id: string,
+  credentialStatus: InferenceEndpointView['credential_status'] = 'configured'
+): InferenceEndpointView {
+  return {
+    id,
+    route_profile_id: 'openai_responses',
+    endpoint_id: id,
+    base_url: `https://${id}.example.com/v1`,
+    auth_profile: 'bearer',
+    credential_reference: { kind: 'stored_secret', credential_id: `${id}-key` },
+    credential_status: credentialStatus,
+  };
+}
+
 function input(
   overrides: Partial<ComposeSelectableModelMenuInput> = {}
 ): ComposeSelectableModelMenuInput {
@@ -107,6 +123,7 @@ function input(
     configured_providers: [],
     models: [],
     inference_endpoints: [],
+    custom_api_groups: [],
     provider_accounts: [],
     preferences: { provider_preferences: [], model_preferences: [] },
     has_credential: () => true,
@@ -122,7 +139,11 @@ describe('composeSelectableModelMenu', () => {
     const model = chatModel('company-gpt', 'user', 'custom-endpoint', 'Company GPT');
     model.custom_provider_name = 'Company Gateway';
 
-    expect(composeSelectableModelMenu(input({ models: [model] })).custom_providers).toEqual([
+    expect(composeSelectableModelMenu(input({
+      models: [model],
+      custom_api_groups: [{ name: 'Company Gateway', inference_endpoint_ids: ['custom-endpoint'] }],
+      inference_endpoints: [customEndpoint('custom-endpoint')],
+    })).custom_providers).toEqual([
       expect.objectContaining({
         provider_name: 'Company Gateway',
         api_format: 'openai_responses',
@@ -130,6 +151,64 @@ describe('composeSelectableModelMenu', () => {
         models: [expect.objectContaining({ model_config_id: 'company-gpt' })],
       }),
     ]);
+  });
+
+  it('空自定义分组仍从已保存连接投影刷新和编辑身份，不伪造可用模型', () => {
+    const result = ModelPickerSnapshotSchema.parse(composeSelectableModelMenu(input({
+      custom_api_groups: [{ name: 'Relay', inference_endpoint_ids: ['relay'] }],
+      inference_endpoints: [customEndpoint('relay', 'missing')],
+    })));
+
+    expect(result.custom_providers).toEqual([{
+      provider_id: 'custom:Relay',
+      provider_name: 'Relay',
+      api_format: 'openai_responses',
+      base_url: 'https://relay.example.com/v1',
+      endpoint_id: 'relay',
+      models: [],
+    }]);
+    expect(result.custom_models).toEqual([]);
+  });
+
+  it('自定义分组归属、快捷选择偏好和运行凭据可用性分别投影', () => {
+    const usable = { ...chatModel('usable', 'user', 'ready'), custom_provider_name: 'Relay' };
+    const unavailable = { ...chatModel('unavailable', 'user', 'missing'), custom_provider_name: 'Relay' };
+    const result = composeSelectableModelMenu(input({
+      models: [usable, unavailable],
+      custom_api_groups: [{ name: 'Relay', inference_endpoint_ids: ['ready', 'missing'] }],
+      inference_endpoints: [customEndpoint('ready'), customEndpoint('missing', 'missing')],
+      preferences: {
+        provider_preferences: [],
+        model_preferences: [
+          { model_config_id: usable.id, visible: false },
+          { model_config_id: unavailable.id, visible: true },
+        ],
+      },
+    }));
+
+    expect(result.custom_providers?.[0]?.models).toEqual([
+      expect.objectContaining({ model_config_id: 'usable', picker_enabled: false, runtime_available: true }),
+      expect.objectContaining({ model_config_id: 'unavailable', picker_enabled: true, runtime_available: false }),
+    ]);
+  });
+
+  it('Provider 目录未知也不把正式 membership 或未声明分组的模型转入自定义', () => {
+    const formal = { ...chatModel('unknown-model', 'user', 'relay'), custom_provider_name: 'Relay' };
+    const ungrouped = { ...chatModel('ungrouped', 'user', 'relay'), custom_provider_name: 'Other' };
+    const result = composeSelectableModelMenu(input({
+      models: [formal, ungrouped],
+      custom_api_groups: [{ name: 'Relay', inference_endpoint_ids: ['relay'] }],
+      inference_endpoints: [customEndpoint('relay')],
+      configured_providers: [{
+        id: 'configured-unknown',
+        provider_definition_id: 'unknown',
+        provider_connection_definition_id: 'unknown',
+        models: [{ model_config_id: formal.id, provider_model_id: 'remote' }],
+      }],
+    }));
+
+    expect(result.custom_providers?.[0]?.models).toEqual([]);
+    expect(result.custom_models).toEqual([]);
   });
 
   it('把 ChatGPT 订阅生图模型归入 OpenAI Provider，而不是系统模型', () => {
@@ -290,6 +369,7 @@ describe('composeSelectableModelMenu', () => {
   it('Cloud 固定独立投影，自定义模型不生成 Provider，默认内置模型不冒充自定义', () => {
     const result = composeSelectableModelMenu(
       input({
+        custom_api_groups: [{ name: '自定义模型', inference_endpoint_ids: ['custom-endpoint'] }],
         models: [
           chatModel('cloud-gpt', 'cloud', 'cloud', 'Cloud GPT'),
           chatModel('custom-intranet', 'user', 'custom-endpoint', '公司内网模型'),

@@ -44,10 +44,12 @@ function makeModelData(overrides: Record<string, unknown> = {}) {
 
 describe('processModelConfig - inference_route', () => {
   it('拒绝旧明文与环境变量字段进入 ModelConfig', () => {
-    expect(() => processModelConfig({
-      modelData: makeModelData({ api_key: 'secret' }),
-      envVars: {},
-    })).toThrow(/不再接受 api_key/);
+    expect(() =>
+      processModelConfig({
+        modelData: makeModelData({ api_key: 'secret' }),
+        envVars: {},
+      })
+    ).toThrow(/不再接受 api_key/);
   });
 
   it('chat 模型必须提供完整显式 route', () => {
@@ -216,13 +218,15 @@ describe('processModelConfig - image_generation_route', () => {
   });
 
   it('image_generation capability 缺少 route 时拒绝启用', () => {
-    expect(() => processModelConfig({
-      modelData: makeModelData({
-        capabilities: ['image_generation'],
-        inference_route: undefined,
-      }),
-      envVars: {},
-    })).toThrow(/image_generation 模型必须声明 image_generation_route/);
+    expect(() =>
+      processModelConfig({
+        modelData: makeModelData({
+          capabilities: ['image_generation'],
+          inference_route: undefined,
+        }),
+        envVars: {},
+      })
+    ).toThrow(/image_generation 模型必须声明 image_generation_route/);
   });
 });
 
@@ -251,31 +255,35 @@ describe('processModelConfig - transcription_route', () => {
   });
 
   it('audio_transcription capability 缺少 typed route 时拒绝启用', () => {
-    expect(() => processModelConfig({
-      modelData: makeModelData({
-        capabilities: ['audio_transcription'],
-        inference_route: undefined,
-      }),
-      envVars: {},
-    })).toThrow(/audio_transcription 模型必须声明 transcription_route/);
+    expect(() =>
+      processModelConfig({
+        modelData: makeModelData({
+          capabilities: ['audio_transcription'],
+          inference_route: undefined,
+        }),
+        envVars: {},
+      })
+    ).toThrow(/audio_transcription 模型必须声明 transcription_route/);
   });
 
   it('route model identity 与目录不一致时拒绝准入', () => {
-    expect(() => processModelConfig({
-      modelData: makeModelData({
-        capabilities: ['audio_transcription'],
-        inference_route: undefined,
-        transcription_route: {
-          api_surface: 'openai_audio_transcriptions',
-          capability_id: 'host:openai-audio-transcriptions',
-          endpoint_id: 'openai',
-          endpoint_model_id: 'other-model',
-          base_url: 'https://example.com/v1',
-          auth_profile: 'bearer',
-        },
-      }),
-      envVars: {},
-    })).toThrow(/transcription_route.endpoint_model_id 必须与 model_name 一致/);
+    expect(() =>
+      processModelConfig({
+        modelData: makeModelData({
+          capabilities: ['audio_transcription'],
+          inference_route: undefined,
+          transcription_route: {
+            api_surface: 'openai_audio_transcriptions',
+            capability_id: 'host:openai-audio-transcriptions',
+            endpoint_id: 'openai',
+            endpoint_model_id: 'other-model',
+            base_url: 'https://example.com/v1',
+            auth_profile: 'bearer',
+          },
+        }),
+        envVars: {},
+      })
+    ).toThrow(/transcription_route.endpoint_model_id 必须与 model_name 一致/);
   });
 });
 
@@ -443,6 +451,93 @@ describe('processModelConfig - reasoning 字段校验', () => {
 
     expect(result.reasoning).toEqual({
       supported_efforts: ['low', 'medium', 'high', 'xhigh'],
+      default_effort: 'medium',
+    });
+  });
+});
+
+describe('SDK reasoning 能力与显式声明的准入', () => {
+  it('只按真实route查询，新Claude能力替代旧off声明，同时保留有效的用户窄范围', () => {
+    const raw = makeModelData({
+      model_name: 'claude-haiku-5-5',
+      inference_route: {
+        ...makeModelData().inference_route,
+        endpoint_model_id: 'claude-haiku-5-5',
+      },
+    });
+    const query = (route: { capability_id: string; endpoint_model_id: string }) => {
+      expect(route.capability_id).toBe('ai-sdk:openai-chat');
+      expect(route.endpoint_model_id).toBe('claude-haiku-5-5');
+      return {
+        supported_efforts: ['low', 'medium', 'high'],
+      } satisfies import('@linnlabs/linnkit/contracts').ModelReasoningConfig;
+    };
+    expect(
+      processModelConfig({ modelData: raw, envVars: {}, reasoningResolver: query }).reasoning
+    ).toEqual({
+      supported_efforts: ['low', 'medium', 'high'],
+      default_effort: 'medium',
+    });
+    expect(
+      processModelConfig({
+        modelData: {
+          ...raw,
+          reasoning: {
+            supported_efforts: ['off', 'medium', 'high'],
+            default_effort: 'off',
+          },
+        },
+        envVars: {},
+        reasoningResolver: query,
+      }).reasoning
+    ).toEqual({
+      supported_efforts: ['medium', 'high'],
+      default_effort: 'medium',
+    });
+    expect(
+      processModelConfig({
+        modelData: {
+          ...raw,
+          reasoning: {
+            supported_efforts: ['medium', 'high'],
+            default_effort: 'high',
+          },
+        },
+        envVars: {},
+        reasoningResolver: query,
+      }).reasoning
+    ).toEqual({
+      supported_efforts: ['medium', 'high'],
+      default_effort: 'high',
+    });
+  });
+
+  it('无共同档位明确报配置冲突，SDK无结果保留已知legacy规则', () => {
+    const raw = makeModelData({
+      model_name: 'claude-sonnet-4-5',
+      inference_route: {
+        ...makeModelData().inference_route,
+        endpoint_model_id: 'claude-sonnet-4-5',
+      },
+    });
+    expect(() =>
+      processModelConfig({
+        modelData: {
+          ...raw,
+          reasoning: {
+            supported_efforts: ['off'],
+            default_effort: 'off',
+          },
+        },
+        envVars: {},
+        reasoningResolver: () => ({ supported_efforts: ['low', 'medium', 'high'] }),
+      })
+    ).toThrow('claude-sonnet-4-5');
+    expect(
+      processModelConfig({ modelData: raw, envVars: {}, reasoningResolver: () => undefined })
+        .reasoning
+    ).toEqual({
+      supported_efforts: ['off', 'low', 'medium', 'high'],
       default_effort: 'medium',
     });
   });

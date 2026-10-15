@@ -306,9 +306,12 @@ capability 明确接入，不能把某一家 `/models` 响应当成通用合同�
 已注册的自定义分组通过 `PUT /api/v1/custom-api-onboarding/providers` 编辑：Renderer 只提交当前分组名称以及新的名称、格式、URL 和可选 Key，URL 使用与注册相同的共享规范化规则。endpoint 复用、凭据沿用条件和 route 重建全部由 Host 决定，Renderer 只展示 Host 返回的稳定错误。
 
 自定义分组刷新通过 `POST /api/v1/custom-api-onboarding/providers/refresh` 只提交分组名称。Host 使用已保存的
-连接与 Key 查询，按 endpoint 和远端模型 ID 去重，保留已有模型与开关，新模型默认关闭。Vue 不调用首次添加的
+连接与 Key 查询，按 endpoint 和远端模型 ID 同步增删，保留存续模型的配置与开关，新模型默认关闭。Vue 不调用首次添加的
 匿名发现路径，也不比较 Provider 模型 ID 或重新提交注册表单。domain-level
-`orchestration/refreshCustomApiProviderModels.ts` 协调刷新与两份目录重读，并复用 picker 的统一错误生命周期。
+`orchestration/refreshCustomApiProviderModels.ts` 在提交成功后，先按响应中的实际删除 ID 清理主模型、各用途与
+reasoning 绑定，并按各 feature 队列顺序从两份本地投影接纳正式删除，再协调两份目录重读，并复用 picker 的统一错误生命周期。
+这保证读取失败后已删除模型也不会残留在有效选择中，刷新移除最后一个模型时仍保留空分组。读取失败明确显示“模型已刷新，但列表同步失败”，
+不能把已提交的增删说成刷新失败，也不能因为读取失败跳过绑定清理。
 
 Credential 只允许存在于未提交表单和一次 Custom API onboarding
 command 中。Host 将它转换为一次 InferenceEndpoint create
@@ -492,8 +495,9 @@ domain 重构不要求 Windows/macOS 安装包验收。
   提交期间固定表单与选择；成功保存后即清理这批草稿，目录重读失败会明确提示“已保存”，不诱导重复添加。
 - Catalog 与 Picker 的网络操作分别按 Pinia store 实例排队，后台通知也参与相同顺序。store 只接收结果，
   不调用网络编排；后台读取不清除用户操作错误，迟到快照不能覆盖随后提交的新值。
-- 自定义分组刷新和删除只向 Host 提交名称，连接与真实归属由后端解析。刷新后新模型默认关闭，已有选择不写回。
-  删除使用 Host 单次目录提交，并用响应中的实际模型 ID 清理用途绑定；同步失败与删除失败分别反馈。
+- 自定义分组刷新和删除只向 Host 提交名称，连接与真实归属由后端解析。刷新按远端快照同步增删，新模型默认关闭，存续模型选择不写回。
+  删除使用 Host 单次目录提交，并用响应中的实际模型 ID 清理用途绑定；显式分组删除还按分组身份移除本地来源，
+  即使分组原本为空且重读失败也不能残留编辑入口。同步失败与删除失败分别反馈。
 
 本轮审计收口了旧发现结果提交、偏好并发覆盖、半批注册、交错刷新重复添加、删除后旧请求写回和错误正文泄密。
 回归验证集中在会话、编排、目录事务和 HTTP 合同，测试通过可控的延迟与写盘失败重现这些实际顺序。

@@ -146,6 +146,136 @@ describe('ModelDiscoveryService', () => {
       });
     });
   });
+
+  it('Anthropic 按 after_id 读完全部页，同一身份去重后才返回完整目录', async () => {
+    const requests: { url: string; headers: Headers; signal: AbortSignal | null | undefined }[] = [];
+    const service = new ModelDiscoveryService({
+      fetchFn: async (url, init) => {
+        requests.push({ url: String(url), headers: new Headers(init?.headers), signal: init?.signal });
+        expect(init?.redirect).toBe('error');
+        return new Response(JSON.stringify(requests.length === 1
+          ? { data: [{ id: 'a' }, { id: 'b' }], has_more: true, last_id: 'b' }
+          : { data: [{ id: 'b' }, { id: 'c' }], has_more: false, last_id: 'c' }
+        ));
+      },
+    });
+
+    const result = await service.discover({
+      api_format: 'anthropic_compatible', base_url: 'https://relay.example/anthropic', api_key: 'test-key',
+    });
+
+    expect(result.models.map(model => model.id)).toEqual(['a', 'b', 'c']);
+    expect(requests.map(request => request.url)).toEqual([
+      'https://relay.example/anthropic/models?limit=1000',
+      'https://relay.example/anthropic/models?limit=1000&after_id=b',
+    ]);
+    for (const request of requests) {
+      expect(request.headers.get('x-api-key')).toBe('test-key');
+      expect(request.headers.get('anthropic-version')).toBe('2023-06-01');
+      expect(request.signal).toBe(requests[0]?.signal);
+    }
+  });
+
+  it('合法空末页结束发现，保留前页结果', async () => {
+    let calls = 0;
+    const service = new ModelDiscoveryService({
+      fetchFn: async () => new Response(JSON.stringify(++calls === 1
+        ? { data: [{ id: 'a' }], has_more: true, last_id: 'a' }
+        : { data: [], has_more: false, last_id: null }
+      )),
+    });
+    const result = await service.discover({
+      api_format: 'anthropic_compatible', base_url: 'https://relay.example/v1',
+    });
+    expect(calls).toBe(2);
+    expect(result.models.map(model => model.id)).toEqual(['a']);
+  });
+
+  it('明确完成的空列表返回空快照，区别于分页错误', async () => {
+    const service = new ModelDiscoveryService({
+      fetchFn: async () => new Response(JSON.stringify({
+        data: [], has_more: false, last_id: null,
+      })),
+    });
+    await expect(service.discover({
+      api_format: 'anthropic_compatible', base_url: 'https://relay.example/v1',
+    })).resolves.toEqual({ models: [] });
+  });
+
+  it.each([
+    { name: '后页失败', body: { error: 'secret response' }, status: 503 },
+    { name: '循环游标', body: { data: [{ id: 'b' }], has_more: true, last_id: 'a' }, status: 200 },
+    { name: '空非末页', body: { data: [], has_more: true, last_id: 'b' }, status: 200 },
+    { name: '缺少终止标记', body: { data: [{ id: 'b' }] }, status: 200 },
+    { name: '未知格式', body: { unknown: [] }, status: 200 },
+    { name: '非法分页标记', body: { data: [{ id: 'b' }], has_more: 'false' }, status: 200 },
+    { name: '缺少续页游标', body: { data: [{ id: 'b' }], has_more: true }, status: 200 },
+  ])('$name 不得把已经取得的部分模型作为完整目录返回', async ({ body, status }) => {
+    let calls = 0;
+    const service = new ModelDiscoveryService({
+      fetchFn: async () => ++calls === 1
+        ? new Response(JSON.stringify({ data: [{ id: 'a' }], has_more: true, last_id: 'a' }))
+        : new Response(JSON.stringify(body), { status }),
+    });
+    await expect(service.discover({
+      api_format: 'anthropic_compatible', base_url: 'https://relay.example/v1',
+    })).rejects.toMatchObject({ code: 'model_discovery.failed' });
+    expect(calls).toBe(2);
+  });
+
+  it('OpenAI 兼容端点显式声明未完分页时拒绝不完整快照，不猜测 cursor 参数', async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({
+      data: [{ id: 'a' }], has_more: true, last_id: 'a',
+    })));
+    await expect(new ModelDiscoveryService({ fetchFn }).discover({
+      api_format: 'openai_compatible', base_url: 'https://relay.example/v1',
+    })).rejects.toMatchObject({ code: 'model_discovery.unsupported_protocol', statusCode: 502 });
+    expect(fetchFn).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { api_format: 'openai_compatible' as const, body: { data: [{ id: 'a' }] } },
+    { api_format: 'anthropic_compatible' as const, body: { data: [{ id: 'a' }] } },
+    { api_format: 'openai_compatible' as const, body: { models: [{ id: 'a' }] } },
+    { api_format: 'openai_compatible' as const, body: { models: { a: { name: 'A' } } } },
+  ])('保留无分页声明的兼容列表 $api_format', async ({ api_format, body }) => {
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(JSON.stringify(body)));
+    const result = await new ModelDiscoveryService({ fetchFn }).discover({
+      api_format, base_url: 'https://relay.example/v1',
+    });
+    expect(result.models.map(model => model.id)).toEqual(['a']);
+    expect(fetchFn).toHaveBeenCalledOnce();
+  });
+
+  it('所有分页共用 15 秒总期限，后页响应体超时不发布前页结果', async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const service = new ModelDiscoveryService({
+      fetchFn: async (_url, init) => {
+        calls += 1;
+        if (calls === 1) {
+          await new Promise<void>(resolve => setTimeout(resolve, 8_000));
+          return new Response(JSON.stringify({ data: [{ id: 'a' }], has_more: true, last_id: 'a' }));
+        }
+        return new Response(new ReadableStream<Uint8Array>({
+          start(controller) {
+            init?.signal?.addEventListener('abort', () => controller.error(new Error('secret')));
+          },
+        }));
+      },
+    });
+    const pending = service.discover({
+      api_format: 'anthropic_compatible', base_url: 'https://relay.example/v1',
+    });
+    const assertion = expect(pending).rejects.toMatchObject({
+      code: 'model_discovery.network_error', statusCode: 504, message: '请求模型列表超时（15s）',
+    });
+    await vi.advanceTimersByTimeAsync(8_000);
+    expect(calls).toBe(2);
+    await vi.advanceTimersByTimeAsync(7_000);
+    await assertion;
+  });
+
   afterEach(() => vi.useRealTimers());
 
   it('保留 Anthropic 网关显式前缀并拒绝带凭据或查询参数的 base URL', () => {

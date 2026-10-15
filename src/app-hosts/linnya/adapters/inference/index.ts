@@ -40,3 +40,4 @@ export {
   type RerankingModelCatalog,
 } from './orchestration/createRerankingPort';
 export * from './features/provider-onboarding-binding';
+export { createLinnyaModelReasoningResolver } from './features/ai-sdk-language-composition/orchestration/createLinnyaModelReasoningResolver';

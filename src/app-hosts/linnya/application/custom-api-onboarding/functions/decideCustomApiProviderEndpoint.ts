@@ -1,28 +1,8 @@
+import type { InferenceEndpointView } from 'src/domains/model-catalog';
 import type {
-  CredentialReference,
-  InferenceEndpointView,
-  ModelConfig,
-} from 'src/domains/model-catalog';
-
-import type { CustomApiRuntimeBinding } from '../definitions/customApiRuntimeBinding';
-
-export type CustomApiProviderEndpointDecision =
-  /** 连接未变化且不会影响分组外模型：保留原 endpoint，必要时在原边界内替换 Key。 */
-  | { readonly kind: 'keep'; readonly endpoint: InferenceEndpointView }
-  /** 为分组新建 endpoint 与独立 credential。 */
-  | { readonly kind: 'create_with_secret' }
-  /** 为分组新建 endpoint，并沿用分组唯一且可用的现有 credential。 */
-  | { readonly kind: 'create_with_credential'; readonly credential_reference: CredentialReference }
-  | { readonly kind: 'credential_required' };
-
-export interface DecideCustomApiProviderEndpointInput {
-  readonly groupModelIds: ReadonlySet<string>;
-  readonly groupEndpoints: readonly InferenceEndpointView[];
-  readonly catalogModels: readonly Pick<ModelConfig, 'id' | 'inference_endpoint_id'>[];
-  readonly binding: CustomApiRuntimeBinding;
-  readonly baseUrl: string;
-  readonly hasNewSecret: boolean;
-}
+  CustomApiProviderEndpointDecision,
+  DecideCustomApiProviderEndpointInput,
+} from '../definitions/customApiProviderEndpointDecision';
 
 function isCredentialUsable(endpoint: InferenceEndpointView): boolean {
   return (
@@ -48,10 +28,24 @@ export function decideCustomApiProviderEndpoint(
     onlyEndpoint.auth_profile === input.binding.auth_profile;
 
   if (connectionUnchanged) {
-    const endpointExclusive = input.catalogModels.every(
-      model => model.inference_endpoint_id !== onlyEndpoint.id || input.groupModelIds.has(model.id)
-    );
-    if (input.hasNewSecret && endpointExclusive) return { kind: 'keep', endpoint: onlyEndpoint };
+    const endpointExclusive =
+      !input.otherGroupEndpointIds.has(onlyEndpoint.id) &&
+      input.catalogModels.every(
+        model =>
+          model.inference_endpoint_id !== onlyEndpoint.id || input.groupModelIds.has(model.id)
+      );
+    // 不同 endpoint 也可能沿用同一凭据；换 Key 必须同时隔离 endpoint 与 credential 两层引用。
+    const reference = onlyEndpoint.credential_reference;
+    const credentialExclusive =
+      reference.kind === 'stored_secret' &&
+      input.catalogEndpoints.every(
+        endpoint =>
+          endpoint.id === onlyEndpoint.id ||
+          endpoint.credential_reference.kind !== 'stored_secret' ||
+          endpoint.credential_reference.credential_id !== reference.credential_id
+      );
+    if (input.hasNewSecret && endpointExclusive && credentialExclusive)
+      return { kind: 'keep', endpoint: onlyEndpoint };
     if (!input.hasNewSecret) {
       return isCredentialUsable(onlyEndpoint)
         ? { kind: 'keep', endpoint: onlyEndpoint }

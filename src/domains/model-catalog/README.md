@@ -2,7 +2,7 @@
 
 `model-catalog`
 是桌面后端产品模型目录和用户 InferenceEndpoint 的唯一 owner。它合并内置默认目录、Linnya
-Cloud 目录、账号能力投影和用户自定义目录，完成严格准入、凭据引用解析、用户模型与端点元数据持久化、进程内查询及 Cloud 刷新事件。正式 Provider 的本地配置身份与模型归属由
+Cloud 目录、账号能力投影和用户自定义目录，完成严格准入、凭据引用解析、用户模型、自定义分组连接归属与端点元数据持久化、进程内查询及 Cloud 刷新事件。正式 Provider 的本地配置身份与模型归属由
 [`provider-configuration`](../provider-configuration/README.md)
 独立拥有，不能塞回通用 `ModelConfig`。
 
@@ -23,6 +23,7 @@ codec、usage/continuation 投影和单次请求编排位于
 | Linnya Cloud 模型拉取、ID、设备身份               | `features/cloud-catalog/`                                                                                              |
 | 内置默认模型与启动路径                            | `features/default-catalog/`                                                                                            |
 | InferenceEndpoint、CredentialReference 与安全密文 | `features/inference-endpoints/`                                                                                        |
+| 自定义 API 分组连接引用与生命周期               | `features/custom-api-groups/`                                                                                          |
 | `user_models.json` 格式与原子写入                 | `features/user-model-persistence/`                                                                                     |
 | 四个来源如何合并、CRUD、Cloud retry/event         | `registry/modelCatalogRegistry.ts`                                                                                     |
 | App Host 启动如何冻结默认目录路径                 | `app-hosts/linnya/backend-runtime/functions/resolveAppDefaultModelsPath.ts`                                             |
@@ -46,7 +47,7 @@ codec、usage/continuation 投影和单次请求编排位于
   capability 加密后保存到 AppData，目录 DTO、Workspace、日志和 Pinia 不出现明文；
 - 在同一个正式 Provider connection 的 endpoint 上添加模型时复用 credential
   boundary；同品牌另一 connection 必须使用独立 endpoint/credential，用户再次提交 Key 只替换当前 boundary 的 secret，目录写盘失败时恢复旧 secret；
-- 原子持久化用户模型和 InferenceEndpoint 元数据，写盘成功后才提交内存状态；
+- 原子持久化用户模型、自定义分组连接归属和 InferenceEndpoint 元数据，写盘成功后才提交内存状态；
 - 提供 capability、UI visibility、tag、purpose default 等目录查询；
 - 在 Cloud 目录成功刷新后发布窄事件，由 Desktop Host
   capability 桥接为 Renderer 重新拉取信号。
@@ -61,7 +62,7 @@ codec、usage/continuation 投影和单次请求编排位于
 - 保存 OpenRouter routing/header 或 Claude SDK
   auth/timeout 这类厂商 codec 配置；正式 package option 只能由 Host runtime
   profile 拥有；
-- 保存正式 Provider 产品身份、ProviderDefinition 关联或模型来源分组；
+- 保存正式 Provider 产品身份、ProviderDefinition 关联或正式模型来源归属；
 - 修复、双读或静默接受缺少 typed route 的旧用户配置。
 
 判断归属时可以用一句话：如果改动在回答“目录里有哪些模型、配置是否合法”，属于这里；如果在回答“这次怎样调用模型、失败后怎么办”，不属于这里。
@@ -76,6 +77,7 @@ model-catalog/
 ├── features/
 │   ├── catalog-admission/               # 原始配置到合法 ModelConfig 的纯规则
 │   ├── cloud-catalog/                   # Cloud 目录 transport、ID 与设备身份
+│   ├── custom-api-groups/              # 分组连接归属、模型快照同步与空连接生命周期
 │   ├── default-catalog/                 # credential-free 默认资产与路径合同
 │   ├── inference-endpoints/            # 端点准入、credential 密文文件与事务
 │   └── user-model-persistence/          # 用户模型文件 envelope 与原子读写
@@ -176,8 +178,18 @@ Onboarding 按正式模型注册流程管理。目录只保存引用，OAuth tok
 
 ### User catalog
 
+自定义 API 的 `CustomApiGroup` 只保存名称和 `inference_endpoint_ids`，不创建正式 Provider 身份，不复制 URL、协议或凭据。它和模型、endpoint 在同一个文件中原子提交；即使远端完整列表为空，分组连接引用仍保留，后续刷新、编辑与显式删除仍可执行。模型消失不代表用户删除了连接。
+
+`registerCustomApiModels` 注册分组及模型；`applyCustomApiGroupModelDiff` 在一次提交中同时新增与删除，已有模型不写回时保留其 ID 与用户编辑；`rebindCustomApiGroup` 支持含零模型的连接编辑；`removeCustomApiGroup` 才删除分组引用。endpoint 只在既没有模型引用、也没有任何自定义分组引用时回收，共享凭据仍按所有剩余 endpoint 引用计算。`resolveInferenceEndpointCredential` 使刷新不再依赖一个占位模型。
+
+v4 文件只从明确 `custom_provider_name` 和 endpoint 引用生成分组，所有条目通过准入后一次覆盖为 v5；不按 route、URL 或模型名猜测正式 Provider。历史未命名模型由 App 在正式 membership 恢复后显式调用 `migrateCustomApiGroups`，同一事务规范化模型归属并补齐引用。重复迁移无状态差异时不写盘、不递增版本，也不会丢失独立空组。
+
+分组的纯规则位于 `custom-api-groups/functions`，凭据准备与失败撤回位于该 feature 的 `orchestration`；registry 继续只拥有串行队列、目录版本校验和统一发布。目录文件写入失败时模型与分组不发布，凭据变更按已有事务协议撤回。跨文件凭据存储仍不宣称具有进程崩溃级事务。
+
+真实持久化验证见 [`customApiGroups.integration.test.ts`](./features/custom-api-groups/__tests__/customApiGroups.integration.test.ts)：覆盖新增删除单次提交、空分组重启后刷新、共享 endpoint、失败回滚、版本冲突与一次迁移。
+
 用户模型和 InferenceEndpoint 元数据写入 Workspace 下的
-`user_models.json`。当前 envelope 版本是 `4.0.0`；用户模型显式声明
+`user_models.json`。当前 envelope 版本是 `5.0.0`；用户模型显式声明
 `catalog_source: user` 并只保存 `inference_endpoint_id`，端点保存 route
 profile、endpoint identity、base URL、auth profile 和 credential
 reference。模型中不存在 `provider` 字段：用户填写 URL、API
@@ -199,7 +211,7 @@ identity、base URL 和 auth profile 必须完全一致。App
 composition 提供异步 codec；启动时密文一次解入 App
 Server 内存，推理热路径仍同步解析且不跨进程。单条密文无法解密时，InferenceEndpoint 仍保留并投影为 `unavailable`，
 请求前由 credential resolver 拒绝使用；重新提交 Key 后才替换旧密文并恢复 `configured`。这类凭据状态不会阻断
-App Server 启动。InferenceEndpoint 没有独立的用户生命周期：删除一个模型后仍有其他模型引用就保留；删除最后一个引用模型时，端点元数据和对应密文必须在同一目录事务中自动清理。新建模型时，credential 密文、端点元数据和模型引用同样按一个业务事务提交；目录写盘失败时撤销刚创建的密文，不留下半端点。
+App Server 启动。InferenceEndpoint 由模型和自定义分组共同引用：删除模型后仍有任意模型或分组引用就保留；两类引用全部移除时，端点元数据和独占密文在目录事务中清理。新建模型时，credential 密文、端点元数据和模型引用同样按一个业务事务提交；目录写盘失败时撤销刚创建的密文，不留下半端点。
 
 已有用户模型更换连接时，application use case 通过 `rebindUserModels`
 把一组模型原子改绑到同一个新建或已有 endpoint：模型 route 与 endpoint 仍按同一准入校验，不再被引用的旧 endpoint
@@ -256,11 +268,16 @@ reference；不得复用 InferenceEndpoint 或恢复模型顶层 `provider`
 - 用户 credential 只允许出现在一次连接创建命令中；系统模型使用显式
   `credential_reference`，日志只允许记录缺失的环境变量名；
 - reasoning 档位使用 Linnkit 共享合同，不能扩大为任意字符串；
-- 模型的 reasoning 能力由显式目录事实优先、模型名推断兜底；推断结果必须以对应
-  Provider codec 已验证的实际档位为准。例如当前 Ollama codec 对 GLM-5.3 系列只公开
-  `low` / `high`，不能把 Ollama 文档中的 `max` 未经 codec 支持就直接暴露到 UI；
+- reasoning 优先查询 App 在初始化前安装的 `ModelReasoningResolver`；窄 port 只接收 route 的 capability 与 endpoint model identity，Catalog 不依赖 SDK 或 Host。SDK 有结果时显式声明取交集，合法显式默认值保留，其余默认值复用 Linnkit `resolveEffectiveEffort`；完全无共同档位是带模型标识的准入错误，不伪装成无能力；
+- SDK 查询无结果才保留显式声明和既有模型名兼容知识。Claude 正则只保留 SDK 缺少正向支持 flag 的 legacy 3.7/4 extended-thinking，不继续扩充新版本；新型号能力由 SDK 查询提供。其它模型仍受现有 codec 能力边界约束，例如 Ollama GLM-5.3 只公开 `low` / `high`；
 - Cloud、本地默认和用户模型走同一个
   `processModelConfig`，不得各维护一份相似校验。
+
+自动 reasoning 能力与用户配置分开：写用户文件时，仅省略与当前自动解析结果完全相同的档位和默认值；更窄的显式范围、不同的合法默认值继续持久化。已有文件不猜测历史来源，不批量改写；新 SDK 在下一次启动重新提供自动能力，不要求重新添加模型。真实持久化与升级回归见 [`modelReasoningPersistence.integration.test.ts`](./features/catalog-admission/__tests__/modelReasoningPersistence.integration.test.ts)。
+
+编辑、批量更新和连接改绑复用同一准入规则：与旧身份自动推导结果完全相同且本次未改变的 `reasoning` 不当作新声明，由新模型 identity 与 capability 重新推导。更窄范围、不同默认值，以及本次主动修改的声明继续参与能力交集；这与持久化采用相同的值相等规则，不声称能识别历史真实来源。
+
+能力查询在初始化开始前冻结，default、Cloud、account、user 的加载和每条更新准入均使用同一解析器。显式能力冲突沿用现有加载语义：用户/default 目录冲突会使初始化失败并保留原文件；Cloud 准入失败保留此前目录并报告刷新失败，不额外跳过非法模型。
 
 Model
 Catalog 不再保存或归一化顶层通用 API 地址。用户输入地址的格式处理属于对应 onboarding
@@ -282,9 +299,8 @@ Cloud 设备身份；Web 外部服务由 Web domain 自己拥有认证合同。�
   HTTP；
 - 本 domain 禁止 import Electron、Renderer、AI SDK、Agent registry、Knowledge
   Base 或具体业务 feature；
-- Model inference
-  Host 读取本 domain 已准入的 route/credential/header，但本 domain 不反向查询 Host
-  capability；
+- Model inference Host 读取本 domain 已准入的 route/credential；目录通过自己定义、由
+  App 装配的纯查询 port 读取模型能力，不导入 Host 或 Provider 的具体实现；
 - `registry/` 不是全局上帝对象，不新增 SDK client、网络重试策略、业务选择或 UI
   projection；
 - 没有两个真实 consumer 的代码不放入 domain `shared/`，当前目录不设 `shared/`。
@@ -332,7 +348,7 @@ KV 只通过 `scripts/cloud-model-kv-v2-migration/`
 | Cloud catalog       | 单请求、typed route、非法 payload、purpose defaults、能力保真                                                                 |
 | User persistence    | v4 envelope、端点引用、损坏文件失败、原子写入                                                                                 |
 | Endpoint credential | 只写密文、跨启动解密、`0600`、删除同步落盘                                                                                    |
-| Registry            | 来源优先级、端点/模型一致性、端点复用、最后引用删除时清理端点与密文、改绑与原位换 Key、Cloud 替换/retry/event、写盘失败不提交内存并撤销密文变更 |
+| Registry            | 来源优先级、端点/模型一致性、端点复用、最后模型/分组引用删除时清理端点与密文、改绑与原位换 Key、Cloud 替换/retry/event、写盘失败不提交内存并撤销密文变更 |
 | Electron bridge     | renderer-ready 前后刷新信号不丢失，payload 不成为第二目录                                                                     |
 
 日常至少运行：
@@ -374,7 +390,7 @@ smoke。单纯目录重构不需要等待 Windows/macOS 正式签名安装包发
 
 `registerUserModels` 在一次串行事务中准备全部连接和模型、保存一次目录，再发布内存快照；单模型注册委托此合同。
 同批后续条目可以引用此前创建的 endpoint。准备或写盘失败按逆序撤销凭据变更，不发布部分模型。
-凭据准备及回滚由 inference-endpoints feature 的 `prepareInferenceEndpointSelection` 拥有，Registry 只协调目录事务。
+凭据准备及回滚由 inference-endpoints feature 的 `prepareInferenceEndpointSelection` 拥有，Registry 只协调目录事务。`EndpointCredentialStore.captureRollback` 只交付撤回闭包，原密文、解密缓存和状态始终封装在 store 内；删除或换 Key 后目录写入失败时直接恢复原记录，不依赖旧 Key 可解密，也不重新加密。`has` 只表示凭据可用，不能把它当作密文是否存在的判断。
 
 `getUserRevision` 是当前进程用户目录/凭据的提交版本。跨网络的应用用例在读取事实前取得版本，并在
 `registerUserModels`、`rebindUserModels` 或 `applyDiff` 提交时传入；版本在事务队列内部校验，冲突抛出公开的

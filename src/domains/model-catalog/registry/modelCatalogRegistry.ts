@@ -1,5 +1,12 @@
 import fs from 'node:fs';
 
+import type { CustomApiGroup, CustomApiGroupMigration } from '../definitions/customApiGroup';
+import type { ModelReasoningResolver } from '../definitions/modelReasoningResolver';
+import { projectUserModelForPersistence } from '../features/user-model-persistence/functions/projectUserModelForPersistence';
+import { assertCustomApiGroupEndpoints } from '../features/custom-api-groups/functions/customApiGroupState';
+import { prepareCustomApiGroupMutation } from '../features/custom-api-groups/orchestration/prepareCustomApiGroupMutation';
+import type { CustomApiGroupMutation } from '../features/custom-api-groups/definitions/customApiGroupMutation';
+
 import {
   findLanguageInferenceRouteProfileForRoute,
   type LanguageInferenceRouteProfileId,
@@ -32,7 +39,7 @@ import { modelPersister } from '../features/user-model-persistence/orchestration
 import { assertEndpointMatchesModel } from '../features/inference-endpoints/functions/assertEndpointMatchesModel';
 import { findUnreferencedInferenceEndpoints } from '../features/inference-endpoints/functions/findUnreferencedInferenceEndpoints';
 import { readInferenceEndpoint } from '../features/inference-endpoints/functions/readInferenceEndpoint';
-import { prepareInferenceEndpointSelection } from '../features/inference-endpoints/orchestration/prepareInferenceEndpointSelection';
+import { prepareInferenceEndpointSelection } from '../features/inference-endpoints';
 import { endpointCredentialStore } from '../features/inference-endpoints/orchestration/endpointCredentialStore';
 import {
   requireInstalledDistributionIdentity,
@@ -80,8 +87,11 @@ export class ModelCatalogRegistry implements ModelCatalog {
   private userMutationTail: Promise<void> = Promise.resolve();
   private readonly accountModelIds = new Map<string, Set<string>>();
   private inferenceEndpoints = new Map<string, InferenceEndpoint>();
+  private customApiGroups = new Map<string, CustomApiGroup>();
   private envVars: Record<string, string> = {};
   private initialized = false;
+  private initializationStarted = false;
+  private modelReasoningResolver: ModelReasoningResolver | undefined;
   private cloudModelRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private cloudModelRetryAttemptCount = 0;
   private cloudModelsLoadedSuccessfully = false;
@@ -100,12 +110,17 @@ export class ModelCatalogRegistry implements ModelCatalog {
 
   async initialize(distributionIdentity?: DistributionIdentity): Promise<void> {
     if (this.initialized) return;
+    this.initializationStarted = true;
 
     this.envVars = processEnvironment();
     await modelPersister.initialize();
     await endpointCredentialStore.initialize();
     const userState = await modelPersister.loadState();
     this.loadInferenceEndpoints(userState.inferenceEndpoints);
+    for (const group of userState.customApiGroups) {
+      assertCustomApiGroupEndpoints(group, this.inferenceEndpoints);
+      this.customApiGroups.set(group.name, group);
+    }
     this.loadDefaultModels();
 
     if (
@@ -118,6 +133,9 @@ export class ModelCatalogRegistry implements ModelCatalog {
     }
 
     this.loadUserModels(userState.models);
+    // 旧文件完整通过准入后才覆盖；任何损坏都不能留下半迁移目录。
+    if (userState.requiresMigration)
+      await this.persistUserState(this.models, this.inferenceEndpoints);
     this.initialized = true;
     logger.info(`[ModelCatalog] 初始化完成，共 ${this.models.size} 个模型`);
   }
@@ -137,6 +155,12 @@ export class ModelCatalogRegistry implements ModelCatalog {
       return this.inferenceEndpoints.get(model.inference_endpoint_id)?.route_profile_id;
     }
     return findLanguageInferenceRouteProfileForRoute(model.inference_route).id;
+  }
+
+  installModelReasoningResolver(resolver: ModelReasoningResolver): void {
+    if (this.initializationStarted)
+      throw new Error('ModelReasoningResolver 必须在 initialize 前安装');
+    this.modelReasoningResolver = resolver;
   }
 
   installEndpointCredentialCodec(codec: EndpointCredentialCodec): void {
@@ -199,6 +223,59 @@ export class ModelCatalogRegistry implements ModelCatalog {
       ...endpoint,
       credential_status: this.resolveEndpointCredentialStatus(endpoint),
     }));
+  }
+
+  getCustomApiGroups(): CustomApiGroup[] {
+    return Array.from(this.customApiGroups.values(), group => ({
+      name: group.name,
+      inference_endpoint_ids: [...group.inference_endpoint_ids],
+    }));
+  }
+
+  resolveInferenceEndpointCredential(inferenceEndpointId: string): string | undefined {
+    return this.resolveCredentialReference(
+      this.requireInferenceEndpoint(inferenceEndpointId).credential_reference
+    );
+  }
+
+  registerCustomApiModels(
+    name: string,
+    registrations: readonly UserModelRegistration[],
+    expectedRevision: number
+  ): Promise<void> {
+    return this.mutateCustomApiGroup({ kind: 'register', name, registrations }, expectedRevision);
+  }
+
+  applyCustomApiGroupModelDiff(
+    name: string,
+    diff: ModelDiff,
+    expectedRevision: number
+  ): Promise<void> {
+    return this.mutateCustomApiGroup({ kind: 'diff', name, diff }, expectedRevision);
+  }
+
+  rebindCustomApiGroup(
+    currentName: string,
+    name: string,
+    models: readonly ModelConfig[],
+    endpoint: InferenceEndpointSelection,
+    expectedRevision: number
+  ): Promise<void> {
+    return this.mutateCustomApiGroup(
+      { kind: 'rebind', currentName, name, models, endpoint },
+      expectedRevision
+    );
+  }
+
+  removeCustomApiGroup(name: string, expectedRevision: number): Promise<void> {
+    return this.mutateCustomApiGroup({ kind: 'remove', name }, expectedRevision);
+  }
+
+  migrateCustomApiGroups(
+    groups: readonly CustomApiGroupMigration[],
+    expectedRevision: number
+  ): Promise<void> {
+    return this.mutateCustomApiGroup({ kind: 'migrate', groups }, expectedRevision);
   }
 
   getUserRevision(): number {
@@ -299,7 +376,11 @@ export class ModelCatalogRegistry implements ModelCatalog {
 
     const nextAccountModelIds = new Set<string>();
     for (const modelData of models) {
-      const model = processModelConfig({ modelData, envVars: this.envVars });
+      const model = processModelConfig({
+        modelData,
+        envVars: this.envVars,
+        reasoningResolver: this.modelReasoningResolver,
+      });
       if (model.catalog_source !== 'account') {
         throw new Error(`Provider account 模型 ${model.id} 必须声明 catalog_source=account`);
       }
@@ -338,7 +419,11 @@ export class ModelCatalogRegistry implements ModelCatalog {
   async addModel(model: ModelConfig): Promise<void> {
     return this.runUserMutation(async () => {
       const nextModels = new Map(this.models);
-      const processedModel = processModelConfig({ modelData: model, envVars: this.envVars });
+      const processedModel = processModelConfig({
+        modelData: model,
+        envVars: this.envVars,
+        reasoningResolver: this.modelReasoningResolver,
+      });
       this.assertModelEndpoint(processedModel);
       nextModels.set(processedModel.id, processedModel);
       await this.commitModelsAndPruneEndpoints(nextModels);
@@ -349,7 +434,12 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return this.runUserMutation(async () => {
       if (!this.models.has(model.id)) throw new Error(`模型不存在: ${model.id}`);
       const nextModels = new Map(this.models);
-      const processedModel = processModelConfig({ modelData: model, envVars: this.envVars });
+      const processedModel = processModelConfig({
+        modelData: model,
+        previousModel: this.models.get(model.id),
+        envVars: this.envVars,
+        reasoningResolver: this.modelReasoningResolver,
+      });
       this.assertModelEndpoint(processedModel);
       nextModels.set(processedModel.id, processedModel);
       await this.commitModelsAndPruneEndpoints(nextModels);
@@ -369,13 +459,22 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return this.runUserMutation(async () => {
       const nextModels = new Map(this.models);
       for (const model of diff.added) {
-        const processed = processModelConfig({ modelData: model, envVars: this.envVars });
+        const processed = processModelConfig({
+          modelData: model,
+          envVars: this.envVars,
+          reasoningResolver: this.modelReasoningResolver,
+        });
         this.assertModelEndpoint(processed);
         nextModels.set(processed.id, processed);
       }
       for (const model of diff.updated) {
         if (!nextModels.has(model.id)) throw new Error(`模型不存在: ${model.id}`);
-        const processed = processModelConfig({ modelData: model, envVars: this.envVars });
+        const processed = processModelConfig({
+          modelData: model,
+          previousModel: nextModels.get(model.id),
+          envVars: this.envVars,
+          reasoningResolver: this.modelReasoningResolver,
+        });
         this.assertModelEndpoint(processed);
         nextModels.set(processed.id, processed);
       }
@@ -438,7 +537,11 @@ export class ModelCatalogRegistry implements ModelCatalog {
     const parsed: unknown = JSON.parse(fs.readFileSync(modelsPath, 'utf8'));
     const models = readModelsEnvelope(parsed);
     for (const modelData of models) {
-      const model = processModelConfig({ modelData, envVars: this.envVars });
+      const model = processModelConfig({
+        modelData,
+        envVars: this.envVars,
+        reasoningResolver: this.modelReasoningResolver,
+      });
       this.models.set(model.id, model);
     }
   }
@@ -455,7 +558,11 @@ export class ModelCatalogRegistry implements ModelCatalog {
 
   private loadUserModels(userModels: readonly unknown[]): void {
     for (const modelData of userModels) {
-      const model = processModelConfig({ modelData, envVars: this.envVars });
+      const model = processModelConfig({
+        modelData,
+        envVars: this.envVars,
+        reasoningResolver: this.modelReasoningResolver,
+      });
       this.assertModelEndpoint(model);
       this.models.set(model.id, model);
     }
@@ -463,7 +570,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
 
   /** 从读取当前目录到凭据/文件提交都串行，失败后下一条事务仍可继续。 */
   private runUserMutation(
-    operation: () => Promise<void>,
+    operation: () => Promise<void | boolean>,
     expectedRevision?: number
   ): Promise<void> {
     const result = this.userMutationTail.then(async () => {
@@ -471,8 +578,8 @@ export class ModelCatalogRegistry implements ModelCatalog {
       if (expectedRevision !== undefined && expectedRevision !== this.userRevision) {
         throw new ModelCatalogConflictError();
       }
-      await operation();
-      this.userRevision += 1;
+      const changed = await operation();
+      if (changed !== false) this.userRevision += 1;
     });
     this.userMutationTail = result.then(
       () => undefined,
@@ -481,17 +588,51 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return result;
   }
 
+  private mutateCustomApiGroup(
+    mutation: CustomApiGroupMutation,
+    expectedRevision: number
+  ): Promise<void> {
+    return this.runUserMutation(async () => {
+      // 凭据准备可能让出执行权；发布时必须与准备前快照比较，保留期间更新的账号/Cloud 投影。
+      const previousModels = new Map(this.models);
+      const prepared = await prepareCustomApiGroupMutation(
+        mutation,
+        {
+          models: previousModels,
+          endpoints: this.inferenceEndpoints,
+          groups: this.customApiGroups,
+        },
+        (model, endpoint) => this.bindUserModelToEndpoint(model, endpoint)
+      );
+      if (!prepared.changed) return false;
+      try {
+        await this.commitModelsAndPruneEndpoints(
+          prepared.models,
+          prepared.endpoints,
+          prepared.groups,
+          previousModels
+        );
+      } catch (error: unknown) {
+        await prepared.rollback();
+        throw error;
+      }
+      return true;
+    }, expectedRevision);
+  }
+
   private async commitModelsAndPruneEndpoints(
     nextModels: Map<string, ModelConfig>,
-    baseEndpoints: ReadonlyMap<string, InferenceEndpoint> = this.inferenceEndpoints
+    baseEndpoints: ReadonlyMap<string, InferenceEndpoint> = this.inferenceEndpoints,
+    nextGroups: ReadonlyMap<string, CustomApiGroup> = this.customApiGroups,
+    previousModels: ReadonlyMap<string, ModelConfig> = new Map(this.models)
   ): Promise<void> {
-    const previousModels = new Map(this.models);
     const orphanedEndpoints = findUnreferencedInferenceEndpoints(
       nextModels.values(),
-      baseEndpoints.values()
+      baseEndpoints.values(),
+      nextGroups.values()
     );
     const nextEndpoints = new Map(baseEndpoints);
-    const removedCredentials: Array<{ readonly id: string; readonly plaintext?: string }> = [];
+    const credentialRollbacks: Array<() => Promise<void>> = [];
 
     try {
       for (const endpoint of orphanedEndpoints) {
@@ -504,35 +645,32 @@ export class ModelCatalogRegistry implements ModelCatalog {
             candidate.credential_reference.credential_id === credentialId
         );
         if (credentialStillReferenced) continue;
-        const plaintext = endpointCredentialStore.has(credentialId)
-          ? endpointCredentialStore.resolve(credentialId)
-          : undefined;
+        const rollback = endpointCredentialStore.captureRollback(credentialId);
         await endpointCredentialStore.remove(credentialId);
-        removedCredentials.push({ id: credentialId, plaintext });
+        credentialRollbacks.push(rollback);
       }
-      await this.persistUserState(nextModels, nextEndpoints);
+      await this.persistUserState(nextModels, nextEndpoints, nextGroups);
     } catch (error: unknown) {
-      for (const credential of removedCredentials) {
-        if (credential.plaintext !== undefined) {
-          await endpointCredentialStore.put(credential.id, credential.plaintext);
-        }
-      }
+      for (const rollback of credentialRollbacks.reverse()) await rollback();
       throw error;
     }
 
     this.models = applyCommittedModelChanges(this.models, previousModels, nextModels);
     this.inferenceEndpoints = nextEndpoints;
+    this.customApiGroups = new Map(nextGroups);
   }
 
   /** 用户模型只能引用一个 endpoint；route 身份必须与该 endpoint 完全一致。 */
   private bindUserModelToEndpoint(model: ModelConfig, endpoint: InferenceEndpoint): ModelConfig {
     const processedModel = processModelConfig({
+      previousModel: this.models.get(model.id),
       modelData: {
         ...model,
         credential_reference: undefined,
         inference_endpoint_id: endpoint.id,
       },
       envVars: this.envVars,
+      reasoningResolver: this.modelReasoningResolver,
     });
     if (processedModel.catalog_source !== 'user') {
       throw new Error(`模型 ${processedModel.id} 必须声明 catalog_source=user`);
@@ -543,10 +681,17 @@ export class ModelCatalogRegistry implements ModelCatalog {
 
   private async persistUserState(
     models: Map<string, ModelConfig>,
-    inferenceEndpoints: Map<string, InferenceEndpoint>
+    inferenceEndpoints: Map<string, InferenceEndpoint>,
+    groups: ReadonlyMap<string, CustomApiGroup> = this.customApiGroups
   ): Promise<void> {
-    const userModels = Array.from(models.values()).filter(model => model.catalog_source === 'user');
-    await modelPersister.saveState(userModels, Array.from(inferenceEndpoints.values()));
+    const userModels = Array.from(models.values())
+      .filter(model => model.catalog_source === 'user')
+      .map(model => projectUserModelForPersistence(model, this.modelReasoningResolver));
+    await modelPersister.saveState(
+      userModels,
+      Array.from(inferenceEndpoints.values()),
+      Array.from(groups.values())
+    );
   }
 
   private requireInferenceEndpoint(endpointId: string): InferenceEndpoint {
@@ -618,7 +763,11 @@ export class ModelCatalogRegistry implements ModelCatalog {
     let cloudModels: ModelConfig[];
     try {
       cloudModels = result.models.map(modelData =>
-        processModelConfig({ modelData, envVars: this.envVars })
+        processModelConfig({
+          modelData,
+          envVars: this.envVars,
+          reasoningResolver: this.modelReasoningResolver,
+        })
       );
     } catch (error) {
       logger.error('[ModelCatalog] 云端目录准入失败:', error);

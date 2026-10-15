@@ -14,17 +14,19 @@ function setup() {
     catalog_source: 'user',
     custom_provider_name: id === 'other' ? 'Other' : 'Relay',
   }));
-  const applyDiff = vi.fn(async () => undefined);
+  const removeCustomApiGroup = vi.fn(async () => undefined);
   const removeModelPreferences = vi.fn(async () => undefined);
   const dependencies: CustomApiOnboardingDependencies = {
     modelCatalog: {
       getModels: () => models,
       getInferenceEndpoints: () => [],
       getUserRevision: () => 7,
-      resolveCredential: vi.fn(),
-      registerUserModels: vi.fn(),
-      rebindUserModels: vi.fn(),
-      applyDiff,
+      applyCustomApiGroupModelDiff: vi.fn(),
+      getCustomApiGroups: () => [{ name: 'Relay', inference_endpoint_ids: ['relay'] }],
+      resolveInferenceEndpointCredential: vi.fn(),
+      registerCustomApiModels: vi.fn(),
+      rebindCustomApiGroup: vi.fn(),
+      removeCustomApiGroup,
     },
     providerMembership: {
       getByModelConfigId: id =>
@@ -41,28 +43,38 @@ function setup() {
     modelDiscovery: { discover: vi.fn() },
     idFactory: { create: () => 'unused' },
   };
-  return { dependencies, applyDiff, removeModelPreferences };
+  return { dependencies, removeCustomApiGroup, removeModelPreferences };
 }
 
 describe('删除自定义分组', () => {
+  it('空分组可显式删除，返回空删除列表而不遗留连接', async () => {
+    const { dependencies, removeCustomApiGroup, removeModelPreferences } = setup();
+    dependencies.modelCatalog.getModels = () => [];
+    await expect(
+      removeCustomApiProvider({ provider_name: 'Relay' }, dependencies)
+    ).resolves.toEqual({
+      removed_model_ids: [],
+      model_picker_preference_recovery_pending: false,
+    });
+    expect(removeCustomApiGroup).toHaveBeenCalledExactlyOnceWith('Relay', 7);
+    expect(removeModelPreferences).not.toHaveBeenCalled();
+  });
+
   it('按后端当前归属一次删除整组，排除正式 Provider 和其他分组', async () => {
-    const { dependencies, applyDiff, removeModelPreferences } = setup();
+    const { dependencies, removeCustomApiGroup, removeModelPreferences } = setup();
     await expect(
       removeCustomApiProvider({ provider_name: 'Relay' }, dependencies)
     ).resolves.toEqual({
       removed_model_ids: ['a', 'b'],
       model_picker_preference_recovery_pending: false,
     });
-    expect(applyDiff).toHaveBeenCalledExactlyOnceWith(
-      { added: [], updated: [], removed: ['a', 'b'] },
-      7
-    );
+    expect(removeCustomApiGroup).toHaveBeenCalledExactlyOnceWith('Relay', 7);
     expect(removeModelPreferences).toHaveBeenCalledWith(['a', 'b']);
   });
 
   it('目录冲突时保留偏好，目录已删除后的偏好失败则报告成功并等待启动清理', async () => {
-    const { dependencies, applyDiff, removeModelPreferences } = setup();
-    applyDiff.mockRejectedValueOnce(new ModelCatalogConflictError());
+    const { dependencies, removeCustomApiGroup, removeModelPreferences } = setup();
+    removeCustomApiGroup.mockRejectedValueOnce(new ModelCatalogConflictError());
     await expect(
       removeCustomApiProvider({ provider_name: 'Relay' }, dependencies)
     ).rejects.toMatchObject({

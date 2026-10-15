@@ -37,7 +37,10 @@ import { QdrantAdapter } from '../../../infra/adapters/vector-store/index';
 import type { QdrantPoint, SparseVector } from '../../../features/knowledge-base/infrastructure/qdrantRepository';
 import { textsToSparseVectors } from '../../../features/knowledge-base/ingestion/utils/textToSparseVector';
 import { generateGraphVectorPointId } from '../../../shared/utils/idUtils';
-import { createEmbeddingPort } from '../../../app-hosts/linnya/adapters/inference';
+import {
+  createEmbeddingPort,
+  createLinnyaModelReasoningResolver,
+} from '../../../app-hosts/linnya/adapters/inference';
 import type { EmbeddingPort } from '../../../domains/model-inference';
 
 import {
@@ -77,6 +80,7 @@ function installWorkerDistributionIdentity(): DistributionIdentity {
 
 async function initializeWorkerServices(): Promise<EmbeddingPort> {
   installWorkerRuntimePathRoots();
+  modelCatalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
   await modelCatalog.initialize(installWorkerDistributionIdentity());
   return createEmbeddingPort({ catalog: modelCatalog });
 }

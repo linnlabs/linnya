@@ -3,25 +3,25 @@ import type {
   InferenceEndpointSelection,
   InferenceEndpointView,
   ModelConfig,
+  CustomApiGroup,
 } from 'src/domains/model-catalog';
 import { CustomApiOnboardingError } from '../definitions/customApiOnboardingError';
 import { buildCustomApiProviderModelUpdate } from './buildCustomApiProviderModelUpdate';
 import { decideCustomApiProviderEndpoint } from './decideCustomApiProviderEndpoint';
 import { selectCustomApiProviderModels } from './selectCustomApiProviderModels';
-import { readCustomApiProviderName } from './readCustomApiProviderName';
 import { readCustomApiRuntimeBinding } from '../registry/customApiRuntimeBindingRegistry';
+import { requireCustomApiGroup } from './requireCustomApiGroup';
 
 /** 分组归属、重名约束与连接替换决策只依赖本次读到的目录快照。 */
 export function planCustomApiProviderUpdate(
   command: CustomApiProviderUpdateCommand,
+  groups: readonly CustomApiGroup[],
   catalogModels: readonly ModelConfig[],
   endpoints: readonly InferenceEndpointView[],
   isFormalProviderModel: (modelId: string) => boolean,
   endpointResourceId: string
 ): { models: ModelConfig[]; endpoint: InferenceEndpointSelection } {
-  const customModels = catalogModels.filter(
-    model => model.catalog_source === 'user' && !isFormalProviderModel(model.id)
-  );
+  const group = requireCustomApiGroup(command.current_provider_name, groups);
   const groupModels = selectCustomApiProviderModels(
     command.current_provider_name,
     catalogModels,
@@ -30,10 +30,7 @@ export function planCustomApiProviderUpdate(
   const groupModelIds = new Set(groupModels.map(model => model.id));
   if (
     command.provider_name !== command.current_provider_name &&
-    customModels.some(
-      model =>
-        !groupModelIds.has(model.id) && readCustomApiProviderName(model) === command.provider_name
-    )
+    groups.some(candidate => candidate.name === command.provider_name)
   ) {
     throw new CustomApiOnboardingError(
       'custom_api_onboarding.provider_name_conflict',
@@ -42,7 +39,7 @@ export function planCustomApiProviderUpdate(
     );
   }
 
-  const groupEndpointIds = new Set(groupModels.map(model => model.inference_endpoint_id));
+  const groupEndpointIds = new Set(group.inference_endpoint_ids);
   const groupEndpoints = endpoints.filter(endpoint => groupEndpointIds.has(endpoint.id));
   if (
     groupEndpoints.length !== groupEndpointIds.size ||
@@ -60,6 +57,12 @@ export function planCustomApiProviderUpdate(
     groupModelIds,
     groupEndpoints,
     catalogModels,
+    catalogEndpoints: endpoints,
+    otherGroupEndpointIds: new Set(
+      groups
+        .filter(candidate => candidate.name !== group.name)
+        .flatMap(candidate => candidate.inference_endpoint_ids)
+    ),
     binding,
     baseUrl: command.base_url,
     hasNewSecret: command.api_key !== undefined,

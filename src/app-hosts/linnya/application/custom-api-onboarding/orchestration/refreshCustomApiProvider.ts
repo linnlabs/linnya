@@ -2,22 +2,16 @@ import type {
   CustomApiProviderRefreshCommand,
   CustomApiProviderRefreshResponse,
 } from '@app/schemas/custom-api-onboarding';
-import {
-  ModelCatalogConflictError,
-  ModelDiscoveryError,
-  type UserModelRegistration,
-} from 'src/domains/model-catalog';
+import { ModelCatalogConflictError, ModelDiscoveryError } from 'src/domains/model-catalog';
 
 import { CustomApiOnboardingError } from '../definitions/customApiOnboardingError';
 import type { CustomApiOnboardingDependencies } from '../definitions/customApiOnboardingPorts';
-import type {
-  CustomApiProviderRefreshTarget,
-  NewCustomApiDiscoveredModel,
-} from '../definitions/customApiProviderRefreshTarget';
+import type { CustomApiProviderRefreshChanges } from '../definitions/customApiProviderRefreshTarget';
 import { resolveCustomApiProviderRefreshTargets } from '../functions/resolveCustomApiProviderRefreshTargets';
-import { selectNewCustomApiModels } from '../functions/selectNewCustomApiModels';
-import { buildCustomApiModelRegistration } from '../functions/buildCustomApiModelRegistration';
-import { readCustomApiRuntimeBinding } from '../registry/customApiRuntimeBindingRegistry';
+import {
+  buildCustomApiProviderRefreshDiff,
+  selectCustomApiProviderRefreshChanges,
+} from '../functions/planCustomApiProviderRefresh';
 
 export async function refreshCustomApiProvider(
   command: CustomApiProviderRefreshCommand,
@@ -26,20 +20,20 @@ export async function refreshCustomApiProvider(
   const revision = dependencies.modelCatalog.getUserRevision();
   const targets = resolveCustomApiProviderRefreshTargets(
     command.provider_name,
+    dependencies.modelCatalog.getCustomApiGroups(),
     dependencies.modelCatalog.getModels(),
     dependencies.modelCatalog.getInferenceEndpoints(),
     modelId => dependencies.providerMembership.getByModelConfigId(modelId) !== undefined
   );
-  const additions: {
-    target: CustomApiProviderRefreshTarget;
-    models: NewCustomApiDiscoveredModel[];
-  }[] = [];
+  const changes: CustomApiProviderRefreshChanges[] = [];
 
   try {
     // 在第一次 await 前固定全部连接的凭据，不能把并发编辑后的新 Key 发往旧 URL。
     // 明文只存在于当前用例栈，不进入目录 DTO、日志或 Renderer。
     const requests = targets.map(target => {
-      const apiKey = dependencies.modelCatalog.resolveCredential(target.credentialModelId);
+      const apiKey = dependencies.modelCatalog.resolveInferenceEndpointCredential(
+        target.endpoint.id
+      );
       if (!apiKey) {
         throw new CustomApiOnboardingError(
           'custom_api_onboarding.credential_required',
@@ -49,55 +43,45 @@ export async function refreshCustomApiProvider(
       }
       return { target, apiKey };
     });
-    // 全部分组连接查询成功后才写目录，网络或鉴权失败时保持原列表和偏好。
+    // 所有连接的完整快照都成功后才增删，后页或后一个连接失败不能删除旧模型。
     for (const { target, apiKey } of requests) {
       const discovered = await dependencies.modelDiscovery.discover({
         api_format: target.apiFormat,
         base_url: target.endpoint.base_url,
         api_key: apiKey,
       });
-      additions.push({
-        target,
-        models: selectNewCustomApiModels(discovered.models, target.existingRemoteModelIds),
-      });
+      changes.push(selectCustomApiProviderRefreshChanges(target, discovered.models));
     }
-
-    const registrations: UserModelRegistration[] = [];
-    for (const { target, models } of additions) {
-      const binding = readCustomApiRuntimeBinding(target.apiFormat);
-      for (const item of models) {
-        const modelId = dependencies.idFactory.create();
-        const model = buildCustomApiModelRegistration({
-          modelId,
-          endpointId: target.endpoint.endpoint_id,
-          command: {
-            api_format: target.apiFormat,
-            base_url: target.endpoint.base_url,
-            provider_name: command.provider_name,
-            models: [item],
-          },
-          model: item,
-          binding,
-        });
-        // 新发现的模型默认关闭，由用户显式启用；已有模型及其偏好完全不写回。
-        registrations.push({
-          model,
-          endpoint: {
-            kind: 'existing',
-            inference_endpoint_id: target.endpoint.id,
-          },
-        });
-      }
-    }
-    if (registrations.length > 0) {
+    const diff = buildCustomApiProviderRefreshDiff(
+      command.provider_name,
+      changes,
+      changes.flatMap(change => change.addedModels.map(() => dependencies.idFactory.create()))
+    );
+    // 新 ID 的关闭偏好先保存；完整增删在目录的同一版本事务中发布。
+    if (diff.added.length > 0) {
       await dependencies.modelPickerPreferences.setModelVisibilities(
-        registrations.map(({ model }) => ({ model_config_id: model.id, visible: false }))
+        diff.added.map(model => ({ model_config_id: model.id, visible: false }))
       );
-      await dependencies.modelCatalog.registerUserModels(registrations, revision);
+    }
+    await dependencies.modelCatalog.applyCustomApiGroupModelDiff(
+      command.provider_name,
+      diff,
+      revision
+    );
+    let recoveryPending = false;
+    if (diff.removed.length > 0) {
+      try {
+        await dependencies.modelPickerPreferences.removeModelPreferences(diff.removed);
+      } catch {
+        // 目录已同步成功；孤儿偏好由启动 reconcile 清理，不能谎报整次刷新失败。
+        recoveryPending = true;
+      }
     }
     return {
       provider_name: command.provider_name,
-      added_model_ids: registrations.map(item => item.model.id),
+      added_model_ids: diff.added.map(model => model.id),
+      removed_model_ids: diff.removed,
+      model_picker_preference_recovery_pending: recoveryPending,
     };
   } catch (error: unknown) {
     if (error instanceof CustomApiOnboardingError) throw error;

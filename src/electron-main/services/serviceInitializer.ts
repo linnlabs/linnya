@@ -47,6 +47,7 @@ import {
 } from 'src/app-hosts/linnya/desktop-capabilities';
 import { providerOnboardingRuntimeBindingRegistry } from 'src/app-hosts/linnya/adapters/inference';
 import { runProviderConfigurationMigration } from 'src/app-hosts/linnya/application/provider-configuration-migration';
+import { runCustomApiGroupMigration } from 'src/app-hosts/linnya/application/custom-api-onboarding';
 import { getDatabaseService, DatabaseService } from './database'; // 导入 DatabaseService
 import { KnowledgeGraphQueueOrchestrator } from 'src/features/knowledge-base/graph/application/knowledgeGraphQueueOrchestrator';
 import { setPluginRuntimeDatabase } from '../../app-hosts/linnya/plugin-registry/pluginRuntimeState';
@@ -61,6 +62,7 @@ import {
 import {
   createDefaultHostInferencePort,
   createEmbeddingPort,
+  createLinnyaModelReasoningResolver,
   createRerankingPort,
   createTextGenerationPort,
 } from 'src/app-hosts/linnya/adapters/inference';
@@ -247,6 +249,7 @@ export class ServiceInitializer {
 
     const systemCredentialCodec = getDesktopCredentialProtectionPort();
     modelCatalog.installEndpointCredentialCodec(systemCredentialCodec);
+    modelCatalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
     providerAccountRegistry.installCredentialCodec(systemCredentialCodec);
     await providerAccountRegistry.initialize();
     await modelCatalog.initialize();
@@ -262,6 +265,11 @@ export class ServiceInitializer {
       modelCatalog,
       providerConfigurations: providerConfigurationRegistry,
       idFactory: { create: randomUUID },
+    });
+    // 正式 Provider 的恢复和旧归属迁移完成后，才能明确剩余用户模型的自定义分组。
+    await runCustomApiGroupMigration({
+      modelCatalog,
+      providerMembership: providerConfigurationRegistry,
     });
     await modelPickerPreferencesRegistry.initialize({
       configured_provider_ids: providerConfigurationRegistry.list().map(provider => provider.id),

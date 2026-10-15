@@ -1,5 +1,4 @@
 import type { ModelConfig } from 'src/domains/model-catalog';
-import { CustomApiOnboardingError } from '../definitions/customApiOnboardingError';
 import { readCustomApiProviderName } from './readCustomApiProviderName';
 
 export function selectCustomApiProviderModels(
@@ -13,11 +12,5 @@ export function selectCustomApiProviderModels(
       !isFormalProviderModel(model.id) &&
       readCustomApiProviderName(model) === providerName
   );
-  if (selected.length === 0)
-    throw new CustomApiOnboardingError(
-      'custom_api_onboarding.provider_not_found',
-      '自定义模型分组不存在或已被删除',
-      404
-    );
   return selected;
 }

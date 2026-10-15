@@ -6,6 +6,7 @@ import { useModelCatalogStore } from '../store/modelCatalogStore';
 import {
   deleteModelFromCatalog,
   loadModelCatalog,
+  removeCommittedModelsFromCatalog,
   synchronizeModelCatalogSnapshot,
   updateModelInCatalog,
 } from './modelCatalogOperations';
@@ -80,5 +81,21 @@ describe('model catalog operations', () => {
     complete(snapshot);
     await Promise.all([loading, removing]);
     expect(useModelCatalogStore().models).toEqual([]);
+  });
+
+  it('接纳 Host 批次删除先等待旧读取收口，也允许删除尚未载入本地的模型', async () => {
+    const gateway = createGateway();
+    const snapshot = await gateway.load();
+    let complete!: (value: typeof snapshot) => void;
+    vi.mocked(gateway.load).mockImplementationOnce(
+      () => new Promise(resolve => { complete = resolve; })
+    );
+    const loading = synchronizeModelCatalogSnapshot(gateway);
+    const removing = removeCommittedModelsFromCatalog(['custom-1', 'not-loaded']);
+    await vi.waitFor(() => expect(complete).toBeTypeOf('function'));
+    complete(snapshot);
+    await Promise.all([loading, removing]);
+    expect(useModelCatalogStore().models).toEqual([]);
+    expect(gateway.delete).not.toHaveBeenCalled();
   });
 });

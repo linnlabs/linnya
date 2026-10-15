@@ -18,6 +18,22 @@ function factoryInput(
 }
 
 describe('createAiSdkLanguageModelRegistry', () => {
+  it('未知模型、旧版非 adaptive 模型和其他协议不凭模型名制造能力声明', () => {
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    const registry = createAiSdkLanguageModelRegistry(fetch);
+    for (const endpointModelId of ['claude-custom-relay', 'unknown-model', 'claude-haiku-4-5']) {
+      expect(registry.resolveModelReasoning({
+        capability_id: AI_SDK_INFERENCE_CAPABILITY_IDS.ANTHROPIC_MESSAGES,
+        endpoint_model_id: endpointModelId,
+      })).toBeUndefined();
+    }
+    expect(registry.resolveModelReasoning({
+      capability_id: AI_SDK_INFERENCE_CAPABILITY_IDS.OPENAI_COMPATIBLE_CHAT,
+      endpoint_model_id: 'claude-haiku-5-5',
+    })).toBeUndefined();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('每个正式 capability 都有且只有一个第三方 package factory', () => {
     const registry = createAiSdkLanguageModelRegistry();
     const registeredCapabilityIds = registry.entries.map(entry => entry.capability_id);

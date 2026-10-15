@@ -140,9 +140,9 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     app.mount(host);
   });
 
-  it.each([true, false])(
-    '自定义分组刷新成功=%s：只提交身份，成功同步两份目录，失败保留旧列表',
-    async success => {
+  it.each(['success', 'refresh-failed', 'catalog-read-failed', 'picker-read-failed'])(
+    '自定义分组刷新 %s：区分远端提交失败与提交后的投影读取失败',
+    async outcome => {
       const snapshot: ModelPickerSnapshot = {
         providers: [],
         custom_models: [],
@@ -201,22 +201,31 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
         purposeDefaults: {},
         cloudModelsReady: true,
       });
-      if (success) {
+      if (outcome !== 'refresh-failed') {
         mocks.refreshCustomProvider.mockResolvedValue({
           provider_name: 'Relay',
           added_model_ids: ['new-model'],
+          removed_model_ids: [],
+          model_picker_preference_recovery_pending: false,
         });
       } else {
         mocks.refreshCustomProvider.mockRejectedValue(new Error('已保存的 API Key 鉴权失败'));
       }
+      if (outcome === 'catalog-read-failed') {
+        mocks.loadCatalog.mockRejectedValue(new Error('catalog unavailable'));
+      }
+      if (outcome === 'picker-read-failed') {
+        mocks.loadPicker.mockRejectedValue(new Error('picker unavailable'));
+      }
       await flushUi();
       const button = host.querySelector<HTMLButtonElement>('.model-visibility-refresh-btn');
       if (!button) throw new Error('自定义分组刷新入口缺失');
+      expect(button.getAttribute('aria-label')).toBe('settings.modelPicker.synchronizeModels');
       button.click();
       await flushUi();
       expect(mocks.refreshCustomProvider).toHaveBeenCalledWith({ provider_name: 'Relay' });
       expect(mocks.refreshProviderModels).not.toHaveBeenCalled();
-      if (success) {
+      if (outcome === 'success') {
         expect(mocks.loadCatalog).toHaveBeenCalledOnce();
         expect(mocks.loadPicker).toHaveBeenCalledOnce();
         expect(useModelCatalogStore().models.map(model => model.id)).toContain('new-model');
@@ -226,14 +235,100 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
             input => !input.checked
           )
         ).toBe(true);
-      } else {
+      } else if (outcome === 'refresh-failed') {
         expect(mocks.loadCatalog).not.toHaveBeenCalled();
         expect(mocks.loadPicker).not.toHaveBeenCalled();
         expect(useModelPickerStore().snapshot).toEqual(snapshot);
         expect(host.textContent).toContain('Relay: 已保存的 API Key 鉴权失败');
+      } else {
+        expect(mocks.loadCatalog).toHaveBeenCalledOnce();
+        expect(mocks.loadPicker).toHaveBeenCalledOnce();
+        expect(mocks.refreshCustomProvider).toHaveBeenCalledOnce();
+        expect(host.textContent).toContain('settings.modelPicker.refreshedSyncFailed');
+        expect(host.textContent).not.toContain('catalog unavailable');
+        expect(host.textContent).not.toContain('picker unavailable');
       }
     }
   );
+
+  it('Host 保留的空自定义分组仍可刷新，不因没有模型丢失管理入口', async () => {
+    const emptyGroup: ModelPickerSnapshot = {
+      providers: [],
+      custom_models: [],
+      custom_providers: [{
+        provider_id: 'custom:Relay',
+        provider_name: 'Relay',
+        api_format: 'openai_compatible',
+        base_url: 'https://relay.example.com/v1',
+        endpoint_id: 'relay-endpoint',
+        models: [],
+      }],
+    };
+    useModelPickerStore().replaceSnapshot(emptyGroup);
+    mocks.refreshCustomProvider.mockResolvedValue({
+      provider_name: 'Relay',
+      added_model_ids: [],
+      removed_model_ids: [],
+      model_picker_preference_recovery_pending: false,
+    });
+    mocks.loadPicker.mockResolvedValue(emptyGroup);
+    mocks.loadCatalog.mockResolvedValue({
+      models: [],
+      purposeDefaults: {},
+      cloudModelsReady: false,
+    });
+    await flushUi();
+    const button = host.querySelector<HTMLButtonElement>('.model-visibility-refresh-btn');
+    if (!button) throw new Error('空自定义分组刷新入口缺失');
+    button.click();
+    await flushUi();
+    expect(mocks.refreshCustomProvider).toHaveBeenCalledExactlyOnceWith({ provider_name: 'Relay' });
+    expect(host.querySelector('.model-visibility-refresh-btn')).not.toBeNull();
+    expect(host.textContent).toContain('Relay');
+  });
+
+  it('最后一个空分组删除成功后读取失败，空态仍展示已提交删除的同步失败提示', async () => {
+    const actual = await vi.importActual<
+      typeof import('../../../orchestration/removeCustomApiProviderModels')
+    >('../../../orchestration/removeCustomApiProviderModels');
+    const removeProvider = vi.fn(async () => ({
+      removed_model_ids: [],
+      model_picker_preference_recovery_pending: false,
+    }));
+    mocks.removeCustomApiProviderModels.mockImplementation(providerName =>
+      actual.removeCustomApiProviderModels(providerName, { removeProvider })
+    );
+    useModelPickerStore().replaceSnapshot({
+      providers: [],
+      custom_models: [],
+      custom_providers: [{
+        provider_id: 'custom:Relay',
+        provider_name: 'Relay',
+        api_format: 'openai_compatible',
+        base_url: 'https://relay.example.com/v1',
+        models: [],
+      }],
+    });
+    mocks.confirm.mockResolvedValue(true);
+    mocks.loadCatalog.mockResolvedValue({
+      models: [],
+      purposeDefaults: {},
+      cloudModelsReady: false,
+    });
+    mocks.loadPicker.mockRejectedValue(new Error('picker unavailable'));
+    await flushUi();
+    const button = host.querySelector<HTMLButtonElement>('.model-visibility-provider-delete');
+    if (!button) throw new Error('空自定义分组删除入口缺失');
+    button.click();
+    await flushUi();
+
+    expect(removeProvider).toHaveBeenCalledExactlyOnceWith({ provider_name: 'Relay' });
+    expect(useModelPickerStore().snapshot?.custom_providers).toEqual([]);
+    expect(host.querySelector('.model-visibility-source-tab')).toBeNull();
+    expect(host.textContent).toContain('settings.modelPicker.empty');
+    expect(host.textContent).toContain('settings.modelPicker.removedSyncFailed');
+    expect(host.textContent).not.toContain('picker unavailable');
+  });
 
   it('刷新调用供应商发现入口并呈现新候选，保留已有配置', async () => {
     const current = useModelPickerStore().snapshot;

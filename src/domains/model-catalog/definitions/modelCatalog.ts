@@ -1,3 +1,5 @@
+import type { CustomApiGroup, CustomApiGroupMigration } from './customApiGroup';
+import type { ModelReasoningResolver } from './modelReasoningResolver';
 /**
  * @file src/domains/model-catalog/definitions/modelCatalog.ts
  *
@@ -180,7 +182,7 @@ export interface ModelConfig {
   /**
    * 思考努力程度能力契约（可选）。
    *
-   * 声明该模型支持哪些思考档位、默认档位、以及档位→原生参数的映射提示。
+   * 声明准入后该模型支持哪些思考档位及默认档位；Provider 原生字段不属于本合同。
    * 经 `processModelConfig()` 白名单保留后，会随 `ModelConfig` 透出到前端（HTTP `GET /api/v1/models` 直传）。
    *
    * 设计要点：
@@ -188,7 +190,7 @@ export interface ModelConfig {
    * - 字段定义与降级纯函数 `resolveEffectiveEffort()` 同源于 `linnkit/contracts`，前后端共用一处真源；
    * - 缺失表示该模型不支持思考努力程度控制，前端不展示控件、adapter 不发任何思考相关字段。
    *
-   * 正式档位与降级合同由 `linnkit/contracts` 和 `reasoning-capabilities.ts` 共同维护。
+   * 正式档位与降级合同来自 `linnkit/contracts`；SDK 查询与显式声明在 Catalog 准入时合并。
    */
   reasoning?: ModelReasoningConfig;
 }
@@ -260,8 +262,37 @@ export interface ModelCatalog {
   /** 返回不含密文和明文的内部推理 endpoint read model。 */
   getInferenceEndpoints(): InferenceEndpointView[];
 
+  /** 独立自定义分组连接归属；没有模型时仍保留。 */
+  getCustomApiGroups(): CustomApiGroup[];
+  resolveInferenceEndpointCredential(inferenceEndpointId: string): string | undefined;
+  registerCustomApiModels(
+    name: string,
+    registrations: readonly UserModelRegistration[],
+    expectedRevision: number
+  ): Promise<void>;
+  applyCustomApiGroupModelDiff(
+    name: string,
+    diff: ModelDiff,
+    expectedRevision: number
+  ): Promise<void>;
+  rebindCustomApiGroup(
+    currentName: string,
+    name: string,
+    models: readonly ModelConfig[],
+    endpoint: InferenceEndpointSelection,
+    expectedRevision: number
+  ): Promise<void>;
+  removeCustomApiGroup(name: string, expectedRevision: number): Promise<void>;
+  migrateCustomApiGroups(
+    groups: readonly CustomApiGroupMigration[],
+    expectedRevision: number
+  ): Promise<void>;
+
   /** 安装由 App composition 通过 Desktop Host capability 提供的系统安全存储 codec。 */
   installEndpointCredentialCodec(codec: EndpointCredentialCodec): void;
+
+  /** 必须在 initialize 前安装；Catalog 不直接依赖 SDK 或 Host。 */
+  installModelReasoningResolver(resolver: ModelReasoningResolver): void;
 
   /** 当前进程用户目录与凭据的提交版本，用于跨异步步骤的乐观并发控制。 */
   getUserRevision(): number;

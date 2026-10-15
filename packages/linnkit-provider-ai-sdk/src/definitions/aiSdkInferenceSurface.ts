@@ -1,4 +1,5 @@
 import type { LanguageModelV4 } from '@ai-sdk/provider';
+import type { ModelReasoningConfig } from '@linnlabs/linnkit/contracts';
 import type { CanonicalInferenceEvent, CanonicalInferenceRequest } from '@linnlabs/linnkit/ports';
 import type { AiSdkInferenceCapabilityId } from './aiSdkCapabilityIds';
 
@@ -76,10 +77,15 @@ export interface AiSdkLanguageModelFactoryEntry {
     | '@openrouter/ai-sdk-provider'
     | 'ai-sdk-ollama';
   readonly package_version: string;
+  /** 只投影上游 SDK 已明确识别的能力；未知模型不产生产品能力声明。 */
+  resolveModelReasoning?(endpointModelId: string): ModelReasoningConfig | undefined;
   createLanguageModel(input: AiSdkLanguageModelFactoryInput): LanguageModelV4;
 }
 
 export interface AiSdkLanguageModelRegistry {
   readonly entries: readonly AiSdkLanguageModelFactoryEntry[];
+  resolveModelReasoning(
+    input: Pick<AiSdkLanguageModelFactoryInput, 'capability_id' | 'endpoint_model_id'>
+  ): ModelReasoningConfig | undefined;
   languageModel(input: AiSdkLanguageModelFactoryInput): LanguageModelV4;
 }

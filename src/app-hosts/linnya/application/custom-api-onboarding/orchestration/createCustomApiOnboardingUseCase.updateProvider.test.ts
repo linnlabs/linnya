@@ -5,6 +5,7 @@ import {
 } from '@app/schemas/custom-api-onboarding';
 import { buildModelInferenceRoute } from '@app/schemas/model-inference';
 import type {
+  CustomApiGroup,
   InferenceEndpointSelection,
   InferenceEndpointView,
   ModelConfig,
@@ -66,9 +67,12 @@ function setup(input: {
   readonly endpoints: readonly InferenceEndpointView[];
   readonly configuredModelIds?: readonly string[];
   readonly ids?: string[];
+  readonly groups?: readonly CustomApiGroup[];
 }) {
-  const rebindUserModels = vi.fn(
+  const rebindCustomApiGroup = vi.fn(
     async (
+      _currentName: string,
+      _newName: string,
       _models: readonly ModelConfig[],
       _endpoint: InferenceEndpointSelection,
       _revision: number
@@ -80,17 +84,32 @@ function setup(input: {
     provider_connection_definition_id: 'ollama-local',
     models: [],
   };
+  const custom = input.models.filter(model => !input.configuredModelIds?.includes(model.id));
+  const groups =
+    input.groups ??
+    [...new Set(custom.map(model => model.custom_provider_name ?? '自定义模型'))].map(name => ({
+      name,
+      inference_endpoint_ids: [
+        ...new Set(
+          custom
+            .filter(model => (model.custom_provider_name ?? '自定义模型') === name)
+            .flatMap(model => (model.inference_endpoint_id ? [model.inference_endpoint_id] : []))
+        ),
+      ],
+    }));
   const ids = input.ids ?? ['new-endpoint'];
   const useCase = createCustomApiOnboardingUseCase({
     modelDiscovery: { discover: vi.fn() },
     modelCatalog: {
       getUserRevision: () => 0,
-      applyDiff: vi.fn(),
+      applyCustomApiGroupModelDiff: vi.fn(),
+      removeCustomApiGroup: vi.fn(),
+      getCustomApiGroups: () => groups,
       getModels: () => [...input.models],
       getInferenceEndpoints: () => [...input.endpoints],
-      resolveCredential: vi.fn(),
-      registerUserModels: vi.fn(),
-      rebindUserModels,
+      resolveInferenceEndpointCredential: vi.fn(),
+      registerCustomApiModels: vi.fn(),
+      rebindCustomApiGroup,
     },
     providerMembership: {
       getByModelConfigId: modelConfigId =>
@@ -99,7 +118,7 @@ function setup(input: {
     modelPickerPreferences: { removeModelPreferences: vi.fn(), setModelVisibilities: vi.fn() },
     idFactory: { create: () => ids.shift() ?? 'unexpected-id' },
   });
-  return { useCase, rebindUserModels };
+  return { useCase, rebindCustomApiGroup };
 }
 
 function admit(request: CustomApiProviderUpdateRequest) {
@@ -107,9 +126,89 @@ function admit(request: CustomApiProviderUpdateRequest) {
 }
 
 describe('createCustomApiOnboardingUseCase.updateProvider', () => {
+  it('空分组仍可编辑名称和连接，并返回空模型列表', async () => {
+    const shared = endpoint('relay');
+    const { useCase, rebindCustomApiGroup } = setup({
+      models: [],
+      endpoints: [shared],
+      groups: [{ name: 'Relay', inference_endpoint_ids: ['relay'] }],
+    });
+    await expect(
+      useCase.updateProvider(
+        admit({
+          current_provider_name: 'Relay',
+          provider_name: 'Relay Renamed',
+          api_format: 'openai_compatible',
+          base_url: shared.base_url,
+        })
+      )
+    ).resolves.toEqual({ provider_name: 'Relay Renamed', model_ids: [] });
+    expect(rebindCustomApiGroup).toHaveBeenCalledExactlyOnceWith(
+      'Relay',
+      'Relay Renamed',
+      [],
+      { kind: 'existing', inference_endpoint_id: 'relay' },
+      0
+    );
+  });
+
+  it('与空分组共享连接时，换 Key 也必须建立独立连接', async () => {
+    const shared = endpoint('relay');
+    const { useCase, rebindCustomApiGroup } = setup({
+      models: [customModel('a', shared, 'Relay')],
+      endpoints: [shared],
+      groups: [
+        { name: 'Relay', inference_endpoint_ids: ['relay'] },
+        { name: 'Empty', inference_endpoint_ids: ['relay'] },
+      ],
+    });
+    await useCase.updateProvider(
+      admit({
+        current_provider_name: 'Relay',
+        provider_name: 'Relay',
+        api_format: 'openai_compatible',
+        base_url: shared.base_url,
+        api_key: 'new-key',
+      })
+    );
+    expect(rebindCustomApiGroup.mock.calls[0]?.[3]).toMatchObject({
+      kind: 'create',
+      endpoint: { id: 'new-endpoint', credential_secret: 'new-key' },
+    });
+  });
+
+  it('独占 endpoint 沿用了其他空分组的凭据时，换 Key 仍需隔离凭据', async () => {
+    const original = endpoint('original');
+    const relocated = endpoint('relocated', {
+      base_url: 'https://new-relay.example.com/v1',
+      credential_reference: original.credential_reference,
+    });
+    const { useCase, rebindCustomApiGroup } = setup({
+      models: [customModel('a', relocated, 'Relay')],
+      endpoints: [original, relocated],
+      groups: [
+        { name: 'Relay', inference_endpoint_ids: ['relocated'] },
+        { name: 'Empty', inference_endpoint_ids: ['original'] },
+      ],
+    });
+    await useCase.updateProvider(
+      admit({
+        current_provider_name: 'Relay',
+        provider_name: 'Relay',
+        api_format: 'openai_compatible',
+        base_url: relocated.base_url,
+        api_key: 'new-key',
+      })
+    );
+    expect(rebindCustomApiGroup.mock.calls[0]?.[3]).toMatchObject({
+      kind: 'create',
+      endpoint: { id: 'new-endpoint', credential_secret: 'new-key' },
+    });
+  });
+
   it('只改名时保留原 endpoint 与 route，不触碰凭据', async () => {
     const shared = endpoint('relay');
-    const { useCase, rebindUserModels } = setup({
+    const { useCase, rebindCustomApiGroup } = setup({
       models: [customModel('a', shared, 'Relay'), customModel('b', shared, 'Relay')],
       endpoints: [shared],
     });
@@ -125,7 +224,7 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
       )
     ).resolves.toEqual({ provider_name: 'Relay Prod', model_ids: ['a', 'b'] });
 
-    const [models, selection] = rebindUserModels.mock.calls[0] ?? [];
+    const [, , models, selection] = rebindCustomApiGroup.mock.calls[0] ?? [];
     expect(selection).toEqual({ kind: 'existing', inference_endpoint_id: 'relay' });
     expect(models?.map(model => model.custom_provider_name)).toEqual(['Relay Prod', 'Relay Prod']);
     expect(models?.[0]?.inference_route).toEqual(customModel('a', shared, 'Relay').inference_route);
@@ -133,7 +232,7 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
 
   it('改地址与格式且未填 Key 时新建 endpoint 并沿用分组唯一可用凭据', async () => {
     const relay = endpoint('relay');
-    const { useCase, rebindUserModels } = setup({
+    const { useCase, rebindCustomApiGroup } = setup({
       models: [customModel('a', relay, 'Relay', { imageInput: true })],
       endpoints: [relay],
     });
@@ -147,7 +246,7 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
       })
     );
 
-    const [models, selection] = rebindUserModels.mock.calls[0] ?? [];
+    const [, , models, selection] = rebindCustomApiGroup.mock.calls[0] ?? [];
     expect(selection).toEqual({
       kind: 'create',
       endpoint: {
@@ -180,7 +279,7 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
 
   it('只换 Key 且 endpoint 由本分组独占时在原凭据边界内替换', async () => {
     const relay = endpoint('relay');
-    const { useCase, rebindUserModels } = setup({
+    const { useCase, rebindCustomApiGroup } = setup({
       models: [customModel('a', relay, 'Relay')],
       endpoints: [relay],
     });
@@ -195,7 +294,7 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
       })
     );
 
-    expect(rebindUserModels.mock.calls[0]?.[1]).toEqual({
+    expect(rebindCustomApiGroup.mock.calls[0]?.[3]).toEqual({
       kind: 'existing',
       inference_endpoint_id: 'relay',
       credential_secret: 'rotated-secret',
@@ -204,7 +303,7 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
 
   it('换 Key 时不影响共享同一 endpoint 的其他分组', async () => {
     const relay = endpoint('relay');
-    const { useCase, rebindUserModels } = setup({
+    const { useCase, rebindCustomApiGroup } = setup({
       models: [customModel('a', relay, 'Relay'), customModel('b', relay, 'Team Relay')],
       endpoints: [relay],
     });
@@ -219,7 +318,7 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
       })
     );
 
-    const [models, selection] = rebindUserModels.mock.calls[0] ?? [];
+    const [, , models, selection] = rebindCustomApiGroup.mock.calls[0] ?? [];
     expect(models?.map(model => model.id)).toEqual(['a']);
     expect(selection).toMatchObject({
       kind: 'create',
@@ -243,7 +342,7 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
       groups: ['relay', 'backup'],
     },
   ])('$name 时修改地址必须重新填写 Key', async ({ endpoints, groups }) => {
-    const { useCase, rebindUserModels } = setup({
+    const { useCase, rebindCustomApiGroup } = setup({
       models: groups.map(endpointId =>
         customModel(endpointId, endpoints.find(view => view.id === endpointId)!, 'Relay')
       ),
@@ -260,12 +359,12 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
         })
       )
     ).rejects.toMatchObject({ code: 'custom_api_onboarding.credential_required', statusCode: 400 });
-    expect(rebindUserModels).not.toHaveBeenCalled();
+    expect(rebindCustomApiGroup).not.toHaveBeenCalled();
   });
 
   it('不改连接但原凭据不可用时，只改名也要求重新填写 Key', async () => {
     const broken = endpoint('relay', { credential_status: 'missing' });
-    const { useCase, rebindUserModels } = setup({
+    const { useCase, rebindCustomApiGroup } = setup({
       models: [customModel('a', broken, 'Relay')],
       endpoints: [broken],
     });
@@ -280,13 +379,13 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
         })
       )
     ).rejects.toMatchObject({ code: 'custom_api_onboarding.credential_required' });
-    expect(rebindUserModels).not.toHaveBeenCalled();
+    expect(rebindCustomApiGroup).not.toHaveBeenCalled();
   });
 
   it('未命名的历史自定义模型归入默认分组，正式 Provider 模型不会被编辑', async () => {
     const relay = endpoint('relay');
     const ollama = endpoint('ollama', { base_url: 'http://127.0.0.1:11434/v1' });
-    const { useCase, rebindUserModels } = setup({
+    const { useCase, rebindCustomApiGroup } = setup({
       models: [
         customModel('legacy', relay, undefined),
         customModel('ollama-model', ollama, undefined),
@@ -305,12 +404,12 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
         })
       )
     ).resolves.toEqual({ provider_name: 'Relay', model_ids: ['legacy'] });
-    expect(rebindUserModels.mock.calls[0]?.[0].map(model => model.id)).toEqual(['legacy']);
+    expect(rebindCustomApiGroup.mock.calls[0]?.[2].map(model => model.id)).toEqual(['legacy']);
   });
 
   it('改成其他分组已使用的名称时拒绝合并', async () => {
     const relay = endpoint('relay');
-    const { useCase, rebindUserModels } = setup({
+    const { useCase, rebindCustomApiGroup } = setup({
       models: [customModel('a', relay, 'Relay'), customModel('b', relay, 'Other')],
       endpoints: [relay],
     });
@@ -328,12 +427,12 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
       code: 'custom_api_onboarding.provider_name_conflict',
       statusCode: 409,
     });
-    expect(rebindUserModels).not.toHaveBeenCalled();
+    expect(rebindCustomApiGroup).not.toHaveBeenCalled();
   });
 
   it('分组不存在或目录写入失败时返回稳定错误', async () => {
     const relay = endpoint('relay');
-    const { useCase, rebindUserModels } = setup({
+    const { useCase, rebindCustomApiGroup } = setup({
       models: [customModel('a', relay, 'Relay')],
       endpoints: [relay],
     });
@@ -349,7 +448,7 @@ describe('createCustomApiOnboardingUseCase.updateProvider', () => {
       )
     ).rejects.toMatchObject({ code: 'custom_api_onboarding.provider_not_found', statusCode: 404 });
 
-    rebindUserModels.mockRejectedValueOnce(new Error('disk unavailable'));
+    rebindCustomApiGroup.mockRejectedValueOnce(new Error('disk unavailable'));
     await expect(
       useCase.updateProvider(
         admit({

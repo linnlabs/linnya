@@ -41,6 +41,10 @@ export const useModelCatalogStore = defineStore('modelCatalog', () => {
     models.value[index] = model;
   }
 
+  function replaceModels(nextModels: readonly ModelCatalogItem[]): void {
+    models.value = [...nextModels];
+  }
+
   function removeModel(modelId: string): void {
     const index = models.value.findIndex(model => model.id === modelId);
     if (index === -1) throw new Error(`待删除模型不在目录中：${modelId}`);
@@ -58,6 +62,7 @@ export const useModelCatalogStore = defineStore('modelCatalog', () => {
     failOperation,
     replaceSnapshot,
     replaceModel,
+    replaceModels,
     removeModel,
   };
 });

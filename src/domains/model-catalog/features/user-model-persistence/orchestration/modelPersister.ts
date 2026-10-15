@@ -6,12 +6,13 @@ import { pathManager } from 'src/shared/utils/pathManager';
 
 import type { ModelConfig } from '../../../definitions/modelCatalog';
 import type { InferenceEndpoint } from '../../../definitions/inferenceEndpoint';
+import type { CustomApiGroup } from '../../../definitions/customApiGroup';
 import {
-  readStoredUserModelState,
   USER_MODELS_FILE_VERSION,
   type StoredUserModelState,
   type UserModelsFile,
 } from '../definitions/userModelsFile';
+import { readStoredUserModelState } from '../functions/readStoredUserModelState';
 
 const logger = new Logger('ModelPersister');
 
@@ -36,7 +37,7 @@ export class ModelPersister {
     } catch (error) {
       const code = error instanceof Error && 'code' in error ? error.code : undefined;
       if (code !== 'ENOENT') throw error;
-      await this.writeUserModelsFile([], []);
+      await this.writeUserModelsFile([], [], []);
       logger.info(`[ModelPersister] Created empty user models file at ${this.userModelsPath}`);
     }
   }
@@ -50,10 +51,11 @@ export class ModelPersister {
 
   async saveState(
     models: readonly ModelConfig[],
-    inferenceEndpoints: readonly InferenceEndpoint[]
+    inferenceEndpoints: readonly InferenceEndpoint[],
+    customApiGroups: readonly CustomApiGroup[]
   ): Promise<void> {
     const userModels = models.filter(model => model.catalog_source === 'user');
-    await this.writeUserModelsFile(userModels, inferenceEndpoints);
+    await this.writeUserModelsFile(userModels, inferenceEndpoints, customApiGroups);
     logger.info(
       `[ModelPersister] Saved ${userModels.length} user models and ${inferenceEndpoints.length} inference endpoints`
     );
@@ -75,13 +77,15 @@ export class ModelPersister {
 
   private async writeUserModelsFile(
     models: readonly ModelConfig[],
-    inferenceEndpoints: readonly InferenceEndpoint[]
+    inferenceEndpoints: readonly InferenceEndpoint[],
+    customApiGroups: readonly CustomApiGroup[]
   ): Promise<void> {
     const userModelsPath = await this.requireUserModelsPathForWrite();
     const data: UserModelsFile = {
       version: USER_MODELS_FILE_VERSION,
       last_updated: new Date().toISOString(),
       inference_endpoints: inferenceEndpoints,
+      custom_api_groups: customApiGroups,
       models,
     };
     const temporaryPath = `${userModelsPath}.tmp`;

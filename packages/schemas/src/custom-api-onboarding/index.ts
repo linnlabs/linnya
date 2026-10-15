@@ -218,7 +218,7 @@ export const CustomApiProviderUpdateCommandSchema = z
 export const CustomApiProviderUpdateResponseSchema = z
   .object({
     provider_name: NonEmptyStringSchema,
-    model_ids: z.array(NonEmptyStringSchema).min(1),
+    model_ids: z.array(NonEmptyStringSchema),
   })
   .strict();
 
@@ -233,7 +233,7 @@ export const CustomApiProviderRemovalCommandSchema = z
   .strict();
 export const CustomApiProviderRemovalResponseSchema = z
   .object({
-    removed_model_ids: z.array(NonEmptyStringSchema).min(1),
+    removed_model_ids: z.array(NonEmptyStringSchema),
     model_picker_preference_recovery_pending: z.boolean(),
   })
   .strict();
@@ -246,6 +246,8 @@ export const CustomApiProviderRefreshResponseSchema = z
   .object({
     provider_name: NonEmptyStringSchema,
     added_model_ids: z.array(NonEmptyStringSchema),
+    removed_model_ids: z.array(NonEmptyStringSchema),
+    model_picker_preference_recovery_pending: z.boolean(),
   })
   .strict();
 

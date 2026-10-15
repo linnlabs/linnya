@@ -59,6 +59,8 @@ describe('custom API onboarding router', () => {
     const refreshProvider = vi.fn(async () => ({
       provider_name: 'Relay',
       added_model_ids: ['new-model'],
+      removed_model_ids: ['old-model'],
+      model_picker_preference_recovery_pending: false,
     }));
     const baseUrl = await start({ refreshProvider });
     const response = await fetch(`${baseUrl}/api/v1/custom-api-onboarding/providers/refresh`, {
@@ -70,6 +72,8 @@ describe('custom API onboarding router', () => {
     expect(CustomApiProviderRefreshResponseSchema.parse(await response.json())).toEqual({
       provider_name: 'Relay',
       added_model_ids: ['new-model'],
+      removed_model_ids: ['old-model'],
+      model_picker_preference_recovery_pending: false,
     });
     expect(refreshProvider).toHaveBeenCalledWith({ provider_name: 'Relay' });
 

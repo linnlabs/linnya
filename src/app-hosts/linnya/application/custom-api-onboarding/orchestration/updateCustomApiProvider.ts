@@ -14,13 +14,20 @@ export async function updateCustomApiProvider(
   const revision = dependencies.modelCatalog.getUserRevision();
   const plan = planCustomApiProviderUpdate(
     command,
+    dependencies.modelCatalog.getCustomApiGroups(),
     dependencies.modelCatalog.getModels(),
     dependencies.modelCatalog.getInferenceEndpoints(),
     modelId => dependencies.providerMembership.getByModelConfigId(modelId) !== undefined,
     dependencies.idFactory.create()
   );
   try {
-    await dependencies.modelCatalog.rebindUserModels(plan.models, plan.endpoint, revision);
+    await dependencies.modelCatalog.rebindCustomApiGroup(
+      command.current_provider_name,
+      command.provider_name,
+      plan.models,
+      plan.endpoint,
+      revision
+    );
   } catch (error: unknown) {
     if (error instanceof ModelCatalogConflictError) {
       throw new CustomApiOnboardingError(

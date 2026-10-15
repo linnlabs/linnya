@@ -43,6 +43,7 @@ import { collectExtractableTextBlocks } from '../../../features/knowledge-base/g
 import { getKnowledgeGraphExtractionModelPolicy } from 'src/app-hosts/linnya/agent-registry/internals/knowledge_graph_extraction';
 import {
   createDefaultHostInferencePort,
+  createLinnyaModelReasoningResolver,
   createTextGenerationPort,
 } from 'src/app-hosts/linnya/adapters/inference';
 import {
@@ -107,6 +108,7 @@ async function initializeWorkerServices(): Promise<void> {
 
   // 初始化模型注册表
   if (modelCatalog.getModels().length === 0) {
+    modelCatalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
     await modelCatalog.initialize(distributionIdentity);
   }
 

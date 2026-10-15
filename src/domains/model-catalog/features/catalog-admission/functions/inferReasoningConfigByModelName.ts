@@ -7,8 +7,7 @@
  * 设计要点：
  * - 用户要求「支持所有常见模型，而不是根据云端来搞」：本函数对所有来源的模型
  *   （本地 default_models.json / 云端 /v1/models / 用户自配）统一生效，
- *   调用点在 `processModelConfig()`，且「显式契约优先，推断兜底」——
- *   模型若显式声明了 `reasoning`，以显式值为准；未声明才按 model_name 推断。
+ *   调用点在 `processModelConfig()`；SDK 能力查询无结果且未显式声明时，才使用此处兼容知识。
  * - 只输出「支持哪些档位 / 默认档位」，不输出 Provider 私有 summary、token budget
  *   或 API 字段；请求体字段形态由 adapter 身份隐含表达（plan §0.2 第1点）。
  * - 固定思考模型（如 deepseek-reasoner / r1，原生不支持档位调节）不补契约，
@@ -66,7 +65,8 @@ export function inferReasoningConfigByModelName(
     };
   }
 
-  // Claude 3.7+ / 4 系列 extended thinking
+  // 仅保留 Claude 3.7 / 4 系列 extended thinking 的兼容知识。
+  // SDK 未给这些 legacy 型号返回正向支持 flag；已知 adaptive 新型号由能力查询直接提供，不能继续扩正则。
   // 匹配 claude-3.7-sonnet、claude-3-7-sonnet、anthropic/claude-opus-4-...、claude-sonnet-4-...、claude-haiku-4-5-...
   if (/claude-(3[.-]7|opus-4|sonnet-4|haiku-4)/.test(name)) {
     return {

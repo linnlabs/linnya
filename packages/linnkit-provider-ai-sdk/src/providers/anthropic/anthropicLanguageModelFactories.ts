@@ -4,6 +4,7 @@ import {
 } from '../../definitions/aiSdkCapabilityIds';
 import type { AiSdkLanguageModelFactoryEntry } from '../../definitions/aiSdkInferenceSurface';
 import { requireAiSdkLanguageModelCredential } from '../../functions/requireAiSdkLanguageModelCredential';
+import { resolveAnthropicModelReasoning } from './resolveAnthropicModelReasoning';
 
 export const ANTHROPIC_LANGUAGE_MODEL_FACTORIES: Record<
   typeof AI_SDK_INFERENCE_CAPABILITY_IDS.ANTHROPIC_MESSAGES,
@@ -15,6 +16,7 @@ export const ANTHROPIC_LANGUAGE_MODEL_FACTORIES: Record<
     auth_profiles: ['api_key', 'bearer'],
     package_name: '@ai-sdk/anthropic',
     package_version: ANTHROPIC_PACKAGE_VERSION,
+    resolveModelReasoning: resolveAnthropicModelReasoning,
     createLanguageModel(input) {
       const credential = requireAiSdkLanguageModelCredential(input);
       const provider = createAnthropic({

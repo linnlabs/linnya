@@ -79,6 +79,13 @@ async function verifyRuntime(label, runtime, conformance) {
     Object.values(runtime.AI_SDK_INFERENCE_CAPABILITY_IDS).length,
     `${label} registry capability 数量异常`
   );
+  // 从 tarball 调用真实能力查询，验证 SDK 内部出口在 ESM/CJS 制品中均可用。
+  const reasoning = registry.resolveModelReasoning({
+    capability_id: 'ai-sdk:anthropic-messages',
+    endpoint_model_id: 'claude-sonnet-5-5',
+  });
+  assert.equal(reasoning?.supported_efforts.includes('xhigh'), true);
+  assert.equal(reasoning?.supported_efforts.includes('off'), false);
 
   const modelId = 'deepseek-flash';
   const resolvedRoute = conformance.createDedicatedProviderConformanceRoute({

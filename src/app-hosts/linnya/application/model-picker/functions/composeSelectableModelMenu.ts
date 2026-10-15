@@ -4,12 +4,8 @@ import type {
   ModelPickerProviderModel,
   ModelPickerSnapshot,
 } from '@app/schemas/model-picker';
-import {
-  readCustomApiFormatForRouteProfileId,
-  type CustomApiFormat,
-} from '@app/schemas/custom-api-onboarding';
+import { readCustomApiFormatForRouteProfileId } from '@app/schemas/custom-api-onboarding';
 import type { ProviderConnectionDefinition } from '@linnya/provider-catalog';
-import { findLanguageInferenceRouteProfileForRoute } from '@app/schemas/model-inference';
 import type { ModelConfig } from 'src/domains/model-catalog';
 import type {
   ConfiguredProvider,
@@ -253,50 +249,28 @@ export function composeSelectableModelMenu(
   const cloudModels = input.models
     .filter(model => model.catalog_source === 'cloud')
     .map(model => projectMaterializedModel(model, input, model.ui_visibility.includes('chat')));
-  const customModelsRaw = input.models.filter(
-    model => model.catalog_source === 'user' && !configuredModelIds.has(model.id)
-  );
-  const customModels = customModelsRaw.map(model => projectMaterializedModel(model, input, true));
-
-  // 按 custom_provider_name 分组
-  const customProvidersMap = new Map<
-    string,
-    {
-      provider_name: string;
-      api_format?: CustomApiFormat;
-      base_url?: string;
-      endpoint_id?: string;
-      models: typeof customModels;
-    }
-  >();
-  for (const rawModel of customModelsRaw) {
-    const providerName = readCustomApiProviderName(rawModel);
-    const groupKey = providerName;
-    const materialized = projectMaterializedModel(rawModel, input, true);
-    if (!customProvidersMap.has(groupKey)) {
-      customProvidersMap.set(groupKey, {
-        provider_name: providerName,
-        api_format: rawModel.inference_route
-          ? readCustomApiFormatForRouteProfileId(
-              findLanguageInferenceRouteProfileForRoute(rawModel.inference_route).id
-            )
-          : undefined,
-        base_url: rawModel.inference_route?.base_url,
-        endpoint_id: rawModel.inference_endpoint_id,
-        models: [],
-      });
-    }
-    customProvidersMap.get(groupKey)!.models.push(materialized);
-  }
-
-  const customProviders = Array.from(customProvidersMap.entries()).map(([key, group]) => ({
-    provider_id: `custom:${key}`,
-    provider_name: group.provider_name,
-    api_format: group.api_format,
-    base_url: group.base_url,
-    endpoint_id: group.endpoint_id,
-    models: group.models,
-  }));
+  // 分组拥有连接的生命周期；远端模型为空时仍保留设置中的刷新、编辑和删除入口。
+  const customProviders = input.custom_api_groups.map(group => {
+    const endpoint = input.inference_endpoints.find(
+      candidate => candidate.id === group.inference_endpoint_ids[0]
+    );
+    const models = input.models.filter(model =>
+      model.catalog_source === 'user' &&
+      !configuredModelIds.has(model.id) &&
+      readCustomApiProviderName(model) === group.name &&
+      model.inference_endpoint_id !== undefined &&
+      group.inference_endpoint_ids.includes(model.inference_endpoint_id)
+    );
+    return {
+      provider_id: `custom:${group.name}`,
+      provider_name: group.name,
+      api_format: endpoint ? readCustomApiFormatForRouteProfileId(endpoint.route_profile_id) : undefined,
+      base_url: endpoint?.base_url,
+      endpoint_id: endpoint?.id,
+      models: models.map(model => projectMaterializedModel(model, input, true)),
+    };
+  });
+  const customModels = customProviders.flatMap(group => group.models);
 
   return {
     ...(cloudModels.length > 0
