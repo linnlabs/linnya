@@ -253,6 +253,22 @@ export interface ModelCatalog {
   registerUserModel(model: ModelConfig, endpoint: InferenceEndpointSelection): Promise<void>;
 
   /**
+   * 原子更新一组已有用户模型，并把它们改绑到同一个新建或已有的内部推理 endpoint。
+   *
+   * 不再被任何模型引用的旧 endpoint 与其独占密文在同一事务中清理；写盘失败时撤销本次凭据变更。
+   */
+  rebindUserModels(
+    models: readonly ModelConfig[],
+    endpoint: InferenceEndpointSelection
+  ): Promise<void>;
+
+  /** 在 endpoint 引用的本地 credential boundary 内替换 secret；共享该凭据的 endpoint 一并生效。 */
+  replaceInferenceEndpointCredential(
+    inferenceEndpointId: string,
+    credentialSecret: string
+  ): Promise<void>;
+
+  /**
    * 原子替换一个 ProviderAccount 在当前进程投影出的模型。
    *
    * 账号模型不写入 Workspace；账号授权是其唯一 durable source，启动恢复时重新投影。

@@ -19,6 +19,7 @@ export function createStatefulProviderOnboardingStorage() {
   let pendingIntent: PendingProviderModelRegistration | undefined;
   const catalog: ProviderOnboardingModelCatalogPort & {
     registerUserModel: ReturnType<typeof vi.fn>;
+    replaceInferenceEndpointCredential: ReturnType<typeof vi.fn>;
   } = {
     getModel: modelConfigId => models.find(model => model.id === modelConfigId),
     getInferenceEndpoints: () => endpoints,
@@ -40,6 +41,16 @@ export function createStatefulProviderOnboardingStorage() {
     }),
     updateModel: vi.fn(async (model: ModelConfig) => {
       models = models.map(candidate => (candidate.id === model.id ? model : candidate));
+    }),
+    replaceInferenceEndpointCredential: vi.fn(async (inferenceEndpointId: string) => {
+      const target = endpoints.find(endpoint => endpoint.id === inferenceEndpointId);
+      if (!target) throw new Error(`InferenceEndpoint 不存在: ${inferenceEndpointId}`);
+      endpoints = endpoints.map(endpoint =>
+        JSON.stringify(endpoint.credential_reference) ===
+        JSON.stringify(target.credential_reference)
+          ? { ...endpoint, credential_status: 'configured' }
+          : endpoint
+      );
     }),
   };
   const configurations: ProviderOnboardingConfigurationPort = {

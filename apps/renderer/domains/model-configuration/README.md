@@ -32,14 +32,14 @@ workflow 只能消费本 domain 的公开合同，不能自行读取模型目录
 | 后端模型列表 DTO、加载、增删改                | `features/model-catalog/`                                                                                                                   |
 | 后端 Provider 公开目录 DTO                    | `features/provider-catalog/`；跨端 schema 位于 `packages/schemas/src/provider-catalog/`                                                     |
 | 快捷选择器可见性与分组投影                    | `features/model-picker/`；Host use case 位于 `src/app-hosts/linnya/application/model-picker/`                                               |
-| 正式 API-Key Provider 接入                    | `features/direct-provider-onboarding/`；后端 workflow 位于 `src/app-hosts/linnya/application/provider-onboarding/`                          |
+| 正式 API-Key Provider 接入与更换 Key          | `features/direct-provider-onboarding/`；后端 workflow 位于 `src/app-hosts/linnya/application/provider-onboarding/`                          |
 | 正式账号型 Provider 授权与模型注册            | `features/provider-account-model-registration/`；授权 Host use case 位于 `src/app-hosts/linnya/application/provider-account-authorization/` |
 | 已有模型的容量解析与 route 编辑               | `features/inference-endpoints/`                                                                                                             |
-| 自定义 API 新增模型                           | `features/custom-model-registration/`；Host use case 位于 `src/app-hosts/linnya/application/custom-api-onboarding/`                         |
+| 自定义 API 新增模型与分组连接编辑             | `features/custom-model-registration/`；Host use case 位于 `src/app-hosts/linnya/application/custom-api-onboarding/`                         |
 | Ollama 本地模型发现与注册                     | `features/ollama-model-registration/`；Host use case 位于 `src/app-hosts/linnya/application/ollama-onboarding/`                             |
 | 统一 Provider 选择与三条注册路径组合          | `ui/ModelRegistrationSettingsPage.vue`；具体表单归各 feature 的 `ui/` 所有                                                                  |
 | 主模型、辅助用途、Embedding/OCR/图片/转录绑定 | `features/purpose-model-bindings/`                                                                                                          |
-| 删除模型后的跨 feature 清理                   | `orchestration/deleteConfiguredModel.ts`                                                                                                    |
+| 删除模型后的跨 feature 清理                   | `orchestration/deleteConfiguredModel.ts`；整个来源（正式 Provider 或自定义分组）删除见 `orchestration/removeModelSource.ts`                  |
 | Knowledge Base 对嵌入模型切换的影响检查       | `ports/embeddingModelChangeImpactPort.ts` 与 Knowledge Base registration                                                                    |
 | Settings 如何嵌入页面                         | `domains/settings/README.md`                                                                                                                |
 | route wire schema                             | `packages/schemas/src/model-inference/`                                                                                                     |
@@ -86,12 +86,12 @@ workflow 只能消费本 domain 的公开合同，不能自行读取模型目录
 model-configuration/
 ├── features/
 │   ├── provider-catalog/           # Provider public HTTP DTO、只读状态与加载编排
-│   ├── direct-provider-onboarding/ # 正式 Provider 的 Key-only 首次接入
+│   ├── direct-provider-onboarding/ # 正式 Provider 的 Key-only 首次接入与更换 Key
 │   ├── provider-account-model-registration/ # 正式账号型 Provider 的授权与模型注册旅程
 │   ├── inference-endpoints/       # token capacity 解析与已有 route 编辑校验
 │   ├── model-catalog/              # HTTP DTO、目录 read model、CRUD 与目录 UI
 │   ├── model-picker/               # Host 组合菜单快照、可见性命令与 Renderer 生命周期
-│   ├── custom-model-registration/  # 自定义 API 注册表单与提交流程
+│   ├── custom-model-registration/  # 自定义 API 注册、分组连接编辑与提交流程
 │   ├── ollama-model-registration/  # Ollama 发现、注册表单与提交流程
 │   └── purpose-model-bindings/     # 用途定义、选择持久化、有效绑定派生与选择 UI
 ├── orchestration/                  # 跨 feature 流程，只做步骤编排
@@ -172,8 +172,10 @@ connection；同一品牌配置多条 connection 时显示接入方式标签。�
 command 复用现有 credential，不能再次向用户索要 Key。对话域只能从本 domain 公开入口读取 picker
 read model，具体菜单层级、图片草稿禁用态和“管理模型…”交互属于 Conversation。
 
-模型管理的开关层级由来源语义决定：正式 Provider 在详情标题提供总开关，关闭后其模型区域整体不可编辑；每个模型仍有独立开关。自定义模型没有伪造的 Provider 总开关，只提供单模型开关；点击自定义模型主内容打开详情弹窗，编辑与删除复用 Model
-Catalog 的正式流程。正式 Provider 的详情标题在总开关左侧提供删除入口；确认后通过现有删除编排清理该 Provider 的配置、凭据和已激活模型。Linnya
+模型管理的开关层级由来源语义决定：正式 Provider 在详情标题提供总开关，关闭后其模型区域整体不可编辑；每个模型仍有独立开关。自定义模型按 Host 投影的分组名称展示在“自定义模型供应商”下，没有伪造的 Provider 总开关，只提供单模型开关；点击自定义模型主内容打开详情弹窗，编辑与删除复用 Model
+Catalog 的正式流程。正式 Provider 的详情标题在总开关左侧提供删除入口；确认后通过 `removeModelSource` 清理该 Provider 的配置、凭据和已激活模型。connection 的 `credential_kind` 为 `api_key` 时，删除入口左侧另有“更新 API Key”，只单向提交新 Key，由 Host 在原 credential boundary 内替换，模型、可见性与用途绑定不变；账号型和本地运行时不提供该入口。
+
+自定义分组的详情标题提供“编辑供应商”和删除入口。编辑弹窗以 Host 快照预填名称、API 格式与地址，Key 留空表示沿用当前凭据；提交后由 Host 决定保留或新建 endpoint、是否需要重新填写 Key，并原子改绑分组内全部模型，Renderer 随后重读模型目录与选择投影。删除需确认，逐个复用模型删除流程，最后一个模型删除时 Host 自动清理 endpoint 与密文。弹窗只在打开期间挂载，草稿与未提交的 Key 随关闭一并丢弃。Linnya
 Cloud 是官方管理的优先来源，客户端不显示 Provider 总开关，也不显示单模型开关；Cloud 模型的上架、下架和可用性由 Cloud
 Model
 Catalog 统一控制。图片生成默认模型也必须由 Cloud Catalog 以 `image_generation` capability 发布，客户端不得把本地环境变量模型改名伪装成 Linnya Cloud。Cloud 与正式 Provider 模型行都不提供详情点击入口。左侧来源导航只负责选择详情，不承载开关或启用数量。
@@ -229,7 +231,7 @@ defaults 和 Cloud 目录确认状态。它不持久化，也不执行网络请�
 action。
 
 自定义 chat 模型详情允许编辑 `context_window_tokens` 与
-`max_output_tokens`。UI 只持有字符串草稿；纯函数统一校验为正安全整数，并与模型身份、endpoint、route
+`max_output_tokens`。API 地址、Key 与 API 格式属于 endpoint，详情弹窗只读展示，修改统一走分组连接编辑，不能按单个模型切换协议。UI 只持有字符串草稿；纯函数统一校验为正安全整数，并与模型身份、endpoint、route
 profile 和图片输入能力一起生成一次原子的 `inference_route` 更新。不得在 catalog
 store、Conversation 或 Settings 中保存第二份容量。
 
@@ -243,7 +245,7 @@ availability 已由 Host 一次投影完成。
 
 当正式 Provider 的本机凭据不可用时，快照会同时返回受控的
 `credential_unavailable_reason`（缺失、系统安全存储暂不可用、密文失效/格式错误或未知错误），Settings
-以错误色展示具体原因，并提供“删除凭据并重新添加”操作。该操作通过 domain-level
+以错误色展示具体原因；API-Key 接入以“更新 API Key”为首选恢复操作，同时保留“删除凭据并重新添加”操作。该操作通过 domain-level
 模型删除编排清理 Provider 的已激活模型、孤儿 endpoint 与本机密文，不在 Renderer 直接访问凭据文件。
 
 store 只持有最后一次严格解析后的快照、当前操作和结构化错误。HTTP、更新流程和同步 state
@@ -300,6 +302,8 @@ capacity 解析规则。新增 API 模型的表单初始值为 256K 上下文窗
 schema 使用同一组 `256000 / 16384` 缺省并输出完整 canonical
 route；非法显式值继续失败。输入与输出两个值是 route 的独立能力事实：Renderer 不假设所有 Provider 都满足同一种窗口关系，也不从模型名猜默认值。后续若增加自动发现，必须作为 Provider-specific
 capability 明确接入，不能把某一家 `/models` 响应当成通用合同。
+
+已注册的自定义分组通过 `PUT /api/v1/custom-api-onboarding/providers` 编辑：Renderer 只提交当前分组名称以及新的名称、格式、URL 和可选 Key，URL 使用与注册相同的共享规范化规则。endpoint 复用、凭据沿用条件和 route 重建全部由 Host 决定，Renderer 只展示 Host 返回的稳定错误。
 
 Credential 只允许存在于未提交表单和一次 Custom API onboarding
 command 中。Host 将它转换为一次 InferenceEndpoint create
@@ -365,7 +369,9 @@ read model。编辑已有模型时不能改变为与已绑定端点不一致的 
 profile；后端会在 catalog admission 明确拒绝。
 
 删除时，`deleteConfiguredModel`
-先删除后端目录实体和前端 catalog，再清理指向该 id 的全部显式用途绑定。不得在 UI、store 或其他 domain 复制这些流程。
+先删除后端目录实体和前端 catalog，再清理指向该 id 的全部显式用途绑定；删除整个来源时 `removeModelSource` 按顺序复用它。不得在 UI、store 或其他 domain 复制这些流程。
+
+编辑来源连接时，自定义分组提交后重读模型目录与选择投影；正式 Provider 更换 Key 只改变凭据可用性，成功后重读选择投影。
 
 ---
 
@@ -440,6 +446,7 @@ capability。只改下拉文案或 provider 字符串不算接入完成。
 | Purpose resolution       | 显式选择、默认值、Cloud readiness、能力过滤、reasoning 降级                                                    |
 | Cross-feature delete     | 后端删除成功后目录与全部绑定同步清理                                                                           |
 | Registration             | 三条 Host onboarding command 的窄输入、route/endpoint 的 Host ownership、credential 单向提交、section 独立状态 |
+| Source editing           | 分组编辑与更换 Key 的窄 command、预填与本地校验、成功后刷新、失败保留弹窗、仅 API-Key connection 可换 Key   |
 | Inference endpoint rules | token capacity 解析、编辑时 route identity 保留和非法修改拒绝                                                  |
 | Cross-domain port        | Knowledge Base 只返回受影响集合，页面只做确认交互                                                              |
 

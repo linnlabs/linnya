@@ -102,7 +102,7 @@ Conversation Agent run 的 application orchestration：请求接纳、Host sessi
 
 ### `application/provider-onboarding/`
 
-编排正式 Provider public catalog、Host 私有 runtime binding 与 Model Catalog 的原子注册流程。Renderer 只提交 Provider、目录模型与 Key；该用例投影 URL、auth、容量、视觉能力和 typed route。它不执行推理、不选择 package，也不把 Custom API 伪装成 ProviderDefinition。
+编排正式 Provider public catalog、Host 私有 runtime binding 与 Model Catalog 的原子注册流程。Renderer 只提交 Provider、目录模型与 Key；该用例投影 URL、auth、容量、视觉能力和 typed route。已连接的 API-Key Provider 更换 Key 也由它在原 credential boundary 内完成。它不执行推理、不选择 package，也不把 Custom API 伪装成 ProviderDefinition。
 
 ### `application/provider-model-discovery/`
 
@@ -111,7 +111,7 @@ Conversation Agent run 的 application orchestration：请求接纳、Host sessi
 
 ### `application/custom-api-onboarding/`
 
-编排自定义 API URL、Key、三选一格式和模型资料到 InferenceEndpoint 与 Model Catalog 的原子注册流程。格式到 route/auth/endpoint identity 的映射只存在于该用例；Renderer 不构造内部 route，本流程也不创建 ProviderDefinition 或模型 `provider` 字段。
+编排自定义 API URL、Key、三选一格式和模型资料到 InferenceEndpoint 与 Model Catalog 的原子注册流程，以及按分组名称整体编辑一组自定义模型的名称、地址、格式与 Key。格式到 route/auth/endpoint identity 的映射只存在于该用例；Renderer 不构造内部 route，本流程也不创建 ProviderDefinition 或模型 `provider` 字段。
 
 ### `application/conversation-control/`
 

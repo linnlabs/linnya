@@ -1,6 +1,7 @@
 import type {
   DirectProviderConnectionOnboardingCommand,
   DirectProviderConnectionOnboardingResponse,
+  DirectProviderCredentialReplacementCommand,
   DirectProviderModelRegistrationCommand,
   DirectProviderModelRegistrationResponse,
 } from '@app/schemas/provider-onboarding';
@@ -37,6 +38,10 @@ export interface ProviderOnboardingModelCatalogPort {
   getInferenceEndpoints(): InferenceEndpointView[];
   registerUserModel(model: ModelConfig, endpoint: InferenceEndpointSelection): Promise<void>;
   updateModel(model: ModelConfig): Promise<void>;
+  replaceInferenceEndpointCredential(
+    inferenceEndpointId: string,
+    credentialSecret: string
+  ): Promise<void>;
 }
 
 export interface ProviderOnboardingConfigurationPort {
@@ -80,6 +85,10 @@ export interface ProviderOnboardingUseCase {
   registerDirectProviderModel(
     command: DirectProviderModelRegistrationCommand
   ): Promise<DirectProviderModelRegistrationResponse>;
+  /** 在已连接 API-Key Provider 唯一的 credential boundary 内替换 Key，不改变模型或 endpoint。 */
+  replaceDirectProviderCredential(
+    command: DirectProviderCredentialReplacementCommand
+  ): Promise<void>;
   /** 用当前已取得的模型资料原位刷新已经激活的模型，不新增或删除模型。 */
   refreshRegisteredProviderModels(
     providerConnectionDefinitionId: string,

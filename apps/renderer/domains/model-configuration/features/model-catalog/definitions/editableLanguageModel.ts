@@ -1,5 +1,4 @@
 import type { UpdateModelCommand } from './modelCatalog';
-import type { ConfigurableLanguageRouteProfileId } from '../../inference-endpoints';
 
 export interface EditableLanguageModelForm {
   readonly displayName: string;
@@ -7,7 +6,6 @@ export interface EditableLanguageModelForm {
   readonly contextWindowTokens: string;
   readonly maxOutputTokens: string;
   readonly supportsImageInput: boolean;
-  readonly protocolProfileId?: ConfigurableLanguageRouteProfileId;
 }
 
 export type EditableLanguageModelIssue =

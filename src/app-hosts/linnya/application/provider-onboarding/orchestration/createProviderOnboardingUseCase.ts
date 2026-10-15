@@ -2,6 +2,7 @@ import type { ProviderModelDiscoveryReadPort } from '../../provider-model-discov
 import type {
   DirectProviderConnectionOnboardingCommand,
   DirectProviderConnectionOnboardingResponse,
+  DirectProviderCredentialReplacementCommand,
   DirectProviderModelRegistrationCommand,
   DirectProviderModelRegistrationResponse,
 } from '@app/schemas/provider-onboarding';
@@ -456,6 +457,99 @@ export function createProviderOnboardingUseCase(
       };
     },
     registerDirectProviderModel,
+
+    async replaceDirectProviderCredential(
+      command: DirectProviderCredentialReplacementCommand
+    ): Promise<void> {
+      const catalogEntry = dependencies.providerCatalog.getConnection(
+        command.provider_connection_definition_id
+      );
+      if (!catalogEntry) {
+        throw new ProviderOnboardingError(
+          'provider_onboarding.provider_not_found',
+          'Provider 不存在',
+          404
+        );
+      }
+      const { provider, connection } = catalogEntry;
+      if (
+        connection.kind !== 'direct' ||
+        resolveProviderOnboardingAuthMethod(connection) !== 'api_key'
+      ) {
+        throw new ProviderOnboardingError(
+          'provider_onboarding.provider_not_supported',
+          '该 Provider 不使用 API Key，无法更换密钥',
+          400
+        );
+      }
+      const configuredProvider =
+        dependencies.providerConfigurations.getByProviderConnectionDefinitionId(connection.id);
+      if (!configuredProvider) {
+        throw new ProviderOnboardingError(
+          'provider_onboarding.provider_not_found',
+          'Provider 尚未连接',
+          404
+        );
+      }
+
+      const configuredModels = configuredProvider.models.map(association =>
+        dependencies.modelCatalog.getModel(association.model_config_id)
+      );
+      const endpointIds = new Set(
+        configuredModels.flatMap(model => model?.inference_endpoint_id ?? [])
+      );
+      const endpoints = dependencies.modelCatalog
+        .getInferenceEndpoints()
+        .filter(endpoint => endpointIds.has(endpoint.id));
+      const [credentialEndpoint] = endpoints;
+      if (
+        !credentialEndpoint ||
+        configuredModels.some(model => model?.inference_endpoint_id === undefined) ||
+        endpoints.length !== endpointIds.size
+      ) {
+        throw new ProviderOnboardingError(
+          'provider_onboarding.configuration_invalid',
+          'Provider 配置引用的模型或推理连接无效',
+          500
+        );
+      }
+      // 同一 connection 的多条 route 共享一份凭据；只替换该边界，不新建 endpoint 或改写模型。
+      const credentialReference = credentialEndpoint.credential_reference;
+      if (
+        credentialReference.kind !== 'stored_secret' ||
+        endpoints.some(
+          endpoint => !isSameCredentialReference(endpoint.credential_reference, credentialReference)
+        )
+      ) {
+        throw new ProviderOnboardingError(
+          'provider_onboarding.configuration_invalid',
+          'Provider 配置的凭据边界无效',
+          500
+        );
+      }
+
+      try {
+        await dependencies.modelCatalog.replaceInferenceEndpointCredential(
+          credentialEndpoint.id,
+          command.api_key
+        );
+      } catch (error: unknown) {
+        logger.warn('provider_onboarding.credential_replacement_failed', {
+          provider_definition_id: provider.id,
+          provider_connection_definition_id: connection.id,
+          failure_type: error instanceof Error ? error.name : 'unknown',
+        });
+        throw new ProviderOnboardingError(
+          'provider_onboarding.credential_replacement_failed',
+          'Provider API Key 更新失败',
+          500
+        );
+      }
+      logger.info('provider_onboarding.credential_replaced', {
+        provider_definition_id: provider.id,
+        provider_connection_definition_id: connection.id,
+      });
+    },
 
     async refreshRegisteredProviderModels(
       providerConnectionDefinitionId: string,

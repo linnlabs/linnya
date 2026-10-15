@@ -64,6 +64,10 @@ export const CUSTOM_API_ONBOARDING_ERROR_CODES = [
   'custom_api_onboarding.invalid_command',
   'custom_api_onboarding.credential_required',
   'custom_api_onboarding.registration_failed',
+  'custom_api_onboarding.provider_not_found',
+  'custom_api_onboarding.provider_name_conflict',
+  'custom_api_onboarding.provider_configuration_invalid',
+  'custom_api_onboarding.update_failed',
 ] as const;
 
 export const CustomApiModelItemSchema = z
@@ -154,6 +158,47 @@ export const CustomApiModelRegistrationCommandSchema = z
     };
   });
 
+/**
+ * 编辑一个自定义模型分组的连接设置。
+ *
+ * `current_provider_name` 是 Host 投影的分组身份；其余字段整体替换分组的名称、地址与格式。
+ * 未提交 Key 表示沿用该分组当前凭据，提交即表示为该分组替换凭据。
+ */
+export const CustomApiProviderUpdateCommandSchema = z
+  .object({
+    current_provider_name: NonEmptyStringSchema,
+    provider_name: NonEmptyStringSchema,
+    api_format: CustomApiFormatSchema,
+    base_url: NonEmptyStringSchema,
+    api_key: NonEmptyStringSchema.optional(),
+  })
+  .strict()
+  .transform((command, context) => {
+    const baseUrl = normalizeCustomApiBaseUrl(command.api_format, command.base_url);
+    if (!baseUrl) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['base_url'],
+        message: '必须是 HTTP 或 HTTPS API 地址',
+      });
+      return z.NEVER;
+    }
+    return {
+      current_provider_name: command.current_provider_name,
+      provider_name: command.provider_name,
+      api_format: command.api_format,
+      base_url: baseUrl,
+      ...(command.api_key ? { api_key: command.api_key } : {}),
+    };
+  });
+
+export const CustomApiProviderUpdateResponseSchema = z
+  .object({
+    provider_name: NonEmptyStringSchema,
+    model_ids: z.array(NonEmptyStringSchema).min(1),
+  })
+  .strict();
+
 export const CustomApiModelRegistrationResponseSchema = z
   .object({
     model_id: NonEmptyStringSchema.optional(),
@@ -206,6 +251,9 @@ export type CustomApiModelRegistrationCommand = z.output<
 export type CustomApiModelRegistrationResponse = z.infer<
   typeof CustomApiModelRegistrationResponseSchema
 >;
+export type CustomApiProviderUpdateRequest = z.input<typeof CustomApiProviderUpdateCommandSchema>;
+export type CustomApiProviderUpdateCommand = z.output<typeof CustomApiProviderUpdateCommandSchema>;
+export type CustomApiProviderUpdateResponse = z.infer<typeof CustomApiProviderUpdateResponseSchema>;
 export type CustomApiOnboardingErrorCode = (typeof CUSTOM_API_ONBOARDING_ERROR_CODES)[number];
 export type CustomApiOnboardingErrorResponse = z.infer<
   typeof CustomApiOnboardingErrorResponseSchema

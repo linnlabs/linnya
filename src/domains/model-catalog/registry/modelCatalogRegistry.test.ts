@@ -22,7 +22,7 @@ const { credentialStoreMock, fetchCloudModelsMock, persisterMock } = vi.hoisted(
     credentialStoreMock: {
       initialize: vi.fn(async () => {}),
       installCodec: vi.fn(),
-      has: vi.fn(() => true),
+      has: vi.fn((_credentialId: string) => true),
       getStatus: vi.fn(() => 'available'),
       resolve: vi.fn(() => 'stored-secret'),
       put: vi.fn(async () => {}),
@@ -550,6 +550,203 @@ describe('Registry default model by capability', () => {
       'inference-endpoint:only-endpoint',
       'stored-secret'
     );
+  });
+
+  it('改绑一组用户模型到新 endpoint 时清理旧 endpoint 与独占密文', async () => {
+    fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
+    persisterMock.loadState.mockResolvedValueOnce({
+      inferenceEndpoints: [buildUserEndpoint('old-endpoint')],
+      models: [
+        buildUserModel('first-user-model', 'old-endpoint'),
+        buildUserModel('second-user-model', 'old-endpoint'),
+      ],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await registry.initialize(createSourceDistributionIdentity());
+    credentialStoreMock.has.mockImplementation(
+      (credentialId: string) => credentialId !== 'inference-endpoint:new-endpoint'
+    );
+    credentialStoreMock.put.mockClear();
+    credentialStoreMock.remove.mockClear();
+
+    const nextBaseUrl = 'https://gateway.example.com/v1';
+    const rebound = ['first-user-model', 'second-user-model'].map(id => {
+      const model = buildUserModel(id, 'new-endpoint');
+      return {
+        ...model,
+        inference_route: { ...model.inference_route!, base_url: nextBaseUrl },
+      };
+    });
+    await registry.rebindUserModels(rebound, {
+      kind: 'create',
+      endpoint: {
+        id: 'new-endpoint',
+        route_profile_id: 'openai_chat',
+        endpoint_id: 'deepseek',
+        base_url: nextBaseUrl,
+        auth_profile: 'bearer',
+        credential_secret: 'rotated-secret',
+      },
+    });
+
+    expect(credentialStoreMock.put).toHaveBeenCalledWith(
+      'inference-endpoint:new-endpoint',
+      'rotated-secret'
+    );
+    expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:old-endpoint');
+    expect(registry.getInferenceEndpoints().map(endpoint => endpoint.id)).toEqual([
+      'new-endpoint',
+    ]);
+    expect(registry.getModel('first-user-model')).toMatchObject({
+      inference_endpoint_id: 'new-endpoint',
+      inference_route: { base_url: nextBaseUrl },
+    });
+    expect(JSON.stringify(persisterMock.saveState.mock.calls)).not.toContain('rotated-secret');
+  });
+
+  it('改绑时复用仍被新 endpoint 引用的凭据，不删除密文', async () => {
+    fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
+    persisterMock.loadState.mockResolvedValueOnce({
+      inferenceEndpoints: [buildUserEndpoint('old-endpoint')],
+      models: [buildUserModel('only-user-model', 'old-endpoint')],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await registry.initialize(createSourceDistributionIdentity());
+    credentialStoreMock.put.mockClear();
+    credentialStoreMock.remove.mockClear();
+
+    const nextBaseUrl = 'https://gateway.example.com/v1';
+    const model = buildUserModel('only-user-model', 'new-endpoint');
+    await registry.rebindUserModels(
+      [{ ...model, inference_route: { ...model.inference_route!, base_url: nextBaseUrl } }],
+      {
+        kind: 'create',
+        endpoint: {
+          id: 'new-endpoint',
+          route_profile_id: 'openai_chat',
+          endpoint_id: 'deepseek',
+          base_url: nextBaseUrl,
+          auth_profile: 'bearer',
+          credential_reference: {
+            kind: 'stored_secret',
+            credential_id: 'inference-endpoint:old-endpoint',
+          },
+        },
+      }
+    );
+
+    expect(credentialStoreMock.put).not.toHaveBeenCalled();
+    expect(credentialStoreMock.remove).not.toHaveBeenCalled();
+    expect(registry.getInferenceEndpoints()).toEqual([
+      expect.objectContaining({
+        id: 'new-endpoint',
+        credential_reference: {
+          kind: 'stored_secret',
+          credential_id: 'inference-endpoint:old-endpoint',
+        },
+      }),
+    ]);
+  });
+
+  it('改绑写盘失败时保留旧目录并撤销新旧凭据变更', async () => {
+    fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
+    persisterMock.loadState.mockResolvedValueOnce({
+      inferenceEndpoints: [buildUserEndpoint('old-endpoint')],
+      models: [buildUserModel('only-user-model', 'old-endpoint')],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await registry.initialize(createSourceDistributionIdentity());
+    credentialStoreMock.has.mockImplementation(
+      (credentialId: string) => credentialId !== 'inference-endpoint:new-endpoint'
+    );
+    credentialStoreMock.put.mockClear();
+    credentialStoreMock.remove.mockClear();
+    persisterMock.saveState.mockRejectedValueOnce(new Error('disk unavailable'));
+
+    const nextBaseUrl = 'https://gateway.example.com/v1';
+    const model = buildUserModel('only-user-model', 'new-endpoint');
+    await expect(
+      registry.rebindUserModels(
+        [{ ...model, inference_route: { ...model.inference_route!, base_url: nextBaseUrl } }],
+        {
+          kind: 'create',
+          endpoint: {
+            id: 'new-endpoint',
+            route_profile_id: 'openai_chat',
+            endpoint_id: 'deepseek',
+            base_url: nextBaseUrl,
+            auth_profile: 'bearer',
+            credential_secret: 'rotated-secret',
+          },
+        }
+      )
+    ).rejects.toThrow('disk unavailable');
+
+    expect(registry.getModel('only-user-model')).toMatchObject({
+      inference_endpoint_id: 'old-endpoint',
+    });
+    expect(registry.getInferenceEndpoints().map(endpoint => endpoint.id)).toEqual([
+      'old-endpoint',
+    ]);
+    expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:new-endpoint');
+    expect(credentialStoreMock.put).toHaveBeenCalledWith(
+      'inference-endpoint:old-endpoint',
+      'stored-secret'
+    );
+  });
+
+  it('改绑只接受已存在的用户模型，失败时不写凭据', async () => {
+    fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
+    persisterMock.loadState.mockResolvedValueOnce({
+      inferenceEndpoints: [buildUserEndpoint('old-endpoint')],
+      models: [buildUserModel('only-user-model', 'old-endpoint')],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await registry.initialize(createSourceDistributionIdentity());
+    credentialStoreMock.put.mockClear();
+
+    await expect(
+      registry.rebindUserModels([buildUserModel('missing-model', 'old-endpoint')], {
+        kind: 'existing',
+        inference_endpoint_id: 'old-endpoint',
+        credential_secret: 'rotated-secret',
+      })
+    ).rejects.toThrow('用户模型不存在: missing-model');
+    await expect(
+      registry.rebindUserModels([], { kind: 'existing', inference_endpoint_id: 'old-endpoint' })
+    ).rejects.toThrow('至少需要一个用户模型');
+    expect(credentialStoreMock.put).not.toHaveBeenCalled();
+  });
+
+  it('在原 credential boundary 内替换 endpoint 密文且不改写目录文件', async () => {
+    fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
+    persisterMock.loadState.mockResolvedValueOnce({
+      inferenceEndpoints: [buildUserEndpoint('only-endpoint')],
+      models: [buildUserModel('only-user-model', 'only-endpoint')],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await registry.initialize(createSourceDistributionIdentity());
+    credentialStoreMock.put.mockClear();
+    persisterMock.saveState.mockClear();
+
+    await registry.replaceInferenceEndpointCredential('only-endpoint', '  rotated-secret  ');
+
+    expect(credentialStoreMock.put).toHaveBeenCalledWith(
+      'inference-endpoint:only-endpoint',
+      'rotated-secret'
+    );
+    expect(persisterMock.saveState).not.toHaveBeenCalled();
+    await expect(registry.replaceInferenceEndpointCredential('only-endpoint', '  ')).rejects.toThrow(
+      'credential secret 不能为空'
+    );
+    await expect(
+      registry.replaceInferenceEndpointCredential('missing-endpoint', 'rotated-secret')
+    ).rejects.toThrow('InferenceEndpoint 不存在');
   });
 
   it('并发用户修改串行提交，写盘期间的账号投影不会被旧快照覆盖', async () => {

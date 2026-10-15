@@ -31,7 +31,8 @@ export function buildEditableLanguageModelUpdate(
   if (!tokenLimits) return { ok: false, issue: 'token_limits_invalid' };
 
   const capabilities = setImageInputCapability(model.capabilities, form.supportsImageInput);
-  const targetProfileId = form.protocolProfileId ?? resolveConfigurableLanguageRouteProfileId(model.inference_route);
+  // 协议属于 endpoint；编辑单个模型只能保留原 route profile，切换格式走分组连接编辑。
+  const currentProfileId = resolveConfigurableLanguageRouteProfileId(model.inference_route);
   return {
     ok: true,
     command: {
@@ -39,7 +40,7 @@ export function buildEditableLanguageModelUpdate(
       model_name: modelName,
       capabilities,
       inference_route: buildConfigurableLanguageModelRoute({
-        profile_id: targetProfileId,
+        profile_id: currentProfileId,
         endpoint_id: model.inference_route.endpoint_id,
         endpoint_model_id: modelName,
         base_url: model.inference_route.base_url,

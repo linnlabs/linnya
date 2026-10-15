@@ -14,6 +14,7 @@ export const PROVIDER_ONBOARDING_ERROR_CODES = [
   'provider_onboarding.credential_required',
   'provider_onboarding.authorization_required',
   'provider_onboarding.registration_failed',
+  'provider_onboarding.credential_replacement_failed',
 ] as const;
 
 /** Renderer 提交正式 Provider 模型时唯一允许的公开 command。 */
@@ -51,6 +52,14 @@ export const DirectProviderConnectionOnboardingResponseSchema = z
   })
   .strict();
 
+/** 已连接的 API-Key Provider 更换密钥时只提交连接身份和新 Key；URL 与协议仍由 Host 目录决定。 */
+export const DirectProviderCredentialReplacementCommandSchema = z
+  .object({
+    provider_connection_definition_id: NonEmptyStringSchema,
+    api_key: NonEmptyStringSchema,
+  })
+  .strict();
+
 export const ProviderOnboardingErrorResponseSchema = z
   .object({
     code: z.enum(PROVIDER_ONBOARDING_ERROR_CODES),
@@ -69,6 +78,9 @@ export type DirectProviderConnectionOnboardingCommand = z.infer<
 >;
 export type DirectProviderConnectionOnboardingResponse = z.infer<
   typeof DirectProviderConnectionOnboardingResponseSchema
+>;
+export type DirectProviderCredentialReplacementCommand = z.infer<
+  typeof DirectProviderCredentialReplacementCommandSchema
 >;
 export type ProviderOnboardingErrorCode = (typeof PROVIDER_ONBOARDING_ERROR_CODES)[number];
 export type ProviderOnboardingErrorResponse = z.infer<typeof ProviderOnboardingErrorResponseSchema>;

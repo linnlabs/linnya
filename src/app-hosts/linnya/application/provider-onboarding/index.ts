@@ -15,6 +15,10 @@ export type {
   ProviderOnboardingUseCase,
 } from './definitions/providerOnboardingPorts';
 export {
+  resolveProviderOnboardingAuthMethod,
+  type ProviderOnboardingAuthMethod,
+} from './functions/resolveProviderOnboardingAuthMethod';
+export {
   createProviderOnboardingUseCase,
   type CreateProviderOnboardingUseCaseDependencies,
 } from './orchestration/createProviderOnboardingUseCase';

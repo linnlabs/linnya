@@ -106,6 +106,17 @@
               class="model-visibility-provider-actions"
             >
               <button
+                v-if="selectedSource.credentialKind === 'api_key'"
+                type="button"
+                class="model-visibility-provider-edit"
+                :aria-label="settingsMessage('settings.modelPicker.replaceApiKey')"
+                :title="settingsMessage('settings.modelPicker.replaceApiKey')"
+                :disabled="isMutating"
+                @click="openCredentialReplacement(selectedSource)"
+              >
+                <EditIcon />
+              </button>
+              <button
                 type="button"
                 class="model-visibility-provider-delete"
                 :aria-label="settingsMessage('settings.modelPicker.removeProvider')"
@@ -121,6 +132,31 @@
                 :disabled="isMutating"
                 @update:model-value="setProviderVisibility(selectedSource, $event)"
               />
+            </div>
+            <div
+              v-else-if="selectedSource.kind === 'custom_provider'"
+              class="model-visibility-provider-actions"
+            >
+              <button
+                type="button"
+                class="model-visibility-provider-edit"
+                :aria-label="settingsMessage('settings.modelPicker.editProvider')"
+                :title="settingsMessage('settings.modelPicker.editProvider')"
+                :disabled="isMutating"
+                @click="openCustomProviderEdit(selectedSource)"
+              >
+                <EditIcon />
+              </button>
+              <button
+                type="button"
+                class="model-visibility-provider-delete"
+                :aria-label="settingsMessage('settings.modelPicker.removeProvider')"
+                :title="settingsMessage('settings.modelPicker.removeProvider')"
+                :disabled="isMutating"
+                @click="removeSelectedCustomProvider(selectedSource)"
+              >
+                <DeleteIcon />
+              </button>
             </div>
           </header>
           <div
@@ -167,6 +203,16 @@
           >
             <SettingsFeedback kind="error" :message="credentialUnavailableMessage" />
             <ActionButtons
+              v-if="selectedSource.credentialKind === 'api_key'"
+              :primary-action-text="settingsMessage('settings.modelPicker.replaceApiKey')"
+              :secondary-action-text="settingsMessage('settings.modelPicker.removeProvider')"
+              :is-primary-action-disabled="isMutating"
+              :is-secondary-action-disabled="isMutating"
+              @primary-click="openCredentialReplacement(selectedSource)"
+              @secondary-click="removeSelectedProvider"
+            />
+            <ActionButtons
+              v-else
               :primary-action-text="settingsMessage('settings.modelPicker.removeProvider')"
               primary-variant="danger"
               :is-primary-action-disabled="isMutating || isRemovingProvider"
@@ -182,6 +228,21 @@
         @close="closeModelDetails"
         @update-success="handleModelDetailsSuccess"
       />
+      <CustomApiProviderEditModal
+        v-if="editingCustomProvider"
+        :provider="editingCustomProvider"
+        @close="editingCustomProvider = null"
+        @saved="handleCustomProviderSaved"
+      />
+      <DirectProviderCredentialModal
+        v-if="replacingCredentialProvider"
+        :provider-connection-definition-id="
+          replacingCredentialProvider.providerConnectionDefinitionId
+        "
+        :provider-name="replacingCredentialProvider.displayName"
+        @close="replacingCredentialProvider = null"
+        @saved="handleCredentialReplaced"
+      />
     </template>
   </SettingsSection>
 </template>
@@ -192,8 +253,13 @@ import { computed, ref, watch } from 'vue';
 
 import type { ModelCatalogItem } from '../../model-catalog';
 import { ModelDetailsModal, useModelCatalogReadModel } from '../../model-catalog';
+import {
+  CustomApiProviderEditModal,
+  type CustomApiProviderConnection,
+} from '../../custom-model-registration';
+import { DirectProviderCredentialModal } from '../../direct-provider-onboarding';
 import { ActionButtons, CustomTextInput, HoverTooltip, Switch } from '@linnya/renderer-ui';
-import { DeleteIcon, RefreshIcon } from '@linnya/renderer-ui/icons';
+import { DeleteIcon, EditIcon, RefreshIcon } from '@linnya/renderer-ui/icons';
 import { confirm } from '@shared/composables/confirmDialog';
 import {
   SettingsFeedback,
@@ -211,7 +277,8 @@ import {
   setModelPickerProviderVisibility,
   useModelPickerReadModel,
 } from '../index';
-import { removeConfiguredProvider } from '../../../orchestration/removeConfiguredProvider';
+import { refreshModelCatalogAfterRegistration } from '../../../orchestration/refreshModelCatalogAfterRegistration';
+import { removeModelSource } from '../../../orchestration/removeModelSource';
 import { registerApiCustomModel } from '../../custom-model-registration/orchestration/registerApiCustomModel';
 import { httpCustomApiModelRegistrationGateway } from '../../custom-model-registration/infrastructure/httpCustomApiModelRegistrationGateway';
 import {
@@ -238,6 +305,11 @@ const selectedSourceId = ref<string | null>(null);
 const selectedModelDetails = ref<ModelCatalogItem | null>(null);
 const isRemovingProvider = ref(false);
 const removalError = ref<string | null>(null);
+const editingCustomProvider = ref<CustomApiProviderConnection | null>(null);
+const replacingCredentialProvider = ref<{
+  readonly providerConnectionDefinitionId: string;
+  readonly displayName: string;
+} | null>(null);
 
 const sources = computed(() =>
   modelPicker.snapshot.value
@@ -415,7 +487,7 @@ async function removeSelectedProvider(): Promise<void> {
     const modelConfigIds = source.models
       .filter(model => model.materialized)
       .map(model => model.model_config_id);
-    await removeConfiguredProvider(modelConfigIds);
+    await removeModelSource(modelConfigIds);
   } catch (error: unknown) {
     console.error('[ModelVisibility] 删除 Provider 失败', {
       errorName: error instanceof Error ? error.name : 'UnknownError',
@@ -424,6 +496,67 @@ async function removeSelectedProvider(): Promise<void> {
   } finally {
     isRemovingProvider.value = false;
   }
+}
+
+async function removeSelectedCustomProvider(
+  source: Extract<ModelVisibilitySource, { kind: 'custom_provider' }>
+): Promise<void> {
+  if (isRemovingProvider.value) return;
+  const confirmed = await confirm({
+    message: settingsMessage('settings.modelPicker.removeCustomProvider.confirm', {
+      providerName: source.displayName,
+      count: source.models.length,
+    }),
+    isDangerousAction: true,
+  });
+  if (!confirmed) return;
+
+  isRemovingProvider.value = true;
+  removalError.value = null;
+  try {
+    // 自定义分组只有已注册模型；最后一个引用模型删除时 Host 同事务清理 endpoint 与密文。
+    await removeModelSource(source.models.map(model => model.model_config_id));
+  } catch (error: unknown) {
+    console.error('[ModelVisibility] 删除自定义模型供应商失败', {
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
+    removalError.value = settingsMessage('settings.modelPicker.removeProvider.failed');
+  } finally {
+    isRemovingProvider.value = false;
+  }
+}
+
+function openCustomProviderEdit(
+  source: Extract<ModelVisibilitySource, { kind: 'custom_provider' }>
+): void {
+  editingCustomProvider.value = {
+    providerName: source.providerName,
+    ...(source.apiFormat ? { apiFormat: source.apiFormat } : {}),
+    ...(source.baseUrl ? { baseUrl: source.baseUrl } : {}),
+  };
+}
+
+function handleCustomProviderSaved(): void {
+  editingCustomProvider.value = null;
+  void refreshModelCatalogAfterRegistration().catch(error => {
+    console.warn('[ModelVisibility] 供应商更新后刷新模型目录失败', error);
+  });
+}
+
+function openCredentialReplacement(
+  source: Extract<ModelVisibilitySource, { kind: 'provider' }>
+): void {
+  replacingCredentialProvider.value = {
+    providerConnectionDefinitionId: source.providerConnectionDefinitionId,
+    displayName: source.displayName,
+  };
+}
+
+function handleCredentialReplaced(): void {
+  replacingCredentialProvider.value = null;
+  void loadModelPicker().catch(error => {
+    console.warn('[ModelVisibility] API Key 更新后刷新快捷选择投影失败', error);
+  });
 }
 
 function handleModelDetailsSuccess(operation: 'update' | 'delete'): void {

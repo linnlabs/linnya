@@ -10,7 +10,7 @@ import { setModelPickerModelVisibility } from '../orchestration/modelPickerOpera
 
 const mocks = vi.hoisted(() => ({
   confirm: vi.fn<() => Promise<boolean>>(),
-  removeConfiguredProvider: vi.fn<(modelConfigIds: readonly string[]) => Promise<void>>(),
+  removeModelSource: vi.fn<(modelConfigIds: readonly string[]) => Promise<void>>(),
   refreshProviderModels: vi.fn<(id: string) => Promise<ModelPickerSnapshot>>(),
   setModelVisibility: vi.fn<() => Promise<ModelPickerSnapshot>>(),
 }));
@@ -26,8 +26,8 @@ vi.mock('@shared/composables/confirmDialog', () => ({
   confirm: mocks.confirm,
 }));
 
-vi.mock('../../../orchestration/removeConfiguredProvider', () => ({
-  removeConfiguredProvider: mocks.removeConfiguredProvider,
+vi.mock('../../../orchestration/removeModelSource', () => ({
+  removeModelSource: mocks.removeModelSource,
 }));
 
 vi.mock('@/domains/settings/public', async importOriginal => {
@@ -56,8 +56,8 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     mocks.confirm.mockReset();
     mocks.refreshProviderModels.mockReset();
     mocks.setModelVisibility.mockReset();
-    mocks.removeConfiguredProvider.mockReset();
-    mocks.removeConfiguredProvider.mockResolvedValue(undefined);
+    mocks.removeModelSource.mockReset();
+    mocks.removeModelSource.mockResolvedValue(undefined);
 
     const pinia = createPinia();
     setActivePinia(pinia);
@@ -70,6 +70,7 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
           display_name: 'OpenAI',
           connection_display_name: 'OpenAI API',
           can_refresh_models: true,
+          credential_kind: 'api_key',
           kind: 'direct',
           picker_enabled: true,
           credential_available: true,
@@ -128,7 +129,7 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     expect(mocks.refreshProviderModels).toHaveBeenCalledOnce();
     expect(host.textContent).toContain('New Catalog Model');
     expect(host.textContent).toContain('GPT Test');
-    expect(mocks.removeConfiguredProvider).not.toHaveBeenCalled();
+    expect(mocks.removeModelSource).not.toHaveBeenCalled();
   });
 
   it('读取失败保留旧列表并展示错误，重试成功清除错误', async () => {
@@ -237,7 +238,7 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     mocks.confirm.mockResolvedValueOnce(false);
     deleteButton.click();
     await flushUi();
-    expect(mocks.removeConfiguredProvider).not.toHaveBeenCalled();
+    expect(mocks.removeModelSource).not.toHaveBeenCalled();
 
     mocks.confirm.mockResolvedValueOnce(true);
     deleteButton.click();
@@ -246,7 +247,7 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
       message: 'settings.modelPicker.removeProvider.confirm',
       isDangerousAction: true,
     });
-    expect(mocks.removeConfiguredProvider).toHaveBeenCalledOnce();
-    expect(mocks.removeConfiguredProvider).toHaveBeenCalledWith(['openai-gpt-test']);
+    expect(mocks.removeModelSource).toHaveBeenCalledOnce();
+    expect(mocks.removeModelSource).toHaveBeenCalledWith(['openai-gpt-test']);
   });
 });

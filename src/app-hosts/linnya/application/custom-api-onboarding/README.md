@@ -40,3 +40,24 @@ ModelConfig；未提交时保留 picker 的默认规则，不生成偏好记录�
 每个模型先提交偏好，再保存目录，避免偏好写入失败后出现默认开启的模型。目录保存失败时，
 该新 ID 的孤儿偏好由现有启动 identity reconcile 清理，不会进入模型列表。批量注册仍逐模型
 提交，并非整个批次的原子事务；中途失败时，之前成功的模型及其偏好保留。
+
+## 分组连接编辑
+
+模型管理把自定义模型按 `custom_provider_name` 投影为分组（未命名的历史模型归入默认分组），分组身份规则由
+`readCustomApiProviderName` 唯一提供，Model Picker 投影与本流程共用。分组只是显示与编辑范围，不是 Provider
+实体；正式 Provider（含 Ollama 本地）的模型即使同为用户目录条目，也按 Provider Configuration 归属排除在外。
+
+`updateProvider` 接收 `current_provider_name` 与整体替换的名称、格式、URL 和可选 Key。共享 strict schema 复用
+注册时的 URL 规范化；改名到另一个已存在的分组名称会被拒绝，不做隐式合并。endpoint 选择规则固定为：
+
+- 地址、格式均未变化，且分组只引用一个 endpoint：保留原 endpoint；提交 Key 时只有该 endpoint 由本分组独占才在原
+  credential boundary 内替换，否则为本分组新建 endpoint，避免影响共用同一 endpoint 的其他分组；
+- 地址或格式变化：总是新建 endpoint；未提交 Key 时仅当分组所有 endpoint 共享同一份可用凭据才沿用该凭据，否则
+  返回 `credential_required`；
+- 原凭据缺失或不可解密时，任何不提交 Key 的编辑都返回 `credential_required`。
+
+模型 route 只替换连接事实（endpoint identity、base URL、auth 与 profile），模型 ID、容量、视觉声明以及
+usage/continuation 保持原值；图片来源仍按新格式的 profile 重新投影。全部模型通过 Model Catalog
+`rebindUserModels` 一次事务改绑，旧 endpoint 在没有引用后与其独占密文同事务清理；写盘失败时撤销本次凭据变更，
+use case 只返回稳定错误码。删除分组不经过本用例：Renderer 逐个复用正式模型删除流程，最后一个引用模型删除时
+endpoint 与密文由 Model Catalog 自动收口。

@@ -5,7 +5,10 @@ import {
   DirectProviderConnectionOnboardingResponseSchema,
   ProviderOnboardingErrorResponseSchema,
 } from '@app/schemas/provider-onboarding';
-import type { ProviderOnboardingUseCase } from 'src/app-hosts/linnya/application/provider-onboarding';
+import {
+  ProviderOnboardingError,
+  type ProviderOnboardingUseCase,
+} from 'src/app-hosts/linnya/application/provider-onboarding';
 
 import { createProviderOnboardingRouter } from './providerOnboardingRouter';
 
@@ -31,11 +34,20 @@ describe('provider onboarding router', () => {
   });
 
   async function start(
-    useCase: Pick<ProviderOnboardingUseCase, 'configureDirectProvider'>
+    useCase: Partial<
+      Pick<ProviderOnboardingUseCase, 'configureDirectProvider' | 'replaceDirectProviderCredential'>
+    >
   ): Promise<string> {
     const app = express();
     app.use(express.json());
-    app.use('/api/v1/provider-onboarding', createProviderOnboardingRouter(useCase));
+    app.use(
+      '/api/v1/provider-onboarding',
+      createProviderOnboardingRouter({
+        configureDirectProvider: vi.fn(),
+        replaceDirectProviderCredential: vi.fn(),
+        ...useCase,
+      })
+    );
     const server = createServer(app);
     servers.push(server);
     return listen(server);
@@ -85,5 +97,64 @@ describe('provider onboarding router', () => {
     );
     expect(serialized).not.toContain('secret-value');
     expect(configureDirectProvider).not.toHaveBeenCalled();
+  });
+
+  it('更换 Key 只把连接身份与新 Key 交给 use case', async () => {
+    const replaceDirectProviderCredential = vi.fn(async () => undefined);
+    const baseUrl = await start({ replaceDirectProviderCredential });
+    const response = await fetch(
+      `${baseUrl}/api/v1/provider-onboarding/direct-providers/credential`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          provider_connection_definition_id: 'openai-api',
+          api_key: 'rotated-secret',
+        }),
+      }
+    );
+
+    expect(response.status).toBe(204);
+    expect(replaceDirectProviderCredential).toHaveBeenCalledWith({
+      provider_connection_definition_id: 'openai-api',
+      api_key: 'rotated-secret',
+    });
+  });
+
+  it('更换 Key 拒绝 URL 等额外字段，并透传稳定业务错误且不回显密钥', async () => {
+    const replaceDirectProviderCredential = vi.fn(async () => {
+      throw new ProviderOnboardingError(
+        'provider_onboarding.provider_not_supported',
+        '该 Provider 不使用 API Key，无法更换密钥',
+        400
+      );
+    });
+    const baseUrl = await start({ replaceDirectProviderCredential });
+    const url = `${baseUrl}/api/v1/provider-onboarding/direct-providers/credential`;
+    const rejected = await fetch(url, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        provider_connection_definition_id: 'openai-api',
+        api_key: 'secret-value',
+        base_url: 'https://should-not-be-accepted.example',
+      }),
+    });
+    expect(rejected.status).toBe(400);
+    expect(JSON.stringify(await rejected.json())).not.toContain('secret-value');
+    expect(replaceDirectProviderCredential).not.toHaveBeenCalled();
+
+    const unsupported = await fetch(url, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        provider_connection_definition_id: 'chatgpt-account',
+        api_key: 'secret-value',
+      }),
+    });
+    expect(unsupported.status).toBe(400);
+    const failure = ProviderOnboardingErrorResponseSchema.parse(await unsupported.json());
+    expect(failure.code).toBe('provider_onboarding.provider_not_supported');
+    expect(JSON.stringify(failure)).not.toContain('secret-value');
   });
 });

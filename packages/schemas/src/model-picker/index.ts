@@ -62,6 +62,8 @@ export const ModelPickerConfiguredProviderSchema = z
     connection_display_name: NonEmptyStringSchema,
     can_refresh_models: z.boolean(),
     kind: z.enum(['direct', 'local_runtime']),
+    /** connection setup 决定的凭据形态；只有 `api_key` 允许在模型管理中更换密钥。 */
+    credential_kind: z.enum(['api_key', 'provider_account', 'none']),
     picker_enabled: z.boolean(),
     credential_available: z.boolean(),
     credential_unavailable_reason: CredentialUnavailableReasonSchema.optional(),

@@ -42,6 +42,7 @@ describe('shouldPromptForModelSetup', () => {
               display_name: 'OpenAI',
               connection_display_name: 'OpenAI API',
               can_refresh_models: true,
+              credential_kind: 'api_key',
               kind: 'direct',
               picker_enabled: true,
               credential_available: true,

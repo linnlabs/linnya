@@ -6,15 +6,15 @@ const { deleteConfiguredModel } = vi.hoisted(() => ({
 
 vi.mock('./deleteConfiguredModel', () => ({ deleteConfiguredModel }));
 
-import { removeConfiguredProvider } from './removeConfiguredProvider';
+import { removeModelSource } from './removeModelSource';
 
-describe('removeConfiguredProvider', () => {
+describe('removeModelSource', () => {
   beforeEach(() => {
     deleteConfiguredModel.mockClear();
   });
 
-  it('按稳定顺序删除 Provider 的全部已激活模型', async () => {
-    await removeConfiguredProvider(['model-a', 'model-b']);
+  it('按稳定顺序删除模型来源的全部已激活模型', async () => {
+    await removeModelSource(['model-a', 'model-b']);
 
     expect(deleteConfiguredModel).toHaveBeenNthCalledWith(1, 'model-a');
     expect(deleteConfiguredModel).toHaveBeenNthCalledWith(2, 'model-b');

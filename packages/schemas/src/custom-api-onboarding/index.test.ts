@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CustomApiModelRegistrationCommandSchema,
+  CustomApiProviderUpdateCommandSchema,
   readCustomApiFormatForRouteProfileId,
 } from './index';
 
@@ -88,5 +89,42 @@ describe('CustomApiModelRegistrationCommandSchema', () => {
       'anthropic_compatible'
     );
     expect(readCustomApiFormatForRouteProfileId('ollama_chat')).toBeUndefined();
+  });
+});
+
+describe('CustomApiProviderUpdateCommandSchema', () => {
+  it('复用注册的地址规范化，未填写 Key 时不生成空凭据字段', () => {
+    expect(
+      CustomApiProviderUpdateCommandSchema.parse({
+        current_provider_name: 'relay.example.com',
+        provider_name: ' Relay ',
+        api_format: 'openai_responses',
+        base_url: 'https://relay.example.com/',
+      })
+    ).toEqual({
+      current_provider_name: 'relay.example.com',
+      provider_name: 'Relay',
+      api_format: 'openai_responses',
+      base_url: 'https://relay.example.com/v1',
+    });
+  });
+
+  it('拒绝非 HTTP 地址与内部 route 字段', () => {
+    const base = {
+      current_provider_name: 'Relay',
+      provider_name: 'Relay',
+      api_format: 'openai_compatible',
+    } as const;
+    expect(
+      CustomApiProviderUpdateCommandSchema.safeParse({ ...base, base_url: 'ftp://relay.example.com' })
+        .success
+    ).toBe(false);
+    expect(
+      CustomApiProviderUpdateCommandSchema.safeParse({
+        ...base,
+        base_url: 'https://relay.example.com/v1',
+        route_profile_id: 'openai_compatible_chat',
+      }).success
+    ).toBe(false);
   });
 });

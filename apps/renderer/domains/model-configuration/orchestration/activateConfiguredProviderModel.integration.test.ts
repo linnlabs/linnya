@@ -22,6 +22,7 @@ const activatedPickerSnapshot: ModelPickerSnapshot = {
       display_name: 'Provider',
       connection_display_name: 'API Key',
       can_refresh_models: true,
+      credential_kind: 'api_key',
       kind: 'direct',
       picker_enabled: true,
       credential_available: true,

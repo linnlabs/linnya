@@ -19,10 +19,14 @@ function modelCatalog(): CustomApiOnboardingModelCatalogPort & {
   registerUserModel: ReturnType<typeof vi.fn>;
 } {
   return {
+    getModels: () => [],
     getInferenceEndpoints: () => [],
     registerUserModel: vi.fn(async (_model: ModelConfig) => undefined),
+    rebindUserModels: vi.fn(async () => undefined),
   };
 }
+
+const noProviderMembership = { getByModelConfigId: () => undefined };
 
 function admitCommand(
   request: CustomApiModelRegistrationRequest
@@ -51,6 +55,7 @@ describe('createCustomApiOnboardingUseCase', () => {
     const ids = ['model-local-1', 'endpoint-local-1'];
     const setModelVisibility = vi.fn();
     const useCase = createCustomApiOnboardingUseCase({
+      providerMembership: noProviderMembership,
       modelCatalog: catalog,
       modelPickerPreferences: { setModelVisibility },
       idFactory: { create: () => ids.shift() ?? 'unexpected-id' },
@@ -108,6 +113,7 @@ describe('createCustomApiOnboardingUseCase', () => {
       },
     ];
     const useCase = createCustomApiOnboardingUseCase({
+      providerMembership: noProviderMembership,
       modelCatalog: catalog,
       idFactory: { create: () => 'model-local-2' },
       modelPickerPreferences: { setModelVisibility: vi.fn() },
@@ -133,6 +139,7 @@ describe('createCustomApiOnboardingUseCase', () => {
   it('OpenAI-compatible 模型可声明图片语义能力，但 route 只开放用户图片', async () => {
     const catalog = modelCatalog();
     const useCase = createCustomApiOnboardingUseCase({
+      providerMembership: noProviderMembership,
       modelCatalog: catalog,
       idFactory: { create: () => 'openai-compatible-model' },
       modelPickerPreferences: { setModelVisibility: vi.fn() },
@@ -163,6 +170,7 @@ describe('createCustomApiOnboardingUseCase', () => {
     const catalog = modelCatalog();
     const ids = ['batch-model-1', 'batch-endpoint', 'batch-model-2'];
     const useCase = createCustomApiOnboardingUseCase({
+      providerMembership: noProviderMembership,
       modelCatalog: catalog,
       modelPickerPreferences: { setModelVisibility: vi.fn() },
       idFactory: { create: () => ids.shift() ?? 'unexpected-id' },
@@ -222,8 +230,11 @@ describe('createCustomApiOnboardingUseCase', () => {
     const models: ModelConfig[] = [];
     let nextId = 0;
     const useCase = createCustomApiOnboardingUseCase({
+      providerMembership: noProviderMembership,
       modelCatalog: {
+        getModels: () => models,
         getInferenceEndpoints: () => [],
+        rebindUserModels: vi.fn(),
         async registerUserModel(model) {
           // Catalog 一旦暴露模型，关闭偏好就应已提交，不能短暂变为默认开启。
           const index = models.length;
@@ -297,6 +308,7 @@ describe('createCustomApiOnboardingUseCase', () => {
       catalog.registerUserModel.mockRejectedValueOnce(new Error('模型目录无法写入'));
     }
     const useCase = createCustomApiOnboardingUseCase({
+      providerMembership: noProviderMembership,
       modelCatalog: catalog,
       modelPickerPreferences: preferences,
       idFactory: { create: () => 'custom-model' },

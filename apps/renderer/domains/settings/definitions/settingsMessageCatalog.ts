@@ -358,6 +358,24 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.modelPicker.refreshModels': '获取新模型',
   'settings.modelPicker.credentialReason.migrationRequired': '此凭据需要迁移，请重新连接该供应商。',
   'settings.modelPicker.customProviders': '自定义模型供应商',
+  'settings.modelPicker.editProvider': '编辑供应商',
+  'settings.modelPicker.editCustomProvider.title': '编辑自定义模型供应商',
+  'settings.modelPicker.editCustomProvider.description': '修改会同时作用于该供应商下的全部模型。',
+  'settings.modelPicker.editCustomProvider.apiKeyHint':
+    '留空则沿用当前 API Key；填写后只替换该供应商使用的 Key。',
+  'settings.modelPicker.editCustomProvider.apiKeyPlaceholder': '留空沿用当前 Key',
+  'settings.modelPicker.editCustomProvider.providerNameRequired': '供应商名称不能为空。',
+  'settings.modelPicker.editCustomProvider.failed': '保存供应商设置失败，请稍后重试。',
+  'settings.modelPicker.removeCustomProvider.confirm':
+    '确定删除自定义模型供应商“{providerName}”及其下 {count} 个模型吗？仅由这些模型使用的 API Key 会一并清除，此操作无法撤销。',
+  'settings.modelPicker.replaceApiKey': '更新 API Key',
+  'settings.modelPicker.replaceApiKey.title': '更新 {providerName} 的 API Key',
+  'settings.modelPicker.replaceApiKey.description':
+    '新 Key 会替换该供应商当前保存的 Key，已启用的模型、可见性和用途绑定保持不变。',
+  'settings.modelPicker.replaceApiKey.failed': 'API Key 更新失败，请稍后重试。',
+  'settings.modelPicker.dialog.cancel': '取消',
+  'settings.modelPicker.dialog.save': '保存',
+  'settings.modelPicker.dialog.saving': '保存中...',
   'settings.addModel.ollama.model.description': '获取已安装的 Ollama 模型，仅支持添加对话模型。',
   'settings.addModel.ollama.loading': '正在加载...',
   'settings.addModel.ollama.empty': '请先刷新或检查 URL',
@@ -816,6 +834,27 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.modelPicker.credentialReason.migrationRequired':
         'This credential requires migration. Reconnect this provider.',
       'settings.modelPicker.customProviders': 'Custom Providers',
+      'settings.modelPicker.editProvider': 'Edit provider',
+      'settings.modelPicker.editCustomProvider.title': 'Edit custom provider',
+      'settings.modelPicker.editCustomProvider.description':
+        'Changes apply to every model under this provider.',
+      'settings.modelPicker.editCustomProvider.apiKeyHint':
+        'Leave blank to keep the current API key. A new key replaces only the key used by this provider.',
+      'settings.modelPicker.editCustomProvider.apiKeyPlaceholder':
+        'Leave blank to keep the current key',
+      'settings.modelPicker.editCustomProvider.providerNameRequired': 'Provider name is required.',
+      'settings.modelPicker.editCustomProvider.failed':
+        'Saving provider settings failed. Try again later.',
+      'settings.modelPicker.removeCustomProvider.confirm':
+        'Delete the custom provider "{providerName}" and its {count} models? API keys used only by these models are removed as well. This cannot be undone.',
+      'settings.modelPicker.replaceApiKey': 'Update API key',
+      'settings.modelPicker.replaceApiKey.title': 'Update API key for {providerName}',
+      'settings.modelPicker.replaceApiKey.description':
+        'The new key replaces the key saved for this provider. Enabled models, visibility, and purpose bindings stay unchanged.',
+      'settings.modelPicker.replaceApiKey.failed': 'Updating the API key failed. Try again later.',
+      'settings.modelPicker.dialog.cancel': 'Cancel',
+      'settings.modelPicker.dialog.save': 'Save',
+      'settings.modelPicker.dialog.saving': 'Saving...',
       'settings.addModel.ollama.model.description':
         'Fetch installed Ollama models. Only chat models can be added.',
       'settings.addModel.ollama.loading': 'Loading...',

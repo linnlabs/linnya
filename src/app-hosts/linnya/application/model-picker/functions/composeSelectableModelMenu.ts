@@ -8,13 +8,16 @@ import {
   readCustomApiFormatForRouteProfileId,
   type CustomApiFormat,
 } from '@app/schemas/custom-api-onboarding';
+import type { ProviderConnectionDefinition } from '@linnya/provider-catalog';
 import { findLanguageInferenceRouteProfileForRoute } from '@app/schemas/model-inference';
 import type { ModelConfig } from 'src/domains/model-catalog';
 import type {
   ConfiguredProvider,
   ConfiguredProviderModel,
 } from 'src/domains/provider-configuration';
+import { readCustomApiProviderName } from '../../custom-api-onboarding';
 import { isModelRuntimeAvailable } from '../../model-runtime-availability';
+import { resolveProviderOnboardingAuthMethod } from '../../provider-onboarding';
 
 import type { ComposeSelectableModelMenuInput } from '../definitions/modelPickerPorts';
 import type { ProviderDiscoveredModel } from 'src/app-hosts/linnya/adapters/provider-model-discovery';
@@ -120,6 +123,14 @@ function providerCredentialStatus(
     : { available: false, reason: resolvedStatus };
 }
 
+/** connection setup schema 是凭据形态的唯一真相；本地运行时不持有凭据。 */
+function providerCredentialKind(
+  connection: ProviderConnectionDefinition
+): ModelPickerConfiguredProvider['credential_kind'] {
+  if (connection.kind === 'local_runtime') return 'none';
+  return resolveProviderOnboardingAuthMethod(connection) ?? 'none';
+}
+
 function providerVisible(
   provider: ConfiguredProvider,
   input: ComposeSelectableModelMenuInput
@@ -220,6 +231,7 @@ function projectConfiguredProvider(
     connection_display_name: connection.display_name,
     can_refresh_models: input.can_refresh_models(connection.id),
     kind: connection.kind,
+    credential_kind: providerCredentialKind(connection),
     picker_enabled: providerVisible(provider, input),
     credential_available: credential.available,
     ...(credential.reason ? { credential_unavailable_reason: credential.reason } : {}),
@@ -258,7 +270,7 @@ export function composeSelectableModelMenu(
     }
   >();
   for (const rawModel of customModelsRaw) {
-    const providerName = rawModel.custom_provider_name?.trim() || '自定义模型';
+    const providerName = readCustomApiProviderName(rawModel);
     const groupKey = providerName;
     const materialized = projectMaterializedModel(rawModel, input, true);
     if (!customProvidersMap.has(groupKey)) {

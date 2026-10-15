@@ -5,8 +5,12 @@ import { ModelDiscoveryResponseSchema } from '@app/schemas';
 import {
   CustomApiModelRegistrationResponseSchema,
   CustomApiOnboardingErrorResponseSchema,
+  CustomApiProviderUpdateResponseSchema,
 } from '@app/schemas/custom-api-onboarding';
-import type { CustomApiOnboardingUseCase } from 'src/app-hosts/linnya/application/custom-api-onboarding';
+import {
+  CustomApiOnboardingError,
+  type CustomApiOnboardingUseCase,
+} from 'src/app-hosts/linnya/application/custom-api-onboarding';
 
 import { createCustomApiOnboardingRouter } from './customApiOnboardingRouter';
 
@@ -31,10 +35,17 @@ describe('custom API onboarding router', () => {
     );
   });
 
-  async function start(useCase: CustomApiOnboardingUseCase): Promise<string> {
+  async function start(useCase: Partial<CustomApiOnboardingUseCase>): Promise<string> {
     const app = express();
     app.use(express.json());
-    app.use('/api/v1/custom-api-onboarding', createCustomApiOnboardingRouter(useCase));
+    app.use(
+      '/api/v1/custom-api-onboarding',
+      createCustomApiOnboardingRouter({
+        registerModel: vi.fn(),
+        updateProvider: vi.fn(),
+        ...useCase,
+      })
+    );
     const server = createServer(app);
     servers.push(server);
     return listen(server);
@@ -104,6 +115,80 @@ describe('custom API onboarding router', () => {
     expect(registerModel).not.toHaveBeenCalled();
   });
 
+  it('分组编辑按所选格式规范化地址后交给 use case', async () => {
+    const updateProvider = vi.fn(async () => ({
+      provider_name: 'Relay',
+      model_ids: ['local-model-1'],
+    }));
+    const baseUrl = await start({ updateProvider });
+    const response = await fetch(`${baseUrl}/api/v1/custom-api-onboarding/providers`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        current_provider_name: 'relay.example.com',
+        provider_name: 'Relay',
+        api_format: 'anthropic_compatible',
+        base_url: 'https://relay.example.com/',
+        api_key: 'rotated-secret',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(CustomApiProviderUpdateResponseSchema.parse(await response.json())).toEqual({
+      provider_name: 'Relay',
+      model_ids: ['local-model-1'],
+    });
+    expect(updateProvider).toHaveBeenCalledWith({
+      current_provider_name: 'relay.example.com',
+      provider_name: 'Relay',
+      api_format: 'anthropic_compatible',
+      base_url: 'https://relay.example.com/v1',
+      api_key: 'rotated-secret',
+    });
+  });
+
+  it('分组编辑拒绝内部 route 字段，并透传稳定业务错误且不回显密钥', async () => {
+    const updateProvider = vi.fn(async () => {
+      throw new CustomApiOnboardingError(
+        'custom_api_onboarding.provider_name_conflict',
+        '已存在同名的自定义模型分组',
+        409
+      );
+    });
+    const baseUrl = await start({ updateProvider });
+    const rejected = await fetch(`${baseUrl}/api/v1/custom-api-onboarding/providers`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        current_provider_name: 'Relay',
+        provider_name: 'Relay',
+        api_format: 'openai_compatible',
+        base_url: 'https://relay.example.com/v1',
+        api_key: 'secret-value',
+        route_profile_id: 'openai_compatible_chat',
+      }),
+    });
+    expect(rejected.status).toBe(400);
+    expect(JSON.stringify(await rejected.json())).not.toContain('secret-value');
+    expect(updateProvider).not.toHaveBeenCalled();
+
+    const conflict = await fetch(`${baseUrl}/api/v1/custom-api-onboarding/providers`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        current_provider_name: 'Relay',
+        provider_name: 'Other',
+        api_format: 'openai_compatible',
+        base_url: 'https://relay.example.com/v1',
+        api_key: 'secret-value',
+      }),
+    });
+    expect(conflict.status).toBe(409);
+    const failure = CustomApiOnboardingErrorResponseSchema.parse(await conflict.json());
+    expect(failure.code).toBe('custom_api_onboarding.provider_name_conflict');
+    expect(JSON.stringify(failure)).not.toContain('secret-value');
+  });
+
   it('支持 /discover 端点自动探测模型列表并推断模型能力', async () => {
     const mockFetch: typeof fetch = async () =>
       new Response(
@@ -119,7 +204,10 @@ describe('custom API onboarding router', () => {
     const discoveryService = new ModelDiscoveryService({ fetchFn: mockFetch });
     app.use(
       '/api/v1/custom-api-onboarding',
-      createCustomApiOnboardingRouter({ registerModel: vi.fn() }, discoveryService)
+      createCustomApiOnboardingRouter(
+        { registerModel: vi.fn(), updateProvider: vi.fn() },
+        discoveryService
+      )
     );
     const server = createServer(app);
     servers.push(server);

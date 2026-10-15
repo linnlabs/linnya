@@ -372,6 +372,7 @@ describe('composeSelectableModelMenu', () => {
 
     expect(result.providers[0]).toMatchObject({
       picker_enabled: false,
+      credential_kind: 'api_key',
       credential_available: false,
       credential_unavailable_reason: 'missing',
       models: [{ picker_enabled: true, runtime_available: false }],
@@ -446,6 +447,7 @@ describe('composeSelectableModelMenu', () => {
 
     expect(result.providers[0]).toMatchObject({
       display_name: 'Ollama',
+      credential_kind: 'none',
       credential_available: true,
       models: [{ materialized: true, runtime_available: true }],
     });
@@ -512,6 +514,7 @@ describe('composeSelectableModelMenu', () => {
       })
     );
     expect(loggedOut.providers[0]).toMatchObject({
+      credential_kind: 'provider_account',
       credential_available: false,
       models: [{ materialized: true, runtime_available: false }],
     });

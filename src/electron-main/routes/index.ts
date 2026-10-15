@@ -409,6 +409,7 @@ export async function configureRoutes(
   logger.info('✅ Provider onboarding 路由已挂载: /api/v1/provider-onboarding');
   const customApiOnboardingUseCase = createCustomApiOnboardingUseCase({
     modelCatalog,
+    providerMembership: providerConfigurationRegistry,
     modelPickerPreferences: modelPickerPreferencesRegistry,
     idFactory: { create: randomUUID },
   });

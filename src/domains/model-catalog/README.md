@@ -191,6 +191,12 @@ Server 内存，推理热路径仍同步解析且不跨进程。单条密文无�
 请求前由 credential resolver 拒绝使用；重新提交 Key 后才替换旧密文并恢复 `configured`。这类凭据状态不会阻断
 App Server 启动。InferenceEndpoint 没有独立的用户生命周期：删除一个模型后仍有其他模型引用就保留；删除最后一个引用模型时，端点元数据和对应密文必须在同一目录事务中自动清理。新建模型时，credential 密文、端点元数据和模型引用同样按一个业务事务提交；目录写盘失败时撤销刚创建的密文，不留下半端点。
 
+已有用户模型更换连接时，application use case 通过 `rebindUserModels`
+把一组模型原子改绑到同一个新建或已有 endpoint：模型 route 与 endpoint 仍按同一准入校验，不再被引用的旧 endpoint
+及其独占密文在同一事务中清理，写盘失败时撤销本次新建或替换的密文。只更换 Key 时使用
+`replaceInferenceEndpointCredential`，在 endpoint 引用的 `stored_secret` 边界内替换密文；共享该凭据的 endpoint
+一并生效，`user_models.json` 不变。两者都不接受 Renderer 构造的 route，调用方必须是对应 onboarding use case。
+
 正式 Provider connection 的 `ConfiguredProvider`/`ConfiguredProviderModel`
 与本文件分属两个 domain。跨文件注册和删除由 application use
 case 先持久化包含品牌/connection identity 的 intent，再修改 Model
@@ -316,7 +322,7 @@ KV 只通过 `scripts/cloud-model-kv-v2-migration/`
 | Cloud catalog       | 单请求、typed route、非法 payload、purpose defaults、能力保真                                                                 |
 | User persistence    | v4 envelope、端点引用、损坏文件失败、原子写入                                                                                 |
 | Endpoint credential | 只写密文、跨启动解密、`0600`、删除同步落盘                                                                                    |
-| Registry            | 来源优先级、端点/模型一致性、端点复用、最后引用删除时清理端点与密文、Cloud 替换/retry/event、写盘失败不提交内存并撤销密文变更 |
+| Registry            | 来源优先级、端点/模型一致性、端点复用、最后引用删除时清理端点与密文、改绑与原位换 Key、Cloud 替换/retry/event、写盘失败不提交内存并撤销密文变更 |
 | Electron bridge     | renderer-ready 前后刷新信号不丢失，payload 不成为第二目录                                                                     |
 
 日常至少运行：

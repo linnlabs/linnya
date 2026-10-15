@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import {
   CustomApiModelRegistrationCommandSchema,
+  CustomApiProviderUpdateCommandSchema,
   type CustomApiOnboardingErrorResponse,
   ModelDiscoveryRequestSchema,
   type ModelDiscoveryErrorResponse,
@@ -86,6 +87,31 @@ export function createCustomApiOnboardingRouter(
       sendError(response, 500, {
         code: 'custom_api_onboarding.registration_failed',
         message: '自定义 API 模型注册失败',
+      });
+    }
+  });
+
+  router.put('/providers', async (request: Request, response: Response) => {
+    const parsed = CustomApiProviderUpdateCommandSchema.safeParse(request.body);
+    if (!parsed.success) {
+      sendError(response, 400, {
+        code: 'custom_api_onboarding.invalid_command',
+        message: '自定义模型分组配置内容无效',
+      });
+      return;
+    }
+
+    try {
+      const result = await useCase.updateProvider(parsed.data);
+      response.status(200).json(result);
+    } catch (error: unknown) {
+      if (error instanceof CustomApiOnboardingError) {
+        sendError(response, error.statusCode, { code: error.code, message: error.message });
+        return;
+      }
+      sendError(response, 500, {
+        code: 'custom_api_onboarding.update_failed',
+        message: '自定义模型分组更新失败',
       });
     }
   });

@@ -72,16 +72,7 @@
           settingsMessage('settings.modelDetails.protocol.label')
         }}</label>
         <div class="control-area">
-          <CustomSelect
-            v-if="isCustomModel"
-            v-model="editForm.protocolProfileId"
-            :options="protocolOptions"
-            :title="settingsMessage('settings.modelDetails.protocol.label')"
-            class="settings-input"
-            font-size="14px"
-            :disabled="modalState.isProcessing"
-          />
-          <div v-else class="info-text">{{ currentProviderProfileLabel }}</div>
+          <div class="info-text">{{ currentProviderProfileLabel }}</div>
         </div>
       </div>
 
@@ -172,16 +163,13 @@
 import { reactive, watch, computed } from 'vue';
 import type { ModelCatalogItem } from '../definitions/modelCatalog';
 import type { EditableLanguageModelIssue } from '../definitions/editableLanguageModel';
-import { ActionButtons, CustomNumberInput, CustomSelect, Modal, Switch } from '@linnya/renderer-ui';
-import type { CustomSelectOption } from '@linnya/renderer-ui';
+import { ActionButtons, CustomNumberInput, Modal, Switch } from '@linnya/renderer-ui';
 import { confirm } from '@shared/composables/confirmDialog';
 import { useSettingsLocalization } from '@/domains/settings/public';
 import { buildEditableLanguageModelUpdate } from '../functions/buildEditableLanguageModelUpdate';
 import { updateModelInCatalog } from '../orchestration/modelCatalogOperations';
 import { deleteConfiguredModel } from '../../../orchestration/deleteConfiguredModel';
 import {
-  CONFIGURABLE_LANGUAGE_ROUTE_PROFILES,
-  type ConfigurableLanguageRouteProfileId,
   resolveConfigurableLanguageProtocolLabelKey,
   resolveConfigurableLanguageRouteProfileId,
 } from '../../inference-endpoints';
@@ -198,7 +186,6 @@ interface EditForm {
   context_window_tokens: string;
   max_output_tokens: string;
   supports_image_input: boolean;
-  protocolProfileId?: ConfigurableLanguageRouteProfileId;
 }
 
 interface ModalState {
@@ -253,29 +240,16 @@ const currentProviderProfileLabel = computed(() => {
   return settingsMessage(resolveConfigurableLanguageProtocolLabelKey(profileId));
 });
 
-const isCustomModel = computed(() => props.model?.catalog_source === 'user');
-
-const protocolOptions = computed<CustomSelectOption[]>(() =>
-  CONFIGURABLE_LANGUAGE_ROUTE_PROFILES.map(profile => ({
-    value: profile.id,
-    text: settingsMessage(profile.labelKey),
-  }))
-);
-
 // 检测表单是否有修改
 const hasChanges = computed(() => {
   if (!props.model) return false;
-  const originalProfileId = props.model.inference_route
-    ? resolveConfigurableLanguageRouteProfileId(props.model.inference_route)
-    : undefined;
   return (
     editForm.display_name !== (props.model.display_name || props.model.name || '') ||
     editForm.model_name !== (props.model.model_name || '') ||
     editForm.context_window_tokens !==
       String(props.model.inference_route?.context_window_tokens ?? '') ||
     editForm.max_output_tokens !== String(props.model.inference_route?.max_output_tokens ?? '') ||
-    editForm.supports_image_input !== (props.model.capabilities?.includes('image_input') === true) ||
-    (isCustomModel.value && editForm.protocolProfileId !== originalProfileId)
+    editForm.supports_image_input !== (props.model.capabilities?.includes('image_input') === true)
   );
 });
 
@@ -289,11 +263,9 @@ watch(
       if (newModel.inference_route) {
         editForm.context_window_tokens = String(newModel.inference_route.context_window_tokens);
         editForm.max_output_tokens = String(newModel.inference_route.max_output_tokens);
-        editForm.protocolProfileId = resolveConfigurableLanguageRouteProfileId(newModel.inference_route);
       } else {
         editForm.context_window_tokens = '';
         editForm.max_output_tokens = '';
-        editForm.protocolProfileId = undefined;
       }
       editForm.supports_image_input = newModel.capabilities?.includes('image_input') === true;
       modalState.error = null;
@@ -349,7 +321,6 @@ const handleSaveModel = async () => {
     contextWindowTokens: editForm.context_window_tokens,
     maxOutputTokens: editForm.max_output_tokens,
     supportsImageInput: editForm.supports_image_input,
-    protocolProfileId: isCustomModel.value ? editForm.protocolProfileId : undefined,
   });
   if (!result.ok) {
     modalState.error = resolveEditIssue(result.issue);

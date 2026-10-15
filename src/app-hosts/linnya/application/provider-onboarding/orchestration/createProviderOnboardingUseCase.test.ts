@@ -136,6 +136,7 @@ function modelCatalog(): ProviderOnboardingModelCatalogPort & {
     getInferenceEndpoints: () => [],
     registerUserModel: vi.fn(async (_model: ModelConfig) => undefined),
     updateModel: vi.fn(async (_model: ModelConfig) => undefined),
+    replaceInferenceEndpointCredential: vi.fn(async () => undefined),
   };
 }
 
