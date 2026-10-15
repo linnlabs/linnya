@@ -280,7 +280,7 @@ Vue 是 peer dependency，Host 与插件必须共享同一实例。`/font-stack`
 
 `tokens.css` 拥有 foundation、通用 semantic、functional、geometry、typography 和跨 owner 稳定复用的 component token。App layout、Conversation、Editor 等业务 token 留在各自 owner，并在 package 样式之后装载。公开 token 的删除、重命名、语义变化或主题集合缺失都按 breaking change 处理。
 
-自 2.6.0 起，刻度类 token 分为四组：控件高度 `--control-height-sm/md/lg`（28/32/36）；角色字阶 `--font-size-<role>` / `--line-height-<role>` 与三档 `--font-weight-*`；4px 网格间距 `--space-*`；动效 `--duration-*` 与 `--ease-*`。圆角扩展到 `--radius-xl`、`--radius-2xl`，焦点环由 `--focus-ring-width`、`--focus-ring-offset` 与主题 token `--color-focus-ring` 组成，功能色新增文字专用的 `--color-*-text`。`--spacing-*` 与 `--transition-*` 仅作为 2.x 已发布插件的兼容别名保留，仓内不再新增使用，下一个 major 删除。各 token 的选择规则见[设计规范](./docs/design.md)。
+自 2.6.0 起，刻度类 token 分为四组：控件高度 `--control-height-sm/md/lg`（28/32/36）；角色字阶 `--font-size-<role>` / `--line-height-<role>` 与三档 `--font-weight-*`；4px 网格间距 `--space-*`；动效 `--duration-*` 与 `--ease-*`。圆角扩展到 `--radius-xl`、`--radius-2xl`，焦点环由 `--focus-ring-width`、`--focus-ring-offset` 与主题 token `--color-focus-ring` 组成，功能色新增文字专用的 `--color-*-text`，强调色新增承载反色文字的实底 `--color-accent-solid` / `--color-accent-solid-hover`。`--spacing-*` 与 `--transition-*` 仅作为 2.x 已发布插件的兼容别名保留，仓内不再新增使用，下一个 major 删除。各 token 的选择规则见[设计规范](./docs/design.md)。
 
 `prefers-reduced-motion: reduce` 下四个 `--duration-*` 会被置为接近 0，经由时长 token 的过渡与动画自动立即完成；直接写在关键帧里的循环动画仍须各自声明 reduced-motion 规则。
 

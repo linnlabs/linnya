@@ -50,6 +50,9 @@
   --color-accent-bg: var(--color-brand-125);
   --color-accent-bg-subtle: var(--color-brand-50);
   --color-accent-bg-hover: var(--color-brand-163);
+  /* 反色文字所在的强调实底（主按钮等），白字对比度不低于 4.5:1。 */
+  --color-accent-solid: var(--color-accent);
+  --color-accent-solid-hover: var(--color-accent-hover);
 
   /* Shadow */
   --shadow-color-xs: rgba(0, 0, 0, 0.05);
@@ -110,6 +113,9 @@
   --color-accent-bg: var(--color-brand-850);
   --color-accent-bg-subtle: var(--color-brand-900);
   --color-accent-bg-hover: var(--color-brand-800);
+  /* 暗色强调色偏亮便于作文字，白字放在它上面只有 3.1:1；实底改用更深一档。 */
+  --color-accent-solid: var(--color-brand-600);
+  --color-accent-solid-hover: var(--color-brand-700);
 
   /* Shadow：深底需要更重的投影才能表达层级。 */
   --shadow-color-xs: rgba(0, 0, 0, 0.2);
@@ -169,6 +175,8 @@
   --color-accent-bg: color-mix(in srgb, var(--color-blue-100) 62%, var(--color-white));
   --color-accent-bg-subtle: color-mix(in srgb, var(--color-blue-50) 74%, var(--color-white));
   --color-accent-bg-hover: color-mix(in srgb, var(--color-blue-125) 68%, var(--color-white));
+  --color-accent-solid: var(--color-accent);
+  --color-accent-solid-hover: var(--color-accent-hover);
 
   /* Shadow */
   --shadow-color-xs: color-mix(in srgb, var(--color-blue-900) 5%, transparent);

@@ -52,6 +52,8 @@
 
 `--color-accent*` 是品牌绿的语义映射，用于主按钮、选中项、激活中的开关与 Tab、焦点环和可交互链接性强调。`moon-blue` 主题把强调色映射为蓝色，因此组件只能引用 `--color-accent*`，不能直接写品牌色阶。
 
+强调色有两种用法，不能混用：作文字、图标、描边时用 `--color-accent`（暗色下偏亮，保证在深底上可读）；作承载反色文字的实底（主按钮等）时用 `--color-accent-solid` 与 `--color-accent-solid-hover`（暗色下更深一档，保证白字 4.5:1）。
+
 ### 2.5 功能色
 
 每种状态有三类 token，用途不能互换：
@@ -73,7 +75,8 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 | 页面、面板、卡片、浮层底色 | 2.1 的表面 token | 基础色阶、`white`、`#fff` |
 | 文字 | 2.2 的文字 token；状态文字用 `--color-*-text` | 功能基础色、`opacity` 降级 |
 | 边框与分隔线 | `--color-border-*` | 用文字色或品牌色阶充当中性边框 |
-| 主操作、选中、焦点 | `--color-accent*`、`--color-focus-ring` | 直接引用 `--color-brand-*` |
+| 主操作实底（反色文字） | `--color-accent-solid`、`--color-accent-solid-hover` 配 `--color-text-on-accent` | 把 `--color-accent` 当白字底色 |
+| 选中、焦点、强调文字与描边 | `--color-accent`、`--color-accent-bg*`、`--color-focus-ring` | 直接引用 `--color-brand-*` |
 | 品牌色浅底（推荐、已选择） | `--color-accent-bg`、`--color-accent-bg-subtle` | 自行用 `color-mix` 调一个新的绿 |
 | 状态提示条、徽标 | `--color-*-bg` 配 `--color-*-text`，描边或图标用基础色 | 浅色底配基础色文字 |
 | 用户选择的内容颜色、语法高亮 | 所属 domain 的内容色 token | 把内容色上移为通用 token |
@@ -231,7 +234,7 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 
 | variant | 视觉 | 用途 |
 | --- | --- | --- |
-| `primary` | 强调色实底、反色文字 | 当前区域唯一的主操作：保存、发送、插入、创建确认 |
+| `primary` | 强调色实底（`--color-accent-solid`）、反色文字 | 当前区域唯一的主操作：保存、发送、插入、创建确认 |
 | `secondary` | 表面底色加描边 | 与主操作并列的次操作：取消、返回 |
 | `ghost` | 透明底加描边 | 已有容器内的次要操作：重置、更多选项 |
 | `plain` | 无底无描边，次级文字色 | 工具栏、标题行、表格行里的轻操作 |
@@ -298,8 +301,5 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 
 ## 14. 当前限制
 
-以下组合已知低于第 2.7 节的要求，保留原因是视觉决策尚未调整，不能作为新组件的先例：
-
-- `outline` 按钮的 `info` tone 文字使用 `--color-info`，浅色主题下对比度约 3.3:1，暗色约 4.1:1。
-- 暗色主题 `primary` 按钮为白字配 `--color-accent`，对比度约 3.1:1。
 - 部分业务 CSS 仍直接引用基础色阶或带有不在刻度上的值，由刻度棘轮和代码评审逐步收敛。
+- 按下态（active）只持续很短时间，outline info tone 按下时文字对比度约 3.8～4:1，未计入第 2.7 节的要求。

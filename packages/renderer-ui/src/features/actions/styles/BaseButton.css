@@ -101,14 +101,14 @@
   padding-right: var(--linnya-ui-button-icon-size);
 }
 
-/* primary：唯一主操作。 */
+/* primary：唯一主操作；实底使用保证反色文字对比度的 accent-solid。 */
 .linnya-ui-button--primary {
   color: var(--color-text-on-accent);
-  background-color: var(--color-accent);
+  background-color: var(--color-accent-solid);
 }
 
 .linnya-ui-button--primary:hover:not(:disabled) {
-  background-color: var(--color-accent-hover);
+  background-color: var(--color-accent-solid-hover);
 }
 
 .linnya-ui-button--primary:disabled {
@@ -226,8 +226,9 @@
   background-color: var(--color-accent-bg);
 }
 
+/* info 描边保持识别色，文字使用可读的 info-text。 */
 .linnya-ui-button--outline.linnya-ui-button--tone-info {
-  color: var(--color-info);
+  color: var(--color-info-text);
   border-color: var(--color-info);
 }
 
