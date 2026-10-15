@@ -7,6 +7,7 @@ import { CustomApiOnboardingError } from '../definitions/customApiOnboardingErro
 import type {
   CustomApiOnboardingIdFactory,
   CustomApiOnboardingModelCatalogPort,
+  CustomApiOnboardingPreferencesPort,
   CustomApiOnboardingUseCase,
 } from '../definitions/customApiOnboardingPorts';
 import { buildCustomApiModelRegistration } from '../functions/buildCustomApiModelRegistration';
@@ -15,6 +16,7 @@ import { readCustomApiRuntimeBinding } from '../registry/customApiRuntimeBinding
 
 export interface CreateCustomApiOnboardingUseCaseDependencies {
   readonly modelCatalog: CustomApiOnboardingModelCatalogPort;
+  readonly modelPickerPreferences: CustomApiOnboardingPreferencesPort;
   readonly idFactory: CustomApiOnboardingIdFactory;
 }
 
@@ -90,9 +92,17 @@ export function createCustomApiOnboardingUseCase(
         });
 
         try {
+          // 先持久化显式选择，避免模型已进入目录、偏好却未保存而被默认开启。
+          // 若后续注册失败，孤儿偏好由现有启动 reconcile 按模型身份清理。
+          if (item.picker_enabled !== undefined) {
+            await dependencies.modelPickerPreferences.setModelVisibility(
+              modelId,
+              item.picker_enabled
+            );
+          }
           await dependencies.modelCatalog.registerUserModel(model, endpointSelection);
         } catch (error: unknown) {
-          console.error('[createCustomApiOnboardingUseCase] registerUserModel error', error);
+          console.error('[createCustomApiOnboardingUseCase] registration failed', error);
           if (error instanceof CustomApiOnboardingError) throw error;
           throw new CustomApiOnboardingError(
             'custom_api_onboarding.registration_failed',

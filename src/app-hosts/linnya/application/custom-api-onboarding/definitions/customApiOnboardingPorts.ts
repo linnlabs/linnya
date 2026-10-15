@@ -13,6 +13,10 @@ export interface CustomApiOnboardingModelCatalogPort {
   registerUserModel(model: ModelConfig, endpoint: InferenceEndpointSelection): Promise<void>;
 }
 
+export interface CustomApiOnboardingPreferencesPort {
+  setModelVisibility(modelConfigId: string, visible: boolean): Promise<void>;
+}
+
 export interface CustomApiOnboardingIdFactory {
   create(): string;
 }

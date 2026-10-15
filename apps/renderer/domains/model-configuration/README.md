@@ -273,6 +273,10 @@ Catalog 原子保存。它要求 URL、首次配置所需的 API
 Key 和三选一兼容格式；相同 URL 与格式已有凭据时可留空复用。它不要求用户命名一层“连接”，也不会把 URL
 host 暴露成独立连接实体。用户未填写供应商名称时，Host 使用 URL hostname 生成稳定的模型分组名称。
 
+发现列表里的逐模型开关以 `picker_enabled` 随批量请求提交，表示快捷选择器可见性：
+关闭的模型仍注册到目录，Host 在注册时保存其显式偏好。注册完成后的 model picker 刷新直接读取
+已保存的选择，Renderer 不再补发逐模型可见性更新，也不维护第二份持久化偏好。
+
 填写自定义 API 地址时，用户按服务文档选择三种 API 格式：`OpenAI 兼容` 对应
 `openai_compatible_chat` 与 `/chat/completions`，`OpenAI Responses` 对应
 `openai_responses` 与 `/responses`， `Anthropic 兼容` 对应

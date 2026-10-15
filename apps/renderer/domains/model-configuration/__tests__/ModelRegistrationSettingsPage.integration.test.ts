@@ -504,7 +504,10 @@ describe('ModelRegistrationSettingsPage', () => {
     ]);
   });
 
-  it('自定义 Provider 探测并注册成功后只刷新模型事实源', async () => {
+  it.each([
+    { name: '部分关闭', enabled: [true, false] },
+    { name: '全部关闭', enabled: [false, false] },
+  ])('自定义 Provider $name 后提交实际选择，再刷新模型事实源', async ({ enabled }) => {
     app = createApp(ModelRegistrationSettingsPage);
     app.use(createPinia());
     app.mount(container);
@@ -512,12 +515,11 @@ describe('ModelRegistrationSettingsPage', () => {
 
     await selectQuickOption(container, 'settings.addModel.quick.customApi');
 
-    const urlInput = container.querySelector<HTMLInputElement>(
-      `input[placeholder="settings.addModel.apiUrl.placeholder"]`
+    setInputValue(
+      container,
+      'settings.addModel.apiUrl.placeholder',
+      'http://gateway.intranet/v1'
     );
-    if (!urlInput) throw new Error('URL input not found');
-    urlInput.value = 'http://gateway.intranet/v1';
-    urlInput.dispatchEvent(new Event('input', { bubbles: true }));
     await flushUi();
 
     mocks.discoverModels.mockResolvedValue({
@@ -526,6 +528,13 @@ describe('ModelRegistrationSettingsPage', () => {
           id: 'gpt-test',
           name: 'GPT Test',
           context_window_tokens: 128000,
+          max_output_tokens: 4096,
+          supports_image_input: false,
+        },
+        {
+          id: 'gpt-hidden',
+          name: 'GPT Hidden',
+          context_window_tokens: 64000,
           max_output_tokens: 4096,
           supports_image_input: false,
         },
@@ -544,6 +553,18 @@ describe('ModelRegistrationSettingsPage', () => {
     });
     await flushUi();
 
+    const switches = Array.from(
+      container.querySelectorAll<HTMLInputElement>(
+        '.custom-discovered-models-list input[type="checkbox"]'
+      )
+    );
+    expect(switches).toHaveLength(enabled.length);
+    for (const [index, toggle] of switches.entries()) {
+      if (!enabled[index]) toggle.click();
+    }
+    await flushUi();
+    expect(switches.map(toggle => toggle.checked)).toEqual(enabled);
+
     const submitButton = container.querySelector<HTMLButtonElement>(
       '[data-registration-kind="custom-provider"] .full-width-button'
     );
@@ -553,12 +574,18 @@ describe('ModelRegistrationSettingsPage', () => {
     await vi.waitFor(() => {
       expect(mocks.loadModels).toHaveBeenCalledOnce();
     });
+    expect(mocks.loadModelPicker).toHaveBeenCalledOnce();
     expect(mocks.registerCustomApi).toHaveBeenCalledWith(
       expect.objectContaining({
         base_url: 'http://gateway.intranet/v1',
         models: expect.arrayContaining([
           expect.objectContaining({
             endpoint_model_id: 'gpt-test',
+            picker_enabled: enabled[0],
+          }),
+          expect.objectContaining({
+            endpoint_model_id: 'gpt-hidden',
+            picker_enabled: enabled[1],
           }),
         ]),
       })

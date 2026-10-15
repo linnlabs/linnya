@@ -25,9 +25,18 @@ command。
   -> 读取该 API 格式的 Host runtime binding
   -> 创建或复用内部 InferenceEndpoint
   -> 投影 User ModelConfig 与 typed route
+  -> 按本地 model_config_id 持久化显式 picker_enabled 偏好
   -> Model Catalog 原子保存 endpoint、credential 与 model
 ```
 
 显式提交新 Key 表示创建新的 credential
 boundary；未提交 Key 时只复用格式、URL、认证完全一致且凭据可用的自定义 endpoint。正式 Provider
 endpoint 即使 URL 相同也不会被本流程复用。
+
+发现列表中的开关表示快捷选择器可见性，关闭的模型仍会注册到目录。显式提交的
+`picker_enabled` 由本 use case 通过窄 port 写入 Model Picker Preferences，不写进
+ModelConfig；未提交时保留 picker 的默认规则，不生成偏好记录。
+
+每个模型先提交偏好，再保存目录，避免偏好写入失败后出现默认开启的模型。目录保存失败时，
+该新 ID 的孤儿偏好由现有启动 identity reconcile 清理，不会进入模型列表。批量注册仍逐模型
+提交，并非整个批次的原子事务；中途失败时，之前成功的模型及其偏好保留。

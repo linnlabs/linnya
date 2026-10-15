@@ -2,6 +2,7 @@ export { CustomApiOnboardingError } from './definitions/customApiOnboardingError
 export type {
   CustomApiOnboardingIdFactory,
   CustomApiOnboardingModelCatalogPort,
+  CustomApiOnboardingPreferencesPort,
   CustomApiOnboardingUseCase,
 } from './definitions/customApiOnboardingPorts';
 export {
