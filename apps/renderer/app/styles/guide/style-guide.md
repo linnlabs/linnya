@@ -1,7 +1,7 @@
 ---
 title: Linnya 前端统一样式指南
-status: v1.5
-last_updated: 2026-09-01
+status: v1.6
+last_updated: 2026-10-15
 applies_to: apps/renderer/**
 ---
 
@@ -13,6 +13,7 @@ applies_to: apps/renderer/**
 
 实际 Token、主题和共享组件以代码为准：
 
+- 视觉语言、刻度选择与状态呈现：`packages/renderer-ui/docs/design.md`
 - 跨业务 Token、内置主题与基础组件：`packages/renderer-ui/README.md`
 - App/Domain 专属 Token 与主题装配：`apps/renderer/app/styles/`
 - Renderer UI 详细用法：`packages/renderer-ui/docs/usage-guide.md`
@@ -195,9 +196,10 @@ hover 通常通过语义背景 Token 表达；focus-visible 必须保留清晰�
 
 ## 8. 间距、圆角、阴影和排版
 
-- 标准间距使用 `--spacing-*`，标准圆角使用 `--radius-*`，标准阴影使用 `--shadow-*`。
+- 标准间距使用 `--space-*`，标准圆角使用 `--radius-*`，标准阴影使用 `--shadow-*`；动效使用 `--duration-*` 与 `--ease-*`。`--spacing-*`、`--transition-*` 只是为已发布插件保留的旧别名，新代码不得使用。
 - 小于一个基础刻度的像素级光学校正可以使用明确数值，但不能据此复制整套几何常量。
-- 字号、行高和字体族使用 Typography Token，不在 Feature 中重置全局字体链。
+- 字号与行高按内容角色成对使用 `--font-size-<role>` / `--line-height-<role>`，字重使用 `--font-weight-*`；不在 Feature 中重置全局字体链。
+- 各刻度的选择规则见设计规范；`pnpm run guard:renderer-style-scale` 以棘轮方式阻止新增写死的刻度值。
 - 布局尺寸如果属于应用运行态契约，应使用 Runtime Token 或组件局部 CSS 变量，而不是升级为视觉 Token。
 - 阴影用于表达真实层级，不作为普通边框或 hover 的替代品。
 
@@ -250,7 +252,7 @@ hover 通常通过语义背景 Token 表达；focus-visible 必须保留清晰�
 
 - [ ] 样式位于正确的所有权边界，并已由对应入口聚合。
 - [ ] 没有新增 Vue SFC style 块、跨 Domain 内部 CSS 依赖或全局通用选择器。
-- [ ] 颜色、间距、圆角、阴影、字号和过渡使用现有 Token。
+- [ ] 颜色、间距、圆角、阴影、字号、字重、层级和动效使用现有 Token，刻度棘轮没有扩张。
 - [ ] 没有硬编码颜色、旧 Token、嵌套兼容 fallback 或组件级主题分支。
 - [ ] 页面、组件、Teleport 浮层、Transition 和 keyframes 都有稳定且唯一的作用域。
 - [ ] 已优先复用共享组件和标准滚动容器。

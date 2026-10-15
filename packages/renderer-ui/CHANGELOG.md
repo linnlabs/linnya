@@ -2,8 +2,13 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
-## Unreleased
+## 2.6.0 - 2026-10-15
 
+- 新增[设计规范](./docs/design.md)，作为表面与文字层级、功能色、字阶、间距、圆角、投影、动效、交互状态和图标的唯一视觉规则入口。
+- 新增刻度 token：角色字阶 `--font-size-{caption,footnote,body,prose,subtitle,title,headline,display}` 与成对行高、三档 `--font-weight-*`、4px 网格 `--space-*`、`--radius-xl` / `--radius-2xl`、`--border-width-hairline`、`--duration-*` 与 `--ease-*`、焦点环 `--focus-ring-width` / `--focus-ring-offset`；三套主题新增 `--color-focus-ring` 与功能色文字 `--color-{success,error,warning,info}-text`。
+- `--spacing-*` 与 `--transition-*` 改为指向新刻度的兼容别名，数值不变；已发布插件无需重建，仓内新代码改用新 token，下一个 major 删除旧名。
+- `prefers-reduced-motion: reduce` 下 `--duration-*` 置为接近 0，经由时长 token（含旧 `--transition-*` 别名）的过渡对减少动态效果的用户立即完成。
+- 暗色主题修正层级：文字五级按对比度递减（primary 不再使用纯白，muted 从 1.4:1 提升到 5:1 以上）；边框改为透明白叠加，在任意表面上可见；按下/选中改为提亮；`--color-bg-elevated` 高于 surface；投影加深；`--color-accent-disabled` 改为暗化而非浅绿。浅色与 moon-blue 视觉不变。
 - 修复 CustomSelect 长普通子菜单超出窗口且末项不可达：两级列表限制可用尺寸并原生滚动，父菜单滚动及窗口 resize 时更新锚点或关闭不可见子层。
 - 子菜单键盘焦点在显示后交接；关闭、切换或卸载取消旧请求，hover 保留当前焦点。Teleport 子层点击保留内部菜单归属，避免原生 Enter/Space 打开二级后被外部点击处理关闭。公开 API、选择事件和面板／颜色内容布局不变，属于兼容实现修正，随下次 Host 装配生效。
 
