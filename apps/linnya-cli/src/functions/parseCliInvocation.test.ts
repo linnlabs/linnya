@@ -50,9 +50,9 @@ describe('parseCliInvocation', () => {
     expect(() => parseCliInvocation(['tools', 'call', 'write_file', '--project', 'p',
       '--args-file', 'args.json', '--args-json', '{}'])).toThrow('mutually exclusive');
   });
-  it('只接受五个 Workspace 工具，并要求调用绑定项目或会话', () => {
+  it('只接受 CLI 工具目录，并要求调用绑定项目或会话', () => {
     expect(parseCliInvocation(['tools', 'list'])).toMatchObject({
-      request: { command: 'workspace_tools', action: 'list' },
+      request: { command: 'tools', action: 'list' },
     });
     expect(parseCliInvocation(['tools', 'describe', 'edit_file'])).toMatchObject({
       request: { action: 'describe', tool_name: 'edit_file' },
@@ -62,7 +62,7 @@ describe('parseCliInvocation', () => {
       '--project', 'project-1',
       '--args-json', '{"locator":"workspace:/notes.md","content":"# Notes"}',
     ])).toMatchObject({
-      kind: 'workspace-tool-call',
+      kind: 'tool-call',
       request: {
         action: 'call',
         tool_name: 'write_file',
@@ -75,7 +75,22 @@ describe('parseCliInvocation', () => {
     ])).toThrow();
     expect(() => parseCliInvocation([
       'tools', 'call', 'read_file', '--args-json', '{}',
-    ])).toThrow('workspace tool call requires conversation_id or project_id');
+    ])).toThrow('tool call requires conversation_id or project_id');
+  });
+
+  it('临时 Web 开关独立于调用；网页和续读沿用同一工具调用合同', () => {
+    for (const [state, enabled] of [['on', true], ['off', false], ['status', undefined]] as const) {
+      expect(parseCliInvocation(['tools', 'web', state])).toMatchObject({
+        kind: 'command',
+        request: { command: 'tools', action: 'web_access', ...(enabled === undefined ? {} : { enabled }) },
+      });
+    }
+    for (const name of ['web_search', 'web_read', 'tool_output_read']) {
+      expect(parseCliInvocation(['tools', 'call', name, '--conversation', 'conversation-1', '--args-json', '{}']))
+        .toMatchObject({ kind: 'tool-call', request: { tool_name: name } });
+    }
+    expect(() => parseCliInvocation(['tools', 'web', 'enable'])).toThrow();
+    expect(() => parseCliInvocation(['tools', 'web', 'on', '--project', 'project-1'])).toThrow();
   });
 
   it('把 models 投影成无参数的窄查询合同', () => {

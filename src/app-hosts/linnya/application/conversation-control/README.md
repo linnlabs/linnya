@@ -1,6 +1,6 @@
 # Conversation Control Use Case
 
-本 feature 是 Linnya Conversation 外部控制动作的产品级 use case。它把 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / workspace_tools / command_approvals` 编排到现有模型目录、Flow、run registry、durable history、工具目录和执行审计 ports，供 CLI 等入口复用。
+本 feature 是 Linnya Conversation 外部控制动作的产品级 use case。它把 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / tools / command_approvals` 编排到现有模型目录、Flow、run registry、durable history、工具目录和执行审计 ports，供 CLI 等入口复用。
 
 它不拥有 HTTP、鉴权、命令行解析、数据库 SQL 或 Agent runtime。共享 wire 合同位于 `packages/schemas/src/conversation-control/`；本地传输位于 `adapters/conversation-control-bridge/`。
 
@@ -13,7 +13,7 @@
 | `ConversationControlExecutionProgressPort` | 读取 Graph 已持久化的当前节点与逻辑 run 累计预算；终态 checkpoint 清理后可从生命周期 telemetry 读取最近一次 execution 步数 |
 | `ConversationControlModelCatalogPort` | 查询安全模型投影，并按统一运行可用性规则校验显式 Chat/图片模型 |
 | `ConversationControlHistoryPort` | 会话列表、消息窗口、指定 run 最终回答、会话 Agent 选择 |
-| `ConversationControlWorkspaceToolCatalogPort` | 只读取五个获准 Workspace 工具的正式描述与参数 schema |
+| `ConversationControlToolCatalogPort` | 读取当前获准 CLI 工具的正式描述与参数 schema |
 | `CommandApprovalControlPort` | 从唯一Commands owner读取审批投影、按精确身份提交单次回复 |
 | `ExecutionAuditExportUseCase` | 关联 RunRegistry、EventStore、Command Audit 与 Telemetry 的安全只读执行摘要 |
 
@@ -26,7 +26,7 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 - `image_generation_model_id` 是单次请求覆盖项，只映射到现有 Flow request，不拥有或修改 Renderer 的全局图片模型偏好。
 - `send` 的 success receipt 必须包含 durable committed user message identity 和 Host 接纳的 `turn_id / run_id / execution_id`。回执不代表运行完成。
 - `send.research_scope` 是新版研究工程入口的显式问题/读者/模式/材料范围，仅与显式 `research_v1` 选择一起接纳。控制面将其投影为 `ConversationOptions.research_scope`，不生成 `host_tool_call`。研究 Agent 首次接纳后将其保存为 descriptor 请求的 `researchScope`，主模型与受控子任务读取同一范围。完整原消息继续走用户消息通道；范围与未绑定上下文由 Research 接纳边界校验，普通 Default 请求不受影响。
-- `send / respond / workspace_tools call` 共用历史项目解析：已有会话省略项目时继承持久化绑定，显式项目必须与绑定一致，不存在的会话拒绝。无项目会话可继续聊天/审批，但不能调用 Workspace 工具；CLI 不负责迁移会话项目。CLI 的 `send` 入口另行要求显式非空项目，因而不会创建或续写无项目会话；这不改变 Host 对其他客户端的继承合同。解析出的项目同时进入 Flow 的 project identity 与 project metadata。
+- `send / respond / tools call` 共用历史项目解析：已有会话省略项目时继承持久化绑定，显式项目必须与绑定一致，不存在的会话拒绝。无项目会话可继续聊天/审批，但不能调用 Workspace 工具；CLI 不负责迁移会话项目。CLI 的 `send` 入口另行要求显式非空项目，因而不会创建或续写无项目会话；这不改变 Host 对其他客户端的继承合同。解析出的项目同时进入 Flow 的 project identity 与 project metadata。
 - `respond` 只接纳当前 `awaiting_user` 的 exact `interaction_id`，继续同一个 `run_id`，并产生新的 `execution_id`；恢复时必须从 run 的 `agentSpecId` 还原原 Agent 路由，不能回退到 default。
 - `resume` 只接纳 exact foreground root 的 settled `paused` 快照，并要求 `expected_run_id / expected_execution_id / expected_updated_at` 全部匹配。它调用 Flow 唯一的 `continueRun` 主链，复用原 descriptor、checkpoint、`run_id` 和 `turn_id`，只轮换 `execution_id`；不创建 `user_input`、不消费 interaction，也不重新解析项目、Agent 或模型。
 - use case 的 fence 预检查只提供清楚错误；RunSupervisor 控制锁下的持久 transition 才是最终并发裁决。Graph 的 tool receipt/reconcile 仍是副作用恢复 owner，`tool_reconciliation_required` 不能被 CLI 或 bridge 绕过。
@@ -46,15 +46,16 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
   同时标注缺失和容量限制；不把历史观测冒认为当前 pause cause 或新的恢复许可。
   `workspace_documents` 另行报告成功保存中的文档诊断严重度计数与截断数；不把它混入
   tool failure，不输出诊断 code/message/target，也不从零 error 推断编译通过。
-- `workspace_tools` 是固定五工具的窄入口：`list_files / read_file / grep / write_file / edit_file`。`list / describe` 读取真实 Tool registry schema；`call` 必须绑定项目或已有 Conversation，并复用正式 Flow admission 与 ToolNode 执行。
+- `tools` 默认开放五个 Workspace 工具：`list_files / read_file / grep / write_file / edit_file`。`web_access` 临时开放或关闭 `web_search / web_read / tool_output_read`；状态归当前 use case 实例，Host 重启重置为关闭，不进入用户设置。`list / describe` 读取真实 Tool registry schema；`call` 必须绑定项目或已有 Conversation，并复用正式 Flow admission 与 ToolNode 执行。
 - 只给项目时创建前端可见的新 Conversation；只给 Conversation 时从历史 owner 解析项目；同时提供时必须一致。Workspace locator 本身不携带项目身份，禁止按当前前端页面或文件存在性猜测作用域。
-- Host 工具请求使用 `yield_after_batch`：完整工具批次结算后结束 run，不调用 LLM。工具 decision/output、权限、审计、pending revision 与 UI projection 仍走普通工具链，不能在本 feature 复制 Workspace 执行逻辑。
+- Host 工具请求使用 `yield_after_batch`：完整工具批次结算后结束 run，不调用 LLM。工具 decision/output、权限、审计、pending revision 与 UI projection 仍走普通工具链，不能在本 feature 复制工具执行逻辑。
+- Web 开关在提交 Flow 前检查；关闭后不接纳新 Web 调用，已接纳的 run 不被暗中取消。普通 Agent 不受此开关影响。CLI 拒绝 `deep_search=true`，保证此入口不隐式启动模型子运行；外部 Agent 自行编排普通搜索与阅读。`tool_output_read` 必须沿用原会话，以保留 blob 归属。
 
 ### 命令审批
 
 `command_approvals`的list要求明确conversation/run，返回该run及后代的真实pending；reply要求请求实际`agent_run_id`、request ID和明确choice。审批owner同步校验作用域和允许选项，并与Renderer/TTY竞争唯一接纳点。`accepted`只确认回复被接纳，授权持久化与进程终态须继续观察原运行；不创建新Flow、user message或execution。
 
-`status.run.command_approvals`为必填数组，来自同一owner并按root子树筛选；保留真实run生命周期，不能把等待命令审批伪装为已有HITL。无审批返回空数组，端点不可用明确报错；`processing`不是待回复。当前字段属于wire protocol 4，旧CLI必须升级，不用宽松解析吞掉新增字段。
+`status.run.command_approvals`为必填数组，来自同一owner并按root子树筛选；保留真实run生命周期，不能把等待命令审批伪装为已有HITL。无审批返回空数组，端点不可用明确报错；`processing`不是待回复。当前控制面使用 wire protocol 5，旧CLI必须升级，不用宽松解析吞掉新增字段。
 
 ## 并发与已知边界
 

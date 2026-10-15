@@ -164,30 +164,30 @@ export const CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES = [
   'edit_file',
 ] as const;
 
-export const ConversationControlWorkspaceToolNameSchema = z.enum(
-  CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES,
+export const ConversationControlToolNameSchema = z.enum(
+  [...CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES, 'web_search', 'web_read', 'tool_output_read'],
 );
 
-const WorkspaceToolsRequestBaseFields = {
+const ToolsRequestBaseFields = {
   ...CommandBaseFields,
-  command: z.literal('workspace_tools'),
+  command: z.literal('tools'),
 } as const;
 
-export const ConversationControlWorkspaceToolsListRequestSchema = z.object({
-  ...WorkspaceToolsRequestBaseFields,
+export const ConversationControlToolsListRequestSchema = z.object({
+  ...ToolsRequestBaseFields,
   action: z.literal('list'),
 }).strict();
 
-export const ConversationControlWorkspaceToolsDescribeRequestSchema = z.object({
-  ...WorkspaceToolsRequestBaseFields,
+export const ConversationControlToolsDescribeRequestSchema = z.object({
+  ...ToolsRequestBaseFields,
   action: z.literal('describe'),
-  tool_name: ConversationControlWorkspaceToolNameSchema,
+  tool_name: ConversationControlToolNameSchema,
 }).strict();
 
-export const ConversationControlWorkspaceToolsCallRequestSchema = z.object({
-  ...WorkspaceToolsRequestBaseFields,
+export const ConversationControlToolsCallRequestSchema = z.object({
+  ...ToolsRequestBaseFields,
   action: z.literal('call'),
-  tool_name: ConversationControlWorkspaceToolNameSchema,
+  tool_name: ConversationControlToolNameSchema,
   args: z.record(JsonValueSchema),
   conversation_id: OpaqueIdSchema.optional(),
   project_id: OpaqueIdSchema.optional(),
@@ -196,15 +196,23 @@ export const ConversationControlWorkspaceToolsCallRequestSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['conversation_id'],
-      message: 'workspace tool call requires conversation_id or project_id',
+      message: 'tool call requires conversation_id or project_id',
     });
   }
 });
 
-export const ConversationControlWorkspaceToolsRequestSchema = z.union([
-  ConversationControlWorkspaceToolsListRequestSchema,
-  ConversationControlWorkspaceToolsDescribeRequestSchema,
-  ConversationControlWorkspaceToolsCallRequestSchema,
+/** 当前 Host 生命周期内的临时开放；省略 enabled 只查询，不修改状态。 */
+export const ConversationControlWebToolAccessRequestSchema = z.object({
+  ...ToolsRequestBaseFields,
+  action: z.literal('web_access'),
+  enabled: z.boolean().optional(),
+}).strict();
+
+export const ConversationControlToolsRequestSchema = z.union([
+  ConversationControlToolsListRequestSchema,
+  ConversationControlToolsDescribeRequestSchema,
+  ConversationControlToolsCallRequestSchema,
+  ConversationControlWebToolAccessRequestSchema,
 ]);
 
 // messages 自身按 window 判别，因此顶层使用 union；每个分支仍是 strict schema。
@@ -220,7 +228,7 @@ export const ConversationControlCommandRequestSchema = z.union([
   ConversationControlStopRequestSchema,
   ConversationControlResultRequestSchema,
   ConversationControlAuditRequestSchema,
-  ConversationControlWorkspaceToolsRequestSchema,
+  ConversationControlToolsRequestSchema,
   ConversationControlCommandApprovalsRequestSchema,
 ]);
 
@@ -254,11 +262,11 @@ export type ConversationControlResultRequest = z.infer<
 export type ConversationControlAuditRequest = z.infer<
   typeof ConversationControlAuditRequestSchema
 >;
-export type ConversationControlWorkspaceToolName = z.infer<
-  typeof ConversationControlWorkspaceToolNameSchema
+export type ConversationControlToolName = z.infer<
+  typeof ConversationControlToolNameSchema
 >;
-export type ConversationControlWorkspaceToolsRequest = z.infer<
-  typeof ConversationControlWorkspaceToolsRequestSchema
+export type ConversationControlToolsRequest = z.infer<
+  typeof ConversationControlToolsRequestSchema
 >;
 export type ConversationControlCommandRequest = z.infer<
   typeof ConversationControlCommandRequestSchema

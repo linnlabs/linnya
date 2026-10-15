@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const CONVERSATION_CONTROL_SCHEMA_VERSION = 1 as const;
-export const CONVERSATION_CONTROL_PROTOCOL_VERSION = 4 as const;
+export const CONVERSATION_CONTROL_PROTOCOL_VERSION = 5 as const;
 export const CONVERSATION_CONTROL_BRIDGE_PATH = '/api/v1/conversation-control' as const;
 export const CONVERSATION_CONTROL_TOKEN_HEADER = 'x-linnya-cli-token' as const;
 export const CONVERSATION_CONTROL_CONNECTION_FILE_ENV = 'LINNYA_CLI_CONNECTION_FILE' as const;
@@ -19,7 +19,7 @@ export const ConversationControlCapabilitySchema = z.enum([
   'stop',
   'result',
   'audit',
-  'workspace_tools',
+  'tools',
   'command_approvals',
 ]);
 

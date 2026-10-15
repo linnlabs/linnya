@@ -183,7 +183,7 @@ export function createLinnyaConversationControlUseCase(
           projectId ?? null,
         ),
     },
-    workspaceTools: {
+    tools: {
       describe(toolNames) {
         const schemas = owners.tools.getToolSchemas({
           toolNames,
@@ -197,11 +197,13 @@ export function createLinnyaConversationControlUseCase(
         return toolNames.map(name => {
           const schema = schemas.find(candidate => candidate.function.name === name);
           if (!schema) {
-            throw new Error(`Workspace tool ${name} is not registered`);
+            throw new Error(`CLI tool ${name} is not registered`);
           }
           return {
             name,
-            description: schema.function.description,
+            description: name === 'web_search'
+              ? `${schema.function.description}\nCLI access: only ordinary search is available. Omit deep_search or set it to false.`
+              : schema.function.description,
             parameters: JsonValueSchema.parse(schema.function.parameters),
           };
         });

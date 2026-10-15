@@ -7,7 +7,7 @@ import { ConversationHistoryListItemSchema } from '../conversation/history';
 import { ConversationUiMessageSchema } from '../conversation/ui-message';
 import { ModelPickerReasoningSchema } from '../model-picker';
 import { CONVERSATION_CONTROL_SCHEMA_VERSION } from './protocol';
-import { ConversationControlWorkspaceToolNameSchema } from './commands';
+import { ConversationControlToolNameSchema } from './commands';
 import { ConversationControlAuditWorkspaceDocumentsSchema } from './workspaceDocumentAudit';
 
 const SuccessBaseFields = {
@@ -265,41 +265,46 @@ export const ConversationControlResultResponseSchema = z.discriminatedUnion('res
     .strict(),
 ]);
 
-export const ConversationControlWorkspaceToolSummarySchema = z
+export const ConversationControlToolSummarySchema = z
   .object({
-    name: ConversationControlWorkspaceToolNameSchema,
+    name: ConversationControlToolNameSchema,
     description: z.string().trim().min(1),
   })
   .strict();
 
-export const ConversationControlWorkspaceToolDescriptorSchema =
-  ConversationControlWorkspaceToolSummarySchema.extend({ parameters: JsonValueSchema }).strict();
+export const ConversationControlToolDescriptorSchema =
+  ConversationControlToolSummarySchema.extend({ parameters: JsonValueSchema }).strict();
 
-const WorkspaceToolsResponseBaseFields = {
+const ToolsResponseBaseFields = {
   ...SuccessBaseFields,
-  command: z.literal('workspace_tools'),
+  command: z.literal('tools'),
 } as const;
 
-export const ConversationControlWorkspaceToolsResponseSchema = z.discriminatedUnion('action', [
+export const ConversationControlToolsResponseSchema = z.discriminatedUnion('action', [
+  z.object({
+    ...ToolsResponseBaseFields,
+    action: z.literal('web_access'),
+    enabled: z.boolean(),
+  }).strict(),
   z
     .object({
-      ...WorkspaceToolsResponseBaseFields,
+      ...ToolsResponseBaseFields,
       action: z.literal('list'),
-      tools: z.array(ConversationControlWorkspaceToolSummarySchema),
+      tools: z.array(ConversationControlToolSummarySchema),
     })
     .strict(),
   z
     .object({
-      ...WorkspaceToolsResponseBaseFields,
+      ...ToolsResponseBaseFields,
       action: z.literal('describe'),
-      tool: ConversationControlWorkspaceToolDescriptorSchema,
+      tool: ConversationControlToolDescriptorSchema,
     })
     .strict(),
   z
     .object({
-      ...WorkspaceToolsResponseBaseFields,
+      ...ToolsResponseBaseFields,
       action: z.literal('call'),
-      tool_name: ConversationControlWorkspaceToolNameSchema,
+      tool_name: ConversationControlToolNameSchema,
       receipt: ConversationControlAcceptedReceiptSchema,
     })
     .strict(),
@@ -642,7 +647,7 @@ export const ConversationControlErrorResponseSchema = z
         'stop',
         'result',
         'audit',
-        'workspace_tools',
+        'tools',
         'command_approvals',
       ])
       .optional(),
@@ -668,7 +673,7 @@ export const ConversationControlCommandResponseSchema = z.union([
   ConversationControlStopResponseSchema,
   ConversationControlResultResponseSchema,
   ConversationControlAuditResponseSchema,
-  ConversationControlWorkspaceToolsResponseSchema,
+  ConversationControlToolsResponseSchema,
   ConversationControlCommandApprovalsResponseSchema,
   ConversationControlErrorResponseSchema,
 ]);
@@ -701,14 +706,14 @@ export type ConversationControlResultResponse = z.infer<
 export type ConversationControlAuditResponse = z.infer<
   typeof ConversationControlAuditResponseSchema
 >;
-export type ConversationControlWorkspaceToolDescriptor = z.infer<
-  typeof ConversationControlWorkspaceToolDescriptorSchema
+export type ConversationControlToolDescriptor = z.infer<
+  typeof ConversationControlToolDescriptorSchema
 >;
-export type ConversationControlWorkspaceToolSummary = z.infer<
-  typeof ConversationControlWorkspaceToolSummarySchema
+export type ConversationControlToolSummary = z.infer<
+  typeof ConversationControlToolSummarySchema
 >;
-export type ConversationControlWorkspaceToolsResponse = z.infer<
-  typeof ConversationControlWorkspaceToolsResponseSchema
+export type ConversationControlToolsResponse = z.infer<
+  typeof ConversationControlToolsResponseSchema
 >;
 export type ConversationControlErrorResponse = z.infer<
   typeof ConversationControlErrorResponseSchema

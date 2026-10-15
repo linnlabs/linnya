@@ -101,13 +101,13 @@ describe('linnya CLI real process -> scripted bridge', () => {
 
   it('真实子进程查询严格受限的 Workspace 工具目录', async () => {
     const bridge = await createScriptedBridge(request => {
-      if (request.command !== 'workspace_tools' || request.action !== 'list') {
-        throw new Error('expected workspace_tools list command');
+      if (request.command !== 'tools' || request.action !== 'list') {
+        throw new Error('expected tools list command');
       }
       return {
         schema_version: 1,
         ok: true,
-        command: 'workspace_tools',
+        command: 'tools',
         action: 'list',
         tools: [{
           name: 'read_file',
@@ -120,13 +120,13 @@ describe('linnya CLI real process -> scripted bridge', () => {
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe('');
     expect(JSON.parse(result.stdout)).toMatchObject({
-      command: 'workspace_tools',
+      command: 'tools',
       action: 'list',
       tools: [{ name: 'read_file' }],
     });
     expect(bridge.receivedCommands).toEqual([{
       schema_version: 1,
-      command: 'workspace_tools',
+      command: 'tools',
       action: 'list',
     }]);
   });

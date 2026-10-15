@@ -13,12 +13,12 @@ POST /api/v1/conversation-control/commands
 
 `handshake` 返回协议版本、App 实例 ID、实际能力和请求/watch 上限；`commands` 使用共享 strict schema 接纳与返回命令。非法 JSON、超限 body、合同错误和 use-case 错误都投影为稳定 JSON，不落到 Express HTML 错误页。
 
-当前握手声明 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / workspace_tools / command_approvals`。
+当前握手声明 `send / models / projects / list / messages / status / resume / respond / stop / result / audit / tools / command_approvals`。
 
 能力公告允许未来新增合法标识符，消费者忽略不认识的能力；命令 union 和响应 schema 仍然封闭且严格。改变既有协议语义必须升级 protocol，不能借能力扩展绕过合同校验。
 
-当前 wire protocol 为 4：audit 增加必填 `llm_responses` 安全观测与覆盖说明。
-protocol 3 的 status/watch `command_approvals` 和精确查询/回复合同保持不变。
+当前 wire protocol 为 5：原 `workspace_tools` 命令/能力统一为 `tools`，增加临时 Web 访问动作和工具 allowlist。
+已有 audit 的 `llm_responses`、status/watch 的 `command_approvals` 与精确查询/回复合同保持不变。
 连接描述与 handshake 一致校验版本，旧 CLI 须明确升级；URL 和连接文件名中的 v1 仍是稳定发现地址。
 审批使用同一 Commands owner，API Server 只在鉴权路由就绪后启用控制端点，并在连接发布失败或停止时撤销。
 关闭端点不自动批准或拒绝 pending，run 取消与 App owner 退出负责业务收口。
@@ -43,7 +43,7 @@ descriptor owner 在 API Server 已绑定真实端口且 Conversation 路由装�
 
 ## 依赖装配
 
-`createLinnyaConversationControlUseCase.ts` 是 app-level composition root：把 Model Catalog、Provider Account、Flow、run registry、durable Conversation history、Tool runtime 与 Telemetry 安全查询映射到 use case 的窄 ports。Tool runtime 只用于读取固定五个 Workspace 工具的真实 schema；CLI 不能借此访问其他已注册工具。模型查询只投影安全选择事实，并复用正式模型运行可用性判断；业务条件、状态选择、审计聚合和结果语义必须留在 application feature 的 functions，HTTP router 只能完成 parse、调用与错误投影。
+`createLinnyaConversationControlUseCase.ts` 是 app-level composition root：把 Model Catalog、Provider Account、Flow、run registry、durable Conversation history、Tool runtime 与 Telemetry 安全查询映射到 use case 的窄 ports。Tool runtime 只用于读取 CLI allowlist 中工具的真实 schema；默认五个 Workspace 工具，临时开关再开放 Web 搜索、读取和长输出续读。开关与接纳规则由 application feature 持有；bridge 不修改 Web 配置或工具实现，也不开放任意注册工具。模型查询只投影安全选择事实，并复用正式模型运行可用性判断；业务条件、状态选择、审计聚合和结果语义必须留在 application feature 的 functions，HTTP router 只能完成 parse、调用与错误投影。
 
 ## 测试
 

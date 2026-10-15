@@ -28,7 +28,7 @@ function createIo() {
 function createClient(execute: ConversationControlClient['execute']): ConversationControlClient {
   return {
     descriptor: {
-      protocol_version: 4,
+      protocol_version: 5,
       app_instance_id: 'app-1',
       pid: 42,
       host: '127.0.0.1',
@@ -39,7 +39,7 @@ function createClient(execute: ConversationControlClient['execute']): Conversati
     },
     handshake: {
       schema_version: 1,
-      protocol_version: 4,
+      protocol_version: 5,
       app_instance_id: 'app-1',
       app_version: '0.0.38',
       capabilities: [
@@ -53,7 +53,7 @@ function createClient(execute: ConversationControlClient['execute']): Conversati
         'respond',
         'stop',
         'result',
-        'workspace_tools',
+        'tools',
       ],
       limits: {
         max_request_bytes: 1024 * 1024,
@@ -113,12 +113,12 @@ describe('runCli', () => {
       );
       let statusCalls = 0;
       const execute: ConversationControlClient['execute'] = async request => {
-        if (request.command === 'workspace_tools') {
+        if (request.command === 'tools') {
           expect(request).toMatchObject({ args: { content: '大段源码'.repeat(10000) } });
           return {
             schema_version: 1,
             ok: true,
-            command: 'workspace_tools',
+            command: 'tools',
             action: 'call',
             tool_name: 'read_file',
             receipt: {

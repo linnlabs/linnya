@@ -42,7 +42,7 @@ function sendJson(response: ServerResponse, status: number, body: unknown): void
 
 export async function createScriptedBridge(
   execute: (request: ConversationControlCommandRequest, response: ServerResponse) => unknown,
-  capabilities: readonly unknown[] = ['send', 'models', 'projects', 'list', 'messages', 'status', 'resume', 'respond', 'stop', 'result', 'audit', 'workspace_tools', 'command_approvals', 'future_additive_capability'],
+  capabilities: readonly unknown[] = ['send', 'models', 'projects', 'list', 'messages', 'status', 'resume', 'respond', 'stop', 'result', 'audit', 'tools', 'command_approvals', 'future_additive_capability'],
 ): Promise<{
   readonly connectionFile: string;
   readonly receivedCommands: ConversationControlCommandRequest[];
@@ -59,7 +59,7 @@ export async function createScriptedBridge(
         await readJsonRequest(request);
         sendJson(response, 200, {
           schema_version: 1,
-          protocol_version: 4,
+          protocol_version: 5,
           app_instance_id: 'app-process-test',
           app_version: '0.0.38',
           capabilities,
@@ -99,7 +99,7 @@ export async function createScriptedBridge(
   temporaryRoots.push(temporaryRoot);
   const connectionFile = path.join(temporaryRoot, 'connection.json');
   const descriptor = ConversationControlConnectionDescriptorSchema.parse({
-    protocol_version: 4,
+    protocol_version: 5,
     app_instance_id: 'app-process-test',
     pid: process.pid,
     host: '127.0.0.1',

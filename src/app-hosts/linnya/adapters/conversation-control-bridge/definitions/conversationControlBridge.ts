@@ -22,7 +22,7 @@ export const LINNYA_CONVERSATION_CONTROL_CAPABILITIES = [
   'stop',
   'result',
   'audit',
-  'workspace_tools',
+  'tools',
   'command_approvals',
 ] satisfies readonly ConversationControlCapability[];
 

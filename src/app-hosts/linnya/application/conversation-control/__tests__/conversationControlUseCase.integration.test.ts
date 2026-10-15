@@ -456,7 +456,7 @@ function fixture(
         return true;
       },
     },
-    workspaceTools: {
+    tools: {
       describe(toolNames) {
         return toolNames.map(name => ({
           name,
@@ -560,6 +560,60 @@ function fixture(
 }
 
 describe('conversation-control use case', () => {
+  it('Web 默认关闭，开启后走原 ToolNode；关闭撤回调用权限且不影响 Workspace', async () => {
+    const test = fixture();
+    const base = { schema_version: 1, command: 'tools' } as const;
+    const access = { ...base, action: 'web_access' } as const;
+    const call = { ...base, action: 'call', conversation_id: 'conversation-1' } as const;
+    await expect(test.useCase.tools(access)).resolves.toMatchObject({ enabled: false });
+    for (const name of ['web_search', 'web_read', 'tool_output_read'] as const) {
+      await expect(test.useCase.tools({ ...base, action: 'describe', tool_name: name }))
+        .rejects.toMatchObject({ code: 'capability_unavailable' });
+      await expect(test.useCase.tools({ ...call, tool_name: name, args: {} }))
+        .rejects.toMatchObject({ code: 'capability_unavailable' });
+    }
+    expect(test.startRequests).toHaveLength(0);
+    await expect(test.useCase.tools({ ...access, enabled: true })).resolves.toMatchObject({ enabled: true });
+    const list = await test.useCase.tools({ ...base, action: 'list' });
+    expect(list).toMatchObject({ tools: expect.arrayContaining([
+      { name: 'web_search', description: 'web_search description' },
+      { name: 'web_read', description: 'web_read description' },
+      { name: 'tool_output_read', description: 'tool_output_read description' },
+    ]) });
+    const calls = [
+      { tool_name: 'web_search', args: { query: 'primary sources', deep_search: false } },
+      { tool_name: 'web_read', args: { url: 'https://example.org' } },
+      { tool_name: 'tool_output_read', args: { blob_id: 'tool_output://original', offset: 0 } },
+    ] as const;
+    for (const entry of calls) {
+      await test.useCase.tools({ ...call, ...entry });
+      test.setRuns([run('completed')]);
+    }
+    expect(test.startRequests).toHaveLength(3);
+    calls.forEach((entry, index) => expect(test.startRequests[index]).toMatchObject({
+      conversation_id: 'conversation-1', project_id: 'project-1',
+      options: { host_tool_call: { ...entry, completion_mode: 'yield_after_batch' } },
+    }));
+    await expect(test.useCase.tools({ ...call, tool_name: 'web_search', args: { query: 'x', deep_search: true } }))
+      .rejects.toMatchObject({ code: 'invalid_request' });
+    await expect(test.useCase.tools({ ...base, action: 'call', tool_name: 'tool_output_read', project_id: 'project-1', args: {} }))
+      .rejects.toMatchObject({ code: 'invalid_request' });
+    await test.useCase.tools({ ...access, enabled: false });
+    await expect(test.useCase.tools({ ...call, tool_name: 'web_read', args: {} }))
+      .rejects.toMatchObject({ code: 'capability_unavailable' });
+    expect(test.startRequests).toHaveLength(3);
+    await test.useCase.tools({ ...call, tool_name: 'read_file', args: { locator: 'workspace:/notes.md' } });
+    expect(test.startRequests).toHaveLength(4);
+    test.setRuns([run('completed')]);
+    await test.useCase.tools({ ...access, enabled: true });
+    await expect(fixture().useCase.tools(access)).resolves.toMatchObject({ enabled: false });
+    // 项目归属查询尚未完成时关闭，不能用调用开始时的旧开关值接纳。
+    const pending = test.useCase.tools({ ...call, tool_name: 'web_read', args: { url: 'https://example.org' } });
+    await test.useCase.tools({ ...access, enabled: false });
+    await expect(pending).rejects.toMatchObject({ code: 'capability_unavailable' });
+    expect(test.startRequests).toHaveLength(4);
+  });
+
   it('projects 通过 Workspace 端口返回可用于工具调用的 ID', async () => {
     expect(await fixture().useCase.execute({ schema_version: 1, command: 'projects' })).toEqual({
       schema_version: 1,
@@ -570,15 +624,15 @@ describe('conversation-control use case', () => {
   });
 
   it('只列出五个正式 Workspace 工具，并复用其真实参数合同', async () => {
-    const response = await fixture().useCase.workspaceTools({
+    const response = await fixture().useCase.tools({
       schema_version: 1,
-      command: 'workspace_tools',
+      command: 'tools',
       action: 'list',
     });
     expect(response).toEqual({
       schema_version: 1,
       ok: true,
-      command: 'workspace_tools',
+      command: 'tools',
       action: 'list',
       tools: [
         { name: 'list_files', description: 'list_files description' },
@@ -592,9 +646,9 @@ describe('conversation-control use case', () => {
 
   it('按项目创建可见工具会话，并要求 ToolNode 在批次后直接结算', async () => {
     const test = fixture();
-    const response = await test.useCase.workspaceTools({
+    const response = await test.useCase.tools({
       schema_version: 1,
-      command: 'workspace_tools',
+      command: 'tools',
       action: 'call',
       tool_name: 'write_file',
       args: { locator: 'workspace:/notes.md', content: '# Notes' },
@@ -608,7 +662,7 @@ describe('conversation-control use case', () => {
     expect(test.startRequests[0]).toMatchObject({
       conversation_id: 'conversation-1',
       project_id: 'project-1',
-      new_events: [{ content: 'CLI 调用 Workspace 工具：write_file' }],
+      new_events: [{ content: 'CLI 调用工具：write_file' }],
       options: {
         project_metadata: { id: 'project-1' },
         host_tool_call: {
@@ -621,9 +675,9 @@ describe('conversation-control use case', () => {
 
   it('已有会话继承项目，并拒绝项目不一致或未绑定项目的会话', async () => {
     const existing = fixture();
-    await existing.useCase.workspaceTools({
+    await existing.useCase.tools({
       schema_version: 1,
-      command: 'workspace_tools',
+      command: 'tools',
       action: 'call',
       tool_name: 'read_file',
       args: { locator: 'workspace:/notes.md' },
@@ -633,9 +687,9 @@ describe('conversation-control use case', () => {
 
     const mismatch = fixture();
     await expect(
-      mismatch.useCase.workspaceTools({
+      mismatch.useCase.tools({
         schema_version: 1,
-        command: 'workspace_tools',
+        command: 'tools',
         action: 'call',
         tool_name: 'read_file',
         args: { locator: 'workspace:/notes.md' },
@@ -648,9 +702,9 @@ describe('conversation-control use case', () => {
     const projectless = fixture();
     projectless.setConversationProjectId(null);
     await expect(
-      projectless.useCase.workspaceTools({
+      projectless.useCase.tools({
         schema_version: 1,
-        command: 'workspace_tools',
+        command: 'tools',
         action: 'call',
         tool_name: 'read_file',
         args: { locator: 'workspace:/notes.md' },

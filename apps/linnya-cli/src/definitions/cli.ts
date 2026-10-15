@@ -6,7 +6,7 @@ import type {
   ConversationControlHandshakeResponse,
   ConversationControlStatusRequest,
   ConversationControlStopRequest,
-  ConversationControlWorkspaceToolsRequest,
+  ConversationControlToolsRequest,
 } from '@app/schemas';
 import packageManifest from '../../package.json';
 
@@ -97,7 +97,7 @@ export type LinnyaCliInvocation =
         | ConversationControlStatusRequest
         | ConversationControlStopRequest
         | Extract<ConversationControlCommandRequest, { command: 'resume' }>
-        | Extract<ConversationControlWorkspaceToolsRequest, { action: 'call' }>
+        | Extract<ConversationControlToolsRequest, { action: 'call' }>
       >;
       readonly pretty: boolean;
     }
@@ -110,10 +110,10 @@ export type LinnyaCliInvocation =
       readonly pretty: boolean;
     }
   | {
-      readonly kind: 'workspace-tool-call';
+      readonly kind: 'tool-call';
       readonly argsFile?: string;
       readonly omitArgs: boolean;
-      readonly request: Extract<ConversationControlWorkspaceToolsRequest, { action: 'call' }>;
+      readonly request: Extract<ConversationControlToolsRequest, { action: 'call' }>;
       readonly intervalMs: number;
       readonly timeoutMs: number;
       readonly pretty: boolean;

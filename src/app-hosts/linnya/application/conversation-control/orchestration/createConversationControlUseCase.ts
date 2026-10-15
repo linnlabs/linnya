@@ -1,5 +1,4 @@
 import {
-  CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES,
   CONVERSATION_CONTROL_SCHEMA_VERSION,
   type ConversationControlCommandRequest,
   type ConversationControlListRequest,
@@ -11,7 +10,7 @@ import {
   type ConversationControlSendRequest,
   type ConversationControlStatusRequest,
   type ConversationControlStopRequest,
-  type ConversationControlWorkspaceToolsRequest,
+  type ConversationControlToolsRequest,
   type ConversationNextRequest,
 } from '@app/schemas';
 import { ConversationControlError } from '../definitions/conversationControlError';
@@ -34,6 +33,8 @@ import { projectExecutionAuditResponse } from '../functions/projectExecutionAudi
 import { projectActiveExecutionProgress } from '../functions/projectActiveExecutionProgress';
 import { selectRunResumeTarget } from '../functions/selectRunResumeTarget';
 import { controlCommandApprovals, readCommandApprovals } from './controlCommandApprovals';
+import { createConversationControlToolAccess } from '../store/conversationControlToolAccess';
+import { assertCliToolAvailable, assertCliToolCallAllowed, selectCliTools } from '../functions/cliToolAccess';
 
 function firstIncomingEventId(acceptance: ConversationControlFlowAcceptance): string {
   const eventId = acceptance.incomingEventIds[0];
@@ -117,8 +118,8 @@ async function resolveConversationProjectId(
   return persistedProjectId ?? undefined;
 }
 
-function buildWorkspaceToolRequest(input: {
-  readonly request: Extract<ConversationControlWorkspaceToolsRequest, { action: 'call' }>;
+function buildToolRequest(input: {
+  readonly request: Extract<ConversationControlToolsRequest, { action: 'call' }>;
   readonly conversationId: string;
   readonly projectId: string;
   readonly timestamp: number;
@@ -130,7 +131,7 @@ function buildWorkspaceToolRequest(input: {
       {
         type: 'user_input',
         timestamp: input.timestamp,
-        content: `CLI 调用 Workspace 工具：${input.request.tool_name}`,
+        content: `CLI 调用工具：${input.request.tool_name}`,
         source: 'user',
       },
     ],
@@ -248,6 +249,7 @@ async function projectStatusResponse(
 export function createConversationControlUseCase(
   ports: ConversationControlUseCasePorts
 ): ConversationControlUseCase {
+  const toolAccess = createConversationControlToolAccess();
   const useCase: ConversationControlUseCase = {
     async execute(request: ConversationControlCommandRequest) {
       switch (request.command) {
@@ -275,8 +277,8 @@ export function createConversationControlUseCase(
           return useCase.result(request);
         case 'audit':
           return useCase.audit(request);
-        case 'workspace_tools':
-          return useCase.workspaceTools(request);
+        case 'tools':
+          return useCase.tools(request);
       }
     },
 
@@ -552,29 +554,40 @@ export function createConversationControlUseCase(
       });
     },
 
-    async workspaceTools(request) {
-      if (request.action === 'list') {
-        const tools = ports.workspaceTools.describe(CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES);
+    async tools(request) {
+      if (request.action === 'web_access') {
+        if (request.enabled !== undefined) toolAccess.setWebEnabled(request.enabled);
         return {
           schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
           ok: true,
-          command: 'workspace_tools',
+          command: 'tools',
+          action: 'web_access',
+          enabled: toolAccess.isWebEnabled(),
+        };
+      }
+      if (request.action === 'list') {
+        const tools = ports.tools.describe(selectCliTools(toolAccess.isWebEnabled()));
+        return {
+          schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+          ok: true,
+          command: 'tools',
           action: 'list',
           tools: tools.map(({ name, description }) => ({ name, description })),
         };
       }
       if (request.action === 'describe') {
-        const tool = ports.workspaceTools.describe([request.tool_name])[0];
+        assertCliToolAvailable(request.tool_name, toolAccess.isWebEnabled());
+        const tool = ports.tools.describe([request.tool_name])[0];
         if (!tool) {
           throw new ConversationControlError(
             'internal_error',
-            `Workspace tool ${request.tool_name} is not registered`
+            `CLI tool ${request.tool_name} is not registered`
           );
         }
         return {
           schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
           ok: true,
-          command: 'workspace_tools',
+          command: 'tools',
           action: 'describe',
           tool,
         };
@@ -584,7 +597,7 @@ export function createConversationControlUseCase(
       if (!projectId) {
         throw new ConversationControlError(
           'invalid_request',
-          'Workspace tool call requires a project or a conversation bound to a Workspace project'
+          'CLI tool call requires a project or a conversation bound to a Workspace project'
         );
       }
       const conversationId = request.conversation_id ?? ports.createConversationId();
@@ -596,8 +609,10 @@ export function createConversationControlUseCase(
           true
         );
       }
+      // 在最后一个异步查询后读取开关，使关闭操作也能阻止尚未提交的调用。
+      assertCliToolCallAllowed(request, toolAccess.isWebEnabled());
       const acceptance = await ports.flow.start(
-        buildWorkspaceToolRequest({
+        buildToolRequest({
           request,
           conversationId,
           projectId,
@@ -607,7 +622,7 @@ export function createConversationControlUseCase(
       return {
         schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
         ok: true,
-        command: 'workspace_tools',
+        command: 'tools',
         action: 'call',
         tool_name: request.tool_name,
         receipt: {

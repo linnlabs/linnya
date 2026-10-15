@@ -25,10 +25,10 @@ import type {
   ConversationControlStatusResponse,
   ConversationControlStopRequest,
   ConversationControlStopResponse,
-  ConversationControlWorkspaceToolDescriptor,
-  ConversationControlWorkspaceToolName,
-  ConversationControlWorkspaceToolsRequest,
-  ConversationControlWorkspaceToolsResponse,
+  ConversationControlToolDescriptor,
+  ConversationControlToolName,
+  ConversationControlToolsRequest,
+  ConversationControlToolsResponse,
   ConversationHistoryListItem,
   ConversationInteractionResponseRequest,
   ConversationNextRequest,
@@ -195,10 +195,10 @@ export interface ConversationControlHistoryPort {
   ): Promise<boolean>;
 }
 
-export interface ConversationControlWorkspaceToolCatalogPort {
+export interface ConversationControlToolCatalogPort {
   describe(
-    toolNames: readonly ConversationControlWorkspaceToolName[]
-  ): readonly ConversationControlWorkspaceToolDescriptor[];
+    toolNames: readonly ConversationControlToolName[]
+  ): readonly ConversationControlToolDescriptor[];
 }
 
 export interface ConversationControlUseCasePorts {
@@ -208,7 +208,7 @@ export interface ConversationControlUseCasePorts {
   readonly models: ConversationControlModelCatalogPort;
   readonly projects: { list(): ConversationControlProjectsResponse['projects'] };
   readonly history: ConversationControlHistoryPort;
-  readonly workspaceTools: ConversationControlWorkspaceToolCatalogPort;
+  readonly tools: ConversationControlToolCatalogPort;
   readonly audit: ExecutionAuditExportUseCase;
   readonly commandApprovals: CommandApprovalControlPort;
   /** 生产 Host 关闭开发 Agent Run Audit 时，控制面必须显式返回 capability_unavailable。 */
@@ -233,7 +233,7 @@ export interface ConversationControlUseCase {
     | ConversationControlStopResponse
     | ConversationControlResultResponse
     | ConversationControlAuditResponse
-    | ConversationControlWorkspaceToolsResponse
+    | ConversationControlToolsResponse
   >;
   commandApprovals(request: ConversationControlCommandApprovalsRequest): Promise<ConversationControlCommandApprovalsResponse>;
   send(request: ConversationControlSendRequest): Promise<ConversationControlSendResponse>;
@@ -251,7 +251,7 @@ export interface ConversationControlUseCase {
   stop(request: ConversationControlStopRequest): Promise<ConversationControlStopResponse>;
   result(request: ConversationControlResultRequest): Promise<ConversationControlResultResponse>;
   audit(request: ConversationControlAuditRequest): Promise<ConversationControlAuditResponse>;
-  workspaceTools(
-    request: ConversationControlWorkspaceToolsRequest
-  ): Promise<ConversationControlWorkspaceToolsResponse>;
+  tools(
+    request: ConversationControlToolsRequest
+  ): Promise<ConversationControlToolsResponse>;
 }

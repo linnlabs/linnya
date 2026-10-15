@@ -12,9 +12,10 @@ import {
   ConversationControlSendRequestSchema,
   ConversationControlStatusRequestSchema,
   ConversationControlStopRequestSchema,
-  ConversationControlWorkspaceToolsCallRequestSchema,
-  ConversationControlWorkspaceToolsDescribeRequestSchema,
-  ConversationControlWorkspaceToolsListRequestSchema,
+  ConversationControlToolsCallRequestSchema,
+  ConversationControlToolsDescribeRequestSchema,
+  ConversationControlToolsListRequestSchema,
+  ConversationControlWebToolAccessRequestSchema,
 } from '@app/schemas';
 import { LinnyaCliError, type LinnyaCliInvocation } from '../definitions/cli';
 
@@ -363,12 +364,26 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
     }
     case 'tools': {
       const action = tokens.positionals[0];
+      if (action === 'web') {
+        assertAllowedOptions(tokens, []);
+        const mode = tokens.positionals[1];
+        if (tokens.positionals.length !== 2 || !['on', 'off', 'status'].includes(mode ?? '')) {
+          usageError('tools web requires exactly one of: on, off, status');
+        }
+        const request = ConversationControlWebToolAccessRequestSchema.parse({
+          schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+          command: 'tools',
+          action: 'web_access',
+          ...(mode === 'status' ? {} : { enabled: mode === 'on' }),
+        });
+        return { kind: 'command', request, pretty };
+      }
       if (action === 'list') {
         assertAllowedOptions(tokens, []);
         if (tokens.positionals.length !== 1) usageError('tools list does not accept arguments');
-        const request = ConversationControlWorkspaceToolsListRequestSchema.parse({
+        const request = ConversationControlToolsListRequestSchema.parse({
           schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
-          command: 'workspace_tools',
+          command: 'tools',
           action: 'list',
         });
         return { kind: 'command', request, pretty };
@@ -378,9 +393,9 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
         if (tokens.positionals.length !== 2) {
           usageError('tools describe requires exactly one tool name');
         }
-        const request = ConversationControlWorkspaceToolsDescribeRequestSchema.parse({
+        const request = ConversationControlToolsDescribeRequestSchema.parse({
           schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
-          command: 'workspace_tools',
+          command: 'tools',
           action: 'describe',
           tool_name: tokens.positionals[1],
         });
@@ -396,9 +411,9 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
         if (readString(tokens, 'args-file') && readString(tokens, 'args-json')) {
           usageError('--args-file and --args-json are mutually exclusive');
         }
-        const request = ConversationControlWorkspaceToolsCallRequestSchema.parse({
+        const request = ConversationControlToolsCallRequestSchema.parse({
           schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
-          command: 'workspace_tools',
+          command: 'tools',
           action: 'call',
           tool_name: tokens.positionals[1],
           args: readString(tokens, 'args-json') === undefined
@@ -408,7 +423,7 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
           project_id: readString(tokens, 'project'),
         });
         return {
-          kind: 'workspace-tool-call',
+          kind: 'tool-call',
           argsFile: readString(tokens, 'args-file'),
           omitArgs: tokens.options.has('omit-args'),
           request,
@@ -417,7 +432,7 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
           pretty,
         };
       }
-      usageError('tools requires one of: list, describe, call');
+      usageError('tools requires one of: list, describe, call, web');
     }
     default:
       usageError(`Unknown command: ${command}`);
@@ -442,7 +457,7 @@ export function parseCliInvocation(argv: readonly string[]): LinnyaCliInvocation
     invocation.kind === 'command'
     || invocation.kind === 'status'
     || invocation.kind === 'stop'
-    || invocation.kind === 'workspace-tool-call'
+    || invocation.kind === 'tool-call'
   ) {
     ConversationControlCommandRequestSchema.parse(invocation.request);
   }

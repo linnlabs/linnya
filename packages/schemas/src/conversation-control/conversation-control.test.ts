@@ -7,7 +7,7 @@ import {
   ConversationControlAuditResponseSchema,
   ConversationControlProgressFrameSchema,
   ConversationControlRunStatusSnapshotSchema,
-  ConversationControlWorkspaceToolsResponseSchema,
+  ConversationControlToolsResponseSchema,
 } from './index';
 
 describe('conversation-control wire contract', () => {
@@ -88,11 +88,11 @@ describe('conversation-control wire contract', () => {
     ).toBe(false);
   });
 
-  it('workspace_tools 只允许五个基础工具，call 必须声明项目作用域', () => {
+  it('tools 限于正式 CLI 目录，call 必须声明项目作用域', () => {
     expect(
       ConversationControlCommandRequestSchema.parse({
         schema_version: 1,
-        command: 'workspace_tools',
+        command: 'tools',
         action: 'call',
         tool_name: 'edit_file',
         args: {
@@ -103,7 +103,7 @@ describe('conversation-control wire contract', () => {
         conversation_id: 'conversation-1',
       })
     ).toMatchObject({
-      command: 'workspace_tools',
+      command: 'tools',
       action: 'call',
       tool_name: 'edit_file',
     });
@@ -111,7 +111,7 @@ describe('conversation-control wire contract', () => {
     expect(
       ConversationControlCommandRequestSchema.safeParse({
         schema_version: 1,
-        command: 'workspace_tools',
+        command: 'tools',
         action: 'call',
         tool_name: 'shell',
         args: {},
@@ -122,7 +122,7 @@ describe('conversation-control wire contract', () => {
     expect(
       ConversationControlCommandRequestSchema.safeParse({
         schema_version: 1,
-        command: 'workspace_tools',
+        command: 'tools',
         action: 'call',
         tool_name: 'read_file',
         args: { locator: 'workspace:/notes.md' },
@@ -130,36 +130,36 @@ describe('conversation-control wire contract', () => {
     ).toBe(false);
   });
 
-  it('workspace_tools list 保持轻量，只有 describe 返回完整参数合同', () => {
+  it('tools list 保持轻量，只有 describe 返回完整参数合同', () => {
     const summary = {
       name: 'read_file',
       description: 'Read one Workspace file',
     } as const;
     expect(
-      ConversationControlWorkspaceToolsResponseSchema.parse({
+      ConversationControlToolsResponseSchema.parse({
         schema_version: 1,
         ok: true,
-        command: 'workspace_tools',
+        command: 'tools',
         action: 'list',
         tools: [summary],
       })
     ).toMatchObject({ tools: [summary] });
 
     expect(
-      ConversationControlWorkspaceToolsResponseSchema.safeParse({
+      ConversationControlToolsResponseSchema.safeParse({
         schema_version: 1,
         ok: true,
-        command: 'workspace_tools',
+        command: 'tools',
         action: 'list',
         tools: [{ ...summary, parameters: { type: 'object' } }],
       }).success
     ).toBe(false);
 
     expect(
-      ConversationControlWorkspaceToolsResponseSchema.parse({
+      ConversationControlToolsResponseSchema.parse({
         schema_version: 1,
         ok: true,
-        command: 'workspace_tools',
+        command: 'tools',
         action: 'describe',
         tool: { ...summary, parameters: { type: 'object' } },
       })
@@ -225,7 +225,7 @@ describe('conversation-control wire contract', () => {
 
   it('连接描述只允许 loopback 和固定长度 session token', () => {
     const base = {
-      protocol_version: 4,
+      protocol_version: 5,
       app_instance_id: 'app-1',
       pid: 123,
       host: '127.0.0.1',

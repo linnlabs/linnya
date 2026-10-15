@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { ConversationControlWorkspaceToolsCallRequestSchema } from '@app/schemas';
+import { ConversationControlToolsCallRequestSchema } from '@app/schemas';
 import { ZodError } from 'zod';
 import type { ConversationControlProgressFrame } from '@app/schemas';
 import {
@@ -16,7 +16,7 @@ import { parseCliInvocation } from '../functions/parseCliInvocation';
 import { exitCodeForError, projectCliError } from '../functions/projectCliError';
 import { createConversationControlConnection } from './createConversationControlConnection';
 import { watchConversationStatus } from './watchConversationStatus';
-import { executeWorkspaceToolCall } from './executeWorkspaceToolCall';
+import { executeToolCall } from './executeToolCall';
 import { stopConversationRun } from './stopConversationRun';
 import { resumeConversationRun } from './resumeConversationRun';
 
@@ -52,6 +52,7 @@ export function linnyaCliUsage(): string {
     '  linnya result <conversation-id> [--run ID]',
     '  linnya audit <conversation-id> [--run ID]',
     '  linnya tools list',
+    '  linnya tools web <on|off|status>',
     '  linnya tools describe <tool-name>',
     '  linnya tools call <tool-name> (--conversation ID | --project ID) [--args-json JSON | --args-file PATH] [--omit-args] [--interval MS] [--timeout MS]',
     '',
@@ -90,14 +91,14 @@ export async function runCli(
     let invocation;
     try {
       invocation = parseCliInvocation(argv);
-      if (invocation.kind === 'workspace-tool-call' && invocation.argsFile) {
+      if (invocation.kind === 'tool-call' && invocation.argsFile) {
         let args: unknown;
         try {
           args = JSON.parse(await readFile(invocation.argsFile, 'utf8'));
         } catch {
           throw new LinnyaCliError('invalid_request', '--args-file must name a readable UTF-8 JSON file');
         }
-        invocation = { ...invocation, request: ConversationControlWorkspaceToolsCallRequestSchema.parse({
+        invocation = { ...invocation, request: ConversationControlToolsCallRequestSchema.parse({
           ...invocation.request, args,
         }) };
       }
@@ -173,8 +174,8 @@ export async function runCli(
       io.write(serialize(response, invocation.pretty));
       return LINNYA_CLI_EXIT.success;
     }
-    if (invocation.kind === 'workspace-tool-call') {
-      const result = await executeWorkspaceToolCall({
+    if (invocation.kind === 'tool-call') {
+      const result = await executeToolCall({
         client,
         request: invocation.request,
         intervalMs: invocation.intervalMs,

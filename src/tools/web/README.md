@@ -18,6 +18,7 @@
 - **web_read**：按确定 URL 读取页面正文。默认只使用本地 HTTP → 按需 Electron JS 渲染；用户可在“网络搜索”设置的“第三方网页解析”中主动配置秘塔/Jina。
 - **历史 Resource wrapper**：`resource_read(http/https)` 已退出 live runtime；旧事件仍由 strict schema 与 Renderer replay projector 接纳，不再作为 Agent 心智。
 - **统一证据接入**：`web_search` / 网页读取成功时都通过 `WebEvidenceWriter` 窄 port 交付 Web 自有 capture DTO；Host 组合层映射为 Evidence command。同 URL 从搜索摘要升级为页面正文后，Resolver 优先回放完整正文。
+- **开发 CLI**：可通过临时开关调用同一搜索/读取工具，默认关闭。开关和普通搜索限制归 Conversation Control，不进入 Web 实现；使用说明见 [CLI 工具入口](../../../apps/linnya-cli/README.md#31-调用工具)。
 
 ### 1.2 本阶段不做什么（与深度 KB 检索解耦）
 

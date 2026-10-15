@@ -8,7 +8,7 @@ Server 实现。两种入口都不让 CLI 直读 SQLite，也不创建每 Agent 
 
 当前适用场景：开发环境中脚本化发消息、查询会话与消息、观察运行状态、处理
 `awaiting_user`
-与 Shell 命令审批、终止运行、读取最终回答、调用五个基础 Workspace 工具，以及在没有 Electron 时启动可运行多个会话/Agent 的前台 Backend。
+与 Shell 命令审批、终止运行、读取最终回答、调用基础 Workspace 工具及临时开放的 Web 工具，以及在没有 Electron 时启动可运行多个会话/Agent 的前台 Backend。
 
 新版研究使用
 `send --agent research_v1`，需显式项目和可用模型，与前端“研究”使用同一主 Agent 和通用子任务入口，普通请求允许开放查找资料。严格材料任务使用
@@ -249,10 +249,10 @@ pnpm linnya:cli send "评价 workspace:/article.md。仅使用该正文，不联
 Agent 的联网或同项目文件访问权限；固定材料评审需在任务中声明范围，并用实际工具记录核查是否遵守。模型评价不等于事实核验。Benchmark 的运行采集与质量评价是两层：可用 Default
 Agent 执行评审任务并保留会话，但普通评审文档不会自动进入 Benchmark，也不会自动变成质量分数；需显式关联被评正文版本和生成/评审运行。
 
-### 3.1 调用 Workspace 工具
+### 3.1 调用工具
 
-CLI 固定只开放
-`list_files / read_file / grep / write_file / edit_file`。它不会接受 Shell、插件工具或任意注册工具。`tools list`
+CLI 默认开放
+`list_files / read_file / grep / write_file / edit_file`；Web 工具需显式开启。它不会接受 Shell、插件工具或任意注册工具。`tools list`
 只返回名称与简介；需要调用时再用 `tools describe`
 读取 App 当前注册的完整正式 schema，避免为发现工具反复传输全部参数合同：
 
@@ -298,6 +298,44 @@ revision 和 Conversation
 UI 投影执行，因此前端能看到这次工具调用的历史，写入行为也与 Linnya
 Agent 使用同一工具时完全一致。CLI 会等待 run 和工具卡都完成：工具成功时把完整工具消息写到 stdout；工具自身返回 error 时把同一消息写到 stderr，并以退出码
 `8` 结束。
+
+#### 临时开放 Web
+
+```bash
+pnpm linnya:cli tools web on
+pnpm linnya:cli tools web status
+pnpm linnya:cli tools describe web_search
+pnpm linnya:cli tools call web_search --project <project-id> \
+  --args-json '{"query":"primary source for the research question"}'
+# 沿用上一条回执的 conversation_id，正式引用、Evidence 和长输出都归属于该会话。
+pnpm linnya:cli tools call web_read --conversation <conversation-id> \
+  --args-json '{"url":"https://example.org/article"}'
+pnpm linnya:cli tools web off
+```
+
+开关只在当前 Host 内存中生效，重启后关闭；不修改普通 Agent 的工具或 Web 服务设置。
+开启后，`list / describe / call` 可访问 `web_search / web_read / tool_output_read`；
+关闭后隐藏并拒绝新的调用，已经接纳的运行正常完成或通过 `stop` 取消。
+它是开发控制面的临时开放，不是同一系统用户之间的权限沙箱；所有连接同一 Host 的 CLI 共用该状态。
+
+CLI 的 `web_search` 只允许普通搜索，`deep_search=true` 明确拒绝，以免启动使用 Linnya 模型额度的子运行。
+外部 Agent 可自行执行多轮搜索和阅读。搜索服务仍使用当前 Linnya 配置，服务自身可能有费用。
+现有 URL 安全、缓存、原文取得状态、引用与 Evidence 合同不变。
+
+遇到正式 `observation_truncation` 时，用原会话调用 `tool_output_read`，按返回的
+`blob_id / offset` 续读；不能只传项目新建会话，也不要把正文中的历史 blob 链接当作当前截断提示。
+保存带引用的 Markdown 同样沿用该会话；只能引用工具实际返回的 `[@ref]`，不能自造来源编号。
+这里只记录 Linnya 工具执行与产物，不会自动导入外部 Agent 的推理、模型 token 或评审记录。
+
+此变更使用 wire protocol 5（工具命令统一为 `tools`）。CLI 与 Host 都要升级并重启 Host；
+旧 protocol 4 会明确拒绝，不做双协议猜测。
+
+外部 Agent 的 Skill 安装由该产品管理。可将内置 `deep-research` 及其 `references/` 原样复制到
+外部产品支持的 Skill 目录，记录版本和文件哈希。资源读取和调用 Linnya CLI 的适配写在任务指令中，
+不修改冻结的方法原文，也不把 OpenCode 等外部运行时接入生产 Agent 注册表。
+例如 OpenCode 使用 `~/.config/opencode/skills/deep-research/SKILL.md`；任务明确要求先加载
+`deep-research`，用其原生文件读取工具查看参考资源，再用 Linnya CLI 操作 Web 和 Workspace。
+不要用 `send` 代替外部推理：`send` 会启动 Linnya 的 Agent 和模型，`tools call` 才是无模型工具入口。
 
 ### 3.2 与 Slides CLI 的区别
 
