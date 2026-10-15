@@ -1,6 +1,6 @@
 import type {
   SlidesManualEditCommand,
-  SlidesManualEditOperation,
+  SlidesManualEditCommandOperation,
 } from '@plugin/slides/shared/authoringEditing';
 import type { SlidesDocumentBuildState } from '@plugin/slides/shared/documentSource';
 
@@ -9,7 +9,7 @@ export function createManualEditCommand(input: {
   readonly documentId: string;
   readonly buildState: SlidesDocumentBuildState;
   readonly renderVersion: number;
-  readonly operation: SlidesManualEditOperation;
+  readonly operation: SlidesManualEditCommandOperation;
 }): SlidesManualEditCommand | null {
   if (
     input.buildState.state !== 'ready'

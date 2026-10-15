@@ -4,10 +4,14 @@ import { createApp, h, nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 
-vi.mock('./DeckOutline.vue', () => ({
-  default: {
-    name: 'DeckOutlineStub',
-    template: '<div class="deck-outline-stub" />',
+vi.mock('../../features/deckNavigator', () => ({
+  DeckNavigatorBar: {
+    name: 'DeckNavigatorBarStub',
+    template: '<div class="deck-navigator-stub" />',
+  },
+  SlideGridView: {
+    name: 'SlideGridViewStub',
+    template: '<div class="slide-grid-stub" />',
   },
 }));
 
@@ -53,8 +57,8 @@ vi.mock('../../features/sourceSelection', async (importOriginal) => ({
 
 vi.mock('@linnya/renderer-ui/icons', () => ({
   AddIcon: { template: '<span />' },
+  ChevronIcon: { template: '<span />' },
   EditIcon: { template: '<span />' },
-  HomeIcon: { template: '<span />' },
   MinusIcon: { template: '<span />' },
   SelectObjectIcon: { template: '<span />' },
 }));
@@ -110,7 +114,7 @@ describe('DeckViewer document transition', () => {
     app.mount(host);
 
     expect(host.querySelector('.slides-status-state-stub')).not.toBeNull();
-    expect(host.querySelector('.deck-outline-stub')).not.toBeNull();
+    expect(host.querySelector('.deck-navigator-stub')).not.toBeNull();
 
     const zoom = host.querySelector<HTMLInputElement>('input[type="range"]');
     if (!zoom) throw new Error('Zoom slider missing');
@@ -129,9 +133,9 @@ describe('DeckViewer document transition', () => {
     await nextTick();
 
     expect(host.querySelector('.slides-status-state-stub')).toBeNull();
-    expect(host.querySelector('.deck-outline-stub')).toBeNull();
+    expect(host.querySelector('.deck-navigator-stub')).toBeNull();
     expect(host.querySelector('.stage-loading-spacer')).not.toBeNull();
-    expect(host.querySelector('.outline-loading-spacer')).not.toBeNull();
+    expect(host.querySelector('.navigator-loading-spacer')).not.toBeNull();
 
     app.unmount();
   });
@@ -205,6 +209,60 @@ describe('DeckViewer document transition', () => {
     await nextTick();
     expect(manualStore.enabled).toBe(true);
     expect(button?.disabled).toBe(true);
+
+    app.unmount();
+  });
+
+  it('平铺视图替换舞台并隐藏舞台工具条；百分比菜单切换适应窗口与固定档位', async () => {
+    const slidesStore = useSlidesStore();
+    const uiStore = useSlidesUiStore();
+    slidesStore.currentDeckId = 'deck-1';
+    slidesStore.deckPreview = {
+      nodeId: 'deck-1', versionNumber: 1, title: 'Deck',
+      slideSize: { width: 10, height: 5.625 },
+      slides: [{ slideId: 'slide-1', number: 1, elements: [] }],
+      theme: { colors: {}, fonts: { major: 'Arial', minor: 'Arial' } },
+      warnings: [],
+    };
+
+    const host = document.createElement('div');
+    document.body.append(host);
+    const app = createApp({ setup() {
+      provideManualEditSubmission({
+        flush: async () => {},
+        enqueue: () => { throw new Error('Stubbed Stage must not submit an edit'); },
+        refreshPresentation: async () => undefined,
+      });
+      return () => h(DeckViewer);
+    } });
+    app.mount(host);
+    await nextTick();
+
+    expect(host.querySelector('.slide-stage-stub')).not.toBeNull();
+    const trigger = host.querySelector<HTMLButtonElement>('.stage-zoom-menu__trigger');
+    if (!trigger) throw new Error('Zoom percentage trigger missing');
+    trigger.click();
+    await nextTick();
+    const option = (label: string) => [...host.querySelectorAll<HTMLElement>('.stage-zoom-menu__panel [role="menuitem"]')]
+      .find(element => element.textContent?.trim() === label);
+    option('150%')?.click();
+    await nextTick();
+    expect(uiStore.zoomMode).toBe('manual');
+    expect(uiStore.zoomLevel).toBe(1.5);
+    expect(host.querySelector('.stage-zoom-menu__panel')).toBeNull();
+
+    trigger.click();
+    await nextTick();
+    option('适应窗口')?.click();
+    await nextTick();
+    expect(uiStore.zoomMode).toBe('fit');
+
+    uiStore.setDeckViewMode('grid');
+    await nextTick();
+    expect(host.querySelector('.slide-grid-stub')).not.toBeNull();
+    expect(host.querySelector('.slide-stage-stub')).toBeNull();
+    expect(host.querySelector('.stage-zoom-slider')).toBeNull();
+    expect(host.querySelector('.deck-navigator-stub')).not.toBeNull();
 
     app.unmount();
   });

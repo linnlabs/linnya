@@ -1,7 +1,7 @@
 /**
  * Slides UI 状态
  *
- * 纯 UI 层状态：面板展开/收起、缩放级别、选中元素、overlay 开关等。
+ * 纯 UI 层状态：视图模式、页面条收起、缩放级别、选中元素、overlay 开关等。
  * 不涉及领域事实数据，也不涉及异步流程。
  */
 
@@ -18,11 +18,17 @@ import { computeSteppedZoomLevel } from '../shared/zoomBehavior';
 
 type ZoomMode = 'fit' | 'manual';
 
+/** 主区域展示单页舞台还是全稿平铺；平铺时底部页面条与舞台工具条隐藏。 */
+export type DeckViewMode = 'slide' | 'grid';
+
 export const useSlidesUiStore = defineStore('slides-ui', () => {
   // ─── State ───
 
-  /** 左侧 outline 面板是否收起 */
-  const outlineCollapsed = ref(false);
+  /** 主区域视图 */
+  const deckViewMode = ref<DeckViewMode>('slide');
+
+  /** 单页视图下底部页面条是否收起 */
+  const filmstripCollapsed = ref(false);
 
   /** 右侧 inspector 面板当前 tab */
   const inspectorTab = ref<InspectorTab>('overview');
@@ -65,8 +71,12 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
 
   // ─── Actions ───
 
-  function toggleOutline() {
-    outlineCollapsed.value = !outlineCollapsed.value;
+  function setDeckViewMode(mode: DeckViewMode) {
+    deckViewMode.value = mode;
+  }
+
+  function toggleFilmstrip() {
+    filmstripCollapsed.value = !filmstripCollapsed.value;
   }
 
   function setInspectorTab(tab: InspectorTab) {
@@ -142,7 +152,8 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
   }
 
   function $reset() {
-    outlineCollapsed.value = false;
+    deckViewMode.value = 'slide';
+    filmstripCollapsed.value = false;
     inspectorTab.value = 'overview';
     inspectorVisible.value = false;
     zoomMode.value = 'fit';
@@ -158,7 +169,8 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
 
   return {
     // State
-    outlineCollapsed,
+    deckViewMode,
+    filmstripCollapsed,
     inspectorTab,
     inspectorVisible,
     zoomLevel,
@@ -171,7 +183,8 @@ export const useSlidesUiStore = defineStore('slides-ui', () => {
     zoomPercentText,
     isFitZoom,
     // Actions
-    toggleOutline,
+    setDeckViewMode,
+    toggleFilmstrip,
     setInspectorTab,
     toggleInspector,
     zoomIn,

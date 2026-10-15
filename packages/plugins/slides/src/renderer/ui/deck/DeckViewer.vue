@@ -1,18 +1,7 @@
 <template>
   <div class="deck-viewer">
     <div class="deck-viewer-body">
-      <!-- 左栏：缩略图列表 -->
-      <div
-        v-if="!outlineCollapsed"
-        class="deck-viewer-outline"
-        :style="{ width: `${OUTLINE_DEFAULT_WIDTH}px` }"
-      >
-        <!-- 文稿切换时必须立即撤下旧列表，不能让已销毁滚动实例的离场 DOM 继续显示。 -->
-        <div v-if="showLoading" class="outline-loading-spacer" />
-        <DeckOutline v-else />
-      </div>
-
-      <!-- 中栏：Slide 预览舞台 -->
+      <!-- 主区域：单页舞台或全稿平铺 -->
       <div ref="stageHostRef" class="deck-viewer-stage">
         <!-- loading 期间不保留上一份文稿的状态页或舞台 DOM。 -->
         <div v-if="showLoading" class="stage-loading-spacer" />
@@ -52,6 +41,7 @@
           v-else-if="!deckPreview"
           title="无预览数据"
         />
+        <SlideGridView v-else-if="deckViewMode === 'grid'" />
         <SlideStage
           v-else
           :source-edit-busy="sourceEditBusy"
@@ -71,8 +61,8 @@
           >{{ manualEditingMessage('slides.manualEditing.refreshPresentation') }}</button>
         </div>
 
-        <!-- 右下角缩放控件只更新自身数值，不参与文稿内容切换。 -->
-        <div v-if="deckPreview" class="stage-zoom-slider">
+        <!-- 右下角缩放控件只更新自身数值，不参与文稿内容切换；平铺视图没有舞台可缩放。 -->
+        <div v-if="deckPreview && deckViewMode === 'slide'" class="stage-zoom-slider">
           <button
             class="stage-zoom-slider__btn"
             :disabled="zoomPercent <= ZOOM_PERCENT_MIN"
@@ -99,16 +89,11 @@
           >
             <AddIcon class="stage-zoom-slider__icon" />
           </button>
-          <span class="stage-zoom-slider__label">{{ zoomPercent }}%</span>
-          <button
-            class="stage-zoom-slider__btn stage-zoom-slider__fit-btn"
-            :class="{ 'stage-zoom-slider__fit-btn--active': zoomMode === 'fit' }"
-            aria-label="适配窗口大小"
-            title="适配窗口大小"
-            @click="zoomToFit"
-          >
-            <HomeIcon class="stage-zoom-slider__icon" />
-          </button>
+          <StageZoomMenu
+            :zoom-percent="zoomPercent"
+            :zoom-mode="zoomMode"
+            @action="applyZoomMenuAction"
+          />
           <button
             class="stage-zoom-slider__btn stage-zoom-slider__edit-btn"
             :class="{ 'stage-zoom-slider__edit-btn--active': manualEditingEnabled }"
@@ -145,6 +130,13 @@
         </div>
       </div>
     </div>
+
+    <!-- 底部导航：文稿切换时立即撤下旧页面条，加载期间保留同高占位避免舞台跳动。 -->
+    <div
+      v-if="showLoading"
+      class="navigator-loading-spacer"
+    />
+    <DeckNavigatorBar v-else-if="deckPreview" />
   </div>
 </template>
 
@@ -158,17 +150,14 @@ import { useSlidesRenderStore } from '../../store/slidesRenderStore';
 import {
   AddIcon,
   EditIcon,
-  HomeIcon,
   MinusIcon,
   SelectObjectIcon,
 } from '@linnya/renderer-ui/icons';
-import DeckOutline from './DeckOutline.vue';
 import SlideStage from '../preview/SlideStage.vue';
 import SlidesStatusState from '../shared/SlidesStatusState.vue';
 import { SlidesDraftFailureLog } from '../../features/documentBuildFailure';
 import {
   INSPECTOR_DEFAULT_WIDTH,
-  OUTLINE_DEFAULT_WIDTH,
   ZOOM_MIN,
   ZOOM_MAX,
   ZOOM_STEP,
@@ -181,6 +170,8 @@ import {
 } from '../../features/sourceSelection';
 import { isKonvaNodeSupported } from '../../features/konvaPreview';
 import { useSlidesPreviewLocalization } from '../../features/previewRenderState';
+import { DeckNavigatorBar, SlideGridView } from '../../features/deckNavigator';
+import { StageZoomMenu, type StageZoomMenuAction } from '../../features/stageZoom';
 import {
   resolveManualEditingAvailability,
   useManualEditingLocalization,
@@ -217,7 +208,7 @@ const {
   documentBuildState,
 } = storeToRefs(slidesStore);
 const {
-  outlineCollapsed,
+  deckViewMode,
   inspectorVisible,
   zoomLevel,
   zoomMode,
@@ -358,8 +349,12 @@ function adjustZoom(delta: number) {
   setZoomPercent(zoomPercent.value + delta);
 }
 
-function zoomToFit() {
-  slidesUiStore.zoomToFit();
+function applyZoomMenuAction(action: StageZoomMenuAction) {
+  if (action.kind === 'fit') {
+    slidesUiStore.zoomToFit();
+    return;
+  }
+  setZoomPercent(action.percent);
 }
 
 function toggleSourceSelectionMode() {

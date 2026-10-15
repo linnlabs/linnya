@@ -1,6 +1,6 @@
 # Presentation manual editing
 
-This feature owns deterministic user edits for generated `deck.js` documents. It rewrites only the machine-owned `compose.manualEdits` literal and orchestrates candidate compilation and revision commit. It does not mutate DeckSpec, PPTX or Renderer state as a second source of truth.
+This feature owns deterministic user edits for generated `deck.js` documents. Object edits rewrite only the machine-owned `compose.manualEdits` literal; inserting a blank slide adds one top-level slide declaration and its entry in `compose.slides`. The feature orchestrates candidate compilation and revision commit for both. It does not mutate DeckSpec, PPTX or Renderer state as a second source of truth.
 
 Current source rules:
 
@@ -10,6 +10,14 @@ Current source rules:
 - text writes carry explicit Text/Shape target kind and replace the complete author value (Text string/runs, Shape string); Shape content merges with its existing fill, size and translation rather than creating a child Text record; text style writes merge font size/color; Frame/Shape fill writes replace the solid background/fill; Shape/Image visual-size writes replace width/height and atomically accumulate an optional resize-anchor translationDelta into the existing translation; deleting any editable author target replaces its record with the exclusive deletion marker;
 - absolute translation writes the complete cumulative `dx / dy` value, while renderer drag commands use `translate_by` so repeated drags accumulate against the checked base revision;
 - source size is checked before the candidate reaches the build pipeline.
+
+Blank slide insertion (`insert_blank_slide`, `index` = 0-based position in the exact checked revision):
+
+- the single top-level `compose({...})` must list pages as a static array of identifiers, either inline (`slides: [a, b]`) or through one top-level `const` array; spreads, calls, expressions, or a list whose length differs from the current DeckSpec are rejected as `slides_not_static`. The writer never guesses page order from display order, line numbers or text;
+- the page that will follow the new one must be declared by exactly one top-level `const|let|var x = createSlide(...)`. The new declaration is placed immediately before that statement (or before the statement that evaluates the slides array when appending), after the previous statement's line, so trailing comments stay on their line and the next page keeps its leading comment. Source paging (`SlideMarkerIndex`) therefore stays aligned with compose order;
+- names are `blankSlideN` / `blank-slide-N` with the lowest N whose text does not already appear anywhere in the source; once written they are ordinary stable author identities;
+- the background is the current revision's normalized `theme.colors.background`, or `#FFFFFF` (the default for an undeclared background) when the theme declares none;
+- the candidate always goes through the full compiler, and existing `manualEdits` records are untouched because they are keyed by `slideKey`, not position.
 
 Repository integration adds two commit invariants for this feature:
 

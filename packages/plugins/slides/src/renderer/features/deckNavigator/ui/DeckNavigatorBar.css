@@ -1,0 +1,123 @@
+.deck-navigator {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-width: 0;
+  box-sizing: border-box;
+  border-top: 0.5px solid var(--color-border-default);
+  background: var(--color-bg-surface);
+}
+
+.deck-navigator .deck-navigator__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 10px 0 12px;
+}
+
+.deck-navigator .deck-navigator__trailing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.deck-navigator .deck-navigator__button,
+.deck-navigator .deck-navigator__view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  outline: none;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.deck-navigator .deck-navigator__button {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+.deck-navigator .deck-navigator__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.deck-navigator .deck-navigator__button:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.deck-navigator .deck-navigator__button:active:not(:disabled) {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.deck-navigator .deck-navigator__button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.deck-navigator .deck-navigator__insert--pending:disabled {
+  opacity: 1;
+  animation: deck-navigator-pending 1.1s ease-in-out infinite;
+}
+
+/* 分段视图开关：浅色凹槽 + 抬起的当前项。 */
+.deck-navigator .deck-navigator__views {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--color-bg-subtle);
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 6%, transparent);
+}
+
+.deck-navigator .deck-navigator__view {
+  width: 28px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.deck-navigator .deck-navigator__view:hover:not(.deck-navigator__view--active) {
+  color: var(--color-text-secondary);
+}
+
+.deck-navigator .deck-navigator__view--active {
+  background: var(--color-bg-default);
+  color: var(--color-text-primary);
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 8%, transparent),
+    0 1px 2px var(--shadow-color-xs);
+}
+
+.deck-navigator .deck-navigator__button:focus-visible,
+.deck-navigator .deck-navigator__view:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-border-focus);
+}
+
+@keyframes deck-navigator-pending {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-navigator .deck-navigator__insert--pending:disabled {
+    opacity: 0.4;
+    animation: none;
+  }
+}

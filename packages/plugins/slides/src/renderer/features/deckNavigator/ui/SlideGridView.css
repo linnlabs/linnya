@@ -1,0 +1,116 @@
+.slide-grid {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-subtle);
+}
+
+.slide-grid .slide-grid__viewport {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  outline: none;
+  animation: slide-grid-enter 0.22s ease both;
+}
+
+.slide-grid .slide-grid__content {
+  /* 左右留白与 resolveSlideGridLayout 的 SLIDE_GRID_PADDING_X_PX 一致。 */
+  padding: 28px 32px 40px;
+}
+
+.slide-grid .slide-grid__row {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  margin: 0 auto;
+}
+
+.slide-grid .slide-grid__cell {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.18s ease;
+}
+
+.slide-grid .slide-grid__cell .slide-thumbnail {
+  --slide-thumbnail-ring-width: 2px;
+  --slide-thumbnail-shadow: 0 2px 8px var(--shadow-color-xs);
+
+  border-radius: 8px;
+}
+
+/* 悬停抬起对当前页同样生效，点击选中时卡片不会先落回原位。 */
+.slide-grid .slide-grid__cell:hover {
+  transform: translateY(-2px);
+}
+
+.slide-grid .slide-grid__cell:hover:not(.slide-grid__cell--current) .slide-thumbnail {
+  --slide-thumbnail-shadow: 0 10px 24px -6px var(--shadow-color-md);
+
+  border-color: var(--color-border-hover);
+}
+
+.slide-grid .slide-grid__cell--current .slide-thumbnail {
+  --slide-thumbnail-ring-color: var(--color-accent);
+  --slide-thumbnail-shadow: 0 8px 22px -8px var(--shadow-color-md);
+
+  border-color: var(--color-accent);
+}
+
+.slide-grid .slide-grid__cell:focus-visible .slide-thumbnail {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 3px;
+}
+
+.slide-grid .slide-grid__caption {
+  padding-left: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  text-align: left;
+  transition: color 0.18s ease;
+}
+
+.slide-grid .slide-grid__cell--current .slide-grid__caption {
+  color: var(--color-accent);
+}
+
+.slide-grid .slide-grid__empty {
+  margin: 48px 0 0;
+  color: var(--color-text-placeholder);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+@keyframes slide-grid-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-grid .slide-grid__viewport {
+    animation: none;
+  }
+
+  .slide-grid .slide-grid__cell,
+  .slide-grid .slide-grid__cell:hover {
+    transform: none;
+    transition: none;
+  }
+}

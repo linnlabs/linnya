@@ -35,6 +35,7 @@ Linnya Slides 先把 PPT 抽象成一门专用的场景图 DSL，再用 JavaScri
 - 选区属性工具条与颜色草稿：[renderer/features/elementProperties](./src/renderer/features/elementProperties/README.md)
 - 完整编辑预览与排版交接：[renderer/features/editingPreview](./src/renderer/features/editingPreview/README.md)
 - 前端有限人工编辑：[renderer/features/manualEditing](./src/renderer/features/manualEditing/README.md)
+- 底部幻灯片导航、平铺视图与新建空白幻灯片：[renderer/features/deckNavigator](./src/renderer/features/deckNavigator/README.md)
 - PPTX 编译、解析与质量检查：[backend/engine](./src/backend/engine/README.md)
 
 ## Agent 工作流

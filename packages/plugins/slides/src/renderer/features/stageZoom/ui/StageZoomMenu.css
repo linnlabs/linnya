@@ -1,0 +1,66 @@
+.stage-zoom-menu {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.stage-zoom-menu .stage-zoom-menu__trigger {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  height: 24px;
+  padding: 0 3px 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  cursor: pointer;
+  outline: none;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.stage-zoom-menu .stage-zoom-menu__value {
+  min-width: 32px;
+  text-align: right;
+}
+
+.stage-zoom-menu .stage-zoom-menu__chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-tertiary);
+  transition: transform 0.16s ease;
+}
+
+.stage-zoom-menu .stage-zoom-menu__trigger:hover,
+.stage-zoom-menu .stage-zoom-menu__trigger--open {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.stage-zoom-menu .stage-zoom-menu__trigger--open .stage-zoom-menu__chevron {
+  transform: rotate(180deg);
+}
+
+.stage-zoom-menu .stage-zoom-menu__trigger:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-border-focus);
+}
+
+/* 工具条贴在舞台底部，菜单向上展开并与百分比按钮居中对齐。 */
+.stage-zoom-menu .stage-zoom-menu__panel {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-zoom-menu .stage-zoom-menu__chevron {
+    transition: none;
+  }
+}

@@ -28,3 +28,20 @@ describe('slidesUiStore source selection mode', () => {
     expect(store.sourceSelectionModeEnabled).toBe(false);
   });
 });
+
+describe('slidesUiStore deck view', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it('resets the grid view and filmstrip visibility with deck UI state', () => {
+    const store = useSlidesUiStore();
+    store.setDeckViewMode('grid');
+    store.toggleFilmstrip();
+
+    store.$reset();
+
+    expect(store.deckViewMode).toBe('slide');
+    expect(store.filmstripCollapsed).toBe(false);
+  });
+});

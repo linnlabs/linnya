@@ -7,7 +7,9 @@ const renderSlideRasterToImageBitmapMock = vi.fn();
 vi.mock('../features/slideRasterization', () => ({
   createThumbnailRasterRequest: (
     slide: PresentationRenderModel['slides'][number],
-  ) => ({ slide }),
+    _slideSize: PresentationRenderModel['slideSize'],
+    viewportWidthPx: number,
+  ) => ({ slide, viewportWidthPx }),
   renderSlideRasterToImageBitmap: renderSlideRasterToImageBitmapMock,
 }));
 
@@ -176,5 +178,32 @@ describe('slidesThumbnailStore', () => {
     expect(thumbnailStore.getThumbnail('s4')).toBe(immediateBitmaps.get('s4') ?? null);
     expect(thumbnailStore.getThumbnail('s5')).toBeNull();
     expect(requestIdleCallbackSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders at the filmstrip width until a larger grid width is requested', async () => {
+    const bitmap = { close: vi.fn() } as unknown as ImageBitmap;
+    renderSlideRasterToImageBitmapMock.mockResolvedValue(bitmap);
+
+    const { useSlidesRenderStore } = await import('./slidesRenderStore');
+    const { useSlidesThumbnailStore } = await import('./slidesThumbnailStore');
+    const renderStore = useSlidesRenderStore();
+    const thumbnailStore = useSlidesThumbnailStore();
+
+    renderStore.renderModel = makeModel();
+    await flushPromises();
+    expect(renderSlideRasterToImageBitmapMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ viewportWidthPx: 128 }),
+    );
+
+    thumbnailStore.requestRasterWidth(320);
+    await flushPromises();
+    expect(renderSlideRasterToImageBitmapMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ viewportWidthPx: 320 }),
+    );
+
+    const callCount = renderSlideRasterToImageBitmapMock.mock.calls.length;
+    thumbnailStore.requestRasterWidth(0);
+    await flushPromises();
+    expect(renderSlideRasterToImageBitmapMock).toHaveBeenCalledTimes(callCount);
   });
 });

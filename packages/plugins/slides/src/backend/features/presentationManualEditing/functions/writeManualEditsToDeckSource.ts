@@ -12,8 +12,7 @@ import {
   getSlidesTypeScriptRuntime,
   type SlidesTypeScriptRuntime,
 } from '../../../capabilities/typescriptRuntime/index.js';
-
-const DEFAULT_SOURCE_MAX_BYTES = 128 * 1024;
+import { SLIDES_MANUAL_EDIT_SOURCE_MAX_BYTES } from '../definitions/manualEditSourceLimits.js';
 
 export type SlidesManualEditSourceErrorCode =
   | 'compose_not_found'
@@ -90,7 +89,7 @@ export function writeManualEditsToDeckSource(
   const nextSource = manualProperty && typescript.isPropertyAssignment(manualProperty)
     ? replaceManualEditsInitializer(source, sourceFile, manualProperty, next)
     : insertManualEditsProperty(source, sourceFile, composeObject, next);
-  const maxSourceBytes = options.maxSourceBytes ?? DEFAULT_SOURCE_MAX_BYTES;
+  const maxSourceBytes = options.maxSourceBytes ?? SLIDES_MANUAL_EDIT_SOURCE_MAX_BYTES;
   if (Buffer.byteLength(nextSource, 'utf8') > maxSourceBytes) {
     throw new SlidesManualEditSourceError(
       'source_too_large',
