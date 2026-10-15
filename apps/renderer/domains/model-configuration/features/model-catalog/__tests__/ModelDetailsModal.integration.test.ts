@@ -97,7 +97,7 @@ describe('ModelDetailsModal token capacity editing', () => {
     replaceInputValue(maxOutputInput, '16384');
     await nextTick();
 
-    const saveButton = document.querySelector<HTMLButtonElement>('.action-btn.primary');
+    const saveButton = document.querySelector<HTMLButtonElement>('.linnya-ui-button--primary');
     saveButton?.click();
     await flushUi();
 

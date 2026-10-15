@@ -427,7 +427,7 @@ describe('ModelRegistrationSettingsPage', () => {
     expect(accountForm.textContent).not.toContain('Responses');
     expect(mocks.getChatGptStatus).toHaveBeenCalledOnce();
 
-    const connectButton = accountForm.querySelector<HTMLButtonElement>('.action-btn.primary');
+    const connectButton = accountForm.querySelector<HTMLButtonElement>('.linnya-ui-button--primary');
     if (!connectButton) throw new Error('ChatGPT sign-in button not found');
     connectButton.click();
     await flushUi();

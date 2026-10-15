@@ -33,13 +33,14 @@
         :placeholder="editorMessage('editor.citation.kb.searchPlaceholder')"
         @keydown.enter="handleSearch"
       />
-      <button
-        class="search-btn"
+      <BaseButton
+        variant="primary"
+        size="md"
         :disabled="!canSearch || store.kbLoading"
         @click="handleSearch"
       >
         {{ store.kbLoading ? editorMessage('editor.citation.kb.searching') : editorMessage('editor.citation.kb.search') }}
-      </button>
+      </BaseButton>
     </div>
 
     <!-- 错误提示 -->
@@ -85,13 +86,14 @@
 
     <!-- 插入按钮 -->
     <div class="action-section">
-      <button
-        class="insert-btn"
+      <BaseButton
+        variant="primary"
+        size="md"
         :disabled="!store.canInsertKbCitation"
         @click="handleInsert"
       >
         {{ formatCitationKbInsertLabel(store.selectedKbResults.length, editorMessage) }}
-      </button>
+      </BaseButton>
     </div>
   </div>
 </template>
@@ -112,7 +114,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { useCitationPanelStore } from '../../store/useCitationPanelStore'
 import { searchInMultipleKbs, type CitationKbSearchItem } from '../../services/citationKbSearchService'
-import { CustomCheckbox } from '@linnya/renderer-ui'
+import { BaseButton, CustomCheckbox } from '@linnya/renderer-ui'
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization'
 import {
   formatCitationKbInsertLabel,

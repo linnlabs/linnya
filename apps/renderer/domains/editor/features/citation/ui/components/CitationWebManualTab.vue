@@ -108,19 +108,17 @@
 
     <!-- 操作区 -->
     <div class="action-section">
-      <button
-        class="reset-btn"
-        @click="handleReset"
-      >
+      <BaseButton variant="ghost" size="md" @click="handleReset">
         {{ editorMessage('editor.citation.form.reset') }}
-      </button>
-      <button
-        class="insert-btn"
+      </BaseButton>
+      <BaseButton
+        variant="primary"
+        size="md"
         :disabled="!store.canInsertWebCitation"
         @click="handleInsert"
       >
         {{ editorMessage('editor.citation.form.insert') }}
-      </button>
+      </BaseButton>
     </div>
   </div>
 </template>
@@ -139,7 +137,7 @@
 import { useCitationPanelStore } from '../../store/useCitationPanelStore'
 import { validateWebManualForm, type WebManualFormInput } from '../../adapters/webCitationAdapter'
 import { useWebManualCitationForm } from '../useWebManualCitationForm'
-import { CustomRadio } from '@linnya/renderer-ui'
+import { BaseButton, CustomRadio } from '@linnya/renderer-ui'
 import { computed } from 'vue'
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization'
 import { resolveCitationValidationErrorMap } from '../../functions/citationPresentation'

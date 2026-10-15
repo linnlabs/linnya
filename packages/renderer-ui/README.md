@@ -17,7 +17,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 
 ## 公开入口
 
-- 包根：FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：BaseButton、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -157,6 +157,12 @@ feature 拥有。
 工作、样式如何扩展、哪些是公共合同、哪些是私有实现、怎样验证 Host 与插件没有回归。任一问题没有明确答案时，
 先把能力留在原 owner 或补设计，不通过增加开关和 fallback 推迟决定。
 
+## 按钮
+
+`BaseButton`（自 2.6.0）是所有按钮的唯一视觉 owner：七种语义 variant（primary、secondary、ghost、plain、danger、soft、outline）、outline 的 accent / info / neutral tone、与 `--control-height-sm/md/lg` 对应的三档尺寸、胶囊形与占满宽度。组件只拥有展示、原生禁用与焦点环，不理解保存、提交或加载等业务状态；调用方通过 `disabled` 和文案投影进行中的状态。图标通过 `icon` 插槽放入 14px 槽位并对辅助技术隐藏，按钮文字或 `aria-label` 是可访问名称。普通属性、`aria-*`、`data-*`、`class`、`style` 与事件都落在唯一的原生 `button`；业务只能定制外围位置与宽度，不覆盖 `.linnya-ui-button*` 内部选择器。
+
+`ActionButtons` 由两个 `BaseButton` 组成，保留原有 props、事件与插槽；主操作 default / danger / accent 分别对应 primary / danger / soft，次操作 filled / ghost / plain 对应 secondary / ghost / plain，并在组内保证 80px 最小宽度。选择哪种层级、怎样组合见[设计规范](./docs/design.md#92-按钮)。目前消费者为知识库页面入口、解析设置、引用面板、命令输入对话框、项目列表空态，以及全部 `ActionButtons` 使用方。
+
 ## 范围滑块
 
 `CustomSlider`（自 2.3.0）属于 `number-entry`，与精确数字输入共享能力边界。它只消费受控数值、min/max/step、disabled 和 `default|compact` 密度，在原生 input 事件时发出一次数值型 `update:modelValue`。轨道进度由 props 派生，外部更新不反向提交；键盘步进、Home/End 和指针行为由原生 range 承担。业务拥有单位、标签、取值规则与保存流程。
@@ -274,7 +280,7 @@ Vue 是 peer dependency，Host 与插件必须共享同一实例。`/font-stack`
 
 `tokens.css` 拥有 foundation、通用 semantic、functional、geometry、typography 和跨 owner 稳定复用的 component token。App layout、Conversation、Editor 等业务 token 留在各自 owner，并在 package 样式之后装载。公开 token 的删除、重命名、语义变化或主题集合缺失都按 breaking change 处理。
 
-自 2.6.0 起，刻度类 token 分为三组：角色字阶 `--font-size-<role>` / `--line-height-<role>` 与三档 `--font-weight-*`；4px 网格间距 `--space-*`；动效 `--duration-*` 与 `--ease-*`。圆角扩展到 `--radius-xl`、`--radius-2xl`，焦点环由 `--focus-ring-width`、`--focus-ring-offset` 与主题 token `--color-focus-ring` 组成，功能色新增文字专用的 `--color-*-text`。`--spacing-*` 与 `--transition-*` 仅作为 2.x 已发布插件的兼容别名保留，仓内不再新增使用，下一个 major 删除。各 token 的选择规则见[设计规范](./docs/design.md)。
+自 2.6.0 起，刻度类 token 分为四组：控件高度 `--control-height-sm/md/lg`（28/32/36）；角色字阶 `--font-size-<role>` / `--line-height-<role>` 与三档 `--font-weight-*`；4px 网格间距 `--space-*`；动效 `--duration-*` 与 `--ease-*`。圆角扩展到 `--radius-xl`、`--radius-2xl`，焦点环由 `--focus-ring-width`、`--focus-ring-offset` 与主题 token `--color-focus-ring` 组成，功能色新增文字专用的 `--color-*-text`。`--spacing-*` 与 `--transition-*` 仅作为 2.x 已发布插件的兼容别名保留，仓内不再新增使用，下一个 major 删除。各 token 的选择规则见[设计规范](./docs/design.md)。
 
 `prefers-reduced-motion: reduce` 下四个 `--duration-*` 会被置为接近 0，经由时长 token 的过渡与动画自动立即完成；直接写在关键帧里的循环动画仍须各自声明 reduced-motion 规则。
 

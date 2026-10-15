@@ -1,37 +1,39 @@
 <!-- packages/renderer-ui/src/features/actions/ui/ActionButtons.vue -->
 <template>
   <div :class="['action-buttons-container', `action-buttons-container--${shape}`]">
-    <button
+    <BaseButton
       v-if="secondaryActionText || $slots['secondary-content']"
       v-show="showSecondaryAction"
       v-bind="secondaryButtonAttributes"
-      type="button"
-      :class="['action-btn', 'secondary', secondaryVariantClass]"
+      :variant="secondaryButtonVariant"
+      :shape="buttonShape"
       :disabled="isSecondaryActionDisabled"
       @click="emit('secondary-click')"
     >
       <slot name="secondary-content">{{ secondaryActionText }}</slot>
-    </button>
-    <button
+    </BaseButton>
+    <BaseButton
       v-if="primaryActionText || $slots['primary-content']"
       v-show="showPrimaryAction"
       v-bind="primaryButtonAttributes"
-      type="button"
-      :class="primaryButtonClasses"
+      :variant="primaryButtonVariant"
+      :shape="buttonShape"
       :disabled="isPrimaryActionDisabled"
       @click="emit('primary-click')"
     >
       <slot name="primary-content">{{ primaryActionText }}</slot>
-    </button>
+    </BaseButton>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import BaseButton from './BaseButton.vue';
 import type {
   ActionButtonsProps,
   ActionButtonsSlots,
 } from '../definitions/actionButtons';
+import type { BaseButtonShape, BaseButtonVariant } from '../definitions/baseButton';
 
 const props = withDefaults(defineProps<ActionButtonsProps>(), {
   primaryActionText: '',
@@ -45,22 +47,21 @@ const props = withDefaults(defineProps<ActionButtonsProps>(), {
   shape: 'default',
 });
 
-const secondaryVariantClass = computed(() => {
-  if (props.secondaryVariant === 'ghost') {
-    return 'secondary-ghost';
-  }
-  if (props.secondaryVariant === 'plain') {
-    return 'secondary-plain';
-  }
-  // 默认 filled：直接使用 .secondary 基础样式
-  return '';
-});
+const PRIMARY_BUTTON_VARIANT = {
+  default: 'primary',
+  danger: 'danger',
+  accent: 'soft',
+} as const satisfies Record<NonNullable<ActionButtonsProps['primaryVariant']>, BaseButtonVariant>;
 
-const primaryButtonClasses = computed<readonly string[]>(() => {
-  if (props.primaryVariant === 'danger') return ['action-btn', 'danger'];
-  if (props.primaryVariant === 'accent') return ['action-btn', 'primary', 'accent'];
-  return ['action-btn', 'primary'];
-});
+const SECONDARY_BUTTON_VARIANT = {
+  filled: 'secondary',
+  ghost: 'ghost',
+  plain: 'plain',
+} as const satisfies Record<NonNullable<ActionButtonsProps['secondaryVariant']>, BaseButtonVariant>;
+
+const primaryButtonVariant = computed<BaseButtonVariant>(() => PRIMARY_BUTTON_VARIANT[props.primaryVariant]);
+const secondaryButtonVariant = computed<BaseButtonVariant>(() => SECONDARY_BUTTON_VARIANT[props.secondaryVariant]);
+const buttonShape = computed<BaseButtonShape>(() => (props.shape === 'pill' ? 'pill' : 'default'));
 
 const emit = defineEmits<{
   'primary-click': [];

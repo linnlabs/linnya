@@ -61,33 +61,12 @@
   color: var(--color-text-placeholder);
 }
 
-.citation-kb-tab .search-btn {
-  height: 32px;
-  padding: 0 var(--space-4);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  color: var(--color-text-on-accent);
-  font-size: var(--font-size-body);
-  cursor: pointer;
-  transition: opacity var(--duration-short);
-}
-
-.citation-kb-tab .search-btn:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.citation-kb-tab .search-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .citation-kb-tab .error-section {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-2);
-  background: var(--color-red-50);
+  background: var(--color-error-bg);
   border-radius: var(--radius-sm);
 }
 
@@ -221,26 +200,4 @@
   display: flex;
   justify-content: flex-end;
   padding-top: var(--space-2);
-}
-
-.citation-kb-tab .insert-btn {
-  height: 32px;
-  padding: 0 var(--space-5);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  color: var(--color-text-on-accent);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition: opacity var(--duration-short);
-}
-
-.citation-kb-tab .insert-btn:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.citation-kb-tab .insert-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }

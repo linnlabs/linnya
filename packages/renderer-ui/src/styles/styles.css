@@ -1,6 +1,7 @@
 @import './tokens.css';
 @import './icons.css';
 @import './scroll/index.css';
+@import '../features/actions/styles/BaseButton.css';
 @import '../features/actions/styles/ActionButtons.css';
 @import '../features/selection/styles/CustomCheckbox.css';
 @import '../features/selection/styles/CustomRadio.css';

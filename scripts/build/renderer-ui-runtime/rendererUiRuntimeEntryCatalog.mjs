@@ -7,6 +7,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
   entry('root', '@linnya/renderer-ui', '.', 'packages/renderer-ui/src/index.ts', 'index.js', [
     'ActionButtons',
     'AlertDialog',
+    'BaseButton',
     'BaseDropdown',
     'CharacterCount',
     'ColorPickerPanel',

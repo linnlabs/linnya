@@ -37,6 +37,7 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 
 | 场景 | 组件 | 说明 |
 |---|---|---|
+| 单个按钮 | `@linnya/renderer-ui` 的 `BaseButton` | 页面入口、工具栏、表单内的任意按钮；用 variant 表达层级，size 与同行输入框对齐。 |
 | 主/次操作按钮组 | `@linnya/renderer-ui` 的 `ActionButtons` | 弹窗、表单、卡片底部的确认/取消按钮；主操作支持 default、danger、accent 三种严格视觉语义和胶囊形态。 |
 | 单行输入 | `@linnya/renderer-ui` 的 `CustomTextInput` | 标准文本输入；支持两档尺寸、无边框模式、提交式更新和使用共享图标的可清除搜索。 |
 | 密文输入 | `@linnya/renderer-ui` 的 `SecretInput` | API Key、访问令牌和密码输入；统一显隐按钮、禁用状态及整组 hover/focus 边框。 |
@@ -97,7 +98,29 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 
 按钮尺寸或排列由业务 owner 定制时，把自己的 class 放到组件根 `class` 以及对应的
 `primary-button-attributes.class` / `secondary-button-attributes.class`，不要引用 `.action-buttons-container` 或
-`.action-btn`。
+`.linnya-ui-button*`。自 2.6.0 起两个按钮由 `BaseButton` 渲染：default → primary、danger → danger、accent → soft，
+次操作 filled / ghost / plain 对应同名层级，高度为 `--control-height-sm`。
+
+### BaseButton
+
+```vue
+<BaseButton variant="outline" tone="accent" size="lg" shape="pill" block @click="createKnowledgeBase">
+  <template #icon><AddIcon /></template>
+  新建知识库
+</BaseButton>
+
+<BaseButton variant="primary" size="md" :disabled="!canInsert" @click="insert">插入引用</BaseButton>
+
+<BaseButton variant="primary" type="submit" form="secret-form" :disabled="submitting">发送</BaseButton>
+```
+
+- `variant`：primary / secondary / ghost / plain / danger / soft / outline，选择规则见[设计规范](./design.md#92-按钮)。
+  `tone`（accent / info / neutral）只对 outline 生效。
+- `size`：sm / md / lg，对应 `--control-height-sm/md/lg`；与同一行的输入框取同一档。
+- `shape="pill"` 只用于页面级入口；`block` 占满容器宽度，带图标时图标贴左、文字视觉居中。
+- `type` 默认 `button`，提交表单时显式传入 `submit`；`disabled` 使用原生语义。
+- 普通属性、`aria-*`、`data-*`、`class`、`style` 与事件都落在唯一的原生 `button` 上。业务只能定制外围布局，
+  不覆盖 `.linnya-ui-button*` 内部选择器。
 
 ## 选择控件的节点扩展
 

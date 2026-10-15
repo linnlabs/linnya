@@ -31,6 +31,11 @@
   --radius-2xl: 16px;
   --radius-full: 9999px;
 
+  /* 控件高度：按钮、输入框、选择器在同一行并排时取同一档，保证基线与边缘对齐。 */
+  --control-height-sm: 28px;
+  --control-height-md: 32px;
+  --control-height-lg: 36px;
+
   /* 发丝边框：高分屏取物理 1px，普通屏保持 1px。 */
   --border-width-hairline: 1px;
 

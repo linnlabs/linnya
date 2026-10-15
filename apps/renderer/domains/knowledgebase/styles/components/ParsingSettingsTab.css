@@ -11,40 +11,6 @@
   padding-bottom: var(--space-6);
 }
 
-.config-tab .action-btn {
-  display: flex;
-  align-items: center;
-  padding: 5px var(--space-3);
-  height: 28px;
-  box-sizing: border-box;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: var(--font-size-body);
-  transition: all var(--duration-medium) var(--ease-standard);
-}
-
-.config-tab .action-btn.secondary {
-  color: var(--color-text-secondary);
-  background-color: transparent;
-  border: none;
-}
-
-.config-tab .action-btn.secondary:hover {
-  background-color: var(--color-bg-hover);
-  color: var(--color-text-primary);
-}
-
-.config-tab .model-settings-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.config-tab .model-settings-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
 .config-tab .parsing-settings-section {
   padding-top: 0;
 }

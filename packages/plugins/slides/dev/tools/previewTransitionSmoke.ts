@@ -105,7 +105,7 @@ async function verifyPropertyInteraction(window: BrowserWindow): Promise<void> {
   await colorClick('[role="tab"]:first-child');
   await colorClick('[role="tab"]:last-child');
   await evaluate('window.manualPropertySmoke.assertColorDraft("#4080C0", true)');
-  await colorClick('.action-btn.secondary');
+  await colorClick('.linnya-ui-button--secondary');
   await evaluate('window.manualPropertySmoke.assertSubmenu(false, "row")');
   await colorClick('.slides-element-color__custom');
   await settleColorMotion();

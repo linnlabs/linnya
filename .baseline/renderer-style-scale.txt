@@ -26,7 +26,6 @@
 1	SCALE-07-duration	apps/renderer/app/workflows/table-fill/ui/tool-card/WriteToTableCard.css
 3	SCALE-03-line-height	apps/renderer/domains/conversation/features/command-execution-presentation/ui/CommandExecutionCard.css
 7	SCALE-05-spacing	apps/renderer/domains/conversation/features/command-execution-presentation/ui/CommandExecutionCard.css
-1	SCALE-05-spacing	apps/renderer/domains/conversation/features/command-execution-presentation/ui/CommandProtectedInputDialog.css
 1	SCALE-06-z-index	apps/renderer/domains/conversation/features/context-window-usage/styles/ContextWindowUsage.css
 3	SCALE-03-line-height	apps/renderer/domains/conversation/features/context-window-usage/styles/ContextWindowUsagePanel.css
 1	SCALE-04-radius	apps/renderer/domains/conversation/features/context-window-usage/styles/ContextWindowUsagePanel.css
@@ -285,11 +284,10 @@
 1	SCALE-05-spacing	apps/renderer/domains/knowledgebase/styles/components/FileUploadTab.css
 5	SCALE-05-spacing	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseDetail.css
 2	SCALE-01-font-size	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseList.css
-3	SCALE-05-spacing	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseList.css
+2	SCALE-05-spacing	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseList.css
 1	SCALE-04-radius	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseModal.css
 1	SCALE-04-radius	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseSettingsTab.css
 1	SCALE-03-line-height	apps/renderer/domains/knowledgebase/styles/components/KnowledgeGraphProgressBar.css
-1	SCALE-05-spacing	apps/renderer/domains/knowledgebase/styles/components/ParsingSettingsTab.css
 1	SCALE-03-line-height	apps/renderer/domains/model-configuration/features/model-catalog/ui/ModelDetailsModal.css
 1	SCALE-05-spacing	apps/renderer/domains/model-configuration/features/model-catalog/ui/ModelDetailsModal.css
 1	SCALE-07-duration	apps/renderer/domains/model-configuration/features/model-picker/ui/ModelVisibilitySettingsSection.css
@@ -338,7 +336,6 @@
 2	SCALE-02-font-weight	apps/renderer/domains/workspace/styles/features/todo/TodoSidebar.css
 1	SCALE-04-radius	apps/renderer/domains/workspace/styles/features/todo/TodoSidebar.css
 3	SCALE-05-spacing	apps/renderer/domains/workspace/styles/features/todo/TodoSidebar.css
-1	SCALE-05-spacing	packages/renderer-ui/src/features/actions/styles/ActionButtons.css
 1	SCALE-01-font-size	packages/renderer-ui/src/features/color-selection/styles/ColorPickerPanel.css
 1	SCALE-02-font-weight	packages/renderer-ui/src/features/color-selection/styles/ColorPickerPanel.css
 1	SCALE-04-radius	packages/renderer-ui/src/features/feedback/styles/CharacterCount.css

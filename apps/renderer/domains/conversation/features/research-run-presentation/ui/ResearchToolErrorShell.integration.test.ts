@@ -152,7 +152,7 @@ describe('research tool errors through the real message shell', () => {
     const host = await mount(failedMessage('ordinary_tool', IMAGE_GENERATION_TOOL_ERROR_CODES.modelNotConfigured));
     expect(host.querySelector('.tool-card__header')).toBeNull();
     expect(host.querySelector('.tool-error-card--actionable')).not.toBeNull();
-    host.querySelector<HTMLButtonElement>('.action-btn.primary')?.click();
+    host.querySelector<HTMLButtonElement>('.linnya-ui-button--primary')?.click();
     expect(openSettings).toHaveBeenCalledWith('model');
     expect(genericCardMounted).toBe(false);
   });

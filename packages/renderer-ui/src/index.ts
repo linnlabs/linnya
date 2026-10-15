@@ -1,4 +1,4 @@
-export { ActionButtons } from './features/actions';
+export { ActionButtons, BaseButton } from './features/actions';
 export type {
   ActionButtonAttributes,
   ActionButtonsPrimaryVariant,
@@ -6,6 +6,13 @@ export type {
   ActionButtonsSecondaryVariant,
   ActionButtonsShape,
   ActionButtonsSlots,
+  BaseButtonProps,
+  BaseButtonShape,
+  BaseButtonSize,
+  BaseButtonSlots,
+  BaseButtonTone,
+  BaseButtonType,
+  BaseButtonVariant,
 } from './features/actions';
 export {
   CustomCheckbox,

@@ -250,7 +250,7 @@ describe('CommandExecutionCard', () => {
     field.value = 'private-value';
     field.dispatchEvent(new Event('input', { bubbles: true }));
     await nextTick();
-    document.body.querySelector<HTMLButtonElement>('.command-protected-input__button.is-primary')?.click();
+    document.body.querySelector<HTMLButtonElement>('.command-protected-input__actions .linnya-ui-button--primary')?.click();
     await nextTick();
 
     expect(submitProtectedInput).toHaveBeenCalledWith(handle, 'private-value');

@@ -1,0 +1,253 @@
+/* Renderer UI actions feature：通用按钮。视觉层级、尺寸与颜色规则见 docs/design.md。 */
+.linnya-ui-button {
+  --linnya-ui-button-icon-size: 14px;
+  --linnya-ui-button-raised-shadow:
+    0 1px 2px var(--shadow-color-xs),
+    0 2px 4px color-mix(in srgb, var(--shadow-color-xs) 40%, transparent);
+  --linnya-ui-button-raised-shadow-hover:
+    0 2px 5px var(--shadow-color-xs),
+    0 6px 14px color-mix(in srgb, var(--shadow-color-xs) 80%, transparent);
+  --linnya-ui-button-raised-shadow-active:
+    0 1px 3px var(--shadow-color-xs),
+    0 2px 6px color-mix(in srgb, var(--shadow-color-xs) 80%, transparent);
+
+  box-sizing: border-box;
+  display: inline-flex;
+  gap: var(--space-1-5);
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-height-sm);
+  margin: 0;
+  padding: 0 var(--space-3);
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-body);
+  white-space: nowrap;
+  cursor: pointer;
+  appearance: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    border-color var(--duration-medium) var(--ease-standard),
+    box-shadow var(--duration-medium) var(--ease-standard),
+    color var(--duration-medium) var(--ease-standard),
+    opacity var(--duration-medium) var(--ease-standard);
+}
+
+.linnya-ui-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.linnya-ui-button:disabled {
+  cursor: not-allowed;
+}
+
+.linnya-ui-button__icon {
+  display: inline-flex;
+  flex: 0 0 var(--linnya-ui-button-icon-size);
+  align-items: center;
+  justify-content: center;
+  width: var(--linnya-ui-button-icon-size);
+  height: var(--linnya-ui-button-icon-size);
+  line-height: 0;
+}
+
+.linnya-ui-button__icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.linnya-ui-button__label {
+  display: inline-flex;
+  gap: inherit;
+  align-items: center;
+  min-width: 0;
+}
+
+/* 尺寸：高度与同档输入框一致，大尺寸用于页面级入口。 */
+.linnya-ui-button--md {
+  gap: var(--space-2);
+  min-height: var(--control-height-md);
+  padding: 0 var(--space-4);
+}
+
+.linnya-ui-button--lg {
+  gap: var(--space-2-5);
+  min-height: var(--control-height-lg);
+  padding: 0 var(--space-4);
+}
+
+.linnya-ui-button--pill {
+  border-radius: var(--radius-full);
+}
+
+/* 占满宽度时图标贴左，文字补偿图标宽度后相对整个按钮视觉居中。 */
+.linnya-ui-button--block {
+  display: flex;
+  width: 100%;
+}
+
+.linnya-ui-button--block.linnya-ui-button--with-icon {
+  justify-content: flex-start;
+}
+
+.linnya-ui-button--block.linnya-ui-button--with-icon .linnya-ui-button__label {
+  flex: 1;
+  justify-content: center;
+  padding-right: var(--linnya-ui-button-icon-size);
+}
+
+/* primary：唯一主操作。 */
+.linnya-ui-button--primary {
+  color: var(--color-text-on-accent);
+  background-color: var(--color-accent);
+}
+
+.linnya-ui-button--primary:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+}
+
+.linnya-ui-button--primary:disabled {
+  background-color: var(--color-accent-disabled);
+}
+
+/* secondary / ghost / plain：从表面到透明逐级减弱的次操作。 */
+.linnya-ui-button--secondary {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border-default);
+}
+
+.linnya-ui-button--ghost {
+  color: var(--color-text-secondary);
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1px var(--color-border-default);
+}
+
+.linnya-ui-button--plain {
+  color: var(--color-text-secondary);
+  background-color: transparent;
+}
+
+.linnya-ui-button--secondary:hover:not(:disabled),
+.linnya-ui-button--ghost:hover:not(:disabled),
+.linnya-ui-button--plain:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-hover);
+}
+
+.linnya-ui-button--secondary:disabled,
+.linnya-ui-button--ghost:disabled,
+.linnya-ui-button--plain:disabled {
+  opacity: 0.5;
+}
+
+/* danger：破坏性主操作。 */
+.linnya-ui-button--danger {
+  color: var(--color-text-on-accent);
+  background-color: var(--color-error);
+}
+
+.linnya-ui-button--danger:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-error) 85%, var(--color-text-primary));
+}
+
+.linnya-ui-button--danger:disabled {
+  background-color: var(--color-error-bg);
+  opacity: 0.6;
+}
+
+/* soft：品牌色浅底的推荐操作。 */
+.linnya-ui-button--soft {
+  color: var(--color-accent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-accent) 8%, transparent) 0%,
+    color-mix(in srgb, var(--color-accent) 4%, transparent) 100%
+  );
+  box-shadow: inset 0 0 0 1px var(--color-accent-hover-light);
+}
+
+.linnya-ui-button--soft:hover:not(:disabled) {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-accent) 15%, transparent) 0%,
+    color-mix(in srgb, var(--color-accent) 8%, transparent) 100%
+  );
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.linnya-ui-button--soft:disabled {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-accent) 4%, transparent) 0%,
+    color-mix(in srgb, var(--color-accent) 2%, transparent) 100%
+  );
+  box-shadow: none;
+  opacity: 0.5;
+}
+
+/* outline：页面级入口，表面底色、发丝描边与轻投影；tone 决定描边与文字颜色。 */
+.linnya-ui-button--outline {
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-bg-surface);
+  border: var(--border-width-hairline) solid var(--color-border-default);
+  box-shadow: var(--linnya-ui-button-raised-shadow);
+}
+
+.linnya-ui-button--outline:hover:not(:disabled) {
+  box-shadow: var(--linnya-ui-button-raised-shadow-hover);
+}
+
+.linnya-ui-button--outline:active:not(:disabled) {
+  box-shadow: var(--linnya-ui-button-raised-shadow-active);
+}
+
+.linnya-ui-button--outline:disabled {
+  box-shadow: none;
+  opacity: 0.5;
+}
+
+.linnya-ui-button--outline.linnya-ui-button--tone-accent {
+  color: var(--color-accent);
+  border-color: var(--color-accent-light);
+}
+
+.linnya-ui-button--outline.linnya-ui-button--tone-accent:hover:not(:disabled) {
+  background-color: var(--color-accent-bg-subtle);
+  border-color: var(--color-accent);
+}
+
+.linnya-ui-button--outline.linnya-ui-button--tone-accent:active:not(:disabled) {
+  background-color: var(--color-accent-bg);
+}
+
+.linnya-ui-button--outline.linnya-ui-button--tone-info {
+  color: var(--color-info);
+  border-color: var(--color-info);
+}
+
+.linnya-ui-button--outline.linnya-ui-button--tone-info:hover:not(:disabled) {
+  background-color: var(--color-info-bg);
+}
+
+.linnya-ui-button--outline.linnya-ui-button--tone-info:active:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-info-bg) 82%, var(--color-info));
+}
+
+.linnya-ui-button--outline.linnya-ui-button--tone-neutral {
+  color: var(--color-text-primary);
+}
+
+.linnya-ui-button--outline.linnya-ui-button--tone-neutral:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-border-hover);
+}
+
+.linnya-ui-button--outline.linnya-ui-button--tone-neutral:active:not(:disabled) {
+  background-color: var(--color-bg-active);
+}
