@@ -180,7 +180,7 @@ Teleport、Popover、Dropdown、Modal 和 fixed overlay 不在触发组件的 DO
 
 - 文本、密文、数字、范围滑块和多行输入。
 - Select、Checkbox、Radio、Switch 和 Segmented Tabs。
-- Modal、AlertDialog、Tooltip、Dropdown 和操作按钮。
+- 按钮（`BaseButton`）、Modal、AlertDialog、Tooltip、Dropdown 和主次操作按钮组（`ActionButtons`）。
 - 标签、日期时间、颜色选择和可拖拽面板。
 - 页面级 OverlayScrollbars 与小区域标准滚动条。
 
@@ -188,7 +188,7 @@ Teleport、Popover、Dropdown、Modal 和 fixed overlay 不在触发组件的 DO
 
 交互语义必须与控件一致：导航和视图切换使用 Tab 或导航项，布尔状态使用 Switch / Checkbox，互斥表单选择才使用 Radio。不要仅因为视觉相似而混用控件。
 
-hover 通常通过语义背景 Token 表达；focus-visible 必须保留清晰的键盘焦点；selected、disabled、loading 和 error 状态应由共享组件契约或明确的状态类承接。
+hover 通常通过语义背景 Token 表达；键盘焦点环由 document baseline（`app/styles/base/reset.css`）统一提供，组件不得在基础选择器上用 `outline: none` 关掉它，悬停才显露的行内操作在 `:focus-within` 时也要显露；selected、disabled、loading 和 error 状态应由共享组件契约或明确的状态类承接。
 
 业务页面只能通过组件公开的 props、slots 和状态类定制。若共享组件缺少一个跨业务成立的能力，应扩展其窄接口并更新组件文档，而不是从业务 CSS 穿透其内部实现。
 
