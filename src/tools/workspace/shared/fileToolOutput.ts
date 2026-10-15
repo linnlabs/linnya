@@ -46,7 +46,10 @@ export function formatEntriesObservation(params: {
   readonly hasMore: boolean;
 }): string {
   if (params.entries.length === 0) {
-    return `${params.label} 下没有可见条目。`;
+    // 分页期间目录可能变化；空页不能被模型理解为整个目录为空。
+    return params.totalCount === 0
+      ? `${params.label} 下没有可见条目。`
+      : `${params.label} 共 ${params.totalCount} 个条目，本次 offset=${params.offset} 已超出当前范围。请对同一目录使用 offset=0 重新读取。`;
   }
 
   const paginationHint = params.hasMore

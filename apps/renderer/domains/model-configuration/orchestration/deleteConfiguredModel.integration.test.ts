@@ -47,4 +47,28 @@ describe('deleteConfiguredModel', () => {
     expect(bindings.selections.imageGenerationModelId.value).toBeNull();
     expect(bindings.selections.auxiliaryModelIds.value.translation).toBeNull();
   });
+  it('删除提交后 Picker 重读失败不让详情界面误报删除失败', async () => {
+    const catalog = useModelCatalogStore();
+    catalog.replaceSnapshot({
+      models: [{ id: 'a', catalog_source: 'user', capabilities: ['chat'] }],
+      purposeDefaults: {},
+      cloudModelsReady: false,
+    });
+    const gateway: ModelCatalogGateway = {
+      load: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(async () => undefined),
+    };
+    const picker: ModelPickerGateway = {
+      load: vi.fn(async () => {
+        throw new Error('offline');
+      }),
+      refreshProviderModels: vi.fn(),
+      setProviderVisibility: vi.fn(),
+      setModelVisibility: vi.fn(),
+      activateProviderModel: vi.fn(),
+    };
+    await expect(deleteConfiguredModel('a', gateway, picker)).resolves.toBeUndefined();
+    expect(catalog.models).toEqual([]);
+  });
 });

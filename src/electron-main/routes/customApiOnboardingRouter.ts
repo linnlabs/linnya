@@ -2,6 +2,8 @@ import { Router, type Request, type Response } from 'express';
 import {
   CustomApiModelRegistrationCommandSchema,
   CustomApiProviderUpdateCommandSchema,
+  CustomApiProviderRemovalCommandSchema,
+  CustomApiProviderRefreshCommandSchema,
   type CustomApiOnboardingErrorResponse,
   ModelDiscoveryRequestSchema,
   type ModelDiscoveryErrorResponse,
@@ -10,10 +12,7 @@ import {
   CustomApiOnboardingError,
   type CustomApiOnboardingUseCase,
 } from 'src/app-hosts/linnya/application/custom-api-onboarding';
-import {
-  ModelDiscoveryService,
-  ModelDiscoveryError,
-} from 'src/domains/model-catalog';
+import { ModelDiscoveryService, ModelDiscoveryError } from 'src/domains/model-catalog';
 
 function sendError(
   response: Response,
@@ -38,6 +37,52 @@ export function createCustomApiOnboardingRouter(
 ): Router {
   const router = Router();
 
+  router.delete('/providers', async (request: Request, response: Response) => {
+    const parsed = CustomApiProviderRemovalCommandSchema.safeParse(request.body);
+    if (!parsed.success) {
+      sendError(response, 400, {
+        code: 'custom_api_onboarding.invalid_command',
+        message: '自定义模型分组删除参数无效',
+      });
+      return;
+    }
+    try {
+      response.json(await useCase.removeProvider(parsed.data));
+    } catch (error: unknown) {
+      if (error instanceof CustomApiOnboardingError) {
+        sendError(response, error.statusCode, { code: error.code, message: error.message });
+        return;
+      }
+      sendError(response, 500, {
+        code: 'custom_api_onboarding.removal_failed',
+        message: '自定义模型分组删除失败',
+      });
+    }
+  });
+
+  router.post('/providers/refresh', async (request: Request, response: Response) => {
+    const parsed = CustomApiProviderRefreshCommandSchema.safeParse(request.body);
+    if (!parsed.success) {
+      sendError(response, 400, {
+        code: 'custom_api_onboarding.invalid_command',
+        message: '自定义模型分组刷新参数无效',
+      });
+      return;
+    }
+    try {
+      response.json(await useCase.refreshProvider(parsed.data));
+    } catch (error: unknown) {
+      if (error instanceof CustomApiOnboardingError) {
+        sendError(response, error.statusCode, { code: error.code, message: error.message });
+        return;
+      }
+      sendError(response, 500, {
+        code: 'custom_api_onboarding.refresh_failed',
+        message: '自定义模型分组刷新失败',
+      });
+    }
+  });
+
   router.post('/discover', async (request: Request, response: Response) => {
     const parsed = ModelDiscoveryRequestSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -61,7 +106,7 @@ export function createCustomApiOnboardingRouter(
       }
       sendDiscoveryError(response, 500, {
         code: 'model_discovery.failed',
-        message: error instanceof Error ? error.message : '模型列表探测失败',
+        message: '模型列表探测失败',
       });
     }
   });

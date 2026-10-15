@@ -151,6 +151,16 @@ credential 只属于 Cloud 私有记录，不得进入本 domain 的公共 Cloud
 模型 API 名称与底层版本不是同一事实。`deepseek-flash` 与既有 V4 名称均接入当前思考档位合同；
 别名解析由供应商负责，目录准入不改写 endpoint model ID，也不能把本地展示名当成运行时版本证明。
 
+### 模型发现容量的已知合同差异
+
+[`parseModelListingResponse`](./features/model-discovery/functions/parseModelListingResponse.ts)
+优先采用接口报告和已有模型推断，仍以 `32768 / 4096` 补齐未知容量；这与
+[language route 的缺省值](../../../packages/schemas/src/model-inference/language-route.ts)
+`256000 / 16384` 尚未统一。两组值都不能当作兼容端点实际容量的证明。
+直接替换输出默认值可能使已报告或已识别的 8K 窗口小于输出预留，造成负输入预算。
+统一合同必须同时处理窗口与输出的联合准入，以及已保存显式配置的来源；不能通过批量放大
+模型容量修复上下文整理。运行时继续使用当前 prepared route 的明确容量。
+
 ### Account catalog
 
 账号型产品可通过 `replaceAccountModels(accountId, models)`
@@ -359,3 +369,17 @@ smoke。单纯目录重构不需要等待 Windows/macOS 正式签名安装包发
 - 外部 domain 深层导入 feature 内部实现。
 
 若需求与这里的 owner 或依赖方向冲突，先更新 Proposal 与本 README，把职责变化讲清楚，再修改代码。
+
+## 用户目录批次与异步版本检查
+
+`registerUserModels` 在一次串行事务中准备全部连接和模型、保存一次目录，再发布内存快照；单模型注册委托此合同。
+同批后续条目可以引用此前创建的 endpoint。准备或写盘失败按逆序撤销凭据变更，不发布部分模型。
+凭据准备及回滚由 inference-endpoints feature 的 `prepareInferenceEndpointSelection` 拥有，Registry 只协调目录事务。
+
+`getUserRevision` 是当前进程用户目录/凭据的提交版本。跨网络的应用用例在读取事实前取得版本，并在
+`registerUserModels`、`rebindUserModels` 或 `applyDiff` 提交时传入；版本在事务队列内部校验，冲突抛出公开的
+`ModelCatalogConflictError`。失败不增加版本，后续任务仍可继续；Cloud/account 投影不改变用户目录版本。
+版本不写盘，因为重启后不存在跨进程遗留的在途用例。它保护请求执行期间的交错更新，不提供多进程共同写目录的锁。
+
+Model Discovery 的 URL、响应解析、错误合同与网络流程分别归属其 feature 的 functions、definitions、orchestration。
+保留公开入口；显式网关路径与推理共用，错误 envelope 不当作空列表，上游原始正文不进入公开错误。

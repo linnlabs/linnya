@@ -305,6 +305,11 @@ capability 明确接入，不能把某一家 `/models` 响应当成通用合同�
 
 已注册的自定义分组通过 `PUT /api/v1/custom-api-onboarding/providers` 编辑：Renderer 只提交当前分组名称以及新的名称、格式、URL 和可选 Key，URL 使用与注册相同的共享规范化规则。endpoint 复用、凭据沿用条件和 route 重建全部由 Host 决定，Renderer 只展示 Host 返回的稳定错误。
 
+自定义分组刷新通过 `POST /api/v1/custom-api-onboarding/providers/refresh` 只提交分组名称。Host 使用已保存的
+连接与 Key 查询，按 endpoint 和远端模型 ID 去重，保留已有模型与开关，新模型默认关闭。Vue 不调用首次添加的
+匿名发现路径，也不比较 Provider 模型 ID 或重新提交注册表单。domain-level
+`orchestration/refreshCustomApiProviderModels.ts` 协调刷新与两份目录重读，并复用 picker 的统一错误生命周期。
+
 Credential 只允许存在于未提交表单和一次 Custom API onboarding
 command 中。Host 将它转换为一次 InferenceEndpoint create
 command；模型配置不重复携带 secret，日志只能记录安全错误 code。未提交 Key 时由 Host 按格式、规范化 URL、认证和 endpoint
@@ -477,3 +482,22 @@ domain 重构不要求 Windows/macOS 安装包验收。
 - 为“以后可能上 API 网关”提前加入空接口、fallback 或重复 DTO。
 
 边界守卫会阻止旧 Renderer 模型实现和深层 import 回流。若新需求与本文边界冲突，先更新 Proposal/README 并说明 owner 变化，再修改代码。
+
+## 自定义模型完整链路的状态与一致性
+
+- `custom-model-registration` 的表单通过 `createCustomApiRegistrationSession` 创建独立会话。`definitions/`
+  声明状态，`functions/` 生成命令和选择项，`store/` 只有同步写入，`orchestration/` 拥有发现、取消和提交顺序。
+  Vue 只读取状态和派发交互；明文 Key 不进入全局 Pinia、持久化或日志，卸载清空。
+- 修改地址、格式或 Key 立即取消当前发现并使旧模型列表失效；即使取消后响应仍到达，也不能写回。
+  提交期间固定表单与选择；成功保存后即清理这批草稿，目录重读失败会明确提示“已保存”，不诱导重复添加。
+- Catalog 与 Picker 的网络操作分别按 Pinia store 实例排队，后台通知也参与相同顺序。store 只接收结果，
+  不调用网络编排；后台读取不清除用户操作错误，迟到快照不能覆盖随后提交的新值。
+- 自定义分组刷新和删除只向 Host 提交名称，连接与真实归属由后端解析。刷新后新模型默认关闭，已有选择不写回。
+  删除使用 Host 单次目录提交，并用响应中的实际模型 ID 清理用途绑定；同步失败与删除失败分别反馈。
+
+本轮审计收口了旧发现结果提交、偏好并发覆盖、半批注册、交错刷新重复添加、删除后旧请求写回和错误正文泄密。
+回归验证集中在会话、编排、目录事务和 HTTP 合同，测试通过可控的延迟与写盘失败重现这些实际顺序。
+正式 Provider 的归属删除仍由 configured-model-removal 的 durable intent 协议负责，不能绕过该 owner 直接批量删目录。
+
+正式 Provider 的批量移除保留逐模型 durable intent，结束后统一重读列表；失败结果带已删除 ID 与失败 ID，
+界面显示实际完成数量。单模型删除共用该流程，已提交的删除不会因 Picker 重读失败被详情界面误报成删除失败。

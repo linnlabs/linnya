@@ -6,6 +6,7 @@ import { useModelCatalogStore } from '../store/modelCatalogStore';
 import {
   deleteModelFromCatalog,
   loadModelCatalog,
+  synchronizeModelCatalogSnapshot,
   updateModelInCatalog,
 } from './modelCatalogOperations';
 
@@ -33,7 +34,9 @@ describe('model catalog operations', () => {
     const store = useModelCatalogStore();
 
     await loadModelCatalog(gateway);
-    expect(store.models).toEqual([{ id: 'custom-1', catalog_source: 'user', display_name: 'Before' }]);
+    expect(store.models).toEqual([
+      { id: 'custom-1', catalog_source: 'user', display_name: 'Before' },
+    ]);
     expect(store.purposeDefaults).toEqual({ autocomplete: 'custom-1' });
     expect(store.cloudModelsReady).toBe(true);
 
@@ -51,11 +54,31 @@ describe('model catalog operations', () => {
     await loadModelCatalog(gateway);
     vi.mocked(gateway.update).mockRejectedValueOnce(new Error('上游拒绝更新'));
 
-    await expect(updateModelInCatalog('custom-1', { display_name: 'After' }, gateway))
-      .rejects.toThrow('上游拒绝更新');
+    await expect(
+      updateModelInCatalog('custom-1', { display_name: 'After' }, gateway)
+    ).rejects.toThrow('上游拒绝更新');
 
     expect(store.models[0]?.display_name).toBe('Before');
     expect(store.error).toEqual({ operation: 'update', detail: '上游拒绝更新' });
     expect(store.activeOperation).toBeNull();
+  });
+  it('后台读取与删除串行，迟到目录不会把已删除模型重新放回界面', async () => {
+    const gateway = createGateway();
+    await loadModelCatalog(gateway);
+    const snapshot = await gateway.load();
+    let complete!: (value: typeof snapshot) => void;
+    vi.mocked(gateway.load).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          complete = resolve;
+        })
+    );
+    const loading = synchronizeModelCatalogSnapshot(gateway);
+    const removing = deleteModelFromCatalog('custom-1', gateway);
+    await vi.waitFor(() => expect(complete).toBeTypeOf('function'));
+    expect(gateway.delete).not.toHaveBeenCalled();
+    complete(snapshot);
+    await Promise.all([loading, removing]);
+    expect(useModelCatalogStore().models).toEqual([]);
   });
 });

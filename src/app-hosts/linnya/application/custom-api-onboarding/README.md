@@ -30,16 +30,35 @@ command。
 ```
 
 显式提交新 Key 表示创建新的 credential
-boundary；未提交 Key 时只复用格式、URL、认证完全一致且凭据可用的自定义 endpoint。正式 Provider
+boundary；未提交 Key 时仅在格式、URL、认证完全一致且凭据可用的自定义 endpoint 唯一时复用；多个匹配连接可能属于不同账号，要求显式填写 Key。正式 Provider
 endpoint 即使 URL 相同也不会被本流程复用。
 
 发现列表中的开关表示快捷选择器可见性，关闭的模型仍会注册到目录。显式提交的
 `picker_enabled` 由本 use case 通过窄 port 写入 Model Picker Preferences，不写进
 ModelConfig；未提交时保留 picker 的默认规则，不生成偏好记录。
 
-每个模型先提交偏好，再保存目录，避免偏好写入失败后出现默认开启的模型。目录保存失败时，
-该新 ID 的孤儿偏好由现有启动 identity reconcile 清理，不会进入模型列表。批量注册仍逐模型
-提交，并非整个批次的原子事务；中途失败时，之前成功的模型及其偏好保留。
+整批先提交偏好，再通过 `registerUserModels` 一次发布目录，避免偏好写入失败后出现默认开启的模型，
+也不会因后续模型出错而只保存半批。目录保存失败时，新 ID 的孤儿偏好由启动 identity reconcile 清理，
+不会进入模型列表。偏好与目录属于不同持久化 owner，这不是跨文件事务；顺序保证失败残留不可见且可清理。
+
+## 已保存分组刷新
+
+`POST /api/v1/custom-api-onboarding/providers/refresh` 只接收 `provider_name`。Host 根据分组的现存
+模型和 endpoint 取得 API 格式、地址与凭据，通过同一 Model Discovery 能力重新查询；Renderer 不读取密钥，
+也不能覆盖刷新目标地址。首次添加的 `/discover` 仍使用表单中单向提交的 Key，两者不能混用。
+
+分组可能包含多个连接，必须在第一次网络等待前同步固定整组的地址、协议与明文凭据快照，
+避免并发编辑后将新 Key 发往旧地址。逐连接使用各自凭据，并以 endpoint 身份与 typed route 的
+`endpoint_model_id` 判断已有模型，不能使用正式 Provider 的 `provider_model_id` 或显示名。已有模型的
+本地 ID、用户编辑和选择偏好保持不变；新模型复用发现它的准确 endpoint，默认关闭，等待用户显式启用。
+重复刷新不重复注册；远端空列表不删除本地模型。所有连接发现成功后才开始注册，鉴权、网络或解析失败
+保留旧目录。全部新增项共享一次目录事务；远端错误正文不得回传给 Renderer。
+
+发现前记录用户目录版本，提交时在 Catalog 串行事务内校验。并发刷新或期间发生连接编辑、换 Key、删除，
+过期提交返回 `configuration_changed` / HTTP 409，用户重读后重新操作；不自动重试可能改变含义的写入。
+版本属于进程中的用户目录与凭据，Cloud/account 目录投影不会制造冲突。
+
+刷新后的 Renderer 跨 feature 编排同时重读 Model Catalog 和 Model Picker，保证新增模型可立即查看详情。
 
 ## 分组连接编辑
 
@@ -59,5 +78,20 @@ ModelConfig；未提交时保留 picker 的默认规则，不生成偏好记录�
 模型 route 只替换连接事实（endpoint identity、base URL、auth 与 profile），模型 ID、容量、视觉声明以及
 usage/continuation 保持原值；图片来源仍按新格式的 profile 重新投影。全部模型通过 Model Catalog
 `rebindUserModels` 一次事务改绑，旧 endpoint 在没有引用后与其独占密文同事务清理；写盘失败时撤销本次凭据变更，
-use case 只返回稳定错误码。删除分组不经过本用例：Renderer 逐个复用正式模型删除流程，最后一个引用模型删除时
-endpoint 与密文由 Model Catalog 自动收口。
+use case 只返回稳定错误码。编辑同样使用目录版本检查，避免覆盖交错提交的模型资料。
+
+## 分组删除与提交边界
+
+`DELETE /api/v1/custom-api-onboarding/providers` 只接收分组名称，由 Host 解析当前全部归属（排除正式 Provider），
+通过带版本检查的 Catalog `applyDiff` 一次删除。最后一个引用消失时，endpoint 和独占凭据按 Catalog 的统一生命周期清理。
+偏好清理失败不谎报删除失败，响应返回 `model_picker_preference_recovery_pending`，启动 reconcile 收口。
+Renderer 按响应中的真实已删除 ID 清理用途绑定；投影读取失败与删除失败分别显示。
+
+## 职责与安全约束
+
+- factory 只装配注册、刷新、编辑和删除编排；分组归属、连接决策、模型投影由 `functions/` 拥有。
+- URL 准入允许内网 HTTP 和 HTTPS，但拒绝 userinfo、query、fragment，凭据只能走独立 Key 字段。
+- 发现请求不跟随重定向，避免将认证头传到另一地址；15 秒超时覆盖 headers 和响应体读取。
+- 列表结构错误不能被解释为“没有模型”；能力推断只在 Model Discovery 中执行并标注 confidence。
+- 凭据持久化和目录文件仍是两个物理落点，异常时执行回滚，但不声称拥有跨文件的进程崩溃事务。
+  本次不新增 Provider 实体或存储迁移；分组仍以名称表达，重命名冲突由用例拒绝。

@@ -7,5 +7,8 @@ import type {
 
 export interface CustomApiModelRegistrationGateway {
   register(command: CustomApiModelRegistrationRequest): Promise<CustomApiModelRegistrationResponse>;
-  discoverModels?(request: ModelDiscoveryRequest): Promise<ModelDiscoveryResponse>;
+  discoverModels(
+    request: ModelDiscoveryRequest,
+    signal?: AbortSignal
+  ): Promise<ModelDiscoveryResponse>;
 }

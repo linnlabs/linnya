@@ -40,7 +40,7 @@ import { createRegisteredChildRunInvoker } from 'src/app-hosts/linnya/adapters/c
 import { createLinnyaChildRunInvoker } from 'src/app-hosts/linnya/adapters/child-runs/childRunInvokerFactory';
 import type { AgentToolEnvironment } from 'src/app-hosts/linnya/backend-runtime/definitions/agentToolEnvironment';
 import { providerCatalog } from '@linnya/provider-catalog';
-import { modelCatalog } from 'src/domains/model-catalog';
+import { modelCatalog, ModelDiscoveryService } from 'src/domains/model-catalog';
 import { providerConfigurationRegistry } from 'src/domains/provider-configuration';
 import { modelPickerPreferencesRegistry } from 'src/domains/model-picker-preferences';
 import { providerOnboardingRuntimeBindingRegistry } from 'src/app-hosts/linnya/adapters/inference';
@@ -409,6 +409,7 @@ export async function configureRoutes(
   logger.info('✅ Provider onboarding 路由已挂载: /api/v1/provider-onboarding');
   const customApiOnboardingUseCase = createCustomApiOnboardingUseCase({
     modelCatalog,
+    modelDiscovery: new ModelDiscoveryService(),
     providerMembership: providerConfigurationRegistry,
     modelPickerPreferences: modelPickerPreferencesRegistry,
     idFactory: { create: randomUUID },

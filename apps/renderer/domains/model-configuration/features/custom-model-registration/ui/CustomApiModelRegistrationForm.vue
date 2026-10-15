@@ -1,26 +1,31 @@
 <template>
-  <div class="add-model-provider-form" data-registration-kind="custom-provider">
+  <div
+    class="add-model-provider-form"
+    data-registration-kind="custom-provider"
+  >
     <SettingsRow
       :label="settingsMessage('settings.addModel.customProvider.label')"
       :hint="settingsMessage('settings.addModel.customProvider.description')"
     >
       <CustomTextInput
-        v-model="form.providerName"
+        :model-value="form.providerName"
+        :disabled="status.isSubmitting"
         class="settings-text-control"
         :placeholder="settingsMessage('settings.addModel.customProvider.placeholder')"
-        @input="userEditedProviderName = true"
+        @update:model-value="session.setField('providerName', $event)"
       />
     </SettingsRow>
 
     <SettingsRow :label="settingsMessage('settings.addModel.apiUrl.label')">
       <CustomTextInput
-        v-model="form.baseUrl"
+        :model-value="form.baseUrl"
+        :disabled="status.isSubmitting"
         class="settings-text-control"
         :placeholder="settingsMessage('settings.addModel.apiUrl.placeholder')"
-        @input="onBaseUrlInput"
+        @update:model-value="session.setField('baseUrl', $event)"
       />
       <template #hint>
-        {{ settingsMessage('settings.addModel.apiUrl.descriptionLine1') }}<br />
+        {{ settingsMessage('settings.addModel.apiUrl.descriptionLine1') }}<br>
         {{ settingsMessage('settings.addModel.apiUrl.descriptionLine2') }}
       </template>
     </SettingsRow>
@@ -30,9 +35,11 @@
       :hint="settingsMessage('settings.addModel.apiKey.optionalReuseDescription')"
     >
       <SecretInput
-        v-model="form.credentialSecret"
+        :model-value="form.credentialSecret"
+        :disabled="status.isSubmitting"
         class="settings-text-control"
         :placeholder="settingsMessage('settings.addModel.apiKey.placeholder')"
+        @update:model-value="session.setField('credentialSecret', $event)"
       />
     </SettingsRow>
 
@@ -42,21 +49,32 @@
     >
       <div class="settings-field-with-action add-model-select-with-action">
         <CustomSelect
-          v-model="form.customApiFormat"
+          :model-value="form.customApiFormat"
+          :disabled="status.isSubmitting"
           :options="customApiFormatOptions"
           :title="settingsMessage('settings.addModel.compatibility.selectTitle')"
           class="add-model-select-control flex-grow"
           font-size="14px"
+          @update:model-value="
+            session.setField('customApiFormat', CustomApiFormatSchema.parse($event))
+          "
         />
         <button
           type="button"
           class="settings-button settings-button-secondary add-model-discover-button"
-          :disabled="isDiscovering || !form.baseUrl"
+          :disabled="isDiscovering || status.isSubmitting || !form.baseUrl"
           :title="settingsMessage('settings.addModel.discover.button')"
-          @click="discoverModels"
+          @click="session.discover"
         >
-          <RefreshIcon class="add-model-refresh-icon" :class="{ 'is-spinning': isDiscovering }" />
-          <span>{{ isDiscovering ? settingsMessage('settings.addModel.discover.fetching') : settingsMessage('settings.addModel.discover.button') }}</span>
+          <RefreshIcon
+            class="add-model-refresh-icon"
+            :class="{ 'is-spinning': isDiscovering }"
+          />
+          <span>{{
+            isDiscovering
+              ? settingsMessage('settings.addModel.discover.fetching')
+              : settingsMessage('settings.addModel.discover.button')
+          }}</span>
         </button>
       </div>
       <SettingsFeedback
@@ -67,33 +85,47 @@
     </SettingsRow>
 
     <!-- 发现多个模型时，直接展示列表及启用/关闭开关 -->
-    <div v-if="discoveredModels.length > 0" class="custom-discovered-models-section">
+    <div
+      v-if="state.models.length > 0"
+      class="custom-discovered-models-section"
+    >
       <header class="custom-discovered-models-header">
         <span class="custom-discovered-models-title">
-          {{ settingsMessage('settings.addModel.discoveredModels.title').replace('{count}', String(discoveredModels.length)) }}
+          {{
+            settingsMessage('settings.addModel.discoveredModels.title').replace(
+              '{count}',
+              String(state.models.length)
+            )
+          }}
         </span>
         <button
           type="button"
           class="settings-link-button"
-          @click="toggleAllEnabled"
+          :disabled="status.isSubmitting"
+          @click="session.setAllEnabled(!allEnabled)"
         >
-          {{ allEnabled ? '全部关闭' : settingsMessage('settings.addModel.discoveredModels.enableAll') }}
+          {{
+            allEnabled
+              ? settingsMessage('settings.addModel.discoveredModels.disableAll')
+              : settingsMessage('settings.addModel.discoveredModels.enableAll')
+          }}
         </button>
       </header>
 
       <div class="custom-discovered-models-list">
         <SettingsList :bordered="false">
           <SettingsListRow
-            v-for="model in discoveredModels"
-            :key="model.id"
-            :title="model.name"
-            :meta="formatModelMeta(model)"
+            v-for="row in state.models"
+            :key="row.item.endpoint_model_id"
+            :title="row.item.display_name"
+            :meta="formatModelMeta(row.item)"
           >
             <template #trailing>
               <Switch
-                :model-value="modelStateMap[model.id]?.enabled ?? true"
-                :ariaLabel="model.name"
-                @update:model-value="toggleModelEnabled(model.id, $event)"
+                :model-value="row.enabled"
+                :disabled="status.isSubmitting"
+                v-bind="{ ariaLabel: row.item.display_name }"
+                @update:model-value="session.setModelEnabled(row.item.endpoint_model_id, $event)"
               />
             </template>
           </SettingsListRow>
@@ -105,226 +137,72 @@
       <button
         type="button"
         class="settings-button full-width-button"
-        :disabled="status.isSubmitting || status.success || discoveredModels.length === 0"
-        @click="submit"
+        :disabled="
+          status.isSubmitting || isDiscovering || status.success || state.models.length === 0
+        "
+        @click="session.submit"
       >
         {{ submitText }}
       </button>
-      <SettingsFeedback kind="error" :message="status.error || ''" />
+      <SettingsFeedback
+        kind="error"
+        :message="status.error || ''"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount } from 'vue';
+import { CustomApiFormatSchema, type CustomApiModelItem } from '@app/schemas';
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import { CustomSelect, CustomTextInput, SecretInput, Switch } from '@linnya/renderer-ui';
+import { RefreshIcon } from '@linnya/renderer-ui/icons';
 import {
   SettingsFeedback,
   SettingsList,
   SettingsListRow,
   SettingsRow,
-  SettingsSwitchRow,
   useSettingsLocalization,
 } from '@/domains/settings/public';
-import type {
-  ApiCustomModelForm,
-  RegistrationFormStatus,
-} from '../definitions/customModelRegistrationForm';
 import { CUSTOM_API_FORMAT_OPTIONS } from '../definitions/customApiFormatOption';
-import { CustomApiModelRegistrationError } from '../definitions/customApiModelRegistrationError';
-import type { CustomModelRegistrationIssue } from '../definitions/customModelRegistrationResult';
-import { registerApiCustomModel } from '../orchestration/registerApiCustomModel';
-import { httpCustomApiModelRegistrationGateway } from '../infrastructure/httpCustomApiModelRegistrationGateway';
-import type { DiscoveredModel } from '@app/schemas';
-import { extractDefaultProviderNameFromBaseUrl } from '@app/schemas';
-import { RefreshIcon } from '@linnya/renderer-ui/icons';
+import { createCustomApiRegistrationSession } from '../orchestration/createCustomApiRegistrationSession';
 
 const props = defineProps<{ readonly refreshModelCatalog: () => Promise<void> }>();
 const { settingsMessage } = useSettingsLocalization();
-const status = reactive<RegistrationFormStatus>({
-  isSubmitting: false,
-  success: false,
-  error: null,
+const session = createCustomApiRegistrationSession(props.refreshModelCatalog, {
+  invalidUrl: settingsMessage('settings.addModel.error.apiUrlInvalid'),
+  discoveryEmpty: settingsMessage('settings.addModel.discover.empty'),
+  discoveryFailed: settingsMessage('settings.addModel.discover.failed'),
+  invalidConfiguration: settingsMessage('settings.addModel.error.invalidDiscoveredModels'),
+  registrationFailed: settingsMessage('settings.addModel.error.unknown'),
+  synchronizationFailed: settingsMessage('settings.addModel.savedSyncFailed'),
 });
-const form = ref<ApiCustomModelForm>(createInitialForm());
-let successTimer: number | null = null;
-const userEditedProviderName = ref(false);
-
-const isDiscovering = ref(false);
-const discoveredModels = ref<DiscoveredModel[]>([]);
-const modelStateMap = ref<Record<string, { enabled: boolean }>>({});
-const discoveryFeedback = ref<{ kind: 'info' | 'error' | 'success'; message: string } | null>(null);
-
+const { state } = session;
+const form = computed(() => state.form);
+const status = computed(() => state.status);
+const isDiscovering = computed(() => state.isDiscovering);
+const discoveryFeedback = computed(() => state.discoveryFeedback);
+const allEnabled = computed(
+  () => state.models.length > 0 && state.models.every(row => row.enabled)
+);
 const customApiFormatOptions = computed<CustomSelectOption[]>(() =>
   CUSTOM_API_FORMAT_OPTIONS.map(option => ({
     value: option.id,
     text: settingsMessage(option.labelKey),
   }))
 );
-
 const submitText = computed(() => {
-  if (status.isSubmitting) return settingsMessage('settings.addModel.submit.adding');
-  if (status.success) return settingsMessage('settings.addModel.submit.success');
+  if (status.value.isSubmitting) return settingsMessage('settings.addModel.submit.adding');
+  if (status.value.success) return settingsMessage('settings.addModel.submit.success');
   return settingsMessage('settings.addModel.submit.add');
 });
-
-const allEnabled = computed(() =>
-  discoveredModels.value.length > 0 &&
-  discoveredModels.value.every(m => modelStateMap.value[m.id]?.enabled ?? true)
-);
-
-function onBaseUrlInput(): void {
-  if (!userEditedProviderName.value && form.value.baseUrl.trim()) {
-    form.value.providerName = extractDefaultProviderNameFromBaseUrl(form.value.baseUrl);
-  }
+function formatModelMeta(model: CustomApiModelItem): string {
+  return [
+    ...(model.endpoint_model_id !== model.display_name ? [model.endpoint_model_id] : []),
+    `${Math.round(model.context_window_tokens / 1024)}k`,
+    ...(model.supports_image_input ? [settingsMessage('settings.modelCapability.imageInput')] : []),
+  ].join(' · ');
 }
-
-function formatModelMeta(model: DiscoveredModel): string {
-  const parts: string[] = [];
-  if (model.id && model.id !== model.name) {
-    parts.push(model.id);
-  }
-  if (model.context_window_tokens) {
-    parts.push(`${Math.round(model.context_window_tokens / 1024)}k`);
-  }
-  if (model.supports_image_input) {
-    parts.push(settingsMessage('settings.modelCapability.imageInput'));
-  }
-  return parts.join(' · ');
-}
-
-function toggleModelEnabled(modelId: string, enabled: boolean): void {
-  modelStateMap.value[modelId] = { enabled };
-}
-
-function toggleAllEnabled(): void {
-  const next = !allEnabled.value;
-  for (const model of discoveredModels.value) {
-    modelStateMap.value[model.id] = { enabled: next };
-  }
-}
-
-function createInitialForm(): ApiCustomModelForm {
-  return {
-    providerName: '',
-    endpointModelId: '',
-    displayName: '',
-    credentialSecret: '',
-    baseUrl: '',
-    customApiFormat: 'openai_compatible',
-    contextWindowTokens: '256000',
-    maxOutputTokens: '16384',
-    supportsImageInput: false,
-  };
-}
-
-function resolveRegistrationIssue(issue: CustomModelRegistrationIssue): string {
-  if (issue === 'endpoint_model_id_required') {
-    return settingsMessage('settings.addModel.error.modelNameRequired');
-  }
-  if (issue === 'base_url_invalid') {
-    return settingsMessage('settings.addModel.error.apiUrlInvalid');
-  }
-  return settingsMessage('settings.modelCapacity.validation.positiveIntegers');
-}
-
-function showSuccess(): void {
-  status.success = true;
-  status.error = null;
-  if (successTimer !== null) window.clearTimeout(successTimer);
-  successTimer = window.setTimeout(() => {
-    status.success = false;
-  }, 3000);
-}
-
-async function discoverModels(): Promise<void> {
-  if (!form.value.baseUrl) return;
-  isDiscovering.value = true;
-  discoveryFeedback.value = null;
-
-  try {
-    const result = await httpCustomApiModelRegistrationGateway.discoverModels?.({
-      api_format: form.value.customApiFormat,
-      base_url: form.value.baseUrl,
-      api_key: form.value.credentialSecret || undefined,
-    });
-
-    if (!result || result.models.length === 0) {
-      discoveryFeedback.value = {
-        kind: 'info',
-        message: settingsMessage('settings.addModel.discover.empty'),
-      };
-      discoveredModels.value = [];
-      modelStateMap.value = {};
-      return;
-    }
-
-    discoveredModels.value = [...result.models];
-    const nextMap: Record<string, { enabled: boolean }> = {};
-    for (const model of result.models) {
-      nextMap[model.id] = { enabled: true };
-    }
-    modelStateMap.value = nextMap;
-    discoveryFeedback.value = null;
-  } catch (error: unknown) {
-    discoveredModels.value = [];
-    modelStateMap.value = {};
-    discoveryFeedback.value = {
-      kind: 'error',
-      message:
-        error instanceof Error ? error.message : settingsMessage('settings.addModel.error.unknown'),
-    };
-  } finally {
-    isDiscovering.value = false;
-  }
-}
-
-async function submit(): Promise<void> {
-  status.isSubmitting = true;
-  status.success = false;
-  status.error = null;
-
-  try {
-    let payload: ApiCustomModelForm = { ...form.value };
-
-    if (discoveredModels.value.length > 0) {
-      payload.models = discoveredModels.value.map(model => ({
-        endpoint_model_id: model.id,
-        display_name: model.name,
-        context_window_tokens: model.context_window_tokens ?? 32768,
-        max_output_tokens: model.max_output_tokens ?? 4096,
-        supports_image_input: model.supports_image_input ?? false,
-        picker_enabled: modelStateMap.value[model.id]?.enabled ?? true,
-      }));
-    }
-
-    const result = await registerApiCustomModel(payload);
-    if (!result.ok) {
-      status.error = resolveRegistrationIssue(result.issue);
-      return;
-    }
-    form.value = createInitialForm();
-    userEditedProviderName.value = false;
-    discoveredModels.value = [];
-    modelStateMap.value = {};
-    discoveryFeedback.value = null;
-    await props.refreshModelCatalog();
-    showSuccess();
-  } catch (error: unknown) {
-    console.error('[CustomApiModelRegistration] 模型注册失败', {
-      errorCode: error instanceof CustomApiModelRegistrationError ? error.code : 'unknown_error',
-    });
-    status.error =
-      error instanceof CustomApiModelRegistrationError
-        ? error.message
-        : settingsMessage('settings.addModel.error.unknown');
-  } finally {
-    status.isSubmitting = false;
-  }
-}
-
-onBeforeUnmount(() => {
-  if (successTimer !== null) window.clearTimeout(successTimer);
-});
+onBeforeUnmount(session.dispose);
 </script>

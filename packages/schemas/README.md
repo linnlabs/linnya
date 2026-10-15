@@ -87,7 +87,7 @@ Conversation Control 协议 4 的 `audit.llm_responses` 是既有审计的安全
 | `src/model-inference/` | language、embedding、reranking 的严格 typed route |
 | `src/provider-catalog/` | Provider/模型公开资料、generation 与 HTTP list/get DTO；不含 package/route/auth |
 | `src/provider-account/` | Provider 账号授权状态、结果和脱敏错误 DTO；不含 token/refresh secret |
-| `src/custom-api-onboarding/` | Custom API 单模型/批量 wire request、规范化 Host command 与错误合同 |
+| `src/custom-api-onboarding/` | Custom API 注册、分组刷新/编辑/删除 command 与错误合同 |
 | `src/document-ocr/` | Paddle layout/job 文档 OCR 的严格 typed route |
 | `src/transcription/` | OpenAI Audio 与 DashScope Qwen ASR 的严格 typed route |
 | `src/conversation-control/` | CLI ↔ App 的版本化 command、response、status frame、handshake 与私有连接描述合同；不含业务编排和 HTTP 实现 |
@@ -453,3 +453,6 @@ Renderer 或 ESM 消费者继续使用历史产物。独立 build/pack gate 仍�
 ### 命令审批控制与卡片身份
 
 `conversation-control/commandApprovals.ts`定义`command_approvals`查询与回复，复用Commands的choice、request ID和pending projection。status的审批数组是必填事实，不从tool loading或命令文本猜测。pending投影必须有实际Agent run、原工具调用和command execution身份；terminal卡片投影必须有Agent run。后者由持久化owner从已有terminal identity读取，不需要迁移或猜测历史数据。审批page snapshot属于同一App版本的临时IPC，不保存为历史消息。
+
+Custom API 的模型发现响应由 Host 补齐容量和图片能力，并携带 `confidence`；这些字段在共享合同中必填，
+Renderer 不再自行补另一套默认值。发现响应中的未知外部数据由 Model Discovery 准入解析，HTTP 网关只校验正式 DTO。

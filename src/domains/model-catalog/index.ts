@@ -14,6 +14,7 @@ export type {
   InferenceAuthProfile,
   ModelCatalog,
   ModelCatalogSource,
+  UserModelRegistration,
   ModelConfig,
   ModelDiff,
   ModelEmbeddingRoute,
@@ -22,6 +23,7 @@ export type {
   ModelRerankingRoute,
   TranscriptionRoute,
 } from './definitions/modelCatalog';
+export { ModelCatalogConflictError } from './definitions/modelCatalog';
 export type {
   CredentialReference,
   NewInferenceEndpoint,

@@ -214,6 +214,20 @@ export type FunctionalModelDefaults = Record<string, string>;
  *
  * @description 定义了模型注册表的核心功能
  */
+/** 批量接入只发布一个目录版本；endpoint 可引用同批此前创建的连接。 */
+export interface UserModelRegistration {
+  readonly model: ModelConfig;
+  readonly endpoint: InferenceEndpointSelection;
+}
+
+/** 远端查询期间目录已变化，调用者应重读配置后由用户重新发起。 */
+export class ModelCatalogConflictError extends Error {
+  constructor() {
+    super('模型配置已发生变化，请重新刷新后重试');
+    this.name = 'ModelCatalogConflictError';
+  }
+}
+
 export interface ModelCatalog {
   /**
    * 获取所有模型
@@ -249,6 +263,14 @@ export interface ModelCatalog {
   /** 安装由 App composition 通过 Desktop Host capability 提供的系统安全存储 codec。 */
   installEndpointCredentialCodec(codec: EndpointCredentialCodec): void;
 
+  /** 当前进程用户目录与凭据的提交版本，用于跨异步步骤的乐观并发控制。 */
+  getUserRevision(): number;
+
+  registerUserModels(
+    registrations: readonly UserModelRegistration[],
+    expectedRevision?: number
+  ): Promise<void>;
+
   /** 原子注册用户模型，并创建或复用一个内部推理 endpoint。 */
   registerUserModel(model: ModelConfig, endpoint: InferenceEndpointSelection): Promise<void>;
 
@@ -259,7 +281,8 @@ export interface ModelCatalog {
    */
   rebindUserModels(
     models: readonly ModelConfig[],
-    endpoint: InferenceEndpointSelection
+    endpoint: InferenceEndpointSelection,
+    expectedRevision?: number
   ): Promise<void>;
 
   /** 在 endpoint 引用的本地 credential boundary 内替换 secret；共享该凭据的 endpoint 一并生效。 */
@@ -300,7 +323,7 @@ export interface ModelCatalog {
    * 应用模型差异
    * @param diff 模型差异对象
    */
-  applyDiff(diff: ModelDiff): Promise<void>;
+  applyDiff(diff: ModelDiff, expectedRevision?: number): Promise<void>;
 
   /**
    * 根据能力过滤模型

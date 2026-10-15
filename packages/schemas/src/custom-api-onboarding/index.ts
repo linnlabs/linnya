@@ -52,6 +52,7 @@ export function normalizeCustomApiBaseUrl(
     return undefined;
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return undefined;
+  if (url.username || url.password || url.search || url.hash) return undefined;
   if (url.pathname === '/') {
     url.pathname = readCustomApiFormatDefinition(format).default_base_path;
   } else {
@@ -68,6 +69,9 @@ export const CUSTOM_API_ONBOARDING_ERROR_CODES = [
   'custom_api_onboarding.provider_name_conflict',
   'custom_api_onboarding.provider_configuration_invalid',
   'custom_api_onboarding.update_failed',
+  'custom_api_onboarding.removal_failed',
+  'custom_api_onboarding.refresh_failed',
+  'custom_api_onboarding.configuration_changed',
 ] as const;
 
 export const CustomApiModelItemSchema = z
@@ -105,7 +109,7 @@ export const CustomApiModelRegistrationCommandSchema = z
     context_window_tokens: PositiveSafeIntegerSchema.optional(),
     max_output_tokens: PositiveSafeIntegerSchema.optional(),
     supports_image_input: z.boolean().optional(),
-    models: z.array(CustomApiModelItemSchema).optional(),
+    models: z.array(CustomApiModelItemSchema).min(1).optional(),
   })
   .strict()
   .transform((command, context) => {
@@ -120,6 +124,25 @@ export const CustomApiModelRegistrationCommandSchema = z
     }
     let models: [CustomApiModelItem, ...CustomApiModelItem[]];
     const batchModels = command.models;
+    const hasSingle = [
+      command.endpoint_model_id,
+      command.display_name,
+      command.context_window_tokens,
+      command.max_output_tokens,
+      command.supports_image_input,
+    ].some(value => value !== undefined);
+    if (
+      batchModels &&
+      (hasSingle ||
+        new Set(batchModels.map(item => item.endpoint_model_id)).size !== batchModels.length)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['models'],
+        message: '批量模型不能重复，也不能同时提交单模型字段',
+      });
+      return z.NEVER;
+    }
     const firstBatchModel = batchModels?.[0];
     if (batchModels && firstBatchModel) {
       models = [firstBatchModel, ...batchModels.slice(1)];
@@ -199,6 +222,33 @@ export const CustomApiProviderUpdateResponseSchema = z
   })
   .strict();
 
+/** 已保存连接的刷新只接收分组身份；地址、协议与密钥由 Host 读取。 */
+export const CustomApiProviderRefreshCommandSchema = z
+  .object({ provider_name: NonEmptyStringSchema })
+  .strict();
+
+/** 删除也只接收分组身份，待删除模型由 Host 当前目录决定。 */
+export const CustomApiProviderRemovalCommandSchema = z
+  .object({ provider_name: NonEmptyStringSchema })
+  .strict();
+export const CustomApiProviderRemovalResponseSchema = z
+  .object({
+    removed_model_ids: z.array(NonEmptyStringSchema).min(1),
+    model_picker_preference_recovery_pending: z.boolean(),
+  })
+  .strict();
+export type CustomApiProviderRemovalCommand = z.infer<typeof CustomApiProviderRemovalCommandSchema>;
+export type CustomApiProviderRemovalResponse = z.infer<
+  typeof CustomApiProviderRemovalResponseSchema
+>;
+
+export const CustomApiProviderRefreshResponseSchema = z
+  .object({
+    provider_name: NonEmptyStringSchema,
+    added_model_ids: z.array(NonEmptyStringSchema),
+  })
+  .strict();
+
 export const CustomApiModelRegistrationResponseSchema = z
   .object({
     model_id: NonEmptyStringSchema.optional(),
@@ -223,9 +273,8 @@ export function readCustomApiFormatRouteProfileId(
 export function readCustomApiFormatForRouteProfileId(
   profileId: LanguageInferenceRouteProfileId
 ): CustomApiFormat | undefined {
-  return CUSTOM_API_FORMAT_DEFINITIONS.find(
-    definition => definition.route_profile_id === profileId
-  )?.id;
+  return CUSTOM_API_FORMAT_DEFINITIONS.find(definition => definition.route_profile_id === profileId)
+    ?.id;
 }
 
 /** 自定义模型只声明语义能力，API 格式负责决定两个图片来源能否真正进入 route。 */
@@ -254,6 +303,10 @@ export type CustomApiModelRegistrationResponse = z.infer<
 export type CustomApiProviderUpdateRequest = z.input<typeof CustomApiProviderUpdateCommandSchema>;
 export type CustomApiProviderUpdateCommand = z.output<typeof CustomApiProviderUpdateCommandSchema>;
 export type CustomApiProviderUpdateResponse = z.infer<typeof CustomApiProviderUpdateResponseSchema>;
+export type CustomApiProviderRefreshCommand = z.infer<typeof CustomApiProviderRefreshCommandSchema>;
+export type CustomApiProviderRefreshResponse = z.infer<
+  typeof CustomApiProviderRefreshResponseSchema
+>;
 export type CustomApiOnboardingErrorCode = (typeof CUSTOM_API_ONBOARDING_ERROR_CODES)[number];
 export type CustomApiOnboardingErrorResponse = z.infer<
   typeof CustomApiOnboardingErrorResponseSchema

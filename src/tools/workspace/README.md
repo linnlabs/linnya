@@ -109,11 +109,19 @@ Markdown 编辑把 exact replacement 前读到的完整 current text 交给 prov
 Markdown provider 会区分本次规范化后无变化与文档当前待确认总数；`replaced` 仍表示请求匹配的
 替换次数。等价请求可以成功但不改变 current，不能据 requested diff 或既有 pending 推断已产生新修订。
 
-五个 Tool 的完整模型 `parameters` 必须直接保留在各自 concrete tool 文件中，方便同时审查描述、字段、
-`required` 与封闭 `oneOf`。Workspace shared 只复用“正式 parser 的错误如何转换为 admission 结果”这一窄逻辑，
+五个 Tool 的完整模型 `parameters` 必须直接保留在各自 concrete tool 文件中，方便同时审查描述、字段和
+`required`。模型目录采用顶层 `object`，保留字段类型、范围、必填项与未知字段限制；locator/inode 互斥、
+读取窗口互斥等跨字段规则通过描述指导生成，由 `@app/schemas` 正式 parser 在 ToolNode start 前严格执行。
+不能把完整执行校验复制成顶层 `oneOf/anyOf/allOf`：Anthropic Messages 会拒绝整个请求，即使模型尚未调用工具，
+连携带相同工具前缀的历史整理也会失败。这里不按 Provider 动态删字段，也不改变已有工具调用格式。
+Workspace shared 只复用“正式 parser 的错误如何转换为 admission 结果”这一窄逻辑，
 不生成 locator/inode 分支，也不把 Workspace 身份语义下沉到 Linnkit。通用协议与测试时序见
 [`src/tools/README.md`](../README.md) 和 Linnkit 的
 [`tool-development-guide.md`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/tool-development-guide.md)。
+
+装配边界的 [`agentToolSchema.integration.test.ts`](../../../packages/plugins/__tests__/agentToolSchema.integration.test.ts)
+把真实 ToolRegistry 目录送入 Anthropic codec，并按上游顶层 schema 约束验证聊天与压缩请求；
+文件工具集成测试继续验证非法身份与窗口在执行前被拒绝，不以 Provider 的 schema 检查替代安全边界。
 
 `write_file` / `edit_file` 在模型流式输出中一旦确定工具名，就通过通用 streaming policy 发布 ephemeral
 占位事件。Renderer 先显示不可展开的“正在创建文件...”或“正在编辑文件...”标题，完整参数到达后仍由
@@ -179,16 +187,20 @@ block 身份规则：
 - 默认认为 6 位冲突概率极低；
 - 若发生冲突（两个不同块算出同一 `ref`），应显式报错提示调用方改用更长 `ref`/重新读取（或在实现中升级为“短 hash 自适应加长”，例如 6→7→8 位）。
 
-### 5.2 Edit：只用 `ref` 定位块
+### 3.2 Edit：对当前普通文本精确替换
 
-### 5.3 Read：默认 preview，并提供 base 视图
+`edit_file` 使用 `old_string/new_string` 替换当前 VFS 普通文本，不接收块 ref 参数。编辑前应通过默认
+`read_file` 取得当前原文；展示行号、DocumentView 的块 ref 和其他展示包装都不能当作待替换正文。
+块 ref 属于结构化阅读及文档领域引用能力，不是通用编辑工具的定位合同。
+
+### 3.3 Read：读取包含待确认修订的当前内容
 
 `read_file(view="document")`：
 
-- 默认返回 **preview**（AI “所见即当前状态”，便于连续编辑）
-- 通过可选参数切换查看 **base**（仅当前 content_json 的文本，不合并 pending）
+- 返回 **preview**（已接受内容与 pending revisions 的共同投影，便于连续阅读和编辑）。
+- 当前工具没有切换到 base 的参数；普通文本和 DocumentView 都读取同一当前内容，不为底层存储视图增加模型参数。
 
-### 3.5 文件写入：直接传标准 Markdown
+### 3.4 文件写入：直接传标准 Markdown
 
 `edit_file` / `write_file` 只要求一件事：写入目标 Markdown 文本。
 

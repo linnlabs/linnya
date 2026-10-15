@@ -29,10 +29,13 @@ export class ReadFileTool extends BaseTool {
       'If a tool-output truncation hint appears, use its tool_output_read call to finish this returned window before following the file next-page hint. Blob character offsets are not file line numbers or DocumentView offsets.',
       'PDF, Office, archives, other binary formats, and unsupported encodings must first be converted with Shell/CLI.',
       'Use inode only for Workspace identity. view="document" is also Workspace-only.',
+      'Provide exactly one of locator or inode. Never send both. Text and DocumentView window fields cannot be mixed.',
       'Markdown citations appear as canonical [@XXXXXX] tokens with same-window source metadata.',
     ].join('\n');
   }
 
+  // 模型目录使用各协议共有的顶层 object；互斥身份等跨字段规则由下方正式 admission 执行。
+  // 顶层 oneOf 会被 Anthropic 拒绝，不能把执行校验的分支复制到模型输入 schema。
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     properties: {
@@ -77,73 +80,6 @@ export class ReadFileTool extends BaseTool {
     },
     required: [],
     additionalProperties: false,
-    // locator-only 与 inode-only 是两个封闭合同；成功结果可以同时返回二者，不代表输入可同传。
-    oneOf: [
-      {
-        type: 'object',
-        properties: {
-          locator: { type: 'string', minLength: 1, description: '明确的文件 locator。' },
-          offset: { type: 'integer', minimum: 1, description: '1-based 起始行。' },
-          limit: {
-            type: 'integer',
-            minimum: 1,
-            maximum: WORKSPACE_READ_FILE_MAX_LIMIT,
-            description: '最大行数。',
-          },
-          view: { type: 'string', enum: ['text'], description: '普通文本读取。' },
-        },
-        required: ['locator'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          inode: { type: 'string', minLength: 1, description: '已有 Workspace 节点的稳定 inode。' },
-          offset: { type: 'integer', minimum: 1, description: '1-based 起始行。' },
-          limit: {
-            type: 'integer',
-            minimum: 1,
-            maximum: WORKSPACE_READ_FILE_MAX_LIMIT,
-            description: '最大行数。',
-          },
-          view: { type: 'string', enum: ['text'], description: '普通文本读取。' },
-        },
-        required: ['inode'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          locator: { type: 'string', minLength: 1, description: 'Workspace 文件 locator。' },
-          offset_chars: { type: 'integer', minimum: 0, description: '字符偏移。' },
-          max_chars: {
-            type: 'integer',
-            minimum: 1,
-            maximum: WORKSPACE_READ_FILE_DOCUMENT_MAX_CHARS,
-            description: '最大字符数。',
-          },
-          view: { type: 'string', enum: ['document'], description: '结构化 DocumentView。' },
-        },
-        required: ['locator', 'view'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          inode: { type: 'string', minLength: 1, description: '已有 Workspace 节点的稳定 inode。' },
-          offset_chars: { type: 'integer', minimum: 0, description: '字符偏移。' },
-          max_chars: {
-            type: 'integer',
-            minimum: 1,
-            maximum: WORKSPACE_READ_FILE_DOCUMENT_MAX_CHARS,
-            description: '最大字符数。',
-          },
-          view: { type: 'string', enum: ['document'], description: '结构化 DocumentView。' },
-        },
-        required: ['inode', 'view'],
-        additionalProperties: false,
-      },
-    ],
   };
 
   protected override validateArguments(args: Record<string, unknown>): {

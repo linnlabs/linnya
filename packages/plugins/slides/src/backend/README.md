@@ -107,6 +107,12 @@ backend 仍有供内部读取 current PPTX 的 legacy export 实现，但当前�
 
 inspect/反馈主链：
 
+`ppt_inspect` 的模型参数目录使用顶层 `object`，通过字段描述说明三种目标身份互斥与页范围依赖；
+这些规则由 `PptInspectToolArgsSchema` 在 ToolNode start 前严格校验。不要再将完整执行分支写成顶层
+`oneOf/anyOf/allOf`，否则 Anthropic 会拒绝携带该工具的整次聊天/压缩请求。
+Core 与 Slides 的真实目录经过 Provider codec 的兼容性由
+[`agentToolSchema.integration.test.ts`](../../../__tests__/agentToolSchema.integration.test.ts) 验证。
+
 ```text
 ppt_inspect / Slides CLI inspect
   -> PptCoordinator.inspectPresentation

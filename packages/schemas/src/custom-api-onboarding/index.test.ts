@@ -80,14 +80,28 @@ describe('CustomApiModelRegistrationCommandSchema', () => {
     ).toBe(false);
   });
 
+  it('批次不允许重复模型、空列表或混用单模型字段', () => {
+    const item = {
+      endpoint_model_id: 'a',
+      context_window_tokens: 64000,
+      max_output_tokens: 8192,
+      supports_image_input: false,
+    };
+    const command = { api_format: 'openai_compatible', base_url: 'https://relay.example/v1' };
+    for (const request of [
+      { ...command, models: [item, item] },
+      { ...command, models: [] },
+      { ...command, ...item, models: [item] },
+    ])
+      expect(CustomApiModelRegistrationCommandSchema.safeParse(request).success).toBe(false);
+  });
+
   it('只把三种 Custom API route profile 回投为用户格式', () => {
     expect(readCustomApiFormatForRouteProfileId('openai_compatible_chat')).toBe(
       'openai_compatible'
     );
     expect(readCustomApiFormatForRouteProfileId('openai_responses')).toBe('openai_responses');
-    expect(readCustomApiFormatForRouteProfileId('anthropic_messages')).toBe(
-      'anthropic_compatible'
-    );
+    expect(readCustomApiFormatForRouteProfileId('anthropic_messages')).toBe('anthropic_compatible');
     expect(readCustomApiFormatForRouteProfileId('ollama_chat')).toBeUndefined();
   });
 });
@@ -116,8 +130,10 @@ describe('CustomApiProviderUpdateCommandSchema', () => {
       api_format: 'openai_compatible',
     } as const;
     expect(
-      CustomApiProviderUpdateCommandSchema.safeParse({ ...base, base_url: 'ftp://relay.example.com' })
-        .success
+      CustomApiProviderUpdateCommandSchema.safeParse({
+        ...base,
+        base_url: 'ftp://relay.example.com',
+      }).success
     ).toBe(false);
     expect(
       CustomApiProviderUpdateCommandSchema.safeParse({

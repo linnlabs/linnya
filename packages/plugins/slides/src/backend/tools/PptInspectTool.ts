@@ -98,6 +98,7 @@ export class PptInspectTool extends BaseTool {
   get description() {
     return [
       '诊断演示文稿中可能存在的布局质量问题。',
+      'presentation_id、locator、inode 必须且只能提供一个；endSlide 必须与 slideNumber 同传。',
       'observation 按统一 finding 合同给出问题代码、级别、证据、目标、源码位置与复验动作；data 只返回前端卡片需要的轻量统计。',
       '查看 deck.js 原文和页面组织请使用 read_file；修改时再用 edit_file。',
       '可选 heuristics=true 附加 Tier-2 低置信启发式提示。',
@@ -105,6 +106,8 @@ export class PptInspectTool extends BaseTool {
     ].join(' ');
   }
 
+  // Provider 目录只声明顶层 object；目标互斥与页范围依赖由正式 parser 在执行前严格校验。
+  // 顶层 oneOf 会让 Anthropic 拒绝整个请求，不能把执行合同的分支复制到生成 schema。
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     additionalProperties: false,
@@ -114,95 +117,6 @@ export class PptInspectTool extends BaseTool {
       ...INSPECTION_PROPERTIES,
     },
     required: [],
-    oneOf: [
-      {
-        type: 'object',
-        properties: {
-          presentation_id: SELECTOR_PROPERTIES.presentation_id,
-          ...INSPECTION_PROPERTIES,
-        },
-        required: ['presentation_id'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          presentation_id: SELECTOR_PROPERTIES.presentation_id,
-          slideNumber: PAGE_RANGE_PROPERTIES.slideNumber,
-          ...INSPECTION_PROPERTIES,
-        },
-        required: ['presentation_id', 'slideNumber'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          presentation_id: SELECTOR_PROPERTIES.presentation_id,
-          ...PAGE_RANGE_PROPERTIES,
-          ...INSPECTION_PROPERTIES,
-        },
-        required: ['presentation_id', 'slideNumber', 'endSlide'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          locator: SELECTOR_PROPERTIES.locator,
-          ...INSPECTION_PROPERTIES,
-        },
-        required: ['locator'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          locator: SELECTOR_PROPERTIES.locator,
-          slideNumber: PAGE_RANGE_PROPERTIES.slideNumber,
-          ...INSPECTION_PROPERTIES,
-        },
-        required: ['locator', 'slideNumber'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          locator: SELECTOR_PROPERTIES.locator,
-          ...PAGE_RANGE_PROPERTIES,
-          ...INSPECTION_PROPERTIES,
-        },
-        required: ['locator', 'slideNumber', 'endSlide'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          inode: SELECTOR_PROPERTIES.inode,
-          ...INSPECTION_PROPERTIES,
-        },
-        required: ['inode'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          inode: SELECTOR_PROPERTIES.inode,
-          slideNumber: PAGE_RANGE_PROPERTIES.slideNumber,
-          ...INSPECTION_PROPERTIES,
-        },
-        required: ['inode', 'slideNumber'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          inode: SELECTOR_PROPERTIES.inode,
-          ...PAGE_RANGE_PROPERTIES,
-          ...INSPECTION_PROPERTIES,
-        },
-        required: ['inode', 'slideNumber', 'endSlide'],
-        additionalProperties: false,
-      },
-    ],
   };
 
   protected override validateArguments(args: Record<string, unknown>): {

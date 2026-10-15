@@ -5,7 +5,11 @@ import { ToolNode, type EngineState } from '@linnlabs/linnkit/runtime-kernel';
 import type { WorkspaceMutationEvent } from '@app/schemas';
 
 import type { ToolContext } from 'src/tools/types';
-import { WorkspaceReadFileResultSchema, WorkspaceWriteFileResultSchema } from '@app/schemas';
+import {
+  WorkspaceListFilesResultSchema,
+  WorkspaceReadFileResultSchema,
+  WorkspaceWriteFileResultSchema,
+} from '@app/schemas';
 import type {
   DiagnosticToolFeedbackPayload,
   PresentationToolCoordinatorPort,
@@ -86,7 +90,7 @@ import {
   installWorkspaceMutationPublisher,
 } from 'src/features/workspace/orchestration/workspaceMutationPublisherRegistry';
 
-const { pluginCli: _slidesPluginCli, ...slidesFileToolContribution } = slidesBackendPlugin;
+const slidesFileToolContribution = { ...slidesBackendPlugin, pluginCli: undefined };
 
 type PresentationDraftRepositoryPort = NonNullable<CodegenPresentationServiceDeps['draftRepo']>;
 type PresentationDraftRecord = NonNullable<ReturnType<PresentationDraftRepositoryPort['get']>>;
@@ -1010,19 +1014,7 @@ describe('list_files / read_file', () => {
     for (const tool of tools) {
       expect(tool.parameters.properties.locator?.minLength, `${tool.name}.locator`).toBe(1);
       expect(tool.parameters.properties.inode?.minLength, `${tool.name}.inode`).toBe(1);
-      expect(tool.parameters.oneOf?.length, `${tool.name}.oneOf`).toBeGreaterThanOrEqual(2);
-      for (const branch of tool.parameters.oneOf ?? []) {
-        expect(
-          'locator' in branch.properties && 'inode' in branch.properties,
-          `${tool.name} must not publish a dual-identity branch`
-        ).toBe(false);
-      }
     }
-    expect(new ListFilesTool().parameters.oneOf).toHaveLength(3);
-    expect(new GrepTool().parameters.oneOf).toHaveLength(3);
-    expect(new ReadFileTool().parameters.oneOf).toHaveLength(4);
-    expect(new WriteFileTool().parameters.oneOf).toHaveLength(2);
-    expect(new EditFileTool().parameters.oneOf).toHaveLength(2);
     expect(new GrepTool().parameters.properties.pattern.minLength).toBe(1);
     expect(new EditFileTool().parameters.properties.old_string.minLength).toBe(1);
     expect(Object.keys(new EditFileTool().parameters.properties).sort()).toEqual([
@@ -1131,6 +1123,34 @@ describe('list_files / read_file', () => {
         type: 'document',
       }),
     ]);
+  });
+
+  it('list_files 区分分页空页与空目录，并能按返回提示重新读取', async () => {
+    const tool = new ListFilesTool();
+    const beyondLastPage = WorkspaceListFilesResultSchema.parse(JSON.parse(
+      await tool.run({ locator: 'workspace:/项目资料', offset: 80 }, context)
+    ));
+    expect(beyondLastPage.data).toMatchObject({
+      entries: [], documents: [], total_count: 1, offset: 80, has_more: false,
+    });
+    expect(beyondLastPage.observation).toContain('共 1 个条目');
+    expect(beyondLastPage.observation).toContain('offset=0');
+    expect(beyondLastPage.observation).not.toContain('没有可见条目');
+
+    const restarted = WorkspaceListFilesResultSchema.parse(JSON.parse(
+      await tool.run({ locator: beyondLastPage.data.locator, offset: 0 }, context)
+    ));
+    expect(restarted.data.entries.map(entry => entry.locator)).toEqual([
+      'workspace:/项目资料/研究.md',
+    ]);
+
+    db.insertNode({ id: 'empty-folder', projectId: 'project-1', type: 'folder', name: '空目录' });
+    const emptyDirectory = WorkspaceListFilesResultSchema.parse(JSON.parse(
+      await tool.run({ locator: 'workspace:/空目录' }, context)
+    ));
+    expect(emptyDirectory.data).toMatchObject({ entries: [], total_count: 0, has_more: false });
+    expect(emptyDirectory.observation).toContain('没有可见条目');
+    expect(emptyDirectory.observation).not.toContain('重新读取');
   });
 
   it('read_file 可按 locator 或 inode 读取文件内容', async () => {
@@ -1555,13 +1575,6 @@ describe('list_files / read_file', () => {
     expect(parameters.properties.offset).not.toHaveProperty('default');
     expect(parameters.properties.limit).not.toHaveProperty('default');
     expect(parameters.properties.view?.enum).toEqual(['text', 'document']);
-    expect(parameters.oneOf).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          properties: { view: expect.objectContaining({ enum: ['image'] }) },
-        }),
-      ])
-    );
   });
 
   it('grep 可在当前项目虚拟文件树中定位文本并返回 grep-like observation', async () => {

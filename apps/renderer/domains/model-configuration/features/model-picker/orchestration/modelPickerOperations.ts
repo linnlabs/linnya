@@ -5,24 +5,45 @@ import { createModelPickerOperationError } from '../functions/modelPickerError';
 import { httpModelPickerGateway } from '../infrastructure/httpModelPickerGateway';
 import { useModelPickerStore } from '../store/modelPickerStore';
 
+// 队列属于当前 Pinia 实例，页面重载、测试或第二个应用实例不共享任务。
+const operations = new WeakMap<ReturnType<typeof useModelPickerStore>, Promise<void>>();
+
+function enqueue(
+  store: ReturnType<typeof useModelPickerStore>,
+  execute: () => Promise<void>
+): Promise<void> {
+  const result = (operations.get(store) ?? Promise.resolve()).then(execute);
+  operations.set(
+    store,
+    result.then(
+      () => undefined,
+      () => undefined
+    )
+  );
+  return result;
+}
+
 async function runSnapshotOperation(
   operation: 'load' | 'provider-visibility' | 'model-visibility' | 'model-activation',
   execute: () => Promise<ModelPickerSnapshot>,
   sourceLabel?: string
 ): Promise<void> {
   const store = useModelPickerStore();
-  store.beginOperation(operation);
-  try {
-    store.replaceSnapshot(await execute());
-    store.finishOperation();
-  } catch (error: unknown) {
-    const failure = createModelPickerOperationError(operation, error);
-    store.failOperation({
-      ...failure,
-      detail: sourceLabel && failure.detail ? `${sourceLabel}: ${failure.detail}` : failure.detail,
-    });
-    throw error;
-  }
+  return enqueue(store, async () => {
+    store.beginOperation(operation);
+    try {
+      store.replaceSnapshot(await execute());
+      store.finishOperation();
+    } catch (error: unknown) {
+      const failure = createModelPickerOperationError(operation, error);
+      store.failOperation({
+        ...failure,
+        detail:
+          sourceLabel && failure.detail ? `${sourceLabel}: ${failure.detail}` : failure.detail,
+      });
+      throw error;
+    }
+  });
 }
 
 export async function loadModelPicker(
@@ -35,8 +56,8 @@ export async function loadModelPicker(
 export async function synchronizeModelPickerSnapshot(
   gateway: ModelPickerGateway = httpModelPickerGateway
 ): Promise<void> {
-  const snapshot = await gateway.load();
-  useModelPickerStore().replaceSnapshot(snapshot);
+  const store = useModelPickerStore();
+  return enqueue(store, async () => store.replaceSnapshot(await gateway.load()));
 }
 
 export function refreshModelPickerProvider(

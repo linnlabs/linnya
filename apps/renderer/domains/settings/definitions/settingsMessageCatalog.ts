@@ -33,6 +33,10 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.modelPicker.removeProvider.confirm':
     '将删除该 Provider 的配置、凭据及其已启用模型，之后可以重新添加。是否继续？',
   'settings.modelPicker.removeProvider.failed': '删除 Provider 失败，请稍后重试。',
+  'settings.modelPicker.modelsRemovedSyncFailed':
+    '模型已删除，但列表同步失败，请重新打开模型管理。',
+  'settings.modelPicker.removeProvider.partialFailed':
+    '已删除 {removed}/{total} 个模型，剩余项删除失败，请刷新后重试。',
   'settings.modelPicker.runtimeUnavailable': '当前不可用',
   'settings.modelPicker.imageGeneration': '图片生成',
   'settings.tabs.about': '关于',
@@ -391,6 +395,11 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.addModel.ollama.statusCode': ' (状态码: {statusCode})  ',
   'settings.addModel.ollama.unknownRefreshError': '获取 Ollama 模型列表时发生未知错误。',
   'settings.addModel.error.unknown': '发生未知错误',
+  'settings.addModel.discoveredModels.disableAll': '全部关闭',
+  'settings.addModel.discover.failed': '获取模型列表失败，请检查连接后重试。',
+  'settings.addModel.error.invalidDiscoveredModels': '模型配置无效，请重新获取模型列表。',
+  'settings.addModel.savedSyncFailed': '模型已保存，但列表同步失败，请到模型管理刷新。',
+  'settings.modelPicker.removedSyncFailed': '分组已删除，但列表同步失败，请重新打开模型管理。',
   'settings.addModel.error.modelNameRequired': '模型名称不能为空。',
   'settings.addModel.error.apiKeyRequired': 'API Key 不能为空。',
   'settings.addModel.error.providerRequired': '请选择模型供应商。',
@@ -487,6 +496,10 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.modelPicker.removeProvider.confirm':
         'This will delete the Provider configuration, credential, and activated models. You can add the Provider again afterward. Continue?',
       'settings.modelPicker.removeProvider.failed': 'Provider deletion failed. Try again later.',
+      'settings.modelPicker.modelsRemovedSyncFailed':
+        'Models were deleted, but the list could not be updated. Reopen model management.',
+      'settings.modelPicker.removeProvider.partialFailed':
+        'Deleted {removed}/{total} models. The remaining deletion failed. Refresh before trying again.',
       'settings.modelPicker.runtimeUnavailable': 'Currently unavailable',
       'settings.modelPicker.imageGeneration': 'Image generation',
       'settings.tabs.about': 'About',
@@ -873,6 +886,15 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.addModel.ollama.unknownRefreshError':
         'An unknown error occurred while fetching the Ollama model list.',
       'settings.addModel.error.unknown': 'An unknown error occurred',
+      'settings.addModel.discoveredModels.disableAll': 'Disable all',
+      'settings.addModel.discover.failed':
+        'Could not load models. Check the connection and try again.',
+      'settings.addModel.error.invalidDiscoveredModels':
+        'Invalid model configuration. Fetch the model list again.',
+      'settings.addModel.savedSyncFailed':
+        'Models were saved, but the list could not be updated. Refresh it in model management.',
+      'settings.modelPicker.removedSyncFailed':
+        'The group was deleted, but the list could not be updated. Reopen model management.',
       'settings.addModel.error.modelNameRequired': 'Model name is required.',
       'settings.addModel.error.apiKeyRequired': 'API key is required.',
       'settings.addModel.error.providerRequired': 'Choose a Provider.',

@@ -93,6 +93,7 @@ export class EditFileTool extends BaseTool {
     return [
       'Performs exact string replacements in a Workspace project file using Linnya paths.',
       'Use read_file first, then pass an exact old_string from the current file content.',
+      'Provide exactly one of locator or inode. Never send both.',
       `Supports existing Markdown documents and enabled plugin-owned document files. Use write_file to create new files: Markdown accepts no suffix, .md, or .markdown${pluginHint}.`,
       'Markdown edits are written as pending revisions so the user can accept or reject them in the editor.',
       'Pending revisions are reflected in current content before user acceptance.',
@@ -107,6 +108,8 @@ export class EditFileTool extends BaseTool {
     return `要编辑的已有 Workspace locator，只能使用 workspace:/...。与 inode 二选一。Markdown 文件可以是无后缀、.md 或 .markdown${buildEnabledPluginEditHint()}。`;
   }
 
+  // 模型目录使用各协议共有的顶层 object；互斥身份等跨字段规则由下方正式 admission 执行。
+  // 顶层 oneOf 会被 Anthropic 拒绝，不能把执行校验的分支复制到模型输入 schema。
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     additionalProperties: false,
@@ -138,34 +141,6 @@ export class EditFileTool extends BaseTool {
       },
     },
     required: ['old_string', 'new_string'],
-    oneOf: [
-      {
-        type: 'object',
-        properties: {
-          locator: {
-            type: 'string',
-            minLength: 1,
-            description: '要编辑的已有 Workspace locator。',
-          },
-          old_string: { type: 'string', minLength: 1, description: '要替换的精确原文。' },
-          new_string: { type: 'string', description: '替换后的文本。' },
-          replace_all: { type: 'boolean', default: false, description: '是否替换所有匹配项。' },
-        },
-        required: ['locator', 'old_string', 'new_string'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          inode: { type: 'string', minLength: 1, description: '已有 Workspace 节点的稳定 inode。' },
-          old_string: { type: 'string', minLength: 1, description: '要替换的精确原文。' },
-          new_string: { type: 'string', description: '替换后的文本。' },
-          replace_all: { type: 'boolean', default: false, description: '是否替换所有匹配项。' },
-        },
-        required: ['inode', 'old_string', 'new_string'],
-        additionalProperties: false,
-      },
-    ],
   };
 
   getParametersForContext(): ToolParameterSchema {

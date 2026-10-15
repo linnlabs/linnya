@@ -597,7 +597,6 @@ describe('PptInspectTool', () => {
     expect(tool.name).toBe('ppt_inspect');
     expect(tool.parameters.required).toEqual([]);
     expect(tool.parameters.additionalProperties).toBe(false);
-    expect(tool.parameters.oneOf).toHaveLength(9);
     expect(() => assertToolParameterSchema(tool.parameters)).not.toThrow();
   });
 

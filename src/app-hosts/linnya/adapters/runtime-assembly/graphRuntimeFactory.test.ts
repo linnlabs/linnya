@@ -4,6 +4,7 @@ import {
   agentTasks,
   agentContext,
   agentOrchestration,
+  mergeContextPolicy,
 } from '@linnlabs/linnkit/context-manager';
 import { defineContextPolicy } from '@linnlabs/linnkit/contracts';
 import type { AgentSpecContextPolicy, AiMessage, RuntimeEvent, TokenRoute } from '@linnlabs/linnkit/contracts';
@@ -268,6 +269,51 @@ describe('graphRuntimeFactory tokenizer wiring', () => {
     expect(tokenizer.estimateMessage).toHaveBeenCalled();
   });
 
+  it('默认装配按 Linnkit encoding 计算实际上下文，不因空配置退回字符粗估', async () => {
+    const modelCatalog = createModelCatalog([{
+      id: 'encoded-model',
+      inference_route: {
+        context_window_tokens: 32_768,
+        max_output_tokens: 4_096,
+      },
+    }]);
+    const dependencies = createDefaultGraphRuntimeDependencies({
+      llmCaller: createLlmCaller(),
+      toolRuntime: createToolRuntime(),
+      modelCatalog,
+      modelResolver: new llm.ModelResolver({ modelCatalog }),
+    });
+    const query = 'Read the document and explain the relevant details. '.repeat(100);
+    const result = await dependencies.contextBuilder.build({
+      request: { model_id: 'encoded-model', promptKey: 'default', query },
+      history: [],
+      modelId: 'encoded-model',
+      toolDefinitionTokens: 0,
+    });
+    const frameworkTokenizer = llm.createDefaultTokenizerPort(
+      mergeContextPolicy({}).tokenEstimation,
+    );
+    const expectedTokens = result.llmMessages.reduce(
+      (total, message) => total + frameworkTokenizer.estimateMessage(message),
+      0,
+    );
+    const roughTokenizer = llm.createDefaultTokenizerPort();
+    const roughTokens = result.llmMessages.reduce(
+      (total, message) => total + roughTokenizer.estimateMessage(message),
+      0,
+    );
+
+    expect(dependencies.tokenizer?.estimateText(query)).toBe(
+      frameworkTokenizer.estimateText(query),
+    );
+    expect(result.tokenEstimate?.finalTokens).toBe(expectedTokens);
+    expect(expectedTokens).toBeLessThan(roughTokens);
+    expect(result.promptBudget).toMatchObject({
+      inputBudgetTokens: 28_672,
+      outputLimitTokens: 4_096,
+    });
+  });
+
   it('应把 token calibration collector 注入默认 contextBuilder，让 build 可产出 context_build tokenEstimate', async () => {
     const tokenizer = createTokenizer();
     const llmCaller = createLlmCaller();
@@ -429,7 +475,6 @@ describe('graphRuntimeFactory tokenizer wiring', () => {
 
   it('关闭校准时基线不漂；开启且样本足够后，同 route actual 样本会改变默认 contextBuilder 的截断结果', async () => {
     const tokenizer = createSizedTokenizer();
-    const llmCaller = createLlmCaller();
     const tokenCalibrationCollector = new LinnyaTokenCalibrationCollector();
     const history = [
       createHistoryEvent({

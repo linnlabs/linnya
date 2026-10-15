@@ -82,11 +82,17 @@
           </div>
         </aside>
 
-        <div v-if="selectedSource" class="model-visibility-models">
+        <div
+          v-if="selectedSource"
+          class="model-visibility-models"
+        >
           <header class="model-visibility-models-header">
             <div class="model-visibility-models-header-left">
               <h4>{{ selectedSource.displayName }}</h4>
-              <HoverTooltip v-if="canRefreshSelectedSource" :text="refreshLabel">
+              <HoverTooltip
+                v-if="canRefreshSelectedSource"
+                :text="refreshLabel"
+              >
                 <button
                   type="button"
                   class="model-visibility-refresh-btn"
@@ -128,7 +134,7 @@
               </button>
               <Switch
                 :model-value="selectedSource.pickerEnabled"
-                :ariaLabel="selectedSource.displayName"
+                v-bind="{ ariaLabel: selectedSource.displayName }"
                 :disabled="isMutating"
                 @update:model-value="setProviderVisibility(selectedSource, $event)"
               />
@@ -184,10 +190,13 @@
                     :interactive="isCustomModelEditable(model)"
                     @select="openCustomModelDetails(model)"
                   >
-                    <template v-if="selectedSource.kind !== 'cloud'" #trailing>
+                    <template
+                      v-if="selectedSource.kind !== 'cloud'"
+                      #trailing
+                    >
                       <Switch
                         :model-value="model.materialized && model.picker_enabled"
-                        :ariaLabel="model.display_name"
+                        v-bind="{ ariaLabel: model.display_name }"
                         :disabled="isModelToggleDisabled(model)"
                         @update:model-value="setModelVisibility(model, $event)"
                       />
@@ -201,7 +210,10 @@
             v-if="selectedSource.kind === 'provider' && !selectedSource.credentialAvailable"
             class="model-visibility-credential-actions"
           >
-            <SettingsFeedback kind="error" :message="credentialUnavailableMessage" />
+            <SettingsFeedback
+              kind="error"
+              :message="credentialUnavailableMessage"
+            />
             <ActionButtons
               v-if="selectedSource.credentialKind === 'api_key'"
               :primary-action-text="settingsMessage('settings.modelPicker.replaceApiKey')"
@@ -219,7 +231,11 @@
               @primary-click="removeSelectedProvider"
             />
           </div>
-          <SettingsFeedback v-if="removalError" kind="error" :message="removalError" />
+          <SettingsFeedback
+            v-if="removalError"
+            kind="error"
+            :message="removalError"
+          />
         </div>
       </div>
       <ModelDetailsModal
@@ -271,16 +287,15 @@ import {
 } from '@/domains/settings/public';
 import {
   loadModelPicker,
-  refreshModelPickerSource,
   refreshModelPickerProvider,
   setModelPickerModelVisibility,
   setModelPickerProviderVisibility,
   useModelPickerReadModel,
 } from '../index';
 import { refreshModelCatalogAfterRegistration } from '../../../orchestration/refreshModelCatalogAfterRegistration';
+import { removeCustomApiProviderModels } from '../../../orchestration/removeCustomApiProviderModels';
 import { removeModelSource } from '../../../orchestration/removeModelSource';
-import { registerApiCustomModel } from '../../custom-model-registration/orchestration/registerApiCustomModel';
-import { httpCustomApiModelRegistrationGateway } from '../../custom-model-registration/infrastructure/httpCustomApiModelRegistrationGateway';
+import { refreshCustomApiProviderModels } from '../../../orchestration/refreshCustomApiProviderModels';
 import {
   filterModelVisibilityModels,
   filterModelVisibilitySources,
@@ -342,40 +357,9 @@ async function refreshSourceModels(source: ModelVisibilitySource): Promise<void>
       await refreshModelPickerProvider(source.configuredProviderId, source.displayName);
       return;
     }
-    await refreshModelPickerSource(source.displayName, async () => {
-      if (source.kind === 'custom_provider' && source.baseUrl && source.apiFormat) {
-        const result = await httpCustomApiModelRegistrationGateway.discoverModels?.({
-          api_format: source.apiFormat,
-          base_url: source.baseUrl,
-        });
-        if (result && result.models.length > 0) {
-          // 同步已有模型，添加新模型
-          const existingModelMap = new Map(source.models.map(m => [m.provider_model_id, m]));
-          const newModelsToAdd = result.models.filter(m => !existingModelMap.has(m.id));
-          if (newModelsToAdd.length > 0) {
-            await registerApiCustomModel({
-              providerName: source.providerName,
-              endpointModelId: '',
-              displayName: '',
-              credentialSecret: '',
-              baseUrl: source.baseUrl,
-              customApiFormat: source.apiFormat,
-              contextWindowTokens: '256000',
-              maxOutputTokens: '16384',
-              supportsImageInput: false,
-              models: newModelsToAdd.map(m => ({
-                endpoint_model_id: m.id,
-                display_name: m.name,
-                context_window_tokens: m.context_window_tokens ?? 32768,
-                max_output_tokens: m.max_output_tokens ?? 4096,
-                supports_image_input: m.supports_image_input ?? false,
-                picker_enabled: true,
-              })),
-            });
-          }
-        }
-      }
-    });
+    if (source.kind === 'custom_provider') {
+      await refreshCustomApiProviderModels(source.providerName, source.displayName);
+    }
   } catch {
     // 操作 owner 已把带来源名称的错误发布到页面；这里不再维护第二份错误状态。
   } finally {
@@ -487,7 +471,15 @@ async function removeSelectedProvider(): Promise<void> {
     const modelConfigIds = source.models
       .filter(model => model.materialized)
       .map(model => model.model_config_id);
-    await removeModelSource(modelConfigIds);
+    const result = await removeModelSource(modelConfigIds);
+    if (result.failure) {
+      removalError.value = settingsMessage('settings.modelPicker.removeProvider.partialFailed', {
+        removed: result.removedModelIds.length,
+        total: modelConfigIds.length,
+      });
+    } else if (result.synchronizationFailed) {
+      removalError.value = settingsMessage('settings.modelPicker.modelsRemovedSyncFailed');
+    }
   } catch (error: unknown) {
     console.error('[ModelVisibility] 删除 Provider 失败', {
       errorName: error instanceof Error ? error.name : 'UnknownError',
@@ -514,8 +506,9 @@ async function removeSelectedCustomProvider(
   isRemovingProvider.value = true;
   removalError.value = null;
   try {
-    // 自定义分组只有已注册模型；最后一个引用模型删除时 Host 同事务清理 endpoint 与密文。
-    await removeModelSource(source.models.map(model => model.model_config_id));
+    const result = await removeCustomApiProviderModels(source.providerName);
+    if (result.synchronizationFailed)
+      removalError.value = settingsMessage('settings.modelPicker.removedSyncFailed');
   } catch (error: unknown) {
     console.error('[ModelVisibility] 删除自定义模型供应商失败', {
       errorName: error instanceof Error ? error.name : 'UnknownError',

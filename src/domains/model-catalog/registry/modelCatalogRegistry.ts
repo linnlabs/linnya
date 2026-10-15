@@ -12,7 +12,9 @@ import type {
   ModelCatalog,
   ModelConfig,
   ModelDiff,
+  UserModelRegistration,
 } from '../definitions/modelCatalog';
+import { ModelCatalogConflictError } from '../definitions/modelCatalog';
 import type {
   CredentialReference,
   InferenceEndpoint,
@@ -30,6 +32,7 @@ import { modelPersister } from '../features/user-model-persistence/orchestration
 import { assertEndpointMatchesModel } from '../features/inference-endpoints/functions/assertEndpointMatchesModel';
 import { findUnreferencedInferenceEndpoints } from '../features/inference-endpoints/functions/findUnreferencedInferenceEndpoints';
 import { readInferenceEndpoint } from '../features/inference-endpoints/functions/readInferenceEndpoint';
+import { prepareInferenceEndpointSelection } from '../features/inference-endpoints/orchestration/prepareInferenceEndpointSelection';
 import { endpointCredentialStore } from '../features/inference-endpoints/orchestration/endpointCredentialStore';
 import {
   requireInstalledDistributionIdentity,
@@ -73,6 +76,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
   private static instance: ModelCatalogRegistry | null = null;
 
   private models = new Map<string, ModelConfig>();
+  private userRevision = 0;
   private userMutationTail: Promise<void> = Promise.resolve();
   private readonly accountModelIds = new Map<string, Set<string>>();
   private inferenceEndpoints = new Map<string, InferenceEndpoint>();
@@ -104,9 +108,9 @@ export class ModelCatalogRegistry implements ModelCatalog {
     this.loadInferenceEndpoints(userState.inferenceEndpoints);
     this.loadDefaultModels();
 
-    if (isLinnyaCloudClientEnabled(
-      distributionIdentity ?? requireInstalledDistributionIdentity()
-    )) {
+    if (
+      isLinnyaCloudClientEnabled(distributionIdentity ?? requireInstalledDistributionIdentity())
+    ) {
       const cloudModelsLoaded = await this.loadCloudModels();
       if (!cloudModelsLoaded) this.scheduleCloudModelRetry('启动阶段首次拉取失败');
     } else {
@@ -197,32 +201,50 @@ export class ModelCatalogRegistry implements ModelCatalog {
     }));
   }
 
-  async registerUserModel(
-    model: ModelConfig,
-    selection: InferenceEndpointSelection
+  getUserRevision(): number {
+    return this.userRevision;
+  }
+
+  registerUserModel(model: ModelConfig, selection: InferenceEndpointSelection): Promise<void> {
+    return this.registerUserModels([{ model, endpoint: selection }]);
+  }
+
+  registerUserModels(
+    registrations: readonly UserModelRegistration[],
+    expectedRevision?: number
   ): Promise<void> {
     return this.runUserMutation(async () => {
-      if (this.models.has(model.id)) throw new Error(`模型已存在: ${model.id}`);
+      if (registrations.length === 0) throw new Error('批量注册至少需要一个用户模型');
+      const ids = registrations.map(item => item.model.id);
+      if (new Set(ids).size !== ids.length || ids.some(id => this.models.has(id))) {
+        throw new Error('注册模型 ID 重复或已存在');
+      }
       const nextEndpoints = new Map(this.inferenceEndpoints);
-      const prepared = await this.prepareEndpointSelection(selection, nextEndpoints);
       const previousModels = new Map(this.models);
       const nextModels = new Map(previousModels);
+      const rollbacks: Array<() => Promise<void>> = [];
       try {
-        const processedModel = this.bindUserModelToEndpoint(model, prepared.endpoint);
-        nextModels.set(processedModel.id, processedModel);
+        for (const { model, endpoint } of registrations) {
+          const prepared = await prepareInferenceEndpointSelection(endpoint, nextEndpoints);
+          rollbacks.push(prepared.rollback);
+          const processed = this.bindUserModelToEndpoint(model, prepared.endpoint);
+          nextModels.set(processed.id, processed);
+        }
         await this.persistUserState(nextModels, nextEndpoints);
       } catch (error: unknown) {
-        await prepared.rollback();
+        // 与准备顺序相反撤销，保证共享凭据被多次替换时也恢复到原始版本。
+        for (const rollback of rollbacks.reverse()) await rollback();
         throw error;
       }
       this.models = applyCommittedModelChanges(this.models, previousModels, nextModels);
       this.inferenceEndpoints = nextEndpoints;
-    });
+    }, expectedRevision);
   }
 
   async rebindUserModels(
     models: readonly ModelConfig[],
-    selection: InferenceEndpointSelection
+    selection: InferenceEndpointSelection,
+    expectedRevision?: number
   ): Promise<void> {
     return this.runUserMutation(async () => {
       if (models.length === 0) throw new Error('改绑 InferenceEndpoint 至少需要一个用户模型');
@@ -235,7 +257,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
         }
       }
       const nextEndpoints = new Map(this.inferenceEndpoints);
-      const prepared = await this.prepareEndpointSelection(selection, nextEndpoints);
+      const prepared = await prepareInferenceEndpointSelection(selection, nextEndpoints);
       try {
         const nextModels = new Map(this.models);
         for (const model of models) {
@@ -247,7 +269,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
         await prepared.rollback();
         throw error;
       }
-    });
+    }, expectedRevision);
   }
 
   async replaceInferenceEndpointCredential(
@@ -343,7 +365,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
     });
   }
 
-  async applyDiff(diff: ModelDiff): Promise<void> {
+  async applyDiff(diff: ModelDiff, expectedRevision?: number): Promise<void> {
     return this.runUserMutation(async () => {
       const nextModels = new Map(this.models);
       for (const model of diff.added) {
@@ -361,7 +383,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
         if (!nextModels.delete(id)) throw new Error(`模型不存在: ${id}`);
       }
       await this.commitModelsAndPruneEndpoints(nextModels);
-    });
+    }, expectedRevision);
   }
 
   getModelsByCapability(capability: string): ModelConfig[] {
@@ -440,9 +462,22 @@ export class ModelCatalogRegistry implements ModelCatalog {
   }
 
   /** 从读取当前目录到凭据/文件提交都串行，失败后下一条事务仍可继续。 */
-  private runUserMutation(operation: () => Promise<void>): Promise<void> {
-    const result = this.userMutationTail.then(operation);
-    this.userMutationTail = result.then(() => undefined, () => undefined);
+  private runUserMutation(
+    operation: () => Promise<void>,
+    expectedRevision?: number
+  ): Promise<void> {
+    const result = this.userMutationTail.then(async () => {
+      // 在目录事务内部校验，检查与提交之间不能插入另一个编辑或删除。
+      if (expectedRevision !== undefined && expectedRevision !== this.userRevision) {
+        throw new ModelCatalogConflictError();
+      }
+      await operation();
+      this.userRevision += 1;
+    });
+    this.userMutationTail = result.then(
+      () => undefined,
+      () => undefined
+    );
     return result;
   }
 
@@ -487,91 +522,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
 
     this.models = applyCommittedModelChanges(this.models, previousModels, nextModels);
     this.inferenceEndpoints = nextEndpoints;
-  }
-
-  /**
-   * 解析一次用户模型写入的 endpoint selection，并先完成必要的凭据写入。
-   *
-   * 返回的 rollback 只撤销本次凭据变更；调用方在目录写盘失败时必须调用它。
-   */
-  private async prepareEndpointSelection(
-    selection: InferenceEndpointSelection,
-    nextEndpoints: Map<string, InferenceEndpoint>
-  ): Promise<{ readonly endpoint: InferenceEndpoint; rollback(): Promise<void> }> {
-    let endpoint: InferenceEndpoint;
-    let createdCredentialId: string | undefined;
-    let replacedCredential: { readonly id: string; readonly previousPlaintext?: string } | undefined;
-
-    if (selection.kind === 'existing') {
-      endpoint = this.requireInferenceEndpoint(selection.inference_endpoint_id);
-      const replacementSecret = selection.credential_secret?.trim();
-      if (replacementSecret) {
-        if (endpoint.credential_reference.kind !== 'stored_secret') {
-          throw new Error(`InferenceEndpoint ${endpoint.id} 不接受本地凭据替换`);
-        }
-        const credentialId = endpoint.credential_reference.credential_id;
-        replacedCredential = {
-          id: credentialId,
-          previousPlaintext: endpointCredentialStore.has(credentialId)
-            ? endpointCredentialStore.resolve(credentialId)
-            : undefined,
-        };
-        await endpointCredentialStore.put(credentialId, replacementSecret);
-      } else if (
-        endpoint.credential_reference.kind === 'stored_secret' &&
-        !endpointCredentialStore.has(endpoint.credential_reference.credential_id)
-      ) {
-        throw new Error(`InferenceEndpoint ${endpoint.id} 的凭据不可用`);
-      }
-    } else {
-      const input = selection.endpoint;
-      if (nextEndpoints.has(input.id)) throw new Error(`InferenceEndpoint 已存在: ${input.id}`);
-      const credentialReference: CredentialReference =
-        input.credential_reference ??
-        (input.auth_profile === 'none'
-          ? { kind: 'none' }
-          : { kind: 'stored_secret', credential_id: `inference-endpoint:${input.id}` });
-      endpoint = readInferenceEndpoint({
-        ...input,
-        credential_reference: credentialReference,
-      });
-      if (credentialReference.kind === 'stored_secret') {
-        const credentialId = credentialReference.credential_id;
-        const credentialSecret = input.credential_secret?.trim();
-        const credentialExists = endpointCredentialStore.has(credentialId);
-        if (!credentialSecret && !credentialExists) {
-          throw new Error('需要认证的 InferenceEndpoint 缺少 credential secret');
-        }
-        if (credentialSecret) {
-          if (credentialExists) {
-            replacedCredential = {
-              id: credentialId,
-              previousPlaintext: endpointCredentialStore.resolve(credentialId),
-            };
-          } else {
-            createdCredentialId = credentialId;
-          }
-          await endpointCredentialStore.put(credentialId, credentialSecret);
-        }
-      }
-      nextEndpoints.set(endpoint.id, endpoint);
-    }
-
-    return {
-      endpoint,
-      async rollback() {
-        if (createdCredentialId) await endpointCredentialStore.remove(createdCredentialId);
-        if (!replacedCredential) return;
-        if (replacedCredential.previousPlaintext === undefined) {
-          await endpointCredentialStore.remove(replacedCredential.id);
-        } else {
-          await endpointCredentialStore.put(
-            replacedCredential.id,
-            replacedCredential.previousPlaintext
-          );
-        }
-      },
-    };
   }
 
   /** 用户模型只能引用一个 endpoint；route 身份必须与该 endpoint 完全一致。 */
@@ -639,7 +589,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
   }
 
   private resolveEndpointCredentialStatus(
-    endpoint: InferenceEndpoint,
+    endpoint: InferenceEndpoint
   ): InferenceEndpointView['credential_status'] {
     if (endpoint.credential_reference.kind === 'none') return 'not_required';
     if (endpoint.credential_reference.kind !== 'stored_secret') return 'configured';

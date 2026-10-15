@@ -45,6 +45,22 @@ Host 重建后恢复旧 run 仍须通过正式 runtime compatibility 校验，�
 
 中文备注：可观察性是显式依赖注入，不是全局 recorder。需要扩展落点时，优先包一层 Port adapter。
 
+默认 tokenizer 使用 Linnkit `mergeContextPolicy` 合并后的 framework / Host
+`tokenEstimation` 配置创建，并将同一个实例交给 Context Manager 与 Graph。不能空配置创建后
+注入：注入实例会接管 Context Manager 的配置，使既有 encoding 退回字符粗估，导致工具预算和
+历史整理水位失真。该计数仍标记为本地估算，不冒充 Provider 的真实 usage。
+
+显式 `tokenizer` override 优先于策略中的估算参数；这是 Linnkit 的 port 合同。当前 Host
+统一选择默认估算器，单个 Agent 的 `tokenEstimation` 不会重配已注入的实例。若将来需要不同
+Agent 的估算器，必须在该 Agent 的 runtime 装配时显式注入，并继续让 Graph / Context Manager
+共用实例，不能只改其中一侧或运行时热替换。自动整理的长度阈值与预算仍由 Linnkit 的
+context policy 和 prepared model route 决定。
+
+[上下文预算模块回归](./__tests__/customModelContextBudget.integration.test.ts) 使用默认 Agent、
+真实 18 个工具和生产 Context Builder 验证：旧 32K 模型携带当前文档时两次短问候不整理；
+完整工具历史使 Prompt 越过 80% 水位后，仍会验收摘要、先提交后发布，再调用主模型。
+只有模型返回与持久化落点使用测试替身，预算、候选选择、重建和工具定义均走正式实现。
+
 ## 自定义工具装配
 
 Host 提供自定义工具环境时，应一起传入 `toolRuntime` 与从同一 registry 创建的

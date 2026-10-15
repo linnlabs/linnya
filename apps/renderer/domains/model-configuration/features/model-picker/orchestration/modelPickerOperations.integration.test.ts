@@ -78,4 +78,45 @@ describe('modelPickerOperations', () => {
     expect(store.activeOperation).toBeNull();
     expect(store.error).toEqual({ operation: 'load', detail: 'host unavailable' });
   });
+  it('旧读取完成后才执行开关写入，后台通知不能用旧快照覆盖新选择', async () => {
+    const target = gateway();
+    let complete!: (value: ModelPickerSnapshot) => void;
+    vi.mocked(target.load).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          complete = resolve;
+        })
+    );
+    const loading = synchronizeModelPickerSnapshot(target);
+    const changing = setModelPickerModelVisibility('model-gpt', false, target);
+    await vi.waitFor(() => expect(target.load).toHaveBeenCalledOnce());
+    expect(target.setModelVisibility).not.toHaveBeenCalled();
+    complete(snapshot);
+    await Promise.all([loading, changing]);
+    expect(target.setModelVisibility).toHaveBeenCalledOnce();
+    expect(useModelPickerStore().activeOperation).toBeNull();
+  });
+
+  it('请求队列按 Pinia 作用域隔离，失败后后续操作可以继续', async () => {
+    const first = gateway();
+    let reject!: (error: Error) => void;
+    vi.mocked(first.load).mockImplementationOnce(
+      () =>
+        new Promise((_resolve, fail) => {
+          reject = fail;
+        })
+    );
+    const pending = loadModelPicker(first);
+    const assertion = expect(pending).rejects.toThrow('offline');
+    const firstStore = useModelPickerStore();
+    const changing = setModelPickerModelVisibility('a', false, first);
+    setActivePinia(createPinia());
+    const second = gateway();
+    await loadModelPicker(second);
+    expect(second.load).toHaveBeenCalledOnce();
+    reject(new Error('offline'));
+    await assertion;
+    await changing;
+    expect(firstStore.error).toBeNull();
+  });
 });

@@ -6,6 +6,8 @@ import {
   CustomApiModelRegistrationResponseSchema,
   CustomApiOnboardingErrorResponseSchema,
   CustomApiProviderUpdateResponseSchema,
+  CustomApiProviderRemovalResponseSchema,
+  CustomApiProviderRefreshResponseSchema,
 } from '@app/schemas/custom-api-onboarding';
 import {
   CustomApiOnboardingError,
@@ -43,6 +45,8 @@ describe('custom API onboarding router', () => {
       createCustomApiOnboardingRouter({
         registerModel: vi.fn(),
         updateProvider: vi.fn(),
+        removeProvider: vi.fn(),
+        refreshProvider: vi.fn(),
         ...useCase,
       })
     );
@@ -50,6 +54,38 @@ describe('custom API onboarding router', () => {
     servers.push(server);
     return listen(server);
   }
+
+  it('已保存分组刷新只接纳身份，不能从 Renderer 覆盖地址或凭据', async () => {
+    const refreshProvider = vi.fn(async () => ({
+      provider_name: 'Relay',
+      added_model_ids: ['new-model'],
+    }));
+    const baseUrl = await start({ refreshProvider });
+    const response = await fetch(`${baseUrl}/api/v1/custom-api-onboarding/providers/refresh`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ provider_name: 'Relay' }),
+    });
+    expect(response.status).toBe(200);
+    expect(CustomApiProviderRefreshResponseSchema.parse(await response.json())).toEqual({
+      provider_name: 'Relay',
+      added_model_ids: ['new-model'],
+    });
+    expect(refreshProvider).toHaveBeenCalledWith({ provider_name: 'Relay' });
+
+    const rejected = await fetch(`${baseUrl}/api/v1/custom-api-onboarding/providers/refresh`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        provider_name: 'Relay',
+        base_url: 'https://other.example.com',
+        api_key: 'secret-value',
+      }),
+    });
+    expect(rejected.status).toBe(400);
+    expect(refreshProvider).toHaveBeenCalledOnce();
+    expect(await rejected.text()).not.toContain('secret-value');
+  });
 
   it('按 API 格式规范化内网根 URL 后把窄 command 交给 use case', async () => {
     const registerModel = vi.fn(async () => ({ model_id: 'local-model-1' }));
@@ -205,7 +241,12 @@ describe('custom API onboarding router', () => {
     app.use(
       '/api/v1/custom-api-onboarding',
       createCustomApiOnboardingRouter(
-        { registerModel: vi.fn(), updateProvider: vi.fn() },
+        {
+          registerModel: vi.fn(),
+          updateProvider: vi.fn(),
+          removeProvider: vi.fn(),
+          refreshProvider: vi.fn(),
+        },
         discoveryService
       )
     );
@@ -232,5 +273,21 @@ describe('custom API onboarding router', () => {
       supports_image_input: true,
       confidence: 'inferred',
     });
+  });
+  it('分组删除只接收名称，并返回实际删除身份和清理状态', async () => {
+    const result = {
+      removed_model_ids: ['a', 'b'],
+      model_picker_preference_recovery_pending: false,
+    };
+    const removeProvider = vi.fn(async () => result);
+    const baseUrl = await start({ removeProvider });
+    const response = await fetch(`${baseUrl}/api/v1/custom-api-onboarding/providers`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ provider_name: 'Relay' }),
+    });
+    expect(response.status).toBe(200);
+    expect(CustomApiProviderRemovalResponseSchema.parse(await response.json())).toEqual(result);
+    expect(removeProvider).toHaveBeenCalledWith({ provider_name: 'Relay' });
   });
 });

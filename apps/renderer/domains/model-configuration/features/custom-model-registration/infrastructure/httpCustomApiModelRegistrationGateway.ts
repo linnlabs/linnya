@@ -25,12 +25,13 @@ export const httpCustomApiModelRegistrationGateway: CustomApiModelRegistrationGa
     return CustomApiModelRegistrationResponseSchema.parse(payload);
   },
 
-  async discoverModels(request) {
+  async discoverModels(request, signal) {
     const baseUrl = await getApiBaseUrl();
     const response = await apiFetch(`${baseUrl}/api/v1/custom-api-onboarding/discover`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(request),
+      signal,
     });
     const payload: unknown = await response.json();
     if (!response.ok) {

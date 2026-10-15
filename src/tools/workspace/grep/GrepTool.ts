@@ -26,12 +26,15 @@ export class GrepTool extends BaseTool {
     return [
       'Search text across the current Workspace project virtual file tree.',
       'Use it like grep over Linnya Workspace locators: grep(pattern="...", locator="workspace:/").',
+      'Provide at most one of locator or inode; omit both to search the project root.',
       'It searches the same VFS text projections used by read_file, including enabled plugin document projections. KnowledgeBase and conversation files are intentionally not included.',
       'Grep results are locators, not citation producers. Citation refs in previews are masked; call read_file on the matched locator before citing a source.',
       'Literal substring search, not regex. A file locator/inode searches the complete current text projection. Directory searches use a bounded persisted prefix index when available; truncated=true also means some file content or scope was not searched, even with zero matches.',
     ].join('\n');
   }
 
+  // 模型目录使用各协议共有的顶层 object；互斥身份等跨字段规则由下方正式 admission 执行。
+  // 顶层 oneOf 会被 Anthropic 拒绝，不能把执行校验的分支复制到模型输入 schema。
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     properties: {
@@ -71,79 +74,6 @@ export class GrepTool extends BaseTool {
     },
     required: ['pattern'],
     additionalProperties: false,
-    oneOf: [
-      {
-        type: 'object',
-        properties: {
-          pattern: { type: 'string', minLength: 1, description: '要搜索的文本。' },
-          case_sensitive: { type: 'boolean', description: '是否区分大小写。' },
-          max_results: {
-            type: 'integer',
-            minimum: 1,
-            maximum: 500,
-            default: 50,
-            description: '最多返回匹配条数。',
-          },
-          max_indexed_nodes: {
-            type: 'integer',
-            minimum: 1,
-            maximum: 20000,
-            default: 5000,
-            description: '目录搜索最多遍历的节点数。',
-          },
-        },
-        required: ['pattern'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          pattern: { type: 'string', minLength: 1, description: '要搜索的文本。' },
-          locator: { type: 'string', minLength: 1, description: '限定搜索的 Workspace locator。' },
-          case_sensitive: { type: 'boolean', description: '是否区分大小写。' },
-          max_results: {
-            type: 'integer',
-            minimum: 1,
-            maximum: 500,
-            default: 50,
-            description: '最多返回匹配条数。',
-          },
-          max_indexed_nodes: {
-            type: 'integer',
-            minimum: 1,
-            maximum: 20000,
-            default: 5000,
-            description: '目录搜索最多遍历的节点数。',
-          },
-        },
-        required: ['pattern', 'locator'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          pattern: { type: 'string', minLength: 1, description: '要搜索的文本。' },
-          inode: { type: 'string', minLength: 1, description: '已有 Workspace 节点的稳定 inode。' },
-          case_sensitive: { type: 'boolean', description: '是否区分大小写。' },
-          max_results: {
-            type: 'integer',
-            minimum: 1,
-            maximum: 500,
-            default: 50,
-            description: '最多返回匹配条数。',
-          },
-          max_indexed_nodes: {
-            type: 'integer',
-            minimum: 1,
-            maximum: 20000,
-            default: 5000,
-            description: '目录搜索最多遍历的节点数。',
-          },
-        },
-        required: ['pattern', 'inode'],
-        additionalProperties: false,
-      },
-    ],
   };
 
   protected override validateArguments(args: Record<string, unknown>): {

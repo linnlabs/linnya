@@ -1,4 +1,5 @@
 import type {
+  ModelPickerModelPreference,
   ModelPickerPreferenceIdentities,
   ModelPickerPreferencesRepository,
   ModelPickerPreferencesSnapshot,
@@ -29,6 +30,7 @@ function reconcileSnapshot(
 }
 
 export class ModelPickerPreferencesRegistry {
+  private mutationTail: Promise<void> = Promise.resolve();
   private snapshot: ModelPickerPreferencesSnapshot | null = null;
 
   constructor(private readonly repository: ModelPickerPreferencesRepository) {}
@@ -47,43 +49,66 @@ export class ModelPickerPreferencesRegistry {
     return cloneSnapshot(this.requireSnapshot());
   }
 
-  async setProviderVisibility(configuredProviderId: string, visible: boolean): Promise<void> {
-    const current = this.requireSnapshot();
-    const next: ModelPickerPreferencesSnapshot = {
-      ...cloneSnapshot(current),
+  setProviderVisibility(configuredProviderId: string, visible: boolean): Promise<void> {
+    return this.mutate(current => ({
+      ...current,
       provider_preferences: [
         ...current.provider_preferences.filter(
           preference => preference.configured_provider_id !== configuredProviderId
         ),
         { configured_provider_id: configuredProviderId, visible },
       ],
-    };
-    await this.commit(next);
+    }));
   }
 
-  async setModelVisibility(modelConfigId: string, visible: boolean): Promise<void> {
-    const current = this.requireSnapshot();
-    const next: ModelPickerPreferencesSnapshot = {
-      ...cloneSnapshot(current),
+  setModelVisibility(modelConfigId: string, visible: boolean): Promise<void> {
+    return this.setModelVisibilities([{ model_config_id: modelConfigId, visible }]);
+  }
+
+  /** 一次接入的所有显式选择共享一次持久化，不能发布半批偏好。 */
+  setModelVisibilities(preferences: readonly ModelPickerModelPreference[]): Promise<void> {
+    const replacements = new Map(
+      preferences.map(preference => [preference.model_config_id, { ...preference }])
+    );
+    return this.mutate(current => ({
+      ...current,
       model_preferences: [
         ...current.model_preferences.filter(
-          preference => preference.model_config_id !== modelConfigId
+          preference => !replacements.has(preference.model_config_id)
         ),
-        { model_config_id: modelConfigId, visible },
+        ...replacements.values(),
       ],
-    };
-    await this.commit(next);
+    }));
   }
 
-  async removeModelPreference(modelConfigId: string): Promise<void> {
-    const current = this.requireSnapshot();
-    if (!current.model_preferences.some(item => item.model_config_id === modelConfigId)) return;
-    await this.commit({
-      ...cloneSnapshot(current),
+  removeModelPreference(modelConfigId: string): Promise<void> {
+    return this.removeModelPreferences([modelConfigId]);
+  }
+
+  removeModelPreferences(modelConfigIds: readonly string[]): Promise<void> {
+    const removed = new Set(modelConfigIds);
+    return this.mutate(current => ({
+      ...current,
       model_preferences: current.model_preferences.filter(
-        preference => preference.model_config_id !== modelConfigId
+        preference => !removed.has(preference.model_config_id)
       ),
+    }));
+  }
+
+  /** 必须在排队后读取当前快照，否则两个独立开关会以同一旧值互相覆盖。 */
+  private mutate(
+    transform: (current: ModelPickerPreferencesSnapshot) => ModelPickerPreferencesSnapshot
+  ): Promise<void> {
+    const result = this.mutationTail.then(async () => {
+      const current = this.requireSnapshot();
+      const next = transform(current);
+      if (JSON.stringify(next) !== JSON.stringify(current)) await this.commit(next);
     });
+    this.mutationTail = result.then(
+      () => undefined,
+      () => undefined
+    );
+    return result;
   }
 
   private requireSnapshot(): ModelPickerPreferencesSnapshot {

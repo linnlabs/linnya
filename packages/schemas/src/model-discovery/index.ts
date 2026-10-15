@@ -1,8 +1,5 @@
 import { z } from 'zod';
-import {
-  CustomApiFormatSchema,
-  normalizeCustomApiBaseUrl,
-} from '../custom-api-onboarding';
+import { CustomApiFormatSchema, normalizeCustomApiBaseUrl } from '../custom-api-onboarding';
 
 const NonEmptyStringSchema = z.string().trim().min(1);
 const PositiveSafeIntegerSchema = z.number().int().positive().safe();
@@ -33,9 +30,9 @@ export const DiscoveredModelSchema = z
   .object({
     id: NonEmptyStringSchema,
     name: NonEmptyStringSchema,
-    context_window_tokens: PositiveSafeIntegerSchema.optional(),
-    max_output_tokens: PositiveSafeIntegerSchema.optional(),
-    supports_image_input: z.boolean().optional(),
+    context_window_tokens: PositiveSafeIntegerSchema,
+    max_output_tokens: PositiveSafeIntegerSchema,
+    supports_image_input: z.boolean(),
     confidence: z.enum(['reported', 'inferred', 'fallback']),
   })
   .strict();

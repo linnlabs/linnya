@@ -15,3 +15,9 @@
 默认可见性和“当前模型例外”不属于本 domain。它们由 Linnya app-level
 `model-picker` workflow 结合 Provider Catalog、ConfiguredProvider、Model
 Catalog 和运行可用性统一投影，避免任一 catalog 反向依赖本 domain。
+
+## 并发与批量写入
+
+Registry 按实例串行执行“读取当前快照 → 变换 → 保存 → 提交内存”，不能在等待前基于旧快照计算结果。
+批量接入通过 `setModelVisibilities` 一次保存，分组删除通过 `removeModelPreferences` 一次清理；单模型 API 复用同一路径。
+一次保存失败不改变当前快照，也不阻断后续任务。文件 repository 的临时文件不会被同一 Registry 的并发写入争用。

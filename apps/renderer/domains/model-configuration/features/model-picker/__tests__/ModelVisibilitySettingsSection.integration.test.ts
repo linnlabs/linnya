@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 
 import { createPinia, setActivePinia } from 'pinia';
+import type { ModelSourceRemovalResult } from '../../../definitions/modelSourceRemoval';
 import type { ModelPickerSnapshot } from '@app/schemas/model-picker';
+import type {
+  CustomApiProviderRefreshCommand,
+  CustomApiProviderRefreshResponse,
+} from '@app/schemas/custom-api-onboarding';
+import type { ModelCatalogSnapshot } from '../../model-catalog';
+import { useModelCatalogStore } from '../../model-catalog';
 import { createApp, nextTick, type App } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -10,20 +17,44 @@ import { setModelPickerModelVisibility } from '../orchestration/modelPickerOpera
 
 const mocks = vi.hoisted(() => ({
   confirm: vi.fn<() => Promise<boolean>>(),
-  removeModelSource: vi.fn<(modelConfigIds: readonly string[]) => Promise<void>>(),
+  removeCustomApiProviderModels:
+    vi.fn<(name: string) => Promise<{ synchronizationFailed: boolean }>>(),
+  removeModelSource:
+    vi.fn<(modelConfigIds: readonly string[]) => Promise<ModelSourceRemovalResult>>(),
   refreshProviderModels: vi.fn<(id: string) => Promise<ModelPickerSnapshot>>(),
   setModelVisibility: vi.fn<() => Promise<ModelPickerSnapshot>>(),
+  refreshCustomProvider:
+    vi.fn<
+      (command: CustomApiProviderRefreshCommand) => Promise<CustomApiProviderRefreshResponse>
+    >(),
+  loadPicker: vi.fn<() => Promise<ModelPickerSnapshot>>(),
+  loadCatalog: vi.fn<() => Promise<ModelCatalogSnapshot>>(),
 }));
 
 vi.mock('../infrastructure/httpModelPickerGateway', () => ({
   httpModelPickerGateway: {
     refreshProviderModels: mocks.refreshProviderModels,
     setModelVisibility: mocks.setModelVisibility,
+    load: mocks.loadPicker,
   },
+}));
+
+vi.mock(
+  '../../custom-model-registration/infrastructure/httpCustomApiProviderRefreshGateway',
+  () => ({
+    httpCustomApiProviderRefreshGateway: { refreshProvider: mocks.refreshCustomProvider },
+  })
+);
+vi.mock('../../model-catalog/infrastructure/httpModelCatalogGateway', () => ({
+  httpModelCatalogGateway: { load: mocks.loadCatalog },
 }));
 
 vi.mock('@shared/composables/confirmDialog', () => ({
   confirm: mocks.confirm,
+}));
+
+vi.mock('../../../orchestration/removeCustomApiProviderModels', () => ({
+  removeCustomApiProviderModels: mocks.removeCustomApiProviderModels,
 }));
 
 vi.mock('../../../orchestration/removeModelSource', () => ({
@@ -54,10 +85,19 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
 
   beforeEach(() => {
     mocks.confirm.mockReset();
+    mocks.refreshCustomProvider.mockReset();
+    mocks.loadPicker.mockReset();
+    mocks.loadCatalog.mockReset();
     mocks.refreshProviderModels.mockReset();
     mocks.setModelVisibility.mockReset();
+    mocks.removeCustomApiProviderModels.mockReset();
+    mocks.removeCustomApiProviderModels.mockResolvedValue({ synchronizationFailed: false });
     mocks.removeModelSource.mockReset();
-    mocks.removeModelSource.mockResolvedValue(undefined);
+    mocks.removeModelSource.mockResolvedValue({
+      removedModelIds: [],
+      failure: null,
+      synchronizationFailed: false,
+    });
 
     const pinia = createPinia();
     setActivePinia(pinia);
@@ -99,6 +139,101 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     app.use(pinia);
     app.mount(host);
   });
+
+  it.each([true, false])(
+    '自定义分组刷新成功=%s：只提交身份，成功同步两份目录，失败保留旧列表',
+    async success => {
+      const snapshot: ModelPickerSnapshot = {
+        providers: [],
+        custom_models: [],
+        custom_providers: [
+          {
+            provider_id: 'custom:Relay',
+            provider_name: 'Relay',
+            api_format: 'openai_compatible',
+            base_url: 'https://relay.example.com/v1',
+            endpoint_id: 'relay-endpoint',
+            models: [
+              {
+                materialized: true,
+                model_config_id: 'existing',
+                display_name: 'Existing',
+                picker_enabled: false,
+                runtime_available: true,
+                capabilities: ['chat'],
+                image_input: false,
+              },
+            ],
+          },
+        ],
+      };
+      useModelPickerStore().replaceSnapshot(snapshot);
+      const refreshed: ModelPickerSnapshot = {
+        ...snapshot,
+        custom_providers: snapshot.custom_providers?.map(group => ({
+          ...group,
+          models: [
+            ...group.models,
+            {
+              materialized: true,
+              model_config_id: 'new-model',
+              display_name: 'New Model',
+              picker_enabled: false,
+              runtime_available: true,
+              capabilities: ['chat'],
+              image_input: false,
+            },
+          ],
+        })),
+      };
+      mocks.loadPicker.mockResolvedValue(refreshed);
+      mocks.loadCatalog.mockResolvedValue({
+        models: [
+          {
+            id: 'new-model',
+            model_name: 'remote-new',
+            display_name: 'New Model',
+            catalog_source: 'user',
+            capabilities: ['chat'],
+            ui_visibility: [],
+          },
+        ],
+        purposeDefaults: {},
+        cloudModelsReady: true,
+      });
+      if (success) {
+        mocks.refreshCustomProvider.mockResolvedValue({
+          provider_name: 'Relay',
+          added_model_ids: ['new-model'],
+        });
+      } else {
+        mocks.refreshCustomProvider.mockRejectedValue(new Error('已保存的 API Key 鉴权失败'));
+      }
+      await flushUi();
+      const button = host.querySelector<HTMLButtonElement>('.model-visibility-refresh-btn');
+      if (!button) throw new Error('自定义分组刷新入口缺失');
+      button.click();
+      await flushUi();
+      expect(mocks.refreshCustomProvider).toHaveBeenCalledWith({ provider_name: 'Relay' });
+      expect(mocks.refreshProviderModels).not.toHaveBeenCalled();
+      if (success) {
+        expect(mocks.loadCatalog).toHaveBeenCalledOnce();
+        expect(mocks.loadPicker).toHaveBeenCalledOnce();
+        expect(useModelCatalogStore().models.map(model => model.id)).toContain('new-model');
+        expect(host.textContent).toContain('New Model');
+        expect(
+          Array.from(host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')).every(
+            input => !input.checked
+          )
+        ).toBe(true);
+      } else {
+        expect(mocks.loadCatalog).not.toHaveBeenCalled();
+        expect(mocks.loadPicker).not.toHaveBeenCalled();
+        expect(useModelPickerStore().snapshot).toEqual(snapshot);
+        expect(host.textContent).toContain('Relay: 已保存的 API Key 鉴权失败');
+      }
+    }
+  );
 
   it('刷新调用供应商发现入口并呈现新候选，保留已有配置', async () => {
     const current = useModelPickerStore().snapshot;

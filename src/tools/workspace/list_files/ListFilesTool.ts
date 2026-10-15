@@ -47,10 +47,13 @@ export class ListFilesTool extends BaseTool {
       'List files and folders in the current Workspace project using Linnya Workspace Path Layer paths.',
       'This is the preferred ls-like tool for the project file tree. It preserves the user-created folder structure and does not expose KnowledgeBase as project files.',
       'Use locator="workspace:/" for the project root. Reuse returned locator or inode with read_file.',
+      'Provide at most one of locator or inode; omit both to list the project root.',
       'Hidden system views under /.linnya are only listed when include_system_nodes=true.',
     ].join('\n');
   }
 
+  // 模型目录使用各协议共有的顶层 object；互斥身份等跨字段规则由下方正式 admission 执行。
+  // 顶层 oneOf 会被 Anthropic 拒绝，不能把执行校验的分支复制到模型输入 schema。
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     properties: {
@@ -85,71 +88,6 @@ export class ListFilesTool extends BaseTool {
     },
     required: [],
     additionalProperties: false,
-    // 分支重复是刻意的：provider 必须看到封闭 oneOf，开发者仍可在上方一眼查看完整参数。
-    oneOf: [
-      {
-        type: 'object',
-        properties: {
-          limit: {
-            type: 'integer',
-            minimum: 1,
-            maximum: 200,
-            default: 80,
-            description: '最多返回条目数。',
-          },
-          offset: { type: 'integer', minimum: 0, default: 0, description: '分页偏移。' },
-          include_system_nodes: {
-            type: 'boolean',
-            default: false,
-            description: '是否列出系统视图。',
-          },
-        },
-        required: [],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          locator: { type: 'string', minLength: 1, description: '要列出的 Workspace locator。' },
-          limit: {
-            type: 'integer',
-            minimum: 1,
-            maximum: 200,
-            default: 80,
-            description: '最多返回条目数。',
-          },
-          offset: { type: 'integer', minimum: 0, default: 0, description: '分页偏移。' },
-          include_system_nodes: {
-            type: 'boolean',
-            default: false,
-            description: '是否列出系统视图。',
-          },
-        },
-        required: ['locator'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          inode: { type: 'string', minLength: 1, description: '已有 Workspace 节点的稳定 inode。' },
-          limit: {
-            type: 'integer',
-            minimum: 1,
-            maximum: 200,
-            default: 80,
-            description: '最多返回条目数。',
-          },
-          offset: { type: 'integer', minimum: 0, default: 0, description: '分页偏移。' },
-          include_system_nodes: {
-            type: 'boolean',
-            default: false,
-            description: '是否列出系统视图。',
-          },
-        },
-        required: ['inode'],
-        additionalProperties: false,
-      },
-    ],
   };
 
   protected override validateArguments(args: Record<string, unknown>): {

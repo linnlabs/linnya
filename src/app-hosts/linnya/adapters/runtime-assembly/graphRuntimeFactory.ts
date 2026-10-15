@@ -1,5 +1,6 @@
 import { graph, llm, telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import type { agentTools } from '@linnlabs/linnkit/context-manager';
+import { mergeContextPolicy } from '@linnlabs/linnkit/context-manager';
 import type {
   AuditPort,
   CanonicalInferencePort,
@@ -18,6 +19,7 @@ import { defaultModelRoutingPolicy } from 'src/app-hosts/linnya/adapters/model-r
 import { createDefaultLinnyaTokenCounter } from 'src/app-hosts/linnya/adapters/token-accounting';
 import { defaultImageInputProcessingProfileRegistry } from 'src/app-hosts/linnya/adapters/llm-input-materialization';
 import { createDefaultHostInferencePort } from 'src/app-hosts/linnya/adapters/inference';
+import { LINNYA_CONTEXT_POLICY_FALLBACK } from 'src/app-hosts/linnya/context-policies/defaultContextPolicy';
 
 export interface DefaultLlmCallerOptions {
   modelResolver?: llm.ModelResolver;
@@ -108,7 +110,11 @@ export function createDefaultGraphRuntimeDependencies(
       modelCatalog,
       llmInputMaterializer: overrides.llmInputMaterializer,
     });
-  const tokenizer = overrides.tokenizer ?? llm.createDefaultTokenizerPort();
+  // 显式注入会接管 Context Manager 的 tokenizer；必须继承框架与 Host 的默认配置，
+  // 否则空配置会把原有 encoding 静默降为字符粗估，并提前触发历史整理。
+  const tokenizer = overrides.tokenizer ?? llm.createDefaultTokenizerPort(
+    mergeContextPolicy({ hostFallback: LINNYA_CONTEXT_POLICY_FALLBACK }).tokenEstimation,
+  );
   const tokenCounter = overrides.tokenCounter ?? createDefaultLinnyaTokenCounter();
   const contextBuilder: graph.GraphExecutorContextBuilder =
     overrides.contextBuilder ??

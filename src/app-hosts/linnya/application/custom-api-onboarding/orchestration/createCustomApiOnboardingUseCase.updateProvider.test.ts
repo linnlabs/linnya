@@ -68,7 +68,11 @@ function setup(input: {
   readonly ids?: string[];
 }) {
   const rebindUserModels = vi.fn(
-    async (_models: readonly ModelConfig[], _endpoint: InferenceEndpointSelection) => undefined
+    async (
+      _models: readonly ModelConfig[],
+      _endpoint: InferenceEndpointSelection,
+      _revision: number
+    ) => undefined
   );
   const configuredProvider: ConfiguredProvider = {
     id: 'configured-ollama',
@@ -78,17 +82,21 @@ function setup(input: {
   };
   const ids = input.ids ?? ['new-endpoint'];
   const useCase = createCustomApiOnboardingUseCase({
+    modelDiscovery: { discover: vi.fn() },
     modelCatalog: {
+      getUserRevision: () => 0,
+      applyDiff: vi.fn(),
       getModels: () => [...input.models],
       getInferenceEndpoints: () => [...input.endpoints],
-      registerUserModel: vi.fn(),
+      resolveCredential: vi.fn(),
+      registerUserModels: vi.fn(),
       rebindUserModels,
     },
     providerMembership: {
       getByModelConfigId: modelConfigId =>
         input.configuredModelIds?.includes(modelConfigId) ? configuredProvider : undefined,
     },
-    modelPickerPreferences: { setModelVisibility: vi.fn() },
+    modelPickerPreferences: { removeModelPreferences: vi.fn(), setModelVisibilities: vi.fn() },
     idFactory: { create: () => ids.shift() ?? 'unexpected-id' },
   });
   return { useCase, rebindUserModels };

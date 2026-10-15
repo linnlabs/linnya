@@ -4,7 +4,7 @@ import {
   type CustomApiModelRegistrationCommand,
   type CustomApiModelRegistrationRequest,
 } from '@app/schemas/custom-api-onboarding';
-import type { ModelConfig } from 'src/domains/model-catalog';
+import type { ModelConfig, UserModelRegistration } from 'src/domains/model-catalog';
 import {
   ModelPickerPreferencesRegistry,
   type ModelPickerPreferencesRepository,
@@ -16,12 +16,17 @@ import type { CustomApiOnboardingModelCatalogPort } from '../definitions/customA
 import { createCustomApiOnboardingUseCase } from './createCustomApiOnboardingUseCase';
 
 function modelCatalog(): CustomApiOnboardingModelCatalogPort & {
-  registerUserModel: ReturnType<typeof vi.fn>;
+  registerUserModels: ReturnType<typeof vi.fn>;
 } {
   return {
+    getUserRevision: () => 0,
+    applyDiff: vi.fn(),
     getModels: () => [],
     getInferenceEndpoints: () => [],
-    registerUserModel: vi.fn(async (_model: ModelConfig) => undefined),
+    resolveCredential: vi.fn(),
+    registerUserModels: vi.fn(
+      async (_registrations: readonly UserModelRegistration[]) => undefined
+    ),
     rebindUserModels: vi.fn(async () => undefined),
   };
 }
@@ -53,11 +58,12 @@ describe('createCustomApiOnboardingUseCase', () => {
   it('把 OpenAI Responses 用户输入投影为完整 route，且不生成 Provider 字段', async () => {
     const catalog = modelCatalog();
     const ids = ['model-local-1', 'endpoint-local-1'];
-    const setModelVisibility = vi.fn();
+    const setModelVisibilities = vi.fn();
     const useCase = createCustomApiOnboardingUseCase({
       providerMembership: noProviderMembership,
+      modelDiscovery: { discover: vi.fn() },
       modelCatalog: catalog,
-      modelPickerPreferences: { setModelVisibility },
+      modelPickerPreferences: { removeModelPreferences: vi.fn(), setModelVisibilities },
       idFactory: { create: () => ids.shift() ?? 'unexpected-id' },
     });
 
@@ -75,7 +81,7 @@ describe('createCustomApiOnboardingUseCase', () => {
       )
     ).resolves.toEqual({ model_id: 'model-local-1' });
 
-    const [model, endpoint] = catalog.registerUserModel.mock.calls[0] ?? [];
+    const { model, endpoint } = catalog.registerUserModels.mock.calls[0][0][0];
     expect(model).toMatchObject({
       id: 'model-local-1',
       model_name: 'company-gpt',
@@ -89,7 +95,7 @@ describe('createCustomApiOnboardingUseCase', () => {
       },
     });
     expect(model).not.toHaveProperty('provider');
-    expect(setModelVisibility).not.toHaveBeenCalled();
+    expect(setModelVisibilities).not.toHaveBeenCalled();
     expect(endpoint).toMatchObject({
       kind: 'create',
       endpoint: { id: 'endpoint-local-1', credential_secret: 'secret-value' },
@@ -114,9 +120,10 @@ describe('createCustomApiOnboardingUseCase', () => {
     ];
     const useCase = createCustomApiOnboardingUseCase({
       providerMembership: noProviderMembership,
+      modelDiscovery: { discover: vi.fn() },
       modelCatalog: catalog,
       idFactory: { create: () => 'model-local-2' },
-      modelPickerPreferences: { setModelVisibility: vi.fn() },
+      modelPickerPreferences: { removeModelPreferences: vi.fn(), setModelVisibilities: vi.fn() },
     });
 
     await useCase.registerModel(
@@ -130,7 +137,7 @@ describe('createCustomApiOnboardingUseCase', () => {
       })
     );
 
-    expect(catalog.registerUserModel.mock.calls[0]?.[1]).toEqual({
+    expect(catalog.registerUserModels.mock.calls[0]?.[0][0].endpoint).toEqual({
       kind: 'existing',
       inference_endpoint_id: 'existing-endpoint',
     });
@@ -140,9 +147,10 @@ describe('createCustomApiOnboardingUseCase', () => {
     const catalog = modelCatalog();
     const useCase = createCustomApiOnboardingUseCase({
       providerMembership: noProviderMembership,
+      modelDiscovery: { discover: vi.fn() },
       modelCatalog: catalog,
       idFactory: { create: () => 'openai-compatible-model' },
-      modelPickerPreferences: { setModelVisibility: vi.fn() },
+      modelPickerPreferences: { removeModelPreferences: vi.fn(), setModelVisibilities: vi.fn() },
     });
 
     await expect(
@@ -158,7 +166,7 @@ describe('createCustomApiOnboardingUseCase', () => {
         })
       )
     ).resolves.toEqual({ model_id: 'openai-compatible-model' });
-    expect(catalog.registerUserModel.mock.calls[0]?.[0]).toMatchObject({
+    expect(catalog.registerUserModels.mock.calls[0]?.[0][0].model).toMatchObject({
       capabilities: ['chat', 'image_input'],
       inference_route: {
         input_support: { user_image: true, tool_result_image: false },
@@ -171,8 +179,9 @@ describe('createCustomApiOnboardingUseCase', () => {
     const ids = ['batch-model-1', 'batch-endpoint', 'batch-model-2'];
     const useCase = createCustomApiOnboardingUseCase({
       providerMembership: noProviderMembership,
+      modelDiscovery: { discover: vi.fn() },
       modelCatalog: catalog,
-      modelPickerPreferences: { setModelVisibility: vi.fn() },
+      modelPickerPreferences: { removeModelPreferences: vi.fn(), setModelVisibilities: vi.fn() },
       idFactory: { create: () => ids.shift() ?? 'unexpected-id' },
     });
 
@@ -203,16 +212,16 @@ describe('createCustomApiOnboardingUseCase', () => {
       model_ids: ['batch-model-1', 'batch-model-2'],
     });
 
-    expect(catalog.registerUserModel).toHaveBeenCalledTimes(2);
-    expect(catalog.registerUserModel.mock.calls[0]?.[1]).toMatchObject({
+    expect(catalog.registerUserModels).toHaveBeenCalledOnce();
+    expect(catalog.registerUserModels.mock.calls[0]?.[0][0].endpoint).toMatchObject({
       kind: 'create',
       endpoint: { id: 'batch-endpoint' },
     });
-    expect(catalog.registerUserModel.mock.calls[1]?.[1]).toEqual({
+    expect(catalog.registerUserModels.mock.calls[0]?.[0][1].endpoint).toEqual({
       kind: 'existing',
       inference_endpoint_id: 'batch-endpoint',
     });
-    expect(catalog.registerUserModel.mock.calls[1]?.[0]).toMatchObject({
+    expect(catalog.registerUserModels.mock.calls[0]?.[0][1].model).toMatchObject({
       id: 'batch-model-2',
       model_name: 'batch-b',
       capabilities: ['chat', 'image_input'],
@@ -231,18 +240,24 @@ describe('createCustomApiOnboardingUseCase', () => {
     let nextId = 0;
     const useCase = createCustomApiOnboardingUseCase({
       providerMembership: noProviderMembership,
+      modelDiscovery: { discover: vi.fn() },
       modelCatalog: {
+        getUserRevision: () => 0,
+        applyDiff: vi.fn(),
         getModels: () => models,
         getInferenceEndpoints: () => [],
+        resolveCredential: vi.fn(),
         rebindUserModels: vi.fn(),
-        async registerUserModel(model) {
-          // Catalog 一旦暴露模型，关闭偏好就应已提交，不能短暂变为默认开启。
-          const index = models.length;
-          const preference = preferences.read().model_preferences.find(
-            item => item.model_config_id === model.id
-          );
-          expect(preference?.visible).toBe(selections[index]);
-          models.push(model);
+        async registerUserModels(registrations) {
+          for (const { model } of registrations) {
+            // Catalog 一旦暴露模型，关闭偏好就应已提交，不能短暂变为默认开启。
+            const index = models.length;
+            const preference = preferences
+              .read()
+              .model_preferences.find(item => item.model_config_id === model.id);
+            expect(preference?.visible).toBe(selections[index]);
+            models.push(model);
+          }
         },
       },
       modelPickerPreferences: preferences,
@@ -305,10 +320,11 @@ describe('createCustomApiOnboardingUseCase', () => {
     if (stage === '偏好') {
       vi.spyOn(repository, 'save').mockRejectedValueOnce(new Error('偏好文件无法写入'));
     } else {
-      catalog.registerUserModel.mockRejectedValueOnce(new Error('模型目录无法写入'));
+      catalog.registerUserModels.mockRejectedValueOnce(new Error('模型目录无法写入'));
     }
     const useCase = createCustomApiOnboardingUseCase({
       providerMembership: noProviderMembership,
+      modelDiscovery: { discover: vi.fn() },
       modelCatalog: catalog,
       modelPickerPreferences: preferences,
       idFactory: { create: () => 'custom-model' },
@@ -332,7 +348,7 @@ describe('createCustomApiOnboardingUseCase', () => {
         })
       )
     ).rejects.toMatchObject({ code: 'custom_api_onboarding.registration_failed' });
-    expect(catalog.registerUserModel).toHaveBeenCalledTimes(stage === '偏好' ? 0 : 1);
+    expect(catalog.registerUserModels).toHaveBeenCalledTimes(stage === '偏好' ? 0 : 1);
     const reloaded = new ModelPickerPreferencesRegistry(repository);
     await reloaded.initialize({ configured_provider_ids: [], model_config_ids: [] });
     expect(reloaded.read().model_preferences).toEqual([]);

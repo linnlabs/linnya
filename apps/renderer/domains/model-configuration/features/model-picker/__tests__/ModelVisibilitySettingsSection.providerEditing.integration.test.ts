@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { createPinia, setActivePinia } from 'pinia';
+import type { ModelSourceRemovalResult } from '../../../definitions/modelSourceRemoval';
 import type { ModelPickerSnapshot } from '@app/schemas/model-picker';
 import type { CustomApiProviderUpdateRequest } from '@app/schemas/custom-api-onboarding';
 import type { DirectProviderCredentialReplacementCommand } from '@app/schemas/provider-onboarding';
@@ -11,7 +12,10 @@ import { useModelPickerStore } from '../store/modelPickerStore';
 
 const mocks = vi.hoisted(() => ({
   confirm: vi.fn<() => Promise<boolean>>(),
-  removeModelSource: vi.fn<(modelConfigIds: readonly string[]) => Promise<void>>(),
+  removeCustomApiProviderModels:
+    vi.fn<(name: string) => Promise<{ synchronizationFailed: boolean }>>(),
+  removeModelSource:
+    vi.fn<(modelConfigIds: readonly string[]) => Promise<ModelSourceRemovalResult>>(),
   refreshModelCatalog: vi.fn<() => Promise<void>>(),
   loadModelPicker: vi.fn<() => Promise<ModelPickerSnapshot>>(),
   updateProvider: vi.fn<(request: CustomApiProviderUpdateRequest) => Promise<unknown>>(),
@@ -36,6 +40,10 @@ vi.mock(
 
 vi.mock('@shared/composables/confirmDialog', () => ({
   confirm: mocks.confirm,
+}));
+
+vi.mock('../../../orchestration/removeCustomApiProviderModels', () => ({
+  removeCustomApiProviderModels: mocks.removeCustomApiProviderModels,
 }));
 
 vi.mock('../../../orchestration/removeModelSource', () => ({
@@ -162,7 +170,12 @@ describe('ModelVisibilitySettingsSection 供应商编辑与删除', () => {
 
   beforeEach(() => {
     for (const mock of Object.values(mocks)) mock.mockReset();
-    mocks.removeModelSource.mockResolvedValue(undefined);
+    mocks.removeModelSource.mockResolvedValue({
+      removedModelIds: [],
+      failure: null,
+      synchronizationFailed: false,
+    });
+    mocks.removeCustomApiProviderModels.mockResolvedValue({ synchronizationFailed: false });
     mocks.refreshModelCatalog.mockResolvedValue(undefined);
     mocks.replaceCredential.mockResolvedValue(undefined);
     mocks.updateProvider.mockResolvedValue({ provider_name: 'Relay', model_ids: ['relay-a'] });
@@ -235,7 +248,7 @@ describe('ModelVisibilitySettingsSection 供应商编辑与删除', () => {
       message: 'settings.modelPicker.removeCustomProvider.confirm',
       isDangerousAction: true,
     });
-    expect(mocks.removeModelSource).toHaveBeenCalledWith(['relay-a', 'relay-b']);
+    expect(mocks.removeCustomApiProviderModels).toHaveBeenCalledWith('Relay');
   });
 
   it('自定义供应商编辑预填当前连接，提交后重读模型目录', async () => {

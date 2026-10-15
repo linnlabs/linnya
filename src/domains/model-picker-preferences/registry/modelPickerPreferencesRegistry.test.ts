@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type {
   ModelPickerPreferencesRepository,
@@ -96,5 +96,41 @@ describe('ModelPickerPreferencesRegistry', () => {
       provider_preferences: [{ configured_provider_id: 'configured-openai', visible: false }],
       model_preferences: [{ model_config_id: 'model-o3', visible: false }],
     });
+  });
+  it('并发修改不同开关和批量偏好不会互相覆盖，失败也不阻断后续写入', async () => {
+    const repository = new MemoryRepository({ provider_preferences: [], model_preferences: [] });
+    const registry = new ModelPickerPreferencesRegistry(repository);
+    await registry.initialize({ configured_provider_ids: ['provider'], model_config_ids: [] });
+    let release!: () => void;
+    const save = vi.spyOn(repository, 'save');
+    save.mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          release = resolve;
+        })
+    );
+    const first = registry.setModelVisibility('a', false);
+    const second = registry.setProviderVisibility('provider', false);
+    const batch = registry.setModelVisibilities([
+      { model_config_id: 'b', visible: false },
+      { model_config_id: 'c', visible: true },
+    ]);
+    await vi.waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    release();
+    await Promise.all([first, second, batch]);
+    expect(registry.read()).toEqual({
+      provider_preferences: [{ configured_provider_id: 'provider', visible: false }],
+      model_preferences: [
+        { model_config_id: 'a', visible: false },
+        { model_config_id: 'b', visible: false },
+        { model_config_id: 'c', visible: true },
+      ],
+    });
+    save.mockRejectedValueOnce(new Error('disk full'));
+    const failed = registry.setModelVisibility('a', true);
+    const succeeding = registry.removeModelPreferences(['b', 'c']);
+    await expect(failed).rejects.toThrow('disk full');
+    await succeeding;
+    expect(registry.read().model_preferences).toEqual([{ model_config_id: 'a', visible: false }]);
   });
 });

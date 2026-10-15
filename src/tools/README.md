@@ -192,8 +192,9 @@ Returns a single number representing the sum.`; }
 - **类型**: 必须是 `object` 类型。
 - **`properties`**: 定义每个参数的名称、类型 (`string`, `integer`, `boolean`, `array`, `object`) 和描述。
 - **`required`**: 一个字符串数组，列出所有必选参数的名称。
-- **声明位置**：暴露给 AI 的完整 `readonly parameters` JSON Schema 必须直接声明在 concrete tool 文件中，方便开发者打开工具文件时同时查看、修改工具描述、输入参数和执行逻辑。不能把顶层 `properties`、`required` 或完整 `oneOf` 隐藏到 schema factory / builder 后面。正式 parser、DTO 和推导类型仍按职责放在对应 `definitions/` 或 schema 包中。
-- **允许的复用**：复杂参数内部若包含独立、稳定且在多个分支复用的子合同，可以使用有业务名称的常量；但 concrete tool 中仍须一眼看清顶层参数和合法分支。为了让 provider 收到封闭 `oneOf` 而重复列出少量字段是有意的合同表达，不要用“更聪明”的 builder 牺牲可读性。
+- **声明位置**：暴露给 AI 的完整 `readonly parameters` JSON Schema 必须直接声明在 concrete tool 文件中，方便开发者打开工具文件时同时查看、修改工具描述、输入参数和执行逻辑。不能把顶层 `properties`、`required` 隐藏到 schema factory / builder 后面。正式 parser、DTO 和推导类型仍按职责放在对应 `definitions/` 或 schema 包中。
+- **生成与执行边界**：模型目录使用各已接入协议共有的顶层 `object`，不声明顶层 `oneOf/anyOf/allOf`；Anthropic 会因此拒绝整个聊天或压缩请求。字段类型、范围与无条件必填项仍显式声明，跨字段互斥和条件必填由描述指导生成，并由 owner parser 在 ToolNode 执行前严格校验。Provider 接受请求不代表参数已经通过业务 admission。
+- **允许的复用**：复杂参数内部若包含独立、稳定且在多个分支复用的子合同，可以使用有业务名称的常量；concrete tool 中仍须一眼看清顶层参数。嵌套子对象的组合约束按实际协议支持保留，禁止为兼容某个 Provider 递归删除约束或放宽正式执行 parser。
 - **可选非空字段**：字段可省略不代表可以传空字符串。新增或修改工具时，若字段一旦出现就必须有内容，必须同时在这里声明 `minLength: 1`，并在 `@app/schemas` 的正式参数合同中使用同等约束；未指定时在调用中省略该字段，不要传 `""`。
 - **示例**:
 ```typescript
@@ -211,20 +212,18 @@ readonly parameters: ToolParameterSchema = {
 ````
 
 - **必填参数是强约束，不是提示**:
-  - 任何业务上“没有它就不能执行”的字段，都必须放进 `required`。
+  - 每次调用都必须提供的字段，必须放进顶层 `required`；互斥身份与条件必填按上面的生成与执行边界处理。
   - 例如 `write_file.content`、`edit_file.old_string`、`edit_file.new_string`。
   - 缺失 `required` 字段的工具调用会在执行层被直接判定为失败，不会进入 `run`。
 
-- **判别联合必须写进结构合同**：
-  - 同一对象因 `type` 等判别字段拥有不同合法字段时，必须使用 `oneOf`
-    为每个分支声明封闭对象，并在分支中设置 `additionalProperties: false`。
-  - 禁止只在字段 `description`
-    里写“仅某类型可用”，同时把该字段放进所有类型共享的
-    `properties`；这会让模型可见合同与 owner admission 分叉。
-  - `validateArguments`
-    的正式 parser 必须表达同一组分支。协议错误应返回具体字段路径，便于模型修正，不能只拼接重复的无路径消息。
-  - JSON
-    Schema 是模型可见合同，正式 parser 是 owner 执行合同。二者必须同构，但不要求由同一个生成器产出；如果生成器会让开发者无法直接审查模型完整输入面，应优先保留显式声明，并用业务测试证明二者一致。
+- **判别联合与跨字段约束**：
+  - 嵌套对象因 `type` 等判别字段拥有不同合法字段时，在已接入协议支持的范围内使用 `oneOf`
+    为每个分支声明封闭对象，并设置 `additionalProperties: false`。不能为简化描述而放宽 owner parser。
+  - 顶层身份互斥、模式与窗口字段等跨字段规则不复制为顶层组合 Schema，也不为编码这些规则新增嵌套参数。
+    模型字段描述必须明确合法组合，`validateArguments` 的正式 parser 则完整表达并执行这些规则。
+  - 协议错误应返回具体字段路径和可执行的修复提示，便于模型修正，不能只拼接重复的无路径消息。
+  - JSON Schema 是协议兼容的模型输入说明，正式 parser 是 owner 执行合同。二者的字段、类型、范围、默认值与业务含义必须一致，
+    但不要求跨字段规则以相同的 Schema 结构表达。用真实协议请求验证目录可被接纳，用 ToolNode 业务测试验证非法组合在执行前被拒绝。
 
 ## 3. `run` 方法
 

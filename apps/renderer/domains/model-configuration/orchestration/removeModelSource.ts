@@ -1,13 +1,32 @@
-import { deleteConfiguredModel } from './deleteConfiguredModel';
+import type { ModelSourceRemovalResult } from '../definitions/modelSourceRemoval';
+import { deleteModelFromCatalog, type ModelCatalogGateway } from '../features/model-catalog';
+import { loadModelPicker, type ModelPickerGateway } from '../features/model-picker';
+import { clearBindingsForModel } from '../features/purpose-model-bindings';
 
-/**
- * 删除一个模型来源（正式 Provider 或自定义模型分组）的全部已激活模型。
- *
- * endpoint 与 credential 生命周期由最后一个引用模型的删除统一收口，
- * 因而这里不直接触碰凭据存储，只编排已有的模型删除用例。
- */
-export async function removeModelSource(modelConfigIds: readonly string[]): Promise<void> {
-  for (const modelConfigId of modelConfigIds) {
-    await deleteConfiguredModel(modelConfigId);
+/** 正式 Provider 的每个归属删除仍走 Host durable intent；整批结束后再同步一次列表。 */
+export async function removeModelSource(
+  modelConfigIds: readonly string[],
+  catalogGateway?: ModelCatalogGateway,
+  pickerGateway?: ModelPickerGateway
+): Promise<ModelSourceRemovalResult> {
+  const removedModelIds: string[] = [];
+  let failure: ModelSourceRemovalResult['failure'] = null;
+  for (const modelId of modelConfigIds) {
+    try {
+      await deleteModelFromCatalog(modelId, catalogGateway);
+      clearBindingsForModel(modelId);
+      removedModelIds.push(modelId);
+    } catch (error: unknown) {
+      failure = { modelId, error };
+      break;
+    }
   }
+  let synchronizationFailed = false;
+  try {
+    await loadModelPicker(pickerGateway);
+  } catch {
+    // 已提交的删除不能被一次读取失败改写成失败，Picker 保留自己的 load 错误。
+    synchronizationFailed = true;
+  }
+  return { removedModelIds, failure, synchronizationFailed };
 }

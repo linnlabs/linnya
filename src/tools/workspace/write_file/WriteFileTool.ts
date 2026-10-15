@@ -120,6 +120,7 @@ export class WriteFileTool extends BaseTool {
     return [
       'Writes full content to a Workspace project file using Linnya paths.',
       'Supports Markdown documents and enabled plugin-owned document files.',
+      'Provide exactly one of locator or inode. New files require locator; inode can only identify an existing file.',
       `For new files, a missing extensionless path, .md, or .markdown creates Markdown${pluginHint ? `; ${pluginHint.slice(1)}` : ''}.`,
       'Markdown writes are stored as pending revisions rather than directly replacing accepted document content.',
       'Prefer edit_file for targeted changes. Use write_file when rewriting the whole file is intentional.',
@@ -132,6 +133,8 @@ export class WriteFileTool extends BaseTool {
     return `要写入的 Workspace locator，只能使用 workspace:/...。与 inode 二选一；新建文件只能传 locator。新建 Markdown 可用无后缀、.md 或 .markdown${pluginHint}。`;
   }
 
+  // 模型目录使用各协议共有的顶层 object；互斥身份等跨字段规则由下方正式 admission 执行。
+  // 顶层 oneOf 会被 Anthropic 拒绝，不能把执行校验的分支复制到模型输入 schema。
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     additionalProperties: false,
@@ -153,27 +156,6 @@ export class WriteFileTool extends BaseTool {
       },
     },
     required: ['content'],
-    // 封闭分支确保新建/按路径写入与按 inode 更新不会形成两个竞争权威。
-    oneOf: [
-      {
-        type: 'object',
-        properties: {
-          locator: { type: 'string', minLength: 1, description: '要写入的 Workspace locator。' },
-          content: { type: 'string', description: '要写入的完整文件内容。' },
-        },
-        required: ['locator', 'content'],
-        additionalProperties: false,
-      },
-      {
-        type: 'object',
-        properties: {
-          inode: { type: 'string', minLength: 1, description: '已有 Workspace 节点的稳定 inode。' },
-          content: { type: 'string', description: '要写入的完整文件内容。' },
-        },
-        required: ['inode', 'content'],
-        additionalProperties: false,
-      },
-    ],
   };
 
   getParametersForContext(): ToolParameterSchema {

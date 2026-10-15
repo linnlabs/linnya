@@ -162,10 +162,12 @@ describe('Registry cloud retry', () => {
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
 
-    await registry.initialize(createOfficialDistributionIdentity({
-      releaseChannel: 'stable',
-      releaseKeyId: 'fixture',
-    }));
+    await registry.initialize(
+      createOfficialDistributionIdentity({
+        releaseChannel: 'stable',
+        releaseKeyId: 'fixture',
+      })
+    );
 
     expect(fetchCloudModelsMock).toHaveBeenCalledTimes(1);
     expect(registry.getModel('cloud-test-model')).toBeUndefined();
@@ -313,10 +315,12 @@ describe('Registry default model by capability', () => {
 
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createOfficialDistributionIdentity({
-      releaseChannel: 'stable',
-      releaseKeyId: 'fixture',
-    }));
+    await registry.initialize(
+      createOfficialDistributionIdentity({
+        releaseChannel: 'stable',
+        releaseKeyId: 'fixture',
+      })
+    );
 
     expect(registry.getFunctionalModelDefaults()).toEqual({
       autocomplete: 'cloud-fast-model',
@@ -595,9 +599,7 @@ describe('Registry default model by capability', () => {
       'rotated-secret'
     );
     expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:old-endpoint');
-    expect(registry.getInferenceEndpoints().map(endpoint => endpoint.id)).toEqual([
-      'new-endpoint',
-    ]);
+    expect(registry.getInferenceEndpoints().map(endpoint => endpoint.id)).toEqual(['new-endpoint']);
     expect(registry.getModel('first-user-model')).toMatchObject({
       inference_endpoint_id: 'new-endpoint',
       inference_route: { base_url: nextBaseUrl },
@@ -688,9 +690,7 @@ describe('Registry default model by capability', () => {
     expect(registry.getModel('only-user-model')).toMatchObject({
       inference_endpoint_id: 'old-endpoint',
     });
-    expect(registry.getInferenceEndpoints().map(endpoint => endpoint.id)).toEqual([
-      'old-endpoint',
-    ]);
+    expect(registry.getInferenceEndpoints().map(endpoint => endpoint.id)).toEqual(['old-endpoint']);
     expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:new-endpoint');
     expect(credentialStoreMock.put).toHaveBeenCalledWith(
       'inference-endpoint:old-endpoint',
@@ -741,9 +741,9 @@ describe('Registry default model by capability', () => {
       'rotated-secret'
     );
     expect(persisterMock.saveState).not.toHaveBeenCalled();
-    await expect(registry.replaceInferenceEndpointCredential('only-endpoint', '  ')).rejects.toThrow(
-      'credential secret 不能为空'
-    );
+    await expect(
+      registry.replaceInferenceEndpointCredential('only-endpoint', '  ')
+    ).rejects.toThrow('credential secret 不能为空');
     await expect(
       registry.replaceInferenceEndpointCredential('missing-endpoint', 'rotated-secret')
     ).rejects.toThrow('InferenceEndpoint 不存在');
@@ -753,13 +753,19 @@ describe('Registry default model by capability', () => {
     const first = buildUserModel('first', 'shared');
     const second = buildUserModel('second', 'shared');
     persisterMock.loadState.mockResolvedValue({
-      models: [first, second], inferenceEndpoints: [buildUserEndpoint('shared')],
+      models: [first, second],
+      inferenceEndpoints: [buildUserEndpoint('shared')],
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
     await registry.initialize(createSourceDistributionIdentity());
     let complete!: () => void;
-    persisterMock.saveState.mockImplementationOnce(() => new Promise<void>(resolve => { complete = resolve; }));
+    persisterMock.saveState.mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          complete = resolve;
+        })
+    );
     const firstWrite = registry.updateModel({ ...first, display_name: 'first updated' });
     await vi.waitFor(() => expect(persisterMock.saveState).toHaveBeenCalledOnce());
     const secondWrite = registry.updateModel({ ...second, display_name: 'second updated' });
@@ -776,7 +782,8 @@ describe('Registry default model by capability', () => {
   it('前一事务失败不吞掉后一事务，也不覆盖退出登录删除的投影', async () => {
     const model = buildUserModel('user', 'endpoint');
     persisterMock.loadState.mockResolvedValue({
-      models: [model], inferenceEndpoints: [buildUserEndpoint('endpoint')],
+      models: [model],
+      inferenceEndpoints: [buildUserEndpoint('endpoint')],
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
@@ -785,7 +792,12 @@ describe('Registry default model by capability', () => {
     persisterMock.saveState.mockRejectedValueOnce(new Error('disk unavailable'));
     const failed = registry.updateModel({ ...model, display_name: 'failed' });
     let complete!: () => void;
-    persisterMock.saveState.mockImplementationOnce(() => new Promise<void>(resolve => { complete = resolve; }));
+    persisterMock.saveState.mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          complete = resolve;
+        })
+    );
     const successful = registry.updateModel({ ...model, display_name: 'saved' });
     await expect(failed).rejects.toThrow('disk unavailable');
     await vi.waitFor(() => expect(persisterMock.saveState).toHaveBeenCalledTimes(2));
@@ -830,5 +842,135 @@ describe('Registry default model by capability', () => {
       'secret-value'
     );
     expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:new-endpoint');
+  });
+  it('整批注册只发布一次目录；删除或编辑后的旧版本不能继续注册', async () => {
+    persisterMock.loadState.mockResolvedValueOnce({
+      inferenceEndpoints: [buildUserEndpoint('shared')],
+      models: [buildUserModel('existing', 'shared')],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await registry.initialize(createSourceDistributionIdentity());
+    const revision = registry.getUserRevision();
+    const registrations = ['a', 'b'].map(id => ({
+      model: buildUserModel(id, 'shared'),
+      endpoint: { kind: 'existing' as const, inference_endpoint_id: 'shared' },
+    }));
+    await registry.registerUserModels(registrations, revision);
+    expect(persisterMock.saveState).toHaveBeenCalledOnce();
+    expect(registry.getModel('a')).toBeDefined();
+    expect(registry.getModel('b')).toBeDefined();
+    await expect(
+      registry.registerUserModels(
+        [{ ...registrations[0], model: buildUserModel('stale', 'shared') }],
+        revision
+      )
+    ).rejects.toMatchObject({ name: 'ModelCatalogConflictError' });
+    expect(registry.getModel('stale')).toBeUndefined();
+    const beforeDeletion = registry.getUserRevision();
+    await registry.applyDiff(
+      { added: [], updated: [], removed: ['a', 'b', 'existing'] },
+      beforeDeletion
+    );
+    await expect(registry.registerUserModels(registrations, beforeDeletion)).rejects.toMatchObject({
+      name: 'ModelCatalogConflictError',
+    });
+    expect(registry.getInferenceEndpoints()).toEqual([]);
+  });
+
+  it('后一个注册失败时撤销前面的凭据准备，不发布半批模型', async () => {
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await registry.initialize(createSourceDistributionIdentity());
+    credentialStoreMock.has.mockReturnValue(false);
+    await expect(
+      registry.registerUserModels(
+        [
+          {
+            model: buildUserModel('first', 'new'),
+            endpoint: {
+              kind: 'create',
+              endpoint: {
+                id: 'new',
+                route_profile_id: 'openai_chat',
+                endpoint_id: 'deepseek',
+                base_url: 'https://api.linnyai.com/proxy/deepseek',
+                auth_profile: 'bearer',
+                credential_secret: 'secret',
+              },
+            },
+          },
+          {
+            model: buildUserModel('second', 'missing'),
+            endpoint: { kind: 'existing', inference_endpoint_id: 'missing' },
+          },
+        ],
+        registry.getUserRevision()
+      )
+    ).rejects.toThrow('InferenceEndpoint 不存在');
+    expect(registry.getModel('first')).toBeUndefined();
+    expect(registry.getModel('second')).toBeUndefined();
+    expect(persisterMock.saveState).not.toHaveBeenCalled();
+    expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:new');
+  });
+  it.each(['register', 'remove'] as const)('批量 %s 写盘失败时保留整个旧目录', async operation => {
+    const original = buildUserModel('original', 'shared');
+    persisterMock.loadState.mockResolvedValueOnce({
+      inferenceEndpoints: [buildUserEndpoint('shared')],
+      models: [original],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await registry.initialize(createSourceDistributionIdentity());
+    const before = registry.getModels();
+    const revision = registry.getUserRevision();
+    persisterMock.saveState.mockRejectedValueOnce(new Error('disk full'));
+    const pending =
+      operation === 'register'
+        ? registry.registerUserModels(
+            ['a', 'b'].map(id => ({
+              model: buildUserModel(id, 'shared'),
+              endpoint: { kind: 'existing', inference_endpoint_id: 'shared' },
+            })),
+            revision
+          )
+        : registry.applyDiff({ added: [], updated: [], removed: ['original'] }, revision);
+    await expect(pending).rejects.toThrow('disk full');
+    expect(registry.getModels()).toEqual(before);
+    expect(registry.getUserRevision()).toBe(revision);
+    expect(registry.getInferenceEndpoints().map(endpoint => endpoint.id)).toEqual(['shared']);
+  });
+  it('同批后续模型可引用刚创建的连接，密钥只写一次', async () => {
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await registry.initialize(createSourceDistributionIdentity());
+    credentialStoreMock.has.mockReturnValueOnce(false).mockReturnValue(true);
+    await registry.registerUserModels(
+      [
+        {
+          model: buildUserModel('first', 'new'),
+          endpoint: {
+            kind: 'create',
+            endpoint: {
+              id: 'new',
+              route_profile_id: 'openai_chat',
+              endpoint_id: 'deepseek',
+              base_url: 'https://api.linnyai.com/proxy/deepseek',
+              auth_profile: 'bearer',
+              credential_secret: 'secret',
+            },
+          },
+        },
+        {
+          model: buildUserModel('second', 'new'),
+          endpoint: { kind: 'existing', inference_endpoint_id: 'new' },
+        },
+      ],
+      registry.getUserRevision()
+    );
+    expect(registry.getModel('first')?.inference_endpoint_id).toBe('new');
+    expect(registry.getModel('second')?.inference_endpoint_id).toBe('new');
+    expect(credentialStoreMock.put).toHaveBeenCalledOnce();
+    expect(persisterMock.saveState).toHaveBeenCalledOnce();
   });
 });

@@ -47,7 +47,7 @@ import { SecretInput } from '@linnya/renderer-ui';
 import { openExternalUrl } from '@/shared/utils/openExternalUrl';
 import { SettingsFeedback, SettingsRow, useSettingsLocalization } from '@/domains/settings/public';
 import { useProviderCatalogReadModel } from '../../provider-catalog';
-import type { RegistrationFormStatus } from '../../custom-model-registration';
+import type { DirectProviderOnboardingStatus } from '../definitions/directProviderOnboardingForm';
 import type { DirectProviderOnboardingForm } from '../definitions/directProviderOnboardingForm';
 import { DirectProviderOnboardingError } from '../definitions/directProviderOnboardingError';
 import { connectDirectProvider } from '../orchestration/connectDirectProvider';
@@ -58,7 +58,7 @@ const props = defineProps<{
   readonly providerConnectionDefinitionId: string;
   readonly refreshModelCatalog: () => Promise<void>;
 }>();
-const status = reactive<RegistrationFormStatus>({
+const status = reactive<DirectProviderOnboardingStatus>({
   isSubmitting: false,
   success: false,
   error: null,
