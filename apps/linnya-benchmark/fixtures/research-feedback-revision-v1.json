@@ -1,0 +1,12 @@
+{
+  "id": "research-feedback-revision-v1",
+  "base_skill": "deep-research",
+  "base_version": "1.4",
+  "base_sha256": "8c9372a32454ecda1906387a586c525626788a5d01091c135cd6db6572308f42",
+  "candidate_version": "1.4-feedback-candidate.1",
+  "replace_once": {
+    "before": "独立复核在同项目新会话读取指定版本和允许材料，另存评审 Markdown，附原句、依据、影响与建议，不改原稿、不读其他评委答案。没有核对的内容写未验证；评委意见也要核对，不能以评分代替证据。新会话不自动隐藏项目文件，普通复核不冒称盲评。",
+    "after": "独立复核在同项目新会话读取指定版本和允许材料，另存评审 Markdown，提供原句、具体问题、可重新打开的原件位置与必要上下文、实际执行的计算或反例、影响及未核范围，不代写可粘贴的替换段落，不改原稿、不读其他评委答案。收到反馈后，作者核对原句、来源上下文和必要计算，有依据地接受、收窄或拒绝；自行重推，同步修改受影响的正文、表格、开头和结论。修订保留来源的对象、分母、期间与适用范围，核对新增判断，保留仍成立的解释。没有核对的内容写未验证，不能以评分代替证据。新会话不自动隐藏项目文件，普通复核不冒称盲评。"
+  },
+  "scope": "Only replace the independent-review paragraph. Freeze complete copies and unchanged resources before running; do not install into built-in discovery or promote from a single development example."
+}

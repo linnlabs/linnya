@@ -18,7 +18,7 @@ Skill 为已有 Agent 提供按需加载的研究方法、工作流程和文档�
 
 Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `skill` 工具。`agentSkillExposure.ts` 由 `GenericAgentTask` 调用，统一追加目录；不要手改每个 Agent 的系统提示词嵌入 Skill 正文。Agent prompt 点名必需 Skill 时，另声明 `requiredSkills` 并走现有配置校验。
 
-`requiredSkills` 可依赖随 Host 分发的内置 Skill 或当前插件随包资源；不能由用户目录或其他插件碰巧存在的同名 Skill 满足。此依赖校验不执行激活或资源读取。受控研究职责继续读取同一份 `deep-research` 1.4；Host 接管阶段产物保存与正式回读，职责自身不开放 Workspace 写工具。
+`requiredSkills` 可依赖随 Host 分发的内置 Skill 或当前插件随包资源；不能由用户目录或其他插件碰巧存在的同名 Skill 满足。此依赖校验不执行激活或资源读取。研究父子职责继续读取同一份 `deep-research` 1.4，通过普通 Workspace 工具自行保存和回读；Host 不自动推进研究阶段，也不代替作者检查正文。
 
 模型可见的三个层次：
 
@@ -41,6 +41,8 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 该 Skill 复用 Default Agent 的 Web、Knowledge、Workspace 与 Shell 工具，不恢复旧 Deep Research beta，不要求固定多 Agent 编排。入口保留共同研究纪律；文体差异与建模选择按需读取 resources。它不强制统一章节、假设数量、概率分数或资料数量，也不宣称系统已经机械验证推论。
 
 1.4 将入口收敛为界定任务、探索资料、检验解释、成文和交付五段循环。解释型研究在成文前实际核查关键竞争解释；描述与固定材料编辑不因此扩张为完整调查。研究记录在调查中保存，缺口必须约束成稿。未来观察只在有依据时给数值阈值，不以形式完整诱导假精确。委派需显式交接材料、访问与产物边界，不能假设子任务继承父会话全部约束；这仍是行为指引，不是权限强制。入口不承诺因果识别已被工具保证，也不强制延长运行时间。
+
+反馈修订候选只替换第五节的独立复核段，实验差异保存在 [Benchmark fixture](../../../apps/linnya-benchmark/fixtures/research-feedback-revision-v1.json)。正式 1.4 及资源保持不变；候选不进入内置发现目录。实验须冻结完整副本并核对实际加载，不将用户请求中的同义要求重复塞给各组而抹去被测差异。
 
 `references/modeling.md` 将材料立场、参与者利益、竞争解释与间接线索连接到具体查找任务：先说明候选机制会留下什么可观察记录，再查相关主体、时间线、资金/实物流和制度条件，并保留反证、基准解释与未解环节。立场不等于真假，相关不等于因果；这是一套行为指引，不是已验证的自动发现能力。
 
