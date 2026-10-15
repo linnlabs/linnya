@@ -107,7 +107,7 @@ async function verifyRuntime(label, runtime, conformance) {
   assert.equal(result.requests.length, 2, `${label} 没有完成两轮 Provider 请求`);
   assert.equal(result.replay.at(-1)?.type, 'tool_call', `${label} 没有保留工具调用回放`);
   assert.deepEqual(result.secondEvents.at(-1), { type: 'finish', reason: 'stop' });
-  // Packed 入口必须解析到 frozen patch 后的 SDK；仅版本号正确不代表工具图片没有退回字符串。
+  // Packed 入口必须保留上游原生工具图片编码；仅版本号正确不代表图片没有退回字符串。
   assert.deepEqual(result.requests[1].body.messages, [
     { role: 'user', content: [
       { type: 'text', text: '比较用户与工具图片。' },

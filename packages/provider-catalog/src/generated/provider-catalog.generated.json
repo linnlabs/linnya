@@ -1,11 +1,11 @@
 {
   "schema_version": 2,
   "generation": {
-    "id": "models-dev-2026-10-08-c77a954783de-p17",
+    "id": "models-dev-2026-10-15-6c177e659711-p18",
     "source_url": "https://models.dev/api.json",
-    "source_sha256": "c77a954783de366deee7a34e0f140392d7d3163cd4378af74588341e9f87df41",
-    "synced_at": "2026-10-08T04:02:19.364Z",
-    "policy_version": 17
+    "source_sha256": "6c177e65971110fa5c3bcda466136dd70864082e8e4b54f169bac352f4198855",
+    "synced_at": "2026-10-15T02:02:31.731Z",
+    "policy_version": 18
   },
   "providers": [
     {
@@ -628,6 +628,20 @@
           "model_discovery": "bundled",
           "models": [
             {
+              "id": "cat-jam-free",
+              "display_name": "Cat Jam Free",
+              "release_status": "active",
+              "context_window_tokens": 262144,
+              "max_input_tokens": 262144,
+              "max_output_tokens": 131072,
+              "capabilities": {
+                "image_input": false,
+                "tool_call": true,
+                "reasoning": true
+              },
+              "release_date": "2026-10-12"
+            },
+            {
               "id": "claude-haiku-5-5",
               "display_name": "Claude Haiku 5.5",
               "release_status": "active",
@@ -641,36 +655,6 @@
               },
               "family": "claude-haiku",
               "release_date": "2026-10-07"
-            },
-            {
-              "id": "deepseek-v4-flash",
-              "display_name": "DeepSeek V4 Flash",
-              "release_status": "active",
-              "context_window_tokens": 1000000,
-              "max_input_tokens": 1000000,
-              "max_output_tokens": 384000,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "deepseek-flash",
-              "release_date": "2026-07-31"
-            },
-            {
-              "id": "deepseek-v4-flash-vision-exp",
-              "display_name": "DeepSeek V4 Flash Vision Exp",
-              "release_status": "active",
-              "context_window_tokens": 1000000,
-              "max_input_tokens": 1000000,
-              "max_output_tokens": 384000,
-              "capabilities": {
-                "image_input": true,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "deepseek-flash",
-              "release_date": "2026-08-21"
             },
             {
               "id": "deepseek-v4-pro",
@@ -1075,6 +1059,20 @@
                 "reasoning": true
               },
               "release_date": "2026-09-23"
+            },
+            {
+              "id": "step-5-preview-free",
+              "display_name": "Step 5 Preview Free",
+              "release_status": "active",
+              "context_window_tokens": 1000000,
+              "max_input_tokens": 1000000,
+              "max_output_tokens": 65536,
+              "capabilities": {
+                "image_input": true,
+                "tool_call": true,
+                "reasoning": true
+              },
+              "release_date": "2026-09-16"
             }
           ]
         }
@@ -3351,8 +3349,8 @@
               "id": "mistral-large-4",
               "display_name": "Mistral Large 4",
               "release_status": "preview",
-              "context_window_tokens": 524288,
-              "max_input_tokens": 524288,
+              "context_window_tokens": 1048576,
+              "max_input_tokens": 1048576,
               "max_output_tokens": 262144,
               "capabilities": {
                 "image_input": true,
@@ -3856,20 +3854,6 @@
               "release_date": "2026-07-07"
             },
             {
-              "id": "apodex/apodex-1.1-mini:free",
-              "display_name": "Apodex 1.1 Mini (free)",
-              "release_status": "active",
-              "context_window_tokens": 262144,
-              "max_input_tokens": 262144,
-              "max_output_tokens": 235929,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "release_date": "2026-10-01"
-            },
-            {
               "id": "openrouter/auto",
               "display_name": "Auto Router",
               "release_status": "active",
@@ -4250,7 +4234,7 @@
               "release_status": "active",
               "context_window_tokens": 163840,
               "max_input_tokens": 163840,
-              "max_output_tokens": 16000,
+              "max_output_tokens": 16384,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -4288,6 +4272,21 @@
               },
               "family": "deepseek",
               "release_date": "2026-09-14"
+            },
+            {
+              "id": "deepseek/deepseek-r1-0528",
+              "display_name": "DeepSeek R1 0528",
+              "release_status": "active",
+              "context_window_tokens": 163840,
+              "max_input_tokens": 163840,
+              "max_output_tokens": 32768,
+              "capabilities": {
+                "image_input": false,
+                "tool_call": true,
+                "reasoning": true
+              },
+              "family": "deepseek-thinking",
+              "release_date": "2025-05-28"
             },
             {
               "id": "deepseek/deepseek-chat-v3-0324",
@@ -4370,7 +4369,7 @@
               "release_status": "active",
               "context_window_tokens": 1048576,
               "max_input_tokens": 1048576,
-              "max_output_tokens": 943718,
+              "max_output_tokens": 943717,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -4797,6 +4796,21 @@
               "release_date": "2026-09-02"
             },
             {
+              "id": "google/gemini-4-argon",
+              "display_name": "Gemini 4 Argon",
+              "release_status": "active",
+              "context_window_tokens": 1048576,
+              "max_input_tokens": 1048576,
+              "max_output_tokens": 65536,
+              "capabilities": {
+                "image_input": true,
+                "tool_call": true,
+                "reasoning": true
+              },
+              "family": "gemini",
+              "release_date": "2026-10-13"
+            },
+            {
               "id": "~google/gemini-flash-latest",
               "display_name": "Gemini Flash Latest",
               "release_status": "active",
@@ -5027,7 +5041,7 @@
               "release_status": "active",
               "context_window_tokens": 204800,
               "max_input_tokens": 204800,
-              "max_output_tokens": 16384,
+              "max_output_tokens": 131072,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -5087,7 +5101,7 @@
               "release_status": "active",
               "context_window_tokens": 204800,
               "max_input_tokens": 204800,
-              "max_output_tokens": 128000,
+              "max_output_tokens": 131072,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -5132,7 +5146,7 @@
               "release_status": "active",
               "context_window_tokens": 1048576,
               "max_input_tokens": 1048576,
-              "max_output_tokens": 131072,
+              "max_output_tokens": 943718,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -5162,7 +5176,7 @@
               "release_status": "active",
               "context_window_tokens": 1048576,
               "max_input_tokens": 1048576,
-              "max_output_tokens": 943717,
+              "max_output_tokens": 943718,
               "capabilities": {
                 "image_input": true,
                 "tool_call": true,
@@ -5282,7 +5296,7 @@
               "release_status": "active",
               "context_window_tokens": 131072,
               "max_input_tokens": 131072,
-              "max_output_tokens": 117964,
+              "max_output_tokens": 65536,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -6298,7 +6312,7 @@
             },
             {
               "id": "moonshotai/kimi-k2-0905",
-              "display_name": "Kimi K2 0905",
+              "display_name": "Kimi K2 Instruct 0905",
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
@@ -6309,7 +6323,7 @@
                 "reasoning": false
               },
               "family": "kimi-k2",
-              "release_date": "2025-09-04"
+              "release_date": "2025-09-05"
             },
             {
               "id": "moonshotai/kimi-k2-thinking",
@@ -6317,7 +6331,7 @@
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 235929,
+              "max_output_tokens": 98304,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -6477,6 +6491,21 @@
               "release_date": "2026-08-11"
             },
             {
+              "id": "liquid/lfm-2.5-24b-a2b",
+              "display_name": "LFM2.5-24B-A2B",
+              "release_status": "active",
+              "context_window_tokens": 128000,
+              "max_input_tokens": 128000,
+              "max_output_tokens": 8192,
+              "capabilities": {
+                "image_input": false,
+                "tool_call": true,
+                "reasoning": true
+              },
+              "family": "liquid",
+              "release_date": "2026-10-13"
+            },
+            {
               "id": "inclusionai/ling-3.0-flash",
               "display_name": "Ling 3.0 Flash",
               "release_status": "active",
@@ -6492,41 +6521,11 @@
               "release_date": "2026-07-23"
             },
             {
-              "id": "inclusionai/ling-3.0-flash-fin",
-              "display_name": "Ling 3.0 Flash Fin",
-              "release_status": "active",
-              "context_window_tokens": 262144,
-              "max_input_tokens": 262144,
-              "max_output_tokens": 32768,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "ling",
-              "release_date": "2026-08-27"
-            },
-            {
-              "id": "inclusionai/ling-3.0-flash-sante:free",
-              "display_name": "Ling 3.0 Flash Sante (free)",
-              "release_status": "active",
-              "context_window_tokens": 262144,
-              "max_input_tokens": 262144,
-              "max_output_tokens": 32768,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "ling",
-              "release_date": "2026-09-04"
-            },
-            {
               "id": "inclusionai/ling-3.0-flash-vl",
               "display_name": "Ling 3.0 Flash VL",
               "release_status": "active",
-              "context_window_tokens": 262144,
-              "max_input_tokens": 262144,
+              "context_window_tokens": 131072,
+              "max_input_tokens": 131072,
               "max_output_tokens": 32768,
               "capabilities": {
                 "image_input": true,
@@ -6542,7 +6541,7 @@
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 32768,
+              "max_output_tokens": 235929,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -6550,21 +6549,6 @@
               },
               "family": "ling",
               "release_date": "2026-10-02"
-            },
-            {
-              "id": "sao10k/l3.1-euryale-70b",
-              "display_name": "Llama 3.1 Euryale 70B v2.2",
-              "release_status": "active",
-              "context_window_tokens": 131072,
-              "max_input_tokens": 131072,
-              "max_output_tokens": 16384,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": false
-              },
-              "family": "llama",
-              "release_date": "2024-08-28"
             },
             {
               "id": "meta-llama/llama-4-maverick",
@@ -6587,7 +6571,7 @@
               "release_status": "active",
               "context_window_tokens": 1310720,
               "max_input_tokens": 1310720,
-              "max_output_tokens": 16384,
+              "max_output_tokens": 117964,
               "capabilities": {
                 "image_input": true,
                 "tool_call": true,
@@ -6632,7 +6616,7 @@
               "release_status": "active",
               "context_window_tokens": 131072,
               "max_input_tokens": 131072,
-              "max_output_tokens": 16384,
+              "max_output_tokens": 32768,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -6782,7 +6766,7 @@
               "release_status": "active",
               "context_window_tokens": 204800,
               "max_input_tokens": 204800,
-              "max_output_tokens": 176947,
+              "max_output_tokens": 131072,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -6812,7 +6796,7 @@
               "release_status": "active",
               "context_window_tokens": 204800,
               "max_input_tokens": 204800,
-              "max_output_tokens": 128000,
+              "max_output_tokens": 32768,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -6827,7 +6811,7 @@
               "release_status": "active",
               "context_window_tokens": 204800,
               "max_input_tokens": 204800,
-              "max_output_tokens": 176947,
+              "max_output_tokens": 131072,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -6945,8 +6929,8 @@
               "id": "mistralai/mistral-large-4-0",
               "display_name": "Mistral Large 4",
               "release_status": "active",
-              "context_window_tokens": 524288,
-              "max_input_tokens": 524288,
+              "context_window_tokens": 1048576,
+              "max_input_tokens": 1048576,
               "max_output_tokens": 262144,
               "capabilities": {
                 "image_input": true,
@@ -7167,6 +7151,21 @@
               "release_date": "2026-09-02"
             },
             {
+              "id": "meta/muse-wonder",
+              "display_name": "Muse Wonder",
+              "release_status": "active",
+              "context_window_tokens": 1048576,
+              "max_input_tokens": 1048576,
+              "max_output_tokens": 943718,
+              "capabilities": {
+                "image_input": true,
+                "tool_call": true,
+                "reasoning": true
+              },
+              "family": "muse",
+              "release_date": "2026-10-12"
+            },
+            {
               "id": "google/gemini-nano-banana-2.1",
               "display_name": "Nano Banana 2.1",
               "release_status": "active",
@@ -7178,7 +7177,7 @@
                 "tool_call": true,
                 "reasoning": true
               },
-              "family": "nano-banana",
+              "family": "gemini-flash",
               "release_date": "2026-10-06"
             },
             {
@@ -7247,7 +7246,7 @@
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 16384,
+              "max_output_tokens": 235929,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -7277,7 +7276,7 @@
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 16384,
+              "max_output_tokens": 182520,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -7307,7 +7306,7 @@
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 131072,
+              "max_output_tokens": 235929,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -7527,20 +7526,6 @@
               "release_date": "2025-04-16"
             },
             {
-              "id": "unbiased/pareto",
-              "display_name": "Pareto",
-              "release_status": "active",
-              "context_window_tokens": 262144,
-              "max_input_tokens": 262144,
-              "max_output_tokens": 131072,
-              "capabilities": {
-                "image_input": true,
-                "tool_call": true,
-                "reasoning": false
-              },
-              "release_date": "2026-09-17"
-            },
-            {
               "id": "unbiased/pareto-26.10-preview",
               "display_name": "Pareto 26.10 Preview",
               "release_status": "active",
@@ -7553,6 +7538,34 @@
                 "reasoning": false
               },
               "release_date": "2026-10-01"
+            },
+            {
+              "id": "unbiased/pareto-26.9",
+              "display_name": "Pareto 26.9",
+              "release_status": "active",
+              "context_window_tokens": 262144,
+              "max_input_tokens": 262144,
+              "max_output_tokens": 131072,
+              "capabilities": {
+                "image_input": true,
+                "tool_call": true,
+                "reasoning": false
+              },
+              "release_date": "2026-10-13"
+            },
+            {
+              "id": "~unbiased/pareto-latest",
+              "display_name": "Pareto Latest",
+              "release_status": "active",
+              "context_window_tokens": 262144,
+              "max_input_tokens": 262144,
+              "max_output_tokens": 131072,
+              "capabilities": {
+                "image_input": true,
+                "tool_call": true,
+                "reasoning": false
+              },
+              "release_date": "2026-10-13"
             },
             {
               "id": "perceptron/perceptron-mk1.5",
@@ -7599,21 +7612,6 @@
               "release_date": "2024-01-25"
             },
             {
-              "id": "qwen/qwen-plus-2025-07-28",
-              "display_name": "Qwen Plus 0728",
-              "release_status": "active",
-              "context_window_tokens": 1000000,
-              "max_input_tokens": 1000000,
-              "max_output_tokens": 32768,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": false
-              },
-              "family": "qwen",
-              "release_date": "2025-09-08"
-            },
-            {
               "id": "qwen/qwen-2.5-72b-instruct",
               "display_name": "Qwen2.5 72B Instruct",
               "release_status": "active",
@@ -7647,8 +7645,8 @@
               "id": "qwen/qwen3-14b",
               "display_name": "Qwen3 14B",
               "release_status": "active",
-              "context_window_tokens": 131072,
-              "max_input_tokens": 131072,
+              "context_window_tokens": 40960,
+              "max_input_tokens": 40960,
               "max_output_tokens": 16384,
               "capabilities": {
                 "image_input": false,
@@ -7677,9 +7675,9 @@
               "id": "qwen/qwen3-235b-a22b-thinking-2507",
               "display_name": "Qwen3 235B A22B Thinking 2507",
               "release_status": "active",
-              "context_window_tokens": 131072,
-              "max_input_tokens": 131072,
-              "max_output_tokens": 117964,
+              "context_window_tokens": 128000,
+              "max_input_tokens": 128000,
+              "max_output_tokens": 16384,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -7689,26 +7687,11 @@
               "release_date": "2025-07-25"
             },
             {
-              "id": "qwen/qwen3-235b-a22b",
-              "display_name": "Qwen3 235B-A22B",
-              "release_status": "active",
-              "context_window_tokens": 131072,
-              "max_input_tokens": 131072,
-              "max_output_tokens": 8192,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "qwen",
-              "release_date": "2025-04"
-            },
-            {
               "id": "qwen/qwen3-30b-a3b",
               "display_name": "Qwen3 30B A3B",
               "release_status": "active",
-              "context_window_tokens": 131072,
-              "max_input_tokens": 131072,
+              "context_window_tokens": 40960,
+              "max_input_tokens": 40960,
               "max_output_tokens": 16384,
               "capabilities": {
                 "image_input": false,
@@ -7724,7 +7707,7 @@
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 32000,
+              "max_output_tokens": 235929,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -7732,21 +7715,6 @@
               },
               "family": "qwen",
               "release_date": "2025-07-29"
-            },
-            {
-              "id": "qwen/qwen3-30b-a3b-thinking-2507",
-              "display_name": "Qwen3 30B A3B Thinking 2507",
-              "release_status": "active",
-              "context_window_tokens": 81920,
-              "max_input_tokens": 81920,
-              "max_output_tokens": 32768,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "qwen",
-              "release_date": "2025-08-28"
             },
             {
               "id": "qwen/qwen3-32b",
@@ -7762,21 +7730,6 @@
               },
               "family": "qwen",
               "release_date": "2025-04"
-            },
-            {
-              "id": "qwen/qwen3-8b",
-              "display_name": "Qwen3 8B",
-              "release_status": "active",
-              "context_window_tokens": 131072,
-              "max_input_tokens": 131072,
-              "max_output_tokens": 8192,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "qwen",
-              "release_date": "2025-04-28"
             },
             {
               "id": "qwen/qwen3-coder",
@@ -7824,51 +7777,6 @@
               "release_date": "2026-02-03"
             },
             {
-              "id": "qwen/qwen3-coder-plus",
-              "display_name": "Qwen3 Coder Plus",
-              "release_status": "active",
-              "context_window_tokens": 1000000,
-              "max_input_tokens": 1000000,
-              "max_output_tokens": 65536,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": false
-              },
-              "family": "qwen",
-              "release_date": "2025-07-23"
-            },
-            {
-              "id": "qwen/qwen3-max",
-              "display_name": "Qwen3 Max",
-              "release_status": "active",
-              "context_window_tokens": 262144,
-              "max_input_tokens": 262144,
-              "max_output_tokens": 65536,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": false
-              },
-              "family": "qwen",
-              "release_date": "2025-09-23"
-            },
-            {
-              "id": "qwen/qwen3-max-thinking",
-              "display_name": "Qwen3 Max Thinking",
-              "release_status": "active",
-              "context_window_tokens": 262144,
-              "max_input_tokens": 262144,
-              "max_output_tokens": 65536,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "qwen",
-              "release_date": "2026-02-09"
-            },
-            {
               "id": "qwen/qwen3-vl-235b-a22b-instruct",
               "display_name": "Qwen3 VL 235B A22B Instruct",
               "release_status": "active",
@@ -7879,21 +7787,6 @@
                 "image_input": true,
                 "tool_call": true,
                 "reasoning": false
-              },
-              "family": "qwen",
-              "release_date": "2025-09-23"
-            },
-            {
-              "id": "qwen/qwen3-vl-235b-a22b-thinking",
-              "display_name": "Qwen3 VL 235B A22B Thinking",
-              "release_status": "active",
-              "context_window_tokens": 131072,
-              "max_input_tokens": 131072,
-              "max_output_tokens": 32768,
-              "capabilities": {
-                "image_input": true,
-                "tool_call": true,
-                "reasoning": true
               },
               "family": "qwen",
               "release_date": "2025-09-23"
@@ -7911,7 +7804,7 @@
                 "reasoning": false
               },
               "family": "qwen",
-              "release_date": "2025-10-06"
+              "release_date": "2025-10-04"
             },
             {
               "id": "qwen/qwen3-vl-30b-a3b-thinking",
@@ -7919,7 +7812,7 @@
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 32768,
+              "max_output_tokens": 235929,
               "capabilities": {
                 "image_input": true,
                 "tool_call": true,
@@ -7929,46 +7822,16 @@
               "release_date": "2025-10-06"
             },
             {
-              "id": "qwen/qwen3-vl-32b-instruct",
-              "display_name": "Qwen3 VL 32B Instruct",
-              "release_status": "active",
-              "context_window_tokens": 131072,
-              "max_input_tokens": 131072,
-              "max_output_tokens": 32768,
-              "capabilities": {
-                "image_input": true,
-                "tool_call": true,
-                "reasoning": false
-              },
-              "family": "qwen",
-              "release_date": "2025-10-23"
-            },
-            {
               "id": "qwen/qwen3-vl-8b-instruct",
               "display_name": "Qwen3 VL 8B Instruct",
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 32768,
+              "max_output_tokens": 235929,
               "capabilities": {
                 "image_input": true,
                 "tool_call": true,
                 "reasoning": false
-              },
-              "family": "qwen",
-              "release_date": "2025-10-14"
-            },
-            {
-              "id": "qwen/qwen3-vl-8b-thinking",
-              "display_name": "Qwen3 VL 8B Thinking",
-              "release_status": "active",
-              "context_window_tokens": 131072,
-              "max_input_tokens": 131072,
-              "max_output_tokens": 32768,
-              "capabilities": {
-                "image_input": true,
-                "tool_call": true,
-                "reasoning": true
               },
               "family": "qwen",
               "release_date": "2025-10-14"
@@ -7994,7 +7857,7 @@
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 32768,
+              "max_output_tokens": 235929,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -8009,7 +7872,7 @@
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 32768,
+              "max_output_tokens": 235929,
               "capabilities": {
                 "image_input": false,
                 "tool_call": true,
@@ -8054,7 +7917,7 @@
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 235929,
+              "max_output_tokens": 16384,
               "capabilities": {
                 "image_input": true,
                 "tool_call": true,
@@ -8069,7 +7932,7 @@
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 81920,
+              "max_output_tokens": 235929,
               "capabilities": {
                 "image_input": true,
                 "tool_call": true,
@@ -8144,7 +8007,7 @@
               "release_status": "active",
               "context_window_tokens": 262144,
               "max_input_tokens": 262144,
-              "max_output_tokens": 65536,
+              "max_output_tokens": 81920,
               "capabilities": {
                 "image_input": true,
                 "tool_call": true,
@@ -8182,21 +8045,6 @@
               },
               "family": "qwen3.6",
               "release_date": "2026-04-27"
-            },
-            {
-              "id": "qwen/qwen3.6-max-preview",
-              "display_name": "Qwen3.6 Max Preview",
-              "release_status": "active",
-              "context_window_tokens": 262144,
-              "max_input_tokens": 262144,
-              "max_output_tokens": 65536,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "qwen",
-              "release_date": "2026-04-20"
             },
             {
               "id": "qwen/qwen3.6-plus",
@@ -8279,7 +8127,7 @@
               "release_status": "active",
               "context_window_tokens": 1000000,
               "max_input_tokens": 1000000,
-              "max_output_tokens": 131072,
+              "max_output_tokens": 235929,
               "capabilities": {
                 "image_input": true,
                 "tool_call": true,
@@ -8332,21 +8180,6 @@
               },
               "family": "qwen",
               "release_date": "2026-09-17"
-            },
-            {
-              "id": "deepseek/deepseek-r1-0528",
-              "display_name": "R1 0528",
-              "release_status": "active",
-              "context_window_tokens": 163840,
-              "max_input_tokens": 163840,
-              "max_output_tokens": 32768,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "deepseek",
-              "release_date": "2025-05-28"
             },
             {
               "id": "rekaai/reka-edge",
@@ -8569,6 +8402,20 @@
                 "reasoning": true
               },
               "release_date": "2026-05-29"
+            },
+            {
+              "id": "stepfun/step-5-preview",
+              "display_name": "Step 5 Preview",
+              "release_status": "active",
+              "context_window_tokens": 1000000,
+              "max_input_tokens": 1000000,
+              "max_output_tokens": 64000,
+              "capabilities": {
+                "image_input": true,
+                "tool_call": true,
+                "reasoning": true
+              },
+              "release_date": "2026-09-16"
             },
             {
               "id": "prism-ml/ternary-bonsai-2-27b",
@@ -9268,6 +9115,21 @@
           "model_discovery": "bundled",
           "models": [
             {
+              "id": "anthropic/claude-fable-5",
+              "display_name": "Claude Fable 5",
+              "release_status": "active",
+              "context_window_tokens": 1000000,
+              "max_input_tokens": 1000000,
+              "max_output_tokens": 128000,
+              "capabilities": {
+                "image_input": true,
+                "tool_call": true,
+                "reasoning": true
+              },
+              "family": "claude-fable",
+              "release_date": "2026-06-09"
+            },
+            {
               "id": "deepseek-ai/DeepSeek-V4-Flash",
               "display_name": "DeepSeek V4 Flash",
               "release_status": "active",
@@ -9596,21 +9458,6 @@
               "release_date": "2025-08-05"
             },
             {
-              "id": "tencent/Hy3",
-              "display_name": "Hy3",
-              "release_status": "active",
-              "context_window_tokens": 262144,
-              "max_input_tokens": 192000,
-              "max_output_tokens": 128000,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "Hy",
-              "release_date": "2026-07-06"
-            },
-            {
               "id": "tencent/Hy4-preview",
               "display_name": "Hy4 preview",
               "release_status": "active",
@@ -9761,21 +9608,6 @@
               "release_date": "2026-06-01"
             },
             {
-              "id": "nvidia/Nemotron-3-Nano-30B-A3B",
-              "display_name": "Nemotron 3 Nano 30B A3B",
-              "release_status": "active",
-              "context_window_tokens": 262144,
-              "max_input_tokens": 262144,
-              "max_output_tokens": 262144,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "nemotron",
-              "release_date": "2025-12-15"
-            },
-            {
               "id": "Qwen/Qwen3.5-35B-A3B",
               "display_name": "Qwen 3.5 35B A3B",
               "release_status": "active",
@@ -9866,21 +9698,6 @@
               "release_date": "2025-07-23"
             },
             {
-              "id": "Qwen/Qwen3-Max",
-              "display_name": "Qwen3 Max",
-              "release_status": "active",
-              "context_window_tokens": 256000,
-              "max_input_tokens": 256000,
-              "max_output_tokens": 65536,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": false
-              },
-              "family": "qwen",
-              "release_date": "2025-09-23"
-            },
-            {
               "id": "Qwen/Qwen3-VL-235B-A22B-Instruct",
               "display_name": "Qwen3 VL 235B A22B Instruct",
               "release_status": "active",
@@ -9894,6 +9711,21 @@
               },
               "family": "qwen",
               "release_date": "2025-09-23"
+            },
+            {
+              "id": "Qwen/Qwen3-VL-30B-A3B-Instruct",
+              "display_name": "Qwen3 VL 30B A3B Instruct",
+              "release_status": "active",
+              "context_window_tokens": 262144,
+              "max_input_tokens": 262144,
+              "max_output_tokens": 32768,
+              "capabilities": {
+                "image_input": true,
+                "tool_call": true,
+                "reasoning": false
+              },
+              "family": "qwen",
+              "release_date": "2025-10-04"
             },
             {
               "id": "Qwen/Qwen3-Next-80B-A3B-Instruct",
@@ -9984,21 +9816,6 @@
               },
               "family": "qwen",
               "release_date": "2026-05-21"
-            },
-            {
-              "id": "Qwen/Qwen3.8-2.4T-A95B",
-              "display_name": "Qwen3.8 2.4T A95B",
-              "release_status": "active",
-              "context_window_tokens": 262144,
-              "max_input_tokens": 262144,
-              "max_output_tokens": 131072,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "qwen",
-              "release_date": "2026-08-12"
             },
             {
               "id": "Qwen/Qwen3.8-27B",
@@ -12759,21 +12576,6 @@
               "release_date": "2026-04-28"
             },
             {
-              "id": "nvidia/nemotron-3-super-120b-a12b",
-              "display_name": "Nemotron 3 Super",
-              "release_status": "active",
-              "context_window_tokens": 262144,
-              "max_input_tokens": 262144,
-              "max_output_tokens": 262144,
-              "capabilities": {
-                "image_input": false,
-                "tool_call": true,
-                "reasoning": true
-              },
-              "family": "nemotron",
-              "release_date": "2026-03-11"
-            },
-            {
               "id": "nvidia/nemotron-3-ultra-550b-a55b",
               "display_name": "Nemotron 3 Ultra 550B A55B",
               "release_status": "active",
@@ -12802,6 +12604,21 @@
               },
               "family": "nemotron",
               "release_date": "2026-08-11"
+            },
+            {
+              "id": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+              "display_name": "Nemotron 3.5 Super VL 120B A12B",
+              "release_status": "active",
+              "context_window_tokens": 1048576,
+              "max_input_tokens": 1048576,
+              "max_output_tokens": 8192,
+              "capabilities": {
+                "image_input": true,
+                "tool_call": true,
+                "reasoning": true
+              },
+              "family": "nemotron",
+              "release_date": "2026-10-15"
             },
             {
               "id": "nvidia/nemotron-voicechat",

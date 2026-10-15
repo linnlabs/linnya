@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ModelsDevSourceSchema } from '../../catalog-admission/definitions/modelsDevSource';
+import { parseModelsDevCatalogSource } from '../../catalog-admission';
 import { generateProviderCatalog } from '../generateProviderCatalog';
 
 function sourceProvider(id: string, models: Record<string, unknown>) {
@@ -139,6 +140,61 @@ const generation = {
 } as const;
 
 describe('generateProviderCatalog', () => {
+  it('发布同步隔离未准入供应商的 schema 变化，并将 alpha 模型标为预发布', () => {
+    const source = makeSource();
+    const projections = generateProviderCatalog(parseModelsDevCatalogSource({
+      ...source,
+      google: sourceProvider('google', {
+        'gemini-alpha': sourceModel('gemini-alpha', { status: 'alpha' }),
+        'gemini-4-argon': sourceModel('gemini-4-argon'),
+      }),
+      'google-vertex': { models: { future: { status: 'new-upstream-status' } } },
+    }), generation);
+    const models = projections.publicCatalog.providers
+      .find(provider => provider.id === 'google')?.connections[0]?.models;
+
+    expect(models).toEqual([
+      expect.objectContaining({ id: 'gemini-alpha', release_status: 'preview' }),
+    ]);
+    expect(projections.runtimeBindings.bindings.some(
+      binding => binding.provider_definition_id === 'google-vertex'
+    )).toBe(false);
+  });
+
+  it('发布同步仍拒绝已准入供应商的未知状态与缺失资料', () => {
+    const source = makeSource();
+    expect(() => parseModelsDevCatalogSource({
+      ...source,
+      google: sourceProvider('google', {
+        invalid: sourceModel('invalid', { status: 'unknown' }),
+      }),
+    })).toThrow();
+    const missingGoogle = Object.fromEntries(
+      Object.entries(source).filter(([id]) => id !== 'google')
+    );
+    expect(() => generateProviderCatalog(parseModelsDevCatalogSource(missingGoogle), generation))
+      .toThrow('models.dev 缺少已准入 Provider: google');
+  });
+
+  it('显式未验收的 Go Google 模型不进入目录，也不会落到默认 Chat 协议', () => {
+    const source = makeSource();
+    source['opencode-go'].models['gemini-4-argon-contributor'] = sourceModel(
+      'gemini-4-argon-contributor',
+      { provider: { npm: '@ai-sdk/google' } }
+    );
+    const projections = generateProviderCatalog(source, generation);
+    const go = projections.publicCatalog.providers.find(provider => provider.id === 'opencode-go');
+    expect(go?.connections[0]?.models.map(model => model.id))
+      .not.toContain('gemini-4-argon-contributor');
+    const binding = projections.runtimeBindings.bindings.find(
+      candidate => candidate.provider_definition_id === 'opencode-go'
+    );
+    expect(binding?.default_base_url).toBe('https://opencode.ai/inference/go/v1');
+    expect(binding?.model_route_bindings?.some(
+      candidate => candidate.model_id === 'gemini-4-argon-contributor'
+    )).toBe(false);
+  });
+
   it('把外部模型事实和 Linnya 已验收 runtime binding 生成成两个投影', () => {
     const projections = generateProviderCatalog(makeSource(), generation);
     const findConnection = (providerId: string, connectionId = providerId) =>

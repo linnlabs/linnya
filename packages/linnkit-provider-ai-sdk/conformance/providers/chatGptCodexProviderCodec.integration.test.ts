@@ -223,7 +223,8 @@ describe('ChatGPT Codex Responses Provider codec conformance', () => {
       );
       const tools = request.body.tools;
       if (!Array.isArray(tools)) throw new Error('ChatGPT Codex 请求缺少工具数组');
-      expect(tools[0]).not.toHaveProperty('strict');
+      // 新版 Responses codec 显式发送 false；工具字段校验仍归 Host admission。
+      expect(tools[0]).toHaveProperty('strict', false);
     }
     expect(requests[1]?.body).toMatchObject({
       input: [

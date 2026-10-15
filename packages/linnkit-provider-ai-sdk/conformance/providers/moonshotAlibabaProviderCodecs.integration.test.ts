@@ -155,7 +155,8 @@ describe('dedicated Provider package codec conformance', () => {
             { role: 'tool', tool_call_id: 'call-1', content: 'file contents' },
           ],
         });
-        expect(secondRequestBody).not.toHaveProperty('messages.1.reasoning_content');
+        // Qwen 的上游 codec 现在保留工具轮推理，后续调用应拿到完整回放。
+        expect(secondRequestBody).toHaveProperty('messages.1.reasoning_content', '先读取文件。');
       }
       expect(result.secondEvents[result.secondEvents.length - 1]).toEqual({
         type: 'finish',

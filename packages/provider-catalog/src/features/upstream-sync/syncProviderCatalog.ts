@@ -9,7 +9,7 @@ import {
   PROVIDER_CATALOG_POLICY_VERSION,
 } from '../catalog-generation/generateProviderCatalog';
 import { assertProviderCatalogProjectionConsistency } from '../catalog-generation/assertProviderCatalogProjectionConsistency';
-import { ModelsDevSourceSchema } from '../catalog-admission/definitions/modelsDevSource';
+import { parseModelsDevCatalogSource } from '../catalog-admission';
 import { parseProviderCatalogSnapshot } from '../catalog-admission/parseProviderCatalogSnapshot';
 import { describeProviderCatalogDiff } from './describeProviderCatalogDiff';
 
@@ -113,7 +113,7 @@ export async function syncProviderCatalog(
 
   const syncedAt = new Date().toISOString();
   const generationId = `models-dev-${syncedAt.slice(0, 10)}-${sourceSha256.slice(0, 12)}-p${PROVIDER_CATALOG_POLICY_VERSION}`;
-  const source = ModelsDevSourceSchema.parse(JSON.parse(rawSource));
+  const source = parseModelsDevCatalogSource(JSON.parse(rawSource));
   const projections = generateProviderCatalog(source, {
     id: generationId,
     source_url: MODELS_DEV_SOURCE_URL,
@@ -126,7 +126,6 @@ export async function syncProviderCatalog(
     projections.runtimeBindings
   );
 
-  const nextRuntimeJson = stableJson(projections.runtimeBindings);
   const runtimeBindingChanged =
     previousRuntime === undefined ||
     typeof previousRuntime !== 'object' ||

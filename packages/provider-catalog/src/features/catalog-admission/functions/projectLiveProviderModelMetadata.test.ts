@@ -52,14 +52,15 @@ describe('projectLiveProviderModelMetadata', () => {
     const metadata = projectLiveProviderModelMetadata('ollama-cloud', {
       'ollama-cloud': provider('ollama-cloud', {
         current: model('current', { status: 'beta' }),
+        early: model('early', { status: 'alpha' }),
         retired: model('retired', { status: 'deprecated' }),
         image: model('image', { modalities: { output: ['image'] } }),
         zero: model('zero', { limit: { context: 0, output: 0 } }),
       }),
     });
 
-    expect(metadata.map(candidate => candidate.id)).toEqual(['current']);
-    expect(metadata[0].release_status).toBe('preview');
+    expect(metadata.map(candidate => candidate.id)).toEqual(['current', 'early']);
+    expect(metadata.map(candidate => candidate.release_status)).toEqual(['preview', 'preview']);
   });
 
   it('上游未声明工具能力时仍提供补充容量，但静态目录继续拒绝这些模型', () => {
@@ -107,6 +108,13 @@ describe('projectLiveProviderModelMetadata', () => {
   });
 
   it('未审核的模型 provider override 不能通过实时资料查询进入默认协议', () => {
+    expect(projectLiveProviderModelMetadata('opencode-go', {
+      'opencode-go': provider('opencode-go', {
+        'gemini-4-argon-contributor': model('gemini-4-argon-contributor', {
+          provider: { npm: '@ai-sdk/google' },
+        }),
+      }),
+    })).toEqual([]);
     expect(() =>
       projectLiveProviderModelMetadata('opencode-go', {
         'opencode-go': provider('opencode-go', {

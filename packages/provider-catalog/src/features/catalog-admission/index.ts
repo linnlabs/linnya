@@ -2,3 +2,4 @@
 export { projectLiveProviderModelMetadata } from './functions/projectLiveProviderModelMetadata';
 export { projectModelsDevProviderModels } from './functions/projectModelsDevProviderModels';
 export { readModelsDevProvider } from './functions/readModelsDevProvider';
+export { parseModelsDevCatalogSource } from './functions/parseModelsDevCatalogSource';

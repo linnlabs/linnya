@@ -10,7 +10,7 @@ const ModelsDevModelSchema = z
     name: z.string().trim().min(1),
     family: z.string().trim().min(1).optional(),
     release_date: z.string().trim().min(1).optional(),
-    status: z.enum(['beta', 'deprecated']).optional(),
+    status: z.enum(['alpha', 'beta', 'deprecated']).optional(),
     attachment: z.boolean().optional(),
     reasoning: z.boolean().optional(),
     tool_call: z.boolean().optional(),

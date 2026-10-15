@@ -420,9 +420,9 @@ function assertWireBody(testCase: CompactionCodecCase, body: Record<string, unkn
         'HISTORY_TOOL_RESULT',
         'CONTEXT_COMPACTION',
       ]);
-      // Anthropic 协议没有 none；官方 codec 通过删除工具实现同一安全语义。
-      expect(body).not.toHaveProperty('tools');
-      expect(body).not.toHaveProperty('tool_choice');
+      // 上游保留工具前缀以稳定缓存，同时显式禁用调用；不能再要求删掉工具定义。
+      expectOrderedTools(body['tools']);
+      expect(body['tool_choice']).toEqual({ type: 'none' });
       return;
     }
     case 'google_generative_ai': {

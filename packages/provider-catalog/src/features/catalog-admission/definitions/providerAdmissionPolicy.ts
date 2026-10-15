@@ -32,6 +32,8 @@ export interface ProviderAdmissionPolicy {
    */
   readonly bundled_models?: readonly ProviderModelDefinition[];
   readonly model_admission?: {
+    /** 明确尚未通过当前 runtime 合同验收的模型；原因与解除条件留在对应 policy。 */
+    readonly excluded_model_ids?: readonly string[];
     /** Agent Provider 首批目录可要求上游明确声明工具调用，避免混入 embedding/TTS 等模型。 */
     readonly requires_tool_call?: true;
     /** 混合协议目录的模型级 provider 覆盖必须经过显式 route 审查，不能继承默认协议。 */

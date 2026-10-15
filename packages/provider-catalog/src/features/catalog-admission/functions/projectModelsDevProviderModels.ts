@@ -11,7 +11,8 @@ function projectModel(model: ModelsDevModel): ProviderModelDefinition | undefine
   return {
     id: model.id,
     display_name: model.name,
-    release_status: model.status === 'beta' ? 'preview' : 'active',
+    // alpha 与 beta 都是上游预发布事实，不能在产品目录中被提升为正式模型。
+    release_status: model.status === 'alpha' || model.status === 'beta' ? 'preview' : 'active',
     context_window_tokens: model.limit.context,
     max_input_tokens: maxInputTokens,
     max_output_tokens: model.limit.output,
@@ -49,6 +50,7 @@ function projectModelMetadata(
 ): ProviderModelDefinition[] {
   return models
     .map(model => {
+      if (policy.model_admission?.excluded_model_ids?.includes(model.id)) return undefined;
       const projectedModel = projectModel(model);
       if (!projectedModel) return undefined;
       // 上游覆盖只触发人工审查；不能根据 npm/api/shape 自动选择 Linnya 的运行协议。

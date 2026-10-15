@@ -37,7 +37,7 @@ describe('dedicated Provider package codec conformance', () => {
     expect(fixtureFetch).not.toHaveBeenCalled();
   });
 
-  it.each(['deepseek-flash', 'deepseek-v4-flash-vision-exp'])(
+  it.each(['deepseek-flash', 'deepseek-v4.1-flash', 'deepseek-v4-flash-vision-exp'])(
     '%s 保留前轮 reasoning、用户图片和工具原生图片，空 tool delta 不截断推理',
     async modelId => {
       const resolvedRoute = route({

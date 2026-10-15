@@ -2,6 +2,11 @@
 
 ## 0.1.0
 
+- 升级 AI SDK Core 至 `7.0.140` 与正式 Provider packages，xAI 使用 5.x Responses；
+  Google 保留自动长输出续传之前的版本，避免改变单 attempt 请求合同。
+  DeepSeek 使用上游原生工具图片实现，删除本地 pnpm patch 与修改声明；协议验收接纳
+  Anthropic/MiniMax 的显式 none、Responses 的 strict=false 和 Qwen reasoning 回放。
+
 - 区分模型工具输入错误与真实流生命周期违规：坏 JSON / 非 object 参数按现有 Linnkit
   预算重试；未知 Host 工具且参数为合法 object 时保留调用交工具层 admission，并只消费配对
   SDK validation error，不扩权或追加请求。补齐真实 Ollama/OpenAI codec 验收。

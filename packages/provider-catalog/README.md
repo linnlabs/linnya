@@ -137,6 +137,18 @@ observation 变化；原始 payload 不写入仓库。两个正式资产写入�
 digest 和模型 route 跨投影校验后才替换，且不创建历史备份目录。source
 digest 与 policy version 都未变化时不会重写资产。
 
+同步只解析 admission policy 选中的供应商，未接入供应商的 schema 变化不阻断目录维护；
+已选供应商仍完整校验，缺失资料和未知状态直接失败。上游 `alpha`、`beta` 均投影为
+`preview`，`deprecated` 不进入语言模型目录。
+
+OpenCode Go 的原生 Google 模型 `gemini-4-argon-contributor` 当前显式排除：连接合同只有
+bearer auth，尚未接纳该模型需要的 Google API key profile 和长输出行为。排除同时作用于
+发布目录与实时资料投影；完成模型级认证合同及对应 conformance 后移除。其他未知模型的
+协议覆盖仍需审查，不能借排除机制静默跳过。
+
+Google 原生 `gemini-4-argon` 同样暂不进入目录，直到 adapter 完成自动长输出续传的
+请求边界验收；通过已有聚合商协议接入的同名模型不因此改变 route。
+
 同步器是仓库维护能力，只通过根命令或 package-local `sync` / `sync:check`
 脚本运行，不声明安装期 CLI bin。Catalog 当前是 `private` workspace package，提前把尚未构建的
 `dist/catalog-sync.js` 声明成 bin 会让 clean install 产生无效链接警告，也会制造一个没有独立发布合同的入口。

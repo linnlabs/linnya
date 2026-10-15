@@ -138,10 +138,16 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
     release_status: 'preview',
     setup_fields: [API_KEY_FIELD],
     model_discovery: 'bundled',
-    model_admission: { requires_tool_call: true, requires_provider_override_review: true },
+    model_admission: {
+      requires_tool_call: true,
+      requires_provider_override_review: true,
+      // 2026-10-15：Go 新增原生 Google surface，但当前连接只有 bearer auth，
+      // Google factory 要求 api_key；完成模型级认证合同及长输出验收后才能解除排除。
+      excluded_model_ids: ['gemini-4-argon-contributor'],
+    },
     runtime_binding: {
       endpoint_id: 'opencode-go',
-      default_base_url: 'https://opencode.ai/zen/go/v1',
+      default_base_url: 'https://opencode.ai/inference/go/v1',
       auth_profile: 'bearer',
       default_route_profile_id: 'openai_compatible_chat',
       supported_route_profile_ids: [
@@ -150,7 +156,7 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
         'anthropic_messages',
       ],
       model_route_bindings: [
-        // 2026-10-08 按官方 Go endpoints 审查；Go 与 Zen 同名模型可能使用不同协议。
+        // 2026-10-15 按官方 Go endpoints 审查；Go 与 Zen 同名模型可能使用不同协议。
         // https://opencode.ai/docs/go/#endpoints；弃用模型必须显式移除，不能自动忽略失效绑定。
         ...[
           'grok-4.7',
@@ -161,7 +167,7 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
           'muse-spark-1.2-contributor',
         ].map(modelId => ({
           model_id: modelId,
-          base_url: 'https://opencode.ai/zen/go/v1',
+          base_url: 'https://opencode.ai/inference/go/v1',
           route_profile_id: 'openai_responses' as const,
         })),
         ...[
@@ -174,7 +180,7 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
         ].map(modelId => ({
           model_id: modelId,
           // @ai-sdk/anthropic 将 /messages 追加到 baseURL；Go 的 baseURL 必须保留 /v1。
-          base_url: 'https://opencode.ai/zen/go/v1',
+          base_url: 'https://opencode.ai/inference/go/v1',
           route_profile_id: 'anthropic_messages' as const,
         })),
       ],
@@ -204,6 +210,11 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
     release_status: 'stable',
     setup_fields: [API_KEY_FIELD],
     model_discovery: 'bundled',
+    model_admission: {
+      // 2026-10-15：Gemini 4 的正式 SDK 支持同时引入自动长输出续传。
+      // 当前 adapter 保持单请求 attempt；完成该协议升级验收后再接纳原生 Gemini 4。
+      excluded_model_ids: ['gemini-4-argon'],
+    },
     runtime_binding: {
       endpoint_id: 'google',
       default_base_url: 'https://generativelanguage.googleapis.com/v1beta',
