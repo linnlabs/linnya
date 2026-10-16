@@ -61,7 +61,7 @@
 
 .ask-question-actions .status-icon {
   font-size: var(--font-size-prose);
-  font-weight: bold;
+  font-weight: var(--font-weight-semibold);
 }
 
 .ask-question-actions .status-text {

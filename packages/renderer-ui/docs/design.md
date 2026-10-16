@@ -121,7 +121,7 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 | `headline` | 22 / 30 | 页面标题 |
 | `display` | 28 / 36 | 空态和首屏的主视觉文字 |
 
-对应 token 为 `--font-size-<role>` 与 `--line-height-<role>`。`--font-size-xs` … `--font-size-3xl` 是基础刻度，只在 token 层和文档内容排版（例如编辑器标题层级）中使用。单行控件需要文字与图标垂直居中时可以使用 `line-height: 1`。
+对应 token 为 `--font-size-<role>` 与 `--line-height-<role>`。`--font-size-xs` … `--font-size-3xl` 是基础刻度，只在 token 层和文档内容排版（例如编辑器标题层级）中使用。单行控件需要文字与图标垂直居中时可以使用 `line-height: 1`。界面文字最小为 `caption`（11px），不使用 9px、10px；图标字形（×、+ 等）的 `font-size` 属于图标尺寸，不受角色字阶约束。
 
 ### 3.2 字重
 

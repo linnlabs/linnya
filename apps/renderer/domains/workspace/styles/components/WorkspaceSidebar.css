@@ -541,7 +541,7 @@
 }
 
 .workspace-sidebar .project-setup-eyebrow {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   /* 字符间距稍微紧凑一些，避免过于松散 */
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -561,7 +561,7 @@
   flex-shrink: 0;
   padding: 3px var(--space-2);
   border-radius: var(--radius-full);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   color: var(--color-accent-light);
   background-color: var(--color-accent-bg-subtle);
@@ -605,7 +605,7 @@
   width: 16px;
   height: 16px;
   border-radius: var(--radius-full);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   background-color: var(--color-accent-strong-light);

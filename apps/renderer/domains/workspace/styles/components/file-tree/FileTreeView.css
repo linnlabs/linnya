@@ -107,7 +107,7 @@
 .workspace-sidebar .file-tree-view .empty-badge {
   padding: 0 var(--space-1-5);
   border-radius: var(--radius-full);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   line-height: 18px;
   background-color: var(--color-accent-bg-subtle);
   color: var(--color-accent-light);

@@ -67,7 +67,7 @@
 }
 
 .agent-todo-card .agent-todo-summary-chip {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   /* 关键：覆盖 TagChip 自身 scoped 样式的注入顺序，确保在 ToDo 场景稳定垂直居中 */
   height: 18px !important;
   padding: 0 var(--space-1-5) !important;
@@ -84,7 +84,7 @@
 }
 
 .agent-todo-card .count-text {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-secondary);
   margin-right: var(--space-1);
   line-height: 18px;
@@ -185,7 +185,7 @@
 }
 
 .agent-todo-card .agent-todo-item-chip {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   height: 18px !important;
   padding: 0 var(--space-1-5) !important;
   line-height: 18px !important;

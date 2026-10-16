@@ -187,7 +187,7 @@
   gap: var(--space-1-5);
   padding: var(--space-1) var(--space-1);
   font-size: var(--font-size-footnote);
-  font-weight: 460;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -204,7 +204,7 @@
   width: 100%;
   padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
   font-size: var(--font-size-footnote);
-  font-weight: 460;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;

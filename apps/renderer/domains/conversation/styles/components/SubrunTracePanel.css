@@ -27,7 +27,7 @@
 }
 
 .subrun-trace-panel .deep-trace__meta {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
 }
 
@@ -63,7 +63,7 @@
 
 .subrun-trace-panel .deep-trace__toggle {
   margin-left: auto;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
   transition: color var(--duration-short) var(--ease-standard), text-decoration-color var(--duration-short) var(--ease-standard);
 }

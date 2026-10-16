@@ -101,7 +101,7 @@
 
 .review-setup-view .agent-badge-info {
   padding: var(--space-0-5) var(--space-1);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-accent);
   background: var(--color-accent-bg);
   border-radius: var(--radius-sm);

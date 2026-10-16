@@ -32,7 +32,7 @@
 
 .todo-sidebar .todo-item .title {
   font-size: var(--font-size-body);
-  font-weight: 460;
+  font-weight: var(--font-weight-medium);
   line-height: 1.2;
   overflow-wrap: anywhere;
   color: var(--color-text-secondary);

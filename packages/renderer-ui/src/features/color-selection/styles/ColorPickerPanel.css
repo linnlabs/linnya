@@ -65,7 +65,7 @@
 }
 
 .shared-color-picker-panel__sample {
-  font-weight: bold;
+  font-weight: var(--font-weight-semibold);
   font-size: 20px;
 }
 

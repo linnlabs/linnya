@@ -129,7 +129,7 @@
   position: absolute;
   left: 0;
   width: 50px;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
   text-align: right;
   font-variant-numeric: tabular-nums;

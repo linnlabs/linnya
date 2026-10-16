@@ -51,7 +51,7 @@
 .manage-tab .file-list-header > div {
   color: var(--color-text-secondary);
   font-size: var(--font-size-footnote);
-  font-weight: 450;
+  font-weight: var(--font-weight-medium);
 }
 
 .manage-tab .file-list-header .col-size,
@@ -85,7 +85,7 @@
 }
 
 .manage-tab .file-name {
-  font-weight: 450;
+  font-weight: var(--font-weight-medium);
   font-size: var(--font-size-body);
   color: var(--color-text-primary);
   overflow-wrap: anywhere;

@@ -28,7 +28,7 @@
 
 .summary-message .success-icon {
   color: var(--color-success-text);
-  font-weight: bold;
+  font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-footnote);
   width: 14px;
   height: 14px;
@@ -52,7 +52,7 @@
 }
 
 .summary-message .summary-timestamp {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
   opacity: 0.7;
   flex-shrink: 0;

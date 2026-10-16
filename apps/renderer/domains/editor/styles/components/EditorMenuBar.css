@@ -68,7 +68,7 @@
 
 .editor-menu-bar button .ordered-list-label {
   font-size: var(--font-size-footnote);
-  font-weight: 700;
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
 }
 
@@ -165,7 +165,7 @@
 
 /* 加粗、斜体按钮内图标/文字样式 */
 .menu-icon {
-  font-weight: bold; /* B */
+  font-weight: var(--font-weight-semibold); /* B */
 }
 .menu-icon i {
   font-style: italic; /* I */

@@ -147,7 +147,7 @@
 
 .image-block-vue-node-view .control-button.is-active {
   color: var(--color-accent-light);
-  font-weight: bold;
+  font-weight: var(--font-weight-semibold);
 }
 
 .image-block-vue-node-view .control-button svg {

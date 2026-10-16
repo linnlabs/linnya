@@ -282,7 +282,7 @@
 .ai-assistant-input .input-editor .ai-assistant-paragraph.is-editor-empty:first-child {
   position: relative;
   min-height: 20px; /* 确保空段落有最小高度 */
-  font-weight: 320;
+  font-weight: var(--font-weight-regular);
 }
 
 .ai-assistant-input .input-editor .ai-assistant-paragraph.is-editor-empty:first-child::before {

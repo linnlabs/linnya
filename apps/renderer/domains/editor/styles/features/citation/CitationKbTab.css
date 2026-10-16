@@ -164,7 +164,7 @@
 }
 
 .citation-kb-tab .result-kb-badge {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   padding: var(--space-0-5) var(--space-1-5);
   border-radius: 10px;
   color: var(--color-text-secondary);

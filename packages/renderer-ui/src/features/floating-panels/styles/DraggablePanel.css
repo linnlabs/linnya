@@ -147,7 +147,7 @@
 .draggable-panel--mini .panel-title {
   color: var(--color-text-primary);
   font-size: var(--font-size-footnote);
-  font-weight: 650;
+  font-weight: var(--font-weight-semibold);
 }
 
 .draggable-panel--mini .panel-body {

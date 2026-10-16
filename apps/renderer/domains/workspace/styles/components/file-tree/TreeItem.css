@@ -72,7 +72,7 @@
   margin-left: var(--space-1-5);
   padding: 0 var(--space-1-5);
   border-radius: var(--radius-lg);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   line-height: 1.4;
   color: var(--color-accent);
   background-color: var(--color-accent-bg);

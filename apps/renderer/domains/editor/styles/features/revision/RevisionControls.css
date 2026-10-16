@@ -154,5 +154,5 @@
 .revision-indicator .indicator-time {
   margin-left: auto;
   padding-left: var(--space-1-5);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }

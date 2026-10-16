@@ -76,13 +76,13 @@
 }
 
 .inline-color-picker .color-sample {
-  font-weight: bold;
+  font-weight: var(--font-weight-semibold);
   font-size: 20px;
 }
 
 .inline-highlight-picker .highlight-sample {
   color: var(--color-text-primary);
-  font-weight: bold;
+  font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-prose);
 }
 

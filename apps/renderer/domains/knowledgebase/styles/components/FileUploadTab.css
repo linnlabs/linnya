@@ -184,7 +184,7 @@
 .upload-tab .file-list-header > div {
   color: var(--color-text-secondary);
   font-size: var(--font-size-footnote);
-  font-weight: 450;
+  font-weight: var(--font-weight-medium);
 }
 
 .upload-tab .file-list-header .col-size,
@@ -225,7 +225,7 @@
 }
 
 .upload-tab .file-name {
-  font-weight: 450;
+  font-weight: var(--font-weight-medium);
   font-size: var(--font-size-body);
   color: var(--color-text-primary);
   overflow-wrap: anywhere;
@@ -250,7 +250,7 @@
 
 .upload-tab .status-text {
   font-size: var(--font-size-footnote);
-  font-weight: 450;
+  font-weight: var(--font-weight-medium);
   padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius-xl);
   text-align: center;

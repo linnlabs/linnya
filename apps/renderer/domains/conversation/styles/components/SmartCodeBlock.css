@@ -154,7 +154,7 @@
   display: inline-block;
   margin-left: var(--space-0-5);
   color: var(--smart-code-block-cursor-color);
-  font-weight: normal;
+  font-weight: var(--font-weight-regular);
   animation: smart-code-block-cursor-blink 1s infinite;
 }
 

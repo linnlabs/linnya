@@ -39,7 +39,7 @@
   border: 1px solid currentColor;
   border-radius: var(--radius-sm);
   font-family: var(--font-family-mono);
-  font-size: 9px;
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
 }
 

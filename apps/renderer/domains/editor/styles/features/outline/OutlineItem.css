@@ -64,7 +64,7 @@
 .editor-outline-item .bullet-indicator {
   font-size: 16px;
   line-height: 1;
-  font-weight: bold;
+  font-weight: var(--font-weight-semibold);
   position: relative;
   top: -0.5px;
 }

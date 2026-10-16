@@ -22,7 +22,7 @@
 
 .todo-sidebar .create-todo-card .header-title {
   margin: 0;
-  font-weight: 350;
+  font-weight: var(--font-weight-regular);
   font-size: var(--font-size-prose);
   color: var(--color-text-heading-meta);
   flex: 1; /* Let title take up remaining space */

@@ -9,6 +9,7 @@
 - `BaseButton` 的 `tone` 同时作用于 outline 与 plain，并新增 `danger`：plain + danger 静止中性、悬停显示错误色，用于行内删除与清理；`TimePicker` 的确定 / 取消改用 `BaseButton`，高度由 26px 统一为 28px。
 - `ActionButtons` 改由两个 `BaseButton` 渲染，props、事件与插槽不变；按钮高度从 29.5px 统一为 `--control-height-sm`（28px），内部 `.action-btn` 选择器移除。
 - 新增 `--color-accent-text`：强调色浅底上的文字（浅色 brand-700、暗色 brand-300、moon-blue blue-700），对比度不低于 4.5:1。`IconButton` 与 `ToolbarButton` 的选中态改用它。
+- `DraggablePanel` 标题与 `ColorPickerPanel` 的强调字重改用 `--font-weight-semibold`；业务样式中的 `bold`、600～700 与 450～500 的字重归并到 semibold / medium，9px、10px 字号统一为 caption（11px）。
 - 对比度修正：`--color-text-heading-meta` 浅色 / moon-blue 由 gray-421（约 2.7:1）加深到 gray-500，影响设置导航分组标题；`CharacterCount` 与 `SegmentedTabs` 的数量不再靠降低 `opacity` 弱化。
 - 新增控件高度 token `--control-height-sm/md/lg`（28/32/36）。
 - 新增 `IconButton` 与 `resolveIconButtonElement`：纯图标按钮的 xs / sm / md / lg 四档（20/24/28/32px，图标 14/18/18/20px）、ghost / subtle 底色、danger tone 与强调色浅底的 `active` 态；`label` 必填，同时作为可访问名称与原生提示，可用 `tooltip=false` 让位给外层 `HoverTooltip`；暴露 `element` 供浮层定位。新增组件 token `--linnya-ui-icon-button-hover-bg` 与 `--linnya-ui-icon-button-hover-bg-raised`：后者供已处于 hover / 选中底色的行把按钮 hover 提高一层，三套主题里都与行底色保持约 6 的 L* 差（暗色不再沿用只亮 1.8 L* 的 hover-strong）。runtime catalog 与真实 tarball consumer 同步新导出。

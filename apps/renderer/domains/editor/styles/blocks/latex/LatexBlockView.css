@@ -10,6 +10,6 @@
 
 .latex-render-error,
 .katex-render-error {
-  font-weight: 700;
+  font-weight: var(--font-weight-semibold);
   color: var(--color-error-text);
 }

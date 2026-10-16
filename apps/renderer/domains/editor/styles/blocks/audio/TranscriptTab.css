@@ -83,7 +83,7 @@
 
 .transcript-tab .time-separator {
   color: var(--color-text-placeholder);
-  font-weight: 300;
+  font-weight: var(--font-weight-regular);
   opacity: 0.4;
 }
 
