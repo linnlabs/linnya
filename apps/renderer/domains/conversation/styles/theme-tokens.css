@@ -13,9 +13,9 @@
   --thought-message-pre-background: #f8fafc;
   --thought-message-pre-border-color: #e2e8f0;
   --thought-message-code-background: #e2e8f0;
-  --thought-message-arrow-color: var(--color-text-placeholder);
+  --thought-message-arrow-color: var(--color-text-muted);
   --thought-message-arrow-hover-color: var(--color-text-secondary);
-  --thought-message-title-color: var(--color-text-placeholder);
+  --thought-message-title-color: var(--color-text-muted);
   --thought-message-title-hover-color: var(--color-text-secondary);
   --thought-message-blockquote-border-color: var(--thought-message-mark-border-color);
 }
@@ -32,9 +32,9 @@
   --thought-message-pre-background: var(--color-bg-subtle);
   --thought-message-pre-border-color: var(--color-border-light);
   --thought-message-code-background: var(--color-bg-subtle);
-  --thought-message-arrow-color: var(--color-text-placeholder);
+  --thought-message-arrow-color: var(--color-text-muted);
   --thought-message-arrow-hover-color: var(--color-text-secondary);
-  --thought-message-title-color: var(--color-text-placeholder);
+  --thought-message-title-color: var(--color-text-muted);
   --thought-message-title-hover-color: var(--color-text-secondary);
   --thought-message-blockquote-border-color: var(--color-border-default);
 }
@@ -46,9 +46,9 @@
   --thought-message-pre-background: var(--color-bg-subtle);
   --thought-message-pre-border-color: var(--color-border-light);
   --thought-message-code-background: var(--color-bg-hover-light);
-  --thought-message-arrow-color: var(--color-text-placeholder);
+  --thought-message-arrow-color: var(--color-text-muted);
   --thought-message-arrow-hover-color: var(--color-text-secondary);
-  --thought-message-title-color: var(--color-text-placeholder);
+  --thought-message-title-color: var(--color-text-muted);
   --thought-message-title-hover-color: var(--color-text-secondary);
   --thought-message-blockquote-border-color: var(--color-border-accent-light);
 }

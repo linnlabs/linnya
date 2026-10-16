@@ -112,13 +112,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   height: 18px;
   padding: 0 var(--space-1-5);
   border-radius: var(--radius-full);
   border: 0.5px solid var(--color-border-accent-light);
   background-color: var(--color-accent-bg-subtle);
-  color: var(--color-accent);
+  color: var(--color-accent-text);
   font-weight: var(--font-weight-medium);
   line-height: 1;
   transform: translateY(-1px);

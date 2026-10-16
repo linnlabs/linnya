@@ -85,7 +85,7 @@
 /* 激活状态按钮样式 */
 .editor-menu-bar button.is-active {
   background-color: var(--color-accent-bg);
-  color: var(--color-accent);
+  color: var(--color-accent-text);
 }
 
 /* ++ 新增：激活状态按钮的悬停效果 ++ */

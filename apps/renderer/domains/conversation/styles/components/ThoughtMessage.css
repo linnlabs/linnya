@@ -10,7 +10,7 @@
   gap: var(--space-1-5);
   padding: 0;
   cursor: pointer;
-  color: var(--color-text-placeholder);
+  color: var(--color-text-muted);
   transition: color var(--duration-medium) var(--ease-standard);
 }
 

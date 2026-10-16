@@ -21,7 +21,7 @@
             {{ segment }}
           </button>
           <span v-else class="breadcrumb-segment">{{ segment }}</span>
-          <span v-if="index < mainHeaderBreadcrumbSegments.length - 1" class="breadcrumb-separator">/</span>
+          <span v-if="index < mainHeaderBreadcrumbSegments.length - 1" class="breadcrumb-separator" aria-hidden="true">/</span>
         </template>
       </div>
       <div class="header-pane__actions">
@@ -147,7 +147,7 @@
               {{ segment }}
             </button>
             <span v-else class="breadcrumb-segment">{{ segment }}</span>
-            <span v-if="index < rightHeaderBreadcrumbSegments.length - 1" class="breadcrumb-separator">/</span>
+            <span v-if="index < rightHeaderBreadcrumbSegments.length - 1" class="breadcrumb-separator" aria-hidden="true">/</span>
           </template>
         </div>
 

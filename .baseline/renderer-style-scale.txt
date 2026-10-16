@@ -282,7 +282,7 @@
 2	SCALE-04-radius	apps/renderer/domains/knowledgebase/styles/components/FileUploadTab.css
 1	SCALE-05-spacing	apps/renderer/domains/knowledgebase/styles/components/FileUploadTab.css
 5	SCALE-05-spacing	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseDetail.css
-2	SCALE-01-font-size	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseList.css
+1	SCALE-01-font-size	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseList.css
 2	SCALE-05-spacing	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseList.css
 1	SCALE-04-radius	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseModal.css
 1	SCALE-04-radius	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseSettingsTab.css
@@ -333,7 +333,6 @@
 3	SCALE-05-spacing	apps/renderer/domains/workspace/styles/features/todo/TodoSidebar.css
 1	SCALE-01-font-size	packages/renderer-ui/src/features/color-selection/styles/ColorPickerPanel.css
 1	SCALE-02-font-weight	packages/renderer-ui/src/features/color-selection/styles/ColorPickerPanel.css
-1	SCALE-04-radius	packages/renderer-ui/src/features/feedback/styles/CharacterCount.css
 1	SCALE-05-spacing	packages/renderer-ui/src/features/feedback/styles/CharacterCount.css
 1	SCALE-03-line-height	packages/renderer-ui/src/features/feedback/styles/HoverTooltip.css
 1	SCALE-05-spacing	packages/renderer-ui/src/features/feedback/styles/NotificationBar.css

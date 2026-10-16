@@ -33,7 +33,7 @@
   --color-text-link: var(--color-blue-500);
   --color-text-link-hover: var(--color-blue-600);
   --color-text-selection: color-mix(in srgb, var(--color-brand-300) 30%, transparent);
-  --color-text-heading-meta: var(--color-gray-421);
+  --color-text-heading-meta: var(--color-gray-500);
   --color-text-on-accent: var(--color-white);
   --color-text-inverse: var(--color-white);
 
@@ -54,6 +54,8 @@
   --color-accent-light: var(--color-brand-500);
   --color-accent-strong-light: var(--color-brand-300);
   --color-accent-disabled: var(--color-brand-200);
+  /* 强调色文字落在强调色浅底（选中、激活）上时使用，三套主题均满足 4.5:1。 */
+  --color-accent-text: var(--color-brand-700);
   --color-accent-bg: var(--color-brand-125);
   --color-accent-bg-subtle: var(--color-brand-50);
   --color-accent-bg-hover: var(--color-brand-163);
@@ -123,6 +125,8 @@
   --color-accent-light: var(--color-brand-450);
   --color-accent-strong-light: var(--color-brand-300);
   --color-accent-disabled: color-mix(in srgb, var(--color-brand-500) 35%, var(--color-gray-900));
+  /* 强调色文字落在强调色浅底（选中、激活）上时使用，三套主题均满足 4.5:1。 */
+  --color-accent-text: var(--color-brand-300);
   --color-accent-bg: var(--color-brand-850);
   --color-accent-bg-subtle: var(--color-brand-900);
   --color-accent-bg-hover: var(--color-brand-800);
@@ -169,7 +173,7 @@
   --color-text-link: var(--color-blue-600);
   --color-text-link-hover: var(--color-blue-700);
   --color-text-selection: color-mix(in srgb, var(--color-blue-300) 34%, transparent);
-  --color-text-heading-meta: color-mix(in srgb, var(--color-blue-700) 28%, var(--color-gray-421));
+  --color-text-heading-meta: color-mix(in srgb, var(--color-blue-700) 28%, var(--color-gray-500));
   --color-text-on-accent: var(--color-white);
   --color-text-inverse: var(--color-white);
 
@@ -190,6 +194,8 @@
   --color-accent-light: var(--color-blue-500);
   --color-accent-strong-light: var(--color-blue-300);
   --color-accent-disabled: var(--color-blue-150);
+  /* 强调色文字落在强调色浅底（选中、激活）上时使用，三套主题均满足 4.5:1。 */
+  --color-accent-text: var(--color-blue-700);
   --color-accent-bg: color-mix(in srgb, var(--color-blue-100) 62%, var(--color-white));
   --color-accent-bg-subtle: color-mix(in srgb, var(--color-blue-50) 74%, var(--color-white));
   --color-accent-bg-hover: color-mix(in srgb, var(--color-blue-125) 68%, var(--color-white));

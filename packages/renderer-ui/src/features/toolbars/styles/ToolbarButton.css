@@ -20,7 +20,7 @@
 }
 .linnya-toolbar-button:hover:not(:disabled, .linnya-toolbar-button--active) { background-color: var(--color-bg-hover-light); }
 .linnya-toolbar-button--active {
-  color: var(--color-accent);
+  color: var(--color-accent-text);
   background-color: var(--color-accent-bg);
 }
 .linnya-toolbar-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }

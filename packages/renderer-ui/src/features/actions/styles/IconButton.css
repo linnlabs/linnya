@@ -76,7 +76,7 @@
 /* 与 ToolbarButton 的选中态一致：开关打开、下拉展开时用强调色浅底。 */
 .linnya-ui-icon-button--active,
 .linnya-ui-icon-button--active:not(:disabled):hover {
-  color: var(--color-accent);
+  color: var(--color-accent-text);
   background-color: var(--color-accent-bg);
 }
 
