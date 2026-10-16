@@ -566,7 +566,7 @@ describe('ModelRegistrationSettingsPage', () => {
     expect(switches.map(toggle => toggle.checked)).toEqual(enabled);
 
     const submitButton = container.querySelector<HTMLButtonElement>(
-      '[data-registration-kind="custom-provider"] .add-model-submit .linnya-ui-button--primary'
+      '[data-registration-kind="custom-provider"] .add-model-submit .linnya-ui-button--tint'
     );
     if (!submitButton) throw new Error('Custom Provider submit button not found');
     submitButton.click();

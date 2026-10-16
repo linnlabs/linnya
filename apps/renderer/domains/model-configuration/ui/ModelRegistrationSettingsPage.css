@@ -28,7 +28,6 @@
 }
 
 .model-registration-settings-page .model-registration-quick-option:hover {
-  color: var(--color-accent);
   background-color: var(--color-bg-hover);
 }
 
@@ -56,12 +55,6 @@
     color var(--duration-micro) var(--ease-standard);
 }
 
-.model-registration-settings-page
-  .model-registration-quick-option:hover
-  .model-registration-quick-option-icon {
-  color: var(--color-accent);
-}
-
 .model-registration-settings-page .model-registration-quick-option-icon.is-open {
   transform: rotate(90deg);
 }
@@ -84,10 +77,6 @@
   cursor: pointer;
   background: transparent;
   border: 0;
-}
-
-.model-registration-settings-page .model-registration-back-button:hover {
-  color: var(--color-accent);
 }
 
 .model-registration-settings-page .model-registration-back-icon {

@@ -49,7 +49,7 @@
 
     <div class="action-area">
       <BaseButton
-        variant="primary"
+        variant="tint"
         size="lg"
         block
         :disabled="!isFormValid"

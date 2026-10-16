@@ -114,9 +114,12 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 <BaseButton variant="primary" size="md" :disabled="!canInsert" @click="insert">插入引用</BaseButton>
 
 <BaseButton variant="primary" type="submit" form="secret-form" :disabled="submitting">发送</BaseButton>
+
+<!-- 占满宽度的主操作用 tint 浅底，避免整条深色色块 -->
+<BaseButton variant="tint" size="lg" block :disabled="!canAdd" @click="add">添加</BaseButton>
 ```
 
-- `variant`：primary / secondary / ghost / plain / danger / soft / outline，选择规则见[设计规范](./design.md#92-按钮)。
+- `variant`：primary / secondary / ghost / plain / danger / soft / tint / outline，选择规则见[设计规范](./design.md#92-按钮)。
   `tone`（accent / info / neutral / danger）只对 outline 与 plain 生效；plain 的 danger 静止时保持中性、悬停才显示错误色。
 - `size`：sm / md / lg，对应 `--control-height-sm/md/lg`；与同一行的输入框取同一档。
 - `shape="pill"` 只用于页面级入口；`block` 占满容器宽度，带图标时图标贴左、文字视觉居中。

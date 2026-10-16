@@ -78,6 +78,16 @@ describe('BaseButton', () => {
     ]);
   });
 
+  it('tint 是独立的 variant，不带 tone', () => {
+    const tint = mountButton({ variant: 'tint', size: 'lg', block: true, tone: 'info' });
+    expect([...tint.classList]).toEqual([
+      'linnya-ui-button',
+      'linnya-ui-button--tint',
+      'linnya-ui-button--lg',
+      'linnya-ui-button--block',
+    ]);
+  });
+
   it('tone 只作用于 outline 与 plain', () => {
     const primary = mountButton({ variant: 'primary', tone: 'info' });
     expect(primary.classList.contains('linnya-ui-button--tone-info')).toBe(false);

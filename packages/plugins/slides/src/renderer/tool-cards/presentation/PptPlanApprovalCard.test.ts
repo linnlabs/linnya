@@ -177,7 +177,7 @@ describe('PptPlanApprovalCard', () => {
     const approveButton = Array.from(host.querySelectorAll<HTMLButtonElement>('button')).find(
       (button) => button.textContent?.trim() === '批准并继续',
     );
-    expect(approveButton?.classList.contains('primary')).toBe(true);
+    expect(approveButton?.classList.contains('linnya-ui-button--primary')).toBe(true);
     expect(approveButton?.disabled).toBe(false);
 
     const signature = host.querySelector<HTMLTextAreaElement>('[aria-label="视觉记忆点"]');
@@ -191,7 +191,7 @@ describe('PptPlanApprovalCard', () => {
     );
     expect(submitButton?.disabled).toBe(false);
 
-    expect(submitButton?.classList.contains('secondary')).toBe(true);
+    expect(submitButton?.classList.contains('linnya-ui-button--ghost')).toBe(true);
     expect(approveButton?.disabled).toBe(true);
   });
 

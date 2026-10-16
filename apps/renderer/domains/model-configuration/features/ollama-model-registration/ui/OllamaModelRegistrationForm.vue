@@ -79,7 +79,7 @@
 
     <div class="add-model-submit">
       <BaseButton
-        variant="primary"
+        variant="tint"
         size="lg"
         block
         :disabled="

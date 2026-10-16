@@ -117,6 +117,23 @@
   background-color: var(--color-accent-disabled);
 }
 
+/*
+ * tint：平涂的品牌色浅底加深色文字，用于占满宽度或位于大片留白里的主操作；
+ * 同样的主操作用 primary 实底会因面积大而显得过重。
+ */
+.linnya-ui-button--tint {
+  color: var(--color-accent-text);
+  background-color: var(--color-accent-bg);
+}
+
+.linnya-ui-button--tint:hover:not(:disabled) {
+  background-color: var(--color-accent-bg-hover);
+}
+
+.linnya-ui-button--tint:disabled {
+  opacity: 0.6;
+}
+
 /* secondary / ghost / plain：从表面到透明逐级减弱的次操作。 */
 .linnya-ui-button--secondary {
   color: var(--color-text-primary);
