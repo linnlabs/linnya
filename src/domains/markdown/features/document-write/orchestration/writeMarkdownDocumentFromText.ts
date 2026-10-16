@@ -206,6 +206,13 @@ export async function writeMarkdownDocumentFromText(params: {
       params.touchDocumentUpdatedAt(params.documentId, Date.now());
     }
 
+    // 必须统计实际提交后的 current（含 pending），不能把输入 token 或局部编辑当成全文。
+    const committedProjection = buildMarkdownCitationReadProjection({
+      content: params.documentStore.getDocument(params.documentId),
+      pendings: params.documentStore.getPendingRevisions(params.documentId),
+      viewMode: 'preview',
+      includeAnnotations: false,
+    });
     const result: MarkdownFileWriteResult = {
       documentId: params.documentId,
       currentText,
@@ -213,6 +220,7 @@ export async function writeMarkdownDocumentFromText(params: {
       edits: executed,
       cancelledCount,
       pendingCount: params.documentStore.getPendingRevisions(params.documentId).length,
+      citationSourceCount: committedProjection.citationProjection.sources.length,
       createdAnnotationIds: annotationMutation.created.map(item => item.annotation.id),
       updatedAnnotationIds: annotationMutation.updated.map(item => item.annotation.id),
       deletedAnnotationIds: annotationMutation.deleted.map(item => item.annotationId),

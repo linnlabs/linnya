@@ -73,6 +73,12 @@ CLI Agent 与内置 Agent 的已有 Markdown 文档写入均走同一 file-write
 根据本次正文 edits、撤销和批注变更共同报告“本次规范化后正文和批注无变化”；
 已有 pending 不得遮住该事实，撤销提议或仅修改批注也不得误报无变化。
 
+新建及 file-style 写入成功回执还报告提交后的全文可解析引用来源数。统计复用 Citation
+admission 的完整 current 投影（包含 pending），按该投影的来源身份去重，不数输入中的标记次数，
+不受 `read_file` 窗口或摘录预算影响。普通链接和代码示例不会变成引用来源；合法的零引用文档照常成功。
+这是模型可见的中性状态，不证明来源已核验、关键主张均有支持或研究报告已合格。
+回执与本次提交绑定；后续 Editor 接受/拒绝修订不会追溯修改历史回执。通用工具参数和插件写入合同不变。
+
 `edit_file` 的读取快照通过 `expectedCurrentText` 进入 document-write；解析完成后按与 VFS 相同的
 Citation-aware current 投影比较（包括正文、pending 和批注），不一致时返回
 `MARKDOWN_FILE_WRITE_CONFLICT` 并要求重读。比较与事务之间不得增加异步等待。

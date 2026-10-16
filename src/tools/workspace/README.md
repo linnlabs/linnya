@@ -11,6 +11,7 @@
 - **`list_files` / `read_file` / `grep` / `edit_file` / `write_file`**
   - 职责：以 `workspace:/...` locator 或稳定 inode 读写 Workspace 内容。一次调用只能选择其中一个身份；成功结果仍同时返回真实 locator 与 inode。
   - Markdown：`read_file` 读取 preview 内容；`edit_file` / `write_file` 写入 pending revisions，不直接覆盖 `document_versions.content_json`。
+  - Markdown 创建/写入的成功 observation 报告当前全文可解析引用来源数（含 pending、按来源去重），由文档 owner 的实际投影提供；零引用合法，不是警告，也不代表来源已经核验。普通 `read_file` 的来源附录仍只对应当前窗口，不能用空窗口推断全文无引用。
   - Citation：带引用 Markdown 的正文统一使用 canonical `[@ref]`，并在同一 `read_file` 结果附带当前窗口的结构化来源、受预算约束的 excerpt 与 diagnostics；`grep` 只定位并遮罩引用 ref。
   - Citation 写入：`write_file/edit_file` 只接纳当前 working history 各 producer 的严格 owner schema，未命中时才读取 conversation-scoped EvidenceStore；Knowledge 必须有 `docId + blockId`，Web 必须有 HTTP(S) canonical URL。同 ref 冲突、格式非法或来源缺失会使整个写入失败，禁止按普通文本保留假 `[@ref]`。
   - Markdown 新建：`write_file(locator="workspace:/name.md", content="...")` 会创建新 Markdown 文件，并复用 normalization 与同一 Citation admission 生成结构化 CitationMark。

@@ -70,6 +70,7 @@ function createMarkdownFileWriteProvider(params: {
           replacedCount: request.replacedCount,
           editedCount: write.edits.length,
           pendingCount: write.pendingCount,
+          citationSourceCount: write.citationSourceCount,
           cancelledCount: write.cancelledCount,
           createdAnnotationCount: write.createdAnnotationIds.length,
           updatedAnnotationCount: write.updatedAnnotationIds.length,
@@ -143,6 +144,7 @@ function buildMarkdownFileWriteObservation(params: {
   readonly replacedCount?: number;
   readonly editedCount: number;
   readonly pendingCount: number;
+  readonly citationSourceCount: number;
   readonly cancelledCount: number;
   readonly createdAnnotationCount: number;
   readonly updatedAnnotationCount: number;
@@ -169,7 +171,7 @@ function buildMarkdownFileWriteObservation(params: {
     facts.push(`批注 ${params.deletedAnnotationCount} 条已删除`);
   }
   const replacement = params.operation === 'edit' ? `，请求替换 ${params.replacedCount ?? 0} 处` : '';
-  return `已处理 Markdown 文件：${params.path}${replacement}；${facts.join('，')}。`;
+  return `已处理 Markdown 文件：${params.path}${replacement}；${facts.join('，')}。当前全文可解析引用来源：${params.citationSourceCount}（含待确认修订；不代表已核验）。`;
 }
 
 function createPluginFileWriteProvider(params: {

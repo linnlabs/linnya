@@ -24,6 +24,8 @@ export interface MarkdownFileWriteResult {
   readonly edits: MarkdownFileWriteEdit[];
   readonly cancelledCount: number;
   readonly pendingCount: number;
+  /** 提交后完整 current 视图中已接纳的去重来源数，不代表来源已核验。 */
+  readonly citationSourceCount: number;
   readonly currentText: string;
   readonly targetText: string;
   readonly createdAnnotationIds: readonly string[];

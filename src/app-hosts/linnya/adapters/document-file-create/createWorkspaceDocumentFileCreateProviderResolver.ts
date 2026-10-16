@@ -7,6 +7,7 @@ import {
 } from '@plugin/backend/documentTypeBackendHook';
 import {
   buildMarkdownDocumentFromText,
+  buildMarkdownCitationReadProjection,
   MarkdownDocumentService,
   MarkdownNormalizationService,
 } from '../../../../domains/markdown';
@@ -105,10 +106,17 @@ function createMarkdownFileCreateProvider(params: {
             'document'
           );
           documentStore.createDocument(documentId, built.content);
+          // 与编辑回执使用同一领域投影；普通链接、代码中的引用示例不冒充来源。
+          const citationSourceCount = buildMarkdownCitationReadProjection({
+            content: documentStore.getDocument(documentId),
+            pendings: [],
+            viewMode: 'preview',
+            includeAnnotations: false,
+          }).citationProjection.sources.length;
           const result: WorkspaceDocumentFileCreateResult = {
             documentId,
             buildObservation: identity =>
-              `已创建 Markdown 文件：${identity.path}。inode: ${identity.inode}。`,
+              `已创建 Markdown 文件：${identity.path}。inode: ${identity.inode}。当前全文可解析引用来源：${citationSourceCount}（不代表已核验）。`,
           };
           params.resultCommit?.commit(result);
           return result;
