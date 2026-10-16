@@ -3,7 +3,9 @@
     <SettingsSection :title="settingsMessage('settings.appearance.theme.title')">
       <SettingsRow
         :label="settingsMessage('settings.appearance.theme.label')"
-        :hint="settingsMessage('settings.appearance.theme.description')"
+        :description="settingsMessage('settings.appearance.theme.description')"
+        control="end"
+        align="center"
       >
         <div
           class="appearance-theme-selector"

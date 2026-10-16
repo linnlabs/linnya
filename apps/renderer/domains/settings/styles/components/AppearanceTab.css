@@ -2,13 +2,13 @@
 /*
  * 主题选择：四张带名称的圆角预览卡（跟随系统 / 浅色 / 月白蓝 / 深色）。
  * 预览是简洁抽象的白天、月白、夜晚插画，调色板见 tokens/theme-preview.css；
- * 选中时在卡片外加一圈强调色，与表面之间留 2px 间隙。
+ * 选中时在卡片外紧贴加一圈 2px 强调色，不留间隙。
  */
 
 .appearance-theme-selector {
   display: grid;
-  /* 与下方下拉框同列对齐；四个选项始终一行。 */
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* 固定 80px 宽的小卡片，四个选项始终一行；整组随 SettingsRow 的 end 控件列靠右对齐。 */
+  grid-template-columns: repeat(4, 80px);
   gap: var(--space-3);
 }
 
@@ -32,7 +32,7 @@
   width: 100%;
   aspect-ratio: 96 / 60;
   overflow: hidden;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: 0 0 0 1px var(--color-border-light);
   transition: box-shadow var(--duration-short) var(--ease-standard);
 }
@@ -42,9 +42,7 @@
 }
 
 .appearance-theme-option.is-active .appearance-theme-tile {
-  box-shadow:
-    0 0 0 2px var(--color-bg-surface),
-    0 0 0 4px var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent);
 }
 
 .appearance-theme-label {
@@ -80,8 +78,8 @@
 
 .theme-preview-art .pv-day-sky { fill: var(--pv-day-sky); }
 .theme-preview-art .pv-sun { fill: var(--pv-sun); }
+.theme-preview-art .pv-sun-halo { fill: var(--pv-sun); opacity: 0.22; }
 .theme-preview-art .pv-cloud { fill: var(--pv-cloud); }
-.theme-preview-art .pv-cloud--far { opacity: 0.85; }
 .theme-preview-art .pv-cloud--moon { opacity: 0.9; }
 .theme-preview-art .pv-moon-sky { fill: var(--pv-moon-sky); }
 .theme-preview-art .pv-moon-white { fill: var(--pv-moon-white); }

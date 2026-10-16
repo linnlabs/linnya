@@ -5,8 +5,8 @@
  * 这是设计规范第 2.6 节允许的“主题预览色块”例外，只在此文件定义，业务样式只引用变量。
  */
 .appearance-theme-selector {
-  --pv-day-sky: #dceafc;
-  --pv-sun: #fff3c9;
+  --pv-day-sky: #ffffff;
+  --pv-sun: #ffd66b;
   --pv-cloud: #ffffff;
   --pv-moon-sky: #e6eefb;
   --pv-moon-white: #ffffff;

@@ -1,23 +1,14 @@
 <!-- apps/renderer/domains/settings/ui/tabs/appearance/ThemePreviewArt.vue -->
 <!--
-  主题预览插画：96 × 60 的简洁抽象场景，只靠色块与少量形状表达“白天 / 月白 / 夜晚”。
+  主题预览插画：96 × 60 的简洁抽象场景，只靠色块与少量形状表达“白天（白底加一轮太阳）/ 月白 / 夜晚”。
   颜色来自 theme-preview.css 里的固定调色板（插画描述的是主题本身，不随当前主题变化）。
 -->
 <template>
   <svg class="theme-preview-art" viewBox="0 0 96 60" preserveAspectRatio="xMidYMid slice" focusable="false">
     <template v-if="scene === 'day'">
       <rect class="pv-day-sky" width="96" height="60" />
+      <circle class="pv-sun-halo" cx="72" cy="17" r="11" />
       <circle class="pv-sun" cx="72" cy="17" r="6.5" />
-      <g class="pv-cloud" transform="translate(14 24) scale(1.15)">
-        <rect x="0" y="9" width="30" height="9" rx="4.5" />
-        <circle cx="10" cy="9" r="6.2" />
-        <circle cx="19.5" cy="7" r="8" />
-      </g>
-      <g class="pv-cloud pv-cloud--far" transform="translate(54 36) scale(0.8)">
-        <rect x="0" y="9" width="30" height="9" rx="4.5" />
-        <circle cx="10" cy="9" r="6.2" />
-        <circle cx="19.5" cy="7" r="8" />
-      </g>
     </template>
     <template v-else-if="scene === 'moon'">
       <rect class="pv-moon-sky" width="96" height="60" />
