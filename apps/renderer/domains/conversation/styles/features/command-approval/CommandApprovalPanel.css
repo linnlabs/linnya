@@ -47,7 +47,7 @@
   margin: var(--space-2) 0 0;
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
-  line-height: 1.45;
+  line-height: var(--line-height-body);
 }
 
 .command-approval-command {
@@ -95,7 +95,7 @@
   margin-top: 7px;
   color: var(--color-text-tertiary);
   font-size: var(--font-size-caption);
-  line-height: 1.4;
+  line-height: var(--line-height-caption);
 }
 
 .command-approval-cwd,
@@ -223,7 +223,7 @@
   margin: 0 auto 0 0;
   color: var(--color-text-tertiary);
   font-size: var(--font-size-caption);
-  line-height: 1.4;
+  line-height: var(--line-height-caption);
 }
 
 @media (max-width: 640px) {

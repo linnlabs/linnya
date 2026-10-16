@@ -38,7 +38,7 @@
 }
 
 .todo-sidebar .section-header .title {
-  font-size: 0.75rem;
+  font-size: var(--font-size-footnote);
   font-weight: var(--font-weight-medium);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -46,7 +46,7 @@
 
 .todo-sidebar .section-header .count {
   margin-left: auto;
-  font-size: 0.75rem;
+  font-size: var(--font-size-footnote);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-placeholder);
 }

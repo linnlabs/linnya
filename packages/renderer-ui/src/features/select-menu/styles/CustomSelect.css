@@ -380,7 +380,7 @@
   background-color: var(--color-border-default);
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
@@ -464,7 +464,7 @@
 
 .custom-select__submenu .panel-item-value {
   font-size: var(--font-size-body);
-  line-height: 1.4;
+  line-height: var(--line-height-body);
   color: var(--color-text-primary);
   word-break: break-all;
 }

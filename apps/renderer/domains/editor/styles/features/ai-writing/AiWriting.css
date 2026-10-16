@@ -48,7 +48,7 @@
   color: var(--color-text-primary);
   font-family: inherit;
   font-size: var(--font-size-prose);
-  line-height: 20px;
+  line-height: var(--line-height-prose);
   vertical-align: middle;
   resize: none;
   background-color: transparent;

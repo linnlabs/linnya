@@ -68,7 +68,7 @@
   box-sizing: border-box;
   display: inline-block;
   min-width: 52px;
-  padding: 3px 9px;
+  padding: calc(var(--space-1) - 1px) calc(var(--space-2-5) - 1px);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   background-color: var(--table-ai-tag-bg);

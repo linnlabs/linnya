@@ -2,7 +2,7 @@
   padding: var(--space-2) 0;
   color: var(--color-error-text);
   font-size: var(--font-size-body);
-  line-height: 1.6;
+  line-height: var(--line-height-body);
 }
 
 .client-notice .client-notice-sync {

@@ -426,7 +426,7 @@
   width: 3px; /* 边框宽度 */
   /* 边框颜色：优先使用当前块颜色，否则回退到默认边框色 */
   background-color: var(--local-block-text-color, var(--color-border-default));
-  border-radius: 1.5px; /* 边框自身的圆角 */
+  border-radius: var(--radius-xs); /* 边框自身的圆角 */
 }
 
 /* -- 修改缩进方式 - 引用块 -- */
@@ -576,7 +576,7 @@
   font-size: 1.1em; /* 可调整公式大小 */
   text-align: center; /* 居中块级公式 */
   /* 可以在这里添加更多 KaTeX 相关的样式 */
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 /* LaTeX 错误信息样式 */
@@ -587,7 +587,7 @@
   padding: var(--space-1) var(--space-2);
   background-color: var(--color-error-bg);
   border: 1px solid color-mix(in srgb, var(--color-error) 30%, transparent);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 /* 
@@ -636,7 +636,7 @@
 .image-block.empty-image {
   color: var(--color-text-placeholder);
   font-style: italic;
-  padding: 15px;
+  padding: calc(var(--space-4) - 1px);
   text-align: center;
   background-color: var(--editor-block-hover-bg);
   border: 1px dashed var(--color-border-default);

@@ -79,7 +79,7 @@
 
 .raw-renderer .error-icon {
   flex-shrink: 0;
-  font-size: 20px;
+  font-size: 20px; /* scale-exempt: 错误图标字形尺寸 */
 }
 
 .raw-renderer .error-content h4 {

@@ -21,7 +21,7 @@
 
 .editor-citation-popover {
   position: fixed;
-  z-index: 10000;
+  z-index: var(--linnya-ui-layer-tooltip);
   /*
    * 这里的卡片样式对齐 LatexInputPanel 的浮层风格。
    * editor 专属根类避免撞上 conversation 域的 .citation-popover。
@@ -51,7 +51,7 @@
   /* 标题不需要加粗，保持与正文一致的正常字重。 */
   font-weight: var(--font-weight-regular);
   color: var(--color-text-primary);
-  line-height: 1.4;
+  line-height: var(--line-height-prose);
   display: -webkit-box;
   line-clamp: 2;
   -webkit-line-clamp: 2;
@@ -95,7 +95,7 @@
 
 .editor-citation-popover .popover-body::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
@@ -107,7 +107,7 @@
 
 .editor-citation-popover .popover-snippet {
   font-size: var(--font-size-body);
-  line-height: 1.6;
+  line-height: var(--line-height-body);
   color: var(--color-text-secondary);
   white-space: pre-wrap;
   word-break: break-word;

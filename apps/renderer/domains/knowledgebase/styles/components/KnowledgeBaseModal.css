@@ -60,7 +60,7 @@
 
 .kb-layout .main-content::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color);
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;

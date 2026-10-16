@@ -1,7 +1,7 @@
 .execution-notice {
   color: var(--color-text-secondary);
   font-size: var(--font-size-body);
-  line-height: 1.7;
+  line-height: var(--line-height-body);
   padding: var(--space-1) 0;
 }
 .execution-notice--failed {

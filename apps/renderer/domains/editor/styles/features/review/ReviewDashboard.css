@@ -22,7 +22,7 @@
 
 .review-dashboard-view .header-left h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--font-size-subtitle);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -31,7 +31,7 @@
   color: var(--color-text-tertiary);
   background: var(--color-bg-hover);
   padding: var(--space-0-5) var(--space-2);
-  border-radius: 10px;
+  border-radius: var(--radius-full);
   font-weight: var(--font-weight-medium);
 }
 
@@ -94,7 +94,7 @@
   font-size: var(--font-size-body);
   color: var(--color-text-secondary);
   cursor: pointer;
-  padding: 5px 14px;
+  padding: 5px var(--space-3);
   border-radius: var(--radius-sm);
   transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard),
     box-shadow var(--duration-short) var(--ease-standard);
@@ -122,7 +122,7 @@
 
 .review-dashboard-view .filter-tabs.is-scrollable::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
@@ -160,7 +160,7 @@
 
 .review-dashboard-view .results-list::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;

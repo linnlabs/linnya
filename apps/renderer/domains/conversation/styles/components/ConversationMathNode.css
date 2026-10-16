@@ -30,7 +30,7 @@
   background-color: var(--color-border-default);
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
 }
 

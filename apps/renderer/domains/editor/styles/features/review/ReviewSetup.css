@@ -30,7 +30,7 @@
 .review-setup-view .subtitle {
   margin: 0;
   font-size: var(--font-size-footnote);
-  line-height: 1.4;
+  line-height: var(--line-height-footnote);
   color: var(--color-text-secondary);
 }
 

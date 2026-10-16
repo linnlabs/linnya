@@ -5,7 +5,7 @@
   line-height: 1; /* Prevent extra line height */
   vertical-align: middle; /* Align vertically with surrounding text */
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   transition: background-color var(--duration-medium) var(--ease-standard), box-shadow var(--duration-medium) var(--ease-standard);
 }
 
@@ -25,10 +25,10 @@
 
 /* Style for source code when rendering fails */
 .inline-latex-view.has-error {
-  padding: 0 3px;
+  padding: 0 calc(var(--space-1) - 1px);
   background-color: var(--color-error-bg);
   border: 1px dashed var(--color-error);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .inline-latex-source-error {

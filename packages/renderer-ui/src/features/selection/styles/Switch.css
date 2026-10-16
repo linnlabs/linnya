@@ -14,7 +14,7 @@
 .switch-control-label {
   color: var(--color-text-secondary);
   font-size: var(--font-size-body);
-  line-height: 1.4;
+  line-height: var(--line-height-body);
 }
 
 .switch-control-input {
@@ -32,7 +32,7 @@
   height: 20px;
   flex-shrink: 0;
   padding: var(--space-0-5);
-  border-radius: 10px;
+  border-radius: var(--radius-full);
   background-color: var(--color-border-default);
   box-sizing: border-box;
   transition: background-color var(--duration-medium) var(--ease-standard), box-shadow var(--duration-medium) var(--ease-standard);

@@ -36,6 +36,7 @@
 
 - LinnyaIcon 更新为叶片与茎分离的品牌图形，新增可选的 compact/display 尺寸稿；默认 compact，颜色跟随 currentColor，并由包样式提供默认品牌色。
 - Linnya 助手及项目对话的空态使用 display 尺寸稿，由各自页面样式展示无背景的图标。
+- 刻度收口（2026-10-17）：`Switch` 轨道与 `CustomSelect` 滚动条滑块改用 `--radius-full`，`CustomCheckbox` 圆角取 `--radius-sm`；`PageSectionHeader` 标题字号由 20px 改为 `--font-size-title`（18px），间距由 18px 归到 `--space-4`（16px），说明行高改为 `--line-height-prose`；`AlertDialog` 分组间距 14px 归到 `--space-3`；`HoverTooltip`、`CustomSelect`、`TextPopover`、`Switch`、`AlertDialog` 的比例行高改为同字号角色的 `--line-height-*`（单行文字变化不超过 1px）；`NotificationBar` 带边框的内边距改为 `calc(token - 1px)`，外尺寸不变。设计规范新增第 15 节“细节清单”，补充带边框控件按外尺寸对齐、胶囊与细条圆角、最高层 z-index、延迟与循环动画的写法，以及刻度棘轮的有意例外（`scale-exempt` 标注）。
 
 ## 2.5.2 - 2026-09-17
 

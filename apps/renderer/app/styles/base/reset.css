@@ -12,7 +12,7 @@
 html, body {
   height: 100%;
   width: 100%;
-  font-size: 16px;
+  font-size: 16px; /* scale-exempt: 根字号 */
   line-height: var(--line-height-normal);
   font-family: var(--font-family-default);
   background-color: var(--color-bg-default);

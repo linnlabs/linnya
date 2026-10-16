@@ -50,7 +50,7 @@
 
 /* 标题文字要和下方导航项的文字左对齐：导航项文字缩进 = 滚动容器 10px + 按钮 8px。 */
 .settings-modal-nav-title {
-  padding: var(--space-5) 18px 14px;
+  padding: var(--space-5) var(--space-4) var(--space-3);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-tight);
@@ -65,13 +65,13 @@
 }
 
 .settings-modal-nav-group + .settings-modal-nav-group {
-  margin-top: 18px;
+  margin-top: var(--space-4);
 }
 
 /* 无标题分组（如「关于」）用一条分隔线与上一段区分，不再重复一次标题。 */
 .settings-modal-nav-group + .settings-modal-nav-group.is-untitled {
-  padding-top: 14px;
-  margin-top: 14px;
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
   border-top: 1px solid var(--settings-hairline);
 }
 
@@ -197,7 +197,7 @@
   background-color: var(--scrollbar-thumb-color);
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
 }
 

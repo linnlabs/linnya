@@ -31,7 +31,7 @@
   align-items: stretch;
   gap: var(--space-3);
   /* 与工作台信息卡 padding 对齐 */
-  padding: var(--space-3) 14px;
+  padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-light);
   background-color: var(--color-bg-surface);
@@ -190,7 +190,7 @@
 }
 
 .kb-list-view .empty-icon {
-  font-size: 40px;
+  font-size: 40px; /* scale-exempt: 空态图标字形尺寸 */
   margin-bottom: var(--space-3);
   opacity: 0.7;
 }

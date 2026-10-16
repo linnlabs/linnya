@@ -89,7 +89,7 @@
   background-color: var(--color-error-bg);
   border: 1px solid var(--color-error);
   border-radius: var(--radius-sm);
-  line-height: 1.4;
+  line-height: var(--line-height-footnote);
 }
 
 .create-kb-content .kb-tag-form-group {

@@ -66,7 +66,7 @@
 
 .shared-color-picker-panel__sample {
   font-weight: var(--font-weight-semibold);
-  font-size: 20px;
+  font-size: 20px; /* scale-exempt: 取色样本字形尺寸 */
 }
 
 .shared-color-picker-panel__footer {

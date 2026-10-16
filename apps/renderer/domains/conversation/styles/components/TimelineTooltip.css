@@ -10,7 +10,7 @@
   border: none;
   color: var(--color-text-primary);
   font-size: var(--font-size-body);
-  line-height: 1.4;
+  line-height: var(--line-height-body);
   opacity: 0;
   overflow-wrap: break-word;
   pointer-events: none;

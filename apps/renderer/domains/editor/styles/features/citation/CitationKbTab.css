@@ -107,7 +107,7 @@
 
 .citation-kb-tab .results-section::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
@@ -166,7 +166,7 @@
 .citation-kb-tab .result-kb-badge {
   font-size: var(--font-size-caption);
   padding: var(--space-0-5) var(--space-1-5);
-  border-radius: 10px;
+  border-radius: var(--radius-full);
   color: var(--color-text-secondary);
   flex-shrink: 0;
 }

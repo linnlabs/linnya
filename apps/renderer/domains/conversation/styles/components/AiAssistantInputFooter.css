@@ -163,7 +163,7 @@
   --conversation-input-action-menu-width: calc(var(--space-10) * 5);
 
   position: fixed;
-  z-index: 1000;
+  z-index: var(--linnya-ui-layer-popover);
   /* 由 JS 动态写入 top/left */
 }
 
@@ -412,7 +412,7 @@
 .ai-assistant-input-footer .selector-group .input-footer-model-options {
   top: auto;
   bottom: calc(100% + 4px);
-  z-index: 1000;
+  z-index: var(--linnya-ui-layer-popover);
 }
 
 .ai-assistant-input-footer .send-button {

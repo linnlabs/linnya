@@ -65,7 +65,7 @@
   max-height: 260px;
   overflow-y: auto;
   font-size: var(--font-size-caption);
-  line-height: 1.65;
+  line-height: var(--line-height-caption);
 }
 
 .tooloutput-read-card .raw-text {
@@ -87,7 +87,7 @@
 
 .tooloutput-read-card .content-wrapper::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;

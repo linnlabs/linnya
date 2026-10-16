@@ -44,7 +44,7 @@
 
 .conversation-chat-surface .empty-mark {
   height: 36px;
-  padding: 0 14px;
+  padding: 0 var(--space-3);
   border-radius: var(--radius-lg);
   display: inline-flex;
   align-items: center;
@@ -58,7 +58,7 @@
 
 .conversation-chat-surface .empty-heading {
   margin: 0 0 28px;
-  font-size: 20px;
+  font-size: var(--font-size-headline);
   line-height: var(--line-height-tight);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
@@ -69,7 +69,7 @@
   margin: calc(var(--space-4) * -1) 0 26px;
   max-width: 520px;
   font-size: var(--font-size-prose);
-  line-height: 1.6;
+  line-height: var(--line-height-prose);
   text-align: center;
   color: var(--color-text-secondary);
 }
@@ -94,11 +94,11 @@
 }
 
 .conversation-chat-surface .conversation-footer-shell {
-  padding: 0 var(--space-4) 18px var(--space-4);
+  padding: 0 var(--space-4) var(--space-4) var(--space-4);
 }
 
 .conversation-chat-surface .input-top-section {
-  padding: 14px var(--space-4) var(--space-0-5);
+  padding: var(--space-3) var(--space-4) var(--space-0-5);
 }
 
 .conversation-chat-surface .input-editor .ai-assistant-tiptap-editor {

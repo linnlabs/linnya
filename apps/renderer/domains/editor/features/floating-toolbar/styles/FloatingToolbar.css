@@ -77,7 +77,7 @@
 
 .inline-color-picker .color-sample {
   font-weight: var(--font-weight-semibold);
-  font-size: 20px;
+  font-size: 20px; /* scale-exempt: 取色样本字形尺寸 */
 }
 
 .inline-highlight-picker .highlight-sample {

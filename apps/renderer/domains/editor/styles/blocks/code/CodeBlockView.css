@@ -8,7 +8,7 @@
   align-items: center;
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--duration-medium) var(--ease-standard), visibility 0s var(--ease-standard) 0.2s;
+  transition: opacity var(--duration-medium) var(--ease-standard), visibility 0s var(--ease-standard) var(--duration-medium);
 }
 
 /* 代码块底色已是浅灰，复制按钮的 hover 底色再高一层。 */
@@ -38,7 +38,7 @@
   z-index: 10;
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--duration-medium) var(--ease-standard), visibility 0s var(--ease-standard) 0.2s;
+  transition: opacity var(--duration-medium) var(--ease-standard), visibility 0s var(--ease-standard) var(--duration-medium);
 }
 
 .code-block-outer:hover .code-block-controls,

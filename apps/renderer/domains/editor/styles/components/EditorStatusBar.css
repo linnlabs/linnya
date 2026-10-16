@@ -15,7 +15,7 @@
   max-width: var(--editor-content-max-width);
   width: 100%;
   margin: 0 auto;
-  font-size: 0.8rem;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-muted);
 }
 
@@ -38,13 +38,13 @@
 .status-item .status-icon,
 .hint-item .hint-icon {
   margin-right: var(--space-1);
-  font-size: 0.9rem;
+  font-size: 0.9rem; /* scale-exempt: 状态图标字形尺寸 */
 }
 
 /* 状态文本样式 */
 .status-item .status-text,
 .hint-item .hint-text {
-  font-size: 0.8rem;
+  font-size: var(--font-size-footnote);
 }
 
 /* 状态栏链接样式 */

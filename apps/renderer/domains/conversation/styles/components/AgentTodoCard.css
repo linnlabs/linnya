@@ -8,7 +8,7 @@
    * - 这里统一为 12px，确保子组件内的「ToDo」标题与 header 文案左对齐，
    *   避免出现“略微超出一点点”的错位感。
    */
-  padding: var(--space-1-5) var(--space-3) var(--space-2-5) 14px;
+  padding: var(--space-1-5) var(--space-3) var(--space-2-5) var(--space-3);
 }
 
 .agent-todo-card .error-state {
@@ -87,7 +87,7 @@
   font-size: var(--font-size-caption);
   color: var(--color-text-secondary);
   margin-right: var(--space-1);
-  line-height: 18px;
+  line-height: var(--line-height-caption);
   display: inline-flex;
   align-items: center;
 }
@@ -162,7 +162,7 @@
 
 .agent-todo-card .item-text {
   font-size: var(--font-size-footnote);
-  line-height: 1.4;
+  line-height: var(--line-height-footnote);
   color: var(--color-text-primary);
   word-break: break-word;
 }

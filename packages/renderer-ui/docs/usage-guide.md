@@ -10,6 +10,7 @@ theme/token/scroll 均由 package 唯一拥有；Editor 选区业务和 Citation
 - 组件只承接通用交互和视觉，不写业务规则。业务校验、权限、保存流程放在对应 domain / feature。
 - package 组件样式由对应 Renderer UI feature 自己拥有；业务组件样式跟随其 app/domain/feature owner。组件不写 scoped style。
 - 平台通用图标从 `@linnya/renderer-ui/icons` 引入；插件语义图标留在插件 owner，不在按钮里手写零散 SVG。
+- 改样式前后按[设计规范第 15 节“细节清单”](./design.md#15-细节清单)自查：间距、行高、字号的改动先量尺寸再动手；带边框控件的奇数内边距不要直接吸附；胶囊用 `--radius-full`；浮层 z-index 只用层级 token。
 - 插件 renderer 直接依赖 `@linnya/renderer-ui`；仍需要 Host 业务能力时使用按能力命名的窄 facade（例如 `subrunToolUi`），禁止通过通用 UI barrel 或 deep import Host 内部路径。
 
 ### Linnya 品牌图标

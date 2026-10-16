@@ -29,7 +29,7 @@
 }
 
 .review-processing-view h3 {
-  font-size: 16px;
+  font-size: var(--font-size-subtitle);
   font-weight: var(--font-weight-semibold);
   margin: 0 0 var(--space-3);
 }
@@ -52,7 +52,7 @@
     color-mix(in srgb, var(--color-accent) 8%, transparent) 100%
   );
   border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
-  border-radius: 20px;
+  border-radius: var(--radius-full);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
   color: var(--color-accent);

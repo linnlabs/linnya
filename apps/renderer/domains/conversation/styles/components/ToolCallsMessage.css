@@ -170,7 +170,7 @@
   padding: 0 var(--space-1-5);
   border-radius: var(--radius-full);
   font-size: var(--font-size-caption);
-  line-height: 18px;
+  line-height: var(--line-height-caption);
   text-transform: none;
   font-weight: var(--font-weight-medium);
   position: relative;

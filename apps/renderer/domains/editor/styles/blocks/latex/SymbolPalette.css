@@ -44,7 +44,7 @@
 
 .symbol-palette .palette-content::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
-  border-radius: 3px;
+  border-radius: var(--radius-full);
 }
 
 .symbol-palette .palette-content::-webkit-scrollbar-track {

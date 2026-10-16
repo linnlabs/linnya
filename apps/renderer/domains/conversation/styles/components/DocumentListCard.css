@@ -75,7 +75,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.4;
+  line-height: var(--line-height-footnote);
 }
 
 .document-list-card .empty-state {
@@ -87,7 +87,7 @@
 }
 
 .document-list-card .empty-icon {
-  font-size: 20px;
+  font-size: 20px; /* scale-exempt: 空态图标字形尺寸 */
   margin-bottom: var(--space-1);
   opacity: 0.5;
 }

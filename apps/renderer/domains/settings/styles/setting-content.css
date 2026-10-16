@@ -96,7 +96,7 @@
 .settings-textarea {
   box-sizing: border-box; /* 确保 padding 和 border 不会撑大宽度 */
   height: 34px; /* 统一高度 */
-  padding: 7px 11px;
+  padding: calc(var(--space-2) - 1px) calc(var(--space-3) - 1px);
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
   background-color: var(--color-bg-surface);
@@ -162,7 +162,7 @@
 
 /* --- 状态提示（加载 / 不可用 / 错误） --- */
 .settings-status {
-  padding: var(--space-3) 14px;
+  padding: var(--space-3) var(--space-3);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
   color: var(--color-text-secondary);
@@ -231,7 +231,7 @@
   background-color: var(--scrollbar-thumb-color);
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
 }
 

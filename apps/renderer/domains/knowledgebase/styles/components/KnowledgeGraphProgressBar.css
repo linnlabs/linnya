@@ -66,7 +66,7 @@
 .kg-progress .kg-popover-title {
   font-size: var(--font-size-footnote);
   font-weight: var(--font-weight-semibold);
-  line-height: 1.2;
+  line-height: var(--line-height-footnote);
   color: var(--color-text-primary);
 }
 

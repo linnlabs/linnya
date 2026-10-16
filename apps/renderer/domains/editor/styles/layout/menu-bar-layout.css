@@ -22,7 +22,7 @@
  */
 .table-size-selector-wrapper {
   position: fixed;
-  z-index: 100; /* 与 CustomSelect 保持一致 */
+  z-index: var(--linnya-ui-layer-inline-menu); /* 与 CustomSelect 保持一致 */
 }
 
 /* 

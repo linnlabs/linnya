@@ -7,7 +7,7 @@
   z-index: var(--linnya-ui-layer-tooltip);
   padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-footnote);
-  line-height: 1.2;
+  line-height: var(--line-height-footnote);
   color: var(--color-white);
   white-space: nowrap;
   pointer-events: none;

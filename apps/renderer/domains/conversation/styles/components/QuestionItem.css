@@ -108,7 +108,7 @@
   color: var(--color-text-primary);
   background-color: var(--color-accent-bg-subtle);
   border: 1px solid var(--color-border-accent-light);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   outline: none;
   transition: border-color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
 }
@@ -127,7 +127,7 @@
   padding: var(--space-2-5);
   font-family: inherit;
   font-size: var(--font-size-body);
-  line-height: 1.4;
+  line-height: var(--line-height-body);
   color: var(--color-text-primary);
   resize: none;
   background-color: var(--color-bg-surface);

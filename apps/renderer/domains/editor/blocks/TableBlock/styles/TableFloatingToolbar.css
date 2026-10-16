@@ -13,7 +13,7 @@
   padding: var(--space-1) var(--space-2);
   margin: 0;
   font-size: var(--font-size-footnote);
-  line-height: 1.2;
+  line-height: var(--line-height-footnote);
   color: var(--color-text-primary);
   text-align: center;
   cursor: pointer;
@@ -77,7 +77,7 @@
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  z-index: 1000;
+  z-index: var(--linnya-ui-layer-popover);
   min-width: 120px;
 }
 

@@ -23,6 +23,12 @@ const EXEMPT_PATH_PREFIXES = [
   'apps/renderer/domains/editor/styles/tokens/',
   'apps/renderer/domains/sheet/react-ref/univer/',
 ] as const;
+/* 开发期诊断与试验页面不属于产品界面，不纳入刻度债务。 */
+const EXEMPT_PATH_FRAGMENTS = [
+  'apps/renderer/app/styles/base/debug.css',
+  'apps/renderer/domains/conversation/features/virtualizer-spike/',
+  'apps/renderer/domains/editor/styles/components/LlmRequestDebugPanel.css',
+] as const;
 const EXEMPT_FILES = new Set([
   'packages/renderer-ui/src/styles/tokens.css',
   'apps/renderer/app/styles/base/highlight-github.css',
@@ -73,7 +79,8 @@ export interface StyleScaleDiff {
 }
 
 const LENGTH_PATTERN = /(?<![\w-])-?(?:\d+\.?\d*|\.\d+)(?:px|rem|em)\b/gu;
-const PERCENT_OR_LENGTH_PATTERN = /(?<![\w-])-?(?:\d+\.?\d*|\.\d+)(?:px|rem|em|%)\b/gu;
+/* em 与百分比是相对当前上下文的字号（文档内容排版、图标跟随文字），不是绕过角色字阶的绝对值。 */
+const ABSOLUTE_FONT_SIZE_PATTERN = /(?<![\w-])-?(?:\d+\.?\d*|\.\d+)(?:px|rem)\b/gu;
 const DURATION_PATTERN = /(?<![\w-])(?:\d+\.?\d*|\.\d+)m?s\b/gu;
 const EASING_PATTERN = /cubic-bezier\(|(?<![\w-])ease(?:-in-out|-in|-out)?(?![\w-])/gu;
 /* 基础色阶不随主题切换；黑白只用于遮罩、投影与固定深色蒙层上的文字，不在此统计。 */
@@ -120,6 +127,12 @@ function isBeyondHairline(text: string): boolean {
   return Math.abs(Number.parseFloat(text)) > 1;
 }
 
+/* 间距刻度最大到 40px；更大的值是版面尺寸（空态留白、固定列宽），不属于间距刻度。 */
+function isSpacingScaleCandidate(text: string): boolean {
+  const value = Math.abs(Number.parseFloat(text));
+  return value > 1 && value <= 40;
+}
+
 /**
  * 统计单条声明违反规则的次数。基础色阶在自定义属性定义里同样统计；
  * 刻度类规则只看真实属性，自定义属性由其定义者负责。
@@ -139,16 +152,18 @@ export function analyzeStyleScaleDeclaration(property: string, rawValue: string)
   const literal = stripVarReferences(value);
 
   if (name === 'font-size') {
-    add('SCALE-01-font-size', countMatches(literal, PERCENT_OR_LENGTH_PATTERN));
+    add('SCALE-01-font-size', countMatches(literal, ABSOLUTE_FONT_SIZE_PATTERN));
   } else if (name === 'font-weight') {
     add('SCALE-02-font-weight', /^(?:\d{3}|bold|bolder|lighter)$/u.test(literal) ? 1 : 0);
   } else if (name === 'line-height') {
     const isNumeric = /^(?:\d+\.?\d*|\.\d+)(?:px|rem|em|%)?$/u.test(literal);
-    add('SCALE-03-line-height', isNumeric && literal !== '0' && literal !== '1' ? 1 : 0);
+    /* 24px 及以上的像素行高是控件内垂直居中用的高度，不是文字行距。 */
+    const isControlHeight = /^(?:\d+\.?\d*)px$/u.test(literal) && Number.parseFloat(literal) >= 24;
+    add('SCALE-03-line-height', isNumeric && literal !== '0' && literal !== '1' && !isControlHeight ? 1 : 0);
   } else if (RADIUS_PROPERTY_PATTERN.test(name)) {
     add('SCALE-04-radius', countMatches(literal, LENGTH_PATTERN, isNonZeroNumber));
   } else if (SPACING_PROPERTY_PATTERN.test(name)) {
-    add('SCALE-05-spacing', countMatches(literal, LENGTH_PATTERN, isBeyondHairline));
+    add('SCALE-05-spacing', countMatches(literal, LENGTH_PATTERN, isSpacingScaleCandidate));
   } else if (name === 'z-index') {
     add('SCALE-06-z-index', /^-?\d+$/u.test(literal) && Math.abs(Number(literal)) >= 10 ? 1 : 0);
   }
@@ -157,10 +172,13 @@ export function analyzeStyleScaleDeclaration(property: string, rawValue: string)
     add('MOTION-01-transition-all', countMatches(literal, TRANSITION_ALL_PATTERN));
   }
 
-  if (DURATION_PROPERTIES.has(name)) {
+  /* 循环动画（infinite）的周期由动画本身决定，不套时长刻度；规范只给出 --duration-loop 一个参考值。 */
+  const isLoopingAnimation = name.startsWith('animation') && /(?<![\w-])infinite(?![\w-])/u.test(literal);
+
+  if (DURATION_PROPERTIES.has(name) && !isLoopingAnimation) {
     add('SCALE-07-duration', countMatches(literal, DURATION_PATTERN, isNonZeroNumber));
   }
-  if (EASING_PROPERTIES.has(name)) {
+  if (EASING_PROPERTIES.has(name) && !isLoopingAnimation) {
     add('SCALE-08-easing', countMatches(literal, EASING_PATTERN));
   }
 
@@ -170,7 +188,9 @@ export function analyzeStyleScaleDeclaration(property: string, rawValue: string)
 /** 汇总一份 CSS 源码中的刻度债务。只读取声明块，不解析选择器或 at-rule 参数。 */
 export function analyzeStyleScaleSource(source: string): Map<StyleScaleRuleId, number> {
   const totals = new Map<StyleScaleRuleId, number>();
-  const withoutComments = source.replace(/\/\*[\s\S]*?\*\//gu, '');
+  /* 声明后紧跟 `scale-exempt: 原因` 注释，表示该值是刻度之外的有意取值（如图标字形尺寸）。 */
+  const withoutExempt = source.replace(/[^;{}]*;\s*\/\*\s*scale-exempt:[\s\S]*?\*\//gu, '');
+  const withoutComments = withoutExempt.replace(/\/\*[\s\S]*?\*\//gu, '');
 
   for (const block of withoutComments.matchAll(/\{([^{}]*)\}/gu)) {
     for (const declaration of block[1].split(';')) {
@@ -192,7 +212,11 @@ function toRepoPath(absolutePath: string): string {
 }
 
 function isExempt(file: string): boolean {
-  return EXEMPT_FILES.has(file) || EXEMPT_PATH_PREFIXES.some(prefix => file.startsWith(prefix));
+  return (
+    EXEMPT_FILES.has(file) ||
+    EXEMPT_PATH_PREFIXES.some(prefix => file.startsWith(prefix)) ||
+    EXEMPT_PATH_FRAGMENTS.some(fragment => file.includes(fragment))
+  );
 }
 
 function collectCssFiles(directory: string): string[] {

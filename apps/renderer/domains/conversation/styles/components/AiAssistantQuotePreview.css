@@ -1,5 +1,5 @@
 .ai-assistant-quote-preview {
-  padding: var(--space-2-5) 14px var(--space-2);
+  padding: var(--space-2-5) var(--space-3) var(--space-2);
   /*
    * 引用区紧贴输入框顶部，只应跟随外壳的两个上圆角。
    * 不单独绘制背景，直接透出输入框 surface，避免覆盖 0.5px 圆角边框的抗锯齿区域。

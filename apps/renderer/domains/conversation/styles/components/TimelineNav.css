@@ -68,7 +68,7 @@
   bottom: var(--timeline-track-padding);
   left: 0;
   width: 2px;
-  border-radius: 1px;
+  border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--color-text-primary) 12%, transparent);
   content: '';
   pointer-events: none;

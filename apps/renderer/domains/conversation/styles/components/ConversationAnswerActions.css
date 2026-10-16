@@ -5,7 +5,7 @@
   opacity: 0;
   transition:
     opacity var(--duration-medium) var(--ease-standard),
-    visibility 0s var(--ease-standard) 0.2s;
+    visibility 0s var(--ease-standard) var(--duration-medium);
   visibility: hidden;
 }
 

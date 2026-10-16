@@ -79,7 +79,7 @@
 .audio-content-panel .panel-content {
   min-height: 60px;
   max-height: 500px;
-  padding: 0 18px var(--space-2);
+  padding: 0 var(--space-4) var(--space-2);
   overflow-y: auto;
 }
 
@@ -93,7 +93,7 @@
 
 .audio-content-panel .panel-content::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   background-color: var(--scrollbar-thumb-color, var(--color-border-default));
   background-clip: content-box;
   transition: background-color var(--duration-medium) var(--ease-standard);

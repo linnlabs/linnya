@@ -3,14 +3,14 @@
   display: flex;
   box-sizing: border-box;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--space-4);
   padding-bottom: var(--space-6);
   border-bottom: 1px solid var(--color-border-light);
 }
 
 .page-section-header.has-tabs {
   /* 带 tab 的页头由 tab 自身下划线承担分隔感，避免出现双线。 */
-  padding-bottom: 18px;
+  padding-bottom: var(--space-4);
   border-bottom: 0;
 }
 
@@ -52,14 +52,14 @@
 }
 
 .page-section-header.is-title-compact .page-section-header__title {
-  font-size: 20px;
+  font-size: var(--font-size-title);
 }
 
 .page-section-header__subtitle {
   margin: var(--space-1) 0 0;
   color: var(--color-text-secondary);
   font-size: var(--font-size-prose);
-  line-height: 1.6;
+  line-height: var(--line-height-prose);
 }
 
 .page-section-header__meta {

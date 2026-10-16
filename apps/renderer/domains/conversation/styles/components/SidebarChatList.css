@@ -151,7 +151,7 @@
 
 .sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-title {
   font-size: var(--font-size-prose);
-  line-height: 28px;
+  line-height: var(--line-height-prose);
 }
 
 .sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-time {

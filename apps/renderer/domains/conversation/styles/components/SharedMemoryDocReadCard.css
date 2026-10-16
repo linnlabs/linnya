@@ -71,7 +71,7 @@
    * - 因此这里通过设置容器字号，安全地让正文整体更紧凑。
    */
   font-size: var(--font-size-caption);
-  line-height: 1.65;
+  line-height: var(--line-height-caption);
 }
 
 .sharedmemory-doc-read-card .doc-plain {
@@ -92,7 +92,7 @@
 
 .sharedmemory-doc-read-card .doc-content-wrapper::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;

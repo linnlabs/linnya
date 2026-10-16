@@ -2,7 +2,7 @@
 .outline-sidebar .outline-list {
   position: relative;
   box-sizing: border-box;
-  padding: 14px;
+  padding: var(--space-3);
   list-style: none;
 }
 
@@ -137,7 +137,7 @@
 
 .outline-sidebar::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   background-color: var(--scrollbar-thumb-color);
   background-clip: content-box;
   transition: background-color var(--duration-medium) var(--ease-standard);

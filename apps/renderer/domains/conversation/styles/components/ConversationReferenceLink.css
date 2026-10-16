@@ -15,7 +15,7 @@ a.ai-ref-link,
   color: var(--conversation-reference-link-accent);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-regular);
-  line-height: 1.4;
+  line-height: var(--line-height-caption);
   text-decoration: none;
   vertical-align: baseline;
   cursor: pointer;

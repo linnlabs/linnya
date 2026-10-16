@@ -90,7 +90,7 @@
 
 .conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view::-webkit-scrollbar-thumb {
   background-color: transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;

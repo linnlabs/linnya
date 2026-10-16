@@ -62,7 +62,7 @@
 }
 
 .editor-outline-item .bullet-indicator {
-  font-size: 16px;
+  font-size: 16px; /* scale-exempt: 列表圆点字形尺寸 */
   line-height: 1;
   font-weight: var(--font-weight-semibold);
   position: relative;

@@ -134,7 +134,7 @@
   place-items: center;
   align-content: center;
   gap: var(--space-2);
-  margin-top: 18px;
+  margin-top: var(--space-4);
   color: var(--color-text-secondary);
 }
 
@@ -246,7 +246,7 @@
   color: var(--color-text-primary);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
-  line-height: 1.35;
+  line-height: var(--line-height-body);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -304,7 +304,7 @@
   overflow: hidden;
   color: var(--color-text-secondary);
   font-size: var(--font-size-footnote);
-  line-height: 1.45;
+  line-height: var(--line-height-footnote);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
 }
@@ -316,7 +316,7 @@
   gap: var(--space-1) var(--space-2-5);
   color: var(--color-text-tertiary);
   font-size: var(--font-size-caption);
-  line-height: 1.35;
+  line-height: var(--line-height-caption);
 }
 
 .plugin-store-card-meta span {
@@ -379,13 +379,13 @@
 
 .plugin-store-detail-shell {
   width: 100%;
-  margin-top: 18px;
+  margin-top: var(--space-4);
   min-height: 320px;
 }
 
 .plugin-store-inner > .plugin-store-placeholder {
   width: 100%;
-  margin-top: 18px;
+  margin-top: var(--space-4);
 }
 
 .plugin-store-detail {
@@ -397,7 +397,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 18px;
+  gap: var(--space-4);
 }
 
 .plugin-store-detail-hero-main {
@@ -419,7 +419,7 @@
   margin: 0;
   overflow: hidden;
   color: var(--color-text-primary);
-  font-size: 24px;
+  font-size: var(--font-size-headline);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0;
   line-height: 1.15;
@@ -431,7 +431,7 @@
   margin: 0;
   color: var(--color-text-secondary);
   font-size: var(--font-size-body);
-  line-height: 1.45;
+  line-height: var(--line-height-body);
 }
 
 .plugin-store-detail-actions {
@@ -469,14 +469,14 @@
 .plugin-store-detail-fact span {
   color: var(--color-text-tertiary);
   font-size: var(--font-size-caption);
-  line-height: 1.2;
+  line-height: var(--line-height-caption);
 }
 
 .plugin-store-detail-fact strong {
   color: var(--color-text-primary);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
-  line-height: 1.3;
+  line-height: var(--line-height-body);
 }
 
 .plugin-store-detail-fact.is-link {
@@ -498,7 +498,7 @@
   font-size: var(--font-size-subtitle);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0;
-  line-height: 1.35;
+  line-height: var(--line-height-subtitle);
 }
 
 .plugin-store-detail-danger-zone {
@@ -512,7 +512,7 @@
   gap: var(--space-2-5);
   color: var(--color-text-secondary);
   font-size: var(--font-size-prose);
-  line-height: 1.65;
+  line-height: var(--line-height-prose);
 }
 
 .plugin-store-detail-copy p {
@@ -543,7 +543,7 @@
   cursor: pointer;
   font: inherit;
   font-size: var(--font-size-footnote);
-  line-height: 1.3;
+  line-height: var(--line-height-footnote);
 }
 
 .plugin-store-release-toggle:hover {
@@ -558,7 +558,7 @@
 
 .plugin-store-release-list {
   display: grid;
-  gap: 14px;
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -581,7 +581,7 @@
   color: var(--color-text-primary);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
-  line-height: 1.3;
+  line-height: var(--line-height-body);
 }
 
 .plugin-store-release-heading span,
@@ -609,7 +609,7 @@
   color: var(--color-text-primary);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
-  line-height: 1.3;
+  line-height: var(--line-height-body);
 }
 
 .plugin-store-capability-list span {
@@ -632,6 +632,6 @@
   }
 
   .plugin-store-detail-title-line h1 {
-    font-size: 20px;
+    font-size: var(--font-size-title);
   }
 }

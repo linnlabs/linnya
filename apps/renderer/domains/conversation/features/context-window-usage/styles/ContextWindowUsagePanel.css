@@ -8,7 +8,7 @@
   margin: 0 0 var(--space-2-5);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
-  line-height: 1.35;
+  line-height: var(--line-height-body);
 }
 
 .usage-breakdown-panel__summary {
@@ -19,7 +19,7 @@
   margin-bottom: var(--space-2);
   color: var(--color-text-secondary);
   font-size: var(--font-size-footnote);
-  line-height: 1.35;
+  line-height: var(--line-height-footnote);
 }
 
 .usage-breakdown-panel__summary > :last-child {
@@ -75,7 +75,7 @@
   align-items: center;
   gap: var(--space-3);
   font-size: var(--font-size-body);
-  line-height: 1.35;
+  line-height: var(--line-height-body);
 }
 
 .usage-breakdown-panel__row-label {
@@ -95,7 +95,7 @@
   width: 12px;
   height: 12px;
   flex: 0 0 auto;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .usage-breakdown-panel__empty {

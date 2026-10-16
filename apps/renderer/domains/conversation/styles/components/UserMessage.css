@@ -25,7 +25,7 @@
   border-radius: var(--radius-lg);
   max-width: 100%;
   overflow-wrap: break-word;
-  line-height: 1.4;
+  line-height: var(--line-height-body);
   font-size: var(--font-size-body);
   white-space: pre-wrap;
 }
@@ -55,7 +55,7 @@
   width: 100%;
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--duration-medium) var(--ease-standard), visibility 0s var(--ease-standard) 0.2s;
+  transition: opacity var(--duration-medium) var(--ease-standard), visibility 0s var(--ease-standard) var(--duration-medium);
 }
 
 .user-message-container .display-mode:hover .user-message-actions {
@@ -158,7 +158,7 @@
   color: var(--color-text-primary);
   font-family: inherit;
   font-size: var(--font-size-prose);
-  line-height: 1.4;
+  line-height: var(--line-height-prose);
   resize: none;
   min-height: 28px;
   max-height: 240px;
@@ -178,7 +178,7 @@
 
 .user-message-container .edit-textarea::-webkit-scrollbar-thumb {
   background: var(--user-message-scrollbar-thumb);
-  border-radius: 3px;
+  border-radius: var(--radius-full);
 }
 
 .user-message-container .edit-textarea::-webkit-scrollbar-thumb:hover {
@@ -230,7 +230,7 @@
 }
 
 .user-message-container .edit-quote-preview {
-  padding: var(--space-2-5) 14px var(--space-2);
+  padding: var(--space-2-5) var(--space-3) var(--space-2);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   background: var(--color-bg-default);
 }
@@ -305,7 +305,7 @@
   bottom: 2px;
   left: 2px;
   width: 3px;
-  border-radius: 1.5px;
+  border-radius: var(--radius-xs);
   background-color: var(--color-border-default);
 }
 

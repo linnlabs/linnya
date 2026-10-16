@@ -295,7 +295,7 @@
   min-width: 50px;
   height: 5px;
   background-color: var(--color-bg-hover);
-  border-radius: 2.5px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
 }
 
@@ -370,7 +370,7 @@
 .upload-tab .empty-desc {
   margin: 0;
   font-size: var(--font-size-footnote);
-  line-height: 1.6;
+  line-height: var(--line-height-footnote);
   color: var(--color-text-placeholder);
 }
 
@@ -388,7 +388,7 @@
 .upload-tab .file-list-items::-webkit-scrollbar-thumb,
 .upload-tab .file-list-header::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color);
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;

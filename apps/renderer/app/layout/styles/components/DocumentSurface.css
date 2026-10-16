@@ -39,12 +39,12 @@
 .document-surface__unavailable-title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
-  line-height: 1.4;
+  line-height: var(--line-height-title);
 }
 
 .document-surface__unavailable-message {
   margin: var(--space-2) 0 0;
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
-  line-height: 1.6;
+  line-height: var(--line-height-prose);
 }

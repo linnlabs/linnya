@@ -17,7 +17,7 @@
   min-width: 0;
   color: var(--color-error-text);
   font-size: var(--font-size-footnote);
-  line-height: 1.4;
+  line-height: var(--line-height-footnote);
   white-space: pre-wrap;
   word-break: break-word;
 }

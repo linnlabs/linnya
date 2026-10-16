@@ -75,7 +75,7 @@
 
 .workspace-document-card .document-outline-row {
   font-size: var(--font-size-footnote);
-  line-height: 1.65;
+  line-height: var(--line-height-footnote);
   color: var(--color-text-primary);
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -98,7 +98,7 @@
 
 .workspace-document-card .doc-content-wrapper::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
@@ -162,7 +162,7 @@
   overflow-wrap: break-word;
   font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
   font-size: var(--font-size-footnote);
-  line-height: 1.6;
+  line-height: var(--line-height-footnote);
   color: var(--color-text-primary);
 }
 

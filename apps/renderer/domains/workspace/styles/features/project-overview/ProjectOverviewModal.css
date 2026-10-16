@@ -48,7 +48,7 @@
 }
 
 .project-overview-stat-value {
-  font-size: 20px;
+  font-size: var(--font-size-headline);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   line-height: 1.15;
@@ -57,7 +57,7 @@
 .project-overview-stat-label {
   font-size: var(--font-size-footnote);
   color: var(--color-text-tertiary);
-  line-height: 1.4;
+  line-height: var(--line-height-footnote);
 }
 
 .project-overview-error-text {

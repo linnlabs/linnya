@@ -29,7 +29,7 @@
 .workspace-batch-export-markdown-footer {
   display: flex;
   justify-content: flex-end;
-  padding: 14px var(--space-8) var(--space-6);
+  padding: var(--space-3) var(--space-8) var(--space-6);
 }
 
 .export-settings-content .form-row,

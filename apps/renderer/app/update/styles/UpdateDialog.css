@@ -35,7 +35,7 @@
 .update-dialog-content .update-dialog-section-content {
   padding: var(--space-3);
   font-size: var(--font-size-body);
-  line-height: 1.6;
+  line-height: var(--line-height-body);
   background-color: var(--color-bg-search-light);
   border-radius: var(--radius-md);
 }
@@ -62,7 +62,7 @@
   background-color: var(--color-border-default);
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
 }
 

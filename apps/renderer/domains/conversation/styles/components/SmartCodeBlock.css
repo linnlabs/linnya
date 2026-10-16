@@ -46,7 +46,7 @@
   opacity: 0;
   transition:
     opacity var(--duration-medium) var(--ease-standard),
-    visibility 0s var(--ease-standard) 0.2s;
+    visibility 0s var(--ease-standard) var(--duration-medium);
 }
 
 .smart-code-block .copy-button {
@@ -109,7 +109,7 @@
   background-color: transparent;
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
@@ -125,7 +125,7 @@
   background-color: transparent;
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
 }
 

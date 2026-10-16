@@ -46,7 +46,7 @@
   min-width: min(360px, 80vw);
   max-width: 100%;
   min-height: 96px;
-  padding: var(--space-4) 18px;
+  padding: var(--space-4) var(--space-4);
   color: var(--color-text-muted);
   text-align: left;
   cursor: pointer;
@@ -81,7 +81,7 @@
 .image-block-vue-node-view .image-missing-placeholder__text {
   overflow-wrap: anywhere;
   font-size: var(--font-size-body);
-  line-height: 1.4;
+  line-height: var(--line-height-body);
 }
 
 .image-block-vue-node-view .resize-handle {
@@ -113,7 +113,7 @@
   opacity: 0;
   transition:
     opacity var(--duration-medium) var(--ease-standard),
-    visibility 0s var(--ease-standard) 0.2s;
+    visibility 0s var(--ease-standard) var(--duration-medium);
   backdrop-filter: blur(2px);
 }
 

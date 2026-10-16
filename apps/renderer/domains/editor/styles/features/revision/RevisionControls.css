@@ -27,7 +27,7 @@
 
 .revision-toolbar .btn-icon {
   flex-shrink: 0;
-  font-size: 16px;
+  font-size: 16px; /* scale-exempt: 按钮图标字形尺寸 */
 }
 
 .revision-toolbar .btn-text {
@@ -36,7 +36,7 @@
 
 .revision-mark-popup {
   position: fixed;
-  z-index: 10000;
+  z-index: var(--linnya-ui-layer-tooltip);
   display: flex;
   gap: var(--space-0-5);
   align-items: center;

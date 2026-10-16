@@ -73,7 +73,7 @@
   padding: 0 var(--space-1-5);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-caption);
-  line-height: 1.4;
+  line-height: var(--line-height-caption);
   color: var(--color-accent);
   background-color: var(--color-accent-bg);
   text-transform: uppercase;
@@ -85,7 +85,7 @@
   flex-grow: 1;
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-focus);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   padding: var(--space-0-5) var(--space-1-5);
   font-size: var(--font-size-body);
   outline: none;
@@ -99,7 +99,7 @@
 
 .tree-item-menu-wrapper {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--linnya-ui-layer-popover);
 }
 
 /* 菜单过渡动画（与 ProjectListView 一致） */

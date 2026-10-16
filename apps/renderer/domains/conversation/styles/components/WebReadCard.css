@@ -1,5 +1,5 @@
 .web-read-card {
-  padding: var(--space-1-5) var(--space-3) var(--space-2-5) 14px;
+  padding: var(--space-1-5) var(--space-3) var(--space-2-5) var(--space-3);
 }
 
 .web-read-card .wr-state {

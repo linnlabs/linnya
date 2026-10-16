@@ -157,7 +157,7 @@
   white-space: pre-wrap;                            /* 保留空白符和换行 */
   word-break: break-word;                           /* 长单词换行 */
   font-size: var(--font-size-body);                                 /* 更小的字体大小，从14px减少到13px */
-  line-height: 1.4;                                /* 调整行高以适应更小的字体 */
+  line-height: var(--line-height-body);                                /* 调整行高以适应更小的字体 */
   color: var(--annotation-panel-content-color);     /* 批注正文颜色由主题承接 */
   margin: 0;                                        /* 移除默认边距 */
 }
@@ -214,7 +214,7 @@
   border-radius: var(--radius-md);
   font-family: inherit;                            /* 继承父元素字体 */
   font-size: var(--font-size-body);                                 /* 与批注正文保持一致，从14px减少到13px */
-  line-height: 1.4;                                /* 与批注正文保持一致，从1.5调整到1.4 */
+  line-height: var(--line-height-body);                                /* 与批注正文保持一致，从1.5调整到1.4 */
   color: var(--annotation-panel-input-color);       /* 输入文字颜色 */
   background-color: var(--annotation-panel-input-bg); /* 背景色 */
   resize: none;                                     /* 禁用调整大小 */
@@ -479,7 +479,7 @@
 
 .annotation-reply-content {
   font-size: var(--font-size-body); /* 字体微调回 13px 与正文一致 */
-  line-height: 1.4;
+  line-height: var(--line-height-body);
   color: var(--annotation-panel-reply-content-color);
   word-break: break-word;
 }

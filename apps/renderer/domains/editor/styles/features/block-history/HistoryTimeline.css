@@ -61,7 +61,7 @@
   gap: var(--space-0-5);
   margin-top: var(--space-1);
   font-size: var(--font-size-caption);
-  line-height: 1.2;
+  line-height: var(--line-height-caption);
 }
 
 .history-timeline .node-version {
@@ -213,7 +213,7 @@
 
 .history-timeline .timeline-axis::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   background-color: var(--color-border-default);
   background-clip: content-box;
   transition: background-color var(--duration-medium) var(--ease-standard);

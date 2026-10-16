@@ -66,7 +66,7 @@
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  z-index: 1000;
+  z-index: var(--linnya-ui-layer-popover);
   display: inline-block;
   width: max-content;
   min-width: unset;

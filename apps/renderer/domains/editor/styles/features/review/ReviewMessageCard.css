@@ -44,7 +44,7 @@
 
 .review-message-card .message-text {
   font-size: var(--font-size-body);
-  line-height: 1.6;
+  line-height: var(--line-height-body);
   color: var(--color-text-primary);
   margin: 0;
   overflow-wrap: break-word;

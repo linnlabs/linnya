@@ -9,7 +9,7 @@
   --citation-popover-scrollbar-thumb: color-mix(in srgb, var(--color-text-primary) 20%, transparent);
 
   position: fixed;
-  z-index: 10000;
+  z-index: var(--linnya-ui-layer-tooltip);
   display: flex;
   flex-direction: column;
   max-height: 300px;
@@ -212,7 +212,7 @@
   background-color: transparent;
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   transition: background-color var(--duration-medium) var(--ease-standard);
 }
 

@@ -170,7 +170,7 @@
   grid-template-columns: 22px 22px;
   gap: var(--space-0-5);
   padding: var(--space-0-5);
-  border-radius: 7px;
+  border-radius: var(--radius-lg);
   background-color: var(--color-bg-subtle);
   --project-nav-indicator-x: 2px;
 
@@ -185,7 +185,7 @@
   left: 0;
   width: 22px;
   transform: translateX(var(--project-nav-indicator-x));
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   background-color: var(--color-bg-surface);
   box-shadow: 0 1px 2px var(--shadow-color-sm);
   z-index: 0;
@@ -202,7 +202,7 @@
   width: 22px;
   height: 22px;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--workspace-sidebar-muted-color);
   cursor: pointer;
@@ -288,7 +288,7 @@
 
 .project-create-menu-wrapper {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--linnya-ui-layer-popover);
 }
 
 .project-create-menu-wrapper .project-create-menu-options {
@@ -515,7 +515,7 @@
 
 .workspace-sidebar .project-setup-card {
   position: relative;
-  padding: 14px var(--space-3) 14px;
+  padding: var(--space-3) var(--space-3) var(--space-3);
   border-radius: var(--radius-lg);
   background-color: var(--color-bg-subtle);
   border: 1px solid var(--color-border-default);
@@ -559,7 +559,7 @@
 
 .workspace-sidebar .project-setup-badge {
   flex-shrink: 0;
-  padding: 3px var(--space-2);
+  padding: calc(var(--space-1) - 1px) var(--space-2);
   border-radius: var(--radius-full);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
@@ -689,7 +689,7 @@
 .asset-preview-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 3000;
+  z-index: var(--linnya-ui-layer-image-preview);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -734,7 +734,7 @@
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  font-size: 20px;
+  font-size: 20px; /* scale-exempt: 关闭图标字形尺寸 */
   line-height: 1;
 }
 
@@ -762,7 +762,7 @@
 
 .sidebar-asset-image-preview .sidebar-asset-preview-state {
   max-width: min(520px, calc(100vw - 48px));
-  padding: 14px var(--space-4);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--color-bg-surface);
   color: var(--color-text-secondary);
@@ -791,7 +791,7 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: var(--font-size-body);
-  line-height: 1.6;
+  line-height: var(--line-height-body);
   color: var(--color-text-primary);
   font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
 }

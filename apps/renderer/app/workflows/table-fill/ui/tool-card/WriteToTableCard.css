@@ -51,7 +51,7 @@
   border-radius: var(--radius-lg);
   padding: var(--space-2) var(--space-2-5);
   font-size: var(--font-size-footnote);
-  line-height: 1.6;
+  line-height: var(--line-height-footnote);
   color: var(--color-text-primary);
   white-space: pre-wrap;
   word-break: break-word;

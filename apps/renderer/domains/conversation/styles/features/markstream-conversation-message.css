@@ -89,7 +89,7 @@
   left: 2px;
   width: 3px;
   background-color: var(--color-border-default);
-  border-radius: 1.5px;
+  border-radius: var(--radius-xs);
   content: "";
 }
 

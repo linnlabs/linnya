@@ -73,7 +73,7 @@
   gap: var(--space-1-5);
   color: var(--color-text-placeholder);
   font-size: var(--font-size-footnote);
-  line-height: 1.4;
+  line-height: var(--line-height-footnote);
   white-space: nowrap;
 }
 
@@ -98,7 +98,7 @@
   min-height: 100%;
   color: var(--color-text-primary);
   font-size: var(--font-size-subtitle);
-  line-height: 1.6;
+  line-height: var(--line-height-subtitle);
   outline: none;
 }
 

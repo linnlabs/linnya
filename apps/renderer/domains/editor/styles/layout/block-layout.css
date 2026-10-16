@@ -225,7 +225,7 @@
 .root-block > .content::-webkit-scrollbar-thumb,
 .version-content > .content::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color, var(--color-border-default)); /* 使用主题变量 */
-  border-radius: 5px; /* 与 editor-shell 一致 */
+  border-radius: var(--radius-full); /* 与 editor-shell 一致 */
   transition: background-color var(--duration-medium) var(--ease-standard); /* 平滑过渡 */
   border: 2px solid transparent; /* 四周透明边框 */
   background-clip: content-box; /* 背景色只填充内容区域 */
@@ -374,11 +374,11 @@
   position: fixed;
   left: 0;
   height: 3px;
-  z-index: 9999;
+  z-index: var(--linnya-ui-layer-tooltip);
   pointer-events: none;
   opacity: 0;
   transition: opacity var(--duration-medium);
-  border-radius: 1.5px;
+  border-radius: var(--radius-xs);
   display: none; /* 默认不显示 */
 }
 

@@ -15,7 +15,7 @@
   color: var(--color-info-text);
   cursor: pointer;
   text-decoration: none;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   padding: 0 var(--space-0-5);
   display: inline-block;
   /* 中文说明：
@@ -38,7 +38,7 @@
    * - transition-delay: 60ms 用于过滤极短暂的鼠标划过（防抖）。
    */
   transition: background-color var(--duration-medium) var(--ease-standard), box-shadow var(--duration-medium) var(--ease-standard);
-  transition-delay: 60ms;
+  transition-delay: 60ms; /* scale-exempt: 防抖延迟，不是动效时长 */
   color: color-mix(in srgb, var(--color-info) 85%, var(--color-text-primary));
   background-color: color-mix(in srgb, var(--color-info-bg) 84%, var(--color-info));
   /* 中文说明：hover 时不使用“链接下划线”，保持引用 token 更像可点击标签 */

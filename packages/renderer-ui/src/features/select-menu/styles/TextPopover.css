@@ -31,7 +31,7 @@
 
 .text-popover .popover-content {
   font-size: var(--font-size-body);
-  line-height: 1.6;
+  line-height: var(--line-height-body);
   color: var(--color-text-primary);
 }
 
@@ -45,7 +45,7 @@
   top: 8px;
   right: 8px;
   padding: var(--space-1);
-  font-size: 16px;
+  font-size: 16px; /* scale-exempt: 关闭图标字形尺寸 */
   line-height: 1;
   color: var(--color-text-tertiary);
   cursor: pointer;

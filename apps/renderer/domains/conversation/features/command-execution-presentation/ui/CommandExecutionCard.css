@@ -18,7 +18,7 @@
   padding: var(--space-2-5) var(--space-3) 3px;
   color: var(--color-text-primary);
   font-size: var(--font-size-body);
-  line-height: 1.45;
+  line-height: var(--line-height-body);
 }
 
 .command-execution-card__prompt {
@@ -52,7 +52,7 @@
   scrollbar-width: thin;
   color: var(--color-text-secondary);
   font-size: var(--font-size-footnote);
-  line-height: 1.55;
+  line-height: var(--line-height-footnote);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -127,7 +127,7 @@
 .command-execution-card__duration {
   color: var(--color-text-tertiary);
   font-size: var(--font-size-caption);
-  line-height: 1.4;
+  line-height: var(--line-height-caption);
 }
 
 .command-execution-card__duration {

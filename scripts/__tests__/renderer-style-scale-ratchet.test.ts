@@ -93,4 +93,20 @@ describe('Renderer style scale ratchet', () => {
     expect(parseStyleScaleBaseline(formatStyleScaleBaseline(entries))).toEqual(entries);
     expect(() => parseStyleScaleBaseline('1\tSCALE-99-unknown\tapps/renderer/a.css')).toThrow('无效 baseline rule');
   });
+
+  it('有意取值不计入债务：相对字号、循环动画、版面尺寸、居中行高与 scale-exempt 标注', () => {
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('font-size', '0.85em'))).toEqual({});
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('font-size', '0.75rem'))).toEqual({ 'SCALE-01-font-size': 1 });
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('animation', 'spin 1s linear infinite'))).toEqual({});
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('animation', 'fade-in 0.4s ease-out'))).toEqual({
+      'SCALE-07-duration': 1,
+      'SCALE-08-easing': 1,
+    });
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('padding', '56px var(--space-4)'))).toEqual({});
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('padding', '36px'))).toEqual({ 'SCALE-05-spacing': 1 });
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('line-height', '28px'))).toEqual({});
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('line-height', '1.4'))).toEqual({ 'SCALE-03-line-height': 1 });
+    const source = '.a { font-size: 20px; /* scale-exempt: 图标字形尺寸 */ padding: 7px; }';
+    expect(Object.fromEntries(analyzeStyleScaleSource(source))).toEqual({ 'SCALE-05-spacing': 1 });
+  });
 });

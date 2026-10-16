@@ -74,7 +74,7 @@
   left: 0;
   color: var(--color-text-placeholder);
   font-size: var(--font-size-prose);
-  line-height: 1.6;
+  line-height: var(--line-height-prose);
   pointer-events: none;
 }
 
@@ -88,7 +88,7 @@
   min-height: 80px;
   color: var(--color-text-primary);
   font-size: var(--font-size-prose);
-  line-height: 1.6;
+  line-height: var(--line-height-prose);
   outline: none;
 }
 

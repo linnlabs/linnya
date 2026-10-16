@@ -99,7 +99,7 @@
   backdrop-filter: blur(2px);
   transition:
     opacity var(--duration-medium) var(--ease-standard),
-    visibility 0s var(--ease-standard) 0.2s;
+    visibility 0s var(--ease-standard) var(--duration-medium);
 }
 
 .image-renderer .image-container:hover .image-controls {
@@ -163,11 +163,11 @@
   color: var(--image-renderer-error);
   background-color: var(--image-renderer-error-bg);
   border: 1px solid color-mix(in srgb, var(--color-error) 35%, transparent);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
 }
 
 .image-renderer .error-icon {
-  font-size: 1.5rem;
+  font-size: 1.5rem; /* scale-exempt: 错误图标字形尺寸 */
 }
 
 .image-renderer .error-content h4 {
@@ -177,7 +177,7 @@
 
 .image-renderer .error-content p {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--font-size-prose);
 }
 
 .image-renderer .empty-state {
@@ -191,5 +191,5 @@
 }
 
 .image-renderer .empty-text {
-  font-size: 0.875rem;
+  font-size: var(--font-size-prose);
 }
