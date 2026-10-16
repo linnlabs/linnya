@@ -1,12 +1,13 @@
 /* apps/renderer/domains/settings/styles/components/AppearanceTab.css */
 /*
- * 主题选择是带名称的预览卡，而不是无标签色点：
- * 预览画布挂真实的 data-linnya-ui-theme，颜色直接取各主题 token，主题调整时预览自动同步。
+ * 主题选择：四张带名称的圆角预览卡（跟随系统 / 浅色 / 月白蓝 / 深色）。
+ * 预览是简洁抽象的白天、月白、夜晚插画，调色板见 tokens/theme-preview.css；
+ * 选中时在卡片外加一圈强调色，与表面之间留 2px 间隙。
  */
 
 .appearance-theme-selector {
   display: grid;
-  /* 与下方下拉框同列对齐；四个选项始终一行，不让「深色」单独掉到第二行。 */
+  /* 与下方下拉框同列对齐；四个选项始终一行。 */
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-3);
 }
@@ -14,38 +15,42 @@
 .appearance-theme-option {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--space-2);
   min-width: 0;
   padding: 0;
   color: var(--color-text-secondary);
-  text-align: left;
   cursor: pointer;
   background: none;
   border: none;
   border-radius: var(--radius-lg);
 }
 
-.appearance-theme-preview {
+.appearance-theme-tile {
   position: relative;
   display: block;
-  aspect-ratio: 16 / 10;
+  width: 100%;
+  aspect-ratio: 96 / 60;
   overflow: hidden;
   border-radius: var(--radius-lg);
-  box-shadow: 0 0 0 1px var(--color-border-default);
+  box-shadow: 0 0 0 1px var(--color-border-light);
   transition: box-shadow var(--duration-short) var(--ease-standard);
 }
 
-.appearance-theme-option:hover .appearance-theme-preview {
+.appearance-theme-option:hover .appearance-theme-tile {
   box-shadow: 0 0 0 1px var(--color-border-hover);
 }
 
-.appearance-theme-option.is-active .appearance-theme-preview {
-  box-shadow: 0 0 0 2px var(--color-accent);
+.appearance-theme-option.is-active .appearance-theme-tile {
+  box-shadow:
+    0 0 0 2px var(--color-bg-surface),
+    0 0 0 4px var(--color-accent);
 }
 
 .appearance-theme-label {
   font-size: var(--font-size-footnote);
   line-height: var(--line-height-footnote);
+  color: var(--color-text-tertiary);
   transition: color var(--duration-short) var(--ease-standard);
 }
 
@@ -58,82 +63,31 @@
   color: var(--color-text-primary);
 }
 
-/* --- 预览画布：侧栏 + 正文 + 输入框的缩略窗口 --- */
+/* --- 插画 --- */
 
-.appearance-theme-canvas {
+.appearance-theme-tile .theme-preview-art {
   position: absolute;
   inset: 0;
-  display: flex;
-  background-color: var(--color-bg-default);
-}
-
-/* 跟随系统：第二张画布只露出右半边。 */
-.appearance-theme-canvas + .appearance-theme-canvas {
-  clip-path: inset(0 0 0 50%);
-}
-
-.appearance-theme-canvas-sidebar {
-  display: flex;
-  flex: 0 0 32%;
-  flex-direction: column;
-  gap: var(--space-1-5);
-  padding: var(--space-2) var(--space-1-5);
-  background-color: var(--color-bg-sidebar);
-  border-right: 1px solid var(--color-border-sidebar);
-}
-
-.appearance-theme-canvas-main {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--space-1-5);
-  min-width: 0;
-  padding: var(--space-2-5) var(--space-2);
-}
-
-.appearance-theme-canvas-line {
   display: block;
-  width: 80%;
-  height: 4px;
-  background-color: var(--color-text-muted);
-  border-radius: var(--radius-full);
-  opacity: 0.45;
-}
-
-.appearance-theme-canvas-line.is-short {
-  width: 55%;
-}
-
-.appearance-theme-canvas-line.is-strong {
-  width: 60%;
-  background-color: var(--color-text-primary);
-  opacity: 0.8;
-}
-
-.appearance-theme-canvas-sidebar .appearance-theme-canvas-line.is-active {
   width: 100%;
-  height: 8px;
-  background-color: var(--color-bg-active);
-  opacity: 1;
+  height: 100%;
 }
 
-.appearance-theme-canvas-input {
-  position: relative;
-  display: block;
-  height: 14px;
-  margin-top: auto;
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-sm);
+/* 跟随系统：夜晚只露出右下半边，沿对角线与白天拼合。 */
+.appearance-theme-tile .theme-preview-art.is-split-night {
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
 }
 
-.appearance-theme-canvas-send {
-  position: absolute;
-  top: 50%;
-  right: 3px;
-  width: 6px;
-  height: 6px;
-  background-color: var(--color-accent);
-  border-radius: var(--radius-full);
-  transform: translateY(-50%);
-}
+.theme-preview-art .pv-day-sky { fill: var(--pv-day-sky); }
+.theme-preview-art .pv-sun { fill: var(--pv-sun); }
+.theme-preview-art .pv-cloud { fill: var(--pv-cloud); }
+.theme-preview-art .pv-cloud--far { opacity: 0.85; }
+.theme-preview-art .pv-cloud--moon { opacity: 0.9; }
+.theme-preview-art .pv-moon-sky { fill: var(--pv-moon-sky); }
+.theme-preview-art .pv-moon-white { fill: var(--pv-moon-white); }
+.theme-preview-art .pv-night-sky { fill: var(--pv-night-sky); }
+.theme-preview-art .pv-moon-warm { fill: var(--pv-moon-warm); }
+.theme-preview-art .pv-star--moon { fill: var(--pv-moon-white); }
+.theme-preview-art .pv-star--1 { fill: var(--pv-star-1); }
+.theme-preview-art .pv-star--2 { fill: var(--pv-star-2); }
+.theme-preview-art .pv-star--3 { fill: var(--pv-star-3); }

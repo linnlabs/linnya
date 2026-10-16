@@ -134,10 +134,13 @@
   --color-accent-solid: var(--color-brand-600);
   --color-accent-solid-hover: var(--color-brand-700);
 
-  /* Shadow：深底需要更重的投影才能表达层级。 */
-  --shadow-color-xs: rgba(0, 0, 0, 0.2);
-  --shadow-color-sm: rgba(0, 0, 0, 0.28);
-  --shadow-color-md: rgba(0, 0, 0, 0.36);
+  /*
+   * Shadow：xs / sm / md 服务开关、卡片等小元素，与浅色保持同一强度，不能随主题加重；
+   * 只有浮层用的 lg / xl 在深底上加重，才能表达层级。
+   */
+  --shadow-color-xs: rgba(0, 0, 0, 0.05);
+  --shadow-color-sm: rgba(0, 0, 0, 0.1);
+  --shadow-color-md: rgba(0, 0, 0, 0.15);
   --shadow-color-lg: rgba(0, 0, 0, 0.48);
   --shadow-color-xl: rgba(0, 0, 0, 0.6);
 }
