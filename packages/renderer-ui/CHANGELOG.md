@@ -11,6 +11,8 @@
 - 设计规范补充颜色使用规则、对比度要求、行距规则、组件规范（按钮层级与组合、卡片、徽标）与当前限制。
 - 包内状态文字改用功能色 `*-text`，在浅色与暗色下均满足 AA。
 - 三套主题新增 `--color-accent-solid` / `--color-accent-solid-hover`，作为反色文字所在的强调实底；暗色取更深一档，`BaseButton` primary 白字对比度从 3.1:1 提升到 5.2:1，浅色与 moon-blue 不变。
+- 三套主题新增 `--color-bg-inverse` / `--color-bg-inverse-hover` / `--color-text-inverse`：浅色为深底白字，暗色反转为浅底深字，修正暗色下禁用态比可用态更亮的问题。
+- `TimePicker` 主操作改用 `--color-text-on-accent` 与 `--color-accent-solid(-hover)`；样式刻度棘轮新增 `COLOR-01-base-palette` 规则，业务 CSS 只剩有意保留的基础色阶引用。
 - `--color-info-text` 调整为浅色 / moon-blue `blue-600`、暗色 `blue-350`，比基础 info 稍深（暗色稍亮）；outline info tone 文字改用它，浅色从 3.3:1 提升到 5.2:1，暗色从 4.1:1 提升到 6.7:1，悬停时同样满足 AA。
 - 新增刻度 token：角色字阶 `--font-size-{caption,footnote,body,prose,subtitle,title,headline,display}` 与成对行高、三档 `--font-weight-*`、4px 网格 `--space-*`、`--radius-xl` / `--radius-2xl`、`--border-width-hairline`、`--duration-*` 与 `--ease-*`、焦点环 `--focus-ring-width` / `--focus-ring-offset`；三套主题新增 `--color-focus-ring` 与功能色文字 `--color-{success,error,warning,info}-text`。
 - `--spacing-*` 与 `--transition-*` 改为指向新刻度的兼容别名，数值不变；已发布插件无需重建，仓内新代码改用新 token，下一个 major 删除旧名。

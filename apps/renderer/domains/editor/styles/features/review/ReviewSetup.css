@@ -292,7 +292,7 @@
 }
 
 .review-setup-view .field-control:hover::-webkit-scrollbar-thumb {
-  background-color: color-mix(in srgb, var(--color-gray-500) 40%, transparent);
+  background-color: var(--scrollbar-thumb-color);
 }
 
 .review-setup-view .field-control::-webkit-scrollbar-corner {

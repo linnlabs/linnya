@@ -40,7 +40,20 @@ describe('Renderer style scale ratchet', () => {
     });
   });
 
-  it('自定义属性、选择器与注释不参与统计', () => {
+  it('基础色阶在属性与自定义属性中都计数，语义 token 与黑白遮罩不计数', () => {
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('color', 'var(--color-red-400)'))).toEqual({
+      'COLOR-01-base-palette': 1,
+    });
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('--local-bg', 'var(--color-gray-850)'))).toEqual({
+      'COLOR-01-base-palette': 1,
+    });
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('color', 'var(--color-error-text)'))).toEqual({});
+    expect(
+      Object.fromEntries(analyzeStyleScaleDeclaration('background', 'color-mix(in srgb, var(--color-black) 50%, transparent)')),
+    ).toEqual({});
+  });
+
+  it('自定义属性、选择器与注释不参与刻度统计', () => {
     const source = [
       '/* font-size: 99px */',
       '.a:hover { --local-gap: 12px; color: var(--color-text-primary); }',

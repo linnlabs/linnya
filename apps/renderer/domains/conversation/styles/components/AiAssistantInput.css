@@ -262,12 +262,12 @@
 }
 
 .ai-assistant-input .input-editor .ai-assistant-tiptap-editor::-webkit-scrollbar-thumb {
-  background: var(--color-gray-300);
+  background: var(--scrollbar-thumb-color);
   border-radius: 3px;
 }
 
 .ai-assistant-input .input-editor .ai-assistant-tiptap-editor::-webkit-scrollbar-thumb:hover {
-  background: var(--color-gray-400);
+  background: var(--scrollbar-thumb-hover-color);
 }
 
 .ai-assistant-input .input-editor .ai-assistant-tiptap-editor.ProseMirror-focused {

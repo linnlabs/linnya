@@ -76,12 +76,14 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 | 文字 | 2.2 的文字 token；状态文字用 `--color-*-text` | 功能基础色、`opacity` 降级 |
 | 边框与分隔线 | `--color-border-*` | 用文字色或品牌色阶充当中性边框 |
 | 主操作实底（反色文字） | `--color-accent-solid`、`--color-accent-solid-hover` 配 `--color-text-on-accent` | 把 `--color-accent` 当白字底色 |
+| 克制的高对比按钮（发送、确认编辑） | `--color-bg-inverse`、`--color-bg-inverse-hover` 配 `--color-text-inverse`；浅色为深底白字，暗色为浅底深字 | 固定深灰底配白字（暗色下禁用态会比可用态更亮） |
+| 滚动条 | `--scrollbar-thumb-color`、`--scrollbar-thumb-hover-color`、`--scrollbar-track-color` | 固定灰阶 |
 | 选中、焦点、强调文字与描边 | `--color-accent`、`--color-accent-bg*`、`--color-focus-ring` | 直接引用 `--color-brand-*` |
 | 品牌色浅底（推荐、已选择） | `--color-accent-bg`、`--color-accent-bg-subtle` | 自行用 `color-mix` 调一个新的绿 |
 | 状态提示条、徽标 | `--color-*-bg` 配 `--color-*-text`，描边或图标用基础色 | 浅色底配基础色文字 |
 | 用户选择的内容颜色、语法高亮 | 所属 domain 的内容色 token | 把内容色上移为通用 token |
 
-基础色阶（`--color-gray-*`、`--color-red-*` 等）只在 token 层使用：它们不随主题切换，业务 CSS 直接引用会在暗色下出现亮底或看不清的文字。主题预览色块等必须展示固定颜色的场景是唯一例外，并应在样式旁注明原因。
+基础色阶（`--color-gray-*`、`--color-red-*` 等）只在 token 层使用：它们不随主题切换，业务 CSS 直接引用会在暗色下出现亮底或看不清的文字。主题预览色块、调试面板、刻意固定的深色代码面板与品牌标识色是仅有的例外，并应在样式旁注明原因。遮罩、投影和固定深色蒙层上的文字可以使用 `--color-black` / `--color-white`，因为它们在所有主题下语义相同。
 
 ### 2.7 对比度
 
@@ -276,7 +278,7 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 
 ## 12. 刻度棘轮
 
-`pnpm run guard:renderer-style-scale` 扫描 `apps/renderer` 与 `packages/renderer-ui/src` 的 CSS（token owner 文件除外），统计绕过 token 的写死值：
+`pnpm run guard:renderer-style-scale` 扫描 `apps/renderer` 与 `packages/renderer-ui/src` 的 CSS（token owner 文件除外），统计绕过 token 的写死值与基础色阶引用：
 
 | 规则 | 统计内容 |
 | --- | --- |
@@ -289,6 +291,7 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 | `SCALE-07-duration` | 过渡与动画中的非零时长 |
 | `SCALE-08-easing` | `ease` 系列关键字与 `cubic-bezier()` |
 | `SCALE-09-legacy-alias` | 旧别名 `--spacing-*` 与 `--transition-*` |
+| `COLOR-01-base-palette` | 引用 `--color-gray-*`、`--color-red-*`、`--color-blue-*`、`--color-yellow-*`、`--color-brand-*` 与 `--color-dark-*` 基础色阶（自定义属性定义中同样统计） |
 
 每个文件每条规则的数量记录在 `.baseline/renderer-style-scale.txt`，只允许减少：新增写死值会让 `pnpm run lint:style` 失败；减少后运行 `pnpm run guard:renderer-style-scale:update` 收紧基线。自定义属性的定义不在统计范围内，局部变量如果表达刻度值，应从 token 派生。
 
@@ -301,5 +304,5 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 
 ## 14. 当前限制
 
-- 部分业务 CSS 仍直接引用基础色阶或带有不在刻度上的值，由刻度棘轮和代码评审逐步收敛。
+- 部分业务 CSS 仍带有不在刻度上的值，由刻度棘轮和代码评审逐步收敛；基础色阶引用只剩第 2.6 节列出的有意例外。
 - 按下态（active）只持续很短时间，outline info tone 按下时文字对比度约 3.8～4:1，未计入第 2.7 节的要求。

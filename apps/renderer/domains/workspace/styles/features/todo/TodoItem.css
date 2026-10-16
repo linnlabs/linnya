@@ -77,16 +77,16 @@
 }
 
 .todo-sidebar .todo-item .priority-high {
-  background-color: var(--color-red-100);
-  color: var(--color-red-400);
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
 }
 .todo-sidebar .todo-item .priority-medium {
-  background-color: var(--color-yellow-100);
-  color: var(--color-yellow-700);
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 .todo-sidebar .todo-item .priority-low {
-  background-color: var(--color-blue-100);
-  color: var(--color-blue-700);
+  background-color: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .todo-sidebar .todo-item .tag-badge {
@@ -111,18 +111,18 @@
 }
 
 .todo-sidebar .todo-item .date-badge.date-tomorrow {
-  background-color: var(--color-yellow-100);
-  color: var(--color-yellow-700);
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .todo-sidebar .todo-item .date-badge.date-overdue {
-  background-color: var(--color-red-100);
-  color: var(--color-red-500);
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
 }
 
 .todo-sidebar .todo-item .date-badge.date-upcoming {
-  background-color: var(--color-blue-50);
-  color: var(--color-blue-700);
+  background-color: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .todo-sidebar .todo-item .date-badge .date-icon {
@@ -156,6 +156,6 @@
 }
 
 .todo-sidebar .todo-item .delete-button:hover {
-  background-color: var(--color-red-100);
+  background-color: var(--color-error-bg);
   color: var(--color-text-tertiary);
 }

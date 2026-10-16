@@ -1,8 +1,8 @@
 .user-message-container {
   --user-message-action-muted-color: var(--color-text-muted);
-  --user-message-scrollbar-thumb: var(--color-gray-300);
-  --user-message-scrollbar-thumb-hover: var(--color-gray-421);
-  --user-message-save-button-bg: var(--color-gray-725);
+  --user-message-scrollbar-thumb: var(--scrollbar-thumb-color);
+  --user-message-scrollbar-thumb-hover: var(--scrollbar-thumb-hover-color);
+  --user-message-save-button-bg: var(--color-bg-inverse);
   --user-message-cancel-hover-bg: var(--color-bg-hover-light);
 
   width: 100%;
@@ -207,7 +207,7 @@
 
 .user-message-container .edit-button.save {
   background-color: var(--user-message-save-button-bg);
-  color: var(--color-white);
+  color: var(--color-text-inverse);
 }
 
 .user-message-container .edit-button.save:hover {

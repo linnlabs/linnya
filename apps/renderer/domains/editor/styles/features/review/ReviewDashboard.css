@@ -81,7 +81,7 @@
   transform: translateX(var(--indicator-x));
   border-radius: var(--radius-sm); /* 按钮圆角矩形 */
   background: var(--color-bg-surface);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-gray-900) 12%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-black) 12%, transparent);
   z-index: 0;
   transition:
     transform var(--duration-long) var(--ease-enter),

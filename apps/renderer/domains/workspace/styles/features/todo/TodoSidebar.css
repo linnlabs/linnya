@@ -253,11 +253,11 @@
 }
 
 .todo-sidebar .danger-dot {
-  background-color: var(--color-red-400);
+  background-color: var(--color-error);
 }
 
 .todo-sidebar .muted-dot {
-  background-color: var(--color-blue-500);
+  background-color: var(--color-info);
 }
 
 .todo-sidebar .todo-list {

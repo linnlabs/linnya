@@ -395,7 +395,7 @@
   transform: translateY(-50%);
   width: 14px;
   height: 14px;
-  color: var(--color-gray-400);
+  color: var(--color-text-placeholder);
   transition: transform var(--duration-medium) var(--ease-standard);
   pointer-events: none;
 }
@@ -423,8 +423,8 @@
   height: 22px;
   border: none;
   border-radius: var(--radius-md);
-  background-color: var(--color-gray-700);
-  color: var(--color-white);
+  background-color: var(--color-bg-inverse);
+  color: var(--color-text-inverse);
   cursor: pointer;
   transition: none;
   padding: 0;
@@ -440,7 +440,7 @@
 }
 
 .ai-assistant-input-footer .send-button:hover:not(.disabled) {
-  background-color: color-mix(in srgb, var(--color-gray-700) 88%, var(--color-blue-900));
+  background-color: var(--color-bg-inverse-hover);
 }
 
 .ai-assistant-input-footer .send-button.disabled {
@@ -449,11 +449,11 @@
 }
 
 .ai-assistant-input-footer .send-button:has(.run-control-icon) {
-  background-color: color-mix(in srgb, var(--color-gray-700) 88%, var(--color-blue-900));
+  background-color: var(--color-bg-inverse-hover);
 }
 
 .ai-assistant-input-footer .send-button:has(.run-control-icon):hover {
-  background-color: color-mix(in srgb, var(--color-gray-700) 88%, var(--color-blue-900));
+  background-color: var(--color-bg-inverse-hover);
 }
 
 .ai-assistant-input-footer .send-icon,

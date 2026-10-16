@@ -11,7 +11,7 @@
   z-index: 100; 
   background-color: var(--color-bg-default);
   padding: var(--space-1) var(--space-2-5); 
-  border-bottom: 0px solid var(--color-gray-100); 
+  border-bottom: 0px solid var(--color-border-light);
   pointer-events: auto; 
   /* 使其内容居中 */
   display: flex;
@@ -161,16 +161,6 @@
 .theme-toggle-button span {
   display: inline-block; /* 让 span 可以设置大小 */
   line-height: 1; /* 确保图标垂直居中 */
-}
-
-/* 调试按钮特殊样式（如果需要） */
-.debug-button {
-  background-color: var(--color-red-350); /* 调试入口需要显眼，但仍使用基础色阶。 */
-  color: var(--color-white);
-}
-
-.debug-button:hover {
-  background-color: var(--color-red-400);
 }
 
 /* 加粗、斜体按钮内图标/文字样式 */

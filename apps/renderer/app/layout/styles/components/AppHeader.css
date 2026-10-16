@@ -438,11 +438,11 @@
 
 /* Windows 系统关闭按钮沿用危险操作语义色，避免 app layout 层保留平台色硬编码。 */
 .app-header-right .windows-controls .close-button:hover {
-  color: var(--color-white);
+  color: var(--color-text-on-accent);
   background-color: var(--app-header-window-close-bg);
 }
 
 .app-header-right .windows-controls .close-button:active {
-  color: var(--color-white);
+  color: var(--color-text-on-accent);
   background-color: var(--app-header-window-close-bg-active);
 }

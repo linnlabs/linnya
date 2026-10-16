@@ -170,41 +170,41 @@
 
 /* Use darker shades on hover for active tags */
 .todo-sidebar .create-todo-card .priority-tag.priority-low.is-active:hover {
-  background-color: var(--color-blue-200);
+  background-color: color-mix(in srgb, var(--color-info-bg) 80%, var(--color-info));
 }
 .todo-sidebar .create-todo-card .priority-tag.priority-medium.is-active:hover {
-  background-color: var(--color-yellow-200);
+  background-color: color-mix(in srgb, var(--color-warning-bg) 80%, var(--color-warning));
 }
 .todo-sidebar .create-todo-card .priority-tag.priority-high.is-active:hover {
-  background-color: var(--color-red-200);
+  background-color: color-mix(in srgb, var(--color-error-bg) 80%, var(--color-error));
 }
 
 /* Tag colors from TodoItem.vue */
 .todo-sidebar .create-todo-card .priority-tag.priority-low {
-  color: var(--color-blue-700);
-  border-color: var(--color-blue-100);
+  color: var(--color-info-text);
+  border-color: color-mix(in srgb, var(--color-info) 30%, transparent);
 }
 
 .todo-sidebar .create-todo-card .priority-tag.priority-medium {
-  color: var(--color-yellow-700);
-  border-color: var(--color-yellow-100);
+  color: var(--color-warning-text);
+  border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
 }
 
 .todo-sidebar .create-todo-card .priority-tag.priority-high {
-  color: var(--color-red-400);
-  border-color: var(--color-red-100);
+  color: var(--color-error-text);
+  border-color: color-mix(in srgb, var(--color-error) 30%, transparent);
 }
 
 .todo-sidebar .create-todo-card .priority-tag.priority-low.is-active {
-  background-color: var(--color-blue-100);
+  background-color: var(--color-info-bg);
 }
 
 .todo-sidebar .create-todo-card .priority-tag.priority-medium.is-active {
-  background-color: var(--color-yellow-100);
+  background-color: var(--color-warning-bg);
 }
 
 .todo-sidebar .create-todo-card .priority-tag.priority-high.is-active {
-  background-color: var(--color-red-100);
+  background-color: var(--color-error-bg);
 }
 
 

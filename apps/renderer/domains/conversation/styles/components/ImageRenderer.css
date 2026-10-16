@@ -14,7 +14,7 @@
   min-height: 12rem;
   padding: 2rem;
   text-align: center;
-  background-color: var(--color-gray-50);
+  background-color: var(--color-bg-subtle);
   border-radius: var(--radius-md);
 }
 
@@ -30,7 +30,7 @@
   display: inline-block;
   max-width: 100%;
   overflow: hidden;
-  background-color: var(--color-gray-100);
+  background-color: var(--color-bg-subtle);
   border-radius: var(--radius-md);
 }
 
@@ -162,7 +162,7 @@
   padding: 1rem;
   color: var(--image-renderer-error);
   background-color: var(--image-renderer-error-bg);
-  border: 1px solid var(--color-red-200);
+  border: 1px solid color-mix(in srgb, var(--color-error) 35%, transparent);
   border-radius: 0.5rem;
 }
 

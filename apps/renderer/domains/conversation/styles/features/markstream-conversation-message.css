@@ -11,7 +11,7 @@
   --markstream-message-subtle-bg: var(--color-bg-subtle);
   --markstream-message-accent: var(--color-accent);
   --markstream-message-accent-hover: var(--color-accent-hover);
-  --markstream-message-inline-code-bg: color-mix(in srgb, var(--color-gray-475) 12%, transparent);
+  --markstream-message-inline-code-bg: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
   --markstream-message-link-hover-bg: color-mix(in srgb, var(--markstream-message-accent) 10%, transparent);
   --markstream-message-link-active-bg: color-mix(in srgb, var(--markstream-message-accent) 14%, transparent);
   --markstream-message-link-focus-ring: color-mix(in srgb, var(--markstream-message-accent) 35%, transparent);

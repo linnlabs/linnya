@@ -143,12 +143,12 @@
 }
 
 .time-root .time-action-button.primary {
-  color: var(--color-white);
-  background-color: var(--color-accent);
+  color: var(--color-text-on-accent);
+  background-color: var(--color-accent-solid);
 }
 
 .time-root .time-action-button.primary:hover {
-  background-color: var(--color-accent-hover);
+  background-color: var(--color-accent-solid-hover);
 }
 
 .time-root .time-fade-enter-active,

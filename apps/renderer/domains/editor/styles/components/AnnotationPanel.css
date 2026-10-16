@@ -14,7 +14,7 @@
  * 作用：定义面板的基础视觉外观 - Notion卡片风格
  */
 .annotation-panel {
-  --annotation-ai-action-color: color-mix(in srgb, var(--color-blue-600) 70%, var(--color-red-350));
+  --annotation-ai-action-color: color-mix(in srgb, var(--color-info-text) 70%, var(--color-error));
 
   position: absolute;
   z-index: 1000;
@@ -291,7 +291,7 @@
 /* 已解决状态下的解决图标按钮 */
 .resolve-icon.is-resolved {
   background-color: var(--color-success);
-  color: var(--color-white);
+  color: var(--color-text-on-accent);
 }
 
 /* 删除图标按钮 */

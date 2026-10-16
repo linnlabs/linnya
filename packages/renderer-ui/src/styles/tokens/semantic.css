@@ -17,6 +17,9 @@
   --color-bg-active-subtle: color-mix(in srgb, var(--color-black) 7%, transparent);
   --color-bg-active-control-hover: var(--color-gray-250);
   --color-bg-selection: color-mix(in srgb, var(--color-brand-400) 6%, transparent);
+  /* 反色实底：发送、确认编辑等需要比主操作更克制的高对比按钮；与 --color-text-inverse 成对使用。 */
+  --color-bg-inverse: var(--color-gray-700);
+  --color-bg-inverse-hover: color-mix(in srgb, var(--color-gray-700) 88%, var(--color-blue-900));
 
   /* Text */
   --color-text-primary: var(--color-gray-900);
@@ -29,6 +32,7 @@
   --color-text-selection: color-mix(in srgb, var(--color-brand-300) 30%, transparent);
   --color-text-heading-meta: var(--color-gray-421);
   --color-text-on-accent: var(--color-white);
+  --color-text-inverse: var(--color-white);
 
   /* Border */
   --color-border-default: var(--color-gray-300);
@@ -80,6 +84,9 @@
   --color-bg-active-subtle: color-mix(in srgb, var(--color-white) 5%, transparent);
   --color-bg-active-control-hover: var(--color-gray-700);
   --color-bg-selection: color-mix(in srgb, var(--color-brand-400) 6%, transparent);
+  /* 暗色下反色实底改为浅色，禁用态（muted）才会比可用态更暗。 */
+  --color-bg-inverse: var(--color-gray-150);
+  --color-bg-inverse-hover: var(--color-gray-50);
 
   /* Text：与浅色同序递减；primary 不用纯白，减少深底光晕。 */
   --color-text-primary: var(--color-gray-150);
@@ -92,6 +99,7 @@
   --color-text-selection: color-mix(in srgb, var(--color-brand-300) 30%, transparent);
   --color-text-heading-meta: var(--color-gray-421);
   --color-text-on-accent: var(--color-white);
+  --color-text-inverse: var(--color-gray-900);
 
   /* Border：用白色透明度叠加，任何一级表面上都保持同样的可见度。 */
   --color-border-default: color-mix(in srgb, var(--color-white) 16%, transparent);
@@ -142,6 +150,8 @@
   --color-bg-active-subtle: color-mix(in srgb, var(--color-blue-300) 10%, transparent);
   --color-bg-active-control-hover: color-mix(in srgb, var(--color-blue-125) 60%, var(--color-white));
   --color-bg-selection: color-mix(in srgb, var(--color-blue-300) 20%, transparent);
+  --color-bg-inverse: var(--color-gray-700);
+  --color-bg-inverse-hover: color-mix(in srgb, var(--color-gray-700) 88%, var(--color-blue-900));
 
   /* Text */
   --color-text-primary: color-mix(in srgb, var(--color-blue-900) 36%, var(--color-gray-900));
@@ -154,6 +164,7 @@
   --color-text-selection: color-mix(in srgb, var(--color-blue-300) 34%, transparent);
   --color-text-heading-meta: color-mix(in srgb, var(--color-blue-700) 28%, var(--color-gray-421));
   --color-text-on-accent: var(--color-white);
+  --color-text-inverse: var(--color-white);
 
   /* Border */
   --color-border-default: color-mix(in srgb, var(--color-blue-150) 48%, var(--color-gray-200));

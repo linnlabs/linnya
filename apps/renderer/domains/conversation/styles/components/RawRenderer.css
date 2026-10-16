@@ -33,6 +33,7 @@
   width: 100%;
 }
 
+/* JSON 区是刻意固定的深色代码面板，三套主题下保持同一外观。 */
 .raw-renderer .json-content {
   overflow: hidden;
   border-radius: var(--radius-lg);
@@ -59,7 +60,7 @@
   max-height: 256px;
   overflow-y: auto;
   padding: var(--space-4);
-  color: var(--color-gray-800);
+  color: var(--color-text-primary);
   font-size: var(--font-size-prose);
   overflow-wrap: break-word;
   scrollbar-width: thin;
@@ -71,7 +72,7 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4);
-  border: 1px solid var(--color-red-200);
+  border: 1px solid color-mix(in srgb, var(--color-error) 35%, transparent);
   border-radius: var(--radius-lg);
   background-color: var(--color-error-bg);
 }
@@ -83,14 +84,14 @@
 
 .raw-renderer .error-content h4 {
   margin: 0 0 var(--space-1);
-  color: var(--color-red-900);
+  color: var(--color-error-text);
   font-size: var(--font-size-prose);
   font-weight: var(--font-weight-medium);
 }
 
 .raw-renderer .error-content p {
   margin: 0;
-  color: var(--color-red-700);
+  color: var(--color-error-text);
   font-size: var(--font-size-prose);
 }
 
@@ -111,11 +112,11 @@
 
 .raw-renderer .text-display::-webkit-scrollbar-thumb {
   border-radius: var(--radius-sm);
-  background-color: var(--color-gray-300);
+  background-color: var(--scrollbar-thumb-color);
 }
 
 .raw-renderer .text-display::-webkit-scrollbar-track {
-  background-color: var(--color-gray-100);
+  background-color: var(--scrollbar-track-color);
 }
 
 @keyframes raw-renderer-spin {

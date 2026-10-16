@@ -145,7 +145,7 @@
 }
 
 .subrun-trace-panel .deep-trace__dot.is-error {
-  background-color: var(--color-red-400);
+  background-color: var(--color-error);
   opacity: 0.6;
 }
 

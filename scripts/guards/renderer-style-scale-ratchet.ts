@@ -1,7 +1,8 @@
 /**
  * Renderer 样式刻度棘轮。
  *
- * 设计规范要求字号、字重、行高、圆角、间距、层级与动效从 Renderer UI token 取值。
+ * 设计规范要求字号、字重、行高、圆角、间距、层级与动效从 Renderer UI token 取值，
+ * 颜色只引用随主题切换的语义 token，不直接引用基础色阶。
  * 存量写死值允许在迁移中减少，但任何文件都不能新增；token owner 文件不在扫描范围内。
  * 规则含义见 packages/renderer-ui/docs/design.md。
  */
@@ -42,7 +43,8 @@ export type StyleScaleRuleId =
   | 'SCALE-06-z-index'
   | 'SCALE-07-duration'
   | 'SCALE-08-easing'
-  | 'SCALE-09-legacy-alias';
+  | 'SCALE-09-legacy-alias'
+  | 'COLOR-01-base-palette';
 
 const STYLE_SCALE_RULE_IDS = new Set<StyleScaleRuleId>([
   'SCALE-01-font-size',
@@ -54,6 +56,7 @@ const STYLE_SCALE_RULE_IDS = new Set<StyleScaleRuleId>([
   'SCALE-07-duration',
   'SCALE-08-easing',
   'SCALE-09-legacy-alias',
+  'COLOR-01-base-palette',
 ]);
 
 export interface StyleScaleBaselineEntry {
@@ -71,6 +74,8 @@ const LENGTH_PATTERN = /(?<![\w-])-?(?:\d+\.?\d*|\.\d+)(?:px|rem|em)\b/gu;
 const PERCENT_OR_LENGTH_PATTERN = /(?<![\w-])-?(?:\d+\.?\d*|\.\d+)(?:px|rem|em|%)\b/gu;
 const DURATION_PATTERN = /(?<![\w-])(?:\d+\.?\d*|\.\d+)m?s\b/gu;
 const EASING_PATTERN = /cubic-bezier\(|(?<![\w-])ease(?:-in-out|-in|-out)?(?![\w-])/gu;
+/* 基础色阶不随主题切换；黑白只用于遮罩、投影与固定深色蒙层上的文字，不在此统计。 */
+const BASE_PALETTE_PATTERN = /var\(\s*--color-(?:(?:gray|red|blue|yellow|brand)-\d+|dark-(?:bg|surface|elevated))\s*\)/gu;
 const LEGACY_ALIAS_PATTERN = /var\(\s*--(?:spacing-(?:xxs|xs|sm|md|lg|xl|2xl)|transition-(?:fast|normal|slow))\b/gu;
 const SPACING_PROPERTY_PATTERN = /^(?:padding|margin)(?:-(?:top|right|bottom|left|inline|block)(?:-(?:start|end))?)?$|^(?:row-|column-)?gap$/u;
 const RADIUS_PROPERTY_PATTERN = /^border(?:-(?:top|bottom|start|end)-(?:left|right|start|end))?-radius$/u;
@@ -111,16 +116,20 @@ function isBeyondHairline(text: string): boolean {
   return Math.abs(Number.parseFloat(text)) > 1;
 }
 
-/** 统计单条声明违反刻度规则的次数；自定义属性由其定义者负责，不在此统计。 */
+/**
+ * 统计单条声明违反规则的次数。基础色阶在自定义属性定义里同样统计；
+ * 刻度类规则只看真实属性，自定义属性由其定义者负责。
+ */
 export function analyzeStyleScaleDeclaration(property: string, rawValue: string): Map<StyleScaleRuleId, number> {
   const counts = new Map<StyleScaleRuleId, number>();
   const name = property.trim().toLowerCase();
-  if (name.startsWith('--')) return counts;
-
   const value = rawValue.replace(/!important/giu, '').trim();
   const add = (ruleId: StyleScaleRuleId, count: number): void => {
     if (count > 0) counts.set(ruleId, (counts.get(ruleId) ?? 0) + count);
   };
+
+  add('COLOR-01-base-palette', countMatches(value, BASE_PALETTE_PATTERN));
+  if (name.startsWith('--')) return counts;
 
   add('SCALE-09-legacy-alias', countMatches(value, LEGACY_ALIAS_PATTERN));
   const literal = stripVarReferences(value);
@@ -286,7 +295,7 @@ function main(): void {
   const baselineFile = path.join(REPO_ROOT, BASELINE_PATH);
   const diff = runStyleScaleRatchet();
   if (diff.expanded.length > 0) {
-    console.error('✗ Renderer 样式新增了未使用 token 的刻度值：');
+    console.error('✗ Renderer 样式新增了未使用 token 的刻度值或基础色阶引用：');
     for (const entry of diff.expanded) console.error(`  + ${describeEntry(entry)}`);
     console.error('\n请改用 Renderer UI token，规则见 packages/renderer-ui/docs/design.md。');
     process.exitCode = 1;
