@@ -3,22 +3,45 @@
     <SettingsSection :title="settingsMessage('settings.appearance.theme.title')">
       <SettingsRow
         :label="settingsMessage('settings.appearance.theme.label')"
-        control="end"
-        align="center"
+        :hint="settingsMessage('settings.appearance.theme.description')"
       >
-        <div class="appearance-theme-selector">
+        <div
+          class="appearance-theme-selector"
+          role="radiogroup"
+          :aria-label="settingsMessage('settings.appearance.theme.label')"
+        >
           <button
             v-for="option in themeOptions"
             :key="option.value"
             type="button"
+            role="radio"
             class="appearance-theme-option"
             :class="{ 'is-active': uiStore.theme === option.value }"
-            :title="settingsMessage(option.labelKey)"
-            :aria-label="settingsMessage(option.labelKey)"
-            :aria-pressed="uiStore.theme === option.value"
+            :aria-checked="uiStore.theme === option.value"
             @click="setTheme(option.value)"
           >
-            <span :class="['appearance-theme-circle', option.circleClass]" />
+            <span class="appearance-theme-preview" aria-hidden="true">
+              <span
+                v-for="previewTheme in option.previewThemes"
+                :key="previewTheme"
+                class="appearance-theme-canvas"
+                :data-linnya-ui-theme="previewTheme"
+              >
+                <span class="appearance-theme-canvas-sidebar">
+                  <span class="appearance-theme-canvas-line is-active" />
+                  <span class="appearance-theme-canvas-line" />
+                  <span class="appearance-theme-canvas-line is-short" />
+                </span>
+                <span class="appearance-theme-canvas-main">
+                  <span class="appearance-theme-canvas-line is-strong" />
+                  <span class="appearance-theme-canvas-line" />
+                  <span class="appearance-theme-canvas-input">
+                    <span class="appearance-theme-canvas-send" />
+                  </span>
+                </span>
+              </span>
+            </span>
+            <span class="appearance-theme-label">{{ settingsMessage(option.labelKey) }}</span>
           </button>
         </div>
       </SettingsRow>
@@ -57,7 +80,7 @@
 
 <script setup lang="ts">
 import type { RendererUiTheme } from '@linnya/renderer-ui/theme';
-import { useUIStore } from '@/shared/stores/ui';
+import { useUIStore, type ThemePreference } from '@/shared/stores/ui';
 import { computed, ref } from 'vue';
 import { CustomSelect } from '@linnya/renderer-ui';
 import { useLocalization, type LinnyaLocale } from '@app/localization';
@@ -66,15 +89,17 @@ import { SettingsPage, SettingsRow, SettingsSection } from '../kit';
 import { useSettingsLocalization } from '../useSettingsLocalization';
 
 interface ThemeOption {
-  readonly value: RendererUiTheme;
+  readonly value: ThemePreference;
   readonly labelKey: SettingsMessageKey;
-  readonly circleClass: string;
+  /** 预览画布使用的真实主题；跟随系统左右各半展示浅色与深色。 */
+  readonly previewThemes: readonly RendererUiTheme[];
 }
 
 const themeOptions: readonly ThemeOption[] = [
-  { value: 'light', labelKey: 'settings.appearance.theme.light', circleClass: 'is-light' },
-  { value: 'moon-blue', labelKey: 'settings.appearance.theme.moonBlue', circleClass: 'is-moon-blue' },
-  { value: 'dark', labelKey: 'settings.appearance.theme.dark', circleClass: 'is-dark' },
+  { value: 'system', labelKey: 'settings.appearance.theme.system', previewThemes: ['light', 'dark'] },
+  { value: 'light', labelKey: 'settings.appearance.theme.light', previewThemes: ['light'] },
+  { value: 'moon-blue', labelKey: 'settings.appearance.theme.moonBlue', previewThemes: ['moon-blue'] },
+  { value: 'dark', labelKey: 'settings.appearance.theme.dark', previewThemes: ['dark'] },
 ];
 
 const uiStore = useUIStore();
@@ -97,7 +122,7 @@ const fontOptions = computed(() => [
   { value: 'source-han', text: settingsMessage('settings.appearance.font.sourceHan') },
 ]);
 
-const setTheme = (theme: RendererUiTheme) => {
+const setTheme = (theme: ThemePreference) => {
   uiStore.setTheme(theme);
 };
 </script>

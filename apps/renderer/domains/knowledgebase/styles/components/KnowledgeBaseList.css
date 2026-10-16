@@ -36,7 +36,9 @@
   border: 1px solid var(--color-border-light);
   background-color: var(--color-bg-surface);
   cursor: pointer;
-  transition: all var(--duration-medium) var(--ease-standard);
+  transition:
+    border-color var(--duration-medium) var(--ease-standard),
+    box-shadow var(--duration-medium) var(--ease-standard);
   outline: none;
   /* 多层级柔和阴影 - 默认态 */
   box-shadow:

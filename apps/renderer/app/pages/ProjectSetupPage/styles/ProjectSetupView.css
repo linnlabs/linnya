@@ -223,7 +223,9 @@
    ---------------------------------------- */
 .project-setup-view .error-slide-enter-active,
 .project-setup-view .error-slide-leave-active {
-  transition: all var(--duration-long) var(--ease-standard);
+  transition:
+    opacity var(--duration-long) var(--ease-standard),
+    transform var(--duration-long) var(--ease-standard);
 }
 
 .project-setup-view .error-slide-enter-from {

@@ -258,7 +258,11 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: all var(--duration-medium) var(--ease-standard);                       /* 过渡效果 */
+  /* 过渡效果 */
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    color var(--duration-medium) var(--ease-standard),
+    transform var(--duration-medium) var(--ease-standard);
   color: var(--color-text-secondary);             /* 默认图标颜色 */
 }
 

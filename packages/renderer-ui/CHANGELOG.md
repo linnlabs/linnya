@@ -19,6 +19,10 @@
 - `--spacing-*` 与 `--transition-*` 改为指向新刻度的兼容别名，数值不变；已发布插件无需重建，仓内新代码改用新 token，下一个 major 删除旧名。
 - `prefers-reduced-motion: reduce` 下 `--duration-*` 置为接近 0，经由时长 token（含旧 `--transition-*` 别名）的过渡对减少动态效果的用户立即完成。
 - 暗色主题修正层级：文字五级按对比度递减（primary 不再使用纯白，muted 从 1.4:1 提升到 5:1 以上）；边框改为透明白叠加，在任意表面上可见；按下/选中改为提亮；`--color-bg-elevated` 高于 surface；投影加深；`--color-accent-disabled` 改为暗化而非浅绿。浅色与 moon-blue 视觉不变。
+- `Modal` 标题改为 `subtitle` 字阶、semibold 与主文字色，不再使用比占位文字还浅的元信息灰；关闭按钮静止时退后一级、悬停提亮，形状固定为圆角方块（不再在悬停时由圆形变方），并显式声明 `type="button"`。props、插槽与事件不变。
+- 三套主题在根元素声明 `color-scheme`（light / moon-blue 为 light，dark 为 dark），原生滚动条、表单控件与下拉弹层随主题切换明暗。
+- `Modal`、`DraggablePanel`、`ColorPickerPanel`、`CustomCheckbox`、`CustomRadio` 的过渡改为显式属性，不再使用 `transition: all`；样式刻度棘轮新增 `MOTION-01-transition-all`。
+- 设计规范补充主题与系统外观（含“跟随系统”只解析为 light / dark）、`transition` 写法、弹窗与列表行规则。
 - 修复 CustomSelect 长普通子菜单超出窗口且末项不可达：两级列表限制可用尺寸并原生滚动，父菜单滚动及窗口 resize 时更新锚点或关闭不可见子层。
 - 子菜单键盘焦点在显示后交接；关闭、切换或卸载取消旧请求，hover 保留当前焦点。Teleport 子层点击保留内部菜单归属，避免原生 Enter/Space 打开二级后被外部点击处理关闭。公开 API、选择事件和面板／颜色内容布局不变，属于兼容实现修正，随下次 Host 装配生效。
 

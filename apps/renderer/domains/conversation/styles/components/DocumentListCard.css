@@ -33,7 +33,7 @@
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-md);
   background-color: transparent;
-  transition: all var(--duration-short) var(--ease-standard);
+  transition: background-color var(--duration-short) var(--ease-standard);
   cursor: default;
   color: var(--color-text-primary);
 }

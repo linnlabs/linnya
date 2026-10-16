@@ -36,7 +36,9 @@
   height: 28px;
   border-radius: 50%;
   color: var(--color-text-primary);
-  transition: all var(--duration-medium);
+  transition:
+    background-color var(--duration-medium),
+    border-radius var(--duration-medium);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -153,7 +155,10 @@
   font-weight: var(--font-weight-medium);
   cursor: pointer;
   border: 1px solid transparent;
-  transition: all var(--duration-medium);
+  transition:
+    background-color var(--duration-medium),
+    border-color var(--duration-medium),
+    color var(--duration-medium);
   background-color: var(--color-bg-surface);
 }
 
@@ -230,7 +235,9 @@
   border: none;
   color: var(--color-text-tertiary);
   cursor: pointer;
-  transition: all var(--duration-medium);
+  transition:
+    background-color var(--duration-medium),
+    color var(--duration-medium);
   flex-shrink: 0;
 }
 

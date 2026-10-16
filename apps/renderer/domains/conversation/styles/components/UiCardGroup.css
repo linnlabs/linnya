@@ -11,7 +11,9 @@
 
 .ui-card-group .ui-card-group-expand-enter-active,
 .ui-card-group .ui-card-group-expand-leave-active {
-  transition: all var(--duration-medium) var(--ease-standard);
+  transition:
+    height var(--duration-medium) var(--ease-standard),
+    opacity var(--duration-medium) var(--ease-standard);
   overflow: hidden;
 }
 
@@ -67,7 +69,9 @@
   position: absolute;
   opacity: 1;
   transform: scale(1);
-  transition: all var(--duration-medium) var(--ease-standard);
+  transition:
+    opacity var(--duration-medium) var(--ease-standard),
+    transform var(--duration-medium) var(--ease-standard);
 }
 
 .ui-card-group .node-chevron {
@@ -82,7 +86,9 @@
 
   opacity: var(--opacity);
   transform: scale(var(--scale)) rotate(var(--rotate));
-  transition: all var(--duration-medium) var(--ease-standard);
+  transition:
+    opacity var(--duration-medium) var(--ease-standard),
+    transform var(--duration-medium) var(--ease-standard);
 }
 
 .ui-card-group .node-chevron.is-expanded {

@@ -162,7 +162,10 @@
   font-size: var(--font-size-footnote);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all var(--duration-medium) var(--ease-standard);
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    box-shadow var(--duration-medium) var(--ease-standard),
+    transform var(--duration-medium) var(--ease-standard);
   user-select: none;
   white-space: nowrap;
 }

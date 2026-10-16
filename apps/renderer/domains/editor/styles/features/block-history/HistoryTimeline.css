@@ -112,7 +112,9 @@
   box-shadow: 0 0 0 2px var(--color-bg-default);
   pointer-events: none;
   transform: translate(-50%, -50%);
-  transition: all var(--duration-long) var(--ease-standard);
+  transition:
+    background-color var(--duration-long) var(--ease-standard),
+    transform var(--duration-long) var(--ease-standard);
 }
 
 .history-timeline .timeline-dot.origin-ai {

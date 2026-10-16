@@ -36,35 +36,41 @@
   border-bottom: none;
 }
 
+/* 标题是弹窗的第一层级：主文字色、副标题字阶；不再用比占位符还浅的元信息灰。 */
 .modal-header h2 {
   flex: 1;
   margin: 0;
-  font-size: var(--font-size-prose);
+  font-size: var(--font-size-subtitle);
   font-style: normal;
-  font-weight: 350;
-  color: var(--color-text-heading-meta);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-subtitle);
+  color: var(--color-text-primary);
   text-align: left;
   text-transform: none;
 }
 
+/* 关闭按钮静止时退后一级，悬停时提亮；形状始终是同一个圆角方块，不在悬停时变形。 */
 .modal-close {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
-  font-size: var(--font-size-title);
-  color: var(--color-text-primary);
+  padding: 0;
+  color: var(--color-text-tertiary);
   cursor: pointer;
   background: transparent;
   border: none;
-  border-radius: 50%;
-  transition: all var(--duration-medium) var(--ease-standard);
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--duration-short) var(--ease-standard),
+    color var(--duration-short) var(--ease-standard);
 }
 
 .modal-close:hover {
+  color: var(--color-text-primary);
   background-color: var(--color-bg-hover);
-  border-radius: var(--radius-sm);
 }
 
 .modal-content {

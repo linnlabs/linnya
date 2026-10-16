@@ -49,7 +49,9 @@
   background: transparent;
   border: none;
   border-radius: 50%;
-  transition: all var(--duration-medium) var(--ease-standard);
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    border-radius var(--duration-medium) var(--ease-standard);
 }
 
 .draggable-panel .close-btn:hover {

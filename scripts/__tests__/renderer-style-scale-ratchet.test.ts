@@ -53,6 +53,21 @@ describe('Renderer style scale ratchet', () => {
     ).toEqual({});
   });
 
+  it('transition 列表里的 all 计数，具体属性与 all 前缀的属性名不计数', () => {
+    expect(
+      Object.fromEntries(analyzeStyleScaleDeclaration('transition', 'all var(--duration-short) var(--ease-standard)')),
+    ).toEqual({ 'MOTION-01-transition-all': 1 });
+    expect(
+      Object.fromEntries(analyzeStyleScaleDeclaration('transition', 'opacity var(--duration-short), all var(--duration-long)')),
+    ).toEqual({ 'MOTION-01-transition-all': 1 });
+    expect(Object.fromEntries(analyzeStyleScaleDeclaration('transition-property', 'all'))).toEqual({
+      'MOTION-01-transition-all': 1,
+    });
+    expect(
+      Object.fromEntries(analyzeStyleScaleDeclaration('transition', 'background-color var(--duration-short) var(--ease-standard)')),
+    ).toEqual({});
+  });
+
   it('自定义属性、选择器与注释不参与刻度统计', () => {
     const source = [
       '/* font-size: 99px */',

@@ -53,7 +53,10 @@
   border-radius: 3px;
   background-color: var(--color-bg-surface);
   box-shadow: var(--shadow-xs);
-  transition: all var(--duration-micro);
+  transition:
+    background-color var(--duration-micro),
+    border-color var(--duration-micro),
+    box-shadow var(--duration-micro);
 }
 
 .checkbox-item input[type="checkbox"]:disabled ~ .checkbox-custom {

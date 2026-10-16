@@ -158,6 +158,8 @@ export type SettingsMessageKey =
   | 'settings.webRead.status.connectionOk'
   | 'settings.appearance.theme.title'
   | 'settings.appearance.theme.label'
+  | 'settings.appearance.theme.description'
+  | 'settings.appearance.theme.system'
   | 'settings.appearance.theme.light'
   | 'settings.appearance.theme.moonBlue'
   | 'settings.appearance.theme.dark'

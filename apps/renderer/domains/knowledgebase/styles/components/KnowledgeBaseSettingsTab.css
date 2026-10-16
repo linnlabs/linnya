@@ -178,7 +178,10 @@
   border: none;
   color: var(--color-text-tertiary);
   cursor: pointer;
-  transition: all var(--duration-medium);
+  transition:
+    background-color var(--duration-medium),
+    color var(--duration-medium),
+    opacity var(--duration-medium);
   flex-shrink: 0;
 }
 
@@ -213,7 +216,7 @@
   border: 1px solid transparent;
   background-color: transparent;
   box-shadow: none;
-  transition: all var(--duration-medium) var(--ease-standard);
+  transition: background-color var(--duration-medium) var(--ease-standard);
   cursor: default;
 }
 
@@ -249,7 +252,9 @@
   color: var(--color-text-tertiary);
   cursor: pointer;
   opacity: 0;
-  transition: all var(--duration-medium) var(--ease-standard);
+  transition:
+    color var(--duration-medium) var(--ease-standard),
+    opacity var(--duration-medium) var(--ease-standard);
 }
 
 .kb-settings-tab .project-item:hover .project-action-btn {

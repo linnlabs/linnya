@@ -37,7 +37,10 @@
   border-radius: 50%;
   background-color: var(--color-bg-surface);
   box-shadow: var(--shadow-xs);
-  transition: all var(--duration-micro);
+  transition:
+    background-color var(--duration-micro),
+    border-color var(--duration-micro),
+    box-shadow var(--duration-micro);
 }
 
 .radio-item .radio-custom::before {

@@ -2,7 +2,6 @@
   border-radius: var(--radius-md);
   margin-top: var(--space-2);
   background: transparent;
-  transition: all var(--duration-medium) var(--ease-standard);
 }
 
 .audio-content-panel.is-collapsed {
@@ -45,7 +44,9 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-body);
   cursor: pointer;
-  transition: all var(--duration-medium) var(--ease-standard);
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    color var(--duration-medium) var(--ease-standard);
 }
 
 .audio-content-panel .tab:hover {
@@ -68,7 +69,7 @@
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: all var(--duration-medium) var(--ease-standard);
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .audio-content-panel .collapse-button:hover {

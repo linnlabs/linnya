@@ -2,6 +2,7 @@
   <div class="sidebar-project-group">
     <div
       class="workspace-sidebar-row project-row"
+      :class="{ 'is-menu-open': isProjectMenuOpen }"
       role="button"
       tabindex="0"
       @pointerenter="$emit('prefetch-conversations', project.id)"

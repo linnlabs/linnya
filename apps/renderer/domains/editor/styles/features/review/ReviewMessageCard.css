@@ -72,7 +72,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--duration-short) var(--ease-standard);
+  transition:
+    background-color var(--duration-short) var(--ease-standard),
+    color var(--duration-short) var(--ease-standard),
+    opacity var(--duration-short) var(--ease-standard);
   flex-shrink: 0;
   opacity: 0;
   pointer-events: none;

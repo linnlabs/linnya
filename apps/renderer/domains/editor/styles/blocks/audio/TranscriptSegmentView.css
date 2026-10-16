@@ -39,7 +39,9 @@
   line-height: 1.6;
   cursor: pointer;
   user-select: none;
-  transition: all var(--duration-short) var(--ease-standard);
+  transition:
+    background-color var(--duration-short) var(--ease-standard),
+    color var(--duration-short) var(--ease-standard);
 }
 
 .transcript-segment-wrapper .timestamp-text:hover {
@@ -81,7 +83,9 @@
   border-radius: 50%;
   background: var(--color-accent);
   transform: translateY(-50%);
-  transition: all var(--duration-short) var(--ease-standard);
+  transition:
+    background-color var(--duration-short) var(--ease-standard),
+    transform var(--duration-short) var(--ease-standard);
 }
 
 .transcript-segment-wrapper:first-child .timestamp-column::after {
@@ -171,7 +175,9 @@
   width: 1px;
   height: 100%;
   background: var(--color-border-default);
-  transition: all var(--duration-medium) var(--ease-standard);
+  transition:
+    width var(--duration-medium) var(--ease-standard),
+    background-color var(--duration-medium) var(--ease-standard);
 }
 
 .transcript-segment-wrapper .divider-overlay.is-hovering .divider-handle,

@@ -11,6 +11,7 @@
           <div class="modal-header">
             <h2>{{ resolvedTitle }}</h2>
             <button
+              type="button"
               class="modal-close"
               :aria-label="closeLabel"
               :title="closeLabel"

@@ -43,7 +43,10 @@
   border-radius: var(--radius-md);
   box-shadow: 0 0.75px 0.5px var(--shadow-color-xs);
   cursor: pointer;
-  transition: all var(--duration-short) var(--ease-standard);
+  transition:
+    border-color var(--duration-short) var(--ease-standard),
+    box-shadow var(--duration-short) var(--ease-standard),
+    transform var(--duration-short) var(--ease-standard);
 }
 
 .shared-color-picker-panel__cell:hover {

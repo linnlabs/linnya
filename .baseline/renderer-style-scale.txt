@@ -298,7 +298,6 @@
 12	SCALE-03-line-height	apps/renderer/domains/plugin-store/styles/components/PluginStoreView.css
 14	SCALE-05-spacing	apps/renderer/domains/plugin-store/styles/components/PluginStoreView.css
 2	SCALE-03-line-height	apps/renderer/domains/settings/styles/components/AboutTab.css
-3	COLOR-01-base-palette	apps/renderer/domains/settings/styles/components/AppearanceTab.css
 1	SCALE-04-radius	apps/renderer/domains/settings/styles/components/SettingsModal.css
 11	SCALE-05-spacing	apps/renderer/domains/settings/styles/components/SettingsModal.css
 2	SCALE-05-spacing	apps/renderer/domains/settings/styles/components/StorageSpaceSettingsTab.css
@@ -358,7 +357,6 @@
 1	SCALE-01-font-size	packages/renderer-ui/src/features/number-entry/styles/CustomNumberInput.css
 1	SCALE-03-line-height	packages/renderer-ui/src/features/overlays/styles/AlertDialog.css
 1	SCALE-05-spacing	packages/renderer-ui/src/features/overlays/styles/AlertDialog.css
-1	SCALE-02-font-weight	packages/renderer-ui/src/features/overlays/styles/Modal.css
 2	SCALE-01-font-size	packages/renderer-ui/src/features/select-menu/styles/CustomSelect.css
 1	SCALE-03-line-height	packages/renderer-ui/src/features/select-menu/styles/CustomSelect.css
 1	SCALE-04-radius	packages/renderer-ui/src/features/select-menu/styles/CustomSelect.css

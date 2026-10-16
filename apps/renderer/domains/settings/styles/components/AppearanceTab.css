@@ -1,58 +1,139 @@
 /* apps/renderer/domains/settings/styles/components/AppearanceTab.css */
-/* 主题色板不是规整表单，不套件套的行原语，只借用 SettingsRow 的控件列。 */
+/*
+ * 主题选择是带名称的预览卡，而不是无标签色点：
+ * 预览画布挂真实的 data-linnya-ui-theme，颜色直接取各主题 token，主题调整时预览自动同步。
+ */
 
 .appearance-theme-selector {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
+  display: grid;
+  /* 与下方下拉框同列对齐；四个选项始终一行，不让「深色」单独掉到第二行。 */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
 }
 
 .appearance-theme-option {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
   padding: 0;
+  color: var(--color-text-secondary);
+  text-align: left;
   cursor: pointer;
   background: none;
   border: none;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-lg);
 }
 
-.appearance-theme-option:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 3px;
-}
-
-.appearance-theme-circle {
+.appearance-theme-preview {
   position: relative;
-  width: 24px;
-  height: 24px;
-  border: 1px solid color-mix(in srgb, var(--color-black) 10%, transparent);
-  border-radius: 50%;
-  transition:
-    transform var(--duration-medium) var(--ease-standard),
-    box-shadow var(--duration-medium) var(--ease-standard);
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 1px var(--color-border-default);
+  transition: box-shadow var(--duration-short) var(--ease-standard);
 }
 
-.appearance-theme-option:hover .appearance-theme-circle {
-  transform: scale(1.1);
+.appearance-theme-option:hover .appearance-theme-preview {
+  box-shadow: 0 0 0 1px var(--color-border-hover);
 }
 
-.appearance-theme-option.is-active .appearance-theme-circle {
-  border-color: transparent;
-  box-shadow:
-    0 0 0 1.5px var(--color-accent),
-    0 3px 6px var(--shadow-color-md);
-  transform: scale(1.1);
+.appearance-theme-option.is-active .appearance-theme-preview {
+  box-shadow: 0 0 0 2px var(--color-accent);
 }
 
-.appearance-theme-circle.is-light {
-  background-color: var(--color-white);
+.appearance-theme-label {
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  transition: color var(--duration-short) var(--ease-standard);
 }
 
-.appearance-theme-circle.is-dark {
-  background-color: var(--color-dark-surface);
+.appearance-theme-option:hover .appearance-theme-label {
+  color: var(--color-text-primary);
 }
 
-.appearance-theme-circle.is-moon-blue {
-  background-color: var(--color-blue-50);
-  border-color: color-mix(in srgb, var(--color-blue-500) 22%, transparent);
+.appearance-theme-option.is-active .appearance-theme-label {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+/* --- 预览画布：侧栏 + 正文 + 输入框的缩略窗口 --- */
+
+.appearance-theme-canvas {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  background-color: var(--color-bg-default);
+}
+
+/* 跟随系统：第二张画布只露出右半边。 */
+.appearance-theme-canvas + .appearance-theme-canvas {
+  clip-path: inset(0 0 0 50%);
+}
+
+.appearance-theme-canvas-sidebar {
+  display: flex;
+  flex: 0 0 32%;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  padding: var(--space-2) var(--space-1-5);
+  background-color: var(--color-bg-sidebar);
+  border-right: 1px solid var(--color-border-sidebar);
+}
+
+.appearance-theme-canvas-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  min-width: 0;
+  padding: var(--space-2-5) var(--space-2);
+}
+
+.appearance-theme-canvas-line {
+  display: block;
+  width: 80%;
+  height: 4px;
+  background-color: var(--color-text-muted);
+  border-radius: var(--radius-full);
+  opacity: 0.45;
+}
+
+.appearance-theme-canvas-line.is-short {
+  width: 55%;
+}
+
+.appearance-theme-canvas-line.is-strong {
+  width: 60%;
+  background-color: var(--color-text-primary);
+  opacity: 0.8;
+}
+
+.appearance-theme-canvas-sidebar .appearance-theme-canvas-line.is-active {
+  width: 100%;
+  height: 8px;
+  background-color: var(--color-bg-active);
+  opacity: 1;
+}
+
+.appearance-theme-canvas-input {
+  position: relative;
+  display: block;
+  height: 14px;
+  margin-top: auto;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+}
+
+.appearance-theme-canvas-send {
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  background-color: var(--color-accent);
+  border-radius: var(--radius-full);
+  transform: translateY(-50%);
 }

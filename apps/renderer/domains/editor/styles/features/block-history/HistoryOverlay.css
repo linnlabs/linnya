@@ -67,7 +67,10 @@
   font-size: var(--font-size-footnote);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all var(--duration-short) var(--ease-standard);
+  transition:
+    background-color var(--duration-short) var(--ease-standard),
+    color var(--duration-short) var(--ease-standard),
+    opacity var(--duration-short) var(--ease-standard);
 }
 
 .history-overlay .overlay-btn:disabled {

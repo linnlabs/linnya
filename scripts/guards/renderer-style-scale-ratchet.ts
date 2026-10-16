@@ -2,7 +2,7 @@
  * Renderer 样式刻度棘轮。
  *
  * 设计规范要求字号、字重、行高、圆角、间距、层级与动效从 Renderer UI token 取值，
- * 颜色只引用随主题切换的语义 token，不直接引用基础色阶。
+ * 颜色只引用随主题切换的语义 token，不直接引用基础色阶；过渡必须列出具体属性，不写 transition: all。
  * 存量写死值允许在迁移中减少，但任何文件都不能新增；token owner 文件不在扫描范围内。
  * 规则含义见 packages/renderer-ui/docs/design.md。
  */
@@ -44,7 +44,8 @@ export type StyleScaleRuleId =
   | 'SCALE-07-duration'
   | 'SCALE-08-easing'
   | 'SCALE-09-legacy-alias'
-  | 'COLOR-01-base-palette';
+  | 'COLOR-01-base-palette'
+  | 'MOTION-01-transition-all';
 
 const STYLE_SCALE_RULE_IDS = new Set<StyleScaleRuleId>([
   'SCALE-01-font-size',
@@ -57,6 +58,7 @@ const STYLE_SCALE_RULE_IDS = new Set<StyleScaleRuleId>([
   'SCALE-08-easing',
   'SCALE-09-legacy-alias',
   'COLOR-01-base-palette',
+  'MOTION-01-transition-all',
 ]);
 
 export interface StyleScaleBaselineEntry {
@@ -76,6 +78,8 @@ const DURATION_PATTERN = /(?<![\w-])(?:\d+\.?\d*|\.\d+)m?s\b/gu;
 const EASING_PATTERN = /cubic-bezier\(|(?<![\w-])ease(?:-in-out|-in|-out)?(?![\w-])/gu;
 /* 基础色阶不随主题切换；黑白只用于遮罩、投影与固定深色蒙层上的文字，不在此统计。 */
 const BASE_PALETTE_PATTERN = /var\(\s*--color-(?:(?:gray|red|blue|yellow|brand)-\d+|dark-(?:bg|surface|elevated))\s*\)/gu;
+/* transition 列表中任一段以 all 开头，都会让布局、颜色等无关属性一起参与动画。 */
+const TRANSITION_ALL_PATTERN = /(?:^|,)\s*all(?![\w-])/gu;
 const LEGACY_ALIAS_PATTERN = /var\(\s*--(?:spacing-(?:xxs|xs|sm|md|lg|xl|2xl)|transition-(?:fast|normal|slow))\b/gu;
 const SPACING_PROPERTY_PATTERN = /^(?:padding|margin)(?:-(?:top|right|bottom|left|inline|block)(?:-(?:start|end))?)?$|^(?:row-|column-)?gap$/u;
 const RADIUS_PROPERTY_PATTERN = /^border(?:-(?:top|bottom|start|end)-(?:left|right|start|end))?-radius$/u;
@@ -147,6 +151,10 @@ export function analyzeStyleScaleDeclaration(property: string, rawValue: string)
     add('SCALE-05-spacing', countMatches(literal, LENGTH_PATTERN, isBeyondHairline));
   } else if (name === 'z-index') {
     add('SCALE-06-z-index', /^-?\d+$/u.test(literal) && Math.abs(Number(literal)) >= 10 ? 1 : 0);
+  }
+
+  if (name === 'transition' || name === 'transition-property') {
+    add('MOTION-01-transition-all', countMatches(literal, TRANSITION_ALL_PATTERN));
   }
 
   if (DURATION_PROPERTIES.has(name)) {

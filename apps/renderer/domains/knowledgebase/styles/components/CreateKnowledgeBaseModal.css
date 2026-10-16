@@ -119,7 +119,10 @@
   border: none;
   color: var(--color-text-tertiary);
   cursor: pointer;
-  transition: all var(--duration-medium);
+  transition:
+    background-color var(--duration-medium),
+    color var(--duration-medium),
+    opacity var(--duration-medium);
   flex-shrink: 0;
 }
 

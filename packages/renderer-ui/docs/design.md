@@ -83,7 +83,7 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 | 状态提示条、徽标 | `--color-*-bg` 配 `--color-*-text`，描边或图标用基础色 | 浅色底配基础色文字 |
 | 用户选择的内容颜色、语法高亮 | 所属 domain 的内容色 token | 把内容色上移为通用 token |
 
-基础色阶（`--color-gray-*`、`--color-red-*` 等）只在 token 层使用：它们不随主题切换，业务 CSS 直接引用会在暗色下出现亮底或看不清的文字。主题预览色块、调试面板、刻意固定的深色代码面板与品牌标识色是仅有的例外，并应在样式旁注明原因。遮罩、投影和固定深色蒙层上的文字可以使用 `--color-black` / `--color-white`，因为它们在所有主题下语义相同。
+基础色阶（`--color-gray-*`、`--color-red-*` 等）只在 token 层使用：它们不随主题切换，业务 CSS 直接引用会在暗色下出现亮底或看不清的文字。调试面板、刻意固定的深色代码面板与品牌标识色是仅有的例外，并应在样式旁注明原因。遮罩、投影和固定深色蒙层上的文字可以使用 `--color-black` / `--color-white`，因为它们在所有主题下语义相同。
 
 ### 2.7 对比度
 
@@ -97,6 +97,12 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 | 禁用控件、纯装饰元素 | 不要求，但禁用态必须同时有 `disabled` 语义 |
 
 对比度按元素实际所在的表面计算，并在三套主题中分别满足。新增颜色组合前先算对比度；已知不达标的组合记录在本文“当前限制”中，不能当作可复用先例。
+
+### 2.8 主题与系统外观
+
+- 每套主题在根元素上同时声明 `color-scheme`（`light`、`moon-blue` 为 light，`dark` 为 dark），原生滚动条、表单控件与下拉弹层随之切换明暗，不需要业务单独适配。
+- 需要在当前主题里展示另一套主题（例如外观设置里的预览）时，在预览元素上设置 `data-linnya-ui-theme`，让它取那套主题的 token，不要用基础色阶临摹。
+- “跟随系统”是 Host 的外观偏好，不是第四套主题：它只在 `light` 与 `dark` 之间解析，`moon-blue` 必须由用户显式选择。组件只读取解析后的主题 token，不感知偏好本身。
 
 ## 3. 字体
 
@@ -201,6 +207,7 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 ### 7.3 规则
 
 - 优先只动画 `opacity` 与 `transform`；需要动画高度时使用 grid `0fr → 1fr` 等不触发逐帧布局的方式。
+- `transition` 只列出状态变化时真正改变的属性，不写 `transition: all`：`all` 会让布局、字号和主题切换时的颜色一起被动画，切换主题时界面会出现不同步的渐变。
 - 动效必须可以被打断：快速重复触发时从当前状态继续，而不是跳回起点。
 - 用户开启“减少动态效果”时，四个时长 token 会被置为接近 0，经由 token 的过渡自动立即完成。直接写在关键帧里的循环动画（如加载指示）必须自行提供 `prefers-reduced-motion` 规则。
 - `--transition-fast` / `--transition-normal` / `--transition-slow` 是 2.x 旧别名，分别指向 micro、medium、long；仓内新代码使用 `--duration-*`。
@@ -262,7 +269,20 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 - 面板与浮层：`--color-bg-elevated` 底、`--shadow-floating-panel`、`--radius-lg`；对话框使用 `Modal`。
 - 卡片内的分组用单边分隔线或间距，不再嵌套卡片。
 
-### 9.4 标签与徽标
+### 9.4 弹窗
+
+- 使用 `Modal`。标题是弹窗的第一层级：`subtitle`（15/22）、semibold、`--color-text-primary`；不要用比正文还浅的灰色做标题。
+- 关闭按钮固定在标题行右侧，28px 圆角方块，静止为 `--color-text-tertiary`，悬停提亮到主文字色并出现 hover 底色；形状不随状态变化。
+- 底部操作区主操作在右、次操作在左，使用 `ActionButtons`；正文过长时由内容区滚动，标题与操作区保持可见。
+- 点击遮罩与 Esc 关闭当前最上层弹窗；含未保存输入的表单弹窗应关闭 `closeOnOverlayClick`，避免误触丢失内容。
+
+### 9.5 列表行
+
+- 侧栏与列表行的名称默认占满整行，溢出用省略号；行内操作（打开、更多）只在悬停、键盘聚焦或其菜单打开时出现，名称也只在这时让出操作区宽度，不为隐藏的按钮常驻留白。
+- 行内操作按钮比行 hover 再高一层底色，保证二次悬停有反馈；菜单打开期间保持行的悬停外观，直到菜单关闭。
+- 次要信息（时间、数量）靠右并使用 `tabular-nums`，悬停时可由行内操作替换。
+
+### 9.6 标签与徽标
 
 - 状态徽标：`caption` 字号、`--radius-sm` 或 `--radius-full`、`--color-*-bg` 底配 `--color-*-text` 文字，高度不超过 20px。
 - 筛选与输入标签使用 `TagChip`；数量徽标使用 `tabular-nums`。
@@ -293,6 +313,7 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 | `SCALE-08-easing` | `ease` 系列关键字与 `cubic-bezier()` |
 | `SCALE-09-legacy-alias` | 旧别名 `--spacing-*` 与 `--transition-*` |
 | `COLOR-01-base-palette` | 引用 `--color-gray-*`、`--color-red-*`、`--color-blue-*`、`--color-yellow-*`、`--color-brand-*` 与 `--color-dark-*` 基础色阶（自定义属性定义中同样统计） |
+| `MOTION-01-transition-all` | `transition` / `transition-property` 中的 `all` |
 
 每个文件每条规则的数量记录在 `.baseline/renderer-style-scale.txt`，只允许减少：新增写死值会让 `pnpm run lint:style` 失败；减少后运行 `pnpm run guard:renderer-style-scale:update` 收紧基线。自定义属性的定义不在统计范围内，局部变量如果表达刻度值，应从 token 派生。
 

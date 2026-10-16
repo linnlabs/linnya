@@ -3,6 +3,7 @@ import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
 import {
   applyThemeToDom,
   normalizeStoredTheme,
+  resolveThemePreference,
 } from './themeClassManagement';
 
 class TestThemeElement {
@@ -32,6 +33,21 @@ describe('themeClassManagement', () => {
 
   it('keeps the moon blue stored theme', () => {
     expect(normalizeStoredTheme('moon-blue')).toBe('moon-blue');
+  });
+
+  it('keeps the system appearance preference', () => {
+    expect(normalizeStoredTheme('system')).toBe('system');
+  });
+
+  it('resolves the system preference to light or dark only', () => {
+    expect(resolveThemePreference('system', false)).toBe('light');
+    expect(resolveThemePreference('system', true)).toBe('dark');
+  });
+
+  it('keeps explicit themes regardless of the system appearance', () => {
+    expect(resolveThemePreference('moon-blue', true)).toBe('moon-blue');
+    expect(resolveThemePreference('light', true)).toBe('light');
+    expect(resolveThemePreference('dark', false)).toBe('dark');
   });
 
   it('applies the light theme to the document root attribute', () => {

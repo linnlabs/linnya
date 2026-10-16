@@ -120,7 +120,9 @@
   background: none;
   border: none;
   border-radius: var(--radius-sm);
-  transition: all var(--duration-medium);
+  transition:
+    background-color var(--duration-medium),
+    color var(--duration-medium);
 }
 
 .review-setup-view .icon-btn svg {

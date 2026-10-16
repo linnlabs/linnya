@@ -48,7 +48,9 @@
   padding: var(--space-1-5) var(--space-2);
   cursor: pointer;
   border-radius: var(--radius-sm);
-  transition: all var(--duration-short) var(--ease-standard);
+  transition:
+    background-color var(--duration-short) var(--ease-standard),
+    opacity var(--duration-short) var(--ease-standard);
 }
 
 .ask-question-item .radio-option:hover,

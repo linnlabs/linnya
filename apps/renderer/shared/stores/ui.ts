@@ -10,7 +10,13 @@ import type {
 
 let currentEditorInstance: UiEditorInstance = null;
 
-const createDefaultTheme = (): RendererUiTheme => 'light';
+/**
+ * 用户选择的外观：具体主题，或跟随系统在浅色与深色之间切换。
+ * 解析为实际主题由布局层的主题管理负责，store 只保存选择本身。
+ */
+export type ThemePreference = RendererUiTheme | 'system';
+
+const createDefaultTheme = (): ThemePreference => 'light';
 
 export const DEFAULT_SIDEBAR_WIDTH = 260;
 
@@ -30,8 +36,7 @@ export const useUIStore = defineStore('ui', {
   state: () => ({
     // 侧边栏状态
     sidebarVisible: true,
-    // 主题状态，从localStorage读取或默认为light
-    // 仅设置默认值，持久化由插件处理
+    // 外观偏好（主题或跟随系统），默认浅色；持久化由插件处理
     theme: createDefaultTheme(),
     // 设置模态窗口状态
     settingsModalVisible: false,
@@ -88,8 +93,8 @@ export const useUIStore = defineStore('ui', {
       this.sidebarVisible = visible;
     },
     
-    // 设置主题
-    setTheme(theme: RendererUiTheme) {
+    // 设置外观偏好
+    setTheme(theme: ThemePreference) {
       this.theme = theme;
     },
     

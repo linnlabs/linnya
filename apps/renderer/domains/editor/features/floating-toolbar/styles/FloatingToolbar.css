@@ -46,7 +46,10 @@
   background-color: var(--color-bg-surface);
   box-shadow: 0 0.75px 0.5px var(--shadow-color-xs);
   cursor: pointer;
-  transition: all var(--duration-short) var(--ease-standard);
+  transition:
+    border-color var(--duration-short) var(--ease-standard),
+    box-shadow var(--duration-short) var(--ease-standard),
+    transform var(--duration-short) var(--ease-standard);
 }
 
 .inline-color-picker .color-cell:hover,
