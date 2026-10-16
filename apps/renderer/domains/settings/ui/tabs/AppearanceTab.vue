@@ -60,28 +60,13 @@
         />
       </SettingsRow>
     </SettingsSection>
-
-    <SettingsSection :title="settingsMessage('settings.appearance.font.title')">
-      <SettingsRow
-        :label="settingsMessage('settings.appearance.font.label')"
-        :hint="settingsMessage('settings.appearance.font.description')"
-      >
-        <CustomSelect
-          v-model="fontValue"
-          :options="fontOptions"
-          :title="settingsMessage('settings.appearance.font.selectTitle')"
-          :disabled="true"
-          font-size="14px"
-        />
-      </SettingsRow>
-    </SettingsSection>
   </SettingsPage>
 </template>
 
 <script setup lang="ts">
 import type { RendererUiTheme } from '@linnya/renderer-ui/theme';
 import { useUIStore, type ThemePreference } from '@/shared/stores/ui';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { CustomSelect } from '@linnya/renderer-ui';
 import { useLocalization, type LinnyaLocale } from '@app/localization';
 import type { SettingsMessageKey } from '../../definitions/settingsMessages';
@@ -109,17 +94,10 @@ const languageValue = computed<LinnyaLocale>({
   get: () => currentLocale.value,
   set: (locale) => changeLocale(locale),
 });
-const fontValue = ref('default');
 
 const languageOptions = computed(() => [
   { value: 'zh-CN', text: settingsMessage('settings.appearance.language.zhCN') },
   { value: 'en-US', text: settingsMessage('settings.appearance.language.enUS') },
-]);
-
-const fontOptions = computed(() => [
-  { value: 'default', text: settingsMessage('settings.appearance.font.systemDefault') },
-  { value: 'pingfang', text: settingsMessage('settings.appearance.font.pingfang') },
-  { value: 'source-han', text: settingsMessage('settings.appearance.font.sourceHan') },
 ]);
 
 const setTheme = (theme: ThemePreference) => {
