@@ -69,8 +69,6 @@
 1	SCALE-03-line-height	apps/renderer/domains/conversation/styles/components/ConversationReferenceLink.css
 1	SCALE-01-font-size	apps/renderer/domains/conversation/styles/components/ConversationResourceLink.css
 1	SCALE-04-radius	apps/renderer/domains/conversation/styles/components/ConversationView.css
-8	SCALE-07-duration	apps/renderer/domains/conversation/styles/components/ConversationView.css
-2	SCALE-08-easing	apps/renderer/domains/conversation/styles/components/ConversationView.css
 1	SCALE-07-duration	apps/renderer/domains/conversation/styles/components/ConversationVisualRow.css
 1	SCALE-08-easing	apps/renderer/domains/conversation/styles/components/ConversationVisualRow.css
 1	SCALE-03-line-height	apps/renderer/domains/conversation/styles/components/ConversationWorkDurationHint.css
@@ -323,8 +321,6 @@
 3	SCALE-04-radius	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
 5	SCALE-05-spacing	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
 2	SCALE-06-z-index	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
-3	SCALE-07-duration	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
-1	SCALE-08-easing	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
 1	SCALE-05-spacing	apps/renderer/domains/workspace/styles/features/import-export/export/ExportModals.css
 1	SCALE-01-font-size	apps/renderer/domains/workspace/styles/features/project-overview/ProjectOverviewModal.css
 2	SCALE-03-line-height	apps/renderer/domains/workspace/styles/features/project-overview/ProjectOverviewModal.css

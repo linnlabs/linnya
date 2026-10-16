@@ -23,9 +23,13 @@
             </span>
           </div>
           <div class="column">
-            <div v-if="isLoading" class="column-empty">
-              {{ workspaceMessage('workspace.projectKb.loadingLinks') }}
-            </div>
+            <SkeletonRows
+              v-if="isLoading"
+              class="kb-list-skeleton"
+              :label="workspaceMessage('workspace.projectKb.loadingLinks')"
+              :rows="2"
+              size="lg"
+            />
             <div v-else-if="linkedKnowledgeBases.length === 0" class="column-empty">
               {{ workspaceMessage('workspace.projectKb.emptyLinked') }}
             </div>
@@ -65,9 +69,13 @@
             </span>
           </div>
           <div class="column">
-            <div v-if="isLoading" class="column-empty">
-              {{ workspaceMessage('workspace.projectKb.loadingKnowledgeBases') }}
-            </div>
+            <SkeletonRows
+              v-if="isLoading"
+              class="kb-list-skeleton"
+              :label="workspaceMessage('workspace.projectKb.loadingKnowledgeBases')"
+              :rows="2"
+              size="lg"
+            />
             <div v-else-if="availableKnowledgeBases.length === 0" class="column-empty">
               {{ workspaceMessage('workspace.projectKb.emptyAvailable') }}
             </div>
@@ -113,7 +121,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { ActionButtons, BaseButton } from '@linnya/renderer-ui';
+import { ActionButtons, BaseButton, SkeletonRows } from '@linnya/renderer-ui';
 import { KnowledgeBaseIcon } from '@linnya/renderer-ui/icons';
 import { useKnowledgeBaseStore } from '@/domains/knowledgebase/stores/knowledgeBase';
 import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';

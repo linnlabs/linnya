@@ -53,81 +53,25 @@
   flex-direction: column;
 }
 
+/* 历史回放骨架：与消息列同宽，一问一答的节奏与真实消息一致；两侧留白由对话宿主统一设置。 */
 .conversation-view-wrapper .history-loading-state {
-  flex: 1;
-  min-height: 100%;
-  display: grid;
-  place-items: center;
-  padding: var(--space-6) var(--space-5);
-  text-align: center;
-  color: var(--color-text-secondary);
+  width: 100%;
+  max-width: var(--conversation-content-column-max-width);
+  margin: 0 auto;
+  padding-top: var(--space-6);
 }
 
-.conversation-view-wrapper .history-loading-copy {
-  transform: none;
-  animation: conversation-history-loading-reveal 120ms ease-out 250ms both;
+.conversation-view-wrapper .history-loading-skeleton__user {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-6);
 }
 
-@keyframes conversation-history-loading-reveal {
-  from {
-    visibility: hidden;
-    opacity: 0;
-  }
-
-  to {
-    visibility: visible;
-    opacity: 1;
-  }
-}
-
-.conversation-view-wrapper .history-loading-title {
-  margin: 0;
-  font-size: var(--font-size-subtitle);
-  line-height: var(--line-height-normal);
-  font-weight: var(--font-weight-regular);
-  color: var(--color-text-secondary);
-}
-
-.conversation-view-wrapper .history-loading-dots {
-  display: inline-flex;
-  width: 2.2em;
-  justify-content: flex-start;
-}
-
-.conversation-view-wrapper .history-loading-dots span {
-  animation: conversation-history-loading-dot 1.2s ease-in-out infinite;
-}
-
-.conversation-view-wrapper .history-loading-dots span:nth-child(2) {
-  animation-delay: 0.15s;
-}
-
-.conversation-view-wrapper .history-loading-dots span:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-.conversation-view-wrapper .history-loading-dots span:nth-child(4) {
-  animation-delay: 0.45s;
-}
-
-.conversation-view-wrapper .history-loading-dots span:nth-child(5) {
-  animation-delay: 0.6s;
-}
-
-.conversation-view-wrapper .history-loading-dots span:nth-child(6) {
-  animation-delay: 0.75s;
-}
-
-@keyframes conversation-history-loading-dot {
-  0%,
-  70%,
-  100% {
-    opacity: 0.35;
-  }
-
-  35% {
-    opacity: 1;
-  }
+.conversation-view-wrapper .history-loading-skeleton__assistant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-8);
 }
 
 .conversation-view-wrapper .messages-container {

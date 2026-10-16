@@ -6,9 +6,14 @@
       `sidebar-chat-list--${surface}`,
     ]"
   >
-    <div v-if="shouldShowInitialLoading" class="chat-list-state">
-      {{ conversationMessage('conversation.sidebar.loading') }}
-    </div>
+    <SkeletonRows
+      v-if="shouldShowInitialLoading"
+      class="chat-list-skeleton"
+      :label="conversationMessage('conversation.sidebar.loading')"
+      :rows="5"
+      :size="variant === 'dropdown' ? 'sm' : 'md'"
+      trailing
+    />
     <div v-else-if="error" class="chat-list-state is-error">
       {{ conversationMessage('conversation.sidebar.loadFailed') }}
     </div>
@@ -159,7 +164,7 @@ import { useSidebarChatList } from './sidebarChatList/useSidebarChatList';
 import type { SidebarChatListEmit, SidebarChatListProps } from './sidebarChatList/definitions';
 import { PinIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect, IconButton } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton, SkeletonRows } from '@linnya/renderer-ui';
 const props = defineProps<SidebarChatListProps>();
 const emit = defineEmits<SidebarChatListEmit>();
 

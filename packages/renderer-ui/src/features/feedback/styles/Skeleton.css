@@ -1,0 +1,118 @@
+/* packages/renderer-ui/src/features/feedback/styles/Skeleton.css */
+/*
+ * 加载占位：形状与最终布局一致，颜色只比所在表面高一层。
+ * 出现前等待 --delay-reveal，短加载不闪烁；微光在用户要求减少动态效果时停止。
+ */
+
+.linnya-ui-skeleton {
+  position: relative;
+}
+
+.linnya-ui-skeleton--delayed {
+  animation: linnya-ui-skeleton-reveal var(--duration-short) var(--ease-enter) var(--delay-reveal) both;
+}
+
+@keyframes linnya-ui-skeleton-reveal {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* 只给辅助技术读的文案。 */
+.linnya-ui-skeleton__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.linnya-ui-skeleton-block {
+  display: block;
+  flex-shrink: 0;
+  max-width: 100%;
+  background-color: var(--linnya-ui-skeleton-bg);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--linnya-ui-skeleton-highlight) 50%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 200% 100%;
+  animation: linnya-ui-skeleton-shimmer var(--duration-loop) linear infinite;
+}
+
+@keyframes linnya-ui-skeleton-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+
+  to {
+    background-position: -50% 0;
+  }
+}
+
+.linnya-ui-skeleton-block--radius-sm {
+  border-radius: var(--radius-sm);
+}
+
+.linnya-ui-skeleton-block--radius-md {
+  border-radius: var(--radius-md);
+}
+
+.linnya-ui-skeleton-block--radius-lg {
+  border-radius: var(--radius-lg);
+}
+
+.linnya-ui-skeleton-block--radius-full {
+  border-radius: var(--radius-full);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linnya-ui-skeleton-block {
+    background-image: none;
+    animation: none;
+  }
+}
+
+/* --- 列表行 --- */
+
+.linnya-ui-skeleton-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.linnya-ui-skeleton-rows__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--control-height-md);
+}
+
+.linnya-ui-skeleton-rows--sm .linnya-ui-skeleton-rows__row {
+  height: var(--control-height-sm);
+}
+
+.linnya-ui-skeleton-rows--lg .linnya-ui-skeleton-rows__row {
+  height: auto;
+  gap: var(--space-3);
+  padding: var(--space-2-5) 0;
+}
+
+.linnya-ui-skeleton-rows__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.linnya-ui-skeleton-rows--lg .linnya-ui-skeleton-rows__text {
+  gap: var(--space-2-5);
+}

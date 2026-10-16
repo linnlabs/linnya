@@ -39,6 +39,7 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 |---|---|---|
 | 单个按钮 | `@linnya/renderer-ui` 的 `BaseButton` | 页面入口、工具栏、表单内的任意按钮；用 variant 表达层级，size 与同行输入框对齐。 |
 | 纯图标按钮 | `@linnya/renderer-ui` 的 `IconButton` | 关闭、更多、刷新、复制、行内删除等没有文字的操作；`label` 必填，size 决定外框与图标尺寸。 |
+| 加载占位 | `@linnya/renderer-ui` 的 `SkeletonRows`、`Skeleton`、`SkeletonBlock` | 结构已知的列表、卡片、消息加载时的骨架；延迟出现、自带读屏状态，形状与真实布局一致。 |
 | 主/次操作按钮组 | `@linnya/renderer-ui` 的 `ActionButtons` | 弹窗、表单、卡片底部的确认/取消按钮；主操作支持 default、danger、accent 三种严格视觉语义和胶囊形态。 |
 | 单行输入 | `@linnya/renderer-ui` 的 `CustomTextInput` | 标准文本输入；支持两档尺寸、无边框模式、提交式更新和使用共享图标的可清除搜索。 |
 | 密文输入 | `@linnya/renderer-ui` 的 `SecretInput` | API Key、访问令牌和密码输入；统一显隐按钮、禁用状态及整组 hover/focus 边框。 |
@@ -147,6 +148,22 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 - `label` 同时是 `aria-label` 与原生 `title`；外层已有自定义提示时传 `:tooltip="false"`。
 - 模板 ref 拿到的是组件实例，原生按钮在 `element` 上；函数式 ref 用 `resolveIconButtonElement(el)` 取出。
 - 按钮放在会 hover / 选中的行里时，在行的操作容器上设置 `--linnya-ui-icon-button-hover-bg: var(--linnya-ui-icon-button-hover-bg-raised)`；不要覆盖 `.linnya-ui-icon-button*` 内部选择器。
+
+### Skeleton
+
+```vue
+<SkeletonRows v-if="isLoading" :label="loadingLabel" :rows="8" icon />
+
+<Skeleton v-if="isDetailLoading" :label="loadingLabel">
+  <SkeletonBlock width="20px" height="20px" radius="sm" />
+  <SkeletonBlock v-for="width in LINE_WIDTHS" :key="width" :width="width" />
+</Skeleton>
+```
+
+- `label` 必填，是 `role="status"` 的读屏文案；形状本身对辅助技术隐藏。
+- 默认在 `--delay-reveal`（200ms）后淡入；确定会很久的加载可传 `:delayed="false"` 立即显示。
+- `SkeletonRows`：`size` 为 sm / md / lg（28px、32px 单行；带 32px 图标的双行），`icon`、`trailing` 按真实行取舍；调用方用外层 class 对齐左右起点。
+- `SkeletonBlock`：`width` / `height` 为 CSS 长度，`radius` 为 sm / md / lg / full；组合时宽度用固定序列，不随机。
 
 ## 选择控件的节点扩展
 

@@ -663,7 +663,6 @@
 }
 
 /* Common states */
-.workspace-sidebar .loading-state,
 .workspace-sidebar .error-state {
   display: flex;
   flex-direction: column;
@@ -674,31 +673,17 @@
   color: var(--workspace-sidebar-muted-color);
 }
 
-.workspace-sidebar .loading-state {
-  opacity: 0;
-  animation: workspace-sidebar-fade-in 0.2s ease-out forwards;
-  animation-delay: 0.15s;
-}
-
-@keyframes workspace-sidebar-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.workspace-sidebar .loading-icon,
 .workspace-sidebar .error-icon {
   width: 32px;
   height: 32px;
   opacity: 0.7;
 }
 
-.workspace-sidebar .spin {
-  animation: workspace-sidebar-spin 1.5s linear infinite;
-}
-
-@keyframes workspace-sidebar-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* 加载骨架与真实行同一起点：行外边距 + 行内边距。 */
+.workspace-sidebar .workspace-sidebar-skeleton {
+  padding:
+    var(--space-1)
+    calc(var(--workspace-sidebar-row-margin-x) + var(--workspace-sidebar-row-padding-x));
 }
 
 .asset-preview-backdrop {

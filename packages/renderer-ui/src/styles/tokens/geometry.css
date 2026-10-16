@@ -60,6 +60,12 @@
   --duration-medium: 200ms;
   --duration-long: 300ms;
 
+  /* 循环动画（骨架微光、加载指示）的一个周期；减少动态效果时由组件停用动画，而不是缩短周期。 */
+  --duration-loop: 1600ms;
+
+  /* 加载占位的出现延迟：短于它的加载不显示占位，避免一闪而过。不是动效，不随减少动态效果归零。 */
+  --delay-reveal: 200ms;
+
   /* 屏内状态变化用 standard；进入用 enter 减速落定；离开用 exit 加速收走。 */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);

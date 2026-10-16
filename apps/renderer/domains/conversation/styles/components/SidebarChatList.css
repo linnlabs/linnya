@@ -18,6 +18,16 @@
   margin: 0;
 }
 
+/* 加载骨架与对话行的文字起点、时间列对齐。 */
+.sidebar-chat-list .chat-list-skeleton {
+  margin: 0 var(--space-2-5);
+  padding: 0 var(--space-2);
+}
+
+.sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-skeleton {
+  margin: 0;
+}
+
 .sidebar-chat-list .chat-list-state.is-error {
   color: var(--color-error-text);
 }

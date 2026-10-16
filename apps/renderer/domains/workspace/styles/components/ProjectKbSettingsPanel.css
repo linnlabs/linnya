@@ -140,6 +140,11 @@
   text-overflow: ellipsis;
 }
 
+/* 加载骨架与知识库条目同样的左右内边距。 */
+.project-kb-section .kb-list-skeleton {
+  padding: 0 var(--space-2-5);
+}
+
 .project-kb-section .column-empty {
   display: flex;
   align-items: center;

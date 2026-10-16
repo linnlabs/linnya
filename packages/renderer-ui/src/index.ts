@@ -41,6 +41,9 @@ export {
   NotificationBar,
   PageSectionHeader,
   ScrollToBottomButton,
+  Skeleton,
+  SkeletonBlock,
+  SkeletonRows,
   resolveHoverTooltipPosition,
 } from './features/feedback';
 export type {
@@ -51,6 +54,12 @@ export type {
   HoverTooltipWindowFocusPort,
   NotificationBarProps,
   NotificationType,
+  SkeletonBlockProps,
+  SkeletonBlockRadius,
+  SkeletonProps,
+  SkeletonRowsProps,
+  SkeletonRowsSize,
+  SkeletonSlots,
 } from './features/feedback';
 export {
   applyTextareaAutoResize,

@@ -79,6 +79,54 @@
   font-size: var(--font-size-prose);
 }
 
+/* 加载骨架：卡片的内边距与间距和真实列表一致。 */
+.plugin-store-list-skeleton,
+.plugin-store-detail-skeleton {
+  width: 100%;
+  margin-top: var(--space-4);
+}
+
+.plugin-store-list-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.plugin-store-list-skeleton__card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 62px;
+  padding: var(--space-2) var(--space-2-5);
+}
+
+.plugin-store-list-skeleton__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.plugin-store-list-skeleton__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.plugin-store-detail-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.plugin-store-detail-skeleton__hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
 .plugin-store-empty-state {
   display: grid;
   width: 100%;

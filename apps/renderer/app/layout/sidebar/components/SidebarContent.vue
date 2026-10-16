@@ -104,12 +104,13 @@
             </div>
           </div>
 
-          <div v-else-if="shouldShowProjectTreeLoading" class="loading-state">
-            <svg class="loading-icon spin" viewBox="0 0 24 24">
-              <path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8Z" />
-            </svg>
-            <p>{{ workspaceMessage('workspace.sidebar.fileTree.loading') }}</p>
-          </div>
+          <SkeletonRows
+            v-else-if="shouldShowProjectTreeLoading"
+            class="workspace-sidebar-skeleton"
+            :label="workspaceMessage('workspace.sidebar.fileTree.loading')"
+            :rows="6"
+            icon
+          />
 
             <FileTreeView
             v-else
@@ -136,6 +137,7 @@
 </template>
 
 <script setup lang="ts">
+import { SkeletonRows } from '@linnya/renderer-ui';
 import { ref } from 'vue';
 import SidebarChatList from '@/domains/conversation/ui/SidebarChatList.vue';
 import SidebarProjectGroup from '@/app/layout/sidebar/components/SidebarProjectGroup.vue';
