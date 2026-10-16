@@ -135,7 +135,7 @@ body,
 }
 
 .visual-row-fixture-row__content--entering {
-  animation: visual-row-fixture-expand 200ms ease-in-out;
+  animation: visual-row-fixture-expand var(--duration-medium) var(--ease-standard);
 }
 
 .visual-row-fixture-row:hover .turn-actions-row,

@@ -14,6 +14,7 @@
 - 新增控件高度 token `--control-height-sm/md/lg`（28/32/36）。
 - 新增 `IconButton` 与 `resolveIconButtonElement`：纯图标按钮的 xs / sm / md / lg 四档（20/24/28/32px，图标 14/18/18/20px）、ghost / subtle 底色、danger tone 与强调色浅底的 `active` 态；`label` 必填，同时作为可访问名称与原生提示，可用 `tooltip=false` 让位给外层 `HoverTooltip`；暴露 `element` 供浮层定位。新增组件 token `--linnya-ui-icon-button-hover-bg` 与 `--linnya-ui-icon-button-hover-bg-raised`：后者供已处于 hover / 选中底色的行把按钮 hover 提高一层，三套主题里都与行底色保持约 6 的 L* 差（暗色不再沿用只亮 1.8 L* 的 hover-strong）。runtime catalog 与真实 tarball consumer 同步新导出。
 - 新增加载占位 `Skeleton`、`SkeletonBlock`、`SkeletonRows` 及公开类型：在 `--delay-reveal`（新增，200ms）后淡入，避免快速加载闪烁；`Skeleton` 自带 `role="status"` 与读屏文案；`SkeletonRows` 提供 28 / 32px 单行与带图标双行三档。新增 `--duration-loop`（1600ms）与组件 token `--linnya-ui-skeleton-bg` / `--linnya-ui-skeleton-highlight`，微光在减少动态效果时停止。runtime catalog 与真实 tarball consumer 同步新导出。
+- `ScrollToBottomButton` 的进出动画改用 `--duration-long` 与 `--ease-enter` / `--ease-exit`，减少动态效果时立即完成。
 - `Modal` 与 `DraggablePanel` 的关闭按钮改由 `IconButton` 渲染（`.modal-close`、`.close-btn` 与 `classNames.closeButton` 保留）；Modal 关闭图标恢复为 18px；`DraggablePanel` 默认标题与 Modal 标题同一层级（副标题字阶、semibold、主文字色）。
 - 设计规范补充颜色使用规则、对比度要求、行距规则、组件规范（按钮层级与组合、卡片、徽标）与当前限制。
 - 包内状态文字改用功能色 `*-text`，在浅色与暗色下均满足 AA。

@@ -1,5 +1,5 @@
 .slash-menu-wrapper {
-  animation: slash-menu-view-fade-in 0.15s ease;
+  animation: slash-menu-view-fade-in var(--duration-short) var(--ease-enter);
 }
 
 .slash-menu-empty {

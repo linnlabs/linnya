@@ -58,7 +58,7 @@
 }
 
 .tt-headers-fade-enter-active {
-  transition: opacity 400ms var(--ease-standard);
+  transition: opacity var(--duration-long) var(--ease-standard);
 }
 
 .tt-headers-fade-enter-from {

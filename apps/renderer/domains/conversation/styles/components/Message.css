@@ -20,7 +20,7 @@
 }
 
 .ai-message.animate-in {
-  animation: conversation-message-slide-up-fade-in 300ms ease-out forwards;
+  animation: conversation-message-slide-up-fade-in var(--duration-long) var(--ease-enter) forwards;
 }
 
 .ai-message.no-animation {

@@ -172,3 +172,9 @@
 .recording-controls .stop-button:hover:not(:disabled) {
   background-color: color-mix(in srgb, var(--color-info) 85%, var(--color-text-primary));
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .recording-controls .limit-warning-icon {
+    animation: none;
+  }
+}

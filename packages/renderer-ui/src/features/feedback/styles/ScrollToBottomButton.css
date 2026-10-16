@@ -97,11 +97,11 @@
 }
 
 .scroll-to-bottom-btn.scroll-btn-enter-active {
-  animation: scroll-to-bottom-fade-in-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: scroll-to-bottom-fade-in-up var(--duration-long) var(--ease-enter);
 }
 
 .scroll-to-bottom-btn.scroll-btn-leave-active {
-  animation: scroll-to-bottom-fade-out-down 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: scroll-to-bottom-fade-out-down var(--duration-long) var(--ease-exit);
 }
 
 @keyframes scroll-to-bottom-fade-in-up {

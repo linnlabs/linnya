@@ -212,7 +212,7 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 - 优先只动画 `opacity` 与 `transform`；需要动画高度时使用 grid `0fr → 1fr` 等不触发逐帧布局的方式。
 - `transition` 只列出状态变化时真正改变的属性，不写 `transition: all`：`all` 会让布局、字号和主题切换时的颜色一起被动画，切换主题时界面会出现不同步的渐变。
 - 动效必须可以被打断：快速重复触发时从当前状态继续，而不是跳回起点。
-- 用户开启“减少动态效果”时，四个时长 token 会被置为接近 0，经由 token 的过渡自动立即完成。直接写在关键帧里的循环动画（如加载指示）必须自行提供 `prefers-reduced-motion` 规则。
+- 用户开启“减少动态效果”时，四个时长 token 会被置为接近 0，经由 token 的过渡自动立即完成。直接写在关键帧里的循环动画（如加载指示）必须自行提供 `prefers-reduced-motion` 规则：装饰性的微光、脉冲、光标闪烁在该偏好下停用；表示“正在进行”的旋转指示可以保留。一次性的进入动画使用 `--duration-*` 与 `--ease-enter`，减少动态效果时随 token 立即完成。
 - `--transition-fast` / `--transition-normal` / `--transition-slow` 是 2.x 旧别名，分别指向 micro、medium、long；仓内新代码使用 `--duration-*`。
 
 ## 8. 交互状态

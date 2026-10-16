@@ -102,3 +102,9 @@
     transform: translateX(100%);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .summary-message.is-loading .summary-content::after {
+    animation: none;
+  }
+}

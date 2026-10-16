@@ -401,7 +401,7 @@
  */
 .annotation-panel.is-creating {
   /* 创建态：使用淡入 + 从下往上轻微浮起的动画 */
-  animation: annotation-panel-fade-in 0.2s ease-out;
+  animation: annotation-panel-fade-in var(--duration-medium) var(--ease-enter);
   /* 创建时不做 top 位置平滑过渡，避免“从页面顶部滑到目标位置”的视觉效果 */
   transition: box-shadow var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }

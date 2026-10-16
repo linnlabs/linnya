@@ -12,7 +12,7 @@
   border-radius: var(--radius-xs);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warning) 80%, transparent);
   transition: background-color var(--duration-short), box-shadow var(--duration-short);
-  animation: find-replace-pulse 0.3s ease-in-out;
+  animation: find-replace-pulse var(--duration-long) var(--ease-standard);
 }
 
 /* Ensure matches are visible in selection */

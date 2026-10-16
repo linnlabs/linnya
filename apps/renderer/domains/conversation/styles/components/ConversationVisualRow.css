@@ -85,7 +85,7 @@
 }
 
 .conversation-visual-row__waiting-indicator.is-visible > svg {
-  animation: conversation-row-waiting-fade-in 0.3s ease-in-out;
+  animation: conversation-row-waiting-fade-in var(--duration-long) var(--ease-standard);
 }
 
 @keyframes conversation-row-waiting-fade-in {

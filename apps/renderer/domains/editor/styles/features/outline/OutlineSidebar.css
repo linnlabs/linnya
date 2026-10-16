@@ -50,7 +50,7 @@
 }
 
 .outline-sidebar .fade-move {
-  transition: transform 0.5s var(--ease-enter);
+  transition: transform var(--duration-long) var(--ease-enter);
 }
 
 .outline-sidebar {
