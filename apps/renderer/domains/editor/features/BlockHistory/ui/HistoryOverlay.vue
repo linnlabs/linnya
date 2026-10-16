@@ -24,9 +24,9 @@
             <template #icon><RestoreIcon /></template>
             {{ editorMessage('editor.blockHistory.overlay.restore') }}
           </BaseButton>
-          <button class="overlay-btn close-btn" @click="handleClose">
+          <IconButton :label="editorMessage('editor.blockHistory.overlay.close')" class="close-btn" @click="handleClose">
             <CloseIcon />
-          </button>
+          </IconButton>
         </div>
       </div>
       
@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { BaseButton } from '@linnya/renderer-ui';
+import { BaseButton, IconButton } from '@linnya/renderer-ui';
 import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { useBlockHistoryStore, type BlockVersion } from '../index'
 import { extractLinesFromContentJson, type VersionLine } from '../utils/lineExtractor'

@@ -38,6 +38,7 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 | 场景 | 组件 | 说明 |
 |---|---|---|
 | 单个按钮 | `@linnya/renderer-ui` 的 `BaseButton` | 页面入口、工具栏、表单内的任意按钮；用 variant 表达层级，size 与同行输入框对齐。 |
+| 纯图标按钮 | `@linnya/renderer-ui` 的 `IconButton` | 关闭、更多、刷新、复制、行内删除等没有文字的操作；`label` 必填，size 决定外框与图标尺寸。 |
 | 主/次操作按钮组 | `@linnya/renderer-ui` 的 `ActionButtons` | 弹窗、表单、卡片底部的确认/取消按钮；主操作支持 default、danger、accent 三种严格视觉语义和胶囊形态。 |
 | 单行输入 | `@linnya/renderer-ui` 的 `CustomTextInput` | 标准文本输入；支持两档尺寸、无边框模式、提交式更新和使用共享图标的可清除搜索。 |
 | 密文输入 | `@linnya/renderer-ui` 的 `SecretInput` | API Key、访问令牌和密码输入；统一显隐按钮、禁用状态及整组 hover/focus 边框。 |
@@ -121,6 +122,31 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 - `type` 默认 `button`，提交表单时显式传入 `submit`；`disabled` 使用原生语义。
 - 普通属性、`aria-*`、`data-*`、`class`、`style` 与事件都落在唯一的原生 `button` 上。业务只能定制外围布局，
   不覆盖 `.linnya-ui-button*` 内部选择器。
+
+### IconButton
+
+```vue
+<IconButton :label="closeLabel" size="md" @click="close">
+  <CloseIcon />
+</IconButton>
+
+<HoverTooltip :text="historyLabel" placement="bottom">
+  <IconButton ref="historyButton" :label="historyLabel" :tooltip="false" :active="isHistoryOpen" @click="toggleHistory">
+    <HistoryIcon />
+  </IconButton>
+</HoverTooltip>
+
+<IconButton :label="deleteLabel" size="xs" tone="danger" @click="remove">
+  <DeleteIcon />
+</IconButton>
+```
+
+- `size`：xs / sm / md / lg，外框 20 / 24 / 28 / 32px，图标 14 / 18 / 18 / 20px；默认 sm。选择规则见[设计规范](./design.md#93-图标按钮)。
+- `variant`：ghost（默认，透明底）/ subtle（静止浅底，用于与输入框并排的添加操作）；`tone="danger"` 悬停显示错误色。
+- `active` 只表达视觉上的选中 / 展开，语义由调用方补 `aria-pressed` 或 `aria-expanded`。
+- `label` 同时是 `aria-label` 与原生 `title`；外层已有自定义提示时传 `:tooltip="false"`。
+- 模板 ref 拿到的是组件实例，原生按钮在 `element` 上；函数式 ref 用 `resolveIconButtonElement(el)` 取出。
+- 按钮放在会 hover / 选中的行里时，在行的操作容器上设置 `--linnya-ui-icon-button-hover-bg: var(--linnya-ui-icon-button-hover-bg-raised)`；不要覆盖 `.linnya-ui-icon-button*` 内部选择器。
 
 ## 选择控件的节点扩展
 

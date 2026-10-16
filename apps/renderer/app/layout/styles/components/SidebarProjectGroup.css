@@ -15,7 +15,8 @@
 .workspace-sidebar .sidebar-project-group .project-row:hover,
 .workspace-sidebar .sidebar-project-group .project-row:focus-within,
 .workspace-sidebar .sidebar-project-group .project-row.is-menu-open {
-  --workspace-sidebar-row-padding-right: 51px;
+  /* 两个 24px 操作按钮 + 2px 间距 + 5px 右边距。 */
+  --workspace-sidebar-row-padding-right: 55px;
 }
 
 .workspace-sidebar .sidebar-project-group .project-row-icon {
@@ -34,10 +35,6 @@
 .workspace-sidebar .sidebar-project-group .project-row:focus-within .row-action-button,
 .workspace-sidebar .sidebar-project-group .project-row.is-menu-open .row-action-button {
   opacity: 1;
-}
-
-.workspace-sidebar .sidebar-project-group .row-action-button:hover {
-  color: var(--color-text-primary);
 }
 
 .sidebar-project-menu-wrapper {

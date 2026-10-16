@@ -24,6 +24,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'FloatingToolbar',
     'HOVER_TOOLTIP_WINDOW_FOCUS_PORT_KEY',
     'HoverTooltip',
+    'IconButton',
     'ImagePreviewModal',
     'Modal',
     'NotificationBar',
@@ -52,6 +53,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'resolveColorPickerOptionHex',
     'resolveDraggablePanelPosition',
     'resolveHoverTooltipPosition',
+    'resolveIconButtonElement',
     'resolveAlertDialogDangerousAction',
   ]),
   entry('icons', '@linnya/renderer-ui/icons', './icons', 'packages/renderer-ui/src/icons/index.ts', 'icons.js', [

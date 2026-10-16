@@ -8,6 +8,7 @@ import {
   type ComponentPublicInstance,
   type CSSProperties,
 } from 'vue';
+import { resolveIconButtonElement } from '@linnya/renderer-ui';
 import { useAssistantStore } from '../../store/assistantStore';
 import type { ConversationListItem } from '../../history/services/historyApiService';
 import { useHistoryListStore } from '../../history/store/historyListStore';
@@ -373,8 +374,9 @@ export function useSidebarChatList(
   );
 
   const setMenuButtonRef = (conversationId: string, element: Element | ComponentPublicInstance | null): void => {
-    if (element instanceof HTMLButtonElement) {
-      menuButtonRefs.set(conversationId, element);
+    const button = resolveIconButtonElement(element);
+    if (button) {
+      menuButtonRefs.set(conversationId, button);
       return;
     }
 

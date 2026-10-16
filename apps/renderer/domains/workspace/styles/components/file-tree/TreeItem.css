@@ -28,7 +28,7 @@
 
 .workspace-sidebar .tree-item:hover .tree-item-content,
 .workspace-sidebar .tree-item.is-more-menu-open .tree-item-content {
-  --workspace-sidebar-row-padding-right: 31px;
+  --workspace-sidebar-row-padding-right: 33px;
 }
 
 .workspace-sidebar .tree-item .expand-icon {
@@ -95,20 +95,6 @@
 
 .workspace-sidebar .tree-item .item-actions {
   flex-shrink: 0;
-}
-
-.workspace-sidebar .tree-item .more-button {
-  transition: background-color var(--duration-short) var(--ease-standard);
-}
-
-.workspace-sidebar .tree-item .more-button:hover {
-  color: var(--color-text-secondary);
-}
-
-/* 选中状态的文件，More 按钮 hover 时使用激活行的灰色层级。 */
-.workspace-sidebar .tree-item.active-file .more-button:hover {
-  background-color: var(--color-bg-active-control-hover);
-  color: var(--color-text-secondary);
 }
 
 .tree-item-menu-wrapper {

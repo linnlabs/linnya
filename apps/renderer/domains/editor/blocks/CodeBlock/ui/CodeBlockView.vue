@@ -50,15 +50,13 @@
     </Teleport>
 
     <div v-if="blockActivation.isUiActive.value" class="code-block-controls" contenteditable="false">
-      <button
+      <IconButton
+        :label="editorMessage('editor.codeBlock.action.copy')"
         class="copy-button"
-        type="button"
         @click="copyCode"
-        :title="editorMessage('editor.codeBlock.action.copy')"
-        :aria-label="editorMessage('editor.codeBlock.action.copy')"
       >
         <CopyIcon />
-      </button>
+      </IconButton>
     </div>
     <div
       class="code-block editor-block"
@@ -76,7 +74,7 @@
 <script setup>
 import { NodeViewWrapper, NodeViewContent, nodeViewProps } from '@tiptap/vue-3';
 import { computed, ref, watch, onMounted, onBeforeUnmount, inject } from 'vue';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton } from '@linnya/renderer-ui';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { CopyIcon } from '@linnya/renderer-ui/icons';
 import { useCurrentBlockActivation } from '../../../ui/composables/useCurrentBlockActivation';

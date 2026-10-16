@@ -10,33 +10,38 @@
     >
       <h2 class="project-title-text">{{ currentProjectName }}</h2>
       <div class="header-actions">
-        <button v-show="isHeaderHovered" @click="$emit('create-folder')" class="add-button" :title="workspaceMessage('workspace.sidebar.fileTree.newFolder')">
+        <IconButton
+          :label="workspaceMessage('workspace.sidebar.fileTree.newFolder')"
+          class="add-button"
+          v-show="isHeaderHovered"
+          @click="$emit('create-folder')"
+        >
           <NewFolderIcon />
-        </button>
+        </IconButton>
 
         <!-- 新建文件下拉菜单：文档 / 思维导图 / 表格 / 演示文稿 -->
         <div class="more-menu-container">
-          <button
-            v-show="isHeaderHovered"
-            ref="newFileButtonRef"
-            @click="toggleCreateMenu"
+          <IconButton
+            :label="workspaceMessage('workspace.sidebar.fileTree.newFile')"
             class="add-button"
-            :title="workspaceMessage('workspace.sidebar.fileTree.newFile')"
+            v-show="isHeaderHovered"
+            ref="newFileButton"
+            @click="toggleCreateMenu"
           >
             <NewFileIcon />
-          </button>
+          </IconButton>
         </div>
 
         <div class="more-menu-container">
-          <button 
-            v-show="isHeaderHovered" 
-            ref="moreButtonRef"
-            @click="toggleMoreMenu" 
-            class="add-button more-button" 
-            :title="workspaceMessage('workspace.sidebar.fileTree.moreOptions')"
+          <IconButton
+            :label="workspaceMessage('workspace.sidebar.fileTree.moreOptions')"
+            class="add-button more-button"
+            v-show="isHeaderHovered"
+            ref="moreButton"
+            @click="toggleMoreMenu"
           >
             <MoreIcon direction="horizontal" />
-          </button>
+          </IconButton>
           <Teleport to="body">
             <transition name="workspace-file-tree-menu-fade">
               <div 
@@ -180,7 +185,7 @@
 <script setup>
 import { provide, ref, computed } from 'vue';
 import TreeItem from './TreeItem.vue';
-import { ActionButtons } from '@linnya/renderer-ui';
+import { ActionButtons, IconButton } from '@linnya/renderer-ui';
 import { NewFolderIcon } from '@linnya/renderer-ui/icons';
 import { NewFileIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
@@ -232,7 +237,8 @@ const currentProjectNameForExport = computed(() => props.currentProjectName || w
 
 // 新建菜单状态
 const showCreateMenu = ref(false);
-const newFileButtonRef = ref(null);
+const newFileButton = ref(null);
+const newFileButtonRef = computed(() => newFileButton.value?.element ?? null);
 const {
   dropdownRef: createDropdownRef,
   dropdownStyle: createDropdownStyle,
@@ -256,7 +262,8 @@ const createOptions = computed(() => [
 
 // 更多菜单状态
 const showMoreMenu = ref(false);
-const moreButtonRef = ref(null);
+const moreButton = ref(null);
+const moreButtonRef = computed(() => moreButton.value?.element ?? null);
 const {
   dropdownRef: moreDropdownRef,
   dropdownStyle: moreDropdownStyle,

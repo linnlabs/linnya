@@ -11,21 +11,4 @@
   top: 8px;
   right: 8px;
   z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: var(--space-1);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: 50%;
-  transition: background-color var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard);
-}
-
-.ai-assistant-table-context .table-mode-close-button:hover {
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-hover-light);
 }

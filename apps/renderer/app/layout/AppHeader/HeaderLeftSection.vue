@@ -3,35 +3,35 @@
     <!-- 功能按钮 -->
     <div class="function-buttons">
       <HoverTooltip :text="layoutMessage('layout.header.sidebar')" placement="bottom">
-        <button
+        <IconButton
+          :label="layoutMessage('layout.header.sidebar')"
+          :tooltip="false"
           class="sidebar-toggle"
-          type="button"
-          :aria-label="layoutMessage('layout.header.sidebar')"
           @click="toggleSidebar"
           :class="{ active: uiStore.sidebarVisible }"
         >
           <SidebarIcon />
-        </button>
+        </IconButton>
       </HoverTooltip>
       <HoverTooltip :text="layoutMessage('layout.header.knowledgeBase')" placement="bottom">
-        <button
+        <IconButton
+          :label="layoutMessage('layout.header.knowledgeBase')"
+          :tooltip="false"
           class="knowledge-base-button"
-          type="button"
-          :aria-label="layoutMessage('layout.header.knowledgeBase')"
           @click="toggleKnowledgeBase"
         >
           <KnowledgeBaseIcon />
-        </button>
+        </IconButton>
       </HoverTooltip>
       <HoverTooltip :text="layoutMessage('layout.header.settings')" placement="bottom">
-        <button
+        <IconButton
+          :label="layoutMessage('layout.header.settings')"
+          :tooltip="false"
           class="settings-button"
-          type="button"
-          :aria-label="layoutMessage('layout.header.settings')"
           @click="toggleSettings"
         >
           <SettingsIcon />
-        </button>
+        </IconButton>
       </HoverTooltip>
     </div>
   </div>
@@ -43,7 +43,7 @@ import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPo
 import { SettingsIcon } from '@linnya/renderer-ui/icons';
 import { KnowledgeBaseIcon } from '@linnya/renderer-ui/icons';
 import { SidebarIcon } from '@linnya/renderer-ui/icons';
-import { HoverTooltip } from '@linnya/renderer-ui';
+import { HoverTooltip, IconButton } from '@linnya/renderer-ui';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
 
 const props = defineProps<{

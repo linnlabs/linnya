@@ -107,35 +107,6 @@
   border-radius: var(--radius-sm);
 }
 
-.review-setup-view .icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  font-size: 16px;
-  line-height: 1;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  transition:
-    background-color var(--duration-medium),
-    color var(--duration-medium);
-}
-
-.review-setup-view .icon-btn svg {
-  display: block;
-  width: 14px;
-  height: 14px;
-}
-
-.review-setup-view .icon-btn:hover {
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-hover);
-}
-
 .review-setup-view .add-agent-wrapper {
   position: relative;
   width: 100%;

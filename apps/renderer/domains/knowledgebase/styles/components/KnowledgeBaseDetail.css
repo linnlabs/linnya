@@ -43,31 +43,6 @@
   min-width: 0;
 }
 
-.kb-detail-view .back-btn {
-  background: none;
-  border: none;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
-}
-
-.kb-detail-view .back-btn:hover {
-  background-color: var(--color-bg-subtle);
-  color: var(--color-text-primary);
-}
-
-.kb-detail-view .back-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
 .kb-detail-view .kb-info {
   display: flex;
   flex-direction: column;

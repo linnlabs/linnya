@@ -17,7 +17,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 
 ## 公开入口
 
-- 包根：BaseButton、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：BaseButton、IconButton、`resolveIconButtonElement`、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -160,6 +160,8 @@ feature 拥有。
 ## 按钮
 
 `BaseButton`（自 2.6.0）是所有按钮的唯一视觉 owner：七种语义 variant（primary、secondary、ghost、plain、danger、soft、outline）、作用于 outline 与 plain 的 accent / info / neutral / danger tone、与 `--control-height-sm/md/lg` 对应的三档尺寸、胶囊形与占满宽度。组件只拥有展示、原生禁用与焦点环，不理解保存、提交或加载等业务状态；调用方通过 `disabled` 和文案投影进行中的状态。图标通过 `icon` 插槽放入 14px 槽位并对辅助技术隐藏，按钮文字或 `aria-label` 是可访问名称。普通属性、`aria-*`、`data-*`、`class`、`style` 与事件都落在唯一的原生 `button`；业务只能定制外围位置与宽度，不覆盖 `.linnya-ui-button*` 内部选择器。
+
+`IconButton`（自 2.6.0）是纯图标按钮的视觉 owner：xs / sm / md / lg 四档外框与图标尺寸、ghost / subtle 两种底色、neutral / danger tone 与强调色浅底的 `active` 态。`label` 必填并同时作为 `aria-label` 与原生提示；模板 ref 通过暴露的 `element` 取得原生按钮供浮层定位，函数式 ref 使用 `resolveIconButtonElement`。会 hover / 选中的行可把 `--linnya-ui-icon-button-hover-bg` 设为 `var(--linnya-ui-icon-button-hover-bg-raised)` 让按钮再高一层，除此之外业务不覆盖 `.linnya-ui-icon-button*` 内部选择器。编辑器格式工具条继续使用 `ToolbarButton`。
 
 `ActionButtons` 由两个 `BaseButton` 组成，保留原有 props、事件与插槽；主操作 default / danger / accent 分别对应 primary / danger / soft，次操作 filled / ghost / plain 对应 secondary / ghost / plain，并在组内保证 80px 最小宽度。选择哪种层级、怎样组合见[设计规范](./docs/design.md#92-按钮)。目前消费者包括知识库页面与设置、项目知识库关联、设置页（存储空间、内存诊断、添加模型）、文档历史、编辑器面板（公式、图片尺寸、引用、查找替换、块历史、Review）、对话卡片、命令输入对话框、项目列表空态、包内 `TimePicker`，以及全部 `ActionButtons` 使用方。
 

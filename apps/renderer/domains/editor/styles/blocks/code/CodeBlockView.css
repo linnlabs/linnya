@@ -11,6 +11,11 @@
   transition: opacity var(--duration-medium) var(--ease-standard), visibility 0s var(--ease-standard) 0.2s;
 }
 
+/* 代码块底色已是浅灰，复制按钮的 hover 底色再高一层。 */
+.code-block-outer .copy-button {
+  --linnya-ui-icon-button-hover-bg: var(--color-bg-hover-strong);
+}
+
 .code-block-outer .language-display {
   position: absolute;
   top: 6px;
@@ -82,34 +87,6 @@
 
 .custom-language-select {
   min-width: 150px;
-}
-
-.code-block-outer .copy-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius-sm);
-  background-color: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  font-size: var(--font-size-caption);
-  transition: color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
-}
-
-.code-block-outer .copy-button svg {
-  display: block;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.code-block-outer .copy-button:hover {
-  background-color: var(--color-bg-hover-strong);
-  color: var(--color-text-primary);
 }
 
 .dropdown-fade-enter-active,

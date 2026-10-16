@@ -83,30 +83,9 @@
   margin-left: var(--space-1);
 }
 
-.workspace-sidebar .project-list-view .more-button {
-  background: none;
-  border: none;
-  padding: var(--space-0-5);
-  border-radius: 3px;
-  cursor: pointer;
-  width: 22px;
-  height: 22px;
-  color: var(--color-text-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color var(--duration-short) var(--ease-standard);
-}
-
-.workspace-sidebar .project-list-view .more-button:hover {
-  /* 与整行 hover 拉开层次，避免按钮 hover 被行背景吞掉。 */
-  background-color: var(--color-bg-hover-strong);
-  color: var(--color-text-secondary);
-}
-
-.workspace-sidebar .project-list-view .more-button svg {
-  width: 18px;
-  height: 18px;
+/* 与整行 hover 拉开层次，避免按钮 hover 被行背景吞掉。 */
+.workspace-sidebar .project-list-view .project-actions {
+  --linnya-ui-icon-button-hover-bg: var(--linnya-ui-icon-button-hover-bg-raised);
 }
 
 .project-menu-wrapper {

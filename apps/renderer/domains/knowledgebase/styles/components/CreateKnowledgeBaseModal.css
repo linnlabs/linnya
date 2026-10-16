@@ -108,39 +108,6 @@
   flex: 1;
 }
 
-.create-kb-content .add-tag-button {
-  display: flex;
-  width: 32px;
-  height: 32px;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-bg-subtle);
-  border: none;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  transition:
-    background-color var(--duration-medium),
-    color var(--duration-medium),
-    opacity var(--duration-medium);
-  flex-shrink: 0;
-}
-
-.create-kb-content .add-tag-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.create-kb-content .add-tag-button:not(:disabled):hover {
-  background-color: var(--color-bg-hover);
-  color: var(--color-text-secondary);
-}
-
-.create-kb-content .add-icon {
-  width: 20px;
-  height: 20px;
-}
-
 .create-kb-content .tags-list {
   display: flex;
   flex-wrap: wrap;

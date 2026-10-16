@@ -1,6 +1,12 @@
 /* 跨 Host 与插件稳定复用的组件/交互 token，三套内置主题必须同构。 */
 
 [data-linnya-ui-theme='light'] {
+  /*
+   * IconButton 悬停底色。按钮所在行已经处于 hover / 选中底色时，容器把它覆盖为 raised：
+   * 与行底色保持约 6 的 L* 差，三套主题里都能一眼看出第二层悬停。
+   */
+  --linnya-ui-icon-button-hover-bg: var(--color-bg-hover);
+  --linnya-ui-icon-button-hover-bg-raised: var(--color-bg-active-control-hover);
   --code-block-bg: var(--color-gray-100);
   --drag-handle-color: var(--color-gray-350);
   --drag-handle-hover-color: var(--color-gray-400);
@@ -11,6 +17,9 @@
 }
 
 [data-linnya-ui-theme='dark'] {
+  --linnya-ui-icon-button-hover-bg: var(--color-bg-hover);
+  /* 暗色 hover-strong 只比行 hover 亮 1.8 L*，几乎不可见，这里单独取更亮一档。 */
+  --linnya-ui-icon-button-hover-bg-raised: var(--color-gray-675);
   --code-block-bg: var(--color-gray-825);
   --drag-handle-color: var(--color-gray-500);
   --drag-handle-hover-color: var(--color-gray-400);
@@ -21,6 +30,8 @@
 }
 
 [data-linnya-ui-theme='moon-blue'] {
+  --linnya-ui-icon-button-hover-bg: var(--color-bg-hover);
+  --linnya-ui-icon-button-hover-bg-raised: var(--color-bg-active-control-hover);
   --code-block-bg: color-mix(in srgb, var(--color-blue-50) 58%, var(--color-white));
   --drag-handle-color: var(--color-text-tertiary);
   --drag-handle-hover-color: var(--color-text-secondary);

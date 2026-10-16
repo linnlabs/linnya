@@ -138,24 +138,8 @@
   gap: var(--space-1);
 }
 
-.todo-sidebar .todo-item .delete-button {
-  display: flex;
-  height: 28px;
-  width: 28px;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-md);
-  color: var(--color-text-tertiary);
-  transition: background-color var(--duration-medium);
-}
-
 .todo-sidebar .todo-item .delete-icon {
   width: 16px;
   height: 16px;
   background-color: transparent !important;
-}
-
-.todo-sidebar .todo-item .delete-button:hover {
-  background-color: var(--color-error-bg);
-  color: var(--color-text-tertiary);
 }

@@ -55,36 +55,6 @@
   text-align: center;
 }
 
-.find-replace-nav-btn {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: var(--space-1);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background-color var(--duration-medium) var(--ease-standard);
-}
-
-.find-replace-nav-btn .nav-icon {
-  width: 16px;
-  height: 16px;
-}
-
-.find-replace-nav-btn:hover:not(:disabled) {
-  background-color: var(--color-bg-hover);
-}
-
-.find-replace-nav-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
 .find-replace-options {
   display: flex;
   gap: var(--space-4);

@@ -150,43 +150,6 @@
   align-items: center;
 }
 
-.create-project-content .add-tag-button {
-  display: flex;
-  width: 32px;
-  height: 32px;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  /*
-   * 原先引用的 --color-interactive-surface-subtle 未定义，实际背景是透明；
-   * 外迁时显式保留这个视觉结果，避免按钮突然获得新的底色。
-   */
-  background-color: transparent;
-  border: none;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  transition:
-    background-color var(--duration-medium),
-    color var(--duration-medium),
-    opacity var(--duration-medium);
-  flex-shrink: 0;
-}
-
-.create-project-content .add-tag-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.create-project-content .add-tag-button:not(:disabled):hover {
-  background-color: var(--color-bg-hover);
-  color: var(--color-text-secondary);
-}
-
-.create-project-content .add-icon {
-  width: 20px;
-  height: 20px;
-}
-
 .create-project-content .tags-list {
   display: flex;
   flex-wrap: wrap;

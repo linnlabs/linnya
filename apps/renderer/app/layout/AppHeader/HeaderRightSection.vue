@@ -35,29 +35,29 @@
               :text="layoutMessage('layout.header.newConversation')"
               placement="bottom"
             >
-              <button
+              <IconButton
+                :label="layoutMessage('layout.header.newConversation')"
+                :tooltip="false"
                 class="project-workspace-action"
-                type="button"
-                :aria-label="layoutMessage('layout.header.newConversation')"
                 @click="handleStartNewConversation"
               >
                 <AddIcon class="project-workspace-action-icon" />
-              </button>
+              </IconButton>
             </HoverTooltip>
             <HoverTooltip
               :text="layoutMessage('layout.header.history')"
               placement="bottom"
             >
-              <button
-                ref="historyToolButtonRef"
+              <IconButton
+                :label="layoutMessage('layout.header.history')"
+                :tooltip="false"
                 class="project-workspace-action"
-                :class="{ 'is-active': showHistoryDropdown }"
-                type="button"
-                :aria-label="layoutMessage('layout.header.history')"
+                ref="historyToolButton"
+                :active="showHistoryDropdown"
                 @click="handleOpenProjectHistory"
               >
                 <HistoryIcon class="project-workspace-action-icon" />
-              </button>
+              </IconButton>
             </HoverTooltip>
           </div>
         </template>
@@ -68,16 +68,16 @@
             :text="timelineButtonTooltip"
             placement="bottom"
           >
-            <button
+            <IconButton
+              :label="timelineButtonTooltip"
+              :tooltip="false"
               class="project-workspace-action"
-              :class="{ 'is-active': !isTimelineCollapsed }"
+              :active="!isTimelineCollapsed"
               :disabled="!canToggleTimeline"
-              type="button"
-              :aria-label="timelineButtonTooltip"
               @click="handleToggleTimeline"
             >
               <TimelineIcon class="project-workspace-action-icon" />
-            </button>
+            </IconButton>
           </HoverTooltip>
         </div>
 
@@ -89,15 +89,15 @@
             placement="bottom"
             :disabled="showDocMenu"
           >
-            <button
-              ref="docMenuButtonRef"
+            <IconButton
+              :label="layoutMessage('layout.header.moreMenu')"
+              :tooltip="false"
               class="project-workspace-action"
-              type="button"
-              :aria-label="layoutMessage('layout.header.moreMenu')"
+              ref="docMenuButton"
               @click.stop="toggleDocMenu"
             >
               <MoreIcon class="project-workspace-action-icon" direction="horizontal" />
-            </button>
+            </IconButton>
           </HoverTooltip>
 
 
@@ -106,14 +106,14 @@
         <!-- 交换位置属于中间窗口；右侧栏开关固定在最右侧，避免跟随中间 pane 边界漂移。 -->
         <div v-if="hasWorkspaceFileSurface" class="workspace-layout-actions">
           <HoverTooltip :text="swapPaneTooltip" placement="bottom">
-            <button
+            <IconButton
+              :label="layoutMessage('layout.header.swapPanes')"
+              :tooltip="false"
               class="project-workspace-action"
-              type="button"
-              :aria-label="layoutMessage('layout.header.swapPanes')"
               @click="handleSwapWorkspacePanes"
             >
               <SwapPaneIcon class="project-workspace-action-icon" />
-            </button>
+            </IconButton>
           </HoverTooltip>
         </div>
       </div>
@@ -159,45 +159,45 @@
               :text="layoutMessage('layout.header.newConversation')"
               placement="bottom"
             >
-              <button
+              <IconButton
+                :label="layoutMessage('layout.header.newConversation')"
+                :tooltip="false"
                 class="project-workspace-action"
-                type="button"
-                :aria-label="layoutMessage('layout.header.newConversation')"
                 @click="handleStartNewConversation"
               >
                 <AddIcon class="project-workspace-action-icon" />
-              </button>
+              </IconButton>
             </HoverTooltip>
             <HoverTooltip
               v-if="canShowProjectConversationHistory"
               :text="layoutMessage('layout.header.history')"
               placement="bottom"
             >
-              <button
-                ref="historyToolButtonRef"
+              <IconButton
+                :label="layoutMessage('layout.header.history')"
+                :tooltip="false"
                 class="project-workspace-action"
-                :class="{ 'is-active': showHistoryDropdown }"
-                type="button"
-                :aria-label="layoutMessage('layout.header.history')"
+                ref="historyToolButton"
+                :active="showHistoryDropdown"
                 @click="handleOpenProjectHistory"
               >
                 <HistoryIcon class="project-workspace-action-icon" />
-              </button>
+              </IconButton>
             </HoverTooltip>
             <HoverTooltip
               :text="timelineButtonTooltip"
               placement="bottom"
             >
-              <button
+              <IconButton
+                :label="timelineButtonTooltip"
+                :tooltip="false"
                 class="project-workspace-action"
-                :class="{ 'is-active': !isTimelineCollapsed }"
+                :active="!isTimelineCollapsed"
                 :disabled="!canToggleTimeline"
-                type="button"
-                :aria-label="timelineButtonTooltip"
                 @click="handleToggleTimeline"
               >
                 <TimelineIcon class="project-workspace-action-icon" />
-              </button>
+              </IconButton>
             </HoverTooltip>
           </div>
 
@@ -209,15 +209,15 @@
               placement="bottom"
               :disabled="showDocMenu"
             >
-              <button
-                ref="docMenuButtonRef"
+              <IconButton
+                :label="layoutMessage('layout.header.moreMenu')"
+                :tooltip="false"
                 class="project-workspace-action"
-                type="button"
-                :aria-label="layoutMessage('layout.header.moreMenu')"
+                ref="docMenuButton"
                 @click.stop="toggleDocMenu"
               >
                 <MoreIcon class="project-workspace-action-icon" direction="horizontal" />
-              </button>
+              </IconButton>
             </HoverTooltip>
 
 
@@ -232,15 +232,15 @@
       :style="workspaceRightToggleStyle"
     >
       <HoverTooltip :text="rightPaneToggleTooltip" placement="bottom">
-        <button
+        <IconButton
+          :label="layoutMessage('layout.header.rightPane.toggle')"
+          :tooltip="false"
           class="project-workspace-action"
-          type="button"
           :disabled="!workspacePaneGeometry.canOccupyRightPane"
-          :aria-label="layoutMessage('layout.header.rightPane.toggle')"
           @click="handleToggleWorkspaceRightPane"
         >
           <SidebarIcon class="project-workspace-action-icon project-workspace-action-icon--right-sidebar" />
-        </button>
+        </IconButton>
       </HoverTooltip>
     </div>
 
@@ -254,14 +254,13 @@
           <header class="header-tool-panel__header">
             <span class="header-tool-panel__title">{{ activeHeaderToolTitle }}</span>
             <div class="header-tool-panel__actions">
-              <button
-                class="header-tool-panel__icon-button"
-                type="button"
-                :title="layoutMessage('layout.header.panel.close')"
+              <IconButton
+                :label="layoutMessage('layout.header.panel.close')"
+                size="md"
                 @click="activeHeaderTool = null"
               >
                 <CloseIcon />
-              </button>
+              </IconButton>
             </div>
           </header>
 
@@ -360,7 +359,7 @@ import { useDocumentActionMenu, useDocumentTypeAvailabilityByActiveType } from '
 import { DocumentHistoryPanel, useHistoryMessages } from '@/domains/document-history';
 import { getDocumentTypeByActiveType, getDocumentTypeByNodeType } from '@/app/plugins/registry';
 import type { DocumentActionMenuOptionValue } from '@/app/plugins/types';
-import { CustomSelect, HoverTooltip, type CustomSelectOption } from '@linnya/renderer-ui';
+import { CustomSelect, HoverTooltip, IconButton, type CustomSelectOption, type IconButtonExposed } from '@linnya/renderer-ui';
 import { resolveWorkspaceNodeDisplayName } from '@/domains/workspace/functions/resolveWorkspaceNodeDisplayName';
 import { WindowActionIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
@@ -597,7 +596,8 @@ type HeaderTool = 'review';
 
 const activeHeaderTool = ref<HeaderTool | null>(null);
 const showHistoryDropdown = ref(false);
-const historyToolButtonRef = ref<HTMLElement | null>(null);
+const historyToolButton = ref<IconButtonExposed | null>(null);
+const historyToolButtonRef = computed<HTMLElement | null>(() => historyToolButton.value?.element ?? null);
 const headerToolPanelRef = ref<HTMLElement | null>(null);
 const canToggleTimeline = computed(() => assistantStore.hasRenderableMessages);
 const isTimelineCollapsed = computed(() => assistantStore.isTimelineCollapsed);
@@ -729,7 +729,8 @@ const handleToggleWorkspaceRightPane = () => {
 // 是否显示文档菜单
 const showDocMenu = ref(false);
 // “更多”按钮引用
-const docMenuButtonRef = ref<HTMLElement | null>(null);
+const docMenuButton = ref<IconButtonExposed | null>(null);
+const docMenuButtonRef = computed<HTMLElement | null>(() => docMenuButton.value?.element ?? null);
 // 菜单容器引用
 const docMenuWrapperRef = ref<HTMLElement | null>(null);
 

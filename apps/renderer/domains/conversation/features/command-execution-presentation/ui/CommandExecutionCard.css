@@ -149,9 +149,7 @@
   color: var(--color-error-text);
 }
 
-.command-execution-card__cancel,
-.command-execution-card__protected-input,
-.command-execution-card__copy {
+.command-execution-card__protected-input {
   display: inline-grid;
   width: 22px;
   height: 22px;
@@ -172,23 +170,17 @@
   white-space: nowrap;
 }
 
-.command-execution-card__cancel:hover:not(:disabled),
-.command-execution-card__protected-input:hover:not(:disabled),
-.command-execution-card__copy:hover:not(:disabled) {
+.command-execution-card__protected-input:hover:not(:disabled) {
   background: var(--color-bg-hover);
   color: var(--color-text-primary);
 }
 
-.command-execution-card__cancel:disabled,
-.command-execution-card__protected-input:disabled,
-.command-execution-card__copy:disabled {
+.command-execution-card__protected-input:disabled {
   cursor: wait;
   opacity: 0.5;
 }
 
-.command-execution-card__cancel svg,
-.command-execution-card__protected-input svg,
-.command-execution-card__copy svg {
+.command-execution-card__protected-input svg {
   width: 14px;
   height: 14px;
 }

@@ -78,16 +78,15 @@
           class="workspace-sidebar-row-actions chat-list-actions"
           @click.stop
         >
-          <button
+          <IconButton
+            :label="conversationMessage('conversation.sidebar.moreOptions')"
+            class="chat-list-action-button"
             :ref="(element) => setMenuButtonRef(conversation.conversation_id, element)"
-            class="workspace-sidebar-row-action-button chat-list-action-button"
-            type="button"
             :disabled="isConversationDeleting(conversation.conversation_id)"
-            :title="conversationMessage('conversation.sidebar.moreOptions')"
             @click.stop="toggleMoreMenu(conversation)"
           >
             <MoreIcon direction="horizontal" />
-          </button>
+          </IconButton>
         </span>
       </div>
 
@@ -160,7 +159,7 @@ import { useSidebarChatList } from './sidebarChatList/useSidebarChatList';
 import type { SidebarChatListEmit, SidebarChatListProps } from './sidebarChatList/definitions';
 import { PinIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton } from '@linnya/renderer-ui';
 const props = defineProps<SidebarChatListProps>();
 const emit = defineEmits<SidebarChatListEmit>();
 

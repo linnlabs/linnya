@@ -94,7 +94,7 @@ try {
     path.join(consumerRoot, 'main.ts'),
     [
       "import { createApp, h } from 'vue';",
-      "import { ActionButtons, BaseButton, ColorPickerPanel, CustomNumberInput, CustomSlider, CustomTextInput, DraggablePanel, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton, DropdownPanel, HoverTooltip, NotificationBar, SimpleDatePicker, TimePicker, createColorPickerOptions, resolveDraggablePanelPosition, resolveHoverTooltipPosition } from '@linnya/renderer-ui';",
+      "import { ActionButtons, BaseButton, ColorPickerPanel, IconButton, CustomNumberInput, CustomSlider, CustomTextInput, DraggablePanel, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton, DropdownPanel, HoverTooltip, NotificationBar, SimpleDatePicker, TimePicker, createColorPickerOptions, resolveDraggablePanelPosition, resolveHoverTooltipPosition } from '@linnya/renderer-ui';",
       "import { ChevronIcon } from '@linnya/renderer-ui/icons';",
       "import { resolveBrowserFontStack } from '@linnya/renderer-ui/font-stack';",
       "import { FALLBACK_SHARED_COMPONENT_LOCALIZATION_PORT } from '@linnya/renderer-ui/localization';",
@@ -110,6 +110,7 @@ try {
       "    h(ChevronIcon, { direction: 'right', 'aria-label': label }),",
       "    h(ActionButtons, { primaryActionText: 'Continue' }),",
       "    h(BaseButton, { variant: 'outline', tone: 'accent', size: 'lg', shape: 'pill' }, () => 'Create'),",
+      "    h(IconButton, { label: 'Close', size: 'md' }, () => h(ChevronIcon, { direction: 'right' })),",
       "    h(CustomTextInput, { modelValue: 'Packed consumer' }),",
       "    h(CustomNumberInput, { modelValue: 4, min: 1, max: 8 }),",
       "    h(CustomSlider, { modelValue: 25, min: 0, max: 100, variant: 'compact', 'aria-label': 'Scale' }),",

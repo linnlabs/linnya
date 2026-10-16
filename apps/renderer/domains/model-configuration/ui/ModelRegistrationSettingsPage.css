@@ -118,17 +118,6 @@
   min-width: 0;
 }
 
-.add-model-refresh-button {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  min-height: 32px;
-  padding: 0;
-  color: var(--color-text-tertiary);
-}
-
 .add-model-discover-button {
   flex-shrink: 0;
 }

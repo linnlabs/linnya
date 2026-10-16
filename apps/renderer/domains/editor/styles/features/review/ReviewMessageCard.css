@@ -62,21 +62,6 @@
 }
 
 .review-message-card .delete-btn {
-  background: none;
-  border: none;
-  padding: var(--space-1);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  /* 常驻占位，用透明度控制显隐，避免 hover 时布局发生变化。 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background-color var(--duration-short) var(--ease-standard),
-    color var(--duration-short) var(--ease-standard),
-    opacity var(--duration-short) var(--ease-standard);
-  flex-shrink: 0;
   opacity: 0;
   pointer-events: none;
 }
@@ -84,14 +69,4 @@
 .review-message-card:hover .delete-btn {
   opacity: 1;
   pointer-events: auto;
-}
-
-.review-message-card .delete-btn:hover {
-  background-color: var(--color-bg-hover-strong);
-  color: var(--color-text-primary);
-}
-
-.review-message-card .delete-btn svg {
-  width: 14px;
-  height: 14px;
 }

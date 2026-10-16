@@ -244,6 +244,7 @@ export type EditorMessageKey =
   | 'editor.blockHistory.overlay.restore'
   | 'editor.blockHistory.overlay.empty'
   | 'editor.blockHistory.overlay.closePreviewShortcut'
+  | 'editor.blockHistory.overlay.close'
   | 'editor.blockHistory.origin.ai'
   | 'editor.blockHistory.origin.manual'
   | 'editor.blockHistory.origin.restore'

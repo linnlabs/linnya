@@ -28,16 +28,15 @@
           class="add-model-select-control flex-grow"
           font-size="14px"
         />
-        <button
-          type="button"
-          class="settings-inline-button add-model-refresh-button"
+        <IconButton
+          :label="settingsMessage('settings.addModel.ollama.refreshTitle')"
+          size="lg"
+          class="add-model-refresh-button"
           :disabled="modelsLoading || !form.serviceUrl"
-          :title="settingsMessage('settings.addModel.ollama.refreshTitle')"
-          :aria-label="settingsMessage('settings.addModel.ollama.refreshTitle')"
           @click="refreshModels"
         >
           <RefreshIcon class="add-model-refresh-icon" :class="{ 'is-spinning': modelsLoading }" />
-        </button>
+        </IconButton>
       </div>
     </SettingsRow>
 
@@ -99,7 +98,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import { RefreshIcon } from '@linnya/renderer-ui/icons';
-import { BaseButton, CustomSelect } from '@linnya/renderer-ui';
+import { BaseButton, CustomSelect, IconButton } from '@linnya/renderer-ui';
 import { CustomTextInput } from '@linnya/renderer-ui';
 import { SettingsFeedback, SettingsRow, useSettingsLocalization } from '@/domains/settings/public';
 import type {

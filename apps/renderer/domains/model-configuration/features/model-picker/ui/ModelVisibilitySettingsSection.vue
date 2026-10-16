@@ -88,10 +88,10 @@
                 v-if="canRefreshSelectedSource"
                 :text="refreshLabel"
               >
-                <button
-                  type="button"
+                <IconButton
+                  :label="refreshLabel"
+                  size="xs"
                   class="model-visibility-refresh-btn"
-                  :aria-label="refreshLabel"
                   :disabled="isRefreshingSourceId !== null || isMutating"
                   @click.stop="refreshSourceModels(selectedSource)"
                 >
@@ -99,34 +99,31 @@
                     class="icon"
                     :class="{ 'is-spinning': isRefreshingSourceId === selectedSource.id }"
                   />
-                </button>
+                </IconButton>
               </HoverTooltip>
             </div>
             <div
               v-if="selectedSource.kind === 'provider'"
               class="model-visibility-provider-actions"
             >
-              <button
-                v-if="selectedSource.credentialKind === 'api_key'"
-                type="button"
+              <IconButton
+                :label="settingsMessage('settings.modelPicker.replaceApiKey')"
                 class="model-visibility-provider-edit"
-                :aria-label="settingsMessage('settings.modelPicker.replaceApiKey')"
-                :title="settingsMessage('settings.modelPicker.replaceApiKey')"
+                v-if="selectedSource.credentialKind === 'api_key'"
                 :disabled="isMutating"
                 @click="openCredentialReplacement(selectedSource)"
               >
                 <EditIcon />
-              </button>
-              <button
-                type="button"
+              </IconButton>
+              <IconButton
+                :label="settingsMessage('settings.modelPicker.removeProvider')"
+                tone="danger"
                 class="model-visibility-provider-delete"
-                :aria-label="settingsMessage('settings.modelPicker.removeProvider')"
-                :title="settingsMessage('settings.modelPicker.removeProvider')"
                 :disabled="isMutating"
                 @click="removeSelectedProvider"
               >
                 <DeleteIcon />
-              </button>
+              </IconButton>
               <Switch
                 :model-value="selectedSource.pickerEnabled"
                 v-bind="{ ariaLabel: selectedSource.displayName }"
@@ -138,26 +135,23 @@
               v-else-if="selectedSource.kind === 'custom_provider'"
               class="model-visibility-provider-actions"
             >
-              <button
-                type="button"
+              <IconButton
+                :label="settingsMessage('settings.modelPicker.editProvider')"
                 class="model-visibility-provider-edit"
-                :aria-label="settingsMessage('settings.modelPicker.editProvider')"
-                :title="settingsMessage('settings.modelPicker.editProvider')"
                 :disabled="isMutating"
                 @click="openCustomProviderEdit(selectedSource)"
               >
                 <EditIcon />
-              </button>
-              <button
-                type="button"
+              </IconButton>
+              <IconButton
+                :label="settingsMessage('settings.modelPicker.removeProvider')"
+                tone="danger"
                 class="model-visibility-provider-delete"
-                :aria-label="settingsMessage('settings.modelPicker.removeProvider')"
-                :title="settingsMessage('settings.modelPicker.removeProvider')"
                 :disabled="isMutating"
                 @click="removeSelectedCustomProvider(selectedSource)"
               >
                 <DeleteIcon />
-              </button>
+              </IconButton>
             </div>
           </header>
           <div
@@ -264,7 +258,7 @@ import {
   type CustomApiProviderConnection,
 } from '../../custom-model-registration';
 import { DirectProviderCredentialModal } from '../../direct-provider-onboarding';
-import { ActionButtons, CustomTextInput, HoverTooltip, Switch } from '@linnya/renderer-ui';
+import { ActionButtons, CustomTextInput, HoverTooltip, IconButton, Switch } from '@linnya/renderer-ui';
 import { DeleteIcon, EditIcon, RefreshIcon } from '@linnya/renderer-ui/icons';
 import { confirm } from '@shared/composables/confirmDialog';
 import {

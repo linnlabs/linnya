@@ -2,14 +2,13 @@
   <div class="project-nav-top">
     <div class="project-nav-header">
       <HoverTooltip :text="layoutMessage('layout.sidebar.project.back')" placement="bottom">
-        <button
+        <IconButton
+          :label="layoutMessage('layout.sidebar.project.back')"
           class="project-nav-back-button"
-          type="button"
-          :aria-label="layoutMessage('layout.sidebar.project.back')"
           @click="$emit('back')"
         >
           <ChevronIcon class="project-nav-back-icon" direction="left" />
-        </button>
+        </IconButton>
       </HoverTooltip>
 
       <div class="project-nav-title" :title="projectName">
@@ -123,7 +122,7 @@ import { ChatIcon } from '@linnya/renderer-ui/icons';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { SearchIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect, HoverTooltip } from '@linnya/renderer-ui';
+import { CustomSelect, HoverTooltip, IconButton } from '@linnya/renderer-ui';
 import { useFixedDropdownPosition } from '@/domains/workspace/ui/sidebar';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
 

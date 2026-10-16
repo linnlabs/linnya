@@ -28,32 +28,6 @@
   flex: 1; /* Let title take up remaining space */
 }
 
-.todo-sidebar .create-todo-card .close-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  color: var(--color-text-primary);
-  transition:
-    background-color var(--duration-medium),
-    border-radius var(--duration-medium);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-}
-
-.todo-sidebar .create-todo-card .close-button:hover {
-  background-color: var(--color-bg-hover);
-  border-radius: var(--radius-sm); /* Match modal style */
-}
-
-.todo-sidebar .create-todo-card .close-icon {
-  width: 18px; /* Match modal style */
-  height: 18px; /* Match modal style */
-}
-
 .todo-sidebar .create-todo-card .form-content {
   padding: var(--space-3) var(--space-6) var(--space-5); /* Match modal content padding style */
   display: flex;
@@ -212,7 +186,6 @@
   background-color: var(--color-error-bg);
 }
 
-
 /* Tag Input */
 .todo-sidebar .create-todo-card .tag-input-wrapper {
   display: flex;
@@ -222,33 +195,6 @@
 
 .todo-sidebar .create-todo-card .tag-input {
   flex: 1;
-}
-
-.todo-sidebar .create-todo-card .add-tag-button {
-  display: flex;
-  width: 32px;
-  height: 32px;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-bg-subtle);
-  border: none;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  transition:
-    background-color var(--duration-medium),
-    color var(--duration-medium);
-  flex-shrink: 0;
-}
-
-.todo-sidebar .create-todo-card .add-tag-button:hover {
-  background-color: var(--color-bg-hover);
-  color: var(--color-text-secondary);
-}
-
-.todo-sidebar .create-todo-card .add-icon {
-  width: 20px;
-  height: 20px;
 }
 
 /* Tags List */

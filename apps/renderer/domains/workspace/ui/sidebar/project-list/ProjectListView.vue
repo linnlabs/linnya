@@ -27,15 +27,15 @@
         
         <!-- 更多菜单按钮 -->
         <div class="project-actions">
-          <button 
+          <IconButton
+            :label="workspaceMessage('workspace.sidebar.project.moreOptions')"
+            class="more-button"
             v-show="hoveredProjectId === project.id || activeMenuProjectId === project.id"
             :ref="el => setMoreButtonRef(project.id, el)"
-            class="more-button"
-            :title="workspaceMessage('workspace.sidebar.project.moreOptions')"
             @click.stop="toggleMenu(project.id, $event)"
           >
             <MoreIcon direction="horizontal" />
-          </button>
+          </IconButton>
         </div>
       </div>
     </div>
@@ -71,7 +71,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
-import { BaseButton, CustomSelect } from '@linnya/renderer-ui';
+import { BaseButton, CustomSelect, IconButton, resolveIconButtonElement } from '@linnya/renderer-ui';
 import { useFixedDropdownPosition } from '../composables/useFixedDropdownPosition';
 import { buildProjectMenuOptions, isProjectDeleteDisabled } from '../functions/projectMenuModel';
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
@@ -110,8 +110,9 @@ const menuOptions = computed(() => buildProjectMenuOptions(activeMenuProject.val
 
 // 设置更多按钮引用
 const setMoreButtonRef = (projectId, el) => {
-  if (el) {
-    moreButtonRefs.value[projectId] = el;
+  const button = resolveIconButtonElement(el);
+  if (button) {
+    moreButtonRefs.value[projectId] = button;
   }
 };
 

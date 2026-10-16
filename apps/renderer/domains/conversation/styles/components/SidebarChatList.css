@@ -100,19 +100,6 @@
   pointer-events: none;
 }
 
-.sidebar-chat-list .chat-list-action-button:hover {
-  color: var(--color-text-secondary);
-}
-
-.sidebar-chat-list .chat-list-item.is-active .chat-list-action-button:hover {
-  background-color: var(--color-bg-active-control-hover);
-  color: var(--color-text-primary);
-}
-
-.sidebar-chat-list .chat-list-action-button.is-active {
-  color: var(--color-text-primary);
-}
-
 .sidebar-chat-list .chat-list-toggle-row {
   width: calc(100% - 20px);
   height: 28px;

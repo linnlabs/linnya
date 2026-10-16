@@ -27,36 +27,17 @@
   border-bottom: none;
 }
 
+/* 与 Modal 标题同一层级：副标题字阶、semibold、主文字色。 */
 .draggable-panel .panel-title {
   flex: 1;
   margin: 0;
-  font-size: var(--font-size-prose);
+  font-size: var(--font-size-subtitle);
   font-style: normal;
-  font-weight: 350;
-  color: var(--color-text-heading-meta);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-subtitle);
+  color: var(--color-text-primary);
   text-align: left;
   text-transform: none;
-}
-
-.draggable-panel .close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  color: var(--color-text-primary);
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  border-radius: 50%;
-  transition:
-    background-color var(--duration-medium) var(--ease-standard),
-    border-radius var(--duration-medium) var(--ease-standard);
-}
-
-.draggable-panel .close-btn:hover {
-  background-color: var(--color-bg-hover);
-  border-radius: var(--radius-sm);
 }
 
 .draggable-panel .panel-body {
@@ -167,18 +148,6 @@
   color: var(--color-text-primary);
   font-size: var(--font-size-footnote);
   font-weight: 650;
-}
-
-.draggable-panel--mini .close-btn {
-  width: 22px;
-  height: 22px;
-  color: var(--color-text-tertiary);
-  border-radius: var(--radius-sm);
-}
-
-.draggable-panel--mini .close-btn svg {
-  width: 14px;
-  height: 14px;
 }
 
 .draggable-panel--mini .panel-body {

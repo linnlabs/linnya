@@ -49,30 +49,6 @@
   text-transform: none;
 }
 
-/* 关闭按钮静止时退后一级，悬停时提亮；形状始终是同一个圆角方块，不在悬停时变形。 */
-.modal-close {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  transition:
-    background-color var(--duration-short) var(--ease-standard),
-    color var(--duration-short) var(--ease-standard);
-}
-
-.modal-close:hover {
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-hover);
-}
-
 .modal-content {
   flex: 1;
   min-width: 0;

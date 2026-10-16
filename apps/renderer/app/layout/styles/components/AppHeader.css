@@ -52,36 +52,11 @@
   align-items: center;
 }
 
+/* 视觉由 IconButton 提供；标题栏是拖拽区，按钮必须显式退出拖拽。 */
 .app-header-left .sidebar-toggle,
 .app-header-left .settings-button,
 .app-header-left .knowledge-base-button {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  margin-right: 0;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
   -webkit-app-region: no-drag;
-}
-
-.app-header-left .sidebar-toggle:hover,
-.app-header-left .settings-button:hover,
-.app-header-left .knowledge-base-button:hover {
-  background-color: var(--color-bg-hover);
-}
-
-.app-header-left .settings-button svg,
-.app-header-left .knowledge-base-button svg,
-.app-header-left .sidebar-toggle svg {
-  width: 18px;
-  height: 18px;
 }
 
 .app-header-right {
@@ -246,40 +221,7 @@
 }
 
 .app-header-right .project-workspace-action {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  transition: background-color var(--duration-short) var(--ease-standard);
   -webkit-app-region: no-drag;
-}
-
-.app-header-right .project-workspace-action:hover {
-  background-color: var(--color-bg-hover);
-}
-
-.app-header-right .project-workspace-action:disabled {
-  color: var(--color-text-muted);
-  cursor: default;
-  background-color: transparent;
-}
-
-.app-header-right .project-workspace-action.is-active {
-  color: var(--color-accent);
-  background-color: var(--color-accent-bg);
-}
-
-.app-header-right .project-workspace-action-icon {
-  width: 18px;
-  height: 18px;
 }
 
 .app-header-right .project-workspace-action-icon--right-sidebar {
@@ -337,30 +279,6 @@
   display: flex;
   gap: var(--space-1);
   align-items: center;
-}
-
-.header-tool-panel__icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: 5px;
-}
-
-.header-tool-panel__icon-button:hover {
-  color: var(--color-text-primary);
-  background: var(--color-bg-hover);
-}
-
-.header-tool-panel__icon-button svg {
-  width: 16px;
-  height: 16px;
 }
 
 .header-tool-panel__body {

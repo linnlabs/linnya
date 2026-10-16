@@ -167,39 +167,6 @@
   max-width: 260px;
 }
 
-.kb-settings-tab .add-tag-button {
-  display: flex;
-  width: 32px;
-  height: 32px;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-bg-subtle);
-  border: none;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  transition:
-    background-color var(--duration-medium),
-    color var(--duration-medium),
-    opacity var(--duration-medium);
-  flex-shrink: 0;
-}
-
-.kb-settings-tab .add-tag-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.kb-settings-tab .add-tag-button:not(:disabled):hover {
-  background-color: var(--color-bg-hover);
-  color: var(--color-text-secondary);
-}
-
-.kb-settings-tab .add-icon {
-  width: 20px;
-  height: 20px;
-}
-
 .kb-settings-tab .project-list {
   display: flex;
   flex-direction: column;
@@ -241,28 +208,11 @@
 }
 
 .kb-settings-tab .project-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-sm);
-  border: none;
-  background-color: transparent;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
   opacity: 0;
-  transition:
-    color var(--duration-medium) var(--ease-standard),
-    opacity var(--duration-medium) var(--ease-standard);
 }
 
 .kb-settings-tab .project-item:hover .project-action-btn {
   opacity: 1;
-}
-
-.kb-settings-tab .project-action-btn:hover {
-  color: var(--color-text-primary);
 }
 
 .kb-settings-tab .remove-btn:hover {

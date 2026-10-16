@@ -1,6 +1,5 @@
 # Renderer style scale debt (packages/renderer-ui/docs/design.md)
 # 格式：count<TAB>rule<TAB>file。只允许数量减少；新增值必须使用 Renderer UI token。
-1	SCALE-04-radius	apps/renderer/app/layout/styles/components/AppHeader.css
 1	SCALE-05-spacing	apps/renderer/app/layout/styles/components/AppHeader.css
 6	SCALE-06-z-index	apps/renderer/app/layout/styles/components/AppHeader.css
 2	SCALE-03-line-height	apps/renderer/app/layout/styles/components/DocumentSurface.css
@@ -230,7 +229,7 @@
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/features/ai-writing/AiWriting.css
 1	SCALE-05-spacing	apps/renderer/domains/editor/styles/features/block-history/BlockHistoryLayout.css
 1	SCALE-03-line-height	apps/renderer/domains/editor/styles/features/block-history/HistoryOverlay.css
-4	SCALE-05-spacing	apps/renderer/domains/editor/styles/features/block-history/HistoryOverlay.css
+2	SCALE-05-spacing	apps/renderer/domains/editor/styles/features/block-history/HistoryOverlay.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/features/block-history/HistoryOverlay.css
 1	SCALE-01-font-size	apps/renderer/domains/editor/styles/features/block-history/HistoryTimeline.css
 1	SCALE-03-line-height	apps/renderer/domains/editor/styles/features/block-history/HistoryTimeline.css
@@ -258,7 +257,7 @@
 1	SCALE-03-line-height	apps/renderer/domains/editor/styles/features/review/ReviewMessageCard.css
 1	SCALE-01-font-size	apps/renderer/domains/editor/styles/features/review/ReviewProcessing.css
 1	SCALE-04-radius	apps/renderer/domains/editor/styles/features/review/ReviewProcessing.css
-2	SCALE-01-font-size	apps/renderer/domains/editor/styles/features/review/ReviewSetup.css
+1	SCALE-01-font-size	apps/renderer/domains/editor/styles/features/review/ReviewSetup.css
 1	SCALE-03-line-height	apps/renderer/domains/editor/styles/features/review/ReviewSetup.css
 2	SCALE-05-spacing	apps/renderer/domains/editor/styles/features/review/ReviewSetup.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/features/revision/BlockChromeHostRevisionToolbar.css
@@ -307,7 +306,6 @@
 7	SCALE-05-spacing	apps/renderer/domains/settings/styles/setting-content.css
 1	SCALE-01-font-size	apps/renderer/domains/workspace/styles/components/file-tree/FileTreeView.css
 1	SCALE-03-line-height	apps/renderer/domains/workspace/styles/components/file-tree/FileTreeView.css
-1	SCALE-04-radius	apps/renderer/domains/workspace/styles/components/file-tree/FileTreeView.css
 1	SCALE-05-spacing	apps/renderer/domains/workspace/styles/components/file-tree/FileTreeView.css
 1	SCALE-06-z-index	apps/renderer/domains/workspace/styles/components/file-tree/FileTreeView.css
 1	SCALE-01-font-size	apps/renderer/domains/workspace/styles/components/file-tree/TreeItem.css
@@ -319,11 +317,10 @@
 1	SCALE-06-z-index	apps/renderer/domains/workspace/styles/components/sidebar/ContextMenu.css
 1	SCALE-03-line-height	apps/renderer/domains/workspace/styles/components/sidebar/CreateProjectModal.css
 1	SCALE-05-spacing	apps/renderer/domains/workspace/styles/components/sidebar/CreateProjectModal.css
-1	SCALE-04-radius	apps/renderer/domains/workspace/styles/components/sidebar/ProjectListView.css
 1	SCALE-06-z-index	apps/renderer/domains/workspace/styles/components/sidebar/ProjectListView.css
 4	SCALE-01-font-size	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
 1	SCALE-03-line-height	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
-6	SCALE-04-radius	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
+3	SCALE-04-radius	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
 5	SCALE-05-spacing	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
 2	SCALE-06-z-index	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
 3	SCALE-07-duration	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css
@@ -350,7 +347,7 @@
 1	SCALE-06-z-index	packages/renderer-ui/src/features/feedback/styles/ScrollToBottomButton.css
 2	SCALE-07-duration	packages/renderer-ui/src/features/feedback/styles/ScrollToBottomButton.css
 2	SCALE-08-easing	packages/renderer-ui/src/features/feedback/styles/ScrollToBottomButton.css
-2	SCALE-02-font-weight	packages/renderer-ui/src/features/floating-panels/styles/DraggablePanel.css
+1	SCALE-02-font-weight	packages/renderer-ui/src/features/floating-panels/styles/DraggablePanel.css
 1	SCALE-04-radius	packages/renderer-ui/src/features/floating-panels/styles/DraggablePanel.css
 1	SCALE-05-spacing	packages/renderer-ui/src/features/floating-panels/styles/DraggablePanel.css
 1	SCALE-06-z-index	packages/renderer-ui/src/features/floating-panels/styles/DraggablePanel.css

@@ -81,7 +81,11 @@
   margin-left: auto;
 }
 
-.user-message-container .action-button {
+/*
+ * 复制按钮复制后会显示“已复制”文字，宽度可变，不使用 IconButton；
+ * 视觉与同组的 IconButton（sm）对齐：静止退后一级，悬停提亮并出现 hover 底色。
+ */
+.user-message-container .user-message-copy-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -91,18 +95,20 @@
   border: none;
   border-radius: var(--radius-sm);
   background-color: transparent;
-  color: var(--user-message-action-muted-color);
+  color: var(--color-text-tertiary);
   cursor: pointer;
-  transition: color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
+  transition:
+    color var(--duration-micro) var(--ease-standard),
+    background-color var(--duration-micro) var(--ease-standard);
 }
 
-.user-message-container .action-button svg {
+.user-message-container .user-message-copy-button svg {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
 }
 
-.user-message-container .action-button:hover {
+.user-message-container .user-message-copy-button:hover {
   color: var(--color-text-primary);
   background-color: var(--color-bg-hover);
 }

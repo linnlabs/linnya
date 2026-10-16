@@ -139,29 +139,6 @@
   top: 14px;
   right: 14px;
   z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-md);
-  transition:
-    color var(--duration-micro) var(--ease-standard),
-    background-color var(--duration-micro) var(--ease-standard);
-}
-
-.settings-modal-panel > .settings-modal-close:hover {
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-hover);
-}
-
-.settings-modal-panel > .settings-modal-close:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: -2px;
 }
 
 /*

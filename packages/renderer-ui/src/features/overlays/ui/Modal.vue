@@ -10,15 +10,14 @@
         <div class="modal-container" :style="containerStyle">
           <div class="modal-header">
             <h2>{{ resolvedTitle }}</h2>
-            <button
-              type="button"
+            <IconButton
+              :label="closeLabel"
+              size="md"
               class="modal-close"
-              :aria-label="closeLabel"
-              :title="closeLabel"
               @click="close"
             >
               <CloseIcon />
-            </button>
+            </IconButton>
           </div>
           <div
             class="modal-content"
@@ -39,6 +38,7 @@
 </template>
 
 <script setup lang="ts">
+import IconButton from '../../actions/ui/IconButton.vue';
 import { computed, onMounted, onUnmounted } from 'vue';
 import type { CSSProperties } from 'vue';
 import { CloseIcon } from '../../../icons';

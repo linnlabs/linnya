@@ -69,14 +69,16 @@
                   :placeholder="knowledgeBaseMessage('knowledgeBase.settings.tagPlaceholder')"
                   @keydown.enter.prevent="handleAddTag"
                 />
-                <button
-                  type="button"
+                <IconButton
+                  :label="knowledgeBaseMessage('knowledgeBase.settings.addTag')"
+                  size="lg"
+                  variant="subtle"
                   class="add-tag-button"
                   :disabled="!newTag.trim()"
                   @click="handleAddTag"
                 >
                   <AddIcon class="add-icon" />
-                </button>
+                </IconButton>
               </div>
 
               <!-- 标签列表：使用通用 TagChip，与创建知识库弹窗保持一致 -->
@@ -130,14 +132,15 @@
                           {{ project.name }}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        class="project-action-btn remove-btn"
-                        :title="knowledgeBaseMessage('knowledgeBase.settings.unlinkTitle')"
+                      <IconButton
+                        :label="knowledgeBaseMessage('knowledgeBase.settings.unlinkTitle')"
+                        size="xs"
+                        tone="danger"
+                        class="project-action-btn"
                         @click="unlinkProject(project.id)"
                       >
                         <CloseIcon class="action-icon" />
-                      </button>
+                      </IconButton>
                     </div>
                   </div>
                   <div v-else class="project-empty">
@@ -165,14 +168,14 @@
                           {{ project.name }}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        class="project-action-btn add-btn"
-                        :title="knowledgeBaseMessage('knowledgeBase.settings.linkTitle')"
+                      <IconButton
+                        :label="knowledgeBaseMessage('knowledgeBase.settings.linkTitle')"
+                        size="xs"
+                        class="project-action-btn"
                         @click="linkProject(project.id)"
                       >
                         <AddIcon class="action-icon" />
-                      </button>
+                      </IconButton>
                     </div>
                   </div>
                   <div v-else class="project-empty">
@@ -220,7 +223,7 @@
 </template>
 
 <script setup lang="ts">
-import { ActionButtons, AlertDialog, BaseButton, TagChip } from '@linnya/renderer-ui';
+import { ActionButtons, AlertDialog, BaseButton, IconButton, TagChip } from '@linnya/renderer-ui';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import {
