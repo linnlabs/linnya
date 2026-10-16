@@ -10,8 +10,12 @@
  */
 export type BaseButtonVariant = 'primary' | 'secondary' | 'ghost' | 'plain' | 'danger' | 'soft' | 'outline';
 
-/** 只有 outline 使用：accent 表达创建与主入口，info 表达导入、上传等信息流入口，neutral 表达普通入口。 */
-export type BaseButtonTone = 'accent' | 'info' | 'neutral';
+/**
+ * 只作用于 outline 与 plain：accent 表达创建与主入口，info 表达导入、上传等信息流入口，
+ * neutral 表达普通操作，danger 表达删除、清理等破坏性操作。
+ * plain 的 danger 静止时保持中性、悬停才显示错误色，避免列表里成排出现红字。
+ */
+export type BaseButtonTone = 'accent' | 'info' | 'neutral' | 'danger';
 
 /** 尺寸与 --control-height-sm/md/lg 一一对应，与同一行的输入框、选择器取同一档。 */
 export type BaseButtonSize = 'sm' | 'md' | 'lg';

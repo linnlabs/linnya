@@ -29,8 +29,8 @@
           </span>
         </div>
         <div v-if="snapshotPointer && files.length === 0" class="subtitle-row">
-          <button
-            class="kb-load-btn"
+          <BaseButton
+            variant="secondary"
             :disabled="snapshotState.kind === 'loading'"
             @click="loadSnapshot"
           >
@@ -39,7 +39,7 @@
                 ? conversationMessage('conversation.tool.knowledgeSearch.loadLoading')
                 : conversationMessage('conversation.tool.knowledgeSearch.loadDetails')
             }}
-          </button>
+          </BaseButton>
           <button
             class="kb-download-link"
             :disabled="isDownloadingSnapshot"
@@ -98,6 +98,7 @@
 </template>
 
 <script setup lang="ts">
+import { BaseButton } from '@linnya/renderer-ui';
 import { computed } from 'vue';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
 import {

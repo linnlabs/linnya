@@ -78,9 +78,15 @@ describe('BaseButton', () => {
     ]);
   });
 
-  it('tone 只作用于 outline', () => {
+  it('tone 只作用于 outline 与 plain', () => {
     const primary = mountButton({ variant: 'primary', tone: 'info' });
     expect(primary.classList.contains('linnya-ui-button--tone-info')).toBe(false);
+
+    const plainDanger = mountButton({ variant: 'plain', tone: 'danger' });
+    expect(plainDanger.classList.contains('linnya-ui-button--tone-danger')).toBe(true);
+
+    const plainDefault = mountButton({ variant: 'plain' });
+    expect(plainDefault.classList.contains('linnya-ui-button--tone-neutral')).toBe(true);
   });
 
   it('图标放入对辅助技术隐藏的槽位，文字仍是按钮的可访问名称', () => {

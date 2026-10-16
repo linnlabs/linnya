@@ -152,35 +152,6 @@
   gap: var(--space-2);
 }
 
-.editor-citation-popover .popover-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--font-size-footnote);
-  color: var(--color-text-secondary);
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all var(--duration-short) var(--ease-standard);
-}
-
-.editor-citation-popover .popover-btn:hover {
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-hover);
-}
-
-.editor-citation-popover .popover-btn.primary {
-  /* 引用相关的“蓝色语义”统一使用 info 色系。 */
-  color: var(--color-info-text);
-}
-
-.editor-citation-popover .popover-btn.primary:hover {
-  color: color-mix(in srgb, var(--color-info) 85%, var(--color-text-primary));
-  background-color: var(--color-info-bg);
-}
-
 .editor-citation-popover .btn-icon {
   flex-shrink: 0;
   /* Popover 内按钮图标统一为 14px，与原内联 SVG 对齐。 */

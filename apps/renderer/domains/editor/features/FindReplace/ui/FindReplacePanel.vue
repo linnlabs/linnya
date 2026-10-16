@@ -56,22 +56,22 @@
             @keydown.escape="handleClose"
           />
           <div class="find-replace-input-actions">
-            <button
-              class="find-replace-action-btn"
+            <BaseButton
+              variant="plain"
               :disabled="!hasMatches"
               @click="handleReplaceCurrent"
               :title="editorMessage('editor.findReplace.replaceCurrent')"
             >
               {{ editorMessage('editor.findReplace.replaceCurrent') }}
-            </button>
-            <button
-              class="find-replace-action-btn"
+            </BaseButton>
+            <BaseButton
+              variant="plain"
               :disabled="!hasMatches"
               @click="handleReplaceAll"
               :title="editorMessage('editor.findReplace.replaceAll')"
             >
               {{ editorMessage('editor.findReplace.replaceAll') }}
-            </button>
+            </BaseButton>
           </div>
         </div>
 
@@ -118,10 +118,7 @@ import { storeToRefs } from 'pinia'
 import { useFindReplaceStore } from '../store/useFindReplaceStore'
 import { useUIStore } from '@/shared/stores/ui'
 import { useDebounceFn } from '@vueuse/core'
-import {
-  CustomCheckbox,
-  DraggablePanel,
-} from '@linnya/renderer-ui'
+import { BaseButton, CustomCheckbox, DraggablePanel } from '@linnya/renderer-ui'
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
 

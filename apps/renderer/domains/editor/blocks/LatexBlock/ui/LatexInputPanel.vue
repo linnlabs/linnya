@@ -18,8 +18,8 @@
           spellcheck="false"
         ></textarea>
         <div class="latex-panel-buttons">
-          <button @click="handleSubmit" class="latex-panel-button submit" :disabled="!latexStore.isSourceValid">{{ editorMessage('editor.latexBlock.input.confirm') }}</button>
-          <button @click="handleCancel" class="latex-panel-button cancel">{{ editorMessage('editor.latexBlock.input.cancel') }}</button>
+          <BaseButton variant="plain" tone="accent" @click="handleSubmit" :disabled="!latexStore.isSourceValid">{{ editorMessage('editor.latexBlock.input.confirm') }}</BaseButton>
+          <BaseButton variant="plain" @click="handleCancel">{{ editorMessage('editor.latexBlock.input.cancel') }}</BaseButton>
         </div>
       </div>
       <div v-if="!latexStore.isSourceValid && latexStore.currentSource.trim() !== ''" class="latex-panel-error">
@@ -38,7 +38,7 @@ import { computePosition, offset, flip, shift, autoUpdate } from '@floating-ui/d
 import { NodeFinder } from '../../../extensions/position/NodeFinder';
 import SymbolPalette from './SymbolPalette.vue'; // ++ 导入符号面板组件 ++
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
-import { applyTextareaAutoResize } from '@linnya/renderer-ui';
+import { applyTextareaAutoResize, BaseButton } from '@linnya/renderer-ui';
 
 // --- Store and Editor ---
 const latexStore = useLatexEditorStore();

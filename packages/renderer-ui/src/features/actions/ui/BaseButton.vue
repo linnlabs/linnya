@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
 import { computed, useSlots } from 'vue';
-import type { BaseButtonProps, BaseButtonSlots } from '../definitions/baseButton';
+import type { BaseButtonProps, BaseButtonSlots, BaseButtonVariant } from '../definitions/baseButton';
 
 const props = withDefaults(defineProps<BaseButtonProps>(), {
   variant: 'secondary',
@@ -25,13 +25,14 @@ const props = withDefaults(defineProps<BaseButtonProps>(), {
 });
 
 defineSlots<BaseButtonSlots>();
+const TONED_VARIANTS: ReadonlySet<BaseButtonVariant> = new Set<BaseButtonVariant>(['outline', 'plain']);
 const slots = useSlots();
 
 const classes = computed<readonly string[]>(() => [
   'linnya-ui-button',
   `linnya-ui-button--${props.variant}`,
   `linnya-ui-button--${props.size}`,
-  ...(props.variant === 'outline' ? [`linnya-ui-button--tone-${props.tone}`] : []),
+  ...(TONED_VARIANTS.has(props.variant) ? [`linnya-ui-button--tone-${props.tone}`] : []),
   ...(props.shape === 'pill' ? ['linnya-ui-button--pill'] : []),
   ...(props.block ? ['linnya-ui-button--block'] : []),
   ...(slots.icon ? ['linnya-ui-button--with-icon'] : []),

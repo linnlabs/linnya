@@ -45,30 +45,6 @@
   gap: var(--space-1-5);
 }
 
-.latex-panel-button {
-  padding: var(--space-1) var(--space-2);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: none;
-  cursor: pointer;
-  font-size: 0.85em;
-  text-align: center;
-  transition: background-color var(--duration-medium), color var(--duration-medium);
-}
-
-.latex-panel-button.submit {
-  color: var(--color-accent);
-}
-
-.latex-panel-button.submit:not(:disabled):hover,
-.latex-panel-button.cancel:hover {
-  background-color: var(--color-bg-hover);
-}
-
-.latex-panel-button.cancel {
-  color: var(--color-text-secondary);
-}
-
 .latex-panel-error {
   width: 100%;
   color: var(--color-error-text);

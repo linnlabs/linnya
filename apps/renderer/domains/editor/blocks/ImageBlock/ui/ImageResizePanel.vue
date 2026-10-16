@@ -26,13 +26,14 @@
             @step-up="adjustWidth(1)"
             @step-down="adjustWidth(-1)"
           />
-          <button
-            class="resize-panel-button submit"
+          <BaseButton
+            variant="plain"
+            tone="accent"
             :disabled="!isInputValid"
             @click="handleSubmit"
           >
             {{ editorMessage('editor.imageBlock.resize.confirm') }}
-          </button>
+          </BaseButton>
           
           <label for="img-height-input">{{ editorMessage('editor.imageBlock.resize.height') }}</label>
           <CustomNumberInput
@@ -49,12 +50,12 @@
             @step-up="adjustHeight(1)"
             @step-down="adjustHeight(-1)"
           />
-          <button
-            class="resize-panel-button cancel"
+          <BaseButton
+            variant="plain"
             @click="handleCancel"
           >
             {{ editorMessage('editor.imageBlock.resize.cancel') }}
-          </button>
+          </BaseButton>
         </div>
       </div>
     </div>
@@ -63,7 +64,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue';
-import { CustomNumberInput } from '@linnya/renderer-ui';
+import { BaseButton, CustomNumberInput } from '@linnya/renderer-ui';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
 
 // Props

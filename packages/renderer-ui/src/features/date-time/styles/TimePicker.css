@@ -119,38 +119,6 @@
   padding: var(--space-1-5) var(--space-3) var(--space-2-5);
 }
 
-.time-root .time-action-button {
-  min-width: 60px;
-  height: 26px;
-  padding: var(--space-0-5) var(--space-2-5);
-  font-size: var(--font-size-footnote);
-  cursor: pointer;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard), border-color var(--duration-short) var(--ease-standard);
-}
-
-.time-root .time-action-button.secondary {
-  color: var(--color-text-tertiary);
-  background-color: transparent;
-  border-color: var(--color-border-default);
-}
-
-.time-root .time-action-button.secondary:hover {
-  color: var(--color-text-secondary);
-  background-color: var(--color-bg-hover);
-  border-color: var(--color-border-hover);
-}
-
-.time-root .time-action-button.primary {
-  color: var(--color-text-on-accent);
-  background-color: var(--color-accent-solid);
-}
-
-.time-root .time-action-button.primary:hover {
-  background-color: var(--color-accent-solid-hover);
-}
-
 .time-root .time-fade-enter-active,
 .time-root .time-fade-leave-active {
   transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);

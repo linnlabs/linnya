@@ -6,6 +6,7 @@
 
 - 新增[设计规范](./docs/design.md)，作为表面与文字层级、功能色、字阶、间距、圆角、投影、动效、交互状态和图标的唯一视觉规则入口。
 - 新增 `BaseButton` 及严格 props / slots 类型：primary、secondary、ghost、plain、danger、soft、outline 七种语义 variant，outline 的 accent / info / neutral tone，sm / md / lg 三档尺寸、胶囊形与占满宽度；统一焦点环、禁用与过渡。runtime catalog 与真实 tarball consumer 同步新导出。
+- `BaseButton` 的 `tone` 同时作用于 outline 与 plain，并新增 `danger`：plain + danger 静止中性、悬停显示错误色，用于行内删除与清理；`TimePicker` 的确定 / 取消改用 `BaseButton`，高度由 26px 统一为 28px。
 - `ActionButtons` 改由两个 `BaseButton` 渲染，props、事件与插槽不变；按钮高度从 29.5px 统一为 `--control-height-sm`（28px），内部 `.action-btn` 选择器移除。
 - 新增控件高度 token `--control-height-sm/md/lg`（28/32/36）。
 - 设计规范补充颜色使用规则、对比度要求、行距规则、组件规范（按钮层级与组合、卡片、徽标）与当前限制。

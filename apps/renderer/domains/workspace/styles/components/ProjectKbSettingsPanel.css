@@ -140,41 +140,6 @@
   text-overflow: ellipsis;
 }
 
-.project-kb-section .kb-action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border-radius: var(--radius-sm);
-  border: none;
-  padding: var(--space-1) var(--space-2-5);
-  min-width: 44px;
-  white-space: nowrap;
-  font-size: var(--font-size-footnote);
-  cursor: pointer;
-  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
-}
-
-.project-kb-section .add-btn {
-  background-color: transparent;
-  color: var(--color-text-secondary);
-}
-
-.project-kb-section .add-btn:hover {
-  background-color: var(--color-bg-hover-strong);
-  color: var(--color-text-primary);
-}
-
-.project-kb-section .remove-btn {
-  background-color: transparent;
-  color: var(--color-text-tertiary);
-}
-
-.project-kb-section .remove-btn:hover {
-  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
-  color: var(--color-error-text);
-}
-
 .project-kb-section .column-empty {
   display: flex;
   align-items: center;

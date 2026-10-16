@@ -235,20 +235,6 @@
   opacity: 0.55;
 }
 
-.settings-inline-button.is-quiet {
-  background: transparent;
-  border-color: transparent;
-}
-
-.settings-inline-button.is-quiet:hover:not(:disabled) {
-  background: var(--color-bg-hover-light);
-  border-color: transparent;
-}
-
-.settings-inline-button.is-danger:hover:not(:disabled) {
-  color: var(--color-error-text);
-}
-
 /* --- 外链按钮（「去这里申请 API Key」） --- */
 
 .settings-external-link {

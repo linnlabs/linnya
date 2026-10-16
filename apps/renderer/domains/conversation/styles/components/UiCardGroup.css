@@ -206,21 +206,6 @@
   min-width: 0;
 }
 
-.ui-card-group .ui-card-body__window-hint-btn {
-  flex-shrink: 0;
-  border: 1px solid var(--ui-card-group-timeline-line-color);
-  background: var(--color-bg-subtle);
-  color: var(--ui-card-group-action-muted-color);
-  border-radius: var(--radius-md);
-  padding: var(--space-0-5) var(--space-2);
-  font-size: var(--font-size-footnote);
-  cursor: pointer;
-}
-
-.ui-card-group .ui-card-body__window-hint-btn:hover {
-  background: var(--ui-card-group-window-hint-hover-bg);
-}
-
 .ui-card-group .ui-card-body .ai-message:first-child {
   margin-top: 0;
 }

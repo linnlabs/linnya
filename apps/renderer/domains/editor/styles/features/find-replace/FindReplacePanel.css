@@ -80,27 +80,7 @@
   background-color: var(--color-bg-hover);
 }
 
-.find-replace-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 28px;
-  padding: 0 var(--space-2-5);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-primary);
-  cursor: pointer;
-  font-size: var(--font-size-footnote);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-}
-
-.find-replace-action-btn:hover:not(:disabled) {
-  background-color: var(--color-bg-hover);
-}
-
-.find-replace-nav-btn:disabled,
-.find-replace-action-btn:disabled {
+.find-replace-nav-btn:disabled {
   cursor: not-allowed;
   opacity: 0.4;
 }

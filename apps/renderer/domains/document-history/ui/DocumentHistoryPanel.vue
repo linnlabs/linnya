@@ -12,14 +12,14 @@
     <div class="document-history-content">
       <div class="document-history-toolbar">
         <span>{{ message('history.readonly') }}</span>
-        <button
-          type="button"
-          class="document-history-refresh"
+        <BaseButton
+          variant="plain"
           :disabled="state.phase !== 'ready' || confirming"
           @click="controller.load()"
         >
-          <RefreshIcon aria-hidden="true" />{{ message('history.refresh') }}
-        </button>
+          <template #icon><RefreshIcon aria-hidden="true" /></template>
+{{ message('history.refresh') }}
+        </BaseButton>
       </div>
       <p v-if="state.restored" class="document-history-notice" role="status">
         {{ message('history.restored') }}
@@ -117,7 +117,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, type Component } from 'vue';
-import { Modal, ActionButtons, AlertDialog } from '@linnya/renderer-ui';
+import { ActionButtons, AlertDialog, BaseButton, Modal } from '@linnya/renderer-ui';
 import { RefreshIcon } from '@linnya/renderer-ui/icons';
 import { createHistoryPanelState } from '../store/historyPanelState';
 import { createHistoryPanelController } from '../orchestration/createHistoryPanelController';

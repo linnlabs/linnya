@@ -12,13 +12,12 @@
         :message="settingsMessage('settings.storageSpace.unavailable')"
       >
         <template #action>
-          <button
-            type="button"
-            class="settings-inline-button"
+          <BaseButton
+            variant="secondary"
             @click="refresh"
           >
             {{ settingsMessage('settings.storageSpace.actions.refresh') }}
-          </button>
+          </BaseButton>
         </template>
       </SettingsState>
 
@@ -92,9 +91,9 @@
                   ? settingsMessage('settings.storageSpace.valueUnavailable')
                   : formatStorageBytes(conversation.byte_size, locale) }}
               </span>
-              <button
-                type="button"
-                class="settings-inline-button is-quiet is-danger"
+              <BaseButton
+                variant="plain"
+                tone="danger"
                 :disabled="store.isPending(conversation.conversation_id)
                   || conversation.work_files_state !== 'available'"
                 @click="clear(conversation.conversation_id)"
@@ -102,7 +101,7 @@
                 {{ settingsMessage(store.isPending(conversation.conversation_id)
                   ? 'settings.storageSpace.actions.clearing'
                   : 'settings.storageSpace.actions.clear') }}
-              </button>
+              </BaseButton>
             </template>
           </SettingsListRow>
         </SettingsList>
@@ -112,6 +111,7 @@
 </template>
 
 <script setup lang="ts">
+import { BaseButton } from '@linnya/renderer-ui';
 import { onMounted } from 'vue';
 
 import { confirm } from '@shared/composables/confirmDialog';

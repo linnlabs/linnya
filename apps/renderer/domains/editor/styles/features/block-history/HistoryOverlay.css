@@ -75,19 +75,6 @@
   opacity: 0.5;
 }
 
-.history-overlay .restore-btn {
-  background-color: var(--color-success);
-  color: var(--color-text-on-accent);
-}
-
-.history-overlay .restore-btn:hover:not(:disabled) {
-  background-color: color-mix(
-    in srgb,
-    var(--color-success) 85%,
-    var(--color-black) 15%
-  );
-}
-
 .history-overlay .close-btn {
   padding: 5px;
   background-color: transparent;

@@ -115,7 +115,7 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 ```
 
 - `variant`：primary / secondary / ghost / plain / danger / soft / outline，选择规则见[设计规范](./design.md#92-按钮)。
-  `tone`（accent / info / neutral）只对 outline 生效。
+  `tone`（accent / info / neutral / danger）只对 outline 与 plain 生效；plain 的 danger 静止时保持中性、悬停才显示错误色。
 - `size`：sm / md / lg，对应 `--control-height-sm/md/lg`；与同一行的输入框取同一档。
 - `shape="pill"` 只用于页面级入口；`block` 占满容器宽度，带图标时图标贴左、文字视觉居中。
 - `type` 默认 `button`，提交表单时显式传入 `submit`；`disabled` 使用原生语义。

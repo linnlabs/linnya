@@ -193,14 +193,13 @@
         <p class="danger-section-desc">
           {{ knowledgeBaseMessage('knowledgeBase.settings.danger.description') }}
         </p>
-        <button
-          type="button"
-          class="danger-delete-btn"
+        <BaseButton
+          variant="danger"
           :disabled="!props.selectedKbId || props.selectedKbId === 'default'"
           @click="openDeleteDialog"
         >
           {{ knowledgeBaseMessage('knowledgeBase.settings.danger.deleteCurrent') }}
-        </button>
+        </BaseButton>
       </div>
     </div>
   </div>
@@ -221,7 +220,7 @@
 </template>
 
 <script setup lang="ts">
-import { ActionButtons, AlertDialog, TagChip } from '@linnya/renderer-ui';
+import { ActionButtons, AlertDialog, BaseButton, TagChip } from '@linnya/renderer-ui';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import {

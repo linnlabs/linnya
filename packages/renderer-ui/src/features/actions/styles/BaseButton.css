@@ -112,6 +112,8 @@
 }
 
 .linnya-ui-button--primary:disabled {
+  /* 文字随底色一起减弱，暗色下才不会像可用态。 */
+  color: color-mix(in srgb, var(--color-text-on-accent) 60%, var(--color-accent-disabled));
   background-color: var(--color-accent-disabled);
 }
 
@@ -146,6 +148,30 @@
   opacity: 0.5;
 }
 
+/* plain 的 tone：强调色与 info 文字常显；danger 静止时保持中性，悬停才提示破坏性。 */
+.linnya-ui-button--plain.linnya-ui-button--tone-accent {
+  color: var(--color-accent);
+}
+
+.linnya-ui-button--plain.linnya-ui-button--tone-accent:hover:not(:disabled) {
+  color: var(--color-accent);
+  background-color: var(--color-accent-bg-subtle);
+}
+
+.linnya-ui-button--plain.linnya-ui-button--tone-info {
+  color: var(--color-info-text);
+}
+
+.linnya-ui-button--plain.linnya-ui-button--tone-info:hover:not(:disabled) {
+  color: var(--color-info-text);
+  background-color: var(--color-info-bg);
+}
+
+.linnya-ui-button--plain.linnya-ui-button--tone-danger:hover:not(:disabled) {
+  color: var(--color-error-text);
+  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
+}
+
 /* danger：破坏性主操作。 */
 .linnya-ui-button--danger {
   color: var(--color-text-on-accent);
@@ -157,6 +183,8 @@
 }
 
 .linnya-ui-button--danger:disabled {
+  /* 浅错误底上白字不可见，禁用时改用错误文字色。 */
+  color: var(--color-error-text);
   background-color: var(--color-error-bg);
   opacity: 0.6;
 }
@@ -238,6 +266,15 @@
 
 .linnya-ui-button--outline.linnya-ui-button--tone-info:active:not(:disabled) {
   background-color: color-mix(in srgb, var(--color-info-bg) 82%, var(--color-info));
+}
+
+.linnya-ui-button--outline.linnya-ui-button--tone-danger {
+  color: var(--color-error-text);
+  border-color: var(--color-error);
+}
+
+.linnya-ui-button--outline.linnya-ui-button--tone-danger:hover:not(:disabled) {
+  background-color: var(--color-error-bg);
 }
 
 .linnya-ui-button--outline.linnya-ui-button--tone-neutral {

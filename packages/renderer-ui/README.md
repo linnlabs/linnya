@@ -159,9 +159,9 @@ feature 拥有。
 
 ## 按钮
 
-`BaseButton`（自 2.6.0）是所有按钮的唯一视觉 owner：七种语义 variant（primary、secondary、ghost、plain、danger、soft、outline）、outline 的 accent / info / neutral tone、与 `--control-height-sm/md/lg` 对应的三档尺寸、胶囊形与占满宽度。组件只拥有展示、原生禁用与焦点环，不理解保存、提交或加载等业务状态；调用方通过 `disabled` 和文案投影进行中的状态。图标通过 `icon` 插槽放入 14px 槽位并对辅助技术隐藏，按钮文字或 `aria-label` 是可访问名称。普通属性、`aria-*`、`data-*`、`class`、`style` 与事件都落在唯一的原生 `button`；业务只能定制外围位置与宽度，不覆盖 `.linnya-ui-button*` 内部选择器。
+`BaseButton`（自 2.6.0）是所有按钮的唯一视觉 owner：七种语义 variant（primary、secondary、ghost、plain、danger、soft、outline）、作用于 outline 与 plain 的 accent / info / neutral / danger tone、与 `--control-height-sm/md/lg` 对应的三档尺寸、胶囊形与占满宽度。组件只拥有展示、原生禁用与焦点环，不理解保存、提交或加载等业务状态；调用方通过 `disabled` 和文案投影进行中的状态。图标通过 `icon` 插槽放入 14px 槽位并对辅助技术隐藏，按钮文字或 `aria-label` 是可访问名称。普通属性、`aria-*`、`data-*`、`class`、`style` 与事件都落在唯一的原生 `button`；业务只能定制外围位置与宽度，不覆盖 `.linnya-ui-button*` 内部选择器。
 
-`ActionButtons` 由两个 `BaseButton` 组成，保留原有 props、事件与插槽；主操作 default / danger / accent 分别对应 primary / danger / soft，次操作 filled / ghost / plain 对应 secondary / ghost / plain，并在组内保证 80px 最小宽度。选择哪种层级、怎样组合见[设计规范](./docs/design.md#92-按钮)。目前消费者为知识库页面入口、解析设置、引用面板、命令输入对话框、项目列表空态，以及全部 `ActionButtons` 使用方。
+`ActionButtons` 由两个 `BaseButton` 组成，保留原有 props、事件与插槽；主操作 default / danger / accent 分别对应 primary / danger / soft，次操作 filled / ghost / plain 对应 secondary / ghost / plain，并在组内保证 80px 最小宽度。选择哪种层级、怎样组合见[设计规范](./docs/design.md#92-按钮)。目前消费者包括知识库页面与设置、项目知识库关联、设置页（存储空间、内存诊断、添加模型）、文档历史、编辑器面板（公式、图片尺寸、引用、查找替换、块历史、Review）、对话卡片、命令输入对话框、项目列表空态、包内 `TimePicker`，以及全部 `ActionButtons` 使用方。
 
 ## 范围滑块
 

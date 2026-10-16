@@ -113,7 +113,6 @@
 1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/SmartCodeBlock.css
 1	SCALE-06-z-index	apps/renderer/domains/conversation/styles/components/SmartCodeBlock.css
 2	SCALE-07-duration	apps/renderer/domains/conversation/styles/components/SmartCodeBlock.css
-1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/SubrunDetailSurface.css
 2	SCALE-01-font-size	apps/renderer/domains/conversation/styles/components/SubrunTracePanel.css
 2	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/SubrunTracePanel.css
 1	SCALE-01-font-size	apps/renderer/domains/conversation/styles/components/SummaryMessage.css
@@ -198,12 +197,12 @@
 3	SCALE-05-spacing	apps/renderer/domains/editor/styles/blocks/image/ImageBlockView.css
 2	SCALE-06-z-index	apps/renderer/domains/editor/styles/blocks/image/ImageBlockView.css
 1	SCALE-07-duration	apps/renderer/domains/editor/styles/blocks/image/ImageBlockView.css
-2	SCALE-01-font-size	apps/renderer/domains/editor/styles/blocks/image/ImageResizePanel.css
+1	SCALE-01-font-size	apps/renderer/domains/editor/styles/blocks/image/ImageResizePanel.css
 3	SCALE-01-font-size	apps/renderer/domains/editor/styles/blocks/latex/InlineLatexView.css
 2	SCALE-04-radius	apps/renderer/domains/editor/styles/blocks/latex/InlineLatexView.css
 3	SCALE-05-spacing	apps/renderer/domains/editor/styles/blocks/latex/InlineLatexView.css
 1	SCALE-02-font-weight	apps/renderer/domains/editor/styles/blocks/latex/LatexBlockView.css
-3	SCALE-01-font-size	apps/renderer/domains/editor/styles/blocks/latex/LatexInputPanel.css
+2	SCALE-01-font-size	apps/renderer/domains/editor/styles/blocks/latex/LatexInputPanel.css
 2	SCALE-01-font-size	apps/renderer/domains/editor/styles/blocks/latex/SymbolPalette.css
 1	SCALE-04-radius	apps/renderer/domains/editor/styles/blocks/latex/SymbolPalette.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/components/AnnotationHandle.css

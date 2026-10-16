@@ -148,21 +148,6 @@
   font-size: var(--font-size-prose);
 }
 
-.knowledge-search-card .kb-load-btn {
-  border: 1px solid var(--color-border-light);
-  background: var(--color-bg-surface);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-footnote);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-}
-
-.knowledge-search-card .kb-load-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .knowledge-search-card .kb-download-link {
   border: none;
   background: transparent;

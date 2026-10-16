@@ -108,12 +108,11 @@
           message="读取失败，请稍后重试。"
         >
           <template #action>
-            <button
-              type="button"
-              class="settings-inline-button"
+            <BaseButton
+              variant="secondary"
             >
               重试
-            </button>
+            </BaseButton>
           </template>
         </SettingsState>
         <SettingsState
@@ -135,12 +134,12 @@
           @select="listSelection = '可点击条目'"
         >
           <template #trailing>
-            <button
-              type="button"
-              class="settings-inline-button is-quiet is-danger"
+            <BaseButton
+              variant="plain"
+              tone="danger"
             >
               删除
-            </button>
+            </BaseButton>
           </template>
         </SettingsListRow>
         <SettingsListRow
@@ -182,7 +181,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { CustomTextInput, SecretInput } from '@linnya/renderer-ui';
+import { BaseButton, CustomTextInput, SecretInput } from '@linnya/renderer-ui';
 import { CustomSelect } from '@linnya/renderer-ui';
 import {
   SettingsActions,

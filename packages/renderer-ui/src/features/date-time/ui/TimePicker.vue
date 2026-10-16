@@ -55,20 +55,18 @@
         </div>
       </div>
       <div class="time-popover-actions">
-        <button
-          type="button"
-          class="time-action-button secondary"
+        <BaseButton
+          variant="ghost"
           @click="closeTimePopover"
         >
           {{ sharedComponentMessage('shared.timePicker.cancel') }}
-        </button>
-        <button
-          type="button"
-          class="time-action-button primary"
+        </BaseButton>
+        <BaseButton
+          variant="primary"
           @click="applyTimeSelection"
         >
           {{ sharedComponentMessage('shared.timePicker.confirm') }}
-        </button>
+        </BaseButton>
       </div>
       </div>
     </transition>
@@ -77,6 +75,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import BaseButton from '../../actions/ui/BaseButton.vue';
 import { ChevronIcon } from '../../../icons';
 import { useSharedComponentLocalization } from '../../../localization';
 import { CustomSelect } from '../../select-menu';

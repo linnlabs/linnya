@@ -30,35 +30,6 @@
   white-space: nowrap;
 }
 
-.image-resize-panel .resize-panel-button {
-  padding: var(--space-1) var(--space-2);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: none;
-  cursor: pointer;
-  font-size: 0.85em;
-  text-align: center;
-  transition: background-color var(--duration-medium), color var(--duration-medium);
-}
-
-.image-resize-panel .resize-panel-button.submit {
-  color: var(--color-accent);
-}
-
-.image-resize-panel .resize-panel-button.submit:not(:disabled):hover,
-.image-resize-panel .resize-panel-button.cancel:hover {
-  background-color: var(--color-bg-hover);
-}
-
-.image-resize-panel .resize-panel-button.submit:disabled {
-  color: var(--color-text-muted);
-  cursor: not-allowed;
-}
-
-.image-resize-panel .resize-panel-button.cancel {
-  color: var(--color-text-secondary);
-}
-
 .resize-panel-fade-enter-active,
 .resize-panel-fade-leave-active {
   transition: opacity var(--duration-medium) var(--ease-enter), transform var(--duration-medium) var(--ease-enter);

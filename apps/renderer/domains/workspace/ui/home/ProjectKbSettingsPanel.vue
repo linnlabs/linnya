@@ -43,14 +43,14 @@
                     {{ kb.description }}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  class="kb-action-btn remove-btn"
+                <BaseButton
+                  variant="plain"
+                  tone="danger"
                   :title="workspaceMessage('workspace.projectKb.unlinkTitle')"
                   @click="unlinkKnowledgeBase(kb.id)"
                 >
                   {{ workspaceMessage('workspace.projectKb.unlink') }}
-                </button>
+                </BaseButton>
               </div>
             </div>
           </div>
@@ -85,14 +85,13 @@
                     {{ kb.description }}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  class="kb-action-btn add-btn"
+                <BaseButton
+                  variant="plain"
                   :title="workspaceMessage('workspace.projectKb.linkTitle')"
                   @click="linkKnowledgeBase(kb.id)"
                 >
                   {{ workspaceMessage('workspace.projectKb.link') }}
-                </button>
+                </BaseButton>
               </div>
             </div>
           </div>
@@ -114,7 +113,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { ActionButtons } from '@linnya/renderer-ui';
+import { ActionButtons, BaseButton } from '@linnya/renderer-ui';
 import { KnowledgeBaseIcon } from '@linnya/renderer-ui/icons';
 import { useKnowledgeBaseStore } from '@/domains/knowledgebase/stores/knowledgeBase';
 import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';

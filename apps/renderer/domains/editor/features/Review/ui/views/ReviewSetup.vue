@@ -5,13 +5,13 @@
         <h3>{{ editorMessage('editor.review.setup.title') }}</h3>
         <p class="subtitle">{{ editorMessage('editor.review.setup.subtitle') }}</p>
       </div>
-      <button 
+      <BaseButton
+        variant="soft"
         v-if="historyCount > 0"
-        class="history-entry-btn"
         @click="reviewStore.setStatus('results')"
       >
         {{ editorMessage('editor.review.setup.historyEntry', { count: historyCount }) }}
-      </button>
+      </BaseButton>
     </div>
 
     <!-- 已选角色列表 -->
@@ -108,13 +108,15 @@
     </div>
 
     <div class="action-area">
-      <button 
-        class="start-btn"
+      <BaseButton
+        variant="primary"
+        size="lg"
+        block
         :disabled="reviewStore.activeAgentIds.length === 0"
         @click="reviewStore.startReview()"
       >
         {{ editorMessage('editor.review.setup.start') }}
-      </button>
+      </BaseButton>
     </div>
   </div>
 </template>
@@ -124,7 +126,7 @@ import { computed, ref, onMounted, nextTick, watch } from 'vue';
 import type { Component } from 'vue';
 import { useReviewStore } from '../../store/reviewStore';
 import { useUIStore } from '@shared/stores/ui';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { BaseButton, CustomSelect } from '@linnya/renderer-ui';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';

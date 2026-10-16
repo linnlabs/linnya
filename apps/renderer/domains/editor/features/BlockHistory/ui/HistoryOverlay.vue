@@ -20,10 +20,10 @@
           <span class="version-time">{{ formattedTime }}</span>
         </div>
         <div class="header-actions">
-          <button class="overlay-btn restore-btn" @click="handleRestore" :disabled="!canRestore">
-            <RestoreIcon />
+          <BaseButton variant="primary" @click="handleRestore" :disabled="!canRestore">
+            <template #icon><RestoreIcon /></template>
             {{ editorMessage('editor.blockHistory.overlay.restore') }}
-          </button>
+          </BaseButton>
           <button class="overlay-btn close-btn" @click="handleClose">
             <CloseIcon />
           </button>
@@ -58,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import { BaseButton } from '@linnya/renderer-ui';
 import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { useBlockHistoryStore, type BlockVersion } from '../index'
 import { extractLinesFromContentJson, type VersionLine } from '../utils/lineExtractor'

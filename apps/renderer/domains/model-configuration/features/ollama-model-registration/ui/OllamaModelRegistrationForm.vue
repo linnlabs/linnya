@@ -79,16 +79,17 @@
     </SettingsRow>
 
     <div class="add-model-submit">
-      <button
-        type="button"
-        class="settings-button full-width-button"
+      <BaseButton
+        variant="primary"
+        size="lg"
+        block
         :disabled="
           status.isSubmitting || !form.endpointModelId || Boolean(refreshError) || status.success
         "
         @click="submit"
       >
         {{ submitText }}
-      </button>
+      </BaseButton>
       <SettingsFeedback kind="error" :message="status.error || ''" />
     </div>
   </div>
@@ -98,7 +99,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import { RefreshIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { BaseButton, CustomSelect } from '@linnya/renderer-ui';
 import { CustomTextInput } from '@linnya/renderer-ui';
 import { SettingsFeedback, SettingsRow, useSettingsLocalization } from '@/domains/settings/public';
 import type {
