@@ -39,7 +39,7 @@ describe('Markdown citation receipt through Host providers', () => {
       const created = await create.create({ projectId, parentId: null, name: 'report.md', content: plain });
       const identity = { documentId: created.documentId, documentName: 'report.md', documentType: 'document',
         projectId, path: '/report.md', inode: `workspace:${created.documentId}` };
-      expect(created.buildObservation(identity)).toContain('全文可解析引用来源：0');
+      expect(created.buildObservation(identity)).not.toContain('引用来源');
       const store = new MarkdownDocumentService(db);
       const count = () => buildMarkdownCitationReadProjection({ content: store.getDocument(created.documentId),
         pendings: store.getPendingRevisions(created.documentId), viewMode: 'preview', includeAnnotations: false,
@@ -59,7 +59,7 @@ describe('Markdown citation receipt through Host providers', () => {
       expect(count()).toBe(1);
       await decide('reject');
       expect(count()).toBe(0);
-      expect((await write(plain)).observation).toContain('全文可解析引用来源：0');
+      expect((await write(plain)).observation).not.toContain('引用来源');
       await write(cited);
       await decide('accept');
       expect(count()).toBe(1);
@@ -67,7 +67,7 @@ describe('Markdown citation receipt through Host providers', () => {
       expect((await writer.write({ identity, operation: 'edit', replacedCount: 1,
         content: cited.replace('说明', '修订说明'), expectedCurrentText: cited,
       })).observation).toContain('全文可解析引用来源：1');
-      expect((await write('删除引用后的普通正文')).observation).toContain('全文可解析引用来源：0');
+      expect((await write('删除引用后的普通正文')).observation).not.toContain('引用来源');
       expect(count()).toBe(0);
       await decide('reject');
       expect(count()).toBe(1);

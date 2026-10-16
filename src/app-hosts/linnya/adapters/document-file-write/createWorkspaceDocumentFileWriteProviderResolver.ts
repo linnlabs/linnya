@@ -171,7 +171,10 @@ function buildMarkdownFileWriteObservation(params: {
     facts.push(`批注 ${params.deletedAnnotationCount} 条已删除`);
   }
   const replacement = params.operation === 'edit' ? `，请求替换 ${params.replacedCount ?? 0} 处` : '';
-  return `已处理 Markdown 文件：${params.path}${replacement}；${facts.join('，')}。当前全文可解析引用来源：${params.citationSourceCount}（含待确认修订；不代表已核验）。`;
+  const citation = params.citationSourceCount > 0
+    ? `当前全文可解析引用来源：${params.citationSourceCount}（含待确认修订）。`
+    : '';
+  return `已处理 Markdown 文件：${params.path}${replacement}；${facts.join('，')}。${citation}`;
 }
 
 function createPluginFileWriteProvider(params: {

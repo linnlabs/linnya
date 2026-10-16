@@ -116,7 +116,7 @@ function createMarkdownFileCreateProvider(params: {
           const result: WorkspaceDocumentFileCreateResult = {
             documentId,
             buildObservation: identity =>
-              `已创建 Markdown 文件：${identity.path}。inode: ${identity.inode}。当前全文可解析引用来源：${citationSourceCount}（不代表已核验）。`,
+              `已创建 Markdown 文件：${identity.path}。inode: ${identity.inode}。${citationSourceCount > 0 ? `当前全文可解析引用来源：${citationSourceCount}。` : ''}`,
           };
           params.resultCommit?.commit(result);
           return result;
