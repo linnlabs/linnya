@@ -24,7 +24,7 @@ export function decorateDeepWebSnapshotToolContext(context: ToolExecutionContext
         !item ||
         item.source_type !== 'web' ||
         !item.url ||
-        (item.capture_kind !== 'web_page' && item.capture_kind !== 'web_search_result') ||
+        (item.capture_kind !== 'web_page' && item.capture_kind !== 'web_search_result' && item.capture_kind !== 'web_file') ||
         result.conflicts.length ||
         result.incomplete_refs.length
       ) {

@@ -180,7 +180,9 @@ const notesByRef = computed(
 );
 function captureLabel(kind: string | undefined): string {
   return conversationMessage(
-    kind === 'page_content'
+    kind === 'file_download'
+      ? 'conversation.tool.webSearch.fileDownload'
+      : kind === 'page_content'
       ? 'conversation.tool.webSearch.pageContent'
       : kind === 'metadata_only'
         ? 'conversation.tool.webSearch.metadataOnly'

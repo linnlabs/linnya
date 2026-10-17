@@ -15,7 +15,7 @@ export interface WebSearchSnapshotReader {
   read(
     bundleId: string,
     ref: string
-  ): Promise<{ text: string; url: string; captureKind: 'web_search_result' | 'web_page' }>;
+  ): Promise<{ text: string; url: string; captureKind: 'web_search_result' | 'web_page' | 'web_file' }>;
 }
 const readers = new WeakMap<object, WebSearchSnapshotReader>();
 const acquisitions = new WeakMap<object, WebSearchAcquisitionPort>();

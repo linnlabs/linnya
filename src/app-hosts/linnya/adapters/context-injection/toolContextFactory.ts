@@ -12,6 +12,7 @@ import type { PhysicalFileReaderPort } from 'src/app-hosts/linnya/application/fi
 import type { ConversationWorkDirectoryAdmissionPort } from 'src/app-hosts/linnya/application/conversation-lifecycle';
 import type { SubrunTraceHistoryProjectorPort } from 'src/app-hosts/linnya/adapters/persistence/subrun-trace-history/definitions/subrunTraceHistory';
 import { createLinnyaChildRunContextInjections } from 'src/app-hosts/linnya/context/agent/createLinnyaFenceInjections';
+import { createWebFileStore } from '../tools/createWebFileStore';
 
 type CreateSubRunTracePublisher = NonNullable<ToolContext['createSubRunTracePublisher']>;
 type RunContext = runContext.RunContext;
@@ -118,6 +119,9 @@ export function createToolContext(options: ToolContextFactoryOptions): ToolConte
     shellToolRuntime: options.hostServices.shellToolRuntime,
     physicalFileReader: options.hostServices.physicalFileReader,
     conversationWorkDirectoryAdmission: options.hostServices.conversationWorkDirectoryAdmission,
+    webFileStore: options.hostServices.conversationWorkDirectoryAdmission
+      ? createWebFileStore(options.hostServices.conversationWorkDirectoryAdmission, options.conversationId)
+      : undefined,
     managedImageIngress: options.hostServices.managedImageIngress,
     toolResultAssetClaims: options.hostServices.toolResultAssetClaims,
     commandRunPermission: options.hostServices.commandRunPermission,

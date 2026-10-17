@@ -307,7 +307,7 @@ src/tools/web/webread/
 - HTML 相对链接依据最终 URL 与有效 base URL 还原，只保留符合既有同步 URL 策略的地址；链接出现不代表目标已读取，后续请求仍须完整校验 DNS 和连接
 - 表格保留精简 HTML 中的空单元格、caption、rowspan/colspan 和表头关联属性；不展开跨度、不猜测会计口径。保留的 HTML 删除事件、样式等非内容属性。静态抽取不承诺解析外部样式表的完整可见性或理解图片里的数字
 - 同一安全 GET 通过 Accept 优先请求来源站点的 Markdown；按实际 Content-Type 分流，不额外请求或自动换 Provider。原生 Markdown 保留来源表示（包括相对链接），不伪造未取得的标题/日期元数据；HTML 不支持协商时继续走原抽取链
-- GitHub `blob` 地址在本地 HTTP 首跳自动转换为 `raw.githubusercontent.com`，转换后的域名仍完整执行 URL/DNS 校验与 IP 钉扎；`web_read` 只读取 HTML/文本，不支持 PDF，实际响应为 `application/pdf` 时返回明确的 `unsupported_mime` 错误
+- GitHub `blob` 地址在本地 HTTP 首跳自动转换为 `raw.githubusercontent.com`，转换后的域名仍完整执行 URL/DNS 校验与 IP 钉扎；`web_read` 读取 HTML/文本，并在 5 MiB 上限内保存通过类型检查的 PDF/CSV/XLSX 原文件，解析交给 Shell（见下节）
 - 本地抓取每一跳都做 URL/DNS 校验，并用已校验 IP 建立连接；禁止改回 fetch 自动重定向
 - 当前读取路由可观察边界是 `failureKind`、`initialFailureKind`、`initialFailureStage`、`escalationReason` 和 `renderAttempted`；失败日志还会记录状态码、响应 MIME、最终 URL、重定向数、请求尝试次数和重试次数（不记录响应正文）。`initialFailureStage` 仅用于 `dom_canonicalization/readability` 抽取阶段。尚未记录每一跳 DNS 解析地址、代理 fake-IP 判定或 DNS/连接分段耗时，不得从现有日志推断这些事实
 - 兼容 TUN 代理 fake-IP：仅域名 DNS 结果允许 `198.18/15`，字面 fake-IP、内网地址及混入内网地址的解析结果仍拒绝
@@ -356,6 +356,10 @@ src/tools/web/webread/
 
 > 中文备注：web_read 读取到的是网页正文（最多 50,000 字符，调用方也可请求更小上限），不是 web_search 的 snippet。
 
+### 5.4 原文件取得与 Shell 解析
+
+PDF、CSV、XLSX 通过同一安全 GET 取得，限额内自动保存到会话物理目录；CSV 保留直接文本视图，PDF/XLSX 不假造正文。Web 只调用物化窄 port，Host 绑定会话生命周期，文件 IO 在 infra adapter。`data.file` 记录实际 URL、时间、字节数、hash 与相对路径，Citation 快照保留文件身份，页码由作者核对后在正文注明。完整合同、配额、类型检查与限制见 [原文件取得](./webread/file-acquisition/README.md)。
+
 ### 5.5 本机与增强解析策略
 
 目标：普通页面由本地安全 GET + Readability/语义 DOM 处理，质量不足时按需渲染；只有用户主动配置后，最后才交给第三方增强解析 Provider：
@@ -395,6 +399,7 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 - 查询缓存 key = 规范化 query + provider + topK + recency；正文缓存 key = canonical URL + 阶梯版本 + provider 序列，`contentHash` 保存在值中，不参与首次查找
 - 生产使用 `<workspace-root>/WebCache/v1` 下按 key 分文件的持久缓存；测试通过 `WebCachePort` 注入内存实现，不依赖 Electron 或 SQLite native ABI
 - URL 过期且上游提供 validator 时发送 ETag/Last-Modified 条件请求；304 必须有 stale 正文才能复用
+- 原文件只参加调用期 in-flight，不保存到公共正文缓存；每个会话分别物化受控副本。
 - in-flight 只共享 Provider/读取阶梯的纯结果；citation、observation 与调用级正文裁剪仍按每次调用生成
 - Evidence 并发合并必须同时满足 conversation、instance、turn 和 parent tool-call 相同，禁止跨 artifact scope 共享
 - 调用方取消互相隔离；失败工作不留在 in-flight map 中，后续请求可以正常重试
@@ -411,7 +416,7 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 - Web 层只拥有 `WebEvidenceCaptureItem` 和 `WebEvidenceWriter`，不依赖 Evidence DTO、bundle 存储或 concrete writer
 - `src/app-hosts/linnya/adapters/tools/webEvidenceWriterToolContextDecorator.ts` 是唯一的 Web → Evidence 字段映射和 conversation scope 注入点
 - `web_search`：每条结果会保存为 `capture_kind='web_search_result'` 的 web evidence
-- `web_read`：读取成功后会保存 `capture_kind='web_page'` 的页面正文 evidence
+- `web_read`：正文读取保存 `capture_kind='web_page'`；原文件取得保存 `web_file` 身份说明，不能当作已读 PDF 正文
 - `web_read` observation 提交本次完整捕获正文；超出通用阈值时由 ToolOutputStore 保存，模型通过 `tool_output_read` 分页
 - EvidenceStore 保存独立的冻结来源快照，用于 ref 校验、审计与 Citation fallback；不参与 Web 正文分页
 - Deep Research 协作文档通过 Workspace citation hydration 保留引用；已退役的 Writer/Evidence snapshot 特殊链不得恢复

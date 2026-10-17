@@ -51,7 +51,7 @@ export const DeepWebSourceNoteSchema = z
     ref: CitationRefSchema,
     source_call_id: NonEmptyStringSchema,
     bundle_id: NonEmptyStringSchema,
-    capture_kind: z.enum(['search_snippet', 'page_content', 'metadata_only']),
+    capture_kind: z.enum(['search_snippet', 'page_content', 'metadata_only', 'file_download']),
     truncated: z.boolean(),
     warnings: z.array(z.string()).max(8),
     purpose: boundedNonEmptyString(300),

@@ -227,3 +227,22 @@ describe('网页资料组装：工具自动回填，不让模型重抄原文', (
     expect(data).toMatchObject({ sources: [], search_count: 1, read_attempt_count: 0 });
   });
 });
+
+it('原文件取得进入资料包但不升级为已读正文，绑定精确 bundle 的身份摘要', async () => {
+  const hash = 'b'.repeat(64);
+  const identity = `Original PDF file; SHA-256 ${hash}; file identity only.`;
+  const event = output('web_read', 'file-read', {
+    url: citation.url, title: citation.docTitle, charCount: 0, truncated: false,
+    provider: 'local_http', renderMode: 'http', extractor: 'file_download', renderAttempted: false, escalated: false,
+    citations: { query: citation.url, searchMode: 'web', citations: [{ ...citation, snippet: identity }] },
+    evidence_store: { bundle_id: 'file-bundle' }, cacheStatus: 'bypass',
+    file: { path: `web-downloads/${hash}.pdf`, format: 'pdf', mimeType: 'application/pdf', byteLength: 100,
+      sha256: hash, requestedUrl: citation.url, finalUrl: citation.url, acquiredAt: '2026-10-17T00:00:00.000Z', trust: 'untrusted_external_file' },
+  }, identity);
+  const reader = { read: vi.fn(async () => ({ text: identity, url: citation.url, captureKind: 'web_file' as const })) };
+  const result = await assembleWebMaterials({ selection: selection(), acquisitions: acquisitions([search(), event]),
+    reader, writer, query: 'question', topK: 6 });
+  expect(reader.read).toHaveBeenCalledWith('file-bundle', citation.ref);
+  expect(result.sources[0]).toMatchObject({ capture_kind: 'file_download', citation: { snippet: identity } });
+  expect(buildDeepWebObservation('question', result)).toContain('not parsed');
+});

@@ -66,7 +66,7 @@ function parseWebEvidenceCandidate(raw: UnknownRecord): EvidenceBundleScanEntry 
 
   const captureKindRaw = readTrimmedString(raw, 'capture_kind');
   const captureKind: WebEvidenceCaptureKind =
-    captureKindRaw === 'web_page' ? 'web_page' : 'web_search_result';
+    captureKindRaw === 'web_file' ? 'web_file' : captureKindRaw === 'web_page' ? 'web_page' : 'web_search_result';
   const siteName = readTrimmedString(raw, 'site_name') || undefined;
   const publishedAt = readTrimmedString(raw, 'published_at') || undefined;
   const candidate: CompleteEvidenceCandidate = {

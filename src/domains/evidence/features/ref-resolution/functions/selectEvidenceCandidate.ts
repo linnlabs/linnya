@@ -41,7 +41,7 @@ export function selectEvidenceCandidate(params: {
 
   if (params.existing.source_type === 'web' && params.incoming.source_type === 'web') {
     return params.existing.capture_kind === 'web_search_result' &&
-      params.incoming.capture_kind === 'web_page'
+      (params.incoming.capture_kind === 'web_page' || params.incoming.capture_kind === 'web_file')
       ? 'replace_existing'
       : 'keep_existing';
   }

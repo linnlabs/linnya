@@ -222,3 +222,5 @@ pnpm vitest run src/app-hosts/linnya/adapters/tools/citation-source-resolution/_
 不能回退其他 bundle。空正文网页仍是元信息取得，不提升为完整正文；Web owner 可从正式
 读取结果交付 URL 与限制。筛选后的 Evidence bundle 由同一 WebEvidenceWriter 生成，
 原始 call / bundle 身份继续保留在附加来源说明中。
+
+Web 文件取得使用 `capture_kind=web_file`。`content_text/snippet` 的文件身份说明保存取得时间、字节数及 SHA-256，URL 保留在正式来源字段中；它不是页级原文。CSV 可附已取得文本。精确 bundle 回放不能被同 URL 的别次正文替代，深搜继续标记为 `file_download`。

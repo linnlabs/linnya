@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ToolPresentationProjectorInput } from '../../types';
-import { projectWebReadPresentation } from './projectWebReadPresentation';
+import { projectWebReadPresentation, projectWebReadCompactStep } from './projectWebReadPresentation';
 
 function project(overrides: Partial<ToolPresentationProjectorInput>) {
   return projectWebReadPresentation({
@@ -48,6 +48,20 @@ function directResult() {
 }
 
 describe('projectWebReadPresentation', () => {
+  it('文件回执实时与序列化重载一致，子任务紧凑步骤不冒充正文成功', () => {
+    const original = directResult();
+    const hash = 'a'.repeat(64);
+    const result = { ...original, data: { ...original.data, charCount: 0, extractor: 'file_download', file: {
+      path: `web-downloads/${hash}.pdf`, sha256: hash, format: 'pdf', mimeType: 'application/pdf', byteLength: 400,
+      acquiredAt: '2026-10-17T00:00:00.000Z', requestedUrl: original.data.url, finalUrl: original.data.url, trust: 'untrusted_external_file',
+    } } };
+    const live = project({ status: 'success', phase: 'complete', result });
+    expect(live).toEqual(project({ status: 'success', phase: 'complete', result: JSON.parse(JSON.stringify(result)) }));
+    expect(live.data).toMatchObject({ charCount: 0, file: { sha256: hash, byteLength: 400 } });
+    expect(projectWebReadCompactStep({ sourceToolName: 'web_read', uiKey: 'web_read', toolCallId: 'file-call', args: { url: original.data.url },
+      status: 'success', phase: 'complete', result })).toMatchObject({ title: { key: 'conversation.tool.webRead.fileSaved', params: { format: 'PDF', count: 400 } } });
+    expect(project({ status: 'error', phase: 'error', result: undefined }).data.kind).toBe('lifecycle');
+  });
   it('生命周期阶段只接纳请求参数，不读取 success result', () => {
     expect(project({ result: { invalid: true } })).toMatchObject({
       data: { kind: 'lifecycle', target: 'https://requested.example/article' },

@@ -11,6 +11,8 @@ import type { WebDocument } from '../../definitions/webDocument';
 
 /** 单次网页读取结果；content/charCount 是现有工具输出兼容字段。 */
 export interface WebReadResult extends WebDocument {
+  /** 下载原件；保存到会话目录后才成为可交付的文件回执。 */
+  filePayload?: import('../file-acquisition/definitions/webFileAcquisition').WebFilePayload;
   /** 网页标题 */
   title: string;
   /** 正文内容（优先 markdown，其次纯文本） */

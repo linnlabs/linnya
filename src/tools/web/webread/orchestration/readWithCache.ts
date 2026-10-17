@@ -17,7 +17,7 @@ import { readWebPageWithLadder } from './readLadder';
 const logger = new Logger('WebReadCache');
 // 正文抽取器或 DOM 规范化语义变化时必须升级，避免 24 小时稳定页面缓存
 // 继续返回旧算法结果。
-const WEB_READ_CACHE_ROUTE_VERSION = 7;
+const WEB_READ_CACHE_ROUTE_VERSION = 8;
 const DEFAULT_LOCAL_PROVIDER_IDENTITY = 'local_http';
 const DEFAULT_RENDER_PROVIDER_IDENTITY = 'local_render';
 
@@ -140,7 +140,8 @@ export async function readWebPageWithCache(
           config,
         },
       );
-      if (cacheAvailable) {
+      // 原文件只在调用/in-flight 内持有。公共正文缓存不保存二进制或会话物理路径。
+      if (cacheAvailable && !ladderResult.readResult.filePayload) {
         try {
           const ttlMs = resolveWebDocumentCacheTtlMs(ladderResult);
           await dependencies.runtime.cache.writeDocument({ key, value: ladderResult, ttlMs });
@@ -168,6 +169,6 @@ export async function readWebPageWithCache(
     ladderResult: coalesced.value,
     cacheStatus: coalesced.joinedExistingRequest
       ? 'coalesced'
-      : cacheAvailable ? (canRevalidate ? 'revalidated' : 'miss') : 'bypass',
+      : cacheAvailable && !coalesced.value.readResult.filePayload ? (canRevalidate ? 'revalidated' : 'miss') : 'bypass',
   };
 }

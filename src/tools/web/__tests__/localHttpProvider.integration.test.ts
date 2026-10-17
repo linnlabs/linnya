@@ -79,7 +79,7 @@ describe('LocalHttpProvider 本地真实 HTTP 集成', () => {
       }
       if (request.url === '/pdf') {
         response.writeHead(200, { 'Content-Type': 'application/pdf' });
-        response.end('%PDF-provider-fixture');
+        response.end('%PDF-1.7\nfixture\n%%EOF');
         return;
       }
       if (request.url === '/semantic') {
@@ -140,13 +140,12 @@ describe('LocalHttpProvider 本地真实 HTTP 集成', () => {
     expect(result.content).toContain('本地 provider 正文内容');
   });
 
-  it('文本类型直接读取，二进制类型返回明确的不支持终态', async () => {
+  it('文本直接读取，PDF 保留原始字节而不假造正文', async () => {
     const provider = new LocalHttpProvider({ resolveHost: resolveFixtureHost });
     const text = await provider.read({ url: `http://provider.test:${port}/plain` });
     expect(text).toMatchObject({ extractor: 'raw_text', content: '纯文本页面内容' });
-    await expect(provider.read({ url: `http://provider.test:${port}/pdf` })).rejects.toMatchObject({
-      kind: 'unsupported_mime',
-      message: 'WebRead 暂不支持 PDF，请改用对应的 HTML 页面或其他文本来源。',
+    await expect(provider.read({ url: `http://provider.test:${port}/pdf` })).resolves.toMatchObject({
+      extractor: 'file_download', content: '', filePayload: { format: 'pdf' },
     });
   });
 

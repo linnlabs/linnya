@@ -41,6 +41,8 @@ export interface LocalHttpFetchResult {
   mimeType: string;
   charset: string;
   bodyText: string;
+  /** 原始响应字节；文件来源身份不能由解码后的文本重建。 */
+  bodyData: Uint8Array;
   rawLength: number;
   tookMs: number;
   redirectCount: number;
@@ -330,6 +332,7 @@ export async function localHttpFetch(
         mimeType: '',
         charset: '',
         bodyText: '',
+        bodyData: new Uint8Array(),
         rawLength: 0,
         tookMs: Date.now() - startedAt,
         redirectCount,
@@ -384,6 +387,7 @@ export async function localHttpFetch(
       mimeType: readMimeType(contentType),
       charset: decoded.charset,
       bodyText: decoded.bodyText,
+      bodyData: response.bodyData,
       rawLength: response.bodyData.byteLength,
       tookMs: Date.now() - startedAt,
       redirectCount,

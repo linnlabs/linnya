@@ -40,6 +40,12 @@
       </div>
 
       <div v-if="pageInfo.snippet" class="wr-snippet">{{ pageInfo.snippet }}</div>
+      <div
+        v-if="pageInfo.file"
+        class="wr-snippet"
+      >
+        {{ pageInfo.file.path }}
+      </div>
     </div>
 
     <!-- 空结果 -->
@@ -88,6 +94,12 @@ const pageInfo = computed(() => (
 ));
 
 const characterCountText = computed(() => {
+  if (pageInfo.value?.file) {
+    return conversationMessage('conversation.tool.webRead.fileSaved', {
+      format: pageInfo.value.file.format.toUpperCase(),
+      count: pageInfo.value.file.byteLength.toLocaleString(currentLocale.value),
+    });
+  }
   const count = pageInfo.value?.charCount ?? 0;
   return conversationMessage('conversation.tool.webRead.characterCount', {
     count: count.toLocaleString(currentLocale.value),

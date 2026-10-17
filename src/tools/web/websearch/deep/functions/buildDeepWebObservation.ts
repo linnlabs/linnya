@@ -34,7 +34,7 @@ export function buildDeepWebObservation(query: string, materials: DeepWebMateria
     .filter(Boolean)
     .join('\n');
   return (
-    `Deep web search: selected materials, NOT a verified answer. Each snippet is only a source prefix (up to 800 characters), not the full body. source_read_truncated describes source acquisition, NOT snippet completeness. Use web_read on selected URLs to verify decisive evidence and qualifications before drawing conclusions. Search calls: ${materials.search_count}; read attempts: ${materials.read_attempt_count}.\n${text}\n` +
+    `Deep web search: selected materials, NOT a verified answer. Each snippet is only a source prefix (up to 800 characters), not the full body. file_download means an original file was acquired, not parsed; its snippet describes file identity. source_read_truncated describes source acquisition, NOT snippet completeness. Use web_read on selected URLs to verify decisive evidence and qualifications before drawing conclusions. Search calls: ${materials.search_count}; read attempts: ${materials.read_attempt_count}.\n${text}\n` +
     wrapUntrustedWebContent({ token: createBoundaryToken(notes), body: notes }).join('\n')
   );
 }

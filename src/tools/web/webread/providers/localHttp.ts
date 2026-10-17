@@ -9,6 +9,7 @@ import { extractArticle } from '../extraction/extractArticle';
 import { createWebReadResult } from '../functions/createWebReadResult';
 import { resolveReadableWebUrl } from '../functions/resolveReadableWebUrl';
 import type { WebReadParams, WebReadProvider, WebReadResult } from './types';
+import { validateWebFile } from '../file-acquisition/functions/validateWebFile';
 
 const HTML_MIME_TYPES = new Set(['text/html', 'application/xhtml+xml']);
 const TEXT_APPLICATION_MIME_TYPES = new Set([
@@ -16,6 +17,7 @@ const TEXT_APPLICATION_MIME_TYPES = new Set([
   'application/xml',
   'application/rss+xml',
   'application/atom+xml',
+  'application/csv',
 ]);
 
 export interface LocalHttpProviderDependencies extends LocalHttpFetchDependencies {
@@ -72,6 +74,23 @@ export class LocalHttpProvider implements WebReadProvider {
       };
     }
 
+    const filePayload = await validateWebFile({
+      mimeType: fetched.mimeType,
+      bytes: fetched.bodyData,
+      decodedText: fetched.bodyText,
+    });
+    if (filePayload && filePayload.format !== 'csv') {
+      return {
+        ...createWebReadResult({
+          url: params.url, finalUrl: fetched.finalUrl, status: fetched.status,
+          contentType: fetched.contentType, title: titleFromUrl(fetched.finalUrl),
+          content: '', contentFormat: 'text', extractor: 'file_download', renderMode: 'http',
+          provider: this.name, rawLength: fetched.rawLength, latencyMs: fetched.tookMs,
+        }),
+        filePayload,
+      };
+    }
+
     if (HTML_MIME_TYPES.has(fetched.mimeType)) {
       const extracted = extractArticle(fetched.bodyText, { url: fetched.finalUrl });
       if (extracted.accessBarrier) {
@@ -118,7 +137,7 @@ export class LocalHttpProvider implements WebReadProvider {
         throw new WebFailureError('empty_content', '本地网页文本响应为空。', { status: fetched.status });
       }
       const warnings: WebDocumentWarning[] = content.length < 200 ? ['content_too_short'] : [];
-      return createWebReadResult({
+      return { ...createWebReadResult({
         url: params.url,
         finalUrl: fetched.finalUrl,
         status: fetched.status,
@@ -137,12 +156,10 @@ export class LocalHttpProvider implements WebReadProvider {
         latencyMs: fetched.tookMs,
         etag: fetched.etag,
         lastModified: fetched.lastModified,
-      });
+      }), ...(filePayload ? { filePayload } : {}) };
     }
 
-    const unsupportedMessage = fetched.mimeType === 'application/pdf'
-      ? 'WebRead 暂不支持 PDF，请改用对应的 HTML 页面或其他文本来源。'
-      : `本地网页抓取暂不支持 MIME ${fetched.mimeType}。`;
+    const unsupportedMessage = `本地网页抓取暂不支持 MIME ${fetched.mimeType}。`;
     throw new WebFailureError('unsupported_mime', unsupportedMessage, { status: fetched.status });
   }
 }

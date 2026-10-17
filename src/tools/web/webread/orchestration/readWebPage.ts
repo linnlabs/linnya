@@ -26,6 +26,8 @@ import {
   requireCitationSequenceOffset,
 } from '../../../../domains/citation';
 import { buildWebReadObservation } from '../functions/buildWebReadObservation';
+import { describeWebFile } from '../file-acquisition/functions/describeWebFile';
+import type { WebFileStore } from '../file-acquisition/definitions/webFileAcquisition';
 
 const logger = new Logger('ReadWebPage');
 
@@ -45,6 +47,7 @@ export interface ReadWebPageDependencies {
   config?: WebReadConfig;
   evidenceWriter?: WebEvidenceWriter;
   cacheRuntime?: WebCacheRuntime;
+  fileStore?: WebFileStore;
 }
 
 function createAbortError(): Error {
@@ -175,6 +178,21 @@ export async function runReadWebPage(
     throw error;
   }
   const readResult = ladderResult.readResult;
+  const fileStore = dependencies.fileStore ?? context.webFileStore;
+  if (readResult.filePayload && !fileStore) {
+    throw new Error('Web file acquisition requires a host-admitted conversation file store.');
+  }
+  const file = readResult.filePayload && fileStore
+    ? await fileStore.save({
+        ...readResult.filePayload,
+        requestedUrl: params.url,
+        finalUrl: readResult.finalUrl,
+        mimeType: readResult.contentType.split(';')[0].trim().toLowerCase(),
+        acquiredAt: readResult.fetchedAt,
+        signal: context.abortSignal,
+      })
+    : undefined;
+  context.abortSignal?.throwIfAborted();
 
   const providerError = tryParseProviderErrorPayload(readResult.content);
   if (providerError) {
@@ -210,7 +228,7 @@ export async function runReadWebPage(
     },
   ]);
   if (!ref) throw new Error('Web read citation allocator returned an incomplete batch.');
-  const snippet = content.slice(0, SNIPPET_CHARS);
+  const snippet = file ? describeWebFile(file) : content.slice(0, SNIPPET_CHARS);
   const siteName = readResult.siteName?.trim();
   const publishedAt = readResult.publishedAt?.trim();
   const author = readResult.byline?.trim();
@@ -243,13 +261,13 @@ export async function runReadWebPage(
           ref,
           title: resolvedTitle,
           snippet,
-          contentText: content,
+          contentText: file ? `${snippet}\nRequested URL: ${file.requestedUrl}\nFinal URL: ${file.finalUrl}${content ? `\nCaptured text:\n${content}` : ''}` : content,
           capturedAtMs: Date.now(),
           url: canonicalUrl,
           canonicalUrl,
           ...(readResult.siteName ? { siteName: readResult.siteName } : {}),
           ...(readResult.publishedAt ? { publishedAt: readResult.publishedAt } : {}),
-          captureKind: 'web_page',
+          captureKind: file ? 'web_file' : 'web_page',
         },
       ],
     }));
@@ -272,11 +290,12 @@ export async function runReadWebPage(
     url: canonicalUrl,
     siteName: readResult.siteName,
     content,
-    contentHash: readResult.contentHash,
+    contentHash: file?.sha256 ?? readResult.contentHash,
     capturedCharCount: content.length,
     captureTruncated: truncated,
     warnings: readResult.warnings,
     resources: readResult.resources,
+    file,
   });
 
   logger.info('[runReadWebPage] 读取完成', {
@@ -323,6 +342,7 @@ export async function runReadWebPage(
       citations,
       evidence_store: { bundle_id: bundleId },
       cacheStatus,
+      ...(file ? { file } : {}),
     },
     observation,
   });

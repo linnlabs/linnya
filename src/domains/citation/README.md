@@ -159,3 +159,7 @@ Editor 文档被 `read_file` 带入新 Conversation 时，只在出站投影中�
 8. 日志不打印 snippet、正文、完整 tool output 或无必要 URL。
 
 Renderer 投影入口见 [Message Projection README](../../../apps/renderer/domains/conversation/services/messageProjection/README.md)，全链路窗口和 Subrun 约束见 [Conversation read model](../../../docs/conversation-platform/06-read-model.md) 与 [Conversation Subruns](../../../docs/conversation-platform/10-subruns.md)。
+
+## Web 原文件来源
+
+Web 在限额内取得 PDF/CSV/XLSX 后仍按 canonical URL 分配 ref。Citation 的 snippet 保存明确标注的文件身份说明（取得时间、大小和 SHA-256），不伪装成原文摘录；结构化取得事实由 Web 工具回执拥有。页码由正文表述，不自动认证。Markdown 持久化同一来源快照，不依赖会话工作副本永久存在；ref 是来源 URL 身份，不是文件版本号。

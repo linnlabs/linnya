@@ -9,12 +9,7 @@ import { SearchIcon } from '@linnya/renderer-ui/icons';
 import { ReadIcon } from '@linnya/renderer-ui/icons';
 import { projectWebSearchPresentation } from '../websearch/functions/projectWebSearchPresentation';
 import { projectWebSearchCompactStep } from '../websearch/functions/projectWebSearchPresentation';
-import { projectWebReadPresentation } from '../webread/functions/projectWebReadPresentation';
-import { createStaticToolCompactStepProjector } from '../compact-step/functions/createStaticToolCompactStepProjector';
-
-const readWebPageCompactStep = createStaticToolCompactStepProjector(
-  'conversation.tool.webRead.configTitle'
-);
+import { projectWebReadPresentation, projectWebReadCompactStep } from '../webread/functions/projectWebReadPresentation';
 
 const WebSearchCard = defineAsyncComponent(() => import('../websearch/WebSearchCard.vue'));
 const WebReadCard = defineAsyncComponent(() => import('../webread/WebReadCard.vue'));
@@ -48,7 +43,7 @@ export const webToolConfigs: Record<string, ToolUiConfig> = {
     component: WebReadCard,
     icon: ReadIcon,
     presentation: projectWebReadPresentation,
-    compactStep: readWebPageCompactStep,
+    compactStep: projectWebReadCompactStep,
     layout: { fullWidth: true, defaultCollapsed: true },
   },
 };

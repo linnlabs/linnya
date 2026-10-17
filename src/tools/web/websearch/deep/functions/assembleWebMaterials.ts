@@ -19,7 +19,7 @@ type Capture = {
   bundleId: string;
   callId: string;
   capturedAtMs: number;
-  kind: 'search_snippet' | 'page_content' | 'metadata_only';
+  kind: 'search_snippet' | 'page_content' | 'metadata_only' | 'file_download';
   truncated: boolean;
   warnings: string[];
 };
@@ -90,7 +90,7 @@ export async function assembleWebMaterials(input: {
         bundleId: result.data.evidence_store.bundle_id,
         callId: event.callId,
         capturedAtMs: event.timestamp,
-        kind: result.data.charCount === 0 ? 'metadata_only' : 'page_content',
+        kind: result.data.file ? 'file_download' : result.data.charCount === 0 ? 'metadata_only' : 'page_content',
         truncated: result.data.truncated,
         warnings: result.data.warnings ?? [],
       });
@@ -125,7 +125,7 @@ export async function assembleWebMaterials(input: {
     if (
       snapshot.url !== capture.citation.url ||
       snapshot.captureKind !==
-        (capture.kind === 'search_snippet' ? 'web_search_result' : 'web_page')
+        (capture.kind === 'search_snippet' ? 'web_search_result' : capture.kind === 'file_download' ? 'web_file' : 'web_page')
     )
       throw new Error('Captured source identity mismatch.');
     // 短摘要由真实快照自动截取，模型只提交 ref 与资料用途，不重新输出大段原文。

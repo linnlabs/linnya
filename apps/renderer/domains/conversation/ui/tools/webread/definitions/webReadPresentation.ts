@@ -8,6 +8,7 @@ export type WebReadPresentationData =
       readonly title: string;
       readonly url: string;
       readonly charCount: number;
+      readonly file?: import('@app/schemas').WebAcquiredFile;
       readonly truncated: boolean;
       readonly snippet: string;
       readonly publishedAt?: string;

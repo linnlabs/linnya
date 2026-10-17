@@ -10,7 +10,7 @@ export type KnowledgeEvidenceCaptureKind =
   | 'knowledge_document_preview'
   | 'knowledge_document_chunk';
 
-export type WebEvidenceCaptureKind = 'web_search_result' | 'web_page';
+export type WebEvidenceCaptureKind = 'web_search_result' | 'web_page' | 'web_file';
 
 export type HistoricalEvidenceBundleKind = 'assemble_evidence';
 export type LiveEvidenceBundleKind = 'knowledge_evidence' | 'web_evidence';

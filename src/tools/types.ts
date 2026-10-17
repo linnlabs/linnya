@@ -50,6 +50,8 @@ export type {
  * 包含工具执行时需要的所有依赖和配置
  */
 export interface ToolContext extends ToolExecutionContext {
+  /** Web owner 的文件物化窄端口；Host 绑定当前会话目录与删除准入。 */
+  webFileStore?: import('./web/webread/file-acquisition/definitions/webFileAcquisition').WebFileStore;
   /** 当前运行实际 Agent 的冻结身份；只由 Host 注入，不从模型参数或 metadata 恢复。 */
   callerAgentId?: string;
   /** Host 为当前 registered child 冻结的执行名单；空数组禁止全部，undefined 不增加限制。 */

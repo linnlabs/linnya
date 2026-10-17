@@ -18,6 +18,24 @@ const WebPageResourceSchema = z.object({
 }).strict();
 export const WEB_READ_MAX_CONTENT_CHARS = 50_000;
 
+/** 文件取得事实，不表示正文、页码或模型解析结果已经核验。路径相对于当前会话 cwd。 */
+export const WebAcquiredFileSchema = z.object({
+  path: z.string().regex(/^web-downloads\/[a-f0-9]{64}\.(pdf|csv|xlsx)$/),
+  format: z.enum(['pdf', 'csv', 'xlsx']),
+  mimeType: NonEmptyStringSchema,
+  byteLength: z.number().int().positive().max(5 * 1024 * 1024),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  requestedUrl: HttpCitationUrlSchema,
+  finalUrl: HttpCitationUrlSchema,
+  acquiredAt: z.string().datetime(),
+  trust: z.literal('untrusted_external_file'),
+}).strict().superRefine((file, context) => {
+  if (file.path !== `web-downloads/${file.sha256}.${file.format}`) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['path'], message: 'File path must match the acquired hash and format' });
+  }
+});
+export type WebAcquiredFile = z.infer<typeof WebAcquiredFileSchema>;
+
 export const WebReadArgsSchema = z.object({
   url: HttpCitationUrlSchema,
   // 读取编排会把非正数恢复为默认预算，并把正数向下取整、限制到最大预算。
@@ -58,6 +76,7 @@ const WebReadDataObjectSchema = z.object({
   /** 提取器启发式信号，不代表来源可信度或全文完整性。 */
   warnings: z.array(WebDocumentWarningSchema).max(8).optional(),
   resources: z.array(WebPageResourceSchema).max(16).optional(),
+  file: WebAcquiredFileSchema.optional(),
   citations: z.object({
     query: HttpCitationUrlSchema,
     searchMode: z.literal('web'),
@@ -74,6 +93,9 @@ function validateWebReadData(
   context: z.RefinementCtx,
 ): void {
   const citation = data.citations.citations[0];
+  if (data.file && data.file.format !== 'csv' && (data.charCount !== 0 || data.extractor !== 'file_download')) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['file'], message: 'Binary file acquisition cannot claim extracted page text' });
+  }
   if (citation.url !== data.url) {
     context.addIssue({
       code: z.ZodIssueCode.custom,

@@ -1,5 +1,5 @@
 /** Web 领域交给外部持久化边界的抓取事实。 */
-export type WebEvidenceCaptureKind = 'web_search_result' | 'web_page';
+export type WebEvidenceCaptureKind = 'web_search_result' | 'web_page' | 'web_file';
 
 /**
  * Web 自己拥有的证据抓取 DTO。

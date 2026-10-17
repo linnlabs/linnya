@@ -4,19 +4,30 @@ import {
   HistoricalWebResourceReadArgsSchema,
   HistoricalWebResourceReadResultSchema,
 } from '@app/schemas';
-import type { ToolPresentationProjection, ToolPresentationProjectorInput } from '../../types';
+import type { ToolPresentationProjection, ToolPresentationProjectorInput, ToolCompactStepProjector } from '../../types';
 import { createConversationToolTitleDescriptor } from '../../functions/createConversationToolTitleDescriptor';
 import type { WebReadPresentationData } from '../definitions/webReadPresentation';
 
-function createWebReadTitle(target: string): ToolPresentationProjection['title'] {
+function createWebReadTitle(target: string): ReturnType<typeof createConversationToolTitleDescriptor> {
   return createConversationToolTitleDescriptor('conversation.tool.webRead.configTitleWithTarget', {
     target,
   });
 }
 
+/** 完整卡和子任务紧凑步骤共用同一次正式结果接纳，不在 Vue 猜 MIME。 */
+export const projectWebReadCompactStep: ToolCompactStepProjector = input => {
+  const projection = projectWebReadPresentation(input);
+  if (projection.data.kind === 'page' && projection.data.file) {
+    return { title: createConversationToolTitleDescriptor('conversation.tool.webRead.fileSaved', {
+      format: projection.data.file.format.toUpperCase(), count: projection.data.file.byteLength,
+    }).text };
+  }
+  return { title: projection.title.text };
+};
+
 export function projectWebReadPresentation(
   input: ToolPresentationProjectorInput
-): ToolPresentationProjection<WebReadPresentationData> {
+): ToolPresentationProjection<WebReadPresentationData> & { title: ReturnType<typeof createConversationToolTitleDescriptor> } {
   if (input.uiKey !== 'web_read') {
     throw new Error(`Unsupported Web read UI key: ${input.uiKey}`);
   }
@@ -65,6 +76,7 @@ export function projectWebReadPresentation(
       title: result.data.title,
       url: result.data.url,
       charCount: result.data.charCount,
+      ...(result.data.file ? { file: result.data.file } : {}),
       truncated: result.data.truncated,
       snippet: citation.snippet,
       ...(citation.publishedAt ? { publishedAt: citation.publishedAt } : {}),

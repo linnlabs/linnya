@@ -188,3 +188,5 @@ Host 装配不完整，应在 child admission 前失败，禁止回退模块级 
 - `src/app-hosts/linnya/adapters/tools/README.md`
 - 独立 Linnkit 仓的 `src/context-manager/README.md`
 - `src/app-hosts/linnya/context/README.md`
+
+Web 文件物化端口由 ToolContext factory 根据已有 conversation work-directory admission 绑定当前会话。registered child 继承同一会话端口；Web 工具不计算物理目录，也不绕过删除准入。
