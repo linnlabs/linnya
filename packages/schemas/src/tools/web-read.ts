@@ -17,13 +17,15 @@ const WebPageResourceSchema = z.object({
   label: NonEmptyStringSchema.optional(),
 }).strict();
 export const WEB_READ_MAX_CONTENT_CHARS = 50_000;
+/** 单文件字节上限由 HTTP 取得、存储回执及历史投影共同遵守；会话总量另由存储拥有。 */
+export const WEB_ACQUIRED_FILE_MAX_BYTES = 30 * 1024 * 1024;
 
 /** 文件取得事实，不表示正文、页码或模型解析结果已经核验。路径相对于当前会话 cwd。 */
 export const WebAcquiredFileSchema = z.object({
   path: z.string().regex(/^web-downloads\/[a-f0-9]{64}\.(pdf|csv|xlsx)$/),
   format: z.enum(['pdf', 'csv', 'xlsx']),
   mimeType: NonEmptyStringSchema,
-  byteLength: z.number().int().positive().max(5 * 1024 * 1024),
+  byteLength: z.number().int().positive().max(WEB_ACQUIRED_FILE_MAX_BYTES),
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
   requestedUrl: HttpCitationUrlSchema,
   finalUrl: HttpCitationUrlSchema,

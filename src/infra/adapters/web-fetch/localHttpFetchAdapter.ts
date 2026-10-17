@@ -15,6 +15,7 @@ import {
   webHttpFetch,
   WebHttpError,
   type WebHttpResponse,
+  type WebHttpFetchArgs,
   withWebHttpErrorDiagnostics,
 } from '../web-http/webHttpFetch';
 import {
@@ -55,7 +56,7 @@ export interface LocalHttpFetchResult {
 export interface LocalHttpFetchOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
-  maxBodyBytes?: number;
+  maxBodyBytes?: WebHttpFetchArgs['maxBodyBytes'];
   maxRedirects?: number;
   validators?: {
     etag?: string;

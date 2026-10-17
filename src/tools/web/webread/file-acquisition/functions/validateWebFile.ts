@@ -8,6 +8,15 @@ const CSV_MIMES = new Set(['text/csv', 'application/csv']);
 const XLSX_WORKBOOK_TYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml';
 
+/** 响应头只决定下载预算；实际字节仍须通过下面的类型校验才能保存。 */
+export function getWebFileFormat(contentType: string): WebFilePayload['format'] | undefined {
+  const mimeType = contentType.split(';', 1)[0]?.trim().toLowerCase();
+  if (mimeType === 'application/pdf') return 'pdf';
+  if (mimeType === XLSX_MIME) return 'xlsx';
+  if (mimeType && CSV_MIMES.has(mimeType)) return 'csv';
+  return undefined;
+}
+
 function invalidFile(): WebFailureError {
   return new WebFailureError(
     'unsupported_mime',
@@ -115,17 +124,18 @@ export async function validateWebFile(input: {
   decodedText: string;
 }): Promise<WebFilePayload | undefined> {
   const { bytes, mimeType } = input;
+  const format = getWebFileFormat(mimeType);
   const prefix = Buffer.from(bytes.subarray(0, 32)).toString('latin1');
-  if (mimeType === 'application/pdf') {
+  if (format === 'pdf') {
     if (!/^%PDF-[12]\.\d(?:\s|$)/.test(prefix)) throw invalidFile();
     return { bytes, format: 'pdf' };
   }
-  if (mimeType === XLSX_MIME) {
+  if (format === 'xlsx') {
     if (!prefix.startsWith('PK\x03\x04')) throw invalidFile();
     await validateXlsx(bytes);
     return { bytes, format: 'xlsx' };
   }
-  if (CSV_MIMES.has(mimeType)) {
+  if (format === 'csv') {
     // CSV 没有魔数。按声明的文本编码解码，拒绝二进制控制符及常见伪装正文；不执行公式。
     if (
       !input.decodedText.trim() ||

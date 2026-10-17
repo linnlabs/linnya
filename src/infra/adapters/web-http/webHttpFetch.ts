@@ -81,7 +81,8 @@ export interface WebHttpFetchArgs {
   body?: BodyInit;
   signal?: AbortSignal;
   timeoutMs: number;
-  maxBodyBytes: number;
+  /** 收到响应头后选择预算；类型策略由调用方拥有，流读取仍统一按实际解压字节限额。 */
+  maxBodyBytes: number | ((response: Pick<WebHttpResponse, 'status' | 'headers'>) => number);
   /** 本地抓取使用 manual，确保每一跳重定向都重新执行 URL 与 DNS 策略。 */
   redirect?: RequestRedirect;
   /** 允许本地抓取把连接固定到已通过策略校验的 DNS 结果。 */
@@ -240,7 +241,8 @@ export async function webHttpFetch(args: WebHttpFetchArgs): Promise<WebHttpRespo
   if (!Number.isFinite(args.timeoutMs) || args.timeoutMs <= 0) {
     throw new Error('webHttpFetch.timeoutMs 必须是正数。');
   }
-  if (!Number.isFinite(args.maxBodyBytes) || args.maxBodyBytes <= 0) {
+  if (typeof args.maxBodyBytes === 'number'
+    && (!Number.isFinite(args.maxBodyBytes) || args.maxBodyBytes <= 0)) {
     throw new Error('webHttpFetch.maxBodyBytes 必须是正数。');
   }
 
@@ -260,7 +262,13 @@ export async function webHttpFetch(args: WebHttpFetchArgs): Promise<WebHttpRespo
       redirect: args.redirect,
       dispatcher: args.dispatcher,
     });
-    const { bodyText, bodyData, bodyBytes } = await readBodyWithLimit(response.body, args.maxBodyBytes);
+    const maxBodyBytes = typeof args.maxBodyBytes === 'function'
+      ? args.maxBodyBytes(response) : args.maxBodyBytes;
+    if (!Number.isFinite(maxBodyBytes) || maxBodyBytes <= 0) {
+      await response.body?.cancel('invalid response body budget');
+      throw new WebHttpError('invalid_response', 'Web HTTP 响应体预算必须是正数。');
+    }
+    const { bodyText, bodyData, bodyBytes } = await readBodyWithLimit(response.body, maxBodyBytes);
     const tookMs = Date.now() - startedAt;
 
     logger.info('[webHttpFetch] 请求完成', {

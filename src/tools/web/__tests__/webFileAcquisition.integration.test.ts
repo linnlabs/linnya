@@ -1,5 +1,6 @@
 import { createServer, type Server } from 'node:http';
 import { createHash } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
 import { mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -50,13 +51,41 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
   let provider: LocalHttpProvider;
   let sequence = 0;
   let fileVersion = 0;
+  const requests: string[] = [];
 
   beforeAll(async () => {
     root = await mkdtemp(path.join(os.tmpdir(), 'web-files-'));
     setWorkspaceRoot(root);
     xlsx = await workbook();
     macroXlsx = await workbook(true);
+    const sizedPdf = (size: number): Buffer => {
+      const bytes = Buffer.alloc(size, ' ');
+      pdf.copy(bytes);
+      return bytes;
+    };
+    // 夹具只分配一次，避免每次请求都重建几十MiB的无关响应。
+    const report30 = sizedPdf(30 * 1024 * 1024);
+    const report20 = sizedPdf(20 * 1024 * 1024);
+    const fixtures: Record<string, { mime: string; bytes: Buffer; encoding?: string; chunked?: boolean }> = {
+      '/report.pdf': { mime: 'application/pdf', bytes: pdf },
+      '/data.csv': { mime: 'application/csv; charset=utf-8', bytes: csv },
+      '/text.csv': { mime: 'text/csv', bytes: csv },
+      '/book.xlsx': { mime: xlsxMime, bytes: xlsx },
+      '/macro.xlsx': { mime: xlsxMime, bytes: macroXlsx },
+      '/fake.pdf': { mime: 'application/pdf', bytes: Buffer.from('MZ executable') },
+      '/fake.csv': { mime: 'application/csv', bytes: Buffer.from('<html>challenge</html>') },
+      '/binary.csv': { mime: 'text/csv', bytes: Buffer.from([0, 1, 2, 3]) },
+      '/archive.zip': { mime: 'application/zip', bytes: xlsx },
+      '/report30.pdf': { mime: 'Application/PDF; version=1.7', bytes: report30, chunked: true },
+      '/report20.pdf': { mime: 'application/pdf', bytes: report20 },
+      '/large.pdf': { mime: 'application/pdf', bytes: sizedPdf(30 * 1024 * 1024 + 1) },
+      '/large.html': { mime: 'text/html', bytes: Buffer.alloc(5 * 1024 * 1024 + 1, 'a') },
+      '/unknown.pdf': { mime: 'application/octet-stream', bytes: report20 },
+      '/disguised.pdf': { mime: 'application/pdf', bytes: Buffer.alloc(6 * 1024 * 1024, 'a') },
+      '/compressed.pdf': { mime: 'application/pdf', bytes: gzipSync(sizedPdf(30 * 1024 * 1024 + 1)), encoding: 'gzip' },
+    };
     server = createServer((request, response) => {
+      requests.push(request.url ?? '');
       if (request.url === '/version.pdf') {
         fileVersion += 1;
         response.writeHead(200, { 'Content-Type': 'application/pdf' });
@@ -65,6 +94,11 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
       }
       if (request.url === '/redirect') {
         response.writeHead(302, { Location: '/report.pdf' });
+        response.end();
+        return;
+      }
+      if (request.url === '/large-redirect') {
+        response.writeHead(302, { Location: '/report30.pdf' });
         response.end();
         return;
       }
@@ -78,18 +112,6 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
         response.end('Forbidden');
         return;
       }
-      const fixtures: Record<string, { mime: string; bytes: Buffer }> = {
-        '/report.pdf': { mime: 'application/pdf', bytes: pdf },
-        '/data.csv': { mime: 'application/csv; charset=utf-8', bytes: csv },
-        '/text.csv': { mime: 'text/csv', bytes: csv },
-        '/book.xlsx': { mime: xlsxMime, bytes: xlsx },
-        '/macro.xlsx': { mime: xlsxMime, bytes: macroXlsx },
-        '/fake.pdf': { mime: 'application/pdf', bytes: Buffer.from('MZ executable') },
-        '/fake.csv': { mime: 'application/csv', bytes: Buffer.from('<html>challenge</html>') },
-        '/binary.csv': { mime: 'text/csv', bytes: Buffer.from([0, 1, 2, 3]) },
-        '/archive.zip': { mime: 'application/zip', bytes: xlsx },
-        '/large.pdf': { mime: 'application/pdf', bytes: Buffer.alloc(5 * 1024 * 1024 + 1) },
-      };
       const fixture = fixtures[request.url ?? ''];
       if (!fixture) {
         response.writeHead(404);
@@ -98,7 +120,8 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
       }
       response.writeHead(200, {
         'Content-Type': fixture.mime,
-        'Content-Length': fixture.bytes.length,
+        ...(fixture.chunked ? {} : { 'Content-Length': fixture.bytes.length }),
+        ...(fixture.encoding ? { 'Content-Encoding': fixture.encoding } : {}),
       });
       response.end(fixture.bytes);
     });
@@ -230,6 +253,24 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
     expect(await readdir(path.join(fixture.directory, 'web-downloads'))).toHaveLength(2);
   });
 
+  it('30MiB文件通过一次GET链取得，流式无长度头仍受限；50MiB会话配额与复用不变', async () => {
+    const fixture = await setup();
+    const before = requests.length;
+    const first = await fixture.read('/large-redirect');
+    expect(requests.slice(before)).toEqual(['/large-redirect', '/report30.pdf']);
+    expect(first.data.file).toMatchObject({ byteLength: 30 * 1024 * 1024, format: 'pdf' });
+    if (!first.data.file) throw new Error('Missing large file receipt');
+    const bytes = await readFile(path.join(fixture.directory, first.data.file.path));
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe(first.data.file.sha256);
+    expect(first.data.citations.citations).toHaveLength(1);
+    await fixture.read('/report20.pdf');
+    const repeated = await fixture.read('/report30.pdf');
+    expect(repeated.data.file?.sha256).toBe(first.data.file.sha256);
+    expect(await readdir(path.join(fixture.directory, 'web-downloads'))).toHaveLength(2);
+    await expect(fixture.read('/report.pdf')).rejects.toThrow('quota exceeded');
+    expect(await readdir(path.join(fixture.directory, 'web-downloads'))).toHaveLength(2);
+  });
+
   it('两种 CSV MIME 均保留原始字节，并继续返回可截断正文；XLSX 不自动解析', async () => {
     const fixture = await setup();
     for (const url of ['/data.csv', '/text.csv']) {
@@ -276,6 +317,10 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
     '/macro.xlsx',
     '/archive.zip',
     '/large.pdf',
+    '/large.html',
+    '/unknown.pdf',
+    '/disguised.pdf',
+    '/compressed.pdf',
     '/forbidden',
     '/private-redirect',
   ])('%s 拒绝，不生成文件与成功来源', async url => {
