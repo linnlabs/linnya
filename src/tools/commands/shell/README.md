@@ -19,7 +19,7 @@
 
 - `data` 给程序和 Renderer 使用，包含 `status`、`processHandle`、`terminal`、输出引用和展示事实。
 - `data.terminal` 的 `process_exit` 是命令真实退出事实；`completed` 只表示进程已完成终态，不能把它当成退出码为 0。
-- `observation` 给模型使用，是稳定纯文本，不包含内部路径、PID、owner generation 或完整 raw artifact。
+- `observation` 给模型使用：控制首行在外、命令正文进入动态不可信数据边界；不包含内部路径、PID、owner generation 或完整 raw artifact。
 - `running` 结果必须带可供 `process` 使用的 opaque handle。
 - `completed` 结果必须等待可信终态和输出结算后再返回。
 

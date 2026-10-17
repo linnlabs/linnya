@@ -149,7 +149,8 @@ describe('ShellTool', () => {
       process_handle: 'command_process_123e4567-e89b-42d3-a456-426614174000',
       next_cursor: 4,
     });
-    expect(structured.observation).toContain('\n\noutput:\nCommand is still running.');
+    expect(structured.observation).toContain('BEGIN_UNTRUSTED_COMMAND_OUTPUT_');
+    expect(structured.observation).toContain('Command is still running.');
   });
 
   it('内部身份字段不能越过 Agent schema 到达 runtime', async () => {

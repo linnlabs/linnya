@@ -162,7 +162,8 @@ describe('ProcessTool', () => {
       status: 'running',
       next_cursor: 8,
     });
-    expect(structured.observation).toContain('\n\noutput:\nNo new output.');
+    expect(structured.observation).toContain('BEGIN_UNTRUSTED_COMMAND_OUTPUT_');
+    expect(structured.observation).toContain('No new output.');
   });
 
   it('拒绝伪造 scope，且不会调用 runtime', async () => {

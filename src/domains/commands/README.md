@@ -335,3 +335,7 @@ abort 与 plugin draining。这样既不复制 Commands domain，也不把插件
 - [Command Execution Presentation](../../../apps/renderer/domains/conversation/features/command-execution-presentation/README.md)
 - [Conversation Files](../conversation-files/README.md)
 - [Command Execution Audit](../audit/features/command-execution-audit/README.md)
+
+## 命令输出信任边界
+
+Shell/process 的模型 observation 保持 `command_control` 首行在可信骨架内，进程输出统一进入动态 `UNTRUSTED_COMMAND_OUTPUT` 边界。输出包括脚本解析的外部文件，不能改变权限或成为新的用户指令。拒绝消息仍由 owner 生成；Renderer 和审计的原始输出不改写。该规则不识别下载命令或 Web 文件目录，不等于操作系统沙箱。
