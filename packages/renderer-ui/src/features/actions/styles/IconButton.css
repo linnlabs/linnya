@@ -89,3 +89,26 @@
   color: var(--color-text-placeholder);
   cursor: not-allowed;
 }
+
+/*
+ * overlay：叠在图片等内容上的按钮。图片没有主题，颜色固定为白色；底条（半透明深色、模糊）由容器提供。
+ * 选中态沿用强调色，但不用强调色浅底，避免在深色底条上发灰。
+ */
+.linnya-ui-icon-button--overlay {
+  color: color-mix(in srgb, var(--color-white) 78%, transparent);
+}
+
+.linnya-ui-icon-button--overlay:not(:disabled):hover {
+  color: var(--color-white);
+  background-color: color-mix(in srgb, var(--color-white) 16%, transparent);
+}
+
+.linnya-ui-icon-button--overlay.linnya-ui-icon-button--active,
+.linnya-ui-icon-button--overlay.linnya-ui-icon-button--active:not(:disabled):hover {
+  color: var(--color-accent-light);
+  background-color: color-mix(in srgb, var(--color-white) 10%, transparent);
+}
+
+.linnya-ui-icon-button--overlay:disabled {
+  color: color-mix(in srgb, var(--color-white) 35%, transparent);
+}

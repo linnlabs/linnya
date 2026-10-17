@@ -59,23 +59,6 @@
   font-weight: var(--font-weight-medium);
 }
 
-.audio-content-panel .collapse-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-1);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background-color var(--duration-medium) var(--ease-standard);
-}
-
-.audio-content-panel .collapse-button:hover {
-  background: var(--color-bg-hover);
-}
-
 .audio-content-panel .panel-content {
   min-height: 60px;
   max-height: 500px;

@@ -9,9 +9,11 @@ export type IconButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 /**
  * - ghost：透明底，悬停出现 hover 底色；绝大多数图标按钮使用它；
- * - subtle：静止即有浅底，用于表单里与输入框并排、需要被看见的添加类操作。
+ * - subtle：静止即有浅底，用于表单里与输入框并排、需要被看见的添加类操作；
+ * - overlay：叠在图片、视频等内容之上，白色图标，悬停出现半透明白底。颜色不随主题变化，
+ *   承载它的半透明深色底条由容器提供。
  */
-export type IconButtonVariant = 'ghost' | 'subtle';
+export type IconButtonVariant = 'ghost' | 'subtle' | 'overlay';
 
 /** danger 静止保持中性、悬停显示错误色，用于行内删除与移除。 */
 export type IconButtonTone = 'neutral' | 'danger';

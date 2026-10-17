@@ -31,21 +31,20 @@
 
       <!-- 控件卡片 -->
       <div class="image-controls">
-        <button
-          class="control-button"
-          :class="{ 'copied': copiedImageUrl === singleImageEntry.url }"
-          :title="copiedImageUrl === singleImageEntry.url ? conversationMessage('conversation.tool.image.copied') : conversationMessage('conversation.tool.image.copy')"
+        <IconButton
+          variant="overlay"
+          :label="copiedImageUrl === singleImageEntry.url ? conversationMessage('conversation.tool.image.copied') : conversationMessage('conversation.tool.image.copy')"
           @click="copyImage(singleImageEntry.url)"
         >
-          <CopyIcon v-if="copiedImageUrl !== singleImageEntry.url" />
-          <span v-else class="copied-text">{{ conversationMessage('conversation.tool.image.copied') }}</span>
-        </button>
-        <button class="control-button" :title="conversationMessage('conversation.tool.image.preview')" @click="openPreviewModal(singleImageEntry.url)">
+          <OkIcon v-if="copiedImageUrl === singleImageEntry.url" />
+          <CopyIcon v-else />
+        </IconButton>
+        <IconButton variant="overlay" :label="conversationMessage('conversation.tool.image.preview')" @click="openPreviewModal(singleImageEntry.url)">
           <ZoomInIcon />
-        </button>
-        <button class="control-button" :title="conversationMessage('conversation.tool.image.download')" @click="downloadImage(singleImageEntry.url, singleImageEntry.fileName)">
+        </IconButton>
+        <IconButton variant="overlay" :label="conversationMessage('conversation.tool.image.download')" @click="downloadImage(singleImageEntry.url, singleImageEntry.fileName)">
           <DownloadIcon />
-        </button>
+        </IconButton>
       </div>
     </div>
 
@@ -70,21 +69,20 @@
 
         <!-- 控件卡片 -->
         <div class="image-controls">
-          <button
-            class="control-button"
-            :class="{ 'copied': copiedImageUrl === imageEntry.url }"
-            :title="copiedImageUrl === imageEntry.url ? conversationMessage('conversation.tool.image.copied') : conversationMessage('conversation.tool.image.copy')"
+          <IconButton
+            variant="overlay"
+            :label="copiedImageUrl === imageEntry.url ? conversationMessage('conversation.tool.image.copied') : conversationMessage('conversation.tool.image.copy')"
             @click="copyImage(imageEntry.url)"
           >
-            <CopyIcon v-if="copiedImageUrl !== imageEntry.url" />
-            <span v-else class="copied-text">{{ conversationMessage('conversation.tool.image.copied') }}</span>
-          </button>
-          <button class="control-button" :title="conversationMessage('conversation.tool.image.preview')" @click="openPreviewModal(imageEntry.url)">
+            <OkIcon v-if="copiedImageUrl === imageEntry.url" />
+            <CopyIcon v-else />
+          </IconButton>
+          <IconButton variant="overlay" :label="conversationMessage('conversation.tool.image.preview')" @click="openPreviewModal(imageEntry.url)">
             <ZoomInIcon />
-          </button>
-          <button class="control-button" :title="conversationMessage('conversation.tool.image.download')" @click="downloadImage(imageEntry.url, imageEntry.fileName)">
+          </IconButton>
+          <IconButton variant="overlay" :label="conversationMessage('conversation.tool.image.download')" @click="downloadImage(imageEntry.url, imageEntry.fileName)">
             <DownloadIcon />
-          </button>
+          </IconButton>
         </div>
       </div>
     </div>
@@ -118,11 +116,12 @@
 <script setup lang="ts">
 import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed, ref, onBeforeUnmount } from 'vue';
-import { ImagePreviewModal } from '@linnya/renderer-ui';
+import { IconButton, ImagePreviewModal } from '@linnya/renderer-ui';
 import type { ImageGenerationPresentationImage } from './definitions/imageGenerationPresentation';
 import { ZoomInIcon } from '@linnya/renderer-ui/icons';
 import { CopyIcon } from '@linnya/renderer-ui/icons';
 import { DownloadIcon } from '@linnya/renderer-ui/icons';
+import { OkIcon } from '@linnya/renderer-ui/icons';
 import { useConversationLocalization } from '../../useConversationLocalization';
 import {
   publishConversationPerf,

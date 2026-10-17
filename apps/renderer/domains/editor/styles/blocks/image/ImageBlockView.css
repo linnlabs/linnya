@@ -123,45 +123,6 @@
   transition-delay: 0s;
 }
 
-.image-block-vue-node-view .control-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 26px;
-  height: 26px;
-  padding: 3px var(--space-1-5);
-  color: color-mix(in srgb, var(--color-white) 70%, transparent);
-  cursor: pointer;
-  background-color: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  transition:
-    background-color var(--duration-medium),
-    color var(--duration-medium);
-}
-
-.image-block-vue-node-view .control-button:hover {
-  color: color-mix(in srgb, var(--color-white) 90%, transparent);
-  background-color: color-mix(in srgb, var(--color-white) 10%, transparent);
-}
-
-.image-block-vue-node-view .control-button.is-active {
-  color: var(--color-accent-light);
-  font-weight: var(--font-weight-semibold);
-}
-
-.image-block-vue-node-view .control-button svg {
-  width: 22px;
-  height: 22px;
-  fill: currentColor;
-}
-
-.image-block-vue-node-view .control-button path {
-  stroke: currentColor;
-  stroke-width: 0.3px;
-  paint-order: stroke fill;
-}
-
 .image-block-vue-node-view .alignment-group {
   position: relative;
   display: flex;

@@ -59,6 +59,15 @@ describe('IconButton', () => {
     ]);
   });
 
+  it('overlay 变体只多一个修饰类，active 仍由 active 类表达', () => {
+    expect([...mountIconButton({ label: '放大', variant: 'overlay', active: true }).classList]).toEqual([
+      'linnya-ui-icon-button',
+      'linnya-ui-icon-button--sm',
+      'linnya-ui-icon-button--overlay',
+      'linnya-ui-icon-button--active',
+    ]);
+  });
+
   it('属性、class 与事件落在原生按钮上，disabled 阻止点击', () => {
     let clicks = 0;
     const button = mountIconButton({

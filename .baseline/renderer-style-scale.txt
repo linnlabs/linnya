@@ -26,7 +26,7 @@
 2	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/DocumentContentCard.css
 2	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/DocumentListCard.css
 1	SCALE-06-z-index	apps/renderer/domains/conversation/styles/components/HistoryDropdown.css
-4	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/ImageRenderer.css
+3	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/ImageRenderer.css
 1	SCALE-06-z-index	apps/renderer/domains/conversation/styles/components/ImageRenderer.css
 1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/KnowledgeSearchCard.css
 1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/QuestionActions.css
@@ -63,7 +63,7 @@
 3	SCALE-05-spacing	apps/renderer/domains/editor/styles/blocks/audio/TranscriptSegmentView.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/blocks/audio/TranscriptTab.css
 2	SCALE-06-z-index	apps/renderer/domains/editor/styles/blocks/code/CodeBlockView.css
-2	SCALE-05-spacing	apps/renderer/domains/editor/styles/blocks/image/ImageBlockView.css
+1	SCALE-05-spacing	apps/renderer/domains/editor/styles/blocks/image/ImageBlockView.css
 2	SCALE-06-z-index	apps/renderer/domains/editor/styles/blocks/image/ImageBlockView.css
 2	SCALE-05-spacing	apps/renderer/domains/editor/styles/blocks/latex/InlineLatexView.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/components/AnnotationHandle.css

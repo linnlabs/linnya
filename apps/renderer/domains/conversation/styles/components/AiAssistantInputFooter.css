@@ -27,11 +27,6 @@
   margin-right: var(--space-1-5);
 }
 
-.ai-assistant-input-footer.input-bottom-section--compact .input-action-menu-button {
-  width: var(--input-footer-control-height);
-  height: var(--input-footer-control-height);
-}
-
 .ai-assistant-input-footer.input-bottom-section--compact .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger) {
   min-width: 0;
   padding: 3px var(--space-5) 3px 7px;
@@ -128,35 +123,9 @@
   flex: 0 0 auto;
 }
 
+/* IconButton xs 为 20px，居中放进原来的 26px / 24px 控件高度里，让右侧选择器位置不变。 */
 .ai-assistant-input-footer .input-action-menu-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* 与旁边 select-trigger 的整体高度节奏对齐 */
-  width: var(--input-footer-control-height);
-  height: var(--input-footer-control-height);
-  border: none;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: 0;
-  transition: background-color var(--duration-short) var(--ease-standard);
-}
-
-.ai-assistant-input-footer .input-action-menu-button:hover:not(:disabled) {
-  background-color: var(--color-bg-hover);
-}
-
-.ai-assistant-input-footer .input-action-menu-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.ai-assistant-input-footer .input-action-menu-add-icon {
-  width: 14px;
-  height: 14px;
-  display: block;
+  margin-inline: calc((var(--input-footer-control-height) - var(--space-5)) / 2);
 }
 
 .ai-assistant-input-footer__input-action-menu-wrapper {

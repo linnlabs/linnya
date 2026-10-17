@@ -115,35 +115,10 @@
   appearance: none;
 }
 
+/* 清除按钮的外观由 IconButton 提供，这里只负责在输入框内的定位。 */
 .tt-text-field__clear {
   position: absolute;
   top: 50%;
   right: var(--space-1);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--space-6);
-  height: var(--space-6);
-  padding: 0;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
   transform: translateY(-50%);
-}
-
-.tt-text-field__clear:hover {
-  color: var(--color-text-primary);
-  background: var(--color-bg-hover);
-}
-
-.tt-text-field__clear:focus-visible {
-  outline: 1px solid var(--color-accent);
-  outline-offset: 1px;
-}
-
-.tt-text-field__clear > .shared-icon {
-  width: var(--space-4);
-  height: var(--space-4);
 }

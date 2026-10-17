@@ -147,7 +147,7 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 ```
 
 - `size`：xs / sm / md / lg，外框 20 / 24 / 28 / 32px，图标 14 / 18 / 18 / 20px；默认 sm。选择规则见[设计规范](./design.md#93-图标按钮)。
-- `variant`：ghost（默认，透明底）/ subtle（静止浅底，用于与输入框并排的添加操作）；`tone="danger"` 悬停显示错误色。
+- `variant`：ghost（默认，透明底）/ subtle（静止浅底，用于与输入框并排的添加操作）/ overlay（叠在图片等内容上，白色图标，底条由容器提供）；`tone="danger"` 悬停显示错误色。
 - `active` 只表达视觉上的选中 / 展开，语义由调用方补 `aria-pressed` 或 `aria-expanded`。
 - `label` 同时是 `aria-label` 与原生 `title`；外层已有自定义提示时传 `:tooltip="false"`。
 - 模板 ref 拿到的是组件实例，原生按钮在 `element` 上；函数式 ref 用 `resolveIconButtonElement(el)` 取出。

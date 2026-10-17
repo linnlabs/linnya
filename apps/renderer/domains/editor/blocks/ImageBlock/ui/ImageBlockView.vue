@@ -40,36 +40,46 @@
       <div v-if="blockActivation.isUiActive.value && editor.isEditable" class="image-block-controls" contenteditable="false">
         <!-- 响应式控件：小图显示省略号，大图显示完整控件 -->
         <template v-if="shouldShowCompactControls">
-          <button
-            class="control-button compact-more"
-            :title="editorMessage('editor.imageBlock.action.more')"
-            @click.stop.prevent="toggleControlsExpanded"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-            </svg>
-          </button>
+          <IconButton variant="overlay" :label="editorMessage('editor.imageBlock.action.more')" @click.stop.prevent="toggleControlsExpanded">
+            <MoreIcon />
+          </IconButton>
         </template>
         <template v-else>
-          <!-- 预览按钮 -->
-          <button class="control-button" :title="editorMessage('editor.imageBlock.action.preview')" @click.stop.prevent="openPreviewModal">
+          <IconButton variant="overlay" :label="editorMessage('editor.imageBlock.action.preview')" @click.stop.prevent="openPreviewModal">
             <ZoomInIcon />
-          </button>
-          <!-- 调整尺寸按钮 -->
-          <button class="control-button" :title="editorMessage('editor.imageBlock.action.resize')" @click.stop.prevent="openResizeModal">
+          </IconButton>
+          <IconButton variant="overlay" :label="editorMessage('editor.imageBlock.action.resize')" @click.stop.prevent="openResizeModal">
             <ResizeIcon />
-          </button>
+          </IconButton>
           <!-- 对齐方式按钮组 -->
           <div class="alignment-group">
-            <button class="control-button" :class="{ 'is-active': node.attrs.alignment === 'left' }" :title="editorMessage('editor.imageBlock.align.left')" @click.stop.prevent="setAlignment('left')">
+            <IconButton
+              variant="overlay"
+              :active="node.attrs.alignment === 'left'"
+              :aria-pressed="node.attrs.alignment === 'left'"
+              :label="editorMessage('editor.imageBlock.align.left')"
+              @click.stop.prevent="setAlignment('left')"
+            >
               <AlignIcon alignment="left" />
-            </button>
-            <button class="control-button" :class="{ 'is-active': node.attrs.alignment === 'center' }" :title="editorMessage('editor.imageBlock.align.center')" @click.stop.prevent="setAlignment('center')">
+            </IconButton>
+            <IconButton
+              variant="overlay"
+              :active="node.attrs.alignment === 'center'"
+              :aria-pressed="node.attrs.alignment === 'center'"
+              :label="editorMessage('editor.imageBlock.align.center')"
+              @click.stop.prevent="setAlignment('center')"
+            >
               <AlignIcon alignment="center" />
-            </button>
-            <button class="control-button" :class="{ 'is-active': node.attrs.alignment === 'right' }" :title="editorMessage('editor.imageBlock.align.right')" @click.stop.prevent="setAlignment('right')">
+            </IconButton>
+            <IconButton
+              variant="overlay"
+              :active="node.attrs.alignment === 'right'"
+              :aria-pressed="node.attrs.alignment === 'right'"
+              :label="editorMessage('editor.imageBlock.align.right')"
+              @click.stop.prevent="setAlignment('right')"
+            >
               <AlignIcon alignment="right" />
-            </button>
+            </IconButton>
           </div>
         </template>
       </div>
@@ -104,10 +114,11 @@ import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3';
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick, inject } from 'vue';
 import { Selection } from 'prosemirror-state';
 import ImageResizePanel from './ImageResizePanel.vue';
-import { ImagePreviewModal } from '@linnya/renderer-ui';
+import { IconButton, ImagePreviewModal } from '@linnya/renderer-ui';
 import { ZoomInIcon } from '@linnya/renderer-ui/icons';
 import { ResizeIcon } from '@linnya/renderer-ui/icons';
 import { AlignIcon } from '@linnya/renderer-ui/icons';
+import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { useCurrentBlockActivation } from '../../../ui/composables/useCurrentBlockActivation';
 import {
   dispatchNodeViewRenderVirtualizationKeepAlive,

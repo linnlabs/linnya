@@ -188,8 +188,11 @@
 }
 
 .audio-player-container .toggle-panel-button,
-.audio-player-container .audio-transcription-button,
 .audio-player-container .create-button {
+  margin-left: var(--space-1);
+}
+
+.audio-player-container .audio-transcription-button {
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -206,9 +209,7 @@
   transition: background-color var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard);
 }
 
-.audio-player-container .toggle-panel-button:hover,
-.audio-player-container .audio-transcription-button:hover:not(:disabled),
-.audio-player-container .create-button:hover {
+.audio-player-container .audio-transcription-button:hover:not(:disabled) {
   background-color: var(--color-bg-hover);
 }
 
@@ -244,12 +245,6 @@
 
 .audio-player-container .create-menu-container {
   position: relative;
-}
-
-.audio-player-container .plus-icon,
-.audio-player-container .chevron-icon {
-  width: 16px;
-  height: 16px;
 }
 
 .audio-player-container .chevron-icon {
