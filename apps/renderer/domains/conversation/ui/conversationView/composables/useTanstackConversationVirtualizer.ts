@@ -160,6 +160,7 @@ export function useTanstackConversationVirtualizer(params: {
   readonly scrollMargin: ComputedRef<number>;
   readonly scrollEndThreshold: ComputedRef<number>;
   readonly estimationWidthPx: Readonly<Ref<number>>;
+  readonly onScrollApplied?: (deltaPx: number, isSizeAdjustment: boolean) => void;
 }) {
   const activeTimelineScrollCleanups = new Set<() => void>();
   let estimateInvalidationRevision = 0;
@@ -170,6 +171,7 @@ export function useTanstackConversationVirtualizer(params: {
   const scrollBridge = createVueVirtualizerScrollBridge({
     shouldDeferExplicitScroll: () => prependTransaction.active.value,
     onDeferredExplicitScrollApplied: prependTransaction.complete,
+    onScrollApplied: params.onScrollApplied,
   });
   const virtualizer = useVirtualizer<HTMLElement, HTMLElement>(computed(() => ({
     count: params.items.value.length,

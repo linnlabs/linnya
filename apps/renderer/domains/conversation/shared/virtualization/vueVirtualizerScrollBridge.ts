@@ -32,12 +32,27 @@ export function createVueVirtualizerScrollBridge(options: {
   readonly scheduleAfterRender?: (callback: () => void) => void;
   readonly shouldDeferExplicitScroll?: () => boolean;
   readonly onDeferredExplicitScrollApplied?: () => void;
+  /** 与真实写入同步通知视觉层；不能等下一帧 scroll 事件才补偿。 */
+  readonly onScrollApplied?: (deltaPx: number, isSizeAdjustment: boolean) => void;
 } = {}): VueVirtualizerScrollBridge {
   const scheduleAfterRender = options.scheduleAfterRender ?? ((callback: () => void) => {
     void nextTick(callback);
   });
   let pendingRequest: PendingScrollRequest | null = null;
   let flushScheduled = false;
+
+  const applyScroll = (
+    offset: number,
+    scrollOptions: { adjustments?: number; behavior?: ScrollBehavior },
+    instance: ElementVirtualizer,
+    isSizeAdjustment: boolean,
+  ): void => {
+    const previousOffset = instance.scrollElement?.scrollTop ?? 0;
+    elementScroll(offset, scrollOptions, instance);
+    // 读取钳位后的真实增量；视觉补偿必须在同一任务内完成，避免先画出跳变再拉回。
+    const deltaPx = (instance.scrollElement?.scrollTop ?? 0) - previousOffset;
+    options.onScrollApplied?.(deltaPx, isSizeAdjustment);
+  };
 
   const scrollToFn: VueVirtualizerScrollBridge['scrollToFn'] = (
     offset,
@@ -59,7 +74,7 @@ export function createVueVirtualizerScrollBridge(options: {
 
       // timeline、手动落底等显式滚动立即执行，并取消尚未提交的旧尺寸修正。
       pendingRequest = null;
-      elementScroll(offset, scrollOptions, instance);
+      applyScroll(offset, scrollOptions, instance, false);
       return;
     }
 
@@ -79,7 +94,7 @@ export function createVueVirtualizerScrollBridge(options: {
       const request = pendingRequest;
       pendingRequest = null;
       if (request === null) return;
-      elementScroll(request.offset, { behavior: request.behavior }, instance);
+      applyScroll(request.offset, { behavior: request.behavior }, instance, !request.completesDeferredExplicitScroll);
       if (request.completesDeferredExplicitScroll) {
         options.onDeferredExplicitScrollApplied?.();
       }

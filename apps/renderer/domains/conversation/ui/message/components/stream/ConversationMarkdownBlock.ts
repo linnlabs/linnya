@@ -12,7 +12,7 @@ export type ConversationMarkdownVNodeChild =
 
 export interface ConversationMarkdownRenderContext {
   readonly isStreaming: boolean;
-  /** 流式尾块里新长出的文字是否淡入（只在 isStreaming 的尾块生效）。 */
+  /** 流式过的消息里，新长出的文字是否淡入（所有块都用 StreamingText 承载，避免封口时半透明文字瞬间变实）。 */
   readonly fadeNewText?: boolean;
   /** 淡入时，文字节点挂载时的整段文本是否也淡入（渲染器初次提交之后才长出来的节点）。 */
   readonly fadeInitialText?: boolean;

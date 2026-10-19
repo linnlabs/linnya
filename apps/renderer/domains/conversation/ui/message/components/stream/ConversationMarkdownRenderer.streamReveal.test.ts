@@ -119,20 +119,78 @@ describe('ConversationMarkdownRenderer streamReveal', () => {
     expect(mountPoint?.textContent).toBe('existing grows');
   });
 
-  it('封口后恢复普通文字，段落元素保持同一个，正文只提交一次', async () => {
+  it('封口时仍在淡入的文字不会瞬间变实：段落元素不变，淡入段留到动画结束', async () => {
     const fixture = mountRenderer({ content: 'existing', streamReveal: true });
     await settleParse();
     fixture.content.value = 'existing grows';
     await settleParse();
     const paragraph = mountPoint?.querySelector('p');
+    expect(freshTexts()).toEqual([' grows']);
 
     fixture.isStreaming.value = false;
     await nextTick();
     await nextTick();
 
     expect(mountPoint?.querySelector('p')).toBe(paragraph);
+    expect(mountPoint?.textContent).toBe('existing grows');
+    expect(freshTexts()).toEqual([' grows']);
+
+    mountPoint?.querySelector('.conversation-stream-text__fresh')?.dispatchEvent(new Event('animationend', { bubbles: true }));
+    await nextTick();
     expect(freshTexts()).toEqual([]);
     expect(mountPoint?.textContent).toBe('existing grows');
+  });
+
+  it('块封口（后面长出新块）时，上一个块仍在淡入的文字保持原样继续淡入，不被换成普通文字', async () => {
+    const fixture = mountRenderer({ content: 'first block', streamReveal: true });
+    await settleParse();
+    fixture.content.value = 'first block grows';
+    await settleParse();
+    expect(freshTexts()).toEqual([' grows']);
+
+    fixture.content.value = 'first block grows\n\nsecond';
+    await settleParse();
+
+    const texts = freshTexts();
+    expect(texts).toContain(' grows');
+    expect(texts).toContain('second');
+    expect(mountPoint?.querySelectorAll('p')[0]?.textContent).toBe('first block grows');
+  });
+
+  it('块类型翻转（段落变列表）导致整块重挂载时，已经可见的文字不会重新从透明淡入', async () => {
+    const fixture = mountRenderer({ content: 'intro', streamReveal: true });
+    await settleParse();
+    fixture.content.value = 'intro\n\n1';
+    await settleParse();
+    mountPoint?.querySelectorAll('.conversation-stream-text__fresh').forEach(node => node.dispatchEvent(new Event('animationend', { bubbles: true })));
+    await nextTick();
+    expect(freshTexts()).toEqual([]);
+
+    fixture.content.value = 'intro\n\n1. one';
+    await settleParse();
+    expect(mountPoint?.querySelector('ol')).not.toBeNull();
+    expect(freshTexts()).not.toContain('1');
+    expect(mountPoint?.textContent).toContain('one');
+  });
+
+  it('从未流式过的消息不用 StreamingText：追加内容也不产生淡入段', async () => {
+    const fixture = mountRenderer({ content: 'history', streamReveal: true, isStreaming: false });
+    await settleParse();
+    fixture.content.value = 'history appended';
+    await settleParse();
+    expect(freshTexts()).toEqual([]);
+    expect(mountPoint?.querySelectorAll('span').length).toBe(0);
+    expect(mountPoint?.textContent).toBe('history appended');
+  });
+
+  it('挂载时是非流式、之后才开始流式：已有的块不整段淡入，只淡入之后追加的部分', async () => {
+    const fixture = mountRenderer({ content: 'old block', streamReveal: true, isStreaming: false });
+    await settleParse();
+    fixture.isStreaming.value = true;
+    await nextTick();
+    fixture.content.value = 'old block more';
+    await settleParse();
+    expect(freshTexts()).toEqual([' more']);
   });
 
   it('不是尾部追加的变化（改写）直接显示，不淡入', async () => {
@@ -165,7 +223,7 @@ describe('ConversationMarkdownRenderer streamReveal', () => {
       expect(mountPoint?.textContent).toBe(`start ${long}`);
     });
 
-    it('流式结束时立刻补齐完整正文', async () => {
+    it('流式结束时立刻补齐完整正文，补齐的那一小段作为一次淡入段出现', async () => {
       const fixture = mountRenderer({ content: 'start', streamReveal: true });
       await settleParse();
       fixture.content.value = `start ${long}`;
@@ -177,7 +235,7 @@ describe('ConversationMarkdownRenderer streamReveal', () => {
       await nextTick();
       await nextTick();
       expect(mountPoint?.textContent).toBe(`start ${long}`);
-      expect(freshTexts()).toEqual([]);
+      expect(freshTexts().length).toBeGreaterThan(0);
     });
 
     it('关闭 streamReveal 时追加内容立即提交（不依赖逐帧调度）', async () => {

@@ -135,5 +135,7 @@ export function useConversationScrollController(params: {
     showScrollToBottomBtn,
     scrollToBottomManual: scrollToBottom,
     scrollToVisualTurn,
+    /** 用户正在滚动（滚轮、触摸、按键、拖动滚动条）；供视觉缓动在手势期间让位。 */
+    isUserScrollGestureActive,
   };
 }

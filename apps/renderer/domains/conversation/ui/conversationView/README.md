@@ -22,6 +22,7 @@ conversationView/
 │   ├── useAppendOnlyConversationVisualRows.ts
 │   ├── useSettledConversationContentWidth.ts
 │   ├── useTanstackConversationVirtualizer.ts
+│   ├── useStreamingScrollGlide.ts
 │   ├── useConversationScrollController.ts
 │   ├── useUserScrollGesture.ts
 │   ├── useConversationTimelinePositions.ts
@@ -97,6 +98,23 @@ TanStack Virtual 是位置与测量的唯一执行者：
 `useConversationScrollController` 只维护产品意图：`follow-bottom`、`anchored`、`free`。它不直接修改 `scrollTop`。发送、编辑重发和重新生成必须由编排显式确保真实尾窗后再提交落底意图，禁止根据“末条消息是 user”猜测。
 
 `hasMoreAfter=true` 表示当前底部是假底，即使处于 `follow-bottom` 也必须允许 `loadAfter`。timeline 导航期间由 Host 设置瞬时导航锁，before/after backfill 都暂停，避免换窗与定位竞争。
+
+### 流式视觉跟随
+
+真实滚动仍由 TanStack 和 `vueVirtualizerScrollBridge` 执行；bridge 在 DOM 写入后同步通知
+`useStreamingScrollGlide` 实际增量与归因。视觉层只吸收流式正向尺寸修正，不能把显式导航、
+prepend 或收缩当作新增正文。延迟的 `scroll` 事件只用于撤销外部滚动上的残余动画，不能追加补偿；
+否则 ResizeObserver 后提交滚动的那一帧已经向上跳，下一帧才被拉回。
+
+`.messages-container` 是未变换的测量原点及纵向 overflow clip 边界，内层独立承担动画。
+transform 会影响 `getBoundingClientRect()` 和滚动溢出区域，所以不能变换测量原点，也不能
+让内层动画扩张 `scrollHeight`。结束且布局不再变化时余动画自然落定；收尾布局变化、离开跟随、连续宽度变化、手势和隐藏时让位。
+
+运行 `node scripts/e2e/conversation-streaming/run-scroll-glide.mjs` 可在独立 Electron profile 中
+复演连续增高、停止、收缩和主动滚动。该 gate 使用正式 virtualizer、bridge、geometry 和 glide，
+同时在滚动提交与 rAF 取样，验证阅读锚点不反向、测量原点稳定、动画不扩张滚动范围；
+覆盖有/无 sticky footer，不访问用户数据库或模型。仅采 rAF 会漏掉先跳后拉回的中间提交。
+文字淡入、Markdown 重解释与最终内容完整性继续由 stream renderer 测试覆盖。
 
 ## Timeline 接口
 
