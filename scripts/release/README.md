@@ -331,6 +331,10 @@ seed 生命周期。
   `stylesheets` tuple；disk/zip
   loader 只读取这份清单，禁止重新扫描目录猜顺序。artifact
   verifier 会对账清单、实际 CSS 集合、zip 与 checksum。
+- **样式边界只识别真实变量声明**：源码、包样式与制品检查使用相同的标识符边界，
+  BEM 状态类后接伪类不能被误记为保留 token；真实 Renderer UI 变量和类的重复打包仍拒绝。
+- **编译器资源按现行清单验收**：TypeScript runtime 使用 v2 manifest，核对 compiler
+  转换参数、package 版本和标准库引用闭包；不能继续按旧版清单拒绝当前构建产物。
 - **脚本失败要早且明确**：缺 manifest 字段、缺 entry、缺 skills 目录、缺 renderer
   assets、缺 latest 指向时直接失败，不做静默 fallback。
 - **脚本不改业务代码**：release 脚本只能读取插件包、生成发布产物、更新发布生成文件；业务迁移、agent、skill、renderer

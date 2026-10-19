@@ -113,7 +113,8 @@ function verifyGlobalSelectors(relativePath, source) {
 }
 
 function collectTokens(source, definitions, references) {
-  for (const match of source.matchAll(/(--[a-z][a-z0-9-]*)\s*:/giu)) definitions.add(match[1]);
+  // BEM 状态类的伪类分隔符不属于 CSS 变量声明。
+  for (const match of source.matchAll(/(?<![\w-])(--[a-z][a-z0-9-]*)\s*:/giu)) definitions.add(match[1]);
   for (const match of source.matchAll(/var\(\s*(--[a-z][a-z0-9-]*)/giu)) references.add(match[1]);
 }
 

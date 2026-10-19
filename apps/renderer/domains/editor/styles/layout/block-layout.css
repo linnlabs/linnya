@@ -409,7 +409,7 @@
    * - bullet 符号
    * - ordered 编号（含 “.” 与视觉间距）
    */
-  padding-left: var(--space-8); 
+  padding-left: var(--space-8);
   margin: 0; /* 与 BaseBlock 保持一致 */
   box-sizing: border-box;
 }

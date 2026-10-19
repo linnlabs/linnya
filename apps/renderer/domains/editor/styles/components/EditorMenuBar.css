@@ -10,7 +10,7 @@
   top: 0; 
   z-index: 100; 
   background-color: var(--color-bg-default);
-  padding: var(--space-1) var(--space-2-5); 
+  padding: var(--space-1) var(--space-2-5);
   border-bottom: 0px solid var(--color-border-light);
   pointer-events: auto; 
   /* 使其内容居中 */
@@ -154,7 +154,7 @@
 .dropdown-divider {
   height: 1px;
   background-color: var(--color-border-default);
-  margin: var(--space-1) var(--space-2); 
+  margin: var(--space-1) var(--space-2);
 }
 
 /* 主题切换按钮特殊图标样式（如果需要） */

@@ -41,6 +41,7 @@ const allowedBackendBareSpecifiers = new Set([
   '@app/schemas/document-view',
   '@app/schemas/file-locator',
   '@app/schemas/plugins/manifest',
+  '@app/schemas/conversation/selected-agent',
   ...(artifactVerification.allowedBackendBareSpecifiers ?? []),
 ]);
 
@@ -160,7 +161,13 @@ const assertPackagedTypeScriptRuntime = async ({ artifactPaths, label, readText 
   );
   const runtimePackageJson = JSON.parse(await readRequiredText(`${runtimeRoot}/package.json`));
   if (
-    runtimeManifest.schemaVersion !== 1 ||
+    // Slides 的紧凑 compiler 已使用 v2 清单，验证端必须同时核对转换方式。
+    runtimeManifest.schemaVersion !== 2 ||
+    runtimeManifest.compilerTransform?.format !== 'cjs' ||
+    runtimeManifest.compilerTransform?.target !== 'node20' ||
+    runtimeManifest.compilerTransform?.minifyWhitespace !== true ||
+    runtimeManifest.compilerTransform?.minifySyntax !== true ||
+    runtimeManifest.compilerTransform?.minifyIdentifiers !== false ||
     typeof runtimeManifest.packageVersion !== 'string' ||
     !Array.isArray(runtimeManifest.standardLibRoots) ||
     !runtimeManifest.standardLibRoots.every(value => typeof value === 'string') ||
@@ -395,7 +402,8 @@ const readRendererUiStyleFacts = async () => {
   const classNames = new Set();
   for (const filePath of cssFiles) {
     const source = await fs.readFile(filePath, 'utf8');
-    for (const match of source.matchAll(/(--[a-z][a-z0-9-]*)\s*:/giu)) {
+    // 与源码边界门禁一致，BEM 状态类后接伪类（--active:hover）不是变量声明。
+    for (const match of source.matchAll(/(?<![\w-])(--[a-z][a-z0-9-]*)\s*:/giu)) {
       if (match[1]) tokenDefinitions.add(match[1]);
     }
     for (const className of extractCssSelectorClassNames(source)) classNames.add(className);
@@ -466,7 +474,7 @@ const assertRendererUiArtifactBoundary = async ({
 
   for (const artifact of cssArtifacts) {
     const source = await artifact.read();
-    const duplicateTokens = Array.from(source.matchAll(/(--[a-z][a-z0-9-]*)\s*:/giu))
+    const duplicateTokens = Array.from(source.matchAll(/(?<![\w-])(--[a-z][a-z0-9-]*)\s*:/giu))
       .map(match => match[1])
       .filter(token => token && styleFacts.tokenDefinitions.has(token));
     const duplicateClasses = [...extractCssSelectorClassNames(source)]

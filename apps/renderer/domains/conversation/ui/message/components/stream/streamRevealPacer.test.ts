@@ -93,7 +93,7 @@ describe('createStreamRevealPacer', () => {
     pacer.receive(110, 3000);
     pacer.advance(3000);
     const frames = run(pacer, 3016, 3400);
-    expect(frames.at(-1)).toBe(110);
+    expect(frames[frames.length - 1]).toBe(110);
   });
 
   it('已经超过截止时间的内容在下一帧全部放出（例如页面被挂起很久之后恢复）', () => {

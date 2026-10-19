@@ -21,7 +21,7 @@
   background-color: transparent; 
   box-shadow: none; 
   /* --- 修改：将 background-color, border, box-shadow 加入过渡 --- */
-  transition: opacity var(--duration-medium), background-color var(--duration-medium), border var(--duration-medium), box-shadow var(--duration-medium); 
+  transition: opacity var(--duration-medium), background-color var(--duration-medium), border var(--duration-medium), box-shadow var(--duration-medium);
   border-radius: var(--radius-sm);      /* 固定: 圆角 */
   /* 移除这里的背景、边框、阴影设置，推迟到 :hover */
 }
