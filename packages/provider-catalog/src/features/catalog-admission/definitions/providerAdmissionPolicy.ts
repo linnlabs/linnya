@@ -9,6 +9,7 @@ import type {
   ProviderReleaseStatus,
   ProviderSetupField,
 } from '../../../definitions/providerCatalog';
+import type { ProviderModelDiscoveryPolicy } from '../../../definitions/providerModelDiscoveryPolicy';
 
 export interface ProviderAdmissionPolicy {
   readonly source_provider_id?: string;
@@ -25,6 +26,8 @@ export interface ProviderAdmissionPolicy {
   readonly release_status: ProviderReleaseStatus;
   readonly setup_fields: readonly ProviderSetupField[];
   readonly model_discovery: ProviderModelDiscoveryKind;
+  /** 列表协议是人工核对的接入事实，不能根据推理协议或上游 npm 字段推测。 */
+  readonly online_model_discovery?: ProviderModelDiscoveryPolicy;
   /**
    * models.dev 不拥有的正式产品模型清单。
    *

@@ -18,6 +18,12 @@
           @click="enterProvider(option.value, option.preferredConnectionDefinitionId)"
         >
           <span class="model-registration-quick-option-label">{{ option.text }}</span>
+          <span
+            v-if="option.connected"
+            class="model-registration-connected"
+          >
+            {{ settingsMessage('settings.addModel.provider.connected') }}
+          </span>
           <ChevronIcon
             direction="right"
             class="model-registration-quick-option-icon"
@@ -177,6 +183,7 @@ import {
   resolveLocalRuntimeProviderConnectionDefinitionId,
 } from '../functions/buildModelRegistrationProviderOptions';
 import { refreshModelCatalogAfterRegistration } from '../orchestration/refreshModelCatalogAfterRegistration';
+import { openConfiguredProviderManagement } from '../orchestration/openConfiguredProviderManagement';
 import './ModelRegistrationSettingsPage.css';
 
 const { settingsMessage } = useSettingsLocalization();
@@ -209,7 +216,7 @@ const providerOptions = computed<CustomSelectOption[]>(() =>
       custom: settingsMessage('settings.addModel.provider.customOption'),
     },
     configuredConnectionIds.value
-  )
+  ).map(option => ({ ...option, text: connectedLabel(option.text, option.connected) }))
 );
 
 const commonProviderOptions = computed(() =>
@@ -223,7 +230,7 @@ const otherProviderOptions = computed<CustomSelectOption[]>(() =>
   buildModelRegistrationOtherProviderOptions(
     providerCatalog.providers.value,
     configuredConnectionIds.value
-  )
+  ).map(option => ({ ...option, text: connectedLabel(option.text, option.connected) }))
 );
 
 const connectionOptions = computed(() =>
@@ -231,26 +238,48 @@ const connectionOptions = computed(() =>
     selectedProvider.value,
     providerCatalog.providers.value,
     configuredConnectionIds.value
+  ).map(option => ({
+    ...option,
+    label: connectedLabel(option.label, option.connected),
+  }))
+);
+const selectedConfiguredProvider = computed(() =>
+  modelPicker.snapshot.value?.providers.find(
+    provider => `connection:${provider.provider_connection_definition_id}` === selectedConnection.value
   )
 );
 const apiKeyProviderConnectionDefinitionId = computed(() =>
-  resolveApiKeyProviderConnectionDefinitionId(
-    selectedConnection.value,
-    providerCatalog.providers.value
-  )
+  selectedConfiguredProvider.value
+    ? undefined
+    : resolveApiKeyProviderConnectionDefinitionId(
+        selectedConnection.value,
+        providerCatalog.providers.value
+      )
 );
 const accountProviderConnectionDefinitionId = computed(() =>
-  resolveAccountProviderConnectionDefinitionId(
-    selectedConnection.value,
-    providerCatalog.providers.value
-  )
+  selectedConfiguredProvider.value
+    ? undefined
+    : resolveAccountProviderConnectionDefinitionId(
+        selectedConnection.value,
+        providerCatalog.providers.value
+      )
 );
 const localRuntimeProviderConnectionDefinitionId = computed(() =>
-  resolveLocalRuntimeProviderConnectionDefinitionId(
-    selectedConnection.value,
-    providerCatalog.providers.value
-  )
+  selectedConfiguredProvider.value
+    ? undefined
+    : resolveLocalRuntimeProviderConnectionDefinitionId(
+        selectedConnection.value,
+        providerCatalog.providers.value
+      )
 );
+
+function connectedLabel(label: string, connected: boolean | undefined): string {
+  return connected ? `${label} · ${settingsMessage('settings.addModel.provider.connected')}` : label;
+}
+
+watch(selectedConfiguredProvider, provider => {
+  if (provider) openConfiguredProviderManagement(provider.configured_provider_id);
+});
 
 /** 选择首屏入口后进入原有详情页，保留 Provider 下拉和接入方式选择。 */
 function enterProvider(

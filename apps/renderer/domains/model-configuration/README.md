@@ -117,7 +117,7 @@ Feature 之间只能依赖对方的
 `orchestration/`，不要塞进任意一个 store。
 
 `ModelRegistrationSettingsPage`
-只拥有页面级“供应商品牌 → 接入方式”选择状态。首次进入时先展示 OpenAI、OpenCode Go、Ollama Cloud、Kimi、Claude 五个常见供应商，并提供“其他供应商”下拉和“自定义 API”入口；选择后进入现有接入详情，保留顶部 Provider 下拉。一个品牌只有一条可用 connection 时直接进入 setup，多条时用
+只拥有页面级“供应商品牌 → 接入方式”选择状态。首次进入时先展示 OpenAI、OpenCode Go、Ollama Cloud、Kimi、Claude 五个常见供应商，并提供“其他供应商”下拉和“自定义 API”入口；选择后进入现有接入详情，保留顶部 Provider 下拉。已连接品牌仍显示“已连接”，不从首屏或下拉过滤；选择已配置 connection 后复用设置壳导航到该连接的模型管理，不再注册。一个品牌只有一条 connection 时直接进入 setup 或管理，多条时用
 `SettingsChoiceGroup` 展示带说明与标签的选择卡。页面按 connection setup
 schema 只挂载当前选择对应的 API-Key、账号授权、本地 runtime 或自定义表单，并只把
 `provider_connection_definition_id`
@@ -186,12 +186,12 @@ intent 恢复。
 
 ### Direct Provider onboarding
 
-模型管理中的“获取新模型”必须查询远端供应商，不能只重读 Host 快照。当前 DeepSeek、Ollama Cloud
-使用正式联网发现；ChatGPT 复用账号目录同步。Host 通过 `can_refresh_models` 声明能力，未接入发现
-的正式来源不显示虚假的刷新按钮。网络、鉴权和解析失败保留旧列表并展示来源明确的错误。
+模型管理中的“获取新模型”必须查询远端供应商，不能只重读 Host 快照。当前 OpenAI API、OpenCode Go、Kimi 开放平台（国际站与中国站）、Claude、DeepSeek、Ollama Cloud
+使用正式联网发现；ChatGPT 复用账号目录同步。Host 通过 `can_refresh_models` 声明能力；未接入发现
+的正式来源保留禁用的更新入口，并说明尚未集成在线查询或本地模型的添加路径。网络、鉴权和解析失败保留旧列表并展示来源明确的错误。
 
 在线候选由 Host 统一提供给列表与激活校验；资料不足的新 ID 仍展示原因并禁用启用操作，不能造默认容量。
-新 ID 由用户显式激活，刷新不自动启用或删除 API-Key Provider 模型，也不修改快捷选择偏好。
+新 ID 由用户显式激活，刷新不自动启用或删除 API-Key Provider 模型，也不修改快捷选择偏好。OpenCode Go 的新 ID 还须经过目录发布的模型协议审核；未审核时显示原因并禁止启用，不能套用默认 Chat 协议。
 既有配置不能因别名或展示名相似被自动迁移，否则会改变历史会话及暂停运行的模型身份。
 
 `features/direct-provider-onboarding` 首次接入只提交
@@ -204,7 +204,7 @@ Catalog 保存共享 credential、endpoint 和模型归属。API-Key 表单的�
 catalog，不在 Vue 中维护厂商 URL 表。
 
 同一 ConfiguredProvider 下继续激活模型时复用原 endpoint/credential
-boundary，且只允许从模型管理发起。已连接的直连 Provider 不再出现在“添加模型”页。API-Key
+boundary，且只允许从模型管理发起。已连接的直连 Provider 保留在“添加模型”页并标记“已连接”，选择后进入相应管理页；同品牌尚未配置的接入方式仍可添加。API-Key
 feature 不伪造多账号、也不把 Key 放进 store 或日志；OAuth/device-flow 产品进入独立 ProviderAccount 用户旅程。
 
 ### Provider Account model registration

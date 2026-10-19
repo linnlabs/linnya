@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { createPinia, setActivePinia } from 'pinia';
+import { createPinia, getActivePinia, setActivePinia } from 'pinia';
 import type { ModelSourceRemovalResult } from '../../../definitions/modelSourceRemoval';
 import type { ModelPickerSnapshot } from '@app/schemas/model-picker';
 import type {
@@ -83,6 +83,16 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
   let app: App<Element> | undefined;
   let host: HTMLDivElement;
 
+  function mountSection(): void {
+    const pinia = getActivePinia();
+    if (!pinia) throw new Error('Pinia instance missing');
+    app = createApp(ModelVisibilitySettingsSection, {
+      activateProviderModel: vi.fn(async () => undefined),
+    });
+    app.use(pinia);
+    app.mount(host);
+  }
+
   beforeEach(() => {
     mocks.confirm.mockReset();
     mocks.refreshCustomProvider.mockReset();
@@ -133,11 +143,7 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
 
     host = document.createElement('div');
     document.body.append(host);
-    app = createApp(ModelVisibilitySettingsSection, {
-      activateProviderModel: vi.fn(async () => undefined),
-    });
-    app.use(pinia);
-    app.mount(host);
+    mountSection();
   });
 
   it.each(['success', 'refresh-failed', 'catalog-read-failed', 'picker-read-failed'])(
@@ -255,14 +261,16 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     const emptyGroup: ModelPickerSnapshot = {
       providers: [],
       custom_models: [],
-      custom_providers: [{
-        provider_id: 'custom:Relay',
-        provider_name: 'Relay',
-        api_format: 'openai_compatible',
-        base_url: 'https://relay.example.com/v1',
-        endpoint_id: 'relay-endpoint',
-        models: [],
-      }],
+      custom_providers: [
+        {
+          provider_id: 'custom:Relay',
+          provider_name: 'Relay',
+          api_format: 'openai_compatible',
+          base_url: 'https://relay.example.com/v1',
+          endpoint_id: 'relay-endpoint',
+          models: [],
+        },
+      ],
     };
     useModelPickerStore().replaceSnapshot(emptyGroup);
     mocks.refreshCustomProvider.mockResolvedValue({
@@ -301,13 +309,15 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     useModelPickerStore().replaceSnapshot({
       providers: [],
       custom_models: [],
-      custom_providers: [{
-        provider_id: 'custom:Relay',
-        provider_name: 'Relay',
-        api_format: 'openai_compatible',
-        base_url: 'https://relay.example.com/v1',
-        models: [],
-      }],
+      custom_providers: [
+        {
+          provider_id: 'custom:Relay',
+          provider_name: 'Relay',
+          api_format: 'openai_compatible',
+          base_url: 'https://relay.example.com/v1',
+          models: [],
+        },
+      ],
     });
     mocks.confirm.mockResolvedValue(true);
     mocks.loadCatalog.mockResolvedValue({
@@ -378,6 +388,45 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     button.click();
     await flushUi();
     expect(host.textContent).not.toContain('catalog read failed');
+  });
+
+  it('未接入在线查询的来源保留更新入口并明确说明原因', async () => {
+    const current = useModelPickerStore().snapshot;
+    if (!current) throw new Error('初始快照缺失');
+    useModelPickerStore().replaceSnapshot({
+      ...current,
+      providers: current.providers.map(provider => ({ ...provider, can_refresh_models: false })),
+    });
+    await flushUi();
+    expect(host.querySelector<HTMLButtonElement>('.model-visibility-refresh-btn')?.disabled).toBe(
+      true
+    );
+    expect(host.textContent).toContain('settings.modelPicker.refreshUnavailable');
+    expect(mocks.refreshProviderModels).not.toHaveBeenCalled();
+  });
+
+  it('管理页按导航指定的连接打开，而不是总选第一个供应商', async () => {
+    const current = useModelPickerStore().snapshot;
+    const first = current?.providers[0];
+    if (!current || !first) throw new Error('初始快照缺失');
+    app?.unmount();
+    useModelPickerStore().replaceSnapshot({
+      ...current,
+      providers: [
+        ...current.providers,
+        {
+          ...first,
+          configured_provider_id: 'target',
+          display_name: 'OpenCode Go',
+        },
+      ],
+    });
+    useModelPickerStore().selectManagementProvider('target');
+    mountSection();
+    await flushUi();
+    expect(host.querySelector('.model-visibility-models-header h4')?.textContent).toContain(
+      'OpenCode Go'
+    );
   });
 
   it('刷新错误不会遮住后续开关失败，操作成功后清除错误', async () => {

@@ -7,6 +7,7 @@ export type ModelRegistrationProviderSelection =
 export interface ModelRegistrationQuickProviderOption {
   readonly value: ModelRegistrationProviderSelection;
   readonly text: string;
+  readonly connected?: true;
   /** 常用入口需要直达某条接入方式时使用，例如 Ollama Cloud。 */
   readonly preferredConnectionDefinitionId?: string;
 }
@@ -14,6 +15,7 @@ export interface ModelRegistrationQuickProviderOption {
 export interface ModelRegistrationProviderOption {
   readonly value: ModelRegistrationProviderSelection | `connection:${string}`;
   readonly text: string;
+  readonly connected?: true;
 }
 
 export interface ModelRegistrationConnectionChoice {
@@ -21,4 +23,5 @@ export interface ModelRegistrationConnectionChoice {
   readonly label: string;
   readonly description?: string;
   readonly badge?: string;
+  readonly connected?: true;
 }

@@ -14,12 +14,7 @@ interface ModelRegistrationProviderOptionLabels {
   readonly custom: string;
 }
 
-const COMMON_PROVIDER_DEFINITION_IDS = [
-  'openai',
-  'opencode-go',
-  'moonshot',
-  'anthropic',
-] as const;
+const COMMON_PROVIDER_DEFINITION_IDS = ['openai', 'opencode-go', 'moonshot', 'anthropic'] as const;
 const COMMON_PROVIDER_DISPLAY_ORDER = ['openai', 'opencode-go'] as const;
 const KIMI_PROVIDER_DEFINITION_ID = 'moonshot';
 const CLAUDE_PROVIDER_DEFINITION_ID = 'anthropic';
@@ -39,15 +34,12 @@ function isSupportedConnection(connection: ProviderConnectionDefinition): boolea
   );
 }
 
-function isAvailableConnection(
+function isVisibleConnection(
   connection: ProviderConnectionDefinition,
   configuredConnectionIds: ReadonlySet<string>
 ): boolean {
-  const isConfiguredBundledDirect =
-    connection.kind === 'direct' &&
-    connection.model_discovery === 'bundled' &&
-    configuredConnectionIds.has(connection.id);
-  return isSupportedConnection(connection) && !isConfiguredBundledDirect;
+  // 已连接入口属于管理导航，即使发布目录暂时没有模型，也不能让连接消失。
+  return isSupportedConnection(connection) || configuredConnectionIds.has(connection.id);
 }
 
 export function buildModelRegistrationProviderOptions(
@@ -58,12 +50,15 @@ export function buildModelRegistrationProviderOptions(
   const providerOptions = providers
     .filter(provider =>
       provider.connections.some(connection =>
-        isAvailableConnection(connection, configuredConnectionIds)
+        isVisibleConnection(connection, configuredConnectionIds)
       )
     )
     .map(provider => ({
       value: providerSelection(provider.id),
       text: provider.display_name,
+      ...(provider.connections.some(connection => configuredConnectionIds.has(connection.id))
+        ? { connected: true as const }
+        : {}),
     }));
 
   return [{ value: CUSTOM_PROVIDER_SELECTION, text: labels.custom }, ...providerOptions];
@@ -71,7 +66,7 @@ export function buildModelRegistrationProviderOptions(
 
 /**
  * 首屏只展示几个高频入口。这里复用 Provider Catalog 的可用性判断，
- * 已经配置且没有其他可用接入方式的 Provider 不会被重复推荐。
+ * 已连接品牌仍保留入口，选择具体 connection 后统一进入管理。
  */
 export function buildModelRegistrationCommonProviderOptions(
   providers: readonly ProviderDefinition[],
@@ -84,48 +79,64 @@ export function buildModelRegistrationCommonProviderOptions(
     if (
       !provider ||
       !provider.connections.some(connection =>
-        isAvailableConnection(connection, configuredConnectionIds)
+        isVisibleConnection(connection, configuredConnectionIds)
       )
     ) {
       continue;
     }
-    options.push({ value: providerSelection(provider.id), text: provider.display_name });
+    options.push({
+      value: providerSelection(provider.id),
+      text: provider.display_name,
+      ...(provider.connections.some(connection => configuredConnectionIds.has(connection.id))
+        ? { connected: true as const }
+        : {}),
+    });
   }
 
   const ollamaProvider = providers.find(
     candidate => candidate.id === OLLAMA_PROVIDER_DEFINITION_ID
   );
-  const ollamaAvailableConnections = ollamaProvider?.connections.filter(connection =>
-    isAvailableConnection(connection, configuredConnectionIds)
-  ) ?? [];
+  const ollamaVisibleConnections =
+    ollamaProvider?.connections.filter(connection =>
+      isVisibleConnection(connection, configuredConnectionIds)
+    ) ?? [];
   const ollamaCloudConnection = ollamaProvider?.connections.find(
     connection => connection.id === OLLAMA_CLOUD_CONNECTION_DEFINITION_ID
   );
   const hasAvailableOllamaCloud = ollamaCloudConnection
-    ? isAvailableConnection(ollamaCloudConnection, configuredConnectionIds)
+    ? isVisibleConnection(ollamaCloudConnection, configuredConnectionIds) &&
+      !configuredConnectionIds.has(ollamaCloudConnection.id)
     : false;
-  if (ollamaAvailableConnections.length > 0 && ollamaProvider) {
+  if (ollamaVisibleConnections.length > 0 && ollamaProvider) {
     options.push({
       value: providerSelection(OLLAMA_PROVIDER_DEFINITION_ID),
-      text: hasAvailableOllamaCloud && ollamaCloudConnection
-        ? ollamaCloudConnection.display_name
-        : ollamaProvider.display_name,
+      text:
+        hasAvailableOllamaCloud && ollamaCloudConnection
+          ? ollamaCloudConnection.display_name
+          : ollamaProvider.display_name,
+      ...(ollamaProvider.connections.some(connection => configuredConnectionIds.has(connection.id))
+        ? { connected: true as const }
+        : {}),
       ...(hasAvailableOllamaCloud && ollamaCloudConnection
         ? { preferredConnectionDefinitionId: ollamaCloudConnection.id }
         : {}),
     });
   }
 
-  const kimiProvider = providers.find(
-    candidate => candidate.id === KIMI_PROVIDER_DEFINITION_ID
-  );
+  const kimiProvider = providers.find(candidate => candidate.id === KIMI_PROVIDER_DEFINITION_ID);
   if (
     kimiProvider &&
     kimiProvider.connections.some(connection =>
-      isAvailableConnection(connection, configuredConnectionIds)
+      isVisibleConnection(connection, configuredConnectionIds)
     )
   ) {
-    options.push({ value: providerSelection(kimiProvider.id), text: kimiProvider.display_name });
+    options.push({
+      value: providerSelection(kimiProvider.id),
+      text: kimiProvider.display_name,
+      ...(kimiProvider.connections.some(connection => configuredConnectionIds.has(connection.id))
+        ? { connected: true as const }
+        : {}),
+    });
   }
 
   const claudeProvider = providers.find(
@@ -134,13 +145,16 @@ export function buildModelRegistrationCommonProviderOptions(
   if (
     claudeProvider &&
     claudeProvider.connections.some(connection =>
-      isAvailableConnection(connection, configuredConnectionIds)
+      isVisibleConnection(connection, configuredConnectionIds)
     )
   ) {
     options.push({
       value: providerSelection(claudeProvider.id),
       // 用户识别的是 Claude 模型品牌；详情页仍保留目录中的 Anthropic Provider 名称。
       text: 'Claude',
+      ...(claudeProvider.connections.some(connection => configuredConnectionIds.has(connection.id))
+        ? { connected: true as const }
+        : {}),
     });
   }
 
@@ -176,12 +190,13 @@ export function buildModelRegistrationConnectionOptions(
   const providerDefinitionId = resolveProviderDefinitionId(selection);
   const provider = providers.find(candidate => candidate.id === providerDefinitionId);
   return (provider?.connections ?? [])
-    .filter(connection => isAvailableConnection(connection, configuredConnectionIds))
+    .filter(connection => isVisibleConnection(connection, configuredConnectionIds))
     .map(connection => ({
       value: `connection:${connection.id}`,
       label: connection.display_name,
       ...(connection.description ? { description: connection.description } : {}),
       ...(connection.badge ? { badge: connection.badge } : {}),
+      ...(configuredConnectionIds.has(connection.id) ? { connected: true as const } : {}),
     }));
 }
 

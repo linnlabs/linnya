@@ -2,6 +2,10 @@ import type { MessageCatalogContribution } from '@app/localization';
 import type { SettingsMessageKey } from './settingsMessages';
 
 export const SETTINGS_MESSAGE_FALLBACKS = {
+  'settings.addModel.provider.connected': '已连接',
+  'settings.modelPicker.refreshingModels': '正在更新模型列表…',
+  'settings.modelPicker.refreshUnavailable': '此连接尚未接入在线模型查询，当前显示随应用发布的目录。',
+  'settings.modelPicker.localRefreshUnavailable': '本地模型请在“添加模型”的 Ollama 本地入口查询和添加。',
   'settings.modal.title': '设置',
   'settings.modal.close': '关闭设置',
   'settings.groups.general': '通用',
@@ -460,6 +464,10 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
   catalogs: {
     'zh-CN': SETTINGS_MESSAGE_FALLBACKS,
     'en-US': {
+      'settings.addModel.provider.connected': 'Connected',
+      'settings.modelPicker.refreshingModels': 'Updating model list…',
+      'settings.modelPicker.refreshUnavailable': 'Online model discovery is not integrated for this connection. The bundled catalog is shown.',
+      'settings.modelPicker.localRefreshUnavailable': 'Discover and add local models through Ollama Local in Add model.',
       'settings.modal.title': 'Settings',
       'settings.modal.close': 'Close settings',
       'settings.groups.general': 'General',

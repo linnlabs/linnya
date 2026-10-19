@@ -29,6 +29,7 @@ export class ModelPickerSourceSynchronizationError extends Error {
 }
 
 export interface ModelPickerReadModel {
+  readonly managementProviderId: Readonly<import('vue').Ref<string | null>>;
   readonly snapshot: Readonly<import('vue').Ref<ModelPickerSnapshot | null>>;
   readonly activeOperation: Readonly<import('vue').Ref<ModelPickerOperation | null>>;
   readonly error: Readonly<import('vue').Ref<ModelPickerOperationError | null>>;

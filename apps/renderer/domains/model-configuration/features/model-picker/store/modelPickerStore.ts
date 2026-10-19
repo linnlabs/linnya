@@ -8,6 +8,11 @@ export const useModelPickerStore = defineStore('modelPicker', () => {
   const snapshot = ref<ModelPickerSnapshot | null>(null);
   const activeOperation = ref<ModelPickerOperation | null>(null);
   const error = ref<ModelPickerOperationError | null>(null);
+  const managementProviderId = ref<string | null>(null);
+
+  function selectManagementProvider(configuredProviderId: string): void {
+    managementProviderId.value = configuredProviderId;
+  }
 
   function beginOperation(operation: ModelPickerOperation): void {
     activeOperation.value = operation;
@@ -31,6 +36,8 @@ export const useModelPickerStore = defineStore('modelPicker', () => {
     snapshot,
     activeOperation,
     error,
+    managementProviderId,
+    selectManagementProvider,
     beginOperation,
     replaceSnapshot,
     finishOperation,

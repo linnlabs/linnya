@@ -387,12 +387,15 @@ describe('Provider model discovery', () => {
     await rejected;
   });
 
-  it('不将普通 API 或本地 Ollama 伪装成已支持的 Cloud discovery', async () => {
+  it('列表协议显式注册，不将账号目录或本地 Ollama 送入 API-Key discovery', async () => {
     const fetchImplementation = vi.fn<typeof fetch>();
     const discovery = createProviderModelDiscovery({ fetchImplementation });
     expect(discovery.supports('deepseek')).toBe(true);
     expect(discovery.supports('ollama-cloud')).toBe(true);
-    for (const connectionId of ['ollama', 'openai-api', 'unknown']) {
+    expect(discovery.supports('openai-api')).toBe(true);
+    expect(discovery.supports('opencode-go')).toBe(true);
+    expect(discovery.supports('anthropic')).toBe(true);
+    for (const connectionId of ['ollama', 'openai-chatgpt-subscription', 'unknown']) {
       expect(discovery.supports(connectionId)).toBe(false);
       await expect(discovery.discover({ ...request, connectionId })).rejects.toBeInstanceOf(
         ProviderModelDiscoveryError

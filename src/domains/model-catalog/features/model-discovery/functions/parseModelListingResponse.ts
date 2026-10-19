@@ -37,6 +37,11 @@ const ListingEntrySchema = z.object({
   architecture: z.object({ modality: z.unknown() }).nullish(),
 });
 const IdentifiedEntrySchema = ListingEntrySchema.extend({ id: z.string().trim().min(1) });
+
+/** 自定义兼容 API 沿用同 ID 的末次资料；正式身份查询不采用此合并规则。 */
+export function mergeDiscoveredModelPages(models: readonly DiscoveredModel[]): DiscoveredModel[] {
+  return [...new Map(models.map(model => [model.id, model])).values()];
+}
 const ListingSchema = z.union([
   z.object({ data: z.array(IdentifiedEntrySchema) }).transform(body => body.data),
   z.object({ models: z.array(IdentifiedEntrySchema) }).transform(body => body.models),

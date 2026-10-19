@@ -85,14 +85,14 @@
             <div class="model-visibility-models-header-left">
               <h4>{{ selectedSource.displayName }}</h4>
               <HoverTooltip
-                v-if="canRefreshSelectedSource"
-                :text="refreshLabel"
+                v-if="selectedSource.kind === 'provider' || selectedSource.kind === 'custom_provider'"
+                :text="refreshUnavailableMessage || refreshLabel"
               >
                 <IconButton
                   :label="refreshLabel"
                   size="xs"
                   class="model-visibility-refresh-btn"
-                  :disabled="isRefreshingSourceId !== null || isMutating"
+                  :disabled="!canRefreshSelectedSource || isRefreshingSourceId !== null || isMutating"
                   @click.stop="refreshSourceModels(selectedSource)"
                 >
                   <RefreshIcon
@@ -107,9 +107,9 @@
               class="model-visibility-provider-actions"
             >
               <IconButton
+                v-if="selectedSource.credentialKind === 'api_key'"
                 :label="settingsMessage('settings.modelPicker.replaceApiKey')"
                 class="model-visibility-provider-edit"
-                v-if="selectedSource.credentialKind === 'api_key'"
                 :disabled="isMutating"
                 @click="openCredentialReplacement(selectedSource)"
               >
@@ -154,6 +154,11 @@
               </IconButton>
             </div>
           </header>
+          <SettingsFeedback
+            v-if="refreshUnavailableMessage"
+            kind="info"
+            :message="refreshUnavailableMessage"
+          />
           <div
             class="model-visibility-models-content"
             :class="{ 'is-disabled': isSelectedSourceDisabled }"
@@ -306,7 +311,9 @@ const modelPickerErrorMessage = computed(() =>
 );
 const sourceQuery = ref('');
 const modelQuery = ref('');
-const selectedSourceId = ref<string | null>(null);
+const selectedSourceId = ref<string | null>(
+  modelPicker.managementProviderId.value ? `provider:${modelPicker.managementProviderId.value}` : null
+);
 const selectedModelDetails = ref<ModelCatalogItem | null>(null);
 const isRemovingProvider = ref(false);
 const removalError = ref<string | null>(null);
@@ -361,9 +368,11 @@ const selectedSource = computed(
 );
 const refreshLabel = computed(() =>
   settingsMessage(
-    selectedSource.value?.kind === 'custom_provider'
-      ? 'settings.modelPicker.synchronizeModels'
-      : 'settings.modelPicker.refreshModels'
+    isRefreshingSourceId.value === selectedSource.value?.id
+      ? 'settings.modelPicker.refreshingModels'
+      : selectedSource.value?.kind === 'custom_provider'
+        ? 'settings.modelPicker.synchronizeModels'
+        : 'settings.modelPicker.refreshModels'
   )
 );
 const canRefreshSelectedSource = computed(() => {
@@ -371,6 +380,15 @@ const canRefreshSelectedSource = computed(() => {
   return source?.kind === 'provider'
     ? source.canRefreshModels
     : source?.kind === 'custom_provider' && Boolean(source.baseUrl && source.apiFormat);
+});
+const refreshUnavailableMessage = computed(() => {
+  const source = selectedSource.value;
+  if (source?.kind !== 'provider' || source.canRefreshModels) return '';
+  return settingsMessage(
+    source.credentialKind === 'none'
+      ? 'settings.modelPicker.localRefreshUnavailable'
+      : 'settings.modelPicker.refreshUnavailable'
+  );
 });
 const filteredModels = computed(() =>
   selectedSource.value ? filterModelVisibilityModels(selectedSource.value, modelQuery.value) : []

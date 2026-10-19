@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
 import { createApp, nextTick, type App } from 'vue';
-import { createPinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
+import { useUIStore } from '@/shared/stores/ui';
+import { useModelPickerStore } from '../features/model-picker/store/modelPickerStore';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -411,6 +413,117 @@ describe('ModelRegistrationSettingsPage', () => {
     expect(container.querySelector('.settings-external-link-icon')).not.toBeNull();
   });
 
+  it.each(['opencode-go', 'deepseek'])(
+    '已连接 %s 入口仍可找到，并导航到相应管理页',
+    async connectionId => {
+      if (connectionId === 'opencode-go') {
+        mocks.loadProviders.mockResolvedValue({
+          generation: {
+            id: 'test',
+            source_url: 'https://models.dev/api.json',
+            source_sha256: 'a'.repeat(64),
+            synced_at: '2026-10-19T00:00:00Z',
+            policy_version: 1,
+          },
+          providers: [
+            {
+              id: connectionId,
+              display_name: 'OpenCode Go',
+              connections: [
+                {
+                  id: connectionId,
+                  display_name: 'OpenCode Go',
+                  kind: 'direct',
+                  release_status: 'preview',
+                  setup_fields: [
+                    { id: 'api_key', kind: 'secret', required: true, label: 'API Key' },
+                  ],
+                  model_discovery: 'bundled',
+                  models: [],
+                },
+              ],
+            },
+          ],
+          total: 1,
+        });
+      }
+      const pinia = createPinia();
+      setActivePinia(pinia);
+      useModelPickerStore().replaceSnapshot({
+        providers: [
+          {
+            configured_provider_id: 'configured-target',
+            provider_definition_id: connectionId,
+            provider_connection_definition_id: connectionId,
+            display_name: connectionId,
+            connection_display_name: connectionId,
+            can_refresh_models: true,
+            kind: 'direct',
+            credential_kind: 'api_key',
+            picker_enabled: false,
+            credential_available: true,
+            models: [],
+          },
+        ],
+        custom_models: [],
+      });
+      app = createApp(ModelRegistrationSettingsPage);
+      app.use(pinia);
+      app.mount(container);
+      await flushUi();
+      const connectedLabel = 'settings.addModel.provider.connected';
+      if (connectionId === 'opencode-go') {
+        const button = Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(
+          candidate => candidate.textContent?.includes('OpenCode Go')
+        );
+        expect(button?.textContent).toContain(connectedLabel);
+        button?.click();
+        await flushUi();
+      } else {
+        await selectOtherProvider(container, `DeepSeek · ${connectedLabel}`);
+      }
+      expect(useUIStore().settingsInitialTabId).toBe('model-management');
+      expect(useModelPickerStore().managementProviderId).toBe('configured-target');
+      expect(container.querySelector('[data-registration-kind="direct-provider"]')).toBeNull();
+    }
+  );
+
+  it('已连接 API 的品牌仍可添加尚未配置的账号接入', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    useModelPickerStore().replaceSnapshot({
+      providers: [
+        {
+          configured_provider_id: 'configured-api',
+          provider_definition_id: 'openai',
+          provider_connection_definition_id: 'openai-api',
+          display_name: 'OpenAI',
+          connection_display_name: 'OpenAI API',
+          can_refresh_models: true,
+          kind: 'direct',
+          credential_kind: 'api_key',
+          picker_enabled: true,
+          credential_available: true,
+          models: [],
+        },
+      ],
+      custom_models: [],
+    });
+    app = createApp(ModelRegistrationSettingsPage);
+    app.use(pinia);
+    app.mount(container);
+    await flushUi();
+    const button = Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(
+      candidate => candidate.textContent?.includes('OpenAI')
+    );
+    button?.click();
+    await flushUi();
+    await selectConnection(container, 'ChatGPT 订阅');
+    expect(mocks.getChatGptStatus).toHaveBeenCalledOnce();
+    expect(useUIStore().settingsInitialTabId).toBeNull();
+    expect(container.querySelector('[data-registration-kind="direct-provider"]')).toBeNull();
+  });
+
   it('账号型 Provider 授权后自动刷新模型管理，不再要求手动添加模型', async () => {
     app = createApp(ModelRegistrationSettingsPage);
     app.use(createPinia());
@@ -427,7 +540,9 @@ describe('ModelRegistrationSettingsPage', () => {
     expect(accountForm.textContent).not.toContain('Responses');
     expect(mocks.getChatGptStatus).toHaveBeenCalledOnce();
 
-    const connectButton = accountForm.querySelector<HTMLButtonElement>('.linnya-ui-button--primary');
+    const connectButton = accountForm.querySelector<HTMLButtonElement>(
+      '.linnya-ui-button--primary'
+    );
     if (!connectButton) throw new Error('ChatGPT sign-in button not found');
     connectButton.click();
     await flushUi();
@@ -515,11 +630,7 @@ describe('ModelRegistrationSettingsPage', () => {
 
     await selectQuickOption(container, 'settings.addModel.quick.customApi');
 
-    setInputValue(
-      container,
-      'settings.addModel.apiUrl.placeholder',
-      'http://gateway.intranet/v1'
-    );
+    setInputValue(container, 'settings.addModel.apiUrl.placeholder', 'http://gateway.intranet/v1');
     await flushUi();
 
     mocks.discoverModels.mockResolvedValue({

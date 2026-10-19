@@ -6,3 +6,4 @@ export {
 export { ModelDiscoveryError } from './definitions/modelDiscoveryError';
 export { buildDiscoveryUrl } from './functions/buildDiscoveryUrl';
 export { parseModelListingResponse } from './functions/parseModelListingResponse';
+export type { ModelListingIdentity } from './definitions/modelListingIdentity';

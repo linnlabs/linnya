@@ -98,6 +98,7 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
     release_status: 'stable',
     setup_fields: [API_KEY_FIELD],
     model_discovery: 'bundled',
+    online_model_discovery: { protocol: 'openai' },
     runtime_binding: {
       endpoint_id: 'openai',
       default_base_url: 'https://api.openai.com/v1',
@@ -138,6 +139,7 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
     release_status: 'preview',
     setup_fields: [API_KEY_FIELD],
     model_discovery: 'bundled',
+    online_model_discovery: { protocol: 'openai', requires_bundled_model: true },
     model_admission: {
       requires_tool_call: true,
       requires_provider_override_review: true,
@@ -194,6 +196,7 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
     release_status: 'stable',
     setup_fields: [API_KEY_FIELD],
     model_discovery: 'bundled',
+    online_model_discovery: { protocol: 'anthropic' },
     runtime_binding: {
       endpoint_id: 'anthropic',
       default_base_url: 'https://api.anthropic.com/v1',
@@ -232,6 +235,7 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
     release_status: 'stable',
     setup_fields: [API_KEY_FIELD],
     model_discovery: 'bundled',
+    online_model_discovery: { protocol: 'deepseek' },
     runtime_binding: {
       endpoint_id: 'deepseek',
       default_base_url: 'https://api.deepseek.com',
@@ -253,6 +257,7 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
     release_status: 'stable',
     setup_fields: [API_KEY_FIELD],
     model_discovery: 'bundled',
+    online_model_discovery: { protocol: 'openai' },
     runtime_binding: {
       endpoint_id: 'moonshotai',
       default_base_url: 'https://api.moonshot.ai/v1',
@@ -274,6 +279,7 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
     release_status: 'preview',
     setup_fields: [API_KEY_FIELD],
     model_discovery: 'bundled',
+    online_model_discovery: { protocol: 'openai' },
     runtime_binding: {
       endpoint_id: 'moonshotai-cn',
       default_base_url: 'https://api.moonshot.cn/v1',
@@ -671,6 +677,7 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
     release_status: 'preview',
     setup_fields: [API_KEY_FIELD],
     model_discovery: 'bundled',
+    online_model_discovery: { protocol: 'ollama' },
     model_admission: { requires_tool_call: true },
     runtime_binding: {
       endpoint_id: 'ollama-cloud',
