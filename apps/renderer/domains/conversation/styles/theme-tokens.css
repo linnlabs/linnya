@@ -13,25 +13,30 @@
   --thought-message-pre-background: #f8fafc;
   --thought-message-pre-border-color: #e2e8f0;
   --thought-message-code-background: #e2e8f0;
-  --thought-message-arrow-color: var(--color-text-placeholder);
+  --thought-message-arrow-color: var(--color-text-muted);
   --thought-message-arrow-hover-color: var(--color-text-secondary);
-  --thought-message-title-color: var(--color-text-placeholder);
+  --thought-message-title-color: var(--color-text-muted);
   --thought-message-title-hover-color: var(--color-text-secondary);
   --thought-message-blockquote-border-color: var(--thought-message-mark-border-color);
 }
 
+/* 暗色与 moon-blue 一样从语义 token 派生，保持与浅色相同的层级：标题和箭头弱于思考正文。 */
 [data-linnya-ui-theme='dark'] {
-  --thought-message-text-color: #9ca3af;
-  --thought-message-line-color: #4b5563;
-  --thought-message-mark-border-color: #4b5563;
-  --thought-message-pre-background: #1f2937;
-  --thought-message-pre-border-color: #374151;
-  --thought-message-code-background: #374151;
-  --thought-message-arrow-color: #9ca3af;
-  --thought-message-arrow-hover-color: #d1d5db;
-  --thought-message-title-color: #d1d5db;
-  --thought-message-title-hover-color: #d1d5db;
-  --thought-message-blockquote-border-color: #007AFF;
+  /* 深底上浅色投影与暖色描边都不可见：投影加深，描边改用透明白发丝线。 */
+  --conversation-tool-card-shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
+  --conversation-tool-card-border-shadow: 0 0 0 1px var(--color-border-light);
+
+  --thought-message-text-color: var(--color-text-tertiary);
+  --thought-message-line-color: var(--color-border-light);
+  --thought-message-mark-border-color: var(--color-border-light);
+  --thought-message-pre-background: var(--color-bg-subtle);
+  --thought-message-pre-border-color: var(--color-border-light);
+  --thought-message-code-background: var(--color-bg-subtle);
+  --thought-message-arrow-color: var(--color-text-muted);
+  --thought-message-arrow-hover-color: var(--color-text-secondary);
+  --thought-message-title-color: var(--color-text-muted);
+  --thought-message-title-hover-color: var(--color-text-secondary);
+  --thought-message-blockquote-border-color: var(--color-border-default);
 }
 
 [data-linnya-ui-theme='moon-blue'] {
@@ -41,9 +46,9 @@
   --thought-message-pre-background: var(--color-bg-subtle);
   --thought-message-pre-border-color: var(--color-border-light);
   --thought-message-code-background: var(--color-bg-hover-light);
-  --thought-message-arrow-color: var(--color-text-placeholder);
+  --thought-message-arrow-color: var(--color-text-muted);
   --thought-message-arrow-hover-color: var(--color-text-secondary);
-  --thought-message-title-color: var(--color-text-placeholder);
+  --thought-message-title-color: var(--color-text-muted);
   --thought-message-title-hover-color: var(--color-text-secondary);
   --thought-message-blockquote-border-color: var(--color-border-accent-light);
 }

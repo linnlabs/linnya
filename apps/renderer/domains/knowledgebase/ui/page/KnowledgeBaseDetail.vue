@@ -4,14 +4,15 @@
       <!-- 顶部头部：返回 + 标题 + Tab 切换 -->
       <header class="detail-header">
         <div class="left-section">
-          <button
+          <IconButton
+            :label="knowledgeBaseMessage('knowledgeBase.detail.backTitle')"
+            size="lg"
             class="back-btn"
-            :title="knowledgeBaseMessage('knowledgeBase.detail.backTitle')"
             @click="$emit('back')"
           >
             <!-- 使用通用 ChevronIcon 图标组件，方向为向左，尺寸与原图标保持一致 -->
             <ChevronIcon direction="left" width="16" height="16" />
-          </button>
+          </IconButton>
           <div class="kb-info">
             <div class="kb-title-row">
               <h2>{{ currentKbName }}</h2>
@@ -96,6 +97,7 @@
 </template>
 
 <script setup lang="ts">
+import { IconButton } from '@linnya/renderer-ui';
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { useKnowledgeBaseStore } from '../../stores/knowledgeBase';
 import { useKnowledgeGraphProgressStore } from '../../stores/knowledgeGraphProgressStore';

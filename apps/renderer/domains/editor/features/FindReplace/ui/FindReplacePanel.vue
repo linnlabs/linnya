@@ -25,24 +25,28 @@
           />
           <div class="find-replace-input-actions">
             <span class="find-replace-count">{{ displayPosition }}</span>
-            <button
+            <IconButton
+              :label="editorMessage('editor.findReplace.previous')"
+              size="md"
+              :tooltip="false"
               class="find-replace-nav-btn"
+              :title="`${editorMessage('editor.findReplace.previous')} (Shift+Enter)`"
               :disabled="!hasMatches"
               @click="handlePrev"
-              :aria-label="editorMessage('editor.findReplace.previous')"
-              :title="`${editorMessage('editor.findReplace.previous')} (Shift+Enter)`"
             >
               <ChevronIcon direction="left" class="nav-icon" />
-            </button>
-            <button
+            </IconButton>
+            <IconButton
+              :label="editorMessage('editor.findReplace.next')"
+              size="md"
+              :tooltip="false"
               class="find-replace-nav-btn"
+              :title="`${editorMessage('editor.findReplace.next')} (Enter)`"
               :disabled="!hasMatches"
               @click="handleNext"
-              :aria-label="editorMessage('editor.findReplace.next')"
-              :title="`${editorMessage('editor.findReplace.next')} (Enter)`"
             >
               <ChevronIcon direction="right" class="nav-icon" />
-            </button>
+            </IconButton>
           </div>
         </div>
 
@@ -56,22 +60,22 @@
             @keydown.escape="handleClose"
           />
           <div class="find-replace-input-actions">
-            <button
-              class="find-replace-action-btn"
+            <BaseButton
+              variant="plain"
               :disabled="!hasMatches"
               @click="handleReplaceCurrent"
               :title="editorMessage('editor.findReplace.replaceCurrent')"
             >
               {{ editorMessage('editor.findReplace.replaceCurrent') }}
-            </button>
-            <button
-              class="find-replace-action-btn"
+            </BaseButton>
+            <BaseButton
+              variant="plain"
               :disabled="!hasMatches"
               @click="handleReplaceAll"
               :title="editorMessage('editor.findReplace.replaceAll')"
             >
               {{ editorMessage('editor.findReplace.replaceAll') }}
-            </button>
+            </BaseButton>
           </div>
         </div>
 
@@ -118,10 +122,7 @@ import { storeToRefs } from 'pinia'
 import { useFindReplaceStore } from '../store/useFindReplaceStore'
 import { useUIStore } from '@/shared/stores/ui'
 import { useDebounceFn } from '@vueuse/core'
-import {
-  CustomCheckbox,
-  DraggablePanel,
-} from '@linnya/renderer-ui'
+import { BaseButton, CustomCheckbox, DraggablePanel, IconButton } from '@linnya/renderer-ui'
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
 

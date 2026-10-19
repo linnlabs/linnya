@@ -17,19 +17,19 @@
 .todo-sidebar .header-placeholder {
   display: flex;
   justify-content: flex-end; /* 右对齐 */
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   flex-shrink: 0;
 }
 
 .todo-sidebar .add-button {
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: var(--space-1-5) var(--space-3);
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border-default);
   background-color: var(--color-accent-bg-subtle);
   color: var(--color-accent);
-  transition: background-color 0.2s;
-  font-size: 12px;
-  font-weight: 400;
+  transition: background-color var(--duration-medium);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-regular);
 }
 
 .todo-sidebar .add-button:hover {
@@ -58,8 +58,8 @@
 
 .todo-sidebar .content::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color);
-  border-radius: 5px;
-  transition: background-color 0.2s ease;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }
@@ -69,19 +69,19 @@
 }
 
 .todo-sidebar .content-inner {
-  padding: 4px 12px;
+  padding: var(--space-1) var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .todo-sidebar .section-content {
-  padding-left: 8px;
-  padding-right: 8px;
-  padding-top: 12px;
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+  padding-top: var(--space-3);
   display: flex;
   flex-direction: column;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .todo-sidebar .timeline-item {
@@ -89,7 +89,7 @@
   display: grid;
   grid-template-columns: 48px 20px 1fr; /* time | connector | content */
   align-items: flex-start; /* Vertically align all cells to the top */
-  gap: 8px;
+  gap: var(--space-2);
   padding-bottom: 0; /* Spacing is handled by timeline-content */
 }
 
@@ -106,7 +106,7 @@
 .todo-sidebar .timeline-content {
   grid-column: 3;
   min-width: 0;
-  padding-bottom: 8px;
+  padding-bottom: var(--space-2);
 }
 
 .todo-sidebar .timeline-item:last-child .timeline-content {
@@ -115,7 +115,7 @@
 
 .todo-sidebar .timeline-time {
   grid-column: 1;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-tertiary);
   text-align: right;
   line-height: 1;
@@ -184,10 +184,10 @@
 .todo-sidebar .sub-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 4px;
-  font-size: 12px;
-  font-weight: 460;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-1);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -202,13 +202,13 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 4px 12px 4px 4px;
-  font-size: 12px;
-  font-weight: 460;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  transition: color 0.2s;
+  transition: color var(--duration-medium);
   background: none;
   border: none;
   cursor: pointer;
@@ -222,12 +222,12 @@
 .todo-sidebar .sub-header-title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .todo-sidebar .sub-header-count {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-placeholder);
 }
 
@@ -235,7 +235,7 @@
   color: var(--color-text-tertiary);
   width: 12px;
   height: 12px;
-  transition: transform 0.2s;
+  transition: transform var(--duration-medium);
 }
 
 .todo-sidebar .sub-header-button .chevron:not(.is-expanded) {
@@ -245,7 +245,7 @@
 .todo-sidebar .dot {
   height: 6px;
   width: 6px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
 }
 
 .todo-sidebar .primary-dot {
@@ -253,17 +253,17 @@
 }
 
 .todo-sidebar .danger-dot {
-  background-color: var(--color-red-400);
+  background-color: var(--color-error);
 }
 
 .todo-sidebar .muted-dot {
-  background-color: var(--color-blue-500);
+  background-color: var(--color-info);
 }
 
 .todo-sidebar .todo-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .todo-sidebar .sub-tasks-section {
@@ -272,14 +272,14 @@
 
 .todo-sidebar .today-tasks-group + .sub-tasks-section,
 .todo-sidebar .sub-tasks-section + .sub-tasks-section {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--color-border-light);
 }
 
 .todo-sidebar .no-tasks-placeholder {
-  padding: 24px 0;
+  padding: var(--space-6) 0;
   text-align: center;
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   color: var(--color-text-placeholder);
 }

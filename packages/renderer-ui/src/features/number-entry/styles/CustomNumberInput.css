@@ -1,14 +1,14 @@
 /* @linnya/renderer-ui number-entry owner。 */
 .custom-number-input {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
 .custom-number-input .input-label {
   flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
 }
 
@@ -23,15 +23,15 @@
 .custom-number-input .styled-input {
   box-sizing: border-box;
   width: 100%;
-  padding: 4px 8px;
-  font-size: 14px;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-prose);
   color: var(--color-text-primary);
   text-align: center;
   appearance: none;
   background-color: var(--color-bg-search-light);
   border: 1px solid transparent;
-  border-radius: 4px;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: border-color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
   -moz-appearance: textfield;
 }
 
@@ -47,7 +47,7 @@
 .custom-number-input .styled-input--panel {
   box-sizing: border-box;
   width: 100%;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   font-size: 0.85em;
   color: var(--color-text-primary);
@@ -66,11 +66,11 @@
 }
 
 .custom-number-input .styled-input--with-spin {
-  padding-right: 24px;
+  padding-right: var(--space-6);
 }
 
 .custom-number-input .styled-input--with-spin.text-align-center {
-  padding-left: 24px;
+  padding-left: var(--space-6);
 }
 
 .custom-number-input .text-align-left {
@@ -110,14 +110,14 @@
 /* CustomSelect 行内数字项的既有密度，由数字输入 owner 通过明确变体提供。 */
 .custom-number-input.custom-number-input--inline-menu .styled-input {
   height: 24px;
-  padding-top: 2px;
-  padding-bottom: 2px;
-  padding-left: 6px;
-  font-size: 13px;
+  padding-top: var(--space-0-5);
+  padding-bottom: var(--space-0-5);
+  padding-left: var(--space-1-5);
+  font-size: var(--font-size-body);
 }
 
 .custom-number-input.custom-number-input--inline-menu .styled-input--with-spin {
-  padding-right: 20px;
+  padding-right: var(--space-5);
 }
 
 .custom-number-input.custom-number-input--inline-menu .number-spin-buttons {

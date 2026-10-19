@@ -33,7 +33,7 @@ describe('ToolErrorCard', () => {
     mountedApp.mount(mountPoint);
 
     expect(mountPoint.querySelector('.tool-error-card--actionable')?.textContent).toContain('尚未配置图片生成模型。');
-    const button = mountPoint.querySelector<HTMLButtonElement>('.action-btn.primary');
+    const button = mountPoint.querySelector<HTMLButtonElement>('.linnya-ui-button--primary');
     expect(button?.textContent?.trim()).toBe('去配置');
     button?.click();
     expect(onAction).toHaveBeenCalledOnce();

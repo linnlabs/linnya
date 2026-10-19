@@ -2,10 +2,10 @@
   position: absolute;
   z-index: var(--linnya-ui-layer-popover);
   display: flex;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
   align-items: center;
   box-sizing: border-box;
-  padding: var(--spacing-xs);
+  padding: var(--space-1);
   border: 0.6px solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background-color: var(--color-bg-default);
@@ -17,7 +17,7 @@
 
 .linnya-toolbar-group {
   display: flex;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
   align-items: center;
   box-sizing: border-box;
 }
@@ -28,7 +28,7 @@
   width: 1px;
   height: 16px;
   /* 与组内／组间的 4px gap 合计为单侧 6px，避免重复留白。 */
-  margin: 0 var(--spacing-xxs);
+  margin: 0 var(--space-0-5);
   background-color: var(--color-border-light);
   content: '';
 }

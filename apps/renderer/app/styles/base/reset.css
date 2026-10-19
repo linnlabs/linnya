@@ -12,8 +12,8 @@
 html, body {
   height: 100%;
   width: 100%;
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 16px; /* scale-exempt: 根字号 */
+  line-height: var(--line-height-normal);
   font-family: var(--font-family-default);
   background-color: var(--color-bg-default);
   border: none !important;
@@ -42,7 +42,25 @@ button, input, select, textarea {
   color: inherit;
   background: none;
   border: none;
+}
+
+/*
+ * 焦点：文本输入由各自的聚焦边框表达，去掉浏览器默认外框；鼠标点击不显示焦点环。
+ * 其余可交互元素在键盘焦点时统一显示设计规范的焦点环；组件有自己的 :focus-visible 样式时覆盖此基线。
+ * 可编辑区与脚本聚焦的容器（tabindex=-1）不画焦点环。
+ */
+input:not([type='checkbox'], [type='radio'], [type='range']),
+textarea {
   outline: none;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:where(:focus-visible):not(:where([contenteditable], [tabindex='-1'])) {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* 重置按钮样式 */

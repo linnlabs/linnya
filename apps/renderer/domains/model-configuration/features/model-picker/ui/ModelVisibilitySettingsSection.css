@@ -1,7 +1,7 @@
 .model-visibility-layout {
   display: grid;
   grid-template-columns: minmax(170px, 0.55fr) minmax(280px, 1.45fr);
-  column-gap: calc(var(--spacing-xl) * 3);
+  column-gap: calc(var(--space-8) * 3);
   height: min(420px, calc(100vh - 240px));
   min-height: 340px;
   overflow: hidden;
@@ -14,7 +14,7 @@
   min-width: 0;
   min-height: 0;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
 }
 
 .model-visibility-sources {
@@ -71,12 +71,12 @@
 
 .model-visibility-source-list .settings-list,
 .model-visibility-model-list .settings-list {
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .model-visibility-source-list .settings-list-row,
 .model-visibility-model-list .settings-list-row {
-  padding: 6px 8px;
+  padding: var(--space-1-5) var(--space-2);
 }
 
 .model-visibility-source-list .settings-list-row.is-active,
@@ -96,9 +96,9 @@
 }
 
 .model-visibility-source-group-title {
-  padding: 12px 0 4px 0;
-  font-size: 12px;
-  font-weight: 400;
+  padding: var(--space-3) 0 var(--space-1) 0;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-tertiary);
   letter-spacing: normal;
   user-select: none;
@@ -112,31 +112,7 @@
 }
 
 .model-visibility-refresh-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  margin-left: 4px;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  opacity: 0.7;
-  transition: opacity var(--transition-fast) ease, background var(--transition-fast) ease;
-}
-
-.model-visibility-refresh-btn:hover {
-  opacity: 1;
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
-}
-
-.model-visibility-refresh-btn .icon {
-  width: 13px;
-  height: 13px;
+  margin-left: var(--space-1);
 }
 
 .model-visibility-refresh-btn .is-spinning {
@@ -172,13 +148,13 @@
 .model-visibility-models-header-left {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
   min-width: 0;
 }
 
 .model-visibility-models-header {
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
   align-items: center;
   justify-content: space-between;
 }
@@ -190,54 +166,8 @@
 .model-visibility-provider-actions {
   display: flex;
   flex-shrink: 0;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
   align-items: center;
-}
-
-.model-visibility-provider-edit,
-.model-visibility-provider-delete {
-  display: inline-flex;
-  width: 24px;
-  height: 24px;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
-  transition:
-    color var(--transition-fast) ease,
-    background-color var(--transition-fast) ease;
-}
-
-.model-visibility-provider-edit > .shared-icon,
-.model-visibility-provider-delete > .shared-icon {
-  width: 16px;
-  height: 16px;
-}
-
-.model-visibility-provider-edit:hover:not(:disabled) {
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-hover);
-}
-
-.model-visibility-provider-delete:hover:not(:disabled) {
-  color: var(--color-error);
-  background-color: color-mix(in srgb, var(--color-error) 10%, transparent);
-}
-
-.model-visibility-provider-edit:focus-visible,
-.model-visibility-provider-delete:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.model-visibility-provider-edit:disabled,
-.model-visibility-provider-delete:disabled {
-  color: var(--color-text-placeholder);
-  cursor: not-allowed;
 }
 
 .model-visibility-models-content {
@@ -245,8 +175,8 @@
   flex: 1;
   min-height: 0;
   flex-direction: column;
-  gap: var(--spacing-sm);
-  transition: opacity var(--transition-fast) ease;
+  gap: var(--space-2);
+  transition: opacity var(--duration-micro) var(--ease-standard);
 }
 
 .model-visibility-models-content.is-disabled {
@@ -256,8 +186,8 @@
 .model-visibility-credential-actions {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
-  margin-top: var(--spacing-sm);
+  gap: var(--space-1);
+  margin-top: var(--space-2);
   min-width: 0;
 }
 

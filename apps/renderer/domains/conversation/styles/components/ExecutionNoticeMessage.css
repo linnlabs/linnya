@@ -1,19 +1,19 @@
 .execution-notice {
   color: var(--color-text-secondary);
-  font-size: 13px;
-  line-height: 1.7;
-  padding: 4px 0;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  padding: var(--space-1) 0;
 }
 .execution-notice--failed {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 .execution-notice .execution-notice__time {
-  margin-inline-start: 8px;
-  font-size: 12px;
+  margin-inline-start: var(--space-2);
+  font-size: var(--font-size-footnote);
   opacity: 0.8;
 }
 .execution-notice .execution-notice__details {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
 }
 .execution-notice .execution-notice__details summary {
   cursor: pointer;

@@ -14,15 +14,16 @@
         </div>
       </div>
 
-      <button class="subrun-detail-footer__back" type="button" @click="navigation.close()">
-        <ChevronIcon class="subrun-detail-footer__back-icon" direction="left" />
+      <BaseButton variant="plain" size="md" @click="navigation.close()">
+        <template #icon><ChevronIcon direction="left" /></template>
         <span>{{ conversationMessage('conversation.tool.subrunDetail.back') }}</span>
-      </button>
+      </BaseButton>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { BaseButton } from '@linnya/renderer-ui';
 import { computed, inject } from 'vue';
 import { useRunExecutionActivity, executionActivity } from '../../../shared/execution-presentation';
 

@@ -39,22 +39,22 @@
           {{ formattedTimestamp }}
         </span>
         <div class="user-message-action-buttons">
-          <button
-            v-if="!isActivityMessage"
+          <IconButton
+            :label="conversationMessage('conversation.userMessage.action.edit')"
             class="action-button"
-            :title="conversationMessage('conversation.userMessage.action.edit')"
+            v-if="!isActivityMessage"
             @click="startEditing"
           >
             <EditIcon />
-          </button>
-          <button
-            v-if="!isActivityMessage"
+          </IconButton>
+          <IconButton
+            :label="conversationMessage('conversation.userMessage.action.regenerate')"
             class="action-button"
-            :title="conversationMessage('conversation.userMessage.action.regenerate')"
+            v-if="!isActivityMessage"
             @click="handleRegenerate"
           >
             <RefreshIcon />
-          </button>
+          </IconButton>
           <button
             class="action-button user-message-copy-button"
             :title="conversationMessage('conversation.userMessage.action.copy')"
@@ -161,7 +161,7 @@ import {
   formatUserMessageTimestampTitle,
 } from '../../functions/userMessageTimestamp';
 import { useConversationLocalization } from '../useConversationLocalization';
-import { applyTextareaAutoResize } from '@linnya/renderer-ui';
+import { applyTextareaAutoResize, IconButton } from '@linnya/renderer-ui';
 import { buildUserMessageQuoteDisplay } from '../../functions/userMessageQuoteDisplay';
 import type {
   EditUserMessageCommand,

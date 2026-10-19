@@ -45,24 +45,19 @@
 
     <template #footer>
       <div class="command-protected-input__actions">
-        <button
-          type="button"
-          class="command-protected-input__button is-secondary"
-          :disabled="submitting"
-          @click="close"
-        >
+        <BaseButton variant="secondary" :disabled="submitting" @click="close">
           {{ conversationMessage('conversation.tool.command.protectedInput.cancel') }}
-        </button>
-        <button
+        </BaseButton>
+        <BaseButton
+          variant="primary"
           type="submit"
           form="command-protected-input-form"
-          class="command-protected-input__button is-primary"
           :disabled="submitting"
         >
           {{ submitting
             ? conversationMessage('conversation.tool.command.protectedInput.sending')
             : conversationMessage('conversation.tool.command.protectedInput.send') }}
-        </button>
+        </BaseButton>
       </div>
     </template>
   </Modal>
@@ -71,7 +66,7 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue';
 
-import { Modal, SecretInput } from '@linnya/renderer-ui';
+import { BaseButton, Modal, SecretInput } from '@linnya/renderer-ui';
 import { useConversationLocalization } from '../../../ui/useConversationLocalization';
 import './CommandProtectedInputDialog.css';
 

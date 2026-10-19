@@ -7,14 +7,10 @@
       <div class="parsing-settings-section">
         <div class="field-header">
           <label class="field-label">{{ knowledgeBaseMessage('knowledgeBase.parsing.settings.title') }}</label>
-          <button
-            type="button"
-            class="action-btn secondary model-settings-btn"
-            @click="openModelParsingSettings"
-          >
-            <SettingsIcon />
-            <span>{{ knowledgeBaseMessage('knowledgeBase.parsing.modelSettings.open') }}</span>
-          </button>
+          <BaseButton variant="plain" @click="openModelParsingSettings">
+            <template #icon><SettingsIcon /></template>
+            {{ knowledgeBaseMessage('knowledgeBase.parsing.modelSettings.open') }}
+          </BaseButton>
         </div>
         
         <div class="parsing-options">
@@ -79,7 +75,7 @@ import { useKnowledgeBaseStore } from '../stores/knowledgeBase'
 import { useNotificationStore } from '@/app/notification'
 import { useKnowledgeBaseLocalization } from './useKnowledgeBaseLocalization'
 import { SettingsIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect, Switch } from '@linnya/renderer-ui';
+import { BaseButton, CustomSelect, Switch } from '@linnya/renderer-ui';
 
 /**
  * 解析设置属于“当前选中的知识库”：

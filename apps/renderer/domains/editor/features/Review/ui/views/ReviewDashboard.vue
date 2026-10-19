@@ -7,9 +7,9 @@
           {{ filteredAnnotations.length }} / {{ reviewAnnotations.length }}
         </span>
       </div>
-      <button class="new-review-btn" @click="reviewStore.resetReview()">
+      <BaseButton variant="secondary" @click="reviewStore.resetReview()">
         {{ editorMessage('editor.review.dashboard.newReview') }}
-      </button>
+      </BaseButton>
     </div>
 
     <div
@@ -60,6 +60,7 @@
 </template>
 
 <script setup lang="ts">
+import { BaseButton } from '@linnya/renderer-ui';
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useReviewStore } from '../../store/reviewStore';
 import ReviewMessageCard from '../components/ReviewMessageCard.vue';

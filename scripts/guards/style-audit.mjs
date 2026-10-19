@@ -20,6 +20,7 @@ const rawColorAllowedFiles = new Set([
   normalizePath('packages/renderer-ui/src/styles/tokens/foundation.css'),
   normalizePath('packages/renderer-ui/src/styles/tokens/semantic.css'),
   normalizePath('apps/renderer/domains/conversation/styles/theme-tokens.css'),
+  normalizePath('apps/renderer/domains/settings/styles/tokens/theme-preview.css'),
   normalizePath('apps/renderer/domains/editor/styles/tokens/theme.css'),
   normalizePath('apps/renderer/domains/editor/styles/tokens/block-colors.css'),
   normalizePath('apps/renderer/domains/editor/styles/tokens/syntax-highlight.css'),

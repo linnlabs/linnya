@@ -3,16 +3,16 @@
 
   display: flex;
   flex-direction: column;
-  padding: 4px 0;
-  margin-top: 4px;
+  padding: var(--space-1) 0;
+  margin-top: var(--space-1);
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .history-timeline .timeline-main-row {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .history-timeline .timeline-axis {
@@ -30,8 +30,8 @@
   display: inline-flex;
   align-items: flex-start;
   min-width: fit-content;
-  padding: 0 4px;
-  gap: 16px;
+  padding: 0 var(--space-1);
+  gap: var(--space-4);
   white-space: nowrap;
 }
 
@@ -58,10 +58,10 @@
 .history-timeline .timeline-node-label {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-top: 4px;
-  font-size: 10px;
-  line-height: 1.2;
+  gap: var(--space-0-5);
+  margin-top: var(--space-1);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
 }
 
 .history-timeline .node-version {
@@ -87,7 +87,7 @@
   cursor: pointer;
   line-height: 0;
   transform: translate(-50%, -50%);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--duration-medium) var(--ease-standard);
 }
 
 .history-timeline .timeline-dot::before {
@@ -112,7 +112,9 @@
   box-shadow: 0 0 0 2px var(--color-bg-default);
   pointer-events: none;
   transform: translate(-50%, -50%);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    background-color var(--duration-long) var(--ease-standard),
+    transform var(--duration-long) var(--ease-standard);
 }
 
 .history-timeline .timeline-dot.origin-ai {
@@ -142,7 +144,7 @@
   box-shadow: 0 0 0 3px var(--color-accent-bg);
   cursor: grab;
   transform: translate(-50%, -50%);
-  transition: box-shadow 0.12s ease, transform 0.12s ease;
+  transition: box-shadow var(--duration-micro) var(--ease-standard), transform var(--duration-micro) var(--ease-standard);
 }
 
 .history-timeline .timeline-handle:hover {
@@ -160,7 +162,7 @@
 .history-timeline .timeline-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   white-space: nowrap;
 }
 
@@ -178,26 +180,26 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
-  margin-top: 8px;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
 }
 
 .history-timeline .history-timeline-actions {
   flex-direction: column-reverse;
   align-items: stretch;
-  gap: 4px;
+  gap: var(--space-1);
   width: 100%;
 }
 
 .history-timeline .history-timeline-action-button {
   width: 100%;
   height: 24px;
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-caption);
 }
 
 .history-timeline .history-timeline-exit-button {
-  margin-top: 2px;
+  margin-top: var(--space-0-5);
 }
 
 .history-timeline .timeline-axis::-webkit-scrollbar {
@@ -211,10 +213,10 @@
 
 .history-timeline .timeline-axis::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   background-color: var(--color-border-default);
   background-clip: content-box;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .history-timeline .timeline-axis::-webkit-scrollbar-thumb:hover {

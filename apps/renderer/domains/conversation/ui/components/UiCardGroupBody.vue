@@ -5,9 +5,9 @@
       <span class="ui-card-body__window-hint-text">
         {{ conversationMessage('conversation.card.windowHint', { count: omittedCount }) }}
       </span>
-      <button class="ui-card-body__window-hint-btn" type="button" @click.stop="$emit('show-all')">
+      <BaseButton variant="ghost" @click.stop="$emit('show-all')">
         {{ conversationMessage('conversation.card.showAll') }}
-      </button>
+      </BaseButton>
     </div>
     <Message
       v-for="child in visibleChildren"
@@ -37,6 +37,7 @@
 </template>
 
 <script setup lang="ts">
+import { BaseButton } from '@linnya/renderer-ui';
 import type { BaseMessage } from '../../types';
 import type {
   EditUserMessageCommand,

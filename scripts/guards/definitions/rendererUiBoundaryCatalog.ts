@@ -16,3 +16,9 @@ export const RENDERER_UI_PUBLIC_TOKEN_ALLOWLIST = [
   '--scrollbar-thumb-hover-color',
   '--scrollbar-track-color',
 ] as const;
+
+/**
+ * 包明确留给调用方调整的视觉入口：容器可以在自己的作用域里重定义，值只能取包自己提供的配套 token。
+ * 目前只有图标按钮悬停底色（设计规范 9.3：行已处于悬停或选中底色时，改为 `--linnya-ui-icon-button-hover-bg-raised`）。
+ */
+export const RENDERER_UI_CALLER_ADJUSTABLE_TOKENS = ['--linnya-ui-icon-button-hover-bg'] as const;

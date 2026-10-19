@@ -1,7 +1,7 @@
 /* 淡入淡出过渡效果 */
 .block-action-menu-fade-enter-active,
 .block-action-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .block-action-menu-fade-enter-from {
@@ -22,7 +22,7 @@
 
 .block-color-picker {
   position: relative;
-  padding: 12px;
+  padding: var(--space-3);
   user-select: none;
   background-color: transparent;
   outline: none;

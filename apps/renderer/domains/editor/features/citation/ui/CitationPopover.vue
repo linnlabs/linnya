@@ -67,46 +67,47 @@
         <!-- 底部操作栏 -->
         <div class="popover-footer">
           <!-- 跳转来源（仅 KB 来源且文档存在时） -->
-          <button
+          <BaseButton
+            variant="plain"
             v-if="sourceType === 'knowledge_base'"
-            class="popover-btn"
             :title="editorMessage('editor.citation.popover.jumpToSourceTitle')"
             @click="handleJumpToSource"
           >
+            <template #icon><SourceIcon /></template>
             <!--
               中文说明：
               - "查看来源"按钮统一使用 Renderer UI 包的 SourceIcon
               - 避免每个地方各自内联一份 SVG，后续主题/尺寸统一更容易维护
             -->
-            <SourceIcon class="btn-icon" />
             <span>{{ editorMessage('editor.citation.popover.viewSource') }}</span>
-          </button>
+          </BaseButton>
 
           <!-- 打开链接（仅 web 来源） -->
-          <button
+          <BaseButton
+            variant="plain"
             v-if="sourceType === 'web' && url"
-            class="popover-btn"
             :title="editorMessage('editor.citation.popover.openUrlTitle')"
             @click="handleOpenUrl"
           >
-            <SourceIcon class="btn-icon" />
+            <template #icon><SourceIcon /></template>
             <span>{{ editorMessage('editor.citation.popover.openLink') }}</span>
-          </button>
+          </BaseButton>
 
           <!-- 编辑引用 -->
-          <button
-            class="popover-btn primary"
+          <BaseButton
+            variant="plain"
+            tone="info"
             :title="editorMessage('editor.citation.popover.editTitle')"
             @click="handleEdit"
           >
+            <template #icon><EditIcon /></template>
             <!--
               中文说明：
               - “编辑引用”按钮统一使用 Renderer UI 包的 EditIcon
               - 避免每个地方各自内联一份 SVG，后续主题/尺寸统一更容易维护
             -->
-            <EditIcon class="btn-icon" />
             <span>{{ editorMessage('editor.citation.popover.edit') }}</span>
-          </button>
+          </BaseButton>
         </div>
       </div>
     </Transition>
@@ -114,6 +115,7 @@
 </template>
 
 <script setup lang="ts">
+import { BaseButton } from '@linnya/renderer-ui';
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import type { CitationSourceType } from '../types'
 import { EditIcon } from '@linnya/renderer-ui/icons';

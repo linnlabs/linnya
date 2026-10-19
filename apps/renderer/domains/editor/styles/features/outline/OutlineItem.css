@@ -3,16 +3,16 @@
   margin: 0;
   padding: 0;
   position: relative;
-  transition: padding-left 0.3s ease;
+  transition: padding-left var(--duration-long) var(--ease-standard);
 }
 
 .editor-outline-item .outline-item-content {
   display: flex;
   align-items: center;
-  padding: 2px 4px;
+  padding: var(--space-0-5) var(--space-1);
   cursor: pointer;
-  border-radius: 4px;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -20,11 +20,11 @@
 
 /* 大纲条目的缩进类来自虚拟列表数据，外迁后必须挂在 feature 根类下，避免污染全局 indent-*。 */
 .editor-outline-item.indent-1 { padding-left: 0px; }
-.editor-outline-item.indent-2 { padding-left: 8px; }
-.editor-outline-item.indent-3 { padding-left: 16px; }
-.editor-outline-item.indent-4 { padding-left: 24px; }
-.editor-outline-item.indent-5 { padding-left: 32px; }
-.editor-outline-item.indent-6 { padding-left: 40px; }
+.editor-outline-item.indent-2 { padding-left: var(--space-2); }
+.editor-outline-item.indent-3 { padding-left: var(--space-4); }
+.editor-outline-item.indent-4 { padding-left: var(--space-6); }
+.editor-outline-item.indent-5 { padding-left: var(--space-8); }
+.editor-outline-item.indent-6 { padding-left: var(--space-10); }
 
 .editor-outline-item .outline-item-content:hover {
   background-color: var(--color-bg-hover);
@@ -40,13 +40,13 @@
 
 .editor-outline-item .outline-item-content.is-active .outline-item-text {
   color: var(--color-accent-light);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .editor-outline-item .outline-indicator {
   width: 16px;
   height: 16px;
-  margin-right: 2px;
+  margin-right: var(--space-0-5);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -62,9 +62,9 @@
 }
 
 .editor-outline-item .bullet-indicator {
-  font-size: 16px;
+  font-size: 16px; /* scale-exempt: 列表圆点字形尺寸 */
   line-height: 1;
-  font-weight: bold;
+  font-weight: var(--font-weight-semibold);
   position: relative;
   top: -0.5px;
 }
@@ -73,7 +73,7 @@
   width: 10px;
   height: 10px;
   stroke-width: 2.5;
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-medium) var(--ease-standard);
 }
 
 .editor-outline-item .collapse-toggle.is-collapsed .chevron-icon {
@@ -85,9 +85,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   color: var(--color-text-muted);
-  transition: color 0.2s ease;
+  transition: color var(--duration-medium) var(--ease-standard);
 }
 
 .editor-outline-item .outline-item-content:hover .outline-item-text {

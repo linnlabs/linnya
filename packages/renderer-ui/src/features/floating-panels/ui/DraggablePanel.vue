@@ -18,15 +18,15 @@
         <span class="panel-title" :class="classNames?.title">
           <slot name="title">{{ defaultTitle }}</slot>
         </span>
-        <button
+        <IconButton
+          :label="closeLabel"
+          :size="variant === 'mini' ? 'xs' : 'sm'"
           class="close-btn"
           :class="classNames?.closeButton"
-          :aria-label="closeLabel"
-          :title="closeLabel"
           @click="emit('close')"
         >
           <CloseIcon />
-        </button>
+        </IconButton>
       </div>
       <div class="panel-body" :class="classNames?.body">
         <slot />
@@ -62,6 +62,7 @@
 </template>
 
 <script setup lang="ts">
+import IconButton from '../../actions/ui/IconButton.vue';
 import {
   computed,
   nextTick,

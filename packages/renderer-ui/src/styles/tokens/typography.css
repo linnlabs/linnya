@@ -1,4 +1,4 @@
-/* Renderer UI 非主题 token：字体栈、字号和行高。 */
+/* Renderer UI 非主题 token：字体栈、字号、行高和字重。 */
 
 :root {
   --font-family-cjk: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
@@ -8,6 +8,7 @@
   /* 保留编辑器当前消费的稳定别名，抽包迁移不改变字体回退链。 */
   --font-family: var(--font-family-default);
 
+  /* 基础字号刻度：只在 token 层和角色无法表达的内容呈现中使用。 */
   --font-size-xs: 12px;
   --font-size-sm: 14px;
   --font-size-md: 16px;
@@ -19,4 +20,27 @@
   --line-height-tight: 1.25;
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.75;
+
+  /* 角色字阶：业务 UI 按内容角色取字号与行高，二者成对使用。 */
+  --font-size-caption: 11px;
+  --line-height-caption: 16px;
+  --font-size-footnote: var(--font-size-xs);
+  --line-height-footnote: 18px;
+  --font-size-body: 13px;
+  --line-height-body: 20px;
+  --font-size-prose: var(--font-size-sm);
+  --line-height-prose: 22px;
+  --font-size-subtitle: 15px;
+  --line-height-subtitle: 22px;
+  --font-size-title: var(--font-size-lg);
+  --line-height-title: 26px;
+  --font-size-headline: 22px;
+  --line-height-headline: 30px;
+  --font-size-display: 28px;
+  --line-height-display: 36px;
+
+  /* 字重只有三档；CJK 字形下 700 过重，强调使用 semibold。 */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
 }

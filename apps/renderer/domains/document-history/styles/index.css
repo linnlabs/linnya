@@ -1,6 +1,6 @@
 .document-history-content,
 .document-history-footer {
-  padding: var(--spacing-lg);
+  padding: var(--space-6);
 }
 .document-history-footer {
   display: flex;
@@ -17,64 +17,42 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
 }
-.document-history-refresh {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  gap: var(--spacing-xs);
-  border: none;
-  border-radius: var(--radius-md);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: transparent;
-  color: var(--color-text-primary);
-  font: inherit;
-  cursor: pointer;
-}
-.document-history-refresh svg {
-  width: 16px;
-  height: 16px;
-}
-.document-history-refresh:not(:disabled):hover {
-  background: var(--color-bg-hover);
-}
-.document-history-refresh:disabled,
 .document-history-version:disabled {
   opacity: 0.5;
   cursor: default;
 }
-.document-history-refresh:focus-visible,
 .document-history-version:focus-visible {
   outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
 }
 .document-history-notice {
   color: var(--color-text-secondary);
-  margin: 0 0 var(--spacing-md);
+  margin: 0 0 var(--space-4);
 }
 .document-history-body {
   flex: 1;
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
-  gap: var(--spacing-lg);
+  gap: var(--space-6);
   min-height: 380px;
 }
 .document-history-list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
 }
 .document-history-version {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
   width: 100%;
-  padding: var(--spacing-sm);
+  padding: var(--space-2);
   border: none;
   border-radius: var(--radius-md);
   background: transparent;
@@ -95,12 +73,12 @@
   min-width: 0;
 }
 .document-history-error {
-  color: var(--color-error);
-  margin-bottom: var(--spacing-sm);
+  color: var(--color-error-text);
+  margin-bottom: var(--space-2);
 }
 @media (max-width: 700px) {
   .document-history-body {
     grid-template-columns: minmax(120px, 30%) minmax(0, 1fr);
-    gap: var(--spacing-sm);
+    gap: var(--space-2);
   }
 }

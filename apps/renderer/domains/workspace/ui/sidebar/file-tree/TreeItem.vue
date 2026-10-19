@@ -60,18 +60,18 @@
 
       <!-- 右侧 More 菜单：hover 出现，点击后打开与右键一致的上下文菜单 -->
       <span class="workspace-sidebar-row-actions item-actions">
-        <button
+        <IconButton
+          :label="workspaceMessage('workspace.sidebar.fileTree.moreOptions')"
+          class="more-button"
           v-show="(isHovered || isMoreMenuOpen) && !isRenaming && moreMenuOptions.length > 0"
-          ref="moreButtonRef"
-          class="workspace-sidebar-row-action-button more-button"
-          :aria-label="workspaceMessage('workspace.sidebar.fileTree.moreOptions')"
+          ref="moreButton"
           draggable="false"
           @click.stop="toggleMoreMenu"
           @mousedown.stop.prevent
           @dragstart.stop.prevent
         >
           <MoreIcon direction="horizontal" />
-        </button>
+        </IconButton>
       </span>
 
       <!-- More 下拉菜单：定位与过渡动画对齐 ProjectListView -->
@@ -129,7 +129,7 @@ import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { ImageIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { UnsupportedDocumentIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton } from '@linnya/renderer-ui';
 import { useTreeItemDragDrop } from '../composables/useTreeItemDragDrop.js';
 import { getNodeMenuOptions } from '../composables/useContextMenu.js';
 import { useFixedDropdownPosition } from '../composables/useFixedDropdownPosition';
@@ -172,7 +172,8 @@ const isHovered = ref(false);
 
 // More 下拉菜单（与 ProjectListView 一致：按钮锚点定位 + Teleport + file-tree 专属过渡）
 const isMoreMenuOpen = ref(false);
-const moreButtonRef = ref(null);
+const moreButton = ref(null);
+const moreButtonRef = computed(() => moreButton.value?.element ?? null);
 const {
     dropdownRef,
     dropdownStyle,

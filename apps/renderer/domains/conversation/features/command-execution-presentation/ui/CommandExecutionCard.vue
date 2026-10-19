@@ -59,17 +59,16 @@
           <span v-else class="command-execution-card__status" :class="`is-${data.state}`">
             {{ footerStatusText }}
           </span>
-          <button
-            v-if="canCancel"
-            type="button"
+          <IconButton
+            :label="conversationMessage('conversation.tool.command.cancel')"
+            size="xs"
             class="command-execution-card__cancel"
+            v-if="canCancel"
             :disabled="isCancelling"
-            :title="conversationMessage('conversation.tool.command.cancel')"
-            :aria-label="conversationMessage('conversation.tool.command.cancel')"
             @click="cancelCurrentCommand"
           >
             <CloseIcon />
-          </button>
+          </IconButton>
           <button
             v-if="canSubmitProtectedInput"
             type="button"
@@ -85,19 +84,18 @@
           <span v-if="durationText" class="command-execution-card__duration">
             {{ durationText }}
           </span>
-          <button
-            type="button"
+          <IconButton
+            :label="copyButtonTitle"
+            size="xs"
             class="command-execution-card__copy"
             :class="{
               'is-copied': copyFeedback === 'copied',
               'is-failed': copyFeedback === 'failed',
             }"
-            :title="copyButtonTitle"
-            :aria-label="copyButtonTitle"
             @click="copyCommandAndOutput"
           >
             <CopyIcon />
-          </button>
+          </IconButton>
         </div>
       </div>
     </div>
@@ -113,6 +111,7 @@
 </template>
 
 <script setup lang="ts">
+import { IconButton } from '@linnya/renderer-ui';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import type { ToolCardPresentation, ToolUiExecutionIdentity } from '@linnya/plugin-host-contract/renderer/toolUi';
 

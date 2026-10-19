@@ -6,9 +6,9 @@
         <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 9h-2v4H9v-4H7V9h2V5h2v4h2v2zm5 7H6V4h7v5h5v9z"/>
       </svg>
       <p>{{ workspaceMessage('workspace.sidebar.project.empty') }}</p>
-      <button @click="$emit('create-project')" class="empty-action-button">
+      <BaseButton variant="primary" size="md" class="empty-action-button" @click="$emit('create-project')">
         {{ workspaceMessage('workspace.sidebar.project.createFirst') }}
-      </button>
+      </BaseButton>
     </div>
 
     <div v-else class="project-list">
@@ -27,15 +27,15 @@
         
         <!-- 更多菜单按钮 -->
         <div class="project-actions">
-          <button 
+          <IconButton
+            :label="workspaceMessage('workspace.sidebar.project.moreOptions')"
+            class="more-button"
             v-show="hoveredProjectId === project.id || activeMenuProjectId === project.id"
             :ref="el => setMoreButtonRef(project.id, el)"
-            class="more-button"
-            :title="workspaceMessage('workspace.sidebar.project.moreOptions')"
             @click.stop="toggleMenu(project.id, $event)"
           >
             <MoreIcon direction="horizontal" />
-          </button>
+          </IconButton>
         </div>
       </div>
     </div>
@@ -71,7 +71,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { BaseButton, CustomSelect, IconButton, resolveIconButtonElement } from '@linnya/renderer-ui';
 import { useFixedDropdownPosition } from '../composables/useFixedDropdownPosition';
 import { buildProjectMenuOptions, isProjectDeleteDisabled } from '../functions/projectMenuModel';
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
@@ -110,8 +110,9 @@ const menuOptions = computed(() => buildProjectMenuOptions(activeMenuProject.val
 
 // 设置更多按钮引用
 const setMoreButtonRef = (projectId, el) => {
-  if (el) {
-    moreButtonRefs.value[projectId] = el;
+  const button = resolveIconButtonElement(el);
+  if (button) {
+    moreButtonRefs.value[projectId] = button;
   }
 };
 

@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  padding: 16px;
+  padding: var(--space-4);
   background-color: color-mix(in srgb, var(--color-black) 50%, transparent);
 }
 
@@ -22,7 +22,7 @@
   min-height: 0;
   overflow: visible;
   background-color: var(--color-bg-surface);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
 }
 
@@ -31,40 +31,22 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-5);
   color: var(--color-text-primary);
   border-bottom: none;
 }
 
+/* 标题是弹窗的第一层级：主文字色、副标题字阶；不再用比占位符还浅的元信息灰。 */
 .modal-header h2 {
   flex: 1;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--font-size-subtitle);
   font-style: normal;
-  font-weight: 350;
-  color: var(--color-text-heading-meta);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-subtitle);
+  color: var(--color-text-primary);
   text-align: left;
   text-transform: none;
-}
-
-.modal-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  font-size: 18px;
-  color: var(--color-text-primary);
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-}
-
-.modal-close:hover {
-  background-color: var(--color-bg-hover);
-  border-radius: 4px;
 }
 
 .modal-content {
@@ -116,7 +98,7 @@
 
 .modal-overlay.app-modal-fade-enter-active,
 .modal-overlay.app-modal-fade-leave-active {
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-medium);
 }
 
 .modal-overlay.app-modal-fade-enter-from,

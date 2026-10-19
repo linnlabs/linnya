@@ -9,7 +9,7 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  padding: 16px;
+  padding: var(--space-4);
   background-color: color-mix(in srgb, var(--color-black) 42%, transparent);
   backdrop-filter: blur(3px);
 }
@@ -31,7 +31,7 @@
   overflow: clip;
   color: var(--color-text-primary);
   background-color: var(--color-bg-surface);
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
   box-shadow:
     0 24px 64px -16px color-mix(in srgb, var(--color-black) 30%, transparent),
     0 4px 16px -4px color-mix(in srgb, var(--color-black) 12%, transparent),
@@ -50,9 +50,9 @@
 
 /* 标题文字要和下方导航项的文字左对齐：导航项文字缩进 = 滚动容器 10px + 按钮 8px。 */
 .settings-modal-nav-title {
-  padding: 20px 18px 14px;
+  padding: var(--space-5) var(--space-4) var(--space-3);
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-tight);
   color: var(--color-text-primary);
 }
@@ -60,26 +60,26 @@
 /* 不预留滚动条槽位，否则左右内边距会不对称；导航条目少，几乎不会出现滚动。 */
 .settings-modal-nav-scroll {
   min-height: 0;
-  padding: 0 10px 20px;
+  padding: 0 var(--space-2-5) var(--space-5);
   overflow-y: auto;
 }
 
 .settings-modal-nav-group + .settings-modal-nav-group {
-  margin-top: 18px;
+  margin-top: var(--space-4);
 }
 
 /* 无标题分组（如「关于」）用一条分隔线与上一段区分，不再重复一次标题。 */
 .settings-modal-nav-group + .settings-modal-nav-group.is-untitled {
-  padding-top: 14px;
-  margin-top: 14px;
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
   border-top: 1px solid var(--settings-hairline);
 }
 
 .settings-modal-nav-group-title {
-  padding: 0 8px;
-  margin-bottom: var(--spacing-xs);
+  padding: 0 var(--space-2);
+  margin-bottom: var(--space-1);
   font-size: var(--font-size-xs);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   letter-spacing: 0.04em;
   color: var(--color-text-heading-meta);
 }
@@ -89,9 +89,9 @@
   align-items: center;
   width: 100%;
   min-height: 30px;
-  padding: 6px 8px;
+  padding: var(--space-1-5) var(--space-2);
   font-size: var(--font-size-sm);
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
   line-height: var(--line-height-tight);
   color: var(--color-text-secondary);
   text-align: left;
@@ -100,12 +100,12 @@
   border: none;
   border-radius: var(--radius-md);
   transition:
-    color var(--transition-fast) ease,
-    background-color var(--transition-fast) ease;
+    color var(--duration-micro) var(--ease-standard),
+    background-color var(--duration-micro) var(--ease-standard);
 }
 
 .settings-modal-nav-item + .settings-modal-nav-item {
-  margin-top: 2px;
+  margin-top: var(--space-0-5);
 }
 
 .settings-modal-nav-item:hover {
@@ -114,7 +114,7 @@
 }
 
 .settings-modal-nav-item.is-active {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   background-color: var(--color-bg-navigation-highlight);
 }
@@ -139,29 +139,6 @@
   top: 14px;
   right: 14px;
   z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-md);
-  transition:
-    color var(--transition-fast) ease,
-    background-color var(--transition-fast) ease;
-}
-
-.settings-modal-panel > .settings-modal-close:hover {
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-hover);
-}
-
-.settings-modal-panel > .settings-modal-close:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: -2px;
 }
 
 /*
@@ -189,7 +166,7 @@
   margin-block: 0 34px;
   overflow: hidden;
   font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-tight);
   color: var(--color-text-primary);
   text-overflow: ellipsis;
@@ -220,8 +197,8 @@
   background-color: var(--scrollbar-thumb-color);
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 5px;
-  transition: background-color var(--transition-normal) ease;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .settings-modal-nav-scroll::-webkit-scrollbar-thumb:hover,
@@ -239,6 +216,6 @@
   }
 
   .settings-modal-panel-body {
-    padding: 36px 42px 40px;
+    padding: 36px 42px var(--space-10);
   }
 }

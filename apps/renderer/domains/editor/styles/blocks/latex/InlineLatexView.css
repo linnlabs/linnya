@@ -1,12 +1,12 @@
 .inline-latex-view {
   display: inline-block;
   padding: 1px 3px;
-  margin: 0 2px; /* Add slight horizontal spacing */
+  margin: 0 var(--space-0-5); /* Add slight horizontal spacing */
   line-height: 1; /* Prevent extra line height */
   vertical-align: middle; /* Align vertically with surrounding text */
   cursor: pointer;
-  border-radius: 3px;
-  transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-medium) var(--ease-standard), box-shadow var(--duration-medium) var(--ease-standard);
 }
 
 .inline-latex-view:hover {
@@ -25,16 +25,16 @@
 
 /* Style for source code when rendering fails */
 .inline-latex-view.has-error {
-  padding: 0 3px;
+  padding: 0 calc(var(--space-1) - 1px);
   background-color: var(--color-error-bg);
   border: 1px dashed var(--color-error);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .inline-latex-source-error {
   font-family: var(--font-family-mono); /* Use monospace for source */
   font-size: 0.9em;
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 /* Simple error indicator */
@@ -42,7 +42,7 @@
   display: inline-block;
   margin-left: 3px;
   font-size: 0.8em;
-  color: var(--color-error);
+  color: var(--color-error-text);
   cursor: help; /* Indicate more info on hover (via title) */
 }
 

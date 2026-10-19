@@ -2,24 +2,24 @@
 /* 更新日志与联系方式是叙述性内容，不是表单，保留自己的排版。 */
 
 .about-release-notes {
-  padding-left: 20px;
+  padding-left: var(--space-5);
   margin: 0;
   font-size: var(--font-size-sm);
-  line-height: 1.6;
+  line-height: var(--line-height-prose);
   color: var(--color-text-secondary);
   list-style-type: disc;
 }
 
 .about-release-notes li + li {
-  margin-top: var(--spacing-xs);
+  margin-top: var(--space-1);
 }
 
 .about-contact {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   font-size: var(--font-size-sm);
-  line-height: 1.6;
+  line-height: var(--line-height-prose);
   color: var(--color-text-secondary);
 }
 
@@ -30,13 +30,13 @@
 .about-contact-list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
-  margin: var(--spacing-sm) 0 0;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
 }
 
 .about-contact-list > div {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
 }
 
 .about-contact-list dt {

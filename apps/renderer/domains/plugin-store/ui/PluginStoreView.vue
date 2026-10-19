@@ -29,9 +29,17 @@
       </section>
 
       <section v-if="selectedPluginId" class="plugin-store-detail-shell">
-        <section v-if="isDetailLoading" class="plugin-store-placeholder" aria-live="polite">
-          <p>{{ pluginStoreMessage('pluginStore.loading.detail') }}</p>
-        </section>
+        <Skeleton
+          v-if="isDetailLoading"
+          class="plugin-store-detail-skeleton"
+          :label="pluginStoreMessage('pluginStore.loading.detail')"
+        >
+          <div class="plugin-store-detail-skeleton__hero">
+            <SkeletonBlock width="20px" height="20px" radius="sm" />
+            <SkeletonBlock width="32%" height="14px" />
+          </div>
+          <SkeletonBlock v-for="width in DETAIL_SKELETON_LINES" :key="width" :width="width" />
+        </Skeleton>
 
         <section v-else-if="selectedDetail" class="plugin-store-detail">
           <section class="plugin-store-detail-hero" aria-labelledby="plugin-store-detail-title">
@@ -176,13 +184,24 @@
         </section>
       </section>
 
-      <section
+      <Skeleton
         v-else-if="isStoreItemsLoading && !hasStoreItems"
-        class="plugin-store-placeholder"
-        aria-live="polite"
+        class="plugin-store-list-skeleton"
+        :label="pluginStoreMessage('pluginStore.loading.list')"
       >
-        <p>{{ pluginStoreMessage('pluginStore.loading.list') }}</p>
-      </section>
+        <!-- 与插件卡片同构：图标 + 名称、描述、版本信息，行尾开关 -->
+        <div v-for="card in LIST_SKELETON_CARDS" :key="card.title" class="plugin-store-list-skeleton__card">
+          <div class="plugin-store-list-skeleton__main">
+            <div class="plugin-store-list-skeleton__heading">
+              <SkeletonBlock width="20px" height="20px" radius="sm" />
+              <SkeletonBlock :width="card.title" height="12px" />
+            </div>
+            <SkeletonBlock :width="card.description" />
+            <SkeletonBlock width="28%" height="8px" />
+          </div>
+          <SkeletonBlock width="32px" height="18px" />
+        </div>
+      </Skeleton>
 
       <section v-else-if="!hasVisibleStoreItems" class="plugin-store-empty-state">
         <p class="plugin-store-empty-title">{{ visibleStoreEmptyTitle }}</p>
@@ -272,6 +291,8 @@ import {
   ActionButtons,
   PageSectionHeader,
   SegmentedTabs,
+  Skeleton,
+  SkeletonBlock,
   Switch,
   TagChip,
   type SegmentedTabItem,
@@ -294,6 +315,14 @@ import {
 import { resolvePluginRuntimeUserErrorMessage } from '../functions/pluginRuntimeErrorPresentation';
 import { usePluginStoreLocalization } from './usePluginStoreLocalization';
 import type { PluginStoreMessageKey } from '../definitions/pluginStoreMessages';
+
+/* 加载骨架的固定形状：与真实卡片、详情的版式一致，每次渲染保持不变。 */
+const LIST_SKELETON_CARDS = [
+  { title: '22%', description: '64%' },
+  { title: '30%', description: '52%' },
+  { title: '18%', description: '70%' },
+] as const;
+const DETAIL_SKELETON_LINES = ['92%', '86%', '74%', '48%'] as const;
 
 type PluginStoreTabId = 'installed' | 'market';
 type PluginCapabilityItem = NonNullable<PluginStoreDetail['skills']>[number];

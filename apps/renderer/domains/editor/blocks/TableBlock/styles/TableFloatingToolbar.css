@@ -1,6 +1,6 @@
 .table-toolbar-root {
   display: flex;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
   align-items: center;
 }
 
@@ -10,17 +10,17 @@
   justify-content: center;
   min-width: 28px;
   height: 26px;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   margin: 0;
-  font-size: 12px;
-  line-height: 1.2;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
   color: var(--color-text-primary);
   text-align: center;
   cursor: pointer;
   background-color: transparent;
   border: none;
-  border-radius: 4px;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-medium) var(--ease-standard), box-shadow var(--duration-medium) var(--ease-standard);
 }
 
 .table-toolbar-root .toolbar-button:hover:not(:disabled) {
@@ -38,7 +38,7 @@
 }
 
 .table-toolbar-root .ai-trigger.toolbar-button {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-accent);
   background-color: var(--color-accent-bg);
 }
@@ -55,7 +55,7 @@
 
 .table-toolbar-root .toolbar-dropdown-trigger {
   display: inline-flex;
-  gap: 2px;
+  gap: var(--space-0-5);
   align-items: center;
 }
 
@@ -63,9 +63,9 @@
   flex-shrink: 0;
   width: 12px;
   height: 12px;
-  margin-left: 2px;
+  margin-left: var(--space-0-5);
   opacity: 0.6;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition: transform var(--duration-medium) var(--ease-standard), opacity var(--duration-medium) var(--ease-standard);
 }
 
 .table-toolbar-root .toolbar-dropdown-trigger.is-menu-open .chevron-icon {
@@ -77,13 +77,13 @@
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  z-index: 1000;
+  z-index: var(--linnya-ui-layer-popover);
   min-width: 120px;
 }
 
 .toolbar-dropdown-fade-enter-active,
 .toolbar-dropdown-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .toolbar-dropdown-fade-enter-from {

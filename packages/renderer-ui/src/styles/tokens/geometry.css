@@ -1,19 +1,47 @@
-/* Renderer UI 非主题 token：间距、圆角、阴影、过渡。 */
+/* Renderer UI 非主题 token：间距、圆角、边框、焦点、阴影与动效。 */
 
 :root {
-  --spacing-xxs: 2px;
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-2xl: 40px;
+  /* 间距刻度：4px 网格，编号 × 4 = 像素；0.5、1.5、2.5 半步只用于紧凑控件内部。 */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* 2.x 已发布插件仍按名称消费的旧间距别名；仓内新代码使用 --space-*，下一个 major 删除。 */
+  --spacing-xxs: var(--space-0-5);
+  --spacing-xs: var(--space-1);
+  --spacing-sm: var(--space-2);
+  --spacing-md: var(--space-4);
+  --spacing-lg: var(--space-6);
+  --spacing-xl: var(--space-8);
+  --spacing-2xl: var(--space-10);
 
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
   --radius-full: 9999px;
+
+  /* 控件高度：按钮、输入框、选择器在同一行并排时取同一档，保证基线与边缘对齐。 */
+  --control-height-sm: 28px;
+  --control-height-md: 32px;
+  --control-height-lg: 36px;
+
+  /* 发丝边框：高分屏取物理 1px，普通屏保持 1px。 */
+  --border-width-hairline: 1px;
+
+  /* 焦点环由 outline 绘制，颜色来自主题的 --color-focus-ring。 */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
 
   --shadow-xs: 0 1px 2px var(--shadow-color-xs);
   --shadow-sm: 0 1px 3px var(--shadow-color-sm);
@@ -26,7 +54,41 @@
     0 -2px 4px -1px color-mix(in srgb, var(--color-black) 4%, transparent),
     0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
 
-  --transition-fast: 0.1s;
-  --transition-normal: 0.2s;
-  --transition-slow: 0.3s;
+  /* 时长按变化幅度选择：反馈 → 小浮层 → 展开收起 → 面板与对话框。 */
+  --duration-micro: 100ms;
+  --duration-short: 150ms;
+  --duration-medium: 200ms;
+  --duration-long: 300ms;
+
+  /* 循环动画（骨架微光、加载指示）的一个周期；减少动态效果时由组件停用动画，而不是缩短周期。 */
+  --duration-loop: 1600ms;
+
+  /* 加载占位的出现延迟：短于它的加载不显示占位，避免一闪而过。不是动效，不随减少动态效果归零。 */
+  --delay-reveal: 200ms;
+
+  /* 屏内状态变化用 standard；进入用 enter 减速落定；离开用 exit 加速收走。 */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 1, 1);
+
+  /* 2.x 已发布插件仍按名称消费的旧时长别名；仓内新代码使用 --duration-*，下一个 major 删除。 */
+  --transition-fast: var(--duration-micro);
+  --transition-normal: var(--duration-medium);
+  --transition-slow: var(--duration-long);
+}
+
+@media (min-resolution: 2dppx) {
+  :root {
+    --border-width-hairline: 0.5px;
+  }
+}
+
+/* 减少动态效果时，所有经由时长 token 的过渡与动画立即完成，保留极短时长让结束事件照常触发。 */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-micro: 0.01ms;
+    --duration-short: 0.01ms;
+    --duration-medium: 0.01ms;
+    --duration-long: 0.01ms;
+  }
 }

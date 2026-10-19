@@ -17,7 +17,7 @@
   align-items: center;
   cursor: pointer; /* 指针光标，表示可点击 */
   opacity: 0; /* 默认不可见 */
-  transition: opacity var(--transition-normal), color var(--transition-normal), background-color var(--transition-normal);
+  transition: opacity var(--duration-medium), color var(--duration-medium), background-color var(--duration-medium);
   border-radius: var(--radius-sm); /* 圆角 */
   z-index: 200; /* 提高z-index确保在批注层之上 */
   color: var(--annotation-entry-color); /* 设置默认图标颜色为浅灰色 */

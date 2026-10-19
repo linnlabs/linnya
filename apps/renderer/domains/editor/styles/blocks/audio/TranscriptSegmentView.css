@@ -2,7 +2,7 @@
   position: relative;
   display: grid;
   min-height: auto;
-  padding: 8px 0;
+  padding: var(--space-2) 0;
 }
 
 .transcript-segment-wrapper:first-child {
@@ -19,7 +19,7 @@
   flex-shrink: 0;
   align-items: flex-start;
   justify-content: flex-start;
-  padding: 2px 0 0;
+  padding: var(--space-0-5) 0 0;
 }
 
 .transcript-segment-wrapper:first-child .timestamp-column {
@@ -31,15 +31,17 @@
 }
 
 .transcript-segment-wrapper .timestamp-text {
-  padding: 2px 6px;
-  border-radius: 3px;
+  padding: var(--space-0-5) var(--space-1-5);
+  border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.6;
+  font-size: var(--font-size-prose);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-prose);
   cursor: pointer;
   user-select: none;
-  transition: all 0.15s ease;
+  transition:
+    background-color var(--duration-short) var(--ease-standard),
+    color var(--duration-short) var(--ease-standard);
 }
 
 .transcript-segment-wrapper .timestamp-text:hover {
@@ -81,7 +83,9 @@
   border-radius: 50%;
   background: var(--color-accent);
   transform: translateY(-50%);
-  transition: all 0.15s ease;
+  transition:
+    background-color var(--duration-short) var(--ease-standard),
+    transform var(--duration-short) var(--ease-standard);
 }
 
 .transcript-segment-wrapper:first-child .timestamp-column::after {
@@ -94,7 +98,7 @@
 
 .transcript-segment-wrapper.active .timestamp-text {
   color: var(--color-accent);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .transcript-segment-wrapper.active .timestamp-column::after {
@@ -104,7 +108,7 @@
 
 .transcript-segment-wrapper .content-columns {
   position: relative;
-  padding: 2px 0 0;
+  padding: var(--space-0-5) 0 0;
   overflow: hidden;
 }
 
@@ -114,8 +118,8 @@
 
 .transcript-segment-wrapper .content-dom {
   color: var(--color-text-primary);
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: var(--font-size-subtitle);
+  line-height: var(--line-height-subtitle);
   outline: none;
 }
 
@@ -171,7 +175,9 @@
   width: 1px;
   height: 100%;
   background: var(--color-border-default);
-  transition: all 0.2s ease;
+  transition:
+    width var(--duration-medium) var(--ease-standard),
+    background-color var(--duration-medium) var(--ease-standard);
 }
 
 .transcript-segment-wrapper .divider-overlay.is-hovering .divider-handle,

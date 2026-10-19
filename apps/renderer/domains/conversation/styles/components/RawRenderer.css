@@ -6,13 +6,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 0;
+  padding: var(--space-6) 0;
 }
 
 .raw-renderer .loading-indicator {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .raw-renderer .spinner {
@@ -25,7 +25,7 @@
 }
 
 .raw-renderer .loading-text {
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   color: var(--color-text-secondary);
 }
 
@@ -33,34 +33,35 @@
   width: 100%;
 }
 
+/* JSON 区是刻意固定的深色代码面板，三套主题下保持同一外观。 */
 .raw-renderer .json-content {
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background-color: var(--color-gray-900);
 }
 
 .raw-renderer .json-display {
   overflow-x: auto;
-  padding: 16px;
+  padding: var(--space-4);
   color: var(--color-brand-400);
   font-family: var(--font-family-mono);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   scrollbar-width: thin;
   white-space: pre-wrap;
 }
 
 .raw-renderer .text-content {
   border: 1px solid var(--color-border-light);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background-color: var(--color-bg-subtle);
 }
 
 .raw-renderer .text-display {
   max-height: 256px;
   overflow-y: auto;
-  padding: 16px;
-  color: var(--color-gray-800);
-  font-size: 14px;
+  padding: var(--space-4);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-prose);
   overflow-wrap: break-word;
   scrollbar-width: thin;
   white-space: pre-wrap;
@@ -69,29 +70,29 @@
 .raw-renderer .error-state {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--color-red-200);
-  border-radius: 8px;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--color-error) 35%, transparent);
+  border-radius: var(--radius-lg);
   background-color: var(--color-error-bg);
 }
 
 .raw-renderer .error-icon {
   flex-shrink: 0;
-  font-size: 20px;
+  font-size: 20px; /* scale-exempt: 错误图标字形尺寸 */
 }
 
 .raw-renderer .error-content h4 {
-  margin: 0 0 4px;
-  color: var(--color-red-900);
-  font-size: 14px;
-  font-weight: 500;
+  margin: 0 0 var(--space-1);
+  color: var(--color-error-text);
+  font-size: var(--font-size-prose);
+  font-weight: var(--font-weight-medium);
 }
 
 .raw-renderer .error-content p {
   margin: 0;
-  color: var(--color-red-700);
-  font-size: 14px;
+  color: var(--color-error-text);
+  font-size: var(--font-size-prose);
 }
 
 .raw-renderer .json-display::-webkit-scrollbar,
@@ -101,7 +102,7 @@
 }
 
 .raw-renderer .json-display::-webkit-scrollbar-thumb {
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background-color: var(--color-gray-600);
 }
 
@@ -110,12 +111,12 @@
 }
 
 .raw-renderer .text-display::-webkit-scrollbar-thumb {
-  border-radius: 4px;
-  background-color: var(--color-gray-300);
+  border-radius: var(--radius-sm);
+  background-color: var(--scrollbar-thumb-color);
 }
 
 .raw-renderer .text-display::-webkit-scrollbar-track {
-  background-color: var(--color-gray-100);
+  background-color: var(--scrollbar-track-color);
 }
 
 @keyframes raw-renderer-spin {

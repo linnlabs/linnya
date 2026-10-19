@@ -15,20 +15,20 @@
       >
         <!-- 输入能力统一从“+”菜单进入，附件与 Agent 不再占用独立底栏按钮。 -->
         <div class="input-action-menu-container">
-          <button
-            ref="inputActionMenuButtonRef"
-            type="button"
+          <IconButton
+            ref="inputActionMenuButtonComponentRef"
             class="input-action-menu-button"
+            size="xs"
+            :label="conversationMessage('conversation.input.actionMenu.open')"
             :disabled="isInputControlsDisabled"
-            :title="conversationMessage('conversation.input.actionMenu.open')"
             aria-haspopup="menu"
             :aria-expanded="showInputActionMenu"
             @click="toggleInputActionMenu"
             @keydown.down.prevent="openInputActionMenu"
             @keydown.up.prevent="openInputActionMenu"
           >
-            <AddIcon class="input-action-menu-add-icon" />
-          </button>
+            <AddIcon />
+          </IconButton>
 
           <Teleport to="body">
             <transition name="ai-assistant-input-action-menu-fade">
@@ -67,7 +67,10 @@
         >
           <div
             class="select-trigger select-trigger--minimal agent-choice-trigger"
-            :class="{ 'is-disabled': isInputControlsDisabled }"
+            :class="{
+              'is-disabled': isInputControlsDisabled,
+              'is-unavailable': isActiveAgentChoiceUnavailable,
+            }"
             role="button"
             :aria-label="activeAgentChoiceAriaLabel"
             :title="activeAgentChoiceAriaLabel"
@@ -160,7 +163,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import type { PropType, Component } from 'vue';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton } from '@linnya/renderer-ui';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
@@ -201,6 +204,7 @@ const props = defineProps({
     type: String as PropType<string | null>,
     default: null,
   },
+  isActiveAgentChoiceUnavailable: { type: Boolean, default: false },
   primaryModelValue: {
     type: String as PropType<string | null>,
     default: null,
@@ -283,7 +287,8 @@ const activeAgentChoiceIconComponent = computed<Component | null>(() => {
 });
 
 const showInputActionMenu = ref(false);
-const inputActionMenuButtonRef = ref<HTMLElement | null>(null);
+const inputActionMenuButtonComponentRef = ref<InstanceType<typeof IconButton> | null>(null);
+const inputActionMenuButtonRef = computed<HTMLElement | null>(() => inputActionMenuButtonComponentRef.value?.element ?? null);
 const inputActionMenuWrapperRef = ref<HTMLElement | null>(null);
 const selectorsRowRef = ref<HTMLElement | null>(null);
 

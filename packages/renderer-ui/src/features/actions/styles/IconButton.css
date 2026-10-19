@@ -1,0 +1,114 @@
+/* packages/renderer-ui/src/features/actions/styles/IconButton.css */
+/*
+ * 纯图标按钮：静止时退后一级（tertiary），悬停时提亮到主文字色，选中时使用强调色浅底。
+ * 已有 hover 底色的容器（例如侧栏行）可以设置 --linnya-ui-icon-button-hover-bg，
+ * 让按钮在行 hover 之上再高一层；这是唯一允许调用方调整的视觉入口。
+ */
+
+.linnya-ui-icon-button {
+  --linnya-ui-icon-button-box: 24px;
+  --linnya-ui-icon-button-icon: 18px;
+
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--linnya-ui-icon-button-box);
+  height: var(--linnya-ui-icon-button-box);
+  padding: 0;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--duration-micro) var(--ease-standard),
+    color var(--duration-micro) var(--ease-standard);
+}
+
+.linnya-ui-icon-button > svg {
+  flex-shrink: 0;
+  width: var(--linnya-ui-icon-button-icon);
+  height: var(--linnya-ui-icon-button-icon);
+}
+
+.linnya-ui-icon-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- 尺寸 --- */
+
+.linnya-ui-icon-button--xs {
+  --linnya-ui-icon-button-box: 20px;
+  --linnya-ui-icon-button-icon: 14px;
+}
+
+/* 20px 外框低于 24px 最小命中区，用透明伪元素把可点击范围向外扩 2px。 */
+.linnya-ui-icon-button--xs::before {
+  position: absolute;
+  inset: -2px;
+  content: '';
+}
+
+.linnya-ui-icon-button--md {
+  --linnya-ui-icon-button-box: 28px;
+}
+
+.linnya-ui-icon-button--lg {
+  --linnya-ui-icon-button-box: 32px;
+  --linnya-ui-icon-button-icon: 20px;
+}
+
+/* --- 变体 --- */
+
+.linnya-ui-icon-button:not(:disabled):hover {
+  color: var(--color-text-primary);
+  background-color: var(--linnya-ui-icon-button-hover-bg);
+}
+
+.linnya-ui-icon-button--subtle {
+  background-color: var(--color-bg-subtle);
+}
+
+/* 与 ToolbarButton 的选中态一致：开关打开、下拉展开时用强调色浅底。 */
+.linnya-ui-icon-button--active,
+.linnya-ui-icon-button--active:not(:disabled):hover {
+  color: var(--color-accent-text);
+  background-color: var(--color-accent-bg);
+}
+
+.linnya-ui-icon-button--danger:not(:disabled):hover {
+  color: var(--color-error-text);
+  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
+}
+
+.linnya-ui-icon-button:disabled {
+  color: var(--color-text-placeholder);
+  cursor: not-allowed;
+}
+
+/*
+ * overlay：叠在图片等内容上的按钮。图片没有主题，颜色固定为白色；底条（半透明深色、模糊）由容器提供。
+ * 选中态沿用强调色，但不用强调色浅底，避免在深色底条上发灰。
+ */
+.linnya-ui-icon-button--overlay {
+  color: color-mix(in srgb, var(--color-white) 78%, transparent);
+}
+
+.linnya-ui-icon-button--overlay:not(:disabled):hover {
+  color: var(--color-white);
+  background-color: color-mix(in srgb, var(--color-white) 16%, transparent);
+}
+
+.linnya-ui-icon-button--overlay.linnya-ui-icon-button--active,
+.linnya-ui-icon-button--overlay.linnya-ui-icon-button--active:not(:disabled):hover {
+  color: var(--color-accent-light);
+  background-color: color-mix(in srgb, var(--color-white) 10%, transparent);
+}
+
+.linnya-ui-icon-button--overlay:disabled {
+  color: color-mix(in srgb, var(--color-white) 35%, transparent);
+}

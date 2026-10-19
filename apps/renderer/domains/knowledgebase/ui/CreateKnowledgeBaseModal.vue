@@ -61,14 +61,16 @@
                 :disabled="isCreating"
                 @keydown.enter.prevent="handleAddTag"
               />
-              <button
-                type="button"
+              <IconButton
+                :label="knowledgeBaseMessage('knowledgeBase.create.addTag')"
+                size="lg"
+                variant="subtle"
                 class="add-tag-button"
                 :disabled="isCreating || !tagInput.trim()"
                 @click="handleAddTag"
               >
                 <AddIcon class="add-icon" />
-              </button>
+              </IconButton>
             </div>
 
             <div v-if="kbTags.length > 0" class="tags-list">
@@ -111,14 +113,16 @@
                   />
                 </template>
               </CustomSelect>
-              <button
-                type="button"
+              <IconButton
+                :label="knowledgeBaseMessage('knowledgeBase.create.addProject')"
+                size="lg"
+                variant="subtle"
                 class="add-tag-button"
                 :disabled="isCreating || !selectedProjectId"
                 @click="handleAddProjectLink"
               >
                 <AddIcon class="add-icon" />
-              </button>
+              </IconButton>
             </div>
 
             <div v-if="linkedProjects.length > 0" class="tags-list">
@@ -156,7 +160,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import { useKnowledgeBaseStore } from '../stores/knowledgeBase';
-import { ActionButtons, CustomSelect, Modal, TagChip } from '@linnya/renderer-ui';
+import { ActionButtons, CustomSelect, IconButton, Modal, TagChip } from '@linnya/renderer-ui';
 import { knowledgeBaseService } from '../services/knowledgeBaseService.js';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';

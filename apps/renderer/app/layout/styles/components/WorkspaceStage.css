@@ -21,13 +21,13 @@
   display: grid;
   place-items: center;
   color: var(--color-text-tertiary);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
 }
 
 .workspace-stage__conversation-side {
   height: 100%;
   min-height: 0;
-  transition: transform var(--transition-slow) ease, opacity var(--transition-slow) ease;
+  transition: transform var(--duration-long) var(--ease-standard), opacity var(--duration-long) var(--ease-standard);
   transform: translateX(16px);
   opacity: 0;
 }
@@ -48,7 +48,7 @@
 .workspace-stage__document-frame--right {
   order: 2;
   flex: 0 0 auto;
-  transition: width var(--transition-slow) ease;
+  transition: width var(--duration-long) var(--ease-standard);
   will-change: width;
 }
 
@@ -59,7 +59,7 @@
   min-height: 0;
   flex-shrink: 0;
   overflow: hidden;
-  transition: width var(--transition-slow) ease;
+  transition: width var(--duration-long) var(--ease-standard);
   will-change: width;
 }
 
@@ -86,7 +86,7 @@
 
 .workspace-stage__document--right {
   height: 100%;
-  transition: transform var(--transition-slow) ease, opacity var(--transition-slow) ease;
+  transition: transform var(--duration-long) var(--ease-standard), opacity var(--duration-long) var(--ease-standard);
   transform: translateX(16px);
   opacity: 0;
 }

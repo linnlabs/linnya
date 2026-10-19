@@ -1,0 +1,18 @@
+/* apps/renderer/domains/settings/styles/tokens/theme-preview.css */
+/*
+ * 外观设置里的主题预览插画调色板。
+ * 插画描述的是主题本身（白天、月白、夜晚），不随当前主题切换，所以使用固定色值；
+ * 这是设计规范第 2.6 节允许的“主题预览色块”例外，只在此文件定义，业务样式只引用变量。
+ */
+.appearance-theme-selector {
+  --pv-day-sky: #ffffff;
+  --pv-sun: #ffd66b;
+  --pv-cloud: #ffffff;
+  --pv-moon-sky: #e6eefb;
+  --pv-moon-white: #ffffff;
+  --pv-night-sky: #1e232d;
+  --pv-moon-warm: #f2f1e6;
+  --pv-star-1: #cfd6e6;
+  --pv-star-2: #aab3c8;
+  --pv-star-3: #8f99b0;
+}

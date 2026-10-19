@@ -5,23 +5,25 @@
 }
 
 .kb-layout .tab-navigation {
-  margin-left: 16px;
+  margin-left: var(--space-4);
   display: flex;
-  gap: 4px;
-  border-radius: 8px;
+  gap: var(--space-1);
+  border-radius: var(--radius-lg);
   flex-shrink: 0;
   width: fit-content;
 }
 
 .kb-layout .tab-button {
-  padding: 6px 16px;
+  padding: var(--space-1-5) var(--space-4);
   border: none;
   background-color: transparent;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   color: var(--color-text-secondary);
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  border-radius: var(--radius-md);
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    color var(--duration-medium) var(--ease-standard);
   white-space: nowrap;
 }
 
@@ -32,7 +34,7 @@
 .kb-layout .tab-button.active {
   color: var(--color-accent);
   background-color: var(--color-accent-bg);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .kb-layout .main-content {
@@ -58,8 +60,8 @@
 
 .kb-layout .main-content::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color);
-  border-radius: 5px;
-  transition: background-color 0.2s ease;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }

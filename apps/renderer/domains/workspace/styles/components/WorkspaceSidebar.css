@@ -34,7 +34,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   color: var(--workspace-sidebar-label-color);
   /*
    * 侧边栏是导航和操作区域，不是正文阅读区域。
@@ -57,8 +57,8 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-2-5);
 }
 
 .workspace-sidebar .sidebar-entry,
@@ -71,9 +71,9 @@
   align-items: center;
   width: 100%;
   height: var(--workspace-sidebar-row-height);
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -90,8 +90,8 @@
 }
 
 .workspace-sidebar .sidebar-empty-state {
-  padding: 12px 8px;
-  font-size: 12px;
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--font-size-footnote);
   color: var(--workspace-sidebar-muted-color);
 }
 
@@ -111,14 +111,14 @@
    * 否则高度开头太快时，会先露出一段侧栏底色，看起来像空白遮挡。
    */
   transition:
-    height 260ms cubic-bezier(0.25, 0, 0.3, 1),
-    opacity 220ms linear;
+    height var(--duration-long) var(--ease-standard),
+    opacity var(--duration-medium) linear;
 }
 
 .workspace-sidebar .project-collapse-leave-active {
   transition:
-    height 220ms cubic-bezier(0.25, 0, 0.3, 1),
-    opacity 180ms linear;
+    height var(--duration-medium) var(--ease-standard),
+    opacity var(--duration-medium) linear;
 }
 
 .workspace-sidebar .project-collapse-enter-from {
@@ -135,8 +135,8 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-2-5);
 }
 
 .workspace-sidebar .project-nav-header {
@@ -148,28 +148,7 @@
 }
 
 .workspace-sidebar .project-nav-back-button {
-  /* 中文说明：按钮只略微扩大点击区域，图标仍保持 18px；标题间距用 margin 明确表达。 */
-  width: 24px;
-  height: 24px;
-  margin-right: 8px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.workspace-sidebar .project-nav-back-button:hover {
-  background-color: var(--color-bg-hover);
-  color: var(--color-text-primary);
-}
-
-.workspace-sidebar .project-nav-back-icon {
-  width: 18px;
-  height: 18px;
+  margin-right: var(--space-2);
 }
 
 .workspace-sidebar .project-nav-title {
@@ -178,8 +157,8 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 14px;
-  font-weight: 400;
+  font-size: var(--font-size-prose);
+  font-weight: var(--font-weight-regular);
   line-height: var(--workspace-sidebar-row-height);
   color: var(--workspace-sidebar-heading-color);
 }
@@ -189,9 +168,9 @@
   position: relative;
   display: grid;
   grid-template-columns: 22px 22px;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 7px;
+  gap: var(--space-0-5);
+  padding: var(--space-0-5);
+  border-radius: var(--radius-lg);
   background-color: var(--color-bg-subtle);
   --project-nav-indicator-x: 2px;
 
@@ -206,11 +185,11 @@
   left: 0;
   width: 22px;
   transform: translateX(var(--project-nav-indicator-x));
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   background-color: var(--color-bg-surface);
   box-shadow: 0 1px 2px var(--shadow-color-sm);
   z-index: 0;
-  transition: transform 0.24s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: transform var(--duration-medium) var(--ease-enter);
 }
 
 .workspace-sidebar--files .project-nav-tabs {
@@ -223,7 +202,7 @@
   width: 22px;
   height: 22px;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--workspace-sidebar-muted-color);
   cursor: pointer;
@@ -248,9 +227,9 @@
   box-sizing: border-box;
   width: 100%;
   height: var(--workspace-sidebar-row-height);
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -268,8 +247,8 @@
   box-sizing: border-box;
   width: 100%;
   height: var(--workspace-sidebar-row-height);
-  padding: 0 8px;
-  border-radius: 6px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--workspace-sidebar-muted-color);
 }
@@ -282,7 +261,7 @@
 .workspace-sidebar .project-nav-search-icon {
   width: 18px;
   height: 18px;
-  margin-right: 10px;
+  margin-right: var(--space-2-5);
   flex-shrink: 0;
   color: currentColor;
 }
@@ -309,7 +288,7 @@
 
 .project-create-menu-wrapper {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--linnya-ui-layer-popover);
 }
 
 .project-create-menu-wrapper .project-create-menu-options {
@@ -319,7 +298,7 @@
 
 .workspace-project-create-menu-fade-enter-active,
 .workspace-project-create-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .workspace-project-create-menu-fade-enter-from {
@@ -336,7 +315,7 @@
   width: 16px;
   height: 16px;
   color: var(--workspace-sidebar-muted-color);
-  margin-right: 8px;
+  margin-right: var(--space-2);
   flex-shrink: 0;
 }
 
@@ -345,7 +324,7 @@
   background: transparent;
   width: 100%;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   outline: none;
   padding: 0;
 }
@@ -396,7 +375,7 @@
 
 .workspace-sidebar .project-section-heading {
   flex-shrink: 0;
-  padding: 0 12px;
+  padding: 0 var(--space-3);
 }
 
 .workspace-sidebar .project-files-panel .file-tree-view {
@@ -408,7 +387,7 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: var(--workspace-sidebar-row-list-padding, 2px 0 4px);
+  padding: var(--workspace-sidebar-row-list-padding, var(--space-0-5) 0 var(--space-1));
 }
 
 .workspace-sidebar .workspace-sidebar-row {
@@ -449,7 +428,7 @@
     0
     var(--workspace-sidebar-row-padding-left);
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--workspace-sidebar-row-color);
   cursor: pointer;
@@ -493,7 +472,7 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   line-height: var(--workspace-sidebar-row-height);
   color: var(--workspace-sidebar-row-label-color);
   text-overflow: ellipsis;
@@ -511,38 +490,21 @@
   right: 5px;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-0-5);
   transform: translateY(-50%);
 }
 
-.workspace-sidebar .workspace-sidebar-row-action-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 2px;
-  border: 0;
-  border-radius: 3px;
-  background: transparent;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-}
-
-.workspace-sidebar .workspace-sidebar-row-action-button:hover {
-  /* 中文说明：row 内按钮必须比行 hover 再高一层，否则二次 hover 没有明确反馈。 */
-  background-color: var(--color-bg-hover-strong);
-  color: var(--color-text-secondary);
-}
-
-.workspace-sidebar .workspace-sidebar-row-action-button svg {
-  width: 18px;
-  height: 18px;
+/*
+ * 行内操作按钮由 IconButton 提供视觉；行本身已有 hover / 选中底色，
+ * 按钮的 hover 使用 raised 档，在两种行底色之上都再高一层，二次悬停才有明确反馈。
+ */
+.workspace-sidebar .workspace-sidebar-row-actions {
+  --linnya-ui-icon-button-hover-bg: var(--linnya-ui-icon-button-hover-bg-raised);
 }
 
 /* PROJECT_SETUP 视图下：AI 项目初始化占位态 */
 .workspace-sidebar .project-setup-empty-state {
-  padding: 16px 12px 20px;
+  padding: var(--space-4) var(--space-3) var(--space-5);
   height: 100%;
   box-sizing: border-box;
   display: flex;
@@ -553,8 +515,8 @@
 
 .workspace-sidebar .project-setup-card {
   position: relative;
-  padding: 14px 12px 14px;
-  border-radius: 8px;
+  padding: var(--space-3) var(--space-3) var(--space-3);
+  border-radius: var(--radius-lg);
   background-color: var(--color-bg-subtle);
   border: 1px solid var(--color-border-default);
   box-shadow: 0 4px 10px var(--shadow-color-sm);
@@ -567,19 +529,19 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 .workspace-sidebar .project-setup-title-main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
   min-width: 0;
 }
 
 .workspace-sidebar .project-setup-eyebrow {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   /* 字符间距稍微紧凑一些，避免过于松散 */
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -587,8 +549,8 @@
 }
 
 .workspace-sidebar .project-setup-title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--font-size-prose);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -597,10 +559,10 @@
 
 .workspace-sidebar .project-setup-badge {
   flex-shrink: 0;
-  padding: 3px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 500;
+  padding: calc(var(--space-1) - 1px) var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
   color: var(--color-accent-light);
   background-color: var(--color-accent-bg-subtle);
   border: 1px solid var(--color-accent-bg-hover);
@@ -609,21 +571,21 @@
 .workspace-sidebar .project-setup-subtitle {
   position: relative;
   margin: 0;
-  margin-bottom: 10px;
-  font-size: 12px;
-  line-height: 1.5;
+  margin-bottom: var(--space-2-5);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-normal);
   color: var(--workspace-sidebar-label-color);
 }
 
 .workspace-sidebar .project-setup-steps {
   position: relative;
   margin: 0;
-  padding: 8px 8px 4px;
+  padding: var(--space-2) var(--space-2) var(--space-1);
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  border-radius: 6px;
+  gap: var(--space-1);
+  border-radius: var(--radius-md);
   background-color: var(--color-bg-surface);
   border: 1px dashed var(--color-border-light);
 }
@@ -631,8 +593,8 @@
 .workspace-sidebar .project-setup-steps li {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  font-size: 11px;
+  gap: var(--space-1-5);
+  font-size: var(--font-size-caption);
   color: var(--workspace-sidebar-label-color);
 }
 
@@ -642,9 +604,9 @@
   justify-content: center;
   width: 16px;
   height: 16px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 600;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   background-color: var(--color-accent-strong-light);
   border: 1px solid var(--color-accent-light);
@@ -653,13 +615,13 @@
 
 .workspace-sidebar .step-text {
   flex: 1;
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
 }
 
 .workspace-sidebar .nav-icon {
   width: 18px;
   height: 18px;
-  margin-right: 10px;
+  margin-right: var(--space-2-5);
   flex-shrink: 0;
   color: var(--color-text-secondary);
 }
@@ -669,102 +631,69 @@
 }
 
 .workspace-sidebar .nav-label {
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   color: var(--workspace-sidebar-label-color);
 }
 
 .workspace-sidebar .projects-section {
-  padding: 0 10px;
+  padding: 0 var(--space-2-5);
 }
 
 .workspace-sidebar .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8px;
-  border-radius: 4px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
   height: 30px;
   box-sizing: border-box;
 }
 
 .workspace-sidebar .section-title {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-semibold);
   color: var(--workspace-sidebar-heading-color);
   text-transform: uppercase;
-}
-
-.workspace-sidebar .add-button {
-  background: none;
-  border: none;
-  padding: 2px;
-  border-radius: 3px;
-  cursor: pointer;
-  width: 22px;
-  height: 22px;
-  color: var(--color-text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.workspace-sidebar .add-button:hover {
-  background-color: var(--color-bg-hover);
 }
 
 .workspace-sidebar .header-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 /* Common states */
-.workspace-sidebar .loading-state,
 .workspace-sidebar .error-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px;
+  padding: var(--space-8) var(--space-4);
   text-align: center;
   color: var(--workspace-sidebar-muted-color);
 }
 
-.workspace-sidebar .loading-state {
-  opacity: 0;
-  animation: workspace-sidebar-fade-in 0.2s ease-out forwards;
-  animation-delay: 0.15s;
-}
-
-@keyframes workspace-sidebar-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.workspace-sidebar .loading-icon,
 .workspace-sidebar .error-icon {
   width: 32px;
   height: 32px;
   opacity: 0.7;
 }
 
-.workspace-sidebar .spin {
-  animation: workspace-sidebar-spin 1.5s linear infinite;
-}
-
-@keyframes workspace-sidebar-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* 加载骨架与真实行同一起点：行外边距 + 行内边距。 */
+.workspace-sidebar .workspace-sidebar-skeleton {
+  padding:
+    var(--space-1)
+    calc(var(--workspace-sidebar-row-margin-x) + var(--workspace-sidebar-row-padding-x));
 }
 
 .asset-preview-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 3000;
+  z-index: var(--linnya-ui-layer-image-preview);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--color-gray-900) 42%, transparent);
+  background: color-mix(in srgb, var(--color-black) 42%, transparent);
 }
 
 .asset-preview-panel {
@@ -772,9 +701,9 @@
   max-height: calc(100vh - 64px);
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background: var(--color-bg-surface);
-  box-shadow: 0 18px 48px color-mix(in srgb, var(--color-gray-900) 26%, transparent);
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--color-black) 26%, transparent);
   overflow: hidden;
 }
 
@@ -782,9 +711,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: 44px;
-  padding: 0 12px 0 16px;
+  padding: 0 var(--space-3) 0 var(--space-4);
   border-bottom: 1px solid var(--color-border-light);
 }
 
@@ -793,7 +722,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   color: var(--color-text-primary);
 }
 
@@ -801,11 +730,11 @@
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  font-size: 20px;
+  font-size: 20px; /* scale-exempt: 关闭图标字形尺寸 */
   line-height: 1;
 }
 
@@ -815,7 +744,7 @@
 
 .asset-preview-body {
   min-height: 240px;
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -824,25 +753,25 @@
 
 .asset-preview-state {
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
 }
 
 .asset-preview-state.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .sidebar-asset-image-preview .sidebar-asset-preview-state {
   max-width: min(520px, calc(100vw - 48px));
-  padding: 14px 16px;
-  border-radius: 8px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
   background: var(--color-bg-surface);
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   box-shadow: 0 4px 20px color-mix(in srgb, var(--color-black) 30%, transparent);
 }
 
 .sidebar-asset-image-preview .sidebar-asset-preview-state.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .asset-text-preview-panel {
@@ -861,8 +790,8 @@
   margin: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
   color: var(--color-text-primary);
   font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
 }

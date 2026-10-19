@@ -6,11 +6,11 @@
 .summary-message .summary-content {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-3);
   background-color: var(--color-bg-surface);
-  border-radius: 8px;
-  font-size: 12px;
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
   max-width: 80%;
   position: relative;
@@ -27,9 +27,9 @@
 }
 
 .summary-message .success-icon {
-  color: var(--color-success);
-  font-weight: bold;
-  font-size: 12px;
+  color: var(--color-success-text);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-footnote);
   width: 14px;
   height: 14px;
   display: inline-flex;
@@ -38,7 +38,7 @@
 }
 
 .summary-message .error-icon {
-  color: var(--color-error);
+  color: var(--color-error-text);
   width: 14px;
   height: 14px;
   display: inline-flex;
@@ -52,7 +52,7 @@
 }
 
 .summary-message .summary-timestamp {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
   opacity: 0.7;
   flex-shrink: 0;
@@ -60,17 +60,17 @@
 
 .summary-message.summary-status-summarizing .summary-content {
   background-color: var(--color-info-bg);
-  color: var(--color-info);
+  color: var(--color-info-text);
 }
 
 .summary-message.summary-status-completed .summary-content {
   background-color: var(--color-success-bg);
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .summary-message.summary-status-error .summary-content {
   background-color: var(--color-error-bg);
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .summary-message.is-loading .summary-content {
@@ -100,5 +100,11 @@
 
   100% {
     transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summary-message.is-loading .summary-content::after {
+    animation: none;
   }
 }

@@ -10,12 +10,12 @@
   /* 中文说明：项目名称文字起点为 44px；列表/项目区已有 10px 左内边距，空态盒内补 34px。 */
   margin: 0;
   padding-left: 34px;
-  font-size: 13px;
+  font-size: var(--font-size-body);
 }
 
 /* 项目页空态与上方“最近对话”标题共用同一条文字起始线。 */
 .workspace-sidebar .sidebar-chat-list--project-panel .chat-list-state {
-  padding-left: 10px;
+  padding-left: var(--space-2-5);
 }
 
 .workspace-sidebar .sidebar-chat-list .chat-list-item {
@@ -50,7 +50,7 @@
   z-index: -1;
   animation:
     sidebar-conversation-history-reveal-pulse
-    calc(var(--transition-slow) + var(--transition-slow) + var(--transition-slow))
+    calc(var(--duration-long) + var(--duration-long) + var(--duration-long))
     ease-in-out
     both;
 }
@@ -82,7 +82,7 @@
   --workspace-sidebar-row-padding-right: 10px;
 
   height: 28px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .workspace-sidebar.workspace-sidebar--project .sidebar-chat-list--project-panel .chat-list-item {

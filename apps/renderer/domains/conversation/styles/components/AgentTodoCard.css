@@ -8,69 +8,69 @@
    * - 这里统一为 12px，确保子组件内的「ToDo」标题与 header 文案左对齐，
    *   避免出现“略微超出一点点”的错位感。
    */
-  padding: 6px 12px 10px 14px;
+  padding: var(--space-1-5) var(--space-3) var(--space-2-5) var(--space-3);
 }
 
 .agent-todo-card .error-state {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 0;
+  gap: var(--space-2);
+  padding: var(--space-2-5) 0;
   color: var(--color-text-secondary);
 }
 
 .agent-todo-card .error-icon {
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   opacity: 0.8;
 }
 
 .agent-todo-card .error-text {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .agent-todo-card .content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .agent-todo-card .meta-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .agent-todo-card .meta-left {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--space-1-5);
   min-width: 0;
 }
 
 .agent-todo-card .meta-title {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
 .agent-todo-card .meta-version {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
 }
 
 .agent-todo-card .meta-right {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   flex-shrink: 0;
 }
 
 .agent-todo-card .agent-todo-summary-chip {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   /* 关键：覆盖 TagChip 自身 scoped 样式的注入顺序，确保在 ToDo 场景稳定垂直居中 */
   height: 18px !important;
-  padding: 0 6px !important;
+  padding: 0 var(--space-1-5) !important;
   line-height: 18px !important;
   display: inline-flex;
   align-items: center;
@@ -84,46 +84,46 @@
 }
 
 .agent-todo-card .count-text {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-secondary);
-  margin-right: 4px;
-  line-height: 18px;
+  margin-right: var(--space-1);
+  line-height: var(--line-height-caption);
   display: inline-flex;
   align-items: center;
 }
 
 .agent-todo-card .empty {
-  padding: 10px 0;
+  padding: var(--space-2-5) 0;
   color: var(--color-text-tertiary);
 }
 
 .agent-todo-card .empty-title {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
 }
 
 .agent-todo-card .empty-subtitle {
-  margin-top: 2px;
-  font-size: 11px;
+  margin-top: var(--space-0-5);
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
 }
 
 .agent-todo-card .list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .agent-todo-card .item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
+  gap: var(--space-1-5);
+  padding: var(--space-1-5) var(--space-2);
   border-radius: 10px;
   /* 更简洁：每条 todo 不要边框（靠 hover + 间距来区分） */
   border: none;
   background-color: var(--color-bg-surface);
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: background-color var(--duration-short) var(--ease-standard), border-color var(--duration-short) var(--ease-standard);
 }
 
 .agent-todo-card .item:hover {
@@ -161,8 +161,8 @@
 }
 
 .agent-todo-card .item-text {
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
   color: var(--color-text-primary);
   word-break: break-word;
 }
@@ -185,9 +185,9 @@
 }
 
 .agent-todo-card .agent-todo-item-chip {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   height: 18px !important;
-  padding: 0 6px !important;
+  padding: 0 var(--space-1-5) !important;
   line-height: 18px !important;
   border: 1px solid var(--color-border-light);
   display: inline-flex;
@@ -198,14 +198,14 @@
 .agent-todo-card .progress-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 2px;
+  gap: var(--space-2-5);
+  margin-top: var(--space-0-5);
 }
 
 .agent-todo-card .progress-bar {
   height: 6px;
   flex: 1;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background-color: var(--color-bg-subtle);
   border: 1px solid var(--color-border-light);
   overflow: hidden;
@@ -214,11 +214,11 @@
 .agent-todo-card .progress-bar__fill {
   height: 100%;
   background-color: var(--color-accent);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
 }
 
 .agent-todo-card .progress-text {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
   flex-shrink: 0;
 }

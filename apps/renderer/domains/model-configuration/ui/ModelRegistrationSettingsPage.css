@@ -4,7 +4,7 @@
 .model-registration-settings-page .model-registration-quick-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   width: 100%;
   max-width: 520px;
 }
@@ -14,8 +14,8 @@
   min-height: 40px;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
   color: var(--color-text-primary);
   text-align: left;
   cursor: pointer;
@@ -23,12 +23,11 @@
   border: 0;
   border-radius: var(--radius-md);
   transition:
-    background-color var(--transition-fast) ease,
-    color var(--transition-fast) ease;
+    background-color var(--duration-micro) var(--ease-standard),
+    color var(--duration-micro) var(--ease-standard);
 }
 
 .model-registration-settings-page .model-registration-quick-option:hover {
-  color: var(--color-accent);
   background-color: var(--color-bg-hover);
 }
 
@@ -41,25 +40,19 @@
 .model-registration-settings-page .model-registration-quick-option-label {
   min-width: 0;
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   line-height: var(--line-height-normal);
 }
 
 .model-registration-settings-page .model-registration-quick-option-icon {
   display: block;
   flex-shrink: 0;
-  width: var(--spacing-md);
-  height: var(--spacing-md);
+  width: var(--space-4);
+  height: var(--space-4);
   color: var(--color-text-tertiary);
   transition:
-    transform var(--transition-fast) ease,
-    color var(--transition-fast) ease;
-}
-
-.model-registration-settings-page
-  .model-registration-quick-option:hover
-  .model-registration-quick-option-icon {
-  color: var(--color-accent);
+    transform var(--duration-micro) var(--ease-standard),
+    color var(--duration-micro) var(--ease-standard);
 }
 
 .model-registration-settings-page .model-registration-quick-option-icon.is-open {
@@ -69,14 +62,14 @@
 .model-registration-settings-page .model-registration-other-provider {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
 }
 
 .model-registration-settings-page .model-registration-back-button {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: var(--spacing-md);
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
   padding: 0;
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
@@ -84,10 +77,6 @@
   cursor: pointer;
   background: transparent;
   border: 0;
-}
-
-.model-registration-settings-page .model-registration-back-button:hover {
-  color: var(--color-accent);
 }
 
 .model-registration-settings-page .model-registration-back-icon {
@@ -108,7 +97,7 @@
 
 .add-model-select-with-action {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   align-items: center;
   width: 100%;
 }
@@ -118,28 +107,8 @@
   min-width: 0;
 }
 
-.add-model-refresh-button {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  min-height: 32px;
-  padding: 0;
-  color: var(--color-text-tertiary);
-}
-
 .add-model-discover-button {
-  display: flex;
   flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-xs);
-  height: 32px;
-  padding: 0 var(--spacing-sm);
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-  white-space: nowrap;
 }
 
 .add-model-refresh-icon {
@@ -162,7 +131,7 @@
 }
 
 .add-model-submit {
-  margin-top: var(--spacing-lg);
+  margin-top: var(--space-6);
 }
 
 .add-model-provider-form {
@@ -171,26 +140,26 @@
 
 .settings-row + .add-model-provider-form,
 .add-model-provider-form > .settings-row + .settings-row {
-  margin-top: 20px;
+  margin-top: var(--space-5);
 }
 
 .custom-discovered-models-section {
-  margin-top: 24px;
+  margin-top: var(--space-6);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
 }
 
 .custom-discovered-models-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 4px;
+  padding: 0 var(--space-1);
 }
 
 .custom-discovered-models-title {
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
@@ -200,7 +169,7 @@
   color: var(--color-accent);
   font-size: var(--font-size-xs);
   cursor: pointer;
-  padding: 2px 6px;
+  padding: var(--space-0-5) var(--space-1-5);
   border-radius: var(--radius-sm);
 }
 
@@ -231,7 +200,7 @@
   background-clip: content-box;
   border: 2px solid transparent;
   border-radius: var(--radius-md);
-  transition: background-color var(--transition-normal) ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .custom-discovered-models-list::-webkit-scrollbar-thumb:hover {
@@ -239,11 +208,11 @@
 }
 
 .custom-discovered-models-list .settings-list {
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .custom-discovered-models-list .settings-list-row {
-  padding: 6px 8px;
+  padding: var(--space-1-5) var(--space-2);
   background: transparent;
   border-radius: var(--radius-sm);
 }

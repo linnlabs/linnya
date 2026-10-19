@@ -4,9 +4,9 @@
  */
 .todo-sidebar .todo-item {
   position: relative;
-  border-radius: 8px;
-  padding: 8px;
-  transition: background-color 0.2s;
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  transition: background-color var(--duration-medium);
 }
 
 .todo-sidebar .todo-item:hover {
@@ -16,7 +16,7 @@
 .todo-sidebar .todo-item .main-content {
   display: flex;
   align-items: flex-start; /* align checkbox with top of content */
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 /* Checkbox */
@@ -31,9 +31,9 @@
 }
 
 .todo-sidebar .todo-item .title {
-  font-size: 13px;
-  font-weight: 460;
-  line-height: 1.2;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
   overflow-wrap: anywhere;
   color: var(--color-text-secondary);
 }
@@ -52,41 +52,41 @@
 
 /* Info Row */
 .todo-sidebar .todo-item .info-row {
-  margin-top: 6px;
+  margin-top: var(--space-1-5);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .todo-sidebar .todo-item .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  border-radius: 9999px;
-  padding: 1px 6px;
-  font-size: 11px;
-  font-weight: 500;
+  gap: var(--space-1);
+  border-radius: var(--radius-full);
+  padding: 1px var(--space-1-5);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
 }
 
 .todo-sidebar .todo-item .badge-dot {
   height: 6px;
   width: 6px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   background-color: currentColor;
 }
 
 .todo-sidebar .todo-item .priority-high {
-  background-color: var(--color-red-100);
-  color: var(--color-red-400);
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
 }
 .todo-sidebar .todo-item .priority-medium {
-  background-color: var(--color-yellow-100);
-  color: var(--color-yellow-700);
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 .todo-sidebar .todo-item .priority-low {
-  background-color: var(--color-blue-100);
-  color: var(--color-blue-700);
+  background-color: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .todo-sidebar .todo-item .tag-badge {
@@ -111,18 +111,18 @@
 }
 
 .todo-sidebar .todo-item .date-badge.date-tomorrow {
-  background-color: var(--color-yellow-100);
-  color: var(--color-yellow-700);
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .todo-sidebar .todo-item .date-badge.date-overdue {
-  background-color: var(--color-red-100);
-  color: var(--color-red-500);
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
 }
 
 .todo-sidebar .todo-item .date-badge.date-upcoming {
-  background-color: var(--color-blue-50);
-  color: var(--color-blue-700);
+  background-color: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .todo-sidebar .todo-item .date-badge .date-icon {
@@ -135,27 +135,11 @@
 .todo-sidebar .todo-item .actions {
   display: flex;
   align-items: center;
-  gap: 4px;
-}
-
-.todo-sidebar .todo-item .delete-button {
-  display: flex;
-  height: 28px;
-  width: 28px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  color: var(--color-text-tertiary);
-  transition: background-color 0.2s;
+  gap: var(--space-1);
 }
 
 .todo-sidebar .todo-item .delete-icon {
   width: 16px;
   height: 16px;
   background-color: transparent !important;
-}
-
-.todo-sidebar .todo-item .delete-button:hover {
-  background-color: var(--color-red-100);
-  color: var(--color-text-tertiary);
 }

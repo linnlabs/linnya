@@ -5,6 +5,7 @@
       <MarkstreamRenderer
         :content="message.content"
         :isStreaming="isStreaming"
+        stream-reveal
         :turnId="turnId"
         :citation-dependencies="message.citationDependencies"
       />

@@ -9,7 +9,7 @@
 
 .review-sidebar-fade-enter-active,
 .review-sidebar-fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-medium) var(--ease-standard);
 }
 
 .review-sidebar-fade-enter-from,

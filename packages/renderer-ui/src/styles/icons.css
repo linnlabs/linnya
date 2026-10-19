@@ -26,8 +26,8 @@
   justify-content: center;
   min-width: 14px;
   height: 16px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
 }
 
@@ -52,6 +52,6 @@
   left: 50%;
   width: 14px;
   height: 3px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   transform: translateX(-50%);
 }

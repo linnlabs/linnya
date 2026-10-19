@@ -22,7 +22,7 @@
  */
 .table-size-selector-wrapper {
   position: fixed;
-  z-index: 100; /* 与 CustomSelect 保持一致 */
+  z-index: var(--linnya-ui-layer-inline-menu); /* 与 CustomSelect 保持一致 */
 }
 
 /* 
@@ -40,7 +40,7 @@
  */
 .table-selector-fade-enter-active,
 .table-selector-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .table-selector-fade-enter-from {

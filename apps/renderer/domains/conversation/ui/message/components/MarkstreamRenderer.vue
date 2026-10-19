@@ -15,6 +15,7 @@
     <ConversationMarkdownRenderer
       :content="content"
       :isStreaming="isStreaming"
+      :stream-reveal="streamReveal"
       :turnId="turnId"
       :citation-dependencies="citationDependencies"
     />
@@ -31,6 +32,8 @@ interface Props {
   content: string
   /** 是否处于流式输出中（会影响渲染策略：打字机/批次渲染） */
   isStreaming?: boolean
+  /** 流式输出时新长出的文字淡入（只对正在增长的尾块生效） */
+  streamReveal?: boolean
   /** 对话轮次 ID（供引用 transfer DOM 标注归属） */
   turnId?: string
   citationDependencies?: ConversationCitationDependencySnapshot
@@ -38,10 +41,11 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   isStreaming: false,
+  streamReveal: false,
   turnId: undefined,
   citationDependencies: undefined,
 })
 
 // 这里必须保持响应式：消息内容是流式更新的
-const { content, isStreaming, turnId, citationDependencies } = toRefs(props)
+const { content, isStreaming, streamReveal, turnId, citationDependencies } = toRefs(props)
 </script>

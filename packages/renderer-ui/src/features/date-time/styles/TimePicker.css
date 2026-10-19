@@ -11,14 +11,14 @@
   justify-content: center;
   width: 140px;
   height: 32px;
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
   cursor: pointer;
   background-color: var(--color-bg-search-light);
   border: 1px solid transparent;
-  border-radius: 4px;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-short) var(--ease-standard), border-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
 }
 
 .time-root .time-button:hover {
@@ -33,19 +33,19 @@
   z-index: var(--linnya-ui-layer-picker);
   min-width: 140px;
   background-color: var(--color-bg-surface);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   box-shadow:
     var(--shadow-lg),
     0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
 }
 
 .time-root .time-popover-body {
-  padding: 8px 10px 6px;
+  padding: var(--space-2) var(--space-2-5) var(--space-1-5);
 }
 
 .time-root .time-select-row {
   display: flex;
-  gap: 6px;
+  gap: var(--space-1-5);
   align-items: center;
   justify-content: center;
 }
@@ -65,7 +65,7 @@
   width: auto;
   padding: 0;
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   line-height: 1;
   color: var(--color-text-tertiary);
 }
@@ -73,10 +73,10 @@
 .time-root .time-arrow-icon {
   width: 14px;
   height: 14px;
-  margin-left: 8px;
+  margin-left: var(--space-2);
   color: var(--color-text-tertiary);
   pointer-events: none;
-  transition: transform 0.2s ease-in-out;
+  transition: transform var(--duration-medium) var(--ease-standard);
 }
 
 .time-root .time-arrow-icon.is-open {
@@ -88,12 +88,12 @@
   width: auto;
   min-width: 50px;
   height: auto;
-  padding: 4px 8px;
-  font-size: 12px;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .time-root .time-select-trigger:hover:not(:disabled) {
@@ -114,46 +114,14 @@
 
 .time-root .time-popover-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   justify-content: flex-end;
-  padding: 6px 12px 10px;
-}
-
-.time-root .time-action-button {
-  min-width: 60px;
-  height: 26px;
-  padding: 2px 10px;
-  font-size: 12px;
-  cursor: pointer;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-
-.time-root .time-action-button.secondary {
-  color: var(--color-text-tertiary);
-  background-color: transparent;
-  border-color: var(--color-border-default);
-}
-
-.time-root .time-action-button.secondary:hover {
-  color: var(--color-text-secondary);
-  background-color: var(--color-bg-hover);
-  border-color: var(--color-border-hover);
-}
-
-.time-root .time-action-button.primary {
-  color: var(--color-white);
-  background-color: var(--color-accent);
-}
-
-.time-root .time-action-button.primary:hover {
-  background-color: var(--color-accent-hover);
+  padding: var(--space-1-5) var(--space-3) var(--space-2-5);
 }
 
 .time-root .time-fade-enter-active,
 .time-root .time-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .time-root .time-fade-enter-from {

@@ -9,11 +9,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px;
+  padding: var(--space-8) var(--space-4);
   text-align: center;
   color: var(--workspace-sidebar-muted-color);
-  font-size: 13px;
-  gap: 12px;
+  font-size: var(--font-size-body);
+  gap: var(--space-3);
   height: 100%;
 }
 
@@ -25,29 +25,11 @@
 }
 
 .workspace-sidebar .project-list-view .empty-action-button {
-  margin-top: 8px;
-  background-color: var(--color-accent);
-  color: var(--color-white);
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
-}
-
-.workspace-sidebar .project-list-view .empty-action-button:hover {
-  background-color: var(--color-accent-hover);
-  transform: translateY(-1px);
-}
-
-.workspace-sidebar .project-list-view .empty-action-button:active {
-  transform: translateY(0);
+  margin-top: var(--space-2);
 }
 
 .workspace-sidebar .project-list-view .project-list {
-  padding: 2px 0;
+  padding: var(--space-0-5) 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -56,9 +38,9 @@
 .workspace-sidebar .project-list-view .project-item {
   display: flex;
   align-items: center;
-  padding: 4px 6px;
-  border-radius: 4px;
-  margin: 2px;
+  padding: var(--space-1) var(--space-1-5);
+  border-radius: var(--radius-sm);
+  margin: var(--space-0-5);
   cursor: pointer;
   user-select: none;
   position: relative;
@@ -71,7 +53,7 @@
 .workspace-sidebar .project-list-view .project-icon {
   width: 22px;
   height: 22px;
-  margin-right: 6px;
+  margin-right: var(--space-1-5);
   flex-shrink: 0;
   color: var(--color-text-tertiary);
   display: flex;
@@ -86,7 +68,7 @@
 }
 
 .workspace-sidebar .project-list-view .project-name {
-  font-size: 13px;
+  font-size: var(--font-size-body);
   color: var(--workspace-sidebar-label-color);
   white-space: nowrap;
   overflow: hidden;
@@ -98,33 +80,12 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  margin-left: 4px;
+  margin-left: var(--space-1);
 }
 
-.workspace-sidebar .project-list-view .more-button {
-  background: none;
-  border: none;
-  padding: 2px;
-  border-radius: 3px;
-  cursor: pointer;
-  width: 22px;
-  height: 22px;
-  color: var(--color-text-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.15s ease;
-}
-
-.workspace-sidebar .project-list-view .more-button:hover {
-  /* 与整行 hover 拉开层次，避免按钮 hover 被行背景吞掉。 */
-  background-color: var(--color-bg-hover-strong);
-  color: var(--color-text-secondary);
-}
-
-.workspace-sidebar .project-list-view .more-button svg {
-  width: 18px;
-  height: 18px;
+/* 与整行 hover 拉开层次，避免按钮 hover 被行背景吞掉。 */
+.workspace-sidebar .project-list-view .project-actions {
+  --linnya-ui-icon-button-hover-bg: var(--linnya-ui-icon-button-hover-bg-raised);
 }
 
 .project-menu-wrapper {
@@ -135,7 +96,7 @@
 
 .workspace-project-list-menu-fade-enter-active,
 .workspace-project-list-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .workspace-project-list-menu-fade-enter-from {

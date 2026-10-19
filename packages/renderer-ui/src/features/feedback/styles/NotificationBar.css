@@ -5,15 +5,15 @@
   display: flex;
   align-items: center;
   max-width: 300px;
-  padding: 5px 10px;
+  padding: calc(var(--space-1-5) - 1px) var(--space-2-5);
   color: var(--color-text-primary);
   pointer-events: none;
   background-color: color-mix(in srgb, var(--color-bg-surface) 90%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-border-default) 65%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(2px);
-  transition: right 0.3s ease-out, opacity 0.3s, transform 0.3s;
+  transition: right var(--duration-long) var(--ease-enter), opacity var(--duration-long), transform var(--duration-long);
 }
 
 .notification-bar.clickable {
@@ -25,38 +25,38 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 6px;
-  font-size: 13px;
+  margin-right: var(--space-1-5);
+  font-size: var(--font-size-body);
 }
 
 .notification-content {
   flex-grow: 1;
   overflow: hidden;
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .notification-type-success {
-  color: var(--color-success);
+  color: var(--color-success-text);
   background-color: color-mix(in srgb, var(--color-success) 18%, transparent);
   border-color: color-mix(in srgb, var(--color-success) 35%, transparent);
 }
 
 .notification-type-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background-color: color-mix(in srgb, var(--color-error) 18%, transparent);
   border-color: color-mix(in srgb, var(--color-error) 35%, transparent);
 }
 
 .notification-type-info {
-  color: var(--color-info);
+  color: var(--color-info-text);
   background-color: color-mix(in srgb, var(--color-info) 18%, transparent);
   border-color: color-mix(in srgb, var(--color-info) 35%, transparent);
 }
 
 .notification-type-warning {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
   background-color: color-mix(in srgb, var(--color-warning) 18%, transparent);
   border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
 }
@@ -64,7 +64,7 @@
 .notification-bar.notification-fade-enter-active,
 .notification-bar.notification-fade-leave-active {
   transition-property: opacity, transform;
-  transition-duration: 0.3s;
+  transition-duration: var(--duration-long);
 }
 
 .notification-bar.notification-fade-enter-from,

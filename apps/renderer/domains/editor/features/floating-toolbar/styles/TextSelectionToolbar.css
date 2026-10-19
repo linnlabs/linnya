@@ -8,7 +8,7 @@
 /* 标题列表仍由 CustomSelect 拥有；这里只保留其旧外层的过渡。 */
 .text-selection-toolbar .heading-menu-fade-enter-active,
 .text-selection-toolbar .heading-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 .text-selection-toolbar .heading-menu-fade-enter-from {
   opacity: 0;
@@ -26,7 +26,7 @@
 
 .text-selection-toolbar .format-buttons {
   display: flex;
-  gap: 2px;
+  gap: var(--space-0-5);
   align-items: center;
 }
 
@@ -37,8 +37,8 @@
 }
 
 .text-selection-toolbar .heading-level {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
 }
 
@@ -52,9 +52,9 @@
   flex-shrink: 0;
   width: 12px;
   height: 12px;
-  margin-left: 2px;
+  margin-left: var(--space-0-5);
   opacity: 0.6;
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-medium) var(--ease-standard);
 }
 
 .text-selection-toolbar .text-selection-heading-button[aria-expanded='true'] .chevron-icon {
@@ -66,7 +66,7 @@
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  z-index: 1000;
+  z-index: var(--linnya-ui-layer-popover);
   display: inline-block;
   width: max-content;
   min-width: unset;
@@ -78,16 +78,16 @@
 
 .text-selection-toolbar .ai-quote-button {
   display: inline-flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
-  padding: 4px 8px;
-  font-size: 12px;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-footnote);
   color: var(--color-text-primary);
   cursor: pointer;
   background: none;
   border: none;
-  border-radius: 4px;
-  transition: background-color 0.15s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-short) var(--ease-standard);
 }
 
 .text-selection-toolbar .ai-quote-button:hover {

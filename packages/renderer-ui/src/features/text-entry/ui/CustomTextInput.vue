@@ -21,17 +21,15 @@
       @input="handleInput"
       @change="handleChange"
     />
-    <button
+    <IconButton
       v-if="clearable && draftValue && !disabled"
-      type="button"
       class="tt-text-field__clear"
-      :aria-label="clearLabel"
-      :title="clearLabel"
+      :label="clearLabel"
       @mousedown.prevent
       @click="handleClear"
     >
       <CloseIcon />
-    </button>
+    </IconButton>
   </span>
 </template>
 
@@ -39,6 +37,7 @@
 import { computed, normalizeClass, normalizeStyle, ref, useAttrs, watch } from 'vue';
 
 import { CloseIcon } from '@linnya/renderer-ui/icons';
+import IconButton from '../../actions/ui/IconButton.vue';
 import { useSharedComponentLocalization } from '@linnya/renderer-ui/localization';
 
 defineOptions({

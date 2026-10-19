@@ -14,7 +14,7 @@
   margin: 0;
   padding-block-start: 0;
   border-radius: var(--radius-sm); /* 圆角边框 */
-  transition: background-color var(--transition-normal), transform var(--transition-fast); /* 平滑过渡效果 */
+  transition: background-color var(--duration-medium), transform var(--duration-micro); /* 平滑过渡效果 */
   width: 100%; /* 宽度为100%，不添加额外宽度 */
   box-sizing: border-box; /* 确保padding不会导致宽度溢出 */
   font-size: var(--editor-body-font-size);
@@ -37,7 +37,7 @@
   max-width: var(--editor-content-max-width);
   width: calc(100% - 2 * var(--editor-content-gutter));
   box-sizing: border-box;
-  margin: 2px auto 2px;
+  margin: var(--space-0-5) auto var(--space-0-5);
   display: flex;
   align-items: center;
   pointer-events: none;
@@ -63,7 +63,7 @@
 .root-block > .root-block-revision-header {
   max-width: none;
   width: 100%;
-  margin: 2px 0;
+  margin: var(--space-0-5) 0;
 }
 
 .root-block > .root-block-revision-header > .block-revision-indicator-row {
@@ -73,29 +73,29 @@
 .shell-revision-indicator {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-0-5);
   width: 100%;
   min-height: 20px;
   box-sizing: border-box;
-  padding: 2px 6px;
-  font-size: 11px;
+  padding: var(--space-0-5) var(--space-1-5);
+  font-size: var(--font-size-caption);
   font-variant-numeric: tabular-nums;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background-color: color-mix(in srgb, var(--color-warning-bg) 82%, var(--color-warning));
   opacity: 0.85;
 }
 
 .shell-revision-label {
-  margin-right: 4px;
+  margin-right: var(--space-1);
   color: var(--color-text-muted);
 }
 
 .shell-revision-insert {
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .shell-revision-delete {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .shell-revision-separator {
@@ -103,14 +103,14 @@
 }
 
 .shell-revision-pending {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .shell-revision-time {
   margin-left: auto;
-  padding-left: 6px;
+  padding-left: var(--space-1-5);
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 /* ==================== 有序列表编号说明 ==================== */
@@ -176,7 +176,7 @@
   position: relative; /* 相对定位，作为子元素的定位参考 */
   margin: 0 auto; /* 上右下左边距，居中显示 */
   padding: 0px; /* 内边距为0，与contentblock完全重合 */
-  border-radius: 4px; /* 与旧样式保持一致 */
+  border-radius: var(--radius-sm); /* 与旧样式保持一致 */
   max-width: var(--editor-content-max-width);
   width: calc(100% - 2 * var(--editor-content-gutter));
   box-sizing: border-box; /* 确保padding不会导致宽度溢出 */
@@ -225,8 +225,8 @@
 .root-block > .content::-webkit-scrollbar-thumb,
 .version-content > .content::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-color, var(--color-border-default)); /* 使用主题变量 */
-  border-radius: 5px; /* 与 editor-shell 一致 */
-  transition: background-color 0.2s ease; /* 平滑过渡 */
+  border-radius: var(--radius-full); /* 与 editor-shell 一致 */
+  transition: background-color var(--duration-medium) var(--ease-standard); /* 平滑过渡 */
   border: 2px solid transparent; /* 四周透明边框 */
   background-clip: content-box; /* 背景色只填充内容区域 */
 }
@@ -254,7 +254,7 @@
  */
 .block-view {
   position: relative;
-  margin: var(--spacing-xs) 0;
+  margin: var(--space-1) 0;
 }
 
 .block-content {
@@ -273,7 +273,7 @@
 .editor-block {
   position: relative;
   border-radius: var(--radius-md);
-  transition: background-color var(--transition-normal);
+  transition: background-color var(--duration-medium);
   width: 100%; /* 所有块默认占满父容器宽度 */
   box-sizing: border-box;
 }
@@ -288,7 +288,7 @@
  */
 .heading-block {
   display: block;
-  padding: 0 2px;
+  padding: 0 var(--space-0-5);
   margin: 0; /* 章节留白归 RootBlock，内容节点不重复添加间距。 */
   box-sizing: border-box;
 }
@@ -303,7 +303,7 @@
  */
 .base-block {
   display: block;
-  padding: 0 2px;
+  padding: 0 var(--space-0-5);
   margin: 0; /* 段落留白归 RootBlock，与标题共享同一套测量边界。 */
   box-sizing: border-box;
   line-height: var(--editor-body-line-height);
@@ -345,7 +345,7 @@
  * 1. 左侧添加内边距，为批注标识预留空间
  */
 .has-annotation {
-  padding-left: var(--spacing-md);
+  padding-left: var(--space-4);
 }
 
 /* ==================== 左侧控制岛布局（已迁移至 BlockVersionHandle.css） ==================== */
@@ -374,11 +374,11 @@
   position: fixed;
   left: 0;
   height: 3px;
-  z-index: 9999;
+  z-index: var(--linnya-ui-layer-tooltip);
   pointer-events: none;
   opacity: 0;
-  transition: opacity var(--transition-normal);
-  border-radius: 1.5px;
+  transition: opacity var(--duration-medium);
+  border-radius: var(--radius-xs);
   display: none; /* 默认不显示 */
 }
 
@@ -409,7 +409,7 @@
    * - bullet 符号
    * - ordered 编号（含 “.” 与视觉间距）
    */
-  padding-left: 32px; 
+  padding-left: var(--space-8); 
   margin: 0; /* 与 BaseBlock 保持一致 */
   box-sizing: border-box;
 }

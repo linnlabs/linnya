@@ -30,8 +30,8 @@
   background-color: var(--color-border-default);
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 5px;
-  transition: background-color 0.2s ease;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .md-math-scroll::-webkit-scrollbar-thumb:hover {
@@ -48,19 +48,19 @@
   justify-content: center;
   min-width: 24px;
   height: 24px;
-  padding: 0 4px;
+  padding: 0 var(--space-1);
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   cursor: pointer;
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   opacity: 0;
   transform: translateY(-50%);
   transition:
-    color 0.2s ease,
-    background-color 0.2s ease,
-    opacity 0.2s ease;
+    color var(--duration-medium) var(--ease-standard),
+    background-color var(--duration-medium) var(--ease-standard),
+    opacity var(--duration-medium) var(--ease-standard);
   pointer-events: none;
 }
 
@@ -88,7 +88,7 @@
 
 .md-math-copied-text {
   color: var(--color-text-secondary);
-  font-weight: 500;
-  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-caption);
   white-space: nowrap;
 }

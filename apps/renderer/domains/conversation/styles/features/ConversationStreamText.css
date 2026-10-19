@@ -1,0 +1,23 @@
+/**
+ * @file ConversationStreamText.css
+ * @description 流式正文新长出的文字淡入。
+ *
+ * 只动画透明度：不模糊、不位移，行内 span 也不改变换行与高度。
+ * 时长取动效 token，用户开启“减少动态效果”时时长归零，动画立即结束。
+ * 缓动用 linear：流式文字的“软边”是一条连续的水位线，线性渐变的可见长度等于名义时长；
+ * 先快后慢的曲线会在前 1/4 时间走完大部分不透明度，同样的名义时长看起来只有一小截。
+ */
+
+[data-scope="conversation-message"] .conversation-stream-text__fresh {
+  animation: conversation-stream-text-fade-in var(--duration-medium) linear both;
+}
+
+@keyframes conversation-stream-text-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

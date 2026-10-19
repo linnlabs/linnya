@@ -1,6 +1,9 @@
 /* 语义颜色 token：组件应优先引用本层，而不是直接引用 base 色阶。 */
 
 [data-linnya-ui-theme='light'] {
+  /* 原生控件、未自定义的滚动条与表单弹层跟随主题明暗。 */
+  color-scheme: light;
+
   /* Background */
   --color-bg-default: var(--color-white);
   --color-bg-surface: var(--color-white);
@@ -17,6 +20,9 @@
   --color-bg-active-subtle: color-mix(in srgb, var(--color-black) 7%, transparent);
   --color-bg-active-control-hover: var(--color-gray-250);
   --color-bg-selection: color-mix(in srgb, var(--color-brand-400) 6%, transparent);
+  /* 反色实底：发送、确认编辑等需要比主操作更克制的高对比按钮；与 --color-text-inverse 成对使用。 */
+  --color-bg-inverse: var(--color-gray-700);
+  --color-bg-inverse-hover: color-mix(in srgb, var(--color-gray-700) 88%, var(--color-blue-900));
 
   /* Text */
   --color-text-primary: var(--color-gray-900);
@@ -27,8 +33,9 @@
   --color-text-link: var(--color-blue-500);
   --color-text-link-hover: var(--color-blue-600);
   --color-text-selection: color-mix(in srgb, var(--color-brand-300) 30%, transparent);
-  --color-text-heading-meta: var(--color-gray-421);
+  --color-text-heading-meta: var(--color-gray-500);
   --color-text-on-accent: var(--color-white);
+  --color-text-inverse: var(--color-white);
 
   /* Border */
   --color-border-default: var(--color-gray-300);
@@ -37,6 +44,7 @@
   --color-border-focus: var(--color-gray-350);
   --color-border-sidebar: var(--color-gray-300);
   --color-border-accent-light: var(--color-brand-300);
+  --color-focus-ring: var(--color-accent);
 
   /* Accent */
   --color-accent: var(--color-brand-600);
@@ -46,9 +54,14 @@
   --color-accent-light: var(--color-brand-500);
   --color-accent-strong-light: var(--color-brand-300);
   --color-accent-disabled: var(--color-brand-200);
+  /* 强调色文字落在强调色浅底（选中、激活）上时使用，三套主题均满足 4.5:1。 */
+  --color-accent-text: var(--color-brand-700);
   --color-accent-bg: var(--color-brand-125);
   --color-accent-bg-subtle: var(--color-brand-50);
   --color-accent-bg-hover: var(--color-brand-163);
+  /* 反色文字所在的强调实底（主按钮等），白字对比度不低于 4.5:1。 */
+  --color-accent-solid: var(--color-accent);
+  --color-accent-solid-hover: var(--color-accent-hover);
 
   /* Shadow */
   --shadow-color-xs: rgba(0, 0, 0, 0.05);
@@ -59,10 +72,12 @@
 }
 
 [data-linnya-ui-theme='dark'] {
-  /* Background */
+  color-scheme: dark;
+
+  /* Background：页面最暗，卡片、浮层逐级提亮，不能让同一层表面在暗色下出现两种底色。 */
   --color-bg-default: var(--color-gray-900);
   --color-bg-surface: var(--color-gray-800);
-  --color-bg-elevated: var(--color-bg-surface);
+  --color-bg-elevated: var(--color-gray-775);
   --color-bg-sidebar: var(--color-gray-800);
   --color-bg-subtle: var(--color-gray-775);
   --color-bg-disabled: var(--color-gray-750);
@@ -71,30 +86,36 @@
   --color-bg-hover: color-mix(in srgb, var(--color-gray-750) 50%, var(--color-gray-725));
   --color-bg-hover-light: var(--color-gray-850);
   --color-bg-hover-strong: var(--color-gray-725);
-  --color-bg-active: color-mix(in srgb, var(--color-black) 10%, transparent);
-  --color-bg-active-subtle: color-mix(in srgb, var(--color-black) 7%, transparent);
+  /* 深底上压黑不可见，按下与选中改为提亮。 */
+  --color-bg-active: color-mix(in srgb, var(--color-white) 8%, transparent);
+  --color-bg-active-subtle: color-mix(in srgb, var(--color-white) 5%, transparent);
   --color-bg-active-control-hover: var(--color-gray-700);
   --color-bg-selection: color-mix(in srgb, var(--color-brand-400) 6%, transparent);
+  /* 暗色下反色实底改为浅色，禁用态（muted）才会比可用态更暗。 */
+  --color-bg-inverse: var(--color-gray-150);
+  --color-bg-inverse-hover: var(--color-gray-50);
 
-  /* Text */
-  --color-text-primary: var(--color-gray-50);
-  --color-text-secondary: var(--color-gray-100);
-  --color-text-tertiary: var(--color-gray-150);
-  --color-text-placeholder: var(--color-gray-300);
-  --color-text-muted: var(--color-gray-750);
+  /* Text：与浅色同序递减；primary 不用纯白，减少深底光晕。 */
+  --color-text-primary: var(--color-gray-150);
+  --color-text-secondary: var(--color-gray-350);
+  --color-text-tertiary: var(--color-gray-400);
+  --color-text-placeholder: var(--color-gray-500);
+  --color-text-muted: var(--color-gray-450);
   --color-text-link: var(--color-blue-200);
   --color-text-link-hover: var(--color-blue-100);
   --color-text-selection: color-mix(in srgb, var(--color-brand-300) 30%, transparent);
   --color-text-heading-meta: var(--color-gray-421);
   --color-text-on-accent: var(--color-white);
+  --color-text-inverse: var(--color-gray-900);
 
-  /* Border */
-  --color-border-default: var(--color-gray-625);
-  --color-border-light: var(--color-gray-800);
-  --color-border-hover: var(--color-gray-600);
-  --color-border-focus: var(--color-gray-500);
-  --color-border-sidebar: var(--color-gray-775);
+  /* Border：用白色透明度叠加，任何一级表面上都保持同样的可见度。 */
+  --color-border-default: color-mix(in srgb, var(--color-white) 16%, transparent);
+  --color-border-light: color-mix(in srgb, var(--color-white) 10%, transparent);
+  --color-border-hover: color-mix(in srgb, var(--color-white) 24%, transparent);
+  --color-border-focus: color-mix(in srgb, var(--color-white) 32%, transparent);
+  --color-border-sidebar: color-mix(in srgb, var(--color-white) 10%, transparent);
   --color-border-accent-light: var(--color-brand-300);
+  --color-focus-ring: var(--color-accent);
 
   /* Accent */
   --color-accent: var(--color-brand-500);
@@ -103,20 +124,30 @@
   --color-accent-hover-light: var(--color-brand-550);
   --color-accent-light: var(--color-brand-450);
   --color-accent-strong-light: var(--color-brand-300);
-  --color-accent-disabled: var(--color-brand-200);
+  --color-accent-disabled: color-mix(in srgb, var(--color-brand-500) 35%, var(--color-gray-900));
+  /* 强调色文字落在强调色浅底（选中、激活）上时使用，三套主题均满足 4.5:1。 */
+  --color-accent-text: var(--color-brand-300);
   --color-accent-bg: var(--color-brand-850);
   --color-accent-bg-subtle: var(--color-brand-900);
   --color-accent-bg-hover: var(--color-brand-800);
+  /* 暗色强调色偏亮便于作文字，白字放在它上面只有 3.1:1；实底改用更深一档。 */
+  --color-accent-solid: var(--color-brand-600);
+  --color-accent-solid-hover: var(--color-brand-700);
 
-  /* Shadow */
+  /*
+   * Shadow：xs / sm / md 服务开关、卡片等小元素，与浅色保持同一强度，不能随主题加重；
+   * 只有浮层用的 lg / xl 在深底上加重，才能表达层级。
+   */
   --shadow-color-xs: rgba(0, 0, 0, 0.05);
   --shadow-color-sm: rgba(0, 0, 0, 0.1);
   --shadow-color-md: rgba(0, 0, 0, 0.15);
-  --shadow-color-lg: rgba(0, 0, 0, 0.3);
-  --shadow-color-xl: rgba(0, 0, 0, 0.5);
+  --shadow-color-lg: rgba(0, 0, 0, 0.48);
+  --shadow-color-xl: rgba(0, 0, 0, 0.6);
 }
 
 [data-linnya-ui-theme='moon-blue'] {
+  color-scheme: light;
+
   /* Background */
   --color-bg-default: color-mix(in srgb, var(--color-blue-25) 82%, var(--color-white));
   --color-bg-surface: color-mix(in srgb, var(--color-blue-25) 58%, var(--color-white));
@@ -133,6 +164,8 @@
   --color-bg-active-subtle: color-mix(in srgb, var(--color-blue-300) 10%, transparent);
   --color-bg-active-control-hover: color-mix(in srgb, var(--color-blue-125) 60%, var(--color-white));
   --color-bg-selection: color-mix(in srgb, var(--color-blue-300) 20%, transparent);
+  --color-bg-inverse: var(--color-gray-700);
+  --color-bg-inverse-hover: color-mix(in srgb, var(--color-gray-700) 88%, var(--color-blue-900));
 
   /* Text */
   --color-text-primary: color-mix(in srgb, var(--color-blue-900) 36%, var(--color-gray-900));
@@ -143,8 +176,9 @@
   --color-text-link: var(--color-blue-600);
   --color-text-link-hover: var(--color-blue-700);
   --color-text-selection: color-mix(in srgb, var(--color-blue-300) 34%, transparent);
-  --color-text-heading-meta: color-mix(in srgb, var(--color-blue-700) 28%, var(--color-gray-421));
+  --color-text-heading-meta: color-mix(in srgb, var(--color-blue-700) 28%, var(--color-gray-500));
   --color-text-on-accent: var(--color-white);
+  --color-text-inverse: var(--color-white);
 
   /* Border */
   --color-border-default: color-mix(in srgb, var(--color-blue-150) 48%, var(--color-gray-200));
@@ -153,6 +187,7 @@
   --color-border-focus: color-mix(in srgb, var(--color-blue-300) 58%, var(--color-gray-300));
   --color-border-sidebar: color-mix(in srgb, var(--color-blue-100) 54%, var(--color-gray-200));
   --color-border-accent-light: var(--color-blue-300);
+  --color-focus-ring: var(--color-accent);
 
   /* Accent */
   --color-accent: var(--color-blue-600);
@@ -162,9 +197,13 @@
   --color-accent-light: var(--color-blue-500);
   --color-accent-strong-light: var(--color-blue-300);
   --color-accent-disabled: var(--color-blue-150);
+  /* 强调色文字落在强调色浅底（选中、激活）上时使用，三套主题均满足 4.5:1。 */
+  --color-accent-text: var(--color-blue-700);
   --color-accent-bg: color-mix(in srgb, var(--color-blue-100) 62%, var(--color-white));
   --color-accent-bg-subtle: color-mix(in srgb, var(--color-blue-50) 74%, var(--color-white));
   --color-accent-bg-hover: color-mix(in srgb, var(--color-blue-125) 68%, var(--color-white));
+  --color-accent-solid: var(--color-accent);
+  --color-accent-solid-hover: var(--color-accent-hover);
 
   /* Shadow */
   --shadow-color-xs: color-mix(in srgb, var(--color-blue-900) 5%, transparent);

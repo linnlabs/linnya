@@ -19,8 +19,8 @@
   font: inherit;
   outline: none;
   transition:
-    border-color var(--transition-fast),
-    background-color var(--transition-fast);
+    border-color var(--duration-micro),
+    background-color var(--duration-micro);
 }
 
 .tt-text-field__control:hover:not(:disabled) {
@@ -97,53 +97,28 @@
 
 .tt-text-field--compact:not(.tt-text-field--textarea) .tt-text-field__control {
   height: 28px;
-  padding: 0 8px;
-  font-size: 11px;
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-caption);
 }
 
 .tt-text-field--compact.tt-text-field--textarea .tt-text-field__control {
   min-height: 58px;
-  padding: 6px 8px;
-  font-size: 11px;
+  padding: var(--space-1-5) var(--space-2);
+  font-size: var(--font-size-caption);
 }
 
 .tt-text-field--clearable:not(.tt-text-field--textarea) .tt-text-field__control {
-  padding-right: var(--spacing-xl);
+  padding-right: var(--space-8);
 }
 
 .tt-text-field--clearable .tt-text-field__control::-webkit-search-cancel-button {
   appearance: none;
 }
 
+/* 清除按钮的外观由 IconButton 提供，这里只负责在输入框内的定位。 */
 .tt-text-field__clear {
   position: absolute;
   top: 50%;
-  right: var(--spacing-xs);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--spacing-lg);
-  height: var(--spacing-lg);
-  padding: 0;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
+  right: var(--space-1);
   transform: translateY(-50%);
-}
-
-.tt-text-field__clear:hover {
-  color: var(--color-text-primary);
-  background: var(--color-bg-hover);
-}
-
-.tt-text-field__clear:focus-visible {
-  outline: 1px solid var(--color-accent);
-  outline-offset: 1px;
-}
-
-.tt-text-field__clear > .shared-icon {
-  width: var(--spacing-md);
-  height: var(--spacing-md);
 }

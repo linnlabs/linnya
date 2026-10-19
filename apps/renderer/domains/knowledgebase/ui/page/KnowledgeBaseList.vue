@@ -9,19 +9,15 @@
         :meta="listMeta"
       >
         <template #actions>
-          <button class="create-btn" @click="onCreateClick">
-            <span class="icon">
-              <AddIcon />
-            </span>
-            <span>{{ knowledgeBaseMessage('knowledgeBase.list.action.create') }}</span>
-          </button>
+          <BaseButton variant="outline" tone="accent" size="lg" shape="pill" block @click="onCreateClick">
+            <template #icon><AddIcon /></template>
+            {{ knowledgeBaseMessage('knowledgeBase.list.action.create') }}
+          </BaseButton>
           <!-- 全局上传入口：放在“新建知识库”下方，承载跨知识库的长时任务列表 -->
-          <button class="global-upload-btn" @click="openGlobalUpload">
-            <span class="icon">
-              <UploadIcon class="upload-icon" />
-            </span>
-            <span>{{ knowledgeBaseMessage('knowledgeBase.list.action.globalUpload') }}</span>
-          </button>
+          <BaseButton variant="outline" tone="info" size="lg" shape="pill" block @click="openGlobalUpload">
+            <template #icon><UploadIcon /></template>
+            {{ knowledgeBaseMessage('knowledgeBase.list.action.globalUpload') }}
+          </BaseButton>
         </template>
       </PageSectionHeader>
 
@@ -93,12 +89,10 @@
           <p class="empty-desc">
             {{ knowledgeBaseMessage('knowledgeBase.list.empty.description') }}
           </p>
-          <button class="empty-create-btn" @click="onCreateClick">
-            <span class="icon">
-              <AddIcon />
-            </span>
+          <BaseButton variant="outline" tone="neutral" size="lg" shape="pill" @click="onCreateClick">
+            <template #icon><AddIcon /></template>
             {{ knowledgeBaseMessage('knowledgeBase.list.empty.createFirst') }}
-          </button>
+          </BaseButton>
         </div>
       </section>
     </div>
@@ -125,7 +119,7 @@ import { useKnowledgeGraphProgressStore } from '../../stores/knowledgeGraphProgr
 import { KnowledgeBaseIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { UploadIcon } from '@linnya/renderer-ui/icons';
-import { PageSectionHeader } from '@linnya/renderer-ui';
+import { BaseButton, PageSectionHeader } from '@linnya/renderer-ui';
 import CreateKnowledgeBaseModal from '../CreateKnowledgeBaseModal.vue';
 import GlobalUploadModal from '../GlobalUploadModal.vue';
 import KnowledgeGraphProgressBar from '../KnowledgeGraphProgressBar.vue';

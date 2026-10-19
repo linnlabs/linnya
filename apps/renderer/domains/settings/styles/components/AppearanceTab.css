@@ -1,58 +1,91 @@
 /* apps/renderer/domains/settings/styles/components/AppearanceTab.css */
-/* 主题色板不是规整表单，不套件套的行原语，只借用 SettingsRow 的控件列。 */
+/*
+ * 主题选择：四张带名称的圆角预览卡（跟随系统 / 浅色 / 月白蓝 / 深色）。
+ * 预览是简洁抽象的白天、月白、夜晚插画，调色板见 tokens/theme-preview.css；
+ * 选中时在卡片外紧贴加一圈 2px 强调色，不留间隙。
+ */
 
 .appearance-theme-selector {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-md);
+  display: grid;
+  /* 固定 80px 宽的小卡片，四个选项始终一行；整组随 SettingsRow 的 end 控件列靠右对齐。 */
+  grid-template-columns: repeat(4, 80px);
+  gap: var(--space-3);
 }
 
 .appearance-theme-option {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
   padding: 0;
+  color: var(--color-text-secondary);
   cursor: pointer;
   background: none;
   border: none;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-lg);
 }
 
-.appearance-theme-option:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 3px;
-}
-
-.appearance-theme-circle {
+.appearance-theme-tile {
   position: relative;
-  width: 24px;
-  height: 24px;
-  border: 1px solid color-mix(in srgb, var(--color-black) 10%, transparent);
-  border-radius: 50%;
-  transition:
-    transform var(--transition-normal) ease,
-    box-shadow var(--transition-normal) ease;
+  display: block;
+  width: 100%;
+  aspect-ratio: 96 / 60;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 1px var(--color-border-light);
+  transition: box-shadow var(--duration-short) var(--ease-standard);
 }
 
-.appearance-theme-option:hover .appearance-theme-circle {
-  transform: scale(1.1);
+.appearance-theme-option:hover .appearance-theme-tile {
+  box-shadow: 0 0 0 1px var(--color-border-hover);
 }
 
-.appearance-theme-option.is-active .appearance-theme-circle {
-  border-color: transparent;
-  box-shadow:
-    0 0 0 1.5px var(--color-accent),
-    0 3px 6px var(--shadow-color-md);
-  transform: scale(1.1);
+.appearance-theme-option.is-active .appearance-theme-tile {
+  box-shadow: 0 0 0 2px var(--color-accent);
 }
 
-.appearance-theme-circle.is-light {
-  background-color: var(--color-white);
+.appearance-theme-label {
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  color: var(--color-text-tertiary);
+  transition: color var(--duration-short) var(--ease-standard);
 }
 
-.appearance-theme-circle.is-dark {
-  background-color: var(--color-dark-surface);
+.appearance-theme-option:hover .appearance-theme-label {
+  color: var(--color-text-primary);
 }
 
-.appearance-theme-circle.is-moon-blue {
-  background-color: var(--color-blue-50);
-  border-color: color-mix(in srgb, var(--color-blue-500) 22%, transparent);
+.appearance-theme-option.is-active .appearance-theme-label {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
 }
+
+/* --- 插画 --- */
+
+.appearance-theme-tile .theme-preview-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 跟随系统：夜晚只露出右下半边，沿对角线与白天拼合。 */
+.appearance-theme-tile .theme-preview-art.is-split-night {
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+.theme-preview-art .pv-day-sky { fill: var(--pv-day-sky); }
+.theme-preview-art .pv-sun { fill: var(--pv-sun); }
+.theme-preview-art .pv-sun-halo { fill: var(--pv-sun); opacity: 0.22; }
+.theme-preview-art .pv-cloud { fill: var(--pv-cloud); }
+.theme-preview-art .pv-cloud--moon { opacity: 0.9; }
+.theme-preview-art .pv-moon-sky { fill: var(--pv-moon-sky); }
+.theme-preview-art .pv-moon-white { fill: var(--pv-moon-white); }
+.theme-preview-art .pv-night-sky { fill: var(--pv-night-sky); }
+.theme-preview-art .pv-moon-warm { fill: var(--pv-moon-warm); }
+.theme-preview-art .pv-star--moon { fill: var(--pv-moon-white); }
+.theme-preview-art .pv-star--1 { fill: var(--pv-star-1); }
+.theme-preview-art .pv-star--2 { fill: var(--pv-star-2); }
+.theme-preview-art .pv-star--3 { fill: var(--pv-star-3); }

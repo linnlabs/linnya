@@ -53,13 +53,15 @@
 
       <!-- Actions -->
       <div v-if="showActions" class="actions">
-        <button
-          @click="$emit('delete', todo.id)"
+        <IconButton
+          :label="workspaceMessage('workspace.todo.item.delete')"
+          size="md"
+          tone="danger"
           class="delete-button"
-          :title="workspaceMessage('workspace.todo.item.delete')"
+          @click="$emit('delete', todo.id)"
         >
           <DeleteIcon class="delete-icon" />
-        </button>
+        </IconButton>
       </div>
     </div>
   </div>
@@ -68,7 +70,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { Todo } from '../types';
-import { CustomCheckbox } from '@linnya/renderer-ui';
+import { CustomCheckbox, IconButton } from '@linnya/renderer-ui';
 import { DeleteIcon } from '@linnya/renderer-ui/icons';
 import { CalendarIcon } from '@linnya/renderer-ui/icons';
 import { TagIcon } from '@linnya/renderer-ui/icons';

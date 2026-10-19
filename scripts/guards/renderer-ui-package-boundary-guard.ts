@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  RENDERER_UI_CALLER_ADJUSTABLE_TOKENS,
   RENDERER_UI_HOST_CONSUMER_ROOTS,
   RENDERER_UI_PLUGIN_WORKSPACE_ROOT,
   RENDERER_UI_PUBLIC_TOKEN_ALLOWLIST,
@@ -173,11 +174,12 @@ function validateReservedTokenDefinitions(
     ...RENDERER_UI_PUBLIC_TOKEN_ALLOWLIST,
     ...packageOwnedTokens,
   ]);
-  const definitionPattern = /(--[a-z][a-z0-9-]*)\s*:/giu;
+  const definitionPattern = /(?<![\w-])(--[a-z][a-z0-9-]*)\s*:/giu;
   for (const file of files) {
     for (const match of file.source.matchAll(definitionPattern)) {
       const token = match[1];
       if (!token || !publicTokens.has(token)) continue;
+      if (RENDERER_UI_CALLER_ADJUSTABLE_TOKENS.some(adjustable => adjustable === token)) continue;
       if (file.path.startsWith('packages/renderer-ui/')) continue;
       failures.push(`Renderer UI 保留 token 不得由外部重定义：${token} @ ${file.path}`);
     }
@@ -193,7 +195,7 @@ async function readPackageStyleFacts(): Promise<PackageStyleFacts> {
   const classNames = new Set<string>();
   for (const filePath of cssFiles) {
     const source = await readFile(filePath, 'utf8');
-    for (const match of source.matchAll(/(--[a-z][a-z0-9-]*)\s*:/giu)) {
+    for (const match of source.matchAll(/(?<![\w-])(--[a-z][a-z0-9-]*)\s*:/giu)) {
       if (match[1]) tokenDefinitions.add(match[1]);
     }
     for (const className of extractCssSelectorClassNames(source)) classNames.add(className);
@@ -251,8 +253,12 @@ function validatePluginRendererBoundaries(
     ) {
       failures.push(`Renderer plugin 禁止按 Host theme selector 分支：${file.path}`);
     }
-    for (const match of file.source.matchAll(/(--[a-z][a-z0-9-]*)\s*:/giu)) {
-      if (match[1] && packageStyleFacts.tokenDefinitions.has(match[1])) {
+    for (const match of file.source.matchAll(/(?<![\w-])(--[a-z][a-z0-9-]*)\s*:/giu)) {
+      if (
+        match[1] &&
+        packageStyleFacts.tokenDefinitions.has(match[1]) &&
+        !RENDERER_UI_CALLER_ADJUSTABLE_TOKENS.some(adjustable => adjustable === match[1])
+      ) {
         failures.push(`Renderer plugin 禁止重定义 package token：${match[1]} @ ${file.path}`);
       }
     }

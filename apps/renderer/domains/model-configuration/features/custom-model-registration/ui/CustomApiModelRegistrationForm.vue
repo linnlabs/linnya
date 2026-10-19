@@ -59,23 +59,21 @@
             session.setField('customApiFormat', CustomApiFormatSchema.parse($event))
           "
         />
-        <button
-          type="button"
-          class="settings-button settings-button-secondary add-model-discover-button"
+        <BaseButton
+          variant="secondary"
+          size="md"
+          class="add-model-discover-button"
           :disabled="isDiscovering || status.isSubmitting || !form.baseUrl"
           :title="settingsMessage('settings.addModel.discover.button')"
           @click="session.discover"
         >
-          <RefreshIcon
-            class="add-model-refresh-icon"
-            :class="{ 'is-spinning': isDiscovering }"
-          />
+          <template #icon><RefreshIcon class="add-model-refresh-icon" :class="{ 'is-spinning': isDiscovering }" /></template>
           <span>{{
             isDiscovering
               ? settingsMessage('settings.addModel.discover.fetching')
               : settingsMessage('settings.addModel.discover.button')
           }}</span>
-        </button>
+        </BaseButton>
       </div>
       <SettingsFeedback
         v-if="discoveryFeedback"
@@ -134,16 +132,17 @@
     </div>
 
     <div class="add-model-submit">
-      <button
-        type="button"
-        class="settings-button full-width-button"
+      <BaseButton
+        variant="tint"
+        size="lg"
+        block
         :disabled="
           status.isSubmitting || isDiscovering || status.success || state.models.length === 0
         "
         @click="session.submit"
       >
         {{ submitText }}
-      </button>
+      </BaseButton>
       <SettingsFeedback
         kind="error"
         :message="status.error || ''"
@@ -156,7 +155,7 @@
 import { computed, onBeforeUnmount } from 'vue';
 import { CustomApiFormatSchema, type CustomApiModelItem } from '@app/schemas';
 import type { CustomSelectOption } from '@linnya/renderer-ui';
-import { CustomSelect, CustomTextInput, SecretInput, Switch } from '@linnya/renderer-ui';
+import { BaseButton, CustomSelect, CustomTextInput, SecretInput, Switch } from '@linnya/renderer-ui';
 import { RefreshIcon } from '@linnya/renderer-ui/icons';
 import {
   SettingsFeedback,

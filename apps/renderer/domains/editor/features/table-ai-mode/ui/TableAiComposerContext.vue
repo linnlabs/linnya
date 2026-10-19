@@ -1,13 +1,13 @@
 <template>
   <div class="ai-assistant-table-context table-context-wrapper">
-    <button
-      v-if="store.isActive"
+    <IconButton
+      :label="closeTitle"
       class="table-mode-close-button"
-      :title="closeTitle"
+      v-if="store.isActive"
       @click="handleClose"
     >
       <CloseIcon />
-    </button>
+    </IconButton>
 
     <TableAiContext
       v-if="context"
@@ -22,6 +22,7 @@
 </template>
 
 <script setup lang="ts">
+import { IconButton } from '@linnya/renderer-ui';
 import { computed } from 'vue';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import TableAiContext from '../../../blocks/TableBlock/ui/TableAiContext.vue';

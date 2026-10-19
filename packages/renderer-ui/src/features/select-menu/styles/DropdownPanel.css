@@ -4,12 +4,12 @@
   box-sizing: border-box;
   overflow: auto;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   outline: none;
   background-color: var(--color-bg-surface);
   color: var(--color-text-primary);
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-size-body);
   line-height: normal;
   box-shadow: var(--shadow-floating-panel);
 }
@@ -17,7 +17,7 @@
 .linnya-dropdown-down-leave-active,
 .linnya-dropdown-up-enter-active,
 .linnya-dropdown-up-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 .linnya-dropdown-down-enter-from { opacity: 0; transform: translateY(-8px); }
 .linnya-dropdown-down-leave-to { opacity: 0; transform: translateY(-4px); }

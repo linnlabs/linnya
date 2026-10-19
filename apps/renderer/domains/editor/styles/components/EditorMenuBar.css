@@ -10,8 +10,8 @@
   top: 0; 
   z-index: 100; 
   background-color: var(--color-bg-default);
-  padding: 4px 10px; 
-  border-bottom: 0px solid var(--color-gray-100); 
+  padding: var(--space-1) var(--space-2-5); 
+  border-bottom: 0px solid var(--color-border-light);
   pointer-events: auto; 
   /* 使其内容居中 */
   display: flex;
@@ -37,12 +37,12 @@
 .editor-menu-bar button {
   border: none;
   background: transparent;
-  border-radius: 4px;
-  padding: 4px 4px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-1);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-size-prose);
   color: var(--color-text-tertiary);
-  transition: background-color 0.2s ease, color 0.2s ease; /* 统一过渡效果 */
+  transition: background-color var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard); /* 统一过渡效果 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -58,23 +58,23 @@
 /* 标题级别文本样式 */
 .editor-menu-bar button .heading-level-text {
   display: inline-block;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
   width: 20px; /* 与SVG图标宽度一致 */
   height: 20px; /* 与SVG图标高度一致 */
-  line-height: 20px; /* 垂直居中 */
+  line-height: var(--line-height-body); /* 垂直居中 */
   text-align: center;
 }
 
 .editor-menu-bar button .ordered-list-label {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
 }
 
 .editor-menu-bar button .llm-debug-label {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
 }
 
 /* 按钮悬停效果 */
@@ -85,7 +85,7 @@
 /* 激活状态按钮样式 */
 .editor-menu-bar button.is-active {
   background-color: var(--color-accent-bg);
-  color: var(--color-accent);
+  color: var(--color-accent-text);
 }
 
 /* ++ 新增：激活状态按钮的悬停效果 ++ */
@@ -106,7 +106,7 @@
   width: 1px;
   height: 20px; /* 或根据按钮高度调整 */
   background-color: var(--color-border-default);
-  margin: 0 4px; /* 调整间距 */
+  margin: 0 var(--space-1); /* 调整间距 */
   vertical-align: middle; /* 垂直居中对齐 */
 }
 
@@ -140,7 +140,7 @@
 /* ++ 新增：下拉菜单过渡动画 ++ */
 .menu-fade-enter-active,
 .menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .menu-fade-enter-from,
@@ -154,7 +154,7 @@
 .dropdown-divider {
   height: 1px;
   background-color: var(--color-border-default);
-  margin: var(--spacing-xs) var(--spacing-sm); 
+  margin: var(--space-1) var(--space-2); 
 }
 
 /* 主题切换按钮特殊图标样式（如果需要） */
@@ -163,19 +163,9 @@
   line-height: 1; /* 确保图标垂直居中 */
 }
 
-/* 调试按钮特殊样式（如果需要） */
-.debug-button {
-  background-color: var(--color-red-350); /* 调试入口需要显眼，但仍使用基础色阶。 */
-  color: var(--color-white);
-}
-
-.debug-button:hover {
-  background-color: var(--color-red-400);
-}
-
 /* 加粗、斜体按钮内图标/文字样式 */
 .menu-icon {
-  font-weight: bold; /* B */
+  font-weight: var(--font-weight-semibold); /* B */
 }
 .menu-icon i {
   font-style: italic; /* I */

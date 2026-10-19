@@ -6,7 +6,12 @@
   --conversation-timeline-visible-height: 100%;
   --conversation-content-column-max-width: 800px;
   --conversation-content-side-gap: 22px;
-  --conversation-footer-mask-bg: var(--color-bg-surface);
+  /*
+   * 宿主背景是消息画布与输入区背板的唯一来源；所在页面只覆盖这个变量，
+   * 避免暗色下画布、背板和页面出现不同底色的接缝。
+   */
+  --conversation-host-bg: var(--color-bg-surface);
+  --conversation-footer-mask-bg: var(--conversation-host-bg);
   --conversation-footer-mask-entry-depth: 14px;
 
   container-type: inline-size;
@@ -16,7 +21,7 @@
   overflow: hidden;
   width: 100%;
   height: 100%;
-  background-color: var(--color-bg-surface);
+  background-color: var(--conversation-host-bg);
 }
 
 .conversation-host-viewport {
@@ -82,7 +87,7 @@
   );
   --conversation-content-timeline-reserve-px: 0px;
 
-  padding: 10px 0 24px;
+  padding: var(--space-2-5) 0 var(--space-6);
 }
 
 .conversation-host[data-conversation-content-state='filled'] .conversation-content {
@@ -115,14 +120,14 @@
   justify-self: end;
   height: var(--conversation-timeline-visible-height, 100%);
   max-height: var(--conversation-timeline-visible-height, 100%);
-  margin-right: var(--timeline-offset-right, 6px);
+  margin-right: var(--timeline-offset-right, var(--space-1-5));
 }
 
 .conversation-host .panel-footer {
   position: relative;
   z-index: 1;
   flex-shrink: 0;
-  background-color: var(--color-bg-surface);
+  background-color: var(--conversation-host-bg);
 }
 
 .conversation-host[data-conversation-content-state='filled'] .panel-footer {

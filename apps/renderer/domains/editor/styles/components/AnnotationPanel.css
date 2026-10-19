@@ -14,7 +14,7 @@
  * 作用：定义面板的基础视觉外观 - Notion卡片风格
  */
 .annotation-panel {
-  --annotation-ai-action-color: color-mix(in srgb, var(--color-blue-600) 70%, var(--color-red-350));
+  --annotation-ai-action-color: color-mix(in srgb, var(--color-info-text) 70%, var(--color-error));
 
   position: absolute;
   z-index: 1000;
@@ -29,10 +29,10 @@
   border-radius: var(--radius-lg);
   border: 1px solid var(--annotation-panel-border); /* 细边框 */
   box-shadow: none;                                   /* 移除默认阴影，让面板更干净 */
-  padding: 10px;                                      /* 内边距 */
+  padding: var(--space-2-5);                                      /* 内边距 */
   font-family: inherit;
   /* 过渡效果 */
-  transition: top 0.25s ease-out, box-shadow 0.15s ease, transform 0.15s ease; 
+  transition: top var(--duration-long) var(--ease-enter), box-shadow var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard); 
 }
 
 .annotation-panel.is-visible {
@@ -59,8 +59,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
-  font-size: 11px;                                 /* 更小的字体，从13px减少到11px，与作者名称保持一致 */
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-caption);                                 /* 更小的字体，从13px减少到11px，与作者名称保持一致 */
   color: var(--color-text-secondary);               /* 次要文本颜色 */
   /* 移除下边框，现在用margin代替分隔 */
   height: 22px; /* 固定高度，确保切换时不会跳动 */
@@ -71,14 +71,14 @@
  * 作用：定义作者名称的样式，无头像版本
  */
 .annotation-author {
-  font-weight: 500;                                 /* 中等粗细，更现代 */
+  font-weight: var(--font-weight-medium);                                 /* 中等粗细，更现代 */
   color: var(--color-text-muted);                  /* 更浅的文本色 */
-  font-size: 11px;                                 /* 更小的字体，从13px减少到11px */
+  font-size: var(--font-size-caption);                                 /* 更小的字体，从13px减少到11px */
 }
 
 .annotation-panel .ai-tag-chip {
   height: 16px;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 /* 
@@ -98,9 +98,9 @@
  */
 .annotation-time {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   opacity: 1;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-medium) var(--ease-standard);
 }
 
 /* 
@@ -109,12 +109,12 @@
  */
 .annotation-icon-buttons {
   display: flex;
-  gap: 8px;                                         /* 按钮间距，与设计一致 */
+  gap: var(--space-2);                                         /* 按钮间距，与设计一致 */
   align-items: center;
   opacity: 0;                                       /* 默认隐藏按钮 */
   position: absolute;                               /* 绝对定位，覆盖在时间戳位置 */
   right: 0;                                         /* 右对齐 */
-  transition: opacity 0.2s ease;                   /* 平滑的显示/隐藏过渡 */
+  transition: opacity var(--duration-medium) var(--ease-standard);                   /* 平滑的显示/隐藏过渡 */
   pointer-events: none;                            /* 隐藏时不阻挡点击 */
 }
 
@@ -156,8 +156,8 @@
   width: 100%;
   white-space: pre-wrap;                            /* 保留空白符和换行 */
   word-break: break-word;                           /* 长单词换行 */
-  font-size: 13px;                                 /* 更小的字体大小，从14px减少到13px */
-  line-height: 1.4;                                /* 调整行高以适应更小的字体 */
+  font-size: var(--font-size-body);                                 /* 更小的字体大小，从14px减少到13px */
+  line-height: var(--line-height-body);                                /* 调整行高以适应更小的字体 */
   color: var(--annotation-panel-content-color);     /* 批注正文颜色由主题承接 */
   margin: 0;                                        /* 移除默认边距 */
 }
@@ -172,13 +172,13 @@
  */
 .annotation-resolved-badge {
   flex-shrink: 0;
-  margin-left: 8px;
-  padding: 3px 8px;                                /* 稍大的内边距 */
+  margin-left: var(--space-2);
+  padding: 3px var(--space-2);                                /* 稍大的内边距 */
   background-color: var(--color-success-bg);        /* 成功状态背景色 */
-  color: var(--color-success);                      /* 成功状态文字颜色 */
-  border-radius: 12px;                             /* 胶囊形状 */
-  font-size: 10px;                                 /* 更小的字体，从11px减少到10px */
-  font-weight: 500;                                /* 中等粗细 */
+  color: var(--color-success-text);                      /* 成功状态文字颜色 */
+  border-radius: var(--radius-xl);                             /* 胶囊形状 */
+  font-size: var(--font-size-caption);                                 /* 最小字号为 caption（11px） */
+  font-weight: var(--font-weight-medium);                                /* 中等粗细 */
   white-space: nowrap;                             /* 不换行 */
 }
 
@@ -209,18 +209,18 @@
   width: 100%;
   min-height: 80px;                                /* 更大的最小高度 */
   max-height: none;
-  padding: 10px;                                   /* 更宽松的内边距 */
+  padding: var(--space-2-5);                                   /* 更宽松的内边距 */
   border: 1px solid var(--annotation-panel-input-border); /* 边框 */
   border-radius: var(--radius-md);
   font-family: inherit;                            /* 继承父元素字体 */
-  font-size: 13px;                                 /* 与批注正文保持一致，从14px减少到13px */
-  line-height: 1.4;                                /* 与批注正文保持一致，从1.5调整到1.4 */
+  font-size: var(--font-size-body);                                 /* 与批注正文保持一致，从14px减少到13px */
+  line-height: var(--line-height-body);                                /* 与批注正文保持一致，从1.5调整到1.4 */
   color: var(--annotation-panel-input-color);       /* 输入文字颜色 */
   background-color: var(--annotation-panel-input-bg); /* 背景色 */
   resize: none;                                     /* 禁用调整大小 */
   overflow: hidden;
   outline: none;                                    /* 移除默认轮廓 */
-  transition: border-color 0.2s ease, box-shadow 0.2s ease; /* 过渡效果 */
+  transition: border-color var(--duration-medium) var(--ease-standard), box-shadow var(--duration-medium) var(--ease-standard); /* 过渡效果 */
 }
 
 /* 
@@ -253,12 +253,16 @@
   border: none;                                     /* 移除边框 */
   background: transparent;                          /* 透明背景 */
   cursor: pointer;                                  /* 手型光标 */
-  font-size: 15px;                                 /* 增大的图标尺寸 */
+  font-size: var(--font-size-subtitle);                                 /* 增大的图标尺寸 */
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: all 0.2s ease;                       /* 过渡效果 */
+  /* 过渡效果 */
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    color var(--duration-medium) var(--ease-standard),
+    transform var(--duration-medium) var(--ease-standard);
   color: var(--color-text-secondary);             /* 默认图标颜色 */
 }
 
@@ -268,7 +272,7 @@
 .icon-edit, .icon-resolve, .icon-delete, .icon-cancel, .icon-save, .icon-ai {
   font-style: normal;
   line-height: 1;
-  font-weight: bold;
+  font-weight: var(--font-weight-semibold);
 }
 
 /* --- 特定图标按钮颜色 --- */
@@ -280,23 +284,23 @@
 
 /* 编辑图标按钮 */
 .edit-icon {
-  color: var(--color-info);
+  color: var(--color-info-text);
 }
 
 /* 解决图标按钮 */
 .resolve-icon {
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 /* 已解决状态下的解决图标按钮 */
 .resolve-icon.is-resolved {
   background-color: var(--color-success);
-  color: var(--color-white);
+  color: var(--color-text-on-accent);
 }
 
 /* 删除图标按钮 */
 .delete-icon {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 /* 取消图标按钮 */
@@ -306,7 +310,7 @@
 
 /* 保存图标按钮 */
 .save-icon {
-  color: var(--color-info);
+  color: var(--color-info-text);
 }
 
 /* ============================================= */
@@ -397,9 +401,9 @@
  */
 .annotation-panel.is-creating {
   /* 创建态：使用淡入 + 从下往上轻微浮起的动画 */
-  animation: annotation-panel-fade-in 0.2s ease-out;
+  animation: annotation-panel-fade-in var(--duration-medium) var(--ease-enter);
   /* 创建时不做 top 位置平滑过渡，避免“从页面顶部滑到目标位置”的视觉效果 */
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition: box-shadow var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 /* ============================================= */
@@ -440,13 +444,13 @@
 /* ============================================= */
 
 .annotation-replies {
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 0.5px solid var(--annotation-panel-border); /* 仅保留顶部横线 */
 }
 
 .annotation-reply-item {
-  padding: 6px 0; /* 减少左右内边距，因为没有背景色了 */
+  padding: var(--space-1-5) 0; /* 减少左右内边距，因为没有背景色了 */
   /* 回复间分割线已移除，保持列表更清爽 */
 }
 
@@ -458,24 +462,24 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;                              /* 与 .annotation-meta 的间距保持一致 */
-  font-size: 11px;
+  margin-bottom: var(--space-1);                              /* 与 .annotation-meta 的间距保持一致 */
+  font-size: var(--font-size-caption);
 }
 
 .annotation-reply-author {
-  font-weight: 500;                                 /* 复用 .annotation-author 的样式 */
+  font-weight: var(--font-weight-medium);                                 /* 复用 .annotation-author 的样式 */
   color: var(--color-text-muted);                  /* 复用 .annotation-author 的颜色 */
-  font-size: 11px;                                 /* 复用 .annotation-author 的大小 */
+  font-size: var(--font-size-caption);                                 /* 复用 .annotation-author 的大小 */
 }
 
 .annotation-reply-time {
   color: var(--annotation-panel-reply-time-color);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .annotation-reply-content {
-  font-size: 13px; /* 字体微调回 13px 与正文一致 */
-  line-height: 1.4;
+  font-size: var(--font-size-body); /* 字体微调回 13px 与正文一致 */
+  line-height: var(--line-height-body);
   color: var(--annotation-panel-reply-content-color);
   word-break: break-word;
 }
@@ -491,7 +495,7 @@
 .annotation-creator {
   display: flex;
   align-items: center;
-  gap: 4px;                                         /* 作者名称和标记间的间距 */
+  gap: var(--space-1);                                         /* 作者名称和标记间的间距 */
 }
 
 @media (max-width: 1200px) {

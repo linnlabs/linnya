@@ -7,6 +7,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
   entry('root', '@linnya/renderer-ui', '.', 'packages/renderer-ui/src/index.ts', 'index.js', [
     'ActionButtons',
     'AlertDialog',
+    'BaseButton',
     'BaseDropdown',
     'CharacterCount',
     'ColorPickerPanel',
@@ -23,6 +24,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'FloatingToolbar',
     'HOVER_TOOLTIP_WINDOW_FOCUS_PORT_KEY',
     'HoverTooltip',
+    'IconButton',
     'ImagePreviewModal',
     'Modal',
     'NotificationBar',
@@ -33,6 +35,9 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'SegmentedTabs',
     'SecretInput',
     'SimpleDatePicker',
+    'Skeleton',
+    'SkeletonBlock',
+    'SkeletonRows',
     'Switch',
     'TagChip',
     'TextPopover',
@@ -51,6 +56,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'resolveColorPickerOptionHex',
     'resolveDraggablePanelPosition',
     'resolveHoverTooltipPosition',
+    'resolveIconButtonElement',
     'resolveAlertDialogDangerousAction',
   ]),
   entry('icons', '@linnya/renderer-ui/icons', './icons', 'packages/renderer-ui/src/icons/index.ts', 'icons.js', [

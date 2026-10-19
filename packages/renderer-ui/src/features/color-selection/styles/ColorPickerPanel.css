@@ -2,7 +2,7 @@
   --linnya-ui-color-picker-cell-border-color: transparent;
 
   position: relative;
-  padding: 12px;
+  padding: var(--space-3);
   outline: none;
   background-color: transparent;
   user-select: none;
@@ -13,7 +13,7 @@
 }
 
 .shared-color-picker-panel__section {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .shared-color-picker-panel__section:last-child {
@@ -21,16 +21,16 @@
 }
 
 .shared-color-picker-panel__title {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   color: var(--color-text-secondary);
-  font-weight: 500;
-  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-footnote);
 }
 
 .shared-color-picker-panel__grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .shared-color-picker-panel__cell {
@@ -40,10 +40,13 @@
   width: 32px;
   height: 32px;
   border: 1px solid var(--linnya-ui-color-picker-cell-border-color);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   box-shadow: 0 0.75px 0.5px var(--shadow-color-xs);
   cursor: pointer;
-  transition: all 150ms ease;
+  transition:
+    border-color var(--duration-short) var(--ease-standard),
+    box-shadow var(--duration-short) var(--ease-standard),
+    transform var(--duration-short) var(--ease-standard);
 }
 
 .shared-color-picker-panel__cell:hover {
@@ -62,8 +65,8 @@
 }
 
 .shared-color-picker-panel__sample {
-  font-weight: bold;
-  font-size: 20px;
+  font-weight: var(--font-weight-semibold);
+  font-size: 20px; /* scale-exempt: 取色样本字形尺寸 */
 }
 
 .shared-color-picker-panel__footer {

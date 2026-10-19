@@ -1,9 +1,9 @@
 .conversation-image-fixture {
-  --input-footer-control-height: var(--spacing-xl);
+  --input-footer-control-height: var(--space-8);
 
-  width: min(100%, calc(var(--spacing-2xl) * 26));
+  width: min(100%, calc(var(--space-10) * 26));
   min-height: 100vh;
-  padding: var(--spacing-xl);
+  padding: var(--space-8);
   margin: 0 auto;
   color: var(--color-text-primary);
 }
@@ -13,11 +13,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
 }
 
 .conversation-image-fixture__header {
-  padding-bottom: var(--spacing-lg);
+  padding-bottom: var(--space-6);
   border-bottom: thin solid var(--color-border-light);
 }
 
@@ -37,14 +37,14 @@
 }
 
 .conversation-image-fixture__eyebrow {
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: var(--space-1);
   font-size: var(--font-size-xs);
   color: var(--color-accent);
 }
 
 .conversation-image-fixture__status {
   flex: 0 0 auto;
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
   background: var(--color-bg-subtle);
@@ -52,16 +52,16 @@
 }
 
 .conversation-image-fixture__section {
-  padding: var(--spacing-lg) 0;
+  padding: var(--space-6) 0;
   border-bottom: thin solid var(--color-border-light);
 }
 
 .conversation-image-fixture__section-heading {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--space-4);
 }
 
 .conversation-image-fixture__section-heading h2 {
-  margin-bottom: var(--spacing-xxs);
+  margin-bottom: var(--space-0-5);
   font-size: var(--font-size-lg);
   line-height: var(--line-height-tight);
   letter-spacing: 0;
@@ -79,9 +79,9 @@
 .conversation-image-fixture__drop-zone {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  min-height: calc(var(--spacing-2xl) * 2);
-  padding: var(--spacing-md);
+  gap: var(--space-2);
+  min-height: calc(var(--space-10) * 2);
+  padding: var(--space-4);
   background: var(--color-bg-subtle);
   border: thin dashed var(--color-border-focus);
   border-radius: var(--radius-md);
@@ -89,7 +89,7 @@
 
 .conversation-image-fixture__drop-zone:focus-visible {
   outline: thin solid var(--color-accent);
-  outline-offset: var(--spacing-xxs);
+  outline-offset: var(--space-0-5);
 }
 
 .conversation-image-fixture__drop-zone div {
@@ -100,7 +100,7 @@
 
 .conversation-image-fixture__text-button {
   flex: 0 0 auto;
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--space-1) var(--space-2);
   color: var(--color-text-secondary);
   cursor: pointer;
   background: transparent;
@@ -124,12 +124,12 @@
 }
 
 .conversation-image-fixture__entry-state {
-  margin-top: var(--spacing-sm);
+  margin-top: var(--space-2);
 }
 
 .conversation-image-fixture__message {
-  max-width: calc(var(--spacing-2xl) * 12);
-  padding: var(--spacing-md);
+  max-width: calc(var(--space-10) * 12);
+  padding: var(--space-4);
   margin-left: auto;
   background: var(--color-bg-subtle);
   border-radius: var(--radius-md);
@@ -141,7 +141,7 @@
 
 @media (max-width: 40rem) {
   .conversation-image-fixture {
-    padding: var(--spacing-md);
+    padding: var(--space-4);
   }
 
   .conversation-image-fixture__header,

@@ -9,20 +9,20 @@
 /* 中文说明：CitationPanel 是 DraggablePanel 内的业务内容，tab 视觉只收口到 citation 面板根下。 */
 .citation-panel .citation-tabs {
   display: flex;
-  gap: 4px;
-  margin-bottom: 16px;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
 }
 
 .citation-panel .citation-tab {
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 400;
+  padding: var(--space-1-5) var(--space-3);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-secondary);
   cursor: pointer;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  transition: color 0.2s, border-color 0.2s;
+  transition: color var(--duration-medium), border-color var(--duration-medium);
 }
 
 .citation-panel .citation-tab:hover {

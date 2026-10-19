@@ -7,7 +7,7 @@
   justify-content: center;
   cursor: zoom-out;
   background: color-mix(in srgb, var(--color-black) 50%, transparent);
-  backdrop-filter: blur(var(--spacing-xxs));
+  backdrop-filter: blur(var(--space-0-5));
 }
 
 .image-preview-modal img {
@@ -22,7 +22,7 @@
 
 .image-preview-modal-fade-enter-active,
 .image-preview-modal-fade-leave-active {
-  transition: opacity var(--transition-fast);
+  transition: opacity var(--duration-micro);
 }
 
 .image-preview-modal-fade-enter-from,

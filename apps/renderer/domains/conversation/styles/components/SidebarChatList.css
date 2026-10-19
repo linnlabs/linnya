@@ -8,9 +8,9 @@
 }
 
 .sidebar-chat-list .chat-list-state {
-  margin: 0 10px;
-  padding: 6px 8px;
-  font-size: 12px;
+  margin: 0 var(--space-2-5);
+  padding: var(--space-1-5) var(--space-2);
+  font-size: var(--font-size-footnote);
   color: var(--workspace-sidebar-muted-color);
 }
 
@@ -18,8 +18,18 @@
   margin: 0;
 }
 
+/* 加载骨架与对话行的文字起点、时间列对齐。 */
+.sidebar-chat-list .chat-list-skeleton {
+  margin: 0 var(--space-2-5);
+  padding: 0 var(--space-2);
+}
+
+.sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-skeleton {
+  margin: 0;
+}
+
 .sidebar-chat-list .chat-list-state.is-error {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .sidebar-chat-list .chat-list-status-slot {
@@ -52,18 +62,18 @@
   flex: 1;
   min-width: 0;
   height: 24px;
-  padding: 0 6px;
+  padding: 0 var(--space-1-5);
   border: 1px solid var(--color-border-focus);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   outline: none;
   background: var(--color-bg-surface);
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-prose);
 }
 
 .sidebar-chat-list .chat-list-time {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   line-height: var(--workspace-sidebar-row-height, 32px);
   color: var(--workspace-sidebar-muted-color);
   white-space: nowrap;
@@ -100,30 +110,17 @@
   pointer-events: none;
 }
 
-.sidebar-chat-list .chat-list-action-button:hover {
-  color: var(--color-text-secondary);
-}
-
-.sidebar-chat-list .chat-list-item.is-active .chat-list-action-button:hover {
-  background-color: var(--color-bg-active-control-hover);
-  color: var(--color-text-primary);
-}
-
-.sidebar-chat-list .chat-list-action-button.is-active {
-  color: var(--color-text-primary);
-}
-
 .sidebar-chat-list .chat-list-toggle-row {
   width: calc(100% - 20px);
   height: 28px;
-  margin: 1px 10px;
-  padding: 0 8px;
+  margin: 1px var(--space-2-5);
+  padding: 0 var(--space-2);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--workspace-sidebar-muted-color);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   text-align: left;
 }
 
@@ -139,7 +136,7 @@
 
 .sidebar-chat-menu-fade-enter-active,
 .sidebar-chat-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .sidebar-chat-menu-fade-enter-from {
@@ -153,12 +150,12 @@
 }
 
 .sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-title {
-  font-size: 14px;
-  line-height: 28px;
+  font-size: var(--font-size-prose);
+  line-height: var(--line-height-prose);
 }
 
 .sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-time {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   line-height: 28px;
 }
 

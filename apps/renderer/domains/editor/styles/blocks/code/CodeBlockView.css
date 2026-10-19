@@ -8,7 +8,12 @@
   align-items: center;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0s ease 0.2s;
+  transition: opacity var(--duration-medium) var(--ease-standard), visibility 0s var(--ease-standard) var(--duration-medium);
+}
+
+/* 代码块底色已是浅灰，复制按钮的 hover 底色再高一层。 */
+.code-block-outer .copy-button {
+  --linnya-ui-icon-button-hover-bg: var(--color-bg-hover-strong);
 }
 
 .code-block-outer .language-display {
@@ -16,12 +21,12 @@
   top: 6px;
   left: 6px;
   z-index: 9;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-sm);
   background-color: transparent;
   color: var(--color-text-tertiary);
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   opacity: 1;
   pointer-events: none;
 }
@@ -33,7 +38,7 @@
   z-index: 10;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0s ease 0.2s;
+  transition: opacity var(--duration-medium) var(--ease-standard), visibility 0s var(--ease-standard) var(--duration-medium);
 }
 
 .code-block-outer:hover .code-block-controls,
@@ -52,16 +57,16 @@
   width: auto;
   min-width: 84px;
   height: 24px;
-  padding: 2px 8px;
+  padding: var(--space-0-5) var(--space-2);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   appearance: none;
   background-color: transparent;
   color: var(--color-text-tertiary);
   cursor: pointer;
   font-family: inherit;
-  font-size: 12px;
-  transition: background-color 0.2s ease;
+  font-size: var(--font-size-footnote);
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .code-block-outer .chevron-icon {
@@ -69,7 +74,7 @@
   width: 14px;
   height: 14px;
   color: var(--color-text-tertiary);
-  transition: transform 0.2s ease-in-out;
+  transition: transform var(--duration-medium) var(--ease-standard);
 }
 
 .code-block-outer .chevron-icon.is-open {
@@ -84,37 +89,9 @@
   min-width: 150px;
 }
 
-.code-block-outer .copy-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  background-color: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  font-size: 11px;
-  transition: color 0.2s ease, background-color 0.2s ease;
-}
-
-.code-block-outer .copy-button svg {
-  display: block;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.code-block-outer .copy-button:hover {
-  background-color: var(--color-bg-hover-strong);
-  color: var(--color-text-primary);
-}
-
 .dropdown-fade-enter-active,
 .dropdown-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .dropdown-fade-enter-from {

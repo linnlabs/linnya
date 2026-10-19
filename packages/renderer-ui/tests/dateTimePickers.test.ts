@@ -108,7 +108,7 @@ describe('TimePicker', () => {
     trigger.click();
     await nextTick();
 
-    const confirm = host.querySelector('.time-action-button.primary');
+    const confirm = host.querySelector('.time-popover-actions .linnya-ui-button--primary');
     if (!(confirm instanceof HTMLButtonElement)) throw new Error('Time picker confirm button not found');
     confirm.click();
     await nextTick();

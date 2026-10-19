@@ -1,7 +1,8 @@
 <template>
-  <button 
-    class="toggle-panel-button" 
-    :title="isPanelVisible
+  <IconButton
+    class="toggle-panel-button"
+    size="md"
+    :label="isPanelVisible
       ? editorMessage('editor.audioBlock.action.hidePanel')
       : editorMessage('editor.audioBlock.action.showPanel')"
     @click="$emit('toggle')"
@@ -11,10 +12,11 @@
       class="chevron-icon" 
       :class="{ 'is-open': isPanelVisible }" 
     />
-  </button>
+  </IconButton>
 </template>
 
 <script setup>
+import { IconButton } from '@linnya/renderer-ui';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';
 

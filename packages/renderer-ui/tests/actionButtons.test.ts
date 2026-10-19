@@ -91,13 +91,13 @@ describe('ActionButtons', () => {
   });
 
   it.each([
-    ['default', ['primary'], ['danger', 'accent']],
-    ['danger', ['danger'], ['primary', 'accent']],
-    ['accent', ['primary', 'accent'], ['danger']],
+    ['default', 'linnya-ui-button--primary', ['linnya-ui-button--danger', 'linnya-ui-button--soft']],
+    ['danger', 'linnya-ui-button--danger', ['linnya-ui-button--primary', 'linnya-ui-button--soft']],
+    ['accent', 'linnya-ui-button--soft', ['linnya-ui-button--primary', 'linnya-ui-button--danger']],
   ] as const)('把 %s 解析为唯一主操作视觉语义', (variant, included, excluded) => {
     const [, primary] = mountActionButtons({ primaryVariant: variant });
 
-    for (const className of included) expect(primary.classList.contains(className)).toBe(true);
+    expect(primary.classList.contains(included)).toBe(true);
     for (const className of excluded) expect(primary.classList.contains(className)).toBe(false);
   });
 });

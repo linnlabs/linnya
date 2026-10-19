@@ -6,9 +6,18 @@
 拥有；单一业务 UI 已归还 app/domain/feature。每个能力只有一个源码和 CSS owner，禁止兼容转发、双份样式、
 deep import，或重新建立 Host 级通用组件杂物目录。完整消费示例见 [使用指南](./docs/usage-guide.md)。
 
+## 文档导航
+
+- [设计规范](./docs/design.md)：Linnya 的视觉语言——表面与文字层级、功能色、角色字阶、间距、圆角、投影、动效、交互状态与图标怎样取值，以及刻度棘轮门禁。新增界面或修改视觉前先读。
+- [使用指南](./docs/usage-guide.md)：各公开组件的消费示例、状态所有权与扩展面。
+- [版本与装配检查表](./docs/release-checklist.md)：判断版本级别、插件兼容 range 与发布验证。
+
+本 README 记录包的边界、公开入口和组件合同；CSS 归属、选择器命名和样式装载等 Host 工程规则见
+[Renderer 样式指南](../../apps/renderer/app/styles/guide/style-guide.md)。
+
 ## 公开入口
 
-- 包根：FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -86,8 +95,9 @@ domain 的 `shared`，而不是直接上升为全局 Renderer UI。未来出现�
 
 ### 4. 视觉、样式与布局
 
-- 颜色、间距、圆角、阴影、字体、层级和状态视觉优先消费现有 semantic/component token。只有跨业务语义稳定且
-  现有 token 无法表达时才新增 token；原始色值只允许出现在 foundation/theme owner，业务内容色不得上移。
+- 颜色、间距、圆角、阴影、字体、层级、动效和状态视觉按[设计规范](./docs/design.md)消费现有 semantic/component
+  token。只有跨业务语义稳定且现有 token 无法表达时才新增 token；原始色值只允许出现在 foundation/theme owner，
+  业务内容色不得上移。
 - 新增 token 必须在 `light`、`dark`、`moon-blue` 中语义一致且集合闭包完整。组件不得读取主题 store、判断主题 ID、
   依赖 Host 主题 class，或让插件覆盖 package 保留 token。
 - 样式必须由组件所在 feature 拥有并汇入唯一 [`styles.css`](./src/styles/styles.css)；组件和插件都不得再次导入或复制
@@ -146,6 +156,14 @@ feature 拥有。
 提交评审前，作者必须能用大白话回答：谁在复用、共同语义是什么、业务边界在哪里、状态由谁拥有、键盘和焦点如何
 工作、样式如何扩展、哪些是公共合同、哪些是私有实现、怎样验证 Host 与插件没有回归。任一问题没有明确答案时，
 先把能力留在原 owner 或补设计，不通过增加开关和 fallback 推迟决定。
+
+## 按钮
+
+`BaseButton`（自 2.6.0）是所有按钮的唯一视觉 owner：八种语义 variant（primary、secondary、ghost、plain、danger、soft、tint、outline）、作用于 outline 与 plain 的 accent / info / neutral / danger tone、与 `--control-height-sm/md/lg` 对应的三档尺寸、胶囊形与占满宽度。组件只拥有展示、原生禁用与焦点环，不理解保存、提交或加载等业务状态；调用方通过 `disabled` 和文案投影进行中的状态。图标通过 `icon` 插槽放入 14px 槽位并对辅助技术隐藏，按钮文字或 `aria-label` 是可访问名称。普通属性、`aria-*`、`data-*`、`class`、`style` 与事件都落在唯一的原生 `button`；业务只能定制外围位置与宽度，不覆盖 `.linnya-ui-button*` 内部选择器。
+
+`IconButton`（自 2.6.0）是纯图标按钮的视觉 owner：xs / sm / md / lg 四档外框与图标尺寸、ghost / subtle / overlay 三种底色、neutral / danger tone 与强调色浅底的 `active` 态。`label` 必填并同时作为 `aria-label` 与原生提示；模板 ref 通过暴露的 `element` 取得原生按钮供浮层定位，函数式 ref 使用 `resolveIconButtonElement`。会 hover / 选中的行可把 `--linnya-ui-icon-button-hover-bg` 设为 `var(--linnya-ui-icon-button-hover-bg-raised)` 让按钮再高一层，除此之外业务不覆盖 `.linnya-ui-icon-button*` 内部选择器。编辑器格式工具条继续使用 `ToolbarButton`。
+
+`ActionButtons` 由两个 `BaseButton` 组成，保留原有 props、事件与插槽；主操作 default / danger / accent 分别对应 primary / danger / soft，次操作 filled / ghost / plain 对应 secondary / ghost / plain，并在组内保证 80px 最小宽度。选择哪种层级、怎样组合见[设计规范](./docs/design.md#92-按钮)。目前消费者包括知识库页面与设置、项目知识库关联、设置页（存储空间、内存诊断、添加模型）、文档历史、编辑器面板（公式、图片尺寸、引用、查找替换、块历史、Review）、对话卡片、命令输入对话框、项目列表空态、包内 `TimePicker`，以及全部 `ActionButtons` 使用方。
 
 ## 范围滑块
 
@@ -263,6 +281,10 @@ Vue 是 peer dependency，Host 与插件必须共享同一实例。`/font-stack`
 内置主题为 `light`、`dark`、`moon-blue`，统一由 `documentElement[data-linnya-ui-theme]` 激活。Host 负责读取和持久化用户选择，只能通过 `/theme` 的类型与常量装配 DOM；组件和插件不得读取 Host theme store，也不得按主题 ID 写视觉分支。
 
 `tokens.css` 拥有 foundation、通用 semantic、functional、geometry、typography 和跨 owner 稳定复用的 component token。App layout、Conversation、Editor 等业务 token 留在各自 owner，并在 package 样式之后装载。公开 token 的删除、重命名、语义变化或主题集合缺失都按 breaking change 处理。
+
+自 2.6.0 起，刻度类 token 分为四组：控件高度 `--control-height-sm/md/lg`（28/32/36）；角色字阶 `--font-size-<role>` / `--line-height-<role>` 与三档 `--font-weight-*`；4px 网格间距 `--space-*`；动效 `--duration-*` 与 `--ease-*`。圆角扩展到 `--radius-xl`、`--radius-2xl`，焦点环由 `--focus-ring-width`、`--focus-ring-offset` 与主题 token `--color-focus-ring` 组成，功能色新增文字专用的 `--color-*-text`，强调色新增承载反色文字的实底 `--color-accent-solid` / `--color-accent-solid-hover`，并新增随主题反转的 `--color-bg-inverse` / `--color-bg-inverse-hover` / `--color-text-inverse`。`--spacing-*` 与 `--transition-*` 仅作为 2.x 已发布插件的兼容别名保留，仓内不再新增使用，下一个 major 删除。各 token 的选择规则见[设计规范](./docs/design.md)。
+
+`prefers-reduced-motion: reduce` 下四个 `--duration-*` 会被置为接近 0，经由时长 token 的过渡与动画自动立即完成；直接写在关键帧里的循环动画仍须各自声明 reduced-motion 规则。
 
 ## Scroll
 

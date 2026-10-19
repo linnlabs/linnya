@@ -13,22 +13,20 @@
           </span>
         </div>
         <div class="process-memory-observation__secondary-actions">
-          <button
-            type="button"
-            class="settings-inline-button is-quiet"
+          <BaseButton
+            variant="plain"
             :disabled="status !== 'recording'"
             @click="sampleNow"
           >
             {{ systemMessage('system.memoryDiagnostics.actions.sample') }}
-          </button>
-          <button
-            type="button"
-            class="settings-inline-button is-quiet"
+          </BaseButton>
+          <BaseButton
+            variant="plain"
             :disabled="!summary || status === 'recording'"
             @click="exportReport"
           >
             {{ systemMessage('system.memoryDiagnostics.actions.export') }}
-          </button>
+          </BaseButton>
         </div>
       </div>
       <SettingsActions
@@ -120,14 +118,14 @@
             :placeholder="systemMessage('system.memoryDiagnostics.marker.placeholder')"
             @keydown.enter="addMarker"
           />
-          <button
-            type="button"
-            class="settings-inline-button"
+          <BaseButton
+            variant="secondary"
+            size="md"
             :disabled="markerDraft.trim().length === 0"
             @click="addMarker"
           >
             {{ systemMessage('system.memoryDiagnostics.marker.add') }}
-          </button>
+          </BaseButton>
         </div>
       </SettingsRow>
       <ol v-if="markers.length > 0" class="process-memory-observation__marker-list">
@@ -144,7 +142,7 @@
 import { computed, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { ElectronProcessMemoryMetric } from '@app/schemas';
-import { CustomTextInput } from '@linnya/renderer-ui';
+import { BaseButton, CustomTextInput } from '@linnya/renderer-ui';
 import {
   SettingsActions,
   SettingsFeedback,

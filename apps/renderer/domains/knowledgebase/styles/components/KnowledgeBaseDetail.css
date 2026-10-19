@@ -16,7 +16,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  padding: 36px 24px 40px;
+  padding: 36px var(--space-6) var(--space-10);
   background-color: var(--color-bg-surface);
 }
 
@@ -24,67 +24,42 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 24px;
+  gap: var(--space-4);
+  padding-bottom: var(--space-6);
   background-color: var(--color-bg-surface);
 }
 
 .kb-detail-view .right-section {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   flex-shrink: 0;
 }
 
 .kb-detail-view .left-section {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-width: 0;
-}
-
-.kb-detail-view .back-btn {
-  background: none;
-  border: none;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.16s ease, color 0.16s ease;
-}
-
-.kb-detail-view .back-btn:hover {
-  background-color: var(--color-bg-subtle);
-  color: var(--color-text-primary);
-}
-
-.kb-detail-view .back-btn svg {
-  width: 18px;
-  height: 18px;
 }
 
 .kb-detail-view .kb-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
 .kb-detail-view .kb-title-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .kb-detail-view .kb-info h2 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -92,13 +67,13 @@
 }
 
 .kb-detail-view .kb-badge {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 999px;
+  font-size: var(--font-size-caption);
+  padding: var(--space-0-5) var(--space-1-5);
+  border-radius: var(--radius-full);
   border: 1px solid var(--color-border-accent-light);
   background-color: var(--color-accent-bg-subtle);
   color: var(--color-accent);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .kb-detail-view .kb-meta-row {
@@ -111,12 +86,12 @@
 
 .kb-detail-view .kb-meta {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-tertiary);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-1-5);
   flex: 0 1 auto;
   min-width: 0;
 }
@@ -139,7 +114,7 @@
   display: inline-flex;
   gap: 0;
   padding: 3px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background-color: var(--color-bg-subtle);
   --indicator-x: 3px;
   --indicator-width: 0px;
@@ -155,20 +130,20 @@
   left: 0;
   width: var(--indicator-width);
   transform: translateX(var(--indicator-x));
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--color-bg-surface);
   box-shadow: 0 6px 18px var(--kb-detail-tab-shadow);
   z-index: 0;
   transition:
-    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
-    width 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+    transform var(--duration-long) var(--ease-enter),
+    width var(--duration-long) var(--ease-enter);
 }
 
 .kb-detail-view .tab-navigation::after {
   content: '';
   position: absolute;
   inset: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: radial-gradient(
     circle at center,
     var(--kb-detail-tab-glow),
@@ -183,15 +158,15 @@
   position: relative;
   z-index: 1;
   text-align: center;
-  padding: 5px 14px;
+  padding: 5px var(--space-3);
   border: none;
   background-color: transparent;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-size-body);
   color: var(--color-text-secondary);
-  border-radius: 999px;
-  transition: background-color 0.16s ease, color 0.16s ease,
-    box-shadow 0.16s ease;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard),
+    box-shadow var(--duration-short) var(--ease-standard);
   white-space: nowrap;
 }
 
@@ -203,7 +178,7 @@
 .kb-detail-view .tab-button.active {
   color: var(--color-accent);
   background-color: transparent;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .kb-detail-view .detail-content {
@@ -247,7 +222,7 @@
   .kb-detail-view .detail-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .kb-detail-view .right-section {

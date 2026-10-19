@@ -217,6 +217,7 @@
 - **容器**: 使用 `.centered-action-row` 作为单独的行（不嵌套在 `.form-row` 内）。
 - **布局**: 使用 `display: flex; justify-content: center;` 实现按钮（及其旁边的消息）水平居中。
 - **间距**: 有标准的上下边距 (`margin-top: 32px; margin-bottom: 24px;`)。
+- **按钮**: 使用 `@linnya/renderer-ui` 的 `BaseButton`，按设计规范选择 variant 与尺寸，不再定义设置页专用的按钮样式；仅图标的行内按钮暂沿用 `.settings-inline-button`。
 
 ```css
 /* setting-content.css */
@@ -226,10 +227,6 @@
   align-items: center;
   margin-top: 24px;
   margin-bottom: 24px;
-}
-.settings-button { /* 按钮本身样式 */
-  padding: 8px 20px;
-  /* ... 其他按钮样式 ... */
 }
 .success-message { /* 成功消息样式 */
   margin-left: 16px;

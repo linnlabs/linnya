@@ -1,5 +1,5 @@
 .review-section.review-dashboard-view {
-  padding: 16px;
+  padding: var(--space-4);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -10,57 +10,39 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
   flex-shrink: 0;
 }
 
 .review-dashboard-view .header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .review-dashboard-view .header-left h3 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-semibold);
 }
 
 .review-dashboard-view .message-count {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-tertiary);
   background: var(--color-bg-hover);
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-weight: 500;
-}
-
-.review-dashboard-view .new-review-btn {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  background: var(--color-bg-default);
-  border: 1px solid var(--color-border-default);
-  padding: 6px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-weight: 500;
-}
-
-.review-dashboard-view .new-review-btn:hover {
-  border-color: var(--color-border-hover);
-  color: var(--color-text-primary);
-  background: var(--color-bg-hover);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-weight-medium);
 }
 
 .review-dashboard-view .filter-tabs {
   position: relative;
   display: flex;
   gap: 0;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
   background-color: var(--color-bg-subtle);
   padding: 3px;
-  border-radius: 6px; /* 形状保持圆角矩形（不做胶囊） */
+  border-radius: var(--radius-md); /* 形状保持圆角矩形（不做胶囊） */
   flex-shrink: 0;
   overflow: hidden;
 
@@ -79,20 +61,20 @@
   left: 0;
   width: var(--indicator-width);
   transform: translateX(var(--indicator-x));
-  border-radius: 4px; /* 按钮圆角矩形 */
+  border-radius: var(--radius-sm); /* 按钮圆角矩形 */
   background: var(--color-bg-surface);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-gray-900) 12%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-black) 12%, transparent);
   z-index: 0;
   transition:
-    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
-    width 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+    transform var(--duration-long) var(--ease-enter),
+    width var(--duration-long) var(--ease-enter);
 }
 
 .review-dashboard-view .filter-tabs::after {
   content: '';
   position: absolute;
   inset: 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: radial-gradient(
     circle at center,
     color-mix(in srgb, var(--color-accent) 14%, transparent),
@@ -109,13 +91,13 @@
   flex: 1;
   background: none;
   border: none;
-  font-size: 13px;
+  font-size: var(--font-size-body);
   color: var(--color-text-secondary);
   cursor: pointer;
-  padding: 5px 14px;
-  border-radius: 4px;
-  transition: background-color 0.16s ease, color 0.16s ease,
-    box-shadow 0.16s ease;
+  padding: 5px var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard),
+    box-shadow var(--duration-short) var(--ease-standard);
   white-space: nowrap;
   text-align: center;
 }
@@ -140,8 +122,8 @@
 
 .review-dashboard-view .filter-tabs.is-scrollable::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
-  border-radius: 5px;
-  transition: background-color 0.2s ease;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }
@@ -158,7 +140,7 @@
 .review-dashboard-view .filter-tab.active {
   color: var(--color-accent);
   background-color: transparent;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .review-dashboard-view .results-list {
@@ -178,8 +160,8 @@
 
 .review-dashboard-view .results-list::-webkit-scrollbar-thumb {
   background-color: var(--color-border-default);
-  border-radius: 5px;
-  transition: background-color 0.2s ease;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }
@@ -193,31 +175,31 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 60px var(--space-5);
   text-align: center;
   color: var(--color-text-secondary);
   height: 100%;
 }
 
 .review-dashboard-view .empty-state p {
-  font-size: 14px;
-  font-weight: 500;
-  margin: 0 0 8px 0;
+  font-size: var(--font-size-prose);
+  font-weight: var(--font-weight-medium);
+  margin: 0 0 var(--space-2) 0;
   color: var(--color-text-primary);
 }
 
 .review-dashboard-view .empty-state .sub {
-  font-size: 13px;
-  font-weight: 400;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-tertiary);
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
   max-width: 240px;
 }
 
 .review-dashboard-view .messages-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   /* 防止审阅卡片后续恢复阴影时被滚动容器截断。 */
-  padding: 2px 4px;
+  padding: var(--space-0-5) var(--space-1);
 }

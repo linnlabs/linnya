@@ -6,8 +6,8 @@
   cursor: pointer;
   white-space: nowrap;
   position: relative;
-  border-radius: 4px;
-  transition: opacity 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--duration-medium) var(--ease-standard);
 }
 
 .workspace-sidebar .tree-item .tree-item-content {
@@ -28,7 +28,7 @@
 
 .workspace-sidebar .tree-item:hover .tree-item-content,
 .workspace-sidebar .tree-item.is-more-menu-open .tree-item-content {
-  --workspace-sidebar-row-padding-right: 31px;
+  --workspace-sidebar-row-padding-right: 33px;
 }
 
 .workspace-sidebar .tree-item .expand-icon {
@@ -69,11 +69,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: 6px;
-  padding: 0 6px;
-  border-radius: 8px;
-  font-size: 10px;
-  line-height: 1.4;
+  margin-left: var(--space-1-5);
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
   color: var(--color-accent);
   background-color: var(--color-accent-bg);
   text-transform: uppercase;
@@ -85,9 +85,9 @@
   flex-grow: 1;
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-focus);
-  border-radius: 3px;
-  padding: 2px 6px;
-  font-size: 13px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-0-5) var(--space-1-5);
+  font-size: var(--font-size-body);
   outline: none;
   width: calc(100% - 50px);
   color: var(--color-text-secondary);
@@ -97,29 +97,15 @@
   flex-shrink: 0;
 }
 
-.workspace-sidebar .tree-item .more-button {
-  transition: background-color 0.15s ease;
-}
-
-.workspace-sidebar .tree-item .more-button:hover {
-  color: var(--color-text-secondary);
-}
-
-/* 选中状态的文件，More 按钮 hover 时使用激活行的灰色层级。 */
-.workspace-sidebar .tree-item.active-file .more-button:hover {
-  background-color: var(--color-bg-active-control-hover);
-  color: var(--color-text-secondary);
-}
-
 .tree-item-menu-wrapper {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--linnya-ui-layer-popover);
 }
 
 /* 菜单过渡动画（与 ProjectListView 一致） */
 .workspace-tree-item-menu-fade-enter-active,
 .workspace-tree-item-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .workspace-tree-item-menu-fade-enter-from {
@@ -145,15 +131,15 @@
 .workspace-sidebar .tree-item.drag-over > .tree-item-content {
   background-color: var(--color-accent-bg);
   color: var(--color-accent);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .workspace-sidebar .tree-item.drag-over > .tree-item-content .item-name {
   color: var(--color-accent);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .workspace-sidebar .tree-item.drag-over > .tree-item-content .folder-icon {
   color: var(--color-accent);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }

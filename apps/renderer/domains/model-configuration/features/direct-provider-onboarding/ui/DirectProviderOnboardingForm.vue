@@ -24,14 +24,15 @@
     </SettingsRow>
 
     <div class="add-model-submit">
-      <button
-        type="button"
-        class="settings-button full-width-button"
+      <BaseButton
+        variant="tint"
+        size="lg"
+        block
         :disabled="status.isSubmitting || status.success"
         @click="submit"
       >
         {{ submitText }}
-      </button>
+      </BaseButton>
       <SettingsFeedback
         kind="error"
         :message="status.error || ''"
@@ -43,7 +44,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue';
 import { LinkIcon } from '@linnya/renderer-ui/icons';
-import { SecretInput } from '@linnya/renderer-ui';
+import { BaseButton, SecretInput } from '@linnya/renderer-ui';
 import { openExternalUrl } from '@/shared/utils/openExternalUrl';
 import { SettingsFeedback, SettingsRow, useSettingsLocalization } from '@/domains/settings/public';
 import { useProviderCatalogReadModel } from '../../provider-catalog';

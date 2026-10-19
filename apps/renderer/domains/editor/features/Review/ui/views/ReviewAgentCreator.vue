@@ -2,9 +2,9 @@
   <div class="review-section create-agent-view review-agent-creator-view">
     <div class="section-header">
       <h3>{{ titleText }}</h3>
-      <button type="button" class="back-btn" @click="reviewStore.exitAgentEditor()">
+      <BaseButton variant="plain" @click="reviewStore.exitAgentEditor()">
         {{ editorMessage('editor.review.agentCreator.back') }}
-      </button>
+      </BaseButton>
     </div>
     
     <div class="input-section full-height">
@@ -48,13 +48,15 @@
     </div>
 
     <div class="action-area">
-      <button 
-        class="start-btn"
+      <BaseButton
+        variant="tint"
+        size="lg"
+        block
         :disabled="!isFormValid"
         @click="handleSaveAgent"
       >
         {{ editorMessage('editor.review.agentCreator.save') }}
-      </button>
+      </BaseButton>
     </div>
   </div>
 </template>
@@ -63,7 +65,7 @@
 import { reactive, computed, ref, onMounted, nextTick, watch } from 'vue';
 import { useReviewStore } from '../../store/reviewStore';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';
-import { applyTextareaAutoResize } from '@linnya/renderer-ui';
+import { applyTextareaAutoResize, BaseButton } from '@linnya/renderer-ui';
 
 const reviewStore = useReviewStore();
 const { editorMessage } = useEditorLocalization();

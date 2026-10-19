@@ -5,5 +5,5 @@
 }
 
 .virtual-conversation-list {
-  background: var(--color-bg-surface);
+  background: var(--conversation-host-bg);
 }

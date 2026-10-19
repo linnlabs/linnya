@@ -5,13 +5,15 @@
         <span class="agent-name">{{ agentName }}</span>
       </div>
       <div class="header-actions">
-        <button
+        <IconButton
+          :label="editorMessage('editor.review.message.delete')"
+          size="xs"
+          tone="danger"
           class="delete-btn"
-          :title="editorMessage('editor.review.message.delete')"
           @click.stop="handleDelete"
         >
           <CloseIcon />
-        </button>
+        </IconButton>
       </div>
     </div>
     <div class="card-content">
@@ -24,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+import { IconButton } from '@linnya/renderer-ui';
 import { computed } from 'vue';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import type { ReviewAnnotation } from '../../types/reviewAnnotation';

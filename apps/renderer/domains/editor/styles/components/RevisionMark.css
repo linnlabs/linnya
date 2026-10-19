@@ -13,13 +13,13 @@
 /* 插入类型（新增文字） */
 .revision-mark--insert {
   background-color: var(--color-success-bg);
-  color: var(--color-success);
+  color: var(--color-success-text);
   text-decoration: underline;
 }
 
 /* 删除类型（删除文字） */
 .revision-mark--delete {
   background-color: var(--color-error-bg);
-  color: var(--color-error);
+  color: var(--color-error-text);
   text-decoration: line-through;
 }

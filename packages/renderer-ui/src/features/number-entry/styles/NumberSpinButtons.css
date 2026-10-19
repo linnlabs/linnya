@@ -20,9 +20,9 @@
   cursor: pointer;
   background: none;
   border: none;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   opacity: 0;
-  transition: opacity 0.2s, background-color 0.2s, color 0.2s;
+  transition: opacity var(--duration-medium), background-color var(--duration-medium), color var(--duration-medium);
 }
 
 .custom-number-input .number-spin-buttons:hover .spin-btn:not(:disabled),

@@ -20,14 +20,14 @@
   position: relative;
   display: inline-block;
   max-width: 100%;
-  border-radius: 6px;
-  transition: box-shadow 0.2s ease-in-out;
+  border-radius: var(--radius-md);
+  transition: box-shadow var(--duration-medium) var(--ease-standard);
 }
 
 /* 图片块被选中时需要高亮真实图片容器，而不是改变图片本身尺寸。 */
 .image-block-vue-node-view.ProseMirror-selectednode .image-container,
 .root-block-outer.is-block-selected .image-block-vue-node-view .image-container {
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   outline: 2px solid var(--color-accent);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 20%, transparent);
 }
@@ -35,24 +35,24 @@
 .image-block-vue-node-view .image-container img {
   display: block;
   max-width: 100%;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   object-fit: contain;
 }
 
 .image-block-vue-node-view .image-missing-placeholder {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   min-width: min(360px, 80vw);
   max-width: 100%;
   min-height: 96px;
-  padding: 16px 18px;
+  padding: var(--space-4) var(--space-4);
   color: var(--color-text-muted);
   text-align: left;
   cursor: pointer;
   background: var(--color-bg-subtle);
   border: 1px dashed var(--color-border-default);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
 }
 
 .image-block-vue-node-view .image-missing-placeholder__icon {
@@ -61,7 +61,7 @@
   width: 28px;
   height: 24px;
   border: 2px solid currentColor;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   opacity: 0.75;
 }
 
@@ -80,8 +80,8 @@
 
 .image-block-vue-node-view .image-missing-placeholder__text {
   overflow-wrap: anywhere;
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
 }
 
 .image-block-vue-node-view .resize-handle {
@@ -105,15 +105,15 @@
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-0-5);
   padding: 3px;
   visibility: hidden;
   background-color: color-mix(in srgb, var(--color-black) 50%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   opacity: 0;
   transition:
-    opacity 0.2s ease,
-    visibility 0s ease 0.2s;
+    opacity var(--duration-medium) var(--ease-standard),
+    visibility 0s var(--ease-standard) var(--duration-medium);
   backdrop-filter: blur(2px);
 }
 
@@ -123,51 +123,12 @@
   transition-delay: 0s;
 }
 
-.image-block-vue-node-view .control-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 26px;
-  height: 26px;
-  padding: 3px 6px;
-  color: color-mix(in srgb, var(--color-white) 70%, transparent);
-  cursor: pointer;
-  background-color: transparent;
-  border: none;
-  border-radius: 4px;
-  transition:
-    background-color 0.2s,
-    color 0.2s;
-}
-
-.image-block-vue-node-view .control-button:hover {
-  color: color-mix(in srgb, var(--color-white) 90%, transparent);
-  background-color: color-mix(in srgb, var(--color-white) 10%, transparent);
-}
-
-.image-block-vue-node-view .control-button.is-active {
-  color: var(--color-accent-light);
-  font-weight: bold;
-}
-
-.image-block-vue-node-view .control-button svg {
-  width: 22px;
-  height: 22px;
-  fill: currentColor;
-}
-
-.image-block-vue-node-view .control-button path {
-  stroke: currentColor;
-  stroke-width: 0.3px;
-  paint-order: stroke fill;
-}
-
 .image-block-vue-node-view .alignment-group {
   position: relative;
   display: flex;
-  gap: 2px;
-  padding-left: 6px;
-  margin-left: 4px;
+  gap: var(--space-0-5);
+  padding-left: var(--space-1-5);
+  margin-left: var(--space-1);
 }
 
 .image-block-vue-node-view .alignment-group::before {

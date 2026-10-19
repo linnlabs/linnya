@@ -14,15 +14,15 @@
           {{ tab.label }}
         </button>
       </div>
-      <button
+      <IconButton
         class="collapse-button"
-        :title="isCollapsed
+        :label="isCollapsed
           ? editorMessage('editor.audioBlock.panel.expand')
           : editorMessage('editor.audioBlock.panel.collapse')"
         @click="toggleCollapse"
       >
         <ChevronIcon :direction="isCollapsed ? 'down' : 'up'" />
-      </button>
+      </IconButton>
     </div>
 
     <div v-if="!isCollapsed" class="panel-content">
@@ -45,6 +45,7 @@ import { useAudioRuntimeStore } from '../../store';
 import NotesTab from './NotesTab.vue';
 import TranscriptTab from './TranscriptTab.vue';
 import SummaryTab from './SummaryTab.vue';
+import { IconButton } from '@linnya/renderer-ui';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';
 import { buildAudioBlockPanelTabs } from '../../functions/audioBlockPresentation';

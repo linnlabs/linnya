@@ -22,7 +22,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-anchor: none;
-  padding: 4px 16px 0 16px;
+  padding: var(--space-1) var(--space-4) 0 var(--space-4);
   height: 100%;
   position: relative;
 }
@@ -53,81 +53,25 @@
   flex-direction: column;
 }
 
+/* 历史回放骨架：与消息列同宽，一问一答的节奏与真实消息一致；两侧留白由对话宿主统一设置。 */
 .conversation-view-wrapper .history-loading-state {
-  flex: 1;
-  min-height: 100%;
-  display: grid;
-  place-items: center;
-  padding: 24px 20px;
-  text-align: center;
-  color: var(--color-text-secondary);
+  width: 100%;
+  max-width: var(--conversation-content-column-max-width);
+  margin: 0 auto;
+  padding-top: var(--space-6);
 }
 
-.conversation-view-wrapper .history-loading-copy {
-  transform: none;
-  animation: conversation-history-loading-reveal 120ms ease-out 250ms both;
+.conversation-view-wrapper .history-loading-skeleton__user {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-6);
 }
 
-@keyframes conversation-history-loading-reveal {
-  from {
-    visibility: hidden;
-    opacity: 0;
-  }
-
-  to {
-    visibility: visible;
-    opacity: 1;
-  }
-}
-
-.conversation-view-wrapper .history-loading-title {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.5;
-  font-weight: 400;
-  color: var(--color-text-secondary);
-}
-
-.conversation-view-wrapper .history-loading-dots {
-  display: inline-flex;
-  width: 2.2em;
-  justify-content: flex-start;
-}
-
-.conversation-view-wrapper .history-loading-dots span {
-  animation: conversation-history-loading-dot 1.2s ease-in-out infinite;
-}
-
-.conversation-view-wrapper .history-loading-dots span:nth-child(2) {
-  animation-delay: 0.15s;
-}
-
-.conversation-view-wrapper .history-loading-dots span:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-.conversation-view-wrapper .history-loading-dots span:nth-child(4) {
-  animation-delay: 0.45s;
-}
-
-.conversation-view-wrapper .history-loading-dots span:nth-child(5) {
-  animation-delay: 0.6s;
-}
-
-.conversation-view-wrapper .history-loading-dots span:nth-child(6) {
-  animation-delay: 0.75s;
-}
-
-@keyframes conversation-history-loading-dot {
-  0%,
-  70%,
-  100% {
-    opacity: 0.35;
-  }
-
-  35% {
-    opacity: 1;
-  }
+.conversation-view-wrapper .history-loading-skeleton__assistant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-8);
 }
 
 .conversation-view-wrapper .messages-container {
@@ -146,8 +90,8 @@
 
 .conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view::-webkit-scrollbar-thumb {
   background-color: transparent;
-  border-radius: 5px;
-  transition: background-color 0.2s ease;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-medium) var(--ease-standard);
   border: 2px solid transparent;
   background-clip: content-box;
 }

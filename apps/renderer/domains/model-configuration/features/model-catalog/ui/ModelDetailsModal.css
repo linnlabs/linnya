@@ -1,12 +1,12 @@
 /* Modal slot 内容会进入 shared Modal 容器，必须用内容根类承接样式边界。 */
 .model-details-content {
-  padding: 12px 32px 24px;
+  padding: var(--space-3) var(--space-8) var(--space-6);
   color: var(--color-text-primary);
 }
 
 .model-details-content .form-row {
   display: flex;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
 }
 
 .model-details-content .form-row:last-of-type {
@@ -21,8 +21,8 @@
   width: 160px;
   flex-shrink: 0;
   padding-top: 0;
-  font-size: 13px;
-  font-weight: 400;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-primary);
   text-align: left;
 }
@@ -31,20 +31,20 @@
   display: flex;
   flex: 1;
   flex-direction: row;
-  gap: 6px;
+  gap: var(--space-1-5);
   justify-content: flex-end;
 }
 
 .model-details-content .settings-input {
   width: 160px;
   height: 28px;
-  padding: 8px 12px;
-  font-size: 14px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-prose);
   color: var(--color-text-primary);
   background-color: var(--color-bg-search-light);
   border: 1px solid transparent;
-  border-radius: 4px;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: border-color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
 }
 
 .model-details-content .settings-input:hover:not(:disabled) {
@@ -72,27 +72,27 @@
   box-sizing: border-box;
   width: 100%;
   min-height: 21px;
-  padding: 0 4px;
-  font-size: 14px;
+  padding: 0 var(--space-1);
+  font-size: var(--font-size-prose);
   color: var(--color-text-primary);
 }
 
 .model-details-content .error-message {
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   margin-top: 15px;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--color-error);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  color: var(--color-error-text);
   background-color: var(--color-error-bg);
   border: 1px solid var(--color-error);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .model-details-footer {
   display: flex;
-  gap: 10px;
+  gap: var(--space-2-5);
   justify-content: flex-end;
-  padding: 0 32px 24px;
+  padding: 0 var(--space-8) var(--space-6);
 }
 
 .model-details-content .select-chevron {
@@ -103,7 +103,7 @@
   height: 16px;
   color: var(--color-text-tertiary);
   pointer-events: none;
-  transition: transform 0.2s ease-in-out;
+  transition: transform var(--duration-medium) var(--ease-standard);
   transform: translateY(-50%);
 }
 

@@ -2,7 +2,7 @@
   top: 100% !important;
   left: auto !important;
   right: 0;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 /* Host 路径贴在当前 rootBlock 右上角，避免依赖 editor 级 overlay 反复量坐标。 */
@@ -14,20 +14,20 @@
 
 .revision-toolbar .toolbar-btn {
   display: inline-flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-2-5);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .revision-toolbar .btn-icon {
   flex-shrink: 0;
-  font-size: 16px;
+  font-size: 16px; /* scale-exempt: 按钮图标字形尺寸 */
 }
 
 .revision-toolbar .btn-text {
@@ -36,13 +36,13 @@
 
 .revision-mark-popup {
   position: fixed;
-  z-index: 10000;
+  z-index: var(--linnya-ui-layer-tooltip);
   display: flex;
-  gap: 2px;
+  gap: var(--space-0-5);
   align-items: center;
-  padding: 4px;
+  padding: var(--space-1);
   border: 0.6px solid var(--color-border-default);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background-color: var(--color-bg-default);
   box-shadow:
     0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 4%, transparent),
@@ -58,9 +58,9 @@
   height: 20px;
   padding: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s ease;
+  transition: background-color var(--duration-micro) var(--ease-standard), color var(--duration-micro) var(--ease-standard), transform var(--duration-micro) var(--ease-standard);
 }
 
 .revision-mark-popup .popup-icon {
@@ -69,7 +69,7 @@
 
 .revision-toolbar .accept-btn,
 .revision-mark-popup .popup-btn.accept {
-  color: var(--color-success);
+  color: var(--color-success-text);
   background-color: var(--color-success-bg);
 }
 
@@ -89,7 +89,7 @@
 
 .revision-toolbar .reject-btn,
 .revision-mark-popup .popup-btn.reject {
-  color: var(--color-error);
+  color: var(--color-error-text);
   background-color: var(--color-error-bg);
 }
 
@@ -109,16 +109,16 @@
 
 .revision-indicator {
   display: flex;
-  gap: 2px;
+  gap: var(--space-0-5);
   align-items: center;
   width: 100%;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: var(--space-0-5) var(--space-1-5);
+  border-radius: var(--radius-sm);
   background-color: var(--color-bg-surface);
   opacity: 0.8;
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   font-variant-numeric: tabular-nums;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard);
 }
 
 .revision-indicator:hover {
@@ -130,16 +130,16 @@
 }
 
 .revision-indicator .indicator-label {
-  margin-right: 4px;
+  margin-right: var(--space-1);
   color: var(--color-text-muted);
 }
 
 .revision-indicator .indicator-insert {
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .revision-indicator .indicator-delete {
-  color: var(--color-error);
+  color: var(--color-error-text);
 }
 
 .revision-indicator .indicator-separator,
@@ -148,11 +148,11 @@
 }
 
 .revision-indicator .indicator-pending {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .revision-indicator .indicator-time {
   margin-left: auto;
-  padding-left: 6px;
-  font-size: 10px;
+  padding-left: var(--space-1-5);
+  font-size: var(--font-size-caption);
 }

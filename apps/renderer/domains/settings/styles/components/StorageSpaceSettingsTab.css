@@ -3,7 +3,7 @@
 
 .storage-space-summary {
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
   align-items: flex-end;
   justify-content: space-between;
 }
@@ -11,7 +11,7 @@
 .storage-space-summary-total {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -22,7 +22,7 @@
 
 .storage-space-summary-value {
   font-size: var(--font-size-2xl);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-tight);
   color: var(--color-text-primary);
 }
@@ -42,7 +42,7 @@
 
 .storage-space-list .settings-list-row {
   min-height: 40px;
-  padding: 9px 8px;
+  padding: 9px var(--space-2);
   border-bottom: none;
   border-radius: var(--radius-sm);
 }
@@ -58,7 +58,7 @@
 
 .storage-space-category-list {
   display: grid;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .storage-space-category-list .settings-list-row {
@@ -68,12 +68,12 @@
 
 .storage-space-conversation-list {
   display: grid;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
 }
 
 .storage-space-conversation-list .settings-list-row-main {
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
   align-items: flex-start;
 }
 
@@ -95,6 +95,6 @@
 }
 
 .storage-space-row-error {
-  margin-left: var(--spacing-sm);
-  color: var(--color-error);
+  margin-left: var(--space-2);
+  color: var(--color-error-text);
 }

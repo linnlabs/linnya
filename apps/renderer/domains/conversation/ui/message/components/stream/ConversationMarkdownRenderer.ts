@@ -15,7 +15,9 @@
 import {
   defineComponent,
   h,
+  computed,
   inject,
+  nextTick,
   shallowRef,
   watch,
   onBeforeUnmount,
@@ -43,6 +45,8 @@ import ConversationMarkdownBlock, {
   type ConversationMarkdownRenderContext,
   type ConversationMarkdownVNodeChild,
 } from './ConversationMarkdownBlock'
+import StreamingText from './StreamingText'
+import { useStreamingRevealContent } from './useStreamingRevealContent'
 import { createMarkdownParseDebug } from './markdownParseDebug'
 import { createMarkdownParseScheduler } from './createMarkdownParseScheduler'
 import { reconcileStreamingMarkdownNodes } from './reconcileStreamingMarkdownNodes'
@@ -203,6 +207,9 @@ function renderNode(
       if (!content) return ''
       REFERENCE_TEXT_RE.lastIndex = 0
       if (!REFERENCE_TEXT_RE.test(content)) {
+        if (ctx.isStreaming && ctx.fadeNewText) {
+          return h(StreamingText, { text: content, animateInitial: ctx.fadeInitialText === true })
+        }
         return content
       }
       REFERENCE_TEXT_RE.lastIndex = 0
@@ -487,6 +494,8 @@ export default defineComponent({
   props: {
     content: { type: String, required: true },
     isStreaming: { type: Boolean, default: false },
+    /** 流式尾块里新长出的文字淡入；默认关闭，由会话答案正文显式开启。 */
+    streamReveal: { type: Boolean, default: false },
     /** 对话轮次 ID（供引用 transfer DOM 标注归属） */
     turnId: { type: String, default: undefined },
     citationDependencies: {
@@ -512,6 +521,13 @@ export default defineComponent({
       next: 1,
     }
     let parsedMarkdown = ''
+    /**
+     * 渲染器首次提交并渲染完之后才长出来的文字节点才需要整段淡入；
+     * 挂载时已有的内容（虚拟列表重挂载、刷新恢复）直接显示，不做动画。
+     * 挂载时正文为空则一开始就算“新长出”。
+     */
+    let revealInitialText = props.content === ''
+    let initialCommitSeen = false
     const parseDebug = createMarkdownParseDebug(import.meta.env.VITE_CONVERSATION_MARKDOWN_DEBUG)
 
     /**
@@ -521,9 +537,27 @@ export default defineComponent({
      * - 这里引入节流：isStreaming=true 时，最多每 50ms 解析一次，把 burst 合并掉。
      */
     const STREAM_PARSE_THROTTLE_MS = 50
+    /**
+     * 开启 streamReveal 时，展示内容本身已经被节奏器匀速放出，不再需要 50ms 的“合并突发”节流；
+     * 解析间隔改为按实际解析耗时自适应：耗时的 5 倍，夹在一帧（16ms）与 50ms 之间，
+     * 让解析最多占用约 1/5 的主线程时间，长文本自动退回到 50ms。
+     */
+    const MIN_REVEAL_PARSE_THROTTLE_MS = 16
+    let parseCostEmaMs = 0
+    const resolveParseThrottleMs = (): number => {
+      if (!props.streamReveal) return STREAM_PARSE_THROTTLE_MS
+      return Math.min(
+        STREAM_PARSE_THROTTLE_MS,
+        Math.max(MIN_REVEAL_PARSE_THROTTLE_MS, Math.ceil(parseCostEmaMs * 5)),
+      )
+    }
     const parseAndSetNodes = (markdown: string, reason: 'immediate' | 'throttled') => {
       void reason
+      const parseStartedAt = performance.now()
       const nextNodes = parseMarkdown(markdown)
+      parseCostEmaMs = parseCostEmaMs === 0
+        ? performance.now() - parseStartedAt
+        : parseCostEmaMs * 0.8 + (performance.now() - parseStartedAt) * 0.2
       const isAppendOnly = markdown.startsWith(parsedMarkdown)
       if (!isAppendOnly) {
         citationDisplayState.map.clear()
@@ -536,9 +570,13 @@ export default defineComponent({
         nextNodes,
       })
       parsedMarkdown = markdown
+      if (!initialCommitSeen) {
+        initialCommitSeen = true
+        void nextTick().then(() => { revealInitialText = true })
+      }
     }
     const parseScheduler = createMarkdownParseScheduler({
-      throttleMs: STREAM_PARSE_THROTTLE_MS,
+      throttleMs: resolveParseThrottleMs,
       parse: parseAndSetNodes,
     })
 
@@ -552,8 +590,22 @@ export default defineComponent({
       parseScheduler.dispose()
     })
 
+    /**
+     * 匀速吐字：开启 streamReveal 且正在流式时，解析的是“追着真实内容走”的展示内容；
+     * 其余情况（流式结束、挂载时已有内容、被替换、页面不可见）始终等于真实内容，
+     * 因此封口提交的永远是完整正文，且只提交一次。
+     */
+    const { revealedContent } = useStreamingRevealContent({
+      content: () => props.content,
+      isStreaming: () => props.isStreaming,
+      enabled: () => props.streamReveal,
+    })
+    const effectiveContent = computed(() =>
+      props.streamReveal && props.isStreaming ? revealedContent.value : props.content,
+    )
+
     watch(
-      () => [props.content, props.isStreaming] as const,
+      () => [effectiveContent.value, props.isStreaming] as const,
       ([markdown, isStreaming]) => {
         // ✅ 性能策略：流式阶段节流解析；非流式则立即解析，保证最终态准确
         // 例外：开启 markdown debug 且命中高信号内容时，强制立即解析，便于定位公式漂移根因
@@ -578,6 +630,8 @@ export default defineComponent({
           key: `${index}:${node.type}`,
           node,
           isStreaming: props.isStreaming && index === nodes.value.length - 1,
+          fadeNewText: props.streamReveal && props.isStreaming && index === nodes.value.length - 1,
+          fadeInitialText: revealInitialText,
           parseMarkdown,
           renderNode,
           turnId: props.turnId,

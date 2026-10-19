@@ -1,17 +1,17 @@
 .conversation-reference-suggestion {
   min-width: 280px;
-  animation: conversation-reference-suggestion-enter 140ms ease-out;
+  animation: conversation-reference-suggestion-enter var(--duration-short) var(--ease-enter);
 }
 
 .conversation-reference-suggestion__empty {
   min-width: 280px;
-  padding: 12px;
+  padding: var(--space-3);
   border: 1px solid color-mix(in srgb, var(--color-text-primary) 8%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: var(--color-bg-surface);
   box-shadow: var(--shadow-lg);
   color: var(--color-text-tertiary);
-  font-size: 13px;
+  font-size: var(--font-size-body);
   text-align: center;
 }
 

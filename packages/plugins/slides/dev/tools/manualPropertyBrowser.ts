@@ -165,7 +165,7 @@ export function mountManualPropertySmoke() {
     assertColorDraft(color: string, valid: boolean) {
       const input = host.querySelector('.slides-element-color__hex input');
       assert(input instanceof HTMLInputElement && input.value.toUpperCase() === color, 'RGB/HSV/HEX drafts diverged');
-      assert(button('.action-btn.primary').disabled === !valid, 'Invalid RGB draft can be applied');
+      assert(button('.linnya-ui-button--primary').disabled === !valid, 'Invalid RGB draft can be applied');
       assert(operations.length === 0, 'Color draft was applied without confirmation');
     },
     assertCustomApplied(color: string) {
@@ -188,16 +188,16 @@ export function mountManualPropertySmoke() {
       assert(button('.slides-element-color__custom').getAttribute('aria-pressed') === 'false', 'Preset also selected custom');
       await click('.slides-element-color__custom');
       await input('.slides-element-color__hex input', '#12');
-      assert(button('.action-btn.primary').disabled, 'Invalid HEX can be submitted');
+      assert(button('.linnya-ui-button--primary').disabled, 'Invalid HEX can be submitted');
       await input('.slides-element-color__hex input', '123456');
       assert(operations.length === 1, 'Draft color submitted before Apply');
-      await click('.action-btn.primary');
+      await click('.linnya-ui-button--primary');
       await open('fill');
       assert(button('.slides-element-color__custom').getAttribute('aria-pressed') === 'true', 'Custom color is not selected');
       assert(!host.querySelector('.shared-color-picker-panel__cell.is-current'), 'Custom color retained a preset selection');
       await click('.slides-element-color__custom');
       await input('.slides-element-color__hex input', '#ABCDEF');
-      await click('.action-btn.secondary');
+      await click('.linnya-ui-button--secondary');
       assert(operations.length === 2, 'Cancel submitted a color');
       await open('size');
       await input('input[type="number"]', '3');

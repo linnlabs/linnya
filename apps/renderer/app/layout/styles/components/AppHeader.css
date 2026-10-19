@@ -18,7 +18,7 @@
 
 .app-header .sidebar-extension.sidebar-fade-enter-active,
 .app-header .sidebar-extension.sidebar-fade-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform var(--duration-long) var(--ease-standard), opacity var(--duration-long) var(--ease-standard);
   will-change: transform, opacity;
 }
 
@@ -34,11 +34,11 @@
   left: 0;
   z-index: 111;
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: center;
   height: 100%;
-  padding-left: 6px;
-  transition: padding-left 0.3s ease;
+  padding-left: var(--space-1-5);
+  transition: padding-left var(--duration-long) var(--ease-standard);
 }
 
 .app-header-left.mac-native {
@@ -48,40 +48,15 @@
 .app-header-left .function-buttons {
   display: flex;
   flex-shrink: 0;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
+/* 视觉由 IconButton 提供；标题栏是拖拽区，按钮必须显式退出拖拽。 */
 .app-header-left .sidebar-toggle,
 .app-header-left .settings-button,
 .app-header-left .knowledge-base-button {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  margin-right: 0;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
   -webkit-app-region: no-drag;
-}
-
-.app-header-left .sidebar-toggle:hover,
-.app-header-left .settings-button:hover,
-.app-header-left .knowledge-base-button:hover {
-  background-color: var(--color-bg-hover);
-}
-
-.app-header-left .settings-button svg,
-.app-header-left .knowledge-base-button svg,
-.app-header-left .sidebar-toggle svg {
-  width: 18px;
-  height: 18px;
 }
 
 .app-header-right {
@@ -109,18 +84,18 @@
   bottom: 0;
   box-sizing: border-box;
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: center;
   min-width: 0;
-  padding: 0 var(--app-header-edge-inset) 0 12px;
+  padding: 0 var(--app-header-edge-inset) 0 var(--space-3);
   overflow: hidden;
   pointer-events: auto;
   transition:
-    left 0.3s ease,
-    right 0.3s ease,
-    width 0.3s ease,
-    padding-left 0.3s ease,
-    padding-right 0.3s ease;
+    left var(--duration-long) var(--ease-standard),
+    right var(--duration-long) var(--ease-standard),
+    width var(--duration-long) var(--ease-standard),
+    padding-left var(--duration-long) var(--ease-standard),
+    padding-right var(--duration-long) var(--ease-standard);
 }
 
 .app-header-right .header-pane--rightmost {
@@ -137,8 +112,8 @@
   align-items: center;
   min-width: 0;
   overflow: hidden;
-  font-size: 12px;
-  font-weight: 400;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-tertiary);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -178,7 +153,7 @@
 .app-header-right .breadcrumb-separator {
   display: inline-block;
   flex-shrink: 0;
-  margin: 0 8px;
+  margin: 0 var(--space-2);
   color: var(--color-border-default);
   user-select: none;
 }
@@ -186,7 +161,7 @@
 .app-header-right .header-pane__actions {
   display: inline-flex;
   flex-shrink: 0;
-  gap: 6px;
+  gap: var(--space-1-5);
   align-items: center;
   min-width: max-content;
   margin-left: auto;
@@ -198,7 +173,7 @@
 }
 
 .app-header-right .header-pane--right {
-  gap: 8px;
+  gap: var(--space-2);
   padding: 0;
 }
 
@@ -210,7 +185,7 @@
   box-sizing: border-box;
   display: flex;
   flex-shrink: 0;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   height: 100%;
   min-width: 0;
@@ -219,11 +194,11 @@
     + var(--app-header-trailing-chrome-width)
     + var(--app-header-icon-button-size)
     + var(--app-header-fixed-button-gap)
-  ) 0 12px;
+  ) 0 var(--space-3);
   opacity: 0;
   transition:
-    transform var(--transition-slow) ease,
-    opacity var(--transition-slow) ease;
+    transform var(--duration-long) var(--ease-standard),
+    opacity var(--duration-long) var(--ease-standard);
   transform: translateX(16px);
 }
 
@@ -234,52 +209,19 @@
 
 .app-header-right .project-workspace-actions {
   display: inline-flex;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
 .app-header-right .workspace-layout-actions,
 .app-header-right .global-tool-actions {
   display: inline-flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
 }
 
 .app-header-right .project-workspace-action {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  transition: background-color 0.15s ease;
   -webkit-app-region: no-drag;
-}
-
-.app-header-right .project-workspace-action:hover {
-  background-color: var(--color-bg-hover);
-}
-
-.app-header-right .project-workspace-action:disabled {
-  color: var(--color-text-muted);
-  cursor: default;
-  background-color: transparent;
-}
-
-.app-header-right .project-workspace-action.is-active {
-  color: var(--color-accent);
-  background-color: var(--color-accent-bg);
-}
-
-.app-header-right .project-workspace-action-icon {
-  width: 18px;
-  height: 18px;
 }
 
 .app-header-right .project-workspace-action-icon--right-sidebar {
@@ -307,7 +249,7 @@
   overflow: hidden;
   background: var(--color-bg-surface);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-floating-panel);
   -webkit-app-region: no-drag;
 }
@@ -315,19 +257,19 @@
 .header-tool-panel__header {
   display: flex;
   flex-shrink: 0;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: center;
   justify-content: space-between;
   height: 40px;
-  padding: 0 8px 0 12px;
+  padding: 0 var(--space-2) 0 var(--space-3);
   border-bottom: 0.5px solid var(--color-border-light);
 }
 
 .header-tool-panel__title {
   min-width: 0;
   overflow: hidden;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -335,32 +277,8 @@
 
 .header-tool-panel__actions {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
-}
-
-.header-tool-panel__icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: 5px;
-}
-
-.header-tool-panel__icon-button:hover {
-  color: var(--color-text-primary);
-  background: var(--color-bg-hover);
-}
-
-.header-tool-panel__icon-button svg {
-  width: 16px;
-  height: 16px;
 }
 
 .header-tool-panel__body {
@@ -376,12 +294,12 @@
 
 .app-header-doc-menu-wrapper {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--linnya-ui-layer-popover);
 }
 
 .app-header-menu-fade-enter-active,
 .app-header-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .app-header-menu-fade-enter-from {
@@ -418,7 +336,7 @@
   cursor: default;
   background-color: transparent;
   border: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
   -webkit-app-region: no-drag;
 }
 
@@ -438,11 +356,11 @@
 
 /* Windows 系统关闭按钮沿用危险操作语义色，避免 app layout 层保留平台色硬编码。 */
 .app-header-right .windows-controls .close-button:hover {
-  color: var(--color-white);
+  color: var(--color-text-on-accent);
   background-color: var(--app-header-window-close-bg);
 }
 
 .app-header-right .windows-controls .close-button:active {
-  color: var(--color-white);
+  color: var(--color-text-on-accent);
   background-color: var(--app-header-window-close-bg-active);
 }

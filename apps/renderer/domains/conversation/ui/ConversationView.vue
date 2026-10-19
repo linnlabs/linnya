@@ -13,15 +13,21 @@
     <div class="conversation-view" ref="conversationRef">
       <div class="conversation-content">
         <!-- 空状态 -->
-        <div v-if="isHistoryReplayLoadingState" class="history-loading-state" role="status" aria-live="polite">
-          <div class="history-loading-copy">
-            <h3 class="history-loading-title">
-              {{ conversationMessage('conversation.view.historyLoading') }}<span class="history-loading-dots" aria-hidden="true">
-                <span>.</span><span>.</span><span>.</span><span>.</span><span>.</span><span>.</span>
-              </span>
-            </h3>
-          </div>
-        </div>
+        <!-- 历史回放：与消息列同宽的骨架，一问一答两组 -->
+        <Skeleton
+          v-if="isHistoryReplayLoadingState"
+          class="history-loading-state"
+          :label="conversationMessage('conversation.view.historyLoading')"
+        >
+          <template v-for="turn in HISTORY_SKELETON_TURNS" :key="turn.user">
+            <div class="history-loading-skeleton__user">
+              <SkeletonBlock :width="turn.user" height="40px" radius="lg" />
+            </div>
+            <div class="history-loading-skeleton__assistant">
+              <SkeletonBlock v-for="(width, index) in turn.assistant" :key="index" :width="width" />
+            </div>
+          </template>
+        </Skeleton>
 
         <!-- 空状态 -->
         <ConversationEmptyState v-else-if="shouldShowEmptyState" />
@@ -50,6 +56,7 @@
 </template>
 
 <script setup lang="ts">
+import { Skeleton, SkeletonBlock } from '@linnya/renderer-ui';
 import { computed, ref, provide, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import {
   useOverlayScrollViewport as useSharedOverlayScrollViewport,
@@ -231,6 +238,11 @@ const contentPhase = useConversationContentPhaseSelector({
 
 const isHistoryReplayPending = computed(() => isConversationHistoryPendingPhase(contentPhase.value));
 const isHistoryReplayLoadingState = computed(() => contentPhase.value === 'history-loading');
+/* 历史回放骨架的固定形状：用户气泡宽度与助手回复的行宽，保持每次一致。 */
+const HISTORY_SKELETON_TURNS = [
+  { user: '46%', assistant: ['94%', '88%', '91%', '58%'] },
+  { user: '32%', assistant: ['90%', '84%', '64%'] },
+] as const;
 
 const shouldShowEmptyState = computed(() => {
   return contentPhase.value === 'draft' || contentPhase.value === 'ready-empty';

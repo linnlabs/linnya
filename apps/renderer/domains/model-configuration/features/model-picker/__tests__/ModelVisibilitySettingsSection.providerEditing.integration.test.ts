@@ -209,7 +209,7 @@ describe('ModelVisibilitySettingsSection 供应商编辑与删除', () => {
     typeInto(content?.querySelector<HTMLInputElement>('input') ?? undefined, '  rotated-key  ');
     await nextTick();
     document
-      .querySelector<HTMLButtonElement>('.direct-provider-credential-footer .action-btn.primary')
+      .querySelector<HTMLButtonElement>('.direct-provider-credential-footer .linnya-ui-button--primary')
       ?.click();
     await flushUi();
 
@@ -225,7 +225,7 @@ describe('ModelVisibilitySettingsSection 供应商编辑与删除', () => {
     mount(snapshot({ credentialAvailable: false }));
     await flushUi();
     const actions = host.querySelector('.model-visibility-credential-actions');
-    expect(actions?.querySelector('.action-btn.primary')?.textContent?.trim()).toBe(
+    expect(actions?.querySelector('.linnya-ui-button--primary')?.textContent?.trim()).toBe(
       'settings.modelPicker.replaceApiKey'
     );
     expect(actions?.textContent).toContain('settings.modelPicker.removeProvider');
@@ -269,7 +269,7 @@ describe('ModelVisibilitySettingsSection 供应商编辑与删除', () => {
     typeInto(urlInput, 'https://relay-2.example.com');
     await nextTick();
     document
-      .querySelector<HTMLButtonElement>('.provider-connection-edit-footer .action-btn.primary')
+      .querySelector<HTMLButtonElement>('.provider-connection-edit-footer .linnya-ui-button--primary')
       ?.click();
     await flushUi();
 
@@ -297,7 +297,7 @@ describe('ModelVisibilitySettingsSection 供应商编辑与删除', () => {
     headerButton('model-visibility-provider-edit')?.click();
     await flushUi();
     document
-      .querySelector<HTMLButtonElement>('.provider-connection-edit-footer .action-btn.primary')
+      .querySelector<HTMLButtonElement>('.provider-connection-edit-footer .linnya-ui-button--primary')
       ?.click();
     await flushUi();
 

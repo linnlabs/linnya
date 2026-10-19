@@ -8,10 +8,10 @@
   --smart-code-block-cursor-color: var(--color-accent);
 
   position: relative;
-  margin: 12px 0;
+  margin: var(--space-3) 0;
   overflow: hidden;
   background: var(--smart-code-block-bg);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
 }
 
 .smart-code-block .language-display {
@@ -19,12 +19,12 @@
   top: 6px;
   left: 6px;
   z-index: 9;
-  padding: 2px 8px;
+  padding: var(--space-0-5) var(--space-2);
   color: var(--smart-code-block-label-color);
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   background-color: transparent;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   opacity: 1;
   pointer-events: none;
 }
@@ -45,8 +45,8 @@
   visibility: hidden;
   opacity: 0;
   transition:
-    opacity 0.2s ease,
-    visibility 0s ease 0.2s;
+    opacity var(--duration-medium) var(--ease-standard),
+    visibility 0s var(--ease-standard) var(--duration-medium);
 }
 
 .smart-code-block .copy-button {
@@ -57,14 +57,14 @@
   height: 24px;
   padding: 0;
   color: var(--smart-code-block-copy-color);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   cursor: pointer;
   background-color: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
+    color var(--duration-medium) var(--ease-standard),
+    background-color var(--duration-medium) var(--ease-standard);
 }
 
 .smart-code-block .copy-button svg {
@@ -91,7 +91,7 @@
   padding: 0;
   overflow: visible;
   font-family: var(--font-family-mono, "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace);
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
   background: transparent;
   border: none;
 }
@@ -109,8 +109,8 @@
   background-color: transparent;
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 5px;
-  transition: background-color 0.2s ease;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .smart-code-block .code-content::-webkit-scrollbar-corner {
@@ -125,8 +125,8 @@
   background-color: transparent;
   background-clip: content-box;
   border: 2px solid transparent;
-  border-radius: 5px;
-  transition: background-color 0.2s ease;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .smart-code-block:hover .code-content::-webkit-scrollbar-thumb,
@@ -152,9 +152,9 @@
 
 .smart-code-block .streaming-cursor {
   display: inline-block;
-  margin-left: 2px;
+  margin-left: var(--space-0-5);
   color: var(--smart-code-block-cursor-color);
-  font-weight: normal;
+  font-weight: var(--font-weight-regular);
   animation: smart-code-block-cursor-blink 1s infinite;
 }
 
@@ -167,5 +167,11 @@
   51%,
   100% {
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .smart-code-block .streaming-cursor {
+    animation: none;
   }
 }

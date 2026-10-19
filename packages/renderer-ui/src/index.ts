@@ -1,4 +1,4 @@
-export { ActionButtons } from './features/actions';
+export { ActionButtons, BaseButton, IconButton, resolveIconButtonElement } from './features/actions';
 export type {
   ActionButtonAttributes,
   ActionButtonsPrimaryVariant,
@@ -6,6 +6,20 @@ export type {
   ActionButtonsSecondaryVariant,
   ActionButtonsShape,
   ActionButtonsSlots,
+  BaseButtonProps,
+  BaseButtonShape,
+  BaseButtonSize,
+  BaseButtonSlots,
+  BaseButtonTone,
+  BaseButtonType,
+  BaseButtonVariant,
+  IconButtonExposed,
+  IconButtonProps,
+  IconButtonSize,
+  IconButtonSlots,
+  IconButtonTone,
+  IconButtonType,
+  IconButtonVariant,
 } from './features/actions';
 export {
   CustomCheckbox,
@@ -27,6 +41,9 @@ export {
   NotificationBar,
   PageSectionHeader,
   ScrollToBottomButton,
+  Skeleton,
+  SkeletonBlock,
+  SkeletonRows,
   resolveHoverTooltipPosition,
 } from './features/feedback';
 export type {
@@ -37,6 +54,12 @@ export type {
   HoverTooltipWindowFocusPort,
   NotificationBarProps,
   NotificationType,
+  SkeletonBlockProps,
+  SkeletonBlockRadius,
+  SkeletonProps,
+  SkeletonRowsProps,
+  SkeletonRowsSize,
+  SkeletonSlots,
 } from './features/feedback';
 export {
   applyTextareaAutoResize,

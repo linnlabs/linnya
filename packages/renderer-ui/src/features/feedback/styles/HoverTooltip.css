@@ -5,20 +5,20 @@
 .hover-tooltip {
   position: fixed;
   z-index: var(--linnya-ui-layer-tooltip);
-  padding: 4px 8px;
-  font-size: 12px;
-  line-height: 1.2;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
   color: var(--color-white);
   white-space: nowrap;
   pointer-events: none;
   background-color: color-mix(in srgb, var(--color-black) 92%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-floating-panel);
 }
 
 .hover-tooltip.tooltip-fade-enter-active,
 .hover-tooltip.tooltip-fade-leave-active {
-  transition: opacity 0.12s ease;
+  transition: opacity var(--duration-micro) var(--ease-standard);
 }
 
 .hover-tooltip.tooltip-fade-enter-from,

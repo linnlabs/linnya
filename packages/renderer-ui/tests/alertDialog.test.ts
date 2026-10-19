@@ -98,7 +98,7 @@ describe('AlertDialog', () => {
       ?.querySelector<HTMLButtonElement>('.modal-close')
       ?.click();
     overlays.find(overlay => overlay.textContent?.includes('提示'))
-      ?.querySelector<HTMLButtonElement>('.action-btn.primary')
+      ?.querySelector<HTMLButtonElement>('.linnya-ui-button--primary')
       ?.click();
     expect(cancelCount).toBe(1);
     expect(closeCount).toBe(1);

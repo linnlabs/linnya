@@ -14,13 +14,13 @@
   display: flex;
   width: 100%;
   min-width: 0;
-  margin-top: 12px;
+  margin-top: var(--space-3);
   flex-direction: column;
   will-change: transform, opacity;
 }
 
 .ai-message.animate-in {
-  animation: conversation-message-slide-up-fade-in 300ms ease-out forwards;
+  animation: conversation-message-slide-up-fade-in var(--duration-long) var(--ease-enter) forwards;
 }
 
 .ai-message.no-animation {
@@ -32,7 +32,7 @@
 }
 
 .message-type-user_input + .ai-message {
-  margin-top: var(--spacing-xs);
+  margin-top: var(--space-1);
 }
 
 .message-type-user_input + .message-type-thought {

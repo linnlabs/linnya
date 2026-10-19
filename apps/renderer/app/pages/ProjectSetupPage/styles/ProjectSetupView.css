@@ -28,7 +28,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0 24px;
+  padding: 0 var(--space-6);
   background-color: var(--color-bg-surface);
   z-index: 10;
   position: sticky;
@@ -38,7 +38,7 @@
 .project-setup-view .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 /* Remove unused button styles now that we use ActionButtons */
@@ -69,7 +69,7 @@
    */
   width: 100%;
   /* bottom padding 预留出底部固定输入栏的高度，避免最后一条消息被遮挡 */
-  padding: 10px 0px 96px;
+  padding: var(--space-2-5) 0px 96px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -118,18 +118,18 @@
 /* 在项目初始化视图中，尽量避免对话区因为滚动条出现/消失而一会儿宽一会儿窄，
    同时去掉为了时间轴 / 滚动条预留的额外右侧 padding，使内容和输入框左对齐 */
 .project-setup-view .conversation-view {
-  padding-right: 16px !important;
+  padding-right: var(--space-4) !important;
 }
 
 .project-setup-view .timeline-expanded .conversation-view {
-  padding-right: 16px !important;
+  padding-right: var(--space-4) !important;
 }
 
 .project-setup-view .btn-content {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .project-setup-view .btn-icon {
@@ -161,13 +161,13 @@
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
+  gap: var(--space-2-5);
+  padding: var(--space-3) var(--space-4);
   background-color: var(--color-error-bg);
   border: 1px solid var(--color-error);
-  border-radius: 8px;
-  color: var(--color-error);
-  font-size: 13px;
+  border-radius: var(--radius-lg);
+  color: var(--color-error-text);
+  font-size: var(--font-size-body);
   z-index: 100;
   box-shadow: 0 4px 16px var(--shadow-color-sm);
   max-width: 480px;
@@ -200,10 +200,10 @@
   padding: 0;
   background: none;
   border: none;
-  color: var(--color-error);
+  color: var(--color-error-text);
   cursor: pointer;
   opacity: 0.6;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-short);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -223,7 +223,9 @@
    ---------------------------------------- */
 .project-setup-view .error-slide-enter-active,
 .project-setup-view .error-slide-leave-active {
-  transition: all 0.25s ease;
+  transition:
+    opacity var(--duration-long) var(--ease-standard),
+    transform var(--duration-long) var(--ease-standard);
 }
 
 .project-setup-view .error-slide-enter-from {

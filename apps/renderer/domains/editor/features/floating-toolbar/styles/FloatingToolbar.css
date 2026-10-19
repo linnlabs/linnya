@@ -2,7 +2,7 @@
 .inline-color-picker,
 .inline-highlight-picker {
   position: relative;
-  padding: 12px;
+  padding: var(--space-3);
   outline: none;
   background-color: var(--color-bg-default);
   user-select: none;
@@ -10,7 +10,7 @@
 
 .inline-color-picker .color-section,
 .inline-highlight-picker .color-section {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .inline-color-picker .color-section:last-child,
@@ -20,17 +20,17 @@
 
 .inline-color-picker .section-title,
 .inline-highlight-picker .section-title {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   color: var(--color-text-secondary);
-  font-weight: 500;
-  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-footnote);
 }
 
 .inline-color-picker .color-grid,
 .inline-highlight-picker .color-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .inline-color-picker .color-cell,
@@ -42,11 +42,14 @@
   width: 32px;
   height: 32px;
   border: 1px solid var(--cell-border-color);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background-color: var(--color-bg-surface);
   box-shadow: 0 0.75px 0.5px var(--shadow-color-xs);
   cursor: pointer;
-  transition: all 150ms ease;
+  transition:
+    border-color var(--duration-short) var(--ease-standard),
+    box-shadow var(--duration-short) var(--ease-standard),
+    transform var(--duration-short) var(--ease-standard);
 }
 
 .inline-color-picker .color-cell:hover,
@@ -73,14 +76,14 @@
 }
 
 .inline-color-picker .color-sample {
-  font-weight: bold;
-  font-size: 20px;
+  font-weight: var(--font-weight-semibold);
+  font-size: 20px; /* scale-exempt: 取色样本字形尺寸 */
 }
 
 .inline-highlight-picker .highlight-sample {
   color: var(--color-text-primary);
-  font-weight: bold;
-  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-prose);
 }
 
 .inline-color-picker .picker-footer,

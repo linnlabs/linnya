@@ -10,6 +10,7 @@ theme/token/scroll 均由 package 唯一拥有；Editor 选区业务和 Citation
 - 组件只承接通用交互和视觉，不写业务规则。业务校验、权限、保存流程放在对应 domain / feature。
 - package 组件样式由对应 Renderer UI feature 自己拥有；业务组件样式跟随其 app/domain/feature owner。组件不写 scoped style。
 - 平台通用图标从 `@linnya/renderer-ui/icons` 引入；插件语义图标留在插件 owner，不在按钮里手写零散 SVG。
+- 改样式前后按[设计规范第 15 节“细节清单”](./design.md#15-细节清单)自查：间距、行高、字号的改动先量尺寸再动手；带边框控件的奇数内边距不要直接吸附；胶囊用 `--radius-full`；浮层 z-index 只用层级 token。
 - 插件 renderer 直接依赖 `@linnya/renderer-ui`；仍需要 Host 业务能力时使用按能力命名的窄 facade（例如 `subrunToolUi`），禁止通过通用 UI barrel 或 deep import Host 内部路径。
 
 ### Linnya 品牌图标
@@ -37,6 +38,9 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 
 | 场景 | 组件 | 说明 |
 |---|---|---|
+| 单个按钮 | `@linnya/renderer-ui` 的 `BaseButton` | 页面入口、工具栏、表单内的任意按钮；用 variant 表达层级，size 与同行输入框对齐。 |
+| 纯图标按钮 | `@linnya/renderer-ui` 的 `IconButton` | 关闭、更多、刷新、复制、行内删除等没有文字的操作；`label` 必填，size 决定外框与图标尺寸。 |
+| 加载占位 | `@linnya/renderer-ui` 的 `SkeletonRows`、`Skeleton`、`SkeletonBlock` | 结构已知的列表、卡片、消息加载时的骨架；延迟出现、自带读屏状态，形状与真实布局一致。 |
 | 主/次操作按钮组 | `@linnya/renderer-ui` 的 `ActionButtons` | 弹窗、表单、卡片底部的确认/取消按钮；主操作支持 default、danger、accent 三种严格视觉语义和胶囊形态。 |
 | 单行输入 | `@linnya/renderer-ui` 的 `CustomTextInput` | 标准文本输入；支持两档尺寸、无边框模式、提交式更新和使用共享图标的可清除搜索。 |
 | 密文输入 | `@linnya/renderer-ui` 的 `SecretInput` | API Key、访问令牌和密码输入；统一显隐按钮、禁用状态及整组 hover/focus 边框。 |
@@ -97,7 +101,73 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 
 按钮尺寸或排列由业务 owner 定制时，把自己的 class 放到组件根 `class` 以及对应的
 `primary-button-attributes.class` / `secondary-button-attributes.class`，不要引用 `.action-buttons-container` 或
-`.action-btn`。
+`.linnya-ui-button*`。自 2.6.0 起两个按钮由 `BaseButton` 渲染：default → primary、danger → danger、accent → soft，
+次操作 filled / ghost / plain 对应同名层级，高度为 `--control-height-sm`。
+
+### BaseButton
+
+```vue
+<BaseButton variant="outline" tone="accent" size="lg" shape="pill" block @click="createKnowledgeBase">
+  <template #icon><AddIcon /></template>
+  新建知识库
+</BaseButton>
+
+<BaseButton variant="primary" size="md" :disabled="!canInsert" @click="insert">插入引用</BaseButton>
+
+<BaseButton variant="primary" type="submit" form="secret-form" :disabled="submitting">发送</BaseButton>
+
+<!-- 占满宽度的主操作用 tint 浅底，避免整条深色色块 -->
+<BaseButton variant="tint" size="lg" block :disabled="!canAdd" @click="add">添加</BaseButton>
+```
+
+- `variant`：primary / secondary / ghost / plain / danger / soft / tint / outline，选择规则见[设计规范](./design.md#92-按钮)。
+  `tone`（accent / info / neutral / danger）只对 outline 与 plain 生效；plain 的 danger 静止时保持中性、悬停才显示错误色。
+- `size`：sm / md / lg，对应 `--control-height-sm/md/lg`；与同一行的输入框取同一档。
+- `shape="pill"` 只用于页面级入口；`block` 占满容器宽度，带图标时图标贴左、文字视觉居中。
+- `type` 默认 `button`，提交表单时显式传入 `submit`；`disabled` 使用原生语义。
+- 普通属性、`aria-*`、`data-*`、`class`、`style` 与事件都落在唯一的原生 `button` 上。业务只能定制外围布局，
+  不覆盖 `.linnya-ui-button*` 内部选择器。
+
+### IconButton
+
+```vue
+<IconButton :label="closeLabel" size="md" @click="close">
+  <CloseIcon />
+</IconButton>
+
+<HoverTooltip :text="historyLabel" placement="bottom">
+  <IconButton ref="historyButton" :label="historyLabel" :tooltip="false" :active="isHistoryOpen" @click="toggleHistory">
+    <HistoryIcon />
+  </IconButton>
+</HoverTooltip>
+
+<IconButton :label="deleteLabel" size="xs" tone="danger" @click="remove">
+  <DeleteIcon />
+</IconButton>
+```
+
+- `size`：xs / sm / md / lg，外框 20 / 24 / 28 / 32px，图标 14 / 18 / 18 / 20px；默认 sm。选择规则见[设计规范](./design.md#93-图标按钮)。
+- `variant`：ghost（默认，透明底）/ subtle（静止浅底，用于与输入框并排的添加操作）/ overlay（叠在图片等内容上，白色图标，底条由容器提供）；`tone="danger"` 悬停显示错误色。
+- `active` 只表达视觉上的选中 / 展开，语义由调用方补 `aria-pressed` 或 `aria-expanded`。
+- `label` 同时是 `aria-label` 与原生 `title`；外层已有自定义提示时传 `:tooltip="false"`。
+- 模板 ref 拿到的是组件实例，原生按钮在 `element` 上；函数式 ref 用 `resolveIconButtonElement(el)` 取出。
+- 按钮放在会 hover / 选中的行里时，在行的操作容器上设置 `--linnya-ui-icon-button-hover-bg: var(--linnya-ui-icon-button-hover-bg-raised)`；不要覆盖 `.linnya-ui-icon-button*` 内部选择器。
+
+### Skeleton
+
+```vue
+<SkeletonRows v-if="isLoading" :label="loadingLabel" :rows="8" icon />
+
+<Skeleton v-if="isDetailLoading" :label="loadingLabel">
+  <SkeletonBlock width="20px" height="20px" radius="sm" />
+  <SkeletonBlock v-for="width in LINE_WIDTHS" :key="width" :width="width" />
+</Skeleton>
+```
+
+- `label` 必填，是 `role="status"` 的读屏文案；形状本身对辅助技术隐藏。
+- 默认在 `--delay-reveal`（200ms）后淡入；确定会很久的加载可传 `:delayed="false"` 立即显示。
+- `SkeletonRows`：`size` 为 sm / md / lg（28px、32px 单行；带 32px 图标的双行），`icon`、`trailing` 按真实行取舍；调用方用外层 class 对齐左右起点。
+- `SkeletonBlock`：`width` / `height` 为 CSS 长度，`radius` 为 sm / md / lg / full；组合时宽度用固定序列，不随机。
 
 ## 选择控件的节点扩展
 

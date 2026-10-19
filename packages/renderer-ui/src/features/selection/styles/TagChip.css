@@ -4,13 +4,13 @@
 
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 1px 6px;
+  gap: var(--space-1);
+  padding: 1px var(--space-1-5);
   border-radius: var(--radius-full);
   background-color: var(--color-accent-bg);
   color: var(--color-accent);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
 }
 
 .tt-tag-chip__icon {
@@ -43,7 +43,7 @@
   flex: 0 0 auto;
   width: 14px;
   height: 14px;
-  margin-left: 2px;
+  margin-left: var(--space-0-5);
   padding: 0;
   border: none;
   background: none;

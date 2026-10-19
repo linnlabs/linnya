@@ -40,10 +40,13 @@
       @update:file-search-query="projectFileSearchQuery = $event"
     />
 
-    <div v-if="projectsStore.isLoading" class="loading-state">
-      <svg class="loading-icon spin" viewBox="0 0 24 24"><path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8Z"/></svg>
-      <p>{{ workspaceMessage('workspace.sidebar.state.loadingProjects') }}</p>
-    </div>
+    <SkeletonRows
+      v-if="projectsStore.isLoading"
+      class="workspace-sidebar-skeleton"
+      :label="workspaceMessage('workspace.sidebar.state.loadingProjects')"
+      :rows="8"
+      icon
+    />
 
     <div v-else-if="projectsStore.error" class="error-state">
       <svg class="error-icon" viewBox="0 0 24 24"><path d="M11 15h2v2h-2v-2zm0-8h2v6h-2V7z"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
@@ -158,7 +161,7 @@ import { getWorkspaceScopeKey, useWorkspaceScopeStore } from '@/shared/stores/wo
 import { useSidebarConversationHistoryRevealStore } from '@/app/layout/store/sidebarConversationHistoryRevealStore';
 import { startDraftConversation } from '@/domains/conversation/services/orchestration/startDraftConversation';
 import { useProjectOverviewModalStore } from '@/domains/workspace/features/project-overview/store/projectOverviewModalStore';
-import { AlertDialog } from '@linnya/renderer-ui';
+import { AlertDialog, SkeletonRows } from '@linnya/renderer-ui';
 import AddToKnowledgeBaseModal from '@/domains/knowledgebase/ui/AddToKnowledgeBaseModal.vue';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import {

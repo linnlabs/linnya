@@ -12,14 +12,14 @@
   width: 32px;
   height: 32px;
   padding: 0;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-primary);
   text-align: center;
   cursor: pointer;
   background-color: transparent;
   border: 0;
-  border-radius: 4px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
 }
 
 .sdp-root .sdp-input:hover {
@@ -36,9 +36,9 @@
   right: 0;
   z-index: var(--linnya-ui-layer-picker);
   min-width: 220px;
-  padding: 8px 10px 10px;
+  padding: var(--space-2) var(--space-2-5) var(--space-2-5);
   background-color: var(--color-bg-surface);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   box-shadow:
     var(--shadow-lg),
     0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
@@ -58,20 +58,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: var(--space-1-5);
 }
 
 .sdp-root .sdp-month-label {
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
 }
 
 .sdp-root .sdp-year-text {
-  padding: 2px 4px;
-  margin-right: 4px;
+  padding: var(--space-0-5) var(--space-1);
+  margin-right: var(--space-1);
   cursor: pointer;
-  border-radius: 4px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
 }
 
 .sdp-root .sdp-year-text:hover {
@@ -89,8 +89,8 @@
   cursor: pointer;
   background: transparent;
   border: none;
-  border-radius: 4px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
 }
 
 .sdp-root .sdp-nav-btn:hover {
@@ -102,15 +102,15 @@
 .sdp-root .sdp-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .sdp-root .sdp-weekdays {
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .sdp-root .sdp-weekday {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
   text-align: center;
 }
@@ -121,13 +121,13 @@
   justify-content: center;
   width: 26px;
   height: 24px;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-primary);
   cursor: pointer;
   background-color: transparent;
   border: none;
-  border-radius: 9999px;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-micro) var(--ease-standard), color var(--duration-micro) var(--ease-standard);
 }
 
 .sdp-root .sdp-cell.is-empty {
@@ -148,11 +148,11 @@
 }
 
 .sdp-root .sdp-cell.is-today {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .sdp-root .sdp-cell.is-selected {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-accent);
   background-color: var(--color-accent-bg);
 }
@@ -160,8 +160,8 @@
 .sdp-root .sdp-month-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  padding-top: 4px;
+  gap: var(--space-1-5);
+  padding-top: var(--space-1);
 }
 
 .sdp-root .sdp-month-item {
@@ -169,13 +169,13 @@
   align-items: center;
   justify-content: center;
   height: 26px;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
   cursor: pointer;
   background-color: transparent;
   border: none;
-  border-radius: 6px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  border-radius: var(--radius-md);
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
 }
 
 .sdp-root .sdp-month-item:hover {
@@ -184,14 +184,14 @@
 }
 
 .sdp-root .sdp-month-item.is-current-month {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-accent);
   background-color: var(--color-accent-bg);
 }
 
 .sdp-root .sdp-fade-enter-active,
 .sdp-root .sdp-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .sdp-root .sdp-fade-enter-from {

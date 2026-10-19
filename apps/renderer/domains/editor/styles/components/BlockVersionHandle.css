@@ -19,7 +19,7 @@
   display: flex;
   flex-direction: row; /* 始终水平排列 */
   align-items: center;
-  gap: 2px; /* 按钮之间的间距 */
+  gap: var(--space-0-5); /* 按钮之间的间距 */
   z-index: 100;
   pointer-events: auto;
   /* 允许溢出，不裁剪 */
@@ -88,9 +88,9 @@
   /* 显隐与过渡：默认隐藏，hover 整个块时再显示（与 drag-handle 行为一致） */
   opacity: 0;
   transition:
-    opacity var(--transition-normal),
-    color var(--transition-normal),
-    background-color var(--transition-normal);
+    opacity var(--duration-medium),
+    color var(--duration-medium),
+    background-color var(--duration-medium);
 }
 
 /* 悬停效果：整个 26x26 容器变为浅灰背景 + 深一点的图标 */

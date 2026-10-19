@@ -9,27 +9,27 @@
   --table-ai-output-border: color-mix(in srgb, var(--color-warning) 35%, transparent);
   --table-ai-output-hover-bg: color-mix(in srgb, var(--color-warning) 14%, transparent);
 
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border-default);
   background-color: var(--color-bg-subtle);
 }
 
 /* 该组件会被 conversation 输入框动态加载，内嵌态必须保留无分割线视觉。 */
 .table-context-embedded.table-ai-context {
-  padding: 12px 16px;
-  margin-bottom: 4px;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-1);
   border-bottom: none;
   background-color: transparent;
 }
 
 .table-ai-context .table-ai-section {
-  padding: 8px 0;
+  padding: var(--space-2) 0;
 }
 
 .table-ai-context .table-ai-section.is-inline {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .table-ai-context .table-ai-section.is-inline .table-ai-section-title {
@@ -44,39 +44,39 @@
 }
 
 .table-ai-context .table-ai-section:first-child {
-  padding-top: 4px;
+  padding-top: var(--space-1);
 }
 
 .table-ai-context .table-ai-section:last-child {
-  padding-bottom: 4px;
+  padding-bottom: var(--space-1);
 }
 
 .table-ai-context .table-ai-section-title {
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2-5);
   color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 400;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-regular);
 }
 
 .table-ai-context .table-ai-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .table-ai-context .table-ai-tag {
   box-sizing: border-box;
   display: inline-block;
   min-width: 52px;
-  padding: 3px 9px;
+  padding: calc(var(--space-1) - 1px) calc(var(--space-2-5) - 1px);
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background-color: var(--table-ai-tag-bg);
   color: var(--color-text-primary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
   text-align: center;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, filter 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard), border-color var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard), filter var(--duration-medium) var(--ease-standard);
 }
 
 .table-ai-context .table-ai-tag:hover {
@@ -107,7 +107,7 @@
 .table-ai-context .table-ai-tag.output-column-display-tag {
   border-color: var(--table-ai-output-border);
   background-color: var(--color-warning-bg);
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .table-ai-context .table-ai-tag.output-column-display-tag:hover {

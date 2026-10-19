@@ -6,9 +6,9 @@
  * 作用：为根块提供视觉边界和交互效果
  */
 .root-block-outer {
-  --editor-block-selection-overlay: color-mix(in srgb, var(--color-brand-300) 70%, var(--color-brand-400));
+  --editor-block-selection-overlay: color-mix(in srgb, var(--color-accent-strong-light) 70%, var(--color-accent-light));
 
-  border-radius: 6px;
+  border-radius: var(--radius-md);
 }
 
 /*
@@ -25,7 +25,7 @@
 }
 
 .block-revision-indicator-row {
-  margin: 2px 0;
+  margin: var(--space-0-5) 0;
 }
 
 /* 
@@ -33,9 +33,9 @@
  * 作用：为内容提供视觉容器
  */
 .root-block {
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background-color: transparent; /* 明确指定透明背景，防止低分辨率下hover时文字抗锯齿模式切换导致轻微偏移 */
-  transition: background-color 0.2s ease-in-out; /* 添加背景色过渡效果 */
+  transition: background-color var(--duration-medium) var(--ease-standard); /* 添加背景色过渡效果 */
   position: relative; /* 为遮罩层定位提供参照 */
 }
 
@@ -74,9 +74,9 @@
   background-color: var(--editor-block-selection-overlay); /* 选中遮罩颜色 */
   opacity: 0; /* 默认不显示 */
   pointer-events: none; /* 不阻挡鼠标事件 */
-  border-radius: 6px; /* 与 root-block 的圆角保持一致 */
+  border-radius: var(--radius-md); /* 与 root-block 的圆角保持一致 */
   z-index: 1; /* 覆盖在内容上方 */
-  transition: opacity 0.2s ease-in-out; /* 过渡效果 */
+  transition: opacity var(--duration-medium) var(--ease-standard); /* 过渡效果 */
 }
 
 .root-block-outer.is-block-selected .root-block::after {
@@ -200,7 +200,7 @@
 .annotation-highlight-block .root-block {
   /* 移除了 outline 和 box-shadow，替换为背景色高亮 */
   background-color: var(--editor-block-hover-bg); /* 悬停时的背景色 */
-  transition: background-color 0.2s ease; /* 添加过渡效果 */
+  transition: background-color var(--duration-medium) var(--ease-standard); /* 添加过渡效果 */
 }
 
 /*
@@ -213,7 +213,7 @@
  */
 .ai-ref-highlight-block .root-block {
   background-color: var(--editor-block-hover-bg);
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 /* 
@@ -221,7 +221,7 @@
  */
 .horizontal-rule-block-outer {
   /* 外层容器，可以添加上下间距 */
-  padding: 4px 0; /* 提供一些垂直空间 (0.5rem -> 8px) */
+  padding: var(--space-1) 0; /* 提供一些垂直空间 (0.5rem -> 8px) */
 }
 
 .horizontal-rule-block {
@@ -245,7 +245,7 @@
 .horizontal-rule-block.ProseMirror-selectednode {
   background-color: var(--color-accent-bg); /* 使用变量定义选中背景色 */
   outline: 2px solid var(--color-accent); /* 使用变量定义选中边框 */
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
 }
 
 .list-item-block {
@@ -286,7 +286,7 @@
   left: -4px; /* 6px - 10px (增加宽度导致的偏移) */
   top: 0;
   width: 32px; /* 22px + 10px (增加宽度以容纳两位数) */
-  padding-right: 6px; /* “.” 后间距 */
+  padding-right: var(--space-1-5); /* “.” 后间距 */
   box-sizing: border-box;
   text-align: right;
   font-size: 1em;
@@ -326,7 +326,7 @@
   line-height: 1;
   /* 定位调整 */
   /* 水平：(22px - 6px) / 2 = 8px */
-  margin-left: 8px;
+  margin-left: var(--space-2);
   /* 使用正文首行高度，空心圆不因行高变化偏离中心。 */
   top: calc(0.5 * var(--editor-body-line-height) * 1em - 3px);
 }
@@ -361,12 +361,12 @@
  */
 .base-block[data-indent="1"],
 .heading-block[data-indent="1"] {
-  padding-left: 20px;
+  padding-left: var(--space-5);
 }
 
 .base-block[data-indent="2"],
 .heading-block[data-indent="2"] {
-  padding-left: 40px;
+  padding-left: var(--space-10);
 }
 
 .base-block[data-indent="3"],
@@ -407,7 +407,7 @@
   /* ++ 颜色继承策略：使用 CSS 变量而非 inherit，避免影响主文本 ++ */
   /* 当块设置了 textColor 时，引用块边框会自动使用该颜色 */
   color: var(--local-block-text-color, inherit);
-  border-radius: 2px; /* 增加圆角效果 */
+  border-radius: var(--radius-xs); /* 增加圆角效果 */
   overflow: visible; /* 确保内容不被裁剪 */
   line-height: var(--editor-body-line-height);
 }
@@ -426,17 +426,17 @@
   width: 3px; /* 边框宽度 */
   /* 边框颜色：优先使用当前块颜色，否则回退到默认边框色 */
   background-color: var(--local-block-text-color, var(--color-border-default));
-  border-radius: 1.5px; /* 边框自身的圆角 */
+  border-radius: var(--radius-xs); /* 边框自身的圆角 */
 }
 
 /* -- 修改缩进方式 - 引用块 -- */
 /* -- 将 margin-left 改为 padding-left, 与其他块保持一致 -- */
 .quote-block-outer[data-indent="1"] .quote-block {
-  padding-left: calc(1rem + 20px);
+  padding-left: calc(1rem + var(--space-5));
 }
 
 .quote-block-outer[data-indent="2"] .quote-block {
-  padding-left: calc(1rem + 40px);
+  padding-left: calc(1rem + var(--space-10));
 }
 
 .quote-block-outer[data-indent="3"] .quote-block {
@@ -510,14 +510,14 @@
   padding: 1em;
   padding-top: 2em; /* 为控件留出空间 */
   padding-bottom: 1em; /* 为控件留出空间 */
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   overflow-x: auto;
   overflow-y: hidden; /* 禁用垂直滚动 */
   white-space: pre;
   margin: 0;
-  line-height: 1.5; /* 调整行高，让代码看起来更紧凑 */
+  line-height: var(--line-height-normal); /* 调整行高，让代码看起来更紧凑 */
   position: relative; /* 为了定位 ::before 伪元素 */
-  transition: background-color 0.2s ease-in-out; /* 背景色过渡动画 */
+  transition: background-color var(--duration-medium) var(--ease-standard); /* 背景色过渡动画 */
   scrollbar-width: thin; /* Firefox 滚动条宽度 */
   scrollbar-color: var(--color-border-default) var(--code-block-bg);
 }
@@ -538,7 +538,7 @@
 /* ③ 滑块主体 */
 .code-block pre::-webkit-scrollbar-thumb {
   background: var(--color-border-default);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 /* 
@@ -547,11 +547,11 @@
 .latex-block-view {
   /* 移除边框，使用与其他块一致的背景色 */
   border: none;
-  border-radius: 4px; /* 保留圆角 */
+  border-radius: var(--radius-sm); /* 保留圆角 */
   padding: 0px; /* 保留内边距 */
   margin: 0px; /* 保留外边距 */
   position: relative;
-  transition: background-color 0.2s ease-in-out; /* 过渡背景色 */
+  transition: background-color var(--duration-medium) var(--ease-standard); /* 过渡背景色 */
   max-width: 100%; /* 防止超出容器 */
 }
 
@@ -564,8 +564,8 @@
 
 .latex-rendered-content {
   cursor: pointer;
-  padding-top: 2px;    /* ++ 增加上内边距 ++ */
-  padding-bottom: 2px; /* ++ 增加下内边距 ++ */
+  padding-top: var(--space-0-5);    /* ++ 增加上内边距 ++ */
+  padding-bottom: var(--space-0-5); /* ++ 增加下内边距 ++ */
   min-height: 20px;
   max-width: 100%; /* 防止超出容器 */
 }
@@ -576,18 +576,18 @@
   font-size: 1.1em; /* 可调整公式大小 */
   text-align: center; /* 居中块级公式 */
   /* 可以在这里添加更多 KaTeX 相关的样式 */
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 /* LaTeX 错误信息样式 */
 .latex-error-message {
-  color: var(--color-error);
+  color: var(--color-error-text);
   font-size: 0.8em;
   margin-top: 5px;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   background-color: var(--color-error-bg);
   border: 1px solid color-mix(in srgb, var(--color-error) 30%, transparent);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 /* 
@@ -596,7 +596,7 @@
  */
 .image-block-outer {
   /* 外层容器，可以添加上下间距 */
-  padding: 4px 0; /* 提供一些垂直空间 */
+  padding: var(--space-1) 0; /* 提供一些垂直空间 */
 }
 
 .image-block {
@@ -606,8 +606,8 @@
   justify-content: center; /* 水平居中图片 */
   align-items: center; /* 垂直居中图片 */
   min-height: 30px; /* 给一个最小高度，方便选中 */
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 /* 图片对齐方式 */
@@ -629,14 +629,14 @@
   height: auto; /* 保持宽高比 */
   display: block; /* 避免底部的额外空间 */
   box-shadow: var(--shadow-sm); /* 轻微阴影效果 */
-  border-radius: 2px; /* 圆角效果 */
+  border-radius: var(--radius-xs); /* 圆角效果 */
 }
 
 /* 空图片样式 */
 .image-block.empty-image {
   color: var(--color-text-placeholder);
   font-style: italic;
-  padding: 15px;
+  padding: calc(var(--space-4) - 1px);
   text-align: center;
   background-color: var(--editor-block-hover-bg);
   border: 1px dashed var(--color-border-default);
@@ -651,7 +651,7 @@
 .image-block.ProseMirror-selectednode {
   background-color: var(--color-accent-bg); /* 使用变量定义选中背景色 */
   outline: 2px solid var(--color-accent); /* 使用变量定义选中边框 */
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
 }
 
 /* 
@@ -672,9 +672,9 @@
   background-color: var(--editor-block-selection-overlay); /* 基色，与主题选中背景匹配 */
   opacity: 0; /* 默认不显示 */
   pointer-events: none; /* 不阻挡鼠标事件 */
-  border-radius: 6px; /* 与 audio-block-border 的圆角保持一致 */
+  border-radius: var(--radius-md); /* 与 audio-block-border 的圆角保持一致 */
   z-index: 11; /* 覆盖在内容上方，且高于内部 sticky toolbar (z-index: 10) */
-  transition: opacity 0.2s ease-in-out; /* 过渡效果 */
+  transition: opacity var(--duration-medium) var(--ease-standard); /* 过渡效果 */
 }
 
 .root-block-outer.is-block-selected .audio-block-border::after {
@@ -686,7 +686,7 @@
  * 作用：为文字添加荧光笔式的背景高亮
  */
 .ProseMirror span[data-text-highlight] {
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   /* 只做轻微的竖直填充，避免左右产生视觉间隙 */
   padding: 1px 0;
   /* 背景色由 mark 的 style 属性提供（使用 color-mix 得到浅色） */

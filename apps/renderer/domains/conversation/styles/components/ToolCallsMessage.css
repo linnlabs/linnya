@@ -5,11 +5,11 @@
   max-width: 100%;
   box-sizing: border-box;
   background-color: var(--color-bg-surface);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   border: 0 solid var(--color-border-light);
-  margin: 2px 0;
+  margin: var(--space-0-5) 0;
   overflow: hidden;
-  transition: box-shadow 0.2s ease-in-out;
+  transition: box-shadow var(--duration-medium) var(--ease-standard);
   /* 工具卡片历史上使用更轻、更暖的阴影；不能直接套通用 shadow token，否则层次会明显变重。 */
   box-shadow:
     var(--conversation-tool-card-shadow),
@@ -53,13 +53,13 @@
 }
 
 .tool-calls-message .tool-card__header {
-  padding: 7px 12px;
+  padding: 7px var(--space-3);
   background-color: var(--color-bg-surface);
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--duration-short) var(--ease-standard);
   min-height: 32px;
   height: auto;
   border-bottom: 0 solid var(--color-border-light);
@@ -80,7 +80,7 @@
 .tool-calls-message .tool-card__title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex: 1;
   min-width: 0;
 }
@@ -95,14 +95,14 @@
 .tool-calls-message .tool-card__name {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   flex: 1;
   min-width: 0;
   flex-wrap: nowrap;
-  font-weight: normal;
+  font-weight: var(--font-weight-regular);
   color: var(--color-text-primary);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-normal);
 }
 
 .tool-calls-message .tool-card__name-text {
@@ -121,7 +121,7 @@
 .tool-calls-message .tool-card__name-text--document-link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .tool-calls-message .tool-card__title-prefix {
@@ -156,9 +156,9 @@
 
 .tool-calls-message .tool-card__header-meta {
   margin-left: auto;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
-  padding-right: 4px;
+  padding-right: var(--space-1);
   align-self: center;
   flex-shrink: 0;
 }
@@ -167,19 +167,19 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
-  border-radius: 999px;
-  font-size: 10px;
-  line-height: 18px;
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
   text-transform: none;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   position: relative;
   top: 0;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    filter 0.15s ease,
-    transform 0.15s ease;
+    background-color var(--duration-short) var(--ease-standard),
+    color var(--duration-short) var(--ease-standard),
+    filter var(--duration-short) var(--ease-standard),
+    transform var(--duration-short) var(--ease-standard);
 }
 
 .tool-calls-message .tool-card__tag--default {
@@ -189,17 +189,17 @@
 
 .tool-calls-message .tool-card__tag--success {
   background-color: var(--color-success-bg);
-  color: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .tool-calls-message .tool-card__tag--warning {
   background-color: var(--color-warning-bg);
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .tool-calls-message .tool-card__tag--info {
   background-color: var(--color-info-bg);
-  color: var(--color-info);
+  color: var(--color-info-text);
 }
 
 .tool-calls-message .tool-card__header:not(.tool-card__header--no-hover):hover .tool-card__tag--success {
@@ -217,7 +217,7 @@
 .tool-calls-message .header-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   margin-top: 1px;
   flex-shrink: 0;
 }

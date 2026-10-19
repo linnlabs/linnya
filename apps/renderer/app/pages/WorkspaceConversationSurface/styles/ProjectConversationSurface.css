@@ -8,7 +8,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .project-chat-empty-logo-icon {
@@ -21,14 +21,14 @@
   display: inline-flex;
   align-items: center;
   height: 32px;
-  padding: 0 14px;
-  border-radius: 999px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
   border: 0.5px solid var(--color-border-default);
   background-color: transparent;
-  font-size: 13px;
+  font-size: var(--font-size-body);
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--duration-short) var(--ease-standard);
 }
 
 .project-chat-suggestion-chip:hover {
@@ -40,5 +40,5 @@
   height: 16px;
   align-self: center;
   background-color: var(--color-border-light);
-  margin: 0 2px;
+  margin: 0 var(--space-0-5);
 }

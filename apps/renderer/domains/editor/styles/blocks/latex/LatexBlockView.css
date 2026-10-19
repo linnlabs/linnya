@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   min-height: 20px;
-  padding: 10px;
+  padding: var(--space-2-5);
   font-style: italic;
   color: var(--color-text-placeholder);
   cursor: pointer;
@@ -10,6 +10,6 @@
 
 .latex-render-error,
 .katex-render-error {
-  font-weight: 700;
-  color: var(--color-error);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-error-text);
 }

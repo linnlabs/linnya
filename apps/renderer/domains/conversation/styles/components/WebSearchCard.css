@@ -1,14 +1,14 @@
 .web-search-card {
-  padding: 6px 12px 10px 14px;
+  padding: var(--space-1-5) var(--space-3) var(--space-2-5) var(--space-3);
 }
 
 .web-search-card .ws-state {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   color: var(--color-text-tertiary);
-  font-size: 12px;
-  padding: 6px 0;
+  font-size: var(--font-size-footnote);
+  padding: var(--space-1-5) 0;
 }
 
 .web-search-card .ws-state--error {
@@ -23,7 +23,7 @@
 .web-search-card .ws-item {
   display: flex;
   flex-direction: column;
-  padding: 10px 0;
+  padding: var(--space-2-5) 0;
 }
 
 .web-search-card .ws-item:first-child {
@@ -39,8 +39,8 @@
 }
 
 .web-search-card .ws-title {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   color: var(--color-accent);
   text-decoration: none;
   display: block;
@@ -57,8 +57,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 2px;
-  gap: 8px;
+  margin-top: var(--space-0-5);
+  gap: var(--space-2);
 }
 
 .web-search-card .ws-meta-left {
@@ -68,7 +68,7 @@
 }
 
 .web-search-card .ws-meta-seg {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
   white-space: nowrap;
   overflow: hidden;
@@ -82,17 +82,17 @@
 }
 
 .web-search-card .ws-meta-date {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-tertiary);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .web-search-card .ws-snippet {
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-normal);
   color: var(--color-text-secondary);
-  margin-top: 4px;
+  margin-top: var(--space-1);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;

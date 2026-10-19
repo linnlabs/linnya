@@ -5,16 +5,16 @@
   position: relative;
   max-width: 280px;
   min-width: 160px;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   background: transparent;
   border: none;
   color: var(--color-text-primary);
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
   opacity: 0;
   overflow-wrap: break-word;
   pointer-events: none;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard);
   white-space: normal;
   /* 关键：把阴影和"1px 描边"统一加在父容器上，沿矩形和箭头合并后的真实轮廓投影，从而避免连接处出现重叠或断线。 */
   filter:
@@ -36,7 +36,7 @@
   position: absolute;
   inset: 0;
   background: var(--timeline-tooltip-bg);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   z-index: -1;
 }
 

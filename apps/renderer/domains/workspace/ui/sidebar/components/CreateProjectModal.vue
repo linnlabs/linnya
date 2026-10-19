@@ -68,14 +68,15 @@
                   />
                 </template>
               </CustomSelect>
-              <button
-                type="button"
+              <IconButton
+                :label="workspaceMessage('workspace.project.modal.addKnowledgeBase')"
+                size="lg"
                 class="add-tag-button"
                 :disabled="isProcessing || !selectedKnowledgeBaseId"
                 @click="handleAddKnowledgeBaseLink"
               >
                 <AddIcon class="add-icon" />
-              </button>
+              </IconButton>
             </div>
 
             <div v-if="linkedKnowledgeBases.length > 0" class="tags-list">
@@ -126,7 +127,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from 'vue';
-import { ActionButtons, applyTextareaAutoResize, CustomSelect, Modal, TagChip } from '@linnya/renderer-ui';
+import { ActionButtons, applyTextareaAutoResize, CustomSelect, IconButton, Modal, TagChip } from '@linnya/renderer-ui';
 import { AiIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';

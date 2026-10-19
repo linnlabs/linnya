@@ -1,13 +1,14 @@
 <template>
   <div class="create-menu-container" ref="containerRef">
-    <button 
-      class="create-button" 
-      :title="editorMessage('editor.audioBlock.action.transcribeAndCreate')"
+    <IconButton
+      ref="buttonComponentRef"
+      class="create-button"
+      size="md"
+      :label="editorMessage('editor.audioBlock.action.transcribeAndCreate')"
       @click.stop="toggleMenu"
-      ref="buttonRef"
     >
-      <PlusCircleIcon class="plus-icon" />
-    </button>
+      <PlusCircleIcon />
+    </IconButton>
     
     <!-- 使用 Teleport 将菜单渲染到 body -->
     <Teleport to="body">
@@ -34,7 +35,7 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { PlusCircleIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton } from '@linnya/renderer-ui';
 import { useCurrentBlockActivation } from '../../../../ui/composables/useCurrentBlockActivation';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';
 import { buildAudioBlockCreateOptions } from '../../functions/audioBlockPresentation';
@@ -47,7 +48,8 @@ const blockActivation = useCurrentBlockActivation();
 
 const isMenuOpen = ref(false);
 const containerRef = ref(null);
-const buttonRef = ref(null);
+const buttonComponentRef = ref(null);
+const buttonRef = computed(() => buttonComponentRef.value?.element ?? null);
 const menuPosition = ref({});
 
 /**

@@ -6,10 +6,17 @@
 .workspace-sidebar .sidebar-project-group .project-row {
   --workspace-sidebar-row-margin-left: 0px;
   --workspace-sidebar-row-margin-right: 0px;
-  --workspace-sidebar-row-padding-right: 51px;
   --workspace-sidebar-row-icon-color: var(--color-text-tertiary);
   --workspace-sidebar-row-bg-active: var(--workspace-sidebar-active-bg);
   --workspace-sidebar-row-active-color: var(--color-text-primary);
+}
+
+/* 操作按钮只在悬停、键盘聚焦或菜单打开时出现，名称也只在这时让出右侧空间。 */
+.workspace-sidebar .sidebar-project-group .project-row:hover,
+.workspace-sidebar .sidebar-project-group .project-row:focus-within,
+.workspace-sidebar .sidebar-project-group .project-row.is-menu-open {
+  /* 两个 24px 操作按钮 + 2px 间距 + 5px 右边距。 */
+  --workspace-sidebar-row-padding-right: 55px;
 }
 
 .workspace-sidebar .sidebar-project-group .project-row-icon {
@@ -25,12 +32,9 @@
 }
 
 .workspace-sidebar .sidebar-project-group .project-row:hover .row-action-button,
-.workspace-sidebar .sidebar-project-group .project-row:focus-within .row-action-button {
+.workspace-sidebar .sidebar-project-group .project-row:focus-within .row-action-button,
+.workspace-sidebar .sidebar-project-group .project-row.is-menu-open .row-action-button {
   opacity: 1;
-}
-
-.workspace-sidebar .sidebar-project-group .row-action-button:hover {
-  color: var(--color-text-primary);
 }
 
 .sidebar-project-menu-wrapper {
@@ -41,7 +45,7 @@
 
 .sidebar-project-menu-fade-enter-active,
 .sidebar-project-menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 
 .sidebar-project-menu-fade-enter-from {

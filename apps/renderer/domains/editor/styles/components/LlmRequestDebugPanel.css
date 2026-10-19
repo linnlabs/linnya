@@ -42,7 +42,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: var(--space-2-5) 14px;
   border-bottom: 1px solid var(--llm-debug-panel-border);
   background: linear-gradient(
     90deg,
@@ -54,40 +54,40 @@
 .llm-debug-title {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  font-size: 13px;
+  gap: var(--space-0-5);
+  font-size: var(--font-size-body);
 }
 
 .llm-debug-title span:first-child {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .llm-debug-meta {
   color: var(--llm-debug-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
 }
 
 .llm-debug-tokens {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 16px;
+  gap: var(--space-1);
+  margin-left: var(--space-4);
   color: var(--llm-debug-text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
 }
 
 .llm-debug-tokens-value {
   color: var(--llm-debug-token-count);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .llm-debug-close {
-  padding: 0 4px;
+  padding: 0 var(--space-1);
   border: none;
   background: transparent;
   color: var(--llm-debug-text-secondary);
   cursor: pointer;
-  font-size: 18px;
+  font-size: var(--font-size-title);
 }
 
 .llm-debug-close:hover {
@@ -104,20 +104,20 @@
 .llm-debug-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid color-mix(in srgb, var(--color-white) 6%, transparent);
   background: var(--llm-debug-toolbar-bg);
 }
 
 .llm-debug-toolbar button {
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-2-5);
   border: 1px solid color-mix(in srgb, var(--color-white) 12%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--llm-debug-text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .llm-debug-toolbar button.active {
@@ -129,7 +129,7 @@
 .llm-debug-status {
   margin-left: auto;
   color: var(--llm-debug-text-tertiary);
-  font-size: 12px;
+  font-size: var(--font-size-footnote);
 }
 
 .llm-debug-status.error {
@@ -148,12 +148,12 @@
 .llm-debug-content .json-viewer {
   flex: 1;
   height: 100%;
-  padding: 10px 12px;
+  padding: var(--space-2-5) var(--space-3);
   margin: 0;
   overflow: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-normal);
   white-space: pre;
   word-break: normal;
 }
@@ -172,7 +172,7 @@
   border-radius: 5px;
   background-color: var(--scrollbar-thumb-color, var(--llm-debug-scrollbar-thumb));
   background-clip: content-box;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-medium) var(--ease-standard);
 }
 
 .llm-debug-content .json-viewer::-webkit-scrollbar-thumb:hover {

@@ -3,14 +3,14 @@
     <!-- Header -->
     <div class="card-header">
       <h3 class="header-title">{{ workspaceMessage('workspace.todo.create.title') }}</h3>
-      <button
-        type="button"
+      <IconButton
+        :label="workspaceMessage('workspace.todo.create.close')"
+        size="md"
         class="close-button"
         @click="handleClose"
-        :title="workspaceMessage('workspace.todo.create.close')"
       >
         <CloseIcon class="close-icon" />
-      </button>
+      </IconButton>
     </div>
 
     <form @submit.prevent="handleAdd" class="form-content">
@@ -42,9 +42,15 @@
             class="form-input tag-input"
             @keydown.enter.prevent="addTag"
           />
-          <button type="button" class="add-tag-button" @click="addTag">
+          <IconButton
+            :label="workspaceMessage('workspace.todo.create.addTag')"
+            size="lg"
+            variant="subtle"
+            class="add-tag-button"
+            @click="addTag"
+          >
             <AddIcon class="add-icon" />
-          </button>
+          </IconButton>
         </div>
         <div v-if="customTags.length > 0" class="tags-list">
           <!--
@@ -125,7 +131,7 @@ import { computed, ref } from 'vue';
 import type { Todo } from '../types.ts';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
-import { ActionButtons, SimpleDatePicker, TagChip, TimePicker } from '@linnya/renderer-ui';
+import { ActionButtons, IconButton, SimpleDatePicker, TagChip, TimePicker } from '@linnya/renderer-ui';
 import { TagIcon } from '@linnya/renderer-ui/icons';
 import { useWorkspaceLocalization } from '../../../ui/useWorkspaceLocalization';
 

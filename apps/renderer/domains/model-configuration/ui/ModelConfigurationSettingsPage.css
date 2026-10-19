@@ -9,7 +9,7 @@
   height: 16px;
   color: var(--color-text-tertiary);
   pointer-events: none;
-  transition: transform 0.2s ease-in-out;
+  transition: transform var(--duration-medium) var(--ease-standard);
   transform: translateY(-50%);
 }
 

@@ -2,6 +2,7 @@
   <div class="sidebar-project-group">
     <div
       class="workspace-sidebar-row project-row"
+      :class="{ 'is-menu-open': isProjectMenuOpen }"
       role="button"
       tabindex="0"
       @pointerenter="$emit('prefetch-conversations', project.id)"
@@ -12,23 +13,21 @@
       <FolderIcon class="workspace-sidebar-row-icon project-row-icon" />
       <span class="workspace-sidebar-row-label project-row-name">{{ project.name }}</span>
       <span class="workspace-sidebar-row-actions project-row-actions" @click.stop>
-        <button
-          class="workspace-sidebar-row-action-button row-action-button"
-          type="button"
-          :title="workspaceMessage('workspace.sidebar.project.open')"
+        <IconButton
+          :label="workspaceMessage('workspace.sidebar.project.open')"
+          class="row-action-button"
           @click="$emit('open', project.id)"
         >
           <OpenIcon />
-        </button>
-        <button
-          ref="moreButtonRef"
-          class="workspace-sidebar-row-action-button row-action-button"
-          type="button"
-          :title="workspaceMessage('workspace.sidebar.project.moreOptions')"
+        </IconButton>
+        <IconButton
+          :label="workspaceMessage('workspace.sidebar.project.moreOptions')"
+          class="row-action-button"
+          ref="moreButton"
           @click="toggleProjectMenu"
         >
           <MoreIcon direction="horizontal" />
-        </button>
+        </IconButton>
       </span>
     </div>
 
@@ -84,7 +83,7 @@ import { computed, ref, watch } from 'vue';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { OpenIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton, type IconButtonExposed } from '@linnya/renderer-ui';
 import SidebarChatList from '@/domains/conversation/ui/SidebarChatList.vue';
 import type { Project } from '@/domains/workspace/store';
 import {
@@ -115,7 +114,8 @@ const emit = defineEmits<{
 }>();
 
 const isProjectMenuOpen = ref(false);
-const moreButtonRef = ref<HTMLButtonElement | null>(null);
+const moreButton = ref<IconButtonExposed | null>(null);
+const moreButtonRef = computed<HTMLButtonElement | null>(() => moreButton.value?.element ?? null);
 const hasMountedConversations = ref(props.isExpanded === true);
 const { workspaceMessage } = useWorkspaceLocalization();
 const projectMenuOptions = computed<ProjectMenuOption[]>(() => buildProjectMenuOptions(props.project, workspaceMessage));

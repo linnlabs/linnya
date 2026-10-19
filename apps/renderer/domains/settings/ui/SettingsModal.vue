@@ -60,14 +60,14 @@
 
       <section class="settings-modal-panel">
         <!-- 关闭按钮浮在面板右上角不随内容滚动；正文右侧留出让位内边距，内容不会滑到按钮底下。 -->
-        <button
-          type="button"
+        <IconButton
+          :label="settingsMessage('settings.modal.close')"
+          size="md"
           class="settings-modal-close"
-          :aria-label="settingsMessage('settings.modal.close')"
           @click="closeSettings"
         >
           <CloseIcon />
-        </button>
+        </IconButton>
 
         <div
           v-if="activeContribution"
@@ -91,6 +91,7 @@
 </template>
 
 <script setup lang="ts">
+import { IconButton } from '@linnya/renderer-ui';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useLocalization } from '@/app/localization';
 import { useUIStore } from '../../../shared/stores/ui';
