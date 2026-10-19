@@ -89,6 +89,7 @@ describe('useTanstackConversationVirtualizer', () => {
     app?.unmount();
     app = null;
     vi.restoreAllMocks();
+    vi.useRealTimers();
     document.body.innerHTML = '';
   });
 
@@ -99,12 +100,13 @@ describe('useTanstackConversationVirtualizer', () => {
     scrollMode?: ConversationScrollMode;
     isStreaming?: boolean;
     scrollHeight?: number;
+    viewportHeight?: number;
   }) {
     const items = shallowRef(options.items);
     const scrollMode = ref<ConversationScrollMode>(options.scrollMode ?? 'anchored');
     const estimationWidthPx = ref(720);
     const { element, scrollTo, setScrollHeight } = createScrollElement(
-      120,
+      options.viewportHeight ?? 120,
       options.scrollTop ?? 0,
       options.scrollHeight,
     );
@@ -171,6 +173,33 @@ describe('useTanstackConversationVirtualizer', () => {
 
     expect(fixture.adapter.scrollOffset.value).toBe(180);
     expect(fixture.adapter.viewportHeight.value).toBe(120);
+  });
+
+  it('keeps the viewport covered when layout clamps the offset before scrolling ends', async () => {
+    vi.useFakeTimers();
+    const fixture = mountAdapter({
+      items: Array.from({ length: 80 }, (_, index) => createVisualRow(`row-${index}`, 100)),
+      viewportHeight: 600,
+      scrollHeight: 8_000,
+    });
+    await nextTick();
+
+    fixture.element.scrollTop = 7_400;
+    fixture.element.dispatchEvent(new Event('scroll'));
+    await nextTick();
+
+    // 初次测高缩短画布后，浏览器会钳位位置；scrollend 必须读取此刻的 DOM，
+    // 不能在 150ms 后把最后一次 scroll 事件捕获的旧 offset 写回虚拟范围。
+    fixture.setScrollHeight(7_100);
+    fixture.element.scrollTop = 6_500;
+    fixture.element.dispatchEvent(new Event('scrollend'));
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+
+    expect(fixture.adapter.scrollOffset.value).toBe(6_500);
+    const visible = fixture.adapter.visibleItems.value;
+    expect(visible[0]?.virtualItem.start).toBeLessThanOrEqual(6_500);
+    expect(visible[visible.length - 1]?.virtualItem.end).toBeGreaterThanOrEqual(7_100);
   });
 
   it('invalidates unmeasured estimates after the settled content width changes', async () => {

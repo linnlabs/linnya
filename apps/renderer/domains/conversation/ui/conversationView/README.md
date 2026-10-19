@@ -86,6 +86,7 @@ TanStack Virtual 是位置与测量的唯一执行者：
 
 - `anchorTo: 'end'` 负责头插旧页后的稳定 key 归位，`followOnAppend` 负责尾部追加。
 - 每个 visual row 直接接 `measureElement`；不得恢复每 item ResizeObserver、手写 spacer 或第二套测量缓存。
+- Desktop 使用原生 `scrollend` 接纳滚动结束时的真实位置。首测缩短画布会触发浏览器位置钳位；不得使用缓存旧 offset 的延迟结束通知，否则可能在落底后重新把可见范围推到末行，造成上方空白。Spike 与动态尺寸门禁保持同一配置。
 - settled width 提交必须作为一次 virtualizer 事务：新估高写入前同步捕获当前 `follow-bottom` 意图或首个可见稳定 row key + row 内偏移，使用 TanStack 公开 `measure()` 失效旧 estimate，画布高度提交后再通过公开 `scrollToEnd()` / `scrollToOffset()` 恢复同一视口。不得访问 `measurementsCache` / `itemSizeCache` 私有状态进行写入，也不得直接修改 DOM `scrollTop`。
 - 始终只补偿完整位于视口上方的尺寸修正，即 `item.end <= scrollOffset`；真实尺寸相对估高的残差不能因 prepend 被吞掉。
 - 检测到旧首 key 被头插后移时开启 prepend render transaction：scroll bridge 合并 `anchorTo` 目标与同批尺寸残差，Vue patch 后一次写入 DOM。禁止用固定 rAF 数量猜测画布提交时机。

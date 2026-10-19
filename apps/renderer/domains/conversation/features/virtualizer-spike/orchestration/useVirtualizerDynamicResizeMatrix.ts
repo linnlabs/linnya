@@ -103,6 +103,8 @@ export function useVirtualizerDynamicResizeMatrix(scrollerRef: Ref<HTMLElement |
     overscan: rows.value.length,
     rangeExtractor: range => Array.from({ length: range.count }, (_, index) => index),
     useAnimationFrameWithResizeObserver: false,
+    // 与正式画布共用原生滚动结束通知，避免旧 offset 的延迟回写。
+    useScrollendEvent: true,
     scrollToFn: scrollBridge.scrollToFn,
     onChange: instance => scrollBridge.flushAfterRender(instance),
   })));

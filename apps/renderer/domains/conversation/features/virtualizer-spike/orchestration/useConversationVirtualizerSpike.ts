@@ -108,6 +108,8 @@ export function useConversationVirtualizerSpike(scrollerRef: Ref<HTMLElement | n
     rangeExtractor: range => extractVirtualizerSpikeRange(range, VIRTUALIZER_SPIKE_PINNED_TAIL_COUNT),
     overscan: 8,
     useAnimationFrameWithResizeObserver: false,
+    // 与正式画布共用原生滚动结束通知，避免旧 offset 的延迟回写。
+    useScrollendEvent: true,
     scrollToFn: scrollBridge.scrollToFn,
     onChange: instance => scrollBridge.flushAfterRender(instance),
   })));

@@ -186,6 +186,9 @@ export function useTanstackConversationVirtualizer(params: {
     rangeExtractor: range => extractConversationRange(range, params.isStreaming.value),
     overscan: 8,
     useAnimationFrameWithResizeObserver: false,
+    // 首测缩短画布时浏览器可能直接钳位 scrollTop；原生 scrollend 重读真实位置，
+    // 避免默认 debounce 把上一次 scroll 捕获的旧 offset 写回，导致顶部漏挂载。
+    useScrollendEvent: true,
     scrollToFn: scrollBridge.scrollToFn,
     onChange: instance => scrollBridge.flushAfterRender(instance),
   })));
