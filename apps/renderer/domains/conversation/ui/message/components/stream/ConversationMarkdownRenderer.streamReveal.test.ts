@@ -48,7 +48,10 @@ describe('ConversationMarkdownRenderer streamReveal', () => {
     return { content, isStreaming };
   }
 
+  /** 让匀速放字走完（落后上限 250ms）并让节流解析提交。 */
   async function settleParse(): Promise<void> {
+    await nextTick();
+    vi.advanceTimersByTime(400);
     await nextTick();
     vi.advanceTimersByTime(60);
     await nextTick();
@@ -139,5 +142,52 @@ describe('ConversationMarkdownRenderer streamReveal', () => {
     await settleParse();
     expect(freshTexts()).toEqual([]);
     expect(mountPoint?.textContent).toBe('completely new');
+  });
+
+  describe('匀速吐字', () => {
+    const long = 'x'.repeat(120);
+
+    it('追加的长文本不会一次性出现，随时间放出直到完整', async () => {
+      const fixture = mountRenderer({ content: 'start', streamReveal: true });
+      await settleParse();
+
+      fixture.content.value = `start ${long}`;
+      await nextTick();
+      vi.advanceTimersByTime(64);
+      await nextTick();
+      vi.advanceTimersByTime(60);
+      await nextTick();
+      const partial = mountPoint?.textContent ?? '';
+      expect(partial.length).toBeGreaterThan('start'.length);
+      expect(partial.length).toBeLessThan(`start ${long}`.length);
+
+      await settleParse();
+      expect(mountPoint?.textContent).toBe(`start ${long}`);
+    });
+
+    it('流式结束时立刻补齐完整正文', async () => {
+      const fixture = mountRenderer({ content: 'start', streamReveal: true });
+      await settleParse();
+      fixture.content.value = `start ${long}`;
+      await nextTick();
+      vi.advanceTimersByTime(32);
+      await nextTick();
+
+      fixture.isStreaming.value = false;
+      await nextTick();
+      await nextTick();
+      expect(mountPoint?.textContent).toBe(`start ${long}`);
+      expect(freshTexts()).toEqual([]);
+    });
+
+    it('关闭 streamReveal 时追加内容立即提交（不依赖逐帧调度）', async () => {
+      const fixture = mountRenderer({ content: 'start', streamReveal: false });
+      await settleParse();
+      fixture.content.value = `start ${long}`;
+      await nextTick();
+      vi.advanceTimersByTime(60);
+      await nextTick();
+      expect(mountPoint?.textContent).toBe(`start ${long}`);
+    });
   });
 });

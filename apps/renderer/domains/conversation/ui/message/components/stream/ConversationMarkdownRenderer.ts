@@ -15,6 +15,7 @@
 import {
   defineComponent,
   h,
+  computed,
   inject,
   nextTick,
   shallowRef,
@@ -45,6 +46,7 @@ import ConversationMarkdownBlock, {
   type ConversationMarkdownVNodeChild,
 } from './ConversationMarkdownBlock'
 import StreamingText from './StreamingText'
+import { useStreamingRevealContent } from './useStreamingRevealContent'
 import { createMarkdownParseDebug } from './markdownParseDebug'
 import { createMarkdownParseScheduler } from './createMarkdownParseScheduler'
 import { reconcileStreamingMarkdownNodes } from './reconcileStreamingMarkdownNodes'
@@ -570,8 +572,22 @@ export default defineComponent({
       parseScheduler.dispose()
     })
 
+    /**
+     * 匀速吐字：开启 streamReveal 且正在流式时，解析的是“追着真实内容走”的展示内容；
+     * 其余情况（流式结束、挂载时已有内容、被替换、页面不可见）始终等于真实内容，
+     * 因此封口提交的永远是完整正文，且只提交一次。
+     */
+    const { revealedContent } = useStreamingRevealContent({
+      content: () => props.content,
+      isStreaming: () => props.isStreaming,
+      enabled: () => props.streamReveal,
+    })
+    const effectiveContent = computed(() =>
+      props.streamReveal && props.isStreaming ? revealedContent.value : props.content,
+    )
+
     watch(
-      () => [props.content, props.isStreaming] as const,
+      () => [effectiveContent.value, props.isStreaming] as const,
       ([markdown, isStreaming]) => {
         // ✅ 性能策略：流式阶段节流解析；非流式则立即解析，保证最终态准确
         // 例外：开启 markdown debug 且命中高信号内容时，强制立即解析，便于定位公式漂移根因

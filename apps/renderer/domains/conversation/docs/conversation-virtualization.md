@@ -88,6 +88,7 @@ flowchart TB
 - **复制 / 转存**：多段 `final_answer` 经离屏 `ConversationAnswerRenderHost` 在同一 Vue app 上下文按需真实渲染后提取，操作串行化；禁止第二套 Markdown→HTML。
 - **Markdown 提交一次**：流式内容可以节流解析，但进入非 streaming 后同一正文只提交一次最终 AST。run 状态变化、操作区挂载或父级重渲染不能触发第二次正文提交；所有 Markdown 来源复用 `MarkstreamRenderer` / `packages/stream-markdown-parser`。
 - **流式淡入只增强、不改结构**：答案正文开启 `stream-reveal` 后，只有“正在增长的尾块”里新长出的文字被包进行内 `span` 做 150ms 透明度淡入（`StreamingText` + 纯函数状态机 `streamingTextSegments`）。行内 span 不改变换行与高度，因此不触及估高与测量；挂载时已有的内容（虚拟列表重挂载、刷新恢复）直接显示，非尾部追加的变化直接重置，封口后恢复普通文字且同一正文仍只提交一次最终 AST。只做透明度，不用模糊或位移。
+- **匀速吐字只改展示节奏，不改数据**：同一个 `stream-reveal` 开关下，`useStreamingRevealContent` 让送去解析的内容追着真实内容走（节奏由纯函数 `streamRevealPacer` 决定：放字速度 = max(近 0.8 秒到达速度 × 1.15, 为赶上每批文字截止时间所需速度, 12 字/秒)，每个字最晚在到达后 250ms 加一帧内出现）。以下情况一律立即等于真实内容：挂载时已有内容、流式结束、功能关闭、内容不是尾部追加（重试替换）、页面不可见。因此封口时提交的永远是完整正文，同一正文仍只提交一次 AST；代码、消息 id、虚拟列表 key 与测量链路都不受影响。可调参数集中在 `DEFAULT_STREAM_REVEAL_PACER_CONFIG`，需要临时关闭时去掉 `AnswerMessage.vue` 里的 `stream-reveal`。
 - **平滑宽度与流式提交隔离**：AppLayout 始终保留真实内容宽度动画。Conversation 宿主只观察真实消息列；连续 resize 时通过 render-scheduling port 暂停当前 Thought / Answer 的 Markdown AST 提交并缓存最新正文，quiet window 后一次追平。解析后的顶层 block 对 append-only 未变节点复用 identity，Vue 只 patch 活跃尾块。该合同同样覆盖 Sidebar、窗口、pane 和 timeline，不监听 App Sidebar 事件。
 
 ### 3.1 合同重构对虚拟化的影响
