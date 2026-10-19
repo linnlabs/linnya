@@ -72,3 +72,11 @@ projection runtime 的常驻只发生在 store。它不要求 `ConversationHost`
 已接纳的 detached 窗口以 transport 技术代次标记工具交接。只有仍处于同一代且无 reader 时，合成视图才对同身份 tool 使用 durable lifecycle/presentation，同时保留 live subrun trace。新 transport 永久使旧标记失效；其它 message variant 和 live-only 消息沿用原 streaming 合成。
 
 历史重新打开时，`historyWindowTailLoader` 在接纳新窗口 revision 后同步失效 trace cache；即使 run 已终止、不会再进入 detached observer，也不能恢复离开前的旧 trace 快照。
+
+“回到底部”在窗口不含尾部或仍有分页请求时重读 tail，已在 ready 尾窗时直接定位。它和时间轴共用导航锁，
+直到真实滚动落定才恢复自动分页。导航 AbortSignal 同时约束窗口响应接纳与虚拟列表定位，取消后保留原窗口，
+不能把过期结果当成 reloaded。用量依赖独立于分页 rows，见 context-window-usage owner README。
+
+长轮次回归：完成开发构建后运行 `LINNYA_CONVERSATION_E2E_SCENARIO=bottom-return node scripts/e2e/conversation-navigation/run-electron-conversation-navigation-e2e.mjs`。
+隔离 SQLite 注入 400 条连续助手消息，对照实际回底按钮与手动滚动；验证按钮只请求 tail、不额外 before 分页，
+两条路径的真实底部和用量环一致，即使来源用户已不在任何保留行中。

@@ -46,7 +46,7 @@ Marker 使用 `ConversationCompleteVisualTurnId`，wire 字段固定为 `visual_
 `ConversationHost.vue` 是 timeline 与 message-window 的唯一跨 feature 编排点：
 
 1. `useTimelineTurnIndex` 根据当前会话、窗口 revision 和 streaming 收尾维护全量 markers。
-2. 点击 marker 时先取消上一次 `AbortController`，再设置 `isTimelineNavigating`；该状态显式传给 `ConversationView`，分页 policy 在导航期间冻结 before/after backfill。
+2. 点击 marker 时先取消上一次 `AbortController`，再通过共用 `useConversationWindowNavigation` 设置 `isWindowNavigating`；该状态显式传给 `ConversationView`，分页 policy 在导航期间冻结 before/after backfill。“回到底部”使用同一代次与锁，旧导航的网络响应和定位必须响应取消。
 3. `navigateToTimelineVisualTurn` 先调用虚拟层异步 `scrollToVisualTurn`。目标已在窗口内时直接完成；否则按 `anchorMessageId` 调 `loadAround`。
 4. 换窗完成后，`waitForTimelineVisualTurnMounted` 监听 `ConversationView` 上报的实测 positions；目标出现后再次按稳定 `visualTurnId` 定位。
 5. 成功、失败、取消或组件卸载都必须释放导航锁。非取消错误由 Host 记录一次上下文日志，不在 UI 组件里静默吞掉。

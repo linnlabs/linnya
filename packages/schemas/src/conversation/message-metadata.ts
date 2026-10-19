@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { JsonRecordSchema } from '../json-value';
 import { ConversationUiSpecSchema } from './presentation';
 import { UserQuoteSchema } from './user-quote';
+import { ConversationMessageIdSchema } from './message-identity';
 
 /** 外部活动只表达运行归属，不参与消息 identity 或视觉轮次分组。 */
 export const ConversationActivityBindingSchema = z.object({
@@ -85,6 +86,16 @@ export const ConversationContextUsageSchema = z.object({
   }
 });
 export type ConversationContextUsage = z.infer<typeof ConversationContextUsageSchema>;
+
+/** 窗口外的最新成功 Prompt 依赖；不把来源用户消息塞回可视窗口或 live 槽。 */
+export const ConversationContextUsageSourceSchema = z.object({
+  user_message_id: ConversationMessageIdSchema,
+  sort_seq: z.number().int().positive(),
+  timestamp: z.number().finite(),
+  usage: ConversationContextUsageSchema,
+}).strict();
+export type ConversationContextUsageSource = z.infer<typeof ConversationContextUsageSourceSchema>;
+
 
 /** 从通用运行事实显式挑选产品 read model 字段，避免把 LinnKit 内部字段持久化到 Conversation。 */
 export function projectConversationContextUsage(

@@ -10,6 +10,7 @@ const SCROLL_TO_BOTTOM_BUTTON_THRESHOLD_PX = 200;
 
 export interface ConversationVirtualizerCommands {
   readonly scrollToEnd: () => void;
+  readonly scrollToEndAndWait: (signal: AbortSignal) => Promise<boolean>;
   readonly scrollToVisualTurn: (
     visualTurnId: ConversationVisualTurnId,
     signal?: AbortSignal,
@@ -134,6 +135,12 @@ export function useConversationScrollController(params: {
     mode: computed(() => mode.value),
     showScrollToBottomBtn,
     scrollToBottomManual: scrollToBottom,
+    navigateToBottom: async (signal: AbortSignal): Promise<boolean> => {
+      mode.value = 'follow-bottom';
+      await nextTick();
+      if (signal.aborted) return false;
+      return params.virtualizer.scrollToEndAndWait(signal);
+    },
     scrollToVisualTurn,
     /** 用户正在滚动（滚轮、触摸、按键、拖动滚动条）；供视觉缓动在手势期间让位。 */
     isUserScrollGestureActive,

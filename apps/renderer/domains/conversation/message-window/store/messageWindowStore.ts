@@ -116,6 +116,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
     conversationId: null,
     status: 'idle',
     rows: [],
+    latestContextUsage: null,
     hasMoreBefore: false,
     hasMoreAfter: false,
     prevCursor: undefined,
@@ -146,6 +147,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.detachedRefreshGeneration = null;
       if (this.conversationId !== null && this.conversationId !== conversationId) {
         this.rows = [];
+        this.latestContextUsage = null;
         this.hasMoreBefore = false;
         this.hasMoreAfter = false;
         this.prevCursor = undefined;
@@ -158,6 +160,11 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.error = null;
     },
 
+    cancelLoading(): void {
+      this.status = this.rows.length > 0 ? 'ready' : 'idle';
+      this.loadingMode = null;
+    },
+
     setPreparing(conversationId: string): void {
       assertWindowConversationOwnership(this.conversationId, conversationId, 'setPreparing');
       this.conversationId = conversationId;
@@ -166,6 +173,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.detachedRefreshGeneration = null;
       this.error = null;
       this.rows = [];
+      this.latestContextUsage = null;
       this.hasMoreBefore = false;
       this.hasMoreAfter = false;
       this.prevCursor = undefined;
@@ -187,6 +195,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.prevCursor = this.hasMoreBefore ? readFirstSortSeq(rows) : snapshot.prevCursor;
       this.nextCursor = this.hasMoreAfter ? readLastSortSeq(rows) : snapshot.nextCursor;
       this.revision = snapshot.revision;
+      this.latestContextUsage = snapshot.latestContextUsage;
     },
 
     prependSnapshot(snapshot: MessageWindowSnapshot): void {
@@ -208,6 +217,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.prevCursor = this.hasMoreBefore ? readFirstSortSeq(rows) : snapshot.prevCursor;
       this.nextCursor = this.hasMoreAfter ? readLastSortSeq(rows) : snapshot.nextCursor;
       this.revision = snapshot.revision;
+      this.latestContextUsage = snapshot.latestContextUsage;
       publishWindowPrependMergePerf({
         beforeCount,
         incomingCount: snapshot.rows.length,
@@ -235,6 +245,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.prevCursor = this.hasMoreBefore ? readFirstSortSeq(rows) : snapshot.prevCursor;
       this.nextCursor = this.hasMoreAfter ? readLastSortSeq(rows) : snapshot.nextCursor;
       this.revision = snapshot.revision;
+      this.latestContextUsage = snapshot.latestContextUsage;
     },
 
     truncateAfterMessage(
@@ -246,6 +257,10 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.detachedRefreshGeneration = null;
 
       const targetRow = this.rows[targetIndex];
+      // 编辑/重跑从目标处截断；该轮及其之后的旧成功快照不再代表当前上下文。
+      if (this.latestContextUsage && this.latestContextUsage.sort_seq >= targetRow.sortSeq) {
+        this.latestContextUsage = null;
+      }
       const rows = [
         ...this.rows.slice(0, targetIndex),
         cloneRetainedTargetRow(targetRow, options),
@@ -280,6 +295,7 @@ export const useMessageWindowStore = defineStore('messageWindow', {
       this.conversationId = null;
       this.status = 'idle';
       this.rows = [];
+      this.latestContextUsage = null;
       this.hasMoreBefore = false;
       this.hasMoreAfter = false;
       this.prevCursor = undefined;

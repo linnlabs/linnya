@@ -57,7 +57,8 @@
 /*
  * Motion Path 只移动光场中心，并不会把长条本身弯曲。
  * 因此用圆角边框蒙版裁切连续渐变光场，实际可见的光始终贴着描边，包括四个圆角。
- * 用 content-box 与 border-box 的差集挖空内部；不要给光场设置 overflow 裁切。
+ * 用 content-box 与 border-box 的差集挖空内部；不要裁切光场自身。
+ * 蒙版只影响绘制，不约束 scroll overflow；track 必须裁切越界光场，避免装饰动画撑大对话滚动范围。
  */
 .ai-assistant-input__model-setup-border-flow-track {
   position: absolute;
@@ -71,6 +72,7 @@
     linear-gradient(var(--color-black), var(--color-black)) content-box,
     linear-gradient(var(--color-black), var(--color-black));
   mask-composite: exclude;
+  overflow: clip;
 }
 
 .ai-assistant-input__model-setup-border-flow-beam {

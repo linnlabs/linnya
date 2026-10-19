@@ -8,10 +8,11 @@ export type HistoryWindowBottomStatus = 'reloaded' | 'current' | 'preparing' | '
 type MessageWindowStore = ReturnType<typeof useMessageWindowStore>;
 
 export interface HistoryWindowBottomLoaderDeps {
+  readonly signal?: AbortSignal;
   readonly store?: MessageWindowStore;
   readonly loadTail?: (
     conversationId: string,
-    options: { readonly limit?: number },
+    options: { readonly limit?: number; readonly signal?: AbortSignal },
   ) => Promise<void>;
 }
 
@@ -25,7 +26,7 @@ export async function ensureHistoryWindowTailForBottom(
     return 'skipped';
   }
 
-  if (!windowStore.hasMoreAfter) {
+  if (!windowStore.hasMoreAfter && windowStore.status === 'ready') {
     return 'current';
   }
 
@@ -34,6 +35,9 @@ export async function ensureHistoryWindowTailForBottom(
     options,
     { readLiveMessages: readConversationLiveMessages },
   ));
-  await loadTailFn(conversationId, { limit });
-  return windowStore.status === 'preparing' ? 'preparing' : 'reloaded';
+  await loadTailFn(conversationId, { limit, signal: deps.signal });
+  if (deps.signal?.aborted) return 'skipped';
+  if (windowStore.conversationId !== conversationId) return 'skipped';
+  if (windowStore.status === 'preparing') return 'preparing';
+  return windowStore.status === 'ready' && !windowStore.hasMoreAfter ? 'reloaded' : 'skipped';
 }

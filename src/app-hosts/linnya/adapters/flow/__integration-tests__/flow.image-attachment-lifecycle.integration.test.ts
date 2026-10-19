@@ -413,6 +413,7 @@ describe('Flow image attachment durable lifecycle', () => {
       conversation_id: incremental.conversation_id,
       messages: incremental.messages,
       citation_dependencies: incremental.citation_dependencies,
+      latest_context_usage: incremental.latest_context_usage,
       has_more_before: incremental.has_more_before,
       has_more_after: incremental.has_more_after,
       prev_cursor: incremental.prev_cursor,

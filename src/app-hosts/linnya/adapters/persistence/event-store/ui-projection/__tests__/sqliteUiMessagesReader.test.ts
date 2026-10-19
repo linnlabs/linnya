@@ -12,7 +12,9 @@ import {
 import {
   conversationMessageIdFromToolIdentity,
   type ConversationAttachmentRef,
+  projectConversationContextUsage,
 } from '@app/schemas';
+import { uiProjectionContextUsage } from '../__fixtures__/uiProjectionFixtures';
 import { CONVERSATION_SCHEMAS } from '../../conversation.schema';
 import {
   readWindowRefresh,
@@ -572,6 +574,7 @@ describe('sqlite UI messages reader', () => {
       status: 'ready',
       conversation_id: readyConversationId,
       messages: [],
+      latest_context_usage: null,
       citation_dependencies: {},
       has_more_before: false,
       has_more_after: false,
@@ -807,6 +810,44 @@ describe('current window conditional refresh', () => {
       expect(after).toMatchObject({ status: 'ready', revision: 2, messages: [{ content: 'new' }, { message_id: 'later' }] });
     } finally {
       hook.mockRestore(); writer.close(); db.close(); rmSync(directory, { recursive: true });
+    }
+  });
+});
+
+
+describe('window-independent context usage', () => {
+  it('keeps the same latest usage when the triggering user is outside even the retained 320 rows', () => {
+    const db = createDb();
+    try {
+      seedConversation(db, 'usage');
+      seedProjectionState(db, 'usage', 'ready', 1);
+      seedMessage(db, 'usage', { messageId: 'user-old', sortSeq: 1, messageType: 'user_input' });
+      seedMessage(db, 'usage', { messageId: 'user-latest', sortSeq: 2, messageType: 'user_input' });
+      const usage = projectConversationContextUsage(uiProjectionContextUsage);
+      db.prepare('UPDATE conversation_ui_messages SET payload_json = ? WHERE message_type = ?')
+        .run(JSON.stringify({ context_usage: usage }), 'user_input');
+      for (let index = 3; index <= 403; index += 1) {
+        seedMessage(db, 'usage', { messageId: `answer-${index}`, sortSeq: index });
+      }
+      const source = { user_message_id: 'user-latest', sort_seq: 2, timestamp: 200, usage };
+      for (const result of [readTail(db, 'usage', 80), readAfter(db, 'usage', 320, 80),
+        readBefore(db, 'usage', 100, 80), readAround(db, 'usage', 'answer-200', 80)]) {
+        expect(result.status).toBe('ready');
+        if (result.status !== 'ready') throw new Error('expected ready window');
+        expect(result.latest_context_usage).toEqual(source);
+        expect(result.messages.some(message => message.message_id === 'user-latest')).toBe(false);
+      }
+      // 截断后从当前 read model 重新派生，不能把被删除轮次的快照留在独立缓存里。
+      db.prepare('DELETE FROM conversation_ui_messages WHERE sort_seq >= 2').run();
+      const truncated = readTail(db, 'usage', 80);
+      if (truncated.status !== 'ready') throw new Error('expected ready window');
+      expect(truncated.latest_context_usage?.user_message_id).toBe('user-old');
+      db.prepare('DELETE FROM conversation_ui_messages').run();
+      const empty = readTail(db, 'usage', 80);
+      if (empty.status !== 'ready') throw new Error('expected ready window');
+      expect(empty.latest_context_usage).toBeNull();
+    } finally {
+      db.close();
     }
   });
 });

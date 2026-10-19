@@ -1,4 +1,4 @@
-import type { ConversationContextUsage } from '@app/schemas';
+import type { ConversationContextUsage, ConversationContextUsageSource } from '@app/schemas';
 import type { BaseMessage } from '../../../types';
 import type {
   ContextWindowUsageLevel,
@@ -9,20 +9,26 @@ import type {
 export interface ProjectContextWindowUsageInput {
   readonly hasActiveConversation: boolean;
   readonly messages: readonly BaseMessage[];
+  readonly durableUsage: ConversationContextUsageSource | null;
   readonly includesConversationTail: boolean;
   readonly currentModelId: string | null;
 }
 
 export function findLatestContextUsage(
   messages: readonly BaseMessage[],
+  durableUsage: ConversationContextUsageSource | null = null,
 ): ConversationContextUsage | null {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
     if (message?.type === 'user_input' && message.metadata?.context_usage) {
-      return message.metadata.context_usage;
+      // 相同来源采用 window ∪ live 的最新投影；旧 live 轮次不能覆盖窗口外更新的 durable 来源。
+      return !durableUsage || message.id === durableUsage.user_message_id
+        || message.timestamp >= durableUsage.timestamp
+        ? message.metadata.context_usage
+        : durableUsage.usage;
     }
   }
-  return null;
+  return durableUsage?.usage ?? null;
 }
 
 function resolveUsageLevel(ratio: number): ContextWindowUsageLevel {
@@ -62,7 +68,7 @@ export function projectContextWindowUsage(
   if (!input.hasActiveConversation) return { status: 'unavailable' };
   if (!input.includesConversationTail) return { status: 'tail_unavailable' };
 
-  const usage = findLatestContextUsage(input.messages);
+  const usage = findLatestContextUsage(input.messages, input.durableUsage);
   if (!usage) return { status: 'unavailable' };
 
   // 快照中的输入预算已经扣除输出额度；二者相加还原当次 route/policy 共同约束后的完整有效窗口。

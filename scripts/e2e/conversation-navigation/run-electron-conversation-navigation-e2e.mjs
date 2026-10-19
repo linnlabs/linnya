@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { seedBottomReturnHistory, runBottomReturnScenario } from './bottom-return-scenario.mjs';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -640,6 +641,7 @@ function seedConversations(projectId) {
     }
   });
   seed();
+  if (scenario === 'bottom-return') db.transaction(() => seedBottomReturnHistory(db))();
   db.close();
 }
 
@@ -1525,6 +1527,16 @@ async function run() {
       () => evaluate(cdp, `document.querySelectorAll('.chat-list-item').length >= 2`),
       '两条历史会话进入侧栏',
     );
+
+    if (scenario === 'bottom-return') {
+      await runBottomReturnScenario({ cdp, evaluate, waitFor });
+      await assertRendererHealthy(cdp, rendererErrors, '回到底部和手动滚动对照');
+      // 经正式关闭链退出，避免 SIGINT 绕过 App Server 的 owner 清理。
+      await evaluate(cdp, "window.electronAPI.windowAction('close')");
+      cdp.close();
+      assert.equal(await waitForProcessExit(electronProcess, 10_000), true, '回底场景未正常退出 Desktop');
+      return;
+    }
 
     if (scenario === 'side-pane-draft') {
       await runSidePaneDraftAssembly({

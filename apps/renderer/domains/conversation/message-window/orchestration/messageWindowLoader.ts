@@ -20,6 +20,7 @@ export interface MessageWindowLoaderDeps {
 
 export interface LoadMessageWindowOptions {
   readonly limit?: number;
+  readonly signal?: AbortSignal;
 }
 
 export type LoadBeforeResult = 'prepended' | 'replaced' | 'preparing' | 'superseded';
@@ -31,6 +32,7 @@ interface MessageWindowRequestToken {
   readonly generation: number;
   readonly mode: MessageWindowLoadMode;
   readonly store: MessageWindowStore;
+  readonly release: () => void;
 }
 
 const requestGenerations = new WeakMap<MessageWindowStore, number>();
@@ -39,11 +41,23 @@ function beginWindowRequest(
   store: MessageWindowStore,
   conversationId: string,
   mode: MessageWindowLoadMode,
+  signal?: AbortSignal,
 ): MessageWindowRequestToken {
+  signal?.throwIfAborted();
   const generation = (requestGenerations.get(store) ?? 0) + 1;
   requestGenerations.set(store, generation);
   store.startLoading(conversationId, mode);
-  return { conversationId, generation, mode, store };
+  const abort = (): void => {
+    if (!isCurrentWindowRequest(token)) return;
+    requestGenerations.set(store, generation + 1);
+    store.cancelLoading();
+  };
+  const token = {
+    conversationId, generation, mode, store,
+    release: () => signal?.removeEventListener('abort', abort),
+  };
+  signal?.addEventListener('abort', abort, { once: true });
+  return token;
 }
 
 function isCurrentWindowRequest(token: MessageWindowRequestToken): boolean {
@@ -92,18 +106,21 @@ export async function loadTail(
   const store = deps.store ?? useMessageWindowStore();
   const api = deps.api ?? messageWindowApi;
   const limit = options.limit ?? readDefaultMessageWindowLimit();
-  const request = beginWindowRequest(store, conversationId, 'tail');
+  const request = beginWindowRequest(store, conversationId, 'tail', options.signal);
 
   try {
     const dto = await api.readTail(conversationId, limit);
     if (!isCurrentWindowRequest(request)) return;
     applyWindowResponse(dto, store, 'replace', deps.readLiveMessages);
   } catch (error) {
+    options.signal?.throwIfAborted();
     if (isCurrentWindowRequest(request)) {
       captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'load' });
       store.setError(conversationId, readErrorMessage(error));
     }
     throw error;
+  } finally {
+    request.release();
   }
 }
 
@@ -117,7 +134,7 @@ export async function loadBefore(
   const api = deps.api ?? messageWindowApi;
   const limit = options.limit ?? readDefaultMessageWindowLimit();
   const expectedRevision = store.conversationId === conversationId ? store.revision : null;
-  const request = beginWindowRequest(store, conversationId, 'before');
+  const request = beginWindowRequest(store, conversationId, 'before', options.signal);
 
   try {
     const dto = await api.readBefore(conversationId, cursor, limit);
@@ -135,11 +152,14 @@ export async function loadBefore(
     applyWindowResponse(dto, store, 'prepend', deps.readLiveMessages);
     return 'prepended';
   } catch (error) {
+    options.signal?.throwIfAborted();
     if (isCurrentWindowRequest(request)) {
       captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'load' });
       store.setError(conversationId, readErrorMessage(error));
     }
     throw error;
+  } finally {
+    request.release();
   }
 }
 
@@ -153,7 +173,7 @@ export async function loadAfter(
   const api = deps.api ?? messageWindowApi;
   const limit = options.limit ?? readDefaultMessageWindowLimit();
   const expectedRevision = store.conversationId === conversationId ? store.revision : null;
-  const request = beginWindowRequest(store, conversationId, 'after');
+  const request = beginWindowRequest(store, conversationId, 'after', options.signal);
 
   try {
     const dto = await api.readAfter(conversationId, cursor, limit);
@@ -171,11 +191,14 @@ export async function loadAfter(
     applyWindowResponse(dto, store, 'append', deps.readLiveMessages);
     return 'appended';
   } catch (error) {
+    options.signal?.throwIfAborted();
     if (isCurrentWindowRequest(request)) {
       captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'load' });
       store.setError(conversationId, readErrorMessage(error));
     }
     throw error;
+  } finally {
+    request.release();
   }
 }
 
@@ -188,7 +211,7 @@ export async function loadAround(
   const store = deps.store ?? useMessageWindowStore();
   const api = deps.api ?? messageWindowApi;
   const limit = options.limit ?? readDefaultMessageWindowLimit();
-  const request = beginWindowRequest(store, conversationId, 'around');
+  const request = beginWindowRequest(store, conversationId, 'around', options.signal);
 
   try {
     const dto = await api.readAround(conversationId, anchorMessageId, limit);
@@ -200,11 +223,14 @@ export async function loadAround(
     applyWindowResponse(dto, store, 'replace', deps.readLiveMessages);
     return 'replaced';
   } catch (error) {
+    options.signal?.throwIfAborted();
     if (isCurrentWindowRequest(request)) {
       captureConversationClientNotice(conversationId, { error_kind: 'unknown', operation: 'load' });
       store.setError(conversationId, readErrorMessage(error));
     }
     throw error;
+  } finally {
+    request.release();
   }
 }
 

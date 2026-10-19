@@ -292,11 +292,15 @@ export function useTanstackConversationVirtualizer(params: {
     params.items.value.findIndex(item => item.isTurnStart && item.visualTurnId === visualTurnId)
   );
 
-  const scrollToVisualTurn = (
-    visualTurnId: ConversationVisualTurnId,
+  const scrollToTarget = (
+    target: { readonly kind: 'turn'; readonly visualTurnId: ConversationVisualTurnId } | { readonly kind: 'end' },
     signal?: AbortSignal,
   ): Promise<boolean> => {
-    const initialIndex = findVisualTurnIndex(visualTurnId);
+    const targetIndex = (): number => target.kind === 'turn'
+      ? findVisualTurnIndex(target.visualTurnId)
+      : params.items.value.length - 1;
+    const initialIndex = targetIndex();
+    if (target.kind === 'end' && initialIndex < 0) return Promise.resolve(true);
     if (initialIndex < 0) return Promise.resolve(false);
 
     return new Promise<boolean>((resolve, reject) => {
@@ -323,11 +327,12 @@ export function useTanstackConversationVirtualizer(params: {
         currentIndex = index;
         previousTargetOffset = null;
         stableFrameCount = 0;
-        virtualizer.value.scrollToIndex(index, { align: 'start' });
+        if (target.kind === 'end') virtualizer.value.scrollToEnd();
+        else virtualizer.value.scrollToIndex(index, { align: 'start' });
       };
 
       const verify = (now: number): void => {
-        const latestIndex = findVisualTurnIndex(visualTurnId);
+        const latestIndex = targetIndex();
         if (latestIndex < 0) {
           finish(false);
           return;
@@ -335,9 +340,9 @@ export function useTanstackConversationVirtualizer(params: {
         // 窗口 prepend/trim 会移动数字 index；导航身份始终由稳定 visual turn key 决定。
         if (latestIndex !== currentIndex) issueScroll(latestIndex);
 
-        const offsetInfo = virtualizer.value.getOffsetForIndex(latestIndex, 'start');
-        const actualOffset = virtualizer.value.scrollOffset
-          ?? params.scrollElement.value?.scrollTop
+        const offsetInfo = virtualizer.value.getOffsetForIndex(latestIndex, target.kind === 'end' ? 'end' : 'start');
+        const actualOffset = params.scrollElement.value?.scrollTop
+          ?? virtualizer.value.scrollOffset
           ?? 0;
         const targetOffset = offsetInfo?.[0];
         const targetUnchanged = targetOffset !== undefined
@@ -346,14 +351,15 @@ export function useTanstackConversationVirtualizer(params: {
         const landed = targetOffset !== undefined
           && Math.abs(actualOffset - targetOffset) < TIMELINE_SCROLL_SETTLE_EPSILON_PX;
 
-        stableFrameCount = targetUnchanged && landed ? stableFrameCount + 1 : 0;
+        // 流式输出期间底部仍可增长；连续贴底即可完成导航，不要求内容停止增长。
+        stableFrameCount = (target.kind === 'end' || targetUnchanged) && landed ? stableFrameCount + 1 : 0;
         previousTargetOffset = targetOffset ?? null;
         if (stableFrameCount >= TIMELINE_SCROLL_STABLE_FRAME_COUNT) {
           finish(true);
           return;
         }
         if (now - startedAt >= TIMELINE_SCROLL_TIMEOUT_MS) {
-          finish(false, new Error(`timeline visual turn scroll did not settle: ${visualTurnId}`));
+          finish(false, new Error(`conversation scroll did not settle: ${target.kind === 'turn' ? target.visualTurnId : 'end'}`));
           return;
         }
         frameId = window.requestAnimationFrame(verify);
@@ -386,7 +392,10 @@ export function useTanstackConversationVirtualizer(params: {
     viewportHeight,
     timelinePositions,
     measureElement,
-    scrollToVisualTurn,
+    scrollToVisualTurn: (visualTurnId: ConversationVisualTurnId, signal?: AbortSignal) => (
+      scrollToTarget({ kind: 'turn', visualTurnId }, signal)
+    ),
+    scrollToEndAndWait: (signal: AbortSignal) => scrollToTarget({ kind: 'end' }, signal),
     scrollToEnd: () => virtualizer.value.scrollToEnd(),
     getDistanceFromEnd: () => virtualizer.value.getDistanceFromEnd(),
   };

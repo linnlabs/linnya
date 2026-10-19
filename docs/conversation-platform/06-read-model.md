@@ -90,6 +90,14 @@ mapper 把 snapshot 绑定到不可变 message row。store 不解析 citation、
 依赖自然释放。dependency snapshot 与 fact index 都是可重建 read model，不是新 SoT，也不得写入 Linnkit
 通用 RuntimeEvent。读取成本随窗口引用及其少量候选事实增长；禁止在窗口 API 回退为全历史扫描。
 
+### 2.5 最新上下文用量依赖
+
+所有 ready 窗口响应携带 `latest_context_usage`（来源 user_message_id、sort_seq、timestamp 和正式 usage，或 null）。
+它从当前 user_input read model 按序读取最近成功 Prompt，不受 messages 范围限制。SQLite 部分索引直接定位来源，
+不重放事件、不扩大窗口、不读取完整用户正文到 Renderer。Renderer 使用共享 strict schema admission，独立保存在窗口快照，
+不回写 live 槽、不计入 320 行上限。切换、preparing、clear 和编辑截断同步移除不再有效的依赖。
+用量展示仍遵循 tail gate，并以同一用户或更新用户的 live 快照覆盖该 durable 依赖；详见 context-window-usage owner README。
+
 ---
 
 ## 3. 合成规则（核心）

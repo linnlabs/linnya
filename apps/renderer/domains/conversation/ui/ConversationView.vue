@@ -118,7 +118,7 @@ interface Props {
   hasMoreAfter?: boolean;
   messageWindowStatus?: MessageWindowStatus;
   messageWindowLoadingMode?: MessageWindowLoadMode | null;
-  isTimelineNavigating?: boolean;
+  isWindowNavigating?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -131,7 +131,7 @@ const props = withDefaults(defineProps<Props>(), {
   hasMoreAfter: false,
   messageWindowStatus: 'idle',
   messageWindowLoadingMode: null,
-  isTimelineNavigating: false,
+  isWindowNavigating: false,
 });
 
 const emit = defineEmits<{
@@ -271,6 +271,7 @@ const {
   mode: scrollMode,
   showScrollToBottomBtn,
   scrollToBottomManual,
+  navigateToBottom,
   scrollToVisualTurn,
   isUserScrollGestureActive,
 } = useConversationScrollController({
@@ -287,6 +288,7 @@ const {
   resetKey,
   virtualizer: {
     scrollToEnd: () => virtualizer.scrollToEnd(),
+    scrollToEndAndWait: signal => virtualizer.scrollToEndAndWait(signal),
     scrollToVisualTurn: (visualTurnId, signal) => (
       virtualizer.scrollToVisualTurn(visualTurnId, signal)
     ),
@@ -396,7 +398,7 @@ watch(
     props.hasMoreAfter,
     props.messageWindowStatus,
     props.messageWindowLoadingMode,
-    props.isTimelineNavigating,
+    props.isWindowNavigating,
   ] as const,
   ([
     nextScrollTop,
@@ -448,6 +450,7 @@ const scrollToMessage = async (messageId: string): Promise<boolean> => {
 
 defineExpose({
   scrollToBottomManual,
+  navigateToBottom,
   scrollToMessage,
   scrollToVisualTurn,
 });

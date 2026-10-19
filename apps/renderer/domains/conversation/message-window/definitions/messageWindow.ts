@@ -1,4 +1,4 @@
-import { CONVERSATION_UI_WINDOW_MAX_ROWS, type ConversationAnswerCompletionReason } from '@app/schemas';
+import { CONVERSATION_UI_WINDOW_MAX_ROWS, type ConversationContextUsageSource, type ConversationAnswerCompletionReason } from '@app/schemas';
 import type { AnswerMessage, BaseMessage } from '../../types';
 import type { UiMessageDto } from './uiMessagesDto';
 import type { Raw } from 'vue';
@@ -32,6 +32,7 @@ export type StoredWindowMessageRow = Raw<WindowMessageRow>;
 export interface MessageWindowSnapshot {
   readonly conversationId: string;
   readonly rows: readonly WindowMessageRow[];
+  readonly latestContextUsage: ConversationContextUsageSource | null;
   readonly hasMoreBefore: boolean;
   readonly hasMoreAfter: boolean;
   readonly prevCursor?: number;
@@ -43,6 +44,7 @@ export interface MessageWindowStateSnapshot {
   readonly conversationId: string | null;
   readonly status: MessageWindowStatus;
   readonly rows: readonly WindowMessageRow[];
+  readonly latestContextUsage: ConversationContextUsageSource | null;
   readonly hasMoreBefore: boolean;
   readonly hasMoreAfter: boolean;
   readonly prevCursor?: number;
@@ -56,6 +58,7 @@ export interface MessageWindowState {
   conversationId: string | null;
   status: MessageWindowStatus;
   rows: StoredWindowMessageRow[];
+  latestContextUsage: ConversationContextUsageSource | null;
   hasMoreBefore: boolean;
   hasMoreAfter: boolean;
   prevCursor?: number;

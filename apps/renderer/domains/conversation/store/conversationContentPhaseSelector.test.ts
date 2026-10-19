@@ -111,6 +111,7 @@ describe('useConversationContentPhaseSelector', () => {
       windowStore.replaceWithSnapshot({
         conversationId: 'conv-window-phase',
         rows: [createWindowRow()],
+        latestContextUsage: null,
         hasMoreBefore: true,
         hasMoreAfter: false,
         prevCursor: 1,
@@ -134,6 +135,7 @@ describe('useConversationContentPhaseSelector', () => {
     windowStore.replaceWithSnapshot({
       conversationId: 'conv-window-phase',
       rows: [createWindowRow()],
+      latestContextUsage: null,
       hasMoreBefore: true,
       hasMoreAfter: false,
       prevCursor: 1,
@@ -156,6 +158,7 @@ describe('useConversationContentPhaseSelector', () => {
     windowStore.replaceWithSnapshot({
       conversationId: 'conv-window-phase',
       rows: [createWindowRow()],
+      latestContextUsage: null,
       hasMoreBefore: true,
       hasMoreAfter: false,
       prevCursor: 1,

@@ -11,8 +11,12 @@ Graph 每次成功 LLM Prompt 发布一条 ephemeral `context_usage_snapshot`；
 
 execution settlement 最多发布一条 durable `run_execution_metrics.context_usage`，使用同一产品转换函数覆盖最终值，保证
 reload 和断线客户端收敛。临时快照不进 EventStore、UI replay、Agent context 或 Graph history。
-`useConversationSelectors` 提供 `window ∪ live` 合成消息和是否包含会话尾部；本 feature 的 orchestration 只把这些
-响应式来源交给纯函数，并把派生结果提供给输入框 footer。没有 feature store，也没有跨 domain store 读取。
+窗口 API 同时返回 `latest_context_usage`：从当前 durable user_input read model 按 sort_seq 读取最近成功快照及来源身份，
+不依赖该用户是否还在 80 条尾页或 320 条保留窗内，也不把来源消息插入可视消息。该依赖随窗口 revision 接纳，
+切换会话、清空/重建和编辑截断时同步清理；没有快照时明确返回 null。
+`useConversationSelectors` 提供该依赖、`window ∪ live` 合成消息和是否包含会话尾部；本 feature 的 orchestration 只把这些
+响应式来源交给纯函数，并把派生结果提供给输入框 footer。同来源或更新用户轮次的 live 快照继续优先；较旧 live 用户
+不能覆盖更新的 durable 来源，分页方式也不能改变用量。没有 feature store，也没有跨 domain store 读取。
 
 当前模型 ID 来自 model-configuration 的公开 purpose binding，仅用于判断 `historical_model`。后端以正式 inference route
 作为理论窗口和最大输出基线，只有显式 Agent policy cap 才能进一步收窄；Renderer 只消费最终快照，不保存模型容量表，

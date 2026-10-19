@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ConversationContextUsage } from '@app/schemas';
+import type { ConversationContextUsage, ConversationContextUsageSource } from '@app/schemas';
 import type { BaseMessage, UserMessage } from '../../../types';
 import {
   formatApproximateContextUsageTokens,
@@ -39,12 +39,14 @@ function userMessage(id: string, contextUsage?: ConversationContextUsage): UserM
 
 function project(input: {
   readonly messages?: readonly BaseMessage[];
+  readonly durableUsage?: ConversationContextUsageSource;
   readonly hasActiveConversation?: boolean;
   readonly includesConversationTail?: boolean;
   readonly currentModelId?: string | null;
 }) {
   return projectContextWindowUsage({
     messages: input.messages ?? [],
+    durableUsage: input.durableUsage ?? null,
     hasActiveConversation: input.hasActiveConversation ?? true,
     includesConversationTail: input.includesConversationTail ?? true,
     currentModelId: input.currentModelId ?? 'model-a',
@@ -83,6 +85,22 @@ describe('projectContextWindowUsage', () => {
       'tool_definitions',
       'conversation',
     ]);
+  });
+
+  it('来源用户被裁出尾窗后仍展示快照，旧 live 不覆盖较新 durable，同轮与新轮 live 继续更新', () => {
+    const durableUsage: ConversationContextUsageSource = {
+      user_message_id: 'latest', sort_seq: 2, timestamp: 2, usage: usage(),
+    };
+    expect(project({ durableUsage })).toMatchObject({ status: 'current', usage: durableUsage.usage });
+    const liveUsage = usage({ budget_model_id: 'live-model' });
+    expect(project({ durableUsage, messages: [userMessage('old', liveUsage)] }))
+      .toMatchObject({ usage: durableUsage.usage });
+    expect(project({ durableUsage, messages: [userMessage('latest', liveUsage)] }))
+      .toMatchObject({ usage: liveUsage });
+    expect(project({ durableUsage, messages: [{ ...userMessage('new', liveUsage), timestamp: 3 }] }))
+      .toMatchObject({ usage: liveUsage });
+    expect(project({ durableUsage, includesConversationTail: false }))
+      .toEqual({ status: 'tail_unavailable' });
   });
 
   it('把 239616 输入预算与 16384 输出上限还原为用户配置的 256K 窗口', () => {

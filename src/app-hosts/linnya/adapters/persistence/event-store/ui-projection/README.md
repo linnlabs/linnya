@@ -42,3 +42,8 @@ trace 写成 Runtime fact，也不创建不存在的父工具 row。首帧只保
 工具 error、cancel 或空结果不能清除已有 child；child 的终态始终由其正式 lifecycle 决定。
 
 `readWindowRefresh` 在一个 SQLite 读取事务中比较正式 projection revision 并读取当前有界窗口、citation dependency closure 和分页元数据；版本未变不读消息行。保留首行锚点，只有调用方当前覆盖尾部才追加新行，不能用新 tail 取代历史阅读范围。
+
+所有 ready 窗口同时携带 `latest_context_usage`，作为输入框用量的窗口外依赖。来源仍是当前 user_input payload，
+通过 `idx_conversation_ui_context_usage` 部分索引按 sort_seq 取最近一条成功快照；不建立第二份持久化用量表。
+它允许来源用户早于尾页甚至整个保留窗口，不改变 messages/cursors。字段使用共享 `ConversationContextUsageSourceSchema`，
+不存在成功快照时返回 null；截断与 rebuild 自然改变其来源。

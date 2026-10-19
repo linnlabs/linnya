@@ -97,7 +97,7 @@ TanStack Virtual 是位置与测量的唯一执行者：
 
 `useConversationScrollController` 只维护产品意图：`follow-bottom`、`anchored`、`free`。它不直接修改 `scrollTop`。发送、编辑重发和重新生成必须由编排显式确保真实尾窗后再提交落底意图，禁止根据“末条消息是 user”猜测。
 
-`hasMoreAfter=true` 表示当前底部是假底，即使处于 `follow-bottom` 也必须允许 `loadAfter`。timeline 导航期间由 Host 设置瞬时导航锁，before/after backfill 都暂停，避免换窗与定位竞争。
+`hasMoreAfter=true` 表示当前底部是假底，即使处于 `follow-bottom` 也必须允许 `loadAfter`。时间轴与“回到底部”共用 Host 的导航代次，before/after backfill 从发起请求到滚动实际落定全程暂停。回底仍直接读取 80 条尾页，不逐页遍历历史；控制器先设置 follow-bottom，再由 virtualizer 完成测高后的定位。连续点击、切换会话、关闭 pane 或另一种导航会取消旧请求和定位；迟到响应不得覆盖当前窗口，旧任务也不得解除新任务的分页锁。
 
 ### 流式视觉跟随
 
@@ -120,7 +120,7 @@ transform 会影响 `getBoundingClientRect()` 和滚动溢出区域，所以不�
 
 本目录只上报当前窗口内 `isTurnStart` 行的实测位置，并按稳定 `visualTurnId` 定位。全会话 marker 来自 `features/timeline/` 的 `/turns` index；目标不在当前窗口时，由 Host 执行 `loadAround -> waitForTimelineVisualTurnMounted -> scrollToVisualTurn`。
 
-`scrollToVisualTurn` 是异步稳定合同：动态测高期间持续按 key 重解析 index，目标 offset 连续稳定且误差小于 1px 才成功。禁止以固定数量的 `nextTick` 或 rAF 代替目标挂载和测量完成条件。
+`scrollToVisualTurn` / `scrollToEndAndWait` 是异步稳定合同：动态测高期间持续按 key 重解析 index，轮次目标 offset 连续稳定且误差小于 1px 才成功；回底以连续贴住实际底部为完成条件，允许流式内容继续增长。禁止以固定数量的 `nextTick` 或 rAF 代替目标挂载和测量完成条件。
 
 ## UI 不变量
 
@@ -139,3 +139,6 @@ transform 会影响 `getBoundingClientRect()` 和滚动溢出区域，所以不�
 渲染项异常先核对：消息可见性、visual-row 投影边界和稳定 key。需要独立上下文的过程必须进入父工具的 subrun collection，禁止重新增加业务专用顶层 row 类型。
 
 若异常涉及切换会话、新草稿、错误通知或流式 terminal 时序，先运行 `pnpm run test:conversation-navigation:electron` 并查看捕获到的第一个 `Runtime.exceptionThrown`。`nextSibling`、`subTree`、`emitsOptions` 等错误常是前一轮 patch 中断后的级联结果，不应直接在报错行增加空值判断。
+
+输入框未配置模型时的边框装饰由 model-setup track 的 `overflow: clip` 约束。CSS mask 只约束绘制，
+不能单独阻止沿路径运动的光场扩张祖先 scrollHeight；不能通过反复滚到底补偿装饰造成的虚假滚动范围。
