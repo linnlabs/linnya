@@ -80,6 +80,8 @@ describe('BYOK live smoke configuration', () => {
     expect(configuration.targets).toEqual([
       expect.objectContaining({
         id: 'deepseek',
+        provider_connection_definition_id: 'deepseek',
+        route_profile_id: 'deepseek_chat',
         capability_id: 'ai-sdk:deepseek',
         endpoint_model_id: 'deepseek-reasoner',
         credential: 'deepseek-secret',

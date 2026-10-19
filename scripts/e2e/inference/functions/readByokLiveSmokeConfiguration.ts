@@ -69,6 +69,8 @@ export function readByokLiveSmokeConfiguration(
   const targets = selectedDescriptors(environment).map(descriptor => ({
     id: descriptor.id,
     name: descriptor.name,
+    provider_connection_definition_id: descriptor.provider_connection_definition_id,
+    route_profile_id: descriptor.route_profile_id,
     capability_id: descriptor.capability_id,
     surface: descriptor.surface,
     endpoint_id: descriptor.endpoint_id,

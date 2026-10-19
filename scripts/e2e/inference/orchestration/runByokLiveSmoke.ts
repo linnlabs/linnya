@@ -1,17 +1,23 @@
+import { randomUUID } from 'node:crypto';
 import type {
   CanonicalAssistantReplayPart,
   CanonicalInferenceEvent,
   CanonicalInferenceRequest,
 } from '@linnlabs/linnkit/ports';
 
-import { createLinnyaAiSdkInferenceCapability } from '../../../../src/app-hosts/linnya/adapters/inference/features/ai-sdk-language-composition/orchestration/createLinnyaAiSdkInferenceCapability';
+import {
+  createDefaultHostInferencePort,
+  runWithInferenceSession,
+} from '../../../../src/app-hosts/linnya/adapters/inference';
 import { createLinnyaAiSdkLanguageModelRegistry } from '../../../../src/app-hosts/linnya/adapters/inference/features/ai-sdk-language-composition/orchestration/createLinnyaAiSdkLanguageModelRegistry';
 import type { ResolvedInferenceAttemptRoute } from '../../../../src/app-hosts/linnya/adapters/inference/definitions/inferenceCapability';
+import type { ModelConfig } from '../../../../src/domains/model-catalog';
 import type { ByokLiveSmokeConfiguration, ByokLiveSmokeTarget } from '../definitions/byokLiveSmoke';
 
 function route(target: ByokLiveSmokeTarget): ResolvedInferenceAttemptRoute {
   return {
     model_id: `byok-smoke-${target.id}`,
+    route_profile_id: target.route_profile_id,
     capability_id: target.capability_id,
     endpoint_id: target.endpoint_id,
     endpoint_model_id: target.endpoint_model_id,
@@ -49,8 +55,8 @@ function firstRequest(resolvedRoute: ResolvedInferenceAttemptRoute): CanonicalIn
     tool_choice: { type: 'tool', name: 'report_status' },
     sampling: { temperature: 0, max_output_tokens: 256 },
     invocation: {
-      trace_id: `byok-live-smoke-${resolvedRoute.endpoint_id}`,
-      attempt_id: 'attempt-1',
+      trace_id: randomUUID(),
+      attempt_id: randomUUID(),
     },
   };
 }
@@ -112,16 +118,32 @@ async function runTarget(
     return fetchImplementation(input, init);
   };
   const resolvedRoute = route(target);
-  const capability = createLinnyaAiSdkInferenceCapability(target.capability_id, target.surface, {
+  const model: ModelConfig = {
+    id: resolvedRoute.model_id,
+    model_name: target.endpoint_model_id,
+    catalog_source: 'default',
+    capabilities: ['chat'],
+    ui_visibility: [],
+    display_name: target.name,
+    description: 'BYOK live smoke',
+    inference_route: resolvedRoute,
+  };
+  // 真实 live gate 必须经过与产品相同的 Host 准入与请求身份装配，不能只验证裸 SDK codec。
+  const inference = createDefaultHostInferencePort({
     language_models: createLinnyaAiSdkLanguageModelRegistry(countingFetch),
+    model_catalog: {
+      getModel: modelId => modelId === model.id ? model : undefined,
+      getInferenceRouteProfileId: modelId =>
+        modelId === model.id ? target.route_profile_id : undefined,
+    },
+    credential_resolver: {
+      resolve: async () => ({ profile: target.auth_profile, secret: target.credential }),
+    },
+    resolve_provider_connection_id: modelId =>
+      modelId === model.id ? target.provider_connection_definition_id : undefined,
   });
   const initialRequest = firstRequest(resolvedRoute);
-  const credential = { profile: target.auth_profile, secret: target.credential } as const;
-  const firstEvents = await collectEvents(capability.stream({
-    request: initialRequest,
-    route: resolvedRoute,
-    credential,
-  }));
+  const firstEvents = await collectEvents(inference.stream(initialRequest));
   assertSuccessfulEvents(target, firstEvents, 'tool');
 
   const toolCalls = firstEvents.filter(
@@ -146,16 +168,13 @@ async function runTarget(
     tools: [],
     tool_choice: 'none',
     sampling: { temperature: 0, max_output_tokens: 64 },
+    // 工具 follow-up 是下一次独立调用；稳定 session 由外层 Conversation scope 持有。
     invocation: {
-      trace_id: `byok-live-smoke-${resolvedRoute.endpoint_id}`,
-      attempt_id: 'attempt-2',
+      trace_id: randomUUID(),
+      attempt_id: randomUUID(),
     },
   };
-  const secondEvents = await collectEvents(capability.stream({
-    request: secondRequest,
-    route: resolvedRoute,
-    credential,
-  }));
+  const secondEvents = await collectEvents(inference.stream(secondRequest));
   assertSuccessfulEvents(target, secondEvents, 'follow-up');
   if (!secondEvents.some(event => event.type === 'answer_delta')) {
     throw new Error(`${target.name} follow-up live smoke 没有产生正文。`);
@@ -172,7 +191,10 @@ export async function runByokLiveSmoke(
 ): Promise<void> {
   for (const target of configuration.targets) {
     write(`[BYOK live smoke] 开始验证 ${target.name}`);
-    await runTarget(target, fetchImplementation);
+    // 一组两轮工具闭环就是一次合成 Conversation，不能复用上一次 smoke 或外层调用身份。
+    await runWithInferenceSession(`byok-live-smoke-${randomUUID()}`, () =>
+      runTarget(target, fetchImplementation)
+    );
     write(`[BYOK live smoke] ${target.name} 两轮工具闭环通过`);
   }
 }

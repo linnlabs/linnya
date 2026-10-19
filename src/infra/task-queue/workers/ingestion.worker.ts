@@ -20,6 +20,10 @@ import {
 import { InternalStage } from '../../../features/knowledge-base/ingestion/definitions/state';
 
 import { modelCatalog } from 'src/domains/model-catalog';
+import {
+  readProviderConnectionLookup,
+  type ProviderConnectionLookup,
+} from 'src/domains/provider-configuration';
 
 // 🔥 新增：导入并配置日志记录器
 import { enableDiagnosticLogForwarding, Logger } from '../../../shared/logger';
@@ -181,8 +185,11 @@ async function processIngestionJob(): Promise<void> {
   logger.info(`开始处理: ${jobData.filename}`);
 
   let embedding: EmbeddingPort;
+  let resolveProviderConnectionId: ProviderConnectionLookup;
   try {
     embedding = await initializeWorkerServices();
+    // App Server 已完成迁移与 intent 恢复，Worker 只冻结当前已提交归属，避免并发写配置。
+    resolveProviderConnectionId = await readProviderConnectionLookup();
   } catch (error) {
     logger.error(`Worker环境初始化失败: ${error}`);
     sendMessage(
@@ -212,7 +219,9 @@ async function processIngestionJob(): Promise<void> {
     // 只建连接 + 设 pragma，不重跑迁移/插件 lifecycle（F1-02）：主进程启动时已完成 initialize()。
     const repositories = createIngestionRepositories();
     const textGeneration = createTextGenerationPort({
-      inferencePort: createDefaultHostInferencePort(),
+      inferencePort: createDefaultHostInferencePort({
+        resolve_provider_connection_id: resolveProviderConnectionId,
+      }),
     });
     const documentOcr = createDocumentOcrPort({ catalog: modelCatalog });
 

@@ -9,7 +9,9 @@ export type {
   ProviderConfigurationCatalogProjection,
   ProviderConfigurationRepository,
   ProviderConfigurationSnapshot,
+  ProviderConnectionLookup,
 } from './definitions/providerConfiguration';
+export { readProviderConnectionLookup } from './features/configuration-persistence/orchestration/readProviderConnectionLookup';
 export {
   ProviderConfigurationRegistry,
   providerConfigurationRegistry,

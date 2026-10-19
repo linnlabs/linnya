@@ -20,6 +20,10 @@ import { parentPort, workerData } from 'worker_threads';
 
 import { enableDiagnosticLogForwarding, Logger } from '../../../shared/logger';
 import { modelCatalog } from 'src/domains/model-catalog';
+import {
+  readProviderConnectionLookup,
+  type ProviderConnectionLookup,
+} from 'src/domains/provider-configuration';
 import { pathManager } from '../../../shared/utils/pathManager';
 import {
   installRuntimePathRoots,
@@ -137,8 +141,11 @@ async function processGraphExtractionJob(): Promise<void> {
     return;
   }
 
+  let resolveProviderConnectionId: ProviderConnectionLookup;
   try {
     await initializeWorkerServices();
+    // 每个任务只读一次已提交归属；图谱批次共享快照，Worker 不恢复 intent 或写配置。
+    resolveProviderConnectionId = await readProviderConnectionLookup();
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     sendMessage('failed', `Worker环境初始化失败: ${msg}`);
@@ -171,7 +178,9 @@ async function processGraphExtractionJob(): Promise<void> {
     failureDocId = jobData.docId;
     // Graph worker 拥有批次级重试；TextGenerationPort 只执行一次 Provider attempt。
     const textGeneration = createTextGenerationPort({
-      inferencePort: createDefaultHostInferencePort(),
+      inferencePort: createDefaultHostInferencePort({
+        resolve_provider_connection_id: resolveProviderConnectionId,
+      }),
     });
     const extractor = new GraphExtractionService(textGeneration);
 

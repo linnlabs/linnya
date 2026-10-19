@@ -160,6 +160,7 @@ export type ConversationMessageKey =
   | 'conversation.error.providerLimit'
   | 'conversation.error.serviceUnavailable'
   | 'conversation.error.badRequest'
+  | 'conversation.error.openCodeSessionRequired'
   | 'conversation.error.auth'
   | 'conversation.error.requestFailed'
   | 'conversation.error.quotaExceeded'

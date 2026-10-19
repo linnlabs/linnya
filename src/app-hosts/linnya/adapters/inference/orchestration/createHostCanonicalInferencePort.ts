@@ -17,6 +17,7 @@ import type {
   InferenceCredential,
   InferenceCredentialResolver,
   InferenceModelCatalog,
+  InferenceRequestIdentityResolver,
   ResolvedInferenceAttemptRoute,
 } from '../definitions/inferenceCapability';
 import {
@@ -76,7 +77,10 @@ async function* streamAttempt(
   }
 
   const credential = await resolveCredential(route, dependencies.credential_resolver);
-  const protocolHeaders = projectInferenceProtocolHeaders(route);
+  const protocolHeaders = projectInferenceProtocolHeaders(
+    route,
+    dependencies.resolve_request_identity?.(request, route)
+  );
   const headers = {
     ...(credential?.request_headers ?? {}),
     ...(protocolHeaders ?? {}),
@@ -192,6 +196,7 @@ export interface HostCanonicalInferenceDependencies {
   readonly capability_registry: InferenceCapabilityRegistry;
   readonly credential_resolver: InferenceCredentialResolver;
   readonly outbound_diagnostics: ProviderOutboundDiagnosticsPort;
+  readonly resolve_request_identity?: InferenceRequestIdentityResolver;
 }
 
 export function createHostCanonicalInferencePort(

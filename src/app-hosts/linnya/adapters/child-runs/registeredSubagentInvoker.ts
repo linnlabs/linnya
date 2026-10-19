@@ -4,6 +4,7 @@ import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types'
 import { generateSubrunId, runIdFromSubrunId, type RunId } from '@linnlabs/linnkit/contracts';
 import { childRuns, graph, tools } from '@linnlabs/linnkit/runtime-kernel';
 import { recordRunTranscript, runWithLlmAuditContext } from 'src/domains/audit';
+import { runWithInferenceSession } from '../inference';
 import { createLinnyaChildRunInvoker } from './childRunInvokerFactory';
 import {
   LinnyaRegisteredChildRunLifecycle,
@@ -349,7 +350,8 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
       try {
         await lifecycle.markRunning(lifecycleRun);
 
-        result = await runWithLlmAuditContext(
+        // child 可以显式选择另一 Conversation；不能借用父作用域或仅在审计开启时绑定身份。
+        result = await runWithInferenceSession(conversationId, () => runWithLlmAuditContext(
           {
             ...(conversationId ? { conversationId } : {}),
             runId: childRunId,
@@ -412,7 +414,7 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
             }
             return childResult;
           }
-        );
+        ));
       } catch (error) {
         if (durable && (await lifecycleRun.handle.meta()).status !== 'cancelled') {
           logger.warn('Durable child attempt interrupted', { childRunId, error });

@@ -42,3 +42,15 @@ export interface InferenceModelCatalog {
   getModel(modelId: string): ModelConfig | undefined;
   getInferenceRouteProfileId(modelId: string): LanguageInferenceRouteProfileId | undefined;
 }
+
+/** Host 产品连接与执行范围的身份，不属于模型协议或凭据。 */
+export interface InferenceRequestIdentity {
+  readonly provider_connection_definition_id?: string;
+  readonly session_id: string;
+  readonly user_agent: string;
+}
+
+export type InferenceRequestIdentityResolver = (
+  request: CanonicalInferenceRequest,
+  route: ResolvedInferenceAttemptRoute
+) => InferenceRequestIdentity | undefined;

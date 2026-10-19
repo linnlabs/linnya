@@ -6,4 +6,6 @@
 
 错误文案继续由 `services/errorNormalizer.ts` 统一解释，保留认证、额度与模型兼容等既有指引。`interactive-run` 持有暂停/继续状态，通知不建立第二套控制状态。Runtime error 的 notice identity 只用来避免同一运行错误同时出现在本地诊断与已投影的消息中。
 
+OpenCode Go 的缺失会话标识由 Host 产品分类器读取结构化错误类型后投影为 `llm.opencode_session_required`；Renderer 只按该稳定码提示更新客户端，不解析上游正文或把普通 HTTP 400 猜成接入错误。
+
 未取得 Runtime fact 的错误由 interactive-run、annotation execution 等原 owner 分类后交给 [client-notices](../client-notices/README.md) 保存安全的产品事实，并通过同一历史窗口呈现。没有 Conversation 或 Host 离线时先持久保留本地条目、明确尚未同步；不伪造运行身份、不进入模型上下文。运行控制仍由原 owner 负责。

@@ -41,6 +41,8 @@ export function projectByokLiveSmokeTargetDescriptors(
       return Object.freeze({
         id: targetId,
         name: `${binding.provider_definition_id} / ${profile.id}`,
+        provider_connection_definition_id: binding.provider_connection_definition_id,
+        route_profile_id: profile.id,
         capability_id: profile.capability_id,
         surface: profile.api_surface,
         endpoint_id: binding.endpoint_id,

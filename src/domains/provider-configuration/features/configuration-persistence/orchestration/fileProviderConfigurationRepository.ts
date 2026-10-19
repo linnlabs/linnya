@@ -27,6 +27,14 @@ function emptySnapshot(): ProviderConfigurationSnapshot {
 export class FileProviderConfigurationRepository implements ProviderConfigurationRepository {
   private filePath: string | null = null;
 
+  /** Worker 只消费启动 owner 已提交的当前版本，不能代替 owner 创建文件或运行迁移。 */
+  async readSnapshot(): Promise<ProviderConfigurationSnapshot> {
+    const filePath = pathManager.getProviderConfigurationsConfigPath({ ensureDirectory: false });
+    const content = await fs.readFile(filePath, 'utf8');
+    const parsed: unknown = JSON.parse(content);
+    return readProviderConfigurationFile(parsed);
+  }
+
   async load(): Promise<ProviderConfigurationSnapshot> {
     const filePath = await this.requirePath();
     try {

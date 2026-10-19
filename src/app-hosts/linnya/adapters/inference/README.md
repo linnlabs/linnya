@@ -132,6 +132,35 @@ Go 验证了“一个 Provider 不等于一套 wire 协议”：同一套餐 Key
 factory。模型级 binding 只选择已存在的 route
 profile；它不创建厂商 body/SSE 分支，也不让 Renderer 选择协议。
 
+### 客户端与会话身份
+
+Host 为真实 language 请求发送 `linnya/<version>` User-Agent。OpenCode Go 还要求每个
+Conversation 稳定的 `x-opencode-session`，该产品要求由 Host 按正式
+`provider-configuration` connection 归属投影，对上述三种 surface 一致生效；不能根据模型名、
+URL 或 endpoint ID 前缀猜产品，也不能把专属头发给 Custom API。
+接入要求以 [OpenCode Go 官方说明](https://opencode.ai/docs/go/#where-can-i-use-it)为准。
+
+`features/request-session/` 独立持有异步执行范围的 Conversation 身份。root/child 在实际执行
+入口显式建立 scope，并在 scope 内消费完整异步流；同一 Conversation 的新轮次、模型切换、
+重试和 child 都保持稳定，另一 Conversation 与并发执行相互隔离。此 scope 不依赖可关闭的
+Audit，不向 Provider 发送 audit context，也不扩展 Linnkit 的 vendor-neutral invocation。
+没有 Conversation 的独立文本生成使用本次 invocation trace 作为独立会话，不能使用每次变化的
+attempt ID 或全进程固定值。
+
+App Server 使用运行中 Provider registry；独立 Worker 在任务初始化时从该 domain 的公开
+`readProviderConnectionLookup()` 读取当前已提交归属的只读快照，不能在 Worker 恢复 intent
+或写回配置。凭据解析继续只负责认证，session 与产品规则不进入 SDK factory 或 Model Catalog。
+
+上游结构化 `MissingSessionID` 由 Host failure policy 转为不可重试的
+`opencode_session_required`，Renderer 显示明确接入提示；不透传 Provider 错误正文，也不把其他
+HTTP 400 猜成相同原因。Host 请求集成测试覆盖三种真实 SDK surface、跨 run/attempt 与并发会话、
+独立生成、Custom API 隔离及错误脱敏；离线测试不替代真实 Go 两轮验收。
+
+2026-10-19 使用应用内已有的 OpenCode Go `deepseek-v4.1-flash` 配置，经源码 Host 装配完成
+真实两轮工具闭环：工具调用、工具结果回放、最终正文与 Provider usage 均成功，恰好两次请求。
+凭据仅由既有保护端口在进程内使用，配置文件前后哈希一致；该证据不代表其他 Go surface
+或打包态已完成在线验收。BYOK live smoke 已统一经过 Host 准入与会话装配，不能退回裸 SDK 验证。
+
 正式 profile 均通过真实第三方 SDK
 codec 的受控流式 fixture；Chat 额外锁住图片、工具增量、usage
 provenance、零 SDK 重试、headers 和单 fetch。DeepSeek、MiniMax、Moonshot、Alibaba 与 Z.AI 还有独立 package

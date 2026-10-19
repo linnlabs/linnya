@@ -67,3 +67,6 @@ export interface ProviderConfigurationRepository {
   load(): Promise<ProviderConfigurationSnapshot>;
   save(snapshot: ProviderConfigurationSnapshot): Promise<void>;
 }
+
+/** 只读运行域只能查询已提交的模型归属，不持有 Registry 的恢复与写入能力。 */
+export type ProviderConnectionLookup = (modelConfigId: string) => string | undefined;

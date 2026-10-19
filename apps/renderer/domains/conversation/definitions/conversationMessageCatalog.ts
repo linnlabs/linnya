@@ -168,6 +168,8 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
     '模型服务返回 429，可能是额度已用尽或请求过于频繁。请稍后重试，或切换模型。',
   'conversation.error.serviceUnavailable': '服务暂时不可用，请稍后再试。',
   'conversation.error.badRequest': '请求参数错误，请检查输入或重试。',
+  'conversation.error.openCodeSessionRequired':
+    'OpenCode Go 拒绝了请求：缺少会话标识。请更新 Linnya 后重试。',
   'conversation.error.auth': '权限校验失败，请检查模型配置或登录状态。',
   'conversation.error.requestFailed': '请求失败，请稍后重试。',
   'conversation.error.quotaExceeded': '该模型到额度上限啦，明天再来或者换其他模型试试吧～',
@@ -873,6 +875,8 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.error.serviceUnavailable':
         'The service is temporarily unavailable. Please try again later.',
       'conversation.error.badRequest': 'The request is invalid. Check your input and try again.',
+      'conversation.error.openCodeSessionRequired':
+        'OpenCode Go rejected the request because its session identifier is missing. Update Linnya and try again.',
       'conversation.error.auth':
         'Authentication failed. Check your model configuration or sign-in status.',
       'conversation.error.requestFailed': 'The request failed. Please try again later.',

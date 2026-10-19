@@ -1,5 +1,6 @@
 import { flushLinnyaAudit, runWithLlmAuditContext } from 'src/domains/audit';
 import { Logger } from 'src/shared/logger';
+import { runWithInferenceSession } from '../../inference';
 
 const logger = new Logger('RunAuditScope');
 
@@ -13,6 +14,7 @@ export interface RunAuditScopeOptions {
 /**
  * 中文备注：
  * - 这层负责建立 run 级统一审计范围，并在 stream 等级下附加 LLM evidence context；
+ * - 推理会话独立绑定 Conversation，审计关闭或切换 run 都不能改变上游会话身份；
  * - 主执行函数只关心“在审计范围中运行什么”，不再自己处理 finally flush；
  * - Audit Domain 负责 evidence 的等级过滤、投影和统一入口，runner 不持有路径和保留策略。
  */
@@ -20,7 +22,7 @@ export async function runWithAgentAuditScope<T>(
   options: RunAuditScopeOptions,
   execute: () => Promise<T>
 ): Promise<T> {
-  return runWithLlmAuditContext(
+  return runWithInferenceSession(options.conversationId, () => runWithLlmAuditContext(
     {
       conversationId: options.conversationId,
       runId: options.runId,
@@ -44,5 +46,5 @@ export async function runWithAgentAuditScope<T>(
         }
       }
     }
-  );
+  ));
 }

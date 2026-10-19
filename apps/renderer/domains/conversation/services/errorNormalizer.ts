@@ -256,6 +256,15 @@ export function normalizeConversationError(
   const compatibleModelIds = readCompatibleModelIds(event);
   const requiredImagePlacements = readRequiredImagePlacements(event);
 
+  if (normalizedErrorCode === 'llm.opencode_session_required') {
+    return {
+      userMessage: resolveErrorMessage('conversation.error.openCodeSessionRequired', options),
+      errorCode,
+      retryable: false,
+      rawMessage,
+    };
+  }
+
   const imageAttachmentErrorCode = ConversationImageAttachmentErrorCodeSchema.options.find(
     code => code === normalizedErrorCode,
   );

@@ -387,8 +387,13 @@ export function getUserModelsConfigPath(): string {
 }
 
 /** 正式 Provider 配置身份与模型归属；不包含 credential 或 route。 */
-export function getProviderConfigurationsConfigPath(): string {
-  const modelsPath = getModelsPath();
+export function getProviderConfigurationsConfigPath(
+  options: { readonly ensureDirectory?: boolean } = {}
+): string {
+  // 只读 Worker 不能因定位文件而创建目录；当前工作区仍以 path owner 的内存事实为准。
+  const modelsPath = options.ensureDirectory === false
+    ? path.join(getWorkspaceRootState().root ?? computeDefaultWorkspaceRoot(), 'Models')
+    : getModelsPath();
   return path.join(modelsPath, 'provider_configurations.json');
 }
 

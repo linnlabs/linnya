@@ -37,6 +37,7 @@ const translated: ConversationMessageResolver = (key, params) => {
   if (key === 'conversation.error.quotaExceeded') return 'translated-quota-exceeded';
   if (key === 'conversation.error.auth') return 'translated-auth';
   if (key === 'conversation.error.badRequest') return 'translated-bad-request';
+  if (key === 'conversation.error.openCodeSessionRequired') return 'translated-opencode-session-required';
   return params ? `${key}:${JSON.stringify(params)}` : key;
 };
 
@@ -137,6 +138,28 @@ describe('errorNormalizer', () => {
       { error_code: 'llm.invalid_request', error: 'request failed' },
       { resolveMessage: translated },
     ).userMessage).toBe('translated-bad-request');
+  });
+
+  it('精确呈现 OpenCode 会话标识错误，实时和历史一致且不展示上游正文', () => {
+    const event = {
+      error_code: 'llm.opencode_session_required',
+      error: 'private upstream detail',
+      retryable: false,
+    };
+    const live = normalizeConversationError(event, { resolveMessage: translated });
+    const replay = normalizeConversationError(JSON.parse(JSON.stringify(event)), { resolveMessage: translated });
+
+    expect(live).toMatchObject({
+      userMessage: 'translated-opencode-session-required',
+      errorCode: 'llm.opencode_session_required',
+      retryable: false,
+    });
+    expect(replay).toEqual(live);
+    expect(live.userMessage).not.toContain('private');
+    expect(normalizeConversationError(event).userMessage).toContain('缺少会话标识');
+    expect(normalizeConversationError({
+      error_code: 'llm.provider_http_400', error: 'MissingSessionID',
+    }, { resolveMessage: translated }).userMessage).toBe('translated-bad-request');
   });
 
   it('maps all image input codes and carries safe compatible model ids', () => {

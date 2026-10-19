@@ -7,6 +7,7 @@ describe('projectByokLiveSmokeTargetDescriptors', () => {
   it('从 Provider 与 route profile 身份派生 target 和环境变量', () => {
     const binding: FormalProviderRuntimeBinding = {
       provider_definition_id: 'openai',
+      provider_connection_definition_id: 'openai-api',
       endpoint_id: 'openai',
       default_base_url: 'https://api.openai.com/v1',
       auth_profile: 'bearer',
@@ -17,12 +18,16 @@ describe('projectByokLiveSmokeTargetDescriptors', () => {
     expect(projectByokLiveSmokeTargetDescriptors([binding])).toEqual([
       expect.objectContaining({
         id: 'openai-responses',
+        provider_connection_definition_id: 'openai-api',
+        route_profile_id: 'openai_responses',
         capability_id: 'ai-sdk:openai-responses',
         modelEnvironmentVariable: 'LINNYA_BYOK_OPENAI_RESPONSES_MODEL',
         credentialEnvironmentVariable: 'LINNYA_BYOK_OPENAI_API_KEY',
       }),
       expect.objectContaining({
         id: 'openai-chat',
+        provider_connection_definition_id: 'openai-api',
+        route_profile_id: 'openai_chat',
         capability_id: 'ai-sdk:openai-chat',
         modelEnvironmentVariable: 'LINNYA_BYOK_OPENAI_CHAT_MODEL',
         credentialEnvironmentVariable: 'LINNYA_BYOK_OPENAI_API_KEY',
@@ -33,6 +38,7 @@ describe('projectByokLiveSmokeTargetDescriptors', () => {
   it('单 route Provider 直接使用 Provider id，且拒绝非 BYOK 绑定', () => {
     const binding: FormalProviderRuntimeBinding = {
       provider_definition_id: 'deepseek',
+      provider_connection_definition_id: 'deepseek',
       endpoint_id: 'deepseek',
       default_base_url: 'https://api.deepseek.com',
       auth_profile: 'bearer',
@@ -76,10 +82,12 @@ describe('projectByokLiveSmokeTargetDescriptors', () => {
     ).toEqual([
       expect.objectContaining({
         id: 'moonshotai',
+        provider_connection_definition_id: 'moonshot-api-global',
         credentialEnvironmentVariable: 'LINNYA_BYOK_MOONSHOTAI_API_KEY',
       }),
       expect.objectContaining({
         id: 'moonshotai-cn',
+        provider_connection_definition_id: 'moonshot-api-cn',
         credentialEnvironmentVariable: 'LINNYA_BYOK_MOONSHOTAI_CN_API_KEY',
       }),
     ]);

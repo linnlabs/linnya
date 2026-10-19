@@ -1,10 +1,12 @@
-import type { ModelInferenceRoute } from '@app/schemas/model-inference';
+import type { LanguageInferenceRouteProfileId, ModelInferenceRoute } from '@app/schemas/model-inference';
 
 import type { AiSdkInferenceSurface } from '@linnlabs/linnkit-provider-ai-sdk';
 
 export interface ByokLiveSmokeTarget {
   readonly id: string;
   readonly name: string;
+  readonly provider_connection_definition_id: string;
+  readonly route_profile_id: LanguageInferenceRouteProfileId;
   readonly capability_id: ModelInferenceRoute['capability_id'];
   readonly surface: AiSdkInferenceSurface;
   readonly endpoint_id: string;

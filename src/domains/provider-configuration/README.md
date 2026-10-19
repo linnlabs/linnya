@@ -51,6 +51,11 @@ case 取消 intent；domain registry 不反向调用 Model Catalog。
 Registry 串行执行每条 intent 命令的校验、快照读取、写盘和内存发布，防止账号后台同步与用户注册/删除互相
 覆盖 pending intent 或已提交归属。一条写盘失败只影响该命令，后续命令继续基于最后一次成功快照执行。
 
+独立 Worker 通过公开 `readProviderConnectionLookup()` 在任务初始化时读取一次已提交的模型归属，
+把窄 lookup 注入 Host 推理装配。只读入口只接受当前版本，缺文件、旧版本、损坏和重复归属直接失败，
+不会创建目录或文件、迁移、恢复 intent 或 reconcile；App Server 必须先完成正式配置初始化。
+快照不暴露 pending intent，运行中的同一任务也不随账号后台同步改变模型归属。
+
 ## 目录
 
 ```text
@@ -59,6 +64,7 @@ provider-configuration/
 ├── features/
 │   └── configuration-persistence/ # 单版本 JSON codec 与文件 adapter
 ├── registry/                    # 唯一内存索引、intent 状态机、启动恢复
+├── shared/functions/            # Registry 与只读快照共用的归属唯一性规则
 ├── index.ts                     # 跨 domain 唯一入口
 └── README.md
 ```

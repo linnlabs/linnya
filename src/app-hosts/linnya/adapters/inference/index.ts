@@ -6,6 +6,8 @@ export type {
   InferenceCredentialRequest,
   InferenceCredentialResolver,
   InferenceModelCatalog,
+  InferenceRequestIdentity,
+  InferenceRequestIdentityResolver,
   ResolvedInferenceAttemptRoute,
 } from './definitions/inferenceCapability';
 export {
@@ -40,4 +42,5 @@ export {
   type RerankingModelCatalog,
 } from './orchestration/createRerankingPort';
 export * from './features/provider-onboarding-binding';
+export { getCurrentInferenceSessionId, runWithInferenceSession } from './features/request-session';
 export { createLinnyaModelReasoningResolver } from './features/ai-sdk-language-composition/orchestration/createLinnyaModelReasoningResolver';

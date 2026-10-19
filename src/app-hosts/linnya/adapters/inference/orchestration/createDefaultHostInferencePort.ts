@@ -1,5 +1,7 @@
 import type { CanonicalInferencePort } from '@linnlabs/linnkit/ports';
 import { modelCatalog } from 'src/domains/model-catalog';
+import { providerConfigurationRegistry } from 'src/domains/provider-configuration';
+import { version } from '../../../../../../package.json';
 import {
   defaultProviderOutboundDiagnostics,
   type ProviderOutboundDiagnosticsPort,
@@ -19,12 +21,16 @@ import { createLinnyaAiSdkLanguageDiagnosticSink } from '../features/ai-sdk-diag
 import { linnyaProviderFailureClassifier } from '../features/provider-failure-policy/functions/classifyLinnyaProviderFailure';
 import { createLinnyaAiSdkInferenceCapability } from '../features/ai-sdk-language-composition/orchestration/createLinnyaAiSdkInferenceCapability';
 import { createLinnyaAiSdkLanguageModelRegistry } from '../features/ai-sdk-language-composition/orchestration/createLinnyaAiSdkLanguageModelRegistry';
+import { getCurrentInferenceSessionId } from '../features/request-session';
+import { projectInferenceRequestIdentity } from '../functions/projectInferenceRequestIdentity';
 
 export interface DefaultHostInferencePortDependencies {
   readonly model_catalog?: InferenceModelCatalog;
   readonly credential_resolver?: InferenceCredentialResolver;
   readonly language_models?: AiSdkLanguageModelRegistry;
   readonly outbound_diagnostics?: ProviderOutboundDiagnosticsPort;
+  /** Worker 注入只读配置快照；App Server 使用唯一的运行中 Provider registry。 */
+  readonly resolve_provider_connection_id?: (modelId: string) => string | undefined;
 }
 
 const defaultModelCatalog: InferenceModelCatalog = {
@@ -44,6 +50,9 @@ export function createDefaultHostInferencePort(
 ): CanonicalInferencePort {
   const languageModels = dependencies.language_models ?? createLinnyaAiSdkLanguageModelRegistry();
   const diagnosticSink = createLinnyaAiSdkLanguageDiagnosticSink();
+  const resolveProviderConnectionId = dependencies.resolve_provider_connection_id
+    ?? (modelId => providerConfigurationRegistry.getByModelConfigId(modelId)
+      ?.provider_connection_definition_id);
   const capabilityRegistry = createInferenceCapabilityRegistry([
     createMockInferenceCapability(),
     ...languageModels.entries.map(entry =>
@@ -60,5 +69,12 @@ export function createDefaultHostInferencePort(
     capability_registry: capabilityRegistry,
     credential_resolver: dependencies.credential_resolver ?? defaultCredentialResolver,
     outbound_diagnostics: dependencies.outbound_diagnostics ?? defaultProviderOutboundDiagnostics,
+    resolve_request_identity: (request, route) => projectInferenceRequestIdentity({
+      request,
+      route,
+      client_version: version,
+      conversation_session_id: getCurrentInferenceSessionId(),
+      resolve_provider_connection_id: resolveProviderConnectionId,
+    }),
   });
 }
