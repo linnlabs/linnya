@@ -537,9 +537,27 @@ export default defineComponent({
      * - 这里引入节流：isStreaming=true 时，最多每 50ms 解析一次，把 burst 合并掉。
      */
     const STREAM_PARSE_THROTTLE_MS = 50
+    /**
+     * 开启 streamReveal 时，展示内容本身已经被节奏器匀速放出，不再需要 50ms 的“合并突发”节流；
+     * 解析间隔改为按实际解析耗时自适应：耗时的 5 倍，夹在一帧（16ms）与 50ms 之间，
+     * 让解析最多占用约 1/5 的主线程时间，长文本自动退回到 50ms。
+     */
+    const MIN_REVEAL_PARSE_THROTTLE_MS = 16
+    let parseCostEmaMs = 0
+    const resolveParseThrottleMs = (): number => {
+      if (!props.streamReveal) return STREAM_PARSE_THROTTLE_MS
+      return Math.min(
+        STREAM_PARSE_THROTTLE_MS,
+        Math.max(MIN_REVEAL_PARSE_THROTTLE_MS, Math.ceil(parseCostEmaMs * 5)),
+      )
+    }
     const parseAndSetNodes = (markdown: string, reason: 'immediate' | 'throttled') => {
       void reason
+      const parseStartedAt = performance.now()
       const nextNodes = parseMarkdown(markdown)
+      parseCostEmaMs = parseCostEmaMs === 0
+        ? performance.now() - parseStartedAt
+        : parseCostEmaMs * 0.8 + (performance.now() - parseStartedAt) * 0.2
       const isAppendOnly = markdown.startsWith(parsedMarkdown)
       if (!isAppendOnly) {
         citationDisplayState.map.clear()
@@ -558,7 +576,7 @@ export default defineComponent({
       }
     }
     const parseScheduler = createMarkdownParseScheduler({
-      throttleMs: STREAM_PARSE_THROTTLE_MS,
+      throttleMs: resolveParseThrottleMs,
       parse: parseAndSetNodes,
     })
 

@@ -79,4 +79,24 @@ describe('conversation Markdown parse scheduler', () => {
 
     expect(parse).not.toHaveBeenCalled();
   });
+
+  it('throttleMs 可以是函数：每次调度前读取最新间隔', () => {
+    vi.useFakeTimers();
+    const parse = vi.fn();
+    let interval = 16;
+    const scheduler = createMarkdownParseScheduler({ throttleMs: () => interval, parse });
+
+    scheduler.update('a', 'throttled');
+    vi.advanceTimersByTime(15);
+    expect(parse).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(parse).toHaveBeenLastCalledWith('a', 'throttled');
+
+    interval = 50;
+    scheduler.update('ab', 'throttled');
+    vi.advanceTimersByTime(49);
+    expect(parse).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    expect(parse).toHaveBeenLastCalledWith('ab', 'throttled');
+  });
 });

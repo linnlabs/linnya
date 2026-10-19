@@ -18,7 +18,8 @@ export interface MarkdownParseScheduler {
  * 无意义地替换整组节点，并触发虚拟行二次测量。
  */
 export function createMarkdownParseScheduler(input: {
-  readonly throttleMs: number;
+  /** 节流间隔；传函数时每次调度前读取，用于按实际解析耗时自适应。 */
+  readonly throttleMs: number | (() => number);
   readonly parse: (markdown: string, reason: MarkdownParseReason) => void;
 }): MarkdownParseScheduler {
   let lastParsedMarkdown: string | null = null;
@@ -61,7 +62,7 @@ export function createMarkdownParseScheduler(input: {
         const latest = pendingMarkdown;
         pendingMarkdown = null;
         if (latest !== null) commit(latest, 'throttled');
-      }, input.throttleMs);
+      }, typeof input.throttleMs === 'function' ? input.throttleMs() : input.throttleMs);
     },
     setSuspended(nextSuspended) {
       if (disposed || suspended === nextSuspended) return;

@@ -15,6 +15,7 @@
         <ConversationMarkdownRenderer
           :content="message.content"
           :isStreaming="isThinking"
+          stream-reveal
           :turnId="turnId"
           :citation-dependencies="message.citationDependencies"
         />
