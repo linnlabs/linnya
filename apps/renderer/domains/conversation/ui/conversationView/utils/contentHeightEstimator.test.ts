@@ -79,7 +79,8 @@ describe('contentHeightEstimator', () => {
   });
 
   it('estimates user input as plain text instead of markdown', () => {
-    const markdownLikeInput = '```ts\nconst revenue = 240_000_000;\nconst growth = 0.38;\n```';
+    // 标题行在 Markdown 里有更大的字号与上下间距；纯文本路径只按一行正文高度计。
+    const markdownLikeInput = ['# One', '# Two', '# Three', '# Four', '# Five', '# Six'].join('\n');
     const userInput = estimateConversationMessageHeight(
       makeMessage('u1', markdownLikeInput, 'user_input'),
       defaultEstimationRegistry,

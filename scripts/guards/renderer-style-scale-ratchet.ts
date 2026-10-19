@@ -127,8 +127,12 @@ function isBeyondHairline(text: string): boolean {
   return Math.abs(Number.parseFloat(text)) > 1;
 }
 
-/* 间距刻度最大到 40px；更大的值是版面尺寸（空态留白、固定列宽），不属于间距刻度。 */
+/**
+ * 间距刻度最大到 40px；更大的值是版面尺寸（空态留白、固定列宽），不属于间距刻度。
+ * `em` 是随当前字号缩放的相对间距（文档内容排版的垂直节奏），不是绕过刻度的绝对值。
+ */
 function isSpacingScaleCandidate(text: string): boolean {
+  if (/(?<!r)em$/u.test(text)) return false;
   const value = Math.abs(Number.parseFloat(text));
   return value > 1 && value <= 40;
 }

@@ -2,8 +2,8 @@
 .answer-body {
   width: 100%;
   color: var(--color-text-primary);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-normal);
+  font-size: var(--font-size-prose);
+  line-height: var(--line-height-prose);
 }
 
 .answer-body .content-area {

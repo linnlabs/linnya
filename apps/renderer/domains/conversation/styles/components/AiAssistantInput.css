@@ -246,7 +246,7 @@
   color: var(--color-text-primary);
   font-family: inherit;
   font-size: var(--font-size-prose);
-  line-height: var(--line-height-prose); /* 改为相对行高，避免固定行高导致的计算问题 */
+  line-height: var(--line-height-prose);
   min-height: 28px; /* 增加最小高度，提供缓冲空间避免高度跳跃 */
   max-height: 240px;
   overflow-y: auto;

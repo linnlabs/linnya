@@ -36,7 +36,6 @@
 3	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/SharedMemoryDocReadCard.css
 2	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/SharedMemoryDocWriteCard.css
 1	SCALE-06-z-index	apps/renderer/domains/conversation/styles/components/SidebarChatList.css
-1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/SmartCodeBlock.css
 1	SCALE-06-z-index	apps/renderer/domains/conversation/styles/components/SmartCodeBlock.css
 2	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/SubrunTracePanel.css
 1	SCALE-03-line-height	apps/renderer/domains/conversation/styles/components/SummaryMessage.css
@@ -50,13 +49,11 @@
 1	SCALE-03-line-height	apps/renderer/domains/conversation/styles/components/WorkspaceDocumentViewCard.css
 3	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/WorkspaceDocumentViewCard.css
 7	SCALE-05-spacing	apps/renderer/domains/conversation/styles/features/command-approval/CommandApprovalPanel.css
-1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/features/markstream-conversation-message.css
 3	SCALE-06-z-index	apps/renderer/domains/editor/blocks/TableBlock/styles/table.css
 1	SCALE-05-spacing	apps/renderer/domains/editor/blocks/TableBlock/styles/TableAiContext.css
 1	SCALE-03-line-height	apps/renderer/domains/editor/blocks/TableBlock/styles/TableCellContentBlock.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/blocks/TableBlock/styles/TableSizeSelector.css
 1	SCALE-03-line-height	apps/renderer/domains/editor/styles/blocks/audio/AudioEditorTabs.css
-1	SCALE-05-spacing	apps/renderer/domains/editor/styles/blocks/audio/AudioEditorTabs.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/blocks/audio/AudioEditorTabs.css
 2	SCALE-06-z-index	apps/renderer/domains/editor/styles/blocks/audio/AudioPlayer.css
 2	SCALE-05-spacing	apps/renderer/domains/editor/styles/blocks/audio/RecordingControls.css
@@ -69,7 +66,7 @@
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/components/AnnotationHandle.css
 1	SCALE-05-spacing	apps/renderer/domains/editor/styles/components/AnnotationPanel.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/components/AnnotationPanel.css
-3	SCALE-05-spacing	apps/renderer/domains/editor/styles/components/Block.css
+2	SCALE-05-spacing	apps/renderer/domains/editor/styles/components/Block.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/components/Block.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/components/BlockVersionHandle.css
 1	SCALE-05-spacing	apps/renderer/domains/editor/styles/components/EditorMenuBar.css

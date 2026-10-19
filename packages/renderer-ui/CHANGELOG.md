@@ -38,6 +38,7 @@
 - Linnya 助手及项目对话的空态使用 display 尺寸稿，由各自页面样式展示无背景的图标。
 - `IconButton` 新增 `overlay` variant：叠在图片、视频等内容上的纯图标按钮，白色图标、悬停半透明白底，选中沿用强调色；颜色不随主题变化，半透明深色底条由容器提供。
 - 业务侧迁移到 `IconButton`：对话与编辑器里图片上的操作按钮（`ImageRenderer`、`ImageBlockView`，使用 `overlay`，复制成功改为对勾图标）、输入框“+”按钮、音频块的面板开关 / 新建菜单 / 折叠按钮，以及 `CustomTextInput` 的清除按钮；清除按钮图标由 16px 统一为 18px。
+- 对话回答、用户消息与输入框改用 `prose`（14/22）：此前回答与用户消息停在 `body`（13/20），比输入框还小；回答里的 Markdown 垂直节奏改为随字号缩放的 `em`，标题字号显式规定。
 - 刻度收口（2026-10-17）：`Switch` 轨道与 `CustomSelect` 滚动条滑块改用 `--radius-full`，`CustomCheckbox` 圆角取 `--radius-sm`；`PageSectionHeader` 标题字号由 20px 改为 `--font-size-title`（18px），间距由 18px 归到 `--space-4`（16px），说明行高改为 `--line-height-prose`；`AlertDialog` 分组间距 14px 归到 `--space-3`；`HoverTooltip`、`CustomSelect`、`TextPopover`、`Switch`、`AlertDialog` 的比例行高改为同字号角色的 `--line-height-*`（单行文字变化不超过 1px）；`NotificationBar` 带边框的内边距改为 `calc(token - 1px)`，外尺寸不变。设计规范新增第 15 节“细节清单”，补充带边框控件按外尺寸对齐、胶囊与细条圆角、最高层 z-index、延迟与循环动画的写法，以及刻度棘轮的有意例外（`scale-exempt` 标注）。
 
 ## 2.5.2 - 2026-09-17

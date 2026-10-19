@@ -27,14 +27,14 @@
 
 /* 段落与换行：对齐旧 `.markdown-content` 的紧凑间距策略。 */
 [data-scope="conversation-message"] p {
-  margin-top: var(--space-0-5);
-  margin-bottom: var(--space-0-5);
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
 }
 
 [data-scope="conversation-message"] br {
   display: block;
   height: 0;
-  margin-bottom: var(--space-2);
+  margin-bottom: 0.5em;
   content: "";
 }
 
@@ -45,15 +45,30 @@
 [data-scope="conversation-message"] h4,
 [data-scope="conversation-message"] h5,
 [data-scope="conversation-message"] h6 {
-  margin: var(--space-3) 0 var(--space-2);
+  margin: 1.1em 0 0.4em;
   color: var(--color-text-primary);
   font-weight: var(--font-weight-semibold);
+  font-size: 1em;
+  line-height: var(--line-height-normal);
+}
+
+/* 标题字号显式规定，不依赖浏览器默认的 2em / 1.5em / 1.17em / 0.83em / 0.67em。 */
+[data-scope="conversation-message"] h1 {
+  font-size: 1.45em;
+}
+
+[data-scope="conversation-message"] h2 {
+  font-size: 1.2em;
+}
+
+[data-scope="conversation-message"] h3 {
+  font-size: 1.07em;
 }
 
 /* 列表：markstream 输出原生列表节点时需要保留默认可读性。 */
 [data-scope="conversation-message"] ul,
 [data-scope="conversation-message"] ol {
-  margin: var(--space-2) 0 var(--space-2) 18px;
+  margin: 0.5em 0 0.5em 1.4em;
   padding: 0;
 }
 
@@ -68,17 +83,17 @@
 }
 
 [data-scope="conversation-message"] li {
-  margin: var(--space-1) 0;
+  margin: 0.2em 0;
 }
 
 /* 引用块：对齐编辑器 quote-block 视觉，但限定在会话消息作用域。 */
 [data-scope="conversation-message"] blockquote {
   position: relative;
-  margin: var(--space-2-5) 0;
-  padding-left: 1rem;
+  margin: 0.7em 0;
+  padding-left: 1em;
   overflow: visible;
   color: var(--color-text-tertiary);
-  line-height: var(--line-height-normal);
+  line-height: inherit;
   border-radius: var(--radius-xs);
 }
 
@@ -95,8 +110,8 @@
 
 /* 二级引用：编辑器没有对应样式，这里补齐缩进。 */
 [data-scope="conversation-message"] blockquote blockquote {
-  margin: var(--space-2) 0;
-  padding-left: calc(1rem + var(--space-5));
+  margin: 0.5em 0;
+  padding-left: calc(1em + var(--space-5));
 }
 
 [data-scope="conversation-message"] blockquote blockquote::before {
@@ -106,7 +121,7 @@
 /* 行内代码与代码块：SmartCodeBlock 会用更具体的组件选择器接管自研代码块。 */
 [data-scope="conversation-message"] code {
   font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
-  font-size: var(--font-size-footnote);
+  font-size: 0.9em;
 }
 
 [data-scope="conversation-message"] :not(pre) > code {
@@ -116,7 +131,7 @@
 }
 
 [data-scope="conversation-message"] pre {
-  margin: var(--space-2-5) 0;
+  margin: 0.7em 0;
   padding: var(--space-2-5) var(--space-3);
   overflow: auto;
   background: var(--markstream-message-subtle-bg);
@@ -152,8 +167,8 @@
 /* 表格：沿用会话 markdown 的基础表格视觉。 */
 [data-scope="conversation-message"] table {
   width: 100%;
-  margin: var(--space-4) 0;
-  font-size: var(--font-size-footnote);
+  margin: 1em 0;
+  font-size: 0.9em;
   border-collapse: collapse;
 }
 

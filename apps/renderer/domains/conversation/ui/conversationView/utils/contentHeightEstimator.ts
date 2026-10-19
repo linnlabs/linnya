@@ -17,6 +17,13 @@ import {
 import type { BaseMessage, ToolCallMessage } from '../../../types';
 import type { EstimationRegistry } from './estimationRegistry';
 import {
+  READING_FONT_SIZE_PX,
+  READING_HEADING_LINE_HEIGHT_RATIO,
+  READING_LINE_HEIGHT_PX,
+  readingEm,
+  readingHeadingFontSizePx,
+} from './conversationReadingTypography';
+import {
   calculateImageGenerationResultHeight,
   type ImageGenerationSingleRatio,
 } from '../../../functions/conversationImageLayout';
@@ -30,6 +37,11 @@ const MIN_CONTENT_WIDTH_PX = 220;
 const USER_IMAGE_GALLERY_MAX_WIDTH_PX = 384;
 const USER_IMAGE_GALLERY_GAP_PX = 4;
 const USER_IMAGE_GALLERY_BOTTOM_MARGIN_PX = 4;
+/** 回答正文的段落样式：与 `--font-size-prose` / `--line-height-prose` 一致。 */
+const READING_STYLE: TextStyleSpec = {
+  fontSizePx: READING_FONT_SIZE_PX,
+  lineHeightPx: READING_LINE_HEIGHT_PX,
+};
 
 const markdown = getMarkdown('conversation-estimation');
 const textMeasureService = new TextMeasureService({
@@ -198,20 +210,22 @@ function extractInlineText(nodes: ParsedNode[]): string {
 }
 
 function estimateHeadingHeight(node: HeadingNode, widthPx: number): number {
-  const fontSizePx = node.level <= 1 ? 22 : node.level === 2 ? 18 : 16;
-  const lineHeightPx = node.level <= 1 ? 32 : 28;
+  const fontSizePx = readingHeadingFontSizePx(node.level);
+  const lineHeightPx = Math.round(fontSizePx * READING_HEADING_LINE_HEIGHT_RATIO);
+  // 标题上 1.1em、下 0.4em（与相邻段落 0.5em 折叠，取较大者）。
+  const marginPx = readingEm(1.1, fontSizePx) + Math.max(readingEm(0.4, fontSizePx), readingEm(0.5));
   return measureTextBlockHeight(extractInlineText(node.children), widthPx, {
     fontSizePx,
     lineHeightPx,
-  }) + 12;
+  }) + marginPx;
 }
 
 function estimateListItemHeight(node: ListItemNode, widthPx: number): number {
-  return estimateNodeCollectionHeight(node.children, Math.max(widthPx - 20, MIN_CONTENT_WIDTH_PX)) + 8;
+  return estimateNodeCollectionHeight(node.children, Math.max(widthPx - readingEm(1.4), MIN_CONTENT_WIDTH_PX)) + readingEm(0.2);
 }
 
 function estimateListHeight(node: ListNode, widthPx: number): number {
-  return node.items.reduce((sum, item) => sum + estimateListItemHeight(item, widthPx), 0) + 8;
+  return node.items.reduce((sum, item) => sum + estimateListItemHeight(item, widthPx), 0) + readingEm(0.5);
 }
 
 function estimateCodeBlockHeight(node: CodeBlockNode, widthPx: number): number {
@@ -228,21 +242,21 @@ function estimateTableHeight(node: TableNode, widthPx: number): number {
   const columnCount = Math.max(node.header.cells.length, 1);
   const innerWidth = Math.max(widthPx - 16, MIN_CONTENT_WIDTH_PX);
   const columnWidth = Math.max(innerWidth / columnCount, 80);
+  // 表格字号 0.9em，行高继承正文的 22px；单元格上下内边距各 6px 加 1px 边框。
+  const tableCellStyle: TextStyleSpec = {
+    fontSizePx: readingEm(0.9),
+    lineHeightPx: READING_LINE_HEIGHT_PX,
+  };
+  const cellChromePx = 14;
   const headerHeight = node.header.cells.reduce((max, cell) => Math.max(
     max,
-    measureTextBlockHeight(extractInlineText(cell.children), columnWidth, {
-      fontSizePx: 13,
-      lineHeightPx: 20,
-    }),
-  ), 0) + 18;
+    measureTextBlockHeight(extractInlineText(cell.children), columnWidth, tableCellStyle),
+  ), 0) + cellChromePx;
   const rowHeights = node.rows.map((row) => row.cells.reduce((max, cell) => Math.max(
     max,
-    measureTextBlockHeight(extractInlineText(cell.children), columnWidth, {
-      fontSizePx: 14,
-      lineHeightPx: 22,
-    }),
-  ), 0) + 18);
-  return headerHeight + rowHeights.reduce((sum, height) => sum + height, 0) + 12;
+    measureTextBlockHeight(extractInlineText(cell.children), columnWidth, tableCellStyle),
+  ), 0) + cellChromePx);
+  return headerHeight + rowHeights.reduce((sum, height) => sum + height, 0) + readingEm(1);
 }
 
 function estimateParagraphLikeHeight(text: string, widthPx: number, style: TextStyleSpec, gapPx: number): number {
@@ -254,10 +268,12 @@ function estimateNodeHeight(node: ParsedNode, widthPx: number): number {
     case 'heading':
       return estimateHeadingHeight(node as HeadingNode, widthPx);
     case 'paragraph':
-      return estimateParagraphLikeHeight(extractInlineText((node as ParagraphNode).children), widthPx, {
-        fontSizePx: 15,
-        lineHeightPx: 24,
-      }, 12);
+      return estimateParagraphLikeHeight(
+        extractInlineText((node as ParagraphNode).children),
+        widthPx,
+        READING_STYLE,
+        readingEm(0.5),
+      );
     case 'list':
       return estimateListHeight(node as ListNode, widthPx);
     case 'code_block':
@@ -265,7 +281,7 @@ function estimateNodeHeight(node: ParsedNode, widthPx: number): number {
     case 'table':
       return estimateTableHeight(node as TableNode, widthPx);
     case 'blockquote':
-      return estimateNodeCollectionHeight(getNodeChildren(node), Math.max(widthPx - 20, MIN_CONTENT_WIDTH_PX)) + 16;
+      return estimateNodeCollectionHeight(getNodeChildren(node), Math.max(widthPx - readingEm(1.4), MIN_CONTENT_WIDTH_PX)) + readingEm(0.8);
     case 'math_block':
       return estimateParagraphLikeHeight(String((node as { content?: unknown }).content ?? ''), widthPx, {
         fontSizePx: 16,
@@ -276,15 +292,12 @@ function estimateNodeHeight(node: ParsedNode, widthPx: number): number {
     case 'image':
       return 240;
     case 'html_block':
-      return estimateParagraphLikeHeight(String((node as { content?: unknown }).content ?? ''), widthPx, {
-        fontSizePx: 14,
-        lineHeightPx: 22,
-      }, 12);
+      return estimateParagraphLikeHeight(String((node as { content?: unknown }).content ?? ''), widthPx, READING_STYLE, readingEm(0.5));
     case 'definition_list':
       return (node as DefinitionListNode).items.reduce((sum: number, item: DefinitionItemNode) => (
         sum
-        + estimateParagraphLikeHeight(extractInlineText(item.term), widthPx, { fontSizePx: 15, lineHeightPx: 24 }, 6)
-        + estimateParagraphLikeHeight(extractInlineText(item.definition), Math.max(widthPx - 16, MIN_CONTENT_WIDTH_PX), { fontSizePx: 14, lineHeightPx: 22 }, 10)
+        + estimateParagraphLikeHeight(extractInlineText(item.term), widthPx, READING_STYLE, readingEm(0.4))
+        + estimateParagraphLikeHeight(extractInlineText(item.definition), Math.max(widthPx - 16, MIN_CONTENT_WIDTH_PX), READING_STYLE, readingEm(0.5))
       ), 0);
     default: {
       const children = getNodeChildren(node);
@@ -293,10 +306,7 @@ function estimateNodeHeight(node: ParsedNode, widthPx: number): number {
       }
       const rawContent = (node as { content?: unknown }).content;
       if (typeof rawContent === 'string') {
-        return estimateParagraphLikeHeight(rawContent, widthPx, {
-          fontSizePx: 15,
-          lineHeightPx: 24,
-        }, 8);
+        return estimateParagraphLikeHeight(rawContent, widthPx, READING_STYLE, readingEm(0.5));
       }
       return 0;
     }
@@ -330,10 +340,7 @@ function estimatePlainUserInputContent(content: string, widthPx: number): Pick<C
    * - 这里复用现有 TextMeasureService。浏览器环境优先走 pretext，Node/异常时自动回退启发式测量。
    */
   return {
-    height: measureTextBlockHeight(content, widthPx, {
-      fontSizePx: 13,
-      lineHeightPx: 19,
-    }),
+    height: measureTextBlockHeight(content, widthPx, READING_STYLE),
     containsTable: false,
   };
 }
