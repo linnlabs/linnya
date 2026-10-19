@@ -16,6 +16,7 @@ import {
   defineComponent,
   h,
   inject,
+  nextTick,
   shallowRef,
   watch,
   onBeforeUnmount,
@@ -43,6 +44,7 @@ import ConversationMarkdownBlock, {
   type ConversationMarkdownRenderContext,
   type ConversationMarkdownVNodeChild,
 } from './ConversationMarkdownBlock'
+import StreamingText from './StreamingText'
 import { createMarkdownParseDebug } from './markdownParseDebug'
 import { createMarkdownParseScheduler } from './createMarkdownParseScheduler'
 import { reconcileStreamingMarkdownNodes } from './reconcileStreamingMarkdownNodes'
@@ -203,6 +205,9 @@ function renderNode(
       if (!content) return ''
       REFERENCE_TEXT_RE.lastIndex = 0
       if (!REFERENCE_TEXT_RE.test(content)) {
+        if (ctx.isStreaming && ctx.fadeNewText) {
+          return h(StreamingText, { text: content, animateInitial: ctx.fadeInitialText === true })
+        }
         return content
       }
       REFERENCE_TEXT_RE.lastIndex = 0
@@ -487,6 +492,8 @@ export default defineComponent({
   props: {
     content: { type: String, required: true },
     isStreaming: { type: Boolean, default: false },
+    /** 流式尾块里新长出的文字淡入；默认关闭，由会话答案正文显式开启。 */
+    streamReveal: { type: Boolean, default: false },
     /** 对话轮次 ID（供引用 transfer DOM 标注归属） */
     turnId: { type: String, default: undefined },
     citationDependencies: {
@@ -512,6 +519,13 @@ export default defineComponent({
       next: 1,
     }
     let parsedMarkdown = ''
+    /**
+     * 渲染器首次提交并渲染完之后才长出来的文字节点才需要整段淡入；
+     * 挂载时已有的内容（虚拟列表重挂载、刷新恢复）直接显示，不做动画。
+     * 挂载时正文为空则一开始就算“新长出”。
+     */
+    let revealInitialText = props.content === ''
+    let initialCommitSeen = false
     const parseDebug = createMarkdownParseDebug(import.meta.env.VITE_CONVERSATION_MARKDOWN_DEBUG)
 
     /**
@@ -536,6 +550,10 @@ export default defineComponent({
         nextNodes,
       })
       parsedMarkdown = markdown
+      if (!initialCommitSeen) {
+        initialCommitSeen = true
+        void nextTick().then(() => { revealInitialText = true })
+      }
     }
     const parseScheduler = createMarkdownParseScheduler({
       throttleMs: STREAM_PARSE_THROTTLE_MS,
@@ -578,6 +596,8 @@ export default defineComponent({
           key: `${index}:${node.type}`,
           node,
           isStreaming: props.isStreaming && index === nodes.value.length - 1,
+          fadeNewText: props.streamReveal && props.isStreaming && index === nodes.value.length - 1,
+          fadeInitialText: revealInitialText,
           parseMarkdown,
           renderNode,
           turnId: props.turnId,

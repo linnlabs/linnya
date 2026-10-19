@@ -87,6 +87,7 @@ flowchart TB
 - **单活跃实例**：chat-centric / editor-centric 双宿主必须保证只有一个活跃 ConversationHost 发分页 / 落底 / 测量意图。
 - **复制 / 转存**：多段 `final_answer` 经离屏 `ConversationAnswerRenderHost` 在同一 Vue app 上下文按需真实渲染后提取，操作串行化；禁止第二套 Markdown→HTML。
 - **Markdown 提交一次**：流式内容可以节流解析，但进入非 streaming 后同一正文只提交一次最终 AST。run 状态变化、操作区挂载或父级重渲染不能触发第二次正文提交；所有 Markdown 来源复用 `MarkstreamRenderer` / `packages/stream-markdown-parser`。
+- **流式淡入只增强、不改结构**：答案正文开启 `stream-reveal` 后，只有“正在增长的尾块”里新长出的文字被包进行内 `span` 做 150ms 透明度淡入（`StreamingText` + 纯函数状态机 `streamingTextSegments`）。行内 span 不改变换行与高度，因此不触及估高与测量；挂载时已有的内容（虚拟列表重挂载、刷新恢复）直接显示，非尾部追加的变化直接重置，封口后恢复普通文字且同一正文仍只提交一次最终 AST。只做透明度，不用模糊或位移。
 - **平滑宽度与流式提交隔离**：AppLayout 始终保留真实内容宽度动画。Conversation 宿主只观察真实消息列；连续 resize 时通过 render-scheduling port 暂停当前 Thought / Answer 的 Markdown AST 提交并缓存最新正文，quiet window 后一次追平。解析后的顶层 block 对 append-only 未变节点复用 identity，Vue 只 patch 活跃尾块。该合同同样覆盖 Sidebar、窗口、pane 和 timeline，不监听 App Sidebar 事件。
 
 ### 3.1 合同重构对虚拟化的影响

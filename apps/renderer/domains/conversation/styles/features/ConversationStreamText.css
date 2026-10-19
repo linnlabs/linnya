@@ -1,0 +1,21 @@
+/**
+ * @file ConversationStreamText.css
+ * @description 流式正文新长出的文字淡入。
+ *
+ * 只动画透明度：不模糊、不位移，行内 span 也不改变换行与高度。
+ * 时长与缓动取动效 token，用户开启“减少动态效果”时时长归零，动画立即结束。
+ */
+
+[data-scope="conversation-message"] .conversation-stream-text__fresh {
+  animation: conversation-stream-text-fade-in var(--duration-short) var(--ease-enter) both;
+}
+
+@keyframes conversation-stream-text-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

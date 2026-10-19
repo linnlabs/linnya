@@ -12,6 +12,10 @@ export type ConversationMarkdownVNodeChild =
 
 export interface ConversationMarkdownRenderContext {
   readonly isStreaming: boolean;
+  /** 流式尾块里新长出的文字是否淡入（只在 isStreaming 的尾块生效）。 */
+  readonly fadeNewText?: boolean;
+  /** 淡入时，文字节点挂载时的整段文本是否也淡入（渲染器初次提交之后才长出来的节点）。 */
+  readonly fadeInitialText?: boolean;
   readonly parseMarkdown: (content: string) => ParsedNode[];
   /** 对话轮次 ID（供引用 transfer DOM 标注归属）。 */
   readonly turnId?: string;
@@ -38,6 +42,8 @@ export default defineComponent({
   props: {
     node: { type: Object as PropType<ParsedNode>, required: true },
     isStreaming: { type: Boolean, required: true },
+    fadeNewText: { type: Boolean, default: false },
+    fadeInitialText: { type: Boolean, default: false },
     parseMarkdown: {
       type: Function as PropType<(content: string) => ParsedNode[]>,
       required: true,
@@ -59,6 +65,8 @@ export default defineComponent({
   setup(props) {
     return () => h(Fragment, null, [props.renderNode(props.node, {
       isStreaming: props.isStreaming,
+      fadeNewText: props.fadeNewText,
+      fadeInitialText: props.fadeInitialText,
       parseMarkdown: props.parseMarkdown,
       turnId: props.turnId,
       citationDependencies: props.citationDependencies,
