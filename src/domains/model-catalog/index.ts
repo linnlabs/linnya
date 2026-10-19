@@ -61,6 +61,7 @@ export {
   ModelDiscoveryError,
   buildDiscoveryUrl,
   parseModelListingResponse,
+  type ModelListingIdentity,
 } from './features/model-discovery/modelDiscoveryService';
 export {
   inferModelCapabilitiesById,

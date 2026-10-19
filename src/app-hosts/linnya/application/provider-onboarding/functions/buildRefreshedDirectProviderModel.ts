@@ -21,7 +21,13 @@ export function buildRefreshedDirectProviderModel(
     modelId: input.existingModel.id,
     endpointResourceId: input.endpoint.id,
     providerModel: input.providerModel,
-    binding: input.binding,
+    // 刷新只更新模型资料；已保存的连接拥有 URL、认证和协议，目录更新不能隐式迁移它。
+    binding: {
+      ...input.binding,
+      base_url: input.endpoint.base_url,
+      auth_profile: input.endpoint.auth_profile,
+      route_profile_id: input.endpoint.route_profile_id,
+    },
     reusableEndpoint: input.endpoint,
   });
   const refreshedModel: ModelConfig = {

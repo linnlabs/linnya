@@ -90,6 +90,14 @@ flow、短期令牌刷新或外部账号身份才需要 ProviderAccount。
 Responses 或 Anthropic 兼容，再输入 URL、Key 和模型 ID；它不向持久化数据增加伪造的
 `provider` 字段。
 
+## 在线模型发现声明
+
+`ProviderAdmissionPolicy.online_model_discovery` 在已有 connection 声明中指定少量共享列表协议，不维护第二份供应商映射。Host 通过 Host-only 子入口的 `getProviderModelDiscoveryPolicy` 查询，具体 HTTP、分页、取消与失败处理由 App adapter 拥有。没有声明的 connection 明确不支持在线查询；不能根据推理 route 或 models.dev 的 npm/api 观察值自动猜测列表协议。
+
+同一列表协议的新供应商只需在原有 admission policy 声明能力，无需新增 Host adapter 或 Vue 分支。模型容量与能力继续复用既有 models.dev 投影；多协议产品的新 ID 必须先完成目录协议审核。这项联网能力声明随 package 代码发布，不改变 bundled 目录成员、生成资产或 runtime route。
+
+Vercel AI SDK 的 Provider 合同统一推理调用，没有通用的供应商模型列表接口；其 Gateway 的 `getAvailableModels` 查询 Gateway 自身目录，不能作为用户直连连接的成员事实。参见 [AI SDK Provider 管理](https://ai-sdk.dev/docs/ai-sdk-core/provider-management)与 [Gateway 动态发现](https://ai-sdk.dev/providers/ai-sdk-providers/ai-gateway#dynamic-model-discovery)。
+
 ## 双投影边界
 
 一次同步产生相同 generation ID/source digest 的两个投影：

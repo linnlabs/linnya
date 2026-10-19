@@ -44,6 +44,12 @@
   line-height: var(--line-height-normal);
 }
 
+.model-registration-settings-page .model-registration-connected {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
 .model-registration-settings-page .model-registration-quick-option-icon {
   display: block;
   flex-shrink: 0;

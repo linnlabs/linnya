@@ -121,11 +121,8 @@ describe('model registration Provider options', () => {
 
   it('Ollama Cloud 已配置时仍保留 Ollama 本地入口', () => {
     expect(
-      buildModelRegistrationCommonProviderOptions(
-        [ollamaProvider],
-        new Set(['ollama-cloud'])
-      )
-    ).toEqual([{ value: 'provider:ollama', text: 'Ollama' }]);
+      buildModelRegistrationCommonProviderOptions([ollamaProvider], new Set(['ollama-cloud']))
+    ).toEqual([{ value: 'provider:ollama', text: 'Ollama', connected: true }]);
     expect(
       buildModelRegistrationOtherProviderOptions([ollamaProvider], new Set(['ollama-cloud']))
     ).toEqual([]);
@@ -155,9 +152,7 @@ describe('model registration Provider options', () => {
         deepseekProvider,
         ollamaProvider,
       ])
-    ).toEqual([
-      { value: 'provider:deepseek', text: 'DeepSeek' },
-    ]);
+    ).toEqual([{ value: 'provider:deepseek', text: 'DeepSeek' }]);
   });
 
   it('品牌只出现一次，并在第二步列出同品牌的 API 与订阅接入方式', () => {
@@ -211,6 +206,13 @@ describe('model registration Provider options', () => {
         new Set(['openai-api'])
       )
     ).toEqual([
+      {
+        value: 'connection:openai-api',
+        label: 'OpenAI API',
+        description: '按量计费，使用 OpenAI Platform API Key',
+        badge: 'API',
+        connected: true,
+      },
       {
         value: 'connection:openai-chatgpt-subscription',
         label: 'ChatGPT 订阅',

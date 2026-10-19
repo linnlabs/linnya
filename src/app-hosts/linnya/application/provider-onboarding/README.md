@@ -18,9 +18,9 @@ Key，校验 connection 的 setup schema 确为 API Key 且已存在 ConfiguredP
 它不新建 endpoint、不改写模型或用途绑定，也不接受 URL、协议等字段；账号型 Provider 继续走登录授权。
 
 API-Key Provider 的 `refreshRegisteredProviderModels` 只原位更新已经激活的 ModelConfig，
-复用注册 builder 更新名称、容量、能力与 route placement，不自动激活或删除模型。
+复用注册 builder 更新名称、容量与能力，保留现有 endpoint 的协议、URL 与认证，不自动激活或删除模型。
 资料优先来自 `application/provider-model-discovery` 本次成功的候选，未发生在线发现时使用 bundled。
-DeepSeek 和 Ollama Cloud 在显式刷新时查询官方目录；启动不再用 bundled 覆盖这些供应商已保存的联网资料。
+已接入在线发现的 connection 在显式刷新时查询官方目录（能力清单见相邻 provider-model-discovery）；启动不再用 bundled 覆盖这些供应商已保存的联网资料。
 其余 bundled connection 仍在启动时刷新已激活模型的发布元数据。
 
 在线新模型也经过相同 membership 校验、已验收 binding、endpoint/credential 复用和 durable intent。
@@ -64,7 +64,7 @@ Provider 必须提交 API Key；账号型 Provider 必须先完成登录。同�
 runtime route，因此可以拥有多个 InferenceEndpoint，但这些 endpoint 必须引用同一份 credential；同一路由
 的模型继续复用 endpoint。`ModelConfig` 是 endpoint 引用的唯一 owner，Provider Configuration 只保存模型
 归属。同一 `provider_model_id` 只能关联一个 ModelConfig，重复添加会明确返回
-`model_already_registered`，不由 Renderer 或各 Provider 分别去重。已连接 Provider 的后续模型选择属于模型管理，不再次进入添加页。
+`model_already_registered`，不由 Renderer 或各 Provider 分别去重。已连接 Provider 的后续模型选择属于模型管理；添加页保留连接入口并导航到管理，不再次提交注册。
 Custom API 没有 ConfiguredProvider 身份，即使 URL 相同也不会被误认成正式 Provider。
 
 账号型 Provider 当前在授权后物化该账号从上游动态发现的可见模型，使 ConfiguredProvider 与模型管理立即可见；

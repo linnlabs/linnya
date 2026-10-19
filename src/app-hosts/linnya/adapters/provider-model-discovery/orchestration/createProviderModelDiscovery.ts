@@ -1,4 +1,6 @@
 import { projectLiveProviderModelMetadata } from '@linnya/provider-catalog';
+import { getProviderModelDiscoveryPolicy } from '@linnya/provider-catalog/runtime-bindings';
+import { ModelDiscoveryService, ModelDiscoveryError } from 'src/domains/model-catalog';
 
 import {
   ProviderModelDiscoveryError,
@@ -12,6 +14,7 @@ import {
   readOllamaModelIds,
   readOllamaModelMetadata,
 } from '../functions/readProviderModelDiscovery';
+import { completeListedProviderModels } from '../functions/completeListedProviderModels';
 
 const REQUEST_TIMEOUT_MS = 15_000;
 const OLLAMA_DETAILS_CONCURRENCY = 4;
@@ -25,8 +28,9 @@ export function createProviderModelDiscovery(
   dependencies: CreateProviderModelDiscoveryDependencies = {}
 ): ProviderModelDiscovery {
   const fetchImplementation = dependencies.fetchImplementation ?? globalThis.fetch;
+  const modelListing = new ModelDiscoveryService({ fetchFn: fetchImplementation });
   const supports = (connectionId: string): boolean =>
-    connectionId === 'deepseek' || connectionId === 'ollama-cloud';
+    getProviderModelDiscoveryPolicy(connectionId) !== undefined;
 
   async function readJson(url: string, init: RequestInit, signal: AbortSignal): Promise<unknown> {
     const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
@@ -49,6 +53,37 @@ export function createProviderModelDiscovery(
       if (timeout.aborted) throw new ProviderModelDiscoveryError('模型列表查询超时，请重试', 504);
       throw new ProviderModelDiscoveryError('无法读取供应商模型资料，请重试', 502);
     }
+  }
+
+  async function discoverListedModels(
+    request: ProviderModelDiscoveryRequest,
+    protocol: 'openai' | 'anthropic',
+    requiresBundledModel: boolean,
+    signal: AbortSignal
+  ): Promise<readonly ProviderDiscoveredModel[]> {
+    const models = await modelListing.listIdentities(
+      {
+        api_format: protocol === 'openai' ? 'openai_compatible' : 'anthropic_compatible',
+        base_url: request.baseUrl,
+        api_key: request.apiKey,
+      },
+      signal
+    );
+    const bundledIds = new Set(request.bundledModels.map(model => model.id));
+    const needsMetadata = !requiresBundledModel && models.some(model => !bundledIds.has(model.id));
+    const liveMetadata = needsMetadata
+      ? projectLiveProviderModelMetadata(
+          request.connectionId,
+          // 元数据查询只接收公共请求头，不能带上供应商凭据。
+          await readJson(MODELS_DEV_URL, { headers: { accept: 'application/json' } }, signal)
+        )
+      : [];
+    return completeListedProviderModels(
+      models,
+      [...liveMetadata, ...request.bundledModels],
+      request.bundledModels,
+      requiresBundledModel
+    );
   }
 
   async function discoverOllama(
@@ -101,7 +136,8 @@ export function createProviderModelDiscovery(
   return {
     supports,
     async discover(request) {
-      if (!supports(request.connectionId)) {
+      const policy = getProviderModelDiscoveryPolicy(request.connectionId);
+      if (!policy) {
         throw new ProviderModelDiscoveryError('该供应商尚不支持实时模型发现', 400);
       }
       const cancellation = new AbortController();
@@ -111,7 +147,15 @@ export function createProviderModelDiscovery(
       ]);
       try {
         if (signal.aborted) throw new ProviderModelDiscoveryError('模型列表刷新已取消', 499);
-        if (request.connectionId === 'deepseek') {
+        if (policy.protocol === 'openai' || policy.protocol === 'anthropic') {
+          return await discoverListedModels(
+            request,
+            policy.protocol,
+            policy.requires_bundled_model === true,
+            signal
+          );
+        }
+        if (policy.protocol === 'deepseek') {
           return readDeepSeekModels(
             await readJson(
               `${request.baseUrl.replace(/\/+$/, '')}/models`,
@@ -126,6 +170,9 @@ export function createProviderModelDiscovery(
       } catch (error: unknown) {
         cancellation.abort();
         if (error instanceof ProviderModelDiscoveryError) throw error;
+        if (error instanceof ModelDiscoveryError) {
+          throw new ProviderModelDiscoveryError(error.message, error.statusCode);
+        }
         throw new ProviderModelDiscoveryError('供应商模型资料未通过准入，请稍后重试', 502);
       }
     },

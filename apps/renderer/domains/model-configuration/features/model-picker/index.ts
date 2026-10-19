@@ -25,4 +25,7 @@ export {
   startModelPickerLifecycle,
   stopModelPickerLifecycle,
 } from './orchestration/modelPickerLifecycle';
-export { useModelPickerReadModel } from './orchestration/modelPickerReadModel';
+export {
+  selectModelManagementProvider,
+  useModelPickerReadModel,
+} from './orchestration/modelPickerReadModel';

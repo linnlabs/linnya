@@ -6,6 +6,32 @@ import {
 } from '../modelDiscoveryService';
 
 describe('ModelDiscoveryService', () => {
+  it('正式列表身份查询不推断容量，也不消费响应中的容量默认值', async () => {
+    const service = new ModelDiscoveryService({
+      fetchFn: async () => Response.json({ data: [{ id: 'unknown' }, {
+        id: 'gpt-5', context_window: 12345, max_output_tokens: 678,
+      }] }),
+    });
+    expect(await service.listIdentities({
+      api_format: 'openai_compatible', base_url: 'https://provider.example/v1',
+    })).toEqual([{ id: 'unknown' }, { id: 'gpt-5' }]);
+  });
+
+  it('正式列表查询跟随外部取消，错误不包含上游私有细节', async () => {
+    const cancellation = new AbortController();
+    const service = new ModelDiscoveryService({
+      fetchFn: async (_url, init) => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new Error('private abort detail')), { once: true });
+      }),
+    });
+    const pending = service.listIdentities({
+      api_format: 'openai_compatible', base_url: 'https://provider.example/v1',
+    }, cancellation.signal);
+    const assertion = expect(pending).rejects.toMatchObject({ statusCode: 499, message: '模型列表刷新已取消' });
+    cancellation.abort();
+    await assertion;
+  });
+
   describe('buildDiscoveryUrl', () => {
     it('builds /models for openai_compatible', () => {
       expect(buildDiscoveryUrl('https://api.openai.com/v1', 'openai_compatible')).toBe(

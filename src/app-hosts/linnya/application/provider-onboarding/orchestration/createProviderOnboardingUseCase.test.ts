@@ -235,6 +235,8 @@ describe('createProviderOnboardingUseCase', () => {
     const storage = createStatefulProviderOnboardingStorage();
     let id = 0;
     let liveModels: readonly ProviderModelDefinition[] | undefined;
+    const bindings = runtimeBindings();
+    const getBinding = bindings.get;
     const useCase = createProviderOnboardingUseCase({
       discoveredModels: { readAvailable: () => liveModels },
       providerCatalog: {
@@ -250,7 +252,7 @@ describe('createProviderOnboardingUseCase', () => {
             ? { provider: OPENAI_PROVIDER, connection: OPENAI_API_CONNECTION }
             : undefined,
       },
-      runtimeBindings: runtimeBindings(),
+      runtimeBindings: bindings,
       modelCatalog: storage.catalog,
       providerConfigurations: storage.configurations,
       providerAccounts: providerAccounts(),
@@ -264,6 +266,18 @@ describe('createProviderOnboardingUseCase', () => {
       provider_model_id: oldDefinition.id,
       api_key: 'fixture-secret',
     });
+    const endpointsBeforeRefresh = structuredClone(storage.readEndpoints());
+    // 新目录改变默认协议也不能影响已保存连接；网络刷新不是协议迁移入口。
+    const changedBinding = vi.spyOn(bindings, 'get').mockImplementation(connectionId => {
+      const binding = getBinding(connectionId);
+      return binding
+        ? {
+            ...binding,
+            default_route_profile_id: 'openai_chat',
+            default_base_url: 'https://changed.example.com/v1',
+          }
+        : undefined;
+    });
     liveModels = [
       { ...oldDefinition, context_window_tokens: 1_000_000, max_input_tokens: 900_000 },
       { ...oldDefinition, id: 'fresh-model', display_name: 'Fresh model' },
@@ -274,6 +288,11 @@ describe('createProviderOnboardingUseCase', () => {
       id: original.model_id,
       inference_route: { context_window_tokens: 1_000_000 },
     });
+    expect(storage.readEndpoints()).toEqual(endpointsBeforeRefresh);
+    expect(storage.readModels()[0]?.inference_route).toMatchObject({
+      api_surface: 'openai_responses', base_url: 'https://api.openai.com/v1',
+    });
+    changedBinding.mockRestore();
     await useCase.registerDirectProviderModel({
       provider_connection_definition_id: OPENAI_API_CONNECTION.id,
       provider_model_id: 'fresh-model',

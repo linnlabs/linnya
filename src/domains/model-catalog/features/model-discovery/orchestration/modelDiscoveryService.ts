@@ -1,9 +1,15 @@
 import {
   ModelDiscoveryRequestSchema,
-  type DiscoveredModel,
   type ModelDiscoveryRequest,
   type ModelDiscoveryResponse,
 } from '@app/schemas';
+import type { ModelListingIdentity } from '../definitions/modelListingIdentity';
+import type { ModelListingPage, ModelListingPageInput } from '../definitions/modelListingPage';
+import {
+  assertUniqueModelListingIdentities,
+  parseModelIdentityListingPage,
+} from '../functions/parseModelIdentityListingPage';
+import { mergeDiscoveredModelPages } from '../functions/parseModelListingResponse';
 import { ModelDiscoveryError } from '../definitions/modelDiscoveryError';
 import { buildDiscoveryUrl } from '../functions/buildDiscoveryUrl';
 import { parseModelListingPage } from '../functions/parseModelListingPage';
@@ -20,6 +26,26 @@ export class ModelDiscoveryService {
   }
 
   async discover(input: ModelDiscoveryRequest): Promise<ModelDiscoveryResponse> {
+    return {
+      models: mergeDiscoveredModelPages(await this.readListing(input, parseModelListingPage)),
+    };
+  }
+
+  /** 正式 Provider 只复用成员查询，不能消费 Custom API 的推断容量。 */
+  async listIdentities(
+    input: ModelDiscoveryRequest,
+    signal?: AbortSignal
+  ): Promise<readonly ModelListingIdentity[]> {
+    const models = await this.readListing(input, parseModelIdentityListingPage, signal);
+    assertUniqueModelListingIdentities(models);
+    return models;
+  }
+
+  private async readListing<Model extends { readonly id: string }>(
+    input: ModelDiscoveryRequest,
+    parsePage: (page: ModelListingPageInput) => ModelListingPage<Model>,
+    signal?: AbortSignal
+  ): Promise<Model[]> {
     const parsed = ModelDiscoveryRequestSchema.safeParse(input);
     if (!parsed.success)
       throw new ModelDiscoveryError('model_discovery.invalid_request', '模型发现参数无效', 400);
@@ -32,9 +58,10 @@ export class ModelDiscoveryService {
       headers.Authorization = `Bearer ${request.api_key}`;
     }
     const controller = new AbortController();
+    const requestSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
     const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
     try {
-      const models = new Map<string, DiscoveredModel>();
+      const models: Model[] = [];
       const visitedAfterIds = new Set<string>();
       let afterId: string | undefined;
       while (true) {
@@ -43,7 +70,7 @@ export class ModelDiscoveryService {
         const response = await this.fetchFn(url, {
           method: 'GET',
           headers,
-          signal: controller.signal,
+          signal: requestSignal,
           redirect: 'error',
         });
         if (!response.ok) {
@@ -61,19 +88,21 @@ export class ModelDiscoveryService {
           );
         }
         const body: unknown = await response.json();
-        const page = parseModelListingPage({
+        const page = parsePage({
           body,
           apiFormat: request.api_format,
           visitedAfterIds,
         });
-        for (const model of page.models) models.set(model.id, model);
+        models.push(...page.models);
         // 调用方会用返回值删除缺失模型；只有全部分页成功才发布完整快照。
-        if (page.nextAfterId === undefined) return { models: [...models.values()] };
+        if (page.nextAfterId === undefined) return models;
         afterId = page.nextAfterId;
         visitedAfterIds.add(afterId);
       }
     } catch (error: unknown) {
       if (error instanceof ModelDiscoveryError) throw error;
+      if (signal?.aborted)
+        throw new ModelDiscoveryError('model_discovery.network_error', '模型列表刷新已取消', 499);
       if (controller.signal.aborted)
         throw new ModelDiscoveryError(
           'model_discovery.network_error',

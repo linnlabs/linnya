@@ -1,4 +1,6 @@
 /** Host-only 子入口。Renderer 禁止导入。 */
+export type { ProviderModelDiscoveryPolicy } from './definitions/providerModelDiscoveryPolicy';
+export { getProviderModelDiscoveryPolicy } from './features/catalog-admission/functions/getProviderModelDiscoveryPolicy';
 export type {
   FormalProviderModelRuntimeBinding,
   FormalProviderRuntimeBinding,

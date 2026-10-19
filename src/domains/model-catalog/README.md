@@ -399,3 +399,5 @@ smoke。单纯目录重构不需要等待 Windows/macOS 正式签名安装包发
 
 Model Discovery 的 URL、响应解析、错误合同与网络流程分别归属其 feature 的 functions、definitions、orchestration。
 保留公开入口；显式网关路径与推理共用，错误 envelope 不当作空列表，上游原始正文不进入公开错误。
+
+正式 Provider 与自定义 API 共用 Model Discovery 的鉴权、URL、分页、超时和安全错误处理。公开的 `ModelDiscoveryService.listIdentities` 只返回经过验证的模型 ID 与可选名称，支持调用方取消，不推断容量或能力；正式 Provider 只消费此窄合同，再由自己的目录资料与协议准入决定是否允许启用。既有 `discover` 仍为自定义 API 提供带 confidence 的资料投影，二者不混用准入语义。

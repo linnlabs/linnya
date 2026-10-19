@@ -1,6 +1,10 @@
 import type { MessageParams } from '@app/localization';
 
 export type SettingsMessageKey =
+  | 'settings.modelPicker.refreshingModels'
+  | 'settings.modelPicker.localRefreshUnavailable'
+  | 'settings.modelPicker.refreshUnavailable'
+  | 'settings.addModel.provider.connected'
   | 'settings.modal.title'
   | 'settings.modal.close'
   | 'settings.groups.general'
