@@ -12,6 +12,7 @@ import { useMessageWindowStore } from '../store/messageWindowStore';
 import type { BaseMessage, ToolCallMessage } from '../../types';
 import {
   ConversationUiMessageSchema,
+  ConversationContextUsageSourceSchema,
   conversationMessageIdFromToolIdentity,
 } from '@app/schemas';
 import {
@@ -100,6 +101,7 @@ function createWindowDto(messages: readonly UiMessageDto[], overrides: Partial<U
     success: true,
     conversation_id: 'conv-window',
     messages,
+    latest_context_usage: null,
     has_more_before: false,
     has_more_after: false,
     revision: 7,
@@ -1335,5 +1337,64 @@ describe('message-window DTO adapter', () => {
     expect(store.status).toBe('loading');
     expect(store.rows).toEqual([]);
     expect(store.revision).toBeNull();
+  });
+});
+
+
+describe('tail navigation and its window-independent usage dependency', () => {
+  beforeEach(() => setActivePinia(createPinia()));
+
+  it('admits and retains the usage source outside the visible tail, then clears it on edit and conversation switch', async () => {
+    const store = useMessageWindowStore();
+    const source = ConversationContextUsageSourceSchema.parse({
+      user_message_id: 'source-user', sort_seq: 1, timestamp: 1,
+      usage: {
+        budget_model_id: 'test-model', used_tokens: 60,
+        components: { system_prompt_tokens: 10, conversation_tokens: 40, tool_definition_tokens: 10 },
+        input_budget_tokens: 100, remaining_tokens: 40, output_limit_tokens: 20,
+        source: 'test-fixture', confidence: 'estimate',
+      },
+    });
+    const dto = createWindowDto(Array.from({ length: 80 }, (_, index) => createMessageDto({
+      message_id: `answer-${index}`, sort_seq: index + 400,
+    })), { latest_context_usage: source, has_more_before: true });
+    await loadTail('conv-window', {}, {
+      store, api: createApi({ tail: readUiMessagesWindowDto(dto) }), readLiveMessages: readNoLiveMessages,
+    });
+    expect(store.latestContextUsage).toEqual(source);
+    expect(store.rows.every(row => row.message.type === 'final_answer')).toBe(true);
+    expect(() => readUiMessagesWindowDto({ ...dto, latest_context_usage: undefined })).toThrow();
+    expect(() => readUiMessagesWindowDto({ ...dto, latest_context_usage: { ...source, usage: {} } })).toThrow();
+
+    const around = createWindowDto([createMessageDto({
+      message_id: 'source-user', sort_seq: 1, role: 'user', message_type: 'user_input', payload: null,
+    })], { latest_context_usage: source, has_more_after: true });
+    await loadAround('conv-window', 'source-user', {}, {
+      store, api: createApi({ around }), readLiveMessages: readNoLiveMessages,
+    });
+    store.truncateAfterMessage('source-user');
+    expect(store.latestContextUsage).toBeNull();
+    await loadTail('conv-window', {}, { store, api: createApi({ tail: dto }), readLiveMessages: readNoLiveMessages });
+    store.startLoading('other-conversation', 'tail');
+    expect(store.latestContextUsage).toBeNull();
+  });
+
+  it('cancels an in-flight bottom request without overwriting a subsequent in-window timeline navigation', async () => {
+    const store = useMessageWindowStore();
+    const head = createWindowDto([createMessageDto({ message_id: 'head', sort_seq: 1 })], { has_more_after: true });
+    store.replaceWithSnapshot(createMessageWindowSnapshot(head, mapUiMessagesWindowDtoToRows(head)));
+    const signal = new AbortController();
+    let resolveTail: (dto: UiMessagesWindowDto) => void = () => { throw new Error('not initialized'); };
+    const tail = new Promise<UiMessagesWindowDto>(resolve => { resolveTail = resolve; });
+    const loading = loadTail('conv-window', { signal: signal.signal }, {
+      store, api: createApi({ tail }), readLiveMessages: readNoLiveMessages,
+    });
+    expect(store.status).toBe('loading');
+    signal.abort();
+    expect(store.status).toBe('ready');
+    resolveTail(createWindowDto([createMessageDto({ message_id: 'tail', sort_seq: 400 })]));
+    await loading;
+    expect(store.rows.map(row => row.messageId)).toEqual(['head']);
+    expect(store.hasMoreAfter).toBe(true);
   });
 });

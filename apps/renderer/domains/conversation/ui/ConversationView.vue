@@ -34,21 +34,26 @@
 
         <!-- 消息列表 -->
         <div v-else ref="messagesContainerRef" class="messages-container">
-          <VirtualConversationCanvas
-            :items="visualRows"
-            :messages="messages"
-            :virtual-rows="virtualRows"
-            :total-height="virtualTotalHeight"
-            :scroll-margin="virtualScrollMargin"
-            :timeline-positions="virtualTimelinePositions"
-            :measure-element="measureVirtualElement"
-            :active-run-ids="assistantStore.activeConversationRunIds"
-            :answer-render-width-px="committedContentWidthPx"
-            :trailing-status="trailingStatus"
-            @layout-change="handleVirtualTurnLayoutChange"
-            @edit-message="handleEditMessage"
-            @regenerate-response="handleRegenerateResponse"
-          />
+          <div
+            ref="streamingContentRef"
+            class="conversation-streaming-content"
+          >
+            <VirtualConversationCanvas
+              :items="visualRows"
+              :messages="messages"
+              :virtual-rows="virtualRows"
+              :total-height="virtualTotalHeight"
+              :scroll-margin="virtualScrollMargin"
+              :timeline-positions="virtualTimelinePositions"
+              :measure-element="measureVirtualElement"
+              :active-run-ids="assistantStore.activeConversationRunIds"
+              :answer-render-width-px="committedContentWidthPx"
+              :trailing-status="trailingStatus"
+              @layout-change="handleVirtualTurnLayoutChange"
+              @edit-message="handleEditMessage"
+              @regenerate-response="handleRegenerateResponse"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -74,6 +79,7 @@ import type { MessageWindowLoadMode, MessageWindowStatus } from '../message-wind
 import { useConversationScrollController } from './conversationView/composables/useConversationScrollController';
 import { useConversationTimelinePositions } from './conversationView/composables/useConversationTimelinePositions';
 import { useStreamingWaitingIndicator } from './conversationView/composables/useStreamingWaitingIndicator';
+import { useStreamingScrollGlide } from './conversationView/composables/useStreamingScrollGlide';
 import { useAppendOnlyConversationVisualRows } from './conversationView/composables/useAppendOnlyConversationVisualRows';
 import { useMessageEntryAnimation } from './conversationView/composables/useMessageEntryAnimation';
 import { useTimelineLayoutReserveAnimation } from './conversationView/composables/useTimelineLayoutReserveAnimation';
@@ -112,7 +118,7 @@ interface Props {
   hasMoreAfter?: boolean;
   messageWindowStatus?: MessageWindowStatus;
   messageWindowLoadingMode?: MessageWindowLoadMode | null;
-  isTimelineNavigating?: boolean;
+  isWindowNavigating?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -125,7 +131,7 @@ const props = withDefaults(defineProps<Props>(), {
   hasMoreAfter: false,
   messageWindowStatus: 'idle',
   messageWindowLoadingMode: null,
-  isTimelineNavigating: false,
+  isWindowNavigating: false,
 });
 
 const emit = defineEmits<{
@@ -151,6 +157,7 @@ provide('conversationMessages', () => props.messages);
 const conversationWrapperRef = ref<HTMLElement | null>(null);
 const conversationRef = ref<HTMLElement>();
 const messagesContainerRef = ref<HTMLElement | null>(null);
+const streamingContentRef = ref<HTMLElement | null>(null);
 const virtualScrollElementRef = ref<HTMLElement | null>(null);
 const conversationOverlayViewportMountRef = ref<HTMLElement | null>(null);
 const conversationOverlayViewportRef = ref<HTMLElement | null>(null);
@@ -264,7 +271,9 @@ const {
   mode: scrollMode,
   showScrollToBottomBtn,
   scrollToBottomManual,
+  navigateToBottom,
   scrollToVisualTurn,
+  isUserScrollGestureActive,
 } = useConversationScrollController({
   conversationRef,
   scrollContainerRef: virtualScrollElementRef,
@@ -279,6 +288,7 @@ const {
   resetKey,
   virtualizer: {
     scrollToEnd: () => virtualizer.scrollToEnd(),
+    scrollToEndAndWait: signal => virtualizer.scrollToEndAndWait(signal),
     scrollToVisualTurn: (visualTurnId, signal) => (
       virtualizer.scrollToVisualTurn(visualTurnId, signal)
     ),
@@ -294,6 +304,15 @@ const chatFlowOrchestrator = useChatFlowOrchestrator({
   onUserMessageCommitted: scrollToBottomManual,
 });
 
+// 外层是测量原点；内层只负责视觉位移，滚动提交时同步补偿，不能监听 scroll 后补。
+const streamingScrollGlide = useStreamingScrollGlide({
+  scrollElement: virtualScrollElementRef,
+  contentElement: streamingContentRef,
+  isActive: () => scrollMode.value === 'follow-bottom' && !isContentWidthChanging.value,
+  isStreaming: () => conversationIsStreaming.value,
+  isUserGestureActive: isUserScrollGestureActive,
+});
+
 const virtualizer = useTanstackConversationVirtualizer({
   items: visualRows,
   enabled: computed(() => true),
@@ -303,6 +322,7 @@ const virtualizer = useTanstackConversationVirtualizer({
   scrollMargin: computed(() => virtualScrollMargin.value),
   scrollEndThreshold: computed(() => scrollEndThreshold.value),
   estimationWidthPx: committedContentWidthPx,
+  onScrollApplied: streamingScrollGlide.onScrollApplied,
 });
 
 const {
@@ -378,7 +398,7 @@ watch(
     props.hasMoreAfter,
     props.messageWindowStatus,
     props.messageWindowLoadingMode,
-    props.isTimelineNavigating,
+    props.isWindowNavigating,
   ] as const,
   ([
     nextScrollTop,
@@ -430,6 +450,7 @@ const scrollToMessage = async (messageId: string): Promise<boolean> => {
 
 defineExpose({
   scrollToBottomManual,
+  navigateToBottom,
   scrollToMessage,
   scrollToVisualTurn,
 });

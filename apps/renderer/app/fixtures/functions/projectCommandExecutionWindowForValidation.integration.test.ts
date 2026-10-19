@@ -84,6 +84,7 @@ function commandWindowDto(): UiMessagesWindowReadyDto {
     conversation_id: 'conversation-command-window',
     messages,
     citation_dependencies: {},
+    latest_context_usage: null,
     has_more_before: false,
     has_more_after: false,
     prev_cursor: 1,

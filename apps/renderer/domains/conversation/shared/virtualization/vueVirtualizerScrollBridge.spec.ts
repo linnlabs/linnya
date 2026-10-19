@@ -8,6 +8,7 @@ function createHarness(options: {
   readonly maxScrollTop?: () => number;
   readonly shouldDeferExplicitScroll?: () => boolean;
   readonly onDeferredExplicitScrollApplied?: () => void;
+  readonly onScrollApplied?: (deltaPx: number, isSizeAdjustment: boolean) => void;
 } = {}) {
   const element = document.createElement('div');
   const scrollTo = vi.fn(({ top }: ScrollToOptions) => {
@@ -33,12 +34,37 @@ function createHarness(options: {
     scheduleAfterRender: callback => scheduled.push(callback),
     shouldDeferExplicitScroll: options.shouldDeferExplicitScroll,
     onDeferredExplicitScrollApplied: options.onDeferredExplicitScrollApplied,
+    onScrollApplied: options.onScrollApplied,
   });
 
   return { bridge, scheduled, scrollTo, virtualizer };
 }
 
 describe('createVueVirtualizerScrollBridge', () => {
+  it('DOM 提交时同步通知实际钳位增量，显式滚动单独归因', () => {
+    const applied = vi.fn();
+    const harness = createHarness({ maxScrollTop: () => 120, onScrollApplied: applied });
+    harness.bridge.scrollToFn(100, {}, harness.virtualizer);
+    expect(applied).toHaveBeenLastCalledWith(100, false);
+    harness.bridge.scrollToFn(100, { adjustments: 29 }, harness.virtualizer);
+    harness.bridge.flushAfterRender(harness.virtualizer);
+    expect(applied).toHaveBeenCalledTimes(1);
+    harness.scheduled.shift()?.();
+    expect(applied).toHaveBeenLastCalledWith(20, true);
+    harness.bridge.scrollToFn(110, {}, harness.virtualizer);
+    expect(applied).toHaveBeenLastCalledWith(-10, false);
+  });
+
+  it('prepend 的尺寸残差仍属于显式锚点，不误判为流式新增', () => {
+    const applied = vi.fn();
+    const harness = createHarness({ shouldDeferExplicitScroll: () => true, onScrollApplied: applied });
+    harness.bridge.scrollToFn(100, {}, harness.virtualizer);
+    harness.bridge.scrollToFn(100, { adjustments: 20 }, harness.virtualizer);
+    harness.bridge.flushAfterRender(harness.virtualizer);
+    harness.scheduled.shift()?.();
+    expect(applied).toHaveBeenCalledExactlyOnceWith(120, false);
+  });
+
   it('尺寸修正在 Vue render 完成后才写入最终目标', () => {
     const harness = createHarness();
 

@@ -10,6 +10,7 @@ import { isRecord } from '../../utils/typeGuards';
 import {
   ConversationCitationDependencySnapshotSchema,
   ConversationUiMessageSchema,
+  ConversationContextUsageSourceSchema,
   ConversationUiWindowUnchangedSchema,
 } from '@app/schemas';
 import {
@@ -42,6 +43,7 @@ function isUiMessagesWindowReadyDto(value: unknown): value is UiMessagesWindowRe
     && typeof value.conversation_id === 'string'
     && messages !== null
     && isCitationDependencies(value.citation_dependencies, messages)
+    && ConversationContextUsageSourceSchema.nullable().safeParse(value.latest_context_usage).success
     && typeof value.has_more_before === 'boolean'
     && typeof value.has_more_after === 'boolean'
     && isOptionalNumber(value.prev_cursor)

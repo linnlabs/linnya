@@ -207,7 +207,7 @@ function renderNode(
       if (!content) return ''
       REFERENCE_TEXT_RE.lastIndex = 0
       if (!REFERENCE_TEXT_RE.test(content)) {
-        if (ctx.isStreaming && ctx.fadeNewText) {
+        if (ctx.fadeNewText) {
           return h(StreamingText, { text: content, animateInitial: ctx.fadeInitialText === true })
         }
         return content
@@ -528,6 +528,30 @@ export default defineComponent({
      */
     let revealInitialText = props.content === ''
     let initialCommitSeen = false
+    /**
+     * 这个渲染实例是否流式过：流式过的消息里，所有文字节点都由 StreamingText 承载，直到卸载。
+     * 若只在“正在增长的尾块”里使用，块封口时组件会被换成普通字符串，
+     * 那一刻仍在淡入的半透明字符会瞬间变成不透明，产生局部亮度跳变；
+     * 这与滚动提交晚一帧造成的整层位置跳变是两个独立问题。
+     * 从未流式过的历史消息不用组件，没有额外开销。
+     */
+    let hasStreamed = props.isStreaming
+    /** 流式开始时已存在的块数：这些块里已有的文字不整段淡入，只淡入之后追加的部分。 */
+    let streamStartBlockCount = 0
+    /**
+     * 已经渲染过的块下标。块类型翻转（段落变列表、表头变表格）会让同一下标的块整体重挂载，
+     * 重挂载时里面已经可见的文字不能再从透明重新淡入，否则就是一次闪烁。
+     */
+    const renderedBlockIndexes = new Set<number>()
+    watch(
+      () => props.isStreaming,
+      streaming => {
+        if (!streaming || hasStreamed) return
+        hasStreamed = true
+        streamStartBlockCount = nodes.value.length
+      },
+      { flush: 'sync' },
+    )
     const parseDebug = createMarkdownParseDebug(import.meta.env.VITE_CONVERSATION_MARKDOWN_DEBUG)
 
     /**
@@ -562,6 +586,7 @@ export default defineComponent({
       if (!isAppendOnly) {
         citationDisplayState.map.clear()
         citationDisplayState.next = 1
+        renderedBlockIndexes.clear()
       }
       nodes.value = reconcileStreamingMarkdownNodes({
         previousMarkdown: parsedMarkdown,
@@ -626,18 +651,22 @@ export default defineComponent({
       return h(
         'div',
         { class: 'conversation-markdown-renderer' },
-        nodes.value.map((node, index) => h(ConversationMarkdownBlock, {
-          key: `${index}:${node.type}`,
-          node,
-          isStreaming: props.isStreaming && index === nodes.value.length - 1,
-          fadeNewText: props.streamReveal && props.isStreaming && index === nodes.value.length - 1,
-          fadeInitialText: revealInitialText,
-          parseMarkdown,
-          renderNode,
-          turnId: props.turnId,
-          citationDependencies: props.citationDependencies,
-          citationDisplayState,
-        })),
+        nodes.value.map((node, index) => {
+          const fadeInitialText = revealInitialText && index >= streamStartBlockCount && !renderedBlockIndexes.has(index)
+          renderedBlockIndexes.add(index)
+          return h(ConversationMarkdownBlock, {
+            key: `${index}:${node.type}`,
+            node,
+            isStreaming: props.isStreaming && index === nodes.value.length - 1,
+            fadeNewText: props.streamReveal && hasStreamed,
+            fadeInitialText,
+            parseMarkdown,
+            renderNode,
+            turnId: props.turnId,
+            citationDependencies: props.citationDependencies,
+            citationDisplayState,
+          })
+        }),
       )
     }
   },

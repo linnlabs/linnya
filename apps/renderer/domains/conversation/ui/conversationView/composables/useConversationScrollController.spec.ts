@@ -31,7 +31,7 @@ async function mountHarness() {
         initialRenderableContentKey: computed(() => initialRenderableContentKey.value),
         scrollEndThreshold: computed(() => 16),
         resetKey: computed(() => resetKey.value),
-        virtualizer: { scrollToEnd, scrollToVisualTurn },
+        virtualizer: { scrollToEnd, scrollToVisualTurn, scrollToEndAndWait: async () => true },
       });
       return () => h('div', { ref: conversationRef, tabindex: 0 });
     },

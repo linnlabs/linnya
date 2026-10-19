@@ -654,6 +654,7 @@ function sendUiMessagesWindow(res: Response, result: UiMessagesWindowResponse): 
     conversation_id: result.conversation_id,
     messages: result.messages,
     citation_dependencies: result.citation_dependencies,
+    latest_context_usage: result.latest_context_usage,
     has_more_before: result.has_more_before,
     has_more_after: result.has_more_after,
     prev_cursor: result.prev_cursor,

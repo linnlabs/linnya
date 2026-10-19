@@ -30,7 +30,7 @@
           :has-more-after="messageWindowHasMoreAfter"
           :message-window-status="messageWindowStatus"
           :message-window-loading-mode="messageWindowLoadingMode"
-          :is-timeline-navigating="isTimelineNavigating"
+          :is-window-navigating="isWindowNavigating"
           class="conversation-view-container"
           @timeline-positions-change="handleTimelinePositionsChange"
           @scroll-to-bottom-visibility-change="handleScrollToBottomVisibilityChange"
@@ -90,6 +90,7 @@
 </template>
 
 <script setup lang="ts">
+import { useConversationWindowNavigation } from './conversationView/composables/useConversationWindowNavigation';
 import { computed, ref, onBeforeUnmount, onMounted, nextTick, provide, watch } from 'vue';
 import type { ConversationMessageId } from '@app/schemas';
 import type { ConversationSurfaceVariant } from '../definitions/conversationPresentation';
@@ -162,10 +163,12 @@ const conversationScrollContainer = ref<HTMLElement | null>(null);
 const timelinePositions = ref<PositionInfo[]>([]);
 const conversationViewRef = ref<Pick<ConversationVirtualizerCommands, 'scrollToVisualTurn'> & {
   scrollToBottomManual: () => void;
+  navigateToBottom: (signal: AbortSignal) => Promise<boolean>;
   scrollToMessage: (messageId: ConversationMessageId) => Promise<boolean>;
 } | null>(null);
 const showScrollToBottomButton = ref(false);
-const isTimelineNavigating = ref(false);
+const windowNavigation = useConversationWindowNavigation();
+const isWindowNavigating = windowNavigation.isNavigating;
 const {
   init: initOverlayScroll,
   scheduleUpdate: scheduleOverlayScrollUpdate,
@@ -286,35 +289,27 @@ const conversationContentState = computed(() => (
     : (contentPhase.value === 'draft' || contentPhase.value === 'ready-empty' ? 'empty' : 'filled')
 ));
 
-let activeTimelineNavigation: AbortController | null = null;
-
 const handleNavigateToVisualTurn = async (marker: TimelineMarker): Promise<void> => {
   const conversationId = assistantStore.activeConversationId;
   if (!conversationId || !conversationViewRef.value) return;
-  activeTimelineNavigation?.abort();
-  const navigation = new AbortController();
-  activeTimelineNavigation = navigation;
-  isTimelineNavigating.value = true;
   try {
-    await navigateToTimelineVisualTurn(conversationId, marker, {
-      scrollToVisualTurn: visualTurnId => (
-        conversationViewRef.value?.scrollToVisualTurn(visualTurnId, navigation.signal)
-        ?? Promise.resolve(false)
-      ),
-      waitForVisualTurnMounted: visualTurnId => waitForTimelineVisualTurnMounted(
-        timelinePositions,
-        visualTurnId,
-        navigation.signal,
-      ),
+    await windowNavigation.run(async signal => {
+      await navigateToTimelineVisualTurn(conversationId, marker, {
+        signal,
+        scrollToVisualTurn: visualTurnId => (
+          conversationViewRef.value?.scrollToVisualTurn(visualTurnId, signal)
+          ?? Promise.resolve(false)
+        ),
+        waitForVisualTurnMounted: visualTurnId => waitForTimelineVisualTurnMounted(
+          timelinePositions,
+          visualTurnId,
+          signal,
+        ),
+      });
     });
   } catch (caught) {
     if (isTimelineNavigationAbortError(caught)) return;
     console.error('[TimelineNavigation] Failed to navigate to turn:', caught);
-  } finally {
-    if (activeTimelineNavigation === navigation) {
-      activeTimelineNavigation = null;
-      isTimelineNavigating.value = false;
-    }
   }
 };
 
@@ -333,11 +328,18 @@ const handleScrollToBottomVisibilityChange = (show: boolean) => {
 
 const handleScrollToBottomClick = async () => {
   const conversationId = assistantStore.activeConversationId;
-  if (conversationId && messageWindowHasMoreAfter.value) {
-    await ensureHistoryWindowTailForBottom(conversationId);
-    await nextTick();
+  const view = conversationViewRef.value;
+  if (!conversationId || !view) return;
+  try {
+    await windowNavigation.run(async signal => {
+      const status = await ensureHistoryWindowTailForBottom(conversationId, undefined, { signal });
+      if (signal.aborted || (status !== 'current' && status !== 'reloaded')) return;
+      await view.navigateToBottom(signal);
+    });
+  } catch (caught) {
+    if (isTimelineNavigationAbortError(caught)) return;
+    console.error('[ConversationNavigation] Failed to return to bottom:', caught);
   }
-  conversationViewRef.value?.scrollToBottomManual();
 };
 
 const handleUserMessageCommitted = (): void => {
@@ -346,13 +348,13 @@ const handleUserMessageCommitted = (): void => {
 
 const handleLoadBeforeRequested = async () => {
   const conversationId = assistantStore.activeConversationId;
-  if (!conversationId) return;
+  if (!conversationId || isWindowNavigating.value) return;
   await loadHistoryWindowBefore(conversationId);
 };
 
 const handleLoadAfterRequested = async () => {
   const conversationId = assistantStore.activeConversationId;
-  if (!conversationId) return;
+  if (!conversationId || isWindowNavigating.value) return;
   await loadHistoryWindowAfter(conversationId);
 };
 
@@ -412,9 +414,7 @@ watch(
 watch(
   () => assistantStore.activeConversationId,
   () => {
-    activeTimelineNavigation?.abort();
-    activeTimelineNavigation = null;
-    isTimelineNavigating.value = false;
+    windowNavigation.cancel();
     timelinePositions.value = [];
   },
   { immediate: true }
@@ -436,6 +436,7 @@ watch(
   () => props.isActive,
   (isActive) => {
     if (isActive) return;
+    windowNavigation.cancel();
     subrunDetailNavigation.reset();
     // 侧栏重开后必须等待新实例测量，不能短暂复用隐藏前的视图派生状态。
     conversationScrollContainer.value = null;
@@ -449,8 +450,6 @@ onBeforeUnmount(() => {
   // 保持“交换 pane 等价于关闭详情”的既有生命周期语义，也避免应用 Header 残留子标题。
   subrunDetailNavigation.reset();
   commandCardControlPageOwner.release();
-  activeTimelineNavigation?.abort();
-  activeTimelineNavigation = null;
-  isTimelineNavigating.value = false;
+  windowNavigation.cancel();
 });
 </script>

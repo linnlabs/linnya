@@ -3,6 +3,7 @@ import type {
   ConversationCitationDependencySnapshot,
   ConversationCompleteVisualTurnId,
   ConversationUiMessage,
+  ConversationContextUsageSource,
 } from '@app/schemas';
 import {
   SubRunTraceKind as RuntimeSubRunTraceKindSchema,
@@ -75,6 +76,7 @@ export type UiMessagesWindowResponse =
       readonly status: 'ready';
       readonly conversation_id: string;
       readonly messages: readonly UiMessageResponse[];
+      readonly latest_context_usage: ConversationContextUsageSource | null;
       readonly citation_dependencies: Readonly<Record<string, ConversationCitationDependencySnapshot>>;
       readonly has_more_before: boolean;
       readonly has_more_after: boolean;

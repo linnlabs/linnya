@@ -78,6 +78,8 @@
   flex: 1;
   padding: 0;
   position: relative;
+  /* 动画位移不能扩张宿主 scrollHeight；外层仍作为未变换的测量原点。 */
+  overflow-y: clip;
 }
 
 .conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view::-webkit-scrollbar {

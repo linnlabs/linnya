@@ -9,6 +9,7 @@ import type { TimelineMarker } from '../definitions/timelineMarker';
 export type TimelineNavigationResult = 'scrolled-mounted' | 'loaded-and-scrolled';
 
 interface NavigateToTimelineTurnDeps {
+  readonly signal?: AbortSignal;
   readonly scrollToVisualTurn: (visualTurnId: ConversationCompleteVisualTurnId) => Promise<boolean>;
   readonly waitForVisualTurnMounted: (visualTurnId: ConversationCompleteVisualTurnId) => Promise<void>;
   readonly loadAroundTurn?: (
@@ -23,15 +24,18 @@ export async function navigateToTimelineVisualTurn(
   marker: TimelineMarker,
   deps: NavigateToTimelineTurnDeps,
 ): Promise<TimelineNavigationResult> {
+  deps.signal?.throwIfAborted();
   if (await deps.scrollToVisualTurn(marker.visualTurnId)) return 'scrolled-mounted';
 
   const loadAroundTurn = deps.loadAroundTurn ?? ((id, anchorId) => loadAround(
     id,
     anchorId,
-    {},
+    { signal: deps.signal },
     { readLiveMessages: readConversationLiveMessages },
   ));
+  deps.signal?.throwIfAborted();
   const loadResult = await loadAroundTurn(conversationId, marker.anchorMessageId);
+  deps.signal?.throwIfAborted();
   if (loadResult === 'superseded') {
     const error = new Error('timeline navigation superseded');
     error.name = 'AbortError';

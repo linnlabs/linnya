@@ -8,6 +8,7 @@ export function createMessageWindowSnapshot(
   return {
     conversationId: dto.conversation_id,
     rows,
+    latestContextUsage: dto.latest_context_usage,
     hasMoreBefore: dto.has_more_before,
     hasMoreAfter: dto.has_more_after,
     prevCursor: dto.prev_cursor,

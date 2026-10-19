@@ -229,6 +229,7 @@ const { t } = useLocalization();
 const contextWindowUsage = useContextWindowUsagePresentation({
   hasActiveConversation: conversationSelectors.hasActiveConversation,
   messages: conversationSelectors.activeMessages,
+  durableUsage: conversationSelectors.activeContextUsageSource,
   includesConversationTail: conversationSelectors.activeMessageWindowIncludesConversationTail,
   currentModelId: modelBindings.effectivePrimaryModelId,
 });

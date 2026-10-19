@@ -12,6 +12,7 @@ import {
   type ConversationUiMessage,
   type ConversationCompleteVisualTurnId,
   type JsonRecord,
+  type ConversationContextUsageSource,
 } from '@app/schemas';
 import { isRecord, toSerializableValue } from './json';
 import {
@@ -84,6 +85,7 @@ export interface UiMessagesWindowReady {
   readonly status: 'ready';
   readonly conversation_id: string;
   readonly messages: readonly UiMessageView[];
+  readonly latest_context_usage: ConversationContextUsageSource | null;
   readonly citation_dependencies: UiMessageCitationDependencies;
   readonly has_more_before: boolean;
   readonly has_more_after: boolean;
@@ -535,6 +537,7 @@ function buildWindowResult(
     status: 'ready',
     conversation_id: conversationId,
     messages,
+    latest_context_usage: readLatestContextUsage(db, conversationId),
     citation_dependencies: readUiMessageCitationDependencies(db, conversationId, messages),
     has_more_before: typeof firstSortSeq === 'number'
       ? hasVisibleRowsBefore(db, conversationId, firstSortSeq)
@@ -545,6 +548,30 @@ function buildWindowResult(
     ...(typeof firstSortSeq === 'number' ? { prev_cursor: firstSortSeq } : {}),
     ...(typeof lastSortSeq === 'number' ? { next_cursor: lastSortSeq } : {}),
     revision,
+  };
+}
+
+function readLatestContextUsage(
+  db: Database.Database,
+  conversationId: string,
+): ConversationContextUsageSource | null {
+  // 来源可能早于整个 320 行窗口；只读取带成功快照的最新 user_input，不重放事件历史。
+  const row = db.prepare<unknown[], UiMessageSqlRow>(`
+    SELECT * FROM conversation_ui_messages
+    WHERE conversation_id = ? AND message_type = 'user_input'
+      AND json_type(payload_json, '$.context_usage') = 'object'
+    ORDER BY sort_seq DESC LIMIT 1
+  `).get(conversationId);
+  if (!row) return null;
+  const message = toUiMessageView(row);
+  if (message.message_type !== 'user_input' || !message.payload?.context_usage) {
+    throw new Error('[SQLiteUiMessagesReader] invalid context usage source');
+  }
+  return {
+    user_message_id: message.message_id,
+    sort_seq: message.sort_seq,
+    timestamp: message.timestamp,
+    usage: message.payload.context_usage,
   };
 }
 
