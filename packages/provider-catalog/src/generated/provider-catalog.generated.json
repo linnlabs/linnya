@@ -1,11 +1,11 @@
 {
   "schema_version": 2,
   "generation": {
-    "id": "models-dev-2026-10-15-6c177e659711-p18",
+    "id": "models-dev-2026-10-15-6c177e659711-p19",
     "source_url": "https://models.dev/api.json",
     "source_sha256": "6c177e65971110fa5c3bcda466136dd70864082e8e4b54f169bac352f4198855",
     "synced_at": "2026-10-15T02:02:31.731Z",
-    "policy_version": 18
+    "policy_version": 19
   },
   "providers": [
     {

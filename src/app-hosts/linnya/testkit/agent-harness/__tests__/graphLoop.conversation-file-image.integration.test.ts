@@ -31,6 +31,7 @@ import { createWorkspaceVerifiedImageLoader } from 'src/features/workspace/asset
 import {
   ANTHROPIC_MESSAGES_IMAGE_INPUT_PROFILE,
   OPENAI_RESPONSES_IMAGE_INPUT_PROFILE,
+  CHAT_COMPLETIONS_IMAGE_INPUT_PROFILE,
 } from 'src/app-hosts/linnya/adapters/llm-input-materialization';
 import { ReadFileTool } from 'src/tools/workspace/read_file/ReadFileTool';
 import type { ToolContext } from 'src/tools/types';
@@ -45,7 +46,7 @@ import {
 
 const STORE_ID = '791cf8b2-b05e-41b0-b74b-a9639f58eb75';
 
-describe.each<ToolImageProviderSurface>(['openai_responses', 'anthropic_messages'])(
+describe.each<ToolImageProviderSurface>(['openai_responses', 'anthropic_messages', 'openai_chat_completions'])(
   'Conversation file image agent loop: %s',
   (surface) => {
     it('从对话目录图片进入受管副本，原图删除后仍可物化、回放且不进入项目资源库', async () => {
@@ -126,7 +127,7 @@ describe.each<ToolImageProviderSurface>(['openai_responses', 'anthropic_messages
         });
         const profile = surface === 'openai_responses'
           ? OPENAI_RESPONSES_IMAGE_INPUT_PROFILE
-          : ANTHROPIC_MESSAGES_IMAGE_INPUT_PROFILE;
+          : surface === 'anthropic_messages' ? ANTHROPIC_MESSAGES_IMAGE_INPUT_PROFILE : CHAT_COMPLETIONS_IMAGE_INPUT_PROFILE;
         const profileRegistry = createImageInputProcessingProfileRegistry({
           resolveRouteForModel: activeModelId => activeModelId === modelId ? surface : undefined,
           bindings: [{ route: surface, profile }],

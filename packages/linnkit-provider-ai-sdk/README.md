@@ -215,6 +215,13 @@ package 更新也不修改 Host 的模型资料、onboarding、Linnkit 或 Agent
 
 ### 上游升级边界
 
+OpenAI-compatible 的工具图片使用 `@ai-sdk/openai-compatible` 自 `3.0.62` 提供的
+`supportsMultiPartToolContent`，当前冻结版本为 `3.0.68`。只有 Host 已准入的
+`AiSdkInferenceRoute.tool_result_image=true` 才向 factory 开启该选项；省略时保留上游默认行为和文本工具 wire。
+Adapter 不按模型名或 URL 判定能力，不自行编码图片，也不插入额外 user message。
+AI SDK 当前没有通用的图片角色能力发现接口，模型的视觉标记不能等同工具图片支持。
+Host 负责提供经过真实 Provider 验收的角色事实；上游未来增加公开角色声明时应复核这层显式 opt-in。
+
 DeepSeek 原生工具图片直接使用上游 codec：`@ai-sdk/deepseek` 已从 `3.0.50`
 支持 tool content 图片块，当前依赖不再携带本地 patch 或修改声明。用户/工具图片、
 跨轮 reasoning、非法图片拒绝、usage 与两轮回放继续由

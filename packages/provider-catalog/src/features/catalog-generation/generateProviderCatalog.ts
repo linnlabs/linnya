@@ -13,7 +13,7 @@ import { projectModelsDevProviderModels, readModelsDevProvider } from '../catalo
 import type { ProviderAdmissionPolicy } from '../catalog-admission/definitions/providerAdmissionPolicy';
 import { PROVIDER_ADMISSION_POLICIES } from '../catalog-admission/registry/providerAdmissionPolicies';
 
-export const PROVIDER_CATALOG_POLICY_VERSION = 18;
+export const PROVIDER_CATALOG_POLICY_VERSION = 19;
 export const MODELS_DEV_SOURCE_URL = 'https://models.dev/api.json';
 
 export interface GeneratedProviderCatalogProjections {

@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import type { ProviderConnectionDefinition, ProviderDefinition } from '@linnya/provider-catalog';
+import { providerCatalog, type ProviderConnectionDefinition, type ProviderDefinition } from '@linnya/provider-catalog';
+import { providerOnboardingRuntimeBindingRegistry } from 'src/app-hosts/linnya/adapters/inference';
 
 import type { ProviderOnboardingRuntimeBindingPort } from '../definitions/providerOnboardingPorts';
 import { createStatefulProviderOnboardingStorage } from './__tests__/fixtures/providerOnboardingStateFixture';
@@ -66,6 +67,61 @@ function runtimeBindings(): ProviderOnboardingRuntimeBindingPort {
 }
 
 describe('OpenCode Go Provider onboarding', () => {
+  it('旧 Go Flash 正常刷新采用发布政策，保留模型/endpoint/凭据身份，其他 compatible 模型不扩权且再次刷新无写入', async () => {
+    const state = createStatefulProviderOnboardingStorage();
+    let policyEnabled = false;
+    let id = 0;
+    const useCase = createProviderOnboardingUseCase({
+      discoveredModels: { readAvailable: () => undefined },
+      providerCatalog,
+      runtimeBindings: {
+        generation_id: providerOnboardingRuntimeBindingRegistry.generation_id,
+        source_sha256: providerOnboardingRuntimeBindingRegistry.source_sha256,
+        get: connectionId => {
+          const binding = providerOnboardingRuntimeBindingRegistry.get(connectionId);
+          if (!binding || policyEnabled) return binding;
+          // 模拟已有用户保存 route 时的旧发布政策；其余真实目录/绑定保持当前事实。
+          return { ...binding, model_route_bindings: binding.model_route_bindings?.map(model => ({
+            model_id: model.model_id, base_url: model.base_url, route_profile_id: model.route_profile_id,
+          })) };
+        },
+      },
+      modelCatalog: state.catalog,
+      providerConfigurations: state.configurations,
+      providerAccounts: { findConnectedAccountId: () => undefined },
+      accountModels: { discoverModels: async () => [] },
+      modelRemoval: { remove: async () => undefined },
+      idFactory: { create: () => `go-policy-${++id}` },
+    });
+    for (const modelId of ['deepseek-v4.1-flash', 'glm-5.3-flash']) {
+      await useCase.registerDirectProviderModel({
+        provider_connection_definition_id: 'opencode-go',
+        provider_model_id: modelId,
+        ...(modelId === 'deepseek-v4.1-flash' ? { api_key: 'fixture-go-secret' } : {}),
+      });
+    }
+    expect(state.readModels().map(model => model.inference_route?.input_support))
+      .toEqual([{ user_image: true, tool_result_image: false }, { user_image: true, tool_result_image: false }]);
+    const modelsBefore = structuredClone(state.readModels());
+    const endpointsBefore = structuredClone(state.readEndpoints());
+    const configuredBefore = structuredClone(state.readConfiguredProvider());
+    const update = vi.spyOn(state.catalog, 'updateModel').mockClear();
+    policyEnabled = true;
+    await useCase.refreshRegisteredProviderModels('opencode-go');
+    expect(update).toHaveBeenCalledOnce();
+    expect(state.readEndpoints()).toEqual(endpointsBefore);
+    expect(state.readConfiguredProvider()).toEqual(configuredBefore);
+    const refreshed = state.readModels()[0];
+    const previous = modelsBefore[0];
+    if (!refreshed?.inference_route || !previous?.inference_route) throw new Error('Missing saved Go fixture.');
+    expect(refreshed).toEqual({ ...previous, inference_route: {
+      ...previous.inference_route, input_support: { user_image: true, tool_result_image: true },
+    } });
+    expect(state.readModels()[1]).toEqual(modelsBefore[1]);
+    await useCase.refreshRegisteredProviderModels('opencode-go');
+    expect(update).toHaveBeenCalledOnce();
+  });
+
   it('用一份 API Key 注册 Chat、Responses 与 Anthropic 三条模型 route', async () => {
     const state = createStatefulProviderOnboardingStorage();
     const ids = [

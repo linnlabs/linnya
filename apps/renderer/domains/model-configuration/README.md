@@ -142,6 +142,10 @@ capacity 输入解析，以及编辑已有模型时对原 typed route
 identity 的保留/重新校验。它不读 endpoint 目录、不创建 route、不复制 Host 的 endpoint 复用规则。禁止靠模型名、URL 或
 `provider` 字符串猜协议，也禁止恢复任意 capability id 输入框。
 
+详情编辑当前只面向自定义模型；正式 Provider 模型行不打开详情。通用表单仍按 profile 默认能力重建 route，
+只声明整体视觉开关。Host 的用户编辑边界依据原 ModelConfig 保留同身份的已准入 opt-in 图片角色，
+不接受表单新增许可；模型或连接身份改变时须重新接纳。Renderer 不读取私有模型政策。
+
 ### Provider catalog
 
 `features/provider-catalog` 只从 `GET /api/v1/providers` 加载严格 public read

@@ -22,6 +22,7 @@ export const OPENAI_COMPATIBLE_LANGUAGE_MODEL_FACTORIES: Record<
         name: input.endpoint_id,
         baseURL: input.base_url,
         includeUsage: true,
+        ...(input.tool_result_image ? { supportsMultiPartToolContent: true } : {}),
         ...(input.credential ? { apiKey: input.credential.secret } : {}),
         ...(input.headers ? { headers: input.headers } : {}),
         ...(input.fetch ? { fetch: input.fetch } : {}),

@@ -41,6 +41,7 @@ function makeSource() {
       Object.fromEntries(
         [
           'grok-4.7',
+          'deepseek-v4.1-flash',
           'grok-4.6',
           'gpt-6-luna',
           'gpt-5.6-luna',
@@ -552,6 +553,12 @@ describe('generateProviderCatalog', () => {
     );
 
     expect(connection).toBeDefined();
+    expect(binding?.model_route_bindings?.filter(model => model.input_policy)).toEqual([{
+      model_id: 'deepseek-v4.1-flash',
+      base_url: 'https://opencode.ai/inference/go/v1',
+      route_profile_id: 'openai_compatible_chat',
+      input_policy: { tool_result_image: true },
+    }]);
     for (const modelId of ['qwen3.7-max', 'qwen3.6-plus']) {
       expect(connection?.models.map(model => model.id)).not.toContain(modelId);
       expect(binding?.model_route_bindings?.map(model => model.model_id)).not.toContain(modelId);

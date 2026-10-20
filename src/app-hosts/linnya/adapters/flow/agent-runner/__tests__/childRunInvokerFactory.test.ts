@@ -31,7 +31,11 @@ import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { createInMemoryToolResultAssetClaimRegistry } from 'src/domains/assets/features/tool-result-claims';
 import { deriveConversationWorkDirectoryIdentity } from 'src/domains/conversation-files';
 import { createToolRuntimeHarness } from 'src/app-hosts/linnya/testkit/agent-harness/toolRegistryHarness';
-import { createToolImageModelCatalog } from 'src/app-hosts/linnya/testkit/agent-harness/toolImageIntegrationFixtures';
+import {
+  assertToolImageAiSdkInput,
+  createToolImageModelCatalog,
+  type ToolImageProviderSurface,
+} from 'src/app-hosts/linnya/testkit/agent-harness/toolImageIntegrationFixtures';
 import { ReadFileTool } from 'src/tools/workspace/read_file/ReadFileTool';
 
 const truncateObservation: tools.ObservationPreviewPort['truncateObservation'] = async params => ({
@@ -396,15 +400,17 @@ describe('childRunInvokerFactory', () => {
     );
   });
 
-  it('child 调用 read_file 后把 durable 图片作为 tool_result_image 交给下一轮模型', async () => {
+  it.each<ToolImageProviderSurface>(['openai_responses', 'openai_chat_completions'])(
+    'child 调用 read_file 后把 durable 图片作为 tool_result_image 交给下一轮模型：%s', async surface => {
     const activeModelId = 'child-read-file-image-model';
     const conversationId = 'child-read-file-image-conversation';
     const sourcePath = '/conversation/slides-renders/run-1/slide-001.png';
     const modelCatalog = createToolImageModelCatalog(activeModelId);
     const modelResolver = new llm.ModelResolver({ modelCatalog });
     const profileRegistry = createImageInputProcessingProfileRegistry({
-      resolveRouteForModel: modelId => modelId === activeModelId ? 'openai_responses' : undefined,
-      bindings: [{ route: 'openai_responses', profile: OPENAI_RESPONSES_IMAGE_INPUT_PROFILE }],
+      resolveRouteForModel: modelId => modelId === activeModelId ? surface : undefined,
+      bindings: [{ route: surface, profile: surface === 'openai_responses'
+        ? OPENAI_RESPONSES_IMAGE_INPUT_PROFILE : CHAT_COMPLETIONS_IMAGE_INPUT_PROFILE }],
     });
     const materializationAttempts: Parameters<LlmInputMaterializerPort['materialize']>[0][] = [];
     const materializer: LlmInputMaterializerPort = {
@@ -548,6 +554,15 @@ describe('childRunInvokerFactory', () => {
         }),
       ]));
       const llmCalls = aiHarness.getCalls();
+      const lastAttempt = materializationAttempts[materializationAttempts.length - 1];
+      if (!lastAttempt) throw new Error('Missing child image materialization attempt.');
+      await assertToolImageAiSdkInput({
+        surface, modelId: activeModelId,
+        inputMessages: lastAttempt.messages,
+        messages: resolveImageMessages(lastAttempt.messages),
+        admissionEvidence: lastAttempt.admissionEvidence,
+        expectedBase64: Buffer.from([1, 2, 3]).toString('base64'),
+      });
       expect(llmCalls[llmCalls.length - 1]?.messages).toEqual(expect.arrayContaining([
         expect.objectContaining({
           role: 'tool',

@@ -34,7 +34,8 @@ export function buildDirectProviderModelRegistration(
   const modelSupportsImageInput = input.providerModel.capabilities.image_input;
   const imageInputSupport = projectLanguageInferenceImageInputSupport(
     input.binding.route_profile_id,
-    modelSupportsImageInput
+    modelSupportsImageInput,
+    input.binding.input_policy
   );
   const endpointId =
     input.reusableEndpoint?.endpoint_id ??

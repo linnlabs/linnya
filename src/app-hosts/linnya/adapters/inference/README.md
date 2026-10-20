@@ -196,7 +196,9 @@ registry 记录经过 conformance 验证的图片来源上限，route 不能声�
 `input_support`。模型目录中的 `image_input` 只表达模型能否理解图片；注册边界把该语义能力分别与 profile 的
 `user_image`、`tool_result_image` 相交。产品开关不因某一个来源缺失而被整体禁用；设置页只提供统一的视觉识别语义开关，
 不把 route 级图片来源差异暴露为额外配置项。
-OpenAI-compatible Chat 可以接收用户图片但不能接收工具结果图片，这个差异不能通过 synthetic user message 抹平。
+OpenAI-compatible Chat 默认只接收用户图片；已验收的模型 binding 可以显式接纳工具结果图片。
+Host 将最终 `input_support.tool_result_image` 透传给 adapter，由上游
+`supportsMultiPartToolContent` 编码原生 tool message。没有政策的模型保持关闭，不能通过 synthetic user message 抹平差异。
 Ollama 原生 Chat 是独立 surface：`ai-sdk-ollama` 会把工具结果图片编码为带 `images` 的原生
 tool message，因此 Ollama Cloud 同时开放用户图片与工具结果图片。该能力必须由 Provider
 conformance 直接断言 wire body，Host 不复制 package 的转换逻辑。

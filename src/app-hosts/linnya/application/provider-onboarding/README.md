@@ -23,6 +23,11 @@ API-Key Provider 的 `refreshRegisteredProviderModels` 只原位更新已经激�
 已接入在线发现的 connection 在显式刷新时查询官方目录（能力清单见相邻 provider-model-discovery）；启动不再用 bundled 覆盖这些供应商已保存的联网资料。
 其余 bundled connection 仍在启动时刷新已激活模型的发布元数据。
 
+模型级 `input_policy` 与 route profile、上游视觉能力共同投影为最终图片来源事实。
+已经注册的 OpenCode Go `deepseek-v4.1-flash` 在一次成功的正常“刷新模型”后获得工具图片支持，
+沿用原 model、endpoint、URL、auth profile 与凭据；第二次相同刷新不再写入。
+Go 的启动恢复不刷新 bundled 元数据，因此仅重启不会保证旧模型采用这项政策。
+
 在线新模型也经过相同 membership 校验、已验收 binding、endpoint/credential 复用和 durable intent。
 缺少能力资料的候选只显示在设置页，不能绕过注册准入。外部发现不能修改调用 URL、认证或协议。
 

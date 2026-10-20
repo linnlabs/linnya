@@ -1,5 +1,6 @@
 import type {
   InferenceAuthProfile,
+  LanguageInferenceImageInputPolicy,
   LanguageInferenceRouteProfileId,
 } from '@app/schemas/model-inference';
 
@@ -28,6 +29,7 @@ export interface ProviderModelRuntimeBinding {
   readonly model_id: string;
   readonly base_url: string;
   readonly route_profile_id: LanguageInferenceRouteProfileId;
+  readonly input_policy?: LanguageInferenceImageInputPolicy;
 }
 
 export interface ProviderRuntimeBindingSnapshot {

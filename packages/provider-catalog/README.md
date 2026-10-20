@@ -39,6 +39,14 @@ factory、Host 分支或 Renderer 特例。只有上游资料缺失、错误或�
 `@linnlabs/linnkit-provider-ai-sdk` 统一接入 Vercel AI SDK Provider package。Catalog 只拥有外部事实到产品目录与
 runtime binding 的投影，不拥有第三方协议实现。
 
+models.dev 的视觉能力只说明模型是否理解图片，尚不声明图片可出现的消息角色。
+现有 `model_route_bindings.input_policy` 只补充已经实测的 `tool_result_image: true`，
+不维护第二份模型资料表。2026-10-20 审核 OpenCode Go `deepseek-v4.1-flash`：
+两张新生成图片的文字、颜色识别与四次请求通过，使用上游 compatible SDK 原生 multipart tool opt-in。
+政策仅适用于该 connection 的该模型，不能扩展到其他 Go 或 compatible 视觉模型；
+新模型和容量、一般视觉资料继续同步 models.dev。每次相关 SDK/Provider 合同更新时复核，
+上游能够声明图片角色后删除本地政策并改用上游事实。
+
 具体 wire codec 继续遵循
 [`@linnlabs/linnkit-provider-ai-sdk`](../linnkit-provider-ai-sdk/README.md)
 的 package-first 规则：优先复用 Vercel AI SDK 或经过审核的开源 Provider

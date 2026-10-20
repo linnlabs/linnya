@@ -22,6 +22,7 @@ export function projectResolvedInferenceAttemptRouteToAiSdkRoute(
     endpoint_id: route.endpoint_id,
     endpoint_model_id: route.endpoint_model_id,
     base_url: route.base_url,
+    ...(route.input_support.tool_result_image ? { tool_result_image: true } : {}),
     ...(route.headers ? { headers: route.headers } : {}),
   };
 }

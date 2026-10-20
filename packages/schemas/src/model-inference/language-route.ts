@@ -52,7 +52,8 @@ export const LANGUAGE_INFERENCE_ROUTE_PROFILES = [
     api_surface: 'openai_chat_completions',
     capability_id: LANGUAGE_INFERENCE_CAPABILITY_IDS.OPENAI_COMPATIBLE_CHAT,
     auth_profiles: ['none', 'bearer'],
-    image_input_support: { user_image: true, tool_result_image: false },
+    // 上游 compatible codec 默认关闭 multipart tool；只有已验收的模型 route 可以显式接纳。
+    image_input_support: { user_image: true, tool_result_image: 'opt_in' },
   },
   {
     id: 'openai_responses',
@@ -312,7 +313,7 @@ export const ModelInferenceRouteSchema = z
         message: `${profile.id} route 不支持用户图片输入`,
       });
     }
-    if (route.input_support.tool_result_image && !profile.image_input_support.tool_result_image) {
+    if (route.input_support.tool_result_image && profile.image_input_support.tool_result_image === false) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['input_support', 'tool_result_image'],
@@ -354,6 +355,11 @@ export function findLanguageInferenceRouteProfileForRoute(
 
 export type LanguageInferenceImageInputSupport = ModelInferenceRoute['input_support'];
 
+/** 上游目录尚无图片角色声明时，由已验收的模型 binding 补充最小接纳政策。 */
+export interface LanguageInferenceImageInputPolicy {
+  readonly tool_result_image: true;
+}
+
 /**
  * 把模型自身的图片理解能力投影到某条已验收 route 的两个独立图片来源。
  *
@@ -362,12 +368,16 @@ export type LanguageInferenceImageInputSupport = ModelInferenceRoute['input_supp
  */
 export function projectLanguageInferenceImageInputSupport(
   profileId: LanguageInferenceRouteProfileId,
-  modelSupportsImageInput: boolean
+  modelSupportsImageInput: boolean,
+  inputPolicy?: LanguageInferenceImageInputPolicy
 ): LanguageInferenceImageInputSupport {
   const support = findLanguageInferenceRouteProfile(profileId).image_input_support;
   return {
     user_image: modelSupportsImageInput && support.user_image,
-    tool_result_image: modelSupportsImageInput && support.tool_result_image,
+    tool_result_image: modelSupportsImageInput && (
+      support.tool_result_image === true ||
+      (support.tool_result_image === 'opt_in' && inputPolicy?.tool_result_image === true)
+    ),
   };
 }
 

@@ -158,6 +158,14 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
         'anthropic_messages',
       ],
       model_route_bindings: [
+        // 2026-10-20：Go 实测两张新图的文字/颜色与四次请求均通过；只补上游目录缺失的 tool 角色事实。
+        // @ai-sdk/openai-compatible 3.0.68 原生 opt-in；上游提供角色声明后删除本地政策并复核。
+        {
+          model_id: 'deepseek-v4.1-flash',
+          base_url: 'https://opencode.ai/inference/go/v1',
+          route_profile_id: 'openai_compatible_chat',
+          input_policy: { tool_result_image: true },
+        },
         // 2026-10-15 按官方 Go endpoints 审查；Go 与 Zen 同名模型可能使用不同协议。
         // https://opencode.ai/docs/go/#endpoints；弃用模型必须显式移除，不能自动忽略失效绑定。
         ...[

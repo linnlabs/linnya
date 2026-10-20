@@ -8,13 +8,18 @@ import type {
 } from '@linnlabs/linnkit/ports';
 import { llm } from '@linnlabs/linnkit/runtime-kernel';
 import { expect } from 'vitest';
-import { findLanguageInferenceRouteProfileForRoute } from '@app/schemas/model-inference';
+import { buildModelInferenceRoute, findLanguageInferenceRouteProfileForRoute } from '@app/schemas/model-inference';
+import type { ModelConfig } from 'src/domains/model-catalog';
+import { createDefaultHostInferencePort } from 'src/app-hosts/linnya/adapters/inference';
 
 import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 import { projectCanonicalMessages } from '@linnlabs/linnkit-provider-ai-sdk/conformance';
-import type { AiSdkInferenceRoute } from '@linnlabs/linnkit-provider-ai-sdk';
+import {
+  createAiSdkLanguageModelRegistry,
+  type AiSdkInferenceRoute,
+} from '@linnlabs/linnkit-provider-ai-sdk';
 
-export type ToolImageProviderSurface = 'openai_responses' | 'anthropic_messages';
+export type ToolImageProviderSurface = 'openai_responses' | 'anthropic_messages' | 'openai_chat_completions';
 
 export function createToolImageModelCatalog(modelId: string): llm.ModelCatalogLike {
   const model: llm.ModelCatalogEntry = {
@@ -113,20 +118,19 @@ export async function assertToolImageAiSdkInput(params: {
     throw new Error('Expected LlmCaller to publish one canonical inference request.');
   }
   const capturedRequest: CanonicalInferenceRequest = request;
+  const capabilityId = params.surface === 'openai_responses'
+    ? 'ai-sdk:openai-responses'
+    : params.surface === 'anthropic_messages' ? 'ai-sdk:anthropic-messages' : 'ai-sdk:openai-compatible';
   const route: AiSdkInferenceRoute = {
     model_id: params.modelId,
-    capability_id: params.surface === 'openai_responses'
-      ? 'ai-sdk:openai-responses'
-      : 'ai-sdk:anthropic-messages',
-    endpoint_id: params.surface === 'openai_responses' ? 'openai' : 'anthropic',
+    capability_id: capabilityId,
+    tool_result_image: true,
+    endpoint_id: `fixture-${params.surface}`,
     endpoint_model_id: 'provider-model',
     surface: params.surface,
     request_profile: findLanguageInferenceRouteProfileForRoute({
       api_surface: params.surface,
-      capability_id:
-        params.surface === 'openai_responses'
-          ? 'ai-sdk:openai-responses'
-          : 'ai-sdk:anthropic-messages',
+      capability_id: capabilityId,
     }).id,
     base_url: 'https://fixture.invalid/v1',
   };
@@ -151,4 +155,49 @@ export async function assertToolImageAiSdkInput(params: {
       : Buffer.from(file.data.data);
   expect(file.mediaType).toBe('image/png');
   expect(actualBytes).toEqual(Buffer.from(params.expectedBase64, 'base64'));
+
+  if (params.surface === 'openai_chat_completions') {
+    // ToolNode/child 的真实 canonical 图片继续通过 production factory，不能只验证 Core 中间形状。
+    let wireBody: unknown;
+    let fetchCount = 0;
+    const fixtureFetch: typeof fetch = async (_input, init) => {
+      fetchCount++;
+      if (typeof init?.body === 'string') wireBody = JSON.parse(init.body);
+      const chunks = [
+        { choices: [{ delta: { role: 'assistant', content: 'captured' } }] },
+        { choices: [{ delta: {}, finish_reason: 'stop' }] },
+      ];
+      return new Response(`${chunks.map(chunk => `data: ${JSON.stringify(chunk)}\n\n`).join('')}data: [DONE]\n\n`, {
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    };
+    const hostModel: ModelConfig = {
+      id: params.modelId, model_name: 'provider-model', catalog_source: 'user',
+      capabilities: ['chat', 'image_input'], ui_visibility: [], display_name: 'Tool image fixture', description: '',
+      inference_route: buildModelInferenceRoute({
+        profile_id: 'openai_compatible_chat', endpoint_id: 'fixture-compatible',
+        endpoint_model_id: 'provider-model', base_url: route.base_url, auth_profile: 'none',
+        input_support: { user_image: true, tool_result_image: true },
+        usage: { response_usage: 'provider_reported_optional' }, continuation: { tool_replay: 'optional' },
+      }),
+    };
+    const port = createDefaultHostInferencePort({
+      model_catalog: {
+        getModel: id => id === params.modelId ? hostModel : undefined,
+        getInferenceRouteProfileId: id => id === params.modelId ? 'openai_compatible_chat' : undefined,
+      },
+      language_models: createAiSdkLanguageModelRegistry(fixtureFetch),
+      resolve_provider_connection_id: () => undefined,
+    });
+    const events = [];
+    for await (const event of port.stream(capturedRequest)) events.push(event);
+    expect(events[events.length - 1]).toEqual({ type: 'finish', reason: 'stop' });
+    expect(fetchCount).toBe(1);
+    expect(wireBody).toMatchObject({ messages: expect.arrayContaining([{
+      role: 'tool', tool_call_id: toolResult.toolCallId,
+      content: expect.arrayContaining([{
+        type: 'image_url', image_url: { url: `data:image/png;base64,${params.expectedBase64}` },
+      }]),
+    }]) });
+  }
 }

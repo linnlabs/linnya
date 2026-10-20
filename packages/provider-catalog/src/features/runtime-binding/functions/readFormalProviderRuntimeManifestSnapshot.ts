@@ -25,6 +25,7 @@ const RawBindingSchema = z
             model_id: z.string().trim().min(1),
             base_url: z.string().url(),
             route_profile_id: LanguageInferenceRouteProfileIdSchema,
+            input_policy: z.object({ tool_result_image: z.literal(true) }).strict().optional(),
           })
           .strict()
       )

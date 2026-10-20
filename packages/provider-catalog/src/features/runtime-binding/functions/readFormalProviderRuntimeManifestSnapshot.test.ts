@@ -1,10 +1,31 @@
 import { describe, expect, it } from 'vitest';
 
 import { readFormalProviderRuntimeManifestSnapshot } from './readFormalProviderRuntimeManifestSnapshot';
+import runtimeBindings from '../../../generated/provider-runtime-bindings.generated.json';
 
 const SHA = 'a'.repeat(64);
 
 describe('readFormalProviderRuntimeManifestSnapshot', () => {
+  it('保留已审核模型图片政策并严格拒绝未定义或否定政策', () => {
+    const snapshot = readFormalProviderRuntimeManifestSnapshot(runtimeBindings);
+    const binding = snapshot.bindings.find(binding => binding.provider_connection_definition_id === 'opencode-go');
+    expect(binding?.model_route_bindings?.find(model => model.model_id === 'deepseek-v4.1-flash')?.input_policy)
+      .toEqual({ tool_result_image: true });
+    expect(binding?.model_route_bindings?.filter(model => model.input_policy)).toHaveLength(1);
+    for (const invalid of [{ tool_result_image: false }, {}, { tool_result_image: true, unknown: true }]) {
+      expect(() => readFormalProviderRuntimeManifestSnapshot({
+        ...runtimeBindings,
+        bindings: runtimeBindings.bindings.map(binding => ({ ...binding,
+          model_route_bindings: [{
+            model_id: 'fixture-model', base_url: binding.default_base_url,
+            route_profile_id: binding.default_route_profile_id,
+            input_policy: invalid,
+          }],
+        })),
+      })).toThrow();
+    }
+  });
+
   it('保留全部已准入 route profile，并删除上游 package 观察值', () => {
     const snapshot = readFormalProviderRuntimeManifestSnapshot({
       schema_version: 2,

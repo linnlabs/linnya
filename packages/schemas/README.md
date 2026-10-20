@@ -30,6 +30,11 @@
 - Provider Account 授权状态、授权结果和脱敏错误的 HTTP 合同；OAuth token 与刷新凭据不属于共享合同。
 - Custom API 注册的 strict wire request、Host admission command 与模型发现 DTO；request 和 admission 后的类型不得混用。
 
+Language route 的图片来源与模型视觉能力分别接纳。Profile 的 `tool_result_image`
+为 `false`、`true` 或 `opt_in`：`opt_in` 只允许已验收的配置生产者显式补充模型政策，
+通用投影默认仍为关闭；最终持久化 `input_support` 只保存布尔事实，重新解析不会删除已准入能力。
+模型视觉能力关闭时，任何政策都不能开启用户或工具图片。
+
 ## 2. 边界
 
 ### 2.1 本包拥有

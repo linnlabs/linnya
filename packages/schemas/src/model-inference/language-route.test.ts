@@ -149,6 +149,24 @@ describe('ModelInferenceRouteSchema', () => {
     });
   });
 
+  it('compatible 工具图片只在显式准入且模型支持视觉时启用，其他 codec 不被政策扩权', () => {
+    const policy = { tool_result_image: true } as const;
+    expect(projectLanguageInferenceImageInputSupport('openai_compatible_chat', true, policy))
+      .toEqual({ user_image: true, tool_result_image: true });
+    expect(projectLanguageInferenceImageInputSupport('openai_compatible_chat', false, policy))
+      .toEqual({ user_image: false, tool_result_image: false });
+    expect(projectLanguageInferenceImageInputSupport('openai_chat', true, policy))
+      .toEqual({ user_image: true, tool_result_image: false });
+    const compatibleProfile = LANGUAGE_INFERENCE_ROUTE_PROFILES.find(profile => profile.id === 'openai_compatible_chat');
+    if (!compatibleProfile) throw new Error('Missing compatible profile fixture.');
+    const admitted = ModelInferenceRouteSchema.parse({
+      ...routeFor(compatibleProfile),
+      input_support: { user_image: true, tool_result_image: true },
+    });
+    // 持久化后的最终事实再次接纳时不能被默认 opt-out 重新擦除。
+    expect(ModelInferenceRouteSchema.parse(admitted).input_support.tool_result_image).toBe(true);
+  });
+
   it('配置生产端只选择 profile，由共享 builder 生成 surface/capability 配对', () => {
     const route = buildModelInferenceRoute({
       profile_id: 'openai_compatible_chat',

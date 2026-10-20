@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "generation_id": "models-dev-2026-10-15-6c177e659711-p18",
+  "generation_id": "models-dev-2026-10-15-6c177e659711-p19",
   "source_sha256": "6c177e65971110fa5c3bcda466136dd70864082e8e4b54f169bac352f4198855",
   "bindings": [
     {
@@ -46,6 +46,14 @@
         "anthropic_messages"
       ],
       "model_route_bindings": [
+        {
+          "model_id": "deepseek-v4.1-flash",
+          "base_url": "https://opencode.ai/inference/go/v1",
+          "route_profile_id": "openai_compatible_chat",
+          "input_policy": {
+            "tool_result_image": true
+          }
+        },
         {
           "model_id": "grok-4.7",
           "base_url": "https://opencode.ai/inference/go/v1",

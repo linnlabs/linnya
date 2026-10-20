@@ -26,6 +26,8 @@ export interface AiSdkInferenceRoute {
   readonly endpoint_id: string;
   readonly endpoint_model_id: string;
   readonly base_url: string;
+  /** Host 已完成模型与图片角色准入；省略时维持上游 codec 默认关闭。 */
+  readonly tool_result_image?: true;
   readonly headers?: Readonly<Record<string, string>>;
 }
 
@@ -54,6 +56,7 @@ export interface AiSdkLanguageModelFactoryInput {
   readonly endpoint_id: string;
   readonly endpoint_model_id: string;
   readonly base_url: string;
+  readonly tool_result_image?: true;
   readonly headers?: Readonly<Record<string, string>>;
   readonly credential?: {
     readonly profile: AiSdkCredentialProfile;

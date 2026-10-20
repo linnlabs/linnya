@@ -101,16 +101,6 @@ export function createModelRouter(modelRemoval: ConfiguredModelRemovalUseCase): 
       if (!modelId) {
         return res.status(400).json({ error: '缺少模型 ID' });
       }
-      const rawUpdate: unknown = req.body;
-      const updateResult = parseEditableModelPatch(rawUpdate);
-      if (!updateResult.success) {
-        return res.status(400).json({
-          error: '模型更新内容无效',
-          details: updateResult.reason,
-        });
-      }
-      console.log(`[ModelRouter] 收到更新模型请求: ${modelId}`, updateResult.patch);
-
       // 检查模型是否存在
       const existingModel = modelCatalog.getModel(modelId);
       if (!existingModel) {
@@ -126,6 +116,16 @@ export function createModelRouter(modelRemoval: ConfiguredModelRemovalUseCase): 
           details: `模型 ${modelId} 不是用户模型，无法更新`,
         });
       }
+
+      const rawUpdate: unknown = req.body;
+      const updateResult = parseEditableModelPatch(rawUpdate, existingModel);
+      if (!updateResult.success) {
+        return res.status(400).json({
+          error: '模型更新内容无效',
+          details: updateResult.reason,
+        });
+      }
+      console.log(`[ModelRouter] 收到更新模型请求: ${modelId}`, updateResult.patch);
 
       // 合并更新数据
       const updatedModel: ModelConfig = {

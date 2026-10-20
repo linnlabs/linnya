@@ -9,6 +9,7 @@ import type {
   ProviderReleaseStatus,
   ProviderSetupField,
 } from '../../../definitions/providerCatalog';
+import type { ProviderModelRuntimeBinding } from '../../../definitions/providerRuntimeBinding';
 import type { ProviderModelDiscoveryPolicy } from '../../../definitions/providerModelDiscoveryPolicy';
 
 export interface ProviderAdmissionPolicy {
@@ -48,11 +49,7 @@ export interface ProviderAdmissionPolicy {
     readonly auth_profile: InferenceAuthProfile;
     readonly default_route_profile_id: LanguageInferenceRouteProfileId;
     readonly supported_route_profile_ids: readonly LanguageInferenceRouteProfileId[];
-    readonly model_route_bindings?: readonly {
-      readonly model_id: string;
-      readonly base_url: string;
-      readonly route_profile_id: LanguageInferenceRouteProfileId;
-    }[];
+    readonly model_route_bindings?: readonly ProviderModelRuntimeBinding[];
   };
   /** 仅供生成资产 diff 和来源审计，不参与运行时选路。 */
   readonly source_catalog_observation?: {

@@ -31,6 +31,12 @@ codec、usage/continuation 投影和单次请求编排位于
 | 模型注册入口                                      | `app-hosts/linnya/application/provider-onboarding/`、`custom-api-onboarding/` 与 `ollama-onboarding/`                  |
 | 推理 route 跨端 schema                            | `packages/schemas/src/model-inference/`、`packages/schemas/src/document-ocr/` 与 `packages/schemas/src/transcription/` |
 
+普通模型 PUT 编辑通过 `parseEditableModelPatch(raw, existingModel)` 接纳。
+对 `opt_in` 图片 profile，客户端不能新增工具图片许可；只有 model、endpoint、base URL、auth、surface 与 capability
+身份均未改变时才可保留已有许可，容量与显示名修改不会撤销它。整体视觉关闭仍会关闭该角色。
+Provider 注册/刷新是独立可信的政策投影通道，直接更新已接纳的 ModelConfig；不得借普通编辑绕过它。
+原生支持工具图片的 profile 继续按自己的合同接纳，不受 opt-in 继承限制。
+
 ---
 
 ## 负责与不负责

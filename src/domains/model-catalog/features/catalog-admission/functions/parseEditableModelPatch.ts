@@ -1,3 +1,7 @@
+import {
+  findLanguageInferenceRouteProfileForRoute,
+  type ModelInferenceRoute,
+} from '@app/schemas/model-inference';
 import type { ModelConfig } from '../../../definitions/modelCatalog';
 import { normalizeModelCapabilities } from './normalizeModelCapabilities';
 import { readModelInferenceRoute } from './readModelInferenceRoute';
@@ -28,7 +32,37 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-export function parseEditableModelPatch(value: unknown): ParseEditableModelPatchResult {
+/** 用户编辑只可保留原身份的 opt-in 事实；新的角色许可由可信注册/刷新用例接纳。 */
+function projectEditedLanguageRoute(
+  route: ModelInferenceRoute,
+  existingModel: Readonly<ModelConfig> | undefined,
+  capabilities: readonly string[] | undefined
+): ModelInferenceRoute {
+  const profile = findLanguageInferenceRouteProfileForRoute(route);
+  if (profile.image_input_support.tool_result_image !== 'opt_in') return route;
+  const previous = existingModel?.inference_route;
+  const retainsAdmission = previous !== undefined &&
+    previous.input_support.tool_result_image &&
+    existingModel?.model_name === route.endpoint_model_id &&
+    (['api_surface', 'capability_id', 'endpoint_id', 'endpoint_model_id', 'base_url', 'auth_profile'] as const)
+      .every(field => previous[field] === route[field]);
+  if (route.input_support.tool_result_image && !retainsAdmission) {
+    throw new Error('用户编辑不能新增工具图片许可；模型或连接身份变化后须由 Provider 重新接纳。');
+  }
+  return {
+    ...route,
+    input_support: {
+      ...route.input_support,
+      // 详情表单只拥有整体视觉开关；容量/名称展示编辑不能擦除同身份的已验收角色。
+      tool_result_image: retainsAdmission && capabilities?.includes('image_input') === true,
+    },
+  };
+}
+
+export function parseEditableModelPatch(
+  value: unknown,
+  existingModel?: Readonly<ModelConfig>
+): ParseEditableModelPatchResult {
   if (!isRecord(value)) {
     return { success: false, reason: '更新内容必须是对象' };
   }
@@ -60,10 +94,13 @@ export function parseEditableModelPatch(value: unknown): ParseEditableModelPatch
       };
     }
     try {
-      patch.inference_route = readModelInferenceRoute(value.inference_route, {
+      const route = readModelInferenceRoute(value.inference_route, {
         modelName,
         hasChatCapability: true,
       });
+      patch.inference_route = route === undefined ? undefined : projectEditedLanguageRoute(
+        route, existingModel, patch.capabilities ?? existingModel?.capabilities
+      );
     } catch (error) {
       return {
         success: false,

@@ -176,6 +176,7 @@ export function createAiSdkInferenceCapability(
             endpoint_id: route.endpoint_id,
             endpoint_model_id: route.endpoint_model_id,
             base_url: route.base_url,
+            ...(route.tool_result_image ? { tool_result_image: route.tool_result_image } : {}),
             ...(route.headers ? { headers: route.headers } : {}),
             ...(credential ? { credential } : {}),
           }),

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { buildModelInferenceRoute, type ModelInferenceRoute } from '@app/schemas/model-inference';
+import type { ModelConfig } from '../../../definitions/modelCatalog';
 import { parseEditableModelPatch } from '../functions/parseEditableModelPatch';
 
 const embeddingRoute = {
@@ -33,6 +35,79 @@ const documentOcrRoute = {
   attempt_timeout_ms: 300_000,
   poll_interval_ms: 5_000,
 };
+
+function compatibleModel(admitted: boolean): ModelConfig & { inference_route: ModelInferenceRoute } {
+  return {
+    id: 'saved-vision-model', model_name: 'verified-model', catalog_source: 'user',
+    display_name: 'Vision fixture', description: '', capabilities: ['chat', 'image_input'], ui_visibility: [],
+    inference_route: buildModelInferenceRoute({
+      profile_id: 'openai_compatible_chat', endpoint_id: 'saved-endpoint',
+      endpoint_model_id: 'verified-model', base_url: 'https://fixture.invalid/v1', auth_profile: 'bearer',
+      input_support: { user_image: true, tool_result_image: admitted },
+      usage: { response_usage: 'provider_reported_optional' }, continuation: { tool_replay: 'optional' },
+    }),
+  };
+}
+
+describe('parseEditableModelPatch - opt-in 图片角色准入', () => {
+  it('同身份的显示名/容量编辑保留已有许可，即使通用表单按默认关闭重建 route', () => {
+    const model = compatibleModel(true);
+    expect(parseEditableModelPatch({
+      model_name: model.model_name, display_name: 'Renamed display',
+      inference_route: { ...model.inference_route, context_window_tokens: 512_000,
+        input_support: { user_image: true, tool_result_image: false } },
+    }, model)).toMatchObject({ success: true, patch: {
+      display_name: 'Renamed display', inference_route: {
+        context_window_tokens: 512_000, input_support: { user_image: true, tool_result_image: true },
+      },
+    } });
+  });
+
+  it('用户请求不能从未准入的 compatible 模型提升工具图片角色', () => {
+    const model = compatibleModel(false);
+    const patch = { model_name: model.model_name, inference_route: {
+      ...model.inference_route, input_support: { user_image: true, tool_result_image: true },
+    } };
+    expect(parseEditableModelPatch(patch, model)).toMatchObject({ success: false });
+    expect(parseEditableModelPatch(patch)).toMatchObject({ success: false });
+  });
+
+  it.each([
+    { endpoint_id: 'different-endpoint' },
+    { endpoint_model_id: 'different-model' },
+    { base_url: 'https://different.invalid/v1' },
+    { auth_profile: 'none' as const },
+  ])('模型/连接身份改变时不能继承旧许可：%j', change => {
+    const model = compatibleModel(true);
+    const route = { ...model.inference_route, ...change };
+    expect(parseEditableModelPatch({ model_name: route.endpoint_model_id, inference_route: route }, model))
+      .toMatchObject({ success: false });
+    expect(parseEditableModelPatch({ model_name: route.endpoint_model_id, inference_route: {
+      ...route, input_support: { user_image: true, tool_result_image: false },
+    } }, model)).toMatchObject({ success: true, patch: {
+      inference_route: { input_support: { user_image: true, tool_result_image: false } },
+    } });
+  });
+
+  it('关闭整体视觉会关闭已准入角色，原生支持图片的 profile 仍可正常启用', () => {
+    const model = compatibleModel(true);
+    expect(parseEditableModelPatch({ model_name: model.model_name, capabilities: ['chat'],
+      inference_route: { ...model.inference_route, input_support: { user_image: false, tool_result_image: false } },
+    }, model)).toMatchObject({ success: true, patch: {
+      inference_route: { input_support: { user_image: false, tool_result_image: false } },
+    } });
+    expect(parseEditableModelPatch({ model_name: model.model_name, inference_route: {
+      ...model.inference_route, api_surface: 'openai_responses', capability_id: 'ai-sdk:openai-responses',
+    } }, compatibleModel(false))).toMatchObject({ success: true, patch: {
+      inference_route: { input_support: { user_image: true, tool_result_image: true } },
+    } });
+    const nativeModel: ModelConfig = { ...model, inference_route: {
+      ...model.inference_route, api_surface: 'openai_responses', capability_id: 'ai-sdk:openai-responses',
+    } };
+    expect(parseEditableModelPatch({ model_name: model.model_name, inference_route: model.inference_route }, nativeModel))
+      .toMatchObject({ success: false });
+  });
+});
 
 describe('parseEditableModelPatch - embedding route', () => {
   it('原子接受 model 与 embedding route 身份更新', () => {

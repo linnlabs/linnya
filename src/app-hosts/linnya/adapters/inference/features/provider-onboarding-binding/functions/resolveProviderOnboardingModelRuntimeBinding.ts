@@ -18,5 +18,6 @@ export function resolveProviderOnboardingModelRuntimeBinding(
     base_url: modelBinding?.base_url ?? binding.default_base_url,
     auth_profile: binding.auth_profile,
     route_profile_id: modelBinding?.route_profile_id ?? binding.default_route_profile_id,
+    ...(modelBinding?.input_policy ? { input_policy: modelBinding.input_policy } : {}),
   };
 }
