@@ -127,7 +127,7 @@ Graph 在测量后、调 Provider 前执行 `admit_prompt_capacity`。`used_toke
 
 - `run_status` 更新权威业务状态。
 - `transport_end` 只释放同 `executionId` 的 controller。
-- `awaiting_user` 仍为 busy，输入区保持"终止"，切换会话也不取消它。
+- `awaiting_user` 仍为 busy，输入区显示禁用的“恢复”，用户通过原交互提交；切换会话也不取消它。自动重试、暂停继续与新消息的区别见 [13](./13-retry-and-resumption.md)。
 - resume 沿用 `run_id` 并分配新 `execution_id`。
 
 释放级别不可混用（[INV-06](./00-invariants.md#inv-06--释放语义分层)）：`transport_end` 清 execution，terminal `run_status` 清 run。一个 execution 结束不得删除同 conversation 的其它 run。

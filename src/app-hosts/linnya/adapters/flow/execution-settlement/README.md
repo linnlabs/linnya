@@ -1,6 +1,8 @@
 # Execution Settlement
 
-该 feature 独占一次 Agent execution 的结算顺序，Graph Runner 不再直接修改 RunSupervisor 状态。
+该 feature 拥有正常返回、等待交互以及 `failed / cancelled` 的结算顺序。持久执行异常保留为 `paused` 的路径仍由相邻 AgentRunner 编排：收口 Commands、drain、读取最后提交的 checkpoint，再通过 RunHandle 标记暂停；本 feature 的 RunHandle 合同不包含 `markPaused`。不能把本模块的唯一结算职责理解为已经接管所有暂停路径。
+
+模型请求重试与任务暂停继续的统一关系、状态矩阵及 owner 地图见 [Conversation 执行恢复规范](../../../../../../docs/conversation-platform/13-retry-and-resumption.md)。
 
 终态错误事实只发布一次：LlmNode 已发布的 classified error 通过 `RuntimeFailureFactSink` 交给 AgentRunner；Graph 尚未发布错误时，AgentRunner 使用 `publishRunFailureFact` 创建事实。Settlement 只消费这条已发布事实来落 RunHandle 状态，不再创建第二条 run-level error。
 

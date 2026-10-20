@@ -21,6 +21,8 @@ Layer: `host-adapter`
 
 ## LLM 重试策略
 
+模型调用重试与整个 run 暂停恢复的跨层关系，统一从 [Conversation 执行恢复规范](../../../../../docs/conversation-platform/13-retry-and-resumption.md) 阅读。本节是默认预算与 caller 装配的详细 owner，不负责产品继续命令。
+
 `createDefaultLlmCaller()` 是默认 root 与 child LLM caller 的唯一配置入口。同模型失败后最多
 传输错误自动重试最多6次，输出损坏、限流和其他可重试错误各最多3次；初次请求不算重试。
 类别预算独立计数，但同模型混合错误仍共享最多6次的总重试边界，不按类别轮换无限重试。

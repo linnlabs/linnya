@@ -176,7 +176,7 @@ execution completion promise，再读取 durable run，避免在 client disconne
 
 Renderer 只同步 Interactive Run control read model：原 run 仍为 `awaiting_user` 时恢复正式 pending
 interaction；同一 run 已换到新 execution 时替换旧 `submitting` snapshot；terminal 时同步真实终态；
-返回 `null` 或结算查询失败时进入 `failed` 并保留 transport/projection error，不能继续无限 busy。
+服务端确认返回 `null` 时，Renderer 收口为本地 `failed` 并保留请求错误；结算查询失败则保留原身份进入 `reconnecting`，继续查询。二者都不能伪造 durable RunRegistry 的 `failed` 终态。
 响应的 conversation、requested run 与 payload run 身份必须逐项相等。全过程不补造 RuntimeEvent、
 `run_status` 或工具终态。
 
@@ -189,6 +189,10 @@ Conversation Backend 有一套业务 owner、两种启动 Host：Desktop Electro
 Renderer 页面、SSE reader 和终端观察者都不拥有执行事实。命令审批的 pending/settlement 也只在 App Server 保存：Desktop 使用已验证的 Renderer page，交互式 CLI Runtime 使用私有 Host presenter RPC，竞争回复只结算一次。普通 HITL 继续使用 Conversation Control `respond`，不能把两类审批身份混用。
 
 App Server ready 必须同时满足数据库和 Conversation routes 可接流量。launcher 强制退出后，parent identity 会触发同一业务 shutdown；完成后关闭残余 pipe、撤销连接描述并释放 Workspace owner，允许原 Workspace 安全重启。
+
+### 3.7 自动重试与持久继续
+
+模型请求的 `retryable` 与整个 run 的可继续状态是不同判断。当前持久运行遇到不可自动重试错误，也可能保留断点进入 `paused`；`completed / failed / cancelled` 才是原 run 的终态。统一行为矩阵、预算归属、恢复限制与修改地图见 [13 · 模型重试、任务暂停与继续](./13-retry-and-resumption.md)。本节继续负责控件、transport 和生命周期接纳，不另建重试策略。
 
 ---
 

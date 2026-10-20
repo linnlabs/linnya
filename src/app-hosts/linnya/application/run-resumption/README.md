@@ -3,6 +3,8 @@
 本应用用例协调 Flow、Linnkit 和持久化 owner，不属于 Audit。执行断点及原输入在生产中也必须可用。恢复不是发送用户消息：保留原 run
 / turn，只创建新的 execution attempt。
 
+自动重试、持久暂停、交互响应和新发送的统一行为矩阵及跨模块修改地图见 [Conversation 执行恢复规范](../../../../../docs/conversation-platform/13-retry-and-resumption.md)。本模块保持恢复输入、兼容性、工具结果和持久断点的 owner，不拥有 LLM 自动重试循环。
+
 ## 输入合同
 
 `RunDescriptor`

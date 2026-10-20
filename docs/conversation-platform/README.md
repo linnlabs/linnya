@@ -71,6 +71,7 @@
 | 10 | [`10-subruns.md`](./10-subruns.md) | 活动模型、父子 agent、系统 batch、trace、lifecycle 与展示 |
 | 11 | [`11-testing-gates.md`](./11-testing-gates.md) | 测试分层、guard、Electron 真机门禁、什么测试不算门禁 |
 | 12 | [`12-open-risks.md`](./12-open-risks.md) | 当前风险、待单独立项的演进与冻结边界；**不是**完成记录 |
+| 13 | [`13-retry-and-resumption.md`](./13-retry-and-resumption.md) | 模型自动重试、持久暂停继续、交互等待和真正终止；跨 owner 的行为与修改地图 |
 
 ---
 
@@ -90,6 +91,7 @@
 | ……排查滚动、吸底、估高、闪帧 | [07](./07-render.md) |
 | ……排查切会话 / 新建对话失败 | [08](./08-lifecycle.md) DOM 归属章 |
 | ……排查取消后卡片仍转圈 | [08](./08-lifecycle.md) 取消三层屏障 |
+| ……知道何时自动重试、何时点继续、何时必须新发消息 | [13](./13-retry-and-resumption.md) → 对应 owner；按钮与 transport 见 [08](./08-lifecycle.md) |
 | ……从 CLI 发消息、观察运行、处理 wait-user 或终止 | [`apps/linnya-cli/README.md`](../../apps/linnya-cli/README.md)；Host 语义见 [`application/conversation-control/`](../../src/app-hosts/linnya/application/conversation-control/README.md) |
 | ……修改用户引用 `user_quote`、历史展示或 edit-resend | [输入贡献 §4](../../apps/renderer/domains/conversation/docs/input-contribution.md#4-user_quote-结构化多引用-wire) + [04](./04-schema-contract.md)；字段可缺失，存在即 strict admission，禁止 fallback |
 | ……知道改动要跑哪些门禁 | [11](./11-testing-gates.md) |

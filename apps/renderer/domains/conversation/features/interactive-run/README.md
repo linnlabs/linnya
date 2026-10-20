@@ -8,11 +8,13 @@
 暂停 SSE 是提示，正式继续凭证由精确 settlement 查询读取。异步查询只允许收敛发起它的 reader
 代次；旧 reader 收尾或迟到查询不得覆盖新的发送、继续或取消状态。
 
+模型自动重试、持久继续、交互响应和真正终止的跨链路规则见 [Conversation 执行恢复规范](../../../../../../docs/conversation-platform/13-retry-and-resumption.md)。本 feature 只持有前端控制投影，不决定 Provider 重试资格。
+
 - 状态按 `conversationId` 分区，切换对话只改变读取对象，不销毁后台 run。
 - `awaiting_user` 是非终态，输入区显示禁用的“恢复”，用户须在原表单提交；SSE transport 结束不会把它改成 completed。
 - 只有同 conversation/run/execution 的 `run_status` 可以更新业务状态；`context_usage_snapshot` 与
   `run_execution_metrics` 只修订消息 read model，`transport_end` 只释放同 execution controller。
-- 恢复必须提交同一组 `runId + interactionId + toolCallId + checkpointRevision + resumeToken`。
+- HITL 交互响应必须提交同一组 `runId + interactionId + toolCallId + checkpointRevision + resumeToken`；普通 paused 继续使用原 run / execution / updated-at 身份，不要求交互凭证。
 - 这组身份只服务 response command 与 Host admission。消息中的 active interaction 可以保存恢复凭证；terminal interaction 只保存 `status / submittedAt / response`，不得复制 run、checkpoint 或 resume 身份。
 - host 先原子认领 interaction；输入事实落盘成功后才激活原 run。落盘前失败会释放认领，用户可重试；重复提交和身份不匹配会被拒绝。
 - `auxiliary/visibility=none` 事件不进入该状态机，标题等辅助 run 不拥有正文控制面。
@@ -21,8 +23,8 @@
 - 暂停/停止命令在途时，排队的 thought/tool 进度和 running 提示不能撤销控制意图；正式结算或请求失败对账才释放该状态。
 - busy 只负责占用与重复启动约束。动画和状态文案统一由 [执行活动展示](../../shared/execution-presentation/README.md) 派生，awaiting_user、pausing、paused、reconnecting、cancelling 均不代表正在生成。内部细分状态不直接展示，用户只看到暂停、进行中、AI 输出结束；输入框只保留暂停、恢复、发送。
 - store 只同步持有快照；网络请求和多步骤恢复流程放在 orchestration。
-- 错误提示属于产生它的 conversation snapshot。用户关闭横幅时只清除该会话的 `error`，保留 terminal run 身份；不得通过组件本地隐藏状态掩盖 store 中的错误，也不得清除后台会话的错误。横幅锚定 ConversationHost 表面，不参与历史滚动。
-- Renderer 持有当前 execution 的 realtime reader 时，Runtime `error` 先由消息投影器归一化为用户文案，再写入同一 conversation snapshot；interactive run 不重复解释错误码。后续的 `run_status`、暂停和结算刷新只能更新控制字段，不能清除同一 `run_id + execution_id` 的错误；用户关闭横幅或新 execution 开始时才清除。旧 execution 的迟到错误不得污染新的发送/继续。CLI 等外部进程发起的 execution 没有当前 Renderer reader，其 durable error 仍供历史与审计读取，但不会凭数据库投影主动触发实时横幅。
+- durable `error / llm_retry` 统一作为消息列表里的 `execution_notice` 展示与重放，规则见 [05 §3.4](../../../../../../docs/conversation-platform/05-live-projection.md#34-运行错误与重试是持久时间线通知)，不再要求第二份错误横幅。CLI 等外部入口产生的 durable 错误也通过同一历史投影展示。
+- 控制 snapshot 仍可保存本次请求失败和状态查询错误，用于命令对账与身份隔离；它不替代持久错误通知。控制态刷新不得误清同 execution 已接纳的错误，旧 execution 的迟到错误不得污染新的发送/继续；清除控制错误不删除历史通知或 terminal run 身份。
 
 消息投影与 run 控制状态是两类事实：问卷卡属于消息 read model，是否仍可提交以这里的 pending interaction 为准。
 
