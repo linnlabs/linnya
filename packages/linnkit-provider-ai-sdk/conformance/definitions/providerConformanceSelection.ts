@@ -17,6 +17,7 @@ const CAPABILITY_CONFORMANCE_FILES = {
   [AI_SDK_INFERENCE_CAPABILITY_IDS.OPENAI_COMPATIBLE_CHAT]: [
     'conformance/providers/openAiChatCapability.integration.test.ts',
     'conformance/providers/compatibleProviderCodecs.integration.test.ts',
+    'conformance/providers/responseFailures.integration.test.ts',
   ],
   [AI_SDK_INFERENCE_CAPABILITY_IDS.OPENAI_RESPONSES]: [
     'conformance/providers/chatGptCodexProviderCodec.integration.test.ts',
@@ -37,6 +38,7 @@ const CAPABILITY_CONFORMANCE_FILES = {
   ],
   [AI_SDK_INFERENCE_CAPABILITY_IDS.DEEPSEEK_CHAT]: [
     'conformance/providers/deepSeekProviderCodec.integration.test.ts',
+    'conformance/providers/responseFailures.integration.test.ts',
   ],
   [AI_SDK_INFERENCE_CAPABILITY_IDS.MINIMAX_CHAT]: [
     'conformance/providers/miniMaxProviderCodec.integration.test.ts',

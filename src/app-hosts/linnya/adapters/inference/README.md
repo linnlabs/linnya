@@ -376,6 +376,13 @@ fixture；Linnya Cloud 等产品错误只修改 Host
 `provider-failure-policy`，不能要求 Linnkit、Renderer 或 Model Catalog 理解 SDK
 shape。
 
+响应不完整、真正 schema 校验和 HTTP2xx 后 body 读取失败，按 package 的
+[failure-projection 合同](../../../../../packages/linnkit-provider-ai-sdk/src/features/failure-projection/README.md)
+分别投影。SDK 的错误类型或 `isRetryable` 默认值不是具体上游根因的证明；Host 日志只接收
+有限 `sdk_error_details`（数据是否存在、cause类别、HTTP status、SDK retryable），
+不保存 response/value/cause 本体。`terminal_event_received` 表示 adapter 已生成 canonical
+终态，不能据它推断上游是否发送结束帧。研究和其他 Agent 共用此分类，不在角色中另建重试规则。
+
 OpenAI Responses 可能在首个终态就以 SDK 解码后的嵌套 `response.failed`
 结束，也可能在已经产生部分输出后才结束。Adapter
 package 必须从该结构的安全判别字段区分 `invalid_prompt`、限流、上游不可用、超时与请求错误，并保持 Provider 的可重试语义；不得把这种 Provider 终态误报为 Linnkit

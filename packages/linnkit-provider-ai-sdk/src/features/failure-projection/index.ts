@@ -14,6 +14,7 @@ export type { AiSdkHostStreamInvariantCode } from './definitions/aiSdkHostStream
 export type {
   AiSdkFailureErrorShape,
   AiSdkFailureObservation,
+  AiSdkFailureSdkDetails,
   AiSdkProviderSignal,
 } from './definitions/aiSdkFailureObservation';
 export type {

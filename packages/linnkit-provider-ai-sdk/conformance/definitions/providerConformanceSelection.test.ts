@@ -36,6 +36,7 @@ describe('selectAffectedProviderConformance', () => {
       test_files: [
         'conformance/providers/contextCompactionRequestCodec.integration.test.ts',
         'conformance/providers/deepSeekProviderCodec.integration.test.ts',
+        'conformance/providers/responseFailures.integration.test.ts',
       ],
       provider_packages: [
         { package_name: '@ai-sdk/deepseek', package_version: expect.any(String) },

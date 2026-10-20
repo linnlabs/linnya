@@ -27,6 +27,26 @@ function retryableStatus(statusCode: number | undefined): boolean {
   );
 }
 
+const TRANSPORT_CAUSE_CODES = new Set([
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'EPIPE',
+  'ETIMEDOUT',
+  'EAI_AGAIN',
+  'UND_ERR_SOCKET',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_BODY_TIMEOUT',
+]);
+
+function isTransportReadCause(cause: unknown): boolean {
+  // Node/Undici 的传输 code 与 Provider 无关，不按厂商名字或错误文案猜连接状态。
+  return (
+    cause instanceof TypeError ||
+    (isRecord(cause) && typeof cause.code === 'string' && TRANSPORT_CAUSE_CODES.has(cause.code))
+  );
+}
+
 function classifyProviderSemanticFailure(error: APICallError): string | undefined {
   const body = error.responseBody?.toLowerCase() ?? '';
   if (
@@ -195,6 +215,14 @@ function readStructuredProviderError(
   depth = 0
 ): StructuredProviderError | undefined {
   if (depth > 3) return undefined;
+
+  if (TypeValidationError.isInstance(error)) {
+    // 部分网关的 error envelope 缺少 message，先被 SDK schema 拒绝。只接纳已经
+    // 解码的 error 对象，不从包含整个响应的 validation message 猜上游原因。
+    return isRecord(error.value) && isRecord(error.value.error)
+      ? readStructuredProviderError(error.value.error, depth + 1)
+      : undefined;
+  }
 
   if (StreamProviderError.isInstance(error)) {
     const code =
@@ -437,6 +465,23 @@ function classifyStructuredProviderError(error: StructuredProviderError): AiSdkF
   return { kind: 'provider', code: 'provider_stream_error', retryable: error.retryable ?? false };
 }
 
+function projectStructuredProviderFailure(
+  error: StructuredProviderError,
+  phase: AiSdkFailurePhase,
+  providerClassifier: AiSdkProviderFailureClassifier | undefined
+): AiSdkFailureProjection {
+  return (
+    providerClassifier?.classify({
+      phase,
+      kind: 'decoded_stream',
+      ...(error.status === undefined ? {} : { status_code: error.status }),
+      ...(error.code === undefined ? {} : { code: error.code }),
+      ...(error.type === undefined ? {} : { type: error.type }),
+      ...(error.reason === undefined ? {} : { reason: error.reason }),
+    }) ?? classifyStructuredProviderError(error)
+  );
+}
+
 export function classifyAiSdkFailure(
   error: unknown,
   signal: AbortSignal | undefined,
@@ -476,6 +521,21 @@ export function classifyAiSdkFailure(
     if (responseDetailFailure !== undefined) {
       return responseDetailFailure;
     }
+    if (status !== undefined && status >= 200 && status < 300) {
+      // SDK 读取成功响应的 body 时也会包装 APICallError，status 仍为 200。
+      // HTTP 接纳成功不是本次失败原因；优先保留有类型的解码/传输原因。
+      if (
+        TypeValidationError.isInstance(error.cause) ||
+        InvalidResponseDataError.isInstance(error.cause) ||
+        JSONParseError.isInstance(error.cause)
+      ) {
+        return classifyAiSdkFailure(error.cause, signal, phase, providerClassifier);
+      }
+      if (isTransportReadCause(error.cause) || error.isRetryable) {
+        return { kind: 'transport', code: 'provider_response_read_error', retryable: true };
+      }
+      return { kind: 'protocol', code: 'provider_response_invalid', retryable: false };
+    }
     // AI SDK 把尚未取得 HTTP response 的 fetch 失败包装为无 status 的 APICallError，
     // 并用 isRetryable 保留 transport 语义。这里只接纳这一个显式信号；已有 HTTP
     // status 的请求由 adapter 投影安全失败与通用重试类别，Linnkit 不解释供应商状态码。
@@ -489,8 +549,23 @@ export function classifyAiSdkFailure(
       ...(status === 429 ? { retry_category: 'rate_limit' as const } : {}),
     };
   }
-  if (TypeValidationError.isInstance(error) || InvalidResponseDataError.isInstance(error)) {
+  if (TypeValidationError.isInstance(error)) {
+    const structured = phase === 'provider_stream' ? readStructuredProviderError(error) : undefined;
+    if (structured) {
+      const projection = projectStructuredProviderFailure(structured, phase, providerClassifier);
+      // 有明确的超时、限流、鉴权等信号才恢复语义；未知 envelope 仍按 schema 失败，
+      // 不能因为任意上游对象声称 retryable 就掩盖持续的协议不兼容。
+      if (projection.code !== 'provider_stream_error') return projection;
+    }
     return { kind: 'protocol', code: 'provider_response_schema_invalid', retryable: false };
+  }
+  if (InvalidResponseDataError.isInstance(error)) {
+    if (phase === 'provider_stream' && error.data === undefined) {
+      // 当前上游用无 data 的 InvalidResponseDataError 表示流没有正常收口。
+      // 这里只报告不完整，不猜网络/超时，更不依赖 SDK 的错误文案。
+      return { kind: 'transport', code: 'provider_stream_truncated', retryable: true };
+    }
+    return { kind: 'protocol', code: 'provider_response_data_invalid', retryable: false };
   }
   if (JSONParseError.isInstance(error)) {
     return { kind: 'protocol', code: 'provider_response_json_invalid', retryable: false };
@@ -512,22 +587,7 @@ export function classifyAiSdkFailure(
   }
   const structuredProviderError = readStructuredProviderError(error);
   if (structuredProviderError) {
-    const hostProjection = providerClassifier?.classify({
-      phase,
-      kind: 'decoded_stream',
-      ...(structuredProviderError.status === undefined
-        ? {}
-        : { status_code: structuredProviderError.status }),
-      ...(structuredProviderError.code === undefined ? {} : { code: structuredProviderError.code }),
-      ...(structuredProviderError.type === undefined ? {} : { type: structuredProviderError.type }),
-      ...(structuredProviderError.reason === undefined
-        ? {}
-        : { reason: structuredProviderError.reason }),
-    });
-    if (hostProjection !== undefined) {
-      return hostProjection;
-    }
-    return classifyStructuredProviderError(structuredProviderError);
+    return projectStructuredProviderFailure(structuredProviderError, phase, providerClassifier);
   }
   if (AISDKError.isInstance(error)) {
     return { kind: 'protocol', code: 'provider_sdk_error', retryable: false };

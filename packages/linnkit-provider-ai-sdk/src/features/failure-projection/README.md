@@ -30,7 +30,17 @@ Stream 失败必须先区分 owner：`AiSdkHostStreamInvariantError` 表示 Host
 不读取错误文案、不伪造参数或工具结果，不在 adapter 校验业务 schema。安全诊断只保留
 有限 `invariant_code` 与触发失败的 `stream_part_type`，不保留工具名、参数、错误正文或 reasoning。
 
-`APICallError` 已带 HTTP status 时，重试语义由本 feature 的稳定状态码规则决定；没有 status 时表示尚未取得 HTTP response，此时只接纳 AI SDK 明确给出的 `isRetryable`。可重试项投影为 `transport/provider_transport_error`，不得因缺少 status 降级成不可重试的通用 Provider 错误，也不得从 message 猜测网络故障。
+`APICallError` 的非成功 HTTP status 按本 feature 的稳定状态码规则决定重试；没有 status 时只接纳 AI SDK 明确给出的 `isRetryable`。可重试项投影为 `transport/provider_transport_error`，不得从 message 猜测网络故障。
+
+HTTP 2xx 只证明请求已接纳，SDK 读取响应 body 失败时仍可能带 status200、`isRetryable=false`（SDK按状态码计算的默认值）。此时 TypeError 传输原因或 SDK 明确可重试信号投影为 `provider_response_read_error`；有类型的 schema/JSON 原因保留对应分类；未知成功响应处理失败为不可重试 `provider_response_invalid`。真实401/403等拒绝不会被内部 cause 覆盖。
+
+响应结构与流不完整必须分开：
+
+- `TypeValidationError` 仍是不可重试 `provider_response_schema_invalid`；仅在 Provider stream 且其已解码 `value.error` 是对象、带可识别的超时/限流/鉴权等信号时，复用正常 decoded error 分类。未知 envelope 的自报 retryable 不覆盖 schema 失败，也不从 validation message（包含整个响应）推断原因。
+- `InvalidResponseDataError` 不等于 schema 校验。当前上游 compatible SDK 在缺 finish reason 时以 `data=undefined` 抛此类错误；流中无 data 按可重试 `provider_stream_truncated` 处理，不声称已定位超时或网络。携带具体无效数据、或发生在非 stream 阶段时保持不可重试 `provider_response_data_invalid`。
+- 只使用 SDK 正式类型与已解码事实，不新增 body/SSE parser、模型/URL 特判或错误文案匹配。上游未来提供专门的流不完整错误类型时，优先替换无 data 的投影边界；SDK 升级必须重跑真实 codec 验收。
+
+安全诊断分别记录 schema 与 invalid-data shape，并可补 `sdk_error_details`：是否有响应数据、底层异常类别、HTTP status 与 SDK 原始 retryable；不记录 data/value/cause 对象或文案。`attempt_observed.terminal_event_received` 表示 adapter 已产生 canonical 终态，不是“上游发了结束帧”的证明；必须在 yield 前登记，覆盖消费者收到终态即停止、异常和自然EOF路径。
 
 Linnkit 0.38 起，已知 HTTP/decoded 429 与限流 finish reason 额外投影 `retry_category: rate_limit`，模型坏工具参数与 SDK 已取得但正文为空的响应投影 `output`。类别来自本 feature 已解码的事实，不靠框架猜 Provider code；原有安全错误码、是否可重试保持不变，次数和等待策略仍由 Host 与 Linnkit 决定。
 

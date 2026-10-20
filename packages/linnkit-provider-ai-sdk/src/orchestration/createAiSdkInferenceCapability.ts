@@ -86,6 +86,9 @@ function failureEvent(
         ? {}
         : { invariant_code: observation.diagnostic.invariant_code }),
       ...(streamPartType === undefined ? {} : { stream_part_type: streamPartType }),
+      ...(observation.diagnostic.sdk_error_details === undefined
+        ? {}
+        : { sdk_error_details: observation.diagnostic.sdk_error_details }),
       ...(observation.diagnostic.provider_signal === undefined
         ? {}
         : { provider_signal: observation.diagnostic.provider_signal }),
@@ -157,6 +160,14 @@ export function createAiSdkInferenceCapability(
       let lastProviderPartType: string | undefined;
       let terminalEventReceived = false;
       let terminalEventType: 'finish' | 'failure' | undefined;
+      const observeEvent = (event: CanonicalInferenceEvent): CanonicalInferenceEvent => {
+        if (event.type === 'finish' || event.type === 'failure') {
+          // 消费者收到终态就可能 break，必须在 yield 前登记，不能等恢复 generator。
+          terminalEventReceived = true;
+          terminalEventType = event.type;
+        }
+        return event;
+      };
       const providerAbortController = new AbortController();
       const forwardRequestAbort = () => providerAbortController.abort(request.signal?.reason);
       if (request.signal?.aborted) {
@@ -487,29 +498,29 @@ export function createAiSdkInferenceCapability(
             providerAbortController.abort(projectionError);
             continue;
           }
-          for (const event of events) yield event;
-          const terminalEvent = events.find(
-            (event): event is Extract<CanonicalInferenceEvent, { type: 'finish' | 'failure' }> =>
-              event.type === 'finish' || event.type === 'failure',
-          );
-          if (terminalEvent) {
-            terminalEventReceived = true;
-            terminalEventType = terminalEvent.type;
-            return;
+          for (const event of events) yield observeEvent(event);
+          if (terminalEventReceived) return;
+        }
+
+        yield observeEvent(
+          deferredProjectionFailure ?? {
+            type: 'failure',
+            kind: 'transport',
+            code: 'provider_stream_truncated',
+            retryable: true,
           }
-        }
+        );
+        return;
       } catch (error: unknown) {
-        if (deferredProjectionFailure) {
-          yield deferredProjectionFailure;
-          return;
-        }
-        yield failureEvent(
-          error,
-          request.signal,
-          failurePhase,
-          dependencies.provider_failure_classifier,
-          dependencies.diagnostic_sink,
-          diagnosticContext,
+        yield observeEvent(
+          deferredProjectionFailure ?? failureEvent(
+            error,
+            request.signal,
+            failurePhase,
+            dependencies.provider_failure_classifier,
+            dependencies.diagnostic_sink,
+            diagnosticContext,
+          )
         );
         return;
       } finally {
@@ -528,18 +539,6 @@ export function createAiSdkInferenceCapability(
         });
         request.signal?.removeEventListener('abort', forwardRequestAbort);
       }
-
-      if (deferredProjectionFailure) {
-        yield deferredProjectionFailure;
-        return;
-      }
-
-      yield {
-        type: 'failure',
-        kind: 'transport',
-        code: 'provider_stream_truncated',
-        retryable: true,
-      };
     },
   };
 }

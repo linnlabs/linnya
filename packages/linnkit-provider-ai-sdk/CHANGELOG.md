@@ -2,6 +2,11 @@
 
 ## 0.1.0
 
+- 修复响应不完整被误归为不可重试 schema 失败、HTTP200后读取失败误归为 HTTP 错误；
+  SDK 校验失败中的已解码 error envelope 只恢复可识别的上游语义，真正不兼容仍停止。
+  安全诊断区分 SDK 错误类别与响应数据状态，并在 yield 前记录 canonical 终态；
+  使用真实 compatible/DeepSeek codec 与 Host caller 验证重试、取消和失败片段撤回，SDK 保持零重试。
+
 - 升级 AI SDK Core 至 `7.0.140` 与正式 Provider packages，xAI 使用 5.x Responses；
   Google 保留自动长输出续传之前的版本，避免改变单 attempt 请求合同。
   DeepSeek 使用上游原生工具图片实现，删除本地 pnpm patch 与修改声明；协议验收接纳

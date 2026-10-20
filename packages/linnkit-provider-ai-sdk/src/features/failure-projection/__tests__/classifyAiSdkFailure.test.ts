@@ -352,6 +352,7 @@ describe('classifyAiSdkFailure', () => {
       diagnostic: {
         phase: 'provider_stream',
         error_shape: 'stream_provider_error',
+        sdk_error_details: { sdk_retryable: true },
         provider_signal: {
           type: 'server_error',
           code: 'upstream_error',

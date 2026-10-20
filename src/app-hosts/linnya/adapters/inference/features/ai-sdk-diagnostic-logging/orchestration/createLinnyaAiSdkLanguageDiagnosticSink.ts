@@ -50,6 +50,14 @@ function logDiagnostic(logger: Logger, diagnostic: AiSdkLanguageDiagnostic): voi
         ...(diagnostic.provider_signal === undefined
           ? {}
           : { provider_signal: diagnostic.provider_signal }),
+        ...(diagnostic.sdk_error_details === undefined
+          ? {}
+          : { sdk_error_details: {
+              response_data_state: diagnostic.sdk_error_details.response_data_state,
+              cause_shape: diagnostic.sdk_error_details.cause_shape,
+              http_status: diagnostic.sdk_error_details.http_status,
+              sdk_retryable: diagnostic.sdk_error_details.sdk_retryable,
+            } }),
         failure_kind: diagnostic.failure_kind,
         failure_code: diagnostic.failure_code,
         retryable: diagnostic.retryable,

@@ -1,6 +1,7 @@
 import type {
   AiSdkFailureErrorShape,
   AiSdkFailurePhase,
+  AiSdkFailureSdkDetails,
   AiSdkHostStreamInvariantCode,
 } from '../features/failure-projection';
 import type { AiSdkInferenceCapabilityId } from './aiSdkCapabilityIds';
@@ -76,6 +77,7 @@ export type AiSdkLanguageDiagnostic =
       readonly error_shape: AiSdkFailureErrorShape;
       readonly invariant_code?: AiSdkHostStreamInvariantCode;
       readonly stream_part_type?: AiSdkLanguageStreamPartType;
+      readonly sdk_error_details?: AiSdkFailureSdkDetails;
       readonly provider_signal?: Readonly<{
         readonly status_code?: number;
         readonly type?: string;

@@ -29,6 +29,11 @@ factory、request body 或 SSE。
 - 真实第三方 codec 的离线两轮 conformance，以及 packed CJS/ESM
   artifact 的两轮工具闭环。
 
+错误规则集中在 [failure-projection](./src/features/failure-projection/README.md)：
+复用 SDK 类型、HTTP/decoded error 与底层 cause，区分响应不完整、成功响应读取失败和真正的
+schema/JSON 不兼容。SDK 的 `isRetryable` 不是每一种流错误的完整判据；adapter 只做安全分类，
+实际次数、退避、取消及失败片段撤回继续交给 Linnkit，不叠加 SDK 自动重试。
+
 本 package 明确不拥有：
 
 - Provider 产品目录、stable/preview、模型资料、模型发现、onboarding 或设置 UI；

@@ -12,6 +12,7 @@ import {
 import type {
   AiSdkFailureErrorShape,
   AiSdkFailureObservation,
+  AiSdkFailureSdkDetails,
 } from '../definitions/aiSdkFailureObservation';
 import type {
   AiSdkFailurePhase,
@@ -28,9 +29,8 @@ function readSafeErrorShape(error: unknown): AiSdkFailureErrorShape {
   if (error instanceof AiSdkHostStreamInvariantError) return 'host_stream_invariant';
   if (error instanceof AiSdkToolCallError) return 'tool_call_error';
   if (APICallError.isInstance(error)) return 'api_call_error';
-  if (TypeValidationError.isInstance(error) || InvalidResponseDataError.isInstance(error)) {
-    return 'response_schema_error';
-  }
+  if (TypeValidationError.isInstance(error)) return 'response_schema_error';
+  if (InvalidResponseDataError.isInstance(error)) return 'invalid_response_data_error';
   if (JSONParseError.isInstance(error)) return 'response_json_error';
   if (EmptyResponseBodyError.isInstance(error)) return 'empty_response_error';
   if (UnsupportedFunctionalityError.isInstance(error)) {
@@ -46,6 +46,29 @@ function readSafeErrorShape(error: unknown): AiSdkFailureErrorShape {
   return 'unknown_thrown_value';
 }
 
+function readSdkDetails(error: unknown): AiSdkFailureSdkDetails | undefined {
+  if (StreamProviderError.isInstance(error)) {
+    return { sdk_retryable: error.isRetryable };
+  }
+  if (APICallError.isInstance(error)) {
+    return {
+      sdk_retryable: error.isRetryable,
+      ...(error.statusCode === undefined ? {} : { http_status: error.statusCode }),
+      ...(error.cause === undefined ? {} : { cause_shape: readSafeErrorShape(error.cause) }),
+    };
+  }
+  if (InvalidResponseDataError.isInstance(error)) {
+    return { response_data_state: error.data === undefined ? 'absent' : 'present' };
+  }
+  if (TypeValidationError.isInstance(error)) {
+    return {
+      response_data_state: error.value === undefined ? 'absent' : 'present',
+      cause_shape: readSafeErrorShape(error.cause),
+    };
+  }
+  return undefined;
+}
+
 export function projectAiSdkFailureObservation(
   error: unknown,
   signal: AbortSignal | undefined,
@@ -53,6 +76,7 @@ export function projectAiSdkFailureObservation(
   providerClassifier?: AiSdkProviderFailureClassifier
 ): AiSdkFailureObservation {
   const providerSignal = projectAiSdkProviderSignal(error);
+  const sdkDetails = readSdkDetails(error);
   return {
     failure: classifyAiSdkFailure(error, signal, phase, providerClassifier),
     diagnostic: {
@@ -62,6 +86,7 @@ export function projectAiSdkFailureObservation(
         ? { invariant_code: error.invariant_code }
         : {}),
       ...(providerSignal === undefined ? {} : { provider_signal: providerSignal }),
+      ...(sdkDetails === undefined ? {} : { sdk_error_details: sdkDetails }),
     },
   };
 }
