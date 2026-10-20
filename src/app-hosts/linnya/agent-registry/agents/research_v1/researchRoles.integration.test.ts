@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -164,7 +163,7 @@ describe('main research and prompt-based document roles through formal preparati
     }
   );
 
-  it('delivers the unchanged formal 1.4 body and full applicable resources through the real Skill tool', async () => {
+  it('discovers the writing index and nested genre cards and delivers resources on demand through the real Skill tool', async () => {
     const skill = new SkillTool();
     const activation = SkillActivateResultSchema.parse(
       JSON.parse(
@@ -181,29 +180,20 @@ describe('main research and prompt-based document roles through formal preparati
     expect(activation.data).toMatchObject({
       activated: true,
       source: 'builtin',
-      resource_count: 3,
+      resource_count: content.resources.length,
     });
     expect(activation.observation).toContain(content.body);
     const root = path.join(getBuiltinSkillsRoot(), 'deep-research');
-    const files = [
-      ['SKILL.md', '8c9372a32454ecda1906387a586c525626788a5d01091c135cd6db6572308f42'],
-      [
-        'references/modeling.md',
-        '9c462aec2caa5d97f897cbf178f7221e9404bfea07ed80638f1cd7c521bd6ff7',
-      ],
-      [
+    // 校验从入口到深层文体卡的真实发现/读取链，不将写作措辞的旧hash当成业务合同。
+    expect(content.resources).toEqual(
+      expect.arrayContaining([
         'references/article-craft.md',
-        '01f2605e1f554de06b0654cecbc27e22563898530def43a680789dcff6b2b9e9',
-      ],
-      [
-        'references/business-analysis.md',
-        'b90c399cd2edc7015b64b2bd0d95ce9cbc0b299fd951cfc0c3afd28e3c8f1af1',
-      ],
-    ] as const;
-    for (const [file, expectedHash] of files) {
+        'references/writing/index.md',
+        'references/writing/genres/explainer.md',
+      ])
+    );
+    for (const file of content.resources) {
       const text = readFileSync(path.join(root, file), 'utf8');
-      expect(createHash('sha256').update(text).digest('hex')).toBe(expectedHash);
-      if (file === 'SKILL.md') continue;
       const result = SkillReadResourceResultSchema.parse(
         JSON.parse(
           await skill.run(

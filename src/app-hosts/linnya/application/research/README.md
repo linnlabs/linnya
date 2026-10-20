@@ -3,8 +3,8 @@
 目标是充分调查、准确解释、深入浅出的长文章。前端入口仍为“研究”，身份仍为
 `research_v1`。主 Agent 使用正常 Conversation、TaskState、通用 `subagent`
 与 Workspace 文件工具；Host 不自动推进研究阶段，不另建 Workflow。Default
-Agent 与正式 deep-research Skill
-1.4 保持不变。工程闭环不等于已经证明跨题稳定的质量优势。
+Agent 与研究父子角色共用正式 deep-research Skill；版本和资源由
+[Skills owner](../../../../features/skills/README.md) 维护。工程闭环不等于已经证明跨题稳定的质量优势。
 
 ## 职责与材料交接
 
@@ -23,7 +23,7 @@ Graph 步，不再委派其他 Agent。它们作为普通已注册子类型供�
 ## 文档保存与最终交付
 
 父角色在完整文章的构思、写作或仅修订任务之前，明确通过 Skill 读取
-`references/article-craft.md`；当前会话已读则不重复加载。正文须面向指定读者交代问题为何重要、必要背景、现状及运行机制，在推论前解释必要概念，并让段落沿问题与证据衔接。允许结论先行、事件开篇和不同文体，不固定章节，不越过材料边界补造背景。已有语义回读同时检查读者能否仅凭正文理解，不以模型自身常识替文章补缺。此为父提示职责，非资源自动注入或强制执行关卡；质量效果仍需完整文章验证。
+`references/article-craft.md`，再按入口读取写作目录与适用文体卡；当前会话已读则不重复加载。调查后根据材料与证据选择写法，而非预先套统一提纲。正文须面向指定读者交代问题为何重要、必要背景、现状及运行机制，在推论前解释必要概念，并让段落沿问题与证据衔接。允许结论先行、事件开篇和不同文体，不固定章节，不越过材料边界补造背景。已有语义回读同时检查读者能否仅凭正文理解，不以模型自身常识替文章补缺。此为父提示与Skill职责，非资源自动注入或强制执行关卡；质量效果仍需完整文章验证。
 
 父子角色用普通 `write_file`、`edit_file` 保存 Markdown，按工具结果使用
 `read_file` 核对真实保存稿。Markdown 编译、Citation、pending
@@ -54,7 +54,7 @@ admission、RunSupervisor、EventStore、Audit 与通用工具恢复。TaskState
 
 ## 方法与验证
 
-研究方法继续从唯一正式 Skill 1.4 及资源加载。父/子角色 system
+研究方法与写作资料继续从唯一正式内置 Skill 及资源加载。父/子角色 system
 prompt 确定职责，具体委派 prompt 给出本题问题与材料；没有自动阶段 system
 reminder。角色与方法维护位置见
 [Agent Registry](../../agent-registry/README.md)。不新增 Judge、图谱、评分或专用评审工具。
