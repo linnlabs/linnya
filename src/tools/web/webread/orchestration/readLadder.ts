@@ -18,6 +18,8 @@ import {
   createWebReadProvider,
 } from '../providers/factory';
 import type { WebReadParams, WebReadProvider, WebReadResult } from '../providers/types';
+import type { WebPageResource } from '../../definitions/webDocument';
+import { attachWebReadRecoveryResources, mergeWebReadRecoveryResources } from '../functions/webReadRecoveryResources';
 
 const logger = new Logger('WebReadLadder');
 const DEFAULT_WEB_READ_TOTAL_TIMEOUT_MS = 90_000;
@@ -56,6 +58,7 @@ async function readManagedFallback(args: {
   initialFailureKind?: WebFailureKind;
   initialFailureStage?: WebExtractionFailureStage;
   previousFailure?: unknown;
+  resources?: readonly WebPageResource[];
 }): Promise<WebReadLadderResult> {
   if (
     args.managedProvider === null ||
@@ -69,9 +72,9 @@ async function readManagedFallback(args: {
         : (getWebExtractionFailureStage(args.previousFailure) ?? args.initialFailureStage);
     const failureReason = previousFailureKind ?? args.initialFailureKind ?? args.reason;
     const stageSuffix = extractionStage ? `，stage=${extractionStage}` : '';
-    throw new WebFailureError<WebReadEscalationReason>(
+    throw attachWebReadRecoveryResources(new WebFailureError<WebReadEscalationReason>(
       'managed_disabled',
-      `[WEB_READ_MANAGED_DISABLED] 本机网页读取未完成（${failureReason}${stageSuffix}），且未启用第三方增强解析。当前配置下不要原样重试此 URL；寻找可取得的官方副本、原件或可靠替代来源，并明确说明尚未取得此页正文。`,
+      `[WEB_READ_MANAGED_DISABLED] 本机网页读取未完成（${failureReason}${stageSuffix}），且未启用第三方增强解析；尚未取得合格正文。`,
       {
         details: {
           escalationReason: args.reason,
@@ -84,7 +87,7 @@ async function readManagedFallback(args: {
             getWebFailureDiagnostics(args.previousFailure).failureStage ?? 'read_ladder',
         },
       }
-    );
+    ), args.resources ?? []);
   }
   const managedProvider = args.managedProvider ?? createWebReadProvider(args.config);
   logger.info('[readWebPageWithLadder] 升级托管读取', {
@@ -126,7 +129,7 @@ async function readManagedFallback(args: {
       failureKind: getWebFailureKind(error),
       ...getWebFailureDiagnostics(error),
     });
-    throw error;
+    throw attachWebReadRecoveryResources(error, args.resources ?? []);
   }
 }
 
@@ -150,6 +153,7 @@ async function readRenderedOrManaged(args: {
   qualityScore: number | undefined;
   initialFailureKind?: WebFailureKind;
   initialFailureStage?: WebExtractionFailureStage;
+  resources?: readonly WebPageResource[];
 }): Promise<WebReadLadderResult> {
   logger.info('[readWebPageWithLadder] 升级本地渲染', {
     operation: 'read',
@@ -166,7 +170,9 @@ async function readRenderedOrManaged(args: {
   } catch (cause: unknown) {
     const error = createWebReadFailure(cause, 'local_render');
     const failureKind = getWebFailureKind(error);
-    if (!MANAGED_AFTER_RENDER_FAILURE.has(failureKind)) throw error;
+    if (!MANAGED_AFTER_RENDER_FAILURE.has(failureKind)) {
+      throw attachWebReadRecoveryResources(error, args.resources ?? []);
+    }
     return readManagedFallback({
       params: args.params,
       initialProvider: args.initialProvider,
@@ -178,6 +184,7 @@ async function readRenderedOrManaged(args: {
       initialFailureKind: args.initialFailureKind,
       initialFailureStage: args.initialFailureStage,
       previousFailure: error,
+      resources: args.resources,
     });
   }
 
@@ -205,6 +212,7 @@ async function readRenderedOrManaged(args: {
     renderAttempted: true,
     initialFailureKind: args.initialFailureKind,
     initialFailureStage: args.initialFailureStage,
+    resources: mergeWebReadRecoveryResources(args.resources, renderedResult.resources),
   });
 }
 
@@ -274,6 +282,7 @@ async function executeReadLadder(
       config,
       reason: quality.reason,
       qualityScore: quality.qualityScore,
+      resources: readResult.resources,
     });
   }
 
@@ -285,6 +294,7 @@ async function executeReadLadder(
     config,
     qualityScore: quality.qualityScore,
     renderAttempted: false,
+    resources: readResult.resources,
   });
 }
 
@@ -308,7 +318,10 @@ export async function readWebPageWithLadder(
   } catch (error: unknown) {
     if (totalBudgetExpired) {
       throw new WebFailureError('timeout', `网页读取总耗时超过 ${totalTimeoutMs}ms。`, {
-        details: { ...getWebFailureDiagnostics(error), failureStage: 'read_ladder' },
+        details: { ...getWebFailureDiagnostics(error), failureStage: 'read_ladder',
+          ...(error instanceof WebFailureError && error.details?.resources
+            ? { resources: error.details.resources } : {}),
+        },
       });
     }
     throw error;

@@ -10,6 +10,7 @@ import {
   type WebExtractionFailureStage,
   type WebFailureKind,
 } from '@app/schemas';
+import type { WebPageResource } from '../definitions/webDocument';
 
 export type {
   EscalatableWebFailureKind,
@@ -19,6 +20,11 @@ export type {
 
 export const ESCALATABLE: ReadonlySet<EscalatableWebFailureKind> =
   new Set<EscalatableWebFailureKind>([...WEB_ESCALATABLE_FAILURE_KIND_VALUES]);
+
+export const WEB_RETRY_STOP_REASONS = [
+  'not_retryable', 'retry_limit', 'retry_after_limit', 'budget_exhausted',
+] as const;
+export type WebRetryStopReason = typeof WEB_RETRY_STOP_REASONS[number];
 
 export interface WebFailureDetails<TReason extends string = WebFailureKind> {
   readonly escalationReason?: TReason;
@@ -36,6 +42,13 @@ export interface WebFailureDetails<TReason extends string = WebFailureKind> {
   readonly failureStage?: WebFailureStage;
   readonly renderFailureKind?: WebRenderFailureKind;
   readonly rpcCode?: number;
+  readonly retryAfterMs?: number;
+  readonly retryStopReason?: WebRetryStopReason;
+  readonly bodyBytes?: number;
+  readonly maxBodyBytes?: number;
+  readonly declaredBodyBytes?: number;
+  /** 已实际抽取的外部资源；不得混入安全诊断，展示必须进入不可信边界。 */
+  readonly resources?: readonly WebPageResource[];
 }
 
 export type WebFailureStage =
@@ -67,6 +80,11 @@ export interface WebFailureDiagnostics {
   readonly renderFailureKind?: WebRenderFailureKind;
   readonly extractionStage?: WebExtractionFailureStage;
   readonly rpcCode?: number;
+  readonly retryAfterMs?: number;
+  readonly retryStopReason?: WebRetryStopReason;
+  readonly bodyBytes?: number;
+  readonly maxBodyBytes?: number;
+  readonly declaredBodyBytes?: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -129,6 +147,13 @@ export function getWebFailureDiagnostics(error: unknown): WebFailureDiagnostics 
   );
   const renderAttempted = read('renderAttempted');
   const rpcCode = read('rpcCode');
+  const retryStopReason = WEB_RETRY_STOP_REASONS.find(value => value === read('retryStopReason'));
+  const numericFacts: { -readonly [K in
+    'retryAfterMs' | 'bodyBytes' | 'maxBodyBytes' | 'declaredBodyBytes']?: number } = {};
+  for (const key of ['retryAfterMs', 'bodyBytes', 'maxBodyBytes', 'declaredBodyBytes'] as const) {
+    const value = read(key);
+    if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) numericFacts[key] = value;
+  }
   const mimeType = getWebDiagnosticMimeType(contentType);
   const safeUrl = typeof finalUrl === 'string' ? sanitizeDiagnosticUrl(finalUrl) : undefined;
   return {
@@ -150,6 +175,8 @@ export function getWebFailureDiagnostics(error: unknown): WebFailureDiagnostics 
     ...(extractionStage ? { extractionStage } : {}),
     ...(typeof renderAttempted === 'boolean' ? { renderAttempted } : {}),
     ...(typeof rpcCode === 'number' && Number.isSafeInteger(rpcCode) ? { rpcCode } : {}),
+    ...numericFacts,
+    ...(retryStopReason ? { retryStopReason } : {}),
   };
 }
 
@@ -288,6 +315,12 @@ export function formatWebFailureDiagnostics(error: unknown): string {
     diagnostics.rpcCode !== undefined ? `rpc_code=${diagnostics.rpcCode}` : '',
     diagnostics.attempt !== undefined ? `attempt=${diagnostics.attempt}` : '',
     diagnostics.retryCount !== undefined ? `retry_count=${diagnostics.retryCount}` : '',
+    diagnostics.retryAfterMs !== undefined ? `retry_after_ms=${diagnostics.retryAfterMs}` : '',
+    diagnostics.retryStopReason ? `retry_stop=${diagnostics.retryStopReason}` : '',
+    diagnostics.contentType ? `mime=${diagnostics.contentType}` : '',
+    diagnostics.bodyBytes !== undefined ? `received_bytes=${diagnostics.bodyBytes}` : '',
+    diagnostics.maxBodyBytes !== undefined ? `limit_bytes=${diagnostics.maxBodyBytes}` : '',
+    diagnostics.declaredBodyBytes !== undefined ? `declared_length=${diagnostics.declaredBodyBytes}` : '',
   ].filter(Boolean);
   return fields.length ? `Web diagnostics: ${fields.join(', ')}.` : '';
 }

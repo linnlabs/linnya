@@ -2,11 +2,13 @@ import type {
   WebFailureKind,
   WebExtractionFailureStage,
   WebReadEscalationReason,
-  WebReadQualitySignal,
 } from '@app/schemas';
 import type { WebReadResult } from '../providers/types';
 
 export type { WebReadEscalationReason, WebReadQualitySignal } from '@app/schemas';
+
+/** 正文短缺的共同阈值；抽取候选选择与质量升级使用同一规则。 */
+export const WEB_READ_SUBSTANTIAL_CONTENT_CHARS = 800;
 
 export interface WebReadQualityAssessment {
   shouldEscalate: boolean;

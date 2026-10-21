@@ -11,6 +11,7 @@ import {
   getWebFailureKind,
   isWebChallengeResponse,
   type WebFailureKind,
+  type WebRetryStopReason,
 } from '../../../tools/web/shared/webFailure';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import {
@@ -47,6 +48,10 @@ export class WebHttpError extends Error {
   readonly attempt?: number;
   readonly retryCount?: number;
   readonly rpcCode?: number;
+  readonly retryStopReason?: WebRetryStopReason;
+  readonly bodyBytes?: number;
+  readonly maxBodyBytes?: number;
+  readonly declaredBodyBytes?: number;
 
   constructor(kind: WebHttpErrorKind, message: string, options?: {
     cause?: unknown;
@@ -59,6 +64,10 @@ export class WebHttpError extends Error {
     attempt?: number;
     retryCount?: number;
     rpcCode?: number;
+    retryStopReason?: WebRetryStopReason;
+    bodyBytes?: number;
+    maxBodyBytes?: number;
+    declaredBodyBytes?: number;
   }) {
     super(message);
     this.name = 'WebHttpError';
@@ -73,6 +82,10 @@ export class WebHttpError extends Error {
     this.attempt = options?.attempt;
     this.retryCount = options?.retryCount;
     this.rpcCode = options?.rpcCode;
+    this.retryStopReason = options?.retryStopReason;
+    this.bodyBytes = options?.bodyBytes;
+    this.maxBodyBytes = options?.maxBodyBytes;
+    this.declaredBodyBytes = options?.declaredBodyBytes;
     // 分类会读取网络异常的 code；传入原始事实，避免派生 code 反向触发自身分类。
     this.code = getWebFailureKind({ kind, ...options });
   }
@@ -142,7 +155,7 @@ export function parseRetryAfter(value: string | null): number | undefined {
 
 export function withWebHttpErrorDiagnostics(
   error: WebHttpError,
-  diagnostics: Pick<WebHttpError, 'url' | 'redirectCount' | 'attempt' | 'retryCount'>,
+  diagnostics: Pick<WebHttpError, 'url' | 'redirectCount' | 'attempt' | 'retryCount' | 'retryStopReason'>,
 ): WebHttpError {
   return new WebHttpError(error.kind, error.message, {
     cause: error.cause,
@@ -151,6 +164,14 @@ export function withWebHttpErrorDiagnostics(
     challengeDetected: error.challengeDetected,
     retryAfterMs: error.retryAfterMs,
     rpcCode: error.rpcCode,
+    url: error.url,
+    redirectCount: error.redirectCount,
+    attempt: error.attempt,
+    retryCount: error.retryCount,
+    retryStopReason: error.retryStopReason,
+    bodyBytes: error.bodyBytes,
+    maxBodyBytes: error.maxBodyBytes,
+    declaredBodyBytes: error.declaredBodyBytes,
     ...diagnostics,
   });
 }
@@ -227,7 +248,8 @@ async function readBodyWithLimit(body: NodeReadableStream | null, maxBodyBytes: 
         await reader.cancel('response body exceeded maxBodyBytes');
         throw new WebHttpError(
           'body_too_large',
-          `Web HTTP 响应体超过上限 ${maxBodyBytes} 字节。`
+          `Web HTTP 响应体超过上限 ${maxBodyBytes} 字节。`,
+          { bodyBytes, maxBodyBytes },
         );
       }
       chunks.push(chunk);
@@ -275,7 +297,23 @@ export async function webHttpFetch(args: WebHttpFetchArgs): Promise<WebHttpRespo
       await response.body?.cancel('invalid response body budget');
       throw new WebHttpError('invalid_response', 'Web HTTP 响应体预算必须是正数。');
     }
-    const { bodyText, bodyData, bodyBytes } = await readBodyWithLimit(response.body, maxBodyBytes);
+    let body: Awaited<ReturnType<typeof readBodyWithLimit>>;
+    try {
+      body = await readBodyWithLimit(response.body, maxBodyBytes);
+    } catch (error: unknown) {
+      if (!(error instanceof WebHttpError)) throw error;
+      const declaredLength = response.headers.get('content-length');
+      const declaredBodyBytes = declaredLength && /^\d+$/.test(declaredLength)
+        && Number.isSafeInteger(Number(declaredLength)) ? Number(declaredLength) : undefined;
+      throw new WebHttpError(error.kind, error.message, {
+        status: response.status,
+        contentType: response.headers.get('content-type') ?? undefined,
+        bodyBytes: error.bodyBytes,
+        maxBodyBytes: error.maxBodyBytes,
+        ...(declaredBodyBytes !== undefined ? { declaredBodyBytes } : {}),
+      });
+    }
+    const { bodyText, bodyData, bodyBytes } = body;
     const tookMs = Date.now() - startedAt;
 
     logger.info('[webHttpFetch] 请求完成', {

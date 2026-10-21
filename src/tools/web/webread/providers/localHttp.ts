@@ -170,6 +170,9 @@ export class LocalHttpProvider implements WebReadProvider {
     const unsupportedMessage = diagnosticMimeType
       ? `本地网页抓取暂不支持 MIME ${diagnosticMimeType}。`
       : '本地网页抓取收到不支持或无效的 Content-Type；未取得正文或保存文件。';
-    throw new WebFailureError('unsupported_mime', unsupportedMessage, { status: fetched.status });
+    throw new WebFailureError('unsupported_mime', unsupportedMessage, {
+      status: fetched.status,
+      details: { contentType: diagnosticMimeType, bodyBytes: fetched.rawLength },
+    });
   }
 }

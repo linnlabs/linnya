@@ -23,6 +23,7 @@ import {
   resolveAndAssertPublicHost,
   type ResolvedWebHost,
 } from '../../../tools/web/shared/urlPolicy';
+import type { WebRetryStopReason } from '../../../tools/web/shared/webFailure';
 
 export const LOCAL_HTTP_TIMEOUT_MS = 12_000;
 export const LOCAL_HTTP_MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -172,6 +173,13 @@ function isTransientRetryCandidate(error: WebHttpError): boolean {
     || error.kind === 'http_5xx';
 }
 
+function retryStopReason(error: WebHttpError, retryCount: number): WebRetryStopReason {
+  if (!isTransientRetryCandidate(error)) return 'not_retryable';
+  if (retryCount >= LOCAL_HTTP_MAX_TRANSIENT_RETRIES) return 'retry_limit';
+  if ((error.retryAfterMs ?? 0) > LOCAL_HTTP_MAX_RETRY_DELAY_MS) return 'retry_after_limit';
+  return 'budget_exhausted';
+}
+
 function sleepWithSignal(delayMs: number, signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) return Promise.reject(createAbortError());
   return new Promise<void>((resolve, reject) => {
@@ -295,7 +303,9 @@ export async function localHttpFetch(
         await sleep(delayMs, options.signal);
         continue;
       }
-      throw diagnosed;
+      throw withWebHttpErrorDiagnostics(diagnosed, {
+        retryStopReason: retryStopReason(diagnosed, retryCount),
+      });
     }
     const response = fetchOutcome;
 
@@ -379,7 +389,9 @@ export async function localHttpFetch(
         await sleep(delayMs, options.signal);
         continue;
       }
-      throw upstreamError;
+      throw withWebHttpErrorDiagnostics(upstreamError, {
+        retryStopReason: retryStopReason(upstreamError, retryCount),
+      });
     }
     const contentType = response.headers.get('content-type')?.trim() || 'application/octet-stream';
     const decoded = decodeBody(response);

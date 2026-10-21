@@ -74,7 +74,10 @@ describe('webHttpFetch 真实 HTTP 合同', () => {
       maxBodyBytes: 128,
     });
 
-    await expect(promise).rejects.toMatchObject({ kind: 'body_too_large' });
+    await expect(promise).rejects.toMatchObject({
+      kind: 'body_too_large', status: 200, bodyBytes: 4_096,
+      maxBodyBytes: 128, declaredBodyBytes: 4_096,
+    });
   });
 
   it('透传调用方取消并分类为 aborted', async () => {

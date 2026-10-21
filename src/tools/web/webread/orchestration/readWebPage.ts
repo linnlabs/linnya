@@ -35,6 +35,8 @@ import { buildWebReadObservation } from '../functions/buildWebReadObservation';
 import { describeWebFile } from '../file-acquisition/functions/describeWebFile';
 import type { WebFileStore } from '../file-acquisition/definitions/webFileAcquisition';
 import { buildWebReadBlockFeedback } from '../functions/buildWebReadBlockFeedback';
+import { buildWebReadFailureFeedback } from '../functions/buildWebReadFailureFeedback';
+import { formatWebReadRecoveryResources } from '../functions/webReadRecoveryResources';
 
 const logger = new Logger('ReadWebPage');
 
@@ -181,6 +183,14 @@ export async function runReadWebPage(
       tookMs: Date.now() - startedAt,
     });
     const diagnostic = formatWebFailureDiagnostics(error);
+    const urlWasObserved = getWebFailureKind(error) === 'http_404' && !context.abortSignal?.aborted
+      ? context.webReadAccessHistory?.hasObservedUrl?.({
+          url: allowedUrl.toString(), currentRunId: context.runId,
+          currentToolCallId: context.parentToolCallId,
+        }) : undefined;
+    const recovery = !context.abortSignal?.aborted
+      ? buildWebReadFailureFeedback(error, { hostname: allowedUrl.hostname, urlWasObserved }) : '';
+    const resources = !context.abortSignal?.aborted ? formatWebReadRecoveryResources(error) : '';
     let feedback = '';
     if (
       !context.abortSignal?.aborted &&
@@ -194,11 +204,11 @@ export async function runReadWebPage(
       });
       feedback = buildWebReadBlockFeedback(allowedUrl.hostname, history);
     }
-    if (error instanceof Error && (diagnostic || feedback)) {
+    if (error instanceof Error && (diagnostic || feedback || recovery || resources)) {
       // in-flight 错误可被不同会话共享，模型诊断与会话反馈只在调用侧生成，不修改共享对象。
       throw new WebFailureError(
         error instanceof WebFailureError ? error.kind : getWebFailureKind(error),
-        [error.message, diagnostic, feedback].filter(Boolean).join('\n'),
+        [error.message, diagnostic, recovery, feedback, resources].filter(Boolean).join('\n'),
         {
           status:
             error instanceof WebFailureError

@@ -167,13 +167,13 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
   });
 
   it.each([
-    { route: '/retry-after-long', timeoutMs: 2_000 },
-    { route: '/retry-after-budget', timeoutMs: 400 },
-  ])('已知 Retry-After 过长或剩余预算不足时不裁短等待、不补发：$route', async ({ route, timeoutMs }) => {
+    { route: '/retry-after-long', timeoutMs: 2_000, retryStopReason: 'retry_after_limit' },
+    { route: '/retry-after-budget', timeoutMs: 400, retryStopReason: 'budget_exhausted' },
+  ])('已知 Retry-After 过长或剩余预算不足时不裁短等待、不补发：$route', async ({ route, timeoutMs, retryStopReason }) => {
     let sleeps = 0;
     await expect(localHttpFetch(`http://fixture.test:${port}${route}`, { timeoutMs }, {
       resolveHost: resolveFixtureHost, sleep: async () => { sleeps += 1; },
-    })).rejects.toMatchObject({ kind: 'rate_limited', status: 429, attempt: 1, retryCount: 0 });
+    })).rejects.toMatchObject({ kind: 'rate_limited', status: 429, attempt: 1, retryCount: 0, retryStopReason });
     expect(requestedPaths.filter(value => value === route)).toHaveLength(1);
     expect(sleeps).toBe(0);
   });
@@ -197,7 +197,7 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
     expect(result).toMatchObject({ status: 200, attemptCount: 2, retryCount: 1 });
     await expect(localHttpFetch(`http://fixture.test:${port}/network-fails`, {}, {
       resolveHost: resolveFixtureHost, sleep: async () => undefined,
-    })).rejects.toMatchObject({ code: 'network_error', attempt: 2, retryCount: 1 });
+    })).rejects.toMatchObject({ code: 'network_error', attempt: 2, retryCount: 1, retryStopReason: 'retry_limit' });
     expect(transientAttempts.get('/network-fails')).toBe(2);
   });
 

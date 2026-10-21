@@ -6,12 +6,14 @@ import { parseCanonicalHtmlDocument } from './parseCanonicalHtmlDocument';
 import { prepareReadableDocument } from './prepareReadableDocument';
 import { renderReadableMarkdown } from './renderReadableMarkdown';
 import { extractPageResources } from './extractPageResources';
+import { extractTabularDom, extractTabularContext } from './extractTabularDom';
 import type { WebPageResource } from '../../definitions/webDocument';
+import { WEB_READ_SUBSTANTIAL_CONTENT_CHARS } from '../definitions/readLadder';
 
 export type ArticleExtractionWarning = WebDocumentWarning;
 
 export interface ExtractArticleResult {
-  extractor: 'readability' | 'semantic_dom';
+  extractor: 'readability' | 'semantic_dom' | 'tabular_dom';
   title: string;
   text: string;
   byline?: string;
@@ -209,6 +211,7 @@ function extractArticleBaseline(
   }
   const semanticCandidateCount = document.querySelectorAll('article, main, [role="main"]').length;
   const semantic = extractSemanticDom(document);
+  const tabular = semanticCandidateCount === 0 ? extractTabularDom(document) : undefined;
   let article: ReadabilityResult;
   try {
     article = options.parseReadability
@@ -220,7 +223,7 @@ function extractArticleBaseline(
   } catch (cause: unknown) {
     // 已有明确语义主区域时，Readability 只是可替换的增强抽取器；它失败不能
     // 推翻已经取得的正文。没有任何正文时才把第三方异常提升为领域失败。
-    if (!semantic.text) {
+    if (!semantic.text && !tabular?.text) {
       throw new WebFailureError(
         'extraction_error',
         '[WEB_READ_EXTRACTION_FAILED] 网页正文抽取器执行失败（stage=readability）。',
@@ -241,9 +244,16 @@ function extractArticleBaseline(
     && (readabilityLength < 200
       || (semantic.textLength - readabilityLength >= 300
         && semantic.textLength >= readabilityLength * 1.35));
-  const extractor = useSemanticDom ? 'semantic_dom' : 'readability';
-  const text = useSemanticDom ? semantic.text : readabilityText;
-  const textLength = useSemanticDom ? semantic.textLength : readabilityLength;
+  const primaryText = useSemanticDom ? semantic.text : readabilityText;
+  const primaryLength = useSemanticDom ? semantic.textLength : readabilityLength;
+  // 只在文章抽取不足且真实数据表被遗漏时选择表格视图；不能仅凭原始 HTML
+  // 的表格行数放宽质量检查。说明/脚注保留在已选正文中，不从全页猜取。
+  const useTabularDom = tabular !== undefined && tabular.tableCount > 0
+    && primaryLength < WEB_READ_SUBSTANTIAL_CONTENT_CHARS;
+  const context = useTabularDom ? extractTabularContext(readableBody, tabular) : undefined;
+  const extractor = useTabularDom ? 'tabular_dom' : useSemanticDom ? 'semantic_dom' : 'readability';
+  const text = useTabularDom ? [tabular.text, context?.text].filter(Boolean).join('\n\n') : primaryText;
+  const textLength = useTabularDom ? tabular.textLength + (context?.textLength ?? 0) : primaryLength;
   const textToHtmlRatio = textLength / Math.max(1, html.length);
   const warnings = new Set<ArticleExtractionWarning>();
 

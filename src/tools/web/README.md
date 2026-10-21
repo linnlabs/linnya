@@ -310,6 +310,7 @@ src/tools/web/webread/
 - R2 已启用三层生产阶梯：本地 HTTP 合格即返回；JS 壳、没有可用正式资源的空正文、质量信号、`network_error`、单跳 `timeout` 与 DOM 规范化失败按需调用一次本地 Chromium；正文为空但已捕获正式资源的 `metadata_only` 是终态，不重复升级；渲染仍不合格或渲染能力失败才调用一次托管兜底。canonical DOM 上的 Readability 异常会跳过机械渲染，直接进入已配置的托管 Reader。整条阶梯 90 秒总预算触发的 `timeout` 仍是终态
 - `text/html` 先由 Cheerio 默认的 WHATWG `parse5` tree builder 规范化成唯一 `html/head/body`，再创建轻量 linkedom DOM；禁止用正则、站点白名单或手工移动第二个 body 修复 tag soup
 - HTML 抽取先用 Readability；失败或明显遗漏时，从 `article/main/[role=main]` 的可访问主区域补取正文，并过滤导航、侧栏、页脚和隐藏节点。Readability 抛错但语义正文已存在时保留正文并记录 warning；完全无正文且没有可用正式资源时才产生 `empty_content` 失败
+- 没有语义主区域且文章抽取不足时，可选择 `tabular_dom` 窄视图：只保留清理后的叶子数据表（有表头至少两行独立数值、无表头至少三行），保留原行列、空单元格、caption/summary 和显式关联说明，再附已选正文中的表外说明。布局表、空骨架和导航不因原 HTML 表格行数多而获得正文资格；空内容与 JS 壳仍执行质量升级。Readability 残表只有全部数据行对应同一已捕获表时才去掉，不凭共同表头删掉另一张表。不回退整个 body，也不承诺恢复全页脚注或尚未加载的数据
 - 主区域选择与内容表达分离：Readability 选中的 HTML 与语义主区域共用 Turndown 转换为 Markdown，保留来源链接、代码缩进、有序列表、删除线、图注与图片 alt。质量判定使用可见文字长度，避免链接地址和标记抬高质量信号
 - 两条路径在选区前共用隐藏节点/内联隐藏样式清理。先移除导航、脚本与 inert 区域，再识别同一主区域内可见、可用按钮声明的折叠正文：`aria-expanded=false` 配合 `aria-controls` 的明确目标，或 read/show-more 命名的按钮与相邻同类命名正文（允许仅包裹按钮的一层容器）。只移除该目标层的隐藏状态，其内部独立隐藏的旧值仍排除；不按域名匹配，不点击控件、不执行额外脚本，也不凭单个类名恢复任意隐藏内容。未识别的折叠方式仍可能遗漏，`truncated=false` 只表示未触及字符上限，不承诺正文完整
 - HTML 相对链接依据最终 URL 与有效 base URL 还原，只保留符合既有同步 URL 策略的地址；链接出现不代表目标已读取，后续请求仍须完整校验 DNS 和连接
@@ -320,7 +321,7 @@ src/tools/web/webread/
 - 当前读取路由可观察边界是 `failureKind`、`initialFailureKind`、`initialFailureStage`、`escalationReason` 和 `renderAttempted`；失败日志还会记录状态码、响应 MIME、最终 URL、重定向数、请求尝试次数和重试次数（不记录响应正文）。`initialFailureStage` 仅用于 `dom_canonicalization/readability` 抽取阶段。尚未记录每一跳 DNS 解析地址、代理 fake-IP 判定或 DNS/连接分段耗时，不得从现有日志推断这些事实
 - 兼容 TUN 代理 fake-IP：仅域名 DNS 结果允许 `198.18/15`，字面 fake-IP、内网地址及混入内网地址的解析结果仍拒绝
 - `WebPageRenderer` port 由 Electron main 显式注入 backend bundle；渲染 worker/runtime 禁止进入 backend bundle。默认渲染 provider 只在质量信号命中后惰性创建
-- 缓存路由身份 version 7 包含渲染开关和选中 Reader，并使旧纯文本抽取、旧 Accept 策略及误删折叠正文的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss
+- 缓存路由身份 version 9 包含渲染开关和选中 Reader，并使旧表格遗漏、旧纯文本抽取、旧 Accept 策略及误删折叠正文的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss
 
 ### 5.3 与 citations 的关系（V1：页级引用先行）
 
@@ -345,7 +346,7 @@ src/tools/web/webread/
 - 失败分类统一由 `shared/webFailure.ts` 维护；质量不足不是终态失败，M2 只能依据该文件导出的升级子集和独立质量原因决定是否升级。HTTP 403/419/429 只有同时出现有限的人机验证页面特征时才归类为 `captcha`，不能仅凭状态码猜测挑战。`dns_error` 仍保持终态；本地 GET 对 timeout/network/429/5xx 共享一次、有总预算约束的瞬态重试，挑战页、权限、MIME、策略和 404 不重试，也不自动换托管 Provider
 - `data` 额外返回 `provider/renderMode/extractor/renderAttempted/escalated/escalationReason/initialFailureKind/initialFailureStage`，用于判断本次读取实际走了哪条路径并回放首跳失败；`renderMode` 可为 `http/js/managed`
 - 有提取器 flags 时同时返回 strict `data.warnings` 和 observation 提示，schema、内部文档与缓存共用枚举。flags 是启发式诊断，表格/列表信号不能直接判为缺失；无 flags 也不证明完整、可信或支持某条结论。内部 qualityScore 不作为给模型的“可信度分数”
-- `web_read` 使用正式 schema 做前置 admission，失败提供 `WEB_READ_ARGUMENTS_INVALID` 与合法 URL 示例；本机阶梯耗尽且 managed 未开启时，明确要求换来源并披露未取得正文，不建议原样循环重试
+- `web_read` 使用正式 schema 做前置 admission，失败提供 `WEB_READ_ARGUMENTS_INVALID` 与合法 URL 示例；本机阶梯耗尽时披露未取得合格正文，恢复建议按实际失败分类生成。访问墙要求新的访问条件；临时网络/上游失败允许等待后再试；本机渲染不可用不等于站点永久不可读；JS 数据壳提示查实际发现的导出/接口链接，不猜地址
 - 搜索与读取的 `data.cacheStatus` 返回 `miss/hit/revalidated/coalesced/bypass`，用于区分真实网络、缓存命中、条件请求和并发合并
 - `data`：标题/URL/正文统计 + owner schema 约束的 `citations` + `evidence_store.bundle_id`；不携带页面全文
 - `observation`：包含本次实际捕获的网页正文（含 `[@ref]`）并保持完整动态不可信边界；超过通用阈值后由 ToolOutputStore 保存完整副本，模型通过 `tool_output_read` 续读
@@ -399,6 +400,7 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 - 资源 URL 是页面外部内容，不是用户授权或可信操作指令。Renderer 或 Agent 若要读取它，必须重新经过 `web_read` 的 URL 策略和 Evidence 流程；
 - 当前只识别显式 DOI、全文/下载语义、常见文献仓库/正式来源链接。不要把页面所有链接暴露为“相关资源”，也不要在没有固定断言的情况下引入站点专用规则。
 - 如果正文抽取为空但页面仍提供标题、摘要或正式资源，Provider 返回成功结果并带 `metadata_only` flag；这表示“已取得页面元数据/资源，未取得正文”，不会伪装成正文成功，也不会反复升级同一 URL。没有资源的空页面仍按 `empty_content` 进入读取阶梯。
+- 短正文/质量不足进入后续读取后失败，保留此前实际发现的文件与数据资源：最多 8 条、总计约 6,000 字符（标签最多 200 字符，过长 URL 跳过而不截成新地址），全部放入失败消息的动态不可信边界。CSV/TSV 及明确的下载数据链接也可作为资源；不自动下载、换来源、分配目标 ref 或写成功 Evidence，失败不进入正文缓存。总预算 timeout 仍可交付这些线索，调用者取消不附恢复链接，策略拒绝不附资源。
 
 这一层吸收了成熟正文抽取器“正文与 metadata 独立”的经验，但不把候选库的正文选择逻辑整体移入生产。landing page 的后续扩展应先以标题、摘要、作者、日期、DOI、全文链接和正式来源链接的冻结断言验证，再决定是否新增页面角色。
 
@@ -431,7 +433,7 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 
 ### 5.8 与 deep_research 的关系（边界）
 
-- 当前研究使用 Default Agent 与按需 Skill；网页深搜只承担资料搜集，不替父 Agent 作综合判断。
+- Default 与 `research_v1` 父子角色都使用同一 Web 合同；网页深搜只承担资料搜集，不替父 Agent 作综合判断。研究编排由 Agent Registry 与普通 subagent 拥有，不进入 Web owner。
 - 旧 `deep_research` 不属于本次调用链，不恢复 Scout/Challenger/Writer 或其私有证据链。知识库深搜仍独立维护。
 
 ### 5.9 逐步探索与 bash 边界
@@ -447,9 +449,10 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 - 挑战页识别只在 HTTP 响应边界读取有限正文，错误对象仅保留 `challengeDetected` 判定，不携带 `bodyPreview`。重试与读取阶梯复用该判定，不能为删正文而丢失 captcha 分类或改变升级规则。
 - `WebHttpError` 通过既有分类函数暴露只读 `code`，`WebFailureError.code` 通常与 `kind` 一致；唯一例外是 `kind=managed_disabled` 且结构化根因已确定为 `captcha/http_403/login_required`，此时 code 保留该访问拦截根因。读取阶梯与诊断仍保留 `managed_disabled`，不改变升级/重试规则；Host ToolRegistry 只转交通用错误合同，不理解 Web 枚举。运行时的 `errorKind=execution` 与 owner 的 `error_code` 分别保留，不能互相覆盖。
 - 无内容失败不能写成功 Evidence；401 不因错误文案或状态码而自动交给第三方 Reader。错误安全不新增 fallback、审计开关或新的导出协议。
-- 安全诊断统一由 `shared/webFailure.ts` 投影：保留实际执行阶段（search/local_http/local_render/managed_reader/read_ladder）、已知首跳/前跳 kind、抽取阶段、本地渲染具体 kind、HTTP/RPC 数值状态及尝试次数。模型收到的持久工具错误附一行同源诊断；后端日志复用同一投影，不要求 Audit 开启，也不从正文复原字段。
+- 安全诊断统一由 `shared/webFailure.ts` 投影：保留实际执行阶段（search/local_http/local_render/managed_reader/read_ladder）、已知首跳/前跳 kind、抽取阶段、本地渲染具体 kind、HTTP/RPC 数值状态及尝试次数。另保留已知 Retry-After 毫秒值、重试停止原因（非瞬态/次数已用尽/等待超限/预算不足）和超限时实际已收字节、上限及声明 Content-Length。声明长度可能对应压缩传输，不能当完整解压大小。模型收到的持久工具错误附同源诊断；后端日志复用同一投影，不要求 Audit 开启，也不从正文复原字段。`max_chars` 不扩大下载预算。
 - `managed_disabled` 仍表示配置终态，不伪装成另一种读取策略；其诊断可以说明例如 `local_render + unavailable` 或 `render_process_gone`，供 Agent/维护者分清网页、抽取与渲染能力问题。没有可核根因时保留 `provider_error + stage`，不假装已定因。
 - 删除 `previousFailureMessage` 任意文案传递；Chromium/供应商原始异常文字、message/detail/body、凭据与 URL 查询参数不进入新诊断。MIME 只保留合法类型，URL 去用户信息/查询/fragment。网络日志同样不再序列化原始 cause 链。
+- 失败消息只例外展示这次已捕获的有界资源链接，并使用与成功内容相同的动态不可信边界；它们不进入安全诊断/日志。HTTP 错误正文仍不返回，也不从挑战页推导资源。
 
 
 ### 5.11 同主机访问拦截反馈
@@ -460,6 +463,7 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 - 反馈建议寻找其他主机的官方副本或可核的替代来源；已有的“搜索同一来源的可读 HTML”引导已移除。没有禁止同主机新页面，没有新增自动重试、域名黑名单或路由变化。
 - Host 从 EventStore 的正式 decision/output 窄投影派生，不另存计数、不依赖可关闭的 Audit。查询只在这类实际失败后执行；SQLite 先筛 conversation/tool，再逐行返回调用参数及终态，不向 Node 读取网页正文、其他工具参数或 observation。聚合按调用身份流式进行，内存不随正文或调用数增长。并发结果只包含查询时已持久化的完成事实；当前失败另加一次，不承诺同时执行调用之间的强序。
 - 重载沿用事实；删除/截断后只统计剩余事实。缺少 Host port 的独立 Web 基准继续返回原错误，不伪造会话历史。缓存/in-flight 共享原始取得结果，会话提示在调用侧生成，不写入共享错误对象。
+- 404 还可查询同一 Host port 的 `hasObservedUrl`，仅核对当前会话及 child 成功 Web 搜索/读取的正式来源、资源和受管文件地址，复用 canonical URL 规则；排除当前调用，不扫描任意正文或模型请求。未命中只说明正式记录未收录，普通正文链接不一定进入资源集合，不能据此断言地址编造。提示先用 `site:` 定位实际页面；没有该能力时不宣称地址未出现。
 
 增强读取的离线评估只能比较已取得 HTML 及现有夹具的抽取效果。失败 URL 清单、403 或验证码页没有被拦住的正文，不能据此声称某个付费 Reader 能恢复；本修复不重抓历史 URL、不启用第三方服务，也不改变凭证或配置。
 
