@@ -1,4 +1,4 @@
-import { extractCanonicalCitationRefs } from '../../../../citation';
+import { flattenMarkdownDocumentBlocks } from '../../../shared';
 import {
   attachCitationNodesToDocJson,
   collectMarkdownLinkHrefs,
@@ -28,15 +28,17 @@ export async function buildMarkdownDocumentFromText(params: {
     return { content: getDefaultContent() };
   }
 
-  const citationRefs = extractCanonicalCitationRefs(text);
-  const citationHydration = text.includes('[@') || text.includes('\\[@')
-    ? await admitMarkdownCitationHydration(text, params.resolveCitationSources)
-    : {};
-
   const normalizedContent = await params.normalizer.buildStructuredDocFromMarkdown(text);
   if (!normalizedContent) {
     throw new Error('Markdown 结构化导入失败，write_file 未创建文件。');
   }
+
+  // 与 pending 使用同一块级语法边界。标题、列表等也能中断段落，不能用原始全文
+  // 中的另一处反引号决定本块引用是否属于代码。
+  const citationHydration = await admitMarkdownCitationHydration(
+    flattenMarkdownDocumentBlocks(normalizedContent).map(block => block.text),
+    params.resolveCitationSources,
+  );
 
   const linkHrefs = collectMarkdownLinkHrefs(normalizedContent);
   const linkHydration = params.resolveCitationSourcesByUrl && linkHrefs.length > 0
@@ -46,7 +48,7 @@ export async function buildMarkdownDocumentFromText(params: {
       )
     : {};
 
-  return citationRefs.length > 0 || Object.keys(linkHydration).length > 0
+  return Object.keys(citationHydration).length > 0 || Object.keys(linkHydration).length > 0
     ? {
         content: attachCitationNodesToDocJson(
           normalizedContent,

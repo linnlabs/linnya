@@ -57,9 +57,10 @@ function inlineFacts(doc: MarkdownDocJson) {
 }
 
 describe('citation emphasis create → current → pending → accept → current', () => {
-  it('跨空段的字面反引号经过创建、修订及接受后保持来源快照', async () => {
+  it.each(['\n\n其他 `text`', '\n# 其他 `text`'])(
+    '跨块的字面反引号经过创建、修订及接受后保持来源快照：%s', async boundary => {
     const { store, normalizer, read, write } = setup();
-    const initial = '`[@Abc234]\n\n其他 `text`';
+    const initial = '`[@Abc234]' + boundary;
     const created = await buildMarkdownDocumentFromText({
       markdown: initial, normalizer, resolveCitationSources: resolveSources,
     });
