@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ToolPresentationProjectorInput } from '../../types';
-import { projectWorkspaceWriteFilePresentation } from './projectWorkspaceWriteFilePresentation';
+import {
+  projectWorkspaceWriteFilePresentation,
+  projectWorkspaceWriteFileCompactStep,
+} from './projectWorkspaceWriteFilePresentation';
 
 function project(overrides: Partial<ToolPresentationProjectorInput>) {
   return projectWorkspaceWriteFilePresentation({
@@ -68,18 +71,22 @@ describe('projectWorkspaceWriteFilePresentation', () => {
   });
 
   it('生命周期参数增量允许空 inode', () => {
-    expect(project({
-      args: { path: '/draft.md', inode: '', content: '# Draft' },
-      phase: 'update',
-    })).toMatchObject({ data: { kind: 'lifecycle', target: 'draft' } });
+    expect(
+      project({
+        args: { path: '/draft.md', inode: '', content: '# Draft' },
+        phase: 'update',
+      })
+    ).toMatchObject({ data: { kind: 'lifecycle', target: 'draft' } });
   });
 
   it('成功阶段严格接纳公共写入事实并生成文档链接', () => {
-    expect(project({
-      status: 'success',
-      phase: 'complete',
-      result: successfulResult(),
-    })).toMatchObject({
+    expect(
+      project({
+        status: 'success',
+        phase: 'complete',
+        result: successfulResult(),
+      })
+    ).toMatchObject({
       data: {
         kind: 'snapshot',
         locator: 'workspace:/docs/final.md',
@@ -94,14 +101,16 @@ describe('projectWorkspaceWriteFilePresentation', () => {
 
   it('创建文件时在 header 中展示延迟本地化的新建标签', () => {
     const result = successfulResult();
-    expect(project({
-      status: 'success',
-      phase: 'complete',
-      result: {
-        ...result,
-        data: { ...result.data, operation: 'create' },
-      },
-    })).toMatchObject({
+    expect(
+      project({
+        status: 'success',
+        phase: 'complete',
+        result: {
+          ...result,
+          data: { ...result.data, operation: 'create' },
+        },
+      })
+    ).toMatchObject({
       title: {
         tag: {
           text: { key: 'conversation.tool.workspace.document.createdTag' },
@@ -111,20 +120,68 @@ describe('projectWorkspaceWriteFilePresentation', () => {
     });
   });
 
+  it('新增目录在实时/历史成功投影和紧凑轨迹中可见，旧回执不虚构目录', () => {
+    const result = successfulResult();
+    const created = {
+      ...result,
+      data: {
+        ...result.data,
+        operation: 'create',
+        created_folders: [{ locator: 'workspace:/docs', inode: 'workspace:folder-1' }],
+      },
+    };
+    const input = {
+      sourceToolName: 'write_file',
+      uiKey: 'write_file',
+      toolCallId: 'create-folders',
+      args: { locator: 'workspace:/docs/final.md', content: 'report' },
+      result: created,
+      status: 'success' as const,
+      phase: 'complete' as const,
+    };
+    expect(project(input)).toMatchObject({
+      data: { createdFolders: created.data.created_folders },
+      title: {
+        tag: {
+          text: {
+            key: 'conversation.tool.workspace.document.createdWithFoldersTag',
+            params: { count: 1 },
+          },
+        },
+      },
+    });
+    expect(projectWorkspaceWriteFileCompactStep(input)).toMatchObject({
+      title: { key: 'conversation.tool.workspace.compact.writeWithFolders', params: { count: 1 } },
+    });
+    expect(project({ status: 'success', result })).toMatchObject({ data: { createdFolders: [] } });
+    expect(() =>
+      projectWorkspaceWriteFileCompactStep({
+        ...input,
+        result: { ...created, data: { ...created.data, created_folders: ['invalid'] } },
+      })
+    ).toThrow();
+    expect(
+      projectWorkspaceWriteFileCompactStep({
+        ...input,
+        status: 'error',
+        phase: 'error',
+        result: undefined,
+      })
+    ).toMatchObject({ title: { key: 'conversation.tool.workspace.compact.write' } });
+  });
+
   it('拒绝插件私有详情或 Markdown edits 穿透公共结果', () => {
     const result = successfulResult();
-    for (const extra of [
-      { presentationId: 'deck-1' },
-      { versionId: 'version-1' },
-      { edits: [] },
-    ]) {
-      expect(() => project({
-        status: 'success',
-        result: {
-          ...result,
-          data: { ...result.data, ...extra },
-        },
-      })).toThrow();
+    for (const extra of [{ presentationId: 'deck-1' }, { versionId: 'version-1' }, { edits: [] }]) {
+      expect(() =>
+        project({
+          status: 'success',
+          result: {
+            ...result,
+            data: { ...result.data, ...extra },
+          },
+        })
+      ).toThrow();
     }
   });
 
@@ -148,13 +205,26 @@ describe('projectWorkspaceWriteFilePresentation', () => {
     delete historical.data.locator;
     delete historical.data.node.locator;
 
-    expect(project({
-      args: { path: '/draft.md', content: '# Draft' },
-      status: 'success',
-      phase: 'complete',
-      result: historical,
-    })).toMatchObject({
+    expect(
+      project({
+        args: { path: '/draft.md', content: '# Draft' },
+        status: 'success',
+        phase: 'complete',
+        result: historical,
+      })
+    ).toMatchObject({
       data: { kind: 'snapshot', locator: 'workspace:/docs/final.md' },
     });
+    expect(
+      projectWorkspaceWriteFileCompactStep({
+        sourceToolName: 'write_file',
+        uiKey: 'write_file',
+        toolCallId: 'historical-write',
+        args: { path: '/draft.md', content: '# Draft' },
+        status: 'success',
+        phase: 'complete',
+        result: historical,
+      })
+    ).toMatchObject({ title: { key: 'conversation.tool.workspace.compact.write' } });
   });
 });

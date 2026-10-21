@@ -345,6 +345,8 @@ export type ConversationMessageKey =
   | 'conversation.tool.workspace.document.read'
   | 'conversation.tool.workspace.document.untitled'
   | 'conversation.tool.workspace.document.createdTag'
+  | 'conversation.tool.workspace.document.createdWithFoldersTag'
+  | 'conversation.tool.workspace.compact.writeWithFolders'
   | 'conversation.tool.workspace.document.createLoading'
   | 'conversation.tool.workspace.document.createFailed'
   | 'conversation.tool.workspace.document.readLoading'

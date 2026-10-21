@@ -671,6 +671,18 @@ export const WorkspaceWriteFileResultSchema = z
         locator: WorkspaceFileLocatorSchema,
         inode: NonEmptyStringSchema,
         operation: z.enum(['create', 'update']),
+        // 历史回执没有此字段；新写入明确列出此次新增的目录身份，已有目录不重复列入。
+        created_folders: z
+          .array(
+            z
+              .object({
+                locator: WorkspaceFileLocatorSchema,
+                inode: NonEmptyStringSchema,
+              })
+              .strict()
+          )
+          .readonly()
+          .optional(),
         documentId: NonEmptyStringSchema,
         node: WorkspaceFileEntrySchema,
         diagnostics: z.array(WorkspaceDocumentDiagnosticSchema).max(20).readonly().optional(),

@@ -132,7 +132,7 @@ async function seedCitedDocument(
   const created = await createWorkspaceDocumentFile({
     request: {
       projectId,
-      parentId: null,
+      parentPath: '/',
       name: 'report.md',
       content: [
         '# Synthetic report',

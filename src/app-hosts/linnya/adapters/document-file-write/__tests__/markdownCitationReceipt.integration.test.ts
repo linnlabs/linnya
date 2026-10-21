@@ -36,7 +36,7 @@ describe('Markdown citation receipt through Host providers', () => {
       const writer = createWorkspaceDocumentFileWriteProviderResolver({ db, context })('document');
       if (!create || !writer) throw new Error('Markdown provider missing');
       const plain = '自己的笔记。`[@Abc234]` 是代码示例。\n\n[普通链接](https://example.com/unread)';
-      const created = await create.create({ projectId, parentId: null, name: 'report.md', content: plain });
+      const created = await create.create({ projectId, parentPath: '/', name: 'report.md', content: plain });
       const identity = { documentId: created.documentId, documentName: 'report.md', documentType: 'document',
         projectId, path: '/report.md', inode: `workspace:${created.documentId}` };
       expect(created.buildObservation(identity)).not.toContain('引用来源');
@@ -74,7 +74,7 @@ describe('Markdown citation receipt through Host providers', () => {
       await write('删除引用后的普通正文');
       await decide('accept');
       expect(count()).toBe(0);
-      const linked = await create.create({ projectId, parentId: null, name: 'linked.md',
+      const linked = await create.create({ projectId, parentPath: '/', name: 'linked.md',
         content: '[已接纳报告](https://example.com/report) 与 [同一报告](https://example.com/report)',
       });
       expect(linked.buildObservation({ path: '/linked.md', inode: `workspace:${linked.documentId}` }))

@@ -15,6 +15,7 @@
   - Citation：带引用 Markdown 的正文统一使用 canonical `[@ref]`，并在同一 `read_file` 结果附带当前窗口的结构化来源、受预算约束的 excerpt 与 diagnostics；`grep` 只定位并遮罩引用 ref。
   - Citation 写入：`write_file/edit_file` 只接纳当前 working history 各 producer 的严格 owner schema，未命中时才读取 conversation-scoped EvidenceStore；Knowledge 必须有 `docId + blockId`，Web 必须有 HTTP(S) canonical URL。同 ref 冲突、格式非法或来源缺失会使整个写入失败，禁止按普通文本保留假 `[@ref]`。
   - Markdown 新建：`write_file(locator="workspace:/name.md", content="...")` 会创建新 Markdown 文件，并复用 normalization 与同一 Citation admission 生成结构化 CitationMark。
+  - 中间目录：新建路径会自动创建缺失的普通 Workspace 文件夹，成功回执的 `created_folders` 返回本次新增目录的 locator/inode；模型 observation 同步列出，已有目录和更新文件返回空数组。Markdown 的目录、文档首版和回执同事务提交，失败全部回滚。插件异步创建失败时保留已创建目录，在 error observation 明确列出 `created_folders`；不回删可能已被其他调用复用的目录。文件/隐藏节点/只读系统视图不能当目录，停用或不支持的格式不会先建目录。目录属于 VFS，Shell `mkdir` 不等价。事务边界见 [文件创建 owner](../../features/workspace/document-file-create/README.md)。
   - 新建规则：尚不存在的节点没有 inode，因此新建 Markdown、MindMap、Slides 等文档只能传 locator。禁止发明 `workspace:dummy`、随机 UUID，禁止同时传 locator 与 inode。
   - Slides：读写 `.slides` source，并通过 `ppt_inspect` 做布局诊断。
   - Sheet：`read_file` / `grep` 读取 checkpoint + `sheet_ops` 回放后的可见展示值预览；写入仍使用 `sheet_*` 专用工具，避免绕过 Sheet oplog。

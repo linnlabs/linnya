@@ -11,6 +11,11 @@ import {
   MarkdownDocumentService,
   MarkdownNormalizationService,
 } from '../../../../domains/markdown';
+import {
+  ensureWorkspaceFileParentFolders,
+  WorkspaceDocumentFileCreateFailure,
+} from '../../../../features/workspace/document-file-create';
+import { readPersistedWorkspaceVfsNode } from '../../../../features/workspace/vfs';
 import { requireCitationSourceResolver } from '../../../../domains/citation';
 import type {
   WorkspaceDocumentFileCreateFormat,
@@ -40,6 +45,8 @@ export function createWorkspaceDocumentFileCreateProviderResolver(params: {
         registeredHook,
         enabledHook: getDocumentTypeBackendHook(registeredHook.docType),
         context: params.context,
+        db: params.db,
+        workspaceService: params.workspaceService,
       });
     }
 
@@ -99,10 +106,21 @@ function createMarkdownFileCreateProvider(params: {
       });
       return params.db
         .transaction(() => {
+          const parent = ensureWorkspaceFileParentFolders({
+            projectId: request.projectId,
+            parentPath: request.parentPath,
+            workspace: {
+              getChildNodes: (parentId, projectId) =>
+                params.workspaceService.getChildNodes(parentId, projectId),
+              isVisibleNode: nodeId => readPersistedWorkspaceVfsNode(params.db, nodeId) !== null,
+              createFolder: (projectId, name, parentId) =>
+                params.workspaceService.createFolder(projectId, name, parentId),
+            },
+          });
           const documentId = params.workspaceService.createDocument(
             request.projectId,
             request.name,
-            request.parentId,
+            parent.parentId,
             'document'
           );
           documentStore.createDocument(documentId, built.content);
@@ -115,6 +133,7 @@ function createMarkdownFileCreateProvider(params: {
           }).citationProjection.sources.length;
           const result: WorkspaceDocumentFileCreateResult = {
             documentId,
+            createdFolders: parent.createdFolders,
             buildObservation: identity =>
               `已创建 Markdown 文件：${identity.path}。inode: ${identity.inode}。${citationSourceCount > 0 ? `当前全文可解析引用来源：${citationSourceCount}。` : ''}`,
           };
@@ -127,6 +146,8 @@ function createMarkdownFileCreateProvider(params: {
 }
 
 function createPluginFileCreateProvider(params: {
+  readonly db: Database.Database;
+  readonly workspaceService: WorkspaceService;
   readonly registeredHook: DocumentTypeBackendHook;
   readonly enabledHook: DocumentTypeBackendHook | undefined;
   readonly context: PluginToolContext;
@@ -139,15 +160,39 @@ function createPluginFileCreateProvider(params: {
     create: async request => {
       const createDocument = params.enabledHook?.createDocument;
       if (!createDocument) throw new Error(unavailableMessage);
-      const result = await createDocument({
-        context: params.context,
-        projectId: request.projectId,
-        parentId: request.parentId,
-        name: request.name,
-        content: request.content,
-      });
+      // 插件 hook 是异步边界；目录用独立短事务，不把 Promise 塞进 SQLite 事务。
+      const parent = params.db
+        .transaction(() =>
+          ensureWorkspaceFileParentFolders({
+            projectId: request.projectId,
+            parentPath: request.parentPath,
+            workspace: {
+              getChildNodes: (parentId, projectId) =>
+                params.workspaceService.getChildNodes(parentId, projectId),
+              isVisibleNode: nodeId => readPersistedWorkspaceVfsNode(params.db, nodeId) !== null,
+              createFolder: (projectId, name, parentId) =>
+                params.workspaceService.createFolder(projectId, name, parentId),
+            },
+          })
+        )
+        .immediate();
+      let result: Awaited<ReturnType<typeof createDocument>>;
+      try {
+        result = await createDocument({
+          context: params.context,
+          projectId: request.projectId,
+          parentId: parent.parentId,
+          name: request.name,
+          content: request.content,
+        });
+      } catch (error) {
+        // 不回删已经提交且可能被其他调用复用的目录；保留插件的原始失败原因。
+        if (parent.createdFolders.length === 0) throw error;
+        throw new WorkspaceDocumentFileCreateFailure(error, parent.createdFolders);
+      }
       return {
         documentId: result.documentId,
+        createdFolders: parent.createdFolders,
         ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}),
         buildObservation: identity =>
           params.enabledHook?.formatCreateObservation

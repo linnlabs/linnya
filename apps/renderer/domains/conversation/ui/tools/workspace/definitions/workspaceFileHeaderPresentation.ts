@@ -45,6 +45,7 @@ export type WorkspaceWriteFilePresentationData =
       readonly kind: 'snapshot';
       readonly locator: string;
       readonly operation: 'create' | 'update';
+      readonly createdFolders: readonly { readonly locator: string; readonly inode: string }[];
       readonly diagnosticCount: number;
     };
 

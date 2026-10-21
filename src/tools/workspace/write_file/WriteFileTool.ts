@@ -55,11 +55,21 @@ function serializeCreatedFileResult(
       locator: formatWorkspaceFileLocator(node.path),
       inode: entry.inode,
       operation: 'create',
+      created_folders: created.createdFolders.map(folder => ({
+        locator: formatWorkspaceFileLocator(folder.path),
+        inode: folder.inode,
+      })),
       documentId: created.documentId,
       node: entry,
     },
     appendDocumentDiagnosticsObservation(
-      created.buildObservation({ path: node.path, inode: entry.inode }),
+      [
+        created.buildObservation({ path: node.path, inode: entry.inode }),
+        ...created.createdFolders.map(
+          folder =>
+            `已创建目录：${formatWorkspaceFileLocator(folder.path)}。inode: ${folder.inode}。`
+        ),
+      ].join('\n'),
       diagnostics
     )
   );
@@ -67,7 +77,7 @@ function serializeCreatedFileResult(
 
 interface FileCreateTarget {
   readonly fileName: string;
-  readonly parentId?: string;
+  readonly parentPath: string;
 }
 
 function readFileExtension(fileName: string): string | null {
@@ -122,6 +132,7 @@ export class WriteFileTool extends BaseTool {
       'Supports Markdown documents and enabled plugin-owned document files.',
       'Provide exactly one of locator or inode. New files require locator; inode can only identify an existing file.',
       `For new files, a missing extensionless path, .md, or .markdown creates Markdown${pluginHint ? `; ${pluginHint.slice(1)}` : ''}.`,
+      'Missing intermediate Workspace folders are created automatically; created_folders lists the new folder locators and inodes. Existing files and read-only system views cannot be used as folders.',
       'Markdown writes are stored as pending revisions rather than directly replacing accepted document content.',
       'Prefer edit_file for targeted changes. Use write_file when rewriting the whole file is intentional.',
       'Only workspace:/... locators are valid here. conversation:/... and file:///... belong to read_file and will be rejected.',
@@ -130,7 +141,7 @@ export class WriteFileTool extends BaseTool {
 
   private buildLocatorParameterDescription(): string {
     const pluginHint = buildEnabledPluginCreateHint();
-    return `要写入的 Workspace locator，只能使用 workspace:/...。与 inode 二选一；新建文件只能传 locator。新建 Markdown 可用无后缀、.md 或 .markdown${pluginHint}。`;
+    return `要写入的 Workspace locator，只能使用 workspace:/...。与 inode 二选一；新建文件只能传 locator，缺失的中间文件夹会自动创建。新建 Markdown 可用无后缀、.md 或 .markdown${pluginHint}。`;
   }
 
   // 模型目录使用各协议共有的顶层 object；互斥身份等跨字段规则由下方正式 admission 执行。
@@ -143,7 +154,7 @@ export class WriteFileTool extends BaseTool {
         type: 'string',
         minLength: 1,
         description:
-          '要写入的 Workspace locator。只能使用 workspace:/...；与 inode 二选一。新建文件只能传 locator。新建 Markdown 可用无后缀、.md 或 .markdown；插件文档格式由已启用插件贡献。',
+          '要写入的 Workspace locator。只能使用 workspace:/...；与 inode 二选一。新建文件只能传 locator，缺失的中间文件夹会自动创建。新建 Markdown 可用无后缀、.md 或 .markdown；插件文档格式由已启用插件贡献。',
       },
       inode: {
         type: 'string',
@@ -238,6 +249,7 @@ export class WriteFileTool extends BaseTool {
           locator: formatWorkspaceFileLocator(node.path),
           inode: node.inode,
           operation: 'update',
+          created_folders: [],
           documentId: node.id,
           node: toFileToolEntry(node),
         },
@@ -269,53 +281,12 @@ export class WriteFileTool extends BaseTool {
     return serialize(write);
   }
 
-  private async resolveFileCreateTarget(params: {
-    readonly path?: string;
-    readonly runtime: ReturnType<typeof resolveWorkspaceFileToolRuntime>;
-  }): Promise<FileCreateTarget | null> {
-    if (!params.path) {
-      return null;
-    }
-
-    const segments = splitNormalizedVfsPath(params.path);
-    if (segments.length === 0) {
-      return null;
-    }
-
+  private resolveFileCreateTarget(path?: string): FileCreateTarget | null {
+    if (!path) return null;
+    const segments = splitNormalizedVfsPath(path);
     const fileName = segments[segments.length - 1];
-    if (!fileName) {
-      return null;
-    }
-
-    if (segments.length === 1) {
-      return {
-        fileName,
-      };
-    }
-
-    const parentPath = `/${segments.slice(0, -1).join('/')}`;
-    const parent = await resolveWorkspaceVfsNode({
-      db: params.runtime.db,
-      projectId: params.runtime.projectId,
-      conversationId: params.runtime.conversationId,
-      instanceId: params.runtime.instanceId,
-      path: parentPath,
-      nodeTypeAccessPolicy: pluginWorkspaceVfsNodeTypeAccessPolicy,
-    });
-    if (!parent.ok) {
-      throw new Error(parent.hint ? `${parent.message} ${parent.hint}` : parent.message);
-    }
-    if (parent.node.type !== 'folder') {
-      throw new Error(`write_file 只能在文件夹下新建文件：${parentPath}`);
-    }
-    if (parent.node.is_virtual) {
-      throw new Error(`write_file 不能在虚拟系统目录下新建文件：${parentPath}`);
-    }
-
-    return {
-      fileName,
-      parentId: parent.node.id,
-    };
+    if (!fileName) return null;
+    return { fileName, parentPath: `/${segments.slice(0, -1).join('/')}` };
   }
 
   private async createMissingFile(params: {
@@ -324,7 +295,7 @@ export class WriteFileTool extends BaseTool {
     readonly context: ToolContext;
     readonly runtime: ReturnType<typeof resolveWorkspaceFileToolRuntime>;
   }): Promise<string | null> {
-    const target = await this.resolveFileCreateTarget(params);
+    const target = this.resolveFileCreateTarget(params.path);
     if (!target) return null;
 
     const context = params.context;
@@ -337,7 +308,7 @@ export class WriteFileTool extends BaseTool {
     const createResult = await createWorkspaceDocumentFile({
       request: {
         projectId: params.runtime.projectId,
-        parentId: target.parentId ?? null,
+        parentPath: target.parentPath,
         name: target.fileName,
         content: params.content,
       },

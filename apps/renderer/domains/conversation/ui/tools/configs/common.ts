@@ -21,7 +21,10 @@ import { projectSharedMemoryListPresentation } from '../sharedmemory/functions/p
 import { projectSharedMemoryWritePresentation } from '../sharedmemory/functions/projectSharedMemoryWritePresentation';
 import { projectWorkspaceListFilesPresentation } from '../workspace/functions/projectWorkspaceListFilesPresentation';
 import { projectWorkspaceGrepPresentation } from '../workspace/functions/projectWorkspaceGrepPresentation';
-import { projectWorkspaceWriteFilePresentation } from '../workspace/functions/projectWorkspaceWriteFilePresentation';
+import {
+  projectWorkspaceWriteFilePresentation,
+  projectWorkspaceWriteFileCompactStep,
+} from '../workspace/functions/projectWorkspaceWriteFilePresentation';
 import { projectWorkspaceEditFilePresentation } from '../workspace/functions/projectWorkspaceEditFilePresentation';
 import { projectSkillPresentation } from '../skill/functions/projectSkillPresentation';
 import { projectImageGenerationPresentation } from '../image/functions/projectImageGenerationPresentation';
@@ -42,7 +45,7 @@ const compactStep = {
   image: createStaticToolCompactStepProjector('conversation.tool.imageGeneration.compact'),
   imageRead: createStaticToolCompactStepProjector('conversation.tool.imageRead.title'),
   listFiles: createStaticToolCompactStepProjector('conversation.tool.workspace.files.list'),
-  writeFile: createStaticToolCompactStepProjector('conversation.tool.workspace.compact.write'),
+  writeFile: projectWorkspaceWriteFileCompactStep,
   editFile: createStaticToolCompactStepProjector('conversation.tool.workspace.compact.edit'),
   grep: createStaticToolCompactStepProjector('conversation.tool.workspace.compact.grep'),
   assemble: createStaticToolCompactStepProjector('conversation.tool.evidence.assemble'),
