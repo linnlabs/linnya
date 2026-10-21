@@ -136,6 +136,7 @@ export class WriteFileTool extends BaseTool {
       `For new files, a missing extensionless path, .md, or .markdown creates Markdown${pluginHint ? `; ${pluginHint.slice(1)}` : ''}.`,
       'Missing intermediate Workspace folders are created automatically; created_folders lists the new folder locators and inodes. Existing files and read-only system views cannot be used as folders.',
       'Markdown writes are stored as pending revisions rather than directly replacing accepted document content.',
+      'For Markdown citations, copy the exact [@ref] returned by a source tool. Put page or table locators outside the token, for example [@ref] (p. 5); wrap syntax examples in inline code.',
       'Markdown receipts count actual saved current text, including pending revisions and annotations: characters are Unicode code points including whitespace and punctuation; han_characters uses Unicode Script=Han. No need to paste the document into Shell to count it.',
       'Prefer edit_file for targeted changes. Use write_file when rewriting the whole file is intentional.',
       'Only workspace:/... locators are valid here. conversation:/... and file:///... belong to read_file and will be rejected.',

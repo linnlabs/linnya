@@ -98,6 +98,7 @@ export class EditFileTool extends BaseTool {
       `Supports existing Markdown documents and enabled plugin-owned document files. Use write_file to create new files: Markdown accepts no suffix, .md, or .markdown${pluginHint}.`,
       'Markdown edits are written as pending revisions so the user can accept or reject them in the editor.',
       'Pending revisions are reflected in current content before user acceptance.',
+      'For Markdown citations, copy the exact [@ref] returned by a source tool. Put page or table locators outside the token, for example [@ref] (p. 5); wrap syntax examples in inline code.',
       'Markdown receipts report character and Han counts for actual current full text, including pending revisions and annotations. Characters are Unicode code points including whitespace and punctuation; Han uses Unicode Script=Han. Counts are not the replacement length.',
       'The diff shows the requested text change before document normalization; read_file returns the current text for further exact edits.',
       'The edit will fail if old_string is not unique unless replace_all=true.',
