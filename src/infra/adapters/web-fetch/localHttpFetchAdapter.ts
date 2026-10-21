@@ -156,11 +156,12 @@ function readOptionalHeader(response: WebHttpResponse, name: string): string | u
   return value || undefined;
 }
 
-function retryDelayMs(error: WebHttpError): number {
-  return Math.min(
-    LOCAL_HTTP_MAX_RETRY_DELAY_MS,
-    Math.max(LOCAL_HTTP_RETRY_BACKOFF_MS, error.retryAfterMs ?? 0),
-  );
+function retryDelayMs(error: WebHttpError, remainingMs: number): number | undefined {
+  const retryAfterMs = error.retryAfterMs ?? 0;
+  // 供应商声明的是等待下限，不能为了本地上限或剩余预算提前补发。
+  if (retryAfterMs > LOCAL_HTTP_MAX_RETRY_DELAY_MS) return undefined;
+  const delayMs = Math.max(LOCAL_HTTP_RETRY_BACKOFF_MS, retryAfterMs);
+  return delayMs < remainingMs ? delayMs : undefined;
 }
 
 function isTransientRetryCandidate(error: WebHttpError): boolean {
@@ -279,9 +280,10 @@ export async function localHttpFetch(
         retryCount,
       });
       const remainingAfterFailure = timeoutMs - (Date.now() - startedAt);
+      const delayMs = retryDelayMs(diagnosed, remainingAfterFailure);
       if (retryCount < LOCAL_HTTP_MAX_TRANSIENT_RETRIES
         && isTransientRetryCandidate(diagnosed)
-        && remainingAfterFailure > LOCAL_HTTP_RETRY_BACKOFF_MS) {
+        && delayMs !== undefined) {
         retryCount += 1;
         logger.warn('[localHttpFetch] 瞬态失败，执行有界重试', {
           url: currentUrl.origin,
@@ -290,7 +292,7 @@ export async function localHttpFetch(
           attempt: attemptCount,
           retryCount,
         });
-        await sleep(Math.min(retryDelayMs(diagnosed), remainingAfterFailure - 1), options.signal);
+        await sleep(delayMs, options.signal);
         continue;
       }
       throw diagnosed;
@@ -362,9 +364,10 @@ export async function localHttpFetch(
         },
       );
       const remainingAfterFailure = timeoutMs - (Date.now() - startedAt);
+      const delayMs = retryDelayMs(upstreamError, remainingAfterFailure);
       if (retryCount < LOCAL_HTTP_MAX_TRANSIENT_RETRIES
         && isTransientRetryCandidate(upstreamError)
-        && remainingAfterFailure > LOCAL_HTTP_RETRY_BACKOFF_MS) {
+        && delayMs !== undefined) {
         retryCount += 1;
         logger.warn('[localHttpFetch] 上游瞬态状态，执行有界重试', {
           url: currentUrl.origin,
@@ -373,7 +376,7 @@ export async function localHttpFetch(
           attempt: attemptCount,
           retryCount,
         });
-        await sleep(Math.min(retryDelayMs(upstreamError), remainingAfterFailure - 1), options.signal);
+        await sleep(delayMs, options.signal);
         continue;
       }
       throw upstreamError;

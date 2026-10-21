@@ -1,3 +1,4 @@
+import { searchWebWithRetry } from './searchWithRetry';
 import { Logger } from '@shared/logger';
 import type { WebCacheStatus } from '../../shared/cache/definitions/webCache';
 import { createWebSearchCacheKey } from '../../shared/cache/functions/cacheKeys';
@@ -53,7 +54,9 @@ export async function searchWebWithCache(args: {
     inFlightKey,
     args.params.signal,
     async (sharedSignal) => {
-      const results = await args.provider.search({ ...args.params, signal: sharedSignal });
+      const results = await searchWebWithRetry({
+        params: { ...args.params, signal: sharedSignal }, provider: args.provider,
+      });
       if (cacheAvailable) {
         try {
           await args.runtime.cache.writeSearch({

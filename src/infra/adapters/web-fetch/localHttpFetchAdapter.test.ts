@@ -23,6 +23,11 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
           return;
         }
       }
+      if (request.url === '/retry-after-long' || request.url === '/retry-after-budget') {
+        response.writeHead(429, { 'Content-Type': 'text/plain', 'Retry-After': request.url === '/retry-after-long' ? '60' : '0.5' });
+        response.end('upstream limited');
+        return;
+      }
       if (request.url === '/challenge-429') {
         response.writeHead(429, 'UPSTREAM_STATUS_INJECTION', { 'Content-Type': 'text/html' });
         response.end('<html><title>Human verification</title><body>UPSTREAM_BODY_INJECTION</body></html>');
@@ -159,6 +164,18 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
       timeoutMs: 2_000,
     }, { resolveHost: resolveFixtureHost, sleep: async () => undefined });
     expect(rateLimited).toMatchObject({ attemptCount: 2, retryCount: 1, status: 200 });
+  });
+
+  it.each([
+    { route: '/retry-after-long', timeoutMs: 2_000 },
+    { route: '/retry-after-budget', timeoutMs: 400 },
+  ])('已知 Retry-After 过长或剩余预算不足时不裁短等待、不补发：$route', async ({ route, timeoutMs }) => {
+    let sleeps = 0;
+    await expect(localHttpFetch(`http://fixture.test:${port}${route}`, { timeoutMs }, {
+      resolveHost: resolveFixtureHost, sleep: async () => { sleeps += 1; },
+    })).rejects.toMatchObject({ kind: 'rate_limited', status: 429, attempt: 1, retryCount: 0 });
+    expect(requestedPaths.filter(value => value === route)).toHaveLength(1);
+    expect(sleeps).toBe(0);
   });
 
   it('挑战页不会被瞬态重试误判', async () => {

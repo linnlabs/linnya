@@ -75,6 +75,14 @@ Web citation 至少需要：
 
 生产搜索服务由独立 Web Search 配置显式选择，产品默认是无需 Key 的 Parallel Free。当前支持 Parallel Free、DuckDuckGo、SearXNG、百度千帆、Serper、Jina Search 与 Tavily；四个需要凭据的服务均使用本机 BYOK/env，Jina/Tavily 注册后可使用其官方免费额度。每次请求只调用当前选中的一个搜索服务，失败、限流或缺凭证时显式报错，不会静默换家。若未来要引入自动 failover，必须另行定义失败子集、重试预算、计费与结果语义，不能在 factory 内补一个宽泛 fallback。
 
+搜索在同一次缓存/in-flight 取得内，对明确的 `timeout/network_error/rate_limited/http_5xx`
+最多退避重试一次；250ms 起；已知 `Retry-After` 不超过 1s 且剩余预算容纳时完整等待，超过则保留原失败、不提前补发。两次尝试、Parallel MCP
+初始化及等待共享 60s 总预算和父取消信号，不新增工具调用身份，不切换供应商。GET adapter 同样不裁短已知 `Retry-After`，超过其 1s 退避上限或剩余预算则不补发；
+已报告用过一次重试时不叠加外层循环。403/验证码、认证、策略、DNS、无效结构及仅有 MCP
+`-32000` 的错误均不据此重试；同样的错误码不保证瞬态，不能从供应商文案猜测。
+失败记录已知 HTTP/RPC 数值状态、阶段、尝试及重试次数；补发成功后才写一次引用/Evidence，
+失败不缓存，也不写成功 Evidence。共享查询的等待者保持各自的取消语义。
+
 `WebSearchResultSchema` 约束 query、结果数量、Evidence bundle、cache 状态与 Web citation 判别联合。
 citation 的 ref、canonical URL 必须唯一，index 必须从当前 execution 的 citation offset 起连续增长；
 这些是正式搜索事实，不由 Renderer 补造或纠正。presentation projector 只映射已接纳 citation 的标题、
@@ -439,6 +447,10 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 - 挑战页识别只在 HTTP 响应边界读取有限正文，错误对象仅保留 `challengeDetected` 判定，不携带 `bodyPreview`。重试与读取阶梯复用该判定，不能为删正文而丢失 captcha 分类或改变升级规则。
 - `WebHttpError` 通过既有分类函数暴露只读 `code`，`WebFailureError.code` 通常与 `kind` 一致；唯一例外是 `kind=managed_disabled` 且结构化根因已确定为 `captcha/http_403/login_required`，此时 code 保留该访问拦截根因。读取阶梯与诊断仍保留 `managed_disabled`，不改变升级/重试规则；Host ToolRegistry 只转交通用错误合同，不理解 Web 枚举。运行时的 `errorKind=execution` 与 owner 的 `error_code` 分别保留，不能互相覆盖。
 - 无内容失败不能写成功 Evidence；401 不因错误文案或状态码而自动交给第三方 Reader。错误安全不新增 fallback、审计开关或新的导出协议。
+- 安全诊断统一由 `shared/webFailure.ts` 投影：保留实际执行阶段（search/local_http/local_render/managed_reader/read_ladder）、已知首跳/前跳 kind、抽取阶段、本地渲染具体 kind、HTTP/RPC 数值状态及尝试次数。模型收到的持久工具错误附一行同源诊断；后端日志复用同一投影，不要求 Audit 开启，也不从正文复原字段。
+- `managed_disabled` 仍表示配置终态，不伪装成另一种读取策略；其诊断可以说明例如 `local_render + unavailable` 或 `render_process_gone`，供 Agent/维护者分清网页、抽取与渲染能力问题。没有可核根因时保留 `provider_error + stage`，不假装已定因。
+- 删除 `previousFailureMessage` 任意文案传递；Chromium/供应商原始异常文字、message/detail/body、凭据与 URL 查询参数不进入新诊断。MIME 只保留合法类型，URL 去用户信息/查询/fragment。网络日志同样不再序列化原始 cause 链。
+
 
 ### 5.11 同主机访问拦截反馈
 
@@ -514,6 +526,8 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 - `src/infra/adapters/web-http/webHttpFetch.test.ts`
 - `src/tools/web/shared/urlPolicy.test.ts`
 - `src/tools/web/__tests__/webBusiness.integration.test.ts`
+- `src/tools/web/__tests__/webSearchRetry.integration.test.ts`（localhost 瞬态、共享取得、取消、预算与终态）
+- `src/tools/web/__tests__/webFailureDiagnostics.integration.test.ts`（渲染前因和安全诊断）
 - `src/tools/web/__tests__/webEvidenceStore.test.ts`
 - `src/tools/web/__tests__/webEvidenceWriterPort.test.ts`
 - `src/tools/web/__tests__/webEvidenceBoundary.test.ts`

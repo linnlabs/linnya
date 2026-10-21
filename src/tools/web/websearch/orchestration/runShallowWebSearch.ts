@@ -7,7 +7,7 @@ import {
 } from '@app/schemas';
 import { createWebSearchProvider } from '../providers/factory';
 import { Logger } from '@shared/logger';
-import { getWebFailureKind } from '../../shared/webFailure';
+import { getWebFailureDiagnostics, getWebFailureKind } from '../../shared/webFailure';
 import type { WebSearchProvider, WebSearchResult } from '../providers/types';
 import type { WebEvidenceWriter } from '../../shared/ports/webEvidenceWriter';
 import type { WebEvidenceCaptureItem } from '../../shared/definitions/webEvidenceCapture';
@@ -76,6 +76,7 @@ export async function runShallowWebSearch(
       provider: provider.name,
       outcome: context.abortSignal?.aborted ? 'cancelled' : 'error',
       failureKind: getWebFailureKind(error),
+      ...getWebFailureDiagnostics(error),
       tookMs: Date.now() - startedAt,
     });
     throw error;
