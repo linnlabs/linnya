@@ -150,9 +150,10 @@ function buildCompactUnifiedDiff(
 
 function buildNotFoundMessage(source: string, oldString: string): string {
   const candidateLines = findCandidateLines(source, oldString);
+  const sourceLines = source.split('\n');
   const candidateHint =
     candidateLines.length > 0
-      ? ` Candidate lines containing the first stable old_string line: ${formatLineList(candidateLines)}.`
+      ? ` Candidate lines containing the first stable old_string line: ${formatLineList(candidateLines)}. Current excerpts: ${candidateLines.map(line => `${line}: ${JSON.stringify(sourceLines[line - 1].slice(0, 180))}`).join('; ')}.`
       : '';
   return `old_string was not found in the current file content.${candidateHint} Use read_file to reload the current content, then copy a larger exact block.`;
 }

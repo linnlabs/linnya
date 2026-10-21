@@ -14,7 +14,10 @@ function projectEscapes(text: string): EscapeProjection {
   const ends: number[] = [];
   for (let index = 0; index < text.length; index += 1) {
     const start = index;
-    if (text[index] === '\\' && /[!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~]/.test(text[index + 1] ?? '')) {
+    if (
+      text[index] === '\\' &&
+      /[!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~]/.test(text[index + 1] ?? '')
+    ) {
       index += 1;
     }
     projected += text[index];
@@ -26,11 +29,17 @@ function projectEscapes(text: string): EscapeProjection {
 
 /** 解析器按转义处分割 text node，PM 规范化合并后再比较；仅忽略临时块身份。 */
 function semantics(node: ProseMirrorJsonNode | null): unknown {
-  return node && {
-    type: node.type, text: node.text, marks: node.marks,
-    attrs: node.attrs && Object.fromEntries(Object.entries(node.attrs).filter(([key]) => key !== 'id')),
-    content: node.content?.map(semantics),
-  };
+  return (
+    node && {
+      type: node.type,
+      text: node.text,
+      marks: node.marks,
+      attrs:
+        node.attrs &&
+        Object.fromEntries(Object.entries(node.attrs).filter(([key]) => key !== 'id')),
+      content: node.content?.map(semantics),
+    }
+  );
 }
 
 /**
@@ -46,19 +55,33 @@ export async function resolveMarkdownEscapeEquivalentText(params: {
   const old = projectEscapes(params.oldString).text;
   if (!old) return null;
   const offsets: number[] = [];
-  for (let offset = source.text.indexOf(old); offset !== -1; offset = source.text.indexOf(old, offset + 1)) {
+  for (
+    let offset = source.text.indexOf(old);
+    offset !== -1;
+    offset = source.text.indexOf(old, offset + 1)
+  ) {
     offsets.push(offset);
     if (offsets.length === 6) break;
   }
   if (offsets.length === 0) return null;
   if (offsets.length > 1) {
-    const lines = offsets.map(offset => params.source.slice(0, source.starts[offset]).split('\n').length);
-    throw new Error(`Markdown escape-equivalent old_string is not unique (candidate lines: ${lines.join(', ')}). Copy a larger exact block from read_file; replace_all does not apply to equivalent matches.`);
+    const lines = offsets.map(
+      offset => params.source.slice(0, source.starts[offset]).split('\n').length
+    );
+    // 只反馈有界当前原文，帮助模型重读定位；不把这些候选自动变成 replace_all。
+    const excerpts = offsets.map(
+      (offset, index) =>
+        `${lines[index]}: ${JSON.stringify(params.source.slice(source.starts[offset], source.ends[offset + old.length - 1]).slice(0, 180))}`
+    );
+    throw new Error(
+      `Markdown escape-equivalent old_string is not unique (candidate lines: ${lines.join(', ')}). Current excerpts: ${excerpts.join('; ')}. Copy a larger exact block from read_file; replace_all does not apply to equivalent matches.`
+    );
   }
   const start = source.starts[offsets[0]];
   const end = source.ends[offsets[0] + old.length - 1];
   const candidate = params.source.slice(start, end);
-  if (candidate === params.oldString || /\\?\[@/.test(candidate) || /\\?\[@/.test(params.oldString)) return null;
+  if (candidate === params.oldString || /\\?\[@/.test(candidate) || /\\?\[@/.test(params.oldString))
+    return null;
   const alternate = params.source.slice(0, start) + params.oldString + params.source.slice(end);
   const [before, after] = await Promise.all([
     importMarkdownToDocJson(params.source),
@@ -66,5 +89,6 @@ export async function resolveMarkdownEscapeEquivalentText(params: {
   ]);
   if (!before.docJson || !after.docJson) return null;
   return JSON.stringify(semantics(before.docJson)) === JSON.stringify(semantics(after.docJson))
-    ? candidate : null;
+    ? candidate
+    : null;
 }

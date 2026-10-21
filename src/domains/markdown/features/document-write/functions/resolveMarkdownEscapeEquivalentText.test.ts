@@ -3,14 +3,23 @@ import { resolveMarkdownEscapeEquivalentText as resolve } from './resolveMarkdow
 
 describe('Markdown escape-equivalent edit target', () => {
   it('locates a unique redundant escape spelling without changing any whitespace', async () => {
-    expect(await resolve({ source: 'Clause 202\\(c\\) is relevant.\n\nNext.', oldString: 'Clause 202(c) is relevant.' }))
-      .toBe('Clause 202\\(c\\) is relevant.');
-    expect(await resolve({ source: 'Clause 202(c) is relevant.', oldString: 'Clause 202\\(c\\) is relevant.' }))
-      .toBe('Clause 202(c) is relevant.');
+    expect(
+      await resolve({
+        source: 'Clause 202\\(c\\) is relevant.\n\nNext.',
+        oldString: 'Clause 202(c) is relevant.',
+      })
+    ).toBe('Clause 202\\(c\\) is relevant.');
+    expect(
+      await resolve({
+        source: 'Clause 202(c) is relevant.',
+        oldString: 'Clause 202\\(c\\) is relevant.',
+      })
+    ).toBe('Clause 202(c) is relevant.');
   });
   it('rejects ambiguity, including when the caller might use replace_all', async () => {
-    await expect(resolve({ source: '202\\(c\\)\n\n202(c)', oldString: '202\\(c)' }))
-      .rejects.toThrow('not unique');
+    await expect(
+      resolve({ source: '202\\(c\\)\n\n202(c)', oldString: '202\\(c)' })
+    ).rejects.toThrow(/not unique.*candidate lines: 1, 3.*Current excerpts:/);
   });
   it.each([
     ['literal \\*important\\* here', 'literal *important* here'],

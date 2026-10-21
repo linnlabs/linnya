@@ -49,7 +49,7 @@ describe('file edit feedback through durable Flow and the next model request', (
       call('first-edit', 'edit_file', { old_string: '原值', new_string: '修订值' }),
       call('before-equivalent', 'read_file', {}),
       call('equivalent', 'edit_file', {
-        old_string: '\\(口径\\)', new_string: '(口径)',
+        old_string: '(口径)', new_string: '\\(口径\\)',
       }),
       call('after-equivalent', 'read_file', {}),
       call('real-edit', 'edit_file', { old_string: '修订值', new_string: '最终值' }),
@@ -98,7 +98,7 @@ describe('file edit feedback through durable Flow and the next model request', (
       return event;
     };
     // 同一 canonical current 和完整 pending 身份均保持不变，而非只比较 pending 数量。
-    expect(output('before-equivalent').observation).toContain('修订值 \\(口径\\)');
+    expect(output('before-equivalent').observation).toContain('修订值 (口径)');
     expect(output('after-equivalent').observation).toEqual(output('before-equivalent').observation);
     expect(pending.get('first-edit')).toHaveLength(1);
     expect(pending.get('equivalent')).toEqual(pending.get('first-edit'));
@@ -113,7 +113,7 @@ describe('file edit feedback through durable Flow and the next model request', (
     expect(pending.get('real-edit')?.[0]?.revision).toBe(
       (pending.get('first-edit')?.[0]?.revision ?? 0) + 1
     );
-    expect(output('after-real-edit').observation).toContain('最终值 \\(口径\\)');
+    expect(output('after-real-edit').observation).toContain('最终值 (口径)');
     expect(pending.get('restore')).toEqual([]);
     expect(output('restore').observation).toContain('已撤回 1 块正文修订');
     expect(pending.get('annotate')).toEqual([]);

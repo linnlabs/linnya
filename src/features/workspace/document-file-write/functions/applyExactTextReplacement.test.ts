@@ -37,7 +37,7 @@ describe('applyExactTextReplacement', () => {
     );
   });
 
-  it('未命中完整块时只给候选行提示，不做模糊替换', () => {
+  it('未命中完整块时给有界当前片段与候选行，不做模糊替换', () => {
     expect(() =>
       applyExactTextReplacement({
         source: ['const title = "new";', 'slide.add(title);'].join('\n'),
@@ -45,6 +45,6 @@ describe('applyExactTextReplacement', () => {
         newString: 'replacement',
         replaceAll: false,
       })
-    ).toThrow(/Candidate lines.*2.*Use read_file/u);
+    ).toThrow(/Candidate lines.*2.*Current excerpts: 2: "slide.add\(title\);".*Use read_file/u);
   });
 });
