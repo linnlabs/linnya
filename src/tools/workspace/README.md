@@ -293,7 +293,7 @@ Workspace 工具不要只测单工具参数校验，至少应覆盖这些真实�
 - **已有文档的 file-style 全文写入：**
   - `src/features/workspace/document-file-write/` 只按正式 Workspace 节点的 `documentType` 调用窄 provider。
   - `src/app-hosts/linnya/adapters/document-file-write/` 组合永久内建 Markdown provider 与插件 `writeDocument` hook。
-  - `edit_file` 在 VFS 事实文本上完成一次 exact replacement，随后与 `write_file` 共用同一写回 provider。
+  - `edit_file` 在 VFS 读取后调用可选 provider `prepareEdit`，在与正式读取一致的可见文本上 exact replacement，随后与 `write_file` 共用同一写回 provider。原 VFS 与来源版本保留为内部并发基线；插件未声明能力时继续使用原 VFS 文本。
   - 普通 `text/markdown` 预览不是文档实体，不能按扩展名或 MIME 进入 Markdown pending/版本链。
 
 - **缺失路径的文件创建：**

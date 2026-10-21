@@ -7,10 +7,12 @@ import {
   type CitationSource,
   type CitationSourceResolverPort,
 } from '../../../../citation';
-import { planMarkdownBlocks } from '../../normalization';
-import { admitMarkdownCitationHydration } from '../functions/admitMarkdownCitationHydration';
+import { attachCitationNodesToDocJson, collectMarkdownLinkHrefs, planMarkdownBlocks } from '../../normalization';
+import { admitMarkdownCitationHydration, admitMarkdownCitationLinkHydration } from '../functions/admitMarkdownCitationHydration';
 import { buildMarkdownPendingCitationMetadata } from './buildMarkdownPendingCitationMetadata';
 import type { MarkdownFileWriteSnapshot } from '../definitions/markdownFileWriteSnapshot';
+import { serializeMarkdownFileWriteTarget } from '../functions/serializeMarkdownFileWriteTarget';
+import { selectMarkdownDocumentLinkSources } from '../functions/selectMarkdownDocumentLinkSources';
 
 async function allocateDocumentAliases(snapshot: MarkdownFileWriteSnapshot, allocator: CitationRefAllocatorPort) {
   if (snapshot.sources.length === 0) return [];
@@ -41,11 +43,11 @@ export async function prepareMarkdownFileWrite(params: {
   readonly targetText: string;
   readonly allocator: CitationRefAllocatorPort;
   readonly resolver: CitationSourceResolverPort;
-  readonly collectLinkHrefs: (markdown: string) => Promise<readonly string[]>;
 }) {
   const refs = await allocateDocumentAliases(params.snapshot, params.allocator);
   const scope = createDocumentCitationWriteScope({
     existingSources: params.snapshot.sources, conversationRefs: refs,
+    reservedSources: params.snapshot.reservedSources,
     reservedRefs: params.snapshot.reservedRefs,
   });
   const documentRefByAlias = new Map<string, string>();
@@ -69,33 +71,46 @@ export async function prepareMarkdownFileWrite(params: {
       return source;
     });
   });
-  const targetText = projectMarkdownCitationTokens({
-    markdown: params.targetText,
-    resolveRef: alias => {
-      const ref = documentRefByAlias.get(alias);
-      if (!ref) throw new Error(`Markdown citation alias ${alias} has no document projection.`);
-      return `[@${ref}]`;
-    },
+  // 接纳和回投使用同一份规范块，不能因另一套原始全文扫描把代码或批注变成引用。
+  let targetText = planned.docJson ? serializeMarkdownFileWriteTarget({
+    document: planned.docJson,
+    annotationComments: planned.annotationComments,
+    projectBody: markdown => projectMarkdownCitationTokens({
+      markdown,
+      resolveRef: alias => {
+        const ref = documentRefByAlias.get(alias);
+        if (!ref) throw new Error(`Markdown citation alias ${alias} has no document projection.`);
+        return `[@${ref}]`;
+      },
+    }),
+  }) : '';
+  const links = planned.docJson ? collectMarkdownLinkHrefs(planned.docJson) : [];
+  const linkHydration = await admitMarkdownCitationLinkHydration(links, async urls => {
+    const known = selectMarkdownDocumentLinkSources(params.snapshot, urls);
+    const missing = urls.filter(url => !known.has(normalizeCitationWebUrl(url)));
+    const external = missing.length > 0 ? await params.resolver.resolveSourcesByUrl(missing) : [];
+    return [...known.values(), ...external].map(source => {
+      const assigned = scope.assignDocumentSource(source);
+      sourceByDocumentRef.set(assigned.ref, assigned);
+      return assigned;
+    }).filter(source => source.sourceType === 'web');
   });
+  if (Object.keys(linkHydration).length > 0) {
+    const canonical = await planMarkdownBlocks(targetText);
+    if (!canonical.docJson) throw new Error('Markdown citation links have no compiled document.');
+    // 已接纳链接在保存 pending 前就变成文档 token，预览、继续编辑与 accept 使用同一身份。
+    targetText = serializeMarkdownFileWriteTarget({
+      document: attachCitationNodesToDocJson(canonical.docJson, {}, linkHydration),
+      annotationComments: canonical.annotationComments,
+      projectBody: markdown => markdown,
+    });
+  }
   const pendingMetaByMarkdown = await buildMarkdownPendingCitationMetadata(targetText, async documentRefs => {
     return documentRefs.map(ref => {
       const source = sourceByDocumentRef.get(ref);
       if (!source) throw new Error(`Markdown document citation ${ref} has no admitted source.`);
       return source;
     });
-  }, {
-    collectLinkHrefs: params.collectLinkHrefs,
-    resolveSourcesByUrl: async urls => {
-      const existing = params.snapshot.sources.filter(source => source.sourceType === 'web');
-      const known = new Map(existing.map(source => [normalizeCitationWebUrl(source.url), source]));
-      const missing = urls.filter(url => !known.has(normalizeCitationWebUrl(url)));
-      const external = missing.length > 0 ? await params.resolver.resolveSourcesByUrl(missing) : [];
-      return [...urls.flatMap(url => {
-        const source = known.get(normalizeCitationWebUrl(url));
-        return source ? [source] : [];
-      }), ...external].map(source => scope.assignDocumentSource(source))
-        .filter(source => source.sourceType === 'web');
-    },
   });
   return { targetText, pendingMetaByMarkdown };
 }

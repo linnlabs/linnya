@@ -245,7 +245,7 @@ function collectProtectedRanges(markdown: string): readonly TextRange[] {
       cursor = autolinkEnd;
       continue;
     }
-    if (!isEscaped(markdown, cursor)) {
+    if ((markdown[cursor] === '[' || markdown[cursor] === ']') && !isEscaped(markdown, cursor)) {
       if (markdown[cursor] === '[') labels.push({
         image: markdown[cursor - 1] === '!' && !isEscaped(markdown, cursor - 1),
         containsLink: false,

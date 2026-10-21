@@ -68,7 +68,9 @@ export function mergeRootBlockAttrs(
   const newAttrs = isRecord(newRoot.attrs) ? newRoot.attrs : {};
   return {
     ...newRoot,
-    attrs: { ...oldAttrs, ...newAttrs, id: preserveId },
+    // 正文 Pending 不拥有批注。导入器为新 root 补出的 annotations=[] 不能清空
+    // 已经由 Annotation 用例接纳的基线批注（file-write 可在同事务中新增批注）。
+    attrs: { ...oldAttrs, ...newAttrs, id: preserveId, annotations: oldAttrs.annotations ?? [] },
   };
 }
 

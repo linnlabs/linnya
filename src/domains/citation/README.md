@@ -19,6 +19,8 @@ Citation domain 管理跨 producer 的公共引用规则：Conversation 内的 6
   引用快照保持不变；
 - Editor `CitationNode` 的 ref 属于文档自身持久化快照。`read_file` 只在出站投影中把它映射成当前
   Conversation 的别名，不回写文档，因此移动文件或脱离原 Conversation 后仍能查看原始引用；
+- 已有文档写入必须按“会话别名 → 稳定来源 → 文档 ref”转换；局部写入 scope 保留文档快照、
+  基线占位与当前别名的对应关系，不修改 Conversation claim，也不提供跨会话旧 ref fallback；
 - Citation domain 不读取 Knowledge 文档、Web 页面或 Evidence bundle；
 - `index` 是生产顺序，不是引用身份，也不是 Renderer 最终展示编号；
 - Linnkit 只保存和回放通用 `RuntimeEvent`，不解释 `data.citations`；
@@ -68,8 +70,12 @@ citation read 分支。
 fail-fast。同锚点有多个快照时，Host resolver 按“当前 owner 输出优先、Evidence fallback 在后”的
 顺序提供候选，Citation domain 统一接纳并保留第一条。
 
-按 URL 的 Markdown 链接接纳只查询当前 working history，不通过 URL 反向创建 Evidence 或伪造来源；
+新增 URL 来源的 Markdown 链接接纳只查询当前 working history，不通过 URL 反向创建 Evidence 或伪造来源；
 未命中的 URL 不阻断通用 Markdown 写入。
+
+已有文档的来源以该文档当前完整快照为准，恢复被 Pending 隐藏的基线来源时可复用原 ref 和完整快照；
+这属于文档输入 scope，不是 resolver 历史回退。新来源仍经当前 working history 接纳。Markdown
+编译按来源身份避让文档已占用 ref，canonical token 与 URL 链接使用同一文档分配结果。
 
 当前 `write_file/edit_file` 已通过 platform ToolContext decorator 取得 Host resolver；Markdown
 document-write 只负责把接纳结果投影为 CitationNode。完整但非法的 citation-like token（包括合法/非法 ref

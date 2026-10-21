@@ -33,7 +33,7 @@ export interface WorkspaceDocumentFileWriteRequest {
   readonly content: string;
   readonly operation: WorkspaceDocumentFileWriteOperation;
   readonly replacedCount?: number;
-  /** edit_file 执行时从 VFS current view 读到的稳定内容版本身份。 */
+  /** 文档 provider 准备编辑时捕获的稳定内容/来源版本身份，仅在内部传递。 */
   readonly expectedSourceKey?: string;
   /** exact replacement 的完整读取快照；由文档 owner 在异步解析后、提交前核对。 */
   readonly expectedCurrentText?: string;

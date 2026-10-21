@@ -5,7 +5,6 @@ import {
   type DocumentTypeBackendHook,
 } from '@plugin/backend/documentTypeBackendHook';
 import {
-  collectMarkdownLinkHrefs,
   MarkdownDocumentService,
   MarkdownNormalizationService,
   writeMarkdownDocumentFromText,
@@ -110,10 +109,6 @@ function createMarkdownFileWriteProvider(params: {
         resolver: {
           resolveSources: refs => requireCitationSourceResolver(params.context).resolveSources(refs),
           resolveSourcesByUrl: urls => requireCitationSourceResolver(params.context).resolveSourcesByUrl(urls),
-        },
-        collectLinkHrefs: async markdown => {
-          const parsed = await normalizer.buildStructuredDocFromMarkdown(markdown);
-          return parsed ? collectMarkdownLinkHrefs(parsed) : [];
         },
       });
       const write = await writeMarkdownDocumentFromText({

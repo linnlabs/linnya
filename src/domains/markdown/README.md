@@ -13,6 +13,19 @@ pending、接受修订都必须保留已取得的完整作者数组、刊名、�
 不从 Conversation 的显示标签反推字段。未变块保持原快照，拒绝修订保留原基线。
 来源只按既有 resolver 优先级选择一份快照，不把不同读取版本的字段拼成新来源。
 
+已有文档写入先把“当前 Conversation 输入别名”按稳定来源身份回投为“文档持久 ref”。
+未变来源使用当前文档整份快照；被 Pending 隐藏的基线来源在恢复原稿时复用原 ref 与快照。
+真正新增的来源仍由当前 Conversation resolver 严格接纳，并避让基线、Pending 和本次已占用的 ref。
+不得把旧文档 ref 作为全局或跨 Conversation 的 resolver fallback。`edit_file` 的可见精确匹配、
+写入 hydration、Pending 预览和接受修订共同使用这份映射；只改变会话显示别名不得制造修订。
+
+引用接纳和别名回投使用同次规范化正文块，代码与批注不参与来源替换。已接纳的标准 Markdown 链接
+在写入 Pending 前物化为文档 canonical token，使待确认预览、继续编辑和接受后的来源一致；
+未取得的 URL 仍是普通链接。普通 HTML comment 保留待接纳状态，不把 planner 临时批注身份写入文档。
+
+旧版 URL-only Pending 的 `citation_link_hydration` 复用 Pending owner 的严格准入后进入内部写入快照；
+继续编辑不因新会话尚未取得它而丢失已存来源。这不会把未知 URL 变成来源，也不增加隐式取证。
+
 - Workspace domain 拥有 `projects`、`workspace_nodes`、路径解析和 VFS 调度。
 - Markdown domain 拥有正文版本、Block 卫星数据、修订、批注、normalization 和文档实例的文本/DocumentView 投影。
 - Asset domain 拥有 `assets` 及资源归属关系；Markdown Block 只引用 asset identity。
@@ -85,6 +98,10 @@ current Markdown 投影按连续 mark 范围输出强调，Citation atom 与相�
 
 ## Pending 与 Editor 提交
 
+正文 Pending 接受时保留目标基线 rootBlock 已接纳的批注；正文导入器默认补出的空 annotations
+不得覆盖 Annotation 用例的事实。文件写入新增或修改的批注仍通过独立 Annotation 用例提交，
+不会因随后接受该块的正文修订而丢失。
+
 每个 `(documentId, rootBlockId)` 最多一条 Pending。已有提议继续编辑时保持 ID 并递增 `revision`；工具把内容改回基线时撤销该提议，新增后删除会同时移除占位块。File-style 写入先对齐未变段落再规划差异，文首插入不改变后面旧块的身份；批注也跟随对齐后的身份。
 
 新增 Pending 的占位 rootBlock 与内部内容块都必须使用 Editor 接受的身份。存储服务为内部块调用既有 `generateEditorBlockId`，纯结构变换接收已分配 ID；不能用 root ID 拼接 `-inner`。否则 Citation 在冷加载时补全参考文献会触发 Editor 身份规范化，使未被用户编辑的占位块也与已存基线不同。Accept 保持严格的同块冲突检查，不忽略 ID 差异。本规则只约束新建占位块，不静默迁移既有异常 ID；旧文档应经正式保存入口同步基线后再处理修订。
@@ -110,10 +127,11 @@ Markdown 标记与正文引用 token）。字符按 Unicode code point、汉字�
 旧 `char_count`，不统计来源附录，也不为计量重新构造整篇正文。Host 通过窄 provider 结果投影到
 `write_file/edit_file` 的可选 `text_metrics`；保存请求的原始长度不能替代实际规范化结果。
 
-`edit_file` 的读取快照通过 `expectedCurrentText` 进入 document-write；解析完成后按与 VFS 相同的
-Citation-aware current 投影比较（包括正文、pending 和批注），不一致时返回
-`MARKDOWN_FILE_WRITE_CONFLICT` 并要求重读。比较与事务之间不得增加异步等待。
-失败不提交本次修订或成功回执；`write_file` 的主动全文覆盖不使用此 edit 前提。
+`edit_file` 的原始读取快照通过 `expectedCurrentText` 进入 document-write；解析完成后按与 VFS 相同的
+Citation-aware current 投影比较（包括正文、pending 和批注）。完整 docJson、正文版本和 Pending
+metadata/revision 同时形成 `expectedSourceKey`，防止正文没变但来源已被并发替换。
+不一致时返回 `MARKDOWN_FILE_WRITE_CONFLICT` 并要求重读。比较与事务之间不得增加异步等待。
+失败不提交本次修订或成功回执；`write_file` 可以覆盖调用开始时的全文，但同样校验异步准备期间的来源版本。
 
 对应 Renderer 生命周期与草稿规则见 [文档会话](../../../apps/renderer/domains/editor/features/document-session/README.md)。Schema v64 为既有 Pending 补充初始 revision，保留其身份和内容；迁移不清理或重建用户文档。
 

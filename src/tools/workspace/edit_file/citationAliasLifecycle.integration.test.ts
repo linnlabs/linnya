@@ -8,7 +8,10 @@ import {
 } from '@app/schemas';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
-import { MarkdownDocumentService, PendingRevisionApplyService } from 'src/domains/markdown';
+import {
+  MarkdownDocumentService, PendingRevisionApplyService, planMarkdownBlocks,
+  buildMarkdownPendingCitationMetadata, collectMarkdownLinkHrefs,
+} from 'src/domains/markdown';
 import {
   admitDocumentCitations, allocateCitationRefs, createCitationRefAllocator,
   attachCitationSequence, attachCitationRefAllocator, attachCitationSourceResolver,
@@ -132,7 +135,8 @@ async function createFixture(mode: FixtureMode = 'legacy', repeated = false) {
     pending: documents.getPendingRevisions(documentId),
   });
   const stateHash = () => createHash('sha256').update(JSON.stringify(state())).digest('hex');
-  const sources = (id = documentId) => admitDocumentCitations(documents.getDocument(id)).sources;
+  const sources = (id = documentId) => admitDocumentCitations(documents.getDocument(id)).sources
+    .filter(source => source.sourceType !== 'manual');
   async function edit(oldString: string, newString: string) {
     return WorkspaceEditFileResultSchema.parse(JSON.parse(await editor.run({
       locator: 'workspace:/original.md', old_string: oldString, new_string: newString,
@@ -150,13 +154,30 @@ async function createFixture(mode: FixtureMode = 'legacy', repeated = false) {
       baseline: documents.getDocument(documentId), decision: { mode: decision },
     });
   }
+  async function proposeLegacyLink() {
+    if (source.sourceType !== 'web') throw new Error('Expected Web fixture');
+    const markdown = `主结论 [Target article](${source.url})。`;
+    const metadata = await buildMarkdownPendingCitationMetadata(markdown, async () => [], {
+      collectLinkHrefs: async text => {
+        const planned = await planMarkdownBlocks(text);
+        return planned.docJson ? collectMarkdownLinkHrefs(planned.docJson) : [];
+      },
+      resolveSourcesByUrl: async () => [source],
+    });
+    const blockId = documents.getDocument(documentId).content[0]?.attrs?.id;
+    if (typeof blockId !== 'string') throw new Error('Expected existing block');
+    // 旧正式写入链保存 URL 正文 + link hydration；不伪造会话历史或 allocator claim。
+    documents.setPendingRevision(documentId, blockId, markdown, 'ai', {
+      ...metadata.values().next().value, operation: 'update',
+    });
+  }
   async function close() {
     await new Promise<void>(resolve => setTimeout(resolve, 0));
     database.close();
   }
   return {
     read, edit, write, decide, state, stateHash, sources, close, source, evidenceCalls,
-    originalBody, persistedRef, otherRef, original, current, documentId,
+    originalBody, persistedRef, otherRef, original, current, documentId, seed, proposeLegacyLink,
   };
 }
 
@@ -186,7 +207,62 @@ async function aliasOf(fixture: Fixture): Promise<string> {
   return ref;
 }
 
+function bodyOf(read: Awaited<ReturnType<Fixture['read']>>): string {
+  return read.observation.split('\n').flatMap(line => {
+    const match = /^\d+ \| ?(.*)$/.exec(line);
+    return match ? [match[1]] : [];
+  }).join('\n');
+}
+
 describe('Workspace edits keep document sources separate from conversation aliases', () => {
+  it.each([
+    '```text\n[@Zzz999]\n```',
+    '`[@Zzz999]`',
+  ])('引用外观的代码保持代码语义：%s', async code => {
+    await withFixture('collision-current', async f => {
+      await f.write(`代码示例：\n\n${code}`);
+      const preview = await f.read();
+      expect(preview.data.citations).toBeUndefined();
+      expect(preview.observation).toContain('Zzz999');
+      await f.decide('accept');
+      expect(f.sources()).toEqual([]);
+      expect(f.evidenceCalls).toEqual([]);
+    });
+  });
+
+  it('链接规范化保留批注身份、普通链接与列表间隔，代码里的 ref 不参与回投', async () => {
+    await withFixture('collision-current', async f => {
+      const alias = await aliasOf(f);
+      const target = [
+        `1. 已取得 [Target article](${targetUrl})。`,
+        '2. 未取得 [Unseen](https://unseen.example.test/path)。',
+        '',
+        '<!-- 评审示例 `[@Zzz999]`，不是正文引用。 -->',
+        '',
+        `**正文 [@${alias}]**。`,
+      ].join('\n');
+      expect((await planMarkdownBlocks(target)).annotationComments).toHaveLength(1);
+      await f.write(target);
+      expect(JSON.stringify(f.state())).toContain('评审示例');
+      const before = await f.read();
+      expect(before.observation).toContain('1. 已取得');
+      expect(bodyOf(before)).toContain('1. 已取得');
+      expect(bodyOf(before)).toContain('\n2. 未取得');
+      expect(before.observation).toContain('[Unseen](https://unseen.example.test/path)');
+      expect(before.observation).not.toContain('annotation-draft-');
+      expectTargetSource(before.data.citations?.citations ?? []);
+      await f.decide('accept');
+      const accepted = await f.read();
+      expect(accepted.observation).toContain('评审示例');
+      expect(accepted.observation).toContain('**正文');
+      const state = f.stateHash();
+      // canonical 批注回读再原样写回，不能替换为 planner 临时身份或生成新批注。
+      await f.write(bodyOf(accepted));
+      expect(f.stateHash()).toBe(state);
+      expect(f.evidenceCalls).toEqual([]);
+    });
+  });
+
   it.each(['same', 'legacy', 'collision-current', 'collision-original'] as const)(
     '%s：只改引用旁的文字不替换来源，接受后仍保留完整元数据', async mode => {
       await withFixture(mode, async f => {
@@ -277,7 +353,7 @@ describe('Workspace edits keep document sources separate from conversation alias
     await withFixture('collision-current', async f => {
       const alias = await aliasOf(f);
       const before = f.stateHash();
-      await f.write(f.originalBody.replaceAll(`[@${f.persistedRef}]`, `[@${alias}]`));
+      await f.write(f.originalBody.split(`[@${f.persistedRef}]`).join(`[@${alias}]`));
       expect(f.state().pending).toHaveLength(0);
       expect(f.stateHash()).toBe(before);
       expectTargetSource(f.sources(), f.persistedRef);
@@ -335,6 +411,52 @@ describe('Workspace edits keep document sources separate from conversation alias
     });
   });
 
+  it('归一 URL 对应多个持久来源时拒绝猜选，已有正文与来源保持不变', async () => {
+    await withFixture('legacy', async f => {
+      if (f.source.sourceType !== 'web') throw new Error('Expected Web fixture');
+      const variantRef = 'Jkm234';
+      await f.seed('workspace:/variant.md', `变体 [@${variantRef}]。`, {
+        ...f.source, ref: variantRef, url: `${targetUrl}#table`, title: 'A distinct captured URL',
+      });
+      const variant = (await f.read('workspace:/variant.md')).data.citations?.citations[0];
+      if (!variant) throw new Error('Expected captured variant source');
+      const alias = await aliasOf(f);
+      await f.write(`主结论 [@${alias}]。\n\n变体来源 [@${variant.ref}]。`);
+      await f.decide('accept');
+      const before = f.stateHash();
+      await expect(f.write(`不能猜版本 [标题](${targetUrl})。`)).rejects.toThrow('对应了不同的来源锚点');
+      expect(f.stateHash()).toBe(before);
+    });
+  });
+
+  it('普通链接目的地址中的引用外观字面值不参与别名回投', async () => {
+    await withFixture('collision-current', async f => {
+      const alias = await aliasOf(f);
+      const url = `https://unseen.example.test/[@${alias}]`;
+      await f.write(`主结论 [@${alias}]。\n\n[普通链接](${url})。`);
+      expect((await f.read()).observation).toContain(url);
+      await f.decide('accept');
+      const accepted = await f.read();
+      expect(accepted.observation).toContain(url);
+      expectTargetSource(f.sources(), f.persistedRef);
+    });
+  });
+
+  it('旧 URL-only Pending 没有当前历史来源时，继续编辑仍保留已持久化完整快照', async () => {
+    await withFixture('legacy', async f => {
+      await f.write('普通正文。');
+      await f.decide('accept');
+      expect(f.sources()).toEqual([]);
+      await f.proposeLegacyLink();
+      expect((await f.read()).data.citations).toBeUndefined();
+      await f.edit('主结论', '继续修订的结论');
+      expectTargetSource((await f.read()).data.citations?.citations ?? []);
+      await f.decide('accept');
+      expectTargetSource(f.sources(), f.persistedRef);
+      expect(f.evidenceCalls).toEqual([]);
+    });
+  });
+
   it.each(['accept', 'reject'] as const)(
     '已有 pending 可继续按当前别名编辑，并安全 %s', async decision => {
       await withFixture('legacy', async f => {
@@ -379,7 +501,7 @@ describe('Workspace edits keep document sources separate from conversation alias
       expect(f.state().pending).toHaveLength(1);
       expect(f.state().pending[0]?.operation).toBe('delete');
       expect((await f.read()).data.citations?.citations ?? []).toEqual([]);
-      await f.write(f.originalBody.replaceAll(`[@${f.persistedRef}]`, `[@${alias}]`));
+      await f.write(f.originalBody.split(`[@${f.persistedRef}]`).join(`[@${alias}]`));
       expect(f.state().pending).toHaveLength(0);
       expect(f.stateHash()).toBe(before);
       expectTargetSource(f.sources(), f.persistedRef);

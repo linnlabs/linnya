@@ -15,9 +15,9 @@ Host resolver 组合两类实现：
 - 永久启用的内建 Markdown provider；
 - 贡献了 `writeDocument` 的插件 provider，并保留插件启停检查。
 
-`write_file` 负责提供目标全文；`edit_file` 先在通用 VFS 文本投影上完成一次 exact
-replacement，再把替换后的全文交给同一个 provider。provider 不重复实现字符串替换，也不反向依赖 Agent
-Tool 类。
+`write_file` 负责提供目标全文；`edit_file` 重读通用 VFS 后，可经 provider 的内部 `prepareEdit`
+取得与正式读取一致的可编辑文本，再完成一次 exact replacement，并把目标全文交给同一个 provider。
+provider 不重复实现字符串替换，也不反向依赖 Agent Tool 类。未声明 `prepareEdit` 的插件继续使用原 VFS 文本。
 
 `edit_file` 的模型可见参数保持
 `locator|inode + old_string + new_string + replace_all`，不增加私有 batch 方言。执行时始终重读 current
@@ -28,9 +28,11 @@ diff，未命中或不唯一时给出候选行和重读提示。
 receipt 作为内部 CAS 身份交给 provider。它不进入工具参数；provider 必须在正式写入前拒绝 stale
 source，不能把精确匹配后发生的并发变化覆盖。
 
-内建 Markdown 没有插件 `sourceKey`：使用 `expectedCurrentText` 核对完整 VFS current
-文本（包含 pending 和批注）。该读取快照只在内部传递；Markdown owner 在异步解析之后、
-同步提交之前校验，冲突抛出 `MARKDOWN_FILE_WRITE_CONFLICT`，不会用旧快照覆盖新内容。
+内建 Markdown 的 `prepareEdit` 将文档引用映射为当前 Conversation 别名供精确匹配；原始 VFS 文本
+仍通过 `expectedCurrentText` 传递，完整文档结构、版本和 Pending metadata 的摘要通过内部
+`expectedSourceKey` 传递。别名不进入并发基线。Markdown owner 在异步解析之后、同步提交之前
+同时核对文本与来源快照，冲突抛出 `MARKDOWN_FILE_WRITE_CONFLICT`。主动全文覆盖也会校验本次
+异步准备开始后的来源版本变化，不把开始之后的并发修改覆盖掉。
 provider 不存在或禁用时由本 feature 返回 `WORKSPACE_DOCUMENT_WRITE_PROVIDER_UNAVAILABLE`；
 正文、引用、并发冲突等错误由对应 owner 分类，分派层不吞并或重新包装未知异常。
 

@@ -8,7 +8,8 @@ import { PENDING_REVISION_SCHEMAS } from 'src/domains/markdown/features/document
 import { BLOCK_HISTORY_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/block-history.schema';
 import { IMAGE_BLOCK_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/image.schema';
 import { MarkdownDocumentService, PendingRevisionApplyService, buildMarkdownCitationReadProjection } from 'src/domains/markdown';
-import { attachCitationSourceResolver, type WebCitationSource } from 'src/domains/citation';
+import { attachCitationSourceResolver, attachCitationRefAllocator, type WebCitationSource } from 'src/domains/citation';
+import { createCitationRefAllocatorFixture } from 'src/domains/citation/testkit/citationRefAllocatorFixture';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { createWorkspaceDocumentFileCreateProviderResolver } from '../../document-file-create/createWorkspaceDocumentFileCreateProviderResolver';
 import { createWorkspaceDocumentFileWriteProviderResolver } from '../createWorkspaceDocumentFileWriteProviderResolver';
@@ -28,6 +29,7 @@ describe('Markdown citation receipt through Host providers', () => {
       const workspaceService = new WorkspaceService(db);
       const projectId = workspaceService.createProject('Citation receipt');
       const context: PluginToolContext = { conversationId: 'receipt-test' };
+      attachCitationRefAllocator(context, createCitationRefAllocatorFixture());
       attachCitationSourceResolver(context, {
         resolveSources: async refs => refs.includes(source.ref) ? [source] : [],
         resolveSourcesByUrl: async urls => urls.includes(source.url) ? [source] : [],

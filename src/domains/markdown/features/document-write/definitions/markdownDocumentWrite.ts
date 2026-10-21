@@ -9,7 +9,7 @@ export class MarkdownFileWriteConflictError extends Error {
   readonly code = 'MARKDOWN_FILE_WRITE_CONFLICT';
 
   constructor() {
-    super('Markdown current content changed after edit_file read it. No edit was committed. Use read_file to reload the current content, then retry the exact replacement.');
+    super('Markdown content or source metadata changed while this write was being prepared. No write was committed. Use read_file to reload the current document, then retry.');
     this.name = 'MarkdownFileWriteConflictError';
   }
 }

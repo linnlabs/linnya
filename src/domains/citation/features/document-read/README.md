@@ -41,6 +41,11 @@ fail-fast。缺字段的非法 CitationNode 保留为可观察的 invalid diagno
 
 ## 窗口与预算
 
+链接的 destination/title、尖括号 URI autolink 和 reference 定义的目的区只表达地址或元数据，
+不产生 Citation ref，也不参与会话别名回投；可见 link label 中的真正引用仍按正文处理。
+未闭合链接、普通括号和转义后的 opener 不能宽泛隐藏正文。保护区与正文分段扫描，
+保护区中的半截 token 不得跨到后续正文配对。词法范围由同一 canonical parser 提供。
+
 Workspace 必须先用 Citation inline-node projector 生成 canonical 正文，再按既有正文 cursor 分页。分页后仅
 通过 `selectDocumentCitationSourcesForBodyWindow` 选择窗口内出现完整 `bodyToken` 的来源；被分页边界
 切开的半个 token 不附带 metadata。
@@ -100,3 +105,7 @@ Agent 可见旁路必须遵守“没有 metadata 就没有可引用 token”：p
 `maskMarkdownCitationTokens` 显示中性 `【citation】`。写入规划则使用
 `normalizeMarkdownCitationTokenSpelling` 对齐 parser 转义后的目标与 citation-aware 当前视图，保证
 `read_file -> edit_file/write_file` 不因 UI label 与 canonical token 的差异制造无关 pending revision。
+
+会话可见 ref 与文档持久 ref 不必相同。已有文档的编辑先通过同一 Conversation allocator 取得
+可见别名供精确匹配，再按稳定来源身份回投原文档编号；完整快照与基线占位由 Markdown 写入 scope
+保留。并发比较使用原持久投影和来源版本，不比较别名文本。不得让 resolver 通过旧 ref 猜原来源。
