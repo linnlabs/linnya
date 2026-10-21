@@ -68,6 +68,23 @@ describe('Markdown document write citation hydration', () => {
     )).rejects.toThrow('Citation admission 内部缺少');
   });
 
+  it('定位写法被拒后可按同一来源重试，代码中的语法讨论不接纳成引用', async () => {
+    const resolveSources = vi.fn(async (): Promise<readonly CitationSource[]> => [{
+      sourceType: 'web', ref: 'Abc234', url: 'https://example.com/report',
+      title: 'Report', snippet: 'Persisted source snapshot',
+    }]);
+    await expect(admitMarkdownCitationHydration(
+      '结论 [@Abc234, p. 5]。', resolveSources,
+    )).rejects.toThrow('Put page or table locators outside the token');
+    expect(resolveSources).not.toHaveBeenCalled();
+
+    const admitted = await admitMarkdownCitationHydration(
+      '结论 [@Abc234]（第5页）。语法示例 `[@ref, p. 5]`。', resolveSources,
+    );
+    expect(Object.keys(admitted)).toEqual(['Abc234']);
+    expect(resolveSources).toHaveBeenCalledExactlyOnceWith(['Abc234']);
+  });
+
   it('按同一批 canonical blocks 一次接纳来源，再分配 pending hydration', async () => {
     const resolveSources = vi.fn(async (): Promise<readonly CitationSource[]> => [{
       sourceType: 'knowledge_base',

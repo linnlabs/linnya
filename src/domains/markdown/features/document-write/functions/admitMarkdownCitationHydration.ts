@@ -61,7 +61,9 @@ export async function admitMarkdownCitationHydration(
       `Invalid citation tokens: ${invalidTokens.map(token => JSON.stringify(token)).join(', ')}. ` +
       'Copy the exact [@ref] token returned for that source by a tool or read_file Citation Sources; ' +
       'ref is the six-character source ID, not a Result number, source name, or content-boundary ID. ' +
-      'Keep each source in its own [@ref] token. If the token is unavailable, read the source again; ' +
+      'Keep each source in its own [@ref] token. Put page or table locators outside the token: ' +
+      '[@ref] (p. 5), not [@ref, p. 5]. When discussing citation syntax rather than citing a source, ' +
+      'wrap the example in inline code. If the token is unavailable, read the source again; ' +
       'do not invent, shorten, or pad a ref. This write was not applied.'
     );
   }
