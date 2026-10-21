@@ -1,5 +1,6 @@
 import { createServer, type Server } from 'node:http';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { Logger } from '../../../shared/logger';
 import { webHttpFetch } from './webHttpFetch';
 
 describe('webHttpFetch 真实 HTTP 合同', () => {
@@ -36,6 +37,22 @@ describe('webHttpFetch 真实 HTTP 合同', () => {
     await new Promise<void>((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));
     });
+  });
+
+  it('HTTP 日志不泄露 URL 用户信息、查询或原始异常链', async () => {
+    const log = vi.spyOn(Logger.prototype, 'error');
+    const url = new URL(baseUrl);
+    url.username = 'fixture-user';
+    url.password = 'fixture-secret';
+    url.search = '?token=fixture-token';
+    await expect(webHttpFetch({ url, method: 'GET', timeoutMs: 1_000, maxBodyBytes: 1_024 }))
+      .rejects.toMatchObject({ kind: 'network_error' });
+    const output = JSON.stringify(log.mock.calls);
+    expect(output).not.toContain('fixture-user');
+    expect(output).not.toContain('fixture-secret');
+    expect(output).not.toContain('fixture-token');
+    expect(output).not.toContain('cause');
+    log.mockRestore();
   });
 
   it('deadline 到达后中止请求并分类为 timeout', async () => {

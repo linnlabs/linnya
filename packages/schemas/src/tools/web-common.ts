@@ -55,10 +55,7 @@ export type EscalatableWebFailureKind = z.infer<typeof EscalatableWebFailureKind
  * 正文抽取失败发生的位置。failure kind 保持稳定、窄小；stage 只用于决定
  * 浏览器渲染是否具有独立恢复价值，以及成功兜底后的诊断观测。
  */
-export const WEB_EXTRACTION_FAILURE_STAGE_VALUES = [
-  'dom_canonicalization',
-  'readability',
-] as const;
+export const WEB_EXTRACTION_FAILURE_STAGE_VALUES = ['dom_canonicalization', 'readability'] as const;
 export const WebExtractionFailureStageSchema = z.enum(WEB_EXTRACTION_FAILURE_STAGE_VALUES);
 export type WebExtractionFailureStage = z.infer<typeof WebExtractionFailureStageSchema>;
 
@@ -93,3 +90,18 @@ export const WEB_READ_ESCALATION_REASON_VALUES = [
 ] as const;
 export const WebReadEscalationReasonSchema = z.enum(WEB_READ_ESCALATION_REASON_VALUES);
 export type WebReadEscalationReason = z.infer<typeof WebReadEscalationReasonSchema>;
+
+/** 本地渲染器的结构化终态；用于安全诊断，不携带 Chromium/页面返回的任意错误正文。 */
+export const WEB_RENDER_FAILURE_KIND_VALUES = [
+  'unavailable',
+  'aborted',
+  'load_timeout',
+  'render_timeout',
+  'total_timeout',
+  'navigation_blocked',
+  'html_too_large',
+  'render_process_gone',
+  'render_failed',
+] as const;
+export const WebRenderFailureKindSchema = z.enum(WEB_RENDER_FAILURE_KIND_VALUES);
+export type WebRenderFailureKind = z.infer<typeof WebRenderFailureKindSchema>;

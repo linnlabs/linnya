@@ -12,7 +12,13 @@ import type { WebReadLadderResult } from '../definitions/readLadder';
 import type { WebReadConfig } from '../definitions/webReadConfig';
 import type { WebReadProvider } from '../providers/types';
 import { getWebReadConfig } from '../ports/webReadConfigReader';
-import { WebFailureError, getWebAccessBlockKind, getWebFailureDiagnostics, getWebFailureKind } from '../../shared/webFailure';
+import {
+  WebFailureError,
+  getWebAccessBlockKind,
+  getWebFailureDiagnostics,
+  getWebFailureKind,
+  formatWebFailureDiagnostics,
+} from '../../shared/webFailure';
 import type { WebEvidenceWriter } from '../../shared/ports/webEvidenceWriter';
 import { requireWebEvidenceWriter } from '../../shared/orchestration/webEvidenceWriterContext';
 import type { WebCacheRuntime } from '../../shared/cache/webCacheFactory';
@@ -67,9 +73,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-function tryParseProviderErrorPayload(
-  content: string
-): { errCode?: number } | null {
+function tryParseProviderErrorPayload(content: string): { errCode?: number } | null {
   const trimmed = content.trim();
   if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null;
   try {
@@ -176,22 +180,33 @@ export async function runReadWebPage(
       ...getWebFailureDiagnostics(error),
       tookMs: Date.now() - startedAt,
     });
-    if (!context.abortSignal?.aborted && getWebAccessBlockKind(error) && error instanceof Error
-      && context.webReadAccessHistory) {
+    const diagnostic = formatWebFailureDiagnostics(error);
+    let feedback = '';
+    if (
+      !context.abortSignal?.aborted &&
+      getWebAccessBlockKind(error) &&
+      context.webReadAccessHistory
+    ) {
       const history = context.webReadAccessHistory.read({
         hostname: allowedUrl.hostname,
         currentRunId: context.runId,
         currentToolCallId: context.parentToolCallId,
       });
-      // in-flight 的错误可被不同会话共享；必须新建 owner 错误，不能把会话反馈写进共享对象。
+      feedback = buildWebReadBlockFeedback(allowedUrl.hostname, history);
+    }
+    if (error instanceof Error && (diagnostic || feedback)) {
+      // in-flight 错误可被不同会话共享，模型诊断与会话反馈只在调用侧生成，不修改共享对象。
       throw new WebFailureError(
         error instanceof WebFailureError ? error.kind : getWebFailureKind(error),
-        `${error.message}\n${buildWebReadBlockFeedback(allowedUrl.hostname, history)}`,
+        [error.message, diagnostic, feedback].filter(Boolean).join('\n'),
         {
-          status: error instanceof WebFailureError ? error.status : getWebFailureDiagnostics(error).status,
+          status:
+            error instanceof WebFailureError
+              ? error.status
+              : getWebFailureDiagnostics(error).status,
           ...(error instanceof WebFailureError ? { details: error.details } : {}),
           cause: error,
-        },
+        }
       );
     }
     throw error;
@@ -201,16 +216,17 @@ export async function runReadWebPage(
   if (readResult.filePayload && !fileStore) {
     throw new Error('Web file acquisition requires a host-admitted conversation file store.');
   }
-  const file = readResult.filePayload && fileStore
-    ? await fileStore.save({
-        ...readResult.filePayload,
-        requestedUrl: params.url,
-        finalUrl: readResult.finalUrl,
-        mimeType: readResult.contentType.split(';')[0].trim().toLowerCase(),
-        acquiredAt: readResult.fetchedAt,
-        signal: context.abortSignal,
-      })
-    : undefined;
+  const file =
+    readResult.filePayload && fileStore
+      ? await fileStore.save({
+          ...readResult.filePayload,
+          requestedUrl: params.url,
+          finalUrl: readResult.finalUrl,
+          mimeType: readResult.contentType.split(';')[0].trim().toLowerCase(),
+          acquiredAt: readResult.fetchedAt,
+          signal: context.abortSignal,
+        })
+      : undefined;
   context.abortSignal?.throwIfAborted();
 
   const providerError = tryParseProviderErrorPayload(readResult.content);
@@ -280,7 +296,9 @@ export async function runReadWebPage(
           ref,
           title: resolvedTitle,
           snippet,
-          contentText: file ? `${snippet}\nRequested URL: ${file.requestedUrl}\nFinal URL: ${file.finalUrl}${content ? `\nCaptured text:\n${content}` : ''}` : content,
+          contentText: file
+            ? `${snippet}\nRequested URL: ${file.requestedUrl}\nFinal URL: ${file.finalUrl}${content ? `\nCaptured text:\n${content}` : ''}`
+            : content,
           capturedAtMs: Date.now(),
           url: canonicalUrl,
           canonicalUrl,

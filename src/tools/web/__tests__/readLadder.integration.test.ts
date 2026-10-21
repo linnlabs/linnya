@@ -577,7 +577,7 @@ describe('R2 本地 HTTP → 本地渲染 → 托管读取阶梯', () => {
         escalationReason: 'network_error',
         initialFailureKind: 'network_error',
         previousFailureKind: 'network_error',
-        previousFailureMessage: 'fixture connection refused',
+        failureStage: 'local_http',
         renderAttempted: false,
       },
     });
@@ -682,7 +682,9 @@ describe('R2 本地 HTTP → 本地渲染 → 托管读取阶梯', () => {
         renderProvider: render.provider,
         managedProvider,
       },
-    )).rejects.toBe(managedError);
+    )).rejects.toMatchObject({
+      kind: 'provider_error', message: 'managed failed', details: { failureStage: 'managed_reader' },
+    });
     expect(render.read).not.toHaveBeenCalled();
     expect(managedRead).toHaveBeenCalledTimes(1);
   });

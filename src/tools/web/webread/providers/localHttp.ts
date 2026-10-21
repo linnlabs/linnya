@@ -6,7 +6,7 @@ import {
   type LocalHttpFetchOptions,
 } from '../../../../infra/adapters/web-fetch/localHttpFetchAdapter';
 import type { WebDocumentWarning } from '../../definitions/webDocument';
-import { WebFailureError } from '../../shared/webFailure';
+import { WebFailureError, getWebDiagnosticMimeType } from '../../shared/webFailure';
 import { extractArticle } from '../extraction/extractArticle';
 import { createWebReadResult } from '../functions/createWebReadResult';
 import { resolveReadableWebUrl } from '../functions/resolveReadableWebUrl';
@@ -165,7 +165,10 @@ export class LocalHttpProvider implements WebReadProvider {
       }), ...(filePayload ? { filePayload } : {}) };
     }
 
-    const unsupportedMessage = `本地网页抓取暂不支持 MIME ${fetched.mimeType}。`;
+    const diagnosticMimeType = getWebDiagnosticMimeType(fetched.mimeType);
+    const unsupportedMessage = diagnosticMimeType
+      ? `本地网页抓取暂不支持 MIME ${diagnosticMimeType}。`
+      : '本地网页抓取收到不支持或无效的 Content-Type；未取得正文或保存文件。';
     throw new WebFailureError('unsupported_mime', unsupportedMessage, { status: fetched.status });
   }
 }

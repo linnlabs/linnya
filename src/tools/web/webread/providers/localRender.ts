@@ -1,7 +1,4 @@
-import {
-  WebPageRenderError,
-  type WebPageRenderer,
-} from '../definitions/webPageRenderer';
+import { WebPageRenderError, type WebPageRenderer } from '../definitions/webPageRenderer';
 import { WebFailureError } from '../../shared/webFailure';
 import { extractArticle } from '../extraction/extractArticle';
 import { createWebReadResult } from '../functions/createWebReadResult';
@@ -16,21 +13,25 @@ export interface LocalRenderProviderDependencies {
 }
 
 function mapRenderError(error: WebPageRenderError): WebFailureError {
+  const options = {
+    details: { failureStage: 'local_render' as const, renderFailureKind: error.kind },
+  };
+  // Chromium 的错误文字可能含页面地址或页面脚本异常，只公开稳定 kind，不转述任意 message。
   switch (error.kind) {
     case 'aborted':
-      return new WebFailureError('aborted', error.message);
+      return new WebFailureError('aborted', '本地网页渲染已取消。', options);
     case 'navigation_blocked':
-      return new WebFailureError('policy_denied', error.message);
+      return new WebFailureError('policy_denied', '本地网页渲染被导航策略拒绝。', options);
     case 'html_too_large':
-      return new WebFailureError('body_too_large', error.message);
+      return new WebFailureError('body_too_large', '本地网页渲染内容超过上限。', options);
     case 'load_timeout':
     case 'render_timeout':
     case 'total_timeout':
-      return new WebFailureError('timeout', error.message);
+      return new WebFailureError('timeout', '本地网页渲染超时。', options);
     case 'unavailable':
     case 'render_process_gone':
     case 'render_failed':
-      return new WebFailureError('provider_error', error.message);
+      return new WebFailureError('provider_error', '本地网页渲染能力失败。', options);
   }
 }
 
@@ -59,7 +60,7 @@ export class LocalRenderProvider implements WebReadProvider {
         extracted.accessBarrier,
         extracted.accessBarrier === 'captcha'
           ? '本地渲染后仍返回人机验证页面。'
-          : '本地渲染后仍要求登录才能读取。',
+          : '本地渲染后仍要求登录才能读取。'
       );
     }
     if (!extracted.text && extracted.resources.length === 0) {

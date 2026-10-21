@@ -2,6 +2,10 @@ import {
   WEB_ESCALATABLE_FAILURE_KIND_VALUES,
   WEB_EXTRACTION_FAILURE_STAGE_VALUES,
   WEB_FAILURE_KIND_VALUES,
+  WEB_READ_ESCALATION_REASON_VALUES,
+  WEB_RENDER_FAILURE_KIND_VALUES,
+  type WebReadEscalationReason,
+  type WebRenderFailureKind,
   type EscalatableWebFailureKind,
   type WebExtractionFailureStage,
   type WebFailureKind,
@@ -13,15 +17,13 @@ export type {
   WebFailureKind,
 } from '@app/schemas';
 
-export const ESCALATABLE: ReadonlySet<EscalatableWebFailureKind> = new Set<EscalatableWebFailureKind>([
-  ...WEB_ESCALATABLE_FAILURE_KIND_VALUES,
-]);
+export const ESCALATABLE: ReadonlySet<EscalatableWebFailureKind> =
+  new Set<EscalatableWebFailureKind>([...WEB_ESCALATABLE_FAILURE_KIND_VALUES]);
 
 export interface WebFailureDetails<TReason extends string = WebFailureKind> {
   readonly escalationReason?: TReason;
   readonly initialFailureKind?: WebFailureKind;
   readonly previousFailureKind?: WebFailureKind;
-  readonly previousFailureMessage?: string;
   readonly renderAttempted?: boolean;
   readonly extractionStage?: WebExtractionFailureStage;
   /** 仅供审计/诊断使用；不会写入网页正文 observation。 */
@@ -31,7 +33,24 @@ export interface WebFailureDetails<TReason extends string = WebFailureKind> {
   readonly redirectCount?: number;
   readonly attempt?: number;
   readonly retryCount?: number;
+  readonly failureStage?: WebFailureStage;
+  readonly renderFailureKind?: WebRenderFailureKind;
+  readonly rpcCode?: number;
 }
+
+export type WebFailureStage =
+  | 'search'
+  | 'local_http'
+  | 'local_render'
+  | 'managed_reader'
+  | 'read_ladder';
+const FAILURE_STAGES: readonly WebFailureStage[] = [
+  'search',
+  'local_http',
+  'local_render',
+  'managed_reader',
+  'read_ladder',
+];
 
 export interface WebFailureDiagnostics {
   readonly status?: number;
@@ -40,6 +59,14 @@ export interface WebFailureDiagnostics {
   readonly redirectCount?: number;
   readonly attempt?: number;
   readonly retryCount?: number;
+  readonly failureStage?: WebFailureStage;
+  readonly initialFailureKind?: WebFailureKind;
+  readonly previousFailureKind?: WebFailureKind;
+  readonly escalationReason?: WebReadEscalationReason;
+  readonly renderAttempted?: boolean;
+  readonly renderFailureKind?: WebRenderFailureKind;
+  readonly extractionStage?: WebExtractionFailureStage;
+  readonly rpcCode?: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -53,12 +80,24 @@ function readStatus(error: Record<string, unknown>): number | undefined {
 function sanitizeDiagnosticUrl(value: string): string {
   try {
     const url = new URL(value);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+    url.username = '';
+    url.password = '';
     url.search = '';
     url.hash = '';
     return url.toString();
   } catch {
-    return value.split(/[?#]/, 1)[0] ?? value;
+    return ''; // 非 URL 的任意文本不是诊断事实。
   }
+}
+
+/** Content-Type 是外部响应头；错误文案和诊断都只展示合法 MIME token。 */
+export function getWebDiagnosticMimeType(value: unknown): string | undefined {
+  const mimeType =
+    typeof value === 'string' ? value.split(';')[0]?.trim().toLowerCase() : undefined;
+  return mimeType && /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(mimeType)
+    ? mimeType
+    : undefined;
 }
 
 /** 只抽取可安全写入结构化日志的失败字段，不携带响应正文。 */
@@ -72,13 +111,45 @@ export function getWebFailureDiagnostics(error: unknown): WebFailureDiagnostics 
   const redirectCount = read('redirectCount');
   const attempt = read('attempt');
   const retryCount = read('retryCount');
+  const failureStage = FAILURE_STAGES.find(value => value === read('failureStage'));
+  const initialFailureKind = WEB_FAILURE_KIND_VALUES.find(
+    value => value === read('initialFailureKind')
+  );
+  const previousFailureKind = WEB_FAILURE_KIND_VALUES.find(
+    value => value === read('previousFailureKind')
+  );
+  const escalationReason = WEB_READ_ESCALATION_REASON_VALUES.find(
+    value => value === read('escalationReason')
+  );
+  const renderFailureKind = WEB_RENDER_FAILURE_KIND_VALUES.find(
+    value => value === read('renderFailureKind')
+  );
+  const extractionStage = WEB_EXTRACTION_FAILURE_STAGE_VALUES.find(
+    value => value === read('extractionStage')
+  );
+  const renderAttempted = read('renderAttempted');
+  const rpcCode = read('rpcCode');
+  const mimeType = getWebDiagnosticMimeType(contentType);
+  const safeUrl = typeof finalUrl === 'string' ? sanitizeDiagnosticUrl(finalUrl) : undefined;
   return {
-    ...(typeof status === 'number' && Number.isInteger(status) ? { status } : {}),
-    ...(typeof contentType === 'string' && contentType ? { contentType } : {}),
-    ...(typeof finalUrl === 'string' && finalUrl ? { finalUrl: sanitizeDiagnosticUrl(finalUrl) } : {}),
-    ...(typeof redirectCount === 'number' && Number.isInteger(redirectCount) ? { redirectCount } : {}),
+    ...(typeof status === 'number' && Number.isInteger(status) && status >= 100 && status <= 599
+      ? { status }
+      : {}),
+    ...(mimeType ? { contentType: mimeType } : {}),
+    ...(safeUrl ? { finalUrl: safeUrl } : {}),
+    ...(typeof redirectCount === 'number' && Number.isInteger(redirectCount)
+      ? { redirectCount }
+      : {}),
     ...(typeof attempt === 'number' && Number.isInteger(attempt) ? { attempt } : {}),
     ...(typeof retryCount === 'number' && Number.isInteger(retryCount) ? { retryCount } : {}),
+    ...(failureStage ? { failureStage } : {}),
+    ...(initialFailureKind ? { initialFailureKind } : {}),
+    ...(previousFailureKind ? { previousFailureKind } : {}),
+    ...(escalationReason ? { escalationReason } : {}),
+    ...(renderFailureKind ? { renderFailureKind } : {}),
+    ...(extractionStage ? { extractionStage } : {}),
+    ...(typeof renderAttempted === 'boolean' ? { renderAttempted } : {}),
+    ...(typeof rpcCode === 'number' && Number.isSafeInteger(rpcCode) ? { rpcCode } : {}),
   };
 }
 
@@ -97,11 +168,11 @@ const CHALLENGE_MARKERS = [
 /** 仅凭状态码不足以断定挑战；必须同时出现有限的结构化页面特征。 */
 export function isWebChallengeResponse(
   status: number | undefined,
-  bodyPreview: string | undefined,
+  bodyPreview: string | undefined
 ): boolean {
   if (status === undefined || bodyPreview === undefined) return false;
   if (status !== 403 && status !== 419 && status !== 429) return false;
-  return CHALLENGE_MARKERS.some((marker) => marker.test(bodyPreview));
+  return CHALLENGE_MARKERS.some(marker => marker.test(bodyPreview));
 }
 
 function hasDnsFailure(error: unknown): boolean {
@@ -122,11 +193,15 @@ export class WebFailureError<TReason extends string = WebFailureKind> extends Er
   readonly details?: WebFailureDetails<TReason>;
   readonly cause?: unknown;
 
-  constructor(kind: WebFailureKind, message: string, options?: {
-    status?: number;
-    details?: WebFailureDetails<TReason>;
-    cause?: unknown;
-  }) {
+  constructor(
+    kind: WebFailureKind,
+    message: string,
+    options?: {
+      status?: number;
+      details?: WebFailureDetails<TReason>;
+      cause?: unknown;
+    }
+  ) {
     super(message);
     this.name = 'WebFailureError';
     this.kind = kind;
@@ -138,9 +213,10 @@ export class WebFailureError<TReason extends string = WebFailureKind> extends Er
   /** 禁用后备读取时仍公开已确认的访问阻断根因，不能把所有 managed_disabled 当作拦截。 */
   get code(): WebFailureKind {
     if (this.kind !== 'managed_disabled') return this.kind;
-    const reason = this.details?.previousFailureKind
-      ?? this.details?.initialFailureKind
-      ?? this.details?.escalationReason;
+    const reason =
+      this.details?.previousFailureKind ??
+      this.details?.initialFailureKind ??
+      this.details?.escalationReason;
     return isWebAccessBlockKind(reason) ? reason : this.kind;
   }
 }
@@ -161,7 +237,7 @@ export function getWebAccessBlockKind(error: unknown): WebAccessBlockKind | unde
 }
 
 export function getWebExtractionFailureStage(
-  error: unknown,
+  error: unknown
 ): WebExtractionFailureStage | undefined {
   if (!isRecord(error) || error['kind'] !== 'extraction_error') return undefined;
   const details = error['details'];
@@ -173,7 +249,7 @@ export function getWebExtractionFailureStage(
 }
 
 export function isEscalatableWebFailureKind(
-  kind: WebFailureKind,
+  kind: WebFailureKind
 ): kind is EscalatableWebFailureKind {
   for (const escalatableKind of ESCALATABLE) {
     if (escalatableKind === kind) return true;
@@ -191,9 +267,27 @@ export function getWebFailureKind(error: unknown): WebFailureKind {
     if (hasDnsFailure(error)) return 'dns_error';
     const kind = error['kind'];
     if (typeof kind === 'string') {
-      const knownKind = WEB_FAILURE_KIND_VALUES.find((candidate) => candidate === kind);
+      const knownKind = WEB_FAILURE_KIND_VALUES.find(candidate => candidate === kind);
       if (knownKind) return knownKind;
     }
   }
   return 'provider_error';
+}
+
+/** 只格式化已知枚举/数值，使模型与持久工具错误能看见根因，不转述上游 message/detail。 */
+export function formatWebFailureDiagnostics(error: unknown): string {
+  const diagnostics = getWebFailureDiagnostics(error);
+  const fields = [
+    diagnostics.failureStage ? `stage=${diagnostics.failureStage}` : '',
+    diagnostics.renderFailureKind ? `render=${diagnostics.renderFailureKind}` : '',
+    diagnostics.extractionStage ? `extraction=${diagnostics.extractionStage}` : '',
+    diagnostics.initialFailureKind ? `initial=${diagnostics.initialFailureKind}` : '',
+    diagnostics.previousFailureKind ? `previous=${diagnostics.previousFailureKind}` : '',
+    diagnostics.escalationReason ? `escalation=${diagnostics.escalationReason}` : '',
+    diagnostics.status !== undefined ? `HTTP=${diagnostics.status}` : '',
+    diagnostics.rpcCode !== undefined ? `rpc_code=${diagnostics.rpcCode}` : '',
+    diagnostics.attempt !== undefined ? `attempt=${diagnostics.attempt}` : '',
+    diagnostics.retryCount !== undefined ? `retry_count=${diagnostics.retryCount}` : '',
+  ].filter(Boolean);
+  return fields.length ? `Web diagnostics: ${fields.join(', ')}.` : '';
 }

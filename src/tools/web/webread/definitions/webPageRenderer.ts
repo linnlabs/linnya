@@ -1,20 +1,13 @@
-export type WebPageRenderFailureKind =
-  | 'unavailable'
-  | 'aborted'
-  | 'load_timeout'
-  | 'render_timeout'
-  | 'total_timeout'
-  | 'navigation_blocked'
-  | 'html_too_large'
-  | 'render_process_gone'
-  | 'render_failed';
+import type { WebRenderFailureKind } from '@app/schemas';
+
+export type WebPageRenderFailureKind = WebRenderFailureKind;
 
 export class WebPageRenderError extends Error {
   readonly name = 'WebPageRenderError';
 
   constructor(
     readonly kind: WebPageRenderFailureKind,
-    message: string,
+    message: string
   ) {
     super(message);
   }

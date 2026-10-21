@@ -7,6 +7,7 @@
 
 import { Logger } from '@shared/logger';
 import {
+  getWebFailureDiagnostics,
   getWebFailureKind,
   isWebChallengeResponse,
   type WebFailureKind,
@@ -45,6 +46,7 @@ export class WebHttpError extends Error {
   readonly redirectCount?: number;
   readonly attempt?: number;
   readonly retryCount?: number;
+  readonly rpcCode?: number;
 
   constructor(kind: WebHttpErrorKind, message: string, options?: {
     cause?: unknown;
@@ -56,6 +58,7 @@ export class WebHttpError extends Error {
     redirectCount?: number;
     attempt?: number;
     retryCount?: number;
+    rpcCode?: number;
   }) {
     super(message);
     this.name = 'WebHttpError';
@@ -69,6 +72,7 @@ export class WebHttpError extends Error {
     this.redirectCount = options?.redirectCount;
     this.attempt = options?.attempt;
     this.retryCount = options?.retryCount;
+    this.rpcCode = options?.rpcCode;
     // 分类会读取网络异常的 code；传入原始事实，避免派生 code 反向触发自身分类。
     this.code = getWebFailureKind({ kind, ...options });
   }
@@ -146,6 +150,7 @@ export function withWebHttpErrorDiagnostics(
     contentType: error.contentType,
     challengeDetected: error.challengeDetected,
     retryAfterMs: error.retryAfterMs,
+    rpcCode: error.rpcCode,
     ...diagnostics,
   });
 }
@@ -185,6 +190,8 @@ function createTimeoutAbortSignal(args: {
 function toLogUrl(rawUrl: string | URL): string {
   try {
     const url = rawUrl instanceof URL ? new URL(rawUrl) : new URL(rawUrl);
+    url.username = '';
+    url.password = '';
     url.search = '';
     url.hash = '';
     return url.toString();
@@ -305,7 +312,7 @@ export async function webHttpFetch(args: WebHttpFetchArgs): Promise<WebHttpRespo
       method: args.method,
       tookMs: Date.now() - startedAt,
       kind: normalizedError.kind,
-      error: normalizedError,
+      ...getWebFailureDiagnostics(normalizedError),
     });
     throw normalizedError;
   } finally {

@@ -8,14 +8,9 @@ import {
   type WebExtractionFailureStage,
   type WebFailureKind,
 } from '../../shared/webFailure';
-import type {
-  WebReadEscalationReason,
-  WebReadLadderResult,
-} from '../definitions/readLadder';
-import {
-  DEFAULT_WEB_READ_CONFIG,
-  type WebReadConfig,
-} from '../definitions/webReadConfig';
+import type { WebReadEscalationReason, WebReadLadderResult } from '../definitions/readLadder';
+import { DEFAULT_WEB_READ_CONFIG, type WebReadConfig } from '../definitions/webReadConfig';
+import { createWebReadFailure } from '../functions/createWebReadFailure';
 import { assessWebReadQuality } from '../functions/assessWebReadQuality';
 import {
   createLocalRenderWebReadProvider,
@@ -62,17 +57,16 @@ async function readManagedFallback(args: {
   initialFailureStage?: WebExtractionFailureStage;
   previousFailure?: unknown;
 }): Promise<WebReadLadderResult> {
-  if (args.managedProvider === null
-    || (args.managedProvider === undefined && args.config.managedReader === 'none')) {
-    const previousFailureKind = args.previousFailure === undefined
-      ? undefined
-      : getWebFailureKind(args.previousFailure);
-    const previousFailureMessage = args.previousFailure instanceof Error
-      ? args.previousFailure.message
-      : undefined;
-    const extractionStage = args.previousFailure === undefined
-      ? args.initialFailureStage
-      : getWebExtractionFailureStage(args.previousFailure) ?? args.initialFailureStage;
+  if (
+    args.managedProvider === null ||
+    (args.managedProvider === undefined && args.config.managedReader === 'none')
+  ) {
+    const previousFailureKind =
+      args.previousFailure === undefined ? undefined : getWebFailureKind(args.previousFailure);
+    const extractionStage =
+      args.previousFailure === undefined
+        ? args.initialFailureStage
+        : (getWebExtractionFailureStage(args.previousFailure) ?? args.initialFailureStage);
     const failureReason = previousFailureKind ?? args.initialFailureKind ?? args.reason;
     const stageSuffix = extractionStage ? `，stage=${extractionStage}` : '';
     throw new WebFailureError<WebReadEscalationReason>(
@@ -83,12 +77,13 @@ async function readManagedFallback(args: {
           escalationReason: args.reason,
           initialFailureKind: args.initialFailureKind,
           previousFailureKind,
-          previousFailureMessage,
           renderAttempted: args.renderAttempted,
           ...(extractionStage ? { extractionStage } : {}),
           ...getWebFailureDiagnostics(args.previousFailure),
+          failureStage:
+            getWebFailureDiagnostics(args.previousFailure).failureStage ?? 'read_ladder',
         },
-      },
+      }
     );
   }
   const managedProvider = args.managedProvider ?? createWebReadProvider(args.config);
@@ -113,7 +108,15 @@ async function readManagedFallback(args: {
       initialFailureKind: args.initialFailureKind,
       initialFailureStage: args.initialFailureStage,
     };
-  } catch (error: unknown) {
+  } catch (cause: unknown) {
+    const error = createWebReadFailure(cause, 'managed_reader', {
+      initialFailureKind: args.initialFailureKind,
+      ...(args.previousFailure !== undefined
+        ? { previousFailureKind: getWebFailureKind(args.previousFailure) }
+        : {}),
+      escalationReason: args.reason,
+      renderAttempted: args.renderAttempted,
+    });
     logger.error('[readWebPageWithLadder] 托管读取失败', {
       operation: 'read',
       provider: managedProvider.name,
@@ -129,14 +132,12 @@ async function readManagedFallback(args: {
 
 function shouldAttemptRender(
   reason: WebReadEscalationReason,
-  extractionStage?: WebExtractionFailureStage,
+  extractionStage?: WebExtractionFailureStage
 ): boolean {
   // Chromium 能独立修复原始 HTML 的建树差异；但 canonical DOM 上的
   // Readability 异常在渲染后仍会进入同一个抽取器，不能机械重试。
   if (reason === 'extraction_error') return extractionStage === 'dom_canonicalization';
-  return reason !== 'http_403'
-    && reason !== 'captcha'
-    && reason !== 'login_required';
+  return reason !== 'http_403' && reason !== 'captcha' && reason !== 'login_required';
 }
 
 async function readRenderedOrManaged(args: {
@@ -162,7 +163,8 @@ async function readRenderedOrManaged(args: {
   let renderedResult: WebReadResult;
   try {
     renderedResult = await args.renderProvider.read(args.params);
-  } catch (error: unknown) {
+  } catch (cause: unknown) {
+    const error = createWebReadFailure(cause, 'local_render');
     const failureKind = getWebFailureKind(error);
     if (!MANAGED_AFTER_RENDER_FAILURE.has(failureKind)) throw error;
     return readManagedFallback({
@@ -208,18 +210,20 @@ async function readRenderedOrManaged(args: {
 
 async function executeReadLadder(
   params: WebReadParams,
-  dependencies: WebReadLadderDependencies,
+  dependencies: WebReadLadderDependencies
 ): Promise<WebReadLadderResult> {
   const config = dependencies.config ?? DEFAULT_WEB_READ_CONFIG;
   const initialProvider = dependencies.provider ?? createLocalWebReadProvider();
-  const renderEnabled = dependencies.renderProvider === undefined
-    ? config.renderEnabled
-    : dependencies.renderProvider !== null;
+  const renderEnabled =
+    dependencies.renderProvider === undefined
+      ? config.renderEnabled
+      : dependencies.renderProvider !== null;
   let readResult: WebReadResult;
 
   try {
     readResult = await initialProvider.read(params);
-  } catch (error: unknown) {
+  } catch (cause: unknown) {
+    const error = createWebReadFailure(cause, 'local_http');
     const failureKind = getWebFailureKind(error);
     const initialFailureStage = getWebExtractionFailureStage(error);
     if (!isEscalatableWebFailureKind(failureKind)) throw error;
@@ -286,7 +290,7 @@ async function executeReadLadder(
 
 export async function readWebPageWithLadder(
   params: WebReadParams,
-  dependencies: WebReadLadderDependencies = {},
+  dependencies: WebReadLadderDependencies = {}
 ): Promise<WebReadLadderResult> {
   const controller = new AbortController();
   let totalBudgetExpired = false;
@@ -300,13 +304,12 @@ export async function readWebPageWithLadder(
   }, totalTimeoutMs);
 
   try {
-    return await executeReadLadder(
-      { ...params, signal: controller.signal },
-      dependencies,
-    );
+    return await executeReadLadder({ ...params, signal: controller.signal }, dependencies);
   } catch (error: unknown) {
     if (totalBudgetExpired) {
-      throw new WebFailureError('timeout', `网页读取总耗时超过 ${totalTimeoutMs}ms。`);
+      throw new WebFailureError('timeout', `网页读取总耗时超过 ${totalTimeoutMs}ms。`, {
+        details: { ...getWebFailureDiagnostics(error), failureStage: 'read_ladder' },
+      });
     }
     throw error;
   } finally {

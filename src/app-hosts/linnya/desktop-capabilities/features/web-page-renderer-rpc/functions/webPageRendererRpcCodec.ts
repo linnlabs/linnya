@@ -1,16 +1,6 @@
 import { z } from 'zod';
+import { WebRenderFailureKindSchema } from '@app/schemas';
 
-const WebPageRenderFailureKindSchema = z.enum([
-  'unavailable',
-  'aborted',
-  'load_timeout',
-  'render_timeout',
-  'total_timeout',
-  'navigation_blocked',
-  'html_too_large',
-  'render_process_gone',
-  'render_failed',
-]);
 
 export const WebPageRenderRpcRequestSchema = z.object({
   url: z.string().url(),
@@ -28,7 +18,7 @@ export const WebPageRenderRpcResultSchema = z.discriminatedUnion('ok', [
   z.object({
     ok: z.literal(false),
     error: z.object({
-      kind: WebPageRenderFailureKindSchema,
+      kind: WebRenderFailureKindSchema,
       message: z.string().min(1).max(2_048),
     }).strict(),
   }).strict(),
