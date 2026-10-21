@@ -13,6 +13,8 @@ import { countMarkdownTextCharacters, serializeMarkdownBlocks, type FlattenedMar
 import { normalizeMarkdownCitationTokenSpelling } from '../../../../citation';
 import { planMarkdownBlockWrites } from '../functions/planMarkdownBlockWrites';
 import { assertMarkdownWriteSourceCurrent } from '../functions/assertMarkdownWriteSourceCurrent';
+import { createMarkdownFileWriteSourceKey } from '../functions/projectMarkdownFileWriteSnapshot';
+import { MarkdownFileWriteConflictError } from '../definitions/markdownDocumentWrite';
 import type { MarkdownAnnotationMeta } from '@app/schemas';
 import {
   applyMarkdownAnnotationChanges,
@@ -101,6 +103,8 @@ export async function writeMarkdownDocumentFromText(params: {
   readonly targetText: string;
   /** file edit 的完整 current 投影快照；全文覆盖写入不传。 */
   readonly expectedCurrentText?: string;
+  /** 来源回投准备时捕获的完整结构/来源/pending 版本，不含会话别名。 */
+  readonly expectedSourceKey?: string;
   readonly toolName: 'edit_file' | 'write_file';
   readonly pendingMetaByMarkdown?: ReadonlyMap<string, PendingRevisionMetadata>;
   readonly annotationAdmission: {
@@ -115,6 +119,9 @@ export async function writeMarkdownDocumentFromText(params: {
   const planned = await planMarkdownBlocks(params.targetText);
   const content = params.documentStore.getDocument(params.documentId);
   const pendings = params.documentStore.getPendingRevisions(params.documentId);
+  if (params.expectedSourceKey !== undefined && params.expectedSourceKey !== createMarkdownFileWriteSourceKey({
+    content, pendings, versionNumber: params.documentStore.getLatestVersion(params.documentId)?.version_number ?? null,
+  })) throw new MarkdownFileWriteConflictError();
   // edit_file 的 old_string 来自 citation-aware VFS 文本。写入规划必须复用同一当前视图，
   // 否则持久层里的 UI label（如 `[1]`）会和 Agent 看到的 `[@ref]` 不同，导致未修改的引用块被误写。
   const currentProjection = buildMarkdownCitationReadProjection({

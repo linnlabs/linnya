@@ -233,24 +233,35 @@ export class EditFileTool extends BaseTool {
     const resolveProvider = createWorkspaceDocumentFileWriteProviderResolver({
       db: databaseService.getDb(),
       context: resolvedContext.context,
+      resultCommit: createFileToolResultCommit(context, this.name, write => serialize(write)),
+      ...(context.workspaceMutationPublisher
+        ? { mutationPublisher: context.workspaceMutationPublisher }
+        : {}),
     });
+    const identity = {
+      documentId: node.id, documentName: node.name, documentType: node.type,
+      projectId: runtime.projectId, path: node.path, inode: node.inode,
+    };
+    const provider = resolveProvider(node.type);
+    const prepared = provider?.enabled && provider.prepareEdit
+      ? await provider.prepareEdit({ identity, currentText: read.text }) : undefined;
+    const editText = prepared?.text ?? read.text;
     let replacement: ExactTextReplacementResult;
     try {
       replacement = applyExactTextReplacement({
-        source: read.text, oldString, newString, replaceAll: parsedArgs.replace_all,
+        source: editText, oldString, newString, replaceAll: parsedArgs.replace_all,
       });
     } catch (error) {
       if (!(error instanceof ExactTextReplacementError) || error.code !== 'OLD_STRING_NOT_FOUND') throw error;
-      const provider = resolveProvider(node.type);
       const equivalent = provider?.enabled && provider.resolveEquivalentEditText
-        ? await provider.resolveEquivalentEditText({ source: read.text, oldString }) : null;
+        ? await provider.resolveEquivalentEditText({ source: editText, oldString }) : null;
       if (equivalent === null) throw error;
       replacement = applyExactTextReplacement({
-        source: read.text, oldString: equivalent, newString, replaceAll: false,
+        source: editText, oldString: equivalent, newString, replaceAll: false,
       });
     }
 
-    const expectedSourceKey = readMetadataString(read.metadata, 'sourceKey');
+    const expectedSourceKey = prepared?.sourceKey ?? readMetadataString(read.metadata, 'sourceKey');
     const serialize = (write: WorkspaceDocumentFileWriteResult): string => {
       const diagnostics = renderDocumentDiagnostics(write.diagnostics);
       const changes = replacement.changes.slice(0, MAX_VISIBLE_EDIT_CHANGES);
@@ -279,28 +290,14 @@ export class EditFileTool extends BaseTool {
     };
     const write = await writeWorkspaceDocumentFile({
       request: {
-        identity: {
-          documentId: node.id,
-          documentName: node.name,
-          documentType: node.type,
-          projectId: runtime.projectId,
-          path: node.path,
-          inode: node.inode,
-        },
+        identity,
         content: replacement.text,
         operation: 'edit',
         replacedCount: replacement.count,
         expectedCurrentText: read.text,
         ...(expectedSourceKey ? { expectedSourceKey } : {}),
       },
-      resolveProvider: createWorkspaceDocumentFileWriteProviderResolver({
-        db: databaseService.getDb(),
-        context: resolvedContext.context,
-        resultCommit: createFileToolResultCommit(context, this.name, serialize),
-        ...(context.workspaceMutationPublisher
-          ? { mutationPublisher: context.workspaceMutationPublisher }
-          : {}),
-      }),
+      resolveProvider,
     });
     return serialize(write);
   }

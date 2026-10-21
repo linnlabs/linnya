@@ -83,7 +83,8 @@ function expectCompleteMetadata(values: readonly { readonly sourceType: string }
 }
 
 function savedSources(documentId = originalDocumentId) {
-  return admitDocumentCitations(documents.getDocument(documentId)).sources;
+  return admitDocumentCitations(documents.getDocument(documentId)).sources
+    .filter(source => source.sourceType !== 'manual');
 }
 
 function bindReadHistory(target: ToolContext, read: Awaited<ReturnType<typeof readOriginal>>) {

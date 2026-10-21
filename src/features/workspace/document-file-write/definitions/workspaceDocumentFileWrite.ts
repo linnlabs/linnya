@@ -53,6 +53,11 @@ export interface WorkspaceDocumentFileWriteProvider {
   readonly displayName: string;
   readonly enabled: boolean;
   readonly disabledMessage: string;
+  /** 内部编辑视图投影；工具不解释文档领域语法，未声明时使用原 VFS 文本。 */
+  readonly prepareEdit?: (params: {
+    readonly identity: WorkspaceDocumentFileIdentity;
+    readonly currentText: string;
+  }) => Promise<{ readonly text: string; readonly sourceKey?: string }>;
   /** 文档 owner 可接纳唯一、语义相同的转义拼写；未声明时只允许 exact。 */
   readonly resolveEquivalentEditText?: (params: {
     readonly source: string;

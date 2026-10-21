@@ -19,3 +19,7 @@ export {
 } from './orchestration/buildMarkdownDocumentFromText';
 
 export { resolveMarkdownEscapeEquivalentText } from './functions/resolveMarkdownEscapeEquivalentText';
+export { projectMarkdownFileWriteSnapshot } from './functions/projectMarkdownFileWriteSnapshot';
+export { prepareMarkdownFileWrite, projectMarkdownFileEditText } from './orchestration/prepareMarkdownFileWrite';
+export type { MarkdownFileWriteSnapshot } from './definitions/markdownFileWriteSnapshot';
+export { MarkdownFileWriteConflictError } from './definitions/markdownDocumentWrite';

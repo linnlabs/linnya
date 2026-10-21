@@ -8,7 +8,8 @@ import { SqliteCitationRefClaimStore } from '../persistence/citation-ref-claims/
 import { CITATION_PRODUCER_TOOL_NAMES } from './citationSequenceToolContextDecorator';
 import { requireToolConversationScope } from './conversation-scope';
 
-export const CITATION_REF_ALLOCATOR_TOOL_NAMES = CITATION_PRODUCER_TOOL_NAMES;
+// 文档编辑要在会话可见别名上匹配；写回按来源回投文档ref，不产生新的工具citation序号。
+export const CITATION_REF_ALLOCATOR_TOOL_NAMES = [...CITATION_PRODUCER_TOOL_NAMES, 'write_file', 'edit_file'] as const;
 
 interface CitationRefAllocatorToolContext extends ToolExecutionContext {
   readonly databaseService?: DatabaseService;

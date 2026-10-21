@@ -5,14 +5,18 @@ import {
   type DocumentTypeBackendHook,
 } from '@plugin/backend/documentTypeBackendHook';
 import {
-  buildMarkdownPendingCitationMetadata,
   collectMarkdownLinkHrefs,
   MarkdownDocumentService,
   MarkdownNormalizationService,
   writeMarkdownDocumentFromText,
   resolveMarkdownEscapeEquivalentText,
+  prepareMarkdownFileWrite,
+  projectMarkdownFileEditText,
+  projectMarkdownFileWriteSnapshot,
+  type MarkdownFileWriteSnapshot,
+  MarkdownFileWriteConflictError,
 } from '../../../../domains/markdown';
-import { requireCitationSourceResolver } from '../../../../domains/citation';
+import { requireCitationRefAllocator, requireCitationSourceResolver, type CitationRefAllocatorPort } from '../../../../domains/citation';
 import type {
   WorkspaceDocumentFileWriteProvider,
   WorkspaceDocumentFileWriteProviderResolver,
@@ -56,11 +60,29 @@ function createMarkdownFileWriteProvider(params: {
   const documentStore = new MarkdownDocumentService(params.db);
   const normalizer = new MarkdownNormalizationService(params.db, documentStore);
   const workspaceMutation = createSqliteWorkspaceDocumentMutationPort(params.db);
+  const captureSnapshot = (documentId: string): MarkdownFileWriteSnapshot => projectMarkdownFileWriteSnapshot({
+    content: documentStore.getDocument(documentId),
+    pendings: documentStore.getPendingRevisions(documentId),
+    versionNumber: documentStore.getLatestVersion(documentId)?.version_number ?? null,
+  });
+  const normalize = async (documentId: string): Promise<void> => {
+    const result = await normalizer.normalizeDocumentIfNeeded(documentId);
+    if (result.status === 'failed') throw new Error(`文档仍处于未规范化状态，无法安全写入 pending revision：${result.reason ?? '未知原因'}`);
+  };
+  // 无引用文档不要求引用运行端口；按需调用仍须经过正式Host绑定，不能构造本地替代分配器。
+  const allocator: CitationRefAllocatorPort = { allocate: anchors =>
+    requireCitationRefAllocator(params.context).allocate(anchors) };
   return {
     displayName: 'Markdown',
     enabled: true,
     disabledMessage: 'Markdown 是永久启用的内建文档类型。',
     resolveEquivalentEditText: resolveMarkdownEscapeEquivalentText,
+    prepareEdit: async request => {
+      await normalize(request.identity.documentId);
+      const snapshot = captureSnapshot(request.identity.documentId);
+      if (snapshot.currentText !== request.currentText) throw new MarkdownFileWriteConflictError();
+      return { text: await projectMarkdownFileEditText(snapshot, allocator), sourceKey: snapshot.sourceKey };
+    },
     write: async request => {
       params.resultCommit?.prepare();
       const formatResult = (
@@ -80,29 +102,28 @@ function createMarkdownFileWriteProvider(params: {
           deletedAnnotationCount: write.deletedAnnotationIds.length,
         }),
       });
-      const normalized = await normalizer.normalizeDocumentIfNeeded(request.identity.documentId);
-      if (normalized.status === 'failed') {
-        throw new Error(
-          `文档仍处于未规范化状态，无法安全写入 pending revision：${normalized.reason ?? '未知原因'}`
-        );
-      }
-
+      await normalize(request.identity.documentId);
+      const snapshot = captureSnapshot(request.identity.documentId);
+      if (request.expectedSourceKey !== undefined && request.expectedSourceKey !== snapshot.sourceKey) throw new MarkdownFileWriteConflictError();
+      const prepared = await prepareMarkdownFileWrite({
+        snapshot, targetText: request.content, allocator,
+        resolver: {
+          resolveSources: refs => requireCitationSourceResolver(params.context).resolveSources(refs),
+          resolveSourcesByUrl: urls => requireCitationSourceResolver(params.context).resolveSourcesByUrl(urls),
+        },
+        collectLinkHrefs: async markdown => {
+          const parsed = await normalizer.buildStructuredDocFromMarkdown(markdown);
+          return parsed ? collectMarkdownLinkHrefs(parsed) : [];
+        },
+      });
       const write = await writeMarkdownDocumentFromText({
         documentStore,
         documentId: request.identity.documentId,
-        targetText: request.content,
+        targetText: prepared.targetText,
         expectedCurrentText: request.expectedCurrentText,
+        expectedSourceKey: snapshot.sourceKey,
         toolName: request.operation === 'edit' ? 'edit_file' : 'write_file',
-        pendingMetaByMarkdown: await buildMarkdownPendingCitationMetadata(request.content, refs =>
-          requireCitationSourceResolver(params.context).resolveSources(refs), {
-            collectLinkHrefs: async markdown => {
-              const parsed = await normalizer.buildStructuredDocFromMarkdown(markdown);
-              return parsed ? collectMarkdownLinkHrefs(parsed) : [];
-            },
-            resolveSourcesByUrl: urls =>
-              requireCitationSourceResolver(params.context).resolveSourcesByUrl(urls),
-          }
-        ),
+        pendingMetaByMarkdown: prepared.pendingMetaByMarkdown,
         annotationAdmission: {
           author: 'AI',
           meta: {
