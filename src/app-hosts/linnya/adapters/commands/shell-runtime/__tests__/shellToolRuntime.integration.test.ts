@@ -1080,7 +1080,7 @@ describe('ShellToolRuntime production orchestration', () => {
     });
   });
 
-  it('pipe 返回 opaque handle，process 支持 poll/cancel 且跨 run 只能看到 unknown', async () => {
+  it('pipe 返回 opaque handle，process 支持 poll/wait/cancel 且跨 run 只能看到 unknown', async () => {
     const f = fixture();
     const started = await f.runtime.executeShell(shellRequest({ command: 'printf ok' }));
     expect(started.status).toBe('running');
@@ -1110,6 +1110,12 @@ describe('ShellToolRuntime production orchestration', () => {
     if (polled.status === 'running') {
       expect(polled.presentation.audit_status).toBeUndefined();
     }
+    const waited = await f.runtime.executeProcess(processRequest('agent-run-a', {
+      type: 'wait',
+      cursor: polled.status === 'running' ? polled.nextCursor : started.nextCursor,
+      wait_timeout_ms: 1,
+    }));
+    expect(waited).toMatchObject({ status: 'running' });
     const cancelled = await f.runtime.executeProcess(processRequest('agent-run-a', {
       type: 'cancel',
     }));
@@ -1125,6 +1131,11 @@ describe('ShellToolRuntime production orchestration', () => {
         kind: 'process_action',
         result: { status: 'running' },
         action: { type: 'poll' },
+      },
+      {
+        kind: 'process_action',
+        result: { status: 'running' },
+        action: { type: 'wait', wait_timeout_ms: 1 },
       },
       {
         kind: 'process_action',

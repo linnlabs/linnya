@@ -8,6 +8,7 @@ import {
   SHELL_HARD_TIMEOUT_MIN_SECONDS,
   SHELL_INITIAL_WAIT_MAX_MS,
   SHELL_INITIAL_WAIT_MIN_MS,
+  ShellToolArgumentsV1Schema,
   parseShellToolArguments,
   type ShellToolResultData,
   type ShellToolRuntimeResult,
@@ -22,6 +23,7 @@ import {
 import { parseShellToolRuntimeResult } from 'src/app-hosts/linnya/adapters/commands/shell-runtime/definitions';
 import { resolveToolConversationInstanceId } from 'src/app-hosts/linnya/adapters/tools/conversation-scope';
 import { formatShellToolModelObservation } from 'src/domains/commands';
+import { shellProtocolViolationMessage } from './functions/shellProtocolViolationMessage';
 
 function projectShellToolResultData(result: ShellToolRuntimeResult): ShellToolResultData {
   if (result.status === 'running') {
@@ -54,6 +56,9 @@ function projectShellToolResultData(result: ShellToolRuntimeResult): ShellToolRe
 export class ShellTool extends BaseTool {
   readonly name = 'shell';
 
+  /** 与 process 一样，参数拒绝是启动前的协议事实，不是命令运行失败。 */
+  readonly argumentValidationErrorCode = 'shell_protocol_violation';
+
   readonly description = `Run a command in a new temporary shell process.
 
 Use this tool for local CLI programs and file-processing commands. Each call starts a new shell;
@@ -85,13 +90,13 @@ requires_write_access when the command may create, modify, install, move, or del
         description: 'Request approval for standard write access when the current mode is read-only. This does not grant full access or expand the standard writable boundary.',
       },
       initial_wait_ms: {
-        type: 'number',
-        description: `Initial wait only, at most ${SHELL_INITIAL_WAIT_MAX_MS} ms; this is not the total command runtime. Longer commands return a handle: use process with wait_timeout_ms to continue waiting. Do not increase this value for long commands.`,
+        type: 'integer',
+        description: `Initial wait only, at most ${SHELL_INITIAL_WAIT_MAX_MS} ms; this is not the total command runtime. Longer commands return a handle: use process with action.type="wait" and action.wait_timeout_ms to continue waiting. Do not increase this value for long commands.`,
         minimum: SHELL_INITIAL_WAIT_MIN_MS,
         maximum: SHELL_INITIAL_WAIT_MAX_MS,
       },
       hard_timeout_seconds: {
-        type: 'number',
+        type: 'integer',
         description: `Maximum total runtime for this command. Omit it to use ${SHELL_HARD_TIMEOUT_DEFAULT_SECONDS} seconds.`,
         minimum: SHELL_HARD_TIMEOUT_MIN_SECONDS,
         maximum: SHELL_HARD_TIMEOUT_MAX_SECONDS,
@@ -100,6 +105,16 @@ requires_write_access when the command may create, modify, install, move, or del
     required: ['command'],
     additionalProperties: false,
   };
+
+  protected override validateArguments(args: Record<string, unknown>): {
+    success: boolean;
+    error?: string;
+  } {
+    const parsed = ShellToolArgumentsV1Schema.safeParse(args);
+    return parsed.success
+      ? { success: true }
+      : { success: false, error: shellProtocolViolationMessage(parsed.error) };
+  }
 
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
     const runtime = context.shellToolRuntime;

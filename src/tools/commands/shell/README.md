@@ -10,7 +10,7 @@
 | `cwd` | 否 | Shell 的物理工作目录。省略时使用当前对话目录；相对路径会以该目录为基准解析，绝对路径按操作系统路径处理 |
 | `interactive` | 否 | 是否为本次调用启用 PTY |
 | `requires_write_access` | 否 | 只读档位下申请写入审批；不会自行扩大标准/完全访问的文件边界 |
-| `initial_wait_ms` | 否 | 首次返回 running handle 前等待，最多 30,000 ms，不是总时长；长任务用 `process.wait_timeout_ms` 续等 |
+| `initial_wait_ms` | 否 | 首次返回 running handle 前等待，整数 250–30,000 ms，不是总时长；长任务用 `process` 的 `action.type="wait"` 和 `action.wait_timeout_ms` 续等 |
 | `hard_timeout_seconds` | 否 | 命令总运行期限 |
 
 ## 返回结果
@@ -22,6 +22,19 @@
 - `observation` 给模型使用：控制首行在外、命令正文进入动态不可信数据边界；不包含内部路径、PID、owner generation 或完整 raw artifact。
 - `running` 结果必须带可供 `process` 使用的 opaque handle。
 - `completed` 结果必须等待可信终态和输出结算后再返回。
+
+## 参数拒绝
+
+正式 `ShellToolArgumentsV1Schema` 在 `ShellTool.validateArguments` 接纳阶段执行，非法参数不会
+发布 `tool_process(start)`，也不会进入目录准入、审批或进程启动。ToolRegistry 将其记为
+`errorKind: protocol`、`errorCode: shell_protocol_violation`；命令启动后的失败仍属于原运行时合同。
+
+错误提示按字段定位，给出通过同一 parser 的最小结构示例，并区分 Shell 首次等待与 Process
+后续等待；不回显命令全文、cwd 或未知字段的值。未知字段仍严格拒绝，不删除、不猜测或改参重试。
+`initial_wait_ms` 超过上限时不会自动截断，模型必须按提示修正后重新提交。
+
+提示投影见 [shellProtocolViolationMessage](./functions/shellProtocolViolationMessage.ts)，不拥有第二份
+字段或范围准入规则；通用字段拼写建议由 Linnkit 拥有，Shell 不实现近似匹配算法。
 
 ## 使用边界
 
