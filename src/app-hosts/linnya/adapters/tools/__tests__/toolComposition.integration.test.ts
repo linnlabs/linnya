@@ -106,6 +106,23 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('registered tool composition', () => {
+  it('执行日志保留调用身份，不输出交给工具的参数值', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const dependencies = createDependencies('Source content');
+    const context = createContext();
+    context.runId = 'run-private-arguments';
+    context.parentToolCallId = 'call-private-arguments';
+    const result = await createRegistry(dependencies).executeTool(
+      'search_web', { query: 'private-query-content' }, context,
+    );
+    expect(result.success).toBe(true);
+    expect(dependencies.search).toHaveBeenCalledWith(expect.objectContaining({ query: 'private-query-content' }));
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('search_web'), {
+      runId: 'run-private-arguments', toolCallId: 'call-private-arguments',
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain('private-query-content');
+  });
+
   it('正式搜索与读取链使用装配依赖、写 Evidence，并在实例内缓存且不串实例', async () => {
     for (const content of ['First source body', 'Second source body']) {
       const dependencies = createDependencies(content);

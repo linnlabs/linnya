@@ -327,7 +327,11 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
         };
       }
 
-      console.log(`[ToolRegistry] 🔧 执行工具: ${toolName}`, normalizedArgs);
+      // 参数可能含命令、用户正文或凭据；执行日志只记录关联身份，内容留在正式权限/审计边界。
+      console.log(`[ToolRegistry] 🔧 执行工具: ${toolName}`, {
+        runId: context.runId,
+        toolCallId: context.parentToolCallId,
+      });
       await this.decorateToolContext(toolName, normalizedArgs, context);
 
       const policy = tool.idempotency;

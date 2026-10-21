@@ -121,6 +121,7 @@ child 工具只在原 child identity / checkpoint 合同下重新进入；外部
 2. 上层如果只需要工具摘要能力，应优先消费 `ToolManager.getSummaryProvider()`
 3. 旧 `src/tools/defaultPorts.ts` bridge 已删除；真实 port 实现只在本 Host adapter
 4. 如果一个变更是 concrete tool 本体，不应该落到这里
+5. 执行开始日志只记录工具名和 run/call 关联身份，不打印参数值；命令、正文和凭据不能因调试日志绕过正式审计边界。
 
 ---
 
