@@ -1,7 +1,7 @@
 # Host 数据库基线与迁移
 
 本目录只管理 Linnya Host 在 `workspace.sqlite` 中拥有的 Schema。当前不兼容开发基线是
-v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v65。
+v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v67。
 
 ## 为什么基线仍是 v61
 
@@ -59,6 +59,14 @@ v63→v64 为既有 Markdown Pending 增加 `revision`，已有记录从 1 开�
 ## v65 会话执行通知
 
 v64→v65 保留 child trace 身份与内容，扩展其 kind 以保存重试和运行错误；保留索引和级联删除。已有会话 UI 投影标记为 pending，由正式 projector 从原 error facts 重建通知。迁移不生成不存在的 child 错误、不修改运行状态、不增加开发 epoch。真实 SQLite 测试覆盖旧结构、事务回滚和历史保留。
+
+## v66 客户端提示与 v67 完整引用元数据
+
+v65→v66 仅重建可再生 UI 消息表，以接纳没有 Runtime 身份的客户端提示；原始事件、运行和客户端事实保留。
+
+v66→v67 清空 `conversation_ui_citation_facts`，并把已有 UI 投影标记为 pending。旧索引用搜索展示合同保存引用，作者数组、刊名和知识库身份可能已经在投影时丢失；因此不能把旧 JSON 双读或猜补成完整来源。启动维护沿用正式 rebuild，从原始 main tool events 与 Subrun trace 重建完整来源，再恢复 ready。
+
+本迁移不修改 Runtime facts、Subrun trace、文档或其待接受修订；原始事实没有的字段仍然缺省，已写入文档的历史损失不能靠 UI 重建恢复。真实 SQLite 回归验证事务回滚、旧 ready 状态失效、完整来源恢复和首次快照规则。
 
 ## v61 之后如何变更
 

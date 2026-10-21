@@ -2,9 +2,9 @@ import type Database from 'better-sqlite3';
 import type { SubRunTraceEvent, ToolOutputEvent } from '@linnlabs/linnkit/contracts';
 import { shouldReplayRuntimeEventToUi } from '@linnlabs/linnkit/runtime-kernel/events';
 import {
-  SearchResultCitationSchema,
+  ConversationCitationSchema,
   conversationMessageIdFromToolIdentity,
-  type SearchResultCitation,
+  type ConversationCitation,
 } from '@app/schemas';
 import {
   admitCitationsFromConversationSubrunOutput,
@@ -63,7 +63,7 @@ interface CitationFactRegistration {
   readonly producerKind: CitationFactProducerKind;
   readonly producerId: string;
   readonly ownerRunId: string;
-  readonly citations: readonly SearchResultCitation[];
+  readonly citations: readonly ConversationCitation[];
 }
 
 interface IndexedConversationCitationFact {
@@ -72,7 +72,7 @@ interface IndexedConversationCitationFact {
   readonly availableSortSeq: number;
   readonly timestamp: number;
   readonly producerKind: CitationFactProducerKind;
-  readonly citation: SearchResultCitation;
+  readonly citation: ConversationCitation;
 }
 
 interface CitationAvailability {
@@ -408,7 +408,7 @@ export class SqliteConversationCitationFactIndex {
 }
 
 function parseCitationFactRow(row: CitationFactSqlRow): IndexedConversationCitationFact {
-  const citation = SearchResultCitationSchema.parse(JSON.parse(row.citation_json));
+  const citation = ConversationCitationSchema.parse(JSON.parse(row.citation_json));
   if (citation.ref !== row.ref) {
     throw new Error(
       `[ConversationCitationFactIndex] indexed ref=${row.ref} 与 citation.ref=${citation.ref} 不一致`

@@ -26,6 +26,10 @@ Citation-bearing tool output 在增量 append、Subrun history projection 与全
 按 ref/消息时点查询和派生生命周期；scope 冲突、来源身份与 dependency closure 仍归 Citation domain。
 窗口读取禁止重新扫描和解析完整 tool history，也禁止在索引缺失时 fallback。
 
+索引保存 `@app/schemas` 的完整 `ConversationCitation`，不是搜索卡片的单作者/站点摘要。Web 的作者数组与刊名、知识库的 `kbId` 经同一 admission 原样保留；展示摘要不能反向用于重建来源快照。同 scope/ref 的首次快照、跨 scope 来源冲突及消息时点可用性规则保持不变，不拼接不同取得版本的字段。
+
+Host Schema v67 清空旧引用 sidecar，并把已有 UI projection 标记为 pending；正式 rebuild 从原始 main tool events 和 Subrun trace 重新接纳。没有运行期旧/新 JSON 双读，ready 之前窗口不交付不完整缓存。原始事实缺失的字段不能补造，文档已经保存的旧引用不由此迁移改写。
+
 Tool row 的 `message_id` 与 `merge_key` 必须相等，并且只通过 `@app/schemas` 的 `conversationMessageIdFromToolIdentity(run_id, tool_call_id)` 生成。`tool_process` 是否持久化、哪类工具事件先到以及一个 decision 是否包含 batch，都不能改变 UI 实体身份。旧事件 ID 体系不兼容；合同升级时物理清理 disposable rows，再从 immutable Runtime facts 重建。
 
 新增或修改消息 variant 时，必须同一变更更新：共享 schema、Host producer、Renderer mapper/live projector、`uiProjectionParity.spec.ts` 以及 `scripts/guards/conversation-contract-guard.mjs`。工具时间必须来自 RuntimeEvent timestamp，禁止在投影器使用 `Date.now()`。
