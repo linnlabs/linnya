@@ -65,4 +65,33 @@ describe('readable Markdown projection create → pending → accept → current
     expect(read()?.text).toBe(edited);
     expect((await write(edited)).edits).toEqual([]);
   });
+  it('preserves tight/loose boundaries by target position through spacing-only edits, cancellation and acceptance', async () => {
+    const { store, normalizer, read, write } = setup();
+    const markdown = '- repeat\n- repeat\n\n- repeat\n  + nested\n\nParagraph.\n\n0) restart\n1) next';
+    const created = await buildMarkdownDocumentFromText({ markdown, normalizer, resolveCitationSources: async () => [] });
+    store.createDocument('doc', created.content);
+    expect(read()?.text).toBe(markdown);
+    expect((await write(markdown)).edits).toEqual([]);
+
+    // 相同文字的三项不能通过 Markdown 字符串 key 共享间隔；只改变第二项的间隔。
+    const loose = markdown.replace('- repeat\n- repeat', '- repeat\n\n- repeat');
+    expect((await write(loose)).edits).toHaveLength(1);
+    expect(read()?.text).toBe(loose);
+    expect((await write(loose)).edits).toEqual([]);
+    await write(markdown);
+    expect(store.getPendingRevisions('doc')).toHaveLength(0);
+    expect(read()?.text).toBe(markdown);
+
+    await write(loose);
+    const version = store.getLatestVersion('doc');
+    if (!version) throw new Error('Missing test document');
+    await new PendingRevisionApplyService(store).commitEditorRevision({
+      documentId: 'doc', expectedVersionNumber: version.version_number,
+      expectedPending: store.getPendingRevisions('doc').map(({ id, revision }) => ({ id, revision })),
+      baseline: store.getDocument('doc'), decision: { mode: 'accept' },
+    });
+    expect(read()?.text).toBe(loose);
+    expect((await write(loose)).edits).toEqual([]);
+  });
+
 });

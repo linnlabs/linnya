@@ -1,5 +1,8 @@
 import { Schema } from 'prosemirror-model';
 import { describe, expect, it } from 'vitest';
+import { flattenMarkdownDocumentBlocks, serializeMarkdownBlocks } from 'src/domains/markdown/shared/markdownBlockProjection';
+import { workspaceMarkdownSchemaLite } from 'src/domains/markdown';
+import { importMarkdownToDocJson } from 'src/domains/markdown/features/normalization/importMarkdownToDocJson';
 import { createMarkdownSerializer } from './markdownSerializer';
 
 const schema = new Schema({
@@ -112,4 +115,14 @@ describe('markdownSerializer', () => {
     expect(markdown).toContain('<!-- linnya-annotation-anchor:v1 empty-block -->')
     expect(markdown).toContain('<!-- linnya-annotation:v1\n')
   })
+  it('exports admitted list spacing, zero starts and table alignment through the editor serializer', async () => {
+    const markdown = '0) zero\n1) one\n\n2) loose\n  + nested\n\nParagraph.\n\n7. restart\n8. next\n\n| Left | Right |\n| :--- | ---: |\n| a | 12 |';
+    const imported = await importMarkdownToDocJson(markdown);
+    if (!imported.docJson) throw new Error('Missing imported document');
+    const doc = workspaceMarkdownSchemaLite.nodeFromJSON(imported.docJson);
+    const output = createMarkdownSerializer().serialize(doc);
+    const roundTrip = await importMarkdownToDocJson(output);
+    expect(serializeMarkdownBlocks(flattenMarkdownDocumentBlocks(roundTrip.docJson))).toBe(markdown);
+  });
+
 });

@@ -16,6 +16,7 @@ import type { MarkdownPendingRevisionLike } from '../../pending-revisions';
  */
 type PendingMeta = {
   operation?: 'update' | 'insert' | 'delete';
+  listSeparatorBefore?: 'tight' | 'loose' | null;
 };
 
 /**
@@ -32,7 +33,8 @@ function parsePendingMeta(metaJson: string | null): PendingMeta | null {
       operation === 'update' || operation === 'insert' || operation === 'delete'
         ? operation
         : undefined;
-    return { operation: op };
+    const spacing = obj.listSeparatorBefore;
+    return { operation: op, ...(spacing === 'tight' || spacing === 'loose' || spacing === null ? { listSeparatorBefore: spacing } : {}) };
   } catch {
     return null;
   }
@@ -92,6 +94,7 @@ export function buildMarkdownPreviewBlocks(params: {
     preview.push({
       ...block,
       text: pending.new_markdown,
+      ...(meta?.listSeparatorBefore !== undefined ? { listSeparatorBefore: meta.listSeparatorBefore ?? undefined } : {}),
     });
   }
 

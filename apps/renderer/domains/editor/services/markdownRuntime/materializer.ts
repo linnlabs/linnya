@@ -344,7 +344,7 @@ export function blockEventsToDocJson(
         const attrs = isPlainObject(event.attrs) ? event.attrs : {}
         const candidate = attrs.start
         const start = listType === 'ordered' && typeof candidate === 'number' &&
-          Number.isInteger(candidate) && candidate > 0 ? candidate : null
+          Number.isInteger(candidate) && candidate >= 0 ? candidate : null
         const node = listItemType.create(
           {
             id: generateBlockId(),
@@ -358,6 +358,7 @@ export function blockEventsToDocJson(
                   : 0,
             start,
             marker: typeof attrs.marker === 'string' ? attrs.marker : null,
+            separatorBefore: attrs.separatorBefore === 'tight' || attrs.separatorBefore === 'loose' ? attrs.separatorBefore : null,
           },
           inline ?? undefined
         )

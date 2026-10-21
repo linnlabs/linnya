@@ -187,6 +187,7 @@ function mapBlockEventToPendingCanonicalBlock(event: BlockEventLike): PendingCan
         listType: typeof event.list_type === 'string' ? event.list_type : 'bullet',
         ...(typeof attrs.start === 'number' ? { start: attrs.start } : {}),
         ...(typeof attrs.marker === 'string' ? { marker: attrs.marker } : {}),
+        // 单块 Markdown 没有前一项；间隔只由 pending metadata 传递，不能在此猜 loose。
         ...(typeof event.list_level === 'number' ? { level: event.list_level } : {}),
       },
       cleanMarkdown: inlineProjection.plainText,

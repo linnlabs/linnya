@@ -312,6 +312,7 @@ async function prepareNonInsertRevision(
       resolvePendingMarkdownForSingleBlock(editor, processedMarkdown, {
         operation: 'batchApplyUpdatePendingRevisions.prepare',
         blockId,
+        listSeparatorBefore: parsed.metadata?.listSeparatorBefore,
         hydration: hydrationPrepared.hydration,
       })
     )
@@ -655,6 +656,7 @@ async function batchApplyNonInsertPendingRevisionsSerial(
     const resolution = await resolvePendingMarkdownForSingleBlock(editor, processedMarkdown, {
       operation: 'batchApplyUpdatePendingRevisions',
       blockId,
+      listSeparatorBefore: parsed.metadata?.listSeparatorBefore,
       hydration: hydrationPrepared.hydration,
     })
     applyResolutionConversionToTr(megaTr, blockPos, resolution)

@@ -8,7 +8,7 @@ import {
 } from '@app/schemas'
 
 // 类型定义
-type NodeSerializer = (state: MarkdownSerializerState, node: ProsemirrorNode) => void
+type NodeSerializer = (state: MarkdownSerializerState, node: ProsemirrorNode, parent: ProsemirrorNode, index: number) => void
 type MarkSerializer = {
   open: string | ((state: MarkdownSerializerState, mark: ProseMirrorMark) => string)
   close: string | ((state: MarkdownSerializerState, mark: ProseMirrorMark) => string)
@@ -94,7 +94,16 @@ const nodes: { [key: string]: NodeSerializer } = {
   text(state, node) {
     state.text(node.text || '')
   },
-  rootBlock(state, node) {
+  rootBlock(state, node, parent, index) {
+    const previous = index > 0 ? parent.child(index - 1).firstChild : null
+    if (previous?.type.name === 'listItemBlock' && node.firstChild?.attrs.separatorBefore === 'tight') {
+      // prosemirror-markdown 自身用 flushClose(1) 投影 tight list；扁平 rootBlock 模型
+      // 不创建伪 list 容器，沿用同一间隔实现。此运行 API 由往返测试覆盖。
+      if (!('flushClose' in state) || typeof state.flushClose !== 'function') {
+        throw new Error('Markdown serializer does not expose tight-list block closing')
+      }
+      state.flushClose(1)
+    }
     const annotations = MarkdownAnnotationsSchema.parse(node.attrs.annotations ?? [])
     const needsEmptyBlockAnchor = annotations.length > 0 && hasEmptyMarkdownAnnotationTarget(node)
     if (needsEmptyBlockAnchor) {
@@ -180,14 +189,11 @@ const nodes: { [key: string]: NodeSerializer } = {
     state.write(state.repeat('  ', node.attrs.level))
 
     // 列表 marker：
-    // - bullet：使用 "* "（与现有解析兼容）
-    // - ordered：默认 "1. "（Markdown 允许所有行都用 1.，解析器仍能识别为有序列表）；
-    //   若节点上有显式的 start（例如用户输入了 "5. "），则首项输出 "${start}. "，
-    //   后续项继续 "1. "。这样导出再粘贴回别处，能保留用户的起始数字意图。
+    // 显式来源编号与 marker 保留；旧节点未记录 marker 时使用 canonical 默认。
     if (node.attrs.listType === 'ordered') {
       const startRaw = node.attrs.start
       const start =
-        typeof startRaw === 'number' && Number.isFinite(startRaw) && startRaw > 0
+        typeof startRaw === 'number' && Number.isFinite(startRaw) && startRaw >= 0
           ? Math.floor(startRaw)
           : 1
       state.write(`${start}${node.attrs.marker === ')' ? ')' : '.'} `)

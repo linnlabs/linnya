@@ -324,6 +324,7 @@ export async function resolvePendingMarkdownForSingleBlock(
   options: {
     operation: string
     blockId?: string
+    listSeparatorBefore?: unknown
     hydration?: Record<string, import('@/shared/utils/citationHydration').CitationHydrationData> | null
   }
 ): Promise<PendingMarkdownResolutionResult> {
@@ -341,7 +342,12 @@ export async function resolvePendingMarkdownForSingleBlock(
     return {
       kind: 'content-block',
       contentType: runtimeClassification.block.contentType,
-      blockAttrs: runtimeClassification.block.blockAttrs,
+      blockAttrs: {
+        ...runtimeClassification.block.blockAttrs,
+        ...(runtimeClassification.block.contentType === 'listItemBlock' &&
+          (options.listSeparatorBefore === 'tight' || options.listSeparatorBefore === 'loose')
+          ? { separatorBefore: options.listSeparatorBefore } : {}),
+      },
       cleanMarkdown: runtimeClassification.block.cleanMarkdown,
       spans:
         runtimeClassification.block.contentType === 'codeBlock'

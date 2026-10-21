@@ -91,7 +91,7 @@ export const ListItemBlock = Node.create({
       // 有序列表起始号（仅对 listType==='ordered' 有意义）
       // 语义：
       //   null  → 跟随上一项 +1（或在新 run 起点默认从 1 开始）
-      //   N>0   → 在“此处”重起一个新的有序段，从 N 开始
+      //   N>=0   → 在“此处”重起一个新的有序段，从 N 开始
       // 用户在 baseBlock 中输入 “5. ” 触发 ordered 转换时，会被赋值为 5；
       // Enter 拆分出的新项不会继承（见 SplitCommands），保持 null。
       start: {
@@ -100,10 +100,10 @@ export const ListItemBlock = Node.create({
           const raw = element.getAttribute('data-list-start')
           if (raw === null || raw === '') return null
           const n = parseInt(raw, 10)
-          return Number.isFinite(n) && n > 0 ? n : null
+          return Number.isFinite(n) && n >= 0 ? n : null
         },
         renderHTML: attributes => {
-          if (typeof attributes.start === 'number' && attributes.start > 0) {
+          if (typeof attributes.start === 'number' && attributes.start >= 0) {
             return { 'data-list-start': String(attributes.start) }
           }
           return {}
@@ -114,6 +114,12 @@ export const ListItemBlock = Node.create({
         default: null,
         parseHTML: element => element.getAttribute('data-list-marker'),
         renderHTML: attributes => attributes.marker ? { 'data-list-marker': attributes.marker } : {},
+      },
+      // 来源中相邻列表项的间隔。旧文档没有这一事实时仍按松散列表导出。
+      separatorBefore: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-list-separator'),
+        renderHTML: attributes => attributes.separatorBefore ? { 'data-list-separator': attributes.separatorBefore } : {},
       },
       // 文本对齐
       textAlign: {
@@ -269,7 +275,7 @@ export const ListItemBlock = Node.create({
    * 编号策略：
    *   1) 若上一项不是同级 ordered（或被 baseBlock/heading 等打断）→ 新 run 起点，
    *      使用 attrs.start ?? 1 作为本项编号。
-   *   2) 若 attrs.start > 0 → 显式重起：本项编号 = start，后续兄弟跟随 +1。
+   *   2) 若 attrs.start >= 0 → 显式重起：本项编号 = start，后续兄弟跟随 +1。
    *   3) 否则跟随上一项 +1。
    *   4) 同 level 内连续；遇到更深 level 时重置更深计数器。
    */
@@ -325,7 +331,7 @@ export const ListItemBlock = Node.create({
         const level = Math.max(0, Math.min(3, rawLevel))
         const explicitStartRaw = contentNode.attrs.start
         const explicitStart =
-          typeof explicitStartRaw === 'number' && Number.isFinite(explicitStartRaw) && explicitStartRaw > 0
+          typeof explicitStartRaw === 'number' && Number.isFinite(explicitStartRaw) && explicitStartRaw >= 0
             ? Math.floor(explicitStartRaw)
             : null
 

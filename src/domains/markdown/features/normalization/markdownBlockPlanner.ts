@@ -8,7 +8,7 @@ import {
   type ParsedMarkdownAnnotationComment,
 } from '@app/schemas';
 import type { MarkdownDocJson, WasmBlockEventLike } from './types';
-import { flattenMarkdownDocumentBlocks } from '../../shared/markdownBlockProjection';
+import { flattenMarkdownDocumentBlocks, serializeMarkdownBlocks } from '../../shared/markdownBlockProjection';
 
 export interface PlannedMarkdownBlocks {
   readonly blockEvents: WasmBlockEventLike[];
@@ -17,6 +17,8 @@ export interface PlannedMarkdownBlocks {
   readonly blocks: string[];
   /** 不含 Annotation comment 的正文块，用于 Revision diff。 */
   readonly bodyBlocks: string[];
+  readonly listSeparators: readonly ('tight' | 'loose' | null)[];
+  readonly text: string;
   /** comment 与其目标块的规划结果；这里只保存 draft/canonical 事实，不生成业务身份。 */
   readonly annotationComments: readonly PlannedMarkdownAnnotationComment[];
 }
@@ -42,6 +44,8 @@ export async function planMarkdownBlocks(
       docJson: null,
       blocks: [],
       bodyBlocks: [],
+      listSeparators: [],
+      text: '',
       annotationComments: [],
     };
   }
@@ -72,6 +76,8 @@ export async function planMarkdownBlocks(
       docJson: null,
       blocks: [],
       bodyBlocks: [],
+      listSeparators: [],
+      text: '',
       annotationComments,
     };
   }
@@ -79,14 +85,16 @@ export async function planMarkdownBlocks(
   const blocks = flattenMarkdownDocumentBlocks(docJson)
     .map((block) => block.text)
     .filter((text) => text.trim().length > 0);
-  const bodyBlocks = flattenMarkdownDocumentBlocks(docJson, { includeAnnotations: false })
-    .map(block => block.text);
+  const bodyProjection = flattenMarkdownDocumentBlocks(docJson, { includeAnnotations: false });
+  const bodyBlocks = bodyProjection.map(block => block.text);
 
   return {
     blockEvents,
     docJson,
     blocks,
     bodyBlocks,
+    listSeparators: bodyProjection.map(block => block.listSeparatorBefore ?? null),
+    text: serializeMarkdownBlocks(flattenMarkdownDocumentBlocks(docJson)),
     annotationComments,
   };
 }

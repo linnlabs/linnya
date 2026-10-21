@@ -21,6 +21,9 @@ use state::{BlockState, DelimMatcher, LatexType};
 pub(crate) struct StreamingParserCore {
     pub(crate) buffer: String,
     current_block_state: BlockState,
+    // 保留已消费前缀的行间隔状态；chunk 边界不能把紧凑列表变松散。
+    trailing_line_breaks: u8,
+    previous_event_is_list: bool,
 }
 
 impl StreamingParserCore {
@@ -50,13 +53,29 @@ impl StreamingParserCore {
         StreamingParserCore {
             buffer: String::new(),
             current_block_state: BlockState::Idle,
+            trailing_line_breaks: 2,
+            previous_event_is_list: false,
         }
+    }
+
+    fn line_breaks_after(mut count: u8, prefix: &str) -> u8 {
+        for ch in prefix.chars() {
+            if ch == '\n' { count = (count + 1).min(2); }
+            else if !ch.is_whitespace() { count = 0; }
+        }
+        count
+    }
+
+    fn blank_before_offset(&self, offset: usize) -> bool {
+        Self::line_breaks_after(self.trailing_line_breaks, &self.buffer[..offset]) >= 2
     }
 
     /// 处理一个文本 chunk，返回新增产生的 BlockEvent 列表。
     pub(crate) fn process_chunk(&mut self, chunk: &str) -> Vec<BlockEvent> {
         self.buffer.push_str(chunk);
-        self.extract_blocks_from_buffer(false)
+        let mut events = self.extract_blocks_from_buffer(false);
+        crate::normalize_list_spacing(&mut events, &mut self.previous_event_is_list);
+        events
     }
 
     /// 结束解析，处理缓冲区剩余内容，返回最终产生的 BlockEvent 列表。
@@ -186,7 +205,7 @@ impl StreamingParserCore {
                     // 注意：不要用 trim()，它会移除段落首部缩进，从而破坏列表缩进层级。
                     // 这里只裁掉尾部空白，保留首部缩进语义。
                     let buffer_trimmed_content = self.buffer.trim_end().to_string();
-                    let (block_events_from_buffer, _) = self.parse_paragraph_content(&buffer_trimmed_content);
+                    let (block_events_from_buffer, _) = self.parse_paragraph_content(&buffer_trimmed_content, self.blank_before_offset(0));
 
                     if !block_events_from_buffer.is_empty() {
                         events.extend(block_events_from_buffer);
@@ -224,6 +243,7 @@ impl StreamingParserCore {
                     .map_or(false, |sc| !sc.is_empty())
         });
 
+        crate::normalize_list_spacing(&mut events, &mut self.previous_event_is_list);
         events
     }
 
@@ -291,7 +311,7 @@ impl StreamingParserCore {
                     }) {
                         if comment_start.start() > 0 {
                             let prefix = current_slice[..comment_start.start()].trim_end();
-                            let (mut prefix_events, _) = self.parse_paragraph_content(prefix);
+                            let (mut prefix_events, _) = self.parse_paragraph_content(prefix, self.blank_before_offset(consumed_offset));
                             events.append(&mut prefix_events);
                             consumed_offset += comment_start.start();
                             continue;
@@ -443,7 +463,7 @@ impl StreamingParserCore {
 
                     // 围栏可直接中断普通段落；先交给已有段落规则处理前文，围栏由下一轮接纳。
                     if let Some((offset, _, _)) = fence_open {
-                        let (mut prefix_events, _) = self.parse_paragraph_content(&current_slice[..offset]);
+                        let (mut prefix_events, _) = self.parse_paragraph_content(&current_slice[..offset], self.blank_before_offset(consumed_offset));
                         events.append(&mut prefix_events);
                         consumed_offset += offset;
                         continue;
@@ -454,7 +474,7 @@ impl StreamingParserCore {
                         let paragraph_slice = &current_slice[..para_end_idx];
                         // 注意：不要 trim()，避免移除段落首行的缩进（列表缩进会因此丢失）。
                         let (mut block_events_from_para, _) =
-                            self.parse_paragraph_content(paragraph_slice.trim_end());
+                            self.parse_paragraph_content(paragraph_slice.trim_end(), self.blank_before_offset(consumed_offset));
 
                         if !block_events_from_para.is_empty() {
                             events.append(&mut block_events_from_para);
@@ -495,7 +515,7 @@ impl StreamingParserCore {
 
                         // 注意：不要 trim()，避免移除行首缩进（列表缩进会因此丢失）。
                         let (mut block_events_from_line, _) =
-                            self.parse_paragraph_content(line_to_check.trim_end());
+                            self.parse_paragraph_content(line_to_check.trim_end(), self.blank_before_offset(consumed_offset));
 
                         let is_plain_base_line =
                             block_events_from_line.len() == 1
@@ -545,7 +565,7 @@ impl StreamingParserCore {
                                         level: Some(indent_level),
                                         list_type: list_type.clone(),
                                         list_level: Some(indent_level),
-                                        attrs: Some(crate::list_item_attributes(marker)),
+                                        attrs: Some(crate::list_item_attributes(marker, self.blank_before_offset(consumed_offset))),
                                     });
                                 }
                                 consumed_offset += nl_pos + 1;
@@ -790,6 +810,7 @@ impl StreamingParserCore {
         }
 
         if consumed_offset > 0 {
+            self.trailing_line_breaks = Self::line_breaks_after(self.trailing_line_breaks, &self.buffer[..consumed_offset]);
             self.buffer = self.buffer[consumed_offset..].to_string();
         }
 
@@ -810,7 +831,7 @@ impl StreamingParserCore {
     }
 
     /// 段落级内容解析辅助方法。
-    fn parse_paragraph_content(&self, content: &str) -> (Vec<BlockEvent>, usize) {
+    fn parse_paragraph_content(&self, content: &str, first_line_blank: bool) -> (Vec<BlockEvent>, usize) {
         let mut events = Vec::new();
         let mut parsed_len = 0;
         let mut base_paragraph = String::new();
@@ -819,7 +840,10 @@ impl StreamingParserCore {
             return (events, parsed_len);
         }
 
+        let mut previous_line_blank = first_line_blank;
         for line in content.lines() {
+            let blank_before = previous_line_blank;
+            previous_line_blank = line.trim().is_empty();
             parsed_len += line.len() + 1;
 
             if line.trim().is_empty() {
@@ -896,7 +920,7 @@ impl StreamingParserCore {
                     level: Some(indent_level),
                     list_type,
                     list_level: Some(indent_level),
-                    attrs: Some(crate::list_item_attributes(marker)),
+                    attrs: Some(crate::list_item_attributes(marker, blank_before)),
                 });
             } else if let Some(captures) = QUOTE_RE.captures(line) {
                 Self::flush_base_paragraph(&mut events, &mut base_paragraph);
@@ -1159,4 +1183,24 @@ mod tests {
         }
         assert!(found_table, "Table not found");
     }
+    #[test]
+    fn list_source_spacing_survives_every_chunk_boundary() {
+        let source = "0) zero\n1) one\n\n2) loose\n  + nested\n\nParagraph.\n7. restart\n8. next";
+        let mut whole = StreamingParserCore::new();
+        let mut expected = whole.process_chunk(source);
+        expected.extend(whole.finalize_parsing());
+        let expected_lists: Vec<_> = expected.iter().filter(|e| e.block_type == BlockType::ListItemBlock).map(|e| e.attrs.clone()).collect();
+        let spacings: Vec<_> = expected_lists.iter().map(|a| a.as_ref().unwrap()["separatorBefore"].as_str().unwrap()).collect();
+        assert_eq!(spacings, vec!["loose", "tight", "loose", "tight", "loose", "tight"]);
+        assert_eq!(expected_lists[0].as_ref().unwrap()["start"], 0);
+        for split in 0..=source.len() {
+            let mut core = StreamingParserCore::new();
+            let mut events = core.process_chunk(&source[..split]);
+            events.extend(core.process_chunk(&source[split..]));
+            events.extend(core.finalize_parsing());
+            let actual: Vec<_> = events.iter().filter(|e| e.block_type == BlockType::ListItemBlock).map(|e| e.attrs.clone()).collect();
+            assert_eq!(actual, expected_lists, "chunk boundary {split}");
+        }
+    }
+
 }

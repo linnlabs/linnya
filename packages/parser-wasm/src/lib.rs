@@ -52,9 +52,23 @@ static LATEX_END_BRACKET_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\\]\s*").un
 static LATEX_END_EQUATION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\end\{equation\}\s*").unwrap());
 
 // 列表编号由 parser 记录，导出不能从已经剥掉 marker 的正文猜回。
-fn list_item_attributes(marker: &str) -> serde_json::Value {
+fn list_item_attributes(marker: &str, blank_before: bool) -> serde_json::Value {
     let start = marker.trim_end_matches(['.', ')']).parse::<u32>().ok();
-    serde_json::json!({ "start": start, "marker": marker.chars().last().map(|c| c.to_string()) })
+    serde_json::json!({ "start": start, "marker": marker.chars().last().map(|c| c.to_string()), "separatorBefore": if blank_before { "loose" } else { "tight" } })
+}
+
+// 间隔只对相邻列表项有效；段落后的首项使用 canonical loose，避免读回后产生伪修订。
+fn normalize_list_spacing(events: &mut [BlockEvent], previous_is_list: &mut bool) {
+    for event in events {
+        if event.block_type == BlockType::HtmlComment { continue; }
+        let is_list = event.block_type == BlockType::ListItemBlock;
+        if is_list && !*previous_is_list {
+            if let Some(attrs) = event.attrs.as_mut() {
+                attrs["separatorBefore"] = serde_json::json!("loose");
+            }
+        }
+        *previous_is_list = is_list;
+    }
 }
 
 // BlockState / LatexType / DelimMatcher 已迁移到 streaming 模块，由 StreamingParserCore 内部使用。
@@ -113,9 +127,12 @@ fn legacy_parse_lines_to_block_events(markdown_input: &str) -> Vec<BlockEvent> {
     let mut current_code_content = String::new();
     let mut current_html_comment: Option<String> = None;
 
+    let mut previous_line_blank = true;
     for source_line in markdown_input.split_inclusive('\n') {
         let line_content = source_line.strip_suffix('\n').unwrap_or(source_line);
         let line_content = line_content.strip_suffix('\r').unwrap_or(line_content);
+        let blank_before = previous_line_blank;
+        previous_line_blank = line_content.trim().is_empty();
         let mut event_generated_by_special_rule = false;
         if let Some(comment) = current_html_comment.as_mut() {
             if !comment.is_empty() {
@@ -225,7 +242,7 @@ fn legacy_parse_lines_to_block_events(markdown_input: &str) -> Vec<BlockEvent> {
                     level: Some(indent_level), // Using level for indent here
                     list_type,
                     list_level: Some(indent_level),
-                    attrs: Some(crate::list_item_attributes(marker)),
+                    attrs: Some(crate::list_item_attributes(marker, blank_before)),
                 });
                 event_generated_by_special_rule = true;
             } else if let Some(captures) = QUOTE_RE.captures(line_content) {
@@ -280,6 +297,7 @@ fn legacy_parse_lines_to_block_events(markdown_input: &str) -> Vec<BlockEvent> {
         });
     }
 
+    normalize_list_spacing(&mut block_events, &mut false);
     block_events
 }
 

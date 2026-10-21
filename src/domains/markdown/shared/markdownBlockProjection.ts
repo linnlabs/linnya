@@ -16,6 +16,8 @@ export interface FlattenedMarkdownBlock {
   readonly blockId: string;
   readonly ref: string;
   readonly text: string;
+  /** 仅列表项携带；旧 JSON 无属性时按既有松散投影，不猜测原始空行。 */
+  readonly listSeparatorBefore?: 'tight' | 'loose';
 }
 
 interface ProseMirrorNode {
@@ -79,7 +81,7 @@ export function flattenMarkdownDocumentBlocks(
   const doc = asNode(content);
   if (!doc) return [];
 
-  const tempBlocks: Array<{ index: number; blockId: string; text: string }> = [];
+  const tempBlocks: Array<Omit<FlattenedMarkdownBlock, 'ref'>> = [];
   const blockIds: string[] = [];
   const admittedBlockIds = new Set<string>();
   let index = 0;
@@ -99,7 +101,10 @@ export function flattenMarkdownDocumentBlocks(
     }
     admittedBlockIds.add(blockId);
     blockIds.push(blockId);
+    const child = asNode(getContent(node)[0]);
+    const spacing = getAttrs(child).separatorBefore;
     tempBlocks.push({
+      ...(child?.type === 'listItemBlock' ? { listSeparatorBefore: spacing === 'tight' ? 'tight' : 'loose' } : {}),
       index,
       blockId,
       text: extractMarkdownFromRootBlock(
@@ -121,10 +126,20 @@ export function flattenMarkdownDocumentBlocks(
   });
 }
 
+/** 列表相邻项的行间隔属于正文语义；跨块类型仍保留段落边界。 */
+export function markdownBlockSeparator(previous: FlattenedMarkdownBlock | undefined, current: FlattenedMarkdownBlock): string {
+  return previous?.listSeparatorBefore && current.listSeparatorBefore === 'tight' ? '\n' : '\n\n';
+}
+
 export function serializeMarkdownBlocks(blocks: readonly FlattenedMarkdownBlock[]): string {
-  return blocks
-    .map(block => block.text.trimEnd())
-    .filter(text => text.length > 0)
-    .join('\n\n')
-    .trimEnd();
+  let text = '';
+  let previous: FlattenedMarkdownBlock | undefined;
+  for (const block of blocks) {
+    const part = block.text.trimEnd();
+    if (!part) continue;
+    if (previous) text += markdownBlockSeparator(previous, block);
+    text += part;
+    previous = block;
+  }
+  return text.trimEnd();
 }

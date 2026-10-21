@@ -4,7 +4,7 @@ export function canResolvePendingMarkdownAsPlainTextFastPath(markdown: string): 
   const normalized = markdown.replace(/\r\n/g, '\n')
 
   if (normalized.includes('\n')) return false
-  if (/^\s*(?:#{1,6}\s|[-*+]\s+|\d+\.\s+|>\s+|---+\s*$)/.test(normalized)) return false
+  if (/^\s*(?:#{1,6}\s|[-*+]\s+|\d+[.)]\s+|>\s+|---+\s*$)/.test(normalized)) return false
 
   // 中文说明：
   // `#` 和裸 `[]()` 在行内通常只是普通文本，压测与真实文档里经常出现

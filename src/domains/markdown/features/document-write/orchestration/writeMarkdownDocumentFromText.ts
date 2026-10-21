@@ -139,15 +139,17 @@ export async function writeMarkdownDocumentFromText(params: {
     content, pendings: [], viewMode: 'original', includeAnnotations: false,
   });
   const pendingByBlock = new Map(pendings.map(pending => [pending.target_block_id, pending]));
-  const currentByBlock = new Map(currentBlocks.map(block => [block.blockId, block.text]));
+  const currentByBlock = new Map(currentBlocks.map(block => [block.blockId, block]));
   const steps = planMarkdownBlockWrites({
     candidates: baseline.baseBlocks.map(block => ({
       block,
-      currentText: currentByBlock.get(block.blockId) ?? block.text,
+      currentText: currentByBlock.get(block.blockId)?.text ?? block.text,
+      currentListSeparatorBefore: currentByBlock.get(block.blockId)?.listSeparatorBefore,
       pending: pendingByBlock.get(block.blockId),
     })),
     markdown: targetBlocks,
     comparison: targetComparisonBlocks,
+    listSeparators: planned.listSeparators,
   });
 
   const annotationChanges = planMarkdownFileAnnotationChanges({
@@ -177,7 +179,10 @@ export async function writeMarkdownDocumentFromText(params: {
           anchorBlockId,
           markdown: step.markdown,
           toolName: params.toolName,
-          extraMeta: params.pendingMetaByMarkdown?.get(step.markdown),
+          extraMeta: {
+            ...params.pendingMetaByMarkdown?.get(step.markdown),
+            listSeparatorBefore: planned.listSeparators[step.targetIndex] ?? null,
+          },
         });
         executed.push(inserted);
         anchorBlockId = inserted.blockId;
@@ -194,7 +199,10 @@ export async function writeMarkdownDocumentFromText(params: {
           markdown: step.kind === 'delete' ? '' : step.markdown,
           operation: step.kind,
           toolName: params.toolName,
-          extraMeta: step.kind === 'update' ? params.pendingMetaByMarkdown?.get(step.markdown) : undefined,
+          extraMeta: step.kind === 'update' ? {
+            ...params.pendingMetaByMarkdown?.get(step.markdown),
+            listSeparatorBefore: planned.listSeparators[step.targetIndex] ?? null,
+          } : undefined,
         });
         if (edit) executed.push(edit);
         else cancelledCount += 1;
@@ -216,7 +224,7 @@ export async function writeMarkdownDocumentFromText(params: {
     const result: MarkdownFileWriteResult = {
       documentId: params.documentId,
       currentText,
-      targetText: planned.blocks.join('\n\n'),
+      targetText: planned.text,
       edits: executed,
       cancelledCount,
       pendingCount: params.documentStore.getPendingRevisions(params.documentId).length,

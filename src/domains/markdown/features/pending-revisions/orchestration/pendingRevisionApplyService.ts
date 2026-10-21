@@ -38,6 +38,7 @@ import {
   isRecord,
   isRootBlock,
   mergeRootBlockAttrs,
+  restorePendingListSpacing,
   parsePendingMetadata,
   resolvePendingOperation,
 } from '../functions/pendingRevisionApplyRules';
@@ -233,6 +234,7 @@ export class PendingRevisionApplyService {
         markdown: pending.new_markdown,
         preserveId: pending.target_block_id,
         oldRoot,
+        listSeparatorBefore: metadata?.listSeparatorBefore,
         citationHydration: extractCitationHydration(metadata, pending.target_block_id),
         citationLinkHydration: extractCitationLinkHydration(metadata, pending.target_block_id),
       });
@@ -249,6 +251,7 @@ export class PendingRevisionApplyService {
     markdown: string;
     preserveId: string;
     oldRoot?: ProseMirrorJsonNode;
+    listSeparatorBefore?: unknown;
     citationHydration?: Record<string, CitationNodeHydrationData> | null;
     citationLinkHydration?: Record<string, CitationLinkHydrationData> | null;
   }): Promise<MarkdownRootBlockJson> {
@@ -275,6 +278,8 @@ export class PendingRevisionApplyService {
       throw new Error(`Pending 必须对应一个 rootBlock，实际为 ${blocks.length}: blockId=${params.preserveId}`);
     }
 
-    return mergeRootBlockAttrs(params.oldRoot ?? blocks[0], blocks[0], params.preserveId);
+    const root = blocks[0];
+    const replacement = restorePendingListSpacing(params.oldRoot, root, params.listSeparatorBefore);
+    return mergeRootBlockAttrs(params.oldRoot ?? root, replacement, params.preserveId);
   }
 }

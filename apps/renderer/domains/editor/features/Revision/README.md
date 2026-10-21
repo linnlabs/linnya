@@ -22,7 +22,7 @@ Revision 展示 Markdown 数据库中的待处理修改，提供块级、行内�
 
 投影账本保存每个块的原始节点及投影后节点，同时记录表格修订产生的临时历史块。保存从账本还原基线，再提取用户后续编辑；不能只删除 revisionMark，因为表格及块类型转换本身也改变了结构。投影失败保留原始基线，并明确标记失败。
 
-Markdown 解析和物化继续复用 [markdownRuntime](../../services/markdownRuntime/README.md)。Revision 不维护另一套 Markdown 解释器。现有表格整块替换与历史视图属于显示策略，不改变数据库事务语义。
+Markdown 解析和物化继续复用 [markdownRuntime](../../services/markdownRuntime/README.md)。Revision 不维护另一套 Markdown 解释器。全文文件写入的 Pending metadata 可携带 `listSeparatorBefore`，用于恢复列表项之间的紧凑/松散间隔；单块 Markdown 本身不含前一项，解析时不得据此猜成松散列表。单项、批次及插入投影都把该事实传给统一 resolver，接受后的正文由后端同一合同确认。现有表格整块替换与历史视图属于显示策略，不改变数据库事务语义。
 
 ## 用户决策
 

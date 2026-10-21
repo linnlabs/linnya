@@ -72,6 +72,22 @@ export function mergeRootBlockAttrs(
   };
 }
 
+/** 单块 pending 不含前一项；全文规划的间隔优先，否则保留旧列表的已知间隔。 */
+export function restorePendingListSpacing(
+  oldRoot: ProseMirrorJsonNode | undefined,
+  newRoot: MarkdownRootBlockJson,
+  admittedSpacing: unknown,
+): MarkdownRootBlockJson {
+  const oldList = oldRoot?.content?.find(child => child.type === 'listItemBlock');
+  const spacing = admittedSpacing ?? oldList?.attrs?.separatorBefore;
+  if (spacing !== 'tight' && spacing !== 'loose') return newRoot;
+  return {
+    ...newRoot,
+    content: newRoot.content?.map(child => child.type === 'listItemBlock'
+      ? { ...child, attrs: { ...child.attrs, separatorBefore: spacing } } : child),
+  };
+}
+
 export function buildRootBlockIndex(content: readonly ProseMirrorJsonNode[]): Map<string, number> {
   const index = new Map<string, number>();
   content.forEach((node, position) => {

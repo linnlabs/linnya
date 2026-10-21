@@ -62,7 +62,14 @@ current Markdown 投影按连续 mark 范围输出强调，Citation atom 与相�
 普通括号、句中井号/大于号、词内下划线不再无条件加反斜杠；字面强调、链接、
 行首结构和代码仍按实际 Markdown 语义保护。行内代码使用足够长的 delimiter，
 不在 code span 内插入会成为正文的反斜杠。新导入列表的编号和 marker 来自 parser
-`attrs.start/marker`，表格列对齐进入已有 cell `align`；旧 JSON 未保存的样式不能恢复。
+`attrs.start/marker`（有序起始号含 0），表格列对齐进入已有 cell `align`；旧 JSON 未保存的样式不能恢复。
+
+相邻列表项的间隔由 parser 的 `attrs.separatorBefore`（`tight/loose`）进入正式 JSON。
+块投影、VFS、DocumentView、Editor 导出使用这一事实，非列表块之间仍保留段落分隔。
+全文写入按目标块索引携带 `listSeparatorBefore` 到 Pending metadata，不以 Markdown 字符串作 key；
+只有空行变化也会形成可接受/拒绝的修订。Preview 和 Accept 使用同一值，单块旧提议没有该属性时
+保留旧列表的已知间隔。旧 JSON 的空属性继续按松散列表导出，不从文字猜测原始版式。
+这保留现有扁平列表模型中相邻项与嵌套项的间隔，不声称支持任意多段落列表容器或逐字排版还原。
 
 `edit_file` 仍先做 exact replacement。仅 exact miss 时，Markdown provider 可以定位一个
 唯一的 ASCII 标点转义等价范围，并用真实导入器对比“当前全文”和“换成请求旧拼写的全文”

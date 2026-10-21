@@ -211,6 +211,7 @@ function insertNewRootBlock(editor, blockEvent, targetInsertPos) {
         blockAttrs.level = blockEvent.list_level || 0;
         blockAttrs.start = typeof blockEvent.attrs?.start === 'number' ? blockEvent.attrs.start : null;
         blockAttrs.marker = typeof blockEvent.attrs?.marker === 'string' ? blockEvent.attrs.marker : null;
+        blockAttrs.separatorBefore = blockEvent.attrs?.separatorBefore === 'tight' || blockEvent.attrs?.separatorBefore === 'loose' ? blockEvent.attrs.separatorBefore : null;
     }
 
     // 特殊处理：TableBlock 需要根据 attrs 中的 TableModel 构建表格节点树

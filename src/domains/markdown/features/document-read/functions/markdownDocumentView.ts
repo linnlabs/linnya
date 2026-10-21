@@ -10,6 +10,7 @@ import {
 } from '@app/schemas';
 import {
   flattenMarkdownDocumentBlocks,
+  markdownBlockSeparator,
   type FlattenedMarkdownBlock,
 } from '../../../shared/markdownBlockProjection';
 import type {
@@ -24,8 +25,13 @@ function buildBodyFromBlocksRef(blocks: readonly FlattenedMarkdownBlock[]): {
   const parts: string[] = [];
   const blockRanges: MarkdownDocumentViewBlockRange[] = [];
   let offset = 0;
+  let previous: FlattenedMarkdownBlock | undefined;
   for (const block of blocks) {
-    if (parts.length > 0) offset += 2;
+    if (previous) {
+      const separator = markdownBlockSeparator(previous, block);
+      parts.push(separator);
+      offset += separator.length;
+    }
     // Markdown 前导空格可能表达列表嵌套；这里只去掉行尾空白。
     const prefix = `[${block.ref}]`;
     const part = `${prefix} ${block.text.trimEnd()}`;
@@ -38,8 +44,9 @@ function buildBodyFromBlocksRef(blocks: readonly FlattenedMarkdownBlock[]): {
     });
     parts.push(part);
     offset += part.length;
+    previous = block;
   }
-  return { text: parts.join('\n\n'), blockRanges };
+  return { text: parts.join(''), blockRanges };
 }
 
 export interface BuildMarkdownDocumentViewOptions {

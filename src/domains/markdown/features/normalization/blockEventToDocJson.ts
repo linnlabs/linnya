@@ -383,6 +383,7 @@ export function convertBlockEventsToDocJson(
             level: Math.max(0, level),
             start: isRecord(event.attrs) ? readNumber(event.attrs.start) : null,
             marker: isRecord(event.attrs) && typeof event.attrs.marker === 'string' ? event.attrs.marker : null,
+            separatorBefore: isRecord(event.attrs) && (event.attrs.separatorBefore === 'tight' || event.attrs.separatorBefore === 'loose') ? event.attrs.separatorBefore : null,
           },
           content: inlineNodes
         })

@@ -6,6 +6,8 @@ export interface PendingRevisionMetadata {
   readonly intent?: string;
   readonly confidence?: number;
   readonly oldMarkdownHash?: string;
+  /** 全文导入按目标块索引保存的列表间隔；null 表示目标不是列表项。 */
+  readonly listSeparatorBefore?: 'tight' | 'loose' | null;
   [key: string]: unknown;
 }
 

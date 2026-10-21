@@ -423,6 +423,28 @@ describe('resolvePendingMarkdownForSingleBlock', () => {
     expect(parsePendingMarkdownToInlineProjection).not.toHaveBeenCalled()
   })
 
+  it('uses admitted document spacing instead of guessing from isolated list-item Markdown', async () => {
+    vi.mocked(classifyPendingMarkdownTopLevelBlock).mockResolvedValue({
+      status: 'single-block',
+      block: {
+        contentType: 'listItemBlock', blockAttrs: { listType: 'ordered', start: 0, marker: ')' },
+        cleanMarkdown: 'item', inlineProjection: null, sourceBlockType: 'ListItemBlock',
+      },
+    })
+    const result = await resolvePendingMarkdownForSingleBlock(
+      createSchemaOnlyEditor(), '0) item',
+      { operation: 'testResolve', blockId: 'list', listSeparatorBefore: 'tight' }
+    )
+    expect(result.kind).toBe('content-block')
+    if (result.kind !== 'content-block') throw new Error('Expected list block')
+    expect(result.blockAttrs).toEqual({ listType: 'ordered', start: 0, marker: ')', separatorBefore: 'tight' })
+    const oldPending = await resolvePendingMarkdownForSingleBlock(
+      createSchemaOnlyEditor(), '0) item', { operation: 'testResolve', blockId: 'list' }
+    )
+    if (oldPending.kind !== 'content-block') throw new Error('Expected list block')
+    expect(oldPending.blockAttrs).not.toHaveProperty('separatorBefore')
+  })
+
   it('returns a dedicated table-block resolution instead of masquerading as baseBlock', async () => {
     vi.mocked(classifyPendingMarkdownTopLevelBlock).mockResolvedValue({
       status: 'table',

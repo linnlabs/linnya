@@ -76,6 +76,7 @@ export async function applyInsertPendingRevision(
   const resolution = await resolvePendingMarkdownForSingleBlock(editor, processedMarkdown, {
     operation: 'applyInsertPendingRevision',
     blockId,
+    listSeparatorBefore: parsed.metadata?.listSeparatorBefore,
     hydration: hydrationPrepared.hydration,
   })
   const { source: resolutionSource } = resolution
@@ -299,6 +300,7 @@ export async function batchApplyInsertPendingRevisions(
     const resolution = await resolvePendingMarkdownForSingleBlock(editor, processedMarkdown, {
       operation: 'batchApplyInsert',
       blockId,
+      listSeparatorBefore: parsed.metadata?.listSeparatorBefore,
       hydration: hydrationPrepared.hydration,
     })
     const { source: resolutionSource } = resolution

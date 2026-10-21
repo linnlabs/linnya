@@ -135,17 +135,17 @@ function escapeText(text: string): string {
     .replace(/\\/g, '\\\\')
     .replace(/([`*\[\]])/g, '\\$1')
     .replace(/(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/gu, '\\_')
-    .replace(/~(?=~)|(?<=~)~/g, '\\~')
+    .replace(/~/g, '\\~')
     .replace(/&(?=(?:#\d+|#x[\da-fA-F]+|[a-zA-Z][a-zA-Z0-9]+);)/g, '\\&')
     .replace(/<(?=[!/?a-zA-Z])/g, '\\<');
 }
 
 function escapeBlockStart(text: string): string {
-  return text.replace(/^( {0,3})(#{1,6})(?=\s|$)/gm, '$1\\$2')
-    .replace(/^( {0,3})>/gm, '$1\\>')
-    .replace(/^( {0,3})([-+])(?=\s|$)/gm, '$1\\$2')
-    .replace(/^( {0,3}\d{1,9})([.)])(?=\s|$)/gm, '$1\\$2')
-    .replace(/^( {0,3})(=+|-+)(?=\s*$)/gm, '$1\\$2');
+  return text.replace(/^([ \t]*)(#{1,6})(?=\s|$)/gm, '$1\\$2')
+    .replace(/^([ \t]*)>/gm, '$1\\>')
+    .replace(/^([ \t]*)([-+])(?=\s|$)/gm, '$1\\$2')
+    .replace(/^([ \t]*\d+)([.)])(?=\s|$)/gm, '$1\\$2')
+    .replace(/^([ \t]*)(=+|-+)(?=\s*$)/gm, '$1\\$2');
 }
 
 function escapeInlineCodeText(text: string): string {
@@ -444,7 +444,7 @@ function serializeBlockChild(
     const start = getNumberAttr(attrs, 'start') ?? 1;
     const sourceMarker = getStringAttr(attrs, 'marker');
     const marker = listType === 'ordered'
-      ? `${Math.max(1, Math.floor(start))}${sourceMarker === ')' ? ')' : '.'} `
+      ? `${Math.max(0, Math.floor(start))}${sourceMarker === ')' ? ')' : '.'} `
       : `${sourceMarker === '+' || sourceMarker === '*' ? sourceMarker : '-'} `;
     const indent = repeat('  ', Math.max(0, Math.floor(level)));
     const inline = serializeInline(node, { inCodeBlock: false, projectInlineText, projectInlineNode });

@@ -87,6 +87,7 @@ export async function applyUpdatePendingRevision(
   const resolution = await resolvePendingMarkdownForSingleBlock(editor, processedMarkdown, {
     operation: 'applyUpdatePendingRevision',
     blockId,
+    listSeparatorBefore: parsed.metadata?.listSeparatorBefore,
     hydration: hydrationPrepared.hydration,
   })
   logRevisionDebug(

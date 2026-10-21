@@ -46,6 +46,10 @@ workspace，`private: true`，不单独发布 npm。
 
 ## 列表与表格来源属性
 
-列表事件的 `attrs.start` 保存实际数字，`attrs.marker` 保存 `-/*/+` 或有序 delimiter
+列表事件的 `attrs.start` 保存实际非负数字（包括 0），`attrs.marker` 保存 `-/*/+` 或有序 delimiter
 `./)`。Node 和 Renderer 物化使用这份正式属性，不从去掉 marker 的正文推断。
 表格事件的 `alignments` 是列对齐的事实源，物化为 cell `align`，导出仍保留冒号位置。
+
+`attrs.separatorBefore` 记录当前列表项前是否有空行：`tight` 表示单换行，`loose` 表示空行。
+Streaming core 保留已消费前缀的行间隔状态，因此 chunk 切分不会丢掉列表紧凑性。
+这是现有扁平 ListItemBlock 的间隔事实，不新增任意多段落列表容器；无来源属性的旧文档不回填猜测。

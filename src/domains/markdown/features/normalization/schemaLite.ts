@@ -131,6 +131,7 @@ const nodes: Record<string, NodeSpec> = {
       level: { default: 0 },
       start: { default: null },
       marker: { default: null },
+      separatorBefore: { default: null },
       textAlign: { default: 'left' },
       backgroundColor: { default: null },
       textColor: { default: null },
