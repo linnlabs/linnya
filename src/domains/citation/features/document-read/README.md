@@ -56,9 +56,21 @@ appendix 同时返回每个 body token 实际注入的预算后 excerpt。Worksp
 复用该结果，禁止从完整持久化 snapshots 再拼一份 `snippet`，否则模型会通过工具 JSON 绕过 excerpt
 预算与裁剪诊断。
 
-正文 cursor 永远只计算正文，不包含 appendix。appendix 的标题、作者和 excerpt 都属于不可信来源
-快照，放在由来源身份与完整快照内容共同哈希得到的边界内；ref 和已 JSON 转义的来源锚点留在可信
-骨架。来源材料只能作为证据，不能授权工具调用或改变权限。
+正文 cursor 永远只计算正文，不包含 appendix。普通文本的下一窗口提示位于正文之后、附录之前；
+已到末行且仍有附录时显式说明源文件 EOF，不根据附录长度推导新的文件行号。
+
+每次附录保留自包含来源信息，不增加读取参数，也不依赖先前调用或上下文交付历史去重：
+
+- ref、类型、已 JSON 转义的 Web URL 或 Knowledge doc/block/kb 锚点压为可信索引行；
+- 标题、作者、日期、刊物和预算后 excerpt 位于一个附录级动态不可信边界内。每来源以宿主标签关联
+  代码围栏中的单行 JSON；外部换行不能冒充来源头或围栏，Host 的 Markdown 别名重绑只改标签、
+  不改快照中的转义引用/反引号。记录间空段防止反引号跨来源配对。token 同时覆盖完整有序快照
+  （含未裁剪摘录）和实际输出；
+- Knowledge/Web 的快照状态在表头说明一次，manual 的 not_applicable 单列；
+- 预算截断/省略在模型文本中按状态汇总，仍保留对应 ref/marker；结构化 diagnostics 不变。
+
+来源材料可以用于核查，但不能授权工具调用或改变权限。Web 保持页面级引用；持久化 excerpt 不是
+经过逐论断匹配的支撑片段，也不证明正文推论成立。需要核对时显式读原件，不新增段落锚定或解引用工具。
 
 Linnkit 最终只把工具结果的 `observation` 送入模型上下文；结构化 `data.citations` 主要服务
 Conversation strict admission、hover 和后续文档写入。因此 appendix 本身就是正式的 Agent 阅读合同，

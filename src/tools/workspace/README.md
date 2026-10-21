@@ -77,6 +77,12 @@ Markdown document-write 只把已接纳事实写成 CitationMark。Workspace 不
 `snapshot_status=persisted source_status=not_checked`。Agent 需要验证来源当前状态时，应显式使用对应
 Knowledge/Web 能力，不能把 `not_checked` 理解为来源仍可访问。
 
+附录只压缩展示包装：可信 ref/类型/锚点用索引行，完整元数据与同一预算后摘录放进一个动态不可信块，
+每来源由宿主标签关联代码围栏中的单行 JSON，避免外部换行伪造来源头，也保护快照不被 Markdown
+别名重绑误改。状态表头与逐 ref 的预算诊断汇总不改变
+`data.citations`、hover 或后续写入快照；每次调用自包含，不依赖跨调用去重、不新增参数或工具。
+Web 引用仍指向页面，摘录未经逐论断匹配；正文页码/表号只是作者定位说明，核对须回原件。
+
 当 Agent 要在回答里提供文件跳转时，直接把 `read_file` 使用的 canonical locator 放进标准 Markdown
 link：Workspace 文件使用 `workspace:/...`，对话过程文件使用 `conversation:/...`，宿主文件使用
 `file:///...`。不要输出裸路径、`documentId` 或 `linnya://`。Workspace 链接由回答所属 Conversation 的

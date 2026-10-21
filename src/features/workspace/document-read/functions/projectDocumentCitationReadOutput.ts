@@ -65,10 +65,24 @@ export function formatDocumentCitationDiagnosticsObservation(
   diagnostics: readonly WorkspaceDocumentCitationDiagnostic[]
 ): string {
   if (diagnostics.length === 0) return '';
+  // 固定的预算解释只写一次，仍逐 ref/marker 保留状态；结构化 diagnostics 不变。
+  const budgetDiagnostics = diagnostics.filter(diagnostic =>
+    diagnostic.code === 'excerpt_truncated' || diagnostic.code === 'excerpt_omitted'
+  );
+  const otherDiagnostics = diagnostics.filter(diagnostic =>
+    diagnostic.code !== 'excerpt_truncated' && diagnostic.code !== 'excerpt_omitted'
+  );
+  const budgetSummary = ['excerpt_truncated', 'excerpt_omitted'].flatMap(code => {
+    const markers = budgetDiagnostics
+      .filter(diagnostic => diagnostic.code === code)
+      .map(diagnostic => diagnostic.marker);
+    return markers.length > 0 ? [`${code} (citation budget): ${markers.join(', ')}`] : [];
+  });
   return [
     '---',
     'Citation Diagnostics',
-    ...diagnostics.map(diagnostic => [
+    ...budgetSummary,
+    ...otherDiagnostics.map(diagnostic => [
       `code=${diagnostic.code}`,
       `marker=${JSON.stringify(diagnostic.marker)}`,
       ...(diagnostic.ref ? [`ref=${JSON.stringify(diagnostic.ref)}`] : []),

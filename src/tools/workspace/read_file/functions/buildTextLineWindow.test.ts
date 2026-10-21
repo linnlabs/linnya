@@ -51,4 +51,20 @@ describe('read_file 文本行窗口', () => {
       '[READ_FILE_LINE_OUT_OF_RANGE]',
     );
   });
+
+  it('源窗口与 EOF 说明位于附录之前，附录不产生下一文件行号', () => {
+    const window = buildTextLineWindow({ text: 'one\ntwo', offset: 1, limit: 1 });
+    const first = formatTextLineWindow({
+      locator: 'workspace:/notes.md', window, supplement: 'Citation Sources\nevidence',
+    });
+    expect(first.indexOf('文件下一页')).toBeLessThan(first.indexOf('Citation Sources'));
+    expect(first).toContain('"offset":2');
+    const last = formatTextLineWindow({
+      locator: 'workspace:/notes.md',
+      window: buildTextLineWindow({ text: 'one\ntwo', offset: 2, limit: 1 }),
+      supplement: 'Citation Sources\nevidence',
+    });
+    expect(last.indexOf('源文件已读至末行')).toBeLessThan(last.indexOf('Citation Sources'));
+    expect(last).not.toContain('"offset":3');
+  });
 });

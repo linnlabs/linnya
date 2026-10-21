@@ -66,12 +66,18 @@ export function formatTextLineWindow(input: {
       .map((line, index) => `${String(input.window.offset + index).padStart(width, ' ')} | ${line}`)
       .join('\n');
   })();
-  const withSupplement = input.supplement ? `${content}\n\n${input.supplement}` : content;
-  if (input.window.nextOffset === undefined) return withSupplement;
-  const nextCall = JSON.stringify({
-    locator: input.locator,
-    offset: input.window.nextOffset,
-    limit: input.window.limit,
-  });
-  return `${withSupplement}\n\n[read_file: 本次源窗口为第 ${input.window.offset}-${input.window.offset + input.window.lineCount - 1} 行，共 ${input.window.totalLineCount} 行。读完本次返回后，文件下一页：read_file(${nextCall})]`;
+  const sections = [content];
+  if (input.window.nextOffset !== undefined) {
+    const nextCall = JSON.stringify({
+      locator: input.locator,
+      offset: input.window.nextOffset,
+      limit: input.window.limit,
+    });
+    sections.push(`[read_file: 本次源窗口为第 ${input.window.offset}-${input.window.offset + input.window.lineCount - 1} 行，共 ${input.window.totalLineCount} 行。读完本次返回后，文件下一页：read_file(${nextCall})]`);
+  } else if (input.supplement) {
+    // 普通无附录 EOF 输出不变；来源快照不能被误当成文件还有下一页。
+    sections.push('[read_file: 源文件已读至末行；下方为来源附录，不属于源文件。]');
+  }
+  if (input.supplement) sections.push(input.supplement);
+  return sections.join('\n\n');
 }
