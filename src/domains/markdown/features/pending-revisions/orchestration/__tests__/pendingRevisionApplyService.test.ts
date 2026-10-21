@@ -282,6 +282,42 @@ describe('PendingRevisionApplyService', () => {
     });
   });
 
+  it.each([
+    {
+      label: 'citation token',
+      markdown: '引用 [@Abc234]',
+      metadata: { citation_hydration: {
+        Abc234: { title: '引用标题', snippet: '快照', authors: ['Alice', 42] },
+      } },
+      error: 'citation_hydration 存在非法条目: blockId=b1, refs=Abc234',
+    },
+    {
+      label: 'URL link',
+      markdown: '[引用](https://example.com/report)',
+      metadata: { citation_link_hydration: {
+        'https://example.com/report': { ref: 'Abc234',
+          data: { title: '引用标题', snippet: '快照', authors: ['Alice', 42] } },
+      } },
+      error: 'citation_link_hydration 存在非法条目: blockId=b1, urls=https://example.com/report',
+    },
+  ])('共享准入仍在接受 $label 的非法来源前拒绝，保留正文与 Pending', async fixture => {
+    const { markdownService, applyService, documentId, db } = setup(doc([rootBlock('b1', 'old')]));
+    try {
+      pending(markdownService, documentId, 'b1', fixture.markdown, 'update', fixture.metadata);
+      const beforeDocument = markdownService.getDocument(documentId);
+      const beforeVersion = markdownService.getLatestVersion(documentId);
+      const beforePending = markdownService.getPendingRevisions(documentId);
+      await expect(applyService.commitEditorRevision({
+        ...editorRequest(markdownService, documentId), decision: { mode: 'accept' },
+      })).rejects.toThrow(`[PendingRevisionApplyService] ${fixture.error}`);
+      expect(markdownService.getDocument(documentId)).toEqual(beforeDocument);
+      expect(markdownService.getLatestVersion(documentId)).toEqual(beforeVersion);
+      expect(markdownService.getPendingRevisions(documentId)).toEqual(beforePending);
+    } finally {
+      db.close();
+    }
+  });
+
   it('accept Link pending 后持久化 href/title，重新读取仍可通过正式 schema', async () => {
     const { markdownService, documentId } = setup(doc([rootBlock('b1', 'old')]));
     const importer: MarkdownImporter = async () => ({

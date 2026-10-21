@@ -24,7 +24,11 @@ import {
 } from '../../normalization/runtime';
 import { generateEditorBlockId } from 'src/shared/utils/idUtils';
 import type { MarkdownDocumentService } from '../../document-storage';
-import type { PendingRevision, PendingRevisionMetadata } from '../definitions/pendingRevision';
+import type { PendingRevision } from '../definitions/pendingRevision';
+import {
+  extractPendingCitationHydration,
+  extractPendingCitationLinkHydration,
+} from '../functions/admitPendingCitationHydration';
 import type {
   MarkdownImporter,
   MarkdownRootBlockJson,
@@ -42,89 +46,6 @@ import {
   parsePendingMetadata,
   resolvePendingOperation,
 } from '../functions/pendingRevisionApplyRules';
-
-function extractCitationHydration(
-  metadata: PendingRevisionMetadata | null,
-  blockId: string
-): Record<string, CitationNodeHydrationData> | null {
-  const raw = metadata?.citation_hydration;
-  if (!isRecord(raw)) return null;
-
-  const hydration: Record<string, CitationNodeHydrationData> = {};
-  const invalidRefs: string[] = [];
-
-  for (const [ref, value] of Object.entries(raw)) {
-    if (isCitationHydrationData(value)) {
-      hydration[ref] = value;
-    } else {
-      invalidRefs.push(ref);
-    }
-  }
-
-  if (invalidRefs.length > 0) {
-    throw new Error(
-      `[PendingRevisionApplyService] citation_hydration 存在非法条目: blockId=${blockId}, refs=${invalidRefs.join(',')}`
-    );
-  }
-
-  return Object.keys(hydration).length > 0 ? hydration : null;
-}
-
-function extractCitationLinkHydration(
-  metadata: PendingRevisionMetadata | null,
-  blockId: string
-): Record<string, CitationLinkHydrationData> | null {
-  const raw = metadata?.citation_link_hydration;
-  if (!isRecord(raw)) return null;
-
-  const hydration: Record<string, CitationLinkHydrationData> = {};
-  const invalidUrls: string[] = [];
-  for (const [url, value] of Object.entries(raw)) {
-    if (isCitationLinkHydrationData(value)) hydration[url] = value;
-    else invalidUrls.push(url);
-  }
-
-  if (invalidUrls.length > 0) {
-    throw new Error(
-      `[PendingRevisionApplyService] citation_link_hydration 存在非法条目: blockId=${blockId}, urls=${invalidUrls.join(',')}`
-    );
-  }
-  return Object.keys(hydration).length > 0 ? hydration : null;
-}
-
-function isCitationHydrationData(value: unknown): value is CitationNodeHydrationData {
-  if (!isRecord(value)) return false;
-  if (typeof value.title !== 'string') return false;
-  if (typeof value.snippet !== 'string') return false;
-  if (value.docId !== undefined && typeof value.docId !== 'string') return false;
-  if (value.blockId !== undefined && typeof value.blockId !== 'string') return false;
-  if (value.kbId !== undefined && typeof value.kbId !== 'string') return false;
-  if (
-    value.sourceType !== undefined &&
-    value.sourceType !== 'knowledge_base' &&
-    value.sourceType !== 'web' &&
-    value.sourceType !== 'manual'
-  ) {
-    return false;
-  }
-  if (value.url !== undefined && typeof value.url !== 'string') return false;
-  if (value.date !== undefined && typeof value.date !== 'string') return false;
-  if (value.containerTitle !== undefined && typeof value.containerTitle !== 'string') return false;
-  if (
-    value.authors !== undefined &&
-    (!Array.isArray(value.authors) || value.authors.some(author => typeof author !== 'string'))
-  ) {
-    return false;
-  }
-  return true;
-}
-
-function isCitationLinkHydrationData(value: unknown): value is CitationLinkHydrationData {
-  if (!isRecord(value) || typeof value.ref !== 'string' || value.ref.trim().length === 0) {
-    return false;
-  }
-  return isCitationHydrationData(value.data);
-}
 
 function createEmptyRootBlock(
   preserveId: string,
@@ -235,8 +156,8 @@ export class PendingRevisionApplyService {
         preserveId: pending.target_block_id,
         oldRoot,
         listSeparatorBefore: metadata?.listSeparatorBefore,
-        citationHydration: extractCitationHydration(metadata, pending.target_block_id),
-        citationLinkHydration: extractCitationLinkHydration(metadata, pending.target_block_id),
+        citationHydration: extractPendingCitationHydration(metadata, pending.target_block_id),
+        citationLinkHydration: extractPendingCitationLinkHydration(metadata, pending.target_block_id),
       });
 
       prepared.set(pending.id, {
