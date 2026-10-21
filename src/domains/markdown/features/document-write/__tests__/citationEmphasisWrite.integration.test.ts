@@ -89,6 +89,7 @@ describe('citation emphasis create → current → pending → accept → curren
     '**关键 [@Abc234] 说明** 后续正文',
     '***关键 [@Abc234] 说明*** 后续正文',
     '**关键** `code` **[@Abc234] 说明** 后续正文',
+    '`x\\` [@Abc234] `y` 关键说明',
   ])('preserves mark ranges and citations through acceptance: %s', async initial => {
     const { store, normalizer, read, write } = setup();
     const created = await buildMarkdownDocumentFromText({ markdown: initial, normalizer, resolveCitationSources: resolveSources });

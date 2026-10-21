@@ -90,10 +90,8 @@ function collectInlineCodeRanges(
       // 行内代码可以跨软换行，不能跨空行连接两个独立段落。
       // 否则全文扫描会吞掉引用，而 pending 按块扫描又会要求物化同一引用。
       if (/\r?\n[\t ]*\r?\n/.test(markdown.slice(cursor, candidate))) break;
-      if (isEscaped(markdown, candidate)) {
-        closingStart = candidate + 1;
-        continue;
-      }
+      // code span 内反斜杠只是字面内容，不能转义 closing delimiter。
+      // 若在此沿用正文的转义判断，会越过真实闭合位置并吞掉后续正文引用。
       const candidateLength = countRun(markdown, candidate, '`');
       if (candidateLength === delimiterLength) {
         ranges.push({ start: cursor, end: candidate + candidateLength });

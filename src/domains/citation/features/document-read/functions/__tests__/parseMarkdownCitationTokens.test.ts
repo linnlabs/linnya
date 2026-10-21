@@ -74,6 +74,12 @@ describe('Markdown citation token protocol', () => {
 
     expect(extractCanonicalCitationRefs(markdown)).toEqual(['ABC236']);
   });
+
+  it('代码内反斜杠不转义闭合反引号，后续正文引用仍被校验', () => {
+    expect(extractCanonicalCitationRefs('`x\\` [@Abc234] `y`')).toEqual(['Abc234']);
+    expect(findInvalidMarkdownCitationTokens('`x\\` [@bad] `y`')).toEqual(['[@bad]']);
+    expect(extractCanonicalCitationRefs('``x\\`` [@Abc234] ``y``')).toEqual(['Abc234']);
+  });
 });
 
 describe('findInvalidMarkdownCitationTokens', () => {
