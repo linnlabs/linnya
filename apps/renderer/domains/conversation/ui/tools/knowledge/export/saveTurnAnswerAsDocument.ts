@@ -13,7 +13,7 @@
  * - 失败语义显式化（数据缺失/保存失败必须明确提示）
  */
 
-import type { SearchResultCitation } from '@app/schemas'
+import type { ConversationCitation } from '@app/schemas'
 import { projectConversationCitationsToEditorHtml } from '../../../../features/citation-presentation'
 import { getWorkspaceDocumentExportPort } from '../../../../../../shared/ports/workspaceDocumentExportPort'
 import type { ConversationMessageResolver } from '../../../../definitions/conversationMessages'
@@ -27,7 +27,7 @@ export interface SaveTurnAnswerAsDocumentParams {
   /** 渲染后的 HTML（来自对话渲染层） */
   renderedHtml: string
   /** 引用查找函数（注入以避免直接依赖 store） */
-  findCitationByRef: (turnId: string, ref: string) => SearchResultCitation | null
+  findCitationByRef: (turnId: string, ref: string) => ConversationCitation | null
   /** 生成 citationId */
   generateCitationId: () => string
   /** 对话域文案解析器（由 UI / 编排层按当前语言注入） */

@@ -1,5 +1,5 @@
 /** 将 Conversation 引用 DOM 投影为 Editor CitationNode 的公开 HTML 协议。 */
-import type { SearchResultCitation } from '@app/schemas';
+import type { ConversationCitation } from '@app/schemas';
 
 export interface ConversationCitationEditorProjectionStats {
   total: number;
@@ -9,7 +9,7 @@ export interface ConversationCitationEditorProjectionStats {
 
 export interface ProjectConversationCitationsToEditorHtmlParams {
   renderedHtml: string;
-  findCitationByRef: (turnId: string, ref: string) => SearchResultCitation | null;
+  findCitationByRef: (turnId: string, ref: string) => ConversationCitation | null;
   generateCitationId: () => string;
 }
 
@@ -57,11 +57,13 @@ export function projectConversationCitationsToEditorHtml(
 
     if (citation.sourceType === 'knowledge_base') {
       nodeElement.dataset.blockId = citation.blockId;
+      if (citation.kbId) nodeElement.dataset.kbId = citation.kbId;
     } else {
       nodeElement.dataset.url = citation.url;
       if (citation.publishedAt) nodeElement.dataset.date = citation.publishedAt;
-      if (citation.author) nodeElement.dataset.authors = JSON.stringify([citation.author]);
-      if (citation.siteName) nodeElement.dataset.containerTitle = citation.siteName;
+      // 展示可只取首位作者，但跨文档传递必须使用完整快照，不能从显示文本反推。
+      if (citation.authors) nodeElement.dataset.authors = JSON.stringify(citation.authors);
+      if (citation.containerTitle) nodeElement.dataset.containerTitle = citation.containerTitle;
     }
 
     // HTML 的文本内容也是可移植边界协议，不保存 Conversation 当时的派生编号。

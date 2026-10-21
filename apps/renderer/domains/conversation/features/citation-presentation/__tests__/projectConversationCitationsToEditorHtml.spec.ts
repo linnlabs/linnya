@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from 'vitest';
-import type { SearchResultCitation } from '@app/schemas';
+import type { ConversationCitation } from '@app/schemas';
 import { projectConversationCitationsToEditorHtml } from '../functions/projectConversationCitationsToEditorHtml';
 
 describe('projectConversationCitationsToEditorHtml', () => {
@@ -13,7 +13,7 @@ describe('projectConversationCitationsToEditorHtml', () => {
       </p>
     `;
 
-    const citationMap = new Map<string, SearchResultCitation>([
+    const citationMap = new Map<string, ConversationCitation>([
       [
         'turn-1::Abc234',
         {
@@ -22,6 +22,7 @@ describe('projectConversationCitationsToEditorHtml', () => {
           sourceType: 'knowledge_base',
           docId: 'doc-kb-1',
           blockId: 'block-kb-1',
+          kbId: 'kb-1',
           docTitle: '知识库文档 A',
           snippet: '知识库摘录 A',
         },
@@ -36,7 +37,8 @@ describe('projectConversationCitationsToEditorHtml', () => {
           docTitle: '网页文档 B',
           snippet: '网页摘录 B',
           publishedAt: '2026-02-20',
-          author: 'Alice',
+          authors: ['Alice', 'Bob', 'Carol'],
+          containerTitle: 'Journal of Examples',
         },
       ],
     ]);
@@ -65,6 +67,7 @@ describe('projectConversationCitationsToEditorHtml', () => {
       sourceType: 'knowledge_base',
       sourceId: 'doc-kb-1',
       blockId: 'block-kb-1',
+      kbId: 'kb-1',
       title: '知识库文档 A',
       snippet: '知识库摘录 A',
     });
@@ -79,7 +82,8 @@ describe('projectConversationCitationsToEditorHtml', () => {
       sourceId: 'https://example.com/article',
       url: 'https://example.com/article',
       date: '2026-02-20',
-      authors: JSON.stringify(['Alice']),
+      authors: JSON.stringify(['Alice', 'Bob', 'Carol']),
+      containerTitle: 'Journal of Examples',
       title: '网页文档 B',
       snippet: '网页摘录 B',
     });

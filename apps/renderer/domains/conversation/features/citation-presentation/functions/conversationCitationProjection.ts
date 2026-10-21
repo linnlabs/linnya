@@ -1,6 +1,6 @@
 import {
   ConversationCitationDependencySnapshotSchema,
-  type SearchResultCitation,
+  type ConversationCitation,
 } from '@app/schemas';
 import {
   createConversationCitationWorkspace,
@@ -45,7 +45,7 @@ export function findCitationInMessages(
   messages: readonly BaseMessage[],
   turnId: string,
   ref: string,
-): SearchResultCitation | null {
+): ConversationCitation | null {
   for (const message of messages) {
     if (readMessageTurnId(message) !== turnId) continue;
     const citation = message.citationDependencies?.citations.find(item => item.ref === ref);

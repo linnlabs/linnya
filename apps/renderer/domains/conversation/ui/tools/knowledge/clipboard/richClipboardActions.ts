@@ -9,7 +9,7 @@
  * - 失败语义显式化：返回结构化结果，由调用方决定 UI 提示。
  */
 
-import type { SearchResultCitation } from '@app/schemas'
+import type { ConversationCitation } from '@app/schemas'
 import {
   projectConversationCitationsToEditorHtml,
   type ConversationCitationEditorProjectionStats,
@@ -88,7 +88,7 @@ export interface CopyRenderedAnswersToClipboardParams {
   copyScope: string
   answerMessageIds?: readonly string[]
   /** 引用查找函数（注入以避免直接依赖 store） */
-  findCitationByRef: (turnId: string, ref: string) => SearchResultCitation | null
+  findCitationByRef: (turnId: string, ref: string) => ConversationCitation | null
   /** 生成 citationId（每次复制生成新的 CitationNode 实例） */
   generateCitationId: () => string
   /** 对话域文案解析器（由 UI 按当前语言注入） */
@@ -185,7 +185,7 @@ export interface ExportRenderedAnswersAsDocumentParams {
   copyScope: string
   answerMessageIds?: readonly string[]
   /** 引用查找函数（注入以避免直接依赖 store） */
-  findCitationByRef: (turnId: string, ref: string) => SearchResultCitation | null
+  findCitationByRef: (turnId: string, ref: string) => ConversationCitation | null
   /** 生成 citationId（每次导出生成新的 CitationNode 实例） */
   generateCitationId: () => string
   /** 对话域文案解析器（由 UI 按当前语言注入） */

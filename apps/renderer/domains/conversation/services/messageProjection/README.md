@@ -84,6 +84,12 @@ Renderer 薄 feature 位于 `domains/conversation/features/citation-presentation
 `src/domains/citation/conversation-presentation.ts` 的公共规则，不复制 toolName 分派、ref parser 或来源身份。
 Durable window 的依赖闭包由 Host 在选定 rows 后生成；MessageProjection 不扫描历史窗口 tool rows。
 
+消息 dependency snapshot 使用 `ConversationCitation` 完整来源合同，与搜索工具的
+`SearchResultCitation` 展示合同分离。Web 的 `authors[]/containerTitle` 与 Knowledge 的 `kbId`
+必须穿过 live、Subrun、历史窗口和消息查找保持完整。popover 可以只显示首位作者，但富复制与另存
+必须直接投影完整字段，不能从作者显示文本或域名重建来源快照。缺失字段不猜补；已有旧快照也不从
+其它消息或来源版本拼接元数据。
+
 完整合同见 [`Conversation Citation`](../../docs/citation.md)。
 
 ### 开发约定（避免退化）

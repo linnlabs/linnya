@@ -41,7 +41,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue';
-import type { SearchResultCitation } from '@app/schemas';
+import type { ConversationCitation } from '@app/schemas';
 import { useConversationLocalization } from '../../../useConversationLocalization';
 import ConversationCitationPopover from './ConversationCitationPopover.vue';
 
@@ -65,7 +65,7 @@ interface Props {
   turnId?: string;
 
   /** 当前消息依赖闭包中与 citationRef 对应的严格引用事实。 */
-  citation?: SearchResultCitation;
+  citation?: ConversationCitation;
 }
 
 const props = defineProps<Props>();
@@ -103,7 +103,7 @@ const HIDE_DELAY = 150;
 /**
  * 获取引用数据
  */
-const citation = computed<SearchResultCitation | null>(() => props.citation ?? null);
+const citation = computed<ConversationCitation | null>(() => props.citation ?? null);
 
 /**
  * 说明：

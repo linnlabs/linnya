@@ -94,7 +94,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import type { SearchResultCitation } from '@app/schemas';
+import type { ConversationCitation } from '@app/schemas';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
 import { LinkIcon } from '@linnya/renderer-ui/icons';
 import { openExternalUrl } from '../../../../../../shared/utils/openExternalUrl';
@@ -117,7 +117,7 @@ interface Props {
   visible: boolean;
 
   /** 引用数据 */
-  citation: SearchResultCitation | null;
+  citation: ConversationCitation | null;
 
   /** 触发元素（用于定位） */
   triggerElement: HTMLElement | null;
@@ -157,8 +157,8 @@ let cleanupAutoUpdate: (() => void) | null = null;
 // 计算属性
 // ============================================================================
 
-type WebCitation = Extract<SearchResultCitation, { sourceType: 'web' }>;
-type KnowledgeCitation = Extract<SearchResultCitation, { sourceType: 'knowledge_base' }>;
+type WebCitation = Extract<ConversationCitation, { sourceType: 'web' }>;
+type KnowledgeCitation = Extract<ConversationCitation, { sourceType: 'knowledge_base' }>;
 
 const webCitation = computed<WebCitation | null>(() => (
   props.citation?.sourceType === 'web' ? props.citation : null
@@ -191,7 +191,7 @@ const webPublishedAt = computed(() => {
 
 /** Web 引用的作者（安全访问） */
 const webAuthor = computed(() => {
-  return webCitation.value?.author ?? '';
+  return webCitation.value?.authors?.[0] ?? '';
 });
 
 /**

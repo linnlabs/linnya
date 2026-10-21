@@ -55,7 +55,9 @@ ref，并跳过 fenced code、inline code 和 code mark。禁止再添加 `\w{6}
 
 Conversation 只消费当前消息的 dependency snapshot，再由
 Conversation citation-presentation 的 `projectConversationCitationsToEditorHtml.ts` 生成 Editor 可解析的
-HTML。边界文本是 canonical
+HTML。输入使用 Conversation 的完整来源合同；Web 的全部作者与刊名、Knowledge 的知识库 ID
+直接写入 `data-authors/data-container-title/data-kb-id`，不经过搜索卡片摘要。popover 的首作者显示
+不是持久化来源。边界文本是 canonical
 `[@ref]`，不是 Conversation 当时的 `[n]`；完整来源快照随 data attributes 一起传入。
 
 粘贴边界由 `remapPastedCitationIdentities` 只重建 `citationId`，保留 ref、稳定来源锚点和快照，避免复制后
