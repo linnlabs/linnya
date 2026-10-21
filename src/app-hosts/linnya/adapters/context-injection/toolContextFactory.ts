@@ -13,6 +13,7 @@ import type { ConversationWorkDirectoryAdmissionPort } from 'src/app-hosts/linny
 import type { SubrunTraceHistoryProjectorPort } from 'src/app-hosts/linnya/adapters/persistence/subrun-trace-history/definitions/subrunTraceHistory';
 import { createLinnyaChildRunContextInjections } from 'src/app-hosts/linnya/context/agent/createLinnyaFenceInjections';
 import { createWebFileStore } from '../tools/createWebFileStore';
+import { createWebReadAccessHistory } from '../tools/createWebReadAccessHistory';
 
 type CreateSubRunTracePublisher = NonNullable<ToolContext['createSubRunTracePublisher']>;
 type RunContext = runContext.RunContext;
@@ -122,6 +123,7 @@ export function createToolContext(options: ToolContextFactoryOptions): ToolConte
     webFileStore: options.hostServices.conversationWorkDirectoryAdmission
       ? createWebFileStore(options.hostServices.conversationWorkDirectoryAdmission, options.conversationId)
       : undefined,
+    webReadAccessHistory: createWebReadAccessHistory(() => options.hostServices.databaseService.getDb(), options.conversationId),
     managedImageIngress: options.hostServices.managedImageIngress,
     toolResultAssetClaims: options.hostServices.toolResultAssetClaims,
     commandRunPermission: options.hostServices.commandRunPermission,

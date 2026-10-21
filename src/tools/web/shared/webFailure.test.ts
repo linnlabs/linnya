@@ -5,6 +5,7 @@ import {
   WebFailureError,
   getWebExtractionFailureStage,
   getWebFailureDiagnostics,
+  getWebAccessBlockKind,
   getWebFailureKind,
   isEscalatableWebFailureKind,
   isWebChallengeResponse,
@@ -21,6 +22,25 @@ describe('Web 终态失败分类与升级子集', () => {
       cause: { cause: { code: 'ENOTFOUND' } },
     }))).toBe('dns_error');
     expect(getWebFailureKind(new WebFailureError('unsupported_mime', 'binary'))).toBe('unsupported_mime');
+  });
+
+  it('增强读取未启用时公开可核实的阻断 code，保留阶梯 kind；缺码历史和超时不猜成阻断', () => {
+    for (const reason of ['captcha', 'http_403', 'login_required'] as const) {
+      const error = new WebFailureError('managed_disabled', 'managed reader disabled', {
+        details: { previousFailureKind: reason },
+      });
+      expect(error.kind).toBe('managed_disabled');
+      expect(error.code).toBe(reason);
+      expect(getWebAccessBlockKind(error)).toBe(reason);
+    }
+    for (const reason of ['timeout', 'provider_error', 'js_required'] as const) {
+      const error = new WebFailureError('managed_disabled', 'managed reader disabled', {
+        details: { previousFailureKind: reason, initialFailureKind: 'captcha' },
+      });
+      expect(error.code).toBe('managed_disabled');
+      expect(getWebAccessBlockKind(error)).toBeUndefined();
+    }
+    expect(getWebAccessBlockKind(new WebFailureError('managed_disabled', 'captcha in a message is not evidence'))).toBeUndefined();
   });
 
   it('ESCALATABLE 包含下一层可能恢复的失败，明确排除策略、取消、DNS、MIME 和 404', () => {

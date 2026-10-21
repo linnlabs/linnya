@@ -135,10 +135,29 @@ export class WebFailureError<TReason extends string = WebFailureKind> extends Er
     this.cause = options?.cause;
   }
 
-  /** 稳定业务码沿用既有 kind，不为工具执行或审计维护第二套错误枚举。 */
+  /** 禁用后备读取时仍公开已确认的访问阻断根因，不能把所有 managed_disabled 当作拦截。 */
   get code(): WebFailureKind {
-    return this.kind;
+    if (this.kind !== 'managed_disabled') return this.kind;
+    const reason = this.details?.previousFailureKind
+      ?? this.details?.initialFailureKind
+      ?? this.details?.escalationReason;
+    return isWebAccessBlockKind(reason) ? reason : this.kind;
   }
+}
+
+export type WebAccessBlockKind = 'captcha' | 'http_403' | 'login_required';
+
+export function isWebAccessBlockKind(kind: unknown): kind is WebAccessBlockKind {
+  return kind === 'captcha' || kind === 'http_403' || kind === 'login_required';
+}
+
+/** 只读正式分类；网络、超时、抽取失败和未知 provider_error 都不推断为站点拦截。 */
+export function getWebAccessBlockKind(error: unknown): WebAccessBlockKind | undefined {
+  const kind = getWebFailureKind(error);
+  if (isWebAccessBlockKind(kind)) return kind;
+  if (kind !== 'managed_disabled' || !(error instanceof WebFailureError)) return undefined;
+  const code = error.code;
+  return isWebAccessBlockKind(code) ? code : undefined;
 }
 
 export function getWebExtractionFailureStage(

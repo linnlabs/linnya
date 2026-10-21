@@ -387,12 +387,23 @@ describe('Web Phase 1 本地优先读取业务 E2E', () => {
   });
 
   it.each([
-    ['unauthorized', 'auth', 401],
-    ['forbidden', 'http_403', 403],
-  ] as const)('%s 失败经正式注册入口和图执行后，不污染模型、事件或诊断', async (scenario, code, status) => {
+    ['unauthorized', 'web_search', 'auth', 401],
+    ['forbidden', 'web_search', 'http_403', 403],
+    ['blocked_managed_disabled', 'web_read', 'captcha', 403],
+  ] as const)('%s 失败经正式注册入口和图执行后，不污染模型、事件或诊断', async (scenario, toolName, code, status) => {
     const context = await prepareBusinessContext();
-    fixture.searchScenario = scenario;
-    vi.spyOn(builtinPluginRegistry, 'getRegisteredToolClasses').mockReturnValue([WebSearchTool]);
+    if (scenario === 'blocked_managed_disabled') {
+      createLocalReadProviderMock.mockReturnValue({
+        name: 'local_http', async read() { throw new WebFailureError('captcha', 'HTTP 403'); },
+      });
+      uninstallWebReadConfigReader?.();
+      uninstallWebReadConfigReader = installWebReadConfigReader({
+        read: () => ({ renderEnabled: false, managedReader: 'none' }),
+        readSettings: () => ({ renderEnabled: false, managedReader: 'none', slots: {} }),
+      });
+      context.webReadAccessHistory = { read: () => ({ blocked: 2, succeeded: 0, unclassified: 1 }) };
+    } else fixture.searchScenario = scenario;
+    vi.spyOn(builtinPluginRegistry, 'getRegisteredToolClasses').mockReturnValue([WebSearchTool, WebReadTool]);
     vi.spyOn(builtinPluginRegistry, 'getRegisteredHostOnlyToolNames').mockReturnValue([]);
     setPluginRuntimeStateForTests({ enabledPluginIds: ['platform'] });
     vi.spyOn(builtinPluginRegistry, 'getRegisteredToolContextDecorators').mockReturnValue([]);
@@ -407,7 +418,7 @@ describe('Web Phase 1 本地优先读取业务 E2E', () => {
     const modelCatalog = createScriptedChatModelCatalog();
     const modelResolver = new runtimeKernel.llm.ModelResolver({ modelCatalog });
     const ai = createScriptedInferenceHarness([
-      { toolCalls: [{ id: 'call_web_failure', name: 'web_search', argumentsJson: '{"query":"failure case"}' }] },
+      { toolCalls: [{ id: 'call_web_failure', name: toolName, argumentsJson: JSON.stringify(toolName === 'web_search' ? { query: 'failure case' } : { url: 'https://example.com/blocked' }) }] },
       { contentChunks: ['搜索失败，未获得可引用的内容。'] },
     ], { modelCatalog });
     const sequencer = new runtimeKernel.execution.EventSequencer(conversationId);
@@ -421,7 +432,7 @@ describe('Web Phase 1 本地优先读取业务 E2E', () => {
       conversationId, turnId, query, toolContext: context,
       request: {
         query, promptKey: PromptKeys.DEFAULT, model_id: SCRIPTED_MODEL_ID,
-        maxSteps: 4, enableTools: true, availableTools: ['web_search'],
+        maxSteps: 4, enableTools: true, availableTools: [toolName],
       },
       llmCaller: ai.getLlmCaller(), toolRuntime: registry,
       observationPreview: defaultObservationPreviewPort, auditPort,
@@ -435,15 +446,19 @@ describe('Web Phase 1 本地优先读取业务 E2E', () => {
     expect(execution).toHaveBeenCalledTimes(1);
     await expect(execution.mock.results[0]?.value).resolves.toMatchObject({
       success: false, errorKind: 'execution', errorCode: code,
-      error: expect.stringContaining(`HTTP ${status}`),
+      error: expect.stringContaining(scenario === 'blocked_managed_disabled' ? 'captcha' : `HTTP ${status}`),
     });
     const events = publisher.getGeneratedEvents();
     const outputs = events.filter(event => event.type === 'tool_output');
     expect(outputs).toHaveLength(1);
     expect(outputs[0]).toMatchObject({ status: 'error', error_code: code });
     expect(outputs[0]?.ephemeral).not.toBe(true);
+    if (scenario === 'blocked_managed_disabled') {
+      expect(outputs[0]?.observation).toContain('访问拦截 3 次');
+      expect(outputs[0]?.observation).toContain('1 次历史失败');
+    }
     const nextInput = ai.getCalls()[1]?.messages;
-    expect(JSON.stringify(nextInput)).toContain(`HTTP ${status}`);
+    expect(JSON.stringify(nextInput)).toContain(scenario === 'blocked_managed_disabled' ? 'captcha' : `HTTP ${status}`);
     expect(diagnostic).toHaveBeenCalled();
     expect(consoleError).toHaveBeenCalled();
     expect(auditPort.emit).toHaveBeenCalled();

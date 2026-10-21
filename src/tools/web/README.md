@@ -437,8 +437,20 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 
 - HTTP 失败的 `bodyText`、`statusText`，以及供应商 JSON / MCP 错误中的 `message/detail` 都是不可信外部内容，不能拼入工具异常、observation、RuntimeEvent、审计或日志。错误文案由 Web owner 的固定模板与数值状态生成；成功网页正文仍走现有动态不可信边界。
 - 挑战页识别只在 HTTP 响应边界读取有限正文，错误对象仅保留 `challengeDetected` 判定，不携带 `bodyPreview`。重试与读取阶梯复用该判定，不能为删正文而丢失 captcha 分类或改变升级规则。
-- `WebHttpError` 通过既有分类函数暴露只读 `code`，`WebFailureError.code` 与其 `kind` 一致；Host ToolRegistry 只转交通用错误合同，不理解 Web 枚举。运行时的 `errorKind=execution` 与 owner 的 `error_code` 分别保留，不能互相覆盖。
+- `WebHttpError` 通过既有分类函数暴露只读 `code`，`WebFailureError.code` 通常与 `kind` 一致；唯一例外是 `kind=managed_disabled` 且结构化根因已确定为 `captcha/http_403/login_required`，此时 code 保留该访问拦截根因。读取阶梯与诊断仍保留 `managed_disabled`，不改变升级/重试规则；Host ToolRegistry 只转交通用错误合同，不理解 Web 枚举。运行时的 `errorKind=execution` 与 owner 的 `error_code` 分别保留，不能互相覆盖。
 - 无内容失败不能写成功 Evidence；401 不因错误文案或状态码而自动交给第三方 Reader。错误安全不新增 fallback、审计开关或新的导出协议。
+
+### 5.11 同主机访问拦截反馈
+
+- `web_read` 确认遇到验证码、HTTP 403 或登录墙时，通过 Host 注入的 `WebReadAccessHistoryPort` 读取当前会话（含 child）已完成的 `web_read` 事实。仅统计请求 URL 的精确 hostname；不合并子域、不从正文或重定向猜域名。
+- 提示“已确认访问拦截 N 次、成功返回 N 次”，当前失败计入一次。计数单位是 `(runId, toolCallId)` 的已完成工具调用，不是网络尝试；恢复同一调用不会重复计数。成功返回也不代表取得完整正文。
+- 超时、取消、一般 Provider 错误、抽取失败不算访问拦截。历史 `managed_disabled` 或缺少 error_code 的失败单列为“根因未分类”，不从旧错误文案猜成验证码，也不回填成零次拦截。
+- 反馈建议寻找其他主机的官方副本或可核的替代来源；已有的“搜索同一来源的可读 HTML”引导已移除。没有禁止同主机新页面，没有新增自动重试、域名黑名单或路由变化。
+- Host 从 EventStore 的正式 decision/output 窄投影派生，不另存计数、不依赖可关闭的 Audit。查询只在这类实际失败后执行；SQLite 先筛 conversation/tool，再逐行返回调用参数及终态，不向 Node 读取网页正文、其他工具参数或 observation。聚合按调用身份流式进行，内存不随正文或调用数增长。并发结果只包含查询时已持久化的完成事实；当前失败另加一次，不承诺同时执行调用之间的强序。
+- 重载沿用事实；删除/截断后只统计剩余事实。缺少 Host port 的独立 Web 基准继续返回原错误，不伪造会话历史。缓存/in-flight 共享原始取得结果，会话提示在调用侧生成，不写入共享错误对象。
+
+增强读取的离线评估只能比较已取得 HTML 及现有夹具的抽取效果。失败 URL 清单、403 或验证码页没有被拦住的正文，不能据此声称某个付费 Reader 能恢复；本修复不重抓历史 URL、不启用第三方服务，也不改变凭证或配置。
+
 
 ---
 

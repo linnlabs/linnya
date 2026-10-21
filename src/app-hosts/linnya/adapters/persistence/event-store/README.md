@@ -66,6 +66,18 @@ Citation producer 的 ref 分配不经过上述 event projection：Host allocato
 `conversation_citation_ref_claims` 做独立短事务。claim 在工具结果之前落盘可能留下未被正文消费的保留号，
 但同来源会永久复用，且不会制造错误来源映射；禁止为了回收短号把跨 domain 工具执行塞进 EventStore 事务。
 
+## 工具历史窄投影
+
+`readConversationToolHistory` 只投影指定会话、指定工具的正式 decision/output 身份、调用参数、终态和
+`error_code`。它是现存 facts 的只读查询，不是另一份状态、UI read model 或 Audit。调用侧使用 schema
+约定的 canonical tool_calls / args 形态；不会解析错误文字来补分类。SQL 过滤并排序后逐行返回，正文、
+observation、错误文本以及其他工具的大参数不进入调用方内存。按调用身份/事实时间排序，允许调用侧
+以固定大小状态聚合并去重；每次查询范围限于指定 conversation，包含其正式 child facts。
+
+Host Web adapter 用此投影生成访问反馈；业务分类及用户文案仍归 Web owner。持久化入口的正式事件
+校验继续生效，本读取不重建完整 RuntimeEvent，不能供 Agent 上下文回放或替代 storage codec 的完整读取。
+删除/截断与重载直接反映到查询；没有单独计数需要同步或清理。
+
 ## UI 投影不变量
 
 - 增量写入与全量 rebuild 必须复用同一 routing admission 和事件投影规则。

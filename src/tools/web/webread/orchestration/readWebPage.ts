@@ -12,7 +12,7 @@ import type { WebReadLadderResult } from '../definitions/readLadder';
 import type { WebReadConfig } from '../definitions/webReadConfig';
 import type { WebReadProvider } from '../providers/types';
 import { getWebReadConfig } from '../ports/webReadConfigReader';
-import { WebFailureError, getWebFailureDiagnostics, getWebFailureKind } from '../../shared/webFailure';
+import { WebFailureError, getWebAccessBlockKind, getWebFailureDiagnostics, getWebFailureKind } from '../../shared/webFailure';
 import type { WebEvidenceWriter } from '../../shared/ports/webEvidenceWriter';
 import { requireWebEvidenceWriter } from '../../shared/orchestration/webEvidenceWriterContext';
 import type { WebCacheRuntime } from '../../shared/cache/webCacheFactory';
@@ -28,6 +28,7 @@ import {
 import { buildWebReadObservation } from '../functions/buildWebReadObservation';
 import { describeWebFile } from '../file-acquisition/functions/describeWebFile';
 import type { WebFileStore } from '../file-acquisition/definitions/webFileAcquisition';
+import { buildWebReadBlockFeedback } from '../functions/buildWebReadBlockFeedback';
 
 const logger = new Logger('ReadWebPage');
 
@@ -175,6 +176,24 @@ export async function runReadWebPage(
       ...getWebFailureDiagnostics(error),
       tookMs: Date.now() - startedAt,
     });
+    if (!context.abortSignal?.aborted && getWebAccessBlockKind(error) && error instanceof Error
+      && context.webReadAccessHistory) {
+      const history = context.webReadAccessHistory.read({
+        hostname: allowedUrl.hostname,
+        currentRunId: context.runId,
+        currentToolCallId: context.parentToolCallId,
+      });
+      // in-flight 的错误可被不同会话共享；必须新建 owner 错误，不能把会话反馈写进共享对象。
+      throw new WebFailureError(
+        error instanceof WebFailureError ? error.kind : getWebFailureKind(error),
+        `${error.message}\n${buildWebReadBlockFeedback(allowedUrl.hostname, history)}`,
+        {
+          status: error instanceof WebFailureError ? error.status : getWebFailureDiagnostics(error).status,
+          ...(error instanceof WebFailureError ? { details: error.details } : {}),
+          cause: error,
+        },
+      );
+    }
     throw error;
   }
   const readResult = ladderResult.readResult;

@@ -18,6 +18,7 @@ Layer: `host-adapters/tools`
 - Citation sequence、Conversation ref allocator 与来源解析的 ToolContext 装饰
 - 正式 producer history 与 Evidence fallback 的 app-level Citation source resolution
 - Linnya `conversationId + research.instanceId` 到工具存储分区的窄 ToolContext 投影
+- 从正式 EventStore 事实派生的同会话 Web 访问记录窄 port（不建立计数表/缓存）
 
 本目录不负责：
 
@@ -39,6 +40,7 @@ src/app-hosts/linnya/adapters/tools/
 ├── citationSequenceToolContextDecorator.ts
 ├── citationRefAllocatorToolContextDecorator.ts
 ├── documentCitationWriteToolContextDecorator.ts
+├── createWebReadAccessHistory.ts  # completed web_read 身份与根因计数，按会话含 child
 ├── citation-source-resolution/    # 跨 owner 的 Citation 来源收集、接纳与窄 resolver
 └── conversation-scope/            # Linnya ToolContext 的 conversation / research instance 分区投影
 ```
@@ -78,6 +80,13 @@ conversation EvidenceStore。Citation domain 只拥有来源 DTO 和接纳规则
 Citation ref allocator decorator 也位于 app-level adapter：它只把当前 `conversationId` 和 Host 的 SQLite
 claim store 组合成 Citation domain 的窄 port。候选生成、来源身份与碰撞规则留在 Citation domain；SQLite
 adapter 只负责原子事务和双唯一约束；Knowledge/Web/Workspace producer 都不得依赖这两个 Host 实现。
+
+`createWebReadAccessHistory` 只负责把 EventStore 的指定工具历史投影与 Web owner 的访问拦截分类组合为
+`WebReadAccessHistoryPort`，由 ToolContext factory 绑定当前会话并被 child 继承。它按请求 hostname 和
+`runId + toolCallId` 统计已完成调用，当前调用排除后由 Web owner 加入本次失败；不会把网络重试当新调用。
+SQL 排序流式返回身份/参数/终态，聚合只保留一条调用，不读取网页正文，也不建立跨请求 Map。
+旧未分类错误单列，暂停中的无终态调用不计；重载、删除和截断直接跟随正式事实。详见
+[Web 同主机反馈](../../../../tools/web/README.md#511-同主机访问拦截反馈)。
 
 `conversation-scope` 也位于 app-level adapter，因为 `research.instanceId` 是 Linnya 产品的
 存储分区语义，不属于 Linnkit 通用 ToolExecutionContext。该 feature 不读写任何产物，
