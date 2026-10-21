@@ -15,6 +15,7 @@ import { buildMarkdownDocumentFromText } from '../orchestration/buildMarkdownDoc
 import { buildMarkdownPendingCitationMetadata } from '../orchestration/buildMarkdownPendingCitationMetadata';
 import { writeMarkdownDocumentFromText } from '../orchestration/writeMarkdownDocumentFromText';
 import type { CitationSource } from '../../../../citation';
+import { extractCanonicalCitationRefs } from '../../../../citation';
 
 const databases: Database.Database[] = [];
 afterEach(() => databases.splice(0).forEach(db => db.close()));
@@ -56,6 +57,31 @@ function inlineFacts(doc: MarkdownDocJson) {
 }
 
 describe('citation emphasis create → current → pending → accept → current', () => {
+  it('跨空段的字面反引号经过创建、修订及接受后保持来源快照', async () => {
+    const { store, normalizer, read, write } = setup();
+    const initial = '`[@Abc234]\n\n其他 `text`';
+    const created = await buildMarkdownDocumentFromText({
+      markdown: initial, normalizer, resolveCitationSources: resolveSources,
+    });
+    store.createDocument('doc', created.content);
+    expect(extractCanonicalCitationRefs(read()?.text ?? '')).toEqual(['Abc234']);
+    const result = await write('`[@Abc234]\n\n更新的 `text`\n\n示例 `[@Def567]`');
+    expect(result.edits.length).toBeGreaterThan(0);
+    expect(extractCanonicalCitationRefs(read()?.text ?? '')).toEqual(['Abc234']);
+    const version = store.getLatestVersion('doc');
+    if (!version) throw new Error('Missing test version');
+    await new PendingRevisionApplyService(store).commitEditorRevision({
+      documentId: 'doc', expectedVersionNumber: version.version_number,
+      expectedPending: store.getPendingRevisions('doc').map(({ id, revision }) => ({ id, revision })),
+      baseline: store.getDocument('doc'), decision: { mode: 'accept' },
+    });
+    const accepted = read();
+    expect(accepted?.metadata.pendingCount).toBe(0);
+    expect(extractCanonicalCitationRefs(accepted?.text ?? '')).toEqual(['Abc234']);
+    expect(JSON.stringify(store.getDocument('doc'))).toContain(source.snippet);
+    expect((await write(accepted?.text ?? '')).edits).toEqual([]);
+  });
+
   it.each([
     '**关键说明 [@Abc234]** 后续正文',
     '**关键说明** [@Abc234] 后续正文',

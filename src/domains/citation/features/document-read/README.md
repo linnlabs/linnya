@@ -28,6 +28,10 @@ Pending Revision 仍以 Markdown 保存，因此 Citation domain 同时拥有窄
 inline code 中的示例。Workspace 写入 hydration 与 pending 阅读必须复用该 parser，禁止再定义
 `\w{6}` 正则或从任意 observation 抽取 ref。
 
+行内代码允许软换行，但不跨空段配对反引号。Markdown pending 的来源接纳与逐块 metadata 分配
+必须扫描同一批 canonical blocks，再对全部 refs 一次解析；不能全文接纳后另用块范围提取，
+否则未闭合反引号可能让两次扫描互相矛盾。格式非法、合法 ref 未绑定的失败规则保持不变。
+
 同一 `citationId` 对应不同来源、同一 ref 对应不同来源、同一来源保存不同 ref 都属于合同冲突并
 fail-fast。缺字段的非法 CitationNode 保留为可观察的 invalid diagnostic，不猜测补齐。
 

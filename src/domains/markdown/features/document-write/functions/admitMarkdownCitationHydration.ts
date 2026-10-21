@@ -47,10 +47,13 @@ export function toCitationNodeHydrationData(
  * Markdown 只依赖 Citation 的公开来源合同，不读取 ToolContext、Evidence 或 Web 内部状态。
  */
 export async function admitMarkdownCitationHydration(
-  markdown: string,
+  markdown: string | readonly string[],
   resolveSources: ResolveMarkdownCitationSources
 ): Promise<Readonly<Record<string, CitationNodeHydrationData>>> {
-  const invalidTokens = findInvalidMarkdownCitationTokens(markdown);
+  // pending 的接纳和 metadata 分配必须使用同一批 canonical blocks；不能先全文配对
+  // 反引号，再按单块取 ref。创建入口仍可传一份完整 Markdown。
+  const blocks = typeof markdown === 'string' ? [markdown] : markdown;
+  const invalidTokens = [...new Set(blocks.flatMap(findInvalidMarkdownCitationTokens))];
   if (invalidTokens.length > 0) {
     // 结果序号、来源简称和 untrusted-content 边界 ID 都不是来源身份；仅列错字会诱发反复猜 ref。
     // 不提供虚构的六位示例，也不把合法外观当成已取得来源，由原 resolver 继续验证绑定。
@@ -63,7 +66,7 @@ export async function admitMarkdownCitationHydration(
     );
   }
 
-  const refs = extractCanonicalCitationRefs(markdown);
+  const refs = [...new Set(blocks.flatMap(extractCanonicalCitationRefs))];
   if (refs.length === 0) return {};
 
   const sources = await resolveSources(refs);

@@ -55,6 +55,13 @@ describe('Markdown citation token protocol', () => {
     expect(extractCanonicalCitationRefs('正文 [@ABC234]\n```\n[@ABC235]')).toEqual(['ABC234']);
   });
 
+  it('不把跨空段的反引号当成行内代码，同时保留跨软换行的代码语义', () => {
+    expect(extractCanonicalCitationRefs('`[@ABC234]\n\n其他 `text`')).toEqual(['ABC234']);
+    expect(extractCanonicalCitationRefs('`[@ABC234]\r\n \t\r\n其他 `text`')).toEqual(['ABC234']);
+    expect(findInvalidMarkdownCitationTokens('`[@bad]\n\n其他 `text`')).toEqual(['[@bad]']);
+    expect(extractCanonicalCitationRefs('`代码\n[@ABC234]` 正文 [@ABC235]')).toEqual(['ABC235']);
+  });
+
   it('带 info string 的 fence 只能由纯 marker 行关闭，转义反引号不创建 code span', () => {
     const markdown = [
       '```md',

@@ -68,7 +68,7 @@ describe('Markdown document write citation hydration', () => {
     )).rejects.toThrow('Citation admission 内部缺少');
   });
 
-  it('一次接纳整份目标 Markdown，再按 pending block 分配 hydration', async () => {
+  it('按同一批 canonical blocks 一次接纳来源，再分配 pending hydration', async () => {
     const resolveSources = vi.fn(async (): Promise<readonly CitationSource[]> => [{
       sourceType: 'knowledge_base',
       ref: 'Abc234',
@@ -95,6 +95,25 @@ describe('Markdown document write citation hydration', () => {
       { citation_hydration: { Abc234: expect.objectContaining({ docId: 'doc-1' }) } },
       { citation_hydration: { Def567: expect.objectContaining({ url: 'https://example.com/article' }) } },
     ]);
+  });
+
+  it('跨段未闭合反引号不再让 pending 引用漏接纳，代码示例仍不生成来源', async () => {
+    const resolveSources = vi.fn(async (): Promise<readonly CitationSource[]> => [{
+      sourceType: 'web', ref: 'Abc234', url: 'https://example.com/report',
+      title: 'Report', snippet: 'Original snapshot',
+    }]);
+    const metadata = await buildMarkdownPendingCitationMetadata(
+      '`[@Abc234]\n\n其他 `text`\n\n示例 `[@Def567]`\n\n```md\n[@bad]\n```',
+      resolveSources,
+    );
+    expect(resolveSources).toHaveBeenCalledExactlyOnceWith(['Abc234']);
+    expect([...metadata.values()]).toEqual([{
+      citation_hydration: { Abc234: expect.objectContaining({ url: 'https://example.com/report' }) },
+    }]);
+    await expect(buildMarkdownPendingCitationMetadata('`[@bad]\n\n其他 `text`', resolveSources))
+      .rejects.toThrow('Invalid citation tokens');
+    await expect(buildMarkdownPendingCitationMetadata('`[@Def567]\n\n其他 `text`', async () => []))
+      .rejects.toThrow('Citation admission 内部缺少');
   });
 
   it('创建文档时按标准 Markdown 链接接纳已读 Web 来源', async () => {

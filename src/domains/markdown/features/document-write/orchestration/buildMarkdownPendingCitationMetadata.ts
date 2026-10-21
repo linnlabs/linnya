@@ -18,10 +18,7 @@ export async function buildMarkdownPendingCitationMetadata(
 ): Promise<ReadonlyMap<string, PendingRevisionMetadata>> {
   const planned = await planMarkdownBlocks(targetText);
   const blocks = planned.bodyBlocks;
-  const hasCanonicalCitation = targetText.includes('[@') || targetText.includes('\\[@');
-  const hydration = hasCanonicalCitation
-    ? await admitMarkdownCitationHydration(targetText, resolveSources)
-    : {};
+  const hydration = await admitMarkdownCitationHydration(blocks, resolveSources);
   const linksByBlock = options.collectLinkHrefs
     ? await Promise.all(blocks.map(block => options.collectLinkHrefs?.(block) ?? Promise.resolve([])))
     : blocks.map(() => [] as readonly string[]);
