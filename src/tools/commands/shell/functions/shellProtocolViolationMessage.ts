@@ -27,6 +27,9 @@ export function shellProtocolViolationMessage(error: ZodError): string {
     issue.code === 'unrecognized_keys' ? issue.keys : [issue.path[0]],
   ));
   const guidance: string[] = [];
+  if (error.issues.some(issue => issue.code === 'unrecognized_keys')) {
+    guidance.push(`Shell 合法字段：${Object.keys(ShellToolArgumentsV1Schema.shape).join(', ')}。`);
+  }
   if (fields.has('command')) {
     guidance.push(`command 最多 ${SHELL_COMMAND_MAX_LENGTH} 个 Unicode 字符；长资料请通过已有物理文件路径交给命令，不要粘贴全文。`);
   }

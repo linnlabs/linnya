@@ -94,6 +94,10 @@ describe('ShellTool ToolNode admission', () => {
     if ('initial_wait_ms' in args || 'wait_timeout_ms' in args) {
       expect(message).toContain('action.wait_timeout_ms');
     }
+    if ('wait_timeout_ms' in args || 'env' in args) {
+      expect(message).toContain('Shell 合法字段：');
+      expect(message).toContain('requires_write_access');
+    }
     const exampleLine = message.split('最小结构示例：')[1]?.split('\n')[0];
     expect(exampleLine).toBeDefined();
     const example: unknown = JSON.parse(exampleLine ?? 'null');

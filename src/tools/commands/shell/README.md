@@ -30,7 +30,8 @@
 `errorKind: protocol`、`errorCode: shell_protocol_violation`；命令启动后的失败仍属于原运行时合同。
 
 错误提示按字段定位，给出通过同一 parser 的最小结构示例，并区分 Shell 首次等待与 Process
-后续等待；不回显命令全文、cwd 或未知字段的值。未知字段仍严格拒绝，不删除、不猜测或改参重试。
+后续等待；不回显命令全文、cwd 或未知字段的值。未知字段还会列出正式 schema 的合法字段名，
+但仍严格拒绝，不删除、不猜测或改参重试。
 `initial_wait_ms` 超过上限时不会自动截断，模型必须按提示修正后重新提交。
 
 提示投影见 [shellProtocolViolationMessage](./functions/shellProtocolViolationMessage.ts)，不拥有第二份
