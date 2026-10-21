@@ -81,7 +81,7 @@ const CitationMatchTypeSchema = z.enum([
 ]);
 
 /**
- * Conversation 展示层允许消费的严格引用事实。
+ * 搜索 producer 的严格引用事实；Conversation 完整来源使用下方独立合同。
  *
  * `ref` 只是短句柄，稳定来源锚点才是事实身份：知识库必须同时携带 docId/blockId，
  * Web 必须携带 URL。这里使用判别联合，禁止通过可选字段猜来源，也不接纳缺 ref 的旧形状。
@@ -120,6 +120,26 @@ export const SearchResultCitationSchema = z.discriminatedUnion('sourceType', [
 export type SearchResultCitation = z.infer<typeof SearchResultCitationSchema>;
 
 /**
+ * Citation owner 接纳后的完整 Conversation 来源快照。
+ *
+ * 搜索 producer 的 author/siteName 是原始输出字段；进入 Conversation 后统一成
+ * authors/containerTitle，避免保存、复制再从单作者的搜索展示结构反向恢复来源。
+ * 没有取得的元数据保持缺省，不从域名、byline 字符串或其它版本猜补。
+ */
+export const ConversationCitationSchema = z.discriminatedUnion('sourceType', [
+  SearchResultCitationSchema.options[0].extend({
+    kbId: z.string().trim().min(1).optional(),
+  }),
+  SearchResultCitationSchema.options[1]
+    .omit({ author: true, siteName: true })
+    .extend({
+      authors: z.array(z.string().trim().min(1)).optional(),
+      containerTitle: z.string().trim().min(1).optional(),
+    }),
+]);
+export type ConversationCitation = z.infer<typeof ConversationCitationSchema>;
+
+/**
  * 一条可见消息的引用依赖闭包。
  *
  * citations 按正文中首次出现顺序排列；无法解析的合法 ref 必须显式进入 unresolved_refs，
@@ -127,7 +147,7 @@ export type SearchResultCitation = z.infer<typeof SearchResultCitationSchema>;
  */
 export const ConversationCitationDependencySnapshotSchema = z
   .object({
-    citations: z.array(SearchResultCitationSchema),
+    citations: z.array(ConversationCitationSchema),
     unresolved_refs: z.array(CitationRefSchema),
   })
   .strict()

@@ -25,7 +25,11 @@ describe('Conversation citation presentation', () => {
     workspace = projectConversationCitationRegistration(
       workspace,
       'turn-a',
-      [webCitation('Ab3Def', 'https://example.com/a')],
+      [{
+        ...webCitation('Ab3Def', 'https://example.com/a'),
+        authors: ['Original author', 'Second author'],
+        containerTitle: 'Original journal',
+      }],
     );
     workspace = projectConversationCitationRegistration(
       workspace,
@@ -76,7 +80,11 @@ describe('Conversation citation presentation', () => {
     workspace = projectConversationCitationRegistration(
       workspace,
       'turn-a',
-      [webCitation('Ab3Def', 'https://example.com/a')],
+      [{
+        ...webCitation('Ab3Def', 'https://example.com/a'),
+        authors: ['Original author', 'Second author'],
+        containerTitle: 'Original journal',
+      }],
     );
     workspace = projectConversationCitationRegistration(
       workspace,
@@ -85,6 +93,8 @@ describe('Conversation citation presentation', () => {
         ...webCitation('Ab3Def', 'https://example.com/a'),
         docTitle: 'later title',
         snippet: 'later snippet',
+        authors: ['Later author'],
+        containerTitle: 'Later journal',
       }],
     );
 
@@ -95,6 +105,8 @@ describe('Conversation citation presentation', () => {
     ).citations[0]).toMatchObject({
       docTitle: 'title-Ab3Def',
       snippet: 'snippet-Ab3Def',
+      authors: ['Original author', 'Second author'],
+      containerTitle: 'Original journal',
     });
   });
 

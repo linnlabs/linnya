@@ -66,7 +66,7 @@ export type {
   WebCitationSource,
 } from './features/source-resolution/definitions/citationSource';
 export { admitCitationSources } from './features/source-resolution/functions/admitCitationSources';
-export { projectSearchResultCitationSource } from './features/source-resolution/functions/projectSearchResultCitationSource';
+export { projectConversationCitationSource } from './features/source-resolution/functions/projectConversationCitationSource';
 export type { CitationSourceAnchor } from './shared/definitions/citationSourceAnchor';
 export {
   admitCitationSourceAnchor,

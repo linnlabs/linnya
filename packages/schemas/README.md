@@ -162,6 +162,11 @@ Citation 合同通过显式 `sourceType` 区分知识库、Web、手工来源与
 
 搜索工具当前只产生 `knowledge_base` 与 `web` 子集；编辑器或 MindMap 的其它引用来源不应混进搜索结果合同。
 
+`SearchResultCitation` 描述搜索 producer 的结果，`ConversationCitation` 描述 Citation owner
+接纳后的完整来源。后者统一使用 Web `authors[]/containerTitle/publishedAt` 和 Knowledge
+`kbId/docId/blockId`；消息 dependency snapshot 使用后者，展示、保存与复制不得降回单作者结构。
+从完整文档读回的元数据不能因为经过 Conversation 而损失；缺失字段不猜补，既有来源优先规则不变。
+
 ### 5.5 Plugin manifest
 
 插件 manifest 是插件身份、入口、兼容性、发布产物、权限与数据归属的共享事实来源。

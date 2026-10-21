@@ -1,7 +1,7 @@
 import {
   ConversationCitationDependencySnapshotSchema,
   type ConversationCitationDependencySnapshot,
-  type SearchResultCitation,
+  type ConversationCitation,
 } from '@app/schemas';
 
 import type { ConversationCitationWorkspace } from '../definitions/conversationCitationWorkspace';
@@ -15,7 +15,7 @@ export function createConversationCitationWorkspace(): ConversationCitationWorks
 export function projectConversationCitationRegistration(
   workspace: ConversationCitationWorkspace,
   scopeId: string,
-  citations: readonly SearchResultCitation[]
+  citations: readonly ConversationCitation[]
 ): ConversationCitationWorkspace {
   if (citations.length === 0) return workspace;
   const nextScope = new Map(workspace.get(scopeId) ?? []);
@@ -41,11 +41,11 @@ function resolveCitation(
   workspace: ConversationCitationWorkspace,
   scopeId: string,
   ref: string
-): SearchResultCitation | null {
+): ConversationCitation | null {
   const exact = workspace.get(scopeId)?.get(ref);
   if (exact) return exact;
 
-  let resolved: SearchResultCitation | null = null;
+  let resolved: ConversationCitation | null = null;
   let resolvedIdentity: string | null = null;
   for (const citations of workspace.values()) {
     const candidate = citations.get(ref);
@@ -69,7 +69,7 @@ export function projectConversationCitationDependencies(
   scopeId: string,
   refs: readonly string[]
 ): ConversationCitationDependencySnapshot {
-  const citations: SearchResultCitation[] = [];
+  const citations: ConversationCitation[] = [];
   const unresolvedRefs: string[] = [];
   for (const ref of refs) {
     const citation = resolveCitation(workspace, scopeId, ref);

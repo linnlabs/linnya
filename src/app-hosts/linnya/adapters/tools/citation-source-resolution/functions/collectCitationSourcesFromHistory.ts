@@ -2,7 +2,7 @@ import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { admitCitationsFromConversationToolOutput } from 'src/domains/citation/conversation-presentation';
 import {
   normalizeCitationWebUrl,
-  projectSearchResultCitationSource,
+  projectConversationCitationSource,
   type CitationSource,
 } from 'src/domains/citation';
 
@@ -21,7 +21,7 @@ function readOwnerSources(
     status: event.status,
     result: toResult(event),
   });
-  return admitted?.citations.map(projectSearchResultCitationSource) ?? [];
+  return admitted?.citations.map(projectConversationCitationSource) ?? [];
 }
 
 /**

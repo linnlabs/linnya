@@ -114,6 +114,13 @@ Host read model，不能让 Citation domain 读取 SQLite，也不能成为第�
 
 Conversation 中的引用从 producer 到 Host durable window、live/Subrun 投影，再到 hover、复制和 Editor 转换，统一经过本 domain 的 conversation-presentation 公共入口：
 
+接纳后的唯一跨端来源合同是 `ConversationCitation`，不是搜索工具的 `SearchResultCitation`。
+Web producer 的单个 `author/siteName` 只在接纳边界转换为 `authors/containerTitle`；
+`read_file` 已取得的完整作者数组、刊名、日期和 Knowledge `kbId` 必须原样保留。
+展示可以只显示首作者，但 Host 写入 resolver、消息 dependency snapshot、富复制与另存
+均消费完整来源，不从展示标签恢复元数据、不拆分作者字符串，也不跨版本拼接缺失字段。
+摘录仍使用本次读取实际交付的有界 snippet，不借元数据保真绕过阅读预算。
+
 ```text
 Knowledge / Web / Workspace citation producer
   → Citation ref allocator + Host atomic claim store

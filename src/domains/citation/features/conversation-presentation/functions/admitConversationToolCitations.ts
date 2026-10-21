@@ -1,4 +1,5 @@
 import {
+  ConversationCitationSchema,
   EvidenceResolveToolOutputSchema,
   HistoricalWebResourceReadResultSchema,
   HistoricalWorkspaceReadFileEventResultSchema,
@@ -7,11 +8,11 @@ import {
   KnowledgeSearchCitationSchema,
   KnowledgeSearchResultSchema,
   ResearchRunWriterReplayResultSchema,
-  SearchResultCitationSchema,
   WebReadResultSchema,
   WebSearchResultSchema,
   WorkspaceReadFileEventResultSchema,
   type SearchResultCitation,
+  type ConversationCitation,
 } from '@app/schemas';
 
 import type { AdmittedConversationCitations } from '../definitions/admittedConversationCitation';
@@ -21,14 +22,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function toAdmission(
-  citations: readonly SearchResultCitation[],
+  citations: readonly ConversationCitation[],
 ): AdmittedConversationCitations | null {
   if (citations.length === 0) return null;
-  return { citations: SearchResultCitationSchema.array().parse(citations) };
+  return { citations: ConversationCitationSchema.array().parse(citations) };
+}
+
+/** 只在 producer 边界转换一次，后续链路不再消费搜索卡片的缩略字段。 */
+function admitSearchCitations(
+  citations: readonly SearchResultCitation[],
+): AdmittedConversationCitations | null {
+  return toAdmission(citations.map(citation => {
+    if (citation.sourceType === 'knowledge_base') return citation;
+    const { author, siteName, ...source } = citation;
+    return {
+      ...source,
+      ...(author ? { authors: [author] } : {}),
+      ...(siteName ? { containerTitle: siteName } : {}),
+    };
+  }));
 }
 
 function admitKnowledgeSearchResult(result: unknown): AdmittedConversationCitations | null {
-  return toAdmission(
+  return admitSearchCitations(
     KnowledgeSearchResultSchema.parse(result).data.citations.citations,
   );
 }
@@ -39,11 +55,11 @@ function admitResourceReadResult(result: unknown): AdmittedConversationCitations
   if (result.data.source === 'knowledge_base') {
     const parsed = KnowledgeBaseResourceReadAdmissionResultSchema.parse(result);
     return 'citations' in parsed.data
-      ? toAdmission(KnowledgeSearchCitationSchema.array().parse(parsed.data.citations.citations))
+      ? admitSearchCitations(KnowledgeSearchCitationSchema.array().parse(parsed.data.citations.citations))
       : null;
   }
   if (result.data.source === 'web') {
-    return toAdmission(
+    return admitSearchCitations(
       HistoricalWebResourceReadResultSchema.parse(result).data.citations.citations,
     );
   }
@@ -60,29 +76,7 @@ function admitReadFileResult(result: unknown): AdmittedConversationCitations | n
     : HistoricalWorkspaceReadFileEventResultSchema.parse(result);
   if (!('citations' in parsed.data) || !parsed.data.citations) return null;
 
-  return toAdmission(parsed.data.citations.citations.map(citation => {
-    if (citation.sourceType === 'knowledge_base') {
-      return SearchResultCitationSchema.parse({
-        ref: citation.ref,
-        index: citation.index,
-        sourceType: citation.sourceType,
-        docId: citation.docId,
-        blockId: citation.blockId,
-        docTitle: citation.docTitle,
-        snippet: citation.snippet,
-      });
-    }
-    return SearchResultCitationSchema.parse({
-      ref: citation.ref,
-      index: citation.index,
-      sourceType: citation.sourceType,
-      url: citation.url,
-      docTitle: citation.docTitle,
-      snippet: citation.snippet,
-      ...(citation.publishedAt ? { publishedAt: citation.publishedAt } : {}),
-      ...(citation.authors[0] ? { author: citation.authors[0] } : {}),
-    });
-  }));
+  return toAdmission(parsed.data.citations.citations);
 }
 
 function admitToolResult(
@@ -97,7 +91,7 @@ function admitToolResult(
       return admitKnowledgeSearchResult(result);
     case 'knowledge_read':
     case 'browse_document_by_chunk':
-      return toAdmission(
+      return admitSearchCitations(
         KnowledgeReadResultSchema.parse(result).data.citations.citations,
       );
     case 'resource_read':
@@ -105,18 +99,18 @@ function admitToolResult(
     case 'evidence_resolve': {
       const parsed = EvidenceResolveToolOutputSchema.parse(result);
       return parsed.data.mode === 'resolve_refs'
-        ? toAdmission(parsed.data.citations?.citations ?? [])
+        ? admitSearchCitations(parsed.data.citations?.citations ?? [])
         : null;
     }
     case 'research_run_writer':
-      return toAdmission(
+      return admitSearchCitations(
         ResearchRunWriterReplayResultSchema.parse(result).data.citations?.citations ?? [],
       );
     case 'search_web':
     case 'web_search':
-      return toAdmission(WebSearchResultSchema.parse(result).data.citations.citations);
+      return admitSearchCitations(WebSearchResultSchema.parse(result).data.citations.citations);
     case 'web_read':
-      return toAdmission(WebReadResultSchema.parse(result).data.citations.citations);
+      return admitSearchCitations(WebReadResultSchema.parse(result).data.citations.citations);
     case 'read_file':
       return admitReadFileResult(result);
     default:
