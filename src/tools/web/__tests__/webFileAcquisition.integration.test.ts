@@ -74,6 +74,14 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
       '/data.csv': { mime: 'application/csv; charset=utf-8', bytes: csv },
       '/text.csv': { mime: 'text/csv', bytes: csv },
       '/book.xlsx': { mime: xlsxMime, bytes: xlsx },
+      '/octet-report': { mime: 'application/octet-stream', bytes: pdf },
+      '/octet-book': { mime: 'application/octet-stream', bytes: xlsx },
+      '/octet-macro': { mime: 'application/octet-stream', bytes: macroXlsx },
+      '/octet.csv': { mime: 'application/octet-stream', bytes: csv },
+      '/octet-text.csv': { mime: 'application/octet-stream', bytes: Buffer.from('not a table\njust prose') },
+      '/octet-binary.csv': { mime: 'application/octet-stream', bytes: Buffer.from([0, 1, 2, 3]) },
+      '/octet-fake.csv': { mime: 'application/octet-stream', bytes: Buffer.from('<html>a,b\nc,d</html>') },
+      '/octet-unknown': { mime: 'application/octet-stream', bytes: csv },
       '/macro.xlsx': { mime: xlsxMime, bytes: macroXlsx },
       '/fake.pdf': { mime: 'application/pdf', bytes: Buffer.from('MZ executable') },
       '/fake.csv': { mime: 'application/csv', bytes: Buffer.from('<html>challenge</html>') },
@@ -317,11 +325,38 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
     await expect(one.read('/report.pdf')).rejects.toThrow('modified');
   });
 
+  it('通用 MIME 按实际 PDF/XLSX 内容取得；CSV 同时需要格式线索和文本检查，仍保留原响应 MIME', async () => {
+    const fixture = await setup();
+    for (const [url, format, bytes] of [
+      ['/octet-report', 'pdf', pdf],
+      ['/octet-book', 'xlsx', xlsx],
+      ['/octet.csv', 'csv', csv],
+    ] as const) {
+      const before = requests.length;
+      const result = await fixture.read(url);
+      expect(requests.slice(before)).toEqual([url]);
+      expect(result.data.file).toMatchObject({
+        format,
+        mimeType: 'application/octet-stream',
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      });
+      if (!result.data.file) throw new Error('Missing original file');
+      expect(await readFile(path.join(fixture.directory, result.data.file.path))).toEqual(bytes);
+      if (format === 'csv') expect(result.data.charCount).toBeGreaterThan(0);
+      else expect(result.data.charCount).toBe(0);
+    }
+  });
+
   it.each([
     '/fake.pdf',
     '/fake.csv',
     '/binary.csv',
     '/macro.xlsx',
+    '/octet-macro',
+    '/octet-text.csv',
+    '/octet-binary.csv',
+    '/octet-fake.csv',
+    '/octet-unknown',
     '/archive.zip',
     '/large.pdf',
     '/large.html',

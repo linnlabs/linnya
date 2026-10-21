@@ -84,6 +84,7 @@ export class LocalHttpProvider implements WebReadProvider {
       mimeType: fetched.mimeType,
       bytes: fetched.bodyData,
       decodedText: fetched.bodyText,
+      finalUrl: fetched.finalUrl,
     });
     if (filePayload && filePayload.format !== 'csv') {
       return {
@@ -137,7 +138,7 @@ export class LocalHttpProvider implements WebReadProvider {
       });
     }
 
-    if (isDirectTextMime(fetched.mimeType)) {
+    if (filePayload?.format === 'csv' || isDirectTextMime(fetched.mimeType)) {
       const content = fetched.bodyText.trim();
       if (!content) {
         throw new WebFailureError('empty_content', '本地网页文本响应为空。', { status: fetched.status });

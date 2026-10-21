@@ -24,7 +24,11 @@ PDF、`text/csv` / `application/csv`、XLSX 使用独立的 30 MiB 单文件响�
 PDF 检查版本签名；XLSX 检查 ZIP 目录、workbook 和内容类型声明，拒绝宏、加密容器、
 重复项和超预算容器（4096 项、声明展开总量 50 MiB、内容类型声明 64 KiB）。
 CSV 没有魔数：按响应编码检查文本，拒绝二进制和 HTML 伪装，不执行公式。
-声明未知 MIME 的文件不按扩展名猜测类型。类型检查不是完整文件有效性或无恶意内容认证。
+`application/octet-stream` 在既有 5 MiB 响应预算内按实际字节识别 PDF 或 ZIP；ZIP 必须继续通过
+同一套严格 XLSX 容器检查，不能仅凭 ZIP 签名保存。CSV 没有魔数，因此仅在最终 URL 路径以 `.csv`
+结尾且内容具有至少两行的分隔表格形状时进入现有 CSV 文本检查；任意文本或无格式线索的数据不猜为 CSV。
+原响应 MIME 保留在文件身份中。未知 MIME 不因此扩大到 30 MiB、不额外请求，超过 5 MiB 仍明确失败。
+类型检查不是完整文件有效性或无恶意内容认证。
 
 CSV 同时返回既有文本视图；`max_chars` 只裁剪文本，不裁剪保存的字节。
 PDF/XLSX 的 `charCount=0`、`extractor=file_download`，模型通过 Shell 解析。

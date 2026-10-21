@@ -100,7 +100,7 @@ function createSession(
       renderSession.on('will-download', cancelDownload);
       const requestFilter = { urls: ['http://*/*', 'https://*/*'] };
       const validateRequest = (
-        details: { url: string },
+        details: { url: string; resourceType: string },
         callback: (response: { cancel: boolean }) => void,
       ): void => {
         let hostname: string;
@@ -110,8 +110,12 @@ function createSession(
           callback({ cancel: true });
           return;
         }
-        const validation = validatedHosts.get(hostname) ?? validateRequestUrl(details.url);
-        validatedHosts.set(hostname, validation);
+        // 主框架每次导航/重定向都重新检查 URL 和 DNS，不能沿用同主机子资源的历史准入。
+        const isNavigation = details.resourceType === 'mainFrame';
+        const validation = isNavigation
+          ? validateRequestUrl(details.url)
+          : validatedHosts.get(hostname) ?? validateRequestUrl(details.url);
+        if (!isNavigation) validatedHosts.set(hostname, validation);
         void validation.then(
           () => callback({ cancel: false }),
           () => callback({ cancel: true }),

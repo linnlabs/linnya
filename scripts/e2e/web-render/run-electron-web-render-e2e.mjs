@@ -67,12 +67,13 @@ try {
     spaRendered: true,
     permissionDenied: true,
     sameHostRedirected: true,
+    sameSiteRedirected: true,
     crossRedirectKind: 'navigation_blocked',
     timeoutKind: 'total_timeout',
     privateNetworkKind: 'render_failed',
     recoveredAfterBlockedNavigation: true,
     popupRequests: 0,
-    downloadRequests: 2,
+    downloadRequests: 3,
   };
   if (JSON.stringify(result) !== JSON.stringify(expected)) {
     throw new Error(`Electron Web Render E2E 结果不符合预期。\nactual=${JSON.stringify(result)}\nexpected=${JSON.stringify(expected)}`);

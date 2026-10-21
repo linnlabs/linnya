@@ -122,10 +122,22 @@ export async function validateWebFile(input: {
   mimeType: string;
   bytes: Uint8Array;
   decodedText: string;
+  finalUrl?: string;
 }): Promise<WebFilePayload | undefined> {
   const { bytes, mimeType } = input;
-  const format = getWebFileFormat(mimeType);
   const prefix = Buffer.from(bytes.subarray(0, 32)).toString('latin1');
+  let format = getWebFileFormat(mimeType);
+  if (!format && mimeType.toLowerCase() === 'application/octet-stream') {
+    // 通用 MIME 不足以证明类型。PDF 看签名，ZIP 仍须通过完整 XLSX 容器检查。
+    if (/^%PDF-[12]\.\d(?:\s|$)/.test(prefix)) format = 'pdf';
+    else if (prefix.startsWith('PK\x03\x04')) format = 'xlsx';
+    else if (input.finalUrl && /\.csv$/i.test(new URL(input.finalUrl).pathname)) {
+      // CSV 无魔数：还需明确的格式线索和表格文本形状；不把任意文本当 CSV 保存。
+      const lines = input.decodedText.trim().split(/\r?\n/, 2);
+      if (lines.length === 2 && [',', ';', '\t'].some(delimiter =>
+        lines.every(line => line.includes(delimiter)))) format = 'csv';
+    }
+  }
   if (format === 'pdf') {
     if (!/^%PDF-[12]\.\d(?:\s|$)/.test(prefix)) throw invalidFile();
     return { bytes, format: 'pdf' };

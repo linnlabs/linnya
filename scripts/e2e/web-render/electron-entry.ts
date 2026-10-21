@@ -40,6 +40,11 @@ async function run(): Promise<void> {
       response.end();
       return;
     }
+    if (route === '/redirect-site') {
+      response.writeHead(302, { Location: `http://web-render.test:${port}/spa` });
+      response.end();
+      return;
+    }
     if (route === '/popup') {
       state.popupRequests += 1;
       response.end('popup must stay blocked');
@@ -78,7 +83,7 @@ async function run(): Promise<void> {
   });
 
   port = await listen(server);
-  const origin = `http://127.0.0.1:${port}`;
+  const origin = `http://www.web-render.test:${port}`;
   const fixtureRuntime = createElectronWebPageRenderRuntime({
     validateRequestUrl: async () => undefined,
   });
@@ -93,6 +98,7 @@ async function run(): Promise<void> {
   try {
     const spa = await worker.render({ url: `${origin}/spa` });
     const redirected = await worker.render({ url: `${origin}/redirect-same` });
+    const siteRedirected = await worker.render({ url: `${origin}/redirect-site` });
     const timeoutWorker = new WebPageRenderWorker({
       runtime: fixtureRuntime,
       partition: `web-render:e2e-timeout-${process.pid}`,
@@ -121,7 +127,7 @@ async function run(): Promise<void> {
     });
     let privateNetworkKind = '';
     try {
-      await restrictedWorker.render({ url: `${origin}/static` });
+      await restrictedWorker.render({ url: `http://127.0.0.1:${port}/static` });
     } catch (error: unknown) {
       privateNetworkKind = error && typeof error === 'object'
         ? String(Reflect.get(error, 'kind') ?? '')
@@ -144,6 +150,7 @@ async function run(): Promise<void> {
       spaRendered: spa.html.includes('SPA_RENDERED_CONTENT'),
       permissionDenied: spa.html.includes('data-permission="denied"'),
       sameHostRedirected: redirected.finalUrl === `${origin}/spa`,
+      sameSiteRedirected: siteRedirected.finalUrl === `http://web-render.test:${port}/spa`,
       crossRedirectKind,
       timeoutKind,
       privateNetworkKind,
@@ -159,6 +166,9 @@ async function run(): Promise<void> {
 }
 
 app.commandLine.appendSwitch('disable-gpu');
+// 合成域名只在夹具 Chromium 中解析到 localhost；生产 runtime 仍执行正常 URL/DNS 准入。
+app.commandLine.appendSwitch('host-resolver-rules', 'MAP *.web-render.test 127.0.0.1, MAP web-render.test 127.0.0.1');
+app.commandLine.appendSwitch('no-proxy-server');
 // 安全测试会主动销毁最后一个隐藏窗；保持主进程存活以验证下一任务能否重建。
 app.on('window-all-closed', () => undefined);
 app.whenReady()

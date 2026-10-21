@@ -338,6 +338,9 @@ importers:
       tippy.js:
         specifier: ^6.3.7
         version: 6.3.7
+      tldts:
+        specifier: 7.0.19
+        version: 7.0.19
       turndown:
         specifier: 7.2.4
         version: 7.2.4
