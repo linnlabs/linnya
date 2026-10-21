@@ -65,7 +65,15 @@ Use this tool for local CLI programs and file-processing commands. Each call sta
 changing directory or environment variables does not persist into the next call. A short command
 returns its final result. A command still running after the initial wait returns a process handle
 for the process tool. Set interactive only when the command requires a real terminal. Set
-requires_write_access when the command may create, modify, install, move, or delete files.`;
+requires_write_access when the command may create, modify, install, move, or delete files.
+
+The default working directory is this conversation's physical work directory. Use relative OS
+paths for temporary and derived files. workspace:/ documents live in Linnya's database VFS,
+not as ordinary files on disk; use formal document tools to read or change them. conversation:/
+maps to the current conversation directory; file:/// identifies an absolute host file. These
+spaces do not synchronize automatically. Do not search application storage or databases for
+Workspace documents. /tmp is shared across conversations and is outside Linnya's conversation
+cleanup; prefer the current directory unless the user requests another permitted location.`;
 
   readonly parameters: ToolParameterSchema = {
     type: 'object',

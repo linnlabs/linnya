@@ -39,12 +39,14 @@
 
 ## 使用边界
 
-- 文件工具优先，Shell 只补充文件工具无法表达的 CLI、脚本、进程和数据库操作。
+- Workspace 正式文档使用文件工具；物理文件检索、批处理、解析、计算、脚本和进程操作可用 Shell。不同工具的地址空间与组合能力不同，不以降低 Shell 使用比例作为优化目标。
 - 每次调用创建新 Shell；`cd`、环境变量和 PTY 状态不会跨调用持久化。
 - 网络和外部 CLI 按产品合同开放，Linnya 不负责它们的安装、版本或行为。
-- 三档权限都不授予 GUI control；`full_access` 只取消命令审批。Shell 及其后代不得启动新的 GUI、普通 App 身份、Dock tile、控制台窗口或任务栏窗口。
+- 三档权限都不授予 GUI control；`full_access` 取消命令审批，并跳过标准档的命令文件写入边界，仍按当前 OS 用户权限执行。Shell 及其后代不得启动新的 GUI、普通 App 身份、Dock tile、控制台窗口或任务栏窗口。
 - Shell 只理解操作系统文件系统路径。Agent 可以在 Shell 中执行 `pwd` 读取当前物理目录，也可以用 `cwd` 指定物理路径；内部默认目录不会因为工具结果而自动泄露。
 - `/README.md` 这类以 `/` 开头的路径属于 Workspace 文件工具的虚拟路径，不应直接作为 Shell 的 `cwd` 或命令参数使用。
 - Shell 创建的物理文件和 Workspace `write_file` / `edit_file` 写入的 VFS 文档当前没有自动同步。需要让 Shell 读取某份 Workspace 内容时，必须先有明确的物理文件来源；不能假定 VFS 文档已经落在 conversation cwd 中。
+- Shell 主描述对所有 Agent 说明：`workspace:/` 是数据库 VFS 文档，`conversation:/` 对应本次物理工作目录，`file:///` 对应宿主绝对文件；三者不自动同步。不能通过查找应用存储或数据库恢复 Workspace 文档。相对 OS 路径默认落在当前会话，`/tmp` 跨会话共享且不参与 Linnya 会话清理；这不表示操作系统永不清理它。
+- 上述模型说明不是文件隔离。当前 standard/read_only 没有内部目录读取沙箱，`internal_data_access` 只约束正式插件 CLI bridge；host `read_file(file:///...)` 与同用户 localhost 控制接口也不能据此视为已隔离。材料范围、独立项目或命令审批不能替代隔离环境，细节见 [权限设置](../../../domains/commands/features/permission-settings/README.md)。
 
 实现入口：[ShellTool.ts](./ShellTool.ts)。业务测试见同目录 `__tests__` 和 App Host 的 `shell-runtime` integration 测试。Workspace 虚拟路径与 Shell 物理目录的边界见 [Workspace 工具说明](../../workspace/README.md) 和 [Commands README](../../../domains/commands/README.md)。
