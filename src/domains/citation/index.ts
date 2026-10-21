@@ -66,6 +66,11 @@ export type {
   WebCitationSource,
 } from './features/source-resolution/definitions/citationSource';
 export { admitCitationSources } from './features/source-resolution/functions/admitCitationSources';
+export type {
+  DocumentCitationWriteScope,
+  DocumentCitationWriteScopeParams,
+} from './features/source-resolution/definitions/documentCitationWriteScope';
+export { createDocumentCitationWriteScope } from './features/source-resolution/functions/createDocumentCitationWriteScope';
 export { projectConversationCitationSource } from './features/source-resolution/functions/projectConversationCitationSource';
 export type { CitationSourceAnchor } from './shared/definitions/citationSourceAnchor';
 export {

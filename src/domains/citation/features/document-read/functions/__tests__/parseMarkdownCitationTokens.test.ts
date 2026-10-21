@@ -102,3 +102,34 @@ describe('findInvalidMarkdownCitationTokens', () => {
     expect(findInvalidMarkdownCitationTokens('事实 [@Abc234; @Def567]。')).toEqual([]);
   });
 });
+
+
+describe('HTML comment 与 code 的词法保护', () => {
+  it('注释内合法和非法 token 都不是来源，未闭合注释保护到 EOF', () => {
+    const text = '正文 [@Abc234] <!-- 隐藏 [@Def567] [@bad] --> 后文 [@GhJ678]';
+    expect(extractCanonicalCitationRefs(text)).toEqual(['Abc234', 'GhJ678']);
+    expect(findInvalidMarkdownCitationTokens(text)).toEqual([]);
+    expect(extractCanonicalCitationRefs('正文 [@Abc234] <!-- [@Def567]')).toEqual(['Abc234']);
+  });
+
+  it('注释中的反引号不与注释外的反引号配对，不吞正文引用', () => {
+    const text = '<!-- ` [@Def567] --> 正文 [@Abc234] `tail';
+    expect(extractCanonicalCitationRefs(text)).toEqual(['Abc234']);
+    expect(findInvalidMarkdownCitationTokens('<!-- ` [@bad] --> 正文 [@oops] `tail'))
+      .toEqual(['[@oops]']);
+  });
+
+  it('code span 内的注释 opener 不延伸到后面的正文', () => {
+    expect(extractCanonicalCitationRefs('`<!-- [@Def567]` 正文 [@Abc234]'))
+      .toEqual(['Abc234']);
+    expect(findInvalidMarkdownCitationTokens('`<!-- [@bad]` 正文 [@oops]'))
+      .toEqual(['[@oops]']);
+  });
+
+  it('fence 内注释不生效，注释内 fence 也不生效', () => {
+    const codeFirst = ['```md', '<!-- [@Def567]', '```', '正文 [@Abc234]'].join('\n');
+    const commentFirst = ['<!--', '```', '[@Def567]', '-->', '正文 [@Abc234]'].join('\n');
+    expect(extractCanonicalCitationRefs(codeFirst)).toEqual(['Abc234']);
+    expect(extractCanonicalCitationRefs(commentFirst)).toEqual(['Abc234']);
+  });
+});

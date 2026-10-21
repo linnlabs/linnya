@@ -10,4 +10,10 @@ describe('projectMarkdownCitationTokens', () => {
 
     expect(result).toBe('**正文** <ABC234><ABC235>\n\n`[@ABC236]`');
   });
+
+  it('安全回投只改正文引用，HTML comment 与代码中的同名 token 保持逐字不变', () => {
+    const markdown = '<!-- ` [@ABC234] --> 正文 [@ABC234] `<!-- [@ABC234]`';
+    expect(projectMarkdownCitationTokens({ markdown, resolveRef: () => '[@DEF567]' }))
+      .toBe('<!-- ` [@ABC234] --> 正文 [@DEF567] `<!-- [@ABC234]`');
+  });
 });

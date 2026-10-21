@@ -14,39 +14,39 @@ function countRun(text: string, start: number, character: string): number {
   return end - start;
 }
 
-function collectFencedCodeRanges(markdown: string): readonly TextRange[] {
-  const ranges: TextRange[] = [];
-  let open: { readonly start: number; readonly marker: '`' | '~'; readonly length: number } | null =
-    null;
-  let lineStart = 0;
+interface CodeFence {
+  readonly marker: '`' | '~';
+  readonly length: number;
+  readonly suffix: string;
+  readonly lineEnd: number;
+}
 
-  while (lineStart <= markdown.length) {
-    const newlineIndex = markdown.indexOf('\n', lineStart);
-    const lineEnd = newlineIndex === -1 ? markdown.length : newlineIndex + 1;
-    const line = markdown.slice(lineStart, newlineIndex === -1 ? markdown.length : newlineIndex);
-    const match = /^( {0,3})(`{3,}|~{3,})(.*)$/.exec(line);
+function readCodeFence(markdown: string, start: number): CodeFence | null {
+  if (start > 0 && markdown[start - 1] !== '\n') return null;
+  const newline = markdown.indexOf('\n', start);
+  const lineEnd = newline === -1 ? markdown.length : newline + 1;
+  const line = markdown.slice(start, newline === -1 ? markdown.length : newline);
+  const match = /^( {0,3})(`{3,}|~{3,})(.*)$/.exec(line);
+  if (!match) return null;
+  const markerRun = match[2];
+  const marker = markerRun?.[0];
+  if (marker !== '`' && marker !== '~') return null;
+  return { marker, length: markerRun.length, suffix: match[3] ?? '', lineEnd };
+}
 
-    if (match) {
-      const markerRun = match[2];
-      const marker = markerRun[0] as '`' | '~';
-      if (!open) {
-        open = { start: lineStart, marker, length: markerRun.length };
-      } else if (
-        open.marker === marker &&
-        markerRun.length >= open.length &&
-        (match[3] ?? '').trim().length === 0
-      ) {
-        ranges.push({ start: open.start, end: lineEnd });
-        open = null;
-      }
+function findFenceEnd(markdown: string, fence: CodeFence): number {
+  let lineStart = fence.lineEnd;
+  while (lineStart < markdown.length) {
+    const candidate = readCodeFence(markdown, lineStart);
+    if (candidate && candidate.marker === fence.marker &&
+      candidate.length >= fence.length && candidate.suffix.trim().length === 0) {
+      return candidate.lineEnd;
     }
-
-    if (newlineIndex === -1) break;
-    lineStart = newlineIndex + 1;
+    const newline = markdown.indexOf('\n', lineStart);
+    if (newline === -1) break;
+    lineStart = newline + 1;
   }
-
-  if (open) ranges.push({ start: open.start, end: markdown.length });
-  return ranges;
+  return markdown.length;
 }
 
 function isEscaped(text: string, index: number): boolean {
@@ -61,49 +61,59 @@ function isInsideRanges(index: number, ranges: readonly TextRange[]): boolean {
   return ranges.some(range => index >= range.start && index < range.end);
 }
 
-function collectInlineCodeRanges(
-  markdown: string,
-  fencedRanges: readonly TextRange[]
-): readonly TextRange[] {
-  const ranges: TextRange[] = [];
-  let cursor = 0;
-
+function findInlineCodeEnd(markdown: string, start: number, delimiterLength: number): number | null {
+  let cursor = start + delimiterLength;
   while (cursor < markdown.length) {
-    if (isInsideRanges(cursor, fencedRanges)) {
-      const containingRange = fencedRanges.find(
-        range => cursor >= range.start && cursor < range.end
-      );
-      cursor = containingRange?.end ?? cursor + 1;
-      continue;
-    }
-    if (markdown[cursor] !== '`' || isEscaped(markdown, cursor)) {
+    // 行内代码允许软换行，但不跨空段或块级 fence 吞掉后面的正文。
+    if (markdown[cursor] === '\n' && /^\n[\t ]*\r?\n/.test(markdown.slice(cursor))) return null;
+    if (readCodeFence(markdown, cursor)) return null;
+    if (markdown[cursor] !== '`') {
       cursor += 1;
       continue;
     }
-
-    const delimiterLength = countRun(markdown, cursor, '`');
-    let closingStart = cursor + delimiterLength;
-    while (closingStart < markdown.length) {
-      if (isInsideRanges(closingStart, fencedRanges)) break;
-      const candidate = markdown.indexOf('`', closingStart);
-      if (candidate === -1 || isInsideRanges(candidate, fencedRanges)) break;
-      // 行内代码可以跨软换行，不能跨空行连接两个独立段落。
-      // 否则全文扫描会吞掉引用，而 pending 按块扫描又会要求物化同一引用。
-      if (/\r?\n[\t ]*\r?\n/.test(markdown.slice(cursor, candidate))) break;
-      // code span 内反斜杠只是字面内容，不能转义 closing delimiter。
-      // 若在此沿用正文的转义判断，会越过真实闭合位置并吞掉后续正文引用。
-      const candidateLength = countRun(markdown, candidate, '`');
-      if (candidateLength === delimiterLength) {
-        ranges.push({ start: cursor, end: candidate + candidateLength });
-        cursor = candidate + candidateLength;
-        closingStart = -1;
-        break;
-      }
-      closingStart = candidate + candidateLength;
-    }
-    if (closingStart !== -1) cursor += delimiterLength;
+    // code span 中的反斜杠和 <!-- 都是字面内容，不改变闭合 delimiter 的含义。
+    const length = countRun(markdown, cursor, '`');
+    if (length === delimiterLength) return cursor + length;
+    cursor += length;
   }
+  return null;
+}
 
+/**
+ * 按词法顺序接纳保护区，而不是分别扫描代码和注释后再合并。
+ * 先进入的结构拥有其内部文字：注释内反引号不能配到正文，代码内 <!-- 也不能开启注释。
+ */
+function collectProtectedRanges(markdown: string): readonly TextRange[] {
+  const ranges: TextRange[] = [];
+  let cursor = 0;
+  while (cursor < markdown.length) {
+    const fence = readCodeFence(markdown, cursor);
+    if (fence) {
+      const end = findFenceEnd(markdown, fence);
+      ranges.push({ start: cursor, end });
+      cursor = end;
+      continue;
+    }
+    if (markdown.startsWith('<!--', cursor) && !isEscaped(markdown, cursor)) {
+      const closing = markdown.indexOf('-->', cursor + 4);
+      const end = closing === -1 ? markdown.length : closing + 3;
+      ranges.push({ start: cursor, end });
+      cursor = end;
+      continue;
+    }
+    if (markdown[cursor] === '`' && !isEscaped(markdown, cursor)) {
+      const delimiterLength = countRun(markdown, cursor, '`');
+      const end = findInlineCodeEnd(markdown, cursor, delimiterLength);
+      if (end !== null) {
+        ranges.push({ start: cursor, end });
+        cursor = end;
+      } else {
+        cursor += delimiterLength;
+      }
+      continue;
+    }
+    cursor += 1;
+  }
   return ranges;
 }
 
@@ -128,14 +138,10 @@ function isCanonicalCitationGroup(group: string): boolean {
 
 /**
  * 解析 Markdown 正文中的 Citation token，严格复用 canonical Base58 ref 合同。
- * fenced code 与 inline code 只属于文档示例，不能创建引用事实。
+ * fenced code、inline code 与 HTML comment 中的 token 不创建引用事实。
  */
 export function parseMarkdownCitationTokens(markdown: string): readonly MarkdownCitationToken[] {
-  const fencedRanges = collectFencedCodeRanges(markdown);
-  const protectedRanges = [
-    ...fencedRanges,
-    ...collectInlineCodeRanges(markdown, fencedRanges),
-  ].sort((left, right) => left.start - right.start);
+  const protectedRanges = collectProtectedRanges(markdown);
   const tokens: MarkdownCitationToken[] = [];
   let match: RegExpExecArray | null;
 
@@ -169,14 +175,10 @@ export function extractCanonicalCitationRefs(markdown: string): readonly string[
 
 /**
  * 找出正文中完整但不符合 canonical ref 合同的 citation-like token。
- * 与正式解析器共享 fenced/inline code 保护范围，代码示例不会阻塞文档写入。
+ * 与正式解析器共享 code/comment 保护范围，示例与注释不会阻塞文档写入。
  */
 export function findInvalidMarkdownCitationTokens(markdown: string): readonly string[] {
-  const fencedRanges = collectFencedCodeRanges(markdown);
-  const protectedRanges = [
-    ...fencedRanges,
-    ...collectInlineCodeRanges(markdown, fencedRanges),
-  ].sort((left, right) => left.start - right.start);
+  const protectedRanges = collectProtectedRanges(markdown);
   const invalid: string[] = [];
   let match: RegExpExecArray | null;
 
