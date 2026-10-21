@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ShallowWebSearchResultSchema, WebReadResultSchema } from '@app/schemas';
+import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 import { attachCitationRefAllocator, attachCitationSequence } from 'src/domains/citation';
 import { createCitationRefAllocatorFixture } from 'src/domains/citation/testkit/citationRefAllocatorFixture';
 import type { BaseTool, ToolContext } from 'src/tools/types';
@@ -110,8 +111,8 @@ describe('registered tool composition', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const dependencies = createDependencies('Source content');
     const context = createContext();
-    context.runId = 'run-private-arguments';
-    context.parentToolCallId = 'call-private-arguments';
+    context.runId = RunIdSchema.parse('run-private-arguments');
+    context.parentToolCallId = ToolCallIdSchema.parse('call-private-arguments');
     const result = await createRegistry(dependencies).executeTool(
       'search_web', { query: 'private-query-content' }, context,
     );
