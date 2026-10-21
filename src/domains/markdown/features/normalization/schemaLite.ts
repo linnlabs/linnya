@@ -130,6 +130,7 @@ const nodes: Record<string, NodeSpec> = {
       listType: { default: 'bullet' },
       level: { default: 0 },
       start: { default: null },
+      marker: { default: null },
       textAlign: { default: 'left' },
       backgroundColor: { default: null },
       textColor: { default: null },

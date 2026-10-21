@@ -43,3 +43,9 @@ StreamingParser 与 blocks API 共用围栏规则：至少三个连续反引号�
 
 该 package 当前服务 Linnya
 workspace，`private: true`，不单独发布 npm。
+
+## 列表与表格来源属性
+
+列表事件的 `attrs.start` 保存实际数字，`attrs.marker` 保存 `-/*/+` 或有序 delimiter
+`./)`。Node 和 Renderer 物化使用这份正式属性，不从去掉 marker 的正文推断。
+表格事件的 `alignments` 是列对齐的事实源，物化为 cell `align`，导出仍保留冒号位置。

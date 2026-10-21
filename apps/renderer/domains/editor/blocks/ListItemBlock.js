@@ -109,6 +109,12 @@ export const ListItemBlock = Node.create({
           return {}
         }
       },
+      // Markdown 来源 marker；旧文档未保存时保持 canonical 导出，不猜原始写法。
+      marker: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-list-marker'),
+        renderHTML: attributes => attributes.marker ? { 'data-list-marker': attributes.marker } : {},
+      },
       // 文本对齐
       textAlign: {
         default: 'left',

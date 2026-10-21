@@ -33,3 +33,7 @@ source，不能把精确匹配后发生的并发变化覆盖。
 同步提交之前校验，冲突抛出 `MARKDOWN_FILE_WRITE_CONFLICT`，不会用旧快照覆盖新内容。
 provider 不存在或禁用时由本 feature 返回 `WORKSPACE_DOCUMENT_WRITE_PROVIDER_UNAVAILABLE`；
 正文、引用、并发冲突等错误由对应 owner 分类，分派层不吞并或重新包装未知异常。
+
+文档 provider 可以通过 `resolveEquivalentEditText` 提供唯一且语义相同的旧文本拼写。
+它只在通用工具 exact miss 后调用；返回当前原文片段，实际替换和 current snapshot 校验
+仍走原有流程。Markdown 的转义/解析规则属于 Markdown owner，Workspace 不解析 Markdown。

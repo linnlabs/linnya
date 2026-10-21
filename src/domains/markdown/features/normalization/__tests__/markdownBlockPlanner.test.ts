@@ -38,9 +38,9 @@ describe('markdownBlockPlanner', () => {
     expect(result.blocks).toEqual([
       '# 标题',
       '第一段',
-      '* one',
-      '* two',
-      '  * nested',
+      '- one',
+      '- two',
+      '  - nested',
       '| a | b |\n| --- | --- |\n| 1 | 2 |',
       '```latex\nE = mc^2\n```'
     ]);
@@ -97,7 +97,7 @@ describe('markdownBlockPlanner', () => {
       ['- one', '', '```ts', 'const x = 1', '```'].join('\n')
     );
 
-    expect(result.blocks).toEqual(['* one', '```ts\nconst x = 1\n```']);
+    expect(result.blocks).toEqual(['- one', '```ts\nconst x = 1\n```']);
   });
 
   it('preserves headings and fenced code for the long mixed payload regression', async () => {

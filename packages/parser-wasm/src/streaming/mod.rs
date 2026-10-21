@@ -545,7 +545,7 @@ impl StreamingParserCore {
                                         level: Some(indent_level),
                                         list_type: list_type.clone(),
                                         list_level: Some(indent_level),
-                                        attrs: None,
+                                        attrs: Some(crate::list_item_attributes(marker)),
                                     });
                                 }
                                 consumed_offset += nl_pos + 1;
@@ -896,7 +896,7 @@ impl StreamingParserCore {
                     level: Some(indent_level),
                     list_type,
                     list_level: Some(indent_level),
-                    attrs: None,
+                    attrs: Some(crate::list_item_attributes(marker)),
                 });
             } else if let Some(captures) = QUOTE_RE.captures(line) {
                 Self::flush_base_paragraph(&mut events, &mut base_paragraph);

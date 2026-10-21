@@ -33,6 +33,7 @@ export interface TableRowsMaterializationOptions {
 
 export interface TableInlineProjectionGridModel {
   withHeaderRow: boolean
+  alignments?: readonly unknown[]
   header: MarkdownInlineProjection[]
   rows: MarkdownInlineProjection[][]
 }
@@ -51,8 +52,12 @@ export function buildTableRowsFromInlineProjectionGrid(
     return null
   }
 
-  const cellAttrs = {
-    colwidth: [options.defaultColWidth ?? 150],
+  const cellAttrs = (index: number) => {
+    const align = model.alignments?.[index]
+    return {
+      colwidth: [options.defaultColWidth ?? 150],
+      align: align === 'left' || align === 'center' || align === 'right' ? align : null,
+    }
   }
 
   const buildCellContentBlock = (projection: MarkdownInlineProjection): ProseMirrorNode | null => {
@@ -82,7 +87,7 @@ export function buildTableRowsFromInlineProjectionGrid(
     for (const projection of model.header) {
       const contentBlock = buildCellContentBlock(projection)
       if (contentBlock) {
-        headerCells.push(headerCellType.create(cellAttrs, [contentBlock]))
+        headerCells.push(headerCellType.create(cellAttrs(headerCells.length), [contentBlock]))
       }
     }
     if (headerCells.length > 0) {
@@ -95,7 +100,7 @@ export function buildTableRowsFromInlineProjectionGrid(
     for (const projection of row) {
       const contentBlock = buildCellContentBlock(projection)
       if (contentBlock) {
-        cells.push(cellType.create(cellAttrs, [contentBlock]))
+        cells.push(cellType.create(cellAttrs(cells.length), [contentBlock]))
       }
     }
 
@@ -114,6 +119,7 @@ export function buildTableRowsFromTableModel(
 ): ProseMirrorNode[] | null {
   const projectionGrid: TableInlineProjectionGridModel = {
     withHeaderRow: model.with_header_row === true,
+    alignments: Array.isArray(model.alignments) ? model.alignments : [],
     header: Array.isArray(model.header)
       ? model.header
           .filter(isPlainObject)
@@ -335,24 +341,10 @@ export function blockEventsToDocJson(
       const listItemType = schema.nodes.listItemBlock
       if (listItemType) {
         const listType = typeof event.list_type === 'string' ? event.list_type : 'bullet'
-        // 前瞻兼容：未来 WASM 若在 ordered 列表的首项上携带 start
-        // （可能字段：event.list_start、event.start、event.attrs.start），自动读取。
-        // 当前 WASM 不发，则为 null（行为完全等同今天）。
-        let start: number | null = null
-        if (listType === 'ordered') {
-          const candidate =
-            (event as { list_start?: unknown }).list_start ??
-            (event as { start?: unknown }).start ??
-            (event.attrs && typeof event.attrs === 'object'
-              ? (event.attrs as { start?: unknown }).start
-              : undefined)
-          if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0) {
-            start = Math.floor(candidate)
-          } else if (typeof candidate === 'string') {
-            const parsed = parseInt(candidate, 10)
-            if (Number.isFinite(parsed) && parsed > 0) start = parsed
-          }
-        }
+        const attrs = isPlainObject(event.attrs) ? event.attrs : {}
+        const candidate = attrs.start
+        const start = listType === 'ordered' && typeof candidate === 'number' &&
+          Number.isInteger(candidate) && candidate > 0 ? candidate : null
         const node = listItemType.create(
           {
             id: generateBlockId(),
@@ -365,6 +357,7 @@ export function blockEventsToDocJson(
                   ? event.level
                   : 0,
             start,
+            marker: typeof attrs.marker === 'string' ? attrs.marker : null,
           },
           inline ?? undefined
         )

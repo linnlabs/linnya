@@ -17,3 +17,5 @@ export {
   buildMarkdownDocumentFromText,
   type MarkdownTextDocumentBuilder,
 } from './orchestration/buildMarkdownDocumentFromText';
+
+export { resolveMarkdownEscapeEquivalentText } from './functions/resolveMarkdownEscapeEquivalentText';

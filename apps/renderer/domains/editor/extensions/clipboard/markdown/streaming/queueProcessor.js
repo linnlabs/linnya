@@ -209,6 +209,8 @@ function insertNewRootBlock(editor, blockEvent, targetInsertPos) {
     } else if (contentType === 'ListItemBlock') {
         blockAttrs.listType = blockEvent.list_type || 'bullet';
         blockAttrs.level = blockEvent.list_level || 0;
+        blockAttrs.start = typeof blockEvent.attrs?.start === 'number' ? blockEvent.attrs.start : null;
+        blockAttrs.marker = typeof blockEvent.attrs?.marker === 'string' ? blockEvent.attrs.marker : null;
     }
 
     // 特殊处理：TableBlock 需要根据 attrs 中的 TableModel 构建表格节点树

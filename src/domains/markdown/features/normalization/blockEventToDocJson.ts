@@ -145,6 +145,11 @@ function buildTableRowsFromModel(model: UnknownRecord): ProseMirrorJsonNode[] {
   const withHeaderRow = model.with_header_row === true;
   const header = readArray(model.header);
   const bodyRows = readArray(model.rows);
+  const alignments = readArray(model.alignments);
+  const alignAt = (index: number): string | null => {
+    const align = alignments[index];
+    return align === 'left' || align === 'right' || align === 'center' ? align : null;
+  };
 
   const buildCellContentBlock = (cellValue: unknown): ProseMirrorJsonNode | null => {
     if (!isRecord(cellValue)) return null;
@@ -173,7 +178,7 @@ function buildTableRowsFromModel(model: UnknownRecord): ProseMirrorJsonNode[] {
           colspan: 1,
           rowspan: 1,
           colwidth: null,
-          align: null,
+          align: alignAt(headerCells.length),
           style: null
         },
         content: [contentBlock]
@@ -200,7 +205,7 @@ function buildTableRowsFromModel(model: UnknownRecord): ProseMirrorJsonNode[] {
           colspan: 1,
           rowspan: 1,
           colwidth: null,
-          align: null,
+          align: alignAt(cells.length),
           style: null
         },
         content: [contentBlock]
@@ -375,7 +380,9 @@ export function convertBlockEventsToDocJson(
             id: generateEditorBlockId(),
             blockType: 'listItem',
             listType: typeof event.list_type === 'string' ? event.list_type : 'bullet',
-            level: Math.max(0, level)
+            level: Math.max(0, level),
+            start: isRecord(event.attrs) ? readNumber(event.attrs.start) : null,
+            marker: isRecord(event.attrs) && typeof event.attrs.marker === 'string' ? event.attrs.marker : null,
           },
           content: inlineNodes
         })

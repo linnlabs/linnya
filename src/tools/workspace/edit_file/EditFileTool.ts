@@ -28,7 +28,7 @@ import {
 } from '../shared/documentDiagnostics';
 import { workspacePathFromLocator } from '../shared/workspaceFileLocator';
 import { validateWorkspaceFileToolArguments } from '../shared/workspaceFileToolContract';
-import { applyExactTextReplacement } from '../../../features/workspace/document-file-write/functions/applyExactTextReplacement';
+import { applyExactTextReplacement, ExactTextReplacementError, type ExactTextReplacementResult } from '../../../features/workspace/document-file-write/functions/applyExactTextReplacement';
 import type { WorkspaceDocumentFileWriteResult } from '../../../features/workspace/document-file-write/definitions/workspaceDocumentFileWrite';
 import { createFileToolResultCommit } from '../shared/fileToolRecovery';
 
@@ -99,6 +99,7 @@ export class EditFileTool extends BaseTool {
       'Pending revisions are reflected in current content before user acceptance.',
       'The diff shows the requested text change before document normalization; read_file returns the current text for further exact edits.',
       'The edit will fail if old_string is not unique unless replace_all=true.',
+      'For Markdown only, an exact miss may match one uniquely located escape-equivalent spelling after the document owner verifies unchanged Markdown semantics. Whitespace, lists, citations and code are not guessed; replace_all does not apply to equivalent matches.',
       'Success returns changed line ranges and a compact unified diff; stale or ambiguous input returns reread hints.',
       'Only workspace:/... locators are valid here. conversation:/... and file:///... belong to read_file and will be rejected.',
     ].join('\n');
@@ -221,18 +222,31 @@ export class EditFileTool extends BaseTool {
       );
     }
 
-    const replacement = applyExactTextReplacement({
-      source: read.text,
-      oldString,
-      newString,
-      replaceAll: parsedArgs.replace_all,
-    });
-
     const databaseService = context.databaseService;
     if (!databaseService) {
       throw new Error('Workspace database not available in tool context.');
     }
     const resolvedContext = ensureWorkspaceServiceToolContext(context);
+    const resolveProvider = createWorkspaceDocumentFileWriteProviderResolver({
+      db: databaseService.getDb(),
+      context: resolvedContext.context,
+    });
+    let replacement: ExactTextReplacementResult;
+    try {
+      replacement = applyExactTextReplacement({
+        source: read.text, oldString, newString, replaceAll: parsedArgs.replace_all,
+      });
+    } catch (error) {
+      if (!(error instanceof ExactTextReplacementError) || error.code !== 'OLD_STRING_NOT_FOUND') throw error;
+      const provider = resolveProvider(node.type);
+      const equivalent = provider?.enabled && provider.resolveEquivalentEditText
+        ? await provider.resolveEquivalentEditText({ source: read.text, oldString }) : null;
+      if (equivalent === null) throw error;
+      replacement = applyExactTextReplacement({
+        source: read.text, oldString: equivalent, newString, replaceAll: false,
+      });
+    }
+
     const expectedSourceKey = readMetadataString(read.metadata, 'sourceKey');
     const serialize = (write: WorkspaceDocumentFileWriteResult): string => {
       const diagnostics = renderDocumentDiagnostics(write.diagnostics);

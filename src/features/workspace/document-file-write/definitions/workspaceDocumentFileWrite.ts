@@ -49,6 +49,11 @@ export interface WorkspaceDocumentFileWriteProvider {
   readonly displayName: string;
   readonly enabled: boolean;
   readonly disabledMessage: string;
+  /** 文档 owner 可接纳唯一、语义相同的转义拼写；未声明时只允许 exact。 */
+  readonly resolveEquivalentEditText?: (params: {
+    readonly source: string;
+    readonly oldString: string;
+  }) => Promise<string | null>;
   readonly write: (
     request: WorkspaceDocumentFileWriteRequest
   ) => Promise<WorkspaceDocumentFileWriteResult>;

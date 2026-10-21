@@ -10,6 +10,7 @@ import {
   MarkdownDocumentService,
   MarkdownNormalizationService,
   writeMarkdownDocumentFromText,
+  resolveMarkdownEscapeEquivalentText,
 } from '../../../../domains/markdown';
 import { requireCitationSourceResolver } from '../../../../domains/citation';
 import type {
@@ -59,6 +60,7 @@ function createMarkdownFileWriteProvider(params: {
     displayName: 'Markdown',
     enabled: true,
     disabledMessage: 'Markdown 是永久启用的内建文档类型。',
+    resolveEquivalentEditText: resolveMarkdownEscapeEquivalentText,
     write: async request => {
       params.resultCommit?.prepare();
       const formatResult = (

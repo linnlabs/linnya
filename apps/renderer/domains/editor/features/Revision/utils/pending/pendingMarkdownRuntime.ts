@@ -180,10 +180,13 @@ function mapBlockEventToPendingCanonicalBlock(event: BlockEventLike): PendingCan
   }
 
   if (event.block_type === 'ListItemBlock') {
+    const attrs = isRecord(event.attrs) ? event.attrs : {};
     return {
       contentType: 'listItemBlock',
       blockAttrs: {
         listType: typeof event.list_type === 'string' ? event.list_type : 'bullet',
+        ...(typeof attrs.start === 'number' ? { start: attrs.start } : {}),
+        ...(typeof attrs.marker === 'string' ? { marker: attrs.marker } : {}),
         ...(typeof event.list_level === 'number' ? { level: event.list_level } : {}),
       },
       cleanMarkdown: inlineProjection.plainText,

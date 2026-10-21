@@ -51,6 +51,12 @@ static LATEX_END_DOLLAR_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\$\$\s*").un
 static LATEX_END_BRACKET_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\\]\s*").unwrap());
 static LATEX_END_EQUATION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\end\{equation\}\s*").unwrap());
 
+// 列表编号由 parser 记录，导出不能从已经剥掉 marker 的正文猜回。
+fn list_item_attributes(marker: &str) -> serde_json::Value {
+    let start = marker.trim_end_matches(['.', ')']).parse::<u32>().ok();
+    serde_json::json!({ "start": start, "marker": marker.chars().last().map(|c| c.to_string()) })
+}
+
 // BlockState / LatexType / DelimMatcher 已迁移到 streaming 模块，由 StreamingParserCore 内部使用。
 
 // --------- StreamingParser 结构体 ---------
@@ -219,7 +225,7 @@ fn legacy_parse_lines_to_block_events(markdown_input: &str) -> Vec<BlockEvent> {
                     level: Some(indent_level), // Using level for indent here
                     list_type,
                     list_level: Some(indent_level),
-                    attrs: None,
+                    attrs: Some(crate::list_item_attributes(marker)),
                 });
                 event_generated_by_special_rule = true;
             } else if let Some(captures) = QUOTE_RE.captures(line_content) {

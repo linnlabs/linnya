@@ -129,25 +129,29 @@ function repeat(str: string, count: number): string {
  * - 对纯文本中的特殊字符进行转义，避免破坏结构。
  */
 function escapeText(text: string): string {
+  // 普通括号、句中 #/>、词内下划线不是 Markdown delimiter。无条件转义会让
+  // read→edit 的文本漂移；仍保护真正的内联语法和行首结构，不改变字面文本语义。
   return text
-    .replace(/\\/g, '\\\\') // 反斜杠
-    .replace(/\*/g, '\\*') // 星号
-    .replace(/_/g, '\\_') // 下划线
-    .replace(/#/g, '\\#') // 井号
-    .replace(/\[/g, '\\[') // 左方括号
-    .replace(/\]/g, '\\]') // 右方括号
-    .replace(/\(/g, '\\(') // 左圆括号
-    .replace(/\)/g, '\\)') // 右圆括号
-    .replace(/`/g, '\\`') // 反引号
-    .replace(/~/g, '\\~') // 波浪号
-    .replace(/>/g, '\\>') // 大于号
-    .replace(/\|/g, '\\|'); // 竖线
+    .replace(/\\/g, '\\\\')
+    .replace(/([`*\[\]])/g, '\\$1')
+    .replace(/(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/gu, '\\_')
+    .replace(/~(?=~)|(?<=~)~/g, '\\~')
+    .replace(/&(?=(?:#\d+|#x[\da-fA-F]+|[a-zA-Z][a-zA-Z0-9]+);)/g, '\\&')
+    .replace(/<(?=[!/?a-zA-Z])/g, '\\<');
+}
+
+function escapeBlockStart(text: string): string {
+  return text.replace(/^( {0,3})(#{1,6})(?=\s|$)/gm, '$1\\$2')
+    .replace(/^( {0,3})>/gm, '$1\\>')
+    .replace(/^( {0,3})([-+])(?=\s|$)/gm, '$1\\$2')
+    .replace(/^( {0,3}\d{1,9})([.)])(?=\s|$)/gm, '$1\\$2')
+    .replace(/^( {0,3})(=+|-+)(?=\s*$)/gm, '$1\\$2');
 }
 
 function escapeInlineCodeText(text: string): string {
   // 行内代码主要需要处理反引号，否则会破坏包裹。
-  // 这里使用最小转义策略（反引号前加反斜杠）。
-  return text.replace(/`/g, '\\`');
+  // code span 的字面内容保持不变；包装阶段选择足够长的反引号 delimiter。
+  return text;
 }
 
 function escapeLinkHref(href: string): string {
@@ -243,6 +247,15 @@ function renderInlineSegments(segments: readonly InlineSegment[], depth = 0): st
       end += 1;
     }
     const content = renderInlineSegments(segments.slice(index, end), depth + 1);
+    if (wrapper.priority === 10) {
+      // code span 中反斜杠不是转义：用更长 delimiter，避免改写字面代码。
+      const longest = (content.match(/`+/g) ?? []).reduce((length, run) => Math.max(length, run.length), 0);
+      const fence = '`'.repeat(longest + 1);
+      const padding = /^`|`$/.test(content) || (/^ .* $/.test(content) && /[^ ]/.test(content)) ? ' ' : '';
+      result += `${fence}${padding}${content}${padding}${fence}`;
+      index = end;
+      continue;
+    }
     if (!wrapper.expelWhitespace) {
       result += `${wrapper.open}${content}${wrapper.close}`;
       index = end;
@@ -280,7 +293,7 @@ function projectInlineSegments(node: unknown, ctx: InlineSerializeContext): Inli
     const marks = getMarks(n);
     const hasInlineCodeMark = marks.some(m => m.type === 'code');
 
-    // codeBlock 内：不转义（只处理行内 code 的反引号转义）
+    // codeBlock 内保留字面内容；行内 code 在包装阶段处理 delimiter。
     if (ctx.inCodeBlock) {
       return [segment(t, [])];
     }
@@ -369,7 +382,11 @@ function serializeTable(
 
   const [header, ...body] = rows;
   const headerLine = `| ${header.join(' | ')} |`;
-  const sepLine = `| ${header.map(() => '---').join(' | ')} |`;
+  const headerCells = getContent(asNode(getContent(node)[0]));
+  const sepLine = `| ${header.map((_, index) => {
+    const align = getStringAttr(getAttrs(asNode(headerCells[index])), 'align');
+    return align === 'left' ? ':---' : align === 'right' ? '---:' : align === 'center' ? ':---:' : '---';
+  }).join(' | ')} |`;
   const bodyLines = body.map(r => `| ${r.join(' | ')} |`);
   return [headerLine, sepLine, ...bodyLines].join('\n');
 }
@@ -384,7 +401,7 @@ function serializeBlockChild(
 
   if (type === 'baseBlock') {
     const inline = serializeInline(node, { inCodeBlock: false, projectInlineText, projectInlineNode });
-    return inline.trimEnd();
+    return escapeBlockStart(inline).trimEnd();
   }
 
   if (type === 'headingBlock') {
@@ -424,7 +441,11 @@ function serializeBlockChild(
   if (type === 'listItemBlock') {
     const level = getNumberAttr(attrs, 'level') ?? 0;
     const listType = getStringAttr(attrs, 'listType');
-    const marker = listType === 'ordered' ? '1. ' : '* ';
+    const start = getNumberAttr(attrs, 'start') ?? 1;
+    const sourceMarker = getStringAttr(attrs, 'marker');
+    const marker = listType === 'ordered'
+      ? `${Math.max(1, Math.floor(start))}${sourceMarker === ')' ? ')' : '.'} `
+      : `${sourceMarker === '+' || sourceMarker === '*' ? sourceMarker : '-'} `;
     const indent = repeat('  ', Math.max(0, Math.floor(level)));
     const inline = serializeInline(node, { inCodeBlock: false, projectInlineText, projectInlineNode });
 

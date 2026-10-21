@@ -190,9 +190,9 @@ const nodes: { [key: string]: NodeSerializer } = {
         typeof startRaw === 'number' && Number.isFinite(startRaw) && startRaw > 0
           ? Math.floor(startRaw)
           : 1
-      state.write(`${start}. `)
+      state.write(`${start}${node.attrs.marker === ')' ? ')' : '.'} `)
     } else {
-      state.write('* ')
+      state.write(`${node.attrs.marker === '+' || node.attrs.marker === '*' ? node.attrs.marker : '-'} `)
     }
 
     state.renderInline(node)
@@ -238,10 +238,9 @@ const nodes: { [key: string]: NodeSerializer } = {
     const firstCell = node.firstChild
     if (firstCell && firstCell.type.name === 'tableHeader') {
       state.write('|')
-      node.forEach(_cell => {
-        // A simple separator is used. Calculating precise width is complex
-        // and not essential for valid Markdown.
-        state.write('---|')
+      node.forEach(cell => {
+        const align = cell.attrs.align
+        state.write(`${align === 'left' ? ':---' : align === 'right' ? '---:' : align === 'center' ? ':---:' : '---'}|`)
       })
       if (lineBreakStyle === 'newline') {
         state.write('\\n')

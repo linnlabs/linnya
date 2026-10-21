@@ -346,3 +346,10 @@ Workspace 工具不要只测单工具参数校验，至少应覆盖这些真实�
   - `src/electron-main/ipc/handlers/workspace/documents/markdown_document/document-ipc.ts`
   - `packages/plugins/mindmap/src/backend/ipc/mindmap_document/document-ipc.ts`（MindMap 插件 IPC）
   - `src/electron-main/preload/index.ts`（`workspace:*` 与 `plugin:invoke` 通道暴露）
+
+### Markdown 转义等价匹配
+
+`edit_file` 优先匹配当前 VFS 原文。Markdown owner 在 exact miss 时可接纳唯一的
+转义等价范围，并实际解析验证全文语义不变；不合并空白、不改列表编号、不猜 Citation，
+不对多个等价候选使用 `replace_all`。匹配到的是当前文本范围，提交仍使用完整读取快照
+防止并发覆盖。插件与其他文档类型未声明该 provider 能力时只有 exact。

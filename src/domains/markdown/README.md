@@ -57,6 +57,20 @@ current Markdown 投影按连续 mark 范围输出强调，Citation atom 与相�
 验收覆盖创建、待接受预览、接受、正式读回与再导入后的语义一致性；不以 Markdown 字符串不同直接认定
 数据库正文损坏，也不能把不同字符串但相同结构的写入算作一次有效修订。
 
+## 文本投影与精确编辑
+
+普通括号、句中井号/大于号、词内下划线不再无条件加反斜杠；字面强调、链接、
+行首结构和代码仍按实际 Markdown 语义保护。行内代码使用足够长的 delimiter，
+不在 code span 内插入会成为正文的反斜杠。新导入列表的编号和 marker 来自 parser
+`attrs.start/marker`，表格列对齐进入已有 cell `align`；旧 JSON 未保存的样式不能恢复。
+
+`edit_file` 仍先做 exact replacement。仅 exact miss 时，Markdown provider 可以定位一个
+唯一的 ASCII 标点转义等价范围，并用真实导入器对比“当前全文”和“换成请求旧拼写的全文”
+的节点、marks 与属性语义。只有完全等价才接纳。空白、列表符号、编号与 Citation token
+不做猜测，code 内字面反斜杠不等价，多个候选即拒绝（包括 `replace_all=true`）。
+通用 Workspace 工具只调用可选 provider 能力；插件未声明时维持严格 exact。
+读取快照的提交冲突检查保持不变，候选匹配期间发生的编辑仍会阻止提交。
+
 ## Pending 与 Editor 提交
 
 每个 `(documentId, rootBlockId)` 最多一条 Pending。已有提议继续编辑时保持 ID 并递增 `revision`；工具把内容改回基线时撤销该提议，新增后删除会同时移除占位块。File-style 写入先对齐未变段落再规划差异，文首插入不改变后面旧块的身份；批注也跟随对齐后的身份。
