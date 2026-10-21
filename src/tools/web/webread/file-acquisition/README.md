@@ -33,8 +33,13 @@ PDF/XLSX 的 `charCount=0`、`extractor=file_download`，模型通过 Shell 解�
 原件保存为 `web-downloads/<sha256>.<format>`（相对于当前会话 Shell cwd），模式 0600。
 不采用远程文件名，不自动预览/打开。下载区总量 50 MiB，Host 同目录写入串行计量；
 写完整后才发布 hash 路径。同 hash 复用前校验实际字节；原件被改动则明确拒绝，
-不把旧 hash 套到新内容上。衍生输出应另存，Shell 的明确写权限不在此变更。
-静态 symlink/不安全目录条目拒绝；此目录不是针对恶意同权限进程的 OS 沙箱。
+不把旧 hash 套到新内容上。回执明确要求解析文本、表格和脚本放在 `web-downloads/` 之外；Shell 的明确写权限不在此变更。
+配额只计量存储层受管命名候选 `<64位小写sha256>.pdf|csv|xlsx` 的普通文件；解析产物、
+无关名称、目录和 symlink 不算受管原件，也不会仅因它们存在而阻断取得。受管候选若变成目录或
+symlink 则明确拒绝，不沿链接统计；同 hash 目标复用仍执行实际类型、字节长度和 hash 校验，
+文件名本身不证明来源身份。配额拒绝报告 `used/incoming/max` 字节数。当前 50 MiB 是受管
+Web 原件配额，不是整个会话目录的总磁盘配额；Shell 产物由 Commands 原有权限/生命周期管理。
+`web-downloads/` 根目录仍须是当前会话内真实目录；此目录不是针对恶意同权限进程的 OS 沙箱。
 
 文件不进入公共页面文本缓存，返回 `cacheStatus=bypass`（并发 GET 合并仍可为 `coalesced`）。
 重复读取可以重新请求 URL，但同内容不重复保存；不增加第一次读取的网络请求。

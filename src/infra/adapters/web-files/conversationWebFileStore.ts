@@ -7,6 +7,7 @@ import type { WebFileStore } from '../../../tools/web/webread/file-acquisition/d
 
 export const WEB_FILE_CONVERSATION_MAX_BYTES = 50 * 1024 * 1024;
 const pending = new Map<string, Promise<unknown>>();
+const MANAGED_WEB_FILE_NAME = /^[a-f0-9]{64}\.(?:pdf|csv|xlsx)$/;
 
 /** 只序列化同目录的配额/复用事务；生命周期准入仍由 Host 拥有。 */
 async function inDirectory<T>(root: string, operation: () => Promise<T>): Promise<T> {
@@ -77,13 +78,20 @@ export async function saveConversationWebFile(
     }
     let used = 0;
     for (const entry of await readdir(dir, { withFileTypes: true })) {
-      // 不沿 Shell 创建的 symlink 扫描/写入。配额统计当前下载区实际普通文件。
-      if (!entry.isFile()) throw new Error('Web download directory contains a non-file entry.');
-      used += (await lstat(path.join(dir, entry.name))).size;
+      // Shell 解析产物并非 Web 受管原件；只检查存储层命名的候选，且不沿 symlink 计量。
+      // 名称筛选不证明来源身份；实际复用仍由上方目标字节/hash 校验负责。
+      if (!MANAGED_WEB_FILE_NAME.test(entry.name)) continue;
+      const managedStat = await lstat(path.join(dir, entry.name));
+      if (!managedStat.isFile() || managedStat.isSymbolicLink()) {
+        throw new Error(
+          'Managed Web download entry must be a regular file, not a directory or symbolic link.'
+        );
+      }
+      used += managedStat.size;
     }
     if (used + input.bytes.byteLength > maxBytes) {
       throw new Error(
-        `Conversation Web download quota exceeded (${maxBytes} bytes). Remove unneeded downloads before retrying.`
+        `Conversation Web download quota exceeded: used=${used} bytes, incoming=${input.bytes.byteLength} bytes, max=${maxBytes} bytes. Remove unneeded originals before retrying; keep parsed outputs outside web-downloads/.`
       );
     }
     input.signal?.throwIfAborted();

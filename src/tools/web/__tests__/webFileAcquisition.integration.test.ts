@@ -66,7 +66,10 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
     // 夹具只分配一次，避免每次请求都重建几十MiB的无关响应。
     const report30 = sizedPdf(30 * 1024 * 1024);
     const report20 = sizedPdf(20 * 1024 * 1024);
-    const fixtures: Record<string, { mime: string; bytes: Buffer; encoding?: string; chunked?: boolean }> = {
+    const fixtures: Record<
+      string,
+      { mime: string; bytes: Buffer; encoding?: string; chunked?: boolean }
+    > = {
       '/report.pdf': { mime: 'application/pdf', bytes: pdf },
       '/data.csv': { mime: 'application/csv; charset=utf-8', bytes: csv },
       '/text.csv': { mime: 'text/csv', bytes: csv },
@@ -82,7 +85,11 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
       '/large.html': { mime: 'text/html', bytes: Buffer.alloc(5 * 1024 * 1024 + 1, 'a') },
       '/unknown.pdf': { mime: 'application/octet-stream', bytes: report20 },
       '/disguised.pdf': { mime: 'application/pdf', bytes: Buffer.alloc(6 * 1024 * 1024, 'a') },
-      '/compressed.pdf': { mime: 'application/pdf', bytes: gzipSync(sizedPdf(30 * 1024 * 1024 + 1)), encoding: 'gzip' },
+      '/compressed.pdf': {
+        mime: 'application/pdf',
+        bytes: gzipSync(sizedPdf(30 * 1024 * 1024 + 1)),
+        encoding: 'gzip',
+      },
     };
     server = createServer((request, response) => {
       requests.push(request.url ?? '');
@@ -327,6 +334,66 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
     const fixture = await setup();
     await expect(fixture.read(url)).rejects.toThrow();
     expect(await readdir(fixture.directory)).toEqual([]);
+  });
+
+  it('配额只计受管原件；解析产物、普通子目录和无关 symlink 不阻断后续取得', async () => {
+    const fixture = await setup();
+    const original = await fixture.read('/report.pdf');
+    const downloadDir = path.join(fixture.directory, 'web-downloads');
+    await writeFile(path.join(downloadDir, 'parsed.txt'), Buffer.alloc(500));
+    await mkdir(path.join(downloadDir, 'tables'));
+    await writeFile(path.join(downloadDir, 'tables/data.csv'), csv);
+    await symlink(path.join(downloadDir, 'parsed.txt'), path.join(downloadDir, 'parsed-link'));
+    const input: Parameters<WebFileStore['save']>[0] = {
+      bytes: csv,
+      format: 'csv',
+      mimeType: 'text/csv',
+      requestedUrl: origin + '/data.csv',
+      finalUrl: origin + '/data.csv',
+      acquiredAt: new Date().toISOString(),
+    };
+    const acquired = await saveConversationWebFile(
+      fixture.directory,
+      input,
+      pdf.length + csv.length
+    );
+    expect(await readFile(path.join(fixture.directory, acquired.path))).toEqual(csv);
+    expect(original.observation).toContain('outside web-downloads/');
+    await expect(
+      saveConversationWebFile(
+        fixture.directory,
+        {
+          ...input,
+          bytes: Buffer.concat([csv, Buffer.from('one more')]),
+        },
+        pdf.length + csv.length
+      )
+    ).rejects.toThrow(
+      `used=${pdf.length + csv.length} bytes, incoming=${csv.length + 8} bytes, max=${pdf.length + csv.length} bytes`
+    );
+  });
+
+  it('受管名称的 symlink 不作原件复用，也不在其他原件配额计量中被跟随', async () => {
+    const fixture = await setup();
+    const downloadDir = path.join(fixture.directory, 'web-downloads');
+    await mkdir(downloadDir);
+    await writeFile(path.join(fixture.directory, 'parsed.txt'), csv);
+    const hash = createHash('sha256').update(csv).digest('hex');
+    await symlink(
+      path.join(fixture.directory, 'parsed.txt'),
+      path.join(downloadDir, `${hash}.csv`)
+    );
+    const input: Parameters<WebFileStore['save']>[0] = {
+      bytes: csv,
+      format: 'csv',
+      mimeType: 'text/csv',
+      requestedUrl: origin + '/data.csv',
+      finalUrl: origin + '/data.csv',
+      acquiredAt: new Date().toISOString(),
+    };
+    await expect(saveConversationWebFile(fixture.directory, input)).rejects.toThrow();
+    await expect(fixture.read('/report.pdf')).rejects.toThrow('regular file');
+    expect(await readFile(path.join(fixture.directory, 'parsed.txt'))).toEqual(csv);
   });
 
   it('取消、下载目录 symlink 和会话配额均阻止落盘；合法复用不再次扣额', async () => {
