@@ -6,11 +6,11 @@
 
 | 字段 | 必填 | 说明 |
 | --- | --- | --- |
-| `command` | 是 | 完整命令文本，禁止 NUL，受长度限制 |
+| `command` | 是 | 完整命令文本，禁止 NUL，最多 12,000 个 Unicode 字符；长资料使用现有物理文件路径，不把全文粘进命令 |
 | `cwd` | 否 | Shell 的物理工作目录。省略时使用当前对话目录；相对路径会以该目录为基准解析，绝对路径按操作系统路径处理 |
 | `interactive` | 否 | 是否为本次调用启用 PTY |
 | `requires_write_access` | 否 | 只读档位下申请写入审批；不会自行扩大标准/完全访问的文件边界 |
-| `initial_wait_ms` | 否 | 返回 running handle 前的等待时间 |
+| `initial_wait_ms` | 否 | 首次返回 running handle 前等待，最多 30,000 ms，不是总时长；长任务用 `process.wait_timeout_ms` 续等 |
 | `hard_timeout_seconds` | 否 | 命令总运行期限 |
 
 ## 返回结果

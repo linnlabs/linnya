@@ -2,6 +2,7 @@ import {
   CommandAgentRunIdSchema,
   CommandConversationIdSchema,
   CommandOriginToolCallIdSchema,
+  SHELL_COMMAND_MAX_LENGTH,
   SHELL_HARD_TIMEOUT_DEFAULT_SECONDS,
   SHELL_HARD_TIMEOUT_MAX_SECONDS,
   SHELL_HARD_TIMEOUT_MIN_SECONDS,
@@ -66,7 +67,9 @@ requires_write_access when the command may create, modify, install, move, or del
     properties: {
       command: {
         type: 'string',
-        description: 'The exact shell command to run.',
+        minLength: 1,
+        maxLength: SHELL_COMMAND_MAX_LENGTH,
+        description: `The exact shell command to run, at most ${SHELL_COMMAND_MAX_LENGTH} Unicode characters. Pass paths to existing input files instead of embedding entire documents in the command.`,
       },
       cwd: {
         type: 'string',
@@ -83,7 +86,7 @@ requires_write_access when the command may create, modify, install, move, or del
       },
       initial_wait_ms: {
         type: 'number',
-        description: 'How long to wait before returning a running process handle.',
+        description: `Initial wait only, at most ${SHELL_INITIAL_WAIT_MAX_MS} ms; this is not the total command runtime. Longer commands return a handle: use process with wait_timeout_ms to continue waiting. Do not increase this value for long commands.`,
         minimum: SHELL_INITIAL_WAIT_MIN_MS,
         maximum: SHELL_INITIAL_WAIT_MAX_MS,
       },
