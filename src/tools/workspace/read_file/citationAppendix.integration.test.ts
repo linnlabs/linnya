@@ -17,7 +17,7 @@ import { ReadFileTool } from './ReadFileTool';
 const sources: readonly CitationSource[] = [{
   sourceType: 'web', ref: 'Abc234', url: 'https://example.com/report',
   title: '公开报告', snippet: '来源快照原文。'.repeat(150),
-  authors: ['作者'], publishedAt: '2026-01-01', containerTitle: '刊物',
+  authors: ['Alice', 'Bob', 'Carol'], publishedAt: '2026-01-01', containerTitle: '刊物',
 }, {
   sourceType: 'knowledge_base', ref: 'Def567', docId: 'doc-1', blockId: 'block-1',
   kbId: 'kb-1', title: '知识库原件', snippet: '该块的保存原文。',
@@ -129,11 +129,12 @@ describe('citation appendix remains self-contained across document consumers', (
     const copied = await readWorkspace({
       inode: saved.data.inode,
     }, nextContext);
-    // 本批验证来源身份与预算后摘录；既有写入 adapter 的刊名/多作者丢失另列 owner 待办。
+    // 正式 read_file history admission 必须保留快照元数据，不能经搜索卡片摘要缩水。
     const originalSource = read.data.citations?.citations[0];
     expect(copied.data.citations?.citations[0]).toMatchObject({
       ref, sourceType: 'web', url: 'https://example.com/report',
       docTitle: originalSource?.docTitle, snippet: originalSource?.snippet,
+      authors: ['Alice', 'Bob', 'Carol'], publishedAt: '2026-01-01', containerTitle: '刊物',
     });
     expect(fallback).not.toHaveBeenCalled();
   });
