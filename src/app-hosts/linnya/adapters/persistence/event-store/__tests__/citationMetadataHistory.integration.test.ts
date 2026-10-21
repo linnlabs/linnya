@@ -11,7 +11,7 @@ import {
   RunIdSchema,
   ToolCallIdSchema,
 } from '@linnlabs/linnkit/contracts';
-import { WorkspaceReadFileEventResultSchema, type WorkspaceReadFileCitation } from '@app/schemas';
+import { JsonValueSchema, WorkspaceReadFileEventResultSchema, type WorkspaceReadFileCitation } from '@app/schemas';
 import { migrateV66ToV67ConversationCitationMetadata } from '../../../../../../electron-main/services/database/migrations/v66-to-v67-conversation-citation-metadata';
 import { runMigrations } from '../../../../../../electron-main/services/database/migrations';
 import { SqliteSubrunTraceHistoryProjector } from '../../subrun-trace-history/sqliteSubrunTraceHistoryProjector';
@@ -110,7 +110,7 @@ async function seedHistory(store: SQLiteEventStore, db: Database.Database) {
       tool_name: 'read_file',
       tool_call_id: ToolCallIdSchema.parse('call-child-read'),
       status: 'success',
-      output: { data: result.data, observation: result.observation },
+      output: JsonValueSchema.parse({ data: result.data, observation: result.observation }),
     },
   ));
   await store.appendEventToRun(session, routeRuntimeEvent(createFinalAnswerEvent(

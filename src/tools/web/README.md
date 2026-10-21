@@ -481,6 +481,8 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 - citation producer 必须走 toolName 白名单和自己的完整 strict schema；
 - 结构不符合合同时投影失败，禁止猜字段、吞错或空数组降级；
 - live / Subrun 使用 projection-owned workspace，durable window 返回 message dependency sidecar；
+- 接纳后使用完整 `ConversationCitation`，保留作者数组、刊名和日期；搜索 producer 的
+  `author/siteName` 只在 Citation 边界转换一次，读回文档的完整快照不降成搜索摘要结构；
 - hover、复制和另存只读消息 snapshot，不存在全局 citationStore、TTL 或跨 Conversation fallback。
 
 ### 6.2 Popover（Web/KB 分支渲染）
@@ -494,19 +496,21 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 
 ## 7. 导出到编辑器（复制/另存）——已完成
 
-目标：对话侧 Web 引用水合为编辑器 `CitationMark`：
+目标：对话侧 Web 引用水合为编辑器 `CitationNode`：
 
 - `data-source-type="web"`
 - `data-source-id="{canonical_url}"`
 - `data-url="{canonical_url}"`
+- 已取得的完整 `data-authors`、`data-container-title`、`data-date`；Knowledge 来源同时保留 `data-kb-id`
 
 实现：
 
-- 水合：`apps/renderer/domains/conversation/ui/tools/knowledge/clipboard/hydrateKnowledgeCitationsToEditorCitationMarks.ts`
+- 水合：`apps/renderer/domains/conversation/features/citation-presentation/functions/projectConversationCitationsToEditorHtml.ts`
 - 复制：`apps/renderer/domains/conversation/ui/tools/knowledge/clipboard/richClipboardActions.ts`
 - 另存：`apps/renderer/domains/conversation/ui/tools/knowledge/export/saveTurnAnswerAsDocument.ts`
 
-编辑器 mark：`apps/renderer/domains/editor/features/citation/marks/CitationMark.ts`
+编辑器节点：`apps/renderer/domains/editor/features/citation/nodes/CitationNode.ts`。
+富复制与另存共用同一完整来源投影；显示首作者或域名不改变保存的元数据。
 
 ---
 

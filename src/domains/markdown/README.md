@@ -8,6 +8,11 @@ Markdown document-write 接受标准 `[标题](https://...)` 作为 Web 来源�
 
 ## 稳定边界
 
+文档写入从 Citation owner 的完整来源快照构造 hydration。读后写入、重建含引用段落的
+pending、接受修订都必须保留已取得的完整作者数组、刊名、日期和 Knowledge `kbId`；
+不从 Conversation 的显示标签反推字段。未变块保持原快照，拒绝修订保留原基线。
+来源只按既有 resolver 优先级选择一份快照，不把不同读取版本的字段拼成新来源。
+
 - Workspace domain 拥有 `projects`、`workspace_nodes`、路径解析和 VFS 调度。
 - Markdown domain 拥有正文版本、Block 卫星数据、修订、批注、normalization 和文档实例的文本/DocumentView 投影。
 - Asset domain 拥有 `assets` 及资源归属关系；Markdown Block 只引用 asset identity。

@@ -13,7 +13,7 @@ import { saveConversationWebFile } from '../../../infra/adapters/web-files/conve
 import {
   attachCitationRefAllocator,
   attachCitationSequence,
-  projectSearchResultCitationSource,
+  projectConversationCitationSource,
   collectDocumentCitationNodeSnapshots,
 } from '../../../domains/citation';
 import { admitCitationsFromConversationToolOutput } from '../../../domains/citation/conversation-presentation';
@@ -220,7 +220,7 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
       result: JSON.parse(JSON.stringify(result)),
     });
     if (!admitted) throw new Error('Missing Citation admission');
-    const sources = admitted.citations.map(projectSearchResultCitationSource);
+    const sources = admitted.citations.map(projectConversationCitationSource);
     const document = await buildMarkdownDocumentFromText({
       markdown: `文件第 2 页的表格（作者另行核对）[@${ref}]。`,
       normalizer: {
