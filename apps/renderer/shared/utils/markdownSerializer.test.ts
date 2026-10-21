@@ -125,4 +125,24 @@ describe('markdownSerializer', () => {
     expect(serializeMarkdownBlocks(flattenMarkdownDocumentBlocks(roundTrip.docJson))).toBe(markdown);
   });
 
+  it('keeps a list annotation attached while preserving the following tight item and paragraph boundary', async () => {
+    const markdown = '- first\n  + nested\n- next\n\nParagraph.\n\n- restarted';
+    const imported = await importMarkdownToDocJson(markdown);
+    if (!imported.docJson) throw new Error('Missing imported document');
+    const annotation = {
+      id: 'list-note', content: 'Check this item', author: 'User', state: 'confirmed',
+      createdAt: '2026-09-04T00:00:00.000Z', updatedAt: '2026-09-04T00:00:00.000Z',
+      resolvedAt: null, replies: [], meta: { source: 'manual' },
+    };
+    const doc = workspaceMarkdownSchemaLite.nodeFromJSON({
+      ...imported.docJson,
+      content: imported.docJson.content.map((root, index) => index === 0
+        ? { ...root, attrs: { ...root.attrs, annotations: [annotation] } } : root),
+    });
+    const output = createMarkdownSerializer().serialize(doc);
+    const roundTrip = await importMarkdownToDocJson(output);
+    expect(serializeMarkdownBlocks(flattenMarkdownDocumentBlocks(roundTrip.docJson, { includeAnnotations: false }))).toBe(markdown);
+    expect(roundTrip.docJson?.content[0].attrs?.annotations).toEqual([annotation]);
+  });
+
 });

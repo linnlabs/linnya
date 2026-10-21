@@ -86,6 +86,37 @@ function hasEmptyMarkdownAnnotationTarget(node: ProsemirrorNode): boolean {
   return child?.type.name === 'baseBlock' && child.content.size === 0
 }
 
+function renderListItem(state: MarkdownSerializerState, node: ProsemirrorNode, continueList: boolean) {
+  const lineBreakStyle = getLineBreakStyle(state)
+
+  // 根据 level 进行缩进，每个 level 两个空格
+  state.write(state.repeat('  ', node.attrs.level))
+
+  // 列表 marker：
+  // 显式来源编号与 marker 保留；旧节点未记录 marker 时使用 canonical 默认。
+  if (node.attrs.listType === 'ordered') {
+    const startRaw = node.attrs.start
+    const start =
+      typeof startRaw === 'number' && Number.isFinite(startRaw) && startRaw >= 0
+        ? Math.floor(startRaw)
+        : 1
+    state.write(`${start}${node.attrs.marker === ')' ? ')' : '.'} `)
+  } else {
+    state.write(`${node.attrs.marker === '+' || node.attrs.marker === '*' ? node.attrs.marker : '-'} `)
+  }
+
+  state.renderInline(node)
+
+  if (lineBreakStyle === 'newline') {
+    state.write('\\n')
+  } else if (continueList) {
+    // 下一项继续同一紧凑列表：公开 API 只写换行，不安排段落间空行。
+    state.ensureNewLine()
+  } else {
+    state.closeBlock(node)
+  }
+}
+
 // 定义节点序列化规则
 const nodes: { [key: string]: NodeSerializer } = {
   doc(state, node) {
@@ -95,27 +126,25 @@ const nodes: { [key: string]: NodeSerializer } = {
     state.text(node.text || '')
   },
   rootBlock(state, node, parent, index) {
-    const previous = index > 0 ? parent.child(index - 1).firstChild : null
-    if (previous?.type.name === 'listItemBlock' && node.firstChild?.attrs.separatorBefore === 'tight') {
-      // prosemirror-markdown 自身用 flushClose(1) 投影 tight list；扁平 rootBlock 模型
-      // 不创建伪 list 容器，沿用同一间隔实现。此运行 API 由往返测试覆盖。
-      if (!('flushClose' in state) || typeof state.flushClose !== 'function') {
-        throw new Error('Markdown serializer does not expose tight-list block closing')
-      }
-      state.flushClose(1)
-    }
+    const child = node.firstChild
+    const next = index + 1 < parent.childCount ? parent.child(index + 1).firstChild : null
+    const continueList = child?.type.name === 'listItemBlock' &&
+      next?.type.name === 'listItemBlock' && next.attrs.separatorBefore === 'tight'
     const annotations = MarkdownAnnotationsSchema.parse(node.attrs.annotations ?? [])
     const needsEmptyBlockAnchor = annotations.length > 0 && hasEmptyMarkdownAnnotationTarget(node)
     if (needsEmptyBlockAnchor) {
       state.write(encodeMarkdownEmptyBlockAnnotationAnchorComment())
       state.closeBlock(node)
+    } else if (child?.type.name === 'listItemBlock') {
+      renderListItem(state, child, continueList && annotations.length === 0)
     } else {
       state.renderContent(node)
     }
-    for (const annotation of annotations) {
+    for (const [annotationIndex, annotation] of annotations.entries()) {
       state.ensureNewLine()
       state.write(encodeMarkdownAnnotationComment(annotation))
-      state.closeBlock(node)
+      if (continueList && annotationIndex === annotations.length - 1) state.ensureNewLine()
+      else state.closeBlock(node)
     }
   },
   baseBlock(state, node) {
@@ -183,31 +212,7 @@ const nodes: { [key: string]: NodeSerializer } = {
     }
   },
   listItemBlock(state, node) {
-    const lineBreakStyle = getLineBreakStyle(state)
-
-    // 根据 level 进行缩进，每个 level 两个空格
-    state.write(state.repeat('  ', node.attrs.level))
-
-    // 列表 marker：
-    // 显式来源编号与 marker 保留；旧节点未记录 marker 时使用 canonical 默认。
-    if (node.attrs.listType === 'ordered') {
-      const startRaw = node.attrs.start
-      const start =
-        typeof startRaw === 'number' && Number.isFinite(startRaw) && startRaw >= 0
-          ? Math.floor(startRaw)
-          : 1
-      state.write(`${start}${node.attrs.marker === ')' ? ')' : '.'} `)
-    } else {
-      state.write(`${node.attrs.marker === '+' || node.attrs.marker === '*' ? node.attrs.marker : '-'} `)
-    }
-
-    state.renderInline(node)
-
-    if (lineBreakStyle === 'newline') {
-      state.write('\\n')
-    } else {
-      state.closeBlock(node)
-    }
+    renderListItem(state, node, false)
   },
   table(state, node) {
     const lineBreakStyle = getLineBreakStyle(state)
