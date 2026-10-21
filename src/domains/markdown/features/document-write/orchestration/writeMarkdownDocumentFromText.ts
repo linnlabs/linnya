@@ -9,7 +9,7 @@ import { generateRefId } from '../../../../../shared/utils/refIdGenerator';
 import type { PendingRevisionMetadata } from '../../pending-revisions';
 import { buildMarkdownCitationReadProjection } from '../../document-read';
 import { planMarkdownBlocks } from '../../normalization';
-import { serializeMarkdownBlocks, type FlattenedMarkdownBlock } from '../../../shared';
+import { countMarkdownTextCharacters, serializeMarkdownBlocks, type FlattenedMarkdownBlock } from '../../../shared';
 import { normalizeMarkdownCitationTokenSpelling } from '../../../../citation';
 import { planMarkdownBlockWrites } from '../functions/planMarkdownBlockWrites';
 import { assertMarkdownWriteSourceCurrent } from '../functions/assertMarkdownWriteSourceCurrent';
@@ -219,7 +219,6 @@ export async function writeMarkdownDocumentFromText(params: {
       content: params.documentStore.getDocument(params.documentId),
       pendings: params.documentStore.getPendingRevisions(params.documentId),
       viewMode: 'preview',
-      includeAnnotations: false,
     });
     const result: MarkdownFileWriteResult = {
       documentId: params.documentId,
@@ -229,6 +228,7 @@ export async function writeMarkdownDocumentFromText(params: {
       cancelledCount,
       pendingCount: params.documentStore.getPendingRevisions(params.documentId).length,
       citationSourceCount: committedProjection.citationProjection.sources.length,
+      textMetrics: countMarkdownTextCharacters(committedProjection.viewBlocks),
       createdAnnotationIds: annotationMutation.created.map(item => item.annotation.id),
       updatedAnnotationIds: annotationMutation.updated.map(item => item.annotation.id),
       deletedAnnotationIds: annotationMutation.deleted.map(item => item.annotationId),

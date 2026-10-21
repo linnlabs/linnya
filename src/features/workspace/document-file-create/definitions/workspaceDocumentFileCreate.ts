@@ -1,4 +1,5 @@
 import type { WorkspaceDocumentFileWriteDiagnostic } from '../../document-file-write/definitions/workspaceDocumentFileWrite';
+import type { TextCharacterMetrics } from '@app/schemas';
 
 export interface WorkspaceDocumentFileCreateRequest {
   readonly projectId: string;
@@ -15,6 +16,7 @@ export interface WorkspaceCreatedFileIdentity {
 export interface WorkspaceDocumentFileCreateResult {
   readonly documentId: string;
   readonly createdFolders: readonly WorkspaceCreatedFileIdentity[];
+  readonly textMetrics?: TextCharacterMetrics;
   readonly diagnostics?: readonly WorkspaceDocumentFileWriteDiagnostic[];
   readonly buildObservation: (identity: WorkspaceCreatedFileIdentity) => string;
 }

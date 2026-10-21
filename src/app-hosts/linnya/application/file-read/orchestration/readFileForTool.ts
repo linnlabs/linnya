@@ -21,6 +21,8 @@ import {
 import { readWorkspaceDocumentForTool } from 'src/tools/workspace/read_file/workspaceDocumentReadAdapter';
 import { resolveWorkspaceFileToolRuntime } from 'src/tools/workspace/shared/fileToolContext';
 import { toFileToolEntry } from 'src/tools/workspace/shared/fileToolOutput';
+import { countTextCharacters } from 'src/shared/textCharacterMetrics';
+import { prependReadTextMetrics } from 'src/tools/workspace/shared/textMetricsObservation';
 import type { ToolContext } from 'src/tools/types';
 import { PhysicalFileReadError } from '../definitions/physicalFileRead';
 import { hasRunImageAttachment } from '../functions/hasRunImageAttachment';
@@ -159,6 +161,10 @@ async function readPhysicalLocator(input: {
     offset: input.args.offset,
     limit: input.args.limit,
   });
+  const textMetrics = {
+    window: countTextCharacters(window.rawText),
+    full_text: countTextCharacters(read.text),
+  };
   return JSON.stringify(
     WorkspaceReadFileResultSchema.parse({
       data: {
@@ -171,13 +177,14 @@ async function readPhysicalLocator(input: {
         limit: input.args.limit,
         line_count: window.lineCount,
         total_line_count: window.totalLineCount,
+        text_metrics: textMetrics,
         has_more: window.hasMore,
         ...(window.nextOffset !== undefined ? { next_offset: window.nextOffset } : {}),
       },
-      observation: formatTextLineWindow({
+      observation: prependReadTextMetrics(formatTextLineWindow({
         locator: read.locator,
         window,
-      }),
+      }), textMetrics),
     }),
     null,
     2
@@ -332,6 +339,13 @@ async function readWorkspaceLocator(input: {
           citationProjection.sources.length > 0 ? requireCitationSequenceOffset(input.context) : 0,
       })
     : undefined;
+  const returnedText = citationProjection
+    ? citationProjection.remapText(window.rawText)
+    : window.rawText;
+  const textMetrics = {
+    window: countTextCharacters(returnedText),
+    full_text: countTextCharacters(read.text),
+  };
   const data: WorkspaceReadFileResult['data'] = {
     source_kind: 'workspace_vfs',
     locator,
@@ -342,6 +356,7 @@ async function readWorkspaceLocator(input: {
     limit: input.args.limit,
     line_count: window.lineCount,
     total_line_count: window.totalLineCount,
+    text_metrics: textMetrics,
     has_more: window.hasMore,
     ...(window.nextOffset !== undefined ? { next_offset: window.nextOffset } : {}),
     ...(citationFields ?? {}),
@@ -349,12 +364,10 @@ async function readWorkspaceLocator(input: {
   return JSON.stringify(
     WorkspaceReadFileResultSchema.parse({
       data,
-      observation: formatTextLineWindow({
+      observation: prependReadTextMetrics(formatTextLineWindow({
         locator,
         window,
-        text: citationProjection
-          ? citationProjection.remapText(window.rawText)
-          : window.rawText,
+        text: returnedText,
         ...(citationWindow?.observationSuffix
           ? {
               supplement: citationProjection
@@ -362,7 +375,7 @@ async function readWorkspaceLocator(input: {
                 : citationWindow.observationSuffix,
             }
           : {}),
-      }),
+      }), textMetrics),
     }),
     null,
     2

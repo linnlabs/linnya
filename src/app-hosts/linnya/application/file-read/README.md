@@ -22,6 +22,11 @@ Workspace VFS、conversation 工作目录、Assets 和工具运行时之间的 a
 读取合同，只使用 `offset_chars/max_chars`。图片不得携带其中任何一种窗口字段。超长 observation 的
 持久化和字符 cursor 续读仍归 ToolOutputStore，file-read 不复制该能力。
 
+普通文本的 `text_metrics.window` 只数本次实际返回的裸正文窗口；`full_text` 数同一次读取已取得的完整
+源文本。字符按 Unicode code point（含空白与标点），汉字按 `Script=Han`；物理全文保留已解码的源换行，
+行窗口使用既有 LF 投影。计量在加入行号、来源附录和分页提示之前完成，正文 ref 别名变换后计窗口，
+完整源文本不会因跨会话别名改写而变化。DocumentView 与图片不从展示文本推造这两项值。
+
 ## Citation 投影边界
 
 Workspace 文档中的 `CitationNode` 是 Editor 自包含的持久化快照：ref、Knowledge `docId + blockId`、Web

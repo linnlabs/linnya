@@ -1,3 +1,5 @@
+import type { TextCharacterMetrics } from '@app/schemas';
+
 export type WorkspaceDocumentFileWriteOperation = 'write' | 'edit';
 
 /** 只标记已知的 provider admission 失败；正文错误由对应文档 owner 分类。 */
@@ -39,6 +41,8 @@ export interface WorkspaceDocumentFileWriteRequest {
 
 export interface WorkspaceDocumentFileWriteResult {
   readonly observation: string;
+  /** 仅 provider 能证明已保存的完整 current 文本时提供；插件不按请求正文猜测。 */
+  readonly textMetrics?: TextCharacterMetrics;
   readonly diagnostics?: readonly WorkspaceDocumentFileWriteDiagnostic[];
 }
 

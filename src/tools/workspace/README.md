@@ -26,6 +26,16 @@
 
 结构化 DocumentView（例如 MindMap 的 `[#ref]`、outline 和插件 presentation）属于同一工具的显式读取模式，字符窗口只能使用语义明确的 `offset_chars/max_chars`，不复用普通文本的 `offset/limit`。超长普通文本 observation 继续由既有 ToolOutputStore 接管；即使一行很长，也不为 `read_file` 增加第二套字符分页语义。
 
+普通文本读回及支持真实 current 文本的写入 provider 返回可选 `text_metrics`：`characters` 按 Unicode
+code point 计数（含空白、标点、Markdown 语法和正文引用 token），`han_characters` 按 Unicode `Script=Han`
+计数；它不是数据库旧 `char_count` 的“汉字 + 英文词”口径，也不是视觉字素或文章质量指标。
+`write_file/edit_file` 的值绑定实际提交后的完整 current 投影，包含 pending 和批注，不使用请求正文；
+Markdown owner 复用事务内已有块投影累计，不再额外读取/拼接整篇。`read_file` 分别返回 `window` 和
+`full_text`：前者仅计实际返回的正文窗口，后者计本次已取得的完整源文本。行号、续读提示与 Citation
+Sources 附录不计入；物理文本行窗口统一换行成 LF，全文计量保留已解码源文本的 CR/LF。
+新回执的 observation 也报告计量，Agent 无需把整篇粘进 Shell 数字数。DocumentView、图片和没有
+真实保存文本事实的插件写入不伪造计量；历史回执字段缺省表示未记录，不能解释成零。
+
 源文件窗口与调用输出存档分别续读，不能混用 cursor：
 
 - `read_file` 的源分页提示携带当前 locator 和下一窗口参数。普通文本继续使用 1-based 行 `offset`；

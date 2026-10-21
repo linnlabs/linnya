@@ -121,6 +121,7 @@ Conversation Control 协议 4 的 `audit.llm_responses` 是既有审计的安全
 | `src/tools/workspace-file-history.ts` | 旧 path 事件的严格 replay-only 合同；禁止用于 live 工具执行 |
 | `src/user-facing-message.ts` | 可本地化用户消息与通用操作结果 |
 | `src/json-value.ts` | 跨进程和插件扩展允许的递归纯 JSON 值 |
+| `src/text-metrics.ts` | 文本字符/汉字计量及完整源文本与正文窗口的窄合同 |
 | `src/index.ts` | 包根公共出口 |
 
 ## 5. 核心合同

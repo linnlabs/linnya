@@ -31,6 +31,7 @@ import { validateWorkspaceFileToolArguments } from '../shared/workspaceFileToolC
 import { applyExactTextReplacement, ExactTextReplacementError, type ExactTextReplacementResult } from '../../../features/workspace/document-file-write/functions/applyExactTextReplacement';
 import type { WorkspaceDocumentFileWriteResult } from '../../../features/workspace/document-file-write/definitions/workspaceDocumentFileWrite';
 import { createFileToolResultCommit } from '../shared/fileToolRecovery';
+import { appendCurrentTextMetrics } from '../shared/textMetricsObservation';
 
 const MAX_EDIT_SOURCE_CHARS = 1_500_000;
 const MAX_VISIBLE_EDIT_CHANGES = 50;
@@ -97,6 +98,7 @@ export class EditFileTool extends BaseTool {
       `Supports existing Markdown documents and enabled plugin-owned document files. Use write_file to create new files: Markdown accepts no suffix, .md, or .markdown${pluginHint}.`,
       'Markdown edits are written as pending revisions so the user can accept or reject them in the editor.',
       'Pending revisions are reflected in current content before user acceptance.',
+      'Markdown receipts report character and Han counts for actual current full text, including pending revisions and annotations. Characters are Unicode code points including whitespace and punctuation; Han uses Unicode Script=Han. Counts are not the replacement length.',
       'The diff shows the requested text change before document normalization; read_file returns the current text for further exact edits.',
       'The edit will fail if old_string is not unique unless replace_all=true.',
       'For Markdown only, an exact miss may match one uniquely located escape-equivalent spelling after the document owner verifies unchanged Markdown semantics. Whitespace, lists, citations and code are not guessed; replace_all does not apply to equivalent matches.',
@@ -260,6 +262,7 @@ export class EditFileTool extends BaseTool {
           inode: node.inode,
           documentId: node.id,
           node: toFileToolEntry(node),
+          ...(write.textMetrics ? { text_metrics: write.textMetrics } : {}),
           replaced: replacement.count,
           changes,
           ...(changesTruncatedCount > 0 ? { changesTruncatedCount } : {}),
@@ -268,7 +271,7 @@ export class EditFileTool extends BaseTool {
         },
         // data.diff 不会自动进入模型上下文；复用有界替换差异，不冒充规范化后的全文。
         appendDocumentDiagnosticsObservation(
-          `${write.observation}\nRequested exact replacement (before document normalization):\n${replacement.diff}`,
+          `${appendCurrentTextMetrics(write.observation, write.textMetrics)}\nRequested exact replacement (before document normalization):\n${replacement.diff}`,
           diagnostics
         )
       );

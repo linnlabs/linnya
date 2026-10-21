@@ -296,6 +296,8 @@ describe('write_file creates project parent folders', () => {
     const result = await create('workspace:/nested/plugin/report.folder-fixture');
     expect(result.data.created_folders).toHaveLength(2);
     expect(result.data.locator).toBe('workspace:/nested/plugin/report.folder-fixture');
+    expect(result.data.text_metrics).toBeUndefined();
+    expect(result.observation).not.toContain('当前全文（含待确认修订）');
   });
 
   it('插件失败保持错误终态且披露已创建目录，不回删被并发调用复用的目录', async () => {

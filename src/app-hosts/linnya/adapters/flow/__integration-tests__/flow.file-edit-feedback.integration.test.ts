@@ -108,6 +108,8 @@ describe('file edit feedback through durable Flow and the next model request', (
     expect(equivalent.data.replaced).toBe(1);
     expect(equivalent.observation).toContain('本次规范化后正文和批注无变化');
     expect(equivalent.observation).toContain('正文修订 1 块待确认');
+    expect(equivalent.data.text_metrics).toEqual({ characters: 8, han_characters: 5 });
+    expect(equivalent.observation).toContain('当前全文（含待确认修订）：8 字符');
 
     expect(pending.get('real-edit')).toHaveLength(1);
     expect(pending.get('real-edit')?.[0]?.revision).toBe(

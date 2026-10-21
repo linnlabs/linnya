@@ -91,11 +91,15 @@ describe('projectWorkspaceReadFilePresentation', () => {
   });
 
   it('成功阶段严格接纳正式结果并生成读取摘要', () => {
+    const result = successfulResult();
     expect(
       project({
         status: 'success',
         phase: 'complete',
-        result: successfulResult(),
+        result: { ...result, data: { ...result.data, text_metrics: {
+          window: { characters: 7, han_characters: 2 },
+          full_text: { characters: 100, han_characters: 60 },
+        } } },
       })
     ).toMatchObject({
       data: {

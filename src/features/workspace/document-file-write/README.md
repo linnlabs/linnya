@@ -37,3 +37,8 @@ provider 不存在或禁用时由本 feature 返回 `WORKSPACE_DOCUMENT_WRITE_PR
 文档 provider 可以通过 `resolveEquivalentEditText` 提供唯一且语义相同的旧文本拼写。
 它只在通用工具 exact miss 后调用；返回当前原文片段，实际替换和 current snapshot 校验
 仍走原有流程。Markdown 的转义/解析规则属于 Markdown owner，Workspace 不解析 Markdown。
+
+provider 可在成功结果提供 `textMetrics`，只表达实际保存后的完整 current 文本字符数和汉字数；
+Markdown 在提交事务内复用 current 块投影计算，包含 pending 与批注。通用工具将它投影为
+`data.text_metrics` 及模型可见回执。没有实际全文事实的插件不填，不能数写入请求来冒充保存结果；
+这不改变插件写入合同，也不新增隐式读取。计量单位与读取窗口边界见 [Workspace 工具](../../../tools/workspace/README.md)。

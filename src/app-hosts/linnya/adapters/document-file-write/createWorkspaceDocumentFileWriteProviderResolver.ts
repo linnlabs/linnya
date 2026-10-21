@@ -66,6 +66,7 @@ function createMarkdownFileWriteProvider(params: {
       const formatResult = (
         write: Awaited<ReturnType<typeof writeMarkdownDocumentFromText>>
       ): WorkspaceDocumentFileWriteResult => ({
+        textMetrics: write.textMetrics,
         observation: buildMarkdownFileWriteObservation({
           operation: request.operation,
           path: request.identity.path,

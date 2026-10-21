@@ -34,6 +34,7 @@ import { readPersistedWorkspaceVfsNode } from '../../../features/workspace/vfs';
 import type { WorkspaceVfsNode } from '../../../features/workspace/vfs/definitions/workspaceVfsNode';
 import type { WorkspaceDocumentFileCreateResult } from '../../../features/workspace/document-file-create/definitions/workspaceDocumentFileCreate';
 import type { WorkspaceDocumentFileWriteResult } from '../../../features/workspace/document-file-write/definitions/workspaceDocumentFileWrite';
+import { appendCurrentTextMetrics } from '../shared/textMetricsObservation';
 
 function serializeWriteFileResult(
   data: WorkspaceWriteFileResult['data'],
@@ -61,15 +62,16 @@ function serializeCreatedFileResult(
       })),
       documentId: created.documentId,
       node: entry,
+      ...(created.textMetrics ? { text_metrics: created.textMetrics } : {}),
     },
     appendDocumentDiagnosticsObservation(
-      [
+      appendCurrentTextMetrics([
         created.buildObservation({ path: node.path, inode: entry.inode }),
         ...created.createdFolders.map(
           folder =>
             `已创建目录：${formatWorkspaceFileLocator(folder.path)}。inode: ${folder.inode}。`
         ),
-      ].join('\n'),
+      ].join('\n'), created.textMetrics),
       diagnostics
     )
   );
@@ -134,6 +136,7 @@ export class WriteFileTool extends BaseTool {
       `For new files, a missing extensionless path, .md, or .markdown creates Markdown${pluginHint ? `; ${pluginHint.slice(1)}` : ''}.`,
       'Missing intermediate Workspace folders are created automatically; created_folders lists the new folder locators and inodes. Existing files and read-only system views cannot be used as folders.',
       'Markdown writes are stored as pending revisions rather than directly replacing accepted document content.',
+      'Markdown receipts count actual saved current text, including pending revisions and annotations: characters are Unicode code points including whitespace and punctuation; han_characters uses Unicode Script=Han. No need to paste the document into Shell to count it.',
       'Prefer edit_file for targeted changes. Use write_file when rewriting the whole file is intentional.',
       'Only workspace:/... locators are valid here. conversation:/... and file:///... belong to read_file and will be rejected.',
     ].join('\n');
@@ -252,8 +255,11 @@ export class WriteFileTool extends BaseTool {
           created_folders: [],
           documentId: node.id,
           node: toFileToolEntry(node),
+          ...(write.textMetrics ? { text_metrics: write.textMetrics } : {}),
         },
-        appendDocumentDiagnosticsObservation(write.observation, diagnostics)
+        appendDocumentDiagnosticsObservation(
+          appendCurrentTextMetrics(write.observation, write.textMetrics), diagnostics
+        )
       );
     };
     const write = await writeWorkspaceDocumentFile({

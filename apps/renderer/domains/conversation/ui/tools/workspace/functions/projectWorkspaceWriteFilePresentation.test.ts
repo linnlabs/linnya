@@ -80,11 +80,12 @@ describe('projectWorkspaceWriteFilePresentation', () => {
   });
 
   it('成功阶段严格接纳公共写入事实并生成文档链接', () => {
+    const result = successfulResult();
     expect(
       project({
         status: 'success',
         phase: 'complete',
-        result: successfulResult(),
+        result: { ...result, data: { ...result.data, text_metrics: { characters: 100, han_characters: 60 } } },
       })
     ).toMatchObject({
       data: {

@@ -9,6 +9,7 @@
 // ============ API DTO 相关 ============
 export * from './api-dtos';
 export * from './json-value';
+export * from './text-metrics';
 export * from './model-inference';
 export * from './document-ocr';
 export * from './transcription';

@@ -100,6 +100,11 @@ admission 的完整 current 投影（包含 pending），按该投影的来源�
 这是模型可见的中性状态，不证明来源已核验、关键主张均有支持或研究报告已合格。
 回执与本次提交绑定；后续 Editor 接受/拒绝修订不会追溯修改历史回执。通用工具参数和插件写入合同不变。
 
+文本计量复用同一提交后 current 块投影，按普通 VFS 文本语义累计字符和汉字（包含 pending、批注、
+Markdown 标记与正文引用 token）。字符按 Unicode code point、汉字按 `Script=Han`，不读取数据库
+旧 `char_count`，不统计来源附录，也不为计量重新构造整篇正文。Host 通过窄 provider 结果投影到
+`write_file/edit_file` 的可选 `text_metrics`；保存请求的原始长度不能替代实际规范化结果。
+
 `edit_file` 的读取快照通过 `expectedCurrentText` 进入 document-write；解析完成后按与 VFS 相同的
 Citation-aware current 投影比较（包括正文、pending 和批注），不一致时返回
 `MARKDOWN_FILE_WRITE_CONFLICT` 并要求重读。比较与事务之间不得增加异步等待。

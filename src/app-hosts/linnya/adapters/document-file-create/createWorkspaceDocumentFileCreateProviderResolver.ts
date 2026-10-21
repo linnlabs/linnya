@@ -8,6 +8,7 @@ import {
 import {
   buildMarkdownDocumentFromText,
   buildMarkdownCitationReadProjection,
+  countMarkdownTextCharacters,
   MarkdownDocumentService,
   MarkdownNormalizationService,
 } from '../../../../domains/markdown';
@@ -125,15 +126,16 @@ function createMarkdownFileCreateProvider(params: {
           );
           documentStore.createDocument(documentId, built.content);
           // 与编辑回执使用同一领域投影；普通链接、代码中的引用示例不冒充来源。
-          const citationSourceCount = buildMarkdownCitationReadProjection({
+          const currentProjection = buildMarkdownCitationReadProjection({
             content: documentStore.getDocument(documentId),
             pendings: [],
             viewMode: 'preview',
-            includeAnnotations: false,
-          }).citationProjection.sources.length;
+          });
+          const citationSourceCount = currentProjection.citationProjection.sources.length;
           const result: WorkspaceDocumentFileCreateResult = {
             documentId,
             createdFolders: parent.createdFolders,
+            textMetrics: countMarkdownTextCharacters(currentProjection.viewBlocks),
             buildObservation: identity =>
               `已创建 Markdown 文件：${identity.path}。inode: ${identity.inode}。${citationSourceCount > 0 ? `当前全文可解析引用来源：${citationSourceCount}。` : ''}`,
           };

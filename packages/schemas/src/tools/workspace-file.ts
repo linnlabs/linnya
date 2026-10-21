@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TextCharacterMetricsSchema, TextReadMetricsSchema } from '../text-metrics';
 import {
   WorkspaceDocumentCitationDiagnosticSchema,
   WorkspaceDocumentKnowledgeCitationSourceSchema,
@@ -361,6 +362,7 @@ const WorkspaceReadFileVfsResultSchema = z
         limit: PositiveIntegerSchema.max(WORKSPACE_READ_FILE_MAX_LIMIT),
         line_count: NonNegativeIntegerSchema,
         total_line_count: NonNegativeIntegerSchema,
+        text_metrics: TextReadMetricsSchema.optional(),
         has_more: z.boolean(),
         next_offset: PositiveIntegerSchema.optional(),
         ...WorkspaceReadFileCitationFieldsSchema,
@@ -433,6 +435,7 @@ const PhysicalTextResultFields = {
   limit: PositiveIntegerSchema.max(WORKSPACE_READ_FILE_MAX_LIMIT),
   line_count: NonNegativeIntegerSchema,
   total_line_count: NonNegativeIntegerSchema,
+  text_metrics: TextReadMetricsSchema.optional(),
   has_more: z.boolean(),
   next_offset: PositiveIntegerSchema.optional(),
 };
@@ -685,6 +688,7 @@ export const WorkspaceWriteFileResultSchema = z
           .optional(),
         documentId: NonEmptyStringSchema,
         node: WorkspaceFileEntrySchema,
+        text_metrics: TextCharacterMetricsSchema.optional(),
         diagnostics: z.array(WorkspaceDocumentDiagnosticSchema).max(20).readonly().optional(),
         diagnosticsTruncatedCount: PositiveIntegerSchema.optional(),
       })
@@ -752,6 +756,7 @@ export const WorkspaceEditFileResultSchema = z
         inode: NonEmptyStringSchema,
         documentId: NonEmptyStringSchema,
         node: WorkspaceFileEntrySchema,
+        text_metrics: TextCharacterMetricsSchema.optional(),
         replaced: PositiveIntegerSchema,
         changes: z
           .array(

@@ -25,6 +25,7 @@ export class ReadFileTool extends BaseTool {
       'Read a project VFS file, a current-conversation file, or a host absolute file through one explicit locator contract.',
       'Use workspace:/..., conversation:/..., or file:///...; bare paths are invalid and never trigger source guessing.',
       'Text uses the mainstream 1-based line window: offset is the starting line and limit is the maximum number of lines. Returned source lines are numbered for precise grep/edit/inspect follow-up.',
+      'Plain-text receipts give character and Han counts for this returned body window and the complete source text. Characters are Unicode code points including whitespace and punctuation; Han uses Unicode Script=Han. Counts exclude line labels, paging hints and citation source appendices. Structured DocumentView and images do not report these text counts.',
       'Structured DocumentView alone uses offset_chars/max_chars. JPEG, PNG, and WebP are verified and attached automatically; identical pixels already attached in the current run are not injected again.',
       'If a tool-output truncation hint appears, use its tool_output_read call to finish this returned window before following the file next-page hint. Blob character offsets are not file line numbers or DocumentView offsets.',
       'PDF, Office, archives, other binary formats, and unsupported encodings must first be converted with Shell/CLI.',

@@ -30,7 +30,7 @@ describe('read_file host locator 与命令权限边界', () => {
     const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-read-file-host-'));
     temporaryRoots.push(root);
     const filePath = path.join(root, '外部 报告.md');
-    const content = '# 外部报告\n同一只读合同。\n';
+    const content = '# 外部报告\r\n同一只读合同𠀀🙂。\r\n';
     await fsp.writeFile(filePath, content, 'utf8');
     const locator = formatHostFileLocator(filePath);
     const permissionLevels: readonly CommandPermissionLevel[] = [
@@ -82,11 +82,17 @@ describe('read_file host locator 与命令权限边界', () => {
         file_name: '外部 报告.md',
         content_type: 'text/markdown',
         byte_length: Buffer.byteLength(content),
+        text_metrics: {
+          window: { characters: 17, han_characters: 11 },
+          full_text: { characters: 19, han_characters: 11 },
+        },
       });
       observations.push(result.observation);
     }
 
-    expect(new Set(observations)).toEqual(new Set(['1 | # 外部报告\n2 | 同一只读合同。\n3 | ']));
+    expect(new Set(observations).size).toBe(1);
+    expect(observations[0]).toContain('本次正文窗口');
+    expect(observations[0]).toContain('1 | # 外部报告\n2 | 同一只读合同𠀀🙂。\n3 | ');
     expect(ingestLocalImage).not.toHaveBeenCalled();
     expect(issueClaims).not.toHaveBeenCalled();
   });

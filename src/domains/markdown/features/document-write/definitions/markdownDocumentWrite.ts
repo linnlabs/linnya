@@ -1,6 +1,7 @@
 import type { PendingRevisionMetadata } from '../../pending-revisions';
 import type { DocumentVersion } from '../../document-storage';
 import type { MarkdownDocJson } from '../../normalization/runtime';
+import type { TextCharacterMetrics } from '@app/schemas';
 
 export type MarkdownFileWriteOperation = 'update' | 'insert' | 'delete';
 
@@ -26,6 +27,8 @@ export interface MarkdownFileWriteResult {
   readonly pendingCount: number;
   /** 提交后完整 current 视图中已接纳的去重来源数，不代表来源已核验。 */
   readonly citationSourceCount: number;
+  /** 实际提交后 current 全文（含 pending 与批注）的字符计量。 */
+  readonly textMetrics: TextCharacterMetrics;
   readonly currentText: string;
   readonly targetText: string;
   readonly createdAnnotationIds: readonly string[];
