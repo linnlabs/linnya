@@ -4,6 +4,7 @@ import {
   findInvalidMarkdownCitationTokens,
   parseMarkdownCitationTokens,
 } from '../parseMarkdownCitationTokens';
+import { projectMarkdownCitationTokens } from '../projectMarkdownCitationTokens';
 
 describe('Markdown citation token protocol', () => {
   it('按正文顺序解析单条、聚合与模型转义写法', () => {
@@ -131,5 +132,106 @@ describe('HTML comment 与 code 的词法保护', () => {
     const commentFirst = ['<!--', '```', '[@Def567]', '-->', '正文 [@Abc234]'].join('\n');
     expect(extractCanonicalCitationRefs(codeFirst)).toEqual(['Abc234']);
     expect(extractCanonicalCitationRefs(commentFirst)).toEqual(['Abc234']);
+  });
+});
+
+
+describe('链接 destination/title 不参与引用接纳或别名回投', () => {
+  const protectedLinks = [
+    '[文章](https://example.com/[@Abc234] "标题 [@bad]")',
+    "![图片](<https://example.com/a([@Abc234])> '标题 [@bad]')",
+    '[文章](https://example.com/a([@Abc234]) (标题 [@bad]))',
+    '<https://example.com/[@Abc234]>',
+    String.raw`[文章](https://example.com/\([@Abc234]\) "引号\" [@bad]")`,
+    '[source]: https://example.com/[@Abc234] "标题 [@bad]"',
+    '[source]:\n <https://example.com/[@Abc234]>\n "标题 [@bad]"',
+    "[source]: https://example.com/[@Abc234]\n '多行\n标题 [@bad]'",
+  ];
+
+  it.each(protectedLinks)('只改可见正文，不改目的地址和title：%s', link => {
+    const markdown = `${link}\n\n正文 [@Abc234]`;
+    expect(extractCanonicalCitationRefs(markdown)).toEqual(['Abc234']);
+    expect(parseMarkdownCitationTokens(markdown)).toHaveLength(1);
+    expect(findInvalidMarkdownCitationTokens(markdown)).toEqual([]);
+    expect(projectMarkdownCitationTokens({ markdown, resolveRef: () => '[@Def567]' }))
+      .toBe(`${link}\n\n正文 [@Def567]`);
+  });
+
+  it('可见link label内真正的引用仍然生效，目的区的同名token不变', () => {
+    const markdown = '[见 [@Abc234]](https://example.com/[@Abc234] "[@bad]")';
+    expect(extractCanonicalCitationRefs(markdown)).toEqual(['Abc234']);
+    expect(findInvalidMarkdownCitationTokens(markdown)).toEqual([]);
+    expect(projectMarkdownCitationTokens({ markdown, resolveRef: () => '[@Def567]' }))
+      .toBe('[见 [@Def567]](https://example.com/[@Abc234] "[@bad]")');
+  });
+
+  it.each([
+    '(普通括号 [@Abc234])',
+    '\\[label](https://example.com/[@Abc234])',
+    '[label] (https://example.com/[@Abc234])',
+    '没有label]([@Abc234])',
+    '[label](https://example.com/[@Abc234]',
+    '[label](https://example.com/[@Abc234] "未闭合title)',
+    '[broken\n\n](https://example.com/[@Abc234])',
+  ])('未构成链接的字面正文仍校验与回投：%s', markdown => {
+    expect(extractCanonicalCitationRefs(markdown)).toEqual(['Abc234']);
+    expect(projectMarkdownCitationTokens({ markdown, resolveRef: () => '[@Def567]' }))
+      .toBe(markdown.replace('[@Abc234]', '[@Def567]'));
+    expect(findInvalidMarkdownCitationTokens(markdown.replace('[@Abc234]', '[@bad]')))
+      .toEqual(['[@bad]']);
+  });
+
+  it('目的区先进入的反引号或comment不是词法指令，不吞后续正文', () => {
+    const link = '[文章](https://example.com/` "<!-- [@bad]")';
+    const markdown = `${link} 正文 [@Abc234] \`tail\``;
+    expect(extractCanonicalCitationRefs(markdown)).toEqual(['Abc234']);
+    expect(findInvalidMarkdownCitationTokens(markdown)).toEqual([]);
+    expect(projectMarkdownCitationTokens({ markdown, resolveRef: () => '[@Def567]' }))
+      .toBe(`${link} 正文 [@Def567] \`tail\``);
+  });
+
+  it('code/comment先进入时仍保护其中的link，label内code中的假闭合不结束链接', () => {
+    const markdown = [
+      '`[例](https://example.com/[@Def567])`',
+      '<!-- [例](https://example.com/[@bad]) -->',
+      '[见 `](假链接<!--` [@Abc234]](https://example.com/[@Def567])',
+    ].join('\n\n');
+    expect(extractCanonicalCitationRefs(markdown)).toEqual(['Abc234']);
+    expect(findInvalidMarkdownCitationTokens(markdown)).toEqual([]);
+  });
+
+  it('内层link使外层不再是链接，但image可位于真正的link label中', () => {
+    expect(extractCanonicalCitationRefs(
+      '[outer [inner](https://example.com/[@Def567])](literal/[@Abc234])',
+    )).toEqual(['Abc234']);
+    expect(extractCanonicalCitationRefs(
+      '[![image](https://example.com/[@Def567]) [@Abc234]](https://example.com/[@Def567])',
+    )).toEqual(['Abc234']);
+  });
+
+  it('reference定义后的普通段落与无效title仍保留正文引用语义', () => {
+    const markdown = '[source]: https://example.com/[@Def567]\n正文 [@Abc234]';
+    expect(extractCanonicalCitationRefs(markdown)).toEqual(['Abc234']);
+    expect(findInvalidMarkdownCitationTokens(
+      '[source]: https://example.com/[@Def567]\n "未闭合title [@bad]',
+    )).toEqual(['[@bad]']);
+  });
+});
+
+
+describe('词法保护区不与正文跨界配对 Citation token', () => {
+  it.each([
+    '[链接](https://example.com/[@) 正文 [@Abc234]',
+    '[链接](https://example.com/ "半截 [@") 正文 [@Abc234]',
+    '<https://example.com/[@> 正文 [@Abc234]',
+    '[source]: https://example.com/[@\n\n正文 [@Abc234]',
+    '`半截 [@` 正文 [@Abc234]',
+    '<!-- 半截 [@ --> 正文 [@Abc234]',
+  ])('保护区内半截不吞后续正文：%s', markdown => {
+    expect(extractCanonicalCitationRefs(markdown)).toEqual(['Abc234']);
+    expect(findInvalidMarkdownCitationTokens(markdown.replace('[@Abc234]', '[@bad]')))
+      .toEqual(['[@bad]']);
+    expect(projectMarkdownCitationTokens({ markdown, resolveRef: () => '[@Def567]' }))
+      .toBe(markdown.replace('[@Abc234]', '[@Def567]'));
   });
 });
