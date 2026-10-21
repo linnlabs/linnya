@@ -371,6 +371,22 @@ describe('Workspace edits keep document sources separate from conversation alias
     });
   });
 
+  it('原引用整块待删除后写回读到的原稿，撤销删除并恢复原文档 ref', async () => {
+    await withFixture('collision-current', async f => {
+      const alias = await aliasOf(f);
+      const before = f.stateHash();
+      await f.edit(`主结论 [@${alias}]。`, '');
+      expect(f.state().pending).toHaveLength(1);
+      expect(f.state().pending[0]?.operation).toBe('delete');
+      expect((await f.read()).data.citations?.citations ?? []).toEqual([]);
+      await f.write(f.originalBody.replaceAll(`[@${f.persistedRef}]`, `[@${alias}]`));
+      expect(f.state().pending).toHaveLength(0);
+      expect(f.stateHash()).toBe(before);
+      expectTargetSource(f.sources(), f.persistedRef);
+      expectTargetSource((await f.read()).data.citations?.citations ?? []);
+    });
+  });
+
   it('删除唯一引用不保留空来源，也不需要猜测旧别名', async () => {
     await withFixture('legacy', async f => {
       const alias = await aliasOf(f);
