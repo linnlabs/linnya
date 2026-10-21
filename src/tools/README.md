@@ -4,7 +4,7 @@
 > 目录下创建、实现和注册自定义工具的完整指南。遵循这些规范是确保工具能够被Agent系统正确识别、调用和管理的关键。
 
 > **配套阅读**：Linnkit 的通用执行协议见
-> [独立 Linnkit 仓的 `src/runtime-kernel/tools/README.md`](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/tools/README.md)，接入说明见
+> [独立 Linnkit 仓的工具合同](https://github.com/linnlabs/linnkit/blob/main/src/runtime-kernel/tools/toolContracts.ts)，接入说明见
 > [独立 Linnkit 仓的 `docs/integration/tools.md`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/tools.md)，完整通用规范见
 > [独立 Linnkit 仓的 `docs/integration/tool-development-guide.md`](https://github.com/linnlabs/linnkit/blob/main/docs/integration/tool-development-guide.md)。本文件在这些通用合同之上补充 Linnya
 > concrete tool 的目录、参数可读性、产品结果和 Renderer 约定。

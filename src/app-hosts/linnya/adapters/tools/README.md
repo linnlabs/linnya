@@ -102,6 +102,11 @@ tool owner 前共用同一检查；拒绝分别返回 `REGISTERED_ROOT_TOOL_NOT_
 `REGISTERED_CHILD_TOOL_NOT_ALLOWED`。空数组禁止所有正式工具，`undefined` 不增加限制。
 没有 Agent scope 的外部人工/API 调用继续遵循自己的接入合同，不会被冒充为根 Agent。
 
+默认 `BaseTool` 的未知顶层字段反馈由正式 Linnkit 包提供：列出 schema 合法字段，仅对唯一的近似
+拼写给提示，不自动改参。覆盖 `validateArguments` 的具体工具继续使用自己的 owner parser；
+Host registry 只转交结果，不再复制一套通用字段匹配规则。深层 admission 先于 start，仍以
+具体工具的正式合同为准。
+
 Host 明确接纳的强制入口只授权原始 `{toolName, toolCallId}`，不把工具名加入模型名单。身份从
 冻结执行选项和当前 run 的首条正式工具决定绑定；开始使用 bootstrap，继续/交互恢复使用原
 checkpoint 的完整 history，不从新请求或模型 metadata 猜测。已产生结果的 call 不能被模型重用
