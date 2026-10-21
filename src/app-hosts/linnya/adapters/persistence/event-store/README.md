@@ -78,6 +78,13 @@ Host Web adapter 用此投影生成访问反馈；业务分类及用户文案仍
 校验继续生效，本读取不重建完整 RuntimeEvent，不能供 Agent 上下文回放或替代 storage codec 的完整读取。
 删除/截断与重载直接反映到查询；没有单独计数需要同步或清理。
 
+`readConversationWebSourceUrls` 是另一条只读窄投影：只从当前会话（含 child）成功的
+`web_search/search_web/web_read` 输出读取 `data.citations.citations[].url`，以及成功读取的
+`data.resources[].url`、受管原件的 `data.file.requestedUrl/finalUrl`。查询逐条交付
+`runId/toolCallId/url`，不把正文、observation、错误或模型请求参数带入调用方；也不扫描任意
+JSON 字段里的 URL。它仅回答地址是否曾被正式结果交付，不证明当前页面可读或内容可信。
+URL 身份归一和具体提示由 Host/Web owner 负责；没有新缓存、索引或可独立漂移的状态。
+
 ## UI 投影不变量
 
 - 增量写入与全量 rebuild 必须复用同一 routing admission 和事件投影规则。

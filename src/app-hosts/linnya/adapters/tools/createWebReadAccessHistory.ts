@@ -1,7 +1,8 @@
 import type Database from 'better-sqlite3';
-import { readConversationToolHistory, type ConversationToolHistoryRow } from '../persistence/event-store';
+import { readConversationToolHistory, readConversationWebSourceUrls, type ConversationToolHistoryRow } from '../persistence/event-store';
 import { isWebAccessBlockKind } from 'src/tools/web/shared/webFailure';
 import type { WebReadAccessCounts, WebReadAccessHistoryPort } from 'src/tools/web/webread/definitions/webReadAccessHistory';
+import { normalizeUrl } from 'src/tools/web/websearch/citations/normalizeUrl';
 
 function readRequestedHostname(argumentsJson: string | null): string | undefined {
   if (argumentsJson === null) return undefined;
@@ -53,6 +54,14 @@ export function createWebReadAccessHistory(getDatabase: () => Database.Database,
   return {
     read(params) {
       return countAccess(readConversationToolHistory(getDatabase(), conversationId, 'web_read'), params);
+    },
+    hasObservedUrl(params) {
+      const requestedUrl = normalizeUrl(params.url);
+      for (const source of readConversationWebSourceUrls(getDatabase(), conversationId)) {
+        if (source.runId === params.currentRunId && source.toolCallId === params.currentToolCallId) continue;
+        if (normalizeUrl(source.url) === requestedUrl) return true;
+      }
+      return false;
     },
   };
 }

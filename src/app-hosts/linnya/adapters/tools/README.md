@@ -89,6 +89,12 @@ SQL 排序流式返回身份/参数/终态，聚合只保留一条调用，不�
 旧未分类错误单列，暂停中的无终态调用不计；重载、删除和截断直接跟随正式事实。详见
 [Web 同主机反馈](../../../../tools/web/README.md#511-同主机访问拦截反馈)。
 
+同一 port 的可选 `hasObservedUrl` 用于失败后的地址来历核对。Host 只消费 EventStore 正式成功
+Web 结果里的来源 URL、资源链接和原件取得地址，并复用 Web/Citation 的 `normalizeUrl` 身份规则；
+排除当前 `runId/toolCallId`。失败请求、任意正文/observation 和其他会话都不是已发现地址的依据。
+没有该 Host 能力的独立测试/工具组合不得把能力缺失解释为“地址未出现”。结果仅描述正式工具
+交付历史；没有命中不能断言作者编造了 URL，也不能证明该地址在网页上不存在。
+
 `conversation-scope` 也位于 app-level adapter，因为 `research.instanceId` 是 Linnya 产品的
 存储分区语义，不属于 Linnkit 通用 ToolExecutionContext。该 feature 不读写任何产物，
 也不使用 `Artifact` 作为泛化命名。

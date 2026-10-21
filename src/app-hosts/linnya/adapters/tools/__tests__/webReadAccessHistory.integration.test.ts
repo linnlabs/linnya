@@ -8,7 +8,7 @@ import {
   createToolCallDecisionEvent, createToolOutputEvent, routeRuntimeEvent,
   RunIdSchema, ToolCallIdSchema, type RoutedRuntimeEvent,
 } from '@linnlabs/linnkit/contracts';
-import { WebReadResultSchema } from '@app/schemas';
+import { WebReadResultSchema, WebSearchResultSchema } from '@app/schemas';
 import { attachCitationRefAllocator, attachCitationSequence } from 'src/domains/citation';
 import { createCitationRefAllocatorFixture } from 'src/domains/citation/testkit/citationRefAllocatorFixture';
 import { MemoryWebCache } from 'src/tools/web/shared/cache/adapters/memoryWebCache';
@@ -19,7 +19,7 @@ import { WebFailureError } from 'src/tools/web/shared/webFailure';
 import type { ToolContext } from 'src/tools/types';
 import { CONVERSATION_SCHEMAS } from '../../persistence/event-store/conversation.schema';
 import { serializeStoredRuntimeEvent } from '../../persistence/event-store/functions/runtimeEventStorageCodec';
-import { readConversationToolHistory } from '../../persistence/event-store';
+import { readConversationToolHistory, readConversationWebSourceUrls } from '../../persistence/event-store';
 import { createWebReadAccessHistory } from '../createWebReadAccessHistory';
 
 function openDatabase(file = ':memory:'): Database.Database {
@@ -42,6 +42,7 @@ function saveEvent(db: Database.Database, event: RoutedRuntimeEvent): void {
 function seedCall(db: Database.Database, input: {
   conversation?: string; run?: string; call: string; url?: string; code?: string;
   success?: boolean; pending?: boolean; toolName?: string; largeText?: string; argsShape?: 'direct' | 'payload';
+  data?: Record<string, unknown>;
 }): void {
   const conversation = input.conversation ?? 'conversation-web-history';
   const run = input.run ?? 'root';
@@ -57,8 +58,33 @@ function seedCall(db: Database.Database, input: {
     'turn', tool, input.call, options), route));
   if (input.pending) return;
   saveEvent(db, routeRuntimeEvent(createToolOutputEvent(`${run}-${input.call}-output`, conversation, 'turn', tool, input.call,
-    input.success ? { status: 'success', observation: input.largeText ?? 'captured', data: { body: input.largeText } }
-      : { status: 'error', observation: input.largeText ?? 'failed', error: 'failed', error_code: input.code }), route));
+    input.success ? { status: 'success', observation: input.largeText ?? 'captured', data: input.data ?? { body: input.largeText } }
+      : { status: 'error', observation: input.largeText ?? 'failed', error: 'failed', error_code: input.code, ...(input.data ? { data: input.data } : {}) }), route));
+}
+
+function sourceReadData(url: string, resourceUrl?: string): Record<string, unknown> {
+  return WebReadResultSchema.parse({
+    data: {
+      url, title: '取得的页面', charCount: 12, truncated: false, provider: 'fixture',
+      renderMode: 'http', extractor: 'fixture', renderAttempted: false, escalated: false,
+      citations: { query: url, searchMode: 'web', citations: [
+        { sourceType: 'web', ref: 'ABC234', index: 1, url, docTitle: '取得的页面', snippet: '正文摘要' },
+      ] },
+      ...(resourceUrl ? { resources: [{ kind: 'document', url: resourceUrl, label: '原报告' }] } : {}),
+      evidence_store: { bundle_id: 'fixture-bundle' }, cacheStatus: 'miss',
+    }, observation: '取得的正文',
+  }).data;
+}
+
+function sourceSearchData(url: string): Record<string, unknown> {
+  return WebSearchResultSchema.parse({
+    data: {
+      query: '研究资料', resultCount: 1,
+      citations: { query: '研究资料', searchMode: 'web', citations: [
+        { sourceType: 'web', ref: 'ABC234', index: 1, url, docTitle: '搜索结果', snippet: '搜索摘要' },
+      ] }, evidence_store: { bundle_id: 'fixture-bundle' },
+    }, observation: '搜索结果',
+  }).data;
 }
 
 describe('Web 访问历史派生与实际读取反馈', () => {
@@ -85,6 +111,74 @@ describe('Web 访问历史派生与实际读取反馈', () => {
   afterAll(async () => {
     server.closeAllConnections();
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  });
+
+  it('只认正式成功搜索/读取的来源与资源，包含 child 并统一 URL 身份；不扫描参数、失败及任意文字', () => {
+    const db = openDatabase();
+    try {
+      const history = createWebReadAccessHistory(() => db, 'conversation-web-history');
+      const observed = history.hasObservedUrl;
+      if (!observed) throw new Error('Expected URL history capability');
+      seedCall(db, { call: 'search', success: true, toolName: 'web_search',
+        data: sourceSearchData('https://source.test/search/?utm_source=fixture#section') });
+      seedCall(db, { run: 'child', call: 'internal-search', success: true, toolName: 'search_web',
+        data: sourceSearchData('https://source.test/internal') });
+      seedCall(db, { run: 'child', call: 'read', success: true,
+        data: sourceReadData('https://source.test/article', 'https://source.test/report.pdf'),
+        largeText: `https://not-observed.test/observation ${'long-body'.repeat(100_000)}` });
+      seedCall(db, { call: 'failed', code: 'http_404', url: 'https://not-observed.test/request',
+        data: sourceReadData('https://not-observed.test/failed-data'),
+        largeText: 'https://not-observed.test/error' });
+      seedCall(db, { call: 'pending-url', pending: true, url: 'https://not-observed.test/pending' });
+      seedCall(db, { call: 'unrelated', success: true, toolName: 'write_file',
+        data: sourceReadData('https://not-observed.test/other-tool') });
+      seedCall(db, { conversation: 'other-conversation', run: 'other-root', call: 'other-search',
+        success: true, toolName: 'web_search', data: sourceSearchData('https://not-observed.test/other-conversation') });
+      for (const url of ['https://source.test/search', 'https://source.test/internal',
+        'https://source.test/article', 'https://source.test/report.pdf']) {
+        expect(observed({ url })).toBe(true);
+      }
+      for (const url of ['https://not-observed.test/observation', 'https://not-observed.test/request',
+        'https://not-observed.test/failed-data', 'https://not-observed.test/error',
+        'https://not-observed.test/pending', 'https://not-observed.test/other-tool',
+        'https://not-observed.test/other-conversation', 'https://blocked.test/page']) {
+        expect(observed({ url })).toBe(false);
+      }
+      expect(observed({ url: 'https://source.test/report.pdf', currentRunId: 'child', currentToolCallId: 'read' })).toBe(false);
+      const urls = [...readConversationWebSourceUrls(db, 'conversation-web-history')];
+      expect(JSON.stringify(urls)).not.toContain('long-body');
+      expect(urls.every(row => Object.keys(row).length === 3)).toBe(true);
+    } finally { db.close(); }
+  });
+
+  it('原文件取得的请求/最终地址可识别；重载和删除不依赖缓存或另存索引', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'web-source-url-history-'));
+    const file = join(dir, 'fixture.sqlite');
+    let db = openDatabase(file);
+    try {
+      const data = sourceReadData('https://source.test/file.pdf');
+      data.charCount = 0;
+      data.extractor = 'file_download';
+      data.file = {
+        path: `web-downloads/${'a'.repeat(64)}.pdf`, format: 'pdf', mimeType: 'application/pdf',
+        byteLength: 12, sha256: 'a'.repeat(64), requestedUrl: 'https://source.test/download',
+        finalUrl: 'https://source.test/file.pdf', acquiredAt: '2026-10-21T00:00:00.000Z',
+        trust: 'untrusted_external_file',
+      };
+      const result = WebReadResultSchema.parse({ data, observation: '文件已取得' });
+      seedCall(db, { run: 'child', call: 'file', success: true, data: result.data });
+      const history = createWebReadAccessHistory(() => db, 'conversation-web-history');
+      expect(history.hasObservedUrl?.({ url: 'https://source.test/download' })).toBe(true);
+      db.close();
+      db = openDatabase(file);
+      expect(history.hasObservedUrl?.({ url: 'https://source.test/file.pdf' })).toBe(true);
+      db.prepare('DELETE FROM events WHERE run_id = ?').run('child');
+      expect(history.hasObservedUrl?.({ url: 'https://source.test/file.pdf' })).toBe(false);
+      expect(history.hasObservedUrl?.({ url: 'https://source.test/download' })).toBe(false);
+    } finally {
+      db.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('从正式父子事件统计，排除当前调用、其它会话/主机、未完成和非阻断错误；重载及删除跟随事实', () => {
@@ -153,7 +247,7 @@ describe('Web 访问历史派生与实际读取反馈', () => {
       });
       const before = requests;
       await expect(tool.run({ url: `http://blocked.test:${port}/blocked` }, context)).rejects.toMatchObject({
-        kind: 'managed_disabled', code: 'captcha',
+        kind: 'managed_disabled', code: 'http_403',
         message: expect.stringMatching(/访问拦截 2 次.*成功返回 1 次.*1 次历史失败/u),
       });
       expect(requests - before).toBe(1);

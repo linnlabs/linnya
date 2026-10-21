@@ -13,4 +13,10 @@ export interface WebReadAccessHistoryPort {
     readonly currentRunId?: string;
     readonly currentToolCallId?: string;
   }): WebReadAccessCounts;
+  /** 仅核对本会话正式成功 Web 结果中的来源/资源 URL；没有该能力不等于未出现。 */
+  hasObservedUrl?(params: {
+    readonly url: string;
+    readonly currentRunId?: string;
+    readonly currentToolCallId?: string;
+  }): boolean;
 }
