@@ -17,3 +17,5 @@ renderer 内 thumbnail raster 与主舞台共用图片、图表注册表，避�
 取消由 renderer 按 requestId 持有 `AbortController`，preload 只转发稳定字符串并抑制已取消请求的结果。禁止把 `AbortSignal`、DOM 对象或其他原生实例穿过 `contextBridge`；它们不属于 shared wire contract。
 
 presentation 查询、页选择、资源授权与物化、输出路径、manifest、asset 登记和 provider 转换不属于本 feature。request/response/ready codec 位于 shared raster 合同，backend definition 和 worker preload 必须共同使用它，不能各自解释消息结构。
+
+`orchestration/renderSlideRaster.test.ts` 的窄轴标题回归覆盖六字输出、完整文本框裁剪与字形位置。节点按结构定位，坐标断言遵守 shared render-geometry 的中心坐标与局部 offset 合同；`group.x/y` 不能当作文本框左上角。真实字体、中心旋转和 PNG 像素由 `pnpm --dir packages/plugins/slides run smoke:raster-worker` 补充验证。

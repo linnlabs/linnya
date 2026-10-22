@@ -277,6 +277,7 @@ mark 与复杂度预算；Renderer adapter 逐 layer 重置状态并解释局部
 
 - backend contribution / public
   entrypoints：`packages/plugins/slides/src/backend/__tests__/public-entrypoints.test.ts`
+- 资源启停：`__tests__/runtime-resources.integration.test.ts` 使用当前 checkout 作为开发根，真实校验 platform 与 Slides 的随包 Skill；不能用不存在的源码根或跳过必需 Skill 校验来隔离测试。
 - coordinator：`packages/plugins/slides/src/backend/coordinator/*.test.ts`、`packages/plugins/slides/src/backend/__tests__/ppt-coordinator.test.ts`
 - IPC：`packages/plugins/slides/src/backend/ipc/*.test.ts`
 - tools：`packages/plugins/slides/src/backend/tools/**/*.test.ts`

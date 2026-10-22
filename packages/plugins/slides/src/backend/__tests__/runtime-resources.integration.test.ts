@@ -41,10 +41,13 @@ import {
   setPluginRuntimeStateForTests,
 } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
 
+const repositoryRoot = path.resolve(import.meta.dirname, '../../../../../..');
+
 describe('Slides runtime resources', () => {
   beforeEach(async () => {
     installRuntimePathRoots({
-      developmentRoot: '/workspace/linnya',
+      // platform 会校验随 Host 分发的必需 Skill；集成测试必须读取当前 checkout 的真实资源。
+      developmentRoot: repositoryRoot,
       appDataRoot: '/data/linnya/AIService',
       workspaceRoot: '/documents/Linnya',
       workspaceRootIsCustom: false,
@@ -57,8 +60,7 @@ describe('Slides runtime resources', () => {
     await syncRegisteredBackendPluginRuntimeResources(new Set());
     if (!backendPluginRegistry.has(slidesBackendPlugin.meta.id)) {
       // 具体插件只在插件 owner / 发行组合层装配；Core 的 builtin 注册只负责 platform。
-      const { pluginCli: _pluginCli, ...runtimeContribution } = slidesBackendPlugin;
-      backendPluginRegistry.register(runtimeContribution);
+      backendPluginRegistry.register({ ...slidesBackendPlugin, pluginCli: undefined });
     }
   });
 

@@ -383,18 +383,26 @@ describe('slide rasterization', () => {
     const stage = offscreenRendererTestState.stageInstances[0];
     const layer = stage?.children[0];
     const rootGroup = layer?.children[0];
-    const axisTitleGroup = rootGroup?.children.find(
-      (child) => child.config.x === 5.18 * 96,
+    // 文本框采用中心定位加局部 offset；按节点结构定位，不能再把 group.x 当作左边缘。
+    const textGroups = rootGroup.children.filter(
+      (child) => child instanceof offscreenRendererTestState.FakeGroup,
     );
+    expect(textGroups).toHaveLength(1);
+    const axisTitleGroup = textGroups[0];
 
-    expect(axisTitleGroup?.config).toEqual(expect.objectContaining({
+    expect(axisTitleGroup.config).toEqual(expect.objectContaining({
+      x: expect.closeTo((5.18 + 0.18 / 2) * 96),
+      y: expect.closeTo((2.98 + 0.84 / 2) * 96),
+      offsetX: 0.18 * 96 / 2,
+      offsetY: 0.84 * 96 / 2,
+      rotation: 0,
       clipX: 0,
       clipY: 0,
       clipWidth: 0.18 * 96,
       clipHeight: 0.84 * 96,
     }));
-    expect(axisTitleGroup?.children).toHaveLength(6);
-    for (const glyph of axisTitleGroup?.children ?? []) {
+    expect(axisTitleGroup.children.map((glyph) => glyph.config.text)).toEqual([...'单均逆向成本']);
+    for (const glyph of axisTitleGroup.children) {
       const x = glyph.config.x;
       expect(typeof x).toBe('number');
       // run advance 不是字形 paint 边界；普通文本不再给 Konva Text 设置
